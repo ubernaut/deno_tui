@@ -13,6 +13,7 @@ export * from "./src/signals/mod.ts";
 export * from "./src/layout/mod.ts";
 
 export * from "./src/canvas/mod.ts";
+export * from "./src/three_ascii/mod.ts";
 
 export * from "./src/utils/mod.ts";
 

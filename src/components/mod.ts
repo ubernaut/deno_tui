@@ -11,3 +11,4 @@ export * from "./slider.ts";
 export * from "./table.ts";
 export * from "./text.ts";
 export * from "./textbox.ts";
+export * from "./three_ascii.ts";
