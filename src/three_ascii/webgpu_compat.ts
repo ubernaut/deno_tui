@@ -1,5 +1,3 @@
-import { GPUFeatureName } from "npm:three@0.183.2/src/renderers/webgpu/utils/WebGPUConstants.js";
-
 let compatibleDevicePromise: Promise<GPUDevice> | undefined;
 type RafCallback = (time: number) => void;
 const WRITE_BUFFER_PATCHED = Symbol.for("deno_tui.three_ascii.write_buffer_patched");
@@ -62,6 +60,17 @@ function patchQueueWriteBuffer(device: GPUDevice): GPUDevice {
   return device;
 }
 
+function patchErrorScopes(device: GPUDevice): GPUDevice {
+  const originalPopErrorScope = device.popErrorScope.bind(device);
+
+  device.popErrorScope = (): Promise<GPUError | null> => {
+    const result = originalPopErrorScope();
+    return result ?? Promise.resolve(null);
+  };
+
+  return device;
+}
+
 function patchShaderModules(device: GPUDevice): GPUDevice {
   const patchedDevice = device as GPUDevice & {
     [SHADER_MODULE_PATCHED]?: boolean;
@@ -107,16 +116,24 @@ export async function getCompatibleWebGPUDevice(): Promise<GPUDevice> {
       throw new Error("Unable to acquire a WebGPU adapter.");
     }
 
-    const requiredFeatures = Object.values(GPUFeatureName).filter((feature) => (
-      adapter.features.has(feature as GPUFeatureName)
-    )) as GPUFeatureName[];
     const device = await adapter.requestDevice({
-      requiredFeatures,
+      // Requesting every exposed adapter feature can fail on lower-memory
+      // runtimes even though the ASCII pipeline only uses baseline WebGPU.
+      requiredFeatures: [],
       requiredLimits: {},
     });
 
-    return patchShaderModules(patchQueueWriteBuffer(ensureDeviceLostPromise(device)));
+    return patchErrorScopes(patchShaderModules(patchQueueWriteBuffer(ensureDeviceLostPromise(device))));
   })();
 
   return await compatibleDevicePromise;
+}
+
+export async function probeCompatibleWebGPUDevice(): Promise<boolean> {
+  try {
+    await getCompatibleWebGPUDevice();
+    return true;
+  } catch {
+    return false;
+  }
 }

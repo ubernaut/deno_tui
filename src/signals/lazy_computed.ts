@@ -65,7 +65,7 @@ export class LazyComputed<T> extends Computed<T> implements LazyDependant {
     this.lastFired = performance.now();
   }
 
-  update(cause: Dependency): void {
+  override update(cause: Dependency): void {
     const { flusher, interval } = this;
 
     if (cause === this.flusher) {

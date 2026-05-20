@@ -36,17 +36,17 @@ export interface AsciiToggleControlDefinition {
 const fixed = (digits: number) => (value: number): string => value.toFixed(digits);
 
 export const DEFAULT_ASCII_DEMO_EFFECT: AcerolaAsciiNodeOptions = {
-  exposure: 1.25,
-  attenuation: 1.2,
-  blendWithBase: 0.24,
-  asciiColor: "#f2ebc8",
-  backgroundColor: "#071017",
-  depthFalloff: 0.18,
-  depthOffset: 110,
-  edgeThreshold: 10,
-  normalThreshold: 0.18,
-  depthThreshold: 0.11,
-  edges: true,
+  exposure: 1.1,
+  attenuation: 1,
+  blendWithBase: 1,
+  asciiColor: "#ffffff",
+  backgroundColor: "#000000",
+  depthFalloff: 0,
+  depthOffset: 180,
+  edgeThreshold: 12,
+  normalThreshold: 0.2,
+  depthThreshold: 0.13,
+  edges: false,
   fill: true,
   invertLuminance: false,
 };
@@ -69,6 +69,25 @@ export const ASCII_TOGGLE_CONTROLS: readonly AsciiToggleControlDefinition[] = [
 ] as const;
 
 export const ASCII_DEMO_PRESETS: readonly AsciiDemoPreset[] = [
+  {
+    id: "opentui-blocks",
+    label: "OpenTUI Blocks",
+    description: "Chunky fill-first blocks tuned to read like the Neon Exodus OpenTUI panels.",
+    effect: {
+      edgeThreshold: 14,
+      normalThreshold: 0.24,
+      depthThreshold: 0.15,
+      exposure: 1.28,
+      attenuation: 0.96,
+      blendWithBase: 1,
+      depthFalloff: 0.04,
+      depthOffset: 150,
+      edges: false,
+      fill: true,
+      invertLuminance: false,
+    },
+    terminalEdgeBias: 1.45,
+  },
   {
     id: "balanced",
     label: "Balanced",
@@ -138,20 +157,20 @@ export const ASCII_DEMO_PRESETS: readonly AsciiDemoPreset[] = [
   {
     id: "fill-only",
     label: "Fill Only",
-    description: "Disables edges and leans into the luminance glyph set.",
+    description: "Disables edges and keeps the original model color visible through the glyphs.",
     effect: {
       edgeThreshold: 12,
       normalThreshold: 0.2,
       depthThreshold: 0.13,
-      exposure: 1.2,
-      attenuation: 1.08,
-      blendWithBase: 0.32,
-      depthFalloff: 0.18,
-      depthOffset: 110,
+      exposure: 1.1,
+      attenuation: 1,
+      blendWithBase: 1,
+      depthFalloff: 0,
+      depthOffset: 180,
       edges: false,
       fill: true,
       invertLuminance: false,
     },
-    terminalEdgeBias: 1.4,
+    terminalEdgeBias: 1.2,
   },
 ] as const;

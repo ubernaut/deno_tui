@@ -40,17 +40,17 @@ export class BoxObject extends DrawObject<"box"> {
     };
   }
 
-  draw(): void {
+  override draw(): void {
     this.rectangle.subscribe(this.#rectangleSubscription);
     super.draw();
   }
 
-  erase(): void {
+  override erase(): void {
     this.rectangle.unsubscribe(this.#rectangleSubscription);
     super.erase();
   }
 
-  rerender(): void {
+  override rerender(): void {
     const { canvas, rerenderCells, omitCells } = this;
     const { frameBuffer, rerenderQueue } = canvas;
     const { rows, columns } = canvas.size.peek();

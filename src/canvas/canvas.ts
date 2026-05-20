@@ -13,6 +13,7 @@ import { Signal, SignalOfObject } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
 
 const textEncoder = new TextEncoder();
+const DRAW_SEQUENCE_FLUSH_LIMIT = Deno.build.os === "windows" ? 1024 : 16384;
 
 /** Interface defining object that {Canvas}'s constructor can interpret */
 export interface CanvasOptions {
@@ -123,27 +124,58 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
       return;
     }
 
-    let i = 0;
-    updateObjects.sort((a, b) => b.zIndex.peek() - a.zIndex.peek() || b.id - a.id);
+    const objectsToUpdate: DrawObject[] = [];
+    const seenObjects = new Set<DrawObject>();
 
-    for (const object of updateObjects) {
-      if (object.updated) continue;
+    while (updateObjects.length) {
+      const object = updateObjects.pop()!;
+      if (seenObjects.has(object)) {
+        continue;
+      }
+      seenObjects.add(object);
+      objectsToUpdate.push(object);
+    }
+
+    objectsToUpdate.sort((a, b) => b.zIndex.peek() - a.zIndex.peek() || b.id - a.id);
+
+    let i = 0;
+    let intersectionsDirty = false;
+
+    for (const object of objectsToUpdate) {
       object.updated = true;
       ++i;
       object.update();
 
       object.updateMovement();
       object.updatePreviousRectangle();
-
       object.updateOutOfBounds();
 
       if (object.outOfBounds) {
-        continue;
+        object.rendered = false;
       }
 
-      if (object.moved) {
+      intersectionsDirty ||= object.moved;
+    }
+
+    const objectsToRender = intersectionsDirty ? [...this.drawnObjects] : objectsToUpdate;
+    if (intersectionsDirty) {
+      objectsToRender.sort((a, b) => b.zIndex.peek() - a.zIndex.peek() || b.id - a.id);
+      for (const object of objectsToRender) {
         this.updateIntersections(object);
         object.moved = false;
+        if (!object.outOfBounds) {
+          object.rendered = false;
+        }
+      }
+    } else {
+      for (const object of objectsToRender) {
+        object.moved = false;
+      }
+    }
+
+    for (const object of objectsToRender) {
+      if (object.outOfBounds) {
+        continue;
       }
 
       if (object.rendered) {
@@ -155,10 +187,6 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
     }
 
     this.rerenderedObjects = i;
-
-    while (updateObjects.length) {
-      updateObjects.pop();
-    }
 
     let drawSequence = "";
     let lastRow = -1;
@@ -181,7 +209,7 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
         const cell = rowBuffer[column];
 
         // This is required to render properly on windows
-        if (drawSequence.length + cell.length > 1024) {
+        if (drawSequence.length + cell.length > DRAW_SEQUENCE_FLUSH_LIMIT) {
           stdout.writeSync(textEncoder.encode(moveCursor(lastRow, lastColumn) + drawSequence));
           drawSequence = moveCursor(row, column);
         }
@@ -196,7 +224,9 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
     }
 
     // Complete final loop draw sequence
-    stdout.writeSync(textEncoder.encode(moveCursor(lastRow, lastColumn) + drawSequence));
+    if (drawSequence.length > 0) {
+      stdout.writeSync(textEncoder.encode(moveCursor(lastRow, lastColumn) + drawSequence));
+    }
 
     this.emit("render");
   }

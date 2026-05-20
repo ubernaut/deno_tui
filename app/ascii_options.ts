@@ -1,0 +1,125 @@
+import type { AcerolaAsciiNodeOptions } from "../src/three_ascii/AcerolaAsciiNode.ts";
+import {
+  ASCII_DEMO_PRESETS,
+  type AsciiDemoPreset,
+  DEFAULT_ASCII_DEMO_EFFECT,
+} from "../src/three_ascii/demo_presets.ts";
+import type { AsciiOptions, BorderMode } from "./types.ts";
+
+const presetMap = new Map<string, AsciiDemoPreset>(ASCII_DEMO_PRESETS.map((preset) => [preset.id, preset]));
+
+export function createDefaultAsciiOptions(border: BorderMode = "sharp"): AsciiOptions {
+  return buildAsciiOptionsFromPreset("opentui-blocks", border);
+}
+
+export function buildAsciiOptionsFromPreset(presetId: string, border: BorderMode): AsciiOptions {
+  const preset = presetMap.get(presetId) ?? ASCII_DEMO_PRESETS[0]!;
+  const effect = {
+    ...DEFAULT_ASCII_DEMO_EFFECT,
+    ...preset.effect,
+  };
+
+  return {
+    preset: preset.id,
+    border,
+    terminalEdgeBias: preset.terminalEdgeBias ?? 1,
+    edgeThreshold: effect.edgeThreshold ?? 10,
+    normalThreshold: effect.normalThreshold ?? 0.18,
+    depthThreshold: effect.depthThreshold ?? 0.11,
+    exposure: effect.exposure ?? 1.25,
+    attenuation: effect.attenuation ?? 1.2,
+    blendWithBase: effect.blendWithBase ?? 0.24,
+    depthFalloff: effect.depthFalloff ?? 0.18,
+    depthOffset: effect.depthOffset ?? 110,
+    edges: effect.edges ?? true,
+    fill: effect.fill ?? true,
+    invertLuminance: effect.invertLuminance ?? false,
+  };
+}
+
+export function applyAsciiPreset(target: AsciiOptions, presetId: string) {
+  const next = buildAsciiOptionsFromPreset(presetId, target.border);
+  Object.assign(target, next);
+}
+
+export function asciiPresetLabel(presetId: string) {
+  return presetMap.get(presetId)?.label ?? presetId.toUpperCase();
+}
+
+export function asciiEffectOptions(options: AsciiOptions): AcerolaAsciiNodeOptions {
+  return {
+    ...DEFAULT_ASCII_DEMO_EFFECT,
+    edgeThreshold: options.edgeThreshold,
+    normalThreshold: options.normalThreshold,
+    depthThreshold: options.depthThreshold,
+    exposure: options.exposure,
+    attenuation: options.attenuation,
+    blendWithBase: options.blendWithBase,
+    depthFalloff: options.depthFalloff,
+    depthOffset: options.depthOffset,
+    edges: options.edges,
+    fill: options.fill,
+    invertLuminance: options.invertLuminance,
+  };
+}
+
+export function asciiControlValues(key: keyof Pick<
+  AsciiOptions,
+  | "edgeThreshold"
+  | "normalThreshold"
+  | "depthThreshold"
+  | "exposure"
+  | "attenuation"
+  | "blendWithBase"
+  | "depthFalloff"
+  | "depthOffset"
+  | "terminalEdgeBias"
+>) {
+  switch (key) {
+    case "edgeThreshold":
+      return [4, 6, 8, 10, 12, 14, 16, 18];
+    case "normalThreshold":
+      return [0.08, 0.12, 0.16, 0.18, 0.22, 0.26, 0.3];
+    case "depthThreshold":
+      return [0.05, 0.08, 0.11, 0.14, 0.17, 0.2];
+    case "exposure":
+      return [0.8, 1, 1.1, 1.25, 1.4, 1.6, 1.8];
+    case "attenuation":
+      return [0.8, 1, 1.1, 1.2, 1.3, 1.4, 1.6];
+    case "blendWithBase":
+      return [0, 0.12, 0.24, 0.32, 0.5, 0.75, 1];
+    case "depthFalloff":
+      return [0, 0.08, 0.14, 0.18, 0.24, 0.32, 0.4];
+    case "depthOffset":
+      return [0, 60, 90, 105, 110, 116, 140, 180];
+    case "terminalEdgeBias":
+      return [0.6, 0.8, 0.92, 1, 1.15, 1.3, 1.4, 1.6, 1.8];
+  }
+}
+
+export function formatAsciiControlValue(
+  key: keyof Pick<
+    AsciiOptions,
+    | "edgeThreshold"
+    | "normalThreshold"
+    | "depthThreshold"
+    | "exposure"
+    | "attenuation"
+    | "blendWithBase"
+    | "depthFalloff"
+    | "depthOffset"
+    | "terminalEdgeBias"
+  >,
+  value: number,
+) {
+  switch (key) {
+    case "edgeThreshold":
+      return value.toFixed(1);
+    case "depthOffset":
+      return value.toFixed(0);
+    default:
+      return value.toFixed(2);
+  }
+}
+
+export { ASCII_DEMO_PRESETS };

@@ -3,6 +3,50 @@
 import type { Alphabet, Key, KeyPressEvent } from "../types.ts";
 
 const lowerCaseAlphabet = "abcdefghijklmnopqrstuvwxyz";
+const sequenceMap: Partial<Record<string, Key>> = {
+  OP: "f1",
+  "[P": "f1",
+  OQ: "f2",
+  "[Q": "f2",
+  OR: "f3",
+  "[R": "f3",
+  OS: "f4",
+  "[S": "f4",
+  "[[A": "f1",
+  "[[B": "f2",
+  "[[C": "f3",
+  "[[D": "f4",
+  "[[E": "f5",
+  "[11~": "f1",
+  "[12~": "f2",
+  "[13~": "f3",
+  "[14~": "f4",
+  "[15~": "f5",
+  "[17~": "f6",
+  "[18~": "f7",
+  "[19~": "f8",
+  "[20~": "f9",
+  "[21~": "f10",
+  "[23~": "f11",
+  "[24~": "f12",
+  OA: "up",
+  "[A": "up",
+  OB: "down",
+  "[B": "down",
+  OC: "right",
+  "[C": "right",
+  OD: "left",
+  "[D": "left",
+  OH: "home",
+  "[H": "home",
+  OF: "end",
+  "[F": "end",
+  "[2~": "insert",
+  "[3~": "delete",
+  "[5~": "pageup",
+  "[6~": "pagedown",
+  "[E": "clear",
+};
 
 const keyPress: KeyPressEvent = {
   buffer: undefined as unknown as Uint8Array,
@@ -79,85 +123,9 @@ export function decodeKey(buffer: Uint8Array, code: string): KeyPressEvent {
         }
 
         code = code.replace(`1;${modifier}`, "").replace(`;${modifier}`, "").replace("1;", "");
-        switch (code) {
-          case "OP":
-          case "[P":
-            keyPress.key = "f1";
-            break;
-          case "OG":
-          case "[Q":
-            keyPress.key = "f2";
-            break;
-          case "OR":
-          case "[R":
-            keyPress.key = "f3";
-            break;
-          case "OS":
-          case "[S":
-            keyPress.key = "f4";
-            break;
-          case "[15~":
-            keyPress.key = "f5";
-            break;
-          case "[17~":
-            keyPress.key = "f6";
-            break;
-          case "[18~":
-            keyPress.key = "f7";
-            break;
-          case "[19~":
-            keyPress.key = "f8";
-            break;
-          case "[20~":
-            keyPress.key = "f9";
-            break;
-          case "[21~":
-            keyPress.key = "f10";
-            break;
-          case "[23~":
-            keyPress.key = "f11";
-            break;
-          case "[24~":
-            keyPress.key = "f12";
-            break;
-
-          case "[A":
-            keyPress.key = "up";
-            break;
-          case "[B":
-            keyPress.key = "down";
-            break;
-          case "[C":
-            keyPress.key = "right";
-            break;
-          case "[D":
-            keyPress.key = "left";
-            break;
-
-          case "[2~":
-            keyPress.key = "insert";
-            break;
-          case "[3~":
-            keyPress.key = "delete";
-            break;
-
-          case "[5~":
-            keyPress.key = "pageup";
-            break;
-          case "[6~":
-            keyPress.key = "pagedown";
-            break;
-
-          case "[H":
-            keyPress.key = "home";
-            break;
-          case "[F":
-            keyPress.key = "end";
-            break;
-
-          case "[E":
-            keyPress.key = "clear";
-            break;
+        const normalizedKey = sequenceMap[code];
+        if (normalizedKey) {
+          keyPress.key = normalizedKey;
         }
       }
       break;

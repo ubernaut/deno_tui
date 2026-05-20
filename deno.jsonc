@@ -1,6 +1,11 @@
 {
   "tasks": {
-    "demo": "deno run --watch --allow-hrtime ./examples/demo.ts"
+    "demo": "deno run --watch --allow-hrtime ./examples/demo.ts",
+    "grwizard": "deno run -A ./app/grwizard.ts",
+    "grwizard:check": "deno check ./app/grwizard.ts",
+    "viz": "deno run -A ./app/main.ts",
+    "viz:check": "deno check ./app/main.ts",
+    "viz:test": "deno test"
   },
   "fmt": {
     "options": {

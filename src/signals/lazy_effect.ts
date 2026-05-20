@@ -63,7 +63,7 @@ export class LazyEffect extends Effect implements LazyDependant {
     this.lastFired = performance.now();
   }
 
-  update(cause: Dependency | Dependant): void {
+  override update(cause: Dependency | Dependant): void {
     const { flusher, interval } = this;
 
     if (flusher) {

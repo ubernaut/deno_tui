@@ -23,9 +23,10 @@ const FOG_SCALE = 0.005 / Math.sqrt(Math.log(2));
 const DEFAULT_PIXEL_ASPECT_RATIO = 0.5;
 const DEFAULT_TERMINAL_EDGE_BIAS = 1;
 const TERMINAL_EDGE_THRESHOLD_SCALE = 2;
+const MIN_VISIBLE_LUMINANCE = 0.015;
 const RESET = "\x1b[0m";
 const GOHU_11_EDGE_SHAPE_MISMATCH = [0, 3, 10, 9] as const;
-const GOHU_11_FILL_GLYPH_COVERAGE = [0, 1, 4, 9, 12, 9, 11, 6, 12, 18] as const;
+const GOHU_11_FILL_GLYPH_COVERAGE = [0, 2, 4, 6, 9, 11, 13, 15, 18, 18] as const;
 
 const FILL_SHADER = /* wgsl */ `
 struct Params {
@@ -62,10 +63,14 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
   let attenuation = params.effect0.y;
 
   var luminanceValue = clamp(pow(max(sample.a, 0.0) * exposure, attenuation), 0.0, 1.0);
-  var fillBucket = clamp(i32(floor(luminanceValue * 10.0 - 0.000001)) - 1, i32(0), i32(9));
+  var fillBucket = i32(0);
+
+  if (luminanceValue > ${MIN_VISIBLE_LUMINANCE}) {
+    fillBucket = clamp(i32(floor(luminanceValue * 9.0)) + 1, i32(1), i32(9));
+  }
 
   if (params.flags.z > 0.5) {
-    fillBucket = 9 - fillBucket;
+    fillBucket = select(i32(0), 10 - fillBucket, fillBucket > 0);
   }
 
   glyphs[index] = f32(fillBucket + 5);

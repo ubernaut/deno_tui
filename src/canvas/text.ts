@@ -64,8 +64,8 @@ export class TextObject extends DrawObject<"text"> {
           }
         }
 
-        rectangle.height = 1;
       }
+      rectangle.height = 1;
 
       const { valueChars: previousValueChars } = this;
       const valueChars: string | string[] = this.valueChars = multiCodePointSupport
@@ -104,8 +104,12 @@ export class TextObject extends DrawObject<"text"> {
       const overwriteRectangle = this.overwriteRectangle.peek();
 
       this.moved = true;
+      this.updated = false;
+      updateObjects.push(this);
       for (const objectUnder of this.objectsUnder) {
         objectUnder.moved = true;
+        objectUnder.updated = false;
+        updateObjects.push(objectUnder);
       }
 
       update(text, rectangle, multiCodePointSupport, overwriteRectangle);
@@ -129,19 +133,19 @@ export class TextObject extends DrawObject<"text"> {
     });
   }
 
-  draw(): void {
+  override draw(): void {
     this.#updateEffect.resume();
     this.rectangle.subscribe(this.#rectangleSubscription);
     super.draw();
   }
 
-  erase(): void {
+  override erase(): void {
     this.#updateEffect.pause();
     this.rectangle.unsubscribe(this.#rectangleSubscription);
     super.erase();
   }
 
-  updateMovement(): void {
+  override updateMovement(): void {
     const { objectsUnder, previousRectangle } = this;
     const rectangle = this.rectangle.peek();
 
@@ -180,7 +184,7 @@ export class TextObject extends DrawObject<"text"> {
     }
   }
 
-  rerender(): void {
+  override rerender(): void {
     const { canvas, valueChars, omitCells, rerenderCells } = this;
 
     const { frameBuffer, rerenderQueue } = canvas;
