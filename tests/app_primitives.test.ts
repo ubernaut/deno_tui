@@ -21,6 +21,8 @@ import { RouteManager } from "../src/app/router.ts";
 import { SettingsController } from "../src/app/settings.ts";
 import { bindSettingsCommands, settingsCommands } from "../src/app/settings_commands.ts";
 import type { SettingsCommandAction } from "../src/app/settings_commands.ts";
+import { bindSplitPaneCommands, splitPaneCommands } from "../src/app/split_pane_commands.ts";
+import type { SplitPaneCommandAction } from "../src/app/split_pane_commands.ts";
 import {
   bindRouteSetting,
   bindSettingSignal,
@@ -1654,6 +1656,79 @@ Deno.test("createThemePlugin rolls back installed surfaces when custom install f
   assertEquals(app.commands.has("theme.set.plain"), false);
   assertEquals(app.plugins(), []);
   app.destroy();
+});
+
+Deno.test("splitPaneCommands resize change direction set ratios and reset", async () => {
+  const controller = new SplitPaneController({
+    direction: "row",
+    ratio: 0.5,
+    minFirst: 2,
+    minSecond: 2,
+    resizeMode: "ratio",
+  });
+  const bounds = { column: 0, row: 0, width: 21, height: 8 };
+  const registry = new CommandRegistry<SplitPaneCommandAction>();
+  const dispose = bindSplitPaneCommands(registry, controller, {
+    id: "main",
+    idPrefix: "mainSplit",
+    group: "layout",
+    bounds,
+    step: 4,
+    includeRatioCommands: true,
+    includeReset: true,
+    ratios: [0.25, 0.75],
+  });
+  const actions: SplitPaneCommandAction[] = [];
+
+  assertEquals(registry.list("layout").map((command) => command.id), [
+    "mainSplit.growFirst",
+    "mainSplit.direction.row",
+    "mainSplit.reset",
+    "mainSplit.ratio.0250",
+    "mainSplit.ratio.0750",
+    "mainSplit.shrinkFirst",
+    "mainSplit.direction.column",
+  ]);
+
+  assertEquals(await registry.execute("mainSplit.growFirst", (action) => void actions.push(action)), true);
+  assertEquals(Math.round((controller.snapshot().ratio ?? 0) * 100), 70);
+  assertEquals(actions[0]!.type, "splitPane.resized");
+  assertEquals(actions[0]!.payload!.id, "main");
+
+  assertEquals(await registry.execute("mainSplit.direction.column", (action) => void actions.push(action)), true);
+  assertEquals(controller.snapshot().direction, "column");
+  assertEquals(actions[1]!.type, "splitPane.directionChanged");
+
+  assertEquals(await registry.execute("mainSplit.ratio.0250", (action) => void actions.push(action)), true);
+  assertEquals(controller.snapshot().ratio, 0.25);
+  assertEquals(actions[2]!.type, "splitPane.ratioChanged");
+
+  assertEquals(await registry.execute("mainSplit.reset", (action) => void actions.push(action)), true);
+  assertEquals(controller.snapshot(), {
+    direction: "row",
+    ratio: 0.5,
+    minFirst: 2,
+    minSecond: 2,
+    resizeMode: "ratio",
+  });
+  assertEquals(actions[3]!.type, "splitPane.reset");
+
+  dispose();
+  assertEquals(registry.list("layout"), []);
+});
+
+Deno.test("splitPaneCommands can omit resize bounds and command groups", () => {
+  const controller = new SplitPaneController({ direction: "row", ratio: 0.5 });
+  const commands = splitPaneCommands(controller, {
+    includeDirectionCommands: false,
+    includeRatioCommands: false,
+    includeReset: false,
+  });
+
+  assertEquals(commands.map((command) => [command.id, commandDisabled(command)]), [
+    ["splitPane.shrinkFirst", true],
+    ["splitPane.growFirst", true],
+  ]);
 });
 
 Deno.test("bindSplitPaneSetting restores and persists layout state", async () => {

@@ -305,7 +305,7 @@ const rects = flexRects(bounds, "row", [
 pane state should be observable, persisted, or shared across input handlers:
 
 ```ts
-import { SplitPaneController, splitPaneRects } from "https://deno.land/x/tui@VERSION/mod.ts";
+import { bindSplitPaneCommands, SplitPaneController, splitPaneRects } from "https://deno.land/x/tui@VERSION/mod.ts";
 
 const panes = splitPaneRects(bounds, {
   direction: "row",
@@ -325,7 +325,21 @@ const split = new SplitPaneController({
 
 const nextPanes = split.resize(bounds, 4);
 splitRatioSetting.set(split.snapshot().ratio ?? 0.65);
+
+const stopSplitCommands = bindSplitPaneCommands(app.commands, split, {
+  id: "main",
+  idPrefix: "layout.mainSplit",
+  bounds: () => app.tui.rectangle.value,
+  group: "layout",
+  includeRatioCommands: true,
+  includeReset: true,
+});
 ```
+
+`splitPaneCommands()` and `bindSplitPaneCommands()` expose resize, direction, ratio preset, and reset actions through
+the same command registry used by palettes, menus, keymaps, and plugins. Pass a static rectangle, rectangle signal, or
+bounds callback so the commands can resize against the current viewport while keeping `SplitPaneController` independent
+of any specific app shell.
 
 Responsive helpers are also exported for common app shell layout:
 
