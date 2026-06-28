@@ -28,8 +28,8 @@ a system monitor shell that can render live data through those scenes.
   set.
 - **Runtime capability layer** — Workers, WebGPU, WebGL, OffscreenCanvas, and IndexedDB are detected through a
   standards-oriented runtime module with configurable fallbacks.
-- **Theme engine** — semantic tokens, palette presets, component variants, composition helpers, and inspection APIs
-  produce normal `Theme` objects while keeping app-level styling reusable.
+- **Theme engine** — semantic tokens, palette presets, named theme packs, runtime providers, component variants,
+  composition helpers, and inspection APIs produce normal `Theme` objects while keeping app-level styling reusable.
 
 ## Features
 
@@ -229,12 +229,18 @@ const ok = form.validate();
 
 ## Theming
 
-Use `createTheme()` for semantic tokens, `createThemeEngine()` for built-in palettes, or `ThemeEngine` for app-level
-component variants. This fork also adds `composeThemeOptions()`, `ThemeEngine.extend()`, and `ThemeEngine.inspect()` so
-larger apps can layer reusable theme packs without mutating a base engine:
+Use `createTheme()` for semantic tokens, `createThemeEngine()` for built-in palettes, `ThemeRegistry` for named theme
+packs, or `ThemeProvider` for runtime theme selection. This fork also adds `composeThemeOptions()`,
+`ThemeEngine.extend()`, and `ThemeEngine.inspect()` so larger apps can layer reusable theme packs without mutating a
+base engine:
 
 ```ts
-import { composeThemeOptions, createThemeEngine } from "https://deno.land/x/tui@VERSION/mod.ts";
+import {
+  composeThemeOptions,
+  createThemeEngine,
+  createThemeProvider,
+  createThemeRegistry,
+} from "https://deno.land/x/tui@VERSION/mod.ts";
 
 const appTheme = composeThemeOptions({
   components: {
@@ -255,7 +261,21 @@ const themeEngine = createThemeEngine("neon", appTheme)
 
 const buttonTheme = themeEngine.component("Button", "danger");
 const availableThemes = themeEngine.inspect();
+
+const registry = createThemeRegistry([
+  { id: "terminal", label: "Terminal", palette: "terminal" },
+  { id: "neon-ops", label: "Neon Ops", palette: "neon", options: appTheme },
+]);
+const provider = createThemeProvider({ registry, activeId: "neon-ops" });
+
+provider.setTheme("terminal");
+const activeButtonTheme = provider.component("Button", "danger").value;
+const themeInventory = provider.inspect();
 ```
+
+`ThemeRegistry.engine(id, overrides)` composes a named pack with per-app overrides, while `ThemeProvider.component()`
+and `ThemeProvider.resolve()` expose computed signals for active component themes and individual state styles. That
+keeps theme switching centralized and testable without requiring widgets to know where their theme came from.
 
 ## Runtime Capabilities
 

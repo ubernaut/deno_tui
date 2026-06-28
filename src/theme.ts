@@ -1,4 +1,5 @@
 // Copyright 2023 Im-Beast. MIT license.
+import { Computed, Signal } from "./signals/mod.ts";
 
 /** Function that's supposed to return styled text given string as parameter */
 export type Style = (text: string) => string;
@@ -172,6 +173,151 @@ export function createThemeEngine(
       ...(options.tokens ?? {}),
     },
   });
+}
+
+export interface ThemePack {
+  id: string;
+  label?: string;
+  palette?: ThemePaletteName;
+  options?: ThemeEngineOptions;
+}
+
+export interface ThemePackInspection {
+  id: string;
+  label: string;
+  palette: ThemePaletteName;
+  components: ThemeComponentInspection[];
+}
+
+export interface ThemeProviderInspection {
+  activeId: string;
+  themes: ThemePackInspection[];
+  engine: ThemeInspection;
+}
+
+export class ThemeRegistry {
+  readonly #packs = new Map<string, ThemePack>();
+
+  constructor(packs: Iterable<ThemePack> = []) {
+    for (const pack of packs) {
+      this.register(pack);
+    }
+  }
+
+  register(pack: ThemePack): this {
+    this.#packs.set(pack.id, {
+      ...pack,
+      options: pack.options ? composeThemeOptions(pack.options) : undefined,
+    });
+    return this;
+  }
+
+  has(id: string): boolean {
+    return this.#packs.has(id);
+  }
+
+  get(id: string): ThemePack | undefined {
+    const pack = this.#packs.get(id);
+    return pack
+      ? {
+        ...pack,
+        options: pack.options ? composeThemeOptions(pack.options) : undefined,
+      }
+      : undefined;
+  }
+
+  ids(): string[] {
+    return [...this.#packs.keys()].sort();
+  }
+
+  engine(id: string, overrides: ThemeEngineOptions = {}): ThemeEngine {
+    const pack = this.#packs.get(id);
+    if (!pack) {
+      throw new ThemePackNotFoundError(id);
+    }
+
+    return createThemeEngine(
+      pack.palette ?? "plain",
+      composeThemeOptions(pack.options ?? {}, overrides),
+    );
+  }
+
+  inspect(): ThemePackInspection[] {
+    return this.ids().map((id) => {
+      const pack = this.#packs.get(id)!;
+      return {
+        id,
+        label: pack.label ?? id,
+        palette: pack.palette ?? "plain",
+        components: this.engine(id).inspect().components,
+      };
+    });
+  }
+}
+
+export class ThemePackNotFoundError extends Error {
+  constructor(id: string) {
+    super(`Theme pack "${id}" is not registered`);
+    this.name = "ThemePackNotFoundError";
+  }
+}
+
+export interface ThemeProviderOptions {
+  registry?: ThemeRegistry;
+  activeId?: string | Signal<string>;
+  overrides?: ThemeEngineOptions;
+}
+
+export class ThemeProvider {
+  readonly registry: ThemeRegistry;
+  readonly activeId: Signal<string>;
+  readonly engine: Computed<ThemeEngine>;
+  readonly #overrides: ThemeEngineOptions;
+
+  constructor(options: ThemeProviderOptions = {}) {
+    this.registry = options.registry ?? createThemeRegistry(defaultThemePacks);
+    this.activeId = options.activeId instanceof Signal
+      ? options.activeId
+      : new Signal(options.activeId ?? this.registry.ids()[0] ?? "plain");
+    this.#overrides = composeThemeOptions(options.overrides ?? {});
+    this.engine = new Computed(() => this.registry.engine(this.activeId.value, this.#overrides));
+  }
+
+  setTheme(id: string): boolean {
+    if (!this.registry.has(id)) return false;
+    this.activeId.value = id;
+    return true;
+  }
+
+  component(componentName: string, variant = "default"): Computed<Theme> {
+    return new Computed(() => this.engine.value.component(componentName, variant));
+  }
+
+  resolve(componentName: string, state: ThemeState, variant = "default"): Computed<Style> {
+    return new Computed(() => this.engine.value.resolve(componentName, state, variant));
+  }
+
+  inspect(): ThemeProviderInspection {
+    return {
+      activeId: this.activeId.peek(),
+      themes: this.registry.inspect(),
+      engine: this.engine.peek().inspect(),
+    };
+  }
+}
+
+export const defaultThemePacks: ThemePack[] = [
+  { id: "plain", label: "Plain", palette: "plain" },
+  { id: "neon", label: "Neon", palette: "neon" },
+  { id: "terminal", label: "Terminal", palette: "terminal" },
+];
+
+export function createThemeRegistry(packs: Iterable<ThemePack> = defaultThemePacks): ThemeRegistry {
+  return new ThemeRegistry(packs);
+}
+
+export function createThemeProvider(options: ThemeProviderOptions = {}): ThemeProvider {
+  return new ThemeProvider(options);
 }
 
 export class ThemeEngine {
