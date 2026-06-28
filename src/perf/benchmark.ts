@@ -2,11 +2,61 @@
 /** A named benchmark workload with optional warmup and pass/fail thresholds. */
 export interface BenchmarkCase {
   name: string;
+  category?: string;
+  description?: string;
+  tags?: readonly string[];
   iterations?: number;
   warmupIterations?: number;
   maxAverageMs?: number;
   maxTotalMs?: number;
   run: () => void | Promise<void>;
+}
+
+/** Serializable benchmark case metadata for docs, CI reports, and selectors. */
+export interface BenchmarkCaseInspection {
+  name: string;
+  category?: string;
+  description?: string;
+  tags: string[];
+  iterations?: number;
+  warmupIterations?: number;
+  maxAverageMs?: number;
+  maxTotalMs?: number;
+  thresholded: boolean;
+}
+
+/** Query fields for selecting benchmark cases by name, metadata, or threshold status. */
+export interface BenchmarkCatalogQuery {
+  search?: string;
+  category?: string;
+  tag?: string;
+  thresholded?: boolean;
+}
+
+/** Aggregate metadata for a benchmark case catalog. */
+export interface BenchmarkCatalogInspection {
+  count: number;
+  thresholded: number;
+  categories: string[];
+  tags: string[];
+}
+
+/** Filtered benchmark catalog with aggregate inspection metadata. */
+export interface BenchmarkCatalogReport {
+  cases: BenchmarkCaseInspection[];
+  inspection: BenchmarkCatalogInspection;
+}
+
+/** Inputs for creating a benchmark catalog report. */
+export interface BenchmarkCatalogReportOptions {
+  cases: readonly BenchmarkCase[];
+  query?: BenchmarkCatalogQuery;
+}
+
+/** Options for rendering benchmark case metadata as Markdown. */
+export interface BenchmarkCatalogMarkdownOptions extends BenchmarkCatalogReportOptions {
+  title?: string;
+  includeSummary?: boolean;
 }
 
 /** Timing result for one benchmark case after warmup and measured iterations. */
@@ -92,6 +142,77 @@ export class BenchmarkRunner {
   async summarize(): Promise<BenchmarkSummary> {
     return summarizeBenchmarkResults(await this.run());
   }
+
+  /** Returns serializable case metadata without running benchmark work. */
+  inspect(query: BenchmarkCatalogQuery = {}): BenchmarkCatalogReport {
+    return createBenchmarkCatalogReport({ cases: this.cases, query });
+  }
+}
+
+/** Returns normalized metadata for a benchmark case without executing it. */
+export function inspectBenchmarkCase(benchmark: BenchmarkCase): BenchmarkCaseInspection {
+  return {
+    name: benchmark.name,
+    category: benchmark.category,
+    description: benchmark.description,
+    tags: [...new Set(benchmark.tags ?? [])].sort(),
+    iterations: benchmark.iterations,
+    warmupIterations: benchmark.warmupIterations,
+    maxAverageMs: benchmark.maxAverageMs,
+    maxTotalMs: benchmark.maxTotalMs,
+    thresholded: benchmark.maxAverageMs !== undefined || benchmark.maxTotalMs !== undefined,
+  };
+}
+
+/** Filters benchmark case metadata for docs, settings, and CI selectors. */
+export function queryBenchmarkCases(
+  cases: readonly BenchmarkCase[],
+  query: BenchmarkCatalogQuery = {},
+): BenchmarkCaseInspection[] {
+  return cases
+    .map(inspectBenchmarkCase)
+    .filter((benchmark) => matchesBenchmarkQuery(benchmark, query))
+    .sort((left, right) =>
+      (left.category ?? "").localeCompare(right.category ?? "") || left.name.localeCompare(right.name)
+    );
+}
+
+/** Aggregates benchmark catalog metadata. */
+export function inspectBenchmarkCatalog(cases: readonly BenchmarkCaseInspection[]): BenchmarkCatalogInspection {
+  return {
+    count: cases.length,
+    thresholded: cases.filter((benchmark) => benchmark.thresholded).length,
+    categories: uniqueSorted(cases.map((benchmark) => benchmark.category).filter(isString)),
+    tags: uniqueSorted(cases.flatMap((benchmark) => benchmark.tags)),
+  };
+}
+
+/** Creates a filtered benchmark catalog report. */
+export function createBenchmarkCatalogReport(options: BenchmarkCatalogReportOptions): BenchmarkCatalogReport {
+  const cases = queryBenchmarkCases(options.cases, options.query);
+  return {
+    cases,
+    inspection: inspectBenchmarkCatalog(cases),
+  };
+}
+
+/** Formats benchmark case metadata as Markdown without running the suite. */
+export function formatBenchmarkCatalogMarkdown(options: BenchmarkCatalogMarkdownOptions): string {
+  const report = createBenchmarkCatalogReport(options);
+  const lines = [`# ${options.title ?? "Benchmark Catalog"}`, ""];
+  if (options.includeSummary ?? true) {
+    lines.push(`${report.inspection.count} cases, ${report.inspection.thresholded} with thresholds.`, "");
+  }
+  lines.push("| Case | Category | Iterations | Thresholds | Tags | Description |");
+  lines.push("| --- | --- | ---: | --- | --- | --- |");
+  for (const benchmark of report.cases) {
+    lines.push(
+      `| ${benchmark.name} | ${benchmark.category ?? "-"} | ${benchmark.iterations ?? "-"} | ${
+        formatBenchmarkCaseThresholds(benchmark)
+      } | ${benchmark.tags.join(", ") || "-"} | ${benchmark.description ?? "-"} |`,
+    );
+  }
+  return lines.join("\n");
 }
 
 /** Summarizes previously collected benchmark results. */
@@ -135,4 +256,36 @@ function formatThresholds(result: BenchmarkResult): string {
     result.maxTotalMs === undefined ? undefined : `max total ${result.maxTotalMs.toFixed(3)}ms`,
   ].filter((value): value is string => value !== undefined);
   return thresholds.length === 0 ? "" : `, ${thresholds.join(", ")}`;
+}
+
+function formatBenchmarkCaseThresholds(benchmark: BenchmarkCaseInspection): string {
+  const thresholds = [
+    benchmark.maxAverageMs === undefined ? undefined : `avg <= ${benchmark.maxAverageMs}`,
+    benchmark.maxTotalMs === undefined ? undefined : `total <= ${benchmark.maxTotalMs}`,
+  ].filter(isString);
+  return thresholds.join(", ") || "-";
+}
+
+function matchesBenchmarkQuery(benchmark: BenchmarkCaseInspection, query: BenchmarkCatalogQuery): boolean {
+  if (query.category && benchmark.category !== query.category) return false;
+  if (query.tag && !benchmark.tags.includes(query.tag)) return false;
+  if (query.thresholded !== undefined && benchmark.thresholded !== query.thresholded) return false;
+  if (!query.search) return true;
+  const parts = query.search.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return true;
+  const haystack = [
+    benchmark.name,
+    benchmark.category,
+    benchmark.description,
+    ...benchmark.tags,
+  ].join(" ").toLowerCase();
+  return parts.every((part) => haystack.includes(part));
+}
+
+function uniqueSorted<T extends string>(values: Iterable<T>): T[] {
+  return [...new Set(values)].sort();
+}
+
+function isString(value: string | undefined): value is string {
+  return value !== undefined;
 }

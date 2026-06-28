@@ -1,8 +1,12 @@
 import { assertEquals } from "./deps.ts";
 import {
   BenchmarkRunner,
+  createBenchmarkCatalogReport,
+  formatBenchmarkCatalogMarkdown,
   formatBenchmarkResults,
   formatBenchmarkSummary,
+  inspectBenchmarkCatalog,
+  queryBenchmarkCases,
   summarizeBenchmarkResults,
 } from "../src/perf/mod.ts";
 
@@ -62,6 +66,55 @@ Deno.test("BenchmarkRunner summarizes threshold failures", async () => {
     [
       "fail slow: 2.000ms avg (2 iterations, 4.000ms total, max total 3.000ms)",
       "fail benchmark summary: 1 cases, 1 failed, 4.000ms total, 4.000ms avg/case",
+    ].join("\n"),
+  );
+});
+
+Deno.test("benchmark catalogs filter inspect and format case metadata", () => {
+  const cases = [
+    {
+      name: "layout/flex",
+      category: "layout",
+      description: "Solve flexible pane rectangles.",
+      tags: ["layout", "rects"],
+      iterations: 100,
+      maxAverageMs: 1,
+      run() {},
+    },
+    {
+      name: "render/sparkline",
+      category: "render",
+      tags: ["dashboard", "text"],
+      iterations: 50,
+      run() {},
+    },
+  ];
+  const runner = new BenchmarkRunner(cases);
+  const report = createBenchmarkCatalogReport({ cases, query: { tag: "layout" } });
+  const markdown = formatBenchmarkCatalogMarkdown({
+    cases,
+    query: { category: "layout" },
+    title: "Layout Benchmarks",
+  });
+
+  assertEquals(queryBenchmarkCases(cases, { search: "flex rects" }).map((entry) => entry.name), ["layout/flex"]);
+  assertEquals(report.inspection, {
+    count: 1,
+    thresholded: 1,
+    categories: ["layout"],
+    tags: ["layout", "rects"],
+  });
+  assertEquals(inspectBenchmarkCatalog(runner.inspect().cases).count, 2);
+  assertEquals(
+    markdown,
+    [
+      "# Layout Benchmarks",
+      "",
+      "1 cases, 1 with thresholds.",
+      "",
+      "| Case | Category | Iterations | Thresholds | Tags | Description |",
+      "| --- | --- | ---: | --- | --- | --- |",
+      "| layout/flex | layout | 100 | avg <= 1 | layout, rects | Solve flexible pane rectangles. |",
     ].join("\n"),
   );
 });

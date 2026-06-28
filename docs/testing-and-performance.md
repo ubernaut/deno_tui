@@ -60,11 +60,15 @@ persistence through the same disposable app-plugin lifecycle as theme and route 
 for the current capability summary, default plan, and built-in profile table, or `deno task capabilities -- --json` for
 machine-readable reports.
 
-`BenchmarkRunner` supports per-case `iterations`, `warmupIterations`, `maxAverageMs`, and `maxTotalMs`. Pass `{ now }`
-in `BenchmarkRunnerOptions` to make benchmark unit tests deterministic, use `summarize()` or
-`summarizeBenchmarkResults()` for pass/fail reporting, and format output with `formatBenchmarkResults()` or
-`formatBenchmarkSummary()`. Summaries include aggregate `totalMs` and `averageMs` fields for CLI reports and
-machine-readable logs. Run `deno task benchmark -- --json` for structured output; threshold failures exit nonzero.
+`BenchmarkRunner` supports per-case `category`, `description`, `tags`, `iterations`, `warmupIterations`, `maxAverageMs`,
+and `maxTotalMs`. Pass `{ now }` in `BenchmarkRunnerOptions` to make benchmark unit tests deterministic, use
+`summarize()` or `summarizeBenchmarkResults()` for pass/fail reporting, and format output with
+`formatBenchmarkResults()` or `formatBenchmarkSummary()`. Summaries include aggregate `totalMs` and `averageMs` fields
+for CLI reports and machine-readable logs. Use `inspect()` plus `createBenchmarkCatalogReport()` or
+`formatBenchmarkCatalogMarkdown()` to expose benchmark metadata in docs, settings screens, CI summaries, and launchers
+without running workloads. Run `deno task benchmark -- --list` for the readable catalog,
+`deno task benchmark -- --list --json` for structured catalog output, or `deno task benchmark -- --json` for structured
+timing output; threshold failures exit nonzero.
 
 Run the default suite without broad permissions:
 

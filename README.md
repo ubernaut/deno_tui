@@ -1932,8 +1932,11 @@ launcher metadata is also exported from `scripts/visualization_launcher.ts` as a
 `queryVisualizationLaunchTargets()`, `createVisualizationLaunchReport()`, `inspectVisualizationLaunchTargets()`, and
 `formatVisualizationLaunchMarkdown()` provide the same structured target list for custom launchers, docs pages, and CI
 reports without duplicating aliases or descriptions. Benchmark runs print per-case timings plus an aggregate summary;
-`deno task benchmark -- --json` emits the same threshold-aware summary as structured data and exits nonzero when a case
-fails its limits.
+`deno task benchmark -- --list` prints the benchmark catalog without running workloads,
+`deno task benchmark -- --list --json` emits that catalog as structured data, and `deno task benchmark -- --json` emits
+the same threshold-aware timing summary as structured data and exits nonzero when a case fails its limits. The catalog
+path is backed by `BenchmarkRunner.inspect()`, `createBenchmarkCatalogReport()`, and `formatBenchmarkCatalogMarkdown()`
+so launchers and docs can reuse the same case metadata.
 
 Direct Deno tasks are also available:
 
