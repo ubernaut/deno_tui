@@ -124,6 +124,15 @@ export interface ThemeTokens {
 }
 
 export type ThemeTokenName = keyof ThemeTokens;
+export const themeTokenNames = [
+  "foreground",
+  "muted",
+  "accent",
+  "success",
+  "warning",
+  "danger",
+  "surface",
+] as const satisfies readonly ThemeTokenName[];
 export type ThemeStyleReference = Style | ThemeTokenName | readonly ThemeStyleReference[];
 export type ThemeStateDefinition = Partial<Record<ThemeState, ThemeStyleReference>>;
 
@@ -147,6 +156,7 @@ export function createTheme(tokens: Partial<ThemeTokens> = {}): Theme & { tokens
 }
 
 export type ThemeState = keyof Theme;
+export const themeStates = ["base", "focused", "active", "disabled"] as const satisfies readonly ThemeState[];
 
 export interface ComponentThemeDefinition {
   extends?: string | readonly string[];
@@ -181,6 +191,53 @@ export interface ThemeComponentInspection {
 export interface ThemeInspection {
   tokens: Array<keyof ThemeTokens>;
   components: ThemeComponentInspection[];
+}
+
+export type ThemeValidationIssueKind =
+  | "unknown-token"
+  | "unknown-component"
+  | "inheritance-cycle";
+
+export interface ThemeValidationIssue {
+  kind: ThemeValidationIssueKind;
+  path: string;
+  message: string;
+  component?: string;
+  variant?: string;
+  state?: ThemeState;
+  reference?: string;
+}
+
+export interface ThemeStylePreview {
+  raw: string;
+  styled: string;
+}
+
+export interface ThemeTokenDiff {
+  token: ThemeTokenName;
+  before: ThemeStylePreview;
+  after: ThemeStylePreview;
+}
+
+export interface ThemeComponentStateDiff {
+  component: string;
+  variant: string;
+  state: ThemeState;
+  before: ThemeStylePreview;
+  after: ThemeStylePreview;
+}
+
+export interface ThemeEngineDiff {
+  sample: string;
+  tokens: ThemeTokenDiff[];
+  components: ThemeComponentStateDiff[];
+}
+
+export interface ThemeEngineDiffOptions {
+  sample?: string;
+  components?: Iterable<string>;
+  variants?: (component: string, engines: readonly [ThemeEngine, ThemeEngine]) => Iterable<string>;
+  includeUnchanged?: boolean;
 }
 
 export type ThemePaletteName = "plain" | "neon" | "terminal";
@@ -279,6 +336,99 @@ export function composeThemeOptions(...options: ThemeEngineOptions[]): ThemeEngi
   }
 
   return { tokens, components };
+}
+
+export function validateThemeOptions(options: ThemeEngineOptions): ThemeValidationIssue[] {
+  const normalized = composeThemeOptions(options);
+  const components = normalized.components ?? {};
+  const issues: ThemeValidationIssue[] = [];
+
+  for (const [component, definition] of Object.entries(components)) {
+    for (const parent of normalizeThemeExtends(definition.extends)) {
+      if (!components[parent]) {
+        issues.push({
+          kind: "unknown-component",
+          path: `components.${component}.extends`,
+          component,
+          reference: parent,
+          message: `Theme component "${component}" extends unknown component "${parent}"`,
+        });
+      }
+    }
+
+    validateThemeStateDefinitionReferences(issues, definition.base, {
+      component,
+      path: `components.${component}.base`,
+    });
+
+    for (const [variant, states] of Object.entries(definition.variants ?? {})) {
+      validateThemeStateDefinitionReferences(issues, states, {
+        component,
+        variant,
+        path: `components.${component}.variants.${variant}`,
+      });
+    }
+  }
+
+  for (const cycle of findThemeInheritanceCycles(components)) {
+    issues.push({
+      kind: "inheritance-cycle",
+      path: `components.${cycle[0]}.extends`,
+      component: cycle[0],
+      message: `Theme component inheritance cycle detected: ${cycle.join(" -> ")}`,
+    });
+  }
+
+  return issues;
+}
+
+export function assertThemeOptions(options: ThemeEngineOptions): void {
+  const issues = validateThemeOptions(options);
+  if (issues.length > 0) {
+    throw new ThemeValidationError(issues);
+  }
+}
+
+export function diffThemeEngines(
+  before: ThemeEngine,
+  after: ThemeEngine,
+  options: ThemeEngineDiffOptions = {},
+): ThemeEngineDiff {
+  const sample = options.sample ?? "Aa";
+  const includeUnchanged = options.includeUnchanged ?? false;
+  const tokenDiffs: ThemeTokenDiff[] = [];
+  const componentDiffs: ThemeComponentStateDiff[] = [];
+
+  for (const token of themeTokenNames) {
+    const beforePreview = previewStyle(before.theme.tokens[token], sample);
+    const afterPreview = previewStyle(after.theme.tokens[token], sample);
+    if (includeUnchanged || beforePreview.styled !== afterPreview.styled) {
+      tokenDiffs.push({ token, before: beforePreview, after: afterPreview });
+    }
+  }
+
+  const componentNames = options.components
+    ? [...options.components]
+    : [...new Set([...before.componentNames(), ...after.componentNames()])].sort();
+
+  for (const component of componentNames) {
+    const variants = options.variants
+      ? [...options.variants(component, [before, after])]
+      : themeDiffVariants(component, before, after);
+    for (const variant of variants) {
+      const beforeTheme = before.component(component, variant);
+      const afterTheme = after.component(component, variant);
+      for (const state of themeStates) {
+        const beforePreview = previewStyle(beforeTheme[state], sample);
+        const afterPreview = previewStyle(afterTheme[state], sample);
+        if (includeUnchanged || beforePreview.styled !== afterPreview.styled) {
+          componentDiffs.push({ component, variant, state, before: beforePreview, after: afterPreview });
+        }
+      }
+    }
+  }
+
+  return { sample, tokens: tokenDiffs, components: componentDiffs };
 }
 
 export function createThemeEngine(
@@ -731,7 +881,7 @@ export class ThemeEngine {
 
   inspect(): ThemeInspection {
     return {
-      tokens: ["foreground", "muted", "accent", "success", "warning", "danger", "surface"],
+      tokens: [...themeTokenNames],
       components: this.componentNames().map((name) => ({
         name,
         variants: this.variants(name),
@@ -772,6 +922,16 @@ export class ThemeInheritanceError extends Error {
   }
 }
 
+export class ThemeValidationError extends Error {
+  readonly issues: ThemeValidationIssue[];
+
+  constructor(issues: ThemeValidationIssue[]) {
+    super(`Theme options are invalid: ${issues.map((issue) => issue.message).join("; ")}`);
+    this.name = "ThemeValidationError";
+    this.issues = issues;
+  }
+}
+
 function mergeThemeExtends(
   base: string | readonly string[] | undefined,
   extension: string | readonly string[] | undefined,
@@ -789,6 +949,91 @@ function isThemeStyleReferencePipeline(
   reference: ThemeStyleReference,
 ): reference is readonly ThemeStyleReference[] {
   return Array.isArray(reference);
+}
+
+function validateThemeStateDefinitionReferences(
+  issues: ThemeValidationIssue[],
+  definition: ThemeStateDefinition | undefined,
+  context: { component: string; variant?: string; path: string },
+): void {
+  for (const [state, reference] of Object.entries(definition ?? {}) as [ThemeState, ThemeStyleReference][]) {
+    validateThemeStyleReference(issues, reference, {
+      ...context,
+      state,
+      path: `${context.path}.${state}`,
+    });
+  }
+}
+
+function validateThemeStyleReference(
+  issues: ThemeValidationIssue[],
+  reference: ThemeStyleReference,
+  context: { component: string; variant?: string; state: ThemeState; path: string },
+): void {
+  if (isThemeStyleReferencePipeline(reference)) {
+    reference.forEach((part, index) =>
+      validateThemeStyleReference(issues, part, {
+        ...context,
+        path: `${context.path}[${index}]`,
+      })
+    );
+    return;
+  }
+
+  if (typeof reference !== "string" || themeTokenNames.includes(reference as ThemeTokenName)) return;
+
+  issues.push({
+    kind: "unknown-token",
+    path: context.path,
+    component: context.component,
+    variant: context.variant,
+    state: context.state,
+    reference,
+    message: `Theme state "${context.component}.${
+      context.variant ? `${context.variant}.` : ""
+    }${context.state}" references unknown token "${reference}"`,
+  });
+}
+
+function findThemeInheritanceCycles(
+  components: Record<string, ComponentThemeDefinition>,
+): string[][] {
+  const cycles: string[][] = [];
+  const visited = new Set<string>();
+  const visiting = new Set<string>();
+
+  const visit = (component: string, path: string[]): void => {
+    if (visiting.has(component)) {
+      cycles.push([...path.slice(path.indexOf(component)), component]);
+      return;
+    }
+    if (visited.has(component)) return;
+
+    visiting.add(component);
+    for (const parent of normalizeThemeExtends(components[component]?.extends)) {
+      if (components[parent]) visit(parent, [...path, parent]);
+    }
+    visiting.delete(component);
+    visited.add(component);
+  };
+
+  for (const component of Object.keys(components).sort()) {
+    visit(component, [component]);
+  }
+
+  return cycles;
+}
+
+function previewStyle(style: Style, sample: string): ThemeStylePreview {
+  return { raw: sample, styled: style(sample) };
+}
+
+function themeDiffVariants(component: string, before: ThemeEngine, after: ThemeEngine): string[] {
+  return [...new Set(["default", ...before.variants(component), ...after.variants(component)])].sort((a, b) => {
+    if (a === "default") return -1;
+    if (b === "default") return 1;
+    return a.localeCompare(b);
+  });
 }
 
 function positiveModulo(value: number, divisor: number): number {

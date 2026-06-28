@@ -725,6 +725,7 @@ pipelines, app-level provider cycling, runtime theme layers, optional async pers
 
 ```ts
 import {
+  assertThemeOptions,
   bindComponentTheme,
   CommandRegistry,
   composeThemeOptions,
@@ -736,7 +737,9 @@ import {
   createThemeLayerStack,
   createThemeProvider,
   createThemeRegistry,
+  diffThemeEngines,
   themeCommands,
+  validateThemeOptions,
 } from "https://deno.land/x/tui@VERSION/mod.ts";
 
 const appTheme = composeThemeOptions({
@@ -770,6 +773,8 @@ const themeEngine = createThemeEngine("neon", appTheme)
     },
   });
 
+const themeIssues = validateThemeOptions(appTheme);
+assertThemeOptions(appTheme);
 const buttonTheme = themeEngine.component("Button", "danger");
 const availableThemes = themeEngine.inspect();
 
@@ -807,6 +812,11 @@ await provider.flush();
 
 const activeButtonTheme = provider.component("Button", "danger").value;
 const themeInventory = provider.inspect();
+const themeDiff = diffThemeEngines(
+  createThemeEngine("terminal"),
+  provider.engine.value,
+  { sample: "Aa" },
+);
 
 // After constructing a Button component instance named `button`:
 const stopBinding = bindComponentTheme(button, provider, "Button", {
@@ -839,7 +849,12 @@ palettes use the same helpers. `themeSelectionCommands()`, `themeLayerCommands()
 active `ThemeProvider` into normal command registry entries for "next theme", "previous theme", explicit theme
 selection, and layer enable/disable/toggle actions. The generated commands use dynamic disabled predicates, so the
 active theme and current layer states stay accurate when they are shown in a command palette, menu bar, context menu, or
-key binding help surface.
+key binding help surface. `validateThemeOptions()` and `assertThemeOptions()` give theme authors a first-class
+diagnostics pass for unknown token references, missing component parents, and inheritance cycles before a pack is
+registered. `themeTokenNames` and `themeStates` expose the stable engine vocabulary for editors, schema generators,
+inspectors, and design tooling. `diffThemeEngines()` previews changed semantic tokens and resolved component states
+between two engines, which makes it practical to build theme review panels, snapshot tests, and migration reports around
+real rendered output instead of raw object comparison.
 
 ## Runtime Capabilities
 

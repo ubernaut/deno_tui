@@ -10,6 +10,7 @@ import {
 } from "../src/components/metric_series.ts";
 import { renderSparkline } from "../src/components/sparkline.ts";
 import {
+  assertThemeOptions,
   composeStyles,
   composeThemeOptions,
   createAnsiStyle,
@@ -20,6 +21,7 @@ import {
   createThemeProvider,
   createThemeRegistry,
   defaultThemePacks,
+  diffThemeEngines,
   emptyStyle,
   mergeComponentThemeDefinition,
   type Theme,
@@ -27,6 +29,10 @@ import {
   ThemeInheritanceError,
   ThemePackNotFoundError,
   themePalettes,
+  themeStates,
+  themeTokenNames,
+  ThemeValidationError,
+  validateThemeOptions,
 } from "../src/theme.ts";
 import { bindComponentTheme } from "../src/theme_binding.ts";
 import { Signal } from "../src/signals/mod.ts";
@@ -89,6 +95,11 @@ Deno.test("createTheme fills semantic token defaults", () => {
   const theme = createTheme({ accent: emptyStyle });
   assertEquals(theme.focused, emptyStyle);
   assertEquals(theme.tokens.warning, emptyStyle);
+});
+
+Deno.test("theme constants expose stable token and state names", () => {
+  assertEquals(themeTokenNames, ["foreground", "muted", "accent", "success", "warning", "danger", "surface"]);
+  assertEquals(themeStates, ["base", "focused", "active", "disabled"]);
 });
 
 Deno.test("ANSI theme style specs create reusable terminal styles", () => {
@@ -292,6 +303,90 @@ Deno.test("ThemeEngine can be extended and inspected without mutating the source
     { name: "Button", variants: ["danger", "quiet"] },
     { name: "Modal", variants: ["palette"] },
   ]);
+});
+
+Deno.test("validateThemeOptions reports bad token references parents and cycles", () => {
+  const issues = validateThemeOptions({
+    components: {
+      Field: {
+        extends: "Missing",
+        base: {
+          base: "foreground",
+          focused: "brandAccent" as "accent",
+        },
+        variants: {
+          invalid: {
+            active: ["danger", "missingTone" as "danger"],
+          },
+        },
+      },
+      A: { extends: "B" },
+      B: { extends: "A" },
+    },
+  });
+
+  assertEquals(issues.map((issue) => issue.kind), [
+    "unknown-component",
+    "unknown-token",
+    "unknown-token",
+    "inheritance-cycle",
+  ]);
+  assertEquals(issues[1].path, "components.Field.base.focused");
+  assertEquals(issues[2].path, "components.Field.variants.invalid.active[1]");
+
+  try {
+    assertThemeOptions({ components: { Button: { base: { base: "missing" as "accent" } } } });
+    throw new Error("expected invalid theme options");
+  } catch (error) {
+    assertEquals(error instanceof ThemeValidationError, true);
+    assertEquals((error as ThemeValidationError).issues[0].reference, "missing");
+  }
+});
+
+Deno.test("diffThemeEngines previews changed tokens and component states", () => {
+  const base = new ThemeEngine({
+    tokens: {
+      foreground: (value) => `fg:${value}`,
+      accent: (value) => `accent:${value}`,
+    },
+    components: {
+      Button: { base: { base: "foreground" } },
+    },
+  });
+  const next = base.extend({
+    tokens: {
+      foreground: (value) => `bright:${value}`,
+    },
+    components: {
+      Button: {
+        base: { focused: "foreground" },
+        variants: { danger: { base: (value) => `danger:${value}` } },
+      },
+    },
+  });
+
+  const diff = diffThemeEngines(base, next, { sample: "x", components: ["Button"] });
+
+  assertEquals(diff.tokens.map((entry) => [entry.token, entry.before.styled, entry.after.styled]), [
+    ["foreground", "fg:x", "bright:x"],
+  ]);
+  assertEquals(
+    diff.components.map((entry) => [
+      entry.component,
+      entry.variant,
+      entry.state,
+      entry.before.styled,
+      entry.after.styled,
+    ]),
+    [
+      ["Button", "default", "base", "fg:x", "bright:x"],
+      ["Button", "default", "focused", "accent:x", "bright:x"],
+      ["Button", "default", "active", "accent:x", "fg:x"],
+      ["Button", "danger", "base", "fg:x", "danger:x"],
+      ["Button", "danger", "focused", "accent:x", "bright:x"],
+      ["Button", "danger", "active", "accent:x", "fg:x"],
+    ],
+  );
 });
 
 Deno.test("ThemeLayerStack composes active layers in registration order", async () => {
