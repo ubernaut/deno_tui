@@ -2,6 +2,7 @@
 export * from "./box.ts";
 export * from "./breadcrumbs.ts";
 export * from "./button.ts";
+export * from "./catalog.ts";
 export * from "./chart.ts";
 export * from "./checkbox.ts";
 export * from "./command_palette.ts";

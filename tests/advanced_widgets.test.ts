@@ -1,5 +1,14 @@
 import { assertEquals } from "./deps.ts";
 import {
+  componentCapabilities,
+  componentCatalog,
+  componentCategories,
+  componentsByCategory,
+  componentsWithCapability,
+  findComponent,
+  listComponents,
+} from "../src/components/catalog.ts";
+import {
   clampCommandPaletteSelection,
   filterCommandPaletteItems,
   renderCommandPaletteRows,
@@ -13,6 +22,42 @@ import {
 } from "../src/components/context_menu.ts";
 import { renderToast } from "../src/components/toast.ts";
 import { flattenTree } from "../src/components/tree.ts";
+
+Deno.test("component catalog exposes searchable widget metadata", () => {
+  const ids = listComponents().map((entry) => entry.id);
+
+  assertEquals(ids.includes("command-palette"), true);
+  assertEquals(ids.includes("three-ascii"), true);
+  assertEquals(findComponent("Command Palette")?.id, "command-palette");
+  assertEquals(findComponent("ThreeAscii")?.capabilities.includes("three"), true);
+  assertEquals(findComponent("missing"), undefined);
+  assertEquals(componentCatalog.every((entry) => entry.description.length > 0), true);
+});
+
+Deno.test("component catalog groups widgets by category and capability", () => {
+  assertEquals(componentCategories(), [
+    "data",
+    "feedback",
+    "input",
+    "layout",
+    "navigation",
+    "overlay",
+    "primitive",
+    "visualization",
+  ]);
+  assertEquals(componentCapabilities().includes("virtualized"), true);
+  assertEquals(componentsByCategory("overlay").map((entry) => entry.id), [
+    "command-palette",
+    "context-menu",
+    "modal",
+    "toast",
+  ]);
+  assertEquals(componentsWithCapability("three").map((entry) => entry.id), ["three-ascii"]);
+  assertEquals(componentsWithCapability("controller").map((entry) => entry.id), [
+    "data-table",
+    "metric-series",
+  ]);
+});
 
 Deno.test("command palette filters labels ids and keywords", () => {
   const items = [

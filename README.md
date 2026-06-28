@@ -139,9 +139,19 @@ Additional fork components include `List`, `VirtualList`, `Tabs`, `Breadcrumbs`,
 `MenuBar`, `ContextMenu`, `RadioGroup`, `ScrollArea`, `Modal`, `KeyHelp`, `CommandPalette`, `Tree`, `ToastStack`,
 `Sparkline`, `Gauge`, `Chart`, `LogViewer`, and `StatusBar`. `VirtualList` combines viewport windowing and
 `SelectionController` for large custom data views, while `Spinner` and `EmptyState` pair naturally with `AsyncResource`
-loading/empty/error state. For table-heavy apps, `DataTableController`, `createDataTableView()`, `sortDataRows()`, and
-the data-table render helpers provide reusable filtering, sorting, pagination, selection, and row formatting without
-coupling data logic to the `Table` renderer:
+loading/empty/error state. `componentCatalog`, `listComponents()`, `findComponent()`, `componentsByCategory()`, and
+`componentsWithCapability()` provide an inspectable widget inventory for docs, launchers, settings screens, and command
+palettes:
+
+```ts
+const overlays = componentsByCategory("overlay");
+const dashboardWidgets = componentsWithCapability("dashboard");
+const threeAscii = findComponent("ThreeAscii");
+```
+
+For table-heavy apps, `DataTableController`, `createDataTableView()`, `sortDataRows()`, and the data-table render
+helpers provide reusable filtering, sorting, pagination, selection, and row formatting without coupling data logic to
+the `Table` renderer:
 
 ```ts
 const table = new DataTableController({
