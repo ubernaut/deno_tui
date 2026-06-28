@@ -47,6 +47,7 @@ import {
   validateThemeOptions,
 } from "../src/theme.ts";
 import { bindComponentTheme } from "../src/theme_binding.ts";
+import { createThemeEngineCache, createThemeProviderCache } from "../src/theme_engine_cache.ts";
 import { Signal } from "../src/signals/mod.ts";
 import { MemoryStore } from "../src/runtime/storage.ts";
 
@@ -626,6 +627,92 @@ Deno.test("ThemeEngine can be extended and inspected without mutating the source
     { name: "Button", variants: ["danger", "quiet"] },
     { name: "Modal", variants: ["palette"] },
   ]);
+});
+
+Deno.test("ThemeEngineCache memoizes component themes and resolved styles", () => {
+  const engine = new ThemeEngine({
+    tokens: { foreground: (value) => `fg:${value}` },
+    components: {
+      Button: {
+        base: { base: "foreground" },
+        variants: { danger: { active: (value) => `danger:${value}` } },
+      },
+    },
+  });
+  const cache = createThemeEngineCache(engine);
+
+  const button = cache.component("Button");
+  const sameButton = cache.component("Button");
+  const danger = cache.component("Button", "danger");
+  const active = cache.resolve("Button", "active", "danger");
+  const sameActive = cache.resolve("Button", "active", "danger");
+
+  assertEquals(button, sameButton);
+  assertEquals(danger.active, active);
+  assertEquals(active, sameActive);
+  assertEquals(active("x"), "danger:x");
+  assertEquals(cache.inspect(), {
+    themeEntries: 2,
+    styleEntries: 1,
+    hits: 3,
+    misses: 3,
+  });
+
+  cache.clear();
+  assertEquals(cache.inspect().themeEntries, 0);
+  assertEquals(cache.inspect().styleEntries, 0);
+});
+
+Deno.test("ThemeProviderCache invalidates when active provider engine changes", async () => {
+  const registry = createThemeRegistry([
+    {
+      id: "plain",
+      palette: "plain",
+      options: {
+        tokens: { foreground: (value) => `plain:${value}` },
+        components: { Button: { base: { base: "foreground" } } },
+      },
+    },
+    {
+      id: "bright",
+      palette: "plain",
+      options: {
+        tokens: { foreground: (value) => `bright:${value}` },
+        components: { Button: { base: { base: "foreground" } } },
+      },
+    },
+  ]);
+  const provider = createThemeProvider({ registry, activeId: "plain" });
+  const cache = createThemeProviderCache(provider);
+
+  await Promise.resolve();
+
+  const plain = cache.component("Button");
+  assertEquals(plain.base("x"), "plain:x");
+  assertEquals(cache.component("Button"), plain);
+  assertEquals(cache.inspect(), {
+    activeId: "plain",
+    themeEntries: 1,
+    styleEntries: 0,
+    hits: 1,
+    misses: 1,
+  });
+
+  provider.setTheme("bright");
+  await Promise.resolve();
+
+  const bright = cache.component("Button");
+  assertEquals(bright.base("x"), "bright:x");
+  assertEquals(bright === plain, false);
+  assertEquals(cache.inspect(), {
+    activeId: "bright",
+    themeEntries: 1,
+    styleEntries: 0,
+    hits: 0,
+    misses: 1,
+  });
+
+  cache.dispose();
 });
 
 Deno.test("validateThemeOptions reports bad token references parents and cycles", () => {

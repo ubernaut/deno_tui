@@ -991,10 +991,12 @@ import {
   createRuntimeStore,
   createThemeCatalog,
   createThemeEngine,
+  createThemeEngineCache,
   createThemeEngineFromManifest,
   createThemeLayerStack,
   createThemePlugin,
   createThemeProvider,
+  createThemeProviderCache,
   createThemeRegistry,
   createThemeRegistryFromManifests,
   diffThemeEngines,
@@ -1114,6 +1116,10 @@ const themeDiff = diffThemeEngines(
   provider.engine.value,
   { sample: "Aa" },
 );
+const themeEngineCache = createThemeEngineCache(provider.engine.value);
+const cachedButtonTheme = themeEngineCache.component("Button", "danger");
+const providerThemeCache = createThemeProviderCache(provider);
+const cachedActiveStyle = providerThemeCache.resolve("Button", "active", "danger");
 
 // After constructing a Button component instance named `button`:
 const stopBinding = bindComponentTheme(button, provider, "Button", {
@@ -1182,7 +1188,10 @@ missing states per component and variant, so theme packs can fail CI before unst
 practical to build theme review panels, snapshot tests, and migration reports around real rendered output instead of raw
 object comparison. `createThemePlugin()` is the app-level installer for the same engine layer: it owns or accepts a
 `ThemeProvider`, registers theme and layer commands, optionally mirrors command bindings into key help, and connects the
-active pack and active layers to `SettingsController` persistence with one disposable plugin.
+active pack and active layers to `SettingsController` persistence with one disposable plugin. `ThemeEngineCache` and
+`ThemeProviderCache` are opt-in runtime accelerators for redraw-heavy apps: they memoize component themes and resolved
+state styles, expose hit/miss inspection, and the provider cache automatically invalidates when theme packs or layers
+change.
 
 ## Runtime Capabilities
 
