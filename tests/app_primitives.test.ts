@@ -1191,6 +1191,36 @@ Deno.test("TuiApp can mirror command bindings into its keymap", () => {
   app.destroy();
 });
 
+Deno.test("TuiApp can route mouse interactions through its mouse router", async () => {
+  const target = new TestMouseTarget();
+  const tui = {
+    on: target.on.bind(target),
+    destroy() {},
+  } as unknown as Tui;
+  const app = createApp({ tui });
+  const seen: string[] = [];
+  app.mouse.register({
+    id: "panel",
+    bounds: { column: 1, row: 1, width: 4, height: 2 },
+    onPress: (_event, context) => {
+      seen.push(`${context.id}:${context.localX}`);
+    },
+  });
+
+  const dispose = app.enableMouseInteractions();
+  target.press({ x: 2, y: 1 });
+  await Promise.resolve();
+  assertEquals(seen, ["panel:1"]);
+  assertEquals(target.listenerCount(), 2);
+
+  dispose();
+  assertEquals(target.listenerCount(), 0);
+  target.press({ x: 2, y: 1 });
+  await Promise.resolve();
+  assertEquals(seen, ["panel:1"]);
+  app.destroy();
+});
+
 Deno.test("TuiApp tracks disposers and cleans them up on destroy", () => {
   let destroyed = 0;
   let disposed = 0;
@@ -1354,6 +1384,11 @@ Deno.test("TuiApp inspects routes commands keymap focus plugins and lifecycle", 
     action: { type: "route", payload: "admin" },
   });
   app.keymap.register({ key: "1", description: "Home", group: "routes" });
+  app.mouse.register({
+    id: "main",
+    bounds: { column: 0, row: 0, width: 10, height: 2 },
+    onPress: () => undefined,
+  });
   app.use({ id: "settings", label: "Settings Pack", install: () => undefined });
   app.useActionMiddleware((action, next) => next(action));
   app.onDispose(() => undefined);
@@ -1387,6 +1422,19 @@ Deno.test("TuiApp inspects routes commands keymap focus plugins and lifecycle", 
       index: -1,
       hasFocus: false,
     },
+    mouse: [
+      {
+        id: "main",
+        bounds: { column: 0, row: 0, width: 10, height: 2 },
+        zIndex: 0,
+        disabled: false,
+        captureDrag: true,
+        hasPressHandler: true,
+        hasDragHandler: false,
+        hasReleaseHandler: false,
+        hasScrollHandler: false,
+      },
+    ],
     plugins: [{ id: "settings", label: "Settings Pack" }],
   });
 

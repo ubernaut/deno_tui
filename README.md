@@ -747,6 +747,7 @@ mouse.register({
   },
 });
 const stopMouse = bindMouseInteractions(tui, mouse);
+// Or use app.mouse plus app.enableMouseInteractions() in a TuiApp.
 ```
 
 Use `ActionBus.subscribeType()` or `app.onActionType()` to handle one action family at a time while preserving typed
@@ -781,7 +782,7 @@ const keymapState = app.keymap.inspect("global");
 ```
 
 `TuiApp.onDispose()` tracks cleanup callbacks and runs them once on `app.destroy()`. Built-in app binders such as
-`app.enableFocusNavigation()` and `app.enableCommandKeys()` are tracked automatically:
+`app.enableFocusNavigation()`, `app.enableCommandKeys()`, and `app.enableMouseInteractions()` are tracked automatically:
 
 ```ts
 app.onDispose(bindModalFocus(app.tui, paletteVisible, app.focus, [commandPalette]));

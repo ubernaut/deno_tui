@@ -11,6 +11,7 @@ import {
 } from "./command_bindings.ts";
 import { CommandRegistry } from "./commands.ts";
 import { DisposableStack } from "./disposables.ts";
+import { bindMouseInteractions, MouseInteractionRouter } from "./mouse_bindings.ts";
 import { type Route, RouteManager } from "./router.ts";
 
 export interface TuiAppOptions<TRoute extends Route = Route> {
@@ -74,6 +75,7 @@ export interface TuiAppInspection<TRoute extends Route = Route> {
   commands: AppCommandInspection;
   keymap: AppKeymapInspection;
   focus: ReturnType<FocusManager["inspect"]>;
+  mouse: ReturnType<MouseInteractionRouter["inspect"]>;
   plugins: AppPluginInspection[];
 }
 
@@ -83,6 +85,7 @@ export class TuiApp<TAction extends Action = Action, TRoute extends Route = Rout
   readonly commands = new CommandRegistry<TAction>();
   readonly focus = new FocusManager();
   readonly keymap = new KeymapRegistry();
+  readonly mouse = new MouseInteractionRouter();
   readonly routes: RouteManager<TRoute>;
   readonly #disposers = new Set<() => void>();
   readonly #plugins = new Map<string, AppPluginInspection & { dispose: () => void }>();
@@ -134,6 +137,10 @@ export class TuiApp<TAction extends Action = Action, TRoute extends Route = Rout
 
   enableCommandKeymap(options: CommandKeymapBindingOptions = {}): () => void {
     return this.onDispose(bindCommandKeymap(this.commands, this.keymap, options));
+  }
+
+  enableMouseInteractions(): () => void {
+    return this.onDispose(bindMouseInteractions(this.tui, this.mouse));
   }
 
   use(plugin: AppPluginInstaller<TAction, TRoute>, options: AppPluginUseOptions = {}): () => void {
@@ -193,6 +200,7 @@ export class TuiApp<TAction extends Action = Action, TRoute extends Route = Rout
         groups: uniqueSorted(keyBindings.map((binding) => binding.group)),
       },
       focus: this.focus.inspect(),
+      mouse: this.mouse.inspect(),
       plugins: this.plugins(),
     };
   }
