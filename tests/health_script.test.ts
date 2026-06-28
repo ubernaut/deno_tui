@@ -7,6 +7,9 @@ Deno.test("health script exposes the expected contributor gates", () => {
     "public-api",
     "api-inventory",
     "api-reference",
+    "web-api",
+    "remote-api",
+    "web-demo",
     "screenshots",
     "app-shell",
     "command-search",
@@ -34,6 +37,7 @@ Deno.test("health script exposes the expected contributor gates", () => {
     "showcase",
     "grwizard",
     "tests",
+    "web-tests",
     "worker-tests",
   ]);
   assertEquals(defaultHealthSteps[2].command, [
