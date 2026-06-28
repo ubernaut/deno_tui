@@ -75,6 +75,21 @@ Deno.test("RouteManager navigates and cycles known routes only", () => {
   assertEquals(routes.navigate("missing"), false);
   assertEquals(routes.navigate("settings"), true);
   assertEquals(routes.active()?.title, "Settings");
+  assertEquals(routes.get("home")?.title, "Home");
+  assertEquals(routes.has("missing"), false);
+  assertEquals(routes.ids(), ["home", "settings"]);
+  assertEquals(routes.activeIndex(), 1);
+  assertEquals(routes.inspect(), {
+    count: 2,
+    activeRouteId: "settings",
+    activeIndex: 1,
+    active: { id: "settings", title: "Settings" },
+    ids: ["home", "settings"],
+    routes: [
+      { id: "home", title: "Home" },
+      { id: "settings", title: "Settings" },
+    ],
+  });
   assertEquals(routes.next()?.id, "home");
 });
 
@@ -115,6 +130,14 @@ Deno.test("RouteManager can fallback to a preferred route when removing active r
   routes.unregister("home");
   assertEquals(routes.active(), undefined);
   assertEquals(routes.activeRouteId.peek(), "");
+  assertEquals(routes.inspect(), {
+    count: 0,
+    activeRouteId: "",
+    activeIndex: -1,
+    active: undefined,
+    ids: [],
+    routes: [],
+  });
 });
 
 Deno.test("RouteManager normalizes invalid initial routes", () => {

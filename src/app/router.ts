@@ -15,6 +15,15 @@ export interface RouteUnregisterOptions {
   fallbackRouteId?: string;
 }
 
+export interface RouteInspection<TRoute extends Route = Route> {
+  count: number;
+  activeRouteId: string;
+  activeIndex: number;
+  active?: TRoute;
+  ids: string[];
+  routes: TRoute[];
+}
+
 export class RouteManager<TRoute extends Route = Route> {
   readonly routes: Signal<TRoute[]>;
   readonly activeRouteId: Signal<string>;
@@ -29,6 +38,22 @@ export class RouteManager<TRoute extends Route = Route> {
 
   active(): TRoute | undefined {
     return this.routes.peek().find((route) => route.id === this.activeRouteId.peek());
+  }
+
+  get(routeId: string): TRoute | undefined {
+    return this.routes.peek().find((route) => route.id === routeId);
+  }
+
+  has(routeId: string): boolean {
+    return this.get(routeId) !== undefined;
+  }
+
+  ids(): string[] {
+    return this.routes.peek().map((route) => route.id);
+  }
+
+  activeIndex(): number {
+    return this.routes.peek().findIndex((route) => route.id === this.activeRouteId.peek());
   }
 
   register(route: TRoute, options: RouteRegisterOptions = {}): boolean {
@@ -71,6 +96,18 @@ export class RouteManager<TRoute extends Route = Route> {
 
   previous(): TRoute | undefined {
     return this.shift(-1);
+  }
+
+  inspect(): RouteInspection<TRoute> {
+    const routes = this.routes.peek();
+    return {
+      count: routes.length,
+      activeRouteId: this.activeRouteId.peek(),
+      activeIndex: this.activeIndex(),
+      active: this.active(),
+      ids: this.ids(),
+      routes: [...routes],
+    };
   }
 
   private normalizeActiveRoute(fallbackRouteId = this.#pendingFallbackRouteId): void {

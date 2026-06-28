@@ -568,7 +568,13 @@ const stopRouteBinding = bindRouteSignal(app.routes, activeRoute.value, {
 ```
 
 `RouteManager.register()` and `RouteManager.unregister()` are useful for plugin-provided routes and keep the active
-route valid when routes are added, replaced, or removed.
+route valid when routes are added, replaced, or removed. `get()`, `has()`, `ids()`, `activeIndex()`, and `inspect()`
+provide stable route metadata for tabs, breadcrumbs, status bars, and tests:
+
+```ts
+const routeState = app.routes.inspect();
+const activeIndex = app.routes.activeIndex();
+```
 
 `bindRouteIndex()` connects route state to index-backed widgets such as tabs, steppers, menu bars, or custom segmented
 controls:
