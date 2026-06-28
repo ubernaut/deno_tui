@@ -22,6 +22,7 @@ export * from "./radio_group.ts";
 export * from "./scroll_area.ts";
 export * from "./slider.ts";
 export * from "./sparkline.ts";
+export * from "./spinner.ts";
 export * from "./statusbar.ts";
 export * from "./stepper.ts";
 export * from "./table.ts";

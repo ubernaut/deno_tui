@@ -19,6 +19,7 @@ import {
   scrollOffsetBy,
 } from "../src/components/scroll_area.ts";
 import { renderStatusBar } from "../src/components/statusbar.ts";
+import { renderSpinner, spinnerGlyph } from "../src/components/spinner.ts";
 import { clampStepperIndex, renderStepper, shiftStepperIndex, stepForIndex } from "../src/components/stepper.ts";
 import { renderTabs } from "../src/components/tabs.ts";
 import { renderVirtualListRows, virtualListRows } from "../src/components/virtual_list.ts";
@@ -127,6 +128,15 @@ Deno.test("stepper renders progress and skips disabled steps", () => {
   assertEquals(shiftStepperIndex(steps, 3, -1), 1);
   assertEquals(clampStepperIndex(steps, 2), 3);
   assertEquals(stepForIndex(steps, 2)?.id, "verify");
+});
+
+Deno.test("spinner renders status glyphs and truncates labels", () => {
+  assertEquals(spinnerGlyph("loading", 5, ["a", "b", "c"]), "c");
+  assertEquals(spinnerGlyph("success"), "✓");
+  assertEquals(spinnerGlyph("error"), "!");
+  assertEquals(spinnerGlyph("idle"), " ");
+  assertEquals(renderSpinner("Loading data", "loading", 1, ["|", "/"], 20), "/ Loading data");
+  assertEquals(renderSpinner("Loading data", "loading", 1, ["|", "/"], 8), "/ Loadi…");
 });
 
 Deno.test("scroll helpers clamp offsets and expose scrollbar thumb state", () => {
