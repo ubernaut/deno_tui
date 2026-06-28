@@ -343,6 +343,7 @@ Optional high-performance APIs are surfaced through `src/runtime/mod.ts`:
 
 - `detectRuntimeCapabilities()`
 - `AsyncScheduler`
+- `AsyncResource` / `createAsyncResource()`
 - `runDataPipeline()` / `LatestDataPipeline`
 - `WorkerPool`
 - `MemoryStore`
@@ -351,6 +352,19 @@ Optional high-performance APIs are surfaced through `src/runtime/mod.ts`:
 - `createPersistentSignal()` / `PersistentSignal`
 
 Use these instead of hard-coding global checks inside components.
+
+`AsyncResource` exposes signal-backed async state for loading data, handling errors, aborting stale work, and preserving
+previous data during refreshes:
+
+```ts
+const metrics = createAsyncResource({
+  loader: async ({ signal }) => await fetchMetrics({ signal }),
+  scheduler: new AsyncScheduler({ concurrency: 1 }),
+});
+
+await metrics.load();
+if (metrics.state.value.status === "success") render(metrics.state.value.data);
+```
 
 `runDataPipeline()` composes expensive row transforms behind an optional scheduler. `LatestDataPipeline` protects
 interactive views from stale async results when users type or change filters quickly:
