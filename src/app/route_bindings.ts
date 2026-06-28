@@ -1,6 +1,21 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { Signal } from "../signals/mod.ts";
+import type { Action } from "./actions.ts";
+import type { Command, CommandRegistry } from "./commands.ts";
 import type { Route, RouteManager } from "./router.ts";
+
+export type RouteCommandKind = "previous" | "next" | "select";
+
+export interface RouteCommandOptions<TRoute extends Route = Route> {
+  idPrefix?: string;
+  group?: string;
+  routeIds?: RouteIdSource;
+  includeCycleCommands?: boolean;
+  includeRouteCommands?: boolean;
+  disableActiveRoute?: boolean;
+  labels?: Partial<Record<RouteCommandKind, string>>;
+  label?: (route: TRoute) => string;
+}
 
 export interface RouteSignalBindingOptions {
   initialSync?: "route" | "signal";
@@ -163,7 +178,88 @@ export function bindRouteIndex<TRoute extends Route = Route>(
   };
 }
 
+export function routeCommands<TAction extends Action = Action, TRoute extends Route = Route>(
+  routes: RouteManager<TRoute>,
+  options: RouteCommandOptions<TRoute> = {},
+): Command<TAction>[] {
+  const idPrefix = options.idPrefix ?? "route";
+  const group = options.group ?? "routes";
+  const label = (kind: RouteCommandKind, fallback: string) => options.labels?.[kind] ?? fallback;
+  const visibleRoutes = () => routesForSource(routes, options.routeIds);
+  const commands: Command<TAction>[] = [];
+
+  if (options.includeCycleCommands ?? true) {
+    commands.push(
+      {
+        id: `${idPrefix}.previous`,
+        label: label("previous", "Previous Route"),
+        group,
+        binding: { key: "left", ctrl: true },
+        disabled: () => visibleRoutes().length <= 1,
+        action: () => {
+          shiftVisibleRoute(routes, -1, visibleRoutes());
+        },
+      },
+      {
+        id: `${idPrefix}.next`,
+        label: label("next", "Next Route"),
+        group,
+        binding: { key: "right", ctrl: true },
+        disabled: () => visibleRoutes().length <= 1,
+        action: () => {
+          shiftVisibleRoute(routes, 1, visibleRoutes());
+        },
+      },
+    );
+  }
+
+  if (options.includeRouteCommands ?? true) {
+    for (const route of visibleRoutes()) {
+      commands.push({
+        id: `${idPrefix}.select.${route.id}`,
+        label: `${label("select", "Route")}: ${options.label?.(route) ?? route.title ?? route.id}`,
+        group,
+        keywords: [route.id, route.title].filter((keyword): keyword is string => !!keyword),
+        disabled: options.disableActiveRoute ?? true ? () => routes.activeRouteId.peek() === route.id : false,
+        action: () => {
+          routes.navigate(route.id);
+        },
+      });
+    }
+  }
+
+  return commands;
+}
+
+export function bindRouteCommands<TAction extends Action = Action, TRoute extends Route = Route>(
+  registry: CommandRegistry<TAction>,
+  routes: RouteManager<TRoute>,
+  options: RouteCommandOptions<TRoute> = {},
+): () => void {
+  return registry.registerAll(routeCommands<TAction, TRoute>(routes, options));
+}
+
 function clampRouteIndex(index: number, length: number): number {
   if (length <= 0) return 0;
   return Math.max(0, Math.min(Math.floor(index), length - 1));
+}
+
+function routesForSource<TRoute extends Route>(
+  routes: RouteManager<TRoute>,
+  routeIds?: RouteIdSource,
+): TRoute[] {
+  const ids = routeIds instanceof Signal ? routeIds.peek() : routeIds;
+  if (!ids) return routes.routes.peek();
+  return ids.map((id) => routes.get(id)).filter((route): route is TRoute => !!route);
+}
+
+function shiftVisibleRoute<TRoute extends Route>(
+  routes: RouteManager<TRoute>,
+  delta: number,
+  visibleRoutes: readonly TRoute[],
+): boolean {
+  if (visibleRoutes.length === 0) return false;
+  const currentIndex = Math.max(0, visibleRoutes.findIndex((route) => route.id === routes.activeRouteId.peek()));
+  const nextRoute = visibleRoutes[(currentIndex + delta + visibleRoutes.length) % visibleRoutes.length]!;
+  return routes.navigate(nextRoute.id);
 }

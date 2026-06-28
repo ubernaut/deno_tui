@@ -15,7 +15,7 @@ import type { Command } from "../src/app/commands.ts";
 import { bindHistoryCommands, bindRouteHistory, historyCommands } from "../src/app/history_bindings.ts";
 import { HistoryStack } from "../src/app/history.ts";
 import { createAppPlugin, inspectAppPluginDefinition } from "../src/app/plugins.ts";
-import { bindRouteIndex, bindRouteSignal } from "../src/app/route_bindings.ts";
+import { bindRouteCommands, bindRouteIndex, bindRouteSignal, routeCommands } from "../src/app/route_bindings.ts";
 import { RouteManager } from "../src/app/router.ts";
 import { SettingsController } from "../src/app/settings.ts";
 import {
@@ -238,6 +238,66 @@ Deno.test("bindRouteIndex supports filtered route id sources and route list chan
   routes.unregister("widgets");
   assertEquals(routes.active()?.id, "overview");
   assertEquals(activeIndex.peek(), 0);
+});
+
+Deno.test("routeCommands project route navigation into command registries", async () => {
+  const routes = new RouteManager([
+    { id: "overview", title: "Overview" },
+    { id: "widgets", title: "Widgets" },
+    { id: "runtime", title: "Runtime" },
+  ], "overview");
+  const registry = new CommandRegistry();
+
+  const dispose = bindRouteCommands(registry, routes, {
+    idPrefix: "nav",
+    routeIds: ["overview", "runtime"],
+    labels: { select: "Open" },
+  });
+
+  assertEquals(registry.list("routes").map((command) => command.id), [
+    "nav.next",
+    "nav.select.overview",
+    "nav.select.runtime",
+    "nav.previous",
+  ]);
+  assertEquals(registry.enabled(registry.get("nav.select.overview")!), false);
+  assertEquals(registry.enabled(registry.get("nav.select.runtime")!), true);
+
+  assertEquals(await registry.execute("nav.next"), true);
+  assertEquals(routes.activeRouteId.peek(), "runtime");
+  assertEquals(registry.enabled(registry.get("nav.select.runtime")!), false);
+
+  assertEquals(await registry.execute("nav.previous"), true);
+  assertEquals(routes.activeRouteId.peek(), "overview");
+
+  assertEquals(await registry.execute("nav.select.runtime"), true);
+  assertEquals(routes.activeRouteId.peek(), "runtime");
+
+  dispose();
+  assertEquals(registry.inspect("routes"), { count: 0, enabled: 0, disabled: 0, groups: [], commands: [] });
+});
+
+Deno.test("routeCommands support dynamic filtered routes and empty cycle disabling", async () => {
+  const routes = new RouteManager([
+    { id: "overview", title: "Overview" },
+    { id: "widgets", title: "Widgets" },
+    { id: "runtime", title: "Runtime" },
+  ], "overview");
+  const registry = new CommandRegistry();
+  const visibleRoutes = new Signal<readonly string[]>(["widgets"]);
+  const commands = routeCommands(routes, {
+    routeIds: visibleRoutes,
+    includeRouteCommands: false,
+  });
+  registry.registerAll(commands);
+
+  assertEquals(commands.map((command) => command.id), ["route.previous", "route.next"]);
+  assertEquals(registry.enabled(registry.get("route.previous")!), false);
+
+  visibleRoutes.value = ["widgets", "runtime"];
+  assertEquals(registry.enabled(registry.get("route.next")!), true);
+  await registry.execute("route.next");
+  assertEquals(routes.activeRouteId.peek(), "runtime");
 });
 
 Deno.test("CommandRegistry projects commands into menus palettes and key bindings", () => {

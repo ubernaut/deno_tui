@@ -601,6 +601,21 @@ const stopRouteSteps = bindRouteIndex(app.routes, routeStepIndex, {
 });
 ```
 
+Use `routeCommands()` or `bindRouteCommands()` to expose route navigation through command palettes, menu bars, key maps,
+or contextual command surfaces without hand-writing one command per route:
+
+```ts
+const stopRouteCommands = bindRouteCommands(app.commands, app.routes, {
+  idPrefix: "nav",
+  routeIds: ["overview", "widgets", "runtime"],
+});
+```
+
+The generated commands include previous/next route cycling and explicit route selection. Pass a
+`Signal<readonly
+string[]>` as `routeIds` when a responsive shell should expose only the currently visible route set;
+disabled predicates update from the active route and visible route count at execution/render time.
+
 `HistoryStack` keeps undo/redo separate from widgets and route managers:
 
 ```ts
