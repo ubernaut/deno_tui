@@ -14,10 +14,12 @@ import { HistoryStack } from "../src/app/history.ts";
 import { bindRouteIndex, bindRouteSignal } from "../src/app/route_bindings.ts";
 import { RouteManager } from "../src/app/router.ts";
 import { SettingsController } from "../src/app/settings.ts";
+import { bindRouteSetting, bindSettingSignal, bindThemeSetting } from "../src/app/settings_bindings.ts";
 import { KeymapRegistry } from "../src/keymap.ts";
 import { MemoryStore } from "../src/runtime/storage.ts";
 import { Signal } from "../src/signals/mod.ts";
 import { createTestKeyPress, TestKeyPressTarget } from "../src/testing/mod.ts";
+import { createThemeProvider, createThemeRegistry } from "../src/theme.ts";
 import type { Tui } from "../src/tui.ts";
 
 Deno.test("ActionBus dispatches to subscribers in registration order", async () => {
@@ -915,4 +917,81 @@ Deno.test("SettingsController resetAll and dispose apply to registered settings"
   settings.dispose();
   assertEquals(routeChanges, 2);
   assertEquals(settings.keys(), []);
+});
+
+Deno.test("bindSettingSignal synchronizes persistent settings with app signals", async () => {
+  const store = new MemoryStore<unknown>();
+  await store.set("panel", "logs");
+  const settings = new SettingsController({ store });
+  const setting = settings.signal({ key: "panel", initialValue: "overview" });
+  const activePanel = new Signal("overview");
+  const dispose = bindSettingSignal(setting, activePanel);
+
+  await settings.ready();
+  assertEquals(activePanel.value, "logs");
+
+  activePanel.value = "metrics";
+  await settings.flush();
+  assertEquals(setting.value.value, "metrics");
+  assertEquals(await store.get("panel"), "metrics");
+
+  setting.set("alerts");
+  assertEquals(activePanel.value, "alerts");
+
+  dispose();
+  activePanel.value = "overview";
+  assertEquals(setting.value.value, "alerts");
+});
+
+Deno.test("bindRouteSetting restores and persists active routes", async () => {
+  const store = new MemoryStore<unknown>();
+  await store.set("shell.route", "runtime");
+  const settings = new SettingsController({ store, namespace: "shell" });
+  const routes = new RouteManager([
+    { id: "overview" },
+    { id: "runtime" },
+    { id: "logs" },
+  ], "overview");
+  const binding = bindRouteSetting(routes, settings);
+
+  await settings.ready();
+  assertEquals(routes.activeRouteId.value, "runtime");
+
+  routes.navigate("logs");
+  await settings.flush();
+  assertEquals(binding.setting.value.value, "logs");
+  assertEquals(await store.get("shell.route"), "logs");
+
+  binding.dispose();
+  routes.navigate("overview");
+  assertEquals(binding.setting.value.value, "logs");
+});
+
+Deno.test("bindThemeSetting connects a provider to app settings", async () => {
+  const store = new MemoryStore<unknown>();
+  await store.set("prefs.theme", "terminal");
+  const settings = new SettingsController({ store, namespace: "prefs" });
+  const provider = createThemeProvider({
+    registry: createThemeRegistry([
+      { id: "plain", palette: "plain" },
+      { id: "terminal", palette: "terminal" },
+    ]),
+    activeId: "plain",
+  });
+  const binding = bindThemeSetting(provider, settings);
+
+  await settings.ready();
+  assertEquals(provider.activeId.value, "terminal");
+
+  provider.setTheme("plain");
+  await settings.flush();
+  assertEquals(binding.setting.value.value, "plain");
+  assertEquals(await store.get("prefs.theme"), "plain");
+
+  binding.setting.set("missing");
+  assertEquals(provider.activeId.value, "plain");
+
+  binding.dispose();
+  provider.setTheme("terminal");
+  assertEquals(binding.setting.value.value, "plain");
 });

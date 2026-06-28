@@ -338,7 +338,8 @@ const activePlugins = app.plugins();
 
 `SettingsController` wraps `PersistentSignal` with app-level namespacing, caching, aggregate readiness, flushing, reset,
 and disposal. Use it for preferences such as active route, theme pack, layout density, split ratios, hidden controls, or
-visualization settings while keeping storage configurable:
+visualization settings while keeping storage configurable. `bindSettingSignal()`, `bindRouteSetting()`, and
+`bindThemeSetting()` wire those preferences into app state without each app rebuilding two-way synchronization logic:
 
 ```ts
 const settings = new SettingsController({
@@ -348,10 +349,16 @@ const settings = new SettingsController({
 
 const activeRoute = settings.signal({ key: "route", initialValue: "overview" });
 const activeTheme = settings.signal({ key: "theme", initialValue: "neon" });
+const stopRouteSetting = bindRouteSetting(app.routes, settings);
+const stopThemeSetting = bindThemeSetting(themeProvider, settings);
 
 await settings.ready();
 activeRoute.set("runtime");
+activeTheme.set("terminal");
 await settings.flush();
+
+app.onDispose(stopRouteSetting.dispose);
+app.onDispose(stopThemeSetting.dispose);
 ```
 
 `bindModalFocus()` ties a visibility signal to a `FocusScope`, traps focus while modal-like surfaces are open, restores
