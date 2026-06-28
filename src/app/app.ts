@@ -46,6 +46,35 @@ export interface AppPluginInspection {
   label: string;
 }
 
+export interface AppRouteInspection<TRoute extends Route = Route> {
+  count: number;
+  activeRouteId: string;
+  active?: TRoute;
+  ids: string[];
+}
+
+export interface AppCommandInspection {
+  count: number;
+  enabled: number;
+  disabled: number;
+  groups: string[];
+}
+
+export interface AppKeymapInspection {
+  count: number;
+  groups: string[];
+}
+
+export interface TuiAppInspection<TRoute extends Route = Route> {
+  destroyed: boolean;
+  disposers: number;
+  routes: AppRouteInspection<TRoute>;
+  commands: AppCommandInspection;
+  keymap: AppKeymapInspection;
+  focus: ReturnType<FocusManager["inspect"]>;
+  plugins: AppPluginInspection[];
+}
+
 export class TuiApp<TAction extends Action = Action, TRoute extends Route = Route> {
   readonly tui: Tui;
   readonly actions = new ActionBus<TAction>();
@@ -139,6 +168,34 @@ export class TuiApp<TAction extends Action = Action, TRoute extends Route = Rout
     return [...this.#plugins.values()].map(({ id, label }) => ({ id, label }));
   }
 
+  inspect(): TuiAppInspection<TRoute> {
+    const routes = this.routes.routes.peek();
+    const commands = this.commands.list();
+    const keyBindings = this.keymap.list();
+    return {
+      destroyed: this.#destroyed,
+      disposers: this.#disposers.size,
+      routes: {
+        count: routes.length,
+        activeRouteId: this.routes.activeRouteId.peek(),
+        active: this.routes.active(),
+        ids: routes.map((route) => route.id),
+      },
+      commands: {
+        count: commands.length,
+        enabled: commands.filter((command) => this.commands.enabled(command)).length,
+        disabled: commands.filter((command) => !this.commands.enabled(command)).length,
+        groups: uniqueSorted(commands.map((command) => command.group)),
+      },
+      keymap: {
+        count: keyBindings.length,
+        groups: uniqueSorted(keyBindings.map((binding) => binding.group)),
+      },
+      focus: this.focus.inspect(),
+      plugins: this.plugins(),
+    };
+  }
+
   onDispose(disposer: () => void): () => void {
     let active = true;
     const wrapped = () => {
@@ -191,6 +248,10 @@ export class TuiApp<TAction extends Action = Action, TRoute extends Route = Rout
     }
     return dispose;
   }
+}
+
+function uniqueSorted(values: Array<string | undefined>): string[] {
+  return [...new Set(values.filter((value): value is string => !!value))].sort();
 }
 
 function pluginMetadata<TAction extends Action, TRoute extends Route>(

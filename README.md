@@ -413,6 +413,17 @@ const stopSettings = app.use({
 const activePlugins = app.plugins();
 ```
 
+`app.inspect()` returns one diagnostic snapshot for route state, command counts, key bindings, focus state, installed
+plugins, lifecycle status, and tracked disposers. It is intended for status bars, debug panels, health checks, and
+tests:
+
+```ts
+const state = app.inspect();
+const activeRoute = state.routes.activeRouteId;
+const commandCount = state.commands.count;
+const plugins = state.plugins.map((plugin) => plugin.id);
+```
+
 `SettingsController` wraps `PersistentSignal` with app-level namespacing, caching, aggregate readiness, flushing, reset,
 and disposal. Use it for preferences such as active route, theme pack, layout density, split ratios, hidden controls, or
 visualization settings while keeping storage configurable. `bindSettingSignal()`, `bindRouteSetting()`,

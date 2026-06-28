@@ -771,6 +771,65 @@ Deno.test("TuiApp tracks function plugins with explicit metadata", () => {
   app.destroy();
 });
 
+Deno.test("TuiApp inspects routes commands keymap focus plugins and lifecycle", () => {
+  const app = createApp<{ type: "route"; payload: string }, { id: string; title: string }>({
+    tui: { destroy() {} } as unknown as Tui,
+    routes: [
+      { id: "home", title: "Home" },
+      { id: "settings", title: "Settings" },
+    ],
+    initialRouteId: "settings",
+  });
+  app.commands.register({
+    id: "route.home",
+    label: "Home",
+    group: "routes",
+    binding: { key: "1" },
+    action: { type: "route", payload: "home" },
+  });
+  app.commands.register({
+    id: "route.admin",
+    label: "Admin",
+    group: "routes",
+    disabled: true,
+    action: { type: "route", payload: "admin" },
+  });
+  app.keymap.register({ key: "1", description: "Home", group: "routes" });
+  app.use({ id: "settings", label: "Settings Pack", install: () => undefined });
+  app.onDispose(() => undefined);
+
+  assertEquals(app.inspect(), {
+    destroyed: false,
+    disposers: 2,
+    routes: {
+      count: 2,
+      activeRouteId: "settings",
+      active: { id: "settings", title: "Settings" },
+      ids: ["home", "settings"],
+    },
+    commands: {
+      count: 2,
+      enabled: 1,
+      disabled: 1,
+      groups: ["routes"],
+    },
+    keymap: {
+      count: 1,
+      groups: ["routes"],
+    },
+    focus: {
+      count: 0,
+      index: -1,
+      hasFocus: false,
+    },
+    plugins: [{ id: "settings", label: "Settings Pack" }],
+  });
+
+  app.destroy();
+  assertEquals(app.inspect().destroyed, true);
+  assertEquals(app.inspect().disposers, 0);
+});
+
 Deno.test("TuiApp installs plugin groups and cleans them up in reverse order", () => {
   const app = createApp({ tui: { destroy() {} } as unknown as Tui });
   const events: string[] = [];
