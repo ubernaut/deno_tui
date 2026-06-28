@@ -300,7 +300,12 @@ const stopCommands = app.commands.registerAll([
 ```
 
 For embedded command surfaces, use `bindCommandKeys(target, registry, dispatch)` with any object that emits `keyPress`
-events.
+events. Use `app.enableCommandKeymap()` or `bindCommandKeymap()` to keep help overlays synchronized with the currently
+registered command bindings:
+
+```ts
+const stopCommandHelp = app.enableCommandKeymap();
+```
 
 Use `commandSurfaceItems()` and `executeCommandSurfaceItem()` to feed command registries into palettes, context menus,
 or custom launchers without duplicating projection and dispatch code:

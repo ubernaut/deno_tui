@@ -25,12 +25,15 @@ export interface CommandProjection {
 }
 
 export type CommandDispatch<TAction extends Action = Action> = (action: TAction) => void | Promise<void>;
+export type CommandRegistryListener = () => void;
 
 export class CommandRegistry<TAction extends Action = Action> {
   private readonly commands = new Map<string, Command<TAction>>();
+  private readonly listeners = new Set<CommandRegistryListener>();
 
   register(command: Command<TAction>): () => void {
     this.commands.set(command.id, command);
+    this.notify();
     return () => {
       if (this.commands.get(command.id) === command) {
         this.unregister(command.id);
@@ -59,7 +62,9 @@ export class CommandRegistry<TAction extends Action = Action> {
   }
 
   unregister(id: string): void {
-    this.commands.delete(id);
+    if (this.commands.delete(id)) {
+      this.notify();
+    }
   }
 
   get(id: string): Command<TAction> | undefined {
@@ -106,5 +111,16 @@ export class CommandRegistry<TAction extends Action = Action> {
       await dispatch(action);
     }
     return true;
+  }
+
+  subscribe(listener: CommandRegistryListener): () => void {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
+
+  private notify(): void {
+    for (const listener of this.listeners) {
+      listener();
+    }
   }
 }

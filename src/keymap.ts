@@ -11,8 +11,13 @@ export interface KeyBinding {
 export class KeymapRegistry {
   readonly bindings = new Map<string, KeyBinding>();
 
-  register(binding: KeyBinding): void {
+  register(binding: KeyBinding): () => void {
     this.bindings.set(bindingId(binding), binding);
+    return () => {
+      if (this.bindings.get(bindingId(binding)) === binding) {
+        this.unregister(binding);
+      }
+    };
   }
 
   unregister(binding: Pick<KeyBinding, "key" | "ctrl" | "meta" | "shift">): void {

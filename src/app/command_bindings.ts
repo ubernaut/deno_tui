@@ -1,5 +1,5 @@
 // Copyright 2023 Im-Beast. MIT license.
-import { bindingId } from "../keymap.ts";
+import { bindingId, type KeyBinding, type KeymapRegistry } from "../keymap.ts";
 import type { KeyPressEvent } from "../input_reader/types.ts";
 import type { Action } from "./actions.ts";
 import type { Command, CommandDispatch, CommandRegistry } from "./commands.ts";
@@ -22,6 +22,10 @@ export interface CommandKeyBindingOptions {
 export interface CommandSurfaceOptions extends CommandKeyBindingOptions {
   includeDisabled?: boolean;
   includeBindingsInKeywords?: boolean;
+}
+
+export interface CommandKeymapBindingOptions extends CommandKeyBindingOptions {
+  includeDisabled?: boolean;
 }
 
 export function commandForKeyEvent<TAction extends Action = Action>(
@@ -47,6 +51,34 @@ export function bindCommandKeys<TAction extends Action = Action>(
       await registry.execute(command.id, dispatch);
     }
   });
+}
+
+export function bindCommandKeymap<TAction extends Action = Action>(
+  registry: CommandRegistry<TAction>,
+  keymap: KeymapRegistry,
+  options: CommandKeymapBindingOptions = {},
+): () => void {
+  let disposers: Array<() => void> = [];
+  const clear = () => {
+    for (const dispose of disposers) {
+      dispose();
+    }
+    disposers = [];
+  };
+  const sync = () => {
+    clear();
+    disposers = registry
+      .keyBindings(options.group, options.includeDisabled ?? false)
+      .map((binding: KeyBinding) => keymap.register(binding));
+  };
+
+  sync();
+  const unsubscribe = registry.subscribe(sync);
+
+  return () => {
+    unsubscribe();
+    clear();
+  };
 }
 
 export function commandSurfaceItems<TAction extends Action = Action>(

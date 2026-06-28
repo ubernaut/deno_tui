@@ -2,6 +2,7 @@ import { assertEquals } from "./deps.ts";
 import { createApp } from "../src/app/app.ts";
 import { ActionBus } from "../src/app/actions.ts";
 import {
+  bindCommandKeymap,
   bindCommandKeys,
   commandForKeyEvent,
   commandSurfaceItems,
@@ -12,6 +13,7 @@ import { bindRouteHistory } from "../src/app/history_bindings.ts";
 import { HistoryStack } from "../src/app/history.ts";
 import { bindRouteSignal } from "../src/app/route_bindings.ts";
 import { RouteManager } from "../src/app/router.ts";
+import { KeymapRegistry } from "../src/keymap.ts";
 import { Signal } from "../src/signals/mod.ts";
 import { createTestKeyPress, TestKeyPressTarget } from "../src/testing/mod.ts";
 import type { Tui } from "../src/tui.ts";
@@ -204,6 +206,28 @@ Deno.test("CommandRegistry disposers do not remove replacement commands", () => 
   assertEquals(registry.get("route.home"), undefined);
 });
 
+Deno.test("CommandRegistry notifies subscribers when commands change", () => {
+  const registry = new CommandRegistry<{ type: "route"; payload: string }>();
+  let changes = 0;
+  const unsubscribe = registry.subscribe(() => changes += 1);
+
+  const dispose = registry.register({
+    id: "route.home",
+    label: "Home",
+    action: { type: "route", payload: "home" },
+  });
+  registry.unregister("missing");
+  dispose();
+  unsubscribe();
+  registry.register({
+    id: "route.logs",
+    label: "Logs",
+    action: { type: "route", payload: "logs" },
+  });
+
+  assertEquals(changes, 2);
+});
+
 Deno.test("commandForKeyEvent matches enabled command bindings by modifiers and group", () => {
   const registry = new CommandRegistry<{ type: "route"; payload: string }>();
   registry.register({
@@ -267,6 +291,46 @@ Deno.test("bindCommandKeys executes matching commands and unsubscribes", async (
   await Promise.resolve();
   assertEquals(seen, ["a", "b"]);
   assertEquals(target.listenerCount(), 0);
+});
+
+Deno.test("bindCommandKeymap mirrors command bindings into key help registries", () => {
+  const registry = new CommandRegistry<{ type: "route"; payload: string }>();
+  const keymap = new KeymapRegistry();
+  keymap.register({ key: "q", description: "Quit", group: "app" });
+  const dispose = bindCommandKeymap(registry, keymap, { group: "routes" });
+
+  const disposeHome = registry.register({
+    id: "route.home",
+    label: "Home",
+    group: "routes",
+    binding: { key: "1" },
+    action: { type: "route", payload: "home" },
+  });
+  registry.register({
+    id: "panel.next",
+    label: "Next Panel",
+    group: "panels",
+    binding: { key: "1" },
+    action: { type: "route", payload: "panel" },
+  });
+
+  assertEquals(keymap.list().map((binding) => binding.description), ["Quit", "Home"]);
+
+  registry.register({
+    id: "route.logs",
+    label: "Logs",
+    description: "Open logs",
+    group: "routes",
+    binding: { key: "l" },
+    action: { type: "route", payload: "logs" },
+  });
+  assertEquals(keymap.list("routes").map((binding) => binding.description), ["Home", "Open logs"]);
+
+  disposeHome();
+  assertEquals(keymap.list("routes").map((binding) => binding.description), ["Open logs"]);
+
+  dispose();
+  assertEquals(keymap.list().map((binding) => binding.description), ["Quit"]);
 });
 
 Deno.test("commandSurfaceItems adapts registry commands for palettes and menus", () => {
@@ -381,6 +445,33 @@ Deno.test("TuiApp can bind command keys to its action bus", async () => {
   assertEquals(target.listenerCount(), 0);
   app.destroy();
   assertEquals(destroyed, true);
+});
+
+Deno.test("TuiApp can mirror command bindings into its keymap", () => {
+  const app = createApp<{ type: "route"; payload: string }>({ tui: { destroy() {} } as unknown as Tui });
+  app.commands.register({
+    id: "route.home",
+    label: "Home",
+    group: "routes",
+    binding: { key: "1" },
+    action: { type: "route", payload: "home" },
+  });
+
+  const dispose = app.enableCommandKeymap();
+  assertEquals(app.keymap.list().map((binding) => binding.description), ["Home"]);
+
+  app.commands.register({
+    id: "route.logs",
+    label: "Logs",
+    group: "routes",
+    binding: { key: "l" },
+    action: { type: "route", payload: "logs" },
+  });
+  assertEquals(app.keymap.list().map((binding) => binding.description), ["Home", "Logs"]);
+
+  dispose();
+  assertEquals(app.keymap.list(), []);
+  app.destroy();
 });
 
 Deno.test("TuiApp tracks disposers and cleans them up on destroy", () => {

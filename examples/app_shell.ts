@@ -191,9 +191,7 @@ app.commands.register({
   },
 });
 
-for (const binding of app.commands.keyBindings()) {
-  app.keymap.register(binding);
-}
+app.enableCommandKeymap();
 
 app.actions.subscribe((action) => {
   if (action.type === "route") {
