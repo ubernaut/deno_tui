@@ -387,6 +387,18 @@ app.onActionType("route", (action) => app.routes.navigate(action.payload));
 app.onActionType("toast", (action) => pushToast(action.payload, "success"));
 ```
 
+`KeymapRegistry` supports disposer-friendly `register()` / `registerAll()`, `get()`, `has()`, group-aware `clear()`, and
+`inspect()` for key-help rows, settings screens, and conflict diagnostics:
+
+```ts
+const stopKeys = app.keymap.registerAll([
+  { key: "p", ctrl: true, description: "Command palette", group: "global" },
+  { key: "z", ctrl: true, description: "Undo", group: "edit" },
+]);
+
+const keymapState = app.keymap.inspect("global");
+```
+
 `TuiApp.onDispose()` tracks cleanup callbacks and runs them once on `app.destroy()`. Built-in app binders such as
 `app.enableFocusNavigation()` and `app.enableCommandKeys()` are tracked automatically:
 

@@ -239,6 +239,48 @@ Deno.test("keymap registry formats sorted bindings", () => {
 
   assertEquals(formatKeyBinding({ key: "p", description: "palette", ctrl: true }), "C-p palette");
   assertEquals(renderKeyHelp(registry.list("global"), 40), "C-p palette  q quit");
+  assertEquals(registry.inspect("global"), {
+    count: 2,
+    groups: ["global"],
+    bindings: [
+      { id: "C-p", key: "p", description: "palette", ctrl: true, group: "global" },
+      { id: "q", key: "q", description: "quit", group: "global" },
+    ],
+  });
+});
+
+Deno.test("keymap registry supports bulk registration replacement and clearing", () => {
+  const registry = new KeymapRegistry();
+  const disposeGlobal = registry.registerAll([
+    { key: "q", description: "quit", group: "global" },
+    { key: "s", description: "save", ctrl: true, group: "file" },
+  ]);
+  const disposeReplacement = registry.register({ key: "q", description: "quick open", group: "global" });
+
+  assertEquals(registry.has({ key: "q" }), true);
+  assertEquals(registry.get({ key: "q" })?.description, "quick open");
+  assertEquals(registry.groups(), ["file", "global"]);
+
+  disposeGlobal();
+  assertEquals(registry.get({ key: "q" })?.description, "quick open");
+  assertEquals(registry.has({ key: "s", ctrl: true }), false);
+
+  disposeReplacement();
+  assertEquals(registry.has({ key: "q" }), false);
+
+  registry.registerAll([
+    { key: "1", description: "one", group: "numbers" },
+    { key: "2", description: "two", group: "numbers" },
+    { key: "x", description: "exit", group: "global" },
+  ]);
+  registry.clear("numbers");
+  assertEquals(registry.inspect(), {
+    count: 1,
+    groups: ["global"],
+    bindings: [{ id: "x", key: "x", description: "exit", group: "global" }],
+  });
+  registry.clear();
+  assertEquals(registry.inspect(), { count: 0, groups: [], bindings: [] });
 });
 
 function keyPress(key: Key, options: Partial<Omit<KeyPressEvent, "key" | "buffer">> = {}): KeyPressEvent {
