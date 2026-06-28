@@ -9,6 +9,7 @@ import {
   type RuntimeStorageStrategy,
   type RuntimeWorkerStrategy,
 } from "./capabilities.ts";
+import { Signal } from "../signals/mod.ts";
 
 export interface RuntimeProfileDefinition {
   id: string;
@@ -75,6 +76,22 @@ export interface RuntimeProfileCatalogReportOptions {
 export interface RuntimeProfileCatalogMarkdownOptions extends RuntimeProfileCatalogReportOptions {
   title?: string;
   includeSummary?: boolean;
+}
+
+export interface RuntimeProfileControllerOptions {
+  registry?: RuntimeProfileRegistry;
+  profiles?: Iterable<RuntimeProfile | RuntimeProfileDefinition>;
+  activeId?: string;
+  capabilities?: RuntimeCapabilities | (() => RuntimeCapabilities);
+  onInvalidProfile?: (id: string) => void;
+}
+
+export interface RuntimeProfileControllerInspection {
+  activeId: string;
+  active?: RuntimeProfileInspection;
+  profileIds: string[];
+  capabilities: RuntimeCapabilities;
+  plan?: RuntimePlan;
 }
 
 export const runtimeProfileDefinitions = [
@@ -228,6 +245,95 @@ export class RuntimeProfileRegistry {
   }
 }
 
+/** State holder for selected runtime profile policy and derived runtime plans. */
+export class RuntimeProfileController {
+  readonly registry: RuntimeProfileRegistry;
+  readonly activeId: Signal<string>;
+  readonly #capabilities: RuntimeCapabilities | (() => RuntimeCapabilities);
+  readonly #onInvalidProfile?: (id: string) => void;
+
+  constructor(options: RuntimeProfileControllerOptions = {}) {
+    this.registry = options.registry ?? createRuntimeProfileRegistry(options.profiles);
+    this.#capabilities = options.capabilities ?? detectRuntimeCapabilities;
+    this.#onInvalidProfile = options.onInvalidProfile;
+    const initialId = this.#validId(options.activeId) ?? this.registry.ids()[0] ?? "";
+    this.activeId = new Signal(initialId);
+    this.activeId.subscribe((id) => this.#repairInvalidProfile(id));
+  }
+
+  ids(): string[] {
+    return this.registry.ids();
+  }
+
+  active(): RuntimeProfile | undefined {
+    return this.registry.get(this.activeId.peek());
+  }
+
+  setProfile(id: string): boolean {
+    if (!this.registry.has(id)) {
+      this.#onInvalidProfile?.(id);
+      return false;
+    }
+    this.activeId.value = id;
+    return true;
+  }
+
+  nextProfile(): string {
+    return this.cycleProfile(1);
+  }
+
+  previousProfile(): string {
+    return this.cycleProfile(-1);
+  }
+
+  cycleProfile(direction: number): string {
+    const ids = this.ids();
+    if (ids.length === 0) return "";
+    const index = ids.indexOf(this.activeId.peek());
+    const next = ids[(index + direction + ids.length) % ids.length] ?? ids[0]!;
+    this.setProfile(next);
+    return this.activeId.peek();
+  }
+
+  plan(capabilities: RuntimeCapabilities = this.capabilities()): RuntimePlan | undefined {
+    const profile = this.active();
+    return profile?.plan(capabilities);
+  }
+
+  capabilities(): RuntimeCapabilities {
+    return typeof this.#capabilities === "function" ? this.#capabilities() : this.#capabilities;
+  }
+
+  catalog(query: RuntimeProfileCatalogQuery = {}): RuntimeProfileCatalogReport {
+    return this.registry.catalog({ capabilities: this.capabilities(), query });
+  }
+
+  inspect(): RuntimeProfileControllerInspection {
+    const capabilities = this.capabilities();
+    const active = this.active();
+    return {
+      activeId: this.activeId.peek(),
+      active: active?.inspect(),
+      profileIds: this.ids(),
+      capabilities,
+      plan: active?.plan(capabilities),
+    };
+  }
+
+  #validId(id: string | undefined): string | undefined {
+    return id && this.registry.has(id) ? id : undefined;
+  }
+
+  #repairInvalidProfile(id: string): void {
+    if (this.registry.has(id)) return;
+    this.#onInvalidProfile?.(id);
+    const fallback = this.registry.ids()[0] ?? "";
+    if (this.activeId.peek() !== fallback) {
+      this.activeId.value = fallback;
+    }
+  }
+}
+
 export class RuntimeProfileNotFoundError extends Error {
   constructor(id: string) {
     super(`Runtime profile "${id}" is not registered`);
@@ -243,6 +349,12 @@ export function createRuntimeProfileRegistry(
   profiles: Iterable<RuntimeProfile | RuntimeProfileDefinition> = runtimeProfileDefinitions,
 ): RuntimeProfileRegistry {
   return new RuntimeProfileRegistry(profiles);
+}
+
+export function createRuntimeProfileController(
+  options: RuntimeProfileControllerOptions = {},
+): RuntimeProfileController {
+  return new RuntimeProfileController(options);
 }
 
 export function runtimeProfiles(): RuntimeProfile[] {

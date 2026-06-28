@@ -53,9 +53,10 @@ lightweight backpressure state, and `workerFactory` lets tests inject a determin
 threads.
 
 Runtime profiles let apps expose strategy choices as data instead of hard-coded conditionals. A settings pane can show
-`RuntimeProfileRegistry.catalog()`, persist the selected profile id with `SettingsController`, and call
-`registry.plan(id, detectRuntimeCapabilities())` at startup. Run `deno task capabilities` for the current capability
-summary, default plan, and built-in profile table, or `deno task capabilities -- --json` for machine-readable reports.
+`RuntimeProfileRegistry.catalog()`, keep the selected profile in a `RuntimeProfileController`, persist it with
+`bindRuntimeProfileSetting()`, and expose `bindRuntimeProfileCommands()` through command palettes or menus. Run
+`deno task capabilities` for the current capability summary, default plan, and built-in profile table, or
+`deno task capabilities -- --json` for machine-readable reports.
 
 `BenchmarkRunner` supports per-case `iterations`, `warmupIterations`, `maxAverageMs`, and `maxTotalMs`. Pass `{ now }`
 in `BenchmarkRunnerOptions` to make benchmark unit tests deterministic, use `summarize()` or

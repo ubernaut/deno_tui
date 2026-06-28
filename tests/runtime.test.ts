@@ -9,6 +9,7 @@ import {
 } from "../src/runtime/capabilities.ts";
 import {
   createRuntimeProfileCatalogReport,
+  createRuntimeProfileController,
   createRuntimeProfileRegistry,
   findRuntimeProfile,
   formatRuntimeProfileCatalogMarkdown,
@@ -151,6 +152,34 @@ Deno.test("runtime profiles expose named strategy policies", () => {
   });
   assertEquals(registry.unregister("ephemeral"), true);
   assertEquals(registry.has("ephemeral"), false);
+});
+
+Deno.test("RuntimeProfileController selects profiles and derives plans", () => {
+  const invalid: string[] = [];
+  const controller = createRuntimeProfileController({
+    activeId: "throughput",
+    capabilities: {
+      workers: true,
+      webgpu: false,
+      webgl: true,
+      offscreenCanvas: true,
+      indexedDb: true,
+    },
+    onInvalidProfile: (id) => invalid.push(id),
+  });
+
+  assertEquals(controller.activeId.peek(), "throughput");
+  assertEquals(controller.plan()?.renderer.strategy, "webgl");
+  assertEquals(controller.nextProfile(), "portable");
+  assertEquals(controller.previousProfile(), "throughput");
+  assertEquals(controller.setProfile("missing"), false);
+  assertEquals(invalid, ["missing"]);
+
+  controller.activeId.value = "missing";
+  assertEquals(controller.activeId.peek(), "balanced");
+  assertEquals(invalid, ["missing", "missing"]);
+  assertEquals(controller.inspect().active?.id, "balanced");
+  assertEquals(controller.catalog({ tag: "performance" }).profiles.map((profile) => profile.id), ["throughput"]);
 });
 
 Deno.test("runtime profile catalogs filter inspect and format reports", () => {

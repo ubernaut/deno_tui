@@ -25,6 +25,7 @@ export * from "./progress_bar_commands.ts";
 export * from "./radio_group_commands.ts";
 export * from "./route_bindings.ts";
 export * from "./router.ts";
+export * from "./runtime_profile_commands.ts";
 export * from "./scroll_area_commands.ts";
 export * from "./selection_bindings.ts";
 export * from "./settings_commands.ts";

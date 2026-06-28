@@ -32,9 +32,12 @@ import { bindSettingsCommands, settingsCommands } from "../src/app/settings_comm
 import type { SettingsCommandAction } from "../src/app/settings_commands.ts";
 import { bindSplitPaneCommands, splitPaneCommands } from "../src/app/split_pane_commands.ts";
 import type { SplitPaneCommandAction } from "../src/app/split_pane_commands.ts";
+import { bindRuntimeProfileCommands, runtimeProfileCommands } from "../src/app/runtime_profile_commands.ts";
+import type { RuntimeProfileCommandAction } from "../src/app/runtime_profile_commands.ts";
 import {
   bindDataTableSetting,
   bindRouteSetting,
+  bindRuntimeProfileSetting,
   bindSettingSignal,
   bindSplitPaneSetting,
   bindThemeLayerSetting,
@@ -55,6 +58,7 @@ import type { ThemePipelineCommandAction } from "../src/app/theme_pipeline_comma
 import { createThemePlugin } from "../src/app/theme_plugin.ts";
 import { KeymapRegistry } from "../src/keymap.ts";
 import { SplitPaneController } from "../src/layout/mod.ts";
+import { createRuntimeProfileController } from "../src/runtime/profiles.ts";
 import { MemoryStore } from "../src/runtime/storage.ts";
 import { Signal } from "../src/signals/mod.ts";
 import { createTestKeyPress, TestKeyPressTarget } from "../src/testing/mod.ts";
@@ -1799,6 +1803,41 @@ Deno.test("bindThemePipelineSetting restores persists and sanitizes active steps
   assertEquals(binding.setting.value.peek(), ["density"]);
 });
 
+Deno.test("bindRuntimeProfileSetting restores persists and sanitizes selected profiles", async () => {
+  const store = new MemoryStore<unknown>();
+  await store.set("prefs.runtime-profile", "portable");
+  const settings = new SettingsController({ store, namespace: "prefs" });
+  const controller = createRuntimeProfileController({
+    activeId: "balanced",
+    capabilities: {
+      workers: true,
+      webgpu: true,
+      webgl: true,
+      offscreenCanvas: true,
+      indexedDb: true,
+    },
+  });
+  const binding = bindRuntimeProfileSetting(controller, settings);
+
+  await settings.ready();
+  assertEquals(controller.activeId.peek(), "portable");
+
+  controller.setProfile("throughput");
+  await Promise.resolve();
+  await settings.flush();
+  assertEquals(binding.setting.value.peek(), "throughput");
+  assertEquals(await store.get("prefs.runtime-profile"), "throughput");
+
+  binding.setting.set("missing");
+  assertEquals(controller.activeId.peek(), "balanced");
+  assertEquals(binding.setting.value.peek(), "balanced");
+
+  binding.dispose();
+  controller.setProfile("portable");
+  await Promise.resolve();
+  assertEquals(binding.setting.value.peek(), "balanced");
+});
+
 Deno.test("bindDataTableSetting restores persists and sanitizes table state", async () => {
   interface Row extends Record<string, unknown> {
     id: string;
@@ -1978,6 +2017,48 @@ Deno.test("theme pipeline commands toggle runtime theme transforms", async () =>
 
   dispose();
   assertEquals(registry.list("theme"), []);
+});
+
+Deno.test("runtime profile commands switch selected runtime policies", async () => {
+  const controller = createRuntimeProfileController({
+    activeId: "balanced",
+    capabilities: {
+      workers: true,
+      webgpu: true,
+      webgl: true,
+      offscreenCanvas: true,
+      indexedDb: true,
+    },
+  });
+  const registry = new CommandRegistry<RuntimeProfileCommandAction>();
+  const dispose = bindRuntimeProfileCommands(registry, controller);
+  const actions: RuntimeProfileCommandAction[] = [];
+
+  assertEquals(runtimeProfileCommands(controller).map((command) => command.id), [
+    "runtime.profile.next",
+    "runtime.profile.previous",
+    "runtime.profile.set.balanced",
+    "runtime.profile.set.throughput",
+    "runtime.profile.set.portable",
+    "runtime.profile.set.ephemeral",
+  ]);
+  assertEquals(registry.enabled(registry.get("runtime.profile.set.balanced")!), false);
+
+  assertEquals(await registry.execute("runtime.profile.set.portable", (action) => void actions.push(action)), true);
+  assertEquals(controller.activeId.peek(), "portable");
+  assertEquals(actions, [
+    { type: "runtime.profile.changed", payload: { id: "portable", previousId: "balanced" } },
+  ]);
+  assertEquals(controller.plan()?.renderer.strategy, "cpu");
+  assertEquals(await registry.execute("runtime.profile.next", (action) => void actions.push(action)), true);
+  assertEquals(controller.activeId.peek(), "ephemeral");
+  assertEquals(actions[1], {
+    type: "runtime.profile.changed",
+    payload: { id: "ephemeral", previousId: "portable", direction: 1 },
+  });
+
+  dispose();
+  assertEquals(registry.list("runtime"), []);
 });
 
 Deno.test("theme preview commands capture active provider snapshots", async () => {
