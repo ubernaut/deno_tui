@@ -70,6 +70,7 @@ Deno.test("component catalog groups widgets by category and capability", () => {
     "checkbox",
     "slider",
     "radio-group",
+    "list",
     "virtual-list",
     "data-table",
     "tabs",
@@ -92,6 +93,7 @@ Deno.test("component catalog supports combined queries and inspection", () => {
   ]);
   assertEquals(queryComponents({ capabilities: ["controller", "selection"] }).map((entry) => entry.id), [
     "radio-group",
+    "list",
     "virtual-list",
     "data-table",
     "tabs",

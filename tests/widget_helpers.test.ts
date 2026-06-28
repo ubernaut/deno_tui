@@ -1,5 +1,6 @@
 import { assertEquals } from "./deps.ts";
 import { bindCheckBoxCommands, checkBoxCommands } from "../src/app/checkbox_commands.ts";
+import { bindListCommands, listCommands } from "../src/app/list_commands.ts";
 import { bindMenuBarCommands, menuBarCommands } from "../src/app/menu_bar_commands.ts";
 import { bindRadioGroupCommands, radioGroupCommands } from "../src/app/radio_group_commands.ts";
 import { bindScrollAreaCommands, scrollAreaCommands } from "../src/app/scroll_area_commands.ts";
@@ -12,7 +13,7 @@ import { renderBreadcrumbs } from "../src/components/breadcrumbs.ts";
 import { CheckBoxController, Mark, renderCheckBoxMark } from "../src/components/checkbox.ts";
 import { renderEmptyState } from "../src/components/empty_state.ts";
 import { renderKeyHelp } from "../src/components/key_help.ts";
-import { virtualRows, visibleListRows } from "../src/components/list.ts";
+import { ListController, virtualRows, visibleListRows } from "../src/components/list.ts";
 import {
   clampMenuIndex,
   MenuBarController,
@@ -66,6 +67,90 @@ Deno.test("virtualRows exposes source indices for large lists", () => {
     { item: "d", index: 3, selected: true },
     { item: "e", index: 4, selected: false },
   ]);
+});
+
+Deno.test("ListController navigates selects and inspects visible rows", () => {
+  const selections: string[] = [];
+  const selectedIndex = new Signal(1);
+  const controller = new ListController({
+    items: ["alpha", "beta", "gamma", "delta"],
+    selectedIndex,
+    onSelect: (item) => void selections.push(item),
+  });
+
+  assertEquals(controller.rows(3), ["  alpha", "> beta", "  gamma"]);
+  controller.handleKeyPress(keyPress("down"), 3);
+  controller.handleKeyPress(keyPress("pagedown"), 3);
+  assertEquals(controller.inspect(2), {
+    items: ["alpha", "beta", "gamma", "delta"],
+    itemCount: 4,
+    selectedIndex: 3,
+    selected: "delta",
+    window: { start: 2, end: 4 },
+    empty: false,
+  });
+  assertEquals(controller.handleKeyPress(keyPress("return"), 2), "delta");
+  assertEquals(selections, ["delta"]);
+  controller.items.value = ["alpha"];
+  assertEquals(selectedIndex.peek(), 0);
+  controller.dispose();
+  selectedIndex.dispose();
+});
+
+Deno.test("listCommands move and select items", async () => {
+  const controller = new ListController({ items: ["alpha", "beta", "gamma"] });
+  const registry = new CommandRegistry();
+  const actions: unknown[] = [];
+  const dispose = bindListCommands(registry, controller, {
+    id: "files",
+    idPrefix: "list.files",
+    group: "list",
+    includeItemCommands: true,
+  });
+  const emptyController = new ListController({ items: [] });
+
+  assertEquals(listCommands(emptyController).map((command) => command.id), [
+    "list.first",
+    "list.previous",
+    "list.next",
+    "list.last",
+    "list.select",
+  ]);
+  assertEquals(registry.list("list").map((command) => command.id), [
+    "list.files.first",
+    "list.files.last",
+    "list.files.next",
+    "list.files.previous",
+    "list.files.select",
+    "list.files.item.0",
+    "list.files.item.1",
+    "list.files.item.2",
+  ]);
+
+  assertEquals(await registry.execute("list.files.next", (action) => void actions.push(action)), true);
+  assertEquals(controller.selected(), "beta");
+  assertEquals(actions.at(-1), {
+    type: "list.changed",
+    payload: {
+      id: "files",
+      inspection: controller.inspect(),
+    },
+  });
+  assertEquals(await registry.execute("list.files.item.2", (action) => void actions.push(action)), true);
+  assertEquals(actions.at(-1), {
+    type: "list.itemSelected",
+    payload: {
+      id: "files",
+      inspection: controller.inspect(),
+      item: "gamma",
+      index: 2,
+    },
+  });
+
+  dispose();
+  assertEquals(registry.list("list"), []);
+  controller.dispose();
+  emptyController.dispose();
 });
 
 Deno.test("virtual list rows support formatted multi selection windows", () => {

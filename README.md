@@ -165,6 +165,23 @@ screens, docs browsers, and plugin marketplaces that need to expose available wi
 queues in each app. `toastCommands()` and `bindToastCommands()` expose clear and dismiss-latest actions for command
 palettes, menu bars, key help, and plugin surfaces.
 
+`ListController` gives compact single-selection lists the same reusable state layer as the larger virtualized list. It
+owns item data, selected-index clamping, keyboard movement, active-item selection callbacks, and inspection state, while
+`listCommands()` and `bindListCommands()` expose first, previous, next, last, active select, and optional direct item
+commands:
+
+```ts
+const files = new ListController({
+  items: ["README.md", "mod.ts", "deno.json"],
+});
+
+const stopListCommands = bindListCommands(app.commands, files, {
+  idPrefix: "files",
+  group: "navigation",
+  includeItemCommands: true,
+});
+```
+
 `VirtualListController` keeps large-list interaction separate from rendering. It exposes viewport rows, selection
 movement, keyboard handling, selected-value persistence helpers, and inspection state for status bars or tests:
 
