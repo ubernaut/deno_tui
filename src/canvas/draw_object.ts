@@ -10,7 +10,6 @@ import { View } from "../view.ts";
 import { Signal, SignalOfObject } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
 import { Subscription } from "../signals/types.ts";
-import { Effect } from "../signals/effect.ts";
 
 export interface DrawObjectOptions {
   canvas: Canvas;
@@ -55,6 +54,11 @@ export class DrawObject<Type extends string = string> {
   moved: boolean;
 
   #styleSubscription: Subscription<Style>;
+  #viewSubscription: Subscription<View | undefined>;
+  #viewRectangleSubscription: Subscription<Rectangle>;
+  #viewOffsetSubscription: Subscription<Offset>;
+  #viewMaxOffsetSubscription: Subscription<Offset>;
+  #attachedView?: View;
 
   constructor(type: Type, options: DrawObjectOptions) {
     this.id = id++;
@@ -92,37 +96,13 @@ export class DrawObject<Type extends string = string> {
       }
     };
 
-    if (this.view.value) {
-      queueMicrotask(() => {
-        new Effect(() => {
-          const view = this.view.value;
-          // FIXME: they might not get watched if view wasnt set by default
-          if (view) {
-            const viewRectangle = view?.rectangle.value;
-            const offset = view?.offset.value;
-            const _maxOffset = view?.maxOffset.value;
+    this.#viewSubscription = (view) => this.#attachView(view);
+    this.#viewRectangleSubscription = () => this.#syncView();
+    this.#viewOffsetSubscription = () => this.#syncView();
+    this.#viewMaxOffsetSubscription = () => this.#queueViewUpdate();
 
-            const rectangle = this.rectangle?.peek();
-            if (!rectangle) return;
-            const { viewOffset } = this;
-
-            rectangle.column += viewRectangle.column - offset.columns - viewOffset.columns;
-            rectangle.row += viewRectangle.row - offset.rows - viewOffset.rows;
-
-            viewOffset.columns = viewRectangle.column - offset.columns;
-            viewOffset.rows = viewRectangle.row - offset.rows;
-          }
-
-          this.updated = false;
-          updateObjects.push(this);
-
-          for (const objectUnder of this.objectsUnder) {
-            objectUnder.updated = false;
-            updateObjects.push(objectUnder);
-          }
-        });
-      });
-    }
+    this.view.subscribe(this.#viewSubscription);
+    queueMicrotask(() => this.#attachView(this.view.peek()));
   }
 
   draw(): void {
@@ -288,4 +268,69 @@ export class DrawObject<Type extends string = string> {
   }
 
   rerender(): void {}
+
+  #attachView(view: View | undefined): void {
+    if (this.#attachedView === view) {
+      this.#syncView();
+      return;
+    }
+
+    if (this.#attachedView) {
+      this.#attachedView.rectangle.unsubscribe(this.#viewRectangleSubscription);
+      this.#attachedView.offset.unsubscribe(this.#viewOffsetSubscription);
+      this.#attachedView.maxOffset.unsubscribe(this.#viewMaxOffsetSubscription);
+    }
+
+    this.#attachedView = view;
+
+    if (view) {
+      view.rectangle.subscribe(this.#viewRectangleSubscription);
+      view.offset.subscribe(this.#viewOffsetSubscription);
+      view.maxOffset.subscribe(this.#viewMaxOffsetSubscription);
+    }
+
+    this.#syncView();
+  }
+
+  #syncView(): void {
+    const view = this.#attachedView;
+    if (!view) {
+      this.#queueViewUpdate();
+      return;
+    }
+
+    const rectangle = this.rectangle?.peek();
+    if (!rectangle) return;
+
+    const viewRectangle = view.rectangle.peek();
+    const offset = view.offset.peek();
+    const nextColumns = viewRectangle.column - offset.columns;
+    const nextRows = viewRectangle.row - offset.rows;
+    const deltaColumns = nextColumns - this.viewOffset.columns;
+    const deltaRows = nextRows - this.viewOffset.rows;
+
+    if (deltaColumns !== 0 || deltaRows !== 0) {
+      rectangle.column += deltaColumns;
+      rectangle.row += deltaRows;
+      this.moved = true;
+      for (const objectUnder of this.objectsUnder) {
+        objectUnder.moved = true;
+      }
+    }
+
+    this.viewOffset.columns = nextColumns;
+    this.viewOffset.rows = nextRows;
+    this.#queueViewUpdate();
+  }
+
+  #queueViewUpdate(): void {
+    const { updateObjects } = this.canvas;
+    this.updated = false;
+    updateObjects.push(this);
+
+    for (const objectUnder of this.objectsUnder) {
+      objectUnder.updated = false;
+      updateObjects.push(objectUnder);
+    }
+  }
 }
