@@ -825,9 +825,10 @@ const plugins = state.plugins.map((plugin) => plugin.id);
 `SettingsController` wraps `PersistentSignal` with app-level namespacing, caching, aggregate readiness, flushing, reset,
 and disposal. Use it for preferences such as active route, theme pack, layout density, split ratios, hidden controls, or
 visualization settings while keeping storage configurable. `bindSettingSignal()`, `bindRouteSetting()`,
-`bindThemeSetting()`, `bindThemeLayerSetting()`, and `bindSplitPaneSetting()` wire those preferences into app state
-without each app rebuilding two-way synchronization logic. `settingsCommands()` and `bindSettingsCommands()` expose
-registered preferences as reset commands for palettes, menus, settings screens, and plugin surfaces:
+`bindThemeSetting()`, `bindThemeLayerSetting()`, `bindSplitPaneSetting()`, and `bindDataTableSetting()` wire those
+preferences into app state without each app rebuilding two-way synchronization logic. `settingsCommands()` and
+`bindSettingsCommands()` expose registered preferences as reset commands for palettes, menus, settings screens, and
+plugin surfaces:
 
 ```ts
 const settings = new SettingsController({
@@ -845,6 +846,11 @@ const stopThemeLayers = bindThemeLayerSetting(themeProvider, settings, {
 });
 const stopSplitSetting = bindSplitPaneSetting(splitController, settings, {
   key: "main-split",
+  serialize: JSON.stringify,
+  deserialize: JSON.parse,
+});
+const stopProcessTableSetting = bindDataTableSetting(processTable, settings, {
+  key: "process-table",
   serialize: JSON.stringify,
   deserialize: JSON.parse,
 });

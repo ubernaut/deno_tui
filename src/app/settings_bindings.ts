@@ -3,6 +3,7 @@ import type { Signal } from "../signals/mod.ts";
 import type { ThemeLayerStack, ThemeProvider } from "../theme.ts";
 import type { PersistentSignal } from "../runtime/storage.ts";
 import type { SplitPaneController, SplitPaneControllerOptions } from "../layout/mod.ts";
+import { canSortColumn, type DataTableController, type DataTableState } from "../components/data_table.ts";
 import { bindRouteSignal, type RouteSignalBindingOptions } from "./route_bindings.ts";
 import type { Route, RouteManager } from "./router.ts";
 import type { AppSettingDefinition, SettingsController } from "./settings.ts";
@@ -50,6 +51,16 @@ export interface SplitPaneSettingBindingOptions<Stored = SplitPaneControllerOpti
   setting?: PersistentSignal<SplitPaneControllerOptions, Stored>;
   serialize?: (value: SplitPaneControllerOptions) => Stored;
   deserialize?: (value: Stored) => SplitPaneControllerOptions;
+}
+
+/** Options for persisting data-table query, sort, pagination, and selected row state. */
+export interface DataTableSettingBindingOptions<Stored = DataTableState>
+  extends SettingSignalBindingOptions<DataTableState> {
+  key?: string;
+  initialValue?: DataTableState;
+  setting?: PersistentSignal<DataTableState, Stored>;
+  serialize?: (value: DataTableState) => Stored;
+  deserialize?: (value: Stored) => DataTableState;
 }
 
 export function bindSettingSignal<T, Stored = T>(
@@ -277,10 +288,126 @@ export function bindSplitPaneSetting<Stored = SplitPaneControllerOptions>(
   };
 }
 
+/** Restores and persists a `DataTableController` state through app settings. */
+export function bindDataTableSetting<
+  TRow extends Record<string, unknown> = Record<string, unknown>,
+  Stored = DataTableState,
+>(
+  controller: DataTableController<TRow>,
+  settings: SettingsController,
+  options: DataTableSettingBindingOptions<Stored> = {},
+): SettingBinding<DataTableState, Stored> {
+  const setting = options.setting ??
+    settings.signal(settingDefinition({
+      key: options.key ?? "data-table",
+      initialValue: options.initialValue ?? snapshotDataTableState(controller),
+      serialize: options.serialize,
+      deserialize: options.deserialize,
+      signalOptions: { deepObserve: true },
+    }));
+
+  let disposed = false;
+  let syncing = false;
+  const equals = options.equals ?? dataTableStateEqual;
+
+  const applyController = (value: DataTableState) => {
+    const next = sanitizeDataTableState(controller, value);
+    if (equals(sanitizeDataTableState(controller, controller.state.peek()), next)) return;
+    syncing = true;
+    controller.state.value = next;
+    syncing = false;
+  };
+  const applySetting = () => {
+    if (disposed || syncing) return;
+    const next = snapshotDataTableState(controller);
+    if (!equals(setting.value.peek(), next)) {
+      syncing = true;
+      setting.set(next);
+      syncing = false;
+    }
+  };
+  const applyLoadedSetting = (value: DataTableState) => {
+    if (disposed || syncing) return;
+    const next = sanitizeDataTableState(controller, value);
+    applyController(value);
+    if (!equals(setting.value.peek(), next)) {
+      syncing = true;
+      setting.set(next);
+      syncing = false;
+    }
+  };
+
+  if (options.initialSync === "signal") {
+    setting.set(snapshotDataTableState(controller));
+  } else {
+    applyLoadedSetting(setting.value.peek());
+    setting.ready.then((value) => {
+      if (!disposed) applyLoadedSetting(value);
+    });
+  }
+
+  setting.value.subscribe(applyLoadedSetting);
+  controller.state.subscribe(applySetting);
+  controller.columns.subscribe(applySetting);
+
+  return {
+    setting,
+    dispose: () => {
+      disposed = true;
+      setting.value.unsubscribe(applyLoadedSetting);
+      controller.state.unsubscribe(applySetting);
+      controller.columns.unsubscribe(applySetting);
+    },
+  };
+}
+
 function settingDefinition<T, Stored>(
   definition: AppSettingDefinition<T, Stored>,
 ): AppSettingDefinition<T, Stored> {
   return definition;
+}
+
+function sanitizeDataTableState<TRow extends Record<string, unknown>>(
+  controller: DataTableController<TRow>,
+  state: DataTableState,
+): DataTableState {
+  const pageSize = state.pageSize === undefined ? undefined : Math.max(1, Math.floor(state.pageSize));
+  const page = state.page === undefined ? undefined : Math.max(0, Math.floor(state.page));
+  const selectedIndex = state.selectedIndex === undefined ? undefined : Math.max(0, Math.floor(state.selectedIndex));
+  const sort = state.sort && canSortColumn(controller.columns.peek(), state.sort.columnId) ? state.sort : undefined;
+  return {
+    ...(state.query ? { query: state.query } : {}),
+    ...(sort ? { sort } : {}),
+    ...(page !== undefined ? { page } : {}),
+    ...(pageSize !== undefined ? { pageSize } : {}),
+    ...(selectedIndex !== undefined ? { selectedIndex } : {}),
+    ...(state.selectedKey !== undefined ? { selectedKey: state.selectedKey } : {}),
+  };
+}
+
+function snapshotDataTableState<TRow extends Record<string, unknown>>(
+  controller: DataTableController<TRow>,
+): DataTableState {
+  const state = sanitizeDataTableState(controller, controller.state.peek());
+  const view = controller.view.peek();
+  return {
+    ...(state.query ? { query: state.query } : {}),
+    ...(state.sort ? { sort: state.sort } : {}),
+    page: view.page,
+    pageSize: view.pageSize,
+    selectedIndex: view.selectedIndex,
+    ...(view.selectedKey !== undefined ? { selectedKey: view.selectedKey } : {}),
+  };
+}
+
+function dataTableStateEqual(left: DataTableState, right: DataTableState): boolean {
+  return (left.query ?? "") === (right.query ?? "") &&
+    left.sort?.columnId === right.sort?.columnId &&
+    left.sort?.direction === right.sort?.direction &&
+    left.page === right.page &&
+    left.pageSize === right.pageSize &&
+    left.selectedIndex === right.selectedIndex &&
+    left.selectedKey === right.selectedKey;
 }
 
 function splitPaneOptionsEqual(left: SplitPaneControllerOptions, right: SplitPaneControllerOptions): boolean {

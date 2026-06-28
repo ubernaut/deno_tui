@@ -32,12 +32,14 @@ import type { SettingsCommandAction } from "../src/app/settings_commands.ts";
 import { bindSplitPaneCommands, splitPaneCommands } from "../src/app/split_pane_commands.ts";
 import type { SplitPaneCommandAction } from "../src/app/split_pane_commands.ts";
 import {
+  bindDataTableSetting,
   bindRouteSetting,
   bindSettingSignal,
   bindSplitPaneSetting,
   bindThemeLayerSetting,
   bindThemeSetting,
 } from "../src/app/settings_bindings.ts";
+import { type DataColumn, DataTableController } from "../src/components/data_table.ts";
 import {
   bindThemeCommands,
   themeCommands,
@@ -1690,6 +1692,81 @@ Deno.test("bindThemeLayerSetting restores and persists active theme layers", asy
   await Promise.resolve();
   assertEquals(binding.setting.value.value, []);
   layers.dispose();
+});
+
+Deno.test("bindDataTableSetting restores persists and sanitizes table state", async () => {
+  interface Row extends Record<string, unknown> {
+    id: string;
+    name: string;
+    cpu: number;
+  }
+  const columns: DataColumn<Row>[] = [
+    { id: "id", sortable: false },
+    { id: "name", sortable: true },
+    { id: "cpu", sortable: true },
+  ];
+  const store = new MemoryStore<unknown>();
+  await store.set(
+    "prefs.process-table",
+    JSON.stringify({
+      query: "deno",
+      sort: { columnId: "missing", direction: "desc" },
+      page: -2,
+      pageSize: 0,
+      selectedIndex: -9,
+      selectedKey: "p2",
+    }),
+  );
+  const settings = new SettingsController({ store, namespace: "prefs" });
+  const controller = new DataTableController<Row>({
+    rows: [
+      { id: "p1", name: "shell", cpu: 3 },
+      { id: "p2", name: "deno", cpu: 42 },
+    ],
+    columns,
+    rowKey: (row) => row.id,
+    initialState: { pageSize: 10 },
+  });
+  const binding = bindDataTableSetting(controller, settings, {
+    key: "process-table",
+    serialize: (value) => JSON.stringify(value),
+    deserialize: (value: string) => JSON.parse(value),
+  });
+
+  await settings.ready();
+  assertEquals(controller.state.peek(), {
+    query: "deno",
+    page: 0,
+    pageSize: 1,
+    selectedIndex: 0,
+    selectedKey: "p2",
+  });
+
+  controller.setQuery("shell");
+  controller.setPageSize(5);
+  controller.setSort({ columnId: "cpu", direction: "desc" });
+  await Promise.resolve();
+  await settings.flush();
+  assertEquals(
+    await store.get("prefs.process-table"),
+    JSON.stringify({
+      query: "shell",
+      sort: { columnId: "cpu", direction: "desc" },
+      page: 0,
+      pageSize: 5,
+      selectedIndex: 0,
+      selectedKey: "p1",
+    }),
+  );
+
+  binding.setting.set({ sort: { columnId: "id", direction: "asc" }, pageSize: 2 });
+  assertEquals(controller.state.peek(), { pageSize: 2 });
+
+  binding.dispose();
+  controller.setQuery("deno");
+  await Promise.resolve();
+  assertEquals(binding.setting.value.peek(), { pageSize: 2 });
+  controller.dispose();
 });
 
 Deno.test("theme command adapters switch packs and report theme actions", async () => {
