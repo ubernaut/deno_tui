@@ -344,6 +344,10 @@ new CommandPalette({
     width: 46,
     height: 7,
   })),
+  onSelect: (item) => {
+    paletteVisible.value = false;
+    return app.executeCommand(item.id).then(() => undefined);
+  },
   visible: paletteVisible,
 });
 

@@ -1,5 +1,10 @@
 import { assertEquals } from "./deps.ts";
-import { filterCommandPaletteItems, renderCommandPaletteRows } from "../src/components/command_palette.ts";
+import {
+  clampCommandPaletteSelection,
+  filterCommandPaletteItems,
+  renderCommandPaletteRows,
+  shiftCommandPaletteSelection,
+} from "../src/components/command_palette.ts";
 import { renderToast } from "../src/components/toast.ts";
 import { flattenTree } from "../src/components/tree.ts";
 
@@ -20,6 +25,23 @@ Deno.test("command palette rows clamp to the filtered list", () => {
   ];
 
   assertEquals(renderCommandPaletteRows(items, "open", 99, 2), ["> Open File"]);
+});
+
+Deno.test("command palette marks disabled rows and skips them during selection", () => {
+  const items = [
+    { id: "open-file", label: "Open File" },
+    { id: "close-pane", label: "Close Pane", disabled: true },
+    { id: "save-file", label: "Save File" },
+  ];
+
+  assertEquals(renderCommandPaletteRows(items, "", 1, 3), [
+    "  Open File",
+    "> (Close Pane)",
+    "  Save File",
+  ]);
+  assertEquals(shiftCommandPaletteSelection(items, 0, 1), 2);
+  assertEquals(shiftCommandPaletteSelection(items, 2, -1), 0);
+  assertEquals(clampCommandPaletteSelection(items, 1), 2);
 });
 
 Deno.test("toast rendering includes severity", () => {
