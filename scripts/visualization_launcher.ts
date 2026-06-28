@@ -61,6 +61,11 @@ export const visualizationLaunchTargets: readonly VisualizationLaunchTarget[] = 
     description: "public API export inventory",
   },
   {
+    task: "component-catalog",
+    aliases: ["components", "component-catalog", "widgets"],
+    description: "component catalog report",
+  },
+  {
     task: "grwizard",
     aliases: ["grwizard", "wizard"],
     description: "responsive GPU/model wizard demo",

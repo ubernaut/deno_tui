@@ -149,6 +149,8 @@ const dashboardWidgets = componentsWithCapability("dashboard");
 const threeAscii = findComponent("ThreeAscii");
 const selectableControllers = queryComponents({ capabilities: ["controller", "selection"] });
 const catalogState = inspectComponentCatalog();
+const catalogReport = createComponentCatalogReport({ query: { category: "visualization" } });
+const catalogMarkdown = formatComponentCatalogMarkdown({ query: { capability: "three" } });
 
 const stopCatalogCommands = bindComponentCatalogCommands(app.commands, {
   query: { category: "visualization" },
@@ -159,6 +161,9 @@ const stopCatalogCommands = bindComponentCatalogCommands(app.commands, {
 `componentCatalogCommands()` and `bindComponentCatalogCommands()` turn catalog entries into normal command registry
 items with searchable keywords and a default `component.selected` action. Use them for command palettes, launcher
 screens, docs browsers, and plugin marketplaces that need to expose available widgets without duplicating catalog data.
+`createComponentCatalogReport()` and `formatComponentCatalogMarkdown()` expose the same metadata as deterministic
+JSON-friendly reports and Markdown tables. Run `deno task component-catalog -- --json`, `deno task component-catalog`,
+or `./visualization components -- --category=overlay` to generate catalog output for docs, CI, or marketplace tooling.
 
 `ToastStackController` owns notification queue state for `ToastStack`: `show()`, `push()`, `dismiss()`,
 `dismissLatest()`, `clear()`, and `inspect()` keep notification overlays bounded and testable without local helper
@@ -1712,6 +1717,7 @@ tuning.
 ./visualization capabilities
 ./visualization benchmark
 ./visualization api-inventory
+./visualization components
 ./visualization grwizard
 ./visualization health
 deno task viz
@@ -1722,8 +1728,8 @@ for 3D panels. Added 3D visualization IDs include `three-lattice`, `three-atfiel
 `three-mapslab`, `three-solenoid`, and `three-ascii-studio`. The same launcher also exposes runtime and tooling demos:
 `worker` for abortable worker-pool concurrency, `actions` for middleware-based action dispatch, `pipeline` for cached
 scheduler-backed transforms, `capabilities` for platform feature detection, `benchmark` for performance smoke checks,
-`api-inventory` for public export graph inspection, `grwizard` for the responsive GPU/model wizard, and `health` for the
-contributor gate.
+`api-inventory` for public export graph inspection, `components` for widget catalog reports, `grwizard` for the
+responsive GPU/model wizard, and `health` for the contributor gate.
 
 Direct Deno tasks are also available:
 
@@ -1736,6 +1742,7 @@ deno task viz
 deno task capabilities
 deno task benchmark
 deno task api-inventory
+deno task component-catalog
 deno task health
 deno task worker-demo
 deno task action-middleware

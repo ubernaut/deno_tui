@@ -49,6 +49,26 @@ export interface ComponentCatalogInspection {
   capabilities: Record<ComponentCapability, number>;
 }
 
+/** Serializable component catalog report for docs, marketplaces, and tooling. */
+export interface ComponentCatalogReport {
+  entries: ComponentCatalogEntry[];
+  inspection: ComponentCatalogInspection;
+  categories: ComponentCategory[];
+  capabilities: ComponentCapability[];
+}
+
+/** Options for building a component catalog report. */
+export interface ComponentCatalogReportOptions {
+  entries?: readonly ComponentCatalogEntry[];
+  query?: ComponentCatalogQuery;
+}
+
+/** Options for formatting a component catalog report as Markdown. */
+export interface ComponentCatalogMarkdownOptions extends ComponentCatalogReportOptions {
+  title?: string;
+  includeSummary?: boolean;
+}
+
 /** Built-in component and helper inventory for demos, docs, and plugin surfaces. */
 export const componentCatalog = [
   component("box", "Box", "primitive", "Filled rectangular surface for backgrounds and panels.", [
@@ -307,6 +327,47 @@ export function inspectComponentCatalog(
   };
 }
 
+/** Creates a deterministic serializable component catalog report. */
+export function createComponentCatalogReport(options: ComponentCatalogReportOptions = {}): ComponentCatalogReport {
+  const entries = [...(options.entries ?? queryComponents(options.query))];
+  return {
+    entries,
+    inspection: inspectComponentCatalog(entries),
+    categories: componentCategories(),
+    capabilities: componentCapabilities(),
+  };
+}
+
+/** Formats catalog entries as a Markdown table with an optional summary. */
+export function formatComponentCatalogMarkdown(options: ComponentCatalogMarkdownOptions = {}): string {
+  const report = createComponentCatalogReport(options);
+  const lines: string[] = [];
+  lines.push(`# ${options.title ?? "Component Catalog"}`);
+  lines.push("");
+
+  if (options.includeSummary ?? true) {
+    lines.push(`Components: ${report.inspection.count}`);
+    lines.push(
+      `Categories: ${
+        nonZeroEntries(report.inspection.categories).map(([name, count]) => `${name} (${count})`).join(", ")
+      }`,
+    );
+    lines.push("");
+  }
+
+  lines.push("| Component | Category | Capabilities | Description |");
+  lines.push("| --- | --- | --- | --- |");
+  for (const entry of report.entries) {
+    lines.push(
+      `| ${escapeMarkdownCell(entry.name)} | ${entry.category} | ${
+        escapeMarkdownCell(entry.capabilities.join(", "))
+      } | ${escapeMarkdownCell(entry.description)} |`,
+    );
+  }
+
+  return lines.join("\n");
+}
+
 function component(
   id: string,
   name: string,
@@ -319,4 +380,12 @@ function component(
 
 function normalizeComponentLookup(value: string): string {
   return value.toLowerCase().replace(/[\s_-]+/g, "");
+}
+
+function nonZeroEntries<T extends string>(record: Record<T, number>): [T, number][] {
+  return (Object.entries(record) as [T, number][]).filter(([, count]) => count > 0);
+}
+
+function escapeMarkdownCell(value: string): string {
+  return value.replaceAll("|", "\\|").replaceAll("\n", " ");
 }

@@ -13,7 +13,9 @@ import {
   componentCategories,
   componentsByCategory,
   componentsWithCapability,
+  createComponentCatalogReport,
   findComponent,
+  formatComponentCatalogMarkdown,
   inspectComponentCatalog,
   listComponents,
   queryComponents,
@@ -141,6 +143,41 @@ Deno.test("component catalog supports combined queries and inspection", () => {
       virtualized: 0,
     },
   });
+});
+
+Deno.test("component catalog reports serialize filtered entries and markdown", () => {
+  const report = createComponentCatalogReport({ query: { category: "visualization" } });
+  const markdown = formatComponentCatalogMarkdown({
+    query: { capability: "three" },
+    title: "Three Widgets",
+  });
+
+  assertEquals(report.entries.map((entry) => entry.id), ["sparkline", "gauge", "chart", "three-ascii"]);
+  assertEquals(report.inspection.count, 4);
+  assertEquals(report.categories, [
+    "data",
+    "feedback",
+    "input",
+    "layout",
+    "navigation",
+    "overlay",
+    "primitive",
+    "visualization",
+  ]);
+  assertEquals(report.capabilities.includes("dashboard"), true);
+  assertEquals(
+    markdown,
+    [
+      "# Three Widgets",
+      "",
+      "Components: 1",
+      "Categories: visualization (1)",
+      "",
+      "| Component | Category | Capabilities | Description |",
+      "| --- | --- | --- | --- |",
+      "| ThreeAscii | visualization | component, three, dashboard | Three.js scene renderer for terminal ASCII output. |",
+    ].join("\n"),
+  );
 });
 
 Deno.test("component catalog commands project widgets into command surfaces", async () => {

@@ -8,6 +8,7 @@
     "capabilities": "deno run -A ./scripts/capabilities.ts",
     "benchmark": "deno run -A ./scripts/benchmark.ts",
     "api-inventory": "deno run -A ./scripts/api_inventory.ts",
+    "component-catalog": "deno run -A ./scripts/component_catalog.ts",
     "health": "deno run -A ./scripts/health.ts",
     "worker-demo": "deno run -A ./examples/worker_pool.ts",
     "action-middleware": "deno run -A ./examples/action_middleware.ts",
