@@ -20,6 +20,7 @@ import {
   createAnsiStyle,
   createAnsiThemeTokens,
   createTheme,
+  createThemeCatalog,
   createThemeEngine,
   createThemeEngineFromManifest,
   createThemeLayerStack,
@@ -707,6 +708,72 @@ Deno.test("ThemeProvider exposes active engine selection and component theme sig
 
   assertEquals(buttonTheme.value.base("x"), "bright:x");
   assertEquals(provider.resolve("Button", "base").value("x"), "bright:x");
+});
+
+Deno.test("ThemeProvider catalogs themes layers tokens states and merged component variants", () => {
+  const provider = createThemeProvider({
+    registry: createThemeRegistry([
+      {
+        id: "plain",
+        label: "Plain Pack",
+        palette: "plain",
+        options: {
+          components: {
+            Button: { variants: { danger: { base: "danger" } } },
+          },
+        },
+      },
+      {
+        id: "ops",
+        label: "Ops Pack",
+        palette: "terminal",
+        options: {
+          components: {
+            Field: { base: { focused: "accent" } },
+          },
+        },
+      },
+    ]),
+    activeId: "plain",
+    layers: [
+      {
+        id: "density",
+        label: "Compact Density",
+        options: {
+          components: {
+            Button: { variants: { quiet: { base: "muted" } } },
+          },
+        },
+      },
+      {
+        id: "contrast",
+        enabled: false,
+        options: {
+          components: {
+            Modal: { base: { active: "warning" } },
+          },
+        },
+      },
+    ],
+  });
+
+  assertEquals(createThemeCatalog(provider), provider.catalog());
+  assertEquals(provider.catalog().activeId, "plain");
+  assertEquals(provider.catalog().tokens, [...themeTokenNames]);
+  assertEquals(provider.catalog().states, [...themeStates]);
+  assertEquals(provider.catalog().themes.map((theme) => [theme.id, theme.active]), [
+    ["ops", false],
+    ["plain", true],
+  ]);
+  assertEquals(provider.catalog().layers.map((layer) => [layer.id, layer.active]), [
+    ["density", true],
+    ["contrast", false],
+  ]);
+  assertEquals(provider.catalog().components, [
+    { name: "Button", variants: ["default", "danger", "quiet"] },
+    { name: "Field", variants: ["default"] },
+    { name: "Modal", variants: ["default"] },
+  ]);
 });
 
 Deno.test("ThemeProvider recomputes engines from active theme layers", async () => {

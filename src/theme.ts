@@ -661,6 +661,27 @@ export interface ThemeProviderInspection {
   engine: ThemeInspection;
 }
 
+export interface ThemeCatalogTheme extends ThemePackInspection {
+  active: boolean;
+}
+
+export interface ThemeCatalogLayer extends ThemeLayerInspection {
+  active: boolean;
+}
+
+export interface ThemeCatalogComponent extends ThemeComponentInspection {
+  variants: string[];
+}
+
+export interface ThemeCatalog {
+  activeId: string;
+  tokens: ThemeTokenName[];
+  states: ThemeState[];
+  themes: ThemeCatalogTheme[];
+  layers: ThemeCatalogLayer[];
+  components: ThemeCatalogComponent[];
+}
+
 export class ThemeLayerStack {
   readonly options: Computed<ThemeEngineOptions>;
   readonly #layers = new Map<string, ThemeLayer>();
@@ -976,6 +997,10 @@ export class ThemeProvider {
     };
   }
 
+  catalog(): ThemeCatalog {
+    return createThemeCatalog(this);
+  }
+
   async #loadTheme(): Promise<string> {
     if (!this.#store) {
       this.#loaded = true;
@@ -1033,6 +1058,28 @@ export function createThemeLayerStack(layers: Iterable<ThemeLayer> = []): ThemeL
 
 export function createThemeProvider(options: ThemeProviderOptions = {}): ThemeProvider {
   return new ThemeProvider(options);
+}
+
+export function createThemeCatalog(provider: ThemeProvider): ThemeCatalog {
+  const inspection = provider.inspect();
+  return {
+    activeId: inspection.activeId,
+    tokens: [...themeTokenNames],
+    states: [...themeStates],
+    themes: inspection.themes.map((theme) => ({
+      ...theme,
+      active: theme.id === inspection.activeId,
+    })),
+    layers: inspection.layers.map((layer) => ({
+      ...layer,
+      active: layer.enabled,
+    })),
+    components: mergeThemeCatalogComponents(
+      inspection.engine.components,
+      ...inspection.themes.map((theme) => theme.components),
+      ...inspection.layers.map((layer) => layer.components),
+    ),
+  };
 }
 
 export class ThemeEngine {
@@ -1246,6 +1293,32 @@ function themeDiffVariants(component: string, before: ThemeEngine, after: ThemeE
     if (b === "default") return 1;
     return a.localeCompare(b);
   });
+}
+
+function mergeThemeCatalogComponents(
+  ...groups: readonly ThemeComponentInspection[][]
+): ThemeCatalogComponent[] {
+  const components = new Map<string, Set<string>>();
+
+  for (const group of groups) {
+    for (const component of group) {
+      const variants = components.get(component.name) ?? new Set<string>(["default"]);
+      variants.add("default");
+      for (const variant of component.variants) variants.add(variant);
+      components.set(component.name, variants);
+    }
+  }
+
+  return [...components.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([name, variants]) => ({
+      name,
+      variants: [...variants].sort((a, b) => {
+        if (a === "default") return -1;
+        if (b === "default") return 1;
+        return a.localeCompare(b);
+      }),
+    }));
 }
 
 function positiveModulo(value: number, divisor: number): number {
