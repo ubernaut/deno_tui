@@ -289,6 +289,16 @@ app.commands.register({
 const stopCommandKeys = app.enableCommandKeys();
 ```
 
+`CommandRegistry.register()` and `CommandRegistry.registerAll()` return disposers, so plugin-provided commands can be
+installed and removed without tracking ids separately:
+
+```ts
+const stopCommands = app.commands.registerAll([
+  { id: "route.overview", label: "Overview", action: { type: "route", payload: "overview" } },
+  { id: "route.logs", label: "Logs", action: { type: "route", payload: "logs" } },
+]);
+```
+
 For embedded command surfaces, use `bindCommandKeys(target, registry, dispatch)` with any object that emits `keyPress`
 events.
 

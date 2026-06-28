@@ -29,8 +29,33 @@ export type CommandDispatch<TAction extends Action = Action> = (action: TAction)
 export class CommandRegistry<TAction extends Action = Action> {
   private readonly commands = new Map<string, Command<TAction>>();
 
-  register(command: Command<TAction>): void {
+  register(command: Command<TAction>): () => void {
     this.commands.set(command.id, command);
+    return () => {
+      if (this.commands.get(command.id) === command) {
+        this.unregister(command.id);
+      }
+    };
+  }
+
+  registerAll(commands: Iterable<Command<TAction>>): () => void {
+    const disposers: Array<() => void> = [];
+    try {
+      for (const command of commands) {
+        disposers.push(this.register(command));
+      }
+    } catch (error) {
+      for (const dispose of [...disposers].reverse()) {
+        dispose();
+      }
+      throw error;
+    }
+
+    return () => {
+      for (const dispose of [...disposers].reverse()) {
+        dispose();
+      }
+    };
   }
 
   unregister(id: string): void {

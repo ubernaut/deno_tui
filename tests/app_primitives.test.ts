@@ -154,6 +154,56 @@ Deno.test("CommandRegistry projects commands into menus palettes and key binding
   ]);
 });
 
+Deno.test("CommandRegistry returns disposers for command registration", () => {
+  const registry = new CommandRegistry<{ type: "route"; payload: string }>();
+  const disposeHome = registry.register({
+    id: "route.home",
+    label: "Go Home",
+    action: { type: "route", payload: "home" },
+  });
+  const disposeMore = registry.registerAll([
+    {
+      id: "route.settings",
+      label: "Settings",
+      action: { type: "route", payload: "settings" },
+    },
+    {
+      id: "route.logs",
+      label: "Logs",
+      action: { type: "route", payload: "logs" },
+    },
+  ]);
+
+  assertEquals(registry.list().map((command) => command.id), ["route.home", "route.logs", "route.settings"]);
+
+  disposeMore();
+  assertEquals(registry.list().map((command) => command.id), ["route.home"]);
+
+  disposeHome();
+  disposeHome();
+  assertEquals(registry.list(), []);
+});
+
+Deno.test("CommandRegistry disposers do not remove replacement commands", () => {
+  const registry = new CommandRegistry<{ type: "route"; payload: string }>();
+  const disposeOriginal = registry.register({
+    id: "route.home",
+    label: "Home",
+    action: { type: "route", payload: "home" },
+  });
+  const disposeReplacement = registry.register({
+    id: "route.home",
+    label: "Start",
+    action: { type: "route", payload: "home" },
+  });
+
+  disposeOriginal();
+  assertEquals(registry.get("route.home")?.label, "Start");
+
+  disposeReplacement();
+  assertEquals(registry.get("route.home"), undefined);
+});
+
 Deno.test("commandForKeyEvent matches enabled command bindings by modifiers and group", () => {
   const registry = new CommandRegistry<{ type: "route"; payload: string }>();
   registry.register({
@@ -364,7 +414,7 @@ Deno.test("TuiApp installs plugins and disposes them with the app", async () => 
     id: "settings",
     install(target) {
       target.routes.register({ id: "settings", title: "Settings" });
-      target.commands.register({
+      const disposeCommands = target.commands.register({
         id: "route.settings",
         label: "Settings",
         action: { type: "route", payload: "settings" },
@@ -374,7 +424,7 @@ Deno.test("TuiApp installs plugins and disposes them with the app", async () => 
       });
       events.push("install");
       return () => {
-        target.commands.unregister("route.settings");
+        disposeCommands();
         target.routes.unregister("settings");
         events.push("dispose");
       };
