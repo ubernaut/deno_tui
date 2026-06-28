@@ -22,6 +22,7 @@ import { CheckBoxController, Mark, renderCheckBoxMark } from "../src/components/
 import { ComboBoxController, comboBoxLabel } from "../src/components/combobox.ts";
 import { renderEmptyState } from "../src/components/empty_state.ts";
 import { InputController } from "../src/components/input.ts";
+import { labelLineLayout } from "../src/components/label.ts";
 import { renderKeyHelp } from "../src/components/key_help.ts";
 import { ListController, virtualRows, visibleListRows } from "../src/components/list.ts";
 import {
@@ -78,6 +79,60 @@ Deno.test("visibleListRows centers the selected item when space allows", () => {
     "> gamma",
     "  delta",
   ]);
+});
+
+Deno.test("labelLineLayout crops and aligns text inside fixed rectangles", () => {
+  assertEquals(
+    labelLineLayout(["abcdef"], { column: 10, row: 2, width: 4, height: 1 }, {
+      horizontal: "right",
+      vertical: "top",
+    }),
+    [
+      {
+        sourceIndex: 0,
+        value: "abcd",
+        rectangle: { column: 10, row: 2, width: 4 },
+      },
+    ],
+  );
+  assertEquals(
+    labelLineLayout(["hi"], { column: 10, row: 2, width: 6, height: 1 }, {
+      horizontal: "center",
+      vertical: "top",
+    }),
+    [
+      {
+        sourceIndex: 0,
+        value: "hi",
+        rectangle: { column: 12, row: 2, width: 2 },
+      },
+    ],
+  );
+});
+
+Deno.test("labelLineLayout clips vertical overflow according to alignment", () => {
+  const lines = ["one", "two", "three", "four"];
+  assertEquals(
+    labelLineLayout(lines, { column: 0, row: 5, width: 5, height: 2 }, {
+      horizontal: "left",
+      vertical: "top",
+    }).map((line) => [line.sourceIndex, line.value, line.rectangle.row]),
+    [
+      [0, "one", 5],
+      [1, "two", 6],
+    ],
+  );
+  assertEquals(
+    labelLineLayout(lines, { column: 0, row: 5, width: 5, height: 2 }, {
+      horizontal: "left",
+      vertical: "bottom",
+    }).map((line) => [line.sourceIndex, line.value, line.rectangle.row]),
+    [
+      [2, "three", 5],
+      [3, "four", 6],
+    ],
+  );
+  assertEquals(labelLineLayout(lines, { column: 0, row: 0, width: 0, height: 2 }), []);
 });
 
 Deno.test("ButtonController tracks presses disabled state and inspection", () => {
