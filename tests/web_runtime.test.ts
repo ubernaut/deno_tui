@@ -1,6 +1,12 @@
 /// <reference lib="dom" />
 import { assertEquals, assertExists } from "./deps.ts";
-import { BrowserCellCanvasSink, parseAnsiCell } from "../src/web/mod.ts";
+import { createAnsiThemeTokens, createTheme } from "../src/theme.ts";
+import {
+  BrowserCellCanvasSink,
+  parseAnsiCell,
+  renderDomNodeToHtml,
+  themeTokensToCssVariables,
+} from "../src/web/mod.ts";
 
 Deno.test("mod.web imports without constructing terminal runtime", async () => {
   const web = await import("../mod.web.ts");
@@ -71,4 +77,38 @@ Deno.test("BrowserCellCanvasSink paints dirty cells to a 2D context", () => {
   assertExists(operations.find((operation) => operation[0] === "fillRect" && operation[5] === "#3b82f6"));
   assertExists(operations.find((operation) => operation[0] === "fillText" && operation[1] === "A"));
   assertEquals(sink.inspectSink().lastStats?.flushedCells, 1);
+});
+
+Deno.test("renderDomNodeToHtml serializes semantic DOM nodes safely", () => {
+  assertEquals(
+    renderDomNodeToHtml({
+      tag: "section",
+      role: "region",
+      ariaLabel: "Demo <panel>",
+      className: "demo",
+      style: { backgroundColor: "#000", padding: "8px" },
+      children: [
+        { tag: "h2", text: "Deno TUI" },
+        { tag: "button", text: "Run", attributes: { type: "button", disabled: true } },
+      ],
+    }),
+    '<section role="region" aria-label="Demo &lt;panel&gt;" class="demo" style="background-color:#000;padding:8px"><h2>Deno TUI</h2><button type="button" disabled>Run</button></section>',
+  );
+});
+
+Deno.test("themeTokensToCssVariables converts ANSI theme tokens to CSS variables", () => {
+  const theme = createTheme(createAnsiThemeTokens({
+    foreground: { foreground: [10, 20, 30] },
+    surface: { background: [1, 2, 3] },
+  }));
+
+  assertEquals(themeTokensToCssVariables(theme), {
+    "--deno-tui-foreground-fg": "rgb(10,20,30)",
+    "--deno-tui-muted-fg": "rgb(10,20,30)",
+    "--deno-tui-accent-fg": "rgb(10,20,30)",
+    "--deno-tui-success-fg": "rgb(10,20,30)",
+    "--deno-tui-warning-fg": "rgb(10,20,30)",
+    "--deno-tui-danger-fg": "rgb(10,20,30)",
+    "--deno-tui-surface-bg": "rgb(1,2,3)",
+  });
 });

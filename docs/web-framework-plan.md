@@ -214,9 +214,10 @@ runtime wrapper around a shared `TuiAppHost`.
 
 ### Phase 3: DOM Renderer
 
-- Define a small render tree for semantic widgets: panels, labels, buttons, lists, forms, tables, overlays, menus, and
-  palettes.
-- Add theme-to-CSS-variable emission from `ThemeEngine` and `ThemeProvider`.
+- Status: started.
+- Defined a small render tree for semantic browser nodes and a `DomRenderTarget` with mount/update/unmount support.
+- Added HTML serialization for tests, docs previews, and server-rendered examples.
+- Added theme-token-to-CSS-variable emission for ANSI-backed `ThemeTokens`.
 - Add DOM focus management that interoperates with the existing focus/command controllers.
 - Add accessibility roles for the first widget set.
 - Keep the DOM renderer optional so terminal apps do not pay for browser code.
