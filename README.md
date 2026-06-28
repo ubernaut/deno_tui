@@ -506,7 +506,12 @@ const stopCommands = app.commands.registerAll([
   { id: "route.overview", label: "Overview", action: { type: "route", payload: "overview" } },
   { id: "route.logs", label: "Logs", action: { type: "route", payload: "logs" } },
 ]);
+
+const commandState = app.commands.inspect("routes");
 ```
+
+Use `app.commands.has(id)`, `groups()`, and group-aware `clear(group)` for plugin teardown, settings screens, and
+diagnostics without reaching into the registry internals.
 
 For embedded command surfaces, use `bindCommandKeys(target, registry, dispatch)` with any object that emits `keyPress`
 events. Use `app.enableCommandKeymap()` or `bindCommandKeymap()` to keep help overlays synchronized with the currently

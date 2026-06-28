@@ -1,5 +1,5 @@
 // Copyright 2023 Im-Beast. MIT license.
-import type { KeyBinding } from "../keymap.ts";
+import { bindingId, type KeyBinding } from "../keymap.ts";
 import type { Action } from "./actions.ts";
 
 export type CommandActionFactory<TAction extends Action = Action> = (
@@ -22,6 +22,25 @@ export interface CommandProjection {
   label: string;
   keywords?: readonly string[];
   disabled?: boolean;
+}
+
+export interface CommandInspection {
+  id: string;
+  label: string;
+  description?: string;
+  group?: string;
+  keywords?: readonly string[];
+  disabled: boolean;
+  bindingId?: string;
+  hasAction: boolean;
+}
+
+export interface CommandRegistryInspection {
+  count: number;
+  enabled: number;
+  disabled: number;
+  groups: string[];
+  commands: CommandInspection[];
 }
 
 export type CommandDispatch<TAction extends Action = Action> = (action: TAction) => void | Promise<void>;
@@ -71,6 +90,10 @@ export class CommandRegistry<TAction extends Action = Action> {
     return this.commands.get(id);
   }
 
+  has(id: string): boolean {
+    return this.commands.has(id);
+  }
+
   list(group?: string): Command<TAction>[] {
     return [...this.commands.values()]
       .filter((command) => group === undefined || command.group === group)
@@ -102,6 +125,48 @@ export class CommandRegistry<TAction extends Action = Action> {
       }));
   }
 
+  groups(): string[] {
+    return uniqueSorted(this.list().map((command) => command.group));
+  }
+
+  clear(group?: string): void {
+    if (group === undefined) {
+      if (this.commands.size === 0) return;
+      this.commands.clear();
+      this.notify();
+      return;
+    }
+
+    let changed = false;
+    for (const [id, command] of this.commands) {
+      if (command.group === group) {
+        this.commands.delete(id);
+        changed = true;
+      }
+    }
+    if (changed) this.notify();
+  }
+
+  inspect(group?: string): CommandRegistryInspection {
+    const commands = this.list(group).map((command) => ({
+      id: command.id,
+      label: command.label,
+      description: command.description,
+      group: command.group,
+      keywords: command.keywords,
+      disabled: !this.enabled(command),
+      bindingId: command.binding ? bindingId(command.binding) : undefined,
+      hasAction: command.action !== undefined,
+    }));
+    return {
+      count: commands.length,
+      enabled: commands.filter((command) => !command.disabled).length,
+      disabled: commands.filter((command) => command.disabled).length,
+      groups: uniqueSorted(commands.map((command) => command.group)),
+      commands,
+    };
+  }
+
   async execute(id: string, dispatch?: CommandDispatch<TAction>): Promise<boolean> {
     const command = this.get(id);
     if (!command || !this.enabled(command) || !command.action) return false;
@@ -123,4 +188,8 @@ export class CommandRegistry<TAction extends Action = Action> {
       listener();
     }
   }
+}
+
+function uniqueSorted(values: Array<string | undefined>): string[] {
+  return [...new Set(values.filter((value): value is string => !!value))].sort();
 }

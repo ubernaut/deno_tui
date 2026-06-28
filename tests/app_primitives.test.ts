@@ -243,6 +243,34 @@ Deno.test("CommandRegistry projects commands into menus palettes and key binding
   assertEquals(registry.keyBindings("routes"), [
     { key: "1", description: "Go Home", group: "routes" },
   ]);
+  assertEquals(registry.inspect("routes"), {
+    count: 2,
+    enabled: 1,
+    disabled: 1,
+    groups: ["routes"],
+    commands: [
+      {
+        id: "route.admin",
+        label: "Admin",
+        description: undefined,
+        group: "routes",
+        keywords: undefined,
+        disabled: true,
+        bindingId: "C-a",
+        hasAction: true,
+      },
+      {
+        id: "route.home",
+        label: "Go Home",
+        description: undefined,
+        group: "routes",
+        keywords: ["home"],
+        disabled: false,
+        bindingId: "1",
+        hasAction: true,
+      },
+    ],
+  });
 });
 
 Deno.test("CommandRegistry returns disposers for command registration", () => {
@@ -293,6 +321,35 @@ Deno.test("CommandRegistry disposers do not remove replacement commands", () => 
 
   disposeReplacement();
   assertEquals(registry.get("route.home"), undefined);
+});
+
+Deno.test("CommandRegistry supports groups has and clear", () => {
+  const registry = new CommandRegistry<{ type: "route"; payload: string }>();
+  let changes = 0;
+  registry.subscribe(() => changes += 1);
+
+  const disposeRoutes = registry.registerAll([
+    { id: "route.home", label: "Home", group: "routes", action: { type: "route", payload: "home" } },
+    { id: "route.logs", label: "Logs", group: "routes", action: { type: "route", payload: "logs" } },
+  ]);
+  registry.register({ id: "global.quit", label: "Quit", group: "global" });
+
+  assertEquals(registry.has("route.home"), true);
+  assertEquals(registry.groups(), ["global", "routes"]);
+  assertEquals(registry.inspect().count, 3);
+
+  registry.clear("routes");
+  assertEquals(registry.list().map((command) => command.id), ["global.quit"]);
+  assertEquals(registry.has("route.home"), false);
+
+  disposeRoutes();
+  assertEquals(registry.list().map((command) => command.id), ["global.quit"]);
+
+  registry.clear("missing");
+  assertEquals(changes, 4);
+  registry.clear();
+  assertEquals(registry.inspect(), { count: 0, enabled: 0, disabled: 0, groups: [], commands: [] });
+  assertEquals(changes, 5);
 });
 
 Deno.test("CommandRegistry notifies subscribers when commands change", () => {
