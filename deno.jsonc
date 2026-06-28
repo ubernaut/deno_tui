@@ -3,6 +3,7 @@
     "demo": "deno run --watch --allow-hrtime ./examples/demo.ts",
     "app-shell": "deno run -A ./examples/app_shell.ts",
     "dashboard": "deno run -A ./examples/dashboard.ts",
+    "theme-manifest": "deno run -A ./examples/theme_manifest.ts",
     "capabilities": "deno run -A ./scripts/capabilities.ts",
     "benchmark": "deno run -A ./scripts/benchmark.ts",
     "health": "deno run -A ./scripts/health.ts",
