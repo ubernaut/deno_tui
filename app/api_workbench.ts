@@ -48,7 +48,7 @@ type HitAction =
   | { type: "theme"; index: number }
   | { type: "control"; id: ControlId; action?: ControlHitAction; index?: number }
   | { type: "dataRow"; index: number };
-type ControlHitAction = "previous" | "next" | "activate" | "set" | "focus";
+type ControlHitAction = "previous" | "next" | "activate" | "set" | "focus" | "toggle";
 
 interface ThemeSpec {
   id: string;
@@ -202,7 +202,6 @@ const themeCombo = new ComboBoxController({
 const dropdown = new ComboBoxController({
   items: ["CPU stream", "GPU queue", "Network bus", "Disk cache"],
   selectedIndex: 1,
-  expanded: true,
   placeholder: "source",
   onSelect: (item) => pushLog(`dropdown selected: ${item}`),
 });
@@ -634,14 +633,18 @@ function renderControls(frame: Frame, rect: Rectangle): void {
   writeSection("combo", `Theme combo  ${themeCombo.expanded.peek() ? "▾" : "▸"} ${themeCombo.label()}`);
   writeWrappedOptions(frame, rect, row, "combo", themeCombo.items.peek(), themeCombo.selectedIndex.peek(), t);
   row += wrappedOptionRowCount(themeCombo.items.peek(), rect.width - 4);
-  writeSection("dropdown", `Dropdown  ${dropdown.expanded.peek() ? "▾" : "▸"} ${dropdown.label()}`);
-  for (const [index, item] of dropdown.items.peek().entries()) {
-    const selected = dropdown.selectedIndex.peek() === index;
-    writeControl("dropdown", `${selected ? "●" : "○"} ${item}`, {
-      indent: true,
-      action: "activate",
-      index,
-    });
+  writeControl("dropdown", `Dropdown  ${dropdown.expanded.peek() ? "▾" : "▸"} ${dropdown.label()}`, {
+    action: "toggle",
+  });
+  if (dropdown.expanded.peek()) {
+    for (const [index, item] of dropdown.items.peek().entries()) {
+      const selected = dropdown.selectedIndex.peek() === index;
+      writeControl("dropdown", `${selected ? "●" : "○"} ${item}`, {
+        indent: true,
+        action: "activate",
+        index,
+      });
+    }
   }
   writeControl("input", `Input     ${commandInput.text.peek()}${activeControl.peek() === "input" ? "▌" : ""}`, {
     action: "focus",
@@ -972,9 +975,11 @@ function applyControlHit(
     }
   } else if (id === "dropdown") {
     if (index !== undefined) dropdown.selectIndex(index);
+    else if (action === "toggle") dropdown.toggle();
     else if (action === "previous") dropdown.move(-1);
     else if (action === "next") dropdown.move(1);
-    else dropdown.selectActive();
+    else if (dropdown.expanded.peek()) dropdown.selectActive();
+    else dropdown.open();
   } else if (id === "input") commandInput.submit();
   else if (id === "stepper") {
     if (index !== undefined) workflowStepper.setActive(index);

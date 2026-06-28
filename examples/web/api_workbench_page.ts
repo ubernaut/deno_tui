@@ -54,7 +54,7 @@ type Hit =
   | { type: "theme"; index: number }
   | { type: "control"; id: ControlId; action?: ControlHitAction; index?: number }
   | { type: "dataRow"; index: number };
-type ControlHitAction = "previous" | "next" | "activate" | "set" | "focus";
+type ControlHitAction = "previous" | "next" | "activate" | "set" | "focus" | "toggle";
 
 interface ThemeSpec {
   label: string;
@@ -176,7 +176,6 @@ const combo = new ComboBoxController({
 const dropdown = new ComboBoxController({
   items: ["CPU stream", "GPU queue", "Network bus", "Disk cache"],
   selectedIndex: 1,
-  expanded: true,
   placeholder: "source",
   onSelect: (item) => push(`dropdown ${item}`),
 });
@@ -654,13 +653,17 @@ function renderControls(frame: string[], rect: Rectangle): void {
   });
   writeWrappedOptions(frame, rect, row, "combo", combo.items.peek(), combo.selectedIndex.peek(), t);
   row += wrappedOptionRowCount(combo.items.peek(), rect.width - 4);
-  writeControl("dropdown", `Dropdown  ${dropdown.expanded.peek() ? "v" : ">"} ${dropdown.label()}`);
-  for (const [index, item] of dropdown.items.peek().entries()) {
-    writeControl("dropdown", `${dropdown.selectedIndex.peek() === index ? "●" : "○"} ${item}`, {
-      indent: true,
-      action: "activate",
-      index,
-    });
+  writeControl("dropdown", `Dropdown  ${dropdown.expanded.peek() ? "v" : ">"} ${dropdown.label()}`, {
+    action: "toggle",
+  });
+  if (dropdown.expanded.peek()) {
+    for (const [index, item] of dropdown.items.peek().entries()) {
+      writeControl("dropdown", `${dropdown.selectedIndex.peek() === index ? "●" : "○"} ${item}`, {
+        indent: true,
+        action: "activate",
+        index,
+      });
+    }
   }
   writeControl("input", `Input     ${input.text.peek()}${activeControl.peek() === "input" ? "|" : ""}`, {
     action: "focus",
@@ -818,9 +821,11 @@ function applyControlHit(
     else combo.selectActive();
   } else if (id === "dropdown") {
     if (index !== undefined) dropdown.selectIndex(index);
+    else if (action === "toggle") dropdown.toggle();
     else if (action === "previous") dropdown.move(-1);
     else if (action === "next") dropdown.move(1);
-    else dropdown.selectActive();
+    else if (dropdown.expanded.peek()) dropdown.selectActive();
+    else dropdown.open();
   } else if (id === "input") input.submit();
   else if (id === "stepper") {
     if (index !== undefined) stepper.setActive(index);
