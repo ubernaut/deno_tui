@@ -1,11 +1,13 @@
 // Copyright 2023 Im-Beast. MIT license.
-import type { ThemeLayerStack, ThemeProvider } from "../theme.ts";
+import { previewThemeProvider, type ThemeLayerStack, type ThemeProvider } from "../theme.ts";
+import type { ThemeProviderPreview, ThemeProviderPreviewOptions } from "../theme.ts";
 import type { Action } from "./actions.ts";
-import type { Command } from "./commands.ts";
+import type { Command, CommandRegistry } from "./commands.ts";
 
 export type ThemeCommandAction =
   | Action<"theme.changed", ThemeChangedPayload>
-  | Action<"theme.layer.changed", ThemeLayerChangedPayload>;
+  | Action<"theme.layer.changed", ThemeLayerChangedPayload>
+  | Action<"theme.previewed", ThemePreviewPayload>;
 
 export interface ThemeChangedPayload {
   id: string;
@@ -18,15 +20,22 @@ export interface ThemeLayerChangedPayload {
   enabled: boolean;
 }
 
+export interface ThemePreviewPayload {
+  preview: ThemeProviderPreview;
+}
+
 export interface ThemeCommandOptions {
   group?: string;
   themePrefix?: string;
   layerPrefix?: string;
+  previewPrefix?: string;
   includeCycleCommands?: boolean;
   includeThemeCommands?: boolean;
   includeLayerCommands?: boolean;
+  includePreviewCommand?: boolean;
   disableActiveTheme?: boolean;
   disableInactiveLayerStates?: boolean;
+  preview?: ThemeProviderPreviewOptions;
 }
 
 export function themeCommands(
@@ -36,7 +45,16 @@ export function themeCommands(
   return [
     ...themeSelectionCommands(provider, options),
     ...themeLayerCommands(provider, options),
+    ...themePreviewCommands(provider, options),
   ];
+}
+
+export function bindThemeCommands<TAction extends Action = ThemeCommandAction>(
+  registry: CommandRegistry<TAction>,
+  provider: ThemeProvider,
+  options: ThemeCommandOptions = {},
+): () => void {
+  return registry.registerAll(themeCommands(provider, options) as unknown as Command<TAction>[]);
 }
 
 export function themeSelectionCommands(
@@ -96,6 +114,29 @@ export function themeSelectionCommands(
   }
 
   return commands;
+}
+
+export function themePreviewCommands(
+  provider: ThemeProvider,
+  options: ThemeCommandOptions = {},
+): Command<ThemeCommandAction>[] {
+  if (!(options.includePreviewCommand ?? true)) return [];
+
+  const group = options.group ?? "theme";
+  const prefix = options.previewPrefix ?? "theme.preview";
+  return [
+    {
+      id: `${prefix}.snapshot`,
+      label: "Preview Theme",
+      description: "Capture the active theme provider catalog and rendered style samples.",
+      group,
+      keywords: ["theme", "preview", "catalog", "tokens", "layers"],
+      action: () => ({
+        type: "theme.previewed",
+        payload: { preview: previewThemeProvider(provider, options.preview) },
+      }),
+    },
+  ];
 }
 
 export function themeLayerCommands(

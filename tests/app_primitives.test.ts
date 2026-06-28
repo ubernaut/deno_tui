@@ -30,7 +30,13 @@ import {
   bindThemeLayerSetting,
   bindThemeSetting,
 } from "../src/app/settings_bindings.ts";
-import { themeCommands, themeLayerCommands, themeSelectionCommands } from "../src/app/theme_commands.ts";
+import {
+  bindThemeCommands,
+  themeCommands,
+  themeLayerCommands,
+  themePreviewCommands,
+  themeSelectionCommands,
+} from "../src/app/theme_commands.ts";
 import type { ThemeCommandAction } from "../src/app/theme_commands.ts";
 import { createThemePlugin } from "../src/app/theme_plugin.ts";
 import { KeymapRegistry } from "../src/keymap.ts";
@@ -1565,6 +1571,69 @@ Deno.test("theme command adapters toggle runtime theme layers", async () => {
   assertEquals(registry.enabled(registry.get("theme.layer.disable.contrast")!), true);
 
   layers.dispose();
+});
+
+Deno.test("theme preview commands capture active provider snapshots", async () => {
+  const provider = createThemeProvider({
+    registry: createThemeRegistry([
+      {
+        id: "plain",
+        label: "Plain",
+        palette: "plain",
+        options: {
+          tokens: { foreground: (value) => `fg:${value}` },
+          components: { Button: { base: { base: "foreground" } } },
+        },
+      },
+    ]),
+    activeId: "plain",
+    layers: [
+      {
+        id: "density",
+        label: "Density",
+        options: { components: { Button: { variants: { compact: { active: "foreground" } } } } },
+      },
+    ],
+  });
+  const registry = new CommandRegistry<ThemeCommandAction>();
+  const actions: unknown[] = [];
+  const dispose = bindThemeCommands(registry, provider, {
+    includeCycleCommands: false,
+    includeThemeCommands: false,
+    includeLayerCommands: false,
+    preview: {
+      sample: "Aa",
+      tokens: ["foreground"],
+      components: ["Button"],
+      states: ["base"],
+    },
+  });
+
+  assertEquals(themePreviewCommands(provider).map((command) => command.id), ["theme.preview.snapshot"]);
+  assertEquals(registry.list("theme").map((command) => command.id), ["theme.preview.snapshot"]);
+  assertEquals(await registry.execute("theme.preview.snapshot", (action) => void actions.push(action)), true);
+  assertEquals(actions, [
+    {
+      type: "theme.previewed",
+      payload: {
+        preview: {
+          sample: "Aa",
+          activeId: "plain",
+          activeLayers: ["density"],
+          catalog: provider.catalog(),
+          tokens: [{ token: "foreground", preview: { raw: "Aa", styled: "fg:Aa" } }],
+          components: [
+            { component: "Button", variant: "default", state: "base", preview: { raw: "Aa", styled: "fg:Aa" } },
+            { component: "Button", variant: "compact", state: "base", preview: { raw: "Aa", styled: "fg:Aa" } },
+          ],
+        },
+      },
+    },
+  ]);
+
+  dispose();
+  assertEquals(registry.list("theme"), []);
+  provider.layers.dispose();
 });
 
 Deno.test("createThemePlugin installs provider commands settings and lifecycle cleanup", async () => {
