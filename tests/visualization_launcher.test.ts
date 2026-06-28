@@ -1,5 +1,10 @@
 import { assertEquals } from "./deps.ts";
-import { filterDemoTargets, formatDemoLauncherScreen, moveDemoSelection } from "../scripts/demo_launcher.ts";
+import {
+  appendDemoLauncherInput,
+  filterDemoTargets,
+  formatDemoLauncherScreen,
+  moveDemoSelection,
+} from "../scripts/demo_launcher.ts";
 import {
   createVisualizationLaunchReport,
   findVisualizationLaunchTarget,
@@ -58,6 +63,17 @@ Deno.test("interactive demo launcher filters renders and moves selections", () =
   const screen = formatDemoLauncherScreen(targets, { index: 0, query: "portfolio" }, { width: 80, height: 10 });
   assertEquals(screen.includes("DEMO LAUNCHER"), true);
   assertEquals(screen.includes("api-workbench"), true);
+});
+
+Deno.test("interactive demo launcher accepts buffered printable input", () => {
+  assertEquals(appendDemoLauncherInput({ index: 4, query: "" }, "batteries"), {
+    index: 0,
+    query: "batteries",
+  });
+  assertEquals(appendDemoLauncherInput({ index: 1, query: "api" }, "\x1b[A"), {
+    index: 1,
+    query: "api",
+  });
 });
 
 Deno.test("visualization launcher exposes unique primary aliases", () => {

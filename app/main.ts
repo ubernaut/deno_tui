@@ -26,6 +26,7 @@ import { defaultVisualizationForSlot, orderVisualizationsForSlot } from "./panel
 import { buildSourceCatalog, resolveSourceFrames } from "./sources.ts";
 import { accentColor, formatDuration, makeStyle, palette, severityAccent } from "./styles.ts";
 import { SystemMonitor } from "./system_metrics.ts";
+import { requireInteractiveTerminal } from "./terminal_guard.ts";
 import { ThreePanelView } from "./three_panel.ts";
 import { centeredRect, fitTextWidth, FrameView, ListView, MultilineTextView, PanelView } from "./ui.ts";
 import {
@@ -43,6 +44,8 @@ import {
   type ViewportMode,
 } from "./types.ts";
 import { renderVisualization, visualizations } from "./visualizations.ts";
+
+requireInteractiveTerminal("deno task viz");
 
 const tui = new Tui({
   style: makeStyle({ bg: palette.void }),

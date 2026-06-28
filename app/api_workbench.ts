@@ -22,7 +22,7 @@ import {
 import { SliderController } from "../src/components/slider.ts";
 import { renderStatusBar } from "../src/components/statusbar.ts";
 import { renderStepper, StepperController } from "../src/components/stepper.ts";
-import { TextBoxController } from "../src/components/textbox.ts";
+import { TextBoxController, wrapTextBoxLines } from "../src/components/textbox.ts";
 import { handleInput } from "../src/input.ts";
 import { SplitPaneController } from "../src/layout/mod.ts";
 import { Computed, Signal } from "../src/signals/mod.ts";
@@ -31,6 +31,7 @@ import type { Rectangle } from "../src/types.ts";
 import { stripStyles, textWidth } from "../src/utils/strings.ts";
 import { grWizardThemePalettes } from "../src/grwizard_themes.ts";
 import { makeStyle } from "./styles.ts";
+import { requireInteractiveTerminal } from "./terminal_guard.ts";
 
 type WindowId = "inspector" | "data" | "controls" | "logs";
 type ControlId =
@@ -139,6 +140,8 @@ const docs = [
   "Use Tab or 1-4 to focus windows; use M, F, R for window controls.",
 ];
 
+requireInteractiveTerminal("deno task api-workbench");
+
 const tui = new Tui({
   style: makeStyle({ bg: themes[0]!.background }),
   refreshRate: 1000 / 24,
@@ -235,9 +238,12 @@ const progress = new ProgressBarController({
   direction: "normal",
   orientation: "horizontal",
 });
+const initialNotesText =
+  "Editable notes\nclick controls or type here. This text box keeps newline breaks and wraps long lines inside the control.";
 const notes = new TextBoxController({
-  text: "Editable notes\nclick controls or type here",
-  cursorPosition: { x: 0, y: 1 },
+  text: initialNotesText,
+  cursorPosition: { x: initialNotesText.split("\n").at(-1)?.length ?? 0, y: 1 },
+  wordWrap: true,
 });
 const table = new DataTableController<ProcessRow>({
   rows,
@@ -261,12 +267,18 @@ tui.rectangle.subscribe(() => {
 
 tui.on("keyPress", (event) => {
   if (event.ctrl && event.key === "c") return;
-  if (isTextControlActive() && event.key !== "escape") {
+  if (isTextControlActive() && (event.key === "escape" || event.key === "tab")) {
+    blurTextControl();
+    draw();
+    return;
+  }
+  if (isTextControlActive()) {
     handleControlsKey(event);
     draw();
     return;
   }
   if (event.key === "q") tui.emit("destroy");
+  else if (event.key === "tab" && activeWindow.peek() === "controls") focusNextControl();
   else if (event.key === "tab") focusNext();
   else if (event.key === "1") focus("inspector");
   else if (event.key === "2") focus("data");
@@ -676,7 +688,7 @@ function renderControls(frame: Frame, rect: Rectangle): void {
     },
   );
   addInlineStepperHits(rect, stepperRow);
-  writeControl("textbox", `TextBox   ${notes.text.peek().split("\n").join(" / ")}`, { action: "focus" });
+  row = renderTextboxControl(frame, rect, row, t);
   if (row < rect.row + rect.height) {
     write(
       frame,
@@ -688,6 +700,60 @@ function renderControls(frame: Frame, rect: Rectangle): void {
       }),
     );
   }
+}
+
+function renderTextboxControl(frame: Frame, rect: Rectangle, row: number, t: ThemeSpec): number {
+  if (row >= rect.row + rect.height) return row;
+  const active = activeControl.peek() === "textbox";
+  const height = Math.min(5, Math.max(2, rect.row + rect.height - row));
+  const labelWidth = Math.min(10, Math.max(0, rect.width - 12));
+  const textColumn = rect.column + labelWidth;
+  const textWidth = Math.max(1, rect.width - labelWidth);
+  const visualLines = wrapTextBoxLines(notes.lines.peek(), textWidth - 2, { wordWrap: true });
+  const cursor = notes.cursorPosition.peek();
+  const cursorRow = visualLines.findIndex((line) =>
+    line.lineIndex === cursor.y && cursor.x >= line.startColumn && cursor.x <= line.endColumn
+  );
+  const start = Math.max(0, Math.min(Math.max(0, cursorRow - height + 1), Math.max(0, visualLines.length - height)));
+  const header = `${active ? ">" : " "} TextBox`;
+  for (let offset = 0; offset < height; offset += 1) {
+    const line = visualLines[start + offset] ?? {
+      text: "",
+      lineIndex: 0,
+      startColumn: 0,
+      endColumn: 0,
+      continuation: false,
+    };
+    const cursorOnLine = active && line.lineIndex === cursor.y && cursor.x >= line.startColumn &&
+      cursor.x <= line.endColumn;
+    const marker = cursorOnLine ? "▌" : " ";
+    write(
+      frame,
+      row + offset,
+      rect.column,
+      paint(fit(offset === 0 ? header : " ".repeat(Math.max(0, labelWidth)), labelWidth), {
+        fg: active && offset === 0 ? t.background : t.text,
+        bg: active && offset === 0 ? t.warn : t.surface,
+        bold: active && offset === 0,
+      }),
+    );
+    write(
+      frame,
+      row + offset,
+      textColumn,
+      paint(fit(`${line.continuation ? "↳" : " "}${line.text}${marker}`, textWidth), {
+        fg: active ? t.background : t.text,
+        bg: active ? t.warn : t.surface,
+        bold: active,
+      }),
+    );
+  }
+  addHit({ column: rect.column, row, width: rect.width, height }, {
+    type: "control",
+    id: "textbox",
+    action: "focus",
+  });
+  return row + height;
 }
 
 function renderLogs(frame: Frame, rect: Rectangle): void {
@@ -1140,6 +1206,19 @@ function handleControlsKey(event: { key: string; ctrl?: boolean; meta?: boolean;
   } else if (event.key === "space" || event.key === "return") {
     applyControlHit(id, "activate");
   }
+}
+
+function blurTextControl(): void {
+  const previous = activeControl.peek();
+  activeWindow.value = "controls";
+  activeControl.value = controlAt(1);
+  pushLog(`control ${previous} blur`);
+}
+
+function focusNextControl(): void {
+  activeWindow.value = "controls";
+  activeControl.value = controlAt(1);
+  pushLog(`control ${activeControl.peek()} focus`);
 }
 
 function isTextControlActive(): boolean {

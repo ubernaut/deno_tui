@@ -8,6 +8,7 @@ import { adaptiveGridItemRect, adaptiveGridPage } from "../src/layout/mod.ts";
 import { createDefaultAsciiOptions, terminalGlyphStyleLabel } from "./ascii_options.ts";
 import { demos, formatCountdown, type NeonDemo, type NeonSection } from "./neon_theme.ts";
 import { accentColor, makeStyle, palette, severityAccent } from "./styles.ts";
+import { requireInteractiveTerminal } from "./terminal_guard.ts";
 import { ThreePanelView } from "./three_panel.ts";
 import type {
   Accent,
@@ -33,6 +34,8 @@ const sectionLabels: Record<ShowcaseSection, string> = {
   control: "CONTROL",
   three: "THREE",
 };
+
+requireInteractiveTerminal("deno task showcase");
 
 const tui = new Tui({
   style: makeStyle({ bg: palette.void }),

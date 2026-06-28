@@ -69,7 +69,7 @@ export class Tui extends EventEmitter<
     this.enableMouse = options.enableMouse ?? false;
     this.canvas = options.canvas ?? new Canvas({
       stdout: this.stdout,
-      size: Deno.consoleSize(),
+      size: terminalSize(),
     });
     this.renderLoop = options.renderLoop ?? new RenderLoop({
       intervalMs: this.refreshRate,
@@ -92,7 +92,7 @@ export class Tui extends EventEmitter<
 
     const updateCanvasSize = () => {
       const { canvas } = this;
-      const { columns, rows } = Deno.consoleSize();
+      const { columns, rows } = terminalSize();
 
       const size = canvas.size.peek();
 
@@ -181,5 +181,16 @@ export class Tui extends EventEmitter<
       await Promise.resolve();
       Deno.exit(0);
     });
+  }
+}
+
+function terminalSize(): { columns: number; rows: number } {
+  try {
+    return Deno.consoleSize();
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    throw new Error(
+      `Tui requires an interactive terminal. Run this command from a TTY or use a report/web task instead. (${detail})`,
+    );
   }
 }

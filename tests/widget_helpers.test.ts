@@ -69,7 +69,7 @@ import {
 } from "../src/components/stepper.ts";
 import { clampTableRow, TableController, tableMaxOffset, tableVisibleCapacity } from "../src/components/table.ts";
 import { clampTabIndex, renderTabs, shiftTabIndex, tabForIndex, TabsController } from "../src/components/tabs.ts";
-import { TextBoxController, TextLineCache } from "../src/components/textbox.ts";
+import { TextBoxController, textBoxVisualCursor, TextLineCache, wrapTextBoxLines } from "../src/components/textbox.ts";
 import { flattenTree, flattenTreeRows, TreeController } from "../src/components/tree.ts";
 import { renderVirtualListRows, VirtualListController, virtualListRows } from "../src/components/virtual_list.ts";
 import type { Key, KeyPressEvent } from "../src/input_reader/types.ts";
@@ -1680,6 +1680,7 @@ Deno.test("TextBoxController edits multiline text and inspects cursor state", ()
     valid: true,
     lineHighlighting: true,
     lineNumbering: true,
+    wordWrap: false,
   });
 
   assertEquals(controller.handleKeyPress(keyPress("backspace")), "changed");
@@ -1693,6 +1694,25 @@ Deno.test("TextBoxController edits multiline text and inspects cursor state", ()
   assertEquals(controller.cursorPosition.peek(), { x: 3, y: 1 });
   assertEquals(changes.at(-1), "one\ntwo");
   controller.dispose();
+});
+
+Deno.test("TextBoxController exposes wrapped visual lines and cursor projection", () => {
+  const lines = ["alpha beta gamma", "", "delta"];
+  assertEquals(wrapTextBoxLines(lines, 7, { wordWrap: true }), [
+    { lineIndex: 0, startColumn: 0, endColumn: 5, text: "alpha", continuation: false },
+    { lineIndex: 0, startColumn: 6, endColumn: 10, text: "beta", continuation: true },
+    { lineIndex: 0, startColumn: 11, endColumn: 16, text: "gamma", continuation: true },
+    { lineIndex: 1, startColumn: 0, endColumn: 0, text: "", continuation: false },
+    { lineIndex: 2, startColumn: 0, endColumn: 5, text: "delta", continuation: false },
+  ]);
+  assertEquals(textBoxVisualCursor(lines, { x: 8, y: 0 }, 7, { wordWrap: true }), {
+    row: 1,
+    column: 2,
+    line: { lineIndex: 0, startColumn: 6, endColumn: 10, text: "beta", continuation: true },
+  });
+  assertEquals(wrapTextBoxLines(["alpha beta"], 20, { wordWrap: false }), [
+    { lineIndex: 0, startColumn: 0, endColumn: 10, text: "alpha beta", continuation: false },
+  ]);
 });
 
 Deno.test("textBoxCommands clear move cursor and set preset values", async () => {

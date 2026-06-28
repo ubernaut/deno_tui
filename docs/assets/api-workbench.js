@@ -4018,6 +4018,7 @@ var TextBoxController = class {
   multiCodePointSupport;
   lineHighlighting;
   lineNumbering;
+  wordWrap;
   lines;
   #textLineCache = new TextLineCache();
   #ownsText;
@@ -4026,6 +4027,7 @@ var TextBoxController = class {
   #ownsMultiCodePointSupport;
   #ownsLineHighlighting;
   #ownsLineNumbering;
+  #ownsWordWrap;
   #onChange;
   #syncCursor = () => this.clampCursor();
   constructor(options = {}) {
@@ -4035,12 +4037,14 @@ var TextBoxController = class {
     this.#ownsMultiCodePointSupport = !(options.multiCodePointSupport instanceof Signal);
     this.#ownsLineHighlighting = !(options.lineHighlighting instanceof Signal);
     this.#ownsLineNumbering = !(options.lineNumbering instanceof Signal);
+    this.#ownsWordWrap = !(options.wordWrap instanceof Signal);
     this.text = signalify(options.text ?? "");
     this.cursorPosition = signalify(options.cursorPosition ?? { x: 0, y: 0 }, { deepObserve: true });
     this.validator = signalify(options.validator);
     this.multiCodePointSupport = signalify(options.multiCodePointSupport ?? false);
     this.lineHighlighting = signalify(options.lineHighlighting ?? false);
     this.lineNumbering = signalify(options.lineNumbering ?? false);
+    this.wordWrap = signalify(options.wordWrap ?? false);
     this.#onChange = options.onChange;
     this.lines = new Computed(() => this.#textLineCache.lines(this.text.value));
     this.text.subscribe(this.#syncCursor);
@@ -4190,7 +4194,8 @@ var TextBoxController = class {
         return validator.test(character);
       }) : true,
       lineHighlighting: this.lineHighlighting.peek(),
-      lineNumbering: this.lineNumbering.peek()
+      lineNumbering: this.lineNumbering.peek(),
+      wordWrap: this.wordWrap.peek()
     };
   }
   dispose() {
@@ -4206,6 +4211,7 @@ var TextBoxController = class {
     if (this.#ownsMultiCodePointSupport) this.multiCodePointSupport.dispose();
     if (this.#ownsLineHighlighting) this.lineHighlighting.dispose();
     if (this.#ownsLineNumbering) this.lineNumbering.dispose();
+    if (this.#ownsWordWrap) this.wordWrap.dispose();
   }
   clampCursor() {
     const cursor = this.cursorPosition.peek();
@@ -4222,6 +4228,56 @@ var TextBoxController = class {
     return { x: lines[y]?.length ?? 0, y };
   }
 };
+function wrapTextBoxLines(lines, width, options = {}) {
+  const visual = [];
+  const safeWidth = Math.max(1, Math.floor(width));
+  const wordWrap = options.wordWrap ?? true;
+  for (const [lineIndex, line] of lines.entries()) {
+    if (!wordWrap || line.length <= safeWidth) {
+      visual.push({
+        lineIndex,
+        startColumn: 0,
+        endColumn: line.length,
+        text: cropToWidth(line.replaceAll("	", " "), safeWidth),
+        continuation: false
+      });
+      continue;
+    }
+    if (line.length === 0) {
+      visual.push({ lineIndex, startColumn: 0, endColumn: 0, text: "", continuation: false });
+      continue;
+    }
+    let startColumn = 0;
+    let continuation = false;
+    while (startColumn < line.length) {
+      const remaining = line.slice(startColumn);
+      if (remaining.length <= safeWidth) {
+        visual.push({
+          lineIndex,
+          startColumn,
+          endColumn: line.length,
+          text: remaining.replaceAll("	", " "),
+          continuation
+        });
+        break;
+      }
+      const slice = line.slice(startColumn, startColumn + safeWidth);
+      const space = slice.lastIndexOf(" ");
+      const endColumn = space > 0 ? startColumn + space : startColumn + safeWidth;
+      visual.push({
+        lineIndex,
+        startColumn,
+        endColumn,
+        text: line.slice(startColumn, endColumn).replaceAll("	", " "),
+        continuation
+      });
+      startColumn = space > 0 ? endColumn + 1 : endColumn;
+      while (line[startColumn] === " ") startColumn += 1;
+      continuation = true;
+    }
+  }
+  return visual.length > 0 ? visual : [{ lineIndex: 0, startColumn: 0, endColumn: 0, text: "", continuation: false }];
+}
 
 // src/three_ascii/demo_presets.ts
 var fixed = (digits) => (value) => value.toFixed(digits);
@@ -5030,7 +5086,12 @@ var progress = new ProgressBarController({
   direction: "normal",
   orientation: "horizontal"
 });
-var textBox = new TextBoxController({ text: "Browser notes\nsame controllers", cursorPosition: { x: 0, y: 1 } });
+var initialTextBoxText = "Browser notes\nsame controllers, same wrapped multiline text area, same keyboard editing.";
+var textBox = new TextBoxController({
+  text: initialTextBoxText,
+  cursorPosition: { x: initialTextBoxText.split("\n").at(-1)?.length ?? 0, y: 1 },
+  wordWrap: true
+});
 var activeControl = new Signal("button");
 var table = new DataTableController({
   rows,
@@ -5055,12 +5116,18 @@ host.platform.size.subscribe(() => {
   draw();
 });
 host.on("keyPress", ({ key }) => {
-  if (isTextControlActive() && key !== "escape") {
+  if (isTextControlActive() && (key === "escape" || key === "tab")) {
+    blurTextControl();
+    draw();
+    return;
+  }
+  if (isTextControlActive()) {
     handleControlsKey({ key, ctrl: false, meta: false, shift: false });
     draw();
     return;
   }
-  if (key === "tab") focusNext();
+  if (key === "tab" && active.peek() === "controls") focusNextControl();
+  else if (key === "tab") focusNext();
   else if (key === "1") focus("inspector");
   else if (key === "2") focus("data");
   else if (key === "3") focus("controls");
@@ -5593,7 +5660,7 @@ function renderControls(frame, rect) {
     }
   );
   addInlineStepperHits(rect, stepperRow);
-  writeControl("textbox", `TextBox   ${textBox.text.peek().split("\n").join(" / ")}`, { action: "focus" });
+  row = renderTextboxControl(frame, rect, row, t);
   if (row < rect.row + rect.height) {
     write(
       frame,
@@ -5602,6 +5669,59 @@ function renderControls(frame, rect) {
       paint(fit(`Progress  ${progressTrack} ${progress.value.peek()}%`, rect.width), t.text, t.surface)
     );
   }
+}
+function renderTextboxControl(frame, rect, row, t) {
+  if (row >= rect.row + rect.height) return row;
+  const selected = activeControl.peek() === "textbox";
+  const height = Math.min(5, Math.max(2, rect.row + rect.height - row));
+  const labelWidth = Math.min(10, Math.max(0, rect.width - 12));
+  const textColumn = rect.column + labelWidth;
+  const textAreaWidth = Math.max(1, rect.width - labelWidth);
+  const visualLines = wrapTextBoxLines(textBox.lines.peek(), textAreaWidth - 2, { wordWrap: true });
+  const cursor = textBox.cursorPosition.peek();
+  const cursorRow = visualLines.findIndex(
+    (line) => line.lineIndex === cursor.y && cursor.x >= line.startColumn && cursor.x <= line.endColumn
+  );
+  const start = Math.max(0, Math.min(Math.max(0, cursorRow - height + 1), Math.max(0, visualLines.length - height)));
+  const header = `${selected ? ">" : " "} TextBox`;
+  for (let offset = 0; offset < height; offset += 1) {
+    const line = visualLines[start + offset] ?? {
+      text: "",
+      lineIndex: 0,
+      startColumn: 0,
+      endColumn: 0,
+      continuation: false
+    };
+    const cursorOnLine = selected && line.lineIndex === cursor.y && cursor.x >= line.startColumn && cursor.x <= line.endColumn;
+    const marker = cursorOnLine ? "|" : " ";
+    write(
+      frame,
+      row + offset,
+      rect.column,
+      paint(
+        fit(offset === 0 ? header : " ".repeat(Math.max(0, labelWidth)), labelWidth),
+        selected && offset === 0 ? t.bg : t.text,
+        selected && offset === 0 ? t.warn : t.surface,
+        selected && offset === 0
+      )
+    );
+    write(
+      frame,
+      row + offset,
+      textColumn,
+      paint(
+        fit(`${line.continuation ? ">" : " "}${line.text}${marker}`, textAreaWidth),
+        selected ? t.bg : t.text,
+        selected ? t.warn : t.surface,
+        selected
+      )
+    );
+  }
+  hitTargets.push({
+    rect: { column: rect.column, row, width: rect.width, height },
+    hit: { type: "control", id: "textbox", action: "focus" }
+  });
+  return row + height;
 }
 function writeWrappedOptions(frame, rect, startRow, id2, items, selectedIndex, t) {
   const width = Math.max(8, rect.width - 4);
@@ -5746,6 +5866,17 @@ function handleControlsKey(event) {
   else if (event.key === "left") applyControlHit(activeControl.peek(), "previous");
   else if (event.key === "right") applyControlHit(activeControl.peek(), "next");
   else if (event.key === "space" || event.key === "return") applyControlHit(activeControl.peek(), "activate");
+}
+function blurTextControl() {
+  const previous = activeControl.peek();
+  active.value = "controls";
+  activeControl.value = controlAt(1);
+  push(`control ${previous} blur`);
+}
+function focusNextControl() {
+  active.value = "controls";
+  activeControl.value = controlAt(1);
+  push(`control ${activeControl.peek()} focus`);
 }
 function controlAt(delta) {
   const ids = [

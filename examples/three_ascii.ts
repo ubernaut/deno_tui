@@ -28,9 +28,12 @@ import {
   DEFAULT_ASCII_DEMO_EFFECT,
 } from "../src/three_ascii/demo_presets.ts";
 import { TERMINAL_GLYPH_STYLES, type TerminalGlyphStyle } from "../src/three_ascii/glyphs.ts";
+import { requireInteractiveTerminal } from "../app/terminal_guard.ts";
 import { Computed, Signal, Tui } from "../mod.ts";
 
 const showControlsAtStartup = !Deno.args.some((arg) => arg === "--no-controls" || arg === "--hide-controls");
+
+requireInteractiveTerminal("deno task three-ascii");
 
 const tui = new Tui({
   style: crayon.bgBlack,

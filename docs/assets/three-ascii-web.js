@@ -3629,7 +3629,7 @@ var ThreeAsciiObject = class extends DrawObject {
       this.grid = buildFallbackGrid(
         rectangle.width,
         rectangle.height,
-        error instanceof Error ? error.message : "ASCII RENDERER OFFLINE"
+        formatThreeAsciiFallbackDetail(error)
       );
       for (let row = rectangle.row; row < rectangle.row + rectangle.height; row += 1) {
         for (let column = rectangle.column; column < rectangle.column + rectangle.width; column += 1) {
@@ -3650,6 +3650,22 @@ var ThreeAsciiObject = class extends DrawObject {
     }
   }
 };
+function formatThreeAsciiFallbackDetail(error) {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  const normalized = message.replace(/\s+/g, " ").trim();
+  if (!normalized) return "GPU BACKEND UNAVAILABLE";
+  const rawGpuPatterns = [
+    /BUFFER WITH .* LABEL IS INVALID/i,
+    /GPU.*VALIDATION/i,
+    /VALIDATION ERROR/i,
+    /DEVICE.*LOST/i,
+    /ADAPTER.*UNAVAILABLE/i
+  ];
+  if (rawGpuPatterns.some((pattern) => pattern.test(normalized))) {
+    return "GPU BACKEND UNAVAILABLE";
+  }
+  return normalized;
+}
 function buildFallbackGrid(width, height, detail) {
   const columns2 = Math.max(1, width);
   const rows2 = Math.max(1, height);

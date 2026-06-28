@@ -32,6 +32,12 @@ export function moveDemoSelection(
   return { ...selection, index: wrap(selection.index + delta, targets.length) };
 }
 
+export function appendDemoLauncherInput(selection: DemoLauncherSelection, input: string): DemoLauncherSelection {
+  if (/[\x00-\x1f\x7f]/.test(input)) return selection;
+  const printable = input.replace(/[^\w -]/g, "");
+  return printable ? { index: 0, query: selection.query + printable } : selection;
+}
+
 export function formatDemoLauncherScreen(
   targets: readonly VisualizationLaunchTarget[],
   selection: DemoLauncherSelection,
@@ -118,7 +124,7 @@ async function selectDemo(): Promise<VisualizationLaunchTarget | undefined> {
       if (key === "up" || key === "k") selection = moveDemoSelection(selection, targets, -1);
       else if (key === "down" || key === "j") selection = moveDemoSelection(selection, targets, 1);
       else if (key === "backspace") selection = { index: 0, query: selection.query.slice(0, -1) };
-      else if (key.length === 1 && /[\w -]/.test(key)) selection = { index: 0, query: selection.query + key };
+      else selection = appendDemoLauncherInput(selection, key);
     }
   } finally {
     Deno.stdin.setRaw(false);

@@ -36,6 +36,8 @@ export interface TextBoxOptions extends ComponentOptions {
   lineHighlighting?: boolean | Signal<boolean>;
   /** Whether to number textbox rows */
   lineNumbering?: boolean | Signal<boolean>;
+  /** Whether long logical lines wrap into multiple visual rows */
+  wordWrap?: boolean | Signal<boolean>;
   controller?: TextBoxController;
   onChange?: (value: string) => void | Promise<void>;
   /** Function that defines what key does what while textbox is focused/active */
@@ -49,6 +51,7 @@ export interface TextBoxControllerOptions {
   multiCodePointSupport?: boolean | Signal<boolean>;
   lineHighlighting?: boolean | Signal<boolean>;
   lineNumbering?: boolean | Signal<boolean>;
+  wordWrap?: boolean | Signal<boolean>;
   onChange?: (value: string) => void | Promise<void>;
 }
 
@@ -62,6 +65,7 @@ export interface TextBoxInspection {
   valid: boolean;
   lineHighlighting: boolean;
   lineNumbering: boolean;
+  wordWrap: boolean;
 }
 
 export type TextBoxEditResult = "changed" | "moved" | "ignored";
@@ -69,6 +73,20 @@ export type TextBoxEditResult = "changed" | "moved" | "ignored";
 export interface TextLineCacheInspection {
   text: string;
   lineCount: number;
+}
+
+export interface TextBoxVisualLine {
+  lineIndex: number;
+  startColumn: number;
+  endColumn: number;
+  text: string;
+  continuation: boolean;
+}
+
+export interface TextBoxVisualCursor {
+  row: number;
+  column: number;
+  line: TextBoxVisualLine;
 }
 
 export class TextLineCache {
@@ -98,6 +116,7 @@ export class TextBoxController {
   readonly multiCodePointSupport: Signal<boolean>;
   readonly lineHighlighting: Signal<boolean>;
   readonly lineNumbering: Signal<boolean>;
+  readonly wordWrap: Signal<boolean>;
   readonly lines: Computed<readonly string[]>;
   readonly #textLineCache = new TextLineCache();
   readonly #ownsText: boolean;
@@ -106,6 +125,7 @@ export class TextBoxController {
   readonly #ownsMultiCodePointSupport: boolean;
   readonly #ownsLineHighlighting: boolean;
   readonly #ownsLineNumbering: boolean;
+  readonly #ownsWordWrap: boolean;
   readonly #onChange?: (value: string) => void | Promise<void>;
   readonly #syncCursor = () => this.clampCursor();
 
@@ -116,12 +136,14 @@ export class TextBoxController {
     this.#ownsMultiCodePointSupport = !(options.multiCodePointSupport instanceof Signal);
     this.#ownsLineHighlighting = !(options.lineHighlighting instanceof Signal);
     this.#ownsLineNumbering = !(options.lineNumbering instanceof Signal);
+    this.#ownsWordWrap = !(options.wordWrap instanceof Signal);
     this.text = signalify(options.text ?? "");
     this.cursorPosition = signalify(options.cursorPosition ?? { x: 0, y: 0 }, { deepObserve: true });
     this.validator = signalify(options.validator);
     this.multiCodePointSupport = signalify(options.multiCodePointSupport ?? false);
     this.lineHighlighting = signalify(options.lineHighlighting ?? false);
     this.lineNumbering = signalify(options.lineNumbering ?? false);
+    this.wordWrap = signalify(options.wordWrap ?? false);
     this.#onChange = options.onChange;
     this.lines = new Computed(() => this.#textLineCache.lines(this.text.value));
     this.text.subscribe(this.#syncCursor);
@@ -288,6 +310,7 @@ export class TextBoxController {
         : true,
       lineHighlighting: this.lineHighlighting.peek(),
       lineNumbering: this.lineNumbering.peek(),
+      wordWrap: this.wordWrap.peek(),
     };
   }
 
@@ -306,6 +329,7 @@ export class TextBoxController {
     if (this.#ownsMultiCodePointSupport) this.multiCodePointSupport.dispose();
     if (this.#ownsLineHighlighting) this.lineHighlighting.dispose();
     if (this.#ownsLineNumbering) this.lineNumbering.dispose();
+    if (this.#ownsWordWrap) this.wordWrap.dispose();
   }
 
   private clampCursor(): void {
@@ -324,6 +348,92 @@ export class TextBoxController {
     const y = Math.max(lines.length - 1, 0);
     return { x: lines[y]?.length ?? 0, y };
   }
+}
+
+export function wrapTextBoxLines(
+  lines: readonly string[],
+  width: number,
+  options: { wordWrap?: boolean } = {},
+): TextBoxVisualLine[] {
+  const visual: TextBoxVisualLine[] = [];
+  const safeWidth = Math.max(1, Math.floor(width));
+  const wordWrap = options.wordWrap ?? true;
+
+  for (const [lineIndex, line] of lines.entries()) {
+    if (!wordWrap || line.length <= safeWidth) {
+      visual.push({
+        lineIndex,
+        startColumn: 0,
+        endColumn: line.length,
+        text: cropToWidth(line.replaceAll("\t", " "), safeWidth),
+        continuation: false,
+      });
+      continue;
+    }
+    if (line.length === 0) {
+      visual.push({ lineIndex, startColumn: 0, endColumn: 0, text: "", continuation: false });
+      continue;
+    }
+
+    let startColumn = 0;
+    let continuation = false;
+    while (startColumn < line.length) {
+      const remaining = line.slice(startColumn);
+      if (remaining.length <= safeWidth) {
+        visual.push({
+          lineIndex,
+          startColumn,
+          endColumn: line.length,
+          text: remaining.replaceAll("\t", " "),
+          continuation,
+        });
+        break;
+      }
+
+      const slice = line.slice(startColumn, startColumn + safeWidth);
+      const space = slice.lastIndexOf(" ");
+      const endColumn = space > 0 ? startColumn + space : startColumn + safeWidth;
+      visual.push({
+        lineIndex,
+        startColumn,
+        endColumn,
+        text: line.slice(startColumn, endColumn).replaceAll("\t", " "),
+        continuation,
+      });
+      startColumn = space > 0 ? endColumn + 1 : endColumn;
+      while (line[startColumn] === " ") startColumn += 1;
+      continuation = true;
+    }
+  }
+
+  return visual.length > 0 ? visual : [{ lineIndex: 0, startColumn: 0, endColumn: 0, text: "", continuation: false }];
+}
+
+export function textBoxVisualCursor(
+  lines: readonly string[],
+  cursor: CursorPosition,
+  width: number,
+  options: { wordWrap?: boolean } = {},
+): TextBoxVisualCursor {
+  const visualLines = wrapTextBoxLines(lines, width, options);
+  let fallbackRow = 0;
+  for (const [row, line] of visualLines.entries()) {
+    if (line.lineIndex !== cursor.y) continue;
+    fallbackRow = row;
+    if (cursor.x >= line.startColumn && cursor.x <= line.endColumn) {
+      return {
+        row,
+        column: clamp(cursor.x - line.startColumn, 0, Math.max(0, width - 1)),
+        line,
+      };
+    }
+  }
+  const line = visualLines[fallbackRow] ?? visualLines[0]!;
+  return {
+    row: fallbackRow,
+    column: clamp(cursor.x - line.startColumn, 0, Math.max(0, width - 1)),
+    line,
+  };
 }
 
 /**
@@ -381,11 +491,13 @@ export class TextBox extends Box {
   declare theme: TextBoxTheme;
 
   #textLines: Computed<readonly string[]>;
+  #visualLines: Computed<TextBoxVisualLine[]>;
 
   text: Signal<string>;
   validator: Signal<RegExp | undefined>;
   lineNumbering: Signal<boolean>;
   lineHighlighting: Signal<boolean>;
+  wordWrap: Signal<boolean>;
   cursorPosition: Signal<CursorPosition>;
   multiCodePointSupport: Signal<boolean>;
   readonly controller: TextBoxController;
@@ -405,6 +517,7 @@ export class TextBox extends Box {
         validator: options.validator,
         lineNumbering: options.lineNumbering,
         lineHighlighting: options.lineHighlighting,
+        wordWrap: options.wordWrap,
         multiCodePointSupport: options.multiCodePointSupport,
         onChange: options.onChange,
       });
@@ -413,9 +526,13 @@ export class TextBox extends Box {
     this.validator = controller.validator;
     this.lineNumbering = controller.lineNumbering;
     this.lineHighlighting = controller.lineHighlighting;
+    this.wordWrap = controller.wordWrap;
     this.cursorPosition = controller.cursorPosition;
     this.multiCodePointSupport = controller.multiCodePointSupport;
     this.#textLines = controller.lines;
+    this.#visualLines = new Computed(() =>
+      wrapTextBoxLines(this.#textLines.value, this.#textColumnWidth(), { wordWrap: this.wordWrap.value })
+    );
 
     new Effect(() => {
       this.#updateLineDrawObjects();
@@ -448,22 +565,33 @@ export class TextBox extends Box {
       zIndex: this.zIndex,
       multiCodePointSupport: this.multiCodePointSupport,
       value: new Computed(() => {
-        const cursorPosition = this.cursorPosition.value;
-        const value = this.#textLines.value[cursorPosition.y];
-        return value?.[cursorPosition.x] ?? " ";
+        const visualCursor = textBoxVisualCursor(
+          this.#textLines.value,
+          this.cursorPosition.value,
+          this.#textColumnWidth(),
+          { wordWrap: this.wordWrap.value },
+        );
+        return visualCursor.line.text[visualCursor.column] ?? " ";
       }),
       style: new Computed(() => this.theme.cursor[this.state.value]),
       rectangle: new Computed(() => {
-        const cursorPosition = this.cursorPosition.value;
         const { row, column, width, height } = this.rectangle.value;
+        const visualCursor = textBoxVisualCursor(
+          this.#textLines.value,
+          this.cursorPosition.value,
+          this.#textColumnWidth(),
+          { wordWrap: this.wordWrap.value },
+        );
+        const offsetY = Math.max(visualCursor.row - height + 1, 0);
 
-        cursorRectangle.row = row + Math.min(cursorPosition.y, height - 1);
+        cursorRectangle.row = row + Math.min(Math.max(0, visualCursor.row - offsetY), height - 1);
 
         if (this.lineNumbering.value) {
-          const lineNumbersWidth = this.drawnObjects.lineNumbers[0].rectangle.peek().width;
-          cursorRectangle.column = column + lineNumbersWidth + Math.min(cursorPosition.x, width - lineNumbersWidth - 1);
+          const lineNumbersWidth = this.#lineNumbersWidth();
+          cursorRectangle.column = column + lineNumbersWidth +
+            Math.min(visualCursor.column, width - lineNumbersWidth - 1);
         } else {
-          cursorRectangle.column = column + Math.min(cursorPosition.x, width - 1);
+          cursorRectangle.column = column + Math.min(visualCursor.column, width - 1);
         }
 
         return cursorRectangle;
@@ -501,17 +629,26 @@ export class TextBox extends Box {
           style: new Computed(() => this.theme.lineNumbers[this.state.value]),
           value: new Computed(() => {
             const { height } = this.rectangle.value;
-            const cursorPosition = this.cursorPosition.value;
+            const visualCursor = textBoxVisualCursor(
+              this.#textLines.value,
+              this.cursorPosition.value,
+              this.#textColumnWidth(),
+              { wordWrap: this.wordWrap.value },
+            );
 
-            const lineNumber = offset + Math.max(cursorPosition.y - height + 1, 0) + 1;
+            const offsetY = Math.max(visualCursor.row - height + 1, 0);
+            const visualLine = this.#visualLines.value[offset + offsetY];
             const maxLineNumber = this.#textLines.value.length;
 
-            return `${lineNumber}`.padEnd(`${maxLineNumber}`.length, " ");
+            return visualLine && !visualLine.continuation
+              ? `${visualLine.lineIndex + 1}`.padEnd(`${maxLineNumber}`.length, " ")
+              : " ".repeat(`${maxLineNumber}`.length);
           }),
           rectangle: new Computed(() => {
             const { row, column } = this.rectangle.value;
             lineNumberRectangle.column = column;
             lineNumberRectangle.row = row + offset;
+            lineNumberRectangle.width = this.#lineNumbersWidth();
             return lineNumberRectangle;
           }),
         });
@@ -537,12 +674,17 @@ export class TextBox extends Box {
 
             const state = this.state.value;
             const highlightLine = this.lineHighlighting.value;
-            const cursorPosition = this.cursorPosition.value;
+            const visualCursor = textBoxVisualCursor(
+              this.#textLines.value,
+              this.cursorPosition.value,
+              this.#textColumnWidth(),
+              { wordWrap: this.wordWrap.value },
+            );
 
-            const offsetY = Math.max(cursorPosition.y - this.rectangle.value.height + 1, 0);
+            const offsetY = Math.max(visualCursor.row - this.rectangle.value.height + 1, 0);
             const currentLine = offsetY + offset;
 
-            if (highlightLine && cursorPosition.y === currentLine) {
+            if (highlightLine && visualCursor.row === currentLine) {
               return this.theme.highlightedLine[state];
             } else return this.theme.value[state];
           }),
@@ -551,13 +693,21 @@ export class TextBox extends Box {
 
             let { width, height } = this.rectangle.value;
             if (this.lineNumbering.value) {
-              const lineNumbersWidth = this.drawnObjects.lineNumbers[0].rectangle.peek().width;
+              const lineNumbersWidth = this.#lineNumbersWidth();
               width -= lineNumbersWidth;
+            }
+
+            if (this.wordWrap.value) {
+              const visualCursor = textBoxVisualCursor(this.#textLines.value, cursorPosition, width, {
+                wordWrap: true,
+              });
+              const offsetY = Math.max(visualCursor.row - height + 1, 0);
+              const value = this.#visualLines.value[offset + offsetY]?.text ?? "";
+              return cropToWidth(value, width).padEnd(width, " ");
             }
 
             const offsetX = cursorPosition.x - width + 1;
             const offsetY = Math.max(cursorPosition.y - height + 1, 0);
-
             const value = this.#textLines.value[offset + offsetY]?.replace("\t", " ") ?? "";
 
             return cropToWidth(offsetX > 0 ? value.slice(offsetX, cursorPosition.x) : value, width).padEnd(width, " ");
@@ -572,7 +722,7 @@ export class TextBox extends Box {
             lineRectangle.row = row + offset;
 
             if (this.lineNumbering.value) {
-              const lineNumbersWidth = this.drawnObjects.lineNumbers[0].rectangle.peek().width;
+              const lineNumbersWidth = this.#lineNumbersWidth();
               lineRectangle.column += lineNumbersWidth;
             }
 
@@ -587,5 +737,13 @@ export class TextBox extends Box {
         delete lines[offset];
       }
     }
+  }
+
+  #lineNumbersWidth(): number {
+    return this.lineNumbering.value ? `${Math.max(1, this.#textLines.value.length)}`.length : 0;
+  }
+
+  #textColumnWidth(): number {
+    return Math.max(1, this.rectangle.value.width - this.#lineNumbersWidth());
   }
 }

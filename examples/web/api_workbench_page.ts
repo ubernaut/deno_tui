@@ -31,6 +31,7 @@ import {
   TextObject,
   type TextRectangle,
   textWidth,
+  wrapTextBoxLines,
 } from "../../mod.web.ts";
 import { grWizardThemePalettes } from "../../src/grwizard_themes.ts";
 import type { Rectangle } from "../../src/types.ts";
@@ -204,7 +205,12 @@ const progress = new ProgressBarController({
   direction: "normal",
   orientation: "horizontal",
 });
-const textBox = new TextBoxController({ text: "Browser notes\nsame controllers", cursorPosition: { x: 0, y: 1 } });
+const initialTextBoxText = "Browser notes\nsame controllers, same wrapped multiline text area, same keyboard editing.";
+const textBox = new TextBoxController({
+  text: initialTextBoxText,
+  cursorPosition: { x: initialTextBoxText.split("\n").at(-1)?.length ?? 0, y: 1 },
+  wordWrap: true,
+});
 const activeControl = new Signal<ControlId>("button");
 const table = new DataTableController<Row>({
   rows,
@@ -232,12 +238,18 @@ host.platform.size.subscribe(() => {
 });
 
 host.on("keyPress", ({ key }) => {
-  if (isTextControlActive() && key !== "escape") {
+  if (isTextControlActive() && (key === "escape" || key === "tab")) {
+    blurTextControl();
+    draw();
+    return;
+  }
+  if (isTextControlActive()) {
     handleControlsKey({ key, ctrl: false, meta: false, shift: false });
     draw();
     return;
   }
-  if (key === "tab") focusNext();
+  if (key === "tab" && active.peek() === "controls") focusNextControl();
+  else if (key === "tab") focusNext();
   else if (key === "1") focus("inspector");
   else if (key === "2") focus("data");
   else if (key === "3") focus("controls");
@@ -816,7 +828,7 @@ function renderControls(frame: string[], rect: Rectangle): void {
     },
   );
   addInlineStepperHits(rect, stepperRow);
-  writeControl("textbox", `TextBox   ${textBox.text.peek().split("\n").join(" / ")}`, { action: "focus" });
+  row = renderTextboxControl(frame, rect, row, t);
   if (row < rect.row + rect.height) {
     write(
       frame,
@@ -825,6 +837,61 @@ function renderControls(frame: string[], rect: Rectangle): void {
       paint(fit(`Progress  ${progressTrack} ${progress.value.peek()}%`, rect.width), t.text, t.surface),
     );
   }
+}
+
+function renderTextboxControl(frame: string[], rect: Rectangle, row: number, t: ThemeSpec): number {
+  if (row >= rect.row + rect.height) return row;
+  const selected = activeControl.peek() === "textbox";
+  const height = Math.min(5, Math.max(2, rect.row + rect.height - row));
+  const labelWidth = Math.min(10, Math.max(0, rect.width - 12));
+  const textColumn = rect.column + labelWidth;
+  const textAreaWidth = Math.max(1, rect.width - labelWidth);
+  const visualLines = wrapTextBoxLines(textBox.lines.peek(), textAreaWidth - 2, { wordWrap: true });
+  const cursor = textBox.cursorPosition.peek();
+  const cursorRow = visualLines.findIndex((line) =>
+    line.lineIndex === cursor.y && cursor.x >= line.startColumn && cursor.x <= line.endColumn
+  );
+  const start = Math.max(0, Math.min(Math.max(0, cursorRow - height + 1), Math.max(0, visualLines.length - height)));
+  const header = `${selected ? ">" : " "} TextBox`;
+  for (let offset = 0; offset < height; offset += 1) {
+    const line = visualLines[start + offset] ?? {
+      text: "",
+      lineIndex: 0,
+      startColumn: 0,
+      endColumn: 0,
+      continuation: false,
+    };
+    const cursorOnLine = selected && line.lineIndex === cursor.y && cursor.x >= line.startColumn &&
+      cursor.x <= line.endColumn;
+    const marker = cursorOnLine ? "|" : " ";
+    write(
+      frame,
+      row + offset,
+      rect.column,
+      paint(
+        fit(offset === 0 ? header : " ".repeat(Math.max(0, labelWidth)), labelWidth),
+        selected && offset === 0 ? t.bg : t.text,
+        selected && offset === 0 ? t.warn : t.surface,
+        selected && offset === 0,
+      ),
+    );
+    write(
+      frame,
+      row + offset,
+      textColumn,
+      paint(
+        fit(`${line.continuation ? ">" : " "}${line.text}${marker}`, textAreaWidth),
+        selected ? t.bg : t.text,
+        selected ? t.warn : t.surface,
+        selected,
+      ),
+    );
+  }
+  hitTargets.push({
+    rect: { column: rect.column, row, width: rect.width, height },
+    hit: { type: "control", id: "textbox", action: "focus" },
+  });
+  return row + height;
 }
 
 function writeWrappedOptions(
@@ -993,6 +1060,19 @@ function handleControlsKey(event: { key: string; ctrl?: boolean; meta?: boolean;
   else if (event.key === "left") applyControlHit(activeControl.peek(), "previous");
   else if (event.key === "right") applyControlHit(activeControl.peek(), "next");
   else if (event.key === "space" || event.key === "return") applyControlHit(activeControl.peek(), "activate");
+}
+
+function blurTextControl(): void {
+  const previous = activeControl.peek();
+  active.value = "controls";
+  activeControl.value = controlAt(1);
+  push(`control ${previous} blur`);
+}
+
+function focusNextControl(): void {
+  active.value = "controls";
+  activeControl.value = controlAt(1);
+  push(`control ${activeControl.peek()} focus`);
 }
 
 function controlAt(delta: number): ControlId {
