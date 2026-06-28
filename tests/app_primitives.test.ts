@@ -33,6 +33,24 @@ Deno.test("ActionBus dispatches to subscribers in registration order", async () 
   assertEquals(seen, ["a:x", "b:x"]);
 });
 
+Deno.test("ActionBus can subscribe to a single action type", async () => {
+  type TestAction =
+    | { type: "append"; payload: string }
+    | { type: "clear" };
+  const bus = new ActionBus<TestAction>();
+  const seen: string[] = [];
+  const unsubscribe = bus.subscribeType("append", (action) => {
+    seen.push(action.payload);
+  });
+
+  await bus.dispatch({ type: "clear" });
+  await bus.dispatch({ type: "append", payload: "a" });
+  unsubscribe();
+  await bus.dispatch({ type: "append", payload: "b" });
+
+  assertEquals(seen, ["a"]);
+});
+
 Deno.test("RouteManager navigates and cycles known routes only", () => {
   const routes = new RouteManager([
     { id: "home", title: "Home" },
@@ -412,6 +430,28 @@ Deno.test("TuiApp dispatches command actions through the action bus", async () =
   assertEquals(await app.executeCommand("missing"), false);
   assertEquals(seen, ["hello"]);
   app.destroy();
+});
+
+Deno.test("TuiApp tracks action subscriptions through app disposal", async () => {
+  type TestAction =
+    | { type: "append"; payload: string }
+    | { type: "clear" };
+  const app = createApp<TestAction>({ tui: { destroy() {} } as unknown as Tui });
+  const seen: string[] = [];
+
+  app.onActionType("append", (action) => {
+    seen.push(action.payload);
+  });
+  app.onAction((action) => {
+    seen.push(`all:${action.type}`);
+  });
+
+  await app.actions.dispatch({ type: "append", payload: "a" });
+  await app.actions.dispatch({ type: "clear" });
+  app.destroy();
+  await app.actions.dispatch({ type: "append", payload: "b" });
+
+  assertEquals(seen, ["a", "all:append", "all:clear"]);
 });
 
 Deno.test("TuiApp can bind command keys to its action bus", async () => {

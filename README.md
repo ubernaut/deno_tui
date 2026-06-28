@@ -243,6 +243,14 @@ This fork exports lightweight app primitives for larger TUIs:
 They are optional and composable. Existing component-first apps continue to work. Use `app.enableFocusNavigation()` or
 `bindFocusNavigation()` to opt into Tab/Shift+Tab traversal for registered focusable components.
 
+Use `ActionBus.subscribeType()` or `app.onActionType()` to handle one action family at a time while preserving typed
+payloads. The app-level helpers track cleanup automatically:
+
+```ts
+app.onActionType("route", (action) => app.routes.navigate(action.payload));
+app.onActionType("toast", (action) => pushToast(action.payload, "success"));
+```
+
 `TuiApp.onDispose()` tracks cleanup callbacks and runs them once on `app.destroy()`. Built-in app binders such as
 `app.enableFocusNavigation()` and `app.enableCommandKeys()` are tracked automatically:
 

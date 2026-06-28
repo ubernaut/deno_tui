@@ -193,24 +193,21 @@ app.commands.register({
 
 app.enableCommandKeymap();
 
-app.actions.subscribe((action) => {
-  if (action.type === "route") {
-    app.routes.navigate(action.payload);
-    routeChoice.value = action.payload;
-    routeStepIndex.value = Math.max(0, ["overview", "widgets", "runtime"].indexOf(action.payload));
-    pushToast(`Route changed to ${action.payload}`, "info");
-  } else if (action.type === "toast") {
-    pushToast(action.payload, "success");
-  } else if (action.type === "palette") {
-    paletteVisible.value = action.payload;
-  } else if (action.type === "context") {
-    contextVisible.value = action.payload;
-  } else if (action.type === "history.undo") {
-    void history.undo();
-  } else if (action.type === "history.redo") {
-    void history.redo();
-  }
+app.onActionType("route", (action) => {
+  app.routes.navigate(action.payload);
+  routeChoice.value = action.payload;
+  routeStepIndex.value = Math.max(0, ["overview", "widgets", "runtime"].indexOf(action.payload));
+  pushToast(`Route changed to ${action.payload}`, "info");
 });
+app.onActionType("toast", (action) => pushToast(action.payload, "success"));
+app.onActionType("palette", (action) => {
+  paletteVisible.value = action.payload;
+});
+app.onActionType("context", (action) => {
+  contextVisible.value = action.payload;
+});
+app.onActionType("history.undo", () => void history.undo());
+app.onActionType("history.redo", () => void history.redo());
 
 void persistedRoute.ready.then((route) => {
   if (app.routes.routes.peek().some((candidate) => candidate.id === route)) {

@@ -2,7 +2,7 @@
 import { bindFocusNavigation, FocusManager, type FocusNavigationOptions } from "../focus.ts";
 import { KeymapRegistry } from "../keymap.ts";
 import { Tui, type TuiOptions } from "../tui.ts";
-import { type Action, ActionBus } from "./actions.ts";
+import { type Action, ActionBus, type ActionHandler, type ActionOfType } from "./actions.ts";
 import {
   bindCommandKeymap,
   bindCommandKeys,
@@ -63,6 +63,17 @@ export class TuiApp<TAction extends Action = Action, TRoute extends Route = Rout
 
   executeCommand(id: string): Promise<boolean> {
     return this.commands.execute(id, (action) => this.actions.dispatch(action));
+  }
+
+  onAction(handler: ActionHandler<TAction>): () => void {
+    return this.onDispose(this.actions.subscribe(handler));
+  }
+
+  onActionType<TType extends TAction["type"]>(
+    type: TType,
+    handler: ActionHandler<ActionOfType<TAction, TType>>,
+  ): () => void {
+    return this.onDispose(this.actions.subscribeType(type, handler));
   }
 
   enableFocusNavigation(options: FocusNavigationOptions = {}): () => void {
