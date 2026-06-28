@@ -12,7 +12,7 @@ import {
 import { InputController } from "../src/components/input.ts";
 import { MenuBarController, renderMenuBar } from "../src/components/menu_bar.ts";
 import { ProgressBarController } from "../src/components/progressbar.ts";
-import { RadioGroupController, renderRadioGroupRows } from "../src/components/radio_group.ts";
+import { RadioGroupController } from "../src/components/radio_group.ts";
 import { ScrollAreaController, scrollbarGlyph, scrollbarThumb } from "../src/components/scroll_area.ts";
 import { SliderController } from "../src/components/slider.ts";
 import { renderStatusBar } from "../src/components/statusbar.ts";
@@ -28,7 +28,17 @@ import { grWizardThemePalettes } from "../src/grwizard_themes.ts";
 import { makeStyle } from "./styles.ts";
 
 type WindowId = "inspector" | "data" | "controls" | "logs";
-type ControlId = "button" | "slider" | "checkbox" | "radio" | "combo" | "input" | "stepper" | "textbox";
+type ControlId =
+  | "button"
+  | "genericButton"
+  | "slider"
+  | "checkbox"
+  | "radio"
+  | "combo"
+  | "dropdown"
+  | "input"
+  | "stepper"
+  | "textbox";
 type HitAction =
   | { type: "focus"; id: WindowId }
   | { type: "minimize"; id: WindowId }
@@ -169,6 +179,10 @@ const actionButton = new ButtonController({
   label: "Run Action",
   onPress: () => pushLog("button pressed"),
 });
+const genericButton = new ButtonController({
+  label: "Generic Button",
+  onPress: () => pushLog("generic button pressed"),
+});
 const modeRadio = new RadioGroupController({
   options: [
     { value: "fast", label: "Fast" },
@@ -182,6 +196,13 @@ const themeCombo = new ComboBoxController({
   selectedIndex: 0,
   placeholder: "theme",
   onSelect: (_item, index) => setTheme(index),
+});
+const dropdown = new ComboBoxController({
+  items: ["CPU stream", "GPU queue", "Network bus", "Disk cache"],
+  selectedIndex: 1,
+  expanded: true,
+  placeholder: "source",
+  onSelect: (item) => pushLog(`dropdown selected: ${item}`),
 });
 const commandInput = new InputController({
   text: "deno task health",
@@ -297,8 +318,10 @@ tui.on("destroy", () => {
   livePreview.dispose();
   compactRows.dispose();
   actionButton.dispose();
+  genericButton.dispose();
   modeRadio.dispose();
   themeCombo.dispose();
+  dropdown.dispose();
   commandInput.dispose();
   workflowStepper.dispose();
   progress.dispose();
@@ -407,7 +430,7 @@ function renderWorkspace(frame: Frame): void {
     }
   } else {
     split.setDirection("row");
-    const rows = splitPane(bounds, "column", 0.54);
+    const rows = splitPane(bounds, "column", 0.46);
     const top = split.rects(rows.first);
     const bottom = split.rects(rows.second);
     renderWindow(frame, "inspector", top.first);
@@ -494,10 +517,14 @@ function renderData(frame: Frame, rect: Rectangle): void {
 function renderControls(frame: Frame, rect: Rectangle): void {
   const t = theme();
   let row = rect.row;
-  const writeControl = (id: ControlId, value: string, options: { previous?: boolean; next?: boolean } = {}) => {
+  const writeControl = (
+    id: ControlId,
+    value: string,
+    options: { previous?: boolean; next?: boolean; action?: "previous" | "next" | "activate"; indent?: boolean } = {},
+  ) => {
     if (row >= rect.row + rect.height) return;
     const active = activeControl.peek() === id;
-    const line = `${active ? ">" : " "} ${value}`;
+    const line = `${active && !options.indent ? ">" : " "} ${options.indent ? "  " : ""}${value}`;
     write(
       frame,
       row,
@@ -508,7 +535,11 @@ function renderControls(frame: Frame, rect: Rectangle): void {
         bold: active,
       }),
     );
-    addHit({ column: rect.column, row, width: rect.width, height: 1 }, { type: "control", id, action: "activate" });
+    addHit({ column: rect.column, row, width: rect.width, height: 1 }, {
+      type: "control",
+      id,
+      action: options.action ?? "activate",
+    });
     if (options.previous) {
       addHit({ column: rect.column, row, width: Math.max(1, Math.floor(rect.width / 2)), height: 1 }, {
         type: "control",
@@ -526,6 +557,9 @@ function renderControls(frame: Frame, rect: Rectangle): void {
     }
     row += 1;
   };
+  const writeSection = (id: ControlId, label: string) => {
+    writeControl(id, label, { action: "activate" });
+  };
   const trackWidth = Math.max(8, Math.min(24, rect.width - 20));
   const slider = density.inspect();
   const filled = Math.round(slider.normalizedValue * trackWidth);
@@ -539,35 +573,43 @@ function renderControls(frame: Frame, rect: Rectangle): void {
       paint("[ Run Action ]", { fg: t.background, bg: t.accent, bold: true })
     } presses=${actionButton.pressCount.peek()}`,
   );
+  writeControl(
+    "genericButton",
+    `${
+      paint("[ Generic Button ]", { fg: t.background, bg: t.border, bold: true })
+    } presses=${genericButton.pressCount.peek()}`,
+  );
   writeControl("slider", `Slider    ${paint(track, { fg: t.good, bg: t.accentDeep })} ${density.value.peek()}/10`, {
     previous: true,
     next: true,
   });
   writeControl(
     "checkbox",
-    `Checkbox  ${
-      paint(renderCheckBoxMark(livePreview.checked.peek()), { fg: t.good, bg: t.surface, bold: true })
-    } live  ${renderCheckBoxMark(compactRows.checked.peek())} compact`,
+    `Checkboxes  ${renderCheckBoxMark(livePreview.checked.peek())} live preview  ${
+      renderCheckBoxMark(compactRows.checked.peek())
+    } compact rows`,
   );
-  writeControl(
-    "radio",
-    `Radio     ${
-      renderRadioGroupRows(
-        modeRadio.options.peek(),
-        modeRadio.selectedValue.peek(),
-        modeRadio.activeIndex.peek(),
-        1,
-      )[0] ?? ""
-    }`,
-    {
-      previous: true,
-      next: true,
-    },
-  );
-  writeControl("combo", `Combo     ${themeCombo.expanded.peek() ? "▾" : "▸"} ${themeCombo.label()}`, {
+  writeControl("radio", `Radio     ${renderInlineRadioOptions()}`, {
     previous: true,
     next: true,
   });
+  writeSection("combo", `Theme combo  ${themeCombo.expanded.peek() ? "▾" : "▸"} ${themeCombo.label()}`);
+  writeWrappedOptions(frame, rect, row, "combo", themeCombo.items.peek(), themeCombo.selectedIndex.peek(), t);
+  row += wrappedOptionRowCount(themeCombo.items.peek(), rect.width - 4);
+  writeSection("dropdown", `Dropdown  ${dropdown.expanded.peek() ? "▾" : "▸"} ${dropdown.label()}`);
+  for (const [index, item] of dropdown.items.peek().entries()) {
+    const selected = dropdown.selectedIndex.peek() === index;
+    writeControl("dropdown", `${selected ? "●" : "○"} ${item}`, {
+      indent: true,
+      previous: true,
+      next: true,
+      action: index < (dropdown.selectedIndex.peek() ?? 0)
+        ? "previous"
+        : index > (dropdown.selectedIndex.peek() ?? 0)
+        ? "next"
+        : "activate",
+    });
+  }
   writeControl("input", `Input     ${commandInput.text.peek()}${activeControl.peek() === "input" ? "▌" : ""}`);
   writeControl(
     "stepper",
@@ -618,6 +660,71 @@ function renderLogs(frame: Frame, rect: Rectangle): void {
       write(frame, rect.row + row, rect.column + rect.width - 1, paint(scrollbarGlyph(row, thumb), { fg: t.accent }));
     }
   }
+}
+
+function writeWrappedOptions(
+  frame: Frame,
+  rect: Rectangle,
+  startRow: number,
+  id: ControlId,
+  items: readonly string[],
+  selectedIndex: number | undefined,
+  t: ThemeSpec,
+): void {
+  const width = Math.max(8, rect.width - 4);
+  let row = startRow;
+  let line = "";
+  let lineStartColumn = rect.column + 2;
+  const flush = () => {
+    if (row >= rect.row + rect.height || line.length === 0) return;
+    const active = activeControl.peek() === id;
+    write(
+      frame,
+      row,
+      lineStartColumn,
+      paint(fit(line, width), {
+        fg: active ? t.background : t.text,
+        bg: active ? t.warn : t.surface,
+        bold: active,
+      }),
+    );
+    addHit({ column: lineStartColumn, row, width, height: 1 }, { type: "control", id, action: "activate" });
+    line = "";
+    row += 1;
+    lineStartColumn = rect.column + 2;
+  };
+  for (const [index, item] of items.entries()) {
+    const token = `${index === selectedIndex ? "[" : " "}${item}${index === selectedIndex ? "]" : " "} `;
+    if (textWidth(line) + textWidth(token) > width) flush();
+    line += token;
+  }
+  flush();
+}
+
+function wrappedOptionRowCount(items: readonly string[], width: number): number {
+  const safeWidth = Math.max(8, width);
+  let rows = 1;
+  let lineWidth = 0;
+  for (const item of items) {
+    const tokenWidth = textWidth(` ${item}  `);
+    if (lineWidth > 0 && lineWidth + tokenWidth > safeWidth) {
+      rows += 1;
+      lineWidth = 0;
+    }
+    lineWidth += tokenWidth;
+  }
+  return rows;
+}
+
+function renderInlineRadioOptions(): string {
+  const options = modeRadio.options.peek();
+  const active = modeRadio.activeIndex.peek();
+  const selected = modeRadio.selectedValue.peek();
+  return options.map((option, index) => {
+    const cursor = index === active ? ">" : " ";
+    const mark = option.value === selected ? "●" : "○";
+    return `${cursor} ${mark} ${option.label}`;
+  }).join("  ");
 }
 
 function renderShelf(frame: Frame): void {
@@ -750,8 +857,9 @@ function applyControlHit(id: ControlId, action: "previous" | "next" | "activate"
   activeWindow.value = "controls";
   activeControl.value = id;
   if (id === "button") actionButton.press("mouse");
+  else if (id === "genericButton") genericButton.press("mouse");
   else if (id === "slider") action === "previous" ? density.decrement() : density.increment();
-  else if (id === "checkbox") livePreview.toggle();
+  else if (id === "checkbox") action === "next" ? compactRows.toggle() : livePreview.toggle();
   else if (id === "radio") {
     if (action === "previous") modeRadio.move(-1);
     else if (action === "next") modeRadio.move(1);
@@ -761,6 +869,10 @@ function applyControlHit(id: ControlId, action: "previous" | "next" | "activate"
     else if (action === "next") themeCombo.move(1);
     const selected = themeCombo.selectActive();
     if (selected) setTheme(themeCombo.selectedIndex.peek() ?? 0);
+  } else if (id === "dropdown") {
+    if (action === "previous") dropdown.move(-1);
+    else if (action === "next") dropdown.move(1);
+    else dropdown.selectActive();
   } else if (id === "input") commandInput.submit();
   else if (id === "stepper") action === "previous" ? workflowStepper.move(-1) : workflowStepper.move(1);
   else if (id === "textbox") notes.setText(`${notes.text.peek()}\nclicked`);
@@ -800,7 +912,18 @@ function isTextControlActive(): boolean {
 }
 
 function controlAt(delta: number): ControlId {
-  const ids: ControlId[] = ["button", "slider", "checkbox", "radio", "combo", "input", "stepper", "textbox"];
+  const ids: ControlId[] = [
+    "button",
+    "genericButton",
+    "slider",
+    "checkbox",
+    "radio",
+    "combo",
+    "dropdown",
+    "input",
+    "stepper",
+    "textbox",
+  ];
   const index = ids.indexOf(activeControl.peek());
   return ids[(index + delta + ids.length) % ids.length]!;
 }

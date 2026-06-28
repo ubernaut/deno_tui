@@ -1305,6 +1305,7 @@ var SortedArray = class extends Array {
 function moveCursor(row, column) {
   return `\x1B[${row + 1};${column + 1}H`;
 }
+var CLEAR_SCREEN = `\x1B[2J`;
 
 // src/canvas/sink.ts
 var textEncoder = new TextEncoder();
@@ -1314,6 +1315,9 @@ var AnsiCanvasSink = class {
   constructor(options) {
     this.#stdout = options.stdout;
     this.#flushLimit = options.flushLimit ?? defaultAnsiFlushLimit();
+  }
+  resize(_columns, _rows) {
+    this.#stdout.writeSync(textEncoder.encode(`${moveCursor(0, 0)}${CLEAR_SCREEN}`));
   }
   flush(updates, _stats) {
     let drawSequence = "";
