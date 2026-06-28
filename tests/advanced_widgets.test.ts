@@ -6,6 +6,7 @@ import {
   inspectComponentCatalogCommands,
 } from "../src/app/component_commands.ts";
 import { CommandRegistry } from "../src/app/commands.ts";
+import { bindToastCommands, toastCommands } from "../src/app/toast_commands.ts";
 import {
   componentCapabilities,
   componentCatalog,
@@ -31,7 +32,7 @@ import {
   shiftContextMenuSelection,
   visibleContextMenuItems,
 } from "../src/components/context_menu.ts";
-import { renderToast } from "../src/components/toast.ts";
+import { renderToast, ToastStackController } from "../src/components/toast.ts";
 import { flattenTree } from "../src/components/tree.ts";
 import type { Key, KeyPressEvent } from "../src/input_reader/types.ts";
 
@@ -70,6 +71,7 @@ Deno.test("component catalog groups widgets by category and capability", () => {
     "data-table",
     "command-palette",
     "context-menu",
+    "toast",
     "metric-series",
   ]);
 });
@@ -78,6 +80,7 @@ Deno.test("component catalog supports combined queries and inspection", () => {
   assertEquals(queryComponents({ category: "overlay", capability: "controller" }).map((entry) => entry.id), [
     "command-palette",
     "context-menu",
+    "toast",
   ]);
   assertEquals(queryComponents({ capabilities: ["controller", "selection"] }).map((entry) => entry.id), [
     "virtual-list",
@@ -103,7 +106,7 @@ Deno.test("component catalog supports combined queries and inspection", () => {
     capabilities: {
       async: 2,
       component: 0,
-      controller: 2,
+      controller: 3,
       dashboard: 0,
       keyboard: 3,
       mouse: 1,
@@ -128,6 +131,7 @@ Deno.test("component catalog commands project widgets into command surfaces", as
   assertEquals(registry.list("catalog").map((command) => command.id), [
     "widgets.select.command-palette",
     "widgets.select.context-menu",
+    "widgets.select.toast",
   ]);
   assertEquals(registry.projections("catalog"), [
     {
@@ -159,6 +163,20 @@ Deno.test("component catalog commands project widgets into command surfaces", as
         "selection",
         "keyboard",
         "mouse",
+      ],
+      disabled: false,
+    },
+    {
+      id: "widgets.select.toast",
+      label: "ToastStack",
+      keywords: [
+        "toast",
+        "ToastStack",
+        "overlay",
+        "Transient notification stack renderer.",
+        "controller",
+        "render-helper",
+        "async",
       ],
       disabled: false,
     },
@@ -347,6 +365,86 @@ Deno.test("toast rendering includes severity", () => {
   assertEquals(renderToast({ id: "1", level: "warning", message: "Disk high" }), "[WARNING] Disk high");
 });
 
+Deno.test("ToastStackController bounds messages and exposes inspection", () => {
+  let nextId = 0;
+  const controller = new ToastStackController({
+    limit: 2,
+    idFactory: () => `toast-${++nextId}`,
+  });
+
+  assertEquals(controller.show("Booted", "success"), { id: "toast-1", level: "success", message: "Booted" });
+  controller.show("Queued", "info");
+  controller.push({ id: "manual", level: "warning", message: "Manual" });
+
+  assertEquals(controller.inspect(), {
+    messages: [
+      { id: "toast-2", level: "info", message: "Queued" },
+      { id: "manual", level: "warning", message: "Manual" },
+    ],
+    count: 2,
+    limit: 2,
+    empty: false,
+  });
+  assertEquals(controller.dismiss("toast-2"), true);
+  assertEquals(controller.dismiss("missing"), false);
+  assertEquals(controller.dismissLatest()?.id, "manual");
+  assertEquals(controller.inspect().empty, true);
+  controller.push({ id: "a", message: "A" });
+  controller.push({ id: "b", message: "B" });
+  controller.setLimit(1);
+  assertEquals(controller.inspect().messages, [{ id: "b", message: "B" }]);
+  controller.setLimit(0);
+  assertEquals(controller.inspect().empty, true);
+  controller.dispose();
+});
+
+Deno.test("toastCommands clear and dismiss controller messages", async () => {
+  const controller = new ToastStackController({
+    messages: [
+      { id: "a", message: "Alpha" },
+      { id: "b", message: "Beta" },
+    ],
+  });
+  const registry = new CommandRegistry();
+  const actions: unknown[] = [];
+  const dispose = bindToastCommands(registry, controller, {
+    idPrefix: "notifications",
+    group: "notifications",
+  });
+
+  assertEquals(toastCommands(new ToastStackController()).map((command) => [command.id, commandDisabled(command)]), [
+    ["toast.dismissLatest", true],
+    ["toast.clear", true],
+  ]);
+  assertEquals(registry.list("notifications").map((command) => command.id), [
+    "notifications.clear",
+    "notifications.dismissLatest",
+  ]);
+
+  assertEquals(await registry.execute("notifications.dismissLatest", (action) => void actions.push(action)), true);
+  assertEquals(controller.inspect().messages.map((message) => message.id), ["a"]);
+  assertEquals(actions, [
+    {
+      type: "toast.dismissed",
+      payload: {
+        dismissedId: "b",
+        inspection: {
+          messages: [{ id: "a", message: "Alpha" }],
+          count: 1,
+          limit: 4,
+          empty: false,
+        },
+      },
+    },
+  ]);
+
+  assertEquals(await registry.execute("notifications.clear", (action) => void actions.push(action)), true);
+  assertEquals(controller.inspect().empty, true);
+
+  dispose();
+  assertEquals(registry.list("notifications"), []);
+});
+
 Deno.test("flattenTree respects expanded state", () => {
   assertEquals(
     flattenTree([
@@ -372,4 +470,8 @@ function keyPress(key: Key, options: Partial<Omit<KeyPressEvent, "key" | "buffer
     shift: options.shift ?? false,
     buffer: new Uint8Array(),
   };
+}
+
+function commandDisabled(command: { disabled?: boolean | (() => boolean) }): boolean | undefined {
+  return typeof command.disabled === "function" ? command.disabled() : command.disabled;
 }

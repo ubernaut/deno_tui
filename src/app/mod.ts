@@ -22,3 +22,4 @@ export * from "./split_pane_commands.ts";
 export * from "./surface_bindings.ts";
 export * from "./theme_commands.ts";
 export * from "./theme_plugin.ts";
+export * from "./toast_commands.ts";

@@ -13,6 +13,19 @@ export interface ToastMessage {
   level?: ToastLevel;
 }
 
+export interface ToastStackControllerOptions {
+  messages?: ToastMessage[] | Signal<ToastMessage[]>;
+  limit?: number | Signal<number>;
+  idFactory?: () => string;
+}
+
+export interface ToastStackInspection {
+  messages: ToastMessage[];
+  count: number;
+  limit: number;
+  empty: boolean;
+}
+
 export interface ToastStackOptions extends ComponentOptions {
   messages: ToastMessage[] | Signal<ToastMessage[]>;
 }
@@ -20,6 +33,73 @@ export interface ToastStackOptions extends ComponentOptions {
 export function renderToast(message: ToastMessage): string {
   const level = (message.level ?? "info").toUpperCase();
   return `[${level}] ${message.message}`;
+}
+
+export class ToastStackController {
+  readonly messages: Signal<ToastMessage[]>;
+  readonly limit: Signal<number>;
+  readonly #idFactory: () => string;
+
+  constructor(options: ToastStackControllerOptions = {}) {
+    this.messages = signalify(options.messages ?? [], { deepObserve: true });
+    this.limit = signalify(options.limit ?? 4);
+    this.#idFactory = options.idFactory ?? (() => crypto.randomUUID());
+    this.#trim();
+  }
+
+  show(message: string, level: ToastLevel = "info", id = this.#idFactory()): ToastMessage {
+    return this.push({ id, level, message });
+  }
+
+  push(message: ToastMessage): ToastMessage {
+    this.messages.value.push({ ...message });
+    this.#trim();
+    return message;
+  }
+
+  dismiss(id: string): boolean {
+    const index = this.messages.value.findIndex((message) => message.id === id);
+    if (index < 0) return false;
+    this.messages.value.splice(index, 1);
+    return true;
+  }
+
+  dismissLatest(): ToastMessage | undefined {
+    return this.messages.value.pop();
+  }
+
+  setLimit(limit: number): void {
+    const normalizedLimit = normalizedToastLimit(limit);
+    this.limit.value = normalizedLimit;
+    this.messages.value = normalizedLimit === 0 ? [] : this.messages.peek().slice(-normalizedLimit);
+  }
+
+  clear(): void {
+    this.messages.value = [];
+  }
+
+  inspect(): ToastStackInspection {
+    const messages = this.messages.peek().map((message) => ({ ...message }));
+    const limit = normalizedToastLimit(this.limit.peek());
+    return {
+      messages,
+      count: messages.length,
+      limit,
+      empty: messages.length === 0,
+    };
+  }
+
+  dispose(): void {
+    this.messages.dispose();
+    this.limit.dispose();
+  }
+
+  #trim(): void {
+    const limit = normalizedToastLimit(this.limit.peek());
+    while (this.messages.value.length > limit) {
+      this.messages.value.shift();
+    }
+  }
 }
 
 export class ToastStack extends Component {
@@ -54,4 +134,8 @@ export class ToastStack extends Component {
       this.subComponents[`toast-${index}`] = text;
     });
   }
+}
+
+function normalizedToastLimit(limit: number): number {
+  return Math.max(0, Math.floor(Number.isFinite(limit) ? limit : 0));
 }

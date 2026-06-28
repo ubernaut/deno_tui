@@ -34,8 +34,9 @@ import {
   Stepper,
   Text,
   type TextRectangle,
-  type ToastMessage,
+  type ToastLevel,
   ToastStack,
+  ToastStackController,
   Tree,
 } from "../mod.ts";
 
@@ -103,9 +104,10 @@ app.onDispose(() => settings.dispose());
 const routeStepIndex = new Signal(0);
 app.onDispose(bindRouteIndex(app.routes, routeStepIndex, { routeIds: ["overview", "widgets", "runtime"] }));
 const history = new HistoryStack({ capacity: 32 });
-const toasts = new Signal<ToastMessage[]>([
-  { id: "boot", level: "success", message: "App shell ready" },
-], { deepObserve: true });
+const toasts = new ToastStackController({
+  limit: 4,
+  messages: [{ id: "boot", level: "success", message: "App shell ready" }],
+});
 const routeList = new Signal(app.routes.routes.peek().map((route) => route.title ?? route.id), { deepObserve: true });
 const breadcrumbs = new Computed(() => [
   { id: "app", label: "App" },
@@ -448,7 +450,7 @@ new ToastStack({
   parent: app.tui,
   theme: themeEngine.component("ToastStack"),
   zIndex: 4,
-  messages: toasts,
+  messages: toasts.messages,
   rectangle: new Computed(() => ({
     column: Math.max(0, app.tui.rectangle.value.width - 42),
     row: Math.max(2, app.tui.rectangle.value.height - 6),
@@ -535,9 +537,6 @@ app.onDispose(bindModalFocus(app.tui, contextVisible, app.focus, [contextMenu]))
 
 app.start();
 
-function pushToast(message: string, level: ToastMessage["level"]) {
-  toasts.value.push({ id: crypto.randomUUID(), level, message });
-  while (toasts.value.length > 4) {
-    toasts.value.shift();
-  }
+function pushToast(message: string, level: ToastLevel) {
+  toasts.show(message, level);
 }

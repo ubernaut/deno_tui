@@ -147,6 +147,7 @@ export const componentCatalog = [
     "themeable",
   ]),
   component("toast", "ToastStack", "overlay", "Transient notification stack renderer.", [
+    "controller",
     "render-helper",
     "async",
   ]),
