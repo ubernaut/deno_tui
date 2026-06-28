@@ -1617,6 +1617,7 @@ Optional high-performance APIs are surfaced through `src/runtime/mod.ts`:
 - `detectTerminalCapabilities()` / `terminalCapabilityEntries()` / `summarizeTerminalCapabilities()` /
   `formatTerminalCapabilities()`
 - `createTerminalPlan()` / `formatTerminalPlan()`
+- `terminalSessionSequences()` / `terminalMouseSequences()` / `createTerminalSessionController()`
 - `RuntimeRendererBackendRegistry` / `RuntimeRendererBackendController` / `selectRuntimeRendererBackend()` /
   `formatRuntimeRendererBackendCatalogMarkdown()`
 - `RuntimeProfile` / `RuntimeProfileRegistry` / `createRuntimeProfileCatalogReport()` /
@@ -1648,6 +1649,8 @@ Use these instead of hard-coding global checks inside components. `formatRuntime
 worker execution, persistent storage, renderer fallback, color depth, Unicode text, mouse protocol, bracketed paste, and
 alternate-screen behavior. `deno task capabilities` prints the runtime summary, terminal summary, default plans,
 built-in runtime profile table, and renderer backend catalog; pass `--json` to that task for structured output.
+`terminalSessionSequences()` and `createTerminalSessionController()` turn a terminal plan into idempotent enter/exit
+setup for alternate screen, cursor visibility, bracketed paste, and mouse protocols using an injectable writer.
 `RuntimeRendererBackendRegistry`, `RuntimeRendererBackendController`, `queryRuntimeRendererBackends()`, and
 `selectRuntimeRendererBackend()` expose the renderer side as a composable catalog: WebGPU three.js ASCII, WebGL canvas,
 and portable CPU terminal backends can be selected, cycled, ranked, filtered, and reported from the same capability

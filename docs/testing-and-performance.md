@@ -41,6 +41,8 @@ These helpers are intentionally small and do not choose a test framework. They w
 - `createRuntimePlan()` / `formatRuntimePlan()` for deterministic worker, storage, and renderer fallback decisions.
 - `detectTerminalCapabilities()` plus `createTerminalPlan()` / `formatTerminalPlan()` for deterministic color, Unicode,
   mouse protocol, bracketed paste, hyperlink, and alternate-screen decisions.
+- `terminalSessionSequences()` and `createTerminalSessionController()` for testable terminal enter/exit setup with an
+  injectable writer.
 - `RuntimeProfile`, `RuntimeProfileRegistry`, and runtime profile catalog helpers for named, queryable policies such as
   balanced, throughput, portable, and ephemeral execution.
 - `inspectRuntimeWorkload()`, `createRuntimeWorkloadReport()`, and `formatRuntimeWorkloadMarkdown()` for scheduler and

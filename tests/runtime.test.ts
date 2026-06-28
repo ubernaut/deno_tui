@@ -15,6 +15,11 @@ import {
   terminalCapabilityEntries,
 } from "../src/runtime/terminal_capabilities.ts";
 import {
+  createTerminalSessionController,
+  terminalMouseSequences,
+  terminalSessionSequences,
+} from "../src/runtime/terminal_session.ts";
+import {
   createRuntimeProfileCatalogReport,
   createRuntimeProfileController,
   createRuntimeProfileRegistry,
@@ -230,6 +235,71 @@ Deno.test("terminal plans choose portable fallbacks from preferences and detecte
       "links    plain",
     ].join("\n"),
   );
+});
+
+Deno.test("terminal session helpers compose setup and teardown sequences", () => {
+  const plan = createTerminalPlan({
+    interactive: true,
+    colorDepth: "truecolor",
+    unicode: true,
+    hyperlinks: true,
+    mouse: true,
+    sgrMouse: true,
+    bracketedPaste: true,
+    alternateScreen: true,
+    cursorShape: true,
+  });
+
+  assertEquals(terminalMouseSequences("none"), { enter: "", exit: "" });
+  assertEquals(terminalMouseSequences("x10"), { enter: "\x1b[?9h", exit: "\x1b[?9l" });
+  assertEquals(terminalMouseSequences("vt200"), { enter: "\x1b[?1000h", exit: "\x1b[?1000l" });
+  assertEquals(terminalMouseSequences("sgr"), {
+    enter: "\x1b[?1000h\x1b[?1006h",
+    exit: "\x1b[?1006l\x1b[?1000l",
+  });
+  assertEquals(terminalSessionSequences({ plan }), {
+    enter: "\x1b[?1049h\x1b[?25l\x1b[?2004h\x1b[?1000h\x1b[?1006h",
+    exit: "\x1b[?1006l\x1b[?1000l\x1b[?2004l\x1b[?25h\x1b[?1049l",
+  });
+  assertEquals(terminalSessionSequences({ plan, hideCursor: false }).enter.includes("\x1b[?25l"), false);
+});
+
+Deno.test("TerminalSessionController writes enter and exit sequences idempotently", async () => {
+  const decoder = new TextDecoder();
+  const writes: string[] = [];
+  const plan = createTerminalPlan({
+    interactive: true,
+    colorDepth: "ansi16",
+    unicode: true,
+    hyperlinks: false,
+    mouse: true,
+    sgrMouse: false,
+    bracketedPaste: false,
+    alternateScreen: true,
+    cursorShape: false,
+  });
+  const controller = createTerminalSessionController({
+    write(data) {
+      writes.push(decoder.decode(data));
+      return data.length;
+    },
+  }, { plan });
+
+  assertEquals(controller.inspect(), {
+    active: false,
+    alternateScreen: true,
+    bracketedPaste: false,
+    mouseProtocol: "vt200",
+    hideCursor: true,
+  });
+  await controller.enter();
+  await controller.enter();
+  assertEquals(controller.active, true);
+  assertEquals(writes, ["\x1b[?1049h\x1b[?25l\x1b[?1000h"]);
+  await controller.dispose();
+  await controller.exit();
+  assertEquals(controller.active, false);
+  assertEquals(writes, ["\x1b[?1049h\x1b[?25l\x1b[?1000h", "\x1b[?1000l\x1b[?25h\x1b[?1049l"]);
 });
 
 Deno.test("runtime profiles expose named strategy policies", () => {

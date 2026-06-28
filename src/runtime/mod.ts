@@ -12,4 +12,5 @@ export * from "./scheduler.ts";
 export * from "./storage.ts";
 export * from "./telemetry.ts";
 export * from "./terminal_capabilities.ts";
+export * from "./terminal_session.ts";
 export * from "./worker_pool.ts";
