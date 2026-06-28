@@ -106,13 +106,13 @@ export class CheckBox extends Button {
         onChange: options.onChange,
       });
 
-    Object.assign(options, {
+    super({
+      ...options,
+      controller: undefined,
       label: {
-        text: new Computed(() => renderCheckBoxMark(controller.checked.value)),
+        text: new Computed<string>(() => renderCheckBoxMark(controller.checked.value)),
       },
     });
-
-    super(options);
     this.controller = controller;
     this.checked = controller.checked;
     if (ownsController) this.on("destroy", () => this.controller.dispose());

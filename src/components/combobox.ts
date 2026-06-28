@@ -3,7 +3,8 @@ import { Computed, Signal, SignalOfObject } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
 import { Button, ButtonOptions } from "./button.ts";
 
-export interface ComboBoxOptions<Items extends string[] = string[]> extends Omit<ButtonOptions, "label"> {
+export interface ComboBoxOptions<Items extends string[] = string[]>
+  extends Omit<ButtonOptions, "label" | "controller"> {
   placeholder?: string;
   items: Items | SignalOfObject<Items>;
   selectedItem?: number | undefined | Signal<number | undefined>;
@@ -252,18 +253,22 @@ export class ComboBox<Items extends string[] = string[]> extends Button {
         onExpandedChange: options.onExpandedChange,
       });
 
-    Object.assign(options, {
+    const label = {
+      text: new Computed<string>(() => {
+        controller.items.value;
+        controller.selectedIndex.value;
+        controller.placeholder.value;
+        return controller.label();
+      }),
+    };
+
+    super({
+      ...options,
+      controller: undefined,
       label: {
-        text: new Computed(() => {
-          controller.items.value;
-          controller.selectedIndex.value;
-          controller.placeholder.value;
-          return controller.label();
-        }),
+        text: label.text,
       },
     });
-
-    super(options);
 
     this.controller = controller as ComboBoxController<Items>;
     this.items = this.controller.items;

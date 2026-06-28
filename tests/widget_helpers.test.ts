@@ -1,4 +1,5 @@
 import { assertEquals } from "./deps.ts";
+import { bindButtonCommands, buttonCommands } from "../src/app/button_commands.ts";
 import { bindCheckBoxCommands, checkBoxCommands } from "../src/app/checkbox_commands.ts";
 import { bindComboBoxCommands, comboBoxCommands } from "../src/app/combobox_commands.ts";
 import { bindListCommands, listCommands } from "../src/app/list_commands.ts";
@@ -13,6 +14,7 @@ import { bindTabsCommands, tabsCommands } from "../src/app/tabs_commands.ts";
 import { bindTreeCommands, treeCommands } from "../src/app/tree_commands.ts";
 import { formatKeyBinding, KeymapRegistry } from "../src/keymap.ts";
 import { renderBreadcrumbs } from "../src/components/breadcrumbs.ts";
+import { ButtonController } from "../src/components/button.ts";
 import { CheckBoxController, Mark, renderCheckBoxMark } from "../src/components/checkbox.ts";
 import { ComboBoxController, comboBoxLabel } from "../src/components/combobox.ts";
 import { renderEmptyState } from "../src/components/empty_state.ts";
@@ -71,6 +73,86 @@ Deno.test("visibleListRows centers the selected item when space allows", () => {
     "> gamma",
     "  delta",
   ]);
+});
+
+Deno.test("ButtonController tracks presses disabled state and inspection", () => {
+  const presses: number[] = [];
+  const controller = new ButtonController({
+    label: "Save",
+    disabled: false,
+    onPress: (inspection) => void presses.push(inspection.pressCount),
+  });
+
+  assertEquals(controller.inspect(), {
+    label: "Save",
+    disabled: false,
+    pressCount: 0,
+    lastPressedAt: undefined,
+    lastMethod: undefined,
+  });
+  assertEquals(controller.press("keyboard", 123), true);
+  assertEquals(controller.inspect(), {
+    label: "Save",
+    disabled: false,
+    pressCount: 1,
+    lastPressedAt: 123,
+    lastMethod: "keyboard",
+  });
+  assertEquals(presses, [1]);
+
+  controller.disable();
+  assertEquals(controller.press("mouse", 456), false);
+  assertEquals(controller.inspect().pressCount, 1);
+  controller.setLabel("Deploy");
+  assertEquals(controller.inspect().label, "Deploy");
+  controller.dispose();
+});
+
+Deno.test("buttonCommands press and change disabled state", async () => {
+  const controller = new ButtonController({ label: "Run" });
+  const registry = new CommandRegistry();
+  const dispose = bindButtonCommands(registry, controller, {
+    id: "run",
+    idPrefix: "button.run",
+    group: "actions",
+  });
+  const actions: unknown[] = [];
+
+  assertEquals(buttonCommands(controller).map((command) => [command.id, commandDisabled(command)]), [
+    ["button.press", false],
+    ["button.enable", true],
+    ["button.disable", false],
+  ]);
+  assertEquals(registry.list("actions").map((command) => command.id), [
+    "button.run.disable",
+    "button.run.enable",
+    "button.run.press",
+  ]);
+
+  assertEquals(await registry.execute("button.run.press", (action) => void actions.push(action)), true);
+  assertEquals(controller.inspect().pressCount, 1);
+  assertEquals(actions[0], {
+    type: "button.pressed",
+    payload: {
+      id: "run",
+      inspection: {
+        label: "Run",
+        disabled: false,
+        pressCount: 1,
+        lastPressedAt: controller.inspect().lastPressedAt,
+        lastMethod: undefined,
+      },
+    },
+  });
+
+  assertEquals(await registry.execute("button.run.disable", (action) => void actions.push(action)), true);
+  assertEquals(controller.disabled.peek(), true);
+  assertEquals(await registry.execute("button.run.press", (action) => void actions.push(action)), false);
+  assertEquals(actions.length, 2);
+
+  dispose();
+  assertEquals(registry.list("actions"), []);
+  controller.dispose();
 });
 
 Deno.test("virtualRows exposes source indices for large lists", () => {
@@ -1363,4 +1445,8 @@ function keyPress(key: Key, options: Partial<Omit<KeyPressEvent, "key" | "buffer
     shift: options.shift ?? false,
     buffer: new Uint8Array(),
   };
+}
+
+function commandDisabled(command: { disabled?: boolean | (() => boolean) }): boolean | undefined {
+  return typeof command.disabled === "function" ? command.disabled() : command.disabled;
 }

@@ -51,6 +51,7 @@ export const componentCatalog = [
   ]),
   component("button", "Button", "input", "Clickable and focusable command button.", [
     "component",
+    "controller",
     "keyboard",
     "mouse",
     "themeable",

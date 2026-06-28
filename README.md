@@ -331,6 +331,23 @@ const stopVolumeCommands = bindSliderCommands(app.commands, volume, {
 });
 ```
 
+`ButtonController` extracts activation state from `Button`: it owns the label and disabled signals, tracks press count
+and the last activation method/time, exposes `press()`, `enable()`, `disable()`, and `inspect()`, and can run an
+`onPress` hook without coupling command surfaces to a rendered component. `buttonCommands()` and `bindButtonCommands()`
+expose press, enable, and disable actions for dialogs, toolbars, forms, command palettes, and key bindings:
+
+```ts
+const saveButton = new ButtonController({
+  label: "Save",
+  onPress: (state) => submitForm(state.pressCount),
+});
+
+const stopSaveCommands = bindButtonCommands(app.commands, saveButton, {
+  idPrefix: "form.save",
+  group: "form",
+});
+```
+
 `CheckBoxController` does the same for boolean inputs: it owns the checked signal, exposes `check()`, `uncheck()`,
 `toggle()`, and `inspect()`, and keeps the rendered `CheckBox` focused on presentation. `checkBoxCommands()` and
 `bindCheckBoxCommands()` expose toggle, check, and uncheck actions for settings panes, command palettes, and key

@@ -1,6 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 export * from "./actions.ts";
 export * from "./app.ts";
+export * from "./button_commands.ts";
 export * from "./checkbox_commands.ts";
 export * from "./combobox_commands.ts";
 export * from "./component_commands.ts";
