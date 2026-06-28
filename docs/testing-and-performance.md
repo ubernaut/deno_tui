@@ -72,6 +72,11 @@ operations to command palettes, menus, and keymaps. `createDataQueryPlugin()` pa
 rollback-safe app plugin lifecycle used by runtime profiles and themes. Run `deno task data-query` for a cache-backed
 process query demo.
 
+`createAppPluginDefinitionRegistry()` keeps plugin catalogs testable when apps discover route, command, keymap, runtime,
+theme, or data-query modules dynamically. The registry supports replacement-safe registration, filtered reports, and
+Markdown output, so docs, launcher screens, and marketplace-style settings panes can use one source of truth. Run
+`deno task app-plugin-catalog` for the built-in plugin registry report.
+
 Runtime profiles let apps expose strategy choices as data instead of hard-coded conditionals. A settings pane can show
 `RuntimeProfileRegistry.catalog()`, keep the selected profile in a `RuntimeProfileController`, persist it with
 `bindRuntimeProfileSetting()`, and expose `bindRuntimeProfileCommands()` through command palettes or menus.

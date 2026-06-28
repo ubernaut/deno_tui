@@ -33,6 +33,7 @@ Deno.test("visualization launcher resolves public aliases to deno tasks", () => 
   assertEquals(resolveVisualizationTask("perf"), "benchmark");
   assertEquals(resolveVisualizationTask("exports"), "api-inventory");
   assertEquals(resolveVisualizationTask("widgets"), "component-catalog");
+  assertEquals(resolveVisualizationTask("plugin-catalog"), "app-plugin-catalog");
   assertEquals(resolveVisualizationTask("wizard"), "grwizard");
   assertEquals(resolveVisualizationTask("check"), "health");
   assertEquals(findVisualizationLaunchTarget("system-monitor")?.task, "viz");
@@ -56,6 +57,11 @@ Deno.test("visualization launch catalog filters targets by category tag and sear
     "grwizard",
     "viz",
     "showcase",
+  ]);
+  assertEquals(queryVisualizationLaunchTargets({ tag: "catalog" }).map((entry) => entry.task), [
+    "component-catalog",
+    "app-plugin-catalog",
+    "theme-gallery",
   ]);
   assertEquals(queryVisualizationLaunchTargets({ tag: "theme" }).map((entry) => entry.task), [
     "dashboard",

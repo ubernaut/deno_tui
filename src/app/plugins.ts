@@ -87,6 +87,11 @@ export interface AppPluginCatalogMarkdownOptions<TAction extends Action = Action
   includeSummary?: boolean;
 }
 
+export interface AppPluginDefinitionRegistryInspection extends AppPluginCatalogInspection {
+  ids: string[];
+  anonymous: number;
+}
+
 export function createAppPlugin<TAction extends Action = Action, TRoute extends Route = Route>(
   definition: AppPluginDefinition<TAction, TRoute>,
 ): AppPlugin<TAction, TRoute> {
@@ -218,10 +223,101 @@ export function formatAppPluginCatalogMarkdown<TAction extends Action = Action, 
   return lines.join("\n");
 }
 
+export class AppPluginDefinitionRegistry<TAction extends Action = Action, TRoute extends Route = Route> {
+  readonly #definitions: AppPluginDefinition<TAction, TRoute>[] = [];
+
+  constructor(definitions: readonly AppPluginDefinition<TAction, TRoute>[] = []) {
+    this.registerAll(definitions);
+  }
+
+  register(definition: AppPluginDefinition<TAction, TRoute>): () => void {
+    const id = pluginDefinitionKey(definition);
+    if (id) {
+      this.unregister(id);
+    }
+    this.#definitions.push(definition);
+    return () => {
+      const index = this.#definitions.indexOf(definition);
+      if (index >= 0) {
+        this.#definitions.splice(index, 1);
+      }
+    };
+  }
+
+  registerAll(definitions: Iterable<AppPluginDefinition<TAction, TRoute>>): () => void {
+    const stack = new DisposableStack();
+    try {
+      for (const definition of definitions) {
+        stack.defer(this.register(definition));
+      }
+    } catch (error) {
+      stack.dispose();
+      throw error;
+    }
+    return stack.dispose;
+  }
+
+  unregister(id: string): boolean {
+    const index = this.#definitions.findIndex((definition) => pluginDefinitionKey(definition) === id);
+    if (index < 0) return false;
+    this.#definitions.splice(index, 1);
+    return true;
+  }
+
+  get(id: string): AppPluginDefinition<TAction, TRoute> | undefined {
+    return this.#definitions.find((definition) => pluginDefinitionKey(definition) === id);
+  }
+
+  has(id: string): boolean {
+    return this.get(id) !== undefined;
+  }
+
+  definitions(): AppPluginDefinition<TAction, TRoute>[] {
+    return [...this.#definitions];
+  }
+
+  query(query: AppPluginCatalogQuery = {}): AppPluginDefinitionInspection[] {
+    return queryAppPluginDefinitions(this.#definitions, query);
+  }
+
+  report(query?: AppPluginCatalogQuery): AppPluginCatalogReport {
+    return createAppPluginCatalogReport({ plugins: this.#definitions, query });
+  }
+
+  markdown(options: Omit<AppPluginCatalogMarkdownOptions<TAction, TRoute>, "plugins"> = {}): string {
+    return formatAppPluginCatalogMarkdown({ ...options, plugins: this.#definitions });
+  }
+
+  inspect(): AppPluginDefinitionRegistryInspection {
+    const report = this.report();
+    return {
+      ...report.inspection,
+      ids: this.#definitions.map(pluginDefinitionKey).filter((id): id is string => !!id).sort(),
+      anonymous: this.#definitions.filter((definition) => !pluginDefinitionKey(definition)).length,
+    };
+  }
+
+  clear(): void {
+    this.#definitions.length = 0;
+  }
+}
+
+export function createAppPluginDefinitionRegistry<TAction extends Action = Action, TRoute extends Route = Route>(
+  definitions: readonly AppPluginDefinition<TAction, TRoute>[] = [],
+): AppPluginDefinitionRegistry<TAction, TRoute> {
+  return new AppPluginDefinitionRegistry(definitions);
+}
+
 function normalizePluginRoute<TRoute extends Route>(
   entry: TRoute | AppPluginRoute<TRoute>,
 ): AppPluginRoute<TRoute> {
   return "route" in entry ? entry : { route: entry };
+}
+
+function pluginDefinitionKey<TAction extends Action, TRoute extends Route>(
+  definition: AppPluginDefinition<TAction, TRoute>,
+): string | undefined {
+  return definition.id ?? definition.label;
 }
 
 function matchesPluginQuery(plugin: AppPluginDefinitionInspection, query: AppPluginCatalogQuery): boolean {
