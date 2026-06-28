@@ -90,6 +90,10 @@ Regenerate these terminal snapshots with `deno task screenshots`.
 
 ![Demo gallery terminal screenshot](./docs/screenshots/demo-gallery.svg)
 
+### Theme Gallery
+
+![Theme gallery terminal screenshot](./docs/screenshots/theme-gallery.svg)
+
 ### API Reference
 
 ![API reference terminal screenshot](./docs/screenshots/api-reference.svg)

@@ -3,82 +3,191 @@
   width="1960"
   height="1240"
   viewBox="0 0 1960 1240"
+  class="theme-neon"
   role="img"
   aria-label="Showcase terminal screenshot"
 >
-  <style>svg{background:#06080d}.frame{fill:#0d1117;stroke:#2dd4bf;stroke-width:4}.title{fill:#e6edf3;font:700 36px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.term{fill:#c9d1d9;font:32px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.accent{fill:#67e8f9}.bar{fill:#111827;stroke:#374151}</style>
-  <rect x="56" y="56" width="1848" height="1128" rx="24" class="frame" />
+  <style>svg{background:#06080d}.frame{fill:#0d1117;stroke:var(--border);stroke-width:4}.title{fill:#f8fafc;font:700 36px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.term{fill:#dbeafe;font:32px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.bar{fill:#111827;stroke:#374151}.screen{fill:#090d14;opacity:.91}.glow{filter:drop-shadow(0 0 18px var(--glow))}.plain{fill:var(--fg)}.muted{fill:var(--muted)}.border{fill:var(--border)}.accent{fill:var(--accent)}.success{fill:var(--success)}.warning{fill:var(--warning)}.danger{fill:var(--danger)}.violet{fill:var(--violet)}.pink{fill:var(--pink)}.blue{fill:var(--blue)}.green{fill:var(--green)}.heat{fill:var(--heat)}.surface{fill:var(--surface)}.theme-neon{--fg:#d7fff7;--muted:#77909a;--border:#2dd4bf;--accent:#67e8f9;--success:#a3e635;--warning:#facc15;--danger:#fb7185;--violet:#c084fc;--pink:#f472b6;--blue:#60a5fa;--green:#34d399;--heat:#f97316;--surface:#93c5fd;--glow:#2dd4bf}.theme-exodus{--fg:#f7e8ff;--muted:#9478a8;--border:#a855f7;--accent:#22d3ee;--success:#bef264;--warning:#fbbf24;--danger:#ff4fd8;--violet:#c084fc;--pink:#fb7185;--blue:#38bdf8;--green:#4ade80;--heat:#f97316;--surface:#e879f9;--glow:#ff4fd8}.theme-system{--fg:#dbeafe;--muted:#94a3b8;--border:#38bdf8;--accent:#67e8f9;--success:#22c55e;--warning:#f59e0b;--danger:#ef4444;--violet:#a78bfa;--pink:#f472b6;--blue:#3b82f6;--green:#10b981;--heat:#f97316;--surface:#93c5fd;--glow:#38bdf8}.theme-gallery{--fg:#f8fafc;--muted:#94a3b8;--border:#818cf8;--accent:#f472b6;--success:#34d399;--warning:#fbbf24;--danger:#fb7185;--violet:#c084fc;--pink:#f472b6;--blue:#60a5fa;--green:#4ade80;--heat:#fb923c;--surface:#a5b4fc;--glow:#818cf8}.theme-theme{--fg:#f7effa;--muted:#b8a6c4;--border:#ac7cc8;--accent:#f694d8;--success:#aad68c;--warning:#ffd08b;--danger:#f27d96;--violet:#c084fc;--pink:#f694d8;--blue:#9db7ff;--green:#7be0bb;--heat:#ff9f68;--surface:#ddd0e6;--glow:#f694d8}.theme-docs{--fg:#e5e7eb;--muted:#9ca3af;--border:#64748b;--accent:#93c5fd;--success:#86efac;--warning:#fde68a;--danger:#fca5a5;--violet:#c4b5fd;--pink:#f9a8d4;--blue:#93c5fd;--green:#86efac;--heat:#fdba74;--surface:#cbd5e1;--glow:#93c5fd}</style>
+  <rect x="56" y="56" width="1848" height="1128" rx="24" class="frame glow" />
   <rect x="56" y="56" width="1848" height="88" rx="24" class="bar" />
   <text x="100" y="114" class="title">Showcase</text>
-  <circle cx="1760" cy="100" r="12" class="accent" />
+  <circle cx="1760" cy="100" r="12" fill="var(--success)" />
   <circle cx="1808" cy="100" r="12" fill="#facc15" />
   <circle cx="1856" cy="100" r="12" fill="#fb7185" />
-  <rect x="80" y="144" width="1800" height="1016" rx="16" fill="#090d14" opacity="0.86" />
-  <text
-    x="100"
-    y="212"
-    class="term"
-  >┌─ DENOTUI SHOWCASE ───────────────────────────────────────────────────────────┐</text>
-  <text
-    x="100"
-    y="264"
-    class="term"
-  >│ Widgets     Theme: neon      Route: /overview      Renderer: webgpu-three   │</text>
-  <text
-    x="100"
-    y="316"
-    class="term"
-  >├───────────────┬─────────────────────────────┬──────────────────────────────┤</text>
-  <text
-    x="100"
-    y="368"
-    class="term"
-  >│ Command       │ Component Catalog           │ Three ASCII Studio           │</text>
-  <text
-    x="100"
-    y="420"
-    class="term"
-  >│ Palette       │ 42 widgets / 8 categories   │      ▓▓▓▓▒▒░░                │</text>
-  <text
-    x="100"
-    y="472"
-    class="term"
-  >│ &gt; theme       │ [x] Button       keyboard   │   ░▒▓██████▓▒░              │</text>
-  <text x="100" y="524" class="term">│   renderer    │ [x] DataTable    async      │  ▒██╲╱╲╱╲╱██▒              │</text>
-  <text x="100" y="576" class="term">│   route       │ [x] Tree         selection  │  ▓█╱╲╱╲╱╲╱█▓              │</text>
-  <text
-    x="100"
-    y="628"
-    class="term"
-  >│               │ [x] ToastStack   feedback   │   ░▒▓████▓▒░                │</text>
-  <text
-    x="100"
-    y="680"
-    class="term"
-  >├───────────────┴──────────────┬──────────────┴──────────────────────────────┤</text>
-  <text
-    x="100"
-    y="732"
-    class="term"
-  >│ Metrics                       │ Toasts / Focus / Keymap                    │</text>
-  <text
-    x="100"
-    y="784"
-    class="term"
-  >│ CPU   ███████████░ 72%        │ ✓ command registry synced                  │</text>
-  <text
-    x="100"
-    y="836"
-    class="term"
-  >│ MEM   ███████░░░░░ 48%        │ ✓ focus scope active                       │</text>
-  <text
-    x="100"
-    y="888"
-    class="term"
-  >│ NET   ▁▂▃▅▇▆▄▂▁▃▆▇           │ ✓ plugin lifecycle clean                   │</text>
-  <text
-    x="100"
-    y="940"
-    class="term"
-  >└───────────────────────────────┴─────────────────────────────────────────────┘</text>
+  <rect x="80" y="144" width="1800" height="1016" rx="16" class="screen" />
+  <text x="100" y="212" class="term" xml:space="preserve">
+    <tspan class="border">┌─</tspan>
+    <tspan class="plain">&#160;DENOTUI&#160;SHOWCASE&#160;</tspan>
+    <tspan class="border">───────────────────────────────────────────────────────────┐</tspan>
+  </text>
+  <text x="100" y="264" class="term" xml:space="preserve">
+    <tspan class="border">│</tspan>
+    <tspan class="plain">&#160;Widgets&#160;&#160;&#160;&#160;&#160;</tspan>
+    <tspan class="pink">Theme</tspan>
+    <tspan class="plain">:&#160;</tspan>
+    <tspan class="pink">neon</tspan>
+    <tspan
+      class="plain"
+    >&#160;&#160;&#160;&#160;&#160;&#160;Route:&#160;/overview&#160;&#160;&#160;&#160;&#160;&#160;</tspan>
+    <tspan class="accent">Renderer</tspan>
+    <tspan class="plain">:&#160;webgpu-three&#160;&#160;&#160;</tspan>
+    <tspan class="border">│</tspan>
+  </text>
+  <text x="100" y="316" class="term" xml:space="preserve">
+    <tspan class="border">├───────────────┬─────────────────────────────┬──────────────────────────────┤</tspan>
+  </text>
+  <text x="100" y="368" class="term" xml:space="preserve">
+    <tspan class="border">│</tspan>
+    <tspan class="plain">&#160;Command&#160;&#160;&#160;&#160;&#160;&#160;&#160;</tspan>
+    <tspan class="border">│</tspan>
+    <tspan
+      class="plain"
+    >&#160;Component&#160;Catalog&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;</tspan>
+    <tspan class="border">│</tspan>
+    <tspan class="plain">&#160;Three&#160;</tspan>
+    <tspan class="accent">ASCII</tspan>
+    <tspan class="plain">&#160;Studio&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;</tspan>
+    <tspan class="border">│</tspan>
+  </text>
+  <text x="100" y="420" class="term" xml:space="preserve">
+    <tspan class="border">│</tspan>
+    <tspan class="plain">&#160;Palette&#160;&#160;&#160;&#160;&#160;&#160;&#160;</tspan>
+    <tspan class="border">│</tspan>
+    <tspan class="plain">&#160;42&#160;widgets&#160;/&#160;8&#160;categories&#160;&#160;&#160;</tspan>
+    <tspan class="border">│</tspan>
+    <tspan class="plain">&#160;&#160;&#160;&#160;&#160;&#160;</tspan>
+    <tspan class="heat">▓▓▓▓▒▒░░</tspan>
+    <tspan
+      class="plain"
+    >&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;</tspan>
+    <tspan class="border">│</tspan>
+  </text>
+  <text x="100" y="472" class="term" xml:space="preserve">
+    <tspan class="border">│</tspan>
+    <tspan class="plain">&#160;&gt;&#160;</tspan>
+    <tspan class="pink">theme</tspan>
+    <tspan class="plain">&#160;&#160;&#160;&#160;&#160;&#160;&#160;</tspan>
+    <tspan class="border">│</tspan>
+    <tspan
+      class="plain"
+    >&#160;[x]&#160;Button&#160;&#160;&#160;&#160;&#160;&#160;&#160;keyboard&#160;&#160;&#160;</tspan>
+    <tspan class="border">│</tspan>
+    <tspan class="plain">&#160;&#160;&#160;</tspan>
+    <tspan class="heat">░▒▓██████▓▒░</tspan>
+    <tspan class="plain">&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;</tspan>
+    <tspan class="border">│</tspan>
+  </text>
+  <text x="100" y="524" class="term" xml:space="preserve">
+    <tspan class="border">│</tspan>
+    <tspan class="plain">&#160;&#160;&#160;renderer&#160;&#160;&#160;&#160;</tspan>
+    <tspan class="border">│</tspan>
+    <tspan
+      class="plain"
+    >&#160;[x]&#160;DataTable&#160;&#160;&#160;&#160;async&#160;&#160;&#160;&#160;&#160;&#160;</tspan>
+    <tspan class="border">│</tspan>
+    <tspan class="plain">&#160;&#160;</tspan>
+    <tspan class="heat">▒██</tspan>
+    <tspan class="border">╲╱╲╱╲╱</tspan>
+    <tspan class="heat">██▒</tspan>
+    <tspan class="plain">&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;</tspan>
+    <tspan class="border">│</tspan>
+  </text>
+  <text x="100" y="576" class="term" xml:space="preserve">
+    <tspan class="border">│</tspan>
+    <tspan class="plain">&#160;&#160;&#160;route&#160;&#160;&#160;&#160;&#160;&#160;&#160;</tspan>
+    <tspan class="border">│</tspan>
+    <tspan
+      class="plain"
+    >&#160;[x]&#160;Tree&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;selection&#160;&#160;</tspan>
+    <tspan class="border">│</tspan>
+    <tspan class="plain">&#160;&#160;</tspan>
+    <tspan class="heat">▓█</tspan>
+    <tspan class="border">╱╲╱╲╱╲╱</tspan>
+    <tspan class="heat">█▓</tspan>
+    <tspan class="plain">&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;</tspan>
+    <tspan class="border">│</tspan>
+  </text>
+  <text x="100" y="628" class="term" xml:space="preserve">
+    <tspan class="border">│</tspan>
+    <tspan
+      class="plain"
+    >&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;</tspan>
+    <tspan class="border">│</tspan>
+    <tspan class="plain">&#160;[x]&#160;ToastStack&#160;&#160;&#160;feedback&#160;&#160;&#160;</tspan>
+    <tspan class="border">│</tspan>
+    <tspan class="plain">&#160;&#160;&#160;</tspan>
+    <tspan class="heat">░▒▓████▓▒░</tspan>
+    <tspan
+      class="plain"
+    >&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;</tspan>
+    <tspan class="border">│</tspan>
+  </text>
+  <text x="100" y="680" class="term" xml:space="preserve">
+    <tspan class="border">├───────────────┴──────────────┬──────────────┴──────────────────────────────┤</tspan>
+  </text>
+  <text x="100" y="732" class="term" xml:space="preserve">
+    <tspan class="border">│</tspan>
+    <tspan
+      class="plain"
+    >&#160;Metrics&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;</tspan>
+    <tspan class="border">│</tspan>
+    <tspan
+      class="plain"
+    >&#160;Toasts&#160;/&#160;Focus&#160;/&#160;Keymap&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;</tspan>
+    <tspan class="border">│</tspan>
+  </text>
+  <text x="100" y="784" class="term" xml:space="preserve">
+    <tspan class="border">│</tspan>
+    <tspan class="plain">&#160;</tspan>
+    <tspan class="accent">CPU</tspan>
+    <tspan class="plain">&#160;&#160;&#160;</tspan>
+    <tspan class="heat">███████████░</tspan>
+    <tspan class="plain">&#160;</tspan>
+    <tspan class="blue">72%</tspan>
+    <tspan class="plain">&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;</tspan>
+    <tspan class="border">│</tspan>
+    <tspan class="plain">&#160;</tspan>
+    <tspan class="success">✓</tspan>
+    <tspan
+      class="plain"
+    >&#160;command&#160;registry&#160;synced&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;</tspan>
+    <tspan class="border">│</tspan>
+  </text>
+  <text x="100" y="836" class="term" xml:space="preserve">
+    <tspan class="border">│</tspan>
+    <tspan class="plain">&#160;</tspan>
+    <tspan class="accent">MEM</tspan>
+    <tspan class="plain">&#160;&#160;&#160;</tspan>
+    <tspan class="heat">███████░░░░░</tspan>
+    <tspan class="plain">&#160;</tspan>
+    <tspan class="blue">48%</tspan>
+    <tspan class="plain">&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;</tspan>
+    <tspan class="border">│</tspan>
+    <tspan class="plain">&#160;</tspan>
+    <tspan class="success">✓</tspan>
+    <tspan class="plain">&#160;focus&#160;scope&#160;</tspan>
+    <tspan class="warning">active</tspan>
+    <tspan
+      class="plain"
+    >&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;</tspan>
+    <tspan class="border">│</tspan>
+  </text>
+  <text x="100" y="888" class="term" xml:space="preserve">
+    <tspan class="border">│</tspan>
+    <tspan class="plain">&#160;</tspan>
+    <tspan class="accent">NET</tspan>
+    <tspan class="plain">&#160;&#160;&#160;</tspan>
+    <tspan class="heat">▁▂▃▅▇▆▄▂▁▃▆▇</tspan>
+    <tspan class="plain">&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;</tspan>
+    <tspan class="border">│</tspan>
+    <tspan class="plain">&#160;</tspan>
+    <tspan class="success">✓</tspan>
+    <tspan
+      class="plain"
+    >&#160;plugin&#160;lifecycle&#160;clean&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;</tspan>
+    <tspan class="border">│</tspan>
+  </text>
+  <text x="100" y="940" class="term" xml:space="preserve">
+    <tspan class="border">└───────────────────────────────┴─────────────────────────────────────────────┘</tspan>
+  </text>
 </svg>
