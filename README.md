@@ -358,6 +358,7 @@ tuning.
 
 ```sh
 ./visualization monitor
+./visualization dashboard
 deno task viz
 ```
 
@@ -372,6 +373,8 @@ deno task showcase
 deno task three-ascii
 deno task dashboard
 deno task viz
+deno task capabilities
+deno task benchmark
 ```
 
 ```sh

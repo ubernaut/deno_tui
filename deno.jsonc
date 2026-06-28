@@ -2,6 +2,8 @@
   "tasks": {
     "demo": "deno run --watch --allow-hrtime ./examples/demo.ts",
     "dashboard": "deno run -A ./examples/dashboard.ts",
+    "capabilities": "deno run -A ./scripts/capabilities.ts",
+    "benchmark": "deno run -A ./scripts/benchmark.ts",
     "grwizard": "deno run -A ./app/grwizard.ts",
     "grwizard:check": "deno check ./app/grwizard.ts",
     "showcase": "deno run -A ./app/showcase.ts",
