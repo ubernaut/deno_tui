@@ -4820,7 +4820,7 @@ var menu = new MenuBarController({
 });
 var split = new SplitPaneController({
   direction: "row",
-  ratio: 0.58,
+  ratio: 0.5,
   minFirst: 28,
   minSecond: 28,
   resizeMode: "ratio"
@@ -4960,14 +4960,14 @@ function draw() {
     if (visible.length === 0) {
       write(frame, body.row + 1, body.column + 2, paint("All panels minimized. Press R or click restore."));
       hitTargets.push({ rect: body, hit: { type: "restore" } });
-    } else if (width < 88 || body.height < 18) {
+    } else if (width < 88 || body.height < 18 || visible.length < 4) {
       stackRects(body, visible.length).forEach((rect, index) => renderPanel(frame, visible[index], rect));
     } else {
-      const parts = split.resize(body, 0);
-      const right = splitRects("column", parts.second, 0.54);
-      const bottom = splitRects("row", right.second, 0.5);
-      renderPanel(frame, "inspector", parts.first);
-      renderPanel(frame, "data", right.first);
+      const rows2 = splitRects("column", body, 0.54);
+      const top = split.resize(rows2.first, 0);
+      const bottom = split.resize(rows2.second, 0);
+      renderPanel(frame, "inspector", top.first);
+      renderPanel(frame, "data", top.second);
       renderPanel(frame, "controls", bottom.first);
       renderPanel(frame, "logs", bottom.second);
     }

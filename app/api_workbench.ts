@@ -155,7 +155,7 @@ const menu = new MenuBarController({
 });
 const split = new SplitPaneController({
   direction: "row",
-  ratio: 0.56,
+  ratio: 0.5,
   minFirst: 32,
   minSecond: 32,
   resizeMode: "ratio",
@@ -347,8 +347,10 @@ function renderHeader(frame: string[]): void {
     return selected ? `[${entry.label}]` : ` ${entry.label} `;
   }).join(" ");
   write(frame, 1, 0, paint(" Themes ", { fg: t.background, bg: t.border, bold: true }));
-  const help = width >= 86
+  const help = width >= 132
     ? "Tab focus  M min  F max  R restore  [/] resize  T theme  Q quit"
+    : width >= 96
+    ? "Tab  M/F/R  T theme  Q quit"
     : width >= 56
     ? "Tab focus  T theme  Q quit"
     : "T theme  Q quit";
@@ -397,17 +399,17 @@ function renderWorkspace(frame: string[]): void {
   }
 
   const stacked = bounds.width < 92 || bounds.height < 18;
-  if (stacked) {
+  if (stacked || visible.length < 4) {
     for (const [index, id] of visible.entries()) {
       renderWindow(frame, id, stackRects(bounds, visible.length)[index]!);
     }
   } else {
     split.setDirection("row");
-    const rects = split.rects(bounds);
-    renderWindow(frame, "inspector", rects.first);
-    const right = splitPane(rects.second, "column", 0.54);
-    renderWindow(frame, "data", right.first);
-    const bottom = splitPane(right.second, "row", 0.5);
+    const rows = splitPane(bounds, "column", 0.54);
+    const top = split.rects(rows.first);
+    const bottom = split.rects(rows.second);
+    renderWindow(frame, "inspector", top.first);
+    renderWindow(frame, "data", top.second);
     renderWindow(frame, "controls", bottom.first);
     renderWindow(frame, "logs", bottom.second);
   }
