@@ -1,6 +1,8 @@
 import { assertEquals } from "./deps.ts";
 import { AsyncResourceParamsError, createAsyncResource } from "../src/runtime/resource.ts";
+import { bindResourceParams } from "../src/runtime/resource_bindings.ts";
 import { AsyncScheduler } from "../src/runtime/scheduler.ts";
+import { Signal } from "../src/signals/mod.ts";
 
 Deno.test("AsyncResource loads data into signal state", async () => {
   const resource = createAsyncResource({
@@ -130,6 +132,79 @@ Deno.test("AsyncResource cancels stale queued scheduler work and applies priorit
   assertEquals(ran, ["5"]);
 });
 
+Deno.test("bindResourceParams loads resources from signal params", async () => {
+  const loaded: number[] = [];
+  const params = new Signal(2);
+  const resource = createAsyncResource<number, number>({
+    loader: ({ params }) => {
+      loaded.push(params);
+      return params * 2;
+    },
+  });
+
+  const dispose = bindResourceParams(resource, params);
+  await settle();
+
+  assertEquals(resource.state.peek().data, 4);
+  assertEquals(loaded, [2]);
+
+  params.value = 7;
+  await settle();
+
+  assertEquals(resource.state.peek().data, 14);
+  assertEquals(loaded, [2, 7]);
+
+  dispose();
+  params.value = 9;
+  await settle();
+  assertEquals(loaded, [2, 7]);
+});
+
+Deno.test("bindResourceParams debounces rapid param changes", async () => {
+  const loaded: number[] = [];
+  const params = new Signal(0);
+  const resource = createAsyncResource<number, number>({
+    loader: ({ params }) => {
+      loaded.push(params);
+      return params;
+    },
+  });
+
+  bindResourceParams(resource, params, { initialLoad: false, debounceMs: 5 });
+  params.value = 1;
+  params.value = 2;
+  params.value = 3;
+
+  await delay(15);
+  await settle();
+
+  assertEquals(loaded, [3]);
+  assertEquals(resource.state.peek().data, 3);
+});
+
+Deno.test("bindResourceParams can abort active resources on dispose", async () => {
+  let aborted = false;
+  const release = deferred<void>();
+  const params = new Signal("first");
+  const resource = createAsyncResource<string, string>({
+    loader: async ({ params, signal }) => {
+      signal.addEventListener("abort", () => {
+        aborted = true;
+        release.resolve();
+      });
+      await release.promise;
+      return params;
+    },
+  });
+
+  const dispose = bindResourceParams(resource, params, { abortOnDispose: true });
+  await settle();
+  dispose();
+  await release.promise;
+
+  assertEquals(aborted, true);
+});
+
 function deferred<T>(): {
   promise: Promise<T>;
   resolve: (value: T | PromiseLike<T>) => void;
@@ -139,4 +214,12 @@ function deferred<T>(): {
     resolve = done;
   });
   return { promise, resolve };
+}
+
+function settle(): Promise<void> {
+  return delay(0);
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }

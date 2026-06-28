@@ -485,7 +485,7 @@ Optional high-performance APIs are surfaced through `src/runtime/mod.ts`:
 
 - `detectRuntimeCapabilities()`
 - `AsyncScheduler`
-- `AsyncResource` / `createAsyncResource()`
+- `AsyncResource` / `createAsyncResource()` / `bindResourceParams()`
 - `runDataPipeline()` / `LatestDataPipeline` / `workerTransform()`
 - `WorkerPool`
 - `MemoryStore`
@@ -522,6 +522,17 @@ const metrics = createAsyncResource({
 
 await metrics.load();
 if (metrics.state.value.status === "success") render(metrics.state.value.data);
+```
+
+`bindResourceParams()` connects a params signal to a resource, with optional debounce for search boxes, filters, route
+params, and other fast-changing UI state:
+
+```ts
+const query = new Signal("");
+const stopMetrics = bindResourceParams(metrics, query, {
+  debounceMs: 100,
+  abortOnDispose: true,
+});
 ```
 
 `runDataPipeline()` composes expensive row transforms behind an optional scheduler. `workerTransform()` lets any stage
