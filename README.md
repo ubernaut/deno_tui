@@ -707,6 +707,7 @@ This fork exports lightweight app primitives for larger TUIs:
 - `FocusManager`
 - `FocusScope`
 - `KeymapRegistry`
+- `MouseInteractionRouter`
 - `SelectionController` and selection helpers
 - `SettingsController`
 - viewport helpers such as `viewportWindow()`, `viewportOffsetBy()`, and `viewportThumb()`
@@ -728,6 +729,24 @@ const stopFocusCommands = bindFocusCommands(app.commands, app.focus, {
     { id: "content", label: "Content", item: scrollArea },
   ],
 });
+```
+
+Use `createMouseInteractionRouter()` and `bindMouseInteractions()` when a screen needs to route decoded terminal mouse
+events by rectangle instead of wiring handlers directly into every component. Targets can expose dynamic bounds,
+disabled predicates, z-index ordering, drag capture, scroll handlers, local coordinates, payloads, and inspectable
+metadata:
+
+```ts
+const mouse = createMouseInteractionRouter();
+mouse.register({
+  id: "splitter",
+  bounds: () => ({ column: splitColumn.value, row: 0, width: 1, height: viewportRows.value }),
+  zIndex: 20,
+  onDrag: (event) => {
+    splitColumn.value += event.movementX;
+  },
+});
+const stopMouse = bindMouseInteractions(tui, mouse);
 ```
 
 Use `ActionBus.subscribeType()` or `app.onActionType()` to handle one action family at a time while preserving typed

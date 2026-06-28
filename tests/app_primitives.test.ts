@@ -21,6 +21,7 @@ import type { Command, CommandActionFactory } from "../src/app/commands.ts";
 import { createDisposableStack, DisposableStack, disposeReverse } from "../src/app/disposables.ts";
 import { bindHistoryCommands, bindRouteHistory, historyCommands } from "../src/app/history_bindings.ts";
 import { HistoryStack } from "../src/app/history.ts";
+import { bindMouseInteractions, createMouseInteractionRouter } from "../src/app/mouse_bindings.ts";
 import {
   createAppPlugin,
   createAppPluginCatalogReport,
@@ -74,7 +75,13 @@ import { createRuntimeProfileController } from "../src/runtime/profiles.ts";
 import { createRuntimeRendererBackendController } from "../src/runtime/renderer_backends.ts";
 import { MemoryStore } from "../src/runtime/storage.ts";
 import { Signal } from "../src/signals/mod.ts";
-import { createTestKeyPress, TestKeyPressTarget } from "../src/testing/mod.ts";
+import {
+  createTestKeyPress,
+  createTestMousePress,
+  createTestMouseScroll,
+  TestKeyPressTarget,
+  TestMouseTarget,
+} from "../src/testing/mod.ts";
 import { createThemeLayerStack, createThemeProvider, createThemeRegistry } from "../src/theme.ts";
 import { createThemeEnginePipeline } from "../src/theme_engine_pipeline.ts";
 import { createThemeWorkspace } from "../src/theme_workspace.ts";
@@ -854,6 +861,144 @@ Deno.test("command surface search ranks labels ids keywords and key bindings", (
     "route.home",
     "route.system-monitor",
   ]);
+});
+
+Deno.test("MouseInteractionRouter dispatches by z-order and local coordinates", async () => {
+  const router = createMouseInteractionRouter();
+  const seen: string[] = [];
+  router.register({
+    id: "back",
+    bounds: { column: 0, row: 0, width: 10, height: 5 },
+    onPress: (_event, context) => {
+      seen.push(`${context.id}:${context.localX},${context.localY}`);
+    },
+  });
+  router.register({
+    id: "front",
+    bounds: { column: 2, row: 1, width: 4, height: 3 },
+    zIndex: 10,
+    onPress: (_event, context) => {
+      seen.push(`${context.id}:${context.localX},${context.localY}`);
+    },
+  });
+
+  assertEquals(await router.dispatch(createTestMousePress({ x: 3, y: 2 })), {
+    handled: true,
+    targetId: "front",
+    kind: "press",
+    captured: false,
+  });
+  assertEquals(await router.dispatch(createTestMousePress({ x: 8, y: 2 })), {
+    handled: true,
+    targetId: "back",
+    kind: "press",
+    captured: false,
+  });
+  assertEquals(seen, ["front:1,1", "back:8,2"]);
+});
+
+Deno.test("MouseInteractionRouter captures drag until release", async () => {
+  const router = createMouseInteractionRouter();
+  const seen: string[] = [];
+  router.register({
+    id: "drag",
+    bounds: { column: 0, row: 0, width: 3, height: 3 },
+    onPress: () => {
+      seen.push("press");
+    },
+    onDrag: (_event, context) => {
+      seen.push(`drag:${context.captured}:${context.localX}`);
+    },
+    onRelease: (_event, context) => {
+      seen.push(`release:${context.captured}`);
+    },
+  });
+  router.register({
+    id: "outside",
+    bounds: { column: 10, row: 0, width: 3, height: 3 },
+    zIndex: 10,
+    onDrag: () => {
+      seen.push("outside-drag");
+    },
+  });
+
+  await router.dispatch(createTestMousePress({ x: 1, y: 1 }));
+  assertEquals(router.captured(), "drag");
+  assertEquals(await router.dispatch(createTestMousePress({ x: 11, y: 1, drag: true, movementX: 10 })), {
+    handled: true,
+    targetId: "drag",
+    kind: "drag",
+    captured: true,
+  });
+  await router.dispatch(createTestMousePress({ x: 11, y: 1, release: true, button: undefined }));
+  assertEquals(router.captured(), undefined);
+  assertEquals(seen, ["press", "drag:true:11", "release:true"]);
+});
+
+Deno.test("MouseInteractionRouter respects disabled targets dynamic bounds and scroll handlers", async () => {
+  const router = createMouseInteractionRouter();
+  let disabled = true;
+  let column = 0;
+  const seen: string[] = [];
+  router.register({
+    id: "scroll",
+    bounds: () => ({ column, row: 0, width: 4, height: 4 }),
+    disabled: () => disabled,
+    onScroll: (event, context) => {
+      seen.push(`${context.id}:${event.scroll}:${context.localX}`);
+    },
+  });
+
+  assertEquals(await router.dispatch(createTestMouseScroll(1, { x: 1, y: 1 })), {
+    handled: false,
+    kind: "scroll",
+    captured: false,
+  });
+  disabled = false;
+  assertEquals(await router.dispatch(createTestMouseScroll(-1, { x: 1, y: 1 })), {
+    handled: true,
+    targetId: "scroll",
+    kind: "scroll",
+    captured: false,
+  });
+  column = 4;
+  assertEquals(await router.dispatch(createTestMouseScroll(1, { x: 5, y: 1 })), {
+    handled: true,
+    targetId: "scroll",
+    kind: "scroll",
+    captured: false,
+  });
+  assertEquals(seen, ["scroll:-1:1", "scroll:1:1"]);
+  assertEquals(router.inspect()[0].bounds, { column: 4, row: 0, width: 4, height: 4 });
+});
+
+Deno.test("bindMouseInteractions routes target mouse events and unsubscribes", async () => {
+  const router = createMouseInteractionRouter();
+  const target = new TestMouseTarget();
+  const seen: string[] = [];
+  router.register({
+    id: "button",
+    bounds: { column: 0, row: 0, width: 5, height: 2 },
+    onPress: () => {
+      seen.push("press");
+    },
+    onScroll: (event) => {
+      seen.push(`scroll:${event.scroll}`);
+    },
+  });
+
+  const dispose = bindMouseInteractions(target, router);
+  assertEquals(target.listenerCount(), 2);
+  target.press({ x: 1, y: 1 });
+  target.scroll(-1, { x: 1, y: 1 });
+  await Promise.resolve();
+  assertEquals(seen, ["press", "scroll:-1"]);
+
+  dispose();
+  assertEquals(target.listenerCount(), 0);
+  target.press({ x: 1, y: 1 });
+  await Promise.resolve();
+  assertEquals(seen, ["press", "scroll:-1"]);
 });
 
 Deno.test("executeCommandSurfaceItem dispatches selected command items", async () => {

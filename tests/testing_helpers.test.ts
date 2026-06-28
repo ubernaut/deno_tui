@@ -7,6 +7,7 @@ import {
   createTestCanvas,
   createTestFocusable,
   createTestKeyPress,
+  createTestMousePress,
   createTestMouseScroll,
   createTestStdout,
   formatTerminalSnapshotDiff,
@@ -14,6 +15,7 @@ import {
   normalizeTerminalSnapshot,
   stripAnsi,
   TestKeyPressTarget,
+  TestMouseTarget,
 } from "../src/testing/mod.ts";
 
 Deno.test("stripAnsi removes terminal control sequences", () => {
@@ -101,6 +103,7 @@ Deno.test("testing input helpers create deterministic events and focusables", ()
     meta: false,
     buffer: new Uint8Array(),
   });
+  assertEquals(createTestMousePress({ x: 2, y: 3, button: 1 }).button, 1);
   assertEquals(createTestMouseScroll(1).scroll, 1);
   assertEquals(createTestFocusable("focused").state.peek(), "focused");
 });
@@ -117,5 +120,26 @@ Deno.test("TestKeyPressTarget emits and unsubscribes key listeners", () => {
   target.key("return");
 
   assertEquals(seen, ["tab"]);
+  assertEquals(target.listenerCount(), 0);
+});
+
+Deno.test("TestMouseTarget emits and unsubscribes mouse listeners", () => {
+  const target = new TestMouseTarget();
+  const seen: string[] = [];
+  const stopPress = target.on("mousePress", (event) => {
+    seen.push(`press:${event.x}`);
+  });
+  const stopScroll = target.on("mouseScroll", (event) => {
+    seen.push(`scroll:${event.scroll}`);
+  });
+
+  target.press({ x: 4 });
+  target.scroll(-1);
+  stopPress();
+  stopScroll();
+  target.press({ x: 9 });
+  target.scroll(1);
+
+  assertEquals(seen, ["press:4", "scroll:-1"]);
   assertEquals(target.listenerCount(), 0);
 });
