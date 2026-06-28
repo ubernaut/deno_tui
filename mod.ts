@@ -21,3 +21,5 @@ export * from "./src/three_ascii/mod.ts";
 export * from "./src/utils/mod.ts";
 
 export * from "./src/input_reader/mod.ts";
+
+export * from "./src/app/mod.ts";

@@ -2,6 +2,7 @@
 export * from "./box.ts";
 export * from "./button.ts";
 export * from "./checkbox.ts";
+export * from "./command_palette.ts";
 export * from "./combobox.ts";
 export * from "./frame.ts";
 export * from "./input.ts";
@@ -17,3 +18,5 @@ export * from "./tabs.ts";
 export * from "./text.ts";
 export * from "./textbox.ts";
 export * from "./three_ascii.ts";
+export * from "./toast.ts";
+export * from "./tree.ts";
