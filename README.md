@@ -66,7 +66,8 @@ renderer lab, and demo suite:
 
 ## Screenshots
 
-Regenerate these terminal snapshots with `deno task screenshots`.
+These are real command captures regenerated with `deno task screenshots`: interactive apps are replayed from a
+fixed-size PTY session, and report-style demos are captured from stdout.
 
 ### Showcase
 
@@ -76,11 +77,9 @@ Regenerate these terminal snapshots with `deno task screenshots`.
 
 ![Neon Exodus suite terminal screenshot](./docs/screenshots/neon-exodus.svg)
 
-![Neon Exodus focus mode terminal screenshot](./docs/screenshots/neon-exodus-focus.svg)
+### Three ASCII
 
-![Neon Exodus web ordering terminal screenshot](./docs/screenshots/neon-exodus-web.svg)
-
-![Neon Exodus Acerola studio terminal screenshot](./docs/screenshots/neon-exodus-studio.svg)
+![Three ASCII terminal screenshot](./docs/screenshots/three-ascii.svg)
 
 ### System Monitor
 
