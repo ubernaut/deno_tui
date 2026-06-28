@@ -27,6 +27,7 @@ import {
 } from "../src/app/settings_bindings.ts";
 import { themeCommands, themeLayerCommands, themeSelectionCommands } from "../src/app/theme_commands.ts";
 import type { ThemeCommandAction } from "../src/app/theme_commands.ts";
+import { createThemePlugin } from "../src/app/theme_plugin.ts";
 import { KeymapRegistry } from "../src/keymap.ts";
 import { SplitPaneController } from "../src/layout/mod.ts";
 import { MemoryStore } from "../src/runtime/storage.ts";
@@ -1511,6 +1512,97 @@ Deno.test("theme command adapters toggle runtime theme layers", async () => {
   assertEquals(registry.enabled(registry.get("theme.layer.disable.contrast")!), true);
 
   layers.dispose();
+});
+
+Deno.test("createThemePlugin installs provider commands settings and lifecycle cleanup", async () => {
+  const store = new MemoryStore<unknown>();
+  await store.set("prefs.theme", "terminal");
+  await store.set("prefs.theme-layers", JSON.stringify(["contrast"]));
+  const settings = new SettingsController({ store, namespace: "prefs" });
+  const app = createApp<ThemeCommandAction>({
+    tui: { destroy() {} } as unknown as Tui,
+  });
+  const actions: ThemeCommandAction[] = [];
+  app.onAction((action) => void actions.push(action));
+
+  const plugin = createThemePlugin<ThemeCommandAction>({
+    settings,
+    mirrorKeymap: true,
+    providerOptions: {
+      registry: createThemeRegistry([
+        { id: "plain", label: "Plain", palette: "plain" },
+        { id: "terminal", label: "Terminal", palette: "terminal" },
+      ]),
+      layers: [
+        {
+          id: "density",
+          label: "Compact Density",
+          options: { components: { Button: { base: { base: "foreground" } } } },
+        },
+        {
+          id: "contrast",
+          label: "High Contrast",
+          enabled: false,
+          options: { components: { Button: { base: { focused: "warning" } } } },
+        },
+      ],
+    },
+    persistLayers: {
+      serialize: (value) => JSON.stringify(value),
+      deserialize: (value) => JSON.parse(value as string),
+    },
+  });
+
+  assertEquals(plugin.inspect().themePersistenceEnabled, true);
+  assertEquals(plugin.inspect().layerPersistenceEnabled, true);
+  const dispose = app.use(plugin);
+
+  await settings.ready();
+  assertEquals(plugin.provider.activeId.value, "terminal");
+  assertEquals(plugin.provider.layers.activeIds(), ["contrast"]);
+  assertEquals(app.commands.has("theme.set.plain"), true);
+  assertEquals(app.commands.has("theme.layer.toggle.density"), true);
+  assertEquals(app.plugins(), [{ id: "theme", label: "Theme Engine" }]);
+
+  assertEquals(await app.executeCommand("theme.set.plain"), true);
+  assertEquals(actions, [{ type: "theme.changed", payload: { id: "plain", previousId: "terminal" } }]);
+  assertEquals(plugin.provider.activeId.peek(), "plain");
+
+  assertEquals(await app.executeCommand("theme.layer.toggle.density"), true);
+  assertEquals(plugin.provider.layers.activeIds(), ["density", "contrast"]);
+  await settings.flush();
+  assertEquals(await store.get("prefs.theme"), "plain");
+  assertEquals(await store.get("prefs.theme-layers"), JSON.stringify(["density", "contrast"]));
+
+  dispose();
+  assertEquals(app.commands.has("theme.set.plain"), false);
+  assertEquals(app.commands.has("theme.layer.toggle.density"), false);
+  assertEquals(app.plugins(), []);
+  app.destroy();
+  plugin.provider.layers.dispose();
+});
+
+Deno.test("createThemePlugin rolls back installed surfaces when custom install fails", () => {
+  const app = createApp<ThemeCommandAction>({ tui: { destroy() {} } as unknown as Tui });
+  const plugin = createThemePlugin<ThemeCommandAction>({
+    providerOptions: {
+      registry: createThemeRegistry([{ id: "plain", palette: "plain" }]),
+    },
+    install() {
+      throw new Error("theme boom");
+    },
+  });
+
+  try {
+    app.use(plugin);
+    throw new Error("expected theme plugin install to throw");
+  } catch (error) {
+    assertEquals(error instanceof Error && error.message, "theme boom");
+  }
+
+  assertEquals(app.commands.has("theme.set.plain"), false);
+  assertEquals(app.plugins(), []);
+  app.destroy();
 });
 
 Deno.test("bindSplitPaneSetting restores and persists layout state", async () => {

@@ -17,3 +17,4 @@ export * from "./settings_bindings.ts";
 export * from "./settings.ts";
 export * from "./surface_bindings.ts";
 export * from "./theme_commands.ts";
+export * from "./theme_plugin.ts";

@@ -735,6 +735,7 @@ import {
   createRuntimeStore,
   createThemeEngine,
   createThemeLayerStack,
+  createThemePlugin,
   createThemeProvider,
   createThemeRegistry,
   diffThemeEngines,
@@ -826,6 +827,20 @@ const stopBinding = bindComponentTheme(button, provider, "Button", {
 const commandRegistry = new CommandRegistry();
 commandRegistry.registerAll(themeCommands(provider));
 const themeSurface = createCommandSurface(commandRegistry);
+
+const themePlugin = createThemePlugin({
+  provider,
+  settings,
+  persistTheme: { key: "theme" },
+  persistLayers: {
+    key: "theme-layers",
+    serialize: (ids) => JSON.stringify(ids),
+    deserialize: (value) => JSON.parse(value as string),
+  },
+  commands: { group: "theme" },
+  mirrorKeymap: true,
+});
+app.use(themePlugin);
 ```
 
 `ThemeRegistry.engine(id, overrides)` composes a named pack with per-app overrides, while `ThemeProvider.component()`
@@ -854,7 +869,10 @@ diagnostics pass for unknown token references, missing component parents, and in
 registered. `themeTokenNames` and `themeStates` expose the stable engine vocabulary for editors, schema generators,
 inspectors, and design tooling. `diffThemeEngines()` previews changed semantic tokens and resolved component states
 between two engines, which makes it practical to build theme review panels, snapshot tests, and migration reports around
-real rendered output instead of raw object comparison.
+real rendered output instead of raw object comparison. `createThemePlugin()` is the app-level installer for the same
+engine layer: it owns or accepts a `ThemeProvider`, registers theme and layer commands, optionally mirrors command
+bindings into key help, and connects the active pack and active layers to `SettingsController` persistence with one
+disposable plugin.
 
 ## Runtime Capabilities
 
