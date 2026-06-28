@@ -6,6 +6,7 @@ export * from "./checkbox.ts";
 export * from "./command_palette.ts";
 export * from "./combobox.ts";
 export * from "./context_menu.ts";
+export * from "./data_table.ts";
 export * from "./frame.ts";
 export * from "./gauge.ts";
 export * from "./input.ts";
