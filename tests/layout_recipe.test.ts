@@ -1,6 +1,8 @@
 import { assertEquals } from "./deps.ts";
 import {
   createLayoutRecipeController,
+  formatLayoutRecipeMarkdown,
+  inspectLayoutRecipe,
   layoutRecipeSlots,
   resolveLayoutRecipe,
   type ResponsiveLayoutRecipe,
@@ -87,6 +89,54 @@ Deno.test("resolveLayoutRecipe omits hidden and undersized slots", () => {
 
 Deno.test("layoutRecipeSlots lists visible leaf ids once", () => {
   assertEquals(layoutRecipeSlots(recipe.layouts.wide!), ["header", "nav", "main", "details"]);
+});
+
+Deno.test("inspectLayoutRecipe reports breakpoints slots and missing layouts", () => {
+  const inspection = inspectLayoutRecipe({
+    ...recipe,
+    breakpoints: [...recipe.breakpoints, { id: "tall", minHeight: 40 }],
+  });
+
+  assertEquals(inspection, {
+    breakpoints: [
+      {
+        id: "compact",
+        minWidth: undefined,
+        minHeight: undefined,
+        hasLayout: true,
+        slots: ["header", "footer", "main"],
+      },
+      { id: "wide", minWidth: 100, minHeight: undefined, hasLayout: true, slots: ["header", "nav", "main", "details"] },
+      { id: "tall", minWidth: undefined, minHeight: 40, hasLayout: false, slots: [] },
+    ],
+    fallback: "compact",
+    layoutIds: ["compact", "wide"],
+    slotIds: ["details", "footer", "header", "main", "nav"],
+    missingLayouts: ["tall"],
+  });
+});
+
+Deno.test("formatLayoutRecipeMarkdown renders breakpoint coverage", () => {
+  assertEquals(
+    formatLayoutRecipeMarkdown({
+      ...recipe,
+      breakpoints: [...recipe.breakpoints, { id: "tall", minHeight: 40 }],
+    }, { title: "Shell Layout" }),
+    [
+      "# Shell Layout",
+      "",
+      "Breakpoints: 3",
+      "Layouts: compact, wide",
+      "Slots: details, footer, header, main, nav",
+      "Missing layouts: tall",
+      "",
+      "| Breakpoint | Min size | Layout | Slots |",
+      "| --- | --- | --- | --- |",
+      "| compact | default | yes | header, footer, main |",
+      "| wide | w>=100 | yes | header, nav, main, details |",
+      "| tall | h>=40 | no | none |",
+    ].join("\n"),
+  );
 });
 
 Deno.test("resolveLayoutRecipe falls back when breakpoint layout is missing", () => {

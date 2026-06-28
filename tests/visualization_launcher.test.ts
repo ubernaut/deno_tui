@@ -8,6 +8,7 @@ import {
 Deno.test("visualization launcher resolves public aliases to deno tasks", () => {
   assertEquals(resolveVisualizationTask(), "showcase");
   assertEquals(resolveVisualizationTask("polygons"), "three-ascii");
+  assertEquals(resolveVisualizationTask("recipe"), "layout-recipe");
   assertEquals(resolveVisualizationTask("monitor"), "viz");
   assertEquals(resolveVisualizationTask("worker"), "worker-demo");
   assertEquals(resolveVisualizationTask("actions"), "action-middleware");

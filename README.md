@@ -642,6 +642,8 @@ Responsive helpers are also exported for common app shell layout:
 - `resolveLayoutRecipe()`
 - `createLayoutRecipeController()`
 - `layoutRecipeSlots()`
+- `inspectLayoutRecipe()`
+- `formatLayoutRecipeMarkdown()`
 - `splitPaneRects()`
 - `resizeSplitPane()`
 - `resizeSplitPaneRatio()`
@@ -667,6 +669,8 @@ const shell = resolveLayoutRecipe(tui.rectangle.value, {
 });
 
 const mainRect = shell.rects.main;
+const shellInspection = inspectLayoutRecipe(recipe);
+const shellMarkdown = formatLayoutRecipeMarkdown(recipe);
 ```
 
 Use `createLayoutRecipeController()` when the app shell should react to a viewport signal and expose derived slot
@@ -681,6 +685,10 @@ app.onDispose(() => {
   shell.dispose();
 });
 ```
+
+Run `deno task layout-recipe`, `deno task layout-recipe -- --json`, or `./visualization layout-recipe` to inspect the
+sample responsive shell recipe as Markdown or JSON. The report includes breakpoint coverage, missing breakpoint layouts,
+and visible slot ids per layout so app shells can debug responsive behavior before components are mounted.
 
 ## App Primitives
 
@@ -1663,21 +1671,22 @@ const preset = findAsciiDemoPreset("mixed-best");
 
 ## Examples
 
-| File                            | Description                                                  |
-| ------------------------------- | ------------------------------------------------------------ |
-| `examples/demo.ts`              | Kitchen-sink demo of all components                          |
-| `examples/calculator.ts`        | Functional calculator built with `GridLayout`                |
-| `examples/layout.ts`            | Grid layout with draggable, colored buttons                  |
-| `examples/app_shell.ts`         | App primitives, settings-backed routes, commands, and toasts |
-| `examples/dashboard.ts`         | Dashboard widgets, semantic theme tokens, and key help       |
-| `examples/theme_manifest.ts`    | Serializable theme manifest compiler and diff demo           |
-| `examples/theme_engines.ts`     | Theme engine factory registry and prewarm demo               |
-| `examples/worker_pool.ts`       | WorkerPool concurrency example                               |
-| `examples/action_middleware.ts` | Action middleware and plugin pipeline example                |
-| `examples/cached_pipeline.ts`   | Cached scheduler-backed data pipeline example                |
-| `examples/three_ascii.ts`       | Interactive 3D ASCII renderer powered by three.js            |
-| `app/showcase.ts`               | Full Neon Exodus-style widget and visualization showcase     |
-| `app/main.ts`                   | Live system monitor dashboard with selectable panels         |
+| File                               | Description                                                  |
+| ---------------------------------- | ------------------------------------------------------------ |
+| `examples/demo.ts`                 | Kitchen-sink demo of all components                          |
+| `examples/calculator.ts`           | Functional calculator built with `GridLayout`                |
+| `examples/layout.ts`               | Grid layout with draggable, colored buttons                  |
+| `examples/layout_recipe_report.ts` | Responsive layout recipe report example                      |
+| `examples/app_shell.ts`            | App primitives, settings-backed routes, commands, and toasts |
+| `examples/dashboard.ts`            | Dashboard widgets, semantic theme tokens, and key help       |
+| `examples/theme_manifest.ts`       | Serializable theme manifest compiler and diff demo           |
+| `examples/theme_engines.ts`        | Theme engine factory registry and prewarm demo               |
+| `examples/worker_pool.ts`          | WorkerPool concurrency example                               |
+| `examples/action_middleware.ts`    | Action middleware and plugin pipeline example                |
+| `examples/cached_pipeline.ts`      | Cached scheduler-backed data pipeline example                |
+| `examples/three_ascii.ts`          | Interactive 3D ASCII renderer powered by three.js            |
+| `app/showcase.ts`                  | Full Neon Exodus-style widget and visualization showcase     |
+| `app/main.ts`                      | Live system monitor dashboard with selectable panels         |
 
 Run the theme manifest and engine factory demos with:
 
@@ -1711,6 +1720,7 @@ tuning.
 ./visualization monitor
 ./visualization dashboard
 ./visualization app-shell
+./visualization layout-recipe
 ./visualization worker
 ./visualization actions
 ./visualization pipeline
@@ -1728,14 +1738,15 @@ for 3D panels. Added 3D visualization IDs include `three-lattice`, `three-atfiel
 `three-mapslab`, `three-solenoid`, and `three-ascii-studio`. The same launcher also exposes runtime and tooling demos:
 `worker` for abortable worker-pool concurrency, `actions` for middleware-based action dispatch, `pipeline` for cached
 scheduler-backed transforms, `capabilities` for platform feature detection, `benchmark` for performance smoke checks,
-`api-inventory` for public export graph inspection, `components` for widget catalog reports, `grwizard` for the
-responsive GPU/model wizard, and `health` for the contributor gate.
+`api-inventory` for public export graph inspection, `components` for widget catalog reports, `layout-recipe` for
+responsive recipe inspection, `grwizard` for the responsive GPU/model wizard, and `health` for the contributor gate.
 
 Direct Deno tasks are also available:
 
 ```sh
 deno task showcase
 deno task app-shell
+deno task layout-recipe
 deno task three-ascii
 deno task dashboard
 deno task viz
@@ -1753,6 +1764,7 @@ deno task cached-pipeline
 deno run --watch --allow-hrtime examples/demo.ts
 deno run --allow-hrtime examples/calculator.ts
 deno run -A examples/app_shell.ts
+deno run -A examples/layout_recipe_report.ts
 deno run -A examples/dashboard.ts
 deno run -A examples/worker_pool.ts
 deno run -A examples/action_middleware.ts

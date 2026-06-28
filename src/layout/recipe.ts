@@ -47,6 +47,30 @@ export interface ResolvedLayoutRecipe<T extends string = string> {
   rects: Partial<Record<T, Rectangle>>;
 }
 
+/** Static metadata for one responsive layout recipe breakpoint. */
+export interface LayoutRecipeBreakpointInspection<T extends string = string> {
+  id: string;
+  minWidth?: number;
+  minHeight?: number;
+  hasLayout: boolean;
+  slots: T[];
+}
+
+/** Static metadata for a responsive layout recipe. */
+export interface LayoutRecipeInspection<T extends string = string> {
+  breakpoints: LayoutRecipeBreakpointInspection<T>[];
+  fallback?: string;
+  layoutIds: string[];
+  slotIds: T[];
+  missingLayouts: string[];
+}
+
+/** Options for formatting a responsive layout recipe as Markdown. */
+export interface LayoutRecipeMarkdownOptions {
+  title?: string;
+  includeSummary?: boolean;
+}
+
 export interface LayoutRecipeControllerInspection<T extends string = string> extends ResolvedLayoutRecipe<T> {
   slots: T[];
 }
@@ -122,6 +146,70 @@ export function layoutRecipeSlots<T extends string>(region: LayoutRegion<T>): T[
   return [...slots];
 }
 
+/** Inspects breakpoint coverage and visible slot ids for a responsive layout recipe. */
+export function inspectLayoutRecipe<T extends string>(
+  recipe: ResponsiveLayoutRecipe<T>,
+): LayoutRecipeInspection<T> {
+  const layoutIds = Object.keys(recipe.layouts).sort();
+  const breakpoints = recipe.breakpoints.map((breakpoint) => {
+    const layout = recipe.layouts[breakpoint.id];
+    return {
+      id: breakpoint.id,
+      minWidth: breakpoint.minWidth,
+      minHeight: breakpoint.minHeight,
+      hasLayout: layout !== undefined,
+      slots: layout ? layoutRecipeSlots(layout) : [],
+    };
+  });
+  const slotIds = uniqueSlots(layoutIds.flatMap((id) => layoutRecipeSlots(recipe.layouts[id]!)));
+  return {
+    breakpoints,
+    fallback: recipe.fallback,
+    layoutIds,
+    slotIds,
+    missingLayouts: recipe.breakpoints
+      .map((breakpoint) => breakpoint.id)
+      .filter((id) => recipe.layouts[id] === undefined),
+  };
+}
+
+/** Formats responsive layout recipe metadata as a Markdown table. */
+export function formatLayoutRecipeMarkdown<T extends string>(
+  recipe: ResponsiveLayoutRecipe<T>,
+  options: LayoutRecipeMarkdownOptions = {},
+): string {
+  const inspection = inspectLayoutRecipe(recipe);
+  const lines: string[] = [];
+  lines.push(`# ${options.title ?? "Layout Recipe"}`);
+  lines.push("");
+
+  if (options.includeSummary ?? true) {
+    lines.push(`Breakpoints: ${inspection.breakpoints.length}`);
+    lines.push(`Layouts: ${inspection.layoutIds.join(", ") || "none"}`);
+    lines.push(`Slots: ${inspection.slotIds.join(", ") || "none"}`);
+    if (inspection.missingLayouts.length > 0) {
+      lines.push(`Missing layouts: ${inspection.missingLayouts.join(", ")}`);
+    }
+    lines.push("");
+  }
+
+  lines.push("| Breakpoint | Min size | Layout | Slots |");
+  lines.push("| --- | --- | --- | --- |");
+  for (const breakpoint of inspection.breakpoints) {
+    const minSize = [
+      breakpoint.minWidth === undefined ? undefined : `w>=${breakpoint.minWidth}`,
+      breakpoint.minHeight === undefined ? undefined : `h>=${breakpoint.minHeight}`,
+    ].filter((value): value is string => value !== undefined).join(" ");
+    lines.push(
+      `| ${breakpoint.id} | ${minSize || "default"} | ${breakpoint.hasLayout ? "yes" : "no"} | ${
+        breakpoint.slots.join(", ") || "none"
+      } |`,
+    );
+  }
+
+  return lines.join("\n");
+}
+
 export function createLayoutRecipeController<T extends string>(
   bounds: Rectangle | Signal<Rectangle>,
   recipe: ResponsiveLayoutRecipe<T>,
@@ -174,6 +262,10 @@ function visitRegion<T extends string>(
 
 function firstLayout<T extends string>(layouts: Record<string, LayoutRegion<T>>): LayoutRegion<T> | undefined {
   return Object.values(layouts)[0];
+}
+
+function uniqueSlots<T extends string>(slots: readonly T[]): T[] {
+  return [...new Set(slots)].sort();
 }
 
 function mainSize(bounds: Rectangle, direction: LayoutRegionDirection): number {

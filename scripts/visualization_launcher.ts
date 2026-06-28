@@ -26,6 +26,11 @@ export const visualizationLaunchTargets: readonly VisualizationLaunchTarget[] = 
     description: "app primitives, command palette, routes, and toasts demo",
   },
   {
+    task: "layout-recipe",
+    aliases: ["layout-recipe", "layout-report", "recipe"],
+    description: "responsive layout recipe report",
+  },
+  {
     task: "viz",
     aliases: ["monitor", "system-monitor", "system", "viz"],
     description: "system monitor visualization dashboard",
