@@ -15,6 +15,7 @@ import {
 } from "../src/app/command_bindings.ts";
 import { CommandRegistry } from "../src/app/commands.ts";
 import type { Command, CommandActionFactory } from "../src/app/commands.ts";
+import { createDisposableStack, DisposableStack, disposeReverse } from "../src/app/disposables.ts";
 import { bindHistoryCommands, bindRouteHistory, historyCommands } from "../src/app/history_bindings.ts";
 import { HistoryStack } from "../src/app/history.ts";
 import {
@@ -88,6 +89,41 @@ Deno.test("ActionBus can subscribe to a single action type", async () => {
   await bus.dispatch({ type: "append", payload: "b" });
 
   assertEquals(seen, ["a"]);
+});
+
+Deno.test("DisposableStack defers idempotent reverse-order cleanup", () => {
+  const events: string[] = [];
+  const stack = new DisposableStack();
+
+  const disposeSecond = stack.defer(() => events.push("second"));
+  stack.defer(undefined);
+  stack.defer(() => events.push("third"));
+  stack.defer(() => events.push("fourth"));
+  disposeSecond();
+
+  assertEquals(stack.inspect(), { disposed: false, size: 2 });
+  stack.dispose();
+  stack.dispose();
+
+  assertEquals(events, ["second", "fourth", "third"]);
+  assertEquals(stack.inspect(), { disposed: true, size: 0 });
+});
+
+Deno.test("DisposableStack immediately runs deferred cleanup after disposal", () => {
+  const events: string[] = [];
+  const stack = createDisposableStack([() => events.push("first")]);
+
+  stack.dispose();
+  const disposeLate = stack.defer(() => events.push("late"));
+  disposeLate();
+
+  disposeReverse([
+    () => events.push("a"),
+    undefined,
+    () => events.push("b"),
+  ]);
+
+  assertEquals(events, ["first", "late", "b", "a"]);
 });
 
 Deno.test("ActionBus middleware can transform and stop actions", async () => {
@@ -1137,6 +1173,35 @@ Deno.test("TuiApp installs plugin groups and cleans them up in reverse order", (
   });
   app.destroy();
   assertEquals(events, ["install:a", "install:b", "dispose:b", "dispose:a", "install:c", "dispose:c"]);
+});
+
+Deno.test("TuiApp rolls back plugin groups when a later install fails", () => {
+  const app = createApp({ tui: { destroy() {} } as unknown as Tui });
+  const events: string[] = [];
+
+  try {
+    app.useAll([
+      () => {
+        events.push("install:a");
+        return () => events.push("dispose:a");
+      },
+      () => {
+        events.push("install:b");
+        return () => events.push("dispose:b");
+      },
+      () => {
+        events.push("install:c");
+        throw new Error("plugin boom");
+      },
+    ]);
+    throw new Error("expected app.useAll to throw");
+  } catch (error) {
+    assertEquals(error instanceof Error && error.message, "plugin boom");
+  }
+
+  assertEquals(events, ["install:a", "install:b", "install:c", "dispose:b", "dispose:a"]);
+  assertEquals(app.inspect().disposers, 0);
+  app.destroy();
 });
 
 Deno.test("createAppPlugin installs declarative app surfaces with teardown", async () => {

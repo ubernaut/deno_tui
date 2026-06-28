@@ -771,10 +771,10 @@ app.onDispose(bindModalFocus(app.tui, paletteVisible, app.focus, [commandPalette
 Use `createAppPlugin()`, `app.use()`, or `app.useAll()` to install reusable app plugins. A plugin can declaratively
 register routes, commands, action middleware, key bindings, and focus items, then run an optional installer for theme
 providers, runtime resources, async data, or other module-level state. Generated disposers remove declarative
-registrations in reverse order and keep teardown tied to the app lifecycle. Identified plugins are tracked by
-`app.plugins()`, `app.pluginIds()`, and `app.hasPlugin(id)`, so larger apps can inspect active modules and avoid
-duplicate installs. Passing `{ replace: true }` to `app.use(plugin, options)` swaps an existing identified plugin before
-installing the replacement:
+registrations in reverse order, roll back partial installs, and keep teardown tied to the app lifecycle. Identified
+plugins are tracked by `app.plugins()`, `app.pluginIds()`, and `app.hasPlugin(id)`, so larger apps can inspect active
+modules and avoid duplicate installs. Passing `{ replace: true }` to `app.use(plugin, options)` swaps an existing
+identified plugin before installing the replacement:
 
 ```ts
 const settingsPluginDefinition = {
@@ -805,6 +805,17 @@ const settingsPlugin = createAppPlugin(settingsPluginDefinition);
 const stopSettings = app.use(settingsPlugin);
 
 const activePlugins = app.plugins();
+```
+
+`DisposableStack`, `createDisposableStack()`, and `disposeReverse()` are exported for plugin authors that need the same
+predictable cleanup primitive used by command registries, keymaps, form fields, app plugin groups, and theme plugins:
+
+```ts
+const lifecycle = createDisposableStack();
+lifecycle.defer(app.commands.registerAll(commands));
+lifecycle.defer(app.keymap.registerAll(keys));
+
+return lifecycle.dispose;
 ```
 
 `createAppPluginCatalogReport()`, `queryAppPluginDefinitions()`, and `formatAppPluginCatalogMarkdown()` turn plugin
@@ -1111,8 +1122,8 @@ Use `createTheme()` for semantic tokens, `createThemeEngine()` for built-in pale
 packs, or `ThemeProvider` for runtime theme selection. This fork treats theming as an engine layer, not just a bag of
 component props: it adds `composeThemeOptions()`, `composeStyles()`, component inheritance, token-backed style
 pipelines, serializable ANSI theme manifests, app-level provider cycling, runtime theme layers, optional async
-persistence, `ThemeEngine.extend()`, and `ThemeEngine.inspect()` so larger apps can layer reusable theme packs without
-mutating a base engine:
+persistence, lifecycle-safe theme plugins, `ThemeEngine.extend()`, and `ThemeEngine.inspect()` so larger apps can layer
+reusable theme packs without mutating a base engine:
 
 ```ts
 import {
@@ -1402,10 +1413,11 @@ palette engines with stable ids, inspect available token coverage, replace palet
 `ThemeProvider`, and `ThemeEngineFactory` also accept custom palette objects for white-label packs and plugin-provided
 themes. `createThemePlugin()` is the app-level installer for the same engine layer: it owns or accepts a
 `ThemeProvider`, registers theme and layer commands, optionally mirrors command bindings into key help, and connects the
-active pack and active layers to `SettingsController` persistence with one disposable plugin. `ThemeEngineCache` and
-`ThemeProviderCache` are opt-in runtime accelerators for redraw-heavy apps: they memoize component themes and resolved
-state styles, expose hit/miss inspection, and the provider cache automatically invalidates when theme packs or layers
-change.
+active pack and active layers to `SettingsController` persistence with one disposable plugin. It uses the same
+`DisposableStack` lifecycle path as app plugins, so command registration, keymap mirroring, settings persistence, and
+custom theme engine setup roll back together if any step fails. `ThemeEngineCache` and `ThemeProviderCache` are opt-in
+runtime accelerators for redraw-heavy apps: they memoize component themes and resolved state styles, expose hit/miss
+inspection, and the provider cache automatically invalidates when theme packs or layers change.
 
 ## Runtime Capabilities
 

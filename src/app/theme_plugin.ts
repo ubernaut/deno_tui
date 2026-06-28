@@ -4,6 +4,7 @@ import type { Action } from "./actions.ts";
 import type { AppPlugin, AppPluginDisposer, TuiApp } from "./app.ts";
 import { bindCommandKeymap, type CommandKeymapBindingOptions } from "./command_bindings.ts";
 import type { Command } from "./commands.ts";
+import { DisposableStack } from "./disposables.ts";
 import type { SettingsController } from "./settings.ts";
 import {
   bindThemeLayerSetting,
@@ -64,7 +65,7 @@ export function createThemePlugin<TAction extends Action = ThemeCommandAction, T
     label,
     provider,
     install(app) {
-      const disposers: Array<() => void> = [];
+      const stack = new DisposableStack();
       let themeSetting: SettingBinding<string, unknown> | undefined;
       let layerSetting: SettingBinding<readonly string[], unknown> | undefined;
 
@@ -76,41 +77,42 @@ export function createThemePlugin<TAction extends Action = ThemeCommandAction, T
           if (persistTheme) {
             const binding = bindThemeSetting<unknown>(provider, options.settings, settingOptions(persistTheme));
             themeSetting = binding;
-            disposers.push(binding.dispose);
+            stack.defer(binding.dispose);
           }
 
           if (persistLayers) {
             const binding = bindThemeLayerSetting<unknown>(provider, options.settings, settingOptions(persistLayers));
             layerSetting = binding;
-            disposers.push(binding.dispose);
+            stack.defer(binding.dispose);
           }
         }
 
         if (options.commands ?? true) {
           const commandOptions = commandOptionsFrom(options.commands);
-          disposers.push(
+          stack.defer(
             app.commands.registerAll(themeCommands(provider, commandOptions) as unknown as Command<TAction>[]),
           );
           if (options.mirrorKeymap) {
-            disposers.push(
+            stack.defer(
               bindCommandKeymap(app.commands, app.keymap, keymapOptionsFrom(options.mirrorKeymap, commandOptions)),
             );
           }
         }
 
-        const customDisposer = options.install?.({
-          app: app as unknown as TuiApp<Action, Route>,
-          provider,
-          themeSetting,
-          layerSetting,
-        });
-        if (customDisposer) disposers.push(customDisposer);
+        stack.defer(
+          options.install?.({
+            app: app as unknown as TuiApp<Action, Route>,
+            provider,
+            themeSetting,
+            layerSetting,
+          }),
+        );
       } catch (error) {
-        disposeReverse(disposers);
+        stack.dispose();
         throw error;
       }
 
-      return () => disposeReverse(disposers);
+      return stack.dispose;
     },
     inspect() {
       return {
@@ -141,10 +143,4 @@ function keymapOptionsFrom(
 
 function settingOptions<TOptions>(options: true | TOptions): TOptions {
   return options === true ? {} as TOptions : options;
-}
-
-function disposeReverse(disposers: Array<() => void>): void {
-  for (const dispose of [...disposers].reverse()) {
-    dispose();
-  }
 }

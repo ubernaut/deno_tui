@@ -1,6 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { bindingId, type KeyBinding } from "../keymap.ts";
 import type { Action } from "./actions.ts";
+import { DisposableStack } from "./disposables.ts";
 
 export type CommandActionFactory<TAction extends Action = Action> = (
   command: Command<TAction>,
@@ -61,23 +62,17 @@ export class CommandRegistry<TAction extends Action = Action> {
   }
 
   registerAll(commands: Iterable<Command<TAction>>): () => void {
-    const disposers: Array<() => void> = [];
+    const stack = new DisposableStack();
     try {
       for (const command of commands) {
-        disposers.push(this.register(command));
+        stack.defer(this.register(command));
       }
     } catch (error) {
-      for (const dispose of [...disposers].reverse()) {
-        dispose();
-      }
+      stack.dispose();
       throw error;
     }
 
-    return () => {
-      for (const dispose of [...disposers].reverse()) {
-        dispose();
-      }
-    };
+    return stack.dispose;
   }
 
   unregister(id: string): void {

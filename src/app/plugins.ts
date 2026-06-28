@@ -4,6 +4,7 @@ import { bindingId, type KeyBinding } from "../keymap.ts";
 import type { Action, ActionMiddleware } from "./actions.ts";
 import type { AppPlugin, AppPluginDisposer, TuiApp } from "./app.ts";
 import type { Command } from "./commands.ts";
+import { DisposableStack } from "./disposables.ts";
 import type { Route, RouteRegisterOptions, RouteUnregisterOptions } from "./router.ts";
 
 export interface AppPluginRoute<TRoute extends Route = Route> {
@@ -83,38 +84,37 @@ export function createAppPlugin<TAction extends Action = Action, TRoute extends 
     id: definition.id,
     label: definition.label,
     install(app) {
-      const disposers: Array<() => void> = [];
+      const stack = new DisposableStack();
       try {
         for (const entry of definition.routes ?? []) {
           const routeEntry = normalizePluginRoute(entry);
           app.routes.register(routeEntry.route, routeEntry.options);
-          disposers.push(() => app.routes.unregister(routeEntry.route.id, routeEntry.unregisterOptions));
+          stack.defer(() => app.routes.unregister(routeEntry.route.id, routeEntry.unregisterOptions));
         }
 
         if (definition.commands?.length) {
-          disposers.push(app.commands.registerAll(definition.commands));
+          stack.defer(app.commands.registerAll(definition.commands));
         }
 
         for (const middleware of definition.actionMiddleware ?? []) {
-          disposers.push(app.useActionMiddleware(middleware));
+          stack.defer(app.useActionMiddleware(middleware));
         }
 
         if (definition.keyBindings?.length) {
-          disposers.push(app.keymap.registerAll(definition.keyBindings));
+          stack.defer(app.keymap.registerAll(definition.keyBindings));
         }
 
         if (definition.focusItems?.length) {
-          disposers.push(app.focus.registerAll(definition.focusItems));
+          stack.defer(app.focus.registerAll(definition.focusItems));
         }
 
-        const customDisposer = definition.install?.(app);
-        if (customDisposer) disposers.push(customDisposer);
+        stack.defer(definition.install?.(app));
       } catch (error) {
-        disposeReverse(disposers);
+        stack.dispose();
         throw error;
       }
 
-      return () => disposeReverse(disposers);
+      return stack.dispose;
     },
   };
 }
@@ -200,12 +200,6 @@ function normalizePluginRoute<TRoute extends Route>(
   entry: TRoute | AppPluginRoute<TRoute>,
 ): AppPluginRoute<TRoute> {
   return "route" in entry ? entry : { route: entry };
-}
-
-function disposeReverse(disposers: Array<() => void>): void {
-  for (const dispose of [...disposers].reverse()) {
-    dispose();
-  }
 }
 
 function matchesPluginQuery(plugin: AppPluginDefinitionInspection, query: AppPluginCatalogQuery): boolean {

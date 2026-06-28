@@ -10,6 +10,7 @@ import {
   type CommandKeymapBindingOptions,
 } from "./command_bindings.ts";
 import { CommandRegistry } from "./commands.ts";
+import { DisposableStack } from "./disposables.ts";
 import { type Route, RouteManager } from "./router.ts";
 
 export interface TuiAppOptions<TRoute extends Route = Route> {
@@ -143,22 +144,16 @@ export class TuiApp<TAction extends Action = Action, TRoute extends Route = Rout
     plugins: Iterable<AppPluginInstaller<TAction, TRoute>>,
     options: AppPluginUseOptions = {},
   ): () => void {
-    const disposers: Array<() => void> = [];
+    const stack = new DisposableStack();
     try {
       for (const plugin of plugins) {
-        disposers.push(this.installPlugin(plugin, options));
+        stack.defer(this.installPlugin(plugin, options));
       }
     } catch (error) {
-      for (const disposer of [...disposers].reverse()) {
-        disposer();
-      }
+      stack.dispose();
       throw error;
     }
-    return this.onDispose(() => {
-      for (const disposer of [...disposers].reverse()) {
-        disposer();
-      }
-    });
+    return this.onDispose(stack.dispose);
   }
 
   hasPlugin(id: string): boolean {

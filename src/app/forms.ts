@@ -1,5 +1,6 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { Signal } from "../signals/mod.ts";
+import { DisposableStack } from "./disposables.ts";
 
 export type FormValues = object;
 export type FieldName<TValues extends FormValues> = keyof TValues & string;
@@ -73,23 +74,17 @@ export class FormController<TValues extends FormValues = FormValues> {
   }
 
   registerAll(fields: Iterable<FormField<unknown, TValues>>): () => void {
-    const disposers: Array<() => void> = [];
+    const stack = new DisposableStack();
     try {
       for (const field of fields) {
-        disposers.push(this.register(field));
+        stack.defer(this.register(field));
       }
     } catch (error) {
-      for (const dispose of [...disposers].reverse()) {
-        dispose();
-      }
+      stack.dispose();
       throw error;
     }
 
-    return () => {
-      for (const dispose of [...disposers].reverse()) {
-        dispose();
-      }
-    };
+    return stack.dispose;
   }
 
   unregister(name: FieldName<TValues>): void {

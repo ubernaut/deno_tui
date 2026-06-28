@@ -1,5 +1,6 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { Component } from "./component.ts";
+import { DisposableStack } from "./app/disposables.ts";
 import type { KeyPressEvent } from "./input_reader/types.ts";
 
 export interface Focusable {
@@ -25,16 +26,12 @@ export class FocusManager {
   }
 
   registerAll(components: Iterable<Focusable>): () => void {
-    const disposers: Array<() => void> = [];
+    const stack = new DisposableStack();
     for (const component of components) {
-      disposers.push(this.register(component));
+      stack.defer(this.register(component));
     }
 
-    return () => {
-      for (const dispose of [...disposers].reverse()) {
-        dispose();
-      }
-    };
+    return stack.dispose;
   }
 
   unregister(component: Focusable): void {

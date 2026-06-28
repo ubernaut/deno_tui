@@ -1,4 +1,6 @@
 // Copyright 2023 Im-Beast. MIT license.
+import { DisposableStack } from "./app/disposables.ts";
+
 export interface KeyBinding {
   key: string;
   description: string;
@@ -31,23 +33,17 @@ export class KeymapRegistry {
   }
 
   registerAll(bindings: Iterable<KeyBinding>): () => void {
-    const disposers: Array<() => void> = [];
+    const stack = new DisposableStack();
     try {
       for (const binding of bindings) {
-        disposers.push(this.register(binding));
+        stack.defer(this.register(binding));
       }
     } catch (error) {
-      for (const dispose of [...disposers].reverse()) {
-        dispose();
-      }
+      stack.dispose();
       throw error;
     }
 
-    return () => {
-      for (const dispose of [...disposers].reverse()) {
-        dispose();
-      }
-    };
+    return stack.dispose;
   }
 
   unregister(binding: Pick<KeyBinding, "key" | "ctrl" | "meta" | "shift">): void {

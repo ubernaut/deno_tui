@@ -8,6 +8,7 @@ export * from "./component_commands.ts";
 export * from "./command_bindings.ts";
 export * from "./commands.ts";
 export * from "./data_table_commands.ts";
+export * from "./disposables.ts";
 export * from "./form_bindings.ts";
 export * from "./form_commands.ts";
 export * from "./focus_commands.ts";
