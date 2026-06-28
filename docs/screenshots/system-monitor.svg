@@ -1,0 +1,76 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="980"
+  height="620"
+  viewBox="0 0 980 620"
+  role="img"
+  aria-label="System Monitor terminal screenshot"
+>
+  <style>svg{background:#06080d}.frame{fill:#0d1117;stroke:#2dd4bf;stroke-width:2}.title{fill:#e6edf3;font:700 18px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.term{fill:#c9d1d9;font:16px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.accent{fill:#67e8f9}.bar{fill:#111827;stroke:#374151}</style>
+  <rect x="28" y="28" width="924" height="564" rx="12" class="frame" />
+  <rect x="28" y="28" width="924" height="44" rx="12" class="bar" />
+  <text x="50" y="57" class="title">System Monitor</text>
+  <circle cx="880" cy="50" r="6" class="accent" />
+  <circle cx="904" cy="50" r="6" fill="#facc15" />
+  <circle cx="928" cy="50" r="6" fill="#fb7185" />
+  <rect x="40" y="72" width="900" height="508" rx="8" fill="#090d14" opacity="0.86" />
+  <text
+    x="50"
+    y="106"
+    class="term"
+  >┌─ SYSTEM MONITOR ───────────────────────────── F4 options ─ F9 layout ───────┐</text>
+  <text
+    x="50"
+    y="132"
+    class="term"
+  >│ host deno-lab        runtime balanced        ascii mixed        60 fps       │</text>
+  <text
+    x="50"
+    y="158"
+    class="term"
+  >├────────────────────────────┬────────────────────────────┬──────────────────┤</text>
+  <text
+    x="50"
+    y="184"
+    class="term"
+  >│ CPU PRESSURE               │ MEMORY                     │ PROCESS TABLE    │</text>
+  <text
+    x="50"
+    y="210"
+    class="term"
+  >│ cores 16                   │ used 18.6G / 64G           │ PID   CPU  RSS   │</text>
+  <text
+    x="50"
+    y="236"
+    class="term"
+  >│ ████████████░░░░ 71%       │ ███████░░░░░░░ 29%         │ 1842  32%  1.2G  │</text>
+  <text x="50" y="262" class="term">│ ▁▃▄▆▇█▆▅▃▂▃▅▇▆▂           │ cache 8.2G                 │ 1910  14%  728M  │</text>
+  <text
+    x="50"
+    y="288"
+    class="term"
+  >├────────────────────────────┴────────────────────────────┴──────────────────┤</text>
+  <text
+    x="50"
+    y="314"
+    class="term"
+  >│ THREE ASCII: solenoid                                                       │</text>
+  <text
+    x="50"
+    y="340"
+    class="term"
+  >│               ░░▒▒▓▓████▓▓▒▒░░                                              │</text>
+  <text x="50" y="366" class="term">│          ░▒▓██╲╱╲╱╲╱╲╱╲╱██▓▒░                                             │</text>
+  <text x="50" y="392" class="term">│       ░▒▓█╲╱╲╱╲╱╲╱╲╱╲╱╲╱█▓▒░                                             │</text>
+  <text x="50" y="418" class="term">│          ░▒▓██╱╲╱╲╱╲╱╲╱██▓▒░                                             │</text>
+  <text
+    x="50"
+    y="444"
+    class="term"
+  >│               ░░▒▒▓▓████▓▓▒▒░░                                              │</text>
+  <text
+    x="50"
+    y="470"
+    class="term"
+  >└──────────────────────────────────────────────────────────────────────────────┘</text>
+</svg>

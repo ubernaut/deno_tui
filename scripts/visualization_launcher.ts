@@ -228,6 +228,13 @@ export const visualizationLaunchTargets: readonly VisualizationLaunchTarget[] = 
     tags: ["app", "runtime", "plugins", "catalog"],
   },
   {
+    task: "demo-gallery",
+    aliases: ["gallery", "demo-gallery", "tour"],
+    description: "capability tour and demo gallery report",
+    category: "report",
+    tags: ["demos", "catalog", "app"],
+  },
+  {
     task: "grwizard",
     aliases: ["grwizard", "wizard"],
     description: "responsive GPU/model wizard demo",

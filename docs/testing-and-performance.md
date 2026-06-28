@@ -118,12 +118,14 @@ deno task api-inventory
 deno task api-inventory -- --json
 deno task api-inventory -- --check --quiet --fail-duplicates --min-doc-coverage=0.25
 deno task api-reference > docs/api-reference.md
+deno task screenshots
 ```
 
 The inventory reports crawled modules, re-export declarations, exported symbol counts, missing local targets, and
 duplicate public symbol names. The contributor health gate runs the quiet check with duplicate failure enabled and an
 25% documentation coverage baseline that can be raised as public JSDoc coverage improves. The generated
-`docs/api-reference.md` file expands that inventory into a complete public module and symbol reference.
+`docs/api-reference.md` file expands that inventory into a complete public module and symbol reference. The screenshot
+task regenerates the README's deterministic SVG terminal snapshots under `docs/screenshots/`.
 
 Run the worker integration path with permissions:
 

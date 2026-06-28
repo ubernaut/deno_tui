@@ -63,6 +63,16 @@ renderer lab, and demo suite:
 - **Theme engine focus** — semantic tokens, palette presets, named theme packs, runtime providers, component variants,
   composition helpers, and inspection APIs produce normal `Theme` objects while keeping app-level styling reusable.
 
+## Screenshots
+
+Regenerate these terminal snapshots with `deno task screenshots`.
+
+| Showcase                                                                 | System Monitor                                                               |
+| ------------------------------------------------------------------------ | ---------------------------------------------------------------------------- |
+| ![Showcase terminal screenshot](./docs/screenshots/showcase.svg)         | ![System monitor terminal screenshot](./docs/screenshots/system-monitor.svg) |
+| Demo Gallery                                                             | API Reference                                                                |
+| ![Demo gallery terminal screenshot](./docs/screenshots/demo-gallery.svg) | ![API reference terminal screenshot](./docs/screenshots/api-reference.svg)   |
+
 ## Features
 
 - **Reactive by default** — UI updates automatically via a built-in signals system (`Signal`, `Computed`, `Effect`)
@@ -2150,6 +2160,9 @@ const preset = findAsciiDemoPreset("mixed-best");
 | `examples/cached_pipeline.ts`       | Cached scheduler-backed data pipeline example                |
 | `examples/data_query.ts`            | Cached async query controller example                        |
 | `examples/three_ascii.ts`           | Interactive 3D ASCII renderer powered by three.js            |
+| `examples/app_plugin_catalog.ts`    | App plugin catalog and Markdown report example               |
+| `examples/adopter_workbench.ts`     | Integrated adopter report across app/runtime/theme/data APIs |
+| `examples/demo_gallery.ts`          | Capability tour across launchers, widgets, renderers, themes |
 | `app/showcase.ts`                   | Full Neon Exodus-style widget and visualization showcase     |
 | `app/main.ts`                       | Live system monitor dashboard with selectable panels         |
 
@@ -2211,6 +2224,7 @@ tuning.
 ./visualization components
 ./visualization plugins
 ./visualization adopter
+./visualization gallery
 ./visualization grwizard
 ./visualization health
 deno task viz
@@ -2228,9 +2242,10 @@ scheduler-backed transforms, `theme-manifest` for serializable theme packs, `the
 lifecycle inspection, `capabilities` for platform feature detection, `runtime-workloads` for scheduler and worker-pool
 pressure inspection, `benchmark` for performance smoke checks, `api-inventory` for public export graph inspection,
 `components` for widget catalog reports, `plugins` for app plugin definition reports, `adopter` for an integrated
-terminal/runtime/plugin/theme/data workbench report, `layout-recipe` for responsive recipe inspection, `grwizard` for
-the responsive GPU/model wizard, and `health` for the contributor gate. The launcher metadata is also exported from
-`scripts/visualization_launcher.ts` as a queryable catalog: `queryVisualizationLaunchTargets()`,
+terminal/runtime/plugin/theme/data workbench report, `gallery` for a compact tour across launchers, widgets, renderers,
+themes, plugins, runtime capabilities, and terminal capabilities, `layout-recipe` for responsive recipe inspection,
+`grwizard` for the responsive GPU/model wizard, and `health` for the contributor gate. The launcher metadata is also
+exported from `scripts/visualization_launcher.ts` as a queryable catalog: `queryVisualizationLaunchTargets()`,
 `createVisualizationLaunchReport()`, `inspectVisualizationLaunchTargets()`, and `formatVisualizationLaunchMarkdown()`
 provide the same structured target list for custom launchers, docs pages, and CI reports without duplicating aliases or
 descriptions. Benchmark runs print per-case timings plus an aggregate summary; `deno task benchmark -- --list` prints
@@ -2266,6 +2281,8 @@ deno task api-inventory
 deno task component-catalog
 deno task app-plugin-catalog
 deno task adopter-workbench
+deno task demo-gallery
+deno task screenshots
 deno task health
 deno task worker-demo
 deno task runtime-workloads

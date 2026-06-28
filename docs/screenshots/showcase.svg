@@ -1,0 +1,76 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="980"
+  height="620"
+  viewBox="0 0 980 620"
+  role="img"
+  aria-label="Showcase terminal screenshot"
+>
+  <style>svg{background:#06080d}.frame{fill:#0d1117;stroke:#2dd4bf;stroke-width:2}.title{fill:#e6edf3;font:700 18px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.term{fill:#c9d1d9;font:16px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.accent{fill:#67e8f9}.bar{fill:#111827;stroke:#374151}</style>
+  <rect x="28" y="28" width="924" height="564" rx="12" class="frame" />
+  <rect x="28" y="28" width="924" height="44" rx="12" class="bar" />
+  <text x="50" y="57" class="title">Showcase</text>
+  <circle cx="880" cy="50" r="6" class="accent" />
+  <circle cx="904" cy="50" r="6" fill="#facc15" />
+  <circle cx="928" cy="50" r="6" fill="#fb7185" />
+  <rect x="40" y="72" width="900" height="508" rx="8" fill="#090d14" opacity="0.86" />
+  <text
+    x="50"
+    y="106"
+    class="term"
+  >┌─ DENOTUI SHOWCASE ───────────────────────────────────────────────────────────┐</text>
+  <text
+    x="50"
+    y="132"
+    class="term"
+  >│ Widgets     Theme: neon      Route: /overview      Renderer: webgpu-three   │</text>
+  <text
+    x="50"
+    y="158"
+    class="term"
+  >├───────────────┬─────────────────────────────┬──────────────────────────────┤</text>
+  <text
+    x="50"
+    y="184"
+    class="term"
+  >│ Command       │ Component Catalog           │ Three ASCII Studio           │</text>
+  <text
+    x="50"
+    y="210"
+    class="term"
+  >│ Palette       │ 42 widgets / 8 categories   │      ▓▓▓▓▒▒░░                │</text>
+  <text
+    x="50"
+    y="236"
+    class="term"
+  >│ &gt; theme       │ [x] Button       keyboard   │   ░▒▓██████▓▒░              │</text>
+  <text x="50" y="262" class="term">│   renderer    │ [x] DataTable    async      │  ▒██╲╱╲╱╲╱██▒              │</text>
+  <text x="50" y="288" class="term">│   route       │ [x] Tree         selection  │  ▓█╱╲╱╲╱╲╱█▓              │</text>
+  <text x="50" y="314" class="term">│               │ [x] ToastStack   feedback   │   ░▒▓████▓▒░                │</text>
+  <text
+    x="50"
+    y="340"
+    class="term"
+  >├───────────────┴──────────────┬──────────────┴──────────────────────────────┤</text>
+  <text
+    x="50"
+    y="366"
+    class="term"
+  >│ Metrics                       │ Toasts / Focus / Keymap                    │</text>
+  <text
+    x="50"
+    y="392"
+    class="term"
+  >│ CPU   ███████████░ 72%        │ ✓ command registry synced                  │</text>
+  <text
+    x="50"
+    y="418"
+    class="term"
+  >│ MEM   ███████░░░░░ 48%        │ ✓ focus scope active                       │</text>
+  <text x="50" y="444" class="term">│ NET   ▁▂▃▅▇▆▄▂▁▃▆▇           │ ✓ plugin lifecycle clean                   │</text>
+  <text
+    x="50"
+    y="470"
+    class="term"
+  >└───────────────────────────────┴─────────────────────────────────────────────┘</text>
+</svg>

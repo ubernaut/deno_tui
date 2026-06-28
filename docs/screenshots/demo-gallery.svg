@@ -1,0 +1,43 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="980"
+  height="620"
+  viewBox="0 0 980 620"
+  role="img"
+  aria-label="Demo Gallery terminal screenshot"
+>
+  <style>svg{background:#06080d}.frame{fill:#0d1117;stroke:#2dd4bf;stroke-width:2}.title{fill:#e6edf3;font:700 18px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.term{fill:#c9d1d9;font:16px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.accent{fill:#67e8f9}.bar{fill:#111827;stroke:#374151}</style>
+  <rect x="28" y="28" width="924" height="564" rx="12" class="frame" />
+  <rect x="28" y="28" width="924" height="44" rx="12" class="bar" />
+  <text x="50" y="57" class="title">Demo Gallery</text>
+  <circle cx="880" cy="50" r="6" class="accent" />
+  <circle cx="904" cy="50" r="6" fill="#facc15" />
+  <circle cx="928" cy="50" r="6" fill="#fb7185" />
+  <rect x="40" y="72" width="900" height="508" rx="8" fill="#090d14" opacity="0.86" />
+  <text x="50" y="106" class="term"># Demo Gallery</text>
+  <text x="50" y="132" class="term"></text>
+  <text x="50" y="158" class="term">Launch targets: 30 across app, check, demo, report, tool</text>
+  <text
+    x="50"
+    y="184"
+    class="term"
+  >Components: 36 across data, feedback, input, layout, navigation, overlay, primitive, visualization</text>
+  <text x="50" y="210" class="term">Renderer backends: 2/3 available       Runtime capabilities: 2/5</text>
+  <text
+    x="50"
+    y="236"
+    class="term"
+  >Theme packs: 3, layers: 0              Plugin packs: shell, visualization, data</text>
+  <text x="50" y="262" class="term"></text>
+  <text x="50" y="288" class="term">Terminal plan:</text>
+  <text x="50" y="314" class="term">color    truecolor</text>
+  <text x="50" y="340" class="term">text     unicode</text>
+  <text x="50" y="366" class="term">mouse    sgr</text>
+  <text x="50" y="392" class="term">screen   alternate</text>
+  <text x="50" y="418" class="term"></text>
+  <text x="50" y="444" class="term">Recommended tour:</text>
+  <text x="50" y="470" class="term">1. ./visualization showcase      full widget wall</text>
+  <text x="50" y="496" class="term">2. ./visualization polygons      glyph/block/mixed three.js ASCII</text>
+  <text x="50" y="522" class="term">3. ./visualization monitor       live panels and selectable 3D views</text>
+  <text x="50" y="548" class="term">4. ./visualization adopter       app/runtime/theme/plugin/data integration</text>
+</svg>

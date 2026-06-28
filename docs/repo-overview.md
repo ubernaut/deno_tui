@@ -57,6 +57,7 @@ Use the root launcher for the most common demos:
 ./visualization adopter
 ./visualization components
 ./visualization plugins
+./visualization gallery
 ./visualization health
 ```
 
@@ -71,6 +72,8 @@ deno task capabilities
 deno task component-catalog
 deno task app-plugin-catalog
 deno task adopter-workbench
+deno task demo-gallery
+deno task screenshots
 deno task benchmark
 deno task health
 ```
@@ -78,7 +81,10 @@ deno task health
 The report-style examples are intended for adopters and CI because they type-check quickly and print deterministic
 Markdown/text output. `examples/adopter_workbench.ts` is the broadest example: it combines terminal planning, terminal
 session sequences, component catalog queries, plugin registry reports, theme gallery matching, and local data query
-pagination in one short integration path.
+pagination in one short integration path. `examples/demo_gallery.ts` is the quick tour report: it summarizes the
+launcher catalog, widget catalog, renderer backends, theme provider, plugin packs, runtime capabilities, terminal
+capabilities, and recommended demo path. `deno task screenshots` regenerates the SVG terminal snapshots used by the
+README under `docs/screenshots/`.
 
 ## Quality Gates
 
@@ -100,6 +106,12 @@ Regenerate the full public API reference with:
 
 ```sh
 deno task api-reference > docs/api-reference.md
+```
+
+Regenerate README screenshots with:
+
+```sh
+deno task screenshots
 ```
 
 Use `deno task benchmark` for timing smoke checks, `deno task benchmark -- --list` for the benchmark catalog, and
