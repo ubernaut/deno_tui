@@ -63,7 +63,6 @@ export class TextObject extends DrawObject<"text"> {
             objectUnder.moved = true;
           }
         }
-
       }
       rectangle.height = 1;
 

@@ -146,7 +146,9 @@ export class MultilineTextView {
     padToWidth?: boolean | Signal<boolean>;
   }) {
     const textSignal = options.text instanceof Signal ? options.text : new Signal(options.text);
-    const padToWidth = options.padToWidth instanceof Signal ? options.padToWidth : new Signal(options.padToWidth ?? true);
+    const padToWidth = options.padToWidth instanceof Signal
+      ? options.padToWidth
+      : new Signal(options.padToWidth ?? true);
     const lineLimit = options.lineLimit ?? 40;
     const lines = new Computed(() => textSignal.value.split("\n"));
 

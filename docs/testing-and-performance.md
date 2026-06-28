@@ -42,6 +42,12 @@ Run the default suite without broad permissions:
 deno test
 ```
 
+Run the contributor health gate:
+
+```bash
+deno task health
+```
+
 Run the worker integration path with permissions:
 
 ```bash

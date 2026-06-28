@@ -1,6 +1,6 @@
 import { visibleSlotIds } from "./layout.ts";
 import { orderVisualizationsForSlot } from "./panel_defaults.ts";
-import { slotIds, type LayoutId, type SlotId } from "./types.ts";
+import { type LayoutId, type SlotId, slotIds } from "./types.ts";
 
 export type MultiPaneLayoutId = Exclude<LayoutId, "single">;
 

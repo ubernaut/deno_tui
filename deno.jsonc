@@ -5,6 +5,7 @@
     "dashboard": "deno run -A ./examples/dashboard.ts",
     "capabilities": "deno run -A ./scripts/capabilities.ts",
     "benchmark": "deno run -A ./scripts/benchmark.ts",
+    "health": "deno run -A ./scripts/health.ts",
     "worker-demo": "deno run -A ./examples/worker_pool.ts",
     "grwizard": "deno run -A ./app/grwizard.ts",
     "grwizard:check": "deno check ./app/grwizard.ts",

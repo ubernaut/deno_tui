@@ -2,7 +2,9 @@
 
 `app/grwizard.ts` is a responsive Deno front end for the real GeoRefine `grWizard` flow.
 
-It discovers hardware and model candidates from `GeoRefineInternal`, builds the same run artifacts as the bash wizard, launches the Docker workflow, tails GeoRefine and swarm output, and presents the run through a Neon-styled multi-panel console.
+It discovers hardware and model candidates from `GeoRefineInternal`, builds the same run artifacts as the bash wizard,
+launches the Docker workflow, tails GeoRefine and swarm output, and presents the run through a Neon-styled multi-panel
+console.
 
 ## Run
 

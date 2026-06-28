@@ -6,24 +6,23 @@ import {
   NodeMaterial,
   NodeUpdateType,
   QuadMesh,
-  RenderTarget,
   RendererUtils,
+  RenderTarget,
   TempNode,
   Texture,
   Vector2,
 } from "npm:three@0.183.2/webgpu";
 import {
-  If,
-  PI,
   abs,
   clamp,
   convertToTexture,
   cross,
-  exp2,
   exp,
+  exp2,
   float,
-  Fn,
   floor,
+  Fn,
+  If,
   luminance,
   max,
   min,
@@ -33,6 +32,7 @@ import {
   normalize,
   passTexture,
   perspectiveDepthToViewZ,
+  PI,
   pow,
   saturate,
   sign,
@@ -356,17 +356,19 @@ export class AcerolaAsciiNode extends TempNode {
     this.setSize(_renderSize.x, _renderSize.y);
 
     const textureType = this.colorNode.value.type;
-    for (const target of [
-      this.luminanceTarget,
-      this.downscaleTarget,
-      this.blurTarget,
-      this.dogTarget,
-      this.normalsTarget,
-      this.edgesTarget,
-      this.sobelXTarget,
-      this.sobelTarget,
-      this.asciiTarget,
-    ]) {
+    for (
+      const target of [
+        this.luminanceTarget,
+        this.downscaleTarget,
+        this.blurTarget,
+        this.dogTarget,
+        this.normalsTarget,
+        this.edgesTarget,
+        this.sobelXTarget,
+        this.sobelTarget,
+        this.asciiTarget,
+      ]
+    ) {
       target.texture.type = textureType;
     }
 
@@ -695,7 +697,13 @@ export class AcerolaAsciiNode extends TempNode {
         });
 
         const fillMask = float(0).toVar();
-        const fillBucket = max(0, min(9, floor(saturate(pow(downscaleInfo.a.mul(this.exposure), this.attenuation)).sub(0.000001).mul(10)).sub(1))).toVar();
+        const fillBucket = max(
+          0,
+          min(
+            9,
+            floor(saturate(pow(downscaleInfo.a.mul(this.exposure), this.attenuation)).sub(0.000001).mul(10)).sub(1),
+          ),
+        ).toVar();
         const correctedFillBucket = this.invertLuminance.select(float(9).sub(fillBucket), fillBucket).toVar();
         const fillGlyphCoord = vec2(localCoord.x.add(correctedFillBucket.mul(8)), localCoord.y);
 
@@ -715,7 +723,8 @@ export class AcerolaAsciiNode extends TempNode {
 
         const centerDepth = sampleNearest(this.normalsTextureNode, tileBase.add(4), this.renderSize).a;
         const z = centerDepth.mul(1000);
-        const fogValue = this.depthFalloff.mul(0.005 / Math.sqrt(Math.log(2))).mul(max(0, z.sub(this.depthOffset))).toVar();
+        const fogValue = this.depthFalloff.mul(0.005 / Math.sqrt(Math.log(2))).mul(max(0, z.sub(this.depthOffset)))
+          .toVar();
         const fogFactor = exp2(fogValue.mul(fogValue).negate()).toVar();
 
         asciiColor.assign(mix(vec3(this.backgroundColor), asciiColor, fogFactor));
@@ -766,17 +775,19 @@ export class AcerolaAsciiNode extends TempNode {
   }
 
   dispose(): void {
-    for (const target of [
-      this.luminanceTarget,
-      this.downscaleTarget,
-      this.blurTarget,
-      this.dogTarget,
-      this.normalsTarget,
-      this.edgesTarget,
-      this.sobelXTarget,
-      this.sobelTarget,
-      this.asciiTarget,
-    ]) {
+    for (
+      const target of [
+        this.luminanceTarget,
+        this.downscaleTarget,
+        this.blurTarget,
+        this.dogTarget,
+        this.normalsTarget,
+        this.edgesTarget,
+        this.sobelXTarget,
+        this.sobelTarget,
+        this.asciiTarget,
+      ]
+    ) {
       target.dispose();
     }
 

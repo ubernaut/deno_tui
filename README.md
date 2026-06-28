@@ -398,6 +398,7 @@ deno task dashboard
 deno task viz
 deno task capabilities
 deno task benchmark
+deno task health
 deno task worker-demo
 ```
 
