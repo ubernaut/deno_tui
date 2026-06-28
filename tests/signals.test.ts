@@ -70,13 +70,52 @@ Deno.test("signals/mod.ts", async (t) => {
 
     signal.value = 10;
 
+    assertEquals(signal.inspect(), {
+      disposed: false,
+      subscriptions: 1,
+      whenSubscriptions: 0,
+      dependants: 0,
+      reactive: false,
+    });
+
     signal.dispose();
+    assertEquals(signal.inspect(), {
+      disposed: true,
+      subscriptions: 0,
+      whenSubscriptions: 0,
+      dependants: 0,
+      reactive: false,
+    });
     try {
       signal.value = 15;
     } catch (_error) {
       assertEquals(signal.value, 10); // value doesn't change after being disposed
       assertEquals(subCount, 6); // doesn't run subscribers after being disposed
     }
+
+    await t.step("dispose restores original deep-observed object references", () => {
+      const object = { foo: "bar" };
+      const proxyObject = { foo: "bar" };
+      const signal = new Signal(object, { deepObserve: true });
+      const signal2 = new Signal(proxyObject, { deepObserve: true, watchObjectIndex: true });
+
+      assertEquals(signal.value === object, false);
+      assertEquals(signal2.value === proxyObject, false);
+      assertEquals(signal.inspect().reactive, true);
+      assertEquals(signal2.inspect().reactive, true);
+
+      signal.dispose();
+      signal2.dispose();
+
+      assertEquals(signal.value, object);
+      assertEquals(signal.value === object, true);
+      assertEquals(signal2.value, proxyObject);
+      assertEquals(signal2.value === proxyObject, true);
+      signal.value.foo = "baz";
+      signal2.value.foo = "baz";
+      assertEquals(object.foo, "baz");
+      assertEquals(proxyObject.foo, "baz");
+    });
 
     await t.step("Deep observe", async (t) => {
       await t.step("Object", async () => {

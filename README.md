@@ -1779,7 +1779,9 @@ new Effect(() => {
 x.value = 10; // logs "sum changed: 13"
 ```
 
-Use `signal.peek()` to read a signal's value without registering a dependency.
+Use `signal.peek()` to read a signal's value without registering a dependency. `signal.inspect()` returns lifecycle
+diagnostics for debug panels and leak checks: disposed state, subscription counts, conditional subscription counts,
+dependant counts, and whether the current value is a reactive wrapper.
 
 Signals can deeply observe objects:
 
@@ -1787,6 +1789,9 @@ Signals can deeply observe objects:
 const rect = new Signal({ column: 0, row: 0 }, { deepObserve: true });
 rect.value.column = 5; // triggers dependants
 ```
+
+When a deep-observed object signal is disposed, `value` is restored to the original object reference so teardown paths
+can mutate final state without keeping proxy/index observers alive.
 
 Use `LazyComputed` and `LazyEffect` when fast-changing inputs should be coalesced. Pass an interval to debounce updates,
 or pass a `Flusher` to hold updates until an explicit frame boundary:
