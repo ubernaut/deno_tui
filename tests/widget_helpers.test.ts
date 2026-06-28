@@ -1,6 +1,7 @@
 import { assertEquals } from "./deps.ts";
 import { bindScrollAreaCommands, scrollAreaCommands } from "../src/app/scroll_area_commands.ts";
 import { CommandRegistry } from "../src/app/commands.ts";
+import { bindStepperCommands, stepperCommands } from "../src/app/stepper_commands.ts";
 import { formatKeyBinding, KeymapRegistry } from "../src/keymap.ts";
 import { renderBreadcrumbs } from "../src/components/breadcrumbs.ts";
 import { renderEmptyState } from "../src/components/empty_state.ts";
@@ -24,7 +25,13 @@ import {
 } from "../src/components/scroll_area.ts";
 import { renderStatusBar } from "../src/components/statusbar.ts";
 import { renderSpinner, spinnerGlyph } from "../src/components/spinner.ts";
-import { clampStepperIndex, renderStepper, shiftStepperIndex, stepForIndex } from "../src/components/stepper.ts";
+import {
+  clampStepperIndex,
+  renderStepper,
+  shiftStepperIndex,
+  stepForIndex,
+  StepperController,
+} from "../src/components/stepper.ts";
 import { renderTabs } from "../src/components/tabs.ts";
 import { TextLineCache } from "../src/components/textbox.ts";
 import { renderVirtualListRows, VirtualListController, virtualListRows } from "../src/components/virtual_list.ts";
@@ -207,6 +214,92 @@ Deno.test("stepper renders progress and skips disabled steps", () => {
   assertEquals(shiftStepperIndex(steps, 3, -1), 1);
   assertEquals(clampStepperIndex(steps, 2), 3);
   assertEquals(stepForIndex(steps, 2)?.id, "verify");
+});
+
+Deno.test("StepperController navigates and inspects workflow state", () => {
+  const changes: string[] = [];
+  const controller = new StepperController({
+    steps: [
+      { id: "plan", label: "Plan", completed: true },
+      { id: "build", label: "Build" },
+      { id: "ship", label: "Ship", disabled: true },
+      { id: "verify", label: "Verify" },
+    ],
+    activeIndex: 1,
+    orientation: "vertical",
+    onChange: (step) => void changes.push(step.id),
+  });
+
+  assertEquals(controller.inspect(), {
+    steps: [
+      { id: "plan", label: "Plan", completed: true },
+      { id: "build", label: "Build" },
+      { id: "ship", label: "Ship", disabled: true },
+      { id: "verify", label: "Verify" },
+    ],
+    stepCount: 4,
+    activeIndex: 1,
+    active: { id: "build", label: "Build" },
+    orientation: "vertical",
+    empty: false,
+  });
+  assertEquals(controller.move(1)?.id, "verify");
+  controller.handleKeyPress(keyPress("up"));
+  assertEquals(controller.active()?.id, "build");
+  assertEquals(controller.last()?.id, "verify");
+  assertEquals(changes, ["verify", "build", "verify"]);
+  controller.dispose();
+});
+
+Deno.test("stepperCommands move and select steps", async () => {
+  const controller = new StepperController({
+    steps: [
+      { id: "plan", label: "Plan" },
+      { id: "build", label: "Build" },
+      { id: "ship", label: "Ship", disabled: true },
+    ],
+  });
+  const registry = new CommandRegistry();
+  const actions: unknown[] = [];
+  const dispose = bindStepperCommands(registry, controller, {
+    id: "release",
+    idPrefix: "wizard.release",
+    group: "wizard",
+    includeStepCommands: true,
+  });
+
+  assertEquals(stepperCommands(new StepperController({ steps: [] })).map((command) => command.id), [
+    "stepper.first",
+    "stepper.previous",
+    "stepper.next",
+    "stepper.last",
+  ]);
+  assertEquals(registry.list("wizard").map((command) => command.id), [
+    "wizard.release.first",
+    "wizard.release.step.build",
+    "wizard.release.step.plan",
+    "wizard.release.step.ship",
+    "wizard.release.last",
+    "wizard.release.next",
+    "wizard.release.previous",
+  ]);
+
+  assertEquals(await registry.execute("wizard.release.next", (action) => void actions.push(action)), true);
+  assertEquals(controller.active()?.id, "build");
+  assertEquals(await registry.execute("wizard.release.step.ship", (action) => void actions.push(action)), false);
+  assertEquals(await registry.execute("wizard.release.step.plan", (action) => void actions.push(action)), true);
+  assertEquals(actions.at(-1), {
+    type: "stepper.stepSelected",
+    payload: {
+      id: "release",
+      step: { id: "plan", label: "Plan" },
+      inspection: controller.inspect(),
+    },
+  });
+
+  dispose();
+  assertEquals(registry.list("wizard"), []);
+  controller.dispose();
 });
 
 Deno.test("spinner renders status glyphs and truncates labels", () => {

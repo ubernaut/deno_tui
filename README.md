@@ -183,6 +183,10 @@ const selectedPids = processes.selectedValues<number>();
 const listState = processes.inspect();
 ```
 
+`StepperController` does the same for workflow navigation: it owns step data, active index, disabled-step skipping,
+orientation, keyboard handling, and inspection state. Use `stepperCommands()` or `bindStepperCommands()` to expose
+first, previous, next, last, and optional direct step-selection actions through command palettes, menus, or key help.
+
 `CommandPaletteController` and `ContextMenuController` expose the overlay widgets' query, selection, navigation, key
 handling, and inspection state without requiring a rendered component. Use them when a command surface, menu bar,
 shortcut handler, or test needs to drive the same behavior as the built-in widgets:

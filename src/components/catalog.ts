@@ -118,6 +118,7 @@ export const componentCatalog = [
     "render-helper",
   ]),
   component("stepper", "Stepper", "navigation", "Sequential workflow step indicator.", [
+    "controller",
     "render-helper",
     "selection",
   ]),
