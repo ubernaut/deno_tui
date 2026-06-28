@@ -528,6 +528,13 @@ const stopSelectionBinding = bindSelectionValue(selection, rows, selectedProcess
   valueForItem: (row) => row.pid,
   initialSync: "value",
 });
+
+const stopSelectionCommands = bindSelectionCommands(app.commands, selection, {
+  idPrefix: "processes",
+  group: "process-list",
+  pageSize: () => processListHeight.value,
+  includeClear: true,
+});
 ```
 
 Viewport helpers keep scrolling, virtual rows, and scrollbar thumbs consistent:

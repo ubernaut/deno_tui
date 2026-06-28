@@ -1,8 +1,32 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { type SelectionController } from "../selection.ts";
 import { Signal } from "../signals/mod.ts";
+import type { Action } from "./actions.ts";
+import type { Command, CommandRegistry } from "./commands.ts";
 
 export type SelectionItemsSource<TItems extends readonly unknown[]> = TItems | Signal<TItems>;
+
+export type SelectionCommandKind =
+  | "first"
+  | "previous"
+  | "next"
+  | "last"
+  | "pagePrevious"
+  | "pageNext"
+  | "toggle"
+  | "clear";
+
+export type SelectionPageSize = number | Signal<number> | (() => number);
+
+export interface SelectionCommandOptions {
+  idPrefix?: string;
+  group?: string;
+  pageSize?: SelectionPageSize;
+  includeToggle?: boolean;
+  includeClear?: boolean;
+  disabledWhenEmpty?: boolean;
+  labels?: Partial<Record<SelectionCommandKind, string>>;
+}
 
 export interface SelectionValueBindingOptions<TItem, TValue = TItem> {
   valueForItem?: (item: TItem, index: number) => TValue;
@@ -112,4 +136,103 @@ export function bindSelectionValue<TItems extends readonly unknown[], TValue = T
     selectedValue.unsubscribe(syncSelectionFromValue);
     source?.unsubscribe(syncFromItems);
   };
+}
+
+export function selectionCommands<TAction extends Action = Action>(
+  selection: SelectionController,
+  options: SelectionCommandOptions = {},
+): Command<TAction>[] {
+  const idPrefix = options.idPrefix ?? "selection";
+  const group = options.group ?? "selection";
+  const disabledWhenEmpty = options.disabledWhenEmpty ?? true;
+  const disabled = () => disabledWhenEmpty && selection.length.peek() <= 0;
+  const pageSize = () => Math.max(1, Math.floor(readPageSize(options.pageSize)));
+  const label = (kind: SelectionCommandKind, fallback: string) => options.labels?.[kind] ?? fallback;
+  const commands: Command<TAction>[] = [
+    {
+      id: `${idPrefix}.first`,
+      label: label("first", "First Item"),
+      group,
+      binding: { key: "home" },
+      disabled,
+      action: () => selection.select(0),
+    },
+    {
+      id: `${idPrefix}.previous`,
+      label: label("previous", "Previous Item"),
+      group,
+      binding: { key: "up" },
+      disabled,
+      action: () => selection.move(-1),
+    },
+    {
+      id: `${idPrefix}.next`,
+      label: label("next", "Next Item"),
+      group,
+      binding: { key: "down" },
+      disabled,
+      action: () => selection.move(1),
+    },
+    {
+      id: `${idPrefix}.last`,
+      label: label("last", "Last Item"),
+      group,
+      binding: { key: "end" },
+      disabled,
+      action: () => selection.select(selection.length.peek() - 1),
+    },
+    {
+      id: `${idPrefix}.pagePrevious`,
+      label: label("pagePrevious", "Previous Page"),
+      group,
+      binding: { key: "pageup" },
+      disabled,
+      action: () => selection.move(-pageSize()),
+    },
+    {
+      id: `${idPrefix}.pageNext`,
+      label: label("pageNext", "Next Page"),
+      group,
+      binding: { key: "pagedown" },
+      disabled,
+      action: () => selection.move(pageSize()),
+    },
+  ];
+
+  if (options.includeToggle ?? true) {
+    commands.push({
+      id: `${idPrefix}.toggle`,
+      label: label("toggle", "Toggle Selection"),
+      group,
+      binding: { key: "space" },
+      disabled,
+      action: () => selection.toggle(),
+    });
+  }
+
+  if (options.includeClear ?? false) {
+    commands.push({
+      id: `${idPrefix}.clear`,
+      label: label("clear", "Clear Selection"),
+      group,
+      disabled,
+      action: () => selection.clear(),
+    });
+  }
+
+  return commands;
+}
+
+export function bindSelectionCommands<TAction extends Action = Action>(
+  registry: CommandRegistry<TAction>,
+  selection: SelectionController,
+  options: SelectionCommandOptions = {},
+): () => void {
+  return registry.registerAll(selectionCommands<TAction>(selection, options));
+}
+
+function readPageSize(pageSize: SelectionPageSize | undefined): number {
+  if (pageSize instanceof Signal) return pageSize.peek();
+  if (typeof pageSize === "function") return pageSize();
+  return pageSize ?? 10;
 }

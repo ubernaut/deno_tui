@@ -9,7 +9,8 @@ import {
   selectRange,
   toggleSelection,
 } from "../src/selection.ts";
-import { bindSelectionValue } from "../src/app/selection_bindings.ts";
+import { bindSelectionCommands, bindSelectionValue, selectionCommands } from "../src/app/selection_bindings.ts";
+import { CommandRegistry } from "../src/app/commands.ts";
 import { Signal } from "../src/signals/mod.ts";
 
 Deno.test("selection helpers clamp and move single selection", () => {
@@ -129,4 +130,62 @@ Deno.test("bindSelectionValue repairs missing values when item sources change", 
   assertEquals(controller.length.peek(), 0);
   assertEquals(controller.state.peek().selected, []);
   assertEquals(selectedId.peek(), undefined);
+});
+
+Deno.test("selectionCommands projects common selection operations into commands", async () => {
+  const controller = new SelectionController({ length: 20, initialState: { activeIndex: 5 } });
+  const pageSize = new Signal(4);
+  const registry = new CommandRegistry();
+  const dispose = bindSelectionCommands(registry, controller, {
+    idPrefix: "rows",
+    group: "table",
+    pageSize,
+    includeClear: true,
+  });
+
+  assertEquals(registry.keyBindings("table").map((binding) => binding.key), [
+    "home",
+    "end",
+    "down",
+    "pagedown",
+    "up",
+    "pageup",
+    "space",
+  ]);
+
+  await registry.execute("rows.pageNext");
+  assertEquals(controller.state.peek().activeIndex, 9);
+
+  pageSize.value = 3;
+  await registry.execute("rows.pagePrevious");
+  assertEquals(controller.state.peek().activeIndex, 6);
+
+  await registry.execute("rows.last");
+  assertEquals(controller.state.peek().activeIndex, 19);
+
+  await registry.execute("rows.clear");
+  assertEquals(controller.state.peek().selected, []);
+
+  dispose();
+  assertEquals(registry.list("table"), []);
+});
+
+Deno.test("selectionCommands can omit multi-select commands and disable empty selections", () => {
+  const controller = new SelectionController({ length: 0 });
+  const commands = selectionCommands(controller, {
+    includeToggle: false,
+    disabledWhenEmpty: true,
+    labels: { next: "Move Down" },
+  });
+
+  assertEquals(commands.map((command) => command.id), [
+    "selection.first",
+    "selection.previous",
+    "selection.next",
+    "selection.last",
+    "selection.pagePrevious",
+    "selection.pageNext",
+  ]);
+  assertEquals(commands.find((command) => command.id === "selection.next")?.label, "Move Down");
+  assertEquals(commands.every((command) => typeof command.disabled === "function" && command.disabled()), true);
 });
