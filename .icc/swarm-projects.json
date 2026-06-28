@@ -1,0 +1,160 @@
+{
+  "schema": "swarm.projects.v1",
+  "projects": [
+    {
+      "id": "deno-tui",
+      "name": "Deno TUI Fork",
+      "root": ".",
+      "icc_repo": "deno_tui",
+      "primary_domain": "terminal-ui-library",
+      "completion_oracle_files": [
+        ".icc/completion-oracles.yaml"
+      ],
+      "icc_skip_dirs": [
+        ".git",
+        ".cache",
+        ".deno",
+        ".vscode",
+        "node_modules",
+        "coverage",
+        "dist",
+        "tmp",
+        "assets",
+        "docs/assets",
+        "docs/screenshots"
+      ],
+      "verification_commands": [
+        "deno fmt --check",
+        "deno lint",
+        "deno test",
+        "deno task api-workbench:check",
+        "deno task web:demo:check"
+      ],
+      "audit_commands": [
+        "python3 ${ICC_HOME:-../infinite_context_coder}/scripts/codebase_tool.py status --repo deno_tui --check-staleness",
+        "python3 ${ICC_HOME:-../infinite_context_coder}/scripts/codebase_tool.py index-quality --repo deno_tui --format markdown"
+      ],
+      "agent_lanes": [
+        {
+          "id": "core-components",
+          "description": "Core component controllers, canvas primitives, input handling, and shared TUI APIs.",
+          "write_prefixes": [
+            "src/components",
+            "src/canvas",
+            "src/input.ts",
+            "src/input_reader",
+            "src/tui.ts",
+            "tests"
+          ],
+          "task_kinds": [
+            "component_api",
+            "mouse_keyboard_behavior",
+            "unit_tests"
+          ],
+          "verify_commands": [
+            "deno test tests/advanced_widgets.test.ts tests/data_table.test.ts tests/input_reader_keyboard.test.ts"
+          ],
+          "max_parallel": 2
+        },
+        {
+          "id": "app-framework",
+          "description": "Composable app shell, command surfaces, routes, plugins, settings, bindings, and runtime profiles.",
+          "write_prefixes": [
+            "src/app",
+            "src/platform",
+            "src/runtime",
+            "examples/app_shell.ts",
+            "examples/adopter_workbench.ts",
+            "tests/app_*.test.ts",
+            "tests/*commands*.test.ts"
+          ],
+          "task_kinds": [
+            "app_framework",
+            "command_surface",
+            "settings_binding"
+          ],
+          "verify_commands": [
+            "deno test tests/app_primitives.test.ts tests/app_layout.test.ts tests/data_query.test.ts"
+          ],
+          "max_parallel": 2
+        },
+        {
+          "id": "web-runtime",
+          "description": "Browser-hosted TUI runtime, remote terminal transport, DOM/Canvas renderers, and Pages demos.",
+          "write_prefixes": [
+            "src/web",
+            "mod.web.ts",
+            "mod.remote.ts",
+            "examples/web",
+            "scripts/build_web_docs.ts",
+            "docs/index.html"
+          ],
+          "task_kinds": [
+            "web_runtime",
+            "browser_demo",
+            "responsive_input"
+          ],
+          "verify_commands": [
+            "deno task web:demo:check",
+            "deno task web:pages:build",
+            "deno task web:test"
+          ],
+          "max_parallel": 1
+        },
+        {
+          "id": "visualization-renderers",
+          "description": "Three ASCII backend, Neon Exodus visualizations, system monitor shell, and generated screenshots.",
+          "write_prefixes": [
+            "src/three_ascii",
+            "app",
+            "examples/three_ascii.ts",
+            "scripts/demo_launcher.ts",
+            "scripts/visualization_launcher.ts",
+            "visualization",
+            "tests/*visualization*.test.ts",
+            "tests/three_ascii*.test.ts"
+          ],
+          "task_kinds": [
+            "visualization",
+            "three_ascii",
+            "terminal_demo"
+          ],
+          "verify_commands": [
+            "deno task viz:check",
+            "deno task neon-exodus:check",
+            "deno test tests/three_ascii_glyphs.test.ts tests/three_ascii_presets.test.ts tests/neon_suite.test.ts"
+          ],
+          "max_parallel": 1
+        },
+        {
+          "id": "docs-and-tooling",
+          "description": "README, generated API reference, repo overview, screenshot capture, benchmarks, and capability reports.",
+          "write_prefixes": [
+            "README.md",
+            "docs",
+            "scripts",
+            ".icc",
+            ".codex"
+          ],
+          "task_kinds": [
+            "documentation",
+            "tooling",
+            "api_inventory"
+          ],
+          "verify_commands": [
+            "deno task api-reference",
+            "deno task api-inventory",
+            "deno task health"
+          ],
+          "max_parallel": 1
+        }
+      ],
+      "metadata": {
+        "icc_home": "${ICC_HOME:-../infinite_context_coder}",
+        "icc_command": "python3 ${ICC_HOME:-../infinite_context_coder}/scripts/codebase_tool.py",
+        "default_summary_command": "architecture-summary --repo deno_tui --bundle",
+        "default_context_command": "pack-context --repo deno_tui"
+      }
+    }
+  ]
+}

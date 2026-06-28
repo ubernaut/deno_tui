@@ -1,0 +1,57 @@
+profiles:
+  - name: deno-tui-library-readiness
+    default: true
+    targets: [deno-tui-library-readiness, deno-tui, library, production-readiness]
+    required_artifacts: [index, memory]
+    presets: [shell-hardening]
+    severity_overrides:
+      source_drift: low
+      guard_diff: medium
+      forward_progress: medium
+    pattern_audit_exclude_path_prefixes:
+      "*": [tests/fixtures, docs/assets, docs/screenshots]
+    verdict:
+      fail_on:
+        high: 0
+      warn_on:
+        medium: 0
+        low: 0
+
+  - name: deno-tui-web-readiness
+    targets: [deno-tui-web-readiness, web, browser, github-pages]
+    required_artifacts: [index, memory]
+    presets: [shell-hardening]
+    severity_overrides:
+      source_drift: low
+      generated_assets: low
+    pattern_audit_exclude_path_prefixes:
+      "*": [docs/assets]
+    verdict:
+      fail_on:
+        high: 0
+      warn_on:
+        medium: 0
+
+  - name: deno-tui-visualization-readiness
+    targets: [deno-tui-visualization-readiness, visualization, three-ascii, neon-exodus]
+    required_artifacts: [index, memory]
+    presets: [shell-hardening]
+    severity_overrides:
+      source_drift: low
+      screenshot_drift: low
+    pattern_audit_exclude_path_prefixes:
+      "*": [docs/screenshots, docs/assets]
+    verdict:
+      fail_on:
+        high: 0
+      warn_on:
+        medium: 0
+
+  - name: no-regression
+    targets: [no-regression, safe-to-merge, smoke]
+    required_artifacts: [index]
+    presets: []
+    verdict:
+      fail_on:
+        high: 0
+      warn_on: {}

@@ -64,6 +64,21 @@ export function scrollbarGlyph(row: number, thumb: ScrollbarThumb): string {
   return viewportThumbGlyph(row, thumb);
 }
 
+export function scrollbarOffsetForPointer(
+  contentLength: number,
+  viewportLength: number,
+  pointerIndex: number,
+): number {
+  const content = normalizedScrollDimension(contentLength);
+  const viewport = normalizedScrollDimension(viewportLength);
+  const maxOffset = Math.max(0, content - viewport);
+  if (maxOffset === 0) return 0;
+  const trackLength = Math.max(1, viewport);
+  const local = Math.max(0, Math.min(trackLength - 1, Math.floor(pointerIndex)));
+  const ratio = trackLength <= 1 ? 0 : local / (trackLength - 1);
+  return Math.max(0, Math.min(maxOffset, Math.round(maxOffset * ratio)));
+}
+
 export class ScrollAreaController {
   readonly contentWidth: Signal<number>;
   readonly contentHeight: Signal<number>;

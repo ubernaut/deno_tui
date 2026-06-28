@@ -53,6 +53,7 @@ import {
   ScrollArea,
   ScrollAreaController,
   scrollbarGlyph,
+  scrollbarOffsetForPointer,
   scrollbarThumb,
   scrollOffsetBy,
 } from "../src/components/scroll_area.ts";
@@ -1516,6 +1517,9 @@ Deno.test("scroll helpers clamp offsets and expose scrollbar thumb state", () =>
   assertEquals(scrollbarGlyph(3, thumb), "│");
   assertEquals(scrollbarGlyph(4, thumb), "█");
   assertEquals(scrollbarThumb(8, 10, 0).visible, false);
+  assertEquals(scrollbarOffsetForPointer(40, 10, 0), 0);
+  assertEquals(scrollbarOffsetForPointer(40, 10, 9), 30);
+  assertEquals(scrollbarOffsetForPointer(8, 10, 8), 0);
 });
 
 Deno.test("ScrollAreaController inspects and clamps viewport offsets", () => {

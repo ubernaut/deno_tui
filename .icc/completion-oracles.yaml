@@ -1,0 +1,146 @@
+oracles:
+  - name: deno-tui-library-readiness
+    target: deno-tui
+    aliases:
+      - deno_tui
+      - library
+      - tui-library
+      - production-readiness
+    criteria:
+      - id: public_api_indexed
+        label: Public module exports and component APIs are indexed
+        kind: contract_kind
+        contract_kinds:
+          - PublicAPI
+          - Component
+          - Controller
+        severity: high
+        action: deno task api-reference
+
+      - id: component_tests_recorded
+        label: Core widget and controller tests are present and runnable
+        kind: test_evidence
+        severity: high
+        action: deno test tests/advanced_widgets.test.ts tests/data_table.test.ts tests/widget_helpers.test.ts
+
+      - id: mouse_keyboard_contracts
+        label: Keyboard and mouse interaction surfaces have focused tests or demo smoke evidence
+        kind: test_evidence
+        severity: high
+        action: deno test tests/input_reader_keyboard.test.ts tests/canvas_intersections.test.ts
+
+      - id: no_unclassified_runtime_fallbacks
+        label: Runtime capability fallbacks are intentional and visible to callers
+        kind: no_stubbed_paths
+        classifications:
+          - production_fallback
+          - synthetic_model_only
+        severity: medium
+        action: document_or_test_runtime_fallback
+
+      - id: api_inventory_current
+        label: API inventory and generated API reference are current
+        kind: runtime_or_contract
+        event_kinds:
+          - artifact
+        contract_kinds:
+          - Artifact
+        severity: medium
+        action: deno task api-inventory && deno task api-reference
+
+  - name: deno-tui-web-readiness
+    target: deno-tui-web
+    aliases:
+      - web
+      - web-runtime
+      - browser
+      - github-pages
+    criteria:
+      - id: web_exports_check
+        label: Browser-safe exports type-check
+        kind: test_evidence
+        severity: high
+        action: deno task web:check
+
+      - id: web_demos_check
+        label: Browser demos type-check
+        kind: test_evidence
+        severity: high
+        action: deno task web:demo:check
+
+      - id: pages_build_emits_docs
+        label: GitHub Pages bundle builds from source demos
+        kind: runtime_or_contract
+        event_kinds:
+          - artifact
+        contract_kinds:
+          - Artifact
+        severity: high
+        action: deno task web:pages:build
+
+      - id: web_runtime_tests
+        label: Web runtime, remote terminal, and canvas sink tests pass
+        kind: test_evidence
+        severity: medium
+        action: deno task web:test
+
+  - name: deno-tui-visualization-readiness
+    target: deno-tui-visualizations
+    aliases:
+      - visualization
+      - visualizations
+      - three-ascii
+      - neon-exodus
+      - system-monitor
+    criteria:
+      - id: visualization_shell_checks
+        label: System monitor and Neon Exodus shells type-check
+        kind: test_evidence
+        severity: high
+        action: deno task viz:check && deno task neon-exodus:check
+
+      - id: three_ascii_tests
+        label: Three ASCII glyph, preset, and fallback tests pass
+        kind: test_evidence
+        severity: high
+        action: deno test tests/three_ascii_glyphs.test.ts tests/three_ascii_presets.test.ts tests/visualizations_three_fallback.test.ts
+
+      - id: visualization_launcher
+        label: Root visualization launcher remains available
+        kind: runtime_or_contract
+        event_kinds:
+          - artifact
+        contract_kinds:
+          - CLIFlag
+          - Artifact
+        severity: medium
+        action: ./visualization
+
+      - id: screenshots_current
+        label: README screenshots can be regenerated from real terminal demos
+        kind: runtime_or_contract
+        event_kinds:
+          - artifact
+        contract_kinds:
+          - Artifact
+        severity: low
+        action: deno task screenshots
+
+  - name: deno-tui-no-regression
+    target: deno-tui-no-regression
+    aliases:
+      - smoke
+      - safe-to-merge
+      - no-regression
+    criteria:
+      - id: format_lint_tests
+        label: Standard Deno format, lint, and tests pass
+        kind: test_evidence
+        severity: high
+        action: deno fmt --check && deno lint && deno test
+
+      - id: main_demos_check
+        label: Primary demos type-check
+        kind: test_evidence
+        severity: medium
+        action: deno task api-workbench:check && deno task web:demo:check

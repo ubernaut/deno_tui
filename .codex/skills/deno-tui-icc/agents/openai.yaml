@@ -1,0 +1,4 @@
+interface:
+  display_name: "Deno TUI ICC"
+  short_description: "Use ICC memory for this Deno TUI repo"
+  default_prompt: "Use $deno-tui-icc to refresh the codebase memory and get an architecture summary."

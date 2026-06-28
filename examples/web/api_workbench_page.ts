@@ -19,6 +19,10 @@ import {
   renderMenuBar,
   renderStatusBar,
   renderStepper,
+  ScrollAreaController,
+  scrollbarGlyph,
+  scrollbarOffsetForPointer,
+  scrollbarThumb,
   Signal,
   SliderController,
   SplitPaneController,
@@ -53,7 +57,9 @@ type Hit =
   | { type: "close"; id: PanelId }
   | { type: "theme"; index: number }
   | { type: "control"; id: ControlId; action?: ControlHitAction; index?: number }
-  | { type: "dataRow"; index: number };
+  | { type: "dataRow"; index: number }
+  | { type: "logScrollbar" }
+  | { type: "workspaceScrollbar" };
 type ControlHitAction = "previous" | "next" | "activate" | "set" | "focus" | "toggle";
 
 interface ThemeSpec {
@@ -154,6 +160,8 @@ const split = new SplitPaneController({
   minSecond: 28,
   resizeMode: "ratio",
 });
+const workspaceScroll = new ScrollAreaController({ showScrollbar: true });
+const logScroll = new ScrollAreaController({ showScrollbar: true });
 const slider = new SliderController({ min: 1, max: 10, value: 6, step: 1, orientation: "horizontal" });
 const live = new CheckBoxController({ checked: true });
 const compact = new CheckBoxController({ checked: false });
@@ -253,7 +261,13 @@ host.on("keyPress", ({ key }) => {
 host.on("mousePress", (event) => {
   if (event.release) return;
   const target = findHit(event.x, event.y);
-  if (target) applyHit(target, event.x);
+  if (target) applyHit(target, event.x, event.y);
+  draw();
+});
+
+host.on("mouseScroll", (event) => {
+  if (active.peek() === "logs") logScroll.scrollBy(0, event.scroll);
+  else workspaceScroll.scrollBy(0, event.scroll);
   draw();
 });
 
@@ -267,6 +281,8 @@ const timer = setInterval(() => {
 }, 650);
 globalThis.addEventListener("beforeunload", () => {
   clearInterval(timer);
+  workspaceScroll.dispose();
+  logScroll.dispose();
   actionButton.dispose();
   genericButton.dispose();
   radio.dispose();
@@ -296,26 +312,38 @@ function draw(): void {
   );
   drawThemes(frame, width);
   const body = { column: 1, row: 3, width: Math.max(10, width - 2), height: Math.max(6, height - 5) };
-  const max = maximized.peek();
-  if (max) {
-    renderPanel(frame, max, body);
+  const layout = workspaceLayout({
+    column: body.column,
+    row: 0,
+    width: Math.max(1, body.width - 1),
+    height: body.height,
+  });
+  workspaceScroll.setViewportSize(layout.bounds.width, body.height);
+  workspaceScroll.setContentSize(layout.bounds.width, layout.contentHeight);
+  const offset = workspaceScroll.offset.peek().rows;
+  const virtual = Array.from(
+    { length: Math.max(body.height, layout.contentHeight) },
+    () => paint(" ".repeat(width), theme().text, theme().bgAlt),
+  );
+  fillRect(virtual, layout.bounds, theme().bgAlt);
+  const hitStart = hitTargets.length;
+  if (maximized.peek()) {
+    renderPanel(virtual, maximized.peek()!, layout.bounds);
   } else {
     const visible = (["inspector", "data", "controls", "logs"] as PanelId[]).filter((id) => !minimized.peek()[id]);
     if (visible.length === 0) {
-      write(frame, body.row + 1, body.column + 2, paint("All panels minimized. Press R or click restore."));
-      hitTargets.push({ rect: body, hit: { type: "restore" } });
-    } else if (width < 88 || body.height < 18 || visible.length < 4) {
-      stackRects(body, visible.length).forEach((rect, index) => renderPanel(frame, visible[index]!, rect));
+      write(virtual, 1, body.column + 2, paint("All panels minimized. Press R or click restore."));
+      hitTargets.push({ rect: { ...layout.bounds, row: 0 }, hit: { type: "restore" } });
     } else {
-      const rows = splitRects("column", body, 0.46);
-      const top = split.resize(rows.first, 0);
-      const bottom = split.resize(rows.second, 0);
-      renderPanel(frame, "inspector", top.first);
-      renderPanel(frame, "data", top.second);
-      renderPanel(frame, "controls", bottom.first);
-      renderPanel(frame, "logs", bottom.second);
+      for (const id of visible) {
+        const rect = layout.rects.get(id);
+        if (rect) renderPanel(virtual, id, rect);
+      }
     }
   }
+  translateWorkspaceHits(hitStart, body.row - offset, body);
+  blitWorkspace(frame, virtual, body, offset, layout.bounds.width);
+  renderWorkspaceScrollbar(frame, body, layout.contentHeight, offset);
   renderShelf(frame);
   frame[height - 1] = fit(
     paint(
@@ -398,9 +426,10 @@ function renderPanel(frame: string[], id: PanelId, rect: Rectangle): void {
     height: Math.max(0, rect.height - 2),
   };
   fillRect(frame, inner, theme().surface);
-  const lines = panelLines(id, inner.width, inner.height);
   if (id === "controls") renderControls(frame, inner);
+  else if (id === "logs") renderLogs(frame, inner);
   else {
+    const lines = panelLines(id, inner.width, inner.height);
     lines.forEach((line, index) => {
       const style = panelLineStyle(id, index);
       write(frame, inner.row + index, inner.column, paint(fit(line, inner.width), style.fg, style.bg, style.bold));
@@ -413,6 +442,24 @@ function renderPanel(frame: string[], id: PanelId, rect: Rectangle): void {
         });
       }
     }
+  }
+}
+
+function renderLogs(frame: string[], rect: Rectangle): void {
+  const lines = [...docs, ...log.peek()];
+  logScroll.setViewportSize(rect.width, rect.height);
+  logScroll.setContentSize(rect.width, lines.length);
+  const offset = logScroll.offset.peek().rows;
+  const bodyWidth = Math.max(0, rect.width - 1);
+  lines.slice(offset, offset + rect.height).forEach((line, index) => {
+    write(frame, rect.row + index, rect.column, paint(fit(line, bodyWidth), theme().text, theme().surface));
+  });
+  if (lines.length <= rect.height || rect.width < 1) return;
+  const column = rect.column + rect.width - 1;
+  const thumb = scrollbarThumb(lines.length, rect.height, offset);
+  hitTargets.push({ rect: { column, row: rect.row, width: 1, height: rect.height }, hit: { type: "logScrollbar" } });
+  for (let row = 0; row < rect.height; row += 1) {
+    write(frame, rect.row + row, column, paint(scrollbarGlyph(row, thumb), theme().accent, theme().surface, true));
   }
 }
 
@@ -466,7 +513,7 @@ function ensureLines(): void {
   }
 }
 
-function applyHit(target: { rect: Rectangle; hit: Hit }, x: number): void {
+function applyHit(target: { rect: Rectangle; hit: Hit }, x: number, y: number): void {
   const hit = target.hit;
   if (hit.type === "focus") focus(hit.id);
   else if (hit.type === "min") minimize(hit.id);
@@ -475,7 +522,16 @@ function applyHit(target: { rect: Rectangle; hit: Hit }, x: number): void {
   else if (hit.type === "restore") hit.id ? restorePanel(hit.id) : restore();
   else if (hit.type === "control") applyControlHit(hit.id, hit.action ?? "activate", target.rect, x, hit.index);
   else if (hit.type === "dataRow") selectDataRow(hit.index);
-  else setTheme(hit.index);
+  else if (hit.type === "logScrollbar") {
+    const lines = docs.length + log.peek().length;
+    logScroll.scrollTo(0, scrollbarOffsetForPointer(lines, target.rect.height, y - target.rect.row));
+    active.value = "logs";
+  } else if (hit.type === "workspaceScrollbar") {
+    workspaceScroll.scrollTo(
+      0,
+      scrollbarOffsetForPointer(workspaceScroll.contentHeight.peek(), target.rect.height, y - target.rect.row),
+    );
+  } else setTheme(hit.index);
 }
 
 function focus(id: PanelId): void {
@@ -525,6 +581,88 @@ function splitRects(direction: "row" | "column", rect: Rectangle, ratio: number)
   const result = controller.resize(rect, 0);
   controller.dispose();
   return result;
+}
+
+function workspaceLayout(bounds: Rectangle): {
+  bounds: Rectangle;
+  contentHeight: number;
+  rects: Map<PanelId, Rectangle>;
+} {
+  const rects = new Map<PanelId, Rectangle>();
+  const max = maximized.peek();
+  if (max) {
+    rects.set(max, bounds);
+    return { bounds, contentHeight: bounds.height, rects };
+  }
+  const visible = (["inspector", "data", "controls", "logs"] as PanelId[]).filter((id) => !minimized.peek()[id]);
+  if (visible.length === 0) return { bounds, contentHeight: bounds.height, rects };
+  const stacked = bounds.width < 88 || bounds.height < 18 || visible.length < 4;
+  if (stacked) {
+    const stackedRects = stackWorkspaceRects(bounds, visible);
+    for (const [index, id] of visible.entries()) rects.set(id, stackedRects[index]!);
+    const bottom = stackedRects.reduce((maxRow, rect) => Math.max(maxRow, rect.row + rect.height), bounds.row);
+    return { bounds, contentHeight: Math.max(bounds.height, bottom - bounds.row), rects };
+  }
+  const rows = splitRects("column", bounds, 0.46);
+  const top = split.resize(rows.first, 0);
+  const bottom = split.resize(rows.second, 0);
+  rects.set("inspector", top.first);
+  rects.set("data", top.second);
+  rects.set("controls", bottom.first);
+  rects.set("logs", bottom.second);
+  return { bounds, contentHeight: bounds.height, rects };
+}
+
+function stackWorkspaceRects(bounds: Rectangle, ids: PanelId[]): Rectangle[] {
+  const gap = ids.length > 1 ? 1 : 0;
+  const preferred = ids.map((id) => preferredPanelHeight(id, bounds.width));
+  const preferredTotal = preferred.reduce((total, height) => total + height, 0) + gap * Math.max(0, ids.length - 1);
+  if (preferredTotal <= bounds.height) return stackRects(bounds, ids.length);
+  let row = bounds.row;
+  return ids.map((id, index) => {
+    const height = preferred[index] ?? preferredPanelHeight(id, bounds.width);
+    const rect = { column: bounds.column, row, width: bounds.width, height };
+    row += height + gap;
+    return rect;
+  });
+}
+
+function preferredPanelHeight(id: PanelId, width: number): number {
+  if (id === "controls") return width < 56 ? 22 : 18;
+  if (id === "data") return 12;
+  if (id === "logs") return 12;
+  return 11;
+}
+
+function translateWorkspaceHits(startIndex: number, rowDelta: number, clip: Rectangle): void {
+  for (let index = hitTargets.length - 1; index >= startIndex; index -= 1) {
+    const target = hitTargets[index]!;
+    const translated = { ...target.rect, row: target.rect.row + rowDelta };
+    if (!intersects(translated, clip)) {
+      hitTargets.splice(index, 1);
+      continue;
+    }
+    target.rect = clipRect(translated, clip);
+  }
+}
+
+function blitWorkspace(frame: string[], virtual: string[], bounds: Rectangle, offset: number, width: number): void {
+  for (let row = 0; row < bounds.height; row += 1) {
+    write(frame, bounds.row + row, bounds.column, fit(virtual[offset + row] ?? "", width));
+  }
+}
+
+function renderWorkspaceScrollbar(frame: string[], bounds: Rectangle, contentHeight: number, offset: number): void {
+  if (contentHeight <= bounds.height || bounds.width < 2) return;
+  const column = bounds.column + bounds.width - 1;
+  const thumb = scrollbarThumb(contentHeight, bounds.height, offset);
+  hitTargets.push({
+    rect: { column, row: bounds.row, width: 1, height: bounds.height },
+    hit: { type: "workspaceScrollbar" },
+  });
+  for (let row = 0; row < bounds.height; row += 1) {
+    write(frame, bounds.row + row, column, paint(scrollbarGlyph(row, thumb), theme().accent, theme().bgAlt, true));
+  }
 }
 
 function stackRects(rect: Rectangle, count: number): Rectangle[] {
@@ -615,12 +753,9 @@ function renderControls(frame: string[], rect: Rectangle): void {
   const progressWidth = Math.max(8, Math.min(18, rect.width - 18));
   const progressFilled = Math.round(progress.ratio() * progressWidth);
   const progressTrack = `${"█".repeat(progressFilled)}${"░".repeat(progressWidth - progressFilled)}`;
-  writeControl("button", `${paint("[ Run Action ]", t.bg, t.accent, true)} presses=${actionButton.pressCount.peek()}`);
-  writeControl(
-    "genericButton",
-    `${paint("[ Generic Button ]", t.bg, t.border, true)} presses=${genericButton.pressCount.peek()}`,
-  );
-  writeControl("slider", `Slider    ${paint(sliderTrack, t.good, t.accentDeep)} ${slider.value.peek()}/10`, {
+  writeControl("button", `[ Run Action ] presses=${actionButton.pressCount.peek()}`);
+  writeControl("genericButton", `[ Generic Button ] presses=${genericButton.pressCount.peek()}`);
+  writeControl("slider", `Slider    ${sliderTrack} ${slider.value.peek()}/10`, {
     previous: true,
     next: true,
   });
@@ -906,6 +1041,19 @@ function paint(value: string, fg = theme().text, bg = theme().bg, bold = false):
 }
 function contains(rect: Rectangle, x: number, y: number): boolean {
   return x >= rect.column && y >= rect.row && x < rect.column + rect.width && y < rect.row + rect.height;
+}
+
+function intersects(left: Rectangle, right: Rectangle): boolean {
+  return left.column < right.column + right.width && left.column + left.width > right.column &&
+    left.row < right.row + right.height && left.row + left.height > right.row;
+}
+
+function clipRect(rect: Rectangle, clip: Rectangle): Rectangle {
+  const column = Math.max(rect.column, clip.column);
+  const row = Math.max(rect.row, clip.row);
+  const right = Math.min(rect.column + rect.width, clip.column + clip.width);
+  const bottom = Math.min(rect.row + rect.height, clip.row + clip.height);
+  return { column, row, width: Math.max(0, right - column), height: Math.max(0, bottom - row) };
 }
 function findHit(x: number, y: number): { rect: Rectangle; hit: Hit } | undefined {
   for (let index = hitTargets.length - 1; index >= 0; index -= 1) {
