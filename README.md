@@ -874,10 +874,10 @@ const plugins = state.plugins.map((plugin) => plugin.id);
 `SettingsController` wraps `PersistentSignal` with app-level namespacing, caching, aggregate readiness, flushing, reset,
 and disposal. Use it for preferences such as active route, theme pack, layout density, split ratios, hidden controls, or
 visualization settings while keeping storage configurable. `bindSettingSignal()`, `bindRouteSetting()`,
-`bindThemeSetting()`, `bindThemeLayerSetting()`, `bindSplitPaneSetting()`, and `bindDataTableSetting()` wire those
-preferences into app state without each app rebuilding two-way synchronization logic. `settingsCommands()` and
-`bindSettingsCommands()` expose registered preferences as reset commands for palettes, menus, settings screens, and
-plugin surfaces:
+`bindThemeSetting()`, `bindThemeLayerSetting()`, `bindSplitPaneSetting()`, `bindDataTableSetting()`, and
+`bindDataQuerySetting()` wire those preferences into app state without each app rebuilding two-way synchronization
+logic. `settingsCommands()` and `bindSettingsCommands()` expose registered preferences as reset commands for palettes,
+menus, settings screens, and plugin surfaces:
 
 ```ts
 const settings = new SettingsController({
@@ -900,6 +900,11 @@ const stopSplitSetting = bindSplitPaneSetting(splitController, settings, {
 });
 const stopProcessTableSetting = bindDataTableSetting(processTable, settings, {
   key: "process-table",
+  serialize: JSON.stringify,
+  deserialize: JSON.parse,
+});
+const stopProcessQuerySetting = bindDataQuerySetting(processes, settings, {
+  key: "process-query",
   serialize: JSON.stringify,
   deserialize: JSON.parse,
 });
@@ -1623,7 +1628,7 @@ Optional high-performance APIs are surfaced through `src/runtime/mod.ts`:
   `bindResourceParams()`
 - `runDataPipeline()` / `LatestDataPipeline` / `CachedDataPipeline` / `bindDataPipeline()` / `workerTransform()`
 - `DataQueryController` / `createDataQueryController()` / `queryLocalData()` / `bindDataQueryParams()` /
-  `bindDataQueryResult()` / `bindDataQueryTable()` / `bindDataQueryCommands()`
+  `bindDataQueryResult()` / `bindDataQueryTable()` / `bindDataQuerySetting()` / `bindDataQueryCommands()`
 - `WorkerPool`
 - `MemoryStore`
 - `IndexedDbStore`
@@ -1814,6 +1819,9 @@ const stopProcessQueryCommands = bindDataQueryCommands(commandRegistry, processe
 
 const table = new DataTableController({ rows: [], columns: processColumns });
 const stopProcessTableBinding = bindDataQueryTable(processes, table);
+const stopProcessQuerySetting = bindDataQuerySetting(processes, settings, {
+  key: "process-query",
+});
 ```
 
 `bindResourceParams()` connects a params signal to a resource, with optional debounce for search boxes, filters, route

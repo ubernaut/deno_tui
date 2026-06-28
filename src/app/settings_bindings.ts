@@ -3,6 +3,14 @@ import type { Signal } from "../signals/mod.ts";
 import type { ThemeLayerStack, ThemeProvider } from "../theme.ts";
 import type { ThemeEnginePipeline } from "../theme_engine_pipeline.ts";
 import type { PersistentSignal } from "../runtime/storage.ts";
+import {
+  type DataQueryController,
+  type DataQueryFilters,
+  type DataQueryParams,
+  type DataQuerySort,
+  normalizeDataQueryParams,
+  type NormalizedDataQueryParams,
+} from "../runtime/data_query.ts";
 import type { RuntimeProfileController } from "../runtime/profiles.ts";
 import type { RuntimeRendererBackendController } from "../runtime/renderer_backends.ts";
 import type { SplitPaneController, SplitPaneControllerOptions } from "../layout/mod.ts";
@@ -90,6 +98,18 @@ export interface DataTableSettingBindingOptions<Stored = DataTableState>
   setting?: PersistentSignal<DataTableState, Stored>;
   serialize?: (value: DataTableState) => Stored;
   deserialize?: (value: Stored) => DataTableState;
+}
+
+/** Options for persisting data-query search, filters, sort, and pagination params. */
+export interface DataQuerySettingBindingOptions<
+  TFilters extends DataQueryFilters = DataQueryFilters,
+  Stored = NormalizedDataQueryParams<TFilters>,
+> extends SettingSignalBindingOptions<NormalizedDataQueryParams<TFilters>> {
+  key?: string;
+  initialValue?: DataQueryParams<TFilters>;
+  setting?: PersistentSignal<NormalizedDataQueryParams<TFilters>, Stored>;
+  serialize?: (value: NormalizedDataQueryParams<TFilters>) => Stored;
+  deserialize?: (value: Stored) => NormalizedDataQueryParams<TFilters>;
 }
 
 export function bindSettingSignal<T, Stored = T>(
@@ -593,6 +613,78 @@ export function bindDataTableSetting<
   };
 }
 
+/** Restores and persists a `DataQueryController` params signal through app settings. */
+export function bindDataQuerySetting<
+  TRow = unknown,
+  TFilters extends DataQueryFilters = DataQueryFilters,
+  Stored = NormalizedDataQueryParams<TFilters>,
+>(
+  controller: DataQueryController<TRow, TFilters>,
+  settings: SettingsController,
+  options: DataQuerySettingBindingOptions<TFilters, Stored> = {},
+): SettingBinding<NormalizedDataQueryParams<TFilters>, Stored> {
+  const setting = options.setting ??
+    settings.signal(settingDefinition({
+      key: options.key ?? "data-query",
+      initialValue: sanitizeDataQueryParams(options.initialValue ?? controller.params.peek()),
+      serialize: options.serialize,
+      deserialize: options.deserialize,
+      signalOptions: { deepObserve: true },
+    }));
+
+  let disposed = false;
+  let syncing = false;
+  const equals = options.equals ?? dataQueryParamsEqual;
+
+  const applyController = (value: DataQueryParams<TFilters>) => {
+    const next = sanitizeDataQueryParams(value);
+    if (equals(sanitizeDataQueryParams(controller.params.peek()), next)) return;
+    syncing = true;
+    controller.params.value = next;
+    syncing = false;
+  };
+  const applySetting = () => {
+    if (disposed || syncing) return;
+    const next = sanitizeDataQueryParams(controller.params.peek());
+    if (!equals(setting.value.peek(), next)) {
+      syncing = true;
+      setting.set(next);
+      syncing = false;
+    }
+  };
+  const applyLoadedSetting = (value: NormalizedDataQueryParams<TFilters>) => {
+    if (disposed || syncing) return;
+    const next = sanitizeDataQueryParams(value);
+    applyController(next);
+    if (!equals(setting.value.peek(), next)) {
+      syncing = true;
+      setting.set(next);
+      syncing = false;
+    }
+  };
+
+  if (options.initialSync === "signal") {
+    setting.set(sanitizeDataQueryParams(controller.params.peek()));
+  } else {
+    applyLoadedSetting(setting.value.peek());
+    setting.ready.then((value) => {
+      if (!disposed) applyLoadedSetting(value);
+    });
+  }
+
+  setting.value.subscribe(applyLoadedSetting);
+  controller.params.subscribe(applySetting);
+
+  return {
+    setting,
+    dispose: () => {
+      disposed = true;
+      setting.value.unsubscribe(applyLoadedSetting);
+      controller.params.unsubscribe(applySetting);
+    },
+  };
+}
+
 function settingDefinition<T, Stored>(
   definition: AppSettingDefinition<T, Stored>,
 ): AppSettingDefinition<T, Stored> {
@@ -640,6 +732,43 @@ function dataTableStateEqual(left: DataTableState, right: DataTableState): boole
     left.pageSize === right.pageSize &&
     left.selectedIndex === right.selectedIndex &&
     left.selectedKey === right.selectedKey;
+}
+
+function sanitizeDataQueryParams<TFilters extends DataQueryFilters>(
+  params: DataQueryParams<TFilters>,
+): NormalizedDataQueryParams<TFilters> {
+  const normalized = normalizeDataQueryParams(params);
+  return {
+    query: normalized.query,
+    filters: sanitizeDataQueryFilters(normalized.filters),
+    ...(sanitizeDataQuerySort(normalized.sort) ? { sort: sanitizeDataQuerySort(normalized.sort) } : {}),
+    page: normalized.page,
+    pageSize: normalized.pageSize,
+  };
+}
+
+function sanitizeDataQueryFilters<TFilters extends DataQueryFilters>(filters: TFilters): TFilters {
+  return Object.fromEntries(
+    Object.entries(filters).filter(([, value]) => value !== undefined && value !== null && value !== ""),
+  ) as TFilters;
+}
+
+function sanitizeDataQuerySort(sort: DataQuerySort | undefined): DataQuerySort | undefined {
+  if (!sort?.field) return undefined;
+  if (sort.direction !== "asc" && sort.direction !== "desc") return undefined;
+  return sort;
+}
+
+function dataQueryParamsEqual<TFilters extends DataQueryFilters>(
+  left: NormalizedDataQueryParams<TFilters>,
+  right: NormalizedDataQueryParams<TFilters>,
+): boolean {
+  return left.query === right.query &&
+    left.page === right.page &&
+    left.pageSize === right.pageSize &&
+    left.sort?.field === right.sort?.field &&
+    left.sort?.direction === right.sort?.direction &&
+    JSON.stringify(left.filters) === JSON.stringify(right.filters);
 }
 
 function sanitizePipelineStepIds(pipeline: ThemeEnginePipeline, ids: readonly string[]): string[] {

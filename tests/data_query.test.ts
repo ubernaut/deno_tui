@@ -3,6 +3,7 @@ import {
   bindDataQueryCommands,
   bindDataQueryParams,
   bindDataQueryResult,
+  bindDataQuerySetting,
   bindDataQueryTable,
   CommandRegistry,
   createDataQueryController,
@@ -15,6 +16,7 @@ import {
   nextDataQuerySort,
   normalizeDataQueryParams,
   queryLocalData,
+  SettingsController,
   Signal,
 } from "../mod.ts";
 
@@ -308,6 +310,66 @@ Deno.test("bindDataQueryTable projects remote query pages into a table without l
 
   binding.dispose();
   table.dispose();
+  controller.dispose();
+});
+
+Deno.test("bindDataQuerySetting restores persists and sanitizes query params", async () => {
+  const store = new MemoryStore<unknown>();
+  await store.set(
+    "prefs.process-query",
+    JSON.stringify({
+      query: "runtime",
+      filters: { group: "runtime", empty: "" },
+      sort: { field: "cpu", direction: "sideways" },
+      page: -2,
+      pageSize: 0,
+    }),
+  );
+  const settings = new SettingsController({ store, namespace: "prefs" });
+  const controller = createDataQueryController<ProcessRow, { group?: string; empty?: string }>({
+    initialParams: { query: "shell", pageSize: 10 },
+    loader: ({ params }) => queryLocalData(rows, params, { searchable: ["name", "group"] }),
+  });
+  const binding = bindDataQuerySetting(controller, settings, {
+    key: "process-query",
+    serialize: (value) => JSON.stringify(value),
+    deserialize: (value: string) => JSON.parse(value),
+  });
+
+  await settings.ready();
+  assertEquals(controller.params.peek(), {
+    query: "runtime",
+    filters: { group: "runtime" },
+    page: 0,
+    pageSize: 1,
+  });
+  assertEquals(binding.setting.value.peek(), {
+    query: "runtime",
+    filters: { group: "runtime" },
+    page: 0,
+    pageSize: 1,
+  });
+
+  await controller.setQuery("renderer");
+  await controller.setPageSize(25);
+  await controller.setSort({ field: "pid", direction: "desc" });
+  await Promise.resolve();
+  await settings.flush();
+  assertEquals(
+    await store.get("prefs.process-query"),
+    JSON.stringify({
+      query: "renderer",
+      filters: { group: "runtime" },
+      sort: { field: "pid", direction: "desc" },
+      page: 0,
+      pageSize: 25,
+    }),
+  );
+
+  binding.dispose();
+  await controller.setQuery("shell");
+  await Promise.resolve();
+  assertEquals(binding.setting.value.peek().query, "renderer");
   controller.dispose();
 });
 

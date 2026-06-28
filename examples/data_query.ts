@@ -1,5 +1,6 @@
 import {
   bindDataQueryCommands,
+  bindDataQuerySetting,
   bindDataQueryTable,
   CommandRegistry,
   createDataQueryController,
@@ -9,6 +10,7 @@ import {
   type DataQueryResult,
   DataTableController,
   queryLocalData,
+  SettingsController,
 } from "../mod.ts";
 
 interface ProcessRow extends Record<string, unknown> {
@@ -37,6 +39,14 @@ const store = createRuntimeStore<DataQueryResult<ProcessRow>>({
   storeName: "queries",
   preferIndexedDb: false,
 });
+const settings = new SettingsController({
+  namespace: "demo",
+  store: createRuntimeStore<unknown>({
+    databaseName: "deno-tui-data-query-demo",
+    storeName: "settings",
+    preferIndexedDb: false,
+  }),
+});
 
 const processes = createDataQueryController<ProcessRow>({
   store,
@@ -63,16 +73,21 @@ const table = new DataTableController({
   rowKey: (row) => String(row.pid),
 });
 const stopTableBinding = bindDataQueryTable(processes, table);
+const querySetting = bindDataQuerySetting(processes, settings, {
+  key: "process-query",
+});
 
 await processes.setQuery("runtime");
 await commandRegistry.execute("processes.query.sort.cpu", (action) => void actions.push(action));
 await commandRegistry.execute("processes.query.sort.cpu", (action) => void actions.push(action));
+await settings.flush();
 
 console.log("Runtime data query");
 console.log(`Rows: ${processes.result.peek().rows.map((row) => `${row.name}:${row.cpu}%`).join(", ")}`);
 console.log(`Table rows: ${table.view.peek().rows.map((row) => row.name).join(", ")}`);
 console.log(`Total: ${processes.inspect().totalRows}`);
 console.log(`Cache: ${processes.inspect().key}`);
+console.log(`Setting: ${querySetting.setting.key}`);
 console.log(`Command actions: ${actions.map((action) => action.type).join(", ")}`);
 
 const restored = createDataQueryController<ProcessRow>({
@@ -91,6 +106,7 @@ console.log(`Restored cached rows: ${restored.result.peek().rows.length}`);
 
 stopTableBinding();
 stopCommands();
+querySetting.dispose();
 table.dispose();
 processes.dispose();
 restored.dispose();
