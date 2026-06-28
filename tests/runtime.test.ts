@@ -17,6 +17,15 @@ import {
   queryRuntimeProfiles,
   runtimeProfiles,
 } from "../src/runtime/profiles.ts";
+import {
+  createRuntimeRendererBackendCatalogReport,
+  createRuntimeRendererBackendRegistry,
+  formatRuntimeRendererBackendCatalogMarkdown,
+  inspectRuntimeRendererBackendCatalog,
+  queryRuntimeRendererBackends,
+  runtimeRendererBackends,
+  selectRuntimeRendererBackend,
+} from "../src/runtime/renderer_backends.ts";
 import { AsyncScheduler, runTaskBatch } from "../src/runtime/scheduler.ts";
 import {
   createRuntimeWorkloadReport,
@@ -231,6 +240,79 @@ Deno.test("runtime profile catalogs filter inspect and format reports", () => {
       "| Profile | Workers | Storage | Renderer | Tags |",
       "| --- | --- | --- | --- | --- |",
       "| Ephemeral | worker-pool | memory | webgpu | memory, testing |",
+    ].join("\n"),
+  );
+});
+
+Deno.test("runtime renderer backends select capability-aware render paths", () => {
+  const capabilities = {
+    workers: true,
+    webgpu: false,
+    webgl: true,
+    offscreenCanvas: true,
+    indexedDb: false,
+  };
+  const registry = createRuntimeRendererBackendRegistry();
+
+  assertEquals(registry.ids(), ["webgpu-three-ascii", "webgl-canvas", "terminal-cpu"]);
+  assertEquals(registry.select(capabilities)?.id, "webgl-canvas");
+  assertEquals(registry.select({ ...capabilities, webgl: false })?.id, "terminal-cpu");
+  assertEquals(registry.select({ ...capabilities, webgl: false }, { allowCpuFallback: false }), undefined);
+  assertEquals(selectRuntimeRendererBackend(runtimeRendererBackends(), capabilities, { tag: "ascii" }), undefined);
+  assertEquals(
+    selectRuntimeRendererBackend(runtimeRendererBackends(), { ...capabilities, webgpu: true }, { tag: "ascii" })?.id,
+    "webgpu-three-ascii",
+  );
+
+  registry.unregister("webgl-canvas");
+  assertEquals(registry.has("webgl-canvas"), false);
+});
+
+Deno.test("runtime renderer backend catalogs query inspect and format reports", () => {
+  const capabilities = {
+    workers: false,
+    webgpu: true,
+    webgl: false,
+    offscreenCanvas: false,
+    indexedDb: false,
+  };
+  const queried = queryRuntimeRendererBackends(runtimeRendererBackends(), { search: "ascii gpu" }, capabilities);
+  const report = createRuntimeRendererBackendCatalogReport({
+    capabilities,
+    query: { tag: "gpu" },
+  });
+  const markdown = formatRuntimeRendererBackendCatalogMarkdown({
+    capabilities,
+    query: { available: true },
+    title: "Renderers",
+  });
+
+  assertEquals(queried.map((backend) => backend.id), ["webgpu-three-ascii"]);
+  assertEquals(report.backends.map((backend) => [backend.id, backend.available, backend.missingCapabilities]), [
+    ["webgpu-three-ascii", true, []],
+    ["webgl-canvas", false, ["webgl"]],
+  ]);
+  assertEquals(inspectRuntimeRendererBackendCatalog(report.backends), {
+    count: 2,
+    available: 1,
+    accelerated: 1,
+    strategies: ["webgl", "webgpu"],
+    capabilities: ["webgl", "webgpu"],
+    tags: ["ascii", "canvas", "fallback", "gpu", "three", "visualization"],
+  });
+  assertEquals(
+    markdown,
+    [
+      "# Renderers",
+      "",
+      "2 backends, 2 available, 1 accelerated.",
+      "",
+      "Selected: WebGPU Three ASCII.",
+      "",
+      "| Backend | Strategy | Available | Missing | Tags |",
+      "| --- | --- | --- | --- | --- |",
+      "| WebGPU Three ASCII | webgpu | yes | - | ascii, gpu, three, visualization |",
+      "| Terminal CPU | cpu | yes | - | fallback, portable, terminal |",
     ].join("\n"),
   );
 });
