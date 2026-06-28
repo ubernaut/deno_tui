@@ -230,6 +230,11 @@ tui.rectangle.subscribe(() => {
 
 tui.on("keyPress", (event) => {
   if (event.ctrl && event.key === "c") return;
+  if (isTextControlActive() && event.key !== "escape") {
+    handleControlsKey(event);
+    draw();
+    return;
+  }
   if (event.key === "q") tui.emit("destroy");
   else if (event.key === "tab") focusNext();
   else if (event.key === "1") focus("inspector");
@@ -738,6 +743,15 @@ function applyControlHit(id: ControlId, action: "previous" | "next" | "activate"
 }
 
 function handleControlsKey(event: { key: string; ctrl?: boolean; meta?: boolean; shift?: boolean }): void {
+  const id = activeControl.peek();
+  if (id === "input") {
+    commandInput.handleKeyPress(event as never);
+    return;
+  }
+  if (id === "textbox") {
+    notes.handleKeyPress(event as never);
+    return;
+  }
   if (event.key === "up") {
     activeControl.value = controlAt(-1);
     return;
@@ -746,18 +760,17 @@ function handleControlsKey(event: { key: string; ctrl?: boolean; meta?: boolean;
     activeControl.value = controlAt(1);
     return;
   }
-  const id = activeControl.peek();
-  if (id === "input") {
-    commandInput.handleKeyPress(event as never);
-  } else if (id === "textbox") {
-    notes.handleKeyPress(event as never);
-  } else if (event.key === "left") {
+  if (event.key === "left") {
     applyControlHit(id, "previous");
   } else if (event.key === "right") {
     applyControlHit(id, "next");
   } else if (event.key === "space" || event.key === "return") {
     applyControlHit(id, "activate");
   }
+}
+
+function isTextControlActive(): boolean {
+  return activeWindow.peek() === "controls" && (activeControl.peek() === "input" || activeControl.peek() === "textbox");
 }
 
 function controlAt(delta: number): ControlId {

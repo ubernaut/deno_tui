@@ -206,6 +206,11 @@ host.platform.size.subscribe(() => {
 });
 
 host.on("keyPress", ({ key }) => {
+  if (isTextControlActive() && key !== "escape") {
+    handleControlsKey({ key, ctrl: false, meta: false, shift: false });
+    draw();
+    return;
+  }
   if (key === "tab") focusNext();
   else if (key === "1") focus("inspector");
   else if (key === "2") focus("data");
@@ -632,10 +637,10 @@ function applyControlHit(id: ControlId, action: "previous" | "next" | "activate"
 }
 
 function handleControlsKey(event: { key: string; ctrl?: boolean; meta?: boolean; shift?: boolean }): void {
-  if (event.key === "up") activeControl.value = controlAt(-1);
-  else if (event.key === "down") activeControl.value = controlAt(1);
-  else if (activeControl.peek() === "input") input.handleKeyPress(event as never);
+  if (activeControl.peek() === "input") input.handleKeyPress(event as never);
   else if (activeControl.peek() === "textbox") textBox.handleKeyPress(event as never);
+  else if (event.key === "up") activeControl.value = controlAt(-1);
+  else if (event.key === "down") activeControl.value = controlAt(1);
   else if (event.key === "left") applyControlHit(activeControl.peek(), "previous");
   else if (event.key === "right") applyControlHit(activeControl.peek(), "next");
   else if (event.key === "space" || event.key === "return") applyControlHit(activeControl.peek(), "activate");
@@ -644,6 +649,9 @@ function handleControlsKey(event: { key: string; ctrl?: boolean; meta?: boolean;
 function controlAt(delta: number): ControlId {
   const ids: ControlId[] = ["button", "slider", "checkbox", "radio", "combo", "input", "stepper", "textbox"];
   return ids[(ids.indexOf(activeControl.peek()) + delta + ids.length) % ids.length]!;
+}
+function isTextControlActive(): boolean {
+  return active.peek() === "controls" && (activeControl.peek() === "input" || activeControl.peek() === "textbox");
 }
 function write(frame: string[], row: number, column: number, value: string): void {
   if (row < 0 || row >= frame.length || column >= cols()) return;

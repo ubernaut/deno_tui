@@ -1330,6 +1330,58 @@ var grWizardThemePalettes = [
     subtitle: "#dfbfed"
   },
   {
+    name: "unit01",
+    label: "Unit-01 Signal",
+    description: "Bio-electric violet, acid green, and warning orange inspired by late-night mecha command rooms.",
+    dark: true,
+    bg: "#09040f",
+    bgAlt: "#13091e",
+    panel: "#20112f",
+    panelAlt: "#2f1b44",
+    surface: "#42255f",
+    border: "#6e42a0",
+    borderStrong: "#a66cff",
+    text: "#f2ecff",
+    textMuted: "#b7a4c8",
+    textSoft: "#d9c8f0",
+    accent: "#9cff4f",
+    accentDeep: "#244d19",
+    warm: "#ff9f3d",
+    warmDeep: "#68340f",
+    success: "#a9ff68",
+    warning: "#ffb13d",
+    danger: "#ff4f83",
+    idle: "#867795",
+    review: "#7ad7ff",
+    subtitle: "#c5ffa8"
+  },
+  {
+    name: "section9",
+    label: "Section 9 Ghost",
+    description: "Cybernetic teal, optic amber, and cold blue surfaces inspired by networked city interfaces.",
+    dark: true,
+    bg: "#031116",
+    bgAlt: "#061b22",
+    panel: "#0b2630",
+    panelAlt: "#103743",
+    surface: "#174a58",
+    border: "#2a7482",
+    borderStrong: "#49b6c7",
+    text: "#e8fbff",
+    textMuted: "#91b8c0",
+    textSoft: "#c1e5eb",
+    accent: "#42f5d7",
+    accentDeep: "#124b45",
+    warm: "#ffc857",
+    warmDeep: "#5c4312",
+    success: "#7dffa8",
+    warning: "#ffca63",
+    danger: "#ff6b7f",
+    idle: "#6f9098",
+    review: "#9db7ff",
+    subtitle: "#a7fff1"
+  },
+  {
     name: "parchment",
     label: "Parchment Brass",
     description: "Warm ivory panels with brass, ink, and red-wax accents.",
@@ -4833,6 +4885,11 @@ host.platform.size.subscribe(() => {
   draw();
 });
 host.on("keyPress", ({ key }) => {
+  if (isTextControlActive() && key !== "escape") {
+    handleControlsKey({ key, ctrl: false, meta: false, shift: false });
+    draw();
+    return;
+  }
   if (key === "tab") focusNext();
   else if (key === "1") focus("inspector");
   else if (key === "2") focus("data");
@@ -5234,10 +5291,10 @@ clicked`);
   push(`control ${id2} ${action}`);
 }
 function handleControlsKey(event) {
-  if (event.key === "up") activeControl.value = controlAt(-1);
-  else if (event.key === "down") activeControl.value = controlAt(1);
-  else if (activeControl.peek() === "input") input.handleKeyPress(event);
+  if (activeControl.peek() === "input") input.handleKeyPress(event);
   else if (activeControl.peek() === "textbox") textBox.handleKeyPress(event);
+  else if (event.key === "up") activeControl.value = controlAt(-1);
+  else if (event.key === "down") activeControl.value = controlAt(1);
   else if (event.key === "left") applyControlHit(activeControl.peek(), "previous");
   else if (event.key === "right") applyControlHit(activeControl.peek(), "next");
   else if (event.key === "space" || event.key === "return") applyControlHit(activeControl.peek(), "activate");
@@ -5245,6 +5302,9 @@ function handleControlsKey(event) {
 function controlAt(delta) {
   const ids = ["button", "slider", "checkbox", "radio", "combo", "input", "stepper", "textbox"];
   return ids[(ids.indexOf(activeControl.peek()) + delta + ids.length) % ids.length];
+}
+function isTextControlActive() {
+  return active.peek() === "controls" && (activeControl.peek() === "input" || activeControl.peek() === "textbox");
 }
 function write(frame, row, column, value) {
   if (row < 0 || row >= frame.length || column >= cols()) return;
