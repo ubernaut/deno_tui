@@ -486,7 +486,7 @@ Optional high-performance APIs are surfaced through `src/runtime/mod.ts`:
 - `detectRuntimeCapabilities()`
 - `AsyncScheduler`
 - `AsyncResource` / `createAsyncResource()` / `bindResourceParams()`
-- `runDataPipeline()` / `LatestDataPipeline` / `workerTransform()`
+- `runDataPipeline()` / `LatestDataPipeline` / `bindDataPipeline()` / `workerTransform()`
 - `WorkerPool`
 - `MemoryStore`
 - `IndexedDbStore`
@@ -566,6 +566,18 @@ if (result.status === "ok") renderRows(result.value);
 
 Pass `priority` and `signal` to `runDataPipeline()` or `LatestDataPipeline.run()` to prioritize visible work and cancel
 queued transforms when search text, route state, or source data changes before the work starts.
+
+`bindDataPipeline()` connects an input signal to a pipeline output signal, aborting superseded work and optionally
+debouncing rapid input changes:
+
+```ts
+const visibleRows = new Signal<ProcessRow[] | undefined>(undefined);
+const stopRows = bindDataPipeline(processes, visibleRows, [
+  filterRows((row) => row.name.includes(query.value)),
+  workerTransform(processPool),
+  sortRows((left, right) => left.cpu - right.cpu),
+], { debounceMs: 50, scheduler });
+```
 
 `createRuntimeStore()` chooses IndexedDB when available and falls back to memory. `PersistentSignal` layers reactive app
 state on top, which is useful for preferences, selected routes, panel layout, and visualization options:

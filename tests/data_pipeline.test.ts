@@ -9,7 +9,9 @@ import {
   sortRows,
   workerTransform,
 } from "../src/runtime/data_pipeline.ts";
+import { bindDataPipeline } from "../src/runtime/data_pipeline_bindings.ts";
 import { AsyncScheduler } from "../src/runtime/scheduler.ts";
+import { Signal } from "../src/signals/mod.ts";
 
 Deno.test("runDataPipeline applies row transforms in order", async () => {
   const rows = await runDataPipeline<number[], string[]>([3, 1, 2, 4], [
@@ -157,6 +159,95 @@ Deno.test("LatestDataPipeline marks older results stale", async () => {
   assertEquals(await first, { status: "stale", revision: 1 });
 });
 
+Deno.test("bindDataPipeline writes latest signal-driven pipeline results", async () => {
+  const input = new Signal([3, 1, 2]);
+  const output = new Signal<string[] | undefined>(undefined);
+  const results: Array<{ value: string[]; revision: number }> = [];
+  const dispose = bindDataPipeline<number[], string[]>(input, output, [
+    sortRows<number>((left, right) => left - right),
+    mapRows<number, string>((value) => `#${value}`),
+  ], {
+    onResult: (value, revision) => {
+      results.push({ value, revision });
+    },
+  });
+
+  await settle();
+
+  assertEquals(output.peek(), ["#1", "#2", "#3"]);
+  assertEquals(results, [{ value: ["#1", "#2", "#3"], revision: 1 }]);
+
+  input.value = [5, 4];
+  await settle();
+
+  assertEquals(output.peek(), ["#4", "#5"]);
+  assertEquals(results.at(-1), { value: ["#4", "#5"], revision: 2 });
+
+  dispose();
+  input.value = [9];
+  await settle();
+  assertEquals(output.peek(), ["#4", "#5"]);
+});
+
+Deno.test("bindDataPipeline debounces rapid input changes", async () => {
+  const input = new Signal(0);
+  const output = new Signal<number | undefined>(undefined);
+  const seen: number[] = [];
+
+  bindDataPipeline<number, number>(input, output, [
+    (value) => {
+      seen.push(value);
+      return value * 10;
+    },
+  ], { initialRun: false, debounceMs: 5 });
+  input.value = 1;
+  input.value = 2;
+  input.value = 3;
+
+  await delay(15);
+  await settle();
+
+  assertEquals(seen, [3]);
+  assertEquals(output.peek(), 30);
+});
+
+Deno.test("bindDataPipeline suppresses stale results and aborts on dispose", async () => {
+  const input = new Signal(1);
+  const output = new Signal<number | undefined>(undefined);
+  const firstRelease = deferred<void>();
+  const disposeRelease = deferred<void>();
+  const aborted: number[] = [];
+  const dispose = bindDataPipeline<number, number>(input, output, [
+    async (value, context) => {
+      context.signal?.addEventListener("abort", () => aborted.push(value));
+      if (value === 1) {
+        await firstRelease.promise;
+      }
+      if (value === 3) {
+        await disposeRelease.promise;
+      }
+      return value * 10;
+    },
+  ]);
+
+  await settle();
+  input.value = 2;
+  firstRelease.resolve();
+  await settle();
+
+  assertEquals(output.peek(), 20);
+  assertEquals(aborted, [1]);
+
+  input.value = 3;
+  await settle();
+  dispose();
+  disposeRelease.resolve();
+  await settle();
+
+  assertEquals(aborted, [1, 3]);
+  assertEquals(output.peek(), 20);
+});
+
 function deferred<T>(): {
   promise: Promise<T>;
   resolve: (value: T | PromiseLike<T>) => void;
@@ -166,6 +257,14 @@ function deferred<T>(): {
     resolve = done;
   });
   return { promise, resolve };
+}
+
+function settle(): Promise<void> {
+  return delay(0);
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 class FakeRunner<TPayload, TResult> {
