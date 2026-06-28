@@ -19,6 +19,8 @@ Every new feature cluster should include:
 - `stripAnsi(value)` removes ANSI control sequences.
 - `normalizeTerminalSnapshot(value)` strips ANSI and trailing cell whitespace.
 - `frameBufferToSnapshot(frameBuffer)` turns a canvas frame buffer into normalized text.
+- `createTestKeyPress()` and `createTestMouseScroll()` build deterministic input events without reading from a TTY.
+- `createTestFocusable()` and `TestKeyPressTarget` make focus/navigation tests independent of real components.
 
 These helpers are intentionally small and do not choose a test framework. They work with Deno's built-in test runner.
 
