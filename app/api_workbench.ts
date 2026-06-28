@@ -499,12 +499,17 @@ function renderData(frame: Frame, rect: Rectangle): void {
   table.setPageSize(Math.max(1, rect.height - 4));
   const bodyRows = renderDataTableRows(view.rows, columns, view.selectedIndex).map((line, index) => ({
     text: line,
-    fg: index === view.selectedIndex ? t.background : t.text,
+    fg: index === view.selectedIndex ? contrastText(t.warn, t.background, t.text) : t.text,
     bg: index === view.selectedIndex ? t.warn : t.surface,
     bold: index === view.selectedIndex,
   }));
   writeRows(frame, rect, [
-    { text: renderDataTableHeader(columns, table.state.peek().sort), fg: t.background, bg: t.accentDeep, bold: true },
+    {
+      text: renderDataTableHeader(columns, table.state.peek().sort),
+      fg: contrastText(t.accentDeep, t.background, t.text),
+      bg: t.accentDeep,
+      bold: true,
+    },
     ...bodyRows,
     { text: "", bg: t.surface },
     {
@@ -1120,6 +1125,40 @@ function paint(text: string, options: { fg?: string; bg?: string; bold?: boolean
 
 function pill(text: string, t = theme()): string {
   return paint(` ${text} `, { fg: t.background, bg: t.accent, bold: true });
+}
+
+function contrastText(background: string, dark: string, light: string): string {
+  const bg = parseHexColor(background);
+  const darkRgb = parseHexColor(dark);
+  const lightRgb = parseHexColor(light);
+  if (!bg || !darkRgb || !lightRgb) return relativeLuminance(bg ?? [0, 0, 0]) > 0.5 ? dark : light;
+  return contrastRatio(bg, lightRgb) >= contrastRatio(bg, darkRgb) ? light : dark;
+}
+
+function contrastRatio(left: [number, number, number], right: [number, number, number]): number {
+  const leftLum = relativeLuminance(left);
+  const rightLum = relativeLuminance(right);
+  const brightest = Math.max(leftLum, rightLum);
+  const darkest = Math.min(leftLum, rightLum);
+  return (brightest + 0.05) / (darkest + 0.05);
+}
+
+function relativeLuminance([red, green, blue]: [number, number, number]): number {
+  const [r, g, b] = [red, green, blue].map((channel) => {
+    const value = channel / 255;
+    return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!;
+}
+
+function parseHexColor(value: string): [number, number, number] | undefined {
+  const color = value.trim().replace(/^#/, "");
+  if (!/^[\da-f]{6}$/i.test(color)) return undefined;
+  return [0, 2, 4].map((index) => Number.parseInt(color.slice(index, index + 2), 16)) as [
+    number,
+    number,
+    number,
+  ];
 }
 
 function addHit(rect: Rectangle, action: HitAction): void {

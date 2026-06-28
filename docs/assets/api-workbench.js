@@ -5177,9 +5177,11 @@ function stackRects(rect, count) {
 }
 function panelLineStyle(id2, index) {
   const t = theme();
-  if (id2 === "data" && index === 0) return { fg: t.bg, bg: t.accentDeep, bold: true };
+  if (id2 === "data" && index === 0) {
+    return { fg: contrastText(t.accentDeep, t.bg, t.text), bg: t.accentDeep, bold: true };
+  }
   if (id2 === "data" && index > 0 && index - 1 === table.view.peek().selectedIndex) {
-    return { fg: t.bg, bg: t.warn, bold: true };
+    return { fg: contrastText(t.warn, t.bg, t.text), bg: t.warn, bold: true };
   }
   if (id2 === "inspector" && (index === 0 || index === 7)) {
     return { fg: t.bg, bg: index === 0 ? t.accent : t.border, bold: true };
@@ -5470,6 +5472,32 @@ function findHit(x, y) {
     const target = hitTargets[index];
     if (contains(target.rect, x, y)) return target;
   }
+}
+function contrastText(background, dark, light) {
+  const bg = parseHexColor(background);
+  const darkRgb = parseHexColor(dark);
+  const lightRgb = parseHexColor(light);
+  if (!bg || !darkRgb || !lightRgb) return relativeLuminance(bg ?? [0, 0, 0]) > 0.5 ? dark : light;
+  return contrastRatio(bg, lightRgb) >= contrastRatio(bg, darkRgb) ? light : dark;
+}
+function contrastRatio(left, right) {
+  const leftLum = relativeLuminance(left);
+  const rightLum = relativeLuminance(right);
+  const brightest = Math.max(leftLum, rightLum);
+  const darkest = Math.min(leftLum, rightLum);
+  return (brightest + 0.05) / (darkest + 0.05);
+}
+function relativeLuminance([red, green, blue]) {
+  const [r, g, b] = [red, green, blue].map((channel) => {
+    const value = channel / 255;
+    return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+function parseHexColor(value) {
+  const color = value.trim().replace(/^#/, "");
+  if (!/^[\da-f]{6}$/i.test(color)) return void 0;
+  return [0, 2, 4].map((index) => Number.parseInt(color.slice(index, index + 2), 16));
 }
 function hex(value) {
   const color = value.replace("#", "");
