@@ -81,6 +81,52 @@ Deno.test("AsyncScheduler aborts pending tasks", async () => {
   await first;
 });
 
+Deno.test("AsyncScheduler inspects capacity and waits for idle", async () => {
+  const scheduler = new AsyncScheduler({ concurrency: 1 });
+  const releaseFirst = deferred<void>();
+  const order: string[] = [];
+
+  const first = scheduler.run(async () => {
+    order.push("first:start");
+    await releaseFirst.promise;
+    order.push("first:end");
+  });
+  const second = scheduler.run(() => order.push("second"));
+  const idle = scheduler.waitForIdle().then(() => order.push("idle"));
+
+  assertEquals(scheduler.capacity(), 1);
+  assertEquals(scheduler.idle(), false);
+  assertEquals(scheduler.inspect(), { concurrency: 1, running: 1, pending: 1, idle: false });
+
+  releaseFirst.resolve();
+  await Promise.all([first, second, idle]);
+
+  assertEquals(scheduler.inspect(), { concurrency: 1, running: 0, pending: 0, idle: true });
+  assertEquals(order, ["first:start", "first:end", "second", "idle"]);
+});
+
+Deno.test("AsyncScheduler can clear queued work without stopping active work", async () => {
+  const scheduler = new AsyncScheduler({ concurrency: 1 });
+  const releaseFirst = deferred<void>();
+  let ran = false;
+  const reason = new Error("cancel queued");
+
+  const first = scheduler.run(() => releaseFirst.promise);
+  const second = scheduler.run(() => {
+    ran = true;
+  }).catch((error) => error);
+
+  assertEquals(scheduler.clearPending(reason), 1);
+  assertEquals(await second, reason);
+  assertEquals(ran, false);
+  assertEquals(scheduler.inspect(), { concurrency: 1, running: 1, pending: 0, idle: false });
+
+  releaseFirst.resolve();
+  await first;
+  await scheduler.waitForIdle();
+  assertEquals(scheduler.idle(), true);
+});
+
 Deno.test("MemoryStore implements the async store contract", async () => {
   const store = new MemoryStore<number>();
   await store.set("answer", 42);
