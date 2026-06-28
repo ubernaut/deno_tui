@@ -2,7 +2,6 @@
 
 import { EmitterEvent, EventEmitter } from "../event_emitter.ts";
 
-import { moveCursor } from "../utils/ansi_codes.ts";
 import { SortedArray } from "../utils/sorted_array.ts";
 import { rectangleIntersection } from "../utils/numbers.ts";
 
@@ -10,14 +9,14 @@ import type { ConsoleSize, Stdout } from "../types.ts";
 import { DrawObject } from "./draw_object.ts";
 import { Signal, SignalOfObject } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
-
-const textEncoder = new TextEncoder();
-const DRAW_SEQUENCE_FLUSH_LIMIT = Deno.build.os === "windows" ? 1024 : 16384;
+import { AnsiCanvasSink, type CanvasCellSink, type CanvasCellUpdate, type CanvasStdout } from "./sink.ts";
 
 /** Interface defining object that {Canvas}'s constructor can interpret */
 export interface CanvasOptions {
   /** Stdout to which canvas will render frameBuffer */
-  stdout: Stdout;
+  stdout?: Stdout | CanvasStdout;
+  /** Sink that receives dirty cell updates after each render. */
+  sink?: CanvasCellSink;
   size: ConsoleSize | SignalOfObject<ConsoleSize>;
 }
 
@@ -42,7 +41,8 @@ export interface CanvasRenderStats {
  * It is responsible for outputting to stdout.
  */
 export class Canvas extends EventEmitter<CanvasEventMap> {
-  stdout: Stdout;
+  stdout?: Stdout | CanvasStdout;
+  sink: CanvasCellSink;
   size: Signal<ConsoleSize>;
   rerenderedObjects?: number;
   frameBuffer: (string | Uint8Array)[][];
@@ -58,6 +58,13 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
     this.frameBuffer = [];
     this.rerenderQueue = [];
     this.stdout = options.stdout;
+    if (options.sink) {
+      this.sink = options.sink;
+    } else if (options.stdout) {
+      this.sink = new AnsiCanvasSink({ stdout: options.stdout as CanvasStdout });
+    } else {
+      throw new Error("Canvas requires either stdout or sink.");
+    }
     this.drawnObjects = new SortedArray((a, b) => a.zIndex.peek() - b.zIndex.peek() || a.id - b.id);
     this.updateObjects = [];
     this.resizeNeeded = false;
@@ -67,7 +74,11 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
 
     this.size.subscribe(() => {
       this.resizeNeeded = true;
+      const { columns, rows } = this.size.peek();
+      this.sink.resize?.(columns, rows);
     });
+    const { columns, rows } = this.size.peek();
+    this.sink.resize?.(columns, rows);
   }
 
   resize() {
@@ -129,7 +140,7 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
   }
 
   render(): void {
-    const { stdout, frameBuffer, updateObjects } = this;
+    const { frameBuffer, updateObjects } = this;
 
     if (this.resizeNeeded) {
       this.resize();
@@ -210,13 +221,10 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
 
     this.rerenderedObjects = i;
 
-    let drawSequence = "";
-    let lastRow = -1;
-    let lastColumn = -1;
-
     const { rerenderQueue } = this;
     const size = this.size.peek();
     let flushedCells = 0;
+    const cellUpdates: CanvasCellUpdate[] = [];
 
     for (let row = 0; row < size.rows; ++row) {
       const columns = rerenderQueue[row];
@@ -225,31 +233,13 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
       const rowBuffer = frameBuffer[row] ??= [];
 
       for (const column of columns) {
-        if (row !== lastRow || column !== lastColumn + 1) {
-          drawSequence += moveCursor(row, column);
-        }
-
         const cell = rowBuffer[column];
-
-        // This is required to render properly on windows
-        if (drawSequence.length + cell.length > DRAW_SEQUENCE_FLUSH_LIMIT) {
-          stdout.writeSync(textEncoder.encode(moveCursor(lastRow, lastColumn) + drawSequence));
-          drawSequence = moveCursor(row, column);
-        }
-
-        drawSequence += cell;
+        if (cell === undefined) continue;
+        cellUpdates.push({ row, column, value: cell });
         flushedCells += 1;
-
-        lastRow = row;
-        lastColumn = column;
       }
 
       columns.clear();
-    }
-
-    // Complete final loop draw sequence
-    if (drawSequence.length > 0) {
-      stdout.writeSync(textEncoder.encode(moveCursor(lastRow, lastColumn) + drawSequence));
     }
 
     this.lastRenderStats = {
@@ -260,6 +250,10 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
       intersectionsDirty,
       flushedCells,
     };
+
+    if (cellUpdates.length > 0) {
+      this.sink.flush(cellUpdates, this.lastRenderStats);
+    }
 
     this.emit("render");
   }
