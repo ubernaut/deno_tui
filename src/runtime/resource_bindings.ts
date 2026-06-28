@@ -10,11 +10,27 @@ export interface ResourceParamsBindingOptions<TParams, TData> {
   onError?: (error: unknown) => void | Promise<void>;
 }
 
+export interface ResourceParamsBindingInspection<TParams, TData> {
+  disposed: boolean;
+  pending: boolean;
+  debounceMs: number;
+  abortOnDispose: boolean;
+  params: TParams;
+  resource: ReturnType<AsyncResource<TParams, TData>["inspect"]>;
+}
+
+export type ResourceParamsBindingHandle<TParams, TData> = (() => void) & {
+  dispose(): void;
+  flush(): void;
+  abort(): void;
+  inspect(): ResourceParamsBindingInspection<TParams, TData>;
+};
+
 export function bindResourceParams<TParams, TData>(
   resource: AsyncResource<TParams, TData>,
   params: Signal<TParams>,
   options: ResourceParamsBindingOptions<TParams, TData> = {},
-): () => void {
+): ResourceParamsBindingHandle<TParams, TData> {
   const debounceMs = Math.max(0, options.debounceMs ?? 0);
   let disposed = false;
   let timeout: ReturnType<typeof setTimeout> | undefined;
@@ -48,7 +64,7 @@ export function bindResourceParams<TParams, TData>(
   }
   params.subscribe(schedule);
 
-  return () => {
+  const dispose = () => {
     if (disposed) return;
     disposed = true;
     clearPending();
@@ -57,4 +73,28 @@ export function bindResourceParams<TParams, TData>(
       resource.abort();
     }
   };
+  const abort = () => {
+    clearPending();
+    resource.abort();
+  };
+  const flush = () => {
+    if (disposed) return;
+    clearPending();
+    load(params.peek());
+  };
+  const inspect = (): ResourceParamsBindingInspection<TParams, TData> => ({
+    disposed,
+    pending: timeout !== undefined,
+    debounceMs,
+    abortOnDispose: options.abortOnDispose ?? false,
+    params: params.peek(),
+    resource: resource.inspect(),
+  });
+
+  return Object.assign(dispose, {
+    dispose,
+    flush,
+    abort,
+    inspect,
+  });
 }

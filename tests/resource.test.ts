@@ -90,6 +90,42 @@ Deno.test("AsyncResource can reload reset and require params", async () => {
   assertEquals(resource.state.peek(), { status: "idle", data: undefined, revision: 3 });
 });
 
+Deno.test("AsyncResource inspects current loading data and error state", async () => {
+  const error = new Error("broken");
+  const resource = createAsyncResource<number, number>({
+    initialData: 7,
+    loader: ({ params }) => {
+      if (params < 0) throw error;
+      return params * 2;
+    },
+  });
+
+  assertEquals(resource.inspect(), {
+    status: "success",
+    data: 7,
+    params: undefined,
+    revision: 0,
+    loading: false,
+    hasData: true,
+    hasError: false,
+    aborted: false,
+  });
+
+  await resource.load(-1);
+  assertEquals(resource.inspect(), {
+    status: "error",
+    data: 7,
+    error,
+    params: -1,
+    revision: 1,
+    loading: false,
+    hasData: true,
+    hasError: true,
+    aborted: false,
+  });
+  resource.dispose();
+});
+
 Deno.test("AsyncResource can run loaders through a scheduler", async () => {
   const scheduler = new AsyncScheduler({ concurrency: 1 });
   const order: string[] = [];
@@ -170,16 +206,19 @@ Deno.test("bindResourceParams debounces rapid param changes", async () => {
     },
   });
 
-  bindResourceParams(resource, params, { initialLoad: false, debounceMs: 5 });
+  const binding = bindResourceParams(resource, params, { initialLoad: false, debounceMs: 5 });
   params.value = 1;
   params.value = 2;
   params.value = 3;
 
+  assertEquals(binding.inspect().pending, true);
   await delay(15);
   await settle();
 
   assertEquals(loaded, [3]);
   assertEquals(resource.state.peek().data, 3);
+  assertEquals(binding.inspect().pending, false);
+  binding.dispose();
 });
 
 Deno.test("bindResourceParams can abort active resources on dispose", async () => {
@@ -203,6 +242,41 @@ Deno.test("bindResourceParams can abort active resources on dispose", async () =
   await release.promise;
 
   assertEquals(aborted, true);
+});
+
+Deno.test("bindResourceParams exposes flush abort inspect and callable dispose", async () => {
+  const loaded: number[] = [];
+  const params = new Signal(1);
+  const resource = createAsyncResource<number, number>({
+    loader: ({ params }) => {
+      loaded.push(params);
+      return params * 10;
+    },
+  });
+
+  const binding = bindResourceParams(resource, params, {
+    initialLoad: false,
+    debounceMs: 50,
+    abortOnDispose: true,
+  });
+  params.value = 2;
+
+  assertEquals(binding.inspect().pending, true);
+  assertEquals(binding.inspect().disposed, false);
+  binding.flush();
+  await settle();
+
+  assertEquals(loaded, [2]);
+  assertEquals(binding.inspect().resource.data, 20);
+
+  params.value = 3;
+  binding.abort();
+  assertEquals(binding.inspect().pending, false);
+  await delay(60);
+  assertEquals(loaded, [2]);
+
+  binding();
+  assertEquals(binding.inspect().disposed, true);
 });
 
 function deferred<T>(): {

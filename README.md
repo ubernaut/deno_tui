@@ -799,6 +799,7 @@ const metrics = createAsyncResource({
 
 await metrics.load();
 if (metrics.state.value.status === "success") render(metrics.state.value.data);
+const metricsState = metrics.inspect();
 ```
 
 `bindResourceParams()` connects a params signal to a resource, with optional debounce for search boxes, filters, route
@@ -810,7 +811,13 @@ const stopMetrics = bindResourceParams(metrics, query, {
   debounceMs: 100,
   abortOnDispose: true,
 });
+
+stopMetrics.flush();
+const bindingState = stopMetrics.inspect();
 ```
+
+The binding handle remains callable as a disposer and also exposes `dispose()`, `flush()`, `abort()`, and `inspect()`
+for debounced search inputs, route params, and tests.
 
 `runDataPipeline()` composes expensive row transforms behind an optional scheduler. `workerTransform()` lets any stage
 offload work through a `WorkerPool` or compatible runner. `LatestDataPipeline` protects interactive views from stale

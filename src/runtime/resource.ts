@@ -31,6 +31,14 @@ export interface AsyncResourceOptions<TParams, TData> {
   keepPreviousData?: boolean;
 }
 
+export interface AsyncResourceInspection<TData = unknown, TParams = unknown>
+  extends AsyncResourceState<TData, TParams> {
+  loading: boolean;
+  hasData: boolean;
+  hasError: boolean;
+  aborted: boolean;
+}
+
 export class AsyncResource<TParams = void, TData = unknown> {
   readonly state: Signal<AsyncResourceState<TData, TParams>>;
   readonly #loader: AsyncResourceLoader<TParams, TData>;
@@ -122,6 +130,17 @@ export class AsyncResource<TParams = void, TData = unknown> {
     this.#controller = undefined;
   }
 
+  inspect(): AsyncResourceInspection<TData, TParams> {
+    const state = this.state.peek();
+    return {
+      ...state,
+      loading: state.status === "loading",
+      hasData: state.data !== undefined,
+      hasError: state.error !== undefined,
+      aborted: this.#controller?.signal.aborted ?? false,
+    };
+  }
+
   reset(data?: TData): void {
     this.abort();
     this.#revision += 1;
@@ -134,6 +153,11 @@ export class AsyncResource<TParams = void, TData = unknown> {
 
   private priority(params: TParams): number | undefined {
     return typeof this.#priority === "function" ? this.#priority(params) : this.#priority;
+  }
+
+  dispose(): void {
+    this.abort();
+    this.state.dispose();
   }
 }
 
