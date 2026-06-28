@@ -165,6 +165,9 @@ export class ScrollArea extends Component {
   readonly offset: Signal<Offset>;
   readonly showScrollbar: Signal<boolean>;
   readonly contentView: View;
+  #syncingView = false;
+  #syncEffect?: Effect;
+  readonly #offsetSubscription = () => this.syncContentView();
 
   constructor(options: ScrollAreaOptions) {
     super(options);
@@ -183,23 +186,13 @@ export class ScrollArea extends Component {
       ),
     });
 
-    new Effect(() => {
-      const rectangle = this.rectangle.value;
-      const maxOffset = maxScrollOffset(
-        this.contentWidth.value,
-        this.contentHeight.value,
-        rectangle.width,
-        rectangle.height,
-      );
-      const offset = clampScrollOffset(this.offset.value, maxOffset);
-      const currentOffset = this.offset.peek();
+    this.offset.subscribe(this.#offsetSubscription);
 
-      this.contentView.rectangle.value = { ...rectangle };
-      this.contentView.maxOffset.value = maxOffset;
-      this.contentView.offset.value = offset;
-      if (currentOffset.columns !== offset.columns || currentOffset.rows !== offset.rows) {
-        this.offset.value = offset;
-      }
+    this.#syncEffect = new Effect(() => {
+      this.rectangle.value;
+      this.contentWidth.value;
+      this.contentHeight.value;
+      this.syncContentView();
     });
 
     this.on("keyPress", ({ key, ctrl, meta }) => {
@@ -226,6 +219,37 @@ export class ScrollArea extends Component {
 
   scrollTo(columns: number, rows: number): Offset {
     return this.setOffset(clampScrollOffset({ columns, rows }, this.contentView.maxOffset.peek()));
+  }
+
+  override destroy(): void {
+    this.offset.unsubscribe(this.#offsetSubscription);
+    this.#syncEffect?.dispose();
+    super.destroy();
+  }
+
+  private syncContentView(): void {
+    if (this.#syncingView) return;
+    this.#syncingView = true;
+    try {
+      const rectangle = this.rectangle.peek();
+      const maxOffset = maxScrollOffset(
+        this.contentWidth.peek(),
+        this.contentHeight.peek(),
+        rectangle.width,
+        rectangle.height,
+      );
+      const currentOffset = this.offset.peek();
+      const offset = clampScrollOffset(currentOffset, maxOffset);
+
+      this.contentView.rectangle.value = { ...rectangle };
+      this.contentView.maxOffset.value = maxOffset;
+      this.contentView.offset.value = offset;
+      if (currentOffset.columns !== offset.columns || currentOffset.rows !== offset.rows) {
+        this.offset.value = offset;
+      }
+    } finally {
+      this.#syncingView = false;
+    }
   }
 
   override draw(): void {

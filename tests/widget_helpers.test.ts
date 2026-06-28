@@ -50,6 +50,7 @@ import {
 import {
   clampScrollOffset,
   maxScrollOffset,
+  ScrollArea,
   ScrollAreaController,
   scrollbarGlyph,
   scrollbarThumb,
@@ -72,6 +73,8 @@ import { flattenTree, flattenTreeRows, TreeController } from "../src/components/
 import { renderVirtualListRows, VirtualListController, virtualListRows } from "../src/components/virtual_list.ts";
 import type { Key, KeyPressEvent } from "../src/input_reader/types.ts";
 import { Signal } from "../src/signals/mod.ts";
+import type { Component } from "../src/component.ts";
+import type { Tui } from "../src/tui.ts";
 
 Deno.test("visibleListRows centers the selected item when space allows", () => {
   assertEquals(visibleListRows(["alpha", "beta", "gamma", "delta"], 2, 3), [
@@ -1547,6 +1550,30 @@ Deno.test("ScrollAreaController inspects and clamps viewport offsets", () => {
   controller.dispose();
 });
 
+Deno.test("ScrollArea component syncs offsets without recursive updates", async () => {
+  const tui = createFakeTui();
+  const contentHeight = new Signal(20);
+  const area = new ScrollArea({
+    parent: tui,
+    theme: {},
+    zIndex: 1,
+    rectangle: { column: 0, row: 0, width: 12, height: 4 },
+    contentHeight,
+  });
+
+  area.scrollBy(0, 8);
+  assertEquals(area.offset.peek(), { columns: 0, rows: 8 });
+  assertEquals(area.contentView.offset.peek(), { columns: 0, rows: 8 });
+
+  await Promise.resolve();
+  contentHeight.value = 3;
+  assertEquals(area.offset.peek(), { columns: 0, rows: 0 });
+  assertEquals(area.contentView.offset.peek(), { columns: 0, rows: 0 });
+  assertEquals(area.contentView.maxOffset.peek(), { columns: 0, rows: 0 });
+
+  area.destroy();
+});
+
 Deno.test("scrollAreaCommands drive movement and scrollbar visibility", async () => {
   const controller = new ScrollAreaController({
     contentWidth: 80,
@@ -1776,4 +1803,17 @@ function keyPress(key: Key, options: Partial<Omit<KeyPressEvent, "key" | "buffer
 
 function commandDisabled(command: { disabled?: boolean | (() => boolean) }): boolean | undefined {
   return typeof command.disabled === "function" ? command.disabled() : command.disabled;
+}
+
+function createFakeTui(): Tui {
+  const root = {
+    children: [] as Component[],
+    components: new Set<Component>(),
+    on: () => () => undefined,
+    addChild(child: Component) {
+      this.children.push(child);
+      this.components.add(child);
+    },
+  };
+  return root as unknown as Tui;
 }
