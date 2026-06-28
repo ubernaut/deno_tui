@@ -1,4 +1,5 @@
 // Copyright 2023 Im-Beast. MIT license.
+import { Signal } from "../signals/mod.ts";
 import type { Rectangle } from "../types.ts";
 
 export type SplitPaneDirection = "row" | "column";
@@ -19,6 +20,12 @@ export interface SplitPaneRects {
   second: Rectangle;
   firstSize: number;
   ratio: number;
+}
+
+export type SplitPaneResizeMode = "size" | "ratio";
+
+export interface SplitPaneControllerOptions extends SplitPaneOptions {
+  resizeMode?: SplitPaneResizeMode;
 }
 
 export function splitPaneRects(bounds: Rectangle, options: SplitPaneOptions): SplitPaneRects {
@@ -60,6 +67,87 @@ export function resizeSplitPane(bounds: Rectangle, options: SplitPaneOptions, de
       { ...options, firstSize: current.firstSize + Math.floor(delta) },
     ),
   };
+}
+
+export function resizeSplitPaneRatio(bounds: Rectangle, options: SplitPaneOptions, delta: number): SplitPaneOptions {
+  const resized = resizeSplitPane(bounds, options, delta);
+  const rects = splitPaneRects(bounds, resized);
+  return {
+    ...resized,
+    firstSize: undefined,
+    ratio: rects.ratio,
+  };
+}
+
+export class SplitPaneController {
+  readonly options: Signal<SplitPaneOptions>;
+  readonly resizeMode: Signal<SplitPaneResizeMode>;
+
+  constructor(options: SplitPaneControllerOptions) {
+    const { resizeMode = "size", ...splitOptions } = options;
+    this.options = new Signal({ ...splitOptions });
+    this.resizeMode = new Signal(resizeMode);
+  }
+
+  rects(bounds: Rectangle): SplitPaneRects {
+    return splitPaneRects(bounds, this.options.peek());
+  }
+
+  resize(bounds: Rectangle, delta: number): SplitPaneRects {
+    this.options.value = this.resizeMode.peek() === "ratio"
+      ? resizeSplitPaneRatio(bounds, this.options.peek(), delta)
+      : resizeSplitPane(bounds, this.options.peek(), delta);
+    return this.rects(bounds);
+  }
+
+  update(options: Partial<SplitPaneControllerOptions>): void {
+    const { resizeMode, ...splitOptions } = options;
+    if (resizeMode) {
+      this.resizeMode.value = resizeMode;
+    }
+    this.options.value = {
+      ...this.options.peek(),
+      ...splitOptions,
+    };
+  }
+
+  setRatio(ratio: number): void {
+    this.options.value = {
+      ...this.options.peek(),
+      firstSize: undefined,
+      ratio: clampRatio(ratio),
+    };
+  }
+
+  setFirstSize(firstSize: number): void {
+    this.options.value = {
+      ...this.options.peek(),
+      firstSize: Math.max(0, Math.floor(firstSize)),
+    };
+  }
+
+  setDirection(direction: SplitPaneDirection): void {
+    this.options.value = {
+      ...this.options.peek(),
+      direction,
+    };
+  }
+
+  snapshot(): SplitPaneControllerOptions {
+    return {
+      ...this.options.peek(),
+      resizeMode: this.resizeMode.peek(),
+    };
+  }
+
+  dispose(): void {
+    this.options.dispose();
+    this.resizeMode.dispose();
+  }
+}
+
+export function createSplitPaneController(options: SplitPaneControllerOptions): SplitPaneController {
+  return new SplitPaneController(options);
 }
 
 function resolveFirstPaneSize(available: number, options: SplitPaneOptions): number {

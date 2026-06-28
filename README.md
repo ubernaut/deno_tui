@@ -228,10 +228,11 @@ const rects = flexRects(bounds, "row", [
 ### Split Panes
 
 `splitPaneRects()` returns first pane, separator, and second pane rectangles for resizable app shells. Use
-`resizeSplitPane()` to apply keyboard or pointer deltas while preserving pane constraints:
+`resizeSplitPane()` for pixel-sized panes, `resizeSplitPaneRatio()` for responsive ratios, or `SplitPaneController` when
+pane state should be observable, persisted, or shared across input handlers:
 
 ```ts
-import { resizeSplitPane, splitPaneRects } from "https://deno.land/x/tui@VERSION/mod.ts";
+import { SplitPaneController, splitPaneRects } from "https://deno.land/x/tui@VERSION/mod.ts";
 
 const panes = splitPaneRects(bounds, {
   direction: "row",
@@ -241,7 +242,16 @@ const panes = splitPaneRects(bounds, {
   gap: 1,
 });
 
-const nextOptions = resizeSplitPane(bounds, { direction: "row", firstSize: panes.firstSize }, 4);
+const split = new SplitPaneController({
+  direction: "row",
+  ratio: 0.65,
+  minFirst: 32,
+  minSecond: 24,
+  resizeMode: "ratio",
+});
+
+const nextPanes = split.resize(bounds, 4);
+splitRatioSetting.set(split.snapshot().ratio ?? 0.65);
 ```
 
 Responsive helpers are also exported for common app shell layout:
@@ -254,6 +264,8 @@ Responsive helpers are also exported for common app shell layout:
 - `layoutRecipeSlots()`
 - `splitPaneRects()`
 - `resizeSplitPane()`
+- `resizeSplitPaneRatio()`
+- `SplitPaneController`
 
 `resolveLayoutRecipe()` layers named app-shell regions over those primitives. Define breakpoint-specific trees with
 `split`, `dock`, and leaf `id` nodes, then pass the resulting rectangles directly to components:
