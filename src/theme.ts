@@ -309,6 +309,25 @@ export class ThemeLayerStack {
     return this.activeIds().map((id) => this.get(id)!);
   }
 
+  setActiveIds(ids: Iterable<string>): string[] {
+    const next = new Set(ids);
+    let changed = false;
+
+    for (const id of this.ids()) {
+      const enabled = next.has(id);
+      if (enabled && !this.#enabled.has(id)) {
+        this.#enabled.add(id);
+        changed = true;
+      } else if (!enabled && this.#enabled.has(id)) {
+        this.#enabled.delete(id);
+        changed = true;
+      }
+    }
+
+    if (changed) this.#touch();
+    return this.activeIds();
+  }
+
   setEnabled(id: string, enabled: boolean): boolean {
     if (!this.#layers.has(id)) return false;
     const changed = enabled ? !this.#enabled.has(id) : this.#enabled.has(id);

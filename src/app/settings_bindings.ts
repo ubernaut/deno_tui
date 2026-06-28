@@ -1,6 +1,6 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { Signal } from "../signals/mod.ts";
-import type { ThemeProvider } from "../theme.ts";
+import type { ThemeLayerStack, ThemeProvider } from "../theme.ts";
 import type { PersistentSignal } from "../runtime/storage.ts";
 import type { SplitPaneController, SplitPaneControllerOptions } from "../layout/mod.ts";
 import { bindRouteSignal, type RouteSignalBindingOptions } from "./route_bindings.ts";
@@ -32,6 +32,15 @@ export interface ThemeSettingBindingOptions<Stored = string> extends SettingSign
   setting?: PersistentSignal<string, Stored>;
   serialize?: (value: string) => Stored;
   deserialize?: (value: Stored) => string;
+}
+
+export interface ThemeLayerSettingBindingOptions<Stored = readonly string[]>
+  extends SettingSignalBindingOptions<readonly string[]> {
+  key?: string;
+  initialValue?: readonly string[];
+  setting?: PersistentSignal<readonly string[], Stored>;
+  serialize?: (value: readonly string[]) => Stored;
+  deserialize?: (value: Stored) => readonly string[];
 }
 
 export interface SplitPaneSettingBindingOptions<Stored = SplitPaneControllerOptions>
@@ -147,6 +156,66 @@ export function bindThemeSetting<Stored = string>(
   };
 }
 
+export function bindThemeLayerSetting<Stored = readonly string[]>(
+  target: ThemeProvider | ThemeLayerStack,
+  settings: SettingsController,
+  options: ThemeLayerSettingBindingOptions<Stored> = {},
+): SettingBinding<readonly string[], Stored> {
+  const layers = "layers" in target ? target.layers : target;
+  const setting = options.setting ??
+    settings.signal(settingDefinition({
+      key: options.key ?? "theme-layers",
+      initialValue: options.initialValue ?? layers.activeIds(),
+      serialize: options.serialize,
+      deserialize: options.deserialize,
+    }));
+
+  let disposed = false;
+  let syncing = false;
+  const equals = options.equals ?? stringArrayEqual;
+
+  const applyLayers = (value: readonly string[]) => {
+    if (equals(layers.activeIds(), value)) return;
+    syncing = true;
+    layers.setActiveIds(value);
+    syncing = false;
+  };
+  const applySetting = () => {
+    if (disposed || syncing) return;
+    const activeIds = layers.activeIds();
+    if (!equals(setting.value.peek(), activeIds)) {
+      syncing = true;
+      setting.set(activeIds);
+      syncing = false;
+    }
+  };
+  const applyLoadedSetting = (value: readonly string[]) => {
+    if (disposed || syncing) return;
+    applyLayers(value);
+  };
+
+  if (options.initialSync === "signal") {
+    setting.set(layers.activeIds());
+  } else {
+    applyLayers(setting.value.peek());
+    setting.ready.then((value) => {
+      if (!disposed) applyLayers(value);
+    });
+  }
+
+  setting.value.subscribe(applyLoadedSetting);
+  layers.options.subscribe(applySetting);
+
+  return {
+    setting,
+    dispose: () => {
+      disposed = true;
+      setting.value.unsubscribe(applyLoadedSetting);
+      layers.options.unsubscribe(applySetting);
+    },
+  };
+}
+
 export function bindSplitPaneSetting<Stored = SplitPaneControllerOptions>(
   controller: SplitPaneController,
   settings: SettingsController,
@@ -223,4 +292,8 @@ function splitPaneOptionsEqual(left: SplitPaneControllerOptions, right: SplitPan
     left.maxFirst === right.maxFirst &&
     left.gap === right.gap &&
     (left.resizeMode ?? "size") === (right.resizeMode ?? "size");
+}
+
+function stringArrayEqual(left: readonly string[], right: readonly string[]): boolean {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
 }

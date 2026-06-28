@@ -18,6 +18,7 @@ import {
   bindRouteSetting,
   bindSettingSignal,
   bindSplitPaneSetting,
+  bindThemeLayerSetting,
   bindThemeSetting,
 } from "../src/app/settings_bindings.ts";
 import { KeymapRegistry } from "../src/keymap.ts";
@@ -25,7 +26,7 @@ import { SplitPaneController } from "../src/layout/mod.ts";
 import { MemoryStore } from "../src/runtime/storage.ts";
 import { Signal } from "../src/signals/mod.ts";
 import { createTestKeyPress, TestKeyPressTarget } from "../src/testing/mod.ts";
-import { createThemeProvider, createThemeRegistry } from "../src/theme.ts";
+import { createThemeLayerStack, createThemeProvider, createThemeRegistry } from "../src/theme.ts";
 import type { Tui } from "../src/tui.ts";
 
 Deno.test("ActionBus dispatches to subscribers in registration order", async () => {
@@ -1000,6 +1001,39 @@ Deno.test("bindThemeSetting connects a provider to app settings", async () => {
   binding.dispose();
   provider.setTheme("terminal");
   assertEquals(binding.setting.value.value, "plain");
+});
+
+Deno.test("bindThemeLayerSetting restores and persists active theme layers", async () => {
+  const store = new MemoryStore<unknown>();
+  await store.set("prefs.theme-layers", JSON.stringify(["contrast"]));
+  const settings = new SettingsController({ store, namespace: "prefs" });
+  const layers = createThemeLayerStack([
+    { id: "density", options: { components: { Button: { base: { base: "foreground" } } } } },
+    { id: "contrast", enabled: false, options: { components: { Button: { base: { focused: "warning" } } } } },
+  ]);
+  const provider = createThemeProvider({ layers });
+  const binding = bindThemeLayerSetting(provider, settings, {
+    serialize: (value) => JSON.stringify(value),
+    deserialize: (value: string) => JSON.parse(value),
+  });
+
+  await settings.ready();
+  assertEquals(layers.activeIds(), ["contrast"]);
+
+  layers.enable("density");
+  await Promise.resolve();
+  await settings.flush();
+  assertEquals(binding.setting.value.value, ["density", "contrast"]);
+  assertEquals(await store.get("prefs.theme-layers"), JSON.stringify(["density", "contrast"]));
+
+  binding.setting.set([]);
+  assertEquals(layers.activeIds(), []);
+
+  binding.dispose();
+  layers.enable("contrast");
+  await Promise.resolve();
+  assertEquals(binding.setting.value.value, []);
+  layers.dispose();
 });
 
 Deno.test("bindSplitPaneSetting restores and persists layout state", async () => {
