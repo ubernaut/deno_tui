@@ -23,6 +23,7 @@
     "action-middleware": "deno run -A ./examples/action_middleware.ts",
     "cached-resource": "deno run -A ./examples/cached_resource.ts",
     "cached-pipeline": "deno run -A ./examples/cached_pipeline.ts",
+    "data-query": "deno run -A ./examples/data_query.ts",
     "grwizard": "deno run -A ./app/grwizard.ts",
     "grwizard:check": "deno check ./app/grwizard.ts",
     "showcase": "deno run -A ./app/showcase.ts",

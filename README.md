@@ -1622,6 +1622,7 @@ Optional high-performance APIs are surfaced through `src/runtime/mod.ts`:
 - `AsyncResource` / `createAsyncResource()` / `CachedAsyncResource` / `createCachedAsyncResource()` /
   `bindResourceParams()`
 - `runDataPipeline()` / `LatestDataPipeline` / `CachedDataPipeline` / `bindDataPipeline()` / `workerTransform()`
+- `DataQueryController` / `createDataQueryController()` / `queryLocalData()`
 - `WorkerPool`
 - `MemoryStore`
 - `IndexedDbStore`
@@ -1777,6 +1778,28 @@ if (restored?.status === "success") render(restored.data);
 const fresh = await metrics.load("cpu");
 if (fresh.status === "success") render(fresh.data);
 const resourceCacheState = metrics.inspect();
+```
+
+`DataQueryController` builds on `CachedAsyncResource` for tables, catalogs, pickers, and dashboard datasets that need a
+shared search/filter/sort/page contract. It exposes normalized `params`, `state`, and `result` signals and can restore
+cached query results before the next async load completes:
+
+```ts
+const processes = createDataQueryController({
+  store: createRuntimeStore({ databaseName: "monitor", storeName: "queries" }),
+  key: (params) => `processes:${params.query}:${params.page}`,
+  initialParams: { pageSize: 20 },
+  loader: async ({ params }) =>
+    queryLocalData(await readProcessRows(), params, {
+      searchable: ["name", "group"],
+    }),
+});
+
+await processes.restore({ query: "runtime" });
+await processes.setQuery("gpu worker");
+await processes.toggleSort("cpu");
+renderRows(processes.result.peek().rows);
+const queryState = processes.inspect();
 ```
 
 `bindResourceParams()` connects a params signal to a resource, with optional debounce for search boxes, filters, route
@@ -2055,6 +2078,7 @@ const preset = findAsciiDemoPreset("mixed-best");
 | `examples/action_middleware.ts`     | Action middleware and plugin pipeline example                |
 | `examples/cached_resource.ts`       | Cached async resource loader example                         |
 | `examples/cached_pipeline.ts`       | Cached scheduler-backed data pipeline example                |
+| `examples/data_query.ts`            | Cached async query controller example                        |
 | `examples/three_ascii.ts`           | Interactive 3D ASCII renderer powered by three.js            |
 | `app/showcase.ts`                   | Full Neon Exodus-style widget and visualization showcase     |
 | `app/main.ts`                       | Live system monitor dashboard with selectable panels         |

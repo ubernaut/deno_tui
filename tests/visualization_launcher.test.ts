@@ -73,6 +73,7 @@ Deno.test("visualization launch catalog filters targets by category tag and sear
   ]);
   assertEquals(queryVisualizationLaunchTargets({ tag: "runtime" }).map((entry) => entry.task), [
     "command-search",
+    "data-query",
     "cached-pipeline",
     "cached-resource",
     "runtime-workloads",

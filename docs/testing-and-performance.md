@@ -49,6 +49,8 @@ These helpers are intentionally small and do not choose a test framework. They w
 - `MemoryStore` and `IndexedDbStore` for configurable persistence.
 - `CachedAsyncResource` and `CachedDataPipeline` for optional store-backed restore paths before fresh async work
   completes.
+- `DataQueryController` plus `queryLocalData()` for cacheable async datasets with normalized search, filter, sort, and
+  pagination state.
 
 Prefer this layer over directly branching on globals inside components. Components should stay deterministic and easy to
 test; apps and renderers should use a runtime plan to decide whether to use Workers, WebGPU, WebGL, IndexedDB, or
@@ -57,6 +59,12 @@ lightweight backpressure state, and `workerFactory` lets tests inject a determin
 threads. Use `createRuntimeWorkloadReport()` when a demo, settings pane, or CI log needs one view over both scheduler
 queues and worker pools. It reports capacity, running work, queued work, saturation, idle state, and termination state
 without requiring callers to special-case each runtime primitive.
+
+`DataQueryController` is the shared runtime primitive for async table, catalog, picker, and dashboard datasets. It wraps
+`CachedAsyncResource`, exposes normalized `params`, `state`, and `result` signals, and keeps query, filter, sort, page,
+and page-size mutations testable without coupling the data source to a specific widget. Use `queryLocalData()` for
+in-memory rows, or provide an async loader that calls a service, worker, IndexedDB store, or WebGPU/WebGL-backed
+preprocessor before returning a `DataQueryResult`. Run `deno task data-query` for a cache-backed process query demo.
 
 Runtime profiles let apps expose strategy choices as data instead of hard-coded conditionals. A settings pane can show
 `RuntimeProfileRegistry.catalog()`, keep the selected profile in a `RuntimeProfileController`, persist it with

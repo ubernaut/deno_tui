@@ -116,6 +116,13 @@ export const visualizationLaunchTargets: readonly VisualizationLaunchTarget[] = 
     tags: ["runtime", "pipeline", "cache"],
   },
   {
+    task: "data-query",
+    aliases: ["data-query", "query", "dataset"],
+    description: "cached async data query controller demo",
+    category: "demo",
+    tags: ["runtime", "query", "cache"],
+  },
+  {
     task: "theme-manifest",
     aliases: ["theme-manifest", "theme-pack", "manifest"],
     description: "serializable theme manifest report",

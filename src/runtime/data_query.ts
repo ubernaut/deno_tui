@@ -1,0 +1,315 @@
+// Copyright 2023 Im-Beast. MIT license.
+import { Computed, Signal } from "../signals/mod.ts";
+import { clamp } from "../utils/numbers.ts";
+import {
+  CachedAsyncResource,
+  type CachedAsyncResourceInspection,
+  type CachedAsyncResourceOptions,
+} from "./resource.ts";
+
+export type DataQuerySortDirection = "asc" | "desc";
+
+export interface DataQuerySort {
+  field: string;
+  direction: DataQuerySortDirection;
+}
+
+export type DataQueryFilters = Record<string, unknown>;
+
+export interface DataQueryParams<TFilters extends DataQueryFilters = DataQueryFilters> {
+  query?: string;
+  filters?: TFilters;
+  sort?: DataQuerySort;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface NormalizedDataQueryParams<TFilters extends DataQueryFilters = DataQueryFilters>
+  extends Required<Pick<DataQueryParams<TFilters>, "query" | "filters" | "page" | "pageSize">> {
+  sort?: DataQuerySort;
+}
+
+export interface DataQueryResult<TRow = unknown> {
+  rows: TRow[];
+  totalRows: number;
+  page: number;
+  pageSize: number;
+  pageCount: number;
+}
+
+export interface LocalDataQueryOptions<TRow, TFilters extends DataQueryFilters = DataQueryFilters> {
+  searchable?: readonly (keyof TRow & string)[] | ((row: TRow) => readonly unknown[]);
+  filter?: (row: TRow, filters: TFilters) => boolean;
+  compare?: (left: unknown, right: unknown, sort: DataQuerySort) => number;
+}
+
+export interface DataQueryControllerOptions<
+  TRow,
+  TFilters extends DataQueryFilters = DataQueryFilters,
+  Stored = DataQueryResult<TRow>,
+> extends
+  Omit<
+    CachedAsyncResourceOptions<NormalizedDataQueryParams<TFilters>, DataQueryResult<TRow>, Stored>,
+    "loader" | "initialParams"
+  > {
+  loader: CachedAsyncResourceOptions<
+    NormalizedDataQueryParams<TFilters>,
+    DataQueryResult<TRow>,
+    Stored
+  >["loader"];
+  initialParams?: DataQueryParams<TFilters>;
+}
+
+export interface DataQueryInspection<TRow = unknown, TFilters extends DataQueryFilters = DataQueryFilters>
+  extends CachedAsyncResourceInspection<DataQueryResult<TRow>, NormalizedDataQueryParams<TFilters>> {
+  params: NormalizedDataQueryParams<TFilters>;
+  rowCount: number;
+  totalRows: number;
+  pageCount: number;
+}
+
+export class DataQueryController<
+  TRow = unknown,
+  TFilters extends DataQueryFilters = DataQueryFilters,
+  Stored = DataQueryResult<TRow>,
+> {
+  readonly params: Signal<NormalizedDataQueryParams<TFilters>>;
+  readonly resource: CachedAsyncResource<NormalizedDataQueryParams<TFilters>, DataQueryResult<TRow>, Stored>;
+  readonly state: CachedAsyncResource<NormalizedDataQueryParams<TFilters>, DataQueryResult<TRow>, Stored>["state"];
+  readonly result: Computed<DataQueryResult<TRow>>;
+
+  constructor(options: DataQueryControllerOptions<TRow, TFilters, Stored>) {
+    const initialParams = normalizeDataQueryParams(options.initialParams);
+    this.params = new Signal(initialParams, { deepObserve: true });
+    this.resource = new CachedAsyncResource({
+      ...options,
+      initialParams,
+    });
+    this.state = this.resource.state;
+    this.result = new Computed(() => this.state.value.data ?? emptyDataQueryResult(this.params.value));
+  }
+
+  async load(params: DataQueryParams<TFilters> = this.params.peek()): Promise<DataQueryResult<TRow>> {
+    const next = normalizeDataQueryParams(params, this.params.peek());
+    this.params.value = next;
+    const state = await this.resource.load(next);
+    return state.data ?? emptyDataQueryResult(next);
+  }
+
+  async restore(params: DataQueryParams<TFilters> = this.params.peek()): Promise<DataQueryResult<TRow> | undefined> {
+    const next = normalizeDataQueryParams(params, this.params.peek());
+    this.params.value = next;
+    const state = await this.resource.restore(next);
+    return state?.data;
+  }
+
+  reload(): Promise<DataQueryResult<TRow>> {
+    return this.load(this.params.peek());
+  }
+
+  async clearCache(params: DataQueryParams<TFilters> = this.params.peek()): Promise<void> {
+    await this.resource.clear(normalizeDataQueryParams(params, this.params.peek()));
+  }
+
+  setQuery(query: string): Promise<DataQueryResult<TRow>> {
+    return this.load({ ...this.params.peek(), query, page: 0 });
+  }
+
+  setFilters(filters: TFilters): Promise<DataQueryResult<TRow>> {
+    return this.load({ ...this.params.peek(), filters, page: 0 });
+  }
+
+  patchFilters(filters: Partial<TFilters>): Promise<DataQueryResult<TRow>> {
+    return this.setFilters({ ...this.params.peek().filters, ...filters } as TFilters);
+  }
+
+  clearFilters(): Promise<DataQueryResult<TRow>> {
+    return this.setFilters({} as TFilters);
+  }
+
+  setSort(sort: DataQuerySort | undefined): Promise<DataQueryResult<TRow>> {
+    return this.load({ ...this.params.peek(), sort, page: 0 });
+  }
+
+  toggleSort(field: string): Promise<DataQueryResult<TRow>> {
+    return this.setSort(nextDataQuerySort(this.params.peek().sort, field));
+  }
+
+  setPage(page: number): Promise<DataQueryResult<TRow>> {
+    const maxPage = Math.max(0, this.result.peek().pageCount - 1);
+    return this.load({ ...this.params.peek(), page: clamp(Math.floor(page), 0, maxPage) });
+  }
+
+  nextPage(): Promise<DataQueryResult<TRow>> {
+    return this.setPage(this.params.peek().page + 1);
+  }
+
+  previousPage(): Promise<DataQueryResult<TRow>> {
+    return this.setPage(this.params.peek().page - 1);
+  }
+
+  setPageSize(pageSize: number): Promise<DataQueryResult<TRow>> {
+    return this.load({ ...this.params.peek(), pageSize, page: 0 });
+  }
+
+  abort(): void {
+    this.resource.abort();
+  }
+
+  inspect(): DataQueryInspection<TRow, TFilters> {
+    const state = this.resource.inspect();
+    const result = state.data ?? emptyDataQueryResult(this.params.peek());
+    return {
+      ...state,
+      params: this.params.peek(),
+      rowCount: result.rows.length,
+      totalRows: result.totalRows,
+      pageCount: result.pageCount,
+    };
+  }
+
+  dispose(): void {
+    this.result.dispose();
+    this.params.dispose();
+    this.resource.dispose();
+  }
+}
+
+export function createDataQueryController<
+  TRow,
+  TFilters extends DataQueryFilters = DataQueryFilters,
+  Stored = DataQueryResult<TRow>,
+>(
+  options: DataQueryControllerOptions<TRow, TFilters, Stored>,
+): DataQueryController<TRow, TFilters, Stored> {
+  return new DataQueryController(options);
+}
+
+export function normalizeDataQueryParams<TFilters extends DataQueryFilters = DataQueryFilters>(
+  params: DataQueryParams<TFilters> = {},
+  fallback: NormalizedDataQueryParams<TFilters> = {
+    query: "",
+    filters: {} as TFilters,
+    page: 0,
+    pageSize: 25,
+  },
+): NormalizedDataQueryParams<TFilters> {
+  return {
+    query: params.query ?? fallback.query,
+    filters: params.filters ?? fallback.filters,
+    sort: params.sort ?? fallback.sort,
+    page: Math.max(0, Math.floor(params.page ?? fallback.page)),
+    pageSize: Math.max(1, Math.floor(params.pageSize ?? fallback.pageSize)),
+  };
+}
+
+export function nextDataQuerySort(sort: DataQuerySort | undefined, field: string): DataQuerySort | undefined {
+  if (sort?.field !== field) return { field, direction: "asc" };
+  return sort.direction === "asc" ? { field, direction: "desc" } : undefined;
+}
+
+export function queryLocalData<
+  TRow extends Record<string, unknown>,
+  TFilters extends DataQueryFilters = DataQueryFilters,
+>(
+  rows: readonly TRow[],
+  params: DataQueryParams<TFilters> = {},
+  options: LocalDataQueryOptions<TRow, TFilters> = {},
+): DataQueryResult<TRow> {
+  const normalized = normalizeDataQueryParams(params);
+  const terms = normalized.query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const filtered = rows.filter((row) => matchesDataQuery(row, terms, normalized.filters, options));
+  const sorted = sortLocalData(filtered, normalized.sort, options.compare);
+  return pageDataQueryRows(sorted, normalized);
+}
+
+export function pageDataQueryRows<TRow>(
+  rows: readonly TRow[],
+  params: DataQueryParams,
+): DataQueryResult<TRow> {
+  const normalized = normalizeDataQueryParams(params);
+  const pageSize = normalized.pageSize;
+  const pageCount = Math.max(1, Math.ceil(rows.length / pageSize));
+  const page = clamp(normalized.page, 0, pageCount - 1);
+  const start = page * pageSize;
+  return {
+    rows: rows.slice(start, start + pageSize),
+    totalRows: rows.length,
+    page,
+    pageSize,
+    pageCount,
+  };
+}
+
+function emptyDataQueryResult<TRow>(params: DataQueryParams): DataQueryResult<TRow> {
+  const normalized = normalizeDataQueryParams(params);
+  return {
+    rows: [],
+    totalRows: 0,
+    page: normalized.page,
+    pageSize: normalized.pageSize,
+    pageCount: 1,
+  };
+}
+
+function matchesDataQuery<TRow extends Record<string, unknown>, TFilters extends DataQueryFilters>(
+  row: TRow,
+  terms: readonly string[],
+  filters: TFilters,
+  options: LocalDataQueryOptions<TRow, TFilters>,
+): boolean {
+  if (options.filter && !options.filter(row, filters)) return false;
+  if (!matchesExactFilters(row, filters)) return false;
+  if (terms.length === 0) return true;
+  const haystack = searchableValues(row, options.searchable).map(stringifyDataQueryValue).join(" ").toLowerCase();
+  return terms.every((term) => haystack.includes(term));
+}
+
+function matchesExactFilters(row: Record<string, unknown>, filters: DataQueryFilters): boolean {
+  for (const [field, expected] of Object.entries(filters)) {
+    if (expected === undefined || expected === null || expected === "") continue;
+    const actual = row[field];
+    if (Array.isArray(expected)) {
+      if (!expected.includes(actual)) return false;
+      continue;
+    }
+    if (actual !== expected) return false;
+  }
+  return true;
+}
+
+function searchableValues<TRow extends Record<string, unknown>>(
+  row: TRow,
+  searchable?: LocalDataQueryOptions<TRow>["searchable"],
+): readonly unknown[] {
+  if (typeof searchable === "function") return searchable(row);
+  if (searchable) return searchable.map((field) => row[field]);
+  return Object.values(row);
+}
+
+function sortLocalData<TRow extends Record<string, unknown>>(
+  rows: readonly TRow[],
+  sort: DataQuerySort | undefined,
+  compare: LocalDataQueryOptions<TRow>["compare"],
+): TRow[] {
+  if (!sort) return [...rows];
+  const direction = sort.direction === "desc" ? -1 : 1;
+  return [...rows].sort((left, right) =>
+    (compare?.(left[sort.field], right[sort.field], sort) ??
+      compareDataQueryValues(left[sort.field], right[sort.field])) *
+    direction
+  );
+}
+
+function compareDataQueryValues(left: unknown, right: unknown): number {
+  if (typeof left === "number" && typeof right === "number") return left - right;
+  const leftString = stringifyDataQueryValue(left);
+  const rightString = stringifyDataQueryValue(right);
+  return leftString.localeCompare(rightString, undefined, { numeric: true, sensitivity: "base" });
+}
+
+function stringifyDataQueryValue(value: unknown): string {
+  if (value === undefined || value === null) return "";
+  if (value instanceof Date) return value.toISOString();
+  return String(value);
+}
