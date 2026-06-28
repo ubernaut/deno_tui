@@ -279,28 +279,16 @@ function draw(): void {
     if (visible.length === 0) {
       write(frame, body.row + 1, body.column + 2, paint("All panels minimized. Press R or click restore."));
       hitTargets.push({ rect: body, hit: { type: "restore" } });
-    } else if (width < 88) {
-      const each = Math.max(5, Math.floor(body.height / visible.length));
-      visible.forEach((id, index) =>
-        renderPanel(frame, id, {
-          column: body.column,
-          row: body.row + index * each,
-          width: body.width,
-          height: index === visible.length - 1 ? body.height - index * each : each - 1,
-        })
-      );
+    } else if (width < 88 || body.height < 18) {
+      stackRects(body, visible.length).forEach((rect, index) => renderPanel(frame, visible[index]!, rect));
     } else {
       const parts = split.resize(body, 0);
-      const lower = splitRects("row", parts.second, 0.5);
+      const right = splitRects("column", parts.second, 0.54);
+      const bottom = splitRects("row", right.second, 0.5);
       renderPanel(frame, "inspector", parts.first);
-      renderPanel(frame, "data", lower.first);
-      renderPanel(frame, "controls", lower.second);
-      renderPanel(frame, "logs", {
-        column: body.column,
-        row: body.row + body.height - 7,
-        width: body.width,
-        height: 7,
-      });
+      renderPanel(frame, "data", right.first);
+      renderPanel(frame, "controls", bottom.first);
+      renderPanel(frame, "logs", bottom.second);
     }
   }
   renderShelf(frame);
@@ -387,9 +375,10 @@ function renderPanel(frame: string[], id: PanelId, rect: Rectangle): void {
   const lines = panelLines(id, inner.width, inner.height);
   if (id === "controls") renderControls(frame, inner);
   else {
-    lines.forEach((line, index) =>
-      write(frame, inner.row + index, inner.column, paint(fit(line, inner.width), theme().text, theme().surface))
-    );
+    lines.forEach((line, index) => {
+      const style = panelLineStyle(id, index);
+      write(frame, inner.row + index, inner.column, paint(fit(line, inner.width), style.fg, style.bg, style.bold));
+    });
   }
 }
 
@@ -495,11 +484,40 @@ function resizeSplit(delta: number): void {
   split.resize({ column: 0, row: 0, width: cols(), height: rowsCount() }, delta);
   push(`resize ${delta}`);
 }
-function splitRects(direction: "row", rect: Rectangle, ratio: number) {
+function splitRects(direction: "row" | "column", rect: Rectangle, ratio: number) {
   const controller = new SplitPaneController({ direction, ratio, minFirst: 6, minSecond: 6, resizeMode: "ratio" });
   const result = controller.resize(rect, 0);
   controller.dispose();
   return result;
+}
+
+function stackRects(rect: Rectangle, count: number): Rectangle[] {
+  if (count <= 0) return [];
+  const gap = rect.height >= count * 5 ? 1 : 0;
+  const available = Math.max(0, rect.height - gap * (count - 1));
+  let row = rect.row;
+  let remaining = available;
+  return Array.from({ length: count }, (_, index) => {
+    const slots = count - index;
+    const height = index === count - 1 ? remaining : Math.max(4, Math.floor(remaining / slots));
+    const next = { column: rect.column, row, width: rect.width, height };
+    row += height + gap;
+    remaining = Math.max(0, remaining - height);
+    return next;
+  });
+}
+
+function panelLineStyle(id: PanelId, index: number): { fg: string; bg: string; bold?: boolean } {
+  const t = theme();
+  if (id === "data" && index === 0) return { fg: t.bg, bg: t.accentDeep, bold: true };
+  if (id === "data" && index > 0 && index - 1 === table.view.peek().selectedIndex) {
+    return { fg: t.bg, bg: t.warn, bold: true };
+  }
+  if (id === "inspector" && (index === 0 || index === 7)) {
+    return { fg: t.bg, bg: index === 0 ? t.accent : t.border, bold: true };
+  }
+  if (id === "logs") return { fg: t.text, bg: t.surface };
+  return { fg: t.text, bg: t.surface };
 }
 function push(message: string): void {
   log.value = [...log.peek(), `${new Date().toLocaleTimeString()} ${message}`].slice(-40);

@@ -268,6 +268,7 @@ tui.on("mouseScroll", (event) => {
 });
 
 const timer = setInterval(() => {
+  const resized = syncTerminalSize();
   if (livePreview.checked.peek()) {
     const nextRows = rows.map((row, index) => ({
       ...row,
@@ -275,7 +276,7 @@ const timer = setInterval(() => {
     }));
     table.rows.value = nextRows;
   }
-  draw();
+  if (resized || livePreview.checked.peek()) draw();
 }, 500);
 
 tui.on("destroy", () => {
@@ -297,6 +298,7 @@ tui.on("destroy", () => {
 });
 
 tui.run();
+syncTerminalSize();
 draw();
 
 function draw(): void {
@@ -368,15 +370,14 @@ function renderWorkspace(frame: string[]): void {
     return;
   }
 
-  const narrow = bounds.width < 92;
-  split.setDirection(narrow ? "column" : "row");
-  const rects = split.rects(bounds);
-  if (narrow) {
-    renderWindow(frame, "inspector", rects.first);
-    const lower = splitPane(rects.second, "column", 0.5);
-    renderWindow(frame, "data", lower.first);
-    renderWindow(frame, "controls", lower.second);
+  const stacked = bounds.width < 92 || bounds.height < 18;
+  if (stacked) {
+    for (const [index, id] of visible.entries()) {
+      renderWindow(frame, id, stackRects(bounds, visible.length)[index]!);
+    }
   } else {
+    split.setDirection("row");
+    const rects = split.rects(bounds);
     renderWindow(frame, "inspector", rects.first);
     const right = splitPane(rects.second, "column", 0.54);
     renderWindow(frame, "data", right.first);
@@ -419,36 +420,44 @@ function renderWindow(frame: string[], id: WindowId, rect: Rectangle): void {
 function renderInspector(frame: string[], rect: Rectangle): void {
   const t = theme();
   const lines = [
-    pill("Composable API surfaces", t),
-    `menu      ${paint("MenuBarController", { fg: t.good })}`,
-    `layout    ${paint("SplitPaneController + adaptive bounds", { fg: t.good })}`,
-    `viewport  ${paint("ScrollAreaController", { fg: t.good })}`,
-    `data      ${paint("DataTableController", { fg: t.good })}`,
-    `controls  ${paint("SliderController / CheckBoxController", { fg: t.good })}`,
-    `theme     ${paint(themes[themeIndex.peek()]!.label, { fg: t.warn, bold: true })}`,
-    "",
-    pill("Recent actions", t),
-    ...commandLog.peek().slice(-Math.max(0, rect.height - 10)).map((line) => `• ${line}`),
+    { text: " Composable API surfaces ", fg: t.background, bg: t.accent, bold: true },
+    { text: "menu      MenuBarController", fg: t.good, bg: t.surface },
+    { text: "layout    SplitPaneController + adaptive bounds", fg: t.good, bg: t.surface },
+    { text: "viewport  ScrollAreaController", fg: t.good, bg: t.surface },
+    { text: "data      DataTableController", fg: t.good, bg: t.surface },
+    { text: "controls  SliderController / CheckBoxController", fg: t.good, bg: t.surface },
+    { text: `theme     ${themes[themeIndex.peek()]!.label}`, fg: t.warn, bg: t.surface, bold: true },
+    { text: "", bg: t.surface },
+    { text: " Recent actions ", fg: t.background, bg: t.border, bold: true },
+    ...commandLog.peek().slice(-Math.max(0, rect.height - 10)).map((line) => ({
+      text: `• ${line}`,
+      fg: t.text,
+      bg: t.panelSoft,
+    })),
   ];
-  writeLines(frame, rect, lines);
+  writeRows(frame, rect, lines);
 }
 
 function renderData(frame: string[], rect: Rectangle): void {
   const t = theme();
   const view = table.view.peek();
   table.setPageSize(Math.max(1, rect.height - 4));
-  const lines = [
-    paint(renderDataTableHeader(columns, table.state.peek().sort), { fg: t.background, bg: t.accentDeep, bold: true }),
-    ...renderDataTableRows(view.rows, columns, view.selectedIndex).map((line, index) =>
-      paint(line, {
-        fg: index === view.selectedIndex ? t.background : t.text,
-        bg: index === view.selectedIndex ? t.warn : t.surface,
-      })
-    ),
-    "",
-    `page ${view.page + 1}/${view.pageCount}  selected ${view.selectedKey ?? "-"}  arrows/page keys navigate`,
-  ];
-  writeLines(frame, rect, lines);
+  const bodyRows = renderDataTableRows(view.rows, columns, view.selectedIndex).map((line, index) => ({
+    text: line,
+    fg: index === view.selectedIndex ? t.background : t.text,
+    bg: index === view.selectedIndex ? t.warn : t.surface,
+    bold: index === view.selectedIndex,
+  }));
+  writeRows(frame, rect, [
+    { text: renderDataTableHeader(columns, table.state.peek().sort), fg: t.background, bg: t.accentDeep, bold: true },
+    ...bodyRows,
+    { text: "", bg: t.surface },
+    {
+      text: `page ${view.page + 1}/${view.pageCount}  selected ${view.selectedKey ?? "-"}  arrows/page keys navigate`,
+      fg: t.muted,
+      bg: t.panelSoft,
+    },
+  ]);
 }
 
 function renderControls(frame: string[], rect: Rectangle): void {
@@ -563,10 +572,14 @@ function renderLogs(frame: string[], rect: Rectangle): void {
   logScroll.setViewportSize(rect.width, rect.height);
   const offset = logScroll.offset.peek().rows;
   const lines = docs.slice(offset, offset + rect.height);
-  writeLines(
+  writeRows(
     frame,
     { ...rect, width: Math.max(0, rect.width - 1) },
-    lines.map((line) => paint(line, { fg: t.text, bg: t.surface })),
+    lines.map((line) => ({
+      text: line,
+      fg: t.text,
+      bg: t.surface,
+    })),
   );
   const thumb = scrollbarThumb(docs.length, rect.height, offset);
   if (logScroll.showScrollbar.peek()) {
@@ -621,6 +634,22 @@ function splitPane(bounds: Rectangle, direction: "row" | "column", ratio: number
   const rects = temp.rects(bounds);
   temp.dispose();
   return rects;
+}
+
+function stackRects(bounds: Rectangle, count: number): Rectangle[] {
+  if (count <= 0) return [];
+  const gap = bounds.height >= count * 5 ? 1 : 0;
+  const available = Math.max(0, bounds.height - gap * (count - 1));
+  let row = bounds.row;
+  let remaining = available;
+  return Array.from({ length: count }, (_, index) => {
+    const slots = count - index;
+    const height = index === count - 1 ? remaining : Math.max(4, Math.floor(remaining / slots));
+    const rect = { column: bounds.column, row, width: bounds.width, height };
+    row += height + gap;
+    remaining = Math.max(0, remaining - height);
+    return rect;
+  });
 }
 
 function focus(id: WindowId): void {
@@ -758,9 +787,22 @@ function ensureLineObjects(): void {
   }
 }
 
-function writeLines(frame: string[], rect: Rectangle, lines: string[]): void {
-  for (let index = 0; index < Math.min(rect.height, lines.length); index += 1) {
-    write(frame, rect.row + index, rect.column, fit(lines[index] ?? "", rect.width));
+type RowStyle = { text: string; fg?: string; bg?: string; bold?: boolean };
+
+function writeRows(frame: string[], rect: Rectangle, rows: RowStyle[]): void {
+  const t = theme();
+  for (let index = 0; index < Math.min(rect.height, rows.length); index += 1) {
+    const row = rows[index]!;
+    write(
+      frame,
+      rect.row + index,
+      rect.column,
+      paint(fit(row.text, rect.width), {
+        fg: row.fg ?? t.text,
+        bg: row.bg ?? t.surface,
+        bold: row.bold,
+      }),
+    );
   }
 }
 
@@ -839,4 +881,18 @@ function currentWidth(): number {
 
 function currentHeight(): number {
   return Math.max(1, tui.rectangle.peek().height);
+}
+
+function syncTerminalSize(): boolean {
+  try {
+    const { columns, rows } = Deno.consoleSize();
+    const size = tui.canvas.size.peek();
+    if (size.columns === columns && size.rows === rows) return false;
+    size.columns = columns;
+    size.rows = rows;
+    ensureLineObjects();
+    return true;
+  } catch {
+    return false;
+  }
 }
