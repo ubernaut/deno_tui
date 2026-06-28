@@ -1525,6 +1525,13 @@ Deno.test("createAppPlugin installs declarative app surfaces with teardown", asy
     ],
     keyBindings: [{ key: "s", description: "Settings", group: "routes" }],
     focusItems: [focusItem],
+    mouseTargets: [{
+      id: "settings-panel",
+      bounds: { column: 2, row: 1, width: 8, height: 3 },
+      onPress: (_event, context) => {
+        events.push(`mouse:${context.localX},${context.localY}`);
+      },
+    }],
     install(target: typeof app) {
       events.push(`install:${target.routes.ids().join(",")}`);
       const stop = target.onActionType("route", (action) => {
@@ -1547,6 +1554,7 @@ Deno.test("createAppPlugin installs declarative app surfaces with teardown", asy
     commands: ["route.settings"],
     keyBindings: ["s"],
     focusItems: 1,
+    mouseTargets: ["settings-panel"],
     hasInstaller: true,
   });
 
@@ -1557,9 +1565,16 @@ Deno.test("createAppPlugin installs declarative app surfaces with teardown", asy
   assertEquals(app.inspect().actions.middleware, 1);
   assertEquals(app.keymap.has({ key: "s" }), true);
   assertEquals(app.focus.inspect().count, 1);
+  assertEquals(app.mouse.inspect().map((target) => target.id), ["settings-panel"]);
 
   assertEquals(await app.executeCommand("route.settings"), true);
   assertEquals(app.routes.activeRouteId.peek(), "settings");
+  assertEquals(await app.mouse.dispatch(createTestMousePress({ x: 4, y: 2 })), {
+    handled: true,
+    targetId: "settings-panel",
+    kind: "press",
+    captured: false,
+  });
 
   dispose();
   assertEquals(app.routes.ids(), ["home"]);
@@ -1567,7 +1582,8 @@ Deno.test("createAppPlugin installs declarative app surfaces with teardown", asy
   assertEquals(app.inspect().actions.middleware, 0);
   assertEquals(app.keymap.has({ key: "s" }), false);
   assertEquals(app.focus.inspect().count, 0);
-  assertEquals(events, ["install:home,settings", "dispose:custom"]);
+  assertEquals(app.mouse.inspect(), []);
+  assertEquals(events, ["install:home,settings", "mouse:2,1", "dispose:custom"]);
   app.destroy();
 });
 
@@ -1581,6 +1597,11 @@ Deno.test("app plugin catalog reports filter plugin definitions for docs and mar
       routes: [{ id: "settings", title: "Settings" }],
       commands: [{ id: "settings.open", label: "Settings" }],
       keyBindings: [{ key: ",", ctrl: true, description: "Settings" }],
+      mouseTargets: [{
+        id: "settings-region",
+        bounds: { column: 0, row: 0, width: 12, height: 2 },
+        onPress: () => undefined,
+      }],
     },
     {
       id: "runtime",
@@ -1596,6 +1617,9 @@ Deno.test("app plugin catalog reports filter plugin definitions for docs and mar
   assertEquals(queryAppPluginDefinitions(definitions, { hasCommands: true }).map((plugin) => plugin.id), [
     "settings",
   ]);
+  assertEquals(queryAppPluginDefinitions(definitions, { hasMouseTargets: true }).map((plugin) => plugin.id), [
+    "settings",
+  ]);
   const report = createAppPluginCatalogReport({ plugins: definitions, query: { search: "settings" } });
   assertEquals(report.inspection, {
     count: 1,
@@ -1603,22 +1627,24 @@ Deno.test("app plugin catalog reports filter plugin definitions for docs and mar
     commandCount: 1,
     keyBindingCount: 1,
     focusItemCount: 0,
+    mouseTargetCount: 1,
     actionMiddlewareCount: 0,
     installerCount: 0,
     tags: ["routes", "settings"],
   });
   assertEquals(report.plugins[0].commands, ["settings.open"]);
+  assertEquals(report.plugins[0].mouseTargets, ["settings-region"]);
   assertEquals(
     formatAppPluginCatalogMarkdown({ plugins: definitions, title: "Plugins" }),
     [
       "# Plugins",
       "",
-      "2 plugins, 1 routes, 1 commands, 1 key bindings.",
+      "2 plugins, 1 routes, 1 commands, 1 key bindings, 1 mouse targets.",
       "",
-      "| Plugin | Tags | Routes | Commands | Key Bindings | Installer |",
-      "| --- | --- | ---: | ---: | ---: | --- |",
-      "| Runtime Pack | resources, runtime | 0 | 0 | 0 | yes |",
-      "| Settings Pack | routes, settings | 1 | 1 | 1 | no |",
+      "| Plugin | Tags | Routes | Commands | Key Bindings | Mouse | Installer |",
+      "| --- | --- | ---: | ---: | ---: | ---: | --- |",
+      "| Runtime Pack | resources, runtime | 0 | 0 | 0 | 0 | yes |",
+      "| Settings Pack | routes, settings | 1 | 1 | 1 | 1 | no |",
     ].join("\n"),
   );
 });
@@ -1632,6 +1658,11 @@ Deno.test("createAppPlugin rolls back declarative registrations when install fai
     routes: [{ id: "admin", title: "Admin" }],
     commands: [{ id: "admin.open", label: "Admin", action: { type: "noop" } }],
     actionMiddleware: [(_action, next) => next(_action)],
+    mouseTargets: [{
+      id: "admin-region",
+      bounds: { column: 0, row: 0, width: 6, height: 2 },
+      onPress: () => undefined,
+    }],
     install() {
       throw new Error("boom");
     },
@@ -1647,6 +1678,7 @@ Deno.test("createAppPlugin rolls back declarative registrations when install fai
   assertEquals(app.routes.ids(), ["home"]);
   assertEquals(app.commands.has("admin.open"), false);
   assertEquals(app.inspect().actions.middleware, 0);
+  assertEquals(app.mouse.inspect(), []);
   app.destroy();
 });
 

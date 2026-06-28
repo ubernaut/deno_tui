@@ -5,6 +5,7 @@ import type { Action, ActionMiddleware } from "./actions.ts";
 import type { AppPlugin, AppPluginDisposer, TuiApp } from "./app.ts";
 import type { Command } from "./commands.ts";
 import { DisposableStack } from "./disposables.ts";
+import type { MouseInteractionTarget } from "./mouse_bindings.ts";
 import type { Route, RouteRegisterOptions, RouteUnregisterOptions } from "./router.ts";
 
 export interface AppPluginRoute<TRoute extends Route = Route> {
@@ -23,6 +24,7 @@ export interface AppPluginDefinition<TAction extends Action = Action, TRoute ext
   commands?: readonly Command<TAction>[];
   keyBindings?: readonly KeyBinding[];
   focusItems?: readonly Focusable[];
+  mouseTargets?: readonly MouseInteractionTarget[];
   install?: (app: TuiApp<TAction, TRoute>) => AppPluginDisposer;
 }
 
@@ -36,6 +38,7 @@ export interface AppPluginDefinitionInspection {
   commands: string[];
   keyBindings: string[];
   focusItems: number;
+  mouseTargets: string[];
   hasInstaller: boolean;
 }
 
@@ -46,6 +49,7 @@ export interface AppPluginCatalogQuery {
   hasCommands?: boolean;
   hasKeyBindings?: boolean;
   hasFocusItems?: boolean;
+  hasMouseTargets?: boolean;
   hasActionMiddleware?: boolean;
   hasInstaller?: boolean;
 }
@@ -56,6 +60,7 @@ export interface AppPluginCatalogInspection {
   commandCount: number;
   keyBindingCount: number;
   focusItemCount: number;
+  mouseTargetCount: number;
   actionMiddlewareCount: number;
   installerCount: number;
   tags: string[];
@@ -108,6 +113,10 @@ export function createAppPlugin<TAction extends Action = Action, TRoute extends 
           stack.defer(app.focus.registerAll(definition.focusItems));
         }
 
+        for (const target of definition.mouseTargets ?? []) {
+          stack.defer(app.mouse.register(target));
+        }
+
         stack.defer(definition.install?.(app));
       } catch (error) {
         stack.dispose();
@@ -132,6 +141,7 @@ export function inspectAppPluginDefinition<TAction extends Action = Action, TRou
     commands: (definition.commands ?? []).map((command) => command.id),
     keyBindings: (definition.keyBindings ?? []).map(bindingId),
     focusItems: definition.focusItems?.length ?? 0,
+    mouseTargets: (definition.mouseTargets ?? []).map((target) => target.id),
     hasInstaller: definition.install !== undefined,
   };
 }
@@ -155,6 +165,7 @@ export function inspectAppPluginCatalog(
     commandCount: plugins.reduce((total, plugin) => total + plugin.commands.length, 0),
     keyBindingCount: plugins.reduce((total, plugin) => total + plugin.keyBindings.length, 0),
     focusItemCount: plugins.reduce((total, plugin) => total + plugin.focusItems, 0),
+    mouseTargetCount: plugins.reduce((total, plugin) => total + plugin.mouseTargets.length, 0),
     actionMiddlewareCount: plugins.reduce((total, plugin) => total + plugin.actionMiddleware, 0),
     installerCount: plugins.filter((plugin) => plugin.hasInstaller).length,
     tags: [...new Set(plugins.flatMap((plugin) => plugin.tags))].sort(),
@@ -178,17 +189,17 @@ export function formatAppPluginCatalogMarkdown<TAction extends Action = Action, 
   const lines = [`# ${options.title ?? "App Plugin Catalog"}`, ""];
   if (options.includeSummary ?? true) {
     lines.push(
-      `${report.inspection.count} plugins, ${report.inspection.routeCount} routes, ${report.inspection.commandCount} commands, ${report.inspection.keyBindingCount} key bindings.`,
+      `${report.inspection.count} plugins, ${report.inspection.routeCount} routes, ${report.inspection.commandCount} commands, ${report.inspection.keyBindingCount} key bindings, ${report.inspection.mouseTargetCount} mouse targets.`,
       "",
     );
   }
-  lines.push("| Plugin | Tags | Routes | Commands | Key Bindings | Installer |");
-  lines.push("| --- | --- | ---: | ---: | ---: | --- |");
+  lines.push("| Plugin | Tags | Routes | Commands | Key Bindings | Mouse | Installer |");
+  lines.push("| --- | --- | ---: | ---: | ---: | ---: | --- |");
   for (const plugin of report.plugins) {
     lines.push(
       `| ${plugin.label ?? plugin.id ?? "plugin"} | ${
         plugin.tags.join(", ") || "-"
-      } | ${plugin.routes.length} | ${plugin.commands.length} | ${plugin.keyBindings.length} | ${
+      } | ${plugin.routes.length} | ${plugin.commands.length} | ${plugin.keyBindings.length} | ${plugin.mouseTargets.length} | ${
         plugin.hasInstaller ? "yes" : "no"
       } |`,
     );
@@ -208,6 +219,7 @@ function matchesPluginQuery(plugin: AppPluginDefinitionInspection, query: AppPlu
   if (query.hasCommands !== undefined && (plugin.commands.length > 0) !== query.hasCommands) return false;
   if (query.hasKeyBindings !== undefined && (plugin.keyBindings.length > 0) !== query.hasKeyBindings) return false;
   if (query.hasFocusItems !== undefined && (plugin.focusItems > 0) !== query.hasFocusItems) return false;
+  if (query.hasMouseTargets !== undefined && (plugin.mouseTargets.length > 0) !== query.hasMouseTargets) return false;
   if (
     query.hasActionMiddleware !== undefined &&
     (plugin.actionMiddleware > 0) !== query.hasActionMiddleware
@@ -223,6 +235,7 @@ function matchesPluginQuery(plugin: AppPluginDefinitionInspection, query: AppPlu
     ...plugin.routes,
     ...plugin.commands,
     ...plugin.keyBindings,
+    ...plugin.mouseTargets,
   ].join(" ").toLowerCase();
   return needle.split(/\s+/).every((part) => haystack.includes(part));
 }
