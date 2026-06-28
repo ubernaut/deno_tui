@@ -1,3 +1,9 @@
-import { detectRuntimeCapabilities } from "../mod.ts";
+import { detectRuntimeCapabilities, formatRuntimeCapabilities, summarizeRuntimeCapabilities } from "../mod.ts";
 
-console.log(JSON.stringify(detectRuntimeCapabilities(), null, 2));
+const capabilities = detectRuntimeCapabilities();
+
+if (Deno.args.includes("--json")) {
+  console.log(JSON.stringify(summarizeRuntimeCapabilities(capabilities), null, 2));
+} else {
+  console.log(formatRuntimeCapabilities(capabilities));
+}

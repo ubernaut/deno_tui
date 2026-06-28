@@ -1,5 +1,10 @@
 import { assertEquals } from "./deps.ts";
-import { detectRuntimeCapabilities } from "../src/runtime/capabilities.ts";
+import {
+  detectRuntimeCapabilities,
+  formatRuntimeCapabilities,
+  runtimeCapabilityEntries,
+  summarizeRuntimeCapabilities,
+} from "../src/runtime/capabilities.ts";
 import { AsyncScheduler, runTaskBatch } from "../src/runtime/scheduler.ts";
 import { createPersistentSignal, createRuntimeStore, MemoryStore } from "../src/runtime/storage.ts";
 import { type WorkerLike, WorkerPool, WorkerPoolTerminatedError } from "../src/runtime/worker_pool.ts";
@@ -18,6 +23,37 @@ Deno.test("detectRuntimeCapabilities accepts an injected scope", () => {
     offscreenCanvas: false,
     indexedDb: true,
   });
+});
+
+Deno.test("runtime capability helpers expose labeled summaries", () => {
+  const capabilities = {
+    workers: true,
+    webgpu: false,
+    webgl: true,
+    offscreenCanvas: false,
+    indexedDb: true,
+  };
+
+  assertEquals(runtimeCapabilityEntries(capabilities).map((entry) => [entry.id, entry.label, entry.available]), [
+    ["workers", "Workers", true],
+    ["webgpu", "WebGPU", false],
+    ["webgl", "WebGL", true],
+    ["offscreenCanvas", "OffscreenCanvas", false],
+    ["indexedDb", "IndexedDB", true],
+  ]);
+  assertEquals(summarizeRuntimeCapabilities(capabilities).available, 3);
+  assertEquals(summarizeRuntimeCapabilities(capabilities).missing, 2);
+  assertEquals(
+    formatRuntimeCapabilities(capabilities),
+    [
+      "Runtime capabilities: 3/5 available",
+      "ok Workers",
+      "missing WebGPU",
+      "ok WebGL",
+      "missing OffscreenCanvas",
+      "ok IndexedDB",
+    ].join("\n"),
+  );
 });
 
 Deno.test("AsyncScheduler respects the configured concurrency limit", async () => {

@@ -31,7 +31,8 @@ These helpers are intentionally small and do not choose a test framework. They w
 
 `src/runtime/mod.ts` exposes:
 
-- `detectRuntimeCapabilities()` for Workers, WebGPU, WebGL, OffscreenCanvas, and IndexedDB.
+- `detectRuntimeCapabilities()` plus `summarizeRuntimeCapabilities()` / `formatRuntimeCapabilities()` for Workers,
+  WebGPU, WebGL, OffscreenCanvas, and IndexedDB diagnostics.
 - `AsyncScheduler` for bounded, prioritized, and abortable queued async work.
 - `WorkerPool`, `installWorkerHandler()`, and `workerTransform()` for standards-style worker jobs and pipeline stages.
 - `MemoryStore` and `IndexedDbStore` for configurable persistence.

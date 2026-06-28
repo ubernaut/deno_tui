@@ -678,6 +678,7 @@ variants and app-level overrides.
 Optional high-performance APIs are surfaced through `src/runtime/mod.ts`:
 
 - `detectRuntimeCapabilities()`
+- `runtimeCapabilityEntries()` / `summarizeRuntimeCapabilities()` / `formatRuntimeCapabilities()`
 - `AsyncScheduler` / `runTaskBatch()`
 - `AsyncResource` / `createAsyncResource()` / `bindResourceParams()`
 - `runDataPipeline()` / `LatestDataPipeline` / `bindDataPipeline()` / `workerTransform()`
@@ -687,7 +688,9 @@ Optional high-performance APIs are surfaced through `src/runtime/mod.ts`:
 - `createRuntimeStore()`
 - `createPersistentSignal()` / `PersistentSignal`
 
-Use these instead of hard-coding global checks inside components.
+Use these instead of hard-coding global checks inside components. `formatRuntimeCapabilities()` produces a readable
+diagnostic summary for settings screens, logs, and `deno task capabilities`; pass `--json` to that task for structured
+summary output.
 
 `AsyncScheduler` caps concurrent work, prioritizes queued tasks, exposes queue inspection, and can wait for or clear
 pending work. `runTaskBatch()` builds on the same scheduler for ordered fan-out work:
