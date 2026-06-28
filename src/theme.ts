@@ -210,6 +210,38 @@ export interface ThemeInspection {
   components: ThemeComponentInspection[];
 }
 
+export interface ThemeVariantCoverageInspection {
+  name: string;
+  states: ThemeState[];
+  missingStates: ThemeState[];
+  complete: boolean;
+}
+
+export interface ThemeComponentCoverageInspection {
+  name: string;
+  extends: string[];
+  variants: ThemeVariantCoverageInspection[];
+  stateCount: number;
+  coveredStateCount: number;
+  missingStateCount: number;
+  complete: boolean;
+}
+
+export interface ThemeCoverageInspection {
+  componentCount: number;
+  variantCount: number;
+  stateCount: number;
+  coveredStateCount: number;
+  missingStateCount: number;
+  complete: boolean;
+  components: ThemeComponentCoverageInspection[];
+}
+
+export interface ThemeCoverageOptions {
+  components?: Iterable<string>;
+  variants?: (component: string, definition: ComponentThemeDefinition) => Iterable<string>;
+}
+
 export type ThemeValidationIssueKind =
   | "unknown-token"
   | "unknown-component"
@@ -618,6 +650,32 @@ export function diffThemeEngines(
   }
 
   return { sample, tokens: tokenDiffs, components: componentDiffs };
+}
+
+export function inspectThemeCoverage(
+  options: ThemeEngineOptions,
+  coverageOptions: ThemeCoverageOptions = {},
+): ThemeCoverageInspection {
+  const components = composeThemeOptions(options).components ?? {};
+  const componentNames = coverageOptions.components
+    ? [...new Set(coverageOptions.components)].sort()
+    : Object.keys(components).sort();
+  const componentCoverage = componentNames.map((name) =>
+    inspectThemeComponentCoverage(name, components, coverageOptions)
+  );
+  const variantCount = componentCoverage.reduce((total, component) => total + component.variants.length, 0);
+  const coveredStateCount = componentCoverage.reduce((total, component) => total + component.coveredStateCount, 0);
+  const missingStateCount = componentCoverage.reduce((total, component) => total + component.missingStateCount, 0);
+
+  return {
+    componentCount: componentCoverage.length,
+    variantCount,
+    stateCount: variantCount * themeStates.length,
+    coveredStateCount,
+    missingStateCount,
+    complete: componentCoverage.every((component) => component.complete),
+    components: componentCoverage,
+  };
 }
 
 export function createThemeEngine(
@@ -1293,6 +1351,87 @@ function themeDiffVariants(component: string, before: ThemeEngine, after: ThemeE
     if (b === "default") return 1;
     return a.localeCompare(b);
   });
+}
+
+function inspectThemeComponentCoverage(
+  name: string,
+  components: Record<string, ComponentThemeDefinition>,
+  options: ThemeCoverageOptions,
+): ThemeComponentCoverageInspection {
+  const resolved = resolveThemeCoverageDefinition(name, components);
+  const variants = coverageVariantNames(name, resolved, options).map((variant) => {
+    const states = coveredThemeStates(resolved, variant);
+    const missingStates = themeStates.filter((state) => !states.includes(state));
+    return {
+      name: variant,
+      states,
+      missingStates,
+      complete: missingStates.length === 0,
+    };
+  });
+  const coveredStateCount = variants.reduce((total, variant) => total + variant.states.length, 0);
+  const missingStateCount = variants.reduce((total, variant) => total + variant.missingStates.length, 0);
+
+  return {
+    name,
+    extends: normalizeThemeExtends(components[name]?.extends),
+    variants,
+    stateCount: variants.length * themeStates.length,
+    coveredStateCount,
+    missingStateCount,
+    complete: variants.every((variant) => variant.complete),
+  };
+}
+
+function resolveThemeCoverageDefinition(
+  componentName: string,
+  components: Record<string, ComponentThemeDefinition>,
+  seen = new Set<string>(),
+): ComponentThemeDefinition {
+  const definition = components[componentName];
+  if (!definition) return {};
+  if (seen.has(componentName)) {
+    throw new ThemeInheritanceError([...seen, componentName]);
+  }
+  seen.add(componentName);
+
+  let resolved: ComponentThemeDefinition = {};
+  for (const parent of normalizeThemeExtends(definition.extends)) {
+    resolved = mergeComponentThemeDefinition(
+      resolved,
+      resolveThemeCoverageDefinition(parent, components, new Set(seen)),
+    );
+  }
+
+  return mergeComponentThemeDefinition(resolved, {
+    base: definition.base,
+    variants: definition.variants,
+  });
+}
+
+function coverageVariantNames(
+  component: string,
+  definition: ComponentThemeDefinition,
+  options: ThemeCoverageOptions,
+): string[] {
+  const variants = options.variants
+    ? [...options.variants(component, definition)]
+    : Object.keys(definition.variants ?? {});
+  return [...new Set(["default", ...variants])].sort((a, b) => {
+    if (a === "default") return -1;
+    if (b === "default") return 1;
+    return a.localeCompare(b);
+  });
+}
+
+function coveredThemeStates(definition: ComponentThemeDefinition, variant: string): ThemeState[] {
+  const states = new Set<string>(Object.keys(definition.base ?? {}));
+  if (variant !== "default") {
+    for (const state of Object.keys(definition.variants?.[variant] ?? {})) {
+      states.add(state);
+    }
+  }
+  return sortedThemeStates(states);
 }
 
 function mergeThemeCatalogComponents(

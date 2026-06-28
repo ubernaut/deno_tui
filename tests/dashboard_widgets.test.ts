@@ -31,6 +31,7 @@ import {
   defaultThemePacks,
   diffThemeEngines,
   emptyStyle,
+  inspectThemeCoverage,
   inspectThemeManifest,
   mergeComponentThemeDefinition,
   previewThemeManifest,
@@ -492,6 +493,74 @@ Deno.test("composeThemeOptions preserves component variants while overriding tok
 
   assertEquals(composed.tokens?.accent, accentB);
   assertEquals(Object.keys(composed.components?.Button.variants ?? {}).sort(), ["danger", "quiet"]);
+});
+
+Deno.test("inspectThemeCoverage reports authored state coverage after inheritance", () => {
+  const coverage = inspectThemeCoverage({
+    components: {
+      Field: {
+        base: { base: emptyStyle, focused: emptyStyle },
+      },
+      Button: {
+        extends: "Field",
+        variants: {
+          danger: { active: emptyStyle, disabled: emptyStyle },
+        },
+      },
+    },
+  }, {
+    components: ["Button", "Field", "Missing"],
+  });
+
+  assertEquals(coverage, {
+    componentCount: 3,
+    variantCount: 4,
+    stateCount: 16,
+    coveredStateCount: 8,
+    missingStateCount: 8,
+    complete: false,
+    components: [
+      {
+        name: "Button",
+        extends: ["Field"],
+        variants: [
+          { name: "default", states: ["base", "focused"], missingStates: ["active", "disabled"], complete: false },
+          { name: "danger", states: ["base", "focused", "active", "disabled"], missingStates: [], complete: true },
+        ],
+        stateCount: 8,
+        coveredStateCount: 6,
+        missingStateCount: 2,
+        complete: false,
+      },
+      {
+        name: "Field",
+        extends: [],
+        variants: [
+          { name: "default", states: ["base", "focused"], missingStates: ["active", "disabled"], complete: false },
+        ],
+        stateCount: 4,
+        coveredStateCount: 2,
+        missingStateCount: 2,
+        complete: false,
+      },
+      {
+        name: "Missing",
+        extends: [],
+        variants: [
+          {
+            name: "default",
+            states: [],
+            missingStates: ["base", "focused", "active", "disabled"],
+            complete: false,
+          },
+        ],
+        stateCount: 4,
+        coveredStateCount: 0,
+        missingStateCount: 4,
+        complete: false,
+      },
+    ],
+  });
 });
 
 Deno.test("ThemeEngine supports component inheritance and aliases", () => {

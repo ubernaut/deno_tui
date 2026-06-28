@@ -838,6 +838,7 @@ import {
   createThemeRegistry,
   createThemeRegistryFromManifests,
   diffThemeEngines,
+  inspectThemeCoverage,
   inspectThemeManifest,
   previewThemeManifest,
   themeCommands,
@@ -877,6 +878,9 @@ const themeEngine = createThemeEngine("neon", appTheme)
 
 const themeIssues = validateThemeOptions(appTheme);
 assertThemeOptions(appTheme);
+const themeCoverage = inspectThemeCoverage(appTheme, {
+  components: ["Button", "ComboBox", "Modal"],
+});
 const buttonTheme = themeEngine.component("Button", "danger");
 const availableThemes = themeEngine.inspect();
 
@@ -1007,10 +1011,12 @@ predicates, so the active theme and current layer states stay accurate when they
 bar, context menu, or key binding help surface. `validateThemeOptions()` and `assertThemeOptions()` give theme authors a
 first-class diagnostics pass for unknown token references, missing component parents, and inheritance cycles before a
 pack is registered. `themeTokenNames` and `themeStates` expose the stable engine vocabulary for editors, schema
-generators, inspectors, and design tooling. `diffThemeEngines()` previews changed semantic tokens and resolved component
-states between two engines, which makes it practical to build theme review panels, snapshot tests, and migration reports
-around real rendered output instead of raw object comparison. `createThemePlugin()` is the app-level installer for the
-same engine layer: it owns or accepts a `ThemeProvider`, registers theme and layer commands, optionally mirrors command
+generators, inspectors, and design tooling. `inspectThemeCoverage()` reports explicitly authored state coverage after
+component inheritance is resolved, including missing states per component and variant, so theme packs can fail CI before
+unstyled states accidentally ship. `diffThemeEngines()` previews changed semantic tokens and resolved component states
+between two engines, which makes it practical to build theme review panels, snapshot tests, and migration reports around
+real rendered output instead of raw object comparison. `createThemePlugin()` is the app-level installer for the same
+engine layer: it owns or accepts a `ThemeProvider`, registers theme and layer commands, optionally mirrors command
 bindings into key help, and connects the active pack and active layers to `SettingsController` persistence with one
 disposable plugin.
 
