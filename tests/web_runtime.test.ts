@@ -91,10 +91,26 @@ Deno.test("BrowserCellCanvasSink paints dirty cells to a 2D context", () => {
 
 Deno.test("BrowserInputSource reports pointer positions in terminal cells", () => {
   const listeners = new Map<string, EventListener>();
+  const operations: unknown[][] = [];
   const target = {
     tabIndex: -1,
     addEventListener: (type: string, listener: EventListener) => void listeners.set(type, listener),
     removeEventListener: (type: string) => void listeners.delete(type),
+    focus: (options?: FocusOptions) => operations.push(["focus", options?.preventScroll]),
+    setPointerCapture: (pointerId: number) => operations.push(["capture", pointerId]),
+    hasPointerCapture: (pointerId: number) => pointerId === 7,
+    releasePointerCapture: (pointerId: number) => operations.push(["release", pointerId]),
+    getBoundingClientRect: () => ({
+      x: 8,
+      y: 16,
+      left: 8,
+      top: 16,
+      right: 168,
+      bottom: 176,
+      width: 160,
+      height: 160,
+      toJSON: () => ({}),
+    }),
   };
   const events: unknown[] = [];
   const input = new BrowserInputSource(target as unknown as HTMLElement, { cellWidth: 8, cellHeight: 16 });
@@ -104,8 +120,9 @@ Deno.test("BrowserInputSource reports pointer positions in terminal cells", () =
   } as never);
 
   listeners.get("pointerdown")?.({
-    offsetX: 23,
-    offsetY: 35,
+    pointerId: 7,
+    clientX: 31,
+    clientY: 51,
     movementX: 0,
     movementY: 0,
     metaKey: false,
@@ -117,6 +134,41 @@ Deno.test("BrowserInputSource reports pointer positions in terminal cells", () =
     preventDefault: () => undefined,
   } as unknown as Event);
 
+  listeners.get("pointermove")?.({
+    pointerId: 7,
+    clientX: 47,
+    clientY: 83,
+    movementX: 16,
+    movementY: 32,
+    metaKey: false,
+    altKey: false,
+    ctrlKey: false,
+    shiftKey: true,
+    buttons: 1,
+    button: 0,
+    preventDefault: () => undefined,
+  } as unknown as Event);
+
+  listeners.get("pointerup")?.({
+    pointerId: 7,
+    clientX: 47,
+    clientY: 83,
+    movementX: 0,
+    movementY: 0,
+    metaKey: false,
+    altKey: false,
+    ctrlKey: false,
+    shiftKey: false,
+    buttons: 0,
+    button: 0,
+    preventDefault: () => undefined,
+  } as unknown as Event);
+
+  assertEquals(operations, [
+    ["focus", true],
+    ["capture", 7],
+    ["release", 7],
+  ]);
   assertEquals(events[0], [
     "mousePress",
     {
@@ -132,6 +184,40 @@ Deno.test("BrowserInputSource reports pointer positions in terminal cells", () =
       drag: true,
       release: false,
       button: 0,
+    },
+  ]);
+  assertEquals(events[1], [
+    "mousePress",
+    {
+      key: "mouse",
+      x: 4,
+      y: 4,
+      movementX: 16,
+      movementY: 32,
+      meta: false,
+      ctrl: false,
+      shift: true,
+      buffer: new Uint8Array(),
+      drag: true,
+      release: false,
+      button: 0,
+    },
+  ]);
+  assertEquals(events[2], [
+    "mousePress",
+    {
+      key: "mouse",
+      x: 4,
+      y: 4,
+      movementX: 0,
+      movementY: 0,
+      meta: false,
+      ctrl: false,
+      shift: false,
+      buffer: new Uint8Array(),
+      drag: false,
+      release: true,
+      button: undefined,
     },
   ]);
   input.dispose();

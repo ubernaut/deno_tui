@@ -36,12 +36,12 @@ renderer lab, and demo suite:
   re-export, exported symbol, and current JSDoc status.
 - [Visualization App](./docs/visualization-app.md) covers the system monitor shell, panel model, and visualization
   controls.
-- [GRWizard App](./docs/grwizard-app.md) covers the responsive GPU/model wizard demo.
 - [Repository Overview](./docs/repo-overview.md) summarizes the architecture, module families, demos, and launch
   commands in one place.
 - [Browser Framework Plan](./docs/web-framework-plan.md) compares browser delivery options and recommends a hybrid
   platform/renderer path for shared terminal and web interfaces. The current branch includes `mod.web.ts`,
-  `mod.remote.ts`, a Canvas2D web host, a DOM render target, and a GitHub Pages Neon Exodus build under `docs/`.
+  `mod.remote.ts`, a Canvas2D web host, a DOM render target, and GitHub Pages builds for Neon Exodus, API Workbench, and
+  the three ASCII renderer under `docs/`.
 - The README remains the primary API tour for components, layouts, app primitives, theming, runtime capabilities,
   reactivity, views, examples, and contribution commands.
 
@@ -2290,7 +2290,6 @@ tuning.
 ./visualization plugins
 ./visualization adopter
 ./visualization gallery
-./visualization grwizard
 ./visualization health
 deno task viz
 ```
@@ -2308,17 +2307,16 @@ lifecycle inspection, `capabilities` for platform feature detection, `runtime-wo
 pressure inspection, `benchmark` for performance smoke checks, `api-inventory` for public export graph inspection,
 `components` for widget catalog reports, `plugins` for app plugin definition reports, `adopter` for an integrated
 terminal/runtime/plugin/theme/data workbench report, `gallery` for a compact tour across launchers, widgets, renderers,
-themes, plugins, runtime capabilities, and terminal capabilities, `layout-recipe` for responsive recipe inspection,
-`grwizard` for the responsive GPU/model wizard, and `health` for the contributor gate. The launcher metadata is also
-exported from `scripts/visualization_launcher.ts` as a queryable catalog: `queryVisualizationLaunchTargets()`,
-`createVisualizationLaunchReport()`, `inspectVisualizationLaunchTargets()`, and `formatVisualizationLaunchMarkdown()`
-provide the same structured target list for custom launchers, docs pages, and CI reports without duplicating aliases or
-descriptions. Benchmark runs print per-case timings plus an aggregate summary; `deno task benchmark -- --list` prints
-the benchmark catalog without running workloads, `deno task benchmark -- --list --json` emits that catalog as structured
-data, and `deno task benchmark -- --json` emits the same threshold-aware timing summary as structured data and exits
-nonzero when a case fails its limits. The catalog path is backed by `BenchmarkRunner.inspect()`,
-`createBenchmarkCatalogReport()`, and `formatBenchmarkCatalogMarkdown()` so launchers and docs can reuse the same case
-metadata.
+themes, plugins, runtime capabilities, and terminal capabilities, `layout-recipe` for responsive recipe inspection, and
+`health` for the contributor gate. The launcher metadata is also exported from `scripts/visualization_launcher.ts` as a
+queryable catalog: `queryVisualizationLaunchTargets()`, `createVisualizationLaunchReport()`,
+`inspectVisualizationLaunchTargets()`, and `formatVisualizationLaunchMarkdown()` provide the same structured target list
+for custom launchers, docs pages, and CI reports without duplicating aliases or descriptions. Benchmark runs print
+per-case timings plus an aggregate summary; `deno task benchmark -- --list` prints the benchmark catalog without running
+workloads, `deno task benchmark -- --list --json` emits that catalog as structured data, and
+`deno task benchmark -- --json` emits the same threshold-aware timing summary as structured data and exits nonzero when
+a case fails its limits. The catalog path is backed by `BenchmarkRunner.inspect()`, `createBenchmarkCatalogReport()`,
+and `formatBenchmarkCatalogMarkdown()` so launchers and docs can reuse the same case metadata.
 
 The theme gallery now uses the exported grWizard palette suite and supports explicit selection:
 

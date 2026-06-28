@@ -200,9 +200,9 @@ function makeArrayMethodsReactive(array, signal, watchObjectIndex = false) {
   if (watchObjectIndex) {
     return makeObjectPropertiesReactive(array, signal, true);
   }
-  const push = array.push.bind(array);
+  const push2 = array.push.bind(array);
   function $push(...items) {
-    const output = push(...items);
+    const output = push2(...items);
     if (output > 0) signal.propagate();
     return output;
   }
@@ -558,6 +558,9 @@ function signalify(input, options) {
 }
 
 // src/utils/numbers.ts
+function clamp(number, min2, max2) {
+  return Math.max(Math.min(number, max2), min2);
+}
 function fitsInRectangle(column, row, rectangle) {
   return rectangle.width !== 0 && rectangle.height !== 0 && column >= rectangle.column && column < rectangle.column + rectangle.width && row >= rectangle.row && row < rectangle.row + rectangle.height;
 }
@@ -586,6 +589,15 @@ function rectangleIntersection(a, b, data) {
   intersectionObject.width = width;
   intersectionObject.height = height;
   return intersectionObject;
+}
+function normalize(value, min2, max2) {
+  return (value - min2) / (max2 - min2) || 0;
+}
+
+// src/selection.ts
+function clampSelectionIndex(length, index) {
+  if (length <= 0) return 0;
+  return Math.max(0, Math.min(Math.floor(index), length - 1));
 }
 
 // src/theme.ts
@@ -810,8 +822,8 @@ var DrawObject = class {
   queueRerender(row, column) {
     const viewRectangle = this.view.peek()?.rectangle?.peek();
     if (row < 0 || column < 0) return;
-    const { columns: columns2, rows: rows2 } = this.canvas.size.peek();
-    if (row >= rows2 || column >= columns2) return;
+    const { columns, rows: rows2 } = this.canvas.size.peek();
+    if (row >= rows2 || column >= columns) return;
     if (viewRectangle && (row < viewRectangle.row || column < viewRectangle.column || row >= viewRectangle.row + viewRectangle.height || column >= viewRectangle.column + viewRectangle.width)) return;
     (this.rerenderCells[row] ??= /* @__PURE__ */ new Set()).add(column);
   }
@@ -856,9 +868,9 @@ var DrawObject = class {
     }
   }
   updateOutOfBounds() {
-    const { columns: columns2, rows: rows2 } = this.canvas.size.peek();
+    const { columns, rows: rows2 } = this.canvas.size.peek();
     const { column, row, width, height } = this.rectangle.peek();
-    this.outOfBounds = width === 0 || height === 0 || column >= columns2 || row >= rows2 || column + width < 0 || row + height < 0;
+    this.outOfBounds = width === 0 || height === 0 || column >= columns || row >= rows2 || column + width < 0 || row + height < 0;
     if (!this.outOfBounds) {
       const viewRectangle = this.view.peek()?.rectangle?.peek();
       if (!viewRectangle) return;
@@ -1014,6 +1026,34 @@ function textWidth(text, start = 0) {
   }
   return width;
 }
+function cropToWidth(text, width) {
+  let cropped = "";
+  let croppedWidth = 0;
+  let ansi = 0;
+  const len = text.length;
+  for (let i = 0; i < len; ++i) {
+    const char = text[i];
+    if (char === "\x1B") {
+      ansi = 1;
+    } else if (ansi >= 3 && isFinalAnsiByte(char)) {
+      ansi = 0;
+    } else if (ansi > 0) {
+      ansi += 1;
+    } else {
+      const charWidth = characterWidth(char);
+      if (croppedWidth + charWidth > width) {
+        if (croppedWidth + 1 === width) {
+          cropped += " ";
+        }
+        break;
+      } else {
+        croppedWidth += charWidth;
+      }
+    }
+    cropped += char;
+  }
+  return cropped;
+}
 function isFinalAnsiByte(character) {
   const codePoint = character.charCodeAt(0);
   return codePoint >= 64 && codePoint < 112;
@@ -1149,12 +1189,12 @@ var TextObject = class extends DrawObject {
   rerender() {
     const { canvas, valueChars, omitCells, rerenderCells } = this;
     const { frameBuffer, rerenderQueue } = canvas;
-    const { columns: columns2, rows: rows2 } = canvas.size.peek();
+    const { columns, rows: rows2 } = canvas.size.peek();
     const rectangle = this.rectangle.peek();
     const style2 = this.style.peek();
     const { row } = rectangle;
     let rowRange = Math.min(row, rows2);
-    let columnRange = Math.min(rectangle.column + valueChars.length, columns2);
+    let columnRange = Math.min(rectangle.column + valueChars.length, columns);
     const viewRectangle = this.view.peek()?.rectangle?.peek();
     if (viewRectangle) {
       rowRange = Math.min(row, viewRectangle.row + viewRectangle.height);
@@ -1458,11 +1498,11 @@ function style(spec) {
   });
 }
 function hexRgb(value) {
-  const hex = value.replace(/^#/, "");
+  const hex2 = value.replace(/^#/, "");
   return [
-    Number.parseInt(hex.slice(0, 2), 16),
-    Number.parseInt(hex.slice(2, 4), 16),
-    Number.parseInt(hex.slice(4, 6), 16)
+    Number.parseInt(hex2.slice(0, 2), 16),
+    Number.parseInt(hex2.slice(2, 4), 16),
+    Number.parseInt(hex2.slice(4, 6), 16)
   ];
 }
 
@@ -1522,12 +1562,12 @@ var BoxObject = class extends DrawObject {
   rerender() {
     const { canvas, rerenderCells, omitCells } = this;
     const { frameBuffer, rerenderQueue } = canvas;
-    const { rows: rows2, columns: columns2 } = canvas.size.peek();
+    const { rows: rows2, columns } = canvas.size.peek();
     const rectangle = this.rectangle.peek();
     const style2 = this.style.peek();
     const filler = this.filler.peek();
     let rowRange = Math.min(rectangle.row + rectangle.height, rows2);
-    let columnRange = Math.min(rectangle.column + rectangle.width, columns2);
+    let columnRange = Math.min(rectangle.column + rectangle.width, columns);
     const viewRectangle = this.view.peek()?.rectangle?.peek();
     if (viewRectangle) {
       rowRange = Math.min(rowRange, viewRectangle.row + viewRectangle.height);
@@ -1623,17 +1663,17 @@ var Canvas = class extends EventEmitter {
     this.size = signalify(options.size, { deepObserve: true });
     this.size.subscribe(() => {
       this.resizeNeeded = true;
-      const { columns: columns3, rows: rows3 } = this.size.peek();
-      this.sink.resize?.(columns3, rows3);
+      const { columns: columns2, rows: rows3 } = this.size.peek();
+      this.sink.resize?.(columns2, rows3);
     });
-    const { columns: columns2, rows: rows2 } = this.size.peek();
-    this.sink.resize?.(columns2, rows2);
+    const { columns, rows: rows2 } = this.size.peek();
+    this.sink.resize?.(columns, rows2);
   }
   resize() {
-    const { columns: columns2, rows: rows2 } = this.size.peek();
+    const { columns, rows: rows2 } = this.size.peek();
     for (const drawObject of this.drawnObjects) {
       const { column, row } = drawObject.rectangle.peek();
-      if (column >= columns2 || row >= rows2) continue;
+      if (column >= columns || row >= rows2) continue;
       drawObject.rendered = false;
       drawObject.updated = false;
       this.updateObjects.push(drawObject);
@@ -1743,16 +1783,16 @@ var Canvas = class extends EventEmitter {
     let flushedCells = 0;
     const cellUpdates = [];
     for (let row = 0; row < size.rows; ++row) {
-      const columns2 = rerenderQueue[row];
-      if (!columns2?.size) continue;
+      const columns = rerenderQueue[row];
+      if (!columns?.size) continue;
       const rowBuffer = frameBuffer[row] ??= [];
-      for (const column of columns2) {
+      for (const column of columns) {
         const cell = rowBuffer[column];
         if (cell === void 0) continue;
         cellUpdates.push({ row, column, value: cell });
         flushedCells += 1;
       }
-      columns2.clear();
+      columns.clear();
     }
     this.lastRenderStats = {
       updatedObjects: i,
@@ -1814,7 +1854,7 @@ import {
   mix,
   mod,
   mx_atan2,
-  normalize,
+  normalize as normalize2,
   passTexture,
   perspectiveDepthToViewZ,
   PI,
@@ -1829,851 +1869,20 @@ import {
   vec4,
   viewZToOrthographicDepth
 } from "https://esm.sh/three@0.183.2/tsl";
-var _quadMesh = /* @__PURE__ */ new QuadMesh();
-var _renderSize = /* @__PURE__ */ new Vector2();
-var _rendererState;
-function configureMaskRenderTarget(renderTarget, name) {
-  renderTarget.texture.name = name;
-  renderTarget.texture.type = HalfFloatType;
-  renderTarget.texture.generateMipmaps = false;
-  renderTarget.texture.minFilter = LinearFilter;
-  renderTarget.texture.magFilter = LinearFilter;
-  renderTarget.depthBuffer = false;
-}
-function colorValue(input, fallback) {
-  return input instanceof Color ? input.clone() : new Color(input ?? fallback);
-}
-function copyOffsetValue(target, input) {
-  if (!input) {
-    return;
-  }
-  if (input instanceof Vector2) {
-    target.copy(input);
-    return;
-  }
-  target.set(input.x, input.y);
-}
-var AcerolaAsciiNode = class extends TempNode {
-  colorNode;
-  depthNode;
-  camera;
-  edgesTexture;
-  fillTexture;
-  resolutionScale;
-  zoom = uniform(1);
-  offset = uniform(new Vector2());
-  kernelSize = uniform(2);
-  sigma = uniform(2);
-  sigmaScale = uniform(1.6);
-  tau = uniform(1);
-  threshold = uniform(5e-3);
-  useDepth = uniform(true);
-  depthThreshold = uniform(0.1);
-  useNormals = uniform(true);
-  normalThreshold = uniform(0.1);
-  depthCutoff = uniform(0);
-  edgeThreshold = uniform(8);
-  edges = uniform(true);
-  fill = uniform(true);
-  exposure = uniform(1);
-  attenuation = uniform(1);
-  invertLuminance = uniform(false);
-  asciiColor = uniform(new Color(16777215));
-  backgroundColor = uniform(new Color(0));
-  blendWithBase = uniform(0);
-  depthFalloff = uniform(0);
-  depthOffset = uniform(0);
-  viewDog = uniform(false);
-  viewUncompressed = uniform(false);
-  viewEdges = uniform(false);
-  cameraNear = uniform(0.1);
-  cameraFar = uniform(1e3);
-  renderSize = uniform(new Vector2(1, 1));
-  inverseRenderSize = uniform(new Vector2(1, 1));
-  downscaleSize = uniform(new Vector2(1, 1));
-  luminanceTarget = new RenderTarget(1, 1, { type: HalfFloatType, depthBuffer: false });
-  downscaleTarget = new RenderTarget(1, 1, { type: HalfFloatType, depthBuffer: false });
-  blurTarget = new RenderTarget(1, 1, { type: HalfFloatType, depthBuffer: false });
-  dogTarget = new RenderTarget(1, 1, { type: HalfFloatType, depthBuffer: false });
-  normalsTarget = new RenderTarget(1, 1, { type: HalfFloatType, depthBuffer: false });
-  edgesTarget = new RenderTarget(1, 1, { type: HalfFloatType, depthBuffer: false });
-  sobelXTarget = new RenderTarget(1, 1, { type: HalfFloatType, depthBuffer: false });
-  sobelTarget = new RenderTarget(1, 1, { type: HalfFloatType, depthBuffer: false });
-  asciiTarget = new RenderTarget(1, 1, { type: HalfFloatType, depthBuffer: false });
-  luminanceTextureNode = texture(this.luminanceTarget.texture);
-  downscaleTextureNode = texture(this.downscaleTarget.texture);
-  blurTextureNode = texture(this.blurTarget.texture);
-  dogTextureNode = texture(this.dogTarget.texture);
-  normalsTextureNode = texture(this.normalsTarget.texture);
-  edgesTextureNode = texture(this.edgesTarget.texture);
-  sobelXTextureNode = texture(this.sobelXTarget.texture);
-  sobelTextureNode = texture(this.sobelTarget.texture);
-  edgesLutNode;
-  fillLutNode;
-  outputTextureNode;
-  luminanceMaterial;
-  downscaleMaterial;
-  blurMaterial;
-  dogMaterial;
-  normalsMaterial;
-  edgesMaterial;
-  sobelXMaterial;
-  sobelMaterial;
-  asciiMaterial;
-  constructor(colorNode, depthNode, camera, luts, options = {}) {
-    super("vec4");
-    this.colorNode = convertToTexture(colorNode);
-    this.depthNode = depthNode;
-    this.camera = camera;
-    this.edgesTexture = luts.edgesTexture;
-    this.fillTexture = luts.fillTexture;
-    this.edgesLutNode = texture(this.edgesTexture);
-    this.fillLutNode = texture(this.fillTexture);
-    this.outputTextureNode = passTexture(this, this.asciiTarget.texture);
-    this.outputTextureNode.uvNode = this.colorNode.uvNode;
-    this.resolutionScale = options.resolutionScale ?? 1;
-    this.applyOptions(options);
-    configureMaskRenderTarget(this.luminanceTarget, "AcerolaAscii.luminance");
-    configureMaskRenderTarget(this.downscaleTarget, "AcerolaAscii.downscale");
-    configureMaskRenderTarget(this.blurTarget, "AcerolaAscii.blur");
-    configureMaskRenderTarget(this.dogTarget, "AcerolaAscii.dog");
-    configureMaskRenderTarget(this.normalsTarget, "AcerolaAscii.normals");
-    configureMaskRenderTarget(this.edgesTarget, "AcerolaAscii.edges");
-    configureMaskRenderTarget(this.sobelXTarget, "AcerolaAscii.sobelX");
-    configureMaskRenderTarget(this.sobelTarget, "AcerolaAscii.sobel");
-    configureMaskRenderTarget(this.asciiTarget, "AcerolaAscii.output");
-    this.updateBeforeType = NodeUpdateType.FRAME;
-  }
-  applyOptions(options) {
-    if (options.zoom !== void 0) {
-      this.zoom.value = options.zoom;
-    }
-    if (options.offset !== void 0) {
-      copyOffsetValue(this.offset.value, options.offset);
-    }
-    if (options.kernelSize !== void 0) {
-      this.kernelSize.value = options.kernelSize;
-    }
-    if (options.sigma !== void 0) {
-      this.sigma.value = options.sigma;
-    }
-    if (options.sigmaScale !== void 0) {
-      this.sigmaScale.value = options.sigmaScale;
-    }
-    if (options.tau !== void 0) {
-      this.tau.value = options.tau;
-    }
-    if (options.threshold !== void 0) {
-      this.threshold.value = options.threshold;
-    }
-    if (options.useDepth !== void 0) {
-      this.useDepth.value = options.useDepth;
-    }
-    if (options.depthThreshold !== void 0) {
-      this.depthThreshold.value = options.depthThreshold;
-    }
-    if (options.useNormals !== void 0) {
-      this.useNormals.value = options.useNormals;
-    }
-    if (options.normalThreshold !== void 0) {
-      this.normalThreshold.value = options.normalThreshold;
-    }
-    if (options.depthCutoff !== void 0) {
-      this.depthCutoff.value = options.depthCutoff;
-    }
-    if (options.edgeThreshold !== void 0) {
-      this.edgeThreshold.value = options.edgeThreshold;
-    }
-    if (options.edges !== void 0) {
-      this.edges.value = options.edges;
-    }
-    if (options.fill !== void 0) {
-      this.fill.value = options.fill;
-    }
-    if (options.exposure !== void 0) {
-      this.exposure.value = options.exposure;
-    }
-    if (options.attenuation !== void 0) {
-      this.attenuation.value = options.attenuation;
-    }
-    if (options.invertLuminance !== void 0) {
-      this.invertLuminance.value = options.invertLuminance;
-    }
-    if (options.asciiColor !== void 0) {
-      this.asciiColor.value.copy(colorValue(options.asciiColor, 16777215));
-    }
-    if (options.backgroundColor !== void 0) {
-      this.backgroundColor.value.copy(colorValue(options.backgroundColor, 0));
-    }
-    if (options.blendWithBase !== void 0) {
-      this.blendWithBase.value = options.blendWithBase;
-    }
-    if (options.depthFalloff !== void 0) {
-      this.depthFalloff.value = options.depthFalloff;
-    }
-    if (options.depthOffset !== void 0) {
-      this.depthOffset.value = options.depthOffset;
-    }
-    if (options.viewDog !== void 0) {
-      this.viewDog.value = options.viewDog;
-    }
-    if (options.viewUncompressed !== void 0) {
-      this.viewUncompressed.value = options.viewUncompressed;
-    }
-    if (options.viewEdges !== void 0) {
-      this.viewEdges.value = options.viewEdges;
-    }
-  }
-  setSize(width, height) {
-    const scaledWidth = Math.max(1, Math.round(width * this.resolutionScale));
-    const scaledHeight = Math.max(1, Math.round(height * this.resolutionScale));
-    const downscaleWidth = Math.max(1, Math.floor(scaledWidth / 8));
-    const downscaleHeight = Math.max(1, Math.floor(scaledHeight / 8));
-    this.renderSize.value.set(scaledWidth, scaledHeight);
-    this.inverseRenderSize.value.set(1 / scaledWidth, 1 / scaledHeight);
-    this.downscaleSize.value.set(downscaleWidth, downscaleHeight);
-    this.luminanceTarget.setSize(scaledWidth, scaledHeight);
-    this.blurTarget.setSize(scaledWidth, scaledHeight);
-    this.dogTarget.setSize(scaledWidth, scaledHeight);
-    this.normalsTarget.setSize(scaledWidth, scaledHeight);
-    this.edgesTarget.setSize(scaledWidth, scaledHeight);
-    this.sobelXTarget.setSize(scaledWidth, scaledHeight);
-    this.sobelTarget.setSize(scaledWidth, scaledHeight);
-    this.asciiTarget.setSize(scaledWidth, scaledHeight);
-    this.downscaleTarget.setSize(downscaleWidth, downscaleHeight);
-  }
-  updateBefore(frame) {
-    const { renderer } = frame;
-    if (!this.asciiMaterial) {
-      this.setup();
-    }
-    _rendererState = RendererUtils.resetRendererState(renderer, _rendererState);
-    renderer.getDrawingBufferSize(_renderSize);
-    this.setSize(_renderSize.x, _renderSize.y);
-    const textureType = this.colorNode.value.type;
-    for (const target of [
-      this.luminanceTarget,
-      this.downscaleTarget,
-      this.blurTarget,
-      this.dogTarget,
-      this.normalsTarget,
-      this.edgesTarget,
-      this.sobelXTarget,
-      this.sobelTarget,
-      this.asciiTarget
-    ]) {
-      target.texture.type = textureType;
-    }
-    this.cameraNear.value = "near" in this.camera ? this.camera.near : 0.1;
-    this.cameraFar.value = "far" in this.camera ? this.camera.far : 1e3;
-    this.renderMaterial(renderer, this.luminanceTarget, this.luminanceMaterial, "Acerola ASCII [Luminance]");
-    this.renderMaterial(renderer, this.downscaleTarget, this.downscaleMaterial, "Acerola ASCII [Downscale]");
-    this.renderMaterial(renderer, this.blurTarget, this.blurMaterial, "Acerola ASCII [Horizontal Blur]");
-    this.renderMaterial(renderer, this.dogTarget, this.dogMaterial, "Acerola ASCII [DoG]");
-    this.renderMaterial(renderer, this.normalsTarget, this.normalsMaterial, "Acerola ASCII [Normals]");
-    this.renderMaterial(renderer, this.edgesTarget, this.edgesMaterial, "Acerola ASCII [Edge Detect]");
-    this.renderMaterial(renderer, this.sobelXTarget, this.sobelXMaterial, "Acerola ASCII [Horizontal Sobel]");
-    this.renderMaterial(renderer, this.sobelTarget, this.sobelMaterial, "Acerola ASCII [Vertical Sobel]");
-    this.renderMaterial(renderer, this.asciiTarget, this.asciiMaterial, "Acerola ASCII [Composite]");
-    RendererUtils.restoreRendererState(renderer, _rendererState);
-  }
-  getTextureNode() {
-    return this.outputTextureNode;
-  }
-  setup() {
-    if (!this.luminanceMaterial) {
-      const sourceSample = (uvNode) => {
-        const transformed = uvNode.mul(2).sub(1).add(vec2(this.offset.x.negate(), this.offset.y).mul(2)).mul(this.zoom).mul(0.5).add(0.5).toVar();
-        const sample = vec4(0).toVar();
-        If(
-          transformed.greaterThanEqual(0).all().and(transformed.lessThanEqual(1).all()),
-          () => {
-            sample.assign(this.colorNode.sample(transformed));
-          }
-        );
-        return sample;
-      };
-      const sourceLinearDepth = (uvNode) => {
-        const transformed = uvNode.mul(2).sub(1).add(vec2(this.offset.x.negate(), this.offset.y).mul(2)).mul(this.zoom).mul(0.5).add(0.5).toVar();
-        const rawDepth = float(1).toVar();
-        If(
-          transformed.greaterThanEqual(0).all().and(transformed.lessThanEqual(1).all()),
-          () => {
-            rawDepth.assign(this.depthNode.sample(transformed).r);
-          }
-        );
-        if ("isPerspectiveCamera" in this.camera && this.camera.isPerspectiveCamera) {
-          const viewZ = perspectiveDepthToViewZ(rawDepth, this.cameraNear, this.cameraFar);
-          return viewZToOrthographicDepth(viewZ, this.cameraNear, this.cameraFar);
-        }
-        return rawDepth;
-      };
-      const sampleNearest = (textureNode, pixelCoord, sizeNode) => {
-        const texel = clamp2(pixelCoord, vec2(0), sizeNode.sub(1));
-        return textureNode.sample(texel.add(0.5).div(sizeNode));
-      };
-      const gaussian = (sigmaNode, position) => {
-        const sigmaSquared = sigmaNode.mul(sigmaNode);
-        const coefficient = float(1).div(sqrt(float(2).mul(PI).mul(sigmaSquared)));
-        return coefficient.mul(exp(float(-(position * position)).div(float(2).mul(sigmaSquared))));
-      };
-      const classifyDirection = (thetaNode, validNode) => {
-        const direction = float(-1).toVar();
-        const absTheta = abs(thetaNode).div(PI).toVar();
-        If(validNode.greaterThan(0.5), () => {
-          If(
-            absTheta.lessThan(0.05).or(absTheta.greaterThan(0.9).and(absTheta.lessThanEqual(1))),
-            () => {
-              direction.assign(0);
-            }
-          ).ElseIf(absTheta.greaterThan(0.45).and(absTheta.lessThan(0.55)), () => {
-            direction.assign(1);
-          }).ElseIf(absTheta.greaterThan(0.05).and(absTheta.lessThan(0.45)), () => {
-            direction.assign(thetaNode.greaterThan(0).select(3, 2));
-          }).ElseIf(absTheta.greaterThan(0.55).and(absTheta.lessThan(0.9)), () => {
-            direction.assign(thetaNode.greaterThan(0).select(2, 3));
-          });
-        });
-        return direction;
-      };
-      const luminancePass = Fn(() => {
-        return vec4(luminance(saturate(sourceSample(uv()).rgb)), 0, 0, 1);
-      });
-      const downscalePass = Fn(() => {
-        const color = saturate(sourceSample(uv())).toVar();
-        return vec4(color.rgb, luminance(color.rgb));
-      });
-      const horizontalBlurPass = Fn(() => {
-        const texelSize = this.inverseRenderSize;
-        const blur = vec2(0).toVar();
-        const kernelSum = vec2(0).toVar();
-        for (let offset = -10; offset <= 10; offset += 1) {
-          const distance = Math.abs(offset);
-          const luminanceValue = this.luminanceTextureNode.sample(
-            uv().add(vec2(float(offset).mul(texelSize.x), 0))
-          ).r;
-          const weights = vec2(
-            gaussian(this.sigma, offset),
-            gaussian(this.sigma.mul(this.sigmaScale), offset)
-          );
-          If(float(distance).lessThanEqual(this.kernelSize), () => {
-            blur.addAssign(vec2(luminanceValue).mul(weights));
-            kernelSum.addAssign(weights);
-          });
-        }
-        const normalized = blur.div(max(kernelSum, vec2(1e-4)));
-        return vec4(normalized, 0, 1);
-      });
-      const dogPass = Fn(() => {
-        const texelSize = this.inverseRenderSize;
-        const blur = vec2(0).toVar();
-        const kernelSum = vec2(0).toVar();
-        for (let offset = -10; offset <= 10; offset += 1) {
-          const distance = Math.abs(offset);
-          const luminanceValue = this.blurTextureNode.sample(
-            uv().add(vec2(0, float(offset).mul(texelSize.y)))
-          ).rg;
-          const weights = vec2(
-            gaussian(this.sigma, offset),
-            gaussian(this.sigma.mul(this.sigmaScale), offset)
-          );
-          If(float(distance).lessThanEqual(this.kernelSize), () => {
-            blur.addAssign(luminanceValue.mul(weights));
-            kernelSum.addAssign(weights);
-          });
-        }
-        const normalized = blur.div(max(kernelSum, vec2(1e-4)));
-        const difference = normalized.x.sub(this.tau.mul(normalized.y)).toVar();
-        return vec4(difference.greaterThanEqual(this.threshold).select(1, 0), 0, 0, 1);
-      });
-      const normalsPass = Fn(() => {
-        const texelSize = this.inverseRenderSize;
-        const centerUv = uv().toVar();
-        const northUv = centerUv.sub(vec2(0, texelSize.y));
-        const eastUv = centerUv.add(vec2(texelSize.x, 0));
-        const centerDepth = sourceLinearDepth(centerUv).toVar();
-        const northDepth = sourceLinearDepth(northUv);
-        const eastDepth = sourceLinearDepth(eastUv);
-        const centerPosition = vec3(centerUv.sub(0.5), 1).mul(centerDepth).toVar();
-        const northPosition = vec3(northUv.sub(0.5), 1).mul(northDepth).toVar();
-        const eastPosition = vec3(eastUv.sub(0.5), 1).mul(eastDepth).toVar();
-        return vec4(normalize(cross(centerPosition.sub(northPosition), centerPosition.sub(eastPosition))), centerDepth);
-      });
-      const edgePass = Fn(() => {
-        const texelSize = this.inverseRenderSize;
-        const center = this.normalsTextureNode.sample(uv()).toVar();
-        const left = texelSize.x.negate();
-        const up = texelSize.y.negate();
-        const samples = [
-          this.normalsTextureNode.sample(uv().add(vec2(left, 0))),
-          this.normalsTextureNode.sample(uv().add(vec2(texelSize.x, 0))),
-          this.normalsTextureNode.sample(uv().add(vec2(0, up))),
-          this.normalsTextureNode.sample(uv().add(vec2(0, texelSize.y))),
-          this.normalsTextureNode.sample(uv().add(vec2(left, up))),
-          this.normalsTextureNode.sample(uv().add(vec2(texelSize.x, up))),
-          this.normalsTextureNode.sample(uv().add(vec2(left, texelSize.y))),
-          this.normalsTextureNode.sample(uv().add(vec2(texelSize.x, texelSize.y)))
-        ];
-        const depthSum = float(0).toVar();
-        const normalSum = vec3(0).toVar();
-        for (const sample of samples) {
-          depthSum.addAssign(abs(sample.a.sub(center.a)));
-          normalSum.addAssign(abs(sample.rgb.sub(center.rgb)));
-        }
-        const output = float(0).toVar();
-        If(this.useDepth.and(depthSum.greaterThan(this.depthThreshold)), () => {
-          output.assign(1);
-        });
-        If(this.useNormals.and(normalSum.dot(vec3(1)).greaterThan(this.normalThreshold)), () => {
-          output.assign(1);
-        });
-        const dog = this.dogTextureNode.sample(uv()).r;
-        return vec4(saturate(abs(dog.sub(output))), 0, 0, 1);
-      });
-      const sobelXPass = Fn(() => {
-        const texelSize = this.inverseRenderSize;
-        const left = this.edgesTextureNode.sample(uv().sub(vec2(texelSize.x, 0))).r;
-        const center = this.edgesTextureNode.sample(uv()).r;
-        const right = this.edgesTextureNode.sample(uv().add(vec2(texelSize.x, 0))).r;
-        const gx = float(3).mul(left).sub(float(3).mul(right));
-        const gy = float(3).mul(left).add(float(10).mul(center)).add(float(3).mul(right));
-        return vec4(gx, gy, 0, 1);
-      });
-      const sobelPass = Fn(() => {
-        const texelSize = this.inverseRenderSize;
-        const grad1 = this.sobelXTextureNode.sample(uv().sub(vec2(0, texelSize.y))).rg;
-        const grad2 = this.sobelXTextureNode.sample(uv()).rg;
-        const grad3 = this.sobelXTextureNode.sample(uv().add(vec2(0, texelSize.y))).rg;
-        const gx = float(3).mul(grad1.x).add(float(10).mul(grad2.x)).add(float(3).mul(grad3.x)).toVar();
-        const gy = float(3).mul(grad1.y).sub(float(3).mul(grad3.y)).toVar();
-        const magnitude = sqrt(gx.mul(gx).add(gy.mul(gy))).toVar();
-        const theta = float(0).toVar();
-        const valid = float(0).toVar();
-        const linearDepth = sourceLinearDepth(uv());
-        If(magnitude.greaterThan(1e-5), () => {
-          theta.assign(mx_atan2(gy, gx));
-          valid.assign(1);
-        });
-        If(this.depthCutoff.greaterThan(0).and(linearDepth.mul(1e3).greaterThan(this.depthCutoff)), () => {
-          theta.assign(0);
-          valid.assign(0);
-        });
-        return vec4(theta, valid, 0, 1);
-      });
-      const asciiPass = Fn(() => {
-        const pixelCoord = uv().mul(this.renderSize).floor().toVar();
-        const tileBase = pixelCoord.div(8).floor().mul(8).toVar();
-        const localCoord = mod(pixelCoord, 8).toVar();
-        const currentSobel = sampleNearest(this.sobelTextureNode, pixelCoord, this.renderSize);
-        const currentDirection = classifyDirection(currentSobel.r, currentSobel.g);
-        const bucket0 = float(0).toVar();
-        const bucket1 = float(0).toVar();
-        const bucket2 = float(0).toVar();
-        const bucket3 = float(0).toVar();
-        for (let row = 0; row < 8; row += 1) {
-          for (let column = 0; column < 8; column += 1) {
-            const coord = tileBase.add(vec2(column, row));
-            const sobel = sampleNearest(this.sobelTextureNode, coord, this.renderSize);
-            const direction = classifyDirection(sobel.r, sobel.g);
-            If(direction.greaterThanEqual(0), () => {
-              If(direction.equal(0), () => {
-                bucket0.addAssign(1);
-              }).ElseIf(direction.equal(1), () => {
-                bucket1.addAssign(1);
-              }).ElseIf(direction.equal(2), () => {
-                bucket2.addAssign(1);
-              }).Else(() => {
-                bucket3.addAssign(1);
-              });
-            });
-          }
-        }
-        const dominantDirection = float(-1).toVar();
-        const maxCount = float(0).toVar();
-        const updateDominant = (direction, count) => {
-          If(count.greaterThan(maxCount), () => {
-            dominantDirection.assign(direction);
-            maxCount.assign(count);
-          });
-        };
-        updateDominant(0, bucket0);
-        updateDominant(1, bucket1);
-        updateDominant(2, bucket2);
-        updateDominant(3, bucket3);
-        If(maxCount.lessThan(this.edgeThreshold), () => {
-          dominantDirection.assign(-1);
-        });
-        const displayDirection = this.viewUncompressed.select(currentDirection, dominantDirection).toVar();
-        const downscaleCoord = pixelCoord.div(8).floor().toVar();
-        const downscaleInfo = sampleNearest(this.downscaleTextureNode, downscaleCoord, this.downscaleSize).toVar();
-        const edgeMask = float(0).toVar();
-        const edgeGlyphCoord = vec2(
-          localCoord.x.add(displayDirection.add(1).mul(8)),
-          float(7).sub(localCoord.y)
-        );
-        If(displayDirection.greaterThanEqual(0).and(this.edges), () => {
-          edgeMask.assign(sampleNearest(this.edgesLutNode, edgeGlyphCoord, vec2(40, 8)).r);
-        });
-        const fillMask = float(0).toVar();
-        const fillBucket = max(
-          0,
-          min(
-            9,
-            floor(saturate(pow(downscaleInfo.a.mul(this.exposure), this.attenuation)).sub(1e-6).mul(10)).sub(1)
-          )
-        ).toVar();
-        const correctedFillBucket = this.invertLuminance.select(float(9).sub(fillBucket), fillBucket).toVar();
-        const fillGlyphCoord = vec2(localCoord.x.add(correctedFillBucket.mul(8)), localCoord.y);
-        If(this.fill, () => {
-          fillMask.assign(sampleNearest(this.fillLutNode, fillGlyphCoord, vec2(80, 8)).r);
-        });
-        const asciiMask = float(0).toVar();
-        If(displayDirection.greaterThanEqual(0).and(this.edges), () => {
-          asciiMask.assign(edgeMask);
-        }).ElseIf(this.fill, () => {
-          asciiMask.assign(fillMask);
-        });
-        const baseAsciiColor = mix(vec3(this.asciiColor), downscaleInfo.rgb, this.blendWithBase).toVar();
-        const asciiColor = mix(vec3(this.backgroundColor), baseAsciiColor, asciiMask).toVar();
-        const centerDepth = sampleNearest(this.normalsTextureNode, tileBase.add(4), this.renderSize).a;
-        const z = centerDepth.mul(1e3);
-        const fogValue = this.depthFalloff.mul(5e-3 / Math.sqrt(Math.log(2))).mul(max(0, z.sub(this.depthOffset))).toVar();
-        const fogFactor = exp2(fogValue.mul(fogValue).negate()).toVar();
-        asciiColor.assign(mix(vec3(this.backgroundColor), asciiColor, fogFactor));
-        If(this.viewDog, () => {
-          asciiColor.assign(vec3(sampleNearest(this.edgesTextureNode, pixelCoord, this.renderSize).r));
-        });
-        If(this.viewEdges.or(this.viewUncompressed), () => {
-          asciiColor.assign(vec3(0));
-          If(displayDirection.equal(0), () => {
-            asciiColor.assign(vec3(1, 0, 0));
-          }).ElseIf(displayDirection.equal(1), () => {
-            asciiColor.assign(vec3(0, 1, 0));
-          }).ElseIf(displayDirection.equal(2), () => {
-            asciiColor.assign(vec3(0, 1, 1));
-          }).ElseIf(displayDirection.equal(3), () => {
-            asciiColor.assign(vec3(1, 1, 0));
-          });
-        });
-        return vec4(asciiColor, 1);
-      });
-      const makeMaterial = (name, fragmentNode) => {
-        const material = new NodeMaterial();
-        material.name = name;
-        material.fragmentNode = fragmentNode();
-        return material;
-      };
-      this.luminanceMaterial = makeMaterial("AcerolaAscii.luminance", luminancePass);
-      this.downscaleMaterial = makeMaterial("AcerolaAscii.downscale", downscalePass);
-      this.blurMaterial = makeMaterial("AcerolaAscii.blur", horizontalBlurPass);
-      this.dogMaterial = makeMaterial("AcerolaAscii.dog", dogPass);
-      this.normalsMaterial = makeMaterial("AcerolaAscii.normals", normalsPass);
-      this.edgesMaterial = makeMaterial("AcerolaAscii.edges", edgePass);
-      this.sobelXMaterial = makeMaterial("AcerolaAscii.sobelX", sobelXPass);
-      this.sobelMaterial = makeMaterial("AcerolaAscii.sobel", sobelPass);
-      this.asciiMaterial = makeMaterial("AcerolaAscii.composite", asciiPass);
-    }
-    return this.outputTextureNode;
-  }
-  dispose() {
-    for (const target of [
-      this.luminanceTarget,
-      this.downscaleTarget,
-      this.blurTarget,
-      this.dogTarget,
-      this.normalsTarget,
-      this.edgesTarget,
-      this.sobelXTarget,
-      this.sobelTarget,
-      this.asciiTarget
-    ]) {
-      target.dispose();
-    }
-    this.luminanceMaterial?.dispose();
-    this.downscaleMaterial?.dispose();
-    this.blurMaterial?.dispose();
-    this.dogMaterial?.dispose();
-    this.normalsMaterial?.dispose();
-    this.edgesMaterial?.dispose();
-    this.sobelXMaterial?.dispose();
-    this.sobelMaterial?.dispose();
-    this.asciiMaterial?.dispose();
-  }
-  renderMaterial(renderer, target, material, label = "AcerolaAscii") {
-    if (!material) return;
-    _quadMesh.material = material;
-    _quadMesh.name = label;
-    renderer.setRenderTarget(target);
-    _quadMesh.render(renderer);
-  }
-};
-
-// src/three_ascii/glyphs.ts
-var EDGE_GLYPHS = [" ", "|", "-", "\\", "/"];
-var FILL_GLYPHS = [" ", "\u2581", "\u2582", "\u2583", "\u2584", "\u2585", "\u2586", "\u2587", "\u2588", "\u2588"];
-var ASCII_FILL_GLYPHS = [" ", ".", ":", "-", "=", "+", "*", "#", "%", "@"];
-var TERMINAL_GLYPH_STYLES = ["blocks", "glyphs", "mixed"];
-
-// src/three_ascii/headless_canvas.ts
-var HeadlessGPUCanvasContext = class {
-  constructor(canvas) {
-    this.canvas = canvas;
-  }
-  configuration;
-  texture = null;
-  readbackBuffer = null;
-  configure(configuration) {
-    this.configuration = configuration;
-    this.invalidateTexture();
-  }
-  getCurrentTexture() {
-    if (!this.configuration) {
-      throw new Error("HeadlessGPUCanvasContext is not configured.");
-    }
-    if (!this.texture) {
-      this.texture = this.configuration.device.createTexture({
-        size: {
-          width: Math.max(1, this.canvas.width),
-          height: Math.max(1, this.canvas.height),
-          depthOrArrayLayers: 1
-        },
-        format: this.configuration.format,
-        usage: this.configuration.usage ?? GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC
-      });
-    }
-    return this.texture;
-  }
-  resize() {
-    this.invalidateTexture();
-  }
-  async readRGBA() {
-    const texture2 = this.getCurrentTexture();
-    const { device } = this.configuration;
-    const bytesPerRow = this.canvas.width * 4;
-    const alignedBytesPerRow = Math.ceil(bytesPerRow / 256) * 256;
-    const bufferSize = alignedBytesPerRow * this.canvas.height;
-    if (!this.readbackBuffer || this.readbackBuffer.size !== bufferSize) {
-      this.readbackBuffer?.destroy();
-      this.readbackBuffer = device.createBuffer({
-        size: bufferSize,
-        usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ
-      });
-    }
-    const encoder = device.createCommandEncoder({ label: "deno_tui.three_ascii.readback" });
-    encoder.copyTextureToBuffer(
-      { texture: texture2 },
-      {
-        buffer: this.readbackBuffer,
-        bytesPerRow: alignedBytesPerRow,
-        rowsPerImage: this.canvas.height
-      },
-      {
-        width: this.canvas.width,
-        height: this.canvas.height,
-        depthOrArrayLayers: 1
-      }
-    );
-    device.queue.submit([encoder.finish()]);
-    await this.readbackBuffer.mapAsync(GPUMapMode.READ);
-    const source = new Uint8Array(this.readbackBuffer.getMappedRange());
-    const result = new Uint8Array(this.canvas.width * this.canvas.height * 4);
-    for (let row = 0; row < this.canvas.height; row += 1) {
-      const srcOffset = row * alignedBytesPerRow;
-      const dstOffset = row * bytesPerRow;
-      result.set(source.subarray(srcOffset, srcOffset + bytesPerRow), dstOffset);
-    }
-    this.readbackBuffer.unmap();
-    return result;
-  }
-  destroy() {
-    this.readbackBuffer?.destroy();
-    this.readbackBuffer = null;
-    this.invalidateTexture();
-  }
-  invalidateTexture() {
-    this.texture?.destroy();
-    this.texture = null;
-  }
-};
-var HeadlessCanvas = class {
-  style = { width: "", height: "" };
-  _width;
-  _height;
-  context;
-  constructor(width, height) {
-    this._width = width;
-    this._height = height;
-    this.context = new HeadlessGPUCanvasContext(this);
-  }
-  get width() {
-    return this._width;
-  }
-  set width(value) {
-    this._width = Math.max(1, Math.floor(value));
-    this.context.resize();
-  }
-  get height() {
-    return this._height;
-  }
-  set height(value) {
-    this._height = Math.max(1, Math.floor(value));
-    this.context.resize();
-  }
-  getContext(type) {
-    return type === "webgpu" ? this.context : null;
-  }
-  setAttribute() {
-  }
-  addEventListener() {
-  }
-  removeEventListener() {
-  }
-  dispatchEvent() {
-    return false;
-  }
-};
 
 // src/three_ascii/loadAsciiLuts.ts
 import { ClampToEdgeWrapping, LinearFilter as LinearFilter2, NoColorSpace, Texture as Texture2 } from "https://esm.sh/three@0.183.2";
-async function loadImageBytes(source) {
-  const url = source instanceof URL ? source : new URL(source, import.meta.url);
-  if (url.protocol === "file:" && typeof Deno !== "undefined") {
-    return await Deno.readFile(url);
-  }
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`Failed to load image: ${url} (${response.status})`);
-  }
-  return new Uint8Array(await response.arrayBuffer());
-}
-async function loadBitmap(source) {
-  const bytes = await loadImageBytes(source);
-  const arrayBuffer = new ArrayBuffer(bytes.byteLength);
-  new Uint8Array(arrayBuffer).set(bytes);
-  const blob = new Blob([arrayBuffer], {
-    type: "image/png"
-  });
-  return await createImageBitmap(blob);
-}
-function createMaskTexture(bitmap) {
-  const texture2 = new Texture2(bitmap);
-  texture2.name = "AcerolaAsciiMask";
-  texture2.colorSpace = NoColorSpace;
-  texture2.generateMipmaps = false;
-  texture2.magFilter = LinearFilter2;
-  texture2.minFilter = LinearFilter2;
-  texture2.wrapS = ClampToEdgeWrapping;
-  texture2.wrapT = ClampToEdgeWrapping;
-  texture2.flipY = false;
-  texture2.needsUpdate = true;
-  return texture2;
-}
-async function loadAsciiLutTextures(edgesUrl, fillUrl) {
-  const [edgesBitmap, fillBitmap] = await Promise.all([
-    loadBitmap(edgesUrl),
-    loadBitmap(fillUrl)
-  ]);
-  return {
-    edgesTexture: createMaskTexture(edgesBitmap),
-    fillTexture: createMaskTexture(fillBitmap)
-  };
-}
 
 // src/three_ascii/webgpu_compat.ts
-var compatibleDevicePromise;
 var WRITE_BUFFER_PATCHED = Symbol.for("deno_tui.three_ascii.write_buffer_patched");
 var SHADER_MODULE_PATCHED = Symbol.for("deno_tui.three_ascii.shader_module_patched");
-function ensureAnimationFrame() {
-  if (!("requestAnimationFrame" in globalThis)) {
-    globalThis.requestAnimationFrame = (callback) => setTimeout(() => callback(performance.now()), 16);
-  }
-  if (!("cancelAnimationFrame" in globalThis)) {
-    globalThis.cancelAnimationFrame = (handle) => {
-      clearTimeout(handle);
-    };
-  }
-}
-function ensureDeviceLostPromise(device) {
-  if (device.lost === void 0) {
-    device.lost = Promise.resolve({
-      reason: "destroyed",
-      message: "GPUDevice.lost is unavailable in this Deno runtime."
-    });
-  }
-  return device;
-}
-function patchQueueWriteBuffer(device) {
-  device.queue[WRITE_BUFFER_PATCHED] = true;
-  return device;
-}
-function patchErrorScopes(device) {
-  const originalPopErrorScope = device.popErrorScope.bind(device);
-  device.popErrorScope = () => {
-    const result = originalPopErrorScope();
-    return result ?? Promise.resolve(null);
-  };
-  return device;
-}
-function patchShaderModules(device) {
-  const patchedDevice = device;
-  if (patchedDevice[SHADER_MODULE_PATCHED]) {
-    return device;
-  }
-  const originalCreateShaderModule = patchedDevice.createShaderModule.bind(device);
-  patchedDevice.createShaderModule = (descriptor) => {
-    let code = descriptor.code;
-    if (code.includes("textureLoad(")) {
-      code = code.split("\n").map((line) => line.includes("textureLoad(") ? line.replace(/,\s*u32\(/g, ", i32(") : line).join("\n");
-    }
-    return originalCreateShaderModule({ ...descriptor, code });
-  };
-  patchedDevice[SHADER_MODULE_PATCHED] = true;
-  return device;
-}
-async function getCompatibleWebGPUDevice() {
-  ensureAnimationFrame();
-  compatibleDevicePromise ??= (async () => {
-    if (typeof navigator === "undefined" || navigator.gpu === void 0) {
-      throw new Error("WebGPU is not available in this Deno runtime.");
-    }
-    const adapter = await navigator.gpu.requestAdapter({
-      featureLevel: "compatibility"
-    });
-    if (!adapter) {
-      throw new Error("Unable to acquire a WebGPU adapter.");
-    }
-    const device = await adapter.requestDevice({
-      // Requesting every exposed adapter feature can fail on lower-memory
-      // runtimes even though the ASCII pipeline only uses baseline WebGPU.
-      requiredFeatures: [],
-      requiredLimits: {}
-    });
-    return patchErrorScopes(patchShaderModules(patchQueueWriteBuffer(ensureDeviceLostPromise(device))));
-  })();
-  return await compatibleDevicePromise;
-}
-async function probeCompatibleWebGPUDevice() {
-  try {
-    await getCompatibleWebGPUDevice();
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 // src/three_ascii/renderer.ts
 var TILE_SIZE = 8;
 var WORKGROUP_SIZE = 8;
 var TILE_PIXEL_COUNT = TILE_SIZE * TILE_SIZE;
 var FOG_SCALE = 5e-3 / Math.sqrt(Math.log(2));
-var DEFAULT_PIXEL_ASPECT_RATIO = 0.5;
-var DEFAULT_TERMINAL_EDGE_BIAS = 1;
-var TERMINAL_EDGE_THRESHOLD_SCALE = 2;
 var MIN_VISIBLE_LUMINANCE = 0.015;
-var RESET = "\x1B[0m";
-var GOHU_11_EDGE_SHAPE_MISMATCH = [0, 3, 10, 9];
-var GOHU_11_FILL_GLYPH_COVERAGE = [0, 2, 4, 6, 9, 11, 13, 15, 18, 18];
-var ASCII_FILL_GLYPH_COVERAGE = [0, 1, 2, 4, 6, 8, 10, 13, 16, 18];
 var FILL_SHADER = (
   /* wgsl */
   `
@@ -2899,729 +2108,6 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
 }
 `
 );
-function colorValue2(input, fallback) {
-  return input instanceof Color2 ? input.clone() : new Color2(input ?? fallback);
-}
-function linearToSrgb(value) {
-  const clamped = Math.max(0, Math.min(1, value));
-  return clamped <= 31308e-7 ? clamped * 12.92 : 1.055 * Math.pow(clamped, 1 / 2.4) - 0.055;
-}
-function colorToBytes(color) {
-  return [
-    Math.round(linearToSrgb(color.r) * 255),
-    Math.round(linearToSrgb(color.g) * 255),
-    Math.round(linearToSrgb(color.b) * 255)
-  ];
-}
-function linearRgbToBytes(red, green, blue) {
-  return [
-    Math.round(linearToSrgb(red) * 255),
-    Math.round(linearToSrgb(green) * 255),
-    Math.round(linearToSrgb(blue) * 255)
-  ];
-}
-function rgbToAnsiForeground(red, green, blue) {
-  return `\x1B[38;2;${red};${green};${blue}m`;
-}
-function rgbToAnsiBackground(red, green, blue) {
-  return `\x1B[48;2;${red};${green};${blue}m`;
-}
-function fillBucketFromGlyphIndex(index) {
-  return Math.max(0, Math.min(FILL_GLYPHS.length - 1, index - 5));
-}
-function clampUnit(value) {
-  return Math.max(0, Math.min(1, value));
-}
-function fillCoverageForGohu11(fillGlyphIndex) {
-  if (fillGlyphIndex < 5) {
-    return 0;
-  }
-  const bucket = Math.max(0, Math.min(GOHU_11_FILL_GLYPH_COVERAGE.length - 1, fillGlyphIndex - 5));
-  return GOHU_11_FILL_GLYPH_COVERAGE[bucket] / TILE_PIXEL_COUNT;
-}
-function fillCoverageForAscii(fillBucket) {
-  const bucket = Math.max(0, Math.min(ASCII_FILL_GLYPH_COVERAGE.length - 1, fillBucket));
-  return ASCII_FILL_GLYPH_COVERAGE[bucket] / TILE_PIXEL_COUNT;
-}
-function pickMixedFillGlyph(fillGlyphIndex) {
-  const bucket = fillBucketFromGlyphIndex(fillGlyphIndex);
-  const targetCoverage = fillCoverageForGohu11(fillGlyphIndex);
-  const candidates = [
-    ...FILL_GLYPHS.map((glyph, index) => ({
-      glyph,
-      coverage: (GOHU_11_FILL_GLYPH_COVERAGE[index] ?? 0) / TILE_PIXEL_COUNT,
-      index,
-      familyBias: 0
-    })),
-    ...ASCII_FILL_GLYPHS.map((glyph, index) => ({
-      glyph,
-      coverage: fillCoverageForAscii(index),
-      index,
-      familyBias: 2e-3
-    }))
-  ];
-  return candidates.reduce((best, candidate) => {
-    const bestScore = Math.abs(best.coverage - targetCoverage) + Math.abs(best.index - bucket) * 1e-3 + best.familyBias;
-    const candidateScore = Math.abs(candidate.coverage - targetCoverage) + Math.abs(candidate.index - bucket) * 1e-3 + candidate.familyBias;
-    return candidateScore < bestScore ? candidate : best;
-  }).glyph;
-}
-function terminalGlyphForCell(style2, edgeGlyphIndex, dominantCount, totalCount, secondCount, fillGlyphIndex, edgeBias) {
-  const edgeCandidate = shouldUseGohu11EdgeGlyph(
-    edgeGlyphIndex,
-    dominantCount,
-    totalCount,
-    secondCount,
-    fillGlyphIndex,
-    edgeBias
-  );
-  if (edgeCandidate) {
-    return EDGE_GLYPHS[Math.max(0, Math.min(EDGE_GLYPHS.length - 1, edgeGlyphIndex))] ?? " ";
-  }
-  const bucket = fillBucketFromGlyphIndex(fillGlyphIndex);
-  switch (style2) {
-    case "glyphs":
-      return ASCII_FILL_GLYPHS[bucket] ?? " ";
-    case "mixed":
-      return pickMixedFillGlyph(fillGlyphIndex);
-    default:
-      return FILL_GLYPHS[bucket] ?? " ";
-  }
-}
-function shouldUseGohu11EdgeGlyph(edgeGlyphIndex, dominantCount, totalCount, secondCount, fillGlyphIndex, edgeBias = DEFAULT_TERMINAL_EDGE_BIAS) {
-  const direction = edgeGlyphIndex - 1;
-  if (direction < 0 || direction >= GOHU_11_EDGE_SHAPE_MISMATCH.length || dominantCount <= 0 || totalCount <= 0) {
-    return false;
-  }
-  const mismatchWeight = GOHU_11_EDGE_SHAPE_MISMATCH[direction] / 48;
-  const directionShare = dominantCount / totalCount;
-  const separation = secondCount > 0 ? (dominantCount - secondCount) / dominantCount : 1;
-  const dominantCoverage = dominantCount / TILE_PIXEL_COUNT;
-  const fillCoverage = fillCoverageForGohu11(fillGlyphIndex);
-  const clampedBias = Math.max(0.5, edgeBias);
-  const biasOffset = clampedBias - 1;
-  const minShare = 0.54 + mismatchWeight * 0.6 + biasOffset * 0.12;
-  const minSeparation = 0.12 + mismatchWeight * 0.55 + biasOffset * 0.18;
-  const minCoverage = 0.09 + fillCoverage * 0.14 + mismatchWeight * 0.08 + biasOffset * 0.06;
-  return directionShare >= clampUnit(minShare) && separation >= clampUnit(minSeparation) && dominantCoverage >= clampUnit(minCoverage);
-}
-var ThreeAsciiRenderer = class {
-  scene;
-  camera;
-  pixelAspectRatio;
-  columns;
-  rows;
-  effectOptions;
-  canvas;
-  terminalEdgeBias;
-  terminalGlyphStyle;
-  initPromise;
-  renderer;
-  renderPipeline;
-  asciiNode;
-  device;
-  paramsBuffer;
-  fillPipeline;
-  edgePipeline;
-  colorPipeline;
-  fillBindGroup;
-  edgeBindGroup;
-  colorBindGroup;
-  fillOutput;
-  edgeOutput;
-  colorOutput;
-  uniformValues = new Float32Array(24);
-  outputCellCount = 0;
-  sizeDirty = true;
-  computeDirty = true;
-  constructor(options) {
-    this.scene = options.scene;
-    this.camera = options.camera;
-    this.columns = Math.max(1, Math.floor(options.columns));
-    this.rows = Math.max(1, Math.floor(options.rows));
-    this.pixelAspectRatio = options.pixelAspectRatio ?? DEFAULT_PIXEL_ASPECT_RATIO;
-    this.effectOptions = { ...options.effect };
-    this.terminalEdgeBias = Math.max(0.5, options.terminalEdgeBias ?? DEFAULT_TERMINAL_EDGE_BIAS);
-    this.terminalGlyphStyle = options.terminalGlyphStyle ?? "blocks";
-    this.canvas = new HeadlessCanvas(1, 1);
-  }
-  async init() {
-    this.initPromise ??= this.initInternal();
-    await this.initPromise;
-  }
-  setSize(columns2, rows2) {
-    const nextColumns = Math.max(1, Math.floor(columns2));
-    const nextRows = Math.max(1, Math.floor(rows2));
-    if (this.columns === nextColumns && this.rows === nextRows) {
-      return;
-    }
-    this.columns = nextColumns;
-    this.rows = nextRows;
-    this.sizeDirty = true;
-    this.computeDirty = true;
-  }
-  setEffectOptions(options) {
-    if (options.asciiColor !== void 0) {
-      this.effectOptions.asciiColor = colorValue2(options.asciiColor, 16777215);
-    }
-    if (options.backgroundColor !== void 0) {
-      this.effectOptions.backgroundColor = colorValue2(options.backgroundColor, 0);
-    }
-    for (const [key, value] of Object.entries(options)) {
-      if (value === void 0 || key === "asciiColor" || key === "backgroundColor") {
-        continue;
-      }
-      this.effectOptions[key] = value;
-    }
-    this.asciiNode?.applyOptions(options);
-    this.computeDirty = true;
-  }
-  getTerminalEdgeBias() {
-    return this.terminalEdgeBias;
-  }
-  setTerminalEdgeBias(value) {
-    this.terminalEdgeBias = Math.max(0.5, value);
-    this.computeDirty = true;
-  }
-  getTerminalGlyphStyle() {
-    return this.terminalGlyphStyle;
-  }
-  setTerminalGlyphStyle(value) {
-    this.terminalGlyphStyle = value;
-    this.computeDirty = true;
-  }
-  async renderToAnsiGrid(deltaTime = 0, onFrame) {
-    if (this.columns <= 0 || this.rows <= 0) {
-      return [];
-    }
-    await this.init();
-    if (onFrame) {
-      await onFrame(deltaTime);
-    }
-    this.applySize();
-    this.updateCameraAspect();
-    this.renderPipeline.render();
-    await this.ensureComputeResources();
-    const effectState = this.getEffectState();
-    this.writeUniforms(effectState);
-    const commandEncoder = this.device.createCommandEncoder({
-      label: "deno_tui.three_ascii.cells"
-    });
-    const workgroupsX = Math.ceil(this.columns / WORKGROUP_SIZE);
-    const workgroupsY = Math.ceil(this.rows / WORKGROUP_SIZE);
-    this.dispatchComputePass(
-      commandEncoder,
-      "deno_tui.three_ascii.fill",
-      this.fillPipeline,
-      this.fillBindGroup,
-      workgroupsX,
-      workgroupsY
-    );
-    this.dispatchComputePass(
-      commandEncoder,
-      "deno_tui.three_ascii.edge",
-      this.edgePipeline,
-      this.edgeBindGroup,
-      workgroupsX,
-      workgroupsY
-    );
-    this.dispatchComputePass(
-      commandEncoder,
-      "deno_tui.three_ascii.color",
-      this.colorPipeline,
-      this.colorBindGroup,
-      workgroupsX,
-      workgroupsY
-    );
-    commandEncoder.copyBufferToBuffer(
-      this.fillOutput.gpu,
-      0,
-      this.fillOutput.readback,
-      0,
-      this.fillOutput.byteLength
-    );
-    commandEncoder.copyBufferToBuffer(
-      this.edgeOutput.gpu,
-      0,
-      this.edgeOutput.readback,
-      0,
-      this.edgeOutput.byteLength
-    );
-    commandEncoder.copyBufferToBuffer(
-      this.colorOutput.gpu,
-      0,
-      this.colorOutput.readback,
-      0,
-      this.colorOutput.byteLength
-    );
-    this.device.queue.submit([commandEncoder.finish()]);
-    const [fillGlyphs, edgeGlyphs, colors2] = await Promise.all([
-      this.readFloatBuffer(this.fillOutput),
-      this.readFloat4Buffer(this.edgeOutput),
-      this.readFloat4Buffer(this.colorOutput)
-    ]);
-    const [backgroundRed, backgroundGreen, backgroundBlue] = colorToBytes(effectState.backgroundColor);
-    const backgroundAnsi = rgbToAnsiBackground(backgroundRed, backgroundGreen, backgroundBlue);
-    const grid = Array.from({ length: this.rows }, () => Array(this.columns));
-    for (let row = 0; row < this.rows; row += 1) {
-      const outputRow = grid[row];
-      for (let column = 0; column < this.columns; column += 1) {
-        const index = row * this.columns + column;
-        const fillGlyphIndex = Math.round(fillGlyphs[index] ?? 0);
-        const edgeOffset = index * 4;
-        const edgeGlyphIndex = Math.round(edgeGlyphs[edgeOffset] ?? 0);
-        const glyph = terminalGlyphForCell(
-          this.terminalGlyphStyle,
-          edgeGlyphIndex,
-          edgeGlyphs[edgeOffset + 1] ?? 0,
-          edgeGlyphs[edgeOffset + 2] ?? 0,
-          edgeGlyphs[edgeOffset + 3] ?? 0,
-          fillGlyphIndex,
-          this.terminalEdgeBias
-        );
-        const colorOffset = index * 4;
-        const [foregroundRed, foregroundGreen, foregroundBlue] = linearRgbToBytes(
-          Math.max(0, Math.min(1, colors2[colorOffset] ?? 0)),
-          Math.max(0, Math.min(1, colors2[colorOffset + 1] ?? 0)),
-          Math.max(0, Math.min(1, colors2[colorOffset + 2] ?? 0))
-        );
-        const foregroundAnsi = rgbToAnsiForeground(foregroundRed, foregroundGreen, foregroundBlue);
-        outputRow[column] = `${backgroundAnsi}${foregroundAnsi}${glyph}${RESET}`;
-      }
-    }
-    return grid;
-  }
-  destroy() {
-    this.fillOutput = this.destroyBufferPair(this.fillOutput);
-    this.edgeOutput = this.destroyBufferPair(this.edgeOutput);
-    this.colorOutput = this.destroyBufferPair(this.colorOutput);
-    this.paramsBuffer?.destroy();
-    this.paramsBuffer = void 0;
-    this.renderPipeline?.dispose();
-    this.renderPipeline = void 0;
-    this.asciiNode?.dispose();
-    this.asciiNode = void 0;
-    this.renderer?.dispose();
-    this.renderer = void 0;
-    this.device = void 0;
-  }
-  async initInternal() {
-    const device = await getCompatibleWebGPUDevice();
-    const renderer = new WebGPURenderer({
-      alpha: false,
-      antialias: false,
-      canvas: this.canvas,
-      context: this.canvas.getContext("webgpu"),
-      device
-    });
-    renderer.setPixelRatio(1);
-    renderer.setSize(TILE_SIZE, TILE_SIZE);
-    await renderer.init();
-    const scenePass = pass(this.scene, this.camera);
-    const luts = await loadAsciiLutTextures(
-      new URL("./assets/edgesASCII.png", import.meta.url),
-      new URL("./assets/fillASCII.png", import.meta.url)
-    );
-    const asciiNode = new AcerolaAsciiNode(
-      scenePass.getTextureNode(),
-      scenePass.getTextureNode("depth"),
-      this.camera,
-      luts,
-      this.effectOptions
-    );
-    this.device = device;
-    this.renderer = renderer;
-    this.asciiNode = asciiNode;
-    this.renderPipeline = new RenderPipeline(renderer, asciiNode);
-    this.applySize();
-  }
-  applySize() {
-    if (!this.renderer || !this.sizeDirty) {
-      return;
-    }
-    this.renderer.setSize(this.columns * TILE_SIZE, this.rows * TILE_SIZE);
-    this.sizeDirty = false;
-    this.computeDirty = true;
-  }
-  updateCameraAspect() {
-    if (!(this.camera instanceof PerspectiveCamera)) {
-      return;
-    }
-    const aspect = this.columns * this.pixelAspectRatio / Math.max(1, this.rows);
-    if (Math.abs(this.camera.aspect - aspect) > 1e-6) {
-      this.camera.aspect = aspect;
-      this.camera.updateProjectionMatrix();
-    }
-  }
-  async ensureComputeResources() {
-    if (!this.device || !this.renderer || !this.asciiNode) {
-      throw new Error("ThreeAsciiRenderer has not been initialized.");
-    }
-    if (!this.fillPipeline) {
-      this.fillPipeline = this.createComputePipeline("deno_tui.three_ascii.fill", FILL_SHADER);
-      this.edgePipeline = this.createComputePipeline("deno_tui.three_ascii.edge", EDGE_SHADER);
-      this.colorPipeline = this.createComputePipeline("deno_tui.three_ascii.color", COLOR_SHADER);
-    }
-    if (!this.paramsBuffer) {
-      this.paramsBuffer = this.device.createBuffer({
-        label: "deno_tui.three_ascii.params",
-        size: this.uniformValues.byteLength,
-        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
-      });
-    }
-    const cellCount = this.columns * this.rows;
-    if (this.outputCellCount !== cellCount) {
-      this.fillOutput = this.ensureBufferPair(this.fillOutput, cellCount * Float32Array.BYTES_PER_ELEMENT, "fill");
-      this.edgeOutput = this.ensureBufferPair(
-        this.edgeOutput,
-        cellCount * 4 * Float32Array.BYTES_PER_ELEMENT,
-        "edge"
-      );
-      this.colorOutput = this.ensureBufferPair(
-        this.colorOutput,
-        cellCount * 4 * Float32Array.BYTES_PER_ELEMENT,
-        "color"
-      );
-      this.outputCellCount = cellCount;
-      this.computeDirty = true;
-    }
-    if (!this.computeDirty) {
-      return;
-    }
-    const downscaleTexture = this.getGpuTexture(this.asciiNode.downscaleTarget.texture);
-    const sobelTexture = this.getGpuTexture(this.asciiNode.sobelTarget.texture);
-    const normalsTexture = this.getGpuTexture(this.asciiNode.normalsTarget.texture);
-    this.fillBindGroup = this.device.createBindGroup({
-      label: "deno_tui.three_ascii.fill.bindings",
-      layout: this.fillPipeline.getBindGroupLayout(0),
-      entries: [
-        { binding: 0, resource: { buffer: this.paramsBuffer } },
-        { binding: 1, resource: downscaleTexture.createView() },
-        { binding: 2, resource: { buffer: this.fillOutput.gpu } }
-      ]
-    });
-    this.edgeBindGroup = this.device.createBindGroup({
-      label: "deno_tui.three_ascii.edge.bindings",
-      layout: this.edgePipeline.getBindGroupLayout(0),
-      entries: [
-        { binding: 0, resource: { buffer: this.paramsBuffer } },
-        { binding: 1, resource: sobelTexture.createView() },
-        { binding: 2, resource: { buffer: this.edgeOutput.gpu } }
-      ]
-    });
-    this.colorBindGroup = this.device.createBindGroup({
-      label: "deno_tui.three_ascii.color.bindings",
-      layout: this.colorPipeline.getBindGroupLayout(0),
-      entries: [
-        { binding: 0, resource: { buffer: this.paramsBuffer } },
-        { binding: 1, resource: downscaleTexture.createView() },
-        { binding: 2, resource: normalsTexture.createView() },
-        { binding: 3, resource: { buffer: this.colorOutput.gpu } }
-      ]
-    });
-    this.computeDirty = false;
-  }
-  getEffectState() {
-    const asciiNode = this.asciiNode;
-    if (!asciiNode) {
-      return {
-        edges: true,
-        fill: true,
-        invertLuminance: false,
-        exposure: 1,
-        attenuation: 1,
-        blendWithBase: 0,
-        depthFalloff: 0,
-        depthOffset: 0,
-        edgeThreshold: 8,
-        asciiColor: colorValue2(this.effectOptions.asciiColor, 16777215),
-        backgroundColor: colorValue2(this.effectOptions.backgroundColor, 0)
-      };
-    }
-    return {
-      edges: Boolean(asciiNode.edges.value),
-      fill: Boolean(asciiNode.fill.value),
-      invertLuminance: Boolean(asciiNode.invertLuminance.value),
-      exposure: Number(asciiNode.exposure.value),
-      attenuation: Number(asciiNode.attenuation.value),
-      blendWithBase: Number(asciiNode.blendWithBase.value),
-      depthFalloff: Number(asciiNode.depthFalloff.value),
-      depthOffset: Number(asciiNode.depthOffset.value),
-      edgeThreshold: Number(asciiNode.edgeThreshold.value),
-      asciiColor: asciiNode.asciiColor.value.clone(),
-      backgroundColor: asciiNode.backgroundColor.value.clone()
-    };
-  }
-  writeUniforms(effectState) {
-    const uniforms = this.uniformValues;
-    uniforms[0] = this.columns;
-    uniforms[1] = this.rows;
-    uniforms[2] = this.columns * TILE_SIZE;
-    uniforms[3] = this.rows * TILE_SIZE;
-    uniforms[4] = effectState.edges ? 1 : 0;
-    uniforms[5] = effectState.fill ? 1 : 0;
-    uniforms[6] = effectState.invertLuminance ? 1 : 0;
-    uniforms[7] = effectState.edgeThreshold * TERMINAL_EDGE_THRESHOLD_SCALE * this.terminalEdgeBias;
-    uniforms[8] = effectState.exposure;
-    uniforms[9] = effectState.attenuation;
-    uniforms[10] = effectState.blendWithBase;
-    uniforms[11] = effectState.depthFalloff;
-    uniforms[12] = effectState.depthOffset;
-    uniforms[13] = 0;
-    uniforms[14] = 0;
-    uniforms[15] = 0;
-    uniforms[16] = effectState.asciiColor.r;
-    uniforms[17] = effectState.asciiColor.g;
-    uniforms[18] = effectState.asciiColor.b;
-    uniforms[19] = 1;
-    uniforms[20] = effectState.backgroundColor.r;
-    uniforms[21] = effectState.backgroundColor.g;
-    uniforms[22] = effectState.backgroundColor.b;
-    uniforms[23] = 1;
-    this.device.queue.writeBuffer(this.paramsBuffer, 0, uniforms);
-  }
-  getGpuTexture(texture2) {
-    const textureData = this.renderer.backend.get(texture2);
-    if (!textureData.texture) {
-      throw new Error("Three.js did not expose a GPU texture for the requested render target.");
-    }
-    return textureData.texture;
-  }
-  createComputePipeline(label, code) {
-    const module = this.device.createShaderModule({
-      label: `${label}.wgsl`,
-      code
-    });
-    return this.device.createComputePipeline({
-      label,
-      layout: "auto",
-      compute: {
-        module,
-        entryPoint: "main"
-      }
-    });
-  }
-  ensureBufferPair(current, byteLength, label) {
-    if (current?.byteLength === byteLength) {
-      return current;
-    }
-    this.destroyBufferPair(current);
-    return {
-      gpu: this.device.createBuffer({
-        label: `deno_tui.three_ascii.${label}.storage`,
-        size: byteLength,
-        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC
-      }),
-      readback: this.device.createBuffer({
-        label: `deno_tui.three_ascii.${label}.readback`,
-        size: byteLength,
-        usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ
-      }),
-      byteLength
-    };
-  }
-  destroyBufferPair(current) {
-    current?.gpu.destroy();
-    current?.readback.destroy();
-    return void 0;
-  }
-  dispatchComputePass(commandEncoder, label, pipeline, bindGroup, workgroupsX, workgroupsY) {
-    const passEncoder = commandEncoder.beginComputePass({ label });
-    passEncoder.setPipeline(pipeline);
-    passEncoder.setBindGroup(0, bindGroup);
-    passEncoder.dispatchWorkgroups(workgroupsX, workgroupsY, 1);
-    passEncoder.end();
-  }
-  async readFloatBuffer(bufferPair) {
-    await bufferPair.readback.mapAsync(GPUMapMode.READ);
-    try {
-      const source = new Float32Array(bufferPair.readback.getMappedRange());
-      const result = new Float32Array(source.length);
-      result.set(source);
-      return result;
-    } finally {
-      bufferPair.readback.unmap();
-    }
-  }
-  async readFloat4Buffer(bufferPair) {
-    return await this.readFloatBuffer(bufferPair);
-  }
-};
-
-// src/canvas/three_ascii.ts
-var ThreeAsciiObject = class extends DrawObject {
-  rectangle;
-  renderer;
-  frameInterval;
-  onFrame;
-  grid = [];
-  lastFrameTime = performance.now();
-  rendering = false;
-  running = false;
-  destroyPending = false;
-  failed = false;
-  constructor(options) {
-    super("three_ascii", { ...options, style: emptyStyle });
-    this.rectangle = signalify(options.rectangle, { deepObserve: true });
-    this.renderer = new ThreeAsciiRenderer({
-      scene: options.scene,
-      camera: options.camera,
-      columns: options.rectangle instanceof Signal ? options.rectangle.peek().width : options.rectangle.width,
-      rows: options.rectangle instanceof Signal ? options.rectangle.peek().height : options.rectangle.height,
-      pixelAspectRatio: options.pixelAspectRatio,
-      terminalEdgeBias: options.terminalEdgeBias,
-      terminalGlyphStyle: options.terminalGlyphStyle,
-      effect: options.effect
-    });
-    this.frameInterval = options.frameInterval ?? 1e3 / 24;
-    this.onFrame = options.onFrame;
-  }
-  draw() {
-    this.rectangle.subscribe(this.handleResize);
-    this.running = true;
-    this.failed = false;
-    this.destroyPending = false;
-    super.draw();
-    queueMicrotask(() => void this.renderLoop());
-  }
-  erase() {
-    this.running = false;
-    this.rectangle.unsubscribe(this.handleResize);
-    if (this.rendering) {
-      this.destroyPending = true;
-    } else {
-      this.renderer.destroy();
-    }
-    super.erase();
-  }
-  rerender() {
-    const { frameBuffer, rerenderQueue } = this.canvas;
-    const rectangle = this.rectangle.peek();
-    const { columns: columns2, rows: rows2 } = this.canvas.size.peek();
-    const viewRectangle = this.view.peek()?.rectangle?.peek();
-    let rowLimit = Math.min(rows2, rectangle.row + rectangle.height);
-    let columnLimit = Math.min(columns2, rectangle.column + rectangle.width);
-    if (viewRectangle) {
-      rowLimit = Math.min(rowLimit, viewRectangle.row + viewRectangle.height);
-      columnLimit = Math.min(columnLimit, viewRectangle.column + viewRectangle.width);
-    }
-    for (let row = rectangle.row; row < rowLimit; row += 1) {
-      const rerenderColumns = this.rerenderCells[row];
-      if (!rerenderColumns?.size) continue;
-      const outputRow = this.grid[row - rectangle.row];
-      const frameRow = frameBuffer[row] ??= [];
-      const queueRow = rerenderQueue[row] ??= /* @__PURE__ */ new Set();
-      const omitColumns = this.omitCells[row];
-      for (const column of rerenderColumns) {
-        if (column < rectangle.column || column >= columnLimit || omitColumns?.has(column)) continue;
-        frameRow[column] = outputRow?.[column - rectangle.column] ?? " ";
-        queueRow.add(column);
-      }
-      rerenderColumns.clear();
-    }
-  }
-  handleResize = (rectangle) => {
-    this.renderer.setSize(rectangle.width, rectangle.height);
-    this.moved = true;
-    this.updated = false;
-    this.canvas.updateObjects.push(this);
-  };
-  setEffectOptions(options) {
-    this.renderer.setEffectOptions(options);
-  }
-  getTerminalEdgeBias() {
-    return this.renderer.getTerminalEdgeBias();
-  }
-  setTerminalEdgeBias(value) {
-    this.renderer.setTerminalEdgeBias(value);
-  }
-  getTerminalGlyphStyle() {
-    return this.renderer.getTerminalGlyphStyle();
-  }
-  setTerminalGlyphStyle(value) {
-    this.renderer.setTerminalGlyphStyle(value);
-  }
-  isOperational() {
-    return !this.failed;
-  }
-  async renderLoop() {
-    if (!this.running || this.rendering) return;
-    this.rendering = true;
-    try {
-      const rectangle = this.rectangle.peek();
-      if (rectangle.width > 0 && rectangle.height > 0) {
-        const now = performance.now();
-        const deltaTime = (now - this.lastFrameTime) / 1e3;
-        this.lastFrameTime = now;
-        this.renderer.setSize(rectangle.width, rectangle.height);
-        this.grid = await this.renderer.renderToAnsiGrid(deltaTime, this.onFrame);
-        if (!this.running) {
-          return;
-        }
-        for (let row = rectangle.row; row < rectangle.row + rectangle.height; row += 1) {
-          for (let column = rectangle.column; column < rectangle.column + rectangle.width; column += 1) {
-            this.queueRerender(row, column);
-          }
-        }
-        this.updated = false;
-        this.canvas.updateObjects.push(this);
-      }
-    } catch (error) {
-      this.failed = true;
-      this.running = false;
-      const rectangle = this.rectangle.peek();
-      this.grid = buildFallbackGrid(
-        rectangle.width,
-        rectangle.height,
-        error instanceof Error ? error.message : "ASCII RENDERER OFFLINE"
-      );
-      for (let row = rectangle.row; row < rectangle.row + rectangle.height; row += 1) {
-        for (let column = rectangle.column; column < rectangle.column + rectangle.width; column += 1) {
-          this.queueRerender(row, column);
-        }
-      }
-      this.updated = false;
-      this.canvas.updateObjects.push(this);
-    } finally {
-      this.rendering = false;
-      if (this.destroyPending) {
-        this.renderer.destroy();
-        this.destroyPending = false;
-      }
-      if (this.running) {
-        setTimeout(() => void this.renderLoop(), this.frameInterval);
-      }
-    }
-  }
-};
-function buildFallbackGrid(width, height, detail) {
-  const columns2 = Math.max(1, width);
-  const rows2 = Math.max(1, height);
-  const grid = Array.from({ length: rows2 }, () => Array.from({ length: columns2 }, () => " "));
-  const lines = [
-    "ASCII RENDERER OFFLINE",
-    cropMessage(detail, columns2)
-  ].filter((line, index, all) => line.length > 0 && (index === 0 || line !== all[0]));
-  const startRow = Math.max(0, Math.floor((rows2 - lines.length) / 2));
-  for (let index = 0; index < lines.length; index += 1) {
-    const line = lines[index] ?? "";
-    const startColumn = Math.max(0, Math.floor((columns2 - line.length) / 2));
-    for (let column = 0; column < line.length && startColumn + column < columns2; column += 1) {
-      grid[startRow + index][startColumn + column] = line[column] ?? " ";
-    }
-  }
-  return grid;
-}
-function cropMessage(message, width) {
-  const cleaned = message.replace(/\s+/g, " ").trim().toUpperCase();
-  if (width <= 0) {
-    return "";
-  }
-  if (cleaned.length <= width) {
-    return cleaned;
-  }
-  return `${cleaned.slice(0, Math.max(0, width - 1))}\u2026`;
-}
 
 // src/runtime/render_loop.ts
 var RenderLoop = class {
@@ -3720,6 +2206,129 @@ var textEncoder3 = new TextEncoder();
 
 // src/layout/flex_layout.ts
 var MAX_FLEX_SIZE = Number.MAX_SAFE_INTEGER;
+
+// src/layout/split_pane.ts
+function splitPaneRects(bounds, options) {
+  const direction = options.direction;
+  const mainSize = direction === "row" ? bounds.width : bounds.height;
+  const crossSize = direction === "row" ? bounds.height : bounds.width;
+  const gap = Math.max(0, Math.floor(options.gap ?? 1));
+  const available = Math.max(0, mainSize - gap);
+  const firstSize = resolveFirstPaneSize(available, options);
+  const secondSize = Math.max(0, available - firstSize);
+  if (direction === "row") {
+    const separatorColumn = bounds.column + firstSize;
+    return {
+      first: { column: bounds.column, row: bounds.row, width: firstSize, height: crossSize },
+      separator: { column: separatorColumn, row: bounds.row, width: gap, height: crossSize },
+      second: { column: separatorColumn + gap, row: bounds.row, width: secondSize, height: crossSize },
+      firstSize,
+      ratio: ratioFor(firstSize, available)
+    };
+  }
+  const separatorRow = bounds.row + firstSize;
+  return {
+    first: { column: bounds.column, row: bounds.row, width: crossSize, height: firstSize },
+    separator: { column: bounds.column, row: separatorRow, width: crossSize, height: gap },
+    second: { column: bounds.column, row: separatorRow + gap, width: crossSize, height: secondSize },
+    firstSize,
+    ratio: ratioFor(firstSize, available)
+  };
+}
+function resizeSplitPane(bounds, options, delta) {
+  const current = splitPaneRects(bounds, options);
+  return {
+    ...options,
+    firstSize: resolveFirstPaneSize(
+      paneAvailableSize(bounds, options.direction, options.gap),
+      { ...options, firstSize: current.firstSize + Math.floor(delta) }
+    )
+  };
+}
+function resizeSplitPaneRatio(bounds, options, delta) {
+  const resized = resizeSplitPane(bounds, options, delta);
+  const rects = splitPaneRects(bounds, resized);
+  return {
+    ...resized,
+    firstSize: void 0,
+    ratio: rects.ratio
+  };
+}
+var SplitPaneController = class {
+  options;
+  resizeMode;
+  constructor(options) {
+    const { resizeMode = "size", ...splitOptions } = options;
+    this.options = new Signal({ ...splitOptions });
+    this.resizeMode = new Signal(resizeMode);
+  }
+  rects(bounds) {
+    return splitPaneRects(bounds, this.options.peek());
+  }
+  resize(bounds, delta) {
+    this.options.value = this.resizeMode.peek() === "ratio" ? resizeSplitPaneRatio(bounds, this.options.peek(), delta) : resizeSplitPane(bounds, this.options.peek(), delta);
+    return this.rects(bounds);
+  }
+  update(options) {
+    const { resizeMode, ...splitOptions } = options;
+    if (resizeMode) {
+      this.resizeMode.value = resizeMode;
+    }
+    this.options.value = {
+      ...this.options.peek(),
+      ...splitOptions
+    };
+  }
+  setRatio(ratio) {
+    this.options.value = {
+      ...this.options.peek(),
+      firstSize: void 0,
+      ratio: clampRatio(ratio)
+    };
+  }
+  setFirstSize(firstSize) {
+    this.options.value = {
+      ...this.options.peek(),
+      firstSize: Math.max(0, Math.floor(firstSize))
+    };
+  }
+  setDirection(direction) {
+    this.options.value = {
+      ...this.options.peek(),
+      direction
+    };
+  }
+  snapshot() {
+    return {
+      ...this.options.peek(),
+      resizeMode: this.resizeMode.peek()
+    };
+  }
+  dispose() {
+    this.options.dispose();
+    this.resizeMode.dispose();
+  }
+};
+function resolveFirstPaneSize(available, options) {
+  if (available <= 0) return 0;
+  const minFirst = Math.max(0, Math.floor(options.minFirst ?? 0));
+  const minSecond = Math.max(0, Math.floor(options.minSecond ?? 0));
+  const maxBySecond = Math.max(0, available - minSecond);
+  const maxFirst = Math.min(maxBySecond, Math.max(minFirst, Math.floor(options.maxFirst ?? available)));
+  const requested = options.firstSize == null ? Math.floor(available * clampRatio(options.ratio ?? 0.5)) : Math.floor(options.firstSize);
+  return Math.max(0, Math.min(maxFirst, Math.max(minFirst, requested)));
+}
+function paneAvailableSize(bounds, direction, gap = 1) {
+  const mainSize = direction === "row" ? bounds.width : bounds.height;
+  return Math.max(0, mainSize - Math.max(0, Math.floor(gap)));
+}
+function ratioFor(size, available) {
+  return available <= 0 ? 0 : size / available;
+}
+function clampRatio(value) {
+  if (Number.isNaN(value)) return 0.5;
+  return Math.max(0, Math.min(1, value));
+}
 
 // src/components/catalog.ts
 var componentCatalog = [
@@ -3903,6 +2512,489 @@ var componentCatalog = [
 ];
 function component(id2, name, category, description, capabilities) {
   return { id: id2, name, category, description, capabilities };
+}
+
+// src/components/checkbox.ts
+function renderCheckBoxMark(checked) {
+  return checked ? "\u2713" /* Check */ : "\u2717" /* Cross */;
+}
+var CheckBoxController = class {
+  checked;
+  #ownsChecked;
+  #onChange;
+  constructor(options) {
+    this.#ownsChecked = !(options.checked instanceof Signal);
+    this.checked = signalify(options.checked);
+    this.#onChange = options.onChange;
+  }
+  setChecked(checked) {
+    this.checked.value = checked;
+    void this.#onChange?.(checked);
+    return checked;
+  }
+  check() {
+    return this.setChecked(true);
+  }
+  uncheck() {
+    return this.setChecked(false);
+  }
+  toggle() {
+    return this.setChecked(!this.checked.peek());
+  }
+  inspect() {
+    const checked = this.checked.peek();
+    return {
+      checked,
+      mark: renderCheckBoxMark(checked)
+    };
+  }
+  dispose() {
+    if (this.#ownsChecked) this.checked.dispose();
+  }
+};
+
+// src/components/data_table.ts
+function createDataTableView(rows2, columns, state = {}, rowKey) {
+  const filtered = filterDataRows(rows2, columns, state.query ?? "");
+  const sorted = sortDataRows(filtered, state.sort);
+  const pageSize = Math.max(1, Math.floor(state.pageSize ?? (sorted.length || 1)));
+  const selectedAbsoluteIndex = selectedRowIndex(sorted, state, rowKey);
+  const pageForSelection = selectedAbsoluteIndex >= 0 ? Math.floor(selectedAbsoluteIndex / pageSize) : void 0;
+  const pageCount = Math.max(1, Math.ceil(sorted.length / pageSize));
+  const page = clamp(Math.floor(pageForSelection ?? state.page ?? 0), 0, pageCount - 1);
+  const start = page * pageSize;
+  const pageRows = sorted.slice(start, start + pageSize);
+  const selectedIndex = selectedAbsoluteIndex >= start && selectedAbsoluteIndex < start + pageRows.length ? selectedAbsoluteIndex - start : clampSelectionIndex(pageRows.length, state.selectedIndex ?? 0);
+  const selectedRow = pageRows[selectedIndex];
+  return {
+    rows: pageRows,
+    totalRows: sorted.length,
+    page,
+    pageSize,
+    pageCount,
+    selectedIndex,
+    selectedKey: selectedRow && rowKey ? rowKey(selectedRow, start + selectedIndex) : void 0,
+    selectedRow
+  };
+}
+var DataTableController = class {
+  rows;
+  columns;
+  state;
+  view;
+  #rowKey;
+  constructor(options) {
+    this.rows = options.rows instanceof Signal ? options.rows : new Signal([...options.rows]);
+    this.columns = options.columns instanceof Signal ? options.columns : new Signal([...options.columns]);
+    this.#rowKey = options.rowKey;
+    this.state = new Signal({ ...options.initialState ?? {} }, { deepObserve: true });
+    this.view = new Computed(
+      () => createDataTableView(this.rows.value, this.columns.value, this.state.value, this.#rowKey)
+    );
+  }
+  setQuery(query) {
+    this.patchState({ query, page: 0, selectedIndex: 0 });
+  }
+  setPage(page) {
+    this.patchState({
+      page: clamp(Math.floor(page), 0, this.view.peek().pageCount - 1),
+      selectedIndex: 0,
+      selectedKey: void 0
+    });
+  }
+  nextPage() {
+    this.setPage(this.view.peek().page + 1);
+  }
+  previousPage() {
+    this.setPage(this.view.peek().page - 1);
+  }
+  setPageSize(pageSize) {
+    this.patchState({ pageSize: Math.max(1, Math.floor(pageSize)), page: 0, selectedIndex: 0 });
+  }
+  setSort(sort) {
+    if (sort && !canSortColumn(this.columns.peek(), sort.columnId)) return;
+    this.patchState({ sort, page: 0, selectedIndex: 0 });
+  }
+  toggleSort(columnId) {
+    if (!canSortColumn(this.columns.peek(), columnId)) return;
+    this.setSort(nextSort(this.state.peek().sort, columnId));
+  }
+  select(index) {
+    const view = this.view.peek();
+    const selectedIndex = clampSelectionIndex(view.rows.length, index);
+    this.patchState({
+      selectedIndex,
+      selectedKey: this.keyForVisibleRow(selectedIndex)
+    });
+  }
+  selectKey(key) {
+    this.patchState({ selectedKey: key, selectedIndex: 0 });
+  }
+  moveSelection(delta) {
+    this.select(this.view.peek().selectedIndex + Math.floor(delta));
+  }
+  first() {
+    this.select(0);
+  }
+  last() {
+    this.select(this.view.peek().rows.length - 1);
+  }
+  handleKeyPress(event) {
+    if (event.ctrl || event.meta || event.shift) return void 0;
+    if (event.key === "up") this.moveSelection(-1);
+    else if (event.key === "down") this.moveSelection(1);
+    else if (event.key === "pageup") this.previousPage();
+    else if (event.key === "pagedown") this.nextPage();
+    else if (event.key === "home") this.first();
+    else if (event.key === "end") this.last();
+    else if (event.key === "return") return this.selectedRow();
+    return void 0;
+  }
+  selectedRow() {
+    return this.view.peek().selectedRow;
+  }
+  selectedKey() {
+    return this.view.peek().selectedKey;
+  }
+  inspect() {
+    const view = this.view.peek();
+    const state = this.state.peek();
+    return {
+      rowCount: this.rows.peek().length,
+      visibleRowCount: view.totalRows,
+      columnCount: this.columns.peek().length,
+      query: state.query ?? "",
+      sort: state.sort,
+      page: view.page,
+      pageSize: view.pageSize,
+      pageCount: view.pageCount,
+      selectedIndex: view.selectedIndex,
+      selectedKey: view.selectedKey,
+      selectedRow: view.selectedRow
+    };
+  }
+  dispose() {
+    this.view.dispose();
+  }
+  patchState(patch) {
+    this.state.value = {
+      ...this.state.peek(),
+      ...patch
+    };
+  }
+  keyForVisibleRow(index) {
+    const view = this.view.peek();
+    const row = view.rows[index];
+    if (!row || !this.#rowKey) return void 0;
+    return this.#rowKey(row, view.page * view.pageSize + index);
+  }
+};
+function filterDataRows(rows2, columns, query) {
+  const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (terms.length === 0) return [...rows2];
+  return rows2.filter((row) => {
+    const haystack = columns.map((column) => stringifyCell(row[column.id])).join(" ").toLowerCase();
+    return terms.every((term) => haystack.includes(term));
+  });
+}
+function sortDataRows(rows2, sort) {
+  if (!sort) return [...rows2];
+  const direction = sort.direction === "desc" ? -1 : 1;
+  return [...rows2].sort((left, right) => compareCells(left[sort.columnId], right[sort.columnId]) * direction);
+}
+function renderDataTableHeader(columns, sort) {
+  return columns.map((column) => {
+    const suffix = sort?.columnId === column.id ? sort.direction === "asc" ? "\u2191" : "\u2193" : "";
+    return padCell(`${column.label ?? column.id}${suffix}`, column.width);
+  }).join(" ");
+}
+function renderDataTableRows(rows2, columns, selectedIndex = 0) {
+  return rows2.map((row, index) => {
+    const marker = index === selectedIndex ? ">" : " ";
+    const cells = columns.map((column) => {
+      const value = column.format ? column.format(row[column.id], row) : stringifyCell(row[column.id]);
+      return padCell(value, column.width);
+    });
+    return `${marker} ${cells.join(" ")}`;
+  });
+}
+function nextSort(current, columnId) {
+  if (current?.columnId === columnId && current.direction === "asc") {
+    return { columnId, direction: "desc" };
+  }
+  return { columnId, direction: "asc" };
+}
+function canSortColumn(columns, columnId) {
+  return columns.some((column) => column.id === columnId && column.sortable !== false);
+}
+function selectedRowIndex(rows2, state, rowKey) {
+  if (!rowKey || state.selectedKey === void 0) return -1;
+  return rows2.findIndex((row, index) => rowKey(row, index) === state.selectedKey);
+}
+function stringifyCell(value) {
+  if (value === void 0 || value === null) return "";
+  return String(value);
+}
+function compareCells(left, right) {
+  if (typeof left === "number" && typeof right === "number") return left - right;
+  return stringifyCell(left).localeCompare(stringifyCell(right), void 0, { numeric: true, sensitivity: "base" });
+}
+function padCell(value, width) {
+  if (!width) return value;
+  const cropped = cropToWidth(value, width);
+  return cropped + " ".repeat(Math.max(0, width - textWidth(cropped)));
+}
+
+// src/components/menu_bar.ts
+function renderMenuBar(items, activeIndex) {
+  return items.map((item, index) => {
+    const label = item.disabled ? `(${item.label})` : item.label;
+    return index === activeIndex ? `[${label}]` : label;
+  }).join(" ");
+}
+function shiftMenuIndex(items, activeIndex, delta) {
+  if (items.length === 0) return -1;
+  let next = activeIndex;
+  for (let count = 0; count < items.length; count += 1) {
+    next = (next + delta + items.length) % items.length;
+    if (!items[next]?.disabled) return next;
+  }
+  return activeIndex;
+}
+function clampMenuIndex(items, activeIndex) {
+  if (items.length === 0) return -1;
+  const clamped = Math.max(0, Math.min(activeIndex, items.length - 1));
+  if (!items[clamped]?.disabled) return clamped;
+  const next = shiftMenuIndex(items, clamped, 1);
+  if (!items[next]?.disabled) return next;
+  const previous = shiftMenuIndex(items, clamped, -1);
+  return items[previous]?.disabled ? clamped : previous;
+}
+function menuItemForIndex(items, activeIndex) {
+  const item = items[clampMenuIndex(items, activeIndex)];
+  return item?.disabled ? void 0 : item;
+}
+var MenuBarController = class {
+  items;
+  activeIndex;
+  #ownsItems;
+  #ownsActiveIndex;
+  #onChange;
+  #onSelect;
+  constructor(options) {
+    this.#ownsItems = !(options.items instanceof Signal);
+    this.#ownsActiveIndex = !(options.activeIndex instanceof Signal);
+    this.items = signalify(options.items, { deepObserve: true });
+    this.activeIndex = signalify(options.activeIndex ?? 0);
+    this.#onChange = options.onChange;
+    this.#onSelect = options.onSelect;
+    this.activeIndex.value = clampMenuIndex(this.items.peek(), this.activeIndex.peek());
+  }
+  active() {
+    return menuItemForIndex(this.items.peek(), this.activeIndex.peek());
+  }
+  move(delta) {
+    return this.setActive(shiftMenuIndex(this.items.peek(), this.activeIndex.peek(), delta));
+  }
+  first() {
+    return this.setActive(0);
+  }
+  last() {
+    return this.setActive(this.items.peek().length - 1);
+  }
+  setActive(index) {
+    const next = clampMenuIndex(this.items.peek(), index);
+    this.activeIndex.value = next;
+    const item = this.items.peek()[next];
+    if (item && !item.disabled) {
+      void this.#onChange?.(item, next);
+      return item;
+    }
+    return void 0;
+  }
+  selectActive() {
+    const index = clampMenuIndex(this.items.peek(), this.activeIndex.peek());
+    const item = this.items.peek()[index];
+    if (item && !item.disabled) {
+      void this.#onSelect?.(item, index);
+      return item;
+    }
+    return void 0;
+  }
+  handleKeyPress({ key, ctrl, meta, shift }) {
+    if (ctrl || meta || shift) return;
+    if (key === "left") {
+      this.move(-1);
+    } else if (key === "right") {
+      this.move(1);
+    } else if (key === "home") {
+      this.first();
+    } else if (key === "end") {
+      this.last();
+    } else if (key === "return" || key === "space") {
+      this.selectActive();
+    }
+  }
+  inspect() {
+    const items = this.items.peek().map((item) => ({ ...item }));
+    const activeIndex = clampMenuIndex(items, this.activeIndex.peek());
+    const active2 = menuItemForIndex(items, activeIndex);
+    return {
+      items,
+      itemCount: items.length,
+      activeIndex,
+      active: active2 ? { ...active2 } : void 0,
+      empty: items.length === 0
+    };
+  }
+  dispose() {
+    if (this.#ownsItems) this.items.dispose();
+    if (this.#ownsActiveIndex) this.activeIndex.dispose();
+  }
+};
+
+// src/components/slider.ts
+function clampSliderValue(value, min2, max2) {
+  return clamp(value, Math.min(min2, max2), Math.max(min2, max2));
+}
+function sliderValueBy(value, min2, max2, step, delta) {
+  return clampSliderValue(value + step * delta, min2, max2);
+}
+function sliderThumbRectangle(track, value, min2, max2, orientation, adjustThumbSize = false) {
+  const range = Math.max(1, Math.abs(max2 - min2));
+  const normalizedValue = normalize(clampSliderValue(value, min2, max2), min2, max2);
+  if (orientation === "horizontal") {
+    const thumbSize2 = adjustThumbSize ? Math.max(1, Math.round(track.width / range)) : 1;
+    return {
+      column: Math.min(
+        track.column + Math.max(0, track.width - thumbSize2),
+        track.column + Math.round(Math.max(0, track.width - 1) * normalizedValue)
+      ),
+      row: track.row,
+      width: thumbSize2,
+      height: track.height
+    };
+  }
+  const thumbSize = adjustThumbSize ? Math.max(1, Math.round(track.height / range)) : 1;
+  return {
+    column: track.column,
+    row: Math.min(
+      track.row + Math.max(0, track.height - thumbSize),
+      track.row + Math.round(Math.max(0, track.height - 1) * normalizedValue)
+    ),
+    width: track.width,
+    height: thumbSize
+  };
+}
+var SliderController = class {
+  min;
+  max;
+  step;
+  value;
+  adjustThumbSize;
+  orientation;
+  #ownsMin;
+  #ownsMax;
+  #ownsStep;
+  #ownsValue;
+  #ownsAdjustThumbSize;
+  #ownsOrientation;
+  #onChange;
+  constructor(options) {
+    this.#ownsMin = !(options.min instanceof Signal);
+    this.#ownsMax = !(options.max instanceof Signal);
+    this.#ownsStep = !(options.step instanceof Signal);
+    this.#ownsValue = !(options.value instanceof Signal);
+    this.#ownsAdjustThumbSize = !(options.adjustThumbSize instanceof Signal);
+    this.#ownsOrientation = !(options.orientation instanceof Signal);
+    this.min = signalify(options.min);
+    this.max = signalify(options.max);
+    this.step = signalify(options.step);
+    this.value = signalify(options.value);
+    this.adjustThumbSize = signalify(options.adjustThumbSize ?? false);
+    this.orientation = signalify(options.orientation);
+    this.#onChange = options.onChange;
+    this.value.value = clampSliderValue(this.value.peek(), this.min.peek(), this.max.peek());
+  }
+  setValue(value) {
+    const next = clampSliderValue(value, this.min.peek(), this.max.peek());
+    this.value.value = next;
+    void this.#onChange?.(next);
+    return next;
+  }
+  increment(steps = 1) {
+    return this.setValue(sliderValueBy(this.value.peek(), this.min.peek(), this.max.peek(), this.step.peek(), steps));
+  }
+  decrement(steps = 1) {
+    return this.increment(-steps);
+  }
+  setMin() {
+    return this.setValue(this.min.peek());
+  }
+  setMax() {
+    return this.setValue(this.max.peek());
+  }
+  handleKeyPress({ key, ctrl, meta, shift }) {
+    if (ctrl || meta || shift) return;
+    if (key === "up" || key === "right") {
+      this.increment();
+    } else if (key === "down" || key === "left") {
+      this.decrement();
+    } else if (key === "home") {
+      this.setMin();
+    } else if (key === "end") {
+      this.setMax();
+    }
+  }
+  handleDrag(movementX, movementY) {
+    const delta = this.orientation.peek() === "horizontal" ? movementX : movementY;
+    return this.increment(delta);
+  }
+  handleScroll(scroll) {
+    return this.increment(scroll);
+  }
+  thumbRectangle(track) {
+    return sliderThumbRectangle(
+      track,
+      this.value.peek(),
+      this.min.peek(),
+      this.max.peek(),
+      this.orientation.peek(),
+      this.adjustThumbSize.peek()
+    );
+  }
+  inspect() {
+    const min2 = this.min.peek();
+    const max2 = this.max.peek();
+    const value = clampSliderValue(this.value.peek(), min2, max2);
+    return {
+      min: min2,
+      max: max2,
+      step: this.step.peek(),
+      value,
+      normalizedValue: normalize(value, min2, max2),
+      orientation: this.orientation.peek(),
+      adjustThumbSize: this.adjustThumbSize.peek(),
+      range: Math.abs(max2 - min2)
+    };
+  }
+  dispose() {
+    if (this.#ownsMin) this.min.dispose();
+    if (this.#ownsMax) this.max.dispose();
+    if (this.#ownsStep) this.step.dispose();
+    if (this.#ownsValue) this.value.dispose();
+    if (this.#ownsAdjustThumbSize) this.adjustThumbSize.dispose();
+    if (this.#ownsOrientation) this.orientation.dispose();
+  }
+};
+
+// src/components/statusbar.ts
+function renderStatusBar(left, right, width) {
+  const safeWidth = Math.max(0, width);
+  const leftText = left.slice(0, safeWidth);
+  const rightText = right.slice(0, Math.max(0, safeWidth - leftText.length));
+  const gap = Math.max(1, safeWidth - leftText.length - rightText.length);
+  return `${leftText}${" ".repeat(gap)}${rightText}`.slice(0, safeWidth);
 }
 
 // src/three_ascii/demo_presets.ts
@@ -4134,8 +3226,8 @@ var BrowserCellCanvasSink = class {
     this.#context.font = this.#font;
     this.#context.textBaseline = "top";
   }
-  resize(columns2, rows2) {
-    this.#columns = Math.max(1, Math.floor(columns2));
+  resize(columns, rows2) {
+    this.#columns = Math.max(1, Math.floor(columns));
     this.#rows = Math.max(1, Math.floor(rows2));
     this.#canvas.width = Math.ceil(this.#columns * this.#cellWidth * this.#pixelRatio);
     this.#canvas.height = Math.ceil(this.#rows * this.#cellHeight * this.#pixelRatio);
@@ -4236,7 +3328,7 @@ function clampByte(value) {
   return Math.max(0, Math.min(255, Math.floor(Number.isFinite(value) ? value : 0)));
 }
 function ansiColor(index) {
-  const colors2 = [
+  const colors = [
     "#0f172a",
     "#ef4444",
     "#22c55e",
@@ -4254,7 +3346,7 @@ function ansiColor(index) {
     "#67e8f9",
     "#f8fafc"
   ];
-  return colors2[index] ?? "#dbeafe";
+  return colors[index] ?? "#dbeafe";
 }
 function ansi256Color(index) {
   if (!Number.isFinite(index) || index < 0) return "#dbeafe";
@@ -4561,429 +3653,354 @@ function createWebTui(options) {
   return new WebTuiHost(options);
 }
 
-// app/neon_three.ts
-import * as THREE from "https://esm.sh/three@0.183.2";
-
-// app/neon_theme.ts
-var colors = {
-  void: "#05070d",
-  alarm: "#ff4231",
-  amber: "#ff9f24",
-  phosphor: "#7dffba",
-  signal: "#5bb0ff",
-  violet: "#b17cff"
-};
-
-// app/neon_three.ts
-function neonLine(color) {
-  return new THREE.LineBasicMaterial({ color });
-}
-function addBoxWire(group, size, color) {
-  const wire = new THREE.LineSegments(
-    new THREE.EdgesGeometry(new THREE.BoxGeometry(size, size, size)),
-    neonLine(color)
-  );
-  group.add(wire);
-  return wire;
-}
-function createHelix(color, radius, turns, height) {
-  const points = [];
-  const count = 220;
-  for (let index = 0; index < count; index += 1) {
-    const t = index / (count - 1) * Math.PI * 2 * turns;
-    points.push(Math.cos(t) * radius, (index / (count - 1) - 0.5) * height, Math.sin(t) * radius);
-  }
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute("position", new THREE.Float32BufferAttribute(points, 3));
-  return new THREE.Line(geometry, neonLine(color));
-}
-function createPointsShell() {
-  const geometry = new THREE.BufferGeometry();
-  const points = [];
-  for (let index = 0; index < 90; index += 1) {
-    const t = index / 89 * Math.PI * 2;
-    points.push(
-      Math.cos(t) * 1.45 * Math.sin(index * 0.19),
-      Math.sin(t * 0.7) * 1.2,
-      Math.sin(t) * 1.45 * Math.cos(index * 0.13)
-    );
-  }
-  geometry.setAttribute("position", new THREE.Float32BufferAttribute(points, 3));
-  return new THREE.Points(geometry, new THREE.PointsMaterial({ color: colors.amber, size: 0.04 }));
-}
-function createMapSlabMesh() {
-  const geometry = new THREE.PlaneGeometry(2.8, 2.8, 16, 16);
-  const positions = geometry.attributes.position;
-  for (let index = 0; index < positions.count; index += 1) {
-    const x = positions.getX(index);
-    const y = positions.getY(index);
-    positions.setZ(index, Math.sin(x * 2.6) * 0.22 + Math.cos(y * 2.8) * 0.17);
-  }
-  positions.needsUpdate = true;
-  const material = new THREE.MeshBasicMaterial({
-    color: colors.phosphor,
-    wireframe: true,
-    transparent: true,
-    opacity: 0.82
-  });
-  const mesh = new THREE.Mesh(geometry, material);
-  mesh.rotation.x = -0.85;
-  mesh.rotation.z = 0.4;
-  return mesh;
-}
-function createNeonThreeScene(mode) {
-  const scene = new THREE.Scene();
-  scene.background = new THREE.Color(colors.void);
-  const group = new THREE.Group();
-  scene.add(new THREE.AmbientLight("#ffffff", 1.15));
-  scene.add(group);
-  const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
-  camera.position.set(0, 0.1, 5.8);
-  const tickBase = (time) => {
-    group.rotation.y = time * 18e-5;
-    group.rotation.x = Math.sin(time * 13e-5) * 0.24;
-  };
-  const bundle2 = (() => {
-    switch (mode) {
-      case "lattice": {
-        const wires = [1.1, 1.7, 2.3].map((size, index) => {
-          const wire = addBoxWire(group, size, index === 1 ? colors.phosphor : colors.signal);
-          wire.rotation.x = index * 0.4;
-          wire.rotation.y = index * 0.5;
-          return wire;
-        });
-        return {
-          tick: (time, signal) => {
-            tickBase(time);
-            wires.forEach((wire, index) => {
-              const factor = 1 + signal.depth * 0.18 * ((index + 1) / wires.length);
-              wire.scale.setScalar(factor);
-              wire.rotation.z = signal.twist * 0.4 * (index + 1);
-              wire.position.y = signal.lift * 0.16 * (index - 1);
-            });
-          }
-        };
-      }
-      case "atfield": {
-        const rings = [0.8, 1.25, 1.7].map((radius, index) => {
-          const ring = new THREE.Mesh(
-            new THREE.TorusGeometry(radius, 0.04, 18, 84),
-            new THREE.MeshBasicMaterial({
-              color: [colors.amber, colors.phosphor, colors.signal][index],
-              transparent: true,
-              opacity: 0.9,
-              wireframe: true
-            })
-          );
-          ring.rotation.x = Math.PI / 2;
-          group.add(ring);
-          return ring;
-        });
-        const axis = createHelix(colors.violet, 0.34, 1.5, 2.8);
-        axis.rotation.z = Math.PI / 2;
-        group.add(axis);
-        return {
-          tick: (time, signal) => {
-            tickBase(time);
-            rings.forEach((ring, index) => {
-              const scale = 1 + signal.depth * 0.14 * (index + 1);
-              ring.scale.setScalar(scale);
-              ring.rotation.z = time * 4e-4 * (index + 1) + signal.twist * 0.6 * (index + 1);
-            });
-            axis.rotation.y = time * 9e-4 + signal.twist * 0.9;
-            axis.scale.setScalar(1 + signal.pulse * 0.12);
-            axis.position.y = signal.lift * 0.25;
-          }
-        };
-      }
-      case "hexshell": {
-        const mesh = new THREE.LineSegments(
-          new THREE.EdgesGeometry(new THREE.IcosahedronGeometry(1.65, 0)),
-          neonLine(colors.phosphor)
-        );
-        const shellPoints = createPointsShell();
-        group.add(mesh, shellPoints);
-        return {
-          tick: (time, signal) => {
-            tickBase(time);
-            mesh.rotation.z = signal.twist * 0.9;
-            mesh.scale.setScalar(1 + signal.depth * 0.16);
-            shellPoints.rotation.y = time * 6e-4 + signal.twist * 0.8;
-            shellPoints.rotation.x = signal.lift * 0.7;
-            shellPoints.position.y = signal.lift * 0.2;
-          }
-        };
-      }
-      case "capture": {
-        const outer = addBoxWire(group, 2.2, colors.amber);
-        const inner = addBoxWire(group, 1.28, colors.signal);
-        const axis = createHelix(colors.alarm, 0.55, 3, 2.4);
-        axis.rotation.z = Math.PI / 2;
-        group.add(axis);
-        return {
-          tick: (time, signal) => {
-            tickBase(time);
-            outer.rotation.z = time * 4e-4 + signal.twist * 0.8;
-            inner.rotation.x = time * 7e-4 - signal.lift * 0.8;
-            outer.scale.setScalar(1 + signal.depth * 0.16);
-            inner.scale.setScalar(1 + signal.pulse * 0.18);
-            axis.rotation.y = time * 8e-4 + signal.twist * 0.8;
-            axis.position.y = signal.lift * 0.26;
-          }
-        };
-      }
-      case "mapslab": {
-        const slab = createMapSlabMesh();
-        group.add(slab);
-        group.position.y = -0.1;
-        return {
-          tick: (time, signal) => {
-            tickBase(time);
-            slab.rotation.z = 0.4 + signal.twist * 0.22;
-            slab.rotation.x = -0.85 + signal.lift * 0.12;
-            slab.scale.set(1 + signal.depth * 0.22, 1 + signal.depth * 0.12, 1);
-            slab.position.z = signal.pulse * 0.16;
-          }
-        };
-      }
-      case "solenoid": {
-        const helixA = createHelix(colors.phosphor, 0.78, 4.5, 3.2);
-        const helixB = createHelix(colors.alarm, 1.02, 4.5, 3.2);
-        helixB.rotation.y = Math.PI / 2;
-        group.add(helixA, helixB);
-        return {
-          tick: (time, signal) => {
-            tickBase(time);
-            helixA.rotation.y = time * 9e-4 + signal.twist;
-            helixB.rotation.x = time * 7e-4 - signal.lift;
-            helixA.scale.setScalar(1 + signal.depth * 0.12);
-            helixB.scale.setScalar(1 + signal.pulse * 0.18);
-            helixA.position.x = signal.twist * -0.35;
-            helixB.position.x = signal.twist * 0.35;
-          }
-        };
-      }
-      case "studio": {
-        scene.background = new THREE.Color("#071017");
-        scene.clear();
-        scene.add(new THREE.AmbientLight(new THREE.Color("#71828a"), 1.5));
-        const keyLight = new THREE.DirectionalLight(new THREE.Color("#fff1c4"), 2.6);
-        keyLight.position.set(5, 6, 3);
-        scene.add(keyLight);
-        const fillLight = new THREE.DirectionalLight(new THREE.Color("#7fc0ff"), 1.1);
-        fillLight.position.set(-4, 2, 5);
-        scene.add(fillLight);
-        const rimLight = new THREE.DirectionalLight(new THREE.Color("#ff4fd8"), 0.85);
-        rimLight.position.set(-3, 4, -2);
-        scene.add(rimLight);
-        scene.add(group);
-        camera.position.set(0, 1.4, 7);
-        const torus = new THREE.Mesh(
-          new THREE.TorusKnotGeometry(1.25, 0.45, 256, 36),
-          new THREE.MeshPhongMaterial({
-            color: new THREE.Color("#9cff3a"),
-            emissive: new THREE.Color("#163a05"),
-            shininess: 60,
-            specular: new THREE.Color("#ffffff")
-          })
-        );
-        torus.position.set(-1.35, 1.3, 0.2);
-        group.add(torus);
-        const sphere = new THREE.Mesh(
-          new THREE.SphereGeometry(0.9, 64, 64),
-          new THREE.MeshPhongMaterial({
-            color: new THREE.Color("#1ee7d2"),
-            emissive: new THREE.Color("#052f2a"),
-            shininess: 100,
-            specular: new THREE.Color("#d7f6ff")
-          })
-        );
-        sphere.position.set(1.9, 0.7, -0.6);
-        group.add(sphere);
-        const block = new THREE.Mesh(
-          new THREE.BoxGeometry(1.2, 1.2, 1.2),
-          new THREE.MeshPhongMaterial({
-            color: new THREE.Color("#ff4fd8"),
-            emissive: new THREE.Color("#3a042e"),
-            shininess: 48
-          })
-        );
-        block.position.set(0.4, 2.55, -1.9);
-        block.rotation.set(0.5, 0.4, 0.2);
-        group.add(block);
-        const floor2 = new THREE.Mesh(
-          new THREE.PlaneGeometry(18, 18, 1, 1),
-          new THREE.MeshPhongMaterial({
-            color: new THREE.Color("#12212a"),
-            specular: new THREE.Color("#0f4039"),
-            shininess: 14
-          })
-        );
-        floor2.rotation.x = -Math.PI / 2;
-        floor2.position.y = -0.45;
-        scene.add(floor2);
-        return {
-          tick: (time, signal) => {
-            const seconds = time * 1e-3;
-            group.rotation.y = seconds * 0.22 + signal.twist * 0.3;
-            torus.rotation.x += 0.028 + signal.pulse * 0.01;
-            torus.rotation.y += 0.044 + signal.depth * 0.01;
-            sphere.position.y = 0.7 + Math.sin(seconds * 1.1) * (0.2 + signal.depth * 0.1);
-            sphere.rotation.y += 0.055;
-            block.rotation.x += 0.035 + signal.lift * 0.01;
-            block.rotation.z += 0.025 + signal.twist * 0.01;
-          }
-        };
-      }
-    }
-  })();
+// app/styles.ts
+function hexToRgb(hex2) {
+  const normalized = hex2.replace(/^#/, "");
+  const value = normalized.length === 3 ? normalized.split("").map((char) => char + char).join("") : normalized;
+  const intValue = Number.parseInt(value, 16);
   return {
-    scene,
-    camera,
-    tick: bundle2.tick,
-    dispose: () => releaseScene(scene)
+    r: intValue >> 16 & 255,
+    g: intValue >> 8 & 255,
+    b: intValue & 255
   };
 }
-function releaseScene(root2) {
-  root2.clear();
+function makeStyle(options = {}) {
+  const codes = [];
+  if (options.bold) {
+    codes.push("1");
+  }
+  if (options.dim) {
+    codes.push("2");
+  }
+  if (options.inverse) {
+    codes.push("7");
+  }
+  if (options.fg) {
+    const { r, g, b } = hexToRgb(options.fg);
+    codes.push(`38;2;${r};${g};${b}`);
+  }
+  if (options.bg) {
+    const { r, g, b } = hexToRgb(options.bg);
+    codes.push(`48;2;${r};${g};${b}`);
+  }
+  if (codes.length === 0) {
+    return (text) => text;
+  }
+  const prefix = `\x1B[${codes.join(";")}m`;
+  return (text) => `${prefix}${text}\x1B[0m`;
 }
 
-// examples/web/three_ascii_page.ts
-var root = document.querySelector("#three-ascii");
-if (!root) throw new Error("Missing #three-ascii mount element.");
+// examples/web/api_workbench_page.ts
+var root = document.querySelector("#api-workbench");
+if (!root) throw new Error("Missing #api-workbench mount element.");
 var host = createWebTui({
   root,
-  refreshRate: 1e3 / 60,
+  refreshRate: 1e3 / 30,
   sinkOptions: {
-    cellWidth: 8,
-    cellHeight: 14,
+    cellWidth: 9,
+    cellHeight: 16,
     foreground: "#eff7ff",
     background: "#05070d",
-    font: "13px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
+    font: "14px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
   }
 });
-var sceneModes = ["studio", "lattice", "atfield", "hexshell", "capture", "mapslab", "solenoid"];
-var sceneIndex = new Signal(0);
-var presetIndex = new Signal(Math.max(0, ASCII_DEMO_PRESETS.findIndex((preset) => preset.id === "mixed-best")));
-var glyphIndex = new Signal(Math.max(0, TERMINAL_GLYPH_STYLES.indexOf("mixed")));
-var paused = new Signal(false);
-var webgpuReady = new Signal("probing webgpu");
-var status = new Signal("initializing acerola ascii renderer");
-var bundle = createNeonThreeScene(sceneModes[sceneIndex.peek()]);
+var themes = [
+  { label: "Neon", bg: "#05070d", panel: "#0a1020", accent: "#ff4231", text: "#eff7ff", muted: "#5a6478" },
+  { label: "Terminal", bg: "#050805", panel: "#071207", accent: "#4ade80", text: "#ecfdf5", muted: "#5a7a62" },
+  { label: "Violet", bg: "#080716", panel: "#11102a", accent: "#b17cff", text: "#f8f7ff", muted: "#73708f" }
+];
+var rows = [
+  { id: "menu", surface: "MenuBar", state: "active", ms: 2 },
+  { id: "split", surface: "SplitPane", state: "resized", ms: 5 },
+  { id: "table", surface: "DataTable", state: "sorted", ms: 8 },
+  { id: "scroll", surface: "ScrollArea", state: "tracking", ms: 3 },
+  { id: "theme", surface: "Theme", state: "bound", ms: 4 },
+  { id: "mouse", surface: "Pointer", state: "captured", ms: 1 }
+];
+var docs = [
+  "Click panel buttons to minimize, maximize, or restore.",
+  "Click theme names to switch the whole workbench.",
+  "Use Tab, 1-4, M, F, R, T, [ and ] from the keyboard.",
+  "The browser host maps pointer cells to the same mouse events as the terminal.",
+  "Resize the browser: the terminal grid recalculates from CSS dimensions.",
+  "The demo uses public controllers and canvas primitives from mod.web.ts."
+];
+var themeIndex = new Signal(0);
+var active = new Signal("inspector");
+var maximized = new Signal(null);
+var minimized = new Signal({
+  inspector: false,
+  data: false,
+  controls: false,
+  logs: false
+}, { deepObserve: true });
+var lineSignals = [];
+var log = new Signal(["ready: web api workbench mounted"], { deepObserve: true });
+var hitTargets = [];
+var menu = new MenuBarController({
+  items: ["File", "View", "Layout", "Theme", "Help"].map((label) => ({ id: label.toLowerCase(), label })),
+  onSelect: (item) => push(`menu ${item.label}`)
+});
+var split = new SplitPaneController({
+  direction: "row",
+  ratio: 0.58,
+  minFirst: 28,
+  minSecond: 28,
+  resizeMode: "ratio"
+});
+var slider = new SliderController({ min: 1, max: 10, value: 6, step: 1, orientation: "horizontal" });
+var live = new CheckBoxController({ checked: true });
+var table = new DataTableController({
+  rows,
+  columns: [
+    { id: "surface", label: "Surface", width: 14, sortable: true },
+    { id: "state", label: "State", width: 10, sortable: true },
+    { id: "ms", label: "ms", width: 4, sortable: true, format: (value) => `${value}` }
+  ],
+  rowKey: (row) => row.id,
+  initialState: { pageSize: 4, sort: { columnId: "ms", direction: "asc" } }
+});
 new BoxObject({
   canvas: host.canvas,
-  rectangle: new Computed(() => ({ column: 0, row: 0, width: columns(), height: rows() })),
+  rectangle: new Computed(() => ({ column: 0, row: 0, width: cols(), height: rowsCount() })),
   filler: " ",
-  style: createAnsiStyle({ background: [5, 7, 13] }),
+  style: new Computed(() => createAnsiStyle({ background: hex(theme().bg) })),
   zIndex: -2
 }).draw();
-new TextObject({
-  canvas: host.canvas,
-  rectangle: new Computed(() => ({ column: 2, row: 0, width: Math.max(0, columns() - 4) })),
-  value: new Computed(
-    () => `THREE ASCII WEBGPU / ${sceneModes[sceneIndex.value].toUpperCase()} / ${activePreset().label.toUpperCase()} / ${activeGlyph().toUpperCase()}`
-  ),
-  overwriteRectangle: true,
-  style: createAnsiStyle({ foreground: [255, 66, 49], bold: true }),
-  zIndex: 3
-}).draw();
-new TextObject({
-  canvas: host.canvas,
-  rectangle: new Computed(() => ({ column: 2, row: 1, width: Math.max(0, columns() - 4) })),
-  value: new Computed(
-    () => `${webgpuReady.value} | ${status.value} | P preset  G glyph  S scene  Space pause  Arrows orbit`
-  ),
-  overwriteRectangle: true,
-  style: createAnsiStyle({ foreground: [91, 176, 255] }),
-  zIndex: 3
-}).draw();
-var ascii = new ThreeAsciiObject({
-  canvas: host.canvas,
-  rectangle: new Computed(() => ({
-    column: 1,
-    row: 3,
-    width: Math.max(24, columns() - 2),
-    height: Math.max(12, rows() - 5)
-  })),
-  style: createAnsiStyle({}),
-  zIndex: 1,
-  scene: bundle.scene,
-  camera: bundle.camera,
-  effect: { ...DEFAULT_ASCII_DEMO_EFFECT, ...activePreset().effect },
-  terminalGlyphStyle: activeGlyph(),
-  terminalEdgeBias: activePreset().terminalEdgeBias,
-  frameInterval: 1e3 / 24,
-  onFrame: (deltaTime) => {
-    if (paused.peek()) return;
-    const time = performance.now();
-    bundle.tick(time, {
-      x: Math.sin(time * 8e-4),
-      y: Math.cos(time * 7e-4),
-      pulse: 0.5 + Math.sin(time * 16e-4) * 0.5,
-      lift: Math.sin(time * 11e-4),
-      twist: Math.cos(time * 9e-4),
-      depth: 0.5 + Math.sin(time * 13e-4) * 0.5,
-      active: true,
-      pressed: false
-    });
-    status.value = `frame ${deltaTime.toFixed(3)}s`;
-  }
+ensureLines();
+host.platform.size.subscribe(() => {
+  ensureLines();
+  draw();
 });
-ascii.draw();
 host.on("keyPress", ({ key }) => {
-  if (key === "p") applyPreset(presetIndex.peek() + 1);
-  else if (key === "g") applyGlyph(glyphIndex.peek() + 1);
-  else if (key === "s") applyScene(sceneIndex.peek() + 1);
-  else if (key === "space") paused.value = !paused.peek();
-  else if (key === "left") bundle.camera.position.x -= 0.18;
-  else if (key === "right") bundle.camera.position.x += 0.18;
-  else if (key === "up") bundle.camera.position.z = Math.max(2.2, bundle.camera.position.z - 0.22);
-  else if (key === "down") bundle.camera.position.z = Math.min(9, bundle.camera.position.z + 0.22);
+  if (key === "tab") focusNext();
+  else if (key === "1") focus("inspector");
+  else if (key === "2") focus("data");
+  else if (key === "3") focus("controls");
+  else if (key === "4") focus("logs");
+  else if (key === "m") minimize(active.peek());
+  else if (key === "f" || key === "return") toggleMax(active.peek());
+  else if (key === "r" || key === "escape") restore();
+  else if (key === "t") setTheme(themeIndex.peek() + 1);
+  else if (key === "[") resizeSplit(-4);
+  else if (key === "]") resizeSplit(4);
+  else if (key === "+" || key === "=") slider.increment();
+  else if (key === "-") slider.decrement();
+  else if (key === "space") live.toggle();
+  else if (key === "left" || key === "right") {
+    menu.handleKeyPress({ key, ctrl: false, meta: false, shift: false });
+  }
+  draw();
+});
+host.on("mousePress", (event) => {
+  if (event.release) return;
+  const target = hitTargets.find(({ rect }) => contains(rect, event.x, event.y));
+  if (target) applyHit(target.hit);
+  draw();
 });
 host.start();
-probeCompatibleWebGPUDevice().then((ready) => {
-  webgpuReady.value = ready ? "webgpu ready" : "webgpu unavailable";
-});
+draw();
+var timer = setInterval(() => {
+  if (live.checked.peek()) {
+    table.rows.value = rows.map((row, index) => ({ ...row, ms: (row.ms + index + slider.value.peek()) % 18 + 1 }));
+    draw();
+  }
+}, 650);
 globalThis.addEventListener("beforeunload", () => {
-  bundle.dispose();
+  clearInterval(timer);
   host.destroy();
 });
-function applyPreset(index) {
-  presetIndex.value = wrap(index, ASCII_DEMO_PRESETS.length);
-  const preset = activePreset();
-  ascii.setEffectOptions(preset.effect);
-  ascii.setTerminalEdgeBias(preset.terminalEdgeBias ?? 1);
-  if (preset.terminalGlyphStyle) applyGlyph(TERMINAL_GLYPH_STYLES.indexOf(preset.terminalGlyphStyle));
-}
-function applyGlyph(index) {
-  glyphIndex.value = wrap(index, TERMINAL_GLYPH_STYLES.length);
-  ascii.setTerminalGlyphStyle(activeGlyph());
-}
-function applyScene(index) {
-  bundle.dispose();
-  sceneIndex.value = wrap(index, sceneModes.length);
-  bundle = createNeonThreeScene(sceneModes[sceneIndex.peek()]);
-  ascii.renderer.scene.clear();
-  ascii.renderer.scene.background = bundle.scene.background;
-  for (const child of [...bundle.scene.children]) {
-    ascii.renderer.scene.add(child);
+function draw() {
+  hitTargets = [];
+  const width = cols();
+  const height = rowsCount();
+  const frame = Array.from({ length: height }, () => " ".repeat(width));
+  write(frame, 0, 1, paint(fit(renderMenuBar(menu.items.peek(), menu.activeIndex.peek()), width - 2)));
+  drawThemes(frame, width);
+  const body = { column: 1, row: 3, width: Math.max(10, width - 2), height: Math.max(6, height - 5) };
+  const max2 = maximized.peek();
+  if (max2) {
+    renderPanel(frame, max2, body);
+  } else {
+    const visible = ["inspector", "data", "controls", "logs"].filter((id2) => !minimized.peek()[id2]);
+    if (visible.length === 0) {
+      write(frame, body.row + 1, body.column + 2, paint("All panels minimized. Press R or click restore."));
+      hitTargets.push({ rect: body, hit: { type: "restore" } });
+    } else if (width < 88) {
+      const each = Math.max(5, Math.floor(body.height / visible.length));
+      visible.forEach(
+        (id2, index) => renderPanel(frame, id2, {
+          column: body.column,
+          row: body.row + index * each,
+          width: body.width,
+          height: index === visible.length - 1 ? body.height - index * each : each - 1
+        })
+      );
+    } else {
+      const parts = split.resize(body, 0);
+      const lower = splitRects("row", parts.second, 0.5);
+      renderPanel(frame, "inspector", parts.first);
+      renderPanel(frame, "data", lower.first);
+      renderPanel(frame, "controls", lower.second);
+      renderPanel(frame, "logs", {
+        column: body.column,
+        row: body.row + body.height - 7,
+        width: body.width,
+        height: 7
+      });
+    }
   }
-  ascii.renderer.camera.copy(bundle.camera);
-  status.value = `scene ${sceneModes[sceneIndex.peek()]}`;
+  frame[height - 1] = fit(
+    renderStatusBar(
+      `focus ${active.peek()} | ${theme().label} | split ${Math.round((split.snapshot().ratio ?? 0) * 100)}%`,
+      "click controls or use keyboard",
+      width
+    ),
+    width
+  );
+  for (let row = 0; row < height; row++) lineSignals[row].value = fit(frame[row] ?? "", width);
+  for (let row = height; row < lineSignals.length; row++) lineSignals[row].value = "";
 }
-function activePreset() {
-  return ASCII_DEMO_PRESETS[presetIndex.value] ?? ASCII_DEMO_PRESETS[0];
+function renderPanel(frame, id2, rect) {
+  if (rect.width < 10 || rect.height < 4) return;
+  hitTargets.push({ rect, hit: { type: "focus", id: id2 } });
+  const selected = active.peek() === id2;
+  const border = selected ? theme().accent : theme().muted;
+  const top = `\u250C ${id2.toUpperCase()} ${"\u2500".repeat(Math.max(0, rect.width - id2.length - 20))} [-] [\u25A1] [\u21BA] \u2510`;
+  write(frame, rect.row, rect.column, paint(fit(top, rect.width), border));
+  hitTargets.push({
+    rect: { column: rect.column + rect.width - 12, row: rect.row, width: 3, height: 1 },
+    hit: { type: "min", id: id2 }
+  });
+  hitTargets.push({
+    rect: { column: rect.column + rect.width - 8, row: rect.row, width: 3, height: 1 },
+    hit: { type: "max", id: id2 }
+  });
+  hitTargets.push({
+    rect: { column: rect.column + rect.width - 4, row: rect.row, width: 3, height: 1 },
+    hit: { type: "restore" }
+  });
+  for (let r = 1; r < rect.height - 1; r++) {
+    write(frame, rect.row + r, rect.column, paint(`\u2502${" ".repeat(rect.width - 2)}\u2502`, border));
+  }
+  write(frame, rect.row + rect.height - 1, rect.column, paint(`\u2514${"\u2500".repeat(rect.width - 2)}\u2518`, border));
+  const inner = {
+    column: rect.column + 2,
+    row: rect.row + 1,
+    width: Math.max(0, rect.width - 4),
+    height: Math.max(0, rect.height - 2)
+  };
+  const lines = panelLines(id2, inner.width, inner.height);
+  lines.forEach((line, index) => write(frame, inner.row + index, inner.column, paint(fit(line, inner.width))));
 }
-function activeGlyph() {
-  return TERMINAL_GLYPH_STYLES[glyphIndex.value] ?? "mixed";
+function panelLines(id2, width, height) {
+  const source = id2 === "data" ? [
+    renderDataTableHeader(table.columns.peek(), table.state.peek().sort),
+    ...renderDataTableRows(table.view.peek().rows, table.columns.peek(), table.view.peek().selectedIndex)
+  ] : id2 === "controls" ? [
+    `density ${slider.value.peek()} ${"\u2588".repeat(slider.value.peek())}`,
+    `live preview ${live.checked.peek() ? "[x]" : "[ ]"}`,
+    "[/] resize split",
+    "T theme  Space toggle"
+  ] : id2 === "logs" ? [...log.peek()].slice(-Math.max(1, height)) : ["API Workbench Web", ...docs];
+  return source.slice(0, height);
 }
-function columns() {
+function drawThemes(frame, width) {
+  let column = Math.max(2, width - 36);
+  themes.forEach((entry, index) => {
+    const label = ` ${entry.label} `;
+    write(frame, 1, column, paint(label, index === themeIndex.peek() ? entry.accent : entry.muted));
+    hitTargets.push({ rect: { column, row: 1, width: label.length, height: 1 }, hit: { type: "theme", index } });
+    column += label.length + 1;
+  });
+}
+function ensureLines() {
+  for (let row = lineSignals.length; row < rowsCount(); row++) {
+    const signal = new Signal("");
+    lineSignals.push(signal);
+    const rowIndex = row;
+    new TextObject({
+      canvas: host.canvas,
+      rectangle: new Computed(() => ({ column: 0, row: rowIndex, width: cols() })),
+      value: signal,
+      overwriteRectangle: true,
+      multiCodePointSupport: true,
+      style: (text) => text,
+      zIndex: 2
+    }).draw();
+  }
+}
+function applyHit(hit) {
+  if (hit.type === "focus") focus(hit.id);
+  else if (hit.type === "min") minimize(hit.id);
+  else if (hit.type === "max") toggleMax(hit.id);
+  else if (hit.type === "restore") restore();
+  else setTheme(hit.index);
+}
+function focus(id2) {
+  active.value = id2;
+  push(`focus ${id2}`);
+}
+function focusNext() {
+  const ids = ["inspector", "data", "controls", "logs"];
+  focus(ids[(ids.indexOf(active.peek()) + 1) % ids.length]);
+}
+function minimize(id2) {
+  minimized.value[id2] = true;
+  if (maximized.peek() === id2) maximized.value = null;
+  push(`minimize ${id2}`);
+}
+function toggleMax(id2) {
+  maximized.value = maximized.peek() === id2 ? null : id2;
+  push(`${maximized.peek() ? "maximize" : "restore"} ${id2}`);
+}
+function restore() {
+  maximized.value = null;
+  minimized.value = { inspector: false, data: false, controls: false, logs: false };
+  push("restore all");
+}
+function setTheme(index) {
+  themeIndex.value = (index % themes.length + themes.length) % themes.length;
+  push(`theme ${theme().label}`);
+}
+function resizeSplit(delta) {
+  split.resize({ column: 0, row: 0, width: cols(), height: rowsCount() }, delta);
+  push(`resize ${delta}`);
+}
+function splitRects(direction, rect, ratio) {
+  const controller = new SplitPaneController({ direction, ratio, minFirst: 6, minSecond: 6, resizeMode: "ratio" });
+  const result = controller.resize(rect, 0);
+  controller.dispose();
+  return result;
+}
+function push(message) {
+  log.value = [...log.peek(), `${(/* @__PURE__ */ new Date()).toLocaleTimeString()} ${message}`].slice(-40);
+}
+function write(frame, row, column, value) {
+  if (row < 0 || row >= frame.length || column >= cols()) return;
+  frame[row] = `${frame[row].slice(0, column)}${value}${frame[row].slice(column + value.length)}`;
+}
+function fit(value, width) {
+  const plain = value.replace(/\x1b\[[0-9;]*m/g, "");
+  return plain.length > width ? plain.slice(0, width) : plain.padEnd(width);
+}
+function paint(value, fg = theme().text) {
+  return makeStyle({ fg, bg: theme().bg })(value);
+}
+function contains(rect, x, y) {
+  return x >= rect.column && y >= rect.row && x < rect.column + rect.width && y < rect.row + rect.height;
+}
+function hex(value) {
+  const color = value.replace("#", "");
+  return [0, 2, 4].map((index) => Number.parseInt(color.slice(index, index + 2), 16));
+}
+function theme() {
+  return themes[themeIndex.value];
+}
+function cols() {
   return host.platform.size.value.columns;
 }
-function rows() {
+function rowsCount() {
   return host.platform.size.value.rows;
 }
-function wrap(index, length) {
-  return (index % length + length) % length;
-}
-//# sourceMappingURL=three-ascii-web.js.map
+//# sourceMappingURL=api-workbench.js.map

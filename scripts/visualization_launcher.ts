@@ -270,13 +270,6 @@ export const visualizationLaunchTargets: readonly VisualizationLaunchTarget[] = 
     tags: ["demos", "catalog", "app"],
   },
   {
-    task: "grwizard",
-    aliases: ["grwizard", "wizard"],
-    description: "responsive GPU/model wizard demo",
-    category: "app",
-    tags: ["gpu", "wizard", "responsive"],
-  },
-  {
     task: "health",
     aliases: ["health", "check"],
     description: "contributor health gate",

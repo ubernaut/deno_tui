@@ -102,7 +102,9 @@ export class BrowserInputSource implements InputSource {
     this.#removeListeners = [
       addListener(this.#target, "keydown", (event) => this.#handleKey(event as KeyboardEvent)),
       addListener(this.#target, "pointerdown", (event) => this.#handlePointer(event as PointerEvent, false)),
+      addListener(this.#target, "pointermove", (event) => this.#handlePointerMove(event as PointerEvent)),
       addListener(this.#target, "pointerup", (event) => this.#handlePointer(event as PointerEvent, true)),
+      addListener(this.#target, "pointercancel", (event) => this.#handlePointer(event as PointerEvent, true)),
       addListener(this.#target, "wheel", (event) => this.#handleWheel(event as WheelEvent)),
     ];
     this.#attached = true;
@@ -137,28 +139,56 @@ export class BrowserInputSource implements InputSource {
   }
 
   #handlePointer(event: PointerEvent, release: boolean): void {
+    if (!release) {
+      this.#target.focus({ preventScroll: true });
+      this.#target.setPointerCapture?.(event.pointerId);
+    } else if (this.#target.hasPointerCapture?.(event.pointerId)) {
+      this.#target.releasePointerCapture?.(event.pointerId);
+    }
+    const position = this.#cellPosition(event);
     this.#emitter?.emit("mousePress", {
       key: "mouse",
-      x: Math.floor(event.offsetX / this.#cellWidth),
-      y: Math.floor(event.offsetY / this.#cellHeight),
+      x: position.x,
+      y: position.y,
       movementX: event.movementX,
       movementY: event.movementY,
       meta: event.metaKey || event.altKey,
       ctrl: event.ctrlKey,
       shift: event.shiftKey,
       buffer: new Uint8Array(),
-      drag: event.buttons !== 0,
+      drag: !release && event.buttons !== 0,
       release,
       button: release ? undefined : browserButton(event.button),
     });
     event.preventDefault();
   }
 
+  #handlePointerMove(event: PointerEvent): void {
+    if (event.buttons === 0) return;
+    const position = this.#cellPosition(event);
+    this.#emitter?.emit("mousePress", {
+      key: "mouse",
+      x: position.x,
+      y: position.y,
+      movementX: event.movementX,
+      movementY: event.movementY,
+      meta: event.metaKey || event.altKey,
+      ctrl: event.ctrlKey,
+      shift: event.shiftKey,
+      buffer: new Uint8Array(),
+      drag: true,
+      release: false,
+      button: browserButton(event.button),
+    });
+    event.preventDefault();
+  }
+
   #handleWheel(event: WheelEvent): void {
+    const position = this.#cellPosition(event);
     this.#emitter?.emit("mouseScroll", {
       key: "mouse",
-      x: Math.floor(event.offsetX / this.#cellWidth),
-      y: Math.floor(event.offsetY / this.#cellHeight),
+      x: position.x,
+      y: position.y,
       movementX: 0,
       movementY: event.deltaY,
       meta: event.metaKey || event.altKey,
@@ -169,6 +199,14 @@ export class BrowserInputSource implements InputSource {
       scroll: event.deltaY > 0 ? 1 : event.deltaY < 0 ? -1 : 0,
     });
     event.preventDefault();
+  }
+
+  #cellPosition(event: MouseEvent): { x: number; y: number } {
+    const rect = this.#target.getBoundingClientRect();
+    return {
+      x: Math.max(0, Math.floor((event.clientX - rect.left) / this.#cellWidth)),
+      y: Math.max(0, Math.floor((event.clientY - rect.top) / this.#cellHeight)),
+    };
   }
 }
 

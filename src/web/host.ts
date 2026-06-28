@@ -58,6 +58,8 @@ export class WebTuiHost extends EventEmitter<WebTuiHostEvents> {
       root: options.root,
       columns: options.columns,
       rows: options.rows,
+      cellWidth: options.sinkOptions?.cellWidth,
+      cellHeight: options.sinkOptions?.cellHeight,
       ...options.platformOptions,
     });
     this.canvas = new Canvas({

@@ -1868,7 +1868,9 @@ var BrowserInputSource = class {
     this.#removeListeners = [
       addListener(this.#target, "keydown", (event) => this.#handleKey(event)),
       addListener(this.#target, "pointerdown", (event) => this.#handlePointer(event, false)),
+      addListener(this.#target, "pointermove", (event) => this.#handlePointerMove(event)),
       addListener(this.#target, "pointerup", (event) => this.#handlePointer(event, true)),
+      addListener(this.#target, "pointercancel", (event) => this.#handlePointer(event, true)),
       addListener(this.#target, "wheel", (event) => this.#handleWheel(event))
     ];
     this.#attached = true;
@@ -1898,27 +1900,54 @@ var BrowserInputSource = class {
     event.preventDefault();
   }
   #handlePointer(event, release) {
+    if (!release) {
+      this.#target.focus({ preventScroll: true });
+      this.#target.setPointerCapture?.(event.pointerId);
+    } else if (this.#target.hasPointerCapture?.(event.pointerId)) {
+      this.#target.releasePointerCapture?.(event.pointerId);
+    }
+    const position = this.#cellPosition(event);
     this.#emitter?.emit("mousePress", {
       key: "mouse",
-      x: Math.floor(event.offsetX / this.#cellWidth),
-      y: Math.floor(event.offsetY / this.#cellHeight),
+      x: position.x,
+      y: position.y,
       movementX: event.movementX,
       movementY: event.movementY,
       meta: event.metaKey || event.altKey,
       ctrl: event.ctrlKey,
       shift: event.shiftKey,
       buffer: new Uint8Array(),
-      drag: event.buttons !== 0,
+      drag: !release && event.buttons !== 0,
       release,
       button: release ? void 0 : browserButton(event.button)
     });
     event.preventDefault();
   }
+  #handlePointerMove(event) {
+    if (event.buttons === 0) return;
+    const position = this.#cellPosition(event);
+    this.#emitter?.emit("mousePress", {
+      key: "mouse",
+      x: position.x,
+      y: position.y,
+      movementX: event.movementX,
+      movementY: event.movementY,
+      meta: event.metaKey || event.altKey,
+      ctrl: event.ctrlKey,
+      shift: event.shiftKey,
+      buffer: new Uint8Array(),
+      drag: true,
+      release: false,
+      button: browserButton(event.button)
+    });
+    event.preventDefault();
+  }
   #handleWheel(event) {
+    const position = this.#cellPosition(event);
     this.#emitter?.emit("mouseScroll", {
       key: "mouse",
-      x: Math.floor(event.offsetX / this.#cellWidth),
-      y: Math.floor(event.offsetY / this.#cellHeight),
+      x: position.x,
+      y: position.y,
       movementX: 0,
       movementY: event.deltaY,
       meta: event.metaKey || event.altKey,
@@ -1929,6 +1958,13 @@ var BrowserInputSource = class {
       scroll: event.deltaY > 0 ? 1 : event.deltaY < 0 ? -1 : 0
     });
     event.preventDefault();
+  }
+  #cellPosition(event) {
+    const rect = this.#target.getBoundingClientRect();
+    return {
+      x: Math.max(0, Math.floor((event.clientX - rect.left) / this.#cellWidth)),
+      y: Math.max(0, Math.floor((event.clientY - rect.top) / this.#cellHeight))
+    };
   }
 };
 function sizeFromElement(root2, cellWidth, cellHeight) {
@@ -2004,6 +2040,8 @@ var WebTuiHost = class extends EventEmitter {
       root: options.root,
       columns: options.columns,
       rows: options.rows,
+      cellWidth: options.sinkOptions?.cellWidth,
+      cellHeight: options.sinkOptions?.cellHeight,
       ...options.platformOptions
     });
     this.canvas = new Canvas({

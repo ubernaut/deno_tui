@@ -6,6 +6,7 @@ if (import.meta.main) {
   await Deno.mkdir(outdir, { recursive: true });
   await Promise.all([
     buildPageBundle("examples/web/neon_exodus_page.ts", `${outdir}/neon-exodus.js`),
+    buildPageBundle("examples/web/api_workbench_page.ts", `${outdir}/api-workbench.js`),
     buildPageBundle("examples/web/three_ascii_page.ts", `${outdir}/three-ascii-web.js`),
     copyThreeAsciiAssets(),
   ]);
@@ -71,7 +72,7 @@ function pageHtml(): string {
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Deno TUI Web - Neon Exodus</title>
+    <title>Deno TUI Web Demos</title>
     <style>
       :root {
         color-scheme: dark;
@@ -162,6 +163,11 @@ function pageHtml(): string {
         box-shadow: 0 0 0 1px rgba(45, 212, 191, 0.26), 0 0 48px rgba(45, 212, 191, 0.12);
       }
 
+      #api-workbench {
+        height: min(720px, calc(100vh - 8rem));
+        box-shadow: 0 0 0 1px rgba(177, 124, 255, 0.24), 0 0 48px rgba(177, 124, 255, 0.12);
+      }
+
       @media (max-width: 720px) {
         header {
           align-items: flex-start;
@@ -196,7 +202,7 @@ function pageHtml(): string {
   <body>
     <header>
       <h1>Neon Exodus / Deno TUI Web</h1>
-      <p>Standalone client-side package demos. Neon Exodus is first; the three ASCII WebGPU renderer is included below.</p>
+      <p>Standalone client-side package demos for Neon Exodus, the API Workbench, and the three ASCII WebGPU renderer.</p>
     </header>
     <div class="demo-shell">
       <section class="demo-heading" aria-label="Neon Exodus demo description">
@@ -204,6 +210,11 @@ function pageHtml(): string {
         <span>Use 1-5, O/W/E, and arrow keys.</span>
       </section>
       <main id="app" class="terminal-host" aria-label="Neon Exodus standalone browser demo"></main>
+      <section class="demo-heading" aria-label="API Workbench demo description">
+        <h2>API Workbench Browser Port</h2>
+        <span>Click panel controls and theme labels, or use Tab, 1-4, M/F/R/T, [, ], and +/-.</span>
+      </section>
+      <main id="api-workbench" class="terminal-host" aria-label="API Workbench standalone browser demo"></main>
       <section class="demo-heading" aria-label="Three ASCII demo description">
         <h2>Acerola Three ASCII WebGPU Renderer</h2>
         <span>Focus the terminal and use P, G, S, Space, and arrow keys.</span>
@@ -211,6 +222,7 @@ function pageHtml(): string {
       <main id="three-ascii" class="terminal-host" aria-label="Three ASCII WebGPU standalone browser demo"></main>
     </div>
     <script type="module" src="./assets/neon-exodus.js"></script>
+    <script type="module" src="./assets/api-workbench.js"></script>
     <script type="module" src="./assets/three-ascii-web.js"></script>
   </body>
 </html>
