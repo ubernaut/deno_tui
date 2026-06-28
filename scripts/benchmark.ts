@@ -1,4 +1,4 @@
-import { BenchmarkRunner, flexRects, formatBenchmarkResults, renderSparkline } from "../mod.ts";
+import { BenchmarkRunner, flexRects, formatBenchmarkSummary, renderSparkline } from "../mod.ts";
 
 const runner = new BenchmarkRunner([
   {
@@ -21,4 +21,14 @@ const runner = new BenchmarkRunner([
   },
 ]);
 
-console.log(formatBenchmarkResults(await runner.run()));
+const summary = await runner.summarize();
+
+if (Deno.args.includes("--json")) {
+  console.log(JSON.stringify(summary, null, 2));
+} else {
+  console.log(formatBenchmarkSummary(summary));
+}
+
+if (!summary.passed) {
+  Deno.exit(1);
+}

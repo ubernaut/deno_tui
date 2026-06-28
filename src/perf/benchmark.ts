@@ -33,6 +33,8 @@ export interface BenchmarkSummary {
   results: BenchmarkResult[];
   passed: boolean;
   failed: BenchmarkResult[];
+  totalMs: number;
+  averageMs: number;
 }
 
 /** Runs benchmark cases sequentially and reports threshold-aware timing results. */
@@ -95,10 +97,13 @@ export class BenchmarkRunner {
 /** Summarizes previously collected benchmark results. */
 export function summarizeBenchmarkResults(results: readonly BenchmarkResult[]): BenchmarkSummary {
   const failed = results.filter((result) => !result.passed);
+  const totalMs = results.reduce((total, result) => total + result.totalMs, 0);
   return {
     results: [...results],
     passed: failed.length === 0,
     failed,
+    totalMs,
+    averageMs: results.length === 0 ? 0 : totalMs / results.length,
   };
 }
 
@@ -111,6 +116,17 @@ export function formatBenchmarkResults(results: readonly BenchmarkResult[]): str
       }ms avg (${result.iterations} iterations, ${result.totalMs.toFixed(3)}ms total${formatThresholds(result)})`
     )
     .join("\n");
+}
+
+/** Formats a benchmark summary with an aggregate footer for CLI reports. */
+export function formatBenchmarkSummary(summary: BenchmarkSummary): string {
+  const body = formatBenchmarkResults(summary.results);
+  const footer = `${
+    summary.passed ? "ok" : "fail"
+  } benchmark summary: ${summary.results.length} cases, ${summary.failed.length} failed, ${
+    summary.totalMs.toFixed(3)
+  }ms total, ${summary.averageMs.toFixed(3)}ms avg/case`;
+  return body ? `${body}\n${footer}` : footer;
 }
 
 function formatThresholds(result: BenchmarkResult): string {

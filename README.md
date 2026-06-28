@@ -1740,6 +1740,8 @@ for 3D panels. Added 3D visualization IDs include `three-lattice`, `three-atfiel
 scheduler-backed transforms, `capabilities` for platform feature detection, `benchmark` for performance smoke checks,
 `api-inventory` for public export graph inspection, `components` for widget catalog reports, `layout-recipe` for
 responsive recipe inspection, `grwizard` for the responsive GPU/model wizard, and `health` for the contributor gate.
+Benchmark runs print per-case timings plus an aggregate summary; `deno task benchmark -- --json` emits the same
+threshold-aware summary as structured data and exits nonzero when a case fails its limits.
 
 Direct Deno tasks are also available:
 

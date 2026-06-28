@@ -47,7 +47,9 @@ state, and `workerFactory` lets tests inject a deterministic worker without star
 
 `BenchmarkRunner` supports per-case `iterations`, `warmupIterations`, `maxAverageMs`, and `maxTotalMs`. Pass `{ now }`
 in `BenchmarkRunnerOptions` to make benchmark unit tests deterministic, use `summarize()` or
-`summarizeBenchmarkResults()` for pass/fail reporting, and format output with `formatBenchmarkResults()`.
+`summarizeBenchmarkResults()` for pass/fail reporting, and format output with `formatBenchmarkResults()` or
+`formatBenchmarkSummary()`. Summaries include aggregate `totalMs` and `averageMs` fields for CLI reports and
+machine-readable logs. Run `deno task benchmark -- --json` for structured output; threshold failures exit nonzero.
 
 Run the default suite without broad permissions:
 
