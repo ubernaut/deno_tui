@@ -13,6 +13,7 @@ export * from "./plugins.ts";
 export * from "./route_bindings.ts";
 export * from "./router.ts";
 export * from "./selection_bindings.ts";
+export * from "./settings_commands.ts";
 export * from "./settings_bindings.ts";
 export * from "./settings.ts";
 export * from "./surface_bindings.ts";

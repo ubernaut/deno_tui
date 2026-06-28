@@ -1,6 +1,7 @@
 import { assertEquals } from "./deps.ts";
 import { createApp } from "../src/app/app.ts";
 import { ActionBus } from "../src/app/actions.ts";
+import type { Action } from "../src/app/actions.ts";
 import {
   bindCommandKeymap,
   bindCommandKeys,
@@ -11,13 +12,15 @@ import {
   executeCommandSurfaceItem,
 } from "../src/app/command_bindings.ts";
 import { CommandRegistry } from "../src/app/commands.ts";
-import type { Command } from "../src/app/commands.ts";
+import type { Command, CommandActionFactory } from "../src/app/commands.ts";
 import { bindHistoryCommands, bindRouteHistory, historyCommands } from "../src/app/history_bindings.ts";
 import { HistoryStack } from "../src/app/history.ts";
 import { createAppPlugin, inspectAppPluginDefinition } from "../src/app/plugins.ts";
 import { bindRouteCommands, bindRouteIndex, bindRouteSignal, routeCommands } from "../src/app/route_bindings.ts";
 import { RouteManager } from "../src/app/router.ts";
 import { SettingsController } from "../src/app/settings.ts";
+import { bindSettingsCommands, settingsCommands } from "../src/app/settings_commands.ts";
+import type { SettingsCommandAction } from "../src/app/settings_commands.ts";
 import {
   bindRouteSetting,
   bindSettingSignal,
@@ -1283,7 +1286,8 @@ Deno.test("SettingsController namespaces and caches persistent settings", async 
   assertEquals(settings.key("route"), "shell.route");
   assertEquals(settings.has("route"), true);
   assertEquals(settings.keys(), ["shell.route"]);
-  assertEquals(settings.inspect(), { namespace: "shell", keys: ["shell.route"] });
+  assertEquals(settings.localKeys(), ["route"]);
+  assertEquals(settings.inspect(), { namespace: "shell", keys: ["shell.route"], localKeys: ["route"] });
 
   route.set("runtime");
   await settings.flush();
@@ -1334,6 +1338,53 @@ Deno.test("SettingsController resetAll and dispose apply to registered settings"
   settings.dispose();
   assertEquals(routeChanges, 2);
   assertEquals(settings.keys(), []);
+});
+
+Deno.test("settingsCommands reset individual settings and all settings", async () => {
+  const store = new MemoryStore<unknown>();
+  const settings = new SettingsController({ store, namespace: "prefs" });
+  const route = settings.signal({ key: "route", initialValue: "overview" });
+  const theme = settings.signal({ key: "theme", initialValue: "plain" });
+  route.set("runtime");
+  theme.set("neon");
+  await settings.flush();
+
+  const registry = new CommandRegistry<SettingsCommandAction>();
+  const dispose = bindSettingsCommands(registry, settings, {
+    idPrefix: "prefs",
+    group: "preferences",
+    labels: { reset: "Restore" },
+    keyLabel: (key) => key.toUpperCase(),
+  });
+  const actions: SettingsCommandAction[] = [];
+
+  assertEquals(registry.list("preferences").map((command) => [command.id, command.label]), [
+    ["prefs.resetAll", "Reset All Settings"],
+    ["prefs.reset.route", "Restore: ROUTE"],
+    ["prefs.reset.theme", "Restore: THEME"],
+  ]);
+
+  assertEquals(await registry.execute("prefs.reset.route", (action) => void actions.push(action)), true);
+  assertEquals(route.value.peek(), "overview");
+  assertEquals(theme.value.peek(), "neon");
+  assertEquals(actions, [{ type: "settings.reset", payload: { key: "route" } }]);
+
+  assertEquals(await registry.execute("prefs.resetAll", (action) => void actions.push(action)), true);
+  assertEquals(route.value.peek(), "overview");
+  assertEquals(theme.value.peek(), "plain");
+  assertEquals(actions[1], { type: "settings.resetAll", payload: { keys: ["route", "theme"] } });
+
+  dispose();
+  assertEquals(registry.list("preferences"), []);
+});
+
+Deno.test("settingsCommands can omit reset all and disable empty settings", () => {
+  const settings = new SettingsController({ store: new MemoryStore<unknown>() });
+  const commands = settingsCommands(settings, { includeResetCommands: false });
+
+  assertEquals(commands.map((command) => [command.id, command.label, commandDisabled(command)]), [
+    ["settings.resetAll", "Reset All Settings", true],
+  ]);
 });
 
 Deno.test("bindSettingSignal synchronizes persistent settings with app signals", async () => {
@@ -1686,12 +1737,12 @@ Deno.test("bindSplitPaneSetting restores and persists layout state", async () =>
   });
 });
 
-function commandDisabled(command: Command): boolean | undefined {
+function commandDisabled<TAction extends Action>(command: Command<TAction>): boolean | undefined {
   return typeof command.disabled === "function" ? command.disabled() : command.disabled;
 }
 
-async function runCommandFactory(command: Command): Promise<void> {
+async function runCommandFactory<TAction extends Action>(command: Command<TAction>): Promise<void> {
   if (typeof command.action === "function") {
-    await command.action(command);
+    await (command.action as CommandActionFactory<TAction>)(command);
   }
 }

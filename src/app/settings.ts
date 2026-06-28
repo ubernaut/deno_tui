@@ -19,6 +19,7 @@ export interface SettingsControllerOptions {
 export interface SettingsControllerInspection {
   namespace: string;
   keys: string[];
+  localKeys: string[];
 }
 
 export class SettingsController {
@@ -65,6 +66,10 @@ export class SettingsController {
     return [...this.#settings.keys()].sort();
   }
 
+  localKeys(): string[] {
+    return this.keys().map((key) => this.localKey(key));
+  }
+
   async ready(): Promise<void> {
     await Promise.all([...this.#settings.values()].map((setting) => setting.ready));
   }
@@ -88,6 +93,7 @@ export class SettingsController {
     return {
       namespace: this.namespace,
       keys: this.keys(),
+      localKeys: this.localKeys(),
     };
   }
 
@@ -100,6 +106,11 @@ export class SettingsController {
 
   key(key: string): string {
     return this.namespace ? `${this.namespace}.${key}` : key;
+  }
+
+  private localKey(key: string): string {
+    const prefix = this.namespace ? `${this.namespace}.` : "";
+    return prefix && key.startsWith(prefix) ? key.slice(prefix.length) : key;
   }
 }
 

@@ -477,7 +477,8 @@ const plugins = state.plugins.map((plugin) => plugin.id);
 and disposal. Use it for preferences such as active route, theme pack, layout density, split ratios, hidden controls, or
 visualization settings while keeping storage configurable. `bindSettingSignal()`, `bindRouteSetting()`,
 `bindThemeSetting()`, `bindThemeLayerSetting()`, and `bindSplitPaneSetting()` wire those preferences into app state
-without each app rebuilding two-way synchronization logic:
+without each app rebuilding two-way synchronization logic. `settingsCommands()` and `bindSettingsCommands()` expose
+registered preferences as reset commands for palettes, menus, settings screens, and plugin surfaces:
 
 ```ts
 const settings = new SettingsController({
@@ -498,6 +499,10 @@ const stopSplitSetting = bindSplitPaneSetting(splitController, settings, {
   serialize: JSON.stringify,
   deserialize: JSON.parse,
 });
+const stopSettingsCommands = bindSettingsCommands(app.commands, settings, {
+  idPrefix: "preferences",
+  group: "settings",
+});
 
 await settings.ready();
 activeRoute.set("runtime");
@@ -508,6 +513,7 @@ app.onDispose(stopRouteSetting.dispose);
 app.onDispose(stopThemeSetting.dispose);
 app.onDispose(stopThemeLayers.dispose);
 app.onDispose(stopSplitSetting.dispose);
+app.onDispose(stopSettingsCommands);
 ```
 
 `bindModalFocus()` ties a visibility signal to a `FocusScope`, traps focus while modal-like surfaces are open, restores
