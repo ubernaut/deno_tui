@@ -24,21 +24,41 @@ case "$target" in
   monitor|system-monitor|system|viz)
     task="viz"
     ;;
+  worker|workers|worker-demo)
+    task="worker-demo"
+    ;;
+  capabilities|caps|runtime)
+    task="capabilities"
+    ;;
+  benchmark|bench|perf)
+    task="benchmark"
+    ;;
+  grwizard|wizard)
+    task="grwizard"
+    ;;
+  health|check)
+    task="health"
+    ;;
   -h|--help|help)
     printf '%s\n' \
-      "usage: ./visualization [showcase|polygons|dashboard|app-shell|monitor] [args...]" \
+      "usage: ./visualization [showcase|polygons|dashboard|app-shell|monitor|worker|capabilities|benchmark|grwizard|health] [args...]" \
       "" \
-      "  showcase  full widget showcase (default)" \
-      "  polygons  standalone three.js ASCII geometry demo" \
-      "            pass --no-controls to start with its control panel hidden" \
-      "  dashboard dashboard widgets and theme engine demo" \
-      "  app-shell app primitives, command palette, routes, and toasts demo" \
-      "  monitor   system monitor visualization dashboard"
+      "  showcase     full widget showcase (default)" \
+      "  polygons     standalone three.js ASCII geometry demo" \
+      "               pass --no-controls to start with its control panel hidden" \
+      "  dashboard    dashboard widgets and theme engine demo" \
+      "  app-shell    app primitives, command palette, routes, and toasts demo" \
+      "  monitor      system monitor visualization dashboard" \
+      "  worker       abortable WorkerPool concurrency demo" \
+      "  capabilities runtime capability report" \
+      "  benchmark    layout and rendering benchmark report" \
+      "  grwizard     responsive GPU/model wizard demo" \
+      "  health       contributor health gate"
     exit 0
     ;;
   *)
     echo "unknown visualization: $target" >&2
-    echo "usage: ./visualization [showcase|polygons|dashboard|app-shell|monitor] [args...]" >&2
+    echo "usage: ./visualization [showcase|polygons|dashboard|app-shell|monitor|worker|capabilities|benchmark|grwizard|health] [args...]" >&2
     exit 64
     ;;
 esac

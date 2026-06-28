@@ -757,12 +757,19 @@ tuning.
 ./visualization monitor
 ./visualization dashboard
 ./visualization app-shell
+./visualization worker
+./visualization capabilities
+./visualization benchmark
+./visualization grwizard
+./visualization health
 deno task viz
 ```
 
 Launches the system monitor dashboard. Use `F4` to open options, select panel visualizations, and change the ASCII style
 for 3D panels. Added 3D visualization IDs include `three-lattice`, `three-atfield`, `three-hexshell`, `three-capture`,
-`three-mapslab`, `three-solenoid`, and `three-ascii-studio`.
+`three-mapslab`, `three-solenoid`, and `three-ascii-studio`. The same launcher also exposes runtime and tooling demos:
+`worker` for abortable worker-pool concurrency, `capabilities` for platform feature detection, `benchmark` for
+performance smoke checks, `grwizard` for the responsive GPU/model wizard, and `health` for the contributor gate.
 
 Direct Deno tasks are also available:
 
