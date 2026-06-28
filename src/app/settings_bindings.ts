@@ -2,6 +2,7 @@
 import type { Signal } from "../signals/mod.ts";
 import type { ThemeProvider } from "../theme.ts";
 import type { PersistentSignal } from "../runtime/storage.ts";
+import type { SplitPaneController, SplitPaneControllerOptions } from "../layout/mod.ts";
 import { bindRouteSignal, type RouteSignalBindingOptions } from "./route_bindings.ts";
 import type { Route, RouteManager } from "./router.ts";
 import type { AppSettingDefinition, SettingsController } from "./settings.ts";
@@ -31,6 +32,15 @@ export interface ThemeSettingBindingOptions<Stored = string> extends SettingSign
   setting?: PersistentSignal<string, Stored>;
   serialize?: (value: string) => Stored;
   deserialize?: (value: Stored) => string;
+}
+
+export interface SplitPaneSettingBindingOptions<Stored = SplitPaneControllerOptions>
+  extends SettingSignalBindingOptions<SplitPaneControllerOptions> {
+  key?: string;
+  initialValue?: SplitPaneControllerOptions;
+  setting?: PersistentSignal<SplitPaneControllerOptions, Stored>;
+  serialize?: (value: SplitPaneControllerOptions) => Stored;
+  deserialize?: (value: Stored) => SplitPaneControllerOptions;
 }
 
 export function bindSettingSignal<T, Stored = T>(
@@ -137,8 +147,80 @@ export function bindThemeSetting<Stored = string>(
   };
 }
 
+export function bindSplitPaneSetting<Stored = SplitPaneControllerOptions>(
+  controller: SplitPaneController,
+  settings: SettingsController,
+  options: SplitPaneSettingBindingOptions<Stored> = {},
+): SettingBinding<SplitPaneControllerOptions, Stored> {
+  const setting = options.setting ??
+    settings.signal(settingDefinition({
+      key: options.key ?? "split-pane",
+      initialValue: options.initialValue ?? controller.snapshot(),
+      serialize: options.serialize,
+      deserialize: options.deserialize,
+    }));
+
+  let disposed = false;
+  let syncing = false;
+  const equals = options.equals ?? splitPaneOptionsEqual;
+
+  const applyController = (value: SplitPaneControllerOptions) => {
+    if (equals(controller.snapshot(), value)) return;
+    syncing = true;
+    controller.update(value);
+    syncing = false;
+  };
+  const applySetting = () => {
+    if (disposed || syncing) return;
+    const snapshot = controller.snapshot();
+    if (!equals(setting.value.peek(), snapshot)) {
+      syncing = true;
+      setting.set(snapshot);
+      syncing = false;
+    }
+  };
+  const applyLoadedSetting = (value: SplitPaneControllerOptions) => {
+    if (disposed || syncing) return;
+    applyController(value);
+  };
+
+  if (options.initialSync === "signal") {
+    setting.set(controller.snapshot());
+  } else {
+    applyController(setting.value.peek());
+    setting.ready.then((value) => {
+      if (!disposed) applyController(value);
+    });
+  }
+
+  setting.value.subscribe(applyLoadedSetting);
+  controller.options.subscribe(applySetting);
+  controller.resizeMode.subscribe(applySetting);
+
+  return {
+    setting,
+    dispose: () => {
+      disposed = true;
+      setting.value.unsubscribe(applyLoadedSetting);
+      controller.options.unsubscribe(applySetting);
+      controller.resizeMode.unsubscribe(applySetting);
+    },
+  };
+}
+
 function settingDefinition<T, Stored>(
   definition: AppSettingDefinition<T, Stored>,
 ): AppSettingDefinition<T, Stored> {
   return definition;
+}
+
+function splitPaneOptionsEqual(left: SplitPaneControllerOptions, right: SplitPaneControllerOptions): boolean {
+  return left.direction === right.direction &&
+    left.ratio === right.ratio &&
+    left.firstSize === right.firstSize &&
+    left.minFirst === right.minFirst &&
+    left.minSecond === right.minSecond &&
+    left.maxFirst === right.maxFirst &&
+    left.gap === right.gap &&
+    (left.resizeMode ?? "size") === (right.resizeMode ?? "size");
 }

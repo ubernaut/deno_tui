@@ -5,6 +5,7 @@ import {
   bindRouteHistory,
   bindRouteIndex,
   bindRouteSetting,
+  bindSplitPaneSetting,
   Breadcrumbs,
   CommandPalette,
   commandSurfaceItems,
@@ -28,7 +29,7 @@ import {
   resolveBreakpoint,
   ScrollArea,
   Signal,
-  splitPaneRects,
+  SplitPaneController,
   StatusBar,
   Stepper,
   Text,
@@ -83,6 +84,21 @@ const settings = createSettingsController({ store: preferences, namespace: "app-
 const routeSetting = bindRouteSetting(app.routes, settings, { key: "active-route", initialValue: "overview" });
 const routeChoice = routeSetting.setting.value;
 app.onDispose(routeSetting.dispose);
+const splitController = new SplitPaneController({
+  direction: "row",
+  ratio: 0.66,
+  minFirst: 28,
+  minSecond: 24,
+  gap: 2,
+  resizeMode: "ratio",
+});
+const splitSetting = bindSplitPaneSetting(splitController, settings, {
+  key: "main-split",
+  serialize: (value) => JSON.stringify(value),
+  deserialize: (value: string) => JSON.parse(value),
+});
+app.onDispose(splitSetting.dispose);
+app.onDispose(() => splitController.dispose());
 app.onDispose(() => settings.dispose());
 const routeStepIndex = new Signal(0);
 app.onDispose(bindRouteIndex(app.routes, routeStepIndex, { routeIds: ["overview", "widgets", "runtime"] }));
@@ -259,15 +275,7 @@ const appContentRect = new Computed(() => {
     height: Math.max(6, rect.height - 10),
   };
 });
-const appPanes = new Computed(() =>
-  splitPaneRects(appContentRect.value, {
-    direction: "row",
-    ratio: 0.66,
-    minFirst: 28,
-    minSecond: 24,
-    gap: 2,
-  })
-);
+const appPanes = new Computed(() => splitController.rects(appContentRect.value));
 
 new Frame({
   parent: app.tui,

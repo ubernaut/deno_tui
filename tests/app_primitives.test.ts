@@ -14,8 +14,14 @@ import { HistoryStack } from "../src/app/history.ts";
 import { bindRouteIndex, bindRouteSignal } from "../src/app/route_bindings.ts";
 import { RouteManager } from "../src/app/router.ts";
 import { SettingsController } from "../src/app/settings.ts";
-import { bindRouteSetting, bindSettingSignal, bindThemeSetting } from "../src/app/settings_bindings.ts";
+import {
+  bindRouteSetting,
+  bindSettingSignal,
+  bindSplitPaneSetting,
+  bindThemeSetting,
+} from "../src/app/settings_bindings.ts";
 import { KeymapRegistry } from "../src/keymap.ts";
+import { SplitPaneController } from "../src/layout/mod.ts";
 import { MemoryStore } from "../src/runtime/storage.ts";
 import { Signal } from "../src/signals/mod.ts";
 import { createTestKeyPress, TestKeyPressTarget } from "../src/testing/mod.ts";
@@ -994,4 +1000,85 @@ Deno.test("bindThemeSetting connects a provider to app settings", async () => {
   binding.dispose();
   provider.setTheme("terminal");
   assertEquals(binding.setting.value.value, "plain");
+});
+
+Deno.test("bindSplitPaneSetting restores and persists layout state", async () => {
+  const store = new MemoryStore<unknown>();
+  await store.set(
+    "prefs.split",
+    JSON.stringify({
+      direction: "row",
+      ratio: 0.75,
+      minFirst: 10,
+      minSecond: 8,
+      gap: 1,
+      resizeMode: "ratio",
+    }),
+  );
+  const settings = new SettingsController({ store, namespace: "prefs" });
+  const controller = new SplitPaneController({
+    direction: "row",
+    ratio: 0.5,
+    minFirst: 10,
+    minSecond: 8,
+    gap: 1,
+    resizeMode: "ratio",
+  });
+  const binding = bindSplitPaneSetting(controller, settings, {
+    key: "split",
+    serialize: (value) => JSON.stringify(value),
+    deserialize: (value: string) => JSON.parse(value),
+  });
+
+  await settings.ready();
+  assertEquals(controller.snapshot(), {
+    direction: "row",
+    ratio: 0.75,
+    minFirst: 10,
+    minSecond: 8,
+    gap: 1,
+    resizeMode: "ratio",
+  });
+
+  controller.setRatio(0.6);
+  await settings.flush();
+  assertEquals(binding.setting.value.value.ratio, 0.6);
+  assertEquals(
+    await store.get("prefs.split"),
+    JSON.stringify({
+      direction: "row",
+      ratio: 0.6,
+      minFirst: 10,
+      minSecond: 8,
+      gap: 1,
+      resizeMode: "ratio",
+    }),
+  );
+
+  binding.setting.set({
+    direction: "column",
+    firstSize: 4,
+    minFirst: 2,
+    minSecond: 2,
+    resizeMode: "size",
+  });
+  assertEquals(controller.snapshot(), {
+    direction: "column",
+    ratio: 0.6,
+    firstSize: 4,
+    minFirst: 2,
+    minSecond: 2,
+    gap: 1,
+    resizeMode: "size",
+  });
+
+  binding.dispose();
+  controller.setRatio(0.25);
+  assertEquals(binding.setting.value.value, {
+    direction: "column",
+    firstSize: 4,
+    minFirst: 2,
+    minSecond: 2,
+    resizeMode: "size",
+  });
 });
