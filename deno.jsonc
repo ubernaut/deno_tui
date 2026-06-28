@@ -6,6 +6,7 @@
     "layout-recipe": "deno run -A ./examples/layout_recipe_report.ts",
     "theme-manifest": "deno run -A ./examples/theme_manifest.ts",
     "theme-engines": "deno run -A ./examples/theme_engines.ts",
+    "theme-engine-commands": "deno run -A ./examples/theme_engine_commands.ts",
     "theme-pipeline": "deno run -A ./examples/theme_pipeline.ts",
     "theme-workspace": "deno run -A ./examples/theme_workspace.ts",
     "theme-gallery": "deno run -A ./examples/theme_gallery.ts",

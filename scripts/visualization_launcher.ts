@@ -123,6 +123,13 @@ export const visualizationLaunchTargets: readonly VisualizationLaunchTarget[] = 
     tags: ["theme", "factory"],
   },
   {
+    task: "theme-engine-commands",
+    aliases: ["theme-engine-commands", "theme-command-surface", "theme-engine-palette"],
+    description: "theme engine command surface demo",
+    category: "demo",
+    tags: ["theme", "factory", "commands"],
+  },
+  {
     task: "theme-pipeline",
     aliases: ["theme-pipeline", "theme-runtime", "theme-transforms"],
     description: "runtime theme transform pipeline demo",

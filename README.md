@@ -2009,35 +2009,37 @@ const preset = findAsciiDemoPreset("mixed-best");
 
 ## Examples
 
-| File                               | Description                                                  |
-| ---------------------------------- | ------------------------------------------------------------ |
-| `examples/demo.ts`                 | Kitchen-sink demo of all components                          |
-| `examples/calculator.ts`           | Functional calculator built with `GridLayout`                |
-| `examples/layout.ts`               | Grid layout with draggable, colored buttons                  |
-| `examples/layout_recipe_report.ts` | Responsive layout recipe report example                      |
-| `examples/app_shell.ts`            | App primitives, settings-backed routes, commands, and toasts |
-| `examples/dashboard.ts`            | Dashboard widgets, semantic theme tokens, and key help       |
-| `examples/theme_manifest.ts`       | Serializable theme manifest compiler and diff demo           |
-| `examples/theme_engines.ts`        | Theme engine factory registry and prewarm demo               |
-| `examples/theme_pipeline.ts`       | Runtime theme transform pipeline and prewarm demo            |
-| `examples/theme_workspace.ts`      | Combined provider, factory, pipeline, and prewarm demo       |
-| `examples/theme_gallery.ts`        | Searchable theme gallery and preview report                  |
-| `examples/theme_resolver.ts`       | Cached theme resolver and renderer lookup demo               |
-| `examples/theme_bindings.ts`       | Grouped component theme binding lifecycle demo               |
-| `examples/worker_pool.ts`          | WorkerPool concurrency example                               |
-| `examples/runtime_workloads.ts`    | Scheduler and worker-pool pressure registry demo             |
-| `examples/action_middleware.ts`    | Action middleware and plugin pipeline example                |
-| `examples/cached_resource.ts`      | Cached async resource loader example                         |
-| `examples/cached_pipeline.ts`      | Cached scheduler-backed data pipeline example                |
-| `examples/three_ascii.ts`          | Interactive 3D ASCII renderer powered by three.js            |
-| `app/showcase.ts`                  | Full Neon Exodus-style widget and visualization showcase     |
-| `app/main.ts`                      | Live system monitor dashboard with selectable panels         |
+| File                                | Description                                                  |
+| ----------------------------------- | ------------------------------------------------------------ |
+| `examples/demo.ts`                  | Kitchen-sink demo of all components                          |
+| `examples/calculator.ts`            | Functional calculator built with `GridLayout`                |
+| `examples/layout.ts`                | Grid layout with draggable, colored buttons                  |
+| `examples/layout_recipe_report.ts`  | Responsive layout recipe report example                      |
+| `examples/app_shell.ts`             | App primitives, settings-backed routes, commands, and toasts |
+| `examples/dashboard.ts`             | Dashboard widgets, semantic theme tokens, and key help       |
+| `examples/theme_manifest.ts`        | Serializable theme manifest compiler and diff demo           |
+| `examples/theme_engines.ts`         | Theme engine factory registry and prewarm demo               |
+| `examples/theme_engine_commands.ts` | Theme engine command surface and catalog demo                |
+| `examples/theme_pipeline.ts`        | Runtime theme transform pipeline and prewarm demo            |
+| `examples/theme_workspace.ts`       | Combined provider, factory, pipeline, and prewarm demo       |
+| `examples/theme_gallery.ts`         | Searchable theme gallery and preview report                  |
+| `examples/theme_resolver.ts`        | Cached theme resolver and renderer lookup demo               |
+| `examples/theme_bindings.ts`        | Grouped component theme binding lifecycle demo               |
+| `examples/worker_pool.ts`           | WorkerPool concurrency example                               |
+| `examples/runtime_workloads.ts`     | Scheduler and worker-pool pressure registry demo             |
+| `examples/action_middleware.ts`     | Action middleware and plugin pipeline example                |
+| `examples/cached_resource.ts`       | Cached async resource loader example                         |
+| `examples/cached_pipeline.ts`       | Cached scheduler-backed data pipeline example                |
+| `examples/three_ascii.ts`           | Interactive 3D ASCII renderer powered by three.js            |
+| `app/showcase.ts`                   | Full Neon Exodus-style widget and visualization showcase     |
+| `app/main.ts`                       | Live system monitor dashboard with selectable panels         |
 
 Run the theme manifest and engine demos with:
 
 ```sh
 deno task theme-manifest
 deno task theme-engines
+deno task theme-engine-commands
 deno task theme-pipeline
 deno task theme-workspace
 deno task theme-resolver
@@ -2076,6 +2078,7 @@ tuning.
 ./visualization pipeline
 ./visualization theme-manifest
 ./visualization theme-engines
+./visualization theme-engine-commands
 ./visualization theme-pipeline
 ./visualization theme-workspace
 ./visualization theme-gallery
@@ -2096,21 +2099,22 @@ for 3D panels. Added 3D visualization IDs include `three-lattice`, `three-atfiel
 `three-mapslab`, `three-solenoid`, and `three-ascii-studio`. The same launcher also exposes runtime and tooling demos:
 `worker` for abortable worker-pool concurrency, `actions` for middleware-based action dispatch, `resource` for cached
 async resource loaders, `pipeline` for cached scheduler-backed transforms, `theme-manifest` for serializable theme
-packs, `theme-engines` for factory prewarming, `theme-pipeline` for runtime theme transforms, `theme-workspace` for
-combined provider/factory/pipeline orchestration, `theme-gallery` for searchable theme previews, `theme-resolver` for
-cached renderer-friendly theme lookups, `theme-bindings` for grouped component theme wiring and lifecycle inspection,
-`capabilities` for platform feature detection, `runtime-workloads` for scheduler and worker-pool pressure inspection,
-`benchmark` for performance smoke checks, `api-inventory` for public export graph inspection, `components` for widget
-catalog reports, `layout-recipe` for responsive recipe inspection, `grwizard` for the responsive GPU/model wizard, and
-`health` for the contributor gate. The launcher metadata is also exported from `scripts/visualization_launcher.ts` as a
-queryable catalog: `queryVisualizationLaunchTargets()`, `createVisualizationLaunchReport()`,
-`inspectVisualizationLaunchTargets()`, and `formatVisualizationLaunchMarkdown()` provide the same structured target list
-for custom launchers, docs pages, and CI reports without duplicating aliases or descriptions. Benchmark runs print
-per-case timings plus an aggregate summary; `deno task benchmark -- --list` prints the benchmark catalog without running
-workloads, `deno task benchmark -- --list --json` emits that catalog as structured data, and
-`deno task benchmark -- --json` emits the same threshold-aware timing summary as structured data and exits nonzero when
-a case fails its limits. The catalog path is backed by `BenchmarkRunner.inspect()`, `createBenchmarkCatalogReport()`,
-and `formatBenchmarkCatalogMarkdown()` so launchers and docs can reuse the same case metadata.
+packs, `theme-engines` for factory prewarming, `theme-engine-commands` for factory preview/catalog command surfaces,
+`theme-pipeline` for runtime theme transforms, `theme-workspace` for combined provider/factory/pipeline orchestration,
+`theme-gallery` for searchable theme previews, `theme-resolver` for cached renderer-friendly theme lookups,
+`theme-bindings` for grouped component theme wiring and lifecycle inspection, `capabilities` for platform feature
+detection, `runtime-workloads` for scheduler and worker-pool pressure inspection, `benchmark` for performance smoke
+checks, `api-inventory` for public export graph inspection, `components` for widget catalog reports, `layout-recipe` for
+responsive recipe inspection, `grwizard` for the responsive GPU/model wizard, and `health` for the contributor gate. The
+launcher metadata is also exported from `scripts/visualization_launcher.ts` as a queryable catalog:
+`queryVisualizationLaunchTargets()`, `createVisualizationLaunchReport()`, `inspectVisualizationLaunchTargets()`, and
+`formatVisualizationLaunchMarkdown()` provide the same structured target list for custom launchers, docs pages, and CI
+reports without duplicating aliases or descriptions. Benchmark runs print per-case timings plus an aggregate summary;
+`deno task benchmark -- --list` prints the benchmark catalog without running workloads,
+`deno task benchmark -- --list --json` emits that catalog as structured data, and `deno task benchmark -- --json` emits
+the same threshold-aware timing summary as structured data and exits nonzero when a case fails its limits. The catalog
+path is backed by `BenchmarkRunner.inspect()`, `createBenchmarkCatalogReport()`, and `formatBenchmarkCatalogMarkdown()`
+so launchers and docs can reuse the same case metadata.
 
 Direct Deno tasks are also available:
 
@@ -2124,6 +2128,7 @@ deno task viz
 deno task cached-resource
 deno task theme-manifest
 deno task theme-engines
+deno task theme-engine-commands
 deno task theme-pipeline
 deno task theme-workspace
 deno task theme-gallery

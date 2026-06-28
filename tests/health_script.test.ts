@@ -13,6 +13,7 @@ Deno.test("health script exposes the expected contributor gates", () => {
     "cached-pipeline",
     "runtime-workloads",
     "theme-engines",
+    "theme-engine-commands",
     "theme-pipeline",
     "theme-workspace",
     "theme-resolver",
