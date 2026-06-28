@@ -1,5 +1,12 @@
 import { assertEquals } from "./deps.ts";
 import {
+  bindComponentCatalogCommands,
+  type ComponentCatalogCommandAction,
+  componentCatalogCommands,
+  inspectComponentCatalogCommands,
+} from "../src/app/component_commands.ts";
+import { CommandRegistry } from "../src/app/commands.ts";
+import {
   componentCapabilities,
   componentCatalog,
   componentCategories,
@@ -104,6 +111,122 @@ Deno.test("component catalog supports combined queries and inspection", () => {
       selection: 2,
       themeable: 1,
       three: 0,
+      virtualized: 0,
+    },
+  });
+});
+
+Deno.test("component catalog commands project widgets into command surfaces", async () => {
+  const registry = new CommandRegistry<ComponentCatalogCommandAction>();
+  const dispose = bindComponentCatalogCommands(registry, {
+    idPrefix: "widgets",
+    group: "catalog",
+    query: { category: "overlay", capability: "controller" },
+  });
+  const actions: ComponentCatalogCommandAction[] = [];
+
+  assertEquals(registry.list("catalog").map((command) => command.id), [
+    "widgets.select.command-palette",
+    "widgets.select.context-menu",
+  ]);
+  assertEquals(registry.projections("catalog"), [
+    {
+      id: "widgets.select.command-palette",
+      label: "CommandPalette",
+      keywords: [
+        "command-palette",
+        "CommandPalette",
+        "overlay",
+        "Filterable command surface.",
+        "controller",
+        "render-helper",
+        "selection",
+        "keyboard",
+        "async",
+      ],
+      disabled: false,
+    },
+    {
+      id: "widgets.select.context-menu",
+      label: "ContextMenu",
+      keywords: [
+        "context-menu",
+        "ContextMenu",
+        "overlay",
+        "Selectable contextual command list.",
+        "controller",
+        "render-helper",
+        "selection",
+        "keyboard",
+        "mouse",
+      ],
+      disabled: false,
+    },
+  ]);
+
+  assertEquals(
+    await registry.execute("widgets.select.context-menu", (action) => void actions.push(action)),
+    true,
+  );
+  assertEquals(actions[0]?.type, "component.selected");
+  assertEquals(actions[0]?.payload?.id, "context-menu");
+
+  dispose();
+  assertEquals(registry.inspect("catalog"), { count: 0, enabled: 0, disabled: 0, groups: [], commands: [] });
+});
+
+Deno.test("component catalog commands support custom actions disabled state and inspection", async () => {
+  type DocsAction = { type: "open-docs"; payload: string };
+  const registry = new CommandRegistry<DocsAction>();
+  const commands = componentCatalogCommands<DocsAction>({
+    entries: componentsWithCapability("three"),
+    label: (entry) => `Docs: ${entry.name}`,
+    disabled: (entry) => entry.id === "three-ascii",
+    action: (entry) => ({ type: "open-docs", payload: entry.id }),
+  });
+  registry.registerAll(commands);
+  const actions: DocsAction[] = [];
+  const enabledRegistry = new CommandRegistry<DocsAction>();
+  enabledRegistry.registerAll(componentCatalogCommands<DocsAction>({
+    entries: componentsWithCapability("three"),
+    action: (entry) => ({ type: "open-docs", payload: entry.id }),
+  }));
+
+  assertEquals(commands.map((command) => [command.id, command.label, command.disabled instanceof Function]), [
+    ["component.select.three-ascii", "Docs: ThreeAscii", true],
+  ]);
+  assertEquals(await registry.execute("component.select.three-ascii", (action) => void actions.push(action)), false);
+  assertEquals(actions, []);
+  assertEquals(
+    await enabledRegistry.execute("component.select.three-ascii", (action) => void actions.push(action)),
+    true,
+  );
+  assertEquals(actions, [{ type: "open-docs", payload: "three-ascii" }]);
+  assertEquals(inspectComponentCatalogCommands({ entries: componentsWithCapability("three"), group: "docs" }), {
+    count: 1,
+    commandCount: 1,
+    group: "docs",
+    categories: {
+      data: 0,
+      feedback: 0,
+      input: 0,
+      layout: 0,
+      navigation: 0,
+      overlay: 0,
+      primitive: 0,
+      visualization: 1,
+    },
+    capabilities: {
+      async: 0,
+      component: 1,
+      controller: 0,
+      dashboard: 1,
+      keyboard: 0,
+      mouse: 0,
+      "render-helper": 0,
+      selection: 0,
+      themeable: 0,
+      three: 1,
       virtualized: 0,
     },
   });
