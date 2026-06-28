@@ -1622,7 +1622,7 @@ Optional high-performance APIs are surfaced through `src/runtime/mod.ts`:
 - `AsyncResource` / `createAsyncResource()` / `CachedAsyncResource` / `createCachedAsyncResource()` /
   `bindResourceParams()`
 - `runDataPipeline()` / `LatestDataPipeline` / `CachedDataPipeline` / `bindDataPipeline()` / `workerTransform()`
-- `DataQueryController` / `createDataQueryController()` / `queryLocalData()`
+- `DataQueryController` / `createDataQueryController()` / `queryLocalData()` / `bindDataQueryCommands()`
 - `WorkerPool`
 - `MemoryStore`
 - `IndexedDbStore`
@@ -1800,6 +1800,16 @@ await processes.setQuery("gpu worker");
 await processes.toggleSort("cpu");
 renderRows(processes.result.peek().rows);
 const queryState = processes.inspect();
+
+const stopProcessQueryCommands = bindDataQueryCommands(commandRegistry, processes, {
+  id: "processes",
+  idPrefix: "processes.query",
+  group: "data",
+  includeSortCommands: true,
+  sortFields: [{ field: "cpu", label: "CPU" }],
+  includePageSizeCommands: true,
+  pageSizes: [20, 50, 100],
+});
 ```
 
 `bindResourceParams()` connects a params signal to a resource, with optional debounce for search boxes, filters, route

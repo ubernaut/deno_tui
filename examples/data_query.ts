@@ -1,4 +1,12 @@
-import { createDataQueryController, createRuntimeStore, type DataQueryResult, queryLocalData } from "../mod.ts";
+import {
+  bindDataQueryCommands,
+  CommandRegistry,
+  createDataQueryController,
+  createRuntimeStore,
+  type DataQueryCommandAction,
+  type DataQueryResult,
+  queryLocalData,
+} from "../mod.ts";
 
 interface ProcessRow extends Record<string, unknown> {
   pid: number;
@@ -32,15 +40,24 @@ const processes = createDataQueryController<ProcessRow>({
     });
   },
 });
+const commandRegistry = new CommandRegistry<DataQueryCommandAction<ProcessRow>>();
+const actions: DataQueryCommandAction<ProcessRow>[] = [];
+const stopCommands = bindDataQueryCommands(commandRegistry, processes, {
+  id: "processes",
+  idPrefix: "processes.query",
+  includeSortCommands: true,
+  sortFields: [{ field: "cpu", label: "CPU" }],
+});
 
 await processes.setQuery("runtime");
-await processes.toggleSort("cpu");
-await processes.toggleSort("cpu");
+await commandRegistry.execute("processes.query.sort.cpu", (action) => void actions.push(action));
+await commandRegistry.execute("processes.query.sort.cpu", (action) => void actions.push(action));
 
 console.log("Runtime data query");
 console.log(`Rows: ${processes.result.peek().rows.map((row) => `${row.name}:${row.cpu}%`).join(", ")}`);
 console.log(`Total: ${processes.inspect().totalRows}`);
 console.log(`Cache: ${processes.inspect().key}`);
+console.log(`Command actions: ${actions.map((action) => action.type).join(", ")}`);
 
 const restored = createDataQueryController<ProcessRow>({
   store,
@@ -58,3 +75,4 @@ console.log(`Restored cached rows: ${restored.result.peek().rows.length}`);
 
 processes.dispose();
 restored.dispose();
+stopCommands();
