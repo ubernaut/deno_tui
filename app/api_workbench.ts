@@ -131,6 +131,7 @@ tui.dispatch();
 
 const themeIndex = new Signal(0);
 const activeWindow = new Signal<WindowId>("inspector");
+const activeControl = new Signal<ControlId>("button");
 const maximized = new Signal<WindowId | null>(null);
 const minimized = new Signal<Record<WindowId, boolean>>({
   inspector: false,
@@ -674,8 +675,6 @@ function applyHit(action: HitAction): void {
   } else if (action.type === "control") applyControlHit(action.id, action.action ?? "activate");
   else setTheme(action.index);
 }
-
-const activeControl = new Signal<ControlId>("button");
 
 function closeWindow(id: WindowId): void {
   minimized.value[id] = true;
