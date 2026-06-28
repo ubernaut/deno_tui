@@ -6,6 +6,7 @@ import {
   summarizeRuntimeCapabilities,
 } from "../src/runtime/capabilities.ts";
 import { AsyncScheduler, runTaskBatch } from "../src/runtime/scheduler.ts";
+import { createRenderLoop, RenderLoop } from "../src/runtime/render_loop.ts";
 import { createPersistentSignal, createRuntimeStore, MemoryStore } from "../src/runtime/storage.ts";
 import { runWorkerBatch, type WorkerLike, WorkerPool, WorkerPoolTerminatedError } from "../src/runtime/worker_pool.ts";
 
@@ -139,6 +140,78 @@ Deno.test("AsyncScheduler inspects capacity and waits for idle", async () => {
 
   assertEquals(scheduler.inspect(), { concurrency: 1, running: 0, pending: 0, idle: true });
   assertEquals(order, ["first:start", "first:end", "second", "idle"]);
+});
+
+Deno.test("RenderLoop runs immediate ticks through an injectable timer", () => {
+  const timer = new TestRenderLoopTimer();
+  const frames: Array<[number, number]> = [];
+  const loop = createRenderLoop({
+    intervalMs: 25,
+    timer,
+    tick: ({ frame, deltaMs }) => frames.push([frame, deltaMs]),
+  });
+
+  loop.start();
+  assertEquals(frames, [[1, 0]]);
+  assertEquals(timer.pendingCount(), 1);
+
+  timer.advance(25);
+  timer.flushNext();
+  assertEquals(frames, [[1, 0], [2, 25]]);
+  assertEquals(loop.inspect(), {
+    running: true,
+    frame: 2,
+    intervalMs: 25,
+    lastStartedAt: 25,
+    lastDurationMs: 0,
+    lastError: undefined,
+  });
+
+  loop.stop();
+  assertEquals(loop.running, false);
+  assertEquals(timer.pendingCount(), 0);
+});
+
+Deno.test("RenderLoop supports delayed start manual steps and interval updates", () => {
+  const timer = new TestRenderLoopTimer();
+  const frames: number[] = [];
+  const loop = new RenderLoop({
+    intervalMs: 10,
+    immediate: false,
+    timer,
+    tick: ({ frame }) => frames.push(frame),
+  });
+
+  loop.start();
+  assertEquals(frames, []);
+  assertEquals(timer.lastDelay(), 10);
+
+  loop.intervalMs = 5;
+  loop.step();
+  assertEquals(frames, [1]);
+  timer.advance(10);
+  timer.flushNext();
+  assertEquals(frames, [1, 2]);
+  assertEquals(timer.lastDelay(), 5);
+});
+
+Deno.test("RenderLoop reports errors and stops after failed ticks", () => {
+  const timer = new TestRenderLoopTimer();
+  const errors: unknown[] = [];
+  const failure = new Error("render failed");
+  const loop = createRenderLoop({
+    timer,
+    onError: (error) => errors.push(error),
+    tick: () => {
+      throw failure;
+    },
+  });
+
+  loop.start();
+  assertEquals(loop.running, false);
+  assertEquals(errors, [failure]);
+  assertEquals(loop.inspect().lastError, failure);
+  assertEquals(timer.pendingCount(), 0);
 });
 
 Deno.test("AsyncScheduler can clear queued work without stopping active work", async () => {
@@ -490,6 +563,47 @@ class DeferredStore<T> extends MemoryStore<T> {
     if (!pending) return;
     this.#pendingGet = undefined;
     pending.resolve(value);
+  }
+}
+
+class TestRenderLoopTimer {
+  #now = 0;
+  #nextId = 0;
+  #pending = new Map<number, { callback: () => void; delay: number }>();
+  #lastDelay = 0;
+
+  setTimeout(callback: () => void, delay: number): number {
+    const id = ++this.#nextId;
+    this.#lastDelay = delay;
+    this.#pending.set(id, { callback, delay });
+    return id;
+  }
+
+  clearTimeout(handle: unknown): void {
+    this.#pending.delete(handle as number);
+  }
+
+  now(): number {
+    return this.#now;
+  }
+
+  advance(ms: number): void {
+    this.#now += ms;
+  }
+
+  flushNext(): void {
+    const [id, pending] = this.#pending.entries().next().value ?? [];
+    if (id === undefined || pending === undefined) return;
+    this.#pending.delete(id);
+    pending.callback();
+  }
+
+  pendingCount(): number {
+    return this.#pending.size;
+  }
+
+  lastDelay(): number {
+    return this.#lastDelay;
   }
 }
 

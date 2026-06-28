@@ -1386,6 +1386,7 @@ Optional high-performance APIs are surfaced through `src/runtime/mod.ts`:
 - `detectRuntimeCapabilities()`
 - `runtimeCapabilityEntries()` / `summarizeRuntimeCapabilities()` / `formatRuntimeCapabilities()`
 - `AsyncScheduler` / `runTaskBatch()`
+- `RenderLoop` / `createRenderLoop()`
 - `AsyncResource` / `createAsyncResource()` / `CachedAsyncResource` / `createCachedAsyncResource()` /
   `bindResourceParams()`
 - `runDataPipeline()` / `LatestDataPipeline` / `CachedDataPipeline` / `bindDataPipeline()` / `workerTransform()`
@@ -1436,6 +1437,23 @@ for per-task backpressure, while `run()` remains the compact promise-only API. S
 `running()`, `capacity()`, and `idle()` are useful for status bars, diagnostics, and queue controls. Batch results
 preserve input order even when queued tasks run by priority, so callers can hydrate lists and tables without rebuilding
 index bookkeeping.
+
+`RenderLoop` is the small inspectable frame driver used by `Tui.run()`. Apps can also create one directly when they need
+manual stepping, timer injection in tests, or a shared frame loop for renderer backends:
+
+```ts
+const loop = createRenderLoop({
+  intervalMs: 1000 / 30,
+  tick: ({ frame, deltaMs }) => {
+    updateAnimations(frame, deltaMs);
+    canvas.render();
+  },
+});
+
+loop.start();
+const loopState = loop.inspect();
+loop.stop();
+```
 
 `AsyncResource` exposes signal-backed async state for loading data, handling errors, aborting stale work, and preserving
 previous data during refreshes:

@@ -37,6 +37,7 @@ These helpers are intentionally small and do not choose a test framework. They w
 - `detectRuntimeCapabilities()` plus `summarizeRuntimeCapabilities()` / `formatRuntimeCapabilities()` for Workers,
   WebGPU, WebGL, OffscreenCanvas, and IndexedDB diagnostics.
 - `AsyncScheduler` for bounded, prioritized, and abortable queued async work.
+- `RenderLoop` for inspectable terminal frame loops with injectable timers.
 - `WorkerPool`, `installWorkerHandler()`, and `workerTransform()` for standards-style worker jobs and pipeline stages.
 - `MemoryStore` and `IndexedDbStore` for configurable persistence.
 - `CachedAsyncResource` and `CachedDataPipeline` for optional store-backed restore paths before fresh async work
