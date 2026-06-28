@@ -684,12 +684,15 @@ pipelines, app-level provider cycling, runtime theme layers, optional async pers
 ```ts
 import {
   bindComponentTheme,
+  CommandRegistry,
   composeThemeOptions,
+  createCommandSurface,
   createRuntimeStore,
   createThemeEngine,
   createThemeLayerStack,
   createThemeProvider,
   createThemeRegistry,
+  themeCommands,
 } from "https://deno.land/x/tui@VERSION/mod.ts";
 
 const appTheme = composeThemeOptions({
@@ -721,7 +724,7 @@ const themeEngine = createThemeEngine("neon", appTheme)
 const buttonTheme = themeEngine.component("Button", "danger");
 const availableThemes = themeEngine.inspect();
 
-const registry = createThemeRegistry([
+const themeRegistry = createThemeRegistry([
   { id: "terminal", label: "Terminal", palette: "terminal" },
   { id: "neon-ops", label: "Neon Ops", palette: "neon", options: appTheme },
 ]);
@@ -741,7 +744,7 @@ const themeStore = createRuntimeStore<string>({
   storeName: "settings",
 });
 const provider = createThemeProvider({
-  registry,
+  registry: themeRegistry,
   layers,
   activeId: "neon-ops",
   store: themeStore,
@@ -760,6 +763,10 @@ const themeInventory = provider.inspect();
 const stopBinding = bindComponentTheme(button, provider, "Button", {
   variant: "danger",
 });
+
+const commandRegistry = new CommandRegistry();
+commandRegistry.registerAll(themeCommands(provider));
+const themeSurface = createCommandSurface(commandRegistry);
 ```
 
 `ThemeRegistry.engine(id, overrides)` composes a named pack with per-app overrides, while `ThemeProvider.component()`
@@ -776,7 +783,11 @@ definitions can also reference semantic token names such as `"foreground"`, `"ac
 instead of concrete style functions, so variants automatically follow the active palette. A state style may also be an
 array of token names and style functions; the engine composes the pipeline in order. Component definitions can `extend`
 one or more other definitions, which makes aliases like `ComboBox -> Field` or shared role themes cheap while preserving
-variants and app-level overrides.
+variants and app-level overrides. `themeSelectionCommands()`, `themeLayerCommands()`, and `themeCommands()` project the
+active `ThemeProvider` into normal command registry entries for "next theme", "previous theme", explicit theme
+selection, and layer enable/disable/toggle actions. The generated commands use dynamic disabled predicates, so the
+active theme and current layer states stay accurate when they are shown in a command palette, menu bar, context menu, or
+key binding help surface.
 
 ## Runtime Capabilities
 

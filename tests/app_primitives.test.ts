@@ -24,6 +24,8 @@ import {
   bindThemeLayerSetting,
   bindThemeSetting,
 } from "../src/app/settings_bindings.ts";
+import { themeCommands, themeLayerCommands, themeSelectionCommands } from "../src/app/theme_commands.ts";
+import type { ThemeCommandAction } from "../src/app/theme_commands.ts";
 import { KeymapRegistry } from "../src/keymap.ts";
 import { SplitPaneController } from "../src/layout/mod.ts";
 import { MemoryStore } from "../src/runtime/storage.ts";
@@ -1294,6 +1296,74 @@ Deno.test("bindThemeLayerSetting restores and persists active theme layers", asy
   layers.enable("contrast");
   await Promise.resolve();
   assertEquals(binding.setting.value.value, []);
+  layers.dispose();
+});
+
+Deno.test("theme command adapters switch packs and report theme actions", async () => {
+  const provider = createThemeProvider({
+    registry: createThemeRegistry([
+      { id: "plain", label: "Plain", palette: "plain" },
+      { id: "terminal", label: "Terminal", palette: "terminal" },
+    ]),
+    activeId: "plain",
+  });
+  const registry = new CommandRegistry<ThemeCommandAction>();
+  registry.registerAll(themeSelectionCommands(provider));
+  const actions: unknown[] = [];
+
+  assertEquals(registry.get("theme.set.plain")?.disabled instanceof Function, true);
+  assertEquals(registry.enabled(registry.get("theme.set.plain")!), false);
+  assertEquals(registry.enabled(registry.get("theme.set.terminal")!), true);
+
+  assertEquals(await registry.execute("theme.set.terminal", (action) => void actions.push(action)), true);
+  assertEquals(provider.activeId.peek(), "terminal");
+  assertEquals(actions, [
+    { type: "theme.changed", payload: { id: "terminal", previousId: "plain" } },
+  ]);
+  assertEquals(registry.enabled(registry.get("theme.set.terminal")!), false);
+
+  assertEquals(await registry.execute("theme.previous", (action) => void actions.push(action)), true);
+  assertEquals(provider.activeId.peek(), "plain");
+  assertEquals(actions[1], {
+    type: "theme.changed",
+    payload: { id: "plain", previousId: "terminal", direction: -1 },
+  });
+});
+
+Deno.test("theme command adapters toggle runtime theme layers", async () => {
+  const layers = createThemeLayerStack([
+    { id: "density", label: "Compact Density", options: { components: { Button: { base: { base: "foreground" } } } } },
+    {
+      id: "contrast",
+      label: "High Contrast",
+      enabled: false,
+      options: { components: { Button: { base: { focused: "warning" } } } },
+    },
+  ]);
+  const provider = createThemeProvider({ layers });
+  const registry = new CommandRegistry<ThemeCommandAction>();
+  registry.registerAll(themeCommands(provider));
+  const actions: unknown[] = [];
+
+  assertEquals(themeLayerCommands(layers).map((command) => command.id), [
+    "theme.layer.toggle.density",
+    "theme.layer.enable.density",
+    "theme.layer.disable.density",
+    "theme.layer.toggle.contrast",
+    "theme.layer.enable.contrast",
+    "theme.layer.disable.contrast",
+  ]);
+  assertEquals(registry.enabled(registry.get("theme.layer.enable.density")!), false);
+  assertEquals(registry.enabled(registry.get("theme.layer.disable.contrast")!), false);
+
+  assertEquals(await registry.execute("theme.layer.toggle.contrast", (action) => void actions.push(action)), true);
+  assertEquals(layers.activeIds(), ["density", "contrast"]);
+  assertEquals(actions, [
+    { type: "theme.layer.changed", payload: { id: "contrast", enabled: true } },
+  ]);
+  assertEquals(registry.enabled(registry.get("theme.layer.enable.contrast")!), false);
+  assertEquals(registry.enabled(registry.get("theme.layer.disable.contrast")!), true);
+
   layers.dispose();
 });
 
