@@ -19,6 +19,7 @@ export * from "./src/layout/mod.ts";
 export * from "./src/components/mod.ts";
 export * from "./src/platform/mod.ts";
 export * from "./src/web/mod.ts";
+export * from "./src/perf/mod.ts";
 
 export * from "./src/canvas/box.ts";
 export * from "./src/canvas/canvas.ts";
@@ -26,15 +27,7 @@ export * from "./src/canvas/draw_object.ts";
 export * from "./src/canvas/sink.ts";
 export * from "./src/canvas/text.ts";
 
-export * from "./src/app/actions.ts";
-export * from "./src/app/app.ts";
-export * from "./src/app/commands.ts";
-export * from "./src/app/disposables.ts";
-export * from "./src/app/forms.ts";
-export * from "./src/app/history.ts";
-export * from "./src/app/plugins.ts";
-export * from "./src/app/router.ts";
-export * from "./src/app/settings.ts";
+export * from "./src/app/mod.ts";
 
 export * from "./src/runtime/capabilities.ts";
 export * from "./src/runtime/data_pipeline.ts";
@@ -49,3 +42,8 @@ export * from "./src/runtime/scheduler.ts";
 export * from "./src/runtime/storage.ts";
 export * from "./src/runtime/telemetry.ts";
 export * from "./src/runtime/worker_pool.ts";
+
+export * from "./src/utils/async.ts";
+export * from "./src/utils/numbers.ts";
+export * from "./src/utils/sorted_array.ts";
+export * from "./src/utils/strings.ts";

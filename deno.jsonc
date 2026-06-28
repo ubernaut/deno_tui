@@ -35,7 +35,8 @@
     "grwizard": "deno run -A ./app/grwizard.ts",
     "grwizard:check": "deno check ./app/grwizard.ts",
     "web:check": "deno check ./mod.web.ts",
-    "web:demo:check": "deno check ./examples/web/standalone.ts",
+    "web:demo:check": "deno check ./examples/web/standalone.ts ./examples/web/neon_exodus_page.ts",
+    "web:pages:build": "deno run -A ./scripts/build_web_docs.ts",
     "remote:check": "deno check ./mod.remote.ts",
     "web:test": "deno test ./tests/web_runtime.test.ts ./tests/web_remote_terminal.test.ts ./tests/canvas_sink.test.ts",
     "neon-exodus": "deno run -A ./app/neon_exodus.ts",
@@ -49,7 +50,7 @@
     "test:workers": "deno test -A ./tests/runtime.test.ts"
   },
   "fmt": {
-    "exclude": ["docs/screenshots"],
+    "exclude": ["docs/screenshots", "docs/assets"],
     "options": {
       "lineWidth": 120
     }

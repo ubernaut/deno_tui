@@ -22,14 +22,16 @@ is the compatibility and remote-control target.
 The repo already has useful browser-ready pieces:
 
 - `mod.web.ts` is the standalone browser-safe entrypoint. It exports platform-neutral controllers, themes, layouts,
-  component helpers, runtime primitives, canvas cell sinks, and `createWebTui()` without exporting the terminal `Tui`
-  runtime.
+  component helpers, app/controller command surfaces, runtime primitives, perf utilities, canvas cell sinks, and
+  `createWebTui()` without exporting the terminal `Tui` runtime.
 - `BrowserPlatform`, `BrowserInputSource`, `BrowserCellCanvasSink`, and `WebTuiHost` provide the first client-side
   runtime path.
 - `mod.remote.ts` exposes the browser/client bridge protocol for hosted terminal apps, including a transport-neutral
   client and WebSocket transport.
 - `examples/web/standalone.ts` demonstrates a browser-only app using the shared `Canvas`, `BoxObject`, `TextObject`,
   ANSI theme styles, and Canvas2D sink.
+- `examples/web/neon_exodus_page.ts` is the default GitHub Pages source. `deno task web:pages:build` bundles it into
+  `docs/index.html` and `docs/assets/neon-exodus.js`.
 - Signals, controllers, commands, plugins, layouts, theme engines, data resources, worker pools, settings, and runtime
   capability planning are mostly platform-neutral.
 - `Canvas` now flushes changed cells through `CanvasCellSink`; terminal output is handled by `AnsiCanvasSink`, and
@@ -174,14 +176,16 @@ export interface RenderTarget {
 }
 ```
 
-`Canvas` should become a compositor that writes dirty cells to a `CellSink`, not directly to stdout. The terminal target
-would provide an ANSI sink. Browser targets would provide canvas and DOM sinks. `Tui` should become a thin terminal
-runtime wrapper around a shared `TuiAppHost`.
+`Canvas` is now a compositor that writes dirty cells to `CanvasCellSink`, not directly to stdout. The terminal target
+provides an ANSI sink, and the browser target provides a Canvas2D sink. `Tui` should still become a thinner terminal
+runtime wrapper around a shared app host.
 
 ## Proposed Package Surface
 
 - `mod.ts`: existing full package, preserving terminal compatibility.
-- `mod.web.ts`: browser-safe public entrypoint with no Deno stdio imports.
+- `mod.web.ts`: browser-safe public entrypoint with no Deno stdio imports. It includes practical shared APIs today:
+  signals, layouts, themes, app/controller command surfaces, runtime resource/data/concurrency primitives, perf
+  utilities, web platform APIs, canvas objects, DOM render targets, and remote bridge helpers.
 - `mod.remote.ts`: optional browser/client bridge types for connecting to an ANSI stream or remote app host.
 - `src/platform/`: shared platform interfaces plus terminal and browser adapters.
 - `src/renderers/ansi/`: terminal stdout sink and terminal session integration.
@@ -213,6 +217,8 @@ runtime wrapper around a shared `TuiAppHost`.
   handling remains to be expanded.
 - Added a minimal `createWebTui(root, options)` API.
 - Ported a standalone animated browser demo source in `examples/web/standalone.ts`.
+- Added `examples/web/neon_exodus_page.ts` as the default standalone web demo, backed by the existing Neon Exodus suite
+  render helpers.
 
 ### Phase 3: DOM Renderer
 
@@ -241,6 +247,8 @@ runtime wrapper around a shared `TuiAppHost`.
 - Add Playwright tests for rendered DOM, canvas pixel smoke checks, input handling, resize behavior, and theme
   switching.
 - Ship browser examples with screenshots or short clips generated from real browser runs.
+- Added a GitHub Pages build script: `deno task web:pages:build` generates `docs/index.html` and
+  `docs/assets/neon-exodus.js`, with Neon Exodus as the default page.
 
 ### Remote Bridge Track
 
