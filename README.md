@@ -384,6 +384,21 @@ Optional high-performance APIs are surfaced through `src/runtime/mod.ts`:
 
 Use these instead of hard-coding global checks inside components.
 
+`AsyncScheduler` caps concurrent work and can prioritize or cancel queued tasks:
+
+```ts
+const scheduler = new AsyncScheduler({ concurrency: 2 });
+const controller = new AbortController();
+
+await scheduler.run(() => refreshVisibleRows(), {
+  priority: 10,
+  signal: controller.signal,
+});
+```
+
+Use higher priorities for focused panels or visible rows, and abort pending tasks when filters, routes, or visualization
+inputs change before queued work starts.
+
 `AsyncResource` exposes signal-backed async state for loading data, handling errors, aborting stale work, and preserving
 previous data during refreshes:
 

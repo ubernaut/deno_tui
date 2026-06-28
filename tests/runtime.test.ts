@@ -37,6 +37,50 @@ Deno.test("AsyncScheduler respects the configured concurrency limit", async () =
   assertEquals(order, ["first:start", "first:end", "second"]);
 });
 
+Deno.test("AsyncScheduler runs higher priority queued tasks first", async () => {
+  const scheduler = new AsyncScheduler({ concurrency: 1 });
+  const order: string[] = [];
+  const releaseFirst = deferred<void>();
+
+  const first = scheduler.run(async () => {
+    order.push("first");
+    await releaseFirst.promise;
+  });
+  const low = scheduler.run(() => order.push("low"), { priority: 0 });
+  const high = scheduler.run(() => order.push("high"), { priority: 10 });
+
+  assertEquals(scheduler.running(), 1);
+  assertEquals(scheduler.pending(), 2);
+
+  releaseFirst.resolve();
+  await Promise.all([first, low, high]);
+
+  assertEquals(order, ["first", "high", "low"]);
+});
+
+Deno.test("AsyncScheduler aborts pending tasks", async () => {
+  const scheduler = new AsyncScheduler({ concurrency: 1 });
+  const releaseFirst = deferred<void>();
+  const controller = new AbortController();
+  let ran = false;
+
+  const first = scheduler.run(() => releaseFirst.promise);
+  const second = scheduler.run(() => {
+    ran = true;
+  }, { signal: controller.signal }).catch((error) => error);
+
+  assertEquals(scheduler.pending(), 1);
+  controller.abort();
+  const error = await second;
+
+  assertEquals(error.name, "AbortError");
+  assertEquals(ran, false);
+  assertEquals(scheduler.pending(), 0);
+
+  releaseFirst.resolve();
+  await first;
+});
+
 Deno.test("MemoryStore implements the async store contract", async () => {
   const store = new MemoryStore<number>();
   await store.set("answer", 42);
@@ -136,4 +180,15 @@ class DeferredStore<T> extends MemoryStore<T> {
     this.#pendingGet = undefined;
     pending.resolve(value);
   }
+}
+
+function deferred<T>(): {
+  promise: Promise<T>;
+  resolve: (value: T | PromiseLike<T>) => void;
+} {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  const promise = new Promise<T>((done) => {
+    resolve = done;
+  });
+  return { promise, resolve };
 }
