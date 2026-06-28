@@ -15,7 +15,16 @@ export const defaultHealthSteps: readonly HealthStep[] = [
   { name: "public-api", command: ["deno", "check", "mod.ts"] },
   {
     name: "api-inventory",
-    command: ["deno", "task", "api-inventory", "--", "--check", "--quiet", "--fail-duplicates"],
+    command: [
+      "deno",
+      "task",
+      "api-inventory",
+      "--",
+      "--check",
+      "--quiet",
+      "--fail-duplicates",
+      "--min-doc-coverage=0.09",
+    ],
   },
   { name: "app-shell", command: ["deno", "check", "examples/app_shell.ts"] },
   { name: "visualization-app", command: ["deno", "task", "viz:check"] },

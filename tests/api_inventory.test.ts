@@ -41,6 +41,7 @@ Deno.test("parseApiSymbols extracts public declarations and local named exports"
     parseApiSymbols(
       [
         `export class Button {}`,
+        `/** Button configuration. */`,
         `export interface ButtonOptions {}`,
         `export type ButtonState = "base";`,
         `export const buttonKinds = [];`,
@@ -55,15 +56,39 @@ Deno.test("parseApiSymbols extracts public declarations and local named exports"
       "src/components/button.ts",
     ),
     [
-      { module: "src/components/button.ts", name: "Button", kind: "class", typeOnly: false },
-      { module: "src/components/button.ts", name: "buttonKinds", kind: "const", typeOnly: false },
-      { module: "src/components/button.ts", name: "ButtonMode", kind: "enum", typeOnly: false },
-      { module: "src/components/button.ts", name: "ButtonOptions", kind: "interface", typeOnly: true },
-      { module: "src/components/button.ts", name: "ButtonState", kind: "type", typeOnly: true },
-      { module: "src/components/button.ts", name: "exposedInternal", kind: "variable", typeOnly: false },
-      { module: "src/components/button.ts", name: "ExposedType", kind: "type", typeOnly: true },
-      { module: "src/components/button.ts", name: "mutableButton", kind: "variable", typeOnly: false },
-      { module: "src/components/button.ts", name: "renderButton", kind: "function", typeOnly: false },
+      { module: "src/components/button.ts", name: "Button", kind: "class", typeOnly: false, documented: false },
+      { module: "src/components/button.ts", name: "buttonKinds", kind: "const", typeOnly: false, documented: false },
+      { module: "src/components/button.ts", name: "ButtonMode", kind: "enum", typeOnly: false, documented: false },
+      {
+        module: "src/components/button.ts",
+        name: "ButtonOptions",
+        kind: "interface",
+        typeOnly: true,
+        documented: true,
+      },
+      { module: "src/components/button.ts", name: "ButtonState", kind: "type", typeOnly: true, documented: false },
+      {
+        module: "src/components/button.ts",
+        name: "exposedInternal",
+        kind: "variable",
+        typeOnly: false,
+        documented: false,
+      },
+      { module: "src/components/button.ts", name: "ExposedType", kind: "type", typeOnly: true, documented: false },
+      {
+        module: "src/components/button.ts",
+        name: "mutableButton",
+        kind: "variable",
+        typeOnly: false,
+        documented: false,
+      },
+      {
+        module: "src/components/button.ts",
+        name: "renderButton",
+        kind: "function",
+        typeOnly: false,
+        documented: false,
+      },
     ],
   );
 });
@@ -100,9 +125,14 @@ Deno.test("createApiInventory crawls local re-export modules and formats results
   ]);
   assertEquals(inventory.exportCount, 5);
   assertEquals(inventory.symbolCount, 2);
+  assertEquals(inventory.documentedSymbolCount, 0);
+  assertEquals(inventory.undocumentedSymbolCount, 2);
+  assertEquals(inventory.documentationCoverage, 0);
   assertEquals(inventory.duplicateSymbols, {});
   assertEquals(inventorySucceeded(inventory), true);
+  assertEquals(inventorySucceeded(inventory, { minDocumentationCoverage: 0.1 }), false);
   assertEquals(formatApiInventory(inventory).includes("Exported symbols: 2"), true);
+  assertEquals(formatApiInventory(inventory).includes("Documentation coverage: 0.0%"), true);
   assertEquals(formatApiInventory(inventory).includes("| `src/components/mod.ts` | 1 | 0 | none |"), true);
 });
 

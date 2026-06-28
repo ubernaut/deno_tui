@@ -20,6 +20,7 @@ export interface ApiSymbolDeclaration {
   name: string;
   kind: ApiSymbolKind;
   typeOnly: boolean;
+  documented: boolean;
 }
 
 export interface ApiModuleInventory {
@@ -34,6 +35,9 @@ export interface ApiInventory {
   modules: ApiModuleInventory[];
   exportCount: number;
   symbolCount: number;
+  documentedSymbolCount: number;
+  undocumentedSymbolCount: number;
+  documentationCoverage: number;
   duplicateSymbols: Record<string, string[]>;
   missingTargets: string[];
 }
@@ -46,6 +50,7 @@ export interface ApiInventoryOptions {
 
 export interface ApiInventorySuccessOptions {
   failDuplicates?: boolean;
+  minDocumentationCoverage?: number;
 }
 
 export function parseApiExports(source: string, module: string): ApiExportDeclaration[] {
@@ -80,6 +85,7 @@ export function parseApiSymbols(source: string, module: string): ApiSymbolDeclar
       name,
       kind,
       typeOnly: kind === "interface" || kind === "type",
+      documented: hasLeadingJSDoc(source, match.index ?? 0),
     });
   }
 
@@ -92,6 +98,7 @@ export function parseApiSymbols(source: string, module: string): ApiSymbolDeclar
         name: parsed.name,
         kind: parsed.typeOnly ? "type" : "variable",
         typeOnly: parsed.typeOnly,
+        documented: hasLeadingJSDoc(source, match.index ?? 0),
       });
     }
   }
@@ -141,11 +148,19 @@ export async function createApiInventory(
 
   const sortedModules = modules.sort((left, right) => left.module.localeCompare(right.module));
   const missingTargets = [...new Set(modules.flatMap((module) => module.missingTargets))].sort();
+  const symbolCount = modules.reduce((total, module) => total + module.symbols.length, 0);
+  const documentedSymbolCount = modules.reduce(
+    (total, module) => total + module.symbols.filter((symbol) => symbol.documented).length,
+    0,
+  );
   return {
     entrypoint: normalizeModulePath(entrypoint),
     modules: sortedModules,
     exportCount: modules.reduce((total, module) => total + module.exports.length, 0),
-    symbolCount: modules.reduce((total, module) => total + module.symbols.length, 0),
+    symbolCount,
+    documentedSymbolCount,
+    undocumentedSymbolCount: symbolCount - documentedSymbolCount,
+    documentationCoverage: symbolCount === 0 ? 1 : documentedSymbolCount / symbolCount,
     duplicateSymbols: duplicateApiSymbols(sortedModules),
     missingTargets,
   };
@@ -159,6 +174,8 @@ export function formatApiInventory(inventory: ApiInventory): string {
     `Modules: ${inventory.modules.length}`,
     `Re-export declarations: ${inventory.exportCount}`,
     `Exported symbols: ${inventory.symbolCount}`,
+    `Documented symbols: ${inventory.documentedSymbolCount}`,
+    `Documentation coverage: ${formatPercent(inventory.documentationCoverage)}`,
     `Duplicate symbols: ${Object.keys(inventory.duplicateSymbols).length}`,
     `Missing targets: ${inventory.missingTargets.length}`,
     ``,
@@ -189,7 +206,8 @@ export function inventorySucceeded(
   options: ApiInventorySuccessOptions = {},
 ): boolean {
   return inventory.missingTargets.length === 0 &&
-    (!(options.failDuplicates ?? false) || Object.keys(inventory.duplicateSymbols).length === 0);
+    (!(options.failDuplicates ?? false) || Object.keys(inventory.duplicateSymbols).length === 0) &&
+    inventory.documentationCoverage >= (options.minDocumentationCoverage ?? 0);
 }
 
 function parseExportNames(source: string, typeOnly: boolean): string[] {
@@ -247,6 +265,19 @@ function duplicateApiSymbols(modules: readonly ApiModuleInventory[]): Record<str
   return duplicates;
 }
 
+function hasLeadingJSDoc(source: string, index: number): boolean {
+  const prefix = source.slice(0, index).trimEnd();
+  if (!prefix.endsWith("*/")) return false;
+  const start = prefix.lastIndexOf("/**");
+  if (start < 0) return false;
+  const between = prefix.slice(start + 3, -2);
+  return !between.includes("*/");
+}
+
+function formatPercent(value: number): string {
+  return `${(value * 100).toFixed(1)}%`;
+}
+
 function normalizeModuleTarget(module: string, target: string): string {
   if (!target.startsWith(".")) return target;
   return normalizeModulePath(joinPath(dirname(module), target));
@@ -300,6 +331,7 @@ if (import.meta.main) {
   const check = Deno.args.includes("--check");
   const quiet = Deno.args.includes("--quiet");
   const failDuplicates = Deno.args.includes("--fail-duplicates");
+  const minDocumentationCoverage = parseMinimumDocumentationCoverage(Deno.args);
   const entrypoint = Deno.args.find((arg) => !arg.startsWith("--")) ?? "mod.ts";
   const inventory = await createApiInventory(entrypoint);
 
@@ -311,7 +343,16 @@ if (import.meta.main) {
     console.log(formatApiInventory(inventory));
   }
 
-  if (check && !inventorySucceeded(inventory, { failDuplicates })) {
+  if (check && !inventorySucceeded(inventory, { failDuplicates, minDocumentationCoverage })) {
     Deno.exit(1);
   }
+}
+
+function parseMinimumDocumentationCoverage(args: readonly string[]): number | undefined {
+  const prefix = "--min-doc-coverage=";
+  const match = args.find((arg) => arg.startsWith(prefix));
+  if (!match) return undefined;
+  const raw = Number(match.slice(prefix.length));
+  if (!Number.isFinite(raw)) return undefined;
+  return raw > 1 ? raw / 100 : Math.max(0, raw);
 }
