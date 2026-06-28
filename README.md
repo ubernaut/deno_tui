@@ -221,8 +221,32 @@ Responsive helpers are also exported for common app shell layout:
 - `insetRect()`
 - `splitRect()`
 - `dockRect()`
+- `resolveLayoutRecipe()`
+- `layoutRecipeSlots()`
 - `splitPaneRects()`
 - `resizeSplitPane()`
+
+`resolveLayoutRecipe()` layers named app-shell regions over those primitives. Define breakpoint-specific trees with
+`split`, `dock`, and leaf `id` nodes, then pass the resulting rectangles directly to components:
+
+```ts
+const shell = resolveLayoutRecipe(tui.rectangle.value, {
+  breakpoints: [{ id: "compact" }, { id: "wide", minWidth: 100 }],
+  fallback: "compact",
+  layouts: {
+    compact: { id: "main", inset: 1 },
+    wide: {
+      split: "row",
+      ratio: 0.25,
+      gap: 1,
+      first: { id: "nav", minWidth: 16 },
+      second: { id: "main" },
+    },
+  },
+});
+
+const mainRect = shell.rects.main;
+```
 
 ## App Primitives
 
