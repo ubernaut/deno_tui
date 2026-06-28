@@ -163,6 +163,16 @@ export function neonSuiteSummary(source: "opentui" | "web" | "extended" = "exten
   };
 }
 
+export function formatNeonSuiteAlert(
+  summary: Pick<ReturnType<typeof neonSuiteSummary>, "count" | "threeCount">,
+  width = 48,
+): string {
+  if (width < 16) return `${summary.count}/${summary.threeCount} 3D`;
+  if (width < 24) return `${summary.count} demos`;
+  if (width < 40) return `${summary.count} demos / ${summary.threeCount} 3D`;
+  return `${summary.count} DEMOS / ${summary.threeCount} THREE.JS SCENES`;
+}
+
 export function fitText(text: string, width: number): string {
   if (width <= 0) return "";
   return text.length <= width ? text : `${text.slice(0, Math.max(0, width - 1))}…`;

@@ -164,6 +164,9 @@ const minimized = new Signal<Record<WindowId, boolean>>({
 const commandLog = new Signal<string[]>(["ready: API workbench mounted"], { deepObserve: true });
 const lineSignals: Signal<string>[] = [];
 let hitTargets: Array<{ rect: Rectangle; action: HitAction }> = [];
+let lastVisibleWindow: WindowId | null = null;
+let lastWorkspaceWidth = 0;
+let lastWorkspaceHeight = 0;
 type Frame = string[][];
 
 const menu = new MenuBarController({
@@ -437,6 +440,7 @@ function renderWorkspace(frame: Frame): void {
   const layout = workspaceLayout({ column: 0, row: 0, width: Math.max(1, bounds.width - 1), height: bounds.height });
   workspaceScroll.setViewportSize(layout.bounds.width, bounds.height);
   workspaceScroll.setContentSize(layout.bounds.width, layout.contentHeight);
+  ensureActiveWindowVisible(layout, bounds.height);
   const offset = workspaceScroll.offset.peek().rows;
   const virtual: Frame = Array.from({ length: Math.max(bounds.height, layout.contentHeight) }, () => []);
   fillRect(virtual, layout.bounds, theme().backgroundSoft);
@@ -1036,6 +1040,35 @@ function renderWorkspaceScrollbar(frame: Frame, bounds: Rectangle, contentHeight
       column,
       paint(scrollbarGlyph(row, thumb), { fg: t.accent, bg: t.backgroundSoft, bold: true }),
     );
+  }
+}
+
+function ensureActiveWindowVisible(
+  layout: { bounds: Rectangle; contentHeight: number; rects: Map<WindowId, Rectangle> },
+  viewportHeight: number,
+): void {
+  const active = activeWindow.peek();
+  const activeRect = layout.rects.get(active);
+  const workspaceChanged = lastWorkspaceWidth !== layout.bounds.width || lastWorkspaceHeight !== viewportHeight;
+  const activeChanged = lastVisibleWindow !== active;
+  if (!activeRect || (!activeChanged && !workspaceChanged)) return;
+
+  lastVisibleWindow = active;
+  lastWorkspaceWidth = layout.bounds.width;
+  lastWorkspaceHeight = viewportHeight;
+
+  if (layout.contentHeight <= viewportHeight) {
+    workspaceScroll.scrollTo(0, 0);
+    return;
+  }
+
+  const offset = workspaceScroll.offset.peek().rows;
+  const top = activeRect.row;
+  const bottom = activeRect.row + activeRect.height;
+  if (top < offset) {
+    workspaceScroll.scrollTo(0, top);
+  } else if (bottom > offset + viewportHeight) {
+    workspaceScroll.scrollTo(0, bottom - viewportHeight);
   }
 }
 

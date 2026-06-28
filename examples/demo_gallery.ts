@@ -5,9 +5,11 @@ import {
   createTerminalPlan,
   createThemeProvider,
   createThemeProviderReport,
+  createThemeRegistry,
   detectRuntimeCapabilities,
   detectTerminalCapabilities,
   formatTerminalPlan,
+  grWizardThemePacks,
   summarizeRuntimeCapabilities,
   summarizeTerminalCapabilities,
 } from "../mod.ts";
@@ -19,9 +21,38 @@ const terminalPlan = createTerminalPlan(terminal);
 const launchers = createVisualizationLaunchReport();
 const components = createComponentCatalogReport();
 const renderers = createRuntimeRendererBackendCatalogReport({ capabilities: runtime });
-const themeReport = createThemeProviderReport(createThemeProvider(), {
-  preview: { tokens: ["foreground", "accent", "success"], components: ["panel", "button"], states: ["base"] },
-});
+const themeReport = createThemeProviderReport(
+  createThemeProvider({
+    registry: createThemeRegistry(grWizardThemePacks),
+    activeId: "grwizard-unit01",
+    layers: [
+      {
+        id: "focus-rings",
+        label: "Focus Rings",
+        options: {
+          components: {
+            Button: { variants: { primary: { focused: "accent", active: "success" } } },
+            DataTable: { variants: { selected: { active: "accent" } } },
+          },
+        },
+      },
+      {
+        id: "review-states",
+        label: "Review States",
+        enabled: false,
+        options: {
+          components: {
+            Badge: { variants: { review: { base: "warning" } } },
+            StatusBar: { variants: { review: { active: "warning" } } },
+          },
+        },
+      },
+    ],
+  }),
+  {
+    preview: { tokens: ["foreground", "accent", "success"], components: ["panel", "button"], states: ["base"] },
+  },
+);
 const plugins = createAppPluginDefinitionRegistry([
   { id: "shell", label: "Shell Pack", tags: ["app", "routes"], routes: [{ id: "home", title: "Home" }] },
   { id: "visualization", label: "Visualization Pack", tags: ["three", "runtime"], commands: [] },
