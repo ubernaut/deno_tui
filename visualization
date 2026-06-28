@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(dirname "$0")"
+
+target="${1:-showcase}"
+if [ "$#" -gt 0 ]; then
+  shift
+fi
+
+case "$target" in
+  showcase|demo)
+    task="showcase"
+    ;;
+  polygons|polygon|geometry|three|three-ascii|ascii)
+    task="three-ascii"
+    ;;
+  monitor|system-monitor|system|viz)
+    task="viz"
+    ;;
+  -h|--help|help)
+    printf '%s\n' \
+      "usage: ./visualization [showcase|polygons|monitor] [args...]" \
+      "" \
+      "  showcase  full widget showcase (default)" \
+      "  polygons  standalone three.js ASCII geometry demo" \
+      "            pass --no-controls to start with its control panel hidden" \
+      "  monitor   system monitor visualization dashboard"
+    exit 0
+    ;;
+  *)
+    echo "unknown visualization: $target" >&2
+    echo "usage: ./visualization [showcase|polygons|monitor] [args...]" >&2
+    exit 64
+    ;;
+esac
+
+if command -v deno >/dev/null 2>&1; then
+  exec deno task "$task" "$@"
+fi
+
+if [ -x "$HOME/.deno/bin/deno" ]; then
+  exec "$HOME/.deno/bin/deno" task "$task" "$@"
+fi
+
+echo "deno was not found. Install Deno or add $HOME/.deno/bin to PATH." >&2
+exit 127

@@ -43,6 +43,7 @@ function renderThreeFallback(visualizationId: SlotConfig["visualizationId"]) {
     ascii: {
       preset: "opentui-blocks",
       border: "sharp",
+      terminalGlyphStyle: "blocks",
       terminalEdgeBias: 1.45,
       edgeThreshold: 14,
       normalThreshold: 0.24,

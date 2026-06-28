@@ -1,8 +1,5 @@
 import { clamp, formatBytes, formatDuration, formatPercent, formatRate } from "./styles.ts";
-import {
-  demos as neonDemos,
-  formatCountdown as neonFormatCountdown,
-} from "../../neon-exodus/opentui-neon-exodus/src/theme.ts";
+import { demos as neonDemos, formatCountdown as neonFormatCountdown } from "./neon_theme.ts";
 import type {
   Accent,
   PanelRender,
@@ -41,6 +38,7 @@ const neonThreeVisualizationIds = [
   "three-capture",
   "three-mapslab",
   "three-solenoid",
+  "three-ascii-studio",
 ] as const;
 
 const neonVisualizationIds = [
@@ -158,6 +156,8 @@ export function renderVisualization(context: RenderContext): PanelRender {
         return renderThreeScene(context, "mapslab", descriptor.accent);
       case "three-solenoid":
         return renderThreeScene(context, "solenoid", descriptor.accent);
+      case "three-ascii-studio":
+        return renderThreeScene(context, "studio", descriptor.accent);
       case "cpu-monitor":
         return renderCpuMonitor(context);
       case "cpu-legend":
@@ -589,6 +589,8 @@ function renderThreeFallbackBody(context: RenderContext, drive: VisualizationDri
         return heatmap(width, chartHeight, drive, THREE_FALLBACK_BLOCKS);
       case "mapslab":
         return routeBoard(width, chartHeight, drive, THREE_FALLBACK_BLOCKS);
+      case "studio":
+        return harmonicField(width, chartHeight, drive, "◆");
     }
   })();
 
@@ -860,6 +862,8 @@ function modeLabel(mode: ThreeSceneMode) {
       return "MAP SLAB";
     case "solenoid":
       return "SOLENOID";
+    case "studio":
+      return "ACEROLA";
   }
 }
 
@@ -1011,6 +1015,8 @@ function modeTwist(mode: ThreeSceneMode) {
       return { phase: 17, speed: 0.07, offset: 0.14, lift: 0.58 };
     case "solenoid":
       return { phase: 21, speed: 0.14, offset: 0.22, lift: 0.28 };
+    case "studio":
+      return { phase: 25, speed: 0.09, offset: 0.3, lift: 0.2 };
   }
 }
 

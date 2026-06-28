@@ -850,6 +850,7 @@ function renderVisualizationBody(
     ascii: {
       preset: "sharp",
       border: "sharp",
+      terminalGlyphStyle: "blocks",
       terminalEdgeBias: 0,
       edgeThreshold: 0.46,
       normalThreshold: 0.5,

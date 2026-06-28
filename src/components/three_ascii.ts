@@ -3,6 +3,7 @@ import type { Camera, Scene } from "npm:three@0.183.2";
 import { Component, type ComponentOptions } from "../component.ts";
 import { ThreeAsciiObject } from "../canvas/three_ascii.ts";
 import type { AcerolaAsciiNodeOptions } from "../three_ascii/AcerolaAsciiNode.ts";
+import type { TerminalGlyphStyle } from "../three_ascii/glyphs.ts";
 
 export interface ThreeAsciiOptions extends ComponentOptions {
   scene: Scene;
@@ -10,6 +11,7 @@ export interface ThreeAsciiOptions extends ComponentOptions {
   frameInterval?: number;
   pixelAspectRatio?: number;
   terminalEdgeBias?: number;
+  terminalGlyphStyle?: TerminalGlyphStyle;
   effect?: AcerolaAsciiNodeOptions;
   onFrame?: (deltaTime: number) => void | Promise<void>;
 }
@@ -22,6 +24,7 @@ export class ThreeAscii extends Component {
   readonly frameInterval?: number;
   readonly pixelAspectRatio?: number;
   readonly terminalEdgeBias?: number;
+  readonly terminalGlyphStyle?: TerminalGlyphStyle;
   readonly effect?: AcerolaAsciiNodeOptions;
   readonly onFrame?: (deltaTime: number) => void | Promise<void>;
 
@@ -32,6 +35,7 @@ export class ThreeAscii extends Component {
     this.frameInterval = options.frameInterval;
     this.pixelAspectRatio = options.pixelAspectRatio;
     this.terminalEdgeBias = options.terminalEdgeBias;
+    this.terminalGlyphStyle = options.terminalGlyphStyle;
     this.effect = options.effect;
     this.onFrame = options.onFrame;
   }
@@ -50,6 +54,7 @@ export class ThreeAscii extends Component {
       frameInterval: this.frameInterval,
       pixelAspectRatio: this.pixelAspectRatio,
       terminalEdgeBias: this.terminalEdgeBias,
+      terminalGlyphStyle: this.terminalGlyphStyle,
       effect: this.effect,
       onFrame: this.onFrame,
     });

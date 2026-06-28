@@ -127,7 +127,7 @@ export class ProgressBar extends Box {
     this.charMap = signalify(charMap ?? progressBarCharMap);
   }
 
-  draw(): void {
+  override draw(): void {
     super.draw();
 
     if (this.smooth.peek()) {
@@ -174,7 +174,7 @@ export class ProgressBar extends Box {
     }
   }
 
-  interact(method: "mouse" | "keyboard"): void {
+  override interact(method: "mouse" | "keyboard"): void {
     const interactionInterval = Date.now() - this.lastInteraction.time;
 
     this.state.value = this.state.peek() === "focused" && (interactionInterval < 500 || method === "keyboard")

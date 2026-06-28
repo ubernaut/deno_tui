@@ -203,7 +203,7 @@ export class TextBox extends Box {
     );
   }
 
-  draw(): void {
+  override draw(): void {
     super.draw();
 
     const { canvas } = this.tui;
@@ -247,7 +247,7 @@ export class TextBox extends Box {
     cursor.draw();
   }
 
-  interact(method: "keyboard" | "mouse"): void {
+  override interact(method: "keyboard" | "mouse"): void {
     this.state.value = "focused";
     super.interact(method);
   }

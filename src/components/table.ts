@@ -208,7 +208,7 @@ export class Table extends Component {
     });
   }
 
-  draw(): void {
+  override draw(): void {
     super.draw();
 
     const { canvas } = this.tui;
@@ -350,7 +350,7 @@ export class Table extends Component {
     spacer.draw();
   }
 
-  interact(method: "mouse" | "keyboard"): void {
+  override interact(method: "mouse" | "keyboard"): void {
     const interactionInterval = Date.now() - this.lastInteraction.time;
 
     this.state.value = this.state.peek() === "focused" && (interactionInterval < 500 || method === "keyboard")

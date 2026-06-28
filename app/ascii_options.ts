@@ -1,4 +1,5 @@
 import type { AcerolaAsciiNodeOptions } from "../src/three_ascii/AcerolaAsciiNode.ts";
+import { TERMINAL_GLYPH_STYLES, type TerminalGlyphStyle } from "../src/three_ascii/glyphs.ts";
 import {
   ASCII_DEMO_PRESETS,
   type AsciiDemoPreset,
@@ -22,6 +23,7 @@ export function buildAsciiOptionsFromPreset(presetId: string, border: BorderMode
   return {
     preset: preset.id,
     border,
+    terminalGlyphStyle: preset.terminalGlyphStyle ?? "blocks",
     terminalEdgeBias: preset.terminalEdgeBias ?? 1,
     edgeThreshold: effect.edgeThreshold ?? 10,
     normalThreshold: effect.normalThreshold ?? 0.18,
@@ -35,6 +37,17 @@ export function buildAsciiOptionsFromPreset(presetId: string, border: BorderMode
     fill: effect.fill ?? true,
     invertLuminance: effect.invertLuminance ?? false,
   };
+}
+
+export function terminalGlyphStyleLabel(style: TerminalGlyphStyle) {
+  switch (style) {
+    case "blocks":
+      return "Blocks";
+    case "glyphs":
+      return "Glyphs";
+    case "mixed":
+      return "Mixed";
+  }
 }
 
 export function applyAsciiPreset(target: AsciiOptions, presetId: string) {
@@ -63,18 +76,20 @@ export function asciiEffectOptions(options: AsciiOptions): AcerolaAsciiNodeOptio
   };
 }
 
-export function asciiControlValues(key: keyof Pick<
-  AsciiOptions,
-  | "edgeThreshold"
-  | "normalThreshold"
-  | "depthThreshold"
-  | "exposure"
-  | "attenuation"
-  | "blendWithBase"
-  | "depthFalloff"
-  | "depthOffset"
-  | "terminalEdgeBias"
->) {
+export function asciiControlValues(
+  key: keyof Pick<
+    AsciiOptions,
+    | "edgeThreshold"
+    | "normalThreshold"
+    | "depthThreshold"
+    | "exposure"
+    | "attenuation"
+    | "blendWithBase"
+    | "depthFalloff"
+    | "depthOffset"
+    | "terminalEdgeBias"
+  >,
+) {
   switch (key) {
     case "edgeThreshold":
       return [4, 6, 8, 10, 12, 14, 16, 18];
@@ -123,3 +138,4 @@ export function formatAsciiControlValue(
 }
 
 export { ASCII_DEMO_PRESETS };
+export { TERMINAL_GLYPH_STYLES };

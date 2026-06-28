@@ -5,12 +5,14 @@ import { Computed, Effect, Signal } from "../src/signals/mod.ts";
 import { probeCompatibleWebGPUDevice } from "../src/three_ascii/webgpu_compat.ts";
 import { Tui } from "../src/tui.ts";
 import {
-  ASCII_DEMO_PRESETS,
   applyAsciiPreset,
+  ASCII_DEMO_PRESETS,
   asciiControlValues,
   asciiPresetLabel,
   createDefaultAsciiOptions,
   formatAsciiControlValue,
+  TERMINAL_GLYPH_STYLES,
+  terminalGlyphStyleLabel,
 } from "./ascii_options.ts";
 import { AudioRegistry, discoverAudioSources } from "./audio.ts";
 import { detectViewportMode, resolveResponsiveLayout, slotRect, visibleSlotIds } from "./layout.ts";
@@ -37,8 +39,8 @@ import {
   type Rect,
   type SlotConfig,
   type SlotId,
-  type ViewportMode,
   slotIds,
+  type ViewportMode,
 } from "./types.ts";
 import { renderVisualization, visualizations } from "./visualizations.ts";
 
@@ -351,14 +353,17 @@ for (const slotId of slotIds) {
   });
 
   slotPanels.set(slotId, panel);
-  slotScenes.set(slotId, new ThreePanelView({
-    canvas: tui.canvas,
-    rectangle: panel.bodyRect,
-    scene: new Computed(() => render.value.three ?? null),
-    ascii: new Computed(() => slots.value[slotId].ascii),
-    enabled: threeAsciiAvailable,
-    zIndex: 11,
-  }));
+  slotScenes.set(
+    slotId,
+    new ThreePanelView({
+      canvas: tui.canvas,
+      rectangle: panel.bodyRect,
+      scene: new Computed(() => render.value.three ?? null),
+      ascii: new Computed(() => slots.value[slotId].ascii),
+      enabled: threeAsciiAvailable,
+      zIndex: 11,
+    }),
+  );
 }
 
 const menuOverlay = new BoxObject({
@@ -681,63 +686,69 @@ function applyMenuSelection(currentMenu: MenuState, itemId: string) {
           }
           return;
         case 1:
+          if (TERMINAL_GLYPH_STYLES.includes(itemId as typeof TERMINAL_GLYPH_STYLES[number])) {
+            slot.ascii.preset = "custom";
+            slot.ascii.terminalGlyphStyle = itemId as typeof TERMINAL_GLYPH_STYLES[number];
+          }
+          return;
+        case 2:
           if (borderModes.includes(itemId as BorderMode)) {
             slot.ascii.border = itemId as BorderMode;
           }
           return;
-        case 2:
+        case 3:
           slot.ascii.preset = "custom";
           slot.ascii.edges = itemId === "on";
           return;
-        case 3:
+        case 4:
           slot.ascii.preset = "custom";
           slot.ascii.fill = itemId === "on";
           return;
-        case 4:
+        case 5:
           slot.ascii.preset = "custom";
           slot.ascii.invertLuminance = itemId === "on";
           return;
-        case 5:
+        case 6:
           slot.ascii.preset = "custom";
           slot.ascii.edgeThreshold = Number(itemId);
           return;
-        case 6:
+        case 7:
           slot.ascii.preset = "custom";
           slot.ascii.normalThreshold = Number(itemId);
           return;
-        case 7:
+        case 8:
           slot.ascii.preset = "custom";
           slot.ascii.depthThreshold = Number(itemId);
           return;
-        case 8:
+        case 9:
           slot.ascii.preset = "custom";
           slot.ascii.exposure = Number(itemId);
           return;
-        case 9:
+        case 10:
           slot.ascii.preset = "custom";
           slot.ascii.attenuation = Number(itemId);
           return;
-        case 10:
+        case 11:
           slot.ascii.preset = "custom";
           slot.ascii.blendWithBase = Number(itemId);
           return;
-        case 11:
+        case 12:
           slot.ascii.preset = "custom";
           slot.ascii.depthFalloff = Number(itemId);
           return;
-        case 12:
+        case 13:
           slot.ascii.preset = "custom";
           slot.ascii.depthOffset = Number(itemId);
           return;
-        case 13:
+        case 14:
           slot.ascii.preset = "custom";
           slot.ascii.terminalEdgeBias = Number(itemId);
           return;
-        case 14:
+        case 15:
           slot.cycleEnabled = itemId === "on";
           cycleClock.set(slot.id, Date.now());
           return;
-        case 15:
+        case 16:
           slot.cycleIntervalMs = Number(itemId);
           cycleClock.set(slot.id, Date.now());
           return;
@@ -881,9 +892,7 @@ function buildMenuModel(
     }];
     const responsiveLine = currentLayout === requestedLayout
       ? `VIEW ${currentViewportMode.toUpperCase()} / ACTIVE ${currentLayout.toUpperCase()}`
-      : `VIEW ${currentViewportMode.toUpperCase()} / ACTIVE ${currentLayout.toUpperCase()} / REQUESTED ${
-        requestedLayout.toUpperCase()
-      }`;
+      : `VIEW ${currentViewportMode.toUpperCase()} / ACTIVE ${currentLayout.toUpperCase()} / REQUESTED ${requestedLayout.toUpperCase()}`;
     return decorateMenu(currentMenu, {
       title: "Layout Select",
       accent: "signal",
@@ -948,6 +957,14 @@ function buildMenuModel(
         id: preset.id,
         label: preset.label,
         selected: targetSlot.ascii.preset === preset.id,
+      })),
+    },
+    {
+      title: "ASCII Style",
+      items: TERMINAL_GLYPH_STYLES.map((style) => ({
+        id: style,
+        label: terminalGlyphStyleLabel(style),
+        selected: targetSlot.ascii.terminalGlyphStyle === style,
       })),
     },
     {
@@ -1073,7 +1090,9 @@ function buildMenuModel(
     accent: "violet",
     descriptionLines: [
       `TARGET ${slotLabel(currentMenu.targetSlotId).toUpperCase()}`,
-      `ASCII ${asciiPresetLabel(targetSlot.ascii.preset).toUpperCase()} / BORDER ${targetSlot.ascii.border.toUpperCase()}`,
+      `ASCII ${
+        asciiPresetLabel(targetSlot.ascii.preset).toUpperCase()
+      } / BORDER ${targetSlot.ascii.border.toUpperCase()}`,
       `EDGE ${targetSlot.ascii.edgeThreshold.toFixed(1)} / EXP ${targetSlot.ascii.exposure.toFixed(2)} / BLEND ${
         targetSlot.ascii.blendWithBase.toFixed(2)
       }`,

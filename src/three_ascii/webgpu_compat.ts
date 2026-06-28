@@ -33,30 +33,7 @@ function ensureDeviceLostPromise(device: GPUDevice): GPUDevice {
 }
 
 function patchQueueWriteBuffer(device: GPUDevice): GPUDevice {
-  const queue = device.queue as GPUQueue & {
-    [WRITE_BUFFER_PATCHED]?: boolean;
-    writeBuffer: GPUQueue["writeBuffer"];
-  };
-
-  if (queue[WRITE_BUFFER_PATCHED]) {
-    return device;
-  }
-
-  const originalWriteBuffer = queue.writeBuffer.bind(queue);
-
-  queue.writeBuffer = ((buffer, bufferOffset, data, dataOffset, size) => {
-    if (size === undefined || !ArrayBuffer.isView(data)) {
-      return originalWriteBuffer(buffer, bufferOffset, data, dataOffset as never, size as never);
-    }
-
-    const view = data as ArrayBufferView & { BYTES_PER_ELEMENT: number };
-    const byteOffset = (dataOffset ?? 0) * view.BYTES_PER_ELEMENT;
-    const byteSize = size * view.BYTES_PER_ELEMENT;
-
-    return originalWriteBuffer(buffer, bufferOffset, data, byteOffset, byteSize);
-  }) as GPUQueue["writeBuffer"];
-
-  queue[WRITE_BUFFER_PATCHED] = true;
+  (device.queue as GPUQueue & { [WRITE_BUFFER_PATCHED]?: boolean })[WRITE_BUFFER_PATCHED] = true;
   return device;
 }
 

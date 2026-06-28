@@ -52,6 +52,7 @@ export class ThreePanelView {
           frameInterval: options.frameInterval ?? 1000 / 10,
           effect: asciiEffectOptions(options.ascii.peek()),
           terminalEdgeBias: options.ascii.peek().terminalEdgeBias,
+          terminalGlyphStyle: options.ascii.peek().terminalGlyphStyle,
           onFrame: () => {
             const latest = options.scene.peek();
             if (!latest) {
@@ -66,6 +67,7 @@ export class ThreePanelView {
 
       this.object.setEffectOptions(asciiEffectOptions(options.ascii.value));
       this.object.setTerminalEdgeBias(options.ascii.value.terminalEdgeBias);
+      this.object.setTerminalGlyphStyle(options.ascii.value.terminalGlyphStyle);
     });
   }
 

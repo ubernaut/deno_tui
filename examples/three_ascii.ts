@@ -27,7 +27,10 @@ import {
   ASCII_TOGGLE_CONTROLS,
   DEFAULT_ASCII_DEMO_EFFECT,
 } from "../src/three_ascii/demo_presets.ts";
+import { TERMINAL_GLYPH_STYLES, type TerminalGlyphStyle } from "../src/three_ascii/glyphs.ts";
 import { Computed, Signal, Tui } from "../mod.ts";
+
+const showControlsAtStartup = !Deno.args.some((arg) => arg === "--no-controls" || arg === "--hide-controls");
 
 const tui = new Tui({
   style: crayon.bgBlack,
@@ -121,7 +124,7 @@ new Text({
   zIndex: 2,
 });
 
-const menuVisible = new Signal(true);
+const menuVisible = new Signal(showControlsAtStartup);
 const selectedRow = new Signal(0);
 const menuWidth = 34;
 const panelOuterWidth = menuWidth + 2;
@@ -148,6 +151,7 @@ const ascii = new ThreeAscii({
   scene,
   camera,
   effect: { ...DEFAULT_ASCII_DEMO_EFFECT },
+  terminalGlyphStyle: "mixed",
   terminalEdgeBias: 1,
   onFrame: (deltaTime) => {
     stage.rotation.y += deltaTime * 0.22;
@@ -184,6 +188,11 @@ interface PresetRow {
   label: string;
 }
 
+interface GlyphStyleRow {
+  type: "glyphStyle";
+  label: string;
+}
+
 interface EdgeBiasRow {
   type: "terminalEdgeBias";
   label: string;
@@ -192,25 +201,28 @@ interface EdgeBiasRow {
   step: number;
 }
 
-type MenuRow = PresetRow | ToggleRow | NumericRow | EdgeBiasRow;
+type MenuRow = PresetRow | GlyphStyleRow | ToggleRow | NumericRow | EdgeBiasRow;
 
 const panelRows: readonly MenuRow[] = [
   { type: "preset", label: "Preset" },
+  { type: "glyphStyle", label: "Glyph style" },
   ...ASCII_TOGGLE_CONTROLS.map((control) => ({ type: "toggle", key: control.key, label: control.label }) as ToggleRow),
-  ...ASCII_NUMERIC_CONTROLS.map((control) => ({
-    type: "numeric",
-    key: control.key,
-    label: control.label,
-    min: control.min,
-    max: control.max,
-    step: control.step,
-    format: control.format,
-  }) as NumericRow),
+  ...ASCII_NUMERIC_CONTROLS.map((control) =>
+    ({
+      type: "numeric",
+      key: control.key,
+      label: control.label,
+      min: control.min,
+      max: control.max,
+      step: control.step,
+      format: control.format,
+    }) as NumericRow
+  ),
   { type: "terminalEdgeBias", label: "Terminal edge bias", min: 0.6, max: 1.8, step: 0.05 },
 ] as const;
 const menuLines = panelRows.map(() => new Signal(""));
-const menuSubtitle = new Signal("Arrows tune | 1-5 presets");
-const activePresetId = new Signal("balanced");
+const menuSubtitle = new Signal(`Arrows tune | 1-${ASCII_DEMO_PRESETS.length} presets`);
+const activePresetId = new Signal("mixed-best");
 
 const effectState = {
   edges: DEFAULT_ASCII_DEMO_EFFECT.edges ?? true,
@@ -226,6 +238,7 @@ const effectState = {
   depthOffset: DEFAULT_ASCII_DEMO_EFFECT.depthOffset ?? 110,
 };
 let terminalEdgeBias = 1;
+let terminalGlyphStyle: TerminalGlyphStyle = "mixed";
 
 const clamp = (value: number, min: number, max: number): number => Math.max(min, Math.min(max, value));
 
@@ -239,6 +252,11 @@ function applyEffectPatch(patch: Partial<typeof effectState>): void {
 function applyTerminalEdgeBias(value: number): void {
   terminalEdgeBias = clamp(value, 0.6, 1.8);
   getAsciiObject()?.setTerminalEdgeBias(terminalEdgeBias);
+}
+
+function applyTerminalGlyphStyle(style: TerminalGlyphStyle): void {
+  terminalGlyphStyle = style;
+  getAsciiObject()?.setTerminalGlyphStyle(style);
 }
 
 function applyPresetByIndex(index: number): void {
@@ -258,6 +276,7 @@ function applyPresetByIndex(index: number): void {
     depthOffset: nextEffect.depthOffset ?? effectState.depthOffset,
   });
   applyTerminalEdgeBias(preset.terminalEdgeBias ?? 1);
+  applyTerminalGlyphStyle(preset.terminalGlyphStyle ?? "blocks");
   activePresetId.value = preset.id;
   refreshMenu();
 }
@@ -270,8 +289,8 @@ function cyclePreset(delta: number): void {
 function refreshMenu(): void {
   const activePreset = ASCII_DEMO_PRESETS.find((preset) => preset.id === activePresetId.peek());
   menuSubtitle.value = activePreset
-    ? `${activePreset.label} | arrows | 1-5`
-    : "Custom | arrows | 1-5";
+    ? `${activePreset.label} | arrows | 1-${ASCII_DEMO_PRESETS.length}`
+    : `Custom | arrows | 1-${ASCII_DEMO_PRESETS.length}`;
 
   panelRows.forEach((row, index) => {
     const marker = selectedRow.peek() === index ? ">" : " ";
@@ -279,6 +298,8 @@ function refreshMenu(): void {
 
     if (row.type === "preset") {
       value = activePreset?.label ?? "Custom";
+    } else if (row.type === "glyphStyle") {
+      value = terminalGlyphStyle;
     } else if (row.type === "toggle") {
       value = effectState[row.key] ? "on" : "off";
     } else if (row.type === "numeric") {
@@ -305,6 +326,15 @@ function adjustSelected(delta: number): void {
 
   if (row.type === "toggle") {
     applyEffectPatch({ [row.key]: !effectState[row.key] } as Partial<typeof effectState>);
+    activePresetId.value = "";
+    refreshMenu();
+    return;
+  }
+
+  if (row.type === "glyphStyle") {
+    const currentIndex = TERMINAL_GLYPH_STYLES.indexOf(terminalGlyphStyle);
+    const nextIndex = (currentIndex + delta + TERMINAL_GLYPH_STYLES.length) % TERMINAL_GLYPH_STYLES.length;
+    applyTerminalGlyphStyle(TERMINAL_GLYPH_STYLES[nextIndex]);
     activePresetId.value = "";
     refreshMenu();
     return;
@@ -395,7 +425,7 @@ tui.on("keyPress", ({ key, ctrl, meta, shift }) => {
     return;
   }
 
-  if (key >= "1" && key <= "5") {
+  if (key >= "1" && key <= String(Math.min(ASCII_DEMO_PRESETS.length, 9))) {
     applyPresetByIndex(Number(key) - 1);
     return;
   }

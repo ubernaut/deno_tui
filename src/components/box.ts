@@ -25,7 +25,7 @@ import { Component } from "../component.ts";
 export class Box extends Component {
   declare drawnObjects: { box: BoxObject };
 
-  draw(): void {
+  override draw(): void {
     super.draw();
 
     const box = new BoxObject({

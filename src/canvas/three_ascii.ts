@@ -5,6 +5,7 @@ import { signalify } from "../utils/signals.ts";
 import type { Rectangle } from "../types.ts";
 import type { Camera, Scene } from "npm:three@0.183.2";
 import type { AcerolaAsciiNodeOptions } from "../three_ascii/AcerolaAsciiNode.ts";
+import type { TerminalGlyphStyle } from "../three_ascii/glyphs.ts";
 import { ThreeAsciiRenderer } from "../three_ascii/renderer.ts";
 
 export interface ThreeAsciiObjectOptions extends DrawObjectOptions {
@@ -14,6 +15,7 @@ export interface ThreeAsciiObjectOptions extends DrawObjectOptions {
   frameInterval?: number;
   pixelAspectRatio?: number;
   terminalEdgeBias?: number;
+  terminalGlyphStyle?: TerminalGlyphStyle;
   effect?: AcerolaAsciiNodeOptions;
   onFrame?: (deltaTime: number) => void | Promise<void>;
 }
@@ -42,6 +44,7 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
       rows: options.rectangle instanceof Signal ? options.rectangle.peek().height : options.rectangle.height,
       pixelAspectRatio: options.pixelAspectRatio,
       terminalEdgeBias: options.terminalEdgeBias,
+      terminalGlyphStyle: options.terminalGlyphStyle,
       effect: options.effect,
     });
     this.frameInterval = options.frameInterval ?? 1000 / 24;
@@ -118,6 +121,14 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
 
   setTerminalEdgeBias(value: number): void {
     this.renderer.setTerminalEdgeBias(value);
+  }
+
+  getTerminalGlyphStyle(): TerminalGlyphStyle {
+    return this.renderer.getTerminalGlyphStyle();
+  }
+
+  setTerminalGlyphStyle(value: TerminalGlyphStyle): void {
+    this.renderer.setTerminalGlyphStyle(value);
   }
 
   isOperational(): boolean {

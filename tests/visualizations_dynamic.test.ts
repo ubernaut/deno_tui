@@ -5,6 +5,7 @@ import type { RenderContext, SlotConfig, SourceFrame, SystemSnapshot } from "../
 const ascii = {
   preset: "opentui-blocks",
   border: "sharp" as const,
+  terminalGlyphStyle: "blocks" as const,
   terminalEdgeBias: 1.45,
   edgeThreshold: 14,
   normalThreshold: 0.24,

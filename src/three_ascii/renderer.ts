@@ -1,17 +1,9 @@
-import {
-  Camera,
-  Color,
-  PerspectiveCamera,
-  Scene,
-} from "npm:three@0.183.2";
+import { Camera, Color, PerspectiveCamera, Scene } from "npm:three@0.183.2";
 import { RenderPipeline, WebGPURenderer } from "npm:three@0.183.2/webgpu";
 import { pass } from "npm:three@0.183.2/tsl";
 
-import {
-  AcerolaAsciiNode,
-  type AcerolaAsciiNodeOptions,
-} from "./AcerolaAsciiNode.ts";
-import { TERMINAL_GLYPHS } from "./glyphs.ts";
+import { AcerolaAsciiNode, type AcerolaAsciiNodeOptions } from "./AcerolaAsciiNode.ts";
+import { ASCII_FILL_GLYPHS, EDGE_GLYPHS, FILL_GLYPHS, type TerminalGlyphStyle } from "./glyphs.ts";
 import { HeadlessCanvas } from "./headless_canvas.ts";
 import { loadAsciiLutTextures } from "./loadAsciiLuts.ts";
 import { getCompatibleWebGPUDevice } from "./webgpu_compat.ts";
@@ -27,6 +19,7 @@ const MIN_VISIBLE_LUMINANCE = 0.015;
 const RESET = "\x1b[0m";
 const GOHU_11_EDGE_SHAPE_MISMATCH = [0, 3, 10, 9] as const;
 const GOHU_11_FILL_GLYPH_COVERAGE = [0, 2, 4, 6, 9, 11, 13, 15, 18, 18] as const;
+const ASCII_FILL_GLYPH_COVERAGE = [0, 1, 2, 4, 6, 8, 10, 13, 16, 18] as const;
 
 const FILL_SHADER = /* wgsl */ `
 struct Params {
@@ -281,6 +274,7 @@ export interface ThreeAsciiRendererOptions {
   rows: number;
   pixelAspectRatio?: number;
   terminalEdgeBias?: number;
+  terminalGlyphStyle?: TerminalGlyphStyle;
   effect?: AcerolaAsciiNodeOptions;
 }
 
@@ -290,9 +284,7 @@ function colorValue(input: Color | string | number | undefined, fallback: number
 
 function linearToSrgb(value: number): number {
   const clamped = Math.max(0, Math.min(1, value));
-  return clamped <= 0.0031308
-    ? clamped * 12.92
-    : 1.055 * Math.pow(clamped, 1 / 2.4) - 0.055;
+  return clamped <= 0.0031308 ? clamped * 12.92 : 1.055 * Math.pow(clamped, 1 / 2.4) - 0.055;
 }
 
 function colorToBytes(color: Color): [number, number, number] {
@@ -319,8 +311,8 @@ function rgbToAnsiBackground(red: number, green: number, blue: number): string {
   return `\x1b[48;2;${red};${green};${blue}m`;
 }
 
-function clampGlyphIndex(index: number): number {
-  return Math.max(0, Math.min(TERMINAL_GLYPHS.length - 1, index));
+function fillBucketFromGlyphIndex(index: number): number {
+  return Math.max(0, Math.min(FILL_GLYPHS.length - 1, index - 5));
 }
 
 function clampUnit(value: number): number {
@@ -334,6 +326,72 @@ function fillCoverageForGohu11(fillGlyphIndex: number): number {
 
   const bucket = Math.max(0, Math.min(GOHU_11_FILL_GLYPH_COVERAGE.length - 1, fillGlyphIndex - 5));
   return GOHU_11_FILL_GLYPH_COVERAGE[bucket] / TILE_PIXEL_COUNT;
+}
+
+function fillCoverageForAscii(fillBucket: number): number {
+  const bucket = Math.max(0, Math.min(ASCII_FILL_GLYPH_COVERAGE.length - 1, fillBucket));
+  return ASCII_FILL_GLYPH_COVERAGE[bucket] / TILE_PIXEL_COUNT;
+}
+
+function pickMixedFillGlyph(fillGlyphIndex: number): string {
+  const bucket = fillBucketFromGlyphIndex(fillGlyphIndex);
+  const targetCoverage = fillCoverageForGohu11(fillGlyphIndex);
+  const candidates = [
+    ...FILL_GLYPHS.map((glyph, index) => ({
+      glyph,
+      coverage: (GOHU_11_FILL_GLYPH_COVERAGE[index] ?? 0) / TILE_PIXEL_COUNT,
+      index,
+      familyBias: 0,
+    })),
+    ...ASCII_FILL_GLYPHS.map((glyph, index) => ({
+      glyph,
+      coverage: fillCoverageForAscii(index),
+      index,
+      familyBias: 0.002,
+    })),
+  ];
+
+  return candidates.reduce((best, candidate) => {
+    const bestScore = Math.abs(best.coverage - targetCoverage) + Math.abs(best.index - bucket) * 0.001 +
+      best.familyBias;
+    const candidateScore = Math.abs(candidate.coverage - targetCoverage) +
+      Math.abs(candidate.index - bucket) * 0.001 +
+      candidate.familyBias;
+    return candidateScore < bestScore ? candidate : best;
+  }).glyph;
+}
+
+function terminalGlyphForCell(
+  style: TerminalGlyphStyle,
+  edgeGlyphIndex: number,
+  dominantCount: number,
+  totalCount: number,
+  secondCount: number,
+  fillGlyphIndex: number,
+  edgeBias: number,
+): string {
+  const edgeCandidate = shouldUseGohu11EdgeGlyph(
+    edgeGlyphIndex,
+    dominantCount,
+    totalCount,
+    secondCount,
+    fillGlyphIndex,
+    edgeBias,
+  );
+
+  if (edgeCandidate) {
+    return EDGE_GLYPHS[Math.max(0, Math.min(EDGE_GLYPHS.length - 1, edgeGlyphIndex))] ?? " ";
+  }
+
+  const bucket = fillBucketFromGlyphIndex(fillGlyphIndex);
+  switch (style) {
+    case "glyphs":
+      return ASCII_FILL_GLYPHS[bucket] ?? " ";
+    case "mixed":
+      return pickMixedFillGlyph(fillGlyphIndex);
+    default:
+      return FILL_GLYPHS[bucket] ?? " ";
+  }
 }
 
 function shouldUseGohu11EdgeGlyph(
@@ -382,6 +440,7 @@ export class ThreeAsciiRenderer {
   private readonly effectOptions: AcerolaAsciiNodeOptions;
   private readonly canvas: HeadlessCanvas;
   private terminalEdgeBias: number;
+  private terminalGlyphStyle: TerminalGlyphStyle;
 
   private initPromise?: Promise<void>;
   private renderer?: ThreeBackendRenderer;
@@ -412,6 +471,7 @@ export class ThreeAsciiRenderer {
     this.pixelAspectRatio = options.pixelAspectRatio ?? DEFAULT_PIXEL_ASPECT_RATIO;
     this.effectOptions = { ...options.effect };
     this.terminalEdgeBias = Math.max(0.5, options.terminalEdgeBias ?? DEFAULT_TERMINAL_EDGE_BIAS);
+    this.terminalGlyphStyle = options.terminalGlyphStyle ?? "blocks";
     this.canvas = new HeadlessCanvas(1, 1);
   }
 
@@ -461,6 +521,15 @@ export class ThreeAsciiRenderer {
 
   setTerminalEdgeBias(value: number): void {
     this.terminalEdgeBias = Math.max(0.5, value);
+    this.computeDirty = true;
+  }
+
+  getTerminalGlyphStyle(): TerminalGlyphStyle {
+    return this.terminalGlyphStyle;
+  }
+
+  setTerminalGlyphStyle(value: TerminalGlyphStyle): void {
+    this.terminalGlyphStyle = value;
     this.computeDirty = true;
   }
 
@@ -561,19 +630,15 @@ export class ThreeAsciiRenderer {
         const fillGlyphIndex = Math.round(fillGlyphs[index] ?? 0);
         const edgeOffset = index * 4;
         const edgeGlyphIndex = Math.round(edgeGlyphs[edgeOffset] ?? 0);
-        const glyphIndex = clampGlyphIndex(
-          shouldUseGohu11EdgeGlyph(
-            edgeGlyphIndex,
-            edgeGlyphs[edgeOffset + 1] ?? 0,
-            edgeGlyphs[edgeOffset + 2] ?? 0,
-            edgeGlyphs[edgeOffset + 3] ?? 0,
-            fillGlyphIndex,
-            this.terminalEdgeBias,
-          )
-            ? edgeGlyphIndex
-            : fillGlyphIndex,
+        const glyph = terminalGlyphForCell(
+          this.terminalGlyphStyle,
+          edgeGlyphIndex,
+          edgeGlyphs[edgeOffset + 1] ?? 0,
+          edgeGlyphs[edgeOffset + 2] ?? 0,
+          edgeGlyphs[edgeOffset + 3] ?? 0,
+          fillGlyphIndex,
+          this.terminalEdgeBias,
         );
-        const glyph = TERMINAL_GLYPHS[glyphIndex] ?? " ";
 
         const colorOffset = index * 4;
         const [foregroundRed, foregroundGreen, foregroundBlue] = linearRgbToBytes(

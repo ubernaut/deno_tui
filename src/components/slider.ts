@@ -120,7 +120,7 @@ export class Slider extends Box {
     });
   }
 
-  draw(): void {
+  override draw(): void {
     super.draw();
 
     const thumbRectangle = { column: 0, row: 0, width: 0, height: 0 };
@@ -168,7 +168,7 @@ export class Slider extends Box {
     thumb.draw();
   }
 
-  interact(method: "keyboard" | "mouse"): void {
+  override interact(method: "keyboard" | "mouse"): void {
     super.interact(method);
     const interactionInterval = Date.now() - this.lastInteraction.time;
 

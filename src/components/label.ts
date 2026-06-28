@@ -121,7 +121,7 @@ export class Label extends Component {
     });
   }
 
-  draw(): void {
+  override draw(): void {
     super.draw();
     this.drawnObjects.texts ??= [];
     this.#fillDrawObjects();

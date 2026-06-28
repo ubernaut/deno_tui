@@ -1,5 +1,5 @@
 import * as THREE from "npm:three@0.183.2";
-import { colors } from "../../neon-exodus/opentui-neon-exodus/src/theme.ts";
+import { colors } from "./neon_theme.ts";
 import type { ThreeSceneMode, ThreeSceneSignal } from "./types.ts";
 
 function neonLine(color: string) {
@@ -202,6 +202,86 @@ export function createNeonThreeScene(mode: ThreeSceneMode): NeonThreeSceneBundle
             helixB.scale.setScalar(1 + signal.pulse * 0.18);
             helixA.position.x = signal.twist * -0.35;
             helixB.position.x = signal.twist * 0.35;
+          },
+        };
+      }
+      case "studio": {
+        scene.background = new THREE.Color("#071017");
+        scene.clear();
+        scene.add(new THREE.AmbientLight(new THREE.Color("#71828a"), 1.5));
+
+        const keyLight = new THREE.DirectionalLight(new THREE.Color("#fff1c4"), 2.6);
+        keyLight.position.set(5, 6, 3);
+        scene.add(keyLight);
+
+        const fillLight = new THREE.DirectionalLight(new THREE.Color("#7fc0ff"), 1.1);
+        fillLight.position.set(-4, 2, 5);
+        scene.add(fillLight);
+
+        const rimLight = new THREE.DirectionalLight(new THREE.Color("#ff4fd8"), 0.85);
+        rimLight.position.set(-3, 4, -2);
+        scene.add(rimLight);
+        scene.add(group);
+        camera.position.set(0, 1.4, 7);
+
+        const torus = new THREE.Mesh(
+          new THREE.TorusKnotGeometry(1.25, 0.45, 256, 36),
+          new THREE.MeshPhongMaterial({
+            color: new THREE.Color("#9cff3a"),
+            emissive: new THREE.Color("#163a05"),
+            shininess: 60,
+            specular: new THREE.Color("#ffffff"),
+          }),
+        );
+        torus.position.set(-1.35, 1.3, 0.2);
+        group.add(torus);
+
+        const sphere = new THREE.Mesh(
+          new THREE.SphereGeometry(0.9, 64, 64),
+          new THREE.MeshPhongMaterial({
+            color: new THREE.Color("#1ee7d2"),
+            emissive: new THREE.Color("#052f2a"),
+            shininess: 100,
+            specular: new THREE.Color("#d7f6ff"),
+          }),
+        );
+        sphere.position.set(1.9, 0.7, -0.6);
+        group.add(sphere);
+
+        const block = new THREE.Mesh(
+          new THREE.BoxGeometry(1.2, 1.2, 1.2),
+          new THREE.MeshPhongMaterial({
+            color: new THREE.Color("#ff4fd8"),
+            emissive: new THREE.Color("#3a042e"),
+            shininess: 48,
+          }),
+        );
+        block.position.set(0.4, 2.55, -1.9);
+        block.rotation.set(0.5, 0.4, 0.2);
+        group.add(block);
+
+        const floor = new THREE.Mesh(
+          new THREE.PlaneGeometry(18, 18, 1, 1),
+          new THREE.MeshPhongMaterial({
+            color: new THREE.Color("#12212a"),
+            specular: new THREE.Color("#0f4039"),
+            shininess: 14,
+          }),
+        );
+        floor.rotation.x = -Math.PI / 2;
+        floor.position.y = -0.45;
+        scene.add(floor);
+
+        return {
+          tick: (time: number, signal: ThreeSceneSignal) => {
+            const seconds = time * 0.001;
+            group.rotation.y = seconds * 0.22 + signal.twist * 0.3;
+            torus.rotation.x += 0.028 + signal.pulse * 0.01;
+            torus.rotation.y += 0.044 + signal.depth * 0.01;
+            sphere.position.y = 0.7 + Math.sin(seconds * 1.1) * (0.2 + signal.depth * 0.1);
+            sphere.rotation.y += 0.055;
+            block.rotation.x += 0.035 + signal.lift * 0.01;
+            block.rotation.z += 0.025 + signal.twist * 0.01;
           },
         };
       }

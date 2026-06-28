@@ -5,17 +5,39 @@
 [![Deno](https://github.com/Im-Beast/deno_tui/actions/workflows/deno.yml/badge.svg)](https://github.com/Im-Beast/deno_tui/actions/workflows/deno.yml)
 [![Deno doc](https://doc.deno.land/badge.svg)](https://doc.deno.land/https://deno.land/x/tui/mod.ts)
 
-A [Deno](https://github.com/denoland/deno/) module for building Terminal User Interfaces. Reactive, composable, and zero-dependency.
+A [Deno](https://github.com/denoland/deno/) module for building Terminal User Interfaces. Reactive, composable, and
+zero-dependency.
+
+This fork extends the original TUI toolkit into a WebGPU-backed terminal visualization lab. The core component set is
+still here, but the headline additions are a richer three.js ASCII renderer, Neon Exodus-style visualization demos, and
+a system monitor shell that can render live data through those scenes.
+
+## Fork Highlights
+
+- **Acerola-inspired three.js ASCII backend** — the `ThreeAscii` renderer now drives a WebGPU post-processing path with
+  edge, fill, depth, color, and fog controls.
+- **Terminal glyph modes** — switch between chunky block output, ASCII glyph output, or a mixed mode that chooses the
+  best block/glyph match for the scene.
+- **Visualization launcher** — run the added demos from the project root with `./visualization`.
+- **Standalone geometry demo** — renders a torus knot, sphere, cube, and floor through the terminal ASCII renderer.
+- **Neon Exodus showcase** — recreates the Neon Exodus widget wall and 3D scene set inside this TUI framework.
+- **System monitor dashboard** — `deno task viz` renders CPU, memory, disk, network, process, and 3D panels with
+  selectable inputs and visualizations.
+- **Expanded widget surface** — components now use explicit `override` methods and have been exercised through the added
+  showcase app and tests.
 
 ## Features
 
 - **Reactive by default** — UI updates automatically via a built-in signals system (`Signal`, `Computed`, `Effect`)
-- **Rich component library** — Box, Button, CheckBox, ComboBox, Input, TextBox, Label, Slider, ProgressBar, Table, Frame, and more
-- **Flexible layouts** — `GridLayout`, `HorizontalLayout`, and `VerticalLayout` for declarative, proportional positioning
+- **Rich component library** — Box, Button, CheckBox, ComboBox, Input, TextBox, Label, Slider, ProgressBar, Table,
+  Frame, and more
+- **Flexible layouts** — `GridLayout`, `HorizontalLayout`, and `VerticalLayout` for declarative, proportional
+  positioning
 - **Keyboard and mouse input** — full support including drag events
 - **Views** — scrollable viewports with offset control
 - **Three.js ASCII renderer** — render 3D scenes as ASCII art in the terminal via the `ThreeAscii` component
-- **Styling framework agnostic** — works with any terminal styling library; [Crayon](https://github.com/crayon-js/crayon) is recommended
+- **Styling framework agnostic** — works with any terminal styling library;
+  [Crayon](https://github.com/crayon-js/crayon) is recommended
 - **Zero dependencies** — no external runtime dependencies required
 
 ## OS Support
@@ -59,7 +81,7 @@ handleMouseControls(tui);
 
 ```ts
 import { Button } from "https://deno.land/x/tui@VERSION/src/components/mod.ts";
-import { Signal, Computed } from "https://deno.land/x/tui@VERSION/mod.ts";
+import { Computed, Signal } from "https://deno.land/x/tui@VERSION/mod.ts";
 
 const count = new Signal(0);
 
@@ -90,21 +112,21 @@ deno task demo
 
 ## Components
 
-| Component     | Description                                               |
-| ------------- | --------------------------------------------------------- |
-| `Box`         | Filled rectangle                                          |
-| `Button`      | Clickable box with an optional label                      |
-| `CheckBox`    | Toggle between checked and unchecked states               |
-| `ComboBox`    | Dropdown selector                                         |
-| `Frame`       | Decorative border around a region                         |
-| `Input`       | Single-line text input with optional password masking     |
-| `TextBox`     | Multi-line text editor with line numbers and highlighting |
-| `Label`       | Text with configurable horizontal/vertical alignment      |
-| `Text`        | Raw text drawn directly on the canvas                     |
-| `ProgressBar` | Horizontal or vertical progress indicator (smooth-capable)|
-| `Slider`      | Horizontal or vertical value slider                       |
-| `Table`       | Scrollable data table with headers and row selection      |
-| `ThreeAscii`  | Renders a three.js scene as ASCII art in the terminal     |
+| Component     | Description                                                |
+| ------------- | ---------------------------------------------------------- |
+| `Box`         | Filled rectangle                                           |
+| `Button`      | Clickable box with an optional label                       |
+| `CheckBox`    | Toggle between checked and unchecked states                |
+| `ComboBox`    | Dropdown selector                                          |
+| `Frame`       | Decorative border around a region                          |
+| `Input`       | Single-line text input with optional password masking      |
+| `TextBox`     | Multi-line text editor with line numbers and highlighting  |
+| `Label`       | Text with configurable horizontal/vertical alignment       |
+| `Text`        | Raw text drawn directly on the canvas                      |
+| `ProgressBar` | Horizontal or vertical progress indicator (smooth-capable) |
+| `Slider`      | Horizontal or vertical value slider                        |
+| `Table`       | Scrollable data table with headers and row selection       |
+| `ThreeAscii`  | Renders a three.js scene as ASCII art in the terminal      |
 
 ## Layouts
 
@@ -152,16 +174,16 @@ const layout = new HorizontalLayout({
 
 The signals system drives all reactive updates in Tui.
 
-| Primitive       | Description                                                  |
-| --------------- | ------------------------------------------------------------ |
-| `Signal`        | A mutable reactive value                                     |
-| `Computed`      | A derived value that recomputes when dependencies change     |
-| `LazyComputed`  | Like `Computed`, but only recomputes when accessed           |
-| `Effect`        | Runs a side-effect whenever its dependencies change          |
-| `LazyEffect`    | Like `Effect`, but deferred until the next flush             |
+| Primitive      | Description                                              |
+| -------------- | -------------------------------------------------------- |
+| `Signal`       | A mutable reactive value                                 |
+| `Computed`     | A derived value that recomputes when dependencies change |
+| `LazyComputed` | Like `Computed`, but only recomputes when accessed       |
+| `Effect`       | Runs a side-effect whenever its dependencies change      |
+| `LazyEffect`   | Like `Effect`, but deferred until the next flush         |
 
 ```ts
-import { Signal, Computed, Effect } from "https://deno.land/x/tui@VERSION/mod.ts";
+import { Computed, Effect, Signal } from "https://deno.land/x/tui@VERSION/mod.ts";
 
 const x = new Signal(2);
 const y = new Signal(3);
@@ -206,7 +228,7 @@ Render 3D scenes as ASCII art using the `ThreeAscii` component, which uses WebGP
 
 ```ts
 import { ThreeAscii } from "https://deno.land/x/tui@VERSION/src/components/mod.ts";
-import { Scene, PerspectiveCamera } from "npm:three@0.183.2";
+import { PerspectiveCamera, Scene } from "npm:three@0.183.2";
 
 const scene = new Scene();
 const camera = new PerspectiveCamera(75, 1, 0.1, 1000);
@@ -222,26 +244,81 @@ const ascii = new ThreeAscii({
 
 See `examples/three_ascii.ts` for a full demo with lighting, geometry, and post-processing effects.
 
+### ASCII renderer extensions in this fork
+
+The terminal renderer exposes the same scene through multiple glyph strategies:
+
+| Mode     | Description                                                                 |
+| -------- | --------------------------------------------------------------------------- |
+| `blocks` | Uses block characters for dense, chunky OpenTUI-style visualizations        |
+| `glyphs` | Uses a traditional ASCII ramp for lighter character-based scene rendering   |
+| `mixed`  | Compares block and glyph coverage and chooses whichever best matches a cell |
+
+The interactive demos expose presets for edges, fill, exposure, attenuation, blend, depth fog, and terminal edge bias.
+The `mixed` mode keeps strong edge glyphs when they are useful, then chooses between block and ASCII fill glyphs for the
+underlying scene coverage.
+
 ## Examples
 
-| File                       | Description                                          |
-| -------------------------- | ---------------------------------------------------- |
-| `examples/demo.ts`         | Kitchen-sink demo of all components                  |
-| `examples/calculator.ts`   | Functional calculator built with `GridLayout`        |
-| `examples/layout.ts`       | Grid layout with draggable, colored buttons          |
-| `examples/three_ascii.ts`  | Interactive 3D ASCII renderer powered by three.js    |
+| File                      | Description                                              |
+| ------------------------- | -------------------------------------------------------- |
+| `examples/demo.ts`        | Kitchen-sink demo of all components                      |
+| `examples/calculator.ts`  | Functional calculator built with `GridLayout`            |
+| `examples/layout.ts`      | Grid layout with draggable, colored buttons              |
+| `examples/three_ascii.ts` | Interactive 3D ASCII renderer powered by three.js        |
+| `app/showcase.ts`         | Full Neon Exodus-style widget and visualization showcase |
+| `app/main.ts`             | Live system monitor dashboard with selectable panels     |
+
+### Launching the added visualizations
+
+From the project root:
+
+```sh
+./visualization
+./visualization showcase
+```
+
+Launches the full showcase app. This is the quickest way to see the expanded widget set, Neon Exodus-inspired panels,
+and the three.js ASCII renderer together.
+
+```sh
+./visualization polygons
+./visualization polygons --no-controls
+```
+
+Launches the standalone geometry renderer with the torus knot, sphere, cube, and floor. Press `m` while it is running to
+show or hide the controls. Use the controls panel to switch presets, glyph style, edge/fill options, and renderer
+tuning.
+
+```sh
+./visualization monitor
+deno task viz
+```
+
+Launches the system monitor dashboard. Use `F4` to open options, select panel visualizations, and change the ASCII style
+for 3D panels. Added 3D visualization IDs include `three-lattice`, `three-atfield`, `three-hexshell`, `three-capture`,
+`three-mapslab`, `three-solenoid`, and `three-ascii-studio`.
+
+Direct Deno tasks are also available:
+
+```sh
+deno task showcase
+deno task three-ascii
+deno task viz
+```
 
 ```sh
 deno run --watch --allow-hrtime examples/demo.ts
 deno run --allow-hrtime examples/calculator.ts
-deno run --allow-hrtime examples/three_ascii.ts
+deno run -A examples/three_ascii.ts
 ```
 
 ## Contributing
 
 Tui is open to contributions. Open an issue or pull request for bug fixes, features, or improvements.
 
-This project follows [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/). Add comments to any code that may be hard to follow.
+This project follows [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/). Add comments to any code
+that may be hard to follow.
 
 ## License
 

@@ -1,4 +1,5 @@
 import type { AcerolaAsciiNodeOptions } from "./AcerolaAsciiNode.ts";
+import type { TerminalGlyphStyle } from "./glyphs.ts";
 
 export type AsciiToggleControlKey = "edges" | "fill" | "invertLuminance";
 export type AsciiNumericControlKey =
@@ -17,6 +18,7 @@ export interface AsciiDemoPreset {
   description: string;
   effect: Partial<AcerolaAsciiNodeOptions>;
   terminalEdgeBias?: number;
+  terminalGlyphStyle?: TerminalGlyphStyle;
 }
 
 export interface AsciiNumericControlDefinition {
@@ -87,6 +89,47 @@ export const ASCII_DEMO_PRESETS: readonly AsciiDemoPreset[] = [
       invertLuminance: false,
     },
     terminalEdgeBias: 1.45,
+    terminalGlyphStyle: "blocks",
+  },
+  {
+    id: "glyph-atlas",
+    label: "Glyph Atlas",
+    description: "Character-ramp ASCII output for a lighter Acerola glyph look.",
+    effect: {
+      edgeThreshold: 10,
+      normalThreshold: 0.18,
+      depthThreshold: 0.11,
+      exposure: 1.2,
+      attenuation: 1.08,
+      blendWithBase: 0.35,
+      depthFalloff: 0.08,
+      depthOffset: 140,
+      edges: true,
+      fill: true,
+      invertLuminance: false,
+    },
+    terminalEdgeBias: 1,
+    terminalGlyphStyle: "glyphs",
+  },
+  {
+    id: "mixed-best",
+    label: "Mixed Best",
+    description: "Chooses across block and character glyphs using the closest terminal coverage match.",
+    effect: {
+      edgeThreshold: 11,
+      normalThreshold: 0.19,
+      depthThreshold: 0.12,
+      exposure: 1.22,
+      attenuation: 1.02,
+      blendWithBase: 0.7,
+      depthFalloff: 0.06,
+      depthOffset: 145,
+      edges: true,
+      fill: true,
+      invertLuminance: false,
+    },
+    terminalEdgeBias: 1.15,
+    terminalGlyphStyle: "mixed",
   },
   {
     id: "balanced",
@@ -96,6 +139,7 @@ export const ASCII_DEMO_PRESETS: readonly AsciiDemoPreset[] = [
       ...DEFAULT_ASCII_DEMO_EFFECT,
     },
     terminalEdgeBias: 1,
+    terminalGlyphStyle: "mixed",
   },
   {
     id: "soft-fill",
@@ -115,6 +159,7 @@ export const ASCII_DEMO_PRESETS: readonly AsciiDemoPreset[] = [
       invertLuminance: false,
     },
     terminalEdgeBias: 1.3,
+    terminalGlyphStyle: "glyphs",
   },
   {
     id: "contrast",
@@ -134,6 +179,7 @@ export const ASCII_DEMO_PRESETS: readonly AsciiDemoPreset[] = [
       invertLuminance: false,
     },
     terminalEdgeBias: 0.92,
+    terminalGlyphStyle: "mixed",
   },
   {
     id: "wire",
@@ -153,6 +199,7 @@ export const ASCII_DEMO_PRESETS: readonly AsciiDemoPreset[] = [
       invertLuminance: false,
     },
     terminalEdgeBias: 0.88,
+    terminalGlyphStyle: "glyphs",
   },
   {
     id: "fill-only",
@@ -172,5 +219,6 @@ export const ASCII_DEMO_PRESETS: readonly AsciiDemoPreset[] = [
       invertLuminance: false,
     },
     terminalEdgeBias: 1.2,
+    terminalGlyphStyle: "blocks",
   },
 ] as const;

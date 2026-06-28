@@ -12,7 +12,17 @@ const signal: ThreeSceneSignal = {
   pressed: false,
 };
 
-for (const mode of ["lattice", "atfield", "hexshell", "capture", "mapslab", "solenoid"] as const satisfies ThreeSceneMode[]) {
+for (
+  const mode of [
+    "lattice",
+    "atfield",
+    "hexshell",
+    "capture",
+    "mapslab",
+    "solenoid",
+    "studio",
+  ] as const satisfies ThreeSceneMode[]
+) {
   Deno.test(`createNeonThreeScene supports ${mode}`, () => {
     const bundle = createNeonThreeScene(mode);
     bundle.tick(performance.now(), signal);

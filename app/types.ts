@@ -1,4 +1,5 @@
 import type { Style } from "../src/theme.ts";
+import type { TerminalGlyphStyle } from "../src/three_ascii/glyphs.ts";
 
 export const slotIds = [
   "cpu",
@@ -28,7 +29,7 @@ export const borderModes = ["rounded", "sharp", "ascii"] as const;
 
 export type BorderMode = typeof borderModes[number];
 
-export const threeSceneModes = ["lattice", "atfield", "hexshell", "capture", "mapslab", "solenoid"] as const;
+export const threeSceneModes = ["lattice", "atfield", "hexshell", "capture", "mapslab", "solenoid", "studio"] as const;
 
 export type ThreeSceneMode = typeof threeSceneModes[number];
 
@@ -37,6 +38,7 @@ export type Severity = "info" | "warning" | "alarm";
 export interface AsciiOptions {
   preset: string;
   border: BorderMode;
+  terminalGlyphStyle: TerminalGlyphStyle;
   terminalEdgeBias: number;
   edgeThreshold: number;
   normalThreshold: number;

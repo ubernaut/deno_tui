@@ -117,7 +117,7 @@ export class ComboBox<Items extends string[] = string[]> extends Button {
     }
   }
 
-  interact(method: "mouse" | "keyboard"): void {
+  override interact(method: "mouse" | "keyboard"): void {
     super.interact(method);
 
     if (this.state.peek() === "active") {

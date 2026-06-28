@@ -52,7 +52,7 @@ export class CheckBox extends Button {
     this.checked = checkedSignal;
   }
 
-  interact(method: "mouse" | "keyboard"): void {
+  override interact(method: "mouse" | "keyboard"): void {
     super.interact(method);
     if (this.state.peek() === "active") this.checked.value = !this.checked.peek();
   }

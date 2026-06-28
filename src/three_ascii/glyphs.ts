@@ -3,6 +3,7 @@
 // characters must be swapped to match the browser's visible output.
 export const EDGE_GLYPHS = [" ", "|", "-", "\\", "/"] as const;
 export const FILL_GLYPHS = [" ", "▁", "▂", "▃", "▄", "▅", "▆", "▇", "█", "█"] as const;
+export const ASCII_FILL_GLYPHS = [" ", ".", ":", "-", "=", "+", "*", "#", "%", "@"] as const;
 export const TERMINAL_GLYPHS = [
   " ",
   "|",
@@ -20,6 +21,9 @@ export const TERMINAL_GLYPHS = [
   "█",
   "█",
 ] as const;
+
+export const TERMINAL_GLYPH_STYLES = ["blocks", "glyphs", "mixed"] as const;
+export type TerminalGlyphStyle = typeof TERMINAL_GLYPH_STYLES[number];
 
 const MIN_VISIBLE_LUMINANCE = 0.015;
 
