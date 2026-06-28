@@ -1,4 +1,6 @@
 import { assertEquals } from "./deps.ts";
+import { CommandRegistry } from "../src/app/commands.ts";
+import { bindDataTableCommands, dataTableCommands } from "../src/app/data_table_commands.ts";
 import {
   canSortColumn,
   createDataTableView,
@@ -236,6 +238,73 @@ Deno.test("DataTableController ignores unsortable columns", async () => {
   controller.setSort({ columnId: "missing", direction: "asc" });
   assertEquals(controller.state.peek().sort, { columnId: "name", direction: "asc" });
   controller.dispose();
+});
+
+Deno.test("dataTableCommands expose table navigation query and sort actions", async () => {
+  const controller = new DataTableController({
+    rows,
+    columns,
+    rowKey: (row) => String(row.pid),
+    initialState: { pageSize: 1, query: "e" },
+  });
+  const registry = new CommandRegistry();
+  const dispose = bindDataTableCommands(registry, controller, { idPrefix: "processes", group: "process-table" });
+
+  assertEquals(registry.list("process-table").map((command) => command.id), [
+    "processes.clearQuery",
+    "processes.first",
+    "processes.last",
+    "processes.pageNext",
+    "processes.next",
+    "processes.pagePrevious",
+    "processes.previous",
+    "processes.sort.cpu",
+    "processes.sort.name",
+    "processes.sort.pid",
+  ]);
+  assertEquals(registry.enabled(registry.get("processes.pagePrevious")!), false);
+  assertEquals(registry.enabled(registry.get("processes.pageNext")!), true);
+
+  assertEquals(await registry.execute("processes.pageNext"), true);
+  assertEquals(controller.state.peek().page, 1);
+
+  assertEquals(await registry.execute("processes.next"), true);
+  await Promise.resolve();
+  assertEquals(controller.selectedRow()?.pid, 10);
+
+  assertEquals(await registry.execute("processes.sort.cpu"), true);
+  await Promise.resolve();
+  assertEquals(controller.state.peek().sort, { columnId: "cpu", direction: "asc" });
+
+  assertEquals(await registry.execute("processes.clearQuery"), true);
+  await Promise.resolve();
+  assertEquals(controller.state.peek().query, "");
+  assertEquals(registry.enabled(registry.get("processes.clearQuery")!), false);
+
+  dispose();
+  assertEquals(registry.inspect("process-table"), { count: 0, enabled: 0, disabled: 0, groups: [], commands: [] });
+  controller.dispose();
+});
+
+Deno.test("dataTableCommands can omit command groups and disable empty tables", () => {
+  const controller = new DataTableController({
+    rows: [],
+    columns,
+  });
+  const commands = dataTableCommands(controller, {
+    includePagingCommands: false,
+    includeQueryCommands: false,
+    includeSortCommands: false,
+    labels: { next: "Move Down" },
+  });
+
+  assertEquals(commands.map((command) => [command.id, command.label]), [
+    ["table.first", "First Row"],
+    ["table.previous", "Previous Row"],
+    ["table.next", "Move Down"],
+    ["table.last", "Last Row"],
+  ]);
+  assertEquals(commands.every((command) => typeof command.disabled === "function" && command.disabled()), true);
 });
 
 function keyPress(key: Key, options: Partial<Omit<KeyPressEvent, "key" | "buffer">> = {}): KeyPressEvent {
