@@ -19,6 +19,9 @@ Every new feature cluster should include:
 - `stripAnsi(value)` removes ANSI control sequences.
 - `normalizeTerminalSnapshot(value)` strips ANSI and trailing cell whitespace.
 - `frameBufferToSnapshot(frameBuffer)` turns a canvas frame buffer into normalized text.
+- `compareTerminalSnapshot(actual, expected)` returns normalized text plus bounded line/column mismatches.
+- `formatTerminalSnapshotDiff(comparison)` formats those mismatches for readable test failures.
+- `assertTerminalSnapshot(actual, expected)` throws that formatted diagnostic when snapshots differ.
 - `createTestKeyPress()` and `createTestMouseScroll()` build deterministic input events without reading from a TTY.
 - `createTestFocusable()` and `TestKeyPressTarget` make focus/navigation tests independent of real components.
 
