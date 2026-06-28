@@ -11,7 +11,8 @@ import {
   executeCommandSurfaceItem,
 } from "../src/app/command_bindings.ts";
 import { CommandRegistry } from "../src/app/commands.ts";
-import { bindRouteHistory } from "../src/app/history_bindings.ts";
+import type { Command } from "../src/app/commands.ts";
+import { bindHistoryCommands, bindRouteHistory, historyCommands } from "../src/app/history_bindings.ts";
 import { HistoryStack } from "../src/app/history.ts";
 import { bindRouteIndex, bindRouteSignal } from "../src/app/route_bindings.ts";
 import { RouteManager } from "../src/app/router.ts";
@@ -971,6 +972,77 @@ Deno.test("bindRouteHistory records undoable route changes without duplicating r
   assertEquals(history.inspect().undoDepth, 2);
 });
 
+Deno.test("historyCommands expose undo redo and clear command actions", async () => {
+  const history = new HistoryStack();
+  const values: string[] = [];
+
+  const commands = historyCommands(history, {
+    includeClear: true,
+    labels: { undo: "Step Back", redo: "Step Forward" },
+  });
+
+  assertEquals(commands.map((command) => [command.id, command.label, commandDisabled(command)]), [
+    ["history.undo", "Step Back", true],
+    ["history.redo", "Step Forward", true],
+    ["history.clear", "Clear History", true],
+  ]);
+
+  await history.apply({
+    label: "Add A",
+    redo: () => {
+      values.push("a");
+    },
+    undo: () => {
+      values.pop();
+    },
+  });
+
+  assertEquals(commands.map((command) => [command.id, commandDisabled(command)]), [
+    ["history.undo", false],
+    ["history.redo", true],
+    ["history.clear", false],
+  ]);
+
+  await runCommandFactory(commands[0]!);
+  assertEquals(values, []);
+  assertEquals(commandDisabled(commands[1]!), false);
+
+  await runCommandFactory(commands[1]!);
+  assertEquals(values, ["a"]);
+
+  await runCommandFactory(commands[2]!);
+  assertEquals(history.inspect().undoDepth, 0);
+});
+
+Deno.test("bindHistoryCommands registers history commands with disposers", async () => {
+  const registry = new CommandRegistry();
+  const history = new HistoryStack();
+  const values: string[] = [];
+
+  const dispose = bindHistoryCommands(registry, history, { idPrefix: "edit", group: "edit" });
+  assertEquals(registry.keyBindings("edit").map((binding) => binding.key), []);
+  assertEquals(await registry.execute("edit.undo"), false);
+
+  await history.apply({
+    label: "Add A",
+    redo: () => {
+      values.push("a");
+    },
+    undo: () => {
+      values.pop();
+    },
+  });
+  assertEquals(registry.keyBindings("edit").map((binding) => binding.key), ["z"]);
+  assertEquals(await registry.execute("edit.undo"), true);
+  assertEquals(values, []);
+  assertEquals(registry.keyBindings("edit").map((binding) => binding.key), ["y"]);
+  assertEquals(await registry.execute("edit.redo"), true);
+  assertEquals(values, ["a"]);
+
+  dispose();
+  assertEquals(registry.list("edit"), []);
+});
+
 Deno.test("SettingsController namespaces and caches persistent settings", async () => {
   const store = new MemoryStore<unknown>();
   const settings = new SettingsController({ store, namespace: "shell" });
@@ -1225,3 +1297,13 @@ Deno.test("bindSplitPaneSetting restores and persists layout state", async () =>
     resizeMode: "size",
   });
 });
+
+function commandDisabled(command: Command): boolean | undefined {
+  return typeof command.disabled === "function" ? command.disabled() : command.disabled;
+}
+
+async function runCommandFactory(command: Command): Promise<void> {
+  if (typeof command.action === "function") {
+    await command.action(command);
+  }
+}

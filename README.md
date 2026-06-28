@@ -578,6 +578,16 @@ await history.undo();
 await history.redo();
 ```
 
+Use `historyCommands()` or `bindHistoryCommands()` to expose undo, redo, and optional clear actions through the shared
+command registry:
+
+```ts
+const stopHistoryCommands = bindHistoryCommands(app.commands, history, {
+  group: "edit",
+  includeClear: true,
+});
+```
+
 `bindRouteHistory()` records `RouteManager` changes as undoable route transitions and can replay them through your app
 action bus:
 
