@@ -343,6 +343,7 @@ Optional high-performance APIs are surfaced through `src/runtime/mod.ts`:
 
 - `detectRuntimeCapabilities()`
 - `AsyncScheduler`
+- `runDataPipeline()` / `LatestDataPipeline`
 - `WorkerPool`
 - `MemoryStore`
 - `IndexedDbStore`
@@ -350,6 +351,22 @@ Optional high-performance APIs are surfaced through `src/runtime/mod.ts`:
 - `createPersistentSignal()` / `PersistentSignal`
 
 Use these instead of hard-coding global checks inside components.
+
+`runDataPipeline()` composes expensive row transforms behind an optional scheduler. `LatestDataPipeline` protects
+interactive views from stale async results when users type or change filters quickly:
+
+```ts
+import { filterRows, LatestDataPipeline, mapRows, sortRows } from "https://deno.land/x/tui@VERSION/mod.ts";
+
+const pipeline = new LatestDataPipeline([
+  filterRows((row) => row.name.includes(query)),
+  sortRows((left, right) => left.name.localeCompare(right.name)),
+  mapRows((row) => ({ ...row, label: `${row.pid} ${row.name}` })),
+]);
+
+const result = await pipeline.run(processes);
+if (result.status === "ok") renderRows(result.value);
+```
 
 `createRuntimeStore()` chooses IndexedDB when available and falls back to memory. `PersistentSignal` layers reactive app
 state on top, which is useful for preferences, selected routes, panel layout, and visualization options:
