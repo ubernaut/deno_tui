@@ -433,13 +433,20 @@ registered command bindings:
 const stopCommandHelp = app.enableCommandKeymap();
 ```
 
-Use `commandSurfaceItems()` and `executeCommandSurfaceItem()` to feed command registries into palettes, context menus,
-or custom launchers without duplicating projection and dispatch code:
+Use `createCommandSurface()` or `bindCommandSurface()` to feed command registries into palettes, context menus, or
+custom launchers without duplicating projection, synchronization, and dispatch code:
 
 ```ts
-const items = commandSurfaceItems(app.commands, { includeDisabled: false });
-await executeCommandSurfaceItem(app.commands, items[0], (action) => app.actions.dispatch(action));
+const commandSurface = createCommandSurface(app.commands, (action) => app.actions.dispatch(action), {
+  includeDisabled: false,
+});
+
+const items = commandSurface.items;
+await commandSurface.execute(items.value[0]);
+app.onDispose(commandSurface.dispose);
 ```
+
+For one-off projections, `commandSurfaceItems()` and `executeCommandSurfaceItem()` remain available.
 
 `FormController` keeps form state separate from rendering:
 

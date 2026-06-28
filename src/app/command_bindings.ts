@@ -1,6 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { bindingId, type KeyBinding, type KeymapRegistry } from "../keymap.ts";
 import type { KeyPressEvent } from "../input_reader/types.ts";
+import { Signal } from "../signals/mod.ts";
 import type { Action } from "./actions.ts";
 import type { Command, CommandDispatch, CommandRegistry } from "./commands.ts";
 
@@ -26,6 +27,13 @@ export interface CommandSurfaceOptions extends CommandKeyBindingOptions {
 
 export interface CommandKeymapBindingOptions extends CommandKeyBindingOptions {
   includeDisabled?: boolean;
+}
+
+export interface CommandSurfaceController<TAction extends Action = Action> {
+  readonly items: Signal<CommandSurfaceItem[]>;
+  refresh(): CommandSurfaceItem[];
+  execute(item: Pick<CommandSurfaceItem, "id">): Promise<boolean>;
+  dispose(): void;
 }
 
 export function commandForKeyEvent<TAction extends Action = Action>(
@@ -103,6 +111,48 @@ export function executeCommandSurfaceItem<TAction extends Action = Action>(
   dispatch?: CommandDispatch<TAction>,
 ): Promise<boolean> {
   return registry.execute(item.id, dispatch);
+}
+
+export function createCommandSurface<TAction extends Action = Action>(
+  registry: CommandRegistry<TAction>,
+  dispatch?: CommandDispatch<TAction>,
+  options: CommandSurfaceOptions = {},
+): CommandSurfaceController<TAction> {
+  let disposed = false;
+  const items = new Signal(commandSurfaceItems(registry, options));
+  const refresh = () => {
+    const next = commandSurfaceItems(registry, options);
+    if (!disposed) {
+      items.value = next;
+    }
+    return next;
+  };
+  const unsubscribe = registry.subscribe(refresh);
+
+  return {
+    items,
+    refresh,
+    execute: (item) => executeCommandSurfaceItem(registry, item, dispatch),
+    dispose: () => {
+      if (disposed) return;
+      disposed = true;
+      unsubscribe();
+      items.dispose();
+    },
+  };
+}
+
+export function bindCommandSurface<TAction extends Action = Action>(
+  registry: CommandRegistry<TAction>,
+  items: Signal<CommandSurfaceItem[]>,
+  options: CommandSurfaceOptions = {},
+): () => void {
+  const sync = () => {
+    items.value = commandSurfaceItems(registry, options);
+  };
+  sync();
+  const unsubscribe = registry.subscribe(sync);
+  return unsubscribe;
 }
 
 function commandKeywords<TAction extends Action = Action>(

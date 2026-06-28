@@ -4,8 +4,10 @@ import { ActionBus } from "../src/app/actions.ts";
 import {
   bindCommandKeymap,
   bindCommandKeys,
+  bindCommandSurface,
   commandForKeyEvent,
   commandSurfaceItems,
+  createCommandSurface,
   executeCommandSurfaceItem,
 } from "../src/app/command_bindings.ts";
 import { CommandRegistry } from "../src/app/commands.ts";
@@ -479,6 +481,54 @@ Deno.test("executeCommandSurfaceItem dispatches selected command items", async (
   );
   assertEquals(await executeCommandSurfaceItem(registry, { id: "missing" }), false);
   assertEquals(seen, ["a"]);
+});
+
+Deno.test("createCommandSurface keeps projected command items synchronized", async () => {
+  const registry = new CommandRegistry<{ type: "append"; payload: string }>();
+  const seen: string[] = [];
+  const surface = createCommandSurface(registry, (action) => {
+    seen.push(action.payload);
+  }, { includeDisabled: false });
+
+  assertEquals(surface.items.peek(), []);
+  const disposeA = registry.register({
+    id: "append.a",
+    label: "Append A",
+    action: { type: "append", payload: "a" },
+  });
+  registry.register({
+    id: "append.b",
+    label: "Append B",
+    disabled: true,
+    action: { type: "append", payload: "b" },
+  });
+
+  assertEquals(surface.items.peek().map((item) => item.id), ["append.a"]);
+  assertEquals(await surface.execute({ id: "append.a" }), true);
+  assertEquals(seen, ["a"]);
+
+  disposeA();
+  assertEquals(surface.items.peek(), []);
+
+  surface.dispose();
+  registry.register({ id: "append.c", label: "Append C" });
+  assertEquals(surface.items.peek(), []);
+});
+
+Deno.test("bindCommandSurface mirrors registry changes into an existing signal", () => {
+  const registry = new CommandRegistry();
+  const items = new Signal(commandSurfaceItems(registry));
+  const dispose = bindCommandSurface(registry, items, { group: "routes" });
+
+  registry.register({ id: "global.quit", label: "Quit", group: "global" });
+  assertEquals(items.peek(), []);
+
+  registry.register({ id: "route.home", label: "Home", group: "routes" });
+  assertEquals(items.peek().map((item) => item.id), ["route.home"]);
+
+  dispose();
+  registry.register({ id: "route.logs", label: "Logs", group: "routes" });
+  assertEquals(items.peek().map((item) => item.id), ["route.home"]);
 });
 
 Deno.test("TuiApp dispatches command actions through the action bus", async () => {
