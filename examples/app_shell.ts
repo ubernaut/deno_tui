@@ -3,6 +3,7 @@ import { crayon } from "https://deno.land/x/crayon@3.3.3/mod.ts";
 import {
   CommandPalette,
   Computed,
+  ContextMenu,
   createApp,
   createThemeEngine,
   dockRect,
@@ -27,7 +28,8 @@ import {
 type DemoAction =
   | { type: "route"; payload: string }
   | { type: "toast"; payload: string }
-  | { type: "palette"; payload: boolean };
+  | { type: "palette"; payload: boolean }
+  | { type: "context"; payload: boolean };
 
 const app = createApp<DemoAction>({
   tuiOptions: {
@@ -56,6 +58,7 @@ const themeEngine = createThemeEngine("neon", {
 });
 
 const paletteVisible = new Signal(false);
+const contextVisible = new Signal(false);
 const activeMenu = new Signal(0);
 const toasts = new Signal<ToastMessage[]>([
   { id: "boot", level: "success", message: "App shell ready" },
@@ -112,6 +115,14 @@ app.commands.register({
   action: () => ({ type: "palette", payload: !paletteVisible.peek() }),
 });
 app.commands.register({
+  id: "context.toggle",
+  label: "Toggle Context Menu",
+  group: "global",
+  keywords: ["actions", "menu"],
+  binding: { key: "c" },
+  action: () => ({ type: "context", payload: !contextVisible.peek() }),
+});
+app.commands.register({
   id: "toast.show",
   label: "Show Toast",
   group: "global",
@@ -141,6 +152,8 @@ app.actions.subscribe((action) => {
     pushToast(action.payload, "success");
   } else if (action.type === "palette") {
     paletteVisible.value = action.payload;
+  } else if (action.type === "context") {
+    contextVisible.value = action.payload;
   }
 });
 
@@ -201,8 +214,8 @@ new Text({
   text: new Computed(() =>
     [
       `Route: ${app.routes.active()?.title ?? "none"}`,
-      "This demo wires app primitives, keymap, routes, command palette, tree, list, toasts, and responsive layout.",
-      "Press p for palette, 1/2/3 for routes, q to quit.",
+      "This demo wires app primitives, keymap, routes, command palette, context menu, tree, list, toasts, and responsive layout.",
+      "Press p for palette, c for context actions, 1/2/3 for routes, q to quit.",
     ].join("  ")
   ),
   overwriteWidth: true,
@@ -352,12 +365,36 @@ new CommandPalette({
   visible: paletteVisible,
 });
 
+new ContextMenu({
+  parent: app.tui,
+  theme: themeEngine.component("ContextMenu"),
+  zIndex: 9,
+  items: new Computed(() => [
+    ...app.commands.projections("routes", false),
+    { id: "separator", label: "", separatorBefore: true },
+    ...app.commands.projections("global", false).filter((item) => item.id !== "app.quit"),
+  ]),
+  rectangle: new Computed(() => ({
+    column: Math.max(2, app.tui.rectangle.value.width - 34),
+    row: 4,
+    width: 30,
+    height: 7,
+  })),
+  onSelect: (item) => {
+    contextVisible.value = false;
+    return app.executeCommand(item.id).then(() => undefined);
+  },
+  visible: contextVisible,
+});
+
 app.tui.on("keyPress", ({ key, ctrl, meta }) => {
   if (ctrl || meta) return;
   if (key === "q") {
     void app.executeCommand("app.quit");
   } else if (key === "p") {
     void app.executeCommand("palette.toggle");
+  } else if (key === "c") {
+    void app.executeCommand("context.toggle");
   } else if (key === "1") {
     void app.executeCommand("route.overview");
   } else if (key === "2") {
@@ -366,6 +403,7 @@ app.tui.on("keyPress", ({ key, ctrl, meta }) => {
     void app.executeCommand("route.runtime");
   } else if (key === "escape") {
     void app.actions.dispatch({ type: "palette", payload: false });
+    void app.actions.dispatch({ type: "context", payload: false });
   }
 });
 
