@@ -1,15 +1,21 @@
 import { assertEquals, assertExists } from "./deps.ts";
 import {
   bindDataQueryCommands,
+  bindDataQueryParams,
+  bindDataQueryResult,
+  bindDataQueryTable,
   CommandRegistry,
   createDataQueryController,
+  type DataColumn,
   type DataQueryCommandAction,
   dataQueryCommands,
   type DataQueryResult,
+  DataTableController,
   MemoryStore,
   nextDataQuerySort,
   normalizeDataQueryParams,
   queryLocalData,
+  Signal,
 } from "../mod.ts";
 
 interface ProcessRow extends Record<string, unknown> {
@@ -24,6 +30,13 @@ const rows: ProcessRow[] = [
   { pid: 2, name: "shell", group: "shell", cpu: 3 },
   { pid: 101, name: "renderer", group: "runtime", cpu: 55 },
   { pid: 33, name: "worker", group: "runtime", cpu: 21 },
+];
+
+const columns: DataColumn<ProcessRow>[] = [
+  { id: "pid", label: "PID", sortable: true },
+  { id: "name", label: "Name", sortable: true },
+  { id: "group", label: "Group" },
+  { id: "cpu", label: "CPU", sortable: true },
 ];
 
 Deno.test("normalizeDataQueryParams clamps page and page size with fallback state", () => {
@@ -201,3 +214,103 @@ Deno.test("data query commands can omit optional command groups and disable empt
   assertEquals(commands[0].disabled instanceof Function ? commands[0].disabled() : commands[0].disabled, true);
   controller.dispose();
 });
+
+Deno.test("bindDataQueryParams debounces signal changes and loads query params", async () => {
+  const loaded: string[] = [];
+  const params = new Signal({ query: "runtime", pageSize: 2 });
+  const controller = createDataQueryController<ProcessRow>({
+    loader: ({ params }) => {
+      loaded.push(params.query);
+      return queryLocalData(rows, params, { searchable: ["name", "group"] });
+    },
+  });
+  const binding = bindDataQueryParams(controller, params, {
+    initialLoad: false,
+    debounceMs: 5,
+  });
+
+  params.value = { query: "shell", pageSize: 2 };
+  params.value = { query: "runtime", pageSize: 2 };
+  await delay(20);
+
+  assertEquals(loaded, ["runtime"]);
+  assertEquals(controller.result.peek().rows.map((row) => row.pid), [10, 101]);
+  assertEquals(binding.inspect().pending, false);
+
+  binding.dispose();
+  params.value = { query: "shell", pageSize: 2 };
+  await delay(10);
+  assertEquals(loaded, ["runtime"]);
+  controller.dispose();
+});
+
+Deno.test("bindDataQueryResult projects query rows into a row signal", async () => {
+  const projected = new Signal<readonly ProcessRow[]>([]);
+  const controller = createDataQueryController<ProcessRow>({
+    initialParams: { query: "runtime", pageSize: 2 },
+    loader: ({ params }) => queryLocalData(rows, params, { searchable: ["name", "group"] }),
+  });
+
+  await controller.reload();
+  const binding = bindDataQueryResult(controller, projected);
+  assertEquals(projected.peek().map((row) => row.pid), [10, 101]);
+
+  await controller.setQuery("shell");
+  assertEquals(projected.peek().map((row) => row.pid), [2]);
+  assertEquals(binding.inspect(), {
+    disposed: false,
+    rowCount: 1,
+    totalRows: 1,
+    page: 0,
+    pageSize: 2,
+    pageCount: 1,
+  });
+
+  binding.dispose();
+  await controller.setQuery("runtime");
+  assertEquals(projected.peek().map((row) => row.pid), [2]);
+  controller.dispose();
+});
+
+Deno.test("bindDataQueryTable projects remote query pages into a table without local double filtering", async () => {
+  const controller = createDataQueryController<ProcessRow>({
+    initialParams: {
+      query: "runtime",
+      sort: { field: "cpu", direction: "desc" },
+      pageSize: 2,
+    },
+    loader: ({ params }) => queryLocalData(rows, params, { searchable: ["name", "group"] }),
+  });
+  const table = new DataTableController({
+    rows: [],
+    columns,
+    rowKey: (row) => String(row.pid),
+    initialState: {
+      query: "local-filter-that-would-hide-everything",
+      sort: { columnId: "name", direction: "asc" },
+      page: 4,
+      pageSize: 1,
+      selectedKey: "33",
+    },
+  });
+
+  await controller.reload();
+  const binding = bindDataQueryTable(controller, table);
+
+  assertEquals(table.rows.peek().map((row) => row.pid), [101, 33]);
+  assertEquals(table.view.peek().rows.map((row) => row.pid), [101, 33]);
+  assertEquals(table.inspect().query, "");
+  assertEquals(table.inspect().sort, undefined);
+  assertEquals(table.inspect().page, 0);
+  assertEquals(table.inspect().pageSize, 2);
+  assertEquals(table.selectedKey(), "33");
+  assertEquals(binding.inspect().totalRows, 3);
+
+  binding.dispose();
+  table.dispose();
+  controller.dispose();
+});
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}

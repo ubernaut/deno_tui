@@ -64,9 +64,11 @@ without requiring callers to special-case each runtime primitive.
 `CachedAsyncResource`, exposes normalized `params`, `state`, and `result` signals, and keeps query, filter, sort, page,
 and page-size mutations testable without coupling the data source to a specific widget. Use `queryLocalData()` for
 in-memory rows, or provide an async loader that calls a service, worker, IndexedDB store, or WebGPU/WebGL-backed
-preprocessor before returning a `DataQueryResult`. `bindDataQueryCommands()` exposes reload, restore, cache clearing,
-query/filter clearing, paging, page-size, and sort operations to command palettes, menus, and keymaps. Run
-`deno task data-query` for a cache-backed process query demo.
+preprocessor before returning a `DataQueryResult`. `bindDataQueryParams()` connects search/filter/page signals to async
+loads, while `bindDataQueryResult()` and `bindDataQueryTable()` project query pages into row signals or
+`DataTableController` instances. `bindDataQueryCommands()` exposes reload, restore, cache clearing, query/filter
+clearing, paging, page-size, and sort operations to command palettes, menus, and keymaps. Run `deno task data-query` for
+a cache-backed process query demo.
 
 Runtime profiles let apps expose strategy choices as data instead of hard-coded conditionals. A settings pane can show
 `RuntimeProfileRegistry.catalog()`, keep the selected profile in a `RuntimeProfileController`, persist it with

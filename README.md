@@ -1622,7 +1622,8 @@ Optional high-performance APIs are surfaced through `src/runtime/mod.ts`:
 - `AsyncResource` / `createAsyncResource()` / `CachedAsyncResource` / `createCachedAsyncResource()` /
   `bindResourceParams()`
 - `runDataPipeline()` / `LatestDataPipeline` / `CachedDataPipeline` / `bindDataPipeline()` / `workerTransform()`
-- `DataQueryController` / `createDataQueryController()` / `queryLocalData()` / `bindDataQueryCommands()`
+- `DataQueryController` / `createDataQueryController()` / `queryLocalData()` / `bindDataQueryParams()` /
+  `bindDataQueryResult()` / `bindDataQueryTable()` / `bindDataQueryCommands()`
 - `WorkerPool`
 - `MemoryStore`
 - `IndexedDbStore`
@@ -1810,6 +1811,9 @@ const stopProcessQueryCommands = bindDataQueryCommands(commandRegistry, processe
   includePageSizeCommands: true,
   pageSizes: [20, 50, 100],
 });
+
+const table = new DataTableController({ rows: [], columns: processColumns });
+const stopProcessTableBinding = bindDataQueryTable(processes, table);
 ```
 
 `bindResourceParams()` connects a params signal to a resource, with optional debounce for search boxes, filters, route

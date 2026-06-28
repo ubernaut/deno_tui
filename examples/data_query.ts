@@ -1,10 +1,13 @@
 import {
   bindDataQueryCommands,
+  bindDataQueryTable,
   CommandRegistry,
   createDataQueryController,
   createRuntimeStore,
+  type DataColumn,
   type DataQueryCommandAction,
   type DataQueryResult,
+  DataTableController,
   queryLocalData,
 } from "../mod.ts";
 
@@ -21,6 +24,12 @@ const rows: ProcessRow[] = [
   { pid: 101, name: "three-ascii", group: "renderer", cpu: 55 },
   { pid: 33, name: "worker-pool", group: "runtime", cpu: 21 },
   { pid: 44, name: "theme-resolver", group: "runtime", cpu: 8 },
+];
+const columns: DataColumn<ProcessRow>[] = [
+  { id: "pid", label: "PID", width: 5 },
+  { id: "name", label: "Name", width: 16 },
+  { id: "group", label: "Group", width: 9 },
+  { id: "cpu", label: "CPU", width: 5 },
 ];
 
 const store = createRuntimeStore<DataQueryResult<ProcessRow>>({
@@ -48,6 +57,12 @@ const stopCommands = bindDataQueryCommands(commandRegistry, processes, {
   includeSortCommands: true,
   sortFields: [{ field: "cpu", label: "CPU" }],
 });
+const table = new DataTableController({
+  rows: [],
+  columns,
+  rowKey: (row) => String(row.pid),
+});
+const stopTableBinding = bindDataQueryTable(processes, table);
 
 await processes.setQuery("runtime");
 await commandRegistry.execute("processes.query.sort.cpu", (action) => void actions.push(action));
@@ -55,6 +70,7 @@ await commandRegistry.execute("processes.query.sort.cpu", (action) => void actio
 
 console.log("Runtime data query");
 console.log(`Rows: ${processes.result.peek().rows.map((row) => `${row.name}:${row.cpu}%`).join(", ")}`);
+console.log(`Table rows: ${table.view.peek().rows.map((row) => row.name).join(", ")}`);
 console.log(`Total: ${processes.inspect().totalRows}`);
 console.log(`Cache: ${processes.inspect().key}`);
 console.log(`Command actions: ${actions.map((action) => action.type).join(", ")}`);
@@ -73,6 +89,8 @@ const restored = createDataQueryController<ProcessRow>({
 await restored.restore();
 console.log(`Restored cached rows: ${restored.result.peek().rows.length}`);
 
+stopTableBinding();
+stopCommands();
+table.dispose();
 processes.dispose();
 restored.dispose();
-stopCommands();
