@@ -28,12 +28,14 @@ import {
   createThemeLayerStack,
   createThemePaletteRegistry,
   createThemeProvider,
+  createThemeProviderReport,
   createThemeRegistry,
   createThemeRegistryFromManifests,
   defaultThemePacks,
   defaultThemePaletteDefinitions,
   diffThemeEngines,
   emptyStyle,
+  formatThemeProviderReportMarkdown,
   inspectThemeCoverage,
   inspectThemeManifest,
   mergeComponentThemeDefinition,
@@ -41,6 +43,7 @@ import {
   previewThemeProvider,
   type Theme,
   ThemeEngine,
+  type ThemeEngineOptions,
   ThemeInheritanceError,
   type ThemePack,
   ThemePackNotFoundError,
@@ -1529,6 +1532,91 @@ Deno.test("previewThemeProvider renders the active engine and layers", () => {
     ],
   );
   assertEquals(preview.catalog.layers.map((layer) => [layer.id, layer.active]), [["alerts", true]]);
+});
+
+Deno.test("theme provider reports combine catalog preview validation and coverage", () => {
+  const provider = createThemeProvider({
+    registry: createThemeRegistry([
+      {
+        id: "ops",
+        label: "Ops",
+        palette: "plain",
+        options: {
+          components: {
+            Field: { base: { base: "foreground", focused: "accent" } },
+            Button: {
+              extends: "Field",
+              variants: { danger: { active: "danger" } },
+            },
+          },
+        },
+      },
+      {
+        id: "broken",
+        label: "Broken",
+        palette: "plain",
+        options: {
+          components: { Badge: { base: { base: "missing-token" } } },
+        } as unknown as ThemeEngineOptions,
+      },
+    ]),
+    activeId: "ops",
+    layers: [
+      {
+        id: "contrast",
+        label: "Contrast",
+        options: {
+          components: {
+            Button: { variants: { quiet: { base: "warning" } } },
+          },
+        },
+      },
+      {
+        id: "broken-layer",
+        enabled: false,
+        options: {
+          components: { Banner: { base: { active: "unknown-token" } } },
+        } as unknown as ThemeEngineOptions,
+      },
+    ],
+  });
+
+  const report = createThemeProviderReport(provider, {
+    title: "Theme Audit",
+    preview: { sample: "OK", components: ["Button"], states: ["base"] },
+    coverage: { components: ["Button"] },
+  });
+  const markdown = formatThemeProviderReportMarkdown(provider, {
+    title: "Theme Audit",
+    preview: false,
+    coverage: { components: ["Button"] },
+  });
+
+  assertEquals(report.activeId, "ops");
+  assertEquals(report.activeLayers, ["contrast"]);
+  assertEquals(report.summary, {
+    themeCount: 2,
+    layerCount: 2,
+    activeLayerCount: 1,
+    componentCount: 4,
+    variantCount: 6,
+    issueCount: 2,
+    missingStateCount: 5,
+    completeCoverage: false,
+  });
+  assertEquals(report.issues.map((issue) => [issue.source, issue.sourceId, issue.kind, issue.reference]), [
+    ["theme", "broken", "unknown-token", "missing-token"],
+    ["layer", "broken-layer", "unknown-token", "unknown-token"],
+  ]);
+  assertEquals(report.preview?.components.map((entry) => [entry.component, entry.variant, entry.state]), [
+    ["Button", "default", "base"],
+    ["Button", "danger", "base"],
+    ["Button", "quiet", "base"],
+  ]);
+  assertEquals(markdown.includes("# Theme Audit"), true);
+  assertEquals(markdown.includes("2 themes, 2 layers, 4 components, 6 variants, 2 issues."), true);
+  assertEquals(markdown.includes("| unknown-token | theme:broken | components.Badge.base.base |"), true);
+  assertEquals(markdown.includes("| Button | quiet | no | active, disabled |"), true);
 });
 
 Deno.test("ThemeProvider engineFor and theme gallery preview inactive engines with layers", () => {

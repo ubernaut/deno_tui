@@ -4,6 +4,7 @@ import {
   createThemeProvider,
   createThemeRegistry,
   filterThemeGalleryItems,
+  formatThemeProviderReportMarkdown,
   type ThemePack,
 } from "../mod.ts";
 
@@ -103,3 +104,9 @@ console.log("");
 console.log(
   `Quick filter "console": ${filterThemeGalleryItems(gallery.items, "console").map((item) => item.id).join(", ")}`,
 );
+console.log("");
+console.log(formatThemeProviderReportMarkdown(provider, {
+  title: "Theme Provider Audit",
+  preview: false,
+  coverage: { components: ["Button", "StatusBar"] },
+}));
