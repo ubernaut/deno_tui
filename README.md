@@ -291,6 +291,7 @@ This fork exports lightweight app primitives for larger TUIs:
 - `FocusScope`
 - `KeymapRegistry`
 - `SelectionController` and selection helpers
+- `SettingsController`
 - viewport helpers such as `viewportWindow()`, `viewportOffsetBy()`, and `viewportThumb()`
 
 They are optional and composable. Existing component-first apps continue to work. Use `app.enableFocusNavigation()` or
@@ -333,6 +334,24 @@ const stopSettings = app.use({
 });
 
 const activePlugins = app.plugins();
+```
+
+`SettingsController` wraps `PersistentSignal` with app-level namespacing, caching, aggregate readiness, flushing, reset,
+and disposal. Use it for preferences such as active route, theme pack, layout density, split ratios, hidden controls, or
+visualization settings while keeping storage configurable:
+
+```ts
+const settings = new SettingsController({
+  namespace: "dashboard",
+  store: createRuntimeStore({ databaseName: "dashboard", storeName: "preferences" }),
+});
+
+const activeRoute = settings.signal({ key: "route", initialValue: "overview" });
+const activeTheme = settings.signal({ key: "theme", initialValue: "neon" });
+
+await settings.ready();
+activeRoute.set("runtime");
+await settings.flush();
 ```
 
 `bindModalFocus()` ties a visibility signal to a `FocusScope`, traps focus while modal-like surfaces are open, restores

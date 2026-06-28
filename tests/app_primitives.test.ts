@@ -13,7 +13,9 @@ import { bindRouteHistory } from "../src/app/history_bindings.ts";
 import { HistoryStack } from "../src/app/history.ts";
 import { bindRouteIndex, bindRouteSignal } from "../src/app/route_bindings.ts";
 import { RouteManager } from "../src/app/router.ts";
+import { SettingsController } from "../src/app/settings.ts";
 import { KeymapRegistry } from "../src/keymap.ts";
+import { MemoryStore } from "../src/runtime/storage.ts";
 import { Signal } from "../src/signals/mod.ts";
 import { createTestKeyPress, TestKeyPressTarget } from "../src/testing/mod.ts";
 import type { Tui } from "../src/tui.ts";
@@ -849,4 +851,68 @@ Deno.test("bindRouteHistory records undoable route changes without duplicating r
   dispose();
   routes.navigate("home");
   assertEquals(history.inspect().undoDepth, 2);
+});
+
+Deno.test("SettingsController namespaces and caches persistent settings", async () => {
+  const store = new MemoryStore<unknown>();
+  const settings = new SettingsController({ store, namespace: "shell" });
+
+  const route = settings.signal({ key: "route", initialValue: "overview" });
+  const sameRoute = settings.signal({ key: "route", initialValue: "ignored" });
+
+  assertEquals(route, sameRoute);
+  assertEquals(settings.key("route"), "shell.route");
+  assertEquals(settings.has("route"), true);
+  assertEquals(settings.keys(), ["shell.route"]);
+  assertEquals(settings.inspect(), { namespace: "shell", keys: ["shell.route"] });
+
+  route.set("runtime");
+  await settings.flush();
+  assertEquals(await store.get("shell.route"), "runtime");
+});
+
+Deno.test("SettingsController supports serialization reset and ready aggregation", async () => {
+  const store = new MemoryStore<unknown>();
+  await store.set("prefs.layout", JSON.stringify({ split: 0.7 }));
+  const settings = new SettingsController({ store, namespace: "prefs" });
+
+  const layout = settings.signal({
+    key: "layout",
+    initialValue: { split: 0.5 },
+    serialize: (value: { split: number }) => JSON.stringify(value),
+    deserialize: (value: string) => JSON.parse(value) as { split: number },
+  });
+
+  await settings.ready();
+  assertEquals(layout.value.value, { split: 0.7 });
+
+  layout.set({ split: 0.25 });
+  await settings.flush();
+  assertEquals(await store.get("prefs.layout"), JSON.stringify({ split: 0.25 }));
+
+  assertEquals(await settings.reset("layout"), true);
+  assertEquals(layout.value.value, { split: 0.5 });
+  assertEquals(await store.get("prefs.layout"), undefined);
+  assertEquals(await settings.reset("missing"), false);
+});
+
+Deno.test("SettingsController resetAll and dispose apply to registered settings", async () => {
+  const store = new MemoryStore<unknown>();
+  const settings = new SettingsController({ store });
+  const route = settings.signal({ key: "route", initialValue: "overview" });
+  const theme = settings.signal({ key: "theme", initialValue: "plain" });
+  let routeChanges = 0;
+
+  route.value.subscribe(() => routeChanges++);
+  route.set("runtime");
+  theme.set("neon");
+  await settings.flush();
+
+  await settings.resetAll();
+  assertEquals(route.value.value, "overview");
+  assertEquals(theme.value.value, "plain");
+
+  settings.dispose();
+  assertEquals(routeChanges, 2);
+  assertEquals(settings.keys(), []);
 });
