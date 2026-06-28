@@ -3,7 +3,7 @@ import { crayon } from "https://deno.land/x/crayon@3.3.3/mod.ts";
 import {
   Chart,
   Computed,
-  createTheme,
+  createThemeEngine,
   Gauge,
   handleInput,
   handleKeyboardControls,
@@ -26,13 +26,7 @@ handleKeyboardControls(tui);
 tui.dispatch();
 tui.run();
 
-const theme = createTheme({
-  foreground: crayon.white,
-  accent: crayon.cyan,
-  success: crayon.green,
-  warning: crayon.yellow,
-  danger: crayon.red,
-});
+const theme = createThemeEngine("neon", { tokens: { foreground: crayon.white } }).component("Dashboard");
 
 const values = new Signal([2, 5, 3, 8, 4, 9, 6, 7], { deepObserve: true });
 const logs = new Signal(["dashboard demo started", "sampling synthetic metrics"], { deepObserve: true });

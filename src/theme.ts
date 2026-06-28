@@ -84,6 +84,51 @@ export interface ThemeEngineOptions {
   components?: Record<string, ComponentThemeDefinition>;
 }
 
+export type ThemePaletteName = "plain" | "neon" | "terminal";
+
+export const themePalettes: Record<ThemePaletteName, Partial<ThemeTokens>> = {
+  plain: {
+    foreground: emptyStyle,
+    muted: emptyStyle,
+    accent: emptyStyle,
+    success: emptyStyle,
+    warning: emptyStyle,
+    danger: emptyStyle,
+    surface: emptyStyle,
+  },
+  neon: {
+    foreground: (value) => `\x1b[38;2;230;255;246m${value}\x1b[0m`,
+    muted: (value) => `\x1b[38;2;104;124;132m${value}\x1b[0m`,
+    accent: (value) => `\x1b[38;2;31;231;210m${value}\x1b[0m`,
+    success: (value) => `\x1b[38;2;156;255;58m${value}\x1b[0m`,
+    warning: (value) => `\x1b[38;2;255;196;87m${value}\x1b[0m`,
+    danger: (value) => `\x1b[38;2;255;79;216m${value}\x1b[0m`,
+    surface: (value) => `\x1b[48;2;7;16;23m${value}\x1b[0m`,
+  },
+  terminal: {
+    foreground: (value) => `\x1b[37m${value}\x1b[0m`,
+    muted: (value) => `\x1b[90m${value}\x1b[0m`,
+    accent: (value) => `\x1b[36m${value}\x1b[0m`,
+    success: (value) => `\x1b[32m${value}\x1b[0m`,
+    warning: (value) => `\x1b[33m${value}\x1b[0m`,
+    danger: (value) => `\x1b[31m${value}\x1b[0m`,
+    surface: emptyStyle,
+  },
+};
+
+export function createThemeEngine(
+  palette: ThemePaletteName = "plain",
+  options: Omit<ThemeEngineOptions, "tokens"> & { tokens?: Partial<ThemeTokens> } = {},
+): ThemeEngine {
+  return new ThemeEngine({
+    ...options,
+    tokens: {
+      ...themePalettes[palette],
+      ...(options.tokens ?? {}),
+    },
+  });
+}
+
 export class ThemeEngine {
   readonly theme: Theme & { tokens: ThemeTokens };
   private readonly components: Record<string, ComponentThemeDefinition>;

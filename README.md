@@ -211,13 +211,13 @@ They are optional and composable. Existing component-first apps continue to work
 
 ## Theming
 
-Use `createTheme()` for semantic tokens or `ThemeEngine` for app-level component variants:
+Use `createTheme()` for semantic tokens, `createThemeEngine()` for built-in palettes, or `ThemeEngine` for app-level
+component variants:
 
 ```ts
-import { ThemeEngine } from "https://deno.land/x/tui@VERSION/mod.ts";
+import { createThemeEngine } from "https://deno.land/x/tui@VERSION/mod.ts";
 
-const themeEngine = new ThemeEngine({
-  tokens: { foreground: crayon.white, accent: crayon.cyan },
+const themeEngine = createThemeEngine("neon", {
   components: {
     Button: {
       variants: {

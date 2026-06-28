@@ -3,7 +3,7 @@ import { renderBarChart } from "../src/components/chart.ts";
 import { renderGauge } from "../src/components/gauge.ts";
 import { visibleLogLines } from "../src/components/log_viewer.ts";
 import { renderSparkline } from "../src/components/sparkline.ts";
-import { createTheme, emptyStyle, ThemeEngine } from "../src/theme.ts";
+import { createTheme, createThemeEngine, emptyStyle, ThemeEngine, themePalettes } from "../src/theme.ts";
 
 Deno.test("renderSparkline samples values into fixed width", () => {
   assertEquals(renderSparkline([0, 1, 2, 3], 4), "▁▃▆█");
@@ -42,4 +42,15 @@ Deno.test("ThemeEngine resolves component variants over global tokens", () => {
 
   assertEquals(engine.resolve("Button", "base")("x"), "fg:x");
   assertEquals(engine.resolve("Button", "base", "danger")("x"), "danger:x");
+});
+
+Deno.test("createThemeEngine merges preset palettes with overrides", () => {
+  const engine = createThemeEngine("terminal", {
+    tokens: {
+      accent: (value) => `custom:${value}`,
+    },
+  });
+
+  assertEquals(themePalettes.terminal.success?.("x"), "\x1b[32mx\x1b[0m");
+  assertEquals(engine.theme.tokens.accent("x"), "custom:x");
 });

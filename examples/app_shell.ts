@@ -4,6 +4,7 @@ import {
   CommandPalette,
   Computed,
   createApp,
+  createThemeEngine,
   dockRect,
   Frame,
   handleInput,
@@ -16,7 +17,6 @@ import {
   StatusBar,
   Text,
   type TextRectangle,
-  ThemeEngine,
   type ToastMessage,
   ToastStack,
   Tree,
@@ -42,15 +42,8 @@ const app = createApp<DemoAction>({
 handleInput(app.tui);
 handleKeyboardControls(app.tui);
 
-const themeEngine = new ThemeEngine({
-  tokens: {
-    foreground: crayon.white,
-    muted: crayon.lightBlack,
-    accent: crayon.cyan,
-    success: crayon.green,
-    warning: crayon.yellow,
-    danger: crayon.red,
-  },
+const themeEngine = createThemeEngine("neon", {
+  tokens: { foreground: crayon.white },
   components: {
     Modal: {
       variants: {
