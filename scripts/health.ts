@@ -28,6 +28,7 @@ export const defaultHealthSteps: readonly HealthStep[] = [
   },
   { name: "api-reference", command: ["deno", "check", "scripts/api_reference.ts"] },
   { name: "web-api", command: ["deno", "task", "web:check"] },
+  { name: "remote-api", command: ["deno", "task", "remote:check"] },
   { name: "web-demo", command: ["deno", "task", "web:demo:check"] },
   { name: "screenshots", command: ["deno", "check", "scripts/generate_screenshots.ts"] },
   { name: "app-shell", command: ["deno", "check", "examples/app_shell.ts"] },

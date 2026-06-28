@@ -26,6 +26,8 @@ The repo already has useful browser-ready pieces:
   runtime.
 - `BrowserPlatform`, `BrowserInputSource`, `BrowserCellCanvasSink`, and `WebTuiHost` provide the first client-side
   runtime path.
+- `mod.remote.ts` exposes the browser/client bridge protocol for hosted terminal apps, including a transport-neutral
+  client and WebSocket transport.
 - `examples/web/standalone.ts` demonstrates a browser-only app using the shared `Canvas`, `BoxObject`, `TextObject`,
   ANSI theme styles, and Canvas2D sink.
 - Signals, controllers, commands, plugins, layouts, theme engines, data resources, worker pools, settings, and runtime
@@ -239,6 +241,16 @@ runtime wrapper around a shared `TuiAppHost`.
 - Add Playwright tests for rendered DOM, canvas pixel smoke checks, input handling, resize behavior, and theme
   switching.
 - Ship browser examples with screenshots or short clips generated from real browser runs.
+
+### Remote Bridge Track
+
+- Status: started.
+- Added `mod.remote.ts` for the hosted terminal/client bridge use case.
+- Added `RemoteTerminalClient`, a JSON protocol for input/resize/ping messages, server data/error/close messages, and a
+  browser `WebSocketRemoteTerminalTransport`.
+- Added protocol tests for preserving binary input buffers and emitting terminal data over a fake transport.
+- Still needed: server-side Deno bridge that runs a TUI process or app host, PTY integration, auth/session boundaries,
+  and an xterm-compatible browser renderer example.
 
 ## Key Risks
 
