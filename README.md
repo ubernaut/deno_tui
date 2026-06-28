@@ -1333,7 +1333,7 @@ Optional high-performance APIs are surfaced through `src/runtime/mod.ts`:
 - `runtimeCapabilityEntries()` / `summarizeRuntimeCapabilities()` / `formatRuntimeCapabilities()`
 - `AsyncScheduler` / `runTaskBatch()`
 - `AsyncResource` / `createAsyncResource()` / `bindResourceParams()`
-- `runDataPipeline()` / `LatestDataPipeline` / `bindDataPipeline()` / `workerTransform()`
+- `runDataPipeline()` / `LatestDataPipeline` / `CachedDataPipeline` / `bindDataPipeline()` / `workerTransform()`
 - `WorkerPool`
 - `MemoryStore`
 - `IndexedDbStore`
@@ -1420,6 +1420,8 @@ async results when users type or change filters quickly:
 
 ```ts
 import {
+  createCachedDataPipeline,
+  createRuntimeStore,
   filterRows,
   LatestDataPipeline,
   mapRows,
@@ -1445,6 +1447,33 @@ if (result.status === "ok") renderRows(result.value);
 
 Pass `priority` and `signal` to `runDataPipeline()` or `LatestDataPipeline.run()` to prioritize visible work and cancel
 queued transforms when search text, route state, or source data changes before the work starts.
+
+`CachedDataPipeline` adds an optional persistence layer for expensive transforms whose latest successful result should
+survive route changes, process refreshes, or app restarts. It uses the same `AsyncStore` contract as settings and can be
+backed by `MemoryStore`, `IndexedDbStore`, or a custom store:
+
+```ts
+const pipeline = createCachedDataPipeline<ProcessRow[], string[]>([
+  filterRows((row) => row.cpu > 0.25),
+  workerTransform(processPool),
+  sortRows((left, right) => right.cpu - left.cpu),
+  mapRows((row) => `${row.pid} ${row.name}`),
+], {
+  store: createRuntimeStore<string[]>({
+    databaseName: "monitor",
+    storeName: "pipelines",
+  }),
+  key: "processes:hot",
+  scheduler,
+  priority: 5,
+});
+
+const restoredRows = await pipeline.restore(processes);
+if (restoredRows) renderRows(restoredRows);
+const latestRows = await pipeline.run(processes);
+if (latestRows.status === "ok") renderRows(latestRows.value);
+const pipelineCacheState = pipeline.inspect();
+```
 
 `bindDataPipeline()` connects an input signal to a pipeline output signal, aborting superseded work and optionally
 debouncing rapid input changes. The returned handle is still callable as a disposer, and also exposes `inspect()`,
@@ -1617,19 +1646,20 @@ const preset = findAsciiDemoPreset("mixed-best");
 
 ## Examples
 
-| File                         | Description                                                  |
-| ---------------------------- | ------------------------------------------------------------ |
-| `examples/demo.ts`           | Kitchen-sink demo of all components                          |
-| `examples/calculator.ts`     | Functional calculator built with `GridLayout`                |
-| `examples/layout.ts`         | Grid layout with draggable, colored buttons                  |
-| `examples/app_shell.ts`      | App primitives, settings-backed routes, commands, and toasts |
-| `examples/dashboard.ts`      | Dashboard widgets, semantic theme tokens, and key help       |
-| `examples/theme_manifest.ts` | Serializable theme manifest compiler and diff demo           |
-| `examples/theme_engines.ts`  | Theme engine factory registry and prewarm demo               |
-| `examples/worker_pool.ts`    | WorkerPool concurrency example                               |
-| `examples/three_ascii.ts`    | Interactive 3D ASCII renderer powered by three.js            |
-| `app/showcase.ts`            | Full Neon Exodus-style widget and visualization showcase     |
-| `app/main.ts`                | Live system monitor dashboard with selectable panels         |
+| File                          | Description                                                  |
+| ----------------------------- | ------------------------------------------------------------ |
+| `examples/demo.ts`            | Kitchen-sink demo of all components                          |
+| `examples/calculator.ts`      | Functional calculator built with `GridLayout`                |
+| `examples/layout.ts`          | Grid layout with draggable, colored buttons                  |
+| `examples/app_shell.ts`       | App primitives, settings-backed routes, commands, and toasts |
+| `examples/dashboard.ts`       | Dashboard widgets, semantic theme tokens, and key help       |
+| `examples/theme_manifest.ts`  | Serializable theme manifest compiler and diff demo           |
+| `examples/theme_engines.ts`   | Theme engine factory registry and prewarm demo               |
+| `examples/worker_pool.ts`     | WorkerPool concurrency example                               |
+| `examples/cached_pipeline.ts` | Cached scheduler-backed data pipeline example                |
+| `examples/three_ascii.ts`     | Interactive 3D ASCII renderer powered by three.js            |
+| `app/showcase.ts`             | Full Neon Exodus-style widget and visualization showcase     |
+| `app/main.ts`                 | Live system monitor dashboard with selectable panels         |
 
 Run the theme manifest and engine factory demos with:
 
@@ -1664,6 +1694,7 @@ tuning.
 ./visualization dashboard
 ./visualization app-shell
 ./visualization worker
+./visualization pipeline
 ./visualization capabilities
 ./visualization benchmark
 ./visualization api-inventory
@@ -1675,9 +1706,9 @@ deno task viz
 Launches the system monitor dashboard. Use `F4` to open options, select panel visualizations, and change the ASCII style
 for 3D panels. Added 3D visualization IDs include `three-lattice`, `three-atfield`, `three-hexshell`, `three-capture`,
 `three-mapslab`, `three-solenoid`, and `three-ascii-studio`. The same launcher also exposes runtime and tooling demos:
-`worker` for abortable worker-pool concurrency, `capabilities` for platform feature detection, `benchmark` for
-performance smoke checks, `api-inventory` for public export graph inspection, `grwizard` for the responsive GPU/model
-wizard, and `health` for the contributor gate.
+`worker` for abortable worker-pool concurrency, `pipeline` for cached scheduler-backed transforms, `capabilities` for
+platform feature detection, `benchmark` for performance smoke checks, `api-inventory` for public export graph
+inspection, `grwizard` for the responsive GPU/model wizard, and `health` for the contributor gate.
 
 Direct Deno tasks are also available:
 
@@ -1692,6 +1723,7 @@ deno task benchmark
 deno task api-inventory
 deno task health
 deno task worker-demo
+deno task cached-pipeline
 ```
 
 ```sh
@@ -1700,6 +1732,7 @@ deno run --allow-hrtime examples/calculator.ts
 deno run -A examples/app_shell.ts
 deno run -A examples/dashboard.ts
 deno run -A examples/worker_pool.ts
+deno run -A examples/cached_pipeline.ts
 deno run -A examples/three_ascii.ts
 ```
 

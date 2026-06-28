@@ -1,5 +1,6 @@
 import { assertEquals } from "./deps.ts";
 import {
+  createCachedDataPipeline,
   DataPipelineAbortError,
   filterRows,
   LatestDataPipeline,
@@ -11,6 +12,7 @@ import {
 } from "../src/runtime/data_pipeline.ts";
 import { bindDataPipeline } from "../src/runtime/data_pipeline_bindings.ts";
 import { AsyncScheduler } from "../src/runtime/scheduler.ts";
+import { MemoryStore } from "../src/runtime/storage.ts";
 import { Signal } from "../src/signals/mod.ts";
 
 Deno.test("runDataPipeline applies row transforms in order", async () => {
@@ -157,6 +159,66 @@ Deno.test("LatestDataPipeline marks older results stale", async () => {
   assertEquals(await second, { status: "ok", value: 11, revision: 2 });
   releaseFirst?.();
   assertEquals(await first, { status: "stale", revision: 1 });
+});
+
+Deno.test("CachedDataPipeline restores and persists successful latest results", async () => {
+  const store = new MemoryStore<string>();
+  const pipeline = createCachedDataPipeline<number[], string[], string>([
+    sortRows<number>((left, right) => left - right),
+    mapRows<number, string>((value) => `#${value}`),
+  ], {
+    store,
+    key: (rows) => `rows:${rows.length}`,
+    serialize: (rows) => rows.join(","),
+    deserialize: (value) => value.split(","),
+  });
+
+  assertEquals(await pipeline.restore([3, 1]), undefined);
+  assertEquals(await pipeline.run([3, 1]), { status: "ok", value: ["#1", "#3"], revision: 1 });
+  assertEquals(await store.get("rows:2"), "#1,#3");
+  assertEquals(pipeline.inspect(), {
+    revision: 1,
+    cached: false,
+    key: "rows:2",
+    value: ["#1", "#3"],
+  });
+
+  const restored = createCachedDataPipeline<number[], string[], string>([], {
+    store,
+    key: (rows) => `rows:${rows.length}`,
+    deserialize: (value) => value.split(","),
+  });
+
+  assertEquals(await restored.restore([9, 8]), ["#1", "#3"]);
+  assertEquals(restored.inspect(), {
+    revision: 0,
+    cached: true,
+    key: "rows:2",
+    value: ["#1", "#3"],
+  });
+});
+
+Deno.test("CachedDataPipeline does not persist stale completions", async () => {
+  const store = new MemoryStore<number>();
+  const releaseFirst = deferred<void>();
+  const pipeline = createCachedDataPipeline<number, number>([
+    async (value) => {
+      if (value === 1) {
+        await releaseFirst.promise;
+      }
+      return value * 10;
+    },
+  ], { store, key: "latest" });
+
+  const first = pipeline.run(1);
+  const second = pipeline.run(2);
+
+  assertEquals(await second, { status: "ok", value: 20, revision: 2 });
+  assertEquals(await store.get("latest"), 20);
+  releaseFirst.resolve();
+  assertEquals(await first, { status: "stale", revision: 1 });
+  assertEquals(await store.get("latest"), 20);
+  assertEquals(pipeline.inspect(), { revision: 2, cached: false, key: "latest", value: 20 });
 });
 
 Deno.test("bindDataPipeline writes latest signal-driven pipeline results", async () => {

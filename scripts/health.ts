@@ -27,6 +27,7 @@ export const defaultHealthSteps: readonly HealthStep[] = [
     ],
   },
   { name: "app-shell", command: ["deno", "check", "examples/app_shell.ts"] },
+  { name: "cached-pipeline", command: ["deno", "check", "examples/cached_pipeline.ts"] },
   { name: "visualization-app", command: ["deno", "task", "viz:check"] },
   { name: "showcase", command: ["deno", "task", "showcase:check"] },
   { name: "grwizard", command: ["deno", "task", "grwizard:check"] },
