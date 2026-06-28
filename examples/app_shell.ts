@@ -13,6 +13,7 @@ import {
   Frame,
   handleInput,
   handleKeyboardControls,
+  HistoryStack,
   KeyHelp,
   List,
   MenuBar,
@@ -32,10 +33,12 @@ import {
 } from "../mod.ts";
 
 type DemoAction =
-  | { type: "route"; payload: string }
+  | { type: "route"; payload: string; history?: boolean }
   | { type: "toast"; payload: string }
   | { type: "palette"; payload: boolean }
-  | { type: "context"; payload: boolean };
+  | { type: "context"; payload: boolean }
+  | { type: "history.undo" }
+  | { type: "history.redo" };
 
 const app = createApp<DemoAction>({
   tuiOptions: {
@@ -77,6 +80,7 @@ const persistedRoute = createPersistentSignal({
 });
 const routeChoice = persistedRoute.value;
 const routeStepIndex = new Signal(0);
+const history = new HistoryStack({ capacity: 32 });
 const toasts = new Signal<ToastMessage[]>([
   { id: "boot", level: "success", message: "App shell ready" },
 ], { deepObserve: true });
@@ -102,6 +106,9 @@ const scrollLines = [
   "  ThemeEngine resolves semantic tokens, component variants, and palette presets.",
   "  Components consume theme slices instead of hard-coded styles.",
   "  Demos use the same theming API exported to application authors.",
+  "",
+  "History direction",
+  "  HistoryStack keeps undo/redo separate from routing and commands.",
 ];
 
 app.commands.register({
@@ -152,6 +159,24 @@ app.commands.register({
   action: { type: "toast", payload: "Command executed" },
 });
 app.commands.register({
+  id: "history.undo",
+  label: "Undo Route",
+  group: "global",
+  keywords: ["back", "history"],
+  binding: { key: "u" },
+  disabled: () => !history.canUndo(),
+  action: { type: "history.undo" },
+});
+app.commands.register({
+  id: "history.redo",
+  label: "Redo Route",
+  group: "global",
+  keywords: ["forward", "history"],
+  binding: { key: "r" },
+  disabled: () => !history.canRedo(),
+  action: { type: "history.redo" },
+});
+app.commands.register({
   id: "app.quit",
   label: "Quit",
   group: "global",
@@ -168,9 +193,20 @@ for (const binding of app.commands.keyBindings()) {
 
 app.actions.subscribe((action) => {
   if (action.type === "route") {
+    const previousRoute = app.routes.active()?.id;
     app.routes.navigate(action.payload);
     routeChoice.value = action.payload;
     routeStepIndex.value = Math.max(0, ["overview", "widgets", "runtime"].indexOf(action.payload));
+    if (action.history !== false && previousRoute && previousRoute !== action.payload) {
+      const nextRoute = action.payload;
+      history.push({
+        id: `route.${previousRoute}.${nextRoute}`,
+        label: `Route ${previousRoute} -> ${nextRoute}`,
+        group: "routes",
+        undo: () => app.actions.dispatch({ type: "route", payload: previousRoute, history: false }),
+        redo: () => app.actions.dispatch({ type: "route", payload: nextRoute, history: false }),
+      });
+    }
     pushToast(`Route changed to ${action.payload}`, "info");
   } else if (action.type === "toast") {
     pushToast(action.payload, "success");
@@ -178,12 +214,16 @@ app.actions.subscribe((action) => {
     paletteVisible.value = action.payload;
   } else if (action.type === "context") {
     contextVisible.value = action.payload;
+  } else if (action.type === "history.undo") {
+    void history.undo();
+  } else if (action.type === "history.redo") {
+    void history.redo();
   }
 });
 
 void persistedRoute.ready.then((route) => {
   if (app.routes.routes.peek().some((candidate) => candidate.id === route)) {
-    void app.actions.dispatch({ type: "route", payload: route });
+    void app.actions.dispatch({ type: "route", payload: route, history: false });
   }
 });
 
@@ -264,7 +304,7 @@ new Text({
     [
       `Route: ${app.routes.active()?.title ?? "none"}`,
       "This demo wires app primitives, keymap, routes, command palette, context menu, tree, list, toasts, and responsive layout.",
-      "Press p for palette, c for context actions, 1/2/3 for routes, q to quit.",
+      "Press p for palette, c for context actions, 1/2/3 for routes, u/r for history, q to quit.",
     ].join("  ")
   ),
   overwriteWidth: true,
@@ -489,6 +529,10 @@ app.tui.on("keyPress", ({ key, ctrl, meta }) => {
   if (ctrl || meta) return;
   if (key === "q") {
     void app.executeCommand("app.quit");
+  } else if (key === "u") {
+    void app.executeCommand("history.undo");
+  } else if (key === "r") {
+    void app.executeCommand("history.redo");
   } else if (key === "p") {
     void app.executeCommand("palette.toggle");
   } else if (key === "c") {

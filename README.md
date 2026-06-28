@@ -229,6 +229,7 @@ This fork exports lightweight app primitives for larger TUIs:
 - `ActionBus`
 - `CommandRegistry`
 - `FormController`
+- `HistoryStack`
 - `RouteManager`
 - `FocusManager`
 - `FocusScope`
@@ -246,6 +247,21 @@ const form = new FormController([
 
 form.setValue("route", "runtime");
 const ok = form.validate();
+```
+
+`HistoryStack` keeps undo/redo separate from widgets and route managers:
+
+```ts
+const history = new HistoryStack({ capacity: 50 });
+
+await history.apply({
+  label: "Rename item",
+  redo: () => renameItem(id, nextName),
+  undo: () => renameItem(id, previousName),
+});
+
+await history.undo();
+await history.redo();
 ```
 
 ## Theming
