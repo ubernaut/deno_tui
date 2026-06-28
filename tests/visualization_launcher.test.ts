@@ -13,6 +13,7 @@ import {
 Deno.test("visualization launcher resolves public aliases to deno tasks", () => {
   assertEquals(resolveVisualizationTask(), "showcase");
   assertEquals(resolveVisualizationTask("neon"), "neon-exodus");
+  assertEquals(resolveVisualizationTask("portfolio"), "api-workbench");
   assertEquals(resolveVisualizationTask("polygons"), "three-ascii");
   assertEquals(resolveVisualizationTask("recipe"), "layout-recipe");
   assertEquals(resolveVisualizationTask("monitor"), "viz");
@@ -60,6 +61,7 @@ Deno.test("visualization launcher help includes all primary aliases", () => {
 
 Deno.test("visualization launch catalog filters targets by category tag and search", () => {
   assertEquals(queryVisualizationLaunchTargets({ category: "app" }).map((entry) => entry.task), [
+    "api-workbench",
     "grwizard",
     "viz",
     "neon-exodus",
@@ -73,6 +75,7 @@ Deno.test("visualization launch catalog filters targets by category tag and sear
     "theme-gallery",
   ]);
   assertEquals(queryVisualizationLaunchTargets({ tag: "theme" }).map((entry) => entry.task), [
+    "api-workbench",
     "dashboard",
     "theme-bindings",
     "theme-engine-commands",

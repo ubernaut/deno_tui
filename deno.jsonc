@@ -34,6 +34,8 @@
     "data-query": "deno run -A ./examples/data_query.ts",
     "grwizard": "deno run -A ./app/grwizard.ts",
     "grwizard:check": "deno check ./app/grwizard.ts",
+    "api-workbench": "deno run -A ./app/api_workbench.ts",
+    "api-workbench:check": "deno check ./app/api_workbench.ts",
     "web:check": "deno check ./mod.web.ts",
     "web:demo:check": "deno check ./examples/web/standalone.ts ./examples/web/neon_exodus_page.ts",
     "web:pages:build": "deno run -A ./scripts/build_web_docs.ts",

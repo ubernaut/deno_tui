@@ -76,6 +76,10 @@ fixed-size PTY session, and report-style demos are captured from stdout.
 
 ![Showcase terminal screenshot](./docs/screenshots/showcase.jpg)
 
+### API Workbench
+
+![API workbench terminal screenshot](./docs/screenshots/api-workbench.jpg)
+
 ### Neon Exodus Suite
 
 ![Neon Exodus suite terminal screenshot](./docs/screenshots/neon-exodus.jpg)
@@ -2208,6 +2212,7 @@ const preset = findAsciiDemoPreset("mixed-best");
 | `examples/app_plugin_catalog.ts`        | App plugin catalog and Markdown report example               |
 | `examples/adopter_workbench.ts`         | Integrated adopter report across app/runtime/theme/data APIs |
 | `examples/demo_gallery.ts`              | Capability tour across launchers, widgets, renderers, themes |
+| `app/api_workbench.ts`                  | Interactive API portfolio with resizable windows and themes  |
 | `app/showcase.ts`                       | Full Neon Exodus-style widget and visualization showcase     |
 | `app/neon_exodus.ts`                    | OpenTUI/web Neon Exodus demo suite rebuilt on this TUI stack |
 | `app/main.ts`                           | Live system monitor dashboard with selectable panels         |
@@ -2230,12 +2235,16 @@ From the project root:
 
 ```sh
 ./visualization
+./visualization portfolio
 ./visualization showcase
 ./visualization neon
 ```
 
-Launches the full showcase app. This is the quickest way to see the expanded widget set, Neon Exodus-inspired panels,
-and the three.js ASCII renderer together.
+`./visualization portfolio` launches the API Workbench with resizable windows, minimize/maximize/restore controls,
+interactive menu bars, split panes, scrollable sections, data tables, form controls, and a theme selector.
+
+`./visualization showcase` launches the full showcase app. This is the quickest way to see the expanded widget set, Neon
+Exodus-inspired panels, and the three.js ASCII renderer together.
 
 `./visualization neon` launches the dedicated Neon Exodus suite. It starts in OpenTUI parity mode with the 24-panel
 deck, supports `O` for OpenTUI mode, `W` for the web demo ordering, and `E` for the extended fork mode that adds the
@@ -2327,6 +2336,7 @@ Direct Deno tasks are also available:
 
 ```sh
 deno task showcase
+deno task api-workbench
 deno task neon-exodus
 deno task app-shell
 deno task command-search

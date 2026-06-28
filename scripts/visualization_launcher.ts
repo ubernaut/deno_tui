@@ -46,6 +46,13 @@ export const visualizationLaunchTargets: readonly VisualizationLaunchTarget[] = 
     tags: ["widgets", "visualization"],
   },
   {
+    task: "api-workbench",
+    aliases: ["api-workbench", "workbench-ui", "interactive-api", "portfolio"],
+    description: "interactive API portfolio with resizable windows controls scroll areas tables and theme selector",
+    category: "app",
+    tags: ["api", "widgets", "layout", "theme", "interactive"],
+  },
+  {
     task: "neon-exodus",
     aliases: ["neon-exodus", "neon", "exodus", "opentui-neon"],
     description: "OpenTUI and web Neon Exodus demo suite",

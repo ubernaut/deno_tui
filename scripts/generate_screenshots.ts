@@ -55,6 +55,16 @@ const targets: ScreenshotTarget[] = [
     timeoutMs: 1200,
   },
   {
+    filename: "api-workbench.jpg",
+    title: "API Workbench",
+    theme: "gallery",
+    columns: 120,
+    rows: 36,
+    command: ["deno", "task", "api-workbench"],
+    mode: "pty",
+    timeoutMs: 1200,
+  },
+  {
     filename: "neon-exodus.jpg",
     title: "Neon Exodus",
     theme: "exodus",
