@@ -1,4 +1,12 @@
 export type ApiExportKind = "star" | "named";
+export type ApiSymbolKind =
+  | "class"
+  | "const"
+  | "enum"
+  | "function"
+  | "interface"
+  | "type"
+  | "variable";
 
 export interface ApiExportDeclaration {
   module: string;
@@ -7,9 +15,17 @@ export interface ApiExportDeclaration {
   names: string[];
 }
 
+export interface ApiSymbolDeclaration {
+  module: string;
+  name: string;
+  kind: ApiSymbolKind;
+  typeOnly: boolean;
+}
+
 export interface ApiModuleInventory {
   module: string;
   exports: ApiExportDeclaration[];
+  symbols: ApiSymbolDeclaration[];
   missingTargets: string[];
 }
 
@@ -17,6 +33,8 @@ export interface ApiInventory {
   entrypoint: string;
   modules: ApiModuleInventory[];
   exportCount: number;
+  symbolCount: number;
+  duplicateSymbols: Record<string, string[]>;
   missingTargets: string[];
 }
 
@@ -24,6 +42,10 @@ export interface ApiInventoryOptions {
   root?: string;
   readTextFile?: (path: string) => string | Promise<string>;
   exists?: (path: string) => boolean | Promise<boolean>;
+}
+
+export interface ApiInventorySuccessOptions {
+  failDuplicates?: boolean;
 }
 
 export function parseApiExports(source: string, module: string): ApiExportDeclaration[] {
@@ -42,6 +64,39 @@ export function parseApiExports(source: string, module: string): ApiExportDeclar
   }
 
   return exports;
+}
+
+export function parseApiSymbols(source: string, module: string): ApiSymbolDeclaration[] {
+  const symbols: ApiSymbolDeclaration[] = [];
+  const declarationPattern =
+    /export\s+(?:(declare)\s+)?(?:(async)\s+)?(class|function|interface|type|enum|const|let|var)\s+([A-Za-z_$][\w$]*)/g;
+  const namedExportPattern = /export\s+\{([\s\S]*?)\}(?!\s+from\s+["'])/g;
+
+  for (const match of source.matchAll(declarationPattern)) {
+    const [, , , rawKind, name] = match;
+    const kind = normalizeSymbolKind(rawKind);
+    symbols.push({
+      module,
+      name,
+      kind,
+      typeOnly: kind === "interface" || kind === "type",
+    });
+  }
+
+  for (const match of source.matchAll(namedExportPattern)) {
+    for (const part of (match[1] ?? "").split(",")) {
+      const parsed = parseNamedSymbol(part);
+      if (!parsed) continue;
+      symbols.push({
+        module,
+        name: parsed.name,
+        kind: parsed.typeOnly ? "type" : "variable",
+        typeOnly: parsed.typeOnly,
+      });
+    }
+  }
+
+  return uniqueSymbols(symbols);
 }
 
 export async function createApiInventory(
@@ -63,6 +118,7 @@ export async function createApiInventory(
     const absoluteModule = joinPath(root, module);
     const source = await readTextFile(absoluteModule);
     const exports = parseApiExports(source, module);
+    const symbols = parseApiSymbols(source, module);
     const missingTargets: string[] = [];
 
     for (const declaration of exports) {
@@ -78,15 +134,19 @@ export async function createApiInventory(
     modules.push({
       module,
       exports,
+      symbols,
       missingTargets: [...new Set(missingTargets)].sort(),
     });
   }
 
+  const sortedModules = modules.sort((left, right) => left.module.localeCompare(right.module));
   const missingTargets = [...new Set(modules.flatMap((module) => module.missingTargets))].sort();
   return {
     entrypoint: normalizeModulePath(entrypoint),
-    modules: modules.sort((left, right) => left.module.localeCompare(right.module)),
+    modules: sortedModules,
     exportCount: modules.reduce((total, module) => total + module.exports.length, 0),
+    symbolCount: modules.reduce((total, module) => total + module.symbols.length, 0),
+    duplicateSymbols: duplicateApiSymbols(sortedModules),
     missingTargets,
   };
 }
@@ -98,25 +158,38 @@ export function formatApiInventory(inventory: ApiInventory): string {
     `Entrypoint: \`${inventory.entrypoint}\``,
     `Modules: ${inventory.modules.length}`,
     `Re-export declarations: ${inventory.exportCount}`,
+    `Exported symbols: ${inventory.symbolCount}`,
+    `Duplicate symbols: ${Object.keys(inventory.duplicateSymbols).length}`,
     `Missing targets: ${inventory.missingTargets.length}`,
     ``,
-    `| Module | Exports | Missing Targets |`,
-    `| ------ | ------- | --------------- |`,
+    `| Module | Re-exports | Symbols | Missing Targets |`,
+    `| ------ | ---------- | ------- | --------------- |`,
   ];
 
   for (const module of inventory.modules) {
     lines.push(
-      `| \`${module.module}\` | ${module.exports.length} | ${
+      `| \`${module.module}\` | ${module.exports.length} | ${module.symbols.length} | ${
         module.missingTargets.length === 0 ? "none" : module.missingTargets.map((target) => `\`${target}\``).join(", ")
       } |`,
     );
   }
 
+  if (Object.keys(inventory.duplicateSymbols).length > 0) {
+    lines.push("", "## Duplicate Symbols", "");
+    for (const [name, modules] of Object.entries(inventory.duplicateSymbols)) {
+      lines.push(`- \`${name}\`: ${modules.map((module) => `\`${module}\``).join(", ")}`);
+    }
+  }
+
   return lines.join("\n");
 }
 
-export function inventorySucceeded(inventory: ApiInventory): boolean {
-  return inventory.missingTargets.length === 0;
+export function inventorySucceeded(
+  inventory: ApiInventory,
+  options: ApiInventorySuccessOptions = {},
+): boolean {
+  return inventory.missingTargets.length === 0 &&
+    (!(options.failDuplicates ?? false) || Object.keys(inventory.duplicateSymbols).length === 0);
 }
 
 function parseExportNames(source: string, typeOnly: boolean): string[] {
@@ -128,6 +201,50 @@ function parseExportNames(source: string, typeOnly: boolean): string[] {
     .map((part) => part.split(/\s+as\s+/)[0].trim())
     .map((part) => typeOnly ? `type ${part}` : part)
     .sort();
+}
+
+function parseNamedSymbol(source: string): { name: string; typeOnly: boolean } | undefined {
+  const trimmed = source.trim();
+  if (!trimmed) return undefined;
+  const typeOnly = trimmed.startsWith("type ");
+  const withoutType = trimmed.replace(/^type\s+/, "");
+  const [, alias] = withoutType.split(/\s+as\s+/);
+  const name = (alias ?? withoutType).trim();
+  return name ? { name, typeOnly } : undefined;
+}
+
+function normalizeSymbolKind(kind: string): ApiSymbolKind {
+  if (kind === "let" || kind === "var") return "variable";
+  return kind as ApiSymbolKind;
+}
+
+function uniqueSymbols(symbols: ApiSymbolDeclaration[]): ApiSymbolDeclaration[] {
+  const byKey = new Map<string, ApiSymbolDeclaration>();
+  for (const symbol of symbols) {
+    byKey.set(`${symbol.module}\0${symbol.name}\0${symbol.kind}\0${symbol.typeOnly}`, symbol);
+  }
+  return [...byKey.values()].sort((left, right) =>
+    left.name.localeCompare(right.name) || left.kind.localeCompare(right.kind)
+  );
+}
+
+function duplicateApiSymbols(modules: readonly ApiModuleInventory[]): Record<string, string[]> {
+  const byName = new Map<string, Set<string>>();
+  for (const module of modules) {
+    for (const symbol of module.symbols) {
+      const modulesForName = byName.get(symbol.name) ?? new Set<string>();
+      modulesForName.add(module.module);
+      byName.set(symbol.name, modulesForName);
+    }
+  }
+
+  const duplicates: Record<string, string[]> = {};
+  for (const [name, moduleNames] of [...byName.entries()].sort(([left], [right]) => left.localeCompare(right))) {
+    if (moduleNames.size > 1) {
+      duplicates[name] = [...moduleNames].sort();
+    }
+  }
+  return duplicates;
 }
 
 function normalizeModuleTarget(module: string, target: string): string {
@@ -182,6 +299,7 @@ if (import.meta.main) {
   const json = Deno.args.includes("--json");
   const check = Deno.args.includes("--check");
   const quiet = Deno.args.includes("--quiet");
+  const failDuplicates = Deno.args.includes("--fail-duplicates");
   const entrypoint = Deno.args.find((arg) => !arg.startsWith("--")) ?? "mod.ts";
   const inventory = await createApiInventory(entrypoint);
 
@@ -193,7 +311,7 @@ if (import.meta.main) {
     console.log(formatApiInventory(inventory));
   }
 
-  if (check && !inventorySucceeded(inventory)) {
+  if (check && !inventorySucceeded(inventory, { failDuplicates })) {
     Deno.exit(1);
   }
 }

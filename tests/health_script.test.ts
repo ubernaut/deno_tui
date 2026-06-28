@@ -13,7 +13,15 @@ Deno.test("health script exposes the expected contributor gates", () => {
     "tests",
     "worker-tests",
   ]);
-  assertEquals(defaultHealthSteps[2].command, ["deno", "task", "api-inventory", "--", "--check", "--quiet"]);
+  assertEquals(defaultHealthSteps[2].command, [
+    "deno",
+    "task",
+    "api-inventory",
+    "--",
+    "--check",
+    "--quiet",
+    "--fail-duplicates",
+  ]);
 });
 
 Deno.test("health results format optional failures without failing the gate", () => {

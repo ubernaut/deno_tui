@@ -4,6 +4,7 @@ import {
   formatApiInventory,
   inventorySucceeded,
   parseApiExports,
+  parseApiSymbols,
 } from "../scripts/api_inventory.ts";
 
 Deno.test("parseApiExports extracts star named and type re-exports", () => {
@@ -31,6 +32,38 @@ Deno.test("parseApiExports extracts star named and type re-exports", () => {
         kind: "named",
         names: ["type Theme", "type ThemeState"],
       },
+    ],
+  );
+});
+
+Deno.test("parseApiSymbols extracts public declarations and local named exports", () => {
+  assertEquals(
+    parseApiSymbols(
+      [
+        `export class Button {}`,
+        `export interface ButtonOptions {}`,
+        `export type ButtonState = "base";`,
+        `export const buttonKinds = [];`,
+        `export let mutableButton = 1;`,
+        `export function renderButton() {}`,
+        `export enum ButtonMode { Primary }`,
+        `const internal = 1;`,
+        `type InternalType = string;`,
+        `export { internal as exposedInternal, type InternalType as ExposedType };`,
+        `export { Other } from "./other.ts";`,
+      ].join("\n"),
+      "src/components/button.ts",
+    ),
+    [
+      { module: "src/components/button.ts", name: "Button", kind: "class", typeOnly: false },
+      { module: "src/components/button.ts", name: "buttonKinds", kind: "const", typeOnly: false },
+      { module: "src/components/button.ts", name: "ButtonMode", kind: "enum", typeOnly: false },
+      { module: "src/components/button.ts", name: "ButtonOptions", kind: "interface", typeOnly: true },
+      { module: "src/components/button.ts", name: "ButtonState", kind: "type", typeOnly: true },
+      { module: "src/components/button.ts", name: "exposedInternal", kind: "variable", typeOnly: false },
+      { module: "src/components/button.ts", name: "ExposedType", kind: "type", typeOnly: true },
+      { module: "src/components/button.ts", name: "mutableButton", kind: "variable", typeOnly: false },
+      { module: "src/components/button.ts", name: "renderButton", kind: "function", typeOnly: false },
     ],
   );
 });
@@ -66,8 +99,11 @@ Deno.test("createApiInventory crawls local re-export modules and formats results
     "src/runtime/scheduler.ts",
   ]);
   assertEquals(inventory.exportCount, 5);
+  assertEquals(inventory.symbolCount, 2);
+  assertEquals(inventory.duplicateSymbols, {});
   assertEquals(inventorySucceeded(inventory), true);
-  assertEquals(formatApiInventory(inventory).includes("| `src/components/mod.ts` | 1 | none |"), true);
+  assertEquals(formatApiInventory(inventory).includes("Exported symbols: 2"), true);
+  assertEquals(formatApiInventory(inventory).includes("| `src/components/mod.ts` | 1 | 0 | none |"), true);
 });
 
 Deno.test("createApiInventory reports missing public export targets", async () => {
@@ -83,4 +119,22 @@ Deno.test("createApiInventory reports missing public export targets", async () =
   assertEquals(inventorySucceeded(inventory), false);
   assertEquals(inventory.missingTargets, ["src/missing.ts"]);
   assertEquals(inventory.modules[0].missingTargets, ["src/missing.ts"]);
+});
+
+Deno.test("createApiInventory reports duplicate exported symbol names", async () => {
+  const files = new Map([
+    ["/repo/mod.ts", [`export * from "./a.ts";`, `export * from "./b.ts";`].join("\n")],
+    ["/repo/a.ts", `export interface Options { a: string }`],
+    ["/repo/b.ts", `export type Options = { b: string };`],
+  ]);
+  const inventory = await createApiInventory("mod.ts", {
+    root: "/repo",
+    readTextFile: (path) => files.get(path) ?? "",
+    exists: (path) => files.has(path),
+  });
+
+  assertEquals(inventory.duplicateSymbols, { Options: ["a.ts", "b.ts"] });
+  assertEquals(inventorySucceeded(inventory), true);
+  assertEquals(inventorySucceeded(inventory, { failDuplicates: true }), false);
+  assertEquals(formatApiInventory(inventory).includes("## Duplicate Symbols"), true);
 });

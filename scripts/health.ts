@@ -13,7 +13,10 @@ export interface HealthResult extends HealthStep {
 export const defaultHealthSteps: readonly HealthStep[] = [
   { name: "format", command: ["deno", "fmt", "--check"] },
   { name: "public-api", command: ["deno", "check", "mod.ts"] },
-  { name: "api-inventory", command: ["deno", "task", "api-inventory", "--", "--check", "--quiet"] },
+  {
+    name: "api-inventory",
+    command: ["deno", "task", "api-inventory", "--", "--check", "--quiet", "--fail-duplicates"],
+  },
   { name: "app-shell", command: ["deno", "check", "examples/app_shell.ts"] },
   { name: "visualization-app", command: ["deno", "task", "viz:check"] },
   { name: "showcase", command: ["deno", "task", "showcase:check"] },
