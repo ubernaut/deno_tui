@@ -49,6 +49,63 @@ Deno.test("FormController can reset and unregister fields", () => {
   assertEquals(form.snapshot().values as Record<string, unknown>, { route: "overview" });
 });
 
+Deno.test("FormController registers fields with disposers and inspects aggregate state", () => {
+  const form = new FormController<SettingsForm>();
+  const disposeFields = form.registerAll([
+    { name: "route", initialValue: "overview", validators: [required()] },
+    { name: "label", initialValue: "", validators: [required("Label required"), minLength(3)] },
+  ]);
+
+  form.touchAll();
+  form.setValues({ route: "runtime", label: "UI" });
+  assertEquals(form.validate(), false);
+
+  assertEquals(form.fieldNames(), ["route", "label"]);
+  assertEquals(form.isDirty(), true);
+  assertEquals(form.isTouched(), true);
+  assertEquals(form.isValid(), false);
+  assertEquals(form.inspect(), {
+    values: { route: "runtime", label: "UI" },
+    errors: { route: [], label: ["Must be at least 3 characters"] },
+    touched: { route: true, label: true },
+    dirty: { route: true, label: true },
+    valid: false,
+    fields: [
+      { name: "route", touched: true, dirty: true, errors: [], valid: true },
+      { name: "label", touched: true, dirty: true, errors: ["Must be at least 3 characters"], valid: false },
+    ],
+    fieldCount: 2,
+    touchedFields: ["route", "label"],
+    dirtyFields: ["route", "label"],
+    errorFields: ["label"],
+    dirtyForm: true,
+    touchedForm: true,
+  });
+
+  disposeFields();
+  assertEquals(form.fieldNames(), []);
+  const empty = form.snapshot();
+  assertEquals(empty.values as Record<string, unknown>, {});
+  assertEquals(empty.errors, {});
+  assertEquals(empty.touched, {});
+  assertEquals(empty.dirty, {});
+  assertEquals(empty.valid, true);
+  form.dispose();
+});
+
+Deno.test("FormController registration disposers ignore replacement fields", () => {
+  const form = new FormController<SettingsForm>();
+  const disposeFirst = form.register({ name: "label", initialValue: "First" });
+  const disposeSecond = form.register({ name: "label", initialValue: "Second" });
+
+  disposeFirst();
+  assertEquals(form.getValue("label"), "Second");
+
+  disposeSecond();
+  assertEquals(form.getValue("label"), undefined);
+  form.dispose();
+});
+
 Deno.test("bindFormField synchronizes controller values with signal-backed widgets", () => {
   const form = new FormController<SettingsForm>([
     { name: "route", initialValue: "overview" },

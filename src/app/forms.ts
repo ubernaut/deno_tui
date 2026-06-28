@@ -22,6 +22,24 @@ export interface FormSnapshot<TValues extends FormValues = FormValues> {
   valid: boolean;
 }
 
+export interface FormFieldInspection<TValues extends FormValues = FormValues> {
+  name: FieldName<TValues>;
+  touched: boolean;
+  dirty: boolean;
+  errors: string[];
+  valid: boolean;
+}
+
+export interface FormInspection<TValues extends FormValues = FormValues> extends FormSnapshot<TValues> {
+  fields: Array<FormFieldInspection<TValues>>;
+  fieldCount: number;
+  touchedFields: string[];
+  dirtyFields: string[];
+  errorFields: string[];
+  dirtyForm: boolean;
+  touchedForm: boolean;
+}
+
 export class FormController<TValues extends FormValues = FormValues> {
   readonly values: Signal<TValues>;
   readonly errors = new Signal<Record<string, string[]>>({}, { deepObserve: true });
@@ -39,13 +57,39 @@ export class FormController<TValues extends FormValues = FormValues> {
     }
   }
 
-  register<TValue>(field: FormField<TValue, TValues>): void {
-    this.fields.set(field.name, field as FormField<unknown, TValues>);
+  register<TValue>(field: FormField<TValue, TValues>): () => void {
+    const registered = field as FormField<unknown, TValues>;
+    this.fields.set(field.name, registered);
     this.mutableInitialValues()[field.name] = field.initialValue;
     this.mutableValues()[field.name] = field.initialValue;
     this.errors.value[field.name] ??= [];
     this.touched.value[field.name] ??= false;
     this.dirty.value[field.name] ??= false;
+    return () => {
+      if (this.fields.get(field.name) === registered) {
+        this.unregister(field.name);
+      }
+    };
+  }
+
+  registerAll(fields: Iterable<FormField<unknown, TValues>>): () => void {
+    const disposers: Array<() => void> = [];
+    try {
+      for (const field of fields) {
+        disposers.push(this.register(field));
+      }
+    } catch (error) {
+      for (const dispose of [...disposers].reverse()) {
+        dispose();
+      }
+      throw error;
+    }
+
+    return () => {
+      for (const dispose of [...disposers].reverse()) {
+        dispose();
+      }
+    };
   }
 
   unregister(name: FieldName<TValues>): void {
@@ -71,6 +115,12 @@ export class FormController<TValues extends FormValues = FormValues> {
     this.touched.value[name] = true;
   }
 
+  touchAll(): void {
+    for (const name of this.fields.keys()) {
+      this.touch(name);
+    }
+  }
+
   validateField(name: FieldName<TValues>): boolean {
     const field = this.fields.get(name);
     if (!field) return true;
@@ -90,6 +140,30 @@ export class FormController<TValues extends FormValues = FormValues> {
     return valid;
   }
 
+  isValid(): boolean {
+    return Object.values(this.errors.peek()).every((messages) => messages.length === 0);
+  }
+
+  isDirty(): boolean {
+    return Object.values(this.dirty.peek()).some(Boolean);
+  }
+
+  isTouched(): boolean {
+    return Object.values(this.touched.peek()).some(Boolean);
+  }
+
+  fieldNames(): Array<FieldName<TValues>> {
+    return [...this.fields.keys()];
+  }
+
+  setValues(values: Partial<TValues>): void {
+    for (const [name, value] of Object.entries(values)) {
+      if (this.fields.has(name as FieldName<TValues>)) {
+        this.setValue(name as FieldName<TValues>, value as TValues[FieldName<TValues>]);
+      }
+    }
+  }
+
   reset(values: Partial<TValues> = {}): void {
     for (const [name, field] of this.fields) {
       const value = name in values ? (values as Record<string, unknown>)[name] : this.initialValue(name);
@@ -106,8 +180,43 @@ export class FormController<TValues extends FormValues = FormValues> {
       errors: cloneRecord(this.errors.peek()),
       touched: { ...this.touched.peek() },
       dirty: { ...this.dirty.peek() },
-      valid: Object.values(this.errors.peek()).every((messages) => messages.length === 0),
+      valid: this.isValid(),
     };
+  }
+
+  inspect(): FormInspection<TValues> {
+    const snapshot = this.snapshot();
+    const fields = this.fieldNames().map((name) => {
+      const errors = snapshot.errors[name] ?? [];
+      return {
+        name,
+        touched: snapshot.touched[name] ?? false,
+        dirty: snapshot.dirty[name] ?? false,
+        errors,
+        valid: errors.length === 0,
+      };
+    });
+    return {
+      ...snapshot,
+      fields,
+      fieldCount: fields.length,
+      touchedFields: fields.filter((field) => field.touched).map((field) => field.name),
+      dirtyFields: fields.filter((field) => field.dirty).map((field) => field.name),
+      errorFields: fields.filter((field) => !field.valid).map((field) => field.name),
+      dirtyForm: this.isDirty(),
+      touchedForm: this.isTouched(),
+    };
+  }
+
+  dispose(): void {
+    this.fields.clear();
+    for (const key of Object.keys(this.initialValues)) {
+      delete this.mutableInitialValues()[key];
+    }
+    this.values.dispose();
+    this.errors.dispose();
+    this.touched.dispose();
+    this.dirty.dispose();
   }
 
   private mutableValues(): Record<string, unknown> {

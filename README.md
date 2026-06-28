@@ -529,11 +529,14 @@ const form = new FormController([
 const stopBinding = bindFormField(form, "route", input.text);
 form.setValue("route", "runtime");
 const ok = form.validate();
+const formState = form.inspect();
 ```
 
 `bindFormField()` connects a controller field to any `Signal`-backed widget value, including `Input.text`,
 `CheckBox.checked`, `RadioGroup.selectedValue`, or a custom adapter signal. It accepts `parse` and `format` transforms
-for non-string values and returns a disposer for dynamic forms.
+for non-string values and returns a disposer for dynamic forms. `FormController.register()` and `registerAll()` also
+return disposers, while `setValues()`, `touchAll()`, `isDirty()`, `isTouched()`, `isValid()`, and `inspect()` keep
+multi-field settings panels testable without coupling them to a concrete widget tree.
 
 `bindRouteSignal()` keeps a `RouteManager` active route synchronized with a plain or persistent route id signal:
 
