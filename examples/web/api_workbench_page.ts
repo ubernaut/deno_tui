@@ -377,6 +377,7 @@ function renderPanel(frame: string[], id: PanelId, rect: Rectangle): void {
     width: Math.max(0, rect.width - 4),
     height: Math.max(0, rect.height - 2),
   };
+  fillRect(frame, inner, theme().surface);
   const lines = panelLines(id, inner.width, inner.height);
   if (id === "controls") renderControls(frame, inner);
   else {

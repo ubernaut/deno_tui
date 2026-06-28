@@ -272,20 +272,23 @@ tui.on("mouseScroll", (event) => {
   }
 });
 
-const timer = setInterval(() => {
-  const resized = syncTerminalSize();
+const liveTimer = setInterval(() => {
   if (livePreview.checked.peek()) {
     const nextRows = rows.map((row, index) => ({
       ...row,
       latency: Math.max(1, ((row.latency + index + density.value.peek()) % 17) + 1),
     }));
     table.rows.value = nextRows;
+    draw();
   }
-  if (resized || livePreview.checked.peek()) draw();
 }, 500);
+const resizeTimer = setInterval(() => {
+  if (syncTerminalSize()) draw();
+}, 100);
 
 tui.on("destroy", () => {
-  clearInterval(timer);
+  clearInterval(liveTimer);
+  clearInterval(resizeTimer);
   menu.dispose();
   split.dispose();
   logScroll.dispose();
@@ -307,6 +310,7 @@ syncTerminalSize();
 draw();
 
 function draw(): void {
+  syncTerminalSize();
   const width = currentWidth();
   const height = currentHeight();
   hitTargets = [];
@@ -333,29 +337,46 @@ function renderHeader(frame: string[]): void {
     frame,
     0,
     17,
-    paint(renderMenuBar(menu.items.peek(), menu.activeIndex.peek()), { fg: t.text, bg: t.backgroundSoft }),
+    paint(fit(renderMenuBar(menu.items.peek(), menu.activeIndex.peek()), Math.max(0, width - 18)), {
+      fg: t.text,
+      bg: t.backgroundSoft,
+    }),
   );
   const themeRow = themes.map((entry, index) => {
     const selected = index === themeIndex.peek();
     return selected ? `[${entry.label}]` : ` ${entry.label} `;
   }).join(" ");
   write(frame, 1, 0, paint(" Themes ", { fg: t.background, bg: t.border, bold: true }));
+  const help = width >= 86
+    ? "Tab focus  M min  F max  R restore  [/] resize  T theme  Q quit"
+    : width >= 56
+    ? "Tab focus  T theme  Q quit"
+    : "T theme  Q quit";
+  const helpWidth = textWidth(help);
+  const showHelp = width >= 34;
+  const helpStart = showHelp ? Math.max(0, width - helpWidth) : width;
+  const themeStart = 9;
+  const themeWidth = Math.max(0, helpStart - themeStart - 1);
   let cursor = 9;
   for (const [index, entry] of themes.entries()) {
     const label = index === themeIndex.peek() ? `[${entry.label}]` : ` ${entry.label} `;
-    addHit({ column: cursor, row: 1, width: textWidth(label), height: 1 }, { type: "theme", index });
+    if (cursor + textWidth(label) <= themeStart + themeWidth) {
+      addHit({ column: cursor, row: 1, width: textWidth(label), height: 1 }, { type: "theme", index });
+    }
     cursor += textWidth(label) + 1;
   }
-  write(frame, 1, 9, paint(themeRow, { fg: t.text, bg: t.panel }));
-  write(
-    frame,
-    1,
-    Math.max(0, width - 58),
-    paint("Tab focus  M min  F max  R restore  [/] resize  T theme  Q quit", {
-      fg: t.muted,
-      bg: t.panel,
-    }),
-  );
+  if (themeWidth > 0) write(frame, 1, themeStart, paint(fit(themeRow, themeWidth), { fg: t.text, bg: t.panel }));
+  if (showHelp) {
+    write(
+      frame,
+      1,
+      helpStart,
+      paint(help, {
+        fg: t.muted,
+        bg: t.panel,
+      }),
+    );
+  }
 }
 
 function renderWorkspace(frame: string[]): void {
@@ -416,6 +437,7 @@ function renderWindow(frame: string[], id: WindowId, rect: Rectangle): void {
   }
 
   const inner = inset(rect, 1);
+  fillRect(frame, inner, t.surface);
   if (id === "inspector") renderInspector(frame, inner);
   else if (id === "data") renderData(frame, inner);
   else if (id === "controls") renderControls(frame, inner);

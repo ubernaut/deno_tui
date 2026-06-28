@@ -1226,6 +1226,32 @@ var TextObject = class extends DrawObject {
 // src/grwizard_themes.ts
 var grWizardThemePalettes = [
   {
+    name: "unit01",
+    label: "Unit-01 Signal",
+    description: "Bio-electric violet, acid green, and warning orange inspired by late-night mecha command rooms.",
+    dark: true,
+    bg: "#09040f",
+    bgAlt: "#13091e",
+    panel: "#20112f",
+    panelAlt: "#2f1b44",
+    surface: "#42255f",
+    border: "#6e42a0",
+    borderStrong: "#a66cff",
+    text: "#f2ecff",
+    textMuted: "#b7a4c8",
+    textSoft: "#d9c8f0",
+    accent: "#9cff4f",
+    accentDeep: "#244d19",
+    warm: "#ff9f3d",
+    warmDeep: "#68340f",
+    success: "#a9ff68",
+    warning: "#ffb13d",
+    danger: "#ff4f83",
+    idle: "#867795",
+    review: "#7ad7ff",
+    subtitle: "#c5ffa8"
+  },
+  {
     name: "arcane",
     label: "Arcane Tide",
     description: "Deep navy, cyan glass, and brass highlights.",
@@ -1328,32 +1354,6 @@ var grWizardThemePalettes = [
     idle: "#8a7c95",
     review: "#9db7ff",
     subtitle: "#dfbfed"
-  },
-  {
-    name: "unit01",
-    label: "Unit-01 Signal",
-    description: "Bio-electric violet, acid green, and warning orange inspired by late-night mecha command rooms.",
-    dark: true,
-    bg: "#09040f",
-    bgAlt: "#13091e",
-    panel: "#20112f",
-    panelAlt: "#2f1b44",
-    surface: "#42255f",
-    border: "#6e42a0",
-    borderStrong: "#a66cff",
-    text: "#f2ecff",
-    textMuted: "#b7a4c8",
-    textSoft: "#d9c8f0",
-    accent: "#9cff4f",
-    accentDeep: "#244d19",
-    warm: "#ff9f3d",
-    warmDeep: "#68340f",
-    success: "#a9ff68",
-    warning: "#ffb13d",
-    danger: "#ff4f83",
-    idle: "#867795",
-    review: "#7ad7ff",
-    subtitle: "#c5ffa8"
   },
   {
     name: "section9",
@@ -5051,6 +5051,7 @@ function renderPanel(frame, id2, rect) {
     width: Math.max(0, rect.width - 4),
     height: Math.max(0, rect.height - 2)
   };
+  fillRect(frame, inner, theme().surface);
   const lines = panelLines(id2, inner.width, inner.height);
   if (id2 === "controls") renderControls(frame, inner);
   else {
