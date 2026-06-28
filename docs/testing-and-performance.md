@@ -33,3 +33,15 @@ These helpers are intentionally small and do not choose a test framework. They w
 
 Prefer this layer over directly branching on globals inside components. Components should stay deterministic and easy to
 test; apps and renderers should decide whether to use Workers, WebGPU, WebGL, IndexedDB, or fallback implementations.
+
+Run the default suite without broad permissions:
+
+```bash
+deno test
+```
+
+Run the worker integration path with permissions:
+
+```bash
+deno task test:workers
+```

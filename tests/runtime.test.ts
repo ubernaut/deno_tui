@@ -2,6 +2,7 @@ import { assertEquals } from "./deps.ts";
 import { detectRuntimeCapabilities } from "../src/runtime/capabilities.ts";
 import { AsyncScheduler } from "../src/runtime/scheduler.ts";
 import { MemoryStore } from "../src/runtime/storage.ts";
+import { WorkerPool } from "../src/runtime/worker_pool.ts";
 
 Deno.test("detectRuntimeCapabilities accepts an injected scope", () => {
   const scope = {
@@ -42,4 +43,24 @@ Deno.test("MemoryStore implements the async store contract", async () => {
   assertEquals(await store.get("answer"), 42);
   await store.delete("answer");
   assertEquals(await store.get("answer"), undefined);
+});
+
+Deno.test("WorkerPool runs module worker jobs", async () => {
+  const workerUrl = new URL("./fixtures/sum_worker.ts", import.meta.url);
+  const permission = await Deno.permissions.query({ name: "read", path: workerUrl });
+  if (permission.state !== "granted") {
+    return;
+  }
+
+  const pool = new WorkerPool<number[], number>({
+    workerUrl,
+    size: 2,
+    name: "deno-tui-test",
+  });
+
+  try {
+    assertEquals(await Promise.all([pool.run([1, 2]), pool.run([3, 4])]), [3, 7]);
+  } finally {
+    pool.terminate();
+  }
 });

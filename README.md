@@ -339,6 +339,7 @@ underlying scene coverage.
 | `examples/layout.ts`      | Grid layout with draggable, colored buttons               |
 | `examples/app_shell.ts`   | App primitives, routes, command palette, tree, and toasts |
 | `examples/dashboard.ts`   | Dashboard widgets, semantic theme tokens, and key help    |
+| `examples/worker_pool.ts` | WorkerPool concurrency example                            |
 | `examples/three_ascii.ts` | Interactive 3D ASCII renderer powered by three.js         |
 | `app/showcase.ts`         | Full Neon Exodus-style widget and visualization showcase  |
 | `app/main.ts`             | Live system monitor dashboard with selectable panels      |
@@ -385,6 +386,7 @@ deno task dashboard
 deno task viz
 deno task capabilities
 deno task benchmark
+deno task worker-demo
 ```
 
 ```sh
@@ -392,6 +394,7 @@ deno run --watch --allow-hrtime examples/demo.ts
 deno run --allow-hrtime examples/calculator.ts
 deno run -A examples/app_shell.ts
 deno run -A examples/dashboard.ts
+deno run -A examples/worker_pool.ts
 deno run -A examples/three_ascii.ts
 ```
 
