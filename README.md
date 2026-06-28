@@ -273,6 +273,20 @@ const stopVolumeCommands = bindSliderCommands(app.commands, volume, {
 });
 ```
 
+`CheckBoxController` does the same for boolean inputs: it owns the checked signal, exposes `check()`, `uncheck()`,
+`toggle()`, and `inspect()`, and keeps the rendered `CheckBox` focused on presentation. `checkBoxCommands()` and
+`bindCheckBoxCommands()` expose toggle, check, and uncheck actions for settings panes, command palettes, and key
+bindings:
+
+```ts
+const autosave = new CheckBoxController({ checked: false });
+
+const stopAutosaveCommands = bindCheckBoxCommands(app.commands, autosave, {
+  idPrefix: "settings.autosave",
+  group: "settings",
+});
+```
+
 `CommandPaletteController` and `ContextMenuController` expose the overlay widgets' query, selection, navigation, key
 handling, and inspection state without requiring a rendered component. Use them when a command surface, menu bar,
 shortcut handler, or test needs to drive the same behavior as the built-in widgets:

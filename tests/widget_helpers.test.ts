@@ -1,4 +1,5 @@
 import { assertEquals } from "./deps.ts";
+import { bindCheckBoxCommands, checkBoxCommands } from "../src/app/checkbox_commands.ts";
 import { bindMenuBarCommands, menuBarCommands } from "../src/app/menu_bar_commands.ts";
 import { bindRadioGroupCommands, radioGroupCommands } from "../src/app/radio_group_commands.ts";
 import { bindScrollAreaCommands, scrollAreaCommands } from "../src/app/scroll_area_commands.ts";
@@ -8,6 +9,7 @@ import { bindStepperCommands, stepperCommands } from "../src/app/stepper_command
 import { bindTabsCommands, tabsCommands } from "../src/app/tabs_commands.ts";
 import { formatKeyBinding, KeymapRegistry } from "../src/keymap.ts";
 import { renderBreadcrumbs } from "../src/components/breadcrumbs.ts";
+import { CheckBoxController, Mark, renderCheckBoxMark } from "../src/components/checkbox.ts";
 import { renderEmptyState } from "../src/components/empty_state.ts";
 import { renderKeyHelp } from "../src/components/key_help.ts";
 import { virtualRows, visibleListRows } from "../src/components/list.ts";
@@ -133,6 +135,65 @@ Deno.test("VirtualListController syncs selected values and external state", () =
   ];
   assertEquals(controller.inspect().itemCount, 2);
   assertEquals(controller.inspect().selected, [0, 1]);
+  controller.dispose();
+});
+
+Deno.test("CheckBoxController toggles and inspects boolean state", () => {
+  const changes: boolean[] = [];
+  const checked = new Signal(false);
+  const controller = new CheckBoxController({
+    checked,
+    onChange: (next) => void changes.push(next),
+  });
+
+  assertEquals(renderCheckBoxMark(false), Mark.Cross);
+  assertEquals(controller.inspect(), { checked: false, mark: Mark.Cross });
+  assertEquals(controller.toggle(), true);
+  assertEquals(controller.check(), true);
+  assertEquals(controller.uncheck(), false);
+  assertEquals(checked.peek(), false);
+  assertEquals(changes, [true, true, false]);
+  controller.dispose();
+  checked.dispose();
+});
+
+Deno.test("checkBoxCommands toggle check and uncheck state", async () => {
+  const controller = new CheckBoxController({ checked: false });
+  const registry = new CommandRegistry();
+  const actions: unknown[] = [];
+  const dispose = bindCheckBoxCommands(registry, controller, {
+    id: "autosave",
+    idPrefix: "settings.autosave",
+    group: "settings",
+  });
+
+  assertEquals(checkBoxCommands(new CheckBoxController({ checked: false })).map((command) => command.id), [
+    "checkbox.toggle",
+    "checkbox.check",
+    "checkbox.uncheck",
+  ]);
+  assertEquals(registry.list("settings").map((command) => command.id), [
+    "settings.autosave.check",
+    "settings.autosave.toggle",
+    "settings.autosave.uncheck",
+  ]);
+  assertEquals(registry.enabled(registry.get("settings.autosave.uncheck")!), false);
+
+  assertEquals(await registry.execute("settings.autosave.toggle", (action) => void actions.push(action)), true);
+  assertEquals(controller.checked.peek(), true);
+  assertEquals(registry.enabled(registry.get("settings.autosave.check")!), false);
+  assertEquals(await registry.execute("settings.autosave.uncheck", (action) => void actions.push(action)), true);
+  assertEquals(actions.at(-1), {
+    type: "checkbox.changed",
+    payload: {
+      id: "autosave",
+      checked: false,
+      inspection: { checked: false, mark: Mark.Cross },
+    },
+  });
+
+  dispose();
+  assertEquals(registry.list("settings"), []);
   controller.dispose();
 });
 

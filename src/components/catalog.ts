@@ -57,6 +57,7 @@ export const componentCatalog = [
   ]),
   component("checkbox", "CheckBox", "input", "Boolean input with keyboard and mouse toggling.", [
     "component",
+    "controller",
     "keyboard",
     "mouse",
     "themeable",
