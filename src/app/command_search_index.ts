@@ -1,6 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { Signal } from "../signals/mod.ts";
 import type { AsyncScheduler, ScheduledTaskOptions } from "../runtime/scheduler.ts";
+import type { AsyncStore } from "../runtime/storage.ts";
 import type { Action } from "./actions.ts";
 import type { CommandDispatch, CommandRegistry } from "./commands.ts";
 import {
@@ -45,12 +46,20 @@ export interface IndexedCommandSearchOptions extends CommandSearchOptions, Comma
   scheduler?: AsyncScheduler;
   priority?: number;
   signal?: AbortSignal;
+  store?: AsyncStore<unknown>;
+  cacheKey?: string;
+  serialize?: (index: CommandSearchIndex) => unknown;
+  deserialize?: (value: unknown) => CommandSearchIndex;
+  restoreOnCreate?: boolean;
+  onCacheError?: (error: unknown) => void;
 }
 
 export interface IndexedCommandSurfaceInspection extends CommandSearchIndexInspection {
   query: string;
   matchCount: number;
   scheduler?: ReturnType<AsyncScheduler["inspect"]>;
+  cached: boolean;
+  cacheKey?: string;
   disposed: boolean;
 }
 
@@ -60,6 +69,9 @@ export interface IndexedCommandSurfaceController<TAction extends Action = Action
   readonly query: Signal<string>;
   readonly matches: Signal<CommandSearchMatch[]>;
   refresh(options?: ScheduledTaskOptions): Promise<CommandSearchIndex>;
+  restore(): Promise<CommandSearchIndex | undefined>;
+  persist(): Promise<void>;
+  clearCache(): Promise<void>;
   search(query?: string, options?: Pick<CommandSearchOptions, "limit">): CommandSearchMatch[];
   setQuery(query: string): CommandSearchMatch[];
   execute(item: Pick<CommandSurfaceItem, "id">): Promise<boolean>;
@@ -119,7 +131,11 @@ export function createIndexedCommandSurface<TAction extends Action = Action>(
 ): IndexedCommandSurfaceController<TAction> {
   let disposed = false;
   let revision = 0;
+  let cached = false;
   const build = () => createCommandSearchIndex(commandSurfaceItems(registry, options), options);
+  const cacheKey = options.cacheKey ?? "command-search-index";
+  const serialize = options.serialize ?? ((value: CommandSearchIndex) => value as unknown);
+  const deserialize = options.deserialize ?? ((value: unknown) => value as CommandSearchIndex);
   const initial = build();
   const query = new Signal(options.query ?? "");
   const index = new Signal(initial, { deepObserve: true });
@@ -140,6 +156,15 @@ export function createIndexedCommandSurface<TAction extends Action = Action>(
     return next;
   };
 
+  const persist = async () => {
+    if (!options.store) return;
+    try {
+      await options.store.set(cacheKey, serialize(index.peek()));
+    } catch (error) {
+      options.onCacheError?.(error);
+    }
+  };
+
   const refresh = async (taskOptions: ScheduledTaskOptions = {}) => {
     const buildRevision = ++revision;
     const scheduledOptions = {
@@ -149,12 +174,44 @@ export function createIndexedCommandSurface<TAction extends Action = Action>(
     const next = options.scheduler
       ? await options.scheduler.run(build, scheduledOptions)
       : await Promise.resolve().then(build);
-    return applyIndex(next, buildRevision);
+    if (disposed || buildRevision !== revision) return next;
+    cached = false;
+    const applied = applyIndex(next, buildRevision);
+    await persist();
+    return applied;
+  };
+
+  const restore = async () => {
+    if (!options.store) return undefined;
+    try {
+      const stored = await options.store.get(cacheKey);
+      if (stored === undefined) return undefined;
+      const restored = deserialize(stored);
+      cached = true;
+      return applyIndex(restored, ++revision);
+    } catch (error) {
+      options.onCacheError?.(error);
+      return undefined;
+    }
+  };
+
+  const clearCache = async () => {
+    cached = false;
+    if (!options.store) return;
+    try {
+      await options.store.delete(cacheKey);
+    } catch (error) {
+      options.onCacheError?.(error);
+    }
   };
 
   const unsubscribe = registry.subscribe(() => {
     void refresh();
   });
+
+  if (options.restoreOnCreate) {
+    void restore();
+  }
 
   return {
     index,
@@ -162,6 +219,9 @@ export function createIndexedCommandSurface<TAction extends Action = Action>(
     query,
     matches,
     refresh,
+    restore,
+    persist,
+    clearCache,
     search: (nextQuery = query.peek(), searchOptions = {}) =>
       searchCommandSearchIndex(index.peek(), nextQuery, { limit: searchOptions.limit ?? options.limit }),
     setQuery: (nextQuery) => {
@@ -174,6 +234,8 @@ export function createIndexedCommandSurface<TAction extends Action = Action>(
       query: query.peek(),
       matchCount: matches.peek().length,
       scheduler: options.scheduler?.inspect(),
+      cached,
+      cacheKey: options.store ? cacheKey : undefined,
       disposed,
     }),
     dispose: () => {

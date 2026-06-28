@@ -930,6 +930,8 @@ Deno.test("indexed command surfaces refresh through schedulers and execute regis
       pending: 0,
       idle: true,
     },
+    cached: false,
+    cacheKey: undefined,
     disposed: false,
   });
   assertEquals(surface.matches.peek().map((match) => match.item.id), ["route.home"]);
@@ -951,6 +953,54 @@ Deno.test("indexed command surfaces refresh through schedulers and execute regis
 
   surface.dispose();
   assertEquals(surface.inspect().disposed, true);
+});
+
+Deno.test("indexed command surfaces can persist restore and clear cached indexes", async () => {
+  const store = new MemoryStore<unknown>();
+  const registry = new CommandRegistry();
+  registry.register({
+    id: "theme.gallery.open",
+    label: "Open Theme Gallery",
+    group: "theme",
+    keywords: ["theme", "gallery", "catalog"],
+  });
+  const surface = createIndexedCommandSurface(registry, undefined, {
+    store,
+    cacheKey: "commands",
+    query: "theme",
+  });
+
+  await surface.persist();
+  assertEquals((await store.get("commands")) !== undefined, true);
+
+  const emptyRegistry = new CommandRegistry();
+  const restored = createIndexedCommandSurface(emptyRegistry, undefined, {
+    store,
+    cacheKey: "commands",
+  });
+  assertEquals(restored.inspect().count, 0);
+  const restoredIndex = await restored.restore();
+
+  assertEquals(restoredIndex?.inspection.count, 1);
+  assertEquals(restored.inspect(), {
+    count: 1,
+    disabled: 0,
+    fieldCount: 7,
+    keywordCount: 5,
+    query: "",
+    matchCount: 1,
+    scheduler: undefined,
+    cached: true,
+    cacheKey: "commands",
+    disposed: false,
+  });
+  assertEquals(restored.setQuery("gallery").map((match) => match.item.id), ["theme.gallery.open"]);
+
+  await restored.clearCache();
+  assertEquals(await store.get("commands"), undefined);
+  assertEquals(restored.inspect().cached, false);
+  surface.dispose();
+  restored.dispose();
 });
 
 Deno.test("MouseInteractionRouter dispatches by z-order and local coordinates", async () => {

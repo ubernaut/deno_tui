@@ -3,6 +3,7 @@ import {
   AsyncScheduler,
   CommandRegistry,
   createIndexedCommandSurface,
+  createRuntimeStore,
   searchCommandSearchIndex,
 } from "../mod.ts";
 
@@ -26,8 +27,15 @@ for (const group of ["routes", "theme", "runtime", "widgets"]) {
 }
 
 const scheduler = new AsyncScheduler({ concurrency: 1 });
+const store = createRuntimeStore({
+  databaseName: "deno-tui-command-search-demo",
+  storeName: "indexes",
+  preferIndexedDb: false,
+});
 const surface = createIndexedCommandSurface(registry, (action) => void actions.push(action), {
   scheduler,
+  store,
+  cacheKey: "demo-index",
   query: "runtime priority",
   limit: 6,
 });
@@ -47,6 +55,7 @@ registry.register({
   action: { type: "demo.command", payload: { id: "runtime.profile.accelerated" } },
 });
 await surface.refresh({ priority: 10 });
+await surface.persist();
 
 console.log("");
 console.log("After scheduler refresh:");
@@ -58,6 +67,7 @@ await surface.execute({ id: "runtime.profile.accelerated" });
 console.log("");
 console.log(`Executed actions: ${actions.map((action) => action.payload?.id).join(", ")}`);
 console.log(`Scheduler idle: ${scheduler.inspect().idle}`);
+console.log(`Cache key: ${surface.inspect().cacheKey}`);
 
 console.log("");
 console.log("One-off indexed lookup:");
@@ -66,6 +76,14 @@ for (const match of lookup) {
   console.log(`- ${match.item.id}`);
 }
 
+const restored = createIndexedCommandSurface(new CommandRegistry<DemoAction>(), undefined, {
+  store,
+  cacheKey: "demo-index",
+});
+await restored.restore();
+console.log("");
+console.log(`Restored cached index: ${restored.inspect().count} commands`);
+restored.dispose();
 surface.dispose();
 
 function title(value: string): string {

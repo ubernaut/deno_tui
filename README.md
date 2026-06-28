@@ -989,18 +989,23 @@ the same ranking behavior without reimplementing filtering.
 
 For larger command catalogs, `createCommandSearchIndex()` precomputes searchable fields and
 `createIndexedCommandSurface()` keeps an indexed command projection synchronized with a `CommandRegistry`. Pass an
-`AsyncScheduler` to rebuild the index off the hot path while preserving the same scoring semantics as
-`rankCommandSurfaceItems()`:
+`AsyncScheduler` to rebuild the index off the hot path, and optionally pass any `AsyncStore` from `createRuntimeStore()`
+to restore and persist the index through IndexedDB or memory-backed storage while preserving the same scoring semantics
+as `rankCommandSurfaceItems()`:
 
 ```ts
 const indexedCommands = createIndexedCommandSurface(app.commands, (action) => app.actions.dispatch(action), {
   scheduler: new AsyncScheduler({ concurrency: 1 }),
+  store: createRuntimeStore({ databaseName: "my-tui-app", storeName: "command-indexes" }),
+  cacheKey: "main-command-index",
   query: "runtime",
   limit: 20,
 });
 
+await indexedCommands.restore();
 const matches = indexedCommands.setQuery("gpu workers");
 await indexedCommands.execute(matches[0].item);
+await indexedCommands.persist();
 const indexState = indexedCommands.inspect();
 app.onDispose(indexedCommands.dispose);
 ```
