@@ -14,6 +14,7 @@ import {
   MenuBar,
   Modal,
   resolveBreakpoint,
+  ScrollArea,
   Signal,
   StatusBar,
   Text,
@@ -60,6 +61,23 @@ const toasts = new Signal<ToastMessage[]>([
   { id: "boot", level: "success", message: "App shell ready" },
 ], { deepObserve: true });
 const routeList = new Signal(app.routes.routes.peek().map((route) => route.title ?? route.id), { deepObserve: true });
+const scrollLines = [
+  "Composable primitives",
+  "  ActionBus dispatches app events without coupling widgets to routes.",
+  "  RouteManager keeps route state observable and testable.",
+  "  FocusScope lets modal-like surfaces trap and restore focus.",
+  "  ScrollArea owns a View so children can render in local coordinates.",
+  "",
+  "Runtime direction",
+  "  WorkerPool handles CPU-bound jobs without blocking input.",
+  "  AsyncScheduler limits concurrent async work.",
+  "  Runtime capability checks keep WebGPU, WebGL, workers, and storage optional.",
+  "",
+  "Theming direction",
+  "  ThemeEngine resolves semantic tokens, component variants, and palette presets.",
+  "  Components consume theme slices instead of hard-coded styles.",
+  "  Demos use the same theming API exported to application authors.",
+];
 
 app.keymap.register({ key: "1", description: "overview", group: "routes" });
 app.keymap.register({ key: "2", description: "widgets", group: "routes" });
@@ -192,6 +210,40 @@ new List({
     height: 5,
   })),
 });
+
+const scrollArea = new ScrollArea({
+  parent: app.tui,
+  theme: themeEngine.component("ScrollArea"),
+  zIndex: 2,
+  contentWidth: 74,
+  contentHeight: scrollLines.length,
+  rectangle: new Computed(() => ({
+    column: Math.max(42, Math.floor(app.tui.rectangle.value.width / 2)),
+    row: 10,
+    width: Math.max(
+      24,
+      app.tui.rectangle.value.width - Math.max(42, Math.floor(app.tui.rectangle.value.width / 2)) - 4,
+    ),
+    height: Math.max(4, app.tui.rectangle.value.height - 17),
+  })),
+});
+scrollArea.state.value = "focused";
+
+for (const [index, line] of scrollLines.entries()) {
+  new Text({
+    parent: scrollArea,
+    theme: themeEngine.component("Text"),
+    zIndex: 2,
+    text: line,
+    overwriteWidth: true,
+    view: scrollArea.contentView,
+    rectangle: {
+      column: 0,
+      row: index,
+      width: 72,
+    },
+  });
+}
 
 new ToastStack({
   parent: app.tui,

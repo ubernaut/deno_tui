@@ -132,8 +132,8 @@ deno task demo
 | `Table`       | Scrollable data table with headers and row selection       |
 | `ThreeAscii`  | Renders a three.js scene as ASCII art in the terminal      |
 
-Additional fork components include `List`, `Tabs`, `MenuBar`, `Modal`, `KeyHelp`, `CommandPalette`, `Tree`,
-`ToastStack`, `Sparkline`, `Gauge`, `Chart`, `LogViewer`, and `StatusBar`.
+Additional fork components include `List`, `Tabs`, `MenuBar`, `ScrollArea`, `Modal`, `KeyHelp`, `CommandPalette`,
+`Tree`, `ToastStack`, `Sparkline`, `Gauge`, `Chart`, `LogViewer`, and `StatusBar`.
 
 ## Layouts
 

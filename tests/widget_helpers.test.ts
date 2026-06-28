@@ -3,6 +3,13 @@ import { formatKeyBinding, KeymapRegistry } from "../src/keymap.ts";
 import { renderKeyHelp } from "../src/components/key_help.ts";
 import { virtualRows, visibleListRows } from "../src/components/list.ts";
 import { renderMenuBar, shiftMenuIndex } from "../src/components/menu_bar.ts";
+import {
+  clampScrollOffset,
+  maxScrollOffset,
+  scrollbarGlyph,
+  scrollbarThumb,
+  scrollOffsetBy,
+} from "../src/components/scroll_area.ts";
 import { renderStatusBar } from "../src/components/statusbar.ts";
 import { renderTabs } from "../src/components/tabs.ts";
 
@@ -41,6 +48,19 @@ Deno.test("menu bar renders active item and skips disabled entries", () => {
 
   assertEquals(renderMenuBar(items, 0), "[File] (Edit) View");
   assertEquals(shiftMenuIndex(items, 0, 1), 2);
+});
+
+Deno.test("scroll helpers clamp offsets and expose scrollbar thumb state", () => {
+  const max = maxScrollOffset(80, 40, 20, 10);
+  assertEquals(max, { columns: 60, rows: 30 });
+  assertEquals(clampScrollOffset({ columns: 70, rows: -4 }, max), { columns: 60, rows: 0 });
+  assertEquals(scrollOffsetBy({ columns: 10, rows: 10 }, max, -2, 25), { columns: 8, rows: 30 });
+
+  const thumb = scrollbarThumb(40, 10, 15);
+  assertEquals(thumb, { start: 4, size: 3, visible: true });
+  assertEquals(scrollbarGlyph(3, thumb), "│");
+  assertEquals(scrollbarGlyph(4, thumb), "█");
+  assertEquals(scrollbarThumb(8, 10, 0).visible, false);
 });
 
 Deno.test("renderStatusBar keeps left and right content inside width", () => {

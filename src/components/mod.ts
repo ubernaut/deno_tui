@@ -15,6 +15,7 @@ export * from "./log_viewer.ts";
 export * from "./menu_bar.ts";
 export * from "./modal.ts";
 export * from "./progressbar.ts";
+export * from "./scroll_area.ts";
 export * from "./slider.ts";
 export * from "./sparkline.ts";
 export * from "./statusbar.ts";
