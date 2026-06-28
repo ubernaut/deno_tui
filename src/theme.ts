@@ -84,6 +84,16 @@ export interface ThemeEngineOptions {
   components?: Record<string, ComponentThemeDefinition>;
 }
 
+export interface ThemeComponentInspection {
+  name: string;
+  variants: string[];
+}
+
+export interface ThemeInspection {
+  tokens: Array<keyof ThemeTokens>;
+  components: ThemeComponentInspection[];
+}
+
 export type ThemePaletteName = "plain" | "neon" | "terminal";
 
 export const themePalettes: Record<ThemePaletteName, Partial<ThemeTokens>> = {
@@ -116,6 +126,41 @@ export const themePalettes: Record<ThemePaletteName, Partial<ThemeTokens>> = {
   },
 };
 
+export function mergeComponentThemeDefinition(
+  base: ComponentThemeDefinition = {},
+  extension: ComponentThemeDefinition = {},
+): ComponentThemeDefinition {
+  const variants = { ...(base.variants ?? {}) };
+  for (const [name, variant] of Object.entries(extension.variants ?? {})) {
+    variants[name] = {
+      ...(variants[name] ?? {}),
+      ...variant,
+    };
+  }
+
+  return {
+    base: {
+      ...(base.base ?? {}),
+      ...(extension.base ?? {}),
+    },
+    variants,
+  };
+}
+
+export function composeThemeOptions(...options: ThemeEngineOptions[]): ThemeEngineOptions {
+  const tokens: Partial<ThemeTokens> = {};
+  const components: Record<string, ComponentThemeDefinition> = {};
+
+  for (const option of options) {
+    Object.assign(tokens, option.tokens ?? {});
+    for (const [name, definition] of Object.entries(option.components ?? {})) {
+      components[name] = mergeComponentThemeDefinition(components[name], definition);
+    }
+  }
+
+  return { tokens, components };
+}
+
 export function createThemeEngine(
   palette: ThemePaletteName = "plain",
   options: Omit<ThemeEngineOptions, "tokens"> & { tokens?: Partial<ThemeTokens> } = {},
@@ -135,7 +180,7 @@ export class ThemeEngine {
 
   constructor(options: ThemeEngineOptions = {}) {
     this.theme = createTheme(options.tokens);
-    this.components = options.components ?? {};
+    this.components = composeThemeOptions({ components: options.components }).components ?? {};
   }
 
   component(componentName: string, variant = "default"): Theme {
@@ -152,5 +197,30 @@ export class ThemeEngine {
 
   resolve(componentName: string, state: ThemeState, variant = "default"): Style {
     return this.component(componentName, variant)[state];
+  }
+
+  extend(options: ThemeEngineOptions): ThemeEngine {
+    return new ThemeEngine(composeThemeOptions({
+      tokens: this.theme.tokens,
+      components: this.components,
+    }, options));
+  }
+
+  componentNames(): string[] {
+    return Object.keys(this.components).sort();
+  }
+
+  variants(componentName: string): string[] {
+    return Object.keys(this.components[componentName]?.variants ?? {}).sort();
+  }
+
+  inspect(): ThemeInspection {
+    return {
+      tokens: ["foreground", "muted", "accent", "success", "warning", "danger", "surface"],
+      components: this.componentNames().map((name) => ({
+        name,
+        variants: this.variants(name),
+      })),
+    };
   }
 }

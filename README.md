@@ -23,12 +23,12 @@ a system monitor shell that can render live data through those scenes.
 - **Neon Exodus showcase** — recreates the Neon Exodus widget wall and 3D scene set inside this TUI framework.
 - **System monitor dashboard** — `deno task viz` renders CPU, memory, disk, network, process, and 3D panels with
   selectable inputs and visualizations.
-- **Expanded widget surface** — List, Tabs, Modal, KeyHelp, CommandPalette, Tree, ToastStack, Sparkline, Gauge, Chart,
-  LogViewer, and StatusBar build on the original component set.
+- **Expanded widget surface** — List, Tabs, MenuBar, ScrollArea, Modal, KeyHelp, CommandPalette, Tree, ToastStack,
+  Sparkline, Gauge, Chart, LogViewer, and StatusBar build on the original component set.
 - **Runtime capability layer** — Workers, WebGPU, WebGL, OffscreenCanvas, and IndexedDB are detected through a
   standards-oriented runtime module with configurable fallbacks.
-- **Theme engine** — semantic tokens and component variants produce normal `Theme` objects while keeping app-level
-  palettes reusable.
+- **Theme engine** — semantic tokens, palette presets, component variants, composition helpers, and inspection APIs
+  produce normal `Theme` objects while keeping app-level styling reusable.
 
 ## Features
 
@@ -213,12 +213,13 @@ They are optional and composable. Existing component-first apps continue to work
 ## Theming
 
 Use `createTheme()` for semantic tokens, `createThemeEngine()` for built-in palettes, or `ThemeEngine` for app-level
-component variants:
+component variants. This fork also adds `composeThemeOptions()`, `ThemeEngine.extend()`, and `ThemeEngine.inspect()` so
+larger apps can layer reusable theme packs without mutating a base engine:
 
 ```ts
-import { createThemeEngine } from "https://deno.land/x/tui@VERSION/mod.ts";
+import { composeThemeOptions, createThemeEngine } from "https://deno.land/x/tui@VERSION/mod.ts";
 
-const themeEngine = createThemeEngine("neon", {
+const appTheme = composeThemeOptions({
   components: {
     Button: {
       variants: {
@@ -228,7 +229,15 @@ const themeEngine = createThemeEngine("neon", {
   },
 });
 
+const themeEngine = createThemeEngine("neon", appTheme)
+  .extend({
+    components: {
+      Modal: { variants: { palette: { focused: crayon.cyan } } },
+    },
+  });
+
 const buttonTheme = themeEngine.component("Button", "danger");
+const availableThemes = themeEngine.inspect();
 ```
 
 ## Runtime Capabilities
