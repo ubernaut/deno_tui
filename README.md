@@ -206,7 +206,12 @@ table.selectKey(String(persistedPid));
 table.toggleSort("cpu");
 const visibleRows = table.view.value.rows;
 const selectedProcess = table.selectedRow();
+const selectedPid = table.selectedKey();
+const tableState = table.inspect();
 ```
+
+Use `table.handleKeyPress(event)` when a table view should consume arrow, page, home/end, and return keys without
+duplicating pagination and selection logic in the component shell.
 
 For metric-heavy dashboards, `MetricSeriesController`, `pushMetricValue()`, and `metricSeriesStats()` provide the shared
 bounded-history layer used by sparklines, bar charts, gauges, logs, worker-fed telemetry, and system-monitor panels:

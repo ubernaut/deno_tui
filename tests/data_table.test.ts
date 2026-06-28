@@ -9,6 +9,7 @@ import {
   renderDataTableRows,
   sortDataRows,
 } from "../src/components/data_table.ts";
+import type { Key, KeyPressEvent } from "../src/input_reader/types.ts";
 import { Signal } from "../src/signals/mod.ts";
 
 interface ProcessRow extends Record<string, unknown> {
@@ -111,6 +112,46 @@ Deno.test("DataTableController keeps query sort pagination and selection in sync
   controller.dispose();
 });
 
+Deno.test("DataTableController inspects table state and handles navigation keys", async () => {
+  const controller = new DataTableController({
+    rows,
+    columns,
+    rowKey: (row) => String(row.pid),
+    initialState: { pageSize: 2 },
+  });
+  await Promise.resolve();
+
+  assertEquals(controller.inspect(), {
+    rowCount: 3,
+    visibleRowCount: 3,
+    columnCount: 3,
+    query: "",
+    sort: undefined,
+    page: 0,
+    pageSize: 2,
+    pageCount: 2,
+    selectedIndex: 0,
+    selectedKey: "10",
+    selectedRow: { pid: 10, name: "deno", cpu: 12 },
+  });
+
+  controller.handleKeyPress(keyPress("down"));
+  assertEquals(controller.selectedKey(), "2");
+  assertEquals(controller.selectedRow()?.pid, 2);
+
+  controller.handleKeyPress(keyPress("pagedown"));
+  assertEquals(controller.inspect().page, 1);
+  assertEquals(controller.selectedRow()?.pid, 101);
+  assertEquals(controller.handleKeyPress(keyPress("return"))?.name, "renderer");
+
+  controller.handleKeyPress(keyPress("pageup"));
+  controller.handleKeyPress(keyPress("end"));
+  assertEquals(controller.selectedRow()?.pid, 2);
+  controller.handleKeyPress(keyPress("home"));
+  assertEquals(controller.selectedRow()?.pid, 10);
+  controller.dispose();
+});
+
 Deno.test("DataTableController reacts to row signals and clamps selection", async () => {
   const source = new Signal<readonly ProcessRow[]>(rows.slice(0, 2));
   const controller = new DataTableController({
@@ -147,6 +188,12 @@ Deno.test("DataTableController keeps keyed selection across sort filter and refr
   assertEquals(controller.view.peek().page, 1);
   assertEquals(controller.selectedRow()?.name, "shell");
 
+  controller.nextPage();
+  assertEquals(controller.view.peek().page, 2);
+  assertEquals(controller.selectedKey(), "101");
+  assertEquals(controller.selectedRow()?.name, "renderer");
+
+  controller.selectKey("2");
   controller.toggleSort("cpu");
   assertEquals(controller.view.peek().page, 0);
   assertEquals(controller.view.peek().selectedKey, "2");
@@ -190,3 +237,13 @@ Deno.test("DataTableController ignores unsortable columns", async () => {
   assertEquals(controller.state.peek().sort, { columnId: "name", direction: "asc" });
   controller.dispose();
 });
+
+function keyPress(key: Key, options: Partial<Omit<KeyPressEvent, "key" | "buffer">> = {}): KeyPressEvent {
+  return {
+    key,
+    ctrl: options.ctrl ?? false,
+    meta: options.meta ?? false,
+    shift: options.shift ?? false,
+    buffer: new Uint8Array(),
+  };
+}

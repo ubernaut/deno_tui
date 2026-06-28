@@ -1,4 +1,5 @@
 // Copyright 2023 Im-Beast. MIT license.
+import type { KeyPressEvent } from "../input_reader/types.ts";
 import { clampSelectionIndex } from "../selection.ts";
 import { Computed, Signal } from "../signals/mod.ts";
 import { clamp } from "../utils/numbers.ts";
@@ -43,6 +44,20 @@ export interface DataTableControllerOptions<TRow extends Record<string, unknown>
   columns: readonly DataColumn<TRow>[] | Signal<readonly DataColumn<TRow>[]>;
   initialState?: DataTableState;
   rowKey?: (row: TRow, index: number) => string;
+}
+
+export interface DataTableInspection<TRow extends Record<string, unknown> = Record<string, unknown>> {
+  rowCount: number;
+  visibleRowCount: number;
+  columnCount: number;
+  query: string;
+  sort?: DataSort;
+  page: number;
+  pageSize: number;
+  pageCount: number;
+  selectedIndex: number;
+  selectedKey?: string;
+  selectedRow?: TRow;
 }
 
 export function createDataTableView<TRow extends Record<string, unknown>>(
@@ -100,7 +115,11 @@ export class DataTableController<TRow extends Record<string, unknown> = Record<s
   }
 
   setPage(page: number): void {
-    this.patchState({ page: clamp(Math.floor(page), 0, this.view.peek().pageCount - 1) });
+    this.patchState({
+      page: clamp(Math.floor(page), 0, this.view.peek().pageCount - 1),
+      selectedIndex: 0,
+      selectedKey: undefined,
+    });
   }
 
   nextPage(): void {
@@ -142,8 +161,50 @@ export class DataTableController<TRow extends Record<string, unknown> = Record<s
     this.select(this.view.peek().selectedIndex + Math.floor(delta));
   }
 
+  first(): void {
+    this.select(0);
+  }
+
+  last(): void {
+    this.select(this.view.peek().rows.length - 1);
+  }
+
+  handleKeyPress(event: KeyPressEvent): TRow | undefined {
+    if (event.ctrl || event.meta || event.shift) return undefined;
+    if (event.key === "up") this.moveSelection(-1);
+    else if (event.key === "down") this.moveSelection(1);
+    else if (event.key === "pageup") this.previousPage();
+    else if (event.key === "pagedown") this.nextPage();
+    else if (event.key === "home") this.first();
+    else if (event.key === "end") this.last();
+    else if (event.key === "return") return this.selectedRow();
+    return undefined;
+  }
+
   selectedRow(): TRow | undefined {
     return this.view.peek().selectedRow;
+  }
+
+  selectedKey(): string | undefined {
+    return this.view.peek().selectedKey;
+  }
+
+  inspect(): DataTableInspection<TRow> {
+    const view = this.view.peek();
+    const state = this.state.peek();
+    return {
+      rowCount: this.rows.peek().length,
+      visibleRowCount: view.totalRows,
+      columnCount: this.columns.peek().length,
+      query: state.query ?? "",
+      sort: state.sort,
+      page: view.page,
+      pageSize: view.pageSize,
+      pageCount: view.pageCount,
+      selectedIndex: view.selectedIndex,
+      selectedKey: view.selectedKey,
+      selectedRow: view.selectedRow,
+    };
   }
 
   dispose(): void {
