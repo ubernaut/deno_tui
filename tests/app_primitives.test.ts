@@ -43,6 +43,7 @@ import {
   runtimeRendererBackendCommands,
 } from "../src/app/runtime_renderer_commands.ts";
 import type { RuntimeRendererBackendCommandAction } from "../src/app/runtime_renderer_commands.ts";
+import { createRuntimeRendererBackendPlugin } from "../src/app/runtime_renderer_plugin.ts";
 import {
   bindDataTableSetting,
   bindRouteSetting,
@@ -2515,6 +2516,81 @@ Deno.test("createRuntimeProfilePlugin rolls back installed surfaces when custom 
   }
 
   assertEquals(app.commands.has("runtime.profile.set.balanced"), false);
+  assertEquals(app.plugins(), []);
+  app.destroy();
+});
+
+Deno.test("createRuntimeRendererBackendPlugin installs renderer commands settings and lifecycle cleanup", async () => {
+  const store = new MemoryStore<unknown>();
+  await store.set("prefs.runtime-renderer", "terminal-cpu");
+  const settings = new SettingsController({ store, namespace: "prefs" });
+  const app = createApp<RuntimeRendererBackendCommandAction>({ tui: { destroy() {} } as unknown as Tui });
+  const actions: RuntimeRendererBackendCommandAction[] = [];
+  app.onAction((action) => void actions.push(action));
+  let contextBackend = "";
+
+  const plugin = createRuntimeRendererBackendPlugin({
+    settings,
+    controllerOptions: {
+      activeId: "webgl-canvas",
+      capabilities: {
+        workers: true,
+        webgpu: false,
+        webgl: true,
+        offscreenCanvas: true,
+        indexedDb: true,
+      },
+    },
+    commands: { group: "runtime" },
+    install(context) {
+      contextBackend = context.controller.activeId.peek();
+      assertEquals(context.backendSetting?.setting.value.peek(), "webgl-canvas");
+    },
+  });
+
+  assertEquals(plugin.inspect().commandsEnabled, true);
+  assertEquals(plugin.inspect().backendPersistenceEnabled, true);
+  const dispose = app.use(plugin);
+
+  await settings.ready();
+  assertEquals(contextBackend, "webgl-canvas");
+  assertEquals(plugin.controller.activeId.peek(), "terminal-cpu");
+  assertEquals(app.commands.has("runtime.renderer.set.webgl-canvas"), true);
+  assertEquals(app.plugins(), [{ id: "runtime-renderer", label: "Runtime Renderer" }]);
+
+  assertEquals(await app.executeCommand("runtime.renderer.select"), true);
+  assertEquals(plugin.controller.activeId.peek(), "webgl-canvas");
+  assertEquals(actions, [
+    {
+      type: "runtime.renderer.changed",
+      payload: { id: "webgl-canvas", previousId: "terminal-cpu", selected: true },
+    },
+  ]);
+  await settings.flush();
+  assertEquals(await store.get("prefs.runtime-renderer"), "webgl-canvas");
+
+  dispose();
+  assertEquals(app.commands.has("runtime.renderer.set.webgl-canvas"), false);
+  assertEquals(app.plugins(), []);
+  app.destroy();
+});
+
+Deno.test("createRuntimeRendererBackendPlugin rolls back installed surfaces when custom install fails", () => {
+  const app = createApp<RuntimeRendererBackendCommandAction>({ tui: { destroy() {} } as unknown as Tui });
+  const plugin = createRuntimeRendererBackendPlugin({
+    install() {
+      throw new Error("runtime renderer boom");
+    },
+  });
+
+  try {
+    app.use(plugin);
+    throw new Error("expected runtime renderer plugin install to throw");
+  } catch (error) {
+    assertEquals(error instanceof Error && error.message, "runtime renderer boom");
+  }
+
+  assertEquals(app.commands.has("runtime.renderer.set.webgl-canvas"), false);
   assertEquals(app.plugins(), []);
   app.destroy();
 });
