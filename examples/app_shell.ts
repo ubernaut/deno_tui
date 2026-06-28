@@ -4,14 +4,15 @@ import {
   bindModalFocus,
   bindRouteHistory,
   bindRouteIndex,
+  bindRouteSetting,
   Breadcrumbs,
   CommandPalette,
   commandSurfaceItems,
   Computed,
   ContextMenu,
   createApp,
-  createPersistentSignal,
   createRuntimeStore,
+  createSettingsController,
   createThemeEngine,
   dockRect,
   executeCommandSurfaceItem,
@@ -78,12 +79,11 @@ const preferences = createRuntimeStore<string>({
   databaseName: "deno-tui-app-shell",
   storeName: "preferences",
 });
-const persistedRoute = createPersistentSignal({
-  key: "active-route",
-  initialValue: "overview",
-  store: preferences,
-});
-const routeChoice = persistedRoute.value;
+const settings = createSettingsController({ store: preferences, namespace: "app-shell" });
+const routeSetting = bindRouteSetting(app.routes, settings, { key: "active-route", initialValue: "overview" });
+const routeChoice = routeSetting.setting.value;
+app.onDispose(routeSetting.dispose);
+app.onDispose(() => settings.dispose());
 const routeStepIndex = new Signal(0);
 app.onDispose(bindRouteIndex(app.routes, routeStepIndex, { routeIds: ["overview", "widgets", "runtime"] }));
 const history = new HistoryStack({ capacity: 32 });
@@ -197,7 +197,6 @@ app.enableCommandKeymap();
 
 app.onActionType("route", (action) => {
   app.routes.navigate(action.payload);
-  routeChoice.value = action.payload;
   pushToast(`Route changed to ${action.payload}`, "info");
 });
 app.onActionType("toast", (action) => pushToast(action.payload, "success"));
@@ -210,10 +209,7 @@ app.onActionType("context", (action) => {
 app.onActionType("history.undo", () => void history.undo());
 app.onActionType("history.redo", () => void history.redo());
 
-void persistedRoute.ready.then((route) => {
-  if (app.routes.routes.peek().some((candidate) => candidate.id === route)) {
-    void app.actions.dispatch({ type: "route", payload: route, history: false });
-  }
+void settings.ready().then(() => {
   app.onDispose(
     bindRouteHistory(app.routes, history, {
       navigate: (routeId) => app.actions.dispatch({ type: "route", payload: routeId, history: false }),

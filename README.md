@@ -820,17 +820,17 @@ underlying scene coverage.
 
 ## Examples
 
-| File                      | Description                                               |
-| ------------------------- | --------------------------------------------------------- |
-| `examples/demo.ts`        | Kitchen-sink demo of all components                       |
-| `examples/calculator.ts`  | Functional calculator built with `GridLayout`             |
-| `examples/layout.ts`      | Grid layout with draggable, colored buttons               |
-| `examples/app_shell.ts`   | App primitives, routes, command palette, tree, and toasts |
-| `examples/dashboard.ts`   | Dashboard widgets, semantic theme tokens, and key help    |
-| `examples/worker_pool.ts` | WorkerPool concurrency example                            |
-| `examples/three_ascii.ts` | Interactive 3D ASCII renderer powered by three.js         |
-| `app/showcase.ts`         | Full Neon Exodus-style widget and visualization showcase  |
-| `app/main.ts`             | Live system monitor dashboard with selectable panels      |
+| File                      | Description                                                  |
+| ------------------------- | ------------------------------------------------------------ |
+| `examples/demo.ts`        | Kitchen-sink demo of all components                          |
+| `examples/calculator.ts`  | Functional calculator built with `GridLayout`                |
+| `examples/layout.ts`      | Grid layout with draggable, colored buttons                  |
+| `examples/app_shell.ts`   | App primitives, settings-backed routes, commands, and toasts |
+| `examples/dashboard.ts`   | Dashboard widgets, semantic theme tokens, and key help       |
+| `examples/worker_pool.ts` | WorkerPool concurrency example                               |
+| `examples/three_ascii.ts` | Interactive 3D ASCII renderer powered by three.js            |
+| `app/showcase.ts`         | Full Neon Exodus-style widget and visualization showcase     |
+| `app/main.ts`             | Live system monitor dashboard with selectable panels         |
 
 ### Launching the added visualizations
 
