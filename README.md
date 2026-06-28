@@ -789,14 +789,15 @@ app.onDispose(bindModalFocus(app.tui, paletteVisible, app.focus, [commandPalette
 ```
 
 Use `createAppPlugin()`, `app.use()`, or `app.useAll()` to install reusable app plugins. A plugin can declaratively
-register routes, commands, action middleware, key bindings, focus items, and mouse interaction targets, then run an
-optional installer for theme providers, runtime resources, async data, or other module-level state. Generated disposers
-remove declarative registrations in reverse order, roll back partial installs, and keep teardown tied to the app
-lifecycle. Identified plugins are tracked by `app.plugins()`, `app.pluginIds()`, and `app.hasPlugin(id)`, so larger apps
-can inspect active modules and avoid duplicate installs. Passing `{ replace: true }` to `app.use(plugin, options)` swaps
-an existing identified plugin before installing the replacement:
+register routes, commands, action middleware, key bindings, focus items, mouse interaction targets, and runtime workload
+sources, then run an optional installer for theme providers, runtime resources, async data, or other module-level state.
+Generated disposers remove declarative registrations in reverse order, roll back partial installs, and keep teardown
+tied to the app lifecycle. Identified plugins are tracked by `app.plugins()`, `app.pluginIds()`, and
+`app.hasPlugin(id)`, so larger apps can inspect active modules and avoid duplicate installs. Passing `{ replace: true }`
+to `app.use(plugin, options)` swaps an existing identified plugin before installing the replacement:
 
 ```ts
+const settingsScheduler = new AsyncScheduler({ concurrency: 2 });
 const settingsPluginDefinition = {
   id: "settings",
   label: "Settings Pack",
@@ -816,6 +817,11 @@ const settingsPluginDefinition = {
     id: "settings-panel",
     bounds: { column: 0, row: 0, width: 48, height: 12 },
     onPress: (event) => app.actions.dispatch({ type: "route", payload: "settings" }),
+  }],
+  workloadSources: [{
+    id: "settings-work",
+    label: "Settings Work",
+    inspect: () => settingsScheduler.inspect(),
   }],
   install(app) {
     const stop = app.onActionType("route", (action) => app.routes.navigate(action.payload));
@@ -845,18 +851,21 @@ return lifecycle.dispose;
 
 `createAppPluginCatalogReport()`, `queryAppPluginDefinitions()`, and `formatAppPluginCatalogMarkdown()` turn plugin
 definitions into docs, marketplace, and diagnostics data with tag, route, command, key binding, focus, mouse target,
-middleware, and installer counts. Theme engines remain a first-class plugin surface through `createThemePlugin()` and
-`createThemeWorkspacePlugin()`, so reusable theme packs, runtime layers, persisted theme settings, and theme commands
-can ship beside normal app surfaces without coupling components to one global theme singleton.
+runtime workload, middleware, and installer counts. Theme engines remain a first-class plugin surface through
+`createThemePlugin()` and `createThemeWorkspacePlugin()`, so reusable theme packs, runtime layers, persisted theme
+settings, and theme commands can ship beside normal app surfaces without coupling components to one global theme
+singleton.
 
-`app.inspect()` returns one diagnostic snapshot for route state, command counts, key bindings, focus state, installed
-plugins, lifecycle status, and tracked disposers. It is intended for status bars, debug panels, health checks, and
-tests:
+`app.workloads` is a `RuntimeWorkloadRegistry` shared by plugins and app code for scheduler and worker-pool pressure
+telemetry. `app.inspect()` returns one diagnostic snapshot for route state, command counts, key bindings, focus state,
+mouse targets, workload pressure, installed plugins, lifecycle status, and tracked disposers. It is intended for status
+bars, debug panels, health checks, and tests:
 
 ```ts
 const state = app.inspect();
 const activeRoute = state.routes.activeRouteId;
 const commandCount = state.commands.count;
+const queuedWork = state.workloads.queued;
 const plugins = state.plugins.map((plugin) => plugin.id);
 ```
 

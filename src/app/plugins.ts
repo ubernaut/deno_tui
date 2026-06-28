@@ -1,6 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { Focusable } from "../focus.ts";
 import { bindingId, type KeyBinding } from "../keymap.ts";
+import type { RuntimeWorkloadSource } from "../runtime/telemetry.ts";
 import type { Action, ActionMiddleware } from "./actions.ts";
 import type { AppPlugin, AppPluginDisposer, TuiApp } from "./app.ts";
 import type { Command } from "./commands.ts";
@@ -25,6 +26,7 @@ export interface AppPluginDefinition<TAction extends Action = Action, TRoute ext
   keyBindings?: readonly KeyBinding[];
   focusItems?: readonly Focusable[];
   mouseTargets?: readonly MouseInteractionTarget[];
+  workloadSources?: readonly RuntimeWorkloadSource[];
   install?: (app: TuiApp<TAction, TRoute>) => AppPluginDisposer;
 }
 
@@ -39,6 +41,7 @@ export interface AppPluginDefinitionInspection {
   keyBindings: string[];
   focusItems: number;
   mouseTargets: string[];
+  workloadSources: string[];
   hasInstaller: boolean;
 }
 
@@ -50,6 +53,7 @@ export interface AppPluginCatalogQuery {
   hasKeyBindings?: boolean;
   hasFocusItems?: boolean;
   hasMouseTargets?: boolean;
+  hasWorkloadSources?: boolean;
   hasActionMiddleware?: boolean;
   hasInstaller?: boolean;
 }
@@ -61,6 +65,7 @@ export interface AppPluginCatalogInspection {
   keyBindingCount: number;
   focusItemCount: number;
   mouseTargetCount: number;
+  workloadSourceCount: number;
   actionMiddlewareCount: number;
   installerCount: number;
   tags: string[];
@@ -117,6 +122,10 @@ export function createAppPlugin<TAction extends Action = Action, TRoute extends 
           stack.defer(app.mouse.register(target));
         }
 
+        for (const source of definition.workloadSources ?? []) {
+          stack.defer(app.workloads.register(source));
+        }
+
         stack.defer(definition.install?.(app));
       } catch (error) {
         stack.dispose();
@@ -142,6 +151,7 @@ export function inspectAppPluginDefinition<TAction extends Action = Action, TRou
     keyBindings: (definition.keyBindings ?? []).map(bindingId),
     focusItems: definition.focusItems?.length ?? 0,
     mouseTargets: (definition.mouseTargets ?? []).map((target) => target.id),
+    workloadSources: (definition.workloadSources ?? []).map((source) => source.id),
     hasInstaller: definition.install !== undefined,
   };
 }
@@ -166,6 +176,7 @@ export function inspectAppPluginCatalog(
     keyBindingCount: plugins.reduce((total, plugin) => total + plugin.keyBindings.length, 0),
     focusItemCount: plugins.reduce((total, plugin) => total + plugin.focusItems, 0),
     mouseTargetCount: plugins.reduce((total, plugin) => total + plugin.mouseTargets.length, 0),
+    workloadSourceCount: plugins.reduce((total, plugin) => total + plugin.workloadSources.length, 0),
     actionMiddlewareCount: plugins.reduce((total, plugin) => total + plugin.actionMiddleware, 0),
     installerCount: plugins.filter((plugin) => plugin.hasInstaller).length,
     tags: [...new Set(plugins.flatMap((plugin) => plugin.tags))].sort(),
@@ -189,17 +200,17 @@ export function formatAppPluginCatalogMarkdown<TAction extends Action = Action, 
   const lines = [`# ${options.title ?? "App Plugin Catalog"}`, ""];
   if (options.includeSummary ?? true) {
     lines.push(
-      `${report.inspection.count} plugins, ${report.inspection.routeCount} routes, ${report.inspection.commandCount} commands, ${report.inspection.keyBindingCount} key bindings, ${report.inspection.mouseTargetCount} mouse targets.`,
+      `${report.inspection.count} plugins, ${report.inspection.routeCount} routes, ${report.inspection.commandCount} commands, ${report.inspection.keyBindingCount} key bindings, ${report.inspection.mouseTargetCount} mouse targets, ${report.inspection.workloadSourceCount} workload sources.`,
       "",
     );
   }
-  lines.push("| Plugin | Tags | Routes | Commands | Key Bindings | Mouse | Installer |");
-  lines.push("| --- | --- | ---: | ---: | ---: | ---: | --- |");
+  lines.push("| Plugin | Tags | Routes | Commands | Key Bindings | Mouse | Workloads | Installer |");
+  lines.push("| --- | --- | ---: | ---: | ---: | ---: | ---: | --- |");
   for (const plugin of report.plugins) {
     lines.push(
       `| ${plugin.label ?? plugin.id ?? "plugin"} | ${
         plugin.tags.join(", ") || "-"
-      } | ${plugin.routes.length} | ${plugin.commands.length} | ${plugin.keyBindings.length} | ${plugin.mouseTargets.length} | ${
+      } | ${plugin.routes.length} | ${plugin.commands.length} | ${plugin.keyBindings.length} | ${plugin.mouseTargets.length} | ${plugin.workloadSources.length} | ${
         plugin.hasInstaller ? "yes" : "no"
       } |`,
     );
@@ -221,6 +232,10 @@ function matchesPluginQuery(plugin: AppPluginDefinitionInspection, query: AppPlu
   if (query.hasFocusItems !== undefined && (plugin.focusItems > 0) !== query.hasFocusItems) return false;
   if (query.hasMouseTargets !== undefined && (plugin.mouseTargets.length > 0) !== query.hasMouseTargets) return false;
   if (
+    query.hasWorkloadSources !== undefined &&
+    (plugin.workloadSources.length > 0) !== query.hasWorkloadSources
+  ) return false;
+  if (
     query.hasActionMiddleware !== undefined &&
     (plugin.actionMiddleware > 0) !== query.hasActionMiddleware
   ) return false;
@@ -236,6 +251,7 @@ function matchesPluginQuery(plugin: AppPluginDefinitionInspection, query: AppPlu
     ...plugin.commands,
     ...plugin.keyBindings,
     ...plugin.mouseTargets,
+    ...plugin.workloadSources,
   ].join(" ").toLowerCase();
   return needle.split(/\s+/).every((part) => haystack.includes(part));
 }

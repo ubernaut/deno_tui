@@ -1,6 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { bindFocusNavigation, FocusManager, type FocusNavigationOptions } from "../focus.ts";
 import { KeymapRegistry } from "../keymap.ts";
+import { RuntimeWorkloadRegistry } from "../runtime/telemetry.ts";
 import { Tui, type TuiOptions } from "../tui.ts";
 import { type Action, ActionBus, type ActionHandler, type ActionMiddleware, type ActionOfType } from "./actions.ts";
 import {
@@ -76,6 +77,7 @@ export interface TuiAppInspection<TRoute extends Route = Route> {
   keymap: AppKeymapInspection;
   focus: ReturnType<FocusManager["inspect"]>;
   mouse: ReturnType<MouseInteractionRouter["inspect"]>;
+  workloads: ReturnType<RuntimeWorkloadRegistry["inspect"]>;
   plugins: AppPluginInspection[];
 }
 
@@ -86,6 +88,7 @@ export class TuiApp<TAction extends Action = Action, TRoute extends Route = Rout
   readonly focus = new FocusManager();
   readonly keymap = new KeymapRegistry();
   readonly mouse = new MouseInteractionRouter();
+  readonly workloads = new RuntimeWorkloadRegistry();
   readonly routes: RouteManager<TRoute>;
   readonly #disposers = new Set<() => void>();
   readonly #plugins = new Map<string, AppPluginInspection & { dispose: () => void }>();
@@ -201,6 +204,7 @@ export class TuiApp<TAction extends Action = Action, TRoute extends Route = Rout
       },
       focus: this.focus.inspect(),
       mouse: this.mouse.inspect(),
+      workloads: this.workloads.inspect(),
       plugins: this.plugins(),
     };
   }

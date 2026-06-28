@@ -73,6 +73,7 @@ import { KeymapRegistry } from "../src/keymap.ts";
 import { SplitPaneController } from "../src/layout/mod.ts";
 import { createRuntimeProfileController } from "../src/runtime/profiles.ts";
 import { createRuntimeRendererBackendController } from "../src/runtime/renderer_backends.ts";
+import { AsyncScheduler } from "../src/runtime/scheduler.ts";
 import { MemoryStore } from "../src/runtime/storage.ts";
 import { Signal } from "../src/signals/mod.ts";
 import {
@@ -1389,6 +1390,12 @@ Deno.test("TuiApp inspects routes commands keymap focus plugins and lifecycle", 
     bounds: { column: 0, row: 0, width: 10, height: 2 },
     onPress: () => undefined,
   });
+  const scheduler = new AsyncScheduler({ concurrency: 2 });
+  app.workloads.register({
+    id: "ui",
+    label: "UI Scheduler",
+    inspect: () => scheduler.inspect(),
+  });
   app.use({ id: "settings", label: "Settings Pack", install: () => undefined });
   app.useActionMiddleware((action, next) => next(action));
   app.onDispose(() => undefined);
@@ -1435,6 +1442,20 @@ Deno.test("TuiApp inspects routes commands keymap focus plugins and lifecycle", 
         hasScrollHandler: false,
       },
     ],
+    workloads: {
+      count: 1,
+      running: 0,
+      queued: 0,
+      pending: 0,
+      capacity: 2,
+      saturated: 0,
+      terminated: 0,
+      idle: true,
+      maxSaturation: 0,
+      sourceIds: ["ui"],
+      labels: ["UI Scheduler"],
+      kinds: ["scheduler"],
+    },
     plugins: [{ id: "settings", label: "Settings Pack" }],
   });
 
@@ -1508,6 +1529,7 @@ Deno.test("createAppPlugin installs declarative app surfaces with teardown", asy
   });
   const events: string[] = [];
   const focusItem = { state: new Signal<"base" | "focused" | "active" | "disabled">("base") };
+  const scheduler = new AsyncScheduler({ concurrency: 1 });
   const definition = {
     id: "settings",
     label: "Settings Pack",
@@ -1532,6 +1554,11 @@ Deno.test("createAppPlugin installs declarative app surfaces with teardown", asy
         events.push(`mouse:${context.localX},${context.localY}`);
       },
     }],
+    workloadSources: [{
+      id: "settings-work",
+      label: "Settings Work",
+      inspect: () => scheduler.inspect(),
+    }],
     install(target: typeof app) {
       events.push(`install:${target.routes.ids().join(",")}`);
       const stop = target.onActionType("route", (action) => {
@@ -1555,6 +1582,7 @@ Deno.test("createAppPlugin installs declarative app surfaces with teardown", asy
     keyBindings: ["s"],
     focusItems: 1,
     mouseTargets: ["settings-panel"],
+    workloadSources: ["settings-work"],
     hasInstaller: true,
   });
 
@@ -1566,6 +1594,7 @@ Deno.test("createAppPlugin installs declarative app surfaces with teardown", asy
   assertEquals(app.keymap.has({ key: "s" }), true);
   assertEquals(app.focus.inspect().count, 1);
   assertEquals(app.mouse.inspect().map((target) => target.id), ["settings-panel"]);
+  assertEquals(app.workloads.inspect().sourceIds, ["settings-work"]);
 
   assertEquals(await app.executeCommand("route.settings"), true);
   assertEquals(app.routes.activeRouteId.peek(), "settings");
@@ -1583,6 +1612,7 @@ Deno.test("createAppPlugin installs declarative app surfaces with teardown", asy
   assertEquals(app.keymap.has({ key: "s" }), false);
   assertEquals(app.focus.inspect().count, 0);
   assertEquals(app.mouse.inspect(), []);
+  assertEquals(app.workloads.inspect().sourceIds, []);
   assertEquals(events, ["install:home,settings", "mouse:2,1", "dispose:custom"]);
   app.destroy();
 });
@@ -1602,6 +1632,10 @@ Deno.test("app plugin catalog reports filter plugin definitions for docs and mar
         bounds: { column: 0, row: 0, width: 12, height: 2 },
         onPress: () => undefined,
       }],
+      workloadSources: [{
+        id: "settings-work",
+        inspect: () => ({ concurrency: 1, running: 0, pending: 0, idle: true }),
+      }],
     },
     {
       id: "runtime",
@@ -1620,6 +1654,9 @@ Deno.test("app plugin catalog reports filter plugin definitions for docs and mar
   assertEquals(queryAppPluginDefinitions(definitions, { hasMouseTargets: true }).map((plugin) => plugin.id), [
     "settings",
   ]);
+  assertEquals(queryAppPluginDefinitions(definitions, { hasWorkloadSources: true }).map((plugin) => plugin.id), [
+    "settings",
+  ]);
   const report = createAppPluginCatalogReport({ plugins: definitions, query: { search: "settings" } });
   assertEquals(report.inspection, {
     count: 1,
@@ -1628,23 +1665,25 @@ Deno.test("app plugin catalog reports filter plugin definitions for docs and mar
     keyBindingCount: 1,
     focusItemCount: 0,
     mouseTargetCount: 1,
+    workloadSourceCount: 1,
     actionMiddlewareCount: 0,
     installerCount: 0,
     tags: ["routes", "settings"],
   });
   assertEquals(report.plugins[0].commands, ["settings.open"]);
   assertEquals(report.plugins[0].mouseTargets, ["settings-region"]);
+  assertEquals(report.plugins[0].workloadSources, ["settings-work"]);
   assertEquals(
     formatAppPluginCatalogMarkdown({ plugins: definitions, title: "Plugins" }),
     [
       "# Plugins",
       "",
-      "2 plugins, 1 routes, 1 commands, 1 key bindings, 1 mouse targets.",
+      "2 plugins, 1 routes, 1 commands, 1 key bindings, 1 mouse targets, 1 workload sources.",
       "",
-      "| Plugin | Tags | Routes | Commands | Key Bindings | Mouse | Installer |",
-      "| --- | --- | ---: | ---: | ---: | ---: | --- |",
-      "| Runtime Pack | resources, runtime | 0 | 0 | 0 | 0 | yes |",
-      "| Settings Pack | routes, settings | 1 | 1 | 1 | 1 | no |",
+      "| Plugin | Tags | Routes | Commands | Key Bindings | Mouse | Workloads | Installer |",
+      "| --- | --- | ---: | ---: | ---: | ---: | ---: | --- |",
+      "| Runtime Pack | resources, runtime | 0 | 0 | 0 | 0 | 0 | yes |",
+      "| Settings Pack | routes, settings | 1 | 1 | 1 | 1 | 1 | no |",
     ].join("\n"),
   );
 });
@@ -1663,6 +1702,10 @@ Deno.test("createAppPlugin rolls back declarative registrations when install fai
       bounds: { column: 0, row: 0, width: 6, height: 2 },
       onPress: () => undefined,
     }],
+    workloadSources: [{
+      id: "admin-work",
+      inspect: () => ({ concurrency: 1, running: 0, pending: 0, idle: true }),
+    }],
     install() {
       throw new Error("boom");
     },
@@ -1679,6 +1722,7 @@ Deno.test("createAppPlugin rolls back declarative registrations when install fai
   assertEquals(app.commands.has("admin.open"), false);
   assertEquals(app.inspect().actions.middleware, 0);
   assertEquals(app.mouse.inspect(), []);
+  assertEquals(app.workloads.inspect().sourceIds, []);
   app.destroy();
 });
 
