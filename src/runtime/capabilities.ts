@@ -27,6 +27,34 @@ export interface RuntimeCapabilitySummary {
   entries: RuntimeCapabilityEntry[];
 }
 
+export type RuntimeWorkerStrategy = "worker-pool" | "main-thread";
+export type RuntimeStorageStrategy = "indexeddb" | "memory";
+export type RuntimeRendererStrategy = "webgpu" | "webgl" | "cpu";
+
+/** Preferences for deriving runtime strategies from detected capabilities. */
+export interface RuntimePlanOptions {
+  preferWorkers?: boolean;
+  preferPersistentStorage?: boolean;
+  preferGpuRenderer?: boolean;
+  allowWebGlFallback?: boolean;
+}
+
+/** One selected runtime strategy plus the capability that drove it. */
+export interface RuntimePlanDecision<TStrategy extends string, TCapability extends RuntimeCapabilityId> {
+  strategy: TStrategy;
+  accelerated: boolean;
+  capability?: TCapability;
+  reason: string;
+}
+
+/** Deterministic runtime strategy plan for apps, demos, and renderer backends. */
+export interface RuntimePlan {
+  capabilities: RuntimeCapabilities;
+  workers: RuntimePlanDecision<RuntimeWorkerStrategy, "workers">;
+  storage: RuntimePlanDecision<RuntimeStorageStrategy, "indexedDb">;
+  renderer: RuntimePlanDecision<RuntimeRendererStrategy, "webgpu" | "webgl">;
+}
+
 const CAPABILITY_METADATA: Record<RuntimeCapabilityId, Omit<RuntimeCapabilityEntry, "id" | "available">> = {
   workers: {
     label: "Workers",
@@ -101,6 +129,60 @@ export function formatRuntimeCapabilities(
   ].join("\n");
 }
 
+/** Builds a deterministic strategy plan from runtime capabilities and app preferences. */
+export function createRuntimePlan(
+  capabilities: RuntimeCapabilities = detectRuntimeCapabilities(),
+  options: RuntimePlanOptions = {},
+): RuntimePlan {
+  const preferWorkers = options.preferWorkers ?? true;
+  const preferPersistentStorage = options.preferPersistentStorage ?? true;
+  const preferGpuRenderer = options.preferGpuRenderer ?? true;
+  const allowWebGlFallback = options.allowWebGlFallback ?? true;
+
+  return {
+    capabilities,
+    workers: preferWorkers && capabilities.workers
+      ? {
+        strategy: "worker-pool",
+        accelerated: true,
+        capability: "workers",
+        reason: "Workers are available and preferred for background work.",
+      }
+      : {
+        strategy: "main-thread",
+        accelerated: false,
+        reason: preferWorkers
+          ? "Workers are unavailable, so work should run on the main thread."
+          : "Worker usage was disabled by runtime plan preferences.",
+      },
+    storage: preferPersistentStorage && capabilities.indexedDb
+      ? {
+        strategy: "indexeddb",
+        accelerated: true,
+        capability: "indexedDb",
+        reason: "IndexedDB is available and preferred for persistent settings.",
+      }
+      : {
+        strategy: "memory",
+        accelerated: false,
+        reason: preferPersistentStorage
+          ? "IndexedDB is unavailable, so settings should use memory or a custom store."
+          : "Persistent storage was disabled by runtime plan preferences.",
+      },
+    renderer: rendererDecision(capabilities, preferGpuRenderer, allowWebGlFallback),
+  };
+}
+
+/** Formats a runtime plan as concise CLI/status text. */
+export function formatRuntimePlan(plan: RuntimePlan): string {
+  return [
+    "Runtime plan:",
+    `workers  ${plan.workers.strategy} (${plan.workers.reason})`,
+    `storage  ${plan.storage.strategy} (${plan.storage.reason})`,
+    `renderer ${plan.renderer.strategy} (${plan.renderer.reason})`,
+  ].join("\n");
+}
+
 function canCreateWebGlContext(scope: typeof globalThis, offscreenCanvas: boolean): boolean {
   try {
     if (offscreenCanvas) {
@@ -116,4 +198,41 @@ function canCreateWebGlContext(scope: typeof globalThis, offscreenCanvas: boolea
   } catch {
     return false;
   }
+}
+
+function rendererDecision(
+  capabilities: RuntimeCapabilities,
+  preferGpuRenderer: boolean,
+  allowWebGlFallback: boolean,
+): RuntimePlanDecision<RuntimeRendererStrategy, "webgpu" | "webgl"> {
+  if (!preferGpuRenderer) {
+    return {
+      strategy: "cpu",
+      accelerated: false,
+      reason: "GPU renderer usage was disabled by runtime plan preferences.",
+    };
+  }
+  if (capabilities.webgpu) {
+    return {
+      strategy: "webgpu",
+      accelerated: true,
+      capability: "webgpu",
+      reason: "WebGPU is available and preferred for accelerated rendering.",
+    };
+  }
+  if (allowWebGlFallback && capabilities.webgl) {
+    return {
+      strategy: "webgl",
+      accelerated: true,
+      capability: "webgl",
+      reason: "WebGPU is unavailable, but WebGL fallback rendering is available.",
+    };
+  }
+  return {
+    strategy: "cpu",
+    accelerated: false,
+    reason: allowWebGlFallback
+      ? "No GPU renderer capability is available, so rendering should use CPU fallbacks."
+      : "WebGPU is unavailable and WebGL fallback rendering was disabled.",
+  };
 }

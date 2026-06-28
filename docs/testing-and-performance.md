@@ -36,6 +36,7 @@ These helpers are intentionally small and do not choose a test framework. They w
 
 - `detectRuntimeCapabilities()` plus `summarizeRuntimeCapabilities()` / `formatRuntimeCapabilities()` for Workers,
   WebGPU, WebGL, OffscreenCanvas, and IndexedDB diagnostics.
+- `createRuntimePlan()` / `formatRuntimePlan()` for deterministic worker, storage, and renderer fallback decisions.
 - `AsyncScheduler` for bounded, prioritized, and abortable queued async work.
 - `RenderLoop` for inspectable terminal frame loops with injectable timers.
 - `WorkerPool`, `installWorkerHandler()`, and `workerTransform()` for standards-style worker jobs and pipeline stages.
@@ -44,9 +45,10 @@ These helpers are intentionally small and do not choose a test framework. They w
   completes.
 
 Prefer this layer over directly branching on globals inside components. Components should stay deterministic and easy to
-test; apps and renderers should decide whether to use Workers, WebGPU, WebGL, IndexedDB, or fallback implementations.
-`WorkerPool.run(payload, { signal })` can abort pending callers, `pendingCount()` exposes lightweight backpressure
-state, and `workerFactory` lets tests inject a deterministic worker without starting real threads.
+test; apps and renderers should use a runtime plan to decide whether to use Workers, WebGPU, WebGL, IndexedDB, or
+fallback implementations. `WorkerPool.run(payload, { signal })` can abort pending callers, `pendingCount()` exposes
+lightweight backpressure state, and `workerFactory` lets tests inject a deterministic worker without starting real
+threads.
 
 `BenchmarkRunner` supports per-case `iterations`, `warmupIterations`, `maxAverageMs`, and `maxTotalMs`. Pass `{ now }`
 in `BenchmarkRunnerOptions` to make benchmark unit tests deterministic, use `summarize()` or

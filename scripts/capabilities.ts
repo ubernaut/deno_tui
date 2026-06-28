@@ -1,9 +1,18 @@
-import { detectRuntimeCapabilities, formatRuntimeCapabilities, summarizeRuntimeCapabilities } from "../mod.ts";
+import {
+  createRuntimePlan,
+  detectRuntimeCapabilities,
+  formatRuntimeCapabilities,
+  formatRuntimePlan,
+  summarizeRuntimeCapabilities,
+} from "../mod.ts";
 
 const capabilities = detectRuntimeCapabilities();
+const plan = createRuntimePlan(capabilities);
 
 if (Deno.args.includes("--json")) {
-  console.log(JSON.stringify(summarizeRuntimeCapabilities(capabilities), null, 2));
+  console.log(JSON.stringify({ ...summarizeRuntimeCapabilities(capabilities), plan }, null, 2));
 } else {
   console.log(formatRuntimeCapabilities(capabilities));
+  console.log("");
+  console.log(formatRuntimePlan(plan));
 }

@@ -1,7 +1,9 @@
 import { assertEquals } from "./deps.ts";
 import {
+  createRuntimePlan,
   detectRuntimeCapabilities,
   formatRuntimeCapabilities,
+  formatRuntimePlan,
   runtimeCapabilityEntries,
   summarizeRuntimeCapabilities,
 } from "../src/runtime/capabilities.ts";
@@ -55,6 +57,50 @@ Deno.test("runtime capability helpers expose labeled summaries", () => {
       "ok IndexedDB",
     ].join("\n"),
   );
+});
+
+Deno.test("runtime plans choose worker storage and renderer strategies", () => {
+  const fullPlan = createRuntimePlan({
+    workers: true,
+    webgpu: true,
+    webgl: true,
+    offscreenCanvas: true,
+    indexedDb: true,
+  });
+
+  assertEquals(fullPlan.workers.strategy, "worker-pool");
+  assertEquals(fullPlan.storage.strategy, "indexeddb");
+  assertEquals(fullPlan.renderer.strategy, "webgpu");
+  assertEquals(fullPlan.renderer.accelerated, true);
+
+  const fallbackPlan = createRuntimePlan({
+    workers: false,
+    webgpu: false,
+    webgl: true,
+    offscreenCanvas: true,
+    indexedDb: false,
+  });
+
+  assertEquals(fallbackPlan.workers.strategy, "main-thread");
+  assertEquals(fallbackPlan.storage.strategy, "memory");
+  assertEquals(fallbackPlan.renderer.strategy, "webgl");
+  assertEquals(formatRuntimePlan(fallbackPlan).includes("renderer webgl"), true);
+
+  const conservativePlan = createRuntimePlan({
+    workers: true,
+    webgpu: true,
+    webgl: true,
+    offscreenCanvas: true,
+    indexedDb: true,
+  }, {
+    preferWorkers: false,
+    preferPersistentStorage: false,
+    preferGpuRenderer: false,
+  });
+
+  assertEquals(conservativePlan.workers.strategy, "main-thread");
+  assertEquals(conservativePlan.storage.strategy, "memory");
+  assertEquals(conservativePlan.renderer.strategy, "cpu");
 });
 
 Deno.test("AsyncScheduler respects the configured concurrency limit", async () => {
