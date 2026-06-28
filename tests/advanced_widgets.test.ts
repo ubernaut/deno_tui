@@ -6,7 +6,9 @@ import {
   componentsByCategory,
   componentsWithCapability,
   findComponent,
+  inspectComponentCatalog,
   listComponents,
+  queryComponents,
 } from "../src/components/catalog.ts";
 import {
   clampCommandPaletteSelection,
@@ -63,6 +65,48 @@ Deno.test("component catalog groups widgets by category and capability", () => {
     "context-menu",
     "metric-series",
   ]);
+});
+
+Deno.test("component catalog supports combined queries and inspection", () => {
+  assertEquals(queryComponents({ category: "overlay", capability: "controller" }).map((entry) => entry.id), [
+    "command-palette",
+    "context-menu",
+  ]);
+  assertEquals(queryComponents({ capabilities: ["controller", "selection"] }).map((entry) => entry.id), [
+    "virtual-list",
+    "data-table",
+    "command-palette",
+    "context-menu",
+  ]);
+  assertEquals(queryComponents({ search: "ascii" }).map((entry) => entry.id), ["three-ascii"]);
+
+  const overlay = queryComponents({ category: "overlay" });
+  assertEquals(inspectComponentCatalog(overlay), {
+    count: 4,
+    categories: {
+      data: 0,
+      feedback: 0,
+      input: 0,
+      layout: 0,
+      navigation: 0,
+      overlay: 4,
+      primitive: 0,
+      visualization: 0,
+    },
+    capabilities: {
+      async: 2,
+      component: 0,
+      controller: 2,
+      dashboard: 0,
+      keyboard: 3,
+      mouse: 1,
+      "render-helper": 4,
+      selection: 2,
+      themeable: 1,
+      three: 0,
+      virtualized: 0,
+    },
+  });
 });
 
 Deno.test("command palette filters labels ids and keywords", () => {

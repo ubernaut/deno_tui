@@ -31,6 +31,19 @@ export interface ComponentCatalogEntry {
   capabilities: readonly ComponentCapability[];
 }
 
+export interface ComponentCatalogQuery {
+  category?: ComponentCategory;
+  capability?: ComponentCapability;
+  capabilities?: readonly ComponentCapability[];
+  search?: string;
+}
+
+export interface ComponentCatalogInspection {
+  count: number;
+  categories: Record<ComponentCategory, number>;
+  capabilities: Record<ComponentCapability, number>;
+}
+
 export const componentCatalog = [
   component("box", "Box", "primitive", "Filled rectangular surface for backgrounds and panels.", [
     "component",
@@ -203,12 +216,54 @@ export function componentsWithCapability(capability: ComponentCapability): Compo
   return componentCatalog.filter((entry) => entry.capabilities.includes(capability));
 }
 
+export function queryComponents(query: ComponentCatalogQuery = {}): ComponentCatalogEntry[] {
+  const capabilities = [
+    ...(query.capability ? [query.capability] : []),
+    ...(query.capabilities ?? []),
+  ];
+  const search = query.search ? normalizeComponentLookup(query.search) : "";
+  return componentCatalog.filter((entry) => {
+    if (query.category && entry.category !== query.category) return false;
+    if (capabilities.some((capability) => !entry.capabilities.includes(capability))) return false;
+    if (!search) return true;
+
+    return [entry.id, entry.name, entry.description, entry.category, ...entry.capabilities]
+      .some((value) => normalizeComponentLookup(value).includes(search));
+  });
+}
+
 export function componentCategories(): ComponentCategory[] {
   return [...new Set(componentCatalog.map((entry) => entry.category))].sort();
 }
 
 export function componentCapabilities(): ComponentCapability[] {
   return [...new Set(componentCatalog.flatMap((entry) => entry.capabilities))].sort();
+}
+
+export function inspectComponentCatalog(
+  entries: readonly ComponentCatalogEntry[] = componentCatalog,
+): ComponentCatalogInspection {
+  const categories = Object.fromEntries(componentCategories().map((category) => [category, 0])) as Record<
+    ComponentCategory,
+    number
+  >;
+  const capabilities = Object.fromEntries(componentCapabilities().map((capability) => [capability, 0])) as Record<
+    ComponentCapability,
+    number
+  >;
+
+  for (const entry of entries) {
+    categories[entry.category] += 1;
+    for (const capability of entry.capabilities) {
+      capabilities[capability] += 1;
+    }
+  }
+
+  return {
+    count: entries.length,
+    categories,
+    capabilities,
+  };
 }
 
 function component(

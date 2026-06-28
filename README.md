@@ -139,14 +139,16 @@ Additional fork components include `List`, `VirtualList`, `Tabs`, `Breadcrumbs`,
 `MenuBar`, `ContextMenu`, `RadioGroup`, `ScrollArea`, `Modal`, `KeyHelp`, `CommandPalette`, `Tree`, `ToastStack`,
 `Sparkline`, `Gauge`, `Chart`, `LogViewer`, and `StatusBar`. `VirtualList` combines viewport windowing and
 `SelectionController` for large custom data views, while `Spinner` and `EmptyState` pair naturally with `AsyncResource`
-loading/empty/error state. `componentCatalog`, `listComponents()`, `findComponent()`, `componentsByCategory()`, and
-`componentsWithCapability()` provide an inspectable widget inventory for docs, launchers, settings screens, and command
-palettes:
+loading/empty/error state. `componentCatalog`, `listComponents()`, `findComponent()`, `componentsByCategory()`,
+`componentsWithCapability()`, `queryComponents()`, and `inspectComponentCatalog()` provide an inspectable widget
+inventory for docs, launchers, settings screens, and command palettes:
 
 ```ts
 const overlays = componentsByCategory("overlay");
 const dashboardWidgets = componentsWithCapability("dashboard");
 const threeAscii = findComponent("ThreeAscii");
+const selectableControllers = queryComponents({ capabilities: ["controller", "selection"] });
+const catalogState = inspectComponentCatalog();
 ```
 
 `VirtualListController` keeps large-list interaction separate from rendering. It exposes viewport rows, selection
