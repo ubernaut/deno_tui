@@ -48,6 +48,13 @@ import {
 } from "../src/theme.ts";
 import { bindComponentTheme } from "../src/theme_binding.ts";
 import { createThemeEngineCache, createThemeProviderCache } from "../src/theme_engine_cache.ts";
+import {
+  createThemeEngineFactory,
+  createThemeEngineFactoryRegistry,
+  prewarmThemeEngines,
+  ThemeEngineFactoryNotFoundError,
+} from "../src/theme_engine_factory.ts";
+import { AsyncScheduler } from "../src/runtime/scheduler.ts";
 import { Signal } from "../src/signals/mod.ts";
 import { MemoryStore } from "../src/runtime/storage.ts";
 
@@ -627,6 +634,146 @@ Deno.test("ThemeEngine can be extended and inspected without mutating the source
     { name: "Button", variants: ["danger", "quiet"] },
     { name: "Modal", variants: ["palette"] },
   ]);
+});
+
+Deno.test("ThemeEngineFactory builds inspectable reusable engine presets", () => {
+  const factory = createThemeEngineFactory({
+    id: "ops",
+    label: "Operations",
+    description: "Operational dashboard theme.",
+    palette: "terminal",
+    tags: ["ops", "dark", "ops"],
+    priority: 5,
+    options: {
+      tokens: {
+        foreground: (value) => `fg:${value}`,
+        accent: (value) => `accent:${value}`,
+      },
+      components: {
+        Button: {
+          base: { base: "foreground", focused: "accent" },
+          variants: { danger: { active: "danger" } },
+        },
+      },
+    },
+  });
+  const engine = factory.build({
+    components: {
+      Button: {
+        variants: { quiet: { base: "muted" } },
+      },
+    },
+  });
+
+  assertEquals(engine.component("Button").base("x"), "fg:x");
+  assertEquals(engine.component("Button").focused("x"), "accent:x");
+  assertEquals(engine.variants("Button"), ["danger", "quiet"]);
+  assertEquals(factory.inspect(), {
+    id: "ops",
+    label: "Operations",
+    description: "Operational dashboard theme.",
+    palette: "terminal",
+    tags: ["dark", "ops"],
+    priority: 5,
+    tokenOverrides: ["foreground", "accent"],
+    components: ["Button"],
+    variants: { Button: ["danger"] },
+    issues: [],
+    valid: true,
+  });
+});
+
+Deno.test("ThemeEngineFactoryRegistry orders replaces and prewarms factories", async () => {
+  const registry = createThemeEngineFactoryRegistry([
+    {
+      id: "low",
+      palette: "plain",
+      priority: 1,
+      options: { components: { Button: { base: { base: (value) => `low:${value}` } } } },
+    },
+    {
+      id: "high",
+      palette: "plain",
+      priority: 10,
+      options: {
+        components: {
+          Button: {
+            base: { base: (value) => `high:${value}` },
+            variants: { danger: { active: "danger" } },
+          },
+        },
+      },
+    },
+  ]);
+
+  registry.register({
+    id: "low",
+    palette: "terminal",
+    priority: 20,
+    options: { components: { Field: { base: { focused: "accent" } } } },
+  });
+
+  assertEquals(registry.ids(), ["low", "high"]);
+  assertEquals(registry.inspect().map((factory) => [factory.id, factory.palette, factory.priority]), [
+    ["low", "terminal", 20],
+    ["high", "plain", 10],
+  ]);
+  assertEquals(registry.build("high").component("Button").base("x"), "high:x");
+
+  const warmed = await registry.prewarm({
+    ids: ["high"],
+    overrides: (_id, factory) => ({
+      components: {
+        Button: {
+          variants: { preview: { active: factory.id === "high" ? "success" : "warning" } },
+        },
+      },
+    }),
+  });
+
+  assertEquals(warmed.map((entry) => entry.id), ["high"]);
+  assertEquals(warmed[0].engine.variants("Button"), ["danger", "preview"]);
+  assertEquals(warmed[0].inspection.components, ["Button"]);
+
+  try {
+    registry.build("missing");
+    throw new Error("expected missing factory");
+  } catch (error) {
+    assertEquals(error instanceof ThemeEngineFactoryNotFoundError, true);
+  }
+});
+
+Deno.test("prewarmThemeEngines accepts a scheduler and preserves input order", async () => {
+  const scheduler = new AsyncScheduler({ concurrency: 1 });
+  const first = createThemeEngineFactory({
+    id: "first",
+    options: { components: { Button: { base: { base: (value) => `first:${value}` } } } },
+  });
+  const second = createThemeEngineFactory({
+    id: "second",
+    options: { components: { Button: { base: { base: (value) => `second:${value}` } } } },
+  });
+
+  const warmed = prewarmThemeEngines([first, second], {
+    scheduler,
+    overrides: (id) => {
+      return {
+        components: {
+          Button: {
+            variants: { preview: { active: id === "first" ? "success" : "warning" } },
+          },
+        },
+      };
+    },
+  });
+
+  const results = await warmed;
+
+  assertEquals(results.map((result) => result.id), ["first", "second"]);
+  assertEquals(results[0].engine.component("Button").base("x"), "first:x");
+  assertEquals(results[1].engine.component("Button").base("x"), "second:x");
+  assertEquals(results[0].engine.variants("Button"), ["preview"]);
+  assertEquals(scheduler.inspect(), { concurrency: 1, running: 0, pending: 0, idle: true });
 });
 
 Deno.test("ThemeEngineCache memoizes component themes and resolved styles", () => {

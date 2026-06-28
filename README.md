@@ -1085,6 +1085,7 @@ import {
   createThemeCatalog,
   createThemeEngine,
   createThemeEngineCache,
+  createThemeEngineFactoryRegistry,
   createThemeEngineFromManifest,
   createThemeLayerStack,
   createThemePlugin,
@@ -1130,6 +1131,18 @@ const themeEngine = createThemeEngine("neon", appTheme)
       Modal: { variants: { palette: { focused: createAnsiStyle({ foreground: "cyan" }) } } },
     },
   });
+
+const themeFactories = createThemeEngineFactoryRegistry([
+  {
+    id: "ops-neon",
+    label: "Ops Neon",
+    palette: "neon",
+    tags: ["dashboard", "dark"],
+    priority: 20,
+    options: appTheme,
+  },
+]);
+const warmedThemeEngines = await themeFactories.prewarm();
 
 const themeIssues = validateThemeOptions(appTheme);
 assertThemeOptions(appTheme);
@@ -1240,6 +1253,10 @@ app.use(themePlugin);
 
 `ThemeRegistry.engine(id, overrides)` composes a named pack with per-app overrides, while `ThemeProvider.component()`
 and `ThemeProvider.resolve()` expose computed signals for active component themes and individual state styles.
+`ThemeEngineFactory` and `ThemeEngineFactoryRegistry` add a reusable engine-construction layer for apps that need
+multiple theme engines, white-label packs, demos, or plugin-provided themes. Factories expose metadata, tags, priority,
+validation issues, token overrides, components, variants, synchronous `build()`, and scheduler-backed `prewarm()` so
+heavy theme catalogs can be prepared before first render without coupling widgets to theme loading.
 `ThemeProvider.themeIds()`, `nextTheme()`, `previousTheme()`, and `cycleTheme(direction)` keep theme switching
 deterministic across command palettes, menus, and key bindings. Pass any `AsyncStore<string>` to persist the active pack
 through `MemoryStore`, `IndexedDbStore`, or a custom settings backend; `provider.ready` reports the loaded theme and
@@ -1586,10 +1603,17 @@ const preset = findAsciiDemoPreset("mixed-best");
 | `examples/app_shell.ts`      | App primitives, settings-backed routes, commands, and toasts |
 | `examples/dashboard.ts`      | Dashboard widgets, semantic theme tokens, and key help       |
 | `examples/theme_manifest.ts` | Serializable theme manifest compiler and diff demo           |
+| `examples/theme_engines.ts`  | Theme engine factory registry and prewarm demo               |
 | `examples/worker_pool.ts`    | WorkerPool concurrency example                               |
 | `examples/three_ascii.ts`    | Interactive 3D ASCII renderer powered by three.js            |
 | `app/showcase.ts`            | Full Neon Exodus-style widget and visualization showcase     |
 | `app/main.ts`                | Live system monitor dashboard with selectable panels         |
+
+Run the theme engine factory demo with:
+
+```sh
+deno task theme-engines
+```
 
 ### Launching the added visualizations
 
