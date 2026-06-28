@@ -308,6 +308,75 @@ Deno.test("TuiApp tracks disposers and cleans them up on destroy", () => {
   assertEquals(disposed, 111);
 });
 
+Deno.test("TuiApp installs plugins and disposes them with the app", async () => {
+  const app = createApp<{ type: "route"; payload: string }, { id: string; title: string }>({
+    tui: { destroy() {} } as unknown as Tui,
+    routes: [{ id: "home", title: "Home" }],
+  });
+  const events: string[] = [];
+
+  const dispose = app.use({
+    id: "settings",
+    install(target) {
+      target.routes.routes.value = [...target.routes.routes.peek(), { id: "settings", title: "Settings" }];
+      target.commands.register({
+        id: "route.settings",
+        label: "Settings",
+        action: { type: "route", payload: "settings" },
+      });
+      target.actions.subscribe((action) => {
+        if (action.type === "route") target.routes.navigate(action.payload);
+      });
+      events.push("install");
+      return () => {
+        target.commands.unregister("route.settings");
+        target.routes.routes.value = target.routes.routes.peek().filter((route) => route.id !== "settings");
+        events.push("dispose");
+      };
+    },
+  });
+
+  assertEquals(app.routes.routes.peek().map((route) => route.id), ["home", "settings"]);
+  assertEquals(await app.executeCommand("route.settings"), true);
+  assertEquals(app.routes.active()?.id, "settings");
+
+  dispose();
+  dispose();
+
+  assertEquals(events, ["install", "dispose"]);
+  assertEquals(app.commands.get("route.settings"), undefined);
+  assertEquals(app.routes.routes.peek().map((route) => route.id), ["home"]);
+  app.destroy();
+});
+
+Deno.test("TuiApp installs plugin groups and cleans them up in reverse order", () => {
+  const app = createApp({ tui: { destroy() {} } as unknown as Tui });
+  const events: string[] = [];
+
+  const dispose = app.useAll([
+    () => {
+      events.push("install:a");
+      return () => events.push("dispose:a");
+    },
+    {
+      install() {
+        events.push("install:b");
+        return () => events.push("dispose:b");
+      },
+    },
+  ]);
+
+  dispose();
+  assertEquals(events, ["install:a", "install:b", "dispose:b", "dispose:a"]);
+
+  app.use(() => {
+    events.push("install:c");
+    return () => events.push("dispose:c");
+  });
+  app.destroy();
+  assertEquals(events, ["install:a", "install:b", "dispose:b", "dispose:a", "install:c", "dispose:c"]);
+});
+
 Deno.test("HistoryStack applies undo redo and clears stale redo entries", async () => {
   const history = new HistoryStack();
   const values: string[] = [];

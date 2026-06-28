@@ -14,6 +14,21 @@ export interface TuiAppOptions<TRoute extends Route = Route> {
   initialRouteId?: string;
 }
 
+export type AppPluginDisposer = void | (() => void);
+
+export interface AppPlugin<TAction extends Action = Action, TRoute extends Route = Route> {
+  id?: string;
+  install(app: TuiApp<TAction, TRoute>): AppPluginDisposer;
+}
+
+export type AppPluginFactory<TAction extends Action = Action, TRoute extends Route = Route> = (
+  app: TuiApp<TAction, TRoute>,
+) => AppPluginDisposer;
+
+export type AppPluginInstaller<TAction extends Action = Action, TRoute extends Route = Route> =
+  | AppPlugin<TAction, TRoute>
+  | AppPluginFactory<TAction, TRoute>;
+
 export class TuiApp<TAction extends Action = Action, TRoute extends Route = Route> {
   readonly tui: Tui;
   readonly actions = new ActionBus<TAction>();
@@ -51,6 +66,33 @@ export class TuiApp<TAction extends Action = Action, TRoute extends Route = Rout
 
   enableCommandKeys(options: CommandKeyBindingOptions = {}): () => void {
     return this.onDispose(bindCommandKeys(this.tui, this.commands, (action) => this.actions.dispatch(action), options));
+  }
+
+  use(plugin: AppPluginInstaller<TAction, TRoute>): () => void {
+    const disposer = typeof plugin === "function" ? plugin(this) : plugin.install(this);
+    return this.onDispose(disposer ?? (() => undefined));
+  }
+
+  useAll(plugins: Iterable<AppPluginInstaller<TAction, TRoute>>): () => void {
+    const disposers: Array<() => void> = [];
+    try {
+      for (const plugin of plugins) {
+        const disposer = typeof plugin === "function" ? plugin(this) : plugin.install(this);
+        if (disposer) {
+          disposers.push(disposer);
+        }
+      }
+    } catch (error) {
+      for (const disposer of [...disposers].reverse()) {
+        disposer();
+      }
+      throw error;
+    }
+    return this.onDispose(() => {
+      for (const disposer of [...disposers].reverse()) {
+        disposer();
+      }
+    });
   }
 
   onDispose(disposer: () => void): () => void {

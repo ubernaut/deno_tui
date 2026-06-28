@@ -250,6 +250,25 @@ They are optional and composable. Existing component-first apps continue to work
 app.onDispose(bindModalFocus(app.tui, paletteVisible, app.focus, [commandPalette]));
 ```
 
+Use `app.use()` or `app.useAll()` to install reusable app plugins. A plugin receives the app instance and can register
+routes, commands, focus items, theme providers, runtime resources, or any other module-level state. Returning a disposer
+keeps teardown tied to the app lifecycle:
+
+```ts
+const stopSettings = app.use({
+  id: "settings",
+  install(app) {
+    app.commands.register({
+      id: "settings.open",
+      label: "Settings",
+      action: { type: "route", payload: "settings" },
+    });
+
+    return () => app.commands.unregister("settings.open");
+  },
+});
+```
+
 `bindModalFocus()` ties a visibility signal to a `FocusScope`, traps focus while modal-like surfaces are open, restores
 the previous focused item when they close, and can close on `Escape`:
 
