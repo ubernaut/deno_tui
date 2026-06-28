@@ -1,5 +1,6 @@
 import { assertEquals } from "./deps.ts";
 import { bindMenuBarCommands, menuBarCommands } from "../src/app/menu_bar_commands.ts";
+import { bindRadioGroupCommands, radioGroupCommands } from "../src/app/radio_group_commands.ts";
 import { bindScrollAreaCommands, scrollAreaCommands } from "../src/app/scroll_area_commands.ts";
 import { CommandRegistry } from "../src/app/commands.ts";
 import { bindStepperCommands, stepperCommands } from "../src/app/stepper_commands.ts";
@@ -19,6 +20,7 @@ import {
 import {
   clampRadioIndex,
   optionForValue,
+  RadioGroupController,
   renderRadioGroupRows,
   shiftRadioIndex,
   visibleRadioOptions,
@@ -378,6 +380,97 @@ Deno.test("radio group renders selected state and skips disabled options", () =>
   assertEquals(clampRadioIndex(options, 1), 2);
   assertEquals(optionForValue(options, "c")?.label, "Gamma");
   assertEquals(visibleRadioOptions(options, 2, 2).map((row) => row.index), [1, 2]);
+});
+
+Deno.test("RadioGroupController navigates selects and inspects option state", () => {
+  const changes: string[] = [];
+  const selectedValue = new Signal<string | undefined>("c");
+  const controller = new RadioGroupController({
+    options: [
+      { value: "a", label: "Alpha" },
+      { value: "b", label: "Beta", disabled: true },
+      { value: "c", label: "Gamma" },
+    ],
+    selectedValue,
+    activeIndex: 1,
+    onChange: (option) => void changes.push(option.value),
+  });
+
+  assertEquals(controller.inspect(), {
+    options: [
+      { value: "a", label: "Alpha" },
+      { value: "b", label: "Beta", disabled: true },
+      { value: "c", label: "Gamma" },
+    ],
+    optionCount: 3,
+    activeIndex: 2,
+    active: { value: "c", label: "Gamma" },
+    selectedValue: "c",
+    selected: { value: "c", label: "Gamma" },
+    empty: false,
+  });
+  assertEquals(controller.move(-1)?.value, "a");
+  assertEquals(controller.selectActive()?.value, "a");
+  assertEquals(selectedValue.peek(), "a");
+  assertEquals(controller.selectValue("b"), undefined);
+  controller.handleKeyPress(keyPress("end"));
+  controller.handleKeyPress(keyPress("space"));
+  assertEquals(changes, ["a", "c"]);
+  controller.dispose();
+  selectedValue.dispose();
+});
+
+Deno.test("radioGroupCommands move and select options", async () => {
+  const controller = new RadioGroupController({
+    options: [
+      { value: "a", label: "Alpha" },
+      { value: "b", label: "Beta", disabled: true },
+      { value: "c", label: "Gamma" },
+    ],
+  });
+  const registry = new CommandRegistry();
+  const actions: unknown[] = [];
+  const dispose = bindRadioGroupCommands(registry, controller, {
+    id: "priority",
+    idPrefix: "radio.priority",
+    group: "form",
+    includeOptionCommands: true,
+  });
+
+  assertEquals(radioGroupCommands(new RadioGroupController({ options: [] })).map((command) => command.id), [
+    "radio.first",
+    "radio.previous",
+    "radio.next",
+    "radio.last",
+    "radio.select",
+  ]);
+  assertEquals(registry.list("form").map((command) => command.id), [
+    "radio.priority.first",
+    "radio.priority.last",
+    "radio.priority.next",
+    "radio.priority.previous",
+    "radio.priority.select",
+    "radio.priority.option.a",
+    "radio.priority.option.b",
+    "radio.priority.option.c",
+  ]);
+
+  assertEquals(await registry.execute("radio.priority.next", (action) => void actions.push(action)), true);
+  assertEquals(controller.active()?.value, "c");
+  assertEquals(await registry.execute("radio.priority.option.b", (action) => void actions.push(action)), false);
+  assertEquals(await registry.execute("radio.priority.option.a", (action) => void actions.push(action)), true);
+  assertEquals(actions.at(-1), {
+    type: "radioGroup.optionSelected",
+    payload: {
+      id: "priority",
+      option: { value: "a", label: "Alpha" },
+      inspection: controller.inspect(),
+    },
+  });
+
+  dispose();
+  assertEquals(registry.list("form"), []);
+  controller.dispose();
 });
 
 Deno.test("stepper renders progress and skips disabled steps", () => {

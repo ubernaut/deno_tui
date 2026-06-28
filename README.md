@@ -229,6 +229,28 @@ const stopMenuCommands = bindMenuBarCommands(app.commands, menu, {
 });
 ```
 
+`RadioGroupController` gives single-choice inputs the same separation of behavior and rendering: it owns options, active
+index, selected value, disabled-option skipping, keyboard handling, and inspection state. `radioGroupCommands()` and
+`bindRadioGroupCommands()` expose movement, active-option selection, and optional direct option-selection commands for
+settings panes, forms, palettes, and menu surfaces:
+
+```ts
+const priority = new RadioGroupController({
+  options: [
+    { value: "low", label: "Low" },
+    { value: "normal", label: "Normal" },
+    { value: "high", label: "High", disabled: true },
+  ],
+  selectedValue: "normal",
+});
+
+const stopPriorityCommands = bindRadioGroupCommands(app.commands, priority, {
+  idPrefix: "settings.priority",
+  group: "settings",
+  includeOptionCommands: true,
+});
+```
+
 `CommandPaletteController` and `ContextMenuController` expose the overlay widgets' query, selection, navigation, key
 handling, and inspection state without requiring a rendered component. Use them when a command surface, menu bar,
 shortcut handler, or test needs to drive the same behavior as the built-in widgets:

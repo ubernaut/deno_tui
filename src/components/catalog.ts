@@ -80,6 +80,7 @@ export const componentCatalog = [
     "themeable",
   ]),
   component("radio-group", "RadioGroup", "input", "Single-choice option group renderer.", [
+    "controller",
     "render-helper",
     "selection",
     "keyboard",
