@@ -10,6 +10,7 @@
     "theme-workspace": "deno run -A ./examples/theme_workspace.ts",
     "theme-gallery": "deno run -A ./examples/theme_gallery.ts",
     "theme-resolver": "deno run -A ./examples/theme_resolver.ts",
+    "theme-bindings": "deno run -A ./examples/theme_bindings.ts",
     "capabilities": "deno run -A ./scripts/capabilities.ts",
     "benchmark": "deno run -A ./scripts/benchmark.ts",
     "api-inventory": "deno run -A ./scripts/api_inventory.ts",

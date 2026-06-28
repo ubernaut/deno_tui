@@ -151,6 +151,13 @@ export const visualizationLaunchTargets: readonly VisualizationLaunchTarget[] = 
     tags: ["theme", "cache", "renderer"],
   },
   {
+    task: "theme-bindings",
+    aliases: ["theme-bindings", "theme-binding", "theme-wiring"],
+    description: "grouped component theme binding demo",
+    category: "demo",
+    tags: ["theme", "bindings", "lifecycle"],
+  },
+  {
     task: "capabilities",
     aliases: ["capabilities", "caps", "runtime"],
     description: "runtime capability report",

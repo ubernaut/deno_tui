@@ -35,6 +35,7 @@ export const defaultHealthSteps: readonly HealthStep[] = [
   { name: "theme-pipeline", command: ["deno", "check", "examples/theme_pipeline.ts"] },
   { name: "theme-workspace", command: ["deno", "check", "examples/theme_workspace.ts"] },
   { name: "theme-resolver", command: ["deno", "check", "examples/theme_resolver.ts"] },
+  { name: "theme-bindings", command: ["deno", "check", "examples/theme_bindings.ts"] },
   { name: "component-catalog", command: ["deno", "check", "scripts/component_catalog.ts"] },
   { name: "visualization-app", command: ["deno", "task", "viz:check"] },
   { name: "showcase", command: ["deno", "task", "showcase:check"] },
