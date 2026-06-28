@@ -7,7 +7,7 @@ import {
 } from "../src/runtime/capabilities.ts";
 import { AsyncScheduler, runTaskBatch } from "../src/runtime/scheduler.ts";
 import { createPersistentSignal, createRuntimeStore, MemoryStore } from "../src/runtime/storage.ts";
-import { type WorkerLike, WorkerPool, WorkerPoolTerminatedError } from "../src/runtime/worker_pool.ts";
+import { runWorkerBatch, type WorkerLike, WorkerPool, WorkerPoolTerminatedError } from "../src/runtime/worker_pool.ts";
 
 Deno.test("detectRuntimeCapabilities accepts an injected scope", () => {
   const scope = {
@@ -327,6 +327,87 @@ Deno.test("WorkerPool exposes pending work and ignores aborted worker responses"
 
   workers[0].respond({ id: 1, ok: true, result: 8 });
   assertEquals(pool.pendingCount(), 0);
+  pool.terminate();
+});
+
+Deno.test("WorkerPool inspects status and waits for idle", async () => {
+  const workers: TestWorker[] = [];
+  const pool = new WorkerPool<number, number>({
+    workerUrl: new URL("./fixtures/sum_worker.ts", import.meta.url),
+    size: 2,
+    workerFactory: () => {
+      const worker = new TestWorker();
+      workers.push(worker);
+      return worker;
+    },
+  });
+  const order: string[] = [];
+
+  const first = pool.run(1).then((value) => order.push(`first:${value}`));
+  const second = pool.run(2).then((value) => order.push(`second:${value}`));
+  const idle = pool.waitForIdle().then(() => order.push("idle"));
+
+  assertEquals(pool.inspect(), {
+    size: 2,
+    pending: 2,
+    idle: false,
+    terminated: false,
+    nextWorkerIndex: 0,
+  });
+  assertEquals(workers[0].messages, [{ id: 1, payload: 1 }]);
+  assertEquals(workers[1].messages, [{ id: 2, payload: 2 }]);
+
+  workers[1].respond({ id: 2, ok: true, result: 20 });
+  await Promise.resolve();
+  assertEquals(pool.inspect(), {
+    size: 2,
+    pending: 1,
+    idle: false,
+    terminated: false,
+    nextWorkerIndex: 0,
+  });
+
+  workers[0].respond({ id: 1, ok: true, result: 10 });
+  await Promise.all([first, second, idle]);
+
+  assertEquals(order, ["second:20", "first:10", "idle"]);
+  assertEquals(pool.inspect(), {
+    size: 2,
+    pending: 0,
+    idle: true,
+    terminated: false,
+    nextWorkerIndex: 0,
+  });
+  pool.terminate();
+});
+
+Deno.test("runWorkerBatch preserves input order while dispatching through the pool", async () => {
+  const workers: TestWorker[] = [];
+  const pool = new WorkerPool<number, number>({
+    workerUrl: new URL("./fixtures/sum_worker.ts", import.meta.url),
+    size: 2,
+    workerFactory: () => {
+      const worker = new TestWorker();
+      workers.push(worker);
+      return worker;
+    },
+  });
+
+  const batch = runWorkerBatch(pool, [1, 2, 3]);
+  assertEquals(pool.pendingCount(), 3);
+  assertEquals(workers[0].messages, [{ id: 1, payload: 1 }, { id: 3, payload: 3 }]);
+  assertEquals(workers[1].messages, [{ id: 2, payload: 2 }]);
+
+  workers[1].respond({ id: 2, ok: true, result: 20 });
+  workers[0].respond({ id: 3, ok: true, result: 30 });
+  workers[0].respond({ id: 1, ok: true, result: 10 });
+
+  assertEquals(await batch, [
+    { input: 1, index: 0, value: 10 },
+    { input: 2, index: 1, value: 20 },
+    { input: 3, index: 2, value: 30 },
+  ]);
+  assertEquals(pool.idle(), true);
   pool.terminate();
 });
 

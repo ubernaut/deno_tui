@@ -827,9 +827,26 @@ activeRoute.set("runtime");
 await activeRoute.flush();
 ```
 
-`WorkerPool.run(payload, { signal })` supports abortable jobs and exposes `pendingCount()` plus `size` for dashboards,
-backpressure, and tests. Pass `workerFactory` in `WorkerPoolOptions` when you need a deterministic fake worker in unit
-tests without broad permissions.
+`WorkerPool.run(payload, { signal })` supports abortable jobs and exposes `pendingCount()`, `idle()`, `inspect()`, and
+`waitForIdle()` for dashboards, backpressure, graceful shutdown, and tests. `runWorkerBatch()` dispatches a set of
+worker payloads concurrently while preserving result order:
+
+```ts
+import { runWorkerBatch, WorkerPool } from "https://deno.land/x/tui@VERSION/mod.ts";
+
+const pool = new WorkerPool<number[], number>({
+  workerUrl: new URL("./workers/sum.ts", import.meta.url),
+  size: 4,
+});
+
+const results = await runWorkerBatch(pool, [[1, 2], [3, 4]]);
+const status = pool.inspect(); // { size, pending, idle, terminated, nextWorkerIndex }
+
+await pool.waitForIdle();
+```
+
+Pass `workerFactory` in `WorkerPoolOptions` when you need a deterministic fake worker in unit tests without broad
+permissions.
 
 ## Reactivity
 

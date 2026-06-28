@@ -11,6 +11,24 @@ export interface WorkerPoolRunOptions {
   signal?: AbortSignal;
 }
 
+export interface WorkerPoolInspection {
+  size: number;
+  pending: number;
+  idle: boolean;
+  terminated: boolean;
+  nextWorkerIndex: number;
+}
+
+export interface WorkerBatchOptions {
+  signal?: AbortSignal;
+}
+
+export interface WorkerBatchResult<TPayload, TResult> {
+  input: TPayload;
+  index: number;
+  value: TResult;
+}
+
 export interface WorkerLike {
   onmessage: ((event: MessageEvent<unknown>) => void) | null;
   onerror: ((event: ErrorEvent) => void) | null;
@@ -51,6 +69,7 @@ interface PendingTask<TResult> {
 export class WorkerPool<TPayload = unknown, TResult = unknown> {
   private readonly workers: WorkerLike[] = [];
   private readonly pending = new Map<number, PendingTask<TResult>>();
+  private readonly idleWaiters = new Set<() => void>();
   private cursor = 0;
   private nextId = 1;
   private terminated = false;
@@ -75,6 +94,28 @@ export class WorkerPool<TPayload = unknown, TResult = unknown> {
 
   pendingCount(): number {
     return this.pending.size;
+  }
+
+  idle(): boolean {
+    return this.pending.size === 0;
+  }
+
+  inspect(): WorkerPoolInspection {
+    const size = this.workers.length;
+    return {
+      size,
+      pending: this.pending.size,
+      idle: this.idle(),
+      terminated: this.terminated,
+      nextWorkerIndex: size === 0 ? 0 : this.cursor % size,
+    };
+  }
+
+  waitForIdle(): Promise<void> {
+    if (this.idle()) return Promise.resolve();
+    return new Promise((resolve) => {
+      this.idleWaiters.add(resolve);
+    });
   }
 
   run(payload: TPayload, options: WorkerPoolRunOptions = {}): Promise<TResult> {
@@ -116,6 +157,7 @@ export class WorkerPool<TPayload = unknown, TResult = unknown> {
       worker.terminate();
     }
     this.workers.length = 0;
+    this.resolveIdleWaiters();
   }
 
   private handleMessage(message: WorkerResponse<TResult>): void {
@@ -128,6 +170,7 @@ export class WorkerPool<TPayload = unknown, TResult = unknown> {
     } else {
       task.reject(new Error(message.error ?? "Worker task failed."));
     }
+    this.resolveIdleWaiters();
   }
 
   private rejectAll(error: Error): void {
@@ -136,7 +179,29 @@ export class WorkerPool<TPayload = unknown, TResult = unknown> {
       task.reject(error);
     }
     this.pending.clear();
+    this.resolveIdleWaiters();
   }
+
+  private resolveIdleWaiters(): void {
+    if (!this.idle()) return;
+    for (const resolve of this.idleWaiters) {
+      resolve();
+    }
+    this.idleWaiters.clear();
+  }
+}
+
+export async function runWorkerBatch<TPayload, TResult>(
+  pool: WorkerPool<TPayload, TResult>,
+  inputs: readonly TPayload[],
+  options: WorkerBatchOptions = {},
+): Promise<Array<WorkerBatchResult<TPayload, TResult>>> {
+  const jobs = inputs.map(async (input, index) => ({
+    input,
+    index,
+    value: await pool.run(input, { signal: options.signal }),
+  }));
+  return await Promise.all(jobs);
 }
 
 function createAbortError(): Error {
