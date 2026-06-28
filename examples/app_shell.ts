@@ -2,6 +2,7 @@ import { crayon } from "https://deno.land/x/crayon@3.3.3/mod.ts";
 
 import {
   bindModalFocus,
+  bindRouteHistory,
   Breadcrumbs,
   CommandPalette,
   commandSurfaceItems,
@@ -196,20 +197,9 @@ for (const binding of app.commands.keyBindings()) {
 
 app.actions.subscribe((action) => {
   if (action.type === "route") {
-    const previousRoute = app.routes.active()?.id;
     app.routes.navigate(action.payload);
     routeChoice.value = action.payload;
     routeStepIndex.value = Math.max(0, ["overview", "widgets", "runtime"].indexOf(action.payload));
-    if (action.history !== false && previousRoute && previousRoute !== action.payload) {
-      const nextRoute = action.payload;
-      history.push({
-        id: `route.${previousRoute}.${nextRoute}`,
-        label: `Route ${previousRoute} -> ${nextRoute}`,
-        group: "routes",
-        undo: () => app.actions.dispatch({ type: "route", payload: previousRoute, history: false }),
-        redo: () => app.actions.dispatch({ type: "route", payload: nextRoute, history: false }),
-      });
-    }
     pushToast(`Route changed to ${action.payload}`, "info");
   } else if (action.type === "toast") {
     pushToast(action.payload, "success");
@@ -228,6 +218,11 @@ void persistedRoute.ready.then((route) => {
   if (app.routes.routes.peek().some((candidate) => candidate.id === route)) {
     void app.actions.dispatch({ type: "route", payload: route, history: false });
   }
+  app.onDispose(
+    bindRouteHistory(app.routes, history, {
+      navigate: (routeId) => app.actions.dispatch({ type: "route", payload: routeId, history: false }),
+    }),
+  );
 });
 
 new StatusBar({

@@ -8,6 +8,7 @@ import {
   executeCommandSurfaceItem,
 } from "../src/app/command_bindings.ts";
 import { CommandRegistry } from "../src/app/commands.ts";
+import { bindRouteHistory } from "../src/app/history_bindings.ts";
 import { HistoryStack } from "../src/app/history.ts";
 import { bindRouteSignal } from "../src/app/route_bindings.ts";
 import { RouteManager } from "../src/app/router.ts";
@@ -379,4 +380,43 @@ Deno.test("HistoryStack trims old entries by capacity", async () => {
   assertEquals(await history.undo(), true);
   assertEquals(await history.undo(), false);
   assertEquals(values, [1]);
+});
+
+Deno.test("bindRouteHistory records undoable route changes without duplicating replays", async () => {
+  const routes = new RouteManager([
+    { id: "home", title: "Home" },
+    { id: "settings", title: "Settings" },
+    { id: "runtime", title: "Runtime" },
+  ]);
+  const history = new HistoryStack();
+  const dispose = bindRouteHistory(routes, history, {
+    id: (previous, next) => `${previous.id}->${next.id}`,
+    label: (previous, next) => `${previous.title} to ${next.title}`,
+  });
+
+  routes.navigate("settings");
+  routes.navigate("runtime");
+
+  assertEquals(history.inspect(), {
+    canUndo: true,
+    canRedo: false,
+    undoDepth: 2,
+    redoDepth: 0,
+    nextUndo: { id: "settings->runtime", label: "Settings to Runtime", group: "routes" },
+    nextRedo: undefined,
+  });
+
+  assertEquals(await history.undo(), true);
+  assertEquals(routes.active()?.id, "settings");
+  assertEquals(history.inspect().undoDepth, 1);
+  assertEquals(history.inspect().redoDepth, 1);
+
+  assertEquals(await history.redo(), true);
+  assertEquals(routes.active()?.id, "runtime");
+  assertEquals(history.inspect().undoDepth, 2);
+  assertEquals(history.inspect().redoDepth, 0);
+
+  dispose();
+  routes.navigate("home");
+  assertEquals(history.inspect().undoDepth, 2);
 });

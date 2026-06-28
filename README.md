@@ -321,6 +321,15 @@ await history.undo();
 await history.redo();
 ```
 
+`bindRouteHistory()` records `RouteManager` changes as undoable route transitions and can replay them through your app
+action bus:
+
+```ts
+const stopRouteHistory = bindRouteHistory(app.routes, history, {
+  navigate: (routeId) => app.actions.dispatch({ type: "route", payload: routeId, history: false }),
+});
+```
+
 Selection helpers keep large lists, tables, and custom browsers consistent:
 
 ```ts
