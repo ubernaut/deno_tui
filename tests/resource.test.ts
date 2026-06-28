@@ -1,7 +1,8 @@
 import { assertEquals } from "./deps.ts";
-import { AsyncResourceParamsError, createAsyncResource } from "../src/runtime/resource.ts";
+import { AsyncResourceParamsError, createAsyncResource, createCachedAsyncResource } from "../src/runtime/resource.ts";
 import { bindResourceParams } from "../src/runtime/resource_bindings.ts";
 import { AsyncScheduler } from "../src/runtime/scheduler.ts";
+import { MemoryStore } from "../src/runtime/storage.ts";
 import { Signal } from "../src/signals/mod.ts";
 
 Deno.test("AsyncResource loads data into signal state", async () => {
@@ -88,6 +89,107 @@ Deno.test("AsyncResource can reload reset and require params", async () => {
 
   resource.reset();
   assertEquals(resource.state.peek(), { status: "idle", data: undefined, revision: 3 });
+});
+
+Deno.test("CachedAsyncResource restores and persists serialized resource data", async () => {
+  const store = new MemoryStore<{ value: number; source: string }>();
+  await store.set("metric:cpu", { value: 7, source: "cache" });
+  const loaded: string[] = [];
+  const resource = createCachedAsyncResource<string, number, { value: number; source: string }>({
+    store,
+    key: (params) => `metric:${params}`,
+    deserialize: (stored) => stored.value,
+    serialize: (value, params) => ({ value, source: params }),
+    loader: ({ params }) => {
+      loaded.push(params);
+      return params.length * 10;
+    },
+  });
+
+  const restored = await resource.restore("cpu");
+  assertEquals(restored, { status: "success", data: 7, params: "cpu", revision: 1 });
+  assertEquals(resource.inspect(), {
+    status: "success",
+    data: 7,
+    params: "cpu",
+    revision: 1,
+    loading: false,
+    hasData: true,
+    hasError: false,
+    aborted: false,
+    cached: true,
+    key: "metric:cpu",
+  });
+
+  const loadedState = await resource.load("cpu");
+  assertEquals(loadedState, { status: "success", data: 30, params: "cpu", revision: 2 });
+  assertEquals(loaded, ["cpu"]);
+  assertEquals(await store.get("metric:cpu"), { value: 30, source: "cpu" });
+  assertEquals(resource.inspect().cached, false);
+});
+
+Deno.test("CachedAsyncResource only persists the latest successful load", async () => {
+  const store = new MemoryStore<number>();
+  let releaseFirst: (() => void) | undefined;
+  const resource = createCachedAsyncResource<number, number>({
+    store,
+    key: (params) => `value:${params}`,
+    loader: async ({ params }) => {
+      if (params === 1) {
+        await new Promise<void>((resolve) => {
+          releaseFirst = resolve;
+        });
+      }
+      return params * 10;
+    },
+  });
+
+  const first = resource.load(1);
+  const second = resource.load(2);
+
+  assertEquals(await second, { status: "success", data: 20, params: 2, revision: 2 });
+  releaseFirst?.();
+  assertEquals(await first, { status: "success", data: 20, params: 2, revision: 2 });
+  assertEquals(await store.get("value:1"), undefined);
+  assertEquals(await store.get("value:2"), 20);
+});
+
+Deno.test("CachedAsyncResource can clear cache entries and isolate cache errors", async () => {
+  const errors: unknown[] = [];
+  const store = {
+    async get(_key: string): Promise<number | undefined> {
+      throw new Error("read failed");
+    },
+    async set(_key: string, _value: number): Promise<void> {
+      throw new Error("write failed");
+    },
+    async delete(_key: string): Promise<void> {
+      throw new Error("delete failed");
+    },
+  };
+  const resource = createCachedAsyncResource<number, number>({
+    store,
+    key: (params) => `n:${params}`,
+    onCacheError: (error) => errors.push(error),
+    loader: ({ params }) => params + 1,
+  });
+
+  assertEquals(await resource.restore(1), undefined);
+  assertEquals((await resource.load(1)).data, 2);
+  await resource.clear(1);
+  assertEquals(errors.length, 3);
+
+  const memory = new MemoryStore<number>();
+  const cached = createCachedAsyncResource<number, number>({
+    store: memory,
+    key: (params) => `n:${params}`,
+    loader: ({ params }) => params,
+  });
+  await cached.load(3);
+  assertEquals(await memory.get("n:3"), 3);
+  await cached.clear();
+  assertEquals(await memory.get("n:3"), undefined);
+  assertEquals(cached.inspect().key, undefined);
 });
 
 Deno.test("AsyncResource inspects current loading data and error state", async () => {

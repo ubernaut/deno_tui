@@ -46,6 +46,11 @@ export const visualizationLaunchTargets: readonly VisualizationLaunchTarget[] = 
     description: "action middleware and plugin pipeline demo",
   },
   {
+    task: "cached-resource",
+    aliases: ["resource", "cached-resource", "resources"],
+    description: "cached async resource loader demo",
+  },
+  {
     task: "cached-pipeline",
     aliases: ["pipeline", "cached-pipeline", "cache"],
     description: "cached scheduler-backed data pipeline demo",

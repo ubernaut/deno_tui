@@ -39,6 +39,8 @@ These helpers are intentionally small and do not choose a test framework. They w
 - `AsyncScheduler` for bounded, prioritized, and abortable queued async work.
 - `WorkerPool`, `installWorkerHandler()`, and `workerTransform()` for standards-style worker jobs and pipeline stages.
 - `MemoryStore` and `IndexedDbStore` for configurable persistence.
+- `CachedAsyncResource` and `CachedDataPipeline` for optional store-backed restore paths before fresh async work
+  completes.
 
 Prefer this layer over directly branching on globals inside components. Components should stay deterministic and easy to
 test; apps and renderers should decide whether to use Workers, WebGPU, WebGL, IndexedDB, or fallback implementations.

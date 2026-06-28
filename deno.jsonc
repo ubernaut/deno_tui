@@ -14,6 +14,7 @@
     "health": "deno run -A ./scripts/health.ts",
     "worker-demo": "deno run -A ./examples/worker_pool.ts",
     "action-middleware": "deno run -A ./examples/action_middleware.ts",
+    "cached-resource": "deno run -A ./examples/cached_resource.ts",
     "cached-pipeline": "deno run -A ./examples/cached_pipeline.ts",
     "grwizard": "deno run -A ./app/grwizard.ts",
     "grwizard:check": "deno check ./app/grwizard.ts",

@@ -1386,7 +1386,8 @@ Optional high-performance APIs are surfaced through `src/runtime/mod.ts`:
 - `detectRuntimeCapabilities()`
 - `runtimeCapabilityEntries()` / `summarizeRuntimeCapabilities()` / `formatRuntimeCapabilities()`
 - `AsyncScheduler` / `runTaskBatch()`
-- `AsyncResource` / `createAsyncResource()` / `bindResourceParams()`
+- `AsyncResource` / `createAsyncResource()` / `CachedAsyncResource` / `createCachedAsyncResource()` /
+  `bindResourceParams()`
 - `runDataPipeline()` / `LatestDataPipeline` / `CachedDataPipeline` / `bindDataPipeline()` / `workerTransform()`
 - `WorkerPool`
 - `MemoryStore`
@@ -1449,6 +1450,28 @@ const metrics = createAsyncResource({
 await metrics.load();
 if (metrics.state.value.status === "success") render(metrics.state.value.data);
 const metricsState = metrics.inspect();
+```
+
+`CachedAsyncResource` adds optional persistence for resource loaders whose latest successful value should be restored
+before a refresh completes. It persists only the latest successful load, ignores cache failures through `onCacheError`,
+and uses the same `AsyncStore` contract as settings and data pipelines:
+
+```ts
+const metrics = createCachedAsyncResource({
+  store: createRuntimeStore<MetricSnapshot>({
+    databaseName: "monitor",
+    storeName: "resources",
+  }),
+  key: (id: string) => `metric:${id}`,
+  loader: async ({ params, signal }) => await fetchMetric(params, { signal }),
+});
+
+const restored = await metrics.restore("cpu");
+if (restored?.status === "success") render(restored.data);
+
+const fresh = await metrics.load("cpu");
+if (fresh.status === "success") render(fresh.data);
+const resourceCacheState = metrics.inspect();
 ```
 
 `bindResourceParams()` connects a params signal to a resource, with optional debounce for search boxes, filters, route
@@ -1713,6 +1736,7 @@ const preset = findAsciiDemoPreset("mixed-best");
 | `examples/theme_pipeline.ts`       | Runtime theme transform pipeline and prewarm demo            |
 | `examples/worker_pool.ts`          | WorkerPool concurrency example                               |
 | `examples/action_middleware.ts`    | Action middleware and plugin pipeline example                |
+| `examples/cached_resource.ts`      | Cached async resource loader example                         |
 | `examples/cached_pipeline.ts`      | Cached scheduler-backed data pipeline example                |
 | `examples/three_ascii.ts`          | Interactive 3D ASCII renderer powered by three.js            |
 | `app/showcase.ts`                  | Full Neon Exodus-style widget and visualization showcase     |
@@ -1754,6 +1778,7 @@ tuning.
 ./visualization layout-recipe
 ./visualization worker
 ./visualization actions
+./visualization resource
 ./visualization pipeline
 ./visualization theme-manifest
 ./visualization theme-engines
@@ -1770,13 +1795,14 @@ deno task viz
 Launches the system monitor dashboard. Use `F4` to open options, select panel visualizations, and change the ASCII style
 for 3D panels. Added 3D visualization IDs include `three-lattice`, `three-atfield`, `three-hexshell`, `three-capture`,
 `three-mapslab`, `three-solenoid`, and `three-ascii-studio`. The same launcher also exposes runtime and tooling demos:
-`worker` for abortable worker-pool concurrency, `actions` for middleware-based action dispatch, `pipeline` for cached
-scheduler-backed transforms, `theme-manifest` for serializable theme packs, `theme-engines` for factory prewarming,
-`theme-pipeline` for runtime theme transforms, `capabilities` for platform feature detection, `benchmark` for
-performance smoke checks, `api-inventory` for public export graph inspection, `components` for widget catalog reports,
-`layout-recipe` for responsive recipe inspection, `grwizard` for the responsive GPU/model wizard, and `health` for the
-contributor gate. Benchmark runs print per-case timings plus an aggregate summary; `deno task benchmark -- --json` emits
-the same threshold-aware summary as structured data and exits nonzero when a case fails its limits.
+`worker` for abortable worker-pool concurrency, `actions` for middleware-based action dispatch, `resource` for cached
+async resource loaders, `pipeline` for cached scheduler-backed transforms, `theme-manifest` for serializable theme
+packs, `theme-engines` for factory prewarming, `theme-pipeline` for runtime theme transforms, `capabilities` for
+platform feature detection, `benchmark` for performance smoke checks, `api-inventory` for public export graph
+inspection, `components` for widget catalog reports, `layout-recipe` for responsive recipe inspection, `grwizard` for
+the responsive GPU/model wizard, and `health` for the contributor gate. Benchmark runs print per-case timings plus an
+aggregate summary; `deno task benchmark -- --json` emits the same threshold-aware summary as structured data and exits
+nonzero when a case fails its limits.
 
 Direct Deno tasks are also available:
 
@@ -1787,6 +1813,7 @@ deno task layout-recipe
 deno task three-ascii
 deno task dashboard
 deno task viz
+deno task cached-resource
 deno task theme-manifest
 deno task theme-engines
 deno task theme-pipeline
