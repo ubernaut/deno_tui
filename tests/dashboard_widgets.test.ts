@@ -59,6 +59,28 @@ Deno.test("ThemeEngine resolves component variants over global tokens", () => {
   assertEquals(engine.resolve("Button", "base", "danger")("x"), "danger:x");
 });
 
+Deno.test("ThemeEngine resolves component token references through active tokens", () => {
+  const engine = new ThemeEngine({
+    tokens: {
+      foreground: (value) => `fg:${value}`,
+      accent: (value) => `accent:${value}`,
+      danger: (value) => `danger:${value}`,
+    },
+    components: {
+      Button: {
+        base: { base: "foreground", focused: "accent" },
+        variants: {
+          danger: { base: "danger" },
+        },
+      },
+    },
+  });
+
+  assertEquals(engine.component("Button").base("x"), "fg:x");
+  assertEquals(engine.component("Button").focused("x"), "accent:x");
+  assertEquals(engine.component("Button", "danger").base("x"), "danger:x");
+});
+
 Deno.test("createThemeEngine merges preset palettes with overrides", () => {
   const engine = createThemeEngine("terminal", {
     tokens: {
@@ -171,8 +193,22 @@ Deno.test("ThemeProvider exposes active engine selection and component theme sig
   const plain = (value: string) => `plain:${value}`;
   const bright = (value: string) => `bright:${value}`;
   const registry = createThemeRegistry([
-    { id: "plain", palette: "plain", options: { tokens: { foreground: plain } } },
-    { id: "bright", palette: "plain", options: { tokens: { foreground: bright } } },
+    {
+      id: "plain",
+      palette: "plain",
+      options: {
+        tokens: { foreground: plain },
+        components: { Button: { base: { base: "foreground" } } },
+      },
+    },
+    {
+      id: "bright",
+      palette: "plain",
+      options: {
+        tokens: { foreground: bright },
+        components: { Button: { base: { base: "foreground" } } },
+      },
+    },
   ]);
   const provider = createThemeProvider({ registry, activeId: "plain" });
   const buttonTheme = provider.component("Button");

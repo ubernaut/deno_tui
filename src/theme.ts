@@ -54,6 +54,10 @@ export interface ThemeTokens {
   surface: Style;
 }
 
+export type ThemeTokenName = keyof ThemeTokens;
+export type ThemeStyleReference = Style | ThemeTokenName;
+export type ThemeStateDefinition = Partial<Record<ThemeState, ThemeStyleReference>>;
+
 export function createTheme(tokens: Partial<ThemeTokens> = {}): Theme & { tokens: ThemeTokens } {
   const fallback = tokens.foreground ?? emptyStyle;
   return {
@@ -76,8 +80,8 @@ export function createTheme(tokens: Partial<ThemeTokens> = {}): Theme & { tokens
 export type ThemeState = keyof Theme;
 
 export interface ComponentThemeDefinition {
-  base?: Partial<Theme>;
-  variants?: Record<string, Partial<Theme>>;
+  base?: ThemeStateDefinition;
+  variants?: Record<string, ThemeStateDefinition>;
 }
 
 export interface ThemeEngineOptions {
@@ -146,6 +150,22 @@ export function mergeComponentThemeDefinition(
     },
     variants,
   };
+}
+
+export function resolveThemeStyleReference(reference: ThemeStyleReference, tokens: ThemeTokens): Style {
+  return typeof reference === "string" ? tokens[reference] : reference;
+}
+
+export function resolveThemeStateDefinition(
+  definition: ThemeStateDefinition = {},
+  tokens: ThemeTokens,
+): Partial<Theme> {
+  const resolved: Partial<Theme> = {};
+  for (const [state, reference] of Object.entries(definition) as [ThemeState, ThemeStyleReference][]) {
+    if (reference === undefined) continue;
+    resolved[state] = resolveThemeStyleReference(reference, tokens);
+  }
+  return resolved;
 }
 
 export function composeThemeOptions(...options: ThemeEngineOptions[]): ThemeEngineOptions {
@@ -336,8 +356,8 @@ export class ThemeEngine {
       focused: this.theme.focused,
       active: this.theme.active,
       disabled: this.theme.disabled,
-      ...(definition?.base ?? {}),
-      ...(variant === "default" ? {} : definition?.variants?.[variant] ?? {}),
+      ...resolveThemeStateDefinition(definition?.base, this.theme.tokens),
+      ...(variant === "default" ? {} : resolveThemeStateDefinition(definition?.variants?.[variant], this.theme.tokens)),
     });
   }
 

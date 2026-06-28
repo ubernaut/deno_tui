@@ -382,7 +382,7 @@ const appTheme = composeThemeOptions({
   components: {
     Button: {
       variants: {
-        danger: { base: crayon.red },
+        danger: { base: "danger" },
       },
     },
   },
@@ -417,7 +417,9 @@ const stopBinding = bindComponentTheme(button, provider, "Button", {
 `ThemeRegistry.engine(id, overrides)` composes a named pack with per-app overrides, while `ThemeProvider.component()`
 and `ThemeProvider.resolve()` expose computed signals for active component themes and individual state styles.
 `bindComponentTheme()` bridges those provider signals back into normal components and returns a disposer, so live theme
-switching stays centralized and testable without requiring widgets to know where their theme came from.
+switching stays centralized and testable without requiring widgets to know where their theme came from. Component
+definitions can also reference semantic token names such as `"foreground"`, `"accent"`, `"danger"`, or `"surface"`
+instead of concrete style functions, so variants automatically follow the active palette.
 
 ## Runtime Capabilities
 
