@@ -74,6 +74,7 @@ import {
   createThemeProviderResolver,
   formatThemeResolutionMarkdown,
 } from "../src/theme_resolver.ts";
+import { createThemeWorkspace } from "../src/theme_workspace.ts";
 import { AsyncScheduler } from "../src/runtime/scheduler.ts";
 import { Signal } from "../src/signals/mod.ts";
 import { MemoryStore } from "../src/runtime/storage.ts";
@@ -1106,6 +1107,99 @@ Deno.test("prewarmThemeEnginePipelines builds selected pipelines through a sched
   assertEquals(warmed[0].engine.component("Button").base("x"), "second:x");
   assertEquals(warmed[0].inspection.activeStepCount, 1);
   assertEquals(scheduler.inspect(), { concurrency: 1, running: 0, pending: 0, idle: true });
+});
+
+Deno.test("ThemeWorkspace composes provider factories pipelines and inspection", () => {
+  const provider = createThemeProvider({
+    registry: createThemeRegistry([
+      {
+        id: "base",
+        palette: "plain",
+        options: { components: { Button: { base: { base: (value) => `base:${value}` } } } },
+      },
+    ]),
+    activeId: "base",
+  });
+  const pipeline = createThemeEnginePipeline({
+    id: "runtime",
+    steps: [
+      {
+        id: "accent",
+        options: { components: { Button: { base: { focused: (value) => `focus:${value}` } } } },
+      },
+    ],
+  });
+  const workspace = createThemeWorkspace({
+    provider,
+    factories: [
+      {
+        id: "factory",
+        palette: "plain",
+        options: { components: { Button: { variants: { danger: { active: (value) => `danger:${value}` } } } } },
+      },
+    ],
+    pipelines: pipeline,
+  });
+
+  assertEquals(workspace.pipelineIds(), ["runtime"]);
+  assertEquals(workspace.activeEngine().component("Button").base("x"), "base:x");
+  assertEquals(workspace.activeEngine().component("Button").focused("x"), "focus:x");
+  assertEquals(workspace.factoryEngine("factory").component("Button", "danger").active("x"), "danger:x");
+  assertEquals(workspace.factoryEngine("factory", { pipelines: false }).component("Button").focused("x"), "x");
+  assertEquals(workspace.inspect().factories.inspection.count, 1);
+  assertEquals(workspace.inspect().pipelines[0].activeStepCount, 1);
+});
+
+Deno.test("ThemeWorkspace prewarms factories pipelines and active provider through one scheduler", async () => {
+  const scheduler = new AsyncScheduler({ concurrency: 2 });
+  const workspace = createThemeWorkspace({
+    providerOptions: {
+      registry: createThemeRegistry([
+        {
+          id: "base",
+          palette: "plain",
+          options: { components: { Badge: { base: { base: (value) => `base:${value}` } } } },
+        },
+      ]),
+      activeId: "base",
+    },
+    factories: [
+      {
+        id: "first",
+        priority: 10,
+        options: { components: { Button: { base: { base: (value) => `first:${value}` } } } },
+      },
+      {
+        id: "second",
+        options: { components: { Button: { base: { base: (value) => `second:${value}` } } } },
+      },
+    ],
+    pipelines: [
+      createThemeEnginePipeline({
+        id: "runtime",
+        steps: [
+          { id: "accent", options: { components: { Badge: { base: { focused: (value) => `focus:${value}` } } } } },
+        ],
+      }),
+    ],
+  });
+
+  const warmed = await workspace.prewarm({
+    scheduler,
+    factories: ["first"],
+    includeActiveProvider: true,
+    factoryOverrides: {
+      components: { Button: { variants: { preview: { active: "success" } } } },
+    },
+  });
+
+  assertEquals(warmed.factories.map((result) => result.id), ["first"]);
+  assertEquals(warmed.factories[0].engine.variants("Button"), ["preview"]);
+  assertEquals(warmed.pipelines.map((result) => result.id), ["runtime"]);
+  assertEquals(warmed.pipelines[0].engine.component("Badge").focused("x"), "focus:x");
+  assertEquals(warmed.activeProvider?.component("Badge").base("x"), "base:x");
+  assertEquals(warmed.scheduler, { concurrency: 2, running: 0, pending: 0, idle: true });
+  assertEquals(scheduler.inspect(), warmed.scheduler);
 });
 
 Deno.test("ThemeEngineCache memoizes component themes and resolved styles", () => {

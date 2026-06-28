@@ -7,6 +7,7 @@
     "theme-manifest": "deno run -A ./examples/theme_manifest.ts",
     "theme-engines": "deno run -A ./examples/theme_engines.ts",
     "theme-pipeline": "deno run -A ./examples/theme_pipeline.ts",
+    "theme-workspace": "deno run -A ./examples/theme_workspace.ts",
     "theme-gallery": "deno run -A ./examples/theme_gallery.ts",
     "theme-resolver": "deno run -A ./examples/theme_resolver.ts",
     "capabilities": "deno run -A ./scripts/capabilities.ts",

@@ -130,6 +130,13 @@ export const visualizationLaunchTargets: readonly VisualizationLaunchTarget[] = 
     tags: ["theme", "pipeline"],
   },
   {
+    task: "theme-workspace",
+    aliases: ["theme-workspace", "theme-orchestrator", "theme-suite"],
+    description: "combined provider factory pipeline theme workspace demo",
+    category: "demo",
+    tags: ["theme", "workspace", "factory", "pipeline"],
+  },
+  {
     task: "theme-gallery",
     aliases: ["theme-gallery", "theme-picker", "theme-catalog"],
     description: "searchable theme gallery and preview report",

@@ -22,6 +22,7 @@ Deno.test("visualization launcher resolves public aliases to deno tasks", () => 
   assertEquals(resolveVisualizationTask("theme-pack"), "theme-manifest");
   assertEquals(resolveVisualizationTask("themes"), "theme-engines");
   assertEquals(resolveVisualizationTask("theme-runtime"), "theme-pipeline");
+  assertEquals(resolveVisualizationTask("theme-orchestrator"), "theme-workspace");
   assertEquals(resolveVisualizationTask("theme-picker"), "theme-gallery");
   assertEquals(resolveVisualizationTask("theme-resolution"), "theme-resolver");
   assertEquals(resolveVisualizationTask("runtime"), "capabilities");
@@ -57,6 +58,7 @@ Deno.test("visualization launch catalog filters targets by category tag and sear
     "theme-engines",
     "theme-pipeline",
     "theme-resolver",
+    "theme-workspace",
     "theme-gallery",
     "theme-manifest",
   ]);
