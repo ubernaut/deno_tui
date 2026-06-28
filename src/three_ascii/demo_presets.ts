@@ -21,6 +21,16 @@ export interface AsciiDemoPreset {
   terminalGlyphStyle?: TerminalGlyphStyle;
 }
 
+export interface AsciiDemoPresetSummary {
+  id: string;
+  label: string;
+  description: string;
+  terminalGlyphStyle: TerminalGlyphStyle;
+  terminalEdgeBias: number;
+  edges: boolean;
+  fill: boolean;
+}
+
 export interface AsciiNumericControlDefinition {
   key: AsciiNumericControlKey;
   label: string;
@@ -222,3 +232,38 @@ export const ASCII_DEMO_PRESETS: readonly AsciiDemoPreset[] = [
     terminalGlyphStyle: "blocks",
   },
 ] as const;
+
+export function asciiDemoPresetIds(style?: TerminalGlyphStyle): string[] {
+  return asciiDemoPresets(style).map((preset) => preset.id);
+}
+
+export function asciiDemoPresets(style?: TerminalGlyphStyle): AsciiDemoPreset[] {
+  return ASCII_DEMO_PRESETS
+    .filter((preset) => style === undefined || (preset.terminalGlyphStyle ?? "blocks") === style)
+    .map(cloneAsciiDemoPreset);
+}
+
+export function findAsciiDemoPreset(id: string, fallbackId = ASCII_DEMO_PRESETS[0]?.id): AsciiDemoPreset | undefined {
+  const preset = ASCII_DEMO_PRESETS.find((candidate) => candidate.id === id) ??
+    ASCII_DEMO_PRESETS.find((candidate) => candidate.id === fallbackId);
+  return preset ? cloneAsciiDemoPreset(preset) : undefined;
+}
+
+export function asciiDemoPresetSummaries(style?: TerminalGlyphStyle): AsciiDemoPresetSummary[] {
+  return asciiDemoPresets(style).map((preset) => ({
+    id: preset.id,
+    label: preset.label,
+    description: preset.description,
+    terminalGlyphStyle: preset.terminalGlyphStyle ?? "blocks",
+    terminalEdgeBias: preset.terminalEdgeBias ?? 1,
+    edges: preset.effect.edges ?? DEFAULT_ASCII_DEMO_EFFECT.edges ?? false,
+    fill: preset.effect.fill ?? DEFAULT_ASCII_DEMO_EFFECT.fill ?? true,
+  }));
+}
+
+function cloneAsciiDemoPreset(preset: AsciiDemoPreset): AsciiDemoPreset {
+  return {
+    ...preset,
+    effect: { ...preset.effect },
+  };
+}

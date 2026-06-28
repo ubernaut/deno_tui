@@ -1001,6 +1001,15 @@ The interactive demos expose presets for edges, fill, exposure, attenuation, ble
 The `mixed` mode keeps strong edge glyphs when they are useful, then chooses between block and ASCII fill glyphs for the
 underlying scene coverage.
 
+Preset metadata is exported for custom launchers and settings panes. Use `asciiDemoPresetIds()`,
+`findAsciiDemoPreset()`, `asciiDemoPresets()`, or `asciiDemoPresetSummaries()` to build style pickers without depending
+on the raw preset table:
+
+```ts
+const mixedPresets = asciiDemoPresetSummaries("mixed");
+const preset = findAsciiDemoPreset("mixed-best");
+```
+
 ## Examples
 
 | File                      | Description                                                  |
