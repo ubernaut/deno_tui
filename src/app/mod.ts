@@ -30,6 +30,7 @@ export * from "./runtime_profile_commands.ts";
 export * from "./runtime_profile_plugin.ts";
 export * from "./runtime_renderer_commands.ts";
 export * from "./runtime_renderer_plugin.ts";
+export * from "./runtime_workload_commands.ts";
 export * from "./scroll_area_commands.ts";
 export * from "./selection_bindings.ts";
 export * from "./settings_commands.ts";

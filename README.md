@@ -710,6 +710,7 @@ This fork exports lightweight app primitives for larger TUIs:
 - `MouseInteractionRouter`
 - `SelectionController` and selection helpers
 - `SettingsController`
+- `runtimeWorkloadCommands()` / `bindRuntimeWorkloadCommands()`
 - viewport helpers such as `viewportWindow()`, `viewportOffsetBy()`, and `viewportThumb()`
 
 They are optional and composable. Existing component-first apps continue to work. Use `FocusManager.register()` or
@@ -1575,6 +1576,7 @@ Optional high-performance APIs are surfaced through `src/runtime/mod.ts`:
   `bindRuntimeProfileSetting()`
 - `createRuntimeRendererBackendPlugin()` / `bindRuntimeRendererBackendCommands()` /
   `bindRuntimeRendererBackendSetting()`
+- `runtimeWorkloadCommands()` / `bindRuntimeWorkloadCommands()`
 - `RuntimeWorkloadRegistry` / `createRuntimeWorkloadRegistry()` / `inspectRuntimeWorkload()` /
   `createRuntimeWorkloadReport()` / `formatRuntimeWorkloadMarkdown()`
 - `AsyncScheduler` / `runTaskBatch()`
@@ -1639,6 +1641,9 @@ const workloads = createRuntimeWorkloadRegistry([
   { id: "sum-workers", label: "Sum Workers", inspect: () => pool.inspect() },
 ]);
 const stopWorkload = workloads.register({ id: "pipeline", inspect: () => pipelineScheduler.inspect() });
+const stopWorkloadCommands = bindRuntimeWorkloadCommands(commandRegistry, workloads, {
+  title: "Runtime Pressure",
+});
 const workloadReport = workloads.report();
 const workloadMarkdown = workloads.markdown({ title: "Runtime Pressure" });
 stopWorkload();

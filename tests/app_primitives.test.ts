@@ -45,6 +45,8 @@ import {
 } from "../src/app/runtime_renderer_commands.ts";
 import type { RuntimeRendererBackendCommandAction } from "../src/app/runtime_renderer_commands.ts";
 import { createRuntimeRendererBackendPlugin } from "../src/app/runtime_renderer_plugin.ts";
+import { bindRuntimeWorkloadCommands, runtimeWorkloadCommands } from "../src/app/runtime_workload_commands.ts";
+import type { RuntimeWorkloadCommandAction } from "../src/app/runtime_workload_commands.ts";
 import {
   bindDataTableSetting,
   bindRouteSetting,
@@ -2504,6 +2506,51 @@ Deno.test("runtime renderer commands switch selected renderer backends", async (
 
   dispose();
   assertEquals(registry.list("runtime"), []);
+});
+
+Deno.test("runtime workload commands capture app workload reports", async () => {
+  const app = createApp({ tui: { destroy() {} } as unknown as Tui });
+  const scheduler = new AsyncScheduler({ concurrency: 1 });
+  const first = scheduler.schedule(() => new Promise(() => undefined));
+  const second = scheduler.schedule(() => undefined);
+  void first.promise.catch(() => undefined);
+  void second.promise.catch(() => undefined);
+  app.workloads.register({
+    id: "ui",
+    label: "UI Work",
+    inspect: () => scheduler.inspect(),
+  });
+  const registry = new CommandRegistry<RuntimeWorkloadCommandAction>();
+  const dispose = bindRuntimeWorkloadCommands(registry, app.workloads, { title: "App Workloads" });
+  const actions: RuntimeWorkloadCommandAction[] = [];
+
+  assertEquals(runtimeWorkloadCommands(app.workloads).map((command) => command.id), [
+    "runtime.workloads.report",
+  ]);
+  assertEquals(registry.enabled(registry.get("runtime.workloads.report")!), true);
+  assertEquals(await registry.execute("runtime.workloads.report", (action) => void actions.push(action)), true);
+  assertEquals(actions[0].type, "runtime.workloads.reported");
+  const payload = actions[0].payload;
+  if (!payload) throw new Error("expected workload report payload");
+  assertEquals(payload.report.inspection, {
+    count: 1,
+    running: 1,
+    queued: 1,
+    pending: 2,
+    capacity: 1,
+    saturated: 1,
+    terminated: 0,
+    idle: false,
+    maxSaturation: 2,
+  });
+  assertEquals(payload.report.workloads[0].state, "queued");
+  assertEquals(payload.markdown?.includes("# App Workloads"), true);
+
+  dispose();
+  assertEquals(registry.list("runtime"), []);
+  first.cancel();
+  second.cancel();
+  app.destroy();
 });
 
 Deno.test("theme preview commands capture active provider snapshots", async () => {
