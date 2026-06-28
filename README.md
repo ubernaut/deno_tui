@@ -39,6 +39,8 @@ renderer lab, and demo suite:
 - [GRWizard App](./docs/grwizard-app.md) covers the responsive GPU/model wizard demo.
 - [Repository Overview](./docs/repo-overview.md) summarizes the architecture, module families, demos, and launch
   commands in one place.
+- [Browser Framework Plan](./docs/web-framework-plan.md) compares browser delivery options and recommends a hybrid
+  platform/renderer path for shared terminal and web interfaces.
 - The README remains the primary API tour for components, layouts, app primitives, theming, runtime capabilities,
   reactivity, views, examples, and contribution commands.
 

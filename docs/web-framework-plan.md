@@ -1,0 +1,213 @@
+# Browser Framework Plan
+
+This branch explores how to make interfaces built with this library usable from a browser while preserving the terminal
+runtime. The goal is not to fork the widget model into separate terminal and web libraries. The goal is to split the
+platform concerns so app controllers, commands, themes, layout recipes, selections, forms, data queries, runtime plans,
+and most widgets can run in both places.
+
+## Current Shape
+
+The repo already has useful browser-ready pieces:
+
+- Signals, controllers, commands, plugins, layouts, theme engines, data resources, worker pools, settings, and runtime
+  capability planning are mostly platform-neutral.
+- `Canvas` is close to a renderer-independent cell compositor, but it currently flushes changed cells directly to
+  terminal stdout.
+- `Tui` is terminal-specific. It owns Deno stdio, console sizing, signal handling, alternate-screen setup, cursor
+  visibility, and process exit behavior.
+- `Component` currently depends on `Tui`, which makes component construction pull in terminal lifecycle assumptions.
+- `ThreeAsciiRenderer` already has a WebGPU-centered path, but the terminal adapter converts the result into ANSI grid
+  cells. Browser usage should be able to render into a real canvas as well as a cell surface.
+
+## Options
+
+### Option 1: Browser Terminal Emulator
+
+Run the existing terminal app mostly unchanged, stream ANSI into a browser terminal such as xterm-style emulation, and
+map browser keyboard/mouse events back to the app.
+
+Pros:
+
+- Fastest path to "it works in a browser".
+- Preserves almost all terminal rendering behavior.
+- Good for demos, hosted docs, remote admin consoles, and compatibility testing.
+
+Cons:
+
+- Requires a server-side Deno process for real apps.
+- Browser output is still a terminal stream, not a browser-native UI.
+- Accessibility, layout inspection, theming through CSS, and embedding individual widgets remain limited.
+
+Best use: compatibility bridge and remote app runner, not the primary framework.
+
+### Option 2: DOM Renderer
+
+Introduce a browser renderer that maps components and draw objects to DOM nodes styled with CSS variables from the theme
+engine.
+
+Pros:
+
+- Browser-native interaction, accessibility, selection, scrolling, responsive layout, and CSS integration.
+- Easiest path to embedding individual widgets into existing web apps.
+- Natural fit for component catalogs, forms, tables, palettes, modals, and docs surfaces.
+
+Cons:
+
+- Harder to preserve exact terminal cell semantics.
+- Potentially slower for dense animated cell surfaces unless virtualization is strict.
+- Requires a second renderer for high-density ASCII and 3D demos.
+
+Best use: app framework, widget embedding, accessibility-first browser experiences.
+
+### Option 3: Canvas/WebGL Cell Renderer
+
+Keep the current cell-grid rendering model, but replace stdout with a browser renderer that paints changed cells into a
+`<canvas>`, `OffscreenCanvas`, WebGL, or WebGPU-backed atlas renderer.
+
+Pros:
+
+- Closest browser-native match to the existing terminal compositor.
+- Fast for dense text UIs, ASCII art, and animated visualizations.
+- Fits workers and OffscreenCanvas well.
+- Keeps terminal-style layouts predictable.
+
+Cons:
+
+- Accessibility needs a parallel semantic layer.
+- Native browser controls and text selection are not automatic.
+- Styling is still a render pipeline concern rather than regular CSS.
+
+Best use: terminal-faithful web target, visual demos, dashboards, and high-performance ASCII rendering.
+
+### Option 4: Hybrid Browser Framework
+
+Add a platform adapter layer and support both DOM and canvas render targets. Standard widgets can render through DOM or
+cell canvas. Dense terminal/ASCII surfaces use canvas/WebGPU. App-level controllers, commands, themes, data, and layout
+stay shared.
+
+Pros:
+
+- Gives the library a real browser-native future without abandoning terminal fidelity.
+- Lets users choose per app or per surface: DOM for forms/tables, canvas for terminals/visualizers.
+- Aligns with the existing runtime capability layer and renderer backend catalog.
+- Supports progressive enhancement: CPU cells, Canvas2D, OffscreenCanvas, WebGL, WebGPU.
+
+Cons:
+
+- More architecture work up front.
+- Needs strict interfaces to prevent terminal assumptions from leaking back into shared code.
+- Requires a disciplined testing story across render targets.
+
+Best use: recommended long-term path.
+
+## Recommended Direction
+
+Build Option 4, with Option 1 as an early compatibility demo.
+
+The main design move is to introduce a platform and renderer boundary:
+
+```ts
+export interface TuiPlatform {
+  readonly kind: "terminal" | "browser";
+  readonly size: Signal<ConsoleSize>;
+  readonly input: InputSource;
+  readonly lifecycle: LifecycleController;
+  now(): number;
+  scheduleFrame(callback: () => void): Disposable;
+}
+
+export interface CellSink {
+  resize(size: ConsoleSize): void;
+  beginFrame(): void;
+  writeCell(row: number, column: number, value: string | Uint8Array): void;
+  endFrame(stats: CanvasRenderStats): void;
+}
+
+export interface RenderTarget {
+  readonly kind: "ansi" | "dom" | "canvas2d" | "webgl" | "webgpu";
+  mount(root: unknown): void;
+  unmount(): void;
+  render(frame: RenderFrame): void;
+  inspect(): RenderTargetInspection;
+}
+```
+
+`Canvas` should become a compositor that writes dirty cells to a `CellSink`, not directly to stdout. The terminal target
+would provide an ANSI sink. Browser targets would provide canvas and DOM sinks. `Tui` should become a thin terminal
+runtime wrapper around a shared `TuiAppHost`.
+
+## Proposed Package Surface
+
+- `mod.ts`: existing full package, preserving terminal compatibility.
+- `mod.web.ts`: browser-safe public entrypoint with no Deno stdio imports.
+- `src/platform/`: shared platform interfaces plus terminal and browser adapters.
+- `src/renderers/ansi/`: terminal stdout sink and terminal session integration.
+- `src/renderers/canvas/`: Canvas2D cell renderer with font atlas and dirty-cell painting.
+- `src/renderers/dom/`: semantic DOM renderer for common widgets and overlays.
+- `src/renderers/webgpu/`: accelerated ASCII/scene renderer hooks and future cell atlas backend.
+- `src/web/`: `createWebTui()`, browser event adapter, resize observer, mounting helpers, CSS token emission.
+- `examples/web/`: browser-hosted demos for showcase, theme gallery, Neon Exodus, system monitor sample data, and Three
+  ASCII.
+
+## Milestones
+
+### Phase 1: Platform Boundary
+
+- Add `TuiPlatform`, `InputSource`, `LifecycleController`, `CellSink`, and `RenderTarget` interfaces.
+- Refactor `Canvas` to accept a `CellSink` while keeping stdout behavior through an ANSI sink.
+- Split terminal lifecycle from `Tui` into a terminal platform adapter.
+- Add browser-safe type aliases so `Stdout`, `Stdin`, and `ConsoleSize` do not force Deno globals into web bundles.
+- Add tests proving existing terminal snapshots still pass through the ANSI sink.
+
+### Phase 2: Browser Cell Canvas
+
+- Implement `BrowserCellCanvasSink` using Canvas2D and dirty-cell painting.
+- Add `ResizeObserver` sizing in rows/columns from font metrics.
+- Add keyboard, pointer, wheel, paste, and focus adapters that emit the same input records as terminal readers.
+- Add a minimal `createWebTui(root, options)` API.
+- Port one static demo and one interactive demo.
+
+### Phase 3: DOM Renderer
+
+- Define a small render tree for semantic widgets: panels, labels, buttons, lists, forms, tables, overlays, menus, and
+  palettes.
+- Add theme-to-CSS-variable emission from `ThemeEngine` and `ThemeProvider`.
+- Add DOM focus management that interoperates with the existing focus/command controllers.
+- Add accessibility roles for the first widget set.
+- Keep the DOM renderer optional so terminal apps do not pay for browser code.
+
+### Phase 4: Accelerated Browser Visuals
+
+- Expose Three ASCII in the browser with real canvas mounting, not just ANSI cells.
+- Add OffscreenCanvas worker mode for high-density cell rendering when available.
+- Add renderer backend selection that uses the existing runtime capability plan: `webgpu -> webgl -> canvas2d -> cpu`.
+- Add frame telemetry through the runtime workload registry.
+- Port Neon Exodus visual modes and the polygon/Three ASCII demos.
+
+### Phase 5: Framework Polish
+
+- Add routing/mount helpers for single-page apps.
+- Add persistent browser settings through the existing `Store`/IndexedDB abstractions.
+- Add docs for embedding one widget, mounting a full app, and sharing code between terminal and browser.
+- Add Playwright tests for rendered DOM, canvas pixel smoke checks, input handling, resize behavior, and theme
+  switching.
+- Ship browser examples with screenshots or short clips generated from real browser runs.
+
+## Key Risks
+
+- `Component` currently imports `Tui`, so shared widgets can accidentally drag in terminal-only code. This should be
+  fixed early with an app host interface.
+- Terminal `Style` is an ANSI function. Browser themes need a structured style representation or a resolver that can
+  emit both ANSI and CSS/canvas colors.
+- Unicode cell width and browser font rendering will not perfectly match every terminal. Browser cell targets should
+  expose font configuration and measurement diagnostics.
+- DOM and canvas renderers should not diverge behaviorally. Controllers should own state; renderers should be thin.
+- Three.js WebGPU support differs across browsers. The runtime backend registry must keep fallbacks explicit and
+  inspectable.
+
+## Decision
+
+Proceed with the hybrid framework. Start with the platform boundary and browser cell canvas because that creates a real
+browser target while preserving the existing terminal mental model. Add DOM rendering after the shared host is stable,
+then use the accelerated renderers for the demos that justify this fork: Neon Exodus, Three ASCII, and rich dashboard
+visualizations.
