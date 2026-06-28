@@ -21,10 +21,17 @@ is the compatibility and remote-control target.
 
 The repo already has useful browser-ready pieces:
 
+- `mod.web.ts` is the standalone browser-safe entrypoint. It exports platform-neutral controllers, themes, layouts,
+  component helpers, runtime primitives, canvas cell sinks, and `createWebTui()` without exporting the terminal `Tui`
+  runtime.
+- `BrowserPlatform`, `BrowserInputSource`, `BrowserCellCanvasSink`, and `WebTuiHost` provide the first client-side
+  runtime path.
+- `examples/web/standalone.ts` demonstrates a browser-only app using the shared `Canvas`, `BoxObject`, `TextObject`,
+  ANSI theme styles, and Canvas2D sink.
 - Signals, controllers, commands, plugins, layouts, theme engines, data resources, worker pools, settings, and runtime
   capability planning are mostly platform-neutral.
-- `Canvas` is close to a renderer-independent cell compositor, but it currently flushes changed cells directly to
-  terminal stdout.
+- `Canvas` now flushes changed cells through `CanvasCellSink`; terminal output is handled by `AnsiCanvasSink`, and
+  browser output is handled by `BrowserCellCanvasSink`.
 - `Tui` is terminal-specific. It owns Deno stdio, console sizing, signal handling, alternate-screen setup, cursor
   visibility, and process exit behavior.
 - `Component` currently depends on `Tui`, which makes component construction pull in terminal lifecycle assumptions.
@@ -187,20 +194,23 @@ runtime wrapper around a shared `TuiAppHost`.
 
 ### Phase 1: Platform Boundary
 
-- Add `TuiPlatform`, `InputSource`, `LifecycleController`, `CellSink`, and `RenderTarget` interfaces.
-- Refactor `Canvas` to accept a `CellSink` while keeping stdout behavior through an ANSI sink.
+- Status: started.
+- Added `TuiPlatform`, `InputSource`, `LifecycleController`, and `CanvasCellSink` interfaces.
+- Refactored `Canvas` to accept a `CanvasCellSink` while keeping stdout behavior through an ANSI sink.
 - Split terminal lifecycle from `Tui` into a terminal platform adapter.
 - Add browser-safe type aliases so `Stdout`, `Stdin`, and `ConsoleSize` do not force Deno globals into web bundles.
-- Add tests proving existing terminal snapshots still pass through the ANSI sink.
+- Added tests proving dirty cells flush through pluggable sinks and ANSI stdout output remains available.
 
 ### Phase 2: Browser Cell Canvas
 
-- Add `mod.web.ts` and a browser bundle smoke test that proves the package imports without Deno globals.
-- Implement `BrowserCellCanvasSink` using Canvas2D and dirty-cell painting.
-- Add `ResizeObserver` sizing in rows/columns from font metrics.
-- Add keyboard, pointer, wheel, paste, and focus adapters that emit the same input records as terminal readers.
-- Add a minimal `createWebTui(root, options)` API.
-- Port one static demo and one interactive demo.
+- Status: started.
+- Added `mod.web.ts` and a smoke test that proves the package imports without the terminal `Tui` export.
+- Implemented `BrowserCellCanvasSink` using Canvas2D and dirty-cell painting.
+- Added `ResizeObserver` sizing in rows/columns from configurable cell metrics.
+- Added keyboard, pointer, and wheel adapters that emit the same input event shapes as terminal readers. Paste/focus
+  handling remains to be expanded.
+- Added a minimal `createWebTui(root, options)` API.
+- Ported a standalone animated browser demo source in `examples/web/standalone.ts`.
 
 ### Phase 3: DOM Renderer
 

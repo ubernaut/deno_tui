@@ -27,6 +27,8 @@ export const defaultHealthSteps: readonly HealthStep[] = [
     ],
   },
   { name: "api-reference", command: ["deno", "check", "scripts/api_reference.ts"] },
+  { name: "web-api", command: ["deno", "task", "web:check"] },
+  { name: "web-demo", command: ["deno", "task", "web:demo:check"] },
   { name: "screenshots", command: ["deno", "check", "scripts/generate_screenshots.ts"] },
   { name: "app-shell", command: ["deno", "check", "examples/app_shell.ts"] },
   { name: "command-search", command: ["deno", "check", "examples/command_search_index.ts"] },
@@ -54,6 +56,7 @@ export const defaultHealthSteps: readonly HealthStep[] = [
   { name: "showcase", command: ["deno", "task", "showcase:check"] },
   { name: "grwizard", command: ["deno", "task", "grwizard:check"] },
   { name: "tests", command: ["deno", "test"] },
+  { name: "web-tests", command: ["deno", "task", "web:test"] },
   { name: "worker-tests", command: ["deno", "task", "test:workers"] },
 ];
 
