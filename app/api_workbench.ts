@@ -311,6 +311,7 @@ draw();
 
 function draw(): void {
   syncTerminalSize();
+  ensureLineObjects();
   const width = currentWidth();
   const height = currentHeight();
   hitTargets = [];
@@ -913,11 +914,11 @@ function theme(): ThemeSpec {
 }
 
 function currentWidth(): number {
-  return Math.max(1, tui.rectangle.peek().width);
+  return Math.max(1, tui.rectangle.value.width);
 }
 
 function currentHeight(): number {
-  return Math.max(1, tui.rectangle.peek().height);
+  return Math.max(1, tui.rectangle.value.height);
 }
 
 function syncTerminalSize(): boolean {

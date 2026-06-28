@@ -1,5 +1,5 @@
 // Copyright 2023 Im-Beast. MIT license.
-import { moveCursor } from "../utils/ansi_codes.ts";
+import { CLEAR_SCREEN, moveCursor } from "../utils/ansi_codes.ts";
 import type { CanvasRenderStats } from "./canvas.ts";
 
 const textEncoder = new TextEncoder();
@@ -32,6 +32,10 @@ export class AnsiCanvasSink implements CanvasCellSink {
   constructor(options: AnsiCanvasSinkOptions) {
     this.#stdout = options.stdout;
     this.#flushLimit = options.flushLimit ?? defaultAnsiFlushLimit();
+  }
+
+  resize(_columns: number, _rows: number): void {
+    this.#stdout.writeSync(textEncoder.encode(`${moveCursor(0, 0)}${CLEAR_SCREEN}`));
   }
 
   flush(updates: readonly CanvasCellUpdate[], _stats?: CanvasRenderStats): void {
