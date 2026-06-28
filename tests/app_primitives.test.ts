@@ -8,8 +8,11 @@ import {
   bindCommandSurface,
   commandForKeyEvent,
   commandSurfaceItems,
+  createCommandKeyBindingReport,
   createCommandSurface,
   executeCommandSurfaceItem,
+  formatCommandKeyBindingMarkdown,
+  inspectCommandKeyBindings,
   rankCommandSurfaceItems,
   searchCommandSurfaceItems,
 } from "../src/app/command_bindings.ts";
@@ -657,6 +660,88 @@ Deno.test("bindCommandKeymap mirrors command bindings into key help registries",
 
   dispose();
   assertEquals(keymap.list().map((binding) => binding.description), ["Quit"]);
+});
+
+Deno.test("command key binding reports surface conflicts and markdown", () => {
+  const registry = new CommandRegistry<{ type: "route"; payload: string }>();
+  registry.registerAll([
+    {
+      id: "route.home",
+      label: "Home",
+      group: "routes",
+      binding: { key: "1" },
+      action: { type: "route", payload: "home" },
+    },
+    {
+      id: "panel.next",
+      label: "Next Panel",
+      group: "panels",
+      binding: { key: "1" },
+      action: { type: "route", payload: "panel" },
+    },
+    {
+      id: "route.admin",
+      label: "Admin",
+      group: "routes",
+      disabled: true,
+      binding: { key: "a", ctrl: true },
+      action: { type: "route", payload: "admin" },
+    },
+    {
+      id: "route.help",
+      label: "Help",
+      group: "routes",
+      action: { type: "route", payload: "help" },
+    },
+  ]);
+
+  const report = createCommandKeyBindingReport(registry);
+  const inclusive = inspectCommandKeyBindings(registry, { includeDisabled: true, includeUnbound: true });
+  const markdown = formatCommandKeyBindingMarkdown(registry, {
+    includeDisabled: true,
+    includeUnbound: true,
+    title: "Keys",
+  });
+
+  assertEquals(report.inspection, {
+    count: 2,
+    groups: ["panels", "routes"],
+    conflictCount: 1,
+    conflictingCommandCount: 2,
+  });
+  assertEquals(
+    report.conflicts.map((
+      conflict,
+    ) => [conflict.bindingId, conflict.groups, conflict.commands.map((c) => c.commandId)]),
+    [
+      ["1", ["panels", "routes"], ["panel.next", "route.home"]],
+    ],
+  );
+  assertEquals(inclusive.map((binding) => [binding.bindingId, binding.commandId, binding.disabled]), [
+    ["", "route.help", false],
+    ["1", "panel.next", false],
+    ["1", "route.home", false],
+    ["C-a", "route.admin", true],
+  ]);
+  assertEquals(
+    markdown,
+    [
+      "# Keys",
+      "",
+      "4 bindings, 1 conflicts.",
+      "",
+      "| Binding | Command | Group | Disabled |",
+      "| --- | --- | --- | --- |",
+      "| - | Help | routes | no |",
+      "| 1 | Next Panel | panels | no |",
+      "| 1 | Home | routes | no |",
+      "| C-a | Admin | routes | yes |",
+      "",
+      "| Conflict | Groups | Commands |",
+      "| --- | --- | --- |",
+      "| 1 | panels, routes | panel.next, route.home |",
+    ].join("\n"),
+  );
 });
 
 Deno.test("commandSurfaceItems adapts registry commands for palettes and menus", () => {

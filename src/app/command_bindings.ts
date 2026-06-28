@@ -40,6 +40,46 @@ export interface CommandKeymapBindingOptions extends CommandKeyBindingOptions {
   includeDisabled?: boolean;
 }
 
+export interface CommandKeyBindingInspection {
+  commandId: string;
+  label: string;
+  group?: string;
+  disabled: boolean;
+  bindingId: string;
+  key: string;
+  ctrl?: boolean;
+  meta?: boolean;
+  shift?: boolean;
+}
+
+export interface CommandKeyBindingConflict {
+  bindingId: string;
+  groups: string[];
+  commands: CommandKeyBindingInspection[];
+}
+
+export interface CommandKeyBindingReportInspection {
+  count: number;
+  groups: string[];
+  conflictCount: number;
+  conflictingCommandCount: number;
+}
+
+export interface CommandKeyBindingReport {
+  bindings: CommandKeyBindingInspection[];
+  conflicts: CommandKeyBindingConflict[];
+  inspection: CommandKeyBindingReportInspection;
+}
+
+export interface CommandKeyBindingReportOptions extends CommandKeymapBindingOptions {
+  includeUnbound?: boolean;
+}
+
+export interface CommandKeyBindingMarkdownOptions extends CommandKeyBindingReportOptions {
+  title?: string;
+  includeSummary?: boolean;
+}
+
 export interface CommandSurfaceController<TAction extends Action = Action> {
   readonly items: Signal<CommandSurfaceItem[]>;
   refresh(): CommandSurfaceItem[];
@@ -203,6 +243,88 @@ export function bindCommandSurface<TAction extends Action = Action>(
   return unsubscribe;
 }
 
+export function inspectCommandKeyBindings<TAction extends Action = Action>(
+  registry: CommandRegistry<TAction>,
+  options: CommandKeyBindingReportOptions = {},
+): CommandKeyBindingInspection[] {
+  const includeDisabled = options.includeDisabled ?? false;
+  const includeUnbound = options.includeUnbound ?? false;
+  return registry.list(options.group)
+    .filter((command) => (includeDisabled || registry.enabled(command)) && (includeUnbound || command.binding))
+    .map((command) => {
+      const binding = command.binding;
+      return {
+        commandId: command.id,
+        label: command.label,
+        group: command.group,
+        disabled: !registry.enabled(command),
+        bindingId: binding ? bindingId(binding) : "",
+        key: binding?.key ?? "",
+        ctrl: binding?.ctrl,
+        meta: binding?.meta,
+        shift: binding?.shift,
+      };
+    })
+    .sort((left, right) =>
+      left.bindingId.localeCompare(right.bindingId) ||
+      (left.group ?? "").localeCompare(right.group ?? "") ||
+      left.label.localeCompare(right.label)
+    );
+}
+
+export function createCommandKeyBindingReport<TAction extends Action = Action>(
+  registry: CommandRegistry<TAction>,
+  options: CommandKeyBindingReportOptions = {},
+): CommandKeyBindingReport {
+  const bindings = inspectCommandKeyBindings(registry, options);
+  const conflicts = inspectCommandKeyBindingConflicts(bindings);
+  return {
+    bindings,
+    conflicts,
+    inspection: {
+      count: bindings.length,
+      groups: uniqueSorted(bindings.map((binding) => binding.group)),
+      conflictCount: conflicts.length,
+      conflictingCommandCount: conflicts.reduce((total, conflict) => total + conflict.commands.length, 0),
+    },
+  };
+}
+
+export function formatCommandKeyBindingMarkdown<TAction extends Action = Action>(
+  registry: CommandRegistry<TAction>,
+  options: CommandKeyBindingMarkdownOptions = {},
+): string {
+  const report = createCommandKeyBindingReport(registry, options);
+  const lines = [`# ${options.title ?? "Command Key Bindings"}`, ""];
+  if (options.includeSummary ?? true) {
+    lines.push(`${report.inspection.count} bindings, ${report.inspection.conflictCount} conflicts.`, "");
+  }
+
+  lines.push("| Binding | Command | Group | Disabled |");
+  lines.push("| --- | --- | --- | --- |");
+  for (const binding of report.bindings) {
+    lines.push(
+      `| ${binding.bindingId || "-"} | ${escapeMarkdownCell(binding.label)} | ${
+        escapeMarkdownCell(binding.group ?? "-")
+      } | ${binding.disabled ? "yes" : "no"} |`,
+    );
+  }
+
+  if (report.conflicts.length > 0) {
+    lines.push("", "| Conflict | Groups | Commands |");
+    lines.push("| --- | --- | --- |");
+    for (const conflict of report.conflicts) {
+      lines.push(
+        `| ${conflict.bindingId} | ${escapeMarkdownCell(conflict.groups.join(", "))} | ${
+          escapeMarkdownCell(conflict.commands.map((command) => command.commandId).join(", "))
+        } |`,
+      );
+    }
+  }
+
+  return lines.join("\n");
+}
+
 function commandKeywords<TAction extends Action = Action>(
   command: Command<TAction>,
   includeBinding: boolean,
@@ -268,4 +390,33 @@ function normalizeSearchText(value: string): string {
 
 function acronym(value: string): string {
   return value.split(/\s+/).map((part) => part[0] ?? "").join("");
+}
+
+function inspectCommandKeyBindingConflicts(
+  bindings: readonly CommandKeyBindingInspection[],
+): CommandKeyBindingConflict[] {
+  const byBinding = new Map<string, CommandKeyBindingInspection[]>();
+  for (const binding of bindings) {
+    if (!binding.bindingId) continue;
+    const commands = byBinding.get(binding.bindingId) ?? [];
+    commands.push(binding);
+    byBinding.set(binding.bindingId, commands);
+  }
+
+  return [...byBinding.entries()]
+    .filter(([, commands]) => commands.length > 1)
+    .map(([bindingId, commands]) => ({
+      bindingId,
+      groups: uniqueSorted(commands.map((command) => command.group)),
+      commands,
+    }))
+    .sort((left, right) => left.bindingId.localeCompare(right.bindingId));
+}
+
+function uniqueSorted(values: Array<string | undefined>): string[] {
+  return [...new Set(values.filter((value): value is string => !!value))].sort();
+}
+
+function escapeMarkdownCell(value: string): string {
+  return value.replaceAll("|", "\\|").replaceAll("\n", " ");
 }

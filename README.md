@@ -923,7 +923,13 @@ registered command bindings:
 
 ```ts
 const stopCommandHelp = app.enableCommandKeymap();
+const keyReport = createCommandKeyBindingReport(app.commands);
+const keyMarkdown = formatCommandKeyBindingMarkdown(app.commands, { title: "App Shortcuts" });
 ```
+
+`createCommandKeyBindingReport()`, `inspectCommandKeyBindings()`, and `formatCommandKeyBindingMarkdown()` expose command
+shortcut inventories and conflicts before bindings are mirrored into `KeymapRegistry`, which lets apps catch duplicate
+chords that would otherwise be ambiguous in keyboard handlers or overwritten in help overlays.
 
 Use `createCommandSurface()` or `bindCommandSurface()` to feed command registries into palettes, context menus, or
 custom launchers without duplicating projection, synchronization, and dispatch code:
