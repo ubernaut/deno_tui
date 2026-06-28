@@ -52,8 +52,9 @@ type Hit =
   | { type: "restore"; id?: PanelId }
   | { type: "close"; id: PanelId }
   | { type: "theme"; index: number }
-  | { type: "control"; id: ControlId; action?: "previous" | "next" | "activate" | "set"; index?: number }
+  | { type: "control"; id: ControlId; action?: ControlHitAction; index?: number }
   | { type: "dataRow"; index: number };
+type ControlHitAction = "previous" | "next" | "activate" | "set" | "focus";
 
 interface ThemeSpec {
   label: string;
@@ -570,7 +571,7 @@ function renderControls(frame: string[], rect: Rectangle): void {
     options: {
       previous?: boolean;
       next?: boolean;
-      action?: "previous" | "next" | "activate";
+      action?: ControlHitAction;
       indent?: boolean;
       index?: number;
     } = {},
@@ -636,11 +637,11 @@ function renderControls(frame: string[], rect: Rectangle): void {
   );
   hitTargets.push({
     rect: { column: rect.column + 13, row: row - 1, width: 16, height: 1 },
-    hit: { type: "control", id: "checkbox", action: "activate" },
+    hit: { type: "control", id: "checkbox", action: "activate", index: 0 },
   });
   hitTargets.push({
     rect: { column: rect.column + 29, row: row - 1, width: 16, height: 1 },
-    hit: { type: "control", id: "checkbox", action: "next" },
+    hit: { type: "control", id: "checkbox", action: "next", index: 1 },
   });
   writeControl("radio", `Radio     ${renderInlineRadioOptions()}`, {
     previous: true,
@@ -657,17 +658,14 @@ function renderControls(frame: string[], rect: Rectangle): void {
   for (const [index, item] of dropdown.items.peek().entries()) {
     writeControl("dropdown", `${dropdown.selectedIndex.peek() === index ? "●" : "○"} ${item}`, {
       indent: true,
-      previous: true,
-      next: true,
-      action: index < (dropdown.selectedIndex.peek() ?? 0)
-        ? "previous"
-        : index > (dropdown.selectedIndex.peek() ?? 0)
-        ? "next"
-        : "activate",
+      action: "activate",
       index,
     });
   }
-  writeControl("input", `Input     ${input.text.peek()}${activeControl.peek() === "input" ? "|" : ""}`);
+  writeControl("input", `Input     ${input.text.peek()}${activeControl.peek() === "input" ? "|" : ""}`, {
+    action: "focus",
+  });
+  const stepperRow = row;
   writeControl(
     "stepper",
     `Stepper   ${
@@ -679,7 +677,8 @@ function renderControls(frame: string[], rect: Rectangle): void {
       next: true,
     },
   );
-  writeControl("textbox", `TextBox   ${textBox.text.peek().split("\n").join(" / ")}`);
+  addInlineStepperHits(rect, stepperRow);
+  writeControl("textbox", `TextBox   ${textBox.text.peek().split("\n").join(" / ")}`, { action: "focus" });
   if (row < rect.row + rect.height) {
     write(
       frame,
@@ -711,7 +710,6 @@ function writeWrappedOptions(
       rect.column + 2,
       paint(fit(line, width), selected ? t.bg : t.text, selected ? t.warn : t.surface, selected),
     );
-    hitTargets.push({ rect: { column: rect.column + 2, row, width, height: 1 }, hit: { type: "control", id } });
     line = "";
     row += 1;
   };
@@ -769,21 +767,41 @@ function addInlineRadioHits(rect: Rectangle, row: number): void {
   }
 }
 
+function addInlineStepperHits(rect: Rectangle, row: number): void {
+  const steps = stepper.steps.peek();
+  let column = rect.column + 12;
+  for (const [index, step] of steps.entries()) {
+    const label = step.disabled ? `(${step.label})` : step.completed ? `✓ ${step.label}` : step.label;
+    const token = index === stepper.activeIndex.peek() ? `[${label}]` : label;
+    const width = textWidth(token);
+    if (column + width > rect.column + rect.width) break;
+    hitTargets.push({
+      rect: { column, row, width, height: 1 },
+      hit: { type: "control", id: "stepper", action: "activate", index },
+    });
+    column += width + 3;
+  }
+}
+
 function applyControlHit(
   id: ControlId,
-  action: "previous" | "next" | "activate" | "set",
+  action: ControlHitAction,
   rect?: Rectangle,
   x?: number,
   index?: number,
 ): void {
   active.value = "controls";
   activeControl.value = id;
+  if (action === "focus") {
+    push(`control ${id} focus`);
+    return;
+  }
   if (id === "button") actionButton.press("mouse");
   else if (id === "genericButton") genericButton.press("mouse");
   else if (id === "slider") {
     if (action === "set" && rect && x !== undefined) setSliderFromPointer(slider, rect, x);
     else action === "previous" ? slider.decrement() : slider.increment();
-  } else if (id === "checkbox") action === "next" ? compact.toggle() : live.toggle();
+  } else if (id === "checkbox") index === 1 || action === "next" ? compact.toggle() : live.toggle();
   else if (id === "radio") {
     if (index !== undefined) {
       radio.setActive(index);
@@ -804,8 +822,10 @@ function applyControlHit(
     else if (action === "next") dropdown.move(1);
     else dropdown.selectActive();
   } else if (id === "input") input.submit();
-  else if (id === "stepper") action === "previous" ? stepper.move(-1) : stepper.move(1);
-  else if (id === "textbox") textBox.setText(`${textBox.text.peek()}\nclicked`);
+  else if (id === "stepper") {
+    if (index !== undefined) stepper.setActive(index);
+    else action === "previous" ? stepper.move(-1) : stepper.move(1);
+  } else if (id === "textbox") textBox.setText(`${textBox.text.peek()}\nclicked`);
   progress.setValue(Math.min(100, progress.value.peek() + 7));
   push(`control ${id} ${action}`);
 }
