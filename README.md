@@ -1366,12 +1366,19 @@ const stopPipelineSetting = bindThemePipelineSetting(runtimePipeline, settings, 
 
 const themePlugin = createThemePlugin({
   provider,
+  pipelines: [runtimePipeline],
   settings,
   persistTheme: { key: "theme" },
   persistLayers: {
     key: "theme-layers",
     serialize: (ids) => JSON.stringify(ids),
     deserialize: (value) => JSON.parse(value as string),
+  },
+  persistPipelines: {
+    runtime: {
+      serialize: (ids) => JSON.stringify(ids),
+      deserialize: (value) => JSON.parse(value as string),
+    },
   },
   commands: { group: "theme" },
   mirrorKeymap: true,
@@ -1443,13 +1450,15 @@ engines with stable ids, inspect available token coverage, replace palettes dete
 instances from the same semantic token contract used by built-in palettes. `createThemeEngineFromPalette()` is the
 low-level bridge for detached or generated palettes, while `ThemeRegistry`, `ThemeProvider`, and `ThemeEngineFactory`
 also accept custom palette objects for white-label packs and plugin-provided themes. `createThemePlugin()` is the
-app-level installer for the same engine layer: it owns or accepts a `ThemeProvider`, registers theme and layer commands,
-optionally mirrors command bindings into key help, and connects the active pack and active layers to
-`SettingsController` persistence with one disposable plugin. It uses the same `DisposableStack` lifecycle path as app
-plugins, so command registration, keymap mirroring, settings persistence, and custom theme engine setup roll back
-together if any step fails. `ThemeEngineCache` and `ThemeProviderCache` are opt-in runtime accelerators for redraw-heavy
-apps: they memoize component themes and resolved state styles, expose hit/miss inspection, and the provider cache
-automatically invalidates when theme packs or layers change.
+app-level installer for the same engine layer: it owns or accepts a `ThemeProvider`, accepts optional
+`ThemeEnginePipeline` instances, registers theme, layer, and pipeline commands, optionally mirrors command bindings into
+key help, and connects the active pack, active layers, and active pipeline steps to `SettingsController` persistence
+with one disposable plugin. Its install context exposes the provider, pipelines, and created setting bindings so apps
+can compose custom theme surfaces without reaching back into module globals. It uses the same `DisposableStack`
+lifecycle path as app plugins, so command registration, keymap mirroring, settings persistence, pipeline wiring, and
+custom theme engine setup roll back together if any step fails. `ThemeEngineCache` and `ThemeProviderCache` are opt-in
+runtime accelerators for redraw-heavy apps: they memoize component themes and resolved state styles, expose hit/miss
+inspection, and the provider cache automatically invalidates when theme packs or layers change.
 
 ## Runtime Capabilities
 

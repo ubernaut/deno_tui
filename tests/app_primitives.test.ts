@@ -2111,6 +2111,65 @@ Deno.test("createThemePlugin installs provider commands settings and lifecycle c
   plugin.provider.layers.dispose();
 });
 
+Deno.test("createThemePlugin installs theme pipeline commands settings and context", async () => {
+  type ThemeRuntimeAction = ThemeCommandAction | ThemePipelineCommandAction;
+  const store = new MemoryStore<unknown>();
+  await store.set("prefs.theme-pipeline-runtime", JSON.stringify(["contrast"]));
+  const settings = new SettingsController({ store, namespace: "prefs" });
+  const app = createApp<ThemeRuntimeAction>({
+    tui: { destroy() {} } as unknown as Tui,
+  });
+  const pipeline = createThemeEnginePipeline({
+    id: "runtime",
+    steps: [
+      { id: "density", label: "Density" },
+      { id: "contrast", label: "Contrast", enabled: false },
+    ],
+  });
+  let installedContextPipelineIds: string[] = [];
+
+  const plugin = createThemePlugin<ThemeRuntimeAction>({
+    settings,
+    pipelines: pipeline,
+    providerOptions: {
+      registry: createThemeRegistry([{ id: "plain", label: "Plain", palette: "plain" }]),
+    },
+    persistPipelines: {
+      runtime: {
+        serialize: (value) => JSON.stringify(value),
+        deserialize: (value) => JSON.parse(value as string),
+      },
+    },
+    install(context) {
+      installedContextPipelineIds = context.pipelines.map((pipeline) => pipeline.id);
+      assertEquals(Object.keys(context.pipelineSettings), ["runtime"]);
+    },
+  });
+
+  const inspection = plugin.inspect();
+  assertEquals(inspection.pipelineCommandsEnabled, true);
+  assertEquals(inspection.pipelinePersistenceIds, ["runtime"]);
+  assertEquals(inspection.pipelines.map((pipeline) => pipeline.id), ["runtime"]);
+
+  const dispose = app.use(plugin);
+
+  await settings.ready();
+  assertEquals(installedContextPipelineIds, ["runtime"]);
+  assertEquals(pipeline.activeIds(), ["contrast"]);
+  assertEquals(app.commands.has("theme.pipeline.runtime.toggle.density"), true);
+  assertEquals(await app.executeCommand("theme.pipeline.runtime.toggle.density"), true);
+  assertEquals(pipeline.activeIds(), ["density", "contrast"]);
+
+  await settings.flush();
+  assertEquals(await store.get("prefs.theme-pipeline-runtime"), JSON.stringify(["density", "contrast"]));
+
+  dispose();
+  assertEquals(app.commands.has("theme.pipeline.runtime.toggle.density"), false);
+  assertEquals(app.plugins(), []);
+  app.destroy();
+  plugin.provider.layers.dispose();
+});
+
 Deno.test("createThemePlugin rolls back installed surfaces when custom install fails", () => {
   const app = createApp<ThemeCommandAction>({ tui: { destroy() {} } as unknown as Tui });
   const plugin = createThemePlugin<ThemeCommandAction>({
