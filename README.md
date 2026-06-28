@@ -32,6 +32,8 @@ renderer lab, and demo suite:
 
 - [Testing and Performance](./docs/testing-and-performance.md) covers test helpers, runtime/concurrency primitives,
   terminal capability planning, API inventory, and benchmark tooling.
+- [API Reference](./docs/api-reference.md) is generated from the full public re-export graph and lists every module,
+  re-export, exported symbol, and current JSDoc status.
 - [Visualization App](./docs/visualization-app.md) covers the system monitor shell, panel model, and visualization
   controls.
 - [GRWizard App](./docs/grwizard-app.md) covers the responsive GPU/model wizard demo.

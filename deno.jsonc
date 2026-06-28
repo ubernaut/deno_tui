@@ -17,6 +17,7 @@
     "runtime-workloads": "deno run -A ./examples/runtime_workloads.ts",
     "benchmark": "deno run -A ./scripts/benchmark.ts",
     "api-inventory": "deno run -A ./scripts/api_inventory.ts",
+    "api-reference": "deno run -A ./scripts/api_reference.ts",
     "component-catalog": "deno run -A ./scripts/component_catalog.ts",
     "app-plugin-catalog": "deno run -A ./examples/app_plugin_catalog.ts",
     "adopter-workbench": "deno run -A ./examples/adopter_workbench.ts",

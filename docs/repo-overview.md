@@ -23,6 +23,8 @@ helpers, and visualization demos on top.
 | `examples/`                                                                                                 | Focused runnable examples and report-style demos for individual subsystems.                                                                                                                                                     |
 | `scripts/`                                                                                                  | Contributor tooling: health gate, API inventory, benchmark runner, capability report, component catalog, and visualization launcher metadata.                                                                                   |
 
+For a complete generated list of public modules, re-exports, and symbols, see [API Reference](./api-reference.md).
+
 ## Core Capabilities
 
 - Reactive rendering with `Signal`, `Computed`, `Effect`, lazy computed/effect variants, and component bindings.
@@ -92,6 +94,12 @@ and at least 25% JSDoc coverage:
 
 ```sh
 deno task api-inventory -- --check --quiet --fail-duplicates --min-doc-coverage=0.25
+```
+
+Regenerate the full public API reference with:
+
+```sh
+deno task api-reference > docs/api-reference.md
 ```
 
 Use `deno task benchmark` for timing smoke checks, `deno task benchmark -- --list` for the benchmark catalog, and
