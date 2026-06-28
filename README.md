@@ -299,6 +299,7 @@ base engine:
 
 ```ts
 import {
+  bindComponentTheme,
   composeThemeOptions,
   createThemeEngine,
   createThemeProvider,
@@ -334,11 +335,17 @@ const provider = createThemeProvider({ registry, activeId: "neon-ops" });
 provider.setTheme("terminal");
 const activeButtonTheme = provider.component("Button", "danger").value;
 const themeInventory = provider.inspect();
+
+// After constructing a Button component instance named `button`:
+const stopBinding = bindComponentTheme(button, provider, "Button", {
+  variant: "danger",
+});
 ```
 
 `ThemeRegistry.engine(id, overrides)` composes a named pack with per-app overrides, while `ThemeProvider.component()`
-and `ThemeProvider.resolve()` expose computed signals for active component themes and individual state styles. That
-keeps theme switching centralized and testable without requiring widgets to know where their theme came from.
+and `ThemeProvider.resolve()` expose computed signals for active component themes and individual state styles.
+`bindComponentTheme()` bridges those provider signals back into normal components and returns a disposer, so live theme
+switching stays centralized and testable without requiring widgets to know where their theme came from.
 
 ## Runtime Capabilities
 

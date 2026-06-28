@@ -12,10 +12,13 @@ import {
   defaultThemePacks,
   emptyStyle,
   mergeComponentThemeDefinition,
+  type Theme,
   ThemeEngine,
   ThemePackNotFoundError,
   themePalettes,
 } from "../src/theme.ts";
+import { bindComponentTheme } from "../src/theme_binding.ts";
+import { Signal } from "../src/signals/mod.ts";
 
 Deno.test("renderSparkline samples values into fixed width", () => {
   assertEquals(renderSparkline([0, 1, 2, 3], 4), "▁▃▆█");
@@ -186,4 +189,51 @@ Deno.test("ThemeProvider exposes active engine selection and component theme sig
 
   assertEquals(buttonTheme.value.base("x"), "bright:x");
   assertEquals(provider.resolve("Button", "base").value("x"), "bright:x");
+});
+
+Deno.test("bindComponentTheme applies provider and variant updates to a component-like target", async () => {
+  const plain = (value: string) => `plain:${value}`;
+  const danger = (value: string) => `danger:${value}`;
+  const bright = (value: string) => `bright:${value}`;
+  const variant = new Signal("default");
+  const applied: string[] = [];
+  const registry = createThemeRegistry([
+    {
+      id: "plain",
+      palette: "plain",
+      options: {
+        tokens: { foreground: plain },
+        components: { Button: { variants: { danger: { base: danger } } } },
+      },
+    },
+    { id: "bright", palette: "plain", options: { tokens: { foreground: bright } } },
+  ]);
+  const provider = createThemeProvider({ registry, activeId: "plain" });
+  const dispose = bindComponentTheme(
+    {
+      setTheme(theme: Theme) {
+        applied.push(theme.base("x"));
+      },
+    },
+    provider,
+    "Button",
+    { variant },
+  );
+
+  await Promise.resolve();
+  assertEquals(applied, ["plain:x"]);
+
+  variant.value = "danger";
+  await Promise.resolve();
+  assertEquals(applied, ["plain:x", "danger:x"]);
+
+  provider.setTheme("bright");
+  await Promise.resolve();
+  assertEquals(applied, ["plain:x", "danger:x", "bright:x"]);
+
+  dispose();
+  provider.setTheme("plain");
+  variant.value = "default";
+  await Promise.resolve();
+  assertEquals(applied, ["plain:x", "danger:x", "bright:x"]);
 });

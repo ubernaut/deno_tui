@@ -130,6 +130,12 @@ export class Component extends EventEmitter<
     });
   }
 
+  setTheme(theme: Partial<Theme>): void {
+    this.theme = hierarchizeTheme(theme);
+    this.state.forceUpdateValue = true;
+    this.state.value = this.state.peek();
+  }
+
   /**
    * Interact with component using mouse/keyboard
    */
