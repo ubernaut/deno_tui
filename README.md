@@ -695,7 +695,7 @@ and visible slot ids per layout so app shells can debug responsive behavior befo
 This fork exports lightweight app primitives for larger TUIs:
 
 - `createApp()` / `TuiApp`
-- `createAppPlugin()` / `inspectAppPluginDefinition()`
+- `createAppPlugin()` / `inspectAppPluginDefinition()` / plugin catalog reports
 - `ActionBus`
 - `CommandRegistry`
 - `FormController`
@@ -796,11 +796,17 @@ const settingsPluginDefinition = {
 };
 
 const pluginShape = inspectAppPluginDefinition(settingsPluginDefinition);
+const pluginReport = createAppPluginCatalogReport({ plugins: [settingsPluginDefinition] });
+const pluginMarkdown = formatAppPluginCatalogMarkdown({ plugins: [settingsPluginDefinition] });
 const settingsPlugin = createAppPlugin(settingsPluginDefinition);
 const stopSettings = app.use(settingsPlugin);
 
 const activePlugins = app.plugins();
 ```
+
+`createAppPluginCatalogReport()`, `queryAppPluginDefinitions()`, and `formatAppPluginCatalogMarkdown()` turn plugin
+definitions into docs, marketplace, and diagnostics data with tag, route, command, key binding, focus, middleware, and
+installer counts.
 
 `app.inspect()` returns one diagnostic snapshot for route state, command counts, key bindings, focus state, installed
 plugins, lifecycle status, and tracked disposers. It is intended for status bars, debug panels, health checks, and

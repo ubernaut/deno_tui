@@ -15,6 +15,8 @@ export interface AppPluginRoute<TRoute extends Route = Route> {
 export interface AppPluginDefinition<TAction extends Action = Action, TRoute extends Route = Route> {
   id?: string;
   label?: string;
+  description?: string;
+  tags?: readonly string[];
   routes?: readonly (TRoute | AppPluginRoute<TRoute>)[];
   actionMiddleware?: readonly ActionMiddleware<TAction>[];
   commands?: readonly Command<TAction>[];
@@ -26,12 +28,52 @@ export interface AppPluginDefinition<TAction extends Action = Action, TRoute ext
 export interface AppPluginDefinitionInspection {
   id?: string;
   label?: string;
+  description?: string;
+  tags: string[];
   routes: string[];
   actionMiddleware: number;
   commands: string[];
   keyBindings: string[];
   focusItems: number;
   hasInstaller: boolean;
+}
+
+export interface AppPluginCatalogQuery {
+  search?: string;
+  tag?: string;
+  hasRoutes?: boolean;
+  hasCommands?: boolean;
+  hasKeyBindings?: boolean;
+  hasFocusItems?: boolean;
+  hasActionMiddleware?: boolean;
+  hasInstaller?: boolean;
+}
+
+export interface AppPluginCatalogInspection {
+  count: number;
+  routeCount: number;
+  commandCount: number;
+  keyBindingCount: number;
+  focusItemCount: number;
+  actionMiddlewareCount: number;
+  installerCount: number;
+  tags: string[];
+}
+
+export interface AppPluginCatalogReport {
+  plugins: AppPluginDefinitionInspection[];
+  inspection: AppPluginCatalogInspection;
+}
+
+export interface AppPluginCatalogReportOptions<TAction extends Action = Action, TRoute extends Route = Route> {
+  plugins: readonly AppPluginDefinition<TAction, TRoute>[];
+  query?: AppPluginCatalogQuery;
+}
+
+export interface AppPluginCatalogMarkdownOptions<TAction extends Action = Action, TRoute extends Route = Route>
+  extends AppPluginCatalogReportOptions<TAction, TRoute> {
+  title?: string;
+  includeSummary?: boolean;
 }
 
 export function createAppPlugin<TAction extends Action = Action, TRoute extends Route = Route>(
@@ -83,6 +125,8 @@ export function inspectAppPluginDefinition<TAction extends Action = Action, TRou
   return {
     id: definition.id,
     label: definition.label,
+    description: definition.description,
+    tags: [...new Set(definition.tags ?? [])].sort(),
     routes: (definition.routes ?? []).map((entry) => normalizePluginRoute(entry).route.id),
     actionMiddleware: definition.actionMiddleware?.length ?? 0,
     commands: (definition.commands ?? []).map((command) => command.id),
@@ -90,6 +134,66 @@ export function inspectAppPluginDefinition<TAction extends Action = Action, TRou
     focusItems: definition.focusItems?.length ?? 0,
     hasInstaller: definition.install !== undefined,
   };
+}
+
+export function queryAppPluginDefinitions<TAction extends Action = Action, TRoute extends Route = Route>(
+  definitions: readonly AppPluginDefinition<TAction, TRoute>[],
+  query: AppPluginCatalogQuery = {},
+): AppPluginDefinitionInspection[] {
+  return definitions
+    .map(inspectAppPluginDefinition)
+    .filter((plugin) => matchesPluginQuery(plugin, query))
+    .sort((left, right) => (left.label ?? left.id ?? "").localeCompare(right.label ?? right.id ?? ""));
+}
+
+export function inspectAppPluginCatalog(
+  plugins: readonly AppPluginDefinitionInspection[],
+): AppPluginCatalogInspection {
+  return {
+    count: plugins.length,
+    routeCount: plugins.reduce((total, plugin) => total + plugin.routes.length, 0),
+    commandCount: plugins.reduce((total, plugin) => total + plugin.commands.length, 0),
+    keyBindingCount: plugins.reduce((total, plugin) => total + plugin.keyBindings.length, 0),
+    focusItemCount: plugins.reduce((total, plugin) => total + plugin.focusItems, 0),
+    actionMiddlewareCount: plugins.reduce((total, plugin) => total + plugin.actionMiddleware, 0),
+    installerCount: plugins.filter((plugin) => plugin.hasInstaller).length,
+    tags: [...new Set(plugins.flatMap((plugin) => plugin.tags))].sort(),
+  };
+}
+
+export function createAppPluginCatalogReport<TAction extends Action = Action, TRoute extends Route = Route>(
+  options: AppPluginCatalogReportOptions<TAction, TRoute>,
+): AppPluginCatalogReport {
+  const plugins = queryAppPluginDefinitions(options.plugins, options.query);
+  return {
+    plugins,
+    inspection: inspectAppPluginCatalog(plugins),
+  };
+}
+
+export function formatAppPluginCatalogMarkdown<TAction extends Action = Action, TRoute extends Route = Route>(
+  options: AppPluginCatalogMarkdownOptions<TAction, TRoute>,
+): string {
+  const report = createAppPluginCatalogReport(options);
+  const lines = [`# ${options.title ?? "App Plugin Catalog"}`, ""];
+  if (options.includeSummary ?? true) {
+    lines.push(
+      `${report.inspection.count} plugins, ${report.inspection.routeCount} routes, ${report.inspection.commandCount} commands, ${report.inspection.keyBindingCount} key bindings.`,
+      "",
+    );
+  }
+  lines.push("| Plugin | Tags | Routes | Commands | Key Bindings | Installer |");
+  lines.push("| --- | --- | ---: | ---: | ---: | --- |");
+  for (const plugin of report.plugins) {
+    lines.push(
+      `| ${plugin.label ?? plugin.id ?? "plugin"} | ${
+        plugin.tags.join(", ") || "-"
+      } | ${plugin.routes.length} | ${plugin.commands.length} | ${plugin.keyBindings.length} | ${
+        plugin.hasInstaller ? "yes" : "no"
+      } |`,
+    );
+  }
+  return lines.join("\n");
 }
 
 function normalizePluginRoute<TRoute extends Route>(
@@ -102,4 +206,29 @@ function disposeReverse(disposers: Array<() => void>): void {
   for (const dispose of [...disposers].reverse()) {
     dispose();
   }
+}
+
+function matchesPluginQuery(plugin: AppPluginDefinitionInspection, query: AppPluginCatalogQuery): boolean {
+  if (query.tag && !plugin.tags.includes(query.tag)) return false;
+  if (query.hasRoutes !== undefined && (plugin.routes.length > 0) !== query.hasRoutes) return false;
+  if (query.hasCommands !== undefined && (plugin.commands.length > 0) !== query.hasCommands) return false;
+  if (query.hasKeyBindings !== undefined && (plugin.keyBindings.length > 0) !== query.hasKeyBindings) return false;
+  if (query.hasFocusItems !== undefined && (plugin.focusItems > 0) !== query.hasFocusItems) return false;
+  if (
+    query.hasActionMiddleware !== undefined &&
+    (plugin.actionMiddleware > 0) !== query.hasActionMiddleware
+  ) return false;
+  if (query.hasInstaller !== undefined && plugin.hasInstaller !== query.hasInstaller) return false;
+  if (!query.search) return true;
+  const needle = query.search.trim().toLowerCase();
+  const haystack = [
+    plugin.id,
+    plugin.label,
+    plugin.description,
+    ...plugin.tags,
+    ...plugin.routes,
+    ...plugin.commands,
+    ...plugin.keyBindings,
+  ].join(" ").toLowerCase();
+  return needle.split(/\s+/).every((part) => haystack.includes(part));
 }

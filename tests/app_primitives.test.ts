@@ -17,7 +17,13 @@ import { CommandRegistry } from "../src/app/commands.ts";
 import type { Command, CommandActionFactory } from "../src/app/commands.ts";
 import { bindHistoryCommands, bindRouteHistory, historyCommands } from "../src/app/history_bindings.ts";
 import { HistoryStack } from "../src/app/history.ts";
-import { createAppPlugin, inspectAppPluginDefinition } from "../src/app/plugins.ts";
+import {
+  createAppPlugin,
+  createAppPluginCatalogReport,
+  formatAppPluginCatalogMarkdown,
+  inspectAppPluginDefinition,
+  queryAppPluginDefinitions,
+} from "../src/app/plugins.ts";
 import { bindRouteCommands, bindRouteIndex, bindRouteSignal, routeCommands } from "../src/app/route_bindings.ts";
 import { RouteManager } from "../src/app/router.ts";
 import { SettingsController } from "../src/app/settings.ts";
@@ -1141,6 +1147,8 @@ Deno.test("createAppPlugin installs declarative app surfaces with teardown", asy
   const definition = {
     id: "settings",
     label: "Settings Pack",
+    description: "Settings routes and commands.",
+    tags: ["settings", "settings", "routes"],
     routes: [{ id: "settings", title: "Settings" }],
     commands: [{
       id: "route.settings",
@@ -1168,6 +1176,8 @@ Deno.test("createAppPlugin installs declarative app surfaces with teardown", asy
   assertEquals(inspectAppPluginDefinition(definition), {
     id: "settings",
     label: "Settings Pack",
+    description: "Settings routes and commands.",
+    tags: ["routes", "settings"],
     routes: ["settings"],
     actionMiddleware: 1,
     commands: ["route.settings"],
@@ -1195,6 +1205,58 @@ Deno.test("createAppPlugin installs declarative app surfaces with teardown", asy
   assertEquals(app.focus.inspect().count, 0);
   assertEquals(events, ["install:home,settings", "dispose:custom"]);
   app.destroy();
+});
+
+Deno.test("app plugin catalog reports filter plugin definitions for docs and marketplaces", () => {
+  const definitions = [
+    {
+      id: "settings",
+      label: "Settings Pack",
+      description: "Settings routes and commands.",
+      tags: ["settings", "routes"],
+      routes: [{ id: "settings", title: "Settings" }],
+      commands: [{ id: "settings.open", label: "Settings" }],
+      keyBindings: [{ key: ",", ctrl: true, description: "Settings" }],
+    },
+    {
+      id: "runtime",
+      label: "Runtime Pack",
+      description: "Runtime metrics and async resources.",
+      tags: ["runtime", "resources"],
+      actionMiddleware: [(action: Action, next: (action: Action) => void) => next(action)],
+      install: () => undefined,
+    },
+  ];
+
+  assertEquals(queryAppPluginDefinitions(definitions, { tag: "runtime" }).map((plugin) => plugin.id), ["runtime"]);
+  assertEquals(queryAppPluginDefinitions(definitions, { hasCommands: true }).map((plugin) => plugin.id), [
+    "settings",
+  ]);
+  const report = createAppPluginCatalogReport({ plugins: definitions, query: { search: "settings" } });
+  assertEquals(report.inspection, {
+    count: 1,
+    routeCount: 1,
+    commandCount: 1,
+    keyBindingCount: 1,
+    focusItemCount: 0,
+    actionMiddlewareCount: 0,
+    installerCount: 0,
+    tags: ["routes", "settings"],
+  });
+  assertEquals(report.plugins[0].commands, ["settings.open"]);
+  assertEquals(
+    formatAppPluginCatalogMarkdown({ plugins: definitions, title: "Plugins" }),
+    [
+      "# Plugins",
+      "",
+      "2 plugins, 1 routes, 1 commands, 1 key bindings.",
+      "",
+      "| Plugin | Tags | Routes | Commands | Key Bindings | Installer |",
+      "| --- | --- | ---: | ---: | ---: | --- |",
+      "| Runtime Pack | resources, runtime | 0 | 0 | 0 | yes |",
+      "| Settings Pack | routes, settings | 1 | 1 | 1 | no |",
+    ].join("\n"),
+  );
 });
 
 Deno.test("createAppPlugin rolls back declarative registrations when install fails", () => {
