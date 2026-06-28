@@ -55,7 +55,7 @@ export interface ThemeTokens {
 }
 
 export type ThemeTokenName = keyof ThemeTokens;
-export type ThemeStyleReference = Style | ThemeTokenName;
+export type ThemeStyleReference = Style | ThemeTokenName | readonly ThemeStyleReference[];
 export type ThemeStateDefinition = Partial<Record<ThemeState, ThemeStyleReference>>;
 
 export function createTheme(tokens: Partial<ThemeTokens> = {}): Theme & { tokens: ThemeTokens } {
@@ -80,6 +80,7 @@ export function createTheme(tokens: Partial<ThemeTokens> = {}): Theme & { tokens
 export type ThemeState = keyof Theme;
 
 export interface ComponentThemeDefinition {
+  extends?: string | readonly string[];
   base?: ThemeStateDefinition;
   variants?: Record<string, ThemeStateDefinition>;
 }
@@ -144,6 +145,7 @@ export function mergeComponentThemeDefinition(
   }
 
   return {
+    extends: mergeThemeExtends(base.extends, extension.extends),
     base: {
       ...(base.base ?? {}),
       ...(extension.base ?? {}),
@@ -152,7 +154,17 @@ export function mergeComponentThemeDefinition(
   };
 }
 
+export function composeStyles(...styles: Style[]): Style {
+  const active = styles.filter((style) => style !== emptyStyle);
+  if (active.length === 0) return emptyStyle;
+  if (active.length === 1) return active[0];
+  return (value) => active.reduce((text, style) => style(text), value);
+}
+
 export function resolveThemeStyleReference(reference: ThemeStyleReference, tokens: ThemeTokens): Style {
+  if (isThemeStyleReferencePipeline(reference)) {
+    return composeStyles(...reference.map((part) => resolveThemeStyleReference(part, tokens)));
+  }
   return typeof reference === "string" ? tokens[reference] : reference;
 }
 
@@ -350,7 +362,7 @@ export class ThemeEngine {
   }
 
   component(componentName: string, variant = "default"): Theme {
-    const definition = this.components[componentName];
+    const definition = this.resolveComponentDefinition(componentName);
     return hierarchizeTheme({
       base: this.theme.base,
       focused: this.theme.focused,
@@ -377,7 +389,7 @@ export class ThemeEngine {
   }
 
   variants(componentName: string): string[] {
-    return Object.keys(this.components[componentName]?.variants ?? {}).sort();
+    return Object.keys(this.resolveComponentDefinition(componentName).variants ?? {}).sort();
   }
 
   inspect(): ThemeInspection {
@@ -389,4 +401,55 @@ export class ThemeEngine {
       })),
     };
   }
+
+  private resolveComponentDefinition(
+    componentName: string,
+    seen = new Set<string>(),
+  ): ComponentThemeDefinition {
+    const definition = this.components[componentName];
+    if (!definition) return {};
+    if (seen.has(componentName)) {
+      throw new ThemeInheritanceError([...seen, componentName]);
+    }
+    seen.add(componentName);
+
+    let resolved: ComponentThemeDefinition = {};
+    for (const parent of normalizeThemeExtends(definition.extends)) {
+      resolved = mergeComponentThemeDefinition(
+        resolved,
+        this.resolveComponentDefinition(parent, new Set(seen)),
+      );
+    }
+
+    return mergeComponentThemeDefinition(resolved, {
+      base: definition.base,
+      variants: definition.variants,
+    });
+  }
+}
+
+export class ThemeInheritanceError extends Error {
+  constructor(chain: string[]) {
+    super(`Theme component inheritance cycle detected: ${chain.join(" -> ")}`);
+    this.name = "ThemeInheritanceError";
+  }
+}
+
+function mergeThemeExtends(
+  base: string | readonly string[] | undefined,
+  extension: string | readonly string[] | undefined,
+): string | readonly string[] | undefined {
+  const names = [...normalizeThemeExtends(base), ...normalizeThemeExtends(extension)];
+  return names.length === 0 ? undefined : [...new Set(names)];
+}
+
+function normalizeThemeExtends(value: string | readonly string[] | undefined): string[] {
+  if (value === undefined) return [];
+  return typeof value === "string" ? [value] : [...value];
+}
+
+function isThemeStyleReferencePipeline(
+  reference: ThemeStyleReference,
+): reference is readonly ThemeStyleReference[] {
+  return Array.isArray(reference);
 }

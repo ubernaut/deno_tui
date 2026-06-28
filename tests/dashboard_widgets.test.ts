@@ -4,6 +4,7 @@ import { renderGauge } from "../src/components/gauge.ts";
 import { visibleLogLines } from "../src/components/log_viewer.ts";
 import { renderSparkline } from "../src/components/sparkline.ts";
 import {
+  composeStyles,
   composeThemeOptions,
   createTheme,
   createThemeEngine,
@@ -14,6 +15,7 @@ import {
   mergeComponentThemeDefinition,
   type Theme,
   ThemeEngine,
+  ThemeInheritanceError,
   ThemePackNotFoundError,
   themePalettes,
 } from "../src/theme.ts";
@@ -81,6 +83,34 @@ Deno.test("ThemeEngine resolves component token references through active tokens
   assertEquals(engine.component("Button", "danger").base("x"), "danger:x");
 });
 
+Deno.test("composeStyles builds reusable style pipelines", () => {
+  const wrap = (value: string) => `[${value}]`;
+  const shout = (value: string) => value.toUpperCase();
+
+  assertEquals(composeStyles(emptyStyle)("x"), "x");
+  assertEquals(composeStyles(wrap, emptyStyle, shout)("x"), "[X]");
+});
+
+Deno.test("ThemeEngine resolves layered state styles", () => {
+  const engine = new ThemeEngine({
+    tokens: {
+      accent: (value) => `accent:${value}`,
+      danger: (value) => `danger:${value}`,
+    },
+    components: {
+      Button: {
+        variants: {
+          danger: {
+            active: ["danger", (value) => `<${value}>`, "accent"],
+          },
+        },
+      },
+    },
+  });
+
+  assertEquals(engine.component("Button", "danger").active("x"), "accent:<danger:x>");
+});
+
 Deno.test("createThemeEngine merges preset palettes with overrides", () => {
   const engine = createThemeEngine("terminal", {
     tokens: {
@@ -106,6 +136,15 @@ Deno.test("theme definitions compose component bases and variants", () => {
   assertEquals(merged.variants?.danger.active, active);
 });
 
+Deno.test("theme definitions compose component inheritance", () => {
+  const merged = mergeComponentThemeDefinition(
+    { extends: "Input" },
+    { extends: ["Focusable", "Input"] },
+  );
+
+  assertEquals(merged.extends, ["Input", "Focusable"]);
+});
+
 Deno.test("composeThemeOptions preserves component variants while overriding tokens", () => {
   const accentA = (value: string) => `a:${value}`;
   const accentB = (value: string) => `b:${value}`;
@@ -122,6 +161,49 @@ Deno.test("composeThemeOptions preserves component variants while overriding tok
 
   assertEquals(composed.tokens?.accent, accentB);
   assertEquals(Object.keys(composed.components?.Button.variants ?? {}).sort(), ["danger", "quiet"]);
+});
+
+Deno.test("ThemeEngine supports component inheritance and aliases", () => {
+  const input = (value: string) => `input:${value}`;
+  const focus = (value: string) => `focus:${value}`;
+  const danger = (value: string) => `danger:${value}`;
+  const engine = new ThemeEngine({
+    components: {
+      Input: {
+        base: { base: input, focused: focus },
+        variants: { invalid: { base: danger } },
+      },
+      ComboBox: {
+        extends: "Input",
+        variants: { compact: { active: focus } },
+      },
+      SearchBox: {
+        extends: ["ComboBox"],
+        base: { disabled: danger },
+      },
+    },
+  });
+
+  assertEquals(engine.component("ComboBox").base("x"), "input:x");
+  assertEquals(engine.component("ComboBox", "invalid").base("x"), "danger:x");
+  assertEquals(engine.component("SearchBox").disabled("x"), "danger:x");
+  assertEquals(engine.variants("SearchBox"), ["compact", "invalid"]);
+});
+
+Deno.test("ThemeEngine rejects component inheritance cycles", () => {
+  const engine = new ThemeEngine({
+    components: {
+      A: { extends: "B" },
+      B: { extends: "A" },
+    },
+  });
+
+  try {
+    engine.component("A");
+    throw new Error("expected cycle");
+  } catch (error) {
+    assertEquals(error instanceof ThemeInheritanceError, true);
+  }
 });
 
 Deno.test("ThemeEngine can be extended and inspected without mutating the source", () => {

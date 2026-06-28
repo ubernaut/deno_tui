@@ -423,9 +423,10 @@ const rows = viewportWindow(items.length, selection.state.value.activeIndex, hei
 ## Theming
 
 Use `createTheme()` for semantic tokens, `createThemeEngine()` for built-in palettes, `ThemeRegistry` for named theme
-packs, or `ThemeProvider` for runtime theme selection. This fork also adds `composeThemeOptions()`,
-`ThemeEngine.extend()`, and `ThemeEngine.inspect()` so larger apps can layer reusable theme packs without mutating a
-base engine:
+packs, or `ThemeProvider` for runtime theme selection. This fork treats theming as an engine layer, not just a bag of
+component props: it adds `composeThemeOptions()`, `composeStyles()`, component inheritance, token-backed style
+pipelines, `ThemeEngine.extend()`, and `ThemeEngine.inspect()` so larger apps can layer reusable theme packs without
+mutating a base engine:
 
 ```ts
 import {
@@ -438,9 +439,18 @@ import {
 
 const appTheme = composeThemeOptions({
   components: {
+    Field: {
+      base: {
+        base: "foreground",
+        focused: ["accent", crayon.bold],
+      },
+    },
+    ComboBox: {
+      extends: "Field",
+    },
     Button: {
       variants: {
-        danger: { base: "danger" },
+        danger: { base: "danger", active: ["danger", crayon.bold] },
       },
     },
   },
@@ -477,7 +487,10 @@ and `ThemeProvider.resolve()` expose computed signals for active component theme
 `bindComponentTheme()` bridges those provider signals back into normal components and returns a disposer, so live theme
 switching stays centralized and testable without requiring widgets to know where their theme came from. Component
 definitions can also reference semantic token names such as `"foreground"`, `"accent"`, `"danger"`, or `"surface"`
-instead of concrete style functions, so variants automatically follow the active palette.
+instead of concrete style functions, so variants automatically follow the active palette. A state style may also be an
+array of token names and style functions; the engine composes the pipeline in order. Component definitions can `extend`
+one or more other definitions, which makes aliases like `ComboBox -> Field` or shared role themes cheap while preserving
+variants and app-level overrides.
 
 ## Runtime Capabilities
 
