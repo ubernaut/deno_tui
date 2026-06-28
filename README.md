@@ -12,6 +12,34 @@ This fork extends the original TUI toolkit into a WebGPU-backed terminal visuali
 still here, but the headline additions are a richer three.js ASCII renderer, Neon Exodus-style visualization demos, and
 a system monitor shell that can render live data through those scenes.
 
+## Repository Scope
+
+This repository is now more than a component package. It is a complete Deno TUI toolkit, runtime layer, app framework,
+renderer lab, and demo suite:
+
+| Area                         | What lives here                                                                                                                                                                                         |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Core terminal UI             | `Tui`, `Canvas`, draw objects, input decoding, views, focus, keymaps, selection, and viewport helpers.                                                                                                  |
+| Widgets                      | Primitive, input, navigation, overlay, data, feedback, dashboard, and visualization components with controller-first APIs.                                                                              |
+| App architecture             | `TuiApp`, action bus, routes, command registry, key binding surfaces, mouse router, settings bindings, history, and disposable plugin lifecycle.                                                        |
+| Plugin/catalog surfaces      | Component catalog, app plugin definition registry, command reports, runtime workload reports, launcher catalog, benchmark catalog, and API inventory.                                                   |
+| Theming                      | Semantic tokens, ANSI style specs, palettes, theme packs, provider/layer orchestration, engine factories, pipelines, gallery previews, resolver caches, and binding groups.                             |
+| Runtime and concurrency      | Capability detection, runtime plans, terminal plans, terminal session setup, async scheduler, worker pool, render loop, stores, cached resources, data pipelines, data queries, and workload telemetry. |
+| Rendering and visualizations | Three.js ASCII rendering, glyph/block/mixed terminal modes, WebGPU/WebGL/CPU backend selection, Neon Exodus-inspired scenes, system monitor panels, and standalone geometry demos.                      |
+| Testing and tooling          | Snapshot helpers, deterministic input helpers, health gate, API inventory, benchmarks, launch scripts, and report-style demos for CI and adopters.                                                      |
+
+## Documentation Map
+
+- [Testing and Performance](./docs/testing-and-performance.md) covers test helpers, runtime/concurrency primitives,
+  terminal capability planning, API inventory, and benchmark tooling.
+- [Visualization App](./docs/visualization-app.md) covers the system monitor shell, panel model, and visualization
+  controls.
+- [GRWizard App](./docs/grwizard-app.md) covers the responsive GPU/model wizard demo.
+- [Repository Overview](./docs/repo-overview.md) summarizes the architecture, module families, demos, and launch
+  commands in one place.
+- The README remains the primary API tour for components, layouts, app primitives, theming, runtime capabilities,
+  reactivity, views, examples, and contribution commands.
+
 ## Fork Highlights
 
 - **Acerola-inspired three.js ASCII backend** — the `ThreeAscii` renderer now drives a WebGPU post-processing path with
