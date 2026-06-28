@@ -123,6 +123,7 @@ export const componentCatalog = [
     "selection",
   ]),
   component("menu-bar", "MenuBar", "navigation", "Top-level command menu row.", [
+    "controller",
     "render-helper",
     "selection",
     "keyboard",

@@ -1,4 +1,5 @@
 import { assertEquals } from "./deps.ts";
+import { bindMenuBarCommands, menuBarCommands } from "../src/app/menu_bar_commands.ts";
 import { bindScrollAreaCommands, scrollAreaCommands } from "../src/app/scroll_area_commands.ts";
 import { CommandRegistry } from "../src/app/commands.ts";
 import { bindStepperCommands, stepperCommands } from "../src/app/stepper_commands.ts";
@@ -7,7 +8,13 @@ import { renderBreadcrumbs } from "../src/components/breadcrumbs.ts";
 import { renderEmptyState } from "../src/components/empty_state.ts";
 import { renderKeyHelp } from "../src/components/key_help.ts";
 import { virtualRows, visibleListRows } from "../src/components/list.ts";
-import { renderMenuBar, shiftMenuIndex } from "../src/components/menu_bar.ts";
+import {
+  clampMenuIndex,
+  MenuBarController,
+  menuItemForIndex,
+  renderMenuBar,
+  shiftMenuIndex,
+} from "../src/components/menu_bar.ts";
 import {
   clampRadioIndex,
   optionForValue,
@@ -173,6 +180,96 @@ Deno.test("menu bar renders active item and skips disabled entries", () => {
 
   assertEquals(renderMenuBar(items, 0), "[File] (Edit) View");
   assertEquals(shiftMenuIndex(items, 0, 1), 2);
+  assertEquals(clampMenuIndex(items, 1), 2);
+  assertEquals(menuItemForIndex(items, 1)?.id, "view");
+});
+
+Deno.test("MenuBarController navigates selects and inspects menu state", () => {
+  const changes: string[] = [];
+  const selections: string[] = [];
+  const controller = new MenuBarController({
+    items: [
+      { id: "file", label: "File" },
+      { id: "edit", label: "Edit", disabled: true },
+      { id: "view", label: "View" },
+    ],
+    activeIndex: 1,
+    onChange: (item) => void changes.push(item.id),
+    onSelect: (item) => void selections.push(item.id),
+  });
+
+  assertEquals(controller.inspect(), {
+    items: [
+      { id: "file", label: "File" },
+      { id: "edit", label: "Edit", disabled: true },
+      { id: "view", label: "View" },
+    ],
+    itemCount: 3,
+    activeIndex: 2,
+    active: { id: "view", label: "View" },
+    empty: false,
+  });
+  assertEquals(controller.move(-1)?.id, "file");
+  controller.handleKeyPress(keyPress("right"));
+  assertEquals(controller.selectActive()?.id, "view");
+  controller.handleKeyPress(keyPress("home"));
+  controller.handleKeyPress(keyPress("space"));
+  assertEquals(changes, ["file", "view", "file"]);
+  assertEquals(selections, ["view", "file"]);
+  controller.dispose();
+});
+
+Deno.test("menuBarCommands move and select menu items", async () => {
+  const controller = new MenuBarController({
+    items: [
+      { id: "file", label: "File" },
+      { id: "edit", label: "Edit", disabled: true },
+      { id: "view", label: "View" },
+    ],
+  });
+  const registry = new CommandRegistry();
+  const actions: unknown[] = [];
+  const dispose = bindMenuBarCommands(registry, controller, {
+    id: "main",
+    idPrefix: "menubar.main",
+    group: "menu",
+    includeItemCommands: true,
+  });
+
+  assertEquals(menuBarCommands(new MenuBarController({ items: [] })).map((command) => command.id), [
+    "menu.first",
+    "menu.previous",
+    "menu.next",
+    "menu.last",
+    "menu.select",
+  ]);
+  assertEquals(registry.list("menu").map((command) => command.id), [
+    "menubar.main.first",
+    "menubar.main.last",
+    "menubar.main.next",
+    "menubar.main.previous",
+    "menubar.main.select",
+    "menubar.main.item.edit",
+    "menubar.main.item.file",
+    "menubar.main.item.view",
+  ]);
+
+  assertEquals(await registry.execute("menubar.main.next", (action) => void actions.push(action)), true);
+  assertEquals(controller.active()?.id, "view");
+  assertEquals(await registry.execute("menubar.main.item.edit", (action) => void actions.push(action)), false);
+  assertEquals(await registry.execute("menubar.main.item.file", (action) => void actions.push(action)), true);
+  assertEquals(actions.at(-1), {
+    type: "menuBar.itemSelected",
+    payload: {
+      id: "main",
+      item: { id: "file", label: "File" },
+      inspection: controller.inspect(),
+    },
+  });
+
+  dispose();
+  assertEquals(registry.list("menu"), []);
+  controller.dispose();
 });
 
 Deno.test("radio group renders selected state and skips disabled options", () => {

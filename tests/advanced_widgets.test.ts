@@ -70,6 +70,7 @@ Deno.test("component catalog groups widgets by category and capability", () => {
     "virtual-list",
     "data-table",
     "stepper",
+    "menu-bar",
     "command-palette",
     "context-menu",
     "toast",
@@ -89,6 +90,7 @@ Deno.test("component catalog supports combined queries and inspection", () => {
     "virtual-list",
     "data-table",
     "stepper",
+    "menu-bar",
     "command-palette",
     "context-menu",
   ]);

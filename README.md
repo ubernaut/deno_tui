@@ -187,6 +187,28 @@ const listState = processes.inspect();
 orientation, keyboard handling, and inspection state. Use `stepperCommands()` or `bindStepperCommands()` to expose
 first, previous, next, last, and optional direct step-selection actions through command palettes, menus, or key help.
 
+`MenuBarController` provides the same reusable state layer for top-level menus: it owns item data, active item movement,
+disabled-item skipping, keyboard handling, selection callbacks, and inspection state. `menuBarCommands()` and
+`bindMenuBarCommands()` expose first, previous, next, last, active-item selection, and optional direct item-selection
+commands. The controller is intentionally styling-agnostic so theme engines can own visual treatment while apps reuse
+the same navigation model across terminal components, command palettes, and alternate renderers:
+
+```ts
+const menu = new MenuBarController({
+  items: [
+    { id: "file", label: "File" },
+    { id: "view", label: "View" },
+    { id: "help", label: "Help", disabled: true },
+  ],
+});
+
+const stopMenuCommands = bindMenuBarCommands(app.commands, menu, {
+  idPrefix: "menubar.main",
+  group: "menu",
+  includeItemCommands: true,
+});
+```
+
 `CommandPaletteController` and `ContextMenuController` expose the overlay widgets' query, selection, navigation, key
 handling, and inspection state without requiring a rendered component. Use them when a command surface, menu bar,
 shortcut handler, or test needs to drive the same behavior as the built-in widgets:
