@@ -354,6 +354,16 @@ const stopRouteBinding = bindRouteSignal(app.routes, activeRoute.value, {
 `RouteManager.register()` and `RouteManager.unregister()` are useful for plugin-provided routes and keep the active
 route valid when routes are added, replaced, or removed.
 
+`bindRouteIndex()` connects route state to index-backed widgets such as tabs, steppers, menu bars, or custom segmented
+controls:
+
+```ts
+const routeStepIndex = new Signal(0);
+const stopRouteSteps = bindRouteIndex(app.routes, routeStepIndex, {
+  routeIds: ["overview", "widgets", "runtime"],
+});
+```
+
 `HistoryStack` keeps undo/redo separate from widgets and route managers:
 
 ```ts

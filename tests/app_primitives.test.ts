@@ -11,7 +11,7 @@ import {
 import { CommandRegistry } from "../src/app/commands.ts";
 import { bindRouteHistory } from "../src/app/history_bindings.ts";
 import { HistoryStack } from "../src/app/history.ts";
-import { bindRouteSignal } from "../src/app/route_bindings.ts";
+import { bindRouteIndex, bindRouteSignal } from "../src/app/route_bindings.ts";
 import { RouteManager } from "../src/app/router.ts";
 import { KeymapRegistry } from "../src/keymap.ts";
 import { Signal } from "../src/signals/mod.ts";
@@ -141,6 +141,63 @@ Deno.test("bindRouteSignal synchronizes route manager state with external signal
   dispose();
   routeId.value = "settings";
   assertEquals(routes.active()?.id, "home");
+});
+
+Deno.test("bindRouteIndex synchronizes route managers with index-backed widgets", () => {
+  const routes = new RouteManager([
+    { id: "home", title: "Home" },
+    { id: "settings", title: "Settings" },
+    { id: "logs", title: "Logs" },
+  ]);
+  const activeIndex = new Signal(1);
+  const invalid: number[] = [];
+  const dispose = bindRouteIndex(routes, activeIndex, {
+    initialSync: "index",
+    onInvalidIndex: (index) => invalid.push(index),
+  });
+
+  assertEquals(routes.active()?.id, "settings");
+
+  routes.navigate("logs");
+  assertEquals(activeIndex.peek(), 2);
+
+  activeIndex.value = 0;
+  assertEquals(routes.active()?.id, "home");
+
+  activeIndex.value = 99;
+  assertEquals(invalid, [99]);
+  assertEquals(activeIndex.peek(), 2);
+  assertEquals(routes.active()?.id, "logs");
+
+  dispose();
+  activeIndex.value = 0;
+  assertEquals(routes.active()?.id, "logs");
+});
+
+Deno.test("bindRouteIndex supports filtered route id sources and route list changes", () => {
+  const routes = new RouteManager([
+    { id: "overview", title: "Overview" },
+    { id: "widgets", title: "Widgets" },
+    { id: "runtime", title: "Runtime" },
+    { id: "logs", title: "Logs" },
+  ], "runtime");
+  const routeIds = new Signal<readonly string[]>(["overview", "runtime"]);
+  const activeIndex = new Signal(0);
+
+  bindRouteIndex(routes, activeIndex, { routeIds, fallbackRouteId: "overview" });
+
+  assertEquals(activeIndex.peek(), 1);
+
+  routeIds.value = ["overview", "widgets"];
+  assertEquals(routes.active()?.id, "overview");
+  assertEquals(activeIndex.peek(), 0);
+
+  activeIndex.value = 1;
+  assertEquals(routes.active()?.id, "widgets");
+
+  routes.unregister("widgets");
+  assertEquals(routes.active()?.id, "overview");
+  assertEquals(activeIndex.peek(), 0);
 });
 
 Deno.test("CommandRegistry projects commands into menus palettes and key bindings", () => {

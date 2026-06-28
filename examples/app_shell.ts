@@ -3,6 +3,7 @@ import { crayon } from "https://deno.land/x/crayon@3.3.3/mod.ts";
 import {
   bindModalFocus,
   bindRouteHistory,
+  bindRouteIndex,
   Breadcrumbs,
   CommandPalette,
   commandSurfaceItems,
@@ -84,6 +85,7 @@ const persistedRoute = createPersistentSignal({
 });
 const routeChoice = persistedRoute.value;
 const routeStepIndex = new Signal(0);
+app.onDispose(bindRouteIndex(app.routes, routeStepIndex, { routeIds: ["overview", "widgets", "runtime"] }));
 const history = new HistoryStack({ capacity: 32 });
 const toasts = new Signal<ToastMessage[]>([
   { id: "boot", level: "success", message: "App shell ready" },
@@ -196,7 +198,6 @@ app.enableCommandKeymap();
 app.onActionType("route", (action) => {
   app.routes.navigate(action.payload);
   routeChoice.value = action.payload;
-  routeStepIndex.value = Math.max(0, ["overview", "widgets", "runtime"].indexOf(action.payload));
   pushToast(`Route changed to ${action.payload}`, "info");
 });
 app.onActionType("toast", (action) => pushToast(action.payload, "success"));
