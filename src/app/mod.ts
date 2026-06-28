@@ -10,6 +10,7 @@ export * from "./form_commands.ts";
 export * from "./forms.ts";
 export * from "./history_bindings.ts";
 export * from "./history.ts";
+export * from "./metric_series_commands.ts";
 export * from "./plugins.ts";
 export * from "./route_bindings.ts";
 export * from "./router.ts";

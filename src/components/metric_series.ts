@@ -21,6 +21,13 @@ export interface MetricSeriesControllerOptions {
   clamp?: boolean | MetricClampRange;
 }
 
+export interface MetricSeriesInspection {
+  values: number[];
+  stats: MetricSeriesStats;
+  limit: number;
+  empty: boolean;
+}
+
 export const DEFAULT_METRIC_SERIES_LIMIT = 60;
 
 export function normalizeMetricValue(value: number, clamp?: boolean | MetricClampRange): number {
@@ -132,6 +139,16 @@ export class MetricSeriesController {
 
   snapshot(): number[] {
     return [...this.values.peek()];
+  }
+
+  inspect(): MetricSeriesInspection {
+    const values = this.snapshot();
+    return {
+      values,
+      stats: this.stats.peek(),
+      limit: this.limit.peek(),
+      empty: values.length === 0,
+    };
   }
 
   dispose(): void {

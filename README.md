@@ -241,7 +241,19 @@ const cpu = new MetricSeriesController({ limit: 120, clamp: true });
 cpu.push(snapshot.cpuRatio);
 const sparkline = renderSparkline(cpu.values.value, 30);
 const latestCpu = cpu.stats.value.latest;
+
+const stopCpuCommands = bindMetricSeriesCommands(app.commands, cpu, {
+  id: "cpu",
+  idPrefix: "metrics.cpu",
+  group: "metrics",
+  includeLimitCommands: true,
+  limits: [60, 120, 240],
+});
 ```
+
+`metricSeriesCommands()` and `bindMetricSeriesCommands()` expose clear and sample-window actions for dashboards that
+need runtime controls in command palettes, menus, or key help. `MetricSeriesController.inspect()` returns values, stats,
+limit, and empty state for status panels, tests, and plugin diagnostics.
 
 ## Layouts
 

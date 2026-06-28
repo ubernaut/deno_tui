@@ -1,4 +1,7 @@
 import { assertEquals } from "./deps.ts";
+import { CommandRegistry } from "../src/app/commands.ts";
+import { bindMetricSeriesCommands, metricSeriesCommands } from "../src/app/metric_series_commands.ts";
+import type { MetricSeriesCommandAction } from "../src/app/metric_series_commands.ts";
 import { renderBarChart } from "../src/components/chart.ts";
 import { renderGauge } from "../src/components/gauge.ts";
 import { visibleLogLines } from "../src/components/log_viewer.ts";
@@ -92,8 +95,65 @@ Deno.test("MetricSeriesController manages bounded reactive samples", () => {
 
   series.reset([Number.POSITIVE_INFINITY, -1]);
   assertEquals(series.values.value, [0, 0]);
+  assertEquals(series.inspect(), {
+    values: [0, 0],
+    stats: { count: 2, min: 0, max: 0, latest: 0, average: 0, sum: 0 },
+    limit: 2,
+    empty: false,
+  });
   assertEquals(snapshots, [[0, 1, 0.5], [1, 0.5, 1], [0.5, 1], [0, 0]]);
   series.dispose();
+});
+
+Deno.test("metricSeriesCommands clear samples and change window limits", async () => {
+  const series = new MetricSeriesController({ limit: 4, initialValues: [1, 2, 3, 4] });
+  const registry = new CommandRegistry<MetricSeriesCommandAction>();
+  const dispose = bindMetricSeriesCommands(registry, series, {
+    id: "cpu",
+    idPrefix: "metrics.cpu",
+    group: "metrics",
+    includeLimitCommands: true,
+    limits: [2, 4],
+  });
+  const actions: MetricSeriesCommandAction[] = [];
+
+  assertEquals(registry.list("metrics").map((command) => [command.id, command.label]), [
+    ["metrics.cpu.clear", "Clear Metric Series"],
+    ["metrics.cpu.limit.2", "Set Metric Window: 2 samples"],
+    ["metrics.cpu.limit.4", "Set Metric Window: 4 samples"],
+  ]);
+
+  assertEquals(await registry.execute("metrics.cpu.limit.2", (action) => void actions.push(action)), true);
+  assertEquals(series.snapshot(), [3, 4]);
+  assertEquals(actions[0], {
+    type: "metricSeries.limitChanged",
+    payload: {
+      id: "cpu",
+      limit: 2,
+      inspection: {
+        values: [3, 4],
+        stats: { count: 2, min: 3, max: 4, latest: 4, average: 3.5, sum: 7 },
+        limit: 2,
+        empty: false,
+      },
+    },
+  });
+
+  assertEquals(await registry.execute("metrics.cpu.clear", (action) => void actions.push(action)), true);
+  assertEquals(series.inspect().empty, true);
+  assertEquals(actions[1]!.type, "metricSeries.cleared");
+
+  dispose();
+  assertEquals(registry.list("metrics"), []);
+});
+
+Deno.test("metricSeriesCommands can omit limit commands and disable empty series", () => {
+  const series = new MetricSeriesController();
+  const commands = metricSeriesCommands(series, { includeLimitCommands: false });
+
+  assertEquals(commands.map((command) => [command.id, commandDisabled(command)]), [
+    ["metric.clear", true],
+  ]);
 });
 
 Deno.test("createTheme fills semantic token defaults", () => {
@@ -809,3 +869,7 @@ Deno.test("bindComponentTheme applies provider and variant updates to a componen
   await Promise.resolve();
   assertEquals(applied, ["plain:x", "danger:x", "bright:x"]);
 });
+
+function commandDisabled(command: { disabled?: boolean | (() => boolean) }): boolean | undefined {
+  return typeof command.disabled === "function" ? command.disabled() : command.disabled;
+}
