@@ -3,6 +3,7 @@ import { bindMenuBarCommands, menuBarCommands } from "../src/app/menu_bar_comman
 import { bindRadioGroupCommands, radioGroupCommands } from "../src/app/radio_group_commands.ts";
 import { bindScrollAreaCommands, scrollAreaCommands } from "../src/app/scroll_area_commands.ts";
 import { CommandRegistry } from "../src/app/commands.ts";
+import { bindSliderCommands, sliderCommands } from "../src/app/slider_commands.ts";
 import { bindStepperCommands, stepperCommands } from "../src/app/stepper_commands.ts";
 import { bindTabsCommands, tabsCommands } from "../src/app/tabs_commands.ts";
 import { formatKeyBinding, KeymapRegistry } from "../src/keymap.ts";
@@ -34,6 +35,7 @@ import {
   scrollOffsetBy,
 } from "../src/components/scroll_area.ts";
 import { renderStatusBar } from "../src/components/statusbar.ts";
+import { clampSliderValue, SliderController, sliderThumbRectangle, sliderValueBy } from "../src/components/slider.ts";
 import { renderSpinner, spinnerGlyph } from "../src/components/spinner.ts";
 import {
   clampStepperIndex,
@@ -470,6 +472,122 @@ Deno.test("radioGroupCommands move and select options", async () => {
 
   dispose();
   assertEquals(registry.list("form"), []);
+  controller.dispose();
+});
+
+Deno.test("slider helpers clamp values and compute thumb rectangles", () => {
+  assertEquals(clampSliderValue(12, 0, 10), 10);
+  assertEquals(clampSliderValue(-2, 0, 10), 0);
+  assertEquals(sliderValueBy(4, 0, 10, 2, 3), 10);
+  assertEquals(sliderThumbRectangle({ column: 2, row: 3, width: 10, height: 2 }, 5, 0, 10, "horizontal"), {
+    column: 7,
+    row: 3,
+    width: 1,
+    height: 2,
+  });
+  assertEquals(sliderThumbRectangle({ column: 2, row: 3, width: 2, height: 10 }, 5, 0, 10, "vertical", true), {
+    column: 2,
+    row: 8,
+    width: 2,
+    height: 1,
+  });
+});
+
+Deno.test("SliderController handles keyboard mouse and inspection state", () => {
+  const changes: number[] = [];
+  const value = new Signal(4);
+  const controller = new SliderController({
+    min: 0,
+    max: 10,
+    step: 2,
+    value,
+    orientation: "horizontal",
+    adjustThumbSize: true,
+    onChange: (next) => void changes.push(next),
+  });
+
+  controller.handleKeyPress(keyPress("right"));
+  controller.handleDrag(2, 0);
+  controller.handleScroll(-1);
+  controller.handleKeyPress(keyPress("home"));
+  controller.handleKeyPress(keyPress("end"));
+
+  assertEquals(value.peek(), 10);
+  assertEquals(changes, [6, 10, 8, 0, 10]);
+  assertEquals(controller.inspect(), {
+    min: 0,
+    max: 10,
+    step: 2,
+    value: 10,
+    normalizedValue: 1,
+    orientation: "horizontal",
+    adjustThumbSize: true,
+    range: 10,
+  });
+  assertEquals(controller.thumbRectangle({ column: 0, row: 0, width: 10, height: 1 }), {
+    column: 9,
+    row: 0,
+    width: 1,
+    height: 1,
+  });
+  controller.dispose();
+  value.dispose();
+});
+
+Deno.test("sliderCommands drive value changes and presets", async () => {
+  const controller = new SliderController({
+    min: 0,
+    max: 10,
+    step: 2,
+    value: 4,
+    orientation: "horizontal",
+  });
+  const registry = new CommandRegistry();
+  const actions: unknown[] = [];
+  const dispose = bindSliderCommands(registry, controller, {
+    id: "volume",
+    idPrefix: "slider.volume",
+    group: "controls",
+    includeValueCommands: true,
+    values: [0, 4, 10],
+  });
+
+  assertEquals(
+    sliderCommands(new SliderController({ min: 0, max: 1, step: 1, value: 0, orientation: "horizontal" })).map((
+      command,
+    ) => command.id),
+    [
+      "slider.decrement",
+      "slider.increment",
+      "slider.min",
+      "slider.max",
+    ],
+  );
+  assertEquals(registry.list("controls").map((command) => command.id), [
+    "slider.volume.decrement",
+    "slider.volume.increment",
+    "slider.volume.max",
+    "slider.volume.min",
+    "slider.volume.value.0",
+    "slider.volume.value.10",
+    "slider.volume.value.4",
+  ]);
+
+  assertEquals(await registry.execute("slider.volume.increment", (action) => void actions.push(action)), true);
+  assertEquals(controller.value.peek(), 6);
+  assertEquals(await registry.execute("slider.volume.value.10", (action) => void actions.push(action)), true);
+  assertEquals(registry.enabled(registry.get("slider.volume.value.10")!), false);
+  assertEquals(actions.at(-1), {
+    type: "slider.changed",
+    payload: {
+      id: "volume",
+      value: 10,
+      inspection: controller.inspect(),
+    },
+  });
+
+  dispose();
+  assertEquals(registry.list("controls"), []);
   controller.dispose();
 });
 

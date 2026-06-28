@@ -32,6 +32,201 @@ export interface SliderOptions extends ComponentOptions {
   adjustThumbSize: boolean | Signal<boolean>;
   orientation: SliderOrientation | Signal<SliderOrientation>;
   theme: DeepPartial<SliderTheme, "thumb">;
+  controller?: SliderController;
+  onChange?: (value: number) => void | Promise<void>;
+}
+
+export interface SliderControllerOptions {
+  min: number | Signal<number>;
+  max: number | Signal<number>;
+  step: number | Signal<number>;
+  value: number | Signal<number>;
+  adjustThumbSize?: boolean | Signal<boolean>;
+  orientation: SliderOrientation | Signal<SliderOrientation>;
+  onChange?: (value: number) => void | Promise<void>;
+}
+
+export interface SliderInspection {
+  min: number;
+  max: number;
+  step: number;
+  value: number;
+  normalizedValue: number;
+  orientation: SliderOrientation;
+  adjustThumbSize: boolean;
+  range: number;
+}
+
+export interface SliderThumbRectangle {
+  column: number;
+  row: number;
+  width: number;
+  height: number;
+}
+
+export interface SliderTrackRectangle {
+  column: number;
+  row: number;
+  width: number;
+  height: number;
+}
+
+export function clampSliderValue(value: number, min: number, max: number): number {
+  return clamp(value, Math.min(min, max), Math.max(min, max));
+}
+
+export function sliderValueBy(value: number, min: number, max: number, step: number, delta: number): number {
+  return clampSliderValue(value + step * delta, min, max);
+}
+
+export function sliderThumbRectangle(
+  track: SliderTrackRectangle,
+  value: number,
+  min: number,
+  max: number,
+  orientation: SliderOrientation,
+  adjustThumbSize = false,
+): SliderThumbRectangle {
+  const range = Math.max(1, Math.abs(max - min));
+  const normalizedValue = normalize(clampSliderValue(value, min, max), min, max);
+
+  if (orientation === "horizontal") {
+    const thumbSize = adjustThumbSize ? Math.max(1, Math.round(track.width / range)) : 1;
+    return {
+      column: Math.min(
+        track.column + Math.max(0, track.width - thumbSize),
+        track.column + Math.round(Math.max(0, track.width - 1) * normalizedValue),
+      ),
+      row: track.row,
+      width: thumbSize,
+      height: track.height,
+    };
+  }
+
+  const thumbSize = adjustThumbSize ? Math.max(1, Math.round(track.height / range)) : 1;
+  return {
+    column: track.column,
+    row: Math.min(
+      track.row + Math.max(0, track.height - thumbSize),
+      track.row + Math.round(Math.max(0, track.height - 1) * normalizedValue),
+    ),
+    width: track.width,
+    height: thumbSize,
+  };
+}
+
+export class SliderController {
+  readonly min: Signal<number>;
+  readonly max: Signal<number>;
+  readonly step: Signal<number>;
+  readonly value: Signal<number>;
+  readonly adjustThumbSize: Signal<boolean>;
+  readonly orientation: Signal<SliderOrientation>;
+  readonly #ownsMin: boolean;
+  readonly #ownsMax: boolean;
+  readonly #ownsStep: boolean;
+  readonly #ownsValue: boolean;
+  readonly #ownsAdjustThumbSize: boolean;
+  readonly #ownsOrientation: boolean;
+  readonly #onChange?: (value: number) => void | Promise<void>;
+
+  constructor(options: SliderControllerOptions) {
+    this.#ownsMin = !(options.min instanceof Signal);
+    this.#ownsMax = !(options.max instanceof Signal);
+    this.#ownsStep = !(options.step instanceof Signal);
+    this.#ownsValue = !(options.value instanceof Signal);
+    this.#ownsAdjustThumbSize = !(options.adjustThumbSize instanceof Signal);
+    this.#ownsOrientation = !(options.orientation instanceof Signal);
+    this.min = signalify(options.min);
+    this.max = signalify(options.max);
+    this.step = signalify(options.step);
+    this.value = signalify(options.value);
+    this.adjustThumbSize = signalify(options.adjustThumbSize ?? false);
+    this.orientation = signalify(options.orientation);
+    this.#onChange = options.onChange;
+    this.value.value = clampSliderValue(this.value.peek(), this.min.peek(), this.max.peek());
+  }
+
+  setValue(value: number): number {
+    const next = clampSliderValue(value, this.min.peek(), this.max.peek());
+    this.value.value = next;
+    void this.#onChange?.(next);
+    return next;
+  }
+
+  increment(steps = 1): number {
+    return this.setValue(sliderValueBy(this.value.peek(), this.min.peek(), this.max.peek(), this.step.peek(), steps));
+  }
+
+  decrement(steps = 1): number {
+    return this.increment(-steps);
+  }
+
+  setMin(): number {
+    return this.setValue(this.min.peek());
+  }
+
+  setMax(): number {
+    return this.setValue(this.max.peek());
+  }
+
+  handleKeyPress({ key, ctrl, meta, shift }: { key: string; ctrl?: boolean; meta?: boolean; shift?: boolean }): void {
+    if (ctrl || meta || shift) return;
+    if (key === "up" || key === "right") {
+      this.increment();
+    } else if (key === "down" || key === "left") {
+      this.decrement();
+    } else if (key === "home") {
+      this.setMin();
+    } else if (key === "end") {
+      this.setMax();
+    }
+  }
+
+  handleDrag(movementX: number, movementY: number): number {
+    const delta = this.orientation.peek() === "horizontal" ? movementX : movementY;
+    return this.increment(delta);
+  }
+
+  handleScroll(scroll: number): number {
+    return this.increment(scroll);
+  }
+
+  thumbRectangle(track: SliderTrackRectangle): SliderThumbRectangle {
+    return sliderThumbRectangle(
+      track,
+      this.value.peek(),
+      this.min.peek(),
+      this.max.peek(),
+      this.orientation.peek(),
+      this.adjustThumbSize.peek(),
+    );
+  }
+
+  inspect(): SliderInspection {
+    const min = this.min.peek();
+    const max = this.max.peek();
+    const value = clampSliderValue(this.value.peek(), min, max);
+    return {
+      min,
+      max,
+      step: this.step.peek(),
+      value,
+      normalizedValue: normalize(value, min, max),
+      orientation: this.orientation.peek(),
+      adjustThumbSize: this.adjustThumbSize.peek(),
+      range: Math.abs(max - min),
+    };
+  }
+
+  dispose(): void {
+    if (this.#ownsMin) this.min.dispose();
+    if (this.#ownsMax) this.max.dispose();
+    if (this.#ownsStep) this.step.dispose();
+    if (this.#ownsValue) this.value.dispose();
+    if (this.#ownsAdjustThumbSize) this.adjustThumbSize.dispose();
+    if (this.#ownsOrientation) this.orientation.dispose();
+  }
 }
 
 /**
@@ -71,53 +266,39 @@ export class Slider extends Box {
   value: Signal<number>;
   adjustThumbSize: Signal<boolean>;
   orientation: Signal<SliderOrientation>;
+  readonly controller: SliderController;
 
   constructor(options: SliderOptions) {
     super(options);
-    this.min = signalify(options.min);
-    this.max = signalify(options.max);
-    this.step = signalify(options.step);
-    this.value = signalify(options.value ?? 0);
-    this.orientation = signalify(options.orientation);
-    this.adjustThumbSize = signalify(options.adjustThumbSize ?? false);
+    const ownsController = !options.controller;
+    this.controller = options.controller ??
+      new SliderController({
+        min: options.min,
+        max: options.max,
+        step: options.step,
+        value: options.value,
+        adjustThumbSize: options.adjustThumbSize,
+        orientation: options.orientation,
+        onChange: options.onChange,
+      });
+    this.min = this.controller.min;
+    this.max = this.controller.max;
+    this.step = this.controller.step;
+    this.value = this.controller.value;
+    this.orientation = this.controller.orientation;
+    this.adjustThumbSize = this.controller.adjustThumbSize;
 
-    this.on("keyPress", ({ key, ctrl, shift, meta }) => {
-      if (ctrl || shift || meta) return;
-
-      const min = this.min.peek();
-      const max = this.max.peek();
-      const step = this.step.peek();
-      const value = this.value.peek();
-
-      switch (key) {
-        case "up":
-        case "right":
-          this.value.value = clamp(value + step, min, max);
-          break;
-        case "down":
-        case "left":
-          this.value.value = clamp(value - step, min, max);
-          break;
-      }
-    });
+    this.on("keyPress", (event) => this.controller.handleKeyPress(event));
 
     this.on("mousePress", ({ drag, movementX, movementY, ctrl, shift, meta }) => {
       if (!drag || ctrl || shift || meta) return;
-
-      const { min, max, step, value, orientation } = this;
-
-      value.value = clamp(
-        value.peek() + (orientation.peek() === "horizontal" ? movementX : movementY) * step.peek(),
-        min.peek(),
-        max.peek(),
-      );
+      this.controller.handleDrag(movementX, movementY);
     });
 
     this.on("mouseScroll", ({ scroll }) => {
-      const { min, max, step, value } = this;
-
-      this.value.value = clamp(value.peek() + scroll * step.peek(), min.peek(), max.peek());
+      this.controller.handleScroll(scroll);
     });
+    if (ownsController) this.on("destroy", () => this.controller.dispose());
   }
 
   override draw(): void {
@@ -130,35 +311,12 @@ export class Slider extends Box {
       canvas: this.tui.canvas,
       style: new Computed(() => this.theme.thumb[this.state.value]),
       rectangle: new Computed(() => {
-        const value = this.value.value;
-        const min = this.min.value;
-        const max = this.max.value;
-
         const { column, row, width, height } = this.rectangle.value;
-        const horizontal = this.orientation.value === "horizontal";
-        const normalizedValue = normalize(value, min, max);
-
-        if (horizontal) {
-          const thumbSize = this.adjustThumbSize.value ? Math.round(width / (max - min)) : 1;
-
-          thumbRectangle.column = Math.min(
-            column + width - thumbSize,
-            column + Math.round((width - 1) * normalizedValue),
-          );
-          thumbRectangle.row = row;
-          thumbRectangle.width = thumbSize;
-          thumbRectangle.height = height;
-        } else {
-          const thumbSize = this.adjustThumbSize.value ? Math.round(height / (max - min)) : 1;
-
-          thumbRectangle.column = column;
-          thumbRectangle.row = Math.min(
-            row + height - thumbSize,
-            row + Math.round((height - 1) * normalizedValue),
-          );
-          thumbRectangle.width = width;
-          thumbRectangle.height = thumbSize;
-        }
+        const next = this.controller.thumbRectangle({ column, row, width, height });
+        thumbRectangle.column = next.column;
+        thumbRectangle.row = next.row;
+        thumbRectangle.width = next.width;
+        thumbRectangle.height = next.height;
 
         return thumbRectangle;
       }),

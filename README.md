@@ -251,6 +251,28 @@ const stopPriorityCommands = bindRadioGroupCommands(app.commands, priority, {
 });
 ```
 
+`SliderController` extracts numeric range behavior from `Slider`: it owns min/max/step/value signals, orientation,
+keyboard handling, drag and scroll deltas, thumb geometry, and inspection state. `sliderCommands()` and
+`bindSliderCommands()` expose increment, decrement, min, max, and optional preset-value commands for dashboards,
+settings panes, command palettes, and key bindings:
+
+```ts
+const volume = new SliderController({
+  min: 0,
+  max: 100,
+  step: 5,
+  value: 40,
+  orientation: "horizontal",
+});
+
+const stopVolumeCommands = bindSliderCommands(app.commands, volume, {
+  idPrefix: "settings.volume",
+  group: "settings",
+  includeValueCommands: true,
+  values: [0, 50, 100],
+});
+```
+
 `CommandPaletteController` and `ContextMenuController` expose the overlay widgets' query, selection, navigation, key
 handling, and inspection state without requiring a rendered component. Use them when a command surface, menu bar,
 shortcut handler, or test needs to drive the same behavior as the built-in widgets:

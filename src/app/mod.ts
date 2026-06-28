@@ -22,6 +22,7 @@ export * from "./selection_bindings.ts";
 export * from "./settings_commands.ts";
 export * from "./settings_bindings.ts";
 export * from "./settings.ts";
+export * from "./slider_commands.ts";
 export * from "./split_pane_commands.ts";
 export * from "./stepper_commands.ts";
 export * from "./surface_bindings.ts";

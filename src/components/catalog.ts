@@ -75,6 +75,7 @@ export const componentCatalog = [
   ]),
   component("slider", "Slider", "input", "Horizontal or vertical numeric slider.", [
     "component",
+    "controller",
     "keyboard",
     "mouse",
     "themeable",
