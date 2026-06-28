@@ -39,6 +39,8 @@ These helpers are intentionally small and do not choose a test framework. They w
 - `detectRuntimeCapabilities()` plus `summarizeRuntimeCapabilities()` / `formatRuntimeCapabilities()` for Workers,
   WebGPU, WebGL, OffscreenCanvas, and IndexedDB diagnostics.
 - `createRuntimePlan()` / `formatRuntimePlan()` for deterministic worker, storage, and renderer fallback decisions.
+- `detectTerminalCapabilities()` plus `createTerminalPlan()` / `formatTerminalPlan()` for deterministic color, Unicode,
+  mouse protocol, bracketed paste, hyperlink, and alternate-screen decisions.
 - `RuntimeProfile`, `RuntimeProfileRegistry`, and runtime profile catalog helpers for named, queryable policies such as
   balanced, throughput, portable, and ephemeral execution.
 - `inspectRuntimeWorkload()`, `createRuntimeWorkloadReport()`, and `formatRuntimeWorkloadMarkdown()` for scheduler and
@@ -53,12 +55,12 @@ These helpers are intentionally small and do not choose a test framework. They w
   pagination state.
 
 Prefer this layer over directly branching on globals inside components. Components should stay deterministic and easy to
-test; apps and renderers should use a runtime plan to decide whether to use Workers, WebGPU, WebGL, IndexedDB, or
-fallback implementations. `WorkerPool.run(payload, { signal })` can abort pending callers, `pendingCount()` exposes
-lightweight backpressure state, and `workerFactory` lets tests inject a deterministic worker without starting real
-threads. Use `createRuntimeWorkloadReport()` when a demo, settings pane, or CI log needs one view over both scheduler
-queues and worker pools. It reports capacity, running work, queued work, saturation, idle state, and termination state
-without requiring callers to special-case each runtime primitive.
+test; apps and renderers should use runtime and terminal plans to decide whether to use Workers, WebGPU, WebGL,
+IndexedDB, Unicode glyphs, mouse protocols, or fallback implementations. `WorkerPool.run(payload, { signal })` can abort
+pending callers, `pendingCount()` exposes lightweight backpressure state, and `workerFactory` lets tests inject a
+deterministic worker without starting real threads. Use `createRuntimeWorkloadReport()` when a demo, settings pane, or
+CI log needs one view over both scheduler queues and worker pools. It reports capacity, running work, queued work,
+saturation, idle state, and termination state without requiring callers to special-case each runtime primitive.
 
 `DataQueryController` is the shared runtime primitive for async table, catalog, picker, and dashboard datasets. It wraps
 `CachedAsyncResource`, exposes normalized `params`, `state`, and `result` signals, and keeps query, filter, sort, page,

@@ -1614,6 +1614,9 @@ Optional high-performance APIs are surfaced through `src/runtime/mod.ts`:
 - `detectRuntimeCapabilities()`
 - `runtimeCapabilityEntries()` / `summarizeRuntimeCapabilities()` / `formatRuntimeCapabilities()`
 - `createRuntimePlan()` / `formatRuntimePlan()`
+- `detectTerminalCapabilities()` / `terminalCapabilityEntries()` / `summarizeTerminalCapabilities()` /
+  `formatTerminalCapabilities()`
+- `createTerminalPlan()` / `formatTerminalPlan()`
 - `RuntimeRendererBackendRegistry` / `RuntimeRendererBackendController` / `selectRuntimeRendererBackend()` /
   `formatRuntimeRendererBackendCatalogMarkdown()`
 - `RuntimeProfile` / `RuntimeProfileRegistry` / `createRuntimeProfileCatalogReport()` /
@@ -1639,23 +1642,25 @@ Optional high-performance APIs are surfaced through `src/runtime/mod.ts`:
 - `createRuntimeStore()`
 - `createPersistentSignal()` / `PersistentSignal`
 
-Use these instead of hard-coding global checks inside components. `formatRuntimeCapabilities()` produces a readable
-diagnostic summary for settings screens and logs, while `createRuntimePlan()` turns the same capability set into
-deterministic app strategies for worker execution, persistent storage, and renderer fallback. `deno task capabilities`
-prints the summary, default plan, built-in runtime profile table, and renderer backend catalog; pass `--json` to that
-task for structured output. `RuntimeRendererBackendRegistry`, `RuntimeRendererBackendController`,
-`queryRuntimeRendererBackends()`, and `selectRuntimeRendererBackend()` expose the renderer side as a composable catalog:
-WebGPU three.js ASCII, WebGL canvas, and portable CPU terminal backends can be selected, cycled, ranked, filtered, and
-reported from the same capability snapshot used by runtime profiles. `bindRuntimeRendererBackendCommands()` and
-`bindRuntimeRendererBackendSetting()` wire that active backend into command palettes, key help, and persisted settings
-with the same controller-first shape as runtime profiles, while `createRuntimeRendererBackendPlugin()` packages the
-controller, commands, persistence, keymap mirroring, and custom lifecycle hooks into one app plugin.
-`RuntimeWorkloadRegistry`, `inspectRuntimeWorkload()`, `createRuntimeWorkloadReport()`, and
-`formatRuntimeWorkloadMarkdown()` normalize `AsyncScheduler.inspect()` and `WorkerPool.inspect()` into one pressure
-report for settings panes, demos, and CI logs: capacity, running work, queued work, saturation, idle state, and
-termination state are all exposed through a JSON-friendly shape. The registry adds disposer-returning dynamic source
-registration, replacement-safe unregistering, aggregate inspection, and Markdown formatting for apps where plugins own
-their own schedulers or worker pools. Runtime profiles are named policy presets for settings screens and launchers:
+Use these instead of hard-coding global checks inside components. `formatRuntimeCapabilities()` and
+`formatTerminalCapabilities()` produce readable diagnostic summaries for settings screens and logs, while
+`createRuntimePlan()` and `createTerminalPlan()` turn the same capability sets into deterministic app strategies for
+worker execution, persistent storage, renderer fallback, color depth, Unicode text, mouse protocol, bracketed paste, and
+alternate-screen behavior. `deno task capabilities` prints the runtime summary, terminal summary, default plans,
+built-in runtime profile table, and renderer backend catalog; pass `--json` to that task for structured output.
+`RuntimeRendererBackendRegistry`, `RuntimeRendererBackendController`, `queryRuntimeRendererBackends()`, and
+`selectRuntimeRendererBackend()` expose the renderer side as a composable catalog: WebGPU three.js ASCII, WebGL canvas,
+and portable CPU terminal backends can be selected, cycled, ranked, filtered, and reported from the same capability
+snapshot used by runtime profiles. `bindRuntimeRendererBackendCommands()` and `bindRuntimeRendererBackendSetting()` wire
+that active backend into command palettes, key help, and persisted settings with the same controller-first shape as
+runtime profiles, while `createRuntimeRendererBackendPlugin()` packages the controller, commands, persistence, keymap
+mirroring, and custom lifecycle hooks into one app plugin. `RuntimeWorkloadRegistry`, `inspectRuntimeWorkload()`,
+`createRuntimeWorkloadReport()`, and `formatRuntimeWorkloadMarkdown()` normalize `AsyncScheduler.inspect()` and
+`WorkerPool.inspect()` into one pressure report for settings panes, demos, and CI logs: capacity, running work, queued
+work, saturation, idle state, and termination state are all exposed through a JSON-friendly shape. The registry adds
+disposer-returning dynamic source registration, replacement-safe unregistering, aggregate inspection, and Markdown
+formatting for apps where plugins own their own schedulers or worker pools. Runtime profiles are named policy presets
+for settings screens and launchers:
 
 ```ts
 const runtimeProfiles = createRuntimeProfileRegistry();

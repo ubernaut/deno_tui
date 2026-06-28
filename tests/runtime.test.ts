@@ -8,6 +8,13 @@ import {
   summarizeRuntimeCapabilities,
 } from "../src/runtime/capabilities.ts";
 import {
+  createTerminalPlan,
+  detectTerminalCapabilities,
+  formatTerminalCapabilities,
+  formatTerminalPlan,
+  terminalCapabilityEntries,
+} from "../src/runtime/terminal_capabilities.ts";
+import {
   createRuntimeProfileCatalogReport,
   createRuntimeProfileController,
   createRuntimeProfileRegistry,
@@ -127,6 +134,102 @@ Deno.test("runtime plans choose worker storage and renderer strategies", () => {
   assertEquals(conservativePlan.workers.strategy, "main-thread");
   assertEquals(conservativePlan.storage.strategy, "memory");
   assertEquals(conservativePlan.renderer.strategy, "cpu");
+});
+
+Deno.test("terminal capability helpers detect color input and interaction support", () => {
+  const capabilities = detectTerminalCapabilities({
+    isTty: true,
+    platform: "linux",
+    env: {
+      TERM: "xterm-256color",
+      COLORTERM: "truecolor",
+      LANG: "en_US.UTF-8",
+      TERM_PROGRAM: "WezTerm",
+    },
+  });
+
+  assertEquals(capabilities, {
+    interactive: true,
+    colorDepth: "truecolor",
+    unicode: true,
+    hyperlinks: true,
+    mouse: true,
+    sgrMouse: true,
+    bracketedPaste: true,
+    alternateScreen: true,
+    cursorShape: true,
+  });
+  assertEquals(terminalCapabilityEntries(capabilities).map((entry) => [entry.id, entry.available]), [
+    ["interactive", true],
+    ["unicode", true],
+    ["hyperlinks", true],
+    ["mouse", true],
+    ["sgrMouse", true],
+    ["bracketedPaste", true],
+    ["alternateScreen", true],
+    ["cursorShape", true],
+  ]);
+  assertEquals(
+    formatTerminalCapabilities(capabilities).split("\n").slice(0, 3),
+    [
+      "Terminal capabilities: 8/8 available, truecolor color",
+      "ok Interactive TTY",
+      "ok Unicode",
+    ],
+  );
+});
+
+Deno.test("terminal plans choose portable fallbacks from preferences and detected features", () => {
+  const dumb = detectTerminalCapabilities({
+    isTty: true,
+    env: { TERM: "dumb", LANG: "C" },
+    platform: "linux",
+  });
+
+  assertEquals(dumb.interactive, false);
+  assertEquals(dumb.colorDepth, "none");
+
+  const forced = detectTerminalCapabilities({
+    isTty: false,
+    forceColor: "2",
+    env: { TERM: "xterm", LANG: "C" },
+    platform: "linux",
+  });
+  assertEquals(forced.colorDepth, "ansi256");
+
+  const plan = createTerminalPlan({
+    interactive: true,
+    colorDepth: "ansi256",
+    unicode: false,
+    hyperlinks: false,
+    mouse: true,
+    sgrMouse: false,
+    bracketedPaste: false,
+    alternateScreen: true,
+    cursorShape: false,
+  }, {
+    preferUnicode: true,
+    preferHyperlinks: true,
+  });
+
+  assertEquals(plan.colorDepth, "ansi256");
+  assertEquals(plan.textMode, "ascii");
+  assertEquals(plan.mouseProtocol, "vt200");
+  assertEquals(plan.alternateScreen, true);
+  assertEquals(plan.bracketedPaste, false);
+  assertEquals(plan.hyperlinks, false);
+  assertEquals(
+    formatTerminalPlan(plan),
+    [
+      "Terminal plan:",
+      "color    ansi256",
+      "text     ascii",
+      "mouse    vt200",
+      "screen   alternate",
+      "paste    plain",
+      "links    plain",
+    ].join("\n"),
+  );
 });
 
 Deno.test("runtime profiles expose named strategy policies", () => {
