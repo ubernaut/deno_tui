@@ -913,6 +913,9 @@ app.onDispose(commandSurface.dispose);
 ```
 
 For one-off projections, `commandSurfaceItems()` and `executeCommandSurfaceItem()` remain available.
+`searchCommandSurfaceItems()` and `rankCommandSurfaceItems()` add deterministic command lookup across labels, ids,
+descriptions, keywords, and key bindings, so palettes, menu launchers, docs browsers, and plugin marketplaces can share
+the same ranking behavior without reimplementing filtering.
 
 `FormController` keeps form state separate from rendering:
 

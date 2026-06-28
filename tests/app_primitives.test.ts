@@ -10,6 +10,8 @@ import {
   commandSurfaceItems,
   createCommandSurface,
   executeCommandSurfaceItem,
+  rankCommandSurfaceItems,
+  searchCommandSurfaceItems,
 } from "../src/app/command_bindings.ts";
 import { CommandRegistry } from "../src/app/commands.ts";
 import type { Command, CommandActionFactory } from "../src/app/commands.ts";
@@ -645,6 +647,65 @@ Deno.test("commandSurfaceItems adapts registry commands for palettes and menus",
     commandSurfaceItems(registry, { group: "routes", includeBindingsInKeywords: false })[1].keywords,
     ["route.home", "routes", "Open the home route", "landing"],
   );
+});
+
+Deno.test("command surface search ranks labels ids keywords and key bindings", () => {
+  const registry = new CommandRegistry<{ type: "route"; payload: string }>();
+  registry.register({
+    id: "route.home",
+    label: "Go Home",
+    description: "Open the home route",
+    group: "routes",
+    keywords: ["landing"],
+    binding: { key: "1" },
+    action: { type: "route", payload: "home" },
+  });
+  registry.register({
+    id: "route.system-monitor",
+    label: "System Monitor",
+    description: "Open runtime dashboard",
+    group: "routes",
+    keywords: ["runtime", "metrics"],
+    binding: { key: "m", ctrl: true },
+    action: { type: "route", payload: "monitor" },
+  });
+  registry.register({
+    id: "theme.next",
+    label: "Next Theme",
+    group: "theme",
+    keywords: ["appearance"],
+    disabled: true,
+    binding: { key: "t" },
+  });
+
+  assertEquals(searchCommandSurfaceItems(registry, { query: "sys mon" }).map((item) => item.id), [
+    "route.system-monitor",
+  ]);
+  assertEquals(searchCommandSurfaceItems(registry, { query: "C-m" }).map((item) => item.id), [
+    "route.system-monitor",
+  ]);
+  assertEquals(searchCommandSurfaceItems(registry, { query: "theme", limit: 1 })[0], {
+    id: "theme.next",
+    label: "Next Theme",
+    keywords: ["theme.next", "theme", "appearance", "t"],
+    disabled: true,
+  });
+  assertEquals(
+    searchCommandSurfaceItems(registry, {
+      query: "theme",
+      includeDisabled: false,
+    }),
+    [],
+  );
+
+  const ranked = rankCommandSurfaceItems(commandSurfaceItems(registry), "runtime");
+  assertEquals(ranked.map((match) => [match.item.id, match.matched]), [
+    ["route.system-monitor", ["runtime"]],
+  ]);
+  assertEquals(rankCommandSurfaceItems(commandSurfaceItems(registry), "", { limit: 2 }).map((match) => match.item.id), [
+    "route.home",
+    "route.system-monitor",
+  ]);
 });
 
 Deno.test("executeCommandSurfaceItem dispatches selected command items", async () => {

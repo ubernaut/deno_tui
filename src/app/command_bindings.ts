@@ -25,6 +25,17 @@ export interface CommandSurfaceOptions extends CommandKeyBindingOptions {
   includeBindingsInKeywords?: boolean;
 }
 
+export interface CommandSearchMatch {
+  item: CommandSurfaceItem;
+  score: number;
+  matched: string[];
+}
+
+export interface CommandSearchOptions extends CommandSurfaceOptions {
+  query?: string;
+  limit?: number;
+}
+
 export interface CommandKeymapBindingOptions extends CommandKeyBindingOptions {
   includeDisabled?: boolean;
 }
@@ -105,6 +116,43 @@ export function commandSurfaceItems<TAction extends Action = Action>(
     }));
 }
 
+export function searchCommandSurfaceItems<TAction extends Action = Action>(
+  registry: CommandRegistry<TAction>,
+  options: CommandSearchOptions = {},
+): CommandSurfaceItem[] {
+  return rankCommandSurfaceItems(commandSurfaceItems(registry, options), options.query ?? "", options)
+    .map((match) => match.item);
+}
+
+export function rankCommandSurfaceItems(
+  items: readonly CommandSurfaceItem[],
+  query: string,
+  options: Pick<CommandSearchOptions, "limit"> = {},
+): CommandSearchMatch[] {
+  const terms = searchTerms(query);
+  const ranked = items
+    .map((item, index) => {
+      const match = scoreCommandSurfaceItem(item, terms);
+      return match
+        ? {
+          item,
+          score: match.score,
+          matched: match.matched,
+          index,
+        }
+        : undefined;
+    })
+    .filter((match): match is CommandSearchMatch & { index: number } => match !== undefined)
+    .sort((left, right) =>
+      right.score - left.score ||
+      Number(left.item.disabled) - Number(right.item.disabled) ||
+      left.item.label.localeCompare(right.item.label) ||
+      left.index - right.index
+    );
+  const limit = options.limit === undefined ? ranked.length : Math.max(0, Math.floor(options.limit));
+  return ranked.slice(0, limit).map(({ index: _index, ...match }) => match);
+}
+
 export function executeCommandSurfaceItem<TAction extends Action = Action>(
   registry: CommandRegistry<TAction>,
   item: Pick<CommandSurfaceItem, "id">,
@@ -166,4 +214,58 @@ function commandKeywords<TAction extends Action = Action>(
     ...(command.keywords ?? []),
     includeBinding && command.binding ? bindingId(command.binding) : undefined,
   ].filter((keyword): keyword is string => !!keyword);
+}
+
+function scoreCommandSurfaceItem(
+  item: CommandSurfaceItem,
+  terms: readonly string[],
+): { score: number; matched: string[] } | undefined {
+  if (terms.length === 0) {
+    return { score: item.disabled ? -1 : 0, matched: [] };
+  }
+
+  const fields = [
+    { value: item.label, weight: 100 },
+    { value: item.id, weight: 80 },
+    ...(item.keywords ?? []).map((value) => ({ value, weight: 40 })),
+  ].map((field) => ({ ...field, normalized: normalizeSearchText(field.value) }));
+
+  let score = item.disabled ? -10 : 0;
+  const matched: string[] = [];
+  for (const term of terms) {
+    let best = 0;
+    let bestValue: string | undefined;
+    for (const field of fields) {
+      const fieldScore = scoreSearchField(field.normalized, term, field.weight);
+      if (fieldScore > best) {
+        best = fieldScore;
+        bestValue = field.value;
+      }
+    }
+    if (best <= 0) return undefined;
+    score += best;
+    if (bestValue) matched.push(bestValue);
+  }
+
+  return { score, matched: [...new Set(matched)] };
+}
+
+function scoreSearchField(field: string, term: string, weight: number): number {
+  if (field === term) return weight + 40;
+  if (field.startsWith(term)) return weight + 25;
+  if (field.split(" ").some((part) => part.startsWith(term))) return weight + 15;
+  if (field.includes(term)) return weight + 5;
+  return acronym(field).startsWith(term) ? weight : 0;
+}
+
+function searchTerms(query: string): string[] {
+  return normalizeSearchText(query).split(/\s+/).filter(Boolean);
+}
+
+function normalizeSearchText(value: string): string {
+  return value.trim().toLowerCase().replace(/[_.:/]+/g, " ").replace(/\s+/g, " ");
+}
+
+function acronym(value: string): string {
+  return value.split(/\s+/).map((part) => part[0] ?? "").join("");
 }
