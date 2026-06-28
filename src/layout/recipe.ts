@@ -1,5 +1,6 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { Rectangle } from "../types.ts";
+import { Computed, Signal } from "../signals/mod.ts";
 import { dockRect, insetRect, resolveBreakpoint, splitRect } from "./responsive.ts";
 
 export type LayoutRegionDirection = "row" | "column";
@@ -46,6 +47,60 @@ export interface ResolvedLayoutRecipe<T extends string = string> {
   rects: Partial<Record<T, Rectangle>>;
 }
 
+export interface LayoutRecipeControllerInspection<T extends string = string> extends ResolvedLayoutRecipe<T> {
+  slots: T[];
+}
+
+export class LayoutRecipeController<T extends string = string> {
+  readonly bounds: Signal<Rectangle>;
+  readonly resolved: Computed<ResolvedLayoutRecipe<T>>;
+  readonly breakpoint: Computed<string>;
+  readonly rects: Computed<Partial<Record<T, Rectangle>>>;
+  readonly #ownsBounds: boolean;
+
+  constructor(
+    bounds: Rectangle | Signal<Rectangle>,
+    readonly recipe: ResponsiveLayoutRecipe<T>,
+  ) {
+    this.bounds = bounds instanceof Signal ? bounds : new Signal(bounds);
+    this.#ownsBounds = !(bounds instanceof Signal);
+    this.resolved = new Computed(() => resolveLayoutRecipe(this.bounds.value, this.recipe));
+    this.breakpoint = new Computed(() => this.resolved.value.breakpoint);
+    this.rects = new Computed(() => this.resolved.value.rects);
+  }
+
+  update(bounds: Rectangle): void {
+    this.bounds.value = bounds;
+  }
+
+  rect(id: T): Computed<Rectangle | undefined> {
+    return new Computed(() => this.rects.value[id]);
+  }
+
+  slots(breakpoint = this.breakpoint.peek()): T[] {
+    const region = this.recipe.layouts[breakpoint] ?? this.recipe.layouts[this.recipe.fallback ?? ""] ??
+      firstLayout(this.recipe.layouts);
+    return region ? layoutRecipeSlots(region) : [];
+  }
+
+  inspect(): LayoutRecipeControllerInspection<T> {
+    const resolved = this.resolved.peek();
+    return {
+      ...resolved,
+      slots: this.slots(resolved.breakpoint),
+    };
+  }
+
+  dispose(): void {
+    this.resolved.dispose();
+    this.breakpoint.dispose();
+    this.rects.dispose();
+    if (this.#ownsBounds) {
+      this.bounds.dispose();
+    }
+  }
+}
+
 export function resolveLayoutRecipe<T extends string>(
   bounds: Rectangle,
   recipe: ResponsiveLayoutRecipe<T>,
@@ -65,6 +120,13 @@ export function layoutRecipeSlots<T extends string>(region: LayoutRegion<T>): T[
     if (!leaf.hidden) slots.add(leaf.id);
   });
   return [...slots];
+}
+
+export function createLayoutRecipeController<T extends string>(
+  bounds: Rectangle | Signal<Rectangle>,
+  recipe: ResponsiveLayoutRecipe<T>,
+): LayoutRecipeController<T> {
+  return new LayoutRecipeController(bounds, recipe);
 }
 
 function assignRegionRects<T extends string>(

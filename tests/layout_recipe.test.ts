@@ -1,5 +1,11 @@
 import { assertEquals } from "./deps.ts";
-import { layoutRecipeSlots, resolveLayoutRecipe, type ResponsiveLayoutRecipe } from "../src/layout/mod.ts";
+import {
+  createLayoutRecipeController,
+  layoutRecipeSlots,
+  resolveLayoutRecipe,
+  type ResponsiveLayoutRecipe,
+} from "../src/layout/mod.ts";
+import { Signal } from "../src/signals/mod.ts";
 
 type SlotId = "header" | "nav" | "main" | "details" | "footer";
 
@@ -94,4 +100,33 @@ Deno.test("resolveLayoutRecipe falls back when breakpoint layout is missing", ()
 
   assertEquals(result.breakpoint, "large");
   assertEquals(result.rects.main, { column: 0, row: 0, width: 120, height: 10 });
+});
+
+Deno.test("LayoutRecipeController tracks bounds and exposes computed rects", async () => {
+  const bounds = new Signal({ column: 0, row: 0, width: 40, height: 12 });
+  const controller = createLayoutRecipeController(bounds, recipe);
+  const main = controller.rect("main");
+
+  await Promise.resolve();
+
+  assertEquals(controller.breakpoint.value, "compact");
+  assertEquals(main.value, { column: 1, row: 4, width: 38, height: 6 });
+  assertEquals(controller.inspect(), {
+    breakpoint: "compact",
+    rects: {
+      header: { column: 0, row: 0, width: 40, height: 2 },
+      footer: { column: 0, row: 11, width: 40, height: 1 },
+      main: { column: 1, row: 4, width: 38, height: 6 },
+    },
+    slots: ["header", "footer", "main"],
+  });
+
+  controller.update({ column: 0, row: 0, width: 120, height: 30 });
+
+  assertEquals(controller.breakpoint.value, "wide");
+  assertEquals(main.value, { column: 31, row: 3, width: 62, height: 27 });
+  assertEquals(controller.slots(), ["header", "nav", "main", "details"]);
+
+  main.dispose();
+  controller.dispose();
 });

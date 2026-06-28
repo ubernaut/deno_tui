@@ -271,6 +271,7 @@ Responsive helpers are also exported for common app shell layout:
 - `splitRect()`
 - `dockRect()`
 - `resolveLayoutRecipe()`
+- `createLayoutRecipeController()`
 - `layoutRecipeSlots()`
 - `splitPaneRects()`
 - `resizeSplitPane()`
@@ -297,6 +298,19 @@ const shell = resolveLayoutRecipe(tui.rectangle.value, {
 });
 
 const mainRect = shell.rects.main;
+```
+
+Use `createLayoutRecipeController()` when the app shell should react to a viewport signal and expose derived slot
+rectangles without rebuilding computed state in each component module:
+
+```ts
+const shell = createLayoutRecipeController(tui.rectangle, recipe);
+const mainRect = shell.rect("main");
+
+app.onDispose(() => {
+  mainRect.dispose();
+  shell.dispose();
+});
 ```
 
 ## App Primitives
