@@ -367,6 +367,22 @@ export interface ThemeProviderPreviewOptions {
 }
 
 export type ThemePaletteName = "plain" | "neon" | "terminal";
+/** Built-in palette id or custom palette definition accepted by theme engines. */
+export type ThemePaletteReference = ThemePaletteName | ThemePalette;
+
+/** Named semantic token set used to seed a theme engine. */
+export interface ThemePalette {
+  id: string;
+  label?: string;
+  tokens: Partial<ThemeTokens>;
+}
+
+/** Serializable palette metadata for inspectors and settings UIs. */
+export interface ThemePaletteInspection {
+  id: string;
+  label: string;
+  tokens: ThemeTokenName[];
+}
 
 export const themePalettes: Record<ThemePaletteName, Partial<ThemeTokens>> = {
   plain: {
@@ -401,6 +417,85 @@ export const themePalettes: Record<ThemePaletteName, Partial<ThemeTokens>> = {
     surface: emptyStyle,
   },
 };
+
+/** Registry for built-in and custom semantic token palettes. */
+export class ThemePaletteRegistry {
+  readonly #palettes = new Map<string, ThemePalette>();
+
+  /** Creates a registry and optionally registers initial palettes. */
+  constructor(palettes: Iterable<ThemePalette | ThemePaletteName> = defaultThemePaletteDefinitions()) {
+    for (const palette of palettes) {
+      this.register(palette);
+    }
+  }
+
+  /** Registers or replaces a palette by id. */
+  register(palette: ThemePalette | ThemePaletteName): this {
+    const normalized = normalizeThemePalette(palette);
+    this.#palettes.set(normalized.id, normalized);
+    return this;
+  }
+
+  /** Removes a palette by id. */
+  unregister(id: string): boolean {
+    return this.#palettes.delete(id);
+  }
+
+  /** Returns whether a palette id is registered. */
+  has(id: string): boolean {
+    return this.#palettes.has(id);
+  }
+
+  /** Looks up a palette by id and returns a defensive copy. */
+  get(id: string): ThemePalette | undefined {
+    const palette = this.#palettes.get(id);
+    return palette
+      ? {
+        ...palette,
+        tokens: { ...palette.tokens },
+      }
+      : undefined;
+  }
+
+  /** Returns registered palette ids in stable order. */
+  ids(): string[] {
+    return [...this.#palettes.keys()].sort();
+  }
+
+  /** Returns palette tokens or throws when the id is unknown. */
+  tokens(id: string): Partial<ThemeTokens> {
+    const palette = this.get(id);
+    if (!palette) {
+      throw new ThemePaletteNotFoundError(id);
+    }
+    return palette.tokens;
+  }
+
+  /** Builds a theme engine from a registered palette and optional overrides. */
+  engine(id: string, options: ThemeEngineOptions = {}): ThemeEngine {
+    return createThemeEngineFromPalette(this.tokens(id), options);
+  }
+
+  /** Returns serializable palette metadata. */
+  inspect(): ThemePaletteInspection[] {
+    return this.ids().map((id) => {
+      const palette = this.#palettes.get(id)!;
+      return {
+        id,
+        label: palette.label ?? id,
+        tokens: sortedThemeTokenNames(Object.keys(palette.tokens)),
+      };
+    });
+  }
+}
+
+/** Error thrown when a palette registry lookup targets an unknown id. */
+export class ThemePaletteNotFoundError extends Error {
+  constructor(id: string) {
+    super(`Theme palette "${id}" is not registered`);
+    this.name = "ThemePaletteNotFoundError";
+  }
+}
 
 export function mergeComponentThemeDefinition(
   base: ComponentThemeDefinition = {},
@@ -708,13 +803,21 @@ export function inspectThemeCoverage(
 }
 
 export function createThemeEngine(
-  palette: ThemePaletteName = "plain",
+  palette: ThemePaletteReference = "plain",
+  options: Omit<ThemeEngineOptions, "tokens"> & { tokens?: Partial<ThemeTokens> } = {},
+): ThemeEngine {
+  return createThemeEngineFromPalette(resolveThemePaletteTokens(palette), options);
+}
+
+/** Builds a theme engine from concrete palette tokens plus optional overrides. */
+export function createThemeEngineFromPalette(
+  palette: Partial<ThemeTokens>,
   options: Omit<ThemeEngineOptions, "tokens"> & { tokens?: Partial<ThemeTokens> } = {},
 ): ThemeEngine {
   return new ThemeEngine({
     ...options,
     tokens: {
-      ...themePalettes[palette],
+      ...palette,
       ...(options.tokens ?? {}),
     },
   });
@@ -723,7 +826,7 @@ export function createThemeEngine(
 export interface ThemePack {
   id: string;
   label?: string;
-  palette?: ThemePaletteName;
+  palette?: ThemePaletteReference;
   options?: ThemeEngineOptions;
 }
 
@@ -737,7 +840,7 @@ export interface ThemePackManifest {
 export interface ThemePackInspection {
   id: string;
   label: string;
-  palette: ThemePaletteName;
+  palette: string;
   components: ThemeComponentInspection[];
 }
 
@@ -959,7 +1062,7 @@ export class ThemeRegistry {
       return {
         id,
         label: pack.label ?? id,
-        palette: pack.palette ?? "plain",
+        palette: themePaletteId(pack.palette ?? "plain"),
         components: this.engine(id).inspect().components,
       };
     });
@@ -1134,6 +1237,22 @@ export const defaultThemePacks: ThemePack[] = [
   { id: "neon", label: "Neon", palette: "neon" },
   { id: "terminal", label: "Terminal", palette: "terminal" },
 ];
+
+/** Returns the built-in palette definitions as registerable palette objects. */
+export function defaultThemePaletteDefinitions(): ThemePalette[] {
+  return (Object.entries(themePalettes) as [ThemePaletteName, Partial<ThemeTokens>][]).map(([id, tokens]) => ({
+    id,
+    label: titleCase(id),
+    tokens,
+  }));
+}
+
+/** Creates a palette registry with built-in palettes by default. */
+export function createThemePaletteRegistry(
+  palettes: Iterable<ThemePalette | ThemePaletteName> = defaultThemePaletteDefinitions(),
+): ThemePaletteRegistry {
+  return new ThemePaletteRegistry(palettes);
+}
 
 export function createThemeRegistry(packs: Iterable<ThemePack> = defaultThemePacks): ThemeRegistry {
   return new ThemeRegistry(packs);
@@ -1312,6 +1431,28 @@ function mergeThemeExtends(
 function normalizeThemeExtends(value: string | readonly string[] | undefined): string[] {
   if (value === undefined) return [];
   return typeof value === "string" ? [value] : [...value];
+}
+
+function normalizeThemePalette(palette: ThemePalette | ThemePaletteName): ThemePalette {
+  if (typeof palette === "string") {
+    return {
+      id: palette,
+      label: titleCase(palette),
+      tokens: { ...themePalettes[palette] },
+    };
+  }
+  return {
+    ...palette,
+    tokens: { ...palette.tokens },
+  };
+}
+
+function resolveThemePaletteTokens(palette: ThemePaletteReference): Partial<ThemeTokens> {
+  return typeof palette === "string" ? themePalettes[palette] : palette.tokens;
+}
+
+function themePaletteId(palette: ThemePaletteReference): string {
+  return typeof palette === "string" ? palette : palette.id;
 }
 
 function isThemeStyleReferencePipeline(
@@ -1530,6 +1671,10 @@ function mergeThemeCatalogComponents(
 
 function positiveModulo(value: number, divisor: number): number {
   return ((value % divisor) + divisor) % divisor;
+}
+
+function titleCase(value: string): string {
+  return value.length === 0 ? value : `${value[0].toUpperCase()}${value.slice(1)}`;
 }
 
 function ansiStyleCodes(spec: AnsiStyleSpec): number[] {

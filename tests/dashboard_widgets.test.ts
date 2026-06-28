@@ -24,11 +24,14 @@ import {
   createThemeCatalog,
   createThemeEngine,
   createThemeEngineFromManifest,
+  createThemeEngineFromPalette,
   createThemeLayerStack,
+  createThemePaletteRegistry,
   createThemeProvider,
   createThemeRegistry,
   createThemeRegistryFromManifests,
   defaultThemePacks,
+  defaultThemePaletteDefinitions,
   diffThemeEngines,
   emptyStyle,
   inspectThemeCoverage,
@@ -40,6 +43,7 @@ import {
   ThemeEngine,
   ThemeInheritanceError,
   ThemePackNotFoundError,
+  ThemePaletteNotFoundError,
   themePalettes,
   themeStates,
   themeTokenNames,
@@ -266,6 +270,61 @@ Deno.test("ANSI theme token specs build semantic token maps", () => {
   assertEquals(tokens.surface?.("x"), "\x1b[48;5;235mx\x1b[0m");
 });
 
+Deno.test("theme palette registries build custom palette-backed engines", () => {
+  const registry = createThemePaletteRegistry([
+    "plain",
+    {
+      id: "matrix",
+      label: "Matrix",
+      tokens: {
+        foreground: (value) => `fg:${value}`,
+        accent: (value) => `accent:${value}`,
+      },
+    },
+  ]);
+
+  registry.register({
+    id: "matrix",
+    label: "Matrix Reloaded",
+    tokens: {
+      foreground: (value) => `green:${value}`,
+      danger: (value) => `danger:${value}`,
+    },
+  });
+
+  const engine = registry.engine("matrix", {
+    components: {
+      Button: {
+        base: { base: "foreground", active: "danger" },
+      },
+    },
+  });
+  const direct = createThemeEngineFromPalette(registry.tokens("matrix"), {
+    components: { Badge: { base: { base: "foreground" } } },
+  });
+
+  assertEquals(defaultThemePaletteDefinitions().map((palette) => palette.id), ["plain", "neon", "terminal"]);
+  assertEquals(registry.ids(), ["matrix", "plain"]);
+  assertEquals(registry.inspect(), [
+    { id: "matrix", label: "Matrix Reloaded", tokens: ["foreground", "danger"] },
+    {
+      id: "plain",
+      label: "Plain",
+      tokens: ["foreground", "muted", "accent", "success", "warning", "danger", "surface"],
+    },
+  ]);
+  assertEquals(engine.component("Button").base("x"), "green:x");
+  assertEquals(engine.component("Button").active("x"), "danger:x");
+  assertEquals(direct.component("Badge").base("x"), "green:x");
+
+  try {
+    registry.tokens("missing");
+    throw new Error("expected missing palette");
+  } catch (error) {
+    assertEquals(error instanceof ThemePaletteNotFoundError, true);
+  }
+});
+
 Deno.test("theme manifests compile serializable packs into engines and registries", () => {
   const manifest = {
     id: "ops",
@@ -461,6 +520,45 @@ Deno.test("createThemeEngine merges preset palettes with overrides", () => {
 
   assertEquals(themePalettes.terminal.success?.("x"), "\x1b[32mx\x1b[0m");
   assertEquals(engine.theme.tokens.accent("x"), "custom:x");
+});
+
+Deno.test("custom palettes flow through theme packs providers and factories", () => {
+  const palette = {
+    id: "contrast",
+    label: "Contrast",
+    tokens: {
+      foreground: (value: string) => `contrast:${value}`,
+      accent: (value: string) => `accent:${value}`,
+    },
+  };
+  const registry = createThemeRegistry([
+    {
+      id: "contrast-pack",
+      label: "Contrast Pack",
+      palette,
+      options: {
+        components: {
+          Button: { base: { base: "foreground", focused: "accent" } },
+        },
+      },
+    },
+  ]);
+  const provider = createThemeProvider({ registry, activeId: "contrast-pack" });
+  const factory = createThemeEngineFactory({
+    id: "contrast-factory",
+    palette,
+    options: {
+      components: {
+        Badge: { base: { base: "foreground" } },
+      },
+    },
+  });
+
+  assertEquals(registry.inspect()[0].palette, "contrast");
+  assertEquals(provider.engine.peek().component("Button").focused("x"), "accent:x");
+  assertEquals(provider.catalog().themes[0].palette, "contrast");
+  assertEquals(factory.inspect().palette, "contrast");
+  assertEquals(factory.build().component("Badge").base("x"), "contrast:x");
 });
 
 Deno.test("theme definitions compose component bases and variants", () => {

@@ -1087,7 +1087,9 @@ import {
   createThemeEngineCache,
   createThemeEngineFactoryRegistry,
   createThemeEngineFromManifest,
+  createThemeEngineFromPalette,
   createThemeLayerStack,
+  createThemePaletteRegistry,
   createThemePlugin,
   createThemeProvider,
   createThemeProviderCache,
@@ -1131,6 +1133,22 @@ const themeEngine = createThemeEngine("neon", appTheme)
       Modal: { variants: { palette: { focused: createAnsiStyle({ foreground: "cyan" }) } } },
     },
   });
+
+const palettes = createThemePaletteRegistry([
+  "terminal",
+  {
+    id: "contrast",
+    label: "Contrast",
+    tokens: createAnsiThemeTokens({
+      foreground: { foreground: "brightWhite" },
+      accent: { foreground: "brightCyan", bold: true },
+      danger: { foreground: "brightRed", bold: true },
+      surface: { background: 235 },
+    }),
+  },
+]);
+const contrastEngine = palettes.engine("contrast", appTheme);
+const detachedPaletteEngine = createThemeEngineFromPalette(palettes.tokens("contrast"), appTheme);
 
 const themeFactories = createThemeEngineFactoryRegistry([
   {
@@ -1296,12 +1314,16 @@ references, missing component parents, and inheritance cycles before a pack is r
 missing states per component and variant, so theme packs can fail CI before unstyled states accidentally ship.
 `diffThemeEngines()` previews changed semantic tokens and resolved component states between two engines, which makes it
 practical to build theme review panels, snapshot tests, and migration reports around real rendered output instead of raw
-object comparison. `createThemePlugin()` is the app-level installer for the same engine layer: it owns or accepts a
-`ThemeProvider`, registers theme and layer commands, optionally mirrors command bindings into key help, and connects the
-active pack and active layers to `SettingsController` persistence with one disposable plugin. `ThemeEngineCache` and
-`ThemeProviderCache` are opt-in runtime accelerators for redraw-heavy apps: they memoize component themes and resolved
-state styles, expose hit/miss inspection, and the provider cache automatically invalidates when theme packs or layers
-change.
+object comparison. `ThemePaletteRegistry` lets apps and plugins register custom palette engines with stable ids, inspect
+available token coverage, replace palettes deterministically, and build `ThemeEngine` instances from the same semantic
+token contract used by built-in palettes. `createThemeEngineFromPalette()` is the low-level bridge for detached or
+generated palettes, while `ThemeRegistry`, `ThemeProvider`, and `ThemeEngineFactory` also accept custom palette objects
+for white-label packs and plugin-provided themes. `createThemePlugin()` is the app-level installer for the same engine
+layer: it owns or accepts a `ThemeProvider`, registers theme and layer commands, optionally mirrors command bindings
+into key help, and connects the active pack and active layers to `SettingsController` persistence with one disposable
+plugin. `ThemeEngineCache` and `ThemeProviderCache` are opt-in runtime accelerators for redraw-heavy apps: they memoize
+component themes and resolved state styles, expose hit/miss inspection, and the provider cache automatically invalidates
+when theme packs or layers change.
 
 ## Runtime Capabilities
 
@@ -1609,9 +1631,10 @@ const preset = findAsciiDemoPreset("mixed-best");
 | `app/showcase.ts`            | Full Neon Exodus-style widget and visualization showcase     |
 | `app/main.ts`                | Live system monitor dashboard with selectable panels         |
 
-Run the theme engine factory demo with:
+Run the theme manifest and engine factory demos with:
 
 ```sh
+deno task theme-manifest
 deno task theme-engines
 ```
 

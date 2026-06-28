@@ -5,7 +5,7 @@ import {
   createThemeEngine,
   type ThemeEngine,
   type ThemeEngineOptions,
-  type ThemePaletteName,
+  type ThemePaletteReference,
   type ThemeTokenName,
   themeTokenNames,
   type ThemeValidationIssue,
@@ -17,7 +17,7 @@ export interface ThemeEngineFactoryDefinition {
   id: string;
   label?: string;
   description?: string;
-  palette?: ThemePaletteName;
+  palette?: ThemePaletteReference;
   options?: ThemeEngineOptions;
   tags?: readonly string[];
   priority?: number;
@@ -28,7 +28,7 @@ export interface ThemeEngineFactoryInspection {
   id: string;
   label: string;
   description?: string;
-  palette: ThemePaletteName;
+  palette: string;
   tags: string[];
   priority: number;
   tokenOverrides: ThemeTokenName[];
@@ -57,7 +57,7 @@ export class ThemeEngineFactory {
   readonly id: string;
   readonly label: string;
   readonly description?: string;
-  readonly palette: ThemePaletteName;
+  readonly palette: ThemePaletteReference;
   readonly tags: readonly string[];
   readonly priority: number;
   readonly options: ThemeEngineOptions;
@@ -96,7 +96,7 @@ export class ThemeEngineFactory {
       id: this.id,
       label: this.label,
       description: this.description,
-      palette: this.palette,
+      palette: themePaletteId(this.palette),
       tags: [...this.tags],
       priority: this.priority,
       tokenOverrides: sortedThemeTokens(Object.keys(this.options.tokens ?? {})),
@@ -221,4 +221,8 @@ export async function prewarmThemeEngines(
 function sortedThemeTokens(values: Iterable<string>): ThemeTokenName[] {
   const requested = new Set(values);
   return themeTokenNames.filter((token) => requested.has(token));
+}
+
+function themePaletteId(palette: ThemePaletteReference): string {
+  return typeof palette === "string" ? palette : palette.id;
 }
