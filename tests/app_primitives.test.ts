@@ -1,6 +1,9 @@
 import { assertEquals } from "./deps.ts";
+import { createApp } from "../src/app/app.ts";
 import { ActionBus } from "../src/app/actions.ts";
+import { CommandRegistry } from "../src/app/commands.ts";
 import { RouteManager } from "../src/app/router.ts";
+import type { Tui } from "../src/tui.ts";
 
 Deno.test("ActionBus dispatches to subscribers in registration order", async () => {
   const bus = new ActionBus<{ type: "append"; payload: string }>();
@@ -28,4 +31,54 @@ Deno.test("RouteManager navigates and cycles known routes only", () => {
   assertEquals(routes.navigate("settings"), true);
   assertEquals(routes.active()?.title, "Settings");
   assertEquals(routes.next()?.id, "home");
+});
+
+Deno.test("CommandRegistry projects commands into menus palettes and key bindings", () => {
+  const registry = new CommandRegistry<{ type: "route"; payload: string }>();
+  registry.register({
+    id: "route.home",
+    label: "Go Home",
+    group: "routes",
+    keywords: ["home"],
+    binding: { key: "1" },
+    action: { type: "route", payload: "home" },
+  });
+  registry.register({
+    id: "route.admin",
+    label: "Admin",
+    group: "routes",
+    disabled: true,
+    binding: { key: "a", ctrl: true },
+    action: { type: "route", payload: "admin" },
+  });
+
+  assertEquals(registry.projections("routes"), [
+    { id: "route.admin", label: "Admin", keywords: undefined, disabled: true },
+    { id: "route.home", label: "Go Home", keywords: ["home"], disabled: false },
+  ]);
+  assertEquals(registry.projections("routes", false), [
+    { id: "route.home", label: "Go Home", keywords: ["home"], disabled: false },
+  ]);
+  assertEquals(registry.keyBindings("routes"), [
+    { key: "1", description: "Go Home", group: "routes" },
+  ]);
+});
+
+Deno.test("TuiApp dispatches command actions through the action bus", async () => {
+  const tui = { destroy() {} } as unknown as Tui;
+  const app = createApp<{ type: "toast"; payload: string }>({ tui });
+  const seen: string[] = [];
+  app.actions.subscribe((action) => {
+    seen.push(action.payload);
+  });
+  app.commands.register({
+    id: "toast.show",
+    label: "Show Toast",
+    action: () => ({ type: "toast", payload: "hello" }),
+  });
+
+  assertEquals(await app.executeCommand("toast.show"), true);
+  assertEquals(await app.executeCommand("missing"), false);
+  assertEquals(seen, ["hello"]);
+  app.destroy();
 });

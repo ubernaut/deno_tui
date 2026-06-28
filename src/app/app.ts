@@ -3,6 +3,7 @@ import { FocusManager } from "../focus.ts";
 import { KeymapRegistry } from "../keymap.ts";
 import { Tui, type TuiOptions } from "../tui.ts";
 import { type Action, ActionBus } from "./actions.ts";
+import { CommandRegistry } from "./commands.ts";
 import { type Route, RouteManager } from "./router.ts";
 
 export interface TuiAppOptions<TRoute extends Route = Route> {
@@ -15,6 +16,7 @@ export interface TuiAppOptions<TRoute extends Route = Route> {
 export class TuiApp<TAction extends Action = Action, TRoute extends Route = Route> {
   readonly tui: Tui;
   readonly actions = new ActionBus<TAction>();
+  readonly commands = new CommandRegistry<TAction>();
   readonly focus = new FocusManager();
   readonly keymap = new KeymapRegistry();
   readonly routes: RouteManager<TRoute>;
@@ -31,6 +33,10 @@ export class TuiApp<TAction extends Action = Action, TRoute extends Route = Rout
 
   destroy(): void {
     this.tui.destroy();
+  }
+
+  executeCommand(id: string): Promise<boolean> {
+    return this.commands.execute(id, (action) => this.actions.dispatch(action));
   }
 }
 

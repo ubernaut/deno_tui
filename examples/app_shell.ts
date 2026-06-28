@@ -79,11 +79,59 @@ const scrollLines = [
   "  Demos use the same theming API exported to application authors.",
 ];
 
-app.keymap.register({ key: "1", description: "overview", group: "routes" });
-app.keymap.register({ key: "2", description: "widgets", group: "routes" });
-app.keymap.register({ key: "3", description: "runtime", group: "routes" });
-app.keymap.register({ key: "p", description: "palette", group: "global" });
-app.keymap.register({ key: "q", description: "quit", group: "global" });
+app.commands.register({
+  id: "route.overview",
+  label: "Go to Overview",
+  group: "routes",
+  keywords: ["home", "route"],
+  binding: { key: "1" },
+  action: { type: "route", payload: "overview" },
+});
+app.commands.register({
+  id: "route.widgets",
+  label: "Go to Widgets",
+  group: "routes",
+  keywords: ["components", "route"],
+  binding: { key: "2" },
+  action: { type: "route", payload: "widgets" },
+});
+app.commands.register({
+  id: "route.runtime",
+  label: "Go to Runtime",
+  group: "routes",
+  keywords: ["workers", "webgpu", "route"],
+  binding: { key: "3" },
+  action: { type: "route", payload: "runtime" },
+});
+app.commands.register({
+  id: "palette.toggle",
+  label: "Toggle Command Palette",
+  group: "global",
+  keywords: ["command", "search"],
+  binding: { key: "p" },
+  action: () => ({ type: "palette", payload: !paletteVisible.peek() }),
+});
+app.commands.register({
+  id: "toast.show",
+  label: "Show Toast",
+  group: "global",
+  keywords: ["notification"],
+  action: { type: "toast", payload: "Command executed" },
+});
+app.commands.register({
+  id: "app.quit",
+  label: "Quit",
+  group: "global",
+  binding: { key: "q" },
+  action: () => {
+    app.destroy();
+    Deno.exit(0);
+  },
+});
+
+for (const binding of app.commands.keyBindings()) {
+  app.keymap.register(binding);
+}
 
 app.actions.subscribe((action) => {
   if (action.type === "route") {
@@ -289,12 +337,7 @@ new CommandPalette({
   parent: app.tui,
   theme: themeEngine.component("CommandPalette"),
   zIndex: 11,
-  items: [
-    { id: "overview", label: "Go to Overview", keywords: ["route", "home"] },
-    { id: "widgets", label: "Go to Widgets", keywords: ["route", "components"] },
-    { id: "runtime", label: "Go to Runtime", keywords: ["route", "workers", "webgpu"] },
-    { id: "toast", label: "Show Toast", keywords: ["notification"] },
-  ],
+  items: new Computed(() => app.commands.projections(undefined, false)),
   rectangle: new Computed(() => ({
     column: Math.max(3, Math.floor(app.tui.rectangle.value.width / 2) - 23),
     row: 5,
@@ -307,16 +350,15 @@ new CommandPalette({
 app.tui.on("keyPress", ({ key, ctrl, meta }) => {
   if (ctrl || meta) return;
   if (key === "q") {
-    app.destroy();
-    Deno.exit(0);
+    void app.executeCommand("app.quit");
   } else if (key === "p") {
-    void app.actions.dispatch({ type: "palette", payload: !paletteVisible.peek() });
+    void app.executeCommand("palette.toggle");
   } else if (key === "1") {
-    void app.actions.dispatch({ type: "route", payload: "overview" });
+    void app.executeCommand("route.overview");
   } else if (key === "2") {
-    void app.actions.dispatch({ type: "route", payload: "widgets" });
+    void app.executeCommand("route.widgets");
   } else if (key === "3") {
-    void app.actions.dispatch({ type: "route", payload: "runtime" });
+    void app.executeCommand("route.runtime");
   } else if (key === "escape") {
     void app.actions.dispatch({ type: "palette", payload: false });
   }

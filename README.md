@@ -203,6 +203,7 @@ This fork exports lightweight app primitives for larger TUIs:
 
 - `createApp()` / `TuiApp`
 - `ActionBus`
+- `CommandRegistry`
 - `RouteManager`
 - `FocusManager`
 - `FocusScope`
