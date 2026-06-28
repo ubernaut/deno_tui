@@ -235,6 +235,7 @@ This fork exports lightweight app primitives for larger TUIs:
 - `FocusScope`
 - `KeymapRegistry`
 - `SelectionController` and selection helpers
+- viewport helpers such as `viewportWindow()`, `viewportOffsetBy()`, and `viewportThumb()`
 
 They are optional and composable. Existing component-first apps continue to work. Use `app.enableFocusNavigation()` or
 `bindFocusNavigation()` to opt into Tab/Shift+Tab traversal for registered focusable components.
@@ -276,6 +277,14 @@ const selection = new SelectionController({
 selection.move(1);
 selection.toggle();
 const window = selection.window(12);
+```
+
+Viewport helpers keep scrolling, virtual rows, and scrollbar thumbs consistent:
+
+```ts
+const maxOffset = maxViewportOffset(contentWidth, contentHeight, width, height);
+const offset = viewportOffsetBy(currentOffset, maxOffset, 0, 1);
+const rows = viewportWindow(items.length, selection.state.value.activeIndex, height);
 ```
 
 ## Theming

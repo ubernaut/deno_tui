@@ -1,6 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { Signal } from "./signals/mod.ts";
 import { signalify } from "./utils/signals.ts";
+import { viewportWindow } from "./viewport.ts";
 
 export type SelectionMode = "single" | "multiple";
 
@@ -111,11 +112,7 @@ export function selectRange(state: SelectionState, length: number, toIndex: numb
 }
 
 export function selectionWindow(length: number, activeIndex: number, capacity: number): { start: number; end: number } {
-  const safeCapacity = Math.max(0, Math.floor(capacity));
-  if (length <= 0 || safeCapacity <= 0) return { start: 0, end: 0 };
-  const active = clampSelectionIndex(length, activeIndex);
-  const start = Math.max(0, Math.min(active - Math.floor(safeCapacity / 2), Math.max(0, length - safeCapacity)));
-  return { start, end: Math.min(length, start + safeCapacity) };
+  return viewportWindow(length, activeIndex, capacity);
 }
 
 export class SelectionController {

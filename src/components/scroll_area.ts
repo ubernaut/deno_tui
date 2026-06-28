@@ -3,9 +3,16 @@ import type { TextRectangle } from "../canvas/text.ts";
 import { Component, type ComponentOptions } from "../component.ts";
 import { Computed, Effect, Signal } from "../signals/mod.ts";
 import type { Offset, Rectangle } from "../types.ts";
-import { clamp } from "../utils/numbers.ts";
 import { signalify } from "../utils/signals.ts";
 import { View } from "../view.ts";
+import {
+  clampViewportOffset,
+  maxViewportOffset,
+  viewportOffsetBy,
+  type ViewportThumb,
+  viewportThumb,
+  viewportThumbGlyph,
+} from "../viewport.ts";
 import { Text } from "./text.ts";
 
 export interface ScrollAreaOptions extends ComponentOptions {
@@ -15,11 +22,7 @@ export interface ScrollAreaOptions extends ComponentOptions {
   showScrollbar?: boolean | Signal<boolean>;
 }
 
-export interface ScrollbarThumb {
-  start: number;
-  size: number;
-  visible: boolean;
-}
+export type ScrollbarThumb = ViewportThumb;
 
 export function maxScrollOffset(
   contentWidth: number,
@@ -27,46 +30,23 @@ export function maxScrollOffset(
   viewportWidth: number,
   viewportHeight: number,
 ): Offset {
-  return {
-    columns: Math.max(0, contentWidth - Math.max(0, viewportWidth)),
-    rows: Math.max(0, contentHeight - Math.max(0, viewportHeight)),
-  };
+  return maxViewportOffset(contentWidth, contentHeight, viewportWidth, viewportHeight);
 }
 
 export function clampScrollOffset(offset: Offset, maxOffset: Offset): Offset {
-  return {
-    columns: clamp(offset.columns, 0, Math.max(0, maxOffset.columns)),
-    rows: clamp(offset.rows, 0, Math.max(0, maxOffset.rows)),
-  };
+  return clampViewportOffset(offset, maxOffset);
 }
 
 export function scrollOffsetBy(offset: Offset, maxOffset: Offset, columns: number, rows: number): Offset {
-  return clampScrollOffset({
-    columns: offset.columns + columns,
-    rows: offset.rows + rows,
-  }, maxOffset);
+  return viewportOffsetBy(offset, maxOffset, columns, rows);
 }
 
 export function scrollbarThumb(contentLength: number, viewportLength: number, offset: number): ScrollbarThumb {
-  const viewport = Math.max(0, viewportLength);
-  const content = Math.max(0, contentLength);
-  if (viewport === 0 || content <= viewport) {
-    return { start: 0, size: viewport, visible: false };
-  }
-
-  const size = clamp(Math.round((viewport / content) * viewport), 1, viewport);
-  const maxStart = Math.max(0, viewport - size);
-  const maxOffset = Math.max(1, content - viewport);
-  return {
-    start: clamp(Math.round((offset / maxOffset) * maxStart), 0, maxStart),
-    size,
-    visible: true,
-  };
+  return viewportThumb(contentLength, viewportLength, offset);
 }
 
 export function scrollbarGlyph(row: number, thumb: ScrollbarThumb): string {
-  if (!thumb.visible) return " ";
-  return row >= thumb.start && row < thumb.start + thumb.size ? "█" : "│";
+  return viewportThumbGlyph(row, thumb);
 }
 
 export class ScrollArea extends Component {

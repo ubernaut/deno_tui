@@ -9,6 +9,7 @@ export * from "./src/selection.ts";
 export * from "./src/theme.ts";
 export * from "./src/types.ts";
 export * from "./src/view.ts";
+export * from "./src/viewport.ts";
 export * from "./src/tui.ts";
 
 export * from "./src/signals/mod.ts";
