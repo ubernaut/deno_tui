@@ -1927,9 +1927,13 @@ async resource loaders, `pipeline` for cached scheduler-backed transforms, `them
 packs, `theme-engines` for factory prewarming, `theme-pipeline` for runtime theme transforms, `theme-gallery` for
 searchable theme previews, `capabilities` for platform feature detection, `benchmark` for performance smoke checks,
 `api-inventory` for public export graph inspection, `components` for widget catalog reports, `layout-recipe` for
-responsive recipe inspection, `grwizard` for the responsive GPU/model wizard, and `health` for the contributor gate.
-Benchmark runs print per-case timings plus an aggregate summary; `deno task benchmark -- --json` emits the same
-threshold-aware summary as structured data and exits nonzero when a case fails its limits.
+responsive recipe inspection, `grwizard` for the responsive GPU/model wizard, and `health` for the contributor gate. The
+launcher metadata is also exported from `scripts/visualization_launcher.ts` as a queryable catalog:
+`queryVisualizationLaunchTargets()`, `createVisualizationLaunchReport()`, `inspectVisualizationLaunchTargets()`, and
+`formatVisualizationLaunchMarkdown()` provide the same structured target list for custom launchers, docs pages, and CI
+reports without duplicating aliases or descriptions. Benchmark runs print per-case timings plus an aggregate summary;
+`deno task benchmark -- --json` emits the same threshold-aware summary as structured data and exits nonzero when a case
+fails its limits.
 
 Direct Deno tasks are also available:
 

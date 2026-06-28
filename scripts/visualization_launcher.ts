@@ -2,6 +2,39 @@ export interface VisualizationLaunchTarget {
   task: string;
   aliases: readonly string[];
   description: string;
+  category?: VisualizationLaunchCategory;
+  tags?: readonly string[];
+}
+
+export type VisualizationLaunchCategory = "app" | "demo" | "report" | "tool" | "check";
+
+export interface VisualizationLaunchQuery {
+  search?: string;
+  category?: VisualizationLaunchCategory;
+  tag?: string;
+  task?: string;
+}
+
+export interface VisualizationLaunchInspection {
+  count: number;
+  categories: VisualizationLaunchCategory[];
+  tags: string[];
+  tasks: string[];
+}
+
+export interface VisualizationLaunchReport {
+  targets: VisualizationLaunchTarget[];
+  inspection: VisualizationLaunchInspection;
+}
+
+export interface VisualizationLaunchReportOptions {
+  targets?: readonly VisualizationLaunchTarget[];
+  query?: VisualizationLaunchQuery;
+}
+
+export interface VisualizationLaunchMarkdownOptions extends VisualizationLaunchReportOptions {
+  title?: string;
+  includeSummary?: boolean;
 }
 
 export const visualizationLaunchTargets: readonly VisualizationLaunchTarget[] = [
@@ -9,119 +42,250 @@ export const visualizationLaunchTargets: readonly VisualizationLaunchTarget[] = 
     task: "showcase",
     aliases: ["showcase", "demo"],
     description: "full widget showcase",
+    category: "app",
+    tags: ["widgets", "visualization"],
   },
   {
     task: "three-ascii",
     aliases: ["polygons", "polygon", "geometry", "three", "three-ascii", "ascii"],
     description: "standalone three.js ASCII geometry demo",
+    category: "demo",
+    tags: ["three", "ascii", "visualization"],
   },
   {
     task: "dashboard",
     aliases: ["dashboard", "dash"],
     description: "dashboard widgets and theme engine demo",
+    category: "demo",
+    tags: ["dashboard", "theme"],
   },
   {
     task: "app-shell",
     aliases: ["app-shell", "shell", "app"],
     description: "app primitives, command palette, routes, and toasts demo",
+    category: "demo",
+    tags: ["app", "commands", "routes"],
   },
   {
     task: "layout-recipe",
     aliases: ["layout-recipe", "layout-report", "recipe"],
     description: "responsive layout recipe report",
+    category: "report",
+    tags: ["layout", "responsive"],
   },
   {
     task: "viz",
     aliases: ["monitor", "system-monitor", "system", "viz"],
     description: "system monitor visualization dashboard",
+    category: "app",
+    tags: ["monitor", "visualization", "three"],
   },
   {
     task: "worker-demo",
     aliases: ["worker", "workers", "worker-demo"],
     description: "abortable WorkerPool concurrency demo",
+    category: "demo",
+    tags: ["runtime", "workers"],
   },
   {
     task: "action-middleware",
     aliases: ["actions", "action-middleware", "middleware"],
     description: "action middleware and plugin pipeline demo",
+    category: "demo",
+    tags: ["app", "plugins", "actions"],
   },
   {
     task: "cached-resource",
     aliases: ["resource", "cached-resource", "resources"],
     description: "cached async resource loader demo",
+    category: "demo",
+    tags: ["runtime", "resource", "cache"],
   },
   {
     task: "cached-pipeline",
     aliases: ["pipeline", "cached-pipeline", "cache"],
     description: "cached scheduler-backed data pipeline demo",
+    category: "demo",
+    tags: ["runtime", "pipeline", "cache"],
   },
   {
     task: "theme-manifest",
     aliases: ["theme-manifest", "theme-pack", "manifest"],
     description: "serializable theme manifest report",
+    category: "report",
+    tags: ["theme", "manifest"],
   },
   {
     task: "theme-engines",
     aliases: ["theme-engines", "theme-factories", "themes"],
     description: "theme engine factory registry demo",
+    category: "demo",
+    tags: ["theme", "factory"],
   },
   {
     task: "theme-pipeline",
     aliases: ["theme-pipeline", "theme-runtime", "theme-transforms"],
     description: "runtime theme transform pipeline demo",
+    category: "demo",
+    tags: ["theme", "pipeline"],
   },
   {
     task: "theme-gallery",
     aliases: ["theme-gallery", "theme-picker", "theme-catalog"],
     description: "searchable theme gallery and preview report",
+    category: "report",
+    tags: ["theme", "catalog"],
   },
   {
     task: "capabilities",
     aliases: ["capabilities", "caps", "runtime"],
     description: "runtime capability report",
+    category: "report",
+    tags: ["runtime", "capabilities"],
   },
   {
     task: "benchmark",
     aliases: ["benchmark", "bench", "perf"],
     description: "layout and rendering benchmark report",
+    category: "tool",
+    tags: ["performance", "benchmark"],
   },
   {
     task: "api-inventory",
     aliases: ["api-inventory", "api", "exports"],
     description: "public API export inventory",
+    category: "tool",
+    tags: ["api", "exports"],
   },
   {
     task: "component-catalog",
     aliases: ["components", "component-catalog", "widgets"],
     description: "component catalog report",
+    category: "report",
+    tags: ["components", "catalog"],
   },
   {
     task: "grwizard",
     aliases: ["grwizard", "wizard"],
     description: "responsive GPU/model wizard demo",
+    category: "app",
+    tags: ["gpu", "wizard", "responsive"],
   },
   {
     task: "health",
     aliases: ["health", "check"],
     description: "contributor health gate",
+    category: "check",
+    tags: ["ci", "health"],
   },
 ];
 
 export function resolveVisualizationTask(target = "showcase"): string | undefined {
-  const normalized = target.toLowerCase();
-  return visualizationLaunchTargets.find((entry) => entry.aliases.includes(normalized))?.task;
+  return findVisualizationLaunchTarget(target)?.task;
+}
+
+export function findVisualizationLaunchTarget(target = "showcase"): VisualizationLaunchTarget | undefined {
+  const normalized = normalizeLaunchLookup(target);
+  return visualizationLaunchTargets.find((entry) =>
+    normalizeLaunchLookup(entry.task) === normalized ||
+    entry.aliases.some((alias) => normalizeLaunchLookup(alias) === normalized)
+  );
+}
+
+export function queryVisualizationLaunchTargets(
+  query: VisualizationLaunchQuery = {},
+  targets: readonly VisualizationLaunchTarget[] = visualizationLaunchTargets,
+): VisualizationLaunchTarget[] {
+  return targets
+    .filter((target) => matchesLaunchTarget(target, query))
+    .sort((left, right) => launchSortKey(left).localeCompare(launchSortKey(right)));
+}
+
+export function inspectVisualizationLaunchTargets(
+  targets: readonly VisualizationLaunchTarget[] = visualizationLaunchTargets,
+): VisualizationLaunchInspection {
+  return {
+    count: targets.length,
+    categories: uniqueSorted(targets.map((target) => target.category).filter(isLaunchCategory)),
+    tags: uniqueSorted(targets.flatMap((target) => target.tags ?? [])),
+    tasks: uniqueSorted(targets.map((target) => target.task)),
+  };
+}
+
+export function createVisualizationLaunchReport(
+  options: VisualizationLaunchReportOptions = {},
+): VisualizationLaunchReport {
+  const targets = queryVisualizationLaunchTargets(options.query, options.targets ?? visualizationLaunchTargets);
+  return {
+    targets,
+    inspection: inspectVisualizationLaunchTargets(targets),
+  };
+}
+
+export function formatVisualizationLaunchMarkdown(options: VisualizationLaunchMarkdownOptions = {}): string {
+  const report = createVisualizationLaunchReport(options);
+  const lines = [`# ${options.title ?? "Visualization Launcher"}`, ""];
+  if (options.includeSummary ?? true) {
+    lines.push(
+      `${report.inspection.count} targets across ${report.inspection.categories.length} categories.`,
+      "",
+    );
+  }
+  lines.push("| Target | Task | Category | Tags | Description |");
+  lines.push("| --- | --- | --- | --- | --- |");
+  for (const target of report.targets) {
+    lines.push(
+      `| ${target.aliases[0] ?? target.task} | ${target.task} | ${target.category ?? "-"} | ${
+        (target.tags ?? []).join(", ") || "-"
+      } | ${target.description} |`,
+    );
+  }
+  return lines.join("\n");
 }
 
 export function formatVisualizationUsage(command = "./visualization"): string {
-  const aliases = visualizationLaunchTargets
-    .map((entry) => entry.aliases[0])
+  const aliases = queryVisualizationLaunchTargets()
+    .map((entry) => entry.aliases[0] ?? entry.task)
     .join("|");
   const lines = [
     `usage: ${command} [${aliases}] [args...]`,
     "",
   ];
-  for (const entry of visualizationLaunchTargets) {
-    lines.push(`  ${entry.aliases[0].padEnd(12, " ")} ${entry.description}`);
+  for (const entry of queryVisualizationLaunchTargets()) {
+    lines.push(`  ${(entry.aliases[0] ?? entry.task).padEnd(14, " ")} ${entry.description}`);
   }
   return lines.join("\n");
+}
+
+function matchesLaunchTarget(target: VisualizationLaunchTarget, query: VisualizationLaunchQuery): boolean {
+  if (query.task && target.task !== query.task) return false;
+  if (query.category && target.category !== query.category) return false;
+  if (query.tag && !(target.tags ?? []).includes(query.tag)) return false;
+  if (!query.search) return true;
+  const parts = query.search.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return true;
+  const haystack = [
+    target.task,
+    target.description,
+    target.category,
+    ...(target.tags ?? []),
+    ...target.aliases,
+  ].join(" ").toLowerCase();
+  return parts.every((part) => haystack.includes(part));
+}
+
+function launchSortKey(target: VisualizationLaunchTarget): string {
+  return `${target.category ?? "zz"}:${target.aliases[0] ?? target.task}`;
+}
+
+function normalizeLaunchLookup(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+
+function uniqueSorted<T extends string>(values: Iterable<T>): T[] {
+  return [...new Set(values)].sort();
+}
+
+function isLaunchCategory(value: string | undefined): value is VisualizationLaunchCategory {
+  return value === "app" || value === "demo" || value === "report" || value === "tool" || value === "check";
 }

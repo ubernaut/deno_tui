@@ -1,6 +1,11 @@
 import { assertEquals } from "./deps.ts";
 import {
+  createVisualizationLaunchReport,
+  findVisualizationLaunchTarget,
+  formatVisualizationLaunchMarkdown,
   formatVisualizationUsage,
+  inspectVisualizationLaunchTargets,
+  queryVisualizationLaunchTargets,
   resolveVisualizationTask,
   visualizationLaunchTargets,
 } from "../scripts/visualization_launcher.ts";
@@ -24,6 +29,7 @@ Deno.test("visualization launcher resolves public aliases to deno tasks", () => 
   assertEquals(resolveVisualizationTask("widgets"), "component-catalog");
   assertEquals(resolveVisualizationTask("wizard"), "grwizard");
   assertEquals(resolveVisualizationTask("check"), "health");
+  assertEquals(findVisualizationLaunchTarget("system-monitor")?.task, "viz");
   assertEquals(resolveVisualizationTask("missing"), undefined);
 });
 
@@ -37,4 +43,61 @@ Deno.test("visualization launcher help includes all primary aliases", () => {
   for (const target of visualizationLaunchTargets) {
     assertEquals(usage.includes(target.aliases[0]), true);
   }
+});
+
+Deno.test("visualization launch catalog filters targets by category tag and search", () => {
+  assertEquals(queryVisualizationLaunchTargets({ category: "app" }).map((entry) => entry.task), [
+    "grwizard",
+    "viz",
+    "showcase",
+  ]);
+  assertEquals(queryVisualizationLaunchTargets({ tag: "theme" }).map((entry) => entry.task), [
+    "dashboard",
+    "theme-engines",
+    "theme-pipeline",
+    "theme-gallery",
+    "theme-manifest",
+  ]);
+  assertEquals(queryVisualizationLaunchTargets({ search: "worker concurrency" }).map((entry) => entry.task), [
+    "worker-demo",
+  ]);
+});
+
+Deno.test("visualization launch catalog reports inspection and markdown", () => {
+  const report = createVisualizationLaunchReport({ query: { category: "check" } });
+  const markdown = formatVisualizationLaunchMarkdown({
+    query: { tag: "capabilities" },
+    title: "Runtime Launchers",
+  });
+
+  assertEquals(report, {
+    targets: [
+      {
+        task: "health",
+        aliases: ["health", "check"],
+        description: "contributor health gate",
+        category: "check",
+        tags: ["ci", "health"],
+      },
+    ],
+    inspection: {
+      count: 1,
+      categories: ["check"],
+      tags: ["ci", "health"],
+      tasks: ["health"],
+    },
+  });
+  assertEquals(inspectVisualizationLaunchTargets(report.targets).count, 1);
+  assertEquals(
+    markdown,
+    [
+      "# Runtime Launchers",
+      "",
+      "1 targets across 1 categories.",
+      "",
+      "| Target | Task | Category | Tags | Description |",
+      "| --- | --- | --- | --- | --- |",
+      "| capabilities | capabilities | report | runtime, capabilities | runtime capability report |",
+    ].join("\n"),
+  );
 });

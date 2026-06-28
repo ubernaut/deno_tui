@@ -22,6 +22,10 @@ Typecheck with:
 deno task viz:check
 ```
 
+The project-root `./visualization` launcher is backed by `scripts/visualization_launcher.ts`. That module exports query,
+inspection, report, and Markdown helpers for building custom demo pickers or docs pages from the same target metadata
+used by launcher tests.
+
 ## Controls
 
 - `F1`: Help
