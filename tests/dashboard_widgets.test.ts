@@ -1935,7 +1935,7 @@ Deno.test("grWizard theme packs populate a selectable theme gallery", () => {
     states: ["base", "focused"],
   });
 
-  assertEquals(gallery.count, 6);
+  assertEquals(gallery.count, grWizardThemePacks.length);
   assertEquals(gallery.matches.map((match) => match.item.id), ["grwizard-parchment", "grwizard-arcane"]);
   assertEquals(gallery.items.every((item) => item.valid), true);
   assertEquals(gallery.items.find((item) => item.id === "grwizard-arcane")?.description?.includes("cyan"), true);

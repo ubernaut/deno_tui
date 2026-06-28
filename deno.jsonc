@@ -23,6 +23,7 @@
     "app-plugin-catalog": "deno run -A ./examples/app_plugin_catalog.ts",
     "adopter-workbench": "deno run -A ./examples/adopter_workbench.ts",
     "demo-gallery": "deno run -A ./examples/demo_gallery.ts",
+    "batteries": "deno run -A ./examples/batteries_included.ts",
     "visualization": "deno run -A ./scripts/demo_launcher.ts",
     "form-workflow": "deno run -A ./examples/form_workflow.ts",
     "table-selection": "deno run -A ./examples/table_selection_workflow.ts",

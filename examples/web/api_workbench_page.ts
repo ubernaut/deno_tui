@@ -313,7 +313,7 @@ function draw(): void {
   drawThemes(frame, width);
   const body = { column: 1, row: 3, width: Math.max(10, width - 2), height: Math.max(6, height - 5) };
   const layout = workspaceLayout({
-    column: body.column,
+    column: 0,
     row: 0,
     width: Math.max(1, body.width - 1),
     height: body.height,
@@ -323,7 +323,7 @@ function draw(): void {
   const offset = workspaceScroll.offset.peek().rows;
   const virtual = Array.from(
     { length: Math.max(body.height, layout.contentHeight) },
-    () => paint(" ".repeat(width), theme().text, theme().bgAlt),
+    () => paint(" ".repeat(layout.bounds.width), theme().text, theme().bgAlt),
   );
   fillRect(virtual, layout.bounds, theme().bgAlt);
   const hitStart = hitTargets.length;
@@ -332,7 +332,7 @@ function draw(): void {
   } else {
     const visible = (["inspector", "data", "controls", "logs"] as PanelId[]).filter((id) => !minimized.peek()[id]);
     if (visible.length === 0) {
-      write(virtual, 1, body.column + 2, paint("All panels minimized. Press R or click restore."));
+      write(virtual, 1, 2, paint("All panels minimized. Press R or click restore."));
       hitTargets.push({ rect: { ...layout.bounds, row: 0 }, hit: { type: "restore" } });
     } else {
       for (const id of visible) {
@@ -341,7 +341,7 @@ function draw(): void {
       }
     }
   }
-  translateWorkspaceHits(hitStart, body.row - offset, body);
+  translateWorkspaceHits(hitStart, body.column, body.row - offset, body);
   blitWorkspace(frame, virtual, body, offset, layout.bounds.width);
   renderWorkspaceScrollbar(frame, body, layout.contentHeight, offset);
   renderShelf(frame);
@@ -634,10 +634,10 @@ function preferredPanelHeight(id: PanelId, width: number): number {
   return 11;
 }
 
-function translateWorkspaceHits(startIndex: number, rowDelta: number, clip: Rectangle): void {
+function translateWorkspaceHits(startIndex: number, columnDelta: number, rowDelta: number, clip: Rectangle): void {
   for (let index = hitTargets.length - 1; index >= startIndex; index -= 1) {
     const target = hitTargets[index]!;
-    const translated = { ...target.rect, row: target.rect.row + rowDelta };
+    const translated = { ...target.rect, column: target.rect.column + columnDelta, row: target.rect.row + rowDelta };
     if (!intersects(translated, clip)) {
       hitTargets.splice(index, 1);
       continue;

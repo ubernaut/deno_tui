@@ -594,6 +594,73 @@ function normalize(value, min2, max2) {
   return (value - min2) / (max2 - min2) || 0;
 }
 
+// src/viewport.ts
+function maxViewportOffset(contentWidth, contentHeight, viewportWidth, viewportHeight) {
+  return {
+    columns: Math.max(0, contentWidth - Math.max(0, viewportWidth)),
+    rows: Math.max(0, contentHeight - Math.max(0, viewportHeight))
+  };
+}
+function clampViewportOffset(offset, maxOffset) {
+  return {
+    columns: clamp(offset.columns, 0, Math.max(0, maxOffset.columns)),
+    rows: clamp(offset.rows, 0, Math.max(0, maxOffset.rows))
+  };
+}
+function viewportOffsetBy(offset, maxOffset, columns, rows2) {
+  return clampViewportOffset({
+    columns: offset.columns + columns,
+    rows: offset.rows + rows2
+  }, maxOffset);
+}
+function viewportThumb(contentLength, viewportLength, offset) {
+  const viewport = Math.max(0, viewportLength);
+  const content = Math.max(0, contentLength);
+  if (viewport === 0 || content <= viewport) {
+    return { start: 0, size: viewport, visible: false };
+  }
+  const size = clamp(Math.round(viewport / content * viewport), 1, viewport);
+  const maxStart = Math.max(0, viewport - size);
+  const maxOffset = Math.max(1, content - viewport);
+  return {
+    start: clamp(Math.round(offset / maxOffset * maxStart), 0, maxStart),
+    size,
+    visible: true
+  };
+}
+function viewportThumbGlyph(row, thumb) {
+  if (!thumb.visible) return " ";
+  return row >= thumb.start && row < thumb.start + thumb.size ? "\u2588" : "\u2502";
+}
+function inspectViewport(contentWidth, contentHeight, viewportWidth, viewportHeight, offset = { columns: 0, rows: 0 }) {
+  const safeContentWidth = Math.max(0, Math.floor(contentWidth));
+  const safeContentHeight = Math.max(0, Math.floor(contentHeight));
+  const safeViewportWidth = Math.max(0, Math.floor(viewportWidth));
+  const safeViewportHeight = Math.max(0, Math.floor(viewportHeight));
+  const maxOffset = maxViewportOffset(safeContentWidth, safeContentHeight, safeViewportWidth, safeViewportHeight);
+  const clampedOffset = clampViewportOffset(offset, maxOffset);
+  return {
+    contentWidth: safeContentWidth,
+    contentHeight: safeContentHeight,
+    viewportWidth: safeViewportWidth,
+    viewportHeight: safeViewportHeight,
+    maxOffset,
+    offset: clampedOffset,
+    horizontalThumb: viewportThumb(safeContentWidth, safeViewportWidth, clampedOffset.columns),
+    verticalThumb: viewportThumb(safeContentHeight, safeViewportHeight, clampedOffset.rows),
+    visibleColumns: {
+      start: clampedOffset.columns,
+      end: Math.min(safeContentWidth, clampedOffset.columns + safeViewportWidth)
+    },
+    visibleRows: {
+      start: clampedOffset.rows,
+      end: Math.min(safeContentHeight, clampedOffset.rows + safeViewportHeight)
+    },
+    canScrollColumns: maxOffset.columns > 0,
+    canScrollRows: maxOffset.rows > 0
+  };
+}
+
 // src/selection.ts
 function clampSelectionIndex(length, index) {
   if (length <= 0) return 0;
@@ -3547,6 +3614,119 @@ var RadioGroupController = class {
   }
 };
 
+// src/components/scroll_area.ts
+function maxScrollOffset(contentWidth, contentHeight, viewportWidth, viewportHeight) {
+  return maxViewportOffset(contentWidth, contentHeight, viewportWidth, viewportHeight);
+}
+function clampScrollOffset(offset, maxOffset) {
+  return clampViewportOffset(offset, maxOffset);
+}
+function scrollOffsetBy(offset, maxOffset, columns, rows2) {
+  return viewportOffsetBy(offset, maxOffset, columns, rows2);
+}
+function scrollbarThumb(contentLength, viewportLength, offset) {
+  return viewportThumb(contentLength, viewportLength, offset);
+}
+function scrollbarGlyph(row, thumb) {
+  return viewportThumbGlyph(row, thumb);
+}
+function scrollbarOffsetForPointer(contentLength, viewportLength, pointerIndex) {
+  const content = normalizedScrollDimension(contentLength);
+  const viewport = normalizedScrollDimension(viewportLength);
+  const maxOffset = Math.max(0, content - viewport);
+  if (maxOffset === 0) return 0;
+  const trackLength = Math.max(1, viewport);
+  const local = Math.max(0, Math.min(trackLength - 1, Math.floor(pointerIndex)));
+  const ratio = trackLength <= 1 ? 0 : local / (trackLength - 1);
+  return Math.max(0, Math.min(maxOffset, Math.round(maxOffset * ratio)));
+}
+var ScrollAreaController = class {
+  contentWidth;
+  contentHeight;
+  viewportWidth;
+  viewportHeight;
+  offset;
+  showScrollbar;
+  #ownsContentWidth;
+  #ownsContentHeight;
+  #ownsViewportWidth;
+  #ownsViewportHeight;
+  #ownsOffset;
+  #ownsShowScrollbar;
+  constructor(options = {}) {
+    this.#ownsContentWidth = !(options.contentWidth instanceof Signal);
+    this.#ownsContentHeight = !(options.contentHeight instanceof Signal);
+    this.#ownsViewportWidth = !(options.viewportWidth instanceof Signal);
+    this.#ownsViewportHeight = !(options.viewportHeight instanceof Signal);
+    this.#ownsOffset = !(options.offset instanceof Signal);
+    this.#ownsShowScrollbar = !(options.showScrollbar instanceof Signal);
+    this.contentWidth = signalify(options.contentWidth ?? 0);
+    this.contentHeight = signalify(options.contentHeight ?? 0);
+    this.viewportWidth = signalify(options.viewportWidth ?? 0);
+    this.viewportHeight = signalify(options.viewportHeight ?? 0);
+    this.offset = signalify(options.offset ?? { columns: 0, rows: 0 }, { deepObserve: true });
+    this.showScrollbar = signalify(options.showScrollbar ?? true);
+    this.#clampOffset();
+  }
+  maxOffset() {
+    return maxScrollOffset(
+      this.contentWidth.peek(),
+      this.contentHeight.peek(),
+      this.viewportWidth.peek(),
+      this.viewportHeight.peek()
+    );
+  }
+  scrollBy(columns, rows2) {
+    return this.setOffset(scrollOffsetBy(this.offset.peek(), this.maxOffset(), columns, rows2));
+  }
+  scrollTo(columns, rows2) {
+    return this.setOffset(clampScrollOffset({ columns, rows: rows2 }, this.maxOffset()));
+  }
+  setContentSize(width, height) {
+    this.contentWidth.value = normalizedScrollDimension(width);
+    this.contentHeight.value = normalizedScrollDimension(height);
+    return this.#clampOffset();
+  }
+  setViewportSize(width, height) {
+    this.viewportWidth.value = normalizedScrollDimension(width);
+    this.viewportHeight.value = normalizedScrollDimension(height);
+    return this.#clampOffset();
+  }
+  setScrollbarVisible(visible) {
+    this.showScrollbar.value = visible;
+  }
+  inspect() {
+    return {
+      ...inspectViewport(
+        this.contentWidth.peek(),
+        this.contentHeight.peek(),
+        this.viewportWidth.peek(),
+        this.viewportHeight.peek(),
+        this.offset.peek()
+      ),
+      showScrollbar: this.showScrollbar.peek()
+    };
+  }
+  dispose() {
+    if (this.#ownsContentWidth) this.contentWidth.dispose();
+    if (this.#ownsContentHeight) this.contentHeight.dispose();
+    if (this.#ownsViewportWidth) this.viewportWidth.dispose();
+    if (this.#ownsViewportHeight) this.viewportHeight.dispose();
+    if (this.#ownsOffset) this.offset.dispose();
+    if (this.#ownsShowScrollbar) this.showScrollbar.dispose();
+  }
+  setOffset(offset) {
+    this.offset.value = offset;
+    return offset;
+  }
+  #clampOffset() {
+    return this.setOffset(clampScrollOffset(this.offset.peek(), this.maxOffset()));
+  }
+};
+function normalizedScrollDimension(value) {
+  return Math.max(0, Math.floor(Number.isFinite(value) ? value : 0));
+}
+
 // src/components/slider.ts
 function clampSliderValue(value, min2, max2) {
   return clamp(value, Math.min(min2, max2), Math.max(min2, max2));
@@ -4806,6 +4986,8 @@ var split = new SplitPaneController({
   minSecond: 28,
   resizeMode: "ratio"
 });
+var workspaceScroll = new ScrollAreaController({ showScrollbar: true });
+var logScroll = new ScrollAreaController({ showScrollbar: true });
 var slider = new SliderController({ min: 1, max: 10, value: 6, step: 1, orientation: "horizontal" });
 var live = new CheckBoxController({ checked: true });
 var compact = new CheckBoxController({ checked: false });
@@ -4901,7 +5083,12 @@ host.on("keyPress", ({ key }) => {
 host.on("mousePress", (event) => {
   if (event.release) return;
   const target = findHit(event.x, event.y);
-  if (target) applyHit(target, event.x);
+  if (target) applyHit(target, event.x, event.y);
+  draw();
+});
+host.on("mouseScroll", (event) => {
+  if (active.peek() === "logs") logScroll.scrollBy(0, event.scroll);
+  else workspaceScroll.scrollBy(0, event.scroll);
   draw();
 });
 host.start();
@@ -4914,6 +5101,8 @@ var timer = setInterval(() => {
 }, 650);
 globalThis.addEventListener("beforeunload", () => {
   clearInterval(timer);
+  workspaceScroll.dispose();
+  logScroll.dispose();
   actionButton.dispose();
   genericButton.dispose();
   radio.dispose();
@@ -4942,26 +5131,38 @@ function draw() {
   );
   drawThemes(frame, width);
   const body = { column: 1, row: 3, width: Math.max(10, width - 2), height: Math.max(6, height - 5) };
-  const max2 = maximized.peek();
-  if (max2) {
-    renderPanel(frame, max2, body);
+  const layout = workspaceLayout({
+    column: 0,
+    row: 0,
+    width: Math.max(1, body.width - 1),
+    height: body.height
+  });
+  workspaceScroll.setViewportSize(layout.bounds.width, body.height);
+  workspaceScroll.setContentSize(layout.bounds.width, layout.contentHeight);
+  const offset = workspaceScroll.offset.peek().rows;
+  const virtual = Array.from(
+    { length: Math.max(body.height, layout.contentHeight) },
+    () => paint(" ".repeat(layout.bounds.width), theme().text, theme().bgAlt)
+  );
+  fillRect(virtual, layout.bounds, theme().bgAlt);
+  const hitStart = hitTargets.length;
+  if (maximized.peek()) {
+    renderPanel(virtual, maximized.peek(), layout.bounds);
   } else {
     const visible = ["inspector", "data", "controls", "logs"].filter((id2) => !minimized.peek()[id2]);
     if (visible.length === 0) {
-      write(frame, body.row + 1, body.column + 2, paint("All panels minimized. Press R or click restore."));
-      hitTargets.push({ rect: body, hit: { type: "restore" } });
-    } else if (width < 88 || body.height < 18 || visible.length < 4) {
-      stackRects(body, visible.length).forEach((rect, index) => renderPanel(frame, visible[index], rect));
+      write(virtual, 1, 2, paint("All panels minimized. Press R or click restore."));
+      hitTargets.push({ rect: { ...layout.bounds, row: 0 }, hit: { type: "restore" } });
     } else {
-      const rows2 = splitRects("column", body, 0.46);
-      const top = split.resize(rows2.first, 0);
-      const bottom = split.resize(rows2.second, 0);
-      renderPanel(frame, "inspector", top.first);
-      renderPanel(frame, "data", top.second);
-      renderPanel(frame, "controls", bottom.first);
-      renderPanel(frame, "logs", bottom.second);
+      for (const id2 of visible) {
+        const rect = layout.rects.get(id2);
+        if (rect) renderPanel(virtual, id2, rect);
+      }
     }
   }
+  translateWorkspaceHits(hitStart, body.column, body.row - offset, body);
+  blitWorkspace(frame, virtual, body, offset, layout.bounds.width);
+  renderWorkspaceScrollbar(frame, body, layout.contentHeight, offset);
   renderShelf(frame);
   frame[height - 1] = fit(
     paint(
@@ -5042,9 +5243,10 @@ function renderPanel(frame, id2, rect) {
     height: Math.max(0, rect.height - 2)
   };
   fillRect(frame, inner, theme().surface);
-  const lines = panelLines(id2, inner.width, inner.height);
   if (id2 === "controls") renderControls(frame, inner);
+  else if (id2 === "logs") renderLogs(frame, inner);
   else {
+    const lines = panelLines(id2, inner.width, inner.height);
     lines.forEach((line, index) => {
       const style2 = panelLineStyle(id2, index);
       write(frame, inner.row + index, inner.column, paint(fit(line, inner.width), style2.fg, style2.bg, style2.bold));
@@ -5057,6 +5259,23 @@ function renderPanel(frame, id2, rect) {
         });
       }
     }
+  }
+}
+function renderLogs(frame, rect) {
+  const lines = [...docs, ...log.peek()];
+  logScroll.setViewportSize(rect.width, rect.height);
+  logScroll.setContentSize(rect.width, lines.length);
+  const offset = logScroll.offset.peek().rows;
+  const bodyWidth = Math.max(0, rect.width - 1);
+  lines.slice(offset, offset + rect.height).forEach((line, index) => {
+    write(frame, rect.row + index, rect.column, paint(fit(line, bodyWidth), theme().text, theme().surface));
+  });
+  if (lines.length <= rect.height || rect.width < 1) return;
+  const column = rect.column + rect.width - 1;
+  const thumb = scrollbarThumb(lines.length, rect.height, offset);
+  hitTargets.push({ rect: { column, row: rect.row, width: 1, height: rect.height }, hit: { type: "logScrollbar" } });
+  for (let row = 0; row < rect.height; row += 1) {
+    write(frame, rect.row + row, column, paint(scrollbarGlyph(row, thumb), theme().accent, theme().surface, true));
   }
 }
 function panelLines(id2, width, height) {
@@ -5100,7 +5319,7 @@ function ensureLines() {
     }).draw();
   }
 }
-function applyHit(target, x) {
+function applyHit(target, x, y) {
   const hit = target.hit;
   if (hit.type === "focus") focus(hit.id);
   else if (hit.type === "min") minimize(hit.id);
@@ -5109,7 +5328,16 @@ function applyHit(target, x) {
   else if (hit.type === "restore") hit.id ? restorePanel(hit.id) : restore();
   else if (hit.type === "control") applyControlHit(hit.id, hit.action ?? "activate", target.rect, x, hit.index);
   else if (hit.type === "dataRow") selectDataRow(hit.index);
-  else setTheme(hit.index);
+  else if (hit.type === "logScrollbar") {
+    const lines = docs.length + log.peek().length;
+    logScroll.scrollTo(0, scrollbarOffsetForPointer(lines, target.rect.height, y - target.rect.row));
+    active.value = "logs";
+  } else if (hit.type === "workspaceScrollbar") {
+    workspaceScroll.scrollTo(
+      0,
+      scrollbarOffsetForPointer(workspaceScroll.contentHeight.peek(), target.rect.height, y - target.rect.row)
+    );
+  } else setTheme(hit.index);
 }
 function focus(id2) {
   active.value = id2;
@@ -5158,6 +5386,78 @@ function splitRects(direction, rect, ratio) {
   const result = controller.resize(rect, 0);
   controller.dispose();
   return result;
+}
+function workspaceLayout(bounds) {
+  const rects = /* @__PURE__ */ new Map();
+  const max2 = maximized.peek();
+  if (max2) {
+    rects.set(max2, bounds);
+    return { bounds, contentHeight: bounds.height, rects };
+  }
+  const visible = ["inspector", "data", "controls", "logs"].filter((id2) => !minimized.peek()[id2]);
+  if (visible.length === 0) return { bounds, contentHeight: bounds.height, rects };
+  const stacked = bounds.width < 88 || bounds.height < 18 || visible.length < 4;
+  if (stacked) {
+    const stackedRects = stackWorkspaceRects(bounds, visible);
+    for (const [index, id2] of visible.entries()) rects.set(id2, stackedRects[index]);
+    const bottom2 = stackedRects.reduce((maxRow, rect) => Math.max(maxRow, rect.row + rect.height), bounds.row);
+    return { bounds, contentHeight: Math.max(bounds.height, bottom2 - bounds.row), rects };
+  }
+  const rows2 = splitRects("column", bounds, 0.46);
+  const top = split.resize(rows2.first, 0);
+  const bottom = split.resize(rows2.second, 0);
+  rects.set("inspector", top.first);
+  rects.set("data", top.second);
+  rects.set("controls", bottom.first);
+  rects.set("logs", bottom.second);
+  return { bounds, contentHeight: bounds.height, rects };
+}
+function stackWorkspaceRects(bounds, ids) {
+  const gap = ids.length > 1 ? 1 : 0;
+  const preferred = ids.map((id2) => preferredPanelHeight(id2, bounds.width));
+  const preferredTotal = preferred.reduce((total, height) => total + height, 0) + gap * Math.max(0, ids.length - 1);
+  if (preferredTotal <= bounds.height) return stackRects(bounds, ids.length);
+  let row = bounds.row;
+  return ids.map((id2, index) => {
+    const height = preferred[index] ?? preferredPanelHeight(id2, bounds.width);
+    const rect = { column: bounds.column, row, width: bounds.width, height };
+    row += height + gap;
+    return rect;
+  });
+}
+function preferredPanelHeight(id2, width) {
+  if (id2 === "controls") return width < 56 ? 22 : 18;
+  if (id2 === "data") return 12;
+  if (id2 === "logs") return 12;
+  return 11;
+}
+function translateWorkspaceHits(startIndex, columnDelta, rowDelta, clip) {
+  for (let index = hitTargets.length - 1; index >= startIndex; index -= 1) {
+    const target = hitTargets[index];
+    const translated = { ...target.rect, column: target.rect.column + columnDelta, row: target.rect.row + rowDelta };
+    if (!intersects(translated, clip)) {
+      hitTargets.splice(index, 1);
+      continue;
+    }
+    target.rect = clipRect(translated, clip);
+  }
+}
+function blitWorkspace(frame, virtual, bounds, offset, width) {
+  for (let row = 0; row < bounds.height; row += 1) {
+    write(frame, bounds.row + row, bounds.column, fit(virtual[offset + row] ?? "", width));
+  }
+}
+function renderWorkspaceScrollbar(frame, bounds, contentHeight, offset) {
+  if (contentHeight <= bounds.height || bounds.width < 2) return;
+  const column = bounds.column + bounds.width - 1;
+  const thumb = scrollbarThumb(contentHeight, bounds.height, offset);
+  hitTargets.push({
+    rect: { column, row: bounds.row, width: 1, height: bounds.height },
+    hit: { type: "workspaceScrollbar" }
+  });
+  for (let row = 0; row < bounds.height; row += 1) {
+    write(frame, bounds.row + row, column, paint(scrollbarGlyph(row, thumb), theme().accent, theme().bgAlt, true));
+  }
 }
 function stackRects(rect, count) {
   if (count <= 0) return [];
@@ -5235,12 +5535,9 @@ function renderControls(frame, rect) {
   const progressWidth = Math.max(8, Math.min(18, rect.width - 18));
   const progressFilled = Math.round(progress.ratio() * progressWidth);
   const progressTrack = `${"\u2588".repeat(progressFilled)}${"\u2591".repeat(progressWidth - progressFilled)}`;
-  writeControl("button", `${paint("[ Run Action ]", t.bg, t.accent, true)} presses=${actionButton.pressCount.peek()}`);
-  writeControl(
-    "genericButton",
-    `${paint("[ Generic Button ]", t.bg, t.border, true)} presses=${genericButton.pressCount.peek()}`
-  );
-  writeControl("slider", `Slider    ${paint(sliderTrack, t.good, t.accentDeep)} ${slider.value.peek()}/10`, {
+  writeControl("button", `[ Run Action ] presses=${actionButton.pressCount.peek()}`);
+  writeControl("genericButton", `[ Generic Button ] presses=${genericButton.pressCount.peek()}`);
+  writeControl("slider", `Slider    ${sliderTrack} ${slider.value.peek()}/10`, {
     previous: true,
     next: true
   });
@@ -5493,6 +5790,16 @@ function paint(value, fg = theme().text, bg = theme().bg, bold = false) {
 }
 function contains(rect, x, y) {
   return x >= rect.column && y >= rect.row && x < rect.column + rect.width && y < rect.row + rect.height;
+}
+function intersects(left, right) {
+  return left.column < right.column + right.width && left.column + left.width > right.column && left.row < right.row + right.height && left.row + left.height > right.row;
+}
+function clipRect(rect, clip) {
+  const column = Math.max(rect.column, clip.column);
+  const row = Math.max(rect.row, clip.row);
+  const right = Math.min(rect.column + rect.width, clip.column + clip.width);
+  const bottom = Math.min(rect.row + rect.height, clip.row + clip.height);
+  return { column, row, width: Math.max(0, right - column), height: Math.max(0, bottom - row) };
 }
 function findHit(x, y) {
   for (let index = hitTargets.length - 1; index >= 0; index -= 1) {

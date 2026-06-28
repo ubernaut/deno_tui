@@ -270,6 +270,13 @@ export const visualizationLaunchTargets: readonly VisualizationLaunchTarget[] = 
     tags: ["demos", "catalog", "app"],
   },
   {
+    task: "batteries",
+    aliases: ["batteries", "batteries-included", "phase-status"],
+    description: "phase 1-6 batteries-included readiness report",
+    category: "report",
+    tags: ["demos", "runtime", "web", "phase"],
+  },
+  {
     task: "health",
     aliases: ["health", "check"],
     description: "contributor health gate",

@@ -26,6 +26,12 @@ The project-root `./visualization` launcher is backed by `scripts/visualization_
 inspection, report, and Markdown helpers for building custom demo pickers or docs pages from the same target metadata
 used by launcher tests.
 
+Use `./visualization portfolio` for the richest general-purpose TUI demo. It includes menu bars, data tables, text
+inputs, radio groups, checkboxes, dropdowns, buttons, sliders, split panes, window controls, theme switching, nested log
+scrolling, and a scrollable virtual workspace for terminals where every active pane cannot fit at once. Use
+`./visualization batteries` for the phase 1-6 readiness report that maps the repo's APIs to concrete demo and
+verification commands.
+
 ## Controls
 
 - `F1`: Help

@@ -59,6 +59,7 @@ Use the root launcher for the most common demos:
 ./visualization components
 ./visualization plugins
 ./visualization gallery
+./visualization batteries
 ./visualization health
 ```
 
@@ -78,6 +79,7 @@ deno task component-catalog
 deno task app-plugin-catalog
 deno task adopter-workbench
 deno task demo-gallery
+deno task batteries
 deno task screenshots
 deno task benchmark
 deno task health
@@ -93,7 +95,8 @@ Markdown/text output. `examples/adopter_workbench.ts` is the broadest example: i
 session sequences, component catalog queries, plugin registry reports, theme gallery matching, and local data query
 pagination in one short integration path. `examples/demo_gallery.ts` is the quick tour report: it summarizes the
 launcher catalog, widget catalog, renderer backends, theme provider, plugin packs, runtime capabilities, terminal
-capabilities, and recommended demo path. `examples/form_workflow.ts`, `examples/table_selection_workflow.ts`, and
+capabilities, and recommended demo path. `examples/batteries_included.ts` is the phase 1-6 readiness report and ties
+each phase to proof commands. `examples/form_workflow.ts`, `examples/table_selection_workflow.ts`, and
 `examples/terminal_command_workflow.ts` are API capability demos for form bindings, command adapters, data table state,
 selection state, command search/dispatch, and terminal session setup. `deno task screenshots` regenerates the SVG
 terminal snapshots used by the README under `docs/screenshots/`.

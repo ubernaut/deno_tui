@@ -1255,6 +1255,7 @@ const scroll = new ScrollAreaController({
   viewportHeight: height,
 });
 scroll.scrollBy(0, 1);
+scroll.scrollTo(0, scrollbarOffsetForPointer(contentHeight, height, pointerRow));
 const stopScrollCommands = bindScrollAreaCommands(app.commands, scroll, {
   idPrefix: "viewport.main",
   includeScrollbarCommands: true,
@@ -1262,9 +1263,11 @@ const stopScrollCommands = bindScrollAreaCommands(app.commands, scroll, {
 ```
 
 `ScrollAreaController` wraps the same viewport math in a reusable state object with `scrollBy()`, `scrollTo()`,
-`setContentSize()`, `setViewportSize()`, `setScrollbarVisible()`, and `inspect()`. `scrollAreaCommands()` and
-`bindScrollAreaCommands()` expose movement, page, edge, and optional scrollbar visibility actions through the command
-registry for scrollable panes that are controlled by menus, key bindings, palettes, or plugins.
+`setContentSize()`, `setViewportSize()`, `setScrollbarVisible()`, and `inspect()`. `scrollbarOffsetForPointer()` maps
+clicks on a scrollbar track to a clamped content offset, so terminal and web renderers can implement "jump to clicked
+position" behavior without duplicating math. `scrollAreaCommands()` and `bindScrollAreaCommands()` expose movement,
+page, edge, and optional scrollbar visibility actions through the command registry for scrollable panes that are
+controlled by menus, key bindings, palettes, or plugins.
 
 ## Theming
 
@@ -2212,6 +2215,7 @@ const preset = findAsciiDemoPreset("mixed-best");
 | `examples/app_plugin_catalog.ts`        | App plugin catalog and Markdown report example               |
 | `examples/adopter_workbench.ts`         | Integrated adopter report across app/runtime/theme/data APIs |
 | `examples/demo_gallery.ts`              | Capability tour across launchers, widgets, renderers, themes |
+| `examples/batteries_included.ts`        | Phase 1-6 readiness report with proof commands               |
 | `app/api_workbench.ts`                  | Interactive API portfolio with resizable windows and themes  |
 | `app/showcase.ts`                       | Full Neon Exodus-style widget and visualization showcase     |
 | `app/neon_exodus.ts`                    | OpenTUI/web Neon Exodus demo suite rebuilt on this TUI stack |
@@ -2238,6 +2242,7 @@ From the project root:
 ./visualization portfolio
 ./visualization showcase
 ./visualization neon
+./visualization batteries
 ```
 
 `./visualization` opens the interactive demo launcher. Use arrows or `j`/`k` to move, type to filter, press `Enter` to
@@ -2245,7 +2250,12 @@ launch the selected demo, and press `Esc` or `q` to exit. `./visualization --lis
 opening the selector.
 
 `./visualization portfolio` launches the API Workbench with resizable windows, minimize/maximize/restore controls,
-interactive menu bars, split panes, scrollable sections, data tables, form controls, and a theme selector.
+interactive menu bars, split panes, scrollable sections, data tables, form controls, and a theme selector. When panes no
+longer fit, the workbench becomes a scrollable virtual workspace; mouse wheels scroll the workspace, log panes retain
+their own scrollbar, and clicking a scrollbar track jumps directly to that content position.
+
+`./visualization batteries` prints the phase 1-6 readiness report. It links each phase to concrete APIs, launch targets,
+and verification commands, which makes it the fastest adopter-oriented overview after `./visualization gallery`.
 
 `./visualization showcase` launches the full showcase app. This is the quickest way to see the expanded widget set, Neon
 Exodus-inspired panels, and the three.js ASCII renderer together.
@@ -2294,6 +2304,7 @@ tuning.
 ./visualization plugins
 ./visualization adopter
 ./visualization gallery
+./visualization batteries
 ./visualization health
 deno task viz
 ```
@@ -2311,16 +2322,17 @@ lifecycle inspection, `capabilities` for platform feature detection, `runtime-wo
 pressure inspection, `benchmark` for performance smoke checks, `api-inventory` for public export graph inspection,
 `components` for widget catalog reports, `plugins` for app plugin definition reports, `adopter` for an integrated
 terminal/runtime/plugin/theme/data workbench report, `gallery` for a compact tour across launchers, widgets, renderers,
-themes, plugins, runtime capabilities, and terminal capabilities, `layout-recipe` for responsive recipe inspection, and
-`health` for the contributor gate. The launcher metadata is also exported from `scripts/visualization_launcher.ts` as a
-queryable catalog: `queryVisualizationLaunchTargets()`, `createVisualizationLaunchReport()`,
-`inspectVisualizationLaunchTargets()`, and `formatVisualizationLaunchMarkdown()` provide the same structured target list
-for custom launchers, docs pages, and CI reports without duplicating aliases or descriptions. Benchmark runs print
-per-case timings plus an aggregate summary; `deno task benchmark -- --list` prints the benchmark catalog without running
-workloads, `deno task benchmark -- --list --json` emits that catalog as structured data, and
-`deno task benchmark -- --json` emits the same threshold-aware timing summary as structured data and exits nonzero when
-a case fails its limits. The catalog path is backed by `BenchmarkRunner.inspect()`, `createBenchmarkCatalogReport()`,
-and `formatBenchmarkCatalogMarkdown()` so launchers and docs can reuse the same case metadata.
+themes, plugins, runtime capabilities, and terminal capabilities, `batteries` for the phase 1-6 readiness matrix,
+`layout-recipe` for responsive recipe inspection, and `health` for the contributor gate. The launcher metadata is also
+exported from `scripts/visualization_launcher.ts` as a queryable catalog: `queryVisualizationLaunchTargets()`,
+`createVisualizationLaunchReport()`, `inspectVisualizationLaunchTargets()`, and `formatVisualizationLaunchMarkdown()`
+provide the same structured target list for custom launchers, docs pages, and CI reports without duplicating aliases or
+descriptions. Benchmark runs print per-case timings plus an aggregate summary; `deno task benchmark -- --list` prints
+the benchmark catalog without running workloads, `deno task benchmark -- --list --json` emits that catalog as structured
+data, and `deno task benchmark -- --json` emits the same threshold-aware timing summary as structured data and exits
+nonzero when a case fails its limits. The catalog path is backed by `BenchmarkRunner.inspect()`,
+`createBenchmarkCatalogReport()`, and `formatBenchmarkCatalogMarkdown()` so launchers and docs can reuse the same case
+metadata.
 
 The theme gallery now uses the exported grWizard palette suite and supports explicit selection:
 
@@ -2366,6 +2378,7 @@ deno task component-catalog
 deno task app-plugin-catalog
 deno task adopter-workbench
 deno task demo-gallery
+deno task batteries
 deno task visualization
 deno task screenshots
 deno task web:check
