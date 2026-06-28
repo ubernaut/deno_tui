@@ -1163,6 +1163,7 @@ import {
   createThemeRegistry,
   createThemeRegistryFromManifests,
   createThemeWorkspace,
+  createThemeWorkspacePlugin,
   diffThemeEngines,
   formatThemeEngineFactoryCatalogMarkdown,
   formatThemeProviderReportMarkdown,
@@ -1272,6 +1273,11 @@ const themeWorkspace = createThemeWorkspace({
 });
 const activeWorkspaceTheme = themeWorkspace.activeEngine();
 const warmedWorkspace = await themeWorkspace.prewarm({ includeActiveProvider: true });
+const themeWorkspacePlugin = createThemeWorkspacePlugin({
+  workspace: themeWorkspace,
+  settings,
+  commands: { group: "theme" },
+});
 
 const themeIssues = validateThemeOptions(appTheme);
 assertThemeOptions(appTheme);
@@ -1498,13 +1504,16 @@ key help, and connects the active pack, active layers, and active pipeline steps
 with one disposable plugin. Its install context exposes the provider, pipelines, and created setting bindings so apps
 can compose custom theme surfaces without reaching back into module globals. It uses the same `DisposableStack`
 lifecycle path as app plugins, so command registration, keymap mirroring, settings persistence, pipeline wiring, and
-custom theme engine setup roll back together if any step fails. `ThemeEngineCache` and `ThemeProviderCache` are opt-in
-runtime accelerators for redraw-heavy apps: they memoize component themes and resolved state styles, expose hit/miss
-inspection, and the provider cache automatically invalidates when theme packs or layers change.
-`createThemeEngineResolver()` and `createThemeProviderResolver()` wrap those caches behind a renderer-friendly API for
-batch token and component-state resolution; `snapshot()`, `componentThemeStyleRequests()`, and
-`formatThemeResolutionMarkdown()` make it straightforward to drive custom widgets, settings previews, renderer backends,
-and CI diagnostics from the exact same computed theme contract.
+custom theme engine setup roll back together if any step fails. `createThemeWorkspacePlugin()` installs that same app
+surface from a `ThemeWorkspace`, preserving the workspace's factory registry and `prewarm()` API for custom settings
+panes, startup hooks, and plugin-provided theme suites while delegating provider and pipeline command wiring to
+`createThemePlugin()`. `ThemeEngineCache` and `ThemeProviderCache` are opt-in runtime accelerators for redraw-heavy
+apps: they memoize component themes and resolved state styles, expose hit/miss inspection, and the provider cache
+automatically invalidates when theme packs or layers change. `createThemeEngineResolver()` and
+`createThemeProviderResolver()` wrap those caches behind a renderer-friendly API for batch token and component-state
+resolution; `snapshot()`, `componentThemeStyleRequests()`, and `formatThemeResolutionMarkdown()` make it straightforward
+to drive custom widgets, settings previews, renderer backends, and CI diagnostics from the exact same computed theme
+contract.
 
 ## Runtime Capabilities
 

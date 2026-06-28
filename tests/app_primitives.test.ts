@@ -67,6 +67,7 @@ import type { ThemeCommandAction } from "../src/app/theme_commands.ts";
 import { bindThemePipelineCommands, themePipelineCommands } from "../src/app/theme_pipeline_commands.ts";
 import type { ThemePipelineCommandAction } from "../src/app/theme_pipeline_commands.ts";
 import { createThemePlugin } from "../src/app/theme_plugin.ts";
+import { createThemeWorkspacePlugin } from "../src/app/theme_workspace_plugin.ts";
 import { KeymapRegistry } from "../src/keymap.ts";
 import { SplitPaneController } from "../src/layout/mod.ts";
 import { createRuntimeProfileController } from "../src/runtime/profiles.ts";
@@ -76,6 +77,7 @@ import { Signal } from "../src/signals/mod.ts";
 import { createTestKeyPress, TestKeyPressTarget } from "../src/testing/mod.ts";
 import { createThemeLayerStack, createThemeProvider, createThemeRegistry } from "../src/theme.ts";
 import { createThemeEnginePipeline } from "../src/theme_engine_pipeline.ts";
+import { createThemeWorkspace } from "../src/theme_workspace.ts";
 import type { Tui } from "../src/tui.ts";
 
 Deno.test("ActionBus dispatches to subscribers in registration order", async () => {
@@ -2446,6 +2448,108 @@ Deno.test("createThemePlugin rolls back installed surfaces when custom install f
   assertEquals(app.commands.has("theme.set.plain"), false);
   assertEquals(app.plugins(), []);
   app.destroy();
+});
+
+Deno.test("createThemeWorkspacePlugin installs workspace theme surfaces and context", async () => {
+  type ThemeWorkspaceAction = ThemeCommandAction | ThemePipelineCommandAction;
+  const store = new MemoryStore<unknown>();
+  await store.set("prefs.theme", "terminal");
+  await store.set("prefs.theme-pipeline-runtime", JSON.stringify(["contrast"]));
+  const settings = new SettingsController({ store, namespace: "prefs" });
+  const app = createApp<ThemeWorkspaceAction>({ tui: { destroy() {} } as unknown as Tui });
+  const pipeline = createThemeEnginePipeline({
+    id: "runtime",
+    steps: [
+      { id: "density", label: "Density" },
+      { id: "contrast", label: "Contrast", enabled: false },
+    ],
+  });
+  const workspace = createThemeWorkspace({
+    providerOptions: {
+      registry: createThemeRegistry([
+        { id: "plain", label: "Plain", palette: "plain" },
+        { id: "terminal", label: "Terminal", palette: "terminal" },
+      ]),
+      activeId: "plain",
+    },
+    factories: [
+      {
+        id: "preview",
+        options: { components: { Badge: { base: { base: (value) => `preview:${value}` } } } },
+      },
+    ],
+    pipelines: pipeline,
+  });
+  let contextFactoryPreview = "";
+
+  const plugin = createThemeWorkspacePlugin<ThemeWorkspaceAction>({
+    workspace,
+    settings,
+    persistPipelines: {
+      runtime: {
+        serialize: (value) => JSON.stringify(value),
+        deserialize: (value) => JSON.parse(value as string),
+      },
+    },
+    install(context) {
+      contextFactoryPreview = context.workspace.factoryEngine("preview").component("Badge").base("x");
+      assertEquals(Object.keys(context.pipelineSettings), ["runtime"]);
+    },
+  });
+
+  assertEquals(plugin.inspect().workspace.factories.inspection.count, 1);
+  assertEquals(plugin.inspect().theme.pipelinePersistenceIds, ["runtime"]);
+  const dispose = app.use(plugin);
+
+  await settings.ready();
+  assertEquals(contextFactoryPreview, "preview:x");
+  assertEquals(plugin.workspace.provider.activeId.peek(), "terminal");
+  assertEquals(pipeline.activeIds(), ["contrast"]);
+  assertEquals(app.commands.has("theme.set.plain"), true);
+  assertEquals(app.commands.has("theme.pipeline.runtime.toggle.density"), true);
+  assertEquals(app.plugins(), [{ id: "theme-workspace", label: "Theme Workspace" }]);
+
+  assertEquals(await app.executeCommand("theme.set.plain"), true);
+  assertEquals(await app.executeCommand("theme.pipeline.runtime.toggle.density"), true);
+  assertEquals(plugin.workspace.provider.activeId.peek(), "plain");
+  assertEquals(pipeline.activeIds(), ["density", "contrast"]);
+  await settings.flush();
+  assertEquals(await store.get("prefs.theme"), "plain");
+  assertEquals(await store.get("prefs.theme-pipeline-runtime"), JSON.stringify(["density", "contrast"]));
+
+  dispose();
+  assertEquals(app.commands.has("theme.set.plain"), false);
+  assertEquals(app.commands.has("theme.pipeline.runtime.toggle.density"), false);
+  assertEquals(app.plugins(), []);
+  app.destroy();
+  plugin.workspace.provider.layers.dispose();
+});
+
+Deno.test("createThemeWorkspacePlugin rolls back installed surfaces when custom install fails", () => {
+  type ThemeWorkspaceAction = ThemeCommandAction | ThemePipelineCommandAction;
+  const app = createApp<ThemeWorkspaceAction>({ tui: { destroy() {} } as unknown as Tui });
+  const plugin = createThemeWorkspacePlugin<ThemeWorkspaceAction>({
+    workspaceOptions: {
+      providerOptions: {
+        registry: createThemeRegistry([{ id: "plain", palette: "plain" }]),
+      },
+    },
+    install() {
+      throw new Error("theme workspace boom");
+    },
+  });
+
+  try {
+    app.use(plugin);
+    throw new Error("expected theme workspace plugin install to throw");
+  } catch (error) {
+    assertEquals(error instanceof Error && error.message, "theme workspace boom");
+  }
+
+  assertEquals(app.commands.has("theme.set.plain"), false);
+  assertEquals(app.plugins(), []);
+  app.destroy();
+  plugin.workspace.provider.layers.dispose();
 });
 
 Deno.test("createRuntimeProfilePlugin installs profile commands settings and lifecycle cleanup", async () => {
