@@ -68,6 +68,12 @@ import {
 } from "../src/theme_engine_factory.ts";
 import { createThemeEnginePipeline, prewarmThemeEnginePipelines } from "../src/theme_engine_pipeline.ts";
 import { createThemeGallery, filterThemeGalleryItems, rankThemeGalleryItems } from "../src/theme_gallery.ts";
+import {
+  componentThemeStyleRequests,
+  createThemeEngineResolver,
+  createThemeProviderResolver,
+  formatThemeResolutionMarkdown,
+} from "../src/theme_resolver.ts";
 import { AsyncScheduler } from "../src/runtime/scheduler.ts";
 import { Signal } from "../src/signals/mod.ts";
 import { MemoryStore } from "../src/runtime/storage.ts";
@@ -1186,6 +1192,119 @@ Deno.test("ThemeProviderCache invalidates when active provider engine changes", 
   });
 
   cache.dispose();
+});
+
+Deno.test("ThemeResolver batches token and component state lookups", () => {
+  const engine = new ThemeEngine({
+    tokens: {
+      foreground: (value) => `fg:${value}`,
+      accent: (value) => `accent:${value}`,
+    },
+    components: {
+      Button: {
+        base: { base: "foreground", focused: "accent" },
+        variants: { danger: { active: (value) => `danger:${value}` } },
+      },
+    },
+  });
+  const resolver = createThemeEngineResolver(engine);
+  const styles = componentThemeStyleRequests(["Button"], {
+    states: ["base", "focused", "active"],
+    variants: () => ["default", "danger"],
+  });
+
+  const snapshot = resolver.snapshot({
+    sample: "x",
+    tokens: ["foreground", "accent"],
+    styles,
+  });
+
+  assertEquals(snapshot.tokens.map((token) => [token.token, token.preview]), [
+    ["foreground", "fg:x"],
+    ["accent", "accent:x"],
+  ]);
+  assertEquals(snapshot.styles.map((style) => [style.component, style.variant, style.state, style.preview]), [
+    ["Button", "default", "base", "fg:x"],
+    ["Button", "default", "focused", "accent:x"],
+    ["Button", "default", "active", "accent:x"],
+    ["Button", "danger", "base", "fg:x"],
+    ["Button", "danger", "focused", "accent:x"],
+    ["Button", "danger", "active", "danger:x"],
+  ]);
+  assertEquals(snapshot.cache, {
+    themeEntries: 2,
+    styleEntries: 6,
+    hits: 4,
+    misses: 8,
+  });
+
+  assertEquals(
+    formatThemeResolutionMarkdown(resolver, {
+      sample: "x",
+      tokens: ["foreground"],
+      styles: [{ component: "Button", variant: "danger", state: "active" }],
+      title: "Resolved",
+    }),
+    [
+      "# Resolved",
+      "",
+      "| Token | Preview |",
+      "| --- | --- |",
+      "| foreground | fg:x |",
+      "",
+      "| Component | Variant | State | Preview |",
+      "| --- | --- | --- | --- |",
+      "| Button | danger | active | danger:x |",
+      "",
+      "| Cache | Value |",
+      "| --- | --- |",
+      "| themes | 2 |",
+      "| styles | 6 |",
+      "| hits | 5 |",
+      "| misses | 8 |",
+    ].join("\n"),
+  );
+});
+
+Deno.test("ThemeProviderResolver follows active theme changes", async () => {
+  const registry = createThemeRegistry([
+    {
+      id: "plain",
+      palette: "plain",
+      options: {
+        tokens: { foreground: (value) => `plain:${value}` },
+        components: { Button: { base: { base: "foreground" } } },
+      },
+    },
+    {
+      id: "bright",
+      palette: "plain",
+      options: {
+        tokens: { foreground: (value) => `bright:${value}` },
+        components: { Button: { base: { base: "foreground" } } },
+      },
+    },
+  ]);
+  const provider = createThemeProvider({ registry, activeId: "plain" });
+  const resolver = createThemeProviderResolver(provider);
+
+  assertEquals(resolver.resolve("Button", "base")("x"), "plain:x");
+  assertEquals(resolver.snapshot({ tokens: ["foreground"], sample: "x" }).tokens[0].preview, "plain:x");
+
+  provider.setTheme("bright");
+  await Promise.resolve();
+
+  assertEquals(resolver.resolve("Button", "base")("x"), "bright:x");
+  assertEquals(resolver.snapshot({ tokens: ["foreground"], sample: "x" }).tokens[0].preview, "bright:x");
+  assertEquals(resolver.inspect(), {
+    activeId: "bright",
+    themeEntries: 1,
+    styleEntries: 1,
+    hits: 0,
+    misses: 2,
+  });
+
+  resolver.dispose();
 });
 
 Deno.test("validateThemeOptions reports bad token references parents and cycles", () => {

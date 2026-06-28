@@ -1128,8 +1128,8 @@ Use `createTheme()` for semantic tokens, `createThemeEngine()` for built-in pale
 packs, or `ThemeProvider` for runtime theme selection. This fork treats theming as an engine layer, not just a bag of
 component props: it adds `composeThemeOptions()`, `composeStyles()`, component inheritance, token-backed style
 pipelines, serializable ANSI theme manifests, app-level provider cycling, runtime theme layers, optional async
-persistence, lifecycle-safe theme plugins, `ThemeEngine.extend()`, and `ThemeEngine.inspect()` so larger apps can layer
-reusable theme packs without mutating a base engine:
+persistence, lifecycle-safe theme plugins, cached resolvers, `ThemeEngine.extend()`, and `ThemeEngine.inspect()` so
+larger apps can layer reusable theme packs without mutating a base engine:
 
 ```ts
 import {
@@ -1159,11 +1159,13 @@ import {
   createThemeProvider,
   createThemeProviderCache,
   createThemeProviderReport,
+  createThemeProviderResolver,
   createThemeRegistry,
   createThemeRegistryFromManifests,
   diffThemeEngines,
   formatThemeEngineFactoryCatalogMarkdown,
   formatThemeProviderReportMarkdown,
+  formatThemeResolutionMarkdown,
   inspectThemeCoverage,
   inspectThemeManifest,
   previewThemeManifest,
@@ -1365,6 +1367,15 @@ const themeEngineCache = createThemeEngineCache(provider.engine.value);
 const cachedButtonTheme = themeEngineCache.component("Button", "danger");
 const providerThemeCache = createThemeProviderCache(provider);
 const cachedActiveStyle = providerThemeCache.resolve("Button", "active", "danger");
+const themeResolver = createThemeProviderResolver(provider);
+const resolvedStyles = themeResolver.snapshot({
+  tokens: ["foreground", "accent", "danger"],
+  styles: [
+    { component: "Button", variant: "danger", state: "active" },
+    { component: "StatusBar", state: "focused" },
+  ],
+});
+const resolverMarkdown = formatThemeResolutionMarkdown(themeResolver, { title: "Resolved Theme" });
 
 // After constructing a Button component instance named `button`:
 const stopBinding = bindComponentTheme(button, provider, "Button", {
@@ -1477,7 +1488,10 @@ globals. It uses the same `DisposableStack` lifecycle path as app plugins, so co
 settings persistence, pipeline wiring, and custom theme engine setup roll back together if any step fails.
 `ThemeEngineCache` and `ThemeProviderCache` are opt-in runtime accelerators for redraw-heavy apps: they memoize
 component themes and resolved state styles, expose hit/miss inspection, and the provider cache automatically invalidates
-when theme packs or layers change.
+when theme packs or layers change. `createThemeEngineResolver()` and `createThemeProviderResolver()` wrap those caches
+behind a renderer-friendly API for batch token and component-state resolution; `snapshot()`,
+`componentThemeStyleRequests()`, and `formatThemeResolutionMarkdown()` make it straightforward to drive custom widgets,
+settings previews, renderer backends, and CI diagnostics from the exact same computed theme contract.
 
 ## Runtime Capabilities
 

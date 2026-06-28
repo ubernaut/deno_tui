@@ -69,21 +69,26 @@ export class ThemeEngineCache {
 export class ThemeProviderCache {
   readonly provider: ThemeProvider;
   #cache: ThemeEngineCache;
+  #signature: string;
   readonly #syncCache = () => {
-    this.#cache = new ThemeEngineCache(this.provider.engine.peek());
+    this.#signature = providerSignature(this.provider);
+    this.#cache = new ThemeEngineCache(this.provider.engineFor(this.provider.activeId.peek()));
   };
 
   constructor(provider: ThemeProvider) {
     this.provider = provider;
-    this.#cache = new ThemeEngineCache(provider.engine.peek());
+    this.#signature = providerSignature(provider);
+    this.#cache = new ThemeEngineCache(provider.engineFor(provider.activeId.peek()));
     this.provider.engine.subscribe(this.#syncCache);
   }
 
   component(componentName: string, variant = "default"): Theme {
+    this.#syncIfChanged();
     return this.#cache.component(componentName, variant);
   }
 
   resolve(componentName: string, state: ThemeState, variant = "default"): Style {
+    this.#syncIfChanged();
     return this.#cache.resolve(componentName, state, variant);
   }
 
@@ -102,6 +107,12 @@ export class ThemeProviderCache {
     this.provider.engine.unsubscribe(this.#syncCache);
     this.clear();
   }
+
+  #syncIfChanged(): void {
+    if (this.#signature !== providerSignature(this.provider)) {
+      this.#syncCache();
+    }
+  }
 }
 
 export function createThemeEngineCache(engine: ThemeEngine): ThemeEngineCache {
@@ -118,4 +129,8 @@ function componentKey(componentName: string, variant: string): string {
 
 function styleKey(componentName: string, variant: string, state: ThemeState): string {
   return `${componentName}\0${variant}\0${state}`;
+}
+
+function providerSignature(provider: ThemeProvider): string {
+  return `${provider.activeId.peek()}\0${provider.layers.activeIds().join("\0")}`;
 }
