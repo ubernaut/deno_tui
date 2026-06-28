@@ -41,6 +41,10 @@ test; apps and renderers should decide whether to use Workers, WebGPU, WebGL, In
 `WorkerPool.run(payload, { signal })` can abort pending callers, `pendingCount()` exposes lightweight backpressure
 state, and `workerFactory` lets tests inject a deterministic worker without starting real threads.
 
+`BenchmarkRunner` supports per-case `iterations`, `warmupIterations`, `maxAverageMs`, and `maxTotalMs`. Pass `{ now }`
+in `BenchmarkRunnerOptions` to make benchmark unit tests deterministic, use `summarize()` or
+`summarizeBenchmarkResults()` for pass/fail reporting, and format output with `formatBenchmarkResults()`.
+
 Run the default suite without broad permissions:
 
 ```bash
