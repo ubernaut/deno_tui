@@ -260,6 +260,11 @@ const stopCpuCommands = bindMetricSeriesCommands(app.commands, cpu, {
 need runtime controls in command palettes, menus, or key help. `MetricSeriesController.inspect()` returns values, stats,
 limit, and empty state for status panels, tests, and plugin diagnostics.
 
+`LogViewerController` provides the same split between log state and rendering for `LogViewer`: `append()`,
+`appendMany()`, `clear()`, `setLimit()`, `setFollow()`, `toggleFollow()`, `visible()`, and `inspect()` keep bounded log
+buffers reusable across system monitors, worker consoles, and diagnostic panes. `logViewerCommands()` and
+`bindLogViewerCommands()` expose clear and follow-toggle actions through the shared command registry.
+
 ## Layouts
 
 Layouts compute reactive `Rectangle` signals for each named element. Pass them directly as a component's `rectangle`.

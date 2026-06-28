@@ -176,6 +176,7 @@ export const componentCatalog = [
   component("gauge", "Gauge", "visualization", "Compact labeled value bar renderer.", ["render-helper", "dashboard"]),
   component("chart", "Chart", "visualization", "Text bar chart renderer.", ["render-helper", "dashboard"]),
   component("log-viewer", "LogViewer", "data", "Tail-following log row window helpers.", [
+    "controller",
     "render-helper",
     "virtualized",
     "dashboard",

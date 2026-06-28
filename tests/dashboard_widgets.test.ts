@@ -1,10 +1,11 @@
 import { assertEquals } from "./deps.ts";
 import { CommandRegistry } from "../src/app/commands.ts";
+import { bindLogViewerCommands, logViewerCommands } from "../src/app/log_viewer_commands.ts";
 import { bindMetricSeriesCommands, metricSeriesCommands } from "../src/app/metric_series_commands.ts";
 import type { MetricSeriesCommandAction } from "../src/app/metric_series_commands.ts";
 import { renderBarChart } from "../src/components/chart.ts";
 import { renderGauge } from "../src/components/gauge.ts";
-import { visibleLogLines } from "../src/components/log_viewer.ts";
+import { LogViewerController, visibleLogLines } from "../src/components/log_viewer.ts";
 import {
   MetricSeriesController,
   metricSeriesStats,
@@ -62,6 +63,30 @@ Deno.test("renderBarChart produces top-down rows", () => {
 Deno.test("visibleLogLines follows the tail by default", () => {
   assertEquals(visibleLogLines(["a", "b", "c"], 2), ["b", "c"]);
   assertEquals(visibleLogLines(["a", "b", "c"], 2, false), ["a", "b"]);
+});
+
+Deno.test("LogViewerController bounds lines and follows visible tail", () => {
+  const logs = new LogViewerController({ limit: 3 });
+
+  logs.append("boot");
+  logs.appendMany(["load", "ready", "tick"]);
+
+  assertEquals(logs.inspect(2), {
+    lines: ["load", "ready", "tick"],
+    lineCount: 3,
+    visible: ["ready", "tick"],
+    limit: 3,
+    follow: true,
+    empty: false,
+  });
+  logs.setFollow(false);
+  assertEquals(logs.visible(2), ["load", "ready"]);
+  assertEquals(logs.toggleFollow(), true);
+  logs.setLimit(1);
+  assertEquals(logs.inspect().lines, ["tick"]);
+  logs.setLimit(0);
+  assertEquals(logs.inspect().empty, true);
+  logs.dispose();
 });
 
 Deno.test("pushMetricValue appends bounded samples", () => {
@@ -155,6 +180,48 @@ Deno.test("metricSeriesCommands can omit limit commands and disable empty series
   assertEquals(commands.map((command) => [command.id, commandDisabled(command)]), [
     ["metric.clear", true],
   ]);
+});
+
+Deno.test("logViewerCommands clear logs and toggle follow mode", async () => {
+  const logs = new LogViewerController({ lines: ["a", "b"], follow: true });
+  const registry = new CommandRegistry();
+  const actions: unknown[] = [];
+  const dispose = bindLogViewerCommands(registry, logs, {
+    id: "system",
+    idPrefix: "logs.system",
+    group: "logs",
+  });
+
+  assertEquals(logViewerCommands(new LogViewerController()).map((command) => [command.id, commandDisabled(command)]), [
+    ["log.clear", true],
+    ["log.toggleFollow", undefined],
+  ]);
+  assertEquals(registry.list("logs").map((command) => command.id), ["logs.system.clear", "logs.system.toggleFollow"]);
+
+  assertEquals(await registry.execute("logs.system.toggleFollow", (action) => void actions.push(action)), true);
+  assertEquals(logs.follow.peek(), false);
+  assertEquals(actions[0], {
+    type: "logViewer.followChanged",
+    payload: {
+      id: "system",
+      follow: false,
+      inspection: {
+        lines: ["a", "b"],
+        lineCount: 2,
+        visible: ["a", "b"],
+        limit: 500,
+        follow: false,
+        empty: false,
+      },
+    },
+  });
+
+  assertEquals(await registry.execute("logs.system.clear", (action) => void actions.push(action)), true);
+  assertEquals(logs.inspect().empty, true);
+
+  dispose();
+  assertEquals(registry.list("logs"), []);
+  logs.dispose();
 });
 
 Deno.test("createTheme fills semantic token defaults", () => {
