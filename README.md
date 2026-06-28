@@ -1469,7 +1469,8 @@ Optional high-performance APIs are surfaced through `src/runtime/mod.ts`:
 - `createRuntimePlan()` / `formatRuntimePlan()`
 - `RuntimeProfile` / `RuntimeProfileRegistry` / `createRuntimeProfileCatalogReport()` /
   `formatRuntimeProfileCatalogMarkdown()`
-- `RuntimeProfileController` / `bindRuntimeProfileCommands()` / `bindRuntimeProfileSetting()`
+- `RuntimeProfileController` / `createRuntimeProfilePlugin()` / `bindRuntimeProfileCommands()` /
+  `bindRuntimeProfileSetting()`
 - `AsyncScheduler` / `runTaskBatch()`
 - `RenderLoop` / `createRenderLoop()`
 - `AsyncResource` / `createAsyncResource()` / `CachedAsyncResource` / `createCachedAsyncResource()` /
@@ -1499,6 +1500,11 @@ const runtimeProfileMarkdown = formatRuntimeProfileCatalogMarkdown({ query: { ta
 const runtimeProfile = createRuntimeProfileController({ registry: runtimeProfiles, activeId: "balanced" });
 const stopRuntimeProfileCommands = bindRuntimeProfileCommands(commandRegistry, runtimeProfile);
 const stopRuntimeProfileSetting = bindRuntimeProfileSetting(runtimeProfile, settings);
+const runtimeProfilePlugin = createRuntimeProfilePlugin({
+  controller: runtimeProfile,
+  settings,
+  commands: { group: "runtime" },
+});
 ```
 
 `AsyncScheduler` caps concurrent work, prioritizes queued tasks, exposes queue inspection, and can wait for or clear

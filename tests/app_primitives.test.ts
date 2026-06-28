@@ -34,6 +34,7 @@ import { bindSplitPaneCommands, splitPaneCommands } from "../src/app/split_pane_
 import type { SplitPaneCommandAction } from "../src/app/split_pane_commands.ts";
 import { bindRuntimeProfileCommands, runtimeProfileCommands } from "../src/app/runtime_profile_commands.ts";
 import type { RuntimeProfileCommandAction } from "../src/app/runtime_profile_commands.ts";
+import { createRuntimeProfilePlugin } from "../src/app/runtime_profile_plugin.ts";
 import {
   bindDataTableSetting,
   bindRouteSetting,
@@ -2270,6 +2271,78 @@ Deno.test("createThemePlugin rolls back installed surfaces when custom install f
   }
 
   assertEquals(app.commands.has("theme.set.plain"), false);
+  assertEquals(app.plugins(), []);
+  app.destroy();
+});
+
+Deno.test("createRuntimeProfilePlugin installs profile commands settings and lifecycle cleanup", async () => {
+  const store = new MemoryStore<unknown>();
+  await store.set("prefs.runtime-profile", "portable");
+  const settings = new SettingsController({ store, namespace: "prefs" });
+  const app = createApp<RuntimeProfileCommandAction>({ tui: { destroy() {} } as unknown as Tui });
+  const actions: RuntimeProfileCommandAction[] = [];
+  app.onAction((action) => void actions.push(action));
+  let contextProfile = "";
+
+  const plugin = createRuntimeProfilePlugin({
+    settings,
+    mirrorKeymap: true,
+    controllerOptions: {
+      activeId: "balanced",
+      capabilities: {
+        workers: true,
+        webgpu: true,
+        webgl: true,
+        offscreenCanvas: true,
+        indexedDb: true,
+      },
+    },
+    install(context) {
+      contextProfile = context.controller.activeId.peek();
+      assertEquals(context.profileSetting?.setting.value.peek(), "balanced");
+    },
+  });
+
+  assertEquals(plugin.inspect().commandsEnabled, true);
+  assertEquals(plugin.inspect().profilePersistenceEnabled, true);
+  const dispose = app.use(plugin);
+
+  await settings.ready();
+  assertEquals(contextProfile, "balanced");
+  assertEquals(plugin.controller.activeId.peek(), "portable");
+  assertEquals(app.commands.has("runtime.profile.set.throughput"), true);
+  assertEquals(app.plugins(), [{ id: "runtime-profile", label: "Runtime Profile" }]);
+
+  assertEquals(await app.executeCommand("runtime.profile.set.throughput"), true);
+  assertEquals(plugin.controller.activeId.peek(), "throughput");
+  assertEquals(actions, [
+    { type: "runtime.profile.changed", payload: { id: "throughput", previousId: "portable" } },
+  ]);
+  await settings.flush();
+  assertEquals(await store.get("prefs.runtime-profile"), "throughput");
+
+  dispose();
+  assertEquals(app.commands.has("runtime.profile.set.throughput"), false);
+  assertEquals(app.plugins(), []);
+  app.destroy();
+});
+
+Deno.test("createRuntimeProfilePlugin rolls back installed surfaces when custom install fails", () => {
+  const app = createApp<RuntimeProfileCommandAction>({ tui: { destroy() {} } as unknown as Tui });
+  const plugin = createRuntimeProfilePlugin({
+    install() {
+      throw new Error("runtime profile boom");
+    },
+  });
+
+  try {
+    app.use(plugin);
+    throw new Error("expected runtime profile plugin install to throw");
+  } catch (error) {
+    assertEquals(error instanceof Error && error.message, "runtime profile boom");
+  }
+
+  assertEquals(app.commands.has("runtime.profile.set.balanced"), false);
   assertEquals(app.plugins(), []);
   app.destroy();
 });

@@ -54,9 +54,11 @@ threads.
 
 Runtime profiles let apps expose strategy choices as data instead of hard-coded conditionals. A settings pane can show
 `RuntimeProfileRegistry.catalog()`, keep the selected profile in a `RuntimeProfileController`, persist it with
-`bindRuntimeProfileSetting()`, and expose `bindRuntimeProfileCommands()` through command palettes or menus. Run
-`deno task capabilities` for the current capability summary, default plan, and built-in profile table, or
-`deno task capabilities -- --json` for machine-readable reports.
+`bindRuntimeProfileSetting()`, and expose `bindRuntimeProfileCommands()` through command palettes or menus.
+`createRuntimeProfilePlugin()` installs that controller, command surface, optional keymap mirroring, and setting
+persistence through the same disposable app-plugin lifecycle as theme and route modules. Run `deno task capabilities`
+for the current capability summary, default plan, and built-in profile table, or `deno task capabilities -- --json` for
+machine-readable reports.
 
 `BenchmarkRunner` supports per-case `iterations`, `warmupIterations`, `maxAverageMs`, and `maxTotalMs`. Pass `{ now }`
 in `BenchmarkRunnerOptions` to make benchmark unit tests deterministic, use `summarize()` or
