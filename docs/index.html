@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Deno TUI Web - Neon Exodus</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        background: #05070d;
+        color: #eff7ff;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      }
+
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+      }
+
+      body {
+        display: grid;
+        grid-template-rows: auto 1fr;
+        min-height: 100vh;
+        overflow: hidden;
+        background:
+          radial-gradient(circle at 20% 0%, rgba(255, 66, 49, 0.18), transparent 32rem),
+          radial-gradient(circle at 90% 10%, rgba(177, 124, 255, 0.16), transparent 34rem),
+          #05070d;
+      }
+
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid rgba(239, 247, 255, 0.16);
+        background: rgba(5, 7, 13, 0.82);
+      }
+
+      h1 {
+        margin: 0;
+        color: #ff4231;
+        font-size: clamp(1rem, 2vw, 1.35rem);
+        letter-spacing: 0;
+      }
+
+      p {
+        margin: 0;
+        color: #5a6478;
+        font-size: 0.9rem;
+      }
+
+      #app {
+        width: min(1200px, 100vw);
+        height: min(684px, calc(100vh - 4rem));
+        align-self: center;
+        justify-self: center;
+        outline: none;
+        box-shadow: 0 0 0 1px rgba(91, 176, 255, 0.24), 0 0 48px rgba(255, 66, 49, 0.14);
+        background: #05070d;
+      }
+
+      canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Neon Exodus / Deno TUI Web</h1>
+      <p>Standalone client-side package demo. Use 1-5, O/W/E, and arrow keys.</p>
+    </header>
+    <main id="app" aria-label="Neon Exodus standalone browser demo"></main>
+    <script type="module" src="./assets/neon-exodus.js"></script>
+  </body>
+</html>

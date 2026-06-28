@@ -59,12 +59,15 @@ interface MinimalIdbDatabase {
 interface MinimalIdbRequest<T> {
   error: Error | null;
   result: T;
-  onsuccess: (() => void) | null;
-  onerror: (() => void) | null;
+  // deno-lint-ignore no-explicit-any
+  onsuccess: ((event: any) => any) | null;
+  // deno-lint-ignore no-explicit-any
+  onerror: ((event: any) => any) | null;
 }
 
 interface MinimalIdbOpenRequest extends MinimalIdbRequest<MinimalIdbDatabase> {
-  onupgradeneeded: (() => void) | null;
+  // deno-lint-ignore no-explicit-any
+  onupgradeneeded: ((event: any) => any) | null;
 }
 
 interface MinimalIndexedDb {

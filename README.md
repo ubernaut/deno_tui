@@ -39,6 +39,9 @@ renderer lab, and demo suite:
 - [GRWizard App](./docs/grwizard-app.md) covers the responsive GPU/model wizard demo.
 - [Repository Overview](./docs/repo-overview.md) summarizes the architecture, module families, demos, and launch
   commands in one place.
+- [Browser Framework Plan](./docs/web-framework-plan.md) compares browser delivery options and recommends a hybrid
+  platform/renderer path for shared terminal and web interfaces. The current branch includes `mod.web.ts`,
+  `mod.remote.ts`, a Canvas2D web host, a DOM render target, and a GitHub Pages Neon Exodus build under `docs/`.
 - The README remains the primary API tour for components, layouts, app primitives, theming, runtime capabilities,
   reactivity, views, examples, and contribution commands.
 
@@ -2348,6 +2351,11 @@ deno task app-plugin-catalog
 deno task adopter-workbench
 deno task demo-gallery
 deno task screenshots
+deno task web:check
+deno task web:demo:check
+deno task remote:check
+deno task web:test
+deno task web:pages:build
 deno task health
 deno task worker-demo
 deno task runtime-workloads
