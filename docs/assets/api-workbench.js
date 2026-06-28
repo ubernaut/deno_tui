@@ -4902,7 +4902,7 @@ host.on("keyPress", ({ key }) => {
 host.on("mousePress", (event) => {
   if (event.release) return;
   const target = findHit(event.x, event.y);
-  if (target) applyHit(target.hit);
+  if (target) applyHit(target, event.x);
   draw();
 });
 host.start();
@@ -5093,13 +5093,14 @@ function ensureLines() {
     }).draw();
   }
 }
-function applyHit(hit) {
+function applyHit(target, x) {
+  const hit = target.hit;
   if (hit.type === "focus") focus(hit.id);
   else if (hit.type === "min") minimize(hit.id);
   else if (hit.type === "max") toggleMax(hit.id);
   else if (hit.type === "close") closePanel(hit.id);
   else if (hit.type === "restore") hit.id ? restorePanel(hit.id) : restore();
-  else if (hit.type === "control") applyControlHit(hit.id, hit.action ?? "activate");
+  else if (hit.type === "control") applyControlHit(hit.id, hit.action ?? "activate", target.rect, x);
   else setTheme(hit.index);
 }
 function focus(id2) {
@@ -5233,6 +5234,10 @@ function renderControls(frame, rect) {
     previous: true,
     next: true
   });
+  hitTargets.push({
+    rect: { column: rect.column + 12, row: row - 1, width: 10, height: 1 },
+    hit: { type: "control", id: "slider", action: "set" }
+  });
   writeControl(
     "checkbox",
     `Checkboxes  ${renderCheckBoxMark(live.checked.peek())} live preview  ${renderCheckBoxMark(compact.checked.peek())} compact rows`
@@ -5323,13 +5328,15 @@ function renderInlineRadioOptions() {
     return `${cursor} ${mark} ${option.label}`;
   }).join("  ");
 }
-function applyControlHit(id2, action) {
+function applyControlHit(id2, action, rect, x) {
   active.value = "controls";
   activeControl.value = id2;
   if (id2 === "button") actionButton.press("mouse");
   else if (id2 === "genericButton") genericButton.press("mouse");
-  else if (id2 === "slider") action === "previous" ? slider.decrement() : slider.increment();
-  else if (id2 === "checkbox") action === "next" ? compact.toggle() : live.toggle();
+  else if (id2 === "slider") {
+    if (action === "set" && rect && x !== void 0) setSliderFromPointer(slider, rect, x);
+    else action === "previous" ? slider.decrement() : slider.increment();
+  } else if (id2 === "checkbox") action === "next" ? compact.toggle() : live.toggle();
   else if (id2 === "radio") {
     if (action === "previous") radio.move(-1);
     else if (action === "next") radio.move(1);
@@ -5348,6 +5355,14 @@ function applyControlHit(id2, action) {
 clicked`);
   progress.setValue(Math.min(100, progress.value.peek() + 7));
   push(`control ${id2} ${action}`);
+}
+function setSliderFromPointer(controller, rect, x) {
+  const inspection = controller.inspect();
+  const local = Math.max(0, Math.min(rect.width - 1, x - rect.column));
+  const ratio = rect.width <= 1 ? 0 : local / (rect.width - 1);
+  const raw = inspection.min + ratio * (inspection.max - inspection.min);
+  const stepped = inspection.min + Math.round((raw - inspection.min) / inspection.step) * inspection.step;
+  controller.setValue(stepped);
 }
 function handleControlsKey(event) {
   if (activeControl.peek() === "input") input.handleKeyPress(event);

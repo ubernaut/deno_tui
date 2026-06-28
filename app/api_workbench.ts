@@ -46,7 +46,7 @@ type HitAction =
   | { type: "restore"; id: WindowId }
   | { type: "close"; id: WindowId }
   | { type: "theme"; index: number }
-  | { type: "control"; id: ControlId; action?: "previous" | "next" | "activate" };
+  | { type: "control"; id: ControlId; action?: "previous" | "next" | "activate" | "set" };
 
 interface ThemeSpec {
   id: string;
@@ -283,7 +283,7 @@ tui.on("keyPress", (event) => {
 tui.on("mousePress", (event) => {
   if (event.release) return;
   const hit = findHit(event.x, event.y);
-  if (hit) applyHit(hit.action);
+  if (hit) applyHit(hit, event.x);
   draw();
 });
 
@@ -583,6 +583,11 @@ function renderControls(frame: Frame, rect: Rectangle): void {
     previous: true,
     next: true,
   });
+  addHit({ column: rect.column + 12, row: row - 1, width: trackWidth, height: 1 }, {
+    type: "control",
+    id: "slider",
+    action: "set",
+  });
   writeControl(
     "checkbox",
     `Checkboxes  ${renderCheckBoxMark(livePreview.checked.peek())} live preview  ${
@@ -830,7 +835,8 @@ function setTheme(index: number): void {
   pushLog(`theme ${theme().label}`);
 }
 
-function applyHit(action: HitAction): void {
+function applyHit(target: { rect: Rectangle; action: HitAction }, x: number): void {
+  const action = target.action;
   if (action.type === "focus") focus(action.id);
   else if (action.type === "minimize") minimize(action.id);
   else if (action.type === "maximize") toggleMaximize(action.id);
@@ -839,7 +845,7 @@ function applyHit(action: HitAction): void {
     minimized.value[action.id] = false;
     maximized.value = null;
     focus(action.id);
-  } else if (action.type === "control") applyControlHit(action.id, action.action ?? "activate");
+  } else if (action.type === "control") applyControlHit(action.id, action.action ?? "activate", target.rect, x);
   else setTheme(action.index);
 }
 
@@ -853,13 +859,20 @@ function closeWindow(id: WindowId): void {
   if (next) activeWindow.value = next;
 }
 
-function applyControlHit(id: ControlId, action: "previous" | "next" | "activate"): void {
+function applyControlHit(
+  id: ControlId,
+  action: "previous" | "next" | "activate" | "set",
+  rect?: Rectangle,
+  x?: number,
+): void {
   activeWindow.value = "controls";
   activeControl.value = id;
   if (id === "button") actionButton.press("mouse");
   else if (id === "genericButton") genericButton.press("mouse");
-  else if (id === "slider") action === "previous" ? density.decrement() : density.increment();
-  else if (id === "checkbox") action === "next" ? compactRows.toggle() : livePreview.toggle();
+  else if (id === "slider") {
+    if (action === "set" && rect && x !== undefined) setSliderFromPointer(density, rect, x);
+    else action === "previous" ? density.decrement() : density.increment();
+  } else if (id === "checkbox") action === "next" ? compactRows.toggle() : livePreview.toggle();
   else if (id === "radio") {
     if (action === "previous") modeRadio.move(-1);
     else if (action === "next") modeRadio.move(1);
@@ -878,6 +891,15 @@ function applyControlHit(id: ControlId, action: "previous" | "next" | "activate"
   else if (id === "textbox") notes.setText(`${notes.text.peek()}\nclicked`);
   progress.setValue(Math.min(100, progress.value.peek() + 7));
   pushLog(`control ${id} ${action}`);
+}
+
+function setSliderFromPointer(controller: SliderController, rect: Rectangle, x: number): void {
+  const inspection = controller.inspect();
+  const local = Math.max(0, Math.min(rect.width - 1, x - rect.column));
+  const ratio = rect.width <= 1 ? 0 : local / (rect.width - 1);
+  const raw = inspection.min + ratio * (inspection.max - inspection.min);
+  const stepped = inspection.min + Math.round((raw - inspection.min) / inspection.step) * inspection.step;
+  controller.setValue(stepped);
 }
 
 function handleControlsKey(event: { key: string; ctrl?: boolean; meta?: boolean; shift?: boolean }): void {
