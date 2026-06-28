@@ -20,6 +20,7 @@ import {
   ScrollArea,
   Signal,
   StatusBar,
+  Stepper,
   Text,
   type TextRectangle,
   type ToastMessage,
@@ -63,6 +64,7 @@ const paletteVisible = new Signal(false);
 const contextVisible = new Signal(false);
 const activeMenu = new Signal(0);
 const routeChoice = new Signal("overview");
+const routeStepIndex = new Signal(0);
 const toasts = new Signal<ToastMessage[]>([
   { id: "boot", level: "success", message: "App shell ready" },
 ], { deepObserve: true });
@@ -155,6 +157,7 @@ app.actions.subscribe((action) => {
   if (action.type === "route") {
     app.routes.navigate(action.payload);
     routeChoice.value = action.payload;
+    routeStepIndex.value = Math.max(0, ["overview", "widgets", "runtime"].indexOf(action.payload));
     pushToast(`Route changed to ${action.payload}`, "info");
   } else if (action.type === "toast") {
     pushToast(action.payload, "success");
@@ -248,6 +251,25 @@ new Breadcrumbs({
   })),
 });
 
+new Stepper({
+  parent: app.tui,
+  theme: themeEngine.component("Stepper"),
+  zIndex: 2,
+  steps: [
+    { id: "overview", label: "Overview", completed: true },
+    { id: "widgets", label: "Widgets" },
+    { id: "runtime", label: "Runtime" },
+  ],
+  activeIndex: routeStepIndex,
+  onChange: (step) => app.executeCommand(`route.${step.id}`).then(() => undefined),
+  rectangle: new Computed(() => ({
+    column: 4,
+    row: 6,
+    width: Math.max(20, app.tui.rectangle.value.width - 42),
+    height: 1,
+  })),
+});
+
 new Tree({
   parent: app.tui,
   theme: themeEngine.component("Tree"),
@@ -275,9 +297,9 @@ new Tree({
   ],
   rectangle: new Computed(() => ({
     column: 4,
-    row: 8,
+    row: 9,
     width: 36,
-    height: Math.max(5, app.tui.rectangle.value.height - 13),
+    height: Math.max(5, app.tui.rectangle.value.height - 14),
   })),
 });
 

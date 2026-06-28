@@ -133,10 +133,10 @@ deno task demo
 | `Table`       | Scrollable data table with headers and row selection       |
 | `ThreeAscii`  | Renders a three.js scene as ASCII art in the terminal      |
 
-Additional fork components include `List`, `Tabs`, `Breadcrumbs`, `MenuBar`, `ContextMenu`, `RadioGroup`, `ScrollArea`,
-`Modal`, `KeyHelp`, `CommandPalette`, `Tree`, `ToastStack`, `Sparkline`, `Gauge`, `Chart`, `LogViewer`, and `StatusBar`.
-For table-heavy apps, `createDataTableView()`, `sortDataRows()`, and the data-table render helpers provide reusable
-filtering, sorting, pagination, and row formatting without coupling data logic to the `Table` renderer.
+Additional fork components include `List`, `Tabs`, `Breadcrumbs`, `Stepper`, `MenuBar`, `ContextMenu`, `RadioGroup`,
+`ScrollArea`, `Modal`, `KeyHelp`, `CommandPalette`, `Tree`, `ToastStack`, `Sparkline`, `Gauge`, `Chart`, `LogViewer`,
+and `StatusBar`. For table-heavy apps, `createDataTableView()`, `sortDataRows()`, and the data-table render helpers
+provide reusable filtering, sorting, pagination, and row formatting without coupling data logic to the `Table` renderer.
 
 ## Layouts
 

@@ -23,6 +23,7 @@ export * from "./scroll_area.ts";
 export * from "./slider.ts";
 export * from "./sparkline.ts";
 export * from "./statusbar.ts";
+export * from "./stepper.ts";
 export * from "./table.ts";
 export * from "./tabs.ts";
 export * from "./text.ts";

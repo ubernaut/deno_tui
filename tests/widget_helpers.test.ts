@@ -19,6 +19,7 @@ import {
   scrollOffsetBy,
 } from "../src/components/scroll_area.ts";
 import { renderStatusBar } from "../src/components/statusbar.ts";
+import { clampStepperIndex, renderStepper, shiftStepperIndex, stepForIndex } from "../src/components/stepper.ts";
 import { renderTabs } from "../src/components/tabs.ts";
 
 Deno.test("visibleListRows centers the selected item when space allows", () => {
@@ -87,6 +88,28 @@ Deno.test("radio group renders selected state and skips disabled options", () =>
   assertEquals(clampRadioIndex(options, 1), 2);
   assertEquals(optionForValue(options, "c")?.label, "Gamma");
   assertEquals(visibleRadioOptions(options, 2, 2).map((row) => row.index), [1, 2]);
+});
+
+Deno.test("stepper renders progress and skips disabled steps", () => {
+  const steps = [
+    { id: "plan", label: "Plan", completed: true },
+    { id: "build", label: "Build" },
+    { id: "ship", label: "Ship", disabled: true },
+    { id: "verify", label: "Verify" },
+  ];
+
+  assertEquals(renderStepper(steps, 1), ["✓ Plan → [Build] → (Ship) → Verify"]);
+  assertEquals(renderStepper(steps, 1, "horizontal", 12), ["✓ Plan → [B…"]);
+  assertEquals(renderStepper(steps, 3, "vertical"), [
+    "  ✓ Plan",
+    "  ○ Build",
+    "  - (Ship)",
+    "> ○ Verify",
+  ]);
+  assertEquals(shiftStepperIndex(steps, 1, 1), 3);
+  assertEquals(shiftStepperIndex(steps, 3, -1), 1);
+  assertEquals(clampStepperIndex(steps, 2), 3);
+  assertEquals(stepForIndex(steps, 2)?.id, "verify");
 });
 
 Deno.test("scroll helpers clamp offsets and expose scrollbar thumb state", () => {
