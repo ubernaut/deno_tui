@@ -11,14 +11,29 @@ export interface ListOptions extends ComponentOptions {
   selectedIndex?: number | Signal<number>;
 }
 
-export function visibleListRows(items: readonly string[], selectedIndex: number, height: number): string[] {
+export interface VirtualRow<T> {
+  item: T;
+  index: number;
+  selected: boolean;
+}
+
+export function virtualRows<T>(
+  items: readonly T[],
+  selectedIndex: number,
+  height: number,
+): VirtualRow<T>[] {
   const safeHeight = Math.max(0, height);
   const selected = clamp(selectedIndex, 0, Math.max(0, items.length - 1));
   const offset = clamp(selected - Math.floor(safeHeight / 2), 0, Math.max(0, items.length - safeHeight));
-  return items.slice(offset, offset + safeHeight).map((item, index) => {
-    const itemIndex = offset + index;
-    return `${itemIndex === selected ? ">" : " "} ${item}`;
-  });
+  return items.slice(offset, offset + safeHeight).map((item, index) => ({
+    item,
+    index: offset + index,
+    selected: offset + index === selected,
+  }));
+}
+
+export function visibleListRows(items: readonly string[], selectedIndex: number, height: number): string[] {
+  return virtualRows(items, selectedIndex, height).map((row) => `${row.selected ? ">" : " "} ${row.item}`);
 }
 
 export class List extends Component {

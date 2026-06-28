@@ -1,17 +1,21 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { Component } from "./component.ts";
 
+export interface Focusable {
+  state: Component["state"];
+}
+
 export class FocusManager {
-  readonly items: Component[] = [];
+  readonly items: Focusable[] = [];
   index = -1;
 
-  register(component: Component): void {
+  register(component: Focusable): void {
     if (!this.items.includes(component)) {
       this.items.push(component);
     }
   }
 
-  unregister(component: Component): void {
+  unregister(component: Focusable): void {
     const index = this.items.indexOf(component);
     if (index < 0) return;
     this.items.splice(index, 1);
@@ -20,11 +24,11 @@ export class FocusManager {
     }
   }
 
-  current(): Component | undefined {
+  current(): Focusable | undefined {
     return this.index < 0 ? undefined : this.items[this.index];
   }
 
-  focus(component: Component): void {
+  focus(component: Focusable): void {
     const index = this.items.indexOf(component);
     if (index < 0) {
       this.register(component);
@@ -35,14 +39,14 @@ export class FocusManager {
     this.applyFocus();
   }
 
-  next(): Component | undefined {
+  next(): Focusable | undefined {
     if (this.items.length === 0) return undefined;
     this.index = (this.index + 1 + this.items.length) % this.items.length;
     this.applyFocus();
     return this.current();
   }
 
-  previous(): Component | undefined {
+  previous(): Focusable | undefined {
     if (this.items.length === 0) return undefined;
     this.index = (this.index - 1 + this.items.length) % this.items.length;
     this.applyFocus();
@@ -53,5 +57,45 @@ export class FocusManager {
     this.items.forEach((item, itemIndex) => {
       item.state.value = itemIndex === this.index ? "focused" : "base";
     });
+  }
+}
+
+export class FocusScope {
+  private previous?: Focusable;
+  private previousItems: Focusable[] = [];
+  private previousIndex = -1;
+
+  constructor(
+    readonly manager: FocusManager,
+    readonly items: readonly Focusable[],
+  ) {}
+
+  enter(initialIndex = 0): Focusable | undefined {
+    this.previous = this.manager.current();
+    this.previousItems = [...this.manager.items];
+    this.previousIndex = this.manager.index;
+    for (const item of this.previousItems) {
+      item.state.value = "base";
+    }
+    this.manager.items.splice(0, this.manager.items.length, ...this.items);
+    this.manager.index = -1;
+
+    const item = this.items[Math.max(0, Math.min(this.items.length - 1, initialIndex))];
+    if (item) {
+      this.manager.focus(item);
+    }
+    return item;
+  }
+
+  exit(): void {
+    for (const item of this.items) {
+      item.state.value = "base";
+    }
+    this.manager.items.splice(0, this.manager.items.length, ...this.previousItems);
+    this.manager.index = this.previousIndex;
+
+    if (this.previous) {
+      this.manager.focus(this.previous);
+    }
   }
 }

@@ -12,6 +12,7 @@ export * from "./label.ts";
 export * from "./key_help.ts";
 export * from "./list.ts";
 export * from "./log_viewer.ts";
+export * from "./menu_bar.ts";
 export * from "./modal.ts";
 export * from "./progressbar.ts";
 export * from "./slider.ts";

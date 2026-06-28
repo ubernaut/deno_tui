@@ -1,7 +1,8 @@
 import { assertEquals } from "./deps.ts";
 import { formatKeyBinding, KeymapRegistry } from "../src/keymap.ts";
 import { renderKeyHelp } from "../src/components/key_help.ts";
-import { visibleListRows } from "../src/components/list.ts";
+import { virtualRows, visibleListRows } from "../src/components/list.ts";
+import { renderMenuBar, shiftMenuIndex } from "../src/components/menu_bar.ts";
 import { renderStatusBar } from "../src/components/statusbar.ts";
 import { renderTabs } from "../src/components/tabs.ts";
 
@@ -13,6 +14,14 @@ Deno.test("visibleListRows centers the selected item when space allows", () => {
   ]);
 });
 
+Deno.test("virtualRows exposes source indices for large lists", () => {
+  assertEquals(virtualRows(["a", "b", "c", "d", "e"], 3, 3), [
+    { item: "c", index: 2, selected: false },
+    { item: "d", index: 3, selected: true },
+    { item: "e", index: 4, selected: false },
+  ]);
+});
+
 Deno.test("renderTabs marks the active tab", () => {
   assertEquals(
     renderTabs([
@@ -21,6 +30,17 @@ Deno.test("renderTabs marks the active tab", () => {
     ], 1),
     " One  [Two]",
   );
+});
+
+Deno.test("menu bar renders active item and skips disabled entries", () => {
+  const items = [
+    { id: "file", label: "File" },
+    { id: "edit", label: "Edit", disabled: true },
+    { id: "view", label: "View" },
+  ];
+
+  assertEquals(renderMenuBar(items, 0), "[File] (Edit) View");
+  assertEquals(shiftMenuIndex(items, 0, 1), 2);
 });
 
 Deno.test("renderStatusBar keeps left and right content inside width", () => {

@@ -132,8 +132,8 @@ deno task demo
 | `Table`       | Scrollable data table with headers and row selection       |
 | `ThreeAscii`  | Renders a three.js scene as ASCII art in the terminal      |
 
-Additional fork components include `List`, `Tabs`, `Modal`, `KeyHelp`, `CommandPalette`, `Tree`, `ToastStack`,
-`Sparkline`, `Gauge`, `Chart`, `LogViewer`, and `StatusBar`.
+Additional fork components include `List`, `Tabs`, `MenuBar`, `Modal`, `KeyHelp`, `CommandPalette`, `Tree`,
+`ToastStack`, `Sparkline`, `Gauge`, `Chart`, `LogViewer`, and `StatusBar`.
 
 ## Layouts
 
@@ -205,6 +205,7 @@ This fork exports lightweight app primitives for larger TUIs:
 - `ActionBus`
 - `RouteManager`
 - `FocusManager`
+- `FocusScope`
 - `KeymapRegistry`
 
 They are optional and composable. Existing component-first apps continue to work.

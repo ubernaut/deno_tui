@@ -11,6 +11,7 @@ import {
   handleKeyboardControls,
   KeyHelp,
   List,
+  MenuBar,
   Modal,
   resolveBreakpoint,
   Signal,
@@ -54,6 +55,7 @@ const themeEngine = createThemeEngine("neon", {
 });
 
 const paletteVisible = new Signal(false);
+const activeMenu = new Signal(0);
 const toasts = new Signal<ToastMessage[]>([
   { id: "boot", level: "success", message: "App shell ready" },
 ], { deepObserve: true });
@@ -88,6 +90,24 @@ new StatusBar({
     ])
   ),
   rectangle: new Computed(() => ({ column: 0, row: 0, width: app.tui.rectangle.value.width, height: 1 })),
+});
+
+new MenuBar({
+  parent: app.tui,
+  theme: themeEngine.component("MenuBar"),
+  zIndex: 2,
+  items: [
+    { id: "routes", label: "Routes" },
+    { id: "widgets", label: "Widgets" },
+    { id: "runtime", label: "Runtime" },
+  ],
+  activeIndex: activeMenu,
+  rectangle: new Computed(() => ({
+    column: 2,
+    row: 2,
+    width: Math.max(20, app.tui.rectangle.value.width - 4),
+    height: 1,
+  })),
 });
 
 const bodyRect = new Computed(() => dockRect(app.tui.rectangle.value, "top", 1).second);
