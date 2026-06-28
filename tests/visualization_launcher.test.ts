@@ -12,6 +12,7 @@ Deno.test("visualization launcher resolves public aliases to deno tasks", () => 
   assertEquals(resolveVisualizationTask("worker"), "worker-demo");
   assertEquals(resolveVisualizationTask("runtime"), "capabilities");
   assertEquals(resolveVisualizationTask("perf"), "benchmark");
+  assertEquals(resolveVisualizationTask("exports"), "api-inventory");
   assertEquals(resolveVisualizationTask("wizard"), "grwizard");
   assertEquals(resolveVisualizationTask("check"), "health");
   assertEquals(resolveVisualizationTask("missing"), undefined);

@@ -61,6 +61,14 @@ Run the contributor health gate:
 deno task health
 ```
 
+Inspect the public re-export graph before release:
+
+```bash
+deno task api-inventory
+deno task api-inventory -- --json
+deno task api-inventory -- --check --quiet
+```
+
 Run the worker integration path with permissions:
 
 ```bash

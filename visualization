@@ -33,6 +33,9 @@ case "$target" in
   benchmark|bench|perf)
     task="benchmark"
     ;;
+  api-inventory|api|exports)
+    task="api-inventory"
+    ;;
   grwizard|wizard)
     task="grwizard"
     ;;
@@ -41,7 +44,7 @@ case "$target" in
     ;;
   -h|--help|help)
     printf '%s\n' \
-      "usage: ./visualization [showcase|polygons|dashboard|app-shell|monitor|worker|capabilities|benchmark|grwizard|health] [args...]" \
+      "usage: ./visualization [showcase|polygons|dashboard|app-shell|monitor|worker|capabilities|benchmark|api-inventory|grwizard|health] [args...]" \
       "" \
       "  showcase     full widget showcase (default)" \
       "  polygons     standalone three.js ASCII geometry demo" \
@@ -52,13 +55,14 @@ case "$target" in
       "  worker       abortable WorkerPool concurrency demo" \
       "  capabilities runtime capability report" \
       "  benchmark    layout and rendering benchmark report" \
+      "  api-inventory public API export inventory" \
       "  grwizard     responsive GPU/model wizard demo" \
       "  health       contributor health gate"
     exit 0
     ;;
   *)
     echo "unknown visualization: $target" >&2
-    echo "usage: ./visualization [showcase|polygons|dashboard|app-shell|monitor|worker|capabilities|benchmark|grwizard|health] [args...]" >&2
+    echo "usage: ./visualization [showcase|polygons|dashboard|app-shell|monitor|worker|capabilities|benchmark|api-inventory|grwizard|health] [args...]" >&2
     exit 64
     ;;
 esac

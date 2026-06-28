@@ -46,6 +46,11 @@ export const visualizationLaunchTargets: readonly VisualizationLaunchTarget[] = 
     description: "layout and rendering benchmark report",
   },
   {
+    task: "api-inventory",
+    aliases: ["api-inventory", "api", "exports"],
+    description: "public API export inventory",
+  },
+  {
     task: "grwizard",
     aliases: ["grwizard", "wizard"],
     description: "responsive GPU/model wizard demo",
