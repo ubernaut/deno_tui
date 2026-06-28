@@ -85,6 +85,23 @@ Deno.test("data table render helpers expose sorted headers and selected rows", (
   assertEquals(nextSort({ columnId: "pid", direction: "asc" }, "pid"), { columnId: "pid", direction: "desc" });
 });
 
+Deno.test("data table render helpers align styled and wide cells by display width", () => {
+  const styledColumns: DataColumn<Record<string, unknown>>[] = [
+    { id: "status", label: "\x1b[32m状态\x1b[0m", width: 6 },
+    { id: "name", label: "Name", width: 6 },
+  ];
+  const styledRows = [
+    { status: "\x1b[31m警告\x1b[0m", name: "renderer" },
+    { status: "ok", name: "终端" },
+  ];
+
+  assertEquals(renderDataTableHeader(styledColumns), "\x1b[32m状态\x1b[0m   Name  ");
+  assertEquals(renderDataTableRows(styledRows, styledColumns, 0), [
+    "> \x1b[31m警告\x1b[0m   render",
+    "  ok     终端  ",
+  ]);
+});
+
 Deno.test("DataTableController keeps query sort pagination and selection in sync", async () => {
   const controller = new DataTableController({
     rows,

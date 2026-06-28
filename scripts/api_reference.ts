@@ -1,4 +1,5 @@
 import { type ApiInventory, createApiInventory } from "./api_inventory.ts";
+import { textWidth } from "../src/utils/strings.ts";
 
 export interface ApiReferenceMarkdownOptions {
   title?: string;
@@ -27,46 +28,60 @@ export function formatApiReferenceMarkdown(
     "",
     "## Module Index",
     "",
-    "| Module | Re-exports | Symbols | Documented |",
-    "| --- | ---: | ---: | ---: |",
   ];
 
+  const moduleRows: string[][] = [];
   for (const module of inventory.modules) {
     const documented = module.symbols.filter((symbol) => symbol.documented).length;
-    lines.push(
-      `| [\`${module.module}\`](#${
-        moduleAnchor(module.module)
-      }) | ${module.exports.length} | ${module.symbols.length} | ${documented} |`,
-    );
+    moduleRows.push([
+      `[\`${module.module}\`](#${moduleAnchor(module.module)})`,
+      String(module.exports.length),
+      String(module.symbols.length),
+      String(documented),
+    ]);
   }
+  lines.push(
+    ...formatMarkdownTable(
+      ["Module", "Re-exports", "Symbols", "Documented"],
+      ["left", "right", "right", "right"],
+      moduleRows,
+    ),
+  );
 
   lines.push("", "## Modules", "");
 
   for (const module of inventory.modules) {
     lines.push(`### ${module.module}`, "");
     if (module.exports.length > 0) {
-      lines.push("| Re-export Target | Kind | Names |", "| --- | --- | --- |");
+      const exportRows: string[][] = [];
       for (const declaration of module.exports) {
-        lines.push(
-          `| \`${declaration.target}\` | ${declaration.kind} | ${
+        exportRows.push([
+          `\`${declaration.target}\``,
+          declaration.kind,
+          `${
             declaration.names.length > 0
               ? declaration.names.map((name) => `\`${escapeMarkdown(name)}\``).join(", ")
               : "-"
-          } |`,
-        );
+          }`,
+        ]);
       }
+      lines.push(...formatMarkdownTable(["Re-export Target", "Kind", "Names"], ["left", "left", "left"], exportRows));
       lines.push("");
     }
 
     if (module.symbols.length > 0) {
-      lines.push("| Symbol | Kind | Type Only | JSDoc |", "| --- | --- | --- | --- |");
+      const symbolRows: string[][] = [];
       for (const symbol of module.symbols) {
-        lines.push(
-          `| \`${escapeMarkdown(symbol.name)}\` | ${symbol.kind} | ${symbol.typeOnly ? "yes" : "no"} | ${
-            symbol.documented ? "yes" : "no"
-          } |`,
-        );
+        symbolRows.push([
+          `\`${escapeMarkdown(symbol.name)}\``,
+          symbol.kind,
+          symbol.typeOnly ? "yes" : "no",
+          symbol.documented ? "yes" : "no",
+        ]);
       }
+      lines.push(
+        ...formatMarkdownTable(["Symbol", "Kind", "Type Only", "JSDoc"], ["left", "left", "left", "left"], symbolRows),
+      );
       lines.push("");
     } else {
       lines.push("_No direct exported symbols._", "");
@@ -98,6 +113,45 @@ function moduleAnchor(module: string): string {
 
 function escapeMarkdown(value: string): string {
   return value.replaceAll("|", "\\|");
+}
+
+type MarkdownTableAlign = "left" | "right";
+
+function formatMarkdownTable(
+  headers: readonly string[],
+  aligns: readonly MarkdownTableAlign[],
+  rows: readonly (readonly string[])[],
+): string[] {
+  const widths = headers.map((header, index) =>
+    Math.max(textWidth(header), ...rows.map((row) => textWidth(row[index] ?? "")), 3)
+  );
+  const output = [
+    `| ${
+      headers.map((header, index) => padMarkdownCell(header, widths[index]!, aligns[index] ?? "left")).join(" | ")
+    } |`,
+    `| ${
+      widths.map((width, index) => {
+        const align = aligns[index] ?? "left";
+        const dashes = "-".repeat(Math.max(3, width - (align === "right" ? 1 : 0)));
+        return align === "right" ? `${dashes}:` : dashes;
+      }).join(" | ")
+    } |`,
+  ];
+  for (const row of rows) {
+    output.push(
+      `| ${
+        headers.map((_, index) => padMarkdownCell(row[index] ?? "", widths[index]!, aligns[index] ?? "left")).join(
+          " | ",
+        )
+      } |`,
+    );
+  }
+  return output;
+}
+
+function padMarkdownCell(value: string, width: number, align: MarkdownTableAlign): string {
+  const padding = " ".repeat(Math.max(0, width - textWidth(value)));
+  return align === "right" ? `${padding}${value}` : `${value}${padding}`;
 }
 
 function formatPercent(value: number): string {

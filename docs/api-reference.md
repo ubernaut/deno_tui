@@ -6,11 +6,11 @@ modules and exported symbols that make up the package API.
 ## Summary
 
 - Entrypoint: `mod.ts`
-- Modules: 175
-- Re-export declarations: 174
-- Exported symbols: 1320
-- Documented symbols: 332
-- Documentation coverage: 25.15%
+- Modules: 177
+- Re-export declarations: 176
+- Exported symbols: 1333
+- Documented symbols: 341
+- Documentation coverage: 25.58%
 - Duplicate symbols: 0
 - Missing targets: 0
 
@@ -18,7 +18,7 @@ modules and exported symbols that make up the package API.
 
 | Module                                                                            | Re-exports | Symbols | Documented |
 | --------------------------------------------------------------------------------- | ---------: | ------: | ---------: |
-| [`mod.ts`](#mod-ts)                                                               |         30 |       0 |          0 |
+| [`mod.ts`](#mod-ts)                                                               |         31 |       0 |          0 |
 | [`src/app/actions.ts`](#src-app-actions-ts)                                       |          0 |       7 |          7 |
 | [`src/app/app.ts`](#src-app-app-ts)                                               |          0 |      13 |         13 |
 | [`src/app/button_commands.ts`](#src-app-button-commands-ts)                       |          0 |       6 |          0 |
@@ -78,7 +78,8 @@ modules and exported symbols that make up the package API.
 | [`src/canvas/box.ts`](#src-canvas-box-ts)                                         |          0 |       2 |          1 |
 | [`src/canvas/canvas.ts`](#src-canvas-canvas-ts)                                   |          0 |       4 |          4 |
 | [`src/canvas/draw_object.ts`](#src-canvas-draw-object-ts)                         |          0 |       2 |          1 |
-| [`src/canvas/mod.ts`](#src-canvas-mod-ts)                                         |          5 |       0 |          0 |
+| [`src/canvas/mod.ts`](#src-canvas-mod-ts)                                         |          6 |       0 |          0 |
+| [`src/canvas/sink.ts`](#src-canvas-sink-ts)                                       |          0 |       6 |          1 |
 | [`src/canvas/text.ts`](#src-canvas-text-ts)                                       |          0 |       3 |          2 |
 | [`src/canvas/three_ascii.ts`](#src-canvas-three-ascii-ts)                         |          0 |       2 |          0 |
 | [`src/component.ts`](#src-component-ts)                                           |          0 |       4 |          2 |
@@ -123,6 +124,7 @@ modules and exported symbols that make up the package API.
 | [`src/controls.ts`](#src-controls-ts)                                             |          0 |       2 |          2 |
 | [`src/event_emitter.ts`](#src-event-emitter-ts)                                   |          0 |       5 |          3 |
 | [`src/focus.ts`](#src-focus-ts)                                                   |          0 |       7 |          0 |
+| [`src/grwizard_themes.ts`](#src-grwizard-themes-ts)                               |          0 |       5 |          5 |
 | [`src/input_reader/mod.ts`](#src-input-reader-mod-ts)                             |          0 |       2 |          1 |
 | [`src/input.ts`](#src-input-ts)                                                   |          0 |       1 |          1 |
 | [`src/keymap.ts`](#src-keymap-ts)                                                 |          0 |       6 |          0 |
@@ -172,7 +174,7 @@ modules and exported symbols that make up the package API.
 | [`src/theme_engine_cache.ts`](#src-theme-engine-cache-ts)                         |          0 |       6 |          0 |
 | [`src/theme_engine_factory.ts`](#src-theme-engine-factory-ts)                     |          0 |      19 |         17 |
 | [`src/theme_engine_pipeline.ts`](#src-theme-engine-pipeline-ts)                   |          0 |      12 |          1 |
-| [`src/theme_gallery.ts`](#src-theme-gallery-ts)                                   |          0 |       9 |          8 |
+| [`src/theme_gallery.ts`](#src-theme-gallery-ts)                                   |          0 |      11 |         11 |
 | [`src/theme_resolver.ts`](#src-theme-resolver-ts)                                 |          0 |      15 |          0 |
 | [`src/theme_workspace.ts`](#src-theme-workspace-ts)                               |          0 |       7 |          7 |
 | [`src/theme.ts`](#src-theme-ts)                                                   |          0 |     109 |         20 |
@@ -213,6 +215,7 @@ modules and exported symbols that make up the package API.
 | `src/theme_engine_factory.ts`  | star | -     |
 | `src/theme_engine_pipeline.ts` | star | -     |
 | `src/theme_gallery.ts`         | star | -     |
+| `src/grwizard_themes.ts`       | star | -     |
 | `src/theme_resolver.ts`        | star | -     |
 | `src/theme_workspace.ts`       | star | -     |
 | `src/types.ts`                 | star | -     |
@@ -1001,9 +1004,21 @@ _No direct exported symbols._
 | `src/canvas/text.ts`        | star | -     |
 | `src/canvas/canvas.ts`      | star | -     |
 | `src/canvas/draw_object.ts` | star | -     |
+| `src/canvas/sink.ts`        | star | -     |
 | `src/canvas/three_ascii.ts` | star | -     |
 
 _No direct exported symbols._
+
+### src/canvas/sink.ts
+
+| Symbol                  | Kind      | Type Only | JSDoc |
+| ----------------------- | --------- | --------- | ----- |
+| `AnsiCanvasSink`        | class     | no        | yes   |
+| `AnsiCanvasSinkOptions` | interface | yes       | no    |
+| `CanvasCellSink`        | interface | yes       | no    |
+| `CanvasCellUpdate`      | interface | yes       | no    |
+| `CanvasStdout`          | interface | yes       | no    |
+| `MemoryCanvasSink`      | class     | no        | no    |
 
 ### src/canvas/text.ts
 
@@ -1568,6 +1583,16 @@ _No direct exported symbols._
 | `FocusNavigationOptions` | interface | yes       | no    |
 | `FocusNavigationTarget`  | interface | yes       | no    |
 | `FocusScope`             | class     | no        | no    |
+
+### src/grwizard_themes.ts
+
+| Symbol                           | Kind      | Type Only | JSDoc |
+| -------------------------------- | --------- | --------- | ----- |
+| `grWizardThemeOptions`           | function  | no        | yes   |
+| `grWizardThemePacks`             | const     | no        | yes   |
+| `GrWizardThemePalette`           | interface | yes       | yes   |
+| `grWizardThemePaletteDefinition` | function  | no        | yes   |
+| `grWizardThemePalettes`          | const     | no        | yes   |
 
 ### src/input_reader/mod.ts
 
@@ -2255,11 +2280,13 @@ _No direct exported symbols._
 | `createThemeGallery`                | function  | no        | yes   |
 | `filterThemeGalleryItems`           | function  | no        | yes   |
 | `rankThemeGalleryItems`             | function  | no        | yes   |
+| `selectThemeGalleryItem`            | function  | no        | yes   |
 | `ThemeGallery`                      | interface | yes       | yes   |
 | `ThemeGalleryComponentStatePreview` | interface | yes       | yes   |
 | `ThemeGalleryItem`                  | interface | yes       | yes   |
-| `ThemeGalleryMatch`                 | interface | yes       | no    |
+| `ThemeGalleryMatch`                 | interface | yes       | yes   |
 | `ThemeGalleryOptions`               | interface | yes       | yes   |
+| `ThemeGallerySelection`             | interface | yes       | yes   |
 | `ThemeGalleryTokenPreview`          | interface | yes       | yes   |
 
 ### src/theme_resolver.ts

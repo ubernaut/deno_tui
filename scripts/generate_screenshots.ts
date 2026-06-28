@@ -1,3 +1,7 @@
+import { Buffer } from "node:buffer";
+import jpeg from "npm:jpeg-js@0.4.4";
+import { PNG } from "npm:pngjs@7.0.0";
+
 interface ScreenshotTarget {
   filename: string;
   title: string;
@@ -41,7 +45,7 @@ const TITLE_HEIGHT = 78;
 
 const targets: ScreenshotTarget[] = [
   {
-    filename: "showcase.svg",
+    filename: "showcase.jpg",
     title: "Showcase",
     theme: "neon",
     columns: 120,
@@ -51,7 +55,7 @@ const targets: ScreenshotTarget[] = [
     timeoutMs: 1200,
   },
   {
-    filename: "neon-exodus.svg",
+    filename: "neon-exodus.jpg",
     title: "Neon Exodus",
     theme: "exodus",
     columns: 120,
@@ -61,7 +65,7 @@ const targets: ScreenshotTarget[] = [
     timeoutMs: 1200,
   },
   {
-    filename: "system-monitor.svg",
+    filename: "system-monitor.jpg",
     title: "System Monitor",
     theme: "system",
     columns: 120,
@@ -71,7 +75,7 @@ const targets: ScreenshotTarget[] = [
     timeoutMs: 1200,
   },
   {
-    filename: "three-ascii.svg",
+    filename: "three-ascii.jpg",
     title: "Three ASCII",
     theme: "exodus",
     columns: 120,
@@ -81,7 +85,7 @@ const targets: ScreenshotTarget[] = [
     timeoutMs: 1400,
   },
   {
-    filename: "theme-gallery.svg",
+    filename: "theme-gallery.jpg",
     title: "Theme Gallery",
     theme: "theme",
     columns: 120,
@@ -90,7 +94,7 @@ const targets: ScreenshotTarget[] = [
     mode: "stdout",
   },
   {
-    filename: "demo-gallery.svg",
+    filename: "demo-gallery.jpg",
     title: "Demo Gallery",
     theme: "gallery",
     columns: 120,
@@ -99,7 +103,7 @@ const targets: ScreenshotTarget[] = [
     mode: "stdout",
   },
   {
-    filename: "api-reference.svg",
+    filename: "api-reference.jpg",
     title: "API Reference",
     theme: "docs",
     columns: 120,
@@ -114,14 +118,15 @@ const defaultStyle: CellStyle = {};
 if (import.meta.main) {
   await Deno.mkdir("docs/screenshots", { recursive: true });
   const expected = new Set(targets.map((target) => target.filename));
+  const browser = await findBrowser();
   for (const target of targets) {
     const output = await captureTarget(target);
     const frame = replayTerminal(output, target);
-    await Deno.writeTextFile(`docs/screenshots/${target.filename}`, renderSvg(frame));
+    await writeJpegScreenshot(frame, `docs/screenshots/${target.filename}`, browser);
   }
 
   for await (const entry of Deno.readDir("docs/screenshots")) {
-    if (entry.isFile && entry.name.endsWith(".svg") && !expected.has(entry.name)) {
+    if (entry.isFile && /\.(?:jpe?g|svg)$/i.test(entry.name) && !expected.has(entry.name)) {
       await Deno.remove(`docs/screenshots/${entry.name}`);
     }
   }
@@ -202,7 +207,7 @@ function replayTerminal(input: string, target: ScreenshotTarget): TerminalFrame 
       continue;
     }
     if (char === "\n") {
-      row = clamp(row + 1, 0, target.rows - 1);
+      row = target.mode === "stdout" ? row + 1 : clamp(row + 1, 0, target.rows - 1);
       column = 0;
       index += 1;
       continue;
@@ -215,8 +220,12 @@ function replayTerminal(input: string, target: ScreenshotTarget): TerminalFrame 
     }
     column += 1;
     if (column >= target.columns) {
-      column = 0;
-      row = clamp(row + 1, 0, target.rows - 1);
+      if (target.mode === "stdout") {
+        column = target.columns;
+      } else {
+        column = 0;
+        row = clamp(row + 1, 0, target.rows - 1);
+      }
     }
     index += codePoint > 0xffff ? 2 : 1;
   }
@@ -268,6 +277,65 @@ function renderSvg(frame: TerminalFrame): string {
     "</svg>",
     "",
   ].join("\n");
+}
+
+async function writeJpegScreenshot(frame: TerminalFrame, path: string, browser: string): Promise<void> {
+  const svg = renderSvg(frame);
+  const width = Math.ceil(PADDING * 2 + frame.columns * CHAR_WIDTH + 48);
+  const height = Math.ceil(PADDING * 2 + TITLE_HEIGHT + frame.rows * LINE_HEIGHT + 32);
+  const tempDir = await Deno.makeTempDir({ prefix: "deno-tui-screenshot-" });
+  const htmlPath = `${tempDir}/frame.html`;
+  const pngPath = `${tempDir}/frame.png`;
+  try {
+    await Deno.writeTextFile(
+      htmlPath,
+      [
+        "<!doctype html>",
+        '<html><head><meta charset="utf-8">',
+        "<style>html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#06080d}svg{display:block}</style>",
+        "</head><body>",
+        svg,
+        "</body></html>",
+      ].join(""),
+    );
+    const output = await new Deno.Command(browser, {
+      args: [
+        "--headless=new",
+        "--disable-gpu",
+        "--no-sandbox",
+        `--window-size=${width},${height}`,
+        `--screenshot=${pngPath}`,
+        `file://${htmlPath}`,
+      ],
+      stdout: "piped",
+      stderr: "piped",
+    }).output();
+    if (!output.success) {
+      throw new Error(`failed to render ${path}: ${decode(output.stderr)}`);
+    }
+    try {
+      await Deno.stat(pngPath);
+    } catch {
+      throw new Error(`failed to render ${path}: browser did not create ${pngPath}: ${decode(output.stderr)}`);
+    }
+    const png = PNG.sync.read(Buffer.from(await Deno.readFile(pngPath)));
+    const encoded = jpeg.encode({ data: png.data, width: png.width, height: png.height }, 92);
+    await Deno.writeFile(path, encoded.data);
+  } finally {
+    await Deno.remove(tempDir, { recursive: true }).catch(() => undefined);
+  }
+}
+
+async function findBrowser(): Promise<string> {
+  for (const candidate of ["google-chrome", "chromium", "chrome"]) {
+    const output = await new Deno.Command("which", {
+      args: [candidate],
+      stdout: "piped",
+      stderr: "null",
+    }).output();
+    if (output.success) return decode(output.stdout).trim();
+  }
+  throw new Error("No Chromium-compatible browser found for JPEG screenshot generation.");
 }
 
 function rowSegments(row: readonly (Cell | undefined)[]): Array<{ column: number; text: string; style: CellStyle }> {

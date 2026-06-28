@@ -74,31 +74,31 @@ fixed-size PTY session, and report-style demos are captured from stdout.
 
 ### Showcase
 
-![Showcase terminal screenshot](./docs/screenshots/showcase.svg)
+![Showcase terminal screenshot](./docs/screenshots/showcase.jpg)
 
 ### Neon Exodus Suite
 
-![Neon Exodus suite terminal screenshot](./docs/screenshots/neon-exodus.svg)
+![Neon Exodus suite terminal screenshot](./docs/screenshots/neon-exodus.jpg)
 
 ### Three ASCII
 
-![Three ASCII terminal screenshot](./docs/screenshots/three-ascii.svg)
+![Three ASCII terminal screenshot](./docs/screenshots/three-ascii.jpg)
 
 ### System Monitor
 
-![System monitor terminal screenshot](./docs/screenshots/system-monitor.svg)
+![System monitor terminal screenshot](./docs/screenshots/system-monitor.jpg)
 
 ### Demo Gallery
 
-![Demo gallery terminal screenshot](./docs/screenshots/demo-gallery.svg)
+![Demo gallery terminal screenshot](./docs/screenshots/demo-gallery.jpg)
 
 ### Theme Gallery
 
-![Theme gallery terminal screenshot](./docs/screenshots/theme-gallery.svg)
+![Theme gallery terminal screenshot](./docs/screenshots/theme-gallery.jpg)
 
 ### API Reference
 
-![API reference terminal screenshot](./docs/screenshots/api-reference.svg)
+![API reference terminal screenshot](./docs/screenshots/api-reference.jpg)
 
 ## Features
 

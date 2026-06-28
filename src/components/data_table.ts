@@ -3,6 +3,7 @@ import type { KeyPressEvent } from "../input_reader/types.ts";
 import { clampSelectionIndex } from "../selection.ts";
 import { Computed, Signal } from "../signals/mod.ts";
 import { clamp } from "../utils/numbers.ts";
+import { cropToWidth, textWidth } from "../utils/strings.ts";
 
 export type SortDirection = "asc" | "desc";
 
@@ -308,5 +309,6 @@ function compareCells(left: unknown, right: unknown): number {
 
 function padCell(value: string, width?: number): string {
   if (!width) return value;
-  return value.length > width ? value.slice(0, width) : value.padEnd(width);
+  const cropped = cropToWidth(value, width);
+  return cropped + " ".repeat(Math.max(0, width - textWidth(cropped)));
 }
