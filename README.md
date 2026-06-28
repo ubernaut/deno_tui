@@ -528,8 +528,8 @@ const rows = viewportWindow(items.length, selection.state.value.activeIndex, hei
 Use `createTheme()` for semantic tokens, `createThemeEngine()` for built-in palettes, `ThemeRegistry` for named theme
 packs, or `ThemeProvider` for runtime theme selection. This fork treats theming as an engine layer, not just a bag of
 component props: it adds `composeThemeOptions()`, `composeStyles()`, component inheritance, token-backed style
-pipelines, app-level provider cycling, optional async persistence, `ThemeEngine.extend()`, and `ThemeEngine.inspect()`
-so larger apps can layer reusable theme packs without mutating a base engine:
+pipelines, app-level provider cycling, runtime theme layers, optional async persistence, `ThemeEngine.extend()`, and
+`ThemeEngine.inspect()` so larger apps can layer reusable theme packs without mutating a base engine:
 
 ```ts
 import {
@@ -537,6 +537,7 @@ import {
   composeThemeOptions,
   createRuntimeStore,
   createThemeEngine,
+  createThemeLayerStack,
   createThemeProvider,
   createThemeRegistry,
 } from "https://deno.land/x/tui@VERSION/mod.ts";
@@ -574,18 +575,31 @@ const registry = createThemeRegistry([
   { id: "terminal", label: "Terminal", palette: "terminal" },
   { id: "neon-ops", label: "Neon Ops", palette: "neon", options: appTheme },
 ]);
+const layers = createThemeLayerStack([
+  {
+    id: "high-contrast",
+    enabled: false,
+    options: {
+      components: {
+        Field: { base: { focused: ["warning", crayon.bold] } },
+      },
+    },
+  },
+]);
 const themeStore = createRuntimeStore<string>({
   databaseName: "my-tui-app",
   storeName: "settings",
 });
 const provider = createThemeProvider({
   registry,
+  layers,
   activeId: "neon-ops",
   store: themeStore,
   storageKey: "theme",
 });
 
 provider.setTheme("terminal");
+layers.toggle("high-contrast");
 provider.nextTheme();
 await provider.flush();
 
@@ -605,11 +619,14 @@ deterministic across command palettes, menus, and key bindings. Pass any `AsyncS
 through `MemoryStore`, `IndexedDbStore`, or a custom settings backend; `provider.ready` reports the loaded theme and
 `provider.flush()` waits for pending writes. `bindComponentTheme()` bridges those provider signals back into normal
 components and returns a disposer, so live theme switching stays centralized and testable without requiring widgets to
-know where their theme came from. Component definitions can also reference semantic token names such as `"foreground"`,
-`"accent"`, `"danger"`, or `"surface"` instead of concrete style functions, so variants automatically follow the active
-palette. A state style may also be an array of token names and style functions; the engine composes the pipeline in
-order. Component definitions can `extend` one or more other definitions, which makes aliases like `ComboBox -> Field` or
-shared role themes cheap while preserving variants and app-level overrides.
+know where their theme came from. `ThemeLayerStack` adds runtime overlays for density, contrast, accessibility, or
+brand-specific state treatments; `enable()`, `disable()`, `toggle()`, `activeIds()`, and `inspect()` make those overlays
+usable from command palettes and settings screens while preserving deterministic composition order. Component
+definitions can also reference semantic token names such as `"foreground"`, `"accent"`, `"danger"`, or `"surface"`
+instead of concrete style functions, so variants automatically follow the active palette. A state style may also be an
+array of token names and style functions; the engine composes the pipeline in order. Component definitions can `extend`
+one or more other definitions, which makes aliases like `ComboBox -> Field` or shared role themes cheap while preserving
+variants and app-level overrides.
 
 ## Runtime Capabilities
 

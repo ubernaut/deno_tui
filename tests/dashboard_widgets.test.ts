@@ -14,6 +14,7 @@ import {
   composeThemeOptions,
   createTheme,
   createThemeEngine,
+  createThemeLayerStack,
   createThemeProvider,
   createThemeRegistry,
   defaultThemePacks,
@@ -270,6 +271,59 @@ Deno.test("ThemeEngine can be extended and inspected without mutating the source
   ]);
 });
 
+Deno.test("ThemeLayerStack composes active layers in registration order", async () => {
+  const baseAccent = (value: string) => `base:${value}`;
+  const denseAccent = (value: string) => `dense:${value}`;
+  const focusStyle = (value: string) => `focus:${value}`;
+  const layers = createThemeLayerStack([
+    {
+      id: "density",
+      label: "Compact Density",
+      options: {
+        tokens: { accent: baseAccent },
+        components: { Button: { base: { focused: "accent" } } },
+      },
+    },
+    {
+      id: "focus",
+      enabled: false,
+      options: {
+        tokens: { accent: denseAccent },
+        components: { Button: { variants: { keyboard: { active: focusStyle } } } },
+      },
+    },
+  ]);
+
+  await Promise.resolve();
+
+  assertEquals(layers.ids(), ["density", "focus"]);
+  assertEquals(layers.activeIds(), ["density"]);
+  assertEquals(layers.options.value.tokens?.accent, baseAccent);
+  assertEquals(layers.enable("focus"), true);
+  await Promise.resolve();
+  assertEquals(layers.options.value.tokens?.accent, denseAccent);
+  assertEquals(Object.keys(layers.options.value.components?.Button.variants ?? {}), ["keyboard"]);
+  assertEquals(layers.disable("missing"), false);
+  assertEquals(layers.toggle("focus"), true);
+  await Promise.resolve();
+  assertEquals(layers.activeIds(), ["density"]);
+  assertEquals(layers.inspect(), [
+    {
+      id: "density",
+      label: "Compact Density",
+      enabled: true,
+      components: [{ name: "Button", variants: [] }],
+    },
+    {
+      id: "focus",
+      label: "focus",
+      enabled: false,
+      components: [{ name: "Button", variants: ["keyboard"] }],
+    },
+  ]);
+  layers.dispose();
+});
+
 Deno.test("ThemeRegistry registers packs and composes overrides into engines", () => {
   const packAccent = (value: string) => `pack:${value}`;
   const overrideAccent = (value: string) => `override:${value}`;
@@ -350,6 +404,49 @@ Deno.test("ThemeProvider exposes active engine selection and component theme sig
 
   assertEquals(buttonTheme.value.base("x"), "bright:x");
   assertEquals(provider.resolve("Button", "base").value("x"), "bright:x");
+});
+
+Deno.test("ThemeProvider recomputes engines from active theme layers", async () => {
+  const pack = (value: string) => `pack:${value}`;
+  const layer = (value: string) => `layer:${value}`;
+  const danger = (value: string) => `danger:${value}`;
+  const layers = createThemeLayerStack([
+    {
+      id: "contrast",
+      enabled: false,
+      options: {
+        tokens: { foreground: layer },
+        components: { Button: { variants: { danger: { base: danger } } } },
+      },
+    },
+  ]);
+  const provider = createThemeProvider({
+    registry: createThemeRegistry([
+      {
+        id: "plain",
+        palette: "plain",
+        options: {
+          tokens: { foreground: pack },
+          components: { Button: { base: { base: "foreground" } } },
+        },
+      },
+    ]),
+    activeId: "plain",
+    layers,
+  });
+  const buttonTheme = provider.component("Button");
+
+  await Promise.resolve();
+  assertEquals(buttonTheme.value.base("x"), "pack:x");
+  assertEquals(provider.inspect().layers[0].enabled, false);
+
+  layers.enable("contrast");
+  await Promise.resolve();
+
+  assertEquals(buttonTheme.value.base("x"), "layer:x");
+  assertEquals(provider.component("Button", "danger").value.base("x"), "danger:x");
+  assertEquals(provider.inspect().layers[0].enabled, true);
+  layers.dispose();
 });
 
 Deno.test("ThemeProvider cycles registered themes", () => {
