@@ -23,8 +23,12 @@ a system monitor shell that can render live data through those scenes.
 - **Neon Exodus showcase** — recreates the Neon Exodus widget wall and 3D scene set inside this TUI framework.
 - **System monitor dashboard** — `deno task viz` renders CPU, memory, disk, network, process, and 3D panels with
   selectable inputs and visualizations.
-- **Expanded widget surface** — components now use explicit `override` methods and have been exercised through the added
-  showcase app and tests.
+- **Expanded widget surface** — List, Tabs, Modal, KeyHelp, CommandPalette, Tree, ToastStack, Sparkline, Gauge, Chart,
+  LogViewer, and StatusBar build on the original component set.
+- **Runtime capability layer** — Workers, WebGPU, WebGL, OffscreenCanvas, and IndexedDB are detected through a
+  standards-oriented runtime module with configurable fallbacks.
+- **Theme engine** — semantic tokens and component variants produce normal `Theme` objects while keeping app-level
+  palettes reusable.
 
 ## Features
 
@@ -128,6 +132,9 @@ deno task demo
 | `Table`       | Scrollable data table with headers and row selection       |
 | `ThreeAscii`  | Renders a three.js scene as ASCII art in the terminal      |
 
+Additional fork components include `List`, `Tabs`, `Modal`, `KeyHelp`, `CommandPalette`, `Tree`, `ToastStack`,
+`Sparkline`, `Gauge`, `Chart`, `LogViewer`, and `StatusBar`.
+
 ## Layouts
 
 Layouts compute reactive `Rectangle` signals for each named element. Pass them directly as a component's `rectangle`.
@@ -169,6 +176,64 @@ const layout = new HorizontalLayout({
   gapX: 1,
 });
 ```
+
+### Flex Layout
+
+`flexRects()` provides a small, public flexbox-like rectangle solver for row or column layouts:
+
+```ts
+import { flexRects } from "https://deno.land/x/tui@VERSION/mod.ts";
+
+const rects = flexRects(bounds, "row", [
+  { id: "sidebar", basis: 24, min: 16 },
+  { id: "main", grow: 1, min: 40 },
+], 1);
+```
+
+## App Primitives
+
+This fork exports lightweight app primitives for larger TUIs:
+
+- `createApp()` / `TuiApp`
+- `ActionBus`
+- `RouteManager`
+- `FocusManager`
+- `KeymapRegistry`
+
+They are optional and composable. Existing component-first apps continue to work.
+
+## Theming
+
+Use `createTheme()` for semantic tokens or `ThemeEngine` for app-level component variants:
+
+```ts
+import { ThemeEngine } from "https://deno.land/x/tui@VERSION/mod.ts";
+
+const themeEngine = new ThemeEngine({
+  tokens: { foreground: crayon.white, accent: crayon.cyan },
+  components: {
+    Button: {
+      variants: {
+        danger: { base: crayon.red },
+      },
+    },
+  },
+});
+
+const buttonTheme = themeEngine.component("Button", "danger");
+```
+
+## Runtime Capabilities
+
+Optional high-performance APIs are surfaced through `src/runtime/mod.ts`:
+
+- `detectRuntimeCapabilities()`
+- `AsyncScheduler`
+- `WorkerPool`
+- `MemoryStore`
+- `IndexedDbStore`
+
+Use these instead of hard-coding global checks inside components.
 
 ## Reactivity
 
@@ -265,6 +330,7 @@ underlying scene coverage.
 | `examples/demo.ts`        | Kitchen-sink demo of all components                      |
 | `examples/calculator.ts`  | Functional calculator built with `GridLayout`            |
 | `examples/layout.ts`      | Grid layout with draggable, colored buttons              |
+| `examples/dashboard.ts`   | Dashboard widgets, semantic theme tokens, and key help   |
 | `examples/three_ascii.ts` | Interactive 3D ASCII renderer powered by three.js        |
 | `app/showcase.ts`         | Full Neon Exodus-style widget and visualization showcase |
 | `app/main.ts`             | Live system monitor dashboard with selectable panels     |
@@ -304,14 +370,21 @@ Direct Deno tasks are also available:
 ```sh
 deno task showcase
 deno task three-ascii
+deno task dashboard
 deno task viz
 ```
 
 ```sh
 deno run --watch --allow-hrtime examples/demo.ts
 deno run --allow-hrtime examples/calculator.ts
+deno run -A examples/dashboard.ts
 deno run -A examples/three_ascii.ts
 ```
+
+## Testing
+
+See [docs/testing-and-performance.md](./docs/testing-and-performance.md) for snapshot helpers, runtime capability
+guidance, and the checklist used for new feature clusters.
 
 ## Contributing
 

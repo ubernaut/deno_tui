@@ -24,3 +24,4 @@ export * from "./src/input_reader/mod.ts";
 
 export * from "./src/app/mod.ts";
 export * from "./src/runtime/mod.ts";
+export * from "./src/testing/mod.ts";
