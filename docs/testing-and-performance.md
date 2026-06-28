@@ -30,7 +30,7 @@ These helpers are intentionally small and do not choose a test framework. They w
 
 - `detectRuntimeCapabilities()` for Workers, WebGPU, WebGL, OffscreenCanvas, and IndexedDB.
 - `AsyncScheduler` for bounded, prioritized, and abortable queued async work.
-- `WorkerPool` and `installWorkerHandler()` for standards-style worker jobs.
+- `WorkerPool`, `installWorkerHandler()`, and `workerTransform()` for standards-style worker jobs and pipeline stages.
 - `MemoryStore` and `IndexedDbStore` for configurable persistence.
 
 Prefer this layer over directly branching on globals inside components. Components should stay deterministic and easy to

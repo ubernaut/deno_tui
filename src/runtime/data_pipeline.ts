@@ -20,6 +20,15 @@ export type DataTransform<TInput, TOutput> = (
 
 type AnyDataTransform = DataTransform<any, any>;
 
+export interface WorkerTaskRunner<TPayload, TResult> {
+  run(payload: TPayload): Promise<TResult>;
+}
+
+export type WorkerPayloadMapper<TInput, TPayload> = (
+  input: TInput,
+  context: DataPipelineContext,
+) => TPayload;
+
 export interface LatestPipelineResult<T> {
   status: "ok" | "stale";
   value?: T;
@@ -112,6 +121,18 @@ export function sortRows<T>(
 
 export function sliceRows<T>(start: number, end?: number): DataTransform<readonly T[], T[]> {
   return (rows) => rows.slice(start, end);
+}
+
+export function workerTransform<TInput, TPayload = TInput, TOutput = unknown>(
+  runner: WorkerTaskRunner<TPayload, TOutput>,
+  payload: WorkerPayloadMapper<TInput, TPayload> = (input) => input as unknown as TPayload,
+): DataTransform<TInput, TOutput> {
+  return async (input, context) => {
+    throwIfAborted(context.signal);
+    const result = await runner.run(payload(input, context));
+    throwIfAborted(context.signal);
+    return result;
+  };
 }
 
 function throwIfAborted(signal: AbortSignal | undefined): void {

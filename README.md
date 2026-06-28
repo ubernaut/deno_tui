@@ -375,7 +375,7 @@ Optional high-performance APIs are surfaced through `src/runtime/mod.ts`:
 - `detectRuntimeCapabilities()`
 - `AsyncScheduler`
 - `AsyncResource` / `createAsyncResource()`
-- `runDataPipeline()` / `LatestDataPipeline`
+- `runDataPipeline()` / `LatestDataPipeline` / `workerTransform()`
 - `WorkerPool`
 - `MemoryStore`
 - `IndexedDbStore`
@@ -413,14 +413,27 @@ await metrics.load();
 if (metrics.state.value.status === "success") render(metrics.state.value.data);
 ```
 
-`runDataPipeline()` composes expensive row transforms behind an optional scheduler. `LatestDataPipeline` protects
-interactive views from stale async results when users type or change filters quickly:
+`runDataPipeline()` composes expensive row transforms behind an optional scheduler. `workerTransform()` lets any stage
+offload work through a `WorkerPool` or compatible runner. `LatestDataPipeline` protects interactive views from stale
+async results when users type or change filters quickly:
 
 ```ts
-import { filterRows, LatestDataPipeline, mapRows, sortRows } from "https://deno.land/x/tui@VERSION/mod.ts";
+import {
+  filterRows,
+  LatestDataPipeline,
+  mapRows,
+  sortRows,
+  WorkerPool,
+  workerTransform,
+} from "https://deno.land/x/tui@VERSION/mod.ts";
+
+const processPool = new WorkerPool({
+  workerUrl: new URL("./workers/process_rows.ts", import.meta.url),
+});
 
 const pipeline = new LatestDataPipeline([
   filterRows((row) => row.name.includes(query)),
+  workerTransform(processPool),
   sortRows((left, right) => left.name.localeCompare(right.name)),
   mapRows((row) => ({ ...row, label: `${row.pid} ${row.name}` })),
 ]);

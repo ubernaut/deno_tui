@@ -7,6 +7,7 @@ import {
   runDataPipeline,
   sliceRows,
   sortRows,
+  workerTransform,
 } from "../src/runtime/data_pipeline.ts";
 import { AsyncScheduler } from "../src/runtime/scheduler.ts";
 
@@ -107,6 +108,34 @@ Deno.test("runDataPipeline cancels pending scheduled transforms with DataPipelin
   await blocker;
 });
 
+Deno.test("workerTransform offloads a pipeline stage through a runner", async () => {
+  const runner = new FakeRunner<{ values: number[]; revision: number }, number>((payload) => {
+    return payload.values.reduce((sum, value) => sum + value, payload.revision);
+  });
+
+  const result = await runDataPipeline<number[], string>([1, 2, 3], [
+    workerTransform(runner, (values, context) => ({ values, revision: context.revision })),
+    (value) => `sum:${value}`,
+  ], { revision: 4 });
+
+  assertEquals(result, "sum:10");
+  assertEquals(runner.payloads, [{ values: [1, 2, 3], revision: 4 }]);
+});
+
+Deno.test("workerTransform respects pipeline abort checks", async () => {
+  const controller = new AbortController();
+  const runner = new FakeRunner<number, number>((value) => value + 1);
+  controller.abort();
+
+  try {
+    await runDataPipeline(1, [workerTransform(runner)], { signal: controller.signal });
+    throw new Error("expected abort");
+  } catch (error) {
+    assertEquals(error instanceof DataPipelineAbortError, true);
+  }
+  assertEquals(runner.payloads, []);
+});
+
 Deno.test("LatestDataPipeline marks older results stale", async () => {
   let releaseFirst: (() => void) | undefined;
   const pipeline = new LatestDataPipeline<number, number>([
@@ -137,4 +166,15 @@ function deferred<T>(): {
     resolve = done;
   });
   return { promise, resolve };
+}
+
+class FakeRunner<TPayload, TResult> {
+  readonly payloads: TPayload[] = [];
+
+  constructor(private readonly handler: (payload: TPayload) => TResult | Promise<TResult>) {}
+
+  async run(payload: TPayload): Promise<TResult> {
+    this.payloads.push(payload);
+    return await this.handler(payload);
+  }
 }
