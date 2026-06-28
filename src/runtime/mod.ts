@@ -2,6 +2,7 @@
 export * from "./capabilities.ts";
 export * from "./data_pipeline.ts";
 export * from "./data_pipeline_bindings.ts";
+export * from "./profiles.ts";
 export * from "./resource.ts";
 export * from "./resource_bindings.ts";
 export * from "./render_loop.ts";

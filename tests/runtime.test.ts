@@ -7,6 +7,15 @@ import {
   runtimeCapabilityEntries,
   summarizeRuntimeCapabilities,
 } from "../src/runtime/capabilities.ts";
+import {
+  createRuntimeProfileCatalogReport,
+  createRuntimeProfileRegistry,
+  findRuntimeProfile,
+  formatRuntimeProfileCatalogMarkdown,
+  inspectRuntimeProfileCatalog,
+  queryRuntimeProfiles,
+  runtimeProfiles,
+} from "../src/runtime/profiles.ts";
 import { AsyncScheduler, runTaskBatch } from "../src/runtime/scheduler.ts";
 import { createRenderLoop, RenderLoop } from "../src/runtime/render_loop.ts";
 import { createPersistentSignal, createRuntimeStore, MemoryStore } from "../src/runtime/storage.ts";
@@ -101,6 +110,95 @@ Deno.test("runtime plans choose worker storage and renderer strategies", () => {
   assertEquals(conservativePlan.workers.strategy, "main-thread");
   assertEquals(conservativePlan.storage.strategy, "memory");
   assertEquals(conservativePlan.renderer.strategy, "cpu");
+});
+
+Deno.test("runtime profiles expose named strategy policies", () => {
+  const capabilities = {
+    workers: true,
+    webgpu: false,
+    webgl: true,
+    offscreenCanvas: true,
+    indexedDb: false,
+  };
+  const registry = createRuntimeProfileRegistry();
+
+  assertEquals(registry.ids(), ["balanced", "throughput", "portable", "ephemeral"]);
+  assertEquals(runtimeProfiles().map((profile) => profile.id), [
+    "balanced",
+    "throughput",
+    "portable",
+    "ephemeral",
+  ]);
+  assertEquals(findRuntimeProfile("Throughput")?.id, "throughput");
+  assertEquals(registry.plan("balanced", capabilities).renderer.strategy, "webgl");
+  assertEquals(registry.plan("portable", capabilities), {
+    capabilities,
+    workers: {
+      strategy: "main-thread",
+      accelerated: false,
+      reason: "Worker usage was disabled by runtime plan preferences.",
+    },
+    storage: {
+      strategy: "memory",
+      accelerated: false,
+      reason: "IndexedDB is unavailable, so settings should use memory or a custom store.",
+    },
+    renderer: {
+      strategy: "cpu",
+      accelerated: false,
+      reason: "GPU renderer usage was disabled by runtime plan preferences.",
+    },
+  });
+  assertEquals(registry.unregister("ephemeral"), true);
+  assertEquals(registry.has("ephemeral"), false);
+});
+
+Deno.test("runtime profile catalogs filter inspect and format reports", () => {
+  const capabilities = {
+    workers: true,
+    webgpu: true,
+    webgl: true,
+    offscreenCanvas: true,
+    indexedDb: true,
+  };
+  const profiles = queryRuntimeProfiles(runtimeProfiles(), { rendererStrategy: "webgpu" }, capabilities);
+  const portable = queryRuntimeProfiles(runtimeProfiles(), { search: "portable", accelerated: false }, {
+    ...capabilities,
+    indexedDb: false,
+  });
+  const report = createRuntimeProfileCatalogReport({
+    capabilities,
+    query: { tag: "performance" },
+  });
+  const markdown = formatRuntimeProfileCatalogMarkdown({
+    capabilities,
+    query: { storageStrategy: "memory" },
+    title: "Memory Profiles",
+  });
+
+  assertEquals(profiles.map((profile) => profile.id), ["balanced", "throughput", "ephemeral"]);
+  assertEquals(portable.map((profile) => profile.id), ["portable"]);
+  assertEquals(report.profiles.map((profile) => profile.id), ["throughput"]);
+  assertEquals(inspectRuntimeProfileCatalog(report.profiles), {
+    count: 1,
+    accelerated: 1,
+    workerStrategies: ["worker-pool"],
+    storageStrategies: ["indexeddb"],
+    rendererStrategies: ["webgpu"],
+    tags: ["performance", "visualization"],
+  });
+  assertEquals(
+    markdown,
+    [
+      "# Memory Profiles",
+      "",
+      "1 profiles, 1 with at least one accelerated strategy.",
+      "",
+      "| Profile | Workers | Storage | Renderer | Tags |",
+      "| --- | --- | --- | --- | --- |",
+      "| Ephemeral | worker-pool | memory | webgpu | memory, testing |",
+    ].join("\n"),
+  );
 });
 
 Deno.test("AsyncScheduler respects the configured concurrency limit", async () => {

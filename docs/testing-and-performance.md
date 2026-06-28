@@ -37,6 +37,8 @@ These helpers are intentionally small and do not choose a test framework. They w
 - `detectRuntimeCapabilities()` plus `summarizeRuntimeCapabilities()` / `formatRuntimeCapabilities()` for Workers,
   WebGPU, WebGL, OffscreenCanvas, and IndexedDB diagnostics.
 - `createRuntimePlan()` / `formatRuntimePlan()` for deterministic worker, storage, and renderer fallback decisions.
+- `RuntimeProfile`, `RuntimeProfileRegistry`, and runtime profile catalog helpers for named, queryable policies such as
+  balanced, throughput, portable, and ephemeral execution.
 - `AsyncScheduler` for bounded, prioritized, and abortable queued async work.
 - `RenderLoop` for inspectable terminal frame loops with injectable timers.
 - `WorkerPool`, `installWorkerHandler()`, and `workerTransform()` for standards-style worker jobs and pipeline stages.
@@ -49,6 +51,11 @@ test; apps and renderers should use a runtime plan to decide whether to use Work
 fallback implementations. `WorkerPool.run(payload, { signal })` can abort pending callers, `pendingCount()` exposes
 lightweight backpressure state, and `workerFactory` lets tests inject a deterministic worker without starting real
 threads.
+
+Runtime profiles let apps expose strategy choices as data instead of hard-coded conditionals. A settings pane can show
+`RuntimeProfileRegistry.catalog()`, persist the selected profile id with `SettingsController`, and call
+`registry.plan(id, detectRuntimeCapabilities())` at startup. Run `deno task capabilities` for the current capability
+summary, default plan, and built-in profile table, or `deno task capabilities -- --json` for machine-readable reports.
 
 `BenchmarkRunner` supports per-case `iterations`, `warmupIterations`, `maxAverageMs`, and `maxTotalMs`. Pass `{ now }`
 in `BenchmarkRunnerOptions` to make benchmark unit tests deterministic, use `summarize()` or

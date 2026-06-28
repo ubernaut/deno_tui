@@ -1467,6 +1467,8 @@ Optional high-performance APIs are surfaced through `src/runtime/mod.ts`:
 - `detectRuntimeCapabilities()`
 - `runtimeCapabilityEntries()` / `summarizeRuntimeCapabilities()` / `formatRuntimeCapabilities()`
 - `createRuntimePlan()` / `formatRuntimePlan()`
+- `RuntimeProfile` / `RuntimeProfileRegistry` / `createRuntimeProfileCatalogReport()` /
+  `formatRuntimeProfileCatalogMarkdown()`
 - `AsyncScheduler` / `runTaskBatch()`
 - `RenderLoop` / `createRenderLoop()`
 - `AsyncResource` / `createAsyncResource()` / `CachedAsyncResource` / `createCachedAsyncResource()` /
@@ -1481,7 +1483,18 @@ Optional high-performance APIs are surfaced through `src/runtime/mod.ts`:
 Use these instead of hard-coding global checks inside components. `formatRuntimeCapabilities()` produces a readable
 diagnostic summary for settings screens and logs, while `createRuntimePlan()` turns the same capability set into
 deterministic app strategies for worker execution, persistent storage, and renderer fallback. `deno task capabilities`
-prints both the summary and the plan; pass `--json` to that task for structured output.
+prints the summary, default plan, and built-in runtime profile table; pass `--json` to that task for structured output.
+Runtime profiles are named policy presets for settings screens and launchers:
+
+```ts
+const runtimeProfiles = createRuntimeProfileRegistry();
+const runtimeReport = runtimeProfiles.catalog({
+  capabilities: detectRuntimeCapabilities(),
+  query: { rendererStrategy: "webgpu" },
+});
+const runtimePlan = runtimeProfiles.plan("balanced");
+const runtimeProfileMarkdown = formatRuntimeProfileCatalogMarkdown({ query: { tag: "performance" } });
+```
 
 `AsyncScheduler` caps concurrent work, prioritizes queued tasks, exposes queue inspection, and can wait for or clear
 pending work. `runTaskBatch()` builds on the same scheduler for ordered fan-out work:
