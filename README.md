@@ -613,6 +613,10 @@ activeRoute.set("runtime");
 await activeRoute.flush();
 ```
 
+`WorkerPool.run(payload, { signal })` supports abortable jobs and exposes `pendingCount()` plus `size` for dashboards,
+backpressure, and tests. Pass `workerFactory` in `WorkerPoolOptions` when you need a deterministic fake worker in unit
+tests without broad permissions.
+
 ## Reactivity
 
 The signals system drives all reactive updates in Tui.

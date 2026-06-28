@@ -2,7 +2,7 @@ import { assertEquals } from "./deps.ts";
 import { detectRuntimeCapabilities } from "../src/runtime/capabilities.ts";
 import { AsyncScheduler } from "../src/runtime/scheduler.ts";
 import { createPersistentSignal, createRuntimeStore, MemoryStore } from "../src/runtime/storage.ts";
-import { WorkerPool } from "../src/runtime/worker_pool.ts";
+import { type WorkerLike, WorkerPool, WorkerPoolTerminatedError } from "../src/runtime/worker_pool.ts";
 
 Deno.test("detectRuntimeCapabilities accepts an injected scope", () => {
   const scope = {
@@ -157,6 +157,46 @@ Deno.test("WorkerPool runs module worker jobs", async () => {
   }
 });
 
+Deno.test("WorkerPool exposes pending work and ignores aborted worker responses", async () => {
+  const workers: TestWorker[] = [];
+  const pool = new WorkerPool<number, number>({
+    workerUrl: new URL("./fixtures/sum_worker.ts", import.meta.url),
+    size: 2,
+    workerFactory: (_url, _options) => {
+      const worker = new TestWorker();
+      workers.push(worker);
+      return worker;
+    },
+  });
+  const controller = new AbortController();
+  const aborted = pool.run(4, { signal: controller.signal }).catch((error) => error);
+
+  assertEquals(pool.size, 2);
+  assertEquals(pool.pendingCount(), 1);
+  assertEquals(workers[0].messages, [{ id: 1, payload: 4 }]);
+
+  controller.abort();
+  const error = await aborted;
+  assertEquals(error.name, "AbortError");
+  assertEquals(pool.pendingCount(), 0);
+
+  workers[0].respond({ id: 1, ok: true, result: 8 });
+  assertEquals(pool.pendingCount(), 0);
+  pool.terminate();
+});
+
+Deno.test("WorkerPool rejects queued work when terminated", async () => {
+  const pool = new WorkerPool<number, number>({
+    workerUrl: new URL("./fixtures/sum_worker.ts", import.meta.url),
+    size: 1,
+    workerFactory: () => new TestWorker(),
+  });
+
+  pool.terminate();
+  const error = await pool.run(1).catch((caught) => caught);
+  assertEquals(error instanceof WorkerPoolTerminatedError, true);
+});
+
 class DeferredStore<T> extends MemoryStore<T> {
   #deferred = false;
   #pendingGet:
@@ -191,4 +231,23 @@ function deferred<T>(): {
     resolve = done;
   });
   return { promise, resolve };
+}
+
+class TestWorker implements WorkerLike {
+  onmessage: ((event: MessageEvent<unknown>) => void) | null = null;
+  onerror: ((event: ErrorEvent) => void) | null = null;
+  readonly messages: unknown[] = [];
+  terminated = false;
+
+  postMessage(message: unknown): void {
+    this.messages.push(message);
+  }
+
+  terminate(): void {
+    this.terminated = true;
+  }
+
+  respond(message: unknown): void {
+    this.onmessage?.({ data: message } as MessageEvent<unknown>);
+  }
 }

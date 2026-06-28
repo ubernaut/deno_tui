@@ -35,6 +35,8 @@ These helpers are intentionally small and do not choose a test framework. They w
 
 Prefer this layer over directly branching on globals inside components. Components should stay deterministic and easy to
 test; apps and renderers should decide whether to use Workers, WebGPU, WebGL, IndexedDB, or fallback implementations.
+`WorkerPool.run(payload, { signal })` can abort pending callers, `pendingCount()` exposes lightweight backpressure
+state, and `workerFactory` lets tests inject a deterministic worker without starting real threads.
 
 Run the default suite without broad permissions:
 
