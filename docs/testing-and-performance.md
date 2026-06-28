@@ -19,6 +19,9 @@ Every new feature cluster should include:
 - `stripAnsi(value)` removes ANSI control sequences.
 - `normalizeTerminalSnapshot(value)` strips ANSI and trailing cell whitespace.
 - `frameBufferToSnapshot(frameBuffer)` turns a canvas frame buffer into normalized text.
+- `createTestStdout()` captures canvas writes in memory.
+- `createTestCanvas({ size })` creates a canvas with deterministic in-memory stdout.
+- `canvasSnapshot(canvas)` and `canvasRowText(canvas, row, width)` read rendered output from a canvas frame buffer.
 - `compareTerminalSnapshot(actual, expected)` returns normalized text plus bounded line/column mismatches.
 - `formatTerminalSnapshotDiff(comparison)` formats those mismatches for readable test failures.
 - `assertTerminalSnapshot(actual, expected)` throws that formatted diagnostic when snapshots differ.

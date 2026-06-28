@@ -1,10 +1,14 @@
 import { assertEquals } from "./deps.ts";
 import {
   assertTerminalSnapshot,
+  canvasRowText,
+  canvasSnapshot,
   compareTerminalSnapshot,
+  createTestCanvas,
   createTestFocusable,
   createTestKeyPress,
   createTestMouseScroll,
+  createTestStdout,
   formatTerminalSnapshotDiff,
   frameBufferToSnapshot,
   normalizeTerminalSnapshot,
@@ -22,6 +26,30 @@ Deno.test("normalizeTerminalSnapshot trims trailing cells but keeps rows", () =>
 
 Deno.test("frameBufferToSnapshot decodes mixed string and byte cells", () => {
   assertEquals(frameBufferToSnapshot([["a", new TextEncoder().encode("b"), undefined]]), "ab");
+});
+
+Deno.test("test stdout captures writes for render assertions", () => {
+  const stdout = createTestStdout();
+  const data = new TextEncoder().encode("abc");
+
+  assertEquals(stdout.writeSync(data), 3);
+  assertEquals(stdout.chunks.length, 1);
+  assertEquals(stdout.text, "abc");
+
+  stdout.clear();
+  assertEquals(stdout.chunks.length, 0);
+  assertEquals(stdout.text, "");
+});
+
+Deno.test("test canvas helpers expose row and full snapshots", () => {
+  const canvas = createTestCanvas({ size: { columns: 4, rows: 2 } });
+  canvas.frameBuffer[0] = ["a", "b"];
+  canvas.frameBuffer[1] = ["c"];
+  canvas.frameBuffer[1][2] = "d";
+
+  assertEquals(canvasRowText(canvas, 0), "ab  ");
+  assertEquals(canvasRowText(canvas, 1, 3), "c d");
+  assertEquals(canvasSnapshot(canvas), "ab\nc d");
 });
 
 Deno.test("compareTerminalSnapshot normalizes and locates differences", () => {

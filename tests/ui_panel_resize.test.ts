@@ -1,26 +1,11 @@
 import { assertEquals, assertStringIncludes } from "./deps.ts";
-import { Canvas } from "../src/canvas/canvas.ts";
 import { Signal } from "../src/signals/mod.ts";
+import { canvasRowText, createTestCanvas } from "../src/testing/mod.ts";
 import { ListView, MultilineTextView, PanelView } from "../app/ui.ts";
 import type { BorderMode, MenuLine, Rect } from "../app/types.ts";
 
-function createStdout(): typeof Deno.stdout {
-  return {
-    writeSync(_data: Uint8Array) {
-      return 0;
-    },
-  } as typeof Deno.stdout;
-}
-
-function rowText(canvas: Canvas, row: number, width: number) {
-  return Array.from({ length: width }, (_, column) => String(canvas.frameBuffer[row]?.[column] ?? " ")).join("");
-}
-
 Deno.test("multiline and list views only allocate visible rows and grow on resize", () => {
-  const canvas = new Canvas({
-    stdout: createStdout(),
-    size: { columns: 40, rows: 30 },
-  });
+  const canvas = createTestCanvas({ size: { columns: 40, rows: 30 } });
 
   const textRect = new Signal<Rect>({ column: 0, row: 0, width: 20, height: 4 });
   const textView = new MultilineTextView({
@@ -57,10 +42,7 @@ Deno.test("multiline and list views only allocate visible rows and grow on resiz
 });
 
 Deno.test("panel bodies keep rendering deep lines in tall single-pane layouts", () => {
-  const canvas = new Canvas({
-    stdout: createStdout(),
-    size: { columns: 64, rows: 360 },
-  });
+  const canvas = createTestCanvas({ size: { columns: 64, rows: 360 } });
 
   const rect = new Signal<Rect>({ column: 0, row: 0, width: 64, height: 340 });
   const bodyLines = Array.from(
@@ -90,5 +72,5 @@ Deno.test("panel bodies keep rendering deep lines in tall single-pane layouts", 
 
   // Panel body starts two rows below the outer rectangle origin.
   const markerRow = 2 + 300;
-  assertStringIncludes(rowText(canvas, markerRow, 64), "RESIZE MARKER");
+  assertStringIncludes(canvasRowText(canvas, markerRow, 64), "RESIZE MARKER");
 });

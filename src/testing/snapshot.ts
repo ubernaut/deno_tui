@@ -1,5 +1,20 @@
 // Copyright 2023 Im-Beast. MIT license.
+import { Canvas } from "../canvas/canvas.ts";
+import type { ConsoleSize, Stdout } from "../types.ts";
+
 const ANSI_PATTERN = /\x1b\[[0-?]*[ -/]*[@-~]/g;
+
+export interface TestStdout {
+  readonly chunks: Uint8Array[];
+  readonly text: string;
+  writeSync(data: Uint8Array): number;
+  clear(): void;
+}
+
+export interface TestCanvasOptions {
+  size?: ConsoleSize;
+  stdout?: TestStdout;
+}
 
 export function stripAnsi(value: string): string {
   return value.replace(ANSI_PATTERN, "");
@@ -14,13 +29,48 @@ export function frameBufferToSnapshot(frameBuffer: readonly (readonly (string | 
   return normalizeTerminalSnapshot(
     frameBuffer
       .map((row) =>
-        row.map((cell) => {
+        Array.from({ length: row.length }, (_, index) => {
+          const cell = row[index];
           if (cell === undefined) return " ";
           return typeof cell === "string" ? cell : decoder.decode(cell);
         }).join("")
       )
       .join("\n"),
   );
+}
+
+export function createTestStdout(): TestStdout {
+  const decoder = new TextDecoder();
+  const chunks: Uint8Array[] = [];
+  return {
+    chunks,
+    writeSync(data: Uint8Array) {
+      chunks.push(data.slice());
+      return data.byteLength;
+    },
+    get text() {
+      return chunks.map((chunk) => decoder.decode(chunk)).join("");
+    },
+    clear() {
+      chunks.length = 0;
+    },
+  };
+}
+
+export function createTestCanvas(options: TestCanvasOptions = {}): Canvas {
+  return new Canvas({
+    stdout: (options.stdout ?? createTestStdout()) as unknown as Stdout,
+    size: options.size ?? { columns: 80, rows: 24 },
+  });
+}
+
+export function canvasSnapshot(canvas: Canvas): string {
+  return frameBufferToSnapshot(canvas.frameBuffer);
+}
+
+export function canvasRowText(canvas: Canvas, row: number, width = canvas.size.peek().columns): string {
+  return Array.from({ length: Math.max(0, width) }, (_, column) => String(canvas.frameBuffer[row]?.[column] ?? " "))
+    .join("");
 }
 
 export interface TerminalSnapshotMismatch {
