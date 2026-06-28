@@ -406,6 +406,7 @@ previous data during refreshes:
 const metrics = createAsyncResource({
   loader: async ({ signal }) => await fetchMetrics({ signal }),
   scheduler: new AsyncScheduler({ concurrency: 1 }),
+  priority: 5,
 });
 
 await metrics.load();
@@ -427,6 +428,9 @@ const pipeline = new LatestDataPipeline([
 const result = await pipeline.run(processes);
 if (result.status === "ok") renderRows(result.value);
 ```
+
+Pass `priority` and `signal` to `runDataPipeline()` or `LatestDataPipeline.run()` to prioritize visible work and cancel
+queued transforms when search text, route state, or source data changes before the work starts.
 
 `createRuntimeStore()` chooses IndexedDB when available and falls back to memory. `PersistentSignal` layers reactive app
 state on top, which is useful for preferences, selected routes, panel layout, and visualization options:

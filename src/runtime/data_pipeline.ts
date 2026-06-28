@@ -9,6 +9,7 @@ export interface DataPipelineContext {
 export interface DataPipelineOptions {
   scheduler?: AsyncScheduler;
   signal?: AbortSignal;
+  priority?: number;
   revision?: number;
 }
 
@@ -44,9 +45,19 @@ export async function runDataPipeline<TInput, TOutput = unknown>(
   let current: unknown = input;
   for (const transform of transforms) {
     throwIfAborted(context.signal);
-    current = options.scheduler
-      ? await options.scheduler.run(() => transform(current, context))
-      : await transform(current, context);
+    try {
+      current = options.scheduler
+        ? await options.scheduler.run(() => transform(current, context), {
+          priority: options.priority,
+          signal: options.signal,
+        })
+        : await transform(current, context);
+    } catch (error) {
+      if (context.signal?.aborted && isAbortError(error)) {
+        throw new DataPipelineAbortError();
+      }
+      throw error;
+    }
     throwIfAborted(context.signal);
   }
   return current as TOutput;
@@ -107,4 +118,8 @@ function throwIfAborted(signal: AbortSignal | undefined): void {
   if (signal?.aborted) {
     throw new DataPipelineAbortError();
   }
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === "AbortError";
 }

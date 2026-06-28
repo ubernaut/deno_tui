@@ -103,3 +103,40 @@ Deno.test("AsyncResource can run loaders through a scheduler", async () => {
   assertEquals((await resource.load("a")).data, "A");
   assertEquals(order, ["a"]);
 });
+
+Deno.test("AsyncResource cancels stale queued scheduler work and applies priority", async () => {
+  const scheduler = new AsyncScheduler({ concurrency: 1 });
+  const releaseBlocker = deferred<void>();
+  const ran: string[] = [];
+  const blocker = scheduler.run(() => releaseBlocker.promise);
+  const resource = createAsyncResource<number, number>({
+    scheduler,
+    priority: (params) => params,
+    loader: ({ params }) => {
+      ran.push(`${params}`);
+      return params * 10;
+    },
+  });
+
+  const stale = resource.load(1);
+  const latest = resource.load(5);
+
+  assertEquals(scheduler.pending(), 1);
+  assertEquals(await stale, { status: "loading", data: undefined, params: 5, revision: 2 });
+  releaseBlocker.resolve();
+  await blocker;
+
+  assertEquals(await latest, { status: "success", data: 50, params: 5, revision: 2 });
+  assertEquals(ran, ["5"]);
+});
+
+function deferred<T>(): {
+  promise: Promise<T>;
+  resolve: (value: T | PromiseLike<T>) => void;
+} {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  const promise = new Promise<T>((done) => {
+    resolve = done;
+  });
+  return { promise, resolve };
+}

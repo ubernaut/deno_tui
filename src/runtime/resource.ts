@@ -25,6 +25,7 @@ export type AsyncResourceLoader<TParams, TData> = (
 export interface AsyncResourceOptions<TParams, TData> {
   loader: AsyncResourceLoader<TParams, TData>;
   scheduler?: AsyncScheduler;
+  priority?: number | ((params: TParams) => number);
   initialData?: TData;
   initialParams?: TParams;
   keepPreviousData?: boolean;
@@ -34,6 +35,7 @@ export class AsyncResource<TParams = void, TData = unknown> {
   readonly state: Signal<AsyncResourceState<TData, TParams>>;
   readonly #loader: AsyncResourceLoader<TParams, TData>;
   readonly #scheduler?: AsyncScheduler;
+  readonly #priority?: number | ((params: TParams) => number);
   readonly #keepPreviousData: boolean;
   #controller: AbortController | undefined;
   #revision = 0;
@@ -41,6 +43,7 @@ export class AsyncResource<TParams = void, TData = unknown> {
   constructor(options: AsyncResourceOptions<TParams, TData>) {
     this.#loader = options.loader;
     this.#scheduler = options.scheduler;
+    this.#priority = options.priority;
     this.#keepPreviousData = options.keepPreviousData ?? true;
     const initialState: AsyncResourceState<TData, TParams> = {
       status: options.initialData === undefined ? "idle" : "success",
@@ -75,7 +78,10 @@ export class AsyncResource<TParams = void, TData = unknown> {
     try {
       const context = { signal: controller.signal, params, revision };
       const data = this.#scheduler
-        ? await this.#scheduler.run(() => this.#loader(context))
+        ? await this.#scheduler.run(() => this.#loader(context), {
+          priority: this.priority(params),
+          signal: controller.signal,
+        })
         : await this.#loader(context);
       if (revision !== this.#revision || controller.signal.aborted) {
         return this.state.peek();
@@ -124,6 +130,10 @@ export class AsyncResource<TParams = void, TData = unknown> {
       data,
       revision: this.#revision,
     };
+  }
+
+  private priority(params: TParams): number | undefined {
+    return typeof this.#priority === "function" ? this.#priority(params) : this.#priority;
   }
 }
 

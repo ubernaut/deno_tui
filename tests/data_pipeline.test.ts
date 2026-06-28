@@ -41,6 +41,32 @@ Deno.test("runDataPipeline uses the provided scheduler", async () => {
   assertEquals(order, ["a:1", "b:2"]);
 });
 
+Deno.test("runDataPipeline passes priority to scheduled transforms", async () => {
+  const scheduler = new AsyncScheduler({ concurrency: 1 });
+  const releaseBlocker = deferred<void>();
+  const order: string[] = [];
+  const blocker = scheduler.run(() => releaseBlocker.promise);
+
+  const low = runDataPipeline<number, number>(1, [
+    (value) => {
+      order.push("low");
+      return value * 10;
+    },
+  ], { scheduler, priority: 0 });
+  const high = runDataPipeline<number, number>(2, [
+    (value) => {
+      order.push("high");
+      return value * 10;
+    },
+  ], { scheduler, priority: 10 });
+
+  releaseBlocker.resolve();
+  await blocker;
+
+  assertEquals(await Promise.all([low, high]), [10, 20]);
+  assertEquals(order, ["high", "low"]);
+});
+
 Deno.test("runDataPipeline rejects aborted work", async () => {
   const controller = new AbortController();
   controller.abort();
@@ -51,6 +77,34 @@ Deno.test("runDataPipeline rejects aborted work", async () => {
   } catch (error) {
     assertEquals(error instanceof DataPipelineAbortError, true);
   }
+});
+
+Deno.test("runDataPipeline cancels pending scheduled transforms with DataPipelineAbortError", async () => {
+  const scheduler = new AsyncScheduler({ concurrency: 1 });
+  const releaseBlocker = deferred<void>();
+  const controller = new AbortController();
+  let ran = false;
+  const blocker = scheduler.run(() => releaseBlocker.promise);
+  const pending = runDataPipeline<number, number>(1, [
+    (value) => {
+      ran = true;
+      return value + 1;
+    },
+  ], { scheduler, signal: controller.signal });
+
+  assertEquals(scheduler.pending(), 1);
+  controller.abort();
+
+  try {
+    await pending;
+    throw new Error("expected abort");
+  } catch (error) {
+    assertEquals(error instanceof DataPipelineAbortError, true);
+  }
+  assertEquals(ran, false);
+
+  releaseBlocker.resolve();
+  await blocker;
 });
 
 Deno.test("LatestDataPipeline marks older results stale", async () => {
@@ -73,3 +127,14 @@ Deno.test("LatestDataPipeline marks older results stale", async () => {
   releaseFirst?.();
   assertEquals(await first, { status: "stale", revision: 1 });
 });
+
+function deferred<T>(): {
+  promise: Promise<T>;
+  resolve: (value: T | PromiseLike<T>) => void;
+} {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  const promise = new Promise<T>((done) => {
+    resolve = done;
+  });
+  return { promise, resolve };
+}
