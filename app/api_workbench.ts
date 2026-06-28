@@ -142,6 +142,7 @@ const minimized = new Signal<Record<WindowId, boolean>>({
 const commandLog = new Signal<string[]>(["ready: API workbench mounted"], { deepObserve: true });
 const lineSignals: Signal<string>[] = [];
 let hitTargets: Array<{ rect: Rectangle; action: HitAction }> = [];
+type Frame = string[][];
 
 const menu = new MenuBarController({
   items: [
@@ -316,19 +317,19 @@ function draw(): void {
   const height = currentHeight();
   hitTargets = [];
   logScroll.setContentSize(Math.max(1, width - 6), docs.length);
-  const frame = Array.from({ length: height }, () => "");
+  const frame: Frame = Array.from({ length: height }, () => []);
   renderHeader(frame);
   renderWorkspace(frame);
   renderStatus(frame);
   for (let row = 0; row < height; row += 1) {
-    lineSignals[row]!.value = fit(frame[row] ?? "", width);
+    lineSignals[row]!.value = renderFrameRow(frame[row] ?? [], width);
   }
   for (let row = height; row < lineSignals.length; row += 1) {
     lineSignals[row]!.value = "";
   }
 }
 
-function renderHeader(frame: string[]): void {
+function renderHeader(frame: Frame): void {
   const width = currentWidth();
   const t = theme();
   fillRow(frame, 0, t.backgroundSoft);
@@ -382,7 +383,7 @@ function renderHeader(frame: string[]): void {
   }
 }
 
-function renderWorkspace(frame: string[]): void {
+function renderWorkspace(frame: Frame): void {
   const bounds = { column: 0, row: 3, width: currentWidth(), height: Math.max(0, currentHeight() - 5) };
   fillRect(frame, bounds, theme().backgroundSoft);
   const max = maximized.peek();
@@ -417,7 +418,7 @@ function renderWorkspace(frame: string[]): void {
   renderShelf(frame);
 }
 
-function renderWindow(frame: string[], id: WindowId, rect: Rectangle): void {
+function renderWindow(frame: Frame, id: WindowId, rect: Rectangle): void {
   if (rect.width < 8 || rect.height < 4 || minimized.peek()[id]) return;
   const t = theme();
   const active = activeWindow.peek() === id;
@@ -447,7 +448,7 @@ function renderWindow(frame: string[], id: WindowId, rect: Rectangle): void {
   else renderLogs(frame, inner);
 }
 
-function renderInspector(frame: string[], rect: Rectangle): void {
+function renderInspector(frame: Frame, rect: Rectangle): void {
   const t = theme();
   const lines = [
     { text: " Composable API surfaces ", fg: t.background, bg: t.accent, bold: true },
@@ -468,7 +469,7 @@ function renderInspector(frame: string[], rect: Rectangle): void {
   writeRows(frame, rect, lines);
 }
 
-function renderData(frame: string[], rect: Rectangle): void {
+function renderData(frame: Frame, rect: Rectangle): void {
   const t = theme();
   const view = table.view.peek();
   table.setPageSize(Math.max(1, rect.height - 4));
@@ -490,7 +491,7 @@ function renderData(frame: string[], rect: Rectangle): void {
   ]);
 }
 
-function renderControls(frame: string[], rect: Rectangle): void {
+function renderControls(frame: Frame, rect: Rectangle): void {
   const t = theme();
   let row = rect.row;
   const writeControl = (id: ControlId, value: string, options: { previous?: boolean; next?: boolean } = {}) => {
@@ -597,7 +598,7 @@ function renderControls(frame: string[], rect: Rectangle): void {
   }
 }
 
-function renderLogs(frame: string[], rect: Rectangle): void {
+function renderLogs(frame: Frame, rect: Rectangle): void {
   const t = theme();
   logScroll.setViewportSize(rect.width, rect.height);
   const offset = logScroll.offset.peek().rows;
@@ -619,7 +620,7 @@ function renderLogs(frame: string[], rect: Rectangle): void {
   }
 }
 
-function renderShelf(frame: string[]): void {
+function renderShelf(frame: Frame): void {
   const row = currentHeight() - 2;
   let column = 1;
   const entries = (Object.entries(minimized.peek()) as Array<[WindowId, boolean]>).filter(([, hidden]) => hidden);
@@ -634,7 +635,7 @@ function renderShelf(frame: string[]): void {
   }
 }
 
-function renderStatus(frame: string[]): void {
+function renderStatus(frame: Frame): void {
   const t = theme();
   const width = currentWidth();
   const left = `focus ${windowTitle(activeWindow.peek())} | ${theme().label} | split ${
@@ -644,7 +645,7 @@ function renderStatus(frame: string[]): void {
   write(frame, currentHeight() - 1, 0, paint(renderStatusBar(left, right, width), { fg: t.text, bg: t.panelSoft }));
 }
 
-function drawFrame(frame: string[], rect: Rectangle, title: string, active: boolean): void {
+function drawFrame(frame: Frame, rect: Rectangle, title: string, active: boolean): void {
   const t = theme();
   fillRect(frame, rect, active ? t.panelSoft : t.panel);
   const borderStyle = { fg: active ? t.accent : t.borderStrong, bg: active ? t.panelSoft : t.panel, bold: active };
@@ -827,7 +828,7 @@ function ensureLineObjects(): void {
 
 type RowStyle = { text: string; fg?: string; bg?: string; bold?: boolean };
 
-function writeRows(frame: string[], rect: Rectangle, rows: RowStyle[]): void {
+function writeRows(frame: Frame, rect: Rectangle, rows: RowStyle[]): void {
   const t = theme();
   for (let index = 0; index < Math.min(rect.height, rows.length); index += 1) {
     const row = rows[index]!;
@@ -844,25 +845,51 @@ function writeRows(frame: string[], rect: Rectangle, rows: RowStyle[]): void {
   }
 }
 
-function write(frame: string[], row: number, column: number, value: string): void {
+function write(frame: Frame, row: number, column: number, value: string): void {
   if (row < 0 || row >= frame.length || column >= currentWidth()) return;
-  const line = frame[row] ?? "";
-  const visible = textWidth(line);
-  if (visible <= column) {
-    frame[row] = line + " ".repeat(column - visible) + value;
-  } else {
-    frame[row] = stripStyles(line).slice(0, column).padEnd(column, " ") + value;
+  const cells = frame[row] ??= [];
+  const styledCells = toStyledCells(value);
+  for (let index = 0; index < styledCells.length && column + index < currentWidth(); index += 1) {
+    cells[column + index] = styledCells[index]!;
   }
 }
 
-function fillRow(frame: string[], row: number, bg: string): void {
+function fillRow(frame: Frame, row: number, bg: string): void {
   write(frame, row, 0, makeStyle({ bg })(" ".repeat(currentWidth())));
 }
 
-function fillRect(frame: string[], rect: Rectangle, bg: string): void {
+function fillRect(frame: Frame, rect: Rectangle, bg: string): void {
   for (let row = rect.row; row < rect.row + rect.height; row += 1) {
     write(frame, row, rect.column, makeStyle({ bg })(" ".repeat(Math.max(0, rect.width))));
   }
+}
+
+function renderFrameRow(cells: string[], width: number): string {
+  const row: string[] = [];
+  for (let column = 0; column < width; column += 1) {
+    row.push(cells[column] ?? " ");
+  }
+  return row.join("");
+}
+
+function toStyledCells(value: string): string[] {
+  const cells: string[] = [];
+  let style = "";
+  for (let index = 0; index < value.length;) {
+    if (value.charCodeAt(index) === 0x1b) {
+      const match = /^\x1b\[[0-9;]*m/.exec(value.slice(index));
+      if (match) {
+        const sequence = match[0];
+        style = sequence.includes("[0m") ? "" : style + sequence;
+        index += sequence.length;
+        continue;
+      }
+    }
+    const char = value[index]!;
+    cells.push(style ? `${style}${char}\x1b[0m` : char);
+    index += char.length;
+  }
+  return cells;
 }
 
 function fit(value: string, width: number): string {
