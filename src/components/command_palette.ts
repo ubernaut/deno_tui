@@ -35,16 +35,41 @@ export interface CommandPaletteInspection {
   selected?: CommandPaletteItem;
 }
 
+export interface CommandPaletteMatch {
+  item: CommandPaletteItem;
+  score: number;
+  matched: string[];
+}
+
 export function filterCommandPaletteItems(
   items: readonly CommandPaletteItem[],
   query: string,
 ): CommandPaletteItem[] {
-  const needle = query.trim().toLowerCase();
-  if (!needle) return [...items];
-  return items.filter((item) => {
-    const haystack = [item.label, item.id, ...(item.keywords ?? [])].join(" ").toLowerCase();
-    return needle.split(/\s+/).every((part) => haystack.includes(part));
-  });
+  return rankCommandPaletteItems(items, query).map((match) => match.item);
+}
+
+export function rankCommandPaletteItems(
+  items: readonly CommandPaletteItem[],
+  query: string,
+): CommandPaletteMatch[] {
+  const terms = searchTerms(query);
+  if (terms.length === 0) {
+    return items.map((item) => ({ item, score: item.disabled ? -1 : 0, matched: [] }));
+  }
+
+  return items
+    .map((item, index) => {
+      const match = scoreCommandPaletteItem(item, terms);
+      return match ? { item, score: match.score, matched: match.matched, index } : undefined;
+    })
+    .filter((match): match is CommandPaletteMatch & { index: number } => match !== undefined)
+    .sort((left, right) =>
+      right.score - left.score ||
+      Number(left.item.disabled) - Number(right.item.disabled) ||
+      left.item.label.localeCompare(right.item.label) ||
+      left.index - right.index
+    )
+    .map(({ index: _index, ...match }) => match);
 }
 
 export function shiftCommandPaletteSelection(
@@ -248,4 +273,54 @@ export function renderCommandPaletteRows(
     selectedIndex,
     height,
   );
+}
+
+function scoreCommandPaletteItem(
+  item: CommandPaletteItem,
+  terms: readonly string[],
+): { score: number; matched: string[] } | undefined {
+  const fields = [
+    { value: item.label, weight: 100 },
+    { value: item.id, weight: 80 },
+    ...(item.keywords ?? []).map((value) => ({ value, weight: 40 })),
+  ].map((field) => ({ ...field, normalized: normalizeSearchText(field.value) }));
+
+  let score = item.disabled ? -10 : 0;
+  const matched: string[] = [];
+  for (const term of terms) {
+    let best = 0;
+    let bestValue: string | undefined;
+    for (const field of fields) {
+      const fieldScore = scoreSearchField(field.normalized, term, field.weight);
+      if (fieldScore > best) {
+        best = fieldScore;
+        bestValue = field.value;
+      }
+    }
+    if (best <= 0) return undefined;
+    score += best;
+    if (bestValue) matched.push(bestValue);
+  }
+
+  return { score, matched: [...new Set(matched)] };
+}
+
+function scoreSearchField(field: string, term: string, weight: number): number {
+  if (field === term) return weight + 40;
+  if (field.startsWith(term)) return weight + 25;
+  if (field.split(" ").some((part) => part.startsWith(term))) return weight + 15;
+  if (field.includes(term)) return weight + 5;
+  return acronym(field).startsWith(term) ? weight : 0;
+}
+
+function searchTerms(query: string): string[] {
+  return normalizeSearchText(query).split(/\s+/).filter(Boolean);
+}
+
+function normalizeSearchText(value: string): string {
+  return value.trim().toLowerCase().replace(/[_.:/]+/g, " ").replace(/\s+/g, " ");
+}
+
+function acronym(value: string): string {
+  return value.split(/\s+/).map((part) => part[0] ?? "").join("");
 }

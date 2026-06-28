@@ -449,6 +449,9 @@ const selectedCommand = palette.selected();
 const paletteState = palette.inspect();
 ```
 
+`filterCommandPaletteItems()` returns query-ranked items for typed command surfaces, while `rankCommandPaletteItems()`
+exposes each item's score and matched fields for previews, diagnostics, and searchable theme or plugin catalogs.
+
 `TableController` extracts row selection and scroll-window state from the `Table` renderer. It owns row count, viewport
 height, selected row, offset row, key handling, mouse/scroll handling, page movement, and inspection state. Use
 `tableCommands()` or `bindTableCommands()` when a rendered table should be controllable from command palettes, menus, or

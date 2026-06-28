@@ -24,6 +24,7 @@ import {
   clampCommandPaletteSelection,
   CommandPaletteController,
   filterCommandPaletteItems,
+  rankCommandPaletteItems,
   renderCommandPaletteRows,
   shiftCommandPaletteSelection,
 } from "../src/components/command_palette.ts";
@@ -319,6 +320,26 @@ Deno.test("command palette filters labels ids and keywords", () => {
 
   assertEquals(filterCommandPaletteItems(items, "find").map((item) => item.id), ["open-file"]);
   assertEquals(renderCommandPaletteRows(items, "pane", 0, 2), ["> Close Pane"]);
+});
+
+Deno.test("command palette ranks labels ids keywords and acronyms", () => {
+  const items = [
+    { id: "route.system-monitor", label: "System Monitor", keywords: ["runtime", "metrics"] },
+    { id: "theme.next", label: "Next Theme", keywords: ["appearance"], disabled: true },
+    { id: "route.home", label: "Go Home", keywords: ["landing"] },
+  ];
+
+  assertEquals(filterCommandPaletteItems(items, "").map((item) => item.id), [
+    "route.system-monitor",
+    "theme.next",
+    "route.home",
+  ]);
+  assertEquals(filterCommandPaletteItems(items, "sys mon").map((item) => item.id), ["route.system-monitor"]);
+  assertEquals(filterCommandPaletteItems(items, "sm").map((item) => item.id), ["route.system-monitor"]);
+  assertEquals(filterCommandPaletteItems(items, "theme").map((item) => item.id), ["theme.next"]);
+  assertEquals(rankCommandPaletteItems(items, "runtime").map((match) => [match.item.id, match.matched]), [
+    ["route.system-monitor", ["runtime"]],
+  ]);
 });
 
 Deno.test("command palette rows clamp to the filtered list", () => {
