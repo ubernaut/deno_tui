@@ -1,4 +1,10 @@
-import { createAnsiStyle, createThemeEngineFactoryRegistry, prewarmThemeEngines, ThemeEngineFactory } from "../mod.ts";
+import {
+  createAnsiStyle,
+  createThemeEngineFactoryRegistry,
+  formatThemeEngineFactoryCatalogMarkdown,
+  prewarmThemeEngines,
+  ThemeEngineFactory,
+} from "../mod.ts";
 
 const underline = createAnsiStyle({ underline: true });
 
@@ -52,6 +58,10 @@ const registry = createThemeEngineFactoryRegistry([
 ]);
 
 console.log("Theme engine factory demo");
+const catalog = registry.catalog();
+console.log(
+  `Catalog: ${catalog.inspection.count} factories, palettes=${catalog.inspection.palettes.join(", ")}`,
+);
 for (const factory of registry.inspect()) {
   console.log(
     `- ${factory.id}: palette=${factory.palette} priority=${factory.priority} valid=${factory.valid}`,
@@ -85,3 +95,10 @@ const detached = new ThemeEngineFactory({
 const [detachedResult] = await prewarmThemeEngines([detached]);
 console.log("");
 console.log(`Detached factory: ${detachedResult.id}/${detachedResult.engine.componentNames().join(", ")}`);
+
+console.log("");
+console.log(formatThemeEngineFactoryCatalogMarkdown({
+  factories: registry.factories(),
+  query: { tag: "dashboard" },
+  title: "Dashboard Theme Engines",
+}));

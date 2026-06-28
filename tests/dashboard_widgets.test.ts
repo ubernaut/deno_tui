@@ -55,8 +55,12 @@ import { bindComponentTheme } from "../src/theme_binding.ts";
 import { createThemeEngineCache, createThemeProviderCache } from "../src/theme_engine_cache.ts";
 import {
   createThemeEngineFactory,
+  createThemeEngineFactoryCatalogReport,
   createThemeEngineFactoryRegistry,
+  formatThemeEngineFactoryCatalogMarkdown,
   prewarmThemeEngines,
+  queryThemeEngineFactories,
+  type ThemeEngineFactoryDefinition,
   ThemeEngineFactoryNotFoundError,
 } from "../src/theme_engine_factory.ts";
 import { createThemeEnginePipeline, prewarmThemeEnginePipelines } from "../src/theme_engine_pipeline.ts";
@@ -842,6 +846,82 @@ Deno.test("ThemeEngineFactoryRegistry orders replaces and prewarms factories", a
   } catch (error) {
     assertEquals(error instanceof ThemeEngineFactoryNotFoundError, true);
   }
+});
+
+Deno.test("theme engine factory catalogs filter inspect and format reports", () => {
+  const factories: ThemeEngineFactoryDefinition[] = [
+    {
+      id: "ops",
+      label: "Ops Neon",
+      description: "Operational dashboard theme.",
+      palette: "neon",
+      tags: ["dashboard", "dark"],
+      priority: 20,
+      options: {
+        tokens: { accent: (value: string) => `accent:${value}` },
+        components: {
+          Button: {
+            base: { focused: "accent" },
+            variants: { danger: { active: "danger" } },
+          },
+        },
+      },
+    },
+    {
+      id: "console",
+      label: "Field Console",
+      palette: "terminal",
+      tags: ["remote"],
+      priority: 10,
+      options: { components: { Input: { base: { focused: "foreground" } } } },
+    },
+    {
+      id: "broken",
+      label: "Broken",
+      palette: "plain",
+      tags: ["draft"],
+      options: { components: { Badge: { base: { base: "missing-token" as "accent" } } } },
+    },
+  ];
+  const registry = createThemeEngineFactoryRegistry(factories);
+
+  assertEquals(queryThemeEngineFactories(factories, { search: "dashboard danger" }).map((factory) => factory.id), [
+    "ops",
+  ]);
+  assertEquals(queryThemeEngineFactories(factories, { tag: "remote" }).map((factory) => factory.id), ["console"]);
+  assertEquals(queryThemeEngineFactories(factories, { palette: "plain", valid: false }).map((factory) => factory.id), [
+    "broken",
+  ]);
+  assertEquals(
+    queryThemeEngineFactories(factories, { hasTokenOverrides: true }).map((factory) => factory.id),
+    ["ops"],
+  );
+
+  const report = createThemeEngineFactoryCatalogReport({ factories });
+  assertEquals(report.inspection, {
+    count: 3,
+    valid: 2,
+    invalid: 1,
+    palettes: ["neon", "plain", "terminal"],
+    tags: ["dark", "dashboard", "draft", "remote"],
+    components: ["Badge", "Button", "Input"],
+    tokenOverrides: ["accent"],
+  });
+  assertEquals(registry.catalog({ hasComponents: true }).inspection.count, 3);
+  assertEquals(registry.catalog({ valid: false }).factories.map((factory) => factory.id), ["broken"]);
+  assertEquals(
+    formatThemeEngineFactoryCatalogMarkdown({ factories, query: { valid: true }, title: "Themes" }),
+    [
+      "# Themes",
+      "",
+      "2 factories, 2 valid, 0 invalid.",
+      "",
+      "| Factory | Palette | Priority | Tags | Components | Valid |",
+      "| --- | --- | ---: | --- | ---: | --- |",
+      "| Ops Neon | neon | 20 | dark, dashboard | 1 | yes |",
+      "| Field Console | terminal | 10 | remote | 1 | yes |",
+    ].join("\n"),
+  );
 });
 
 Deno.test("prewarmThemeEngines accepts a scheduler and preserves input order", async () => {

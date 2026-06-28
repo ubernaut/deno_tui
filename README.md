@@ -1139,6 +1139,7 @@ import {
   createThemeCatalog,
   createThemeEngine,
   createThemeEngineCache,
+  createThemeEngineFactoryCatalogReport,
   createThemeEngineFactoryRegistry,
   createThemeEngineFromManifest,
   createThemeEngineFromPalette,
@@ -1152,10 +1153,12 @@ import {
   createThemeRegistry,
   createThemeRegistryFromManifests,
   diffThemeEngines,
+  formatThemeEngineFactoryCatalogMarkdown,
   inspectThemeCoverage,
   inspectThemeManifest,
   previewThemeManifest,
   prewarmThemeEnginePipelines,
+  queryThemeEngineFactories,
   themeCommands,
   validateThemeOptions,
 } from "https://deno.land/x/tui@VERSION/mod.ts";
@@ -1217,6 +1220,12 @@ const themeFactories = createThemeEngineFactoryRegistry([
     options: appTheme,
   },
 ]);
+const themeFactoryCatalog = themeFactories.catalog({ tag: "dashboard" });
+const dashboardThemeFactories = queryThemeEngineFactories(themeFactories.factories(), { search: "ops neon" });
+const themeFactoryReport = createThemeEngineFactoryCatalogReport({
+  factories: themeFactories.factories(),
+  query: { valid: true },
+});
 const warmedThemeEngines = await themeFactories.prewarm();
 
 const runtimePipeline = createThemeEnginePipeline({
@@ -1359,6 +1368,9 @@ and `ThemeProvider.resolve()` expose computed signals for active component theme
 multiple theme engines, white-label packs, demos, or plugin-provided themes. Factories expose metadata, tags, priority,
 validation issues, token overrides, components, variants, synchronous `build()`, and scheduler-backed `prewarm()` so
 heavy theme catalogs can be prepared before first render without coupling widgets to theme loading.
+`registry.catalog()`, `queryThemeEngineFactories()`, `createThemeEngineFactoryCatalogReport()`, and
+`formatThemeEngineFactoryCatalogMarkdown()` turn those factories into searchable theme engine inventories with palette,
+tag, validity, component, and token-override filters for settings panes, docs, demos, and plugin marketplaces.
 `ThemeEnginePipeline` adds the runtime side of that engine story: apps can register ordered, enableable transforms that
 extend an existing engine with contrast, density, accessibility, brand, or experiment-specific overlays. Pipeline steps
 can be plain `ThemeEngineOptions` or functions that receive the current engine and return another engine or extension

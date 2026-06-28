@@ -52,6 +52,43 @@ export interface ThemeEnginePrewarmOptions extends ScheduledTaskOptions {
   overrides?: ThemeEngineOptions | ((id: string, factory: ThemeEngineFactory) => ThemeEngineOptions);
 }
 
+/** Query filters for searchable theme engine factory catalogs. */
+export interface ThemeEngineFactoryCatalogQuery {
+  search?: string;
+  tag?: string;
+  palette?: string;
+  valid?: boolean;
+  hasComponents?: boolean;
+  hasTokenOverrides?: boolean;
+}
+
+/** Aggregate metadata for theme engine factory catalogs. */
+export interface ThemeEngineFactoryCatalogInspection {
+  count: number;
+  valid: number;
+  invalid: number;
+  palettes: string[];
+  tags: string[];
+  components: string[];
+  tokenOverrides: ThemeTokenName[];
+}
+
+/** Searchable catalog report for settings panes, docs, and marketplaces. */
+export interface ThemeEngineFactoryCatalogReport {
+  factories: ThemeEngineFactoryInspection[];
+  inspection: ThemeEngineFactoryCatalogInspection;
+}
+
+export interface ThemeEngineFactoryCatalogReportOptions {
+  factories: Iterable<ThemeEngineFactory | ThemeEngineFactoryDefinition>;
+  query?: ThemeEngineFactoryCatalogQuery;
+}
+
+export interface ThemeEngineFactoryCatalogMarkdownOptions extends ThemeEngineFactoryCatalogReportOptions {
+  title?: string;
+  includeSummary?: boolean;
+}
+
 /** Reusable theme engine preset that can validate, inspect, and build engines. */
 export class ThemeEngineFactory {
   readonly id: string;
@@ -156,6 +193,11 @@ export class ThemeEngineFactoryRegistry {
     return this.factories().map((factory) => factory.inspect());
   }
 
+  /** Returns a filtered catalog report for settings panes, docs, and marketplaces. */
+  catalog(query: ThemeEngineFactoryCatalogQuery = {}): ThemeEngineFactoryCatalogReport {
+    return createThemeEngineFactoryCatalogReport({ factories: this.factories(), query });
+  }
+
   /** Builds one registered factory by id. */
   build(id: string, overrides: ThemeEngineOptions = {}): ThemeEngine {
     const factory = this.get(id);
@@ -193,6 +235,67 @@ export function createThemeEngineFactoryRegistry(
   return new ThemeEngineFactoryRegistry(factories);
 }
 
+/** Filters and ranks theme engine factory inspections for searchable UIs. */
+export function queryThemeEngineFactories(
+  factories: Iterable<ThemeEngineFactory | ThemeEngineFactoryDefinition>,
+  query: ThemeEngineFactoryCatalogQuery = {},
+): ThemeEngineFactoryInspection[] {
+  return normalizeFactories(factories)
+    .map((factory) => factory.inspect())
+    .filter((factory) => matchesFactoryQuery(factory, query))
+    .sort((left, right) => right.priority - left.priority || left.label.localeCompare(right.label));
+}
+
+/** Aggregates factory catalog metadata for diagnostics and settings screens. */
+export function inspectThemeEngineFactoryCatalog(
+  factories: readonly ThemeEngineFactoryInspection[],
+): ThemeEngineFactoryCatalogInspection {
+  return {
+    count: factories.length,
+    valid: factories.filter((factory) => factory.valid).length,
+    invalid: factories.filter((factory) => !factory.valid).length,
+    palettes: uniqueSorted(factories.map((factory) => factory.palette)),
+    tags: uniqueSorted(factories.flatMap((factory) => factory.tags)),
+    components: uniqueSorted(factories.flatMap((factory) => factory.components)),
+    tokenOverrides: sortedThemeTokens(factories.flatMap((factory) => factory.tokenOverrides)),
+  };
+}
+
+/** Creates a filtered theme engine factory catalog report. */
+export function createThemeEngineFactoryCatalogReport(
+  options: ThemeEngineFactoryCatalogReportOptions,
+): ThemeEngineFactoryCatalogReport {
+  const factories = queryThemeEngineFactories(options.factories, options.query);
+  return {
+    factories,
+    inspection: inspectThemeEngineFactoryCatalog(factories),
+  };
+}
+
+/** Formats a factory catalog report as compact markdown for generated docs. */
+export function formatThemeEngineFactoryCatalogMarkdown(
+  options: ThemeEngineFactoryCatalogMarkdownOptions,
+): string {
+  const report = createThemeEngineFactoryCatalogReport(options);
+  const lines = [`# ${options.title ?? "Theme Engine Factories"}`, ""];
+  if (options.includeSummary ?? true) {
+    lines.push(
+      `${report.inspection.count} factories, ${report.inspection.valid} valid, ${report.inspection.invalid} invalid.`,
+      "",
+    );
+  }
+  lines.push("| Factory | Palette | Priority | Tags | Components | Valid |");
+  lines.push("| --- | --- | ---: | --- | ---: | --- |");
+  for (const factory of report.factories) {
+    lines.push(
+      `| ${factory.label} | ${factory.palette} | ${factory.priority} | ${
+        factory.tags.join(", ") || "-"
+      } | ${factory.components.length} | ${factory.valid ? "yes" : "no"} |`,
+    );
+  }
+  return lines.join("\n");
+}
+
 /** Builds a list of factories through an optional scheduler while preserving result order. */
 export async function prewarmThemeEngines(
   factories: readonly ThemeEngineFactory[],
@@ -225,4 +328,44 @@ function sortedThemeTokens(values: Iterable<string>): ThemeTokenName[] {
 
 function themePaletteId(palette: ThemePaletteReference): string {
   return typeof palette === "string" ? palette : palette.id;
+}
+
+function normalizeFactories(
+  factories: Iterable<ThemeEngineFactory | ThemeEngineFactoryDefinition>,
+): ThemeEngineFactory[] {
+  return [...factories].map((factory) =>
+    factory instanceof ThemeEngineFactory ? factory : createThemeEngineFactory(factory)
+  );
+}
+
+function matchesFactoryQuery(
+  factory: ThemeEngineFactoryInspection,
+  query: ThemeEngineFactoryCatalogQuery,
+): boolean {
+  if (query.tag && !factory.tags.includes(query.tag)) return false;
+  if (query.palette && factory.palette !== query.palette) return false;
+  if (query.valid !== undefined && factory.valid !== query.valid) return false;
+  if (query.hasComponents !== undefined && (factory.components.length > 0) !== query.hasComponents) return false;
+  if (
+    query.hasTokenOverrides !== undefined &&
+    (factory.tokenOverrides.length > 0) !== query.hasTokenOverrides
+  ) return false;
+  if (!query.search) return true;
+  const needle = query.search.trim().toLowerCase();
+  if (!needle) return true;
+  const haystack = [
+    factory.id,
+    factory.label,
+    factory.description,
+    factory.palette,
+    ...factory.tags,
+    ...factory.components,
+    ...factory.tokenOverrides,
+    ...Object.values(factory.variants).flat(),
+  ].join(" ").toLowerCase();
+  return needle.split(/\s+/).every((part) => haystack.includes(part));
+}
+
+function uniqueSorted(values: Iterable<string | undefined>): string[] {
+  return [...new Set([...values].filter((value): value is string => !!value))].sort();
 }
