@@ -149,6 +149,24 @@ const dashboardWidgets = componentsWithCapability("dashboard");
 const threeAscii = findComponent("ThreeAscii");
 ```
 
+`CommandPaletteController` and `ContextMenuController` expose the overlay widgets' query, selection, navigation, key
+handling, and inspection state without requiring a rendered component. Use them when a command surface, menu bar,
+shortcut handler, or test needs to drive the same behavior as the built-in widgets:
+
+```ts
+const palette = new CommandPaletteController({
+  items: [
+    { id: "open", label: "Open File", keywords: ["find"] },
+    { id: "close", label: "Close Pane", disabled: true },
+  ],
+});
+
+palette.setQuery("open");
+palette.move(1);
+const selectedCommand = palette.selected();
+const paletteState = palette.inspect();
+```
+
 For table-heavy apps, `DataTableController`, `createDataTableView()`, `sortDataRows()`, and the data-table render
 helpers provide reusable filtering, sorting, pagination, selection, and row formatting without coupling data logic to
 the `Table` renderer:

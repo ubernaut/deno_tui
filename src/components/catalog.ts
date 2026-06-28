@@ -114,12 +114,14 @@ export const componentCatalog = [
   ]),
   component("key-help", "KeyHelp", "navigation", "Formatted key binding help rows.", ["render-helper", "keyboard"]),
   component("command-palette", "CommandPalette", "overlay", "Filterable command surface.", [
+    "controller",
     "render-helper",
     "selection",
     "keyboard",
     "async",
   ]),
   component("context-menu", "ContextMenu", "overlay", "Selectable contextual command list.", [
+    "controller",
     "render-helper",
     "selection",
     "keyboard",

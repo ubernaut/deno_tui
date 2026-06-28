@@ -1,6 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { TextRectangle } from "../canvas/text.ts";
 import { Component, type ComponentOptions } from "../component.ts";
+import type { KeyPressEvent } from "../input_reader/types.ts";
 import { Computed, Signal } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
 import { Text } from "./text.ts";
@@ -15,7 +16,19 @@ export interface ContextMenuItem {
 export interface ContextMenuOptions extends ComponentOptions {
   items: ContextMenuItem[] | Signal<ContextMenuItem[]>;
   selectedIndex?: number | Signal<number>;
+  controller?: ContextMenuController;
   onSelect?: (item: ContextMenuItem) => void | Promise<void>;
+}
+
+export interface ContextMenuControllerOptions {
+  items: ContextMenuItem[] | Signal<ContextMenuItem[]>;
+  selectedIndex?: number | Signal<number>;
+}
+
+export interface ContextMenuInspection {
+  selectedIndex: number;
+  itemCount: number;
+  selected?: ContextMenuItem;
 }
 
 export function renderContextMenuRows(
@@ -81,37 +94,99 @@ function isSelectableContextItem(item: ContextMenuItem | undefined): boolean {
   return !!item && !item.disabled && !item.separatorBefore;
 }
 
-export class ContextMenu extends Component {
-  items: Signal<ContextMenuItem[]>;
-  selectedIndex: Signal<number>;
+export class ContextMenuController {
+  readonly items: Signal<ContextMenuItem[]>;
+  readonly selectedIndex: Signal<number>;
+  readonly #ownsItems: boolean;
+  readonly #ownsSelectedIndex: boolean;
 
-  constructor(private readonly options: ContextMenuOptions) {
-    super(options);
+  constructor(options: ContextMenuControllerOptions) {
+    this.#ownsItems = !(options.items instanceof Signal);
+    this.#ownsSelectedIndex = !(options.selectedIndex instanceof Signal);
     this.items = signalify(options.items, { deepObserve: true });
     this.selectedIndex = signalify(options.selectedIndex ?? 0);
+    this.clamp();
+  }
 
-    this.on("keyPress", ({ key, ctrl, meta, shift }) => {
-      if (ctrl || meta || shift) return;
-      if (key === "up") {
-        this.selectedIndex.value = shiftContextMenuSelection(this.items.peek(), this.selectedIndex.peek(), -1);
-      } else if (key === "down") {
-        this.selectedIndex.value = shiftContextMenuSelection(this.items.peek(), this.selectedIndex.peek(), 1);
-      } else if (key === "home") {
-        this.selectedIndex.value = clampContextMenuSelection(this.items.peek(), 0);
-      } else if (key === "end") {
-        this.selectedIndex.value = clampContextMenuSelection(this.items.peek(), this.items.peek().length - 1);
-      } else if (key === "return") {
-        const item = this.selected();
-        if (item) void this.options.onSelect?.(item);
-      }
-      this.selectedIndex.value = clampContextMenuSelection(this.items.peek(), this.selectedIndex.peek());
-    });
+  move(delta: number): void {
+    this.selectedIndex.value = shiftContextMenuSelection(this.items.peek(), this.selectedIndex.peek(), delta);
+    this.clamp();
+  }
+
+  first(): void {
+    this.selectedIndex.value = clampContextMenuSelection(this.items.peek(), 0);
+  }
+
+  last(): void {
+    this.selectedIndex.value = clampContextMenuSelection(this.items.peek(), this.items.peek().length - 1);
+  }
+
+  clamp(): void {
+    this.selectedIndex.value = clampContextMenuSelection(this.items.peek(), this.selectedIndex.peek());
   }
 
   selected(): ContextMenuItem | undefined {
     const index = clampContextMenuSelection(this.items.peek(), this.selectedIndex.peek());
     const item = this.items.peek()[index];
     return isSelectableContextItem(item) ? item : undefined;
+  }
+
+  handleKeyPress(event: KeyPressEvent): ContextMenuItem | undefined {
+    if (event.ctrl || event.meta || event.shift) return undefined;
+    if (event.key === "up") {
+      this.move(-1);
+    } else if (event.key === "down") {
+      this.move(1);
+    } else if (event.key === "home") {
+      this.first();
+    } else if (event.key === "end") {
+      this.last();
+    } else if (event.key === "return") {
+      return this.selected();
+    }
+    this.clamp();
+    return undefined;
+  }
+
+  inspect(): ContextMenuInspection {
+    return {
+      selectedIndex: this.selectedIndex.peek(),
+      itemCount: this.items.peek().length,
+      selected: this.selected(),
+    };
+  }
+
+  dispose(): void {
+    if (this.#ownsItems) this.items.dispose();
+    if (this.#ownsSelectedIndex) this.selectedIndex.dispose();
+  }
+}
+
+export class ContextMenu extends Component {
+  items: Signal<ContextMenuItem[]>;
+  selectedIndex: Signal<number>;
+  readonly controller: ContextMenuController;
+
+  constructor(private readonly options: ContextMenuOptions) {
+    super(options);
+    const ownsController = !options.controller;
+    this.controller = options.controller ??
+      new ContextMenuController({
+        items: options.items,
+        selectedIndex: options.selectedIndex,
+      });
+    this.items = this.controller.items;
+    this.selectedIndex = this.controller.selectedIndex;
+
+    this.on("keyPress", (event) => {
+      const item = this.controller.handleKeyPress(event);
+      if (item) void this.options.onSelect?.(item);
+    });
+    if (ownsController) this.on("destroy", () => this.controller.dispose());
+  }
+
+  selected(): ContextMenuItem | undefined {
+    return this.controller.selected();
   }
 
   override draw(): void {

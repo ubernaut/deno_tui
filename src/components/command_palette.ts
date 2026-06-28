@@ -5,6 +5,7 @@ import { Computed, Signal } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
 import { List, visibleListRows } from "./list.ts";
 import { Text } from "./text.ts";
+import type { KeyPressEvent } from "../input_reader/types.ts";
 
 export interface CommandPaletteItem {
   id: string;
@@ -17,7 +18,21 @@ export interface CommandPaletteOptions extends ComponentOptions {
   items: CommandPaletteItem[] | Signal<CommandPaletteItem[]>;
   query?: string | Signal<string>;
   selectedIndex?: number | Signal<number>;
+  controller?: CommandPaletteController;
   onSelect?: (item: CommandPaletteItem) => void | Promise<void>;
+}
+
+export interface CommandPaletteControllerOptions {
+  items: CommandPaletteItem[] | Signal<CommandPaletteItem[]>;
+  query?: string | Signal<string>;
+  selectedIndex?: number | Signal<number>;
+}
+
+export interface CommandPaletteInspection {
+  query: string;
+  selectedIndex: number;
+  filteredCount: number;
+  selected?: CommandPaletteItem;
 }
 
 export function filterCommandPaletteItems(
@@ -61,40 +76,124 @@ export function clampCommandPaletteSelection(
   return items[previous]?.disabled ? clamped : previous;
 }
 
+export class CommandPaletteController {
+  readonly items: Signal<CommandPaletteItem[]>;
+  readonly query: Signal<string>;
+  readonly selectedIndex: Signal<number>;
+  readonly filtered: Signal<CommandPaletteItem[]>;
+  readonly #ownsItems: boolean;
+  readonly #ownsQuery: boolean;
+  readonly #ownsSelectedIndex: boolean;
+  readonly #syncFiltered = () => {
+    this.filtered.value = filterCommandPaletteItems(this.items.peek(), this.query.peek());
+  };
+
+  constructor(options: CommandPaletteControllerOptions) {
+    this.#ownsItems = !(options.items instanceof Signal);
+    this.#ownsQuery = !(options.query instanceof Signal);
+    this.#ownsSelectedIndex = !(options.selectedIndex instanceof Signal);
+    this.items = signalify(options.items, { deepObserve: true });
+    this.query = signalify(options.query ?? "");
+    this.selectedIndex = signalify(options.selectedIndex ?? 0);
+    this.filtered = new Signal(filterCommandPaletteItems(this.items.peek(), this.query.peek()), { deepObserve: true });
+    this.items.subscribe(this.#syncFiltered);
+    this.query.subscribe(this.#syncFiltered);
+    this.clamp();
+  }
+
+  setQuery(query: string): void {
+    this.query.value = query;
+    this.clamp();
+  }
+
+  append(value: string): void {
+    this.setQuery(this.query.peek() + value);
+  }
+
+  backspace(): void {
+    this.setQuery(this.query.peek().slice(0, -1));
+  }
+
+  move(delta: number): void {
+    this.selectedIndex.value = shiftCommandPaletteSelection(this.filteredItems(), this.selectedIndex.peek(), delta);
+    this.clamp();
+  }
+
+  clamp(): void {
+    this.selectedIndex.value = clampCommandPaletteSelection(this.filteredItems(), this.selectedIndex.peek());
+  }
+
+  selected(): CommandPaletteItem | undefined {
+    const item = this.filteredItems()[this.selectedIndex.peek()];
+    return item?.disabled ? undefined : item;
+  }
+
+  handleKeyPress(event: KeyPressEvent): CommandPaletteItem | undefined {
+    if (event.ctrl || event.meta) return undefined;
+
+    if (event.key === "backspace") {
+      this.backspace();
+    } else if (event.key === "return") {
+      return this.selected();
+    } else if (event.key === "up") {
+      this.move(-1);
+    } else if (event.key === "down") {
+      this.move(1);
+    } else if (event.key.length === 1) {
+      this.append(event.shift ? event.key.toUpperCase() : event.key);
+    }
+
+    this.clamp();
+    return undefined;
+  }
+
+  inspect(): CommandPaletteInspection {
+    return {
+      query: this.query.peek(),
+      selectedIndex: this.selectedIndex.peek(),
+      filteredCount: this.filteredItems().length,
+      selected: this.selected(),
+    };
+  }
+
+  dispose(): void {
+    this.items.unsubscribe(this.#syncFiltered);
+    this.query.unsubscribe(this.#syncFiltered);
+    this.filtered.dispose();
+    if (this.#ownsItems) this.items.dispose();
+    if (this.#ownsQuery) this.query.dispose();
+    if (this.#ownsSelectedIndex) this.selectedIndex.dispose();
+  }
+
+  private filteredItems(): CommandPaletteItem[] {
+    return filterCommandPaletteItems(this.items.peek(), this.query.peek());
+  }
+}
+
 export class CommandPalette extends Component {
   items: Signal<CommandPaletteItem[]>;
   query: Signal<string>;
   selectedIndex: Signal<number>;
+  readonly controller: CommandPaletteController;
 
   constructor(private readonly options: CommandPaletteOptions) {
     super(options);
-    this.items = signalify(options.items, { deepObserve: true });
-    this.query = signalify(options.query ?? "");
-    this.selectedIndex = signalify(options.selectedIndex ?? 0);
+    const ownsController = !options.controller;
+    this.controller = options.controller ??
+      new CommandPaletteController({
+        items: options.items,
+        query: options.query,
+        selectedIndex: options.selectedIndex,
+      });
+    this.items = this.controller.items;
+    this.query = this.controller.query;
+    this.selectedIndex = this.controller.selectedIndex;
 
-    this.on("keyPress", ({ key, ctrl, meta, shift }) => {
-      if (ctrl || meta) return;
-
-      if (key === "backspace") {
-        this.query.value = this.query.peek().slice(0, -1);
-      } else if (key === "return") {
-        const item = this.selected();
-        if (item) void this.options.onSelect?.(item);
-      } else if (key === "up") {
-        const filtered = filterCommandPaletteItems(this.items.peek(), this.query.peek());
-        this.selectedIndex.value = shiftCommandPaletteSelection(filtered, this.selectedIndex.peek(), -1);
-      } else if (key === "down") {
-        const filtered = filterCommandPaletteItems(this.items.peek(), this.query.peek());
-        this.selectedIndex.value = shiftCommandPaletteSelection(filtered, this.selectedIndex.peek(), 1);
-      } else if (key.length === 1) {
-        this.query.value += shift ? key.toUpperCase() : key;
-      }
-
-      this.selectedIndex.value = clampCommandPaletteSelection(
-        filterCommandPaletteItems(this.items.peek(), this.query.peek()),
-        this.selectedIndex.peek(),
-      );
+    this.on("keyPress", (event) => {
+      const item = this.controller.handleKeyPress(event);
+      if (item) void this.options.onSelect?.(item);
     });
+    if (ownsController) this.on("destroy", () => this.controller.dispose());
   }
 
   override draw(): void {
@@ -134,9 +233,7 @@ export class CommandPalette extends Component {
   }
 
   selected(): CommandPaletteItem | undefined {
-    const filtered = filterCommandPaletteItems(this.items.peek(), this.query.peek());
-    const item = filtered[this.selectedIndex.peek()];
-    return item?.disabled ? undefined : item;
+    return this.controller.selected();
   }
 }
 
