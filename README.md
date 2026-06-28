@@ -297,6 +297,15 @@ const ok = form.validate();
 `CheckBox.checked`, `RadioGroup.selectedValue`, or a custom adapter signal. It accepts `parse` and `format` transforms
 for non-string values and returns a disposer for dynamic forms.
 
+`bindRouteSignal()` keeps a `RouteManager` active route synchronized with a plain or persistent route id signal:
+
+```ts
+const stopRouteBinding = bindRouteSignal(app.routes, activeRoute.value, {
+  initialSync: "signal",
+  fallbackRouteId: "overview",
+});
+```
+
 `HistoryStack` keeps undo/redo separate from widgets and route managers:
 
 ```ts

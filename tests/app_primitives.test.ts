@@ -9,7 +9,9 @@ import {
 } from "../src/app/command_bindings.ts";
 import { CommandRegistry } from "../src/app/commands.ts";
 import { HistoryStack } from "../src/app/history.ts";
+import { bindRouteSignal } from "../src/app/route_bindings.ts";
 import { RouteManager } from "../src/app/router.ts";
+import { Signal } from "../src/signals/mod.ts";
 import { createTestKeyPress, TestKeyPressTarget } from "../src/testing/mod.ts";
 import type { Tui } from "../src/tui.ts";
 
@@ -39,6 +41,40 @@ Deno.test("RouteManager navigates and cycles known routes only", () => {
   assertEquals(routes.navigate("settings"), true);
   assertEquals(routes.active()?.title, "Settings");
   assertEquals(routes.next()?.id, "home");
+});
+
+Deno.test("bindRouteSignal synchronizes route manager state with external signals", () => {
+  const routes = new RouteManager([
+    { id: "home", title: "Home" },
+    { id: "settings", title: "Settings" },
+  ]);
+  const routeId = new Signal("settings");
+  const invalid: string[] = [];
+  const dispose = bindRouteSignal(routes, routeId, {
+    initialSync: "signal",
+    onInvalidRoute: (id) => invalid.push(id),
+  });
+
+  assertEquals(routes.active()?.id, "settings");
+
+  routes.navigate("home");
+  assertEquals(routeId.peek(), "home");
+
+  routeId.value = "settings";
+  assertEquals(routes.active()?.id, "settings");
+
+  routeId.value = "missing";
+  assertEquals(invalid, ["missing"]);
+  assertEquals(routeId.peek(), "settings");
+  assertEquals(routes.active()?.id, "settings");
+
+  routes.routes.value = [{ id: "home", title: "Home" }];
+  assertEquals(routeId.peek(), "home");
+  assertEquals(routes.active()?.id, "home");
+
+  dispose();
+  routeId.value = "settings";
+  assertEquals(routes.active()?.id, "home");
 });
 
 Deno.test("CommandRegistry projects commands into menus palettes and key bindings", () => {
