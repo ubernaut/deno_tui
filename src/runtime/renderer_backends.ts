@@ -5,6 +5,7 @@ import {
   type RuntimeCapabilityId,
   type RuntimeRendererStrategy,
 } from "./capabilities.ts";
+import { Signal } from "../signals/mod.ts";
 
 export interface RuntimeRendererBackendDefinition {
   id: string;
@@ -69,6 +70,24 @@ export interface RuntimeRendererBackendSelectionOptions {
   strategy?: RuntimeRendererStrategy;
   tag?: string;
   allowCpuFallback?: boolean;
+}
+
+export interface RuntimeRendererBackendControllerOptions {
+  registry?: RuntimeRendererBackendRegistry;
+  backends?: Iterable<RuntimeRendererBackend | RuntimeRendererBackendDefinition>;
+  activeId?: string;
+  capabilities?: RuntimeCapabilities | (() => RuntimeCapabilities);
+  selection?: RuntimeRendererBackendSelectionOptions;
+  onInvalidBackend?: (id: string) => void;
+}
+
+export interface RuntimeRendererBackendControllerInspection {
+  activeId: string;
+  active?: RuntimeRendererBackendInspection;
+  backendIds: string[];
+  capabilities: RuntimeCapabilities;
+  selection: RuntimeRendererBackendSelectionOptions;
+  selected?: RuntimeRendererBackendInspection;
 }
 
 export const runtimeRendererBackendDefinitions = [
@@ -192,6 +211,101 @@ export class RuntimeRendererBackendRegistry {
   }
 }
 
+export class RuntimeRendererBackendController {
+  readonly registry: RuntimeRendererBackendRegistry;
+  readonly activeId: Signal<string>;
+  readonly selection: RuntimeRendererBackendSelectionOptions;
+  readonly #capabilities: RuntimeCapabilities | (() => RuntimeCapabilities);
+  readonly #onInvalidBackend?: (id: string) => void;
+
+  constructor(options: RuntimeRendererBackendControllerOptions = {}) {
+    this.registry = options.registry ?? createRuntimeRendererBackendRegistry(options.backends);
+    this.#capabilities = options.capabilities ?? detectRuntimeCapabilities;
+    this.selection = { ...options.selection };
+    this.#onInvalidBackend = options.onInvalidBackend;
+    const initialId = this.#validId(options.activeId) ?? this.selected()?.id ?? this.registry.ids()[0] ?? "";
+    this.activeId = new Signal(initialId);
+    this.activeId.subscribe((id) => this.#repairInvalidBackend(id));
+  }
+
+  ids(): string[] {
+    return this.registry.ids();
+  }
+
+  active(capabilities: RuntimeCapabilities = this.capabilities()): RuntimeRendererBackendInspection | undefined {
+    return this.registry.get(this.activeId.peek())?.inspect(capabilities);
+  }
+
+  selected(capabilities: RuntimeCapabilities = this.capabilities()): RuntimeRendererBackendInspection | undefined {
+    return this.registry.select(capabilities, this.selection);
+  }
+
+  setBackend(id: string): boolean {
+    if (!this.registry.has(id)) {
+      this.#onInvalidBackend?.(id);
+      return false;
+    }
+    this.activeId.value = id;
+    return true;
+  }
+
+  setSelectedBackend(capabilities: RuntimeCapabilities = this.capabilities()): string {
+    const selected = this.selected(capabilities);
+    if (selected) this.setBackend(selected.id);
+    return this.activeId.peek();
+  }
+
+  nextBackend(): string {
+    return this.cycleBackend(1);
+  }
+
+  previousBackend(): string {
+    return this.cycleBackend(-1);
+  }
+
+  cycleBackend(direction: number): string {
+    const ids = this.ids();
+    if (ids.length === 0) return "";
+    const index = Math.max(0, ids.indexOf(this.activeId.peek()));
+    const next = ids[(index + direction + ids.length) % ids.length] ?? ids[0]!;
+    this.setBackend(next);
+    return this.activeId.peek();
+  }
+
+  capabilities(): RuntimeCapabilities {
+    return typeof this.#capabilities === "function" ? this.#capabilities() : this.#capabilities;
+  }
+
+  catalog(query: RuntimeRendererBackendQuery = {}): RuntimeRendererBackendCatalogReport {
+    return this.registry.catalog({ capabilities: this.capabilities(), query, select: this.selection });
+  }
+
+  inspect(): RuntimeRendererBackendControllerInspection {
+    const capabilities = this.capabilities();
+    return {
+      activeId: this.activeId.peek(),
+      active: this.active(capabilities),
+      backendIds: this.ids(),
+      capabilities,
+      selection: { ...this.selection },
+      selected: this.selected(capabilities),
+    };
+  }
+
+  #validId(id: string | undefined): string | undefined {
+    return id && this.registry.has(id) ? id : undefined;
+  }
+
+  #repairInvalidBackend(id: string): void {
+    if (this.registry.has(id)) return;
+    this.#onInvalidBackend?.(id);
+    const fallback = this.selected()?.id ?? this.registry.ids()[0] ?? "";
+    if (this.activeId.peek() !== fallback) {
+      this.activeId.value = fallback;
+    }
+  }
+}
+
 export function createRuntimeRendererBackend(
   definition: RuntimeRendererBackendDefinition,
 ): RuntimeRendererBackend {
@@ -202,6 +316,12 @@ export function createRuntimeRendererBackendRegistry(
   backends: Iterable<RuntimeRendererBackend | RuntimeRendererBackendDefinition> = runtimeRendererBackendDefinitions,
 ): RuntimeRendererBackendRegistry {
   return new RuntimeRendererBackendRegistry(backends);
+}
+
+export function createRuntimeRendererBackendController(
+  options: RuntimeRendererBackendControllerOptions = {},
+): RuntimeRendererBackendController {
+  return new RuntimeRendererBackendController(options);
 }
 
 export function runtimeRendererBackends(): RuntimeRendererBackend[] {

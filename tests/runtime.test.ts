@@ -19,6 +19,7 @@ import {
 } from "../src/runtime/profiles.ts";
 import {
   createRuntimeRendererBackendCatalogReport,
+  createRuntimeRendererBackendController,
   createRuntimeRendererBackendRegistry,
   formatRuntimeRendererBackendCatalogMarkdown,
   inspectRuntimeRendererBackendCatalog,
@@ -315,6 +316,40 @@ Deno.test("runtime renderer backend catalogs query inspect and format reports", 
       "| Terminal CPU | cpu | yes | - | fallback, portable, terminal |",
     ].join("\n"),
   );
+});
+
+Deno.test("RuntimeRendererBackendController tracks active and selected backends", () => {
+  const invalid: string[] = [];
+  let capabilities = {
+    workers: true,
+    webgpu: false,
+    webgl: true,
+    offscreenCanvas: true,
+    indexedDb: false,
+  };
+  const controller = createRuntimeRendererBackendController({
+    capabilities: () => capabilities,
+    selection: { allowCpuFallback: true },
+    onInvalidBackend: (id) => invalid.push(id),
+  });
+
+  assertEquals(controller.activeId.peek(), "webgl-canvas");
+  assertEquals(controller.selected()?.id, "webgl-canvas");
+  assertEquals(controller.nextBackend(), "terminal-cpu");
+  assertEquals(controller.previousBackend(), "webgl-canvas");
+  assertEquals(controller.setBackend("missing"), false);
+  assertEquals(invalid, ["missing"]);
+
+  capabilities = { ...capabilities, webgpu: true };
+  assertEquals(controller.setSelectedBackend(), "webgpu-three-ascii");
+  assertEquals(controller.catalog({ available: true }).selected?.id, "webgpu-three-ascii");
+  assertEquals(controller.inspect().active?.accelerated, true);
+
+  controller.registry.unregister("webgpu-three-ascii");
+  controller.activeId.value = "terminal-cpu";
+  controller.activeId.value = "webgpu-three-ascii";
+  assertEquals(controller.activeId.peek(), "webgl-canvas");
+  assertEquals(invalid, ["missing", "webgpu-three-ascii"]);
 });
 
 Deno.test("AsyncScheduler respects the configured concurrency limit", async () => {
