@@ -1,5 +1,6 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { clampSelectionIndex } from "../selection.ts";
+import { Computed, Signal } from "../signals/mod.ts";
 import { clamp } from "../utils/numbers.ts";
 
 export type SortDirection = "asc" | "desc";
@@ -34,6 +35,12 @@ export interface DataTableView<TRow extends Record<string, unknown> = Record<str
   selectedIndex: number;
 }
 
+export interface DataTableControllerOptions<TRow extends Record<string, unknown> = Record<string, unknown>> {
+  rows: readonly TRow[] | Signal<readonly TRow[]>;
+  columns: readonly DataColumn<TRow>[] | Signal<readonly DataColumn<TRow>[]>;
+  initialState?: DataTableState;
+}
+
 export function createDataTableView<TRow extends Record<string, unknown>>(
   rows: readonly TRow[],
   columns: readonly DataColumn<TRow>[],
@@ -54,6 +61,76 @@ export function createDataTableView<TRow extends Record<string, unknown>>(
     pageCount,
     selectedIndex: clampSelectionIndex(pageRows.length, state.selectedIndex ?? 0),
   };
+}
+
+export class DataTableController<TRow extends Record<string, unknown> = Record<string, unknown>> {
+  readonly rows: Signal<readonly TRow[]>;
+  readonly columns: Signal<readonly DataColumn<TRow>[]>;
+  readonly state: Signal<DataTableState>;
+  readonly view: Computed<DataTableView<TRow>>;
+
+  constructor(options: DataTableControllerOptions<TRow>) {
+    this.rows = options.rows instanceof Signal ? options.rows : new Signal<readonly TRow[]>([...options.rows]);
+    this.columns = options.columns instanceof Signal
+      ? options.columns
+      : new Signal<readonly DataColumn<TRow>[]>([...options.columns]);
+    this.state = new Signal<DataTableState>({ ...(options.initialState ?? {}) }, { deepObserve: true });
+    this.view = new Computed(() => createDataTableView(this.rows.value, this.columns.value, this.state.value));
+  }
+
+  setQuery(query: string): void {
+    this.patchState({ query, page: 0, selectedIndex: 0 });
+  }
+
+  setPage(page: number): void {
+    this.patchState({ page: clamp(Math.floor(page), 0, this.view.peek().pageCount - 1) });
+  }
+
+  nextPage(): void {
+    this.setPage(this.view.peek().page + 1);
+  }
+
+  previousPage(): void {
+    this.setPage(this.view.peek().page - 1);
+  }
+
+  setPageSize(pageSize: number): void {
+    this.patchState({ pageSize: Math.max(1, Math.floor(pageSize)), page: 0, selectedIndex: 0 });
+  }
+
+  setSort(sort: DataSort | undefined): void {
+    if (sort && !canSortColumn(this.columns.peek(), sort.columnId)) return;
+    this.patchState({ sort, page: 0, selectedIndex: 0 });
+  }
+
+  toggleSort(columnId: string): void {
+    if (!canSortColumn(this.columns.peek(), columnId)) return;
+    this.setSort(nextSort(this.state.peek().sort, columnId));
+  }
+
+  select(index: number): void {
+    this.patchState({ selectedIndex: clampSelectionIndex(this.view.peek().rows.length, index) });
+  }
+
+  moveSelection(delta: number): void {
+    this.select(this.view.peek().selectedIndex + Math.floor(delta));
+  }
+
+  selectedRow(): TRow | undefined {
+    const view = this.view.peek();
+    return view.rows[view.selectedIndex];
+  }
+
+  dispose(): void {
+    this.view.dispose();
+  }
+
+  private patchState(patch: Partial<DataTableState>): void {
+    this.state.value = {
+      ...this.state.peek(),
+      ...patch,
+    };
+  }
 }
 
 export function filterDataRows<TRow extends Record<string, unknown>>(
@@ -108,6 +185,13 @@ export function nextSort(current: DataSort | undefined, columnId: string): DataS
     return { columnId, direction: "desc" };
   }
   return { columnId, direction: "asc" };
+}
+
+export function canSortColumn<TRow extends Record<string, unknown>>(
+  columns: readonly DataColumn<TRow>[],
+  columnId: string,
+): boolean {
+  return columns.some((column) => column.id === columnId && column.sortable !== false);
 }
 
 function stringifyCell(value: unknown): string {

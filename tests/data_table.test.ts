@@ -1,12 +1,15 @@
 import { assertEquals } from "./deps.ts";
 import {
+  canSortColumn,
   createDataTableView,
   type DataColumn,
+  DataTableController,
   nextSort,
   renderDataTableHeader,
   renderDataTableRows,
   sortDataRows,
 } from "../src/components/data_table.ts";
+import { Signal } from "../src/signals/mod.ts";
 
 interface ProcessRow extends Record<string, unknown> {
   pid: number;
@@ -58,4 +61,80 @@ Deno.test("data table render helpers expose sorted headers and selected rows", (
   ]);
   assertEquals(nextSort(undefined, "pid"), { columnId: "pid", direction: "asc" });
   assertEquals(nextSort({ columnId: "pid", direction: "asc" }, "pid"), { columnId: "pid", direction: "desc" });
+});
+
+Deno.test("DataTableController keeps query sort pagination and selection in sync", async () => {
+  const controller = new DataTableController({
+    rows,
+    columns,
+    initialState: { pageSize: 2 },
+  });
+  await Promise.resolve();
+
+  assertEquals(controller.view.peek().rows.map((row) => row.pid), [10, 2]);
+
+  controller.toggleSort("cpu");
+  assertEquals(controller.state.peek().sort, { columnId: "cpu", direction: "asc" });
+  assertEquals(controller.view.peek().rows.map((row) => row.pid), [2, 10]);
+
+  controller.toggleSort("cpu");
+  assertEquals(controller.state.peek().sort, { columnId: "cpu", direction: "desc" });
+  assertEquals(controller.view.peek().rows.map((row) => row.pid), [101, 10]);
+
+  controller.nextPage();
+  assertEquals(controller.view.peek().page, 1);
+  assertEquals(controller.view.peek().rows.map((row) => row.pid), [2]);
+
+  controller.setQuery("deno");
+  assertEquals(controller.view.peek().page, 0);
+  assertEquals(controller.view.peek().rows.map((row) => row.pid), [10]);
+  assertEquals(controller.selectedRow()?.name, "deno");
+  controller.dispose();
+});
+
+Deno.test("DataTableController reacts to row signals and clamps selection", async () => {
+  const source = new Signal<readonly ProcessRow[]>(rows.slice(0, 2));
+  const controller = new DataTableController({
+    rows: source,
+    columns,
+    initialState: { selectedIndex: 1, pageSize: 5 },
+  });
+  await Promise.resolve();
+
+  assertEquals(controller.selectedRow()?.pid, 2);
+  controller.moveSelection(10);
+  assertEquals(controller.view.peek().selectedIndex, 1);
+
+  source.value = [{ pid: 33, name: "new", cpu: 1 }];
+  assertEquals(controller.view.peek().selectedIndex, 0);
+  assertEquals(controller.selectedRow()?.pid, 33);
+
+  controller.dispose();
+  source.value = rows;
+  assertEquals(controller.view.peek().rows, [{ pid: 33, name: "new", cpu: 1 }]);
+});
+
+Deno.test("DataTableController ignores unsortable columns", async () => {
+  const tableColumns: DataColumn<ProcessRow>[] = [
+    { id: "pid", sortable: false },
+    { id: "name" },
+  ];
+  const controller = new DataTableController({
+    rows,
+    columns: tableColumns,
+  });
+  await Promise.resolve();
+
+  assertEquals(canSortColumn(tableColumns, "pid"), false);
+  assertEquals(canSortColumn(tableColumns, "name"), true);
+
+  controller.toggleSort("pid");
+  assertEquals(controller.state.peek().sort, undefined);
+
+  controller.toggleSort("name");
+  assertEquals(controller.state.peek().sort, { columnId: "name", direction: "asc" });
+
+  controller.setSort({ columnId: "missing", direction: "asc" });
+  assertEquals(controller.state.peek().sort, { columnId: "name", direction: "asc" });
+  controller.dispose();
 });
