@@ -2,7 +2,8 @@
 // When we map edge directions directly to terminal glyphs, the diagonal
 // characters must be swapped to match the browser's visible output.
 export const EDGE_GLYPHS = [" ", "|", "-", "\\", "/"] as const;
-export const FILL_GLYPHS = [" ", ".", ":", "C", "O", "P", "0", "?", "@", "█"] as const;
+export const FILL_GLYPHS = [" ", "▁", "▂", "▃", "▄", "▅", "▆", "▇", "█", "█"] as const;
+export const ASCII_FILL_GLYPHS = [" ", ".", ":", "-", "=", "+", "*", "#", "%", "@"] as const;
 export const TERMINAL_GLYPHS = [
   " ",
   "|",
@@ -10,16 +11,21 @@ export const TERMINAL_GLYPHS = [
   "\\",
   "/",
   " ",
-  ".",
-  ":",
-  "C",
-  "O",
-  "P",
-  "0",
-  "?",
-  "@",
+  "▁",
+  "▂",
+  "▃",
+  "▄",
+  "▅",
+  "▆",
+  "▇",
+  "█",
   "█",
 ] as const;
+
+export const TERMINAL_GLYPH_STYLES = ["blocks", "glyphs", "mixed"] as const;
+export type TerminalGlyphStyle = typeof TERMINAL_GLYPH_STYLES[number];
+
+const MIN_VISIBLE_LUMINANCE = 0.015;
 
 export type EdgeDirection = -1 | 0 | 1 | 2 | 3;
 
@@ -59,7 +65,11 @@ export function bucketAsciiLuminance(
     value = 1 - value;
   }
 
-  return Math.max(0, Math.min(9, Math.floor(value * 10) - 1));
+  if (value <= MIN_VISIBLE_LUMINANCE) {
+    return 0;
+  }
+
+  return Math.max(1, Math.min(9, Math.floor(value * 9) + 1));
 }
 
 export function pickDominantEdgeDirection(

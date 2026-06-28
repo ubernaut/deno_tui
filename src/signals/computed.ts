@@ -54,16 +54,16 @@ export class Computed<T> extends Signal<T> implements Dependant, Dependency {
     });
   }
 
-  get value(): T {
+  override get value(): T {
     activeSignals?.add(this);
     return this.$value;
   }
 
-  set value(_value: T) {
+  override set value(_value: T) {
     throw new ComputedReadOnlyError();
   }
 
-  jink(_value: T): never {
+  override jink(_value: T): never {
     throw new ComputedReadOnlyError();
   }
 
@@ -75,12 +75,12 @@ export class Computed<T> extends Signal<T> implements Dependant, Dependency {
     }
   }
 
-  dispose(): void {
+  override dispose(): void {
     super.dispose();
 
     const { dependencies } = this;
-    for (const dependency of dependencies) {
-      dependency.dependants!.delete(this);
+    for (const dependency of [...dependencies]) {
+      dependency.dependants?.delete(this);
       dependencies.delete(dependency);
     }
   }

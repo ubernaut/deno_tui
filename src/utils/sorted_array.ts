@@ -14,7 +14,7 @@ export class SortedArray<T = unknown> extends Array<T> {
     this.compareFn = compareFn;
   }
 
-  push(...items: T[]): number {
+  override push(...items: T[]): number {
     super.push(...items);
     this.sort(this.compareFn);
     return this.length;

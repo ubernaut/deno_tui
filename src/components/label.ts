@@ -23,6 +23,13 @@ export interface LabelAlign {
   horizontal: "left" | "center" | "right";
 }
 
+/** One cropped, positioned row produced by `labelLineLayout()`. */
+export interface LabelLineLayout {
+  sourceIndex: number;
+  value: string;
+  rectangle: TextRectangle;
+}
+
 export interface LabelOptions extends Omit<ComponentOptions, "rectangle"> {
   text: string | Signal<string>;
   rectangle: LabelRectangle | SignalOfObject<LabelRectangle>;
@@ -85,6 +92,7 @@ export class Label extends Component {
   declare drawnObjects: { texts: TextObject[] };
 
   #valueLines: Signal<string[]>;
+  #lineLayout: Signal<LabelLineLayout[]>;
 
   text: Signal<string>;
   align: Signal<LabelAlign>;
@@ -100,6 +108,9 @@ export class Label extends Component {
     this.align = signalify(options.align ?? { vertical: "top", horizontal: "left" }, { deepObserve: true });
 
     this.#valueLines = new Computed(() => this.text.value.split("\n"));
+    this.#lineLayout = new Computed(() =>
+      labelLineLayout(this.#valueLines.value, this.rectangle.value, this.align.value)
+    );
 
     new Effect(() => {
       const rectangle = this.rectangle.value;
@@ -112,16 +123,17 @@ export class Label extends Component {
       }
 
       const drawnTexts = (this.drawnObjects.texts ??= []).length;
+      const lineLayout = this.#lineLayout.value;
 
-      if (valueLines.length > drawnTexts) {
+      if (lineLayout.length > drawnTexts) {
         this.#fillDrawObjects();
-      } else if (valueLines.length < drawnTexts) {
+      } else if (lineLayout.length < drawnTexts) {
         this.#popUnusedDrawObjects();
       }
     });
   }
 
-  draw(): void {
+  override draw(): void {
     super.draw();
     this.drawnObjects.texts ??= [];
     this.#fillDrawObjects();
@@ -132,7 +144,7 @@ export class Label extends Component {
 
     const { drawnObjects } = this;
 
-    for (let offset = drawnObjects.texts.length; offset < this.#valueLines.peek().length; ++offset) {
+    for (let offset = drawnObjects.texts.length; offset < this.#lineLayout.peek().length; ++offset) {
       const textRectangle: TextRectangle = { column: 0, row: 0, width: 0 };
       const text = new TextObject({
         canvas: this.tui.canvas,
@@ -141,42 +153,13 @@ export class Label extends Component {
         zIndex: this.zIndex,
         multiCodePointSupport: this.multiCodePointSupport,
         value: new Computed(() => {
-          const value = this.#valueLines.value[offset];
-          return cropToWidth(value, this.rectangle.value.width);
+          return this.#lineLayout.value[offset]?.value ?? "";
         }),
         rectangle: new Computed(() => {
-          const valueLines = this.#valueLines.value;
-
-          const { column, row, width, height } = this.rectangle.value;
-          textRectangle.column = column;
-          textRectangle.row = row + offset;
-
-          let value = valueLines[offset];
-          value = cropToWidth(value, width);
-          const valueWidth = textWidth(value);
-
-          const { vertical, horizontal } = this.align.value;
-          switch (horizontal) {
-            case "center":
-              textRectangle.column += ~~((width - valueWidth) / 2);
-              break;
-            case "right":
-              textRectangle.column += width - valueWidth;
-              break;
-          }
-
-          textRectangle.row = row + offset;
-          switch (vertical) {
-            case "center":
-              textRectangle.row += ~~(height / 2 - valueLines.length / 2);
-              break;
-            case "bottom":
-              textRectangle.row += height - valueLines.length;
-              break;
-          }
-
-          // FIXME: Crop text if necessary
-
+          const rectangle = this.#lineLayout.value[offset]?.rectangle ?? { column: 0, row: 0, width: 0 };
+          textRectangle.column = rectangle.column;
+          textRectangle.row = rectangle.row;
+          textRectangle.width = rectangle.width;
           return textRectangle;
         }),
       });
@@ -189,8 +172,75 @@ export class Label extends Component {
   #popUnusedDrawObjects(): void {
     if (!this.#valueLines) throw new Error("#valueLines has to be set");
 
-    for (const text of this.drawnObjects.texts.splice(this.#valueLines.peek().length)) {
+    for (const text of this.drawnObjects.texts.splice(this.#lineLayout.peek().length)) {
       text.erase();
     }
   }
+}
+
+/** Computes cropped, aligned, in-bounds text rows for a label rectangle. */
+export function labelLineLayout(
+  lines: readonly string[],
+  rectangle: LabelRectangle,
+  align: LabelAlign = { vertical: "top", horizontal: "left" },
+): LabelLineLayout[] {
+  const width = Math.max(0, rectangle.width ?? maxLineWidth(lines));
+  const height = Math.max(0, rectangle.height ?? lines.length);
+  if (width === 0 || height === 0 || lines.length === 0) return [];
+
+  const visibleCount = Math.min(lines.length, height);
+  const sourceOffset = labelSourceOffset(lines.length, visibleCount, align.vertical);
+  const rowOffset = labelRowOffset(height, visibleCount, align.vertical);
+
+  return Array.from({ length: visibleCount }, (_, index) => {
+    const sourceIndex = sourceOffset + index;
+    const value = cropToWidth(lines[sourceIndex] ?? "", width);
+    const valueWidth = textWidth(value);
+    return {
+      sourceIndex,
+      value,
+      rectangle: {
+        column: rectangle.column + labelColumnOffset(width, valueWidth, align.horizontal),
+        row: rectangle.row + rowOffset + index,
+        width: valueWidth,
+      },
+    };
+  });
+}
+
+function labelColumnOffset(width: number, valueWidth: number, horizontal: LabelAlign["horizontal"]): number {
+  switch (horizontal) {
+    case "center":
+      return Math.max(0, Math.floor((width - valueWidth) / 2));
+    case "right":
+      return Math.max(0, width - valueWidth);
+    default:
+      return 0;
+  }
+}
+
+function labelRowOffset(height: number, visibleCount: number, vertical: LabelAlign["vertical"]): number {
+  switch (vertical) {
+    case "center":
+      return Math.max(0, Math.floor((height - visibleCount) / 2));
+    case "bottom":
+      return Math.max(0, height - visibleCount);
+    default:
+      return 0;
+  }
+}
+
+function labelSourceOffset(lineCount: number, visibleCount: number, vertical: LabelAlign["vertical"]): number {
+  switch (vertical) {
+    case "center":
+      return Math.max(0, Math.floor((lineCount - visibleCount) / 2));
+    case "bottom":
+      return Math.max(0, lineCount - visibleCount);
+    default:
+      return 0;
+  }
+}
+
+function maxLineWidth(lines: readonly string[]): number {
+  return lines.reduce((width, line) => Math.max(width, textWidth(line)), 0);
 }

@@ -1,0 +1,469 @@
+// Copyright 2023 Im-Beast. MIT license.
+import {
+  createRuntimePlan,
+  detectRuntimeCapabilities,
+  type RuntimeCapabilities,
+  type RuntimePlan,
+  type RuntimePlanOptions,
+  type RuntimeRendererStrategy,
+  type RuntimeStorageStrategy,
+  type RuntimeWorkerStrategy,
+} from "./capabilities.ts";
+import { Signal } from "../signals/mod.ts";
+
+export interface RuntimeProfileDefinition {
+  id: string;
+  label?: string;
+  description?: string;
+  options?: RuntimePlanOptions;
+  tags?: readonly string[];
+  priority?: number;
+}
+
+export interface RuntimeProfileInspection {
+  id: string;
+  label: string;
+  description?: string;
+  options: RuntimePlanOptions;
+  tags: string[];
+  priority: number;
+}
+
+export interface RuntimeProfilePlanInspection extends RuntimeProfileInspection {
+  plan: RuntimePlan;
+  strategies: {
+    workers: RuntimeWorkerStrategy;
+    storage: RuntimeStorageStrategy;
+    renderer: RuntimeRendererStrategy;
+  };
+  accelerated: {
+    workers: boolean;
+    storage: boolean;
+    renderer: boolean;
+  };
+}
+
+export interface RuntimeProfileCatalogQuery {
+  search?: string;
+  tag?: string;
+  workerStrategy?: RuntimeWorkerStrategy;
+  storageStrategy?: RuntimeStorageStrategy;
+  rendererStrategy?: RuntimeRendererStrategy;
+  accelerated?: boolean;
+}
+
+export interface RuntimeProfileCatalogInspection {
+  count: number;
+  accelerated: number;
+  workerStrategies: RuntimeWorkerStrategy[];
+  storageStrategies: RuntimeStorageStrategy[];
+  rendererStrategies: RuntimeRendererStrategy[];
+  tags: string[];
+}
+
+export interface RuntimeProfileCatalogReport {
+  profiles: RuntimeProfilePlanInspection[];
+  inspection: RuntimeProfileCatalogInspection;
+  capabilities: RuntimeCapabilities;
+}
+
+export interface RuntimeProfileCatalogReportOptions {
+  profiles?: Iterable<RuntimeProfile | RuntimeProfileDefinition>;
+  capabilities?: RuntimeCapabilities;
+  query?: RuntimeProfileCatalogQuery;
+}
+
+export interface RuntimeProfileCatalogMarkdownOptions extends RuntimeProfileCatalogReportOptions {
+  title?: string;
+  includeSummary?: boolean;
+}
+
+export interface RuntimeProfileControllerOptions {
+  registry?: RuntimeProfileRegistry;
+  profiles?: Iterable<RuntimeProfile | RuntimeProfileDefinition>;
+  activeId?: string;
+  capabilities?: RuntimeCapabilities | (() => RuntimeCapabilities);
+  onInvalidProfile?: (id: string) => void;
+}
+
+export interface RuntimeProfileControllerInspection {
+  activeId: string;
+  active?: RuntimeProfileInspection;
+  profileIds: string[];
+  capabilities: RuntimeCapabilities;
+  plan?: RuntimePlan;
+}
+
+export const runtimeProfileDefinitions = [
+  {
+    id: "balanced",
+    label: "Balanced",
+    description: "Use workers, persistent storage, and GPU rendering when available.",
+    tags: ["default", "adaptive"],
+    priority: 100,
+  },
+  {
+    id: "throughput",
+    label: "Throughput",
+    description: "Prefer every available acceleration path for busy dashboards and visualizations.",
+    tags: ["performance", "visualization"],
+    priority: 90,
+    options: {
+      preferWorkers: true,
+      preferPersistentStorage: true,
+      preferGpuRenderer: true,
+      allowWebGlFallback: true,
+    },
+  },
+  {
+    id: "portable",
+    label: "Portable",
+    description: "Avoid workers and GPU rendering while still using persistent storage when available.",
+    tags: ["fallback", "portable"],
+    priority: 40,
+    options: {
+      preferWorkers: false,
+      preferPersistentStorage: true,
+      preferGpuRenderer: false,
+    },
+  },
+  {
+    id: "ephemeral",
+    label: "Ephemeral",
+    description: "Avoid persistent storage for demos, tests, and disposable sessions.",
+    tags: ["memory", "testing"],
+    priority: 30,
+    options: {
+      preferWorkers: true,
+      preferPersistentStorage: false,
+      preferGpuRenderer: true,
+      allowWebGlFallback: true,
+    },
+  },
+] as const satisfies readonly RuntimeProfileDefinition[];
+
+/** Named runtime policy that turns capabilities into a concrete strategy plan. */
+export class RuntimeProfile {
+  readonly id: string;
+  readonly label: string;
+  readonly description?: string;
+  readonly options: RuntimePlanOptions;
+  readonly tags: readonly string[];
+  readonly priority: number;
+
+  constructor(definition: RuntimeProfileDefinition) {
+    this.id = definition.id;
+    this.label = definition.label ?? definition.id;
+    this.description = definition.description;
+    this.options = { ...definition.options };
+    this.tags = [...new Set(definition.tags ?? [])].sort();
+    this.priority = definition.priority ?? 0;
+  }
+
+  inspect(): RuntimeProfileInspection {
+    return {
+      id: this.id,
+      label: this.label,
+      description: this.description,
+      options: { ...this.options },
+      tags: [...this.tags],
+      priority: this.priority,
+    };
+  }
+
+  plan(capabilities: RuntimeCapabilities = detectRuntimeCapabilities()): RuntimePlan {
+    return createRuntimePlan(capabilities, this.options);
+  }
+
+  inspectPlan(capabilities: RuntimeCapabilities = detectRuntimeCapabilities()): RuntimeProfilePlanInspection {
+    const plan = this.plan(capabilities);
+    return {
+      ...this.inspect(),
+      plan,
+      strategies: {
+        workers: plan.workers.strategy,
+        storage: plan.storage.strategy,
+        renderer: plan.renderer.strategy,
+      },
+      accelerated: {
+        workers: plan.workers.accelerated,
+        storage: plan.storage.accelerated,
+        renderer: plan.renderer.accelerated,
+      },
+    };
+  }
+}
+
+/** Ordered registry of runtime policy profiles for settings panes and launchers. */
+export class RuntimeProfileRegistry {
+  readonly #profiles = new Map<string, RuntimeProfile>();
+
+  constructor(profiles: Iterable<RuntimeProfile | RuntimeProfileDefinition> = runtimeProfileDefinitions) {
+    for (const profile of profiles) {
+      this.register(profile);
+    }
+  }
+
+  register(profile: RuntimeProfile | RuntimeProfileDefinition): this {
+    const normalized = profile instanceof RuntimeProfile ? profile : createRuntimeProfile(profile);
+    this.#profiles.set(normalized.id, normalized);
+    return this;
+  }
+
+  unregister(id: string): boolean {
+    return this.#profiles.delete(id);
+  }
+
+  has(id: string): boolean {
+    return this.#profiles.has(id);
+  }
+
+  get(id: string): RuntimeProfile | undefined {
+    return this.#profiles.get(id);
+  }
+
+  ids(): string[] {
+    return this.profiles().map((profile) => profile.id);
+  }
+
+  profiles(): RuntimeProfile[] {
+    return [...this.#profiles.values()].sort((a, b) => b.priority - a.priority || a.id.localeCompare(b.id));
+  }
+
+  inspect(): RuntimeProfileInspection[] {
+    return this.profiles().map((profile) => profile.inspect());
+  }
+
+  plan(id: string, capabilities: RuntimeCapabilities = detectRuntimeCapabilities()): RuntimePlan {
+    const profile = this.get(id);
+    if (!profile) throw new RuntimeProfileNotFoundError(id);
+    return profile.plan(capabilities);
+  }
+
+  catalog(options: Omit<RuntimeProfileCatalogReportOptions, "profiles"> = {}): RuntimeProfileCatalogReport {
+    return createRuntimeProfileCatalogReport({ ...options, profiles: this.profiles() });
+  }
+}
+
+/** State holder for selected runtime profile policy and derived runtime plans. */
+export class RuntimeProfileController {
+  readonly registry: RuntimeProfileRegistry;
+  readonly activeId: Signal<string>;
+  readonly #capabilities: RuntimeCapabilities | (() => RuntimeCapabilities);
+  readonly #onInvalidProfile?: (id: string) => void;
+
+  constructor(options: RuntimeProfileControllerOptions = {}) {
+    this.registry = options.registry ?? createRuntimeProfileRegistry(options.profiles);
+    this.#capabilities = options.capabilities ?? detectRuntimeCapabilities;
+    this.#onInvalidProfile = options.onInvalidProfile;
+    const initialId = this.#validId(options.activeId) ?? this.registry.ids()[0] ?? "";
+    this.activeId = new Signal(initialId);
+    this.activeId.subscribe((id) => this.#repairInvalidProfile(id));
+  }
+
+  ids(): string[] {
+    return this.registry.ids();
+  }
+
+  active(): RuntimeProfile | undefined {
+    return this.registry.get(this.activeId.peek());
+  }
+
+  setProfile(id: string): boolean {
+    if (!this.registry.has(id)) {
+      this.#onInvalidProfile?.(id);
+      return false;
+    }
+    this.activeId.value = id;
+    return true;
+  }
+
+  nextProfile(): string {
+    return this.cycleProfile(1);
+  }
+
+  previousProfile(): string {
+    return this.cycleProfile(-1);
+  }
+
+  cycleProfile(direction: number): string {
+    const ids = this.ids();
+    if (ids.length === 0) return "";
+    const index = ids.indexOf(this.activeId.peek());
+    const next = ids[(index + direction + ids.length) % ids.length] ?? ids[0]!;
+    this.setProfile(next);
+    return this.activeId.peek();
+  }
+
+  plan(capabilities: RuntimeCapabilities = this.capabilities()): RuntimePlan | undefined {
+    const profile = this.active();
+    return profile?.plan(capabilities);
+  }
+
+  capabilities(): RuntimeCapabilities {
+    return typeof this.#capabilities === "function" ? this.#capabilities() : this.#capabilities;
+  }
+
+  catalog(query: RuntimeProfileCatalogQuery = {}): RuntimeProfileCatalogReport {
+    return this.registry.catalog({ capabilities: this.capabilities(), query });
+  }
+
+  inspect(): RuntimeProfileControllerInspection {
+    const capabilities = this.capabilities();
+    const active = this.active();
+    return {
+      activeId: this.activeId.peek(),
+      active: active?.inspect(),
+      profileIds: this.ids(),
+      capabilities,
+      plan: active?.plan(capabilities),
+    };
+  }
+
+  #validId(id: string | undefined): string | undefined {
+    return id && this.registry.has(id) ? id : undefined;
+  }
+
+  #repairInvalidProfile(id: string): void {
+    if (this.registry.has(id)) return;
+    this.#onInvalidProfile?.(id);
+    const fallback = this.registry.ids()[0] ?? "";
+    if (this.activeId.peek() !== fallback) {
+      this.activeId.value = fallback;
+    }
+  }
+}
+
+export class RuntimeProfileNotFoundError extends Error {
+  constructor(id: string) {
+    super(`Runtime profile "${id}" is not registered`);
+    this.name = "RuntimeProfileNotFoundError";
+  }
+}
+
+export function createRuntimeProfile(definition: RuntimeProfileDefinition): RuntimeProfile {
+  return new RuntimeProfile(definition);
+}
+
+export function createRuntimeProfileRegistry(
+  profiles: Iterable<RuntimeProfile | RuntimeProfileDefinition> = runtimeProfileDefinitions,
+): RuntimeProfileRegistry {
+  return new RuntimeProfileRegistry(profiles);
+}
+
+export function createRuntimeProfileController(
+  options: RuntimeProfileControllerOptions = {},
+): RuntimeProfileController {
+  return new RuntimeProfileController(options);
+}
+
+export function runtimeProfiles(): RuntimeProfile[] {
+  return runtimeProfileDefinitions.map(createRuntimeProfile);
+}
+
+export function findRuntimeProfile(idOrLabel: string): RuntimeProfile | undefined {
+  const normalized = normalizeProfileLookup(idOrLabel);
+  return runtimeProfiles().find((profile) =>
+    normalizeProfileLookup(profile.id) === normalized || normalizeProfileLookup(profile.label) === normalized
+  );
+}
+
+export function queryRuntimeProfiles(
+  profiles: Iterable<RuntimeProfile | RuntimeProfileDefinition> = runtimeProfileDefinitions,
+  query: RuntimeProfileCatalogQuery = {},
+  capabilities: RuntimeCapabilities = detectRuntimeCapabilities(),
+): RuntimeProfilePlanInspection[] {
+  return normalizeProfiles(profiles)
+    .map((profile) => profile.inspectPlan(capabilities))
+    .filter((profile) => matchesRuntimeProfileQuery(profile, query))
+    .sort((left, right) => right.priority - left.priority || left.label.localeCompare(right.label));
+}
+
+export function inspectRuntimeProfileCatalog(
+  profiles: readonly RuntimeProfilePlanInspection[],
+): RuntimeProfileCatalogInspection {
+  return {
+    count: profiles.length,
+    accelerated:
+      profiles.filter((profile) =>
+        profile.accelerated.workers || profile.accelerated.storage || profile.accelerated.renderer
+      ).length,
+    workerStrategies: uniqueSorted(profiles.map((profile) => profile.strategies.workers)),
+    storageStrategies: uniqueSorted(profiles.map((profile) => profile.strategies.storage)),
+    rendererStrategies: uniqueSorted(profiles.map((profile) => profile.strategies.renderer)),
+    tags: uniqueSorted(profiles.flatMap((profile) => profile.tags)),
+  };
+}
+
+export function createRuntimeProfileCatalogReport(
+  options: RuntimeProfileCatalogReportOptions = {},
+): RuntimeProfileCatalogReport {
+  const capabilities = options.capabilities ?? detectRuntimeCapabilities();
+  const profiles = queryRuntimeProfiles(options.profiles ?? runtimeProfileDefinitions, options.query, capabilities);
+  return {
+    profiles,
+    inspection: inspectRuntimeProfileCatalog(profiles),
+    capabilities,
+  };
+}
+
+export function formatRuntimeProfileCatalogMarkdown(options: RuntimeProfileCatalogMarkdownOptions = {}): string {
+  const report = createRuntimeProfileCatalogReport(options);
+  const lines = [`# ${options.title ?? "Runtime Profiles"}`, ""];
+  if (options.includeSummary ?? true) {
+    lines.push(
+      `${report.inspection.count} profiles, ${report.inspection.accelerated} with at least one accelerated strategy.`,
+      "",
+    );
+  }
+  lines.push("| Profile | Workers | Storage | Renderer | Tags |");
+  lines.push("| --- | --- | --- | --- | --- |");
+  for (const profile of report.profiles) {
+    lines.push(
+      `| ${profile.label} | ${profile.strategies.workers} | ${profile.strategies.storage} | ${profile.strategies.renderer} | ${
+        profile.tags.join(", ") || "-"
+      } |`,
+    );
+  }
+  return lines.join("\n");
+}
+
+function normalizeProfiles(
+  profiles: Iterable<RuntimeProfile | RuntimeProfileDefinition>,
+): RuntimeProfile[] {
+  return [...profiles].map((profile) => profile instanceof RuntimeProfile ? profile : createRuntimeProfile(profile));
+}
+
+function matchesRuntimeProfileQuery(
+  profile: RuntimeProfilePlanInspection,
+  query: RuntimeProfileCatalogQuery,
+): boolean {
+  if (query.tag && !profile.tags.includes(query.tag)) return false;
+  if (query.workerStrategy && profile.strategies.workers !== query.workerStrategy) return false;
+  if (query.storageStrategy && profile.strategies.storage !== query.storageStrategy) return false;
+  if (query.rendererStrategy && profile.strategies.renderer !== query.rendererStrategy) return false;
+  if (
+    query.accelerated !== undefined &&
+    (profile.accelerated.workers || profile.accelerated.storage || profile.accelerated.renderer) !== query.accelerated
+  ) return false;
+  if (!query.search) return true;
+  const needle = normalizeProfileLookup(query.search);
+  if (!needle) return true;
+  return [
+    profile.id,
+    profile.label,
+    profile.description,
+    ...profile.tags,
+    profile.strategies.workers,
+    profile.strategies.storage,
+    profile.strategies.renderer,
+  ].some((value) => value && normalizeProfileLookup(value).includes(needle));
+}
+
+function normalizeProfileLookup(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+
+function uniqueSorted<T extends string>(values: Iterable<T>): T[] {
+  return [...new Set(values)].sort();
+}

@@ -71,7 +71,7 @@ export class Text extends Component {
     this.multiCodePointSupport = signalify(options.multiCodePointSupport ?? false);
   }
 
-  draw(): void {
+  override draw(): void {
     const text = new TextObject({
       canvas: this.tui.canvas,
       view: this.view,

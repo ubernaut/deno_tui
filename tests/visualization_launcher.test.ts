@@ -1,0 +1,122 @@
+import { assertEquals } from "./deps.ts";
+import {
+  createVisualizationLaunchReport,
+  findVisualizationLaunchTarget,
+  formatVisualizationLaunchMarkdown,
+  formatVisualizationUsage,
+  inspectVisualizationLaunchTargets,
+  queryVisualizationLaunchTargets,
+  resolveVisualizationTask,
+  visualizationLaunchTargets,
+} from "../scripts/visualization_launcher.ts";
+
+Deno.test("visualization launcher resolves public aliases to deno tasks", () => {
+  assertEquals(resolveVisualizationTask(), "showcase");
+  assertEquals(resolveVisualizationTask("polygons"), "three-ascii");
+  assertEquals(resolveVisualizationTask("recipe"), "layout-recipe");
+  assertEquals(resolveVisualizationTask("monitor"), "viz");
+  assertEquals(resolveVisualizationTask("worker"), "worker-demo");
+  assertEquals(resolveVisualizationTask("command-index"), "command-search");
+  assertEquals(resolveVisualizationTask("actions"), "action-middleware");
+  assertEquals(resolveVisualizationTask("resources"), "cached-resource");
+  assertEquals(resolveVisualizationTask("pipeline"), "cached-pipeline");
+  assertEquals(resolveVisualizationTask("theme-pack"), "theme-manifest");
+  assertEquals(resolveVisualizationTask("themes"), "theme-engines");
+  assertEquals(resolveVisualizationTask("theme-command-surface"), "theme-engine-commands");
+  assertEquals(resolveVisualizationTask("theme-runtime"), "theme-pipeline");
+  assertEquals(resolveVisualizationTask("theme-orchestrator"), "theme-workspace");
+  assertEquals(resolveVisualizationTask("theme-picker"), "theme-gallery");
+  assertEquals(resolveVisualizationTask("theme-resolution"), "theme-resolver");
+  assertEquals(resolveVisualizationTask("theme-wiring"), "theme-bindings");
+  assertEquals(resolveVisualizationTask("runtime"), "capabilities");
+  assertEquals(resolveVisualizationTask("runtime-pressure"), "runtime-workloads");
+  assertEquals(resolveVisualizationTask("perf"), "benchmark");
+  assertEquals(resolveVisualizationTask("exports"), "api-inventory");
+  assertEquals(resolveVisualizationTask("widgets"), "component-catalog");
+  assertEquals(resolveVisualizationTask("wizard"), "grwizard");
+  assertEquals(resolveVisualizationTask("check"), "health");
+  assertEquals(findVisualizationLaunchTarget("system-monitor")?.task, "viz");
+  assertEquals(resolveVisualizationTask("missing"), undefined);
+});
+
+Deno.test("visualization launcher exposes unique primary aliases", () => {
+  const aliases = visualizationLaunchTargets.map((entry) => entry.aliases[0]);
+  assertEquals([...new Set(aliases)], aliases);
+});
+
+Deno.test("visualization launcher help includes all primary aliases", () => {
+  const usage = formatVisualizationUsage();
+  for (const target of visualizationLaunchTargets) {
+    assertEquals(usage.includes(target.aliases[0]), true);
+  }
+});
+
+Deno.test("visualization launch catalog filters targets by category tag and search", () => {
+  assertEquals(queryVisualizationLaunchTargets({ category: "app" }).map((entry) => entry.task), [
+    "grwizard",
+    "viz",
+    "showcase",
+  ]);
+  assertEquals(queryVisualizationLaunchTargets({ tag: "theme" }).map((entry) => entry.task), [
+    "dashboard",
+    "theme-bindings",
+    "theme-engine-commands",
+    "theme-engines",
+    "theme-pipeline",
+    "theme-resolver",
+    "theme-workspace",
+    "theme-gallery",
+    "theme-manifest",
+  ]);
+  assertEquals(queryVisualizationLaunchTargets({ search: "worker concurrency" }).map((entry) => entry.task), [
+    "worker-demo",
+  ]);
+  assertEquals(queryVisualizationLaunchTargets({ tag: "runtime" }).map((entry) => entry.task), [
+    "command-search",
+    "data-query",
+    "cached-pipeline",
+    "cached-resource",
+    "runtime-workloads",
+    "worker-demo",
+    "capabilities",
+  ]);
+});
+
+Deno.test("visualization launch catalog reports inspection and markdown", () => {
+  const report = createVisualizationLaunchReport({ query: { category: "check" } });
+  const markdown = formatVisualizationLaunchMarkdown({
+    query: { tag: "capabilities" },
+    title: "Runtime Launchers",
+  });
+
+  assertEquals(report, {
+    targets: [
+      {
+        task: "health",
+        aliases: ["health", "check"],
+        description: "contributor health gate",
+        category: "check",
+        tags: ["ci", "health"],
+      },
+    ],
+    inspection: {
+      count: 1,
+      categories: ["check"],
+      tags: ["ci", "health"],
+      tasks: ["health"],
+    },
+  });
+  assertEquals(inspectVisualizationLaunchTargets(report.targets).count, 1);
+  assertEquals(
+    markdown,
+    [
+      "# Runtime Launchers",
+      "",
+      "1 targets across 1 categories.",
+      "",
+      "| Target | Task | Category | Tags | Description |",
+      "| --- | --- | --- | --- | --- |",
+      "| capabilities | capabilities | report | runtime, capabilities | runtime capability report |",
+    ].join("\n"),
+  );
+});

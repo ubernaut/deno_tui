@@ -1,5 +1,3 @@
-import { GPUFeatureName } from "npm:three@0.183.2/src/renderers/webgpu/utils/WebGPUConstants.js";
-
 let compatibleDevicePromise: Promise<GPUDevice> | undefined;
 type RafCallback = (time: number) => void;
 const WRITE_BUFFER_PATCHED = Symbol.for("deno_tui.three_ascii.write_buffer_patched");
@@ -35,30 +33,18 @@ function ensureDeviceLostPromise(device: GPUDevice): GPUDevice {
 }
 
 function patchQueueWriteBuffer(device: GPUDevice): GPUDevice {
-  const queue = device.queue as GPUQueue & {
-    [WRITE_BUFFER_PATCHED]?: boolean;
-    writeBuffer: GPUQueue["writeBuffer"];
+  (device.queue as GPUQueue & { [WRITE_BUFFER_PATCHED]?: boolean })[WRITE_BUFFER_PATCHED] = true;
+  return device;
+}
+
+function patchErrorScopes(device: GPUDevice): GPUDevice {
+  const originalPopErrorScope = device.popErrorScope.bind(device);
+
+  device.popErrorScope = (): Promise<GPUError | null> => {
+    const result = originalPopErrorScope();
+    return result ?? Promise.resolve(null);
   };
 
-  if (queue[WRITE_BUFFER_PATCHED]) {
-    return device;
-  }
-
-  const originalWriteBuffer = queue.writeBuffer.bind(queue);
-
-  queue.writeBuffer = ((buffer, bufferOffset, data, dataOffset, size) => {
-    if (size === undefined || !ArrayBuffer.isView(data)) {
-      return originalWriteBuffer(buffer, bufferOffset, data, dataOffset as never, size as never);
-    }
-
-    const view = data as ArrayBufferView & { BYTES_PER_ELEMENT: number };
-    const byteOffset = (dataOffset ?? 0) * view.BYTES_PER_ELEMENT;
-    const byteSize = size * view.BYTES_PER_ELEMENT;
-
-    return originalWriteBuffer(buffer, bufferOffset, data, byteOffset, byteSize);
-  }) as GPUQueue["writeBuffer"];
-
-  queue[WRITE_BUFFER_PATCHED] = true;
   return device;
 }
 
@@ -107,16 +93,24 @@ export async function getCompatibleWebGPUDevice(): Promise<GPUDevice> {
       throw new Error("Unable to acquire a WebGPU adapter.");
     }
 
-    const requiredFeatures = Object.values(GPUFeatureName).filter((feature) => (
-      adapter.features.has(feature as GPUFeatureName)
-    )) as GPUFeatureName[];
     const device = await adapter.requestDevice({
-      requiredFeatures,
+      // Requesting every exposed adapter feature can fail on lower-memory
+      // runtimes even though the ASCII pipeline only uses baseline WebGPU.
+      requiredFeatures: [],
       requiredLimits: {},
     });
 
-    return patchShaderModules(patchQueueWriteBuffer(ensureDeviceLostPromise(device)));
+    return patchErrorScopes(patchShaderModules(patchQueueWriteBuffer(ensureDeviceLostPromise(device))));
   })();
 
   return await compatibleDevicePromise;
+}
+
+export async function probeCompatibleWebGPUDevice(): Promise<boolean> {
+  try {
+    await getCompatibleWebGPUDevice();
+    return true;
+  } catch {
+    return false;
+  }
 }

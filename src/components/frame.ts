@@ -84,7 +84,7 @@ export class Frame extends Component {
     );
   }
 
-  draw(): void {
+  override draw(): void {
     super.draw();
 
     const { canvas } = this.tui;

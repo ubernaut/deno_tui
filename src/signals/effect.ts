@@ -70,7 +70,7 @@ export class Effect implements Dependant {
   dispose(): void {
     const { dependencies } = this;
     for (const dependency of dependencies) {
-      dependency.dependants!.delete(this);
+      dependency.dependants?.delete(this);
     }
     dependencies.clear();
   }

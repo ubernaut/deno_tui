@@ -4,8 +4,6 @@ import { Flusher } from "./flusher.ts";
 
 import type { Dependant, Dependency, LazyDependant } from "./types.ts";
 
-// TODO: Tests
-
 interface LazyEffectOptions {
   interval: number;
   flusher: Flusher;
@@ -63,8 +61,14 @@ export class LazyEffect extends Effect implements LazyDependant {
     this.lastFired = performance.now();
   }
 
-  update(cause: Dependency | Dependant): void {
+  override update(cause: Dependency | Dependant): void {
     const { flusher, interval } = this;
+
+    if (cause === this.flusher) {
+      super.update(cause);
+      this.lastFired = performance.now();
+      return;
+    }
 
     if (flusher) {
       flusher.depend(this);
@@ -74,11 +78,20 @@ export class LazyEffect extends Effect implements LazyDependant {
       const timeDifference = performance.now() - this.lastFired;
       if (timeDifference < interval) {
         if (this.timeout) clearTimeout(this.timeout);
-        this.timeout = setTimeout(this.#updateCallback!, timeDifference);
+        this.timeout = setTimeout(this.#updateCallback!, interval - timeDifference);
       } else {
         super.update(cause);
         this.lastFired = performance.now();
       }
     }
+  }
+
+  override dispose(): void {
+    if (this.timeout) {
+      clearTimeout(this.timeout);
+      this.timeout = undefined;
+    }
+    this.flusher?.dependants.delete(this);
+    super.dispose();
   }
 }

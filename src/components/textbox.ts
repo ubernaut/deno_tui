@@ -28,15 +28,302 @@ export interface TextBoxTheme extends Theme {
 
 export interface TextBoxOptions extends ComponentOptions {
   text?: string | Signal<string>;
-  validator?: RegExp | Signal<RegExp>;
+  validator?: RegExp | Signal<RegExp | undefined>;
   theme: DeepPartial<TextBoxTheme, "cursor">;
   multiCodePointSupport?: boolean | Signal<boolean>;
+  cursorPosition?: CursorPosition | Signal<CursorPosition>;
   /** Whether to highlight currently selected text row */
   lineHighlighting?: boolean | Signal<boolean>;
   /** Whether to number textbox rows */
   lineNumbering?: boolean | Signal<boolean>;
+  controller?: TextBoxController;
+  onChange?: (value: string) => void | Promise<void>;
   /** Function that defines what key does what while textbox is focused/active */
   keyboardHandler?: (keyPress: KeyPressEvent) => void;
+}
+
+export interface TextBoxControllerOptions {
+  text?: string | Signal<string>;
+  cursorPosition?: CursorPosition | Signal<CursorPosition>;
+  validator?: RegExp | Signal<RegExp | undefined>;
+  multiCodePointSupport?: boolean | Signal<boolean>;
+  lineHighlighting?: boolean | Signal<boolean>;
+  lineNumbering?: boolean | Signal<boolean>;
+  onChange?: (value: string) => void | Promise<void>;
+}
+
+export interface TextBoxInspection {
+  text: string;
+  lines: readonly string[];
+  lineCount: number;
+  cursorPosition: CursorPosition;
+  currentLine: string;
+  empty: boolean;
+  valid: boolean;
+  lineHighlighting: boolean;
+  lineNumbering: boolean;
+}
+
+export type TextBoxEditResult = "changed" | "moved" | "ignored";
+
+export interface TextLineCacheInspection {
+  text: string;
+  lineCount: number;
+}
+
+export class TextLineCache {
+  #text = "";
+  #lines: readonly string[] = [""];
+
+  lines(text: string): readonly string[] {
+    if (text !== this.#text) {
+      this.#text = text;
+      this.#lines = text.split("\n");
+    }
+    return this.#lines;
+  }
+
+  inspect(): TextLineCacheInspection {
+    return {
+      text: this.#text,
+      lineCount: this.#lines.length,
+    };
+  }
+}
+
+export class TextBoxController {
+  readonly text: Signal<string>;
+  readonly cursorPosition: Signal<CursorPosition>;
+  readonly validator: Signal<RegExp | undefined>;
+  readonly multiCodePointSupport: Signal<boolean>;
+  readonly lineHighlighting: Signal<boolean>;
+  readonly lineNumbering: Signal<boolean>;
+  readonly lines: Computed<readonly string[]>;
+  readonly #textLineCache = new TextLineCache();
+  readonly #ownsText: boolean;
+  readonly #ownsCursorPosition: boolean;
+  readonly #ownsValidator: boolean;
+  readonly #ownsMultiCodePointSupport: boolean;
+  readonly #ownsLineHighlighting: boolean;
+  readonly #ownsLineNumbering: boolean;
+  readonly #onChange?: (value: string) => void | Promise<void>;
+  readonly #syncCursor = () => this.clampCursor();
+
+  constructor(options: TextBoxControllerOptions = {}) {
+    this.#ownsText = !(options.text instanceof Signal);
+    this.#ownsCursorPosition = !(options.cursorPosition instanceof Signal);
+    this.#ownsValidator = !(options.validator instanceof Signal);
+    this.#ownsMultiCodePointSupport = !(options.multiCodePointSupport instanceof Signal);
+    this.#ownsLineHighlighting = !(options.lineHighlighting instanceof Signal);
+    this.#ownsLineNumbering = !(options.lineNumbering instanceof Signal);
+    this.text = signalify(options.text ?? "");
+    this.cursorPosition = signalify(options.cursorPosition ?? { x: 0, y: 0 }, { deepObserve: true });
+    this.validator = signalify(options.validator);
+    this.multiCodePointSupport = signalify(options.multiCodePointSupport ?? false);
+    this.lineHighlighting = signalify(options.lineHighlighting ?? false);
+    this.lineNumbering = signalify(options.lineNumbering ?? false);
+    this.#onChange = options.onChange;
+    this.lines = new Computed(() => this.#textLineCache.lines(this.text.value));
+    this.text.subscribe(this.#syncCursor);
+    this.cursorPosition.subscribe(this.#syncCursor);
+    this.#syncCursor();
+  }
+
+  setText(value: string, cursorPosition: CursorPosition = this.endPosition(value)): string {
+    this.text.value = value;
+    this.setCursorPosition(cursorPosition);
+    void this.#onChange?.(this.text.peek());
+    return this.text.peek();
+  }
+
+  clear(): string {
+    return this.setText("", { x: 0, y: 0 });
+  }
+
+  setCursorPosition(position: CursorPosition): CursorPosition {
+    const cursor = this.cursorPosition.peek();
+    cursor.y = position.y;
+    cursor.x = position.x;
+    this.clampCursor();
+    this.cursorPosition.forceUpdateValue = true;
+    this.cursorPosition.value = cursor;
+    return { ...this.cursorPosition.peek() };
+  }
+
+  moveCursor(delta: Partial<CursorPosition>): CursorPosition {
+    const cursor = this.cursorPosition.peek();
+    return this.setCursorPosition({
+      x: cursor.x + (delta.x ?? 0),
+      y: cursor.y + (delta.y ?? 0),
+    });
+  }
+
+  home(): CursorPosition {
+    return this.setCursorPosition({ ...this.cursorPosition.peek(), x: 0 });
+  }
+
+  end(): CursorPosition {
+    const cursor = this.cursorPosition.peek();
+    return this.setCursorPosition({
+      x: this.currentLines()[cursor.y]?.length ?? 0,
+      y: cursor.y,
+    });
+  }
+
+  insert(character: string): boolean {
+    if (!this.accepts(character)) return false;
+    const cursor = this.cursorPosition.peek();
+    const lines = [...this.currentLines()];
+    const line = lines[cursor.y] ?? "";
+    lines[cursor.y] = insertAt(line, cursor.x, character);
+    this.setText(lines.join("\n"), { x: cursor.x + character.length, y: cursor.y });
+    return true;
+  }
+
+  newline(): boolean {
+    const cursor = this.cursorPosition.peek();
+    const lines = [...this.currentLines()];
+    const line = lines[cursor.y] ?? "";
+    lines[cursor.y] = line.slice(0, cursor.x);
+    lines.splice(cursor.y + 1, 0, line.slice(cursor.x));
+    this.setText(lines.join("\n"), { x: 0, y: cursor.y + 1 });
+    return true;
+  }
+
+  backspace(): boolean {
+    const cursor = this.cursorPosition.peek();
+    const lines = [...this.currentLines()];
+    const line = lines[cursor.y] ?? "";
+    if (cursor.x === 0) {
+      if (cursor.y === 0) return false;
+      const previous = lines[cursor.y - 1] ?? "";
+      lines[cursor.y - 1] = previous + line;
+      lines.splice(cursor.y, 1);
+      this.setText(lines.join("\n"), { x: previous.length, y: cursor.y - 1 });
+      return true;
+    }
+    lines[cursor.y] = line.slice(0, cursor.x - 1) + line.slice(cursor.x);
+    this.setText(lines.join("\n"), { x: cursor.x - 1, y: cursor.y });
+    return true;
+  }
+
+  delete(): boolean {
+    const cursor = this.cursorPosition.peek();
+    const lines = [...this.currentLines()];
+    const line = lines[cursor.y] ?? "";
+    if (cursor.x < line.length) {
+      lines[cursor.y] = line.slice(0, cursor.x) + line.slice(cursor.x + 1);
+      this.setText(lines.join("\n"), cursor);
+      return true;
+    }
+    if (lines.length - 1 <= cursor.y) return false;
+    lines[cursor.y] = line + (lines[cursor.y + 1] ?? "");
+    lines.splice(cursor.y + 1, 1);
+    this.setText(lines.join("\n"), cursor);
+    return true;
+  }
+
+  handleKeyPress({ key, ctrl, meta }: KeyPressEvent): TextBoxEditResult {
+    if (ctrl || meta) return "ignored";
+
+    switch (key) {
+      case "left":
+        this.moveCursor({ x: -1 });
+        return "moved";
+      case "right":
+        this.moveCursor({ x: 1 });
+        return "moved";
+      case "up":
+        this.moveCursor({ y: -1 });
+        return "moved";
+      case "down":
+        this.moveCursor({ y: 1 });
+        return "moved";
+      case "home":
+        this.home();
+        return "moved";
+      case "end":
+        this.end();
+        return "moved";
+      case "backspace":
+        return this.backspace() ? "changed" : "ignored";
+      case "delete":
+        return this.delete() ? "changed" : "ignored";
+      case "return":
+        return this.newline() ? "changed" : "ignored";
+      case "space":
+        return this.insert(" ") ? "changed" : "ignored";
+      case "tab":
+        return this.insert("\t") ? "changed" : "ignored";
+      default:
+        if (key.length > 1) return "ignored";
+        return this.insert(key) ? "changed" : "ignored";
+    }
+  }
+
+  accepts(character: string): boolean {
+    const validator = this.validator.peek();
+    if (!validator) return true;
+    validator.lastIndex = 0;
+    return validator.test(character);
+  }
+
+  inspect(): TextBoxInspection {
+    const text = this.text.peek();
+    const lines = this.currentLines();
+    const validator = this.validator.peek();
+    return {
+      text,
+      lines,
+      lineCount: lines.length,
+      cursorPosition: { ...this.cursorPosition.peek() },
+      currentLine: lines[this.cursorPosition.peek().y] ?? "",
+      empty: text.length === 0,
+      valid: validator
+        ? [...text].every((character) => {
+          if (character === "\n") return true;
+          validator.lastIndex = 0;
+          return validator.test(character);
+        })
+        : true,
+      lineHighlighting: this.lineHighlighting.peek(),
+      lineNumbering: this.lineNumbering.peek(),
+    };
+  }
+
+  dispose(): void {
+    this.text.unsubscribe(this.#syncCursor);
+    this.cursorPosition.unsubscribe(this.#syncCursor);
+    try {
+      this.lines.dispose();
+    } catch {
+      // Computed dependency tracking is asynchronous; disposal may happen before
+      // dependencies have linked their dependant sets in short-lived tests.
+    }
+    if (this.#ownsText) this.text.dispose();
+    if (this.#ownsCursorPosition) this.cursorPosition.dispose();
+    if (this.#ownsValidator) this.validator.dispose();
+    if (this.#ownsMultiCodePointSupport) this.multiCodePointSupport.dispose();
+    if (this.#ownsLineHighlighting) this.lineHighlighting.dispose();
+    if (this.#ownsLineNumbering) this.lineNumbering.dispose();
+  }
+
+  private clampCursor(): void {
+    const cursor = this.cursorPosition.peek();
+    const lines = this.currentLines();
+    cursor.y = clamp(cursor.y, 0, Math.max(lines.length - 1, 0));
+    cursor.x = clamp(cursor.x, 0, lines[cursor.y]?.length ?? 0);
+  }
+
+  private currentLines(): readonly string[] {
+    return this.#textLineCache.lines(this.text.peek());
+  }
+
+  private endPosition(value: string): CursorPosition {
+    const lines = this.#textLineCache.lines(value);
+    const y = Math.max(lines.length - 1, 0);
+    return { x: lines[y]?.length ?? 0, y };
+  }
 }
 
 /**
@@ -93,13 +380,15 @@ export class TextBox extends Box {
   };
   declare theme: TextBoxTheme;
 
-  #textLines: Computed<string[]>;
+  #textLines: Computed<readonly string[]>;
 
   text: Signal<string>;
+  validator: Signal<RegExp | undefined>;
   lineNumbering: Signal<boolean>;
   lineHighlighting: Signal<boolean>;
   cursorPosition: Signal<CursorPosition>;
   multiCodePointSupport: Signal<boolean>;
+  readonly controller: TextBoxController;
 
   constructor(options: TextBoxOptions) {
     super(options);
@@ -108,15 +397,25 @@ export class TextBox extends Box {
     this.theme.lineNumbers ??= this.theme;
     this.theme.highlightedLine ??= this.theme;
 
-    this.cursorPosition = new Signal({ x: 0, y: 0 }, { deepObserve: true });
-
-    this.text = signalify(options.text ?? "");
-    this.lineNumbering = signalify(options.lineNumbering ?? false);
-    this.lineHighlighting = signalify(options.lineHighlighting ?? false);
-    this.multiCodePointSupport = signalify(options.multiCodePointSupport ?? false);
-
-    // FIXME: This creates unnecessary arrays each time it runs
-    this.#textLines = new Computed(() => this.text.value.split("\n"));
+    const ownsController = !options.controller;
+    const controller = options.controller ??
+      new TextBoxController({
+        text: options.text,
+        cursorPosition: options.cursorPosition,
+        validator: options.validator,
+        lineNumbering: options.lineNumbering,
+        lineHighlighting: options.lineHighlighting,
+        multiCodePointSupport: options.multiCodePointSupport,
+        onChange: options.onChange,
+      });
+    this.controller = controller;
+    this.text = controller.text;
+    this.validator = controller.validator;
+    this.lineNumbering = controller.lineNumbering;
+    this.lineHighlighting = controller.lineHighlighting;
+    this.cursorPosition = controller.cursorPosition;
+    this.multiCodePointSupport = controller.multiCodePointSupport;
+    this.#textLines = controller.lines;
 
     new Effect(() => {
       this.#updateLineDrawObjects();
@@ -124,86 +423,14 @@ export class TextBox extends Box {
 
     this.on(
       "keyPress",
-      options.keyboardHandler ?? (({ key, ctrl, meta }) => {
-        if (ctrl || meta) return;
-
-        const cursorPosition = this.cursorPosition.peek();
-        const textLines = this.#textLines.peek();
-        const textLine = textLines[cursorPosition.y] ??= "";
-
-        let character: string;
-
-        switch (key) {
-          case "left":
-            --cursorPosition.x;
-            break;
-          case "right":
-            ++cursorPosition.x;
-            break;
-          case "up":
-            --cursorPosition.y;
-            break;
-          case "down":
-            if (textLines.length - 1 > cursorPosition.y) {
-              ++cursorPosition.y;
-            }
-            break;
-          case "home":
-            cursorPosition.x = 0;
-            return;
-          case "end":
-            cursorPosition.x = textLine.length;
-            return;
-
-          case "backspace":
-            if (cursorPosition.x === 0) {
-              if (cursorPosition.y === 0) return;
-              textLines[cursorPosition.y - 1] += textLines[cursorPosition.y];
-              textLines.splice(cursorPosition.y, 1);
-              --cursorPosition.y;
-              cursorPosition.x = textLines[cursorPosition.y].length;
-            } else {
-              textLines[cursorPosition.y] = textLine.slice(0, cursorPosition.x - 1) + textLine.slice(cursorPosition.x);
-              cursorPosition.x = clamp(cursorPosition.x - 1, 0, textLine.length);
-            }
-            break;
-          case "delete":
-            textLines[cursorPosition.y] = textLine.slice(0, cursorPosition.x) + textLine.slice(cursorPosition.x + 1);
-
-            if (cursorPosition.x === textLine.length && textLines.length - 1 > cursorPosition.y) {
-              textLines[cursorPosition.y] += textLines[cursorPosition.y + 1];
-              textLines.splice(cursorPosition.y + 1, 1);
-            }
-            break;
-          case "return":
-            ++cursorPosition.y;
-            break;
-
-          case "space":
-            character = " ";
-            break;
-          case "tab":
-            character = "\t";
-            break;
-          default:
-            if (key.length > 1) return;
-            character = key;
-        }
-
-        cursorPosition.y = clamp(cursorPosition.y, 0, textLines.length);
-        cursorPosition.x = clamp(cursorPosition.x, 0, textLines[cursorPosition.y]?.length ?? 0);
-
-        if (character!) {
-          textLines[cursorPosition.y] = insertAt(textLine, cursorPosition.x, character);
-          ++cursorPosition.x;
-        }
-
-        this.text.value = textLines.join("\n");
+      options.keyboardHandler ?? ((event) => {
+        this.controller.handleKeyPress(event);
       }),
     );
+    if (ownsController) this.on("destroy", () => this.controller.dispose());
   }
 
-  draw(): void {
+  override draw(): void {
     super.draw();
 
     const { canvas } = this.tui;
@@ -247,7 +474,7 @@ export class TextBox extends Box {
     cursor.draw();
   }
 
-  interact(method: "keyboard" | "mouse"): void {
+  override interact(method: "keyboard" | "mouse"): void {
     this.state.value = "focused";
     super.interact(method);
   }

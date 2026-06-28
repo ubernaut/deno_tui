@@ -1,6 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { activeSignals } from "./dependency_tracking.ts";
 import {
+  IS_REACTIVE,
   makeMapMethodsReactive,
   makeObjectPropertiesReactive,
   makeSetMethodsReactive,
@@ -8,8 +9,6 @@ import {
   Reactive,
 } from "./reactivity.ts";
 import { Dependant, Dependency, Subscription } from "./types.ts";
-
-// TODO: Make dispose revert reactive value modifications
 
 /** Thrown whenever `deepObserve` is set and `typeof value !== "object"` */
 export class SignalDeepObserveTypeofError extends Error {
@@ -45,6 +44,15 @@ export interface SignalOptions<T> {
   watchMapUpdates?: T extends Map<unknown, unknown> ? boolean : never;
 }
 
+/** Serializable lifecycle and subscription diagnostics for a signal. */
+export interface SignalInspection {
+  disposed: boolean;
+  subscriptions: number;
+  whenSubscriptions: number;
+  dependants: number;
+  reactive: boolean;
+}
+
 /**
  * Signal wraps value in a container.
  *
@@ -66,6 +74,7 @@ export class Signal<T> implements Dependency {
   whenSubscriptions?: Map<T, Set<Subscription<T>>>;
 
   forceUpdateValue?: boolean;
+  disposed = false;
 
   constructor(value: T, options?: SignalOptions<T>) {
     if (options?.deepObserve) {
@@ -122,6 +131,17 @@ export class Signal<T> implements Dependency {
     this.subscriptions?.delete(subscription);
   }
 
+  /** Returns signal lifecycle and listener diagnostics. */
+  inspect(): SignalInspection {
+    return {
+      disposed: this.disposed,
+      subscriptions: this.subscriptions?.size ?? 0,
+      whenSubscriptions: [...(this.whenSubscriptions?.values() ?? [])].reduce((count, set) => count + set.size, 0),
+      dependants: this.dependants?.size ?? 0,
+      reactive: typeof this.$value === "object" && this.$value !== null && IS_REACTIVE in this.$value,
+    };
+  }
+
   /** Add `dependant` to signal `dependants` */
   depend(dependant: Dependant): void {
     this.dependants ??= new Set();
@@ -169,22 +189,25 @@ export class Signal<T> implements Dependency {
    */
   dispose(): void {
     let { $value } = this;
+    this.disposed = true;
 
     // Set $value to its original reference to make next property accessess faster
-    if (typeof $value === "object") {
+    if (typeof $value === "object" && $value !== null) {
       $value = ($value as Reactive<T>)?.[ORIGINAL_REF] ?? $value;
     }
+    this.$value = $value;
 
     Object.defineProperty(this, "value", {
-      value: this.$value,
+      value: $value,
     });
 
-    const { dependants, subscriptions } = this;
+    const { dependants, subscriptions, whenSubscriptions } = this;
 
     subscriptions?.clear();
+    whenSubscriptions?.clear();
 
     if (!dependants) return;
-    for (const dependant of dependants) {
+    for (const dependant of [...dependants]) {
       dependants.delete(dependant);
       dependant.dependencies.delete(this);
 

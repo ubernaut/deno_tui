@@ -1,6 +1,5 @@
 // Copyright 2023 Im-Beast. MIT license.
 
-// TODO; on style change, dont update intersections, just clear current ones
 import { EmitterEvent, EventEmitter } from "../event_emitter.ts";
 
 import { moveCursor } from "../utils/ansi_codes.ts";
@@ -13,6 +12,7 @@ import { Signal, SignalOfObject } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
 
 const textEncoder = new TextEncoder();
+const DRAW_SEQUENCE_FLUSH_LIMIT = Deno.build.os === "windows" ? 1024 : 16384;
 
 /** Interface defining object that {Canvas}'s constructor can interpret */
 export interface CanvasOptions {
@@ -25,6 +25,16 @@ export interface CanvasOptions {
 export type CanvasEventMap = {
   render: EmitterEvent<[]>;
 };
+
+/** Lightweight diagnostics for the most recent canvas render pass. */
+export interface CanvasRenderStats {
+  updatedObjects: number;
+  renderedObjects: number;
+  rerenderedObjects: number;
+  intersectionUpdates: number;
+  intersectionsDirty: boolean;
+  flushedCells: number;
+}
 
 /**
  * Object, which stores data about currently rendered objects.
@@ -40,6 +50,7 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
   drawnObjects: SortedArray<DrawObject>;
   updateObjects: DrawObject[];
   resizeNeeded: boolean;
+  lastRenderStats: CanvasRenderStats;
 
   constructor(options: CanvasOptions) {
     super();
@@ -50,6 +61,7 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
     this.drawnObjects = new SortedArray((a, b) => a.zIndex.peek() - b.zIndex.peek() || a.id - b.id);
     this.updateObjects = [];
     this.resizeNeeded = false;
+    this.lastRenderStats = emptyRenderStats();
 
     this.size = signalify(options.size, { deepObserve: true });
 
@@ -111,6 +123,11 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
     }
   }
 
+  /** Returns diagnostics from the most recent render pass. */
+  inspectRender(): CanvasRenderStats {
+    return { ...this.lastRenderStats };
+  }
+
   render(): void {
     const { stdout, frameBuffer, updateObjects } = this;
 
@@ -120,45 +137,78 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
     }
 
     if (!updateObjects.length) {
+      this.lastRenderStats = emptyRenderStats();
       return;
     }
 
-    let i = 0;
-    updateObjects.sort((a, b) => b.zIndex.peek() - a.zIndex.peek() || b.id - a.id);
+    const objectsToUpdate: DrawObject[] = [];
+    const seenObjects = new Set<DrawObject>();
 
-    for (const object of updateObjects) {
-      if (object.updated) continue;
+    while (updateObjects.length) {
+      const object = updateObjects.pop()!;
+      if (seenObjects.has(object)) {
+        continue;
+      }
+      seenObjects.add(object);
+      objectsToUpdate.push(object);
+    }
+
+    objectsToUpdate.sort((a, b) => b.zIndex.peek() - a.zIndex.peek() || b.id - a.id);
+
+    let i = 0;
+    let intersectionsDirty = false;
+
+    for (const object of objectsToUpdate) {
       object.updated = true;
       ++i;
       object.update();
 
       object.updateMovement();
       object.updatePreviousRectangle();
-
       object.updateOutOfBounds();
 
+      if (object.outOfBounds) {
+        object.rendered = false;
+      }
+
+      intersectionsDirty ||= object.moved;
+    }
+
+    const objectsToRender = intersectionsDirty ? [...this.drawnObjects] : objectsToUpdate;
+    if (intersectionsDirty) {
+      objectsToRender.sort((a, b) => b.zIndex.peek() - a.zIndex.peek() || b.id - a.id);
+      for (const object of objectsToRender) {
+        this.updateIntersections(object);
+        object.moved = false;
+        if (!object.outOfBounds) {
+          object.rendered = false;
+        }
+      }
+    } else {
+      for (const object of objectsToRender) {
+        object.moved = false;
+      }
+    }
+
+    let renderedObjects = 0;
+    let rerenderedObjects = 0;
+
+    for (const object of objectsToRender) {
       if (object.outOfBounds) {
         continue;
       }
 
-      if (object.moved) {
-        this.updateIntersections(object);
-        object.moved = false;
-      }
-
       if (object.rendered) {
         object.rerender();
+        rerenderedObjects += 1;
       } else {
         object.render();
         object.rendered = true;
+        renderedObjects += 1;
       }
     }
 
     this.rerenderedObjects = i;
-
-    while (updateObjects.length) {
-      updateObjects.pop();
-    }
 
     let drawSequence = "";
     let lastRow = -1;
@@ -166,6 +216,7 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
 
     const { rerenderQueue } = this;
     const size = this.size.peek();
+    let flushedCells = 0;
 
     for (let row = 0; row < size.rows; ++row) {
       const columns = rerenderQueue[row];
@@ -181,12 +232,13 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
         const cell = rowBuffer[column];
 
         // This is required to render properly on windows
-        if (drawSequence.length + cell.length > 1024) {
+        if (drawSequence.length + cell.length > DRAW_SEQUENCE_FLUSH_LIMIT) {
           stdout.writeSync(textEncoder.encode(moveCursor(lastRow, lastColumn) + drawSequence));
           drawSequence = moveCursor(row, column);
         }
 
         drawSequence += cell;
+        flushedCells += 1;
 
         lastRow = row;
         lastColumn = column;
@@ -196,8 +248,30 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
     }
 
     // Complete final loop draw sequence
-    stdout.writeSync(textEncoder.encode(moveCursor(lastRow, lastColumn) + drawSequence));
+    if (drawSequence.length > 0) {
+      stdout.writeSync(textEncoder.encode(moveCursor(lastRow, lastColumn) + drawSequence));
+    }
+
+    this.lastRenderStats = {
+      updatedObjects: i,
+      renderedObjects,
+      rerenderedObjects,
+      intersectionUpdates: intersectionsDirty ? objectsToRender.length : 0,
+      intersectionsDirty,
+      flushedCells,
+    };
 
     this.emit("render");
   }
+}
+
+function emptyRenderStats(): CanvasRenderStats {
+  return {
+    updatedObjects: 0,
+    renderedObjects: 0,
+    rerenderedObjects: 0,
+    intersectionUpdates: 0,
+    intersectionsDirty: false,
+    flushedCells: 0,
+  };
 }

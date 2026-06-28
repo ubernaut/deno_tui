@@ -7,6 +7,7 @@ import { Computed, Signal } from "./signals/mod.ts";
 import { Style } from "./theme.ts";
 import { Rectangle, Stdin, Stdout } from "./types.ts";
 import { HIDE_CURSOR, SHOW_CURSOR, USE_PRIMARY_BUFFER, USE_SECONDARY_BUFFER } from "./utils/ansi_codes.ts";
+import { RenderLoop } from "./runtime/render_loop.ts";
 
 const textEncoder = new TextEncoder();
 
@@ -16,6 +17,7 @@ export interface TuiOptions {
   stdout?: Stdout;
   canvas?: Canvas;
   refreshRate?: number;
+  renderLoop?: RenderLoop;
 }
 
 /**
@@ -48,8 +50,7 @@ export class Tui extends EventEmitter<
   components: Set<Component>;
   drawnObjects: { background?: BoxObject };
   refreshRate: number;
-
-  #nextUpdateTimeout?: number;
+  renderLoop: RenderLoop;
 
   constructor(options: TuiOptions) {
     super();
@@ -59,6 +60,10 @@ export class Tui extends EventEmitter<
     this.canvas = options.canvas ?? new Canvas({
       stdout: this.stdout,
       size: Deno.consoleSize(),
+    });
+    this.renderLoop = options.renderLoop ?? new RenderLoop({
+      intervalMs: this.refreshRate,
+      tick: () => this.canvas.render(),
     });
 
     this.style = options.style;
@@ -125,17 +130,13 @@ export class Tui extends EventEmitter<
 
     stdout.write(textEncoder.encode(USE_SECONDARY_BUFFER + HIDE_CURSOR));
 
-    const updateStep = () => {
-      canvas.render();
-      this.#nextUpdateTimeout = setTimeout(updateStep, this.refreshRate);
-    };
-    updateStep();
+    this.renderLoop.start();
   }
 
   destroy(): void {
     this.off();
 
-    clearTimeout(this.#nextUpdateTimeout);
+    this.renderLoop.stop();
 
     try {
       this.stdin.setRaw(false);
