@@ -16,6 +16,7 @@ Deno.test("visualization launcher resolves public aliases to deno tasks", () => 
   assertEquals(resolveVisualizationTask("recipe"), "layout-recipe");
   assertEquals(resolveVisualizationTask("monitor"), "viz");
   assertEquals(resolveVisualizationTask("worker"), "worker-demo");
+  assertEquals(resolveVisualizationTask("command-index"), "command-search");
   assertEquals(resolveVisualizationTask("actions"), "action-middleware");
   assertEquals(resolveVisualizationTask("resources"), "cached-resource");
   assertEquals(resolveVisualizationTask("pipeline"), "cached-pipeline");
@@ -71,6 +72,7 @@ Deno.test("visualization launch catalog filters targets by category tag and sear
     "worker-demo",
   ]);
   assertEquals(queryVisualizationLaunchTargets({ tag: "runtime" }).map((entry) => entry.task), [
+    "command-search",
     "cached-pipeline",
     "cached-resource",
     "runtime-workloads",

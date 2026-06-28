@@ -67,6 +67,13 @@ export const visualizationLaunchTargets: readonly VisualizationLaunchTarget[] = 
     tags: ["app", "commands", "routes"],
   },
   {
+    task: "command-search",
+    aliases: ["command-search", "command-index", "indexed-commands"],
+    description: "scheduler-backed indexed command search demo",
+    category: "demo",
+    tags: ["app", "commands", "runtime"],
+  },
+  {
     task: "layout-recipe",
     aliases: ["layout-recipe", "layout-report", "recipe"],
     description: "responsive layout recipe report",

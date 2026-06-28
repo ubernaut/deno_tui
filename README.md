@@ -701,6 +701,7 @@ This fork exports lightweight app primitives for larger TUIs:
 - `createAppPlugin()` / `inspectAppPluginDefinition()` / plugin catalog reports
 - `ActionBus`
 - `CommandRegistry`
+- `createCommandSearchIndex()` / `createIndexedCommandSurface()`
 - `FormController`
 - `HistoryStack`
 - `RouteManager`
@@ -985,6 +986,24 @@ For one-off projections, `commandSurfaceItems()` and `executeCommandSurfaceItem(
 `searchCommandSurfaceItems()` and `rankCommandSurfaceItems()` add deterministic command lookup across labels, ids,
 descriptions, keywords, and key bindings, so palettes, menu launchers, docs browsers, and plugin marketplaces can share
 the same ranking behavior without reimplementing filtering.
+
+For larger command catalogs, `createCommandSearchIndex()` precomputes searchable fields and
+`createIndexedCommandSurface()` keeps an indexed command projection synchronized with a `CommandRegistry`. Pass an
+`AsyncScheduler` to rebuild the index off the hot path while preserving the same scoring semantics as
+`rankCommandSurfaceItems()`:
+
+```ts
+const indexedCommands = createIndexedCommandSurface(app.commands, (action) => app.actions.dispatch(action), {
+  scheduler: new AsyncScheduler({ concurrency: 1 }),
+  query: "runtime",
+  limit: 20,
+});
+
+const matches = indexedCommands.setQuery("gpu workers");
+await indexedCommands.execute(matches[0].item);
+const indexState = indexedCommands.inspect();
+app.onDispose(indexedCommands.dispose);
+```
 
 `FormController` keeps form state separate from rendering:
 
@@ -2016,6 +2035,7 @@ const preset = findAsciiDemoPreset("mixed-best");
 | `examples/layout.ts`                | Grid layout with draggable, colored buttons                  |
 | `examples/layout_recipe_report.ts`  | Responsive layout recipe report example                      |
 | `examples/app_shell.ts`             | App primitives, settings-backed routes, commands, and toasts |
+| `examples/command_search_index.ts`  | Scheduler-backed indexed command search demo                 |
 | `examples/dashboard.ts`             | Dashboard widgets, semantic theme tokens, and key help       |
 | `examples/theme_manifest.ts`        | Serializable theme manifest compiler and diff demo           |
 | `examples/theme_engines.ts`         | Theme engine factory registry and prewarm demo               |
@@ -2071,6 +2091,7 @@ tuning.
 ./visualization monitor
 ./visualization dashboard
 ./visualization app-shell
+./visualization command-search
 ./visualization layout-recipe
 ./visualization worker
 ./visualization actions
@@ -2097,30 +2118,32 @@ deno task viz
 Launches the system monitor dashboard. Use `F4` to open options, select panel visualizations, and change the ASCII style
 for 3D panels. Added 3D visualization IDs include `three-lattice`, `three-atfield`, `three-hexshell`, `three-capture`,
 `three-mapslab`, `three-solenoid`, and `three-ascii-studio`. The same launcher also exposes runtime and tooling demos:
-`worker` for abortable worker-pool concurrency, `actions` for middleware-based action dispatch, `resource` for cached
-async resource loaders, `pipeline` for cached scheduler-backed transforms, `theme-manifest` for serializable theme
-packs, `theme-engines` for factory prewarming, `theme-engine-commands` for factory preview/catalog command surfaces,
-`theme-pipeline` for runtime theme transforms, `theme-workspace` for combined provider/factory/pipeline orchestration,
-`theme-gallery` for searchable theme previews, `theme-resolver` for cached renderer-friendly theme lookups,
-`theme-bindings` for grouped component theme wiring and lifecycle inspection, `capabilities` for platform feature
-detection, `runtime-workloads` for scheduler and worker-pool pressure inspection, `benchmark` for performance smoke
-checks, `api-inventory` for public export graph inspection, `components` for widget catalog reports, `layout-recipe` for
-responsive recipe inspection, `grwizard` for the responsive GPU/model wizard, and `health` for the contributor gate. The
-launcher metadata is also exported from `scripts/visualization_launcher.ts` as a queryable catalog:
-`queryVisualizationLaunchTargets()`, `createVisualizationLaunchReport()`, `inspectVisualizationLaunchTargets()`, and
-`formatVisualizationLaunchMarkdown()` provide the same structured target list for custom launchers, docs pages, and CI
-reports without duplicating aliases or descriptions. Benchmark runs print per-case timings plus an aggregate summary;
-`deno task benchmark -- --list` prints the benchmark catalog without running workloads,
-`deno task benchmark -- --list --json` emits that catalog as structured data, and `deno task benchmark -- --json` emits
-the same threshold-aware timing summary as structured data and exits nonzero when a case fails its limits. The catalog
-path is backed by `BenchmarkRunner.inspect()`, `createBenchmarkCatalogReport()`, and `formatBenchmarkCatalogMarkdown()`
-so launchers and docs can reuse the same case metadata.
+`worker` for abortable worker-pool concurrency, `command-search` for scheduler-backed indexed command lookup, `actions`
+for middleware-based action dispatch, `resource` for cached async resource loaders, `pipeline` for cached
+scheduler-backed transforms, `theme-manifest` for serializable theme packs, `theme-engines` for factory prewarming,
+`theme-engine-commands` for factory preview/catalog command surfaces, `theme-pipeline` for runtime theme transforms,
+`theme-workspace` for combined provider/factory/pipeline orchestration, `theme-gallery` for searchable theme previews,
+`theme-resolver` for cached renderer-friendly theme lookups, `theme-bindings` for grouped component theme wiring and
+lifecycle inspection, `capabilities` for platform feature detection, `runtime-workloads` for scheduler and worker-pool
+pressure inspection, `benchmark` for performance smoke checks, `api-inventory` for public export graph inspection,
+`components` for widget catalog reports, `layout-recipe` for responsive recipe inspection, `grwizard` for the responsive
+GPU/model wizard, and `health` for the contributor gate. The launcher metadata is also exported from
+`scripts/visualization_launcher.ts` as a queryable catalog: `queryVisualizationLaunchTargets()`,
+`createVisualizationLaunchReport()`, `inspectVisualizationLaunchTargets()`, and `formatVisualizationLaunchMarkdown()`
+provide the same structured target list for custom launchers, docs pages, and CI reports without duplicating aliases or
+descriptions. Benchmark runs print per-case timings plus an aggregate summary; `deno task benchmark -- --list` prints
+the benchmark catalog without running workloads, `deno task benchmark -- --list --json` emits that catalog as structured
+data, and `deno task benchmark -- --json` emits the same threshold-aware timing summary as structured data and exits
+nonzero when a case fails its limits. The catalog path is backed by `BenchmarkRunner.inspect()`,
+`createBenchmarkCatalogReport()`, and `formatBenchmarkCatalogMarkdown()` so launchers and docs can reuse the same case
+metadata.
 
 Direct Deno tasks are also available:
 
 ```sh
 deno task showcase
 deno task app-shell
+deno task command-search
 deno task layout-recipe
 deno task three-ascii
 deno task dashboard

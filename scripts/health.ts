@@ -27,6 +27,7 @@ export const defaultHealthSteps: readonly HealthStep[] = [
     ],
   },
   { name: "app-shell", command: ["deno", "check", "examples/app_shell.ts"] },
+  { name: "command-search", command: ["deno", "check", "examples/command_search_index.ts"] },
   { name: "layout-recipe", command: ["deno", "check", "examples/layout_recipe_report.ts"] },
   { name: "action-middleware", command: ["deno", "check", "examples/action_middleware.ts"] },
   { name: "cached-resource", command: ["deno", "check", "examples/cached_resource.ts"] },

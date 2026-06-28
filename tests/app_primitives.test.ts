@@ -16,6 +16,11 @@ import {
   rankCommandSurfaceItems,
   searchCommandSurfaceItems,
 } from "../src/app/command_bindings.ts";
+import {
+  createCommandSearchIndex,
+  createIndexedCommandSurface,
+  searchCommandSearchIndex,
+} from "../src/app/command_search_index.ts";
 import { CommandRegistry } from "../src/app/commands.ts";
 import type { Command, CommandActionFactory } from "../src/app/commands.ts";
 import { createDisposableStack, DisposableStack, disposeReverse } from "../src/app/disposables.ts";
@@ -871,6 +876,81 @@ Deno.test("command surface search ranks labels ids keywords and key bindings", (
     "route.home",
     "route.system-monitor",
   ]);
+});
+
+Deno.test("command search indexes rank precomputed command surface fields", () => {
+  const items = [
+    { id: "route.system-monitor", label: "System Monitor", keywords: ["runtime", "metrics"] },
+    { id: "theme.next", label: "Next Theme", keywords: ["appearance"], disabled: true },
+    { id: "route.home", label: "Go Home", keywords: ["landing"] },
+  ];
+  const index = createCommandSearchIndex(items);
+
+  assertEquals(index.inspection, {
+    count: 3,
+    disabled: 1,
+    fieldCount: 10,
+    keywordCount: 4,
+  });
+  assertEquals(searchCommandSearchIndex(index, "sys mon").map((match) => match.item.id), ["route.system-monitor"]);
+  assertEquals(searchCommandSearchIndex(index, "runtime").map((match) => [match.item.id, match.matched]), [
+    ["route.system-monitor", ["runtime"]],
+  ]);
+  assertEquals(searchCommandSearchIndex(index, "theme").map((match) => match.item.id), ["theme.next"]);
+});
+
+Deno.test("indexed command surfaces refresh through schedulers and execute registry actions", async () => {
+  type TestAction = { type: "ran"; payload: string };
+  const scheduler = new AsyncScheduler({ concurrency: 1 });
+  const registry = new CommandRegistry<TestAction>();
+  const actions: TestAction[] = [];
+  registry.register({
+    id: "route.home",
+    label: "Go Home",
+    group: "nav",
+    keywords: ["landing"],
+    action: { type: "ran", payload: "home" },
+  });
+  const surface = createIndexedCommandSurface(registry, (action) => void actions.push(action), {
+    scheduler,
+    group: "nav",
+    query: "home",
+  });
+
+  assertEquals(surface.inspect(), {
+    count: 1,
+    disabled: 0,
+    fieldCount: 5,
+    keywordCount: 3,
+    query: "home",
+    matchCount: 1,
+    scheduler: {
+      concurrency: 1,
+      running: 0,
+      pending: 0,
+      idle: true,
+    },
+    disposed: false,
+  });
+  assertEquals(surface.matches.peek().map((match) => match.item.id), ["route.home"]);
+
+  registry.register({
+    id: "route.system-monitor",
+    label: "System Monitor",
+    group: "nav",
+    keywords: ["runtime", "metrics"],
+    action: { type: "ran", payload: "monitor" },
+  });
+  await surface.refresh();
+  assertEquals(surface.items.peek().map((item) => item.id), ["route.home", "route.system-monitor"]);
+  surface.query.value = "runtime";
+  assertEquals(surface.matches.peek().map((match) => match.item.id), ["route.system-monitor"]);
+  assertEquals(surface.setQuery("sys mon").map((match) => match.item.id), ["route.system-monitor"]);
+  assertEquals(await surface.execute({ id: "route.system-monitor" }), true);
+  assertEquals(actions, [{ type: "ran", payload: "monitor" }]);
+
+  surface.dispose();
+  assertEquals(surface.inspect().disposed, true);
 });
 
 Deno.test("MouseInteractionRouter dispatches by z-order and local coordinates", async () => {
