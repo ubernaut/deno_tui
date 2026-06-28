@@ -1,7 +1,10 @@
 import { assertEquals } from "./deps.ts";
 import { Signal } from "../src/signals/mod.ts";
 import { bindFormField } from "../src/app/form_bindings.ts";
+import { bindFormCommands, formCommands } from "../src/app/form_commands.ts";
+import type { FormCommandAction } from "../src/app/form_commands.ts";
 import { FormController, minLength, required } from "../src/app/forms.ts";
+import { CommandRegistry } from "../src/app/commands.ts";
 
 interface SettingsForm extends Record<string, unknown> {
   route: string;
@@ -106,6 +109,66 @@ Deno.test("FormController registration disposers ignore replacement fields", () 
   form.dispose();
 });
 
+Deno.test("formCommands validate reset touch and field actions", async () => {
+  const form = new FormController<SettingsForm>([
+    { name: "route", initialValue: "overview", validators: [required()] },
+    { name: "label", initialValue: "", validators: [required("Label required"), minLength(3)] },
+  ]);
+  const registry = new CommandRegistry<FormCommandAction<SettingsForm>>();
+  const dispose = bindFormCommands(registry, form, {
+    id: "settings",
+    idPrefix: "settingsForm",
+    group: "settings",
+    includeFieldCommands: true,
+    labels: { validate: "Check", validateField: "Check Field" },
+    fieldLabel: (field) => field.toUpperCase(),
+  });
+  const actions: Array<FormCommandAction<SettingsForm>> = [];
+
+  assertEquals(registry.list("settings").map((command) => [command.id, command.label]), [
+    ["settingsForm.validate", "Check"],
+    ["settingsForm.field.label.validate", "Check Field: LABEL"],
+    ["settingsForm.field.route.validate", "Check Field: ROUTE"],
+    ["settingsForm.reset", "Reset Form"],
+    ["settingsForm.touchAll", "Touch All Fields"],
+    ["settingsForm.field.label.touch", "Touch Field: LABEL"],
+    ["settingsForm.field.route.touch", "Touch Field: ROUTE"],
+  ]);
+
+  assertEquals(await registry.execute("settingsForm.validate", (action) => void actions.push(action)), true);
+  const validateAction = actions[0]!;
+  if (validateAction.type !== "form.validated") throw new Error("expected form.validated");
+  assertEquals(validateAction.payload!.id, "settings");
+  assertEquals(validateAction.payload!.valid, false);
+  assertEquals(validateAction.payload!.snapshot.errors.label, ["Label required", "Must be at least 3 characters"]);
+
+  assertEquals(await registry.execute("settingsForm.field.label.touch", (action) => void actions.push(action)), true);
+  assertEquals(form.touched.peek().label, true);
+  const touchAction = actions[1]!;
+  if (touchAction.type !== "form.field.touched") throw new Error("expected form.field.touched");
+  assertEquals(touchAction.payload!.field, "label");
+
+  form.setValue("label", "Runtime");
+  assertEquals(commandDisabled(registry.get("settingsForm.reset")!), false);
+  assertEquals(await registry.execute("settingsForm.reset", (action) => void actions.push(action)), true);
+  assertEquals(form.snapshot().values, { route: "overview", label: "" });
+  assertEquals(actions[2]!.type, "form.reset");
+
+  dispose();
+  assertEquals(registry.list("settings"), []);
+});
+
+Deno.test("formCommands can omit field commands and disable empty forms", () => {
+  const form = new FormController<SettingsForm>();
+  const commands = formCommands(form, { includeFieldCommands: false });
+
+  assertEquals(commands.map((command) => [command.id, commandDisabled(command)]), [
+    ["form.validate", true],
+    ["form.reset", true],
+    ["form.touchAll", true],
+  ]);
+});
+
 Deno.test("bindFormField synchronizes controller values with signal-backed widgets", () => {
   const form = new FormController<SettingsForm>([
     { name: "route", initialValue: "overview" },
@@ -157,3 +220,7 @@ Deno.test("bindFormField supports target-first sync and parse format transforms"
 
   dispose();
 });
+
+function commandDisabled(command: { disabled?: boolean | (() => boolean) }): boolean | undefined {
+  return typeof command.disabled === "function" ? command.disabled() : command.disabled;
+}

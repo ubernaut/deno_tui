@@ -599,13 +599,22 @@ const stopBinding = bindFormField(form, "route", input.text);
 form.setValue("route", "runtime");
 const ok = form.validate();
 const formState = form.inspect();
+
+const stopFormCommands = bindFormCommands(app.commands, form, {
+  id: "settings",
+  idPrefix: "settingsForm",
+  group: "settings",
+  includeFieldCommands: true,
+});
 ```
 
 `bindFormField()` connects a controller field to any `Signal`-backed widget value, including `Input.text`,
 `CheckBox.checked`, `RadioGroup.selectedValue`, or a custom adapter signal. It accepts `parse` and `format` transforms
 for non-string values and returns a disposer for dynamic forms. `FormController.register()` and `registerAll()` also
 return disposers, while `setValues()`, `touchAll()`, `isDirty()`, `isTouched()`, `isValid()`, and `inspect()` keep
-multi-field settings panels testable without coupling them to a concrete widget tree.
+multi-field settings panels testable without coupling them to a concrete widget tree. `formCommands()` and
+`bindFormCommands()` expose validate, reset, touch-all, and optional per-field validate/touch actions through the shared
+command registry so form workflows can appear in command palettes, menus, key help, or plugin-provided surfaces.
 
 `bindRouteSignal()` keeps a `RouteManager` active route synchronized with a plain or persistent route id signal:
 
