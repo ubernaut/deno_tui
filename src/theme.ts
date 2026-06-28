@@ -15,6 +15,74 @@ export function replaceEmptyStyle(style: Style, replacement: Style): Style {
   return style === emptyStyle ? replacement : style;
 }
 
+export type AnsiColorName =
+  | "black"
+  | "red"
+  | "green"
+  | "yellow"
+  | "blue"
+  | "magenta"
+  | "cyan"
+  | "white"
+  | "brightBlack"
+  | "brightRed"
+  | "brightGreen"
+  | "brightYellow"
+  | "brightBlue"
+  | "brightMagenta"
+  | "brightCyan"
+  | "brightWhite";
+
+export type AnsiRgbColor = readonly [red: number, green: number, blue: number];
+export type AnsiColor = AnsiColorName | AnsiRgbColor | number;
+
+const ANSI_COLOR_NAMES: readonly AnsiColorName[] = [
+  "black",
+  "red",
+  "green",
+  "yellow",
+  "blue",
+  "magenta",
+  "cyan",
+  "white",
+  "brightBlack",
+  "brightRed",
+  "brightGreen",
+  "brightYellow",
+  "brightBlue",
+  "brightMagenta",
+  "brightCyan",
+  "brightWhite",
+];
+
+export interface AnsiStyleSpec {
+  foreground?: AnsiColor;
+  background?: AnsiColor;
+  bold?: boolean;
+  dim?: boolean;
+  italic?: boolean;
+  underline?: boolean;
+  inverse?: boolean;
+  strikethrough?: boolean;
+}
+
+export type AnsiThemeTokenSpecs = Partial<Record<ThemeTokenName, AnsiStyleSpec>>;
+
+export function createAnsiStyle(spec: AnsiStyleSpec): Style {
+  const codes = ansiStyleCodes(spec);
+  if (codes.length === 0) return emptyStyle;
+  const open = `\x1b[${codes.join(";")}m`;
+  return (value) => `${open}${value}\x1b[0m`;
+}
+
+export function createAnsiThemeTokens(specs: AnsiThemeTokenSpecs): Partial<ThemeTokens> {
+  const tokens: Partial<ThemeTokens> = {};
+  for (const [name, spec] of Object.entries(specs) as [ThemeTokenName, AnsiStyleSpec][]) {
+    tokens[name] = createAnsiStyle(spec);
+  }
+  return tokens;
+}
+
 /** Applies default values to properties (lower one hierarchy or `emptyStyle`) that aren't set */
 export function hierarchizeTheme(input: Partial<Theme> = {}): Theme {
   input.base ??= emptyStyle;
@@ -128,21 +196,25 @@ export const themePalettes: Record<ThemePaletteName, Partial<ThemeTokens>> = {
     surface: emptyStyle,
   },
   neon: {
-    foreground: (value) => `\x1b[38;2;230;255;246m${value}\x1b[0m`,
-    muted: (value) => `\x1b[38;2;104;124;132m${value}\x1b[0m`,
-    accent: (value) => `\x1b[38;2;31;231;210m${value}\x1b[0m`,
-    success: (value) => `\x1b[38;2;156;255;58m${value}\x1b[0m`,
-    warning: (value) => `\x1b[38;2;255;196;87m${value}\x1b[0m`,
-    danger: (value) => `\x1b[38;2;255;79;216m${value}\x1b[0m`,
-    surface: (value) => `\x1b[48;2;7;16;23m${value}\x1b[0m`,
+    ...createAnsiThemeTokens({
+      foreground: { foreground: [230, 255, 246] },
+      muted: { foreground: [104, 124, 132] },
+      accent: { foreground: [31, 231, 210] },
+      success: { foreground: [156, 255, 58] },
+      warning: { foreground: [255, 196, 87] },
+      danger: { foreground: [255, 79, 216] },
+      surface: { background: [7, 16, 23] },
+    }),
   },
   terminal: {
-    foreground: (value) => `\x1b[37m${value}\x1b[0m`,
-    muted: (value) => `\x1b[90m${value}\x1b[0m`,
-    accent: (value) => `\x1b[36m${value}\x1b[0m`,
-    success: (value) => `\x1b[32m${value}\x1b[0m`,
-    warning: (value) => `\x1b[33m${value}\x1b[0m`,
-    danger: (value) => `\x1b[31m${value}\x1b[0m`,
+    ...createAnsiThemeTokens({
+      foreground: { foreground: "white" },
+      muted: { foreground: "brightBlack" },
+      accent: { foreground: "cyan" },
+      success: { foreground: "green" },
+      warning: { foreground: "yellow" },
+      danger: { foreground: "red" },
+    }),
     surface: emptyStyle,
   },
 };
@@ -721,4 +793,39 @@ function isThemeStyleReferencePipeline(
 
 function positiveModulo(value: number, divisor: number): number {
   return ((value % divisor) + divisor) % divisor;
+}
+
+function ansiStyleCodes(spec: AnsiStyleSpec): number[] {
+  const codes: number[] = [];
+  if (spec.bold) codes.push(1);
+  if (spec.dim) codes.push(2);
+  if (spec.italic) codes.push(3);
+  if (spec.underline) codes.push(4);
+  if (spec.inverse) codes.push(7);
+  if (spec.strikethrough) codes.push(9);
+  if (spec.foreground !== undefined) codes.push(...ansiColorCodes(spec.foreground, false));
+  if (spec.background !== undefined) codes.push(...ansiColorCodes(spec.background, true));
+  return codes;
+}
+
+function ansiColorCodes(color: AnsiColor, background: boolean): number[] {
+  if (typeof color === "number") {
+    return [background ? 48 : 38, 5, clampAnsiByte(color)];
+  }
+
+  if (typeof color !== "string") {
+    return [background ? 48 : 38, 2, ...color.map(clampAnsiByte)];
+  }
+
+  return [ansiNamedColorCode(color, background)];
+}
+
+function ansiNamedColorCode(color: AnsiColorName, background: boolean): number {
+  const index = ANSI_COLOR_NAMES.indexOf(color);
+  const base = background ? 40 : 30;
+  return index < 8 ? base + index : base + 60 + index - 8;
+}
+
+function clampAnsiByte(value: number): number {
+  return Math.max(0, Math.min(255, Math.round(value)));
 }

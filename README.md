@@ -686,6 +686,8 @@ import {
   bindComponentTheme,
   CommandRegistry,
   composeThemeOptions,
+  createAnsiStyle,
+  createAnsiThemeTokens,
   createCommandSurface,
   createRuntimeStore,
   createThemeEngine,
@@ -696,6 +698,11 @@ import {
 } from "https://deno.land/x/tui@VERSION/mod.ts";
 
 const appTheme = composeThemeOptions({
+  tokens: createAnsiThemeTokens({
+    foreground: { foreground: [230, 255, 246] },
+    accent: { foreground: "cyan", bold: true },
+    surface: { background: 235 },
+  }),
   components: {
     Field: {
       base: {
@@ -717,7 +724,7 @@ const appTheme = composeThemeOptions({
 const themeEngine = createThemeEngine("neon", appTheme)
   .extend({
     components: {
-      Modal: { variants: { palette: { focused: crayon.cyan } } },
+      Modal: { variants: { palette: { focused: createAnsiStyle({ foreground: "cyan" }) } } },
     },
   });
 
@@ -783,7 +790,10 @@ definitions can also reference semantic token names such as `"foreground"`, `"ac
 instead of concrete style functions, so variants automatically follow the active palette. A state style may also be an
 array of token names and style functions; the engine composes the pipeline in order. Component definitions can `extend`
 one or more other definitions, which makes aliases like `ComboBox -> Field` or shared role themes cheap while preserving
-variants and app-level overrides. `themeSelectionCommands()`, `themeLayerCommands()`, and `themeCommands()` project the
+variants and app-level overrides. `createAnsiStyle()` and `createAnsiThemeTokens()` provide a small serializable
+style-spec layer for theme engines: packs can use named ANSI colors, 256-color indexes, RGB tuples, and text attributes
+like bold or underline without embedding raw escape sequences throughout the app. The built-in `neon` and `terminal`
+palettes use the same helpers. `themeSelectionCommands()`, `themeLayerCommands()`, and `themeCommands()` project the
 active `ThemeProvider` into normal command registry entries for "next theme", "previous theme", explicit theme
 selection, and layer enable/disable/toggle actions. The generated commands use dynamic disabled predicates, so the
 active theme and current layer states stay accurate when they are shown in a command palette, menu bar, context menu, or

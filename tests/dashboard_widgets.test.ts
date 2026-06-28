@@ -12,6 +12,8 @@ import { renderSparkline } from "../src/components/sparkline.ts";
 import {
   composeStyles,
   composeThemeOptions,
+  createAnsiStyle,
+  createAnsiThemeTokens,
   createTheme,
   createThemeEngine,
   createThemeLayerStack,
@@ -87,6 +89,27 @@ Deno.test("createTheme fills semantic token defaults", () => {
   const theme = createTheme({ accent: emptyStyle });
   assertEquals(theme.focused, emptyStyle);
   assertEquals(theme.tokens.warning, emptyStyle);
+});
+
+Deno.test("ANSI theme style specs create reusable terminal styles", () => {
+  assertEquals(createAnsiStyle({})("x"), "x");
+  assertEquals(createAnsiStyle({ foreground: "cyan", bold: true })("x"), "\x1b[1;36mx\x1b[0m");
+  assertEquals(
+    createAnsiStyle({ foreground: [31.4, 231.2, 210.8], background: 17, underline: true })("x"),
+    "\x1b[4;38;2;31;231;211;48;5;17mx\x1b[0m",
+  );
+});
+
+Deno.test("ANSI theme token specs build semantic token maps", () => {
+  const tokens = createAnsiThemeTokens({
+    foreground: { foreground: "white" },
+    accent: { foreground: [31, 231, 210] },
+    surface: { background: 235 },
+  });
+
+  assertEquals(tokens.foreground?.("x"), "\x1b[37mx\x1b[0m");
+  assertEquals(tokens.accent?.("x"), "\x1b[38;2;31;231;210mx\x1b[0m");
+  assertEquals(tokens.surface?.("x"), "\x1b[48;5;235mx\x1b[0m");
 });
 
 Deno.test("ThemeEngine resolves component variants over global tokens", () => {
