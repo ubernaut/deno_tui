@@ -1,5 +1,6 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { Component } from "./component.ts";
+import type { KeyPressEvent } from "./input_reader/types.ts";
 
 export interface Focusable {
   state: Component["state"];
@@ -58,6 +59,37 @@ export class FocusManager {
       item.state.value = itemIndex === this.index ? "focused" : "base";
     });
   }
+}
+
+export interface FocusNavigationTarget {
+  on(type: "keyPress", listener: (event: KeyPressEvent) => void | Promise<void>): () => void;
+}
+
+export interface FocusNavigationOptions {
+  key?: KeyPressEvent["key"];
+  reverseWithShift?: boolean;
+  items?: readonly Focusable[];
+}
+
+export function bindFocusNavigation(
+  target: FocusNavigationTarget,
+  manager: FocusManager,
+  options: FocusNavigationOptions = {},
+): () => void {
+  for (const item of options.items ?? []) {
+    manager.register(item);
+  }
+
+  const key = options.key ?? "tab";
+  const reverseWithShift = options.reverseWithShift ?? true;
+  return target.on("keyPress", (event) => {
+    if (event.ctrl || event.meta || event.key !== key) return;
+    if (reverseWithShift && event.shift) {
+      manager.previous();
+    } else {
+      manager.next();
+    }
+  });
 }
 
 export class FocusScope {

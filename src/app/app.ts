@@ -1,5 +1,5 @@
 // Copyright 2023 Im-Beast. MIT license.
-import { FocusManager } from "../focus.ts";
+import { bindFocusNavigation, FocusManager, type FocusNavigationOptions } from "../focus.ts";
 import { KeymapRegistry } from "../keymap.ts";
 import { Tui, type TuiOptions } from "../tui.ts";
 import { type Action, ActionBus } from "./actions.ts";
@@ -37,6 +37,10 @@ export class TuiApp<TAction extends Action = Action, TRoute extends Route = Rout
 
   executeCommand(id: string): Promise<boolean> {
     return this.commands.execute(id, (action) => this.actions.dispatch(action));
+  }
+
+  enableFocusNavigation(options: FocusNavigationOptions = {}): () => void {
+    return bindFocusNavigation(this.tui, this.focus, options);
   }
 }
 

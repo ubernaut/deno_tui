@@ -209,7 +209,8 @@ This fork exports lightweight app primitives for larger TUIs:
 - `FocusScope`
 - `KeymapRegistry`
 
-They are optional and composable. Existing component-first apps continue to work.
+They are optional and composable. Existing component-first apps continue to work. Use `app.enableFocusNavigation()` or
+`bindFocusNavigation()` to opt into Tab/Shift+Tab traversal for registered focusable components.
 
 ## Theming
 

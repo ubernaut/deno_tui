@@ -158,7 +158,7 @@ new StatusBar({
   rectangle: new Computed(() => ({ column: 0, row: 0, width: app.tui.rectangle.value.width, height: 1 })),
 });
 
-new MenuBar({
+const menuBar = new MenuBar({
   parent: app.tui,
   theme: themeEngine.component("MenuBar"),
   zIndex: 2,
@@ -275,7 +275,8 @@ const scrollArea = new ScrollArea({
     height: Math.max(4, app.tui.rectangle.value.height - 17),
   })),
 });
-scrollArea.state.value = "focused";
+app.enableFocusNavigation({ items: [menuBar, scrollArea] });
+app.focus.focus(scrollArea);
 
 for (const [index, line] of scrollLines.entries()) {
   new Text({
