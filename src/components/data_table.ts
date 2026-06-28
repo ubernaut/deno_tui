@@ -24,6 +24,7 @@ export interface DataTableState {
   page?: number;
   pageSize?: number;
   selectedIndex?: number;
+  selectedKey?: string;
 }
 
 export interface DataTableView<TRow extends Record<string, unknown> = Record<string, unknown>> {
@@ -33,33 +34,45 @@ export interface DataTableView<TRow extends Record<string, unknown> = Record<str
   pageSize: number;
   pageCount: number;
   selectedIndex: number;
+  selectedKey?: string;
+  selectedRow?: TRow;
 }
 
 export interface DataTableControllerOptions<TRow extends Record<string, unknown> = Record<string, unknown>> {
   rows: readonly TRow[] | Signal<readonly TRow[]>;
   columns: readonly DataColumn<TRow>[] | Signal<readonly DataColumn<TRow>[]>;
   initialState?: DataTableState;
+  rowKey?: (row: TRow, index: number) => string;
 }
 
 export function createDataTableView<TRow extends Record<string, unknown>>(
   rows: readonly TRow[],
   columns: readonly DataColumn<TRow>[],
   state: DataTableState = {},
+  rowKey?: (row: TRow, index: number) => string,
 ): DataTableView<TRow> {
   const filtered = filterDataRows(rows, columns, state.query ?? "");
   const sorted = sortDataRows(filtered, state.sort);
   const pageSize = Math.max(1, Math.floor(state.pageSize ?? (sorted.length || 1)));
+  const selectedAbsoluteIndex = selectedRowIndex(sorted, state, rowKey);
+  const pageForSelection = selectedAbsoluteIndex >= 0 ? Math.floor(selectedAbsoluteIndex / pageSize) : undefined;
   const pageCount = Math.max(1, Math.ceil(sorted.length / pageSize));
-  const page = clamp(Math.floor(state.page ?? 0), 0, pageCount - 1);
+  const page = clamp(Math.floor(pageForSelection ?? state.page ?? 0), 0, pageCount - 1);
   const start = page * pageSize;
   const pageRows = sorted.slice(start, start + pageSize);
+  const selectedIndex = selectedAbsoluteIndex >= start && selectedAbsoluteIndex < start + pageRows.length
+    ? selectedAbsoluteIndex - start
+    : clampSelectionIndex(pageRows.length, state.selectedIndex ?? 0);
+  const selectedRow = pageRows[selectedIndex];
   return {
     rows: pageRows,
     totalRows: sorted.length,
     page,
     pageSize,
     pageCount,
-    selectedIndex: clampSelectionIndex(pageRows.length, state.selectedIndex ?? 0),
+    selectedIndex,
+    selectedKey: selectedRow && rowKey ? rowKey(selectedRow, start + selectedIndex) : undefined,
+    selectedRow,
   };
 }
 
@@ -68,14 +81,18 @@ export class DataTableController<TRow extends Record<string, unknown> = Record<s
   readonly columns: Signal<readonly DataColumn<TRow>[]>;
   readonly state: Signal<DataTableState>;
   readonly view: Computed<DataTableView<TRow>>;
+  readonly #rowKey?: (row: TRow, index: number) => string;
 
   constructor(options: DataTableControllerOptions<TRow>) {
     this.rows = options.rows instanceof Signal ? options.rows : new Signal<readonly TRow[]>([...options.rows]);
     this.columns = options.columns instanceof Signal
       ? options.columns
       : new Signal<readonly DataColumn<TRow>[]>([...options.columns]);
+    this.#rowKey = options.rowKey;
     this.state = new Signal<DataTableState>({ ...(options.initialState ?? {}) }, { deepObserve: true });
-    this.view = new Computed(() => createDataTableView(this.rows.value, this.columns.value, this.state.value));
+    this.view = new Computed(() =>
+      createDataTableView(this.rows.value, this.columns.value, this.state.value, this.#rowKey)
+    );
   }
 
   setQuery(query: string): void {
@@ -109,7 +126,16 @@ export class DataTableController<TRow extends Record<string, unknown> = Record<s
   }
 
   select(index: number): void {
-    this.patchState({ selectedIndex: clampSelectionIndex(this.view.peek().rows.length, index) });
+    const view = this.view.peek();
+    const selectedIndex = clampSelectionIndex(view.rows.length, index);
+    this.patchState({
+      selectedIndex,
+      selectedKey: this.keyForVisibleRow(selectedIndex),
+    });
+  }
+
+  selectKey(key: string | undefined): void {
+    this.patchState({ selectedKey: key, selectedIndex: 0 });
   }
 
   moveSelection(delta: number): void {
@@ -117,8 +143,7 @@ export class DataTableController<TRow extends Record<string, unknown> = Record<s
   }
 
   selectedRow(): TRow | undefined {
-    const view = this.view.peek();
-    return view.rows[view.selectedIndex];
+    return this.view.peek().selectedRow;
   }
 
   dispose(): void {
@@ -130,6 +155,13 @@ export class DataTableController<TRow extends Record<string, unknown> = Record<s
       ...this.state.peek(),
       ...patch,
     };
+  }
+
+  private keyForVisibleRow(index: number): string | undefined {
+    const view = this.view.peek();
+    const row = view.rows[index];
+    if (!row || !this.#rowKey) return undefined;
+    return this.#rowKey(row, view.page * view.pageSize + index);
   }
 }
 
@@ -192,6 +224,15 @@ export function canSortColumn<TRow extends Record<string, unknown>>(
   columnId: string,
 ): boolean {
   return columns.some((column) => column.id === columnId && column.sortable !== false);
+}
+
+function selectedRowIndex<TRow extends Record<string, unknown>>(
+  rows: readonly TRow[],
+  state: DataTableState,
+  rowKey?: (row: TRow, index: number) => string,
+): number {
+  if (!rowKey || state.selectedKey === undefined) return -1;
+  return rows.findIndex((row, index) => rowKey(row, index) === state.selectedKey);
 }
 
 function stringifyCell(value: unknown): string {

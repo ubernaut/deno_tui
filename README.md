@@ -161,12 +161,15 @@ const table = new DataTableController({
     { id: "name", label: "Name", sortable: true },
     { id: "cpu", label: "CPU", sortable: true },
   ],
+  rowKey: (row) => String(row.pid),
   initialState: { pageSize: 20 },
 });
 
 table.setQuery(search.value);
+table.selectKey(String(persistedPid));
 table.toggleSort("cpu");
 const visibleRows = table.view.value.rows;
+const selectedProcess = table.selectedRow();
 ```
 
 For metric-heavy dashboards, `MetricSeriesController`, `pushMetricValue()`, and `metricSeriesStats()` provide the shared

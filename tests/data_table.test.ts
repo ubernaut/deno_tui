@@ -42,7 +42,26 @@ Deno.test("createDataTableView filters sorts paginates and clamps selection", ()
   assertEquals(view.page, 1);
   assertEquals(view.pageCount, 3);
   assertEquals(view.selectedIndex, 0);
+  assertEquals(view.selectedRow, { pid: 10, name: "deno", cpu: 12 });
   assertEquals(view.rows, [{ pid: 10, name: "deno", cpu: 12 }]);
+});
+
+Deno.test("createDataTableView can preserve selected rows by key", () => {
+  const view = createDataTableView(
+    rows,
+    columns,
+    {
+      sort: { columnId: "cpu", direction: "desc" },
+      pageSize: 1,
+      selectedKey: "2",
+    },
+    (row) => String(row.pid),
+  );
+
+  assertEquals(view.page, 2);
+  assertEquals(view.selectedIndex, 0);
+  assertEquals(view.selectedKey, "2");
+  assertEquals(view.selectedRow, { pid: 2, name: "shell", cpu: 3 });
 });
 
 Deno.test("data table sorting handles numbers and numeric strings", () => {
@@ -112,6 +131,39 @@ Deno.test("DataTableController reacts to row signals and clamps selection", asyn
   controller.dispose();
   source.value = rows;
   assertEquals(controller.view.peek().rows, [{ pid: 33, name: "new", cpu: 1 }]);
+});
+
+Deno.test("DataTableController keeps keyed selection across sort filter and refresh", async () => {
+  const source = new Signal<readonly ProcessRow[]>(rows);
+  const controller = new DataTableController({
+    rows: source,
+    columns,
+    rowKey: (row) => String(row.pid),
+    initialState: { pageSize: 1 },
+  });
+  await Promise.resolve();
+
+  controller.selectKey("2");
+  assertEquals(controller.view.peek().page, 1);
+  assertEquals(controller.selectedRow()?.name, "shell");
+
+  controller.toggleSort("cpu");
+  assertEquals(controller.view.peek().page, 0);
+  assertEquals(controller.view.peek().selectedKey, "2");
+  assertEquals(controller.selectedRow()?.name, "shell");
+
+  source.value = [
+    { pid: 99, name: "other", cpu: 1 },
+    { pid: 2, name: "shell2", cpu: 99 },
+  ];
+  assertEquals(controller.view.peek().selectedKey, "2");
+  assertEquals(controller.selectedRow()?.name, "shell2");
+
+  controller.setQuery("other");
+  assertEquals(controller.view.peek().selectedKey, "99");
+  assertEquals(controller.selectedRow()?.name, "other");
+
+  controller.dispose();
 });
 
 Deno.test("DataTableController ignores unsortable columns", async () => {
