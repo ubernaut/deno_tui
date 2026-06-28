@@ -1,9 +1,11 @@
 import { assertEquals } from "./deps.ts";
 import { createApp } from "../src/app/app.ts";
 import { ActionBus } from "../src/app/actions.ts";
+import { bindCommandKeys, commandForKeyEvent } from "../src/app/command_bindings.ts";
 import { CommandRegistry } from "../src/app/commands.ts";
 import { HistoryStack } from "../src/app/history.ts";
 import { RouteManager } from "../src/app/router.ts";
+import { createTestKeyPress, TestKeyPressTarget } from "../src/testing/mod.ts";
 import type { Tui } from "../src/tui.ts";
 
 Deno.test("ActionBus dispatches to subscribers in registration order", async () => {
@@ -65,6 +67,71 @@ Deno.test("CommandRegistry projects commands into menus palettes and key binding
   ]);
 });
 
+Deno.test("commandForKeyEvent matches enabled command bindings by modifiers and group", () => {
+  const registry = new CommandRegistry<{ type: "route"; payload: string }>();
+  registry.register({
+    id: "route.home",
+    label: "Go Home",
+    group: "routes",
+    binding: { key: "1" },
+    action: { type: "route", payload: "home" },
+  });
+  registry.register({
+    id: "route.admin",
+    label: "Admin",
+    group: "routes",
+    disabled: true,
+    binding: { key: "a", ctrl: true },
+    action: { type: "route", payload: "admin" },
+  });
+  registry.register({
+    id: "panel.next",
+    label: "Next Panel",
+    group: "panels",
+    binding: { key: "1" },
+    action: { type: "route", payload: "panel" },
+  });
+
+  assertEquals(commandForKeyEvent(registry, createTestKeyPress("1"))?.id, "panel.next");
+  assertEquals(commandForKeyEvent(registry, createTestKeyPress("1"), { group: "routes" })?.id, "route.home");
+  assertEquals(commandForKeyEvent(registry, createTestKeyPress("a", { ctrl: true })), undefined);
+});
+
+Deno.test("bindCommandKeys executes matching commands and unsubscribes", async () => {
+  const registry = new CommandRegistry<{ type: "append"; payload: string }>();
+  const target = new TestKeyPressTarget();
+  const seen: string[] = [];
+  registry.register({
+    id: "append.a",
+    label: "Append A",
+    binding: { key: "a" },
+    action: { type: "append", payload: "a" },
+  });
+  registry.register({
+    id: "append.b",
+    label: "Append B",
+    binding: { key: "b", shift: true },
+    action: () => ({ type: "append", payload: "b" }),
+  });
+
+  const dispose = bindCommandKeys(target, registry, (action) => {
+    seen.push(action.payload);
+  });
+  target.key("a");
+  target.key("b");
+  target.key("b", { shift: true });
+  await Promise.resolve();
+
+  assertEquals(seen, ["a", "b"]);
+  assertEquals(target.listenerCount(), 1);
+
+  dispose();
+  target.key("a");
+  await Promise.resolve();
+  assertEquals(seen, ["a", "b"]);
+  assertEquals(target.listenerCount(), 0);
+});
+
 Deno.test("TuiApp dispatches command actions through the action bus", async () => {
   const tui = { destroy() {} } as unknown as Tui;
   const app = createApp<{ type: "toast"; payload: string }>({ tui });
@@ -81,6 +148,31 @@ Deno.test("TuiApp dispatches command actions through the action bus", async () =
   assertEquals(await app.executeCommand("toast.show"), true);
   assertEquals(await app.executeCommand("missing"), false);
   assertEquals(seen, ["hello"]);
+  app.destroy();
+});
+
+Deno.test("TuiApp can bind command keys to its action bus", async () => {
+  const target = new TestKeyPressTarget();
+  const tui = { on: target.on.bind(target), destroy() {} } as unknown as Tui;
+  const app = createApp<{ type: "toast"; payload: string }>({ tui });
+  const seen: string[] = [];
+  app.actions.subscribe((action) => {
+    seen.push(action.payload);
+  });
+  app.commands.register({
+    id: "toast.show",
+    label: "Show Toast",
+    binding: { key: "t", ctrl: true },
+    action: { type: "toast", payload: "hello" },
+  });
+
+  const dispose = app.enableCommandKeys();
+  target.key("t");
+  target.key("t", { ctrl: true });
+  await Promise.resolve();
+
+  assertEquals(seen, ["hello"]);
+  dispose();
   app.destroy();
 });
 

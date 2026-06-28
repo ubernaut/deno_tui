@@ -243,6 +243,22 @@ This fork exports lightweight app primitives for larger TUIs:
 They are optional and composable. Existing component-first apps continue to work. Use `app.enableFocusNavigation()` or
 `bindFocusNavigation()` to opt into Tab/Shift+Tab traversal for registered focusable components.
 
+Commands can also bind directly to key events:
+
+```ts
+app.commands.register({
+  id: "route.runtime",
+  label: "Runtime",
+  binding: { key: "2" },
+  action: { type: "route", payload: "runtime" },
+});
+
+const stopCommandKeys = app.enableCommandKeys();
+```
+
+For embedded command surfaces, use `bindCommandKeys(target, registry, dispatch)` with any object that emits `keyPress`
+events.
+
 `FormController` keeps form state separate from rendering:
 
 ```ts

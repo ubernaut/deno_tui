@@ -1,6 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 export * from "./actions.ts";
 export * from "./app.ts";
+export * from "./command_bindings.ts";
 export * from "./commands.ts";
 export * from "./form_bindings.ts";
 export * from "./forms.ts";

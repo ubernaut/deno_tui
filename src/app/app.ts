@@ -3,6 +3,7 @@ import { bindFocusNavigation, FocusManager, type FocusNavigationOptions } from "
 import { KeymapRegistry } from "../keymap.ts";
 import { Tui, type TuiOptions } from "../tui.ts";
 import { type Action, ActionBus } from "./actions.ts";
+import { bindCommandKeys, type CommandKeyBindingOptions } from "./command_bindings.ts";
 import { CommandRegistry } from "./commands.ts";
 import { type Route, RouteManager } from "./router.ts";
 
@@ -41,6 +42,10 @@ export class TuiApp<TAction extends Action = Action, TRoute extends Route = Rout
 
   enableFocusNavigation(options: FocusNavigationOptions = {}): () => void {
     return bindFocusNavigation(this.tui, this.focus, options);
+  }
+
+  enableCommandKeys(options: CommandKeyBindingOptions = {}): () => void {
+    return bindCommandKeys(this.tui, this.commands, (action) => this.actions.dispatch(action), options);
   }
 }
 
