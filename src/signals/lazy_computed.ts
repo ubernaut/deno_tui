@@ -5,8 +5,6 @@ import { Flusher } from "./flusher.ts";
 
 import type { LazyDependant } from "./types.ts";
 
-// TODO: Tests
-
 interface LazyComputedOptions {
   interval: number;
   flusher: Flusher;
@@ -82,11 +80,20 @@ export class LazyComputed<T> extends Computed<T> implements LazyDependant {
       const timeDifference = performance.now() - this.lastFired;
       if (timeDifference < interval) {
         if (this.timeout) clearTimeout(this.timeout);
-        this.timeout = setTimeout(this.#updateCallback!, timeDifference);
+        this.timeout = setTimeout(this.#updateCallback!, interval - timeDifference);
       } else {
         super.update(cause);
         this.lastFired = performance.now();
       }
     }
+  }
+
+  override dispose(): void {
+    if (this.timeout) {
+      clearTimeout(this.timeout);
+      this.timeout = undefined;
+    }
+    this.flusher?.dependants.delete(this);
+    super.dispose();
   }
 }

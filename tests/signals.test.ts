@@ -1,5 +1,5 @@
 // Copyright 2023 Im-Beast. MIT license.
-import { Computed, Effect, Signal } from "../src/signals/mod.ts";
+import { Computed, Effect, Flusher, LazyComputed, LazyEffect, Signal } from "../src/signals/mod.ts";
 import { IS_REACTIVE } from "../src/signals/reactivity.ts";
 import { assertArrayIncludes, assertEquals, assertThrows } from "./deps.ts";
 
@@ -396,4 +396,118 @@ Deno.test("signals/mod.ts", async (t) => {
       `s1:${15}, c1:${30} | s2: ${10}, c2:${30} | c3: ${900}`,
     );
   });
+
+  await t.step("LazyComputed", async (t) => {
+    await t.step("coalesces interval updates until the remaining delay elapses", async () => {
+      const signal = new Signal(1);
+      const computed = new LazyComputed(() => signal.value * 2, 25);
+      await Promise.resolve();
+
+      signal.value = 2;
+      assertEquals(computed.value, 2);
+
+      await delay(8);
+      assertEquals(computed.value, 2);
+
+      signal.value = 3;
+      await delay(35);
+      assertEquals(computed.value, 6);
+      computed.dispose();
+    });
+
+    await t.step("waits for an explicit flusher", async () => {
+      const flusher = new Flusher();
+      const signal = new Signal(1);
+      const computed = new LazyComputed(() => signal.value * 2, flusher);
+      await Promise.resolve();
+
+      signal.value = 4;
+      assertEquals(computed.value, 2);
+      assertEquals(flusher.dependants.has(computed), true);
+
+      flusher.flush();
+      assertEquals(computed.value, 8);
+      assertEquals(flusher.dependants.has(computed), false);
+      computed.dispose();
+    });
+
+    await t.step("clears pending lazy work on dispose", async () => {
+      const flusher = new Flusher();
+      const signal = new Signal(1);
+      const computed = new LazyComputed(() => signal.value * 2, { interval: 25, flusher });
+      await Promise.resolve();
+
+      signal.value = 5;
+      assertEquals(computed.value, 2);
+      assertEquals(flusher.dependants.has(computed), true);
+
+      computed.dispose();
+      await delay(35);
+      flusher.flush();
+      assertEquals(computed.value, 2);
+      assertEquals(flusher.dependants.has(computed), false);
+    });
+  });
+
+  await t.step("LazyEffect", async (t) => {
+    await t.step("coalesces interval updates until the remaining delay elapses", async () => {
+      const signal = new Signal(1);
+      const values: number[] = [];
+      const effect = new LazyEffect(() => {
+        values.push(signal.value);
+      }, 25);
+      await Promise.resolve();
+
+      signal.value = 2;
+      signal.value = 3;
+      assertEquals(values, [1]);
+
+      await delay(35);
+      assertEquals(values, [1, 3]);
+      effect.dispose();
+    });
+
+    await t.step("runs flusher-only effects when flushed", async () => {
+      const flusher = new Flusher();
+      const signal = new Signal(1);
+      const values: number[] = [];
+      const effect = new LazyEffect(() => {
+        values.push(signal.value);
+      }, flusher);
+      await Promise.resolve();
+
+      signal.value = 4;
+      assertEquals(values, [1]);
+      assertEquals(flusher.dependants.has(effect), true);
+
+      flusher.flush();
+      assertEquals(values, [1, 4]);
+      assertEquals(flusher.dependants.has(effect), false);
+      effect.dispose();
+    });
+
+    await t.step("clears pending lazy effect work on dispose", async () => {
+      const flusher = new Flusher();
+      const signal = new Signal(1);
+      const values: number[] = [];
+      const effect = new LazyEffect(() => {
+        values.push(signal.value);
+      }, { interval: 25, flusher });
+      await Promise.resolve();
+
+      signal.value = 7;
+      assertEquals(values, [1]);
+      assertEquals(flusher.dependants.has(effect), true);
+
+      effect.dispose();
+      await delay(35);
+      flusher.flush();
+      assertEquals(values, [1]);
+      assertEquals(flusher.dependants.has(effect), false);
+    });
+  });
 });
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}

@@ -648,6 +648,19 @@ const rect = new Signal({ column: 0, row: 0 }, { deepObserve: true });
 rect.value.column = 5; // triggers dependants
 ```
 
+Use `LazyComputed` and `LazyEffect` when fast-changing inputs should be coalesced. Pass an interval to debounce updates,
+or pass a `Flusher` to hold updates until an explicit frame boundary:
+
+```ts
+const frame = new Flusher();
+const visibleTotal = new LazyComputed(() => rows.value.length, frame);
+
+rows.value = nextRows;
+// visibleTotal.value is still the previous value here.
+frame.flush();
+// visibleTotal.value now reflects nextRows.
+```
+
 ## Views
 
 A `View` creates a scrollable region. Mount components inside it by passing the view instance as the `view` option:
