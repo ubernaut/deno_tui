@@ -137,6 +137,13 @@ export const visualizationLaunchTargets: readonly VisualizationLaunchTarget[] = 
     tags: ["theme", "catalog"],
   },
   {
+    task: "theme-resolver",
+    aliases: ["theme-resolver", "theme-resolution", "theme-cache"],
+    description: "cached theme resolver and renderer lookup demo",
+    category: "demo",
+    tags: ["theme", "cache", "renderer"],
+  },
+  {
     task: "capabilities",
     aliases: ["capabilities", "caps", "runtime"],
     description: "runtime capability report",

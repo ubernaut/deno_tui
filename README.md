@@ -1902,6 +1902,7 @@ const preset = findAsciiDemoPreset("mixed-best");
 | `examples/theme_engines.ts`        | Theme engine factory registry and prewarm demo               |
 | `examples/theme_pipeline.ts`       | Runtime theme transform pipeline and prewarm demo            |
 | `examples/theme_gallery.ts`        | Searchable theme gallery and preview report                  |
+| `examples/theme_resolver.ts`       | Cached theme resolver and renderer lookup demo               |
 | `examples/worker_pool.ts`          | WorkerPool concurrency example                               |
 | `examples/action_middleware.ts`    | Action middleware and plugin pipeline example                |
 | `examples/cached_resource.ts`      | Cached async resource loader example                         |
@@ -1916,6 +1917,7 @@ Run the theme manifest and engine demos with:
 deno task theme-manifest
 deno task theme-engines
 deno task theme-pipeline
+deno task theme-resolver
 ```
 
 ### Launching the added visualizations
@@ -1952,6 +1954,7 @@ tuning.
 ./visualization theme-engines
 ./visualization theme-pipeline
 ./visualization theme-gallery
+./visualization theme-resolver
 ./visualization capabilities
 ./visualization benchmark
 ./visualization api-inventory
@@ -1967,18 +1970,19 @@ for 3D panels. Added 3D visualization IDs include `three-lattice`, `three-atfiel
 `worker` for abortable worker-pool concurrency, `actions` for middleware-based action dispatch, `resource` for cached
 async resource loaders, `pipeline` for cached scheduler-backed transforms, `theme-manifest` for serializable theme
 packs, `theme-engines` for factory prewarming, `theme-pipeline` for runtime theme transforms, `theme-gallery` for
-searchable theme previews, `capabilities` for platform feature detection, `benchmark` for performance smoke checks,
-`api-inventory` for public export graph inspection, `components` for widget catalog reports, `layout-recipe` for
-responsive recipe inspection, `grwizard` for the responsive GPU/model wizard, and `health` for the contributor gate. The
-launcher metadata is also exported from `scripts/visualization_launcher.ts` as a queryable catalog:
-`queryVisualizationLaunchTargets()`, `createVisualizationLaunchReport()`, `inspectVisualizationLaunchTargets()`, and
-`formatVisualizationLaunchMarkdown()` provide the same structured target list for custom launchers, docs pages, and CI
-reports without duplicating aliases or descriptions. Benchmark runs print per-case timings plus an aggregate summary;
-`deno task benchmark -- --list` prints the benchmark catalog without running workloads,
-`deno task benchmark -- --list --json` emits that catalog as structured data, and `deno task benchmark -- --json` emits
-the same threshold-aware timing summary as structured data and exits nonzero when a case fails its limits. The catalog
-path is backed by `BenchmarkRunner.inspect()`, `createBenchmarkCatalogReport()`, and `formatBenchmarkCatalogMarkdown()`
-so launchers and docs can reuse the same case metadata.
+searchable theme previews, `theme-resolver` for cached renderer-friendly theme lookups, `capabilities` for platform
+feature detection, `benchmark` for performance smoke checks, `api-inventory` for public export graph inspection,
+`components` for widget catalog reports, `layout-recipe` for responsive recipe inspection, `grwizard` for the responsive
+GPU/model wizard, and `health` for the contributor gate. The launcher metadata is also exported from
+`scripts/visualization_launcher.ts` as a queryable catalog: `queryVisualizationLaunchTargets()`,
+`createVisualizationLaunchReport()`, `inspectVisualizationLaunchTargets()`, and `formatVisualizationLaunchMarkdown()`
+provide the same structured target list for custom launchers, docs pages, and CI reports without duplicating aliases or
+descriptions. Benchmark runs print per-case timings plus an aggregate summary; `deno task benchmark -- --list` prints
+the benchmark catalog without running workloads, `deno task benchmark -- --list --json` emits that catalog as structured
+data, and `deno task benchmark -- --json` emits the same threshold-aware timing summary as structured data and exits
+nonzero when a case fails its limits. The catalog path is backed by `BenchmarkRunner.inspect()`,
+`createBenchmarkCatalogReport()`, and `formatBenchmarkCatalogMarkdown()` so launchers and docs can reuse the same case
+metadata.
 
 Direct Deno tasks are also available:
 
@@ -1994,6 +1998,7 @@ deno task theme-manifest
 deno task theme-engines
 deno task theme-pipeline
 deno task theme-gallery
+deno task theme-resolver
 deno task capabilities
 deno task benchmark
 deno task api-inventory
@@ -2010,6 +2015,7 @@ deno run --allow-hrtime examples/calculator.ts
 deno run -A examples/app_shell.ts
 deno run -A examples/layout_recipe_report.ts
 deno run -A examples/dashboard.ts
+deno run -A examples/theme_resolver.ts
 deno run -A examples/worker_pool.ts
 deno run -A examples/action_middleware.ts
 deno run -A examples/cached_pipeline.ts
