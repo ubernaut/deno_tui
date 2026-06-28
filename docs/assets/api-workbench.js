@@ -5050,6 +5050,14 @@ function renderPanel(frame, id2, rect) {
       const style2 = panelLineStyle(id2, index);
       write(frame, inner.row + index, inner.column, paint(fit(line, inner.width), style2.fg, style2.bg, style2.bold));
     });
+    if (id2 === "data") {
+      for (let index = 0; index < Math.min(table.view.peek().rows.length, Math.max(0, inner.height - 1)); index += 1) {
+        hitTargets.push({
+          rect: { column: inner.column, row: inner.row + 1 + index, width: inner.width, height: 1 },
+          hit: { type: "dataRow", index }
+        });
+      }
+    }
   }
 }
 function panelLines(id2, width, height) {
@@ -5100,7 +5108,8 @@ function applyHit(target, x) {
   else if (hit.type === "max") toggleMax(hit.id);
   else if (hit.type === "close") closePanel(hit.id);
   else if (hit.type === "restore") hit.id ? restorePanel(hit.id) : restore();
-  else if (hit.type === "control") applyControlHit(hit.id, hit.action ?? "activate", target.rect, x);
+  else if (hit.type === "control") applyControlHit(hit.id, hit.action ?? "activate", target.rect, x, hit.index);
+  else if (hit.type === "dataRow") selectDataRow(hit.index);
   else setTheme(hit.index);
 }
 function focus(id2) {
@@ -5200,7 +5209,7 @@ function renderControls(frame, rect) {
     );
     hitTargets.push({
       rect: { column: rect.column, row, width: rect.width, height: 1 },
-      hit: { type: "control", id: id2, action: options.action ?? "activate" }
+      hit: { type: "control", id: id2, action: options.action ?? "activate", index: options.index }
     });
     if (options.previous) {
       hitTargets.push({
@@ -5242,10 +5251,19 @@ function renderControls(frame, rect) {
     "checkbox",
     `Checkboxes  ${renderCheckBoxMark(live.checked.peek())} live preview  ${renderCheckBoxMark(compact.checked.peek())} compact rows`
   );
+  hitTargets.push({
+    rect: { column: rect.column + 13, row: row - 1, width: 16, height: 1 },
+    hit: { type: "control", id: "checkbox", action: "activate" }
+  });
+  hitTargets.push({
+    rect: { column: rect.column + 29, row: row - 1, width: 16, height: 1 },
+    hit: { type: "control", id: "checkbox", action: "next" }
+  });
   writeControl("radio", `Radio     ${renderInlineRadioOptions()}`, {
     previous: true,
     next: true
   });
+  addInlineRadioHits(rect, row - 1);
   writeControl("combo", `Theme combo  ${combo.expanded.peek() ? "v" : ">"} ${combo.label()}`, {
     previous: true,
     next: true
@@ -5258,7 +5276,8 @@ function renderControls(frame, rect) {
       indent: true,
       previous: true,
       next: true,
-      action: index < (dropdown.selectedIndex.peek() ?? 0) ? "previous" : index > (dropdown.selectedIndex.peek() ?? 0) ? "next" : "activate"
+      action: index < (dropdown.selectedIndex.peek() ?? 0) ? "previous" : index > (dropdown.selectedIndex.peek() ?? 0) ? "next" : "activate",
+      index
     });
   }
   writeControl("input", `Input     ${input.text.peek()}${activeControl.peek() === "input" ? "|" : ""}`);
@@ -5300,6 +5319,10 @@ function writeWrappedOptions(frame, rect, startRow, id2, items, selectedIndex, t
   for (const [index, item] of items.entries()) {
     const token = `${index === selectedIndex ? "[" : " "}${item}${index === selectedIndex ? "]" : " "} `;
     if (textWidth(line) + textWidth(token) > width) flush();
+    hitTargets.push({
+      rect: { column: rect.column + 2 + textWidth(line), row, width: textWidth(token), height: 1 },
+      hit: { type: "control", id: id2, action: "activate", index }
+    });
     line += token;
   }
   flush();
@@ -5328,7 +5351,20 @@ function renderInlineRadioOptions() {
     return `${cursor} ${mark} ${option.label}`;
   }).join("  ");
 }
-function applyControlHit(id2, action, rect, x) {
+function addInlineRadioHits(rect, row) {
+  let column = rect.column + 12;
+  for (const [index, option] of radio.options.peek().entries()) {
+    const width = textWidth(
+      `${index === radio.activeIndex.peek() ? ">" : " "} ${option.value === radio.selectedValue.peek() ? "\u25CF" : "\u25CB"} ${option.label}`
+    );
+    hitTargets.push({
+      rect: { column, row, width, height: 1 },
+      hit: { type: "control", id: "radio", action: "activate", index }
+    });
+    column += width + 2;
+  }
+}
+function applyControlHit(id2, action, rect, x, index) {
   active.value = "controls";
   activeControl.value = id2;
   if (id2 === "button") actionButton.press("mouse");
@@ -5338,15 +5374,22 @@ function applyControlHit(id2, action, rect, x) {
     else action === "previous" ? slider.decrement() : slider.increment();
   } else if (id2 === "checkbox") action === "next" ? compact.toggle() : live.toggle();
   else if (id2 === "radio") {
-    if (action === "previous") radio.move(-1);
+    if (index !== void 0) {
+      radio.setActive(index);
+      radio.selectActive();
+    } else if (action === "previous") radio.move(-1);
     else if (action === "next") radio.move(1);
     else radio.selectActive();
   } else if (id2 === "combo") {
-    if (action === "previous") combo.move(-1);
+    if (index !== void 0) {
+      combo.selectIndex(index);
+      setTheme(index);
+    } else if (action === "previous") combo.move(-1);
     else if (action === "next") combo.move(1);
-    combo.selectActive();
+    else combo.selectActive();
   } else if (id2 === "dropdown") {
-    if (action === "previous") dropdown.move(-1);
+    if (index !== void 0) dropdown.selectIndex(index);
+    else if (action === "previous") dropdown.move(-1);
     else if (action === "next") dropdown.move(1);
     else dropdown.selectActive();
   } else if (id2 === "input") input.submit();
@@ -5355,6 +5398,11 @@ function applyControlHit(id2, action, rect, x) {
 clicked`);
   progress.setValue(Math.min(100, progress.value.peek() + 7));
   push(`control ${id2} ${action}`);
+}
+function selectDataRow(index) {
+  active.value = "data";
+  table.select(index);
+  push(`data row ${table.selectedKey() ?? index}`);
 }
 function setSliderFromPointer(controller, rect, x) {
   const inspection = controller.inspect();

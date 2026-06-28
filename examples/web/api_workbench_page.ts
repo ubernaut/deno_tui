@@ -52,7 +52,8 @@ type Hit =
   | { type: "restore"; id?: PanelId }
   | { type: "close"; id: PanelId }
   | { type: "theme"; index: number }
-  | { type: "control"; id: ControlId; action?: "previous" | "next" | "activate" | "set" };
+  | { type: "control"; id: ControlId; action?: "previous" | "next" | "activate" | "set"; index?: number }
+  | { type: "dataRow"; index: number };
 
 interface ThemeSpec {
   label: string;
@@ -404,6 +405,14 @@ function renderPanel(frame: string[], id: PanelId, rect: Rectangle): void {
       const style = panelLineStyle(id, index);
       write(frame, inner.row + index, inner.column, paint(fit(line, inner.width), style.fg, style.bg, style.bold));
     });
+    if (id === "data") {
+      for (let index = 0; index < Math.min(table.view.peek().rows.length, Math.max(0, inner.height - 1)); index += 1) {
+        hitTargets.push({
+          rect: { column: inner.column, row: inner.row + 1 + index, width: inner.width, height: 1 },
+          hit: { type: "dataRow", index },
+        });
+      }
+    }
   }
 }
 
@@ -464,7 +473,8 @@ function applyHit(target: { rect: Rectangle; hit: Hit }, x: number): void {
   else if (hit.type === "max") toggleMax(hit.id);
   else if (hit.type === "close") closePanel(hit.id);
   else if (hit.type === "restore") hit.id ? restorePanel(hit.id) : restore();
-  else if (hit.type === "control") applyControlHit(hit.id, hit.action ?? "activate", target.rect, x);
+  else if (hit.type === "control") applyControlHit(hit.id, hit.action ?? "activate", target.rect, x, hit.index);
+  else if (hit.type === "dataRow") selectDataRow(hit.index);
   else setTheme(hit.index);
 }
 
@@ -555,7 +565,13 @@ function renderControls(frame: string[], rect: Rectangle): void {
   const writeControl = (
     id: ControlId,
     value: string,
-    options: { previous?: boolean; next?: boolean; action?: "previous" | "next" | "activate"; indent?: boolean } = {},
+    options: {
+      previous?: boolean;
+      next?: boolean;
+      action?: "previous" | "next" | "activate";
+      indent?: boolean;
+      index?: number;
+    } = {},
   ) => {
     if (row >= rect.row + rect.height) return;
     const selected = activeControl.peek() === id;
@@ -572,7 +588,7 @@ function renderControls(frame: string[], rect: Rectangle): void {
     );
     hitTargets.push({
       rect: { column: rect.column, row, width: rect.width, height: 1 },
-      hit: { type: "control", id, action: options.action ?? "activate" },
+      hit: { type: "control", id, action: options.action ?? "activate", index: options.index },
     });
     if (options.previous) {
       hitTargets.push({
@@ -616,10 +632,19 @@ function renderControls(frame: string[], rect: Rectangle): void {
       renderCheckBoxMark(compact.checked.peek())
     } compact rows`,
   );
+  hitTargets.push({
+    rect: { column: rect.column + 13, row: row - 1, width: 16, height: 1 },
+    hit: { type: "control", id: "checkbox", action: "activate" },
+  });
+  hitTargets.push({
+    rect: { column: rect.column + 29, row: row - 1, width: 16, height: 1 },
+    hit: { type: "control", id: "checkbox", action: "next" },
+  });
   writeControl("radio", `Radio     ${renderInlineRadioOptions()}`, {
     previous: true,
     next: true,
   });
+  addInlineRadioHits(rect, row - 1);
   writeControl("combo", `Theme combo  ${combo.expanded.peek() ? "v" : ">"} ${combo.label()}`, {
     previous: true,
     next: true,
@@ -637,6 +662,7 @@ function renderControls(frame: string[], rect: Rectangle): void {
         : index > (dropdown.selectedIndex.peek() ?? 0)
         ? "next"
         : "activate",
+      index,
     });
   }
   writeControl("input", `Input     ${input.text.peek()}${activeControl.peek() === "input" ? "|" : ""}`);
@@ -690,6 +716,10 @@ function writeWrappedOptions(
   for (const [index, item] of items.entries()) {
     const token = `${index === selectedIndex ? "[" : " "}${item}${index === selectedIndex ? "]" : " "} `;
     if (textWidth(line) + textWidth(token) > width) flush();
+    hitTargets.push({
+      rect: { column: rect.column + 2 + textWidth(line), row, width: textWidth(token), height: 1 },
+      hit: { type: "control", id, action: "activate", index },
+    });
     line += token;
   }
   flush();
@@ -721,11 +751,28 @@ function renderInlineRadioOptions(): string {
   }).join("  ");
 }
 
+function addInlineRadioHits(rect: Rectangle, row: number): void {
+  let column = rect.column + 12;
+  for (const [index, option] of radio.options.peek().entries()) {
+    const width = textWidth(
+      `${index === radio.activeIndex.peek() ? ">" : " "} ${
+        option.value === radio.selectedValue.peek() ? "●" : "○"
+      } ${option.label}`,
+    );
+    hitTargets.push({
+      rect: { column, row, width, height: 1 },
+      hit: { type: "control", id: "radio", action: "activate", index },
+    });
+    column += width + 2;
+  }
+}
+
 function applyControlHit(
   id: ControlId,
   action: "previous" | "next" | "activate" | "set",
   rect?: Rectangle,
   x?: number,
+  index?: number,
 ): void {
   active.value = "controls";
   activeControl.value = id;
@@ -736,15 +783,22 @@ function applyControlHit(
     else action === "previous" ? slider.decrement() : slider.increment();
   } else if (id === "checkbox") action === "next" ? compact.toggle() : live.toggle();
   else if (id === "radio") {
-    if (action === "previous") radio.move(-1);
+    if (index !== undefined) {
+      radio.setActive(index);
+      radio.selectActive();
+    } else if (action === "previous") radio.move(-1);
     else if (action === "next") radio.move(1);
     else radio.selectActive();
   } else if (id === "combo") {
-    if (action === "previous") combo.move(-1);
+    if (index !== undefined) {
+      combo.selectIndex(index);
+      setTheme(index);
+    } else if (action === "previous") combo.move(-1);
     else if (action === "next") combo.move(1);
-    combo.selectActive();
+    else combo.selectActive();
   } else if (id === "dropdown") {
-    if (action === "previous") dropdown.move(-1);
+    if (index !== undefined) dropdown.selectIndex(index);
+    else if (action === "previous") dropdown.move(-1);
     else if (action === "next") dropdown.move(1);
     else dropdown.selectActive();
   } else if (id === "input") input.submit();
@@ -752,6 +806,12 @@ function applyControlHit(
   else if (id === "textbox") textBox.setText(`${textBox.text.peek()}\nclicked`);
   progress.setValue(Math.min(100, progress.value.peek() + 7));
   push(`control ${id} ${action}`);
+}
+
+function selectDataRow(index: number): void {
+  active.value = "data";
+  table.select(index);
+  push(`data row ${table.selectedKey() ?? index}`);
 }
 
 function setSliderFromPointer(controller: SliderController, rect: Rectangle, x: number): void {

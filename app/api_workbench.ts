@@ -46,7 +46,8 @@ type HitAction =
   | { type: "restore"; id: WindowId }
   | { type: "close"; id: WindowId }
   | { type: "theme"; index: number }
-  | { type: "control"; id: ControlId; action?: "previous" | "next" | "activate" | "set" };
+  | { type: "control"; id: ControlId; action?: "previous" | "next" | "activate" | "set"; index?: number }
+  | { type: "dataRow"; index: number };
 
 interface ThemeSpec {
   id: string;
@@ -512,6 +513,12 @@ function renderData(frame: Frame, rect: Rectangle): void {
       bg: t.panelSoft,
     },
   ]);
+  for (let index = 0; index < Math.min(view.rows.length, Math.max(0, rect.height - 1)); index += 1) {
+    addHit({ column: rect.column, row: rect.row + 1 + index, width: rect.width, height: 1 }, {
+      type: "dataRow",
+      index,
+    });
+  }
 }
 
 function renderControls(frame: Frame, rect: Rectangle): void {
@@ -520,7 +527,13 @@ function renderControls(frame: Frame, rect: Rectangle): void {
   const writeControl = (
     id: ControlId,
     value: string,
-    options: { previous?: boolean; next?: boolean; action?: "previous" | "next" | "activate"; indent?: boolean } = {},
+    options: {
+      previous?: boolean;
+      next?: boolean;
+      action?: "previous" | "next" | "activate";
+      indent?: boolean;
+      index?: number;
+    } = {},
   ) => {
     if (row >= rect.row + rect.height) return;
     const active = activeControl.peek() === id;
@@ -539,6 +552,7 @@ function renderControls(frame: Frame, rect: Rectangle): void {
       type: "control",
       id,
       action: options.action ?? "activate",
+      index: options.index,
     });
     if (options.previous) {
       addHit({ column: rect.column, row, width: Math.max(1, Math.floor(rect.width / 2)), height: 1 }, {
@@ -594,10 +608,21 @@ function renderControls(frame: Frame, rect: Rectangle): void {
       renderCheckBoxMark(compactRows.checked.peek())
     } compact rows`,
   );
+  addHit({ column: rect.column + 13, row: row - 1, width: 16, height: 1 }, {
+    type: "control",
+    id: "checkbox",
+    action: "activate",
+  });
+  addHit({ column: rect.column + 29, row: row - 1, width: 16, height: 1 }, {
+    type: "control",
+    id: "checkbox",
+    action: "next",
+  });
   writeControl("radio", `Radio     ${renderInlineRadioOptions()}`, {
     previous: true,
     next: true,
   });
+  addInlineRadioHits(rect, row - 1);
   writeSection("combo", `Theme combo  ${themeCombo.expanded.peek() ? "▾" : "▸"} ${themeCombo.label()}`);
   writeWrappedOptions(frame, rect, row, "combo", themeCombo.items.peek(), themeCombo.selectedIndex.peek(), t);
   row += wrappedOptionRowCount(themeCombo.items.peek(), rect.width - 4);
@@ -613,6 +638,7 @@ function renderControls(frame: Frame, rect: Rectangle): void {
         : index > (dropdown.selectedIndex.peek() ?? 0)
         ? "next"
         : "activate",
+      index,
     });
   }
   writeControl("input", `Input     ${commandInput.text.peek()}${activeControl.peek() === "input" ? "▌" : ""}`);
@@ -701,6 +727,12 @@ function writeWrappedOptions(
   for (const [index, item] of items.entries()) {
     const token = `${index === selectedIndex ? "[" : " "}${item}${index === selectedIndex ? "]" : " "} `;
     if (textWidth(line) + textWidth(token) > width) flush();
+    addHit({ column: lineStartColumn + textWidth(line), row, width: textWidth(token), height: 1 }, {
+      type: "control",
+      id,
+      action: "activate",
+      index,
+    });
     line += token;
   }
   flush();
@@ -730,6 +762,24 @@ function renderInlineRadioOptions(): string {
     const mark = option.value === selected ? "●" : "○";
     return `${cursor} ${mark} ${option.label}`;
   }).join("  ");
+}
+
+function addInlineRadioHits(rect: Rectangle, row: number): void {
+  let column = rect.column + 12;
+  for (const [index, option] of modeRadio.options.peek().entries()) {
+    const width = textWidth(
+      `${index === modeRadio.activeIndex.peek() ? ">" : " "} ${
+        option.value === modeRadio.selectedValue.peek() ? "●" : "○"
+      } ${option.label}`,
+    );
+    addHit({ column, row, width, height: 1 }, {
+      type: "control",
+      id: "radio",
+      action: "activate",
+      index,
+    });
+    column += width + 2;
+  }
 }
 
 function renderShelf(frame: Frame): void {
@@ -845,7 +895,9 @@ function applyHit(target: { rect: Rectangle; action: HitAction }, x: number): vo
     minimized.value[action.id] = false;
     maximized.value = null;
     focus(action.id);
-  } else if (action.type === "control") applyControlHit(action.id, action.action ?? "activate", target.rect, x);
+  } else if (action.type === "control") {
+    applyControlHit(action.id, action.action ?? "activate", target.rect, x, action.index);
+  } else if (action.type === "dataRow") selectDataRow(action.index);
   else setTheme(action.index);
 }
 
@@ -864,6 +916,7 @@ function applyControlHit(
   action: "previous" | "next" | "activate" | "set",
   rect?: Rectangle,
   x?: number,
+  index?: number,
 ): void {
   activeWindow.value = "controls";
   activeControl.value = id;
@@ -874,16 +927,25 @@ function applyControlHit(
     else action === "previous" ? density.decrement() : density.increment();
   } else if (id === "checkbox") action === "next" ? compactRows.toggle() : livePreview.toggle();
   else if (id === "radio") {
-    if (action === "previous") modeRadio.move(-1);
+    if (index !== undefined) {
+      modeRadio.setActive(index);
+      modeRadio.selectActive();
+    } else if (action === "previous") modeRadio.move(-1);
     else if (action === "next") modeRadio.move(1);
     else modeRadio.selectActive();
   } else if (id === "combo") {
-    if (action === "previous") themeCombo.move(-1);
+    if (index !== undefined) {
+      const selected = themeCombo.selectIndex(index);
+      if (selected) setTheme(index);
+    } else if (action === "previous") themeCombo.move(-1);
     else if (action === "next") themeCombo.move(1);
-    const selected = themeCombo.selectActive();
-    if (selected) setTheme(themeCombo.selectedIndex.peek() ?? 0);
+    else {
+      const selected = themeCombo.selectActive();
+      if (selected) setTheme(themeCombo.selectedIndex.peek() ?? 0);
+    }
   } else if (id === "dropdown") {
-    if (action === "previous") dropdown.move(-1);
+    if (index !== undefined) dropdown.selectIndex(index);
+    else if (action === "previous") dropdown.move(-1);
     else if (action === "next") dropdown.move(1);
     else dropdown.selectActive();
   } else if (id === "input") commandInput.submit();
@@ -891,6 +953,13 @@ function applyControlHit(
   else if (id === "textbox") notes.setText(`${notes.text.peek()}\nclicked`);
   progress.setValue(Math.min(100, progress.value.peek() + 7));
   pushLog(`control ${id} ${action}`);
+}
+
+function selectDataRow(index: number): void {
+  activeWindow.value = "data";
+  table.select(index);
+  const selected = table.selectedKey() ?? `${index}`;
+  pushLog(`data row selected: ${selected}`);
 }
 
 function setSliderFromPointer(controller: SliderController, rect: Rectangle, x: number): void {
