@@ -193,12 +193,33 @@ const rects = flexRects(bounds, "row", [
 ], 1);
 ```
 
+### Split Panes
+
+`splitPaneRects()` returns first pane, separator, and second pane rectangles for resizable app shells. Use
+`resizeSplitPane()` to apply keyboard or pointer deltas while preserving pane constraints:
+
+```ts
+import { resizeSplitPane, splitPaneRects } from "https://deno.land/x/tui@VERSION/mod.ts";
+
+const panes = splitPaneRects(bounds, {
+  direction: "row",
+  ratio: 0.65,
+  minFirst: 32,
+  minSecond: 24,
+  gap: 1,
+});
+
+const nextOptions = resizeSplitPane(bounds, { direction: "row", firstSize: panes.firstSize }, 4);
+```
+
 Responsive helpers are also exported for common app shell layout:
 
 - `resolveBreakpoint()`
 - `insetRect()`
 - `splitRect()`
 - `dockRect()`
+- `splitPaneRects()`
+- `resizeSplitPane()`
 
 ## App Primitives
 

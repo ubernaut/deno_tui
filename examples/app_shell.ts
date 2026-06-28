@@ -19,6 +19,7 @@ import {
   resolveBreakpoint,
   ScrollArea,
   Signal,
+  splitPaneRects,
   StatusBar,
   Stepper,
   Text,
@@ -201,6 +202,24 @@ const menuBar = new MenuBar({
 });
 
 const bodyRect = new Computed(() => dockRect(app.tui.rectangle.value, "top", 1).second);
+const appContentRect = new Computed(() => {
+  const rect = bodyRect.value;
+  return {
+    column: rect.column + 4,
+    row: rect.row + 3,
+    width: Math.max(20, rect.width - 8),
+    height: Math.max(6, rect.height - 10),
+  };
+});
+const appPanes = new Computed(() =>
+  splitPaneRects(appContentRect.value, {
+    direction: "row",
+    ratio: 0.66,
+    minFirst: 28,
+    minSecond: 24,
+    gap: 2,
+  })
+);
 
 new Frame({
   parent: app.tui,
@@ -208,12 +227,13 @@ new Frame({
   zIndex: 1,
   charMap: "rounded",
   rectangle: new Computed(() => {
-    const rect = bodyRect.value;
+    const rect = appContentRect.value;
+    const pane = appPanes.value.first;
     return {
-      column: rect.column + 2,
-      row: rect.row + 2,
-      width: Math.max(10, rect.width - 35),
-      height: Math.max(6, rect.height - 7),
+      column: pane.column - 2,
+      row: rect.row - 1,
+      width: Math.max(10, pane.width + 4),
+      height: Math.max(6, rect.height + 2),
     };
   }),
 });
@@ -231,9 +251,9 @@ new Text({
   ),
   overwriteWidth: true,
   rectangle: new Computed<TextRectangle>(() => ({
-    column: 4,
-    row: 4,
-    width: Math.max(20, app.tui.rectangle.value.width - 42),
+    column: appPanes.value.first.column,
+    row: appContentRect.value.row,
+    width: Math.max(20, appPanes.value.first.width),
   })),
 });
 
@@ -244,9 +264,9 @@ new Breadcrumbs({
   items: breadcrumbs,
   separator: "›",
   rectangle: new Computed(() => ({
-    column: 4,
-    row: 5,
-    width: Math.max(20, app.tui.rectangle.value.width - 42),
+    column: appPanes.value.first.column,
+    row: appContentRect.value.row + 1,
+    width: Math.max(20, appPanes.value.first.width),
     height: 1,
   })),
 });
@@ -263,9 +283,9 @@ new Stepper({
   activeIndex: routeStepIndex,
   onChange: (step) => app.executeCommand(`route.${step.id}`).then(() => undefined),
   rectangle: new Computed(() => ({
-    column: 4,
-    row: 6,
-    width: Math.max(20, app.tui.rectangle.value.width - 42),
+    column: appPanes.value.first.column,
+    row: appContentRect.value.row + 2,
+    width: Math.max(20, appPanes.value.first.width),
     height: 1,
   })),
 });
@@ -296,10 +316,10 @@ new Tree({
     },
   ],
   rectangle: new Computed(() => ({
-    column: 4,
-    row: 9,
-    width: 36,
-    height: Math.max(5, app.tui.rectangle.value.height - 14),
+    column: appPanes.value.first.column,
+    row: appContentRect.value.row + 5,
+    width: Math.min(36, Math.max(20, appPanes.value.first.width)),
+    height: Math.max(5, appContentRect.value.height - 5),
   })),
 });
 
@@ -309,9 +329,9 @@ new List({
   zIndex: 2,
   items: routeList,
   rectangle: new Computed(() => ({
-    column: Math.max(42, app.tui.rectangle.value.width - 30),
-    row: 4,
-    width: 24,
+    column: appPanes.value.second.column,
+    row: appContentRect.value.row,
+    width: Math.max(20, appPanes.value.second.width),
     height: 5,
   })),
 });
@@ -328,9 +348,9 @@ const routeRadio = new RadioGroup({
   selectedValue: routeChoice,
   onChange: (option) => app.executeCommand(`route.${option.value}`).then(() => undefined),
   rectangle: new Computed(() => ({
-    column: Math.max(42, app.tui.rectangle.value.width - 30),
-    row: 10,
-    width: 24,
+    column: appPanes.value.second.column,
+    row: appContentRect.value.row + 6,
+    width: Math.max(20, appPanes.value.second.width),
     height: 3,
   })),
 });
@@ -342,13 +362,10 @@ const scrollArea = new ScrollArea({
   contentWidth: 74,
   contentHeight: scrollLines.length,
   rectangle: new Computed(() => ({
-    column: Math.max(42, Math.floor(app.tui.rectangle.value.width / 2)),
-    row: 14,
-    width: Math.max(
-      24,
-      app.tui.rectangle.value.width - Math.max(42, Math.floor(app.tui.rectangle.value.width / 2)) - 4,
-    ),
-    height: Math.max(4, app.tui.rectangle.value.height - 21),
+    column: appPanes.value.second.column,
+    row: appContentRect.value.row + 10,
+    width: Math.max(20, appPanes.value.second.width),
+    height: Math.max(4, appContentRect.value.height - 10),
   })),
 });
 app.enableFocusNavigation({ items: [menuBar, routeRadio, scrollArea] });
