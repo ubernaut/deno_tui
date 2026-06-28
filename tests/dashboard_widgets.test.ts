@@ -27,6 +27,7 @@ import {
 } from "../src/theme.ts";
 import { bindComponentTheme } from "../src/theme_binding.ts";
 import { Signal } from "../src/signals/mod.ts";
+import { MemoryStore } from "../src/runtime/storage.ts";
 
 Deno.test("renderSparkline samples values into fixed width", () => {
   assertEquals(renderSparkline([0, 1, 2, 3], 4), "▁▃▆█");
@@ -349,6 +350,77 @@ Deno.test("ThemeProvider exposes active engine selection and component theme sig
 
   assertEquals(buttonTheme.value.base("x"), "bright:x");
   assertEquals(provider.resolve("Button", "base").value("x"), "bright:x");
+});
+
+Deno.test("ThemeProvider cycles registered themes", () => {
+  const provider = createThemeProvider({
+    registry: createThemeRegistry([
+      { id: "plain", palette: "plain" },
+      { id: "neon", palette: "neon" },
+      { id: "terminal", palette: "terminal" },
+    ]),
+    activeId: "plain",
+  });
+
+  assertEquals(provider.themeIds(), ["neon", "plain", "terminal"]);
+  assertEquals(provider.nextTheme(), "terminal");
+  assertEquals(provider.previousTheme(), "plain");
+  assertEquals(provider.cycleTheme(-1), "neon");
+  assertEquals(provider.setTheme("missing"), false);
+});
+
+Deno.test("ThemeProvider persists active theme selection", async () => {
+  const store = new MemoryStore<string>();
+  await store.set("app-theme", "terminal");
+  const provider = createThemeProvider({
+    registry: createThemeRegistry([
+      { id: "plain", palette: "plain" },
+      { id: "terminal", palette: "terminal" },
+    ]),
+    activeId: "plain",
+    store,
+    storageKey: "app-theme",
+  });
+
+  assertEquals(await provider.ready, "terminal");
+  assertEquals(provider.inspect().activeId, "terminal");
+
+  provider.setTheme("plain");
+  await provider.flush();
+  assertEquals(await store.get("app-theme"), "plain");
+
+  assertEquals(await provider.resetTheme("terminal"), true);
+  assertEquals(provider.inspect().activeId, "terminal");
+  assertEquals(await store.get("app-theme"), undefined);
+});
+
+Deno.test("ThemeProvider preserves local changes made before persisted theme load finishes", async () => {
+  let resolveGet!: (value: string) => void;
+  const writes: Array<[string, string]> = [];
+  const store = {
+    get: () => new Promise<string>((resolve) => resolveGet = resolve),
+    set: async (key: string, value: string) => {
+      writes.push([key, value]);
+    },
+    delete: async () => {},
+  };
+  const provider = createThemeProvider({
+    registry: createThemeRegistry([
+      { id: "plain", palette: "plain" },
+      { id: "terminal", palette: "terminal" },
+    ]),
+    activeId: "plain",
+    store,
+    storageKey: "theme",
+  });
+
+  provider.setTheme("terminal");
+  resolveGet("plain");
+
+  assertEquals(await provider.ready, "terminal");
+  await provider.flush();
+  assertEquals(provider.inspect().activeId, "terminal");
+  assertEquals(writes, [["theme", "terminal"]]);
 });
 
 Deno.test("bindComponentTheme applies provider and variant updates to a component-like target", async () => {

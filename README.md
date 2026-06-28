@@ -483,13 +483,14 @@ const rows = viewportWindow(items.length, selection.state.value.activeIndex, hei
 Use `createTheme()` for semantic tokens, `createThemeEngine()` for built-in palettes, `ThemeRegistry` for named theme
 packs, or `ThemeProvider` for runtime theme selection. This fork treats theming as an engine layer, not just a bag of
 component props: it adds `composeThemeOptions()`, `composeStyles()`, component inheritance, token-backed style
-pipelines, `ThemeEngine.extend()`, and `ThemeEngine.inspect()` so larger apps can layer reusable theme packs without
-mutating a base engine:
+pipelines, app-level provider cycling, optional async persistence, `ThemeEngine.extend()`, and `ThemeEngine.inspect()`
+so larger apps can layer reusable theme packs without mutating a base engine:
 
 ```ts
 import {
   bindComponentTheme,
   composeThemeOptions,
+  createRuntimeStore,
   createThemeEngine,
   createThemeProvider,
   createThemeRegistry,
@@ -528,9 +529,21 @@ const registry = createThemeRegistry([
   { id: "terminal", label: "Terminal", palette: "terminal" },
   { id: "neon-ops", label: "Neon Ops", palette: "neon", options: appTheme },
 ]);
-const provider = createThemeProvider({ registry, activeId: "neon-ops" });
+const themeStore = createRuntimeStore<string>({
+  databaseName: "my-tui-app",
+  storeName: "settings",
+});
+const provider = createThemeProvider({
+  registry,
+  activeId: "neon-ops",
+  store: themeStore,
+  storageKey: "theme",
+});
 
 provider.setTheme("terminal");
+provider.nextTheme();
+await provider.flush();
+
 const activeButtonTheme = provider.component("Button", "danger").value;
 const themeInventory = provider.inspect();
 
@@ -542,13 +555,16 @@ const stopBinding = bindComponentTheme(button, provider, "Button", {
 
 `ThemeRegistry.engine(id, overrides)` composes a named pack with per-app overrides, while `ThemeProvider.component()`
 and `ThemeProvider.resolve()` expose computed signals for active component themes and individual state styles.
-`bindComponentTheme()` bridges those provider signals back into normal components and returns a disposer, so live theme
-switching stays centralized and testable without requiring widgets to know where their theme came from. Component
-definitions can also reference semantic token names such as `"foreground"`, `"accent"`, `"danger"`, or `"surface"`
-instead of concrete style functions, so variants automatically follow the active palette. A state style may also be an
-array of token names and style functions; the engine composes the pipeline in order. Component definitions can `extend`
-one or more other definitions, which makes aliases like `ComboBox -> Field` or shared role themes cheap while preserving
-variants and app-level overrides.
+`ThemeProvider.themeIds()`, `nextTheme()`, `previousTheme()`, and `cycleTheme(direction)` keep theme switching
+deterministic across command palettes, menus, and key bindings. Pass any `AsyncStore<string>` to persist the active pack
+through `MemoryStore`, `IndexedDbStore`, or a custom settings backend; `provider.ready` reports the loaded theme and
+`provider.flush()` waits for pending writes. `bindComponentTheme()` bridges those provider signals back into normal
+components and returns a disposer, so live theme switching stays centralized and testable without requiring widgets to
+know where their theme came from. Component definitions can also reference semantic token names such as `"foreground"`,
+`"accent"`, `"danger"`, or `"surface"` instead of concrete style functions, so variants automatically follow the active
+palette. A state style may also be an array of token names and style functions; the engine composes the pipeline in
+order. Component definitions can `extend` one or more other definitions, which makes aliases like `ComboBox -> Field` or
+shared role themes cheap while preserving variants and app-level overrides.
 
 ## Runtime Capabilities
 

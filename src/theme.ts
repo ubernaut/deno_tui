@@ -1,5 +1,6 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { Computed, Signal } from "./signals/mod.ts";
+import type { AsyncStore } from "./runtime/storage.ts";
 
 /** Function that's supposed to return styled text given string as parameter */
 export type Style = (text: string) => string;
@@ -298,13 +299,24 @@ export interface ThemeProviderOptions {
   registry?: ThemeRegistry;
   activeId?: string | Signal<string>;
   overrides?: ThemeEngineOptions;
+  store?: AsyncStore<string>;
+  storageKey?: string;
+  onError?: (error: unknown) => void;
 }
 
 export class ThemeProvider {
   readonly registry: ThemeRegistry;
   readonly activeId: Signal<string>;
   readonly engine: Computed<ThemeEngine>;
+  readonly ready: Promise<string>;
   readonly #overrides: ThemeEngineOptions;
+  readonly #store?: AsyncStore<string>;
+  readonly #storageKey: string;
+  readonly #onError?: (error: unknown) => void;
+  #loaded = false;
+  #dirtyBeforeLoad = false;
+  #suspendWrites = false;
+  #pendingWrite: Promise<void> = Promise.resolve();
 
   constructor(options: ThemeProviderOptions = {}) {
     this.registry = options.registry ?? createThemeRegistry(defaultThemePacks);
@@ -312,12 +324,58 @@ export class ThemeProvider {
       ? options.activeId
       : new Signal(options.activeId ?? this.registry.ids()[0] ?? "plain");
     this.#overrides = composeThemeOptions(options.overrides ?? {});
+    this.#store = options.store;
+    this.#storageKey = options.storageKey ?? "theme.active";
+    this.#onError = options.onError;
     this.engine = new Computed(() => this.registry.engine(this.activeId.value, this.#overrides));
+    this.activeId.subscribe((id) => this.#persistTheme(id));
+    this.ready = this.#loadTheme();
   }
 
   setTheme(id: string): boolean {
     if (!this.registry.has(id)) return false;
     this.activeId.value = id;
+    return true;
+  }
+
+  themeIds(): string[] {
+    return this.registry.ids();
+  }
+
+  cycleTheme(direction = 1): string {
+    const ids = this.themeIds();
+    if (ids.length === 0) return this.activeId.peek();
+
+    const currentIndex = Math.max(0, ids.indexOf(this.activeId.peek()));
+    const nextIndex = positiveModulo(currentIndex + direction, ids.length);
+    this.setTheme(ids[nextIndex]);
+    return this.activeId.peek();
+  }
+
+  nextTheme(): string {
+    return this.cycleTheme(1);
+  }
+
+  previousTheme(): string {
+    return this.cycleTheme(-1);
+  }
+
+  async flush(): Promise<void> {
+    await this.ready;
+    await this.#pendingWrite;
+  }
+
+  async resetTheme(id = this.themeIds()[0] ?? this.activeId.peek()): Promise<boolean> {
+    if (!this.registry.has(id)) return false;
+    await this.ready;
+    this.#suspendWrites = true;
+    this.activeId.value = id;
+    this.#suspendWrites = false;
+    this.#pendingWrite = this.#pendingWrite
+      .catch(() => undefined)
+      .then(() => this.#store?.delete(this.#storageKey))
+      .catch((error) => this.#onError?.(error));
+    await this.#pendingWrite;
     return true;
   }
 
@@ -335,6 +393,46 @@ export class ThemeProvider {
       themes: this.registry.inspect(),
       engine: this.engine.peek().inspect(),
     };
+  }
+
+  async #loadTheme(): Promise<string> {
+    if (!this.#store) {
+      this.#loaded = true;
+      return this.activeId.peek();
+    }
+
+    try {
+      const storedId = await this.#store.get(this.#storageKey);
+      this.#loaded = true;
+      if (storedId && this.registry.has(storedId) && !this.#dirtyBeforeLoad) {
+        this.#suspendWrites = true;
+        this.activeId.value = storedId;
+        this.#suspendWrites = false;
+      } else if (this.#dirtyBeforeLoad) {
+        this.#writeTheme(this.activeId.peek());
+      }
+      return this.activeId.peek();
+    } catch (error) {
+      this.#loaded = true;
+      this.#onError?.(error);
+      return this.activeId.peek();
+    }
+  }
+
+  #persistTheme(id: string): void {
+    if (this.#suspendWrites || !this.#store) return;
+    if (!this.#loaded) {
+      this.#dirtyBeforeLoad = true;
+      return;
+    }
+    this.#writeTheme(id);
+  }
+
+  #writeTheme(id: string): void {
+    this.#pendingWrite = this.#pendingWrite
+      .catch(() => undefined)
+      .then(() => this.#store?.set(this.#storageKey, id))
+      .catch((error) => this.#onError?.(error));
   }
 }
 
@@ -452,4 +550,8 @@ function isThemeStyleReferencePipeline(
   reference: ThemeStyleReference,
 ): reference is readonly ThemeStyleReference[] {
   return Array.isArray(reference);
+}
+
+function positiveModulo(value: number, divisor: number): number {
+  return ((value % divisor) + divisor) % divisor;
 }
