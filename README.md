@@ -369,6 +369,25 @@ const stopSearchCommands = bindInputCommands(app.commands, searchInput, {
 });
 ```
 
+`TextBoxController` applies the same controller pattern to multiline editing: it owns text, cursor position, line
+splitting, validators, line numbering/highlighting flags, key handling, clear/set helpers, and inspection state.
+`textBoxCommands()` and `bindTextBoxCommands()` expose clear, cursor movement, and optional preset-value actions for
+notes panes, script editors, logs with editable filters, and settings text areas:
+
+```ts
+const notes = new TextBoxController({
+  text: "Investigate GPU backend",
+  lineNumbering: true,
+  lineHighlighting: true,
+  onChange: (value) => draftStore.set("notes", value),
+});
+
+const stopNotesCommands = bindTextBoxCommands(app.commands, notes, {
+  idPrefix: "notes",
+  group: "editor",
+});
+```
+
 `CheckBoxController` does the same for boolean inputs: it owns the checked signal, exposes `check()`, `uncheck()`,
 `toggle()`, and `inspect()`, and keeps the rendered `CheckBox` focused on presentation. `checkBoxCommands()` and
 `bindCheckBoxCommands()` expose toggle, check, and uncheck actions for settings panes, command palettes, and key

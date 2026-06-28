@@ -78,6 +78,7 @@ export const componentCatalog = [
   ]),
   component("textbox", "TextBox", "input", "Multi-line text editor with cursor, line numbers, and selection.", [
     "component",
+    "controller",
     "keyboard",
     "themeable",
   ]),

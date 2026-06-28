@@ -13,6 +13,7 @@ import { bindSliderCommands, sliderCommands } from "../src/app/slider_commands.t
 import { bindStepperCommands, stepperCommands } from "../src/app/stepper_commands.ts";
 import { bindTableCommands, tableCommands } from "../src/app/table_commands.ts";
 import { bindTabsCommands, tabsCommands } from "../src/app/tabs_commands.ts";
+import { bindTextBoxCommands, textBoxCommands } from "../src/app/textbox_commands.ts";
 import { bindTreeCommands, treeCommands } from "../src/app/tree_commands.ts";
 import { formatKeyBinding, KeymapRegistry } from "../src/keymap.ts";
 import { renderBreadcrumbs } from "../src/components/breadcrumbs.ts";
@@ -65,7 +66,7 @@ import {
 } from "../src/components/stepper.ts";
 import { clampTableRow, TableController, tableMaxOffset, tableVisibleCapacity } from "../src/components/table.ts";
 import { clampTabIndex, renderTabs, shiftTabIndex, tabForIndex, TabsController } from "../src/components/tabs.ts";
-import { TextLineCache } from "../src/components/textbox.ts";
+import { TextBoxController, TextLineCache } from "../src/components/textbox.ts";
 import { flattenTree, flattenTreeRows, TreeController } from "../src/components/tree.ts";
 import { renderVirtualListRows, VirtualListController, virtualListRows } from "../src/components/virtual_list.ts";
 import type { Key, KeyPressEvent } from "../src/input_reader/types.ts";
@@ -1566,6 +1567,95 @@ Deno.test("TextLineCache reuses line snapshots until text changes", () => {
   assertEquals(first === third, false);
   assertEquals(third, ["alpha", "beta", "gamma"]);
   assertEquals(cache.inspect(), { text: "alpha\nbeta\ngamma", lineCount: 3 });
+});
+
+Deno.test("TextBoxController edits multiline text and inspects cursor state", () => {
+  const changes: string[] = [];
+  const controller = new TextBoxController({
+    text: "alpha\nbeta",
+    cursorPosition: { x: 5, y: 0 },
+    validator: /[a-z ]/,
+    lineHighlighting: true,
+    lineNumbering: true,
+    onChange: (value) => void changes.push(value),
+  });
+
+  assertEquals(controller.handleKeyPress(keyPress("return")), "changed");
+  assertEquals(controller.text.peek(), "alpha\n\nbeta");
+  assertEquals(controller.insert("X"), false);
+  assertEquals(controller.insert("g"), true);
+  assertEquals(controller.inspect(), {
+    text: "alpha\ng\nbeta",
+    lines: ["alpha", "g", "beta"],
+    lineCount: 3,
+    cursorPosition: { x: 1, y: 1 },
+    currentLine: "g",
+    empty: false,
+    valid: true,
+    lineHighlighting: true,
+    lineNumbering: true,
+  });
+
+  assertEquals(controller.handleKeyPress(keyPress("backspace")), "changed");
+  assertEquals(controller.text.peek(), "alpha\n\nbeta");
+  assertEquals(controller.handleKeyPress(keyPress("backspace")), "changed");
+  assertEquals(controller.text.peek(), "alpha\nbeta");
+  assertEquals(controller.cursorPosition.peek(), { x: 5, y: 0 });
+  controller.end();
+  assertEquals(controller.cursorPosition.peek(), { x: 5, y: 0 });
+  controller.setText("one\ntwo", { x: 99, y: 99 });
+  assertEquals(controller.cursorPosition.peek(), { x: 3, y: 1 });
+  assertEquals(changes.at(-1), "one\ntwo");
+  controller.dispose();
+});
+
+Deno.test("textBoxCommands clear move cursor and set preset values", async () => {
+  const controller = new TextBoxController({ text: "one\ntwo", cursorPosition: { x: 1, y: 1 } });
+  const registry = new CommandRegistry();
+  const dispose = bindTextBoxCommands(registry, controller, {
+    id: "notes",
+    idPrefix: "textbox.notes",
+    group: "editor",
+    includeValueCommands: true,
+    values: ["todo", "done\nship"],
+  });
+  const actions: unknown[] = [];
+
+  assertEquals(textBoxCommands(new TextBoxController()).map((command) => [command.id, commandDisabled(command)]), [
+    ["textbox.clear", true],
+    ["textbox.home", false],
+    ["textbox.left", false],
+    ["textbox.right", false],
+    ["textbox.up", false],
+    ["textbox.down", false],
+    ["textbox.end", false],
+  ]);
+  assertEquals(registry.list("editor").map((command) => command.id), [
+    "textbox.notes.clear",
+    "textbox.notes.value.done%0Aship",
+    "textbox.notes.value.todo",
+    "textbox.notes.down",
+    "textbox.notes.left",
+    "textbox.notes.right",
+    "textbox.notes.up",
+    "textbox.notes.end",
+    "textbox.notes.home",
+  ]);
+
+  assertEquals(await registry.execute("textbox.notes.up", (action) => void actions.push(action)), true);
+  assertEquals(controller.cursorPosition.peek(), { x: 1, y: 0 });
+  assertEquals(actions[0], {
+    type: "textbox.cursorMoved",
+    payload: { id: "notes", inspection: controller.inspect() },
+  });
+  assertEquals(await registry.execute("textbox.notes.value.done%0Aship", (action) => void actions.push(action)), true);
+  assertEquals(controller.text.peek(), "done\nship");
+  assertEquals(await registry.execute("textbox.notes.clear", (action) => void actions.push(action)), true);
+  assertEquals(controller.inspect().empty, true);
+
+  dispose();
+  assertEquals(registry.list("editor"), []);
+  controller.dispose();
 });
 
 Deno.test("keymap registry formats sorted bindings", () => {
