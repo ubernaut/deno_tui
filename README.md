@@ -76,6 +76,12 @@ Regenerate these terminal snapshots with `deno task screenshots`.
 
 ![Neon Exodus suite terminal screenshot](./docs/screenshots/neon-exodus.svg)
 
+![Neon Exodus focus mode terminal screenshot](./docs/screenshots/neon-exodus-focus.svg)
+
+![Neon Exodus web ordering terminal screenshot](./docs/screenshots/neon-exodus-web.svg)
+
+![Neon Exodus Acerola studio terminal screenshot](./docs/screenshots/neon-exodus-studio.svg)
+
 ### System Monitor
 
 ![System monitor terminal screenshot](./docs/screenshots/system-monitor.svg)

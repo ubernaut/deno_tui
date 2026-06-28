@@ -1,0 +1,90 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="1960"
+  height="1240"
+  viewBox="0 0 1960 1240"
+  role="img"
+  aria-label="Neon Exodus Acerola Studio terminal screenshot"
+>
+  <style>svg{background:#06080d}.frame{fill:#0d1117;stroke:#2dd4bf;stroke-width:4}.title{fill:#e6edf3;font:700 36px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.term{fill:#c9d1d9;font:32px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.accent{fill:#67e8f9}.bar{fill:#111827;stroke:#374151}</style>
+  <rect x="56" y="56" width="1848" height="1128" rx="24" class="frame" />
+  <rect x="56" y="56" width="1848" height="88" rx="24" class="bar" />
+  <text x="100" y="114" class="title">Neon Exodus Acerola Studio</text>
+  <circle cx="1760" cy="100" r="12" class="accent" />
+  <circle cx="1808" cy="100" r="12" fill="#facc15" />
+  <circle cx="1856" cy="100" r="12" fill="#fb7185" />
+  <rect x="80" y="144" width="1800" height="1016" rx="16" fill="#090d14" opacity="0.86" />
+  <text x="100" y="212" class="term">NEON EXODUS EXTENDED SUITE / THREE / 06:52:27</text>
+  <text x="100" y="264" class="term">EXTENDED MODE / THREE-ASCII-STUDIO / BLOCKS GLYPHS MIXED</text>
+  <text x="100" y="316" class="term"></text>
+  <text
+    x="100"
+    y="368"
+    class="term"
+  >┌─ SELECTED / ASCII-GPU / ACEROLA ASCII STUDIO ──────────────────────────────┐</text>
+  <text
+    x="100"
+    y="420"
+    class="term"
+  >│ torus knot + sphere + cube + floor / post-process edge-fill-depth pipeline │</text>
+  <text
+    x="100"
+    y="472"
+    class="term"
+  >│                                                                            │</text>
+  <text
+    x="100"
+    y="524"
+    class="term"
+  >│              ▓▓▓▓██████▓▓▒▒░░                         ░░▒▒▓▓              │</text>
+  <text
+    x="100"
+    y="576"
+    class="term"
+  >│          ░▒▓████▓▒░░░░▒▓████▓▒░                  ░▒▓████████▓▒░           │</text>
+  <text
+    x="100"
+    y="628"
+    class="term"
+  >│        ░▓██▓▒░              ░▒▓██░              ░▓██▓▒░  ░▒▓██▓░          │</text>
+  <text
+    x="100"
+    y="680"
+    class="term"
+  >│       ▒██▒       torus knot       ▒██▒          ▒██▒   sphere   ▒██▒       │</text>
+  <text
+    x="100"
+    y="732"
+    class="term"
+  >│        ░▓██▓▒░              ░▒▓██░              ░▓██▓▒░  ░▒▓██▓░          │</text>
+  <text
+    x="100"
+    y="784"
+    class="term"
+  >│          ░▒▓████▓▒░░░░▒▓████▓▒░                  ░▒▓████████▓▒░           │</text>
+  <text
+    x="100"
+    y="836"
+    class="term"
+  >│                   ░░▒▒▓▓████▓▓▒▒░░                    ░░▒▒▓▓              │</text>
+  <text
+    x="100"
+    y="888"
+    class="term"
+  >│                              ╱╲╱╲╱╲   cube   ╱╲╱╲╱╲                         │</text>
+  <text
+    x="100"
+    y="940"
+    class="term"
+  >│          floor ░░░░▒▒▒▒▓▓▓▓████████████▓▓▓▓▒▒▒▒░░░░                       │</text>
+  <text
+    x="100"
+    y="992"
+    class="term"
+  >│ renderer mixed-best / edge bias 1.35 / blend 0.80 / WebGPU preferred      │</text>
+  <text
+    x="100"
+    y="1044"
+    class="term"
+  >└────────────────────────────────────────────────────────────────────────────┘</text>
+</svg>

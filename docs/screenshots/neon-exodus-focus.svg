@@ -1,0 +1,85 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="1960"
+  height="1240"
+  viewBox="0 0 1960 1240"
+  role="img"
+  aria-label="Neon Exodus Focus Mode terminal screenshot"
+>
+  <style>svg{background:#06080d}.frame{fill:#0d1117;stroke:#2dd4bf;stroke-width:4}.title{fill:#e6edf3;font:700 36px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.term{fill:#c9d1d9;font:32px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.accent{fill:#67e8f9}.bar{fill:#111827;stroke:#374151}</style>
+  <rect x="56" y="56" width="1848" height="1128" rx="24" class="frame" />
+  <rect x="56" y="56" width="1848" height="88" rx="24" class="bar" />
+  <text x="100" y="114" class="title">Neon Exodus Focus Mode</text>
+  <circle cx="1760" cy="100" r="12" class="accent" />
+  <circle cx="1808" cy="100" r="12" fill="#facc15" />
+  <circle cx="1856" cy="100" r="12" fill="#fb7185" />
+  <rect x="80" y="144" width="1800" height="1016" rx="16" fill="#090d14" opacity="0.86" />
+  <text x="100" y="212" class="term">NEON EXODUS OPENTUI SUITE / THREE / 07:03:44</text>
+  <text x="100" y="264" class="term">ARROWS CYCLE  ESC,T RETURN  +/- VOL  B/G/M ASCII  O/W/E SUITE  Q EXIT</text>
+  <text x="100" y="316" class="term"></text>
+  <text
+    x="100"
+    y="368"
+    class="term"
+  >┌─ SELECTED / THREE-5 / WIREFRAME LATTICE CHAMBER ───────────────────────────┐</text>
+  <text
+    x="100"
+    y="420"
+    class="term"
+  >│ LATTICE / MAXIMIZED / SOURCE OPENTUI / ACEROLA WEBGPU READY / STYLE MIXED  │</text>
+  <text
+    x="100"
+    y="472"
+    class="term"
+  >│                                                                            │</text>
+  <text
+    x="100"
+    y="524"
+    class="term"
+  >│                          ░░░░▒▒▓▓████▓▓▒▒░░░░                              │</text>
+  <text
+    x="100"
+    y="576"
+    class="term"
+  >│                    ░▒▓██╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱██▓▒░                             │</text>
+  <text
+    x="100"
+    y="628"
+    class="term"
+  >│               ░▒▓██╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱██▓▒░                            │</text>
+  <text
+    x="100"
+    y="680"
+    class="term"
+  >│            ░▒▓█╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱█▓▒░                             │</text>
+  <text
+    x="100"
+    y="732"
+    class="term"
+  >│               ░▒▓██╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱██▓▒░                             │</text>
+  <text
+    x="100"
+    y="784"
+    class="term"
+  >│                    ░▒▓██╱╲╱╲╱╲╱╲╱╲╱╲╱██▓▒░                                │</text>
+  <text
+    x="100"
+    y="836"
+    class="term"
+  >│                          ░░░░▒▒▓▓████▓▓▒▒░░░░                              │</text>
+  <text
+    x="100"
+    y="888"
+    class="term"
+  >│                                                                            │</text>
+  <text
+    x="100"
+    y="940"
+    class="term"
+  >│ depth 0.82   twist +0.41   lift -0.16   pulse 0.91   glyph mix auto-match  │</text>
+  <text
+    x="100"
+    y="992"
+    class="term"
+  >└────────────────────────────────────────────────────────────────────────────┘</text>
+</svg>
