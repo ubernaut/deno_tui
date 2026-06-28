@@ -15,6 +15,7 @@ import { DisposableStack } from "./disposables.ts";
 import { bindMouseInteractions, MouseInteractionRouter } from "./mouse_bindings.ts";
 import { type Route, RouteManager } from "./router.ts";
 
+/** Construction options for a high-level TUI application shell. */
 export interface TuiAppOptions<TRoute extends Route = Route> {
   tui?: Tui;
   tuiOptions?: TuiOptions;
@@ -22,33 +23,40 @@ export interface TuiAppOptions<TRoute extends Route = Route> {
   initialRouteId?: string;
 }
 
+/** Cleanup callback returned by an app plugin installer. */
 export type AppPluginDisposer = void | (() => void);
 
+/** Reusable app module that can install commands, routes, bindings, and runtime resources. */
 export interface AppPlugin<TAction extends Action = Action, TRoute extends Route = Route> {
   id?: string;
   label?: string;
   install(app: TuiApp<TAction, TRoute>): AppPluginDisposer;
 }
 
+/** Function-form app plugin installer. */
 export type AppPluginFactory<TAction extends Action = Action, TRoute extends Route = Route> = (
   app: TuiApp<TAction, TRoute>,
 ) => AppPluginDisposer;
 
+/** Object or function app plugin accepted by `TuiApp.use()`. */
 export type AppPluginInstaller<TAction extends Action = Action, TRoute extends Route = Route> =
   | AppPlugin<TAction, TRoute>
   | AppPluginFactory<TAction, TRoute>;
 
+/** Options for installing, labeling, or replacing an app plugin. */
 export interface AppPluginUseOptions {
   id?: string;
   label?: string;
   replace?: boolean;
 }
 
+/** Serializable metadata for an installed app plugin. */
 export interface AppPluginInspection {
   id: string;
   label: string;
 }
 
+/** Serializable route state for app diagnostics. */
 export interface AppRouteInspection<TRoute extends Route = Route> {
   count: number;
   activeRouteId: string;
@@ -56,6 +64,7 @@ export interface AppRouteInspection<TRoute extends Route = Route> {
   ids: string[];
 }
 
+/** Serializable command registry state for app diagnostics. */
 export interface AppCommandInspection {
   count: number;
   enabled: number;
@@ -63,11 +72,13 @@ export interface AppCommandInspection {
   groups: string[];
 }
 
+/** Serializable keymap registry state for app diagnostics. */
 export interface AppKeymapInspection {
   count: number;
   groups: string[];
 }
 
+/** Aggregate app state snapshot for status bars, diagnostics, and tests. */
 export interface TuiAppInspection<TRoute extends Route = Route> {
   destroyed: boolean;
   disposers: number;
@@ -81,6 +92,7 @@ export interface TuiAppInspection<TRoute extends Route = Route> {
   plugins: AppPluginInspection[];
 }
 
+/** High-level composition root for routes, commands, focus, mouse, plugins, and runtime workloads. */
 export class TuiApp<TAction extends Action = Action, TRoute extends Route = Route> {
   readonly tui: Tui;
   readonly actions = new ActionBus<TAction>();
@@ -99,11 +111,13 @@ export class TuiApp<TAction extends Action = Action, TRoute extends Route = Rout
     this.routes = new RouteManager(options.routes ?? [], options.initialRouteId);
   }
 
+  /** Starts rendering and input dispatch on the underlying `Tui`. */
   start(): void {
     this.tui.dispatch();
     this.tui.run();
   }
 
+  /** Disposes app resources and destroys the underlying `Tui` once. */
   destroy(): void {
     if (this.#destroyed) return;
     this.#destroyed = true;
@@ -111,14 +125,17 @@ export class TuiApp<TAction extends Action = Action, TRoute extends Route = Rout
     this.tui.destroy();
   }
 
+  /** Executes a registered command by id through the app action bus. */
   executeCommand(id: string): Promise<boolean> {
     return this.commands.execute(id, (action) => this.actions.dispatch(action));
   }
 
+  /** Subscribes to every action and automatically removes the handler on app disposal. */
   onAction(handler: ActionHandler<TAction>): () => void {
     return this.onDispose(this.actions.subscribe(handler));
   }
 
+  /** Subscribes to one action type and automatically removes the handler on app disposal. */
   onActionType<TType extends TAction["type"]>(
     type: TType,
     handler: ActionHandler<ActionOfType<TAction, TType>>,
@@ -126,30 +143,37 @@ export class TuiApp<TAction extends Action = Action, TRoute extends Route = Rout
     return this.onDispose(this.actions.subscribeType(type, handler));
   }
 
+  /** Installs action middleware and automatically removes it on app disposal. */
   useActionMiddleware(middleware: ActionMiddleware<TAction>): () => void {
     return this.onDispose(this.actions.use(middleware));
   }
 
+  /** Binds keyboard focus traversal to the app `Tui` and focus manager. */
   enableFocusNavigation(options: FocusNavigationOptions = {}): () => void {
     return this.onDispose(bindFocusNavigation(this.tui, this.focus, options));
   }
 
+  /** Binds command key handling to the app `Tui`, command registry, and action bus. */
   enableCommandKeys(options: CommandKeyBindingOptions = {}): () => void {
     return this.onDispose(bindCommandKeys(this.tui, this.commands, (action) => this.actions.dispatch(action), options));
   }
 
+  /** Mirrors command key bindings into the app keymap registry. */
   enableCommandKeymap(options: CommandKeymapBindingOptions = {}): () => void {
     return this.onDispose(bindCommandKeymap(this.commands, this.keymap, options));
   }
 
+  /** Routes decoded terminal mouse events through the app mouse interaction router. */
   enableMouseInteractions(): () => void {
     return this.onDispose(bindMouseInteractions(this.tui, this.mouse));
   }
 
+  /** Installs one plugin and tracks its disposer with the app lifecycle. */
   use(plugin: AppPluginInstaller<TAction, TRoute>, options: AppPluginUseOptions = {}): () => void {
     return this.onDispose(this.installPlugin(plugin, options));
   }
 
+  /** Installs multiple plugins with rollback if a later plugin fails. */
   useAll(
     plugins: Iterable<AppPluginInstaller<TAction, TRoute>>,
     options: AppPluginUseOptions = {},
@@ -166,18 +190,22 @@ export class TuiApp<TAction extends Action = Action, TRoute extends Route = Rout
     return this.onDispose(stack.dispose);
   }
 
+  /** Returns whether an identified plugin is currently installed. */
   hasPlugin(id: string): boolean {
     return this.#plugins.has(id);
   }
 
+  /** Returns installed plugin ids in registration order. */
   pluginIds(): string[] {
     return [...this.#plugins.keys()];
   }
 
+  /** Returns installed plugin metadata without exposing internal disposers. */
   plugins(): AppPluginInspection[] {
     return [...this.#plugins.values()].map(({ id, label }) => ({ id, label }));
   }
 
+  /** Returns an aggregate app state snapshot. */
   inspect(): TuiAppInspection<TRoute> {
     const routes = this.routes.routes.peek();
     const commands = this.commands.list();
@@ -209,6 +237,7 @@ export class TuiApp<TAction extends Action = Action, TRoute extends Route = Rout
     };
   }
 
+  /** Registers a disposer that runs at most once when removed or when the app is disposed. */
   onDispose(disposer: () => void): () => void {
     let active = true;
     const wrapped = () => {
@@ -225,6 +254,7 @@ export class TuiApp<TAction extends Action = Action, TRoute extends Route = Rout
     return wrapped;
   }
 
+  /** Runs tracked disposers without destroying the underlying `Tui`. */
   dispose(): void {
     for (const disposer of [...this.#disposers]) {
       disposer();
@@ -279,6 +309,7 @@ function pluginMetadata<TAction extends Action, TRoute extends Route>(
   };
 }
 
+/** Creates a high-level TUI application shell. */
 export function createApp<TAction extends Action = Action, TRoute extends Route = Route>(
   options: TuiAppOptions<TRoute> = {},
 ): TuiApp<TAction, TRoute> {

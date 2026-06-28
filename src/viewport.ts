@@ -2,17 +2,20 @@
 import type { Offset } from "./types.ts";
 import { clamp } from "./utils/numbers.ts";
 
+/** Half-open visible item range for a one-dimensional viewport. */
 export interface ViewportWindow {
   start: number;
   end: number;
 }
 
+/** Scrollbar thumb geometry for one viewport axis. */
 export interface ViewportThumb {
   start: number;
   size: number;
   visible: boolean;
 }
 
+/** Serializable scroll state and derived viewport geometry. */
 export interface ViewportInspection {
   contentWidth: number;
   contentHeight: number;
@@ -28,6 +31,7 @@ export interface ViewportInspection {
   canScrollRows: boolean;
 }
 
+/** Returns the maximum scroll offset for content inside a viewport. */
 export function maxViewportOffset(
   contentWidth: number,
   contentHeight: number,
@@ -40,6 +44,7 @@ export function maxViewportOffset(
   };
 }
 
+/** Clamps a scroll offset to a maximum offset on both axes. */
 export function clampViewportOffset(offset: Offset, maxOffset: Offset): Offset {
   return {
     columns: clamp(offset.columns, 0, Math.max(0, maxOffset.columns)),
@@ -47,6 +52,7 @@ export function clampViewportOffset(offset: Offset, maxOffset: Offset): Offset {
   };
 }
 
+/** Moves a scroll offset by a delta and clamps it to the maximum offset. */
 export function viewportOffsetBy(offset: Offset, maxOffset: Offset, columns: number, rows: number): Offset {
   return clampViewportOffset({
     columns: offset.columns + columns,
@@ -54,6 +60,7 @@ export function viewportOffsetBy(offset: Offset, maxOffset: Offset, columns: num
   }, maxOffset);
 }
 
+/** Returns a centered visible index window around an active item when possible. */
 export function viewportWindow(length: number, activeIndex: number, capacity: number): ViewportWindow {
   const safeCapacity = Math.max(0, Math.floor(capacity));
   if (length <= 0 || safeCapacity <= 0) return { start: 0, end: 0 };
@@ -62,6 +69,7 @@ export function viewportWindow(length: number, activeIndex: number, capacity: nu
   return { start, end: Math.min(length, start + safeCapacity) };
 }
 
+/** Computes scrollbar thumb geometry for one content axis. */
 export function viewportThumb(contentLength: number, viewportLength: number, offset: number): ViewportThumb {
   const viewport = Math.max(0, viewportLength);
   const content = Math.max(0, contentLength);
@@ -79,11 +87,13 @@ export function viewportThumb(contentLength: number, viewportLength: number, off
   };
 }
 
+/** Renders one vertical scrollbar cell for a computed thumb. */
 export function viewportThumbGlyph(row: number, thumb: ViewportThumb): string {
   if (!thumb.visible) return " ";
   return row >= thumb.start && row < thumb.start + thumb.size ? "█" : "│";
 }
 
+/** Normalizes and inspects scroll state for a two-dimensional viewport. */
 export function inspectViewport(
   contentWidth: number,
   contentHeight: number,

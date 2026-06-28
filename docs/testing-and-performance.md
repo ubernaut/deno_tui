@@ -116,7 +116,7 @@ Inspect the public re-export graph before release:
 ```bash
 deno task api-inventory
 deno task api-inventory -- --json
-deno task api-inventory -- --check --quiet --fail-duplicates --min-doc-coverage=0.18
+deno task api-inventory -- --check --quiet --fail-duplicates --min-doc-coverage=0.25
 ```
 
 The inventory reports crawled modules, re-export declarations, exported symbol counts, missing local targets, and
