@@ -13,6 +13,9 @@ Deno.test("visualization launcher resolves public aliases to deno tasks", () => 
   assertEquals(resolveVisualizationTask("worker"), "worker-demo");
   assertEquals(resolveVisualizationTask("actions"), "action-middleware");
   assertEquals(resolveVisualizationTask("pipeline"), "cached-pipeline");
+  assertEquals(resolveVisualizationTask("theme-pack"), "theme-manifest");
+  assertEquals(resolveVisualizationTask("themes"), "theme-engines");
+  assertEquals(resolveVisualizationTask("theme-runtime"), "theme-pipeline");
   assertEquals(resolveVisualizationTask("runtime"), "capabilities");
   assertEquals(resolveVisualizationTask("perf"), "benchmark");
   assertEquals(resolveVisualizationTask("exports"), "api-inventory");

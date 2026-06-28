@@ -10,6 +10,7 @@ export * from "./src/theme.ts";
 export * from "./src/theme_binding.ts";
 export * from "./src/theme_engine_cache.ts";
 export * from "./src/theme_engine_factory.ts";
+export * from "./src/theme_engine_pipeline.ts";
 export * from "./src/types.ts";
 export * from "./src/view.ts";
 export * from "./src/viewport.ts";

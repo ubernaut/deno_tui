@@ -51,6 +51,21 @@ export const visualizationLaunchTargets: readonly VisualizationLaunchTarget[] = 
     description: "cached scheduler-backed data pipeline demo",
   },
   {
+    task: "theme-manifest",
+    aliases: ["theme-manifest", "theme-pack", "manifest"],
+    description: "serializable theme manifest report",
+  },
+  {
+    task: "theme-engines",
+    aliases: ["theme-engines", "theme-factories", "themes"],
+    description: "theme engine factory registry demo",
+  },
+  {
+    task: "theme-pipeline",
+    aliases: ["theme-pipeline", "theme-runtime", "theme-transforms"],
+    description: "runtime theme transform pipeline demo",
+  },
+  {
     task: "capabilities",
     aliases: ["capabilities", "caps", "runtime"],
     description: "runtime capability report",

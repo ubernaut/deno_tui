@@ -58,6 +58,7 @@ import {
   prewarmThemeEngines,
   ThemeEngineFactoryNotFoundError,
 } from "../src/theme_engine_factory.ts";
+import { createThemeEnginePipeline, prewarmThemeEnginePipelines } from "../src/theme_engine_pipeline.ts";
 import { AsyncScheduler } from "../src/runtime/scheduler.ts";
 import { Signal } from "../src/signals/mod.ts";
 import { MemoryStore } from "../src/runtime/storage.ts";
@@ -871,6 +872,137 @@ Deno.test("prewarmThemeEngines accepts a scheduler and preserves input order", a
   assertEquals(results[0].engine.component("Button").base("x"), "first:x");
   assertEquals(results[1].engine.component("Button").base("x"), "second:x");
   assertEquals(results[0].engine.variants("Button"), ["preview"]);
+  assertEquals(scheduler.inspect(), { concurrency: 1, running: 0, pending: 0, idle: true });
+});
+
+Deno.test("ThemeEnginePipeline applies ordered theme transforms and exposes inspection", () => {
+  const pipeline = createThemeEnginePipeline({
+    id: "runtime",
+    label: "Runtime",
+    description: "Runtime theme modifiers.",
+    steps: [
+      {
+        id: "contrast",
+        label: "Contrast",
+        options: {
+          tokens: {
+            accent: (value) => `contrast:${value}`,
+          },
+          components: {
+            Button: {
+              base: { focused: "accent" },
+              variants: { danger: { active: "danger" } },
+            },
+          },
+        },
+      },
+      {
+        id: "brand",
+        enabled: false,
+        transform: (engine) =>
+          engine.extend({
+            components: {
+              Button: {
+                variants: { brand: { active: (value) => `brand:${value}` } },
+              },
+            },
+          }),
+      },
+      {
+        id: "density",
+        transform: (_engine, context) => ({
+          components: {
+            Badge: { base: { base: (value) => `${context.stepId}:${value}` } },
+          },
+        }),
+      },
+    ],
+  });
+
+  const base = createThemeEngine("plain", {
+    tokens: { danger: (value) => `danger:${value}` },
+    components: { Button: { base: { base: (value) => `base:${value}` } } },
+  });
+  const themed = pipeline.apply(base);
+
+  assertEquals(themed.component("Button").base("x"), "base:x");
+  assertEquals(themed.component("Button").focused("x"), "contrast:x");
+  assertEquals(themed.component("Button", "danger").active("x"), "danger:x");
+  assertEquals(themed.component("Badge").base("x"), "density:x");
+  assertEquals(themed.variants("Button"), ["danger"]);
+  assertEquals(pipeline.activeIds(), ["contrast", "density"]);
+  assertEquals(pipeline.inspect(), {
+    id: "runtime",
+    label: "Runtime",
+    description: "Runtime theme modifiers.",
+    stepCount: 3,
+    activeStepCount: 2,
+    steps: [
+      {
+        id: "contrast",
+        label: "Contrast",
+        description: undefined,
+        enabled: true,
+        hasTransform: false,
+        tokenOverrides: ["accent"],
+        components: ["Button"],
+        variants: { Button: ["danger"] },
+      },
+      {
+        id: "brand",
+        label: "brand",
+        description: undefined,
+        enabled: false,
+        hasTransform: true,
+        tokenOverrides: [],
+        components: [],
+        variants: {},
+      },
+      {
+        id: "density",
+        label: "density",
+        description: undefined,
+        enabled: true,
+        hasTransform: true,
+        tokenOverrides: [],
+        components: [],
+        variants: {},
+      },
+    ],
+  });
+
+  assertEquals(pipeline.enable("brand"), true);
+  assertEquals(pipeline.toggle("density"), true);
+  const branded = pipeline.apply(base);
+  assertEquals(branded.variants("Button"), ["brand", "danger"]);
+  assertEquals(branded.component("Button", "brand").active("x"), "brand:x");
+  assertEquals(branded.componentNames(), ["Button"]);
+});
+
+Deno.test("prewarmThemeEnginePipelines builds selected pipelines through a scheduler", async () => {
+  const scheduler = new AsyncScheduler({ concurrency: 1 });
+  const first = createThemeEnginePipeline({
+    id: "first",
+    steps: [
+      { id: "accent", options: { components: { Button: { base: { base: (value) => `first:${value}` } } } } },
+    ],
+  });
+  const second = createThemeEnginePipeline({
+    id: "second",
+    steps: [
+      { id: "accent", options: { components: { Button: { base: { base: (value) => `second:${value}` } } } } },
+    ],
+  });
+
+  const warmed = await prewarmThemeEnginePipelines([first, second], {
+    scheduler,
+    ids: ["second"],
+    base: () => new ThemeEngine(),
+  });
+
+  assertEquals(warmed.map((result) => result.id), ["second"]);
+  assertEquals(warmed[0].engine.component("Button").base("x"), "second:x");
+  assertEquals(warmed[0].inspection.activeStepCount, 1);
   assertEquals(scheduler.inspect(), { concurrency: 1, running: 0, pending: 0, idle: true });
 });
 

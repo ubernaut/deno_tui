@@ -1113,6 +1113,7 @@ import {
   createThemeEngineFactoryRegistry,
   createThemeEngineFromManifest,
   createThemeEngineFromPalette,
+  createThemeEnginePipeline,
   createThemeLayerStack,
   createThemePaletteRegistry,
   createThemePlugin,
@@ -1124,6 +1125,7 @@ import {
   inspectThemeCoverage,
   inspectThemeManifest,
   previewThemeManifest,
+  prewarmThemeEnginePipelines,
   themeCommands,
   validateThemeOptions,
 } from "https://deno.land/x/tui@VERSION/mod.ts";
@@ -1186,6 +1188,28 @@ const themeFactories = createThemeEngineFactoryRegistry([
   },
 ]);
 const warmedThemeEngines = await themeFactories.prewarm();
+
+const runtimePipeline = createThemeEnginePipeline({
+  id: "runtime-accessibility",
+  steps: [
+    {
+      id: "high-contrast",
+      options: {
+        tokens: { accent: createAnsiStyle({ foreground: "brightCyan", bold: true }) },
+        components: { Button: { base: { focused: "accent" } } },
+      },
+    },
+    {
+      id: "focus-ring",
+      transform: (engine) =>
+        engine.extend({
+          components: { Input: { base: { focused: ["accent", createAnsiStyle({ underline: true })] } } },
+        }),
+    },
+  ],
+});
+const accessibleTheme = runtimePipeline.apply(themeEngine);
+const warmedPipelines = await prewarmThemeEnginePipelines([runtimePipeline], { base: themeEngine });
 
 const themeIssues = validateThemeOptions(appTheme);
 assertThemeOptions(appTheme);
@@ -1300,55 +1324,60 @@ and `ThemeProvider.resolve()` expose computed signals for active component theme
 multiple theme engines, white-label packs, demos, or plugin-provided themes. Factories expose metadata, tags, priority,
 validation issues, token overrides, components, variants, synchronous `build()`, and scheduler-backed `prewarm()` so
 heavy theme catalogs can be prepared before first render without coupling widgets to theme loading.
-`ThemeProvider.themeIds()`, `nextTheme()`, `previousTheme()`, and `cycleTheme(direction)` keep theme switching
-deterministic across command palettes, menus, and key bindings. Pass any `AsyncStore<string>` to persist the active pack
-through `MemoryStore`, `IndexedDbStore`, or a custom settings backend; `provider.ready` reports the loaded theme and
-`provider.flush()` waits for pending writes. `bindComponentTheme()` bridges those provider signals back into normal
-components and returns a disposer, so live theme switching stays centralized and testable without requiring widgets to
-know where their theme came from. `provider.catalog()` and `createThemeCatalog(provider)` return a normalized catalog of
-theme packs, active flags, layer toggles, engine tokens, states, components, and variants, which is the preferred
-surface for building theme pickers, settings panels, inspector panes, and demo controls. `previewThemeProvider()`
-renders token and component-state samples from the currently composed provider, including active runtime layers, so
-settings panes and demos can show the exact live theme instead of reimplementing preview logic. `themePreviewCommands()`
-exposes that same live snapshot through the command registry as a `theme.previewed` action, and `bindThemeCommands()`
-registers theme selection, layer toggles, and preview commands with one disposer for command palettes, menus, key help,
-and plugin surfaces. `ThemeLayerStack` adds runtime overlays for density, contrast, accessibility, or brand-specific
-state treatments; `enable()`, `disable()`, `toggle()`, `activeIds()`, and `inspect()` make those overlays usable from
-command palettes and settings screens while preserving deterministic composition order. Component definitions can also
-reference semantic token names such as `"foreground"`, `"accent"`, `"danger"`, or `"surface"` instead of concrete style
-functions, so variants automatically follow the active palette. A state style may also be an array of token names and
-style functions; the engine composes the pipeline in order. Component definitions can `extend` one or more other
-definitions, which makes aliases like `ComboBox -> Field` or shared role themes cheap while preserving variants and
-app-level overrides. `createAnsiStyle()` and `createAnsiThemeTokens()` provide a small serializable style-spec layer for
-theme engines: packs can use named ANSI colors, 256-color indexes, RGB tuples, and text attributes like bold or
-underline without embedding raw escape sequences throughout the app. `compileThemeManifestOptions()`,
-`createThemeEngineFromManifest()`, and `createThemeRegistryFromManifests()` build on those specs so reusable theme packs
-can be plain data: semantic token specs, component inheritance, variants, and state pipelines can be loaded from
-JSON-like modules, validated, diffed, and installed without hard-coding style functions. `inspectThemeManifest()`
-exposes manifest metadata, declared tokens, component inheritance, variants, state coverage, and validation issues for
-editors and settings panels, while `previewThemeManifest()` returns rendered token and component-state samples for
-review panes and snapshot tests. The built-in `neon` and `terminal` palettes use the same helpers.
-`themeSelectionCommands()`, `themeLayerCommands()`, and `themeCommands()` project the active `ThemeProvider` into normal
-command registry entries for "next theme", "previous theme", explicit theme selection, and layer enable/disable/toggle
-actions. The generated commands use dynamic disabled predicates, so the active theme and current layer states stay
-accurate when they are shown in a command palette, menu bar, context menu, or key binding help surface.
-`validateThemeOptions()` and `assertThemeOptions()` give theme authors a first-class diagnostics pass for unknown token
-references, missing component parents, and inheritance cycles before a pack is registered. `themeTokenNames` and
-`themeStates` expose the stable engine vocabulary for editors, schema generators, inspectors, and design tooling.
-`inspectThemeCoverage()` reports explicitly authored state coverage after component inheritance is resolved, including
-missing states per component and variant, so theme packs can fail CI before unstyled states accidentally ship.
-`diffThemeEngines()` previews changed semantic tokens and resolved component states between two engines, which makes it
-practical to build theme review panels, snapshot tests, and migration reports around real rendered output instead of raw
-object comparison. `ThemePaletteRegistry` lets apps and plugins register custom palette engines with stable ids, inspect
-available token coverage, replace palettes deterministically, and build `ThemeEngine` instances from the same semantic
-token contract used by built-in palettes. `createThemeEngineFromPalette()` is the low-level bridge for detached or
-generated palettes, while `ThemeRegistry`, `ThemeProvider`, and `ThemeEngineFactory` also accept custom palette objects
-for white-label packs and plugin-provided themes. `createThemePlugin()` is the app-level installer for the same engine
-layer: it owns or accepts a `ThemeProvider`, registers theme and layer commands, optionally mirrors command bindings
-into key help, and connects the active pack and active layers to `SettingsController` persistence with one disposable
-plugin. `ThemeEngineCache` and `ThemeProviderCache` are opt-in runtime accelerators for redraw-heavy apps: they memoize
-component themes and resolved state styles, expose hit/miss inspection, and the provider cache automatically invalidates
-when theme packs or layers change.
+`ThemeEnginePipeline` adds the runtime side of that engine story: apps can register ordered, enableable transforms that
+extend an existing engine with contrast, density, accessibility, brand, or experiment-specific overlays. Pipeline steps
+can be plain `ThemeEngineOptions` or functions that receive the current engine and return another engine or extension
+options; `inspect()` reports active steps, token overrides, component coverage, and variants for settings UIs, while
+`prewarmThemeEnginePipelines()` prepares selected pipelines through the same scheduler-backed runtime path as factory
+prewarming. `ThemeProvider.themeIds()`, `nextTheme()`, `previousTheme()`, and `cycleTheme(direction)` keep theme
+switching deterministic across command palettes, menus, and key bindings. Pass any `AsyncStore<string>` to persist the
+active pack through `MemoryStore`, `IndexedDbStore`, or a custom settings backend; `provider.ready` reports the loaded
+theme and `provider.flush()` waits for pending writes. `bindComponentTheme()` bridges those provider signals back into
+normal components and returns a disposer, so live theme switching stays centralized and testable without requiring
+widgets to know where their theme came from. `provider.catalog()` and `createThemeCatalog(provider)` return a normalized
+catalog of theme packs, active flags, layer toggles, engine tokens, states, components, and variants, which is the
+preferred surface for building theme pickers, settings panels, inspector panes, and demo controls.
+`previewThemeProvider()` renders token and component-state samples from the currently composed provider, including
+active runtime layers, so settings panes and demos can show the exact live theme instead of reimplementing preview
+logic. `themePreviewCommands()` exposes that same live snapshot through the command registry as a `theme.previewed`
+action, and `bindThemeCommands()` registers theme selection, layer toggles, and preview commands with one disposer for
+command palettes, menus, key help, and plugin surfaces. `ThemeLayerStack` adds runtime overlays for density, contrast,
+accessibility, or brand-specific state treatments; `enable()`, `disable()`, `toggle()`, `activeIds()`, and `inspect()`
+make those overlays usable from command palettes and settings screens while preserving deterministic composition order.
+Component definitions can also reference semantic token names such as `"foreground"`, `"accent"`, `"danger"`, or
+`"surface"` instead of concrete style functions, so variants automatically follow the active palette. A state style may
+also be an array of token names and style functions; the engine composes the pipeline in order. Component definitions
+can `extend` one or more other definitions, which makes aliases like `ComboBox -> Field` or shared role themes cheap
+while preserving variants and app-level overrides. `createAnsiStyle()` and `createAnsiThemeTokens()` provide a small
+serializable style-spec layer for theme engines: packs can use named ANSI colors, 256-color indexes, RGB tuples, and
+text attributes like bold or underline without embedding raw escape sequences throughout the app.
+`compileThemeManifestOptions()`, `createThemeEngineFromManifest()`, and `createThemeRegistryFromManifests()` build on
+those specs so reusable theme packs can be plain data: semantic token specs, component inheritance, variants, and state
+pipelines can be loaded from JSON-like modules, validated, diffed, and installed without hard-coding style functions.
+`inspectThemeManifest()` exposes manifest metadata, declared tokens, component inheritance, variants, state coverage,
+and validation issues for editors and settings panels, while `previewThemeManifest()` returns rendered token and
+component-state samples for review panes and snapshot tests. The built-in `neon` and `terminal` palettes use the same
+helpers. `themeSelectionCommands()`, `themeLayerCommands()`, and `themeCommands()` project the active `ThemeProvider`
+into normal command registry entries for "next theme", "previous theme", explicit theme selection, and layer
+enable/disable/toggle actions. The generated commands use dynamic disabled predicates, so the active theme and current
+layer states stay accurate when they are shown in a command palette, menu bar, context menu, or key binding help
+surface. `validateThemeOptions()` and `assertThemeOptions()` give theme authors a first-class diagnostics pass for
+unknown token references, missing component parents, and inheritance cycles before a pack is registered.
+`themeTokenNames` and `themeStates` expose the stable engine vocabulary for editors, schema generators, inspectors, and
+design tooling. `inspectThemeCoverage()` reports explicitly authored state coverage after component inheritance is
+resolved, including missing states per component and variant, so theme packs can fail CI before unstyled states
+accidentally ship. `diffThemeEngines()` previews changed semantic tokens and resolved component states between two
+engines, which makes it practical to build theme review panels, snapshot tests, and migration reports around real
+rendered output instead of raw object comparison. `ThemePaletteRegistry` lets apps and plugins register custom palette
+engines with stable ids, inspect available token coverage, replace palettes deterministically, and build `ThemeEngine`
+instances from the same semantic token contract used by built-in palettes. `createThemeEngineFromPalette()` is the
+low-level bridge for detached or generated palettes, while `ThemeRegistry`, `ThemeProvider`, and `ThemeEngineFactory`
+also accept custom palette objects for white-label packs and plugin-provided themes. `createThemePlugin()` is the
+app-level installer for the same engine layer: it owns or accepts a `ThemeProvider`, registers theme and layer commands,
+optionally mirrors command bindings into key help, and connects the active pack and active layers to
+`SettingsController` persistence with one disposable plugin. `ThemeEngineCache` and `ThemeProviderCache` are opt-in
+runtime accelerators for redraw-heavy apps: they memoize component themes and resolved state styles, expose hit/miss
+inspection, and the provider cache automatically invalidates when theme packs or layers change.
 
 ## Runtime Capabilities
 
@@ -1681,6 +1710,7 @@ const preset = findAsciiDemoPreset("mixed-best");
 | `examples/dashboard.ts`            | Dashboard widgets, semantic theme tokens, and key help       |
 | `examples/theme_manifest.ts`       | Serializable theme manifest compiler and diff demo           |
 | `examples/theme_engines.ts`        | Theme engine factory registry and prewarm demo               |
+| `examples/theme_pipeline.ts`       | Runtime theme transform pipeline and prewarm demo            |
 | `examples/worker_pool.ts`          | WorkerPool concurrency example                               |
 | `examples/action_middleware.ts`    | Action middleware and plugin pipeline example                |
 | `examples/cached_pipeline.ts`      | Cached scheduler-backed data pipeline example                |
@@ -1688,11 +1718,12 @@ const preset = findAsciiDemoPreset("mixed-best");
 | `app/showcase.ts`                  | Full Neon Exodus-style widget and visualization showcase     |
 | `app/main.ts`                      | Live system monitor dashboard with selectable panels         |
 
-Run the theme manifest and engine factory demos with:
+Run the theme manifest and engine demos with:
 
 ```sh
 deno task theme-manifest
 deno task theme-engines
+deno task theme-pipeline
 ```
 
 ### Launching the added visualizations
@@ -1724,6 +1755,9 @@ tuning.
 ./visualization worker
 ./visualization actions
 ./visualization pipeline
+./visualization theme-manifest
+./visualization theme-engines
+./visualization theme-pipeline
 ./visualization capabilities
 ./visualization benchmark
 ./visualization api-inventory
@@ -1737,11 +1771,12 @@ Launches the system monitor dashboard. Use `F4` to open options, select panel vi
 for 3D panels. Added 3D visualization IDs include `three-lattice`, `three-atfield`, `three-hexshell`, `three-capture`,
 `three-mapslab`, `three-solenoid`, and `three-ascii-studio`. The same launcher also exposes runtime and tooling demos:
 `worker` for abortable worker-pool concurrency, `actions` for middleware-based action dispatch, `pipeline` for cached
-scheduler-backed transforms, `capabilities` for platform feature detection, `benchmark` for performance smoke checks,
-`api-inventory` for public export graph inspection, `components` for widget catalog reports, `layout-recipe` for
-responsive recipe inspection, `grwizard` for the responsive GPU/model wizard, and `health` for the contributor gate.
-Benchmark runs print per-case timings plus an aggregate summary; `deno task benchmark -- --json` emits the same
-threshold-aware summary as structured data and exits nonzero when a case fails its limits.
+scheduler-backed transforms, `theme-manifest` for serializable theme packs, `theme-engines` for factory prewarming,
+`theme-pipeline` for runtime theme transforms, `capabilities` for platform feature detection, `benchmark` for
+performance smoke checks, `api-inventory` for public export graph inspection, `components` for widget catalog reports,
+`layout-recipe` for responsive recipe inspection, `grwizard` for the responsive GPU/model wizard, and `health` for the
+contributor gate. Benchmark runs print per-case timings plus an aggregate summary; `deno task benchmark -- --json` emits
+the same threshold-aware summary as structured data and exits nonzero when a case fails its limits.
 
 Direct Deno tasks are also available:
 
@@ -1752,6 +1787,9 @@ deno task layout-recipe
 deno task three-ascii
 deno task dashboard
 deno task viz
+deno task theme-manifest
+deno task theme-engines
+deno task theme-pipeline
 deno task capabilities
 deno task benchmark
 deno task api-inventory

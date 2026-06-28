@@ -36,6 +36,15 @@ case "$target" in
   pipeline|cached-pipeline|cache)
     task="cached-pipeline"
     ;;
+  theme-manifest|theme-pack|manifest)
+    task="theme-manifest"
+    ;;
+  theme-engines|theme-factories|themes)
+    task="theme-engines"
+    ;;
+  theme-pipeline|theme-runtime|theme-transforms)
+    task="theme-pipeline"
+    ;;
   capabilities|caps|runtime)
     task="capabilities"
     ;;
@@ -56,7 +65,7 @@ case "$target" in
     ;;
   -h|--help|help)
     printf '%s\n' \
-      "usage: ./visualization [showcase|polygons|dashboard|app-shell|layout-recipe|monitor|worker|actions|pipeline|capabilities|benchmark|api-inventory|components|grwizard|health] [args...]" \
+      "usage: ./visualization [showcase|polygons|dashboard|app-shell|layout-recipe|monitor|worker|actions|pipeline|theme-manifest|theme-engines|theme-pipeline|capabilities|benchmark|api-inventory|components|grwizard|health] [args...]" \
       "" \
       "  showcase     full widget showcase (default)" \
       "  polygons     standalone three.js ASCII geometry demo" \
@@ -68,6 +77,9 @@ case "$target" in
       "  worker       abortable WorkerPool concurrency demo" \
       "  actions      action middleware and plugin pipeline demo" \
       "  pipeline     cached scheduler-backed data pipeline demo" \
+      "  theme-manifest serializable theme manifest report" \
+      "  theme-engines theme engine factory registry demo" \
+      "  theme-pipeline runtime theme transform pipeline demo" \
       "  capabilities runtime capability report" \
       "  benchmark    layout and rendering benchmark report" \
       "  api-inventory public API export inventory" \
@@ -78,7 +90,7 @@ case "$target" in
     ;;
   *)
     echo "unknown visualization: $target" >&2
-    echo "usage: ./visualization [showcase|polygons|dashboard|app-shell|layout-recipe|monitor|worker|actions|pipeline|capabilities|benchmark|api-inventory|components|grwizard|health] [args...]" >&2
+    echo "usage: ./visualization [showcase|polygons|dashboard|app-shell|layout-recipe|monitor|worker|actions|pipeline|theme-manifest|theme-engines|theme-pipeline|capabilities|benchmark|api-inventory|components|grwizard|health] [args...]" >&2
     exit 64
     ;;
 esac
