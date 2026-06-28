@@ -109,6 +109,7 @@ export const componentCatalog = [
     "keyboard",
   ]),
   component("tabs", "Tabs", "navigation", "Segmented route or view selector.", [
+    "controller",
     "render-helper",
     "selection",
     "keyboard",

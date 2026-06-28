@@ -24,6 +24,7 @@ export * from "./settings.ts";
 export * from "./split_pane_commands.ts";
 export * from "./stepper_commands.ts";
 export * from "./surface_bindings.ts";
+export * from "./tabs_commands.ts";
 export * from "./theme_commands.ts";
 export * from "./theme_plugin.ts";
 export * from "./toast_commands.ts";

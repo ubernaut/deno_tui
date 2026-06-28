@@ -3,6 +3,7 @@ import { bindMenuBarCommands, menuBarCommands } from "../src/app/menu_bar_comman
 import { bindScrollAreaCommands, scrollAreaCommands } from "../src/app/scroll_area_commands.ts";
 import { CommandRegistry } from "../src/app/commands.ts";
 import { bindStepperCommands, stepperCommands } from "../src/app/stepper_commands.ts";
+import { bindTabsCommands, tabsCommands } from "../src/app/tabs_commands.ts";
 import { formatKeyBinding, KeymapRegistry } from "../src/keymap.ts";
 import { renderBreadcrumbs } from "../src/components/breadcrumbs.ts";
 import { renderEmptyState } from "../src/components/empty_state.ts";
@@ -39,7 +40,7 @@ import {
   stepForIndex,
   StepperController,
 } from "../src/components/stepper.ts";
-import { renderTabs } from "../src/components/tabs.ts";
+import { clampTabIndex, renderTabs, shiftTabIndex, tabForIndex, TabsController } from "../src/components/tabs.ts";
 import { TextLineCache } from "../src/components/textbox.ts";
 import { renderVirtualListRows, VirtualListController, virtualListRows } from "../src/components/virtual_list.ts";
 import type { Key, KeyPressEvent } from "../src/input_reader/types.ts";
@@ -132,13 +133,101 @@ Deno.test("VirtualListController syncs selected values and external state", () =
 });
 
 Deno.test("renderTabs marks the active tab", () => {
+  const tabs = [
+    { id: "one", label: "One" },
+    { id: "two", label: "Two", disabled: true },
+    { id: "three", label: "Three" },
+  ];
+
   assertEquals(
-    renderTabs([
-      { id: "one", label: "One" },
-      { id: "two", label: "Two" },
-    ], 1),
-    " One  [Two]",
+    renderTabs(tabs, 2),
+    " One   (Two)  [Three]",
   );
+  assertEquals(shiftTabIndex(tabs, 0, 1), 2);
+  assertEquals(clampTabIndex(tabs, 1), 2);
+  assertEquals(tabForIndex(tabs, 1)?.id, "three");
+});
+
+Deno.test("TabsController navigates and inspects tab state", () => {
+  const changes: string[] = [];
+  const controller = new TabsController({
+    tabs: [
+      { id: "overview", label: "Overview" },
+      { id: "logs", label: "Logs", disabled: true },
+      { id: "settings", label: "Settings" },
+    ],
+    activeIndex: 1,
+    onChange: (tab) => void changes.push(tab.id),
+  });
+
+  assertEquals(controller.inspect(), {
+    tabs: [
+      { id: "overview", label: "Overview" },
+      { id: "logs", label: "Logs", disabled: true },
+      { id: "settings", label: "Settings" },
+    ],
+    tabCount: 3,
+    activeIndex: 2,
+    active: { id: "settings", label: "Settings" },
+    empty: false,
+  });
+  assertEquals(controller.move(-1)?.id, "overview");
+  controller.handleKeyPress(keyPress("right"));
+  controller.handleKeyPress(keyPress("home"));
+  assertEquals(controller.active()?.id, "overview");
+  assertEquals(changes, ["overview", "settings", "overview"]);
+  controller.dispose();
+});
+
+Deno.test("tabsCommands move and select tabs", async () => {
+  const controller = new TabsController({
+    tabs: [
+      { id: "overview", label: "Overview" },
+      { id: "logs", label: "Logs", disabled: true },
+      { id: "settings", label: "Settings" },
+    ],
+  });
+  const registry = new CommandRegistry();
+  const actions: unknown[] = [];
+  const dispose = bindTabsCommands(registry, controller, {
+    id: "main",
+    idPrefix: "tabs.main",
+    group: "tabs",
+    includeTabCommands: true,
+  });
+
+  assertEquals(tabsCommands(new TabsController({ tabs: [] })).map((command) => command.id), [
+    "tabs.first",
+    "tabs.previous",
+    "tabs.next",
+    "tabs.last",
+  ]);
+  assertEquals(registry.list("tabs").map((command) => command.id), [
+    "tabs.main.first",
+    "tabs.main.tab.logs",
+    "tabs.main.tab.overview",
+    "tabs.main.tab.settings",
+    "tabs.main.last",
+    "tabs.main.next",
+    "tabs.main.previous",
+  ]);
+
+  assertEquals(await registry.execute("tabs.main.next", (action) => void actions.push(action)), true);
+  assertEquals(controller.active()?.id, "settings");
+  assertEquals(await registry.execute("tabs.main.tab.logs", (action) => void actions.push(action)), false);
+  assertEquals(await registry.execute("tabs.main.tab.overview", (action) => void actions.push(action)), true);
+  assertEquals(actions.at(-1), {
+    type: "tabs.tabSelected",
+    payload: {
+      id: "main",
+      tab: { id: "overview", label: "Overview" },
+      inspection: controller.inspect(),
+    },
+  });
+
+  dispose();
+  assertEquals(registry.list("tabs"), []);
+  controller.dispose();
 });
 
 Deno.test("renderBreadcrumbs truncates from the left", () => {

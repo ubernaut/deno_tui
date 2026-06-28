@@ -183,6 +183,26 @@ const selectedPids = processes.selectedValues<number>();
 const listState = processes.inspect();
 ```
 
+`TabsController` owns tab data, active index, disabled-tab skipping, keyboard handling, and inspection state for
+navigation bars that need to be reused by route managers, command palettes, key bindings, or alternate renderers.
+`tabsCommands()` and `bindTabsCommands()` expose first, previous, next, last, and optional direct tab-selection actions:
+
+```ts
+const tabs = new TabsController({
+  tabs: [
+    { id: "overview", label: "Overview" },
+    { id: "logs", label: "Logs" },
+    { id: "settings", label: "Settings", disabled: true },
+  ],
+});
+
+const stopTabsCommands = bindTabsCommands(app.commands, tabs, {
+  idPrefix: "tabs.main",
+  group: "navigation",
+  includeTabCommands: true,
+});
+```
+
 `StepperController` does the same for workflow navigation: it owns step data, active index, disabled-step skipping,
 orientation, keyboard handling, and inspection state. Use `stepperCommands()` or `bindStepperCommands()` to expose
 first, previous, next, last, and optional direct step-selection actions through command palettes, menus, or key help.
