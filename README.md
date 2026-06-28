@@ -259,6 +259,14 @@ const stopCommandKeys = app.enableCommandKeys();
 For embedded command surfaces, use `bindCommandKeys(target, registry, dispatch)` with any object that emits `keyPress`
 events.
 
+Use `commandSurfaceItems()` and `executeCommandSurfaceItem()` to feed command registries into palettes, context menus,
+or custom launchers without duplicating projection and dispatch code:
+
+```ts
+const items = commandSurfaceItems(app.commands, { includeDisabled: false });
+await executeCommandSurfaceItem(app.commands, items[0], (action) => app.actions.dispatch(action));
+```
+
 `FormController` keeps form state separate from rendering:
 
 ```ts

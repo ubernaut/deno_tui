@@ -1,7 +1,12 @@
 import { assertEquals } from "./deps.ts";
 import { createApp } from "../src/app/app.ts";
 import { ActionBus } from "../src/app/actions.ts";
-import { bindCommandKeys, commandForKeyEvent } from "../src/app/command_bindings.ts";
+import {
+  bindCommandKeys,
+  commandForKeyEvent,
+  commandSurfaceItems,
+  executeCommandSurfaceItem,
+} from "../src/app/command_bindings.ts";
 import { CommandRegistry } from "../src/app/commands.ts";
 import { HistoryStack } from "../src/app/history.ts";
 import { RouteManager } from "../src/app/router.ts";
@@ -130,6 +135,68 @@ Deno.test("bindCommandKeys executes matching commands and unsubscribes", async (
   await Promise.resolve();
   assertEquals(seen, ["a", "b"]);
   assertEquals(target.listenerCount(), 0);
+});
+
+Deno.test("commandSurfaceItems adapts registry commands for palettes and menus", () => {
+  const registry = new CommandRegistry<{ type: "route"; payload: string }>();
+  registry.register({
+    id: "route.home",
+    label: "Go Home",
+    description: "Open the home route",
+    group: "routes",
+    keywords: ["landing"],
+    binding: { key: "1" },
+    action: { type: "route", payload: "home" },
+  });
+  registry.register({
+    id: "route.admin",
+    label: "Admin",
+    group: "routes",
+    disabled: true,
+    binding: { key: "a", ctrl: true },
+    action: { type: "route", payload: "admin" },
+  });
+
+  assertEquals(commandSurfaceItems(registry, { group: "routes" }), [
+    {
+      id: "route.admin",
+      label: "Admin",
+      keywords: ["route.admin", "routes", "C-a"],
+      disabled: true,
+    },
+    {
+      id: "route.home",
+      label: "Go Home",
+      keywords: ["route.home", "routes", "Open the home route", "landing", "1"],
+      disabled: false,
+    },
+  ]);
+  assertEquals(commandSurfaceItems(registry, { group: "routes", includeDisabled: false }).map((item) => item.id), [
+    "route.home",
+  ]);
+  assertEquals(
+    commandSurfaceItems(registry, { group: "routes", includeBindingsInKeywords: false })[1].keywords,
+    ["route.home", "routes", "Open the home route", "landing"],
+  );
+});
+
+Deno.test("executeCommandSurfaceItem dispatches selected command items", async () => {
+  const registry = new CommandRegistry<{ type: "append"; payload: string }>();
+  const seen: string[] = [];
+  registry.register({
+    id: "append.a",
+    label: "Append A",
+    action: { type: "append", payload: "a" },
+  });
+
+  assertEquals(
+    await executeCommandSurfaceItem(registry, { id: "append.a" }, (action) => {
+      seen.push(action.payload);
+    }),
+    true,
+  );
+  assertEquals(await executeCommandSurfaceItem(registry, { id: "missing" }), false);
+  assertEquals(seen, ["a"]);
 });
 
 Deno.test("TuiApp dispatches command actions through the action bus", async () => {

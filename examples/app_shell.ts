@@ -3,6 +3,7 @@ import { crayon } from "https://deno.land/x/crayon@3.3.3/mod.ts";
 import {
   Breadcrumbs,
   CommandPalette,
+  commandSurfaceItems,
   Computed,
   ContextMenu,
   createApp,
@@ -10,6 +11,7 @@ import {
   createRuntimeStore,
   createThemeEngine,
   dockRect,
+  executeCommandSurfaceItem,
   Frame,
   handleInput,
   handleKeyboardControls,
@@ -489,7 +491,7 @@ new CommandPalette({
   parent: app.tui,
   theme: themeEngine.component("CommandPalette"),
   zIndex: 11,
-  items: new Computed(() => app.commands.projections(undefined, false)),
+  items: new Computed(() => commandSurfaceItems(app.commands, { includeDisabled: false })),
   rectangle: new Computed(() => ({
     column: Math.max(3, Math.floor(app.tui.rectangle.value.width / 2) - 23),
     row: 5,
@@ -498,7 +500,9 @@ new CommandPalette({
   })),
   onSelect: (item) => {
     paletteVisible.value = false;
-    return app.executeCommand(item.id).then(() => undefined);
+    return executeCommandSurfaceItem(app.commands, item, (action) => app.actions.dispatch(action)).then(() =>
+      undefined
+    );
   },
   visible: paletteVisible,
 });
@@ -508,9 +512,11 @@ new ContextMenu({
   theme: themeEngine.component("ContextMenu"),
   zIndex: 9,
   items: new Computed(() => [
-    ...app.commands.projections("routes", false),
+    ...commandSurfaceItems(app.commands, { group: "routes", includeDisabled: false }),
     { id: "separator", label: "", separatorBefore: true },
-    ...app.commands.projections("global", false).filter((item) => item.id !== "app.quit"),
+    ...commandSurfaceItems(app.commands, { group: "global", includeDisabled: false }).filter((item) =>
+      item.id !== "app.quit"
+    ),
   ]),
   rectangle: new Computed(() => ({
     column: Math.max(2, app.tui.rectangle.value.width - 34),
@@ -520,7 +526,9 @@ new ContextMenu({
   })),
   onSelect: (item) => {
     contextVisible.value = false;
-    return app.executeCommand(item.id).then(() => undefined);
+    return executeCommandSurfaceItem(app.commands, item, (action) => app.actions.dispatch(action)).then(() =>
+      undefined
+    );
   },
   visible: contextVisible,
 });
