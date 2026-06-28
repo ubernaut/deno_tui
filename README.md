@@ -2240,6 +2240,10 @@ From the project root:
 ./visualization neon
 ```
 
+`./visualization` opens the interactive demo launcher. Use arrows or `j`/`k` to move, type to filter, press `Enter` to
+launch the selected demo, and press `Esc` or `q` to exit. `./visualization --list` prints the same catalog without
+opening the selector.
+
 `./visualization portfolio` launches the API Workbench with resizable windows, minimize/maximize/restore controls,
 interactive menu bars, split panes, scrollable sections, data tables, form controls, and a theme selector.
 
@@ -2362,6 +2366,7 @@ deno task component-catalog
 deno task app-plugin-catalog
 deno task adopter-workbench
 deno task demo-gallery
+deno task visualization
 deno task screenshots
 deno task web:check
 deno task web:demo:check

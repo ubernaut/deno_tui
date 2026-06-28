@@ -3,120 +3,12 @@ set -euo pipefail
 
 cd "$(dirname "$0")"
 
-target="${1:-showcase}"
-if [ "$#" -gt 0 ]; then
-  shift
-fi
-
-case "$target" in
-  showcase|demo)
-    task="showcase"
-    ;;
-  polygons|polygon|geometry|three|three-ascii|ascii)
-    task="three-ascii"
-    ;;
-  dashboard|dash)
-    task="dashboard"
-    ;;
-  app-shell|shell|app)
-    task="app-shell"
-    ;;
-  layout-recipe|layout-report|recipe)
-    task="layout-recipe"
-    ;;
-  monitor|system-monitor|system|viz)
-    task="viz"
-    ;;
-  worker|workers|worker-demo)
-    task="worker-demo"
-    ;;
-  actions|action-middleware|middleware)
-    task="action-middleware"
-    ;;
-  resource|cached-resource|resources)
-    task="cached-resource"
-    ;;
-  pipeline|cached-pipeline|cache)
-    task="cached-pipeline"
-    ;;
-  theme-manifest|theme-pack|manifest)
-    task="theme-manifest"
-    ;;
-  theme-engines|theme-factories|themes)
-    task="theme-engines"
-    ;;
-  theme-pipeline|theme-runtime|theme-transforms)
-    task="theme-pipeline"
-    ;;
-  theme-gallery|theme-picker|theme-catalog)
-    task="theme-gallery"
-    ;;
-  theme-bindings|theme-binding|theme-wiring)
-    task="theme-bindings"
-    ;;
-  capabilities|caps|runtime)
-    task="capabilities"
-    ;;
-  runtime-workloads|workloads|runtime-pressure|pressure)
-    task="runtime-workloads"
-    ;;
-  benchmark|bench|perf)
-    task="benchmark"
-    ;;
-  api-inventory|api|exports)
-    task="api-inventory"
-    ;;
-  components|component-catalog|widgets)
-    task="component-catalog"
-    ;;
-  grwizard|wizard)
-    task="grwizard"
-    ;;
-  health|check)
-    task="health"
-    ;;
-  -h|--help|help)
-    printf '%s\n' \
-      "usage: ./visualization [showcase|polygons|dashboard|app-shell|layout-recipe|monitor|worker|actions|resource|pipeline|theme-manifest|theme-engines|theme-pipeline|theme-gallery|theme-bindings|capabilities|runtime-workloads|benchmark|api-inventory|components|grwizard|health] [args...]" \
-      "" \
-      "  showcase     full widget showcase (default)" \
-      "  polygons     standalone three.js ASCII geometry demo" \
-      "               pass --no-controls to start with its control panel hidden" \
-      "  dashboard    dashboard widgets and theme engine demo" \
-      "  app-shell    app primitives, command palette, routes, and toasts demo" \
-      "  layout-recipe responsive layout recipe report" \
-      "  monitor      system monitor visualization dashboard" \
-      "  worker       abortable WorkerPool concurrency demo" \
-      "  actions      action middleware and plugin pipeline demo" \
-      "  resource     cached async resource loader demo" \
-      "  pipeline     cached scheduler-backed data pipeline demo" \
-      "  theme-manifest serializable theme manifest report" \
-      "  theme-engines theme engine factory registry demo" \
-      "  theme-pipeline runtime theme transform pipeline demo" \
-      "  theme-gallery searchable theme gallery and preview report" \
-      "  theme-bindings grouped component theme binding demo" \
-      "  capabilities runtime capability report" \
-      "  runtime-workloads scheduler and worker-pool pressure demo" \
-      "  benchmark    layout and rendering benchmark report" \
-      "  api-inventory public API export inventory" \
-      "  components   component catalog report" \
-      "  grwizard     responsive GPU/model wizard demo" \
-      "  health       contributor health gate"
-    exit 0
-    ;;
-  *)
-    echo "unknown visualization: $target" >&2
-    echo "usage: ./visualization [showcase|polygons|dashboard|app-shell|layout-recipe|monitor|worker|actions|resource|pipeline|theme-manifest|theme-engines|theme-pipeline|theme-gallery|theme-bindings|capabilities|runtime-workloads|benchmark|api-inventory|components|grwizard|health] [args...]" >&2
-    exit 64
-    ;;
-esac
-
 if command -v deno >/dev/null 2>&1; then
-  exec deno task "$task" "$@"
+  exec deno run -A ./scripts/demo_launcher.ts "$@"
 fi
 
 if [ -x "$HOME/.deno/bin/deno" ]; then
-  exec "$HOME/.deno/bin/deno" task "$task" "$@"
+  exec "$HOME/.deno/bin/deno" run -A ./scripts/demo_launcher.ts "$@"
 fi
 
 echo "deno was not found. Install Deno or add $HOME/.deno/bin to PATH." >&2

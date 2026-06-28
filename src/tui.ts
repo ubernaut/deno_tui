@@ -6,7 +6,14 @@ import { InputEventRecord } from "./input_reader/mod.ts";
 import { Computed, Signal } from "./signals/mod.ts";
 import { Style } from "./theme.ts";
 import { Rectangle, Stdin, Stdout } from "./types.ts";
-import { HIDE_CURSOR, SHOW_CURSOR, USE_PRIMARY_BUFFER, USE_SECONDARY_BUFFER } from "./utils/ansi_codes.ts";
+import {
+  DISABLE_MOUSE,
+  ENABLE_MOUSE,
+  HIDE_CURSOR,
+  SHOW_CURSOR,
+  USE_PRIMARY_BUFFER,
+  USE_SECONDARY_BUFFER,
+} from "./utils/ansi_codes.ts";
 import { RenderLoop } from "./runtime/render_loop.ts";
 
 const textEncoder = new TextEncoder();
@@ -18,6 +25,7 @@ export interface TuiOptions {
   canvas?: Canvas;
   refreshRate?: number;
   renderLoop?: RenderLoop;
+  enableMouse?: boolean;
 }
 
 /**
@@ -51,12 +59,14 @@ export class Tui extends EventEmitter<
   drawnObjects: { background?: BoxObject };
   refreshRate: number;
   renderLoop: RenderLoop;
+  enableMouse: boolean;
 
   constructor(options: TuiOptions) {
     super();
     this.stdin = options.stdin ?? Deno.stdin;
     this.stdout = options.stdout ?? Deno.stdout;
     this.refreshRate = options.refreshRate ?? 1000 / 60;
+    this.enableMouse = options.enableMouse ?? false;
     this.canvas = options.canvas ?? new Canvas({
       stdout: this.stdout,
       size: Deno.consoleSize(),
@@ -128,7 +138,7 @@ export class Tui extends EventEmitter<
       box.draw();
     }
 
-    stdout.write(textEncoder.encode(USE_SECONDARY_BUFFER + HIDE_CURSOR));
+    stdout.write(textEncoder.encode(USE_SECONDARY_BUFFER + HIDE_CURSOR + (this.enableMouse ? ENABLE_MOUSE : "")));
 
     this.renderLoop.start();
   }
@@ -142,7 +152,7 @@ export class Tui extends EventEmitter<
       this.stdin.setRaw(false);
     } catch { /**/ }
 
-    this.stdout.write(textEncoder.encode(USE_PRIMARY_BUFFER + SHOW_CURSOR));
+    this.stdout.write(textEncoder.encode((this.enableMouse ? DISABLE_MOUSE : "") + USE_PRIMARY_BUFFER + SHOW_CURSOR));
 
     for (const component of this.components) {
       component.destroy();

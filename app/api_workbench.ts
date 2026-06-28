@@ -17,6 +17,7 @@ import { Computed, Signal } from "../src/signals/mod.ts";
 import { Tui } from "../src/tui.ts";
 import type { Rectangle } from "../src/types.ts";
 import { stripStyles, textWidth } from "../src/utils/strings.ts";
+import { grWizardThemePalettes } from "../src/grwizard_themes.ts";
 import { makeStyle } from "./styles.ts";
 
 type WindowId = "inspector" | "data" | "controls" | "logs";
@@ -31,12 +32,17 @@ interface ThemeSpec {
   id: string;
   label: string;
   background: string;
+  backgroundSoft: string;
   panel: string;
   panelSoft: string;
+  surface: string;
   border: string;
+  borderStrong: string;
   accent: string;
+  accentDeep: string;
   text: string;
   muted: string;
+  soft: string;
   good: string;
   warn: string;
   danger: string;
@@ -50,50 +56,25 @@ interface ProcessRow extends Record<string, unknown> {
   latency: number;
 }
 
-const themes: ThemeSpec[] = [
-  {
-    id: "neon",
-    label: "Neon",
-    background: "#05070d",
-    panel: "#0a1020",
-    panelSoft: "#111932",
-    border: "#5bb0ff",
-    accent: "#ff4231",
-    text: "#eff7ff",
-    muted: "#5a6478",
-    good: "#7dffba",
-    warn: "#ff9f24",
-    danger: "#ff4231",
-  },
-  {
-    id: "terminal",
-    label: "Terminal",
-    background: "#050805",
-    panel: "#071207",
-    panelSoft: "#0d2110",
-    border: "#4ade80",
-    accent: "#86efac",
-    text: "#ecfdf5",
-    muted: "#5a7a62",
-    good: "#bbf7d0",
-    warn: "#fde047",
-    danger: "#fb7185",
-  },
-  {
-    id: "violet",
-    label: "Violet",
-    background: "#080716",
-    panel: "#11102a",
-    panelSoft: "#1d1a3d",
-    border: "#b17cff",
-    accent: "#f0abfc",
-    text: "#f8f7ff",
-    muted: "#73708f",
-    good: "#67e8f9",
-    warn: "#facc15",
-    danger: "#fb7185",
-  },
-];
+const themes: ThemeSpec[] = grWizardThemePalettes.map((palette) => ({
+  id: palette.name,
+  label: palette.label,
+  background: palette.bg,
+  backgroundSoft: palette.bgAlt,
+  panel: palette.panel,
+  panelSoft: palette.panelAlt,
+  surface: palette.surface,
+  border: palette.border,
+  borderStrong: palette.borderStrong,
+  accent: palette.accent,
+  accentDeep: palette.accentDeep,
+  text: palette.text,
+  muted: palette.textMuted,
+  soft: palette.textSoft,
+  good: palette.success,
+  warn: palette.warning,
+  danger: palette.danger,
+}));
 
 const rows: ProcessRow[] = [
   { id: "layout", surface: "Adaptive Grid", api: "layout", state: "ready", latency: 4 },
@@ -132,6 +113,7 @@ const docs = [
 const tui = new Tui({
   style: makeStyle({ bg: themes[0]!.background }),
   refreshRate: 1000 / 24,
+  enableMouse: true,
 });
 
 handleInput(tui);
@@ -274,8 +256,15 @@ function draw(): void {
 function renderHeader(frame: string[]): void {
   const width = currentWidth();
   const t = theme();
+  fillRow(frame, 0, t.backgroundSoft);
+  fillRow(frame, 1, t.panel);
   write(frame, 0, 0, paint(" API WORKBENCH ", { fg: t.background, bg: t.accent, bold: true }));
-  write(frame, 0, 17, paint(renderMenuBar(menu.items.peek(), menu.activeIndex.peek()), { fg: t.text, bg: t.panel }));
+  write(
+    frame,
+    0,
+    17,
+    paint(renderMenuBar(menu.items.peek(), menu.activeIndex.peek()), { fg: t.text, bg: t.backgroundSoft }),
+  );
   const themeRow = themes.map((entry, index) => {
     const selected = index === themeIndex.peek();
     return selected ? `[${entry.label}]` : ` ${entry.label} `;
@@ -301,6 +290,7 @@ function renderHeader(frame: string[]): void {
 
 function renderWorkspace(frame: string[]): void {
   const bounds = { column: 0, row: 3, width: currentWidth(), height: Math.max(0, currentHeight() - 5) };
+  fillRect(frame, bounds, theme().backgroundSoft);
   const max = maximized.peek();
   if (max) {
     renderWindow(frame, max, bounds);
@@ -363,7 +353,7 @@ function renderWindow(frame: string[], id: WindowId, rect: Rectangle): void {
 function renderInspector(frame: string[], rect: Rectangle): void {
   const t = theme();
   const lines = [
-    paint("Composable API surfaces", { fg: t.accent, bold: true }),
+    pill("Composable API surfaces", t),
     `menu      ${paint("MenuBarController", { fg: t.good })}`,
     `layout    ${paint("SplitPaneController + adaptive bounds", { fg: t.good })}`,
     `viewport  ${paint("ScrollAreaController", { fg: t.good })}`,
@@ -371,7 +361,7 @@ function renderInspector(frame: string[], rect: Rectangle): void {
     `controls  ${paint("SliderController / CheckBoxController", { fg: t.good })}`,
     `theme     ${paint(themes[themeIndex.peek()]!.label, { fg: t.warn, bold: true })}`,
     "",
-    paint("Recent actions", { fg: t.accent, bold: true }),
+    pill("Recent actions", t),
     ...commandLog.peek().slice(-Math.max(0, rect.height - 10)).map((line) => `• ${line}`),
   ];
   writeLines(frame, rect, lines);
@@ -382,8 +372,13 @@ function renderData(frame: string[], rect: Rectangle): void {
   const view = table.view.peek();
   table.setPageSize(Math.max(1, rect.height - 4));
   const lines = [
-    paint(renderDataTableHeader(columns, table.state.peek().sort), { fg: t.accent, bold: true }),
-    ...renderDataTableRows(view.rows, columns, view.selectedIndex),
+    paint(renderDataTableHeader(columns, table.state.peek().sort), { fg: t.background, bg: t.accentDeep, bold: true }),
+    ...renderDataTableRows(view.rows, columns, view.selectedIndex).map((line, index) =>
+      paint(line, {
+        fg: index === view.selectedIndex ? t.background : t.text,
+        bg: index === view.selectedIndex ? t.warn : t.surface,
+      })
+    ),
     "",
     `page ${view.page + 1}/${view.pageCount}  selected ${view.selectedKey ?? "-"}  arrows/page keys navigate`,
   ];
@@ -397,10 +392,10 @@ function renderControls(frame: string[], rect: Rectangle): void {
   const filled = Math.round(slider.normalizedValue * trackWidth);
   const track = `${"█".repeat(filled)}${"░".repeat(Math.max(0, trackWidth - filled))}`;
   const lines = [
-    `${paint("Density", { fg: t.accent, bold: true })} ${track} ${density.value.peek()}/10`,
-    `${renderCheckBoxMark(livePreview.checked.peek())} live data preview     ${
-      renderCheckBoxMark(compactRows.checked.peek())
-    } compact rows`,
+    `${pill("Density", t)} ${paint(track, { fg: t.good, bg: t.accentDeep })} ${density.value.peek()}/10`,
+    `${
+      paint(renderCheckBoxMark(livePreview.checked.peek()), { fg: t.good, bg: t.surface, bold: true })
+    } live data preview     ${renderCheckBoxMark(compactRows.checked.peek())} compact rows`,
     "",
     "Keyboard controls:",
     "+/- slider   X toggle live preview",
@@ -416,7 +411,11 @@ function renderLogs(frame: string[], rect: Rectangle): void {
   logScroll.setViewportSize(rect.width, rect.height);
   const offset = logScroll.offset.peek().rows;
   const lines = docs.slice(offset, offset + rect.height);
-  writeLines(frame, { ...rect, width: Math.max(0, rect.width - 1) }, lines.map((line) => paint(line, { fg: t.text })));
+  writeLines(
+    frame,
+    { ...rect, width: Math.max(0, rect.width - 1) },
+    lines.map((line) => paint(line, { fg: t.text, bg: t.surface })),
+  );
   const thumb = scrollbarThumb(docs.length, rect.height, offset);
   if (logScroll.showScrollbar.peek()) {
     for (let row = 0; row < rect.height; row += 1) {
@@ -445,7 +444,8 @@ function renderStatus(frame: string[]): void {
 
 function drawFrame(frame: string[], rect: Rectangle, title: string, active: boolean): void {
   const t = theme();
-  const borderStyle = { fg: active ? t.accent : t.border, bg: t.panel, bold: active };
+  fillRect(frame, rect, active ? t.panelSoft : t.panel);
+  const borderStyle = { fg: active ? t.accent : t.borderStrong, bg: active ? t.panelSoft : t.panel, bold: active };
   const titleStyle = { fg: t.background, bg: active ? t.accent : t.border, bold: true };
   const horizontal = "─".repeat(Math.max(0, rect.width - 2));
   write(frame, rect.row, rect.column, paint(`┌${horizontal}┐`, borderStyle));
@@ -553,6 +553,16 @@ function write(frame: string[], row: number, column: number, value: string): voi
   }
 }
 
+function fillRow(frame: string[], row: number, bg: string): void {
+  write(frame, row, 0, makeStyle({ bg })(" ".repeat(currentWidth())));
+}
+
+function fillRect(frame: string[], rect: Rectangle, bg: string): void {
+  for (let row = rect.row; row < rect.row + rect.height; row += 1) {
+    write(frame, row, rect.column, makeStyle({ bg })(" ".repeat(Math.max(0, rect.width))));
+  }
+}
+
 function fit(value: string, width: number): string {
   const visible = textWidth(value);
   if (visible === width) return value;
@@ -561,8 +571,12 @@ function fit(value: string, width: number): string {
   return `${plain.slice(0, Math.max(0, width - 1))}…`;
 }
 
-function paint(text: string, _options: { fg?: string; bg?: string; bold?: boolean } = {}): string {
-  return text;
+function paint(text: string, options: { fg?: string; bg?: string; bold?: boolean } = {}): string {
+  return makeStyle({ fg: options.fg ?? theme().text, bg: options.bg, bold: options.bold })(text);
+}
+
+function pill(text: string, t = theme()): string {
+  return paint(` ${text} `, { fg: t.background, bg: t.accent, bold: true });
 }
 
 function addHit(rect: Rectangle, action: HitAction): void {

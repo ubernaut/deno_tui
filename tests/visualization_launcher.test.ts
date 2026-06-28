@@ -1,4 +1,5 @@
 import { assertEquals } from "./deps.ts";
+import { filterDemoTargets, formatDemoLauncherScreen, moveDemoSelection } from "../scripts/demo_launcher.ts";
 import {
   createVisualizationLaunchReport,
   findVisualizationLaunchTarget,
@@ -44,6 +45,18 @@ Deno.test("visualization launcher resolves public aliases to deno tasks", () => 
   assertEquals(resolveVisualizationTask("check"), "health");
   assertEquals(findVisualizationLaunchTarget("system-monitor")?.task, "viz");
   assertEquals(resolveVisualizationTask("missing"), undefined);
+});
+
+Deno.test("interactive demo launcher filters renders and moves selections", () => {
+  const targets = filterDemoTargets(visualizationLaunchTargets, "portfolio");
+  assertEquals(targets.map((target) => target.task), ["api-workbench"]);
+  assertEquals(
+    moveDemoSelection({ index: 0, query: "" }, visualizationLaunchTargets, -1).index,
+    visualizationLaunchTargets.length - 1,
+  );
+  const screen = formatDemoLauncherScreen(targets, { index: 0, query: "portfolio" }, { width: 80, height: 10 });
+  assertEquals(screen.includes("DEMO LAUNCHER"), true);
+  assertEquals(screen.includes("api-workbench"), true);
 });
 
 Deno.test("visualization launcher exposes unique primary aliases", () => {

@@ -17,8 +17,11 @@ import {
   SplitPaneController,
   TextObject,
   type TextRectangle,
+  textWidth,
 } from "../../mod.web.ts";
+import { grWizardThemePalettes } from "../../src/grwizard_themes.ts";
 import type { Rectangle } from "../../src/types.ts";
+import { stripStyles } from "../../src/utils/strings.ts";
 import { makeStyle } from "../../app/styles.ts";
 
 type PanelId = "inspector" | "data" | "controls" | "logs";
@@ -32,10 +35,19 @@ type Hit =
 interface ThemeSpec {
   label: string;
   bg: string;
+  bgAlt: string;
   panel: string;
+  panelAlt: string;
+  surface: string;
+  border: string;
+  borderStrong: string;
   accent: string;
+  accentDeep: string;
   text: string;
   muted: string;
+  soft: string;
+  good: string;
+  warn: string;
 }
 
 interface Row extends Record<string, unknown> {
@@ -60,11 +72,23 @@ const host = createWebTui({
   },
 });
 
-const themes: ThemeSpec[] = [
-  { label: "Neon", bg: "#05070d", panel: "#0a1020", accent: "#ff4231", text: "#eff7ff", muted: "#5a6478" },
-  { label: "Terminal", bg: "#050805", panel: "#071207", accent: "#4ade80", text: "#ecfdf5", muted: "#5a7a62" },
-  { label: "Violet", bg: "#080716", panel: "#11102a", accent: "#b17cff", text: "#f8f7ff", muted: "#73708f" },
-];
+const themes: ThemeSpec[] = grWizardThemePalettes.map((palette) => ({
+  label: palette.label,
+  bg: palette.bg,
+  bgAlt: palette.bgAlt,
+  panel: palette.panel,
+  panelAlt: palette.panelAlt,
+  surface: palette.surface,
+  border: palette.border,
+  borderStrong: palette.borderStrong,
+  accent: palette.accent,
+  accentDeep: palette.accentDeep,
+  text: palette.text,
+  muted: palette.textMuted,
+  soft: palette.textSoft,
+  good: palette.success,
+  warn: palette.warning,
+}));
 const rows: Row[] = [
   { id: "menu", surface: "MenuBar", state: "active", ms: 2 },
   { id: "split", surface: "SplitPane", state: "resized", ms: 5 },
@@ -178,8 +202,16 @@ function draw(): void {
   hitTargets = [];
   const width = cols();
   const height = rowsCount();
-  const frame = Array.from({ length: height }, () => " ".repeat(width));
-  write(frame, 0, 1, paint(fit(renderMenuBar(menu.items.peek(), menu.activeIndex.peek()), width - 2)));
+  const frame = Array.from({ length: height }, () => paint(" ".repeat(width), theme().text, theme().bg));
+  write(frame, 0, 0, paint(" ".repeat(width), theme().text, theme().bgAlt));
+  write(frame, 1, 0, paint(" ".repeat(width), theme().text, theme().panel));
+  write(frame, 0, 1, paint(` API WORKBENCH `, theme().bg, theme().accent, true));
+  write(
+    frame,
+    0,
+    17,
+    paint(fit(renderMenuBar(menu.items.peek(), menu.activeIndex.peek()), width - 18), theme().text, theme().bgAlt),
+  );
   drawThemes(frame, width);
   const body = { column: 1, row: 3, width: Math.max(10, width - 2), height: Math.max(6, height - 5) };
   const max = maximized.peek();
@@ -215,10 +247,14 @@ function draw(): void {
     }
   }
   frame[height - 1] = fit(
-    renderStatusBar(
-      `focus ${active.peek()} | ${theme().label} | split ${Math.round((split.snapshot().ratio ?? 0) * 100)}%`,
-      "click controls or use keyboard",
-      width,
+    paint(
+      renderStatusBar(
+        `focus ${active.peek()} | ${theme().label} | split ${Math.round((split.snapshot().ratio ?? 0) * 100)}%`,
+        "click controls or use keyboard",
+        width,
+      ),
+      theme().text,
+      theme().panelAlt,
     ),
     width,
   );
@@ -230,9 +266,15 @@ function renderPanel(frame: string[], id: PanelId, rect: Rectangle): void {
   if (rect.width < 10 || rect.height < 4) return;
   hitTargets.push({ rect, hit: { type: "focus", id } });
   const selected = active.peek() === id;
-  const border = selected ? theme().accent : theme().muted;
+  fillRect(frame, rect, selected ? theme().panelAlt : theme().panel);
+  const border = selected ? theme().accent : theme().borderStrong;
   const top = `┌ ${id.toUpperCase()} ${"─".repeat(Math.max(0, rect.width - id.length - 20))} [-] [□] [↺] ┐`;
-  write(frame, rect.row, rect.column, paint(fit(top, rect.width), border));
+  write(
+    frame,
+    rect.row,
+    rect.column,
+    paint(fit(top, rect.width), border, selected ? theme().panelAlt : theme().panel, selected),
+  );
   hitTargets.push({
     rect: { column: rect.column + rect.width - 12, row: rect.row, width: 3, height: 1 },
     hit: { type: "min", id },
@@ -246,9 +288,19 @@ function renderPanel(frame: string[], id: PanelId, rect: Rectangle): void {
     hit: { type: "restore" },
   });
   for (let r = 1; r < rect.height - 1; r++) {
-    write(frame, rect.row + r, rect.column, paint(`│${" ".repeat(rect.width - 2)}│`, border));
+    write(
+      frame,
+      rect.row + r,
+      rect.column,
+      paint(`│${" ".repeat(rect.width - 2)}│`, border, selected ? theme().panelAlt : theme().panel),
+    );
   }
-  write(frame, rect.row + rect.height - 1, rect.column, paint(`└${"─".repeat(rect.width - 2)}┘`, border));
+  write(
+    frame,
+    rect.row + rect.height - 1,
+    rect.column,
+    paint(`└${"─".repeat(rect.width - 2)}┘`, border, selected ? theme().panelAlt : theme().panel),
+  );
   const inner = {
     column: rect.column + 2,
     row: rect.row + 1,
@@ -256,7 +308,9 @@ function renderPanel(frame: string[], id: PanelId, rect: Rectangle): void {
     height: Math.max(0, rect.height - 2),
   };
   const lines = panelLines(id, inner.width, inner.height);
-  lines.forEach((line, index) => write(frame, inner.row + index, inner.column, paint(fit(line, inner.width))));
+  lines.forEach((line, index) =>
+    write(frame, inner.row + index, inner.column, paint(fit(line, inner.width), theme().text, theme().surface))
+  );
 }
 
 function panelLines(id: PanelId, width: number, height: number): string[] {
@@ -267,8 +321,10 @@ function panelLines(id: PanelId, width: number, height: number): string[] {
     ]
     : id === "controls"
     ? [
-      `density ${slider.value.peek()} ${"█".repeat(slider.value.peek())}`,
-      `live preview ${live.checked.peek() ? "[x]" : "[ ]"}`,
+      `${paint(" Density ", theme().bg, theme().accent, true)} ${
+        paint("█".repeat(slider.value.peek()).padEnd(10, "░"), theme().good, theme().accentDeep)
+      } ${slider.value.peek()}/10`,
+      `${paint(live.checked.peek() ? "[x]" : "[ ]", theme().good, theme().surface, true)} live preview`,
       "[/] resize split",
       "T theme  Space toggle",
     ]
@@ -279,10 +335,19 @@ function panelLines(id: PanelId, width: number, height: number): string[] {
 }
 
 function drawThemes(frame: string[], width: number): void {
-  let column = Math.max(2, width - 36);
+  let column = Math.max(2, width - themes.reduce((total, entry) => total + entry.label.length + 4, 0));
   themes.forEach((entry, index) => {
     const label = ` ${entry.label} `;
-    write(frame, 1, column, paint(label, index === themeIndex.peek() ? entry.accent : entry.muted));
+    write(
+      frame,
+      1,
+      column,
+      paint(
+        label,
+        index === themeIndex.peek() ? theme().bg : entry.soft,
+        index === themeIndex.peek() ? entry.accent : theme().panel,
+      ),
+    );
     hitTargets.push({ rect: { column, row: 1, width: label.length, height: 1 }, hit: { type: "theme", index } });
     column += label.length + 1;
   });
@@ -354,14 +419,29 @@ function push(message: string): void {
 }
 function write(frame: string[], row: number, column: number, value: string): void {
   if (row < 0 || row >= frame.length || column >= cols()) return;
-  frame[row] = `${frame[row]!.slice(0, column)}${value}${frame[row]!.slice(column + value.length)}`;
+  const line = frame[row] ?? "";
+  const visible = textWidth(line);
+  const valueWidth = textWidth(value);
+  if (visible <= column) {
+    frame[row] = line + " ".repeat(column - visible) + value;
+    return;
+  }
+  frame[row] = stripStyles(line).slice(0, column).padEnd(column, " ") + value +
+    stripStyles(line).slice(column + valueWidth);
 }
 function fit(value: string, width: number): string {
-  const plain = value.replace(/\x1b\[[0-9;]*m/g, "");
-  return plain.length > width ? plain.slice(0, width) : plain.padEnd(width);
+  const plain = stripStyles(value);
+  return textWidth(plain) > width
+    ? plain.slice(0, Math.max(0, width - 1)) + "…"
+    : value + " ".repeat(Math.max(0, width - textWidth(plain)));
 }
-function paint(value: string, fg = theme().text): string {
-  return makeStyle({ fg, bg: theme().bg })(value);
+function fillRect(frame: string[], rect: Rectangle, bg: string): void {
+  for (let row = rect.row; row < rect.row + rect.height; row += 1) {
+    write(frame, row, rect.column, paint(" ".repeat(Math.max(0, rect.width)), theme().text, bg));
+  }
+}
+function paint(value: string, fg = theme().text, bg = theme().bg, bold = false): string {
+  return makeStyle({ fg, bg, bold })(value);
 }
 function contains(rect: Rectangle, x: number, y: number): boolean {
   return x >= rect.column && y >= rect.row && x < rect.column + rect.width && y < rect.row + rect.height;
