@@ -190,6 +190,13 @@ const rects = flexRects(bounds, "row", [
 ], 1);
 ```
 
+Responsive helpers are also exported for common app shell layout:
+
+- `resolveBreakpoint()`
+- `insetRect()`
+- `splitRect()`
+- `dockRect()`
+
 ## App Primitives
 
 This fork exports lightweight app primitives for larger TUIs:
