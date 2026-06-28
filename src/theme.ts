@@ -337,6 +337,35 @@ export interface ThemeManifestPreviewOptions {
   tokens?: Iterable<ThemeTokenName>;
 }
 
+export interface ThemeProviderTokenPreview {
+  token: ThemeTokenName;
+  preview: ThemeStylePreview;
+}
+
+export interface ThemeProviderComponentStatePreview {
+  component: string;
+  variant: string;
+  state: ThemeState;
+  preview: ThemeStylePreview;
+}
+
+export interface ThemeProviderPreview {
+  sample: string;
+  activeId: string;
+  activeLayers: string[];
+  catalog: ThemeCatalog;
+  tokens: ThemeProviderTokenPreview[];
+  components: ThemeProviderComponentStatePreview[];
+}
+
+export interface ThemeProviderPreviewOptions {
+  sample?: string;
+  components?: Iterable<string>;
+  variants?: (component: string, engine: ThemeEngine) => Iterable<string>;
+  states?: Iterable<ThemeState>;
+  tokens?: Iterable<ThemeTokenName>;
+}
+
 export type ThemePaletteName = "plain" | "neon" | "terminal";
 
 export const themePalettes: Record<ThemePaletteName, Partial<ThemeTokens>> = {
@@ -1137,6 +1166,45 @@ export function createThemeCatalog(provider: ThemeProvider): ThemeCatalog {
       ...inspection.themes.map((theme) => theme.components),
       ...inspection.layers.map((layer) => layer.components),
     ),
+  };
+}
+
+export function previewThemeProvider(
+  provider: ThemeProvider,
+  options: ThemeProviderPreviewOptions = {},
+): ThemeProviderPreview {
+  const sample = options.sample ?? "Aa";
+  const engine = provider.engine.peek();
+  const catalog = provider.catalog();
+  const tokenNames = options.tokens ? sortedThemeTokenNames([...options.tokens]) : [...themeTokenNames];
+  const componentNames = options.components
+    ? [...options.components]
+    : catalog.components.map((component) => component.name);
+  const stateNames = options.states ? sortedThemeStates([...options.states]) : [...themeStates];
+
+  return {
+    sample,
+    activeId: provider.activeId.peek(),
+    activeLayers: provider.layers.activeIds(),
+    catalog,
+    tokens: tokenNames.map((token) => ({
+      token,
+      preview: previewStyle(engine.theme.tokens[token], sample),
+    })),
+    components: componentNames.flatMap((component) => {
+      const variants = options.variants
+        ? [...options.variants(component, engine)]
+        : ["default", ...engine.variants(component)];
+      return variants.flatMap((variant) => {
+        const theme = engine.component(component, variant);
+        return stateNames.map((state) => ({
+          component,
+          variant,
+          state,
+          preview: previewStyle(theme[state], sample),
+        }));
+      });
+    }),
   };
 }
 

@@ -35,6 +35,7 @@ import {
   inspectThemeManifest,
   mergeComponentThemeDefinition,
   previewThemeManifest,
+  previewThemeProvider,
   type Theme,
   ThemeEngine,
   ThemeInheritanceError,
@@ -910,6 +911,67 @@ Deno.test("ThemeProvider catalogs themes layers tokens states and merged compone
     { name: "Field", variants: ["default"] },
     { name: "Modal", variants: ["default"] },
   ]);
+});
+
+Deno.test("previewThemeProvider renders the active engine and layers", () => {
+  const foreground = (value: string) => `foreground:${value}`;
+  const accent = (value: string) => `accent:${value}`;
+  const danger = (value: string) => `danger:${value}`;
+  const layerActive = (value: string) => `layer:${value}`;
+  const provider = createThemeProvider({
+    registry: createThemeRegistry([
+      {
+        id: "ops",
+        label: "Ops",
+        palette: "plain",
+        options: {
+          tokens: { foreground, accent, success: accent, danger },
+          components: {
+            Button: {
+              base: { base: "foreground", focused: "accent" },
+              variants: { danger: { base: "danger" } },
+            },
+          },
+        },
+      },
+    ]),
+    activeId: "ops",
+    layers: createThemeLayerStack([
+      {
+        id: "alerts",
+        label: "Alert Overrides",
+        options: {
+          components: {
+            Button: { variants: { danger: { active: layerActive } } },
+          },
+        },
+      },
+    ]),
+  });
+
+  const preview = previewThemeProvider(provider, {
+    sample: "OK",
+    tokens: ["accent", "foreground"],
+    components: ["Button"],
+    states: ["base", "active"],
+  });
+
+  assertEquals(preview.activeId, "ops");
+  assertEquals(preview.activeLayers, ["alerts"]);
+  assertEquals(preview.tokens.map((entry) => [entry.token, entry.preview.styled]), [
+    ["foreground", "foreground:OK"],
+    ["accent", "accent:OK"],
+  ]);
+  assertEquals(
+    preview.components.map((entry) => [entry.component, entry.variant, entry.state, entry.preview.styled]),
+    [
+      ["Button", "default", "base", "foreground:OK"],
+      ["Button", "default", "active", "accent:OK"],
+      ["Button", "danger", "base", "danger:OK"],
+      ["Button", "danger", "active", "layer:OK"],
+    ],
+  );
+  assertEquals(preview.catalog.layers.map((layer) => [layer.id, layer.active]), [["alerts", true]]);
 });
 
 Deno.test("ThemeProvider recomputes engines from active theme layers", async () => {

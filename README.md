@@ -1083,15 +1083,17 @@ through `MemoryStore`, `IndexedDbStore`, or a custom settings backend; `provider
 components and returns a disposer, so live theme switching stays centralized and testable without requiring widgets to
 know where their theme came from. `provider.catalog()` and `createThemeCatalog(provider)` return a normalized catalog of
 theme packs, active flags, layer toggles, engine tokens, states, components, and variants, which is the preferred
-surface for building theme pickers, settings panels, inspector panes, and demo controls. `ThemeLayerStack` adds runtime
-overlays for density, contrast, accessibility, or brand-specific state treatments; `enable()`, `disable()`, `toggle()`,
-`activeIds()`, and `inspect()` make those overlays usable from command palettes and settings screens while preserving
-deterministic composition order. Component definitions can also reference semantic token names such as `"foreground"`,
-`"accent"`, `"danger"`, or `"surface"` instead of concrete style functions, so variants automatically follow the active
-palette. A state style may also be an array of token names and style functions; the engine composes the pipeline in
-order. Component definitions can `extend` one or more other definitions, which makes aliases like `ComboBox -> Field` or
-shared role themes cheap while preserving variants and app-level overrides. `createAnsiStyle()` and
-`createAnsiThemeTokens()` provide a small serializable style-spec layer for theme engines: packs can use named ANSI
+surface for building theme pickers, settings panels, inspector panes, and demo controls. `previewThemeProvider()`
+renders token and component-state samples from the currently composed provider, including active runtime layers, so
+settings panes and demos can show the exact live theme instead of reimplementing preview logic. `ThemeLayerStack` adds
+runtime overlays for density, contrast, accessibility, or brand-specific state treatments; `enable()`, `disable()`,
+`toggle()`, `activeIds()`, and `inspect()` make those overlays usable from command palettes and settings screens while
+preserving deterministic composition order. Component definitions can also reference semantic token names such as
+`"foreground"`, `"accent"`, `"danger"`, or `"surface"` instead of concrete style functions, so variants automatically
+follow the active palette. A state style may also be an array of token names and style functions; the engine composes
+the pipeline in order. Component definitions can `extend` one or more other definitions, which makes aliases like
+`ComboBox -> Field` or shared role themes cheap while preserving variants and app-level overrides. `createAnsiStyle()`
+and `createAnsiThemeTokens()` provide a small serializable style-spec layer for theme engines: packs can use named ANSI
 colors, 256-color indexes, RGB tuples, and text attributes like bold or underline without embedding raw escape sequences
 throughout the app. `compileThemeManifestOptions()`, `createThemeEngineFromManifest()`, and
 `createThemeRegistryFromManifests()` build on those specs so reusable theme packs can be plain data: semantic token
