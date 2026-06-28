@@ -1,9 +1,7 @@
 import {
-  bindDataQueryCommands,
-  bindDataQuerySetting,
-  bindDataQueryTable,
-  CommandRegistry,
+  createApp,
   createDataQueryController,
+  createDataQueryPlugin,
   createRuntimeStore,
   type DataColumn,
   type DataQueryCommandAction,
@@ -59,27 +57,33 @@ const processes = createDataQueryController<ProcessRow>({
     });
   },
 });
-const commandRegistry = new CommandRegistry<DataQueryCommandAction<ProcessRow>>();
+const app = createApp<DataQueryCommandAction<ProcessRow>>({ tui: { destroy() {} } as never });
 const actions: DataQueryCommandAction<ProcessRow>[] = [];
-const stopCommands = bindDataQueryCommands(commandRegistry, processes, {
-  id: "processes",
-  idPrefix: "processes.query",
-  includeSortCommands: true,
-  sortFields: [{ field: "cpu", label: "CPU" }],
-});
+app.onAction((action) => void actions.push(action));
 const table = new DataTableController({
   rows: [],
   columns,
   rowKey: (row) => String(row.pid),
 });
-const stopTableBinding = bindDataQueryTable(processes, table);
-const querySetting = bindDataQuerySetting(processes, settings, {
-  key: "process-query",
+const plugin = createDataQueryPlugin({
+  id: "processes",
+  label: "Process Query",
+  controller: processes,
+  table,
+  settings,
+  persistParams: { key: "process-query" },
+  commands: {
+    idPrefix: "processes.query",
+    includeSortCommands: true,
+    sortFields: [{ field: "cpu", label: "CPU" }],
+  },
+  mirrorKeymap: { includeDisabled: true },
 });
+const stopPlugin = app.use(plugin);
 
 await processes.setQuery("runtime");
-await commandRegistry.execute("processes.query.sort.cpu", (action) => void actions.push(action));
-await commandRegistry.execute("processes.query.sort.cpu", (action) => void actions.push(action));
+await app.executeCommand("processes.query.sort.cpu");
+await app.executeCommand("processes.query.sort.cpu");
 await settings.flush();
 
 console.log("Runtime data query");
@@ -87,7 +91,8 @@ console.log(`Rows: ${processes.result.peek().rows.map((row) => `${row.name}:${ro
 console.log(`Table rows: ${table.view.peek().rows.map((row) => row.name).join(", ")}`);
 console.log(`Total: ${processes.inspect().totalRows}`);
 console.log(`Cache: ${processes.inspect().key}`);
-console.log(`Setting: ${querySetting.setting.key}`);
+console.log(`Plugin: ${plugin.inspect().label}`);
+console.log(`Keymap bindings: ${app.keymap.inspect().count}`);
 console.log(`Command actions: ${actions.map((action) => action.type).join(", ")}`);
 
 const restored = createDataQueryController<ProcessRow>({
@@ -104,9 +109,7 @@ const restored = createDataQueryController<ProcessRow>({
 await restored.restore();
 console.log(`Restored cached rows: ${restored.result.peek().rows.length}`);
 
-stopTableBinding();
-stopCommands();
-querySetting.dispose();
+stopPlugin();
 table.dispose();
 processes.dispose();
 restored.dispose();

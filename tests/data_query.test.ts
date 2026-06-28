@@ -6,7 +6,9 @@ import {
   bindDataQuerySetting,
   bindDataQueryTable,
   CommandRegistry,
+  createApp,
   createDataQueryController,
+  createDataQueryPlugin,
   type DataColumn,
   type DataQueryCommandAction,
   dataQueryCommands,
@@ -370,6 +372,92 @@ Deno.test("bindDataQuerySetting restores persists and sanitizes query params", a
   await controller.setQuery("shell");
   await Promise.resolve();
   assertEquals(binding.setting.value.peek().query, "renderer");
+  controller.dispose();
+});
+
+Deno.test("createDataQueryPlugin installs query commands settings table binding and keymap", async () => {
+  const store = new MemoryStore<unknown>();
+  const settings = new SettingsController({ store, namespace: "prefs" });
+  const controller = createDataQueryController<ProcessRow>({
+    initialParams: { query: "runtime", pageSize: 2 },
+    loader: ({ params }) => queryLocalData(rows, params, { searchable: ["name", "group"] }),
+  });
+  const table = new DataTableController({
+    rows: [],
+    columns,
+    rowKey: (row) => String(row.pid),
+  });
+  const app = createApp<DataQueryCommandAction<ProcessRow>>({ tui: { destroy() {} } as never });
+  const actions: DataQueryCommandAction<ProcessRow>[] = [];
+  app.onAction((action) => void actions.push(action));
+  const plugin = createDataQueryPlugin({
+    id: "processes",
+    label: "Processes",
+    controller,
+    table,
+    settings,
+    persistParams: { key: "process-query" },
+    commands: {
+      idPrefix: "processes.query",
+      group: "processes",
+      includeSortCommands: true,
+      sortFields: [{ field: "cpu", label: "CPU" }],
+    },
+    mirrorKeymap: { includeDisabled: true },
+  });
+
+  const dispose = app.use(plugin);
+  assertEquals(app.hasPlugin("processes"), true);
+  assertEquals(plugin.inspect().tableBindingEnabled, true);
+  assertEquals(plugin.inspect().paramsPersistenceEnabled, true);
+  assertEquals(app.keymap.inspect().count, 2);
+
+  await app.executeCommand("processes.query.reload");
+  assertEquals(actions.at(-1)?.type, "dataQuery.loaded");
+  assertEquals(table.rows.peek().map((row) => row.pid), [10, 101]);
+
+  await app.executeCommand("processes.query.sort.cpu");
+  await settings.flush();
+  assertEquals(controller.params.peek().sort, { field: "cpu", direction: "asc" });
+  assertEquals(await store.get("prefs.process-query"), {
+    query: "runtime",
+    filters: {},
+    sort: { field: "cpu", direction: "asc" },
+    page: 0,
+    pageSize: 2,
+  });
+
+  dispose();
+  assertEquals(app.hasPlugin("processes"), false);
+  assertEquals(app.commands.inspect().count, 0);
+  assertEquals(app.keymap.inspect().count, 0);
+  table.dispose();
+  controller.dispose();
+});
+
+Deno.test("createDataQueryPlugin rolls back installed surfaces when custom install fails", () => {
+  const controller = createDataQueryController<ProcessRow>({
+    loader: ({ params }) => queryLocalData(rows, params),
+  });
+  const app = createApp<DataQueryCommandAction<ProcessRow>>({ tui: { destroy() {} } as never });
+  const plugin = createDataQueryPlugin({
+    controller,
+    commands: { idPrefix: "failing.query" },
+    install: () => {
+      throw new Error("install failed");
+    },
+  });
+
+  let message = "";
+  try {
+    app.use(plugin);
+  } catch (error) {
+    message = error instanceof Error ? error.message : String(error);
+  }
+
+  assertEquals(message, "install failed");
+  assertEquals(app.commands.inspect().count, 0);
+  assertEquals(app.hasPlugin("data-query"), false);
   controller.dispose();
 });
 

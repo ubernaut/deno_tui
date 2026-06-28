@@ -1628,7 +1628,8 @@ Optional high-performance APIs are surfaced through `src/runtime/mod.ts`:
   `bindResourceParams()`
 - `runDataPipeline()` / `LatestDataPipeline` / `CachedDataPipeline` / `bindDataPipeline()` / `workerTransform()`
 - `DataQueryController` / `createDataQueryController()` / `queryLocalData()` / `bindDataQueryParams()` /
-  `bindDataQueryResult()` / `bindDataQueryTable()` / `bindDataQuerySetting()` / `bindDataQueryCommands()`
+  `bindDataQueryResult()` / `bindDataQueryTable()` / `bindDataQuerySetting()` / `bindDataQueryCommands()` /
+  `createDataQueryPlugin()`
 - `WorkerPool`
 - `MemoryStore`
 - `IndexedDbStore`
@@ -1821,6 +1822,12 @@ const table = new DataTableController({ rows: [], columns: processColumns });
 const stopProcessTableBinding = bindDataQueryTable(processes, table);
 const stopProcessQuerySetting = bindDataQuerySetting(processes, settings, {
   key: "process-query",
+});
+const processQueryPlugin = createDataQueryPlugin({
+  controller: processes,
+  table,
+  settings,
+  commands: { idPrefix: "processes.query" },
 });
 ```
 
