@@ -1,6 +1,6 @@
 import { assertEquals } from "./deps.ts";
 import { detectRuntimeCapabilities } from "../src/runtime/capabilities.ts";
-import { AsyncScheduler } from "../src/runtime/scheduler.ts";
+import { AsyncScheduler, runTaskBatch } from "../src/runtime/scheduler.ts";
 import { createPersistentSignal, createRuntimeStore, MemoryStore } from "../src/runtime/storage.ts";
 import { type WorkerLike, WorkerPool, WorkerPoolTerminatedError } from "../src/runtime/worker_pool.ts";
 
@@ -125,6 +125,69 @@ Deno.test("AsyncScheduler can clear queued work without stopping active work", a
   await first;
   await scheduler.waitForIdle();
   assertEquals(scheduler.idle(), true);
+});
+
+Deno.test("runTaskBatch preserves input order while using scheduler priority", async () => {
+  const scheduler = new AsyncScheduler({ concurrency: 1 });
+  const releaseFirst = deferred<void>();
+  const execution: number[] = [];
+
+  const batch = runTaskBatch([
+    {
+      input: 1,
+      priority: 0,
+      task: async (value) => {
+        execution.push(value);
+        await releaseFirst.promise;
+        return value * 10;
+      },
+    },
+    { input: 2, priority: 0 },
+    { input: 3, priority: 10 },
+  ], {
+    scheduler,
+    task: (value) => {
+      execution.push(value);
+      return value * 10;
+    },
+  });
+
+  await Promise.resolve();
+  assertEquals(scheduler.inspect(), { concurrency: 1, running: 1, pending: 2, idle: false });
+
+  releaseFirst.resolve();
+  const results = await batch;
+
+  assertEquals(execution, [1, 3, 2]);
+  assertEquals(results, [
+    { input: 1, index: 0, value: 10 },
+    { input: 2, index: 1, value: 20 },
+    { input: 3, index: 2, value: 30 },
+  ]);
+});
+
+Deno.test("runTaskBatch supports abortable batch work", async () => {
+  const scheduler = new AsyncScheduler({ concurrency: 1 });
+  const releaseFirst = deferred<void>();
+  const controller = new AbortController();
+
+  const batch = runTaskBatch([1, 2], {
+    scheduler,
+    signal: controller.signal,
+    task: async (value) => {
+      if (value === 1) await releaseFirst.promise;
+      return value;
+    },
+  }).catch((error) => error);
+
+  await Promise.resolve();
+  controller.abort();
+  releaseFirst.resolve();
+
+  const error = await batch;
+  assertEquals(error.name, "AbortError");
+  await scheduler.waitForIdle();
+  assertEquals(scheduler.inspect(), { concurrency: 1, running: 0, pending: 0, idle: true });
 });
 
 Deno.test("MemoryStore implements the async store contract", async () => {

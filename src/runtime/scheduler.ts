@@ -26,6 +26,22 @@ export interface AsyncSchedulerInspection {
   idle: boolean;
 }
 
+export interface TaskBatchItem<TInput, TOutput> extends ScheduledTaskOptions {
+  input: TInput;
+  task?: (input: TInput, index: number) => TOutput | Promise<TOutput>;
+}
+
+export interface TaskBatchOptions<TInput, TOutput> extends ScheduledTaskOptions {
+  scheduler?: AsyncScheduler;
+  task?: (input: TInput, index: number) => TOutput | Promise<TOutput>;
+}
+
+export interface TaskBatchResult<TInput, TOutput> {
+  input: TInput;
+  index: number;
+  value: TOutput;
+}
+
 export class AsyncScheduler {
   private readonly concurrency: number;
   private active = 0;
@@ -177,4 +193,43 @@ export function nextFrame(): Promise<number> {
     return new Promise((resolve) => raf(resolve));
   }
   return new Promise((resolve) => setTimeout(() => resolve(performance.now()), 16));
+}
+
+export async function runTaskBatch<TInput, TOutput>(
+  items: readonly (TInput | TaskBatchItem<TInput, TOutput>)[],
+  options: TaskBatchOptions<TInput, TOutput> = {},
+): Promise<TaskBatchResult<TInput, TOutput>[]> {
+  const scheduler = options.scheduler ?? new AsyncScheduler();
+  const sharedTask = options.task;
+  const jobs = items.map((item, index) => {
+    const batchItem = normalizeBatchItem(item);
+    const task = batchItem.task ?? sharedTask;
+    if (!task) {
+      return Promise.reject(new TypeError("runTaskBatch requires a task option or per-item task."));
+    }
+
+    const priority = batchItem.priority ?? options.priority;
+    const signal = batchItem.signal ?? options.signal;
+    return scheduler.run(async () => ({
+      input: batchItem.input,
+      index,
+      value: await task(batchItem.input, index),
+    }), { priority, signal });
+  });
+
+  return await Promise.all(jobs);
+}
+
+function normalizeBatchItem<TInput, TOutput>(
+  item: TInput | TaskBatchItem<TInput, TOutput>,
+): TaskBatchItem<TInput, TOutput> {
+  if (isTaskBatchItem<TInput, TOutput>(item)) return item;
+  return { input: item };
+}
+
+function isTaskBatchItem<TInput, TOutput>(
+  item: TInput | TaskBatchItem<TInput, TOutput>,
+): item is TaskBatchItem<TInput, TOutput> {
+  return typeof item === "object" && item !== null && "input" in item &&
+    ("task" in item || "priority" in item || "signal" in item);
 }

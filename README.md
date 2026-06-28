@@ -648,7 +648,7 @@ variants and app-level overrides.
 Optional high-performance APIs are surfaced through `src/runtime/mod.ts`:
 
 - `detectRuntimeCapabilities()`
-- `AsyncScheduler`
+- `AsyncScheduler` / `runTaskBatch()`
 - `AsyncResource` / `createAsyncResource()` / `bindResourceParams()`
 - `runDataPipeline()` / `LatestDataPipeline` / `bindDataPipeline()` / `workerTransform()`
 - `WorkerPool`
@@ -660,7 +660,7 @@ Optional high-performance APIs are surfaced through `src/runtime/mod.ts`:
 Use these instead of hard-coding global checks inside components.
 
 `AsyncScheduler` caps concurrent work, prioritizes queued tasks, exposes queue inspection, and can wait for or clear
-pending work:
+pending work. `runTaskBatch()` builds on the same scheduler for ordered fan-out work:
 
 ```ts
 const scheduler = new AsyncScheduler({ concurrency: 2 });
@@ -674,11 +674,19 @@ await scheduler.run(() => refreshVisibleRows(), {
 const status = scheduler.inspect();
 await scheduler.waitForIdle();
 scheduler.clearPending();
+
+const rows = await runTaskBatch(processIds, {
+  scheduler,
+  priority: 5,
+  signal: controller.signal,
+  task: async (pid) => await loadProcessRow(pid),
+});
 ```
 
 Use higher priorities for focused panels or visible rows, and abort pending tasks when filters, routes, or visualization
 inputs change before queued work starts. `inspect()`, `pending()`, `running()`, `capacity()`, and `idle()` are useful
-for status bars, diagnostics, and backpressure controls.
+for status bars, diagnostics, and backpressure controls. Batch results preserve input order even when queued tasks run
+by priority, so callers can hydrate lists and tables without rebuilding index bookkeeping.
 
 `AsyncResource` exposes signal-backed async state for loading data, handling errors, aborting stale work, and preserving
 previous data during refreshes:
