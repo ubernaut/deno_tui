@@ -15,12 +15,28 @@ export interface DataPipelineBindingOptions<TOutput> extends Omit<DataPipelineOp
   onError?: (error: unknown, revision: number) => void | Promise<void>;
 }
 
+export interface DataPipelineBindingInspection {
+  revision: number;
+  running: boolean;
+  pending: boolean;
+  disposed: boolean;
+}
+
+export interface DataPipelineBinding<TInput> {
+  (): void;
+  dispose(): void;
+  abort(): void;
+  flush(): void;
+  run(input?: TInput): void;
+  inspect(): DataPipelineBindingInspection;
+}
+
 export function bindDataPipeline<TInput, TOutput>(
   input: Signal<TInput>,
   output: Signal<TOutput | undefined>,
   transforms: readonly DataTransform<any, any>[],
   options: DataPipelineBindingOptions<TOutput> = {},
-): () => void {
+): DataPipelineBinding<TInput> {
   const debounceMs = Math.max(0, options.debounceMs ?? 0);
   let disposed = false;
   let revision = 0;
@@ -81,7 +97,7 @@ export function bindDataPipeline<TInput, TOutput>(
   }
   input.subscribe(schedule);
 
-  return () => {
+  const dispose = () => {
     if (disposed) return;
     disposed = true;
     clearPending();
@@ -90,4 +106,26 @@ export function bindDataPipeline<TInput, TOutput>(
       abort();
     }
   };
+
+  const binding = dispose as DataPipelineBinding<TInput>;
+  binding.dispose = dispose;
+  binding.abort = abort;
+  binding.flush = () => {
+    if (disposed || timeout === undefined) return;
+    const next = input.peek();
+    clearPending();
+    run(next);
+  };
+  binding.run = (next = input.peek()) => {
+    clearPending();
+    run(next);
+  };
+  binding.inspect = () => ({
+    revision,
+    running: controller !== undefined,
+    pending: timeout !== undefined,
+    disposed,
+  });
+
+  return binding;
 }

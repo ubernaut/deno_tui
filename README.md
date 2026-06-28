@@ -706,15 +706,20 @@ Pass `priority` and `signal` to `runDataPipeline()` or `LatestDataPipeline.run()
 queued transforms when search text, route state, or source data changes before the work starts.
 
 `bindDataPipeline()` connects an input signal to a pipeline output signal, aborting superseded work and optionally
-debouncing rapid input changes:
+debouncing rapid input changes. The returned handle is still callable as a disposer, and also exposes `inspect()`,
+`flush()`, `run()`, and `abort()` for status bars, command handlers, and tests:
 
 ```ts
 const visibleRows = new Signal<ProcessRow[] | undefined>(undefined);
-const stopRows = bindDataPipeline(processes, visibleRows, [
+const rowsBinding = bindDataPipeline(processes, visibleRows, [
   filterRows((row) => row.name.includes(query.value)),
   workerTransform(processPool),
   sortRows((left, right) => left.cpu - right.cpu),
 ], { debounceMs: 50, scheduler });
+
+const pipelineStatus = rowsBinding.inspect();
+rowsBinding.flush();
+app.onDispose(rowsBinding);
 ```
 
 `createRuntimeStore()` chooses IndexedDB when available and falls back to memory. `PersistentSignal` layers reactive app

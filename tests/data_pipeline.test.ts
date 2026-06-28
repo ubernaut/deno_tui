@@ -194,7 +194,7 @@ Deno.test("bindDataPipeline debounces rapid input changes", async () => {
   const output = new Signal<number | undefined>(undefined);
   const seen: number[] = [];
 
-  bindDataPipeline<number, number>(input, output, [
+  const binding = bindDataPipeline<number, number>(input, output, [
     (value) => {
       seen.push(value);
       return value * 10;
@@ -209,6 +209,8 @@ Deno.test("bindDataPipeline debounces rapid input changes", async () => {
 
   assertEquals(seen, [3]);
   assertEquals(output.peek(), 30);
+  assertEquals(binding.inspect(), { revision: 1, running: false, pending: false, disposed: false });
+  binding.dispose();
 });
 
 Deno.test("bindDataPipeline suppresses stale results and aborts on dispose", async () => {
@@ -246,6 +248,62 @@ Deno.test("bindDataPipeline suppresses stale results and aborts on dispose", asy
 
   assertEquals(aborted, [1, 3]);
   assertEquals(output.peek(), 20);
+});
+
+Deno.test("bindDataPipeline exposes an inspectable binding handle", async () => {
+  const input = new Signal(1);
+  const output = new Signal<number | undefined>(undefined);
+  const release = deferred<void>();
+  const binding = bindDataPipeline<number, number>(input, output, [
+    async (value) => {
+      if (value === 1) {
+        await release.promise;
+      }
+      return value * 10;
+    },
+  ], { debounceMs: 20 });
+
+  assertEquals(binding.inspect(), { revision: 0, running: false, pending: true, disposed: false });
+  binding.flush();
+  assertEquals(binding.inspect(), { revision: 1, running: true, pending: false, disposed: false });
+
+  input.value = 2;
+  assertEquals(binding.inspect(), { revision: 1, running: true, pending: true, disposed: false });
+  binding.run(3);
+  await settle();
+  assertEquals(output.peek(), 30);
+  assertEquals(binding.inspect(), { revision: 2, running: false, pending: false, disposed: false });
+
+  release.resolve();
+  await settle();
+  assertEquals(output.peek(), 30);
+
+  binding.dispose();
+  assertEquals(binding.inspect(), { revision: 2, running: false, pending: false, disposed: true });
+});
+
+Deno.test("bindDataPipeline can abort active work through its handle", async () => {
+  const input = new Signal(1);
+  const output = new Signal<number | undefined>(undefined);
+  const aborted = deferred<void>();
+  const binding = bindDataPipeline<number, number>(input, output, [
+    async (_value, context) => {
+      context.signal?.addEventListener("abort", () => aborted.resolve());
+      await aborted.promise;
+      return 1;
+    },
+  ]);
+
+  await settle();
+  assertEquals(binding.inspect().running, true);
+  binding.abort();
+  await aborted.promise;
+  await settle();
+
+  assertEquals(output.peek(), undefined);
+  assertEquals(binding.inspect(), { revision: 1, running: false, pending: false, disposed: false });
+  binding();
+  assertEquals(binding.inspect().disposed, true);
 });
 
 function deferred<T>(): {
