@@ -32,16 +32,71 @@ Deno.test("canvas keeps higher z overlays visible after lower z redraws", () => 
   canvas.render();
 
   assertEquals(canvasRowText(canvas, 1, 12), "............");
+  assertEquals(canvas.inspectRender().intersectionsDirty, true);
+  assertEquals(canvas.inspectRender().intersectionUpdates, 2);
 
   overlayRect.value = { column: 2, row: 1, width: 4 };
   canvas.render();
 
   assertEquals(canvasRowText(canvas, 1, 12), "..HELP......");
+  assertEquals(canvas.inspectRender().intersectionsDirty, true);
+  assertEquals(canvas.inspectRender().intersectionUpdates, 2);
 
   backgroundStyle.value = () => "#";
   canvas.render();
 
   assertEquals(canvasRowText(canvas, 1, 12), "##HELP######");
+  assertEquals(canvas.inspectRender().intersectionsDirty, false);
+  assertEquals(canvas.inspectRender().intersectionUpdates, 0);
+  assertEquals(canvas.inspectRender().renderedObjects, 1);
+  assertEquals(canvas.inspectRender().rerenderedObjects, 0);
+});
+
+Deno.test("canvas render inspection reports repaint and idle passes", () => {
+  const canvas = createTestCanvas({ size: { columns: 8, rows: 2 } });
+  const style = new Signal<(text: string) => string>((text: string) => text);
+  const background = new BoxObject({
+    canvas,
+    rectangle: { column: 0, row: 0, width: 8, height: 2 },
+    filler: ".",
+    style,
+    zIndex: 1,
+  });
+
+  background.draw();
+  canvas.render();
+
+  assertEquals(canvas.inspectRender(), {
+    updatedObjects: 1,
+    renderedObjects: 1,
+    rerenderedObjects: 0,
+    intersectionUpdates: 1,
+    intersectionsDirty: true,
+    flushedCells: 16,
+  });
+
+  style.value = (text: string) => text.toUpperCase();
+  canvas.render();
+
+  assertEquals(canvas.inspectRender(), {
+    updatedObjects: 1,
+    renderedObjects: 1,
+    rerenderedObjects: 0,
+    intersectionUpdates: 0,
+    intersectionsDirty: false,
+    flushedCells: 16,
+  });
+
+  canvas.render();
+
+  assertEquals(canvas.inspectRender(), {
+    updatedObjects: 0,
+    renderedObjects: 0,
+    rerenderedObjects: 0,
+    intersectionUpdates: 0,
+    intersectionsDirty: false,
+    flushedCells: 0,
+  });
 });
 
 Deno.test("draw objects track views attached after construction", () => {

@@ -1,6 +1,5 @@
 // Copyright 2023 Im-Beast. MIT license.
 
-// TODO; on style change, dont update intersections, just clear current ones
 import { EmitterEvent, EventEmitter } from "../event_emitter.ts";
 
 import { moveCursor } from "../utils/ansi_codes.ts";
@@ -27,6 +26,16 @@ export type CanvasEventMap = {
   render: EmitterEvent<[]>;
 };
 
+/** Lightweight diagnostics for the most recent canvas render pass. */
+export interface CanvasRenderStats {
+  updatedObjects: number;
+  renderedObjects: number;
+  rerenderedObjects: number;
+  intersectionUpdates: number;
+  intersectionsDirty: boolean;
+  flushedCells: number;
+}
+
 /**
  * Object, which stores data about currently rendered objects.
  *
@@ -41,6 +50,7 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
   drawnObjects: SortedArray<DrawObject>;
   updateObjects: DrawObject[];
   resizeNeeded: boolean;
+  lastRenderStats: CanvasRenderStats;
 
   constructor(options: CanvasOptions) {
     super();
@@ -51,6 +61,7 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
     this.drawnObjects = new SortedArray((a, b) => a.zIndex.peek() - b.zIndex.peek() || a.id - b.id);
     this.updateObjects = [];
     this.resizeNeeded = false;
+    this.lastRenderStats = emptyRenderStats();
 
     this.size = signalify(options.size, { deepObserve: true });
 
@@ -112,6 +123,11 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
     }
   }
 
+  /** Returns diagnostics from the most recent render pass. */
+  inspectRender(): CanvasRenderStats {
+    return { ...this.lastRenderStats };
+  }
+
   render(): void {
     const { stdout, frameBuffer, updateObjects } = this;
 
@@ -121,6 +137,7 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
     }
 
     if (!updateObjects.length) {
+      this.lastRenderStats = emptyRenderStats();
       return;
     }
 
@@ -173,6 +190,9 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
       }
     }
 
+    let renderedObjects = 0;
+    let rerenderedObjects = 0;
+
     for (const object of objectsToRender) {
       if (object.outOfBounds) {
         continue;
@@ -180,9 +200,11 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
 
       if (object.rendered) {
         object.rerender();
+        rerenderedObjects += 1;
       } else {
         object.render();
         object.rendered = true;
+        renderedObjects += 1;
       }
     }
 
@@ -194,6 +216,7 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
 
     const { rerenderQueue } = this;
     const size = this.size.peek();
+    let flushedCells = 0;
 
     for (let row = 0; row < size.rows; ++row) {
       const columns = rerenderQueue[row];
@@ -215,6 +238,7 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
         }
 
         drawSequence += cell;
+        flushedCells += 1;
 
         lastRow = row;
         lastColumn = column;
@@ -228,6 +252,26 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
       stdout.writeSync(textEncoder.encode(moveCursor(lastRow, lastColumn) + drawSequence));
     }
 
+    this.lastRenderStats = {
+      updatedObjects: i,
+      renderedObjects,
+      rerenderedObjects,
+      intersectionUpdates: intersectionsDirty ? objectsToRender.length : 0,
+      intersectionsDirty,
+      flushedCells,
+    };
+
     this.emit("render");
   }
+}
+
+function emptyRenderStats(): CanvasRenderStats {
+  return {
+    updatedObjects: 0,
+    renderedObjects: 0,
+    rerenderedObjects: 0,
+    intersectionUpdates: 0,
+    intersectionsDirty: false,
+    flushedCells: 0,
+  };
 }

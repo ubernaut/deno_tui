@@ -22,6 +22,8 @@ Every new feature cluster should include:
 - `createTestStdout()` captures canvas writes in memory.
 - `createTestCanvas({ size })` creates a canvas with deterministic in-memory stdout.
 - `canvasSnapshot(canvas)` and `canvasRowText(canvas, row, width)` read rendered output from a canvas frame buffer.
+- `Canvas.inspectRender()` reports the most recent render pass, including updated objects, intersection recalculations,
+  and flushed cells for repaint regression tests.
 - `compareTerminalSnapshot(actual, expected)` returns normalized text plus bounded line/column mismatches.
 - `formatTerminalSnapshotDiff(comparison)` formats those mismatches for readable test failures.
 - `assertTerminalSnapshot(actual, expected)` throws that formatted diagnostic when snapshots differ.
