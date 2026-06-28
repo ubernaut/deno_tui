@@ -2,6 +2,7 @@
 export * from "./actions.ts";
 export * from "./app.ts";
 export * from "./checkbox_commands.ts";
+export * from "./combobox_commands.ts";
 export * from "./component_commands.ts";
 export * from "./command_bindings.ts";
 export * from "./commands.ts";

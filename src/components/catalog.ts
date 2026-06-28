@@ -64,6 +64,7 @@ export const componentCatalog = [
   ]),
   component("combobox", "ComboBox", "input", "Text input with selectable suggestions.", [
     "component",
+    "controller",
     "keyboard",
     "selection",
     "themeable",

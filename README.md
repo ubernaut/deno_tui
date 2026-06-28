@@ -165,6 +165,23 @@ screens, docs browsers, and plugin marketplaces that need to expose available wi
 queues in each app. `toastCommands()` and `bindToastCommands()` expose clear and dismiss-latest actions for command
 palettes, menu bars, key help, and plugin surfaces.
 
+`ComboBoxController` owns dropdown items, placeholder text, selected index, expanded state, keyboard movement, selection
+callbacks, and inspection state for `ComboBox`. Use `comboBoxCommands()` or `bindComboBoxCommands()` to expose
+open/close/toggle, first/previous/next/last, active selection, and optional direct item-selection commands:
+
+```ts
+const environment = new ComboBoxController({
+  items: ["development", "staging", "production"],
+  placeholder: "choose environment",
+});
+
+const stopEnvironmentCommands = bindComboBoxCommands(app.commands, environment, {
+  idPrefix: "deploy.environment",
+  group: "input",
+  includeItemCommands: true,
+});
+```
+
 `ListController` gives compact single-selection lists the same reusable state layer as the larger virtualized list. It
 owns item data, selected-index clamping, keyboard movement, active-item selection callbacks, and inspection state, while
 `listCommands()` and `bindListCommands()` expose first, previous, next, last, active select, and optional direct item

@@ -1,5 +1,6 @@
 import { assertEquals } from "./deps.ts";
 import { bindCheckBoxCommands, checkBoxCommands } from "../src/app/checkbox_commands.ts";
+import { bindComboBoxCommands, comboBoxCommands } from "../src/app/combobox_commands.ts";
 import { bindListCommands, listCommands } from "../src/app/list_commands.ts";
 import { bindMenuBarCommands, menuBarCommands } from "../src/app/menu_bar_commands.ts";
 import { bindRadioGroupCommands, radioGroupCommands } from "../src/app/radio_group_commands.ts";
@@ -12,6 +13,7 @@ import { bindTreeCommands, treeCommands } from "../src/app/tree_commands.ts";
 import { formatKeyBinding, KeymapRegistry } from "../src/keymap.ts";
 import { renderBreadcrumbs } from "../src/components/breadcrumbs.ts";
 import { CheckBoxController, Mark, renderCheckBoxMark } from "../src/components/checkbox.ts";
+import { ComboBoxController, comboBoxLabel } from "../src/components/combobox.ts";
 import { renderEmptyState } from "../src/components/empty_state.ts";
 import { renderKeyHelp } from "../src/components/key_help.ts";
 import { ListController, virtualRows, visibleListRows } from "../src/components/list.ts";
@@ -270,6 +272,109 @@ Deno.test("treeCommands navigate toggle and select nodes", async () => {
 
   dispose();
   assertEquals(registry.list("tree"), []);
+  controller.dispose();
+  emptyController.dispose();
+});
+
+Deno.test("ComboBoxController opens navigates selects and inspects state", () => {
+  const selections: string[] = [];
+  const expanded: boolean[] = [];
+  const controller = new ComboBoxController({
+    items: ["alpha", "beta", "gamma"],
+    placeholder: "choose",
+    onSelect: (item) => void selections.push(item),
+    onExpandedChange: (next) => void expanded.push(next),
+  });
+
+  assertEquals(
+    comboBoxLabel(controller.items.peek(), controller.selectedIndex.peek(), controller.placeholder.peek()),
+    "choose",
+  );
+  assertEquals(controller.inspect(), {
+    items: ["alpha", "beta", "gamma"],
+    itemCount: 3,
+    selectedIndex: undefined,
+    selected: undefined,
+    expanded: false,
+    placeholder: "choose",
+    label: "choose",
+    empty: false,
+  });
+
+  controller.handleKeyPress(keyPress("down"));
+  controller.handleKeyPress(keyPress("down"));
+  assertEquals(controller.inspect().selected, "beta");
+  assertEquals(controller.inspect().expanded, true);
+  assertEquals(controller.handleKeyPress(keyPress("return")), "beta");
+  assertEquals(controller.inspect().expanded, false);
+  assertEquals(selections, ["beta"]);
+  assertEquals(expanded, [true, false]);
+
+  controller.items.value = ["only"];
+  assertEquals(controller.inspect().selectedIndex, 0);
+  controller.items.value = [];
+  assertEquals(controller.inspect().selectedIndex, undefined);
+  assertEquals(controller.inspect().empty, true);
+  controller.dispose();
+});
+
+Deno.test("comboBoxCommands open move and select items", async () => {
+  const controller = new ComboBoxController({ items: ["alpha", "beta", "gamma"] });
+  const registry = new CommandRegistry();
+  const actions: unknown[] = [];
+  const dispose = bindComboBoxCommands(registry, controller, {
+    id: "choice",
+    idPrefix: "combo.choice",
+    group: "input",
+    includeItemCommands: true,
+  });
+  const emptyController = new ComboBoxController<string[]>({ items: [] });
+
+  assertEquals(comboBoxCommands(emptyController).map((command) => command.id), [
+    "combobox.open",
+    "combobox.close",
+    "combobox.toggle",
+    "combobox.first",
+    "combobox.previous",
+    "combobox.next",
+    "combobox.last",
+    "combobox.select",
+  ]);
+  assertEquals(registry.list("input").map((command) => command.id), [
+    "combo.choice.close",
+    "combo.choice.first",
+    "combo.choice.last",
+    "combo.choice.next",
+    "combo.choice.open",
+    "combo.choice.previous",
+    "combo.choice.select",
+    "combo.choice.item.0",
+    "combo.choice.item.1",
+    "combo.choice.item.2",
+    "combo.choice.toggle",
+  ]);
+
+  assertEquals(await registry.execute("combo.choice.open", (action) => void actions.push(action)), true);
+  assertEquals(controller.expanded.peek(), true);
+  assertEquals(actions.at(-1), {
+    type: "comboBox.expandedChanged",
+    payload: { id: "choice", inspection: controller.inspect(), expanded: true },
+  });
+  assertEquals(await registry.execute("combo.choice.next", (action) => void actions.push(action)), true);
+  assertEquals(controller.selected(), "alpha");
+  assertEquals(await registry.execute("combo.choice.item.2", (action) => void actions.push(action)), true);
+  assertEquals(actions.at(-1), {
+    type: "comboBox.itemSelected",
+    payload: {
+      id: "choice",
+      inspection: controller.inspect(),
+      item: "gamma",
+      index: 2,
+    },
+  });
+
+  dispose();
+  assertEquals(registry.list("input"), []);
   controller.dispose();
   emptyController.dispose();
 });
