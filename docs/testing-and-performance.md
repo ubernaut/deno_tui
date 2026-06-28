@@ -39,6 +39,8 @@ These helpers are intentionally small and do not choose a test framework. They w
 - `createRuntimePlan()` / `formatRuntimePlan()` for deterministic worker, storage, and renderer fallback decisions.
 - `RuntimeProfile`, `RuntimeProfileRegistry`, and runtime profile catalog helpers for named, queryable policies such as
   balanced, throughput, portable, and ephemeral execution.
+- `inspectRuntimeWorkload()`, `createRuntimeWorkloadReport()`, and `formatRuntimeWorkloadMarkdown()` for scheduler and
+  worker-pool pressure telemetry.
 - `AsyncScheduler` for bounded, prioritized, and abortable queued async work.
 - `RenderLoop` for inspectable terminal frame loops with injectable timers.
 - `WorkerPool`, `installWorkerHandler()`, and `workerTransform()` for standards-style worker jobs and pipeline stages.
@@ -50,7 +52,9 @@ Prefer this layer over directly branching on globals inside components. Componen
 test; apps and renderers should use a runtime plan to decide whether to use Workers, WebGPU, WebGL, IndexedDB, or
 fallback implementations. `WorkerPool.run(payload, { signal })` can abort pending callers, `pendingCount()` exposes
 lightweight backpressure state, and `workerFactory` lets tests inject a deterministic worker without starting real
-threads.
+threads. Use `createRuntimeWorkloadReport()` when a demo, settings pane, or CI log needs one view over both scheduler
+queues and worker pools. It reports capacity, running work, queued work, saturation, idle state, and termination state
+without requiring callers to special-case each runtime primitive.
 
 Runtime profiles let apps expose strategy choices as data instead of hard-coded conditionals. A settings pane can show
 `RuntimeProfileRegistry.catalog()`, keep the selected profile in a `RuntimeProfileController`, persist it with

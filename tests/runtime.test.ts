@@ -18,6 +18,11 @@ import {
   runtimeProfiles,
 } from "../src/runtime/profiles.ts";
 import { AsyncScheduler, runTaskBatch } from "../src/runtime/scheduler.ts";
+import {
+  createRuntimeWorkloadReport,
+  formatRuntimeWorkloadMarkdown,
+  inspectRuntimeWorkload,
+} from "../src/runtime/telemetry.ts";
 import { createRenderLoop, RenderLoop } from "../src/runtime/render_loop.ts";
 import { createPersistentSignal, createRuntimeStore, MemoryStore } from "../src/runtime/storage.ts";
 import { runWorkerBatch, type WorkerLike, WorkerPool, WorkerPoolTerminatedError } from "../src/runtime/worker_pool.ts";
@@ -670,6 +675,90 @@ Deno.test("WorkerPool inspects status and waits for idle", async () => {
     nextWorkerIndex: 0,
   });
   pool.terminate();
+});
+
+Deno.test("runtime workload telemetry normalizes schedulers and worker pools", () => {
+  const workers: TestWorker[] = [];
+  const pool = new WorkerPool<number, number>({
+    workerUrl: new URL("./fixtures/sum_worker.ts", import.meta.url),
+    size: 2,
+    workerFactory: () => {
+      const worker = new TestWorker();
+      workers.push(worker);
+      return worker;
+    },
+  });
+  const jobs = [
+    pool.run(1).catch(() => undefined),
+    pool.run(2).catch(() => undefined),
+    pool.run(3).catch(() => undefined),
+  ];
+
+  const schedulerSource = {
+    id: "ui-scheduler",
+    label: "UI Scheduler",
+    inspect: () => ({
+      concurrency: 2,
+      running: 2,
+      pending: 1,
+      idle: false,
+    }),
+  };
+  const report = createRuntimeWorkloadReport({
+    sources: [
+      schedulerSource,
+      { id: "workers", label: "Workers", inspect: () => pool.inspect() },
+    ],
+  });
+  const markdown = formatRuntimeWorkloadMarkdown({
+    title: "Runtime Pressure",
+    sources: [schedulerSource],
+  });
+
+  assertEquals(inspectRuntimeWorkload(schedulerSource), {
+    id: "ui-scheduler",
+    label: "UI Scheduler",
+    kind: "scheduler",
+    capacity: 2,
+    running: 2,
+    queued: 1,
+    pending: 3,
+    saturation: 1.5,
+    idle: false,
+    terminated: false,
+    state: "queued",
+  });
+  assertEquals(report.workloads.map((workload) => [workload.id, workload.kind, workload.state, workload.saturation]), [
+    ["ui-scheduler", "scheduler", "queued", 1.5],
+    ["workers", "worker-pool", "queued", 1.5],
+  ]);
+  assertEquals(report.inspection, {
+    count: 2,
+    running: 4,
+    queued: 2,
+    pending: 6,
+    capacity: 4,
+    saturated: 2,
+    terminated: 0,
+    idle: false,
+    maxSaturation: 1.5,
+  });
+  assertEquals(
+    markdown,
+    [
+      "# Runtime Pressure",
+      "",
+      "1 workloads, 3 pending, 1 saturated.",
+      "",
+      "| Workload | Kind | State | Running | Queued | Capacity | Saturation |",
+      "| --- | --- | --- | ---: | ---: | ---: | ---: |",
+      "| UI Scheduler | scheduler | queued | 2 | 1 | 2 | 1.50 |",
+    ].join("\n"),
+  );
+
+  pool.terminate();
+  assertEquals(inspectRuntimeWorkload({ id: "workers", inspect: () => pool.inspect() }).state, "terminated");
+  void Promise.all(jobs);
 });
 
 Deno.test("runWorkerBatch preserves input order while dispatching through the pool", async () => {

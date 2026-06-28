@@ -1484,6 +1484,7 @@ Optional high-performance APIs are surfaced through `src/runtime/mod.ts`:
   `formatRuntimeProfileCatalogMarkdown()`
 - `RuntimeProfileController` / `createRuntimeProfilePlugin()` / `bindRuntimeProfileCommands()` /
   `bindRuntimeProfileSetting()`
+- `inspectRuntimeWorkload()` / `createRuntimeWorkloadReport()` / `formatRuntimeWorkloadMarkdown()`
 - `AsyncScheduler` / `runTaskBatch()`
 - `RenderLoop` / `createRenderLoop()`
 - `AsyncResource` / `createAsyncResource()` / `CachedAsyncResource` / `createCachedAsyncResource()` /
@@ -1499,7 +1500,10 @@ Use these instead of hard-coding global checks inside components. `formatRuntime
 diagnostic summary for settings screens and logs, while `createRuntimePlan()` turns the same capability set into
 deterministic app strategies for worker execution, persistent storage, and renderer fallback. `deno task capabilities`
 prints the summary, default plan, and built-in runtime profile table; pass `--json` to that task for structured output.
-Runtime profiles are named policy presets for settings screens and launchers:
+`inspectRuntimeWorkload()`, `createRuntimeWorkloadReport()`, and `formatRuntimeWorkloadMarkdown()` normalize
+`AsyncScheduler.inspect()` and `WorkerPool.inspect()` into one pressure report for settings panes, demos, and CI logs:
+capacity, running work, queued work, saturation, idle state, and termination state are all exposed through a
+JSON-friendly shape. Runtime profiles are named policy presets for settings screens and launchers:
 
 ```ts
 const runtimeProfiles = createRuntimeProfileRegistry();
