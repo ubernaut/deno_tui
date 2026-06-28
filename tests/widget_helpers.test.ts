@@ -1,4 +1,6 @@
 import { assertEquals } from "./deps.ts";
+import { bindScrollAreaCommands, scrollAreaCommands } from "../src/app/scroll_area_commands.ts";
+import { CommandRegistry } from "../src/app/commands.ts";
 import { formatKeyBinding, KeymapRegistry } from "../src/keymap.ts";
 import { renderBreadcrumbs } from "../src/components/breadcrumbs.ts";
 import { renderEmptyState } from "../src/components/empty_state.ts";
@@ -15,6 +17,7 @@ import {
 import {
   clampScrollOffset,
   maxScrollOffset,
+  ScrollAreaController,
   scrollbarGlyph,
   scrollbarThumb,
   scrollOffsetBy,
@@ -226,6 +229,97 @@ Deno.test("scroll helpers clamp offsets and expose scrollbar thumb state", () =>
   assertEquals(scrollbarGlyph(3, thumb), "│");
   assertEquals(scrollbarGlyph(4, thumb), "█");
   assertEquals(scrollbarThumb(8, 10, 0).visible, false);
+});
+
+Deno.test("ScrollAreaController inspects and clamps viewport offsets", () => {
+  const controller = new ScrollAreaController({
+    contentWidth: 80,
+    contentHeight: 40,
+    viewportWidth: 20,
+    viewportHeight: 10,
+    offset: { columns: 90, rows: 15 },
+  });
+
+  assertEquals(controller.inspect(), {
+    contentWidth: 80,
+    contentHeight: 40,
+    viewportWidth: 20,
+    viewportHeight: 10,
+    maxOffset: { columns: 60, rows: 30 },
+    offset: { columns: 60, rows: 15 },
+    horizontalThumb: { start: 15, size: 5, visible: true },
+    verticalThumb: { start: 4, size: 3, visible: true },
+    visibleColumns: { start: 60, end: 80 },
+    visibleRows: { start: 15, end: 25 },
+    canScrollColumns: true,
+    canScrollRows: true,
+    showScrollbar: true,
+  });
+
+  assertEquals(controller.scrollBy(-10, 100), { columns: 50, rows: 30 });
+  assertEquals(controller.setViewportSize(100, 100), { columns: 0, rows: 0 });
+  controller.setScrollbarVisible(false);
+  assertEquals(controller.inspect().showScrollbar, false);
+  controller.dispose();
+});
+
+Deno.test("scrollAreaCommands drive movement and scrollbar visibility", async () => {
+  const controller = new ScrollAreaController({
+    contentWidth: 80,
+    contentHeight: 40,
+    viewportWidth: 20,
+    viewportHeight: 10,
+  });
+  const registry = new CommandRegistry();
+  const actions: unknown[] = [];
+  const dispose = bindScrollAreaCommands(registry, controller, {
+    id: "main",
+    idPrefix: "viewport.main",
+    group: "viewport",
+    includeScrollbarCommands: true,
+  });
+
+  assertEquals(scrollAreaCommands(new ScrollAreaController()).map((command) => command.id), [
+    "scroll.up",
+    "scroll.down",
+    "scroll.left",
+    "scroll.right",
+    "scroll.pageUp",
+    "scroll.pageDown",
+    "scroll.home",
+    "scroll.end",
+  ]);
+  assertEquals(registry.list("viewport").map((command) => command.id), [
+    "viewport.main.scrollbar.hide",
+    "viewport.main.pageDown",
+    "viewport.main.pageUp",
+    "viewport.main.down",
+    "viewport.main.end",
+    "viewport.main.home",
+    "viewport.main.left",
+    "viewport.main.right",
+    "viewport.main.up",
+    "viewport.main.scrollbar.show",
+  ]);
+
+  assertEquals(await registry.execute("viewport.main.pageDown", (action) => void actions.push(action)), true);
+  assertEquals(controller.offset.peek(), { columns: 0, rows: 9 });
+  assertEquals(await registry.execute("viewport.main.end", (action) => void actions.push(action)), true);
+  assertEquals(controller.offset.peek(), { columns: 0, rows: 30 });
+  assertEquals(await registry.execute("viewport.main.scrollbar.hide", (action) => void actions.push(action)), true);
+  assertEquals(controller.showScrollbar.peek(), false);
+  assertEquals(actions.at(-1), {
+    type: "scrollArea.scrollbarChanged",
+    payload: {
+      id: "main",
+      visible: false,
+      inspection: controller.inspect(),
+    },
+  });
+
+  dispose();
+  assertEquals(registry.list("viewport"), []);
+  controller.dispose();
 });
 
 Deno.test("renderStatusBar keeps left and right content inside width", () => {

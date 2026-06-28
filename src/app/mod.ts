@@ -15,6 +15,7 @@ export * from "./metric_series_commands.ts";
 export * from "./plugins.ts";
 export * from "./route_bindings.ts";
 export * from "./router.ts";
+export * from "./scroll_area_commands.ts";
 export * from "./selection_bindings.ts";
 export * from "./settings_commands.ts";
 export * from "./settings_bindings.ts";

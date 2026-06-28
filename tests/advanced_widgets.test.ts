@@ -74,6 +74,7 @@ Deno.test("component catalog groups widgets by category and capability", () => {
     "toast",
     "log-viewer",
     "metric-series",
+    "scroll-area",
   ]);
 });
 

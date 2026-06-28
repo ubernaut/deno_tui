@@ -192,6 +192,7 @@ export const componentCatalog = [
   ]),
   component("frame", "Frame", "layout", "Bordered component frame.", ["component", "themeable"]),
   component("scroll-area", "ScrollArea", "layout", "Viewport and scrollbar helper renderers.", [
+    "controller",
     "render-helper",
     "virtualized",
   ]),

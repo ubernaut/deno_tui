@@ -764,7 +764,24 @@ const maxOffset = maxViewportOffset(contentWidth, contentHeight, width, height);
 const offset = viewportOffsetBy(currentOffset, maxOffset, 0, 1);
 const rows = viewportWindow(items.length, selection.state.value.activeIndex, height);
 const viewportState = inspectViewport(contentWidth, contentHeight, width, height, offset);
+
+const scroll = new ScrollAreaController({
+  contentWidth,
+  contentHeight,
+  viewportWidth: width,
+  viewportHeight: height,
+});
+scroll.scrollBy(0, 1);
+const stopScrollCommands = bindScrollAreaCommands(app.commands, scroll, {
+  idPrefix: "viewport.main",
+  includeScrollbarCommands: true,
+});
 ```
+
+`ScrollAreaController` wraps the same viewport math in a reusable state object with `scrollBy()`, `scrollTo()`,
+`setContentSize()`, `setViewportSize()`, `setScrollbarVisible()`, and `inspect()`. `scrollAreaCommands()` and
+`bindScrollAreaCommands()` expose movement, page, edge, and optional scrollbar visibility actions through the command
+registry for scrollable panes that are controlled by menus, key bindings, palettes, or plugins.
 
 ## Theming
 
