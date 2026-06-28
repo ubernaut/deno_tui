@@ -14,6 +14,7 @@ import {
   List,
   MenuBar,
   Modal,
+  RadioGroup,
   resolveBreakpoint,
   ScrollArea,
   Signal,
@@ -60,6 +61,7 @@ const themeEngine = createThemeEngine("neon", {
 const paletteVisible = new Signal(false);
 const contextVisible = new Signal(false);
 const activeMenu = new Signal(0);
+const routeChoice = new Signal("overview");
 const toasts = new Signal<ToastMessage[]>([
   { id: "boot", level: "success", message: "App shell ready" },
 ], { deepObserve: true });
@@ -147,6 +149,7 @@ for (const binding of app.commands.keyBindings()) {
 app.actions.subscribe((action) => {
   if (action.type === "route") {
     app.routes.navigate(action.payload);
+    routeChoice.value = action.payload;
     pushToast(`Route changed to ${action.payload}`, "info");
   } else if (action.type === "toast") {
     pushToast(action.payload, "success");
@@ -272,6 +275,25 @@ new List({
   })),
 });
 
+const routeRadio = new RadioGroup({
+  parent: app.tui,
+  theme: themeEngine.component("RadioGroup"),
+  zIndex: 2,
+  options: [
+    { value: "overview", label: "Overview" },
+    { value: "widgets", label: "Widgets" },
+    { value: "runtime", label: "Runtime" },
+  ],
+  selectedValue: routeChoice,
+  onChange: (option) => app.executeCommand(`route.${option.value}`).then(() => undefined),
+  rectangle: new Computed(() => ({
+    column: Math.max(42, app.tui.rectangle.value.width - 30),
+    row: 10,
+    width: 24,
+    height: 3,
+  })),
+});
+
 const scrollArea = new ScrollArea({
   parent: app.tui,
   theme: themeEngine.component("ScrollArea"),
@@ -280,15 +302,15 @@ const scrollArea = new ScrollArea({
   contentHeight: scrollLines.length,
   rectangle: new Computed(() => ({
     column: Math.max(42, Math.floor(app.tui.rectangle.value.width / 2)),
-    row: 10,
+    row: 14,
     width: Math.max(
       24,
       app.tui.rectangle.value.width - Math.max(42, Math.floor(app.tui.rectangle.value.width / 2)) - 4,
     ),
-    height: Math.max(4, app.tui.rectangle.value.height - 17),
+    height: Math.max(4, app.tui.rectangle.value.height - 21),
   })),
 });
-app.enableFocusNavigation({ items: [menuBar, scrollArea] });
+app.enableFocusNavigation({ items: [menuBar, routeRadio, scrollArea] });
 app.focus.focus(scrollArea);
 
 for (const [index, line] of scrollLines.entries()) {

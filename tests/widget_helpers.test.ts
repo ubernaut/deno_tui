@@ -4,6 +4,13 @@ import { renderKeyHelp } from "../src/components/key_help.ts";
 import { virtualRows, visibleListRows } from "../src/components/list.ts";
 import { renderMenuBar, shiftMenuIndex } from "../src/components/menu_bar.ts";
 import {
+  clampRadioIndex,
+  optionForValue,
+  renderRadioGroupRows,
+  shiftRadioIndex,
+  visibleRadioOptions,
+} from "../src/components/radio_group.ts";
+import {
   clampScrollOffset,
   maxScrollOffset,
   scrollbarGlyph,
@@ -48,6 +55,25 @@ Deno.test("menu bar renders active item and skips disabled entries", () => {
 
   assertEquals(renderMenuBar(items, 0), "[File] (Edit) View");
   assertEquals(shiftMenuIndex(items, 0, 1), 2);
+});
+
+Deno.test("radio group renders selected state and skips disabled options", () => {
+  const options = [
+    { value: "a", label: "Alpha" },
+    { value: "b", label: "Beta", disabled: true },
+    { value: "c", label: "Gamma" },
+  ];
+
+  assertEquals(renderRadioGroupRows(options, "c", 0, 3), [
+    "> ○ Alpha",
+    "  ○ (Beta)",
+    "  ● Gamma",
+  ]);
+  assertEquals(shiftRadioIndex(options, 0, 1), 2);
+  assertEquals(shiftRadioIndex(options, 2, -1), 0);
+  assertEquals(clampRadioIndex(options, 1), 2);
+  assertEquals(optionForValue(options, "c")?.label, "Gamma");
+  assertEquals(visibleRadioOptions(options, 2, 2).map((row) => row.index), [1, 2]);
 });
 
 Deno.test("scroll helpers clamp offsets and expose scrollbar thumb state", () => {
