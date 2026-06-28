@@ -1,23 +1,29 @@
 // Copyright 2023 Im-Beast. MIT license.
+/** Options for bounded async task scheduling. */
 export interface SchedulerOptions {
   concurrency?: number;
 }
 
+/** Unit of work accepted by the async scheduler. */
 export type ScheduledTask<T> = () => T | Promise<T>;
 
+/** Per-task priority and cancellation options. */
 export interface ScheduledTaskOptions {
   priority?: number;
   signal?: AbortSignal;
 }
 
+/** Lifecycle status for a scheduled task handle. */
 export type ScheduledTaskStatus = "queued" | "running" | "settled" | "cancelled";
 
+/** Serializable task handle status. */
 export interface ScheduledTaskInspection {
   priority: number;
   sequence: number;
   status: ScheduledTaskStatus;
 }
 
+/** Cancellable handle returned by scheduled work. */
 export interface ScheduledTaskHandle<T> {
   readonly promise: Promise<T>;
   cancel(reason?: unknown): boolean;
@@ -33,6 +39,7 @@ interface QueuedTask {
   sequence: number;
 }
 
+/** Serializable scheduler queue and capacity status. */
 export interface AsyncSchedulerInspection {
   concurrency: number;
   running: number;
@@ -40,22 +47,26 @@ export interface AsyncSchedulerInspection {
   idle: boolean;
 }
 
+/** Batch item with optional per-item task, priority, and cancellation. */
 export interface TaskBatchItem<TInput, TOutput> extends ScheduledTaskOptions {
   input: TInput;
   task?: (input: TInput, index: number) => TOutput | Promise<TOutput>;
 }
 
+/** Options shared across a task batch. */
 export interface TaskBatchOptions<TInput, TOutput> extends ScheduledTaskOptions {
   scheduler?: AsyncScheduler;
   task?: (input: TInput, index: number) => TOutput | Promise<TOutput>;
 }
 
+/** Ordered result for one input item in a task batch. */
 export interface TaskBatchResult<TInput, TOutput> {
   input: TInput;
   index: number;
   value: TOutput;
 }
 
+/** Priority-aware async scheduler with bounded concurrency and abortable queued work. */
 export class AsyncScheduler {
   private readonly concurrency: number;
   private active = 0;
@@ -63,14 +74,17 @@ export class AsyncScheduler {
   private readonly queue: QueuedTask[] = [];
   private readonly idleResolvers = new Set<() => void>();
 
+  /** Creates a scheduler with a positive concurrency limit. */
   constructor(options: SchedulerOptions = {}) {
     this.concurrency = Math.max(1, Math.floor(options.concurrency ?? navigator.hardwareConcurrency ?? 2));
   }
 
+  /** Schedules a task and returns only its promise. */
   run<T>(task: ScheduledTask<T>, options: ScheduledTaskOptions = {}): Promise<T> {
     return this.schedule(task, options).promise;
   }
 
+  /** Schedules a task and returns a cancellable inspection handle. */
   schedule<T>(task: ScheduledTask<T>, options: ScheduledTaskOptions = {}): ScheduledTaskHandle<T> {
     let status: ScheduledTaskStatus = "queued";
     let queued: QueuedTask | undefined;
@@ -152,22 +166,27 @@ export class AsyncScheduler {
     };
   }
 
+  /** Returns queued task count. */
   pending(): number {
     return this.queue.length;
   }
 
+  /** Returns active task count. */
   running(): number {
     return this.active;
   }
 
+  /** Returns the scheduler concurrency limit. */
   capacity(): number {
     return this.concurrency;
   }
 
+  /** Returns whether there are no queued or running tasks. */
   idle(): boolean {
     return this.active === 0 && this.queue.length === 0;
   }
 
+  /** Resolves when all queued and running work has settled. */
   waitForIdle(): Promise<void> {
     if (this.idle()) return Promise.resolve();
     return new Promise((resolve) => {
@@ -175,6 +194,7 @@ export class AsyncScheduler {
     });
   }
 
+  /** Cancels queued tasks without interrupting already running work. */
   clearPending(reason: unknown = createAbortError()): number {
     const queued = this.queue.splice(0);
     for (const task of queued) {
@@ -187,6 +207,7 @@ export class AsyncScheduler {
     return queued.length;
   }
 
+  /** Returns a lightweight scheduler status snapshot. */
   inspect(): AsyncSchedulerInspection {
     return {
       concurrency: this.concurrency,
@@ -238,6 +259,7 @@ function createAbortError(): Error {
   return error;
 }
 
+/** Resolves on the next animation frame, falling back to a timeout outside browsers. */
 export function nextFrame(): Promise<number> {
   const raf = (globalThis as typeof globalThis & {
     requestAnimationFrame?: (callback: (time: number) => void) => number;
@@ -248,6 +270,7 @@ export function nextFrame(): Promise<number> {
   return new Promise((resolve) => setTimeout(() => resolve(performance.now()), 16));
 }
 
+/** Runs a batch of inputs through a scheduler while preserving result order. */
 export async function runTaskBatch<TInput, TOutput>(
   items: readonly (TInput | TaskBatchItem<TInput, TOutput>)[],
   options: TaskBatchOptions<TInput, TOutput> = {},

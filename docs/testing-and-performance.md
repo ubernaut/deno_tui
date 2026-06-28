@@ -66,12 +66,12 @@ Inspect the public re-export graph before release:
 ```bash
 deno task api-inventory
 deno task api-inventory -- --json
-deno task api-inventory -- --check --quiet --fail-duplicates --min-doc-coverage=0.15
+deno task api-inventory -- --check --quiet --fail-duplicates --min-doc-coverage=0.18
 ```
 
 The inventory reports crawled modules, re-export declarations, exported symbol counts, missing local targets, and
-duplicate public symbol names. The contributor health gate runs the quiet check with duplicate failure enabled and a 15%
-documentation coverage baseline that can be raised as public JSDoc coverage improves.
+duplicate public symbol names. The contributor health gate runs the quiet check with duplicate failure enabled and an
+18% documentation coverage baseline that can be raised as public JSDoc coverage improves.
 
 Run the worker integration path with permissions:
 

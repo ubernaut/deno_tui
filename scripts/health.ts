@@ -23,7 +23,7 @@ export const defaultHealthSteps: readonly HealthStep[] = [
       "--check",
       "--quiet",
       "--fail-duplicates",
-      "--min-doc-coverage=0.15",
+      "--min-doc-coverage=0.18",
     ],
   },
   { name: "app-shell", command: ["deno", "check", "examples/app_shell.ts"] },
