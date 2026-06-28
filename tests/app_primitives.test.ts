@@ -220,7 +220,13 @@ Deno.test("TuiApp dispatches command actions through the action bus", async () =
 
 Deno.test("TuiApp can bind command keys to its action bus", async () => {
   const target = new TestKeyPressTarget();
-  const tui = { on: target.on.bind(target), destroy() {} } as unknown as Tui;
+  let destroyed = false;
+  const tui = {
+    on: target.on.bind(target),
+    destroy() {
+      destroyed = true;
+    },
+  } as unknown as Tui;
   const app = createApp<{ type: "toast"; payload: string }>({ tui });
   const seen: string[] = [];
   app.actions.subscribe((action) => {
@@ -240,7 +246,29 @@ Deno.test("TuiApp can bind command keys to its action bus", async () => {
 
   assertEquals(seen, ["hello"]);
   dispose();
+  assertEquals(target.listenerCount(), 0);
   app.destroy();
+  assertEquals(destroyed, true);
+});
+
+Deno.test("TuiApp tracks disposers and cleans them up on destroy", () => {
+  let destroyed = 0;
+  let disposed = 0;
+  const app = createApp({ tui: { destroy: () => destroyed += 1 } as unknown as Tui });
+  const first = app.onDispose(() => disposed += 1);
+  app.onDispose(() => disposed += 10);
+
+  first();
+  first();
+  assertEquals(disposed, 1);
+
+  app.destroy();
+  app.destroy();
+  assertEquals(disposed, 11);
+  assertEquals(destroyed, 1);
+
+  app.onDispose(() => disposed += 100);
+  assertEquals(disposed, 111);
 });
 
 Deno.test("HistoryStack applies undo redo and clears stale redo entries", async () => {

@@ -535,8 +535,8 @@ const contextMenu = new ContextMenu({
   visible: contextVisible,
 });
 
-bindModalFocus(app.tui, paletteVisible, app.focus, [commandPalette]);
-bindModalFocus(app.tui, contextVisible, app.focus, [contextMenu]);
+app.onDispose(bindModalFocus(app.tui, paletteVisible, app.focus, [commandPalette]));
+app.onDispose(bindModalFocus(app.tui, contextVisible, app.focus, [contextMenu]));
 
 app.start();
 

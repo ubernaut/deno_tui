@@ -243,6 +243,13 @@ This fork exports lightweight app primitives for larger TUIs:
 They are optional and composable. Existing component-first apps continue to work. Use `app.enableFocusNavigation()` or
 `bindFocusNavigation()` to opt into Tab/Shift+Tab traversal for registered focusable components.
 
+`TuiApp.onDispose()` tracks cleanup callbacks and runs them once on `app.destroy()`. Built-in app binders such as
+`app.enableFocusNavigation()` and `app.enableCommandKeys()` are tracked automatically:
+
+```ts
+app.onDispose(bindModalFocus(app.tui, paletteVisible, app.focus, [commandPalette]));
+```
+
 `bindModalFocus()` ties a visibility signal to a `FocusScope`, traps focus while modal-like surfaces are open, restores
 the previous focused item when they close, and can close on `Escape`:
 

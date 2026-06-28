@@ -21,6 +21,8 @@ export class TuiApp<TAction extends Action = Action, TRoute extends Route = Rout
   readonly focus = new FocusManager();
   readonly keymap = new KeymapRegistry();
   readonly routes: RouteManager<TRoute>;
+  readonly #disposers = new Set<() => void>();
+  #destroyed = false;
 
   constructor(options: TuiAppOptions<TRoute> = {}) {
     this.tui = options.tui ?? new Tui(options.tuiOptions ?? {});
@@ -33,6 +35,9 @@ export class TuiApp<TAction extends Action = Action, TRoute extends Route = Rout
   }
 
   destroy(): void {
+    if (this.#destroyed) return;
+    this.#destroyed = true;
+    this.dispose();
     this.tui.destroy();
   }
 
@@ -41,11 +46,33 @@ export class TuiApp<TAction extends Action = Action, TRoute extends Route = Rout
   }
 
   enableFocusNavigation(options: FocusNavigationOptions = {}): () => void {
-    return bindFocusNavigation(this.tui, this.focus, options);
+    return this.onDispose(bindFocusNavigation(this.tui, this.focus, options));
   }
 
   enableCommandKeys(options: CommandKeyBindingOptions = {}): () => void {
-    return bindCommandKeys(this.tui, this.commands, (action) => this.actions.dispatch(action), options);
+    return this.onDispose(bindCommandKeys(this.tui, this.commands, (action) => this.actions.dispatch(action), options));
+  }
+
+  onDispose(disposer: () => void): () => void {
+    let active = true;
+    const wrapped = () => {
+      if (!active) return;
+      active = false;
+      this.#disposers.delete(wrapped);
+      disposer();
+    };
+    if (this.#destroyed) {
+      wrapped();
+    } else {
+      this.#disposers.add(wrapped);
+    }
+    return wrapped;
+  }
+
+  dispose(): void {
+    for (const disposer of [...this.#disposers]) {
+      disposer();
+    }
   }
 }
 
