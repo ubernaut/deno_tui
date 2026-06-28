@@ -10,6 +10,7 @@ Deno.test("visualization launcher resolves public aliases to deno tasks", () => 
   assertEquals(resolveVisualizationTask("polygons"), "three-ascii");
   assertEquals(resolveVisualizationTask("monitor"), "viz");
   assertEquals(resolveVisualizationTask("worker"), "worker-demo");
+  assertEquals(resolveVisualizationTask("actions"), "action-middleware");
   assertEquals(resolveVisualizationTask("pipeline"), "cached-pipeline");
   assertEquals(resolveVisualizationTask("runtime"), "capabilities");
   assertEquals(resolveVisualizationTask("perf"), "benchmark");

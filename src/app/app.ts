@@ -2,7 +2,7 @@
 import { bindFocusNavigation, FocusManager, type FocusNavigationOptions } from "../focus.ts";
 import { KeymapRegistry } from "../keymap.ts";
 import { Tui, type TuiOptions } from "../tui.ts";
-import { type Action, ActionBus, type ActionHandler, type ActionOfType } from "./actions.ts";
+import { type Action, ActionBus, type ActionHandler, type ActionMiddleware, type ActionOfType } from "./actions.ts";
 import {
   bindCommandKeymap,
   bindCommandKeys,
@@ -68,6 +68,7 @@ export interface AppKeymapInspection {
 export interface TuiAppInspection<TRoute extends Route = Route> {
   destroyed: boolean;
   disposers: number;
+  actions: ReturnType<ActionBus["inspect"]>;
   routes: AppRouteInspection<TRoute>;
   commands: AppCommandInspection;
   keymap: AppKeymapInspection;
@@ -116,6 +117,10 @@ export class TuiApp<TAction extends Action = Action, TRoute extends Route = Rout
     handler: ActionHandler<ActionOfType<TAction, TType>>,
   ): () => void {
     return this.onDispose(this.actions.subscribeType(type, handler));
+  }
+
+  useActionMiddleware(middleware: ActionMiddleware<TAction>): () => void {
+    return this.onDispose(this.actions.use(middleware));
   }
 
   enableFocusNavigation(options: FocusNavigationOptions = {}): () => void {
@@ -175,6 +180,7 @@ export class TuiApp<TAction extends Action = Action, TRoute extends Route = Rout
     return {
       destroyed: this.#destroyed,
       disposers: this.#disposers.size,
+      actions: this.actions.inspect(),
       routes: {
         count: routes.length,
         activeRouteId: this.routes.activeRouteId.peek(),

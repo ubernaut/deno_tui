@@ -36,6 +36,11 @@ export const visualizationLaunchTargets: readonly VisualizationLaunchTarget[] = 
     description: "abortable WorkerPool concurrency demo",
   },
   {
+    task: "action-middleware",
+    aliases: ["actions", "action-middleware", "middleware"],
+    description: "action middleware and plugin pipeline demo",
+  },
+  {
     task: "cached-pipeline",
     aliases: ["pipeline", "cached-pipeline", "cache"],
     description: "cached scheduler-backed data pipeline demo",

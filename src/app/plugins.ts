@@ -1,7 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { Focusable } from "../focus.ts";
 import { bindingId, type KeyBinding } from "../keymap.ts";
-import type { Action } from "./actions.ts";
+import type { Action, ActionMiddleware } from "./actions.ts";
 import type { AppPlugin, AppPluginDisposer, TuiApp } from "./app.ts";
 import type { Command } from "./commands.ts";
 import type { Route, RouteRegisterOptions, RouteUnregisterOptions } from "./router.ts";
@@ -16,6 +16,7 @@ export interface AppPluginDefinition<TAction extends Action = Action, TRoute ext
   id?: string;
   label?: string;
   routes?: readonly (TRoute | AppPluginRoute<TRoute>)[];
+  actionMiddleware?: readonly ActionMiddleware<TAction>[];
   commands?: readonly Command<TAction>[];
   keyBindings?: readonly KeyBinding[];
   focusItems?: readonly Focusable[];
@@ -26,6 +27,7 @@ export interface AppPluginDefinitionInspection {
   id?: string;
   label?: string;
   routes: string[];
+  actionMiddleware: number;
   commands: string[];
   keyBindings: string[];
   focusItems: number;
@@ -49,6 +51,10 @@ export function createAppPlugin<TAction extends Action = Action, TRoute extends 
 
         if (definition.commands?.length) {
           disposers.push(app.commands.registerAll(definition.commands));
+        }
+
+        for (const middleware of definition.actionMiddleware ?? []) {
+          disposers.push(app.useActionMiddleware(middleware));
         }
 
         if (definition.keyBindings?.length) {
@@ -78,6 +84,7 @@ export function inspectAppPluginDefinition<TAction extends Action = Action, TRou
     id: definition.id,
     label: definition.label,
     routes: (definition.routes ?? []).map((entry) => normalizePluginRoute(entry).route.id),
+    actionMiddleware: definition.actionMiddleware?.length ?? 0,
     commands: (definition.commands ?? []).map((command) => command.id),
     keyBindings: (definition.keyBindings ?? []).map(bindingId),
     focusItems: definition.focusItems?.length ?? 0,

@@ -80,6 +80,33 @@ Deno.test("ActionBus can subscribe to a single action type", async () => {
   assertEquals(seen, ["a"]);
 });
 
+Deno.test("ActionBus middleware can transform and stop actions", async () => {
+  type TestAction =
+    | { type: "append"; payload: string }
+    | { type: "drop"; payload: string };
+  const bus = new ActionBus<TestAction>();
+  const seen: string[] = [];
+
+  bus.use(async (action, next) => {
+    seen.push(`before:${action.type}`);
+    if (action.type === "drop") return;
+    await next({ ...action, payload: action.payload.toUpperCase() });
+    seen.push(`after:${action.type}`);
+  });
+  bus.subscribe((action) => {
+    seen.push(`handler:${action.type}:${action.payload}`);
+  });
+
+  assertEquals(bus.inspect(), { handlers: 1, middleware: 1, dispatching: false });
+  const dispatch = bus.dispatch({ type: "append", payload: "a" });
+  assertEquals(bus.inspect().dispatching, true);
+  await dispatch;
+  await bus.dispatch({ type: "drop", payload: "b" });
+
+  assertEquals(seen, ["before:append", "handler:append:A", "after:append", "before:drop"]);
+  assertEquals(bus.inspect(), { handlers: 1, middleware: 1, dispatching: false });
+});
+
 Deno.test("RouteManager navigates and cycles known routes only", () => {
   const routes = new RouteManager([
     { id: "home", title: "Home" },
@@ -728,6 +755,28 @@ Deno.test("TuiApp tracks action subscriptions through app disposal", async () =>
   assertEquals(seen, ["a", "all:append", "all:clear"]);
 });
 
+Deno.test("TuiApp tracks action middleware through app disposal", async () => {
+  type TestAction = { type: "append"; payload: string };
+  const app = createApp<TestAction>({ tui: { destroy() {} } as unknown as Tui });
+  const seen: string[] = [];
+
+  app.useActionMiddleware(async (action, next) => {
+    seen.push(`middleware:${action.payload}`);
+    await next({ ...action, payload: action.payload.toUpperCase() });
+  });
+  app.onAction((action) => {
+    seen.push(`handler:${action.payload}`);
+  });
+
+  assertEquals(app.inspect().actions, { handlers: 1, middleware: 1, dispatching: false });
+  await app.actions.dispatch({ type: "append", payload: "a" });
+  app.destroy();
+  await app.actions.dispatch({ type: "append", payload: "b" });
+
+  assertEquals(seen, ["middleware:a", "handler:A"]);
+  assertEquals(app.inspect().actions, { handlers: 0, middleware: 0, dispatching: false });
+});
+
 Deno.test("TuiApp can bind command keys to its action bus", async () => {
   const target = new TestKeyPressTarget();
   let destroyed = false;
@@ -952,11 +1001,17 @@ Deno.test("TuiApp inspects routes commands keymap focus plugins and lifecycle", 
   });
   app.keymap.register({ key: "1", description: "Home", group: "routes" });
   app.use({ id: "settings", label: "Settings Pack", install: () => undefined });
+  app.useActionMiddleware((action, next) => next(action));
   app.onDispose(() => undefined);
 
   assertEquals(app.inspect(), {
     destroyed: false,
-    disposers: 2,
+    disposers: 3,
+    actions: {
+      handlers: 0,
+      middleware: 1,
+      dispatching: false,
+    },
     routes: {
       count: 2,
       activeRouteId: "settings",
@@ -984,6 +1039,7 @@ Deno.test("TuiApp inspects routes commands keymap focus plugins and lifecycle", 
   app.destroy();
   assertEquals(app.inspect().destroyed, true);
   assertEquals(app.inspect().disposers, 0);
+  assertEquals(app.inspect().actions, { handlers: 0, middleware: 0, dispatching: false });
 });
 
 Deno.test("TuiApp installs plugin groups and cleans them up in reverse order", () => {
@@ -1029,8 +1085,11 @@ Deno.test("createAppPlugin installs declarative app surfaces with teardown", asy
       id: "route.settings",
       label: "Settings",
       group: "routes",
-      action: { type: "route", payload: "settings" },
+      action: { type: "route", payload: "settings-alias" },
     }],
+    actionMiddleware: [
+      (action, next) => next(action.payload === "settings-alias" ? { ...action, payload: "settings" } : action),
+    ],
     keyBindings: [{ key: "s", description: "Settings", group: "routes" }],
     focusItems: [focusItem],
     install(target: typeof app) {
@@ -1049,6 +1108,7 @@ Deno.test("createAppPlugin installs declarative app surfaces with teardown", asy
     id: "settings",
     label: "Settings Pack",
     routes: ["settings"],
+    actionMiddleware: 1,
     commands: ["route.settings"],
     keyBindings: ["s"],
     focusItems: 1,
@@ -1059,6 +1119,7 @@ Deno.test("createAppPlugin installs declarative app surfaces with teardown", asy
   assertEquals(app.plugins(), [{ id: "settings", label: "Settings Pack" }]);
   assertEquals(app.routes.ids(), ["home", "settings"]);
   assertEquals(app.commands.has("route.settings"), true);
+  assertEquals(app.inspect().actions.middleware, 1);
   assertEquals(app.keymap.has({ key: "s" }), true);
   assertEquals(app.focus.inspect().count, 1);
 
@@ -1068,6 +1129,7 @@ Deno.test("createAppPlugin installs declarative app surfaces with teardown", asy
   dispose();
   assertEquals(app.routes.ids(), ["home"]);
   assertEquals(app.commands.has("route.settings"), false);
+  assertEquals(app.inspect().actions.middleware, 0);
   assertEquals(app.keymap.has({ key: "s" }), false);
   assertEquals(app.focus.inspect().count, 0);
   assertEquals(events, ["install:home,settings", "dispose:custom"]);
@@ -1082,6 +1144,7 @@ Deno.test("createAppPlugin rolls back declarative registrations when install fai
   const plugin = createAppPlugin<{ type: "noop" }, { id: string; title: string }>({
     routes: [{ id: "admin", title: "Admin" }],
     commands: [{ id: "admin.open", label: "Admin", action: { type: "noop" } }],
+    actionMiddleware: [(_action, next) => next(_action)],
     install() {
       throw new Error("boom");
     },
@@ -1096,6 +1159,7 @@ Deno.test("createAppPlugin rolls back declarative registrations when install fai
 
   assertEquals(app.routes.ids(), ["home"]);
   assertEquals(app.commands.has("admin.open"), false);
+  assertEquals(app.inspect().actions.middleware, 0);
   app.destroy();
 });
 

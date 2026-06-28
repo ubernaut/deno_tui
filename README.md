@@ -715,11 +715,19 @@ const stopFocusCommands = bindFocusCommands(app.commands, app.focus, {
 ```
 
 Use `ActionBus.subscribeType()` or `app.onActionType()` to handle one action family at a time while preserving typed
-payloads. The app-level helpers track cleanup automatically:
+payloads. `ActionBus.use()` and `app.useActionMiddleware()` install middleware that can observe, transform, reroute, or
+stop actions before subscribers run. The app-level helpers track cleanup automatically:
 
 ```ts
+app.useActionMiddleware(async (action, next) => {
+  if (action.type === "command.blocked") return;
+  await next(action.type === "route.alias" ? { type: "route", payload: "overview" } : action);
+});
+
 app.onActionType("route", (action) => app.routes.navigate(action.payload));
 app.onActionType("toast", (action) => pushToast(action.payload, "success"));
+
+const actionBusState = app.actions.inspect();
 ```
 
 `EventEmitter` powers `Tui`, components, and canvas objects. It now exposes disposer-returning `on()` / `once()`,
@@ -745,11 +753,12 @@ app.onDispose(bindModalFocus(app.tui, paletteVisible, app.focus, [commandPalette
 ```
 
 Use `createAppPlugin()`, `app.use()`, or `app.useAll()` to install reusable app plugins. A plugin can declaratively
-register routes, commands, key bindings, and focus items, then run an optional installer for theme providers, runtime
-resources, async data, or other module-level state. Generated disposers remove declarative registrations in reverse
-order and keep teardown tied to the app lifecycle. Identified plugins are tracked by `app.plugins()`, `app.pluginIds()`,
-and `app.hasPlugin(id)`, so larger apps can inspect active modules and avoid duplicate installs. Passing
-`{ replace: true }` to `app.use(plugin, options)` swaps an existing identified plugin before installing the replacement:
+register routes, commands, action middleware, key bindings, and focus items, then run an optional installer for theme
+providers, runtime resources, async data, or other module-level state. Generated disposers remove declarative
+registrations in reverse order and keep teardown tied to the app lifecycle. Identified plugins are tracked by
+`app.plugins()`, `app.pluginIds()`, and `app.hasPlugin(id)`, so larger apps can inspect active modules and avoid
+duplicate installs. Passing `{ replace: true }` to `app.use(plugin, options)` swaps an existing identified plugin before
+installing the replacement:
 
 ```ts
 const settingsPluginDefinition = {
@@ -760,8 +769,11 @@ const settingsPluginDefinition = {
     {
       id: "settings.open",
       label: "Settings",
-      action: { type: "route", payload: "settings" },
+      action: { type: "route.alias", payload: "settings" },
     },
+  ],
+  actionMiddleware: [
+    (action, next) => next(action.type === "route.alias" ? { type: "route", payload: action.payload } : action),
   ],
   keyBindings: [{ key: ",", ctrl: true, description: "Settings", group: "global" }],
   install(app) {
@@ -1646,20 +1658,21 @@ const preset = findAsciiDemoPreset("mixed-best");
 
 ## Examples
 
-| File                          | Description                                                  |
-| ----------------------------- | ------------------------------------------------------------ |
-| `examples/demo.ts`            | Kitchen-sink demo of all components                          |
-| `examples/calculator.ts`      | Functional calculator built with `GridLayout`                |
-| `examples/layout.ts`          | Grid layout with draggable, colored buttons                  |
-| `examples/app_shell.ts`       | App primitives, settings-backed routes, commands, and toasts |
-| `examples/dashboard.ts`       | Dashboard widgets, semantic theme tokens, and key help       |
-| `examples/theme_manifest.ts`  | Serializable theme manifest compiler and diff demo           |
-| `examples/theme_engines.ts`   | Theme engine factory registry and prewarm demo               |
-| `examples/worker_pool.ts`     | WorkerPool concurrency example                               |
-| `examples/cached_pipeline.ts` | Cached scheduler-backed data pipeline example                |
-| `examples/three_ascii.ts`     | Interactive 3D ASCII renderer powered by three.js            |
-| `app/showcase.ts`             | Full Neon Exodus-style widget and visualization showcase     |
-| `app/main.ts`                 | Live system monitor dashboard with selectable panels         |
+| File                            | Description                                                  |
+| ------------------------------- | ------------------------------------------------------------ |
+| `examples/demo.ts`              | Kitchen-sink demo of all components                          |
+| `examples/calculator.ts`        | Functional calculator built with `GridLayout`                |
+| `examples/layout.ts`            | Grid layout with draggable, colored buttons                  |
+| `examples/app_shell.ts`         | App primitives, settings-backed routes, commands, and toasts |
+| `examples/dashboard.ts`         | Dashboard widgets, semantic theme tokens, and key help       |
+| `examples/theme_manifest.ts`    | Serializable theme manifest compiler and diff demo           |
+| `examples/theme_engines.ts`     | Theme engine factory registry and prewarm demo               |
+| `examples/worker_pool.ts`       | WorkerPool concurrency example                               |
+| `examples/action_middleware.ts` | Action middleware and plugin pipeline example                |
+| `examples/cached_pipeline.ts`   | Cached scheduler-backed data pipeline example                |
+| `examples/three_ascii.ts`       | Interactive 3D ASCII renderer powered by three.js            |
+| `app/showcase.ts`               | Full Neon Exodus-style widget and visualization showcase     |
+| `app/main.ts`                   | Live system monitor dashboard with selectable panels         |
 
 Run the theme manifest and engine factory demos with:
 
@@ -1694,6 +1707,7 @@ tuning.
 ./visualization dashboard
 ./visualization app-shell
 ./visualization worker
+./visualization actions
 ./visualization pipeline
 ./visualization capabilities
 ./visualization benchmark
@@ -1706,9 +1720,10 @@ deno task viz
 Launches the system monitor dashboard. Use `F4` to open options, select panel visualizations, and change the ASCII style
 for 3D panels. Added 3D visualization IDs include `three-lattice`, `three-atfield`, `three-hexshell`, `three-capture`,
 `three-mapslab`, `three-solenoid`, and `three-ascii-studio`. The same launcher also exposes runtime and tooling demos:
-`worker` for abortable worker-pool concurrency, `pipeline` for cached scheduler-backed transforms, `capabilities` for
-platform feature detection, `benchmark` for performance smoke checks, `api-inventory` for public export graph
-inspection, `grwizard` for the responsive GPU/model wizard, and `health` for the contributor gate.
+`worker` for abortable worker-pool concurrency, `actions` for middleware-based action dispatch, `pipeline` for cached
+scheduler-backed transforms, `capabilities` for platform feature detection, `benchmark` for performance smoke checks,
+`api-inventory` for public export graph inspection, `grwizard` for the responsive GPU/model wizard, and `health` for the
+contributor gate.
 
 Direct Deno tasks are also available:
 
@@ -1723,6 +1738,7 @@ deno task benchmark
 deno task api-inventory
 deno task health
 deno task worker-demo
+deno task action-middleware
 deno task cached-pipeline
 ```
 
@@ -1732,6 +1748,7 @@ deno run --allow-hrtime examples/calculator.ts
 deno run -A examples/app_shell.ts
 deno run -A examples/dashboard.ts
 deno run -A examples/worker_pool.ts
+deno run -A examples/action_middleware.ts
 deno run -A examples/cached_pipeline.ts
 deno run -A examples/three_ascii.ts
 ```

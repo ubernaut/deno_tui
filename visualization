@@ -27,6 +27,9 @@ case "$target" in
   worker|workers|worker-demo)
     task="worker-demo"
     ;;
+  actions|action-middleware|middleware)
+    task="action-middleware"
+    ;;
   pipeline|cached-pipeline|cache)
     task="cached-pipeline"
     ;;
@@ -47,7 +50,7 @@ case "$target" in
     ;;
   -h|--help|help)
     printf '%s\n' \
-      "usage: ./visualization [showcase|polygons|dashboard|app-shell|monitor|worker|pipeline|capabilities|benchmark|api-inventory|grwizard|health] [args...]" \
+      "usage: ./visualization [showcase|polygons|dashboard|app-shell|monitor|worker|actions|pipeline|capabilities|benchmark|api-inventory|grwizard|health] [args...]" \
       "" \
       "  showcase     full widget showcase (default)" \
       "  polygons     standalone three.js ASCII geometry demo" \
@@ -56,6 +59,7 @@ case "$target" in
       "  app-shell    app primitives, command palette, routes, and toasts demo" \
       "  monitor      system monitor visualization dashboard" \
       "  worker       abortable WorkerPool concurrency demo" \
+      "  actions      action middleware and plugin pipeline demo" \
       "  pipeline     cached scheduler-backed data pipeline demo" \
       "  capabilities runtime capability report" \
       "  benchmark    layout and rendering benchmark report" \
@@ -66,7 +70,7 @@ case "$target" in
     ;;
   *)
     echo "unknown visualization: $target" >&2
-    echo "usage: ./visualization [showcase|polygons|dashboard|app-shell|monitor|worker|pipeline|capabilities|benchmark|api-inventory|grwizard|health] [args...]" >&2
+    echo "usage: ./visualization [showcase|polygons|dashboard|app-shell|monitor|worker|actions|pipeline|capabilities|benchmark|api-inventory|grwizard|health] [args...]" >&2
     exit 64
     ;;
 esac
