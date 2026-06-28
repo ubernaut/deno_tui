@@ -12,6 +12,7 @@
     "theme-resolver": "deno run -A ./examples/theme_resolver.ts",
     "theme-bindings": "deno run -A ./examples/theme_bindings.ts",
     "capabilities": "deno run -A ./scripts/capabilities.ts",
+    "runtime-workloads": "deno run -A ./examples/runtime_workloads.ts",
     "benchmark": "deno run -A ./scripts/benchmark.ts",
     "api-inventory": "deno run -A ./scripts/api_inventory.ts",
     "component-catalog": "deno run -A ./scripts/component_catalog.ts",

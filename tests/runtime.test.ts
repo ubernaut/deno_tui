@@ -29,6 +29,7 @@ import {
 } from "../src/runtime/renderer_backends.ts";
 import { AsyncScheduler, runTaskBatch } from "../src/runtime/scheduler.ts";
 import {
+  createRuntimeWorkloadRegistry,
   createRuntimeWorkloadReport,
   formatRuntimeWorkloadMarkdown,
   inspectRuntimeWorkload,
@@ -876,6 +877,83 @@ Deno.test("runtime workload telemetry normalizes schedulers and worker pools", (
   pool.terminate();
   assertEquals(inspectRuntimeWorkload({ id: "workers", inspect: () => pool.inspect() }).state, "terminated");
   void Promise.all(jobs);
+});
+
+Deno.test("RuntimeWorkloadRegistry tracks dynamic workload sources with disposable replacement", () => {
+  const scheduler = new AsyncScheduler({ concurrency: 1 });
+  const first = scheduler.schedule(() => new Promise(() => undefined));
+  const second = scheduler.schedule(() => undefined);
+  void first.promise.catch(() => undefined);
+  void second.promise.catch(() => undefined);
+  const registry = createRuntimeWorkloadRegistry();
+
+  const disposeUi = registry.register({
+    id: "ui",
+    label: "UI Work",
+    inspect: () => scheduler.inspect(),
+  });
+  const disposeReplacement = registry.register({
+    id: "ui",
+    label: "Replacement UI",
+    kind: "scheduler",
+    inspect: () => scheduler.inspect(),
+  });
+  disposeUi();
+
+  assertEquals(registry.has("ui"), true);
+  assertEquals(registry.get("ui")?.label, "Replacement UI");
+  assertEquals(registry.inspect(), {
+    count: 1,
+    running: 1,
+    queued: 1,
+    pending: 2,
+    capacity: 1,
+    saturated: 1,
+    terminated: 0,
+    idle: false,
+    maxSaturation: 2,
+    sourceIds: ["ui"],
+    labels: ["Replacement UI"],
+    kinds: ["scheduler"],
+  });
+  assertEquals(registry.report().workloads.map((workload) => workload.state), ["queued"]);
+  assertEquals(
+    registry.markdown({ title: "Workloads" }),
+    [
+      "# Workloads",
+      "",
+      "1 workloads, 2 pending, 1 saturated.",
+      "",
+      "| Workload | Kind | State | Running | Queued | Capacity | Saturation |",
+      "| --- | --- | --- | ---: | ---: | ---: | ---: |",
+      "| Replacement UI | scheduler | queued | 1 | 1 | 1 | 2.00 |",
+    ].join("\n"),
+  );
+
+  disposeReplacement();
+  assertEquals(registry.inspect(), {
+    count: 0,
+    running: 0,
+    queued: 0,
+    pending: 0,
+    capacity: 0,
+    saturated: 0,
+    terminated: 0,
+    idle: true,
+    maxSaturation: 0,
+    sourceIds: [],
+    labels: [],
+    kinds: [],
+  });
+
+  registry.register({
+    id: "again",
+    inspect: () => scheduler.inspect(),
+  });
+  registry.clear();
+  assertEquals(registry.sources(), []);
+  first.cancel();
+  second.cancel();
 });
 
 Deno.test("runWorkerBatch preserves input order while dispatching through the pool", async () => {

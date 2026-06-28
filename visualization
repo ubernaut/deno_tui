@@ -57,6 +57,9 @@ case "$target" in
   capabilities|caps|runtime)
     task="capabilities"
     ;;
+  runtime-workloads|workloads|runtime-pressure|pressure)
+    task="runtime-workloads"
+    ;;
   benchmark|bench|perf)
     task="benchmark"
     ;;
@@ -74,7 +77,7 @@ case "$target" in
     ;;
   -h|--help|help)
     printf '%s\n' \
-      "usage: ./visualization [showcase|polygons|dashboard|app-shell|layout-recipe|monitor|worker|actions|resource|pipeline|theme-manifest|theme-engines|theme-pipeline|theme-gallery|theme-bindings|capabilities|benchmark|api-inventory|components|grwizard|health] [args...]" \
+      "usage: ./visualization [showcase|polygons|dashboard|app-shell|layout-recipe|monitor|worker|actions|resource|pipeline|theme-manifest|theme-engines|theme-pipeline|theme-gallery|theme-bindings|capabilities|runtime-workloads|benchmark|api-inventory|components|grwizard|health] [args...]" \
       "" \
       "  showcase     full widget showcase (default)" \
       "  polygons     standalone three.js ASCII geometry demo" \
@@ -93,6 +96,7 @@ case "$target" in
       "  theme-gallery searchable theme gallery and preview report" \
       "  theme-bindings grouped component theme binding demo" \
       "  capabilities runtime capability report" \
+      "  runtime-workloads scheduler and worker-pool pressure demo" \
       "  benchmark    layout and rendering benchmark report" \
       "  api-inventory public API export inventory" \
       "  components   component catalog report" \
@@ -102,7 +106,7 @@ case "$target" in
     ;;
   *)
     echo "unknown visualization: $target" >&2
-    echo "usage: ./visualization [showcase|polygons|dashboard|app-shell|layout-recipe|monitor|worker|actions|resource|pipeline|theme-manifest|theme-engines|theme-pipeline|theme-gallery|theme-bindings|capabilities|benchmark|api-inventory|components|grwizard|health] [args...]" >&2
+    echo "usage: ./visualization [showcase|polygons|dashboard|app-shell|layout-recipe|monitor|worker|actions|resource|pipeline|theme-manifest|theme-engines|theme-pipeline|theme-gallery|theme-bindings|capabilities|runtime-workloads|benchmark|api-inventory|components|grwizard|health] [args...]" >&2
     exit 64
     ;;
 esac

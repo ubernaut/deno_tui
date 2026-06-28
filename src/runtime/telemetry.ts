@@ -60,6 +60,73 @@ export interface RuntimeWorkloadMarkdownOptions extends RuntimeWorkloadReportOpt
   title?: string;
 }
 
+/** Inspection summary for registered runtime workload sources. */
+export interface RuntimeWorkloadRegistryInspection extends RuntimeWorkloadReportInspection {
+  sourceIds: string[];
+  labels: string[];
+  kinds: RuntimeWorkloadKind[];
+}
+
+/** Registry for dynamic scheduler and worker-pool telemetry sources. */
+export class RuntimeWorkloadRegistry {
+  readonly #sources = new Map<string, RuntimeWorkloadSource>();
+
+  constructor(sources: Iterable<RuntimeWorkloadSource> = []) {
+    for (const source of sources) {
+      this.register(source);
+    }
+  }
+
+  register(source: RuntimeWorkloadSource): () => void {
+    const registered = { ...source };
+    this.#sources.set(source.id, registered);
+    return () => {
+      if (this.#sources.get(source.id) === registered) {
+        this.unregister(source.id);
+      }
+    };
+  }
+
+  unregister(id: string): boolean {
+    return this.#sources.delete(id);
+  }
+
+  has(id: string): boolean {
+    return this.#sources.has(id);
+  }
+
+  get(id: string): RuntimeWorkloadSource | undefined {
+    const source = this.#sources.get(id);
+    return source ? { ...source } : undefined;
+  }
+
+  sources(): RuntimeWorkloadSource[] {
+    return [...this.#sources.values()].map((source) => ({ ...source }));
+  }
+
+  clear(): void {
+    this.#sources.clear();
+  }
+
+  report(): RuntimeWorkloadReport {
+    return createRuntimeWorkloadReport({ sources: this.sources() });
+  }
+
+  inspect(): RuntimeWorkloadRegistryInspection {
+    const report = this.report();
+    return {
+      ...report.inspection,
+      sourceIds: report.workloads.map((workload) => workload.id),
+      labels: report.workloads.map((workload) => workload.label),
+      kinds: uniqueSorted(report.workloads.map((workload) => workload.kind)),
+    };
+  }
+
+  markdown(options: Omit<RuntimeWorkloadMarkdownOptions, "sources"> = {}): string {
+    return formatRuntimeWorkloadMarkdown({ ...options, sources: this.sources() });
+  }
+}
+
 /** Inspects one scheduler or worker-pool source through a normalized workload shape. */
 export function inspectRuntimeWorkload(source: RuntimeWorkloadSource): RuntimeWorkloadInspection {
   const raw = source.inspect();
@@ -124,6 +191,13 @@ export function formatRuntimeWorkloadMarkdown(options: RuntimeWorkloadMarkdownOp
   return lines.join("\n");
 }
 
+/** Creates a runtime workload registry from inspectable scheduler and worker-pool sources. */
+export function createRuntimeWorkloadRegistry(
+  sources: Iterable<RuntimeWorkloadSource> = [],
+): RuntimeWorkloadRegistry {
+  return new RuntimeWorkloadRegistry(sources);
+}
+
 function normalizeRuntimeWorkload(
   raw: AsyncSchedulerInspection | WorkerPoolInspection,
   kind: RuntimeWorkloadKind,
@@ -168,4 +242,8 @@ function inferRuntimeWorkloadKind(raw: AsyncSchedulerInspection | WorkerPoolInsp
 
 function escapeMarkdownCell(value: string): string {
   return value.replaceAll("|", "\\|").replaceAll("\n", " ");
+}
+
+function uniqueSorted<T extends string>(values: Iterable<T>): T[] {
+  return [...new Set(values)].sort();
 }

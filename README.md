@@ -1566,7 +1566,8 @@ Optional high-performance APIs are surfaced through `src/runtime/mod.ts`:
   `bindRuntimeProfileSetting()`
 - `createRuntimeRendererBackendPlugin()` / `bindRuntimeRendererBackendCommands()` /
   `bindRuntimeRendererBackendSetting()`
-- `inspectRuntimeWorkload()` / `createRuntimeWorkloadReport()` / `formatRuntimeWorkloadMarkdown()`
+- `RuntimeWorkloadRegistry` / `createRuntimeWorkloadRegistry()` / `inspectRuntimeWorkload()` /
+  `createRuntimeWorkloadReport()` / `formatRuntimeWorkloadMarkdown()`
 - `AsyncScheduler` / `runTaskBatch()`
 - `RenderLoop` / `createRenderLoop()`
 - `AsyncResource` / `createAsyncResource()` / `CachedAsyncResource` / `createCachedAsyncResource()` /
@@ -1589,10 +1590,12 @@ reported from the same capability snapshot used by runtime profiles. `bindRuntim
 `bindRuntimeRendererBackendSetting()` wire that active backend into command palettes, key help, and persisted settings
 with the same controller-first shape as runtime profiles, while `createRuntimeRendererBackendPlugin()` packages the
 controller, commands, persistence, keymap mirroring, and custom lifecycle hooks into one app plugin.
-`inspectRuntimeWorkload()`, `createRuntimeWorkloadReport()`, and `formatRuntimeWorkloadMarkdown()` normalize
-`AsyncScheduler.inspect()` and `WorkerPool.inspect()` into one pressure report for settings panes, demos, and CI logs:
-capacity, running work, queued work, saturation, idle state, and termination state are all exposed through a
-JSON-friendly shape. Runtime profiles are named policy presets for settings screens and launchers:
+`RuntimeWorkloadRegistry`, `inspectRuntimeWorkload()`, `createRuntimeWorkloadReport()`, and
+`formatRuntimeWorkloadMarkdown()` normalize `AsyncScheduler.inspect()` and `WorkerPool.inspect()` into one pressure
+report for settings panes, demos, and CI logs: capacity, running work, queued work, saturation, idle state, and
+termination state are all exposed through a JSON-friendly shape. The registry adds disposer-returning dynamic source
+registration, replacement-safe unregistering, aggregate inspection, and Markdown formatting for apps where plugins own
+their own schedulers or worker pools. Runtime profiles are named policy presets for settings screens and launchers:
 
 ```ts
 const runtimeProfiles = createRuntimeProfileRegistry();
@@ -1622,6 +1625,14 @@ const runtimeProfilePlugin = createRuntimeProfilePlugin({
   settings,
   commands: { group: "runtime" },
 });
+const workloads = createRuntimeWorkloadRegistry([
+  { id: "ui-scheduler", label: "UI Scheduler", inspect: () => scheduler.inspect() },
+  { id: "sum-workers", label: "Sum Workers", inspect: () => pool.inspect() },
+]);
+const stopWorkload = workloads.register({ id: "pipeline", inspect: () => pipelineScheduler.inspect() });
+const workloadReport = workloads.report();
+const workloadMarkdown = workloads.markdown({ title: "Runtime Pressure" });
+stopWorkload();
 ```
 
 `AsyncScheduler` caps concurrent work, prioritizes queued tasks, exposes queue inspection, and can wait for or clear
@@ -1986,6 +1997,7 @@ const preset = findAsciiDemoPreset("mixed-best");
 | `examples/theme_resolver.ts`       | Cached theme resolver and renderer lookup demo               |
 | `examples/theme_bindings.ts`       | Grouped component theme binding lifecycle demo               |
 | `examples/worker_pool.ts`          | WorkerPool concurrency example                               |
+| `examples/runtime_workloads.ts`    | Scheduler and worker-pool pressure registry demo             |
 | `examples/action_middleware.ts`    | Action middleware and plugin pipeline example                |
 | `examples/cached_resource.ts`      | Cached async resource loader example                         |
 | `examples/cached_pipeline.ts`      | Cached scheduler-backed data pipeline example                |
@@ -2042,6 +2054,7 @@ tuning.
 ./visualization theme-resolver
 ./visualization theme-bindings
 ./visualization capabilities
+./visualization runtime-workloads
 ./visualization benchmark
 ./visualization api-inventory
 ./visualization components
@@ -2058,18 +2071,18 @@ async resource loaders, `pipeline` for cached scheduler-backed transforms, `them
 packs, `theme-engines` for factory prewarming, `theme-pipeline` for runtime theme transforms, `theme-workspace` for
 combined provider/factory/pipeline orchestration, `theme-gallery` for searchable theme previews, `theme-resolver` for
 cached renderer-friendly theme lookups, `theme-bindings` for grouped component theme wiring and lifecycle inspection,
-`capabilities` for platform feature detection, `benchmark` for performance smoke checks, `api-inventory` for public
-export graph inspection, `components` for widget catalog reports, `layout-recipe` for responsive recipe inspection,
-`grwizard` for the responsive GPU/model wizard, and `health` for the contributor gate. The launcher metadata is also
-exported from `scripts/visualization_launcher.ts` as a queryable catalog: `queryVisualizationLaunchTargets()`,
-`createVisualizationLaunchReport()`, `inspectVisualizationLaunchTargets()`, and `formatVisualizationLaunchMarkdown()`
-provide the same structured target list for custom launchers, docs pages, and CI reports without duplicating aliases or
-descriptions. Benchmark runs print per-case timings plus an aggregate summary; `deno task benchmark -- --list` prints
-the benchmark catalog without running workloads, `deno task benchmark -- --list --json` emits that catalog as structured
-data, and `deno task benchmark -- --json` emits the same threshold-aware timing summary as structured data and exits
-nonzero when a case fails its limits. The catalog path is backed by `BenchmarkRunner.inspect()`,
-`createBenchmarkCatalogReport()`, and `formatBenchmarkCatalogMarkdown()` so launchers and docs can reuse the same case
-metadata.
+`capabilities` for platform feature detection, `runtime-workloads` for scheduler and worker-pool pressure inspection,
+`benchmark` for performance smoke checks, `api-inventory` for public export graph inspection, `components` for widget
+catalog reports, `layout-recipe` for responsive recipe inspection, `grwizard` for the responsive GPU/model wizard, and
+`health` for the contributor gate. The launcher metadata is also exported from `scripts/visualization_launcher.ts` as a
+queryable catalog: `queryVisualizationLaunchTargets()`, `createVisualizationLaunchReport()`,
+`inspectVisualizationLaunchTargets()`, and `formatVisualizationLaunchMarkdown()` provide the same structured target list
+for custom launchers, docs pages, and CI reports without duplicating aliases or descriptions. Benchmark runs print
+per-case timings plus an aggregate summary; `deno task benchmark -- --list` prints the benchmark catalog without running
+workloads, `deno task benchmark -- --list --json` emits that catalog as structured data, and
+`deno task benchmark -- --json` emits the same threshold-aware timing summary as structured data and exits nonzero when
+a case fails its limits. The catalog path is backed by `BenchmarkRunner.inspect()`, `createBenchmarkCatalogReport()`,
+and `formatBenchmarkCatalogMarkdown()` so launchers and docs can reuse the same case metadata.
 
 Direct Deno tasks are also available:
 
@@ -2089,11 +2102,13 @@ deno task theme-gallery
 deno task theme-resolver
 deno task theme-bindings
 deno task capabilities
+deno task runtime-workloads
 deno task benchmark
 deno task api-inventory
 deno task component-catalog
 deno task health
 deno task worker-demo
+deno task runtime-workloads
 deno task action-middleware
 deno task cached-pipeline
 ```
@@ -2108,6 +2123,7 @@ deno run -A examples/theme_workspace.ts
 deno run -A examples/theme_resolver.ts
 deno run -A examples/theme_bindings.ts
 deno run -A examples/worker_pool.ts
+deno run -A examples/runtime_workloads.ts
 deno run -A examples/action_middleware.ts
 deno run -A examples/cached_pipeline.ts
 deno run -A examples/three_ascii.ts

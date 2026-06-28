@@ -165,6 +165,13 @@ export const visualizationLaunchTargets: readonly VisualizationLaunchTarget[] = 
     tags: ["runtime", "capabilities"],
   },
   {
+    task: "runtime-workloads",
+    aliases: ["runtime-workloads", "workloads", "runtime-pressure", "pressure"],
+    description: "scheduler and worker-pool pressure demo",
+    category: "demo",
+    tags: ["runtime", "telemetry", "workers"],
+  },
+  {
     task: "benchmark",
     aliases: ["benchmark", "bench", "perf"],
     description: "layout and rendering benchmark report",
