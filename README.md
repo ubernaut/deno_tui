@@ -1162,10 +1162,12 @@ larger apps can layer reusable theme packs without mutating a base engine:
 import {
   assertThemeOptions,
   bindComponentTheme,
+  bindComponentThemes,
   bindThemePipelineCommands,
   bindThemePipelineSetting,
   CommandRegistry,
   compileThemeManifestOptions,
+  ComponentThemeBindingGroup,
   composeThemeOptions,
   createAnsiStyle,
   createAnsiThemeTokens,
@@ -1422,6 +1424,11 @@ const resolverMarkdown = formatThemeResolutionMarkdown(themeResolver, { title: "
 const stopBinding = bindComponentTheme(button, provider, "Button", {
   variant: "danger",
 });
+const themeBindings = bindComponentThemes(provider, [
+  { id: "primary-button", target: button, componentName: "Button", variant: "danger" },
+  { id: "status-badge", target: badge, componentName: "Badge" },
+]);
+const themeBindingState = themeBindings.inspect();
 
 const commandRegistry = new CommandRegistry();
 commandRegistry.registerAll(themeCommands(provider));
@@ -1479,30 +1486,32 @@ active engine metadata, and `prewarm()` prepares factories, pipelines, and the a
 switching deterministic across command palettes, menus, and key bindings. Pass any `AsyncStore<string>` to persist the
 active pack through `MemoryStore`, `IndexedDbStore`, or a custom settings backend; `provider.ready` reports the loaded
 theme and `provider.flush()` waits for pending writes. `bindComponentTheme()` bridges those provider signals back into
-normal components and returns a disposer, so live theme switching stays centralized and testable without requiring
-widgets to know where their theme came from. `provider.catalog()` and `createThemeCatalog(provider)` return a normalized
-catalog of theme packs, active flags, layer toggles, engine tokens, states, components, and variants, which is the
-preferred surface for building theme pickers, settings panels, inspector panes, and demo controls.
-`previewThemeProvider()` renders token and component-state samples from the currently composed provider, including
-active runtime layers, so settings panes and demos can show the exact live theme instead of reimplementing preview
-logic. `createThemeProviderReport()` and `formatThemeProviderReportMarkdown()` combine the live provider catalog, active
-layers, preview samples, validation issues, and active-composition coverage into one audit-ready structure for settings
-panes, docs, demos, and CI checks. `ThemeProvider.engineFor(id)` previews inactive theme packs through the same provider
-overrides and active layers as the live app. `createThemeGallery()` builds on that to return ranked, searchable theme
-picker items with metadata, validation issues, active layer ids, token previews, and component-state previews for
-settings screens, marketplaces, demos, and command palettes. `themePreviewCommands()` exposes that same live snapshot
-through the command registry as a `theme.previewed` action, and `bindThemeCommands()` registers theme selection, layer
-toggles, and preview commands with one disposer for command palettes, menus, key help, and plugin surfaces.
-`ThemeLayerStack` adds runtime overlays for density, contrast, accessibility, or brand-specific state treatments;
-`enable()`, `disable()`, `toggle()`, `activeIds()`, and `inspect()` make those overlays usable from command palettes and
-settings screens while preserving deterministic composition order. Component definitions can also reference semantic
-token names such as `"foreground"`, `"accent"`, `"danger"`, or `"surface"` instead of concrete style functions, so
-variants automatically follow the active palette. A state style may also be an array of token names and style functions;
-the engine composes the pipeline in order. Component definitions can `extend` one or more other definitions, which makes
-aliases like `ComboBox -> Field` or shared role themes cheap while preserving variants and app-level overrides.
-`createAnsiStyle()` and `createAnsiThemeTokens()` provide a small serializable style-spec layer for theme engines: packs
-can use named ANSI colors, 256-color indexes, RGB tuples, and text attributes like bold or underline without embedding
-raw escape sequences throughout the app. `compileThemeManifestOptions()`, `createThemeEngineFromManifest()`, and
+normal components and returns a disposer, while `bindComponentThemes()` and `ComponentThemeBindingGroup` batch those
+bindings into an inspectable lifecycle surface for full screens, renderer targets, and theme-aware plugin modules. Live
+theme switching stays centralized and testable without requiring widgets to know where their theme came from.
+`provider.catalog()` and `createThemeCatalog(provider)` return a normalized catalog of theme packs, active flags, layer
+toggles, engine tokens, states, components, and variants, which is the preferred surface for building theme pickers,
+settings panels, inspector panes, and demo controls. `previewThemeProvider()` renders token and component-state samples
+from the currently composed provider, including active runtime layers, so settings panes and demos can show the exact
+live theme instead of reimplementing preview logic. `createThemeProviderReport()` and
+`formatThemeProviderReportMarkdown()` combine the live provider catalog, active layers, preview samples, validation
+issues, and active-composition coverage into one audit-ready structure for settings panes, docs, demos, and CI checks.
+`ThemeProvider.engineFor(id)` previews inactive theme packs through the same provider overrides and active layers as the
+live app. `createThemeGallery()` builds on that to return ranked, searchable theme picker items with metadata,
+validation issues, active layer ids, token previews, and component-state previews for settings screens, marketplaces,
+demos, and command palettes. `themePreviewCommands()` exposes that same live snapshot through the command registry as a
+`theme.previewed` action, and `bindThemeCommands()` registers theme selection, layer toggles, and preview commands with
+one disposer for command palettes, menus, key help, and plugin surfaces. `ThemeLayerStack` adds runtime overlays for
+density, contrast, accessibility, or brand-specific state treatments; `enable()`, `disable()`, `toggle()`,
+`activeIds()`, and `inspect()` make those overlays usable from command palettes and settings screens while preserving
+deterministic composition order. Component definitions can also reference semantic token names such as `"foreground"`,
+`"accent"`, `"danger"`, or `"surface"` instead of concrete style functions, so variants automatically follow the active
+palette. A state style may also be an array of token names and style functions; the engine composes the pipeline in
+order. Component definitions can `extend` one or more other definitions, which makes aliases like `ComboBox -> Field` or
+shared role themes cheap while preserving variants and app-level overrides. `createAnsiStyle()` and
+`createAnsiThemeTokens()` provide a small serializable style-spec layer for theme engines: packs can use named ANSI
+colors, 256-color indexes, RGB tuples, and text attributes like bold or underline without embedding raw escape sequences
+throughout the app. `compileThemeManifestOptions()`, `createThemeEngineFromManifest()`, and
 `createThemeRegistryFromManifests()` build on those specs so reusable theme packs can be plain data: semantic token
 specs, component inheritance, variants, and state pipelines can be loaded from JSON-like modules, validated, diffed, and
 installed without hard-coding style functions. `inspectThemeManifest()` exposes manifest metadata, declared tokens,

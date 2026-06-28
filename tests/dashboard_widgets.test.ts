@@ -54,7 +54,7 @@ import {
   ThemeValidationError,
   validateThemeOptions,
 } from "../src/theme.ts";
-import { bindComponentTheme } from "../src/theme_binding.ts";
+import { bindComponentTheme, bindComponentThemes, ComponentThemeBindingGroup } from "../src/theme_binding.ts";
 import { createThemeEngineCache, createThemeProviderCache } from "../src/theme_engine_cache.ts";
 import {
   createThemeEngineFactory,
@@ -2075,6 +2075,134 @@ Deno.test("bindComponentTheme applies provider and variant updates to a componen
   variant.value = "default";
   await Promise.resolve();
   assertEquals(applied, ["plain:x", "danger:x", "bright:x"]);
+});
+
+Deno.test("ComponentThemeBindingGroup batches themed targets with inspection and replacement", async () => {
+  const plain = (value: string) => `plain:${value}`;
+  const danger = (value: string) => `danger:${value}`;
+  const bright = (value: string) => `bright:${value}`;
+  const variant = new Signal("default");
+  const applied: Record<string, string[]> = { primary: [], replacement: [], badge: [] };
+  const registry = createThemeRegistry([
+    {
+      id: "plain",
+      palette: "plain",
+      options: {
+        tokens: { foreground: plain, accent: bright },
+        components: {
+          Button: { variants: { danger: { base: danger } } },
+          Badge: { base: { base: "accent" } },
+        },
+      },
+    },
+    { id: "bright", palette: "plain", options: { tokens: { foreground: bright } } },
+  ]);
+  const provider = createThemeProvider({ registry, activeId: "plain" });
+  const group = bindComponentThemes(provider, [
+    {
+      id: "primary",
+      componentName: "Button",
+      variant,
+      target: { setTheme: (theme: Theme) => applied.primary.push(theme.base("x")) },
+    },
+    {
+      id: "badge",
+      componentName: "Badge",
+      target: { setTheme: (theme: Theme) => applied.badge.push(theme.base("x")) },
+    },
+  ]);
+
+  await Promise.resolve();
+  assertEquals(applied, {
+    primary: ["plain:x"],
+    replacement: [],
+    badge: ["bright:x"],
+  });
+  assertEquals(group.inspect(), {
+    count: 2,
+    components: ["Badge", "Button"],
+    variants: ["default"],
+    bindings: [
+      { id: "primary", componentName: "Button", variant: "default" },
+      { id: "badge", componentName: "Badge", variant: "default" },
+    ],
+  });
+
+  variant.value = "danger";
+  await Promise.resolve();
+  assertEquals(group.inspect().variants, ["danger", "default"]);
+  assertEquals(applied.primary, ["plain:x", "danger:x"]);
+
+  group.register({
+    id: "primary",
+    componentName: "Button",
+    target: { setTheme: (theme: Theme) => applied.replacement.push(theme.base("x")) },
+  });
+  await Promise.resolve();
+  assertEquals(applied.replacement, ["plain:x"]);
+
+  provider.setTheme("bright");
+  await Promise.resolve();
+  assertEquals(applied.primary, ["plain:x", "danger:x"]);
+  assertEquals(applied.replacement, ["plain:x", "bright:x"]);
+  assertEquals(applied.badge, ["bright:x", "bright:x"]);
+
+  assertEquals(group.unregister("badge"), true);
+  provider.setTheme("plain");
+  await Promise.resolve();
+  assertEquals(applied.badge, ["bright:x", "bright:x"]);
+
+  group.dispose();
+  provider.setTheme("bright");
+  await Promise.resolve();
+  assertEquals(group.inspect().count, 0);
+  assertEquals(applied.replacement, ["plain:x", "bright:x", "plain:x"]);
+});
+
+Deno.test("ComponentThemeBindingGroup disposes on abort and rejects late registration", async () => {
+  const controller = new AbortController();
+  const applied: string[] = [];
+  const provider = createThemeProvider({
+    registry: createThemeRegistry([
+      { id: "plain", palette: "plain" },
+      { id: "terminal", palette: "terminal" },
+    ]),
+    activeId: "plain",
+  });
+  const group = new ComponentThemeBindingGroup(provider, [{
+    id: "button",
+    componentName: "Button",
+    target: { setTheme: (theme: Theme) => applied.push(theme.base("x")) },
+  }], controller.signal);
+
+  await Promise.resolve();
+  assertEquals(group.inspect().count, 1);
+  const entryController = new AbortController();
+  group.register({
+    id: "label",
+    componentName: "Label",
+    abortSignal: entryController.signal,
+    target: { setTheme: () => undefined },
+  });
+  assertEquals(group.inspect().count, 2);
+  entryController.abort();
+  assertEquals(group.inspect().count, 1);
+
+  controller.abort();
+  provider.setTheme("terminal");
+  await Promise.resolve();
+  assertEquals(group.inspect().count, 0);
+  assertEquals(applied.length, 1);
+
+  try {
+    group.register({
+      componentName: "Button",
+      target: { setTheme: () => undefined },
+    });
+    throw new Error("expected group.register to throw");
+  } catch (error) {
+    assertEquals(error instanceof Error && error.message, "ComponentThemeBindingGroup is disposed");
+  }
 });
 
 function commandDisabled(command: { disabled?: boolean | (() => boolean) }): boolean | undefined {
