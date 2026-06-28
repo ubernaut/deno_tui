@@ -307,8 +307,31 @@ Optional high-performance APIs are surfaced through `src/runtime/mod.ts`:
 - `WorkerPool`
 - `MemoryStore`
 - `IndexedDbStore`
+- `createRuntimeStore()`
+- `createPersistentSignal()` / `PersistentSignal`
 
 Use these instead of hard-coding global checks inside components.
+
+`createRuntimeStore()` chooses IndexedDB when available and falls back to memory. `PersistentSignal` layers reactive app
+state on top, which is useful for preferences, selected routes, panel layout, and visualization options:
+
+```ts
+import { createPersistentSignal, createRuntimeStore } from "https://deno.land/x/tui@VERSION/mod.ts";
+
+const store = createRuntimeStore<string>({
+  databaseName: "my-tui",
+  storeName: "preferences",
+});
+const activeRoute = createPersistentSignal({
+  key: "active-route",
+  initialValue: "overview",
+  store,
+});
+
+await activeRoute.ready;
+activeRoute.set("runtime");
+await activeRoute.flush();
+```
 
 ## Reactivity
 

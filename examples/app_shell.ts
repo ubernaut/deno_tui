@@ -6,6 +6,8 @@ import {
   Computed,
   ContextMenu,
   createApp,
+  createPersistentSignal,
+  createRuntimeStore,
   createThemeEngine,
   dockRect,
   Frame,
@@ -64,7 +66,16 @@ const themeEngine = createThemeEngine("neon", {
 const paletteVisible = new Signal(false);
 const contextVisible = new Signal(false);
 const activeMenu = new Signal(0);
-const routeChoice = new Signal("overview");
+const preferences = createRuntimeStore<string>({
+  databaseName: "deno-tui-app-shell",
+  storeName: "preferences",
+});
+const persistedRoute = createPersistentSignal({
+  key: "active-route",
+  initialValue: "overview",
+  store: preferences,
+});
+const routeChoice = persistedRoute.value;
 const routeStepIndex = new Signal(0);
 const toasts = new Signal<ToastMessage[]>([
   { id: "boot", level: "success", message: "App shell ready" },
@@ -85,6 +96,7 @@ const scrollLines = [
   "  WorkerPool handles CPU-bound jobs without blocking input.",
   "  AsyncScheduler limits concurrent async work.",
   "  Runtime capability checks keep WebGPU, WebGL, workers, and storage optional.",
+  "  PersistentSignal stores preferences through IndexedDB with memory fallback.",
   "",
   "Theming direction",
   "  ThemeEngine resolves semantic tokens, component variants, and palette presets.",
@@ -166,6 +178,12 @@ app.actions.subscribe((action) => {
     paletteVisible.value = action.payload;
   } else if (action.type === "context") {
     contextVisible.value = action.payload;
+  }
+});
+
+void persistedRoute.ready.then((route) => {
+  if (app.routes.routes.peek().some((candidate) => candidate.id === route)) {
+    void app.actions.dispatch({ type: "route", payload: route });
   }
 });
 

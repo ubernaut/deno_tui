@@ -1,4 +1,6 @@
 // Copyright 2023 Im-Beast. MIT license.
+import { Signal, type SignalOptions } from "../signals/mod.ts";
+
 export interface AsyncStore<T = unknown> {
   get(key: string): Promise<T | undefined>;
   set(key: string, value: T): Promise<void>;
@@ -25,6 +27,21 @@ export interface IndexedDbStoreOptions {
   databaseName: string;
   storeName?: string;
   version?: number;
+}
+
+export interface RuntimeStoreOptions extends IndexedDbStoreOptions {
+  preferIndexedDb?: boolean;
+  scope?: typeof globalThis;
+}
+
+export interface PersistentSignalOptions<T, Stored = T> {
+  key: string;
+  initialValue: T;
+  store: AsyncStore<Stored>;
+  signalOptions?: SignalOptions<T>;
+  serialize?: (value: T) => Stored;
+  deserialize?: (value: Stored) => T;
+  onError?: (error: unknown) => void;
 }
 
 interface MinimalIdbDatabase {
@@ -81,6 +98,109 @@ export class IndexedDbStore<T = unknown> implements AsyncStore<T> {
     const database = await this.databasePromise;
     await requestValue(database.transaction(this.storeName, "readwrite").objectStore(this.storeName).delete(key));
   }
+}
+
+export function createRuntimeStore<T = unknown>(options: RuntimeStoreOptions): AsyncStore<T> {
+  if (options.preferIndexedDb !== false && "indexedDB" in (options.scope ?? globalThis)) {
+    return new IndexedDbStore<T>(options);
+  }
+  return new MemoryStore<T>();
+}
+
+export class PersistentSignal<T, Stored = T> {
+  readonly value: Signal<T>;
+  readonly ready: Promise<T>;
+  readonly key: string;
+  readonly store: AsyncStore<Stored>;
+  readonly initialValue: T;
+  #loaded = false;
+  #dirtyBeforeLoad = false;
+  #suspendWrites = false;
+  #pendingWrite: Promise<void> = Promise.resolve();
+
+  readonly #serialize: (value: T) => Stored;
+  readonly #deserialize: (value: Stored) => T;
+  readonly #onError?: (error: unknown) => void;
+
+  constructor(options: PersistentSignalOptions<T, Stored>) {
+    this.key = options.key;
+    this.store = options.store;
+    this.initialValue = options.initialValue;
+    this.value = new Signal(options.initialValue, options.signalOptions);
+    this.#serialize = options.serialize ?? ((value) => value as unknown as Stored);
+    this.#deserialize = options.deserialize ?? ((value) => value as unknown as T);
+    this.#onError = options.onError;
+
+    this.value.subscribe((value) => {
+      if (this.#suspendWrites) return;
+      if (!this.#loaded) {
+        this.#dirtyBeforeLoad = true;
+        return;
+      }
+      this.#write(value);
+    });
+
+    this.ready = this.#load();
+  }
+
+  set(value: T): void {
+    this.value.value = value;
+  }
+
+  update(updater: (value: T) => T): void {
+    this.value.value = updater(this.value.peek());
+  }
+
+  async flush(): Promise<void> {
+    await this.ready;
+    await this.#pendingWrite;
+  }
+
+  async reset(value = this.initialValue): Promise<void> {
+    await this.ready;
+    this.#suspendWrites = true;
+    this.value.value = value;
+    this.#suspendWrites = false;
+    this.#pendingWrite = this.#pendingWrite
+      .catch(() => undefined)
+      .then(() => this.store.delete(this.key))
+      .catch((error) => {
+        this.#onError?.(error);
+      });
+    await this.#pendingWrite;
+  }
+
+  async #load(): Promise<T> {
+    try {
+      const stored = await this.store.get(this.key);
+      this.#loaded = true;
+      if (stored !== undefined && !this.#dirtyBeforeLoad) {
+        this.value.value = this.#deserialize(stored);
+      } else if (this.#dirtyBeforeLoad) {
+        this.#write(this.value.peek());
+      }
+      return this.value.peek();
+    } catch (error) {
+      this.#loaded = true;
+      this.#onError?.(error);
+      return this.value.peek();
+    }
+  }
+
+  #write(value: T): void {
+    this.#pendingWrite = this.#pendingWrite
+      .catch(() => undefined)
+      .then(() => this.store.set(this.key, this.#serialize(value)))
+      .catch((error) => {
+        this.#onError?.(error);
+      });
+  }
+}
+
+export function createPersistentSignal<T, Stored = T>(
+  options: PersistentSignalOptions<T, Stored>,
+): PersistentSignal<T, Stored> {
+  return new PersistentSignal(options);
 }
 
 function openDatabase(databaseName: string, storeName: string, version: number): Promise<MinimalIdbDatabase> {
