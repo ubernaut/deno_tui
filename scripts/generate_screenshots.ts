@@ -45,14 +45,14 @@ const TITLE_HEIGHT = 78;
 
 const targets: ScreenshotTarget[] = [
   {
-    filename: "showcase.jpg",
-    title: "Showcase",
-    theme: "neon",
+    filename: "three-ascii.jpg",
+    title: "Three ASCII Renderer",
+    theme: "exodus",
     columns: 120,
     rows: 36,
-    command: ["deno", "task", "showcase"],
+    command: ["deno", "task", "three-ascii", "--", "--no-controls"],
     mode: "pty",
-    timeoutMs: 1200,
+    timeoutMs: 3200,
   },
   {
     filename: "api-workbench.jpg",
@@ -61,6 +61,34 @@ const targets: ScreenshotTarget[] = [
     columns: 120,
     rows: 36,
     command: ["deno", "task", "api-workbench"],
+    mode: "pty",
+    timeoutMs: 1200,
+  },
+  {
+    filename: "demo-gallery.jpg",
+    title: "Demo Gallery",
+    theme: "gallery",
+    columns: 120,
+    rows: 36,
+    command: ["deno", "task", "demo-gallery"],
+    mode: "stdout",
+  },
+  {
+    filename: "component-catalog.jpg",
+    title: "Component Catalog",
+    theme: "gallery",
+    columns: 120,
+    rows: 36,
+    command: ["deno", "task", "component-catalog"],
+    mode: "stdout",
+  },
+  {
+    filename: "showcase.jpg",
+    title: "Showcase",
+    theme: "neon",
+    columns: 120,
+    rows: 36,
+    command: ["deno", "task", "showcase"],
     mode: "pty",
     timeoutMs: 1200,
   },
@@ -82,17 +110,37 @@ const targets: ScreenshotTarget[] = [
     rows: 36,
     command: ["deno", "task", "viz"],
     mode: "pty",
+    timeoutMs: 1600,
+  },
+  {
+    filename: "dashboard.jpg",
+    title: "Dashboard Widgets",
+    theme: "system",
+    columns: 120,
+    rows: 36,
+    command: ["deno", "task", "dashboard"],
+    mode: "pty",
     timeoutMs: 1200,
   },
   {
-    filename: "three-ascii.jpg",
-    title: "Three ASCII",
-    theme: "exodus",
+    filename: "app-shell.jpg",
+    title: "App Shell",
+    theme: "gallery",
     columns: 120,
     rows: 36,
-    command: ["deno", "task", "three-ascii", "--", "--no-controls"],
+    command: ["deno", "task", "app-shell"],
     mode: "pty",
-    timeoutMs: 1400,
+    timeoutMs: 1200,
+  },
+  {
+    filename: "demo-launcher.jpg",
+    title: "Demo Launcher",
+    theme: "gallery",
+    columns: 120,
+    rows: 36,
+    command: ["deno", "task", "visualization"],
+    mode: "pty",
+    timeoutMs: 600,
   },
   {
     filename: "theme-gallery.jpg",
@@ -104,12 +152,219 @@ const targets: ScreenshotTarget[] = [
     mode: "stdout",
   },
   {
-    filename: "demo-gallery.jpg",
-    title: "Demo Gallery",
+    filename: "app-plugin-catalog.jpg",
+    title: "App Plugin Catalog",
     theme: "gallery",
     columns: 120,
     rows: 36,
-    command: ["deno", "task", "demo-gallery"],
+    command: ["deno", "task", "app-plugin-catalog"],
+    mode: "stdout",
+  },
+  {
+    filename: "adopter-workbench.jpg",
+    title: "Adopter Workbench",
+    theme: "gallery",
+    columns: 120,
+    rows: 36,
+    command: ["deno", "task", "adopter-workbench"],
+    mode: "stdout",
+  },
+  {
+    filename: "batteries.jpg",
+    title: "Batteries Included",
+    theme: "docs",
+    columns: 120,
+    rows: 36,
+    command: ["deno", "task", "batteries"],
+    mode: "stdout",
+  },
+  {
+    filename: "layout-recipe.jpg",
+    title: "Layout Recipe",
+    theme: "docs",
+    columns: 120,
+    rows: 36,
+    command: ["deno", "task", "layout-recipe"],
+    mode: "stdout",
+  },
+  {
+    filename: "actions.jpg",
+    title: "Action Middleware",
+    theme: "docs",
+    columns: 120,
+    rows: 36,
+    command: ["deno", "task", "action-middleware"],
+    mode: "stdout",
+  },
+  {
+    filename: "command-search.jpg",
+    title: "Command Search",
+    theme: "docs",
+    columns: 120,
+    rows: 36,
+    command: ["deno", "task", "command-search"],
+    mode: "stdout",
+  },
+  {
+    filename: "cached-resource.jpg",
+    title: "Cached Resource",
+    theme: "docs",
+    columns: 120,
+    rows: 36,
+    command: ["deno", "task", "cached-resource"],
+    mode: "stdout",
+  },
+  {
+    filename: "cached-pipeline.jpg",
+    title: "Cached Pipeline",
+    theme: "docs",
+    columns: 120,
+    rows: 36,
+    command: ["deno", "task", "cached-pipeline"],
+    mode: "stdout",
+  },
+  {
+    filename: "data-query.jpg",
+    title: "Data Query",
+    theme: "docs",
+    columns: 120,
+    rows: 36,
+    command: ["deno", "task", "data-query"],
+    mode: "stdout",
+  },
+  {
+    filename: "form-workflow.jpg",
+    title: "Form Workflow",
+    theme: "docs",
+    columns: 120,
+    rows: 36,
+    command: ["deno", "task", "form-workflow"],
+    mode: "stdout",
+  },
+  {
+    filename: "table-selection.jpg",
+    title: "Table Selection",
+    theme: "docs",
+    columns: 120,
+    rows: 36,
+    command: ["deno", "task", "table-selection"],
+    mode: "stdout",
+  },
+  {
+    filename: "terminal-command.jpg",
+    title: "Terminal Command Surface",
+    theme: "docs",
+    columns: 120,
+    rows: 36,
+    command: ["deno", "task", "terminal-command"],
+    mode: "stdout",
+  },
+  {
+    filename: "worker-demo.jpg",
+    title: "Worker Pool",
+    theme: "docs",
+    columns: 120,
+    rows: 36,
+    command: ["deno", "task", "worker-demo"],
+    mode: "stdout",
+  },
+  {
+    filename: "runtime-workloads.jpg",
+    title: "Runtime Workloads",
+    theme: "docs",
+    columns: 120,
+    rows: 36,
+    command: ["deno", "task", "runtime-workloads"],
+    mode: "stdout",
+  },
+  {
+    filename: "capabilities.jpg",
+    title: "Runtime Capabilities",
+    theme: "docs",
+    columns: 120,
+    rows: 36,
+    command: ["deno", "task", "capabilities"],
+    mode: "stdout",
+  },
+  {
+    filename: "theme-manifest.jpg",
+    title: "Theme Manifest",
+    theme: "theme",
+    columns: 120,
+    rows: 36,
+    command: ["deno", "task", "theme-manifest"],
+    mode: "stdout",
+  },
+  {
+    filename: "theme-engines.jpg",
+    title: "Theme Engines",
+    theme: "theme",
+    columns: 120,
+    rows: 36,
+    command: ["deno", "task", "theme-engines"],
+    mode: "stdout",
+  },
+  {
+    filename: "theme-engine-commands.jpg",
+    title: "Theme Engine Commands",
+    theme: "theme",
+    columns: 120,
+    rows: 36,
+    command: ["deno", "task", "theme-engine-commands"],
+    mode: "stdout",
+  },
+  {
+    filename: "theme-pipeline.jpg",
+    title: "Theme Pipeline",
+    theme: "theme",
+    columns: 120,
+    rows: 36,
+    command: ["deno", "task", "theme-pipeline"],
+    mode: "stdout",
+  },
+  {
+    filename: "theme-workspace.jpg",
+    title: "Theme Workspace",
+    theme: "theme",
+    columns: 120,
+    rows: 36,
+    command: ["deno", "task", "theme-workspace"],
+    mode: "stdout",
+  },
+  {
+    filename: "theme-resolver.jpg",
+    title: "Theme Resolver",
+    theme: "theme",
+    columns: 120,
+    rows: 36,
+    command: ["deno", "task", "theme-resolver"],
+    mode: "stdout",
+  },
+  {
+    filename: "theme-bindings.jpg",
+    title: "Theme Bindings",
+    theme: "theme",
+    columns: 120,
+    rows: 36,
+    command: ["deno", "task", "theme-bindings"],
+    mode: "stdout",
+  },
+  {
+    filename: "benchmark.jpg",
+    title: "Benchmark",
+    theme: "docs",
+    columns: 120,
+    rows: 36,
+    command: ["deno", "task", "benchmark"],
+    mode: "stdout",
+  },
+  {
+    filename: "api-inventory.jpg",
+    title: "API Inventory",
+    theme: "docs",
+    columns: 120,
+    rows: 36,
+    command: ["deno", "task", "api-inventory"],
     mode: "stdout",
   },
   {
@@ -180,33 +435,55 @@ function replayTerminal(input: string, target: ScreenshotTarget): TerminalFrame 
 
   while (index < input.length) {
     const char = input[index]!;
-    if (char === "\x1b" && input[index + 1] === "[") {
-      const parsed = parseCsi(input, index);
+    if (char === "\u009b") {
+      const parsed = parseCsi(input, index, 1);
       if (parsed) {
         const { command, params, raw } = parsed;
-        if (command === "m") {
-          style = applySgr(style, params);
-        } else if (command === "H" || command === "f") {
-          row = clamp(numberParam(params[0], 1) - 1, 0, target.rows - 1);
-          column = clamp(numberParam(params[1], 1) - 1, 0, target.columns - 1);
-        } else if (command === "G") {
-          column = clamp(numberParam(params[0], 1) - 1, 0, target.columns - 1);
-        } else if (command === "A") {
-          row = clamp(row - numberParam(params[0], 1), 0, target.rows - 1);
-        } else if (command === "B") {
-          row = clamp(row + numberParam(params[0], 1), 0, target.rows - 1);
-        } else if (command === "C") {
-          column = clamp(column + numberParam(params[0], 1), 0, target.columns - 1);
-        } else if (command === "D") {
-          column = clamp(column - numberParam(params[0], 1), 0, target.columns - 1);
-        } else if (command === "J" || raw === "?1049h") {
-          clearCells(cells);
-          row = 0;
-          column = 0;
-        } else if (command === "K") {
-          clearRow(cells[row]!, column);
-        }
+        ({ row, column, style } = applyTerminalControl({
+          cells,
+          command,
+          params,
+          raw,
+          row,
+          column,
+          style,
+          target,
+        }));
         index = parsed.end;
+        continue;
+      }
+    } else if (char === "\u009d") {
+      const end = parseOscEnd(input, index, 1);
+      if (end) {
+        index = end;
+        continue;
+      }
+    } else if (char === "\x1b") {
+      if (input[index + 1] === "[") {
+        const parsed = parseCsi(input, index, 2);
+        if (parsed) {
+          const { command, params, raw } = parsed;
+          ({ row, column, style } = applyTerminalControl({
+            cells,
+            command,
+            params,
+            raw,
+            row,
+            column,
+            style,
+            target,
+          }));
+          index = parsed.end;
+          continue;
+        }
+      } else if (input[index + 1] === "]") {
+        const end = parseOscEnd(input, index, 2);
+        if (end) {
+          index = end;
+          continue;
+        }
+      } else {
+        index += 1;
         continue;
       }
     }
@@ -392,17 +669,69 @@ function backgroundSegments(
 function parseCsi(
   input: string,
   start: number,
+  prefixLength: number,
 ): { raw: string; params: string[]; command: string; end: number } | null {
-  let index = start + 2;
+  let index = start + prefixLength;
   while (index < input.length) {
     const code = input.charCodeAt(index);
+    if (code === 0x1b) {
+      const raw = input.slice(start + prefixLength, index);
+      return { raw, params: raw.replace(/^\?/, "").split(";"), command: "", end: index };
+    }
     if (code >= 0x40 && code <= 0x7e) {
-      const raw = input.slice(start + 2, index);
+      const raw = input.slice(start + prefixLength, index);
       return { raw, params: raw.replace(/^\?/, "").split(";"), command: input[index]!, end: index + 1 };
     }
     index += 1;
   }
   return null;
+}
+
+function parseOscEnd(input: string, start: number, prefixLength: number): number | null {
+  let index = start + prefixLength;
+  while (index < input.length) {
+    if (input[index] === "\x07") return index + 1;
+    if (input[index] === "\x1b" && input[index + 1] === "\\") return index + 2;
+    index += 1;
+  }
+  return null;
+}
+
+function applyTerminalControl(options: {
+  cells: Cell[][];
+  command: string;
+  params: string[];
+  raw: string;
+  row: number;
+  column: number;
+  style: CellStyle;
+  target: ScreenshotTarget;
+}): { row: number; column: number; style: CellStyle } {
+  const { cells, command, params, raw, target } = options;
+  let { row, column, style } = options;
+  if (command === "m") {
+    style = applySgr(style, params);
+  } else if (command === "H" || command === "f") {
+    row = clamp(numberParam(params[0], 1) - 1, 0, target.rows - 1);
+    column = clamp(numberParam(params[1], 1) - 1, 0, target.columns - 1);
+  } else if (command === "G") {
+    column = clamp(numberParam(params[0], 1) - 1, 0, target.columns - 1);
+  } else if (command === "A") {
+    row = clamp(row - numberParam(params[0], 1), 0, target.rows - 1);
+  } else if (command === "B") {
+    row = clamp(row + numberParam(params[0], 1), 0, target.rows - 1);
+  } else if (command === "C") {
+    column = clamp(column + numberParam(params[0], 1), 0, target.columns - 1);
+  } else if (command === "D") {
+    column = clamp(column - numberParam(params[0], 1), 0, target.columns - 1);
+  } else if (command === "J" || raw === "?1049h") {
+    clearCells(cells);
+    row = 0;
+    column = 0;
+  } else if (command === "K") {
+    clearRow(cells[row]!, column);
+  }
+  return { row, column, style };
 }
 
 function applySgr(previous: CellStyle, params: readonly string[]): CellStyle {

@@ -98,8 +98,8 @@ launcher catalog, widget catalog, renderer backends, theme provider, plugin pack
 capabilities, and recommended demo path. `examples/batteries_included.ts` is the phase 1-6 readiness report and ties
 each phase to proof commands. `examples/form_workflow.ts`, `examples/table_selection_workflow.ts`, and
 `examples/terminal_command_workflow.ts` are API capability demos for form bindings, command adapters, data table state,
-selection state, command search/dispatch, and terminal session setup. `deno task screenshots` regenerates the SVG
-terminal snapshots used by the README under `docs/screenshots/`.
+selection state, command search/dispatch, and terminal session setup. `deno task screenshots` regenerates the JPEG
+terminal screenshots used by the README under `docs/screenshots/`.
 
 ## Quality Gates
 

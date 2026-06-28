@@ -125,7 +125,8 @@ The inventory reports crawled modules, re-export declarations, exported symbol c
 duplicate public symbol names. The contributor health gate runs the quiet check with duplicate failure enabled and an
 25% documentation coverage baseline that can be raised as public JSDoc coverage improves. The generated
 `docs/api-reference.md` file expands that inventory into a complete public module and symbol reference. The screenshot
-task regenerates the README's deterministic SVG terminal snapshots under `docs/screenshots/`.
+task regenerates the README's deterministic JPEG terminal captures for the full demo portfolio under
+`docs/screenshots/`.
 
 Run the worker integration path with permissions:
 

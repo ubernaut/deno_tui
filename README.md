@@ -67,40 +67,96 @@ renderer lab, and demo suite:
 - **Theme engine focus** — semantic tokens, palette presets, named theme packs, runtime providers, component variants,
   composition helpers, and inspection APIs produce normal `Theme` objects while keeping app-level styling reusable.
 
-## Screenshots
+## Demo Screenshots
 
 These are real command captures regenerated with `deno task screenshots`: interactive apps are replayed from a
-fixed-size PTY session, and report-style demos are captured from stdout.
+fixed-size PTY session, and report-style demos are captured from stdout. The portfolio leads with the Acerola-style
+Three renderer, the interactive workspace, and the catalog surfaces because those show the fork's main extensions most
+directly.
 
-### Showcase
+### Three ASCII Renderer
 
-![Showcase terminal screenshot](./docs/screenshots/showcase.jpg)
+![Three ASCII renderer terminal screenshot](./docs/screenshots/three-ascii.jpg)
 
-### API Workbench
+### API Workbench Workspace
 
 ![API workbench terminal screenshot](./docs/screenshots/api-workbench.jpg)
 
-### Neon Exodus Suite
-
-![Neon Exodus suite terminal screenshot](./docs/screenshots/neon-exodus.jpg)
-
-### Three ASCII
-
-![Three ASCII terminal screenshot](./docs/screenshots/three-ascii.jpg)
-
-### System Monitor
-
-![System monitor terminal screenshot](./docs/screenshots/system-monitor.jpg)
-
-### Demo Gallery
+### Demo And Component Catalogs
 
 ![Demo gallery terminal screenshot](./docs/screenshots/demo-gallery.jpg)
 
-### Theme Gallery
+![Component catalog terminal screenshot](./docs/screenshots/component-catalog.jpg)
+
+### Full-Screen Applications
+
+![Showcase terminal screenshot](./docs/screenshots/showcase.jpg)
+
+![Neon Exodus suite terminal screenshot](./docs/screenshots/neon-exodus.jpg)
+
+![System monitor terminal screenshot](./docs/screenshots/system-monitor.jpg)
+
+![Dashboard widgets terminal screenshot](./docs/screenshots/dashboard.jpg)
+
+![App shell terminal screenshot](./docs/screenshots/app-shell.jpg)
+
+![Demo launcher terminal screenshot](./docs/screenshots/demo-launcher.jpg)
+
+### Runtime, Data, And Command Demos
+
+![Action middleware terminal screenshot](./docs/screenshots/actions.jpg)
+
+![Command search terminal screenshot](./docs/screenshots/command-search.jpg)
+
+![Cached resource terminal screenshot](./docs/screenshots/cached-resource.jpg)
+
+![Cached pipeline terminal screenshot](./docs/screenshots/cached-pipeline.jpg)
+
+![Data query terminal screenshot](./docs/screenshots/data-query.jpg)
+
+![Form workflow terminal screenshot](./docs/screenshots/form-workflow.jpg)
+
+![Table selection terminal screenshot](./docs/screenshots/table-selection.jpg)
+
+![Terminal command surface terminal screenshot](./docs/screenshots/terminal-command.jpg)
+
+![Worker pool terminal screenshot](./docs/screenshots/worker-demo.jpg)
+
+![Runtime workloads terminal screenshot](./docs/screenshots/runtime-workloads.jpg)
+
+![Runtime capabilities terminal screenshot](./docs/screenshots/capabilities.jpg)
+
+### Theme System Demos
 
 ![Theme gallery terminal screenshot](./docs/screenshots/theme-gallery.jpg)
 
-### API Reference
+![Theme manifest terminal screenshot](./docs/screenshots/theme-manifest.jpg)
+
+![Theme engines terminal screenshot](./docs/screenshots/theme-engines.jpg)
+
+![Theme engine commands terminal screenshot](./docs/screenshots/theme-engine-commands.jpg)
+
+![Theme pipeline terminal screenshot](./docs/screenshots/theme-pipeline.jpg)
+
+![Theme workspace terminal screenshot](./docs/screenshots/theme-workspace.jpg)
+
+![Theme resolver terminal screenshot](./docs/screenshots/theme-resolver.jpg)
+
+![Theme bindings terminal screenshot](./docs/screenshots/theme-bindings.jpg)
+
+### Reports And Reference
+
+![App plugin catalog terminal screenshot](./docs/screenshots/app-plugin-catalog.jpg)
+
+![Adopter workbench terminal screenshot](./docs/screenshots/adopter-workbench.jpg)
+
+![Batteries included terminal screenshot](./docs/screenshots/batteries.jpg)
+
+![Layout recipe terminal screenshot](./docs/screenshots/layout-recipe.jpg)
+
+![Benchmark terminal screenshot](./docs/screenshots/benchmark.jpg)
+
+![API inventory terminal screenshot](./docs/screenshots/api-inventory.jpg)
 
 ![API reference terminal screenshot](./docs/screenshots/api-reference.jpg)
 
