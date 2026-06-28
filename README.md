@@ -319,11 +319,17 @@ for non-string values and returns a disposer for dynamic forms.
 `bindRouteSignal()` keeps a `RouteManager` active route synchronized with a plain or persistent route id signal:
 
 ```ts
+app.routes.register({ id: "settings", title: "Settings" });
+app.routes.unregister("settings", { fallbackRouteId: "overview" });
+
 const stopRouteBinding = bindRouteSignal(app.routes, activeRoute.value, {
   initialSync: "signal",
   fallbackRouteId: "overview",
 });
 ```
+
+`RouteManager.register()` and `RouteManager.unregister()` are useful for plugin-provided routes and keep the active
+route valid when routes are added, replaced, or removed.
 
 `HistoryStack` keeps undo/redo separate from widgets and route managers:
 

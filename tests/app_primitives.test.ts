@@ -44,6 +44,51 @@ Deno.test("RouteManager navigates and cycles known routes only", () => {
   assertEquals(routes.next()?.id, "home");
 });
 
+Deno.test("RouteManager registers replaces and removes dynamic routes", () => {
+  const routes = new RouteManager([{ id: "home", title: "Home" }]);
+
+  assertEquals(routes.register({ id: "settings", title: "Settings" }, { activate: true }), true);
+  assertEquals(routes.active()?.id, "settings");
+  assertEquals(routes.routes.peek().map((route) => route.id), ["home", "settings"]);
+
+  assertEquals(routes.register({ id: "settings", title: "Duplicate" }), false);
+  assertEquals(routes.active()?.title, "Settings");
+
+  assertEquals(routes.register({ id: "settings", title: "Preferences" }, { replace: true }), true);
+  assertEquals(routes.active()?.title, "Preferences");
+
+  assertEquals(routes.unregister("settings"), true);
+  assertEquals(routes.active()?.id, "home");
+  assertEquals(routes.unregister("missing"), false);
+
+  routes.register({ id: "logs", title: "Logs" });
+  routes.navigate("logs");
+  routes.routes.value = [{ id: "metrics", title: "Metrics" }];
+  assertEquals(routes.active()?.id, "metrics");
+});
+
+Deno.test("RouteManager can fallback to a preferred route when removing active routes", () => {
+  const routes = new RouteManager([
+    { id: "home", title: "Home" },
+    { id: "settings", title: "Settings" },
+    { id: "logs", title: "Logs" },
+  ], "settings");
+
+  assertEquals(routes.unregister("settings", { fallbackRouteId: "logs" }), true);
+  assertEquals(routes.active()?.id, "logs");
+
+  routes.unregister("logs");
+  routes.unregister("home");
+  assertEquals(routes.active(), undefined);
+  assertEquals(routes.activeRouteId.peek(), "");
+});
+
+Deno.test("RouteManager normalizes invalid initial routes", () => {
+  const routes = new RouteManager([{ id: "home", title: "Home" }], "missing");
+
+  assertEquals(routes.active()?.id, "home");
+});
+
 Deno.test("bindRouteSignal synchronizes route manager state with external signals", () => {
   const routes = new RouteManager([
     { id: "home", title: "Home" },
@@ -318,7 +363,7 @@ Deno.test("TuiApp installs plugins and disposes them with the app", async () => 
   const dispose = app.use({
     id: "settings",
     install(target) {
-      target.routes.routes.value = [...target.routes.routes.peek(), { id: "settings", title: "Settings" }];
+      target.routes.register({ id: "settings", title: "Settings" });
       target.commands.register({
         id: "route.settings",
         label: "Settings",
@@ -330,7 +375,7 @@ Deno.test("TuiApp installs plugins and disposes them with the app", async () => 
       events.push("install");
       return () => {
         target.commands.unregister("route.settings");
-        target.routes.routes.value = target.routes.routes.peek().filter((route) => route.id !== "settings");
+        target.routes.unregister("settings");
         events.push("dispose");
       };
     },
