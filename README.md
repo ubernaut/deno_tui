@@ -316,8 +316,10 @@ This fork exports lightweight app primitives for larger TUIs:
 - `SettingsController`
 - viewport helpers such as `viewportWindow()`, `viewportOffsetBy()`, and `viewportThumb()`
 
-They are optional and composable. Existing component-first apps continue to work. Use `app.enableFocusNavigation()` or
-`bindFocusNavigation()` to opt into Tab/Shift+Tab traversal for registered focusable components.
+They are optional and composable. Existing component-first apps continue to work. Use `FocusManager.register()` or
+`registerAll()` to add focusable components with disposer-friendly ownership, `inspect()` for status/debug panels, and
+`clear()` when replacing a whole focus region. Use `app.enableFocusNavigation()` or `bindFocusNavigation()` to opt into
+Tab/Shift+Tab traversal for registered focusable components.
 
 Use `ActionBus.subscribeType()` or `app.onActionType()` to handle one action family at a time while preserving typed
 payloads. The app-level helpers track cleanup automatically:

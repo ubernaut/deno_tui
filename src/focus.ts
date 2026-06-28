@@ -6,23 +6,62 @@ export interface Focusable {
   state: Component["state"];
 }
 
+export interface FocusManagerInspection {
+  count: number;
+  index: number;
+  hasFocus: boolean;
+}
+
 export class FocusManager {
   readonly items: Focusable[] = [];
   index = -1;
 
-  register(component: Focusable): void {
-    if (!this.items.includes(component)) {
-      this.items.push(component);
+  register(component: Focusable): () => void {
+    if (this.items.includes(component)) {
+      return () => undefined;
     }
+    this.items.push(component);
+    return () => this.unregister(component);
+  }
+
+  registerAll(components: Iterable<Focusable>): () => void {
+    const disposers: Array<() => void> = [];
+    for (const component of components) {
+      disposers.push(this.register(component));
+    }
+
+    return () => {
+      for (const dispose of [...disposers].reverse()) {
+        dispose();
+      }
+    };
   }
 
   unregister(component: Focusable): void {
     const index = this.items.indexOf(component);
     if (index < 0) return;
+    const wasCurrent = index === this.index;
     this.items.splice(index, 1);
-    if (this.index >= this.items.length) {
+    component.state.value = "base";
+
+    if (this.items.length === 0) {
+      this.index = -1;
+    } else if (wasCurrent) {
+      this.index = Math.min(index, this.items.length - 1);
+    } else if (index < this.index) {
+      this.index -= 1;
+    } else if (this.index >= this.items.length) {
       this.index = this.items.length - 1;
     }
+    this.applyFocus();
+  }
+
+  clear(): void {
+    for (const item of this.items) {
+      item.state.value = "base";
+    }
+    this.items.length = 0;
+    this.index = -1;
   }
 
   current(): Focusable | undefined {
@@ -52,6 +91,14 @@ export class FocusManager {
     this.index = (this.index - 1 + this.items.length) % this.items.length;
     this.applyFocus();
     return this.current();
+  }
+
+  inspect(): FocusManagerInspection {
+    return {
+      count: this.items.length,
+      index: this.index,
+      hasFocus: this.current() !== undefined,
+    };
   }
 
   private applyFocus(): void {

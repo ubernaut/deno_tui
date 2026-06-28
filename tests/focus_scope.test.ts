@@ -67,6 +67,50 @@ Deno.test("bindFocusNavigation cycles focus with tab and unsubscribes cleanly", 
   assertEquals(listener, undefined);
 });
 
+Deno.test("FocusManager registration disposers keep focus state normalized", () => {
+  const manager = new FocusManager();
+  const first = targetItem();
+  const second = targetItem();
+  const third = targetItem();
+  const dispose = manager.registerAll([first, second, third]);
+
+  manager.focus(third);
+  assertEquals(manager.inspect(), { count: 3, index: 2, hasFocus: true });
+
+  manager.unregister(first);
+  assertEquals(manager.current(), third);
+  assertEquals(manager.inspect(), { count: 2, index: 1, hasFocus: true });
+  assertEquals(third.state.peek(), "focused");
+
+  manager.unregister(third);
+  assertEquals(manager.current(), second);
+  assertEquals(manager.inspect(), { count: 1, index: 0, hasFocus: true });
+  assertEquals(third.state.peek(), "base");
+  assertEquals(second.state.peek(), "focused");
+
+  dispose();
+  assertEquals(manager.inspect(), { count: 0, index: -1, hasFocus: false });
+  assertEquals(second.state.peek(), "base");
+});
+
+Deno.test("FocusManager clear resets registered item state", () => {
+  const manager = new FocusManager();
+  const first = targetItem();
+  const second = targetItem();
+  const disposeFirst = manager.register(first);
+  manager.register(second);
+
+  manager.focus(first);
+  manager.clear();
+
+  assertEquals(manager.inspect(), { count: 0, index: -1, hasFocus: false });
+  assertEquals(first.state.peek(), "base");
+  assertEquals(second.state.peek(), "base");
+
+  disposeFirst();
+  assertEquals(manager.inspect(), { count: 0, index: -1, hasFocus: false });
+});
+
 Deno.test("bindModalFocus enters restores and closes on escape", () => {
   const target = new TestKeyTarget();
   const manager = new FocusManager();
