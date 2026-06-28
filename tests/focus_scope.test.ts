@@ -1,4 +1,6 @@
 import { assertEquals } from "./deps.ts";
+import { bindFocusCommands, focusCommands } from "../src/app/focus_commands.ts";
+import { CommandRegistry } from "../src/app/commands.ts";
 import { bindModalFocus } from "../src/app/surface_bindings.ts";
 import { bindFocusNavigation, type Focusable, FocusManager, FocusScope } from "../src/focus.ts";
 import { Signal } from "../src/signals/mod.ts";
@@ -111,6 +113,62 @@ Deno.test("FocusManager clear resets registered item state", () => {
   assertEquals(manager.inspect(), { count: 0, index: -1, hasFocus: false });
 });
 
+Deno.test("focusCommands navigate clear and target focus items", async () => {
+  const manager = new FocusManager();
+  const first = targetItem();
+  const second = targetItem();
+  const registry = new CommandRegistry();
+  manager.registerAll([first, second]);
+  const actions: unknown[] = [];
+  const dispose = bindFocusCommands(registry, manager, {
+    id: "main",
+    idPrefix: "focus.main",
+    group: "focus",
+    includeTargetCommands: true,
+    targets: [
+      { id: "first", label: "First", item: first },
+      { id: "second", label: "Second", item: second, keywords: ["details"] },
+    ],
+  });
+
+  assertEquals(focusCommands(new FocusManager()).map((command) => [command.id, commandDisabled(command)]), [
+    ["focus.previous", true],
+    ["focus.next", true],
+    ["focus.clear", true],
+  ]);
+  assertEquals(registry.keyBindings("focus").map((binding) => [binding.key, binding.shift ?? false]), [
+    ["tab", false],
+    ["tab", true],
+  ]);
+  assertEquals(registry.list("focus").map((command) => command.id), [
+    "focus.main.clear",
+    "focus.main.target.first",
+    "focus.main.target.second",
+    "focus.main.next",
+    "focus.main.previous",
+  ]);
+
+  assertEquals(await registry.execute("focus.main.next", (action) => void actions.push(action)), true);
+  assertEquals(first.state.peek(), "focused");
+  assertEquals(actions[0], {
+    type: "focus.changed",
+    payload: { id: "main", index: 0, inspection: manager.inspect() },
+  });
+
+  assertEquals(await registry.execute("focus.main.target.second", (action) => void actions.push(action)), true);
+  assertEquals(second.state.peek(), "focused");
+  assertEquals(registry.enabled(registry.get("focus.main.target.second")!), false);
+  assertEquals(await registry.execute("focus.main.clear", (action) => void actions.push(action)), true);
+  assertEquals(manager.inspect(), { count: 0, index: -1, hasFocus: false });
+  assertEquals(actions.at(-1), {
+    type: "focus.cleared",
+    payload: { id: "main", index: -1, inspection: manager.inspect() },
+  });
+
+  dispose();
+  assertEquals(registry.list("focus"), []);
+});
+
 Deno.test("bindModalFocus enters restores and closes on escape", () => {
   const target = new TestKeyTarget();
   const manager = new FocusManager();
@@ -140,6 +198,10 @@ Deno.test("bindModalFocus enters restores and closes on escape", () => {
 
 function targetItem(): Focusable {
   return target();
+}
+
+function commandDisabled(command: { disabled?: boolean | (() => boolean) }): boolean | undefined {
+  return typeof command.disabled === "function" ? command.disabled() : command.disabled;
 }
 
 class TestKeyTarget {

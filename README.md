@@ -698,7 +698,21 @@ This fork exports lightweight app primitives for larger TUIs:
 They are optional and composable. Existing component-first apps continue to work. Use `FocusManager.register()` or
 `registerAll()` to add focusable components with disposer-friendly ownership, `inspect()` for status/debug panels, and
 `clear()` when replacing a whole focus region. Use `app.enableFocusNavigation()` or `bindFocusNavigation()` to opt into
-Tab/Shift+Tab traversal for registered focusable components.
+Tab/Shift+Tab traversal for registered focusable components. Use `focusCommands()` or `bindFocusCommands()` to expose
+next/previous focus, clear focus, and optional direct focus-target commands through command palettes, menus, keymaps,
+and plugin surfaces:
+
+```ts
+const stopFocusCommands = bindFocusCommands(app.commands, app.focus, {
+  idPrefix: "focus.main",
+  group: "focus",
+  includeTargetCommands: true,
+  targets: [
+    { id: "menu", label: "Menu", item: menuBar },
+    { id: "content", label: "Content", item: scrollArea },
+  ],
+});
+```
 
 Use `ActionBus.subscribeType()` or `app.onActionType()` to handle one action family at a time while preserving typed
 payloads. The app-level helpers track cleanup automatically:

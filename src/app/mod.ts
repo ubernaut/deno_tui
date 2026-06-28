@@ -10,6 +10,7 @@ export * from "./commands.ts";
 export * from "./data_table_commands.ts";
 export * from "./form_bindings.ts";
 export * from "./form_commands.ts";
+export * from "./focus_commands.ts";
 export * from "./forms.ts";
 export * from "./history_bindings.ts";
 export * from "./history.ts";
