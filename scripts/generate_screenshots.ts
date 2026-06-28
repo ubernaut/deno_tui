@@ -7,8 +7,11 @@ interface TerminalScreenshot {
   theme?: ScreenshotTheme;
 }
 
-const SCREENSHOT_WIDTH = 1960;
-const SCREENSHOT_HEIGHT = 1240;
+const SCREENSHOT_WIDTH = 2240;
+const SCREENSHOT_HEIGHT = 1440;
+const FONT_SIZE = 42;
+const TITLE_FONT_SIZE = 52;
+const CHAR_WIDTH = 25.4;
 
 type ScreenshotTheme = "neon" | "exodus" | "system" | "gallery" | "theme" | "docs";
 type SegmentKind =
@@ -277,21 +280,21 @@ if (import.meta.main) {
 }
 
 function renderSvg(screenshot: TerminalScreenshot): string {
-  const padding = 56;
-  const titleHeight = 88;
-  const lineHeight = 52;
+  const padding = 40;
+  const titleHeight = 82;
+  const lineHeight = 66;
   const contentTop = padding + titleHeight;
   const contentHeight = screenshot.height - padding * 2 - titleHeight;
   const theme = screenshot.theme ?? "neon";
   const text = screenshot.lines.map((line, index) =>
-    renderLine(line, padding + 44, contentTop + 68 + index * lineHeight)
+    renderLine(line, padding + 42, contentTop + 78 + index * lineHeight)
   ).join("\n");
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${screenshot.width}" height="${screenshot.height}" viewBox="0 0 ${screenshot.width} ${screenshot.height}" class="theme-${theme}" role="img" aria-label="${
       escapeXml(screenshot.title)
     } terminal screenshot">`,
     "<style>",
-    "svg{background:#06080d}.frame{fill:#0d1117;stroke:var(--border);stroke-width:4}.title{fill:#f8fafc;font:700 36px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.term{fill:#dbeafe;font:32px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.bar{fill:#111827;stroke:#374151}.screen{fill:#090d14;opacity:.91}.glow{filter:drop-shadow(0 0 18px var(--glow))}.plain{fill:var(--fg)}.muted{fill:var(--muted)}.border{fill:var(--border)}.accent{fill:var(--accent)}.success{fill:var(--success)}.warning{fill:var(--warning)}.danger{fill:var(--danger)}.violet{fill:var(--violet)}.pink{fill:var(--pink)}.blue{fill:var(--blue)}.green{fill:var(--green)}.heat{fill:var(--heat)}.surface{fill:var(--surface)}.theme-neon{--fg:#d7fff7;--muted:#77909a;--border:#2dd4bf;--accent:#67e8f9;--success:#a3e635;--warning:#facc15;--danger:#fb7185;--violet:#c084fc;--pink:#f472b6;--blue:#60a5fa;--green:#34d399;--heat:#f97316;--surface:#93c5fd;--glow:#2dd4bf}.theme-exodus{--fg:#f7e8ff;--muted:#9478a8;--border:#a855f7;--accent:#22d3ee;--success:#bef264;--warning:#fbbf24;--danger:#ff4fd8;--violet:#c084fc;--pink:#fb7185;--blue:#38bdf8;--green:#4ade80;--heat:#f97316;--surface:#e879f9;--glow:#ff4fd8}.theme-system{--fg:#dbeafe;--muted:#94a3b8;--border:#38bdf8;--accent:#67e8f9;--success:#22c55e;--warning:#f59e0b;--danger:#ef4444;--violet:#a78bfa;--pink:#f472b6;--blue:#3b82f6;--green:#10b981;--heat:#f97316;--surface:#93c5fd;--glow:#38bdf8}.theme-gallery{--fg:#f8fafc;--muted:#94a3b8;--border:#818cf8;--accent:#f472b6;--success:#34d399;--warning:#fbbf24;--danger:#fb7185;--violet:#c084fc;--pink:#f472b6;--blue:#60a5fa;--green:#4ade80;--heat:#fb923c;--surface:#a5b4fc;--glow:#818cf8}.theme-theme{--fg:#f7effa;--muted:#b8a6c4;--border:#ac7cc8;--accent:#f694d8;--success:#aad68c;--warning:#ffd08b;--danger:#f27d96;--violet:#c084fc;--pink:#f694d8;--blue:#9db7ff;--green:#7be0bb;--heat:#ff9f68;--surface:#ddd0e6;--glow:#f694d8}.theme-docs{--fg:#e5e7eb;--muted:#9ca3af;--border:#64748b;--accent:#93c5fd;--success:#86efac;--warning:#fde68a;--danger:#fca5a5;--violet:#c4b5fd;--pink:#f9a8d4;--blue:#93c5fd;--green:#86efac;--heat:#fdba74;--surface:#cbd5e1;--glow:#93c5fd}",
+    `svg{background:#06080d}.frame{fill:#0d1117;stroke:var(--border);stroke-width:4}.title{fill:#f8fafc;font:700 ${TITLE_FONT_SIZE}px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.term{font:${FONT_SIZE}px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.bar{fill:#111827;stroke:#374151}.screen{fill:#090d14;opacity:.91}.glow{filter:drop-shadow(0 0 18px var(--glow))}.plain{fill:var(--fg)}.muted{fill:var(--muted)}.border{fill:var(--border)}.accent{fill:var(--accent)}.success{fill:var(--success)}.warning{fill:var(--warning)}.danger{fill:var(--danger)}.violet{fill:var(--violet)}.pink{fill:var(--pink)}.blue{fill:var(--blue)}.green{fill:var(--green)}.heat{fill:var(--heat)}.surface{fill:var(--surface)}.theme-neon{--fg:#d7fff7;--muted:#77909a;--border:#2dd4bf;--accent:#67e8f9;--success:#a3e635;--warning:#facc15;--danger:#fb7185;--violet:#c084fc;--pink:#f472b6;--blue:#60a5fa;--green:#34d399;--heat:#f97316;--surface:#93c5fd;--glow:#2dd4bf}.theme-exodus{--fg:#f7e8ff;--muted:#9478a8;--border:#a855f7;--accent:#22d3ee;--success:#bef264;--warning:#fbbf24;--danger:#ff4fd8;--violet:#c084fc;--pink:#fb7185;--blue:#38bdf8;--green:#4ade80;--heat:#f97316;--surface:#e879f9;--glow:#ff4fd8}.theme-system{--fg:#dbeafe;--muted:#94a3b8;--border:#38bdf8;--accent:#67e8f9;--success:#22c55e;--warning:#f59e0b;--danger:#ef4444;--violet:#a78bfa;--pink:#f472b6;--blue:#3b82f6;--green:#10b981;--heat:#f97316;--surface:#93c5fd;--glow:#38bdf8}.theme-gallery{--fg:#f8fafc;--muted:#94a3b8;--border:#818cf8;--accent:#f472b6;--success:#34d399;--warning:#fbbf24;--danger:#fb7185;--violet:#c084fc;--pink:#f472b6;--blue:#60a5fa;--green:#4ade80;--heat:#fb923c;--surface:#a5b4fc;--glow:#818cf8}.theme-theme{--fg:#f7effa;--muted:#b8a6c4;--border:#ac7cc8;--accent:#f694d8;--success:#aad68c;--warning:#ffd08b;--danger:#f27d96;--violet:#c084fc;--pink:#f694d8;--blue:#9db7ff;--green:#7be0bb;--heat:#ff9f68;--surface:#ddd0e6;--glow:#f694d8}.theme-docs{--fg:#e5e7eb;--muted:#9ca3af;--border:#64748b;--accent:#93c5fd;--success:#86efac;--warning:#fde68a;--danger:#fca5a5;--violet:#c4b5fd;--pink:#f9a8d4;--blue:#93c5fd;--green:#86efac;--heat:#fdba74;--surface:#cbd5e1;--glow:#93c5fd}`,
     "</style>",
     `<rect x="${padding}" y="${padding}" width="${screenshot.width - padding * 2}" height="${
       screenshot.height - padding * 2
@@ -299,7 +302,7 @@ function renderSvg(screenshot: TerminalScreenshot): string {
     `<rect x="${padding}" y="${padding}" width="${
       screenshot.width - padding * 2
     }" height="${titleHeight}" rx="24" class="bar"/>`,
-    `<text x="${padding + 44}" y="${padding + 58}" class="title">${escapeXml(screenshot.title)}</text>`,
+    `<text x="${padding + 42}" y="${padding + 58}" class="title">${escapeXml(screenshot.title)}</text>`,
     `<circle cx="${screenshot.width - padding - 144}" cy="${padding + 44}" r="12" fill="var(--success)"/>`,
     `<circle cx="${screenshot.width - padding - 96}" cy="${padding + 44}" r="12" fill="#facc15"/>`,
     `<circle cx="${screenshot.width - padding - 48}" cy="${padding + 44}" r="12" fill="#fb7185"/>`,
@@ -314,11 +317,16 @@ function renderSvg(screenshot: TerminalScreenshot): string {
 
 function renderLine(line: string, x: number, y: number): string {
   const segments = colorizeLine(line);
-  const tspans = segments.map((segment) => `<tspan class="${segment.kind}">${escapeSvgText(segment.text)}</tspan>`)
-    .join(
-      "",
-    );
-  return `<text x="${x}" y="${y}" class="term" xml:space="preserve">${tspans}</text>`;
+  let cursor = 0;
+  const text = segments.map((segment) => {
+    const segmentX = x + cursor * CHAR_WIDTH;
+    cursor += segment.text.length;
+    if (segment.text.trim().length === 0) return "";
+    return `<text x="${segmentX.toFixed(1)}" y="${y}" class="term ${segment.kind}">${
+      escapeSvgText(segment.text)
+    }</text>`;
+  }).join("");
+  return `<g>${text}</g>`;
 }
 
 function colorizeLine(line: string): TextSegment[] {
@@ -383,8 +391,11 @@ function escapeSvgText(value: string): string {
 }
 
 async function formatScreenshots(paths: readonly string[]): Promise<void> {
-  if (paths.length === 0) return;
-  const result = await new Deno.Command("deno", { args: ["fmt", ...paths] }).output();
+  const formattedPaths = paths.filter((path) => !path.endsWith(".svg"));
+  if (formattedPaths.length === 0) return;
+  const result = await new Deno.Command("deno", {
+    args: ["fmt", ...formattedPaths],
+  }).output();
   if (!result.success) {
     throw new Error(new TextDecoder().decode(result.stderr).trim() || "failed to format screenshots");
   }
