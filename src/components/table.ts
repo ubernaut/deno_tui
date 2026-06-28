@@ -10,6 +10,7 @@ import { textWidth } from "../utils/strings.ts";
 import { clamp } from "../utils/numbers.ts";
 import { Computed, Effect, Signal } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
+import type { KeyPressEvent, MouseEvent, MousePressEvent, MouseScrollEvent } from "../input_reader/types.ts";
 
 export const TableUnicodeCharacters = {
   sharp: {
@@ -54,6 +55,194 @@ export interface TableOptions extends Omit<ComponentOptions, "rectangle"> {
   rectangle: Omit<Rectangle, "width">;
   data: string[][];
   charMap: keyof typeof TableUnicodeCharacters | TableUnicodeCharactersType;
+  selectedRow?: number | Signal<number>;
+  offsetRow?: number | Signal<number>;
+  controller?: TableController;
+  onSelect?: (row: number) => void | Promise<void>;
+}
+
+export interface TableControllerOptions {
+  rowCount?: number | Signal<number>;
+  viewportHeight?: number | Signal<number>;
+  selectedRow?: number | Signal<number>;
+  offsetRow?: number | Signal<number>;
+  onSelect?: (row: number) => void | Promise<void>;
+}
+
+export interface TableInspection {
+  rowCount: number;
+  selectedRow: number;
+  offsetRow: number;
+  viewportHeight: number;
+  visibleCapacity: number;
+  maxOffsetRow: number;
+  empty: boolean;
+}
+
+export function tableVisibleCapacity(viewportHeight: number): number {
+  return Math.max(0, Math.floor(viewportHeight) - 4);
+}
+
+export function tableMaxOffset(rowCount: number, viewportHeight: number): number {
+  return Math.max(0, Math.floor(rowCount) - tableVisibleCapacity(viewportHeight));
+}
+
+export function clampTableRow(row: number, rowCount: number): number {
+  return clamp(Math.floor(row), 0, Math.max(0, Math.floor(rowCount) - 1));
+}
+
+export class TableController {
+  readonly rowCount: Signal<number>;
+  readonly viewportHeight: Signal<number>;
+  readonly selectedRow: Signal<number>;
+  readonly offsetRow: Signal<number>;
+  readonly #ownsRowCount: boolean;
+  readonly #ownsViewportHeight: boolean;
+  readonly #ownsSelectedRow: boolean;
+  readonly #ownsOffsetRow: boolean;
+  readonly #onSelect?: (row: number) => void | Promise<void>;
+  readonly #syncBounds = () => {
+    this.selectedRow.value = clampTableRow(this.selectedRow.peek(), this.rowCount.peek());
+    this.offsetRow.value = clamp(
+      this.offsetRow.peek(),
+      0,
+      tableMaxOffset(this.rowCount.peek(), this.viewportHeight.peek()),
+    );
+  };
+
+  constructor(options: TableControllerOptions = {}) {
+    this.#ownsRowCount = !(options.rowCount instanceof Signal);
+    this.#ownsViewportHeight = !(options.viewportHeight instanceof Signal);
+    this.#ownsSelectedRow = !(options.selectedRow instanceof Signal);
+    this.#ownsOffsetRow = !(options.offsetRow instanceof Signal);
+    this.rowCount = signalify(options.rowCount ?? 0);
+    this.viewportHeight = signalify(options.viewportHeight ?? 0);
+    this.selectedRow = signalify(options.selectedRow ?? 0);
+    this.offsetRow = signalify(options.offsetRow ?? 0);
+    this.#onSelect = options.onSelect;
+    this.rowCount.subscribe(this.#syncBounds);
+    this.viewportHeight.subscribe(this.#syncBounds);
+    this.selectedRow.subscribe(this.#syncBounds);
+    this.offsetRow.subscribe(this.#syncBounds);
+    this.#syncBounds();
+  }
+
+  setRowCount(rowCount: number): number {
+    this.rowCount.value = Math.max(0, Math.floor(rowCount));
+    return this.rowCount.peek();
+  }
+
+  setViewportHeight(height: number): number {
+    this.viewportHeight.value = Math.max(0, Math.floor(height));
+    return this.viewportHeight.peek();
+  }
+
+  select(row: number, reveal = true): number {
+    this.selectedRow.value = clampTableRow(row, this.rowCount.peek());
+    if (reveal) this.revealSelected();
+    void this.#onSelect?.(this.selectedRow.peek());
+    return this.selectedRow.peek();
+  }
+
+  move(delta: number): number {
+    return this.select(this.selectedRow.peek() + Math.floor(delta));
+  }
+
+  first(): number {
+    return this.select(0);
+  }
+
+  last(): number {
+    return this.select(this.rowCount.peek() - 1);
+  }
+
+  pageUp(): number {
+    return this.move(-Math.max(1, tableVisibleCapacity(this.viewportHeight.peek())));
+  }
+
+  pageDown(): number {
+    return this.move(Math.max(1, tableVisibleCapacity(this.viewportHeight.peek())));
+  }
+
+  scroll(delta: number): number {
+    this.offsetRow.value = clamp(
+      this.offsetRow.peek() + Math.floor(delta),
+      0,
+      tableMaxOffset(this.rowCount.peek(), this.viewportHeight.peek()),
+    );
+    return this.offsetRow.peek();
+  }
+
+  revealSelected(): number {
+    const capacity = tableVisibleCapacity(this.viewportHeight.peek());
+    const maxOffset = tableMaxOffset(this.rowCount.peek(), this.viewportHeight.peek());
+    if (capacity <= 0) {
+      this.offsetRow.value = 0;
+    } else {
+      this.offsetRow.value = clamp(this.selectedRow.peek() - Math.floor(capacity / 2), 0, maxOffset);
+    }
+    return this.offsetRow.peek();
+  }
+
+  selectViewportRow(y: number, tableRow: number): number | undefined {
+    const dataRow = Math.floor(y) - Math.floor(tableRow) + this.offsetRow.peek() - 3;
+    if (dataRow !== clampTableRow(dataRow, this.rowCount.peek())) return undefined;
+    return this.select(dataRow, false);
+  }
+
+  handleKeyPress(event: KeyPressEvent): number | undefined {
+    if (event.ctrl || event.meta || event.shift) return undefined;
+    switch (event.key) {
+      case "up":
+        return this.move(-1);
+      case "down":
+        return this.move(1);
+      case "pageup":
+        return this.pageUp();
+      case "pagedown":
+        return this.pageDown();
+      case "home":
+        return this.first();
+      case "end":
+        return this.last();
+      case "return":
+        void this.#onSelect?.(this.selectedRow.peek());
+        return this.selectedRow.peek();
+    }
+    return undefined;
+  }
+
+  handleMouseEvent(event: MouseEvent | MousePressEvent | MouseScrollEvent, tableRow: number): number | undefined {
+    if (event.ctrl || event.meta || event.shift) return undefined;
+    if ("scroll" in event) return this.scroll(event.scroll);
+    if ("button" in event) return this.selectViewportRow(event.y, tableRow);
+    return undefined;
+  }
+
+  inspect(): TableInspection {
+    const rowCount = this.rowCount.peek();
+    const viewportHeight = this.viewportHeight.peek();
+    return {
+      rowCount,
+      selectedRow: this.selectedRow.peek(),
+      offsetRow: this.offsetRow.peek(),
+      viewportHeight,
+      visibleCapacity: tableVisibleCapacity(viewportHeight),
+      maxOffsetRow: tableMaxOffset(rowCount, viewportHeight),
+      empty: rowCount === 0,
+    };
+  }
+
+  dispose(): void {
+    this.rowCount.unsubscribe(this.#syncBounds);
+    this.viewportHeight.unsubscribe(this.#syncBounds);
+    this.selectedRow.unsubscribe(this.#syncBounds);
+    this.offsetRow.unsubscribe(this.#syncBounds);
+    if (this.#ownsRowCount) this.rowCount.dispose();
+    if (this.#ownsViewportHeight) this.viewportHeight.dispose();
+    if (this.#ownsSelectedRow) this.selectedRow.dispose();
+    if (this.#ownsOffsetRow) this.offsetRow.dispose();
+  }
 }
 
 /**
@@ -121,6 +310,13 @@ export class Table extends Component {
   charMap: Signal<TableUnicodeCharactersType>;
   selectedRow: Signal<number>;
   offsetRow: Signal<number>;
+  readonly controller: TableController;
+  readonly #syncRowCount = (data: string[][]) => {
+    this.controller.setRowCount(data.length);
+  };
+  readonly #syncViewportHeight = () => {
+    this.controller.setViewportHeight(this.rectangle.peek().height);
+  };
 
   constructor(options: TableOptions) {
     super(options as unknown as ComponentOptions);
@@ -131,8 +327,17 @@ export class Table extends Component {
       { deepObserve: true },
     );
     this.headers = signalify(options.headers as TableHeader<true>[], { deepObserve: true });
-    this.selectedRow = new Signal(0);
-    this.offsetRow = new Signal(0);
+    const ownsController = !options.controller;
+    this.controller = options.controller ??
+      new TableController({
+        rowCount: this.data.peek().length,
+        viewportHeight: this.rectangle.peek().height,
+        selectedRow: options.selectedRow,
+        offsetRow: options.offsetRow,
+        onSelect: options.onSelect,
+      });
+    this.selectedRow = this.controller.selectedRow;
+    this.offsetRow = this.controller.offsetRow;
 
     new Effect(() => {
       const headers = this.headers.value;
@@ -149,6 +354,7 @@ export class Table extends Component {
     });
 
     this.data.subscribe((data) => {
+      this.#syncRowCount(data);
       const dataDrawObjects = this.drawnObjects.data?.length;
       if (!dataDrawObjects) return;
       if (data.length > dataDrawObjects) {
@@ -157,54 +363,20 @@ export class Table extends Component {
         this.#popUnusedDataDrawObjects();
       }
     });
+    this.rectangle.subscribe(this.#syncViewportHeight);
 
-    this.on("keyPress", ({ key, ctrl, meta, shift }) => {
-      if (ctrl || meta || shift) return;
-
-      const { height } = this.rectangle.peek();
-      const lastDataRow = this.data.peek().length - 1;
-
-      const { selectedRow, offsetRow } = this;
-
-      switch (key) {
-        case "up":
-          --selectedRow.value;
-          break;
-        case "down":
-          ++selectedRow.value;
-          break;
-        case "pageup":
-          selectedRow.value -= ~~(lastDataRow / 100);
-          break;
-        case "pagedown":
-          selectedRow.value += ~~(lastDataRow / 100);
-          break;
-        case "home":
-          selectedRow.value = 0;
-          break;
-        case "end":
-          selectedRow.value = lastDataRow;
-          break;
-      }
-
-      selectedRow.value = clamp(selectedRow.peek(), 0, lastDataRow);
-      offsetRow.value = clamp(selectedRow.peek() - ~~((height - 4) / 2), 0, lastDataRow - height + 5);
+    this.on("keyPress", (event) => {
+      this.controller.handleKeyPress(event);
     });
 
     this.on("mouseEvent", (mouseEvent) => {
-      if (mouseEvent.ctrl || mouseEvent.meta || mouseEvent.shift) return;
-      const { y } = mouseEvent;
-      const { row, height } = this.rectangle.peek();
+      this.controller.handleMouseEvent(mouseEvent, this.rectangle.peek().row);
+    });
 
-      const lastDataRow = this.data.peek().length - 1;
-
-      if ("scroll" in mouseEvent) {
-        this.offsetRow.value = clamp(this.offsetRow.peek() + mouseEvent.scroll, 0, lastDataRow - height + 5);
-      } else if ("button" in mouseEvent && y >= row + 3 && y <= row + height - 2) {
-        const dataRow = y - row + this.offsetRow.peek() - 3;
-        if (dataRow !== clamp(dataRow, 0, lastDataRow)) return;
-        this.selectedRow.value = dataRow;
-      }
+    this.on("destroy", () => {
+      this.data.unsubscribe(this.#syncRowCount);
+      this.rectangle.unsubscribe(this.#syncViewportHeight);
+      if (ownsController) this.controller.dispose();
     });
   }
 

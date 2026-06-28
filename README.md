@@ -425,6 +425,28 @@ const selectedCommand = palette.selected();
 const paletteState = palette.inspect();
 ```
 
+`TableController` extracts row selection and scroll-window state from the `Table` renderer. It owns row count, viewport
+height, selected row, offset row, key handling, mouse/scroll handling, page movement, and inspection state. Use
+`tableCommands()` or `bindTableCommands()` when a rendered table should be controllable from command palettes, menus, or
+key help without reimplementing row math:
+
+```ts
+const processTable = new TableController({
+  rowCount: processRows.value.length,
+  viewportHeight: 14,
+  onSelect: (row) => openProcess(processRows.value[row]),
+});
+
+processTable.pageDown();
+processTable.revealSelected();
+const tableFocusState = processTable.inspect();
+
+const stopProcessTableCommands = bindTableCommands(app.commands, processTable, {
+  idPrefix: "process-table",
+  group: "process-table",
+});
+```
+
 For table-heavy apps, `DataTableController`, `createDataTableView()`, `sortDataRows()`, and the data-table render
 helpers provide reusable filtering, sorting, pagination, selection, and row formatting without coupling data logic to
 the `Table` renderer:

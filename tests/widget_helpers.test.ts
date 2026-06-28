@@ -11,6 +11,7 @@ import { bindScrollAreaCommands, scrollAreaCommands } from "../src/app/scroll_ar
 import { CommandRegistry } from "../src/app/commands.ts";
 import { bindSliderCommands, sliderCommands } from "../src/app/slider_commands.ts";
 import { bindStepperCommands, stepperCommands } from "../src/app/stepper_commands.ts";
+import { bindTableCommands, tableCommands } from "../src/app/table_commands.ts";
 import { bindTabsCommands, tabsCommands } from "../src/app/tabs_commands.ts";
 import { bindTreeCommands, treeCommands } from "../src/app/tree_commands.ts";
 import { formatKeyBinding, KeymapRegistry } from "../src/keymap.ts";
@@ -62,6 +63,7 @@ import {
   stepForIndex,
   StepperController,
 } from "../src/components/stepper.ts";
+import { clampTableRow, TableController, tableMaxOffset, tableVisibleCapacity } from "../src/components/table.ts";
 import { clampTabIndex, renderTabs, shiftTabIndex, tabForIndex, TabsController } from "../src/components/tabs.ts";
 import { TextLineCache } from "../src/components/textbox.ts";
 import { flattenTree, flattenTreeRows, TreeController } from "../src/components/tree.ts";
@@ -721,6 +723,95 @@ Deno.test("VirtualListController syncs selected values and external state", () =
   ];
   assertEquals(controller.inspect().itemCount, 2);
   assertEquals(controller.inspect().selected, [0, 1]);
+  controller.dispose();
+});
+
+Deno.test("TableController moves pages scrolls and clamps row state", () => {
+  const selected: number[] = [];
+  const controller = new TableController({
+    rowCount: 10,
+    viewportHeight: 6,
+    selectedRow: 4,
+    onSelect: (row) => void selected.push(row),
+  });
+
+  assertEquals(tableVisibleCapacity(6), 2);
+  assertEquals(tableMaxOffset(10, 6), 8);
+  assertEquals(clampTableRow(99, 10), 9);
+  assertEquals(controller.inspect(), {
+    rowCount: 10,
+    selectedRow: 4,
+    offsetRow: 0,
+    viewportHeight: 6,
+    visibleCapacity: 2,
+    maxOffsetRow: 8,
+    empty: false,
+  });
+
+  controller.pageDown();
+  assertEquals(controller.selectedRow.peek(), 6);
+  assertEquals(controller.offsetRow.peek(), 5);
+  controller.handleKeyPress(keyPress("end"));
+  assertEquals(controller.selectedRow.peek(), 9);
+  assertEquals(controller.scroll(-2), 6);
+  assertEquals(controller.selectViewportRow(5, 1), 7);
+  controller.setRowCount(3);
+  assertEquals(controller.inspect(), {
+    rowCount: 3,
+    selectedRow: 2,
+    offsetRow: 1,
+    viewportHeight: 6,
+    visibleCapacity: 2,
+    maxOffsetRow: 1,
+    empty: false,
+  });
+  assertEquals(selected, [6, 9, 7]);
+  controller.dispose();
+});
+
+Deno.test("tableCommands move and select table rows", async () => {
+  const controller = new TableController({ rowCount: 5, viewportHeight: 6 });
+  const registry = new CommandRegistry();
+  const dispose = bindTableCommands(registry, controller, {
+    id: "processes",
+    idPrefix: "table.processes",
+    group: "table",
+  });
+  const actions: unknown[] = [];
+
+  assertEquals(tableCommands(new TableController()).map((command) => [command.id, commandDisabled(command)]), [
+    ["table.first", true],
+    ["table.previous", true],
+    ["table.next", true],
+    ["table.last", true],
+    ["table.pagePrevious", true],
+    ["table.pageNext", true],
+    ["table.select", true],
+  ]);
+  assertEquals(registry.list("table").map((command) => command.id), [
+    "table.processes.first",
+    "table.processes.last",
+    "table.processes.pageNext",
+    "table.processes.next",
+    "table.processes.pagePrevious",
+    "table.processes.previous",
+    "table.processes.select",
+  ]);
+
+  assertEquals(await registry.execute("table.processes.next", (action) => void actions.push(action)), true);
+  assertEquals(controller.selectedRow.peek(), 1);
+  assertEquals(actions[0], {
+    type: "table.changed",
+    payload: { id: "processes", inspection: controller.inspect() },
+  });
+  assertEquals(await registry.execute("table.processes.select", (action) => void actions.push(action)), true);
+  assertEquals(actions[1], {
+    type: "table.rowSelected",
+    payload: { id: "processes", inspection: controller.inspect(), row: 1 },
+  });
+
+  dispose();
+  assertEquals(registry.list("table"), []);
   controller.dispose();
 });
 

@@ -32,6 +32,7 @@ export * from "./slider_commands.ts";
 export * from "./split_pane_commands.ts";
 export * from "./stepper_commands.ts";
 export * from "./surface_bindings.ts";
+export * from "./table_commands.ts";
 export * from "./tabs_commands.ts";
 export * from "./theme_commands.ts";
 export * from "./theme_plugin.ts";

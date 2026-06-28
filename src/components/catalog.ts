@@ -110,6 +110,7 @@ export const componentCatalog = [
   ]),
   component("table", "Table", "data", "Scrollable table component with headers and selection.", [
     "component",
+    "controller",
     "selection",
     "themeable",
   ]),
