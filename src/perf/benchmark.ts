@@ -1,4 +1,5 @@
 // Copyright 2023 Im-Beast. MIT license.
+/** A named benchmark workload with optional warmup and pass/fail thresholds. */
 export interface BenchmarkCase {
   name: string;
   iterations?: number;
@@ -8,6 +9,7 @@ export interface BenchmarkCase {
   run: () => void | Promise<void>;
 }
 
+/** Timing result for one benchmark case after warmup and measured iterations. */
 export interface BenchmarkResult {
   name: string;
   iterations: number;
@@ -19,23 +21,27 @@ export interface BenchmarkResult {
   passed: boolean;
 }
 
+/** Shared runner options for deterministic tests and suite-level iteration defaults. */
 export interface BenchmarkRunnerOptions {
   now?: () => number;
   defaultIterations?: number;
   defaultWarmupIterations?: number;
 }
 
+/** Aggregate benchmark status with failed cases split out for CI gates. */
 export interface BenchmarkSummary {
   results: BenchmarkResult[];
   passed: boolean;
   failed: BenchmarkResult[];
 }
 
+/** Runs benchmark cases sequentially and reports threshold-aware timing results. */
 export class BenchmarkRunner {
   readonly #now: () => number;
   readonly #defaultIterations: number;
   readonly #defaultWarmupIterations: number;
 
+  /** Creates a benchmark runner for a fixed case list. */
   constructor(
     private readonly cases: readonly BenchmarkCase[],
     options: BenchmarkRunnerOptions = {},
@@ -45,6 +51,7 @@ export class BenchmarkRunner {
     this.#defaultWarmupIterations = Math.max(0, Math.floor(options.defaultWarmupIterations ?? 0));
   }
 
+  /** Runs all cases and returns raw timing results. */
   async run(): Promise<BenchmarkResult[]> {
     const results: BenchmarkResult[] = [];
     for (const benchmark of this.cases) {
@@ -79,11 +86,13 @@ export class BenchmarkRunner {
     return results;
   }
 
+  /** Runs all cases and returns a pass/fail summary. */
   async summarize(): Promise<BenchmarkSummary> {
     return summarizeBenchmarkResults(await this.run());
   }
 }
 
+/** Summarizes previously collected benchmark results. */
 export function summarizeBenchmarkResults(results: readonly BenchmarkResult[]): BenchmarkSummary {
   const failed = results.filter((result) => !result.passed);
   return {
@@ -93,6 +102,7 @@ export function summarizeBenchmarkResults(results: readonly BenchmarkResult[]): 
   };
 }
 
+/** Formats benchmark results as stable text for CLI output and smoke tests. */
 export function formatBenchmarkResults(results: readonly BenchmarkResult[]): string {
   return results
     .map((result) =>

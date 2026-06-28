@@ -1,4 +1,5 @@
 // Copyright 2023 Im-Beast. MIT license.
+/** Optional platform capabilities that can accelerate or persist TUI workloads. */
 export interface RuntimeCapabilities {
   workers: boolean;
   webgpu: boolean;
@@ -7,8 +8,10 @@ export interface RuntimeCapabilities {
   indexedDb: boolean;
 }
 
+/** Stable identifier for one runtime capability. */
 export type RuntimeCapabilityId = keyof RuntimeCapabilities;
 
+/** Display metadata for one runtime capability probe. */
 export interface RuntimeCapabilityEntry {
   id: RuntimeCapabilityId;
   label: string;
@@ -16,6 +19,7 @@ export interface RuntimeCapabilityEntry {
   description: string;
 }
 
+/** Aggregate capability probe result for status panels and diagnostics. */
 export interface RuntimeCapabilitySummary {
   total: number;
   available: number;
@@ -50,6 +54,7 @@ interface CanvasLike {
   getContext(type: string): unknown;
 }
 
+/** Detects optional standards APIs on the provided global scope. */
 export function detectRuntimeCapabilities(scope: typeof globalThis = globalThis): RuntimeCapabilities {
   const offscreenCanvas = "OffscreenCanvas" in scope;
   return {
@@ -61,6 +66,7 @@ export function detectRuntimeCapabilities(scope: typeof globalThis = globalThis)
   };
 }
 
+/** Converts raw capability booleans into labeled display entries. */
 export function runtimeCapabilityEntries(capabilities: RuntimeCapabilities): RuntimeCapabilityEntry[] {
   return (Object.keys(CAPABILITY_METADATA) as RuntimeCapabilityId[]).map((id) => ({
     id,
@@ -69,6 +75,7 @@ export function runtimeCapabilityEntries(capabilities: RuntimeCapabilities): Run
   }));
 }
 
+/** Summarizes capability availability counts and labeled entries. */
 export function summarizeRuntimeCapabilities(
   capabilities: RuntimeCapabilities = detectRuntimeCapabilities(),
 ): RuntimeCapabilitySummary {
@@ -82,6 +89,7 @@ export function summarizeRuntimeCapabilities(
   };
 }
 
+/** Formats runtime capabilities as concise CLI/status text. */
 export function formatRuntimeCapabilities(
   capabilities: RuntimeCapabilities = detectRuntimeCapabilities(),
 ): string {

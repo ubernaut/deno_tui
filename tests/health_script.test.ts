@@ -21,7 +21,7 @@ Deno.test("health script exposes the expected contributor gates", () => {
     "--check",
     "--quiet",
     "--fail-duplicates",
-    "--min-doc-coverage=0.09",
+    "--min-doc-coverage=0.12",
   ]);
 });
 
