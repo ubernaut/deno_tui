@@ -39,6 +39,31 @@ export interface TextBoxOptions extends ComponentOptions {
   keyboardHandler?: (keyPress: KeyPressEvent) => void;
 }
 
+export interface TextLineCacheInspection {
+  text: string;
+  lineCount: number;
+}
+
+export class TextLineCache {
+  #text = "";
+  #lines: readonly string[] = [""];
+
+  lines(text: string): readonly string[] {
+    if (text !== this.#text) {
+      this.#text = text;
+      this.#lines = text.split("\n");
+    }
+    return this.#lines;
+  }
+
+  inspect(): TextLineCacheInspection {
+    return {
+      text: this.#text,
+      lineCount: this.#lines.length,
+    };
+  }
+}
+
 /**
  * Component for creating interactive mutliline text input
  *
@@ -93,7 +118,8 @@ export class TextBox extends Box {
   };
   declare theme: TextBoxTheme;
 
-  #textLines: Computed<string[]>;
+  #textLineCache = new TextLineCache();
+  #textLines: Computed<readonly string[]>;
 
   text: Signal<string>;
   lineNumbering: Signal<boolean>;
@@ -115,8 +141,7 @@ export class TextBox extends Box {
     this.lineHighlighting = signalify(options.lineHighlighting ?? false);
     this.multiCodePointSupport = signalify(options.multiCodePointSupport ?? false);
 
-    // FIXME: This creates unnecessary arrays each time it runs
-    this.#textLines = new Computed(() => this.text.value.split("\n"));
+    this.#textLines = new Computed(() => this.#textLineCache.lines(this.text.value));
 
     new Effect(() => {
       this.#updateLineDrawObjects();
@@ -128,7 +153,7 @@ export class TextBox extends Box {
         if (ctrl || meta) return;
 
         const cursorPosition = this.cursorPosition.peek();
-        const textLines = this.#textLines.peek();
+        const textLines = [...this.#textLines.peek()];
         const textLine = textLines[cursorPosition.y] ??= "";
 
         let character: string;

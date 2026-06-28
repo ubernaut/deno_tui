@@ -23,6 +23,7 @@ import { renderStatusBar } from "../src/components/statusbar.ts";
 import { renderSpinner, spinnerGlyph } from "../src/components/spinner.ts";
 import { clampStepperIndex, renderStepper, shiftStepperIndex, stepForIndex } from "../src/components/stepper.ts";
 import { renderTabs } from "../src/components/tabs.ts";
+import { TextLineCache } from "../src/components/textbox.ts";
 import { renderVirtualListRows, VirtualListController, virtualListRows } from "../src/components/virtual_list.ts";
 import type { Key, KeyPressEvent } from "../src/input_reader/types.ts";
 import { Signal } from "../src/signals/mod.ts";
@@ -230,6 +231,19 @@ Deno.test("scroll helpers clamp offsets and expose scrollbar thumb state", () =>
 Deno.test("renderStatusBar keeps left and right content inside width", () => {
   assertEquals(renderStatusBar("READY", "12:00", 12), "READY  12:00");
   assertEquals(renderStatusBar("LONG LEFT", "RIGHT", 8), "LONG LEF");
+});
+
+Deno.test("TextLineCache reuses line snapshots until text changes", () => {
+  const cache = new TextLineCache();
+  const first = cache.lines("alpha\nbeta");
+  const second = cache.lines("alpha\nbeta");
+  const third = cache.lines("alpha\nbeta\ngamma");
+
+  assertEquals(first, ["alpha", "beta"]);
+  assertEquals(first === second, true);
+  assertEquals(first === third, false);
+  assertEquals(third, ["alpha", "beta", "gamma"]);
+  assertEquals(cache.inspect(), { text: "alpha\nbeta\ngamma", lineCount: 3 });
 });
 
 Deno.test("keymap registry formats sorted bindings", () => {
