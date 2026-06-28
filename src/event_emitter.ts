@@ -16,6 +16,12 @@ export type EmitterEvent<Args extends unknown[] = unknown[]> = {
 
 export type EventRecord = Record<string, EmitterEvent>;
 
+export interface EventEmitterInspection {
+  eventCount: number;
+  listenerCount: number;
+  events: Array<{ type: string; listenerCount: number }>;
+}
+
 /** Custom implementation of event emitter */
 export class EventEmitter<EventMap extends EventRecord> {
   listeners: {
@@ -46,6 +52,10 @@ export class EventEmitter<EventMap extends EventRecord> {
     return () => this.off(type, listener);
   }
 
+  once<Type extends keyof EventMap>(type: Type, listener: EventListener<EventMap, Type>): () => void {
+    return this.on(type, listener, true);
+  }
+
   /**
    * Remove event listeners
    *  - If no event type is passed, every single listener will be removed
@@ -68,7 +78,9 @@ export class EventEmitter<EventMap extends EventRecord> {
 
     const listeners = this.listeners[type];
     if (!listeners) return;
-    listeners.splice(listeners.indexOf(listener), 1);
+    const index = listeners.indexOf(listener);
+    if (index < 0) return;
+    listeners.splice(index, 1);
   }
 
   /** Emit specific type, after emitting all listeners associated with that event type will run with given arguments */
@@ -79,5 +91,28 @@ export class EventEmitter<EventMap extends EventRecord> {
     for (const listener of listeners!) {
       listener.apply(this, args);
     }
+  }
+
+  listenerCount<Type extends keyof EventMap>(type?: Type): number {
+    if (type !== undefined) return this.listeners[type]?.length ?? 0;
+    return Object.values(this.listeners).reduce((total, listeners) => total + (listeners?.length ?? 0), 0);
+  }
+
+  eventNames(): string[] {
+    return Object.entries(this.listeners)
+      .filter(([, listeners]) => listeners.length > 0)
+      .map(([type]) => type);
+  }
+
+  inspect(): EventEmitterInspection {
+    const events = Object.entries(this.listeners)
+      .map(([type, listeners]) => ({ type, listenerCount: listeners.length }))
+      .filter((entry) => entry.listenerCount > 0)
+      .sort((left, right) => left.type.localeCompare(right.type));
+    return {
+      eventCount: events.length,
+      listenerCount: events.reduce((total, event) => total + event.listenerCount, 0),
+      events,
+    };
   }
 }

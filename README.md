@@ -387,6 +387,9 @@ app.onActionType("route", (action) => app.routes.navigate(action.payload));
 app.onActionType("toast", (action) => pushToast(action.payload, "success"));
 ```
 
+`EventEmitter` powers `Tui`, components, and canvas objects. It now exposes disposer-returning `on()` / `once()`,
+`listenerCount()`, `eventNames()`, and `inspect()` for custom widgets, debug panels, and leak checks.
+
 `KeymapRegistry` supports disposer-friendly `register()` / `registerAll()`, `get()`, `has()`, group-aware `clear()`, and
 `inspect()` for key-help rows, settings screens, and conflict diagnostics:
 
