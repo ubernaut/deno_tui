@@ -1,6 +1,7 @@
 {
   "tasks": {
     "demo": "deno run --watch --allow-hrtime ./examples/demo.ts",
+    "app-shell": "deno run -A ./examples/app_shell.ts",
     "dashboard": "deno run -A ./examples/dashboard.ts",
     "capabilities": "deno run -A ./scripts/capabilities.ts",
     "benchmark": "deno run -A ./scripts/benchmark.ts",

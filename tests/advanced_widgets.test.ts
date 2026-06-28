@@ -13,6 +13,15 @@ Deno.test("command palette filters labels ids and keywords", () => {
   assertEquals(renderCommandPaletteRows(items, "pane", 0, 2), ["> Close Pane"]);
 });
 
+Deno.test("command palette rows clamp to the filtered list", () => {
+  const items = [
+    { id: "open-file", label: "Open File", keywords: ["find"] },
+    { id: "close-pane", label: "Close Pane" },
+  ];
+
+  assertEquals(renderCommandPaletteRows(items, "open", 99, 2), ["> Open File"]);
+});
+
 Deno.test("toast rendering includes severity", () => {
   assertEquals(renderToast({ id: "1", level: "warning", message: "Disk high" }), "[WARNING] Disk high");
 });

@@ -40,6 +40,28 @@ export class CommandPalette extends Component {
     this.items = signalify(options.items, { deepObserve: true });
     this.query = signalify(options.query ?? "");
     this.selectedIndex = signalify(options.selectedIndex ?? 0);
+
+    this.on("keyPress", ({ key, ctrl, meta, shift }) => {
+      if (ctrl || meta) return;
+
+      if (key === "backspace") {
+        this.query.value = this.query.peek().slice(0, -1);
+      } else if (key === "up") {
+        this.selectedIndex.value = Math.max(0, this.selectedIndex.peek() - 1);
+      } else if (key === "down") {
+        this.selectedIndex.value += 1;
+      } else if (key.length === 1) {
+        this.query.value += shift ? key.toUpperCase() : key;
+      }
+
+      this.selectedIndex.value = Math.max(
+        0,
+        Math.min(
+          this.selectedIndex.peek(),
+          Math.max(0, filterCommandPaletteItems(this.items.peek(), this.query.peek()).length - 1),
+        ),
+      );
+    });
   }
 
   override draw(): void {

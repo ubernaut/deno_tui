@@ -18,23 +18,27 @@ case "$target" in
   dashboard|dash)
     task="dashboard"
     ;;
+  app-shell|shell|app)
+    task="app-shell"
+    ;;
   monitor|system-monitor|system|viz)
     task="viz"
     ;;
   -h|--help|help)
     printf '%s\n' \
-      "usage: ./visualization [showcase|polygons|monitor] [args...]" \
+      "usage: ./visualization [showcase|polygons|dashboard|app-shell|monitor] [args...]" \
       "" \
       "  showcase  full widget showcase (default)" \
       "  polygons  standalone three.js ASCII geometry demo" \
       "            pass --no-controls to start with its control panel hidden" \
       "  dashboard dashboard widgets and theme engine demo" \
+      "  app-shell app primitives, command palette, routes, and toasts demo" \
       "  monitor   system monitor visualization dashboard"
     exit 0
     ;;
   *)
     echo "unknown visualization: $target" >&2
-    echo "usage: ./visualization [showcase|polygons|monitor] [args...]" >&2
+    echo "usage: ./visualization [showcase|polygons|dashboard|app-shell|monitor] [args...]" >&2
     exit 64
     ;;
 esac
