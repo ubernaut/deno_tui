@@ -21,6 +21,9 @@ Deno.test("visualization launcher resolves public aliases to deno tasks", () => 
   assertEquals(resolveVisualizationTask("actions"), "action-middleware");
   assertEquals(resolveVisualizationTask("resources"), "cached-resource");
   assertEquals(resolveVisualizationTask("pipeline"), "cached-pipeline");
+  assertEquals(resolveVisualizationTask("forms"), "form-workflow");
+  assertEquals(resolveVisualizationTask("selection"), "table-selection");
+  assertEquals(resolveVisualizationTask("session"), "terminal-command");
   assertEquals(resolveVisualizationTask("theme-pack"), "theme-manifest");
   assertEquals(resolveVisualizationTask("themes"), "theme-engines");
   assertEquals(resolveVisualizationTask("theme-command-surface"), "theme-engine-commands");
@@ -89,6 +92,7 @@ Deno.test("visualization launch catalog filters targets by category tag and sear
     "cached-pipeline",
     "cached-resource",
     "runtime-workloads",
+    "terminal-command",
     "worker-demo",
     "adopter-workbench",
     "capabilities",

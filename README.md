@@ -2139,36 +2139,39 @@ const preset = findAsciiDemoPreset("mixed-best");
 
 ## Examples
 
-| File                                | Description                                                  |
-| ----------------------------------- | ------------------------------------------------------------ |
-| `examples/demo.ts`                  | Kitchen-sink demo of all components                          |
-| `examples/calculator.ts`            | Functional calculator built with `GridLayout`                |
-| `examples/layout.ts`                | Grid layout with draggable, colored buttons                  |
-| `examples/layout_recipe_report.ts`  | Responsive layout recipe report example                      |
-| `examples/app_shell.ts`             | App primitives, settings-backed routes, commands, and toasts |
-| `examples/command_search_index.ts`  | Scheduler-backed indexed command search demo                 |
-| `examples/dashboard.ts`             | Dashboard widgets, semantic theme tokens, and key help       |
-| `examples/theme_manifest.ts`        | Serializable theme manifest compiler and diff demo           |
-| `examples/theme_engines.ts`         | Theme engine factory registry and prewarm demo               |
-| `examples/theme_engine_commands.ts` | Theme engine command surface and catalog demo                |
-| `examples/theme_pipeline.ts`        | Runtime theme transform pipeline and prewarm demo            |
-| `examples/theme_workspace.ts`       | Combined provider, factory, pipeline, and prewarm demo       |
-| `examples/theme_gallery.ts`         | Searchable theme gallery and preview report                  |
-| `examples/theme_resolver.ts`        | Cached theme resolver and renderer lookup demo               |
-| `examples/theme_bindings.ts`        | Grouped component theme binding lifecycle demo               |
-| `examples/worker_pool.ts`           | WorkerPool concurrency example                               |
-| `examples/runtime_workloads.ts`     | Scheduler and worker-pool pressure registry demo             |
-| `examples/action_middleware.ts`     | Action middleware and plugin pipeline example                |
-| `examples/cached_resource.ts`       | Cached async resource loader example                         |
-| `examples/cached_pipeline.ts`       | Cached scheduler-backed data pipeline example                |
-| `examples/data_query.ts`            | Cached async query controller example                        |
-| `examples/three_ascii.ts`           | Interactive 3D ASCII renderer powered by three.js            |
-| `examples/app_plugin_catalog.ts`    | App plugin catalog and Markdown report example               |
-| `examples/adopter_workbench.ts`     | Integrated adopter report across app/runtime/theme/data APIs |
-| `examples/demo_gallery.ts`          | Capability tour across launchers, widgets, renderers, themes |
-| `app/showcase.ts`                   | Full Neon Exodus-style widget and visualization showcase     |
-| `app/neon_exodus.ts`                | OpenTUI/web Neon Exodus demo suite rebuilt on this TUI stack |
-| `app/main.ts`                       | Live system monitor dashboard with selectable panels         |
+| File                                    | Description                                                  |
+| --------------------------------------- | ------------------------------------------------------------ |
+| `examples/demo.ts`                      | Kitchen-sink demo of all components                          |
+| `examples/calculator.ts`                | Functional calculator built with `GridLayout`                |
+| `examples/layout.ts`                    | Grid layout with draggable, colored buttons                  |
+| `examples/layout_recipe_report.ts`      | Responsive layout recipe report example                      |
+| `examples/app_shell.ts`                 | App primitives, settings-backed routes, commands, and toasts |
+| `examples/command_search_index.ts`      | Scheduler-backed indexed command search demo                 |
+| `examples/dashboard.ts`                 | Dashboard widgets, semantic theme tokens, and key help       |
+| `examples/theme_manifest.ts`            | Serializable theme manifest compiler and diff demo           |
+| `examples/theme_engines.ts`             | Theme engine factory registry and prewarm demo               |
+| `examples/theme_engine_commands.ts`     | Theme engine command surface and catalog demo                |
+| `examples/theme_pipeline.ts`            | Runtime theme transform pipeline and prewarm demo            |
+| `examples/theme_workspace.ts`           | Combined provider, factory, pipeline, and prewarm demo       |
+| `examples/theme_gallery.ts`             | Searchable theme gallery and preview report                  |
+| `examples/theme_resolver.ts`            | Cached theme resolver and renderer lookup demo               |
+| `examples/theme_bindings.ts`            | Grouped component theme binding lifecycle demo               |
+| `examples/worker_pool.ts`               | WorkerPool concurrency example                               |
+| `examples/runtime_workloads.ts`         | Scheduler and worker-pool pressure registry demo             |
+| `examples/action_middleware.ts`         | Action middleware and plugin pipeline example                |
+| `examples/cached_resource.ts`           | Cached async resource loader example                         |
+| `examples/cached_pipeline.ts`           | Cached scheduler-backed data pipeline example                |
+| `examples/data_query.ts`                | Cached async query controller example                        |
+| `examples/form_workflow.ts`             | Form controller, signal binding, validation, and commands    |
+| `examples/table_selection_workflow.ts`  | Data table paging/sorting plus multi-selection commands      |
+| `examples/terminal_command_workflow.ts` | Terminal session planning plus command-surface dispatch      |
+| `examples/three_ascii.ts`               | Interactive 3D ASCII renderer powered by three.js            |
+| `examples/app_plugin_catalog.ts`        | App plugin catalog and Markdown report example               |
+| `examples/adopter_workbench.ts`         | Integrated adopter report across app/runtime/theme/data APIs |
+| `examples/demo_gallery.ts`              | Capability tour across launchers, widgets, renderers, themes |
+| `app/showcase.ts`                       | Full Neon Exodus-style widget and visualization showcase     |
+| `app/neon_exodus.ts`                    | OpenTUI/web Neon Exodus demo suite rebuilt on this TUI stack |
+| `app/main.ts`                           | Live system monitor dashboard with selectable panels         |
 
 Run the theme manifest and engine demos with:
 
@@ -2220,6 +2223,9 @@ tuning.
 ./visualization actions
 ./visualization resource
 ./visualization pipeline
+./visualization form
+./visualization table-selection
+./visualization terminal-session
 ./visualization theme-manifest
 ./visualization theme-engines
 ./visualization theme-engine-commands
@@ -2278,6 +2284,9 @@ deno task three-ascii
 deno task dashboard
 deno task viz
 deno task cached-resource
+deno task form-workflow
+deno task table-selection
+deno task terminal-command
 deno task theme-manifest
 deno task theme-engines
 deno task theme-engine-commands

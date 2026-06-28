@@ -87,7 +87,7 @@ const screenshots: TerminalScreenshot[] = [
     lines: [
       "# Demo Gallery",
       "",
-      "Launch targets: 31 across app, check, demo, report, tool",
+      "Launch targets: 34 across app, check, demo, report, tool",
       "Components: 36 across data, feedback, input, layout, navigation, overlay, primitive, visualization",
       "Renderer backends: 2/3 available       Runtime capabilities: 2/5",
       "Theme packs: 3, layers: 0              Plugin packs: shell, visualization, data",
@@ -101,8 +101,8 @@ const screenshots: TerminalScreenshot[] = [
       "Recommended tour:",
       "1. ./visualization showcase      full widget wall",
       "2. ./visualization neon         OpenTUI/web Neon Exodus suite",
-      "3. ./visualization polygons      glyph/block/mixed three.js ASCII",
-      "4. ./visualization monitor       live panels and selectable 3D views",
+      "3. ./visualization form         forms, commands, and signal bindings",
+      "4. ./visualization table        data table and selection commands",
     ],
   },
   {

@@ -52,10 +52,13 @@ console.log("");
 console.log("## Recommended Tour");
 console.log("1. `./visualization showcase` for the full widget wall and Neon Exodus panels.");
 console.log("2. `./visualization neon` for the OpenTUI/web Neon Exodus suite.");
-console.log("3. `./visualization polygons` for glyph/block/mixed three.js ASCII rendering.");
-console.log("4. `./visualization monitor` for live system panels and selectable 3D views.");
-console.log("5. `./visualization adopter` for the integrated app/runtime/theme/plugin/data report.");
-console.log("6. `deno task health` for the complete contributor verification path.");
+console.log("3. `./visualization form` for form controllers, validation, binding, and commands.");
+console.log("4. `./visualization table` for data table state, keyed rows, and multi-selection.");
+console.log("5. `./visualization terminal-session` for terminal plans and command-surface dispatch.");
+console.log("6. `./visualization polygons` for glyph/block/mixed three.js ASCII rendering.");
+console.log("7. `./visualization monitor` for live system panels and selectable 3D views.");
+console.log("8. `./visualization adopter` for the integrated app/runtime/theme/plugin/data report.");
+console.log("9. `deno task health` for the complete contributor verification path.");
 
 function groupBy<T>(
   values: readonly T[],

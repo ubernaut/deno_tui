@@ -70,6 +70,9 @@ deno task neon-exodus
 deno task viz
 deno task three-ascii
 deno task dashboard
+deno task form-workflow
+deno task table-selection
+deno task terminal-command
 deno task capabilities
 deno task component-catalog
 deno task app-plugin-catalog
@@ -90,8 +93,10 @@ Markdown/text output. `examples/adopter_workbench.ts` is the broadest example: i
 session sequences, component catalog queries, plugin registry reports, theme gallery matching, and local data query
 pagination in one short integration path. `examples/demo_gallery.ts` is the quick tour report: it summarizes the
 launcher catalog, widget catalog, renderer backends, theme provider, plugin packs, runtime capabilities, terminal
-capabilities, and recommended demo path. `deno task screenshots` regenerates the SVG terminal snapshots used by the
-README under `docs/screenshots/`.
+capabilities, and recommended demo path. `examples/form_workflow.ts`, `examples/table_selection_workflow.ts`, and
+`examples/terminal_command_workflow.ts` are API capability demos for form bindings, command adapters, data table state,
+selection state, command search/dispatch, and terminal session setup. `deno task screenshots` regenerates the SVG
+terminal snapshots used by the README under `docs/screenshots/`.
 
 ## Quality Gates
 

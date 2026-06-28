@@ -130,6 +130,27 @@ export const visualizationLaunchTargets: readonly VisualizationLaunchTarget[] = 
     tags: ["runtime", "query", "cache"],
   },
   {
+    task: "form-workflow",
+    aliases: ["form", "forms", "form-workflow"],
+    description: "form controller binding and command workflow demo",
+    category: "demo",
+    tags: ["app", "forms", "commands"],
+  },
+  {
+    task: "table-selection",
+    aliases: ["table-selection", "table", "selection"],
+    description: "data table, keyed rows, and multi-selection workflow demo",
+    category: "demo",
+    tags: ["data", "table", "selection", "commands"],
+  },
+  {
+    task: "terminal-command",
+    aliases: ["terminal-command", "terminal-session", "session"],
+    description: "terminal session planning and command surface demo",
+    category: "demo",
+    tags: ["terminal", "commands", "runtime"],
+  },
+  {
     task: "theme-manifest",
     aliases: ["theme-manifest", "theme-pack", "manifest"],
     description: "serializable theme manifest report",
