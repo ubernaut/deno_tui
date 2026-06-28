@@ -214,6 +214,13 @@ export const visualizationLaunchTargets: readonly VisualizationLaunchTarget[] = 
     tags: ["components", "catalog"],
   },
   {
+    task: "app-plugin-catalog",
+    aliases: ["plugins", "plugin-catalog", "app-plugin-catalog"],
+    description: "app plugin definition catalog report",
+    category: "report",
+    tags: ["app", "plugins", "catalog"],
+  },
+  {
     task: "grwizard",
     aliases: ["grwizard", "wizard"],
     description: "responsive GPU/model wizard demo",

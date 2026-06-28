@@ -30,6 +30,7 @@ import { bindMouseInteractions, createMouseInteractionRouter } from "../src/app/
 import {
   createAppPlugin,
   createAppPluginCatalogReport,
+  createAppPluginDefinitionRegistry,
   formatAppPluginCatalogMarkdown,
   inspectAppPluginDefinition,
   queryAppPluginDefinitions,
@@ -1825,6 +1826,57 @@ Deno.test("app plugin catalog reports filter plugin definitions for docs and mar
       "| Settings Pack | routes, settings | 1 | 1 | 1 | 1 | 1 | no |",
     ].join("\n"),
   );
+});
+
+Deno.test("app plugin definition registries manage query and markdown catalogs", () => {
+  const settings = {
+    id: "settings",
+    label: "Settings Pack",
+    description: "Settings routes and commands.",
+    tags: ["settings", "routes"],
+    routes: [{ id: "settings", title: "Settings" }],
+    commands: [{ id: "settings.open", label: "Settings" }],
+  };
+  const runtime = {
+    id: "runtime",
+    label: "Runtime Pack",
+    tags: ["runtime"],
+    workloadSources: [{
+      id: "runtime-work",
+      inspect: () => ({ concurrency: 1, running: 0, pending: 0, idle: true }),
+    }],
+  };
+  const registry = createAppPluginDefinitionRegistry([settings]);
+  const disposeRuntime = registry.register(runtime);
+
+  assertEquals(registry.inspect(), {
+    count: 2,
+    routeCount: 1,
+    commandCount: 1,
+    keyBindingCount: 0,
+    focusItemCount: 0,
+    mouseTargetCount: 0,
+    workloadSourceCount: 1,
+    actionMiddlewareCount: 0,
+    installerCount: 0,
+    tags: ["routes", "runtime", "settings"],
+    ids: ["runtime", "settings"],
+    anonymous: 0,
+  });
+  assertEquals(registry.query({ hasWorkloadSources: true }).map((plugin) => plugin.id), ["runtime"]);
+  assertEquals(registry.report({ tag: "settings" }).inspection.count, 1);
+  assertEquals(registry.markdown({ title: "Plugin Registry" }).includes("| Runtime Pack | runtime |"), true);
+
+  registry.register({ ...runtime, label: "Runtime Pack 2", commands: [{ id: "runtime.open", label: "Runtime" }] });
+  assertEquals(registry.get("runtime")?.label, "Runtime Pack 2");
+  assertEquals(registry.inspect().commandCount, 2);
+  disposeRuntime();
+  assertEquals(registry.has("runtime"), true);
+
+  assertEquals(registry.unregister("runtime"), true);
+  assertEquals(registry.has("runtime"), false);
+  registry.clear();
+  assertEquals(registry.inspect().count, 0);
 });
 
 Deno.test("createAppPlugin rolls back declarative registrations when install fails", () => {

@@ -21,6 +21,7 @@ Deno.test("health script exposes the expected contributor gates", () => {
     "theme-resolver",
     "theme-bindings",
     "component-catalog",
+    "app-plugin-catalog",
     "visualization-app",
     "showcase",
     "grwizard",

@@ -834,6 +834,7 @@ const settingsPluginDefinition = {
 const pluginShape = inspectAppPluginDefinition(settingsPluginDefinition);
 const pluginReport = createAppPluginCatalogReport({ plugins: [settingsPluginDefinition] });
 const pluginMarkdown = formatAppPluginCatalogMarkdown({ plugins: [settingsPluginDefinition] });
+const pluginRegistry = createAppPluginDefinitionRegistry([settingsPluginDefinition]);
 const settingsPlugin = createAppPlugin(settingsPluginDefinition);
 const stopSettings = app.use(settingsPlugin);
 
@@ -853,10 +854,12 @@ return lifecycle.dispose;
 
 `createAppPluginCatalogReport()`, `queryAppPluginDefinitions()`, and `formatAppPluginCatalogMarkdown()` turn plugin
 definitions into docs, marketplace, and diagnostics data with tag, route, command, key binding, focus, mouse target,
-runtime workload, middleware, and installer counts. Theme engines remain a first-class plugin surface through
-`createThemePlugin()` and `createThemeWorkspacePlugin()`, so reusable theme packs, runtime layers, persisted theme
-settings, and theme commands can ship beside normal app surfaces without coupling components to one global theme
-singleton.
+runtime workload, middleware, and installer counts. `createAppPluginDefinitionRegistry()` adds dynamic registration,
+replacement-safe unregistration, lookup, query, inspection, and Markdown report helpers for apps that discover plugin
+packs at runtime. Run `deno task app-plugin-catalog` or `./visualization plugins` to print the same report used by
+launcher/docs tooling. Theme engines remain a first-class plugin surface through `createThemePlugin()` and
+`createThemeWorkspacePlugin()`, so reusable theme packs, runtime layers, persisted theme settings, and theme commands
+can ship beside normal app surfaces without coupling components to one global theme singleton.
 
 `app.workloads` is a `RuntimeWorkloadRegistry` shared by plugins and app code for scheduler and worker-pool pressure
 telemetry. `app.inspect()` returns one diagnostic snapshot for route state, command counts, key bindings, focus state,
@@ -2168,6 +2171,7 @@ tuning.
 ./visualization benchmark
 ./visualization api-inventory
 ./visualization components
+./visualization plugins
 ./visualization grwizard
 ./visualization health
 deno task viz
@@ -2184,17 +2188,17 @@ scheduler-backed transforms, `theme-manifest` for serializable theme packs, `the
 `theme-resolver` for cached renderer-friendly theme lookups, `theme-bindings` for grouped component theme wiring and
 lifecycle inspection, `capabilities` for platform feature detection, `runtime-workloads` for scheduler and worker-pool
 pressure inspection, `benchmark` for performance smoke checks, `api-inventory` for public export graph inspection,
-`components` for widget catalog reports, `layout-recipe` for responsive recipe inspection, `grwizard` for the responsive
-GPU/model wizard, and `health` for the contributor gate. The launcher metadata is also exported from
-`scripts/visualization_launcher.ts` as a queryable catalog: `queryVisualizationLaunchTargets()`,
-`createVisualizationLaunchReport()`, `inspectVisualizationLaunchTargets()`, and `formatVisualizationLaunchMarkdown()`
-provide the same structured target list for custom launchers, docs pages, and CI reports without duplicating aliases or
-descriptions. Benchmark runs print per-case timings plus an aggregate summary; `deno task benchmark -- --list` prints
-the benchmark catalog without running workloads, `deno task benchmark -- --list --json` emits that catalog as structured
-data, and `deno task benchmark -- --json` emits the same threshold-aware timing summary as structured data and exits
-nonzero when a case fails its limits. The catalog path is backed by `BenchmarkRunner.inspect()`,
-`createBenchmarkCatalogReport()`, and `formatBenchmarkCatalogMarkdown()` so launchers and docs can reuse the same case
-metadata.
+`components` for widget catalog reports, `plugins` for app plugin definition reports, `layout-recipe` for responsive
+recipe inspection, `grwizard` for the responsive GPU/model wizard, and `health` for the contributor gate. The launcher
+metadata is also exported from `scripts/visualization_launcher.ts` as a queryable catalog:
+`queryVisualizationLaunchTargets()`, `createVisualizationLaunchReport()`, `inspectVisualizationLaunchTargets()`, and
+`formatVisualizationLaunchMarkdown()` provide the same structured target list for custom launchers, docs pages, and CI
+reports without duplicating aliases or descriptions. Benchmark runs print per-case timings plus an aggregate summary;
+`deno task benchmark -- --list` prints the benchmark catalog without running workloads,
+`deno task benchmark -- --list --json` emits that catalog as structured data, and `deno task benchmark -- --json` emits
+the same threshold-aware timing summary as structured data and exits nonzero when a case fails its limits. The catalog
+path is backed by `BenchmarkRunner.inspect()`, `createBenchmarkCatalogReport()`, and `formatBenchmarkCatalogMarkdown()`
+so launchers and docs can reuse the same case metadata.
 
 Direct Deno tasks are also available:
 
@@ -2220,6 +2224,7 @@ deno task runtime-workloads
 deno task benchmark
 deno task api-inventory
 deno task component-catalog
+deno task app-plugin-catalog
 deno task health
 deno task worker-demo
 deno task runtime-workloads
