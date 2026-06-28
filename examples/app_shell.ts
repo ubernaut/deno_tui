@@ -1,6 +1,7 @@
 import { crayon } from "https://deno.land/x/crayon@3.3.3/mod.ts";
 
 import {
+  bindModalFocus,
   Breadcrumbs,
   CommandPalette,
   commandSurfaceItems,
@@ -429,6 +430,7 @@ const scrollArea = new ScrollArea({
   })),
 });
 app.enableFocusNavigation({ items: [menuBar, routeRadio, scrollArea] });
+app.enableCommandKeys();
 app.focus.focus(scrollArea);
 
 for (const [index, line] of scrollLines.entries()) {
@@ -487,7 +489,7 @@ new Modal({
   visible: paletteVisible,
 });
 
-new CommandPalette({
+const commandPalette = new CommandPalette({
   parent: app.tui,
   theme: themeEngine.component("CommandPalette"),
   zIndex: 11,
@@ -507,7 +509,7 @@ new CommandPalette({
   visible: paletteVisible,
 });
 
-new ContextMenu({
+const contextMenu = new ContextMenu({
   parent: app.tui,
   theme: themeEngine.component("ContextMenu"),
   zIndex: 9,
@@ -533,29 +535,8 @@ new ContextMenu({
   visible: contextVisible,
 });
 
-app.tui.on("keyPress", ({ key, ctrl, meta }) => {
-  if (ctrl || meta) return;
-  if (key === "q") {
-    void app.executeCommand("app.quit");
-  } else if (key === "u") {
-    void app.executeCommand("history.undo");
-  } else if (key === "r") {
-    void app.executeCommand("history.redo");
-  } else if (key === "p") {
-    void app.executeCommand("palette.toggle");
-  } else if (key === "c") {
-    void app.executeCommand("context.toggle");
-  } else if (key === "1") {
-    void app.executeCommand("route.overview");
-  } else if (key === "2") {
-    void app.executeCommand("route.widgets");
-  } else if (key === "3") {
-    void app.executeCommand("route.runtime");
-  } else if (key === "escape") {
-    void app.actions.dispatch({ type: "palette", payload: false });
-    void app.actions.dispatch({ type: "context", payload: false });
-  }
-});
+bindModalFocus(app.tui, paletteVisible, app.focus, [commandPalette]);
+bindModalFocus(app.tui, contextVisible, app.focus, [contextMenu]);
 
 app.start();
 

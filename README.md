@@ -243,6 +243,13 @@ This fork exports lightweight app primitives for larger TUIs:
 They are optional and composable. Existing component-first apps continue to work. Use `app.enableFocusNavigation()` or
 `bindFocusNavigation()` to opt into Tab/Shift+Tab traversal for registered focusable components.
 
+`bindModalFocus()` ties a visibility signal to a `FocusScope`, traps focus while modal-like surfaces are open, restores
+the previous focused item when they close, and can close on `Escape`:
+
+```ts
+const stopModalFocus = bindModalFocus(app.tui, paletteVisible, app.focus, [commandPalette]);
+```
+
 Commands can also bind directly to key events:
 
 ```ts
