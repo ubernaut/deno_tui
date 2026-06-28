@@ -1,6 +1,7 @@
 import { crayon } from "https://deno.land/x/crayon@3.3.3/mod.ts";
 
 import {
+  Breadcrumbs,
   CommandPalette,
   Computed,
   ContextMenu,
@@ -66,6 +67,10 @@ const toasts = new Signal<ToastMessage[]>([
   { id: "boot", level: "success", message: "App shell ready" },
 ], { deepObserve: true });
 const routeList = new Signal(app.routes.routes.peek().map((route) => route.title ?? route.id), { deepObserve: true });
+const breadcrumbs = new Computed(() => [
+  { id: "app", label: "App" },
+  { id: app.routes.active()?.id ?? "none", label: app.routes.active()?.title ?? "No route" },
+]);
 const scrollLines = [
   "Composable primitives",
   "  ActionBus dispatches app events without coupling widgets to routes.",
@@ -229,6 +234,20 @@ new Text({
   })),
 });
 
+new Breadcrumbs({
+  parent: app.tui,
+  theme: themeEngine.component("Breadcrumbs"),
+  zIndex: 2,
+  items: breadcrumbs,
+  separator: "›",
+  rectangle: new Computed(() => ({
+    column: 4,
+    row: 5,
+    width: Math.max(20, app.tui.rectangle.value.width - 42),
+    height: 1,
+  })),
+});
+
 new Tree({
   parent: app.tui,
   theme: themeEngine.component("Tree"),
@@ -256,9 +275,9 @@ new Tree({
   ],
   rectangle: new Computed(() => ({
     column: 4,
-    row: 7,
+    row: 8,
     width: 36,
-    height: Math.max(5, app.tui.rectangle.value.height - 12),
+    height: Math.max(5, app.tui.rectangle.value.height - 13),
   })),
 });
 

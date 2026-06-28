@@ -1,5 +1,6 @@
 // Copyright 2023 Im-Beast. MIT license.
 export * from "./box.ts";
+export * from "./breadcrumbs.ts";
 export * from "./button.ts";
 export * from "./chart.ts";
 export * from "./checkbox.ts";

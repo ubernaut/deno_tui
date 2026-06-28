@@ -1,5 +1,6 @@
 import { assertEquals } from "./deps.ts";
 import { formatKeyBinding, KeymapRegistry } from "../src/keymap.ts";
+import { renderBreadcrumbs } from "../src/components/breadcrumbs.ts";
 import { renderKeyHelp } from "../src/components/key_help.ts";
 import { virtualRows, visibleListRows } from "../src/components/list.ts";
 import { renderMenuBar, shiftMenuIndex } from "../src/components/menu_bar.ts";
@@ -44,6 +45,18 @@ Deno.test("renderTabs marks the active tab", () => {
     ], 1),
     " One  [Two]",
   );
+});
+
+Deno.test("renderBreadcrumbs truncates from the left", () => {
+  const items = [
+    { id: "app", label: "App" },
+    { id: "settings", label: "Settings" },
+    { id: "runtime", label: "Runtime" },
+  ];
+
+  assertEquals(renderBreadcrumbs(items, "/"), "App / Settings / Runtime");
+  assertEquals(renderBreadcrumbs(items, "/", 12), "… / Runtime");
+  assertEquals(renderBreadcrumbs(items, "/", 6), "… / R…");
 });
 
 Deno.test("menu bar renders active item and skips disabled entries", () => {

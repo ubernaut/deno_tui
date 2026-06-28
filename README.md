@@ -23,7 +23,7 @@ a system monitor shell that can render live data through those scenes.
 - **Neon Exodus showcase** — recreates the Neon Exodus widget wall and 3D scene set inside this TUI framework.
 - **System monitor dashboard** — `deno task viz` renders CPU, memory, disk, network, process, and 3D panels with
   selectable inputs and visualizations.
-- **Expanded widget surface** — List, Tabs, MenuBar, ContextMenu, RadioGroup, ScrollArea, Modal, KeyHelp,
+- **Expanded widget surface** — List, Tabs, Breadcrumbs, MenuBar, ContextMenu, RadioGroup, ScrollArea, Modal, KeyHelp,
   CommandPalette, Tree, ToastStack, Sparkline, Gauge, Chart, LogViewer, and StatusBar build on the original component
   set.
 - **Runtime capability layer** — Workers, WebGPU, WebGL, OffscreenCanvas, and IndexedDB are detected through a
@@ -133,9 +133,9 @@ deno task demo
 | `Table`       | Scrollable data table with headers and row selection       |
 | `ThreeAscii`  | Renders a three.js scene as ASCII art in the terminal      |
 
-Additional fork components include `List`, `Tabs`, `MenuBar`, `ContextMenu`, `RadioGroup`, `ScrollArea`, `Modal`,
-`KeyHelp`, `CommandPalette`, `Tree`, `ToastStack`, `Sparkline`, `Gauge`, `Chart`, `LogViewer`, and `StatusBar`. For
-table-heavy apps, `createDataTableView()`, `sortDataRows()`, and the data-table render helpers provide reusable
+Additional fork components include `List`, `Tabs`, `Breadcrumbs`, `MenuBar`, `ContextMenu`, `RadioGroup`, `ScrollArea`,
+`Modal`, `KeyHelp`, `CommandPalette`, `Tree`, `ToastStack`, `Sparkline`, `Gauge`, `Chart`, `LogViewer`, and `StatusBar`.
+For table-heavy apps, `createDataTableView()`, `sortDataRows()`, and the data-table render helpers provide reusable
 filtering, sorting, pagination, and row formatting without coupling data logic to the `Table` renderer.
 
 ## Layouts
