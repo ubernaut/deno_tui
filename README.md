@@ -205,6 +205,7 @@ This fork exports lightweight app primitives for larger TUIs:
 - `createApp()` / `TuiApp`
 - `ActionBus`
 - `CommandRegistry`
+- `FormController`
 - `RouteManager`
 - `FocusManager`
 - `FocusScope`
@@ -212,6 +213,17 @@ This fork exports lightweight app primitives for larger TUIs:
 
 They are optional and composable. Existing component-first apps continue to work. Use `app.enableFocusNavigation()` or
 `bindFocusNavigation()` to opt into Tab/Shift+Tab traversal for registered focusable components.
+
+`FormController` keeps form state separate from rendering:
+
+```ts
+const form = new FormController([
+  { name: "route", initialValue: "overview", validators: [required()] },
+]);
+
+form.setValue("route", "runtime");
+const ok = form.validate();
+```
 
 ## Theming
 
