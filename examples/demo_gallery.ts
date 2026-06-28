@@ -51,10 +51,11 @@ for (const [category, targets] of categories) {
 console.log("");
 console.log("## Recommended Tour");
 console.log("1. `./visualization showcase` for the full widget wall and Neon Exodus panels.");
-console.log("2. `./visualization polygons` for glyph/block/mixed three.js ASCII rendering.");
-console.log("3. `./visualization monitor` for live system panels and selectable 3D views.");
-console.log("4. `./visualization adopter` for the integrated app/runtime/theme/plugin/data report.");
-console.log("5. `deno task health` for the complete contributor verification path.");
+console.log("2. `./visualization neon` for the OpenTUI/web Neon Exodus suite.");
+console.log("3. `./visualization polygons` for glyph/block/mixed three.js ASCII rendering.");
+console.log("4. `./visualization monitor` for live system panels and selectable 3D views.");
+console.log("5. `./visualization adopter` for the integrated app/runtime/theme/plugin/data report.");
+console.log("6. `deno task health` for the complete contributor verification path.");
 
 function groupBy<T>(
   values: readonly T[],

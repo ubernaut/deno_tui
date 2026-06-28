@@ -1,0 +1,55 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="980"
+  height="620"
+  viewBox="0 0 980 620"
+  role="img"
+  aria-label="Neon Exodus Suite terminal screenshot"
+>
+  <style>svg{background:#06080d}.frame{fill:#0d1117;stroke:#2dd4bf;stroke-width:2}.title{fill:#e6edf3;font:700 18px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.term{fill:#c9d1d9;font:16px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.accent{fill:#67e8f9}.bar{fill:#111827;stroke:#374151}</style>
+  <rect x="28" y="28" width="924" height="564" rx="12" class="frame" />
+  <rect x="28" y="28" width="924" height="44" rx="12" class="bar" />
+  <text x="50" y="57" class="title">Neon Exodus Suite</text>
+  <circle cx="880" cy="50" r="6" class="accent" />
+  <circle cx="904" cy="50" r="6" fill="#facc15" />
+  <circle cx="928" cy="50" r="6" fill="#fb7185" />
+  <rect x="40" y="72" width="900" height="508" rx="8" fill="#090d14" opacity="0.86" />
+  <text x="50" y="106" class="term">NEON EXODUS OPENTUI SUITE / ALL / 07:08:12</text>
+  <text x="50" y="132" class="term">[1 ALL]   2 OVERVIEW   3 SIGNALS   4 CONTROL   5 THREE</text>
+  <text x="50" y="158" class="term">ARROWS MOVE  ENTER,F MAX  B/G/M ASCII  O/W/E SUITE  Q EXIT</text>
+  <text x="50" y="184" class="term"></text>
+  <text x="50" y="210" class="term">┌─ OPENTUI DEMO DECK ───────────────────────── 24 DEMOS / 6 THREE.JS SCENES ┐</text>
+  <text
+    x="50"
+    y="236"
+    class="term"
+  >│ SELECTED WARNING STACK / VIEW ALL / SOURCE OPENTUI                         │</text>
+  <text
+    x="50"
+    y="262"
+    class="term"
+  >│ OVERVIEW 6  SIGNALS 6  CONTROL 6  THREE 6                                  │</text>
+  <text
+    x="50"
+    y="288"
+    class="term"
+  >│ OPEN TUI PARITY: 24 DEMOS / WEB ORDERING: 24 DEMOS / EXTENDED: 25 DEMOS    │</text>
+  <text
+    x="50"
+    y="314"
+    class="term"
+  >└─────────────────────────────────────────────────────────────────────────────┘</text>
+  <text x="50" y="340" class="term">┌─ SELECTED / ALERT-000 / WARNING STACK ─┐ ┌─ OVERVIEW / TIME-SEG / COUNTER ┐</text>
+  <text x="50" y="366" class="term">│ WARN  59% ALERT-000                    │ │ CLOCK 14:08:36                 │</text>
+  <text x="50" y="392" class="term">│ HARMONIC  37% ALERT-000                │ │ COUNTDOWN 07:08:12             │</text>
+  <text x="50" y="418" class="term">│ NOISE  88% ALERT-000                   │ │ SYNC 91.4%                     │</text>
+  <text x="50" y="444" class="term">└────────────────────────────────────────┘ └────────────────────────────────┘</text>
+  <text x="50" y="470" class="term">┌─ THREE-5 / WIREFRAME LATTICE ──────────┐ ┌─ THREE-6 / A.T.FIELD RING ─────┐</text>
+  <text
+    x="50"
+    y="496"
+    class="term"
+  >│ Acerola ASCII: mixed glyph/block mode  │ │ WebGPU three.js backend ready   │</text>
+  <text x="50" y="522" class="term">│        ░▒▓██╲╱╲╱██▓▒░                 │ │     ◎──◎──◎   violet spine     │</text>
+  <text x="50" y="548" class="term">└────────────────────────────────────────┘ └────────────────────────────────┘</text>
+</svg>

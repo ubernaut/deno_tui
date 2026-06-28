@@ -50,7 +50,8 @@ renderer lab, and demo suite:
   best block/glyph match for the scene.
 - **Visualization launcher** — run the added demos from the project root with `./visualization`.
 - **Standalone geometry demo** — renders a torus knot, sphere, cube, and floor through the terminal ASCII renderer.
-- **Neon Exodus showcase** — recreates the Neon Exodus widget wall and 3D scene set inside this TUI framework.
+- **Neon Exodus suite** — recreates the OpenTUI Neon Exodus deck, includes the web demo ordering, and extends the set
+  with the Acerola ASCII studio scene.
 - **System monitor dashboard** — `deno task viz` renders CPU, memory, disk, network, process, and 3D panels with
   selectable inputs and visualizations.
 - **Expanded widget surface** — List, Tabs, Breadcrumbs, MenuBar, ContextMenu, RadioGroup, ScrollArea, Modal, KeyHelp,
@@ -67,11 +68,13 @@ renderer lab, and demo suite:
 
 Regenerate these terminal snapshots with `deno task screenshots`.
 
-| Showcase                                                                 | System Monitor                                                               |
-| ------------------------------------------------------------------------ | ---------------------------------------------------------------------------- |
-| ![Showcase terminal screenshot](./docs/screenshots/showcase.svg)         | ![System monitor terminal screenshot](./docs/screenshots/system-monitor.svg) |
-| Demo Gallery                                                             | API Reference                                                                |
-| ![Demo gallery terminal screenshot](./docs/screenshots/demo-gallery.svg) | ![API reference terminal screenshot](./docs/screenshots/api-reference.svg)   |
+| Showcase                                                                     | System Monitor                                                               |
+| ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| ![Showcase terminal screenshot](./docs/screenshots/showcase.svg)             | ![System monitor terminal screenshot](./docs/screenshots/system-monitor.svg) |
+| Demo Gallery                                                                 | API Reference                                                                |
+| ![Demo gallery terminal screenshot](./docs/screenshots/demo-gallery.svg)     | ![API reference terminal screenshot](./docs/screenshots/api-reference.svg)   |
+| Neon Exodus Suite                                                            |                                                                              |
+| ![Neon Exodus suite terminal screenshot](./docs/screenshots/neon-exodus.svg) |                                                                              |
 
 ## Features
 
@@ -2164,6 +2167,7 @@ const preset = findAsciiDemoPreset("mixed-best");
 | `examples/adopter_workbench.ts`     | Integrated adopter report across app/runtime/theme/data APIs |
 | `examples/demo_gallery.ts`          | Capability tour across launchers, widgets, renderers, themes |
 | `app/showcase.ts`                   | Full Neon Exodus-style widget and visualization showcase     |
+| `app/neon_exodus.ts`                | OpenTUI/web Neon Exodus demo suite rebuilt on this TUI stack |
 | `app/main.ts`                       | Live system monitor dashboard with selectable panels         |
 
 Run the theme manifest and engine demos with:
@@ -2185,10 +2189,16 @@ From the project root:
 ```sh
 ./visualization
 ./visualization showcase
+./visualization neon
 ```
 
 Launches the full showcase app. This is the quickest way to see the expanded widget set, Neon Exodus-inspired panels,
 and the three.js ASCII renderer together.
+
+`./visualization neon` launches the dedicated Neon Exodus suite. It starts in OpenTUI parity mode with the 24-panel
+deck, supports `O` for OpenTUI mode, `W` for the web demo ordering, and `E` for the extended fork mode that adds the
+Acerola ASCII studio scene. Use `1`-`5` to switch sections, arrows to move, `Enter`/`F` to maximize, `Esc`/`T` to
+return, `B`/`G`/`M` to switch block/glyph/mixed ASCII styles, and `+`/`-` to adjust the feedback cue volume.
 
 ```sh
 ./visualization polygons
@@ -2201,6 +2211,7 @@ tuning.
 
 ```sh
 ./visualization monitor
+./visualization neon-exodus
 ./visualization dashboard
 ./visualization app-shell
 ./visualization command-search
@@ -2259,6 +2270,7 @@ Direct Deno tasks are also available:
 
 ```sh
 deno task showcase
+deno task neon-exodus
 deno task app-shell
 deno task command-search
 deno task layout-recipe

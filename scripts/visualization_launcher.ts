@@ -46,6 +46,13 @@ export const visualizationLaunchTargets: readonly VisualizationLaunchTarget[] = 
     tags: ["widgets", "visualization"],
   },
   {
+    task: "neon-exodus",
+    aliases: ["neon-exodus", "neon", "exodus", "opentui-neon"],
+    description: "OpenTUI and web Neon Exodus demo suite",
+    category: "app",
+    tags: ["widgets", "visualization", "three", "neon"],
+  },
+  {
     task: "three-ascii",
     aliases: ["polygons", "polygon", "geometry", "three", "three-ascii", "ascii"],
     description: "standalone three.js ASCII geometry demo",

@@ -12,6 +12,7 @@ import {
 
 Deno.test("visualization launcher resolves public aliases to deno tasks", () => {
   assertEquals(resolveVisualizationTask(), "showcase");
+  assertEquals(resolveVisualizationTask("neon"), "neon-exodus");
   assertEquals(resolveVisualizationTask("polygons"), "three-ascii");
   assertEquals(resolveVisualizationTask("recipe"), "layout-recipe");
   assertEquals(resolveVisualizationTask("monitor"), "viz");
@@ -58,6 +59,7 @@ Deno.test("visualization launch catalog filters targets by category tag and sear
   assertEquals(queryVisualizationLaunchTargets({ category: "app" }).map((entry) => entry.task), [
     "grwizard",
     "viz",
+    "neon-exodus",
     "showcase",
   ]);
   assertEquals(queryVisualizationLaunchTargets({ tag: "catalog" }).map((entry) => entry.task), [

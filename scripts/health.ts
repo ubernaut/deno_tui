@@ -47,6 +47,7 @@ export const defaultHealthSteps: readonly HealthStep[] = [
   { name: "adopter-workbench", command: ["deno", "check", "examples/adopter_workbench.ts"] },
   { name: "demo-gallery", command: ["deno", "check", "examples/demo_gallery.ts"] },
   { name: "visualization-app", command: ["deno", "task", "viz:check"] },
+  { name: "neon-exodus", command: ["deno", "task", "neon-exodus:check"] },
   { name: "showcase", command: ["deno", "task", "showcase:check"] },
   { name: "grwizard", command: ["deno", "task", "grwizard:check"] },
   { name: "tests", command: ["deno", "test"] },

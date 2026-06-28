@@ -51,6 +51,7 @@ Use the root launcher for the most common demos:
 
 ```sh
 ./visualization showcase
+./visualization neon
 ./visualization monitor
 ./visualization polygons
 ./visualization dashboard
@@ -65,6 +66,7 @@ Direct Deno tasks expose the same surfaces:
 
 ```sh
 deno task showcase
+deno task neon-exodus
 deno task viz
 deno task three-ascii
 deno task dashboard
@@ -77,6 +79,11 @@ deno task screenshots
 deno task benchmark
 deno task health
 ```
+
+`./visualization neon` is the dedicated Neon Exodus suite. It starts with the OpenTUI implementation's 24-demo deck,
+adds a web-ordering mode for the browser demo layout, and includes an extended mode with this fork's Acerola ASCII
+studio scene. The app uses this library's raw TUI canvas, panel views, synthetic source drives, and three.js ASCII
+renderer instead of React/OpenTUI or browser DOM primitives.
 
 The report-style examples are intended for adopters and CI because they type-check quickly and print deterministic
 Markdown/text output. `examples/adopter_workbench.ts` is the broadest example: it combines terminal planning, terminal

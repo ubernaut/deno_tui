@@ -16,7 +16,7 @@
   <rect x="40" y="72" width="900" height="508" rx="8" fill="#090d14" opacity="0.86" />
   <text x="50" y="106" class="term"># Demo Gallery</text>
   <text x="50" y="132" class="term"></text>
-  <text x="50" y="158" class="term">Launch targets: 30 across app, check, demo, report, tool</text>
+  <text x="50" y="158" class="term">Launch targets: 31 across app, check, demo, report, tool</text>
   <text
     x="50"
     y="184"
@@ -37,7 +37,7 @@
   <text x="50" y="418" class="term"></text>
   <text x="50" y="444" class="term">Recommended tour:</text>
   <text x="50" y="470" class="term">1. ./visualization showcase      full widget wall</text>
-  <text x="50" y="496" class="term">2. ./visualization polygons      glyph/block/mixed three.js ASCII</text>
-  <text x="50" y="522" class="term">3. ./visualization monitor       live panels and selectable 3D views</text>
-  <text x="50" y="548" class="term">4. ./visualization adopter       app/runtime/theme/plugin/data integration</text>
+  <text x="50" y="496" class="term">2. ./visualization neon         OpenTUI/web Neon Exodus suite</text>
+  <text x="50" y="522" class="term">3. ./visualization polygons      glyph/block/mixed three.js ASCII</text>
+  <text x="50" y="548" class="term">4. ./visualization monitor       live panels and selectable 3D views</text>
 </svg>

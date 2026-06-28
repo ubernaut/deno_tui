@@ -31,6 +31,8 @@
     "data-query": "deno run -A ./examples/data_query.ts",
     "grwizard": "deno run -A ./app/grwizard.ts",
     "grwizard:check": "deno check ./app/grwizard.ts",
+    "neon-exodus": "deno run -A ./app/neon_exodus.ts",
+    "neon-exodus:check": "deno check ./app/neon_exodus.ts",
     "showcase": "deno run -A ./app/showcase.ts",
     "showcase:check": "deno check ./app/showcase.ts",
     "three-ascii": "deno run -A ./examples/three_ascii.ts",

@@ -27,6 +27,7 @@ Deno.test("health script exposes the expected contributor gates", () => {
     "adopter-workbench",
     "demo-gallery",
     "visualization-app",
+    "neon-exodus",
     "showcase",
     "grwizard",
     "tests",
