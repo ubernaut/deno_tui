@@ -343,6 +343,17 @@ selection.toggle();
 const window = selection.window(12);
 ```
 
+`bindSelectionValue()` connects a controller to stable domain values, which is useful when selected rows need to survive
+filtering, persistence, or list reordering:
+
+```ts
+const selectedProcessId = new Signal<number | undefined>(persistedPid);
+const stopSelectionBinding = bindSelectionValue(selection, rows, selectedProcessId, {
+  valueForItem: (row) => row.pid,
+  initialSync: "value",
+});
+```
+
 Viewport helpers keep scrolling, virtual rows, and scrollbar thumbs consistent:
 
 ```ts

@@ -9,4 +9,5 @@ export * from "./history_bindings.ts";
 export * from "./history.ts";
 export * from "./route_bindings.ts";
 export * from "./router.ts";
+export * from "./selection_bindings.ts";
 export * from "./surface_bindings.ts";

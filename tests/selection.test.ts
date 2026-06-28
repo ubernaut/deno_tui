@@ -9,6 +9,7 @@ import {
   selectRange,
   toggleSelection,
 } from "../src/selection.ts";
+import { bindSelectionValue } from "../src/app/selection_bindings.ts";
 import { Signal } from "../src/signals/mod.ts";
 
 Deno.test("selection helpers clamp and move single selection", () => {
@@ -70,4 +71,62 @@ Deno.test("SelectionController normalizes when length changes", () => {
   controller.toggle(0);
   assertEquals(controller.state.peek(), { activeIndex: 0, anchorIndex: 0, selected: [0, 1] });
   assertEquals(controller.window(1), { start: 0, end: 1 });
+});
+
+Deno.test("bindSelectionValue synchronizes active selection with selected values", () => {
+  const rows = new Signal([
+    { id: "alpha", label: "Alpha" },
+    { id: "beta", label: "Beta" },
+    { id: "gamma", label: "Gamma" },
+  ]);
+  const selectedId = new Signal<string | undefined>("beta");
+  const controller = new SelectionController({ length: 0 });
+
+  const dispose = bindSelectionValue(controller, rows, selectedId, {
+    valueForItem: (row) => row.id,
+    initialSync: "value",
+  });
+
+  assertEquals(controller.length.peek(), 3);
+  assertEquals(controller.state.peek().activeIndex, 1);
+
+  controller.move(1);
+  assertEquals(selectedId.peek(), "gamma");
+
+  selectedId.value = "alpha";
+  assertEquals(controller.state.peek().activeIndex, 0);
+
+  dispose();
+  controller.move(1);
+  assertEquals(selectedId.peek(), "alpha");
+});
+
+Deno.test("bindSelectionValue repairs missing values when item sources change", () => {
+  const rows = new Signal([
+    { id: "alpha", label: "Alpha" },
+    { id: "beta", label: "Beta" },
+    { id: "gamma", label: "Gamma" },
+  ]);
+  const missing: string[] = [];
+  const selectedId = new Signal<string | undefined>("gamma");
+  const controller = new SelectionController({ length: rows.peek().length });
+
+  bindSelectionValue(controller, rows, selectedId, {
+    valueForItem: (row) => row.id,
+    initialSync: "value",
+    onMissingValue: (value) => missing.push(value),
+  });
+
+  rows.value = [{ id: "alpha", label: "Alpha" }];
+
+  assertEquals(controller.length.peek(), 1);
+  assertEquals(controller.state.peek().activeIndex, 0);
+  assertEquals(selectedId.peek(), "alpha");
+  assertEquals(missing, ["gamma"]);
+
+  rows.value = [];
+
+  assertEquals(controller.length.peek(), 0);
+  assertEquals(controller.state.peek().selected, []);
+  assertEquals(selectedId.peek(), undefined);
 });
