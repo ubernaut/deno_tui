@@ -3,8 +3,10 @@ import {
   clampSelectionIndex,
   createSelection,
   moveSelection,
+  selectedValues,
   selectIndex,
   SelectionController,
+  selectionFromValues,
   selectionWindow,
   selectRange,
   toggleSelection,
@@ -53,6 +55,34 @@ Deno.test("selectionWindow centers active rows and handles empty inputs", () => 
   assertEquals(selectionWindow(10, 9, 4), { start: 6, end: 10 });
   assertEquals(selectionWindow(0, 0, 4), { start: 0, end: 0 });
   assertEquals(selectionWindow(10, 5, 0), { start: 0, end: 0 });
+});
+
+Deno.test("selection value helpers preserve stable item identity", () => {
+  const rows = [
+    { id: "alpha", label: "Alpha" },
+    { id: "beta", label: "Beta" },
+    { id: "gamma", label: "Gamma" },
+  ];
+  const state = { activeIndex: 2, anchorIndex: 1, selected: [1, 2] };
+  const ids = selectedValues(rows, state, { valueForItem: (row) => row.id });
+
+  assertEquals(ids, ["beta", "gamma"]);
+  assertEquals(
+    selectionFromValues(
+      [
+        { id: "gamma", label: "Gamma" },
+        { id: "alpha", label: "Alpha" },
+        { id: "beta", label: "Beta" },
+      ],
+      ids,
+      { valueForItem: (row) => row.id, mode: "multiple" },
+    ),
+    { activeIndex: 2, anchorIndex: 2, selected: [0, 2] },
+  );
+  assertEquals(
+    selectionFromValues(rows, ["missing"], { valueForItem: (row) => row.id, fallbackIndex: 1 }),
+    { activeIndex: 1, anchorIndex: 1, selected: [1] },
+  );
 });
 
 Deno.test("SelectionController normalizes when length changes", () => {

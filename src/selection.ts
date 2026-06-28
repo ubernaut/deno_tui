@@ -24,6 +24,11 @@ export interface SelectionControllerOptions {
   wrap?: boolean | Signal<boolean>;
 }
 
+export interface SelectionValueOptions<TItem, TValue = TItem> {
+  valueForItem?: (item: TItem, index: number) => TValue;
+  equals?: (left: TValue, right: TValue) => boolean;
+}
+
 export function createSelection(length: number, activeIndex = 0, mode: SelectionMode = "single"): SelectionState {
   return normalizeSelection({ activeIndex, anchorIndex: activeIndex, selected: [activeIndex] }, length, mode);
 }
@@ -113,6 +118,46 @@ export function selectRange(state: SelectionState, length: number, toIndex: numb
 
 export function selectionWindow(length: number, activeIndex: number, capacity: number): { start: number; end: number } {
   return viewportWindow(length, activeIndex, capacity);
+}
+
+export function selectedValues<TItem, TValue = TItem>(
+  items: readonly TItem[],
+  state: SelectionState,
+  options: SelectionValueOptions<TItem, TValue> = {},
+): TValue[] {
+  const valueForItem = options.valueForItem ?? ((item: TItem) => item as unknown as TValue);
+  return state.selected
+    .map((index) => {
+      const item = items[index];
+      return item === undefined ? undefined : valueForItem(item, index);
+    })
+    .filter((value): value is TValue => value !== undefined);
+}
+
+export function selectionFromValues<TItem, TValue = TItem>(
+  items: readonly TItem[],
+  values: readonly TValue[],
+  options: SelectionValueOptions<TItem, TValue> & {
+    mode?: SelectionMode;
+    fallbackIndex?: number;
+  } = {},
+): SelectionState {
+  const valueForItem = options.valueForItem ?? ((item: TItem) => item as unknown as TValue);
+  const equals = options.equals ?? Object.is;
+  const selected = values
+    .map((value) => items.findIndex((item, index) => equals(valueForItem(item, index), value)))
+    .filter((index) => index >= 0);
+  const activeIndex = selected[0] ?? clampSelectionIndex(items.length, options.fallbackIndex ?? 0);
+
+  return normalizeSelection(
+    {
+      activeIndex,
+      anchorIndex: activeIndex,
+      selected: selected.length > 0 ? selected : [activeIndex],
+    },
+    items.length,
+    options.mode ?? "single",
+  );
 }
 
 export class SelectionController {

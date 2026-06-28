@@ -561,6 +561,14 @@ const stopSelectionCommands = bindSelectionCommands(app.commands, selection, {
   pageSize: () => processListHeight.value,
   includeClear: true,
 });
+
+const selectedPids = selectedValues(rows, selection.state.value, {
+  valueForItem: (row) => row.pid,
+});
+selection.state.value = selectionFromValues(nextRows, selectedPids, {
+  valueForItem: (row) => row.pid,
+  mode: "multiple",
+});
 ```
 
 Viewport helpers keep scrolling, virtual rows, and scrollbar thumbs consistent:
