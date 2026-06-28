@@ -348,6 +348,27 @@ const stopSaveCommands = bindButtonCommands(app.commands, saveButton, {
 });
 ```
 
+`InputController` extracts single-line text editing from `Input`: it owns text, cursor position, placeholder, password
+mode, validator, key handling, clear/submit behavior, and inspection state. `inputCommands()` and `bindInputCommands()`
+expose submit, clear, cursor movement, and optional preset-value actions for search boxes, form fields, command
+palettes, and settings panes:
+
+```ts
+const searchInput = new InputController({
+  text: "",
+  placeholder: "Filter widgets",
+  validator: /[a-z0-9 -]/i,
+  onSubmit: (query) => runSearch(query),
+});
+
+const stopSearchCommands = bindInputCommands(app.commands, searchInput, {
+  idPrefix: "widgets.search",
+  group: "search",
+  includeValueCommands: true,
+  values: ["theme", "layout", "runtime"],
+});
+```
+
 `CheckBoxController` does the same for boolean inputs: it owns the checked signal, exposes `check()`, `uncheck()`,
 `toggle()`, and `inspect()`, and keeps the rendered `CheckBox` focused on presentation. `checkBoxCommands()` and
 `bindCheckBoxCommands()` expose toggle, check, and uncheck actions for settings panes, command palettes, and key

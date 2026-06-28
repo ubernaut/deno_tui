@@ -2,6 +2,7 @@ import { assertEquals } from "./deps.ts";
 import { bindButtonCommands, buttonCommands } from "../src/app/button_commands.ts";
 import { bindCheckBoxCommands, checkBoxCommands } from "../src/app/checkbox_commands.ts";
 import { bindComboBoxCommands, comboBoxCommands } from "../src/app/combobox_commands.ts";
+import { bindInputCommands, inputCommands } from "../src/app/input_commands.ts";
 import { bindListCommands, listCommands } from "../src/app/list_commands.ts";
 import { bindMenuBarCommands, menuBarCommands } from "../src/app/menu_bar_commands.ts";
 import { bindProgressBarCommands, progressBarCommands } from "../src/app/progress_bar_commands.ts";
@@ -18,6 +19,7 @@ import { ButtonController } from "../src/components/button.ts";
 import { CheckBoxController, Mark, renderCheckBoxMark } from "../src/components/checkbox.ts";
 import { ComboBoxController, comboBoxLabel } from "../src/components/combobox.ts";
 import { renderEmptyState } from "../src/components/empty_state.ts";
+import { InputController } from "../src/components/input.ts";
 import { renderKeyHelp } from "../src/components/key_help.ts";
 import { ListController, virtualRows, visibleListRows } from "../src/components/list.ts";
 import {
@@ -152,6 +154,95 @@ Deno.test("buttonCommands press and change disabled state", async () => {
 
   dispose();
   assertEquals(registry.list("actions"), []);
+  controller.dispose();
+});
+
+Deno.test("InputController edits text validates characters and inspects state", () => {
+  const changes: string[] = [];
+  const submissions: string[] = [];
+  const controller = new InputController({
+    text: "ab",
+    cursorPosition: 1,
+    validator: /[a-z ]/,
+    placeholder: "name",
+    onChange: (value) => void changes.push(value),
+    onSubmit: (value) => void submissions.push(value),
+  });
+
+  assertEquals(controller.insert("X"), false);
+  assertEquals(controller.handleKeyPress(keyPress("space")), "changed");
+  assertEquals(controller.inspect(), {
+    text: "a b",
+    cursorPosition: 2,
+    length: 3,
+    empty: false,
+    password: false,
+    placeholder: "name",
+    valid: true,
+  });
+
+  assertEquals(controller.handleKeyPress(keyPress("right")), "moved");
+  assertEquals(controller.handleKeyPress(keyPress("backspace")), "changed");
+  assertEquals(controller.text.peek(), "a ");
+  assertEquals(controller.cursorPosition.peek(), 2);
+  controller.setText("abc", 99);
+  assertEquals(controller.cursorPosition.peek(), 3);
+  controller.handleKeyPress(keyPress("return"));
+  assertEquals(submissions, ["abc"]);
+  assertEquals(changes, ["a b", "a ", "abc"]);
+  controller.dispose();
+});
+
+Deno.test("inputCommands submit clear move cursor and set preset values", async () => {
+  const controller = new InputController({ text: "run", cursorPosition: 1 });
+  const registry = new CommandRegistry();
+  const dispose = bindInputCommands(registry, controller, {
+    id: "query",
+    idPrefix: "input.query",
+    group: "search",
+    includeValueCommands: true,
+    values: ["run", "deploy"],
+  });
+  const actions: unknown[] = [];
+
+  assertEquals(inputCommands(new InputController()).map((command) => [command.id, commandDisabled(command)]), [
+    ["input.submit", undefined],
+    ["input.clear", true],
+    ["input.home", true],
+    ["input.left", true],
+    ["input.right", true],
+    ["input.end", true],
+  ]);
+  assertEquals(registry.list("search").map((command) => command.id), [
+    "input.query.clear",
+    "input.query.end",
+    "input.query.home",
+    "input.query.left",
+    "input.query.right",
+    "input.query.value.deploy",
+    "input.query.value.run",
+    "input.query.submit",
+  ]);
+
+  assertEquals(await registry.execute("input.query.right", (action) => void actions.push(action)), true);
+  assertEquals(controller.cursorPosition.peek(), 2);
+  assertEquals(actions[0], {
+    type: "input.cursorMoved",
+    payload: { id: "query", inspection: controller.inspect() },
+  });
+
+  assertEquals(await registry.execute("input.query.value.deploy", (action) => void actions.push(action)), true);
+  assertEquals(controller.text.peek(), "deploy");
+  assertEquals(await registry.execute("input.query.submit", (action) => void actions.push(action)), true);
+  assertEquals(actions[2], {
+    type: "input.submitted",
+    payload: { id: "query", inspection: controller.inspect(), value: "deploy" },
+  });
+  assertEquals(await registry.execute("input.query.clear", (action) => void actions.push(action)), true);
+  assertEquals(controller.inspect().empty, true);
+
+  dispose();
+  assertEquals(registry.list("search"), []);
   controller.dispose();
 });
 

@@ -70,6 +70,7 @@ Deno.test("component catalog groups widgets by category and capability", () => {
     "button",
     "checkbox",
     "combobox",
+    "input",
     "slider",
     "radio-group",
     "list",

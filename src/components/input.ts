@@ -13,6 +13,7 @@ import { TextObject, TextRectangle } from "../canvas/text.ts";
 import { clamp } from "../utils/numbers.ts";
 import { signalify } from "../utils/signals.ts";
 import { cropToWidth, insertAt } from "../utils/strings.ts";
+import type { KeyPressEvent } from "../input_reader/types.ts";
 
 export interface InputTheme extends Theme {
   value: Theme;
@@ -33,8 +34,208 @@ export interface InputOptions extends Omit<ComponentOptions, "rectangle"> {
   password?: boolean | Signal<boolean>;
   placeholder?: string | Signal<string | undefined>;
   multiCodePointSupport?: boolean | Signal<boolean>;
+  cursorPosition?: number | Signal<number>;
+  controller?: InputController;
+  onChange?: (value: string) => void | Promise<void>;
+  onSubmit?: (value: string) => void | Promise<void>;
   rectangle: InputRectangle | SignalOfObject<InputRectangle>;
   theme: DeepPartial<InputTheme, "cursor">;
+}
+
+export interface InputControllerOptions {
+  text?: string | Signal<string>;
+  cursorPosition?: number | Signal<number>;
+  validator?: RegExp | Signal<RegExp | undefined>;
+  password?: boolean | Signal<boolean>;
+  placeholder?: string | Signal<string | undefined>;
+  multiCodePointSupport?: boolean | Signal<boolean>;
+  onChange?: (value: string) => void | Promise<void>;
+  onSubmit?: (value: string) => void | Promise<void>;
+}
+
+export interface InputInspection {
+  text: string;
+  cursorPosition: number;
+  length: number;
+  empty: boolean;
+  password: boolean;
+  placeholder?: string;
+  valid: boolean;
+}
+
+export type InputEditResult =
+  | "changed"
+  | "submitted"
+  | "moved"
+  | "ignored";
+
+export class InputController {
+  readonly text: Signal<string>;
+  readonly cursorPosition: Signal<number>;
+  readonly validator: Signal<RegExp | undefined>;
+  readonly password: Signal<boolean>;
+  readonly placeholder: Signal<string | undefined>;
+  readonly multiCodePointSupport: Signal<boolean>;
+  readonly #ownsText: boolean;
+  readonly #ownsCursorPosition: boolean;
+  readonly #ownsValidator: boolean;
+  readonly #ownsPassword: boolean;
+  readonly #ownsPlaceholder: boolean;
+  readonly #ownsMultiCodePointSupport: boolean;
+  readonly #onChange?: (value: string) => void | Promise<void>;
+  readonly #onSubmit?: (value: string) => void | Promise<void>;
+  readonly #syncCursor = () => {
+    this.cursorPosition.value = clamp(this.cursorPosition.peek(), 0, this.text.peek().length);
+  };
+
+  constructor(options: InputControllerOptions = {}) {
+    this.#ownsText = !(options.text instanceof Signal);
+    this.#ownsCursorPosition = !(options.cursorPosition instanceof Signal);
+    this.#ownsValidator = !(options.validator instanceof Signal);
+    this.#ownsPassword = !(options.password instanceof Signal);
+    this.#ownsPlaceholder = !(options.placeholder instanceof Signal);
+    this.#ownsMultiCodePointSupport = !(options.multiCodePointSupport instanceof Signal);
+    this.text = signalify(options.text ?? "");
+    this.cursorPosition = signalify(options.cursorPosition ?? 0);
+    this.validator = signalify(options.validator);
+    this.password = signalify(options.password ?? false);
+    this.placeholder = signalify(options.placeholder);
+    this.multiCodePointSupport = signalify(options.multiCodePointSupport ?? false);
+    this.#onChange = options.onChange;
+    this.#onSubmit = options.onSubmit;
+    this.text.subscribe(this.#syncCursor);
+    this.cursorPosition.subscribe(this.#syncCursor);
+    this.#syncCursor();
+  }
+
+  setText(value: string, cursorPosition = value.length): string {
+    this.text.value = value;
+    this.cursorPosition.value = clamp(cursorPosition, 0, value.length);
+    void this.#onChange?.(this.text.peek());
+    return this.text.peek();
+  }
+
+  clear(): string {
+    return this.setText("", 0);
+  }
+
+  moveCursor(offset: number): number {
+    return this.setCursorPosition(this.cursorPosition.peek() + offset);
+  }
+
+  setCursorPosition(position: number): number {
+    this.cursorPosition.value = clamp(position, 0, this.text.peek().length);
+    return this.cursorPosition.peek();
+  }
+
+  home(): number {
+    return this.setCursorPosition(0);
+  }
+
+  end(): number {
+    return this.setCursorPosition(this.text.peek().length);
+  }
+
+  insert(character: string): boolean {
+    if (!this.accepts(character)) return false;
+    const cursorPosition = this.cursorPosition.peek();
+    const value = insertAt(this.text.peek(), cursorPosition, character);
+    this.setText(value, cursorPosition + character.length);
+    return true;
+  }
+
+  backspace(): boolean {
+    const cursorPosition = this.cursorPosition.peek();
+    if (cursorPosition === 0) return false;
+    const value = this.text.peek();
+    this.setText(value.slice(0, cursorPosition - 1) + value.slice(cursorPosition), cursorPosition - 1);
+    return true;
+  }
+
+  delete(): boolean {
+    const cursorPosition = this.cursorPosition.peek();
+    const value = this.text.peek();
+    if (cursorPosition >= value.length) return false;
+    this.setText(value.slice(0, cursorPosition) + value.slice(cursorPosition + 1), cursorPosition);
+    return true;
+  }
+
+  submit(): string {
+    const value = this.text.peek();
+    void this.#onSubmit?.(value);
+    return value;
+  }
+
+  handleKeyPress({ key, ctrl, meta }: Pick<KeyPressEvent, "key" | "ctrl" | "meta">): InputEditResult {
+    if (ctrl || meta) return "ignored";
+
+    switch (key) {
+      case "return":
+        this.submit();
+        return "submitted";
+      case "backspace":
+        return this.backspace() ? "changed" : "ignored";
+      case "delete":
+        return this.delete() ? "changed" : "ignored";
+      case "left":
+        this.moveCursor(-1);
+        return "moved";
+      case "right":
+        this.moveCursor(1);
+        return "moved";
+      case "home":
+        this.home();
+        return "moved";
+      case "end":
+        this.end();
+        return "moved";
+      case "space":
+        return this.insert(" ") ? "changed" : "ignored";
+      case "tab":
+        return this.insert("\t") ? "changed" : "ignored";
+      default:
+        if (key.length > 1) return "ignored";
+        return this.insert(key) ? "changed" : "ignored";
+    }
+  }
+
+  accepts(character: string): boolean {
+    const validator = this.validator.peek();
+    if (!validator) return true;
+    validator.lastIndex = 0;
+    return validator.test(character);
+  }
+
+  inspect(): InputInspection {
+    const text = this.text.peek();
+    const validator = this.validator.peek();
+    if (validator) validator.lastIndex = 0;
+    return {
+      text,
+      cursorPosition: this.cursorPosition.peek(),
+      length: text.length,
+      empty: text.length === 0,
+      password: this.password.peek(),
+      placeholder: this.placeholder.peek(),
+      valid: validator
+        ? [...text].every((character) => {
+          validator.lastIndex = 0;
+          return validator.test(character);
+        })
+        : true,
+    };
+  }
+
+  dispose(): void {
+    this.text.unsubscribe(this.#syncCursor);
+    this.cursorPosition.unsubscribe(this.#syncCursor);
+    if (this.#ownsText) this.text.dispose();
+    if (this.#ownsCursorPosition) this.cursorPosition.dispose();
+    if (this.#ownsValidator) this.validator.dispose();
+    if (this.#ownsPassword) this.password.dispose();
+    if (this.#ownsPlaceholder) this.placeholder.dispose();
+    if (this.#ownsMultiCodePointSupport) this.multiCodePointSupport.dispose();
+  }
 }
 
 /**
@@ -105,6 +306,7 @@ export class Input extends Box {
   validator: Signal<RegExp | undefined>;
   multiCodePointSupport: Signal<boolean>;
   placeholder: Signal<string | undefined>;
+  readonly controller: InputController;
 
   constructor(options: InputOptions) {
     const { rectangle } = options;
@@ -120,58 +322,30 @@ export class Input extends Box {
     this.theme.value ??= this.theme;
     this.theme.placeholder ??= this.theme.value;
 
-    this.cursorPosition = new Signal(0);
+    const ownsController = !options.controller;
+    const controller = options.controller ??
+      new InputController({
+        text: options.text,
+        cursorPosition: options.cursorPosition,
+        validator: options.validator,
+        placeholder: options.placeholder,
+        password: options.password,
+        multiCodePointSupport: options.multiCodePointSupport,
+        onChange: options.onChange,
+        onSubmit: options.onSubmit,
+      });
+    this.controller = controller;
+    this.cursorPosition = controller.cursorPosition;
+    this.text = controller.text;
+    this.validator = controller.validator;
+    this.placeholder = controller.placeholder;
+    this.password = controller.password;
+    this.multiCodePointSupport = controller.multiCodePointSupport;
 
-    this.text = signalify(options.text ?? "");
-    this.validator = signalify(options.validator);
-    this.placeholder = signalify(options.placeholder);
-    this.password = signalify(options.password ?? false);
-    this.multiCodePointSupport = signalify(options.multiCodePointSupport ?? false);
-
-    this.on("keyPress", ({ key, ctrl, meta }) => {
-      if (ctrl || meta) return;
-
-      const cursorPosition = this.cursorPosition.peek();
-      const validator = this.validator.peek();
-      const value = this.text.peek();
-
-      let character = "";
-      switch (key) {
-        case "backspace":
-          if (cursorPosition === 0) return;
-          this.text.value = value.slice(0, cursorPosition - 1) + value.slice(cursorPosition);
-          this.cursorPosition.value = clamp(cursorPosition - 1, 0, value.length);
-          return;
-        case "delete":
-          this.text.value = value.slice(0, cursorPosition) + value.slice(cursorPosition + 1);
-          return;
-        case "left":
-          this.cursorPosition.value = clamp(cursorPosition - 1, 0, value.length);
-          return;
-        case "right":
-          this.cursorPosition.value = clamp(cursorPosition + 1, 0, value.length);
-          return;
-        case "home":
-          this.cursorPosition.value = 0;
-          return;
-        case "end":
-          this.cursorPosition.value = value.length;
-          return;
-        case "space":
-          character = " ";
-          break;
-        case "tab":
-          character = "\t";
-          break;
-        default:
-          if (key.length > 1) return;
-          character = key;
-      }
-
-      if (validator && !validator.test(character)) return;
-      this.text.value = insertAt(value, cursorPosition, character);
-      this.cursorPosition.value = clamp(cursorPosition + 1, 0, this.text.value.length);
+    this.on("keyPress", (event) => {
+      this.controller.handleKeyPress(event);
     });
+    if (ownsController) this.on("destroy", () => this.controller.dispose());
   }
 
   override draw(): void {

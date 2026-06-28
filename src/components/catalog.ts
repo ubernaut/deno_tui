@@ -70,7 +70,12 @@ export const componentCatalog = [
     "selection",
     "themeable",
   ]),
-  component("input", "Input", "input", "Single-line text entry.", ["component", "keyboard", "themeable"]),
+  component("input", "Input", "input", "Single-line text entry.", [
+    "component",
+    "controller",
+    "keyboard",
+    "themeable",
+  ]),
   component("textbox", "TextBox", "input", "Multi-line text editor with cursor, line numbers, and selection.", [
     "component",
     "keyboard",
