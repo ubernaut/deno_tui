@@ -11,15 +11,18 @@ import {
 import { renderSparkline } from "../src/components/sparkline.ts";
 import {
   assertThemeOptions,
+  compileThemeManifestOptions,
   composeStyles,
   composeThemeOptions,
   createAnsiStyle,
   createAnsiThemeTokens,
   createTheme,
   createThemeEngine,
+  createThemeEngineFromManifest,
   createThemeLayerStack,
   createThemeProvider,
   createThemeRegistry,
+  createThemeRegistryFromManifests,
   defaultThemePacks,
   diffThemeEngines,
   emptyStyle,
@@ -121,6 +124,66 @@ Deno.test("ANSI theme token specs build semantic token maps", () => {
   assertEquals(tokens.foreground?.("x"), "\x1b[37mx\x1b[0m");
   assertEquals(tokens.accent?.("x"), "\x1b[38;2;31;231;210mx\x1b[0m");
   assertEquals(tokens.surface?.("x"), "\x1b[48;5;235mx\x1b[0m");
+});
+
+Deno.test("theme manifests compile serializable packs into engines and registries", () => {
+  const manifest = {
+    id: "ops",
+    label: "Operations",
+    palette: "plain",
+    options: {
+      tokens: {
+        foreground: { foreground: "white" },
+        accent: { foreground: [31, 231, 210], bold: true },
+        danger: { foreground: "red", underline: true },
+      },
+      components: {
+        Field: {
+          base: {
+            base: "foreground",
+            focused: ["accent", { underline: true }],
+          },
+        },
+        Button: {
+          extends: "Field",
+          variants: {
+            danger: {
+              active: ["danger", { bold: true }],
+            },
+          },
+        },
+      },
+    },
+  } as const;
+
+  const options = compileThemeManifestOptions(manifest.options);
+  const engine = createThemeEngineFromManifest(manifest);
+  const registry = createThemeRegistryFromManifests([manifest]);
+
+  assertEquals(options.tokens?.accent?.("x"), "\x1b[1;38;2;31;231;210mx\x1b[0m");
+  assertEquals(engine.component("Button").base("x"), "\x1b[37mx\x1b[0m");
+  assertEquals(engine.component("Button").focused("x"), "\x1b[4m\x1b[1;38;2;31;231;210mx\x1b[0m\x1b[0m");
+  assertEquals(
+    engine.component("Button", "danger").active("x"),
+    "\x1b[1m\x1b[4;31mx\x1b[0m\x1b[0m",
+  );
+  assertEquals(registry.ids(), ["ops"]);
+  assertEquals(registry.engine("ops").variants("Button"), ["danger"]);
+});
+
+Deno.test("theme manifests reuse theme option validation", () => {
+  const options = compileThemeManifestOptions({
+    components: {
+      Button: {
+        extends: "Missing",
+        base: { base: "brand" },
+      },
+    },
+  });
+  const issues = validateThemeOptions(options);
+
+  assertEquals(issues.map((issue) => issue.kind), ["unknown-component", "unknown-token"]);
+  assertEquals(issues[1].reference, "brand");
 });
 
 Deno.test("ThemeEngine resolves component variants over global tokens", () => {

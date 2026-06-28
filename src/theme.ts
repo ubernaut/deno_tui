@@ -136,6 +136,23 @@ export const themeTokenNames = [
 export type ThemeStyleReference = Style | ThemeTokenName | readonly ThemeStyleReference[];
 export type ThemeStateDefinition = Partial<Record<ThemeState, ThemeStyleReference>>;
 
+export type ThemeManifestStyleReference =
+  | string
+  | AnsiStyleSpec
+  | readonly ThemeManifestStyleReference[];
+export type ThemeManifestStateDefinition = Partial<Record<ThemeState, ThemeManifestStyleReference>>;
+
+export interface ThemeManifestComponentDefinition {
+  extends?: string | readonly string[];
+  base?: ThemeManifestStateDefinition;
+  variants?: Record<string, ThemeManifestStateDefinition>;
+}
+
+export interface ThemeManifestOptions {
+  tokens?: Partial<Record<ThemeTokenName, AnsiStyleSpec>>;
+  components?: Record<string, ThemeManifestComponentDefinition>;
+}
+
 export function createTheme(tokens: Partial<ThemeTokens> = {}): Theme & { tokens: ThemeTokens } {
   const fallback = tokens.foreground ?? emptyStyle;
   return {
@@ -338,6 +355,71 @@ export function composeThemeOptions(...options: ThemeEngineOptions[]): ThemeEngi
   return { tokens, components };
 }
 
+export function compileThemeManifestStyleReference(
+  reference: ThemeManifestStyleReference,
+): ThemeStyleReference {
+  if (isThemeManifestStyleReferencePipeline(reference)) {
+    return reference.map((part) => compileThemeManifestStyleReference(part));
+  }
+  return typeof reference === "string" ? reference as ThemeTokenName : createAnsiStyle(reference);
+}
+
+export function compileThemeManifestStateDefinition(
+  definition: ThemeManifestStateDefinition = {},
+): ThemeStateDefinition {
+  const output: ThemeStateDefinition = {};
+  for (const [state, reference] of Object.entries(definition) as [ThemeState, ThemeManifestStyleReference][]) {
+    if (reference === undefined) continue;
+    output[state] = compileThemeManifestStyleReference(reference);
+  }
+  return output;
+}
+
+export function compileThemeManifestOptions(manifest: ThemeManifestOptions = {}): ThemeEngineOptions {
+  const components: Record<string, ComponentThemeDefinition> = {};
+
+  for (const [name, definition] of Object.entries(manifest.components ?? {})) {
+    const variants: Record<string, ThemeStateDefinition> = {};
+    for (const [variant, states] of Object.entries(definition.variants ?? {})) {
+      variants[variant] = compileThemeManifestStateDefinition(states);
+    }
+
+    components[name] = {
+      extends: definition.extends,
+      base: compileThemeManifestStateDefinition(definition.base),
+      variants,
+    };
+  }
+
+  return composeThemeOptions({
+    tokens: manifest.tokens ? createAnsiThemeTokens(manifest.tokens) : undefined,
+    components,
+  });
+}
+
+export function themePackFromManifest(manifest: ThemePackManifest): ThemePack {
+  return {
+    id: manifest.id,
+    label: manifest.label,
+    palette: manifest.palette,
+    options: compileThemeManifestOptions(manifest.options),
+  };
+}
+
+export function createThemeEngineFromManifest(
+  manifest: Pick<ThemePackManifest, "palette" | "options">,
+  overrides: ThemeEngineOptions = {},
+): ThemeEngine {
+  return createThemeEngine(
+    manifest.palette ?? "plain",
+    composeThemeOptions(compileThemeManifestOptions(manifest.options), overrides),
+  );
+}
+
+export function createThemeRegistryFromManifests(manifests: Iterable<ThemePackManifest>): ThemeRegistry {
+  return createThemeRegistry([...manifests].map(themePackFromManifest));
+}
+
 export function validateThemeOptions(options: ThemeEngineOptions): ThemeValidationIssue[] {
   const normalized = composeThemeOptions(options);
   const components = normalized.components ?? {};
@@ -449,6 +531,13 @@ export interface ThemePack {
   label?: string;
   palette?: ThemePaletteName;
   options?: ThemeEngineOptions;
+}
+
+export interface ThemePackManifest {
+  id: string;
+  label?: string;
+  palette?: ThemePaletteName;
+  options?: ThemeManifestOptions;
 }
 
 export interface ThemePackInspection {
@@ -948,6 +1037,12 @@ function normalizeThemeExtends(value: string | readonly string[] | undefined): s
 function isThemeStyleReferencePipeline(
   reference: ThemeStyleReference,
 ): reference is readonly ThemeStyleReference[] {
+  return Array.isArray(reference);
+}
+
+function isThemeManifestStyleReferencePipeline(
+  reference: ThemeManifestStyleReference,
+): reference is readonly ThemeManifestStyleReference[] {
   return Array.isArray(reference);
 }
 

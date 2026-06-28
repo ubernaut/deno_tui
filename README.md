@@ -726,24 +726,28 @@ const viewportState = inspectViewport(contentWidth, contentHeight, width, height
 Use `createTheme()` for semantic tokens, `createThemeEngine()` for built-in palettes, `ThemeRegistry` for named theme
 packs, or `ThemeProvider` for runtime theme selection. This fork treats theming as an engine layer, not just a bag of
 component props: it adds `composeThemeOptions()`, `composeStyles()`, component inheritance, token-backed style
-pipelines, app-level provider cycling, runtime theme layers, optional async persistence, `ThemeEngine.extend()`, and
-`ThemeEngine.inspect()` so larger apps can layer reusable theme packs without mutating a base engine:
+pipelines, serializable ANSI theme manifests, app-level provider cycling, runtime theme layers, optional async
+persistence, `ThemeEngine.extend()`, and `ThemeEngine.inspect()` so larger apps can layer reusable theme packs without
+mutating a base engine:
 
 ```ts
 import {
   assertThemeOptions,
   bindComponentTheme,
   CommandRegistry,
+  compileThemeManifestOptions,
   composeThemeOptions,
   createAnsiStyle,
   createAnsiThemeTokens,
   createCommandSurface,
   createRuntimeStore,
   createThemeEngine,
+  createThemeEngineFromManifest,
   createThemeLayerStack,
   createThemePlugin,
   createThemeProvider,
   createThemeRegistry,
+  createThemeRegistryFromManifests,
   diffThemeEngines,
   themeCommands,
   validateThemeOptions,
@@ -785,10 +789,34 @@ assertThemeOptions(appTheme);
 const buttonTheme = themeEngine.component("Button", "danger");
 const availableThemes = themeEngine.inspect();
 
+const opsManifest = {
+  id: "ops",
+  label: "Operations",
+  palette: "terminal",
+  options: {
+    tokens: {
+      accent: { foreground: "cyan", bold: true },
+      danger: { foreground: "red", underline: true },
+    },
+    components: {
+      Field: { base: { focused: "accent" } },
+      Button: {
+        extends: "Field",
+        variants: {
+          danger: { active: ["danger", { bold: true }] },
+        },
+      },
+    },
+  },
+} as const;
+const manifestOptions = compileThemeManifestOptions(opsManifest.options);
+const manifestEngine = createThemeEngineFromManifest(opsManifest);
+
 const themeRegistry = createThemeRegistry([
   { id: "terminal", label: "Terminal", palette: "terminal" },
   { id: "neon-ops", label: "Neon Ops", palette: "neon", options: appTheme },
 ]);
+const manifestRegistry = createThemeRegistryFromManifests([opsManifest]);
 const layers = createThemeLayerStack([
   {
     id: "high-contrast",
@@ -865,10 +893,13 @@ array of token names and style functions; the engine composes the pipeline in or
 one or more other definitions, which makes aliases like `ComboBox -> Field` or shared role themes cheap while preserving
 variants and app-level overrides. `createAnsiStyle()` and `createAnsiThemeTokens()` provide a small serializable
 style-spec layer for theme engines: packs can use named ANSI colors, 256-color indexes, RGB tuples, and text attributes
-like bold or underline without embedding raw escape sequences throughout the app. The built-in `neon` and `terminal`
-palettes use the same helpers. `themeSelectionCommands()`, `themeLayerCommands()`, and `themeCommands()` project the
-active `ThemeProvider` into normal command registry entries for "next theme", "previous theme", explicit theme
-selection, and layer enable/disable/toggle actions. The generated commands use dynamic disabled predicates, so the
+like bold or underline without embedding raw escape sequences throughout the app. `compileThemeManifestOptions()`,
+`createThemeEngineFromManifest()`, and `createThemeRegistryFromManifests()` build on those specs so reusable theme packs
+can be plain data: semantic token specs, component inheritance, variants, and state pipelines can be loaded from
+JSON-like modules, validated, diffed, and installed without hard-coding style functions. The built-in `neon` and
+`terminal` palettes use the same helpers. `themeSelectionCommands()`, `themeLayerCommands()`, and `themeCommands()`
+project the active `ThemeProvider` into normal command registry entries for "next theme", "previous theme", explicit
+theme selection, and layer enable/disable/toggle actions. The generated commands use dynamic disabled predicates, so the
 active theme and current layer states stay accurate when they are shown in a command palette, menu bar, context menu, or
 key binding help surface. `validateThemeOptions()` and `assertThemeOptions()` give theme authors a first-class
 diagnostics pass for unknown token references, missing component parents, and inheritance cycles before a pack is
