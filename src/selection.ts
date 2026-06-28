@@ -165,8 +165,15 @@ export class SelectionController {
   readonly mode: Signal<SelectionMode>;
   readonly wrap: Signal<boolean>;
   readonly state: Signal<SelectionState>;
+  readonly #ownsLength: boolean;
+  readonly #ownsMode: boolean;
+  readonly #ownsWrap: boolean;
+  readonly #normalize = () => this.normalize();
 
   constructor(options: SelectionControllerOptions) {
+    this.#ownsLength = !(options.length instanceof Signal);
+    this.#ownsMode = !(options.mode instanceof Signal);
+    this.#ownsWrap = !(options.wrap instanceof Signal);
     this.length = signalify(options.length);
     this.mode = signalify(options.mode ?? "single");
     this.wrap = signalify(options.wrap ?? false);
@@ -174,8 +181,8 @@ export class SelectionController {
       deepObserve: true,
     });
 
-    this.length.subscribe(() => this.normalize());
-    this.mode.subscribe(() => this.normalize());
+    this.length.subscribe(this.#normalize);
+    this.mode.subscribe(this.#normalize);
   }
 
   normalize(): void {
@@ -212,6 +219,15 @@ export class SelectionController {
 
   window(capacity: number): { start: number; end: number } {
     return selectionWindow(this.length.peek(), this.state.peek().activeIndex, capacity);
+  }
+
+  dispose(): void {
+    this.length.unsubscribe(this.#normalize);
+    this.mode.unsubscribe(this.#normalize);
+    if (this.#ownsLength) this.length.dispose();
+    if (this.#ownsMode) this.mode.dispose();
+    if (this.#ownsWrap) this.wrap.dispose();
+    this.state.dispose();
   }
 }
 

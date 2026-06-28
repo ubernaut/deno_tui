@@ -75,6 +75,7 @@ export const componentCatalog = [
   component("list", "List", "data", "Selectable list component.", ["component", "selection", "themeable"]),
   component("virtual-list", "VirtualList", "data", "Windowed list component for large item sets.", [
     "component",
+    "controller",
     "selection",
     "virtualized",
     "themeable",

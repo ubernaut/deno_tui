@@ -23,7 +23,9 @@ import { renderStatusBar } from "../src/components/statusbar.ts";
 import { renderSpinner, spinnerGlyph } from "../src/components/spinner.ts";
 import { clampStepperIndex, renderStepper, shiftStepperIndex, stepForIndex } from "../src/components/stepper.ts";
 import { renderTabs } from "../src/components/tabs.ts";
-import { renderVirtualListRows, virtualListRows } from "../src/components/virtual_list.ts";
+import { renderVirtualListRows, VirtualListController, virtualListRows } from "../src/components/virtual_list.ts";
+import type { Key, KeyPressEvent } from "../src/input_reader/types.ts";
+import { Signal } from "../src/signals/mod.ts";
 
 Deno.test("visibleListRows centers the selected item when space allows", () => {
   assertEquals(visibleListRows(["alpha", "beta", "gamma", "delta"], 2, 3), [
@@ -55,6 +57,60 @@ Deno.test("virtual list rows support formatted multi selection windows", () => {
     "> ● delta",
     "    epsilon",
   ]);
+});
+
+Deno.test("VirtualListController drives viewport rows and key navigation", () => {
+  const controller = new VirtualListController({
+    items: ["alpha", "beta", "gamma", "delta", "epsilon"],
+    mode: "multiple",
+    format: (item, index) => `${index}:${item}`,
+  });
+
+  controller.setViewportHeight(3);
+  controller.handleKeyPress(keyPress("down", { shift: true }));
+  controller.handleKeyPress(keyPress("down", { shift: true }));
+
+  assertEquals(controller.inspect(), {
+    itemCount: 5,
+    mode: "multiple",
+    activeIndex: 2,
+    selected: [0, 1, 2],
+    selectedItems: ["alpha", "beta", "gamma"],
+    window: { start: 1, end: 4 },
+  });
+  assertEquals(controller.rows.peek().map((row) => row.text), ["1:beta", "2:gamma", "3:delta"]);
+
+  controller.handleKeyPress(keyPress("pagedown"));
+  assertEquals(controller.inspect().activeIndex, 4);
+  assertEquals(controller.handleKeyPress(keyPress("return")), "epsilon");
+  controller.dispose();
+});
+
+Deno.test("VirtualListController syncs selected values and external state", () => {
+  const selection = new Signal({ activeIndex: 0, anchorIndex: 0, selected: [0] });
+  const controller = new VirtualListController({
+    items: [
+      { id: "a", label: "Alpha" },
+      { id: "b", label: "Beta" },
+      { id: "c", label: "Gamma" },
+    ],
+    mode: "multiple",
+    selection,
+    valueForItem: (item) => item.id,
+  });
+
+  controller.selectValues(["c", "a"]);
+
+  assertEquals(controller.selectedValues(), ["a", "c"]);
+  assertEquals(selection.peek(), { activeIndex: 2, anchorIndex: 2, selected: [0, 2] });
+
+  controller.items.value = [
+    { id: "a", label: "Alpha" },
+    { id: "c", label: "Gamma" },
+  ];
+  assertEquals(controller.inspect().itemCount, 2);
+  assertEquals(controller.inspect().selected, [0, 1]);
+  controller.dispose();
 });
 
 Deno.test("renderTabs marks the active tab", () => {
@@ -184,3 +240,13 @@ Deno.test("keymap registry formats sorted bindings", () => {
   assertEquals(formatKeyBinding({ key: "p", description: "palette", ctrl: true }), "C-p palette");
   assertEquals(renderKeyHelp(registry.list("global"), 40), "C-p palette  q quit");
 });
+
+function keyPress(key: Key, options: Partial<Omit<KeyPressEvent, "key" | "buffer">> = {}): KeyPressEvent {
+  return {
+    key,
+    ctrl: options.ctrl ?? false,
+    meta: options.meta ?? false,
+    shift: options.shift ?? false,
+    buffer: new Uint8Array(),
+  };
+}

@@ -149,6 +149,24 @@ const dashboardWidgets = componentsWithCapability("dashboard");
 const threeAscii = findComponent("ThreeAscii");
 ```
 
+`VirtualListController` keeps large-list interaction separate from rendering. It exposes viewport rows, selection
+movement, keyboard handling, selected-value persistence helpers, and inspection state for status bars or tests:
+
+```ts
+const processes = new VirtualListController({
+  items: processRows,
+  mode: "multiple",
+  valueForItem: (row) => row.pid,
+  format: (row) => `${row.pid} ${row.name}`,
+});
+
+processes.setViewportHeight(20);
+processes.selectValues([persistedPid]);
+const visibleRows = processes.rows.value;
+const selectedPids = processes.selectedValues<number>();
+const listState = processes.inspect();
+```
+
 `CommandPaletteController` and `ContextMenuController` expose the overlay widgets' query, selection, navigation, key
 handling, and inspection state without requiring a rendered component. Use them when a command surface, menu bar,
 shortcut handler, or test needs to drive the same behavior as the built-in widgets:

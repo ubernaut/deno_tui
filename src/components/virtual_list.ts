@@ -1,7 +1,16 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { TextRectangle } from "../canvas/text.ts";
 import { Component, type ComponentOptions } from "../component.ts";
-import { SelectionController, type SelectionMode, type SelectionState, selectionWindow } from "../selection.ts";
+import type { KeyPressEvent } from "../input_reader/types.ts";
+import {
+  selectedValues,
+  SelectionController,
+  selectionFromValues,
+  type SelectionMode,
+  type SelectionState,
+  type SelectionValueOptions,
+  selectionWindow,
+} from "../selection.ts";
 import { Computed, Signal } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
 import { Text } from "./text.ts";
@@ -18,8 +27,26 @@ export interface VirtualListOptions<T> extends ComponentOptions {
   items: T[] | Signal<T[]>;
   mode?: SelectionMode | Signal<SelectionMode>;
   selection?: SelectionController | Signal<SelectionState>;
+  controller?: VirtualListController<T>;
   format?: (item: T, index: number) => string;
   onSelect?: (item: T, index: number, state: SelectionState) => void | Promise<void>;
+}
+
+export interface VirtualListControllerOptions<T, TValue = T> {
+  items: T[] | Signal<T[]>;
+  mode?: SelectionMode | Signal<SelectionMode>;
+  selection?: SelectionController | Signal<SelectionState>;
+  format?: (item: T, index: number) => string;
+  valueForItem?: (item: T, index: number) => TValue;
+}
+
+export interface VirtualListInspection<T> {
+  itemCount: number;
+  mode: SelectionMode;
+  activeIndex: number;
+  selected: number[];
+  selectedItems: T[];
+  window: { start: number; end: number };
 }
 
 export function virtualListRows<T>(
@@ -55,58 +82,220 @@ export function renderVirtualListRows<T>(
   });
 }
 
+export class VirtualListController<T, TValue = T> {
+  readonly items: Signal<T[]>;
+  readonly rows: Signal<Array<VirtualListRow<T>>>;
+  readonly selection: SelectionController;
+  readonly format: (item: T, index: number) => string;
+  readonly valueForItem?: (item: T, index: number) => TValue;
+  readonly #length: Signal<number>;
+  readonly #capacity = new Signal(0);
+  readonly #externalSelection?: Signal<SelectionState>;
+  readonly #ownsItems: boolean;
+  readonly #ownsSelection: boolean;
+  readonly #syncLength = (items: T[]) => {
+    this.#length.value = items.length;
+    this.selection.normalize();
+    this.refreshRows();
+  };
+  readonly #syncRows = () => {
+    this.refreshRows();
+  };
+  readonly #syncExternalSelection = (state: SelectionState) => {
+    if (this.#externalSelection) this.#externalSelection.value = state;
+  };
+
+  constructor(options: VirtualListControllerOptions<T, TValue>) {
+    this.#ownsItems = !(options.items instanceof Signal);
+    this.items = signalify(options.items, { deepObserve: true });
+    this.format = options.format ?? ((item) => String(item));
+    this.valueForItem = options.valueForItem;
+    this.#length = new Signal(this.items.peek().length);
+    this.#externalSelection = options.selection instanceof Signal ? options.selection : undefined;
+    this.#ownsSelection = !(options.selection instanceof SelectionController);
+    this.selection = options.selection instanceof SelectionController ? options.selection : new SelectionController({
+      length: this.#length,
+      mode: options.mode ?? "single",
+      initialState: this.#externalSelection?.peek(),
+    });
+    this.rows = new Signal(virtualListRows(this.items.peek(), this.selection.state.peek(), 0, this.format), {
+      deepObserve: true,
+    });
+
+    this.items.subscribe(this.#syncLength);
+    this.selection.state.subscribe(this.#syncRows);
+    this.#capacity.subscribe(this.#syncRows);
+    if (this.#externalSelection) {
+      this.selection.state.subscribe(this.#syncExternalSelection);
+    }
+    this.refreshRows();
+  }
+
+  setViewportHeight(height: number): void {
+    this.#capacity.value = Math.max(0, Math.floor(height));
+  }
+
+  move(delta: number, extend = false): void {
+    this.selection.move(delta, extend);
+  }
+
+  page(delta: number, extend = false): void {
+    this.move(delta * Math.max(1, this.#capacity.peek()), extend);
+  }
+
+  first(): void {
+    this.selection.select(0);
+  }
+
+  last(): void {
+    this.selection.select(this.items.peek().length - 1);
+  }
+
+  toggle(): void {
+    this.selection.toggle();
+  }
+
+  selectedItem(): T | undefined {
+    return this.items.peek()[this.selection.state.peek().activeIndex];
+  }
+
+  selectedValues(options?: SelectionValueOptions<T, TValue>): TValue[];
+  selectedValues<TSelectedValue>(options: SelectionValueOptions<T, TSelectedValue>): TSelectedValue[];
+  selectedValues<TSelectedValue>(
+    options: SelectionValueOptions<T, TSelectedValue | TValue> = {},
+  ): Array<TSelectedValue | TValue> {
+    return selectedValues(this.items.peek(), this.selection.state.peek(), this.valueOptions(options));
+  }
+
+  selectValues(
+    values: readonly TValue[],
+    options?: SelectionValueOptions<T, TValue> & {
+      mode?: SelectionMode;
+      fallbackIndex?: number;
+    },
+  ): void;
+  selectValues<TSelectedValue>(
+    values: readonly TSelectedValue[],
+    options: SelectionValueOptions<T, TSelectedValue> & {
+      mode?: SelectionMode;
+      fallbackIndex?: number;
+    },
+  ): void;
+  selectValues<TSelectedValue>(
+    values: readonly TSelectedValue[],
+    options: SelectionValueOptions<T, TSelectedValue | TValue> & {
+      mode?: SelectionMode;
+      fallbackIndex?: number;
+    } = {},
+  ): void {
+    this.selection.state.value = selectionFromValues(this.items.peek(), values, {
+      mode: this.selection.mode.peek(),
+      ...this.valueOptions(options),
+    });
+  }
+
+  handleKeyPress(event: KeyPressEvent): T | undefined {
+    if (event.ctrl || event.meta) return undefined;
+    if (event.key === "up") this.move(-1, event.shift);
+    else if (event.key === "down") this.move(1, event.shift);
+    else if (event.key === "pageup") this.page(-1, event.shift);
+    else if (event.key === "pagedown") this.page(1, event.shift);
+    else if (event.key === "home") this.first();
+    else if (event.key === "end") this.last();
+    else if (event.key === "space") this.toggle();
+    else if (event.key === "return") return this.selectedItem();
+    return undefined;
+  }
+
+  inspect(height = this.#capacity.peek()): VirtualListInspection<T> {
+    const state = this.selection.state.peek();
+    return {
+      itemCount: this.items.peek().length,
+      mode: this.selection.mode.peek(),
+      activeIndex: state.activeIndex,
+      selected: [...state.selected],
+      selectedItems: selectedValues(this.items.peek(), state),
+      window: selectionWindow(this.items.peek().length, state.activeIndex, height),
+    };
+  }
+
+  refreshRows(): Array<VirtualListRow<T>> {
+    const rows = virtualListRows(this.items.peek(), this.selection.state.peek(), this.#capacity.peek(), this.format);
+    this.rows.value = rows;
+    return rows;
+  }
+
+  dispose(): void {
+    this.items.unsubscribe(this.#syncLength);
+    this.selection.state.unsubscribe(this.#syncRows);
+    this.#capacity.unsubscribe(this.#syncRows);
+    if (this.#externalSelection) {
+      this.selection.state.unsubscribe(this.#syncExternalSelection);
+    }
+    this.rows.dispose();
+    this.#capacity.dispose();
+    this.#length.dispose();
+    if (this.#ownsItems) this.items.dispose();
+    if (this.#ownsSelection) this.selection.dispose();
+  }
+
+  private valueOptions<TSelectedValue>(
+    options: SelectionValueOptions<T, TSelectedValue>,
+  ): SelectionValueOptions<T, TSelectedValue> {
+    if (options.valueForItem || !this.valueForItem) return options;
+    return {
+      ...options,
+      valueForItem: this.valueForItem as unknown as (item: T, index: number) => TSelectedValue,
+    };
+  }
+}
+
 export class VirtualList<T> extends Component {
   readonly items: Signal<T[]>;
   readonly selection: SelectionController;
   readonly format: (item: T, index: number) => string;
+  readonly controller: VirtualListController<T>;
+  readonly #syncViewportHeight = () => {
+    this.controller.setViewportHeight(this.rectangle.peek().height);
+  };
 
   constructor(private readonly listOptions: VirtualListOptions<T>) {
     super(listOptions);
-    this.items = signalify(listOptions.items, { deepObserve: true });
-    this.format = listOptions.format ?? ((item) => String(item));
-    this.selection = listOptions.selection instanceof SelectionController
-      ? listOptions.selection
-      : new SelectionController({
-        length: new Computed(() => this.items.value.length),
-        mode: listOptions.mode ?? "single",
-        initialState: listOptions.selection instanceof Signal ? listOptions.selection.peek() : undefined,
+    const ownsController = !listOptions.controller;
+    this.controller = listOptions.controller ??
+      new VirtualListController({
+        items: listOptions.items,
+        mode: listOptions.mode,
+        selection: listOptions.selection,
+        format: listOptions.format,
       });
+    this.items = this.controller.items;
+    this.selection = this.controller.selection;
+    this.format = this.controller.format;
+    this.#syncViewportHeight();
+    this.rectangle.subscribe(this.#syncViewportHeight);
 
-    const externalSelection = listOptions.selection instanceof Signal ? listOptions.selection : undefined;
-    if (externalSelection) {
-      this.selection.state.subscribe((state) => {
-        externalSelection.value = state;
-      });
-    }
-
-    this.on("keyPress", ({ key, ctrl, meta, shift }) => {
-      if (ctrl || meta) return;
-      if (key === "up") this.selection.move(-1, shift);
-      else if (key === "down") this.selection.move(1, shift);
-      else if (key === "pageup") this.selection.move(-Math.max(1, this.rectangle.peek().height), shift);
-      else if (key === "pagedown") this.selection.move(Math.max(1, this.rectangle.peek().height), shift);
-      else if (key === "home") this.selection.select(0);
-      else if (key === "end") this.selection.select(this.items.peek().length - 1);
-      else if (key === "space") this.selection.toggle();
-      else if (key === "return") {
+    this.on("keyPress", (event) => {
+      const item = this.controller.handleKeyPress(event);
+      if (item !== undefined) {
         const state = this.selection.state.peek();
-        const item = this.items.peek()[state.activeIndex];
-        if (item !== undefined) {
-          void this.listOptions.onSelect?.(item, state.activeIndex, state);
-        }
+        void this.listOptions.onSelect?.(item, state.activeIndex, state);
       }
+    });
+    this.on("destroy", () => {
+      this.rectangle.unsubscribe(this.#syncViewportHeight);
+      if (ownsController) this.controller.dispose();
     });
   }
 
   override draw(): void {
     super.draw();
     const rows = new Computed(() =>
-      renderVirtualListRows(
-        this.items.value,
-        this.selection.state.value,
-        this.rectangle.value.height,
-        this.format,
-      )
+      this.controller.rows.value.map((row) => {
+        const cursor = row.active ? ">" : " ";
+        const marker = row.selected ? "●" : " ";
+        return `${cursor} ${marker} ${row.text}`;
+      })
     );
     Array.from({ length: this.rectangle.peek().height }, (_, index) => {
       const row = new Text({
