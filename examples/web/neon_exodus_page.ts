@@ -1,8 +1,9 @@
 /// <reference lib="dom" />
 /// <reference lib="dom.iterable" />
 import { BoxObject } from "../../src/canvas/box.ts";
-import { TextObject } from "../../src/canvas/text.ts";
-import { Signal } from "../../src/signals/mod.ts";
+import { TextObject, type TextRectangle } from "../../src/canvas/text.ts";
+import { Computed, Signal } from "../../src/signals/mod.ts";
+import { adaptiveGridItemRect, adaptiveGridPage } from "../../src/layout/mod.ts";
 import { createAnsiStyle } from "../../src/theme.ts";
 import { stripStyles, textWidth } from "../../src/utils/strings.ts";
 import { createWebTui } from "../../src/web/host.ts";
@@ -17,15 +18,11 @@ import {
 import { accentColor, makeStyle, palette } from "../../app/styles.ts";
 import type { NeonDemo } from "../../app/neon_theme.ts";
 
-const columns = 120;
-const rows = 36;
 const root = document.querySelector<HTMLElement>("#app");
 if (!root) throw new Error("Missing #app mount element.");
 
 const host = createWebTui({
   root,
-  columns,
-  rows,
   sinkOptions: {
     cellWidth: 10,
     cellHeight: 19,
@@ -36,23 +33,35 @@ const host = createWebTui({
 
 new BoxObject({
   canvas: host.canvas,
-  rectangle: { column: 0, row: 0, width: columns, height: rows },
+  rectangle: new Computed(() => ({ column: 0, row: 0, width: currentColumns(), height: currentRows() })),
   filler: " ",
   style: createAnsiStyle({ background: [5, 7, 13] }),
   zIndex: -1,
 }).draw();
 
-const lineSignals = Array.from({ length: rows }, () => new Signal(""));
-for (let row = 0; row < rows; row += 1) {
-  new TextObject({
-    canvas: host.canvas,
-    rectangle: { column: 0, row, width: columns },
-    value: lineSignals[row]!,
-    overwriteRectangle: true,
-    multiCodePointSupport: true,
-    style: (text) => text,
-    zIndex: 1,
-  }).draw();
+const lineSignals: Signal<string>[] = [];
+ensureLineSignals();
+
+host.platform.size.subscribe(() => {
+  ensureLineSignals();
+  draw();
+});
+
+function ensureLineSignals(): void {
+  for (let row = lineSignals.length; row < currentRows(); row += 1) {
+    const signal = new Signal("");
+    lineSignals.push(signal);
+    const rowIndex = row;
+    new TextObject({
+      canvas: host.canvas,
+      rectangle: new Computed<TextRectangle>(() => ({ column: 0, row: rowIndex, width: currentColumns() })),
+      value: signal,
+      overwriteRectangle: true,
+      multiCodePointSupport: true,
+      style: (text) => text,
+      zIndex: 1,
+    }).draw();
+  }
 }
 
 let phase = 0;
@@ -86,6 +95,9 @@ setInterval(() => {
 globalThis.addEventListener("beforeunload", () => host.destroy());
 
 function draw(): void {
+  const columns = currentColumns();
+  const rows = currentRows();
+  ensureLineSignals();
   const frame = Array.from({ length: rows }, () => "");
   frame[0] = headerLine();
   frame[1] = navLine();
@@ -94,23 +106,27 @@ function draw(): void {
   const visible = visibleDemos();
   const selectedIndex = Math.max(0, visible.findIndex((demo) => demo.id === selectedId));
   const selected = visible[selectedIndex] ?? visible[0];
-  const grid = section === "all"
-    ? { cols: 3, panelWidth: 38, panelHeight: 10 }
-    : { cols: 2, panelWidth: 57, panelHeight: 13 };
-  const startRow = section === "all" ? 5 : 6;
-  const startColumn = 2;
-  const gap = 2;
-  const count = section === "all" ? 9 : 6;
-  const offset = Math.max(0, selectedIndex - (selectedIndex % grid.cols));
-  const demos = visible.slice(offset, offset + count);
+  const content = {
+    column: 1,
+    row: section === "all" ? 5 : 6,
+    width: Math.max(0, columns - 2),
+    height: Math.max(0, rows - (section === "all" ? 7 : 15)),
+  };
+  const page = adaptiveGridPage(content, selectedIndex, {
+    itemCount: visible.length,
+    minColumnWidth: section === "all" ? 34 : 42,
+    minRowHeight: section === "all" ? 9 : 11,
+    maxColumns: section === "all" ? 4 : 3,
+    gap: 1,
+  });
+  const demos = visible.slice(page.pageStart, page.pageStart + page.grid.pageSize);
 
   for (const [index, demo] of demos.entries()) {
-    const column = startColumn + (index % grid.cols) * (grid.panelWidth + gap);
-    const row = startRow + Math.floor(index / grid.cols) * (grid.panelHeight + 1);
-    placePanel(frame, column, row, grid.panelWidth, grid.panelHeight, demo, demo.id === selectedId);
+    const rect = adaptiveGridItemRect(content, page.grid, index, 1);
+    placePanel(frame, rect.column, rect.row, rect.width, rect.height, demo, demo.id === selectedId);
   }
 
-  if (selected && section !== "all") {
+  if (selected && section !== "all" && rows >= 24) {
     placeSelectedDetail(frame, selected);
   }
 
@@ -123,6 +139,9 @@ function draw(): void {
 
   for (let row = 0; row < rows; row += 1) {
     lineSignals[row]!.value = fit(frame[row] ?? "", columns);
+  }
+  for (let row = rows; row < lineSignals.length; row += 1) {
+    lineSignals[row]!.value = "";
   }
 }
 
@@ -138,6 +157,7 @@ function ensureSelectedVisible(): void {
 }
 
 function headerLine(): string {
+  const columns = currentColumns();
   const title = makeStyle({ fg: palette.alarm, bold: true })(" NEON EXODUS ");
   const subtitle = makeStyle({ fg: palette.paper, bold: true })(" / DENO TUI WEB STANDALONE / ");
   const clock = makeStyle({ fg: palette.amber, bold: true })(new Date().toLocaleTimeString());
@@ -153,6 +173,7 @@ function navLine(): string {
 }
 
 function hintLine(): string {
+  const columns = currentColumns();
   const summary =
     `${source.toUpperCase()} SOURCE / ${visibleDemos().length} DEMOS / SELECTED ${selectedId.toUpperCase()} / PHASE ${
       String(phase).padStart(4, "0")
@@ -169,6 +190,7 @@ function placePanel(
   demo: NeonDemo,
   selected: boolean,
 ): void {
+  if (width < 4 || height < 4) return;
   const render = renderNeonSuiteDemo({
     demo,
     phase,
@@ -180,7 +202,7 @@ function placePanel(
   const accent = selected ? palette.paper : accentColor(render.accent);
   const border = makeStyle({ fg: accent, bold: selected });
   const title = makeStyle({ fg: palette.void, bg: accent, bold: true })(
-    fit(` ${demo.code} / ${demo.title.toUpperCase()} `, width - 2),
+    fit(` ${demo.code} / ${demo.title.toUpperCase()} `, Math.max(0, width - 2)),
   );
   write(frame, row, column, border(`┌${"─".repeat(width - 2)}┐`));
   write(frame, row + 1, column, `${border("│")}${title}${pad("", width - 2 - textWidth(title))}${border("│")}`);
@@ -202,10 +224,13 @@ function placePanel(
 }
 
 function placeSelectedDetail(frame: string[], demo: NeonDemo): void {
+  const columns = currentColumns();
+  const rows = currentRows();
+  const width = Math.max(24, Math.min(110, columns - 8));
   const render = renderNeonSuiteDemo({
     demo,
     phase,
-    width: 110,
+    width,
     height: 6,
     selected: true,
     renderMode: "max",
@@ -213,25 +238,26 @@ function placeSelectedDetail(frame: string[], demo: NeonDemo): void {
   const top = rows - 8;
   const accent = accentColor(render.accent);
   const border = makeStyle({ fg: accent, bold: true });
-  write(frame, top, 4, border(`┌${"─".repeat(110)}┐`));
+  write(frame, top, 4, border(`┌${"─".repeat(width)}┐`));
   write(
     frame,
     top + 1,
     4,
     `${border("│")}${
       makeStyle({ fg: palette.void, bg: accent, bold: true })(
-        fit(` SELECTED / ${demo.code} / ${demo.title.toUpperCase()} `, 110),
+        fit(` SELECTED / ${demo.code} / ${demo.title.toUpperCase()} `, width),
       )
     }${border("│")}`,
   );
   const lines = render.body.split("\n").slice(0, 4);
   for (let index = 0; index < 4; index += 1) {
-    write(frame, top + 2 + index, 4, `${border("│")}${fit(lines[index] ?? "", 110)}${border("│")}`);
+    write(frame, top + 2 + index, 4, `${border("│")}${fit(lines[index] ?? "", width)}${border("│")}`);
   }
-  write(frame, top + 6, 4, border(`└${"─".repeat(110)}┘`));
+  write(frame, top + 6, 4, border(`└${"─".repeat(width)}┘`));
 }
 
 function write(frame: string[], row: number, column: number, value: string): void {
+  const columns = currentColumns();
   if (row < 0 || row >= frame.length || column >= columns) return;
   const line = frame[row] ?? "";
   const visible = textWidth(line);
@@ -253,4 +279,12 @@ function fit(value: string, width: number): string {
 
 function pad(value: string, width: number): string {
   return value + " ".repeat(Math.max(0, width));
+}
+
+function currentColumns(): number {
+  return Math.max(1, host.platform.size.peek().columns);
+}
+
+function currentRows(): number {
+  return Math.max(1, host.platform.size.peek().rows);
 }

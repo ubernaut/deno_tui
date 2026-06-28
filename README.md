@@ -756,6 +756,10 @@ app.onDispose(() => {
 });
 ```
 
+For card decks, galleries, and dashboard walls, `adaptiveGrid()`, `adaptiveGridPage()`, and `adaptiveGridItemRect()`
+derive columns, rows, page windows, and item rectangles from the current terminal bounds. These helpers make demos and
+apps collapse from dense monitor-style layouts to single-column narrow terminals without duplicating breakpoint math.
+
 Run `deno task layout-recipe`, `deno task layout-recipe -- --json`, or `./visualization layout-recipe` to inspect the
 sample responsive shell recipe as Markdown or JSON. The report includes breakpoint coverage, missing breakpoint layouts,
 and visible slot ids per layout so app shells can debug responsive behavior before components are mounted.

@@ -48,7 +48,7 @@ export class BrowserPlatform implements TuiPlatform {
         : sizeFromElement(options.root, cellWidth, cellHeight),
       { deepObserve: true },
     );
-    this.input = options.input ?? new BrowserInputSource(options.root);
+    this.input = options.input ?? new BrowserInputSource(options.root, { cellWidth, cellHeight });
     this.lifecycle = options.lifecycle ?? new NoopLifecycleController("browser");
     this.#scheduler = options.scheduler ?? defaultBrowserFrameScheduler();
 
@@ -83,12 +83,16 @@ export class BrowserPlatform implements TuiPlatform {
 
 export class BrowserInputSource implements InputSource {
   readonly #target: HTMLElement;
+  readonly #cellWidth: number;
+  readonly #cellHeight: number;
   #emitter?: PlatformInputEmitter;
   #attached = false;
   #removeListeners: Array<() => void> = [];
 
-  constructor(target: HTMLElement) {
+  constructor(target: HTMLElement, options: { cellWidth?: number; cellHeight?: number } = {}) {
     this.#target = target;
+    this.#cellWidth = Math.max(1, options.cellWidth ?? 10);
+    this.#cellHeight = Math.max(1, options.cellHeight ?? 20);
   }
 
   attach(emitter: PlatformInputEmitter): void {
@@ -135,8 +139,8 @@ export class BrowserInputSource implements InputSource {
   #handlePointer(event: PointerEvent, release: boolean): void {
     this.#emitter?.emit("mousePress", {
       key: "mouse",
-      x: event.offsetX,
-      y: event.offsetY,
+      x: Math.floor(event.offsetX / this.#cellWidth),
+      y: Math.floor(event.offsetY / this.#cellHeight),
       movementX: event.movementX,
       movementY: event.movementY,
       meta: event.metaKey || event.altKey,
@@ -153,8 +157,8 @@ export class BrowserInputSource implements InputSource {
   #handleWheel(event: WheelEvent): void {
     this.#emitter?.emit("mouseScroll", {
       key: "mouse",
-      x: event.offsetX,
-      y: event.offsetY,
+      x: Math.floor(event.offsetX / this.#cellWidth),
+      y: Math.floor(event.offsetY / this.#cellHeight),
       movementX: 0,
       movementY: event.deltaY,
       meta: event.metaKey || event.altKey,

@@ -7,6 +7,30 @@ export interface Breakpoint {
   minHeight?: number;
 }
 
+export interface AdaptiveGridOptions {
+  itemCount: number;
+  minColumnWidth: number;
+  minRowHeight: number;
+  maxColumns?: number;
+  maxRows?: number;
+  gap?: number;
+}
+
+export interface AdaptiveGrid {
+  columns: number;
+  rows: number;
+  itemWidth: number;
+  itemHeight: number;
+  pageSize: number;
+}
+
+export interface AdaptiveGridPage {
+  grid: AdaptiveGrid;
+  pageStart: number;
+  pageIndex: number;
+  pageCount: number;
+}
+
 export function resolveBreakpoint(bounds: Rectangle, breakpoints: readonly Breakpoint[]): string {
   const matches = breakpoints
     .filter((breakpoint) => bounds.width >= (breakpoint.minWidth ?? 0) && bounds.height >= (breakpoint.minHeight ?? 0))
@@ -21,6 +45,67 @@ export function insetRect(rect: Rectangle, inset: number): Rectangle {
     row: rect.row + safeInset,
     width: Math.max(0, rect.width - safeInset * 2),
     height: Math.max(0, rect.height - safeInset * 2),
+  };
+}
+
+export function adaptiveGrid(bounds: Rectangle, options: AdaptiveGridOptions): AdaptiveGrid {
+  const gap = Math.max(0, Math.floor(options.gap ?? 1));
+  const itemCount = Math.max(0, Math.floor(options.itemCount));
+  const minColumnWidth = Math.max(1, Math.floor(options.minColumnWidth));
+  const minRowHeight = Math.max(1, Math.floor(options.minRowHeight));
+  const maxColumns = Math.max(1, Math.floor(options.maxColumns ?? (itemCount || 1)));
+  const maxRows = Math.max(1, Math.floor(options.maxRows ?? (itemCount || 1)));
+  const width = Math.max(0, Math.floor(bounds.width));
+  const height = Math.max(0, Math.floor(bounds.height));
+
+  const columnsByWidth = Math.max(1, Math.floor((width + gap) / (minColumnWidth + gap)));
+  const rowsByHeight = Math.max(1, Math.floor((height + gap) / (minRowHeight + gap)));
+  const columns = Math.max(1, Math.min(maxColumns, itemCount || 1, columnsByWidth));
+  const rows = Math.max(1, Math.min(maxRows, Math.ceil(Math.max(1, itemCount) / columns), rowsByHeight));
+  const itemWidth = Math.max(0, Math.floor((width - Math.max(0, columns - 1) * gap) / columns));
+  const itemHeight = Math.max(0, Math.floor((height - Math.max(0, rows - 1) * gap) / rows));
+
+  return {
+    columns,
+    rows,
+    itemWidth,
+    itemHeight,
+    pageSize: Math.max(1, columns * rows),
+  };
+}
+
+export function adaptiveGridPage(
+  bounds: Rectangle,
+  selectedIndex: number,
+  options: AdaptiveGridOptions,
+): AdaptiveGridPage {
+  const grid = adaptiveGrid(bounds, options);
+  const itemCount = Math.max(0, Math.floor(options.itemCount));
+  const pageCount = Math.max(1, Math.ceil(Math.max(1, itemCount) / grid.pageSize));
+  const safeSelected = Math.max(0, Math.min(Math.floor(selectedIndex), Math.max(0, itemCount - 1)));
+  const pageIndex = Math.min(pageCount - 1, Math.floor(safeSelected / grid.pageSize));
+  return {
+    grid,
+    pageStart: pageIndex * grid.pageSize,
+    pageIndex,
+    pageCount,
+  };
+}
+
+export function adaptiveGridItemRect(bounds: Rectangle, grid: AdaptiveGrid, localIndex: number, gap = 1): Rectangle {
+  const safeGap = Math.max(0, Math.floor(gap));
+  const column = Math.max(0, Math.floor(localIndex)) % grid.columns;
+  const row = Math.floor(Math.max(0, Math.floor(localIndex)) / grid.columns);
+  const lastColumn = column === grid.columns - 1;
+  const lastRow = row === grid.rows - 1;
+  const x = bounds.column + column * (grid.itemWidth + safeGap);
+  const y = bounds.row + row * (grid.itemHeight + safeGap);
+
+  return {
+    column: x,
+    row: y,
+    width: Math.max(0, lastColumn ? bounds.column + bounds.width - x : grid.itemWidth),
+    height: Math.max(0, lastRow ? bounds.row + bounds.height - y : grid.itemHeight),
   };
 }
 

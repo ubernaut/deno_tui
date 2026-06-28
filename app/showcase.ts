@@ -4,6 +4,7 @@ import { handleInput } from "../src/input.ts";
 import { Computed, Effect, Signal } from "../src/signals/mod.ts";
 import { probeCompatibleWebGPUDevice } from "../src/three_ascii/webgpu_compat.ts";
 import { Tui } from "../src/tui.ts";
+import { adaptiveGridItemRect, adaptiveGridPage } from "../src/layout/mod.ts";
 import { createDefaultAsciiOptions, terminalGlyphStyleLabel } from "./ascii_options.ts";
 import { demos, formatCountdown, type NeonDemo, type NeonSection } from "./neon_theme.ts";
 import { accentColor, makeStyle, palette, severityAccent } from "./styles.ts";
@@ -345,50 +346,39 @@ function cardRect(index: number): Rect {
     return selectedIndex.value === index ? area : hiddenRect();
   }
 
-  const columns = gridColumns();
-  const rows = gridRows();
-  const cardsPerPage = Math.max(1, columns * rows);
-  const pageStart = Math.floor(selectedIndex.value / cardsPerPage) * cardsPerPage;
+  const page = gridPage();
+  const pageStart = page.pageStart;
   const local = index - pageStart;
 
-  if (local < 0 || local >= cardsPerPage) {
+  if (local < 0 || local >= page.grid.pageSize) {
     return hiddenRect();
   }
 
-  const column = local % columns;
-  const row = Math.floor(local / columns);
-  const cardWidth = Math.floor((area.width - Math.max(0, columns - 1)) / columns);
-  const cardHeight = Math.floor((area.height - Math.max(0, rows - 1)) / rows);
-  const lastColumn = column === columns - 1;
-  const lastRow = row === rows - 1;
-
-  return {
-    column: area.column + column * (cardWidth + 1),
-    row: area.row + row * (cardHeight + 1),
-    width: Math.max(0, lastColumn ? area.width - column * (cardWidth + 1) : cardWidth),
-    height: Math.max(0, lastRow ? area.height - row * (cardHeight + 1) : cardHeight),
-  };
+  return adaptiveGridItemRect(area, page.grid, local);
 }
 
 function gridColumns() {
-  const width = contentRect.peek().width;
-  if (width >= 152) return 4;
-  if (width >= 112) return 3;
-  if (width >= 72) return 2;
-  return 1;
+  return gridPage().grid.columns;
 }
 
 function gridRows() {
-  const height = contentRect.peek().height;
-  const minHeight = contentRect.peek().width >= 112 ? 10 : 8;
-  return Math.max(1, Math.floor((height + 1) / (minHeight + 1)));
+  return gridPage().grid.rows;
 }
 
 function pageState() {
-  const cardsPerPage = Math.max(1, gridColumns() * gridRows());
-  const total = Math.max(1, Math.ceil(visibleDemos.value.length / cardsPerPage));
-  const current = Math.min(total - 1, Math.floor(selectedIndex.value / cardsPerPage));
-  return { current, total };
+  const page = gridPage();
+  return { current: page.pageIndex, total: page.pageCount };
+}
+
+function gridPage() {
+  const area = contentRect.peek();
+  return adaptiveGridPage(area, selectedIndex.peek(), {
+    itemCount: visibleDemos.peek().length,
+    minColumnWidth: section.peek() === "three" ? 42 : 34,
+    minRowHeight: area.width >= 112 ? 10 : 8,
+    maxColumns: section.peek() === "all" ? 4 : 3,
+    gap: 1,
+  });
 }
 
 function renderShowcaseDemo(demo: NeonDemo, rect: Rect, selected: boolean): PanelRender {

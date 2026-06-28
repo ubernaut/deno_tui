@@ -4,6 +4,7 @@ import { handleInput } from "../src/input.ts";
 import { Computed, Effect, Signal } from "../src/signals/mod.ts";
 import { probeCompatibleWebGPUDevice } from "../src/three_ascii/webgpu_compat.ts";
 import { Tui } from "../src/tui.ts";
+import { adaptiveGridItemRect, adaptiveGridPage } from "../src/layout/mod.ts";
 import { createDefaultAsciiOptions, terminalGlyphStyleLabel } from "./ascii_options.ts";
 import { formatCountdown, type NeonDemo } from "./neon_theme.ts";
 import {
@@ -365,13 +366,11 @@ function moveSelectionForKey(key: string) {
 }
 
 function gridColumns() {
-  return neonColumnsForWidth(contentRect().width, section.peek());
+  return gridPage().grid.columns;
 }
 
 function gridRows() {
-  const area = contentRect();
-  const scene = neonSceneHeight(area.width, area.height, section.peek());
-  return Math.max(1, Math.floor((area.height + 1) / (scene + 5)));
+  return gridPage().grid.rows;
 }
 
 function deckRect(): Rect {
@@ -403,26 +402,12 @@ function cardRect(index: number): Rect {
     return selectedIndex.value === index ? area : hiddenRect();
   }
 
-  const columns = gridColumns();
-  const rows = gridRows();
-  const cardsPerPage = Math.max(1, columns * rows);
-  const pageStart = Math.floor(selectedIndex.value / cardsPerPage) * cardsPerPage;
+  const page = gridPage();
+  const pageStart = page.pageStart;
   const local = index - pageStart;
-  if (local < 0 || local >= cardsPerPage) return hiddenRect();
+  if (local < 0 || local >= page.grid.pageSize) return hiddenRect();
 
-  const column = local % columns;
-  const row = Math.floor(local / columns);
-  const cardWidth = Math.floor((area.width - Math.max(0, columns - 1)) / columns);
-  const cardHeight = Math.floor((area.height - Math.max(0, rows - 1)) / rows);
-  const lastColumn = column === columns - 1;
-  const lastRow = row === rows - 1;
-
-  return {
-    column: area.column + column * (cardWidth + 1),
-    row: area.row + row * (cardHeight + 1),
-    width: Math.max(0, lastColumn ? area.width - column * (cardWidth + 1) : cardWidth),
-    height: Math.max(0, lastRow ? area.height - row * (cardHeight + 1) : cardHeight),
-  };
+  return adaptiveGridItemRect(area, page.grid, local);
 }
 
 function renderCard(demo: NeonDemo, rect: Rect, selected: boolean): PanelRender {
@@ -450,6 +435,23 @@ function deckBody() {
     } DEMOS  /  EXTENDED: ${neonSuiteSummary("extended").count} DEMOS`,
   ];
   return lines.join("\n");
+}
+
+function gridPage() {
+  const area = contentRect();
+  return adaptiveGridPage(area, selectedIndex.peek(), {
+    itemCount: visibleDemos.peek().length,
+    minColumnWidth: minCardWidth(area.width, section.peek()),
+    minRowHeight: neonSceneHeight(area.width, area.height, section.peek()) + 5,
+    maxColumns: neonColumnsForWidth(area.width, section.peek()),
+    gap: 1,
+  });
+}
+
+function minCardWidth(width: number, currentSection: NeonSuiteSection) {
+  if (currentSection === "three") return 48;
+  if (currentSection === "all") return width >= 176 ? 56 : 38;
+  return width >= 116 ? 56 : 38;
 }
 
 function fitPad(text: string, width: number) {

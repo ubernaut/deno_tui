@@ -54,13 +54,28 @@
       }
 
       #app {
-        width: min(1200px, 100vw);
-        height: min(684px, calc(100vh - 4rem));
+        width: min(1600px, calc(100vw - 1rem));
+        height: calc(100vh - 4.5rem);
+        min-height: 360px;
         align-self: center;
         justify-self: center;
         outline: none;
         box-shadow: 0 0 0 1px rgba(91, 176, 255, 0.24), 0 0 48px rgba(255, 66, 49, 0.14);
         background: #05070d;
+      }
+
+      @media (max-width: 720px) {
+        header {
+          align-items: flex-start;
+          flex-direction: column;
+          gap: 0.25rem;
+        }
+
+        #app {
+          width: 100vw;
+          height: calc(100vh - 5.75rem);
+          min-height: 300px;
+        }
       }
 
       canvas {

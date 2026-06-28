@@ -410,6 +410,53 @@ var Signal = class {
   }
 };
 
+// src/signals/computed.ts
+var ComputedReadOnlyError = class extends Error {
+  constructor() {
+    super("Computed is read-only, you can't (and shouldn't!) directly modify its value");
+  }
+};
+var Computed = class extends Signal {
+  computable;
+  dependencies;
+  constructor(computable) {
+    super(void 0);
+    const value = computable(this);
+    super.value = value;
+    this.computable = computable;
+    this.dependencies = /* @__PURE__ */ new Set();
+    trackDependencies(this.dependencies, this, computable).then(() => {
+      for (const dependency of this.dependencies) {
+        dependency.depend(this);
+      }
+    });
+  }
+  get value() {
+    activeSignals?.add(this);
+    return this.$value;
+  }
+  set value(_value) {
+    throw new ComputedReadOnlyError();
+  }
+  jink(_value) {
+    throw new ComputedReadOnlyError();
+  }
+  update(cause) {
+    activeSignals?.add(this);
+    if (this.$value !== (this.$value = this.computable(cause)) || this.forceUpdateValue) {
+      this.propagate(cause);
+    }
+  }
+  dispose() {
+    super.dispose();
+    const { dependencies } = this;
+    for (const dependency of [...dependencies]) {
+      dependency.dependants?.delete(this);
+      dependencies.delete(dependency);
+    }
+  }
+};
+
 // src/signals/effect.ts
 var Effect = class {
   $effectable;
@@ -578,8 +625,8 @@ var DrawObject = class {
   queueRerender(row, column) {
     const viewRectangle = this.view.peek()?.rectangle?.peek();
     if (row < 0 || column < 0) return;
-    const { columns: columns2, rows: rows2 } = this.canvas.size.peek();
-    if (row >= rows2 || column >= columns2) return;
+    const { columns, rows } = this.canvas.size.peek();
+    if (row >= rows || column >= columns) return;
     if (viewRectangle && (row < viewRectangle.row || column < viewRectangle.column || row >= viewRectangle.row + viewRectangle.height || column >= viewRectangle.column + viewRectangle.width)) return;
     (this.rerenderCells[row] ??= /* @__PURE__ */ new Set()).add(column);
   }
@@ -624,9 +671,9 @@ var DrawObject = class {
     }
   }
   updateOutOfBounds() {
-    const { columns: columns2, rows: rows2 } = this.canvas.size.peek();
+    const { columns, rows } = this.canvas.size.peek();
     const { column, row, width, height } = this.rectangle.peek();
-    this.outOfBounds = width === 0 || height === 0 || column >= columns2 || row >= rows2 || column + width < 0 || row + height < 0;
+    this.outOfBounds = width === 0 || height === 0 || column >= columns || row >= rows || column + width < 0 || row + height < 0;
     if (!this.outOfBounds) {
       const viewRectangle = this.view.peek()?.rectangle?.peek();
       if (!viewRectangle) return;
@@ -736,12 +783,12 @@ var BoxObject = class extends DrawObject {
   rerender() {
     const { canvas, rerenderCells, omitCells } = this;
     const { frameBuffer, rerenderQueue } = canvas;
-    const { rows: rows2, columns: columns2 } = canvas.size.peek();
+    const { rows, columns } = canvas.size.peek();
     const rectangle = this.rectangle.peek();
     const style = this.style.peek();
     const filler = this.filler.peek();
-    let rowRange = Math.min(rectangle.row + rectangle.height, rows2);
-    let columnRange = Math.min(rectangle.column + rectangle.width, columns2);
+    let rowRange = Math.min(rectangle.row + rectangle.height, rows);
+    let columnRange = Math.min(rectangle.column + rectangle.width, columns);
     const viewRectangle = this.view.peek()?.rectangle?.peek();
     if (viewRectangle) {
       rowRange = Math.min(rowRange, viewRectangle.row + viewRectangle.height);
@@ -982,12 +1029,12 @@ var TextObject = class extends DrawObject {
   rerender() {
     const { canvas, valueChars, omitCells, rerenderCells } = this;
     const { frameBuffer, rerenderQueue } = canvas;
-    const { columns: columns2, rows: rows2 } = canvas.size.peek();
+    const { columns, rows } = canvas.size.peek();
     const rectangle = this.rectangle.peek();
     const style = this.style.peek();
     const { row } = rectangle;
-    let rowRange = Math.min(row, rows2);
-    let columnRange = Math.min(rectangle.column + valueChars.length, columns2);
+    let rowRange = Math.min(row, rows);
+    let columnRange = Math.min(rectangle.column + valueChars.length, columns);
     const viewRectangle = this.view.peek()?.rectangle?.peek();
     if (viewRectangle) {
       rowRange = Math.min(row, viewRectangle.row + viewRectangle.height);
@@ -1012,6 +1059,62 @@ var TextObject = class extends DrawObject {
     rerenderColumns.clear();
   }
 };
+
+// src/layout/flex_layout.ts
+var MAX_FLEX_SIZE = Number.MAX_SAFE_INTEGER;
+
+// src/layout/responsive.ts
+function adaptiveGrid(bounds, options) {
+  const gap = Math.max(0, Math.floor(options.gap ?? 1));
+  const itemCount = Math.max(0, Math.floor(options.itemCount));
+  const minColumnWidth = Math.max(1, Math.floor(options.minColumnWidth));
+  const minRowHeight = Math.max(1, Math.floor(options.minRowHeight));
+  const maxColumns = Math.max(1, Math.floor(options.maxColumns ?? (itemCount || 1)));
+  const maxRows = Math.max(1, Math.floor(options.maxRows ?? (itemCount || 1)));
+  const width = Math.max(0, Math.floor(bounds.width));
+  const height = Math.max(0, Math.floor(bounds.height));
+  const columnsByWidth = Math.max(1, Math.floor((width + gap) / (minColumnWidth + gap)));
+  const rowsByHeight = Math.max(1, Math.floor((height + gap) / (minRowHeight + gap)));
+  const columns = Math.max(1, Math.min(maxColumns, itemCount || 1, columnsByWidth));
+  const rows = Math.max(1, Math.min(maxRows, Math.ceil(Math.max(1, itemCount) / columns), rowsByHeight));
+  const itemWidth = Math.max(0, Math.floor((width - Math.max(0, columns - 1) * gap) / columns));
+  const itemHeight = Math.max(0, Math.floor((height - Math.max(0, rows - 1) * gap) / rows));
+  return {
+    columns,
+    rows,
+    itemWidth,
+    itemHeight,
+    pageSize: Math.max(1, columns * rows)
+  };
+}
+function adaptiveGridPage(bounds, selectedIndex, options) {
+  const grid = adaptiveGrid(bounds, options);
+  const itemCount = Math.max(0, Math.floor(options.itemCount));
+  const pageCount = Math.max(1, Math.ceil(Math.max(1, itemCount) / grid.pageSize));
+  const safeSelected = Math.max(0, Math.min(Math.floor(selectedIndex), Math.max(0, itemCount - 1)));
+  const pageIndex = Math.min(pageCount - 1, Math.floor(safeSelected / grid.pageSize));
+  return {
+    grid,
+    pageStart: pageIndex * grid.pageSize,
+    pageIndex,
+    pageCount
+  };
+}
+function adaptiveGridItemRect(bounds, grid, localIndex, gap = 1) {
+  const safeGap = Math.max(0, Math.floor(gap));
+  const column = Math.max(0, Math.floor(localIndex)) % grid.columns;
+  const row = Math.floor(Math.max(0, Math.floor(localIndex)) / grid.columns);
+  const lastColumn = column === grid.columns - 1;
+  const lastRow = row === grid.rows - 1;
+  const x = bounds.column + column * (grid.itemWidth + safeGap);
+  const y = bounds.row + row * (grid.itemHeight + safeGap);
+  return {
+    column: x,
+    row: y,
+    width: Math.max(0, lastColumn ? bounds.column + bounds.width - x : grid.itemWidth),
+    height: Math.max(0, lastRow ? bounds.row + bounds.height - y : grid.itemHeight)
+  };
+}
 
 // src/theme.ts
 function emptyStyle(text) {
@@ -1270,17 +1373,17 @@ var Canvas = class extends EventEmitter {
     this.size = signalify(options.size, { deepObserve: true });
     this.size.subscribe(() => {
       this.resizeNeeded = true;
-      const { columns: columns3, rows: rows3 } = this.size.peek();
-      this.sink.resize?.(columns3, rows3);
+      const { columns: columns2, rows: rows2 } = this.size.peek();
+      this.sink.resize?.(columns2, rows2);
     });
-    const { columns: columns2, rows: rows2 } = this.size.peek();
-    this.sink.resize?.(columns2, rows2);
+    const { columns, rows } = this.size.peek();
+    this.sink.resize?.(columns, rows);
   }
   resize() {
-    const { columns: columns2, rows: rows2 } = this.size.peek();
+    const { columns, rows } = this.size.peek();
     for (const drawObject of this.drawnObjects) {
       const { column, row } = drawObject.rectangle.peek();
-      if (column >= columns2 || row >= rows2) continue;
+      if (column >= columns || row >= rows) continue;
       drawObject.rendered = false;
       drawObject.updated = false;
       this.updateObjects.push(drawObject);
@@ -1390,16 +1493,16 @@ var Canvas = class extends EventEmitter {
     let flushedCells = 0;
     const cellUpdates = [];
     for (let row = 0; row < size.rows; ++row) {
-      const columns2 = rerenderQueue[row];
-      if (!columns2?.size) continue;
+      const columns = rerenderQueue[row];
+      if (!columns?.size) continue;
       const rowBuffer = frameBuffer[row] ??= [];
-      for (const column of columns2) {
+      for (const column of columns) {
         const cell = rowBuffer[column];
         if (cell === void 0) continue;
         cellUpdates.push({ row, column, value: cell });
         flushedCells += 1;
       }
-      columns2.clear();
+      columns.clear();
     }
     this.lastRenderStats = {
       updatedObjects: i,
@@ -1547,9 +1650,9 @@ var BrowserCellCanvasSink = class {
     this.#context.font = this.#font;
     this.#context.textBaseline = "top";
   }
-  resize(columns2, rows2) {
-    this.#columns = Math.max(1, Math.floor(columns2));
-    this.#rows = Math.max(1, Math.floor(rows2));
+  resize(columns, rows) {
+    this.#columns = Math.max(1, Math.floor(columns));
+    this.#rows = Math.max(1, Math.floor(rows));
     this.#canvas.width = Math.ceil(this.#columns * this.#cellWidth * this.#pixelRatio);
     this.#canvas.height = Math.ceil(this.#rows * this.#cellHeight * this.#pixelRatio);
     this.#context.setTransform?.(1, 0, 0, 1, 0, 0);
@@ -1718,7 +1821,7 @@ var BrowserPlatform = class {
       options.columns && options.rows ? { columns: options.columns, rows: options.rows } : sizeFromElement(options.root, cellWidth, cellHeight),
       { deepObserve: true }
     );
-    this.input = options.input ?? new BrowserInputSource(options.root);
+    this.input = options.input ?? new BrowserInputSource(options.root, { cellWidth, cellHeight });
     this.lifecycle = options.lifecycle ?? new NoopLifecycleController("browser");
     this.#scheduler = options.scheduler ?? defaultBrowserFrameScheduler();
     if ("ResizeObserver" in globalThis) {
@@ -1748,11 +1851,15 @@ var BrowserPlatform = class {
 };
 var BrowserInputSource = class {
   #target;
+  #cellWidth;
+  #cellHeight;
   #emitter;
   #attached = false;
   #removeListeners = [];
-  constructor(target) {
+  constructor(target, options = {}) {
     this.#target = target;
+    this.#cellWidth = Math.max(1, options.cellWidth ?? 10);
+    this.#cellHeight = Math.max(1, options.cellHeight ?? 20);
   }
   attach(emitter) {
     this.detach();
@@ -1793,8 +1900,8 @@ var BrowserInputSource = class {
   #handlePointer(event, release) {
     this.#emitter?.emit("mousePress", {
       key: "mouse",
-      x: event.offsetX,
-      y: event.offsetY,
+      x: Math.floor(event.offsetX / this.#cellWidth),
+      y: Math.floor(event.offsetY / this.#cellHeight),
       movementX: event.movementX,
       movementY: event.movementY,
       meta: event.metaKey || event.altKey,
@@ -1810,8 +1917,8 @@ var BrowserInputSource = class {
   #handleWheel(event) {
     this.#emitter?.emit("mouseScroll", {
       key: "mouse",
-      x: event.offsetX,
-      y: event.offsetY,
+      x: Math.floor(event.offsetX / this.#cellWidth),
+      y: Math.floor(event.offsetY / this.#cellHeight),
       movementX: 0,
       movementY: event.deltaY,
       meta: event.metaKey || event.altKey,
@@ -2868,11 +2975,11 @@ function renderNetworkMonitor(context) {
 function renderProcessMonitor(context) {
   const drive = buildVisualizationDrive(context, 24);
   const header = "PID     NAME             CPU%   MEM%";
-  const rows2 = context.system.processes.slice(0, Math.max(1, context.height - 1)).map(
+  const rows = context.system.processes.slice(0, Math.max(1, context.height - 1)).map(
     (process) => `${String(process.pid).padEnd(7, " ")}${crop(process.name, 16).padEnd(16, " ")}${process.cpuPercent.toFixed(1).padStart(6, " ")}${process.memoryPercent.toFixed(1).padStart(7, " ")}`
   );
   return {
-    body: [header, ...rows2].join("\n"),
+    body: [header, ...rows].join("\n"),
     footer: context.system.processes[0] ? `HOT ${context.system.processes[0].name.toUpperCase()} ${context.system.processes[0].cpuPercent.toFixed(1)}% CPU  RISE ${(Math.max(0, drive.slope) * 100).toFixed(0)}%` : "PROCESS TABLE EMPTY",
     alert: context.system.processes[0]?.cpuPercent >= 90 ? "PROCESS SPIKE DETECTED" : "",
     accent: context.system.processes[0]?.cpuPercent >= 90 ? "alarm" : "amber",
@@ -3339,10 +3446,10 @@ function plotHistory(values, width, height, glyph) {
   return signalChart(sampleSeries(values, width), width, height, glyph);
 }
 function barChart(values, width, height, glyphs) {
-  const columns2 = sampleSeries(values, width);
+  const columns = sampleSeries(values, width);
   const matrix = createMatrix(width, height, " ");
   for (let x = 0; x < width; x += 1) {
-    const filled = Math.max(1, Math.round((columns2[x] ?? 0) * height));
+    const filled = Math.max(1, Math.round((columns[x] ?? 0) * height));
     for (let row = 0; row < height; row += 1) {
       const fromBottom = height - row;
       if (fromBottom <= filled) {
@@ -3511,16 +3618,16 @@ function heatmap(width, height, drive, glyphs) {
   }
   return renderMatrix(matrix);
 }
-function routeBoard(width, rows2, drive, glyphs) {
-  const matrix = createMatrix(width, rows2, " ");
+function routeBoard(width, rows, drive, glyphs) {
+  const matrix = createMatrix(width, rows, " ");
   const lanes = Math.max(2, Math.min(4, drive.sources.length + 1));
-  for (let row = 0; row < rows2; row += 1) {
+  for (let row = 0; row < rows; row += 1) {
     const source2 = drive.sources[row % drive.sources.length] ?? drive.primary;
     const spread = drive.spreadSeries[row % drive.spreadSeries.length] ?? drive.divergence;
     const limit = Math.floor(
       clamp(source2.normalizedSeries[row % source2.normalizedSeries.length] * 0.72 + spread * 0.28, 0, 1) * (width - 1)
     );
-    const cursor = Math.floor(moduloUnit(drive.scan + row / Math.max(rows2, 1) + source2.slope * 0.25) * (width - 1));
+    const cursor = Math.floor(moduloUnit(drive.scan + row / Math.max(rows, 1) + source2.slope * 0.25) * (width - 1));
     for (let column = 0; column < width; column += 1) {
       const onLane = (row + column + lanes) % Math.max(3, lanes + 1) === 0;
       const filled = column <= limit;
@@ -3682,11 +3789,11 @@ function clampInt(value, min, max) {
 }
 function gridify(entries, width) {
   const itemWidth = width >= 72 ? 28 : width >= 52 ? 24 : width >= 40 ? 20 : 16;
-  const columns2 = Math.max(1, Math.floor((width + 1) / (itemWidth + 1)));
-  const rows2 = Math.ceil(entries.length / columns2);
+  const columns = Math.max(1, Math.floor((width + 1) / (itemWidth + 1)));
+  const rows = Math.ceil(entries.length / columns);
   return Array.from(
-    { length: rows2 },
-    (_, row) => Array.from({ length: columns2 }, (_2, column) => entries[row + column * rows2]).filter((value) => Boolean(value)).map((value) => crop(value, itemWidth).padEnd(itemWidth, " ")).join(" ")
+    { length: rows },
+    (_, row) => Array.from({ length: columns }, (_2, column) => entries[row + column * rows]).filter((value) => Boolean(value)).map((value) => crop(value, itemWidth).padEnd(itemWidth, " ")).join(" ")
   ).join("\n");
 }
 function crop(text, width) {
@@ -3877,14 +3984,10 @@ function unitWave(value, frequency, offset) {
 }
 
 // examples/web/neon_exodus_page.ts
-var columns = 120;
-var rows = 36;
 var root = document.querySelector("#app");
 if (!root) throw new Error("Missing #app mount element.");
 var host = createWebTui({
   root,
-  columns,
-  rows,
   sinkOptions: {
     cellWidth: 10,
     cellHeight: 19,
@@ -3894,22 +3997,32 @@ var host = createWebTui({
 });
 new BoxObject({
   canvas: host.canvas,
-  rectangle: { column: 0, row: 0, width: columns, height: rows },
+  rectangle: new Computed(() => ({ column: 0, row: 0, width: currentColumns(), height: currentRows() })),
   filler: " ",
   style: createAnsiStyle({ background: [5, 7, 13] }),
   zIndex: -1
 }).draw();
-var lineSignals = Array.from({ length: rows }, () => new Signal(""));
-for (let row = 0; row < rows; row += 1) {
-  new TextObject({
-    canvas: host.canvas,
-    rectangle: { column: 0, row, width: columns },
-    value: lineSignals[row],
-    overwriteRectangle: true,
-    multiCodePointSupport: true,
-    style: (text) => text,
-    zIndex: 1
-  }).draw();
+var lineSignals = [];
+ensureLineSignals();
+host.platform.size.subscribe(() => {
+  ensureLineSignals();
+  draw();
+});
+function ensureLineSignals() {
+  for (let row = lineSignals.length; row < currentRows(); row += 1) {
+    const signal = new Signal("");
+    lineSignals.push(signal);
+    const rowIndex = row;
+    new TextObject({
+      canvas: host.canvas,
+      rectangle: new Computed(() => ({ column: 0, row: rowIndex, width: currentColumns() })),
+      value: signal,
+      overwriteRectangle: true,
+      multiCodePointSupport: true,
+      style: (text) => text,
+      zIndex: 1
+    }).draw();
+  }
 }
 var phase = 0;
 var section = "all";
@@ -3938,6 +4051,9 @@ setInterval(() => {
 }, 240);
 globalThis.addEventListener("beforeunload", () => host.destroy());
 function draw() {
+  const columns = currentColumns();
+  const rows = currentRows();
+  ensureLineSignals();
   const frame = Array.from({ length: rows }, () => "");
   frame[0] = headerLine();
   frame[1] = navLine();
@@ -3945,19 +4061,25 @@ function draw() {
   const visible = visibleDemos();
   const selectedIndex = Math.max(0, visible.findIndex((demo) => demo.id === selectedId));
   const selected = visible[selectedIndex] ?? visible[0];
-  const grid = section === "all" ? { cols: 3, panelWidth: 38, panelHeight: 10 } : { cols: 2, panelWidth: 57, panelHeight: 13 };
-  const startRow = section === "all" ? 5 : 6;
-  const startColumn = 2;
-  const gap = 2;
-  const count = section === "all" ? 9 : 6;
-  const offset = Math.max(0, selectedIndex - selectedIndex % grid.cols);
-  const demos2 = visible.slice(offset, offset + count);
+  const content = {
+    column: 1,
+    row: section === "all" ? 5 : 6,
+    width: Math.max(0, columns - 2),
+    height: Math.max(0, rows - (section === "all" ? 7 : 15))
+  };
+  const page = adaptiveGridPage(content, selectedIndex, {
+    itemCount: visible.length,
+    minColumnWidth: section === "all" ? 34 : 42,
+    minRowHeight: section === "all" ? 9 : 11,
+    maxColumns: section === "all" ? 4 : 3,
+    gap: 1
+  });
+  const demos2 = visible.slice(page.pageStart, page.pageStart + page.grid.pageSize);
   for (const [index, demo] of demos2.entries()) {
-    const column = startColumn + index % grid.cols * (grid.panelWidth + gap);
-    const row = startRow + Math.floor(index / grid.cols) * (grid.panelHeight + 1);
-    placePanel(frame, column, row, grid.panelWidth, grid.panelHeight, demo, demo.id === selectedId);
+    const rect = adaptiveGridItemRect(content, page.grid, index, 1);
+    placePanel(frame, rect.column, rect.row, rect.width, rect.height, demo, demo.id === selectedId);
   }
-  if (selected && section !== "all") {
+  if (selected && section !== "all" && rows >= 24) {
     placeSelectedDetail(frame, selected);
   }
   frame[rows - 1] = makeStyle({ fg: palette.dim })(
@@ -3968,6 +4090,9 @@ function draw() {
   );
   for (let row = 0; row < rows; row += 1) {
     lineSignals[row].value = fit(frame[row] ?? "", columns);
+  }
+  for (let row = rows; row < lineSignals.length; row += 1) {
+    lineSignals[row].value = "";
   }
 }
 function visibleDemos() {
@@ -3980,6 +4105,7 @@ function ensureSelectedVisible() {
   }
 }
 function headerLine() {
+  const columns = currentColumns();
   const title = makeStyle({ fg: palette.alarm, bold: true })(" NEON EXODUS ");
   const subtitle = makeStyle({ fg: palette.paper, bold: true })(" / DENO TUI WEB STANDALONE / ");
   const clock = makeStyle({ fg: palette.amber, bold: true })((/* @__PURE__ */ new Date()).toLocaleTimeString());
@@ -3993,10 +4119,12 @@ function navLine() {
   }).join("   ");
 }
 function hintLine() {
+  const columns = currentColumns();
   const summary = `${source.toUpperCase()} SOURCE / ${visibleDemos().length} DEMOS / SELECTED ${selectedId.toUpperCase()} / PHASE ${String(phase).padStart(4, "0")}`;
   return makeStyle({ fg: palette.dim })(fit(summary, columns));
 }
 function placePanel(frame, column, row, width, height, demo, selected) {
+  if (width < 4 || height < 4) return;
   const render = renderNeonSuiteDemo({
     demo,
     phase,
@@ -4008,7 +4136,7 @@ function placePanel(frame, column, row, width, height, demo, selected) {
   const accent = selected ? palette.paper : accentColor(render.accent);
   const border = makeStyle({ fg: accent, bold: selected });
   const title = makeStyle({ fg: palette.void, bg: accent, bold: true })(
-    fit(` ${demo.code} / ${demo.title.toUpperCase()} `, width - 2)
+    fit(` ${demo.code} / ${demo.title.toUpperCase()} `, Math.max(0, width - 2))
   );
   write(frame, row, column, border(`\u250C${"\u2500".repeat(width - 2)}\u2510`));
   write(frame, row + 1, column, `${border("\u2502")}${title}${pad("", width - 2 - textWidth(title))}${border("\u2502")}`);
@@ -4027,10 +4155,13 @@ function placePanel(frame, column, row, width, height, demo, selected) {
   write(frame, row + height - 1, column, border(`\u2514${"\u2500".repeat(width - 2)}\u2518`));
 }
 function placeSelectedDetail(frame, demo) {
+  const columns = currentColumns();
+  const rows = currentRows();
+  const width = Math.max(24, Math.min(110, columns - 8));
   const render = renderNeonSuiteDemo({
     demo,
     phase,
-    width: 110,
+    width,
     height: 6,
     selected: true,
     renderMode: "max"
@@ -4038,22 +4169,23 @@ function placeSelectedDetail(frame, demo) {
   const top = rows - 8;
   const accent = accentColor(render.accent);
   const border = makeStyle({ fg: accent, bold: true });
-  write(frame, top, 4, border(`\u250C${"\u2500".repeat(110)}\u2510`));
+  write(frame, top, 4, border(`\u250C${"\u2500".repeat(width)}\u2510`));
   write(
     frame,
     top + 1,
     4,
     `${border("\u2502")}${makeStyle({ fg: palette.void, bg: accent, bold: true })(
-      fit(` SELECTED / ${demo.code} / ${demo.title.toUpperCase()} `, 110)
+      fit(` SELECTED / ${demo.code} / ${demo.title.toUpperCase()} `, width)
     )}${border("\u2502")}`
   );
   const lines = render.body.split("\n").slice(0, 4);
   for (let index = 0; index < 4; index += 1) {
-    write(frame, top + 2 + index, 4, `${border("\u2502")}${fit(lines[index] ?? "", 110)}${border("\u2502")}`);
+    write(frame, top + 2 + index, 4, `${border("\u2502")}${fit(lines[index] ?? "", width)}${border("\u2502")}`);
   }
-  write(frame, top + 6, 4, border(`\u2514${"\u2500".repeat(110)}\u2518`));
+  write(frame, top + 6, 4, border(`\u2514${"\u2500".repeat(width)}\u2518`));
 }
 function write(frame, row, column, value) {
+  const columns = currentColumns();
   if (row < 0 || row >= frame.length || column >= columns) return;
   const line = frame[row] ?? "";
   const visible = textWidth(line);
@@ -4073,5 +4205,11 @@ function fit(value, width) {
 }
 function pad(value, width) {
   return value + " ".repeat(Math.max(0, width));
+}
+function currentColumns() {
+  return Math.max(1, host.platform.size.peek().columns);
+}
+function currentRows() {
+  return Math.max(1, host.platform.size.peek().rows);
 }
 //# sourceMappingURL=neon-exodus.js.map

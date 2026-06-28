@@ -3,6 +3,7 @@ import { assertEquals, assertExists } from "./deps.ts";
 import { createAnsiThemeTokens, createTheme } from "../src/theme.ts";
 import {
   BrowserCellCanvasSink,
+  BrowserInputSource,
   parseAnsiCell,
   renderDomNodeToHtml,
   themeTokensToCssVariables,
@@ -83,6 +84,54 @@ Deno.test("BrowserCellCanvasSink paints dirty cells to a 2D context", () => {
   assertExists(operations.find((operation) => operation[0] === "fillRect" && operation[5] === "#3b82f6"));
   assertExists(operations.find((operation) => operation[0] === "fillText" && operation[1] === "A"));
   assertEquals(sink.inspectSink().lastStats?.flushedCells, 1);
+});
+
+Deno.test("BrowserInputSource reports pointer positions in terminal cells", () => {
+  const listeners = new Map<string, EventListener>();
+  const target = {
+    tabIndex: -1,
+    addEventListener: (type: string, listener: EventListener) => void listeners.set(type, listener),
+    removeEventListener: (type: string) => void listeners.delete(type),
+  };
+  const events: unknown[] = [];
+  const input = new BrowserInputSource(target as unknown as HTMLElement, { cellWidth: 8, cellHeight: 16 });
+
+  input.attach({
+    emit: (type: string, event: unknown) => void events.push([type, event]),
+  } as never);
+
+  listeners.get("pointerdown")?.({
+    offsetX: 23,
+    offsetY: 35,
+    movementX: 0,
+    movementY: 0,
+    metaKey: false,
+    altKey: false,
+    ctrlKey: false,
+    shiftKey: false,
+    buttons: 1,
+    button: 0,
+    preventDefault: () => undefined,
+  } as unknown as Event);
+
+  assertEquals(events[0], [
+    "mousePress",
+    {
+      key: "mouse",
+      x: 2,
+      y: 2,
+      movementX: 0,
+      movementY: 0,
+      meta: false,
+      ctrl: false,
+      shift: false,
+      buffer: new Uint8Array(),
+      drag: true,
+      release: false,
+      button: 0,
+    },
+  ]);
+  input.dispose();
 });
 
 Deno.test("renderDomNodeToHtml serializes semantic DOM nodes safely", () => {
