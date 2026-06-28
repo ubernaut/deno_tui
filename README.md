@@ -1173,6 +1173,7 @@ import {
   assertThemeOptions,
   bindComponentTheme,
   bindComponentThemes,
+  bindThemeEngineCommands,
   bindThemePipelineCommands,
   bindThemePipelineSetting,
   CommandRegistry,
@@ -1214,6 +1215,7 @@ import {
   queryThemeEngineFactories,
   SettingsController,
   themeCommands,
+  themeEngineCommands,
   themePipelineCommands,
   validateThemeOptions,
 } from "https://deno.land/x/tui@VERSION/mod.ts";
@@ -1282,6 +1284,9 @@ const themeFactoryReport = createThemeEngineFactoryCatalogReport({
   query: { valid: true },
 });
 const warmedThemeEngines = await themeFactories.prewarm();
+const themeEngineCommandList = themeEngineCommands(themeFactories, {
+  title: "Theme Engines",
+});
 
 const runtimePipeline = createThemeEnginePipeline({
   id: "runtime-accessibility",
@@ -1316,6 +1321,7 @@ const themeWorkspacePlugin = createThemeWorkspacePlugin({
   workspace: themeWorkspace,
   settings,
   commands: { group: "theme" },
+  engineCommands: { group: "theme", title: "Workspace Theme Engines" },
 });
 
 const themeIssues = validateThemeOptions(appTheme);
@@ -1442,6 +1448,9 @@ const themeBindingState = themeBindings.inspect();
 
 const commandRegistry = new CommandRegistry();
 commandRegistry.registerAll(themeCommands(provider));
+const stopThemeEngineCommands = bindThemeEngineCommands(commandRegistry, themeWorkspace, {
+  title: "Workspace Theme Engines",
+});
 const stopPipelineCommands = bindThemePipelineCommands(commandRegistry, runtimePipeline);
 const themeSurface = createCommandSurface(commandRegistry);
 const stopPipelineSetting = bindThemePipelineSetting(runtimePipeline, settings, {
@@ -1480,6 +1489,11 @@ heavy theme catalogs can be prepared before first render without coupling widget
 `registry.catalog()`, `queryThemeEngineFactories()`, `createThemeEngineFactoryCatalogReport()`, and
 `formatThemeEngineFactoryCatalogMarkdown()` turn those factories into searchable theme engine inventories with palette,
 tag, validity, component, and token-override filters for settings panes, docs, demos, and plugin marketplaces.
+`themeEngineCommands()` and `bindThemeEngineCommands()` project that factory layer into command registries: every valid
+factory can emit a `theme.engine.previewed` action with serializable engine inspection metadata, and the catalog command
+emits `theme.engine.catalog.reported` with optional markdown for inspector panes and docs. The commands accept either a
+standalone `ThemeEngineFactoryRegistry` or a full `ThemeWorkspace`; workspace-backed previews apply the same runtime
+pipelines as live app themes, so preview panes and command palettes do not drift from the renderer.
 `ThemeEnginePipeline` adds the runtime side of that engine story: apps can register ordered, enableable transforms that
 extend an existing engine with contrast, density, accessibility, brand, or experiment-specific overlays. Pipeline steps
 can be plain `ThemeEngineOptions` or functions that receive the current engine and return another engine or extension
@@ -1553,13 +1567,13 @@ lifecycle path as app plugins, so command registration, keymap mirroring, settin
 custom theme engine setup roll back together if any step fails. `createThemeWorkspacePlugin()` installs that same app
 surface from a `ThemeWorkspace`, preserving the workspace's factory registry and `prewarm()` API for custom settings
 panes, startup hooks, and plugin-provided theme suites while delegating provider and pipeline command wiring to
-`createThemePlugin()`. `ThemeEngineCache` and `ThemeProviderCache` are opt-in runtime accelerators for redraw-heavy
-apps: they memoize component themes and resolved state styles, expose hit/miss inspection, and the provider cache
-automatically invalidates when theme packs or layers change. `createThemeEngineResolver()` and
-`createThemeProviderResolver()` wrap those caches behind a renderer-friendly API for batch token and component-state
-resolution; `snapshot()`, `componentThemeStyleRequests()`, and `formatThemeResolutionMarkdown()` make it straightforward
-to drive custom widgets, settings previews, renderer backends, and CI diagnostics from the exact same computed theme
-contract.
+`createThemePlugin()` and installing workspace engine preview/catalog commands by default. `ThemeEngineCache` and
+`ThemeProviderCache` are opt-in runtime accelerators for redraw-heavy apps: they memoize component themes and resolved
+state styles, expose hit/miss inspection, and the provider cache automatically invalidates when theme packs or layers
+change. `createThemeEngineResolver()` and `createThemeProviderResolver()` wrap those caches behind a renderer-friendly
+API for batch token and component-state resolution; `snapshot()`, `componentThemeStyleRequests()`, and
+`formatThemeResolutionMarkdown()` make it straightforward to drive custom widgets, settings previews, renderer backends,
+and CI diagnostics from the exact same computed theme contract.
 
 ## Runtime Capabilities
 

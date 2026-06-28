@@ -3,9 +3,15 @@ import type { Route } from "./router.ts";
 import type { Action } from "./actions.ts";
 import type { AppPlugin, AppPluginDisposer } from "./app.ts";
 import type { CommandKeymapBindingOptions } from "./command_bindings.ts";
+import { DisposableStack } from "./disposables.ts";
 import type { SettingsController } from "./settings.ts";
 import type { ThemeLayerSettingBindingOptions, ThemeSettingBindingOptions } from "./settings_bindings.ts";
 import type { ThemeCommandAction, ThemeCommandOptions } from "./theme_commands.ts";
+import {
+  bindThemeEngineCommands,
+  type ThemeEngineCommandAction,
+  type ThemeEngineCommandOptions,
+} from "./theme_engine_commands.ts";
 import type { ThemePipelineCommandAction } from "./theme_pipeline_commands.ts";
 import {
   createThemePlugin,
@@ -26,6 +32,7 @@ export interface ThemeWorkspacePluginOptions {
   persistLayers?: boolean | ThemeLayerSettingBindingOptions<unknown>;
   persistPipelines?: ThemePluginPipelineSettingOptions;
   commands?: boolean | ThemeCommandOptions;
+  engineCommands?: boolean | ThemeEngineCommandOptions;
   pipelineCommands?: ThemePluginPipelineCommandOptions;
   mirrorKeymap?: boolean | CommandKeymapBindingOptions;
   install?: (context: ThemeWorkspacePluginInstallContext) => AppPluginDisposer;
@@ -39,11 +46,12 @@ export interface ThemeWorkspacePluginInspection {
   id?: string;
   label?: string;
   theme: ThemePluginInspection;
+  engineCommandsEnabled: boolean;
   workspace: ReturnType<ThemeWorkspace["inspect"]>;
 }
 
 export interface ThemeWorkspaceAppPlugin<
-  TAction extends Action = ThemeCommandAction | ThemePipelineCommandAction,
+  TAction extends Action = ThemeCommandAction | ThemePipelineCommandAction | ThemeEngineCommandAction,
   TRoute extends Route = Route,
 > extends AppPlugin<TAction, TRoute> {
   readonly workspace: ThemeWorkspace;
@@ -51,7 +59,7 @@ export interface ThemeWorkspaceAppPlugin<
 }
 
 export function createThemeWorkspacePlugin<
-  TAction extends Action = ThemeCommandAction | ThemePipelineCommandAction,
+  TAction extends Action = ThemeCommandAction | ThemePipelineCommandAction | ThemeEngineCommandAction,
   TRoute extends Route = Route,
 >(
   options: ThemeWorkspacePluginOptions = {},
@@ -83,15 +91,38 @@ export function createThemeWorkspacePlugin<
     label,
     workspace,
     install(app) {
-      return theme.install(app);
+      const stack = new DisposableStack();
+      try {
+        stack.defer(theme.install(app));
+        if (options.engineCommands ?? true) {
+          stack.defer(
+            bindThemeEngineCommands(
+              app.commands,
+              workspace,
+              themeEngineCommandOptionsFrom(options.engineCommands),
+            ) as () => void,
+          );
+        }
+      } catch (error) {
+        stack.dispose();
+        throw error;
+      }
+      return stack.dispose;
     },
     inspect() {
       return {
         id,
         label,
         theme: theme.inspect(),
+        engineCommandsEnabled: (options.engineCommands ?? true) !== false,
         workspace: workspace.inspect(),
       };
     },
   };
+}
+
+function themeEngineCommandOptionsFrom(
+  options: boolean | ThemeEngineCommandOptions | undefined,
+): ThemeEngineCommandOptions {
+  return typeof options === "object" ? options : {};
 }

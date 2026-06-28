@@ -67,6 +67,13 @@ import {
   themeSelectionCommands,
 } from "../src/app/theme_commands.ts";
 import type { ThemeCommandAction } from "../src/app/theme_commands.ts";
+import {
+  bindThemeEngineCommands,
+  themeEngineCatalogCommands,
+  themeEngineCommands,
+  themeEngineFactoryCommands,
+} from "../src/app/theme_engine_commands.ts";
+import type { ThemeEngineCommandAction } from "../src/app/theme_engine_commands.ts";
 import { bindThemePipelineCommands, themePipelineCommands } from "../src/app/theme_pipeline_commands.ts";
 import type { ThemePipelineCommandAction } from "../src/app/theme_pipeline_commands.ts";
 import { createThemePlugin } from "../src/app/theme_plugin.ts";
@@ -2420,6 +2427,92 @@ Deno.test("theme pipeline commands toggle runtime theme transforms", async () =>
   assertEquals(registry.list("theme"), []);
 });
 
+Deno.test("theme engine commands preview factories and capture catalogs", async () => {
+  const workspace = createThemeWorkspace({
+    factories: [
+      {
+        id: "ops",
+        label: "Ops",
+        palette: "plain",
+        tags: ["dashboard"],
+        priority: 10,
+        options: {
+          components: {
+            Badge: { base: { base: (value) => `ops:${value}` } },
+          },
+        },
+      },
+      {
+        id: "draft",
+        label: "Draft",
+        options: {
+          components: {
+            Badge: { base: { base: "missing-token" as "accent" } },
+          },
+        },
+      },
+    ],
+    pipelines: createThemeEnginePipeline({
+      id: "runtime",
+      steps: [
+        {
+          id: "variant",
+          options: {
+            components: {
+              Badge: { variants: { runtime: { active: "success" } } },
+            },
+          },
+        },
+      ],
+    }),
+  });
+  const registry = new CommandRegistry<ThemeEngineCommandAction>();
+  const dispose = bindThemeEngineCommands(registry, workspace, { title: "Theme Engines" });
+  const actions: ThemeEngineCommandAction[] = [];
+
+  assertEquals(themeEngineFactoryCommands(workspace).map((command) => command.id), [
+    "theme.engine.preview.ops",
+    "theme.engine.preview.draft",
+  ]);
+  assertEquals(themeEngineCatalogCommands(workspace).map((command) => command.id), [
+    "theme.engine.catalog",
+  ]);
+  assertEquals(themeEngineCommands(workspace).length, 3);
+  assertEquals(registry.enabled(registry.get("theme.engine.preview.ops")!), true);
+  assertEquals(registry.enabled(registry.get("theme.engine.preview.draft")!), false);
+
+  assertEquals(await registry.execute("theme.engine.preview.ops", (action) => void actions.push(action)), true);
+  const previewAction = actions[0];
+  assertEquals(previewAction.type, "theme.engine.previewed");
+  if (previewAction.type !== "theme.engine.previewed") throw new Error("expected theme engine preview action");
+  const previewPayload = previewAction.payload;
+  if (!previewPayload) throw new Error("expected theme engine preview payload");
+  assertEquals(previewPayload.id, "ops");
+  assertEquals(previewPayload.engine.components, [
+    { name: "Badge", variants: ["runtime"] },
+  ]);
+
+  assertEquals(await registry.execute("theme.engine.catalog", (action) => void actions.push(action)), true);
+  const catalogAction = actions[1];
+  assertEquals(catalogAction.type, "theme.engine.catalog.reported");
+  if (catalogAction.type !== "theme.engine.catalog.reported") throw new Error("expected theme engine catalog action");
+  const catalogPayload = catalogAction.payload;
+  if (!catalogPayload) throw new Error("expected theme engine catalog payload");
+  assertEquals(catalogPayload.report.inspection, {
+    count: 2,
+    valid: 1,
+    invalid: 1,
+    palettes: ["plain"],
+    tags: ["dashboard"],
+    components: ["Badge"],
+    tokenOverrides: [],
+  });
+  assertEquals(catalogPayload.markdown?.includes("# Theme Engines"), true);
+
+  dispose();
+  assertEquals(registry.list("theme"), []);
+});
+
 Deno.test("runtime profile commands switch selected runtime policies", async () => {
   const controller = createRuntimeProfileController({
     activeId: "balanced",
@@ -2767,12 +2860,14 @@ Deno.test("createThemePlugin rolls back installed surfaces when custom install f
 });
 
 Deno.test("createThemeWorkspacePlugin installs workspace theme surfaces and context", async () => {
-  type ThemeWorkspaceAction = ThemeCommandAction | ThemePipelineCommandAction;
+  type ThemeWorkspaceAction = ThemeCommandAction | ThemePipelineCommandAction | ThemeEngineCommandAction;
   const store = new MemoryStore<unknown>();
   await store.set("prefs.theme", "terminal");
   await store.set("prefs.theme-pipeline-runtime", JSON.stringify(["contrast"]));
   const settings = new SettingsController({ store, namespace: "prefs" });
   const app = createApp<ThemeWorkspaceAction>({ tui: { destroy() {} } as unknown as Tui });
+  const actions: ThemeWorkspaceAction[] = [];
+  app.onAction((action) => void actions.push(action));
   const pipeline = createThemeEnginePipeline({
     id: "runtime",
     steps: [
@@ -2815,6 +2910,7 @@ Deno.test("createThemeWorkspacePlugin installs workspace theme surfaces and cont
 
   assertEquals(plugin.inspect().workspace.factories.inspection.count, 1);
   assertEquals(plugin.inspect().theme.pipelinePersistenceIds, ["runtime"]);
+  assertEquals(plugin.inspect().engineCommandsEnabled, true);
   const dispose = app.use(plugin);
 
   await settings.ready();
@@ -2823,10 +2919,13 @@ Deno.test("createThemeWorkspacePlugin installs workspace theme surfaces and cont
   assertEquals(pipeline.activeIds(), ["contrast"]);
   assertEquals(app.commands.has("theme.set.plain"), true);
   assertEquals(app.commands.has("theme.pipeline.runtime.toggle.density"), true);
+  assertEquals(app.commands.has("theme.engine.preview.preview"), true);
   assertEquals(app.plugins(), [{ id: "theme-workspace", label: "Theme Workspace" }]);
 
   assertEquals(await app.executeCommand("theme.set.plain"), true);
   assertEquals(await app.executeCommand("theme.pipeline.runtime.toggle.density"), true);
+  assertEquals(await app.executeCommand("theme.engine.preview.preview"), true);
+  assertEquals(actions.at(-1)?.type, "theme.engine.previewed");
   assertEquals(plugin.workspace.provider.activeId.peek(), "plain");
   assertEquals(pipeline.activeIds(), ["density", "contrast"]);
   await settings.flush();
@@ -2836,13 +2935,14 @@ Deno.test("createThemeWorkspacePlugin installs workspace theme surfaces and cont
   dispose();
   assertEquals(app.commands.has("theme.set.plain"), false);
   assertEquals(app.commands.has("theme.pipeline.runtime.toggle.density"), false);
+  assertEquals(app.commands.has("theme.engine.preview.preview"), false);
   assertEquals(app.plugins(), []);
   app.destroy();
   plugin.workspace.provider.layers.dispose();
 });
 
 Deno.test("createThemeWorkspacePlugin rolls back installed surfaces when custom install fails", () => {
-  type ThemeWorkspaceAction = ThemeCommandAction | ThemePipelineCommandAction;
+  type ThemeWorkspaceAction = ThemeCommandAction | ThemePipelineCommandAction | ThemeEngineCommandAction;
   const app = createApp<ThemeWorkspaceAction>({ tui: { destroy() {} } as unknown as Tui });
   const plugin = createThemeWorkspacePlugin<ThemeWorkspaceAction>({
     workspaceOptions: {
@@ -2863,6 +2963,7 @@ Deno.test("createThemeWorkspacePlugin rolls back installed surfaces when custom 
   }
 
   assertEquals(app.commands.has("theme.set.plain"), false);
+  assertEquals(app.commands.has("theme.engine.catalog"), false);
   assertEquals(app.plugins(), []);
   app.destroy();
   plugin.workspace.provider.layers.dispose();

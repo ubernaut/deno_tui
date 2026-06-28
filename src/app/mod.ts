@@ -44,6 +44,7 @@ export * from "./table_commands.ts";
 export * from "./tabs_commands.ts";
 export * from "./textbox_commands.ts";
 export * from "./theme_commands.ts";
+export * from "./theme_engine_commands.ts";
 export * from "./theme_pipeline_commands.ts";
 export * from "./theme_plugin.ts";
 export * from "./theme_workspace_plugin.ts";
