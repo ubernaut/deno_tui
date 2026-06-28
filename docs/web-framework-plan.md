@@ -5,6 +5,18 @@ runtime. The goal is not to fork the widget model into separate terminal and web
 platform concerns so app controllers, commands, themes, layout recipes, selections, forms, data queries, runtime plans,
 and most widgets can run in both places.
 
+Two browser use cases should be supported:
+
+- **Standalone client-side package:** import the library into a browser bundle and run the full interface locally with
+  browser APIs only. This path uses DOM, Canvas2D, OffscreenCanvas, WebGL, WebGPU, IndexedDB, and Workers directly, with
+  no Deno server process required.
+- **Hosted terminal/client bridge:** run an existing terminal app on a server or local Deno process and connect to it
+  from the browser through an ANSI terminal stream. This path is useful for remote admin tools, compatibility demos, and
+  apps that need host filesystem/process access.
+
+Both are valuable, but they should not be conflated. The standalone package is the framework target; the terminal bridge
+is the compatibility and remote-control target.
+
 ## Current Shape
 
 The repo already has useful browser-ready pieces:
@@ -39,6 +51,27 @@ Cons:
 - Accessibility, layout inspection, theming through CSS, and embedding individual widgets remain limited.
 
 Best use: compatibility bridge and remote app runner, not the primary framework.
+
+### Option 1B: Standalone Browser Runtime
+
+Publish a browser-safe entrypoint that runs entirely client-side. Apps import `mod.web.ts`, mount into a DOM element,
+and use browser-native capabilities for rendering, input, storage, concurrency, and GPU acceleration.
+
+Pros:
+
+- No server process or WebSocket bridge required.
+- Works for static hosting, embedded widgets, docs, playgrounds, dashboards, and local-first browser apps.
+- Can use IndexedDB for settings/data, Workers for background pipelines, and WebGPU/WebGL for visualizers.
+- Enables real browser integration: history, routing, accessibility, CSS, pointer events, clipboard, and installable
+  examples.
+
+Cons:
+
+- Cannot access host processes, local shell commands, or filesystem paths unless the app provides browser-safe adapters.
+- Needs a browser-safe public entrypoint with no accidental Deno stdio/process imports.
+- Requires deterministic fallbacks for browsers without WebGPU, OffscreenCanvas, or module worker support.
+
+Best use: the default browser package target.
 
 ### Option 2: DOM Renderer
 
@@ -102,7 +135,7 @@ Best use: recommended long-term path.
 
 ## Recommended Direction
 
-Build Option 4, with Option 1 as an early compatibility demo.
+Build Option 4, with Option 1B as the primary browser package target and Option 1 as an early compatibility demo.
 
 The main design move is to introduce a platform and renderer boundary:
 
@@ -140,6 +173,7 @@ runtime wrapper around a shared `TuiAppHost`.
 
 - `mod.ts`: existing full package, preserving terminal compatibility.
 - `mod.web.ts`: browser-safe public entrypoint with no Deno stdio imports.
+- `mod.remote.ts`: optional browser/client bridge types for connecting to an ANSI stream or remote app host.
 - `src/platform/`: shared platform interfaces plus terminal and browser adapters.
 - `src/renderers/ansi/`: terminal stdout sink and terminal session integration.
 - `src/renderers/canvas/`: Canvas2D cell renderer with font atlas and dirty-cell painting.
@@ -161,6 +195,7 @@ runtime wrapper around a shared `TuiAppHost`.
 
 ### Phase 2: Browser Cell Canvas
 
+- Add `mod.web.ts` and a browser bundle smoke test that proves the package imports without Deno globals.
 - Implement `BrowserCellCanvasSink` using Canvas2D and dirty-cell painting.
 - Add `ResizeObserver` sizing in rows/columns from font metrics.
 - Add keyboard, pointer, wheel, paste, and focus adapters that emit the same input records as terminal readers.
@@ -186,6 +221,7 @@ runtime wrapper around a shared `TuiAppHost`.
 
 ### Phase 5: Framework Polish
 
+- Add package/export docs for terminal, standalone browser, and remote browser-client usage.
 - Add routing/mount helpers for single-page apps.
 - Add persistent browser settings through the existing `Store`/IndexedDB abstractions.
 - Add docs for embedding one widget, mounting a full app, and sharing code between terminal and browser.
@@ -204,10 +240,13 @@ runtime wrapper around a shared `TuiAppHost`.
 - DOM and canvas renderers should not diverge behaviorally. Controllers should own state; renderers should be thin.
 - Three.js WebGPU support differs across browsers. The runtime backend registry must keep fallbacks explicit and
   inspectable.
+- Browser-safe packaging can regress if shared modules import Deno globals at top level. Add CI checks that import
+  `mod.web.ts` in a browser-like runtime and fail on terminal-only dependencies.
 
 ## Decision
 
-Proceed with the hybrid framework. Start with the platform boundary and browser cell canvas because that creates a real
-browser target while preserving the existing terminal mental model. Add DOM rendering after the shared host is stable,
-then use the accelerated renderers for the demos that justify this fork: Neon Exodus, Three ASCII, and rich dashboard
-visualizations.
+Proceed with the hybrid framework. Treat the standalone client-side package as the primary web framework output, and
+treat the browser terminal bridge as a compatibility/remoting layer. Start with the platform boundary and browser cell
+canvas because that creates a real browser target while preserving the existing terminal mental model. Add DOM rendering
+after the shared host is stable, then use the accelerated renderers for the demos that justify this fork: Neon Exodus,
+Three ASCII, and rich dashboard visualizations.
