@@ -668,6 +668,7 @@ Viewport helpers keep scrolling, virtual rows, and scrollbar thumbs consistent:
 const maxOffset = maxViewportOffset(contentWidth, contentHeight, width, height);
 const offset = viewportOffsetBy(currentOffset, maxOffset, 0, 1);
 const rows = viewportWindow(items.length, selection.state.value.activeIndex, height);
+const viewportState = inspectViewport(contentWidth, contentHeight, width, height, offset);
 ```
 
 ## Theming

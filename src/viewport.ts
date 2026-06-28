@@ -13,6 +13,21 @@ export interface ViewportThumb {
   visible: boolean;
 }
 
+export interface ViewportInspection {
+  contentWidth: number;
+  contentHeight: number;
+  viewportWidth: number;
+  viewportHeight: number;
+  maxOffset: Offset;
+  offset: Offset;
+  horizontalThumb: ViewportThumb;
+  verticalThumb: ViewportThumb;
+  visibleColumns: ViewportWindow;
+  visibleRows: ViewportWindow;
+  canScrollColumns: boolean;
+  canScrollRows: boolean;
+}
+
 export function maxViewportOffset(
   contentWidth: number,
   contentHeight: number,
@@ -67,4 +82,40 @@ export function viewportThumb(contentLength: number, viewportLength: number, off
 export function viewportThumbGlyph(row: number, thumb: ViewportThumb): string {
   if (!thumb.visible) return " ";
   return row >= thumb.start && row < thumb.start + thumb.size ? "█" : "│";
+}
+
+export function inspectViewport(
+  contentWidth: number,
+  contentHeight: number,
+  viewportWidth: number,
+  viewportHeight: number,
+  offset: Offset = { columns: 0, rows: 0 },
+): ViewportInspection {
+  const safeContentWidth = Math.max(0, Math.floor(contentWidth));
+  const safeContentHeight = Math.max(0, Math.floor(contentHeight));
+  const safeViewportWidth = Math.max(0, Math.floor(viewportWidth));
+  const safeViewportHeight = Math.max(0, Math.floor(viewportHeight));
+  const maxOffset = maxViewportOffset(safeContentWidth, safeContentHeight, safeViewportWidth, safeViewportHeight);
+  const clampedOffset = clampViewportOffset(offset, maxOffset);
+
+  return {
+    contentWidth: safeContentWidth,
+    contentHeight: safeContentHeight,
+    viewportWidth: safeViewportWidth,
+    viewportHeight: safeViewportHeight,
+    maxOffset,
+    offset: clampedOffset,
+    horizontalThumb: viewportThumb(safeContentWidth, safeViewportWidth, clampedOffset.columns),
+    verticalThumb: viewportThumb(safeContentHeight, safeViewportHeight, clampedOffset.rows),
+    visibleColumns: {
+      start: clampedOffset.columns,
+      end: Math.min(safeContentWidth, clampedOffset.columns + safeViewportWidth),
+    },
+    visibleRows: {
+      start: clampedOffset.rows,
+      end: Math.min(safeContentHeight, clampedOffset.rows + safeViewportHeight),
+    },
+    canScrollColumns: maxOffset.columns > 0,
+    canScrollRows: maxOffset.rows > 0,
+  };
 }
