@@ -2,6 +2,7 @@
 export * from "./actions.ts";
 export * from "./app.ts";
 export * from "./commands.ts";
+export * from "./form_bindings.ts";
 export * from "./forms.ts";
 export * from "./history.ts";
 export * from "./router.ts";

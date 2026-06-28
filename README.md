@@ -250,9 +250,14 @@ const form = new FormController([
   { name: "route", initialValue: "overview", validators: [required()] },
 ]);
 
+const stopBinding = bindFormField(form, "route", input.text);
 form.setValue("route", "runtime");
 const ok = form.validate();
 ```
+
+`bindFormField()` connects a controller field to any `Signal`-backed widget value, including `Input.text`,
+`CheckBox.checked`, `RadioGroup.selectedValue`, or a custom adapter signal. It accepts `parse` and `format` transforms
+for non-string values and returns a disposer for dynamic forms.
 
 `HistoryStack` keeps undo/redo separate from widgets and route managers:
 
