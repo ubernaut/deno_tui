@@ -2,19 +2,29 @@
 /// <reference lib="dom.iterable" />
 import {
   BoxObject,
+  ButtonController,
   CheckBoxController,
+  ComboBoxController,
   Computed,
   createAnsiStyle,
   createWebTui,
   DataTableController,
+  InputController,
   MenuBarController,
+  ProgressBarController,
+  RadioGroupController,
+  renderCheckBoxMark,
   renderDataTableHeader,
   renderDataTableRows,
   renderMenuBar,
+  renderRadioGroupRows,
   renderStatusBar,
+  renderStepper,
   Signal,
   SliderController,
   SplitPaneController,
+  StepperController,
+  TextBoxController,
   TextObject,
   type TextRectangle,
   textWidth,
@@ -25,12 +35,15 @@ import { stripStyles } from "../../src/utils/strings.ts";
 import { makeStyle } from "../../app/styles.ts";
 
 type PanelId = "inspector" | "data" | "controls" | "logs";
+type ControlId = "button" | "slider" | "checkbox" | "radio" | "combo" | "input" | "stepper" | "textbox";
 type Hit =
   | { type: "focus"; id: PanelId }
   | { type: "min"; id: PanelId }
   | { type: "max"; id: PanelId }
-  | { type: "restore" }
-  | { type: "theme"; index: number };
+  | { type: "restore"; id?: PanelId }
+  | { type: "close"; id: PanelId }
+  | { type: "theme"; index: number }
+  | { type: "control"; id: ControlId; action?: "previous" | "next" | "activate" };
 
 interface ThemeSpec {
   label: string;
@@ -132,6 +145,41 @@ const split = new SplitPaneController({
 });
 const slider = new SliderController({ min: 1, max: 10, value: 6, step: 1, orientation: "horizontal" });
 const live = new CheckBoxController({ checked: true });
+const compact = new CheckBoxController({ checked: false });
+const actionButton = new ButtonController({ label: "Run Action", onPress: () => push("button pressed") });
+const radio = new RadioGroupController({
+  options: [
+    { value: "fast", label: "Fast" },
+    { value: "balanced", label: "Balanced" },
+    { value: "precise", label: "Precise" },
+  ],
+  selectedValue: "balanced",
+});
+const combo = new ComboBoxController({
+  items: themes.map((entry) => entry.label),
+  selectedIndex: 0,
+  placeholder: "theme",
+  onSelect: (_item, index) => setTheme(index),
+});
+const input = new InputController({ text: "deno task web:demo:check", cursorPosition: 24, placeholder: "command" });
+const stepper = new StepperController({
+  steps: [
+    { id: "draft", label: "Draft", completed: true },
+    { id: "review", label: "Review" },
+    { id: "ship", label: "Ship" },
+  ],
+  activeIndex: 1,
+});
+const progress = new ProgressBarController({
+  min: 0,
+  max: 100,
+  value: 42,
+  smooth: false,
+  direction: "normal",
+  orientation: "horizontal",
+});
+const textBox = new TextBoxController({ text: "Browser notes\nsame controllers", cursorPosition: { x: 0, y: 1 } });
+const activeControl = new Signal<ControlId>("button");
 const table = new DataTableController<Row>({
   rows,
   columns: [
@@ -169,6 +217,7 @@ host.on("keyPress", ({ key }) => {
   else if (key === "t") setTheme(themeIndex.peek() + 1);
   else if (key === "[") resizeSplit(-4);
   else if (key === "]") resizeSplit(4);
+  else if (active.peek() === "controls") handleControlsKey({ key, ctrl: false, meta: false, shift: false });
   else if (key === "+" || key === "=") slider.increment();
   else if (key === "-") slider.decrement();
   else if (key === "space") live.toggle();
@@ -180,7 +229,7 @@ host.on("keyPress", ({ key }) => {
 
 host.on("mousePress", (event) => {
   if (event.release) return;
-  const target = hitTargets.find(({ rect }) => contains(rect, event.x, event.y));
+  const target = findHit(event.x, event.y);
   if (target) applyHit(target.hit);
   draw();
 });
@@ -195,6 +244,14 @@ const timer = setInterval(() => {
 }, 650);
 globalThis.addEventListener("beforeunload", () => {
   clearInterval(timer);
+  actionButton.dispose();
+  radio.dispose();
+  combo.dispose();
+  input.dispose();
+  stepper.dispose();
+  progress.dispose();
+  textBox.dispose();
+  compact.dispose();
   host.destroy();
 });
 
@@ -246,6 +303,7 @@ function draw(): void {
       });
     }
   }
+  renderShelf(frame);
   frame[height - 1] = fit(
     paint(
       renderStatusBar(
@@ -262,13 +320,28 @@ function draw(): void {
   for (let row = height; row < lineSignals.length; row++) lineSignals[row]!.value = "";
 }
 
+function renderShelf(frame: string[]): void {
+  const row = rowsCount() - 2;
+  let column = 2;
+  const hidden = (Object.entries(minimized.peek()) as Array<[PanelId, boolean]>).filter(([, value]) => value);
+  if (hidden.length === 0) return;
+  write(frame, row, column, paint("minimized ", theme().muted, theme().bgAlt));
+  column += 10;
+  for (const [id] of hidden) {
+    const label = `[${id}]`;
+    write(frame, row, column, paint(label, theme().bg, theme().border, true));
+    hitTargets.push({ rect: { column, row, width: label.length, height: 1 }, hit: { type: "restore", id } });
+    column += label.length + 1;
+  }
+}
+
 function renderPanel(frame: string[], id: PanelId, rect: Rectangle): void {
   if (rect.width < 10 || rect.height < 4) return;
   hitTargets.push({ rect, hit: { type: "focus", id } });
   const selected = active.peek() === id;
   fillRect(frame, rect, selected ? theme().panelAlt : theme().panel);
   const border = selected ? theme().accent : theme().borderStrong;
-  const top = `┌ ${id.toUpperCase()} ${"─".repeat(Math.max(0, rect.width - id.length - 20))} [-] [□] [↺] ┐`;
+  const top = `┌ ${id.toUpperCase()} ${"─".repeat(Math.max(0, rect.width - id.length - 24))} [-] [□] [↺] [x] ┐`;
   write(
     frame,
     rect.row,
@@ -276,16 +349,20 @@ function renderPanel(frame: string[], id: PanelId, rect: Rectangle): void {
     paint(fit(top, rect.width), border, selected ? theme().panelAlt : theme().panel, selected),
   );
   hitTargets.push({
-    rect: { column: rect.column + rect.width - 12, row: rect.row, width: 3, height: 1 },
+    rect: { column: rect.column + rect.width - 16, row: rect.row, width: 3, height: 1 },
     hit: { type: "min", id },
   });
   hitTargets.push({
-    rect: { column: rect.column + rect.width - 8, row: rect.row, width: 3, height: 1 },
+    rect: { column: rect.column + rect.width - 12, row: rect.row, width: 3, height: 1 },
     hit: { type: "max", id },
   });
   hitTargets.push({
+    rect: { column: rect.column + rect.width - 8, row: rect.row, width: 3, height: 1 },
+    hit: { type: "restore", id },
+  });
+  hitTargets.push({
     rect: { column: rect.column + rect.width - 4, row: rect.row, width: 3, height: 1 },
-    hit: { type: "restore" },
+    hit: { type: "close", id },
   });
   for (let r = 1; r < rect.height - 1; r++) {
     write(
@@ -308,9 +385,12 @@ function renderPanel(frame: string[], id: PanelId, rect: Rectangle): void {
     height: Math.max(0, rect.height - 2),
   };
   const lines = panelLines(id, inner.width, inner.height);
-  lines.forEach((line, index) =>
-    write(frame, inner.row + index, inner.column, paint(fit(line, inner.width), theme().text, theme().surface))
-  );
+  if (id === "controls") renderControls(frame, inner);
+  else {
+    lines.forEach((line, index) =>
+      write(frame, inner.row + index, inner.column, paint(fit(line, inner.width), theme().text, theme().surface))
+    );
+  }
 }
 
 function panelLines(id: PanelId, width: number, height: number): string[] {
@@ -320,14 +400,7 @@ function panelLines(id: PanelId, width: number, height: number): string[] {
       ...renderDataTableRows(table.view.peek().rows, table.columns.peek(), table.view.peek().selectedIndex),
     ]
     : id === "controls"
-    ? [
-      `${paint(" Density ", theme().bg, theme().accent, true)} ${
-        paint("█".repeat(slider.value.peek()).padEnd(10, "░"), theme().good, theme().accentDeep)
-      } ${slider.value.peek()}/10`,
-      `${paint(live.checked.peek() ? "[x]" : "[ ]", theme().good, theme().surface, true)} live preview`,
-      "[/] resize split",
-      "T theme  Space toggle",
-    ]
+    ? []
     : id === "logs"
     ? [...log.peek()].slice(-Math.max(1, height))
     : ["API Workbench Web", ...docs];
@@ -374,7 +447,9 @@ function applyHit(hit: Hit): void {
   if (hit.type === "focus") focus(hit.id);
   else if (hit.type === "min") minimize(hit.id);
   else if (hit.type === "max") toggleMax(hit.id);
-  else if (hit.type === "restore") restore();
+  else if (hit.type === "close") closePanel(hit.id);
+  else if (hit.type === "restore") hit.id ? restorePanel(hit.id) : restore();
+  else if (hit.type === "control") applyControlHit(hit.id, hit.action ?? "activate");
   else setTheme(hit.index);
 }
 
@@ -391,9 +466,21 @@ function minimize(id: PanelId): void {
   if (maximized.peek() === id) maximized.value = null;
   push(`minimize ${id}`);
 }
+function closePanel(id: PanelId): void {
+  minimized.value[id] = true;
+  if (maximized.peek() === id) maximized.value = null;
+  const next = (["inspector", "data", "controls", "logs"] as PanelId[]).find((panel) => !minimized.peek()[panel]);
+  if (next) active.value = next;
+  push(`close ${id}`);
+}
 function toggleMax(id: PanelId): void {
   maximized.value = maximized.peek() === id ? null : id;
   push(`${maximized.peek() ? "maximize" : "restore"} ${id}`);
+}
+function restorePanel(id: PanelId): void {
+  minimized.value[id] = false;
+  maximized.value = null;
+  focus(id);
 }
 function restore(): void {
   maximized.value = null;
@@ -416,6 +503,129 @@ function splitRects(direction: "row", rect: Rectangle, ratio: number) {
 }
 function push(message: string): void {
   log.value = [...log.peek(), `${new Date().toLocaleTimeString()} ${message}`].slice(-40);
+}
+
+function renderControls(frame: string[], rect: Rectangle): void {
+  let row = rect.row;
+  const t = theme();
+  const writeControl = (id: ControlId, value: string, options: { previous?: boolean; next?: boolean } = {}) => {
+    if (row >= rect.row + rect.height) return;
+    const selected = activeControl.peek() === id;
+    write(
+      frame,
+      row,
+      rect.column,
+      paint(
+        fit(`${selected ? ">" : " "} ${value}`, rect.width),
+        selected ? t.bg : t.text,
+        selected ? t.warn : t.surface,
+        selected,
+      ),
+    );
+    hitTargets.push({ rect: { column: rect.column, row, width: rect.width, height: 1 }, hit: { type: "control", id } });
+    if (options.previous) {
+      hitTargets.push({
+        rect: { column: rect.column, row, width: Math.max(1, Math.floor(rect.width / 2)), height: 1 },
+        hit: { type: "control", id, action: "previous" },
+      });
+    }
+    if (options.next) {
+      hitTargets.push({
+        rect: {
+          column: rect.column + Math.floor(rect.width / 2),
+          row,
+          width: Math.ceil(rect.width / 2),
+          height: 1,
+        },
+        hit: { type: "control", id, action: "next" },
+      });
+    }
+    row += 1;
+  };
+  const sliderTrack = `${"█".repeat(slider.value.peek())}${"░".repeat(10 - slider.value.peek())}`;
+  const progressWidth = Math.max(8, Math.min(18, rect.width - 18));
+  const progressFilled = Math.round(progress.ratio() * progressWidth);
+  const progressTrack = `${"█".repeat(progressFilled)}${"░".repeat(progressWidth - progressFilled)}`;
+  writeControl("button", `${paint("[ Run Action ]", t.bg, t.accent, true)} presses=${actionButton.pressCount.peek()}`);
+  writeControl("slider", `Slider    ${paint(sliderTrack, t.good, t.accentDeep)} ${slider.value.peek()}/10`, {
+    previous: true,
+    next: true,
+  });
+  writeControl(
+    "checkbox",
+    `Checkbox  ${renderCheckBoxMark(live.checked.peek())} live ${renderCheckBoxMark(compact.checked.peek())} compact`,
+  );
+  writeControl(
+    "radio",
+    `Radio     ${
+      renderRadioGroupRows(radio.options.peek(), radio.selectedValue.peek(), radio.activeIndex.peek(), 1)[0] ?? ""
+    }`,
+    {
+      previous: true,
+      next: true,
+    },
+  );
+  writeControl("combo", `Combo     ${combo.expanded.peek() ? "v" : ">"} ${combo.label()}`, {
+    previous: true,
+    next: true,
+  });
+  writeControl("input", `Input     ${input.text.peek()}${activeControl.peek() === "input" ? "|" : ""}`);
+  writeControl(
+    "stepper",
+    `Stepper   ${
+      renderStepper(stepper.steps.peek(), stepper.activeIndex.peek(), "horizontal", Math.max(8, rect.width - 12))[0] ??
+        ""
+    }`,
+    {
+      previous: true,
+      next: true,
+    },
+  );
+  writeControl("textbox", `TextBox   ${textBox.text.peek().split("\n").join(" / ")}`);
+  if (row < rect.row + rect.height) {
+    write(
+      frame,
+      row,
+      rect.column,
+      paint(fit(`Progress  ${progressTrack} ${progress.value.peek()}%`, rect.width), t.text, t.surface),
+    );
+  }
+}
+
+function applyControlHit(id: ControlId, action: "previous" | "next" | "activate"): void {
+  active.value = "controls";
+  activeControl.value = id;
+  if (id === "button") actionButton.press("mouse");
+  else if (id === "slider") action === "previous" ? slider.decrement() : slider.increment();
+  else if (id === "checkbox") live.toggle();
+  else if (id === "radio") {
+    if (action === "previous") radio.move(-1);
+    else if (action === "next") radio.move(1);
+    else radio.selectActive();
+  } else if (id === "combo") {
+    if (action === "previous") combo.move(-1);
+    else if (action === "next") combo.move(1);
+    combo.selectActive();
+  } else if (id === "input") input.submit();
+  else if (id === "stepper") action === "previous" ? stepper.move(-1) : stepper.move(1);
+  else if (id === "textbox") textBox.setText(`${textBox.text.peek()}\nclicked`);
+  progress.setValue(Math.min(100, progress.value.peek() + 7));
+  push(`control ${id} ${action}`);
+}
+
+function handleControlsKey(event: { key: string; ctrl?: boolean; meta?: boolean; shift?: boolean }): void {
+  if (event.key === "up") activeControl.value = controlAt(-1);
+  else if (event.key === "down") activeControl.value = controlAt(1);
+  else if (activeControl.peek() === "input") input.handleKeyPress(event as never);
+  else if (activeControl.peek() === "textbox") textBox.handleKeyPress(event as never);
+  else if (event.key === "left") applyControlHit(activeControl.peek(), "previous");
+  else if (event.key === "right") applyControlHit(activeControl.peek(), "next");
+  else if (event.key === "space" || event.key === "return") applyControlHit(activeControl.peek(), "activate");
+}
+
+function controlAt(delta: number): ControlId {
+  const ids: ControlId[] = ["button", "slider", "checkbox", "radio", "combo", "input", "stepper", "textbox"];
+  return ids[(ids.indexOf(activeControl.peek()) + delta + ids.length) % ids.length]!;
 }
 function write(frame: string[], row: number, column: number, value: string): void {
   if (row < 0 || row >= frame.length || column >= cols()) return;
@@ -445,6 +655,12 @@ function paint(value: string, fg = theme().text, bg = theme().bg, bold = false):
 }
 function contains(rect: Rectangle, x: number, y: number): boolean {
   return x >= rect.column && y >= rect.row && x < rect.column + rect.width && y < rect.row + rect.height;
+}
+function findHit(x: number, y: number): { rect: Rectangle; hit: Hit } | undefined {
+  for (let index = hitTargets.length - 1; index >= 0; index -= 1) {
+    const target = hitTargets[index]!;
+    if (contains(target.rect, x, y)) return target;
+  }
 }
 function hex(value: string): [number, number, number] {
   const color = value.replace("#", "");

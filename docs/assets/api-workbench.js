@@ -100,8 +100,8 @@ function optimizeDependencies(into, from = into) {
 var IS_REACTIVE = Symbol("reactive");
 var ORIGINAL_REF = Symbol("original_ref");
 var CONNECTED_SIGNAL = Symbol("connected_signal");
-function isReactive(input) {
-  return input instanceof Object && IS_REACTIVE in input;
+function isReactive(input2) {
+  return input2 instanceof Object && IS_REACTIVE in input2;
 }
 function makeMapMethodsReactive(map, signal, watchMapUpdates = false) {
   Object.defineProperties(map, {
@@ -553,8 +553,8 @@ var Effect = class {
 };
 
 // src/utils/signals.ts
-function signalify(input, options) {
-  return input instanceof Signal ? input : new Signal(input, options);
+function signalify(input2, options) {
+  return input2 instanceof Signal ? input2 : new Signal(input2, options);
 }
 
 // src/utils/numbers.ts
@@ -1000,6 +1000,9 @@ function stripStyles(string) {
     }
   }
   return stripped;
+}
+function insertAt(string, index, value) {
+  return string.slice(0, index) + value + string.slice(index);
 }
 function textWidth(text, start = 0) {
   if (!text) return 0;
@@ -2330,6 +2333,63 @@ function clampRatio(value) {
   return Math.max(0, Math.min(1, value));
 }
 
+// src/components/button.ts
+var ButtonController = class {
+  label;
+  disabled;
+  pressCount = new Signal(0);
+  lastPressedAt = new Signal(void 0);
+  lastMethod = new Signal(void 0);
+  #ownsLabel;
+  #ownsDisabled;
+  #onPress;
+  constructor(options = {}) {
+    this.#ownsLabel = !(options.label instanceof Signal);
+    this.#ownsDisabled = !(options.disabled instanceof Signal);
+    this.label = signalify(options.label ?? "");
+    this.disabled = signalify(options.disabled ?? false);
+    this.#onPress = options.onPress;
+  }
+  setLabel(label) {
+    this.label.value = label;
+    return label;
+  }
+  setDisabled(disabled) {
+    this.disabled.value = disabled;
+    return disabled;
+  }
+  enable() {
+    return this.setDisabled(false);
+  }
+  disable() {
+    return this.setDisabled(true);
+  }
+  press(method, now = Date.now()) {
+    if (this.disabled.peek()) return false;
+    this.pressCount.value++;
+    this.lastPressedAt.value = now;
+    this.lastMethod.value = method;
+    void this.#onPress?.(this.inspect());
+    return true;
+  }
+  inspect() {
+    return {
+      label: this.label.peek(),
+      disabled: this.disabled.peek(),
+      pressCount: this.pressCount.peek(),
+      lastPressedAt: this.lastPressedAt.peek(),
+      lastMethod: this.lastMethod.peek()
+    };
+  }
+  dispose() {
+    if (this.#ownsLabel) this.label.dispose();
+    if (this.#ownsDisabled) this.disabled.dispose();
+    this.pressCount.dispose();
+    this.lastPressedAt.dispose();
+    this.lastMethod.dispose();
+  }
+};
+
 // src/components/catalog.ts
 var componentCatalog = [
   component("box", "Box", "primitive", "Filled rectangular surface for backgrounds and panels.", [
@@ -2553,6 +2613,158 @@ var CheckBoxController = class {
   }
 };
 
+// src/components/combobox.ts
+function clampComboBoxIndex(items, index) {
+  if (items.length === 0 || index === void 0 || !Number.isFinite(index)) return void 0;
+  return Math.max(0, Math.min(Math.floor(index), items.length - 1));
+}
+function comboBoxLabel(items, selectedIndex, placeholder = "") {
+  const selected = clampComboBoxIndex(items, selectedIndex);
+  return selected === void 0 ? placeholder : items[selected] ?? placeholder;
+}
+var ComboBoxController = class {
+  items;
+  selectedIndex;
+  expanded;
+  placeholder;
+  #ownsItems;
+  #ownsSelectedIndex;
+  #ownsExpanded;
+  #ownsPlaceholder;
+  #onSelect;
+  #onExpandedChange;
+  #syncSelection = () => {
+    this.selectedIndex.value = clampComboBoxIndex(this.items.peek(), this.selectedIndex.peek());
+    if (this.items.peek().length === 0) this.setExpanded(false);
+  };
+  constructor(options) {
+    this.#ownsItems = !(options.items instanceof Signal);
+    this.#ownsSelectedIndex = !(options.selectedIndex instanceof Signal);
+    this.#ownsExpanded = !(options.expanded instanceof Signal);
+    this.#ownsPlaceholder = !(options.placeholder instanceof Signal);
+    this.items = signalify(options.items, { deepObserve: true });
+    this.selectedIndex = signalify(options.selectedIndex);
+    this.expanded = signalify(options.expanded ?? false);
+    this.placeholder = signalify(options.placeholder ?? "");
+    this.#onSelect = options.onSelect;
+    this.#onExpandedChange = options.onExpandedChange;
+    this.items.subscribe(this.#syncSelection);
+    this.#syncSelection();
+  }
+  label() {
+    return comboBoxLabel(this.items.peek(), this.selectedIndex.peek(), this.placeholder.peek());
+  }
+  selected() {
+    const index = clampComboBoxIndex(this.items.peek(), this.selectedIndex.peek());
+    return index === void 0 ? void 0 : this.items.peek()[index];
+  }
+  setExpanded(expanded) {
+    const next = expanded && this.items.peek().length > 0;
+    if (this.expanded.peek() !== next) {
+      this.expanded.value = next;
+      void this.#onExpandedChange?.(next);
+    }
+    return this.expanded.peek();
+  }
+  open() {
+    return this.setExpanded(true);
+  }
+  close() {
+    return this.setExpanded(false);
+  }
+  toggle() {
+    return this.setExpanded(!this.expanded.peek());
+  }
+  move(delta) {
+    const items = this.items.peek();
+    if (items.length === 0) return void 0;
+    const current = clampComboBoxIndex(items, this.selectedIndex.peek()) ?? (delta < 0 ? items.length : -1);
+    return this.setSelectedIndex(current + delta);
+  }
+  first() {
+    return this.setSelectedIndex(0);
+  }
+  last() {
+    return this.setSelectedIndex(this.items.peek().length - 1);
+  }
+  setSelectedIndex(index) {
+    const next = clampComboBoxIndex(this.items.peek(), index);
+    this.selectedIndex.value = next;
+    return this.selected();
+  }
+  selectActive() {
+    const index = clampComboBoxIndex(this.items.peek(), this.selectedIndex.peek());
+    if (index === void 0) return void 0;
+    const item = this.items.peek()[index];
+    if (item !== void 0) {
+      void this.#onSelect?.(item, index);
+      this.close();
+    }
+    return item;
+  }
+  selectIndex(index) {
+    const item = this.setSelectedIndex(index);
+    if (item === void 0) return void 0;
+    return this.selectActive();
+  }
+  handleKeyPress({ key, ctrl, meta, shift }) {
+    if (ctrl || meta || shift) return void 0;
+    if (key === "up") {
+      this.open();
+      return this.move(-1);
+    }
+    if (key === "down") {
+      this.open();
+      return this.move(1);
+    }
+    if (key === "home") {
+      this.open();
+      return this.first();
+    }
+    if (key === "end") {
+      this.open();
+      return this.last();
+    }
+    if (key === "escape") {
+      this.close();
+      return void 0;
+    }
+    if (key === "space") {
+      this.toggle();
+      return this.selected();
+    }
+    if (key === "return") {
+      if (!this.expanded.peek()) {
+        this.open();
+        return this.selected();
+      }
+      return this.selectActive();
+    }
+    return void 0;
+  }
+  inspect() {
+    const items = [...this.items.peek()];
+    const selectedIndex = clampComboBoxIndex(items, this.selectedIndex.peek());
+    return {
+      items,
+      itemCount: items.length,
+      selectedIndex,
+      selected: selectedIndex === void 0 ? void 0 : items[selectedIndex],
+      expanded: this.expanded.peek(),
+      placeholder: this.placeholder.peek(),
+      label: comboBoxLabel(items, selectedIndex, this.placeholder.peek()),
+      empty: items.length === 0
+    };
+  }
+  dispose() {
+    this.items.unsubscribe(this.#syncSelection);
+    if (this.#ownsItems) this.items.dispose();
+    if (this.#ownsSelectedIndex) this.selectedIndex.dispose();
+    if (this.#ownsExpanded) this.expanded.dispose();
+    if (this.#ownsPlaceholder) this.placeholder.dispose();
+  }
+};
+
 // src/components/data_table.ts
 function createDataTableView(rows2, columns, state = {}, rowKey) {
   const filtered = filterDataRows(rows2, columns, state.query ?? "");
@@ -2745,6 +2957,158 @@ function padCell(value, width) {
   return cropped + " ".repeat(Math.max(0, width - textWidth(cropped)));
 }
 
+// src/components/input.ts
+var InputController = class {
+  text;
+  cursorPosition;
+  validator;
+  password;
+  placeholder;
+  multiCodePointSupport;
+  #ownsText;
+  #ownsCursorPosition;
+  #ownsValidator;
+  #ownsPassword;
+  #ownsPlaceholder;
+  #ownsMultiCodePointSupport;
+  #onChange;
+  #onSubmit;
+  #syncCursor = () => {
+    this.cursorPosition.value = clamp(this.cursorPosition.peek(), 0, this.text.peek().length);
+  };
+  constructor(options = {}) {
+    this.#ownsText = !(options.text instanceof Signal);
+    this.#ownsCursorPosition = !(options.cursorPosition instanceof Signal);
+    this.#ownsValidator = !(options.validator instanceof Signal);
+    this.#ownsPassword = !(options.password instanceof Signal);
+    this.#ownsPlaceholder = !(options.placeholder instanceof Signal);
+    this.#ownsMultiCodePointSupport = !(options.multiCodePointSupport instanceof Signal);
+    this.text = signalify(options.text ?? "");
+    this.cursorPosition = signalify(options.cursorPosition ?? 0);
+    this.validator = signalify(options.validator);
+    this.password = signalify(options.password ?? false);
+    this.placeholder = signalify(options.placeholder);
+    this.multiCodePointSupport = signalify(options.multiCodePointSupport ?? false);
+    this.#onChange = options.onChange;
+    this.#onSubmit = options.onSubmit;
+    this.text.subscribe(this.#syncCursor);
+    this.cursorPosition.subscribe(this.#syncCursor);
+    this.#syncCursor();
+  }
+  setText(value, cursorPosition = value.length) {
+    this.text.value = value;
+    this.cursorPosition.value = clamp(cursorPosition, 0, value.length);
+    void this.#onChange?.(this.text.peek());
+    return this.text.peek();
+  }
+  clear() {
+    return this.setText("", 0);
+  }
+  moveCursor(offset) {
+    return this.setCursorPosition(this.cursorPosition.peek() + offset);
+  }
+  setCursorPosition(position) {
+    this.cursorPosition.value = clamp(position, 0, this.text.peek().length);
+    return this.cursorPosition.peek();
+  }
+  home() {
+    return this.setCursorPosition(0);
+  }
+  end() {
+    return this.setCursorPosition(this.text.peek().length);
+  }
+  insert(character) {
+    if (!this.accepts(character)) return false;
+    const cursorPosition = this.cursorPosition.peek();
+    const value = insertAt(this.text.peek(), cursorPosition, character);
+    this.setText(value, cursorPosition + character.length);
+    return true;
+  }
+  backspace() {
+    const cursorPosition = this.cursorPosition.peek();
+    if (cursorPosition === 0) return false;
+    const value = this.text.peek();
+    this.setText(value.slice(0, cursorPosition - 1) + value.slice(cursorPosition), cursorPosition - 1);
+    return true;
+  }
+  delete() {
+    const cursorPosition = this.cursorPosition.peek();
+    const value = this.text.peek();
+    if (cursorPosition >= value.length) return false;
+    this.setText(value.slice(0, cursorPosition) + value.slice(cursorPosition + 1), cursorPosition);
+    return true;
+  }
+  submit() {
+    const value = this.text.peek();
+    void this.#onSubmit?.(value);
+    return value;
+  }
+  handleKeyPress({ key, ctrl, meta }) {
+    if (ctrl || meta) return "ignored";
+    switch (key) {
+      case "return":
+        this.submit();
+        return "submitted";
+      case "backspace":
+        return this.backspace() ? "changed" : "ignored";
+      case "delete":
+        return this.delete() ? "changed" : "ignored";
+      case "left":
+        this.moveCursor(-1);
+        return "moved";
+      case "right":
+        this.moveCursor(1);
+        return "moved";
+      case "home":
+        this.home();
+        return "moved";
+      case "end":
+        this.end();
+        return "moved";
+      case "space":
+        return this.insert(" ") ? "changed" : "ignored";
+      case "tab":
+        return this.insert("	") ? "changed" : "ignored";
+      default:
+        if (key.length > 1) return "ignored";
+        return this.insert(key) ? "changed" : "ignored";
+    }
+  }
+  accepts(character) {
+    const validator = this.validator.peek();
+    if (!validator) return true;
+    validator.lastIndex = 0;
+    return validator.test(character);
+  }
+  inspect() {
+    const text = this.text.peek();
+    const validator = this.validator.peek();
+    if (validator) validator.lastIndex = 0;
+    return {
+      text,
+      cursorPosition: this.cursorPosition.peek(),
+      length: text.length,
+      empty: text.length === 0,
+      password: this.password.peek(),
+      placeholder: this.placeholder.peek(),
+      valid: validator ? [...text].every((character) => {
+        validator.lastIndex = 0;
+        return validator.test(character);
+      }) : true
+    };
+  }
+  dispose() {
+    this.text.unsubscribe(this.#syncCursor);
+    this.cursorPosition.unsubscribe(this.#syncCursor);
+    if (this.#ownsText) this.text.dispose();
+    if (this.#ownsCursorPosition) this.cursorPosition.dispose();
+    if (this.#ownsValidator) this.validator.dispose();
+    if (this.#ownsPassword) this.password.dispose();
+    if (this.#ownsPlaceholder) this.placeholder.dispose();
+    if (this.#ownsMultiCodePointSupport) this.multiCodePointSupport.dispose();
+  }
+};
+
 // src/components/menu_bar.ts
 function renderMenuBar(items, activeIndex) {
   return items.map((item, index) => {
@@ -2849,6 +3213,303 @@ var MenuBarController = class {
   }
   dispose() {
     if (this.#ownsItems) this.items.dispose();
+    if (this.#ownsActiveIndex) this.activeIndex.dispose();
+  }
+};
+
+// src/components/progressbar.ts
+var progressBarCharMap = {
+  vertical: ["\u2588", "\u{1FB86}", "\u{1FB85}", "\u{1FB84}", "\u{1FB83}", "\u{1FB82}", "\u2594"],
+  horizontal: ["\u2588", "\u2589", "\u2589", "\u258A", "\u258B", "\u258D", "\u258E", "\u258F"]
+};
+function clampProgressValue(value, min2, max2) {
+  return Math.max(Math.min(value, Math.max(min2, max2)), Math.min(min2, max2));
+}
+function progressRatio(value, min2, max2, direction = "normal") {
+  const ratio = normalize(clampProgressValue(value, min2, max2), min2, max2);
+  return direction === "reversed" ? 1 - ratio : ratio;
+}
+function progressRectangle(track, value, min2, max2, orientation, direction = "normal") {
+  const ratio = progressRatio(value, min2, max2, direction);
+  return orientation === "horizontal" ? {
+    column: track.column,
+    row: track.row,
+    width: Math.round(track.width * ratio),
+    height: track.height
+  } : {
+    column: track.column,
+    row: track.row,
+    width: track.width,
+    height: Math.round(track.height * ratio)
+  };
+}
+function progressSmoothLine(offset, width, height, value, min2, max2, orientation, direction, charMap) {
+  const ratio = progressRatio(value, min2, max2, direction);
+  const chars = charMap[orientation];
+  const step = 1 / chars.length;
+  if (orientation === "horizontal") {
+    const steps2 = ratio * width;
+    const remainder2 = steps2 % 1;
+    return chars[0].repeat(steps2) + (remainder2 < step ? "" : chars[chars.length - Math.max(Math.round(remainder2 / step), 1)]);
+  }
+  const steps = ratio * height;
+  const remainder = steps % 1;
+  if (offset - 1 >= steps - remainder) return "";
+  if (offset < steps - remainder) return chars[0].repeat(width);
+  return remainder < step ? "" : chars[chars.length - Math.max(Math.round(remainder / step), 1)].repeat(width);
+}
+var ProgressBarController = class {
+  min;
+  max;
+  value;
+  smooth;
+  direction;
+  orientation;
+  charMap;
+  #ownsMin;
+  #ownsMax;
+  #ownsValue;
+  #ownsSmooth;
+  #ownsDirection;
+  #ownsOrientation;
+  #ownsCharMap;
+  #onChange;
+  #syncValue = () => {
+    this.value.value = clampProgressValue(this.value.peek(), this.min.peek(), this.max.peek());
+  };
+  constructor(options) {
+    this.#ownsMin = !(options.min instanceof Signal);
+    this.#ownsMax = !(options.max instanceof Signal);
+    this.#ownsValue = !(options.value instanceof Signal);
+    this.#ownsSmooth = !(options.smooth instanceof Signal);
+    this.#ownsDirection = !(options.direction instanceof Signal);
+    this.#ownsOrientation = !(options.orientation instanceof Signal);
+    this.#ownsCharMap = !(options.charMap instanceof Signal);
+    this.min = signalify(options.min);
+    this.max = signalify(options.max);
+    this.value = signalify(options.value);
+    this.smooth = signalify(options.smooth);
+    this.direction = signalify(options.direction);
+    this.orientation = signalify(options.orientation);
+    this.charMap = signalify(options.charMap ?? progressBarCharMap);
+    this.#onChange = options.onChange;
+    this.min.subscribe(this.#syncValue);
+    this.max.subscribe(this.#syncValue);
+    this.value.subscribe(this.#syncValue);
+    this.#syncValue();
+  }
+  ratio() {
+    return progressRatio(this.value.peek(), this.min.peek(), this.max.peek(), this.direction.peek());
+  }
+  setValue(value) {
+    const next = clampProgressValue(value, this.min.peek(), this.max.peek());
+    this.value.value = next;
+    void this.#onChange?.(next);
+    return next;
+  }
+  increment(step = 1) {
+    return this.setValue(this.value.peek() + step);
+  }
+  decrement(step = 1) {
+    return this.setValue(this.value.peek() - step);
+  }
+  setMin() {
+    return this.setValue(this.min.peek());
+  }
+  setMax() {
+    return this.setValue(this.max.peek());
+  }
+  progressRectangle(track) {
+    return progressRectangle(
+      track,
+      this.value.peek(),
+      this.min.peek(),
+      this.max.peek(),
+      this.orientation.peek(),
+      this.direction.peek()
+    );
+  }
+  smoothLine(offset, width, height) {
+    return progressSmoothLine(
+      offset,
+      width,
+      height,
+      this.value.peek(),
+      this.min.peek(),
+      this.max.peek(),
+      this.orientation.peek(),
+      this.direction.peek(),
+      this.charMap.peek()
+    );
+  }
+  inspect() {
+    const normalizedValue = normalize(
+      clampProgressValue(this.value.peek(), this.min.peek(), this.max.peek()),
+      this.min.peek(),
+      this.max.peek()
+    );
+    return {
+      min: this.min.peek(),
+      max: this.max.peek(),
+      value: this.value.peek(),
+      normalizedValue,
+      direction: this.direction.peek(),
+      orientation: this.orientation.peek(),
+      smooth: this.smooth.peek(),
+      complete: normalizedValue >= 1,
+      empty: normalizedValue <= 0
+    };
+  }
+  dispose() {
+    this.min.unsubscribe(this.#syncValue);
+    this.max.unsubscribe(this.#syncValue);
+    this.value.unsubscribe(this.#syncValue);
+    if (this.#ownsMin) this.min.dispose();
+    if (this.#ownsMax) this.max.dispose();
+    if (this.#ownsValue) this.value.dispose();
+    if (this.#ownsSmooth) this.smooth.dispose();
+    if (this.#ownsDirection) this.direction.dispose();
+    if (this.#ownsOrientation) this.orientation.dispose();
+    if (this.#ownsCharMap) this.charMap.dispose();
+  }
+};
+
+// src/components/radio_group.ts
+function renderRadioGroupRows(options, selectedValue, activeIndex, height) {
+  return visibleRadioOptions(options, activeIndex, height).map((row) => {
+    const selected = row.option.value === selectedValue;
+    const cursor = row.active ? ">" : " ";
+    const mark = selected ? "\u25CF" : "\u25CB";
+    const label = row.option.disabled ? `(${row.option.label})` : row.option.label;
+    return `${cursor} ${mark} ${label}`;
+  });
+}
+function visibleRadioOptions(options, activeIndex, height) {
+  const safeHeight = Math.max(0, height);
+  if (safeHeight === 0) return [];
+  const active2 = clampRadioIndex(options, activeIndex);
+  const offset = Math.max(0, Math.min(active2 - Math.floor(safeHeight / 2), Math.max(0, options.length - safeHeight)));
+  return options.slice(offset, offset + safeHeight).map((option, index) => {
+    const optionIndex = offset + index;
+    return {
+      option,
+      index: optionIndex,
+      active: optionIndex === active2 && !option.disabled
+    };
+  });
+}
+function clampRadioIndex(options, activeIndex) {
+  if (options.length === 0) return 0;
+  const clamped = Math.max(0, Math.min(activeIndex, options.length - 1));
+  if (!options[clamped]?.disabled) return clamped;
+  const next = shiftRadioIndex(options, clamped, 1);
+  if (!options[next]?.disabled) return next;
+  const previous = shiftRadioIndex(options, clamped, -1);
+  return options[previous]?.disabled ? clamped : previous;
+}
+function shiftRadioIndex(options, activeIndex, delta) {
+  if (options.length === 0) return 0;
+  let next = Math.max(0, Math.min(activeIndex, options.length - 1));
+  for (let count = 0; count < options.length; count += 1) {
+    next = Math.max(0, Math.min(options.length - 1, next + delta));
+    if (!options[next]?.disabled) return next;
+    if (next === 0 || next === options.length - 1) break;
+  }
+  return activeIndex;
+}
+function optionForValue(options, value) {
+  return options.find((option) => option.value === value);
+}
+var RadioGroupController = class {
+  options;
+  selectedValue;
+  activeIndex;
+  #ownsOptions;
+  #ownsSelectedValue;
+  #ownsActiveIndex;
+  #onChange;
+  constructor(options) {
+    this.#ownsOptions = !(options.options instanceof Signal);
+    this.#ownsSelectedValue = !(options.selectedValue instanceof Signal);
+    this.#ownsActiveIndex = !(options.activeIndex instanceof Signal);
+    this.options = signalify(options.options, { deepObserve: true });
+    this.selectedValue = options.selectedValue instanceof Signal ? options.selectedValue : signalify(options.selectedValue);
+    this.activeIndex = signalify(options.activeIndex ?? 0);
+    this.#onChange = options.onChange;
+    this.activeIndex.value = clampRadioIndex(this.options.peek(), this.activeIndex.peek());
+  }
+  active() {
+    const option = this.options.peek()[clampRadioIndex(this.options.peek(), this.activeIndex.peek())];
+    return option?.disabled ? void 0 : option;
+  }
+  selected() {
+    return optionForValue(this.options.peek(), this.selectedValue.peek());
+  }
+  move(delta) {
+    return this.setActive(shiftRadioIndex(this.options.peek(), this.activeIndex.peek(), delta));
+  }
+  first() {
+    return this.setActive(0);
+  }
+  last() {
+    return this.setActive(this.options.peek().length - 1);
+  }
+  setActive(index) {
+    const next = clampRadioIndex(this.options.peek(), index);
+    this.activeIndex.value = next;
+    return this.active();
+  }
+  selectActive() {
+    const option = this.active();
+    if (option) {
+      this.selectedValue.value = option.value;
+      void this.#onChange?.(option);
+    }
+    return option;
+  }
+  selectValue(value) {
+    const index = this.options.peek().findIndex((option2) => option2.value === value);
+    if (index < 0) return void 0;
+    const option = this.options.peek()[index];
+    if (!option || option.disabled) return void 0;
+    this.activeIndex.value = index;
+    this.selectedValue.value = option.value;
+    void this.#onChange?.(option);
+    return option;
+  }
+  handleKeyPress({ key, ctrl, meta, shift }) {
+    if (ctrl || meta || shift) return;
+    if (key === "up") {
+      this.move(-1);
+    } else if (key === "down") {
+      this.move(1);
+    } else if (key === "home") {
+      this.first();
+    } else if (key === "end") {
+      this.last();
+    } else if (key === "return" || key === "space") {
+      this.selectActive();
+    }
+    this.activeIndex.value = clampRadioIndex(this.options.peek(), this.activeIndex.peek());
+  }
+  inspect() {
+    const options = this.options.peek().map((option) => ({ ...option }));
+    const activeIndex = clampRadioIndex(options, this.activeIndex.peek());
+    const active2 = options[activeIndex];
+    const selected = optionForValue(options, this.selectedValue.peek());
+    return {
+      options,
+      optionCount: options.length,
+      activeIndex,
+      active: active2 && !active2.disabled ? { ...active2 } : void 0,
+      selectedValue: this.selectedValue.peek(),
+      selected: selected ? { ...selected } : void 0,
+      empty: options.length === 0
+    };
+  }
+  dispose() {
+    if (this.#ownsOptions) this.options.dispose();
+    if (this.#ownsSelectedValue) this.selectedValue.dispose();
     if (this.#ownsActiveIndex) this.activeIndex.dispose();
   }
 };
@@ -2996,6 +3657,358 @@ function renderStatusBar(left, right, width) {
   const gap = Math.max(1, safeWidth - leftText.length - rightText.length);
   return `${leftText}${" ".repeat(gap)}${rightText}`.slice(0, safeWidth);
 }
+
+// src/components/stepper.ts
+function renderStepper(steps, activeIndex, orientation = "horizontal", width = Number.POSITIVE_INFINITY, separator = "\u2192") {
+  if (orientation === "vertical") {
+    return steps.map((step, index) => renderVerticalStep(step, index === clampStepperIndex(steps, activeIndex)));
+  }
+  const text = steps.map((step, index) => renderHorizontalStep(step, index === clampStepperIndex(steps, activeIndex))).join(` ${separator} `);
+  return [text.length <= width ? text : truncateStepperText(text, width)];
+}
+function clampStepperIndex(steps, activeIndex) {
+  if (steps.length === 0) return 0;
+  const clamped = Math.max(0, Math.min(activeIndex, steps.length - 1));
+  if (!steps[clamped]?.disabled) return clamped;
+  const next = shiftStepperIndex(steps, clamped, 1);
+  if (!steps[next]?.disabled) return next;
+  const previous = shiftStepperIndex(steps, clamped, -1);
+  return steps[previous]?.disabled ? clamped : previous;
+}
+function shiftStepperIndex(steps, activeIndex, delta) {
+  if (steps.length === 0) return 0;
+  let next = Math.max(0, Math.min(activeIndex, steps.length - 1));
+  for (let count = 0; count < steps.length; count += 1) {
+    next = Math.max(0, Math.min(steps.length - 1, next + delta));
+    if (!steps[next]?.disabled) return next;
+    if (next === 0 || next === steps.length - 1) break;
+  }
+  return activeIndex;
+}
+function stepForIndex(steps, activeIndex) {
+  const step = steps[clampStepperIndex(steps, activeIndex)];
+  return step?.disabled ? void 0 : step;
+}
+var StepperController = class {
+  steps;
+  activeIndex;
+  orientation;
+  #ownsSteps;
+  #ownsActiveIndex;
+  #ownsOrientation;
+  #onChange;
+  constructor(options) {
+    this.#ownsSteps = !(options.steps instanceof Signal);
+    this.#ownsActiveIndex = !(options.activeIndex instanceof Signal);
+    this.#ownsOrientation = !(options.orientation instanceof Signal);
+    this.steps = signalify(options.steps, { deepObserve: true });
+    this.activeIndex = signalify(options.activeIndex ?? 0);
+    this.orientation = signalify(options.orientation ?? "horizontal");
+    this.#onChange = options.onChange;
+    this.activeIndex.value = clampStepperIndex(this.steps.peek(), this.activeIndex.peek());
+  }
+  active() {
+    return stepForIndex(this.steps.peek(), this.activeIndex.peek());
+  }
+  move(delta) {
+    return this.setActive(shiftStepperIndex(this.steps.peek(), this.activeIndex.peek(), delta));
+  }
+  first() {
+    return this.setActive(0);
+  }
+  last() {
+    return this.setActive(this.steps.peek().length - 1);
+  }
+  setActive(index) {
+    const next = clampStepperIndex(this.steps.peek(), index);
+    this.activeIndex.value = next;
+    const step = this.steps.peek()[next];
+    if (step && !step.disabled) {
+      void this.#onChange?.(step, next);
+      return step;
+    }
+    return void 0;
+  }
+  handleKeyPress({ key, ctrl, meta, shift }) {
+    if (ctrl || meta || shift) return;
+    const orientation = this.orientation.peek();
+    if (orientation === "horizontal" && key === "left" || orientation === "vertical" && key === "up") {
+      this.move(-1);
+    } else if (orientation === "horizontal" && key === "right" || orientation === "vertical" && key === "down") {
+      this.move(1);
+    } else if (key === "home") {
+      this.first();
+    } else if (key === "end") {
+      this.last();
+    }
+  }
+  inspect() {
+    const steps = this.steps.peek().map((step) => ({ ...step }));
+    const activeIndex = clampStepperIndex(steps, this.activeIndex.peek());
+    const active2 = stepForIndex(steps, activeIndex);
+    return {
+      steps,
+      stepCount: steps.length,
+      activeIndex,
+      active: active2 ? { ...active2 } : void 0,
+      orientation: this.orientation.peek(),
+      empty: steps.length === 0
+    };
+  }
+  dispose() {
+    if (this.#ownsSteps) this.steps.dispose();
+    if (this.#ownsActiveIndex) this.activeIndex.dispose();
+    if (this.#ownsOrientation) this.orientation.dispose();
+  }
+};
+function renderHorizontalStep(step, active2) {
+  const label = step.disabled ? `(${step.label})` : step.label;
+  if (active2) return `[${label}]`;
+  if (step.completed) return `\u2713 ${label}`;
+  return label;
+}
+function renderVerticalStep(step, active2) {
+  const cursor = active2 && !step.disabled ? ">" : " ";
+  const mark = step.disabled ? "-" : step.completed ? "\u2713" : "\u25CB";
+  const label = step.disabled ? `(${step.label})` : step.label;
+  return `${cursor} ${mark} ${label}`;
+}
+function truncateStepperText(text, width) {
+  const safeWidth = Math.max(0, width);
+  if (safeWidth === 0) return "";
+  if (safeWidth === 1) return "\u2026";
+  return `${text.slice(0, safeWidth - 1)}\u2026`;
+}
+
+// src/components/textbox.ts
+var TextLineCache = class {
+  #text = "";
+  #lines = [""];
+  lines(text) {
+    if (text !== this.#text) {
+      this.#text = text;
+      this.#lines = text.split("\n");
+    }
+    return this.#lines;
+  }
+  inspect() {
+    return {
+      text: this.#text,
+      lineCount: this.#lines.length
+    };
+  }
+};
+var TextBoxController = class {
+  text;
+  cursorPosition;
+  validator;
+  multiCodePointSupport;
+  lineHighlighting;
+  lineNumbering;
+  lines;
+  #textLineCache = new TextLineCache();
+  #ownsText;
+  #ownsCursorPosition;
+  #ownsValidator;
+  #ownsMultiCodePointSupport;
+  #ownsLineHighlighting;
+  #ownsLineNumbering;
+  #onChange;
+  #syncCursor = () => this.clampCursor();
+  constructor(options = {}) {
+    this.#ownsText = !(options.text instanceof Signal);
+    this.#ownsCursorPosition = !(options.cursorPosition instanceof Signal);
+    this.#ownsValidator = !(options.validator instanceof Signal);
+    this.#ownsMultiCodePointSupport = !(options.multiCodePointSupport instanceof Signal);
+    this.#ownsLineHighlighting = !(options.lineHighlighting instanceof Signal);
+    this.#ownsLineNumbering = !(options.lineNumbering instanceof Signal);
+    this.text = signalify(options.text ?? "");
+    this.cursorPosition = signalify(options.cursorPosition ?? { x: 0, y: 0 }, { deepObserve: true });
+    this.validator = signalify(options.validator);
+    this.multiCodePointSupport = signalify(options.multiCodePointSupport ?? false);
+    this.lineHighlighting = signalify(options.lineHighlighting ?? false);
+    this.lineNumbering = signalify(options.lineNumbering ?? false);
+    this.#onChange = options.onChange;
+    this.lines = new Computed(() => this.#textLineCache.lines(this.text.value));
+    this.text.subscribe(this.#syncCursor);
+    this.cursorPosition.subscribe(this.#syncCursor);
+    this.#syncCursor();
+  }
+  setText(value, cursorPosition = this.endPosition(value)) {
+    this.text.value = value;
+    this.setCursorPosition(cursorPosition);
+    void this.#onChange?.(this.text.peek());
+    return this.text.peek();
+  }
+  clear() {
+    return this.setText("", { x: 0, y: 0 });
+  }
+  setCursorPosition(position) {
+    const cursor = this.cursorPosition.peek();
+    cursor.y = position.y;
+    cursor.x = position.x;
+    this.clampCursor();
+    this.cursorPosition.forceUpdateValue = true;
+    this.cursorPosition.value = cursor;
+    return { ...this.cursorPosition.peek() };
+  }
+  moveCursor(delta) {
+    const cursor = this.cursorPosition.peek();
+    return this.setCursorPosition({
+      x: cursor.x + (delta.x ?? 0),
+      y: cursor.y + (delta.y ?? 0)
+    });
+  }
+  home() {
+    return this.setCursorPosition({ ...this.cursorPosition.peek(), x: 0 });
+  }
+  end() {
+    const cursor = this.cursorPosition.peek();
+    return this.setCursorPosition({
+      x: this.currentLines()[cursor.y]?.length ?? 0,
+      y: cursor.y
+    });
+  }
+  insert(character) {
+    if (!this.accepts(character)) return false;
+    const cursor = this.cursorPosition.peek();
+    const lines = [...this.currentLines()];
+    const line = lines[cursor.y] ?? "";
+    lines[cursor.y] = insertAt(line, cursor.x, character);
+    this.setText(lines.join("\n"), { x: cursor.x + character.length, y: cursor.y });
+    return true;
+  }
+  newline() {
+    const cursor = this.cursorPosition.peek();
+    const lines = [...this.currentLines()];
+    const line = lines[cursor.y] ?? "";
+    lines[cursor.y] = line.slice(0, cursor.x);
+    lines.splice(cursor.y + 1, 0, line.slice(cursor.x));
+    this.setText(lines.join("\n"), { x: 0, y: cursor.y + 1 });
+    return true;
+  }
+  backspace() {
+    const cursor = this.cursorPosition.peek();
+    const lines = [...this.currentLines()];
+    const line = lines[cursor.y] ?? "";
+    if (cursor.x === 0) {
+      if (cursor.y === 0) return false;
+      const previous = lines[cursor.y - 1] ?? "";
+      lines[cursor.y - 1] = previous + line;
+      lines.splice(cursor.y, 1);
+      this.setText(lines.join("\n"), { x: previous.length, y: cursor.y - 1 });
+      return true;
+    }
+    lines[cursor.y] = line.slice(0, cursor.x - 1) + line.slice(cursor.x);
+    this.setText(lines.join("\n"), { x: cursor.x - 1, y: cursor.y });
+    return true;
+  }
+  delete() {
+    const cursor = this.cursorPosition.peek();
+    const lines = [...this.currentLines()];
+    const line = lines[cursor.y] ?? "";
+    if (cursor.x < line.length) {
+      lines[cursor.y] = line.slice(0, cursor.x) + line.slice(cursor.x + 1);
+      this.setText(lines.join("\n"), cursor);
+      return true;
+    }
+    if (lines.length - 1 <= cursor.y) return false;
+    lines[cursor.y] = line + (lines[cursor.y + 1] ?? "");
+    lines.splice(cursor.y + 1, 1);
+    this.setText(lines.join("\n"), cursor);
+    return true;
+  }
+  handleKeyPress({ key, ctrl, meta }) {
+    if (ctrl || meta) return "ignored";
+    switch (key) {
+      case "left":
+        this.moveCursor({ x: -1 });
+        return "moved";
+      case "right":
+        this.moveCursor({ x: 1 });
+        return "moved";
+      case "up":
+        this.moveCursor({ y: -1 });
+        return "moved";
+      case "down":
+        this.moveCursor({ y: 1 });
+        return "moved";
+      case "home":
+        this.home();
+        return "moved";
+      case "end":
+        this.end();
+        return "moved";
+      case "backspace":
+        return this.backspace() ? "changed" : "ignored";
+      case "delete":
+        return this.delete() ? "changed" : "ignored";
+      case "return":
+        return this.newline() ? "changed" : "ignored";
+      case "space":
+        return this.insert(" ") ? "changed" : "ignored";
+      case "tab":
+        return this.insert("	") ? "changed" : "ignored";
+      default:
+        if (key.length > 1) return "ignored";
+        return this.insert(key) ? "changed" : "ignored";
+    }
+  }
+  accepts(character) {
+    const validator = this.validator.peek();
+    if (!validator) return true;
+    validator.lastIndex = 0;
+    return validator.test(character);
+  }
+  inspect() {
+    const text = this.text.peek();
+    const lines = this.currentLines();
+    const validator = this.validator.peek();
+    return {
+      text,
+      lines,
+      lineCount: lines.length,
+      cursorPosition: { ...this.cursorPosition.peek() },
+      currentLine: lines[this.cursorPosition.peek().y] ?? "",
+      empty: text.length === 0,
+      valid: validator ? [...text].every((character) => {
+        if (character === "\n") return true;
+        validator.lastIndex = 0;
+        return validator.test(character);
+      }) : true,
+      lineHighlighting: this.lineHighlighting.peek(),
+      lineNumbering: this.lineNumbering.peek()
+    };
+  }
+  dispose() {
+    this.text.unsubscribe(this.#syncCursor);
+    this.cursorPosition.unsubscribe(this.#syncCursor);
+    try {
+      this.lines.dispose();
+    } catch {
+    }
+    if (this.#ownsText) this.text.dispose();
+    if (this.#ownsCursorPosition) this.cursorPosition.dispose();
+    if (this.#ownsValidator) this.validator.dispose();
+    if (this.#ownsMultiCodePointSupport) this.multiCodePointSupport.dispose();
+    if (this.#ownsLineHighlighting) this.lineHighlighting.dispose();
+    if (this.#ownsLineNumbering) this.lineNumbering.dispose();
+  }
+  clampCursor() {
+    const cursor = this.cursorPosition.peek();
+    const lines = this.currentLines();
+    cursor.y = clamp(cursor.y, 0, Math.max(lines.length - 1, 0));
+    cursor.x = clamp(cursor.x, 0, lines[cursor.y]?.length ?? 0);
+  }
+  currentLines() {
+    return this.#textLineCache.lines(this.text.peek());
+  }
+  endPosition(value) {
+    const lines = this.#textLineCache.lines(value);
+    const y = Math.max(lines.length - 1, 0);
+    return { x: lines[y]?.length ?? 0, y };
+  }
+};
 
 // src/three_ascii/demo_presets.ts
 var fixed = (digits) => (value) => value.toFixed(digits);
@@ -3762,6 +4775,41 @@ var split = new SplitPaneController({
 });
 var slider = new SliderController({ min: 1, max: 10, value: 6, step: 1, orientation: "horizontal" });
 var live = new CheckBoxController({ checked: true });
+var compact = new CheckBoxController({ checked: false });
+var actionButton = new ButtonController({ label: "Run Action", onPress: () => push("button pressed") });
+var radio = new RadioGroupController({
+  options: [
+    { value: "fast", label: "Fast" },
+    { value: "balanced", label: "Balanced" },
+    { value: "precise", label: "Precise" }
+  ],
+  selectedValue: "balanced"
+});
+var combo = new ComboBoxController({
+  items: themes.map((entry) => entry.label),
+  selectedIndex: 0,
+  placeholder: "theme",
+  onSelect: (_item, index) => setTheme(index)
+});
+var input = new InputController({ text: "deno task web:demo:check", cursorPosition: 24, placeholder: "command" });
+var stepper = new StepperController({
+  steps: [
+    { id: "draft", label: "Draft", completed: true },
+    { id: "review", label: "Review" },
+    { id: "ship", label: "Ship" }
+  ],
+  activeIndex: 1
+});
+var progress = new ProgressBarController({
+  min: 0,
+  max: 100,
+  value: 42,
+  smooth: false,
+  direction: "normal",
+  orientation: "horizontal"
+});
+var textBox = new TextBoxController({ text: "Browser notes\nsame controllers", cursorPosition: { x: 0, y: 1 } });
+var activeControl = new Signal("button");
 var table = new DataTableController({
   rows,
   columns: [
@@ -3796,6 +4844,7 @@ host.on("keyPress", ({ key }) => {
   else if (key === "t") setTheme(themeIndex.peek() + 1);
   else if (key === "[") resizeSplit(-4);
   else if (key === "]") resizeSplit(4);
+  else if (active.peek() === "controls") handleControlsKey({ key, ctrl: false, meta: false, shift: false });
   else if (key === "+" || key === "=") slider.increment();
   else if (key === "-") slider.decrement();
   else if (key === "space") live.toggle();
@@ -3806,7 +4855,7 @@ host.on("keyPress", ({ key }) => {
 });
 host.on("mousePress", (event) => {
   if (event.release) return;
-  const target = hitTargets.find(({ rect }) => contains(rect, event.x, event.y));
+  const target = findHit(event.x, event.y);
   if (target) applyHit(target.hit);
   draw();
 });
@@ -3820,6 +4869,14 @@ var timer = setInterval(() => {
 }, 650);
 globalThis.addEventListener("beforeunload", () => {
   clearInterval(timer);
+  actionButton.dispose();
+  radio.dispose();
+  combo.dispose();
+  input.dispose();
+  stepper.dispose();
+  progress.dispose();
+  textBox.dispose();
+  compact.dispose();
   host.destroy();
 });
 function draw() {
@@ -3870,6 +4927,7 @@ function draw() {
       });
     }
   }
+  renderShelf(frame);
   frame[height - 1] = fit(
     paint(
       renderStatusBar(
@@ -3885,13 +4943,27 @@ function draw() {
   for (let row = 0; row < height; row++) lineSignals[row].value = fit(frame[row] ?? "", width);
   for (let row = height; row < lineSignals.length; row++) lineSignals[row].value = "";
 }
+function renderShelf(frame) {
+  const row = rowsCount() - 2;
+  let column = 2;
+  const hidden = Object.entries(minimized.peek()).filter(([, value]) => value);
+  if (hidden.length === 0) return;
+  write(frame, row, column, paint("minimized ", theme().muted, theme().bgAlt));
+  column += 10;
+  for (const [id2] of hidden) {
+    const label = `[${id2}]`;
+    write(frame, row, column, paint(label, theme().bg, theme().border, true));
+    hitTargets.push({ rect: { column, row, width: label.length, height: 1 }, hit: { type: "restore", id: id2 } });
+    column += label.length + 1;
+  }
+}
 function renderPanel(frame, id2, rect) {
   if (rect.width < 10 || rect.height < 4) return;
   hitTargets.push({ rect, hit: { type: "focus", id: id2 } });
   const selected = active.peek() === id2;
   fillRect(frame, rect, selected ? theme().panelAlt : theme().panel);
   const border = selected ? theme().accent : theme().borderStrong;
-  const top = `\u250C ${id2.toUpperCase()} ${"\u2500".repeat(Math.max(0, rect.width - id2.length - 20))} [-] [\u25A1] [\u21BA] \u2510`;
+  const top = `\u250C ${id2.toUpperCase()} ${"\u2500".repeat(Math.max(0, rect.width - id2.length - 24))} [-] [\u25A1] [\u21BA] [x] \u2510`;
   write(
     frame,
     rect.row,
@@ -3899,16 +4971,20 @@ function renderPanel(frame, id2, rect) {
     paint(fit(top, rect.width), border, selected ? theme().panelAlt : theme().panel, selected)
   );
   hitTargets.push({
-    rect: { column: rect.column + rect.width - 12, row: rect.row, width: 3, height: 1 },
+    rect: { column: rect.column + rect.width - 16, row: rect.row, width: 3, height: 1 },
     hit: { type: "min", id: id2 }
   });
   hitTargets.push({
-    rect: { column: rect.column + rect.width - 8, row: rect.row, width: 3, height: 1 },
+    rect: { column: rect.column + rect.width - 12, row: rect.row, width: 3, height: 1 },
     hit: { type: "max", id: id2 }
   });
   hitTargets.push({
+    rect: { column: rect.column + rect.width - 8, row: rect.row, width: 3, height: 1 },
+    hit: { type: "restore", id: id2 }
+  });
+  hitTargets.push({
     rect: { column: rect.column + rect.width - 4, row: rect.row, width: 3, height: 1 },
-    hit: { type: "restore" }
+    hit: { type: "close", id: id2 }
   });
   for (let r = 1; r < rect.height - 1; r++) {
     write(
@@ -3931,20 +5007,18 @@ function renderPanel(frame, id2, rect) {
     height: Math.max(0, rect.height - 2)
   };
   const lines = panelLines(id2, inner.width, inner.height);
-  lines.forEach(
-    (line, index) => write(frame, inner.row + index, inner.column, paint(fit(line, inner.width), theme().text, theme().surface))
-  );
+  if (id2 === "controls") renderControls(frame, inner);
+  else {
+    lines.forEach(
+      (line, index) => write(frame, inner.row + index, inner.column, paint(fit(line, inner.width), theme().text, theme().surface))
+    );
+  }
 }
 function panelLines(id2, width, height) {
   const source = id2 === "data" ? [
     renderDataTableHeader(table.columns.peek(), table.state.peek().sort),
     ...renderDataTableRows(table.view.peek().rows, table.columns.peek(), table.view.peek().selectedIndex)
-  ] : id2 === "controls" ? [
-    `${paint(" Density ", theme().bg, theme().accent, true)} ${paint("\u2588".repeat(slider.value.peek()).padEnd(10, "\u2591"), theme().good, theme().accentDeep)} ${slider.value.peek()}/10`,
-    `${paint(live.checked.peek() ? "[x]" : "[ ]", theme().good, theme().surface, true)} live preview`,
-    "[/] resize split",
-    "T theme  Space toggle"
-  ] : id2 === "logs" ? [...log.peek()].slice(-Math.max(1, height)) : ["API Workbench Web", ...docs];
+  ] : id2 === "controls" ? [] : id2 === "logs" ? [...log.peek()].slice(-Math.max(1, height)) : ["API Workbench Web", ...docs];
   return source.slice(0, height);
 }
 function drawThemes(frame, width) {
@@ -3985,7 +5059,9 @@ function applyHit(hit) {
   if (hit.type === "focus") focus(hit.id);
   else if (hit.type === "min") minimize(hit.id);
   else if (hit.type === "max") toggleMax(hit.id);
-  else if (hit.type === "restore") restore();
+  else if (hit.type === "close") closePanel(hit.id);
+  else if (hit.type === "restore") hit.id ? restorePanel(hit.id) : restore();
+  else if (hit.type === "control") applyControlHit(hit.id, hit.action ?? "activate");
   else setTheme(hit.index);
 }
 function focus(id2) {
@@ -4001,9 +5077,21 @@ function minimize(id2) {
   if (maximized.peek() === id2) maximized.value = null;
   push(`minimize ${id2}`);
 }
+function closePanel(id2) {
+  minimized.value[id2] = true;
+  if (maximized.peek() === id2) maximized.value = null;
+  const next = ["inspector", "data", "controls", "logs"].find((panel) => !minimized.peek()[panel]);
+  if (next) active.value = next;
+  push(`close ${id2}`);
+}
 function toggleMax(id2) {
   maximized.value = maximized.peek() === id2 ? null : id2;
   push(`${maximized.peek() ? "maximize" : "restore"} ${id2}`);
+}
+function restorePanel(id2) {
+  minimized.value[id2] = false;
+  maximized.value = null;
+  focus(id2);
 }
 function restore() {
   maximized.value = null;
@@ -4026,6 +5114,121 @@ function splitRects(direction, rect, ratio) {
 }
 function push(message) {
   log.value = [...log.peek(), `${(/* @__PURE__ */ new Date()).toLocaleTimeString()} ${message}`].slice(-40);
+}
+function renderControls(frame, rect) {
+  let row = rect.row;
+  const t = theme();
+  const writeControl = (id2, value, options = {}) => {
+    if (row >= rect.row + rect.height) return;
+    const selected = activeControl.peek() === id2;
+    write(
+      frame,
+      row,
+      rect.column,
+      paint(
+        fit(`${selected ? ">" : " "} ${value}`, rect.width),
+        selected ? t.bg : t.text,
+        selected ? t.warn : t.surface,
+        selected
+      )
+    );
+    hitTargets.push({ rect: { column: rect.column, row, width: rect.width, height: 1 }, hit: { type: "control", id: id2 } });
+    if (options.previous) {
+      hitTargets.push({
+        rect: { column: rect.column, row, width: Math.max(1, Math.floor(rect.width / 2)), height: 1 },
+        hit: { type: "control", id: id2, action: "previous" }
+      });
+    }
+    if (options.next) {
+      hitTargets.push({
+        rect: {
+          column: rect.column + Math.floor(rect.width / 2),
+          row,
+          width: Math.ceil(rect.width / 2),
+          height: 1
+        },
+        hit: { type: "control", id: id2, action: "next" }
+      });
+    }
+    row += 1;
+  };
+  const sliderTrack = `${"\u2588".repeat(slider.value.peek())}${"\u2591".repeat(10 - slider.value.peek())}`;
+  const progressWidth = Math.max(8, Math.min(18, rect.width - 18));
+  const progressFilled = Math.round(progress.ratio() * progressWidth);
+  const progressTrack = `${"\u2588".repeat(progressFilled)}${"\u2591".repeat(progressWidth - progressFilled)}`;
+  writeControl("button", `${paint("[ Run Action ]", t.bg, t.accent, true)} presses=${actionButton.pressCount.peek()}`);
+  writeControl("slider", `Slider    ${paint(sliderTrack, t.good, t.accentDeep)} ${slider.value.peek()}/10`, {
+    previous: true,
+    next: true
+  });
+  writeControl(
+    "checkbox",
+    `Checkbox  ${renderCheckBoxMark(live.checked.peek())} live ${renderCheckBoxMark(compact.checked.peek())} compact`
+  );
+  writeControl(
+    "radio",
+    `Radio     ${renderRadioGroupRows(radio.options.peek(), radio.selectedValue.peek(), radio.activeIndex.peek(), 1)[0] ?? ""}`,
+    {
+      previous: true,
+      next: true
+    }
+  );
+  writeControl("combo", `Combo     ${combo.expanded.peek() ? "v" : ">"} ${combo.label()}`, {
+    previous: true,
+    next: true
+  });
+  writeControl("input", `Input     ${input.text.peek()}${activeControl.peek() === "input" ? "|" : ""}`);
+  writeControl(
+    "stepper",
+    `Stepper   ${renderStepper(stepper.steps.peek(), stepper.activeIndex.peek(), "horizontal", Math.max(8, rect.width - 12))[0] ?? ""}`,
+    {
+      previous: true,
+      next: true
+    }
+  );
+  writeControl("textbox", `TextBox   ${textBox.text.peek().split("\n").join(" / ")}`);
+  if (row < rect.row + rect.height) {
+    write(
+      frame,
+      row,
+      rect.column,
+      paint(fit(`Progress  ${progressTrack} ${progress.value.peek()}%`, rect.width), t.text, t.surface)
+    );
+  }
+}
+function applyControlHit(id2, action) {
+  active.value = "controls";
+  activeControl.value = id2;
+  if (id2 === "button") actionButton.press("mouse");
+  else if (id2 === "slider") action === "previous" ? slider.decrement() : slider.increment();
+  else if (id2 === "checkbox") live.toggle();
+  else if (id2 === "radio") {
+    if (action === "previous") radio.move(-1);
+    else if (action === "next") radio.move(1);
+    else radio.selectActive();
+  } else if (id2 === "combo") {
+    if (action === "previous") combo.move(-1);
+    else if (action === "next") combo.move(1);
+    combo.selectActive();
+  } else if (id2 === "input") input.submit();
+  else if (id2 === "stepper") action === "previous" ? stepper.move(-1) : stepper.move(1);
+  else if (id2 === "textbox") textBox.setText(`${textBox.text.peek()}
+clicked`);
+  progress.setValue(Math.min(100, progress.value.peek() + 7));
+  push(`control ${id2} ${action}`);
+}
+function handleControlsKey(event) {
+  if (event.key === "up") activeControl.value = controlAt(-1);
+  else if (event.key === "down") activeControl.value = controlAt(1);
+  else if (activeControl.peek() === "input") input.handleKeyPress(event);
+  else if (activeControl.peek() === "textbox") textBox.handleKeyPress(event);
+  else if (event.key === "left") applyControlHit(activeControl.peek(), "previous");
+  else if (event.key === "right") applyControlHit(activeControl.peek(), "next");
+  else if (event.key === "space" || event.key === "return") applyControlHit(activeControl.peek(), "activate");
+}
+function controlAt(delta) {
+  const ids = ["button", "slider", "checkbox", "radio", "combo", "input", "stepper", "textbox"];
+  return ids[(ids.indexOf(activeControl.peek()) + delta + ids.length) % ids.length];
 }
 function write(frame, row, column, value) {
   if (row < 0 || row >= frame.length || column >= cols()) return;
@@ -4052,6 +5255,12 @@ function paint(value, fg = theme().text, bg = theme().bg, bold = false) {
 }
 function contains(rect, x, y) {
   return x >= rect.column && y >= rect.row && x < rect.column + rect.width && y < rect.row + rect.height;
+}
+function findHit(x, y) {
+  for (let index = hitTargets.length - 1; index >= 0; index -= 1) {
+    const target = hitTargets[index];
+    if (contains(target.rect, x, y)) return target;
+  }
 }
 function hex(value) {
   const color = value.replace("#", "");
