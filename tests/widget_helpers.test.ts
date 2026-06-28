@@ -1,6 +1,7 @@
 import { assertEquals } from "./deps.ts";
 import { formatKeyBinding, KeymapRegistry } from "../src/keymap.ts";
 import { renderBreadcrumbs } from "../src/components/breadcrumbs.ts";
+import { renderEmptyState } from "../src/components/empty_state.ts";
 import { renderKeyHelp } from "../src/components/key_help.ts";
 import { virtualRows, visibleListRows } from "../src/components/list.ts";
 import { renderMenuBar, shiftMenuIndex } from "../src/components/menu_bar.ts";
@@ -76,6 +77,24 @@ Deno.test("renderBreadcrumbs truncates from the left", () => {
   assertEquals(renderBreadcrumbs(items, "/"), "App / Settings / Runtime");
   assertEquals(renderBreadcrumbs(items, "/", 12), "… / Runtime");
   assertEquals(renderBreadcrumbs(items, "/", 6), "… / R…");
+});
+
+Deno.test("renderEmptyState centers and truncates content", () => {
+  assertEquals(
+    renderEmptyState(
+      {
+        icon: "-",
+        title: "No results found",
+        message: "Try a different filter",
+        action: "Press / to search",
+      },
+      12,
+      6,
+    ),
+    ["", "-", "No results …", "Try a diffe…", "Press / to …"],
+  );
+  assertEquals(renderEmptyState({ title: "Nothing here", message: "Add an item" }, 20, 1), ["Nothing here"]);
+  assertEquals(renderEmptyState({ title: "Nothing here" }, 0, 2, false), [""]);
 });
 
 Deno.test("menu bar renders active item and skips disabled entries", () => {

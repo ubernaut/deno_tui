@@ -133,12 +133,13 @@ deno task demo
 | `Table`       | Scrollable data table with headers and row selection       |
 | `ThreeAscii`  | Renders a three.js scene as ASCII art in the terminal      |
 
-Additional fork components include `List`, `VirtualList`, `Tabs`, `Breadcrumbs`, `Stepper`, `Spinner`, `MenuBar`,
-`ContextMenu`, `RadioGroup`, `ScrollArea`, `Modal`, `KeyHelp`, `CommandPalette`, `Tree`, `ToastStack`, `Sparkline`,
-`Gauge`, `Chart`, `LogViewer`, and `StatusBar`. `VirtualList` combines viewport windowing and `SelectionController` for
-large custom data views, while `Spinner` pairs naturally with `AsyncResource` loading/error/success state. For
-table-heavy apps, `createDataTableView()`, `sortDataRows()`, and the data-table render helpers provide reusable
-filtering, sorting, pagination, and row formatting without coupling data logic to the `Table` renderer.
+Additional fork components include `List`, `VirtualList`, `Tabs`, `Breadcrumbs`, `Stepper`, `Spinner`, `EmptyState`,
+`MenuBar`, `ContextMenu`, `RadioGroup`, `ScrollArea`, `Modal`, `KeyHelp`, `CommandPalette`, `Tree`, `ToastStack`,
+`Sparkline`, `Gauge`, `Chart`, `LogViewer`, and `StatusBar`. `VirtualList` combines viewport windowing and
+`SelectionController` for large custom data views, while `Spinner` and `EmptyState` pair naturally with `AsyncResource`
+loading/empty/error state. For table-heavy apps, `createDataTableView()`, `sortDataRows()`, and the data-table render
+helpers provide reusable filtering, sorting, pagination, and row formatting without coupling data logic to the `Table`
+renderer.
 
 ## Layouts
 
