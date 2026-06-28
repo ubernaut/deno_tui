@@ -39,9 +39,15 @@ import { bindRuntimeProfileCommands, runtimeProfileCommands } from "../src/app/r
 import type { RuntimeProfileCommandAction } from "../src/app/runtime_profile_commands.ts";
 import { createRuntimeProfilePlugin } from "../src/app/runtime_profile_plugin.ts";
 import {
+  bindRuntimeRendererBackendCommands,
+  runtimeRendererBackendCommands,
+} from "../src/app/runtime_renderer_commands.ts";
+import type { RuntimeRendererBackendCommandAction } from "../src/app/runtime_renderer_commands.ts";
+import {
   bindDataTableSetting,
   bindRouteSetting,
   bindRuntimeProfileSetting,
+  bindRuntimeRendererBackendSetting,
   bindSettingSignal,
   bindSplitPaneSetting,
   bindThemeLayerSetting,
@@ -63,6 +69,7 @@ import { createThemePlugin } from "../src/app/theme_plugin.ts";
 import { KeymapRegistry } from "../src/keymap.ts";
 import { SplitPaneController } from "../src/layout/mod.ts";
 import { createRuntimeProfileController } from "../src/runtime/profiles.ts";
+import { createRuntimeRendererBackendController } from "../src/runtime/renderer_backends.ts";
 import { MemoryStore } from "../src/runtime/storage.ts";
 import { Signal } from "../src/signals/mod.ts";
 import { createTestKeyPress, TestKeyPressTarget } from "../src/testing/mod.ts";
@@ -1924,6 +1931,40 @@ Deno.test("bindRuntimeProfileSetting restores persists and sanitizes selected pr
   assertEquals(binding.setting.value.peek(), "balanced");
 });
 
+Deno.test("bindRuntimeRendererBackendSetting restores persists and sanitizes selected backends", async () => {
+  const store = new MemoryStore<unknown>();
+  await store.set("prefs.runtime-renderer", "terminal-cpu");
+  const settings = new SettingsController({ store, namespace: "prefs" });
+  const controller = createRuntimeRendererBackendController({
+    capabilities: {
+      workers: true,
+      webgpu: false,
+      webgl: true,
+      offscreenCanvas: true,
+      indexedDb: true,
+    },
+  });
+  const binding = bindRuntimeRendererBackendSetting(controller, settings);
+
+  await settings.ready();
+  assertEquals(controller.activeId.peek(), "terminal-cpu");
+
+  controller.setBackend("webgl-canvas");
+  await Promise.resolve();
+  await settings.flush();
+  assertEquals(binding.setting.value.peek(), "webgl-canvas");
+  assertEquals(await store.get("prefs.runtime-renderer"), "webgl-canvas");
+
+  binding.setting.set("missing");
+  assertEquals(controller.activeId.peek(), "webgl-canvas");
+  assertEquals(binding.setting.value.peek(), "webgl-canvas");
+
+  binding.dispose();
+  controller.setBackend("terminal-cpu");
+  await Promise.resolve();
+  assertEquals(binding.setting.value.peek(), "webgl-canvas");
+});
+
 Deno.test("bindDataTableSetting restores persists and sanitizes table state", async () => {
   interface Row extends Record<string, unknown> {
     id: string;
@@ -2141,6 +2182,52 @@ Deno.test("runtime profile commands switch selected runtime policies", async () 
   assertEquals(actions[1], {
     type: "runtime.profile.changed",
     payload: { id: "ephemeral", previousId: "portable", direction: 1 },
+  });
+
+  dispose();
+  assertEquals(registry.list("runtime"), []);
+});
+
+Deno.test("runtime renderer commands switch selected renderer backends", async () => {
+  const controller = createRuntimeRendererBackendController({
+    capabilities: {
+      workers: true,
+      webgpu: false,
+      webgl: true,
+      offscreenCanvas: true,
+      indexedDb: true,
+    },
+  });
+  const registry = new CommandRegistry<RuntimeRendererBackendCommandAction>();
+  const dispose = bindRuntimeRendererBackendCommands(registry, controller);
+  const actions: RuntimeRendererBackendCommandAction[] = [];
+
+  assertEquals(runtimeRendererBackendCommands(controller).map((command) => command.id), [
+    "runtime.renderer.next",
+    "runtime.renderer.previous",
+    "runtime.renderer.select",
+    "runtime.renderer.set.webgpu-three-ascii",
+    "runtime.renderer.set.webgl-canvas",
+    "runtime.renderer.set.terminal-cpu",
+  ]);
+  assertEquals(registry.enabled(registry.get("runtime.renderer.set.webgpu-three-ascii")!), false);
+  assertEquals(registry.enabled(registry.get("runtime.renderer.set.webgl-canvas")!), false);
+
+  assertEquals(
+    await registry.execute("runtime.renderer.set.terminal-cpu", (action) => void actions.push(action)),
+    true,
+  );
+  assertEquals(controller.activeId.peek(), "terminal-cpu");
+  assertEquals(actions, [
+    { type: "runtime.renderer.changed", payload: { id: "terminal-cpu", previousId: "webgl-canvas" } },
+  ]);
+  assertEquals(registry.enabled(registry.get("runtime.renderer.select")!), true);
+
+  assertEquals(await registry.execute("runtime.renderer.select", (action) => void actions.push(action)), true);
+  assertEquals(controller.activeId.peek(), "webgl-canvas");
+  assertEquals(actions[1], {
+    type: "runtime.renderer.changed",
+    payload: { id: "webgl-canvas", previousId: "terminal-cpu", selected: true },
   });
 
   dispose();

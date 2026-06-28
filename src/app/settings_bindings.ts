@@ -4,6 +4,7 @@ import type { ThemeLayerStack, ThemeProvider } from "../theme.ts";
 import type { ThemeEnginePipeline } from "../theme_engine_pipeline.ts";
 import type { PersistentSignal } from "../runtime/storage.ts";
 import type { RuntimeProfileController } from "../runtime/profiles.ts";
+import type { RuntimeRendererBackendController } from "../runtime/renderer_backends.ts";
 import type { SplitPaneController, SplitPaneControllerOptions } from "../layout/mod.ts";
 import { canSortColumn, type DataTableController, type DataTableState } from "../components/data_table.ts";
 import { bindRouteSignal, type RouteSignalBindingOptions } from "./route_bindings.ts";
@@ -56,6 +57,15 @@ export interface ThemePipelineSettingBindingOptions<Stored = readonly string[]>
 }
 
 export interface RuntimeProfileSettingBindingOptions<Stored = string> extends SettingSignalBindingOptions<string> {
+  key?: string;
+  initialValue?: string;
+  setting?: PersistentSignal<string, Stored>;
+  serialize?: (value: string) => Stored;
+  deserialize?: (value: Stored) => string;
+}
+
+export interface RuntimeRendererBackendSettingBindingOptions<Stored = string>
+  extends SettingSignalBindingOptions<string> {
   key?: string;
   initialValue?: string;
   setting?: PersistentSignal<string, Stored>;
@@ -337,6 +347,74 @@ export function bindRuntimeProfileSetting<Stored = string>(
     if (equals(controller.activeId.peek(), next)) return;
     syncing = true;
     controller.setProfile(next);
+    syncing = false;
+  };
+  const applySetting = (id: string) => {
+    if (disposed || syncing) return;
+    const next = sanitize(id);
+    if (!equals(setting.value.peek(), next)) {
+      syncing = true;
+      setting.set(next);
+      syncing = false;
+    }
+  };
+  const applyLoadedSetting = (id: string) => {
+    if (disposed || syncing) return;
+    const next = sanitize(id);
+    applyController(next);
+    if (!equals(setting.value.peek(), next)) {
+      syncing = true;
+      setting.set(next);
+      syncing = false;
+    }
+  };
+
+  if (options.initialSync === "signal") {
+    setting.set(controller.activeId.peek());
+  } else {
+    applyLoadedSetting(setting.value.peek());
+    setting.ready.then((value) => {
+      if (!disposed) applyLoadedSetting(value);
+    });
+  }
+
+  setting.value.subscribe(applyLoadedSetting);
+  controller.activeId.subscribe(applySetting);
+
+  return {
+    setting,
+    dispose: () => {
+      disposed = true;
+      setting.value.unsubscribe(applyLoadedSetting);
+      controller.activeId.unsubscribe(applySetting);
+    },
+  };
+}
+
+export function bindRuntimeRendererBackendSetting<Stored = string>(
+  controller: RuntimeRendererBackendController,
+  settings: SettingsController,
+  options: RuntimeRendererBackendSettingBindingOptions<Stored> = {},
+): SettingBinding<string, Stored> {
+  const setting = options.setting ??
+    settings.signal(settingDefinition({
+      key: options.key ?? "runtime-renderer",
+      initialValue: options.initialValue ?? controller.activeId.peek(),
+      serialize: options.serialize,
+      deserialize: options.deserialize,
+    }));
+
+  let disposed = false;
+  let syncing = false;
+  const equals = options.equals ?? Object.is;
+
+  const fallbackId = () => controller.selected()?.id ?? controller.ids()[0] ?? "";
+  const sanitize = (id: string) => controller.registry.has(id) ? id : fallbackId();
+  const applyController = (id: string) => {
+    const next = sanitize(id);
+    if (equals(controller.activeId.peek(), next)) return;
+    syncing = true;
+    controller.setBackend(next);
     syncing = false;
   };
   const applySetting = (id: string) => {

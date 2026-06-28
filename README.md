@@ -1506,6 +1506,7 @@ Optional high-performance APIs are surfaced through `src/runtime/mod.ts`:
   `formatRuntimeProfileCatalogMarkdown()`
 - `RuntimeProfileController` / `createRuntimeProfilePlugin()` / `bindRuntimeProfileCommands()` /
   `bindRuntimeProfileSetting()`
+- `bindRuntimeRendererBackendCommands()` / `bindRuntimeRendererBackendSetting()`
 - `inspectRuntimeWorkload()` / `createRuntimeWorkloadReport()` / `formatRuntimeWorkloadMarkdown()`
 - `AsyncScheduler` / `runTaskBatch()`
 - `RenderLoop` / `createRenderLoop()`
@@ -1525,11 +1526,13 @@ prints the summary, default plan, built-in runtime profile table, and renderer b
 task for structured output. `RuntimeRendererBackendRegistry`, `RuntimeRendererBackendController`,
 `queryRuntimeRendererBackends()`, and `selectRuntimeRendererBackend()` expose the renderer side as a composable catalog:
 WebGPU three.js ASCII, WebGL canvas, and portable CPU terminal backends can be selected, cycled, ranked, filtered, and
-reported from the same capability snapshot used by runtime profiles. `inspectRuntimeWorkload()`,
-`createRuntimeWorkloadReport()`, and `formatRuntimeWorkloadMarkdown()` normalize `AsyncScheduler.inspect()` and
-`WorkerPool.inspect()` into one pressure report for settings panes, demos, and CI logs: capacity, running work, queued
-work, saturation, idle state, and termination state are all exposed through a JSON-friendly shape. Runtime profiles are
-named policy presets for settings screens and launchers:
+reported from the same capability snapshot used by runtime profiles. `bindRuntimeRendererBackendCommands()` and
+`bindRuntimeRendererBackendSetting()` wire that active backend into command palettes, key help, and persisted settings
+with the same controller-first shape as runtime profiles. `inspectRuntimeWorkload()`, `createRuntimeWorkloadReport()`,
+and `formatRuntimeWorkloadMarkdown()` normalize `AsyncScheduler.inspect()` and `WorkerPool.inspect()` into one pressure
+report for settings panes, demos, and CI logs: capacity, running work, queued work, saturation, idle state, and
+termination state are all exposed through a JSON-friendly shape. Runtime profiles are named policy presets for settings
+screens and launchers:
 
 ```ts
 const runtimeProfiles = createRuntimeProfileRegistry();
@@ -1542,6 +1545,8 @@ const runtimeProfileMarkdown = formatRuntimeProfileCatalogMarkdown({ query: { ta
 const rendererBackends = createRuntimeRendererBackendRegistry();
 const rendererBackend = rendererBackends.select(detectRuntimeCapabilities());
 const rendererBackendController = createRuntimeRendererBackendController({ registry: rendererBackends });
+const stopRendererBackendCommands = bindRuntimeRendererBackendCommands(commandRegistry, rendererBackendController);
+const stopRendererBackendSetting = bindRuntimeRendererBackendSetting(rendererBackendController, settings);
 const rendererBackendMarkdown = formatRuntimeRendererBackendCatalogMarkdown({ query: { available: true } });
 
 const runtimeProfile = createRuntimeProfileController({ registry: runtimeProfiles, activeId: "balanced" });
