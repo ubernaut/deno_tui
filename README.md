@@ -182,6 +182,30 @@ const stopListCommands = bindListCommands(app.commands, files, {
 });
 ```
 
+`TreeController` separates hierarchical expansion and selection behavior from the `Tree` renderer. It exposes flattened
+rows with depth and expansion metadata, keyboard handling for arrow/home/end/page navigation, expand/collapse/toggle,
+selection callbacks, and inspection state. Use `treeCommands()` or `bindTreeCommands()` to expose tree movement,
+expand/collapse/toggle, active selection, and optional direct visible-node selection actions:
+
+```ts
+const projectTree = new TreeController({
+  nodes: [
+    {
+      id: "src",
+      label: "src",
+      expanded: true,
+      children: [{ id: "mod", label: "mod.ts" }],
+    },
+  ],
+});
+
+const stopTreeCommands = bindTreeCommands(app.commands, projectTree, {
+  idPrefix: "project.tree",
+  group: "navigation",
+  includeNodeCommands: true,
+});
+```
+
 `VirtualListController` keeps large-list interaction separate from rendering. It exposes viewport rows, selection
 movement, keyboard handling, selected-value persistence helpers, and inspection state for status bars or tests:
 

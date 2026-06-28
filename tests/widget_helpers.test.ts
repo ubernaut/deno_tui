@@ -8,6 +8,7 @@ import { CommandRegistry } from "../src/app/commands.ts";
 import { bindSliderCommands, sliderCommands } from "../src/app/slider_commands.ts";
 import { bindStepperCommands, stepperCommands } from "../src/app/stepper_commands.ts";
 import { bindTabsCommands, tabsCommands } from "../src/app/tabs_commands.ts";
+import { bindTreeCommands, treeCommands } from "../src/app/tree_commands.ts";
 import { formatKeyBinding, KeymapRegistry } from "../src/keymap.ts";
 import { renderBreadcrumbs } from "../src/components/breadcrumbs.ts";
 import { CheckBoxController, Mark, renderCheckBoxMark } from "../src/components/checkbox.ts";
@@ -49,6 +50,7 @@ import {
 } from "../src/components/stepper.ts";
 import { clampTabIndex, renderTabs, shiftTabIndex, tabForIndex, TabsController } from "../src/components/tabs.ts";
 import { TextLineCache } from "../src/components/textbox.ts";
+import { flattenTree, flattenTreeRows, TreeController } from "../src/components/tree.ts";
 import { renderVirtualListRows, VirtualListController, virtualListRows } from "../src/components/virtual_list.ts";
 import type { Key, KeyPressEvent } from "../src/input_reader/types.ts";
 import { Signal } from "../src/signals/mod.ts";
@@ -149,6 +151,125 @@ Deno.test("listCommands move and select items", async () => {
 
   dispose();
   assertEquals(registry.list("list"), []);
+  controller.dispose();
+  emptyController.dispose();
+});
+
+Deno.test("TreeController flattens navigates toggles and inspects rows", () => {
+  const toggles: Array<[string, boolean]> = [];
+  const selections: string[] = [];
+  const controller = new TreeController({
+    nodes: [
+      {
+        id: "src",
+        label: "src",
+        expanded: true,
+        children: [
+          { id: "mod", label: "mod.ts" },
+          { id: "components", label: "components", children: [{ id: "button", label: "button.ts" }] },
+        ],
+      },
+      { id: "readme", label: "README.md" },
+    ],
+    onToggle: (row, expanded) => void toggles.push([row.id, expanded]),
+    onSelect: (row) => void selections.push(row.id),
+  });
+
+  assertEquals(flattenTree(controller.nodes.peek()), ["▾ src", "    mod.ts", "  ▸ components", "  README.md"]);
+  assertEquals(flattenTreeRows(controller.nodes.peek()).map((row) => [row.id, row.depth, row.index]), [
+    ["src", 0, 0],
+    ["mod", 1, 1],
+    ["components", 1, 2],
+    ["readme", 0, 3],
+  ]);
+
+  controller.handleKeyPress(keyPress("down"), 3);
+  controller.handleKeyPress(keyPress("down"), 3);
+  assertEquals(controller.selected()?.id, "components");
+  assertEquals(controller.handleKeyPress(keyPress("right"), 3)?.expanded, true);
+  assertEquals(controller.rowTexts(), ["▾ src", "    mod.ts", "  ▾ components", "      button.ts", "  README.md"]);
+  assertEquals(controller.inspect(2).window, { start: 1, end: 3 });
+
+  controller.handleKeyPress(keyPress("space"), 3);
+  assertEquals(controller.selected()?.expanded, false);
+  assertEquals(toggles, [["components", true], ["components", false]]);
+  assertEquals(controller.handleKeyPress(keyPress("return"), 3)?.id, "components");
+  assertEquals(selections, ["components"]);
+  controller.dispose();
+});
+
+Deno.test("treeCommands navigate toggle and select nodes", async () => {
+  const controller = new TreeController({
+    nodes: [
+      {
+        id: "root",
+        label: "Root",
+        expanded: true,
+        children: [{ id: "child", label: "Child" }],
+      },
+      { id: "logs", label: "Logs" },
+    ],
+  });
+  const registry = new CommandRegistry();
+  const actions: unknown[] = [];
+  const dispose = bindTreeCommands(registry, controller, {
+    id: "project",
+    idPrefix: "tree.project",
+    group: "tree",
+    includeNodeCommands: true,
+  });
+  const emptyController = new TreeController({ nodes: [] });
+
+  assertEquals(treeCommands(emptyController).map((command) => command.id), [
+    "tree.first",
+    "tree.previous",
+    "tree.next",
+    "tree.last",
+    "tree.toggle",
+    "tree.expand",
+    "tree.collapse",
+    "tree.select",
+  ]);
+  assertEquals(registry.list("tree").map((command) => command.id), [
+    "tree.project.collapse",
+    "tree.project.expand",
+    "tree.project.first",
+    "tree.project.last",
+    "tree.project.next",
+    "tree.project.previous",
+    "tree.project.select",
+    "tree.project.node.child",
+    "tree.project.node.logs",
+    "tree.project.node.root",
+    "tree.project.toggle",
+  ]);
+
+  assertEquals(await registry.execute("tree.project.next", (action) => void actions.push(action)), true);
+  assertEquals(controller.selected()?.id, "child");
+  assertEquals(actions.at(-1), {
+    type: "tree.changed",
+    payload: { id: "project", inspection: controller.inspect() },
+  });
+
+  assertEquals(await registry.execute("tree.project.node.root", (action) => void actions.push(action)), true);
+  assertEquals(actions.at(-1), {
+    type: "tree.nodeSelected",
+    payload: { id: "project", inspection: controller.inspect(), row: controller.inspect().selected },
+  });
+  assertEquals(await registry.execute("tree.project.collapse", (action) => void actions.push(action)), true);
+  assertEquals(controller.inspect().selected?.expanded, false);
+  assertEquals(actions.at(-1), {
+    type: "tree.nodeToggled",
+    payload: {
+      id: "project",
+      inspection: controller.inspect(),
+      row: controller.inspect().selected,
+      expanded: false,
+    },
+  });
+
+  dispose();
+  assertEquals(registry.list("tree"), []);
   controller.dispose();
   emptyController.dispose();
 });

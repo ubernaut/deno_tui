@@ -112,9 +112,12 @@ export const componentCatalog = [
     "selection",
   ]),
   component("tree", "Tree", "data", "Hierarchical rows with expansion state.", [
+    "component",
+    "controller",
     "render-helper",
     "selection",
     "keyboard",
+    "themeable",
   ]),
   component("tabs", "Tabs", "navigation", "Segmented route or view selector.", [
     "controller",
