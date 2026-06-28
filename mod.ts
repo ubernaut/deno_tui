@@ -12,6 +12,7 @@ export * from "./src/theme_engine_cache.ts";
 export * from "./src/theme_engine_factory.ts";
 export * from "./src/theme_engine_pipeline.ts";
 export * from "./src/theme_gallery.ts";
+export * from "./src/grwizard_themes.ts";
 export * from "./src/theme_resolver.ts";
 export * from "./src/theme_workspace.ts";
 export * from "./src/types.ts";

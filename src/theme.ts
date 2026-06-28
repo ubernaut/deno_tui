@@ -866,6 +866,7 @@ export function createThemeEngineFromPalette(
 export interface ThemePack {
   id: string;
   label?: string;
+  description?: string;
   palette?: ThemePaletteReference;
   options?: ThemeEngineOptions;
 }
@@ -873,6 +874,7 @@ export interface ThemePack {
 export interface ThemePackManifest {
   id: string;
   label?: string;
+  description?: string;
   palette?: ThemePaletteName;
   options?: ThemeManifestOptions;
 }

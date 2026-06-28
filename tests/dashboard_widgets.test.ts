@@ -67,7 +67,13 @@ import {
   ThemeEngineFactoryNotFoundError,
 } from "../src/theme_engine_factory.ts";
 import { createThemeEnginePipeline, prewarmThemeEnginePipelines } from "../src/theme_engine_pipeline.ts";
-import { createThemeGallery, filterThemeGalleryItems, rankThemeGalleryItems } from "../src/theme_gallery.ts";
+import {
+  createThemeGallery,
+  filterThemeGalleryItems,
+  rankThemeGalleryItems,
+  selectThemeGalleryItem,
+} from "../src/theme_gallery.ts";
+import { grWizardThemePacks } from "../src/grwizard_themes.ts";
 import {
   componentThemeStyleRequests,
   createThemeEngineResolver,
@@ -1912,6 +1918,51 @@ Deno.test("ThemeProvider engineFor and theme gallery preview inactive engines wi
   assertEquals(rankThemeGalleryItems(gallery.items, "broken").map((match) => [match.item.id, match.item.valid]), [
     ["broken", false],
   ]);
+
+  provider.layers.dispose();
+});
+
+Deno.test("grWizard theme packs populate a selectable theme gallery", () => {
+  const provider = createThemeProvider({
+    registry: createThemeRegistry(grWizardThemePacks),
+    activeId: "grwizard-arcane",
+  });
+  const gallery = createThemeGallery(provider, {
+    query: "brass",
+    sample: "OK",
+    tokens: ["accent", "warning"],
+    components: ["Button", "StatusBar"],
+    states: ["base", "focused"],
+  });
+
+  assertEquals(gallery.count, 6);
+  assertEquals(gallery.matches.map((match) => match.item.id), ["grwizard-parchment", "grwizard-arcane"]);
+  assertEquals(gallery.items.every((item) => item.valid), true);
+  assertEquals(gallery.items.find((item) => item.id === "grwizard-arcane")?.description?.includes("cyan"), true);
+
+  const selected = selectThemeGalleryItem(provider, "grwizard-forge", {
+    sample: "OK",
+    components: ["Button"],
+    states: ["base"],
+  });
+  assertEquals(selected, {
+    selected: true,
+    id: "grwizard-forge",
+    previousId: "grwizard-arcane",
+    activeId: "grwizard-forge",
+    item: selected.item,
+  });
+  assertEquals(selected.item?.active, true);
+  assertEquals(provider.activeId.peek(), "grwizard-forge");
+
+  const unknown = selectThemeGalleryItem(provider, "grwizard-missing");
+  assertEquals(unknown, {
+    selected: false,
+    id: "grwizard-missing",
+    previousId: "grwizard-forge",
+    activeId: "grwizard-forge",
+    reason: "unknown",
+  });
 
   provider.layers.dispose();
 });

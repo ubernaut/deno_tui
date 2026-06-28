@@ -31,6 +31,7 @@ export interface ThemeGalleryComponentStatePreview {
 export interface ThemeGalleryItem {
   id: string;
   label: string;
+  description?: string;
   palette: string;
   active: boolean;
   valid: boolean;
@@ -47,10 +48,21 @@ export interface ThemeGalleryItem {
   };
 }
 
+/** Search result for one ranked theme gallery item. */
 export interface ThemeGalleryMatch {
   item: ThemeGalleryItem;
   score: number;
   matched: string[];
+}
+
+/** Result of applying a gallery item to a provider. */
+export interface ThemeGallerySelection {
+  selected: boolean;
+  id: string;
+  previousId: string;
+  activeId: string;
+  reason?: "unknown" | "invalid";
+  item?: ThemeGalleryItem;
 }
 
 /** Complete theme gallery snapshot for settings panes, demos, and command surfaces. */
@@ -110,6 +122,32 @@ export function filterThemeGalleryItems(
   return rankThemeGalleryItems(items, query).map((match) => match.item);
 }
 
+/** Selects a gallery item on the provider after checking registration and theme validation. */
+export function selectThemeGalleryItem(
+  provider: ThemeProvider,
+  id: string,
+  options: ThemeGalleryOptions & { allowInvalid?: boolean } = {},
+): ThemeGallerySelection {
+  const previousId = provider.activeId.peek();
+  if (!provider.registry.has(id)) {
+    return { selected: false, id, previousId, activeId: previousId, reason: "unknown" };
+  }
+
+  const item = createThemeGalleryItem(provider, id, options);
+  if (!item.valid && options.allowInvalid !== true) {
+    return { selected: false, id, previousId, activeId: previousId, reason: "invalid", item };
+  }
+
+  provider.setTheme(id);
+  return {
+    selected: provider.activeId.peek() === id,
+    id,
+    previousId,
+    activeId: provider.activeId.peek(),
+    item: createThemeGalleryItem(provider, id, options),
+  };
+}
+
 function createThemeGalleryItem(
   provider: ThemeProvider,
   id: string,
@@ -136,6 +174,7 @@ function createThemeGalleryItem(
   return {
     id,
     label: pack?.label ?? id,
+    description: pack?.description,
     palette,
     active: provider.activeId.peek() === id,
     valid: issues.length === 0,
@@ -144,7 +183,16 @@ function createThemeGalleryItem(
     tokens: tokenNames,
     components: componentNames,
     variants,
-    keywords: themeGalleryKeywords(id, pack?.label, palette, activeLayers, componentNames, variants, issues),
+    keywords: themeGalleryKeywords(
+      id,
+      pack?.label,
+      pack?.description,
+      palette,
+      activeLayers,
+      componentNames,
+      variants,
+      issues,
+    ),
     preview: {
       sample,
       tokens: tokenNames.map((token) => ({
@@ -181,6 +229,7 @@ function themeGalleryCommandItem(item: ThemeGalleryItem): CommandPaletteItem {
 function themeGalleryKeywords(
   id: string,
   label: string | undefined,
+  description: string | undefined,
   palette: ThemeGalleryItem["palette"] | undefined,
   activeLayers: readonly string[],
   components: readonly string[],
@@ -193,13 +242,14 @@ function themeGalleryKeywords(
       "engine",
       id,
       label ?? id,
+      description,
       palette ?? "plain",
       ...activeLayers,
       ...components,
       ...Object.values(variants).flat(),
       ...(issues.length === 0 ? ["valid"] : ["invalid", ...issues.map((issue) => issue.kind)]),
     ]),
-  ].filter(Boolean).sort();
+  ].filter((keyword): keyword is string => typeof keyword === "string" && keyword.length > 0).sort();
 }
 
 function previewStyle(style: (text: string) => string, sample: string): ThemeStylePreview {

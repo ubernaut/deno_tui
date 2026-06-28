@@ -1,112 +1,127 @@
 import {
-  createAnsiStyle,
   createThemeGallery,
   createThemeProvider,
   createThemeRegistry,
   filterThemeGalleryItems,
   formatThemeProviderReportMarkdown,
-  type ThemePack,
+  grWizardThemePacks,
+  selectThemeGalleryItem,
 } from "../mod.ts";
 
-const brokenPack = {
-  id: "broken-pack",
-  label: "Broken Pack",
-  palette: "plain",
-  options: {
-    components: {
-      Badge: { base: { base: "missing-token" } },
-    },
-  },
-} as unknown as ThemePack;
+interface ThemeGalleryArgs {
+  query: string;
+  select?: string;
+}
 
+const args = parseArgs(Deno.args);
 const provider = createThemeProvider({
-  registry: createThemeRegistry([
-    {
-      id: "ops-neon",
-      label: "Ops Neon",
-      palette: "neon",
-      options: {
-        components: {
-          Button: {
-            base: { base: "foreground", focused: "accent" },
-            variants: { danger: { active: "danger" } },
-          },
-          StatusBar: {
-            base: { base: ["surface", "foreground"], active: ["surface", "accent"] },
-          },
-        },
-      },
-    },
-    {
-      id: "field-console",
-      label: "Field Console",
-      palette: "terminal",
-      options: {
-        tokens: {
-          accent: createAnsiStyle({ foreground: "brightCyan", bold: true }),
-        },
-        components: {
-          Button: { base: { focused: "accent" } },
-          Input: { base: { base: "foreground", focused: "accent" } },
-        },
-      },
-    },
-    brokenPack,
-  ]),
-  activeId: "ops-neon",
+  registry: createThemeRegistry(grWizardThemePacks),
+  activeId: "grwizard-arcane",
   layers: [
     {
-      id: "accessibility",
-      label: "Accessibility",
+      id: "focus-rings",
+      label: "Focus Rings",
       options: {
         components: {
-          Button: { variants: { high: { base: "warning" } } },
+          Button: { variants: { primary: { focused: "accent", active: "success" } } },
+          DataTable: { variants: { selected: { active: "accent" } } },
+        },
+      },
+    },
+    {
+      id: "review-states",
+      label: "Review States",
+      enabled: false,
+      options: {
+        components: {
+          Badge: { variants: { review: { base: "warning" } } },
+          StatusBar: { variants: { review: { active: "warning" } } },
         },
       },
     },
   ],
 });
 
-const query = Deno.args.join(" ");
-const gallery = createThemeGallery(provider, {
-  query,
-  sample: "LIVE",
-  tokens: ["foreground", "accent", "warning"],
-  components: ["Button", "StatusBar"],
-  states: ["base", "focused", "active"],
-});
+if (args.select) {
+  const selection = selectThemeGalleryItem(provider, args.select, galleryOptions(args.query));
+  if (!selection.selected) {
+    console.log(`Could not select ${args.select}: ${selection.reason ?? "unknown"}`);
+  }
+}
+
+const gallery = createThemeGallery(provider, galleryOptions(args.query));
 
 console.log("Theme gallery demo");
-console.log(`active=${gallery.activeId} query=${query || "(none)"}`);
+console.log(`active=${gallery.activeId} query=${gallery.query || "(none)"} themes=${gallery.count}`);
+console.log("select with: deno task theme-gallery -- --select grwizard-forge");
 console.log("");
 
 for (const match of gallery.matches) {
   const item = match.item;
   console.log(
-    `- ${
-      item.active ? "*" : " "
+    `${
+      item.active ? ">" : " "
     } ${item.id}: ${item.label} palette=${item.palette} valid=${item.valid} score=${match.score}`,
   );
+  if (item.description) {
+    console.log(`  ${item.description}`);
+  }
   console.log(`  layers=${item.activeLayers.join(", ") || "none"}`);
   console.log(`  matched=${match.matched.join(", ") || "none"}`);
-  for (const token of item.preview.tokens) {
-    console.log(`  token ${token.token}: ${token.preview.styled}`);
-  }
-  for (const preview of item.preview.components.slice(0, 4)) {
-    console.log(`  ${preview.component}/${preview.variant}/${preview.state}: ${preview.preview.styled}`);
-  }
-  if (!item.valid) {
-    console.log(`  issues=${item.issues.map((issue) => issue.message).join("; ")}`);
-  }
+  console.log(`  tokens=${item.preview.tokens.map((token) => token.preview.styled).join(" ")}`);
+  console.log(
+    `  button=${preview(item, "Button", "default", "focused")} status=${
+      preview(item, "StatusBar", "warning", "base")
+    } badge=${preview(item, "Badge", "review", "base")}`,
+  );
 }
 
 console.log("");
 console.log(
-  `Quick filter "console": ${filterThemeGalleryItems(gallery.items, "console").map((item) => item.id).join(", ")}`,
+  `Quick filter "brass": ${filterThemeGalleryItems(gallery.items, "brass").map((item) => item.id).join(", ")}`,
 );
 console.log("");
 console.log(formatThemeProviderReportMarkdown(provider, {
   title: "Theme Provider Audit",
   preview: false,
-  coverage: { components: ["Button", "StatusBar"] },
+  coverage: { components: ["Badge", "Button", "DataTable", "StatusBar", "Text"] },
 }));
+
+function galleryOptions(query: string) {
+  return {
+    query,
+    sample: "LIVE",
+    tokens: ["foreground", "muted", "accent", "success", "warning", "danger"] as const,
+    components: ["Badge", "Button", "DataTable", "StatusBar", "Text"],
+    states: ["base", "focused", "active"] as const,
+  };
+}
+
+function preview(
+  item: ReturnType<typeof createThemeGallery>["items"][number],
+  component: string,
+  variant: string,
+  state: string,
+): string {
+  return item.preview.components.find((entry) =>
+    entry.component === component && entry.variant === variant && entry.state === state
+  )?.preview.styled ?? "(missing)";
+}
+
+function parseArgs(values: readonly string[]): ThemeGalleryArgs {
+  const terms: string[] = [];
+  let select: string | undefined;
+
+  for (let index = 0; index < values.length; index += 1) {
+    const value = values[index];
+    if (value === "--select" || value === "-s") {
+      select = values[++index];
+    } else if (value.startsWith("--select=")) {
+      select = value.slice("--select=".length);
+    } else if (value !== "--") {
+      terms.push(value);
+    }
+  }
+
+  return { query: terms.join(" "), select };
+}
