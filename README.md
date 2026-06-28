@@ -345,6 +345,30 @@ const stopAutosaveCommands = bindCheckBoxCommands(app.commands, autosave, {
 });
 ```
 
+`ProgressBarController` extracts bounded progress state from `ProgressBar`: it owns min/max/value, smooth rendering
+mode, orientation, direction, character maps, progress geometry, smooth row text, clamping, and inspection state. Use
+`progressBarCommands()` or `bindProgressBarCommands()` to expose increment/decrement, min/max, and optional preset
+values for build monitors, upload panes, installers, and dashboard tasks:
+
+```ts
+const buildProgress = new ProgressBarController({
+  min: 0,
+  max: 100,
+  value: 35,
+  smooth: true,
+  direction: "normal",
+  orientation: "horizontal",
+});
+
+const stopBuildProgressCommands = bindProgressBarCommands(app.commands, buildProgress, {
+  idPrefix: "build.progress",
+  group: "build",
+  step: 5,
+  includeValueCommands: true,
+  values: [0, 50, 100],
+});
+```
+
 `CommandPaletteController` and `ContextMenuController` expose the overlay widgets' query, selection, navigation, key
 handling, and inspection state without requiring a rendered component. Use them when a command surface, menu bar,
 shortcut handler, or test needs to drive the same behavior as the built-in widgets:

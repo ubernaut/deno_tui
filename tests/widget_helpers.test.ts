@@ -3,6 +3,7 @@ import { bindCheckBoxCommands, checkBoxCommands } from "../src/app/checkbox_comm
 import { bindComboBoxCommands, comboBoxCommands } from "../src/app/combobox_commands.ts";
 import { bindListCommands, listCommands } from "../src/app/list_commands.ts";
 import { bindMenuBarCommands, menuBarCommands } from "../src/app/menu_bar_commands.ts";
+import { bindProgressBarCommands, progressBarCommands } from "../src/app/progress_bar_commands.ts";
 import { bindRadioGroupCommands, radioGroupCommands } from "../src/app/radio_group_commands.ts";
 import { bindScrollAreaCommands, scrollAreaCommands } from "../src/app/scroll_area_commands.ts";
 import { CommandRegistry } from "../src/app/commands.ts";
@@ -24,6 +25,13 @@ import {
   renderMenuBar,
   shiftMenuIndex,
 } from "../src/components/menu_bar.ts";
+import {
+  clampProgressValue,
+  ProgressBarController,
+  progressRatio,
+  progressRectangle,
+  progressSmoothLine,
+} from "../src/components/progressbar.ts";
 import {
   clampRadioIndex,
   optionForValue,
@@ -377,6 +385,100 @@ Deno.test("comboBoxCommands open move and select items", async () => {
   assertEquals(registry.list("input"), []);
   controller.dispose();
   emptyController.dispose();
+});
+
+Deno.test("ProgressBarController clamps values and computes progress geometry", () => {
+  const changes: number[] = [];
+  const value = new Signal(40);
+  const controller = new ProgressBarController({
+    min: 0,
+    max: 100,
+    value,
+    smooth: true,
+    direction: "normal",
+    orientation: "horizontal",
+    onChange: (next) => void changes.push(next),
+  });
+
+  assertEquals(clampProgressValue(120, 0, 100), 100);
+  assertEquals(progressRatio(25, 0, 100), 0.25);
+  assertEquals(progressRatio(25, 0, 100, "reversed"), 0.75);
+  assertEquals(progressRectangle({ column: 1, row: 2, width: 10, height: 3 }, 40, 0, 100, "horizontal"), {
+    column: 1,
+    row: 2,
+    width: 4,
+    height: 3,
+  });
+  assertEquals(progressSmoothLine(0, 4, 1, 50, 0, 100, "horizontal", "normal", controller.charMap.peek()), "██");
+
+  assertEquals(controller.increment(70), 100);
+  assertEquals(controller.inspect(), {
+    min: 0,
+    max: 100,
+    value: 100,
+    normalizedValue: 1,
+    direction: "normal",
+    orientation: "horizontal",
+    smooth: true,
+    complete: true,
+    empty: false,
+  });
+  value.value = -10;
+  assertEquals(controller.value.peek(), 0);
+  assertEquals(changes, [100]);
+  controller.dispose();
+  value.dispose();
+});
+
+Deno.test("progressBarCommands adjust progress values and presets", async () => {
+  const controller = new ProgressBarController({
+    min: 0,
+    max: 100,
+    value: 25,
+    smooth: false,
+    direction: "normal",
+    orientation: "horizontal",
+  });
+  const registry = new CommandRegistry();
+  const actions: unknown[] = [];
+  const dispose = bindProgressBarCommands(registry, controller, {
+    id: "build",
+    idPrefix: "progress.build",
+    group: "progress",
+    step: 25,
+    includeValueCommands: true,
+    values: [0, 50, 100],
+  });
+
+  assertEquals(progressBarCommands(controller).map((command) => command.id), [
+    "progress.decrement",
+    "progress.increment",
+    "progress.min",
+    "progress.max",
+  ]);
+  assertEquals(registry.list("progress").map((command) => command.id), [
+    "progress.build.decrement",
+    "progress.build.increment",
+    "progress.build.max",
+    "progress.build.min",
+    "progress.build.value.0",
+    "progress.build.value.100",
+    "progress.build.value.50",
+  ]);
+
+  assertEquals(await registry.execute("progress.build.increment", (action) => void actions.push(action)), true);
+  assertEquals(controller.value.peek(), 50);
+  assertEquals(actions.at(-1), {
+    type: "progressBar.changed",
+    payload: { id: "build", value: 50, inspection: controller.inspect() },
+  });
+  assertEquals(registry.enabled(registry.get("progress.build.value.50")!), false);
+  assertEquals(await registry.execute("progress.build.max", (action) => void actions.push(action)), true);
+  assertEquals(controller.inspect().complete, true);
+
+  dispose();
+  assertEquals(registry.list("progress"), []);
+  controller.dispose();
 });
 
 Deno.test("virtual list rows support formatted multi selection windows", () => {

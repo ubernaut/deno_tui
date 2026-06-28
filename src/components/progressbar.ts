@@ -37,8 +37,234 @@ export interface ProgressBarOptions extends ComponentOptions {
   direction: ProgressBarDirection | Signal<ProgressBarDirection>;
   orientation: ProgressBarOrientation | Signal<ProgressBarOrientation>;
   charMap?: ProgressBarCharMapType | SignalOfObject<ProgressBarCharMapType>;
+  controller?: ProgressBarController;
+  onChange?: (value: number) => void | Promise<void>;
 
   theme: DeepPartial<ProgressBarTheme, "progress">;
+}
+
+export interface ProgressBarControllerOptions {
+  min: number | Signal<number>;
+  max: number | Signal<number>;
+  value: number | Signal<number>;
+  smooth: boolean | Signal<boolean>;
+  direction: ProgressBarDirection | Signal<ProgressBarDirection>;
+  orientation: ProgressBarOrientation | Signal<ProgressBarOrientation>;
+  charMap?: ProgressBarCharMapType | SignalOfObject<ProgressBarCharMapType>;
+  onChange?: (value: number) => void | Promise<void>;
+}
+
+export interface ProgressBarInspection {
+  min: number;
+  max: number;
+  value: number;
+  normalizedValue: number;
+  direction: ProgressBarDirection;
+  orientation: ProgressBarOrientation;
+  smooth: boolean;
+  complete: boolean;
+  empty: boolean;
+}
+
+export interface ProgressBarTrackRectangle {
+  column: number;
+  row: number;
+  width: number;
+  height: number;
+}
+
+export function clampProgressValue(value: number, min: number, max: number): number {
+  return Math.max(Math.min(value, Math.max(min, max)), Math.min(min, max));
+}
+
+export function progressRatio(
+  value: number,
+  min: number,
+  max: number,
+  direction: ProgressBarDirection = "normal",
+): number {
+  const ratio = normalize(clampProgressValue(value, min, max), min, max);
+  return direction === "reversed" ? 1 - ratio : ratio;
+}
+
+export function progressRectangle(
+  track: ProgressBarTrackRectangle,
+  value: number,
+  min: number,
+  max: number,
+  orientation: ProgressBarOrientation,
+  direction: ProgressBarDirection = "normal",
+): ProgressBarTrackRectangle {
+  const ratio = progressRatio(value, min, max, direction);
+  return orientation === "horizontal"
+    ? {
+      column: track.column,
+      row: track.row,
+      width: Math.round(track.width * ratio),
+      height: track.height,
+    }
+    : {
+      column: track.column,
+      row: track.row,
+      width: track.width,
+      height: Math.round(track.height * ratio),
+    };
+}
+
+export function progressSmoothLine(
+  offset: number,
+  width: number,
+  height: number,
+  value: number,
+  min: number,
+  max: number,
+  orientation: ProgressBarOrientation,
+  direction: ProgressBarDirection,
+  charMap: ProgressBarCharMapType,
+): string {
+  const ratio = progressRatio(value, min, max, direction);
+  const chars = charMap[orientation];
+  const step = 1 / chars.length;
+
+  if (orientation === "horizontal") {
+    const steps = ratio * width;
+    const remainder = steps % 1;
+    return chars[0].repeat(steps) +
+      (remainder < step ? "" : chars[chars.length - Math.max(Math.round(remainder / step), 1)]);
+  }
+
+  const steps = ratio * height;
+  const remainder = steps % 1;
+  if (offset - 1 >= steps - remainder) return "";
+  if (offset < steps - remainder) return chars[0].repeat(width);
+  return remainder < step ? "" : chars[chars.length - Math.max(Math.round(remainder / step), 1)].repeat(width);
+}
+
+export class ProgressBarController {
+  readonly min: Signal<number>;
+  readonly max: Signal<number>;
+  readonly value: Signal<number>;
+  readonly smooth: Signal<boolean>;
+  readonly direction: Signal<ProgressBarDirection>;
+  readonly orientation: Signal<ProgressBarOrientation>;
+  readonly charMap: Signal<ProgressBarCharMapType>;
+  readonly #ownsMin: boolean;
+  readonly #ownsMax: boolean;
+  readonly #ownsValue: boolean;
+  readonly #ownsSmooth: boolean;
+  readonly #ownsDirection: boolean;
+  readonly #ownsOrientation: boolean;
+  readonly #ownsCharMap: boolean;
+  readonly #onChange?: (value: number) => void | Promise<void>;
+  readonly #syncValue = () => {
+    this.value.value = clampProgressValue(this.value.peek(), this.min.peek(), this.max.peek());
+  };
+
+  constructor(options: ProgressBarControllerOptions) {
+    this.#ownsMin = !(options.min instanceof Signal);
+    this.#ownsMax = !(options.max instanceof Signal);
+    this.#ownsValue = !(options.value instanceof Signal);
+    this.#ownsSmooth = !(options.smooth instanceof Signal);
+    this.#ownsDirection = !(options.direction instanceof Signal);
+    this.#ownsOrientation = !(options.orientation instanceof Signal);
+    this.#ownsCharMap = !(options.charMap instanceof Signal);
+    this.min = signalify(options.min);
+    this.max = signalify(options.max);
+    this.value = signalify(options.value);
+    this.smooth = signalify(options.smooth);
+    this.direction = signalify(options.direction);
+    this.orientation = signalify(options.orientation);
+    this.charMap = signalify(options.charMap ?? progressBarCharMap);
+    this.#onChange = options.onChange;
+    this.min.subscribe(this.#syncValue);
+    this.max.subscribe(this.#syncValue);
+    this.value.subscribe(this.#syncValue);
+    this.#syncValue();
+  }
+
+  ratio(): number {
+    return progressRatio(this.value.peek(), this.min.peek(), this.max.peek(), this.direction.peek());
+  }
+
+  setValue(value: number): number {
+    const next = clampProgressValue(value, this.min.peek(), this.max.peek());
+    this.value.value = next;
+    void this.#onChange?.(next);
+    return next;
+  }
+
+  increment(step = 1): number {
+    return this.setValue(this.value.peek() + step);
+  }
+
+  decrement(step = 1): number {
+    return this.setValue(this.value.peek() - step);
+  }
+
+  setMin(): number {
+    return this.setValue(this.min.peek());
+  }
+
+  setMax(): number {
+    return this.setValue(this.max.peek());
+  }
+
+  progressRectangle(track: ProgressBarTrackRectangle): ProgressBarTrackRectangle {
+    return progressRectangle(
+      track,
+      this.value.peek(),
+      this.min.peek(),
+      this.max.peek(),
+      this.orientation.peek(),
+      this.direction.peek(),
+    );
+  }
+
+  smoothLine(offset: number, width: number, height: number): string {
+    return progressSmoothLine(
+      offset,
+      width,
+      height,
+      this.value.peek(),
+      this.min.peek(),
+      this.max.peek(),
+      this.orientation.peek(),
+      this.direction.peek(),
+      this.charMap.peek(),
+    );
+  }
+
+  inspect(): ProgressBarInspection {
+    const normalizedValue = normalize(
+      clampProgressValue(this.value.peek(), this.min.peek(), this.max.peek()),
+      this.min.peek(),
+      this.max.peek(),
+    );
+    return {
+      min: this.min.peek(),
+      max: this.max.peek(),
+      value: this.value.peek(),
+      normalizedValue,
+      direction: this.direction.peek(),
+      orientation: this.orientation.peek(),
+      smooth: this.smooth.peek(),
+      complete: normalizedValue >= 1,
+      empty: normalizedValue <= 0,
+    };
+  }
+
+  dispose(): void {
+    this.min.unsubscribe(this.#syncValue);
+    this.max.unsubscribe(this.#syncValue);
+    this.value.unsubscribe(this.#syncValue);
+    if (this.#ownsMin) this.min.dispose();
+    if (this.#ownsMax) this.max.dispose();
+    if (this.#ownsValue) this.value.dispose();
+    if (this.#ownsSmooth) this.smooth.dispose();
+    if (this.#ownsDirection) this.direction.dispose();
+    if (this.#ownsOrientation) this.orientation.dispose();
+    if (this.#ownsCharMap) this.charMap.dispose();
+  }
 }
 
 /**
@@ -113,18 +339,31 @@ export class ProgressBar extends Box {
   direction: Signal<ProgressBarDirection>;
   orientation: Signal<ProgressBarOrientation>;
   charMap: Signal<ProgressBarCharMapType>;
+  readonly controller: ProgressBarController;
 
   constructor(options: ProgressBarOptions) {
     super(options);
 
-    const { min, max, value, smooth, direction, orientation, charMap } = options;
-    this.min = signalify(min);
-    this.max = signalify(max);
-    this.value = signalify(value);
-    this.smooth = signalify(smooth);
-    this.direction = signalify(direction);
-    this.orientation = signalify(orientation);
-    this.charMap = signalify(charMap ?? progressBarCharMap);
+    const ownsController = !options.controller;
+    this.controller = options.controller ??
+      new ProgressBarController({
+        min: options.min,
+        max: options.max,
+        value: options.value,
+        smooth: options.smooth,
+        direction: options.direction,
+        orientation: options.orientation,
+        charMap: options.charMap,
+        onChange: options.onChange,
+      });
+    this.min = this.controller.min;
+    this.max = this.controller.max;
+    this.value = this.controller.value;
+    this.smooth = this.controller.smooth;
+    this.direction = this.controller.direction;
+    this.orientation = this.controller.orientation;
+    this.charMap = this.controller.charMap;
+    if (ownsController) this.on("destroy", () => this.controller.dispose());
   }
 
   override draw(): void {
@@ -141,20 +380,8 @@ export class ProgressBar extends Box {
         zIndex: this.zIndex,
         style: new Computed(() => this.theme.progress[this.state.value]),
         rectangle: new Computed(() => {
-          let normalizedValue = normalize(this.value.value, this.min.value, this.max.value);
-          if (this.direction.value === "reversed") normalizedValue = 1 - normalizedValue;
-
           const { column, row, width, height } = this.rectangle.value;
-          progressRectangle.column = column;
-          progressRectangle.row = row;
-
-          if (this.orientation.value === "horizontal") {
-            progressRectangle.width = Math.round(width * normalizedValue);
-            progressRectangle.height = height;
-          } else {
-            progressRectangle.width = width;
-            progressRectangle.height = Math.round(height * normalizedValue);
-          }
+          Object.assign(progressRectangle, this.controller.progressRectangle({ column, row, width, height }));
 
           const { progress } = this.drawnObjects;
           if (Array.isArray(progress)) {
@@ -204,36 +431,8 @@ export class ProgressBar extends Box {
           return progressLineRectangle;
         }),
         value: new Computed(() => {
-          let normalizedValue = normalize(this.value.value, this.min.value, this.max.value);
-          if (this.direction.value === "reversed") normalizedValue = 1 - normalizedValue;
-
-          const charMap = this.charMap.value[this.orientation.value];
-          const step = 1 / (charMap.length);
-
           const { width, height } = this.rectangle.value;
-
-          if (this.orientation.value === "horizontal") {
-            const steps = normalizedValue * width;
-            const remainder = steps % 1;
-            return charMap[0].repeat(steps) +
-              (
-                remainder < step ? "" : charMap[charMap.length - Math.max(Math.round(remainder / step), 1)]
-              );
-          } else {
-            const steps = normalizedValue * height;
-
-            const remainder = steps % 1;
-
-            if (offset - 1 >= steps - remainder) {
-              return "";
-            } else if (offset < steps - remainder) {
-              return charMap[0].repeat(width);
-            } else {
-              return remainder < step
-                ? ""
-                : charMap[charMap.length - Math.max(Math.round(remainder / step), 1)].repeat(width);
-            }
-          }
+          return this.controller.smoothLine(offset, width, height);
         }),
       });
 

@@ -176,6 +176,7 @@ export const componentCatalog = [
   ]),
   component("progressbar", "ProgressBar", "feedback", "Horizontal or vertical progress component.", [
     "component",
+    "controller",
     "themeable",
   ]),
   component("statusbar", "StatusBar", "feedback", "Left/right status row renderer.", [
