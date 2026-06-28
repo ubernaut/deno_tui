@@ -1,5 +1,6 @@
 // Copyright 2023 Im-Beast. MIT license.
 
+/** High-level widget grouping for catalogs and docs browsers. */
 export type ComponentCategory =
   | "primitive"
   | "input"
@@ -10,6 +11,7 @@ export type ComponentCategory =
   | "visualization"
   | "layout";
 
+/** Capability tags that describe how a component can be used. */
 export type ComponentCapability =
   | "component"
   | "controller"
@@ -23,6 +25,7 @@ export type ComponentCapability =
   | "three"
   | "dashboard";
 
+/** Searchable metadata for one public component or widget helper. */
 export interface ComponentCatalogEntry {
   id: string;
   name: string;
@@ -31,6 +34,7 @@ export interface ComponentCatalogEntry {
   capabilities: readonly ComponentCapability[];
 }
 
+/** Query options for filtering the component catalog. */
 export interface ComponentCatalogQuery {
   category?: ComponentCategory;
   capability?: ComponentCapability;
@@ -38,12 +42,14 @@ export interface ComponentCatalogQuery {
   search?: string;
 }
 
+/** Aggregate component catalog counts by category and capability. */
 export interface ComponentCatalogInspection {
   count: number;
   categories: Record<ComponentCategory, number>;
   capabilities: Record<ComponentCapability, number>;
 }
 
+/** Built-in component and helper inventory for demos, docs, and plugin surfaces. */
 export const componentCatalog = [
   component("box", "Box", "primitive", "Filled rectangular surface for backgrounds and panels.", [
     "component",
@@ -224,10 +230,12 @@ export const componentCatalog = [
   component("text", "Text", "primitive", "Raw text draw object.", ["component", "themeable"]),
 ] as const satisfies readonly ComponentCatalogEntry[];
 
+/** Returns a copy of the built-in component catalog. */
 export function listComponents(): ComponentCatalogEntry[] {
   return [...componentCatalog];
 }
 
+/** Finds a component by id or display name, ignoring separators and case. */
 export function findComponent(idOrName: string): ComponentCatalogEntry | undefined {
   const normalized = normalizeComponentLookup(idOrName);
   return componentCatalog.find((entry) =>
@@ -235,14 +243,17 @@ export function findComponent(idOrName: string): ComponentCatalogEntry | undefin
   );
 }
 
+/** Returns all catalog entries in one category. */
 export function componentsByCategory(category: ComponentCategory): ComponentCatalogEntry[] {
   return componentCatalog.filter((entry) => entry.category === category);
 }
 
+/** Returns all catalog entries that expose a capability tag. */
 export function componentsWithCapability(capability: ComponentCapability): ComponentCatalogEntry[] {
   return componentCatalog.filter((entry) => entry.capabilities.includes(capability));
 }
 
+/** Filters components by category, capabilities, and full-text search. */
 export function queryComponents(query: ComponentCatalogQuery = {}): ComponentCatalogEntry[] {
   const capabilities = [
     ...(query.capability ? [query.capability] : []),
@@ -259,14 +270,17 @@ export function queryComponents(query: ComponentCatalogQuery = {}): ComponentCat
   });
 }
 
+/** Returns the known component categories in sorted order. */
 export function componentCategories(): ComponentCategory[] {
   return [...new Set(componentCatalog.map((entry) => entry.category))].sort();
 }
 
+/** Returns the known component capability tags in sorted order. */
 export function componentCapabilities(): ComponentCapability[] {
   return [...new Set(componentCatalog.flatMap((entry) => entry.capabilities))].sort();
 }
 
+/** Counts catalog entries by category and capability. */
 export function inspectComponentCatalog(
   entries: readonly ComponentCatalogEntry[] = componentCatalog,
 ): ComponentCatalogInspection {

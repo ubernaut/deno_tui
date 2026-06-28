@@ -3,20 +3,24 @@ import { Signal } from "./signals/mod.ts";
 import { signalify } from "./utils/signals.ts";
 import { viewportWindow } from "./viewport.ts";
 
+/** Selection behavior for list-like widgets. */
 export type SelectionMode = "single" | "multiple";
 
+/** Index-based selection state shared by lists, tables, trees, and custom browsers. */
 export interface SelectionState {
   activeIndex: number;
   anchorIndex: number;
   selected: number[];
 }
 
+/** Options for moving the active selection index. */
 export interface SelectionMoveOptions {
   mode?: SelectionMode;
   extend?: boolean;
   wrap?: boolean;
 }
 
+/** Reactive controller setup for a bounded selection model. */
 export interface SelectionControllerOptions {
   length: number | Signal<number>;
   mode?: SelectionMode | Signal<SelectionMode>;
@@ -24,11 +28,13 @@ export interface SelectionControllerOptions {
   wrap?: boolean | Signal<boolean>;
 }
 
+/** Mapping options for converting selected indices to stable domain values. */
 export interface SelectionValueOptions<TItem, TValue = TItem> {
   valueForItem?: (item: TItem, index: number) => TValue;
   equals?: (left: TValue, right: TValue) => boolean;
 }
 
+/** Creates normalized selection state for a collection length. */
 export function createSelection(length: number, activeIndex = 0, mode: SelectionMode = "single"): SelectionState {
   return normalizeSelection({ activeIndex, anchorIndex: activeIndex, selected: [activeIndex] }, length, mode);
 }
@@ -48,11 +54,13 @@ export function normalizeSelection(
   return { activeIndex, anchorIndex, selected };
 }
 
+/** Clamps an index to the valid selection range for a collection length. */
 export function clampSelectionIndex(length: number, index: number): number {
   if (length <= 0) return 0;
   return Math.max(0, Math.min(Math.floor(index), length - 1));
 }
 
+/** Moves the active index and optionally extends a multiple selection range. */
 export function moveSelection(
   state: SelectionState,
   length: number,
@@ -67,6 +75,7 @@ export function moveSelection(
   return normalizeSelection({ activeIndex, anchorIndex: activeIndex, selected: [activeIndex] }, length, mode);
 }
 
+/** Selects one index, replacing single selection or adding to multiple selection. */
 export function selectIndex(
   state: SelectionState,
   length: number,
@@ -88,6 +97,7 @@ export function selectIndex(
   );
 }
 
+/** Toggles an index in multiple-selection state. */
 export function toggleSelection(state: SelectionState, length: number, index = state.activeIndex): SelectionState {
   const activeIndex = clampSelectionIndex(length, index);
   const selected = new Set(state.selected);
@@ -107,6 +117,7 @@ export function toggleSelection(state: SelectionState, length: number, index = s
   );
 }
 
+/** Selects the inclusive range between the anchor index and target index. */
 export function selectRange(state: SelectionState, length: number, toIndex: number): SelectionState {
   const activeIndex = clampSelectionIndex(length, toIndex);
   const anchorIndex = clampSelectionIndex(length, state.anchorIndex);
@@ -116,10 +127,12 @@ export function selectRange(state: SelectionState, length: number, toIndex: numb
   return normalizeSelection({ activeIndex, anchorIndex, selected }, length, "multiple");
 }
 
+/** Computes the visible window that should contain the active selection. */
 export function selectionWindow(length: number, activeIndex: number, capacity: number): { start: number; end: number } {
   return viewportWindow(length, activeIndex, capacity);
 }
 
+/** Returns selected domain values for the selected indices. */
 export function selectedValues<TItem, TValue = TItem>(
   items: readonly TItem[],
   state: SelectionState,
@@ -134,6 +147,7 @@ export function selectedValues<TItem, TValue = TItem>(
     .filter((value): value is TValue => value !== undefined);
 }
 
+/** Reconstructs selection state from stable domain values. */
 export function selectionFromValues<TItem, TValue = TItem>(
   items: readonly TItem[],
   values: readonly TValue[],
@@ -160,6 +174,7 @@ export function selectionFromValues<TItem, TValue = TItem>(
   );
 }
 
+/** Reactive selection controller for reusable keyboard and data widgets. */
 export class SelectionController {
   readonly length: Signal<number>;
   readonly mode: Signal<SelectionMode>;
@@ -170,6 +185,7 @@ export class SelectionController {
   readonly #ownsWrap: boolean;
   readonly #normalize = () => this.normalize();
 
+  /** Creates a controller and subscribes to reactive length/mode changes. */
   constructor(options: SelectionControllerOptions) {
     this.#ownsLength = !(options.length instanceof Signal);
     this.#ownsMode = !(options.mode instanceof Signal);
@@ -185,10 +201,12 @@ export class SelectionController {
     this.mode.subscribe(this.#normalize);
   }
 
+  /** Re-normalizes state after bounds or mode changes. */
   normalize(): void {
     this.state.value = normalizeSelection(this.state.peek(), this.length.peek(), this.mode.peek());
   }
 
+  /** Moves the active index by a delta. */
   move(delta: number, extend = false): void {
     this.state.value = moveSelection(this.state.peek(), this.length.peek(), delta, {
       mode: this.mode.peek(),
@@ -197,18 +215,22 @@ export class SelectionController {
     });
   }
 
+  /** Selects an index according to the active selection mode. */
   select(index: number): void {
     this.state.value = selectIndex(this.state.peek(), this.length.peek(), index, this.mode.peek());
   }
 
+  /** Toggles an index in multiple-selection mode. */
   toggle(index = this.state.peek().activeIndex): void {
     this.state.value = toggleSelection(this.state.peek(), this.length.peek(), index);
   }
 
+  /** Selects a range from the anchor index to the target index. */
   range(toIndex: number): void {
     this.state.value = selectRange(this.state.peek(), this.length.peek(), toIndex);
   }
 
+  /** Clears selected indices while preserving the active index. */
   clear(): void {
     this.state.value = normalizeSelection(
       { activeIndex: this.state.peek().activeIndex, selected: [] },
@@ -217,10 +239,12 @@ export class SelectionController {
     );
   }
 
+  /** Returns a visible window around the active index. */
   window(capacity: number): { start: number; end: number } {
     return selectionWindow(this.length.peek(), this.state.peek().activeIndex, capacity);
   }
 
+  /** Releases owned signals and subscriptions. */
   dispose(): void {
     this.length.unsubscribe(this.#normalize);
     this.mode.unsubscribe(this.#normalize);
