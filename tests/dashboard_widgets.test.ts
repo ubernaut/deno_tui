@@ -2,6 +2,12 @@ import { assertEquals } from "./deps.ts";
 import { renderBarChart } from "../src/components/chart.ts";
 import { renderGauge } from "../src/components/gauge.ts";
 import { visibleLogLines } from "../src/components/log_viewer.ts";
+import {
+  MetricSeriesController,
+  metricSeriesStats,
+  normalizeMetricValue,
+  pushMetricValue,
+} from "../src/components/metric_series.ts";
 import { renderSparkline } from "../src/components/sparkline.ts";
 import {
   composeStyles,
@@ -37,6 +43,42 @@ Deno.test("renderBarChart produces top-down rows", () => {
 Deno.test("visibleLogLines follows the tail by default", () => {
   assertEquals(visibleLogLines(["a", "b", "c"], 2), ["b", "c"]);
   assertEquals(visibleLogLines(["a", "b", "c"], 2, false), ["a", "b"]);
+});
+
+Deno.test("pushMetricValue appends bounded samples", () => {
+  assertEquals(pushMetricValue([1, 2, 3], 4, 3), [2, 3, 4]);
+  assertEquals(pushMetricValue([1, 2, 3], 4, 0), []);
+});
+
+Deno.test("normalizeMetricValue supports finite fallback and clamp ranges", () => {
+  assertEquals(normalizeMetricValue(Number.NaN), 0);
+  assertEquals(normalizeMetricValue(2, true), 1);
+  assertEquals(normalizeMetricValue(-5, { min: -2, max: 2 }), -2);
+});
+
+Deno.test("metricSeriesStats summarizes values", () => {
+  assertEquals(metricSeriesStats([]), { count: 0, min: 0, max: 0, latest: 0, average: 0, sum: 0 });
+  assertEquals(metricSeriesStats([1, 3, 5]), { count: 3, min: 1, max: 5, latest: 5, average: 3, sum: 9 });
+});
+
+Deno.test("MetricSeriesController manages bounded reactive samples", () => {
+  const series = new MetricSeriesController({ limit: 3, initialValues: [0, 1], clamp: true });
+  const snapshots: number[][] = [];
+  series.values.subscribe((values) => snapshots.push(values));
+
+  series.push(0.5);
+  series.push(2);
+  assertEquals(series.values.value, [1, 0.5, 1]);
+  assertEquals(series.stats.value, { count: 3, min: 0.5, max: 1, latest: 1, average: 2.5 / 3, sum: 2.5 });
+  assertEquals(series.latest(), 1);
+
+  series.setLimit(2);
+  assertEquals(series.snapshot(), [0.5, 1]);
+
+  series.reset([Number.POSITIVE_INFINITY, -1]);
+  assertEquals(series.values.value, [0, 0]);
+  assertEquals(snapshots, [[0, 1, 0.5], [1, 0.5, 1], [0.5, 1], [0, 0]]);
+  series.dispose();
 });
 
 Deno.test("createTheme fills semantic token defaults", () => {

@@ -17,6 +17,7 @@ export * from "./key_help.ts";
 export * from "./list.ts";
 export * from "./log_viewer.ts";
 export * from "./menu_bar.ts";
+export * from "./metric_series.ts";
 export * from "./modal.ts";
 export * from "./progressbar.ts";
 export * from "./radio_group.ts";

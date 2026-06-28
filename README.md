@@ -26,9 +26,11 @@ a system monitor shell that can render live data through those scenes.
 - **Expanded widget surface** — List, Tabs, Breadcrumbs, MenuBar, ContextMenu, RadioGroup, ScrollArea, Modal, KeyHelp,
   CommandPalette, Tree, ToastStack, Sparkline, Gauge, Chart, LogViewer, and StatusBar build on the original component
   set.
+- **Dashboard data controllers** — bounded metric series state keeps charts, sparklines, gauges, and telemetry panels
+  composable without every app rebuilding the same history buffer.
 - **Runtime capability layer** — Workers, WebGPU, WebGL, OffscreenCanvas, and IndexedDB are detected through a
   standards-oriented runtime module with configurable fallbacks.
-- **Theme engine** — semantic tokens, palette presets, named theme packs, runtime providers, component variants,
+- **Theme engine focus** — semantic tokens, palette presets, named theme packs, runtime providers, component variants,
   composition helpers, and inspection APIs produce normal `Theme` objects while keeping app-level styling reusable.
 
 ## Features
@@ -155,6 +157,17 @@ const table = new DataTableController({
 table.setQuery(search.value);
 table.toggleSort("cpu");
 const visibleRows = table.view.value.rows;
+```
+
+For metric-heavy dashboards, `MetricSeriesController`, `pushMetricValue()`, and `metricSeriesStats()` provide the shared
+bounded-history layer used by sparklines, bar charts, gauges, logs, worker-fed telemetry, and system-monitor panels:
+
+```ts
+const cpu = new MetricSeriesController({ limit: 120, clamp: true });
+
+cpu.push(snapshot.cpuRatio);
+const sparkline = renderSparkline(cpu.values.value, 30);
+const latestCpu = cpu.stats.value.latest;
 ```
 
 ## Layouts
