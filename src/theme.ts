@@ -1113,12 +1113,7 @@ export class ThemeProvider {
     this.#store = options.store;
     this.#storageKey = options.storageKey ?? "theme.active";
     this.#onError = options.onError;
-    this.engine = new Computed(() =>
-      this.registry.engine(
-        this.activeId.value,
-        composeThemeOptions(this.#overrides, this.layers.options.value),
-      )
-    );
+    this.engine = new Computed(() => this.engineFor(this.activeId.value));
     this.activeId.subscribe((id) => this.#persistTheme(id));
     this.ready = this.#loadTheme();
   }
@@ -1149,6 +1144,13 @@ export class ThemeProvider {
 
   previousTheme(): string {
     return this.cycleTheme(-1);
+  }
+
+  engineFor(id: string): ThemeEngine {
+    return this.registry.engine(
+      id,
+      composeThemeOptions(this.#overrides, this.layers.options.value),
+    );
   }
 
   async flush(): Promise<void> {

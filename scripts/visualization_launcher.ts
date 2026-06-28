@@ -71,6 +71,11 @@ export const visualizationLaunchTargets: readonly VisualizationLaunchTarget[] = 
     description: "runtime theme transform pipeline demo",
   },
   {
+    task: "theme-gallery",
+    aliases: ["theme-gallery", "theme-picker", "theme-catalog"],
+    description: "searchable theme gallery and preview report",
+  },
+  {
     task: "capabilities",
     aliases: ["capabilities", "caps", "runtime"],
     description: "runtime capability report",

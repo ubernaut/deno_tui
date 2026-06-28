@@ -42,6 +42,7 @@ import {
   type Theme,
   ThemeEngine,
   ThemeInheritanceError,
+  type ThemePack,
   ThemePackNotFoundError,
   ThemePaletteNotFoundError,
   themePalettes,
@@ -59,6 +60,7 @@ import {
   ThemeEngineFactoryNotFoundError,
 } from "../src/theme_engine_factory.ts";
 import { createThemeEnginePipeline, prewarmThemeEnginePipelines } from "../src/theme_engine_pipeline.ts";
+import { createThemeGallery, filterThemeGalleryItems, rankThemeGalleryItems } from "../src/theme_gallery.ts";
 import { AsyncScheduler } from "../src/runtime/scheduler.ts";
 import { Signal } from "../src/signals/mod.ts";
 import { MemoryStore } from "../src/runtime/storage.ts";
@@ -1436,6 +1438,88 @@ Deno.test("previewThemeProvider renders the active engine and layers", () => {
     ],
   );
   assertEquals(preview.catalog.layers.map((layer) => [layer.id, layer.active]), [["alerts", true]]);
+});
+
+Deno.test("ThemeProvider engineFor and theme gallery preview inactive engines with layers", () => {
+  const plain = (value: string) => `plain:${value}`;
+  const ops = (value: string) => `ops:${value}`;
+  const warning = (value: string) => `warning:${value}`;
+  const brokenPack = {
+    id: "broken",
+    label: "Broken",
+    palette: "plain",
+    options: {
+      components: { Badge: { base: { base: "missing-token" } } },
+    },
+  } as unknown as ThemePack;
+  const provider = createThemeProvider({
+    registry: createThemeRegistry([
+      {
+        id: "plain",
+        label: "Plain",
+        palette: "plain",
+        options: {
+          tokens: { foreground: plain },
+          components: { Button: { base: { base: "foreground" } } },
+        },
+      },
+      {
+        id: "ops",
+        label: "Operations",
+        palette: "terminal",
+        options: {
+          tokens: { foreground: ops },
+          components: { Button: { base: { base: "foreground" } } },
+        },
+      },
+      brokenPack,
+    ]),
+    activeId: "plain",
+    overrides: { tokens: { warning } },
+    layers: [
+      {
+        id: "accessibility",
+        label: "Accessibility",
+        options: {
+          components: { Button: { variants: { high: { base: "warning" } } } },
+        },
+      },
+    ],
+  });
+
+  assertEquals(provider.engineFor("ops").component("Button", "high").base("OK"), "warning:OK");
+
+  const gallery = createThemeGallery(provider, {
+    query: "terminal",
+    sample: "OK",
+    tokens: ["warning", "foreground"],
+    components: ["Button"],
+    states: ["base"],
+  });
+  const opsItem = gallery.items.find((item) => item.id === "ops")!;
+  const brokenItem = gallery.items.find((item) => item.id === "broken")!;
+
+  assertEquals(gallery.activeId, "plain");
+  assertEquals(gallery.count, 3);
+  assertEquals(gallery.matches.map((match) => match.item.id), ["ops"]);
+  assertEquals(opsItem.activeLayers, ["accessibility"]);
+  assertEquals(opsItem.preview.tokens.map((entry) => [entry.token, entry.preview.styled]), [
+    ["foreground", "ops:OK"],
+    ["warning", "warning:OK"],
+  ]);
+  assertEquals(
+    opsItem.preview.components.map((entry) => [entry.component, entry.variant, entry.state, entry.preview.styled]),
+    [
+      ["Button", "default", "base", "ops:OK"],
+      ["Button", "high", "base", "warning:OK"],
+    ],
+  );
+  assertEquals(brokenItem.valid, false);
+  assertEquals(brokenItem.issues.map((issue) => issue.kind), ["unknown-token"]);
+  assertEquals(filterThemeGalleryItems(gallery.items, "operations").map((item) => item.id), ["ops"]);
+  assertEquals(rankThemeGalleryItems(gallery.items, "broken").map((match) => [match.item.id, match.item.valid]), [
+    ["broken", false],
+  ]);
 });
 
 Deno.test("ThemeProvider recomputes engines from active theme layers", async () => {
