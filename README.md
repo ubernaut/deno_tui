@@ -68,13 +68,25 @@ renderer lab, and demo suite:
 
 Regenerate these terminal snapshots with `deno task screenshots`.
 
-| Showcase                                                                     | System Monitor                                                               |
-| ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| ![Showcase terminal screenshot](./docs/screenshots/showcase.svg)             | ![System monitor terminal screenshot](./docs/screenshots/system-monitor.svg) |
-| Demo Gallery                                                                 | API Reference                                                                |
-| ![Demo gallery terminal screenshot](./docs/screenshots/demo-gallery.svg)     | ![API reference terminal screenshot](./docs/screenshots/api-reference.svg)   |
-| Neon Exodus Suite                                                            |                                                                              |
-| ![Neon Exodus suite terminal screenshot](./docs/screenshots/neon-exodus.svg) |                                                                              |
+### Showcase
+
+![Showcase terminal screenshot](./docs/screenshots/showcase.svg)
+
+### Neon Exodus Suite
+
+![Neon Exodus suite terminal screenshot](./docs/screenshots/neon-exodus.svg)
+
+### System Monitor
+
+![System monitor terminal screenshot](./docs/screenshots/system-monitor.svg)
+
+### Demo Gallery
+
+![Demo gallery terminal screenshot](./docs/screenshots/demo-gallery.svg)
+
+### API Reference
+
+![API reference terminal screenshot](./docs/screenshots/api-reference.svg)
 
 ## Features
 

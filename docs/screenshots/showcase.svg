@@ -1,76 +1,84 @@
 <svg
   xmlns="http://www.w3.org/2000/svg"
-  width="980"
-  height="620"
-  viewBox="0 0 980 620"
+  width="1960"
+  height="1240"
+  viewBox="0 0 1960 1240"
   role="img"
   aria-label="Showcase terminal screenshot"
 >
-  <style>svg{background:#06080d}.frame{fill:#0d1117;stroke:#2dd4bf;stroke-width:2}.title{fill:#e6edf3;font:700 18px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.term{fill:#c9d1d9;font:16px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.accent{fill:#67e8f9}.bar{fill:#111827;stroke:#374151}</style>
-  <rect x="28" y="28" width="924" height="564" rx="12" class="frame" />
-  <rect x="28" y="28" width="924" height="44" rx="12" class="bar" />
-  <text x="50" y="57" class="title">Showcase</text>
-  <circle cx="880" cy="50" r="6" class="accent" />
-  <circle cx="904" cy="50" r="6" fill="#facc15" />
-  <circle cx="928" cy="50" r="6" fill="#fb7185" />
-  <rect x="40" y="72" width="900" height="508" rx="8" fill="#090d14" opacity="0.86" />
+  <style>svg{background:#06080d}.frame{fill:#0d1117;stroke:#2dd4bf;stroke-width:4}.title{fill:#e6edf3;font:700 36px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.term{fill:#c9d1d9;font:32px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.accent{fill:#67e8f9}.bar{fill:#111827;stroke:#374151}</style>
+  <rect x="56" y="56" width="1848" height="1128" rx="24" class="frame" />
+  <rect x="56" y="56" width="1848" height="88" rx="24" class="bar" />
+  <text x="100" y="114" class="title">Showcase</text>
+  <circle cx="1760" cy="100" r="12" class="accent" />
+  <circle cx="1808" cy="100" r="12" fill="#facc15" />
+  <circle cx="1856" cy="100" r="12" fill="#fb7185" />
+  <rect x="80" y="144" width="1800" height="1016" rx="16" fill="#090d14" opacity="0.86" />
   <text
-    x="50"
-    y="106"
+    x="100"
+    y="212"
     class="term"
   >┌─ DENOTUI SHOWCASE ───────────────────────────────────────────────────────────┐</text>
   <text
-    x="50"
-    y="132"
+    x="100"
+    y="264"
     class="term"
   >│ Widgets     Theme: neon      Route: /overview      Renderer: webgpu-three   │</text>
   <text
-    x="50"
-    y="158"
+    x="100"
+    y="316"
     class="term"
   >├───────────────┬─────────────────────────────┬──────────────────────────────┤</text>
   <text
-    x="50"
-    y="184"
+    x="100"
+    y="368"
     class="term"
   >│ Command       │ Component Catalog           │ Three ASCII Studio           │</text>
   <text
-    x="50"
-    y="210"
+    x="100"
+    y="420"
     class="term"
   >│ Palette       │ 42 widgets / 8 categories   │      ▓▓▓▓▒▒░░                │</text>
   <text
-    x="50"
-    y="236"
+    x="100"
+    y="472"
     class="term"
   >│ &gt; theme       │ [x] Button       keyboard   │   ░▒▓██████▓▒░              │</text>
-  <text x="50" y="262" class="term">│   renderer    │ [x] DataTable    async      │  ▒██╲╱╲╱╲╱██▒              │</text>
-  <text x="50" y="288" class="term">│   route       │ [x] Tree         selection  │  ▓█╱╲╱╲╱╲╱█▓              │</text>
-  <text x="50" y="314" class="term">│               │ [x] ToastStack   feedback   │   ░▒▓████▓▒░                │</text>
+  <text x="100" y="524" class="term">│   renderer    │ [x] DataTable    async      │  ▒██╲╱╲╱╲╱██▒              │</text>
+  <text x="100" y="576" class="term">│   route       │ [x] Tree         selection  │  ▓█╱╲╱╲╱╲╱█▓              │</text>
   <text
-    x="50"
-    y="340"
+    x="100"
+    y="628"
+    class="term"
+  >│               │ [x] ToastStack   feedback   │   ░▒▓████▓▒░                │</text>
+  <text
+    x="100"
+    y="680"
     class="term"
   >├───────────────┴──────────────┬──────────────┴──────────────────────────────┤</text>
   <text
-    x="50"
-    y="366"
+    x="100"
+    y="732"
     class="term"
   >│ Metrics                       │ Toasts / Focus / Keymap                    │</text>
   <text
-    x="50"
-    y="392"
+    x="100"
+    y="784"
     class="term"
   >│ CPU   ███████████░ 72%        │ ✓ command registry synced                  │</text>
   <text
-    x="50"
-    y="418"
+    x="100"
+    y="836"
     class="term"
   >│ MEM   ███████░░░░░ 48%        │ ✓ focus scope active                       │</text>
-  <text x="50" y="444" class="term">│ NET   ▁▂▃▅▇▆▄▂▁▃▆▇           │ ✓ plugin lifecycle clean                   │</text>
   <text
-    x="50"
-    y="470"
+    x="100"
+    y="888"
+    class="term"
+  >│ NET   ▁▂▃▅▇▆▄▂▁▃▆▇           │ ✓ plugin lifecycle clean                   │</text>
+  <text
+    x="100"
+    y="940"
     class="term"
   >└───────────────────────────────┴─────────────────────────────────────────────┘</text>
 </svg>

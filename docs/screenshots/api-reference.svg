@@ -1,33 +1,33 @@
 <svg
   xmlns="http://www.w3.org/2000/svg"
-  width="980"
-  height="620"
-  viewBox="0 0 980 620"
+  width="1960"
+  height="1240"
+  viewBox="0 0 1960 1240"
   role="img"
   aria-label="API Reference terminal screenshot"
 >
-  <style>svg{background:#06080d}.frame{fill:#0d1117;stroke:#2dd4bf;stroke-width:2}.title{fill:#e6edf3;font:700 18px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.term{fill:#c9d1d9;font:16px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.accent{fill:#67e8f9}.bar{fill:#111827;stroke:#374151}</style>
-  <rect x="28" y="28" width="924" height="564" rx="12" class="frame" />
-  <rect x="28" y="28" width="924" height="44" rx="12" class="bar" />
-  <text x="50" y="57" class="title">API Reference</text>
-  <circle cx="880" cy="50" r="6" class="accent" />
-  <circle cx="904" cy="50" r="6" fill="#facc15" />
-  <circle cx="928" cy="50" r="6" fill="#fb7185" />
-  <rect x="40" y="72" width="900" height="508" rx="8" fill="#090d14" opacity="0.86" />
-  <text x="50" y="106" class="term"># API Reference</text>
-  <text x="50" y="132" class="term"></text>
-  <text x="50" y="158" class="term">Entrypoint: mod.ts</text>
-  <text x="50" y="184" class="term">Modules: 175</text>
-  <text x="50" y="210" class="term">Re-export declarations: 174</text>
-  <text x="50" y="236" class="term">Exported symbols: 1320</text>
-  <text x="50" y="262" class="term">Documented symbols: 332</text>
-  <text x="50" y="288" class="term">Duplicate symbols: 0</text>
-  <text x="50" y="314" class="term">Missing targets: 0</text>
-  <text x="50" y="340" class="term"></text>
-  <text x="50" y="366" class="term">Module index:</text>
-  <text x="50" y="392" class="term">src/app/actions.ts                  7 symbols    7 documented</text>
-  <text x="50" y="418" class="term">src/app/app.ts                     13 symbols   13 documented</text>
-  <text x="50" y="444" class="term">src/components/catalog.ts          16 symbols   16 documented</text>
-  <text x="50" y="470" class="term">src/runtime/terminal_session.ts     7 symbols    7 documented</text>
-  <text x="50" y="496" class="term">src/three_ascii/renderer.ts         2 symbols    0 documented</text>
+  <style>svg{background:#06080d}.frame{fill:#0d1117;stroke:#2dd4bf;stroke-width:4}.title{fill:#e6edf3;font:700 36px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.term{fill:#c9d1d9;font:32px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.accent{fill:#67e8f9}.bar{fill:#111827;stroke:#374151}</style>
+  <rect x="56" y="56" width="1848" height="1128" rx="24" class="frame" />
+  <rect x="56" y="56" width="1848" height="88" rx="24" class="bar" />
+  <text x="100" y="114" class="title">API Reference</text>
+  <circle cx="1760" cy="100" r="12" class="accent" />
+  <circle cx="1808" cy="100" r="12" fill="#facc15" />
+  <circle cx="1856" cy="100" r="12" fill="#fb7185" />
+  <rect x="80" y="144" width="1800" height="1016" rx="16" fill="#090d14" opacity="0.86" />
+  <text x="100" y="212" class="term"># API Reference</text>
+  <text x="100" y="264" class="term"></text>
+  <text x="100" y="316" class="term">Entrypoint: mod.ts</text>
+  <text x="100" y="368" class="term">Modules: 175</text>
+  <text x="100" y="420" class="term">Re-export declarations: 174</text>
+  <text x="100" y="472" class="term">Exported symbols: 1320</text>
+  <text x="100" y="524" class="term">Documented symbols: 332</text>
+  <text x="100" y="576" class="term">Duplicate symbols: 0</text>
+  <text x="100" y="628" class="term">Missing targets: 0</text>
+  <text x="100" y="680" class="term"></text>
+  <text x="100" y="732" class="term">Module index:</text>
+  <text x="100" y="784" class="term">src/app/actions.ts                  7 symbols    7 documented</text>
+  <text x="100" y="836" class="term">src/app/app.ts                     13 symbols   13 documented</text>
+  <text x="100" y="888" class="term">src/components/catalog.ts          16 symbols   16 documented</text>
+  <text x="100" y="940" class="term">src/runtime/terminal_session.ts     7 symbols    7 documented</text>
+  <text x="100" y="992" class="term">src/three_ascii/renderer.ts         2 symbols    0 documented</text>
 </svg>
