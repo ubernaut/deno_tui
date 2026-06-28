@@ -19,6 +19,7 @@
     "api-inventory": "deno run -A ./scripts/api_inventory.ts",
     "component-catalog": "deno run -A ./scripts/component_catalog.ts",
     "app-plugin-catalog": "deno run -A ./examples/app_plugin_catalog.ts",
+    "adopter-workbench": "deno run -A ./examples/adopter_workbench.ts",
     "health": "deno run -A ./scripts/health.ts",
     "worker-demo": "deno run -A ./examples/worker_pool.ts",
     "action-middleware": "deno run -A ./examples/action_middleware.ts",

@@ -34,6 +34,7 @@ Deno.test("visualization launcher resolves public aliases to deno tasks", () => 
   assertEquals(resolveVisualizationTask("exports"), "api-inventory");
   assertEquals(resolveVisualizationTask("widgets"), "component-catalog");
   assertEquals(resolveVisualizationTask("plugin-catalog"), "app-plugin-catalog");
+  assertEquals(resolveVisualizationTask("adopter"), "adopter-workbench");
   assertEquals(resolveVisualizationTask("wizard"), "grwizard");
   assertEquals(resolveVisualizationTask("check"), "health");
   assertEquals(findVisualizationLaunchTarget("system-monitor")?.task, "viz");
@@ -59,6 +60,7 @@ Deno.test("visualization launch catalog filters targets by category tag and sear
     "showcase",
   ]);
   assertEquals(queryVisualizationLaunchTargets({ tag: "catalog" }).map((entry) => entry.task), [
+    "adopter-workbench",
     "component-catalog",
     "app-plugin-catalog",
     "theme-gallery",
@@ -84,6 +86,7 @@ Deno.test("visualization launch catalog filters targets by category tag and sear
     "cached-resource",
     "runtime-workloads",
     "worker-demo",
+    "adopter-workbench",
     "capabilities",
   ]);
 });

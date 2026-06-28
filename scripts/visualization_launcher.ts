@@ -221,6 +221,13 @@ export const visualizationLaunchTargets: readonly VisualizationLaunchTarget[] = 
     tags: ["app", "plugins", "catalog"],
   },
   {
+    task: "adopter-workbench",
+    aliases: ["adopter", "workbench", "adopter-workbench"],
+    description: "integrated adopter workbench report",
+    category: "report",
+    tags: ["app", "runtime", "plugins", "catalog"],
+  },
+  {
     task: "grwizard",
     aliases: ["grwizard", "wizard"],
     description: "responsive GPU/model wizard demo",
