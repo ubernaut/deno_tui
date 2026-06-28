@@ -26,6 +26,7 @@ export * from "./src/canvas/canvas.ts";
 export * from "./src/canvas/draw_object.ts";
 export * from "./src/canvas/sink.ts";
 export * from "./src/canvas/text.ts";
+export * from "./src/canvas/three_ascii.ts";
 
 export * from "./src/app/mod.ts";
 
@@ -42,6 +43,8 @@ export * from "./src/runtime/scheduler.ts";
 export * from "./src/runtime/storage.ts";
 export * from "./src/runtime/telemetry.ts";
 export * from "./src/runtime/worker_pool.ts";
+
+export * from "./src/three_ascii/mod.ts";
 
 export * from "./src/utils/async.ts";
 export * from "./src/utils/numbers.ts";

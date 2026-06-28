@@ -21,6 +21,9 @@ Deno.test("mod.web imports without constructing terminal runtime", async () => {
   assertEquals(typeof exports.textWidth, "function");
   assertEquals(typeof exports.DomRenderTarget, "function");
   assertEquals(typeof exports.createRemoteTerminalClient, "function");
+  assertEquals(typeof exports.ThreeAsciiRenderer, "function");
+  assertEquals(typeof exports.ThreeAsciiObject, "function");
+  assertEquals(typeof exports.probeCompatibleWebGPUDevice, "function");
   assertEquals(typeof exports.Tui, "undefined");
 });
 

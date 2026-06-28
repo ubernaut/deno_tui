@@ -20,10 +20,9 @@
       }
 
       body {
-        display: grid;
-        grid-template-rows: auto 1fr;
         min-height: 100vh;
-        overflow: hidden;
+        overflow-x: hidden;
+        overflow-y: auto;
         background:
           radial-gradient(circle at 20% 0%, rgba(255, 66, 49, 0.18), transparent 32rem),
           radial-gradient(circle at 90% 10%, rgba(177, 124, 255, 0.16), transparent 34rem),
@@ -53,15 +52,46 @@
         font-size: 0.9rem;
       }
 
-      #app {
+      .demo-shell {
+        display: grid;
+        gap: 1rem;
+        padding: 1rem;
+      }
+
+      .demo-heading {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 1rem;
         width: min(1600px, calc(100vw - 1rem));
-        height: calc(100vh - 4.5rem);
+        justify-self: center;
+      }
+
+      .demo-heading h2 {
+        margin: 0;
+        color: #eff7ff;
+        font-size: clamp(0.95rem, 1.6vw, 1.18rem);
+        letter-spacing: 0;
+      }
+
+      .demo-heading span {
+        color: #5bb0ff;
+        font-size: 0.82rem;
+      }
+
+      .terminal-host {
+        width: min(1600px, calc(100vw - 1rem));
+        height: min(760px, calc(100vh - 8rem));
         min-height: 360px;
-        align-self: center;
         justify-self: center;
         outline: none;
         box-shadow: 0 0 0 1px rgba(91, 176, 255, 0.24), 0 0 48px rgba(255, 66, 49, 0.14);
         background: #05070d;
+      }
+
+      #three-ascii {
+        height: min(640px, calc(100vh - 8rem));
+        box-shadow: 0 0 0 1px rgba(45, 212, 191, 0.26), 0 0 48px rgba(45, 212, 191, 0.12);
       }
 
       @media (max-width: 720px) {
@@ -71,9 +101,19 @@
           gap: 0.25rem;
         }
 
-        #app {
+        .demo-shell {
+          padding: 0.5rem 0;
+        }
+
+        .demo-heading {
+          align-items: flex-start;
+          flex-direction: column;
+          padding: 0 0.5rem;
+        }
+
+        .terminal-host {
           width: 100vw;
-          height: calc(100vh - 5.75rem);
+          height: calc(100vh - 7rem);
           min-height: 300px;
         }
       }
@@ -88,9 +128,23 @@
   <body>
     <header>
       <h1>Neon Exodus / Deno TUI Web</h1>
-      <p>Standalone client-side package demo. Use 1-5, O/W/E, and arrow keys.</p>
+      <p>
+        Standalone client-side package demos. Neon Exodus is first; the three ASCII WebGPU renderer is included below.
+      </p>
     </header>
-    <main id="app" aria-label="Neon Exodus standalone browser demo"></main>
+    <div class="demo-shell">
+      <section class="demo-heading" aria-label="Neon Exodus demo description">
+        <h2>Neon Exodus Browser Port</h2>
+        <span>Use 1-5, O/W/E, and arrow keys.</span>
+      </section>
+      <main id="app" class="terminal-host" aria-label="Neon Exodus standalone browser demo"></main>
+      <section class="demo-heading" aria-label="Three ASCII demo description">
+        <h2>Acerola Three ASCII WebGPU Renderer</h2>
+        <span>Focus the terminal and use P, G, S, Space, and arrow keys.</span>
+      </section>
+      <main id="three-ascii" class="terminal-host" aria-label="Three ASCII WebGPU standalone browser demo"></main>
+    </div>
     <script type="module" src="./assets/neon-exodus.js"></script>
+    <script type="module" src="./assets/three-ascii-web.js"></script>
   </body>
 </html>
