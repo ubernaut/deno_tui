@@ -260,11 +260,14 @@ app.onDispose(bindModalFocus(app.tui, paletteVisible, app.focus, [commandPalette
 
 Use `app.use()` or `app.useAll()` to install reusable app plugins. A plugin receives the app instance and can register
 routes, commands, focus items, theme providers, runtime resources, or any other module-level state. Returning a disposer
-keeps teardown tied to the app lifecycle:
+keeps teardown tied to the app lifecycle. Identified plugins are tracked by `app.plugins()`, `app.pluginIds()`, and
+`app.hasPlugin(id)`, so larger apps can inspect active modules and avoid duplicate installs. Passing `{ replace: true }`
+to `app.use(plugin, options)` swaps an existing identified plugin before installing the replacement:
 
 ```ts
 const stopSettings = app.use({
   id: "settings",
+  label: "Settings Pack",
   install(app) {
     app.commands.register({
       id: "settings.open",
@@ -275,6 +278,8 @@ const stopSettings = app.use({
     return () => app.commands.unregister("settings.open");
   },
 });
+
+const activePlugins = app.plugins();
 ```
 
 `bindModalFocus()` ties a visibility signal to a `FocusScope`, traps focus while modal-like surfaces are open, restores

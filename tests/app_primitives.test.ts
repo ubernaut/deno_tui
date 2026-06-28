@@ -632,6 +632,84 @@ Deno.test("TuiApp installs plugins and disposes them with the app", async () => 
   app.destroy();
 });
 
+Deno.test("TuiApp inspects plugins and skips duplicate identified installs", () => {
+  const app = createApp({ tui: { destroy() {} } as unknown as Tui });
+  const events: string[] = [];
+
+  const disposeFirst = app.use({
+    id: "settings",
+    label: "Settings Pack",
+    install() {
+      events.push("install:first");
+      return () => events.push("dispose:first");
+    },
+  });
+  const disposeDuplicate = app.use({
+    id: "settings",
+    install() {
+      events.push("install:duplicate");
+      return () => events.push("dispose:duplicate");
+    },
+  });
+
+  assertEquals(events, ["install:first"]);
+  assertEquals(app.hasPlugin("settings"), true);
+  assertEquals(app.pluginIds(), ["settings"]);
+  assertEquals(app.plugins(), [{ id: "settings", label: "Settings Pack" }]);
+
+  disposeDuplicate();
+  assertEquals(app.hasPlugin("settings"), true);
+  disposeFirst();
+  assertEquals(app.hasPlugin("settings"), false);
+  assertEquals(app.plugins(), []);
+  assertEquals(events, ["install:first", "dispose:first"]);
+  app.destroy();
+});
+
+Deno.test("TuiApp can replace identified plugins", () => {
+  const app = createApp({ tui: { destroy() {} } as unknown as Tui });
+  const events: string[] = [];
+
+  app.use({
+    id: "theme",
+    install() {
+      events.push("install:old");
+      return () => events.push("dispose:old");
+    },
+  });
+  const disposeReplacement = app.use({
+    id: "theme",
+    label: "Theme Pack",
+    install() {
+      events.push("install:new");
+      return () => events.push("dispose:new");
+    },
+  }, { replace: true });
+
+  assertEquals(events, ["install:old", "dispose:old", "install:new"]);
+  assertEquals(app.plugins(), [{ id: "theme", label: "Theme Pack" }]);
+
+  disposeReplacement();
+  assertEquals(app.plugins(), []);
+  assertEquals(events, ["install:old", "dispose:old", "install:new", "dispose:new"]);
+  app.destroy();
+});
+
+Deno.test("TuiApp tracks function plugins with explicit metadata", () => {
+  const app = createApp({ tui: { destroy() {} } as unknown as Tui });
+  const events: string[] = [];
+  const dispose = app.use(() => {
+    events.push("install");
+    return () => events.push("dispose");
+  }, { id: "runtime", label: "Runtime Pack" });
+
+  assertEquals(app.plugins(), [{ id: "runtime", label: "Runtime Pack" }]);
+  dispose();
+  assertEquals(app.plugins(), []);
+  assertEquals(events, ["install", "dispose"]);
+  app.destroy();
+});
+
 Deno.test("TuiApp installs plugin groups and cleans them up in reverse order", () => {
   const app = createApp({ tui: { destroy() {} } as unknown as Tui });
   const events: string[] = [];

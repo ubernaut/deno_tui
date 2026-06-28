@@ -23,6 +23,7 @@ export type AppPluginDisposer = void | (() => void);
 
 export interface AppPlugin<TAction extends Action = Action, TRoute extends Route = Route> {
   id?: string;
+  label?: string;
   install(app: TuiApp<TAction, TRoute>): AppPluginDisposer;
 }
 
@@ -34,6 +35,17 @@ export type AppPluginInstaller<TAction extends Action = Action, TRoute extends R
   | AppPlugin<TAction, TRoute>
   | AppPluginFactory<TAction, TRoute>;
 
+export interface AppPluginUseOptions {
+  id?: string;
+  label?: string;
+  replace?: boolean;
+}
+
+export interface AppPluginInspection {
+  id: string;
+  label: string;
+}
+
 export class TuiApp<TAction extends Action = Action, TRoute extends Route = Route> {
   readonly tui: Tui;
   readonly actions = new ActionBus<TAction>();
@@ -42,6 +54,7 @@ export class TuiApp<TAction extends Action = Action, TRoute extends Route = Rout
   readonly keymap = new KeymapRegistry();
   readonly routes: RouteManager<TRoute>;
   readonly #disposers = new Set<() => void>();
+  readonly #plugins = new Map<string, AppPluginInspection & { dispose: () => void }>();
   #destroyed = false;
 
   constructor(options: TuiAppOptions<TRoute> = {}) {
@@ -88,19 +101,18 @@ export class TuiApp<TAction extends Action = Action, TRoute extends Route = Rout
     return this.onDispose(bindCommandKeymap(this.commands, this.keymap, options));
   }
 
-  use(plugin: AppPluginInstaller<TAction, TRoute>): () => void {
-    const disposer = typeof plugin === "function" ? plugin(this) : plugin.install(this);
-    return this.onDispose(disposer ?? (() => undefined));
+  use(plugin: AppPluginInstaller<TAction, TRoute>, options: AppPluginUseOptions = {}): () => void {
+    return this.onDispose(this.installPlugin(plugin, options));
   }
 
-  useAll(plugins: Iterable<AppPluginInstaller<TAction, TRoute>>): () => void {
+  useAll(
+    plugins: Iterable<AppPluginInstaller<TAction, TRoute>>,
+    options: AppPluginUseOptions = {},
+  ): () => void {
     const disposers: Array<() => void> = [];
     try {
       for (const plugin of plugins) {
-        const disposer = typeof plugin === "function" ? plugin(this) : plugin.install(this);
-        if (disposer) {
-          disposers.push(disposer);
-        }
+        disposers.push(this.installPlugin(plugin, options));
       }
     } catch (error) {
       for (const disposer of [...disposers].reverse()) {
@@ -113,6 +125,18 @@ export class TuiApp<TAction extends Action = Action, TRoute extends Route = Rout
         disposer();
       }
     });
+  }
+
+  hasPlugin(id: string): boolean {
+    return this.#plugins.has(id);
+  }
+
+  pluginIds(): string[] {
+    return [...this.#plugins.keys()];
+  }
+
+  plugins(): AppPluginInspection[] {
+    return [...this.#plugins.values()].map(({ id, label }) => ({ id, label }));
   }
 
   onDispose(disposer: () => void): () => void {
@@ -136,6 +160,49 @@ export class TuiApp<TAction extends Action = Action, TRoute extends Route = Rout
       disposer();
     }
   }
+
+  private installPlugin(
+    plugin: AppPluginInstaller<TAction, TRoute>,
+    options: AppPluginUseOptions,
+  ): () => void {
+    const metadata = pluginMetadata(plugin, options);
+    if (metadata?.id && this.#plugins.has(metadata.id)) {
+      if (!options.replace) {
+        return () => undefined;
+      }
+      this.#plugins.get(metadata.id)?.dispose();
+    }
+
+    let active = true;
+    const pluginDisposer = typeof plugin === "function" ? plugin(this) : plugin.install(this);
+    const dispose = () => {
+      if (!active) return;
+      active = false;
+      if (metadata?.id && this.#plugins.get(metadata.id)?.dispose === dispose) {
+        this.#plugins.delete(metadata.id);
+      }
+      pluginDisposer?.();
+    };
+    if (metadata?.id) {
+      this.#plugins.set(metadata.id, {
+        ...metadata,
+        dispose,
+      });
+    }
+    return dispose;
+  }
+}
+
+function pluginMetadata<TAction extends Action, TRoute extends Route>(
+  plugin: AppPluginInstaller<TAction, TRoute>,
+  options: AppPluginUseOptions,
+): AppPluginInspection | undefined {
+  const id = options.id ?? (typeof plugin === "function" ? undefined : plugin.id);
+  if (!id) return undefined;
+  return {
+    id,
+    label: options.label ?? (typeof plugin === "function" ? id : plugin.label ?? id),
+  };
 }
 
 export function createApp<TAction extends Action = Action, TRoute extends Route = Route>(
