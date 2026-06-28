@@ -10,6 +10,20 @@ export interface ScheduledTaskOptions {
   signal?: AbortSignal;
 }
 
+export type ScheduledTaskStatus = "queued" | "running" | "settled" | "cancelled";
+
+export interface ScheduledTaskInspection {
+  priority: number;
+  sequence: number;
+  status: ScheduledTaskStatus;
+}
+
+export interface ScheduledTaskHandle<T> {
+  readonly promise: Promise<T>;
+  cancel(reason?: unknown): boolean;
+  inspect(): ScheduledTaskInspection;
+}
+
 interface QueuedTask {
   run: () => void;
   reject: (error: unknown) => void;
@@ -54,40 +68,61 @@ export class AsyncScheduler {
   }
 
   run<T>(task: ScheduledTask<T>, options: ScheduledTaskOptions = {}): Promise<T> {
-    return new Promise<T>((resolve, reject) => {
+    return this.schedule(task, options).promise;
+  }
+
+  schedule<T>(task: ScheduledTask<T>, options: ScheduledTaskOptions = {}): ScheduledTaskHandle<T> {
+    let status: ScheduledTaskStatus = "queued";
+    let queued: QueuedTask | undefined;
+    let abort: (() => void) | undefined;
+    const priority = options.priority ?? 0;
+    const sequence = this.sequence++;
+
+    const promise = new Promise<T>((resolve, reject) => {
       if (options.signal?.aborted) {
+        status = "cancelled";
         reject(createAbortError());
         return;
       }
 
-      let abort: (() => void) | undefined;
-      const queued: QueuedTask = {
-        priority: options.priority ?? 0,
-        sequence: this.sequence++,
+      queued = {
+        priority,
+        sequence,
         reject,
         signal: options.signal,
         run: () => {
           options.signal?.removeEventListener("abort", abort!);
           if (options.signal?.aborted) {
+            status = "cancelled";
             reject(createAbortError());
             return;
           }
 
+          status = "running";
           this.active += 1;
+          const finish = () => {
+            status = "settled";
+            this.active -= 1;
+            this.drain();
+          };
           Promise.resolve()
             .then(task)
-            .then(resolve, reject)
-            .finally(() => {
-              this.active -= 1;
-              this.drain();
+            .then((value) => {
+              finish();
+              resolve(value);
+            }, (error) => {
+              finish();
+              reject(error);
             });
         },
       };
 
       abort = () => {
+        if (!queued) return;
         const index = this.queue.indexOf(queued);
         if (index >= 0) {
           this.queue.splice(index, 1);
+          status = "cancelled";
           reject(createAbortError());
           this.resolveIdleIfNeeded();
         }
@@ -97,6 +132,24 @@ export class AsyncScheduler {
       this.enqueue(queued);
       this.drain();
     });
+
+    return {
+      promise,
+      cancel: (reason = createAbortError()) => {
+        if (!queued || status !== "queued") return false;
+        const index = this.queue.indexOf(queued);
+        if (index < 0) return false;
+        this.queue.splice(index, 1);
+        if (queued.signal && queued.abort) {
+          queued.signal.removeEventListener("abort", queued.abort);
+        }
+        status = "cancelled";
+        queued.reject(reason);
+        this.resolveIdleIfNeeded();
+        return true;
+      },
+      inspect: () => ({ priority, sequence, status }),
+    };
   }
 
   pending(): number {

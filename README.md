@@ -840,6 +840,13 @@ await scheduler.run(() => refreshVisibleRows(), {
   signal: controller.signal,
 });
 
+const hydrate = scheduler.schedule(() => hydrateVisibleRows(), {
+  priority: 20,
+});
+const hydrateStatus = hydrate.inspect();
+hydrate.cancel();
+await hydrate.promise.catch(() => undefined);
+
 const status = scheduler.inspect();
 await scheduler.waitForIdle();
 scheduler.clearPending();
@@ -853,9 +860,11 @@ const rows = await runTaskBatch(processIds, {
 ```
 
 Use higher priorities for focused panels or visible rows, and abort pending tasks when filters, routes, or visualization
-inputs change before queued work starts. `inspect()`, `pending()`, `running()`, `capacity()`, and `idle()` are useful
-for status bars, diagnostics, and backpressure controls. Batch results preserve input order even when queued tasks run
-by priority, so callers can hydrate lists and tables without rebuilding index bookkeeping.
+inputs change before queued work starts. `schedule()` returns a task handle with `promise`, `cancel()`, and `inspect()`
+for per-task backpressure, while `run()` remains the compact promise-only API. Scheduler-level `inspect()`, `pending()`,
+`running()`, `capacity()`, and `idle()` are useful for status bars, diagnostics, and queue controls. Batch results
+preserve input order even when queued tasks run by priority, so callers can hydrate lists and tables without rebuilding
+index bookkeeping.
 
 `AsyncResource` exposes signal-backed async state for loading data, handling errors, aborting stale work, and preserving
 previous data during refreshes:

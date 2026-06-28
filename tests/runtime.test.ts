@@ -163,6 +163,51 @@ Deno.test("AsyncScheduler can clear queued work without stopping active work", a
   assertEquals(scheduler.idle(), true);
 });
 
+Deno.test("AsyncScheduler schedule exposes cancellable task handles", async () => {
+  const scheduler = new AsyncScheduler({ concurrency: 1 });
+  const releaseFirst = deferred<void>();
+  const cancelReason = new Error("no longer visible");
+  let ran = false;
+
+  const first = scheduler.schedule(() => releaseFirst.promise, { priority: 1 });
+  const second = scheduler.schedule(() => {
+    ran = true;
+    return "second";
+  }, { priority: 5 });
+
+  assertEquals(first.inspect(), { priority: 1, sequence: 0, status: "running" });
+  assertEquals(second.inspect(), { priority: 5, sequence: 1, status: "queued" });
+  assertEquals(second.cancel(cancelReason), true);
+  assertEquals(second.inspect(), { priority: 5, sequence: 1, status: "cancelled" });
+  assertEquals(second.cancel(), false);
+  assertEquals(await second.promise.catch((error) => error), cancelReason);
+  assertEquals(ran, false);
+
+  releaseFirst.resolve();
+  await first.promise;
+  assertEquals(first.inspect(), { priority: 1, sequence: 0, status: "settled" });
+  assertEquals(scheduler.inspect(), { concurrency: 1, running: 0, pending: 0, idle: true });
+});
+
+Deno.test("AsyncScheduler schedule handles running and aborted task states", async () => {
+  const scheduler = new AsyncScheduler({ concurrency: 1 });
+  const controller = new AbortController();
+  const releaseFirst = deferred<void>();
+
+  const first = scheduler.schedule(() => releaseFirst.promise);
+  const aborted = scheduler.schedule(() => "never", { signal: controller.signal });
+  controller.abort();
+
+  assertEquals(aborted.inspect().status, "cancelled");
+  assertEquals(await aborted.promise.catch((error) => error.name), "AbortError");
+  assertEquals(first.cancel(), false);
+  assertEquals(first.inspect().status, "running");
+
+  releaseFirst.resolve();
+  await first.promise;
+  assertEquals(first.inspect().status, "settled");
+});
+
 Deno.test("runTaskBatch preserves input order while using scheduler priority", async () => {
   const scheduler = new AsyncScheduler({ concurrency: 1 });
   const releaseFirst = deferred<void>();
