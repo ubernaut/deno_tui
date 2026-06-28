@@ -1,9 +1,9 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { Component, type ComponentOptions } from "../component.ts";
 import type { TextRectangle } from "../canvas/text.ts";
+import { clampSelectionIndex, selectionWindow } from "../selection.ts";
 import { Computed, Signal } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
-import { clamp } from "../utils/numbers.ts";
 import { Text } from "./text.ts";
 
 export interface ListOptions extends ComponentOptions {
@@ -23,12 +23,12 @@ export function virtualRows<T>(
   height: number,
 ): VirtualRow<T>[] {
   const safeHeight = Math.max(0, height);
-  const selected = clamp(selectedIndex, 0, Math.max(0, items.length - 1));
-  const offset = clamp(selected - Math.floor(safeHeight / 2), 0, Math.max(0, items.length - safeHeight));
-  return items.slice(offset, offset + safeHeight).map((item, index) => ({
+  const selected = clampSelectionIndex(items.length, selectedIndex);
+  const window = selectionWindow(items.length, selected, safeHeight);
+  return items.slice(window.start, window.end).map((item, index) => ({
     item,
-    index: offset + index,
-    selected: offset + index === selected,
+    index: window.start + index,
+    selected: window.start + index === selected,
   }));
 }
 
@@ -49,7 +49,7 @@ export class List extends Component {
       if (ctrl || meta || shift) return;
       if (key === "up") this.selectedIndex.value -= 1;
       if (key === "down") this.selectedIndex.value += 1;
-      this.selectedIndex.value = clamp(this.selectedIndex.peek(), 0, Math.max(0, this.items.peek().length - 1));
+      this.selectedIndex.value = clampSelectionIndex(this.items.peek().length, this.selectedIndex.peek());
     });
   }
 

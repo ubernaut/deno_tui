@@ -234,6 +234,7 @@ This fork exports lightweight app primitives for larger TUIs:
 - `FocusManager`
 - `FocusScope`
 - `KeymapRegistry`
+- `SelectionController` and selection helpers
 
 They are optional and composable. Existing component-first apps continue to work. Use `app.enableFocusNavigation()` or
 `bindFocusNavigation()` to opt into Tab/Shift+Tab traversal for registered focusable components.
@@ -262,6 +263,19 @@ await history.apply({
 
 await history.undo();
 await history.redo();
+```
+
+Selection helpers keep large lists, tables, and custom browsers consistent:
+
+```ts
+const selection = new SelectionController({
+  length: rows.length,
+  mode: "multiple",
+});
+
+selection.move(1);
+selection.toggle();
+const window = selection.window(12);
 ```
 
 ## Theming

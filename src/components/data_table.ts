@@ -1,4 +1,5 @@
 // Copyright 2023 Im-Beast. MIT license.
+import { clampSelectionIndex } from "../selection.ts";
 import { clamp } from "../utils/numbers.ts";
 
 export type SortDirection = "asc" | "desc";
@@ -51,7 +52,7 @@ export function createDataTableView<TRow extends Record<string, unknown>>(
     page,
     pageSize,
     pageCount,
-    selectedIndex: clamp(Math.floor(state.selectedIndex ?? 0), 0, Math.max(0, pageRows.length - 1)),
+    selectedIndex: clampSelectionIndex(pageRows.length, state.selectedIndex ?? 0),
   };
 }
 

@@ -5,6 +5,7 @@ export * from "./src/event_emitter.ts";
 export * from "./src/focus.ts";
 export * from "./src/input.ts";
 export * from "./src/keymap.ts";
+export * from "./src/selection.ts";
 export * from "./src/theme.ts";
 export * from "./src/types.ts";
 export * from "./src/view.ts";
