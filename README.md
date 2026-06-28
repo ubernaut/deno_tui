@@ -364,6 +364,7 @@ app.onDispose(() => {
 This fork exports lightweight app primitives for larger TUIs:
 
 - `createApp()` / `TuiApp`
+- `createAppPlugin()` / `inspectAppPluginDefinition()`
 - `ActionBus`
 - `CommandRegistry`
 - `FormController`
@@ -411,26 +412,35 @@ const keymapState = app.keymap.inspect("global");
 app.onDispose(bindModalFocus(app.tui, paletteVisible, app.focus, [commandPalette]));
 ```
 
-Use `app.use()` or `app.useAll()` to install reusable app plugins. A plugin receives the app instance and can register
-routes, commands, focus items, theme providers, runtime resources, or any other module-level state. Returning a disposer
-keeps teardown tied to the app lifecycle. Identified plugins are tracked by `app.plugins()`, `app.pluginIds()`, and
-`app.hasPlugin(id)`, so larger apps can inspect active modules and avoid duplicate installs. Passing `{ replace: true }`
-to `app.use(plugin, options)` swaps an existing identified plugin before installing the replacement:
+Use `createAppPlugin()`, `app.use()`, or `app.useAll()` to install reusable app plugins. A plugin can declaratively
+register routes, commands, key bindings, and focus items, then run an optional installer for theme providers, runtime
+resources, async data, or other module-level state. Generated disposers remove declarative registrations in reverse
+order and keep teardown tied to the app lifecycle. Identified plugins are tracked by `app.plugins()`, `app.pluginIds()`,
+and `app.hasPlugin(id)`, so larger apps can inspect active modules and avoid duplicate installs. Passing
+`{ replace: true }` to `app.use(plugin, options)` swaps an existing identified plugin before installing the replacement:
 
 ```ts
-const stopSettings = app.use({
+const settingsPluginDefinition = {
   id: "settings",
   label: "Settings Pack",
-  install(app) {
-    app.commands.register({
+  routes: [{ id: "settings", title: "Settings" }],
+  commands: [
+    {
       id: "settings.open",
       label: "Settings",
       action: { type: "route", payload: "settings" },
-    });
-
-    return () => app.commands.unregister("settings.open");
+    },
+  ],
+  keyBindings: [{ key: ",", ctrl: true, description: "Settings", group: "global" }],
+  install(app) {
+    const stop = app.onActionType("route", (action) => app.routes.navigate(action.payload));
+    return stop;
   },
-});
+};
+
+const pluginShape = inspectAppPluginDefinition(settingsPluginDefinition);
+const settingsPlugin = createAppPlugin(settingsPluginDefinition);
+const stopSettings = app.use(settingsPlugin);
 
 const activePlugins = app.plugins();
 ```

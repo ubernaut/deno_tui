@@ -14,6 +14,7 @@ import { CommandRegistry } from "../src/app/commands.ts";
 import type { Command } from "../src/app/commands.ts";
 import { bindHistoryCommands, bindRouteHistory, historyCommands } from "../src/app/history_bindings.ts";
 import { HistoryStack } from "../src/app/history.ts";
+import { createAppPlugin, inspectAppPluginDefinition } from "../src/app/plugins.ts";
 import { bindRouteIndex, bindRouteSignal } from "../src/app/route_bindings.ts";
 import { RouteManager } from "../src/app/router.ts";
 import { SettingsController } from "../src/app/settings.ts";
@@ -939,6 +940,91 @@ Deno.test("TuiApp installs plugin groups and cleans them up in reverse order", (
   });
   app.destroy();
   assertEquals(events, ["install:a", "install:b", "dispose:b", "dispose:a", "install:c", "dispose:c"]);
+});
+
+Deno.test("createAppPlugin installs declarative app surfaces with teardown", async () => {
+  const app = createApp<{ type: "route"; payload: string }, { id: string; title: string }>({
+    tui: { destroy() {} } as unknown as Tui,
+    routes: [{ id: "home", title: "Home" }],
+  });
+  const events: string[] = [];
+  const focusItem = { state: new Signal<"base" | "focused" | "active" | "disabled">("base") };
+  const definition = {
+    id: "settings",
+    label: "Settings Pack",
+    routes: [{ id: "settings", title: "Settings" }],
+    commands: [{
+      id: "route.settings",
+      label: "Settings",
+      group: "routes",
+      action: { type: "route", payload: "settings" },
+    }],
+    keyBindings: [{ key: "s", description: "Settings", group: "routes" }],
+    focusItems: [focusItem],
+    install(target: typeof app) {
+      events.push(`install:${target.routes.ids().join(",")}`);
+      const stop = target.onActionType("route", (action) => {
+        target.routes.navigate(action.payload);
+      });
+      return () => {
+        events.push("dispose:custom");
+        stop();
+      };
+    },
+  } satisfies Parameters<typeof createAppPlugin<{ type: "route"; payload: string }, { id: string; title: string }>>[0];
+
+  assertEquals(inspectAppPluginDefinition(definition), {
+    id: "settings",
+    label: "Settings Pack",
+    routes: ["settings"],
+    commands: ["route.settings"],
+    keyBindings: ["s"],
+    focusItems: 1,
+    hasInstaller: true,
+  });
+
+  const dispose = app.use(createAppPlugin(definition));
+  assertEquals(app.plugins(), [{ id: "settings", label: "Settings Pack" }]);
+  assertEquals(app.routes.ids(), ["home", "settings"]);
+  assertEquals(app.commands.has("route.settings"), true);
+  assertEquals(app.keymap.has({ key: "s" }), true);
+  assertEquals(app.focus.inspect().count, 1);
+
+  assertEquals(await app.executeCommand("route.settings"), true);
+  assertEquals(app.routes.activeRouteId.peek(), "settings");
+
+  dispose();
+  assertEquals(app.routes.ids(), ["home"]);
+  assertEquals(app.commands.has("route.settings"), false);
+  assertEquals(app.keymap.has({ key: "s" }), false);
+  assertEquals(app.focus.inspect().count, 0);
+  assertEquals(events, ["install:home,settings", "dispose:custom"]);
+  app.destroy();
+});
+
+Deno.test("createAppPlugin rolls back declarative registrations when install fails", () => {
+  const app = createApp<{ type: "noop" }, { id: string; title: string }>({
+    tui: { destroy() {} } as unknown as Tui,
+    routes: [{ id: "home", title: "Home" }],
+  });
+  const plugin = createAppPlugin<{ type: "noop" }, { id: string; title: string }>({
+    routes: [{ id: "admin", title: "Admin" }],
+    commands: [{ id: "admin.open", label: "Admin", action: { type: "noop" } }],
+    install() {
+      throw new Error("boom");
+    },
+  });
+
+  try {
+    app.use(plugin);
+    throw new Error("expected app.use to throw");
+  } catch (error) {
+    assertEquals(error instanceof Error && error.message, "boom");
+  }
+
+  assertEquals(app.routes.ids(), ["home"]);
+  assertEquals(app.commands.has("admin.open"), false);
+  app.destroy();
 });
 
 Deno.test("HistoryStack applies undo redo and clears stale redo entries", async () => {
