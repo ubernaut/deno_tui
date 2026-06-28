@@ -749,6 +749,8 @@ import {
   createThemeRegistry,
   createThemeRegistryFromManifests,
   diffThemeEngines,
+  inspectThemeManifest,
+  previewThemeManifest,
   themeCommands,
   validateThemeOptions,
 } from "https://deno.land/x/tui@VERSION/mod.ts";
@@ -811,6 +813,11 @@ const opsManifest = {
 } as const;
 const manifestOptions = compileThemeManifestOptions(opsManifest.options);
 const manifestEngine = createThemeEngineFromManifest(opsManifest);
+const manifestInspection = inspectThemeManifest(opsManifest);
+const manifestPreview = previewThemeManifest(opsManifest, {
+  sample: "Aa",
+  components: ["Button"],
+});
 
 const themeRegistry = createThemeRegistry([
   { id: "terminal", label: "Terminal", palette: "terminal" },
@@ -896,20 +903,22 @@ style-spec layer for theme engines: packs can use named ANSI colors, 256-color i
 like bold or underline without embedding raw escape sequences throughout the app. `compileThemeManifestOptions()`,
 `createThemeEngineFromManifest()`, and `createThemeRegistryFromManifests()` build on those specs so reusable theme packs
 can be plain data: semantic token specs, component inheritance, variants, and state pipelines can be loaded from
-JSON-like modules, validated, diffed, and installed without hard-coding style functions. The built-in `neon` and
-`terminal` palettes use the same helpers. `themeSelectionCommands()`, `themeLayerCommands()`, and `themeCommands()`
-project the active `ThemeProvider` into normal command registry entries for "next theme", "previous theme", explicit
-theme selection, and layer enable/disable/toggle actions. The generated commands use dynamic disabled predicates, so the
-active theme and current layer states stay accurate when they are shown in a command palette, menu bar, context menu, or
-key binding help surface. `validateThemeOptions()` and `assertThemeOptions()` give theme authors a first-class
-diagnostics pass for unknown token references, missing component parents, and inheritance cycles before a pack is
-registered. `themeTokenNames` and `themeStates` expose the stable engine vocabulary for editors, schema generators,
-inspectors, and design tooling. `diffThemeEngines()` previews changed semantic tokens and resolved component states
-between two engines, which makes it practical to build theme review panels, snapshot tests, and migration reports around
-real rendered output instead of raw object comparison. `createThemePlugin()` is the app-level installer for the same
-engine layer: it owns or accepts a `ThemeProvider`, registers theme and layer commands, optionally mirrors command
-bindings into key help, and connects the active pack and active layers to `SettingsController` persistence with one
-disposable plugin.
+JSON-like modules, validated, diffed, and installed without hard-coding style functions. `inspectThemeManifest()`
+exposes manifest metadata, declared tokens, component inheritance, variants, state coverage, and validation issues for
+editors and settings panels, while `previewThemeManifest()` returns rendered token and component-state samples for
+review panes and snapshot tests. The built-in `neon` and `terminal` palettes use the same helpers.
+`themeSelectionCommands()`, `themeLayerCommands()`, and `themeCommands()` project the active `ThemeProvider` into normal
+command registry entries for "next theme", "previous theme", explicit theme selection, and layer enable/disable/toggle
+actions. The generated commands use dynamic disabled predicates, so the active theme and current layer states stay
+accurate when they are shown in a command palette, menu bar, context menu, or key binding help surface.
+`validateThemeOptions()` and `assertThemeOptions()` give theme authors a first-class diagnostics pass for unknown token
+references, missing component parents, and inheritance cycles before a pack is registered. `themeTokenNames` and
+`themeStates` expose the stable engine vocabulary for editors, schema generators, inspectors, and design tooling.
+`diffThemeEngines()` previews changed semantic tokens and resolved component states between two engines, which makes it
+practical to build theme review panels, snapshot tests, and migration reports around real rendered output instead of raw
+object comparison. `createThemePlugin()` is the app-level installer for the same engine layer: it owns or accepts a
+`ThemeProvider`, registers theme and layer commands, optionally mirrors command bindings into key help, and connects the
+active pack and active layers to `SettingsController` persistence with one disposable plugin.
 
 ## Runtime Capabilities
 

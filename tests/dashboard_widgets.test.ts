@@ -26,7 +26,9 @@ import {
   defaultThemePacks,
   diffThemeEngines,
   emptyStyle,
+  inspectThemeManifest,
   mergeComponentThemeDefinition,
+  previewThemeManifest,
   type Theme,
   ThemeEngine,
   ThemeInheritanceError,
@@ -184,6 +186,66 @@ Deno.test("theme manifests reuse theme option validation", () => {
 
   assertEquals(issues.map((issue) => issue.kind), ["unknown-component", "unknown-token"]);
   assertEquals(issues[1].reference, "brand");
+});
+
+Deno.test("theme manifests expose inspection and preview data for authoring tools", () => {
+  const manifest = {
+    id: "ops",
+    label: "Operations",
+    palette: "plain",
+    options: {
+      tokens: {
+        accent: { foreground: "cyan", bold: true },
+        danger: { foreground: "red" },
+      },
+      components: {
+        Field: {
+          base: {
+            base: "foreground",
+            focused: "accent",
+          },
+        },
+        Button: {
+          extends: "Field",
+          variants: {
+            danger: {
+              active: ["danger", { underline: true }],
+            },
+          },
+        },
+      },
+    },
+  } as const;
+
+  const inspection = inspectThemeManifest(manifest);
+  const preview = previewThemeManifest(manifest, {
+    sample: "OK",
+    tokens: ["accent"],
+    components: ["Button"],
+    states: ["base", "active"],
+  });
+
+  assertEquals(inspection, {
+    id: "ops",
+    label: "Operations",
+    palette: "plain",
+    tokens: ["accent", "danger"],
+    components: [
+      { name: "Button", extends: ["Field"], states: [], variants: [{ name: "danger", states: ["active"] }] },
+      { name: "Field", extends: [], states: ["base", "focused"], variants: [] },
+    ],
+    issues: [],
+  });
+  assertEquals(preview.tokens, [{ token: "accent", preview: { raw: "OK", styled: "\x1b[1;36mOK\x1b[0m" } }]);
+  assertEquals(
+    preview.components.map((entry) => [entry.component, entry.variant, entry.state, entry.preview.styled]),
+    [
+      ["Button", "default", "base", "OK"],
+      ["Button", "default", "active", "OK"],
+      ["Button", "danger", "base", "OK"],
+      ["Button", "danger", "active", "\x1b[4m\x1b[31mOK\x1b[0m\x1b[0m"],
+    ],
+  );
 });
 
 Deno.test("ThemeEngine resolves component variants over global tokens", () => {

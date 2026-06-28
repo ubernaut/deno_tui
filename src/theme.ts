@@ -257,6 +257,54 @@ export interface ThemeEngineDiffOptions {
   includeUnchanged?: boolean;
 }
 
+export interface ThemeManifestVariantInspection {
+  name: string;
+  states: ThemeState[];
+}
+
+export interface ThemeManifestComponentInspection {
+  name: string;
+  extends: string[];
+  states: ThemeState[];
+  variants: ThemeManifestVariantInspection[];
+}
+
+export interface ThemeManifestInspection {
+  id: string;
+  label: string;
+  palette: ThemePaletteName;
+  tokens: ThemeTokenName[];
+  components: ThemeManifestComponentInspection[];
+  issues: ThemeValidationIssue[];
+}
+
+export interface ThemeManifestTokenPreview {
+  token: ThemeTokenName;
+  preview: ThemeStylePreview;
+}
+
+export interface ThemeManifestComponentStatePreview {
+  component: string;
+  variant: string;
+  state: ThemeState;
+  preview: ThemeStylePreview;
+}
+
+export interface ThemeManifestPreview {
+  sample: string;
+  manifest: ThemeManifestInspection;
+  tokens: ThemeManifestTokenPreview[];
+  components: ThemeManifestComponentStatePreview[];
+}
+
+export interface ThemeManifestPreviewOptions {
+  sample?: string;
+  components?: Iterable<string>;
+  variants?: (component: string, engine: ThemeEngine) => Iterable<string>;
+  states?: Iterable<ThemeState>;
+  tokens?: Iterable<ThemeTokenName>;
+}
+
 export type ThemePaletteName = "plain" | "neon" | "terminal";
 
 export const themePalettes: Record<ThemePaletteName, Partial<ThemeTokens>> = {
@@ -418,6 +466,65 @@ export function createThemeEngineFromManifest(
 
 export function createThemeRegistryFromManifests(manifests: Iterable<ThemePackManifest>): ThemeRegistry {
   return createThemeRegistry([...manifests].map(themePackFromManifest));
+}
+
+export function inspectThemeManifest(manifest: ThemePackManifest): ThemeManifestInspection {
+  const options = compileThemeManifestOptions(manifest.options);
+  const components = manifest.options?.components ?? {};
+  return {
+    id: manifest.id,
+    label: manifest.label ?? manifest.id,
+    palette: manifest.palette ?? "plain",
+    tokens: sortedThemeTokenNames(Object.keys(manifest.options?.tokens ?? {})),
+    components: Object.entries(components)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([name, definition]) => ({
+        name,
+        extends: normalizeThemeExtends(definition.extends),
+        states: sortedThemeStates(Object.keys(definition.base ?? {})),
+        variants: Object.entries(definition.variants ?? {})
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([variant, states]) => ({
+            name: variant,
+            states: sortedThemeStates(Object.keys(states)),
+          })),
+      })),
+    issues: validateThemeOptions(options),
+  };
+}
+
+export function previewThemeManifest(
+  manifest: ThemePackManifest,
+  options: ThemeManifestPreviewOptions = {},
+): ThemeManifestPreview {
+  const sample = options.sample ?? "Aa";
+  const engine = createThemeEngineFromManifest(manifest);
+  const tokenNames = options.tokens ? sortedThemeTokenNames([...options.tokens]) : [...themeTokenNames];
+  const componentNames = options.components ? [...options.components] : engine.componentNames();
+  const stateNames = options.states ? sortedThemeStates([...options.states]) : [...themeStates];
+
+  return {
+    sample,
+    manifest: inspectThemeManifest(manifest),
+    tokens: tokenNames.map((token) => ({
+      token,
+      preview: previewStyle(engine.theme.tokens[token], sample),
+    })),
+    components: componentNames.flatMap((component) => {
+      const variants = options.variants
+        ? [...options.variants(component, engine)]
+        : ["default", ...engine.variants(component)];
+      return variants.flatMap((variant) => {
+        const theme = engine.component(component, variant);
+        return stateNames.map((state) => ({
+          component,
+          variant,
+          state,
+          preview: previewStyle(theme[state], sample),
+        }));
+      });
+    }),
+  };
 }
 
 export function validateThemeOptions(options: ThemeEngineOptions): ThemeValidationIssue[] {
@@ -1121,6 +1228,16 @@ function findThemeInheritanceCycles(
 
 function previewStyle(style: Style, sample: string): ThemeStylePreview {
   return { raw: sample, styled: style(sample) };
+}
+
+function sortedThemeTokenNames(values: Iterable<string>): ThemeTokenName[] {
+  const requested = new Set(values);
+  return themeTokenNames.filter((token) => requested.has(token));
+}
+
+function sortedThemeStates(values: Iterable<string>): ThemeState[] {
+  const requested = new Set(values);
+  return themeStates.filter((state) => requested.has(state));
 }
 
 function themeDiffVariants(component: string, before: ThemeEngine, after: ThemeEngine): string[] {
