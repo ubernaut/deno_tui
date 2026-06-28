@@ -21,6 +21,7 @@ import {
 import { renderStatusBar } from "../src/components/statusbar.ts";
 import { clampStepperIndex, renderStepper, shiftStepperIndex, stepForIndex } from "../src/components/stepper.ts";
 import { renderTabs } from "../src/components/tabs.ts";
+import { renderVirtualListRows, virtualListRows } from "../src/components/virtual_list.ts";
 
 Deno.test("visibleListRows centers the selected item when space allows", () => {
   assertEquals(visibleListRows(["alpha", "beta", "gamma", "delta"], 2, 3), [
@@ -35,6 +36,22 @@ Deno.test("virtualRows exposes source indices for large lists", () => {
     { item: "c", index: 2, selected: false },
     { item: "d", index: 3, selected: true },
     { item: "e", index: 4, selected: false },
+  ]);
+});
+
+Deno.test("virtual list rows support formatted multi selection windows", () => {
+  const items = ["alpha", "beta", "gamma", "delta", "epsilon"];
+  const state = { activeIndex: 3, anchorIndex: 1, selected: [1, 3] };
+
+  assertEquals(virtualListRows(items, state, 3, (item, index) => `${index}:${item}`), [
+    { item: "gamma", index: 2, active: false, selected: false, text: "2:gamma" },
+    { item: "delta", index: 3, active: true, selected: true, text: "3:delta" },
+    { item: "epsilon", index: 4, active: false, selected: false, text: "4:epsilon" },
+  ]);
+  assertEquals(renderVirtualListRows(items, state, 3), [
+    "    gamma",
+    "> ● delta",
+    "    epsilon",
   ]);
 });
 

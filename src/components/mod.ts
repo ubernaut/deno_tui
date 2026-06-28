@@ -31,3 +31,4 @@ export * from "./textbox.ts";
 export * from "./three_ascii.ts";
 export * from "./toast.ts";
 export * from "./tree.ts";
+export * from "./virtual_list.ts";
