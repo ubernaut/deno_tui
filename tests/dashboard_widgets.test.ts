@@ -1520,6 +1520,8 @@ Deno.test("ThemeProvider engineFor and theme gallery preview inactive engines wi
   assertEquals(rankThemeGalleryItems(gallery.items, "broken").map((match) => [match.item.id, match.item.valid]), [
     ["broken", false],
   ]);
+
+  provider.layers.dispose();
 });
 
 Deno.test("ThemeProvider recomputes engines from active theme layers", async () => {

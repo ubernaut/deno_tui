@@ -79,8 +79,8 @@ export class Computed<T> extends Signal<T> implements Dependant, Dependency {
     super.dispose();
 
     const { dependencies } = this;
-    for (const dependency of dependencies) {
-      dependency.dependants!.delete(this);
+    for (const dependency of [...dependencies]) {
+      dependency.dependants?.delete(this);
       dependencies.delete(dependency);
     }
   }
