@@ -38,6 +38,7 @@ import {
   bindSettingSignal,
   bindSplitPaneSetting,
   bindThemeLayerSetting,
+  bindThemePipelineSetting,
   bindThemeSetting,
 } from "../src/app/settings_bindings.ts";
 import { type DataColumn, DataTableController } from "../src/components/data_table.ts";
@@ -49,6 +50,8 @@ import {
   themeSelectionCommands,
 } from "../src/app/theme_commands.ts";
 import type { ThemeCommandAction } from "../src/app/theme_commands.ts";
+import { bindThemePipelineCommands, themePipelineCommands } from "../src/app/theme_pipeline_commands.ts";
+import type { ThemePipelineCommandAction } from "../src/app/theme_pipeline_commands.ts";
 import { createThemePlugin } from "../src/app/theme_plugin.ts";
 import { KeymapRegistry } from "../src/keymap.ts";
 import { SplitPaneController } from "../src/layout/mod.ts";
@@ -56,6 +59,7 @@ import { MemoryStore } from "../src/runtime/storage.ts";
 import { Signal } from "../src/signals/mod.ts";
 import { createTestKeyPress, TestKeyPressTarget } from "../src/testing/mod.ts";
 import { createThemeLayerStack, createThemeProvider, createThemeRegistry } from "../src/theme.ts";
+import { createThemeEnginePipeline } from "../src/theme_engine_pipeline.ts";
 import type { Tui } from "../src/tui.ts";
 
 Deno.test("ActionBus dispatches to subscribers in registration order", async () => {
@@ -1759,6 +1763,42 @@ Deno.test("bindThemeLayerSetting restores and persists active theme layers", asy
   layers.dispose();
 });
 
+Deno.test("bindThemePipelineSetting restores persists and sanitizes active steps", async () => {
+  const store = new MemoryStore<unknown>();
+  await store.set("prefs.theme-pipeline-runtime", JSON.stringify(["contrast", "missing"]));
+  const settings = new SettingsController({ store, namespace: "prefs" });
+  const pipeline = createThemeEnginePipeline({
+    id: "runtime",
+    steps: [
+      { id: "density", label: "Density" },
+      { id: "contrast", label: "Contrast", enabled: false },
+    ],
+  });
+  const binding = bindThemePipelineSetting(pipeline, settings, {
+    serialize: (value) => JSON.stringify(value),
+    deserialize: (value: string) => JSON.parse(value),
+  });
+
+  await settings.ready();
+  assertEquals(pipeline.activeIds(), ["contrast"]);
+  assertEquals(binding.setting.value.peek(), ["contrast"]);
+
+  pipeline.enable("density");
+  await Promise.resolve();
+  await settings.flush();
+  assertEquals(binding.setting.value.peek(), ["density", "contrast"]);
+  assertEquals(await store.get("prefs.theme-pipeline-runtime"), JSON.stringify(["density", "contrast"]));
+
+  binding.setting.set(["missing", "density"]);
+  assertEquals(pipeline.activeIds(), ["density"]);
+  assertEquals(binding.setting.value.peek(), ["density"]);
+
+  binding.dispose();
+  pipeline.enable("contrast");
+  await Promise.resolve();
+  assertEquals(binding.setting.value.peek(), ["density"]);
+});
+
 Deno.test("bindDataTableSetting restores persists and sanitizes table state", async () => {
   interface Row extends Record<string, unknown> {
     id: string;
@@ -1900,6 +1940,44 @@ Deno.test("theme command adapters toggle runtime theme layers", async () => {
   assertEquals(registry.enabled(registry.get("theme.layer.disable.contrast")!), true);
 
   layers.dispose();
+});
+
+Deno.test("theme pipeline commands toggle runtime theme transforms", async () => {
+  const pipeline = createThemeEnginePipeline({
+    id: "runtime",
+    steps: [
+      { id: "density", label: "Density" },
+      { id: "contrast", label: "Contrast", enabled: false },
+    ],
+  });
+  const registry = new CommandRegistry<ThemePipelineCommandAction>();
+  const dispose = bindThemePipelineCommands(registry, pipeline);
+  const actions: unknown[] = [];
+
+  assertEquals(themePipelineCommands(pipeline).map((command) => command.id), [
+    "theme.pipeline.runtime.toggle.density",
+    "theme.pipeline.runtime.enable.density",
+    "theme.pipeline.runtime.disable.density",
+    "theme.pipeline.runtime.toggle.contrast",
+    "theme.pipeline.runtime.enable.contrast",
+    "theme.pipeline.runtime.disable.contrast",
+  ]);
+  assertEquals(registry.enabled(registry.get("theme.pipeline.runtime.enable.density")!), false);
+  assertEquals(registry.enabled(registry.get("theme.pipeline.runtime.disable.contrast")!), false);
+
+  assertEquals(
+    await registry.execute("theme.pipeline.runtime.toggle.contrast", (action) => void actions.push(action)),
+    true,
+  );
+  assertEquals(pipeline.activeIds(), ["density", "contrast"]);
+  assertEquals(actions, [
+    { type: "theme.pipeline.step.changed", payload: { pipelineId: "runtime", id: "contrast", enabled: true } },
+  ]);
+  assertEquals(registry.enabled(registry.get("theme.pipeline.runtime.enable.contrast")!), false);
+  assertEquals(registry.enabled(registry.get("theme.pipeline.runtime.disable.contrast")!), true);
+
+  dispose();
+  assertEquals(registry.list("theme"), []);
 });
 
 Deno.test("theme preview commands capture active provider snapshots", async () => {

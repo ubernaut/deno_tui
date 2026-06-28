@@ -1,6 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { Signal } from "../signals/mod.ts";
 import type { ThemeLayerStack, ThemeProvider } from "../theme.ts";
+import type { ThemeEnginePipeline } from "../theme_engine_pipeline.ts";
 import type { PersistentSignal } from "../runtime/storage.ts";
 import type { SplitPaneController, SplitPaneControllerOptions } from "../layout/mod.ts";
 import { canSortColumn, type DataTableController, type DataTableState } from "../components/data_table.ts";
@@ -36,6 +37,15 @@ export interface ThemeSettingBindingOptions<Stored = string> extends SettingSign
 }
 
 export interface ThemeLayerSettingBindingOptions<Stored = readonly string[]>
+  extends SettingSignalBindingOptions<readonly string[]> {
+  key?: string;
+  initialValue?: readonly string[];
+  setting?: PersistentSignal<readonly string[], Stored>;
+  serialize?: (value: readonly string[]) => Stored;
+  deserialize?: (value: Stored) => readonly string[];
+}
+
+export interface ThemePipelineSettingBindingOptions<Stored = readonly string[]>
   extends SettingSignalBindingOptions<readonly string[]> {
   key?: string;
   initialValue?: readonly string[];
@@ -227,6 +237,73 @@ export function bindThemeLayerSetting<Stored = readonly string[]>(
   };
 }
 
+export function bindThemePipelineSetting<Stored = readonly string[]>(
+  pipeline: ThemeEnginePipeline,
+  settings: SettingsController,
+  options: ThemePipelineSettingBindingOptions<Stored> = {},
+): SettingBinding<readonly string[], Stored> {
+  const setting = options.setting ??
+    settings.signal(settingDefinition({
+      key: options.key ?? `theme-pipeline-${pipeline.id}`,
+      initialValue: options.initialValue ?? pipeline.activeIds(),
+      serialize: options.serialize,
+      deserialize: options.deserialize,
+    }));
+
+  let disposed = false;
+  let syncing = false;
+  const equals = options.equals ?? stringArrayEqual;
+
+  const applyPipeline = (value: readonly string[]) => {
+    const next = sanitizePipelineStepIds(pipeline, value);
+    if (equals(pipeline.activeIds(), next)) return;
+    syncing = true;
+    pipeline.setActiveIds(next);
+    syncing = false;
+  };
+  const applySetting = () => {
+    if (disposed || syncing) return;
+    const activeIds = pipeline.activeIds();
+    if (!equals(setting.value.peek(), activeIds)) {
+      syncing = true;
+      setting.set(activeIds);
+      syncing = false;
+    }
+  };
+  const applyLoadedSetting = (value: readonly string[]) => {
+    if (disposed || syncing) return;
+    const next = sanitizePipelineStepIds(pipeline, value);
+    applyPipeline(next);
+    if (!equals(setting.value.peek(), next)) {
+      syncing = true;
+      setting.set(next);
+      syncing = false;
+    }
+  };
+
+  const unsubscribePipeline = pipeline.subscribe(applySetting);
+
+  if (options.initialSync === "signal") {
+    setting.set(pipeline.activeIds());
+  } else {
+    applyLoadedSetting(setting.value.peek());
+    setting.ready.then((value) => {
+      if (!disposed) applyLoadedSetting(value);
+    });
+  }
+
+  setting.value.subscribe(applyLoadedSetting);
+
+  return {
+    setting,
+    dispose: () => {
+      disposed = true;
+      setting.value.unsubscribe(applyLoadedSetting);
+      unsubscribePipeline();
+    },
+  };
+}
+
 export function bindSplitPaneSetting<Stored = SplitPaneControllerOptions>(
   controller: SplitPaneController,
   settings: SettingsController,
@@ -408,6 +485,11 @@ function dataTableStateEqual(left: DataTableState, right: DataTableState): boole
     left.pageSize === right.pageSize &&
     left.selectedIndex === right.selectedIndex &&
     left.selectedKey === right.selectedKey;
+}
+
+function sanitizePipelineStepIds(pipeline: ThemeEnginePipeline, ids: readonly string[]): string[] {
+  const requested = new Set(ids);
+  return pipeline.ids().filter((id) => requested.has(id));
 }
 
 function splitPaneOptionsEqual(left: SplitPaneControllerOptions, right: SplitPaneControllerOptions): boolean {

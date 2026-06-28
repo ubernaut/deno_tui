@@ -61,6 +61,8 @@ export interface ThemeEnginePipelineBuildResult {
   inspection: ThemeEnginePipelineInspection;
 }
 
+export type ThemeEnginePipelineListener = () => void;
+
 export interface ThemeEnginePipelinePrewarmOptions extends ScheduledTaskOptions {
   scheduler?: AsyncScheduler;
   ids?: Iterable<string>;
@@ -74,6 +76,7 @@ export class ThemeEnginePipeline {
   readonly description?: string;
   readonly #steps = new Map<string, ThemeEnginePipelineStepDefinition>();
   readonly #enabled = new Set<string>();
+  readonly #listeners = new Set<ThemeEnginePipelineListener>();
 
   constructor(definition: ThemeEnginePipelineDefinition) {
     this.id = definition.id;
@@ -95,12 +98,14 @@ export class ThemeEnginePipeline {
     } else {
       this.#enabled.delete(step.id);
     }
+    this.#notify();
     return this;
   }
 
   unregister(id: string): boolean {
     const removed = this.#steps.delete(id);
     this.#enabled.delete(id);
+    if (removed) this.#notify();
     return removed;
   }
 
@@ -129,12 +134,31 @@ export class ThemeEnginePipeline {
 
   setEnabled(id: string, enabled: boolean): boolean {
     if (!this.#steps.has(id)) return false;
+    const wasEnabled = this.#enabled.has(id);
     if (enabled) {
       this.#enabled.add(id);
     } else {
       this.#enabled.delete(id);
     }
+    if (wasEnabled !== enabled) this.#notify();
     return true;
+  }
+
+  setActiveIds(ids: Iterable<string>): this {
+    const requested = new Set(ids);
+    let changed = false;
+    for (const id of this.#steps.keys()) {
+      const enabled = requested.has(id);
+      const wasEnabled = this.#enabled.has(id);
+      if (enabled) {
+        this.#enabled.add(id);
+      } else {
+        this.#enabled.delete(id);
+      }
+      changed ||= wasEnabled !== enabled;
+    }
+    if (changed) this.#notify();
+    return this;
   }
 
   enable(id: string): boolean {
@@ -175,6 +199,17 @@ export class ThemeEnginePipeline {
       activeStepCount: steps.filter((step) => step.enabled).length,
       steps,
     };
+  }
+
+  subscribe(listener: ThemeEnginePipelineListener): () => void {
+    this.#listeners.add(listener);
+    return () => this.#listeners.delete(listener);
+  }
+
+  #notify(): void {
+    for (const listener of this.#listeners) {
+      listener();
+    }
   }
 }
 

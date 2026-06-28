@@ -1059,6 +1059,17 @@ Deno.test("ThemeEnginePipeline applies ordered theme transforms and exposes insp
   assertEquals(branded.variants("Button"), ["brand", "danger"]);
   assertEquals(branded.component("Button", "brand").active("x"), "brand:x");
   assertEquals(branded.componentNames(), ["Button"]);
+
+  const changes: string[][] = [];
+  const unsubscribe = pipeline.subscribe(() => changes.push(pipeline.activeIds()));
+  pipeline.setActiveIds(["density", "missing"]);
+  assertEquals(pipeline.activeIds(), ["density"]);
+  assertEquals(changes, [["density"]]);
+  pipeline.setActiveIds(["density"]);
+  assertEquals(changes, [["density"]]);
+  assertEquals(pipeline.unregister("density"), true);
+  assertEquals(changes, [["density"], []]);
+  unsubscribe();
 });
 
 Deno.test("prewarmThemeEnginePipelines builds selected pipelines through a scheduler", async () => {
