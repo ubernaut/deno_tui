@@ -149,9 +149,7 @@ export function getSourceFrame(
         accent: "signal",
         value: clamp(system.cpuOverall / 100, 0, 1),
         series: system.cpuCores.map((core) => core.usage / 100),
-        detailLines: system.cpuCores.slice(0, 6).map((core) =>
-          `CPU${core.label.padStart(2, "0")} ${core.usage.toFixed(0)}%`
-        ),
+        detailLines: system.cpuCores.map((core) => `CPU${core.label.padStart(2, "0")} ${core.usage.toFixed(0)}%`),
       };
     case "sys:memory":
       return {

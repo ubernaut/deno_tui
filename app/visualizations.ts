@@ -393,7 +393,7 @@ function renderCpuLegend(context: RenderContext): PanelRender {
   ];
 
   return {
-    body: lines.slice(0, Math.max(1, context.height)).join("\n"),
+    body: lines.join("\n"),
     footer: `CORES ${String(context.system.cpuCores.length).padStart(2, "0")}  LOAD ${
       (drive.current * 100).toFixed(0)
     }%`,

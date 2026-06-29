@@ -1,4 +1,6 @@
-import { assert, assertNotEquals } from "./deps.ts";
+import { assert, assertEquals, assertNotEquals } from "./deps.ts";
+import { AudioRegistry } from "../app/audio.ts";
+import { getSourceFrame } from "../app/sources.ts";
 import { buildVisualizationDrive, renderVisualization, visualizations } from "../app/visualizations.ts";
 import type { RenderContext, SlotConfig, SourceFrame, SystemSnapshot } from "../app/types.ts";
 
@@ -254,4 +256,23 @@ Deno.test("every visualization renders and reacts to changed inputs", () => {
     assert(hot.body.trim().length > 0, `${visualization.id} should render a non-empty hot body`);
     assertNotEquals(calm.body, hot.body, `${visualization.id} body should change with different inputs`);
   }
+});
+
+Deno.test("cpu legend exposes every core for scrollable panels", () => {
+  const manyCoreSystem = {
+    ...calmSystem,
+    cpuCores: Array.from({ length: 16 }, (_, index) => ({
+      label: String(index),
+      usage: 10 + index,
+    })),
+  };
+  const source = getSourceFrame("sys:cpu-cores", manyCoreSystem, new AudioRegistry([]), 0);
+  const legend = renderVisualization({
+    ...makeContext("cpu-legend", manyCoreSystem, [source], 0),
+    height: 4,
+  });
+
+  assertEquals(source.detailLines.length, 16);
+  assertEquals(legend.body.split("\n").length, 17);
+  assert(legend.body.includes("015"));
 });
