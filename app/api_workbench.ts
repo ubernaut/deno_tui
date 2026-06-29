@@ -28,14 +28,18 @@ import { TextBoxController, wrapTextBoxLines } from "../src/components/textbox.t
 import { handleInput } from "../src/input.ts";
 import { WindowManagerController } from "../src/layout/mod.ts";
 import { Computed, Signal } from "../src/signals/mod.ts";
+import { probeCompatibleWebGPUDevice } from "../src/three_ascii/webgpu_compat.ts";
 import { Tui } from "../src/tui.ts";
 import type { Rectangle } from "../src/types.ts";
 import { stripStyles, textWidth } from "../src/utils/strings.ts";
 import { grWizardThemePalettes } from "../src/grwizard_themes.ts";
+import { createDefaultAsciiOptions, terminalGlyphStyleLabel } from "./ascii_options.ts";
 import { makeStyle } from "./styles.ts";
 import { requireInteractiveTerminal } from "./terminal_guard.ts";
+import { ThreePanelView } from "./three_panel.ts";
+import type { AsciiOptions, ThreeSceneMode, ThreeSceneSignal } from "./types.ts";
 
-type WindowId = "explorer" | "inspector" | "data" | "controls" | "logs";
+type WindowId = "explorer" | "inspector" | "data" | "controls" | "logs" | "three";
 type ControlId =
   | "button"
   | "genericButton"
@@ -155,6 +159,7 @@ const docs = [
   "ScrollAreaController clamps offsets and reports scrollbar thumbs.",
   "DataTableController handles keyed selection, sorting, paging, and filtering.",
   "ModalController provides centered pop-over content with trapped keyboard focus and action buttons.",
+  "ThreePanelView embeds the Acerola three.js ASCII renderer directly inside a managed workbench window.",
   "SliderController and CheckBoxController expose input state without renderer coupling.",
   "Theme selection updates all surfaces through shared semantic tokens.",
   "Window controls demonstrate minimize, maximize, restore, focus, and layout recomposition.",
@@ -162,11 +167,18 @@ const docs = [
   "This demo intentionally uses public controllers plus canvas primitives so the composition remains transparent.",
   "Resize the terminal: panels collapse from side-by-side to stacked narrow layouts.",
   "Use [ and ] to tune tile density; use T to cycle themes.",
-  "Use Tab or 1-5 to focus windows; use M, F, R for window controls.",
+  "Use Tab or 1-6 to focus windows; use M, F, R for window controls.",
 ];
 const explorerKeys = new Set(["up", "down", "left", "right", "pageup", "pagedown", "home", "end", "space", "return"]);
 
 requireInteractiveTerminal("deno task api-workbench");
+
+const threeAsciiAvailable = new Signal(await probeCompatibleWebGPUDevice());
+const ascii = new Signal<AsciiOptions>({
+  ...createDefaultAsciiOptions("sharp"),
+  terminalGlyphStyle: "mixed",
+  preset: "custom",
+});
 
 const tui = new Tui({
   style: makeStyle({ bg: themes[0]!.background }),
@@ -188,6 +200,7 @@ const minimized = new Signal<Record<WindowId, boolean>>({
   data: false,
   controls: false,
   logs: false,
+  three: false,
 }, { deepObserve: true });
 const windowManager = new WindowManagerController({
   activeId: "inspector",
@@ -197,6 +210,7 @@ const windowManager = new WindowManagerController({
     { id: "data", title: "Data Table", minWidth: 42, minHeight: 12 },
     { id: "controls", title: "Controls", minWidth: 40, minHeight: 18 },
     { id: "logs", title: "Logs", minWidth: 36, minHeight: 12 },
+    { id: "three", title: "Three ASCII", minWidth: 42, minHeight: 16 },
   ],
 });
 const commandLog = new Signal<string[]>(["ready: API workbench mounted"], { deepObserve: true });
@@ -344,6 +358,31 @@ const table = new DataTableController<ProcessRow>({
   rowKey: (row) => row.id,
   initialState: { pageSize: 5, sort: { columnId: "latency", direction: "asc" } },
 });
+const threeBodyRect = new Signal<Rectangle>({ column: 0, row: 0, width: 0, height: 0 }, { deepObserve: true });
+const threeScene = new Computed<{ mode: ThreeSceneMode; signal: ThreeSceneSignal } | null>(() =>
+  modal.openState.value || minimized.value.three || !threeAsciiAvailable.value ? null : {
+    mode: "studio",
+    signal: {
+      x: density.value.value / 10,
+      y: progress.value.value / 100,
+      depth: density.value.value / 10,
+      twist: compactRows.checked.value ? 0.8 : 0.25,
+      lift: progress.ratio(),
+      pulse: livePreview.checked.value ? 0.7 : 0.15,
+      active: activeWindow.value === "three",
+      pressed: activeControl.value === "button",
+    },
+  }
+);
+const threePanel = new ThreePanelView({
+  canvas: tui.canvas,
+  rectangle: threeBodyRect,
+  scene: threeScene,
+  ascii,
+  enabled: threeAsciiAvailable,
+  zIndex: 3,
+  frameInterval: 1000 / 18,
+});
 
 new BoxObject({
   canvas: tui.canvas,
@@ -388,6 +427,7 @@ tui.on("keyPress", (event) => {
   else if (event.key === "3") focus("data");
   else if (event.key === "4") focus("controls");
   else if (event.key === "5") focus("logs");
+  else if (event.key === "6") focus("three");
   else if (activeWindow.peek() === "explorer" && explorerKeys.has(event.key)) {
     explorer.handleKeyPress(event, Math.max(1, currentHeight() - 8));
   } else if (event.key === "m") minimize(activeWindow.peek());
@@ -460,6 +500,11 @@ tui.on("destroy", () => {
   notes.dispose();
   explorer.dispose();
   table.dispose();
+  threePanel.dispose();
+  threeScene.dispose();
+  threeBodyRect.dispose();
+  ascii.dispose();
+  threeAsciiAvailable.dispose();
 });
 
 tui.run();
@@ -473,6 +518,7 @@ function draw(): void {
   const height = currentHeight();
   hitTargets = [];
   dropdownOverlay = null;
+  setThreeBodyRect({ column: 0, row: 0, width: 0, height: 0 });
   logScroll.setContentSize(Math.max(1, width - 6), docs.length);
   const frame: Frame = Array.from({ length: height }, () => []);
   renderHeader(frame);
@@ -591,6 +637,7 @@ function renderWorkspace(frame: Frame): void {
   const max = maximized.peek();
   if (max) {
     renderWindow(virtual, max, layout.bounds);
+    updateThreeBodyRect(max === "three" ? layout.bounds : undefined, bounds, offset);
     translateWorkspaceHits(hitStart, bounds.row - offset, bounds);
     blitWorkspace(frame, virtual, bounds, offset, layout.bounds.width);
     renderWorkspaceScrollbar(frame, bounds, layout.contentHeight, offset);
@@ -608,7 +655,10 @@ function renderWorkspace(frame: Frame): void {
 
   for (const id of visible) {
     const rect = layout.rects.get(id);
-    if (rect) renderWindow(virtual, id, rect);
+    if (rect) {
+      renderWindow(virtual, id, rect);
+      if (id === "three") updateThreeBodyRect(rect, bounds, offset);
+    }
   }
   translateWorkspaceHits(hitStart, bounds.row - offset, bounds);
   blitWorkspace(frame, virtual, bounds, offset, layout.bounds.width);
@@ -645,7 +695,63 @@ function renderWindow(frame: Frame, id: WindowId, rect: Rectangle): void {
   else if (id === "inspector") renderInspector(frame, inner);
   else if (id === "data") renderData(frame, inner);
   else if (id === "controls") renderControls(frame, inner);
-  else renderLogs(frame, inner);
+  else if (id === "logs") renderLogs(frame, inner);
+  else renderThree(frame, inner);
+}
+
+function renderThree(frame: Frame, rect: Rectangle): void {
+  const t = theme();
+  const mode = terminalGlyphStyleLabel(ascii.peek().terminalGlyphStyle).toUpperCase();
+  if (threeAsciiAvailable.peek()) {
+    writeRows(frame, rect, [
+      {
+        text: ` ACEROLA THREE.JS ASCII · ${mode} · STUDIO GEOMETRY `,
+        fg: t.buttonActiveText,
+        bg: t.buttonActiveBg,
+        bold: true,
+      },
+      { text: "torus knot  sphere  block  floor plane", fg: t.soft, bg: t.surface },
+      { text: "", bg: t.surface },
+    ]);
+    return;
+  }
+
+  const fallback = renderThreeFallback(rect.width, rect.height, t);
+  writeRows(frame, rect, fallback);
+}
+
+function renderThreeFallback(width: number, height: number, t: ThemeSpec): RowStyle[] {
+  const title = ` THREE ASCII FALLBACK · ${terminalGlyphStyleLabel(ascii.peek().terminalGlyphStyle).toUpperCase()} `;
+  const body = [
+    "         .-=========-.         ",
+    "      .-#%%%@@@@@@%%%#-.       ",
+    "    .+%%@*=-.     .-=*@%+.     ",
+    "   :#%@-     TORUS     -@%#:   ",
+    "   *%@=   <> SPHERE <>  =@%*   ",
+    "   :#%@-      CUBE      -@%#:  ",
+    "    .+%%@*=-.     .-=*@%+.     ",
+    "      .-#%%%@@@@@@%%%#-.       ",
+    "         `-=========-'         ",
+  ];
+  return [
+    { text: title, fg: t.buttonActiveText, bg: t.buttonActiveBg, bold: true },
+    {
+      text: threeAsciiAvailable.peek()
+        ? "renderer warming up"
+        : "WebGPU/WebGL backend unavailable; text preview active",
+      fg: t.warn,
+      bg: t.surface,
+      bold: !threeAsciiAvailable.peek(),
+    },
+    { text: "", bg: t.surface },
+    ...body.slice(0, Math.max(0, height - 5)).map((text, index) => ({
+      text: centerText(text, width),
+      fg: index % 3 === 0 ? t.accent : index % 3 === 1 ? t.good : t.warn,
+      bg: t.surface,
+      bold: true,
+    })),
+    { text: "scene: torus knot + sphere + box + floor", fg: t.soft, bg: t.surface },
+  ];
 }
 
 function renderExplorer(frame: Frame, rect: Rectangle): void {
@@ -687,10 +793,11 @@ function renderInspector(frame: Frame, rect: Rectangle): void {
     { text: "viewport  ScrollAreaController", fg: t.good, bg: t.surface },
     { text: "data      DataTableController", fg: t.good, bg: t.surface },
     { text: "controls  SliderController / CheckBoxController", fg: t.good, bg: t.surface },
+    { text: "three     ThreePanelView + Acerola ASCII", fg: t.good, bg: t.surface },
     { text: `theme     ${themes[themeIndex.peek()]!.label}`, fg: t.warn, bg: t.surface, bold: true },
     { text: "", bg: t.surface },
     { text: " Recent actions ", fg: t.background, bg: t.border, bold: true },
-    ...commandLog.peek().slice(-Math.max(0, rect.height - 10)).map((line) => ({
+    ...commandLog.peek().slice(-Math.max(0, rect.height - 11)).map((line) => ({
       text: `• ${line}`,
       fg: t.text,
       bg: t.panelSoft,
@@ -1101,7 +1208,7 @@ function renderStatus(frame: Frame): void {
   const width = currentWidth();
   const densityLabel = tileDensity.peek() === 0 ? "balanced" : tileDensity.peek() > 0 ? "dense" : "wide";
   const left = `focus ${windowTitle(activeWindow.peek())} | ${theme().label} | tiles ${densityLabel}`;
-  const right = "1-5 focus  [/] tile density  arrows table/logs  mouse";
+  const right = "1-6 focus  [/] tile density  arrows table/logs  mouse";
   write(frame, currentHeight() - 1, 0, paint(renderStatusBar(left, right, width), { fg: t.text, bg: t.panelSoft }));
 }
 
@@ -1211,6 +1318,29 @@ function workspaceLayout(bounds: Rectangle): {
     if (entry.rect) rects.set(entry.id as WindowId, entry.rect);
   }
   return { bounds, contentHeight: Math.max(bounds.height, layout.contentHeight), rects };
+}
+
+function updateThreeBodyRect(rect: Rectangle | undefined, viewport: Rectangle, offset: number): void {
+  if (!rect || modal.openState.peek() || minimized.peek().three) {
+    setThreeBodyRect({ column: 0, row: 0, width: 0, height: 0 });
+    return;
+  }
+  const inner = inset(rect, 1);
+  const sceneRect = { ...inner, row: inner.row + 3, height: Math.max(0, inner.height - 3) };
+  const translated = { ...sceneRect, row: sceneRect.row + viewport.row - offset };
+  const clipped = clipRect(translated, viewport);
+  setThreeBodyRect(clipped.width >= 8 && clipped.height >= 6 ? clipped : { column: 0, row: 0, width: 0, height: 0 });
+}
+
+function setThreeBodyRect(rect: Rectangle): void {
+  const current = threeBodyRect.peek();
+  if (
+    current.column === rect.column && current.row === rect.row && current.width === rect.width &&
+    current.height === rect.height
+  ) {
+    return;
+  }
+  threeBodyRect.value = rect;
 }
 
 function translateWorkspaceHits(startIndex: number, rowDelta: number, clip: Rectangle): void {
@@ -1429,8 +1559,8 @@ function openHelpModal(): void {
     tone: "info",
     body: [
       "Keyboard: Tab moves focus through windows. Inside Controls, Tab moves through controls and leaves the pane after the last control. Shift+Tab moves backward.",
-      "Use 1-5 to focus Explorer, Inspector, Data Table, Controls, or Logs. Use M to minimize, F or Enter to maximize, R or Escape to restore windows.",
-      "When a window is fullscreen, use the bottom tabs or 1-5 to switch between fullscreen windows.",
+      "Use 1-6 to focus Explorer, Inspector, Data Table, Controls, Logs, or Three ASCII. Use M to minimize, F or Enter to maximize, R or Escape to restore windows.",
+      "When a window is fullscreen, use the bottom tabs or 1-6 to switch between fullscreen windows.",
       "Use arrows in the Data Table and Logs. In Controls, arrows adjust sliders, radio groups, combo boxes, steppers, and dropdown selections.",
       "Mouse: click windows to focus them, click rows to select them, click controls to change values, drag or click scrollbars to move through overflow content.",
       "Use the Theme menu to switch palettes. Click the [x] button in the top-right menu bar or press Q to quit.",
@@ -1789,6 +1919,12 @@ function fit(value: string, width: number): string {
   return `${plain.slice(0, Math.max(0, width - 1))}…`;
 }
 
+function centerText(value: string, width: number): string {
+  const cropped = fit(value, width);
+  const remaining = Math.max(0, width - textWidth(cropped));
+  return `${" ".repeat(Math.floor(remaining / 2))}${cropped}`;
+}
+
 function paint(text: string, options: { fg?: string; bg?: string; bold?: boolean } = {}): string {
   return makeStyle({ fg: options.fg ?? theme().text, bg: options.bg, bold: options.bold })(text);
 }
@@ -1895,11 +2031,13 @@ function windowTitle(id: WindowId): string {
     ? "Data Table"
     : id === "controls"
     ? "Controls"
-    : "Logs";
+    : id === "logs"
+    ? "Logs"
+    : "Three ASCII";
 }
 
 function windowIds(): WindowId[] {
-  return ["explorer", "inspector", "data", "controls", "logs"];
+  return ["explorer", "inspector", "data", "controls", "logs", "three"];
 }
 
 function theme(): ThemeSpec {

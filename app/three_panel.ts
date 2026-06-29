@@ -78,4 +78,9 @@ export class ThreePanelView {
     this.bundle = undefined;
     this.activeMode = undefined;
   }
+
+  dispose(): void {
+    this.effect.dispose();
+    this.destroy();
+  }
 }
