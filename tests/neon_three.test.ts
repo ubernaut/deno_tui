@@ -1,5 +1,5 @@
 import { createNeonThreeScene } from "../app/neon_three.ts";
-import type { ThreeSceneMode, ThreeSceneSignal } from "../app/types.ts";
+import { threeSceneModes, type ThreeSceneSignal } from "../app/types.ts";
 
 const signal: ThreeSceneSignal = {
   x: 0.5,
@@ -12,24 +12,7 @@ const signal: ThreeSceneSignal = {
   pressed: false,
 };
 
-for (
-  const mode of [
-    "lattice",
-    "atfield",
-    "hexshell",
-    "capture",
-    "mapslab",
-    "solenoid",
-    "studio",
-    "emergency",
-    "launch",
-    "magi",
-    "target",
-    "waveform",
-    "angel",
-    "gate",
-  ] as const satisfies ThreeSceneMode[]
-) {
+for (const mode of threeSceneModes) {
   Deno.test(`createNeonThreeScene supports ${mode}`, () => {
     const bundle = createNeonThreeScene(mode);
     bundle.tick(performance.now(), signal);

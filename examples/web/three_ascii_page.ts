@@ -17,7 +17,7 @@ import {
   ThreeAsciiObject,
 } from "../../mod.web.ts";
 import { createNeonThreeScene } from "../../app/neon_three.ts";
-import type { ThreeSceneMode } from "../../app/types.ts";
+import { type ThreeSceneMode, threeSceneModes } from "../../app/types.ts";
 
 const root = document.querySelector<HTMLElement>("#three-ascii");
 if (!root) throw new Error("Missing #three-ascii mount element.");
@@ -34,7 +34,7 @@ const host = createWebTui({
   },
 });
 
-const sceneModes: ThreeSceneMode[] = ["studio", "lattice", "atfield", "hexshell", "capture", "mapslab", "solenoid"];
+const sceneModes: ThreeSceneMode[] = [...threeSceneModes];
 const sceneIndex = new Signal(0);
 const presetIndex = new Signal(Math.max(0, ASCII_DEMO_PRESETS.findIndex((preset) => preset.id === "mixed-best")));
 const glyphIndex = new Signal(Math.max(0, TERMINAL_GLYPH_STYLES.indexOf("mixed")));

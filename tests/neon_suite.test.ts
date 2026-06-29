@@ -63,7 +63,28 @@ Deno.test("neon suite maps non-text NGE widgets to primitive three scenes", () =
   const matrixRender = renderNeonSuiteDemo({ demo: matrix, phase: 40, width: 52, height: 12, selected: true });
   const warningRender = renderNeonSuiteDemo({ demo: warning, phase: 40, width: 52, height: 12, selected: true });
 
-  assertEquals(matrixRender.three?.mode, "gate");
-  assertEquals(matrixRender.footer.includes("GATE PRIMITIVES"), true);
+  assertEquals(matrixRender.three?.mode, "relay");
+  assertEquals(matrixRender.footer.includes("RELAY PRIMITIVES"), true);
   assertEquals(warningRender.three, undefined);
+});
+
+Deno.test("neon suite maps geometric widgets to dedicated NGE primitive modes", () => {
+  const expectations = new Map([
+    ["counter-board", "counter"],
+    ["profile-card", "plug"],
+    ["live-feed", "surveillance"],
+    ["channel-matrix", "relay"],
+    ["telemetry-rack", "rack"],
+    ["biosignal-strip", "scope"],
+    ["hex-heatmap", "heat"],
+    ["route-board", "route"],
+    ["tactical-map", "command"],
+    ["network-topology", "topology"],
+  ]);
+
+  for (const [id, mode] of expectations) {
+    const demo = demos.find((entry) => entry.id === id)!;
+    const rendered = renderNeonSuiteDemo({ demo, phase: 32, width: 64, height: 14, selected: true });
+    assertEquals(rendered.three?.mode, mode);
+  }
 });

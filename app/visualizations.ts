@@ -115,21 +115,21 @@ const visualizationMap = new Map(visualizations.map((entry) => [entry.id, entry]
 const neonDemoIds = new Set(neonDemos.map((demo) => demo.id));
 const textOnlyNeonDemoIds = new Set(["warning-stack", "event-log", "component-index"]);
 const ngePrimitiveSceneModes: Record<string, ThreeSceneMode> = {
-  "counter-board": "emergency",
-  "profile-card": "angel",
-  "live-feed": "waveform",
-  "channel-matrix": "gate",
-  "telemetry-rack": "launch",
-  "biosignal-strip": "waveform",
-  "harmonic-graph": "atfield",
-  "psychograph": "angel",
+  "counter-board": "counter",
+  "profile-card": "plug",
+  "live-feed": "surveillance",
+  "channel-matrix": "relay",
+  "telemetry-rack": "rack",
+  "biosignal-strip": "scope",
+  "harmonic-graph": "scope",
+  "psychograph": "scope",
   "field-ring": "target",
-  "hex-heatmap": "gate",
+  "hex-heatmap": "heat",
   "magi-board": "magi",
-  "route-board": "mapslab",
-  "gate-status": "launch",
-  "tactical-map": "target",
-  "network-topology": "magi",
+  "route-board": "route",
+  "gate-status": "gate",
+  "tactical-map": "command",
+  "network-topology": "topology",
 };
 
 export interface VisualizationSourceDrive {
@@ -934,16 +934,26 @@ function renderThreeFallbackBody(context: RenderContext, drive: VisualizationDri
       case "studio":
         return harmonicField(width, chartHeight, drive, "◆");
       case "emergency":
+      case "counter":
+      case "relay":
         return routeBoard(width, chartHeight, drive, [" ", "░", "▒", "▓", "█"]);
       case "launch":
       case "gate":
+      case "route":
         return signalChart(drive.spreadSeries, width, chartHeight, drive.hazard >= 0.78 ? "▓" : "▒");
       case "magi":
       case "angel":
+      case "plug":
+      case "rack":
+      case "heat":
+      case "command":
         return heatmap(width, chartHeight, drive, THREE_FALLBACK_BLOCKS);
       case "target":
         return circularField(width, chartHeight, drive);
       case "waveform":
+      case "scope":
+      case "surveillance":
+      case "topology":
         return psychograph(width, chartHeight, drive, monitorGlyph(drive, "signal"));
     }
   })();
@@ -1220,6 +1230,26 @@ function modeLabel(mode: ThreeSceneMode) {
       return "ACEROLA";
     case "emergency":
       return "EMERGENCY";
+    case "counter":
+      return "COUNTER";
+    case "plug":
+      return "TEST PLUG";
+    case "surveillance":
+      return "SURVEIL";
+    case "relay":
+      return "RELAY";
+    case "rack":
+      return "RACK";
+    case "scope":
+      return "SCOPE";
+    case "heat":
+      return "HEX FIELD";
+    case "route":
+      return "ROUTE";
+    case "topology":
+      return "TOPOLOGY";
+    case "command":
+      return "COMMAND";
     case "launch":
       return "LAUNCH";
     case "magi":
@@ -1440,6 +1470,26 @@ function modeTwist(mode: ThreeSceneMode) {
       return { phase: 25, speed: 0.09, offset: 0.3, lift: 0.2 };
     case "emergency":
       return { phase: 29, speed: 0.16, offset: 0.32, lift: 0.16 };
+    case "counter":
+      return { phase: 31, speed: 0.13, offset: 0.18, lift: 0.12 };
+    case "plug":
+      return { phase: 32, speed: 0.08, offset: 0.16, lift: 0.3 };
+    case "surveillance":
+      return { phase: 34, speed: 0.09, offset: 0.24, lift: 0.18 };
+    case "relay":
+      return { phase: 35, speed: 0.15, offset: 0.26, lift: 0.2 };
+    case "rack":
+      return { phase: 36, speed: 0.14, offset: 0.2, lift: 0.16 };
+    case "scope":
+      return { phase: 38, speed: 0.18, offset: 0.34, lift: 0.34 };
+    case "heat":
+      return { phase: 39, speed: 0.1, offset: 0.22, lift: 0.42 };
+    case "route":
+      return { phase: 40, speed: 0.1, offset: 0.2, lift: 0.48 };
+    case "topology":
+      return { phase: 42, speed: 0.09, offset: 0.22, lift: 0.24 };
+    case "command":
+      return { phase: 44, speed: 0.07, offset: 0.16, lift: 0.18 };
     case "launch":
       return { phase: 33, speed: 0.1, offset: 0.2, lift: 0.5 };
     case "magi":

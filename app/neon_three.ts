@@ -53,6 +53,24 @@ function addWirePanel(
   return panel;
 }
 
+function addSolidBox(
+  group: THREE.Group,
+  width: number,
+  height: number,
+  depth: number,
+  color: string,
+  position: [number, number, number],
+  opacity = 0.82,
+) {
+  const box = new THREE.Mesh(
+    new THREE.BoxGeometry(width, height, depth),
+    new THREE.MeshBasicMaterial({ color, transparent: opacity < 1, opacity }),
+  );
+  box.position.set(...position);
+  group.add(box);
+  return box;
+}
+
 function createPolyline(points: THREE.Vector3[], color: string) {
   const geometry = new THREE.BufferGeometry().setFromPoints(points);
   return new THREE.Line(geometry, neonLine(color));
@@ -132,6 +150,74 @@ function createReticle(color: string, radius: number) {
   );
   group.add(horizontal, vertical);
   return group;
+}
+
+function createGrid(width: number, height: number, columns: number, rows: number, color: string) {
+  const grid = new THREE.Group();
+  for (let column = 0; column <= columns; column += 1) {
+    const x = (column / columns - 0.5) * width;
+    grid.add(createPolyline([new THREE.Vector3(x, -height / 2, 0), new THREE.Vector3(x, height / 2, 0)], color));
+  }
+  for (let row = 0; row <= rows; row += 1) {
+    const y = (row / rows - 0.5) * height;
+    grid.add(createPolyline([new THREE.Vector3(-width / 2, y, 0), new THREE.Vector3(width / 2, y, 0)], color));
+  }
+  return grid;
+}
+
+function createContourField(color: string, layers = 9): THREE.Group {
+  const field = new THREE.Group();
+  for (let layer = 0; layer < layers; layer += 1) {
+    const points = Array.from({ length: 90 }, (_, index) => {
+      const t = (index / 89) * Math.PI * 2;
+      const radius = 0.5 + layer * 0.14 + Math.sin(index * 0.33 + layer) * 0.05;
+      return new THREE.Vector3(
+        Math.cos(t) * radius * (0.78 + layer * 0.035),
+        Math.sin(t) * radius * (1.05 - layer * 0.025),
+        Math.sin(t * 2.7 + layer) * 0.05,
+      );
+    });
+    const line = createPolyline(points, color);
+    line.position.set(-1.25 + layer * 0.055, 0.2 - layer * 0.025, -0.2 + layer * 0.018);
+    field.add(line);
+  }
+  return field;
+}
+
+function createSegmentBoard(color: string): THREE.Group {
+  const board = new THREE.Group();
+  const material = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9 });
+  const segmentSpecs: Array<[number, number, number, number]> = [
+    [0, 0.48, 0.62, 0.08],
+    [0, 0, 0.62, 0.08],
+    [0, -0.48, 0.62, 0.08],
+    [-0.34, 0.24, 0.08, 0.48],
+    [0.34, 0.24, 0.08, 0.48],
+    [-0.34, -0.24, 0.08, 0.48],
+    [0.34, -0.24, 0.08, 0.48],
+  ];
+  segmentSpecs.forEach(([x, y, width, height], index) => {
+    const segment = new THREE.Mesh(new THREE.BoxGeometry(width, height, 0.05), material.clone());
+    segment.position.set(x, y, index * 0.006);
+    board.add(segment);
+  });
+  return board;
+}
+
+function createHexTile(color: string) {
+  const tile = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.18, 0.18, 0.08, 6),
+    new THREE.MeshBasicMaterial({ color, wireframe: true, transparent: true, opacity: 0.9 }),
+  );
+  tile.rotation.x = Math.PI / 2;
+  return tile;
+}
+
+function createTopologyNode(color: string, radius = 0.09) {
+  return new THREE.Mesh(
+    new THREE.SphereGeometry(radius, 16, 12),
+    new THREE.MeshBasicMaterial({ color, wireframe: true }),
+  );
 }
 
 export interface NeonThreeSceneBundle {
@@ -379,6 +465,379 @@ export function createNeonThreeScene(mode: ThreeSceneMode): NeonThreeSceneBundle
             topRail.scale.x = 1 + signal.depth * 0.08;
             bottomRail.scale.x = 1 + signal.depth * 0.08;
             warning.scale.setScalar(1 + Math.sin(seconds * 5.5) * 0.08 + signal.pulse * 0.08);
+          },
+        };
+      }
+      case "counter": {
+        camera.position.set(0, 0.1, 6.2);
+        const backplate = addWirePanel(group, 4.5, 2.5, colors.signal, [0, 0, -0.12]);
+        const boards = [-1.4, 0, 1.4].map((x, index) => {
+          const board = createSegmentBoard(index === 1 ? colors.phosphor : colors.amber);
+          board.position.set(x, 0.14, 0.08);
+          group.add(board);
+          addWirePanel(group, 1.0, 1.35, index === 1 ? colors.phosphor : colors.alarm, [x, 0.14, 0.02]);
+          return board;
+        });
+        const rails = [-1.05, 1.18].map((y) =>
+          createPolyline([new THREE.Vector3(-2.25, y, 0), new THREE.Vector3(2.25, y, 0)], colors.alarm)
+        );
+        group.add(...rails);
+        return {
+          tick: (time: number, signal: ThreeSceneSignal) => {
+            const seconds = time * 0.001;
+            group.rotation.y = signal.twist * 0.2;
+            group.rotation.x = signal.lift * 0.08;
+            backplate.scale.x = 1 + signal.depth * 0.08;
+            boards.forEach((board, boardIndex) => {
+              board.children.forEach((segment: THREE.Object3D, segmentIndex: number) => {
+                segment.visible = ((Math.floor(seconds * 3 + boardIndex) + segmentIndex) % 5) !== 0 || signal.pressed;
+              });
+              board.scale.setScalar(1 + signal.pulse * (0.03 + boardIndex * 0.01));
+            });
+            rails.forEach((rail, index) => {
+              rail.position.x = Math.sin(seconds * 1.5 + index) * 0.08 * (1 + signal.depth);
+            });
+          },
+        };
+      }
+      case "plug": {
+        camera.position.set(0, 0.28, 6.7);
+        const separators = [-0.78, 0.78].map((x) => addWirePanel(group, 0.04, 2.8, colors.alarm, [x, 0, 0.18]));
+        const plugs = [-1.45, 0, 1.45].map((x, index) => {
+          const plug = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.32, 0.38, 2.65, 32, 4),
+            new THREE.MeshBasicMaterial({
+              color: [colors.signal, colors.phosphor, colors.amber][index],
+              wireframe: true,
+              transparent: true,
+              opacity: 0.92,
+            }),
+          );
+          plug.position.set(x, -0.08, 0);
+          group.add(plug);
+          addWirePanel(group, 0.9, 2.95, index === 1 ? colors.phosphor : colors.alarm, [x, 0, -0.08]);
+          const plate = addSolidBox(group, 0.78, 0.22, 0.05, colors.alarm, [x, -1.12, 0.18], 0.9);
+          return { plug, plate };
+        });
+        const scan = addPanel(group, 4.4, 0.18, colors.signal, [0, 0.95, 0.24], 0.48);
+        return {
+          tick: (time: number, signal: ThreeSceneSignal) => {
+            const seconds = time * 0.001;
+            group.rotation.y = signal.twist * 0.18;
+            group.rotation.x = signal.lift * 0.1;
+            plugs.forEach(({ plug, plate }, index) => {
+              plug.rotation.y = seconds * (0.25 + index * 0.08);
+              plug.position.y = -0.08 + Math.sin(seconds * 1.1 + index) * 0.08 + signal.lift * 0.16;
+              plug.scale.setScalar(1 + signal.pulse * 0.06 * (index + 1));
+              plate.scale.x = 0.72 + signal.depth * 0.28 + Math.sin(seconds * 2.2 + index) * 0.06;
+            });
+            separators.forEach((separator, index) => {
+              separator.scale.y = 1 + signal.depth * 0.1 + Math.sin(seconds * 3 + index) * 0.03;
+            });
+            scan.position.y = 0.95 - ((seconds * (0.32 + signal.pulse * 0.25)) % 2.2);
+          },
+        };
+      }
+      case "surveillance": {
+        camera.position.set(0, 0.05, 6.5);
+        const grid = createGrid(4.7, 2.85, 5, 4, colors.phosphor);
+        grid.position.z = -0.24;
+        group.add(grid);
+        const contours = createContourField(colors.phosphor, 12);
+        contours.position.set(-1.25, 0.15, 0.08);
+        group.add(contours);
+        const livePanel = addWirePanel(group, 0.94, 0.52, colors.alarm, [1.55, 1.05, 0.2]);
+        const target = createReticle(colors.alarm, 0.28);
+        target.position.set(-1.58, 0.42, 0.28);
+        group.add(target);
+        const silhouettes = [-0.45, 0.15, 0.72].map((x, index) =>
+          addSolidBox(group, 0.28 + index * 0.08, 0.44 + index * 0.04, 0.08, colors.void, [x, -1.02, 0.26], 0.96)
+        );
+        return {
+          tick: (time: number, signal: ThreeSceneSignal) => {
+            const seconds = time * 0.001;
+            group.rotation.y = signal.twist * 0.12;
+            grid.position.x = Math.sin(seconds * 0.45) * 0.08;
+            contours.children.forEach((child: THREE.Object3D, index: number) => {
+              child.rotation.z = Math.sin(seconds * 0.35 + index * 0.4) * 0.12;
+              child.scale.setScalar(1 + signal.depth * 0.08 + Math.sin(seconds * 0.8 + index) * 0.025);
+            });
+            livePanel.scale.setScalar(1 + (signal.pressed ? 0.12 : 0.04) * Math.sin(seconds * 5.5));
+            target.rotation.z = seconds * 0.9;
+            target.position.x = -1.58 + signal.twist * 0.3;
+            target.position.y = 0.42 + signal.lift * 0.2;
+            silhouettes.forEach((silhouette, index) => {
+              silhouette.scale.y = 1 + signal.pulse * 0.08 * (index + 1);
+            });
+          },
+        };
+      }
+      case "relay": {
+        camera.position.set(0, 0.05, 6.4);
+        const busLines = Array.from({ length: 12 }, (_, index) => {
+          const y = (index % 6 - 2.5) * 0.42;
+          const x = index < 6 ? -1.3 : 1.3;
+          const line = createPolyline(
+            [
+              new THREE.Vector3(x - 0.52, y, -0.1),
+              new THREE.Vector3(x - 0.18, y, -0.1),
+              new THREE.Vector3(x - 0.18, y - 0.24, -0.1),
+              new THREE.Vector3(x + 0.52, y - 0.24, -0.1),
+            ],
+            colors.alarm,
+          );
+          group.add(line);
+          return line;
+        });
+        const bars = Array.from({ length: 30 }, (_, index) => {
+          const column = index % 5;
+          const row = Math.floor(index / 5);
+          const x = (column - 2) * 0.8 + (row % 2) * 0.18;
+          const y = 1.1 - row * 0.45;
+          const bar = addSolidBox(group, 0.66, 0.15, 0.08, colors.phosphor, [x, y, 0.1], 0.96);
+          bar.rotation.z = -0.55;
+          return { bar, baseY: y };
+        });
+        const nodes = bars.map(({ bar }, index) =>
+          addSolidBox(
+            group,
+            0.1,
+            0.1,
+            0.1,
+            index % 4 === 0 ? colors.amber : colors.alarm,
+            [bar.position.x - 0.32, bar.position.y - 0.18, 0.18],
+            0.92,
+          )
+        );
+        return {
+          tick: (time: number, signal: ThreeSceneSignal) => {
+            const seconds = time * 0.001;
+            group.rotation.y = signal.twist * 0.16;
+            bars.forEach(({ bar, baseY }, index) => {
+              const phase = seconds * 2.2 + index * 0.28;
+              bar.position.y = baseY + Math.sin(phase) * 0.04 * signal.depth;
+              bar.scale.x = 0.82 + signal.depth * 0.28 + Math.max(0, Math.sin(phase)) * 0.18;
+              bar.material.opacity = 0.74 + Math.max(0, Math.sin(phase)) * 0.24;
+            });
+            nodes.forEach((node, index) => {
+              node.scale.setScalar(0.75 + Math.max(0, Math.sin(seconds * 3.1 + index)) * (0.4 + signal.pulse * 0.3));
+            });
+            busLines.forEach((line, index) => {
+              line.position.x = Math.sin(seconds * 0.8 + index) * 0.04 * signal.depth;
+            });
+          },
+        };
+      }
+      case "rack": {
+        camera.position.set(0, 0.15, 6.3);
+        addWirePanel(group, 4.4, 2.8, colors.alarm, [0, 0, -0.14]);
+        const cells = Array.from({ length: 48 }, (_, index) => {
+          const column = index % 8;
+          const row = Math.floor(index / 8);
+          const color = index % 5 === 0 ? colors.alarm : index % 3 === 0 ? colors.amber : colors.phosphor;
+          return addSolidBox(group, 0.34, 0.12, 0.08, color, [(column - 3.5) * 0.5, 1.08 - row * 0.42, 0.06], 0.9);
+        });
+        const rails = [-2.25, 2.25].map((x) => addWirePanel(group, 0.18, 2.95, colors.signal, [x, 0, 0.02]));
+        return {
+          tick: (time: number, signal: ThreeSceneSignal) => {
+            const seconds = time * 0.001;
+            group.rotation.y = signal.twist * 0.14;
+            cells.forEach((cell, index) => {
+              const value = 0.45 + Math.max(0, Math.sin(seconds * (1.5 + (index % 7) * 0.12) + index)) * 0.7;
+              cell.scale.x = value + signal.depth * 0.16;
+              cell.scale.y = 1 + signal.pulse * 0.08 * ((index % 4) + 1);
+            });
+            rails.forEach((rail, index) => {
+              rail.scale.y = 1 + Math.sin(seconds * 2 + index) * 0.04 + signal.pulse * 0.08;
+            });
+          },
+        };
+      }
+      case "scope": {
+        camera.position.set(0, 0.05, 6.4);
+        const grid = createGrid(4.8, 2.7, 10, 6, colors.violet);
+        grid.position.z = -0.18;
+        group.add(grid);
+        const ribbons = [colors.signal, colors.phosphor, colors.amber, colors.alarm].map((color, index) => {
+          const ribbon = createWaveRibbon(color, 128);
+          ribbon.position.y = (index - 1.5) * 0.42;
+          group.add(ribbon);
+          return ribbon;
+        });
+        const thresholds = [-1.7, 1.7].map((x) =>
+          createPolyline([new THREE.Vector3(x, -1.35, 0.08), new THREE.Vector3(x, 1.35, 0.08)], colors.alarm)
+        );
+        group.add(...thresholds);
+        return {
+          tick: (time: number, signal: ThreeSceneSignal) => {
+            const seconds = time * 0.001;
+            group.rotation.x = signal.lift * 0.12;
+            group.rotation.y = signal.twist * 0.16;
+            ribbons.forEach((ribbon, index) => {
+              ribbon.position.x = ((seconds * (0.18 + index * 0.04)) % 0.7) - 0.35;
+              ribbon.scale.y = 0.75 + signal.pulse * (0.26 + index * 0.08);
+              ribbon.rotation.z = Math.sin(seconds * 0.9 + index) * 0.08;
+            });
+            thresholds.forEach((threshold, index) => {
+              threshold.position.x = Math.sin(seconds * 0.75 + index * Math.PI) * 0.18 * signal.depth;
+            });
+          },
+        };
+      }
+      case "heat": {
+        camera.position.set(0, 0.15, 6.0);
+        const tiles = Array.from({ length: 55 }, (_, index) => {
+          const row = Math.floor(index / 11);
+          const column = index % 11;
+          const color = index % 7 === 0 ? colors.alarm : index % 3 === 0 ? colors.amber : colors.phosphor;
+          const tile = createHexTile(color);
+          tile.position.set((column - 5) * 0.36 + (row % 2) * 0.18, 1.0 - row * 0.36, 0);
+          group.add(tile);
+          return tile;
+        });
+        return {
+          tick: (time: number, signal: ThreeSceneSignal) => {
+            const seconds = time * 0.001;
+            group.rotation.x = -0.18 + signal.lift * 0.18;
+            group.rotation.y = signal.twist * 0.22;
+            tiles.forEach((tile, index) => {
+              const pulse = Math.max(0, Math.sin(seconds * 1.8 + index * 0.31));
+              tile.position.z = pulse * 0.24 * (0.4 + signal.depth);
+              tile.scale.setScalar(0.82 + pulse * 0.36 + signal.pulse * 0.08);
+            });
+          },
+        };
+      }
+      case "route": {
+        camera.position.set(0, 0.2, 6.4);
+        const tracks = [-0.95, -0.35, 0.28, 0.92].map((y, index) => {
+          const points = [
+            new THREE.Vector3(-2.1, y, 0),
+            new THREE.Vector3(-0.75, y + Math.sin(index) * 0.18, 0.08),
+            new THREE.Vector3(0.1, y - 0.28, 0.02),
+            new THREE.Vector3(1.25, y + 0.22, 0.1),
+            new THREE.Vector3(2.08, y, 0),
+          ];
+          const line = createPolyline(points, index % 2 === 0 ? colors.phosphor : colors.alarm);
+          group.add(line);
+          return line;
+        });
+        const switches = [-1.15, 0.05, 1.18].map((x, index) =>
+          addWirePanel(group, 0.38, 0.74, index === 1 ? colors.amber : colors.signal, [x, -0.08 + index * 0.34, 0.18])
+        );
+        const plug = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.18, 0.18, 0.72, 16),
+          new THREE.MeshBasicMaterial({ color: colors.amber, wireframe: true }),
+        );
+        plug.rotation.z = Math.PI / 2;
+        group.add(plug);
+        return {
+          tick: (time: number, signal: ThreeSceneSignal) => {
+            const seconds = time * 0.001;
+            group.rotation.y = signal.twist * 0.16;
+            tracks.forEach((track, index) => {
+              track.position.z = Math.sin(seconds * 1.2 + index) * 0.12 * signal.depth;
+            });
+            switches.forEach((entry, index) => {
+              entry.rotation.z = (index - 1) * 0.16 + signal.twist * 0.2;
+              entry.scale.y = 1 + signal.pulse * 0.12;
+            });
+            plug.position.x = -1.8 + ((seconds * (0.38 + signal.pulse * 0.28)) % 3.6);
+            plug.position.y = Math.sin(seconds * 1.1) * 0.34;
+          },
+        };
+      }
+      case "topology": {
+        camera.position.set(0, 0.1, 6.4);
+        const positions = [
+          [-1.75, 0.85, 0.12],
+          [-0.95, 0.12, -0.05],
+          [-1.45, -0.78, 0.18],
+          [0.0, 0.72, 0.08],
+          [0.28, -0.18, 0.22],
+          [0.98, -0.88, -0.02],
+          [1.4, 0.36, 0.16],
+          [1.82, 1.0, -0.04],
+        ] as const;
+        const nodes = positions.map(([x, y, z], index) => {
+          const node = createTopologyNode(
+            index % 3 === 0 ? colors.amber : colors.phosphor,
+            index % 4 === 0 ? 0.13 : 0.1,
+          );
+          node.position.set(x, y, z);
+          group.add(node);
+          return node;
+        });
+        const links = [
+          [0, 1],
+          [1, 2],
+          [1, 3],
+          [3, 4],
+          [4, 5],
+          [4, 6],
+          [6, 7],
+          [2, 5],
+        ].map(([a, b], index) => {
+          const link = createPolyline(
+            [
+              new THREE.Vector3(...positions[a]),
+              new THREE.Vector3(...positions[b]),
+            ],
+            index % 3 === 0 ? colors.alarm : colors.signal,
+          );
+          group.add(link);
+          return link;
+        });
+        return {
+          tick: (time: number, signal: ThreeSceneSignal) => {
+            const seconds = time * 0.001;
+            group.rotation.y = signal.twist * 0.2;
+            group.rotation.x = signal.lift * 0.1;
+            nodes.forEach((node, index) => {
+              const pulse = Math.max(0, Math.sin(seconds * 2.2 + index * 0.7));
+              node.scale.setScalar(0.8 + pulse * 0.45 + signal.pulse * 0.12);
+              node.position.z = positions[index]![2] + pulse * 0.18 * signal.depth;
+            });
+            links.forEach((link, index) => {
+              link.position.z = Math.sin(seconds * 1.3 + index) * 0.05 * signal.depth;
+            });
+          },
+        };
+      }
+      case "command": {
+        camera.position.set(0, 0.45, 7.0);
+        const wall = [-1.55, -0.5, 0.55, 1.55].map((x, index) => {
+          const panel = addWirePanel(group, 0.9, 1.78, index % 2 === 0 ? colors.signal : colors.phosphor, [x, 0.35, 0]);
+          panel.rotation.y = (x / 1.55) * -0.24;
+          return panel;
+        });
+        const redBlocks = Array.from({ length: 9 }, (_, index) => {
+          const x = -1.75 + (index % 3) * 1.12 + (index > 5 ? 0.22 : 0);
+          const y = 0.92 - Math.floor(index / 3) * 0.62;
+          const block = addSolidBox(group, 0.28 + (index % 2) * 0.14, 0.22, 0.08, colors.alarm, [x, y, 0.22], 0.88);
+          block.rotation.z = index % 2 === 0 ? 0.08 : -0.18;
+          return block;
+        });
+        const floor = new THREE.Mesh(
+          new THREE.PlaneGeometry(5.2, 2.4, 4, 2),
+          new THREE.MeshBasicMaterial({ color: colors.violet, wireframe: true, transparent: true, opacity: 0.35 }),
+        );
+        floor.rotation.x = -Math.PI / 2;
+        floor.position.y = -1.12;
+        floor.position.z = 0.5;
+        group.add(floor);
+        return {
+          tick: (time: number, signal: ThreeSceneSignal) => {
+            const seconds = time * 0.001;
+            group.rotation.y = signal.twist * 0.12;
+            wall.forEach((panel, index) => {
+              panel.scale.y = 1 + signal.depth * 0.06 + Math.sin(seconds * 0.9 + index) * 0.02;
+            });
+            redBlocks.forEach((block, index) => {
+              block.position.z = 0.22 + Math.max(0, Math.sin(seconds * 1.7 + index)) * 0.12;
+              block.scale.setScalar(1 + signal.pulse * 0.05);
+            });
+            floor.rotation.z = signal.twist * 0.08;
           },
         };
       }
