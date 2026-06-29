@@ -144,11 +144,13 @@ export class MultilineTextView {
     zIndex: number;
     lineLimit?: number;
     padToWidth?: boolean | Signal<boolean>;
+    lineOffset?: number | Signal<number>;
   }) {
     const textSignal = options.text instanceof Signal ? options.text : new Signal(options.text);
     const padToWidth = options.padToWidth instanceof Signal
       ? options.padToWidth
       : new Signal(options.padToWidth ?? true);
+    const lineOffset = options.lineOffset instanceof Signal ? options.lineOffset : new Signal(options.lineOffset ?? 0);
     const lineLimit = options.lineLimit ?? 40;
     const lines = new Computed(() => textSignal.value.split("\n"));
 
@@ -171,7 +173,7 @@ export class MultilineTextView {
               width: 0,
             };
           }
-          const source = lines.value[index] ?? "";
+          const source = lines.value[Math.max(0, lineOffset.value) + index] ?? "";
           const cropped = cropToWidth(source, width);
           return {
             column: rect.column,
@@ -184,7 +186,7 @@ export class MultilineTextView {
           if (index >= rect.height || rect.width <= 0) {
             return "";
           }
-          const source = lines.value[index] ?? "";
+          const source = lines.value[Math.max(0, lineOffset.value) + index] ?? "";
           const cropped = cropToWidth(source, rect.width);
           return padToWidth.value ? cropped.padEnd(rect.width, " ") : cropped;
         }),
@@ -313,6 +315,7 @@ export class PanelView {
     footerStyle: Signal<Style>;
     borderMode: Signal<BorderMode>;
     bodyPadToWidth?: Signal<boolean>;
+    bodyLineOffset?: Signal<number>;
     zIndex: number;
   }) {
     const innerRect = new Computed(() => inset(options.rectangle.value, 1));
@@ -391,6 +394,7 @@ export class PanelView {
       zIndex: options.zIndex + 2,
       lineLimit: PANEL_BODY_LINE_LIMIT,
       padToWidth: options.bodyPadToWidth ?? true,
+      lineOffset: options.bodyLineOffset,
     });
 
     this.footer = new TextObject({

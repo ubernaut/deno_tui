@@ -1,5 +1,6 @@
 import { BoxObject } from "../src/canvas/box.ts";
 import { TextObject, type TextRectangle } from "../src/canvas/text.ts";
+import { ScrollAreaController, scrollbarGlyph, scrollbarThumb } from "../src/components/scroll_area.ts";
 import { handleInput } from "../src/input.ts";
 import { WindowManagerController, type WindowManagerWindowInspection } from "../src/layout/mod.ts";
 import { Computed, Effect, Signal } from "../src/signals/mod.ts";
@@ -40,6 +41,8 @@ import {
   type ViewportMode,
 } from "./types.ts";
 import { renderVisualization, visualizations } from "./visualizations.ts";
+
+const PANEL_SCROLLBAR_LINE_LIMIT = 256;
 
 type MonitorHit =
   | { type: "focus"; id: SlotId }
@@ -371,8 +374,12 @@ shellObjects.push(footerText);
 
 const slotPanels = new Map<SlotId, PanelView>();
 const slotScenes = new Map<SlotId, ThreePanelView>();
+const slotScrolls = new Map<SlotId, ScrollAreaController>();
+const scrollTeardowns: Array<() => void> = [];
 
 for (const slotId of slotIds) {
+  const scroll = new ScrollAreaController({ showScrollbar: true });
+  slotScrolls.set(slotId, scroll);
   const rect = new Computed(() => slotWindowRect(slotId));
   const render = new Computed(() => {
     if (rect.value.width <= 0 || rect.value.height <= 0) {
@@ -411,11 +418,18 @@ for (const slotId of slotIds) {
     alert: new Computed(() => render.value.alert),
     body: new Computed(() => render.value.body),
     bodyPadToWidth: new Computed(() => !(render.value.three && threeAsciiAvailable.value)),
+    bodyLineOffset: new Computed(() => scroll.offset.value.rows),
     footer: new Computed(() => {
       const renderValue = render.value;
       const slot = slots.value[slotId];
       const cycle = slot.cycleEnabled ? ` / CYCLE ${Math.round(slot.cycleIntervalMs / 1000)}S` : "";
-      return `${renderValue.footer}${cycle}`;
+      const scrollState = scroll.inspect();
+      const overflow = scrollState.maxOffset.rows > 0
+        ? ` / SCROLL ${scroll.offset.value.rows + 1}-${
+          Math.min(scroll.contentHeight.value, scroll.offset.value.rows + scroll.viewportHeight.value)
+        }/${scroll.contentHeight.value}`
+        : "";
+      return `${renderValue.footer}${cycle}${overflow}`;
     }),
     backgroundStyle: new Computed(() =>
       makeStyle({
@@ -465,6 +479,24 @@ for (const slotId of slotIds) {
   });
 
   slotPanels.set(slotId, panel);
+  const syncPanelScroll = () => {
+    const bodyRect = panel.bodyRect.peek();
+    const body = render.peek().body;
+    const bodyLineCount = body.length === 0 ? 0 : body.split("\n").length;
+    if (scroll.viewportWidth.peek() !== bodyRect.width || scroll.viewportHeight.peek() !== bodyRect.height) {
+      scroll.setViewportSize(bodyRect.width, bodyRect.height);
+    }
+    if (scroll.contentWidth.peek() !== bodyRect.width || scroll.contentHeight.peek() !== bodyLineCount) {
+      scroll.setContentSize(bodyRect.width, bodyLineCount);
+    }
+  };
+  syncPanelScroll();
+  panel.bodyRect.subscribe(syncPanelScroll);
+  render.subscribe(syncPanelScroll);
+  scrollTeardowns.push(() => {
+    panel.bodyRect.unsubscribe(syncPanelScroll);
+    render.unsubscribe(syncPanelScroll);
+  });
   slotScenes.set(
     slotId,
     new ThreePanelView({
@@ -477,6 +509,43 @@ for (const slotId of slotIds) {
     }),
   );
 }
+
+const panelScrollbarText: TextObject[] = slotIds.flatMap((slotId) =>
+  Array.from({ length: PANEL_SCROLLBAR_LINE_LIMIT }, (_, index) =>
+    new TextObject({
+      canvas: tui.canvas,
+      zIndex: 27,
+      style: new Computed(() => {
+        const active = windowManager.activeId.value === slotId;
+        return makeStyle({
+          fg: active ? accentColor("signal") : palette.dim,
+          bg: active ? palette.panelSoft : palette.panel,
+          bold: active,
+        });
+      }),
+      overwriteRectangle: true,
+      rectangle: new Computed<TextRectangle>(() => {
+        const panel = slotPanels.get(slotId);
+        const scroll = slotScrolls.get(slotId);
+        const rect = panel?.bodyRect.value ?? { column: 0, row: 0, width: 0, height: 0 };
+        const visible = Boolean(
+          scroll?.showScrollbar.value && scroll.maxOffset().rows > 0 && index < rect.height && rect.width > 0,
+        );
+        return {
+          column: visible ? rect.column + Math.max(0, rect.width - 1) : 0,
+          row: visible ? rect.row + index : 0,
+          width: visible ? 1 : 0,
+        };
+      }),
+      value: new Computed(() => {
+        const panel = slotPanels.get(slotId);
+        const scroll = slotScrolls.get(slotId);
+        const rect = panel?.bodyRect.value;
+        if (!scroll || !rect || scroll.maxOffset().rows <= 0 || index >= rect.height) return "";
+        return scrollbarGlyph(index, scrollbarThumb(scroll.contentHeight.value, rect.height, scroll.offset.value.rows));
+      }),
+    }))
+);
 
 const windowControlText: TextObject[] = slotIds.map((slotId) =>
   new TextObject({
@@ -677,6 +746,20 @@ tui.on("keyPress", (event) => {
     case "]":
       tileDensity.value = Math.min(4, tileDensity.value + 1);
       return;
+    case "pageup":
+      scrollSlot(selectedSlotId.peek(), -Math.max(1, panelBodyHeight(selectedSlotId.peek()) - 1));
+      return;
+    case "pagedown":
+      scrollSlot(selectedSlotId.peek(), Math.max(1, panelBodyHeight(selectedSlotId.peek()) - 1));
+      return;
+    case "home":
+      slotScrolls.get(selectedSlotId.peek())?.scrollTo(0, 0);
+      return;
+    case "end": {
+      const scroll = slotScrolls.get(selectedSlotId.peek());
+      scroll?.scrollTo(0, scroll.maxOffset().rows);
+      return;
+    }
     case "tab":
       selectNextSlot(event.shift ? -1 : 1);
       return;
@@ -736,6 +819,12 @@ tui.on("mousePress", (event) => {
   const target = findHit(event.x, event.y);
   if (!target) return;
   applyHit(target.hit);
+});
+
+tui.on("mouseScroll", (event) => {
+  if (menu.peek()) return;
+  const hovered = slotAt(event.x, event.y);
+  scrollSlot(hovered ?? selectedSlotId.peek(), event.scroll);
 });
 
 function handleMenuKey(key: string, currentMenu: MenuState) {
@@ -1009,6 +1098,24 @@ function shiftSelectedVisualization(step: number) {
 
 function shiftSelectedOutput(step: number) {
   selectNextSlot(step);
+}
+
+function scrollSlot(slotId: SlotId, rows: number): void {
+  if (rows === 0) return;
+  const scroll = slotScrolls.get(slotId);
+  scroll?.scrollBy(0, rows);
+}
+
+function panelBodyHeight(slotId: SlotId): number {
+  return Math.max(1, slotPanels.get(slotId)?.bodyRect.value.height ?? 1);
+}
+
+function slotAt(x: number, y: number): SlotId | undefined {
+  for (let index = workspaceLayout.peek().visible.length - 1; index >= 0; index -= 1) {
+    const entry = workspaceLayout.peek().visible[index]!;
+    const slotId = entry.id as SlotId;
+    if (slotIds.includes(slotId) && entry.rect && contains(entry.rect, x, y)) return slotId;
+  }
 }
 
 function slotWindowRect(slotId: SlotId): Rect {
@@ -1545,6 +1652,12 @@ tui.on("destroy", () => {
   audioRegistry.dispose();
   windowManager.dispose();
   tileDensity.dispose();
+  for (const teardown of scrollTeardowns) {
+    teardown();
+  }
+  for (const scroll of slotScrolls.values()) {
+    scroll.dispose();
+  }
   for (const timer of timers) {
     clearInterval(timer);
   }
@@ -1556,6 +1669,9 @@ for (const object of shellObjects) {
 }
 for (const panel of slotPanels.values()) {
   panel.draw();
+}
+for (const scrollbar of panelScrollbarText) {
+  scrollbar.draw();
 }
 for (const controls of windowControlText) {
   controls.draw();

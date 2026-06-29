@@ -41,6 +41,25 @@ Deno.test("multiline and list views only allocate visible rows and grow on resiz
   assertEquals(listView.lines.length, 7);
 });
 
+Deno.test("multiline views render from a scroll offset", () => {
+  const canvas = createTestCanvas({ size: { columns: 32, rows: 8 } });
+  const offset = new Signal(2);
+  const textView = new MultilineTextView({
+    canvas,
+    rectangle: new Signal<Rect>({ column: 0, row: 0, width: 18, height: 3 }),
+    text: new Signal(["ZERO", "ONE", "TWO", "THREE", "FOUR"].join("\n")),
+    style: new Signal((text: string) => text),
+    zIndex: 1,
+    lineOffset: offset,
+  });
+
+  textView.draw();
+  canvas.render();
+
+  assertStringIncludes(canvasRowText(canvas, 0, 18), "TWO");
+  assertStringIncludes(canvasRowText(canvas, 2, 18), "FOUR");
+});
+
 Deno.test("panel bodies keep rendering deep lines in tall single-pane layouts", () => {
   const canvas = createTestCanvas({ size: { columns: 64, rows: 360 } });
 
