@@ -49,6 +49,7 @@ import { ThreePanelView } from "./three_panel.ts";
 import type {
   Accent,
   AsciiOptions,
+  PanelRender,
   RenderContext,
   SlotConfig,
   SourceFrame,
@@ -1739,9 +1740,47 @@ function windowContentSize(id: WindowId, viewport: Rectangle): { width: number; 
     return { width: baseWidth, height: Math.max(baseHeight, 24) };
   }
   if (isVisualizationWindow(id)) {
-    return { width: Math.max(baseWidth, 86), height: Math.max(baseHeight, 28) };
+    return visualizationWindowContentSize(id, viewport, baseWidth, baseHeight);
   }
-  return { width: Math.max(baseWidth, 82), height: Math.max(baseHeight, 16) };
+  return { width: baseWidth, height: Math.max(baseHeight, 16) };
+}
+
+function visualizationWindowContentSize(
+  id: VisualizationWindowId,
+  viewport: Rectangle,
+  baseWidth: number,
+  baseHeight: number,
+): { width: number; height: number } {
+  const visualizationId = dynamicVisualizationWindows.peek()[id];
+  const option = visualizationOption(visualizationId);
+  if (!visualizationId || !option) return { width: baseWidth, height: baseHeight };
+
+  const rendered = renderVisualization(buildVisualizationContext(visualizationId, {
+    ...viewport,
+    width: baseWidth,
+    height: baseHeight,
+  }));
+  const rows = visualizationWindowRows(option, rendered);
+  const scrollableRows = [
+    ...rendered.body.split("\n"),
+    rendered.footer,
+  ];
+  return {
+    width: Math.max(baseWidth, maxTrimmedTextWidth(scrollableRows)),
+    height: Math.max(baseHeight, rows.length),
+  };
+}
+
+function visualizationWindowRows(
+  option: NonNullable<ReturnType<typeof visualizationOption>>,
+  rendered: PanelRender,
+): string[] {
+  return [
+    ` ${option.group.toUpperCase()} · ${rendered.title ?? option.label.toUpperCase()} `,
+    rendered.alert ? `! ${rendered.alert}` : option.description,
+    ...rendered.body.split("\n"),
+    rendered.footer,
+  ];
 }
 
 function buildVisualizationContext(visualizationId: string, rect: Rectangle): RenderContext {
@@ -2896,6 +2935,10 @@ function renderFrameSlice(cells: string[], start: number, width: number): string
 
 function maxTextWidth(values: readonly string[]): number {
   return values.reduce((max, value) => Math.max(max, textWidth(value)), 0);
+}
+
+function maxTrimmedTextWidth(values: readonly string[]): number {
+  return values.reduce((max, value) => Math.max(max, textWidth(value.trimEnd())), 0);
 }
 
 function threeHeaderRows(mode: string, width: number, t: ThemeSpec): RowStyle[] {
