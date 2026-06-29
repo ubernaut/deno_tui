@@ -984,18 +984,49 @@ function renderControls(frame: Frame, rect: Rectangle): void {
   ) => {
     if (row >= rect.row + rect.height) return;
     const active = activeControl.peek() === id;
-    const line = `${active && !options.indent ? ">" : " "} ${options.indent ? "  " : ""}${value}`;
-    const style = options.button ? buttonPaintOptions(t, active ? "active" : "base") : {
+    const prefix = `${active && !options.indent ? ">" : " "} ${options.indent ? "  " : ""}`;
+    const line = `${prefix}${value}`;
+    const baseStyle = {
       fg: active ? t.background : t.text,
       bg: active ? t.warn : t.surface,
       bold: active,
     };
-    write(
-      frame,
-      row,
-      rect.column,
-      paint(fit(line, rect.width), style),
-    );
+    if (options.button) {
+      const match = /^(\[[^\]]+\])(.*)$/.exec(value);
+      const buttonText = match?.[1] ?? value;
+      const detailText = match?.[2] ?? "";
+      write(frame, row, rect.column, paint(" ".repeat(rect.width), { fg: t.text, bg: t.surface }));
+      write(frame, row, rect.column, paint(fit(prefix, rect.width), baseStyle));
+      let column = rect.column + textWidth(prefix);
+      const remainingForButton = Math.max(0, rect.width - textWidth(prefix));
+      write(
+        frame,
+        row,
+        column,
+        paint(fit(buttonText, remainingForButton), buttonPaintOptions(t, active ? "active" : "base")),
+      );
+      column += Math.min(textWidth(buttonText), remainingForButton);
+      const remainingForDetail = Math.max(0, rect.width - (column - rect.column));
+      if (remainingForDetail > 0) {
+        write(
+          frame,
+          row,
+          column,
+          paint(fit(detailText, remainingForDetail), {
+            fg: active ? t.warn : t.text,
+            bg: t.surface,
+            bold: active,
+          }),
+        );
+      }
+    } else {
+      write(
+        frame,
+        row,
+        rect.column,
+        paint(fit(line, rect.width), baseStyle),
+      );
+    }
     addHit({ column: rect.column, row, width: rect.width, height: 1 }, {
       type: "control",
       id,
