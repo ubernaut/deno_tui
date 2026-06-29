@@ -699,37 +699,171 @@ function renderDiskMonitor(context: RenderContext): PanelRender {
 }
 
 function renderNetworkMonitor(context: RenderContext): PanelRender {
-  const { system, width, height } = context;
-  const drive = buildVisualizationDrive(context, Math.max(width, 48));
-  const graphHeight = Math.max(3, height - 4);
-  const rx = plotHistory(system.rxHistory, Math.max(12, width), graphHeight, monitorGlyph(drive, "signal"));
-  const tx = plotHistory(system.txHistory, Math.max(12, width), graphHeight, monitorGlyph(drive, "amber"));
+  const { system } = context;
+  const width = Math.max(1, context.width);
+  const height = Math.max(1, context.height);
+  const drive = buildVisualizationDrive(context, Math.max(width, 24));
+  const alert = networkAlert(context);
+  const network = busiestNetwork(system.networks);
+  const isSurging = Boolean(network && network.rxRate + network.txRate > 125_000_000);
 
   return {
-    body: [
-      `RX BUS`,
-      rx,
-      `TX BUS`,
-      tx,
-      ...system.networks.slice(0, 2).map((network) =>
-        `${network.name.toUpperCase()} ${formatRate(network.rxRate)}↓ ${formatRate(network.txRate)}↑`
-      ),
-    ].join("\n"),
-    footer: system.networks[0]
-      ? `${system.networks[0].name.toUpperCase()} ${system.networks[0].addresses[0] ?? "NO ADDRESS"}  BURST ${
-        (drive.volatility * 100).toFixed(0)
-      }%`
-      : "NO ACTIVE INTERFACES",
-    alert: networkAlert(context),
-    accent: context.system.networks[0] &&
-        (context.system.networks[0].rxRate + context.system.networks[0].txRate) > 125_000_000
-      ? "amber"
-      : "signal",
-    severity: context.system.networks[0] &&
-        (context.system.networks[0].rxRate + context.system.networks[0].txRate) > 125_000_000
-      ? "warning"
-      : "info",
+    body: networkMonitorLines(system, drive, width, height).join("\n"),
+    footer: networkFooter(system, drive, width),
+    alert,
+    accent: isSurging ? "amber" : "signal",
+    severity: isSurging ? "warning" : "info",
   };
+}
+
+function networkMonitorLines(
+  system: RenderContext["system"],
+  drive: VisualizationDrive,
+  width: number,
+  height: number,
+): string[] {
+  const lineBudget = Math.max(1, height);
+  const chartWidth = Math.max(1, width);
+
+  if (lineBudget <= 3 || width < 20) {
+    return fitNetworkLines(
+      [
+        networkSummaryLine(system, width),
+        compactNetworkTrace(system, chartWidth),
+        ...networkInterfaceRows(system, width, lineBudget - 2),
+      ],
+      width,
+      lineBudget,
+    );
+  }
+
+  if (lineBudget <= 6) {
+    const interfaceRows = Math.min(system.networks.length, Math.max(0, lineBudget - 3));
+    const chartHeight = Math.max(1, lineBudget - 1 - interfaceRows);
+    return fitNetworkLines(
+      [
+        width >= 32 ? "RX/TX BUS" : "RX/TX",
+        ...plotHistory(
+          combinedNetworkHistory(system),
+          chartWidth,
+          chartHeight,
+          monitorGlyph(drive, "signal"),
+        ).split("\n"),
+        ...networkInterfaceRows(system, width, interfaceRows),
+      ],
+      width,
+      lineBudget,
+    );
+  }
+
+  const interfaceRows = Math.min(system.networks.length, width >= 36 ? 2 : 1, Math.max(0, lineBudget - 6));
+  const graphRows = Math.max(2, lineBudget - 2 - interfaceRows);
+  const rxHeight = Math.max(1, Math.floor(graphRows / 2));
+  const txHeight = Math.max(1, graphRows - rxHeight);
+
+  return fitNetworkLines(
+    [
+      width >= 28 ? "RX BUS" : "RX",
+      ...plotHistory(system.rxHistory, chartWidth, rxHeight, monitorGlyph(drive, "signal")).split("\n"),
+      width >= 28 ? "TX BUS" : "TX",
+      ...plotHistory(system.txHistory, chartWidth, txHeight, monitorGlyph(drive, "amber")).split("\n"),
+      ...networkInterfaceRows(system, width, interfaceRows),
+    ],
+    width,
+    lineBudget,
+  );
+}
+
+function networkSummaryLine(system: RenderContext["system"], width: number): string {
+  const network = busiestNetwork(system.networks);
+  if (!network) {
+    return "NET IDLE";
+  }
+
+  const name = crop(network.name.toUpperCase(), width < 24 ? 5 : 10);
+  if (width < 28) {
+    return `NET ${name} ${compactRate(network.rxRate)}↓ ${compactRate(network.txRate)}↑`;
+  }
+  return `NET ${name} RX ${formatRate(network.rxRate)}  TX ${formatRate(network.txRate)}`;
+}
+
+function compactNetworkTrace(system: RenderContext["system"], width: number): string {
+  const rx = sampleSeries(system.rxHistory, width);
+  const tx = sampleSeries(system.txHistory, width);
+  return Array.from({ length: width }, (_, index) => {
+    const rxValue = rx[index] ?? 0;
+    const txValue = tx[index] ?? 0;
+    const combined = Math.max(rxValue, txValue);
+    if (combined >= 0.82) return "█";
+    if (rxValue >= 0.5 && txValue >= 0.5) return "▓";
+    if (rxValue >= txValue && rxValue >= 0.22) return "▄";
+    if (txValue > rxValue && txValue >= 0.22) return "▀";
+    return "·";
+  }).join("");
+}
+
+function networkInterfaceRows(system: RenderContext["system"], width: number, count: number): string[] {
+  if (count <= 0) {
+    return [];
+  }
+  if (system.networks.length === 0) {
+    return ["NO ACTIVE INTERFACES"];
+  }
+  return system.networks.slice(0, count).map((network) => networkInterfaceLine(network, width));
+}
+
+function networkInterfaceLine(
+  network: RenderContext["system"]["networks"][number],
+  width: number,
+): string {
+  const name = crop(network.name.toUpperCase(), width < 28 ? 6 : 10);
+  if (width < 30) {
+    return `${name} R${compactRate(network.rxRate)} T${compactRate(network.txRate)}`;
+  }
+  if (width < 48) {
+    return `${name.padEnd(10, " ")} R ${formatRate(network.rxRate)}  T ${formatRate(network.txRate)}`;
+  }
+  const address = network.addresses[0] ? ` ${network.addresses[0]}` : "";
+  return `${name.padEnd(10, " ")}${address}  RX ${formatRate(network.rxRate)}  TX ${formatRate(network.txRate)}`;
+}
+
+function networkFooter(system: RenderContext["system"], drive: VisualizationDrive, width: number): string {
+  const network = busiestNetwork(system.networks);
+  if (!network) {
+    return "NO ACTIVE INTERFACES";
+  }
+  const name = crop(network.name.toUpperCase(), width < 30 ? 6 : 10);
+  if (width < 34) {
+    return crop(`${name} ${compactRate(network.rxRate)}↓ ${compactRate(network.txRate)}↑`, width);
+  }
+  const address = network.addresses[0] ?? "NO ADDRESS";
+  return crop(
+    `${name} ${address}  RX ${formatRate(network.rxRate)}  TX ${formatRate(network.txRate)}  BURST ${
+      (drive.volatility * 100).toFixed(0)
+    }%`,
+    width,
+  );
+}
+
+function combinedNetworkHistory(system: RenderContext["system"]): number[] {
+  const length = Math.max(system.rxHistory.length, system.txHistory.length, 1);
+  return Array.from(
+    { length },
+    (_, index) => Math.max(system.rxHistory[index] ?? 0, system.txHistory[index] ?? 0),
+  );
+}
+
+function compactRate(value: number): string {
+  return formatRate(value)
+    .replace(/\s+/g, "")
+    .replace("KiB/s", "K/s")
+    .replace("MiB/s", "M/s")
+    .replace("GiB/s", "G/s")
+    .replace("TiB/s", "T/s");
+}
+
+function fitNetworkLines(lines: string[], width: number, height: number): string[] {
+  return lines.slice(0, Math.max(1, height)).map((line) => crop(line.trimEnd(), width));
 }
 
 function renderProcessMonitor(context: RenderContext): PanelRender {
@@ -1199,12 +1333,21 @@ function driveAlert(drive: VisualizationDrive) {
 }
 
 function networkAlert(context: RenderContext) {
-  const network = context.system.networks[0];
+  const network = busiestNetwork(context.system.networks);
   if (!network) {
     return "";
   }
   const totalRate = network.rxRate + network.txRate;
   return totalRate > 125_000_000 ? `${network.name.toUpperCase()} SURGE ABOVE ${formatRate(totalRate)}` : "";
+}
+
+function busiestNetwork(networks: RenderContext["system"]["networks"]) {
+  return networks.reduce<RenderContext["system"]["networks"][number] | undefined>((busiest, network) => {
+    if (!busiest) {
+      return network;
+    }
+    return network.rxRate + network.txRate > busiest.rxRate + busiest.txRate ? network : busiest;
+  }, undefined);
 }
 
 function severityForValue(value: number, warning: number, alarm: number): Severity {

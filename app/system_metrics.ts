@@ -19,6 +19,7 @@ type CpuTimes = {
 type NetCounters = {
   rxBytes: number;
   txBytes: number;
+  sampledAt: number;
 };
 
 type DiskCache = {
@@ -198,6 +199,7 @@ export class SystemMonitor {
   }
 
   #sampleNetwork(text: string) {
+    const sampledAt = Date.now();
     const interfaces = Deno.networkInterfaces();
     const addressMap = new Map<string, string[]>();
     for (const entry of interfaces) {
@@ -223,12 +225,15 @@ export class SystemMonitor {
         const counters = countersPart?.trim().split(/\s+/).map(Number) ?? [];
         const rxBytes = counters[0] ?? 0;
         const txBytes = counters[8] ?? 0;
-        const previous = this.#netCounters.get(name) ?? { rxBytes, txBytes };
-        const rxRate = Math.max(0, rxBytes - previous.rxBytes);
-        const txRate = Math.max(0, txBytes - previous.txBytes);
-        this.#netCounters.set(name, { rxBytes, txBytes });
-        totalRxRate += rxRate;
-        totalTxRate += txRate;
+        const previous = this.#netCounters.get(name) ?? { rxBytes, txBytes, sampledAt };
+        const elapsedSeconds = Math.max(0.001, (sampledAt - previous.sampledAt) / 1000);
+        const rxRate = Math.max(0, (rxBytes - previous.rxBytes) / elapsedSeconds);
+        const txRate = Math.max(0, (txBytes - previous.txBytes) / elapsedSeconds);
+        this.#netCounters.set(name, { rxBytes, txBytes, sampledAt });
+        if (name !== "lo") {
+          totalRxRate += rxRate;
+          totalTxRate += txRate;
+        }
         return {
           name,
           addresses: addressMap.get(name) ?? [],

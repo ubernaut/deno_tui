@@ -3,6 +3,7 @@ import { AudioRegistry } from "../app/audio.ts";
 import { getSourceFrame } from "../app/sources.ts";
 import { buildVisualizationDrive, renderVisualization, visualizations } from "../app/visualizations.ts";
 import type { RenderContext, SlotConfig, SourceFrame, SystemSnapshot } from "../app/types.ts";
+import { textWidth } from "../src/utils/strings.ts";
 
 const ascii = {
   preset: "opentui-blocks",
@@ -303,6 +304,20 @@ Deno.test("cpu legend exposes every core for scrollable panels", () => {
   assertEquals(source.detailLines.length, 16);
   assertEquals(legend.body.split("\n").length, 17);
   assert(legend.body.includes("015"));
+});
+
+Deno.test("network monitor adapts to narrow and short panes", () => {
+  const rendered = renderVisualization({
+    ...makeContext("network-monitor", hotSystem, hotSources, 0),
+    width: 18,
+    height: 4,
+  });
+  const lines = rendered.body.split("\n");
+
+  assert(lines.length <= 4);
+  for (const line of [...lines, rendered.footer]) {
+    assert(textWidth(line) <= 18, `${line} should fit within the pane`);
+  }
 });
 
 Deno.test("process monitor exposes the top 100 rows for scrolling", () => {
