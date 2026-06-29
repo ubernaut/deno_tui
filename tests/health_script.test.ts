@@ -22,6 +22,7 @@ Deno.test("health script exposes the expected contributor gates", () => {
     "form-workflow",
     "table-selection",
     "window-manager",
+    "workspace-launcher",
     "terminal-command",
     "runtime-workloads",
     "theme-engines",

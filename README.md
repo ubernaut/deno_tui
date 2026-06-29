@@ -2349,6 +2349,7 @@ const preset = findAsciiDemoPreset("mixed-best");
 | `examples/form_workflow.ts`             | Form controller, signal binding, validation, and commands    |
 | `examples/table_selection_workflow.ts`  | Data table paging/sorting plus multi-selection commands      |
 | `examples/window_manager_demo.ts`       | Tiling window manager, fullscreen tabs, and file explorer    |
+| `examples/windowing_system_launcher.ts` | File explorer launcher for demos, widgets, and visual apps   |
 | `examples/terminal_command_workflow.ts` | Terminal session planning plus command-surface dispatch      |
 | `examples/three_ascii.ts`               | Interactive 3D ASCII renderer powered by three.js            |
 | `examples/app_plugin_catalog.ts`        | App plugin catalog and Markdown report example               |
@@ -2427,6 +2428,7 @@ tuning.
 ./visualization form
 ./visualization table-selection
 ./visualization window-manager
+./visualization workspace-launcher
 ./visualization terminal-session
 ./visualization theme-manifest
 ./visualization theme-engines
@@ -2463,9 +2465,11 @@ pressure inspection, `benchmark` for performance smoke checks, `api-inventory` f
 `components` for widget catalog reports, `plugins` for app plugin definition reports, `adopter` for an integrated
 terminal/runtime/plugin/theme/data workbench report, `gallery` for a compact tour across launchers, widgets, renderers,
 themes, plugins, runtime capabilities, and terminal capabilities, `batteries` for the phase 1-6 readiness matrix,
-`layout-recipe` for responsive recipe inspection, `window-manager` for the tiling window/tab/file explorer workflow, and
-`health` for the contributor gate. The launcher metadata is also exported from `scripts/visualization_launcher.ts` as a
-queryable catalog: `queryVisualizationLaunchTargets()`, `createVisualizationLaunchReport()`,
+`layout-recipe` for responsive recipe inspection, `window-manager` for the tiling window/tab/file explorer workflow,
+`workspace-launcher` for an interactive file-explorer-driven mini desktop that opens the system monitor, three ASCII
+renderer, widget catalog, showcase, Neon Exodus suite, and runtime demos as managed preview windows, and `health` for
+the contributor gate. The launcher metadata is also exported from `scripts/visualization_launcher.ts` as a queryable
+catalog: `queryVisualizationLaunchTargets()`, `createVisualizationLaunchReport()`,
 `inspectVisualizationLaunchTargets()`, and `formatVisualizationLaunchMarkdown()` provide the same structured target list
 for custom launchers, docs pages, and CI reports without duplicating aliases or descriptions. Benchmark runs print
 per-case timings plus an aggregate summary; `deno task benchmark -- --list` prints the benchmark catalog without running

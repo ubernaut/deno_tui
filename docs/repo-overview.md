@@ -59,6 +59,7 @@ Use the root launcher for the most common demos:
 ./visualization components
 ./visualization plugins
 ./visualization window-manager
+./visualization workspace-launcher
 ./visualization gallery
 ./visualization batteries
 ./visualization health
@@ -75,6 +76,7 @@ deno task dashboard
 deno task form-workflow
 deno task table-selection
 deno task window-manager
+deno task workspace-launcher
 deno task terminal-command
 deno task capabilities
 deno task component-catalog

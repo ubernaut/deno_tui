@@ -158,6 +158,13 @@ export const visualizationLaunchTargets: readonly VisualizationLaunchTarget[] = 
     tags: ["layout", "windows", "tree", "files", "usability"],
   },
   {
+    task: "workspace-launcher",
+    aliases: ["workspace-launcher", "desktop", "windowing-demo", "demo-workspace"],
+    description: "interactive file explorer launcher that opens demos widgets and visualizations as managed windows",
+    category: "app",
+    tags: ["layout", "windows", "tree", "files", "widgets", "three", "monitor", "interactive"],
+  },
+  {
     task: "terminal-command",
     aliases: ["terminal-command", "terminal-session", "session"],
     description: "terminal session planning and command surface demo",

@@ -32,6 +32,8 @@ Deno.test("visualization launcher resolves public aliases to deno tasks", () => 
   assertEquals(resolveVisualizationTask("selection"), "table-selection");
   assertEquals(resolveVisualizationTask("windowing"), "window-manager");
   assertEquals(resolveVisualizationTask("file-explorer"), "window-manager");
+  assertEquals(resolveVisualizationTask("desktop"), "workspace-launcher");
+  assertEquals(resolveVisualizationTask("demo-workspace"), "workspace-launcher");
   assertEquals(resolveVisualizationTask("session"), "terminal-command");
   assertEquals(resolveVisualizationTask("theme-pack"), "theme-manifest");
   assertEquals(resolveVisualizationTask("themes"), "theme-engines");
@@ -96,6 +98,7 @@ Deno.test("visualization launch catalog filters targets by category tag and sear
     "viz",
     "neon-exodus",
     "showcase",
+    "workspace-launcher",
   ]);
   assertEquals(queryVisualizationLaunchTargets({ tag: "catalog" }).map((entry) => entry.task), [
     "adopter-workbench",
