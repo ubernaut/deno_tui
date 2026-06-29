@@ -133,6 +133,18 @@ function createWaveRibbon(color: string, count = 96) {
   return createPolyline(points, color);
 }
 
+function createLissajousTrace(color: string, scaleX: number, scaleY: number, phase = 0) {
+  const points = Array.from({ length: 180 }, (_, index) => {
+    const t = (index / 179) * Math.PI * 2;
+    return new THREE.Vector3(
+      Math.sin(t * 3 + phase) * scaleX,
+      Math.sin(t * 4 + phase * 0.7) * scaleY,
+      Math.cos(t * 5 + phase) * 0.18,
+    );
+  });
+  return createPolyline(points, color);
+}
+
 function createReticle(color: string, radius: number) {
   const group = new THREE.Group();
   const ring = new THREE.Mesh(
@@ -680,6 +692,159 @@ export function createNeonThreeScene(mode: ThreeSceneMode): NeonThreeSceneBundle
             });
             thresholds.forEach((threshold, index) => {
               threshold.position.x = Math.sin(seconds * 0.75 + index * Math.PI) * 0.18 * signal.depth;
+            });
+          },
+        };
+      }
+      case "biosignal": {
+        camera.position.set(0, 0.02, 6.2);
+        const grid = createGrid(4.8, 2.7, 12, 5, colors.phosphor);
+        grid.position.z = -0.22;
+        group.add(grid);
+        const traces = [colors.phosphor, colors.signal, colors.amber].map((color, index) => {
+          const trace = createWaveRibbon(color, 140);
+          trace.position.y = 0.72 - index * 0.7;
+          group.add(trace);
+          return trace;
+        });
+        const scan = addPanel(group, 0.12, 2.7, colors.signal, [-2.1, 0, 0.16], 0.42);
+        const markers = Array.from({ length: 12 }, (_, index) =>
+          addSolidBox(
+            group,
+            0.08,
+            0.18,
+            0.06,
+            index % 4 === 0 ? colors.alarm : colors.phosphor,
+            [-2.1 + index * 0.38, -1.16, 0.22],
+            0.88,
+          ));
+        return {
+          tick: (time: number, signal: ThreeSceneSignal) => {
+            const seconds = time * 0.001;
+            group.rotation.x = signal.lift * 0.1;
+            group.rotation.y = signal.twist * 0.12;
+            traces.forEach((trace, index) => {
+              trace.position.x = ((seconds * (0.22 + index * 0.05)) % 0.8) - 0.4;
+              trace.scale.y = 0.72 + signal.pulse * (0.22 + index * 0.1);
+              trace.rotation.z = Math.sin(seconds * 1.1 + index) * 0.06;
+            });
+            scan.position.x = -2.1 + ((seconds * (0.8 + signal.pulse * 0.5)) % 4.2);
+            markers.forEach((marker, index) => {
+              marker.scale.y = 0.65 + Math.max(0, Math.sin(seconds * 3 + index)) * (0.8 + signal.depth * 0.4);
+            });
+          },
+        };
+      }
+      case "harmonic": {
+        camera.position.set(0, 0.12, 6.5);
+        const rings = [0.62, 1.05, 1.52, 1.96].map((radius, index) => {
+          const ring = new THREE.Mesh(
+            new THREE.TorusGeometry(radius, 0.018 + index * 0.006, 16, 96),
+            new THREE.MeshBasicMaterial({
+              color: [colors.violet, colors.signal, colors.phosphor, colors.amber][index],
+              wireframe: true,
+              transparent: true,
+              opacity: 0.86,
+            }),
+          );
+          ring.rotation.x = Math.PI / 2 + index * 0.18;
+          group.add(ring);
+          return ring;
+        });
+        const traces = [
+          createLissajousTrace(colors.violet, 1.85, 0.95, 0),
+          createLissajousTrace(colors.phosphor, 1.45, 1.15, 0.7),
+          createLissajousTrace(colors.alarm, 1.1, 0.62, 1.4),
+        ];
+        traces.forEach((trace) => group.add(trace));
+        const core = new THREE.Mesh(
+          new THREE.IcosahedronGeometry(0.22, 0),
+          new THREE.MeshBasicMaterial({ color: colors.amber, wireframe: true }),
+        );
+        group.add(core);
+        return {
+          tick: (time: number, signal: ThreeSceneSignal) => {
+            const seconds = time * 0.001;
+            group.rotation.y = signal.twist * 0.22;
+            group.rotation.x = Math.sin(seconds * 0.35) * 0.08 + signal.lift * 0.08;
+            rings.forEach((ring, index) => {
+              ring.rotation.z = seconds * (0.26 + index * 0.12) * (index % 2 === 0 ? 1 : -1);
+              ring.scale.setScalar(0.9 + signal.depth * 0.12 * (index + 1));
+            });
+            traces.forEach((trace, index) => {
+              trace.rotation.z = seconds * (0.18 + index * 0.08);
+              trace.scale.setScalar(0.9 + signal.pulse * (0.1 + index * 0.06));
+            });
+            core.scale.setScalar(1 + signal.pulse * 0.55);
+          },
+        };
+      }
+      case "psychograph": {
+        camera.position.set(0, 0.06, 6.3);
+        const backing = addWirePanel(group, 4.6, 2.65, colors.amber, [0, 0, -0.18]);
+        const scribbles = Array.from({ length: 7 }, (_, index) => {
+          const trace = createLissajousTrace(
+            index % 2 === 0 ? colors.amber : index % 3 === 0 ? colors.alarm : colors.violet,
+            1.0 + index * 0.16,
+            0.46 + (index % 4) * 0.17,
+            index * 0.58,
+          );
+          trace.position.z = index * 0.025;
+          group.add(trace);
+          return trace;
+        });
+        const nodes = Array.from({ length: 10 }, (_, index) => {
+          const node = createTopologyNode(index % 3 === 0 ? colors.alarm : colors.amber, 0.055);
+          node.position.set(Math.sin(index * 1.7) * 1.8, Math.cos(index * 1.1) * 0.96, 0.2);
+          group.add(node);
+          return node;
+        });
+        return {
+          tick: (time: number, signal: ThreeSceneSignal) => {
+            const seconds = time * 0.001;
+            group.rotation.y = signal.twist * 0.18;
+            backing.scale.x = 1 + signal.depth * 0.08;
+            scribbles.forEach((trace, index) => {
+              trace.rotation.z = Math.sin(seconds * (0.35 + index * 0.05) + index) * (0.18 + signal.depth * 0.12);
+              trace.scale.x = 0.78 + signal.pulse * 0.2 + index * 0.02;
+              trace.scale.y = 0.72 + signal.depth * 0.18;
+            });
+            nodes.forEach((node, index) => {
+              node.position.x = Math.sin(seconds * 0.8 + index * 1.7) * (1.4 + signal.depth * 0.45);
+              node.position.y = Math.cos(seconds * 0.9 + index * 1.1) * (0.72 + signal.pulse * 0.24);
+              node.scale.setScalar(0.7 + Math.max(0, Math.sin(seconds * 2.3 + index)) * 0.55);
+            });
+          },
+        };
+      }
+      case "field": {
+        camera.position.set(0, 0.08, 6.2);
+        const reticles = [0.5, 0.9, 1.32, 1.74].map((radius, index) => {
+          const reticle = createReticle([colors.signal, colors.phosphor, colors.amber, colors.alarm][index], radius);
+          reticle.rotation.x = Math.PI / 2;
+          group.add(reticle);
+          return reticle;
+        });
+        const shell = new THREE.Mesh(
+          new THREE.IcosahedronGeometry(0.58, 1),
+          new THREE.MeshBasicMaterial({ color: colors.phosphor, wireframe: true, transparent: true, opacity: 0.92 }),
+        );
+        group.add(shell);
+        const clampRails = [-1.95, 1.95].map((x) => addWirePanel(group, 0.32, 2.8, colors.alarm, [x, 0, 0.12]));
+        return {
+          tick: (time: number, signal: ThreeSceneSignal) => {
+            const seconds = time * 0.001;
+            group.rotation.y = signal.twist * 0.22;
+            reticles.forEach((reticle, index) => {
+              reticle.rotation.z = seconds * (0.22 + index * 0.1) * (index % 2 === 0 ? 1 : -1);
+              reticle.scale.setScalar(1 + signal.depth * 0.08 * (index + 1));
+            });
+            shell.position.set((signal.x - 0.5) * 1.2, (0.5 - signal.y) * 0.85, signal.pulse * 0.18);
+            shell.rotation.x = seconds * 0.7;
+            shell.rotation.y = seconds * 0.9;
+            shell.scale.setScalar(1 + signal.pulse * 0.25);
+            clampRails.forEach((rail, index) => {
+              rail.position.x = (index === 0 ? -1.95 : 1.95) + (index === 0 ? signal.depth : -signal.depth) * 0.18;
             });
           },
         };

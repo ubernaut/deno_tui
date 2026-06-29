@@ -120,10 +120,10 @@ const ngePrimitiveSceneModes: Record<string, ThreeSceneMode> = {
   "live-feed": "surveillance",
   "channel-matrix": "relay",
   "telemetry-rack": "rack",
-  "biosignal-strip": "scope",
-  "harmonic-graph": "scope",
-  "psychograph": "scope",
-  "field-ring": "target",
+  "biosignal-strip": "biosignal",
+  "harmonic-graph": "harmonic",
+  "psychograph": "psychograph",
+  "field-ring": "field",
   "hex-heatmap": "heat",
   "magi-board": "magi",
   "route-board": "route",
@@ -941,6 +941,10 @@ function renderThreeFallbackBody(context: RenderContext, drive: VisualizationDri
       case "gate":
       case "route":
         return signalChart(drive.spreadSeries, width, chartHeight, drive.hazard >= 0.78 ? "▓" : "▒");
+      case "harmonic":
+        return harmonicField(width, chartHeight, drive, monitorGlyph(drive, "violet"));
+      case "field":
+        return circularField(width, chartHeight, drive);
       case "magi":
       case "angel":
       case "plug":
@@ -952,6 +956,8 @@ function renderThreeFallbackBody(context: RenderContext, drive: VisualizationDri
         return circularField(width, chartHeight, drive);
       case "waveform":
       case "scope":
+      case "biosignal":
+      case "psychograph":
       case "surveillance":
       case "topology":
         return psychograph(width, chartHeight, drive, monitorGlyph(drive, "signal"));
@@ -1242,6 +1248,14 @@ function modeLabel(mode: ThreeSceneMode) {
       return "RACK";
     case "scope":
       return "SCOPE";
+    case "biosignal":
+      return "BIOSIGNAL";
+    case "harmonic":
+      return "HARMONIC";
+    case "psychograph":
+      return "PSYCHO";
+    case "field":
+      return "FIELD";
     case "heat":
       return "HEX FIELD";
     case "route":
@@ -1482,6 +1496,14 @@ function modeTwist(mode: ThreeSceneMode) {
       return { phase: 36, speed: 0.14, offset: 0.2, lift: 0.16 };
     case "scope":
       return { phase: 38, speed: 0.18, offset: 0.34, lift: 0.34 };
+    case "biosignal":
+      return { phase: 38, speed: 0.2, offset: 0.32, lift: 0.3 };
+    case "harmonic":
+      return { phase: 39, speed: 0.09, offset: 0.22, lift: 0.24 };
+    case "psychograph":
+      return { phase: 40, speed: 0.17, offset: 0.36, lift: 0.32 };
+    case "field":
+      return { phase: 41, speed: 0.13, offset: 0.28, lift: 0.24 };
     case "heat":
       return { phase: 39, speed: 0.1, offset: 0.22, lift: 0.42 };
     case "route":

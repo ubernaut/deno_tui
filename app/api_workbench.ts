@@ -340,6 +340,12 @@ interface DropdownOverlay {
   itemIndexes?: number[];
   selectedIndex?: number;
 }
+type WorkbenchThreeScene = { mode: ThreeSceneMode; signal: ThreeSceneSignal };
+interface DynamicThreePanel {
+  rectangle: Signal<Rectangle>;
+  scene: Signal<WorkbenchThreeScene | null>;
+  panel: ThreePanelView;
+}
 
 const menu = new MenuBarController({
   items: [
@@ -526,6 +532,8 @@ const threePanel = new ThreePanelView({
   zIndex: 3,
   frameInterval: 1000 / 18,
 });
+const visualizationThreePanels = new Map<VisualizationWindowId, DynamicThreePanel>();
+const visualizationThreeSupport = new Map<string, boolean>();
 
 new BoxObject({
   canvas: tui.canvas,
@@ -651,6 +659,12 @@ tui.on("destroy", () => {
   explorer.dispose();
   table.dispose();
   threePanel.dispose();
+  for (const entry of visualizationThreePanels.values()) {
+    entry.panel.dispose();
+    entry.scene.dispose();
+    entry.rectangle.dispose();
+  }
+  visualizationThreePanels.clear();
   threeScene.dispose();
   threeBodyRect.dispose();
   systemMonitor.stop();
@@ -825,10 +839,15 @@ function renderWorkspace(frame: Frame): void {
   const virtual: Frame = Array.from({ length: Math.max(bounds.height, layout.contentHeight) }, () => []);
   fillRect(virtual, layout.bounds, theme().backgroundSoft);
   const hitStart = hitTargets.length;
+  const renderedVisualizationThree = new Set<VisualizationWindowId>();
   const max = maximized.peek();
   if (max) {
     renderWindow(virtual, max, layout.bounds);
     updateThreeBodyRect(max === "three" ? layout.bounds : undefined, bounds, offset);
+    if (isVisualizationWindow(max)) {
+      if (updateVisualizationThreePanel(max, layout.bounds, bounds, offset)) renderedVisualizationThree.add(max);
+    }
+    hideUnrenderedVisualizationThreePanels(renderedVisualizationThree);
     translateWorkspaceHits(hitStart, bounds.row - offset, bounds);
     blitWorkspace(frame, virtual, bounds, offset, layout.bounds.width);
     renderWorkspaceScrollbar(frame, bounds, layout.contentHeight, offset);
@@ -839,6 +858,7 @@ function renderWorkspace(frame: Frame): void {
   const visible = windowIds().filter((id) => !minimized.peek()[id]);
   if (visible.length === 0) {
     setThreeBodyRect({ column: 0, row: 0, width: 0, height: 0 });
+    hideUnrenderedVisualizationThreePanels(renderedVisualizationThree);
     write(frame, bounds.row + 1, 2, paint(emptyWorkspaceMessage(), { fg: theme().warn }));
     renderShelf(frame);
     return;
@@ -852,10 +872,13 @@ function renderWorkspace(frame: Frame): void {
       if (id === "three") {
         renderedThree = true;
         updateThreeBodyRect(rect, bounds, offset);
+      } else if (isVisualizationWindow(id)) {
+        if (updateVisualizationThreePanel(id, rect, bounds, offset)) renderedVisualizationThree.add(id);
       }
     }
   }
   if (!renderedThree) setThreeBodyRect({ column: 0, row: 0, width: 0, height: 0 });
+  hideUnrenderedVisualizationThreePanels(renderedVisualizationThree);
   translateWorkspaceHits(hitStart, bounds.row - offset, bounds);
   blitWorkspace(frame, virtual, bounds, offset, layout.bounds.width);
   renderWorkspaceScrollbar(frame, bounds, layout.contentHeight, offset);
@@ -928,6 +951,38 @@ function renderVisualizationWindow(frame: Frame, id: VisualizationWindowId, rect
   const rendered = renderVisualization(buildVisualizationContext(visualizationId, rect));
   const accent = accentColor(rendered.accent);
   const lines = rendered.body.split("\n");
+  const useThreeScene = Boolean(rendered.three && threeAsciiAvailable.peek() && rect.width >= 8 && rect.height >= 9);
+  if (useThreeScene) {
+    writeRows(frame, rect, [
+      {
+        text: ` ${option.group.toUpperCase()} · ${rendered.title ?? option.label.toUpperCase()} `,
+        fg: contrastText(accent, t.background, t.text),
+        bg: accent,
+        bold: true,
+      },
+      {
+        text: rendered.alert ? `! ${rendered.alert}` : option.description,
+        fg: rendered.severity === "alarm" ? t.danger : rendered.severity === "warning" ? t.warn : t.soft,
+        bg: t.surface,
+        bold: rendered.severity !== "info",
+      },
+      {
+        text: visualizationThreeStatusLine(rendered, option),
+        fg: t.buttonActiveText,
+        bg: t.buttonActiveBg,
+        bold: true,
+      },
+    ]);
+    if (rect.height > 3) {
+      write(
+        frame,
+        rect.row + rect.height - 1,
+        rect.column,
+        paint(fit(rendered.footer, rect.width), { fg: t.muted, bg: t.panelSoft }),
+      );
+    }
+    return;
+  }
   writeRows(frame, rect, [
     {
       text: ` ${option.group.toUpperCase()} · ${rendered.title ?? option.label.toUpperCase()} `,
@@ -1858,6 +1913,12 @@ function visualizationWindowContentSize(
     width: baseWidth,
     height: baseHeight,
   }));
+  if (rendered.three && threeAsciiAvailable.peek()) {
+    return {
+      width: baseWidth,
+      height: Math.max(baseHeight, 22),
+    };
+  }
   const rows = visualizationWindowRows(option, rendered);
   const scrollableRows = [
     ...rendered.body.split("\n"),
@@ -1879,6 +1940,15 @@ function visualizationWindowRows(
     ...rendered.body.split("\n"),
     rendered.footer,
   ];
+}
+
+function visualizationThreeStatusLine(
+  rendered: PanelRender,
+  option: NonNullable<ReturnType<typeof visualizationOption>>,
+): string {
+  const mode = rendered.three?.mode.toUpperCase() ?? "TEXT";
+  const glyphs = terminalGlyphStyleLabel(ascii.peek().terminalGlyphStyle).toUpperCase();
+  return compactSpaces(`ACEROLA ${mode} · ${glyphs} · ${option.label}`);
 }
 
 function buildVisualizationContext(visualizationId: string, rect: Rectangle): RenderContext {
@@ -2179,15 +2249,119 @@ function updateThreeBodyRect(rect: Rectangle | undefined, viewport: Rectangle, o
   setThreeBodyRect(clipped.width >= 8 && clipped.height >= 6 ? clipped : { column: 0, row: 0, width: 0, height: 0 });
 }
 
+function hideUnrenderedVisualizationThreePanels(renderedIds: Set<VisualizationWindowId>): void {
+  for (const id of visualizationThreePanels.keys()) {
+    if (!renderedIds.has(id)) hideVisualizationThreePanel(id);
+  }
+}
+
+function updateVisualizationThreePanel(
+  id: VisualizationWindowId,
+  rect: Rectangle,
+  viewport: Rectangle,
+  offset: number,
+): boolean {
+  const visualizationId = dynamicVisualizationWindows.peek()[id];
+  if (
+    !visualizationId || !threeAsciiAvailable.peek() || modal.openState.peek() || threeConfigOpen.peek() ||
+    screenDropdownOpen() || minimized.peek()[id]
+  ) {
+    hideVisualizationThreePanel(id);
+    return false;
+  }
+
+  const inner = inset(rect, 1);
+  const contentSize = windowContentSize(id, inner);
+  const rendered = renderVisualization(buildVisualizationContext(visualizationId, {
+    column: 0,
+    row: 0,
+    width: contentSize.width,
+    height: Math.max(4, contentSize.height - 4),
+  }));
+  if (!rendered.three) {
+    hideVisualizationThreePanel(id);
+    return false;
+  }
+
+  const bodyViewport = windowContentViewport(inner, contentSize.width, contentSize.height);
+  const scroll = windowScroll(id).offset.peek();
+  const sceneRect = visualizationThreeSceneRect(contentSize);
+  const translated = {
+    ...sceneRect,
+    column: bodyViewport.column + sceneRect.column - scroll.columns,
+    row: bodyViewport.row + viewport.row - offset + sceneRect.row - scroll.rows,
+  };
+  const clipped = clipRect(translated, { ...bodyViewport, row: bodyViewport.row + viewport.row - offset });
+
+  if (clipped.width < 8 || clipped.height < 6) {
+    hideVisualizationThreePanel(id);
+    return false;
+  }
+
+  const entry = ensureVisualizationThreePanel(id);
+  setSignalRect(entry.rectangle, clipped);
+  entry.scene.value = rendered.three;
+  return true;
+}
+
+function visualizationThreeSceneRect(contentSize: { width: number; height: number }): Rectangle {
+  return {
+    column: 0,
+    row: 3,
+    width: contentSize.width,
+    height: Math.max(0, contentSize.height - 4),
+  };
+}
+
+function ensureVisualizationThreePanel(id: VisualizationWindowId): DynamicThreePanel {
+  const existing = visualizationThreePanels.get(id);
+  if (existing) return existing;
+
+  const rectangle = new Signal<Rectangle>({ column: 0, row: 0, width: 0, height: 0 }, { deepObserve: true });
+  const scene = new Signal<WorkbenchThreeScene | null>(null);
+  const panel = new ThreePanelView({
+    canvas: tui.canvas,
+    rectangle,
+    scene,
+    ascii,
+    enabled: threeAsciiAvailable,
+    zIndex: 4,
+    frameInterval: 1000 / 18,
+  });
+  const entry = { rectangle, scene, panel };
+  visualizationThreePanels.set(id, entry);
+  return entry;
+}
+
+function hideVisualizationThreePanel(id: VisualizationWindowId): void {
+  const entry = visualizationThreePanels.get(id);
+  if (!entry) return;
+  entry.scene.value = null;
+  setSignalRect(entry.rectangle, { column: 0, row: 0, width: 0, height: 0 });
+}
+
+function disposeVisualizationThreePanel(id: VisualizationWindowId): void {
+  const entry = visualizationThreePanels.get(id);
+  if (!entry) return;
+  entry.panel.dispose();
+  entry.scene.dispose();
+  entry.rectangle.dispose();
+  visualizationThreePanels.delete(id);
+}
+
 function setThreeBodyRect(rect: Rectangle): void {
-  const current = threeBodyRect.peek();
+  setSignalRect(threeBodyRect, rect);
+}
+
+function setSignalRect(target: Signal<Rectangle>, rect: Rectangle): void {
+  const current = target.peek();
   if (
     current.column === rect.column && current.row === rect.row && current.width === rect.width &&
     current.height === rect.height
   ) {
     return;
   }
-  threeBodyRect.value = rect;
+  target.value = rect;
 }
 
 function screenDropdownOpen(): boolean {
@@ -2195,7 +2369,29 @@ function screenDropdownOpen(): boolean {
 }
 
 function isThreeRenderedWindow(id: WindowId): boolean {
-  return id === "three";
+  if (id === "three") return true;
+  return isVisualizationWindow(id) && visualizationWindowSupportsThree(id);
+}
+
+function visualizationWindowSupportsThree(id: VisualizationWindowId): boolean {
+  const visualizationId = dynamicVisualizationWindows.peek()[id];
+  if (!visualizationId) return false;
+  return visualizationIdSupportsThree(visualizationId);
+}
+
+function visualizationIdSupportsThree(visualizationId: string): boolean {
+  const cached = visualizationThreeSupport.get(visualizationId);
+  if (cached !== undefined) return cached;
+  const supportsThree = Boolean(
+    renderVisualization(buildVisualizationContext(visualizationId, {
+      column: 0,
+      row: 0,
+      width: 48,
+      height: 16,
+    })).three,
+  );
+  visualizationThreeSupport.set(visualizationId, supportsThree);
+  return supportsThree;
 }
 
 function translateWorkspaceHits(startIndex: number, rowDelta: number, clip: Rectangle): void {
@@ -2646,7 +2842,7 @@ function openHelpModal(): void {
       "Use N to open the New menu, Shift+T to open Theme, T to cycle themes, H or ? for help, Q to request quit, and 0 to restore the next minimized window.",
       "Use 1-6 to focus built-in windows, and higher numbers for added windows. Use M to minimize, F or Enter to maximize, C to close, and R or Escape to restore windows.",
       "When a window is fullscreen, use the bottom tabs, Tab, or number shortcuts to switch between fullscreen windows.",
-      "Use G from the Three ASCII window to open renderer config. In config, use Up/Down to select settings and Left/Right or Enter to change them.",
+      "Use G from any Three ASCII, Neon 3D, or NGE primitive window to open renderer config. In config, use Up/Down to select settings and Left/Right or Enter to change them.",
       "Use arrows in the Data Table, Explorer, Logs, and overflow windows. In Data Table, S cycles the sort column. Shift+Left/Right scrolls horizontally when content is wider than the pane.",
       "In Controls, arrows adjust sliders, radio groups, combo boxes, steppers, and dropdown selections. Enter or Space activates the selected control.",
       "Mouse: click windows to focus them, click rows to select them, click controls to change values, drag or click scrollbars to move through overflow content.",
@@ -3000,6 +3196,9 @@ function handleThreeConfigKey(event: { key: string; shift?: boolean }): void {
 }
 
 function closeWindow(id: WindowId): void {
+  if (isVisualizationWindow(id)) {
+    disposeVisualizationThreePanel(id);
+  }
   windowManager.close(id);
   syncWindowSignalsFromManager();
   pushLog(`close ${windowTitle(id)}`);
