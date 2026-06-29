@@ -27,11 +27,13 @@ import { renderStepper, StepperController } from "../src/components/stepper.ts";
 import { TextBoxController, wrapTextBoxLines } from "../src/components/textbox.ts";
 import { handleInput } from "../src/input.ts";
 import { WindowManagerController } from "../src/layout/mod.ts";
+import { type AsyncStore, createRuntimeStore } from "../src/runtime/storage.ts";
 import { Computed, Signal } from "../src/signals/mod.ts";
 import { probeCompatibleWebGPUDevice } from "../src/three_ascii/webgpu_compat.ts";
 import { Tui } from "../src/tui.ts";
 import type { Rectangle } from "../src/types.ts";
 import { stripStyles, textWidth } from "../src/utils/strings.ts";
+import { AudioRegistry } from "./audio.ts";
 import { grWizardThemePalettes } from "../src/grwizard_themes.ts";
 import {
   applyAsciiPreset,
@@ -43,7 +45,9 @@ import {
   terminalGlyphStyleLabel,
 } from "./ascii_options.ts";
 import { demos as neonDemos } from "./neon_theme.ts";
+import { getSourceFrame } from "./sources.ts";
 import { makeStyle } from "./styles.ts";
+import { SystemMonitor } from "./system_metrics.ts";
 import { requireInteractiveTerminal } from "./terminal_guard.ts";
 import { ThreePanelView } from "./three_panel.ts";
 import type {
@@ -88,6 +92,7 @@ type HitAction =
   | { type: "asciiConfig"; index: number; action?: ConfigHitAction }
   | { type: "theme"; index: number }
   | { type: "newWindow"; index: number }
+  | { type: "workspace"; index: number }
   | { type: "modalAction"; index: number }
   | { type: "control"; id: ControlId; action?: ControlHitAction; index?: number }
   | { type: "dataRow"; index: number }
@@ -148,6 +153,43 @@ interface NewWindowOption {
   label: string;
   group: "Monitor" | "Neon" | "Neon 3D";
   description: string;
+}
+
+interface SavedWorkspace {
+  name: string;
+  visualizationIds: string[];
+  savedAt: number;
+}
+
+class JsonFileStore<T = unknown> implements AsyncStore<T> {
+  constructor(private readonly path: string) {}
+
+  async get(key: string): Promise<T | undefined> {
+    const values = await this.#read();
+    return values[key] as T | undefined;
+  }
+
+  async set(key: string, value: T): Promise<void> {
+    const values = await this.#read();
+    values[key] = value;
+    await Deno.writeTextFile(this.path, `${JSON.stringify(values, null, 2)}\n`);
+  }
+
+  async delete(key: string): Promise<void> {
+    const values = await this.#read();
+    delete values[key];
+    await Deno.writeTextFile(this.path, `${JSON.stringify(values, null, 2)}\n`);
+  }
+
+  async #read(): Promise<Record<string, unknown>> {
+    try {
+      const parsed = JSON.parse(await Deno.readTextFile(this.path));
+      return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed as Record<string, unknown> : {};
+    } catch (error) {
+      if (error instanceof Deno.errors.NotFound) return {};
+      throw error;
+    }
+  }
 }
 
 const themes: ThemeSpec[] = grWizardThemePalettes.map((palette) => ({
@@ -223,9 +265,15 @@ const newWindowOptions: NewWindowOption[] = visualizations.map((entry) => ({
   group: entry.id.startsWith("three-") ? "Neon 3D" : neonDemoIds.has(entry.id) ? "Neon" : "Monitor",
   description: entry.description,
 }));
+const WORKSPACE_STORE_KEY = "api-workbench.workspaces";
 
 requireInteractiveTerminal("deno task api-workbench");
 
+const systemMonitor = new SystemMonitor(72);
+await systemMonitor.start(1000);
+const workbenchAudioRegistry = new AudioRegistry([]);
+const workspaceStore = createWorkspaceStore();
+const savedWorkspaces = new Signal<SavedWorkspace[]>(await loadSavedWorkspaces(), { deepObserve: true });
 const threeAsciiAvailable = new Signal(await probeCompatibleWebGPUDevice());
 const ascii = new Signal<AsciiOptions>({
   ...createDefaultAsciiOptions("sharp"),
@@ -246,6 +294,10 @@ const themeIndex = new Signal(0);
 const themeMenuOpen = new Signal(false);
 const newWindowMenuOpen = new Signal(false);
 const newWindowMenuIndex = new Signal(0);
+const workspaceMenuOpen = new Signal(false);
+const workspaceMenuIndex = new Signal(0);
+const workspaceNameDraft = new Signal("");
+const workspaceSaveMode = new Signal(false);
 const menuFocused = new Signal(false);
 const threeConfigOpen = new Signal(false);
 const threeConfigSelected = new Signal(0);
@@ -281,7 +333,7 @@ let lastWorkspaceHeight = 0;
 let dropdownOverlay: DropdownOverlay | null = null;
 type Frame = string[][];
 interface DropdownOverlay {
-  kind: "control" | "theme" | "newWindow";
+  kind: "control" | "theme" | "newWindow" | "workspace";
   coordinate: "workspace" | "screen";
   rect: Rectangle;
   items: string[];
@@ -293,6 +345,7 @@ const menu = new MenuBarController({
   items: [
     { id: "file", label: "File" },
     { id: "new", label: "New" },
+    { id: "workspace", label: "Workspace" },
     { id: "view", label: "View" },
     { id: "layout", label: "Layout" },
     { id: "theme", label: "Theme" },
@@ -301,6 +354,7 @@ const menu = new MenuBarController({
   onSelect: (item) => {
     if (item.id === "new") {
       themeMenuOpen.value = false;
+      workspaceMenuOpen.value = false;
       newWindowMenuOpen.value = !newWindowMenuOpen.peek();
       menuFocused.value = true;
       newWindowMenuIndex.value = Math.max(0, Math.min(newWindowMenuIndex.peek(), newWindowOptions.length - 1));
@@ -309,20 +363,32 @@ const menu = new MenuBarController({
     }
     if (item.id === "theme") {
       newWindowMenuOpen.value = false;
+      workspaceMenuOpen.value = false;
       themeMenuOpen.value = !themeMenuOpen.peek();
       menuFocused.value = true;
       pushLog(`${themeMenuOpen.peek() ? "open" : "close"} theme menu`);
       return;
     }
+    if (item.id === "workspace") {
+      themeMenuOpen.value = false;
+      newWindowMenuOpen.value = false;
+      workspaceMenuOpen.value = !workspaceMenuOpen.peek();
+      menuFocused.value = true;
+      workspaceMenuIndex.value = Math.max(0, Math.min(workspaceMenuIndex.peek(), workspaceMenuItemCount() - 1));
+      pushLog(`${workspaceMenuOpen.peek() ? "open" : "close"} workspace menu`);
+      return;
+    }
     if (item.id === "help") {
       themeMenuOpen.value = false;
       newWindowMenuOpen.value = false;
+      workspaceMenuOpen.value = false;
       menuFocused.value = false;
       openHelpModal();
       return;
     }
     themeMenuOpen.value = false;
     newWindowMenuOpen.value = false;
+    workspaceMenuOpen.value = false;
     menuFocused.value = true;
     pushLog(`menu selected: ${item.label}`);
   },
@@ -482,6 +548,10 @@ tui.on("keyPress", (event) => {
     return;
   }
   if (modal.openState.peek()) {
+    if (workspaceSaveMode.peek() && handleWorkspaceSaveKey(event)) {
+      draw();
+      return;
+    }
     modal.handleKeyPress(event);
     draw();
     return;
@@ -566,6 +636,10 @@ tui.on("destroy", () => {
   modalButton.dispose();
   modal.dispose();
   newWindowMenuIndex.dispose();
+  workspaceMenuIndex.dispose();
+  workspaceNameDraft.dispose();
+  workspaceSaveMode.dispose();
+  savedWorkspaces.dispose();
   menuFocused.dispose();
   threeConfigOpen.dispose();
   threeConfigSelected.dispose();
@@ -579,6 +653,8 @@ tui.on("destroy", () => {
   threePanel.dispose();
   threeScene.dispose();
   threeBodyRect.dispose();
+  systemMonitor.stop();
+  workbenchAudioRegistry.dispose();
   ascii.dispose();
   threeAsciiAvailable.dispose();
 });
@@ -664,6 +740,24 @@ function renderHeader(frame: Frame): void {
       items: visible.items,
       itemIndexes: visible.indexes,
       selectedIndex: visible.indexes.indexOf(newWindowMenuIndex.peek()),
+    };
+  }
+  if (workspaceMenuOpen.peek()) {
+    const labels = workspaceMenuLabels();
+    const visible = visibleMenuSlice(labels, workspaceMenuIndex.peek(), Math.max(6, currentHeight() - 5));
+    const menuRect = menuItemRect(
+      menuStart,
+      "workspace",
+      Math.max(30, ...labels.map((label) => textWidth(label) + 6)),
+      visible.items.length + 2,
+    );
+    dropdownOverlay = {
+      kind: "workspace",
+      coordinate: "screen",
+      rect: menuRect,
+      items: visible.items,
+      itemIndexes: visible.indexes,
+      selectedIndex: visible.indexes.indexOf(workspaceMenuIndex.peek()),
     };
   }
   const help = width >= 132
@@ -1790,23 +1884,65 @@ function visualizationWindowRows(
 function buildVisualizationContext(visualizationId: string, rect: Rectangle): RenderContext {
   const option = visualizationOption(visualizationId);
   const phase = Math.floor(performance.now() / 80);
+  const usesRealSystem = option?.group === "Monitor";
+  const system = usesRealSystem
+    ? systemMonitor.snapshot.peek()
+    : syntheticWorkbenchSystem(phase, option?.group ?? "Monitor");
+  const sources = usesRealSystem
+    ? realWorkbenchSources(visualizationId, system, phase)
+    : syntheticWorkbenchSources(visualizationId, option?.group ?? "Monitor", phase);
   const slot: SlotConfig = {
     id: "cpu",
     name: option?.label ?? visualizationId,
     visualizationId,
-    inputSourceIds: ["workbench:primary", "workbench:secondary", "workbench:noise"],
+    inputSourceIds: usesRealSystem
+      ? monitorSourceIds(visualizationId)
+      : ["workbench:primary", "workbench:secondary", "workbench:noise"],
     cycleEnabled: false,
     cycleIntervalMs: 10000,
     ascii: ascii.peek(),
   };
   return {
     slot,
-    system: syntheticWorkbenchSystem(phase, option?.group ?? "Monitor"),
-    sources: syntheticWorkbenchSources(visualizationId, option?.group ?? "Monitor", phase),
+    system,
+    sources,
     phase,
     width: Math.max(8, rect.width),
     height: Math.max(4, rect.height - 3),
   };
+}
+
+function realWorkbenchSources(visualizationId: string, system: SystemSnapshot, phase: number): SourceFrame[] {
+  return monitorSourceIds(visualizationId).map((sourceId) =>
+    getSourceFrame(sourceId, system, workbenchAudioRegistry, phase)
+  );
+}
+
+function monitorSourceIds(visualizationId: string): string[] {
+  switch (visualizationId) {
+    case "cpu-monitor":
+      return ["sys:cpu", "sys:load"];
+    case "cpu-legend":
+      return ["sys:cpu-cores"];
+    case "gpu-combined-monitor":
+      return ["sys:gpu", "sys:gpu-chip", "sys:gpu-memory"];
+    case "gpu-chip-monitor":
+      return ["sys:gpu-chip", "sys:gpu"];
+    case "gpu-memory-monitor":
+      return ["sys:gpu-memory", "sys:gpu"];
+    case "memory-monitor":
+      return ["sys:memory", "sys:swap", "sys:load"];
+    case "temperature-monitor":
+      return ["sys:temperature", "sys:alerts"];
+    case "disk-monitor":
+      return ["sys:disk", "sys:alerts"];
+    case "network-monitor":
+      return ["sys:network"];
+    case "process-monitor":
+      return ["sys:processes", "sys:cpu"];
+    default:
+      return ["sys:cpu", "sys:memory", "sys:alerts"];
+  }
 }
 
 function syntheticWorkbenchSources(id: string, group: NewWindowOption["group"], phase: number): SourceFrame[] {
@@ -2055,7 +2191,7 @@ function setThreeBodyRect(rect: Rectangle): void {
 }
 
 function screenDropdownOpen(): boolean {
-  return themeMenuOpen.peek() || newWindowMenuOpen.peek();
+  return themeMenuOpen.peek() || newWindowMenuOpen.peek() || workspaceMenuOpen.peek();
 }
 
 function isThreeRenderedWindow(id: WindowId): boolean {
@@ -2133,6 +2269,8 @@ function renderDropdownOverlay(frame: Frame, bounds: Rectangle, offset: number):
           ? { type: "theme", index: actionIndex }
           : overlay.kind === "newWindow"
           ? { type: "newWindow", index: actionIndex }
+          : overlay.kind === "workspace"
+          ? { type: "workspace", index: actionIndex }
           : { type: "control", id: "dropdown", action: "activate", index: actionIndex },
       );
     }
@@ -2292,6 +2430,177 @@ function setTheme(index: number): void {
   pushLog(`theme ${theme().label}`);
 }
 
+function openSaveWorkspaceModal(): void {
+  closeTopMenus();
+  workspaceSaveMode.value = true;
+  workspaceNameDraft.value = defaultWorkspaceName();
+  modal.open({
+    title: "Save Workspace",
+    tone: "confirm",
+    body: workspaceSaveModalBody(),
+    actions: [
+      { id: "workspace-cancel", label: "Cancel" },
+      { id: "workspace-save", label: "Save", default: true },
+    ],
+  });
+  pushLog("save workspace prompt");
+}
+
+function workspaceSaveModalBody(): string[] {
+  const loaded = currentWorkspaceVisualizationIds();
+  return [
+    "Name the current set of loaded widget windows.",
+    `Name: ${workspaceNameDraft.peek()}${workspaceSaveMode.peek() ? "▌" : ""}`,
+    `Windows: ${loaded.length === 0 ? "none" : loaded.join(", ")}`,
+    "indexedDB" in globalThis ? "Storage: IndexedDB" : "Storage: Deno JSON fallback",
+  ];
+}
+
+function refreshWorkspaceSaveModal(): void {
+  if (!workspaceSaveMode.peek() || !modal.openState.peek()) return;
+  modal.update({ body: workspaceSaveModalBody() });
+}
+
+function handleWorkspaceSaveKey(event: { key: string; ctrl?: boolean; meta?: boolean }): boolean {
+  if (event.ctrl || event.meta) return false;
+  if (event.key === "escape") {
+    workspaceSaveMode.value = false;
+    modal.close();
+    return true;
+  }
+  if (event.key === "backspace") {
+    workspaceNameDraft.value = workspaceNameDraft.peek().slice(0, -1);
+    refreshWorkspaceSaveModal();
+    return true;
+  }
+  if (event.key === "return") {
+    void saveCurrentWorkspace();
+    return true;
+  }
+  if (event.key.length === 1 && textWidth(event.key) === 1) {
+    workspaceNameDraft.value = `${workspaceNameDraft.peek()}${event.key}`.slice(0, 48);
+    refreshWorkspaceSaveModal();
+    return true;
+  }
+  return false;
+}
+
+async function saveCurrentWorkspace(): Promise<void> {
+  const name = normalizeWorkspaceName(workspaceNameDraft.peek());
+  const visualizationIds = currentWorkspaceVisualizationIds();
+  const next: SavedWorkspace = { name, visualizationIds, savedAt: Date.now() };
+  const workspaces = [
+    next,
+    ...savedWorkspaces.peek().filter((workspace) => workspace.name.toLowerCase() !== name.toLowerCase()),
+  ].slice(0, 24);
+  savedWorkspaces.value = workspaces;
+  await persistSavedWorkspaces();
+  workspaceSaveMode.value = false;
+  modal.open({
+    title: "Workspace Saved",
+    tone: "success",
+    body: [`${name}`, `${visualizationIds.length} widget window(s) saved.`],
+    actions: [{ id: "dismiss", label: "OK", default: true }],
+  });
+  pushLog(`workspace saved ${name}`);
+}
+
+function applyWorkspaceMenuItem(index: number): void {
+  if (index === 0) {
+    openSaveWorkspaceModal();
+    return;
+  }
+  const workspace = savedWorkspaces.peek()[index - 1];
+  if (!workspace) return;
+  loadWorkspace(workspace);
+}
+
+function loadWorkspace(workspace: SavedWorkspace): void {
+  closeTopMenus();
+  const target = new Set(workspace.visualizationIds);
+  for (const id of windowManager.ids()) {
+    if (isVisualizationWindow(id as WindowId)) {
+      const visualizationId = dynamicVisualizationWindows.peek()[id as VisualizationWindowId];
+      if (!visualizationId || !target.has(visualizationId)) closeWindow(id as WindowId);
+    }
+  }
+  for (const visualizationId of workspace.visualizationIds) {
+    addVisualizationWindow(visualizationOption(visualizationId));
+  }
+  pushLog(`workspace loaded ${workspace.name}`);
+}
+
+function workspaceMenuLabels(): string[] {
+  const labels = ["[+] Save Current..."];
+  for (const workspace of savedWorkspaces.peek()) {
+    labels.push(`[ ] ${workspace.name} (${workspace.visualizationIds.length})`);
+  }
+  if (labels.length === 1) labels.push("    No saved workspaces");
+  return labels;
+}
+
+function workspaceMenuItemCount(): number {
+  return Math.max(1, savedWorkspaces.peek().length + 1);
+}
+
+function currentWorkspaceVisualizationIds(): string[] {
+  return windowManager.ids()
+    .filter((id) => isVisualizationWindow(id as WindowId))
+    .map((id) => dynamicVisualizationWindows.peek()[id as VisualizationWindowId])
+    .filter((id): id is string => Boolean(id));
+}
+
+function defaultWorkspaceName(): string {
+  const count = savedWorkspaces.peek().length + 1;
+  return `Workspace ${count}`;
+}
+
+function normalizeWorkspaceName(name: string): string {
+  const trimmed = name.replace(/\s+/g, " ").trim();
+  return trimmed.length > 0 ? trimmed : defaultWorkspaceName();
+}
+
+async function loadSavedWorkspaces(): Promise<SavedWorkspace[]> {
+  const stored = await workspaceStore.get(WORKSPACE_STORE_KEY).catch(() => undefined);
+  return normalizeSavedWorkspaces(stored);
+}
+
+async function persistSavedWorkspaces(): Promise<void> {
+  await workspaceStore.set(WORKSPACE_STORE_KEY, savedWorkspaces.peek()).catch((error) => {
+    pushLog(`workspace save failed ${error instanceof Error ? error.message : "unknown"}`);
+  });
+}
+
+function normalizeSavedWorkspaces(value: unknown): SavedWorkspace[] {
+  if (!Array.isArray(value)) return [];
+  const validIds = new Set(newWindowOptions.map((option) => option.id));
+  return value.flatMap((entry): SavedWorkspace[] => {
+    if (!entry || typeof entry !== "object") return [];
+    const candidate = entry as Partial<SavedWorkspace>;
+    const name = typeof candidate.name === "string" ? normalizeWorkspaceName(candidate.name) : "";
+    const visualizationIds = Array.isArray(candidate.visualizationIds)
+      ? candidate.visualizationIds.filter((id): id is string => typeof id === "string" && validIds.has(id))
+      : [];
+    if (!name) return [];
+    return [{
+      name,
+      visualizationIds,
+      savedAt: typeof candidate.savedAt === "number" ? candidate.savedAt : 0,
+    }];
+  }).slice(0, 24);
+}
+
+function createWorkspaceStore(): AsyncStore<unknown> {
+  if ("indexedDB" in globalThis) {
+    return createRuntimeStore<unknown>({
+      databaseName: "deno-tui-api-workbench",
+      storeName: "workspaces",
+      version: 1,
+    });
+  }
+  return new JsonFileStore<unknown>(".api-workbench-workspaces.json");
+}
+
 function openWorkbenchModal(): void {
   modal.open({
     title: "Confirm Action",
@@ -2353,6 +2662,16 @@ function openHelpModal(): void {
 }
 
 function applyModalAction(actionId: string): void {
+  if (actionId === "workspace-save") {
+    void saveCurrentWorkspace();
+    return;
+  }
+  if (actionId === "workspace-cancel") {
+    workspaceSaveMode.value = false;
+    modal.close();
+    pushLog("workspace save cancelled");
+    return;
+  }
   if (actionId === "details") {
     modal.open({
       title: "Modal Details",
@@ -2423,6 +2742,7 @@ function applyHit(target: { rect: Rectangle; action: HitAction }, x: number, y: 
   } else if (action.type === "dataRow") selectDataRow(action.index);
   else if (action.type === "explorerRow") selectExplorerRow(action.index);
   else if (action.type === "newWindow") toggleVisualizationWindow(newWindowOptions[action.index]);
+  else if (action.type === "workspace") applyWorkspaceMenuItem(action.index);
   else if (action.type === "windowVScrollbar") {
     const scroll = windowScroll(action.id);
     scroll.scrollTo(
@@ -2561,6 +2881,20 @@ function handleScreenDropdownKey(event: { key: string; ctrl?: boolean; meta?: bo
     else if (event.key === "return" || event.key === "space") {
       toggleVisualizationWindow(newWindowOptions[newWindowMenuIndex.peek()]);
     }
+    return;
+  }
+  if (workspaceMenuOpen.peek()) {
+    const count = workspaceMenuItemCount();
+    if (count === 0) return;
+    if (event.key === "up") workspaceMenuIndex.value = (workspaceMenuIndex.peek() - 1 + count) % count;
+    else if (event.key === "down") workspaceMenuIndex.value = (workspaceMenuIndex.peek() + 1) % count;
+    else if (event.key === "home") workspaceMenuIndex.value = 0;
+    else if (event.key === "end") workspaceMenuIndex.value = count - 1;
+    else if (event.key === "pageup") workspaceMenuIndex.value = Math.max(0, workspaceMenuIndex.peek() - 6);
+    else if (event.key === "pagedown") workspaceMenuIndex.value = Math.min(count - 1, workspaceMenuIndex.peek() + 6);
+    else if (event.key === "return" || event.key === "space") {
+      applyWorkspaceMenuItem(workspaceMenuIndex.peek());
+    }
   }
 }
 
@@ -2574,9 +2908,11 @@ function openActiveTopMenu(): void {
   const item = menu.active();
   if (item?.id === "theme") openThemeMenu();
   else if (item?.id === "new") openNewWindowMenu();
+  else if (item?.id === "workspace") openWorkspaceMenu();
   else {
     themeMenuOpen.value = false;
     newWindowMenuOpen.value = false;
+    workspaceMenuOpen.value = false;
   }
 }
 
@@ -2585,6 +2921,7 @@ function openThemeMenu(): void {
   if (index >= 0) menu.setActive(index);
   menuFocused.value = true;
   newWindowMenuOpen.value = false;
+  workspaceMenuOpen.value = false;
   themeMenuOpen.value = true;
   pushLog("open theme menu");
 }
@@ -2594,14 +2931,27 @@ function openNewWindowMenu(): void {
   if (index >= 0) menu.setActive(index);
   menuFocused.value = true;
   themeMenuOpen.value = false;
+  workspaceMenuOpen.value = false;
   newWindowMenuOpen.value = true;
   newWindowMenuIndex.value = Math.max(0, Math.min(newWindowMenuIndex.peek(), newWindowOptions.length - 1));
   pushLog("open new window menu");
 }
 
+function openWorkspaceMenu(): void {
+  const index = menu.items.peek().findIndex((item) => item.id === "workspace");
+  if (index >= 0) menu.setActive(index);
+  menuFocused.value = true;
+  themeMenuOpen.value = false;
+  newWindowMenuOpen.value = false;
+  workspaceMenuOpen.value = true;
+  workspaceMenuIndex.value = Math.max(0, Math.min(workspaceMenuIndex.peek(), workspaceMenuItemCount() - 1));
+  pushLog("open workspace menu");
+}
+
 function closeTopMenus(clearFocus = true): void {
   themeMenuOpen.value = false;
   newWindowMenuOpen.value = false;
+  workspaceMenuOpen.value = false;
   if (clearFocus) menuFocused.value = false;
 }
 
