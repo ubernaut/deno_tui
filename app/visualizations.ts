@@ -663,7 +663,7 @@ function renderNetworkMonitor(context: RenderContext): PanelRender {
 function renderProcessMonitor(context: RenderContext): PanelRender {
   const drive = buildVisualizationDrive(context, 24);
   const header = "PID     NAME             CPU%   MEM%";
-  const rows = context.system.processes.slice(0, Math.max(1, context.height - 1)).map((process) =>
+  const rows = context.system.processes.slice(0, 100).map((process) =>
     `${String(process.pid).padEnd(7, " ")}${crop(process.name, 16).padEnd(16, " ")}${
       process.cpuPercent.toFixed(1).padStart(6, " ")
     }${process.memoryPercent.toFixed(1).padStart(7, " ")}`
@@ -674,7 +674,9 @@ function renderProcessMonitor(context: RenderContext): PanelRender {
     footer: context.system.processes[0]
       ? `HOT ${context.system.processes[0].name.toUpperCase()} ${
         context.system.processes[0].cpuPercent.toFixed(1)
-      }% CPU  RISE ${(Math.max(0, drive.slope) * 100).toFixed(0)}%`
+      }% CPU  TOP ${Math.min(100, context.system.processes.length)}  RISE ${
+        (Math.max(0, drive.slope) * 100).toFixed(0)
+      }%`
       : "PROCESS TABLE EMPTY",
     alert: context.system.processes[0]?.cpuPercent >= 90 ? "PROCESS SPIKE DETECTED" : "",
     accent: context.system.processes[0]?.cpuPercent >= 90 ? "alarm" : "amber",

@@ -356,7 +356,7 @@ export class SystemMonitor {
 
     this.#processCpu = nextProcessCpu;
 
-    return processes.sort((a, b) => b.cpuPercent - a.cpuPercent || b.memoryBytes - a.memoryBytes).slice(0, 14);
+    return processes.sort((a, b) => b.cpuPercent - a.cpuPercent || b.memoryBytes - a.memoryBytes).slice(0, 100);
   }
 }
 

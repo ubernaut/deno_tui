@@ -304,3 +304,26 @@ Deno.test("cpu legend exposes every core for scrollable panels", () => {
   assertEquals(legend.body.split("\n").length, 17);
   assert(legend.body.includes("015"));
 });
+
+Deno.test("process monitor exposes the top 100 rows for scrolling", () => {
+  const processSystem = {
+    ...calmSystem,
+    processes: Array.from({ length: 120 }, (_, index) => ({
+      pid: 10_000 + index,
+      name: `worker-${index}`,
+      state: index % 2 === 0 ? "R" : "S",
+      cpuPercent: 120 - index,
+      memoryPercent: index / 10,
+      memoryBytes: (64 + index) * 1024 ** 2,
+    })),
+  };
+  const rendered = renderVisualization({
+    ...makeContext("process-monitor", processSystem, calmSources, 0),
+    height: 5,
+  });
+  const lines = rendered.body.split("\n");
+
+  assertEquals(lines.length, 101);
+  assert(rendered.body.includes("worker-99"));
+  assert(!rendered.body.includes("worker-100"));
+});
