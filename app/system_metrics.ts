@@ -4,6 +4,7 @@ import type {
   AlertMessage,
   CpuCoreSnapshot,
   DiskSnapshot,
+  GpuSnapshot,
   NetworkSnapshot,
   ProcessSnapshot,
   SystemSnapshot,
@@ -71,6 +72,7 @@ export class SystemMonitor {
         netText,
         temperatures,
         disks,
+        gpu,
         rawProcesses,
       ] = await Promise.all([
         Deno.readTextFile("/proc/stat"),
@@ -78,6 +80,7 @@ export class SystemMonitor {
         Deno.readTextFile("/proc/net/dev"),
         sampleTemperatures(),
         this.#sampleDisks(),
+        sampleGpu(current.gpu),
         this.#collectProcessStats(),
       ]);
 
@@ -101,6 +104,17 @@ export class SystemMonitor {
         cpuOverall: cpuSample.overall,
         cpuCores: cpuSample.cores,
         cpuHistory: pushHistory(current.cpuHistory, cpuSample.overall / 100, this.#historyLength),
+        gpu,
+        gpuUtilizationHistory: pushHistory(
+          current.gpuUtilizationHistory,
+          gpu.available ? gpu.utilizationPercent / 100 : 0,
+          this.#historyLength,
+        ),
+        gpuMemoryHistory: pushHistory(
+          current.gpuMemoryHistory,
+          gpu.available ? gpu.memoryPercent / 100 : 0,
+          this.#historyLength,
+        ),
         memory: {
           total: memoryInfo.total,
           used: memoryUsed,
@@ -134,6 +148,7 @@ export class SystemMonitor {
           temperatures,
           disks,
           networks: networkSample.networks,
+          gpu,
         }),
       };
 
@@ -396,6 +411,62 @@ async function sampleTemperatures() {
   return zones.sort((a, b) => b.celsius - a.celsius);
 }
 
+async function sampleGpu(current: GpuSnapshot): Promise<GpuSnapshot> {
+  try {
+    const result = await new Deno.Command("nvidia-smi", {
+      args: [
+        "--query-gpu=name,utilization.gpu,memory.used,memory.total,temperature.gpu,power.draw,clocks.gr,clocks.mem",
+        "--format=csv,noheader,nounits",
+      ],
+      stdout: "piped",
+      stderr: "null",
+    }).output();
+    if (!result.success) return current.available ? current : emptyGpuSnapshot();
+
+    const rows = new TextDecoder().decode(result.stdout).trim().split("\n").filter(Boolean);
+    const gpus = rows.map(parseNvidiaSmiGpuRow).filter((gpu): gpu is GpuSnapshot => gpu !== null);
+    return gpus.sort((left, right) => right.utilizationPercent - left.utilizationPercent)[0] ??
+      (current.available ? current : emptyGpuSnapshot());
+  } catch {
+    return current.available ? current : emptyGpuSnapshot();
+  }
+}
+
+function parseNvidiaSmiGpuRow(row: string): GpuSnapshot | null {
+  const [name, utilization, memoryUsed, memoryTotal, temperature, power, graphicsClock, memoryClock] = row
+    .split(",")
+    .map((part) => part.trim());
+  if (!name) return null;
+  const total = parseMetricNumber(memoryTotal);
+  const used = parseMetricNumber(memoryUsed);
+  const utilizationPercent = clamp(parseMetricNumber(utilization), 0, 100);
+  const memoryPercent = total > 0 ? clamp((used / total) * 100, 0, 100) : 0;
+  return {
+    available: true,
+    name,
+    utilizationPercent,
+    memoryUsed: used * 1024 ** 2,
+    memoryTotal: total * 1024 ** 2,
+    memoryPercent,
+    temperatureCelsius: parseNullableMetricNumber(temperature),
+    powerWatts: parseNullableMetricNumber(power),
+    graphicsClockMhz: parseNullableMetricNumber(graphicsClock),
+    memoryClockMhz: parseNullableMetricNumber(memoryClock),
+  };
+}
+
+function parseMetricNumber(value: string | undefined): number {
+  if (!value || /not supported|n\/a/i.test(value)) return 0;
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function parseNullableMetricNumber(value: string | undefined): number | null {
+  if (!value || /not supported|n\/a/i.test(value)) return null;
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 function pushHistory(history: number[], value: number, limit: number) {
   const next = history.slice(-Math.max(0, limit - 1));
   next.push(clamp(value, 0, 1));
@@ -412,6 +483,7 @@ function collectAlerts(input: {
   temperatures: TemperatureSnapshot[];
   disks: DiskSnapshot[];
   networks: NetworkSnapshot[];
+  gpu: GpuSnapshot;
 }) {
   const alerts: AlertMessage[] = [];
 
@@ -490,7 +562,37 @@ function collectAlerts(input: {
     });
   }
 
+  if (input.gpu.available && input.gpu.utilizationPercent >= 95) {
+    alerts.push({
+      severity: "warning",
+      title: "GPU SATURATION",
+      detail: `${input.gpu.name.toUpperCase()} AT ${input.gpu.utilizationPercent.toFixed(0)}%`,
+    });
+  }
+  if (input.gpu.available && input.gpu.memoryPercent >= 92) {
+    alerts.push({
+      severity: "alarm",
+      title: "VRAM LIMIT",
+      detail: `GPU MEMORY AT ${input.gpu.memoryPercent.toFixed(0)}%`,
+    });
+  }
+
   return alerts.slice(0, 4);
+}
+
+function emptyGpuSnapshot(): GpuSnapshot {
+  return {
+    available: false,
+    name: "GPU unavailable",
+    utilizationPercent: 0,
+    memoryUsed: 0,
+    memoryTotal: 0,
+    memoryPercent: 0,
+    temperatureCelsius: null,
+    powerWatts: null,
+    graphicsClockMhz: null,
+    memoryClockMhz: null,
+  };
 }
 
 function emptySnapshot(hostname: string, osRelease: string, historyLength: number): SystemSnapshot {
@@ -503,6 +605,9 @@ function emptySnapshot(hostname: string, osRelease: string, historyLength: numbe
     cpuOverall: 0,
     cpuCores: [],
     cpuHistory: Array.from({ length: historyLength }, () => 0),
+    gpu: emptyGpuSnapshot(),
+    gpuUtilizationHistory: Array.from({ length: historyLength }, () => 0),
+    gpuMemoryHistory: Array.from({ length: historyLength }, () => 0),
     memory: {
       total: 0,
       used: 0,

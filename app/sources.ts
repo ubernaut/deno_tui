@@ -19,6 +19,27 @@ export function buildSourceCatalog(audioCatalog: AudioCatalogEntry[]) {
       kind: "system",
     },
     {
+      id: "sys:gpu",
+      name: "GPU Combined",
+      description: "GPU utilization and VRAM pressure.",
+      group: "System",
+      kind: "system",
+    },
+    {
+      id: "sys:gpu-chip",
+      name: "GPU Chip",
+      description: "GPU core utilization, thermals, power, and clocks.",
+      group: "System",
+      kind: "system",
+    },
+    {
+      id: "sys:gpu-memory",
+      name: "GPU Memory",
+      description: "Dedicated GPU memory usage.",
+      group: "System",
+      kind: "system",
+    },
+    {
       id: "sys:memory",
       name: "Memory",
       description: "RAM usage history and available memory.",
@@ -150,6 +171,37 @@ export function getSourceFrame(
         value: clamp(system.cpuOverall / 100, 0, 1),
         series: system.cpuCores.map((core) => core.usage / 100),
         detailLines: system.cpuCores.map((core) => `CPU${core.label.padStart(2, "0")} ${core.usage.toFixed(0)}%`),
+      };
+    case "sys:gpu":
+      return {
+        id: sourceId,
+        name: "GPU",
+        accent: gpuAccent(system.gpu.utilizationPercent, system.gpu.memoryPercent, system.gpu.available),
+        value: system.gpu.available
+          ? clamp(Math.max(system.gpu.utilizationPercent, system.gpu.memoryPercent) / 100, 0, 1)
+          : 0,
+        series: system.gpuUtilizationHistory.map((value, index) =>
+          Math.max(value, system.gpuMemoryHistory[index] ?? 0)
+        ),
+        detailLines: gpuDetailLines(system),
+      };
+    case "sys:gpu-chip":
+      return {
+        id: sourceId,
+        name: "GPU Chip",
+        accent: gpuAccent(system.gpu.utilizationPercent, 0, system.gpu.available),
+        value: system.gpu.available ? clamp(system.gpu.utilizationPercent / 100, 0, 1) : 0,
+        series: system.gpuUtilizationHistory,
+        detailLines: gpuChipDetailLines(system),
+      };
+    case "sys:gpu-memory":
+      return {
+        id: sourceId,
+        name: "GPU Memory",
+        accent: gpuAccent(0, system.gpu.memoryPercent, system.gpu.available),
+        value: system.gpu.available ? clamp(system.gpu.memoryPercent / 100, 0, 1) : 0,
+        series: system.gpuMemoryHistory,
+        detailLines: gpuMemoryDetailLines(system),
       };
     case "sys:memory":
       return {
@@ -321,6 +373,54 @@ function pseudoRandom(seedA: number, seedB: number) {
 
 function last(values: number[]) {
   return values[values.length - 1] ?? 0;
+}
+
+function gpuAccent(utilization: number, memory: number, available: boolean) {
+  if (!available) return "violet";
+  const pressure = Math.max(utilization, memory);
+  return pressure >= 90 ? "alarm" : pressure >= 72 ? "amber" : "violet";
+}
+
+function gpuDetailLines(system: SystemSnapshot) {
+  if (!system.gpu.available) return ["GPU TELEMETRY OFFLINE", "INSTALL NVIDIA-SMI OR ENABLE DRIVER METRICS"];
+  return [
+    system.gpu.name,
+    `CHIP ${system.gpu.utilizationPercent.toFixed(0)}%  VRAM ${system.gpu.memoryPercent.toFixed(0)}%`,
+    `MEM ${bytesToShort(system.gpu.memoryUsed)} / ${bytesToShort(system.gpu.memoryTotal)}`,
+    gpuThermalPowerLine(system),
+  ];
+}
+
+function gpuChipDetailLines(system: SystemSnapshot) {
+  if (!system.gpu.available) return ["GPU CHIP OFFLINE"];
+  return [
+    system.gpu.name,
+    `UTIL ${system.gpu.utilizationPercent.toFixed(0)}%`,
+    gpuThermalPowerLine(system),
+    `GFX ${formatOptionalNumber(system.gpu.graphicsClockMhz, "MHz")}  MEM ${
+      formatOptionalNumber(system.gpu.memoryClockMhz, "MHz")
+    }`,
+  ];
+}
+
+function gpuMemoryDetailLines(system: SystemSnapshot) {
+  if (!system.gpu.available) return ["GPU MEMORY OFFLINE"];
+  return [
+    `VRAM ${system.gpu.memoryPercent.toFixed(0)}%`,
+    `${bytesToShort(system.gpu.memoryUsed)} USED`,
+    `${bytesToShort(Math.max(0, system.gpu.memoryTotal - system.gpu.memoryUsed))} FREE`,
+    `${bytesToShort(system.gpu.memoryTotal)} TOTAL`,
+  ];
+}
+
+function gpuThermalPowerLine(system: SystemSnapshot) {
+  return `TEMP ${formatOptionalNumber(system.gpu.temperatureCelsius, "C")}  POWER ${
+    formatOptionalNumber(system.gpu.powerWatts, "W")
+  }`;
+}
+
+function formatOptionalNumber(value: number | null, suffix: string) {
+  return value === null ? "--" : `${value.toFixed(value >= 100 ? 0 : 1)}${suffix}`;
 }
 
 function bytesToShort(value: number) {

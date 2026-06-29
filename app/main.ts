@@ -81,7 +81,10 @@ const windowManager = new WindowManagerController({
     id: slotId,
     title: slotLabel(slotId),
     order: index,
-    minWidth: slotId === "cpuLegend" || slotId === "temperature" || slotId === "disk" ? 28 : 42,
+    minWidth: slotId === "cpuLegend" || slotId === "temperature" || slotId === "disk" || slotId === "gpuChip" ||
+        slotId === "gpuMemory"
+      ? 28
+      : 42,
     minHeight: slotId === "temperature" || slotId === "disk" ? 8 : 11,
   })),
   tileOptions: {
@@ -1550,6 +1553,12 @@ function slotLabel(slotId: SlotId) {
       return "CPU Panel";
     case "cpuLegend":
       return "CPU Legend";
+    case "gpu":
+      return "GPU Fusion";
+    case "gpuChip":
+      return "GPU Chip";
+    case "gpuMemory":
+      return "GPU Memory";
     case "memory":
       return "Memory Panel";
     case "temperature":
@@ -1579,6 +1588,33 @@ function createDefaultSlots(): Record<SlotId, SlotConfig> {
       name: "CPU Legend",
       visualizationId: defaultVisualizationForSlot("cpuLegend"),
       inputSourceIds: ["sys:cpu-cores"],
+      cycleEnabled: false,
+      cycleIntervalMs: 10000,
+      ascii: createDefaultAsciiOptions(),
+    },
+    gpu: {
+      id: "gpu",
+      name: "GPU Fusion",
+      visualizationId: defaultVisualizationForSlot("gpu"),
+      inputSourceIds: ["sys:gpu", "sys:gpu-chip", "sys:gpu-memory"],
+      cycleEnabled: false,
+      cycleIntervalMs: 10000,
+      ascii: createDefaultAsciiOptions(),
+    },
+    gpuChip: {
+      id: "gpuChip",
+      name: "GPU Chip",
+      visualizationId: defaultVisualizationForSlot("gpuChip"),
+      inputSourceIds: ["sys:gpu-chip"],
+      cycleEnabled: false,
+      cycleIntervalMs: 10000,
+      ascii: createDefaultAsciiOptions(),
+    },
+    gpuMemory: {
+      id: "gpuMemory",
+      name: "GPU Memory",
+      visualizationId: defaultVisualizationForSlot("gpuMemory"),
+      inputSourceIds: ["sys:gpu-memory"],
       cycleEnabled: false,
       cycleIntervalMs: 10000,
       ascii: createDefaultAsciiOptions(),

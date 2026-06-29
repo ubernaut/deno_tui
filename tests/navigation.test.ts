@@ -34,5 +34,6 @@ Deno.test("shiftOutputTarget cycles visible outputs in split layouts and all out
   assertEquals(shiftOutputTarget("quad", "cpu", 1), "memory");
   assertEquals(shiftOutputTarget("quad", "cpu", -1), "processes");
   assertEquals(shiftOutputTarget("single", "cpu", 1), "cpuLegend");
+  assertEquals(shiftOutputTarget("single", "cpuLegend", 1), "gpu");
   assertEquals(shiftOutputTarget("single", "cpu", -1), "processes");
 });

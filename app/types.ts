@@ -4,6 +4,9 @@ import type { TerminalGlyphStyle } from "../src/three_ascii/glyphs.ts";
 export const slotIds = [
   "cpu",
   "cpuLegend",
+  "gpu",
+  "gpuChip",
+  "gpuMemory",
   "memory",
   "temperature",
   "disk",
@@ -117,6 +120,19 @@ export interface ProcessSnapshot {
   memoryBytes: number;
 }
 
+export interface GpuSnapshot {
+  available: boolean;
+  name: string;
+  utilizationPercent: number;
+  memoryUsed: number;
+  memoryTotal: number;
+  memoryPercent: number;
+  temperatureCelsius: number | null;
+  powerWatts: number | null;
+  graphicsClockMhz: number | null;
+  memoryClockMhz: number | null;
+}
+
 export interface SystemSnapshot {
   timestamp: number;
   hostname: string;
@@ -126,6 +142,9 @@ export interface SystemSnapshot {
   cpuOverall: number;
   cpuCores: CpuCoreSnapshot[];
   cpuHistory: number[];
+  gpu: GpuSnapshot;
+  gpuUtilizationHistory: number[];
+  gpuMemoryHistory: number[];
   memory: MemorySnapshot;
   memoryHistory: number[];
   swapHistory: number[];

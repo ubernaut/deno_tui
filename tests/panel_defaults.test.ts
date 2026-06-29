@@ -4,6 +4,9 @@ import { visualizations } from "../app/visualizations.ts";
 
 Deno.test("panel defaults pick the curated monitor wall demos", () => {
   assertEquals(defaultVisualizationForSlot("cpu"), "three-lattice");
+  assertEquals(defaultVisualizationForSlot("gpu"), "gpu-combined-monitor");
+  assertEquals(defaultVisualizationForSlot("gpuChip"), "gpu-chip-monitor");
+  assertEquals(defaultVisualizationForSlot("gpuMemory"), "gpu-memory-monitor");
   assertEquals(defaultVisualizationForSlot("memory"), "three-hexshell");
   assertEquals(defaultVisualizationForSlot("temperature"), "three-capture");
   assertEquals(defaultVisualizationForSlot("disk"), "three-mapslab");

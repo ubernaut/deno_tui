@@ -56,6 +56,9 @@ Deno.test("monitor layout hides slots not present in the wall", () => {
   assertEquals(visibleSlotIds("monitor", "memory"), [
     "cpu",
     "cpuLegend",
+    "gpu",
+    "gpuChip",
+    "gpuMemory",
     "memory",
     "temperature",
     "disk",
@@ -67,6 +70,12 @@ Deno.test("monitor layout hides slots not present in the wall", () => {
     row: 0,
     width: 0,
     height: 0,
+  });
+  assertEquals(slotRect("monitor", { column: 0, row: 0, width: 160, height: 48 }, "gpu", "memory"), {
+    column: 0,
+    row: 12,
+    width: 90,
+    height: 12,
   });
 });
 

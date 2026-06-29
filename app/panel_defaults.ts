@@ -18,6 +18,28 @@ const preferredVisualizationIdsBySlot: Record<SlotId, string[]> = {
     "counter-board",
     "component-index",
   ],
+  gpu: [
+    "gpu-combined-monitor",
+    "three-atfield",
+    "field-ring",
+    "telemetry-rack",
+    "magi-board",
+    "three-solenoid",
+  ],
+  gpuChip: [
+    "gpu-chip-monitor",
+    "three-lattice",
+    "biosignal-strip",
+    "harmonic-graph",
+    "gate-status",
+  ],
+  gpuMemory: [
+    "gpu-memory-monitor",
+    "hex-heatmap",
+    "three-hexshell",
+    "channel-matrix",
+    "counter-board",
+  ],
   memory: [
     "three-hexshell",
     "hex-heatmap",

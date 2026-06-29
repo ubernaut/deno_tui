@@ -1,6 +1,17 @@
 import type { LayoutId, Rect, SlotId, ViewportMode } from "./types.ts";
 
-const MONITOR_SLOT_IDS: SlotId[] = ["cpu", "cpuLegend", "memory", "temperature", "disk", "network", "processes"];
+const MONITOR_SLOT_IDS: SlotId[] = [
+  "cpu",
+  "cpuLegend",
+  "gpu",
+  "gpuChip",
+  "gpuMemory",
+  "memory",
+  "temperature",
+  "disk",
+  "network",
+  "processes",
+];
 
 export function detectViewportMode(bounds: Rect): ViewportMode {
   if (bounds.width < 90 || bounds.height < 26) {
@@ -107,12 +118,14 @@ export function slotRect(currentLayout: LayoutId, bounds: Rect, slotId: SlotId, 
       }
     }
     case "monitor": {
-      const [topHeight, middleHeight, bottomHeight] = weightedSplit(
-        Math.max(0, bounds.height - 2),
-        [29, 34, 37],
-        [4, 4, 4],
+      const [topHeight, gpuHeight, middleHeight, bottomHeight] = weightedSplit(
+        Math.max(0, bounds.height - 3),
+        [23, 25, 25, 27],
+        [4, 4, 4, 4],
       );
       const [topLeftWidth, topRightWidth] = weightedSplit(Math.max(0, bounds.width - 1), [82, 18], [12, 10]);
+      const [gpuLeftWidth, gpuRightWidth] = weightedSplit(Math.max(0, bounds.width - 1), [58, 42], [14, 14]);
+      const [gpuChipHeight, gpuMemoryHeight] = weightedSplit(Math.max(0, gpuHeight - 1), [52, 48], [3, 3]);
       const [middleLeftWidth, middleRightWidth] = weightedSplit(Math.max(0, bounds.width - 1), [56, 44], [14, 12]);
       const [tempHeight, diskHeight] = weightedSplit(Math.max(0, middleHeight - 1), [48, 52], [3, 3]);
       const [bottomLeftWidth, bottomRightWidth] = weightedSplit(Math.max(0, bounds.width - 1), [49, 51], [14, 14]);
@@ -122,38 +135,59 @@ export function slotRect(currentLayout: LayoutId, bounds: Rect, slotId: SlotId, 
           return { column: bounds.column, row: bounds.row, width: topLeftWidth, height: topHeight };
         case "cpuLegend":
           return { column: bounds.column + topLeftWidth + 1, row: bounds.row, width: topRightWidth, height: topHeight };
-        case "memory":
+        case "gpu":
           return {
             column: bounds.column,
             row: bounds.row + topHeight + 1,
+            width: gpuLeftWidth,
+            height: gpuHeight,
+          };
+        case "gpuChip":
+          return {
+            column: bounds.column + gpuLeftWidth + 1,
+            row: bounds.row + topHeight + 1,
+            width: gpuRightWidth,
+            height: gpuChipHeight,
+          };
+        case "gpuMemory":
+          return {
+            column: bounds.column + gpuLeftWidth + 1,
+            row: bounds.row + topHeight + 1 + gpuChipHeight + 1,
+            width: gpuRightWidth,
+            height: gpuMemoryHeight,
+          };
+        case "memory":
+          return {
+            column: bounds.column,
+            row: bounds.row + topHeight + gpuHeight + 2,
             width: middleLeftWidth,
             height: middleHeight,
           };
         case "temperature":
           return {
             column: bounds.column + middleLeftWidth + 1,
-            row: bounds.row + topHeight + 1,
+            row: bounds.row + topHeight + gpuHeight + 2,
             width: middleRightWidth,
             height: tempHeight,
           };
         case "disk":
           return {
             column: bounds.column + middleLeftWidth + 1,
-            row: bounds.row + topHeight + 1 + tempHeight + 1,
+            row: bounds.row + topHeight + gpuHeight + 2 + tempHeight + 1,
             width: middleRightWidth,
             height: diskHeight,
           };
         case "network":
           return {
             column: bounds.column,
-            row: bounds.row + topHeight + middleHeight + 2,
+            row: bounds.row + topHeight + gpuHeight + middleHeight + 3,
             width: bottomLeftWidth,
             height: bottomHeight,
           };
         case "processes":
           return {
             column: bounds.column + bottomLeftWidth + 1,
-            row: bounds.row + topHeight + middleHeight + 2,
+            row: bounds.row + topHeight + gpuHeight + middleHeight + 3,
             width: bottomRightWidth,
             height: bottomHeight,
           };
