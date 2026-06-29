@@ -33,7 +33,15 @@ import { Tui } from "../src/tui.ts";
 import type { Rectangle } from "../src/types.ts";
 import { stripStyles, textWidth } from "../src/utils/strings.ts";
 import { grWizardThemePalettes } from "../src/grwizard_themes.ts";
-import { createDefaultAsciiOptions, terminalGlyphStyleLabel } from "./ascii_options.ts";
+import {
+  applyAsciiPreset,
+  ASCII_DEMO_PRESETS,
+  asciiControlValues,
+  createDefaultAsciiOptions,
+  formatAsciiControlValue,
+  TERMINAL_GLYPH_STYLES,
+  terminalGlyphStyleLabel,
+} from "./ascii_options.ts";
 import { demos as neonDemos } from "./neon_theme.ts";
 import { makeStyle } from "./styles.ts";
 import { requireInteractiveTerminal } from "./terminal_guard.ts";
@@ -75,6 +83,8 @@ type HitAction =
   | { type: "maximize"; id: WindowId }
   | { type: "restore"; id: WindowId }
   | { type: "close"; id: WindowId }
+  | { type: "threeConfig"; id: WindowId }
+  | { type: "asciiConfig"; index: number; action?: ConfigHitAction }
   | { type: "theme"; index: number }
   | { type: "newWindow"; index: number }
   | { type: "modalAction"; index: number }
@@ -85,6 +95,18 @@ type HitAction =
   | { type: "windowHScrollbar"; id: WindowId }
   | { type: "workspaceScrollbar" };
 type ControlHitAction = "previous" | "next" | "activate" | "set" | "focus" | "toggle";
+type ConfigHitAction = "previous" | "next" | "activate";
+type AsciiNumericKey =
+  | "edgeThreshold"
+  | "normalThreshold"
+  | "depthThreshold"
+  | "exposure"
+  | "attenuation"
+  | "blendWithBase"
+  | "depthFalloff"
+  | "depthOffset"
+  | "terminalEdgeBias";
+type AsciiToggleKey = "edges" | "fill" | "invertLuminance";
 
 interface ThemeSpec {
   id: string;
@@ -222,6 +244,8 @@ tui.dispatch();
 const themeIndex = new Signal(0);
 const themeMenuOpen = new Signal(false);
 const newWindowMenuOpen = new Signal(false);
+const threeConfigOpen = new Signal(false);
+const threeConfigSelected = new Signal(0);
 const activeWindow = new Signal<WindowId>("inspector");
 const activeControl = new Signal<ControlId>("button");
 const maximized = new Signal<WindowId | null>(null);
@@ -404,7 +428,7 @@ const table = new DataTableController<ProcessRow>({
 });
 const threeBodyRect = new Signal<Rectangle>({ column: 0, row: 0, width: 0, height: 0 }, { deepObserve: true });
 const threeScene = new Computed<{ mode: ThreeSceneMode; signal: ThreeSceneSignal } | null>(() =>
-  modal.openState.value || minimized.value.three || !threeAsciiAvailable.value ? null : {
+  modal.openState.value || threeConfigOpen.value || minimized.value.three || !threeAsciiAvailable.value ? null : {
     mode: "studio",
     signal: {
       x: density.value.value / 10,
@@ -443,6 +467,11 @@ tui.rectangle.subscribe(() => {
 
 tui.on("keyPress", (event) => {
   if (event.ctrl && event.key === "c") return;
+  if (threeConfigOpen.peek()) {
+    handleThreeConfigKey(event);
+    draw();
+    return;
+  }
   if (modal.openState.peek()) {
     modal.handleKeyPress(event);
     draw();
@@ -549,6 +578,8 @@ tui.on("destroy", () => {
   dropdown.dispose();
   modalButton.dispose();
   modal.dispose();
+  threeConfigOpen.dispose();
+  threeConfigSelected.dispose();
   dynamicVisualizationWindows.dispose();
   commandInput.dispose();
   workflowStepper.dispose();
@@ -756,6 +787,8 @@ function renderWindow(frame: Frame, id: WindowId, rect: Rectangle): void {
   const restoreX = rect.column + rect.width - 8;
   const maxX = rect.column + rect.width - 12;
   const minX = rect.column + rect.width - 16;
+  const configLabel = "[config]";
+  const configX = minX - textWidth(configLabel) - 1;
   if (rect.width >= 22) {
     write(frame, buttonRow, minX, paint("[-]", { fg: t.background, bg: t.warn, bold: true }));
     write(frame, buttonRow, maxX, paint("[□]", { fg: t.background, bg: t.good, bold: true }));
@@ -765,6 +798,10 @@ function renderWindow(frame: Frame, id: WindowId, rect: Rectangle): void {
     addHit({ column: maxX, row: buttonRow, width: 3, height: 1 }, { type: "maximize", id });
     addHit({ column: restoreX, row: buttonRow, width: 3, height: 1 }, { type: "restore", id });
     addHit({ column: closeX, row: buttonRow, width: 3, height: 1 }, { type: "close", id });
+  }
+  if (isThreeRenderedWindow(id) && configX > rect.column + textWidth(windowTitle(id)) + 3) {
+    write(frame, buttonRow, configX, paint(configLabel, buttonPaintOptions(t, "base")));
+    addHit({ column: configX, row: buttonRow, width: textWidth(configLabel), height: 1 }, { type: "threeConfig", id });
   }
 
   const inner = inset(rect, 1);
@@ -1376,6 +1413,10 @@ function emptyWorkspaceMessage(): string {
 }
 
 function renderModalOverlay(frame: Frame): void {
+  if (threeConfigOpen.peek()) {
+    renderThreeConfigModal(frame);
+    return;
+  }
   if (!modal.openState.peek()) return;
 
   const t = theme();
@@ -1444,6 +1485,191 @@ function renderModalOverlay(frame: Frame): void {
     addHit({ column: cursor, row: actionRow, width, height: 1 }, { type: "modalAction", index });
     cursor += width + 1;
   }
+}
+
+type ThreeConfigRow =
+  | { kind: "preset"; label: string }
+  | { kind: "glyphStyle"; label: string }
+  | { kind: "toggle"; key: AsciiToggleKey; label: string }
+  | { kind: "numeric"; key: AsciiNumericKey; label: string };
+
+const threeConfigRows: readonly ThreeConfigRow[] = [
+  { kind: "preset", label: "Preset" },
+  { kind: "glyphStyle", label: "Glyph style" },
+  { kind: "numeric", key: "terminalEdgeBias", label: "Edge glyph bias" },
+  { kind: "toggle", key: "edges", label: "Edge pass" },
+  { kind: "toggle", key: "fill", label: "Fill pass" },
+  { kind: "toggle", key: "invertLuminance", label: "Invert luminance" },
+  { kind: "numeric", key: "edgeThreshold", label: "Edge threshold" },
+  { kind: "numeric", key: "normalThreshold", label: "Normal edge" },
+  { kind: "numeric", key: "depthThreshold", label: "Depth edge" },
+  { kind: "numeric", key: "exposure", label: "Exposure" },
+  { kind: "numeric", key: "attenuation", label: "Attenuation" },
+  { kind: "numeric", key: "blendWithBase", label: "Base blend" },
+  { kind: "numeric", key: "depthFalloff", label: "Fog falloff" },
+  { kind: "numeric", key: "depthOffset", label: "Fog offset" },
+];
+
+function renderThreeConfigModal(frame: Frame): void {
+  const t = theme();
+  const screen = { column: 0, row: 0, width: currentWidth(), height: currentHeight() };
+  addHit(screen, { type: "asciiConfig", index: -1 });
+  const width = Math.min(Math.max(54, currentWidth() - 8), 82);
+  const height = Math.min(Math.max(14, threeConfigRows.length + 5), Math.max(8, currentHeight() - 4));
+  const rect = {
+    column: Math.max(0, Math.floor((currentWidth() - width) / 2)),
+    row: Math.max(1, Math.floor((currentHeight() - height) / 2)),
+    width,
+    height,
+  };
+  const shadow = clipRect(
+    { column: rect.column + 2, row: rect.row + 1, width: rect.width, height: rect.height },
+    screen,
+  );
+  if (shadow.width > 0 && shadow.height > 0) fillRect(frame, shadow, t.background);
+  fillRect(frame, rect, t.panelSoft);
+  drawFrame(frame, rect, "Three Renderer Config", true);
+
+  const inner = inset(rect, 1);
+  const title = `ASCII ${terminalGlyphStyleLabel(ascii.peek().terminalGlyphStyle)} · ${
+    asciiPresetLabelLocal(ascii.peek().preset)
+  }`;
+  write(frame, inner.row, inner.column, paint(fit(title, inner.width), { fg: t.accent, bg: t.panelSoft, bold: true }));
+  const rowsTop = inner.row + 2;
+  const visibleRows = Math.max(0, inner.height - 3);
+  for (let visibleIndex = 0; visibleIndex < Math.min(visibleRows, threeConfigRows.length); visibleIndex += 1) {
+    const rowIndex = visibleIndex;
+    const row = threeConfigRows[rowIndex]!;
+    const y = rowsTop + visibleIndex;
+    const selected = threeConfigSelected.peek() === rowIndex;
+    const bg = selected ? t.warn : t.surface;
+    const fg = selected ? t.background : t.text;
+    write(frame, y, inner.column, paint(" ".repeat(inner.width), { bg }));
+    write(frame, y, inner.column, paint(fit(threeConfigRowText(row), inner.width), { fg, bg, bold: selected }));
+    const leftWidth = Math.max(6, Math.floor(inner.width / 2));
+    addHit({ column: inner.column, row: y, width: leftWidth, height: 1 }, {
+      type: "asciiConfig",
+      index: rowIndex,
+      action: "previous",
+    });
+    addHit({ column: inner.column + leftWidth, row: y, width: inner.width - leftWidth, height: 1 }, {
+      type: "asciiConfig",
+      index: rowIndex,
+      action: "next",
+    });
+  }
+  const footer = "Up/Down select  Left/Right change  Enter toggle  Esc close";
+  write(
+    frame,
+    inner.row + inner.height - 1,
+    inner.column,
+    paint(fit(footer, inner.width), {
+      fg: t.muted,
+      bg: t.panel,
+    }),
+  );
+}
+
+function threeConfigRowText(row: ThreeConfigRow): string {
+  const current = ascii.peek();
+  if (row.kind === "preset") {
+    return `${row.label.padEnd(18)} [<] ${asciiPresetLabelLocal(current.preset)} [>]`;
+  }
+  if (row.kind === "glyphStyle") {
+    const labels = TERMINAL_GLYPH_STYLES.map((style) =>
+      style === current.terminalGlyphStyle
+        ? `[${terminalGlyphStyleLabel(style)}]`
+        : ` ${terminalGlyphStyleLabel(style)} `
+    ).join(" ");
+    return `${row.label.padEnd(18)} ${labels}`;
+  }
+  if (row.kind === "toggle") {
+    return `${row.label.padEnd(18)} ${current[row.key] ? "[x]" : "[ ]"}`;
+  }
+  const value = Number(current[row.key]);
+  const values = asciiControlValues(row.key);
+  const ratio = numericOptionRatio(values, value);
+  const trackWidth = 14;
+  const filled = Math.round(ratio * trackWidth);
+  const track = `${"█".repeat(filled)}${"░".repeat(Math.max(0, trackWidth - filled))}`;
+  return `${row.label.padEnd(18)} [<] ${track} ${formatAsciiControlValue(row.key, value).padStart(5)} [>]`;
+}
+
+function applyThreeConfigRow(index: number, action: ConfigHitAction = "activate"): void {
+  if (index < 0) {
+    closeThreeConfigModal();
+    return;
+  }
+  const row = threeConfigRows[index];
+  if (!row) return;
+  threeConfigSelected.value = index;
+  if (row.kind === "preset") {
+    stepAsciiPreset(action === "previous" ? -1 : 1);
+  } else if (row.kind === "glyphStyle") {
+    stepAsciiGlyphStyle(action === "previous" ? -1 : 1);
+  } else if (row.kind === "toggle") {
+    toggleAsciiOption(row.key);
+  } else {
+    stepAsciiNumeric(row.key, action === "previous" ? -1 : 1);
+  }
+}
+
+function stepAsciiPreset(delta: number): void {
+  const ids = ASCII_DEMO_PRESETS.map((preset) => preset.id);
+  const current = ascii.peek();
+  const currentIndex = Math.max(0, ids.indexOf(current.preset));
+  const nextId = ids[(currentIndex + delta + ids.length) % ids.length]!;
+  const next = { ...current };
+  applyAsciiPreset(next, nextId);
+  ascii.value = next;
+  pushLog(`three config preset ${asciiPresetLabelLocal(nextId)}`);
+}
+
+function stepAsciiGlyphStyle(delta: number): void {
+  const current = ascii.peek();
+  const index = TERMINAL_GLYPH_STYLES.indexOf(current.terminalGlyphStyle);
+  const next = TERMINAL_GLYPH_STYLES[(index + delta + TERMINAL_GLYPH_STYLES.length) % TERMINAL_GLYPH_STYLES.length]!;
+  ascii.value = { ...current, terminalGlyphStyle: next, preset: "custom" };
+  pushLog(`three config glyph style ${terminalGlyphStyleLabel(next)}`);
+}
+
+function toggleAsciiOption(key: AsciiToggleKey): void {
+  const current = ascii.peek();
+  ascii.value = { ...current, [key]: !current[key], preset: "custom" };
+  pushLog(`three config ${key} ${!current[key] ? "on" : "off"}`);
+}
+
+function stepAsciiNumeric(key: AsciiNumericKey, delta: number): void {
+  const current = ascii.peek();
+  const values = asciiControlValues(key);
+  const currentValue = Number(current[key]);
+  const closest = closestValueIndex(values, currentValue);
+  const nextValue = values[Math.max(0, Math.min(values.length - 1, closest + delta))]!;
+  ascii.value = { ...current, [key]: nextValue, preset: "custom" };
+  pushLog(`three config ${key} ${formatAsciiControlValue(key, nextValue)}`);
+}
+
+function numericOptionRatio(values: readonly number[], value: number): number {
+  const min = values[0] ?? 0;
+  const max = values.at(-1) ?? min;
+  return max === min ? 1 : Math.max(0, Math.min(1, (value - min) / (max - min)));
+}
+
+function closestValueIndex(values: readonly number[], value: number): number {
+  let best = 0;
+  let distance = Number.POSITIVE_INFINITY;
+  for (const [index, candidate] of values.entries()) {
+    const nextDistance = Math.abs(candidate - value);
+    if (nextDistance < distance) {
+      best = index;
+      distance = nextDistance;
+    }
+  }
+  return best;
+}
+
+function asciiPresetLabelLocal(presetId: string): string {
+  return ASCII_DEMO_PRESETS.find((preset) => preset.id === presetId)?.label ?? "Custom";
 }
 
 function drawFrame(frame: Frame, rect: Rectangle, title: string, active: boolean): void {
@@ -1744,7 +1970,7 @@ function renderWindowScrollbars(
 }
 
 function updateThreeBodyRect(rect: Rectangle | undefined, viewport: Rectangle, offset: number): void {
-  if (!rect || modal.openState.peek() || screenDropdownOpen() || minimized.peek().three) {
+  if (!rect || modal.openState.peek() || threeConfigOpen.peek() || screenDropdownOpen() || minimized.peek().three) {
     setThreeBodyRect({ column: 0, row: 0, width: 0, height: 0 });
     return;
   }
@@ -1775,6 +2001,10 @@ function setThreeBodyRect(rect: Rectangle): void {
 
 function screenDropdownOpen(): boolean {
   return themeMenuOpen.peek() || newWindowMenuOpen.peek();
+}
+
+function isThreeRenderedWindow(id: WindowId): boolean {
+  return id === "three";
 }
 
 function translateWorkspaceHits(startIndex: number, rowDelta: number, clip: Rectangle): void {
@@ -2089,6 +2319,8 @@ function applyHit(target: { rect: Rectangle; action: HitAction }, x: number, y: 
   else if (action.type === "minimize") minimize(action.id);
   else if (action.type === "maximize") toggleMaximize(action.id);
   else if (action.type === "close") closeWindow(action.id);
+  else if (action.type === "threeConfig") openThreeConfigModal(action.id);
+  else if (action.type === "asciiConfig") applyThreeConfigRow(action.index, action.action ?? "activate");
   else if (action.type === "restore") {
     windowManager.restore(action.id);
     syncWindowSignalsFromManager();
@@ -2122,6 +2354,45 @@ function applyHit(target: { rect: Rectangle; action: HitAction }, x: number, y: 
       scrollbarOffsetForPointer(workspaceScroll.contentHeight.peek(), target.rect.height, y - target.rect.row),
     );
   } else if (action.type === "theme") setTheme(action.index);
+}
+
+function openThreeConfigModal(id: WindowId): void {
+  if (!isThreeRenderedWindow(id)) return;
+  modal.close();
+  themeMenuOpen.value = false;
+  newWindowMenuOpen.value = false;
+  threeConfigOpen.value = true;
+  threeConfigSelected.value = 0;
+  focus(id);
+  pushLog(`configure ${windowTitle(id)}`);
+}
+
+function closeThreeConfigModal(): void {
+  threeConfigOpen.value = false;
+  pushLog("three config closed");
+}
+
+function handleThreeConfigKey(event: { key: string; shift?: boolean }): void {
+  if (event.key === "escape" || event.key === "q") {
+    closeThreeConfigModal();
+    return;
+  }
+  if (event.key === "up") {
+    threeConfigSelected.value = (threeConfigSelected.peek() - 1 + threeConfigRows.length) % threeConfigRows.length;
+    return;
+  }
+  if (event.key === "down" || event.key === "tab") {
+    const delta = event.shift ? -1 : 1;
+    threeConfigSelected.value = (threeConfigSelected.peek() + delta + threeConfigRows.length) % threeConfigRows.length;
+    return;
+  }
+  if (event.key === "left") {
+    applyThreeConfigRow(threeConfigSelected.peek(), "previous");
+    return;
+  }
+  if (event.key === "right" || event.key === "return" || event.key === "space") {
+    applyThreeConfigRow(threeConfigSelected.peek(), "next");
+  }
 }
 
 function closeWindow(id: WindowId): void {
