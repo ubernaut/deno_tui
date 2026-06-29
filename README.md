@@ -763,12 +763,36 @@ the same command registry used by palettes, menus, keymaps, and plugins. Pass a 
 bounds callback so the commands can resize against the current viewport while keeping `SplitPaneController` independent
 of any specific app shell.
 
+### Tiled Workspaces
+
+`tileRects()` scores available terminal space and returns one-column, two-column, three-column, or four-column pane
+rectangles from minimum tile dimensions and a target aspect ratio. It is useful for dashboard/workbench surfaces that
+should become denser on wide terminals while still supporting scrollable vertical overflow on short screens:
+
+```ts
+import { tileRects } from "https://deno.land/x/tui@VERSION/mod.ts";
+
+const workspace = tileRects(bounds, {
+  itemCount: panels.length,
+  minTileWidth: 36,
+  minTileHeight: 10,
+  maxColumns: 4,
+  targetAspectRatio: 2.3,
+  allowVerticalOverflow: true,
+});
+
+for (const [index, panel] of panels.entries()) {
+  panel.rectangle.value = workspace.rects[index];
+}
+```
+
 Responsive helpers are also exported for common app shell layout:
 
 - `resolveBreakpoint()`
 - `insetRect()`
 - `splitRect()`
 - `dockRect()`
+- `tileRects()`
 - `resolveLayoutRecipe()`
 - `createLayoutRecipeController()`
 - `layoutRecipeSlots()`

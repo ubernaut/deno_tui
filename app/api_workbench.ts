@@ -24,7 +24,7 @@ import { renderStatusBar } from "../src/components/statusbar.ts";
 import { renderStepper, StepperController } from "../src/components/stepper.ts";
 import { TextBoxController, wrapTextBoxLines } from "../src/components/textbox.ts";
 import { handleInput } from "../src/input.ts";
-import { SplitPaneController } from "../src/layout/mod.ts";
+import { tileRects } from "../src/layout/mod.ts";
 import { Computed, Signal } from "../src/signals/mod.ts";
 import { Tui } from "../src/tui.ts";
 import type { Rectangle } from "../src/types.ts";
@@ -108,7 +108,7 @@ const themes: ThemeSpec[] = grWizardThemePalettes.map((palette) => ({
 
 const rows: ProcessRow[] = [
   { id: "layout", surface: "Adaptive Grid", api: "layout", state: "ready", latency: 4 },
-  { id: "split", surface: "Split Pane", api: "layout", state: "resizing", latency: 6 },
+  { id: "tiles", surface: "Tile Layout", api: "layout", state: "balancing", latency: 6 },
   { id: "menu", surface: "Menu Bar", api: "component", state: "active", latency: 2 },
   { id: "scroll", surface: "Scroll Area", api: "viewport", state: "tracking", latency: 3 },
   { id: "data", surface: "Data Table", api: "data", state: "sorted", latency: 8 },
@@ -127,7 +127,7 @@ const columns: DataColumn<ProcessRow>[] = [
 const docs = [
   "API Workbench demonstrates controller-first composition.",
   "MenuBarController owns active menu state and selection.",
-  "SplitPaneController resizes panes with preserved ratios.",
+  "tileRects balances panes across one, two, three, or four columns.",
   "ScrollAreaController clamps offsets and reports scrollbar thumbs.",
   "DataTableController handles keyed selection, sorting, paging, and filtering.",
   "SliderController and CheckBoxController expose input state without renderer coupling.",
@@ -136,7 +136,7 @@ const docs = [
   "Mouse clicks work on window buttons and theme swatches; keyboard shortcuts mirror command surfaces.",
   "This demo intentionally uses public controllers plus canvas primitives so the composition remains transparent.",
   "Resize the terminal: panels collapse from side-by-side to stacked narrow layouts.",
-  "Use [ and ] to resize the main split; use T to cycle themes.",
+  "Use [ and ] to tune tile density; use T to cycle themes.",
   "Use Tab or 1-4 to focus windows; use M, F, R for window controls.",
 ];
 
@@ -179,13 +179,7 @@ const menu = new MenuBarController({
   ],
   onSelect: (item) => pushLog(`menu selected: ${item.label}`),
 });
-const split = new SplitPaneController({
-  direction: "row",
-  ratio: 0.5,
-  minFirst: 32,
-  minSecond: 32,
-  resizeMode: "ratio",
-});
+const tileDensity = new Signal(0);
 const workspaceScroll = new ScrollAreaController({ showScrollbar: true });
 const logScroll = new ScrollAreaController({ contentHeight: docs.length, showScrollbar: true });
 const density = new SliderController({ min: 1, max: 10, step: 1, value: 6, orientation: "horizontal" });
@@ -291,8 +285,8 @@ tui.on("keyPress", (event) => {
   else if (event.key === "f" || event.key === "return") toggleMaximize(activeWindow.peek());
   else if (event.key === "r" || event.key === "escape") restoreAll();
   else if (event.key === "t") setTheme(themeIndex.peek() + 1);
-  else if (event.key === "[") resizeSplit(-4);
-  else if (event.key === "]") resizeSplit(4);
+  else if (event.key === "[") adjustTileDensity(-1);
+  else if (event.key === "]") adjustTileDensity(1);
   else if (activeWindow.peek() === "controls") handleControlsKey(event);
   else if (event.key === "+" || event.key === "=") density.increment();
   else if (event.key === "-" || event.key === "_") density.decrement();
@@ -338,7 +332,6 @@ tui.on("destroy", () => {
   clearInterval(liveTimer);
   clearInterval(resizeTimer);
   menu.dispose();
-  split.dispose();
   workspaceScroll.dispose();
   logScroll.dispose();
   density.dispose();
@@ -507,7 +500,7 @@ function renderInspector(frame: Frame, rect: Rectangle): void {
   const lines = [
     { text: " Composable API surfaces ", fg: t.background, bg: t.accent, bold: true },
     { text: "menu      MenuBarController", fg: t.good, bg: t.surface },
-    { text: "layout    SplitPaneController + adaptive bounds", fg: t.good, bg: t.surface },
+    { text: "layout    tileRects + adaptive bounds", fg: t.good, bg: t.surface },
     { text: "viewport  ScrollAreaController", fg: t.good, bg: t.surface },
     { text: "data      DataTableController", fg: t.good, bg: t.surface },
     { text: "controls  SliderController / CheckBoxController", fg: t.good, bg: t.surface },
@@ -909,10 +902,9 @@ function renderShelf(frame: Frame): void {
 function renderStatus(frame: Frame): void {
   const t = theme();
   const width = currentWidth();
-  const left = `focus ${windowTitle(activeWindow.peek())} | ${theme().label} | split ${
-    (split.snapshot().ratio ?? 0).toFixed(2)
-  }`;
-  const right = "1-4 focus  arrows table/logs  mouse buttons";
+  const densityLabel = tileDensity.peek() === 0 ? "balanced" : tileDensity.peek() > 0 ? "dense" : "wide";
+  const left = `focus ${windowTitle(activeWindow.peek())} | ${theme().label} | tiles ${densityLabel}`;
+  const right = "1-4 focus  [/] tile density  arrows table/logs  mouse";
   write(frame, currentHeight() - 1, 0, paint(renderStatusBar(left, right, width), { fg: t.text, bg: t.panelSoft }));
 }
 
@@ -929,13 +921,6 @@ function drawFrame(frame: Frame, rect: Rectangle, title: string, active: boolean
   }
   write(frame, rect.row + rect.height - 1, rect.column, paint(`└${horizontal}┘`, borderStyle));
   write(frame, rect.row, rect.column + 2, paint(` ${title.toUpperCase()} `, titleStyle));
-}
-
-function splitPane(bounds: Rectangle, direction: "row" | "column", ratio: number) {
-  const temp = new SplitPaneController({ direction, ratio, minFirst: 6, minSecond: 6, resizeMode: "ratio" });
-  const rects = temp.rects(bounds);
-  temp.dispose();
-  return rects;
 }
 
 function stackRects(bounds: Rectangle, count: number): Rectangle[] {
@@ -969,7 +954,7 @@ function workspaceLayout(bounds: Rectangle): {
   const visible = (["inspector", "data", "controls", "logs"] as WindowId[]).filter((id) => !minimized.peek()[id]);
   if (visible.length === 0) return { bounds, contentHeight: bounds.height, rects };
 
-  const stacked = bounds.width < 92 || bounds.height < 18 || visible.length < 4;
+  const stacked = bounds.width < 92 || bounds.height < 18;
   if (stacked) {
     const stackedRects = stackWorkspaceRects(bounds, visible);
     for (const [index, id] of visible.entries()) rects.set(id, stackedRects[index]!);
@@ -977,15 +962,20 @@ function workspaceLayout(bounds: Rectangle): {
     return { bounds, contentHeight: Math.max(bounds.height, bottom - bounds.row), rects };
   }
 
-  split.setDirection("row");
-  const rows = splitPane(bounds, "column", 0.46);
-  const top = split.rects(rows.first);
-  const bottom = split.rects(rows.second);
-  rects.set("inspector", top.first);
-  rects.set("data", top.second);
-  rects.set("controls", bottom.first);
-  rects.set("logs", bottom.second);
-  return { bounds, contentHeight: bounds.height, rects };
+  const densityOffset = tileDensity.peek() * 4;
+  const layout = tileRects(bounds, {
+    itemCount: visible.length,
+    minTileWidth: Math.max(28, 38 - densityOffset),
+    minTileHeight: 10,
+    maxColumns: bounds.width >= 172 ? 4 : 3,
+    gap: 1,
+    targetAspectRatio: 2.25 + tileDensity.peek() * 0.12,
+    allowVerticalOverflow: true,
+  });
+  for (const [index, id] of visible.entries()) {
+    rects.set(id, layout.rects[index]!);
+  }
+  return { bounds, contentHeight: Math.max(bounds.height, layout.contentHeight), rects };
 }
 
 function stackWorkspaceRects(bounds: Rectangle, ids: WindowId[]): Rectangle[] {
@@ -1102,9 +1092,9 @@ function restoreAll(): void {
   pushLog("restore all windows");
 }
 
-function resizeSplit(delta: number): void {
-  split.resize({ column: 0, row: 0, width: currentWidth(), height: currentHeight() }, delta);
-  pushLog(`resize split ${delta > 0 ? "+" : ""}${delta}`);
+function adjustTileDensity(delta: number): void {
+  tileDensity.value = Math.max(-3, Math.min(3, tileDensity.peek() + delta));
+  pushLog(`tile density ${tileDensity.peek()}`);
 }
 
 function setTheme(index: number): void {

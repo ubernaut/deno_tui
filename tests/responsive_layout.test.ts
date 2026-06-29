@@ -7,6 +7,7 @@ import {
   insetRect,
   resolveBreakpoint,
   splitRect,
+  tileRects,
 } from "../src/layout/mod.ts";
 
 Deno.test("resolveBreakpoint picks the largest matching breakpoint", () => {
@@ -99,4 +100,50 @@ Deno.test("adaptiveGridPage and item rects keep pages inside bounds", () => {
     width: 21,
     height: 9,
   });
+});
+
+Deno.test("tileRects chooses wider grids instead of only one or two columns", () => {
+  const mediumWide = tileRects({ column: 2, row: 3, width: 120, height: 30 }, {
+    itemCount: 4,
+    minTileWidth: 36,
+    minTileHeight: 10,
+    maxColumns: 4,
+    targetAspectRatio: 2.3,
+    gap: 1,
+  });
+
+  assertEquals(mediumWide.columns, 3);
+  assertEquals(mediumWide.rows, 2);
+  assertEquals(mediumWide.rects[0], { column: 2, row: 3, width: 39, height: 14 });
+  assertEquals(mediumWide.rects[2], { column: 82, row: 3, width: 40, height: 14 });
+  assertEquals(mediumWide.rects[3], { column: 2, row: 18, width: 39, height: 14 });
+
+  const extraWide = tileRects({ column: 2, row: 3, width: 150, height: 30 }, {
+    itemCount: 4,
+    minTileWidth: 36,
+    minTileHeight: 10,
+    maxColumns: 4,
+    targetAspectRatio: 2.3,
+    gap: 1,
+  });
+
+  assertEquals(extraWide.columns, 4);
+  assertEquals(extraWide.rows, 1);
+  assertEquals(extraWide.rects[3], { column: 113, row: 3, width: 39, height: 30 });
+});
+
+Deno.test("tileRects can overflow vertically for scrollable tiled panes", () => {
+  const layout = tileRects({ column: 0, row: 0, width: 80, height: 12 }, {
+    itemCount: 4,
+    minTileWidth: 34,
+    minTileHeight: 8,
+    maxColumns: 2,
+    gap: 1,
+    allowVerticalOverflow: true,
+  });
+
+  assertEquals(layout.columns, 2);
+  assertEquals(layout.rows, 2);
+  assertEquals(layout.contentHeight, 17);
+  assertEquals(layout.rects[2], { column: 0, row: 9, width: 39, height: 8 });
 });
