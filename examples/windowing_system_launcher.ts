@@ -25,6 +25,8 @@ export interface WorkspaceDemoState {
   manager: WindowManagerController;
   openedIds: Set<string>;
   log: string[];
+  quitModalOpen: boolean;
+  quitModalAction: "cancel" | "quit";
 }
 
 export interface WorkspaceDemoScreenOptions {
@@ -193,6 +195,8 @@ export function createWorkspaceDemoState(
     openedIds,
     manager: new WindowManagerController({ activeId: "explorer", windows }),
     log: ["ready: select a demo in the file explorer and press Enter"],
+    quitModalOpen: false,
+    quitModalAction: "cancel",
   };
 }
 
@@ -226,6 +230,31 @@ export function activeWorkspaceItem(state: WorkspaceDemoState): WorkspaceDemoIte
   return activeId ? itemById.get(activeId) : undefined;
 }
 
+export function openWorkspaceQuitModal(state: WorkspaceDemoState): void {
+  state.quitModalOpen = true;
+  state.quitModalAction = "cancel";
+  state.log.unshift("quit requested");
+  state.log.splice(5);
+}
+
+export function handleWorkspaceQuitModalKey(state: WorkspaceDemoState, key: string): boolean {
+  if (!state.quitModalOpen) return false;
+  if (key === "escape" || key === "n" || key === "q") {
+    state.quitModalOpen = false;
+    state.quitModalAction = "cancel";
+    state.log.unshift("quit cancelled");
+    state.log.splice(5);
+    return false;
+  }
+  if (key === "left" || key === "right" || key === "tab" || key === "backtab") {
+    state.quitModalAction = state.quitModalAction === "cancel" ? "quit" : "cancel";
+    return false;
+  }
+  if (key === "y") return true;
+  if (key === "enter") return state.quitModalAction === "quit";
+  return false;
+}
+
 export function formatWorkspaceDemoScreen(
   state: WorkspaceDemoState,
   options: WorkspaceDemoScreenOptions = {},
@@ -239,7 +268,7 @@ export function formatWorkspaceDemoScreen(
     canvas,
     0,
     1,
-    fit("Enter open preview  L launch real task  Tab focus  F fullscreen  M hide  R restore  Q quit", width),
+    fit("Enter open preview  L launch real task  Tab focus  F fullscreen  M hide  R restore  Q confirm quit", width),
   );
 
   const contentHeight = Math.max(1, height - 4);
@@ -269,6 +298,7 @@ export function formatWorkspaceDemoScreen(
       width,
     ),
   );
+  if (state.quitModalOpen) drawQuitModal(canvas, width, height, state.quitModalAction);
   return canvas.map((row) => row.join("")).join("\n");
 }
 
@@ -296,7 +326,7 @@ export function formatWorkspaceLauncherHelp(): string {
     "  F            toggle fullscreen",
     "  M            hide/minimize the active window",
     "  R            restore hidden windows",
-    "  Q/Esc        quit",
+    "  Q/Esc        open quit confirmation",
     "",
     "Included launch targets:",
     ...workspaceDemoItems.map((item) => `  ${item.path.padEnd(36)} deno task ${item.task}`),
@@ -315,7 +345,14 @@ async function runInteractiveWorkspace(): Promise<WorkspaceDemoItem | undefined>
       write(`\x1b[H${formatWorkspaceDemoScreen(state, { width: size.columns, height: size.rows, frame })}`);
       frame += 1;
       const key = await readKey();
-      if (key === "q" || key === "escape") break;
+      if (state.quitModalOpen) {
+        if (handleWorkspaceQuitModalKey(state, key)) break;
+        continue;
+      }
+      if (key === "q" || key === "escape") {
+        openWorkspaceQuitModal(state);
+        continue;
+      }
       if (key === "tab") state.manager.focusNext();
       else if (key === "backtab") state.manager.focusNext(-1);
       else if (key === "f") state.manager.fullscreen(state.manager.activeId.peek());
@@ -462,6 +499,38 @@ function drawItemPreview(
   writeLines(canvas, rect, lines);
 }
 
+function drawQuitModal(canvas: string[][], width: number, height: number, selected: "cancel" | "quit"): void {
+  const modalWidth = Math.min(Math.max(44, Math.floor(width * 0.48)), Math.max(20, width - 4));
+  const modalHeight = 9;
+  const rect = {
+    column: Math.max(0, Math.floor((width - modalWidth) / 2)),
+    row: Math.max(2, Math.floor((height - modalHeight) / 2)),
+    width: modalWidth,
+    height: modalHeight,
+  };
+  fillRect(canvas, rect, " ");
+  drawBox(canvas, rect, "* Confirm Quit", "=", "!");
+  const inner = {
+    column: rect.column + 2,
+    row: rect.row + 2,
+    width: Math.max(0, rect.width - 4),
+    height: Math.max(0, rect.height - 4),
+  };
+  writeLines(canvas, inner, [
+    "Are you sure you want to quit the workspace launcher?",
+    "",
+    "Use Left/Right or Tab to choose. Enter applies the selected action.",
+  ]);
+  const cancel = selected === "cancel" ? "[ Cancel ]" : "  Cancel  ";
+  const quit = selected === "quit" ? "[ Quit ]" : "  Quit  ";
+  writeText(
+    canvas,
+    inner.column,
+    rect.row + rect.height - 2,
+    fit(`${cancel}    ${quit}    Y confirm / N cancel`, inner.width),
+  );
+}
+
 function writeLines(
   canvas: string[][],
   rect: { column: number; row: number; width: number; height: number },
@@ -492,6 +561,16 @@ function drawBox(
   }
   writeText(canvas, rect.column, rect.row + rect.height - 1, `+${horizontal.repeat(Math.max(0, rect.width - 2))}+`);
   writeText(canvas, rect.column + 2, rect.row, fit(` ${title} `, Math.max(0, rect.width - 4)));
+}
+
+function fillRect(
+  canvas: string[][],
+  rect: { column: number; row: number; width: number; height: number },
+  fill: string,
+): void {
+  for (let row = 0; row < rect.height; row += 1) {
+    writeText(canvas, rect.column, rect.row + row, fill.repeat(Math.max(0, rect.width)));
+  }
 }
 
 function createCanvas(width: number, height: number, fill: string): string[][] {

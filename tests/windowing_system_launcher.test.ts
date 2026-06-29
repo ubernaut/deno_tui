@@ -3,7 +3,9 @@ import {
   createWorkspaceDemoState,
   decodeWorkspaceKeys,
   formatWorkspaceDemoScreen,
+  handleWorkspaceQuitModalKey,
   openWorkspaceItem,
+  openWorkspaceQuitModal,
   selectedWorkspaceItem,
   workspaceDemoItems,
 } from "../examples/windowing_system_launcher.ts";
@@ -43,6 +45,33 @@ Deno.test("workspace launcher renders file explorer and active preview", () => {
   assertEquals(screen.includes("System Monitor"), true);
   assertEquals(screen.includes("deno task viz"), true);
   assertEquals(selectedWorkspaceItem(state)?.id, undefined);
+  state.explorer.dispose();
+  state.manager.dispose();
+});
+
+Deno.test("workspace launcher shows quit confirmation before exiting", () => {
+  const state = createWorkspaceDemoState([]);
+  openWorkspaceQuitModal(state);
+  assertEquals(state.quitModalOpen, true);
+  assertEquals(state.quitModalAction, "cancel");
+
+  const screen = formatWorkspaceDemoScreen(state, { width: 90, height: 24 });
+  assertEquals(screen.includes("Confirm Quit"), true);
+  assertEquals(screen.includes("Are you sure you want to quit"), true);
+  assertEquals(handleWorkspaceQuitModalKey(state, "enter"), false);
+
+  handleWorkspaceQuitModalKey(state, "right");
+  assertEquals(state.quitModalAction, "quit");
+  assertEquals(handleWorkspaceQuitModalKey(state, "enter"), true);
+  state.explorer.dispose();
+  state.manager.dispose();
+});
+
+Deno.test("workspace launcher quit confirmation can be cancelled", () => {
+  const state = createWorkspaceDemoState([]);
+  openWorkspaceQuitModal(state);
+  assertEquals(handleWorkspaceQuitModalKey(state, "n"), false);
+  assertEquals(state.quitModalOpen, false);
   state.explorer.dispose();
   state.manager.dispose();
 });
