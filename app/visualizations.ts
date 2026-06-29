@@ -464,9 +464,7 @@ function renderCpuLegend(context: RenderContext): PanelRender {
   const drive = buildVisualizationDrive(context, 24);
   const lines = [
     `TOTAL  ${formatPercent(context.system.cpuOverall)}`,
-    ...context.system.cpuCores.map((core) =>
-      `${core.label.padStart(3, "0")} ${miniMeter(core.usage / 100, 6, drive.hazard)} ${formatPercent(core.usage)}`
-    ),
+    ...cpuLegendRows(context.system.cpuCores, context.width, drive.hazard),
   ];
 
   return {
@@ -478,6 +476,27 @@ function renderCpuLegend(context: RenderContext): PanelRender {
     accent: context.system.cpuOverall >= 88 ? "alarm" : drive.divergence >= 0.6 ? "amber" : "signal",
     severity: context.system.cpuOverall >= 88 ? "alarm" : drive.divergence >= 0.6 ? "warning" : "info",
   };
+}
+
+function cpuLegendRows(cores: RenderContext["system"]["cpuCores"], width: number, hazard: number): string[] {
+  if (cores.length === 0) return ["NO CORE DATA"];
+
+  const sample = coreLegendCell(cores[0]!, hazard);
+  const cellWidth = Math.max(12, sample.length);
+  const columns = Math.max(1, Math.min(8, Math.floor((Math.max(12, width) + 2) / (cellWidth + 2))));
+  const rows = Math.ceil(cores.length / columns);
+
+  return Array.from({ length: rows }, (_, row) => {
+    const cells = Array.from({ length: columns }, (_, column) => {
+      const core = cores[row + column * rows];
+      return core ? coreLegendCell(core, hazard).padEnd(cellWidth, " ") : "";
+    }).filter(Boolean);
+    return crop(cells.join("  "), Math.max(12, width));
+  });
+}
+
+function coreLegendCell(core: RenderContext["system"]["cpuCores"][number], hazard: number): string {
+  return `${core.label.padStart(3, "0")} ${miniMeter(core.usage / 100, 6, hazard)} ${formatPercent(core.usage)}`;
 }
 
 function renderGpuCombinedMonitor(context: RenderContext): PanelRender {

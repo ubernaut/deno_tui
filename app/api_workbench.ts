@@ -1793,6 +1793,7 @@ function syntheticWorkbenchSources(id: string, group: NewWindowOption["group"], 
 function syntheticWorkbenchSystem(phase: number, group: NewWindowOption["group"]): SystemSnapshot {
   const hot = unitWave(phase, 0.07, group === "Monitor" ? 0.1 : 0.33);
   const warm = unitWave(phase, 0.045, 0.55);
+  const cpuCoreCount = Math.max(1, navigator.hardwareConcurrency || 1);
   return {
     timestamp: Date.now(),
     hostname: "workbench",
@@ -1800,8 +1801,8 @@ function syntheticWorkbenchSystem(phase: number, group: NewWindowOption["group"]
     uptimeSeconds: phase,
     loadavg: [hot * 2.4, warm * 1.8, Math.max(hot, warm)],
     cpuOverall: hot * 100,
-    cpuCores: Array.from({ length: 8 }, (_, index) => ({
-      label: `cpu${index}`,
+    cpuCores: Array.from({ length: cpuCoreCount }, (_, index) => ({
+      label: String(index),
       usage: unitWave(phase + index * 7, 0.06, index * 0.13) * 100,
     })),
     cpuHistory: Array.from({ length: 72 }, (_, index) => unitWave(phase + index, 0.07, 0.03) * 100),
