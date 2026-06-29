@@ -244,6 +244,8 @@ tui.dispatch();
 const themeIndex = new Signal(0);
 const themeMenuOpen = new Signal(false);
 const newWindowMenuOpen = new Signal(false);
+const newWindowMenuIndex = new Signal(0);
+const menuFocused = new Signal(false);
 const threeConfigOpen = new Signal(false);
 const threeConfigSelected = new Signal(0);
 const activeWindow = new Signal<WindowId>("inspector");
@@ -298,23 +300,28 @@ const menu = new MenuBarController({
     if (item.id === "new") {
       themeMenuOpen.value = false;
       newWindowMenuOpen.value = !newWindowMenuOpen.peek();
+      menuFocused.value = true;
+      newWindowMenuIndex.value = Math.max(0, Math.min(newWindowMenuIndex.peek(), newWindowOptions.length - 1));
       pushLog(`${newWindowMenuOpen.peek() ? "open" : "close"} new window menu`);
       return;
     }
     if (item.id === "theme") {
       newWindowMenuOpen.value = false;
       themeMenuOpen.value = !themeMenuOpen.peek();
+      menuFocused.value = true;
       pushLog(`${themeMenuOpen.peek() ? "open" : "close"} theme menu`);
       return;
     }
     if (item.id === "help") {
       themeMenuOpen.value = false;
       newWindowMenuOpen.value = false;
+      menuFocused.value = false;
       openHelpModal();
       return;
     }
     themeMenuOpen.value = false;
     newWindowMenuOpen.value = false;
+    menuFocused.value = true;
     pushLog(`menu selected: ${item.label}`);
   },
 });
@@ -477,6 +484,16 @@ tui.on("keyPress", (event) => {
     draw();
     return;
   }
+  if (screenDropdownOpen()) {
+    handleScreenDropdownKey(event);
+    draw();
+    return;
+  }
+  if (menuFocused.peek()) {
+    handleMenuFocusKey(event);
+    draw();
+    return;
+  }
   if (isTextControlActive() && event.key === "escape") {
     blurTextControl();
     draw();
@@ -492,39 +509,7 @@ tui.on("keyPress", (event) => {
     draw();
     return;
   }
-  if (event.key === "q") tui.emit("destroy");
-  else if (event.key === "tab" && activeWindow.peek() === "controls") focusNextControl(event.shift ? -1 : 1);
-  else if (event.key === "tab") focusNext();
-  else if (event.key === "1") focus("explorer");
-  else if (event.key === "2") focus("inspector");
-  else if (event.key === "3") focus("data");
-  else if (event.key === "4") focus("controls");
-  else if (event.key === "5") focus("logs");
-  else if (event.key === "6") focus("three");
-  else if (activeWindow.peek() === "explorer" && explorerKeys.has(event.key)) {
-    explorer.handleKeyPress(event, Math.max(1, currentHeight() - 8));
-  } else if (event.key === "m") minimize(activeWindow.peek());
-  else if (event.key === "f" || event.key === "return") toggleMaximize(activeWindow.peek());
-  else if (event.key === "r" || event.key === "escape") restoreAll();
-  else if (event.key === "t") setTheme(themeIndex.peek() + 1);
-  else if (event.key === "[") adjustTileDensity(-1);
-  else if (event.key === "]") adjustTileDensity(1);
-  else if (event.key === "pageup") scrollWindow(activeWindow.peek(), 0, -windowScrollPage(activeWindow.peek()));
-  else if (event.key === "pagedown") scrollWindow(activeWindow.peek(), 0, windowScrollPage(activeWindow.peek()));
-  else if (event.key === "home") windowScrolls.get(activeWindow.peek())?.scrollTo(0, 0);
-  else if (event.key === "end") {
-    const scroll = windowScrolls.get(activeWindow.peek());
-    scroll?.scrollTo(scroll.offset.peek().columns, scroll.maxOffset().rows);
-  } else if (event.key === "left" && event.shift) scrollWindow(activeWindow.peek(), -4, 0);
-  else if (event.key === "right" && event.shift) scrollWindow(activeWindow.peek(), 4, 0);
-  else if (activeWindow.peek() === "controls") handleControlsKey(event);
-  else if (event.key === "+" || event.key === "=") density.increment();
-  else if (event.key === "-" || event.key === "_") density.decrement();
-  else if (event.key === "x" || event.key === "space") livePreview.toggle();
-  else if (event.key === "left" || event.key === "right") menu.handleKeyPress(event);
-  else if (activeWindow.peek() === "data") table.handleKeyPress(event);
-  else if (event.key === "up") scrollWindow(activeWindow.peek(), 0, -1);
-  else if (event.key === "down") scrollWindow(activeWindow.peek(), 0, 1);
+  handleWorkbenchKey(event);
   draw();
 });
 
@@ -578,6 +563,8 @@ tui.on("destroy", () => {
   dropdown.dispose();
   modalButton.dispose();
   modal.dispose();
+  newWindowMenuIndex.dispose();
+  menuFocused.dispose();
   threeConfigOpen.dispose();
   threeConfigSelected.dispose();
   dynamicVisualizationWindows.dispose();
@@ -672,15 +659,16 @@ function renderHeader(frame: Frame): void {
       coordinate: "screen",
       rect: menuRect,
       items: labels,
+      selectedIndex: newWindowMenuIndex.peek(),
     };
   }
   const help = width >= 132
-    ? "Tab focus  M min  F max  R restore  [/] tiles  T theme  Q quit"
+    ? "F10 menu  N new  T theme  G config  C close  Tab focus  M/F/R  Q quit"
     : width >= 96
-    ? "Tab  M/F/R  T theme  Q quit"
+    ? "F10 menu  N new  G config  Tab  M/F/R  Q quit"
     : width >= 56
-    ? "Tab focus  T theme  Q quit"
-    : "T theme  Q quit";
+    ? "F10 menu  N new  Tab focus  Q quit"
+    : "F10 menu  Q quit";
   const helpWidth = textWidth(help);
   const showHelp = width >= 34;
   const helpStart = showHelp ? Math.max(0, width - helpWidth) : width;
@@ -991,7 +979,7 @@ function renderData(frame: Frame, rect: Rectangle): void {
     ...bodyRows,
     { text: "", bg: t.surface },
     {
-      text: `page ${view.page + 1}/${view.pageCount}  selected ${view.selectedKey ?? "-"}  arrows/page keys navigate`,
+      text: `page ${view.page + 1}/${view.pageCount}  selected ${view.selectedKey ?? "-"}  arrows/page keys  S sort`,
       fg: t.muted,
       bg: t.panelSoft,
     },
@@ -1394,7 +1382,7 @@ function renderStatus(frame: Frame): void {
   const width = currentWidth();
   const densityLabel = tileDensity.peek() === 0 ? "balanced" : tileDensity.peek() > 0 ? "dense" : "wide";
   const left = `focus ${windowTitle(activeWindow.peek())} | ${theme().label} | tiles ${densityLabel}`;
-  const right = "New menu adds widgets  [/] tile density  arrows/scrollbars  mouse";
+  const right = "F10 menu  N new  Shift+T themes  G config  0 restore minimized";
   write(frame, currentHeight() - 1, 0, paint(renderStatusBar(left, right, width), { fg: t.text, bg: t.panelSoft }));
 }
 
@@ -2220,10 +2208,19 @@ function adjustTileDensity(delta: number): void {
   pushLog(`tile density ${tileDensity.peek()}`);
 }
 
+function cycleDataSortColumn(delta: number): void {
+  const sortable = columns.filter((column) => column.sortable !== false);
+  if (sortable.length === 0) return;
+  const current = table.state.peek().sort?.columnId;
+  const index = Math.max(0, sortable.findIndex((column) => column.id === current));
+  const next = sortable[(index + delta + sortable.length) % sortable.length]!;
+  table.toggleSort(next.id);
+  pushLog(`sort data by ${next.label}`);
+}
+
 function setTheme(index: number): void {
   themeIndex.value = (index + themes.length) % themes.length;
-  themeMenuOpen.value = false;
-  newWindowMenuOpen.value = false;
+  closeTopMenus();
   pushLog(`theme ${theme().label}`);
 }
 
@@ -2244,18 +2241,40 @@ function openWorkbenchModal(): void {
   pushLog("modal opened");
 }
 
+function openQuitModal(): void {
+  closeTopMenus();
+  threeConfigOpen.value = false;
+  modal.open({
+    title: "Quit Workbench?",
+    tone: "warning",
+    body: [
+      "Close the API workbench and return to the terminal?",
+      "Use Enter to confirm, Escape to cancel, or Tab to choose an action.",
+    ],
+    actions: [
+      { id: "cancel", label: "Cancel" },
+      { id: "quit", label: "Quit", destructive: true, default: true },
+    ],
+  });
+  pushLog("quit confirmation");
+}
+
 function openHelpModal(): void {
   modal.open({
     title: "Workbench Help",
     tone: "info",
     body: [
       "Keyboard: Tab moves focus through windows. Inside Controls, Tab moves through controls and leaves the pane after the last control. Shift+Tab moves backward.",
-      "Use 1-6 to focus Explorer, Inspector, Data Table, Controls, Logs, or Three ASCII. Use M to minimize, F or Enter to maximize, R or Escape to restore windows.",
-      "When a window is fullscreen, use the bottom tabs or 1-6 to switch between fullscreen windows.",
-      "Use arrows in the Data Table and Logs. In Controls, arrows adjust sliders, radio groups, combo boxes, steppers, and dropdown selections.",
+      "Use F10 to focus the top menu, Left/Right to move, Down or Enter to open, arrows to choose menu items, Enter to activate, and Escape to leave.",
+      "Use N to open the New menu, Shift+T to open Theme, T to cycle themes, H or ? for help, Q to request quit, and 0 to restore the next minimized window.",
+      "Use 1-6 to focus built-in windows, and higher numbers for added windows. Use M to minimize, F or Enter to maximize, C to close, and R or Escape to restore windows.",
+      "When a window is fullscreen, use the bottom tabs, Tab, or number shortcuts to switch between fullscreen windows.",
+      "Use G from the Three ASCII window to open renderer config. In config, use Up/Down to select settings and Left/Right or Enter to change them.",
+      "Use arrows in the Data Table, Explorer, Logs, and overflow windows. In Data Table, S cycles the sort column. Shift+Left/Right scrolls horizontally when content is wider than the pane.",
+      "In Controls, arrows adjust sliders, radio groups, combo boxes, steppers, and dropdown selections. Enter or Space activates the selected control.",
       "Mouse: click windows to focus them, click rows to select them, click controls to change values, drag or click scrollbars to move through overflow content.",
       "Use the New menu to add Monitor, Neon Exodus, and Neon 3D widget windows to the workspace.",
-      "Use the Theme menu to switch palettes. Click the [x] button in the top-right menu bar or press Q to quit.",
+      "Use the Theme menu to switch palettes. Click the [x] button in the top-right menu bar or press Q to open quit confirmation.",
     ],
     actions: [
       { id: "dismiss", label: "Dismiss", default: true },
@@ -2303,6 +2322,10 @@ function applyModalAction(actionId: string): void {
     focus("controls");
     return;
   }
+  if (actionId === "quit") {
+    tui.emit("destroy");
+    return;
+  }
 
   modal.close();
   pushLog(`modal ${actionId}`);
@@ -2313,7 +2336,7 @@ function applyHit(target: { rect: Rectangle; action: HitAction }, x: number, y: 
   if (action.type === "menu") {
     menu.setActive(action.index);
     menu.selectActive();
-  } else if (action.type === "quit") tui.emit("destroy");
+  } else if (action.type === "quit") openQuitModal();
   else if (action.type === "windowTab") selectWindowTab(action.id);
   else if (action.type === "focus") focus(action.id);
   else if (action.type === "minimize") minimize(action.id);
@@ -2359,8 +2382,7 @@ function applyHit(target: { rect: Rectangle; action: HitAction }, x: number, y: 
 function openThreeConfigModal(id: WindowId): void {
   if (!isThreeRenderedWindow(id)) return;
   modal.close();
-  themeMenuOpen.value = false;
-  newWindowMenuOpen.value = false;
+  closeTopMenus();
   threeConfigOpen.value = true;
   threeConfigSelected.value = 0;
   focus(id);
@@ -2370,6 +2392,169 @@ function openThreeConfigModal(id: WindowId): void {
 function closeThreeConfigModal(): void {
   threeConfigOpen.value = false;
   pushLog("three config closed");
+}
+
+function handleWorkbenchKey(event: { key: string; ctrl?: boolean; meta?: boolean; shift?: boolean }): void {
+  if (event.ctrl || event.meta) return;
+  if (event.key === "q") openQuitModal();
+  else if (event.key === "f10") focusMenu();
+  else if (event.key === "?" || event.key === "h") openHelpModal();
+  else if (event.key === "n") openNewWindowMenu();
+  else if (event.key === "T" || (event.key === "t" && event.shift)) openThemeMenu();
+  else if (event.key === "t") setTheme(themeIndex.peek() + 1);
+  else if (event.key === "g") openThreeConfigModal(activeWindow.peek());
+  else if (event.key === "c") closeWindow(activeWindow.peek());
+  else if (event.key === "m") minimize(activeWindow.peek());
+  else if (event.key === "f" || event.key === "return") toggleMaximize(activeWindow.peek());
+  else if (event.key === "r" || event.key === "escape") restoreAll();
+  else if (event.key === "tab" && activeWindow.peek() === "controls") focusNextControl(event.shift ? -1 : 1);
+  else if (event.key === "tab") event.shift ? focusPrevious() : focusNext();
+  else if (focusWindowByNumber(event.key)) return;
+  else if (event.key === "0") restoreNextMinimizedWindow();
+  else if (event.key === "[") adjustTileDensity(-1);
+  else if (event.key === "]") adjustTileDensity(1);
+  else if (event.key === "pageup") scrollWindow(activeWindow.peek(), 0, -windowScrollPage(activeWindow.peek()));
+  else if (event.key === "pagedown") scrollWindow(activeWindow.peek(), 0, windowScrollPage(activeWindow.peek()));
+  else if (event.key === "home") windowScrolls.get(activeWindow.peek())?.scrollTo(0, 0);
+  else if (event.key === "end") {
+    const scroll = windowScrolls.get(activeWindow.peek());
+    scroll?.scrollTo(scroll.offset.peek().columns, scroll.maxOffset().rows);
+  } else if (event.key === "left" && event.shift) scrollWindow(activeWindow.peek(), -4, 0);
+  else if (event.key === "right" && event.shift) scrollWindow(activeWindow.peek(), 4, 0);
+  else if (activeWindow.peek() === "explorer" && explorerKeys.has(event.key)) {
+    explorer.handleKeyPress(event, Math.max(1, currentHeight() - 8));
+  } else if (activeWindow.peek() === "controls") handleControlsKey(event);
+  else if (activeWindow.peek() === "data" && event.key.toLowerCase() === "s") {
+    cycleDataSortColumn(event.shift || event.key === "S" ? -1 : 1);
+  } else if (activeWindow.peek() === "data") table.handleKeyPress(event as never);
+  else if (event.key === "+" || event.key === "=") density.increment();
+  else if (event.key === "-" || event.key === "_") density.decrement();
+  else if (event.key === "x" || event.key === "space") livePreview.toggle();
+  else if (event.key === "left") scrollWindow(activeWindow.peek(), -1, 0);
+  else if (event.key === "right") scrollWindow(activeWindow.peek(), 1, 0);
+  else if (event.key === "up") scrollWindow(activeWindow.peek(), 0, -1);
+  else if (event.key === "down") scrollWindow(activeWindow.peek(), 0, 1);
+}
+
+function handleMenuFocusKey(event: { key: string; ctrl?: boolean; meta?: boolean; shift?: boolean }): void {
+  if (event.ctrl || event.meta) return;
+  if (event.key === "escape") {
+    closeTopMenus();
+    return;
+  }
+  if (event.key === "tab") {
+    closeTopMenus();
+    event.shift ? focusPrevious() : focusNext();
+    return;
+  }
+  if (event.key === "left" || event.key === "right" || event.key === "home" || event.key === "end") {
+    menu.handleKeyPress(event);
+    return;
+  }
+  if (event.key === "down" || event.key === "return" || event.key === "space") {
+    menu.selectActive();
+  }
+}
+
+function handleScreenDropdownKey(event: { key: string; ctrl?: boolean; meta?: boolean; shift?: boolean }): void {
+  if (event.ctrl || event.meta) return;
+  if (event.key === "escape") {
+    closeTopMenus();
+    return;
+  }
+  if (event.key === "tab") {
+    closeTopMenus();
+    event.shift ? focusPrevious() : focusNext();
+    return;
+  }
+  if (event.key === "left" || event.key === "right") {
+    const delta = event.key === "left" ? -1 : 1;
+    menu.move(delta);
+    openActiveTopMenu();
+    return;
+  }
+  if (themeMenuOpen.peek()) {
+    if (event.key === "up") themeIndex.value = (themeIndex.peek() - 1 + themes.length) % themes.length;
+    else if (event.key === "down") themeIndex.value = (themeIndex.peek() + 1) % themes.length;
+    else if (event.key === "home") themeIndex.value = 0;
+    else if (event.key === "end") themeIndex.value = themes.length - 1;
+    else if (event.key === "return" || event.key === "space") setTheme(themeIndex.peek());
+    return;
+  }
+  if (newWindowMenuOpen.peek()) {
+    const count = newWindowOptions.length;
+    if (count === 0) return;
+    if (event.key === "up") newWindowMenuIndex.value = (newWindowMenuIndex.peek() - 1 + count) % count;
+    else if (event.key === "down") newWindowMenuIndex.value = (newWindowMenuIndex.peek() + 1) % count;
+    else if (event.key === "home") newWindowMenuIndex.value = 0;
+    else if (event.key === "end") newWindowMenuIndex.value = count - 1;
+    else if (event.key === "pageup") newWindowMenuIndex.value = Math.max(0, newWindowMenuIndex.peek() - 6);
+    else if (event.key === "pagedown") newWindowMenuIndex.value = Math.min(count - 1, newWindowMenuIndex.peek() + 6);
+    else if (event.key === "return" || event.key === "space") {
+      addVisualizationWindow(newWindowOptions[newWindowMenuIndex.peek()]);
+    }
+  }
+}
+
+function focusMenu(): void {
+  menuFocused.value = true;
+  closeTopMenus(false);
+  pushLog("menu focus");
+}
+
+function openActiveTopMenu(): void {
+  const item = menu.active();
+  if (item?.id === "theme") openThemeMenu();
+  else if (item?.id === "new") openNewWindowMenu();
+  else {
+    themeMenuOpen.value = false;
+    newWindowMenuOpen.value = false;
+  }
+}
+
+function openThemeMenu(): void {
+  const index = menu.items.peek().findIndex((item) => item.id === "theme");
+  if (index >= 0) menu.setActive(index);
+  menuFocused.value = true;
+  newWindowMenuOpen.value = false;
+  themeMenuOpen.value = true;
+  pushLog("open theme menu");
+}
+
+function openNewWindowMenu(): void {
+  const index = menu.items.peek().findIndex((item) => item.id === "new");
+  if (index >= 0) menu.setActive(index);
+  menuFocused.value = true;
+  themeMenuOpen.value = false;
+  newWindowMenuOpen.value = true;
+  newWindowMenuIndex.value = Math.max(0, Math.min(newWindowMenuIndex.peek(), newWindowOptions.length - 1));
+  pushLog("open new window menu");
+}
+
+function closeTopMenus(clearFocus = true): void {
+  themeMenuOpen.value = false;
+  newWindowMenuOpen.value = false;
+  if (clearFocus) menuFocused.value = false;
+}
+
+function focusWindowByNumber(key: string): boolean {
+  const index = Number.parseInt(key, 10);
+  if (!Number.isInteger(index) || index < 1) return false;
+  const id = windowIds()[index - 1];
+  if (!id) return false;
+  focus(id);
+  return true;
+}
+
+function restoreNextMinimizedWindow(): void {
+  const entry = windowManager.inspect().windows.find((window) => window.minimized && !window.closed);
+  if (!entry) {
+    pushLog("no minimized windows");
+    return;
+  }
+  windowManager.restore(entry.id);
+  syncWindowSignalsFromManager();
+  pushLog(`restore ${windowTitle(entry.id as WindowId)}`);
 }
 
 function handleThreeConfigKey(event: { key: string; shift?: boolean }): void {
@@ -2404,8 +2589,7 @@ function closeWindow(id: WindowId): void {
 function addVisualizationWindow(option: NewWindowOption | undefined): void {
   if (!option) return;
   const id = visualizationWindowId(option.id);
-  newWindowMenuOpen.value = false;
-  themeMenuOpen.value = false;
+  closeTopMenus();
   if (!windowManager.ids({ includeClosed: true }).includes(id)) {
     dynamicVisualizationWindows.value = { ...dynamicVisualizationWindows.peek(), [id]: option.id };
     windowScrolls.set(id, new ScrollAreaController({ showScrollbar: true }));
@@ -2516,6 +2700,21 @@ function handleControlsKey(event: { key: string; ctrl?: boolean; meta?: boolean;
   }
   if (id === "textbox") {
     notes.handleKeyPress(event as never);
+    return;
+  }
+  if (id === "dropdown" && dropdown.expanded.peek()) {
+    if (event.key === "up") dropdown.move(-1);
+    else if (event.key === "down") dropdown.move(1);
+    else if (event.key === "home") dropdown.first();
+    else if (event.key === "end") dropdown.last();
+    else if (event.key === "escape") dropdown.close();
+    else if (event.key === "return" || event.key === "space") dropdown.selectActive();
+    else if (event.key === "left") applyControlHit(id, "previous");
+    else if (event.key === "right") applyControlHit(id, "next");
+    return;
+  }
+  if (id === "radio" && (event.key === "up" || event.key === "down")) {
+    modeRadio.move(event.key === "up" ? -1 : 1);
     return;
   }
   if (event.key === "up") {
