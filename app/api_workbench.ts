@@ -533,7 +533,6 @@ function draw(): void {
   const height = currentHeight();
   hitTargets = [];
   dropdownOverlay = null;
-  setThreeBodyRect({ column: 0, row: 0, width: 0, height: 0 });
   const frame: Frame = Array.from({ length: height }, () => []);
   renderHeader(frame);
   renderWorkspace(frame);
@@ -662,18 +661,24 @@ function renderWorkspace(frame: Frame): void {
 
   const visible = windowIds().filter((id) => !minimized.peek()[id]);
   if (visible.length === 0) {
+    setThreeBodyRect({ column: 0, row: 0, width: 0, height: 0 });
     write(frame, bounds.row + 1, 2, paint("All windows minimized. Press R to restore.", { fg: theme().warn }));
     renderShelf(frame);
     return;
   }
 
+  let renderedThree = false;
   for (const id of visible) {
     const rect = layout.rects.get(id);
     if (rect) {
       renderWindow(virtual, id, rect);
-      if (id === "three") updateThreeBodyRect(rect, bounds, offset);
+      if (id === "three") {
+        renderedThree = true;
+        updateThreeBodyRect(rect, bounds, offset);
+      }
     }
   }
+  if (!renderedThree) setThreeBodyRect({ column: 0, row: 0, width: 0, height: 0 });
   translateWorkspaceHits(hitStart, bounds.row - offset, bounds);
   blitWorkspace(frame, virtual, bounds, offset, layout.bounds.width);
   renderWorkspaceScrollbar(frame, bounds, layout.contentHeight, offset);
