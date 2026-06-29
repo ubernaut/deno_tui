@@ -112,6 +112,25 @@ export const visualizations: VisualizationDescriptor[] = [
 ];
 
 const visualizationMap = new Map(visualizations.map((entry) => [entry.id, entry]));
+const neonDemoIds = new Set(neonDemos.map((demo) => demo.id));
+const textOnlyNeonDemoIds = new Set(["warning-stack", "event-log", "component-index"]);
+const ngePrimitiveSceneModes: Record<string, ThreeSceneMode> = {
+  "counter-board": "emergency",
+  "profile-card": "angel",
+  "live-feed": "waveform",
+  "channel-matrix": "gate",
+  "telemetry-rack": "launch",
+  "biosignal-strip": "waveform",
+  "harmonic-graph": "atfield",
+  "psychograph": "angel",
+  "field-ring": "target",
+  "hex-heatmap": "gate",
+  "magi-board": "magi",
+  "route-board": "mapslab",
+  "gate-status": "launch",
+  "tactical-map": "target",
+  "network-topology": "magi",
+};
 
 export interface VisualizationSourceDrive {
   source: SourceFrame;
@@ -237,16 +256,50 @@ export function renderVisualization(context: RenderContext): PanelRender {
     }
   })();
 
-  const footerBase = panel.footer || sourceFooter(context.sources);
+  const enhancedPanel = applyNgePrimitiveScene(context, panel);
+  const footerBase = enhancedPanel.footer || sourceFooter(context.sources);
   return {
     title: descriptor.name.toUpperCase(),
-    accent: panel.accent ?? descriptor.accent,
-    severity: panel.severity ?? "info",
-    alert: panel.alert ?? "",
-    body: panel.body,
+    accent: enhancedPanel.accent ?? descriptor.accent,
+    severity: enhancedPanel.severity ?? "info",
+    alert: enhancedPanel.alert ?? "",
+    body: enhancedPanel.body,
     footer: footerBase,
-    three: panel.three,
+    three: enhancedPanel.three,
   };
+}
+
+function applyNgePrimitiveScene(context: RenderContext, panel: PanelRender): PanelRender {
+  const visualizationId = context.slot.visualizationId;
+  if (!neonDemoIds.has(visualizationId) || textOnlyNeonDemoIds.has(visualizationId)) {
+    return panel;
+  }
+
+  if (panel.three) {
+    return {
+      ...panel,
+      footer: appendSceneFooter(panel.footer, panel.three.mode, context.width),
+    };
+  }
+
+  const mode = ngePrimitiveSceneModes[visualizationId];
+  if (!mode) return panel;
+  const drive = buildVisualizationDrive(context, Math.max(32, context.width));
+
+  return {
+    ...panel,
+    footer: appendSceneFooter(panel.footer, mode, context.width),
+    three: {
+      mode,
+      signal: driveThreeSignal(context, drive, mode),
+    },
+  };
+}
+
+function appendSceneFooter(footer: string, mode: ThreeSceneMode, width: number): string {
+  const suffix = `${modeLabel(mode)} PRIMITIVES`;
+  if (!footer) return suffix;
+  return `${crop(footer, Math.max(0, width - suffix.length - 3))} / ${suffix}`;
 }
 
 export function buildVisualizationDrive(
@@ -727,6 +780,18 @@ function renderThreeFallbackBody(context: RenderContext, drive: VisualizationDri
         return routeBoard(width, chartHeight, drive, THREE_FALLBACK_BLOCKS);
       case "studio":
         return harmonicField(width, chartHeight, drive, "◆");
+      case "emergency":
+        return routeBoard(width, chartHeight, drive, [" ", "░", "▒", "▓", "█"]);
+      case "launch":
+      case "gate":
+        return signalChart(drive.spreadSeries, width, chartHeight, drive.hazard >= 0.78 ? "▓" : "▒");
+      case "magi":
+      case "angel":
+        return heatmap(width, chartHeight, drive, THREE_FALLBACK_BLOCKS);
+      case "target":
+        return circularField(width, chartHeight, drive);
+      case "waveform":
+        return psychograph(width, chartHeight, drive, monitorGlyph(drive, "signal"));
     }
   })();
 
@@ -1000,6 +1065,20 @@ function modeLabel(mode: ThreeSceneMode) {
       return "SOLENOID";
     case "studio":
       return "ACEROLA";
+    case "emergency":
+      return "EMERGENCY";
+    case "launch":
+      return "LAUNCH";
+    case "magi":
+      return "MAGI";
+    case "target":
+      return "TARGET";
+    case "waveform":
+      return "WAVEFORM";
+    case "angel":
+      return "ANGEL";
+    case "gate":
+      return "GATE";
   }
 }
 
@@ -1197,6 +1276,20 @@ function modeTwist(mode: ThreeSceneMode) {
       return { phase: 21, speed: 0.14, offset: 0.22, lift: 0.28 };
     case "studio":
       return { phase: 25, speed: 0.09, offset: 0.3, lift: 0.2 };
+    case "emergency":
+      return { phase: 29, speed: 0.16, offset: 0.32, lift: 0.16 };
+    case "launch":
+      return { phase: 33, speed: 0.1, offset: 0.2, lift: 0.5 };
+    case "magi":
+      return { phase: 37, speed: 0.06, offset: 0.14, lift: 0.18 };
+    case "target":
+      return { phase: 41, speed: 0.13, offset: 0.28, lift: 0.22 };
+    case "waveform":
+      return { phase: 45, speed: 0.18, offset: 0.34, lift: 0.34 };
+    case "angel":
+      return { phase: 49, speed: 0.08, offset: 0.22, lift: 0.48 };
+    case "gate":
+      return { phase: 53, speed: 0.12, offset: 0.18, lift: 0.42 };
   }
 }
 

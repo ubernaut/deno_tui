@@ -21,6 +21,13 @@ for (
     "mapslab",
     "solenoid",
     "studio",
+    "emergency",
+    "launch",
+    "magi",
+    "target",
+    "waveform",
+    "angel",
+    "gate",
   ] as const satisfies ThreeSceneMode[]
 ) {
   Deno.test(`createNeonThreeScene supports ${mode}`, () => {

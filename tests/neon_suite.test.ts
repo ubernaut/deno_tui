@@ -55,3 +55,15 @@ Deno.test("neon suite renderer covers text and three scene demos", () => {
   const threeRender = renderNeonSuiteDemo({ demo: lattice, phase: 4, width: 48, height: 8, selected: true });
   assertEquals(threeRender.three?.mode, "lattice");
 });
+
+Deno.test("neon suite maps non-text NGE widgets to primitive three scenes", () => {
+  const matrix = demos.find((demo) => demo.id === "channel-matrix")!;
+  const warning = demos.find((demo) => demo.id === "warning-stack")!;
+
+  const matrixRender = renderNeonSuiteDemo({ demo: matrix, phase: 40, width: 52, height: 12, selected: true });
+  const warningRender = renderNeonSuiteDemo({ demo: warning, phase: 40, width: 52, height: 12, selected: true });
+
+  assertEquals(matrixRender.three?.mode, "gate");
+  assertEquals(matrixRender.footer.includes("GATE PRIMITIVES"), true);
+  assertEquals(warningRender.three, undefined);
+});

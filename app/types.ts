@@ -32,7 +32,22 @@ export const borderModes = ["rounded", "sharp", "ascii"] as const;
 
 export type BorderMode = typeof borderModes[number];
 
-export const threeSceneModes = ["lattice", "atfield", "hexshell", "capture", "mapslab", "solenoid", "studio"] as const;
+export const threeSceneModes = [
+  "lattice",
+  "atfield",
+  "hexshell",
+  "capture",
+  "mapslab",
+  "solenoid",
+  "studio",
+  "emergency",
+  "launch",
+  "magi",
+  "target",
+  "waveform",
+  "angel",
+  "gate",
+] as const;
 
 export type ThreeSceneMode = typeof threeSceneModes[number];
 
