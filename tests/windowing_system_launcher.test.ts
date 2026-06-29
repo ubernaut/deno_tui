@@ -49,6 +49,19 @@ Deno.test("workspace launcher renders file explorer and active preview", () => {
   state.manager.dispose();
 });
 
+Deno.test("workspace launcher wraps top and bottom bars in narrow terminals", () => {
+  const state = createWorkspaceDemoState(["system-monitor", "three-ascii", "component-catalog"]);
+  const screen = formatWorkspaceDemoScreen(state, { width: 34, height: 22 });
+  const lines = screen.split("\n");
+
+  assertEquals(lines.every((line) => line.length === 34), true);
+  assertEquals(screen.includes("WINDOWING SYSTEM LAUNCHER"), true);
+  assertEquals(screen.includes("Q confirm quit"), true);
+  assertEquals(screen.includes("Three ASCII Renderer"), true);
+  state.explorer.dispose();
+  state.manager.dispose();
+});
+
 Deno.test("workspace launcher shows quit confirmation before exiting", () => {
   const state = createWorkspaceDemoState([]);
   openWorkspaceQuitModal(state);

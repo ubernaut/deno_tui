@@ -259,45 +259,40 @@ export function formatWorkspaceDemoScreen(
   state: WorkspaceDemoState,
   options: WorkspaceDemoScreenOptions = {},
 ): string {
-  const width = Math.max(50, options.width ?? 118);
-  const height = Math.max(16, options.height ?? 34);
+  const width = Math.max(24, options.width ?? 118);
+  const height = Math.max(12, options.height ?? 34);
   const frame = options.frame ?? 0;
   const canvas = createCanvas(width, height, " ");
-  writeText(canvas, 0, 0, fit("WINDOWING SYSTEM LAUNCHER  FileExplorer -> WindowManager", width));
-  writeText(
-    canvas,
-    0,
-    1,
-    fit("Enter open preview  L launch real task  Tab focus  F fullscreen  M hide  R restore  Q confirm quit", width),
-  );
+  const topBar = wrapBarLines([
+    "WINDOWING SYSTEM LAUNCHER  FileExplorer -> WindowManager",
+    "Enter open preview  L launch real task  Tab focus  F fullscreen  M hide  R restore  Q confirm quit",
+  ], width);
+  writeBarLines(canvas, 0, topBar, width);
 
-  const contentHeight = Math.max(1, height - 4);
+  const selected = selectedWorkspaceItem(state);
+  const active = activeWorkspaceItem(state);
+  const layoutForTabs = state.manager.inspect();
+  const bottomPrimary = layoutForTabs.fullscreenId
+    ? layoutForTabs.tabs.map((tab) => `${tab.fullscreen ? "[" : " "}${tab.title}${tab.fullscreen ? "]" : " "}`).join(
+      " ",
+    )
+    : `open windows: ${
+      [...state.openedIds].map((id) => itemById.get(id)?.title).filter(Boolean).join(" | ") || "none"
+    }`;
+  const bottomBar = wrapBarLines([
+    bottomPrimary,
+    `selected ${selected?.title ?? "folder"} | active ${active?.title ?? state.manager.activeId.peek() ?? "none"}`,
+  ], width);
+  const bottomStart = Math.max(topBar.length, height - bottomBar.length);
+  const contentHeight = Math.max(0, bottomStart - topBar.length);
   const layout = state.manager.layout({ bounds: { column: 0, row: 0, width, height: contentHeight } });
   for (const window of layout.visible) {
     if (!window.rect) continue;
-    const rect = { ...window.rect, row: window.rect.row + 2 };
+    const rect = { ...window.rect, row: window.rect.row + topBar.length };
     drawWindow(canvas, rect, window, state, frame);
   }
 
-  if (layout.fullscreenId) {
-    const tabText = layout.tabs.map((tab) => `${tab.fullscreen ? "[" : " "}${tab.title}${tab.fullscreen ? "]" : " "}`)
-      .join(" ");
-    writeText(canvas, 0, height - 2, fit(tabText, width));
-  } else {
-    const opened = [...state.openedIds].map((id) => itemById.get(id)?.title).filter(Boolean).join(" | ");
-    writeText(canvas, 0, height - 2, fit(`open windows: ${opened || "none"}`, width));
-  }
-  const selected = selectedWorkspaceItem(state);
-  const active = activeWorkspaceItem(state);
-  writeText(
-    canvas,
-    0,
-    height - 1,
-    fit(
-      `selected ${selected?.title ?? "folder"} | active ${active?.title ?? state.manager.activeId.peek() ?? "none"}`,
-      width,
-    ),
-  );
+  writeBarLines(canvas, bottomStart, bottomBar, width);
   if (state.quitModalOpen) drawQuitModal(canvas, width, height, state.quitModalAction);
   return canvas.map((row) => row.join("")).join("\n");
 }
@@ -529,6 +524,16 @@ function drawQuitModal(canvas: string[][], width: number, height: number, select
     rect.row + rect.height - 2,
     fit(`${cancel}    ${quit}    Y confirm / N cancel`, inner.width),
   );
+}
+
+function wrapBarLines(lines: readonly string[], width: number): string[] {
+  return lines.flatMap((line) => wrapLine(line, width));
+}
+
+function writeBarLines(canvas: string[][], startRow: number, lines: readonly string[], width: number): void {
+  for (let index = 0; index < lines.length; index += 1) {
+    writeText(canvas, 0, startRow + index, fit(lines[index]!, width));
+  }
 }
 
 function writeLines(
