@@ -21,6 +21,7 @@ import { ButtonController } from "../src/components/button.ts";
 import { CheckBoxController, Mark, renderCheckBoxMark } from "../src/components/checkbox.ts";
 import { ComboBoxController, comboBoxLabel } from "../src/components/combobox.ts";
 import { renderEmptyState } from "../src/components/empty_state.ts";
+import { createFileExplorerTree, FileExplorerController } from "../src/components/file_explorer.ts";
 import { InputController } from "../src/components/input.ts";
 import { labelLineLayout } from "../src/components/label.ts";
 import { renderKeyHelp } from "../src/components/key_help.ts";
@@ -441,6 +442,38 @@ Deno.test("TreeController flattens navigates toggles and inspects rows", () => {
   assertEquals(toggles, [["components", true], ["components", false]]);
   assertEquals(controller.handleKeyPress(keyPress("return"), 3)?.id, "components");
   assertEquals(selections, ["components"]);
+  controller.dispose();
+});
+
+Deno.test("FileExplorerController builds path trees and opens files", () => {
+  const opened: string[] = [];
+  const controller = new FileExplorerController({
+    root: createFileExplorerTree([
+      "/src/components/button.ts",
+      "/src/components/tree.ts",
+      "/src/layout/window_manager.ts",
+      "/README.md",
+    ]),
+    onOpen: (entry) => void opened.push(entry.path),
+  });
+
+  assertEquals(controller.entries().map((entry) => entry.path), [
+    "/src",
+    "/src/components",
+    "/src/components/button.ts",
+    "/src/components/tree.ts",
+    "/src/layout",
+    "/src/layout/window_manager.ts",
+    "/README.md",
+  ]);
+  controller.tree.setSelectedIndex(2);
+  assertEquals(controller.selected()?.kind, "file");
+  controller.openActive();
+  assertEquals(opened, ["/src/components/button.ts"]);
+  controller.tree.setSelectedIndex(1);
+  controller.openActive();
+  assertEquals(controller.selected()?.expanded, false);
+
   controller.dispose();
 });
 

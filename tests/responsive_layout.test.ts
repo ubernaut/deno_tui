@@ -8,6 +8,7 @@ import {
   resolveBreakpoint,
   splitRect,
   tileRects,
+  WindowManagerController,
 } from "../src/layout/mod.ts";
 
 Deno.test("resolveBreakpoint picks the largest matching breakpoint", () => {
@@ -146,4 +147,35 @@ Deno.test("tileRects can overflow vertically for scrollable tiled panes", () => 
   assertEquals(layout.rows, 2);
   assertEquals(layout.contentHeight, 17);
   assertEquals(layout.rects[2], { column: 0, row: 9, width: 39, height: 8 });
+});
+
+Deno.test("WindowManagerController manages fullscreen tabs and tiled layout", () => {
+  const manager = new WindowManagerController({
+    windows: [
+      { id: "explorer", title: "Explorer", minWidth: 24 },
+      { id: "editor", title: "Editor", minWidth: 36 },
+      { id: "logs", title: "Logs", minWidth: 24 },
+    ],
+    activeId: "editor",
+  });
+
+  const tiled = manager.layout({ bounds: { column: 0, row: 0, width: 100, height: 24 } });
+  assertEquals(tiled.visible.length, 3);
+  assertEquals(tiled.activeId, "editor");
+  assertEquals(tiled.tabs.map((entry) => entry.id), ["explorer", "editor", "logs"]);
+
+  manager.fullscreen("editor");
+  const fullscreen = manager.layout({ bounds: { column: 0, row: 0, width: 100, height: 24 } });
+  assertEquals(fullscreen.fullscreenId, "editor");
+  assertEquals(fullscreen.visible.map((entry) => entry.id), ["editor"]);
+  assertEquals(fullscreen.visible[0]?.rect, { column: 0, row: 0, width: 100, height: 24 });
+
+  manager.selectTab("logs");
+  assertEquals(manager.inspect().fullscreenId, "logs");
+  assertEquals(manager.inspect().activeId, "logs");
+
+  manager.minimize("logs");
+  assertEquals(manager.inspect().fullscreenId, undefined);
+  assertEquals(manager.inspect().windows.find((entry) => entry.id === "logs")?.minimized, true);
+  manager.dispose();
 });

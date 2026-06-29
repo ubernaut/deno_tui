@@ -10,6 +10,7 @@ export * from "./combobox.ts";
 export * from "./context_menu.ts";
 export * from "./data_table.ts";
 export * from "./empty_state.ts";
+export * from "./file_explorer.ts";
 export * from "./frame.ts";
 export * from "./gauge.ts";
 export * from "./input.ts";

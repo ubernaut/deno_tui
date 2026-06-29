@@ -263,8 +263,8 @@ deno task demo
 | `ThreeAscii`  | Renders a three.js scene as ASCII art in the terminal      |
 
 Additional fork components include `List`, `VirtualList`, `Tabs`, `Breadcrumbs`, `Stepper`, `Spinner`, `EmptyState`,
-`MenuBar`, `ContextMenu`, `RadioGroup`, `ScrollArea`, `Modal`, `KeyHelp`, `CommandPalette`, `Tree`, `ToastStack`,
-`Sparkline`, `Gauge`, `Chart`, `LogViewer`, and `StatusBar`. `VirtualList` combines viewport windowing and
+`MenuBar`, `ContextMenu`, `RadioGroup`, `ScrollArea`, `Modal`, `KeyHelp`, `CommandPalette`, `Tree`, `FileExplorer`,
+`ToastStack`, `Sparkline`, `Gauge`, `Chart`, `LogViewer`, and `StatusBar`. `VirtualList` combines viewport windowing and
 `SelectionController` for large custom data views, while `Spinner` and `EmptyState` pair naturally with `AsyncResource`
 loading/empty/error state. `componentCatalog`, `listComponents()`, `findComponent()`, `componentsByCategory()`,
 `componentsWithCapability()`, `queryComponents()`, and `inspectComponentCatalog()` provide an inspectable widget
@@ -317,6 +317,23 @@ const modal = new ModalController({
 modal.open();
 modal.handleKeyPress({ key: "right" });
 modal.activateAction();
+```
+
+`FileExplorerController` builds on `TreeController` for project/file navigation. It turns path lists into sorted
+directory/file trees with path metadata, selection, expansion, keyboard navigation, and file-open callbacks:
+
+```ts
+const explorer = new FileExplorerController({
+  root: createFileExplorerTree([
+    "/README.md",
+    "/src/components/tree.ts",
+    "/src/layout/window_manager.ts",
+  ]),
+  onOpen: (entry) => console.log(entry.path),
+});
+
+explorer.tree.expandActive();
+explorer.openActive();
 ```
 
 `ComboBoxController` owns dropdown items, placeholder text, selected index, expanded state, keyboard movement, selection
@@ -808,6 +825,24 @@ for (const [index, panel] of panels.entries()) {
 }
 ```
 
+`WindowManagerController` wraps the tiling primitives with mini window-system state: ordered windows, active focus,
+minimize/restore/close, fullscreen selection, fullscreen tab switching, and solved rectangles for the renderer:
+
+```ts
+const manager = new WindowManagerController({
+  windows: [
+    { id: "explorer", title: "Explorer", minWidth: 26 },
+    { id: "editor", title: "Editor", minWidth: 48 },
+    { id: "logs", title: "Logs", minWidth: 32 },
+  ],
+  activeId: "editor",
+});
+
+const layout = manager.layout({ bounds: tui.rectangle.value });
+manager.fullscreen("editor");
+manager.selectTab("logs");
+```
+
 Responsive helpers are also exported for common app shell layout:
 
 - `resolveBreakpoint()`
@@ -815,6 +850,7 @@ Responsive helpers are also exported for common app shell layout:
 - `splitRect()`
 - `dockRect()`
 - `tileRects()`
+- `WindowManagerController`
 - `resolveLayoutRecipe()`
 - `createLayoutRecipeController()`
 - `layoutRecipeSlots()`

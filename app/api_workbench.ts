@@ -9,6 +9,7 @@ import {
   renderDataTableHeader,
   renderDataTableRows,
 } from "../src/components/data_table.ts";
+import { createFileExplorerTree, FileExplorerController } from "../src/components/file_explorer.ts";
 import { InputController } from "../src/components/input.ts";
 import { MenuBarController, renderMenuBar } from "../src/components/menu_bar.ts";
 import { modalContentHeight, ModalController, renderModalRows } from "../src/components/modal.ts";
@@ -25,7 +26,7 @@ import { renderStatusBar } from "../src/components/statusbar.ts";
 import { renderStepper, StepperController } from "../src/components/stepper.ts";
 import { TextBoxController, wrapTextBoxLines } from "../src/components/textbox.ts";
 import { handleInput } from "../src/input.ts";
-import { tileRects } from "../src/layout/mod.ts";
+import { WindowManagerController } from "../src/layout/mod.ts";
 import { Computed, Signal } from "../src/signals/mod.ts";
 import { Tui } from "../src/tui.ts";
 import type { Rectangle } from "../src/types.ts";
@@ -34,7 +35,7 @@ import { grWizardThemePalettes } from "../src/grwizard_themes.ts";
 import { makeStyle } from "./styles.ts";
 import { requireInteractiveTerminal } from "./terminal_guard.ts";
 
-type WindowId = "inspector" | "data" | "controls" | "logs";
+type WindowId = "explorer" | "inspector" | "data" | "controls" | "logs";
 type ControlId =
   | "button"
   | "genericButton"
@@ -60,6 +61,7 @@ type HitAction =
   | { type: "modalAction"; index: number }
   | { type: "control"; id: ControlId; action?: ControlHitAction; index?: number }
   | { type: "dataRow"; index: number }
+  | { type: "explorerRow"; index: number }
   | { type: "logScrollbar" }
   | { type: "workspaceScrollbar" };
 type ControlHitAction = "previous" | "next" | "activate" | "set" | "focus" | "toggle";
@@ -113,6 +115,7 @@ const themes: ThemeSpec[] = grWizardThemePalettes.map((palette) => ({
 }));
 
 const rows: ProcessRow[] = [
+  { id: "explorer", surface: "File Explorer", api: "tree", state: "browsing", latency: 3 },
   { id: "layout", surface: "Adaptive Grid", api: "layout", state: "ready", latency: 4 },
   { id: "tiles", surface: "Tile Layout", api: "layout", state: "balancing", latency: 6 },
   { id: "menu", surface: "Menu Bar", api: "component", state: "active", latency: 2 },
@@ -133,6 +136,8 @@ const columns: DataColumn<ProcessRow>[] = [
 
 const docs = [
   "API Workbench demonstrates controller-first composition.",
+  "WindowManagerController owns focus, fullscreen, minimized state, and shared top/bottom chrome.",
+  "FileExplorerController builds a tree-backed browser for project files and command surfaces.",
   "MenuBarController owns active menu state and selection.",
   "tileRects balances panes across one, two, three, or four columns.",
   "ScrollAreaController clamps offsets and reports scrollbar thumbs.",
@@ -145,8 +150,9 @@ const docs = [
   "This demo intentionally uses public controllers plus canvas primitives so the composition remains transparent.",
   "Resize the terminal: panels collapse from side-by-side to stacked narrow layouts.",
   "Use [ and ] to tune tile density; use T to cycle themes.",
-  "Use Tab or 1-4 to focus windows; use M, F, R for window controls.",
+  "Use Tab or 1-5 to focus windows; use M, F, R for window controls.",
 ];
+const explorerKeys = new Set(["up", "down", "left", "right", "pageup", "pagedown", "home", "end", "space", "return"]);
 
 requireInteractiveTerminal("deno task api-workbench");
 
@@ -165,11 +171,22 @@ const activeWindow = new Signal<WindowId>("inspector");
 const activeControl = new Signal<ControlId>("button");
 const maximized = new Signal<WindowId | null>(null);
 const minimized = new Signal<Record<WindowId, boolean>>({
+  explorer: false,
   inspector: false,
   data: false,
   controls: false,
   logs: false,
 }, { deepObserve: true });
+const windowManager = new WindowManagerController({
+  activeId: "inspector",
+  windows: [
+    { id: "explorer", title: "Explorer", minWidth: 26, minHeight: 12 },
+    { id: "inspector", title: "Inspector", minWidth: 32, minHeight: 11 },
+    { id: "data", title: "Data Table", minWidth: 42, minHeight: 12 },
+    { id: "controls", title: "Controls", minWidth: 40, minHeight: 18 },
+    { id: "logs", title: "Logs", minWidth: 36, minHeight: 12 },
+  ],
+});
 const commandLog = new Signal<string[]>(["ready: API workbench mounted"], { deepObserve: true });
 const lineSignals: Signal<string>[] = [];
 let hitTargets: Array<{ rect: Rectangle; action: HitAction }> = [];
@@ -290,6 +307,25 @@ const notes = new TextBoxController({
   cursorPosition: { x: initialNotesText.split("\n").at(-1)?.length ?? 0, y: 1 },
   wordWrap: true,
 });
+const explorer = new FileExplorerController({
+  root: createFileExplorerTree([
+    "/README.md",
+    "/mod.ts",
+    "/app/api_workbench.ts",
+    "/app/neon_exodus.ts",
+    "/src/components/file_explorer.ts",
+    "/src/components/tree.ts",
+    "/src/components/modal.ts",
+    "/src/components/data_table.ts",
+    "/src/layout/window_manager.ts",
+    "/src/layout/responsive.ts",
+    "/src/app/commands.ts",
+    "/src/runtime/worker_pool.ts",
+    "/tests/widget_helpers.test.ts",
+    "/tests/responsive_layout.test.ts",
+  ]),
+  onOpen: (entry) => pushLog(`open ${entry.path}`),
+});
 const table = new DataTableController<ProcessRow>({
   rows,
   columns,
@@ -335,11 +371,14 @@ tui.on("keyPress", (event) => {
   if (event.key === "q") tui.emit("destroy");
   else if (event.key === "tab" && activeWindow.peek() === "controls") focusNextControl(event.shift ? -1 : 1);
   else if (event.key === "tab") focusNext();
-  else if (event.key === "1") focus("inspector");
-  else if (event.key === "2") focus("data");
-  else if (event.key === "3") focus("controls");
-  else if (event.key === "4") focus("logs");
-  else if (event.key === "m") minimize(activeWindow.peek());
+  else if (event.key === "1") focus("explorer");
+  else if (event.key === "2") focus("inspector");
+  else if (event.key === "3") focus("data");
+  else if (event.key === "4") focus("controls");
+  else if (event.key === "5") focus("logs");
+  else if (activeWindow.peek() === "explorer" && explorerKeys.has(event.key)) {
+    explorer.handleKeyPress(event, Math.max(1, currentHeight() - 8));
+  } else if (event.key === "m") minimize(activeWindow.peek());
   else if (event.key === "f" || event.key === "return") toggleMaximize(activeWindow.peek());
   else if (event.key === "r" || event.key === "escape") restoreAll();
   else if (event.key === "t") setTheme(themeIndex.peek() + 1);
@@ -392,6 +431,7 @@ tui.on("destroy", () => {
   menu.dispose();
   workspaceScroll.dispose();
   logScroll.dispose();
+  windowManager.dispose();
   density.dispose();
   livePreview.dispose();
   compactRows.dispose();
@@ -406,6 +446,7 @@ tui.on("destroy", () => {
   workflowStepper.dispose();
   progress.dispose();
   notes.dispose();
+  explorer.dispose();
   table.dispose();
 });
 
@@ -546,7 +587,7 @@ function renderWorkspace(frame: Frame): void {
     return;
   }
 
-  const visible = (["inspector", "data", "controls", "logs"] as WindowId[]).filter((id) => !minimized.peek()[id]);
+  const visible = windowIds().filter((id) => !minimized.peek()[id]);
   if (visible.length === 0) {
     write(frame, bounds.row + 1, 2, paint("All windows minimized. Press R to restore.", { fg: theme().warn }));
     renderShelf(frame);
@@ -588,18 +629,49 @@ function renderWindow(frame: Frame, id: WindowId, rect: Rectangle): void {
 
   const inner = inset(rect, 1);
   fillRect(frame, inner, t.surface);
-  if (id === "inspector") renderInspector(frame, inner);
+  if (id === "explorer") renderExplorer(frame, inner);
+  else if (id === "inspector") renderInspector(frame, inner);
   else if (id === "data") renderData(frame, inner);
   else if (id === "controls") renderControls(frame, inner);
   else renderLogs(frame, inner);
+}
+
+function renderExplorer(frame: Frame, rect: Rectangle): void {
+  const t = theme();
+  const visible = explorer.tree.visible(rect.height);
+  const inspection = explorer.tree.inspect(rect.height);
+  writeRows(
+    frame,
+    rect,
+    visible.map((row) => {
+      const selected = row.index === inspection.selectedIndex;
+      const node = row.node as { kind?: string; path?: string };
+      const icon = row.hasChildren ? row.expanded ? "▾" : "▸" : node.kind === "file" ? "·" : " ";
+      const label = `${"  ".repeat(row.depth)}${icon} ${row.label}`;
+      return {
+        text: label,
+        fg: selected ? contrastText(t.warn, t.background, t.text) : node.kind === "directory" ? t.good : t.text,
+        bg: selected ? t.warn : t.surface,
+        bold: selected || node.kind === "directory",
+      };
+    }),
+  );
+  const start = inspection.window.start;
+  for (let index = 0; index < visible.length; index += 1) {
+    addHit({ column: rect.column, row: rect.row + index, width: rect.width, height: 1 }, {
+      type: "explorerRow",
+      index: start + index,
+    });
+  }
 }
 
 function renderInspector(frame: Frame, rect: Rectangle): void {
   const t = theme();
   const lines = [
     { text: " Composable API surfaces ", fg: t.background, bg: t.accent, bold: true },
+    { text: "explorer  FileExplorerController", fg: t.good, bg: t.surface },
     { text: "menu      MenuBarController", fg: t.good, bg: t.surface },
-    { text: "layout    tileRects + adaptive bounds", fg: t.good, bg: t.surface },
+    { text: "layout    WindowManagerController", fg: t.good, bg: t.surface },
     { text: "viewport  ScrollAreaController", fg: t.good, bg: t.surface },
     { text: "data      DataTableController", fg: t.good, bg: t.surface },
     { text: "controls  SliderController / CheckBoxController", fg: t.good, bg: t.surface },
@@ -1014,10 +1086,11 @@ function renderWindowTabs(frame: Frame): void {
   fillRow(frame, row, t.backgroundSoft);
   write(frame, row, 1, paint("windows ", { fg: t.muted, bg: t.backgroundSoft }));
   let column = 9;
-  for (const id of windowIds()) {
+  for (const tab of windowManager.inspect().tabs) {
+    const id = tab.id as WindowId;
     if (column >= currentWidth() - 1) break;
-    const selected = maximized.peek() === id;
-    const hidden = minimized.peek()[id];
+    const selected = tab.fullscreen;
+    const hidden = tab.minimized;
     const marker = selected ? "●" : hidden ? "○" : " ";
     const label = `[${marker} ${windowTitle(id)}]`;
     const width = Math.min(textWidth(label), Math.max(0, currentWidth() - column));
@@ -1042,7 +1115,7 @@ function renderStatus(frame: Frame): void {
   const width = currentWidth();
   const densityLabel = tileDensity.peek() === 0 ? "balanced" : tileDensity.peek() > 0 ? "dense" : "wide";
   const left = `focus ${windowTitle(activeWindow.peek())} | ${theme().label} | tiles ${densityLabel}`;
-  const right = "1-4 focus  [/] tile density  arrows table/logs  mouse";
+  const right = "1-5 focus  [/] tile density  arrows table/logs  mouse";
   write(frame, currentHeight() - 1, 0, paint(renderStatusBar(left, right, width), { fg: t.text, bg: t.panelSoft }));
 }
 
@@ -1120,80 +1193,26 @@ function drawFrame(frame: Frame, rect: Rectangle, title: string, active: boolean
   write(frame, rect.row, rect.column + 2, paint(` ${title.toUpperCase()} `, titleStyle));
 }
 
-function stackRects(bounds: Rectangle, count: number): Rectangle[] {
-  if (count <= 0) return [];
-  const gap = bounds.height >= count * 5 ? 1 : 0;
-  const available = Math.max(0, bounds.height - gap * (count - 1));
-  let row = bounds.row;
-  let remaining = available;
-  return Array.from({ length: count }, (_, index) => {
-    const slots = count - index;
-    const height = index === count - 1 ? remaining : Math.max(4, Math.floor(remaining / slots));
-    const rect = { column: bounds.column, row, width: bounds.width, height };
-    row += height + gap;
-    remaining = Math.max(0, remaining - height);
-    return rect;
-  });
-}
-
 function workspaceLayout(bounds: Rectangle): {
   bounds: Rectangle;
   contentHeight: number;
   rects: Map<WindowId, Rectangle>;
 } {
   const rects = new Map<WindowId, Rectangle>();
-  const max = maximized.peek();
-  if (max) {
-    rects.set(max, bounds);
-    return { bounds, contentHeight: bounds.height, rects };
-  }
-
-  const visible = (["inspector", "data", "controls", "logs"] as WindowId[]).filter((id) => !minimized.peek()[id]);
-  if (visible.length === 0) return { bounds, contentHeight: bounds.height, rects };
-
-  const stacked = bounds.width < 92 || bounds.height < 18;
-  if (stacked) {
-    const stackedRects = stackWorkspaceRects(bounds, visible);
-    for (const [index, id] of visible.entries()) rects.set(id, stackedRects[index]!);
-    const bottom = stackedRects.reduce((maxRow, rect) => Math.max(maxRow, rect.row + rect.height), bounds.row);
-    return { bounds, contentHeight: Math.max(bounds.height, bottom - bounds.row), rects };
-  }
-
   const densityOffset = tileDensity.peek() * 4;
-  const layout = tileRects(bounds, {
-    itemCount: visible.length,
-    minTileWidth: Math.max(28, 38 - densityOffset),
-    minTileHeight: 10,
-    maxColumns: bounds.width >= 172 ? 4 : 3,
-    gap: 1,
-    targetAspectRatio: 2.25 + tileDensity.peek() * 0.12,
-    allowVerticalOverflow: true,
+  const layout = windowManager.layout({
+    bounds,
+    tileOptions: {
+      minTileWidth: Math.max(26, 38 - densityOffset),
+      minTileHeight: 10,
+      maxColumns: bounds.width >= 172 ? 4 : 3,
+      targetAspectRatio: 2.25 + tileDensity.peek() * 0.12,
+    },
   });
-  for (const [index, id] of visible.entries()) {
-    rects.set(id, layout.rects[index]!);
+  for (const entry of layout.visible) {
+    if (entry.rect) rects.set(entry.id as WindowId, entry.rect);
   }
   return { bounds, contentHeight: Math.max(bounds.height, layout.contentHeight), rects };
-}
-
-function stackWorkspaceRects(bounds: Rectangle, ids: WindowId[]): Rectangle[] {
-  const gap = ids.length > 1 ? 1 : 0;
-  const preferred = ids.map((id) => preferredWindowHeight(id, bounds.width));
-  const preferredTotal = preferred.reduce((total, height) => total + height, 0) + gap * Math.max(0, ids.length - 1);
-  if (preferredTotal <= bounds.height) return stackRects(bounds, ids.length);
-  let row = bounds.row;
-  return ids.map((id, index) => {
-    const height = preferred[index] ?? preferredWindowHeight(id, bounds.width);
-    const rect = { column: bounds.column, row, width: bounds.width, height };
-    row += height + gap;
-    return rect;
-  });
-}
-
-function preferredWindowHeight(id: WindowId, width: number): number {
-  if (id === "controls") return width < 56 ? 22 : 18;
-  if (id === "data") return 12;
-  if (id === "logs") return 12;
-  return 11;
 }
 
 function translateWorkspaceHits(startIndex: number, rowDelta: number, clip: Rectangle): void {
@@ -1326,9 +1345,8 @@ function ensureActiveWindowVisible(
 }
 
 function focus(id: WindowId): void {
-  activeWindow.value = id;
-  minimized.value[id] = false;
-  if (maximized.peek() !== null) maximized.value = id;
+  windowManager.focus(id);
+  syncWindowSignalsFromManager();
   pushLog(`focus ${windowTitle(id)}`);
 }
 
@@ -1345,29 +1363,36 @@ function focusPrevious(): void {
 }
 
 function minimize(id: WindowId): void {
-  minimized.value[id] = true;
-  if (maximized.peek() === id) maximized.value = null;
+  windowManager.minimize(id);
+  syncWindowSignalsFromManager();
   pushLog(`minimize ${windowTitle(id)}`);
 }
 
 function toggleMaximize(id: WindowId): void {
-  maximized.value = maximized.peek() === id ? null : id;
-  minimized.value[id] = false;
-  activeWindow.value = id;
+  windowManager.fullscreen(id);
+  syncWindowSignalsFromManager();
   pushLog(`${maximized.peek() === id ? "maximize" : "restore"} ${windowTitle(id)}`);
 }
 
 function selectWindowTab(id: WindowId): void {
-  minimized.value[id] = false;
-  maximized.value = id;
-  activeWindow.value = id;
+  windowManager.selectTab(id);
+  syncWindowSignalsFromManager();
   pushLog(`fullscreen tab ${windowTitle(id)}`);
 }
 
 function restoreAll(): void {
-  maximized.value = null;
-  minimized.value = { inspector: false, data: false, controls: false, logs: false };
+  windowManager.restore();
+  syncWindowSignalsFromManager();
   pushLog("restore all windows");
+}
+
+function syncWindowSignalsFromManager(): void {
+  const inspection = windowManager.inspect();
+  activeWindow.value = (inspection.activeId as WindowId | undefined) ?? "explorer";
+  maximized.value = (inspection.fullscreenId as WindowId | undefined) ?? null;
+  minimized.value = Object.fromEntries(
+    inspection.windows.map((entry) => [entry.id, entry.minimized || entry.closed]),
+  ) as Record<WindowId, boolean>;
 }
 
 function adjustTileDensity(delta: number): void {
@@ -1404,8 +1429,8 @@ function openHelpModal(): void {
     tone: "info",
     body: [
       "Keyboard: Tab moves focus through windows. Inside Controls, Tab moves through controls and leaves the pane after the last control. Shift+Tab moves backward.",
-      "Use 1-4 to focus Inspector, Data Table, Controls, or Logs. Use M to minimize, F or Enter to maximize, R or Escape to restore windows.",
-      "When a window is fullscreen, use the bottom tabs or 1-4 to switch between fullscreen windows.",
+      "Use 1-5 to focus Explorer, Inspector, Data Table, Controls, or Logs. Use M to minimize, F or Enter to maximize, R or Escape to restore windows.",
+      "When a window is fullscreen, use the bottom tabs or 1-5 to switch between fullscreen windows.",
       "Use arrows in the Data Table and Logs. In Controls, arrows adjust sliders, radio groups, combo boxes, steppers, and dropdown selections.",
       "Mouse: click windows to focus them, click rows to select them, click controls to change values, drag or click scrollbars to move through overflow content.",
       "Use the Theme menu to switch palettes. Click the [x] button in the top-right menu bar or press Q to quit.",
@@ -1473,17 +1498,19 @@ function applyHit(target: { rect: Rectangle; action: HitAction }, x: number, y: 
   else if (action.type === "maximize") toggleMaximize(action.id);
   else if (action.type === "close") closeWindow(action.id);
   else if (action.type === "restore") {
-    minimized.value[action.id] = false;
-    maximized.value = null;
-    focus(action.id);
+    windowManager.restore(action.id);
+    syncWindowSignalsFromManager();
+    pushLog(`restore ${windowTitle(action.id)}`);
   } else if (action.type === "control") {
     applyControlHit(action.id, action.action ?? "activate", target.rect, x, action.index);
   } else if (action.type === "modalAction") {
     if (action.index >= 0) modal.activateAction(action.index);
   } else if (action.type === "dataRow") selectDataRow(action.index);
+  else if (action.type === "explorerRow") selectExplorerRow(action.index);
   else if (action.type === "logScrollbar") {
     logScroll.scrollTo(0, scrollbarOffsetForPointer(docs.length, target.rect.height, y - target.rect.row));
-    activeWindow.value = "logs";
+    windowManager.focus("logs");
+    syncWindowSignalsFromManager();
   } else if (action.type === "workspaceScrollbar") {
     workspaceScroll.scrollTo(
       0,
@@ -1493,11 +1520,9 @@ function applyHit(target: { rect: Rectangle; action: HitAction }, x: number, y: 
 }
 
 function closeWindow(id: WindowId): void {
-  minimized.value[id] = true;
-  if (maximized.peek() === id) maximized.value = null;
+  windowManager.close(id);
+  syncWindowSignalsFromManager();
   pushLog(`close ${windowTitle(id)}`);
-  const next = windowIds().find((candidate) => !minimized.peek()[candidate]);
-  if (next) activeWindow.value = next;
 }
 
 function applyControlHit(
@@ -1507,7 +1532,8 @@ function applyControlHit(
   x?: number,
   index?: number,
 ): void {
-  activeWindow.value = "controls";
+  windowManager.focus("controls");
+  syncWindowSignalsFromManager();
   activeControl.value = id;
   if (action === "focus") {
     pushLog(`control ${id} focus`);
@@ -1554,10 +1580,21 @@ function applyControlHit(
 }
 
 function selectDataRow(index: number): void {
-  activeWindow.value = "data";
+  windowManager.focus("data");
+  syncWindowSignalsFromManager();
   table.select(index);
   const selected = table.selectedKey() ?? `${index}`;
   pushLog(`data row selected: ${selected}`);
+}
+
+function selectExplorerRow(index: number): void {
+  windowManager.focus("explorer");
+  syncWindowSignalsFromManager();
+  explorer.tree.setSelectedIndex(index);
+  const entry = explorer.selected();
+  if (entry?.kind === "file") explorer.openActive();
+  else if (entry?.kind === "directory") explorer.tree.toggleActive();
+  pushLog(`explorer ${entry?.path ?? index}`);
 }
 
 function setSliderFromPointer(controller: SliderController, rect: Rectangle, x: number): void {
@@ -1598,13 +1635,15 @@ function handleControlsKey(event: { key: string; ctrl?: boolean; meta?: boolean;
 
 function blurTextControl(): void {
   const previous = activeControl.peek();
-  activeWindow.value = "controls";
+  windowManager.focus("controls");
+  syncWindowSignalsFromManager();
   activeControl.value = controlAt(1);
   pushLog(`control ${previous} blur`);
 }
 
 function focusNextControl(delta = 1): void {
-  activeWindow.value = "controls";
+  windowManager.focus("controls");
+  syncWindowSignalsFromManager();
   const next = controlAtEdge(delta);
   if (next) {
     activeControl.value = next;
@@ -1830,11 +1869,19 @@ function inset(rect: Rectangle, amount: number): Rectangle {
 }
 
 function windowTitle(id: WindowId): string {
-  return id === "inspector" ? "Inspector" : id === "data" ? "Data Table" : id === "controls" ? "Controls" : "Logs";
+  return id === "explorer"
+    ? "Explorer"
+    : id === "inspector"
+    ? "Inspector"
+    : id === "data"
+    ? "Data Table"
+    : id === "controls"
+    ? "Controls"
+    : "Logs";
 }
 
 function windowIds(): WindowId[] {
-  return ["inspector", "data", "controls", "logs"];
+  return ["explorer", "inspector", "data", "controls", "logs"];
 }
 
 function theme(): ThemeSpec {

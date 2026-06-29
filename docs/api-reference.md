@@ -6,11 +6,11 @@ modules and exported symbols that make up the package API.
 ## Summary
 
 - Entrypoint: `mod.ts`
-- Modules: 178
-- Re-export declarations: 177
-- Exported symbols: 1359
+- Modules: 180
+- Re-export declarations: 179
+- Exported symbols: 1373
 - Documented symbols: 344
-- Documentation coverage: 25.31%
+- Documentation coverage: 25.05%
 - Duplicate symbols: 0
 - Missing targets: 0
 
@@ -94,6 +94,7 @@ modules and exported symbols that make up the package API.
 | [`src/components/context_menu.ts`](#src-components-context-menu-ts)               |          0 |      10 |          0 |
 | [`src/components/data_table.ts`](#src-components-data-table-ts)                   |          0 |      15 |          0 |
 | [`src/components/empty_state.ts`](#src-components-empty-state-ts)                 |          0 |       4 |          0 |
+| [`src/components/file_explorer.ts`](#src-components-file-explorer-ts)             |          0 |       7 |          0 |
 | [`src/components/frame.ts`](#src-components-frame-ts)                             |          0 |       4 |          1 |
 | [`src/components/gauge.ts`](#src-components-gauge-ts)                             |          0 |       3 |          0 |
 | [`src/components/input.ts`](#src-components-input-ts)                             |          0 |       8 |          1 |
@@ -103,7 +104,7 @@ modules and exported symbols that make up the package API.
 | [`src/components/log_viewer.ts`](#src-components-log-viewer-ts)                   |          0 |       6 |          0 |
 | [`src/components/menu_bar.ts`](#src-components-menu-bar-ts)                       |          0 |      10 |          0 |
 | [`src/components/metric_series.ts`](#src-components-metric-series-ts)             |          0 |      10 |          0 |
-| [`src/components/mod.ts`](#src-components-mod-ts)                                 |         37 |       0 |          0 |
+| [`src/components/mod.ts`](#src-components-mod-ts)                                 |         38 |       0 |          0 |
 | [`src/components/modal.ts`](#src-components-modal-ts)                             |          0 |      11 |          0 |
 | [`src/components/progressbar.ts`](#src-components-progressbar-ts)                 |          0 |      15 |          1 |
 | [`src/components/radio_group.ts`](#src-components-radio-group-ts)                 |          0 |      11 |          0 |
@@ -132,12 +133,13 @@ modules and exported symbols that make up the package API.
 | [`src/layout/flex_layout.ts`](#src-layout-flex-layout-ts)                         |          0 |       3 |          0 |
 | [`src/layout/grid_layout.ts`](#src-layout-grid-layout-ts)                         |          0 |       3 |          1 |
 | [`src/layout/horizontal_layout.ts`](#src-layout-horizontal-layout-ts)             |          0 |       1 |          1 |
-| [`src/layout/mod.ts`](#src-layout-mod-ts)                                         |          9 |       0 |          0 |
+| [`src/layout/mod.ts`](#src-layout-mod-ts)                                         |         10 |       0 |          0 |
 | [`src/layout/recipe.ts`](#src-layout-recipe-ts)                                   |          0 |      18 |          5 |
 | [`src/layout/responsive.ts`](#src-layout-responsive-ts)                           |          0 |      14 |          3 |
 | [`src/layout/split_pane.ts`](#src-layout-split-pane-ts)                           |          0 |      10 |          0 |
 | [`src/layout/types.ts`](#src-layout-types-ts)                                     |          0 |       3 |          0 |
 | [`src/layout/vertical_layout.ts`](#src-layout-vertical-layout-ts)                 |          0 |       1 |          1 |
+| [`src/layout/window_manager.ts`](#src-layout-window-manager-ts)                   |          0 |       7 |          0 |
 | [`src/perf/benchmark.ts`](#src-perf-benchmark-ts)                                 |          0 |      19 |         19 |
 | [`src/perf/mod.ts`](#src-perf-mod-ts)                                             |          1 |       0 |          0 |
 | [`src/runtime/capabilities.ts`](#src-runtime-capabilities-ts)                     |          0 |      16 |         13 |
@@ -1188,6 +1190,18 @@ _No direct exported symbols._
 | `EmptyStateOptions` | interface | yes       | no    |
 | `renderEmptyState`  | function  | no        | no    |
 
+### src/components/file_explorer.ts
+
+| Symbol                          | Kind      | Type Only | JSDoc |
+| ------------------------------- | --------- | --------- | ----- |
+| `createFileExplorerTree`        | function  | no        | no    |
+| `FileExplorerController`        | class     | no        | no    |
+| `FileExplorerControllerOptions` | interface | yes       | no    |
+| `FileExplorerEntry`             | interface | yes       | no    |
+| `FileExplorerInspection`        | interface | yes       | no    |
+| `FileExplorerNode`              | interface | yes       | no    |
+| `FileExplorerNodeKind`          | type      | yes       | no    |
+
 ### src/components/frame.ts
 
 | Symbol                       | Kind      | Type Only | JSDoc |
@@ -1306,6 +1320,7 @@ _No direct exported symbols._
 | `src/components/context_menu.ts`    | star | -     |
 | `src/components/data_table.ts`      | star | -     |
 | `src/components/empty_state.ts`     | star | -     |
+| `src/components/file_explorer.ts`   | star | -     |
 | `src/components/frame.ts`           | star | -     |
 | `src/components/gauge.ts`           | star | -     |
 | `src/components/input.ts`           | star | -     |
@@ -1676,6 +1691,7 @@ _No direct exported symbols._
 | `src/layout/responsive.ts`        | star | -     |
 | `src/layout/split_pane.ts`        | star | -     |
 | `src/layout/recipe.ts`            | star | -     |
+| `src/layout/window_manager.ts`    | star | -     |
 
 _No direct exported symbols._
 
@@ -1749,6 +1765,18 @@ _No direct exported symbols._
 | Symbol           | Kind  | Type Only | JSDoc |
 | ---------------- | ----- | --------- | ----- |
 | `VerticalLayout` | class | no        | yes   |
+
+### src/layout/window_manager.ts
+
+| Symbol                          | Kind      | Type Only | JSDoc |
+| ------------------------------- | --------- | --------- | ----- |
+| `WindowManagerController`       | class     | no        | no    |
+| `WindowManagerLayoutInspection` | interface | yes       | no    |
+| `WindowManagerLayoutOptions`    | interface | yes       | no    |
+| `WindowManagerOptions`          | interface | yes       | no    |
+| `WindowManagerWindow`           | interface | yes       | no    |
+| `WindowManagerWindowInspection` | interface | yes       | no    |
+| `WindowManagerWindowState`      | type      | yes       | no    |
 
 ### src/perf/benchmark.ts
 

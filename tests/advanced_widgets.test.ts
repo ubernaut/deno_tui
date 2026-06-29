@@ -82,6 +82,7 @@ Deno.test("component catalog groups widgets by category and capability", () => {
     "table",
     "data-table",
     "tree",
+    "file-explorer",
     "tabs",
     "stepper",
     "menu-bar",
@@ -92,6 +93,7 @@ Deno.test("component catalog groups widgets by category and capability", () => {
     "progressbar",
     "log-viewer",
     "metric-series",
+    "window-manager",
     "scroll-area",
   ]);
 });
@@ -111,6 +113,7 @@ Deno.test("component catalog supports combined queries and inspection", () => {
     "table",
     "data-table",
     "tree",
+    "file-explorer",
     "tabs",
     "stepper",
     "menu-bar",

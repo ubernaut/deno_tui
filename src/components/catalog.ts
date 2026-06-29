@@ -154,6 +154,13 @@ export const componentCatalog = [
     "keyboard",
     "themeable",
   ]),
+  component("file-explorer", "FileExplorer", "data", "Path-aware tree controller for project and file browsers.", [
+    "controller",
+    "selection",
+    "keyboard",
+    "mouse",
+    "themeable",
+  ]),
   component("tabs", "Tabs", "navigation", "Segmented route or view selector.", [
     "controller",
     "render-helper",
@@ -243,6 +250,11 @@ export const componentCatalog = [
     "dashboard",
   ]),
   component("frame", "Frame", "layout", "Bordered component frame.", ["component", "themeable"]),
+  component("window-manager", "WindowManager", "layout", "Tiling window state, fullscreen tabs, and chrome model.", [
+    "controller",
+    "keyboard",
+    "mouse",
+  ]),
   component("scroll-area", "ScrollArea", "layout", "Viewport and scrollbar helper renderers.", [
     "controller",
     "render-helper",
