@@ -167,7 +167,13 @@ let hitTargets: Array<{ rect: Rectangle; action: HitAction }> = [];
 let lastVisibleWindow: WindowId | null = null;
 let lastWorkspaceWidth = 0;
 let lastWorkspaceHeight = 0;
+let dropdownOverlay: DropdownOverlay | null = null;
 type Frame = string[][];
+interface DropdownOverlay {
+  rect: Rectangle;
+  items: string[];
+  selectedIndex?: number;
+}
 
 const menu = new MenuBarController({
   items: [
@@ -359,6 +365,7 @@ function draw(): void {
   const width = currentWidth();
   const height = currentHeight();
   hitTargets = [];
+  dropdownOverlay = null;
   logScroll.setContentSize(Math.max(1, width - 6), docs.length);
   const frame: Frame = Array.from({ length: height }, () => []);
   renderHeader(frame);
@@ -444,6 +451,7 @@ function renderWorkspace(frame: Frame): void {
     translateWorkspaceHits(hitStart, bounds.row - offset, bounds);
     blitWorkspace(frame, virtual, bounds, offset, layout.bounds.width);
     renderWorkspaceScrollbar(frame, bounds, layout.contentHeight, offset);
+    renderDropdownOverlay(frame, bounds, offset);
     renderShelf(frame);
     return;
   }
@@ -462,6 +470,7 @@ function renderWorkspace(frame: Frame): void {
   translateWorkspaceHits(hitStart, bounds.row - offset, bounds);
   blitWorkspace(frame, virtual, bounds, offset, layout.bounds.width);
   renderWorkspaceScrollbar(frame, bounds, layout.contentHeight, offset);
+  renderDropdownOverlay(frame, bounds, offset);
   renderShelf(frame);
 }
 
@@ -656,14 +665,18 @@ function renderControls(frame: Frame, rect: Rectangle): void {
     action: "toggle",
   });
   if (dropdown.expanded.peek()) {
-    for (const [index, item] of dropdown.items.peek().entries()) {
-      const selected = dropdown.selectedIndex.peek() === index;
-      writeControl("dropdown", `${selected ? "●" : "○"} ${item}`, {
-        indent: true,
-        action: "activate",
-        index,
-      });
-    }
+    const items = [...dropdown.items.peek()];
+    const contentWidth = Math.max(...items.map((item) => textWidth(item)), textWidth(dropdown.label()), 12);
+    dropdownOverlay = {
+      rect: {
+        column: rect.column + 2,
+        row,
+        width: Math.min(Math.max(16, contentWidth + 6), Math.max(16, rect.width - 4)),
+        height: items.length + 2,
+      },
+      items,
+      selectedIndex: dropdown.selectedIndex.peek(),
+    };
   }
   writeControl("input", `Input     ${commandInput.text.peek()}${activeControl.peek() === "input" ? "▌" : ""}`, {
     action: "focus",
@@ -1031,6 +1044,65 @@ function renderWorkspaceScrollbar(frame: Frame, bounds: Rectangle, contentHeight
       paint(scrollbarGlyph(row, thumb), { fg: t.accent, bg: t.backgroundSoft, bold: true }),
     );
   }
+}
+
+function renderDropdownOverlay(frame: Frame, bounds: Rectangle, offset: number): void {
+  const overlay = dropdownOverlay;
+  if (!overlay || overlay.items.length === 0) return;
+
+  const t = theme();
+  const rect = {
+    ...overlay.rect,
+    row: overlay.rect.row + bounds.row - offset,
+  };
+  if (!intersects(rect, bounds)) return;
+
+  const clipped = clipRect(rect, bounds);
+  if (clipped.width < 8 || clipped.height < 1) return;
+
+  fillRect(frame, clipped, t.panelSoft);
+  const top = `┌${"─".repeat(Math.max(0, rect.width - 2))}┐`;
+  const bottom = `└${"─".repeat(Math.max(0, rect.width - 2))}┘`;
+  writeClippedOverlayRow(frame, bounds, rect.row, rect.column, top, { fg: t.accent, bg: t.panelSoft, bold: true });
+  for (const [index, item] of overlay.items.entries()) {
+    const selected = overlay.selectedIndex === index;
+    const marker = selected ? "●" : "○";
+    const row = rect.row + 1 + index;
+    const style = selected
+      ? { fg: t.background, bg: t.warn, bold: true }
+      : { fg: t.text, bg: t.panelSoft, bold: false };
+    writeClippedOverlayRow(frame, bounds, row, rect.column, `│ ${fit(`${marker} ${item}`, rect.width - 4)} │`, style);
+    const hit = clipRect({ column: rect.column + 1, row, width: Math.max(0, rect.width - 2), height: 1 }, bounds);
+    if (hit.width > 0 && hit.height > 0) {
+      addHit(hit, { type: "control", id: "dropdown", action: "activate", index });
+    }
+  }
+  writeClippedOverlayRow(
+    frame,
+    bounds,
+    rect.row + rect.height - 1,
+    rect.column,
+    bottom,
+    { fg: t.accent, bg: t.panelSoft, bold: true },
+  );
+}
+
+function writeClippedOverlayRow(
+  frame: Frame,
+  bounds: Rectangle,
+  row: number,
+  column: number,
+  value: string,
+  style: { fg?: string; bg?: string; bold?: boolean },
+): void {
+  if (row < bounds.row || row >= bounds.row + bounds.height) return;
+  const start = Math.max(column, bounds.column);
+  const end = Math.min(column + textWidth(value), bounds.column + bounds.width);
+  if (end <= start) return;
+  const visibleWidth = end - start;
+  const leftTrim = Math.max(0, start - column);
+  const text = stripStyles(value).slice(leftTrim, leftTrim + visibleWidth);
+  write(frame, row, start, paint(fit(text, visibleWidth), style));
 }
 
 function ensureActiveWindowVisible(
