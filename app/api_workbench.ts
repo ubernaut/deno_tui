@@ -2741,8 +2741,9 @@ function applyHit(target: { rect: Rectangle; action: HitAction }, x: number, y: 
     if (action.index >= 0) modal.activateAction(action.index);
   } else if (action.type === "dataRow") selectDataRow(action.index);
   else if (action.type === "explorerRow") selectExplorerRow(action.index);
-  else if (action.type === "newWindow") toggleVisualizationWindow(newWindowOptions[action.index]);
-  else if (action.type === "workspace") applyWorkspaceMenuItem(action.index);
+  else if (action.type === "newWindow") {
+    toggleVisualizationWindow(newWindowOptions[action.index], { keepMenuOpen: true });
+  } else if (action.type === "workspace") applyWorkspaceMenuItem(action.index);
   else if (action.type === "windowVScrollbar") {
     const scroll = windowScroll(action.id);
     scroll.scrollTo(
@@ -2879,7 +2880,7 @@ function handleScreenDropdownKey(event: { key: string; ctrl?: boolean; meta?: bo
     else if (event.key === "pageup") newWindowMenuIndex.value = Math.max(0, newWindowMenuIndex.peek() - 6);
     else if (event.key === "pagedown") newWindowMenuIndex.value = Math.min(count - 1, newWindowMenuIndex.peek() + 6);
     else if (event.key === "return" || event.key === "space") {
-      toggleVisualizationWindow(newWindowOptions[newWindowMenuIndex.peek()]);
+      toggleVisualizationWindow(newWindowOptions[newWindowMenuIndex.peek()], { keepMenuOpen: true });
     }
     return;
   }
@@ -3004,20 +3005,24 @@ function closeWindow(id: WindowId): void {
   pushLog(`close ${windowTitle(id)}`);
 }
 
-function toggleVisualizationWindow(option: NewWindowOption | undefined): void {
+function toggleVisualizationWindow(
+  option: NewWindowOption | undefined,
+  options: { keepMenuOpen?: boolean } = {},
+): void {
   if (!option) return;
   if (isVisualizationLoaded(option.id)) {
     closeWindow(visualizationWindowId(option.id));
-    closeTopMenus();
+    if (!options.keepMenuOpen) closeTopMenus();
+    else menuFocused.value = true;
     return;
   }
-  addVisualizationWindow(option);
+  addVisualizationWindow(option, options);
 }
 
-function addVisualizationWindow(option: NewWindowOption | undefined): void {
+function addVisualizationWindow(option: NewWindowOption | undefined, options: { keepMenuOpen?: boolean } = {}): void {
   if (!option) return;
   const id = visualizationWindowId(option.id);
-  closeTopMenus();
+  if (!options.keepMenuOpen) closeTopMenus();
   if (!windowManager.ids({ includeClosed: true }).includes(id)) {
     dynamicVisualizationWindows.value = { ...dynamicVisualizationWindows.peek(), [id]: option.id };
     windowScrolls.set(id, new ScrollAreaController({ showScrollbar: true }));
@@ -3035,6 +3040,7 @@ function addVisualizationWindow(option: NewWindowOption | undefined): void {
     windowManager.restore(id);
   }
   focus(id);
+  if (options.keepMenuOpen) menuFocused.value = true;
   pushLog(`add window ${option.label}`);
 }
 
