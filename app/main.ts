@@ -1,6 +1,7 @@
 import { BoxObject } from "../src/canvas/box.ts";
 import { TextObject, type TextRectangle } from "../src/canvas/text.ts";
 import { handleInput } from "../src/input.ts";
+import { WindowManagerController, type WindowManagerWindowInspection } from "../src/layout/mod.ts";
 import { Computed, Effect, Signal } from "../src/signals/mod.ts";
 import { probeCompatibleWebGPUDevice } from "../src/three_ascii/webgpu_compat.ts";
 import { Tui } from "../src/tui.ts";
@@ -15,13 +16,8 @@ import {
   terminalGlyphStyleLabel,
 } from "./ascii_options.ts";
 import { AudioRegistry, discoverAudioSources } from "./audio.ts";
-import { detectViewportMode, resolveResponsiveLayout, slotRect, visibleSlotIds } from "./layout.ts";
-import {
-  type MultiPaneLayoutId,
-  shiftOutputTarget,
-  shiftVisualizationForSlot,
-  toggleFullscreenLayout,
-} from "./navigation.ts";
+import { detectViewportMode } from "./layout.ts";
+import { type MultiPaneLayoutId, shiftVisualizationForSlot } from "./navigation.ts";
 import { defaultVisualizationForSlot, orderVisualizationsForSlot } from "./panel_defaults.ts";
 import { buildSourceCatalog, resolveSourceFrames } from "./sources.ts";
 import { accentColor, formatDuration, makeStyle, palette, severityAccent } from "./styles.ts";
@@ -45,11 +41,21 @@ import {
 } from "./types.ts";
 import { renderVisualization, visualizations } from "./visualizations.ts";
 
+type MonitorHit =
+  | { type: "focus"; id: SlotId }
+  | { type: "minimize"; id: SlotId }
+  | { type: "maximize"; id: SlotId }
+  | { type: "restore"; id: SlotId }
+  | { type: "close"; id: SlotId }
+  | { type: "tab"; id: SlotId }
+  | { type: "quit" };
+
 requireInteractiveTerminal("deno task viz");
 
 const tui = new Tui({
   style: makeStyle({ bg: palette.void }),
   refreshRate: 1000 / 24,
+  enableMouse: true,
 });
 
 const audioCatalog = await discoverAudioSources();
@@ -65,6 +71,24 @@ const menu = new Signal<MenuState | null>(null);
 const sourceCatalog = new Signal(buildSourceCatalog(audioCatalog));
 const phase = new Signal(0);
 const restoreLayout = new Signal<MultiPaneLayoutId>("monitor");
+const tileDensity = new Signal(0);
+const windowManager = new WindowManagerController({
+  activeId: "cpu",
+  windows: slotIds.map((slotId, index) => ({
+    id: slotId,
+    title: slotLabel(slotId),
+    order: index,
+    minWidth: slotId === "cpuLegend" || slotId === "temperature" || slotId === "disk" ? 28 : 42,
+    minHeight: slotId === "temperature" || slotId === "disk" ? 8 : 11,
+  })),
+  tileOptions: {
+    minTileWidth: 42,
+    minTileHeight: 11,
+    targetAspectRatio: 2.1,
+    allowVerticalOverflow: true,
+  },
+});
+let hitTargets: Array<{ rect: Rect; hit: MonitorHit }> = [];
 
 const cycleClock = new Map<SlotId, number>();
 const timers = [
@@ -110,15 +134,29 @@ const contentRect = new Computed<Rect>(() => {
   const bounds = appRect.value;
   return {
     column: 1,
-    row: 2,
+    row: 3,
     width: Math.max(0, bounds.width - 2),
-    height: Math.max(0, bounds.height - 4),
+    height: Math.max(0, bounds.height - 5),
   };
 });
 
 const viewportMode = new Computed<ViewportMode>(() => detectViewportMode(contentRect.value));
-const activeLayout = new Computed<LayoutId>(() => resolveResponsiveLayout(layout.value, contentRect.value));
-const visibleSlots = new Computed(() => visibleSlotIds(activeLayout.value, selectedSlotId.value));
+const workspaceLayout = new Computed(() =>
+  windowManager.layout({
+    bounds: contentRect.value,
+    tileOptions: {
+      maxColumns: maxMonitorColumns(contentRect.value, layout.value),
+      minTileWidth: Math.max(28, 46 - tileDensity.value * 3),
+      minTileHeight: Math.max(7, 12 - tileDensity.value),
+      targetAspectRatio: 2.1 + tileDensity.value * 0.12,
+    },
+  })
+);
+const activeLayout = new Computed<LayoutId>(() => windowManager.fullscreenId.value ? "single" : layout.value);
+const visibleSlots = new Computed(() => {
+  const source = workspaceLayout.value.fullscreenId ? workspaceLayout.value.tabs : workspaceLayout.value.visible;
+  return source.map((entry) => entry.id as SlotId).filter((id) => slotIds.includes(id));
+});
 
 new Effect(() => {
   if (layout.value !== "single") {
@@ -127,9 +165,14 @@ new Effect(() => {
 });
 
 new Effect(() => {
+  const activeId = windowManager.activeId.value as SlotId | undefined;
+  if (activeId && slotIds.includes(activeId)) selectedSlotId.value = activeId;
+});
+
+new Effect(() => {
   const current = selectedSlotId.value;
   if (!visibleSlots.value.includes(current)) {
-    selectedSlotId.value = visibleSlots.value[0] ?? "cpu";
+    focusSlot(visibleSlots.value[0] ?? "cpu");
   }
 });
 
@@ -182,6 +225,20 @@ const alertText = new TextObject({
 });
 shellObjects.push(alertText);
 
+const quitText = new TextObject({
+  canvas: tui.canvas,
+  zIndex: 102,
+  style: makeStyle({ fg: palette.void, bg: accentColor("alarm"), bold: true }),
+  overwriteRectangle: true,
+  rectangle: new Computed<TextRectangle>(() => ({
+    column: Math.max(0, appRect.value.width - 5),
+    row: 0,
+    width: appRect.value.width >= 12 ? 5 : 0,
+  })),
+  value: new Computed<string>(() => appRect.value.width >= 12 ? " [x] " : ""),
+});
+shellObjects.push(quitText);
+
 const statusBackground = new BoxObject({
   canvas: tui.canvas,
   zIndex: 100,
@@ -224,6 +281,47 @@ const statusText = new TextObject({
 });
 shellObjects.push(statusText);
 
+const windowBarBackground = new BoxObject({
+  canvas: tui.canvas,
+  zIndex: 100,
+  style: makeStyle({ bg: palette.void }),
+  rectangle: new Computed(() => ({
+    column: 0,
+    row: 2,
+    width: appRect.value.width,
+    height: appRect.value.height > 2 ? 1 : 0,
+  })),
+});
+shellObjects.push(windowBarBackground);
+
+const windowBarText = new TextObject({
+  canvas: tui.canvas,
+  zIndex: 101,
+  style: makeStyle({ bg: palette.void, fg: palette.dim }),
+  overwriteRectangle: true,
+  rectangle: new Computed<TextRectangle>(() => ({
+    column: 0,
+    row: 2,
+    width: appRect.value.width,
+  })),
+  value: new Computed(() => {
+    const tabs = workspaceLayout.value.tabs
+      .filter((entry) => !entry.closed)
+      .map((entry) => {
+        const label = slotLabel(entry.id as SlotId).replace(" Panel", "");
+        if (entry.active) return `[${label}]`;
+        if (entry.minimized) return `(${label})`;
+        return ` ${label} `;
+      })
+      .join(" ");
+    const help = appRect.value.width >= 108
+      ? "  Tab/Arrows focus  Enter/F max  M min  R restore  X close  [/] tiles"
+      : "  Tab focus  F max  M min  R restore";
+    return crop(`${tabs}${help}`, appRect.value.width).padEnd(appRect.value.width, " ");
+  }),
+});
+shellObjects.push(windowBarText);
+
 const footerBackground = new BoxObject({
   canvas: tui.canvas,
   zIndex: 100,
@@ -248,14 +346,25 @@ const footerText = new TextObject({
     width: appRect.value.width,
   })),
   value: new Computed(() => {
-    const mobileFooter =
-      "MOBILE VIEW ACTIVE  /  ENTER FULLSCREEN  ,/. OUTPUT  </> VIZ  F2 ROUTING  F3 LAYOUT  F4 OPTIONS  Q EXIT";
+    if (workspaceLayout.value.fullscreenId) {
+      const tabs = workspaceLayout.value.tabs
+        .filter((entry) => !entry.closed)
+        .map((entry, index) =>
+          `${entry.active ? "[" : " "}${index + 1}:${slotLabel(entry.id as SlotId)}${entry.active ? "]" : " "}`
+        )
+        .join(" ");
+      return crop(`FULLSCREEN TABS  ${tabs}  /  R RESTORE  Q EXIT`, appRect.value.width).padEnd(
+        appRect.value.width,
+        " ",
+      );
+    }
+    const mobileFooter = "MOBILE  /  ENTER FULLSCREEN  ,/. WINDOW  </> VIZ  F2 ROUTING  F4 OPTIONS  Q EXIT";
     const desktopFooter =
-      "F1 HELP  F2 ROUTING  F3 LAYOUT  F4 OPTIONS  ENTER FULLSCREEN  ,/. OUTPUT  </> VIZ  F5 CYCLE  TAB/ARROWS FOCUS  Q EXIT";
-    return crop(
-      viewportMode.value === "mobile" ? mobileFooter : desktopFooter,
+      "F1 HELP  F2 ROUTING  F3 LAYOUT  F4 OPTIONS  ENTER/F FULLSCREEN  ,/. WINDOW  </> VIZ  F5 CYCLE  Q EXIT";
+    return crop(viewportMode.value === "mobile" ? mobileFooter : desktopFooter, appRect.value.width).padEnd(
       appRect.value.width,
-    ).padEnd(appRect.value.width, " ");
+      " ",
+    );
   }),
 });
 shellObjects.push(footerText);
@@ -264,7 +373,7 @@ const slotPanels = new Map<SlotId, PanelView>();
 const slotScenes = new Map<SlotId, ThreePanelView>();
 
 for (const slotId of slotIds) {
-  const rect = new Computed(() => slotRect(activeLayout.value, contentRect.value, slotId, selectedSlotId.value));
+  const rect = new Computed(() => slotWindowRect(slotId));
   const render = new Computed(() => {
     if (rect.value.width <= 0 || rect.value.height <= 0) {
       return {
@@ -288,7 +397,7 @@ for (const slotId of slotIds) {
       height: Math.max(4, rect.value.height - 4),
     });
   });
-  const selected = new Computed(() => selectedSlotId.value === slotId);
+  const selected = new Computed(() => windowManager.activeId.value === slotId);
 
   const panel = new PanelView({
     canvas: tui.canvas,
@@ -368,6 +477,35 @@ for (const slotId of slotIds) {
     }),
   );
 }
+
+const windowControlText: TextObject[] = slotIds.map((slotId) =>
+  new TextObject({
+    canvas: tui.canvas,
+    zIndex: 26,
+    style: new Computed(() => {
+      const active = windowManager.activeId.value === slotId;
+      return makeStyle({
+        fg: active ? palette.void : palette.paper,
+        bg: active ? accentColor("signal") : palette.panel,
+        bold: active,
+      });
+    }),
+    overwriteRectangle: true,
+    rectangle: new Computed<TextRectangle>(() => {
+      const rect = slotWindowRect(slotId);
+      const visible = rect.width >= 28 && rect.height >= 4;
+      return {
+        column: visible ? rect.column + Math.max(0, rect.width - 16) : 0,
+        row: visible ? rect.row : 0,
+        width: visible ? 15 : 0,
+      };
+    }),
+    value: new Computed<string>(() => {
+      const rect = slotWindowRect(slotId);
+      return rect.width >= 28 && rect.height >= 4 ? "[-] [□] [↺] [x]" : "";
+    }),
+  })
+);
 
 const menuOverlay = new BoxObject({
   canvas: tui.canvas,
@@ -510,11 +648,37 @@ tui.on("keyPress", (event) => {
     case "q":
       tui.emit("destroy");
       return;
+    case "1":
+    case "2":
+    case "3":
+    case "4":
+    case "5":
+    case "6":
+    case "7":
+      focusSlot(slotIds[Number(event.key) - 1] ?? selectedSlotId.peek());
+      return;
     case "return":
-      layout.value = toggleFullscreenLayout(layout.value, restoreLayout.value);
+    case "f":
+      toggleFullscreen(selectedSlotId.peek());
+      return;
+    case "m":
+      windowManager.minimize(selectedSlotId.peek());
+      return;
+    case "r":
+    case "escape":
+      windowManager.restore();
+      return;
+    case "x":
+      windowManager.close(selectedSlotId.peek());
+      return;
+    case "[":
+      tileDensity.value = Math.max(-2, tileDensity.value - 1);
+      return;
+    case "]":
+      tileDensity.value = Math.min(4, tileDensity.value + 1);
       return;
     case "tab":
-      selectNextSlot(1);
+      selectNextSlot(event.shift ? -1 : 1);
       return;
     case "left":
     case "right":
@@ -564,6 +728,14 @@ tui.on("keyPress", (event) => {
       shiftSelectedVisualization(1);
       return;
   }
+});
+
+tui.on("mousePress", (event) => {
+  if (event.release || menu.peek()) return;
+  rebuildHitTargets();
+  const target = findHit(event.x, event.y);
+  if (!target) return;
+  applyHit(target.hit);
 });
 
 function handleMenuKey(key: string, currentMenu: MenuState) {
@@ -652,7 +824,7 @@ function applyMenuSelection(currentMenu: MenuState, itemId: string) {
   switch (currentMenu.kind) {
     case "layout":
       if (layoutIds.includes(itemId as LayoutId)) {
-        layout.value = itemId as LayoutId;
+        applyMonitorLayout(itemId as LayoutId);
         menu.value = null;
       }
       return;
@@ -765,12 +937,14 @@ function applyMenuSelection(currentMenu: MenuState, itemId: string) {
 }
 
 function moveSelection(direction: "left" | "right" | "up" | "down") {
-  const visible = visibleSlotIds(activeLayout.peek(), selectedSlotId.peek());
+  const visible = workspaceLayout.peek().visible
+    .filter((entry) => slotIds.includes(entry.id as SlotId) && entry.rect)
+    .map((entry) => entry as WindowManagerWindowInspection & { id: SlotId; rect: Rect });
   if (visible.length === 0) {
     return;
   }
-  const current = selectedSlotId.peek();
-  const currentRect = slotRect(activeLayout.peek(), contentRect.peek(), current, selectedSlotId.peek());
+  const current = visible.find((entry) => entry.id === selectedSlotId.peek()) ?? visible[0]!;
+  const currentRect = current.rect;
   const currentCenter = {
     x: currentRect.column + currentRect.width / 2,
     y: currentRect.row + currentRect.height / 2,
@@ -779,11 +953,11 @@ function moveSelection(direction: "left" | "right" | "up" | "down") {
   let bestSlot: SlotId | null = null;
   let bestDistance = Number.POSITIVE_INFINITY;
 
-  for (const slotId of visible) {
-    if (slotId === current) {
+  for (const entry of visible) {
+    if (entry.id === current.id) {
       continue;
     }
-    const rect = slotRect(activeLayout.peek(), contentRect.peek(), slotId, selectedSlotId.peek());
+    const rect = entry.rect;
     const center = {
       x: rect.column + rect.width / 2,
       y: rect.row + rect.height / 2,
@@ -809,22 +983,22 @@ function moveSelection(direction: "left" | "right" | "up" | "down") {
       (direction === "left" || direction === "right" ? Math.abs(dy) : Math.abs(dx)) * 0.4;
     if (distance < bestDistance) {
       bestDistance = distance;
-      bestSlot = slotId;
+      bestSlot = entry.id;
     }
   }
 
   if (bestSlot) {
-    selectedSlotId.value = bestSlot;
+    focusSlot(bestSlot);
   }
 }
 
 function selectNextSlot(step: number) {
-  const visible = visibleSlotIds(activeLayout.peek(), selectedSlotId.peek());
+  const visible = visibleSlots.peek();
   if (visible.length === 0) {
     return;
   }
   const currentIndex = Math.max(0, visible.indexOf(selectedSlotId.peek()));
-  selectedSlotId.value = visible[(currentIndex + step + visible.length) % visible.length] ?? visible[0]!;
+  focusSlot(visible[(currentIndex + step + visible.length) % visible.length] ?? visible[0]!);
 }
 
 function shiftSelectedVisualization(step: number) {
@@ -834,7 +1008,123 @@ function shiftSelectedVisualization(step: number) {
 }
 
 function shiftSelectedOutput(step: number) {
-  selectedSlotId.value = shiftOutputTarget(activeLayout.peek(), selectedSlotId.peek(), step);
+  selectNextSlot(step);
+}
+
+function slotWindowRect(slotId: SlotId): Rect {
+  const rect = workspaceLayout.value.windows.find((entry) => entry.id === slotId)?.rect;
+  return rect ?? { column: 0, row: 0, width: 0, height: 0 };
+}
+
+function focusSlot(slotId: SlotId): void {
+  windowManager.focus(slotId);
+  selectedSlotId.value = slotId;
+}
+
+function toggleFullscreen(slotId: SlotId): void {
+  focusSlot(slotId);
+  windowManager.fullscreen(slotId);
+}
+
+function applyMonitorLayout(nextLayout: LayoutId): void {
+  layout.value = nextLayout;
+  if (nextLayout === "single") {
+    windowManager.fullscreen(selectedSlotId.peek());
+  } else {
+    windowManager.restore();
+  }
+}
+
+function maxMonitorColumns(bounds: Rect, requestedLayout: LayoutId): number {
+  if (requestedLayout === "horizontal") return 1;
+  if (requestedLayout === "vertical") return 2;
+  if (requestedLayout === "quad") return 2;
+  if (bounds.width >= 180) return 4;
+  if (bounds.width >= 118) return 3;
+  if (bounds.width >= 74) return 2;
+  return 1;
+}
+
+function rebuildHitTargets(): void {
+  hitTargets = [];
+  if (appRect.peek().width >= 12) {
+    hitTargets.push({
+      rect: { column: Math.max(0, appRect.peek().width - 5), row: 0, width: 5, height: 1 },
+      hit: { type: "quit" },
+    });
+  }
+  for (const entry of workspaceLayout.peek().visible) {
+    const slotId = entry.id as SlotId;
+    if (!slotIds.includes(slotId) || !entry.rect) continue;
+    const rect = entry.rect;
+    hitTargets.push({ rect, hit: { type: "focus", id: slotId } });
+    if (rect.width >= 28 && rect.height >= 4) {
+      const column = rect.column + Math.max(0, rect.width - 16);
+      hitTargets.push({ rect: { column, row: rect.row, width: 3, height: 1 }, hit: { type: "minimize", id: slotId } });
+      hitTargets.push({
+        rect: { column: column + 4, row: rect.row, width: 3, height: 1 },
+        hit: { type: "maximize", id: slotId },
+      });
+      hitTargets.push({
+        rect: { column: column + 8, row: rect.row, width: 3, height: 1 },
+        hit: { type: "restore", id: slotId },
+      });
+      hitTargets.push({
+        rect: { column: column + 12, row: rect.row, width: 3, height: 1 },
+        hit: { type: "close", id: slotId },
+      });
+    }
+  }
+  if (workspaceLayout.peek().fullscreenId) {
+    let column = 17;
+    const row = Math.max(0, appRect.peek().height - 1);
+    for (const entry of workspaceLayout.peek().tabs.filter((tab) => !tab.closed)) {
+      const slotId = entry.id as SlotId;
+      if (!slotIds.includes(slotId)) continue;
+      const label = `${entry.active ? "[" : " "}${slotLabel(slotId)}${entry.active ? "]" : " "}`;
+      hitTargets.push({ rect: { column, row, width: label.length + 2, height: 1 }, hit: { type: "tab", id: slotId } });
+      column += label.length + 5;
+    }
+  }
+}
+
+function findHit(x: number, y: number): { rect: Rect; hit: MonitorHit } | undefined {
+  for (let index = hitTargets.length - 1; index >= 0; index -= 1) {
+    const target = hitTargets[index]!;
+    if (contains(target.rect, x, y)) return target;
+  }
+}
+
+function applyHit(hit: MonitorHit): void {
+  switch (hit.type) {
+    case "focus":
+      focusSlot(hit.id);
+      return;
+    case "minimize":
+      focusSlot(hit.id);
+      windowManager.minimize(hit.id);
+      return;
+    case "maximize":
+      toggleFullscreen(hit.id);
+      return;
+    case "restore":
+      windowManager.restore(hit.id);
+      return;
+    case "close":
+      focusSlot(hit.id);
+      windowManager.close(hit.id);
+      return;
+    case "tab":
+      windowManager.selectTab(hit.id);
+      return;
+    case "quit":
+      tui.emit("destroy");
+      return;
+  }
+}
+
+function contains(rect: Rect, x: number, y: number): boolean {
+  return x >= rect.column && y >= rect.row && x < rect.column + rect.width && y < rect.row + rect.height;
 }
 
 function buildMenuModel(
@@ -916,9 +1206,7 @@ function buildMenuModel(
         title: "Output Target",
         items: slotIds.map((slotId) => ({
           id: slotId,
-          label: `${slotLabel(slotId)}${
-            visibleSlotIds(currentLayout, selectedSlotId.peek()).includes(slotId) ? " (visible)" : ""
-          }`,
+          label: `${slotLabel(slotId)}${visibleSlots.peek().includes(slotId) ? " (visible)" : ""}`,
           selected: currentMenu.targetSlotId === slotId,
         })),
       },
@@ -1255,6 +1543,8 @@ tui.dispatch();
 tui.on("destroy", () => {
   systemMonitor.stop();
   audioRegistry.dispose();
+  windowManager.dispose();
+  tileDensity.dispose();
   for (const timer of timers) {
     clearInterval(timer);
   }
@@ -1266,6 +1556,9 @@ for (const object of shellObjects) {
 }
 for (const panel of slotPanels.values()) {
   panel.draw();
+}
+for (const controls of windowControlText) {
+  controls.draw();
 }
 menuOverlay.draw();
 menuBackground.draw();
