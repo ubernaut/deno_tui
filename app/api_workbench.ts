@@ -857,16 +857,7 @@ function renderThree(frame: Frame, rect: Rectangle): void {
   const t = theme();
   const mode = terminalGlyphStyleLabel(ascii.peek().terminalGlyphStyle).toUpperCase();
   if (threeAsciiAvailable.peek()) {
-    writeRows(frame, rect, [
-      {
-        text: ` ACEROLA THREE.JS ASCII · ${mode} · STUDIO GEOMETRY `,
-        fg: t.buttonActiveText,
-        bg: t.buttonActiveBg,
-        bold: true,
-      },
-      { text: "torus knot  sphere  block  floor plane", fg: t.soft, bg: t.surface },
-      { text: "", bg: t.surface },
-    ]);
+    writeRows(frame, rect, threeHeaderRows(mode, rect.width, t));
     return;
   }
 
@@ -938,7 +929,7 @@ function renderExplorer(frame: Frame, rect: Rectangle): void {
 
 function renderInspector(frame: Frame, rect: Rectangle): void {
   const t = theme();
-  const lines = [
+  const headerLines = [
     { text: " Composable API surfaces ", fg: t.background, bg: t.accent, bold: true },
     { text: "explorer  FileExplorerController", fg: t.good, bg: t.surface },
     { text: "menu      MenuBarController", fg: t.good, bg: t.surface },
@@ -950,19 +941,32 @@ function renderInspector(frame: Frame, rect: Rectangle): void {
     { text: `theme     ${themes[themeIndex.peek()]!.label}`, fg: t.warn, bg: t.surface, bold: true },
     { text: "", bg: t.surface },
     { text: " Recent actions ", fg: t.background, bg: t.border, bold: true },
-    ...commandLog.peek().slice(-Math.max(0, rect.height - 11)).map((line) => ({
-      text: `• ${line}`,
+  ];
+  const availableActionRows = Math.max(0, rect.height - headerLines.length);
+  const actionLines = commandLog.peek()
+    .slice(-Math.max(4, availableActionRows))
+    .flatMap((line) => wrapPlain(`• ${line}`, rect.width))
+    .slice(-availableActionRows)
+    .map((line) => ({
+      text: line,
       fg: t.text,
       bg: t.panelSoft,
-    })),
-  ];
-  writeRows(frame, rect, lines);
+    }));
+  writeRows(frame, rect, [...headerLines, ...actionLines]);
 }
 
 function renderData(frame: Frame, rect: Rectangle): void {
   const t = theme();
+  const pendingView = table.view.peek();
+  const footerRows = dataFooterRows(
+    pendingView.page + 1,
+    pendingView.pageCount,
+    pendingView.selectedKey,
+    rect.width,
+    t,
+  );
+  table.setPageSize(Math.max(1, rect.height - 2 - footerRows.length));
   const view = table.view.peek();
-  table.setPageSize(Math.max(1, rect.height - 4));
   const bodyRows = renderDataTableRows(view.rows, columns, view.selectedIndex).map((line, index) => ({
     text: line,
     fg: index === view.selectedIndex ? contrastText(t.warn, t.background, t.text) : t.text,
@@ -978,11 +982,7 @@ function renderData(frame: Frame, rect: Rectangle): void {
     },
     ...bodyRows,
     { text: "", bg: t.surface },
-    {
-      text: `page ${view.page + 1}/${view.pageCount}  selected ${view.selectedKey ?? "-"}  arrows/page keys  S sort`,
-      fg: t.muted,
-      bg: t.panelSoft,
-    },
+    ...dataFooterRows(view.page + 1, view.pageCount, view.selectedKey, rect.width, t),
   ]);
   for (let index = 0; index < Math.min(view.rows.length, Math.max(0, rect.height - 1)); index += 1) {
     addHit({ column: rect.column, row: rect.row + 1 + index, width: rect.width, height: 1 }, {
@@ -1130,7 +1130,13 @@ function renderControls(frame: Frame, rect: Rectangle): void {
       index,
     });
   }
-  writeSection("combo", `Theme combo  ${themeCombo.expanded.peek() ? "▾" : "▸"} ${themeCombo.label()}`);
+  const themeHeader = `Theme  ${themeCombo.expanded.peek() ? "▾" : "▸"} ${themeCombo.label()}`;
+  if (textWidth(`> ${themeHeader}`) > rect.width && rect.width > 16) {
+    writeSection("combo", `Theme  ${themeCombo.expanded.peek() ? "▾" : "▸"}`);
+    writeControl("combo", themeCombo.label(), { indent: true });
+  } else {
+    writeSection("combo", themeHeader);
+  }
   writeWrappedOptions(frame, rect, row, "combo", themeCombo.items.peek(), themeCombo.selectedIndex.peek(), t);
   row += wrappedOptionRowCount(themeCombo.items.peek(), rect.width - 4);
   writeControl("dropdown", `Dropdown  ${dropdown.expanded.peek() ? "▾" : "▸"} ${dropdown.label()}`, {
@@ -1717,7 +1723,10 @@ function windowContentSize(id: WindowId, viewport: Rectangle): { width: number; 
     };
   }
   if (id === "controls") {
-    return { width: Math.max(baseWidth, 104), height: Math.max(baseHeight, 42) };
+    return { width: baseWidth, height: Math.max(baseHeight, 44) };
+  }
+  if (id === "inspector") {
+    return { width: baseWidth, height: Math.max(baseHeight, 18) };
   }
   if (id === "logs") {
     return { width: Math.max(baseWidth, maxTextWidth(docs) + 2), height: Math.max(baseHeight, docs.length) };
@@ -1727,7 +1736,7 @@ function windowContentSize(id: WindowId, viewport: Rectangle): { width: number; 
     return { width: Math.max(baseWidth, width), height: Math.max(baseHeight, rows.length + 4) };
   }
   if (id === "three") {
-    return { width: Math.max(baseWidth, 76), height: Math.max(baseHeight, 24) };
+    return { width: baseWidth, height: Math.max(baseHeight, 24) };
   }
   if (isVisualizationWindow(id)) {
     return { width: Math.max(baseWidth, 86), height: Math.max(baseHeight, 28) };
@@ -2872,6 +2881,63 @@ function renderFrameSlice(cells: string[], start: number, width: number): string
 
 function maxTextWidth(values: readonly string[]): number {
   return values.reduce((max, value) => Math.max(max, textWidth(value)), 0);
+}
+
+function threeHeaderRows(mode: string, width: number, t: ThemeSpec): RowStyle[] {
+  const title = compactSpaces(`ACEROLA THREE.JS ASCII · ${mode} · STUDIO GEOMETRY`);
+  const compactTitle = compactSpaces(`THREE ASCII · ${mode}`);
+  const geometry = "torus knot · sphere · block · floor plane";
+  const compactGeometry = "torus · sphere · block · floor";
+  const titleText = width >= textWidth(` ${title} `) ? ` ${title} ` : ` ${compactTitle} `;
+  const detailText = width >= textWidth(geometry) ? geometry : compactGeometry;
+  return [
+    {
+      text: titleText,
+      fg: t.buttonActiveText,
+      bg: t.buttonActiveBg,
+      bold: true,
+    },
+    { text: detailText, fg: t.soft, bg: t.surface },
+    { text: "", bg: t.surface },
+  ];
+}
+
+function dataFooterRows(
+  page: number,
+  pageCount: number,
+  selectedKey: string | undefined,
+  width: number,
+  t: ThemeSpec,
+): RowStyle[] {
+  const selected = selectedKey ?? "-";
+  const full = compactSpaces(`page ${page}/${pageCount}  selected ${selected}  arrows/page keys  S sort`);
+  const rows = textWidth(full) <= width
+    ? [full]
+    : wrapPlain(`page ${page}/${pageCount} selected ${selected} arrows/page keys S sort`, width);
+  return rows.map((text) => ({ text, fg: t.muted, bg: t.panelSoft }));
+}
+
+function wrapPlain(value: string, width: number): string[] {
+  const safeWidth = Math.max(1, width);
+  const words = stripStyles(value).replace(/\s+/g, " ").trim().split(" ").filter(Boolean);
+  if (words.length === 0) return [""];
+  const rows: string[] = [];
+  let line = "";
+  for (const word of words) {
+    const next = line.length > 0 ? `${line} ${word}` : word;
+    if (textWidth(next) <= safeWidth) {
+      line = next;
+      continue;
+    }
+    if (line.length > 0) rows.push(line);
+    line = textWidth(word) <= safeWidth ? word : fit(word, safeWidth).trimEnd();
+  }
+  if (line.length > 0) rows.push(line);
+  return rows;
+}
+
+function compactSpaces(value: string): string {
+  return value.replace(/\s+/g, " ").trim();
 }
 
 function toStyledCells(value: string): string[] {
