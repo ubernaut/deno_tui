@@ -578,6 +578,7 @@ function draw(): void {
   renderHeader(frame);
   renderWorkspace(frame);
   renderStatus(frame);
+  renderActiveDropdownOverlay(frame);
   renderModalOverlay(frame);
   for (let row = 0; row < height; row += 1) {
     lineSignals[row]!.value = renderFrameRow(frame[row] ?? [], width);
@@ -714,7 +715,6 @@ function renderWorkspace(frame: Frame): void {
     translateWorkspaceHits(hitStart, bounds.row - offset, bounds);
     blitWorkspace(frame, virtual, bounds, offset, layout.bounds.width);
     renderWorkspaceScrollbar(frame, bounds, layout.contentHeight, offset);
-    renderDropdownOverlay(frame, bounds, offset);
     renderWindowTabs(frame);
     return;
   }
@@ -722,7 +722,7 @@ function renderWorkspace(frame: Frame): void {
   const visible = windowIds().filter((id) => !minimized.peek()[id]);
   if (visible.length === 0) {
     setThreeBodyRect({ column: 0, row: 0, width: 0, height: 0 });
-    write(frame, bounds.row + 1, 2, paint("All windows minimized. Press R to restore.", { fg: theme().warn }));
+    write(frame, bounds.row + 1, 2, paint(emptyWorkspaceMessage(), { fg: theme().warn }));
     renderShelf(frame);
     return;
   }
@@ -742,7 +742,6 @@ function renderWorkspace(frame: Frame): void {
   translateWorkspaceHits(hitStart, bounds.row - offset, bounds);
   blitWorkspace(frame, virtual, bounds, offset, layout.bounds.width);
   renderWorkspaceScrollbar(frame, bounds, layout.contentHeight, offset);
-  renderDropdownOverlay(frame, bounds, offset);
   renderShelf(frame);
 }
 
@@ -1278,11 +1277,13 @@ function addInlineStepperHits(rect: Rectangle, row: number): void {
 function renderShelf(frame: Frame): void {
   const row = currentHeight() - 2;
   let column = 1;
-  const entries = (Object.entries(minimized.peek()) as Array<[WindowId, boolean]>).filter(([, hidden]) => hidden);
+  const entries = windowManager.inspect().windows
+    .filter((entry) => entry.minimized && !entry.closed)
+    .map((entry) => entry.id as WindowId);
   if (entries.length === 0) return;
   write(frame, row, column, paint("minimized ", { fg: theme().muted, bg: theme().backgroundSoft }));
   column += 10;
-  for (const [id] of entries) {
+  for (const id of entries) {
     const label = `[${windowTitle(id)}]`;
     write(frame, row, column, paint(label, { fg: theme().background, bg: theme().border, bold: true }));
     addHit({ column, row, width: textWidth(label), height: 1 }, { type: "restore", id });
@@ -1327,6 +1328,20 @@ function renderStatus(frame: Frame): void {
   const left = `focus ${windowTitle(activeWindow.peek())} | ${theme().label} | tiles ${densityLabel}`;
   const right = "New menu adds widgets  [/] tile density  arrows/scrollbars  mouse";
   write(frame, currentHeight() - 1, 0, paint(renderStatusBar(left, right, width), { fg: t.text, bg: t.panelSoft }));
+}
+
+function renderActiveDropdownOverlay(frame: Frame): void {
+  const bounds = { column: 0, row: 3, width: currentWidth(), height: Math.max(0, currentHeight() - 5) };
+  renderDropdownOverlay(frame, bounds, workspaceScroll.offset.peek().rows);
+}
+
+function emptyWorkspaceMessage(): string {
+  const inspection = windowManager.inspect();
+  const minimizedCount = inspection.windows.filter((entry) => entry.minimized).length;
+  const openCount = inspection.windows.filter((entry) => !entry.closed).length;
+  if (openCount === 0) return "All windows closed. Use New to add a widget window.";
+  if (minimizedCount > 0) return "All open windows minimized. Press R or use the shelf to restore.";
+  return "No visible windows. Use New to add a widget window.";
 }
 
 function renderModalOverlay(frame: Frame): void {
@@ -1698,7 +1713,7 @@ function renderWindowScrollbars(
 }
 
 function updateThreeBodyRect(rect: Rectangle | undefined, viewport: Rectangle, offset: number): void {
-  if (!rect || modal.openState.peek() || minimized.peek().three) {
+  if (!rect || modal.openState.peek() || screenDropdownOpen() || minimized.peek().three) {
     setThreeBodyRect({ column: 0, row: 0, width: 0, height: 0 });
     return;
   }
@@ -1725,6 +1740,10 @@ function setThreeBodyRect(rect: Rectangle): void {
     return;
   }
   threeBodyRect.value = rect;
+}
+
+function screenDropdownOpen(): boolean {
+  return themeMenuOpen.peek() || newWindowMenuOpen.peek();
 }
 
 function translateWorkspaceHits(startIndex: number, rowDelta: number, clip: Rectangle): void {
@@ -1931,7 +1950,7 @@ function syncWindowSignalsFromManager(): void {
   activeWindow.value = (inspection.activeId as WindowId | undefined) ?? "explorer";
   maximized.value = (inspection.fullscreenId as WindowId | undefined) ?? null;
   minimized.value = Object.fromEntries(
-    inspection.windows.map((entry) => [entry.id, entry.minimized || entry.closed]),
+    inspection.windows.map((entry) => [entry.id, entry.minimized]),
   );
 }
 
@@ -2075,9 +2094,9 @@ function applyHit(target: { rect: Rectangle; action: HitAction }, x: number, y: 
 }
 
 function closeWindow(id: WindowId): void {
-  windowManager.minimize(id);
+  windowManager.close(id);
   syncWindowSignalsFromManager();
-  pushLog(`hide ${windowTitle(id)}`);
+  pushLog(`close ${windowTitle(id)}`);
 }
 
 function addVisualizationWindow(option: NewWindowOption | undefined): void {
