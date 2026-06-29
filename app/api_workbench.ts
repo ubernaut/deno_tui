@@ -84,6 +84,12 @@ interface ThemeSpec {
   good: string;
   warn: string;
   danger: string;
+  buttonBg: string;
+  buttonText: string;
+  buttonActiveBg: string;
+  buttonActiveText: string;
+  buttonMutedBg: string;
+  buttonMutedText: string;
 }
 
 interface ProcessRow extends Record<string, unknown> {
@@ -112,6 +118,12 @@ const themes: ThemeSpec[] = grWizardThemePalettes.map((palette) => ({
   good: palette.success,
   warn: palette.warning,
   danger: palette.danger,
+  buttonBg: palette.accentDeep,
+  buttonText: contrastText(palette.accentDeep, palette.bg, palette.text),
+  buttonActiveBg: palette.accent,
+  buttonActiveText: contrastText(palette.accent, palette.bg, palette.text),
+  buttonMutedBg: palette.panelAlt,
+  buttonMutedText: palette.textMuted,
 }));
 
 const rows: ProcessRow[] = [
@@ -732,20 +744,22 @@ function renderControls(frame: Frame, rect: Rectangle): void {
       action?: ControlHitAction;
       indent?: boolean;
       index?: number;
+      button?: boolean;
     } = {},
   ) => {
     if (row >= rect.row + rect.height) return;
     const active = activeControl.peek() === id;
     const line = `${active && !options.indent ? ">" : " "} ${options.indent ? "  " : ""}${value}`;
+    const style = options.button ? buttonPaintOptions(t, active ? "active" : "base") : {
+      fg: active ? t.background : t.text,
+      bg: active ? t.warn : t.surface,
+      bold: active,
+    };
     write(
       frame,
       row,
       rect.column,
-      paint(fit(line, rect.width), {
-        fg: active ? t.background : t.text,
-        bg: active ? t.warn : t.surface,
-        bold: active,
-      }),
+      paint(fit(line, rect.width), style),
     );
     addHit({ column: rect.column, row, width: rect.width, height: 1 }, {
       type: "control",
@@ -783,14 +797,17 @@ function renderControls(frame: Frame, rect: Rectangle): void {
   writeControl(
     "button",
     `[ Run Action ] presses=${actionButton.pressCount.peek()}`,
+    { button: true },
   );
   writeControl(
     "genericButton",
     `[ Generic Button ] presses=${genericButton.pressCount.peek()}`,
+    { button: true },
   );
   writeControl(
     "modal",
     `[ Open Modal ] state=${modal.openState.peek() ? "open" : "closed"}`,
+    { button: true },
   );
   writeControl("slider", `Slider    ${track} ${density.value.peek()}/10`, {
     previous: true,
@@ -1123,8 +1140,8 @@ function renderModalOverlay(frame: Frame): void {
       frame,
       inner.row + index,
       inner.column,
-      paint(fit(rows[index]!, inner.width), {
-        fg: actionRow ? t.warn : titleRow ? t.accent : t.text,
+      paint(fit(actionRow ? "" : rows[index]!, inner.width), {
+        fg: titleRow ? t.accent : t.text,
         bg: actionRow ? t.panel : t.panelSoft,
         bold: actionRow || titleRow,
       }),
@@ -1142,6 +1159,18 @@ function renderModalOverlay(frame: Frame): void {
       : `  ${action.label}  `;
     const width = textWidth(label);
     if (cursor + width > inner.column + inner.width) break;
+    write(
+      frame,
+      actionRow,
+      cursor,
+      paint(
+        label,
+        action.destructive ? dangerButtonPaintOptions(t, action.disabled) : buttonPaintOptions(
+          t,
+          action.disabled ? "disabled" : index === inspection.selectedActionIndex ? "active" : "base",
+        ),
+      ),
+    );
     addHit({ column: cursor, row: actionRow, width, height: 1 }, { type: "modalAction", index });
     cursor += width + 1;
   }
@@ -1765,7 +1794,25 @@ function paint(text: string, options: { fg?: string; bg?: string; bold?: boolean
 }
 
 function pill(text: string, t = theme()): string {
-  return paint(` ${text} `, { fg: t.background, bg: t.accent, bold: true });
+  return paint(` ${text} `, buttonPaintOptions(t, "active"));
+}
+
+function buttonPaintOptions(
+  t: ThemeSpec,
+  state: "base" | "active" | "disabled" = "base",
+): { fg: string; bg: string; bold: boolean } {
+  if (state === "disabled") {
+    return { fg: t.buttonMutedText, bg: t.buttonMutedBg, bold: false };
+  }
+  if (state === "active") {
+    return { fg: t.buttonActiveText, bg: t.buttonActiveBg, bold: true };
+  }
+  return { fg: t.buttonText, bg: t.buttonBg, bold: true };
+}
+
+function dangerButtonPaintOptions(t: ThemeSpec, disabled?: boolean): { fg: string; bg: string; bold: boolean } {
+  if (disabled) return buttonPaintOptions(t, "disabled");
+  return { fg: contrastText(t.danger, t.background, t.text), bg: t.danger, bold: true };
 }
 
 function contrastText(background: string, dark: string, light: string): string {
