@@ -285,6 +285,7 @@ interface DropdownOverlay {
   coordinate: "workspace" | "screen";
   rect: Rectangle;
   items: string[];
+  itemIndexes?: number[];
   selectedIndex?: number;
 }
 
@@ -648,19 +649,21 @@ function renderHeader(frame: Frame): void {
     };
   }
   if (newWindowMenuOpen.peek()) {
-    const labels = newWindowOptions.map((entry) => `${entry.group}: ${entry.label}`);
+    const labels = newWindowOptions.map((entry) => newWindowMenuLabel(entry));
+    const visible = visibleMenuSlice(labels, newWindowMenuIndex.peek(), Math.max(6, currentHeight() - 5));
     const menuRect = menuItemRect(
       menuStart,
       "new",
       Math.max(28, ...labels.map((label) => textWidth(label) + 6)),
-      Math.min(labels.length + 2, Math.max(8, currentHeight() - 3)),
+      visible.items.length + 2,
     );
     dropdownOverlay = {
       kind: "newWindow",
       coordinate: "screen",
       rect: menuRect,
-      items: labels,
-      selectedIndex: newWindowMenuIndex.peek(),
+      items: visible.items,
+      itemIndexes: visible.indexes,
+      selectedIndex: visible.indexes.indexOf(newWindowMenuIndex.peek()),
     };
   }
   const help = width >= 132
@@ -1696,6 +1699,7 @@ function workspaceLayout(bounds: Rectangle): {
       minTileHeight: 10,
       maxColumns: bounds.width >= 172 ? 4 : 3,
       targetAspectRatio: 2.25 + tileDensity.peek() * 0.12,
+      allowVerticalOverflow: true,
     },
   });
   for (const entry of layout.visible) {
@@ -2114,6 +2118,7 @@ function renderDropdownOverlay(frame: Frame, bounds: Rectangle, offset: number):
   writeClippedOverlayRow(frame, clip, rect.row, rect.column, top, { fg: t.accent, bg: t.panelSoft, bold: true });
   for (const [index, item] of overlay.items.entries()) {
     const selected = overlay.selectedIndex === index;
+    const actionIndex = overlay.itemIndexes?.[index] ?? index;
     const marker = selected ? "●" : "○";
     const row = rect.row + 1 + index;
     const style = selected
@@ -2125,10 +2130,10 @@ function renderDropdownOverlay(frame: Frame, bounds: Rectangle, offset: number):
       addHit(
         hit,
         overlay.kind === "theme"
-          ? { type: "theme", index }
+          ? { type: "theme", index: actionIndex }
           : overlay.kind === "newWindow"
-          ? { type: "newWindow", index }
-          : { type: "control", id: "dropdown", action: "activate", index },
+          ? { type: "newWindow", index: actionIndex }
+          : { type: "control", id: "dropdown", action: "activate", index: actionIndex },
       );
     }
   }
@@ -2417,7 +2422,7 @@ function applyHit(target: { rect: Rectangle; action: HitAction }, x: number, y: 
     if (action.index >= 0) modal.activateAction(action.index);
   } else if (action.type === "dataRow") selectDataRow(action.index);
   else if (action.type === "explorerRow") selectExplorerRow(action.index);
-  else if (action.type === "newWindow") addVisualizationWindow(newWindowOptions[action.index]);
+  else if (action.type === "newWindow") toggleVisualizationWindow(newWindowOptions[action.index]);
   else if (action.type === "windowVScrollbar") {
     const scroll = windowScroll(action.id);
     scroll.scrollTo(
@@ -2554,7 +2559,7 @@ function handleScreenDropdownKey(event: { key: string; ctrl?: boolean; meta?: bo
     else if (event.key === "pageup") newWindowMenuIndex.value = Math.max(0, newWindowMenuIndex.peek() - 6);
     else if (event.key === "pagedown") newWindowMenuIndex.value = Math.min(count - 1, newWindowMenuIndex.peek() + 6);
     else if (event.key === "return" || event.key === "space") {
-      addVisualizationWindow(newWindowOptions[newWindowMenuIndex.peek()]);
+      toggleVisualizationWindow(newWindowOptions[newWindowMenuIndex.peek()]);
     }
   }
 }
@@ -2649,6 +2654,16 @@ function closeWindow(id: WindowId): void {
   pushLog(`close ${windowTitle(id)}`);
 }
 
+function toggleVisualizationWindow(option: NewWindowOption | undefined): void {
+  if (!option) return;
+  if (isVisualizationLoaded(option.id)) {
+    closeWindow(visualizationWindowId(option.id));
+    closeTopMenus();
+    return;
+  }
+  addVisualizationWindow(option);
+}
+
 function addVisualizationWindow(option: NewWindowOption | undefined): void {
   if (!option) return;
   const id = visualizationWindowId(option.id);
@@ -2661,8 +2676,7 @@ function addVisualizationWindow(option: NewWindowOption | undefined): void {
       {
         id,
         title: option.label,
-        minWidth: option.group === "Monitor" ? 38 : 42,
-        minHeight: option.group === "Monitor" ? 14 : 16,
+        ...visualizationWindowMinimums(option),
         closable: true,
         order: windowManager.windows.peek().length,
       },
@@ -2672,6 +2686,26 @@ function addVisualizationWindow(option: NewWindowOption | undefined): void {
   }
   focus(id);
   pushLog(`add window ${option.label}`);
+}
+
+function isVisualizationLoaded(visualizationId: string): boolean {
+  const id = visualizationWindowId(visualizationId);
+  return windowManager.ids().includes(id);
+}
+
+function newWindowMenuLabel(option: NewWindowOption): string {
+  return `${isVisualizationLoaded(option.id) ? "[x]" : "[ ]"} ${option.group}: ${option.label}`;
+}
+
+function visualizationWindowMinimums(option: NewWindowOption): { minWidth: number; minHeight: number } {
+  if (option.group === "Monitor") {
+    if (option.id === "cpu-legend" || option.id === "process-monitor") return { minWidth: 34, minHeight: 14 };
+    if (option.id.includes("gpu")) return { minWidth: 40, minHeight: 13 };
+    return { minWidth: 36, minHeight: 12 };
+  }
+  if (option.group === "Neon 3D") return { minWidth: 42, minHeight: 16 };
+  if (option.id === "component-index" || option.id === "magi-board") return { minWidth: 42, minHeight: 15 };
+  return { minWidth: 38, minHeight: 13 };
 }
 
 function applyControlHit(
@@ -2939,6 +2973,22 @@ function maxTextWidth(values: readonly string[]): number {
 
 function maxTrimmedTextWidth(values: readonly string[]): number {
   return values.reduce((max, value) => Math.max(max, textWidth(value.trimEnd())), 0);
+}
+
+function visibleMenuSlice(
+  items: string[],
+  selectedIndex: number,
+  maxItems: number,
+): { items: string[]; indexes: number[] } {
+  const count = Math.max(1, maxItems);
+  if (items.length <= count) {
+    return { items, indexes: items.map((_, index) => index) };
+  }
+  const start = Math.max(0, Math.min(selectedIndex - Math.floor(count / 2), items.length - count));
+  return {
+    items: items.slice(start, start + count),
+    indexes: Array.from({ length: count }, (_, index) => start + index),
+  };
 }
 
 function threeHeaderRows(mode: string, width: number, t: ThemeSpec): RowStyle[] {
