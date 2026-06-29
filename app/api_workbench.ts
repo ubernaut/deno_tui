@@ -40,6 +40,7 @@ import { ThreePanelView } from "./three_panel.ts";
 import type { AsciiOptions, ThreeSceneMode, ThreeSceneSignal } from "./types.ts";
 
 type WindowId = "explorer" | "inspector" | "data" | "controls" | "logs" | "three";
+const windowOrder: readonly WindowId[] = ["explorer", "inspector", "data", "controls", "logs", "three"];
 type ControlId =
   | "button"
   | "genericButton"
@@ -66,7 +67,8 @@ type HitAction =
   | { type: "control"; id: ControlId; action?: ControlHitAction; index?: number }
   | { type: "dataRow"; index: number }
   | { type: "explorerRow"; index: number }
-  | { type: "logScrollbar" }
+  | { type: "windowVScrollbar"; id: WindowId }
+  | { type: "windowHScrollbar"; id: WindowId }
   | { type: "workspaceScrollbar" };
 type ControlHitAction = "previous" | "next" | "activate" | "set" | "focus" | "toggle";
 
@@ -254,7 +256,9 @@ const menu = new MenuBarController({
 });
 const tileDensity = new Signal(0);
 const workspaceScroll = new ScrollAreaController({ showScrollbar: true });
-const logScroll = new ScrollAreaController({ contentHeight: docs.length, showScrollbar: true });
+const windowScrolls = new Map<WindowId, ScrollAreaController>(
+  windowOrder.map((id) => [id, new ScrollAreaController({ showScrollbar: true })]),
+);
 const density = new SliderController({ min: 1, max: 10, step: 1, value: 6, orientation: "horizontal" });
 const livePreview = new CheckBoxController({ checked: true });
 const compactRows = new CheckBoxController({ checked: false });
@@ -436,14 +440,22 @@ tui.on("keyPress", (event) => {
   else if (event.key === "t") setTheme(themeIndex.peek() + 1);
   else if (event.key === "[") adjustTileDensity(-1);
   else if (event.key === "]") adjustTileDensity(1);
+  else if (event.key === "pageup") scrollWindow(activeWindow.peek(), 0, -windowScrollPage(activeWindow.peek()));
+  else if (event.key === "pagedown") scrollWindow(activeWindow.peek(), 0, windowScrollPage(activeWindow.peek()));
+  else if (event.key === "home") windowScrolls.get(activeWindow.peek())?.scrollTo(0, 0);
+  else if (event.key === "end") {
+    const scroll = windowScrolls.get(activeWindow.peek());
+    scroll?.scrollTo(scroll.offset.peek().columns, scroll.maxOffset().rows);
+  } else if (event.key === "left" && event.shift) scrollWindow(activeWindow.peek(), -4, 0);
+  else if (event.key === "right" && event.shift) scrollWindow(activeWindow.peek(), 4, 0);
   else if (activeWindow.peek() === "controls") handleControlsKey(event);
   else if (event.key === "+" || event.key === "=") density.increment();
   else if (event.key === "-" || event.key === "_") density.decrement();
   else if (event.key === "x" || event.key === "space") livePreview.toggle();
   else if (event.key === "left" || event.key === "right") menu.handleKeyPress(event);
-  else if (activeWindow.peek() === "logs" && event.key === "up") logScroll.scrollBy(0, -1);
-  else if (activeWindow.peek() === "logs" && event.key === "down") logScroll.scrollBy(0, 1);
   else if (activeWindow.peek() === "data") table.handleKeyPress(event);
+  else if (event.key === "up") scrollWindow(activeWindow.peek(), 0, -1);
+  else if (event.key === "down") scrollWindow(activeWindow.peek(), 0, 1);
   draw();
 });
 
@@ -455,8 +467,9 @@ tui.on("mousePress", (event) => {
 });
 
 tui.on("mouseScroll", (event) => {
-  if (activeWindow.peek() === "logs") {
-    logScroll.scrollBy(0, event.scroll);
+  const hovered = windowAt(event.x, event.y);
+  if (hovered) {
+    scrollWindow(hovered, event.shift ? event.scroll * 4 : 0, event.shift ? 0 : event.scroll);
   } else {
     workspaceScroll.scrollBy(0, event.scroll);
   }
@@ -482,7 +495,9 @@ tui.on("destroy", () => {
   clearInterval(resizeTimer);
   menu.dispose();
   workspaceScroll.dispose();
-  logScroll.dispose();
+  for (const scroll of windowScrolls.values()) {
+    scroll.dispose();
+  }
   windowManager.dispose();
   density.dispose();
   livePreview.dispose();
@@ -519,7 +534,6 @@ function draw(): void {
   hitTargets = [];
   dropdownOverlay = null;
   setThreeBodyRect({ column: 0, row: 0, width: 0, height: 0 });
-  logScroll.setContentSize(Math.max(1, width - 6), docs.length);
   const frame: Frame = Array.from({ length: height }, () => []);
   renderHeader(frame);
   renderWorkspace(frame);
@@ -690,13 +704,29 @@ function renderWindow(frame: Frame, id: WindowId, rect: Rectangle): void {
   }
 
   const inner = inset(rect, 1);
+  const scroll = windowScroll(id);
+  const contentSize = windowContentSize(id, inner);
+  const viewport = windowContentViewport(inner, contentSize.width, contentSize.height);
+  scroll.setViewportSize(viewport.width, viewport.height);
+  scroll.setContentSize(contentSize.width, contentSize.height);
   fillRect(frame, inner, t.surface);
-  if (id === "explorer") renderExplorer(frame, inner);
-  else if (id === "inspector") renderInspector(frame, inner);
-  else if (id === "data") renderData(frame, inner);
-  else if (id === "controls") renderControls(frame, inner);
-  else if (id === "logs") renderLogs(frame, inner);
-  else renderThree(frame, inner);
+  const contentFrame: Frame = Array.from({ length: contentSize.height }, () => []);
+  fillRect(contentFrame, { column: 0, row: 0, width: contentSize.width, height: contentSize.height }, t.surface);
+  const contentHitStart = hitTargets.length;
+  renderWindowContent(contentFrame, id, { column: 0, row: 0, width: contentSize.width, height: contentSize.height });
+  translateDropdownOverlayForWindow(id, viewport, scroll.offset.peek());
+  translateContentHits(contentHitStart, viewport, scroll.offset.peek());
+  blitWindowContent(frame, contentFrame, viewport, scroll.offset.peek());
+  renderWindowScrollbars(frame, id, inner, viewport, contentSize);
+}
+
+function renderWindowContent(frame: Frame, id: WindowId, rect: Rectangle): void {
+  if (id === "explorer") renderExplorer(frame, rect);
+  else if (id === "inspector") renderInspector(frame, rect);
+  else if (id === "data") renderData(frame, rect);
+  else if (id === "controls") renderControls(frame, rect);
+  else if (id === "logs") renderLogs(frame, rect);
+  else renderThree(frame, rect);
 }
 
 function renderThree(frame: Frame, rect: Rectangle): void {
@@ -756,13 +786,13 @@ function renderThreeFallback(width: number, height: number, t: ThemeSpec): RowSt
 
 function renderExplorer(frame: Frame, rect: Rectangle): void {
   const t = theme();
-  const visible = explorer.tree.visible(rect.height);
-  const inspection = explorer.tree.inspect(rect.height);
+  const visible = explorer.tree.visibleRows();
+  const selectedIndex = explorer.tree.selectedIndex.peek();
   writeRows(
     frame,
     rect,
     visible.map((row) => {
-      const selected = row.index === inspection.selectedIndex;
+      const selected = row.index === selectedIndex;
       const node = row.node as { kind?: string; path?: string };
       const icon = row.hasChildren ? row.expanded ? "▾" : "▸" : node.kind === "file" ? "·" : " ";
       const label = `${"  ".repeat(row.depth)}${icon} ${row.label}`;
@@ -774,11 +804,10 @@ function renderExplorer(frame: Frame, rect: Rectangle): void {
       };
     }),
   );
-  const start = inspection.window.start;
   for (let index = 0; index < visible.length; index += 1) {
     addHit({ column: rect.column, row: rect.row + index, width: rect.width, height: 1 }, {
       type: "explorerRow",
-      index: start + index,
+      index,
     });
   }
 }
@@ -1058,27 +1087,15 @@ function renderTextboxControl(frame: Frame, rect: Rectangle, row: number, t: The
 
 function renderLogs(frame: Frame, rect: Rectangle): void {
   const t = theme();
-  logScroll.setViewportSize(rect.width, rect.height);
-  const offset = logScroll.offset.peek().rows;
-  const lines = docs.slice(offset, offset + rect.height);
   writeRows(
     frame,
-    { ...rect, width: Math.max(0, rect.width - 1) },
-    lines.map((line) => ({
+    rect,
+    docs.map((line) => ({
       text: line,
       fg: t.text,
       bg: t.surface,
     })),
   );
-  const thumb = scrollbarThumb(docs.length, rect.height, offset);
-  if (logScroll.showScrollbar.peek()) {
-    addHit({ column: rect.column + rect.width - 1, row: rect.row, width: 1, height: rect.height }, {
-      type: "logScrollbar",
-    });
-    for (let row = 0; row < rect.height; row += 1) {
-      write(frame, rect.row + row, rect.column + rect.width - 1, paint(scrollbarGlyph(row, thumb), { fg: t.accent }));
-    }
-  }
 }
 
 function writeWrappedOptions(
@@ -1320,15 +1337,152 @@ function workspaceLayout(bounds: Rectangle): {
   return { bounds, contentHeight: Math.max(bounds.height, layout.contentHeight), rects };
 }
 
+function windowScroll(id: WindowId): ScrollAreaController {
+  return windowScrolls.get(id)!;
+}
+
+function windowContentSize(id: WindowId, viewport: Rectangle): { width: number; height: number } {
+  const baseWidth = Math.max(1, viewport.width);
+  const baseHeight = Math.max(1, viewport.height);
+  if (id === "explorer") {
+    const entries = explorer.entries();
+    return {
+      width: Math.max(baseWidth, maxTextWidth(entries.map((entry) => entry.text)) + 2),
+      height: Math.max(baseHeight, entries.length),
+    };
+  }
+  if (id === "controls") {
+    return { width: Math.max(baseWidth, 104), height: Math.max(baseHeight, 42) };
+  }
+  if (id === "logs") {
+    return { width: Math.max(baseWidth, maxTextWidth(docs) + 2), height: Math.max(baseHeight, docs.length) };
+  }
+  if (id === "data") {
+    const width = columns.reduce((sum, column) => sum + (column.width ?? 12) + 2, 8);
+    return { width: Math.max(baseWidth, width), height: Math.max(baseHeight, rows.length + 4) };
+  }
+  if (id === "three") {
+    return { width: Math.max(baseWidth, 76), height: Math.max(baseHeight, 24) };
+  }
+  return { width: Math.max(baseWidth, 82), height: Math.max(baseHeight, 16) };
+}
+
+function windowContentViewport(inner: Rectangle, contentWidth: number, contentHeight: number): Rectangle {
+  let width = inner.width;
+  let height = inner.height;
+  let needsVertical = contentHeight > height;
+  let needsHorizontal = contentWidth > width;
+  if (needsVertical) width = Math.max(0, width - 1);
+  if (needsHorizontal) height = Math.max(0, height - 1);
+  needsVertical = contentHeight > height;
+  needsHorizontal = contentWidth > width;
+  if (needsVertical && width === inner.width) width = Math.max(0, width - 1);
+  if (needsHorizontal && height === inner.height) height = Math.max(0, height - 1);
+  return { column: inner.column, row: inner.row, width, height };
+}
+
+function translateContentHits(
+  startIndex: number,
+  viewport: Rectangle,
+  offset: { columns: number; rows: number },
+): void {
+  for (let index = hitTargets.length - 1; index >= startIndex; index -= 1) {
+    const target = hitTargets[index]!;
+    const translated = {
+      ...target.rect,
+      column: viewport.column + target.rect.column - offset.columns,
+      row: viewport.row + target.rect.row - offset.rows,
+    };
+    if (!intersects(translated, viewport)) {
+      hitTargets.splice(index, 1);
+      continue;
+    }
+    target.rect = clipRect(translated, viewport);
+  }
+}
+
+function translateDropdownOverlayForWindow(
+  id: WindowId,
+  viewport: Rectangle,
+  offset: { columns: number; rows: number },
+): void {
+  if (id !== "controls" || dropdownOverlay?.coordinate !== "workspace" || dropdownOverlay.kind !== "control") return;
+  dropdownOverlay = {
+    ...dropdownOverlay,
+    rect: {
+      ...dropdownOverlay.rect,
+      column: viewport.column + dropdownOverlay.rect.column - offset.columns,
+      row: viewport.row + dropdownOverlay.rect.row - offset.rows,
+    },
+  };
+}
+
+function blitWindowContent(
+  frame: Frame,
+  content: Frame,
+  viewport: Rectangle,
+  offset: { columns: number; rows: number },
+) {
+  for (let row = 0; row < viewport.height; row += 1) {
+    const cells = content[offset.rows + row] ?? [];
+    write(frame, viewport.row + row, viewport.column, renderFrameSlice(cells, offset.columns, viewport.width));
+  }
+}
+
+function renderWindowScrollbars(
+  frame: Frame,
+  id: WindowId,
+  inner: Rectangle,
+  viewport: Rectangle,
+  contentSize: { width: number; height: number },
+): void {
+  const scroll = windowScroll(id);
+  const t = theme();
+  const maxOffset = scroll.maxOffset();
+  if (maxOffset.rows > 0 && viewport.height > 0) {
+    const column = inner.column + inner.width - 1;
+    const thumb = scrollbarThumb(contentSize.height, viewport.height, scroll.offset.peek().rows);
+    addHit({ column, row: viewport.row, width: 1, height: viewport.height }, { type: "windowVScrollbar", id });
+    for (let row = 0; row < viewport.height; row += 1) {
+      write(
+        frame,
+        viewport.row + row,
+        column,
+        paint(scrollbarGlyph(row, thumb), { fg: t.accent, bg: t.panelSoft, bold: true }),
+      );
+    }
+  }
+  if (maxOffset.columns > 0 && viewport.width > 0) {
+    const row = inner.row + inner.height - 1;
+    const thumb = scrollbarThumb(contentSize.width, viewport.width, scroll.offset.peek().columns);
+    addHit({ column: viewport.column, row, width: viewport.width, height: 1 }, { type: "windowHScrollbar", id });
+    for (let column = 0; column < viewport.width; column += 1) {
+      write(
+        frame,
+        row,
+        viewport.column + column,
+        paint(scrollbarGlyph(column, thumb), { fg: t.accent, bg: t.panelSoft, bold: true }),
+      );
+    }
+  }
+}
+
 function updateThreeBodyRect(rect: Rectangle | undefined, viewport: Rectangle, offset: number): void {
   if (!rect || modal.openState.peek() || minimized.peek().three) {
     setThreeBodyRect({ column: 0, row: 0, width: 0, height: 0 });
     return;
   }
   const inner = inset(rect, 1);
-  const sceneRect = { ...inner, row: inner.row + 3, height: Math.max(0, inner.height - 3) };
-  const translated = { ...sceneRect, row: sceneRect.row + viewport.row - offset };
-  const clipped = clipRect(translated, viewport);
+  const contentSize = windowContentSize("three", inner);
+  const bodyViewport = windowContentViewport(inner, contentSize.width, contentSize.height);
+  const scroll = windowScroll("three").offset.peek();
+  const sceneRect = { column: 0, row: 3, width: contentSize.width, height: Math.max(0, contentSize.height - 3) };
+  const translated = {
+    ...sceneRect,
+    column: bodyViewport.column + sceneRect.column - scroll.columns,
+    row: bodyViewport.row + viewport.row - offset + sceneRect.row - scroll.rows,
+  };
+  const clipped = clipRect(translated, { ...bodyViewport, row: bodyViewport.row + viewport.row - offset });
   setThreeBodyRect(clipped.width >= 8 && clipped.height >= 6 ? clipped : { column: 0, row: 0, width: 0, height: 0 });
 }
 
@@ -1470,6 +1624,30 @@ function ensureActiveWindowVisible(
   } else if (bottom > offset + viewportHeight) {
     workspaceScroll.scrollTo(0, bottom - viewportHeight);
   }
+}
+
+function scrollWindow(id: WindowId, columns: number, rows: number): void {
+  windowScroll(id).scrollBy(columns, rows);
+}
+
+function windowScrollPage(id: WindowId): number {
+  return Math.max(1, windowScroll(id).viewportHeight.peek() - 1);
+}
+
+function windowAt(x: number, y: number): WindowId | undefined {
+  const hit = findHit(x, y);
+  if (!hit) return undefined;
+  const action = hit.action;
+  if (
+    action.type === "focus" || action.type === "minimize" || action.type === "maximize" ||
+    action.type === "restore" || action.type === "close" || action.type === "windowVScrollbar" ||
+    action.type === "windowHScrollbar"
+  ) {
+    return action.id;
+  }
+  if (action.type === "control") return "controls";
+  if (action.type === "dataRow") return "data";
+  if (action.type === "explorerRow") return "explorer";
 }
 
 function focus(id: WindowId): void {
@@ -1637,9 +1815,21 @@ function applyHit(target: { rect: Rectangle; action: HitAction }, x: number, y: 
     if (action.index >= 0) modal.activateAction(action.index);
   } else if (action.type === "dataRow") selectDataRow(action.index);
   else if (action.type === "explorerRow") selectExplorerRow(action.index);
-  else if (action.type === "logScrollbar") {
-    logScroll.scrollTo(0, scrollbarOffsetForPointer(docs.length, target.rect.height, y - target.rect.row));
-    windowManager.focus("logs");
+  else if (action.type === "windowVScrollbar") {
+    const scroll = windowScroll(action.id);
+    scroll.scrollTo(
+      scroll.offset.peek().columns,
+      scrollbarOffsetForPointer(scroll.contentHeight.peek(), scroll.viewportHeight.peek(), y - target.rect.row),
+    );
+    windowManager.focus(action.id);
+    syncWindowSignalsFromManager();
+  } else if (action.type === "windowHScrollbar") {
+    const scroll = windowScroll(action.id);
+    scroll.scrollTo(
+      scrollbarOffsetForPointer(scroll.contentWidth.peek(), scroll.viewportWidth.peek(), x - target.rect.column),
+      scroll.offset.peek().rows,
+    );
+    windowManager.focus(action.id);
     syncWindowSignalsFromManager();
   } else if (action.type === "workspaceScrollbar") {
     workspaceScroll.scrollTo(
@@ -1891,6 +2081,18 @@ function renderFrameRow(cells: string[], width: number): string {
   return row.join("");
 }
 
+function renderFrameSlice(cells: string[], start: number, width: number): string {
+  const row: string[] = [];
+  for (let column = 0; column < width; column += 1) {
+    row.push(cells[start + column] ?? " ");
+  }
+  return row.join("");
+}
+
+function maxTextWidth(values: readonly string[]): number {
+  return values.reduce((max, value) => Math.max(max, textWidth(value)), 0);
+}
+
 function toStyledCells(value: string): string[] {
   const cells: string[] = [];
   let style = "";
@@ -2037,7 +2239,7 @@ function windowTitle(id: WindowId): string {
 }
 
 function windowIds(): WindowId[] {
-  return ["explorer", "inspector", "data", "controls", "logs", "three"];
+  return [...windowOrder];
 }
 
 function theme(): ThemeSpec {
