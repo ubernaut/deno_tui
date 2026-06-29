@@ -34,13 +34,26 @@ import type { Rectangle } from "../src/types.ts";
 import { stripStyles, textWidth } from "../src/utils/strings.ts";
 import { grWizardThemePalettes } from "../src/grwizard_themes.ts";
 import { createDefaultAsciiOptions, terminalGlyphStyleLabel } from "./ascii_options.ts";
+import { demos as neonDemos } from "./neon_theme.ts";
 import { makeStyle } from "./styles.ts";
 import { requireInteractiveTerminal } from "./terminal_guard.ts";
 import { ThreePanelView } from "./three_panel.ts";
-import type { AsciiOptions, ThreeSceneMode, ThreeSceneSignal } from "./types.ts";
+import type {
+  Accent,
+  AsciiOptions,
+  RenderContext,
+  SlotConfig,
+  SourceFrame,
+  SystemSnapshot,
+  ThreeSceneMode,
+  ThreeSceneSignal,
+} from "./types.ts";
+import { renderVisualization, visualizations } from "./visualizations.ts";
 
-type WindowId = "explorer" | "inspector" | "data" | "controls" | "logs" | "three";
-const windowOrder: readonly WindowId[] = ["explorer", "inspector", "data", "controls", "logs", "three"];
+type BuiltInWindowId = "explorer" | "inspector" | "data" | "controls" | "logs" | "three";
+type VisualizationWindowId = `viz:${string}`;
+type WindowId = BuiltInWindowId | VisualizationWindowId;
+const builtInWindowOrder: readonly BuiltInWindowId[] = ["explorer", "inspector", "data", "controls", "logs", "three"];
 type ControlId =
   | "button"
   | "genericButton"
@@ -63,6 +76,7 @@ type HitAction =
   | { type: "restore"; id: WindowId }
   | { type: "close"; id: WindowId }
   | { type: "theme"; index: number }
+  | { type: "newWindow"; index: number }
   | { type: "modalAction"; index: number }
   | { type: "control"; id: ControlId; action?: ControlHitAction; index?: number }
   | { type: "dataRow"; index: number }
@@ -104,6 +118,13 @@ interface ProcessRow extends Record<string, unknown> {
   api: string;
   state: string;
   latency: number;
+}
+
+interface NewWindowOption {
+  id: string;
+  label: string;
+  group: "Monitor" | "Neon" | "Neon 3D";
+  description: string;
 }
 
 const themes: ThemeSpec[] = grWizardThemePalettes.map((palette) => ({
@@ -172,6 +193,13 @@ const docs = [
   "Use Tab or 1-6 to focus windows; use M, F, R for window controls.",
 ];
 const explorerKeys = new Set(["up", "down", "left", "right", "pageup", "pagedown", "home", "end", "space", "return"]);
+const neonDemoIds = new Set(neonDemos.map((demo) => demo.id));
+const newWindowOptions: NewWindowOption[] = visualizations.map((entry) => ({
+  id: entry.id,
+  label: entry.name,
+  group: entry.id.startsWith("three-") ? "Neon 3D" : neonDemoIds.has(entry.id) ? "Neon" : "Monitor",
+  description: entry.description,
+}));
 
 requireInteractiveTerminal("deno task api-workbench");
 
@@ -193,10 +221,11 @@ tui.dispatch();
 
 const themeIndex = new Signal(0);
 const themeMenuOpen = new Signal(false);
+const newWindowMenuOpen = new Signal(false);
 const activeWindow = new Signal<WindowId>("inspector");
 const activeControl = new Signal<ControlId>("button");
 const maximized = new Signal<WindowId | null>(null);
-const minimized = new Signal<Record<WindowId, boolean>>({
+const minimized = new Signal<Record<string, boolean>>({
   explorer: false,
   inspector: false,
   data: false,
@@ -216,6 +245,7 @@ const windowManager = new WindowManagerController({
   ],
 });
 const commandLog = new Signal<string[]>(["ready: API workbench mounted"], { deepObserve: true });
+const dynamicVisualizationWindows = new Signal<Record<VisualizationWindowId, string>>({}, { deepObserve: true });
 const lineSignals: Signal<string>[] = [];
 let hitTargets: Array<{ rect: Rectangle; action: HitAction }> = [];
 let lastVisibleWindow: WindowId | null = null;
@@ -224,7 +254,7 @@ let lastWorkspaceHeight = 0;
 let dropdownOverlay: DropdownOverlay | null = null;
 type Frame = string[][];
 interface DropdownOverlay {
-  kind: "control" | "theme";
+  kind: "control" | "theme" | "newWindow";
   coordinate: "workspace" | "screen";
   rect: Rectangle;
   items: string[];
@@ -234,30 +264,40 @@ interface DropdownOverlay {
 const menu = new MenuBarController({
   items: [
     { id: "file", label: "File" },
+    { id: "new", label: "New" },
     { id: "view", label: "View" },
     { id: "layout", label: "Layout" },
     { id: "theme", label: "Theme" },
     { id: "help", label: "Help" },
   ],
   onSelect: (item) => {
+    if (item.id === "new") {
+      themeMenuOpen.value = false;
+      newWindowMenuOpen.value = !newWindowMenuOpen.peek();
+      pushLog(`${newWindowMenuOpen.peek() ? "open" : "close"} new window menu`);
+      return;
+    }
     if (item.id === "theme") {
+      newWindowMenuOpen.value = false;
       themeMenuOpen.value = !themeMenuOpen.peek();
       pushLog(`${themeMenuOpen.peek() ? "open" : "close"} theme menu`);
       return;
     }
     if (item.id === "help") {
       themeMenuOpen.value = false;
+      newWindowMenuOpen.value = false;
       openHelpModal();
       return;
     }
     themeMenuOpen.value = false;
+    newWindowMenuOpen.value = false;
     pushLog(`menu selected: ${item.label}`);
   },
 });
 const tileDensity = new Signal(0);
 const workspaceScroll = new ScrollAreaController({ showScrollbar: true });
 const windowScrolls = new Map<WindowId, ScrollAreaController>(
-  windowOrder.map((id) => [id, new ScrollAreaController({ showScrollbar: true })]),
+  builtInWindowOrder.map((id) => [id, new ScrollAreaController({ showScrollbar: true })]),
 );
 const density = new SliderController({ min: 1, max: 10, step: 1, value: 6, orientation: "horizontal" });
 const livePreview = new CheckBoxController({ checked: true });
@@ -509,6 +549,7 @@ tui.on("destroy", () => {
   dropdown.dispose();
   modalButton.dispose();
   modal.dispose();
+  dynamicVisualizationWindows.dispose();
   commandInput.dispose();
   workflowStepper.dispose();
   progress.dispose();
@@ -572,13 +613,33 @@ function renderHeader(frame: Frame): void {
     addHit({ column: closeColumn, row: 0, width: closeWidth, height: 1 }, { type: "quit" });
   }
   if (themeMenuOpen.peek()) {
-    const themeRect = themeMenuRect(menuStart);
+    const themeRect = menuItemRect(
+      menuStart,
+      "theme",
+      Math.max(20, ...themes.map((entry) => textWidth(entry.label) + 6)),
+      themes.length + 2,
+    );
     dropdownOverlay = {
       kind: "theme",
       coordinate: "screen",
       rect: themeRect,
       items: themes.map((entry) => entry.label),
       selectedIndex: themeIndex.peek(),
+    };
+  }
+  if (newWindowMenuOpen.peek()) {
+    const labels = newWindowOptions.map((entry) => `${entry.group}: ${entry.label}`);
+    const menuRect = menuItemRect(
+      menuStart,
+      "new",
+      Math.max(28, ...labels.map((label) => textWidth(label) + 6)),
+      Math.min(labels.length + 2, Math.max(8, currentHeight() - 3)),
+    );
+    dropdownOverlay = {
+      kind: "newWindow",
+      coordinate: "screen",
+      rect: menuRect,
+      items: labels,
     };
   }
   const help = width >= 132
@@ -616,23 +677,22 @@ function renderMenuHits(column: number, row: number, width: number): void {
   }
 }
 
-function themeMenuRect(menuStart: number): Rectangle {
+function menuItemRect(menuStart: number, itemId: string, preferredWidth: number, preferredHeight: number): Rectangle {
   let cursor = menuStart;
   for (const [index, item] of menu.items.peek().entries()) {
     const label = item.disabled ? `(${item.label})` : item.label;
     const token = index === menu.activeIndex.peek() ? `[${label}]` : label;
-    if (item.id === "theme") {
-      const itemWidth = Math.max(20, ...themes.map((entry) => textWidth(entry.label) + 6));
+    if (item.id === itemId) {
       return {
         column: cursor,
         row: 1,
-        width: Math.min(itemWidth, Math.max(20, currentWidth() - cursor)),
-        height: themes.length + 2,
+        width: Math.min(preferredWidth, Math.max(20, currentWidth() - cursor)),
+        height: preferredHeight,
       };
     }
     cursor += textWidth(token) + 1;
   }
-  return { column: menuStart, row: 1, width: 24, height: themes.length + 2 };
+  return { column: menuStart, row: 1, width: Math.min(preferredWidth, currentWidth()), height: preferredHeight };
 }
 
 function renderWorkspace(frame: Frame): void {
@@ -731,7 +791,42 @@ function renderWindowContent(frame: Frame, id: WindowId, rect: Rectangle): void 
   else if (id === "data") renderData(frame, rect);
   else if (id === "controls") renderControls(frame, rect);
   else if (id === "logs") renderLogs(frame, rect);
+  else if (isVisualizationWindow(id)) renderVisualizationWindow(frame, id, rect);
   else renderThree(frame, rect);
+}
+
+function renderVisualizationWindow(frame: Frame, id: VisualizationWindowId, rect: Rectangle): void {
+  const visualizationId = dynamicVisualizationWindows.peek()[id];
+  const option = visualizationOption(visualizationId);
+  const t = theme();
+  if (!visualizationId || !option) {
+    writeRows(frame, rect, [{ text: "Visualization window not found", fg: t.warn, bg: t.surface, bold: true }]);
+    return;
+  }
+  const rendered = renderVisualization(buildVisualizationContext(visualizationId, rect));
+  const accent = accentColor(rendered.accent);
+  const lines = rendered.body.split("\n");
+  writeRows(frame, rect, [
+    {
+      text: ` ${option.group.toUpperCase()} · ${rendered.title ?? option.label.toUpperCase()} `,
+      fg: contrastText(accent, t.background, t.text),
+      bg: accent,
+      bold: true,
+    },
+    {
+      text: rendered.alert ? `! ${rendered.alert}` : option.description,
+      fg: rendered.severity === "alarm" ? t.danger : rendered.severity === "warning" ? t.warn : t.soft,
+      bg: t.surface,
+      bold: rendered.severity !== "info",
+    },
+    ...lines.map((text, index) => ({
+      text,
+      fg: index % 3 === 0 ? accent : index % 3 === 1 ? t.text : t.soft,
+      bg: t.surface,
+      bold: index === 0,
+    })),
+    { text: rendered.footer, fg: t.muted, bg: t.panelSoft },
+  ]);
 }
 
 function renderThree(frame: Frame, rect: Rectangle): void {
@@ -1230,7 +1325,7 @@ function renderStatus(frame: Frame): void {
   const width = currentWidth();
   const densityLabel = tileDensity.peek() === 0 ? "balanced" : tileDensity.peek() > 0 ? "dense" : "wide";
   const left = `focus ${windowTitle(activeWindow.peek())} | ${theme().label} | tiles ${densityLabel}`;
-  const right = "1-6 focus  [/] tile density  arrows table/logs  mouse";
+  const right = "New menu adds widgets  [/] tile density  arrows/scrollbars  mouse";
   write(frame, currentHeight() - 1, 0, paint(renderStatusBar(left, right, width), { fg: t.text, bg: t.panelSoft }));
 }
 
@@ -1343,7 +1438,12 @@ function workspaceLayout(bounds: Rectangle): {
 }
 
 function windowScroll(id: WindowId): ScrollAreaController {
-  return windowScrolls.get(id)!;
+  let scroll = windowScrolls.get(id);
+  if (!scroll) {
+    scroll = new ScrollAreaController({ showScrollbar: true });
+    windowScrolls.set(id, scroll);
+  }
+  return scroll;
 }
 
 function windowContentSize(id: WindowId, viewport: Rectangle): { width: number; height: number } {
@@ -1369,7 +1469,132 @@ function windowContentSize(id: WindowId, viewport: Rectangle): { width: number; 
   if (id === "three") {
     return { width: Math.max(baseWidth, 76), height: Math.max(baseHeight, 24) };
   }
+  if (isVisualizationWindow(id)) {
+    return { width: Math.max(baseWidth, 86), height: Math.max(baseHeight, 28) };
+  }
   return { width: Math.max(baseWidth, 82), height: Math.max(baseHeight, 16) };
+}
+
+function buildVisualizationContext(visualizationId: string, rect: Rectangle): RenderContext {
+  const option = visualizationOption(visualizationId);
+  const phase = Math.floor(performance.now() / 80);
+  const slot: SlotConfig = {
+    id: "cpu",
+    name: option?.label ?? visualizationId,
+    visualizationId,
+    inputSourceIds: ["workbench:primary", "workbench:secondary", "workbench:noise"],
+    cycleEnabled: false,
+    cycleIntervalMs: 10000,
+    ascii: ascii.peek(),
+  };
+  return {
+    slot,
+    system: syntheticWorkbenchSystem(phase, option?.group ?? "Monitor"),
+    sources: syntheticWorkbenchSources(visualizationId, option?.group ?? "Monitor", phase),
+    phase,
+    width: Math.max(8, rect.width),
+    height: Math.max(4, rect.height - 3),
+  };
+}
+
+function syntheticWorkbenchSources(id: string, group: NewWindowOption["group"], phase: number): SourceFrame[] {
+  const seed = id.split("").reduce((sum, char) => sum + char.charCodeAt(0), 0);
+  const specs: Array<{ id: string; name: string; accent: Accent; offset: number }> = [
+    { id: "primary", name: group, accent: group === "Monitor" ? "signal" : "phosphor", offset: seed % 29 },
+    { id: "secondary", name: "Harmonic", accent: "violet", offset: seed % 41 },
+    { id: "noise", name: "Noise", accent: seed % 2 === 0 ? "amber" : "alarm", offset: seed % 17 },
+  ];
+  return specs.map((spec, index) => {
+    const series = Array.from(
+      { length: 72 },
+      (_, sample) => unitWave(phase + sample + spec.offset, 0.08 + index * 0.025, 0.11 + index * 0.07),
+    );
+    const value = series.at(-1) ?? 0.5;
+    return {
+      id: `workbench:${id}:${spec.id}`,
+      name: spec.name,
+      accent: spec.accent,
+      value,
+      series,
+      detailLines: [`${Math.round(value * 100)}%`, group],
+    };
+  });
+}
+
+function syntheticWorkbenchSystem(phase: number, group: NewWindowOption["group"]): SystemSnapshot {
+  const hot = unitWave(phase, 0.07, group === "Monitor" ? 0.1 : 0.33);
+  const warm = unitWave(phase, 0.045, 0.55);
+  return {
+    timestamp: Date.now(),
+    hostname: "workbench",
+    osRelease: "demo",
+    uptimeSeconds: phase,
+    loadavg: [hot * 2.4, warm * 1.8, Math.max(hot, warm)],
+    cpuOverall: hot * 100,
+    cpuCores: Array.from({ length: 8 }, (_, index) => ({
+      label: `cpu${index}`,
+      usage: unitWave(phase + index * 7, 0.06, index * 0.13) * 100,
+    })),
+    cpuHistory: Array.from({ length: 72 }, (_, index) => unitWave(phase + index, 0.07, 0.03) * 100),
+    memory: {
+      total: 32 * 1024 ** 3,
+      used: warm * 26 * 1024 ** 3,
+      available: (1 - warm) * 26 * 1024 ** 3,
+      free: (1 - warm) * 18 * 1024 ** 3,
+      swapTotal: 8 * 1024 ** 3,
+      swapUsed: hot * 2 * 1024 ** 3,
+      percent: warm * 100,
+      swapPercent: hot * 25,
+    },
+    memoryHistory: Array.from({ length: 72 }, (_, index) => unitWave(phase + index, 0.045, 0.21)),
+    swapHistory: Array.from({ length: 72 }, (_, index) => unitWave(phase + index, 0.038, 0.49) * 0.35),
+    temperatures: [
+      { label: "CPU", celsius: 38 + hot * 50 },
+      { label: "GPU", celsius: 35 + warm * 46 },
+    ],
+    disks: [
+      {
+        filesystem: "/dev/nvme0n1",
+        mount: "/",
+        total: 1024 * 1024 ** 3,
+        used: warm * 820 * 1024 ** 3,
+        available: (1 - warm) * 820 * 1024 ** 3,
+        percent: Math.round(warm * 100),
+      },
+    ],
+    networks: [
+      {
+        name: "eth0",
+        addresses: ["10.0.0.2"],
+        rxBytes: phase * 95_000,
+        txBytes: phase * 72_000,
+        rxRate: hot * 95_000_000,
+        txRate: warm * 72_000_000,
+      },
+    ],
+    rxHistory: Array.from({ length: 72 }, (_, index) => unitWave(phase + index, 0.1, 0.2)),
+    txHistory: Array.from({ length: 72 }, (_, index) => unitWave(phase + index, 0.085, 0.4)),
+    processes: Array.from({ length: 8 }, (_, index) => ({
+      pid: 4200 + index,
+      name: ["deno", "webgpu", "worker", "renderer", "scheduler", "cache", "input", "theme"][index] ?? "task",
+      state: index % 3 === 0 ? "run" : "sleep",
+      cpuPercent: unitWave(phase + index, 0.09, index * 0.2) * 80,
+      memoryPercent: unitWave(phase + index, 0.05, index * 0.15) * 18,
+      memoryBytes: (128 + index * 64) * 1024 ** 2,
+    })),
+    alerts: hot > 0.92 ? [{ severity: "warning", title: "WORKBENCH", detail: "LOAD SPIKE" }] : [],
+  };
+}
+
+function unitWave(value: number, frequency: number, offset: number): number {
+  return Math.max(
+    0,
+    Math.min(
+      1,
+      0.5 + Math.sin(value * frequency + offset) * 0.34 +
+        Math.cos(value * (frequency * 0.37) + offset * 2.1) * 0.16,
+    ),
+  );
 }
 
 function windowContentViewport(inner: Rectangle, contentWidth: number, contentHeight: number): Rectangle {
@@ -1570,6 +1795,8 @@ function renderDropdownOverlay(frame: Frame, bounds: Rectangle, offset: number):
         hit,
         overlay.kind === "theme"
           ? { type: "theme", index }
+          : overlay.kind === "newWindow"
+          ? { type: "newWindow", index }
           : { type: "control", id: "dropdown", action: "activate", index },
       );
     }
@@ -1705,7 +1932,7 @@ function syncWindowSignalsFromManager(): void {
   maximized.value = (inspection.fullscreenId as WindowId | undefined) ?? null;
   minimized.value = Object.fromEntries(
     inspection.windows.map((entry) => [entry.id, entry.minimized || entry.closed]),
-  ) as Record<WindowId, boolean>;
+  );
 }
 
 function adjustTileDensity(delta: number): void {
@@ -1716,6 +1943,7 @@ function adjustTileDensity(delta: number): void {
 function setTheme(index: number): void {
   themeIndex.value = (index + themes.length) % themes.length;
   themeMenuOpen.value = false;
+  newWindowMenuOpen.value = false;
   pushLog(`theme ${theme().label}`);
 }
 
@@ -1746,6 +1974,7 @@ function openHelpModal(): void {
       "When a window is fullscreen, use the bottom tabs or 1-6 to switch between fullscreen windows.",
       "Use arrows in the Data Table and Logs. In Controls, arrows adjust sliders, radio groups, combo boxes, steppers, and dropdown selections.",
       "Mouse: click windows to focus them, click rows to select them, click controls to change values, drag or click scrollbars to move through overflow content.",
+      "Use the New menu to add Monitor, Neon Exodus, and Neon 3D widget windows to the workspace.",
       "Use the Theme menu to switch palettes. Click the [x] button in the top-right menu bar or press Q to quit.",
     ],
     actions: [
@@ -1820,6 +2049,7 @@ function applyHit(target: { rect: Rectangle; action: HitAction }, x: number, y: 
     if (action.index >= 0) modal.activateAction(action.index);
   } else if (action.type === "dataRow") selectDataRow(action.index);
   else if (action.type === "explorerRow") selectExplorerRow(action.index);
+  else if (action.type === "newWindow") addVisualizationWindow(newWindowOptions[action.index]);
   else if (action.type === "windowVScrollbar") {
     const scroll = windowScroll(action.id);
     scroll.scrollTo(
@@ -1841,13 +2071,39 @@ function applyHit(target: { rect: Rectangle; action: HitAction }, x: number, y: 
       0,
       scrollbarOffsetForPointer(workspaceScroll.contentHeight.peek(), target.rect.height, y - target.rect.row),
     );
-  } else setTheme(action.index);
+  } else if (action.type === "theme") setTheme(action.index);
 }
 
 function closeWindow(id: WindowId): void {
   windowManager.minimize(id);
   syncWindowSignalsFromManager();
   pushLog(`hide ${windowTitle(id)}`);
+}
+
+function addVisualizationWindow(option: NewWindowOption | undefined): void {
+  if (!option) return;
+  const id = visualizationWindowId(option.id);
+  newWindowMenuOpen.value = false;
+  themeMenuOpen.value = false;
+  if (!windowManager.ids({ includeClosed: true }).includes(id)) {
+    dynamicVisualizationWindows.value = { ...dynamicVisualizationWindows.peek(), [id]: option.id };
+    windowScrolls.set(id, new ScrollAreaController({ showScrollbar: true }));
+    windowManager.windows.value = [
+      ...windowManager.windows.peek(),
+      {
+        id,
+        title: option.label,
+        minWidth: option.group === "Monitor" ? 38 : 42,
+        minHeight: option.group === "Monitor" ? 14 : 16,
+        closable: true,
+        order: windowManager.windows.peek().length,
+      },
+    ];
+  } else {
+    windowManager.restore(id);
+  }
+  focus(id);
+  pushLog(`add window ${option.label}`);
 }
 
 function applyControlHit(
@@ -2230,6 +2486,9 @@ function inset(rect: Rectangle, amount: number): Rectangle {
 }
 
 function windowTitle(id: WindowId): string {
+  if (isVisualizationWindow(id)) {
+    return visualizationOption(dynamicVisualizationWindows.peek()[id])?.label ?? "Visualization";
+  }
   return id === "explorer"
     ? "Explorer"
     : id === "inspector"
@@ -2244,7 +2503,32 @@ function windowTitle(id: WindowId): string {
 }
 
 function windowIds(): WindowId[] {
-  return [...windowOrder];
+  return windowManager.ids().map((id) => id as WindowId);
+}
+
+function isVisualizationWindow(id: WindowId): id is VisualizationWindowId {
+  return id.startsWith("viz:");
+}
+
+function visualizationWindowId(visualizationId: string): VisualizationWindowId {
+  return `viz:${visualizationId.replace(/[^a-z0-9-]/gi, "-").toLowerCase()}` as VisualizationWindowId;
+}
+
+function visualizationOption(visualizationId: string | undefined): NewWindowOption | undefined {
+  return visualizationId ? newWindowOptions.find((entry) => entry.id === visualizationId) : undefined;
+}
+
+function accentColor(accent: Accent): string {
+  const t = theme();
+  return accent === "alarm"
+    ? t.danger
+    : accent === "amber"
+    ? t.warn
+    : accent === "phosphor"
+    ? t.good
+    : accent === "violet"
+    ? t.borderStrong
+    : t.accent;
 }
 
 function theme(): ThemeSpec {
