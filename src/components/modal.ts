@@ -1,14 +1,252 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { Component, type ComponentOptions } from "../component.ts";
 import type { TextRectangle } from "../canvas/text.ts";
-import { Computed } from "../signals/mod.ts";
+import { Computed, Signal } from "../signals/mod.ts";
+import { cropToWidth, textWidth } from "../utils/strings.ts";
 import { Box } from "./box.ts";
 import { Frame } from "./frame.ts";
 import { Text } from "./text.ts";
 
+export type ModalTone = "info" | "confirm" | "success" | "warning" | "error";
+
+export interface ModalAction {
+  id: string;
+  label: string;
+  disabled?: boolean;
+  default?: boolean;
+  destructive?: boolean;
+}
+
+export interface ModalContent {
+  title: string;
+  body?: string | string[];
+  tone?: ModalTone;
+  actions?: ModalAction[];
+}
+
+export interface ModalControllerOptions extends ModalContent {
+  open?: boolean;
+  selectedActionIndex?: number;
+  closeOnEscape?: boolean;
+  onAction?: (action: ModalAction, inspection: ModalInspection) => void | Promise<void>;
+  onOpenChange?: (open: boolean, inspection: ModalInspection) => void | Promise<void>;
+}
+
+export interface ModalInspection {
+  open: boolean;
+  title: string;
+  body: string[];
+  tone: ModalTone;
+  actions: ModalAction[];
+  selectedActionIndex: number;
+  selectedAction?: ModalAction;
+}
+
+export interface RenderModalRowsOptions {
+  width: number;
+  height?: number;
+  showTone?: boolean;
+}
+
 export interface ModalOptions extends ComponentOptions {
   title?: string;
   body?: string;
+}
+
+export class ModalController {
+  readonly openState: Signal<boolean>;
+  readonly title: Signal<string>;
+  readonly body: Signal<string[]>;
+  readonly tone: Signal<ModalTone>;
+  readonly actions: Signal<ModalAction[]>;
+  readonly selectedActionIndex: Signal<number>;
+  readonly closeOnEscape: Signal<boolean>;
+  readonly #onAction?: (action: ModalAction, inspection: ModalInspection) => void | Promise<void>;
+  readonly #onOpenChange?: (open: boolean, inspection: ModalInspection) => void | Promise<void>;
+
+  constructor(options: ModalControllerOptions = { title: "" }) {
+    this.openState = new Signal(options.open ?? false);
+    this.title = new Signal(options.title ?? "");
+    this.body = new Signal(normalizeModalBody(options.body), { deepObserve: true });
+    this.tone = new Signal(options.tone ?? "info");
+    this.actions = new Signal(normalizeModalActions(options.actions), { deepObserve: true });
+    this.selectedActionIndex = new Signal(
+      clampModalActionIndex(
+        this.actions.peek(),
+        options.selectedActionIndex ?? defaultModalActionIndex(this.actions.peek()),
+      ),
+    );
+    this.closeOnEscape = new Signal(options.closeOnEscape ?? true);
+    this.#onAction = options.onAction;
+    this.#onOpenChange = options.onOpenChange;
+  }
+
+  open(content?: Partial<ModalContent>): ModalInspection {
+    if (content) this.update(content);
+    this.openState.value = true;
+    const inspection = this.inspect();
+    void this.#onOpenChange?.(true, inspection);
+    return inspection;
+  }
+
+  close(): ModalInspection {
+    this.openState.value = false;
+    const inspection = this.inspect();
+    void this.#onOpenChange?.(false, inspection);
+    return inspection;
+  }
+
+  toggle(content?: Partial<ModalContent>): ModalInspection {
+    return this.openState.peek() ? this.close() : this.open(content);
+  }
+
+  update(content: Partial<ModalContent>): ModalInspection {
+    if (content.title !== undefined) this.title.value = content.title;
+    if (content.body !== undefined) this.body.value = normalizeModalBody(content.body);
+    if (content.tone !== undefined) this.tone.value = content.tone;
+    if (content.actions !== undefined) {
+      this.actions.value = normalizeModalActions(content.actions);
+      this.selectedActionIndex.value = defaultModalActionIndex(this.actions.peek());
+    } else {
+      this.selectedActionIndex.value = clampModalActionIndex(this.actions.peek(), this.selectedActionIndex.peek());
+    }
+    return this.inspect();
+  }
+
+  setSelectedActionIndex(index: number): ModalAction | undefined {
+    this.selectedActionIndex.value = clampModalActionIndex(this.actions.peek(), index);
+    return this.selectedAction();
+  }
+
+  moveAction(delta: number): ModalAction | undefined {
+    const actions = this.actions.peek();
+    if (actions.length === 0) return undefined;
+    let next = this.selectedActionIndex.peek();
+    for (let count = 0; count < actions.length; count += 1) {
+      next = (next + delta + actions.length) % actions.length;
+      if (!actions[next]?.disabled) return this.setSelectedActionIndex(next);
+    }
+    return this.selectedAction();
+  }
+
+  selectedAction(): ModalAction | undefined {
+    return this.actions.peek()[clampModalActionIndex(this.actions.peek(), this.selectedActionIndex.peek())];
+  }
+
+  activateAction(index = this.selectedActionIndex.peek()): ModalAction | undefined {
+    const action = this.actions.peek()[clampModalActionIndex(this.actions.peek(), index)];
+    if (!action || action.disabled) return undefined;
+    this.selectedActionIndex.value = clampModalActionIndex(this.actions.peek(), index);
+    const inspection = this.inspect();
+    void this.#onAction?.({ ...action }, inspection);
+    return action;
+  }
+
+  handleKeyPress({ key, ctrl, meta, shift }: { key: string; ctrl?: boolean; meta?: boolean; shift?: boolean }) {
+    if (!this.openState.peek() || ctrl || meta) return undefined;
+    if (key === "escape" && this.closeOnEscape.peek()) return this.close();
+    if (key === "left" || (key === "tab" && shift)) return this.moveAction(-1);
+    if (key === "right" || key === "tab") return this.moveAction(1);
+    if (key === "return" || key === "space") return this.activateAction();
+    return undefined;
+  }
+
+  inspect(): ModalInspection {
+    const actions = this.actions.peek().map((action) => ({ ...action }));
+    const selectedActionIndex = clampModalActionIndex(actions, this.selectedActionIndex.peek());
+    return {
+      open: this.openState.peek(),
+      title: this.title.peek(),
+      body: [...this.body.peek()],
+      tone: this.tone.peek(),
+      actions,
+      selectedActionIndex,
+      selectedAction: actions[selectedActionIndex] ? { ...actions[selectedActionIndex]! } : undefined,
+    };
+  }
+
+  dispose(): void {
+    this.openState.dispose();
+    this.title.dispose();
+    this.body.dispose();
+    this.tone.dispose();
+    this.actions.dispose();
+    this.selectedActionIndex.dispose();
+    this.closeOnEscape.dispose();
+  }
+}
+
+export function renderModalRows(inspection: ModalInspection, options: RenderModalRowsOptions): string[] {
+  const width = Math.max(0, Math.floor(options.width));
+  if (width <= 0) return [];
+  const innerWidth = Math.max(0, width - 4);
+  const tone = options.showTone === false ? "" : `[${inspection.tone.toUpperCase()}] `;
+  const rows = [
+    cropToWidth(`${tone}${inspection.title}`, innerWidth),
+    "",
+    ...inspection.body.flatMap((line) => wrapModalLine(line, innerWidth)),
+  ];
+  const actions = renderModalActions(inspection.actions, inspection.selectedActionIndex, innerWidth);
+  if (actions) rows.push("", actions);
+  const height = options.height === undefined ? rows.length : Math.max(0, Math.floor(options.height));
+  if (options.height === undefined || height <= 0 || rows.length <= height) return rows;
+  if (!actions || height === 1) return rows.slice(0, height);
+  return [...rows.slice(0, height - 1), actions];
+}
+
+export function modalContentHeight(inspection: ModalInspection, width: number): number {
+  return renderModalRows(inspection, { width }).length + 2;
+}
+
+function normalizeModalBody(body: string | string[] | undefined): string[] {
+  if (Array.isArray(body)) return body.flatMap((line) => `${line}`.split("\n"));
+  return body === undefined ? [] : `${body}`.split("\n");
+}
+
+function normalizeModalActions(actions: readonly ModalAction[] | undefined): ModalAction[] {
+  return (actions ?? [{ id: "ok", label: "OK", default: true }]).map((action) => ({ ...action }));
+}
+
+function defaultModalActionIndex(actions: readonly ModalAction[]): number {
+  const preferred = actions.findIndex((action) => action.default && !action.disabled);
+  if (preferred >= 0) return preferred;
+  return actions.findIndex((action) => !action.disabled);
+}
+
+function clampModalActionIndex(actions: readonly ModalAction[], index: number): number {
+  if (actions.length === 0) return -1;
+  const clamped = Math.max(0, Math.min(Math.floor(index), actions.length - 1));
+  if (!actions[clamped]?.disabled) return clamped;
+  const fallback = defaultModalActionIndex(actions);
+  return fallback >= 0 ? fallback : clamped;
+}
+
+function renderModalActions(actions: readonly ModalAction[], selectedIndex: number, width: number): string {
+  const row = actions.map((action, index) => {
+    const label = action.disabled ? `(${action.label})` : action.label;
+    const token = index === selectedIndex ? `[ ${label} ]` : `  ${label}  `;
+    return action.destructive ? `!${token}!` : token;
+  }).join(" ");
+  return cropToWidth(row, width);
+}
+
+function wrapModalLine(value: string, width: number): string[] {
+  if (width <= 0) return [""];
+  const words = value.split(/\s+/).filter(Boolean);
+  if (words.length === 0) return [""];
+  const rows: string[] = [];
+  let line = "";
+  for (const word of words) {
+    const next = line ? `${line} ${word}` : word;
+    if (textWidth(next) <= width) {
+      line = next;
+    } else {
+      if (line) rows.push(cropToWidth(line, width));
+      line = cropToWidth(word, width);
+    }
+  }
+  if (line) rows.push(cropToWidth(line, width));
+  return rows;
 }
 
 export class Modal extends Component {

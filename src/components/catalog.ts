@@ -191,8 +191,10 @@ export const componentCatalog = [
     "mouse",
   ]),
   component("modal", "Modal", "overlay", "Centered overlay frame and focus target.", [
+    "controller",
     "render-helper",
     "keyboard",
+    "mouse",
     "themeable",
   ]),
   component("toast", "ToastStack", "overlay", "Transient notification stack renderer.", [

@@ -6,11 +6,11 @@ modules and exported symbols that make up the package API.
 ## Summary
 
 - Entrypoint: `mod.ts`
-- Modules: 177
-- Re-export declarations: 176
-- Exported symbols: 1333
-- Documented symbols: 341
-- Documentation coverage: 25.58%
+- Modules: 178
+- Re-export declarations: 177
+- Exported symbols: 1359
+- Documented symbols: 344
+- Documentation coverage: 25.31%
 - Duplicate symbols: 0
 - Missing targets: 0
 
@@ -81,7 +81,7 @@ modules and exported symbols that make up the package API.
 | [`src/canvas/mod.ts`](#src-canvas-mod-ts)                                         |          6 |       0 |          0 |
 | [`src/canvas/sink.ts`](#src-canvas-sink-ts)                                       |          0 |       6 |          1 |
 | [`src/canvas/text.ts`](#src-canvas-text-ts)                                       |          0 |       3 |          2 |
-| [`src/canvas/three_ascii.ts`](#src-canvas-three-ascii-ts)                         |          0 |       2 |          0 |
+| [`src/canvas/three_ascii.ts`](#src-canvas-three-ascii-ts)                         |          0 |       3 |          0 |
 | [`src/component.ts`](#src-component-ts)                                           |          0 |       4 |          2 |
 | [`src/components/box.ts`](#src-components-box-ts)                                 |          0 |       1 |          1 |
 | [`src/components/breadcrumbs.ts`](#src-components-breadcrumbs-ts)                 |          0 |       4 |          0 |
@@ -104,10 +104,10 @@ modules and exported symbols that make up the package API.
 | [`src/components/menu_bar.ts`](#src-components-menu-bar-ts)                       |          0 |      10 |          0 |
 | [`src/components/metric_series.ts`](#src-components-metric-series-ts)             |          0 |      10 |          0 |
 | [`src/components/mod.ts`](#src-components-mod-ts)                                 |         37 |       0 |          0 |
-| [`src/components/modal.ts`](#src-components-modal-ts)                             |          0 |       2 |          0 |
+| [`src/components/modal.ts`](#src-components-modal-ts)                             |          0 |      11 |          0 |
 | [`src/components/progressbar.ts`](#src-components-progressbar-ts)                 |          0 |      15 |          1 |
 | [`src/components/radio_group.ts`](#src-components-radio-group-ts)                 |          0 |      11 |          0 |
-| [`src/components/scroll_area.ts`](#src-components-scroll-area-ts)                 |          0 |      11 |          0 |
+| [`src/components/scroll_area.ts`](#src-components-scroll-area-ts)                 |          0 |      12 |          0 |
 | [`src/components/slider.ts`](#src-components-slider-ts)                           |          0 |      12 |          1 |
 | [`src/components/sparkline.ts`](#src-components-sparkline-ts)                     |          0 |       3 |          0 |
 | [`src/components/spinner.ts`](#src-components-spinner-ts)                         |          0 |       6 |          0 |
@@ -116,7 +116,7 @@ modules and exported symbols that make up the package API.
 | [`src/components/table.ts`](#src-components-table-ts)                             |          0 |      12 |          1 |
 | [`src/components/tabs.ts`](#src-components-tabs-ts)                               |          0 |      10 |          0 |
 | [`src/components/text.ts`](#src-components-text-ts)                               |          0 |       2 |          1 |
-| [`src/components/textbox.ts`](#src-components-textbox-ts)                         |          0 |      10 |          1 |
+| [`src/components/textbox.ts`](#src-components-textbox-ts)                         |          0 |      14 |          1 |
 | [`src/components/three_ascii.ts`](#src-components-three-ascii-ts)                 |          0 |       2 |          0 |
 | [`src/components/toast.ts`](#src-components-toast-ts)                             |          0 |       8 |          0 |
 | [`src/components/tree.ts`](#src-components-tree-ts)                               |          0 |      11 |          0 |
@@ -134,7 +134,7 @@ modules and exported symbols that make up the package API.
 | [`src/layout/horizontal_layout.ts`](#src-layout-horizontal-layout-ts)             |          0 |       1 |          1 |
 | [`src/layout/mod.ts`](#src-layout-mod-ts)                                         |          9 |       0 |          0 |
 | [`src/layout/recipe.ts`](#src-layout-recipe-ts)                                   |          0 |      18 |          5 |
-| [`src/layout/responsive.ts`](#src-layout-responsive-ts)                           |          0 |       5 |          0 |
+| [`src/layout/responsive.ts`](#src-layout-responsive-ts)                           |          0 |      14 |          3 |
 | [`src/layout/split_pane.ts`](#src-layout-split-pane-ts)                           |          0 |      10 |          0 |
 | [`src/layout/types.ts`](#src-layout-types-ts)                                     |          0 |       3 |          0 |
 | [`src/layout/vertical_layout.ts`](#src-layout-vertical-layout-ts)                 |          0 |       1 |          1 |
@@ -181,8 +181,9 @@ modules and exported symbols that make up the package API.
 | [`src/three_ascii/AcerolaAsciiNode.ts`](#src-three-ascii-acerolaasciinode-ts)     |          0 |       2 |          0 |
 | [`src/three_ascii/demo_presets.ts`](#src-three-ascii-demo-presets-ts)             |          0 |      14 |          0 |
 | [`src/three_ascii/glyphs.ts`](#src-three-ascii-glyphs-ts)                         |          0 |      11 |          0 |
-| [`src/three_ascii/mod.ts`](#src-three-ascii-mod-ts)                               |          4 |       0 |          0 |
+| [`src/three_ascii/mod.ts`](#src-three-ascii-mod-ts)                               |          5 |       0 |          0 |
 | [`src/three_ascii/renderer.ts`](#src-three-ascii-renderer-ts)                     |          0 |       2 |          0 |
+| [`src/three_ascii/webgpu_compat.ts`](#src-three-ascii-webgpu-compat-ts)           |          0 |       2 |          0 |
 | [`src/tui.ts`](#src-tui-ts)                                                       |          0 |       2 |          1 |
 | [`src/types.ts`](#src-types-ts)                                                   |          0 |       8 |          8 |
 | [`src/utils/ansi_codes.ts`](#src-utils-ansi-codes-ts)                             |          0 |       8 |          8 |
@@ -1030,10 +1031,11 @@ _No direct exported symbols._
 
 ### src/canvas/three_ascii.ts
 
-| Symbol                    | Kind      | Type Only | JSDoc |
-| ------------------------- | --------- | --------- | ----- |
-| `ThreeAsciiObject`        | class     | no        | no    |
-| `ThreeAsciiObjectOptions` | interface | yes       | no    |
+| Symbol                           | Kind      | Type Only | JSDoc |
+| -------------------------------- | --------- | --------- | ----- |
+| `formatThreeAsciiFallbackDetail` | function  | no        | no    |
+| `ThreeAsciiObject`               | class     | no        | no    |
+| `ThreeAsciiObjectOptions`        | interface | yes       | no    |
 
 ### src/component.ts
 
@@ -1335,10 +1337,19 @@ _No direct exported symbols._
 
 ### src/components/modal.ts
 
-| Symbol         | Kind      | Type Only | JSDoc |
-| -------------- | --------- | --------- | ----- |
-| `Modal`        | class     | no        | no    |
-| `ModalOptions` | interface | yes       | no    |
+| Symbol                   | Kind      | Type Only | JSDoc |
+| ------------------------ | --------- | --------- | ----- |
+| `Modal`                  | class     | no        | no    |
+| `ModalAction`            | interface | yes       | no    |
+| `ModalContent`           | interface | yes       | no    |
+| `modalContentHeight`     | function  | no        | no    |
+| `ModalController`        | class     | no        | no    |
+| `ModalControllerOptions` | interface | yes       | no    |
+| `ModalInspection`        | interface | yes       | no    |
+| `ModalOptions`           | interface | yes       | no    |
+| `ModalTone`              | type      | yes       | no    |
+| `renderModalRows`        | function  | no        | no    |
+| `RenderModalRowsOptions` | interface | yes       | no    |
 
 ### src/components/progressbar.ts
 
@@ -1388,6 +1399,7 @@ _No direct exported symbols._
 | `ScrollAreaInspection`        | interface | yes       | no    |
 | `ScrollAreaOptions`           | interface | yes       | no    |
 | `scrollbarGlyph`              | function  | no        | no    |
+| `scrollbarOffsetForPointer`   | function  | no        | no    |
 | `scrollbarThumb`              | function  | no        | no    |
 | `ScrollbarThumb`              | type      | yes       | no    |
 | `scrollOffsetBy`              | function  | no        | no    |
@@ -1503,8 +1515,12 @@ _No direct exported symbols._
 | `TextBoxInspection`        | interface | yes       | no    |
 | `TextBoxOptions`           | interface | yes       | no    |
 | `TextBoxTheme`             | interface | yes       | no    |
+| `textBoxVisualCursor`      | function  | no        | no    |
+| `TextBoxVisualCursor`      | interface | yes       | no    |
+| `TextBoxVisualLine`        | interface | yes       | no    |
 | `TextLineCache`            | class     | no        | no    |
 | `TextLineCacheInspection`  | interface | yes       | no    |
+| `wrapTextBoxLines`         | function  | no        | no    |
 
 ### src/components/three_ascii.ts
 
@@ -1688,13 +1704,22 @@ _No direct exported symbols._
 
 ### src/layout/responsive.ts
 
-| Symbol              | Kind      | Type Only | JSDoc |
-| ------------------- | --------- | --------- | ----- |
-| `Breakpoint`        | interface | yes       | no    |
-| `dockRect`          | function  | no        | no    |
-| `insetRect`         | function  | no        | no    |
-| `resolveBreakpoint` | function  | no        | no    |
-| `splitRect`         | function  | no        | no    |
+| Symbol                 | Kind      | Type Only | JSDoc |
+| ---------------------- | --------- | --------- | ----- |
+| `adaptiveGrid`         | function  | no        | no    |
+| `AdaptiveGrid`         | interface | yes       | no    |
+| `adaptiveGridItemRect` | function  | no        | no    |
+| `AdaptiveGridOptions`  | interface | yes       | no    |
+| `adaptiveGridPage`     | function  | no        | no    |
+| `AdaptiveGridPage`     | interface | yes       | no    |
+| `Breakpoint`           | interface | yes       | no    |
+| `dockRect`             | function  | no        | no    |
+| `insetRect`            | function  | no        | no    |
+| `resolveBreakpoint`    | function  | no        | no    |
+| `splitRect`            | function  | no        | no    |
+| `TileLayout`           | interface | yes       | yes   |
+| `TileLayoutOptions`    | interface | yes       | yes   |
+| `tileRects`            | function  | no        | yes   |
 
 ### src/layout/split_pane.ts
 
@@ -2485,6 +2510,7 @@ _No direct exported symbols._
 | `src/three_ascii/demo_presets.ts`     | star | -     |
 | `src/three_ascii/glyphs.ts`           | star | -     |
 | `src/three_ascii/renderer.ts`         | star | -     |
+| `src/three_ascii/webgpu_compat.ts`    | star | -     |
 
 _No direct exported symbols._
 
@@ -2494,6 +2520,13 @@ _No direct exported symbols._
 | --------------------------- | --------- | --------- | ----- |
 | `ThreeAsciiRenderer`        | class     | no        | no    |
 | `ThreeAsciiRendererOptions` | interface | yes       | no    |
+
+### src/three_ascii/webgpu_compat.ts
+
+| Symbol                        | Kind     | Type Only | JSDoc |
+| ----------------------------- | -------- | --------- | ----- |
+| `getCompatibleWebGPUDevice`   | function | no        | no    |
+| `probeCompatibleWebGPUDevice` | function | no        | no    |
 
 ### src/tui.ts
 

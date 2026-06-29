@@ -11,6 +11,7 @@ import {
 } from "../src/components/data_table.ts";
 import { InputController } from "../src/components/input.ts";
 import { MenuBarController, renderMenuBar } from "../src/components/menu_bar.ts";
+import { modalContentHeight, ModalController, renderModalRows } from "../src/components/modal.ts";
 import { ProgressBarController } from "../src/components/progressbar.ts";
 import { RadioGroupController } from "../src/components/radio_group.ts";
 import {
@@ -37,6 +38,7 @@ type WindowId = "inspector" | "data" | "controls" | "logs";
 type ControlId =
   | "button"
   | "genericButton"
+  | "modal"
   | "slider"
   | "checkbox"
   | "radio"
@@ -53,6 +55,7 @@ type HitAction =
   | { type: "restore"; id: WindowId }
   | { type: "close"; id: WindowId }
   | { type: "theme"; index: number }
+  | { type: "modalAction"; index: number }
   | { type: "control"; id: ControlId; action?: ControlHitAction; index?: number }
   | { type: "dataRow"; index: number }
   | { type: "logScrollbar" }
@@ -113,6 +116,7 @@ const rows: ProcessRow[] = [
   { id: "menu", surface: "Menu Bar", api: "component", state: "active", latency: 2 },
   { id: "scroll", surface: "Scroll Area", api: "viewport", state: "tracking", latency: 3 },
   { id: "data", surface: "Data Table", api: "data", state: "sorted", latency: 8 },
+  { id: "modal", surface: "Modal Window", api: "overlay", state: "armed", latency: 4 },
   { id: "theme", surface: "Theme Selector", api: "theme", state: "bound", latency: 5 },
   { id: "worker", surface: "Worker Pool", api: "runtime", state: "queued", latency: 11 },
   { id: "cache", surface: "Cached Resource", api: "runtime", state: "warm", latency: 1 },
@@ -131,6 +135,7 @@ const docs = [
   "tileRects balances panes across one, two, three, or four columns.",
   "ScrollAreaController clamps offsets and reports scrollbar thumbs.",
   "DataTableController handles keyed selection, sorting, paging, and filtering.",
+  "ModalController provides centered pop-over content with trapped keyboard focus and action buttons.",
   "SliderController and CheckBoxController expose input state without renderer coupling.",
   "Theme selection updates all surfaces through shared semantic tokens.",
   "Window controls demonstrate minimize, maximize, restore, focus, and layout recomposition.",
@@ -211,6 +216,24 @@ const genericButton = new ButtonController({
   label: "Generic Button",
   onPress: () => pushLog("generic button pressed"),
 });
+const modalButton = new ButtonController({
+  label: "Open Modal",
+  onPress: () => openWorkbenchModal(),
+});
+const modal = new ModalController({
+  title: "Confirm Action",
+  body: [
+    "Modal windows sit above the workspace and can contain text, menus, warnings, errors, and buttons.",
+    "Use Tab or arrow keys to move between actions; Enter activates the selected action.",
+  ],
+  tone: "confirm",
+  actions: [
+    { id: "cancel", label: "Cancel" },
+    { id: "details", label: "Details" },
+    { id: "confirm", label: "Confirm", default: true },
+  ],
+  onAction: (action) => applyModalAction(action.id),
+});
 const modeRadio = new RadioGroupController({
   options: [
     { value: "fast", label: "Fast" },
@@ -282,6 +305,11 @@ tui.rectangle.subscribe(() => {
 
 tui.on("keyPress", (event) => {
   if (event.ctrl && event.key === "c") return;
+  if (modal.openState.peek()) {
+    modal.handleKeyPress(event);
+    draw();
+    return;
+  }
   if (isTextControlActive() && (event.key === "escape" || event.key === "tab")) {
     blurTextControl();
     draw();
@@ -360,6 +388,8 @@ tui.on("destroy", () => {
   modeRadio.dispose();
   themeCombo.dispose();
   dropdown.dispose();
+  modalButton.dispose();
+  modal.dispose();
   commandInput.dispose();
   workflowStepper.dispose();
   progress.dispose();
@@ -383,6 +413,7 @@ function draw(): void {
   renderHeader(frame);
   renderWorkspace(frame);
   renderStatus(frame);
+  renderModalOverlay(frame);
   for (let row = 0; row < height; row += 1) {
     lineSignals[row]!.value = renderFrameRow(frame[row] ?? [], width);
   }
@@ -664,6 +695,10 @@ function renderControls(frame: Frame, rect: Rectangle): void {
   writeControl(
     "genericButton",
     `[ Generic Button ] presses=${genericButton.pressCount.peek()}`,
+  );
+  writeControl(
+    "modal",
+    `[ Open Modal ] state=${modal.openState.peek() ? "open" : "closed"}`,
   );
   writeControl("slider", `Slider    ${track} ${density.value.peek()}/10`, {
     previous: true,
@@ -962,6 +997,65 @@ function renderStatus(frame: Frame): void {
   write(frame, currentHeight() - 1, 0, paint(renderStatusBar(left, right, width), { fg: t.text, bg: t.panelSoft }));
 }
 
+function renderModalOverlay(frame: Frame): void {
+  if (!modal.openState.peek()) return;
+
+  const t = theme();
+  const screen = { column: 0, row: 0, width: currentWidth(), height: currentHeight() };
+  addHit(screen, { type: "modalAction", index: -1 });
+
+  const inspection = modal.inspect();
+  const width = Math.min(Math.max(38, currentWidth() - 8), 72);
+  const contentHeight = modalContentHeight(inspection, width);
+  const height = Math.min(Math.max(9, contentHeight), Math.max(7, currentHeight() - 6));
+  const rect = {
+    column: Math.max(0, Math.floor((currentWidth() - width) / 2)),
+    row: Math.max(1, Math.floor((currentHeight() - height) / 2)),
+    width,
+    height,
+  };
+  const shadow = clipRect(
+    { column: rect.column + 2, row: rect.row + 1, width: rect.width, height: rect.height },
+    screen,
+  );
+  if (shadow.width > 0 && shadow.height > 0) fillRect(frame, shadow, t.background);
+
+  fillRect(frame, rect, t.panelSoft);
+  drawFrame(frame, rect, inspection.title, true);
+
+  const inner = inset(rect, 1);
+  const rows = renderModalRows(inspection, { width: rect.width, height: inner.height });
+  for (let index = 0; index < rows.length && index < inner.height; index += 1) {
+    const actionRow = inspection.actions.length > 0 && index === rows.length - 1;
+    const titleRow = index === 0;
+    write(
+      frame,
+      inner.row + index,
+      inner.column,
+      paint(fit(rows[index]!, inner.width), {
+        fg: actionRow ? t.warn : titleRow ? t.accent : t.text,
+        bg: actionRow ? t.panel : t.panelSoft,
+        bold: actionRow || titleRow,
+      }),
+    );
+  }
+
+  if (inspection.actions.length === 0 || rows.length === 0) return;
+  const actionRow = inner.row + Math.min(rows.length, inner.height) - 1;
+  let cursor = inner.column;
+  for (const [index, action] of inspection.actions.entries()) {
+    const label = action.disabled
+      ? `( ${action.label} )`
+      : index === inspection.selectedActionIndex
+      ? `[ ${action.label} ]`
+      : `  ${action.label}  `;
+    const width = textWidth(label);
+    if (cursor + width > inner.column + inner.width) break;
+    addHit({ column: cursor, row: actionRow, width, height: 1 }, { type: "modalAction", index });
+    cursor += width + 1;
+  }
+}
+
 function drawFrame(frame: Frame, rect: Rectangle, title: string, active: boolean): void {
   const t = theme();
   fillRect(frame, rect, active ? t.panelSoft : t.panel);
@@ -1223,6 +1317,61 @@ function setTheme(index: number): void {
   pushLog(`theme ${theme().label}`);
 }
 
+function openWorkbenchModal(): void {
+  modal.open({
+    title: "Confirm Action",
+    tone: "confirm",
+    body: [
+      "Modal windows sit above the workspace and can contain text, menus, warnings, errors, and buttons.",
+      "Keyboard focus is trapped while the modal is open. Use Tab, arrows, Enter, Escape, or click an action.",
+    ],
+    actions: [
+      { id: "cancel", label: "Cancel" },
+      { id: "details", label: "Details" },
+      { id: "confirm", label: "Confirm", default: true },
+    ],
+  });
+  pushLog("modal opened");
+}
+
+function applyModalAction(actionId: string): void {
+  if (actionId === "details") {
+    modal.open({
+      title: "Modal Details",
+      tone: "info",
+      body: [
+        "The ModalController is renderer-neutral and exposes open state, tone, content, action focus, and callbacks.",
+        "Workbench rendering adds a theme-aware pop-over, blocks background clicks, and routes action hit targets back to the controller.",
+      ],
+      actions: [
+        { id: "back", label: "Back" },
+        { id: "confirm", label: "Confirm", default: true },
+        { id: "dismiss", label: "Dismiss" },
+      ],
+    });
+    pushLog("modal details");
+    return;
+  }
+  if (actionId === "back") {
+    openWorkbenchModal();
+    return;
+  }
+  if (actionId === "confirm") {
+    modal.open({
+      title: "Action Confirmed",
+      tone: "success",
+      body:
+        "The modal action completed. This same surface can be used for confirmations, alerts, menus, and error dialogs.",
+      actions: [{ id: "dismiss", label: "Dismiss", default: true }],
+    });
+    pushLog("modal confirmed");
+    return;
+  }
+
+  modal.close();
+  pushLog(`modal ${actionId}`);
+}
+
 function applyHit(target: { rect: Rectangle; action: HitAction }, x: number, y: number): void {
   const action = target.action;
   if (action.type === "menu") {
@@ -1238,6 +1387,8 @@ function applyHit(target: { rect: Rectangle; action: HitAction }, x: number, y: 
     focus(action.id);
   } else if (action.type === "control") {
     applyControlHit(action.id, action.action ?? "activate", target.rect, x, action.index);
+  } else if (action.type === "modalAction") {
+    if (action.index >= 0) modal.activateAction(action.index);
   } else if (action.type === "dataRow") selectDataRow(action.index);
   else if (action.type === "logScrollbar") {
     logScroll.scrollTo(0, scrollbarOffsetForPointer(docs.length, target.rect.height, y - target.rect.row));
@@ -1275,6 +1426,7 @@ function applyControlHit(
   }
   if (id === "button") actionButton.press("mouse");
   else if (id === "genericButton") genericButton.press("mouse");
+  else if (id === "modal") modalButton.press("mouse");
   else if (id === "slider") {
     if (action === "set" && rect && x !== undefined) setSliderFromPointer(density, rect, x);
     else action === "previous" ? density.decrement() : density.increment();
@@ -1376,6 +1528,7 @@ function controlAt(delta: number): ControlId {
   const ids: ControlId[] = [
     "button",
     "genericButton",
+    "modal",
     "slider",
     "checkbox",
     "radio",

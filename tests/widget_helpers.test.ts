@@ -32,6 +32,7 @@ import {
   renderMenuBar,
   shiftMenuIndex,
 } from "../src/components/menu_bar.ts";
+import { ModalController, renderModalRows } from "../src/components/modal.ts";
 import {
   clampProgressValue,
   ProgressBarController,
@@ -1073,6 +1074,71 @@ Deno.test("menu bar renders active item and skips disabled entries", () => {
   assertEquals(shiftMenuIndex(items, 0, 1), 2);
   assertEquals(clampMenuIndex(items, 1), 2);
   assertEquals(menuItemForIndex(items, 1)?.id, "view");
+});
+
+Deno.test("ModalController opens updates actions and closes on escape", () => {
+  const actions: unknown[] = [];
+  const controller = new ModalController({
+    title: "Deploy changes",
+    body: "Ship the active build to production?",
+    tone: "confirm",
+    actions: [
+      { id: "cancel", label: "Cancel" },
+      { id: "ship", label: "Ship", default: true },
+    ],
+    onAction: (action, inspection) => void actions.push({ action, open: inspection.open }),
+  });
+
+  assertEquals(controller.inspect().open, false);
+  assertEquals(controller.open().selectedAction?.id, "ship");
+  assertEquals(controller.moveAction(-1)?.id, "cancel");
+  controller.handleKeyPress({ key: "right" });
+  assertEquals(controller.selectedAction()?.id, "ship");
+  controller.handleKeyPress({ key: "return" });
+  assertEquals(actions, [{
+    action: { id: "ship", label: "Ship", default: true },
+    open: true,
+  }]);
+  controller.handleKeyPress({ key: "escape" });
+  assertEquals(controller.inspect().open, false);
+  assertEquals(
+    controller.open({
+      actions: [
+        { id: "back", label: "Back" },
+        { id: "details", label: "Details", default: true },
+      ],
+    }).selectedAction?.id,
+    "details",
+  );
+
+  controller.dispose();
+});
+
+Deno.test("renderModalRows formats wrapped body and focused actions", () => {
+  const controller = new ModalController({
+    open: true,
+    title: "Validation failed",
+    body: ["One field is invalid and needs attention.", "Review the highlighted input."],
+    tone: "error",
+    actions: [
+      { id: "dismiss", label: "Dismiss", default: true },
+      { id: "details", label: "Details" },
+    ],
+  });
+
+  assertEquals(renderModalRows(controller.inspect(), { width: 28 }), [
+    "[ERROR] Validation faile",
+    "",
+    "One field is invalid and",
+    "needs attention.",
+    "Review the highlighted",
+    "input.",
+    "",
+    "[ Dismiss ]   Details  ",
+  ]);
+  assertEquals(renderModalRows(controller.inspect(), { width: 28, height: 4 }).at(-1), "[ Dismiss ]   Details  ");
+
+  controller.dispose();
 });
 
 Deno.test("MenuBarController navigates selects and inspects menu state", () => {

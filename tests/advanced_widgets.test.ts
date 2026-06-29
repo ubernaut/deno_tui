@@ -87,6 +87,7 @@ Deno.test("component catalog groups widgets by category and capability", () => {
     "menu-bar",
     "command-palette",
     "context-menu",
+    "modal",
     "toast",
     "progressbar",
     "log-viewer",
@@ -99,6 +100,7 @@ Deno.test("component catalog supports combined queries and inspection", () => {
   assertEquals(queryComponents({ category: "overlay", capability: "controller" }).map((entry) => entry.id), [
     "command-palette",
     "context-menu",
+    "modal",
     "toast",
   ]);
   assertEquals(queryComponents({ capabilities: ["controller", "selection"] }).map((entry) => entry.id), [
@@ -133,10 +135,10 @@ Deno.test("component catalog supports combined queries and inspection", () => {
     capabilities: {
       async: 2,
       component: 0,
-      controller: 3,
+      controller: 4,
       dashboard: 0,
       keyboard: 3,
-      mouse: 1,
+      mouse: 2,
       "render-helper": 4,
       selection: 2,
       themeable: 1,
@@ -193,6 +195,7 @@ Deno.test("component catalog commands project widgets into command surfaces", as
   assertEquals(registry.list("catalog").map((command) => command.id), [
     "widgets.select.command-palette",
     "widgets.select.context-menu",
+    "widgets.select.modal",
     "widgets.select.toast",
   ]);
   assertEquals(registry.projections("catalog"), [
@@ -225,6 +228,22 @@ Deno.test("component catalog commands project widgets into command surfaces", as
         "selection",
         "keyboard",
         "mouse",
+      ],
+      disabled: false,
+    },
+    {
+      id: "widgets.select.modal",
+      label: "Modal",
+      keywords: [
+        "modal",
+        "Modal",
+        "overlay",
+        "Centered overlay frame and focus target.",
+        "controller",
+        "render-helper",
+        "keyboard",
+        "mouse",
+        "themeable",
       ],
       disabled: false,
     },

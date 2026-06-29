@@ -297,6 +297,28 @@ or `./visualization components -- --category=overlay` to generate catalog output
 queues in each app. `toastCommands()` and `bindToastCommands()` expose clear and dismiss-latest actions for command
 palettes, menu bars, key help, and plugin surfaces.
 
+`ModalController` provides a renderer-neutral state layer for blocking pop-over windows. It owns open/closed state,
+title/body content, tone, actions, selected action focus, Escape handling, and action callbacks. `renderModalRows()` and
+`modalContentHeight()` give terminal, web, and test renderers a shared text projection for confirmations, warnings,
+errors, command menus, and other modal dialogs:
+
+```ts
+const modal = new ModalController({
+  title: "Deploy changes",
+  body: "Ship the active build to production?",
+  tone: "confirm",
+  actions: [
+    { id: "cancel", label: "Cancel" },
+    { id: "ship", label: "Ship", default: true },
+  ],
+  onAction: (action) => console.log(action.id),
+});
+
+modal.open();
+modal.handleKeyPress({ key: "right" });
+modal.activateAction();
+```
+
 `ComboBoxController` owns dropdown items, placeholder text, selected index, expanded state, keyboard movement, selection
 callbacks, and inspection state for `ComboBox`. Use `comboBoxCommands()` or `bindComboBoxCommands()` to expose
 open/close/toggle, first/previous/next/last, active selection, and optional direct item-selection commands:
