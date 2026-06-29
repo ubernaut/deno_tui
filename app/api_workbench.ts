@@ -46,6 +46,7 @@ type ControlId =
   | "stepper"
   | "textbox";
 type HitAction =
+  | { type: "menu"; index: number }
   | { type: "focus"; id: WindowId }
   | { type: "minimize"; id: WindowId }
   | { type: "maximize"; id: WindowId }
@@ -152,6 +153,7 @@ handleInput(tui);
 tui.dispatch();
 
 const themeIndex = new Signal(0);
+const themeMenuOpen = new Signal(false);
 const activeWindow = new Signal<WindowId>("inspector");
 const activeControl = new Signal<ControlId>("button");
 const maximized = new Signal<WindowId | null>(null);
@@ -170,6 +172,8 @@ let lastWorkspaceHeight = 0;
 let dropdownOverlay: DropdownOverlay | null = null;
 type Frame = string[][];
 interface DropdownOverlay {
+  kind: "control" | "theme";
+  coordinate: "workspace" | "screen";
   rect: Rectangle;
   items: string[];
   selectedIndex?: number;
@@ -183,7 +187,15 @@ const menu = new MenuBarController({
     { id: "theme", label: "Theme" },
     { id: "help", label: "Help" },
   ],
-  onSelect: (item) => pushLog(`menu selected: ${item.label}`),
+  onSelect: (item) => {
+    if (item.id === "theme") {
+      themeMenuOpen.value = !themeMenuOpen.peek();
+      pushLog(`${themeMenuOpen.peek() ? "open" : "close"} theme menu`);
+      return;
+    }
+    themeMenuOpen.value = false;
+    pushLog(`menu selected: ${item.label}`);
+  },
 });
 const tileDensity = new Signal(0);
 const workspaceScroll = new ScrollAreaController({ showScrollbar: true });
@@ -385,22 +397,29 @@ function renderHeader(frame: Frame): void {
   fillRow(frame, 0, t.backgroundSoft);
   fillRow(frame, 1, t.panel);
   write(frame, 0, 0, paint(" API WORKBENCH ", { fg: t.background, bg: t.accent, bold: true }));
+  const menuStart = 17;
+  renderMenuHits(menuStart, 0, Math.max(0, width - menuStart));
   write(
     frame,
     0,
-    17,
-    paint(fit(renderMenuBar(menu.items.peek(), menu.activeIndex.peek()), Math.max(0, width - 18)), {
+    menuStart,
+    paint(fit(renderMenuBar(menu.items.peek(), menu.activeIndex.peek()), Math.max(0, width - menuStart)), {
       fg: t.text,
       bg: t.backgroundSoft,
     }),
   );
-  const themeRow = themes.map((entry, index) => {
-    const selected = index === themeIndex.peek();
-    return selected ? `[${entry.label}]` : ` ${entry.label} `;
-  }).join(" ");
-  write(frame, 1, 0, paint(" Themes ", { fg: t.background, bg: t.border, bold: true }));
+  if (themeMenuOpen.peek()) {
+    const themeRect = themeMenuRect(menuStart);
+    dropdownOverlay = {
+      kind: "theme",
+      coordinate: "screen",
+      rect: themeRect,
+      items: themes.map((entry) => entry.label),
+      selectedIndex: themeIndex.peek(),
+    };
+  }
   const help = width >= 132
-    ? "Tab focus  M min  F max  R restore  [/] resize  T theme  Q quit"
+    ? "Tab focus  M min  F max  R restore  [/] tiles  T theme  Q quit"
     : width >= 96
     ? "Tab  M/F/R  T theme  Q quit"
     : width >= 56
@@ -409,17 +428,6 @@ function renderHeader(frame: Frame): void {
   const helpWidth = textWidth(help);
   const showHelp = width >= 34;
   const helpStart = showHelp ? Math.max(0, width - helpWidth) : width;
-  const themeStart = 9;
-  const themeWidth = Math.max(0, helpStart - themeStart - 1);
-  let cursor = 9;
-  for (const [index, entry] of themes.entries()) {
-    const label = index === themeIndex.peek() ? `[${entry.label}]` : ` ${entry.label} `;
-    if (cursor + textWidth(label) <= themeStart + themeWidth) {
-      addHit({ column: cursor, row: 1, width: textWidth(label), height: 1 }, { type: "theme", index });
-    }
-    cursor += textWidth(label) + 1;
-  }
-  if (themeWidth > 0) write(frame, 1, themeStart, paint(fit(themeRow, themeWidth), { fg: t.text, bg: t.panel }));
   if (showHelp) {
     write(
       frame,
@@ -431,6 +439,37 @@ function renderHeader(frame: Frame): void {
       }),
     );
   }
+}
+
+function renderMenuHits(column: number, row: number, width: number): void {
+  let cursor = column;
+  for (const [index, item] of menu.items.peek().entries()) {
+    const label = item.disabled ? `(${item.label})` : item.label;
+    const token = index === menu.activeIndex.peek() ? `[${label}]` : label;
+    const tokenWidth = textWidth(token);
+    if (cursor + tokenWidth > column + width) break;
+    addHit({ column: cursor, row, width: tokenWidth, height: 1 }, { type: "menu", index });
+    cursor += tokenWidth + 1;
+  }
+}
+
+function themeMenuRect(menuStart: number): Rectangle {
+  let cursor = menuStart;
+  for (const [index, item] of menu.items.peek().entries()) {
+    const label = item.disabled ? `(${item.label})` : item.label;
+    const token = index === menu.activeIndex.peek() ? `[${label}]` : label;
+    if (item.id === "theme") {
+      const itemWidth = Math.max(20, ...themes.map((entry) => textWidth(entry.label) + 6));
+      return {
+        column: cursor,
+        row: 1,
+        width: Math.min(itemWidth, Math.max(20, currentWidth() - cursor)),
+        height: themes.length + 2,
+      };
+    }
+    cursor += textWidth(token) + 1;
+  }
+  return { column: menuStart, row: 1, width: 24, height: themes.length + 2 };
 }
 
 function renderWorkspace(frame: Frame): void {
@@ -668,6 +707,8 @@ function renderControls(frame: Frame, rect: Rectangle): void {
     const items = [...dropdown.items.peek()];
     const contentWidth = Math.max(...items.map((item) => textWidth(item)), textWidth(dropdown.label()), 12);
     dropdownOverlay = {
+      kind: "control",
+      coordinate: "workspace",
       rect: {
         column: rect.column + 2,
         row,
@@ -1051,19 +1092,21 @@ function renderDropdownOverlay(frame: Frame, bounds: Rectangle, offset: number):
   if (!overlay || overlay.items.length === 0) return;
 
   const t = theme();
-  const rect = {
-    ...overlay.rect,
-    row: overlay.rect.row + bounds.row - offset,
-  };
-  if (!intersects(rect, bounds)) return;
+  const clip = overlay.coordinate === "workspace"
+    ? bounds
+    : { column: 0, row: 0, width: currentWidth(), height: currentHeight() };
+  const rect = overlay.coordinate === "workspace"
+    ? { ...overlay.rect, row: overlay.rect.row + bounds.row - offset }
+    : overlay.rect;
+  if (!intersects(rect, clip)) return;
 
-  const clipped = clipRect(rect, bounds);
+  const clipped = clipRect(rect, clip);
   if (clipped.width < 8 || clipped.height < 1) return;
 
   fillRect(frame, clipped, t.panelSoft);
   const top = `┌${"─".repeat(Math.max(0, rect.width - 2))}┐`;
   const bottom = `└${"─".repeat(Math.max(0, rect.width - 2))}┘`;
-  writeClippedOverlayRow(frame, bounds, rect.row, rect.column, top, { fg: t.accent, bg: t.panelSoft, bold: true });
+  writeClippedOverlayRow(frame, clip, rect.row, rect.column, top, { fg: t.accent, bg: t.panelSoft, bold: true });
   for (const [index, item] of overlay.items.entries()) {
     const selected = overlay.selectedIndex === index;
     const marker = selected ? "●" : "○";
@@ -1071,15 +1114,20 @@ function renderDropdownOverlay(frame: Frame, bounds: Rectangle, offset: number):
     const style = selected
       ? { fg: t.background, bg: t.warn, bold: true }
       : { fg: t.text, bg: t.panelSoft, bold: false };
-    writeClippedOverlayRow(frame, bounds, row, rect.column, `│ ${fit(`${marker} ${item}`, rect.width - 4)} │`, style);
-    const hit = clipRect({ column: rect.column + 1, row, width: Math.max(0, rect.width - 2), height: 1 }, bounds);
+    writeClippedOverlayRow(frame, clip, row, rect.column, `│ ${fit(`${marker} ${item}`, rect.width - 4)} │`, style);
+    const hit = clipRect({ column: rect.column + 1, row, width: Math.max(0, rect.width - 2), height: 1 }, clip);
     if (hit.width > 0 && hit.height > 0) {
-      addHit(hit, { type: "control", id: "dropdown", action: "activate", index });
+      addHit(
+        hit,
+        overlay.kind === "theme"
+          ? { type: "theme", index }
+          : { type: "control", id: "dropdown", action: "activate", index },
+      );
     }
   }
   writeClippedOverlayRow(
     frame,
-    bounds,
+    clip,
     rect.row + rect.height - 1,
     rect.column,
     bottom,
@@ -1171,12 +1219,16 @@ function adjustTileDensity(delta: number): void {
 
 function setTheme(index: number): void {
   themeIndex.value = (index + themes.length) % themes.length;
+  themeMenuOpen.value = false;
   pushLog(`theme ${theme().label}`);
 }
 
 function applyHit(target: { rect: Rectangle; action: HitAction }, x: number, y: number): void {
   const action = target.action;
-  if (action.type === "focus") focus(action.id);
+  if (action.type === "menu") {
+    menu.setActive(action.index);
+    menu.selectActive();
+  } else if (action.type === "focus") focus(action.id);
   else if (action.type === "minimize") minimize(action.id);
   else if (action.type === "maximize") toggleMaximize(action.id);
   else if (action.type === "close") closeWindow(action.id);
