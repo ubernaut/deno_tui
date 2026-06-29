@@ -801,29 +801,27 @@ function renderControls(frame: Frame, rect: Rectangle): void {
     id: "slider",
     action: "set",
   });
-  writeControl(
-    "checkbox",
-    `Checkboxes  ${renderCheckBoxMark(livePreview.checked.peek())} live preview  ${
-      renderCheckBoxMark(compactRows.checked.peek())
-    } compact rows`,
-  );
-  addHit({ column: rect.column + 13, row: row - 1, width: 16, height: 1 }, {
-    type: "control",
-    id: "checkbox",
-    action: "activate",
+  writeControl("checkbox", "Checkboxes");
+  writeControl("checkbox", `${renderCheckBoxMark(livePreview.checked.peek())} live preview`, {
+    indent: true,
     index: 0,
   });
-  addHit({ column: rect.column + 29, row: row - 1, width: 16, height: 1 }, {
-    type: "control",
-    id: "checkbox",
-    action: "next",
+  writeControl("checkbox", `${renderCheckBoxMark(compactRows.checked.peek())} compact rows`, {
+    indent: true,
     index: 1,
   });
-  writeControl("radio", `Radio     ${renderInlineRadioOptions()}`, {
+  writeControl("radio", "Radio", {
     previous: true,
     next: true,
   });
-  addInlineRadioHits(rect, row - 1);
+  for (const [index, option] of modeRadio.options.peek().entries()) {
+    const mark = option.value === modeRadio.selectedValue.peek() ? "●" : "○";
+    const cursor = index === modeRadio.activeIndex.peek() ? ">" : " ";
+    writeControl("radio", `${cursor} ${mark} ${option.label}`, {
+      indent: true,
+      index,
+    });
+  }
   writeSection("combo", `Theme combo  ${themeCombo.expanded.peek() ? "▾" : "▸"} ${themeCombo.label()}`);
   writeWrappedOptions(frame, rect, row, "combo", themeCombo.items.peek(), themeCombo.selectedIndex.peek(), t);
   row += wrappedOptionRowCount(themeCombo.items.peek(), rect.width - 4);
@@ -1016,35 +1014,6 @@ function wrappedOptionRowCount(items: readonly string[], width: number): number 
     lineWidth += tokenWidth;
   }
   return rows;
-}
-
-function renderInlineRadioOptions(): string {
-  const options = modeRadio.options.peek();
-  const active = modeRadio.activeIndex.peek();
-  const selected = modeRadio.selectedValue.peek();
-  return options.map((option, index) => {
-    const cursor = index === active ? ">" : " ";
-    const mark = option.value === selected ? "●" : "○";
-    return `${cursor} ${mark} ${option.label}`;
-  }).join("  ");
-}
-
-function addInlineRadioHits(rect: Rectangle, row: number): void {
-  let column = rect.column + 12;
-  for (const [index, option] of modeRadio.options.peek().entries()) {
-    const width = textWidth(
-      `${index === modeRadio.activeIndex.peek() ? ">" : " "} ${
-        option.value === modeRadio.selectedValue.peek() ? "●" : "○"
-      } ${option.label}`,
-    );
-    addHit({ column, row, width, height: 1 }, {
-      type: "control",
-      id: "radio",
-      action: "activate",
-      index,
-    });
-    column += width + 2;
-  }
 }
 
 function addInlineStepperHits(rect: Rectangle, row: number): void {
