@@ -133,7 +133,7 @@ function fileExplorerEntry(row: TreeRow): FileExplorerEntry {
     kind: node.kind,
     depth: row.depth,
     expanded: row.expanded,
-    text: `${node.kind === "directory" ? row.expanded ? "▾" : "▸" : "·"} ${row.label}`,
+    text: `${"  ".repeat(row.depth)}${node.kind === "directory" ? row.expanded ? "▾" : "▸" : "·"} ${row.label}`,
   };
 }
 

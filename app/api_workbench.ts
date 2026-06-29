@@ -1351,13 +1351,15 @@ function focus(id: WindowId): void {
 }
 
 function focusNext(): void {
-  const ids = windowIds();
+  const ids = windowManager.ids() as WindowId[];
+  if (ids.length === 0) return;
   const index = ids.indexOf(activeWindow.peek());
   focus(ids[(index + 1) % ids.length]!);
 }
 
 function focusPrevious(): void {
-  const ids = windowIds();
+  const ids = windowManager.ids() as WindowId[];
+  if (ids.length === 0) return;
   const index = ids.indexOf(activeWindow.peek());
   focus(ids[(index - 1 + ids.length) % ids.length]!);
 }
@@ -1520,9 +1522,9 @@ function applyHit(target: { rect: Rectangle; action: HitAction }, x: number, y: 
 }
 
 function closeWindow(id: WindowId): void {
-  windowManager.close(id);
+  windowManager.minimize(id);
   syncWindowSignalsFromManager();
-  pushLog(`close ${windowTitle(id)}`);
+  pushLog(`hide ${windowTitle(id)}`);
 }
 
 function applyControlHit(

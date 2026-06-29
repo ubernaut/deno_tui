@@ -151,6 +151,13 @@ export const visualizationLaunchTargets: readonly VisualizationLaunchTarget[] = 
     tags: ["data", "table", "selection", "commands"],
   },
   {
+    task: "window-manager",
+    aliases: ["window-manager", "windowing", "file-explorer", "explorer"],
+    description: "tiling window manager fullscreen tabs and file explorer workflow demo",
+    category: "demo",
+    tags: ["layout", "windows", "tree", "files", "usability"],
+  },
+  {
     task: "terminal-command",
     aliases: ["terminal-command", "terminal-session", "session"],
     description: "terminal session planning and command surface demo",

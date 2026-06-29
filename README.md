@@ -2348,6 +2348,7 @@ const preset = findAsciiDemoPreset("mixed-best");
 | `examples/data_query.ts`                | Cached async query controller example                        |
 | `examples/form_workflow.ts`             | Form controller, signal binding, validation, and commands    |
 | `examples/table_selection_workflow.ts`  | Data table paging/sorting plus multi-selection commands      |
+| `examples/window_manager_demo.ts`       | Tiling window manager, fullscreen tabs, and file explorer    |
 | `examples/terminal_command_workflow.ts` | Terminal session planning plus command-surface dispatch      |
 | `examples/three_ascii.ts`               | Interactive 3D ASCII renderer powered by three.js            |
 | `examples/app_plugin_catalog.ts`        | App plugin catalog and Markdown report example               |
@@ -2425,6 +2426,7 @@ tuning.
 ./visualization pipeline
 ./visualization form
 ./visualization table-selection
+./visualization window-manager
 ./visualization terminal-session
 ./visualization theme-manifest
 ./visualization theme-engines
@@ -2461,16 +2463,16 @@ pressure inspection, `benchmark` for performance smoke checks, `api-inventory` f
 `components` for widget catalog reports, `plugins` for app plugin definition reports, `adopter` for an integrated
 terminal/runtime/plugin/theme/data workbench report, `gallery` for a compact tour across launchers, widgets, renderers,
 themes, plugins, runtime capabilities, and terminal capabilities, `batteries` for the phase 1-6 readiness matrix,
-`layout-recipe` for responsive recipe inspection, and `health` for the contributor gate. The launcher metadata is also
-exported from `scripts/visualization_launcher.ts` as a queryable catalog: `queryVisualizationLaunchTargets()`,
-`createVisualizationLaunchReport()`, `inspectVisualizationLaunchTargets()`, and `formatVisualizationLaunchMarkdown()`
-provide the same structured target list for custom launchers, docs pages, and CI reports without duplicating aliases or
-descriptions. Benchmark runs print per-case timings plus an aggregate summary; `deno task benchmark -- --list` prints
-the benchmark catalog without running workloads, `deno task benchmark -- --list --json` emits that catalog as structured
-data, and `deno task benchmark -- --json` emits the same threshold-aware timing summary as structured data and exits
-nonzero when a case fails its limits. The catalog path is backed by `BenchmarkRunner.inspect()`,
-`createBenchmarkCatalogReport()`, and `formatBenchmarkCatalogMarkdown()` so launchers and docs can reuse the same case
-metadata.
+`layout-recipe` for responsive recipe inspection, `window-manager` for the tiling window/tab/file explorer workflow, and
+`health` for the contributor gate. The launcher metadata is also exported from `scripts/visualization_launcher.ts` as a
+queryable catalog: `queryVisualizationLaunchTargets()`, `createVisualizationLaunchReport()`,
+`inspectVisualizationLaunchTargets()`, and `formatVisualizationLaunchMarkdown()` provide the same structured target list
+for custom launchers, docs pages, and CI reports without duplicating aliases or descriptions. Benchmark runs print
+per-case timings plus an aggregate summary; `deno task benchmark -- --list` prints the benchmark catalog without running
+workloads, `deno task benchmark -- --list --json` emits that catalog as structured data, and
+`deno task benchmark -- --json` emits the same threshold-aware timing summary as structured data and exits nonzero when
+a case fails its limits. The catalog path is backed by `BenchmarkRunner.inspect()`, `createBenchmarkCatalogReport()`,
+and `formatBenchmarkCatalogMarkdown()` so launchers and docs can reuse the same case metadata.
 
 The theme gallery now uses the exported grWizard palette suite and supports explicit selection:
 

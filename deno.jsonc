@@ -27,6 +27,7 @@
     "visualization": "deno run -A ./scripts/demo_launcher.ts",
     "form-workflow": "deno run -A ./examples/form_workflow.ts",
     "table-selection": "deno run -A ./examples/table_selection_workflow.ts",
+    "window-manager": "deno run -A ./examples/window_manager_demo.ts",
     "terminal-command": "deno run -A ./examples/terminal_command_workflow.ts",
     "health": "deno run -A ./scripts/health.ts",
     "worker-demo": "deno run -A ./examples/worker_pool.ts",

@@ -41,6 +41,7 @@ export const defaultHealthSteps: readonly HealthStep[] = [
   { name: "data-query", command: ["deno", "check", "examples/data_query.ts"] },
   { name: "form-workflow", command: ["deno", "check", "examples/form_workflow.ts"] },
   { name: "table-selection", command: ["deno", "check", "examples/table_selection_workflow.ts"] },
+  { name: "window-manager", command: ["deno", "check", "examples/window_manager_demo.ts"] },
   { name: "terminal-command", command: ["deno", "check", "examples/terminal_command_workflow.ts"] },
   { name: "runtime-workloads", command: ["deno", "check", "examples/runtime_workloads.ts"] },
   { name: "theme-engines", command: ["deno", "check", "examples/theme_engines.ts"] },
