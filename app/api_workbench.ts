@@ -50,6 +50,7 @@ type ControlId =
 type HitAction =
   | { type: "menu"; index: number }
   | { type: "quit" }
+  | { type: "windowTab"; id: WindowId }
   | { type: "focus"; id: WindowId }
   | { type: "minimize"; id: WindowId }
   | { type: "maximize"; id: WindowId }
@@ -541,7 +542,7 @@ function renderWorkspace(frame: Frame): void {
     blitWorkspace(frame, virtual, bounds, offset, layout.bounds.width);
     renderWorkspaceScrollbar(frame, bounds, layout.contentHeight, offset);
     renderDropdownOverlay(frame, bounds, offset);
-    renderShelf(frame);
+    renderWindowTabs(frame);
     return;
   }
 
@@ -1007,6 +1008,35 @@ function renderShelf(frame: Frame): void {
   }
 }
 
+function renderWindowTabs(frame: Frame): void {
+  const row = currentHeight() - 2;
+  const t = theme();
+  fillRow(frame, row, t.backgroundSoft);
+  write(frame, row, 1, paint("windows ", { fg: t.muted, bg: t.backgroundSoft }));
+  let column = 9;
+  for (const id of windowIds()) {
+    if (column >= currentWidth() - 1) break;
+    const selected = maximized.peek() === id;
+    const hidden = minimized.peek()[id];
+    const marker = selected ? "●" : hidden ? "○" : " ";
+    const label = `[${marker} ${windowTitle(id)}]`;
+    const width = Math.min(textWidth(label), Math.max(0, currentWidth() - column));
+    if (width <= 0) break;
+    write(
+      frame,
+      row,
+      column,
+      paint(fit(label, width), {
+        fg: selected ? t.background : hidden ? t.muted : t.text,
+        bg: selected ? t.accent : hidden ? t.panel : t.panelSoft,
+        bold: selected,
+      }),
+    );
+    addHit({ column, row, width, height: 1 }, { type: "windowTab", id });
+    column += width + 1;
+  }
+}
+
 function renderStatus(frame: Frame): void {
   const t = theme();
   const width = currentWidth();
@@ -1298,17 +1328,18 @@ function ensureActiveWindowVisible(
 function focus(id: WindowId): void {
   activeWindow.value = id;
   minimized.value[id] = false;
+  if (maximized.peek() !== null) maximized.value = id;
   pushLog(`focus ${windowTitle(id)}`);
 }
 
 function focusNext(): void {
-  const ids: WindowId[] = ["inspector", "data", "controls", "logs"];
+  const ids = windowIds();
   const index = ids.indexOf(activeWindow.peek());
   focus(ids[(index + 1) % ids.length]!);
 }
 
 function focusPrevious(): void {
-  const ids: WindowId[] = ["inspector", "data", "controls", "logs"];
+  const ids = windowIds();
   const index = ids.indexOf(activeWindow.peek());
   focus(ids[(index - 1 + ids.length) % ids.length]!);
 }
@@ -1322,7 +1353,15 @@ function minimize(id: WindowId): void {
 function toggleMaximize(id: WindowId): void {
   maximized.value = maximized.peek() === id ? null : id;
   minimized.value[id] = false;
+  activeWindow.value = id;
   pushLog(`${maximized.peek() === id ? "maximize" : "restore"} ${windowTitle(id)}`);
+}
+
+function selectWindowTab(id: WindowId): void {
+  minimized.value[id] = false;
+  maximized.value = id;
+  activeWindow.value = id;
+  pushLog(`fullscreen tab ${windowTitle(id)}`);
 }
 
 function restoreAll(): void {
@@ -1366,6 +1405,7 @@ function openHelpModal(): void {
     body: [
       "Keyboard: Tab moves focus through windows. Inside Controls, Tab moves through controls and leaves the pane after the last control. Shift+Tab moves backward.",
       "Use 1-4 to focus Inspector, Data Table, Controls, or Logs. Use M to minimize, F or Enter to maximize, R or Escape to restore windows.",
+      "When a window is fullscreen, use the bottom tabs or 1-4 to switch between fullscreen windows.",
       "Use arrows in the Data Table and Logs. In Controls, arrows adjust sliders, radio groups, combo boxes, steppers, and dropdown selections.",
       "Mouse: click windows to focus them, click rows to select them, click controls to change values, drag or click scrollbars to move through overflow content.",
       "Use the Theme menu to switch palettes. Click the [x] button in the top-right menu bar or press Q to quit.",
@@ -1427,6 +1467,7 @@ function applyHit(target: { rect: Rectangle; action: HitAction }, x: number, y: 
     menu.setActive(action.index);
     menu.selectActive();
   } else if (action.type === "quit") tui.emit("destroy");
+  else if (action.type === "windowTab") selectWindowTab(action.id);
   else if (action.type === "focus") focus(action.id);
   else if (action.type === "minimize") minimize(action.id);
   else if (action.type === "maximize") toggleMaximize(action.id);
@@ -1455,9 +1496,7 @@ function closeWindow(id: WindowId): void {
   minimized.value[id] = true;
   if (maximized.peek() === id) maximized.value = null;
   pushLog(`close ${windowTitle(id)}`);
-  const next = (["inspector", "data", "controls", "logs"] as WindowId[]).find((candidate) =>
-    !minimized.peek()[candidate]
-  );
+  const next = windowIds().find((candidate) => !minimized.peek()[candidate]);
   if (next) activeWindow.value = next;
 }
 
@@ -1792,6 +1831,10 @@ function inset(rect: Rectangle, amount: number): Rectangle {
 
 function windowTitle(id: WindowId): string {
   return id === "inspector" ? "Inspector" : id === "data" ? "Data Table" : id === "controls" ? "Controls" : "Logs";
+}
+
+function windowIds(): WindowId[] {
+  return ["inspector", "data", "controls", "logs"];
 }
 
 function theme(): ThemeSpec {
