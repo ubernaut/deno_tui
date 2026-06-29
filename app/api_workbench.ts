@@ -49,6 +49,7 @@ type ControlId =
   | "textbox";
 type HitAction =
   | { type: "menu"; index: number }
+  | { type: "quit" }
   | { type: "focus"; id: WindowId }
   | { type: "minimize"; id: WindowId }
   | { type: "maximize"; id: WindowId }
@@ -198,6 +199,11 @@ const menu = new MenuBarController({
       pushLog(`${themeMenuOpen.peek() ? "open" : "close"} theme menu`);
       return;
     }
+    if (item.id === "help") {
+      themeMenuOpen.value = false;
+      openHelpModal();
+      return;
+    }
     themeMenuOpen.value = false;
     pushLog(`menu selected: ${item.label}`);
   },
@@ -310,8 +316,13 @@ tui.on("keyPress", (event) => {
     draw();
     return;
   }
-  if (isTextControlActive() && (event.key === "escape" || event.key === "tab")) {
+  if (isTextControlActive() && event.key === "escape") {
     blurTextControl();
+    draw();
+    return;
+  }
+  if (isTextControlActive() && event.key === "tab") {
+    focusNextControl(event.shift ? -1 : 1);
     draw();
     return;
   }
@@ -321,7 +332,7 @@ tui.on("keyPress", (event) => {
     return;
   }
   if (event.key === "q") tui.emit("destroy");
-  else if (event.key === "tab" && activeWindow.peek() === "controls") focusNextControl();
+  else if (event.key === "tab" && activeWindow.peek() === "controls") focusNextControl(event.shift ? -1 : 1);
   else if (event.key === "tab") focusNext();
   else if (event.key === "1") focus("inspector");
   else if (event.key === "2") focus("data");
@@ -429,16 +440,24 @@ function renderHeader(frame: Frame): void {
   fillRow(frame, 1, t.panel);
   write(frame, 0, 0, paint(" API WORKBENCH ", { fg: t.background, bg: t.accent, bold: true }));
   const menuStart = 17;
-  renderMenuHits(menuStart, 0, Math.max(0, width - menuStart));
+  const closeLabel = width >= 20 ? " [x] " : "";
+  const closeWidth = textWidth(closeLabel);
+  const menuWidth = Math.max(0, width - menuStart - closeWidth);
+  renderMenuHits(menuStart, 0, menuWidth);
   write(
     frame,
     0,
     menuStart,
-    paint(fit(renderMenuBar(menu.items.peek(), menu.activeIndex.peek()), Math.max(0, width - menuStart)), {
+    paint(fit(renderMenuBar(menu.items.peek(), menu.activeIndex.peek()), menuWidth), {
       fg: t.text,
       bg: t.backgroundSoft,
     }),
   );
+  if (closeLabel) {
+    const closeColumn = Math.max(0, width - closeWidth);
+    write(frame, 0, closeColumn, paint(closeLabel, { fg: t.background, bg: t.danger, bold: true }));
+    addHit({ column: closeColumn, row: 0, width: closeWidth, height: 1 }, { type: "quit" });
+  }
   if (themeMenuOpen.peek()) {
     const themeRect = themeMenuRect(menuStart);
     dropdownOverlay = {
@@ -1288,6 +1307,12 @@ function focusNext(): void {
   focus(ids[(index + 1) % ids.length]!);
 }
 
+function focusPrevious(): void {
+  const ids: WindowId[] = ["inspector", "data", "controls", "logs"];
+  const index = ids.indexOf(activeWindow.peek());
+  focus(ids[(index - 1 + ids.length) % ids.length]!);
+}
+
 function minimize(id: WindowId): void {
   minimized.value[id] = true;
   if (maximized.peek() === id) maximized.value = null;
@@ -1334,6 +1359,25 @@ function openWorkbenchModal(): void {
   pushLog("modal opened");
 }
 
+function openHelpModal(): void {
+  modal.open({
+    title: "Workbench Help",
+    tone: "info",
+    body: [
+      "Keyboard: Tab moves focus through windows. Inside Controls, Tab moves through controls and leaves the pane after the last control. Shift+Tab moves backward.",
+      "Use 1-4 to focus Inspector, Data Table, Controls, or Logs. Use M to minimize, F or Enter to maximize, R or Escape to restore windows.",
+      "Use arrows in the Data Table and Logs. In Controls, arrows adjust sliders, radio groups, combo boxes, steppers, and dropdown selections.",
+      "Mouse: click windows to focus them, click rows to select them, click controls to change values, drag or click scrollbars to move through overflow content.",
+      "Use the Theme menu to switch palettes. Click the [x] button in the top-right menu bar or press Q to quit.",
+    ],
+    actions: [
+      { id: "dismiss", label: "Dismiss", default: true },
+      { id: "controls", label: "Focus Controls" },
+    ],
+  });
+  pushLog("help opened");
+}
+
 function applyModalAction(actionId: string): void {
   if (actionId === "details") {
     modal.open({
@@ -1367,6 +1411,11 @@ function applyModalAction(actionId: string): void {
     pushLog("modal confirmed");
     return;
   }
+  if (actionId === "controls") {
+    modal.close();
+    focus("controls");
+    return;
+  }
 
   modal.close();
   pushLog(`modal ${actionId}`);
@@ -1377,7 +1426,8 @@ function applyHit(target: { rect: Rectangle; action: HitAction }, x: number, y: 
   if (action.type === "menu") {
     menu.setActive(action.index);
     menu.selectActive();
-  } else if (action.type === "focus") focus(action.id);
+  } else if (action.type === "quit") tui.emit("destroy");
+  else if (action.type === "focus") focus(action.id);
   else if (action.type === "minimize") minimize(action.id);
   else if (action.type === "maximize") toggleMaximize(action.id);
   else if (action.type === "close") closeWindow(action.id);
@@ -1514,10 +1564,15 @@ function blurTextControl(): void {
   pushLog(`control ${previous} blur`);
 }
 
-function focusNextControl(): void {
+function focusNextControl(delta = 1): void {
   activeWindow.value = "controls";
-  activeControl.value = controlAt(1);
-  pushLog(`control ${activeControl.peek()} focus`);
+  const next = controlAtEdge(delta);
+  if (next) {
+    activeControl.value = next;
+    pushLog(`control ${activeControl.peek()} focus`);
+    return;
+  }
+  delta < 0 ? focusPrevious() : focusNext();
 }
 
 function isTextControlActive(): boolean {
@@ -1540,6 +1595,25 @@ function controlAt(delta: number): ControlId {
   ];
   const index = ids.indexOf(activeControl.peek());
   return ids[(index + delta + ids.length) % ids.length]!;
+}
+
+function controlAtEdge(delta: number): ControlId | undefined {
+  const ids: ControlId[] = [
+    "button",
+    "genericButton",
+    "modal",
+    "slider",
+    "checkbox",
+    "radio",
+    "combo",
+    "dropdown",
+    "input",
+    "stepper",
+    "textbox",
+  ];
+  const index = ids.indexOf(activeControl.peek());
+  const next = index + delta;
+  return next < 0 || next >= ids.length ? undefined : ids[next];
 }
 
 function pushLog(message: string): void {
