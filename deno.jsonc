@@ -2,7 +2,11 @@
   "exports": {
     ".": "./mod.ts",
     "./web": "./mod.web.ts",
-    "./remote": "./mod.remote.ts"
+    "./remote": "./mod.remote.ts",
+    "./layout/yoga": "./src/layout/solvers/yoga.ts"
+  },
+  "imports": {
+    "yoga-layout": "npm:yoga-layout@3.2.1"
   },
   "tasks": {
     "demo": "deno run --watch --allow-hrtime ./examples/demo.ts",
@@ -10,6 +14,8 @@
     "command-search": "deno run -A ./examples/command_search_index.ts",
     "dashboard": "deno run -A ./examples/dashboard.ts",
     "layout-recipe": "deno run -A ./examples/layout_recipe_report.ts",
+    "html-css-layout": "deno run -A ./examples/html_css_layout.ts",
+    "html-css-layout:yoga": "deno run -A ./examples/html_css_layout.ts --yoga",
     "theme-manifest": "deno run -A ./examples/theme_manifest.ts",
     "theme-engines": "deno run -A ./examples/theme_engines.ts",
     "theme-engine-commands": "deno run -A ./examples/theme_engine_commands.ts",

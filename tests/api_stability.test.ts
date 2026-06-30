@@ -11,12 +11,18 @@ import {
 import { formatPackageExportValidation, validatePackageExports } from "../scripts/package_check.ts";
 
 Deno.test("package entrypoint manifest separates terminal web and remote surfaces", () => {
-  assertEquals(packageEntrypoints.map((entrypoint) => entrypoint.specifier), [".", "./web", "./remote"]);
+  assertEquals(packageEntrypoints.map((entrypoint) => entrypoint.specifier), [
+    ".",
+    "./web",
+    "./remote",
+    "./layout/yoga",
+  ]);
   assertEquals(packageEntrypointFor(".")?.path, "./mod.ts");
   assertEquals(packageEntrypointFor("./mod.web.ts")?.specifier, "./web");
   assertEquals(filterPackageEntrypoints({ runtime: "browser" }).map((entrypoint) => entrypoint.specifier), ["./web"]);
   assertEquals(filterPackageEntrypoints({ stability: "experimental" }).map((entrypoint) => entrypoint.specifier), [
     "./remote",
+    "./layout/yoga",
   ]);
   assertEquals(formatPackageEntrypointMarkdown().includes("`./web`"), true);
 });
@@ -26,6 +32,7 @@ Deno.test("api surface policies mark public experimental and demo-only code", ()
     "mod.ts",
     "mod.web.ts",
     "mod.remote.ts",
+    "src/layout/solvers/yoga.ts",
     "src/three_ascii/*",
   ]);
   assertEquals(filterApiSurfacePolicies({ stability: "internal" }).map((policy) => policy.pattern), [
@@ -54,6 +61,7 @@ Deno.test("package export validation compares deno export maps with the stabilit
         ".": "./mod.ts",
         "./web": "./mod.web.ts",
         "./remote": "./mod.remote.ts",
+        "./layout/yoga": "./src/layout/solvers/yoga.ts",
       },
     },
     packageEntrypoints,
@@ -71,11 +79,11 @@ Deno.test("package export validation compares deno export maps with the stabilit
       },
     },
     packageEntrypoints,
-    { exists: (path) => path !== "mod.remote.ts" },
+    { exists: (path) => path !== "mod.remote.ts" && path !== "src/layout/solvers/yoga.ts" },
   );
   assertEquals(invalid.ok, false);
-  assertEquals(invalid.missingExports, ["./remote"]);
+  assertEquals(invalid.missingExports, ["./remote", "./layout/yoga"]);
   assertEquals(invalid.mismatchedExports, [{ specifier: "./web", expected: "./mod.web.ts", actual: "./wrong.ts" }]);
   assertEquals(invalid.unexpectedExports, ["./extra"]);
-  assertEquals(invalid.missingFiles, ["./mod.remote.ts"]);
+  assertEquals(invalid.missingFiles, ["./mod.remote.ts", "./src/layout/solvers/yoga.ts"]);
 });

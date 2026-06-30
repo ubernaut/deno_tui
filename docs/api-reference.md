@@ -6,10 +6,10 @@ modules and exported symbols that make up the package API.
 ## Summary
 
 - Entrypoint: `mod.ts`
-- Modules: 185
-- Re-export declarations: 184
-- Exported symbols: 1468
-- Documented symbols: 1468
+- Modules: 195
+- Re-export declarations: 194
+- Exported symbols: 1547
+- Documented symbols: 1547
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -18,7 +18,7 @@ modules and exported symbols that make up the package API.
 
 | Module                                                                            | Re-exports | Symbols | Documented |
 | --------------------------------------------------------------------------------- | ---------: | ------: | ---------: |
-| [`mod.ts`](#mod-ts)                                                               |         32 |       0 |          0 |
+| [`mod.ts`](#mod-ts)                                                               |         33 |       0 |          0 |
 | [`src/api_stability.ts`](#src-api-stability-ts)                                   |          0 |      14 |         14 |
 | [`src/app/actions.ts`](#src-app-actions-ts)                                       |          0 |       7 |          7 |
 | [`src/app/app.ts`](#src-app-app-ts)                                               |          0 |      13 |         13 |
@@ -133,18 +133,28 @@ modules and exported symbols that make up the package API.
 | [`src/input_reader/mod.ts`](#src-input-reader-mod-ts)                             |          0 |       2 |          2 |
 | [`src/input.ts`](#src-input-ts)                                                   |          0 |       1 |          1 |
 | [`src/keymap.ts`](#src-keymap-ts)                                                 |          0 |       6 |          6 |
+| [`src/layout/engine.ts`](#src-layout-engine-ts)                                   |          0 |       6 |          6 |
 | [`src/layout/errors.ts`](#src-layout-errors-ts)                                   |          0 |       2 |          2 |
 | [`src/layout/flex_layout.ts`](#src-layout-flex-layout-ts)                         |          0 |       3 |          3 |
 | [`src/layout/grid_layout.ts`](#src-layout-grid-layout-ts)                         |          0 |       3 |          3 |
 | [`src/layout/horizontal_layout.ts`](#src-layout-horizontal-layout-ts)             |          0 |       1 |          1 |
-| [`src/layout/mod.ts`](#src-layout-mod-ts)                                         |         11 |       0 |          0 |
+| [`src/layout/mod.ts`](#src-layout-mod-ts)                                         |         15 |       0 |          0 |
 | [`src/layout/overlay.ts`](#src-layout-overlay-ts)                                 |          0 |      19 |         19 |
 | [`src/layout/recipe.ts`](#src-layout-recipe-ts)                                   |          0 |      18 |         18 |
 | [`src/layout/responsive.ts`](#src-layout-responsive-ts)                           |          0 |      14 |         14 |
+| [`src/layout/solver.ts`](#src-layout-solver-ts)                                   |          0 |      12 |         12 |
+| [`src/layout/solvers/simple.ts`](#src-layout-solvers-simple-ts)                   |          0 |       3 |          3 |
 | [`src/layout/split_pane.ts`](#src-layout-split-pane-ts)                           |          0 |      10 |         10 |
+| [`src/layout/style.ts`](#src-layout-style-ts)                                     |          0 |      25 |         25 |
 | [`src/layout/types.ts`](#src-layout-types-ts)                                     |          0 |       3 |          3 |
 | [`src/layout/vertical_layout.ts`](#src-layout-vertical-layout-ts)                 |          0 |       1 |          1 |
 | [`src/layout/window_manager.ts`](#src-layout-window-manager-ts)                   |          0 |      10 |         10 |
+| [`src/markup/cascade.ts`](#src-markup-cascade-ts)                                 |          0 |       5 |          5 |
+| [`src/markup/css.ts`](#src-markup-css-ts)                                         |          0 |       7 |          7 |
+| [`src/markup/html.ts`](#src-markup-html-ts)                                       |          0 |       3 |          3 |
+| [`src/markup/hydrate.ts`](#src-markup-hydrate-ts)                                 |          0 |       3 |          3 |
+| [`src/markup/mod.ts`](#src-markup-mod-ts)                                         |          5 |       0 |          0 |
+| [`src/markup/widgets.ts`](#src-markup-widgets-ts)                                 |          0 |      15 |         15 |
 | [`src/perf/benchmark.ts`](#src-perf-benchmark-ts)                                 |          0 |      19 |         19 |
 | [`src/perf/mod.ts`](#src-perf-mod-ts)                                             |          1 |       0 |          0 |
 | [`src/runtime/capabilities.ts`](#src-runtime-capabilities-ts)                     |          0 |      16 |         16 |
@@ -233,6 +243,7 @@ modules and exported symbols that make up the package API.
 | `src/tui.ts`                   | star | -     |
 | `src/signals/mod.ts`           | star | -     |
 | `src/layout/mod.ts`            | star | -     |
+| `src/markup/mod.ts`            | star | -     |
 | `src/components/mod.ts`        | star | -     |
 | `src/canvas/mod.ts`            | star | -     |
 | `src/three_ascii/mod.ts`       | star | -     |
@@ -1730,6 +1741,17 @@ _No direct exported symbols._
 | `KeymapInspection`     | interface | yes       | yes   |
 | `KeymapRegistry`       | class     | no        | yes   |
 
+### src/layout/engine.ts
+
+| Symbol                         | Kind      | Type Only | JSDoc |
+| ------------------------------ | --------- | --------- | ----- |
+| `createLayoutEngine`           | function  | no        | yes   |
+| `LayoutEngine`                 | class     | no        | yes   |
+| `LayoutEngineOptions`          | interface | yes       | yes   |
+| `LayoutRunOptions`             | interface | yes       | yes   |
+| `LayoutSolverUnsupportedError` | class     | no        | yes   |
+| `layoutTree`                   | function  | no        | yes   |
+
 ### src/layout/errors.ts
 
 | Symbol                              | Kind  | Type Only | JSDoc |
@@ -1774,6 +1796,10 @@ _No direct exported symbols._
 | `src/layout/recipe.ts`            | star | -     |
 | `src/layout/window_manager.ts`    | star | -     |
 | `src/layout/overlay.ts`           | star | -     |
+| `src/layout/style.ts`             | star | -     |
+| `src/layout/solver.ts`            | star | -     |
+| `src/layout/engine.ts`            | star | -     |
+| `src/layout/solvers/simple.ts`    | star | -     |
 
 _No direct exported symbols._
 
@@ -1843,6 +1869,31 @@ _No direct exported symbols._
 | `TileLayoutOptions`    | interface | yes       | yes   |
 | `tileRects`            | function  | no        | yes   |
 
+### src/layout/solver.ts
+
+| Symbol                       | Kind      | Type Only | JSDoc |
+| ---------------------------- | --------- | --------- | ----- |
+| `cloneLayoutNode`            | function  | no        | yes   |
+| `ComputedLayoutBox`          | interface | yes       | yes   |
+| `createLayoutNode`           | function  | no        | yes   |
+| `flattenComputedLayoutBoxes` | function  | no        | yes   |
+| `LayoutIntrinsicSize`        | interface | yes       | yes   |
+| `LayoutNode`                 | interface | yes       | yes   |
+| `LayoutNodeOptions`          | interface | yes       | yes   |
+| `LayoutSolver`               | interface | yes       | yes   |
+| `LayoutSolverInput`          | interface | yes       | yes   |
+| `LayoutSolverResult`         | interface | yes       | yes   |
+| `mapLayoutBoxes`             | function  | no        | yes   |
+| `walkLayoutNodes`            | function  | no        | yes   |
+
+### src/layout/solvers/simple.ts
+
+| Symbol                      | Kind      | Type Only | JSDoc |
+| --------------------------- | --------- | --------- | ----- |
+| `simpleLayoutSolver`        | function  | no        | yes   |
+| `SimpleLayoutSolver`        | class     | no        | yes   |
+| `SimpleLayoutSolverOptions` | interface | yes       | yes   |
+
 ### src/layout/split_pane.ts
 
 | Symbol                       | Kind      | Type Only | JSDoc |
@@ -1857,6 +1908,36 @@ _No direct exported symbols._
 | `splitPaneRects`             | function  | no        | yes   |
 | `SplitPaneRects`             | interface | yes       | yes   |
 | `SplitPaneResizeMode`        | type      | yes       | yes   |
+
+### src/layout/style.ts
+
+| Symbol                       | Kind      | Type Only | JSDoc |
+| ---------------------------- | --------- | --------- | ----- |
+| `applyLayoutDeclaration`     | function  | no        | yes   |
+| `applyLayoutDeclarations`    | function  | no        | yes   |
+| `AUTO_LAYOUT_LENGTH`         | const     | no        | yes   |
+| `autoLength`                 | function  | no        | yes   |
+| `BoxEdges`                   | interface | yes       | yes   |
+| `cellLength`                 | function  | no        | yes   |
+| `clampLayoutSize`            | function  | no        | yes   |
+| `cloneComputedLayoutStyle`   | function  | no        | yes   |
+| `ComputedLayoutStyle`        | interface | yes       | yes   |
+| `defaultComputedLayoutStyle` | function  | no        | yes   |
+| `frLength`                   | function  | no        | yes   |
+| `LayoutAlignItems`           | type      | yes       | yes   |
+| `LayoutDisplay`              | type      | yes       | yes   |
+| `LayoutFlexDirection`        | type      | yes       | yes   |
+| `LayoutJustifyContent`       | type      | yes       | yes   |
+| `LayoutLengthValue`          | interface | yes       | yes   |
+| `LayoutOverflow`             | type      | yes       | yes   |
+| `LayoutPosition`             | type      | yes       | yes   |
+| `LayoutVisibility`           | type      | yes       | yes   |
+| `parseBoxEdges`              | function  | no        | yes   |
+| `parseLayoutInteger`         | function  | no        | yes   |
+| `parseLayoutLength`          | function  | no        | yes   |
+| `percentLength`              | function  | no        | yes   |
+| `resolveLayoutLength`        | function  | no        | yes   |
+| `ZERO_BOX_EDGES`             | const     | no        | yes   |
 
 ### src/layout/types.ts
 
@@ -1886,6 +1967,76 @@ _No direct exported symbols._
 | `WindowManagerWindowInspection` | interface | yes       | yes   |
 | `WindowManagerWindowState`      | type      | yes       | yes   |
 | `windowManagerZOrder`           | function  | no        | yes   |
+
+### src/markup/cascade.ts
+
+| Symbol                   | Kind      | Type Only | JSDoc |
+| ------------------------ | --------- | --------- | ----- |
+| `applyCssCascade`        | function  | no        | yes   |
+| `ApplyCssCascadeOptions` | interface | yes       | yes   |
+| `matchesCssSelector`     | function  | no        | yes   |
+| `resolveCssVariables`    | function  | no        | yes   |
+| `TuiCssNodeState`        | type      | yes       | yes   |
+
+### src/markup/css.ts
+
+| Symbol                   | Kind      | Type Only | JSDoc |
+| ------------------------ | --------- | --------- | ----- |
+| `cssSelectorSpecificity` | function  | no        | yes   |
+| `parseCssDeclarations`   | function  | no        | yes   |
+| `parseCssStylesheet`     | function  | no        | yes   |
+| `selectorParts`          | function  | no        | yes   |
+| `TuiCssDeclaration`      | interface | yes       | yes   |
+| `TuiCssRule`             | interface | yes       | yes   |
+| `TuiCssStylesheet`       | interface | yes       | yes   |
+
+### src/markup/html.ts
+
+| Symbol                  | Kind      | Type Only | JSDoc |
+| ----------------------- | --------- | --------- | ----- |
+| `parseTuiMarkup`        | function  | no        | yes   |
+| `TuiMarkupDocument`     | interface | yes       | yes   |
+| `TuiMarkupParseOptions` | interface | yes       | yes   |
+
+### src/markup/hydrate.ts
+
+| Symbol                | Kind      | Type Only | JSDoc |
+| --------------------- | --------- | --------- | ----- |
+| `createMarkupLayout`  | function  | no        | yes   |
+| `MarkupLayoutOptions` | interface | yes       | yes   |
+| `MarkupLayoutResult`  | interface | yes       | yes   |
+
+### src/markup/mod.ts
+
+| Re-export Target        | Kind | Names |
+| ----------------------- | ---- | ----- |
+| `src/markup/cascade.ts` | star | -     |
+| `src/markup/css.ts`     | star | -     |
+| `src/markup/html.ts`    | star | -     |
+| `src/markup/hydrate.ts` | star | -     |
+| `src/markup/widgets.ts` | star | -     |
+
+_No direct exported symbols._
+
+### src/markup/widgets.ts
+
+| Symbol                              | Kind      | Type Only | JSDoc |
+| ----------------------------------- | --------- | --------- | ----- |
+| `createDefaultMarkupWidgetRegistry` | function  | no        | yes   |
+| `dispatchMarkupWidgetEvent`         | function  | no        | yes   |
+| `HydratedMarkupWidget`              | interface | yes       | yes   |
+| `HydratedMarkupWidgetInspection`    | interface | yes       | yes   |
+| `hydrateMarkupWidgets`              | function  | no        | yes   |
+| `MarkupWidgetController`            | type      | yes       | yes   |
+| `MarkupWidgetDescriptor`            | interface | yes       | yes   |
+| `MarkupWidgetEvent`                 | type      | yes       | yes   |
+| `MarkupWidgetFactory`               | type      | yes       | yes   |
+| `MarkupWidgetFactoryContext`        | interface | yes       | yes   |
+| `MarkupWidgetHydration`             | class     | no        | yes   |
+| `MarkupWidgetHydrationInspection`   | interface | yes       | yes   |
+| `MarkupWidgetHydrationOptions`      | interface | yes       | yes   |
+| `MarkupWidgetHydrationRegistry`     | class     | no        | yes   |
+| `MarkupWidgetKind`                  | type      | yes       | yes   |
 
 ### src/perf/benchmark.ts
 

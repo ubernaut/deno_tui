@@ -17,6 +17,7 @@ export * from "./src/view.ts";
 
 export * from "./src/signals/mod.ts";
 export * from "./src/layout/mod.ts";
+export * from "./src/markup/mod.ts";
 export * from "./src/components/mod.ts";
 export * from "./src/platform/mod.ts";
 export * from "./src/web/mod.ts";

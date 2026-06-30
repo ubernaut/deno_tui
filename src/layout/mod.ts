@@ -10,3 +10,7 @@ export * from "./split_pane.ts";
 export * from "./recipe.ts";
 export * from "./window_manager.ts";
 export * from "./overlay.ts";
+export * from "./style.ts";
+export * from "./solver.ts";
+export * from "./engine.ts";
+export * from "./solvers/simple.ts";

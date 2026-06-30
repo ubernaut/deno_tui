@@ -8,8 +8,8 @@ export type PackageRuntime = "shared" | "terminal" | "browser" | "remote" | "dem
 
 /** Manifest record for a Deno package export. */
 export interface PackageEntrypointManifest {
-  specifier: "." | "./web" | "./remote";
-  path: "./mod.ts" | "./mod.web.ts" | "./mod.remote.ts";
+  specifier: "." | "./web" | "./remote" | "./layout/yoga";
+  path: "./mod.ts" | "./mod.web.ts" | "./mod.remote.ts" | "./src/layout/solvers/yoga.ts";
   runtime: PackageRuntime;
   stability: ApiStabilityTier;
   description: string;
@@ -92,6 +92,15 @@ export const packageEntrypoints = [
     includes: ["remote terminal protocol", "browser transport", "input/resize/ping message types"],
     excludes: ["server-side PTY host", "standalone browser renderer"],
   },
+  {
+    specifier: "./layout/yoga",
+    path: "./src/layout/solvers/yoga.ts",
+    runtime: "shared",
+    stability: "experimental",
+    description: "Optional Yoga-backed Flexbox solver for HTML/CSS-style layout trees.",
+    includes: ["Yoga Flexbox solver", "cell-rect conversion", "text measurement hooks"],
+    excludes: ["default dependency-free layout solver", "CSS parser and markup hydration helpers"],
+  },
 ] as const satisfies readonly PackageEntrypointManifest[];
 
 /** Stability markers for public, experimental, demo, terminal-only, and web-only surfaces. */
@@ -116,6 +125,13 @@ export const apiSurfacePolicies = [
     stability: "experimental",
     public: true,
     description: "Remote terminal bridge API. Protocol and transport details may change while PTY hosting matures.",
+  },
+  {
+    pattern: "src/layout/solvers/yoga.ts",
+    runtime: "shared",
+    stability: "experimental",
+    public: true,
+    description: "Optional Yoga-backed layout solver subpath. Flexbox behavior may evolve with solver integration.",
   },
   {
     pattern: "src/three_ascii/*",

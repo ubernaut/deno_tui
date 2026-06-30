@@ -46,6 +46,8 @@ renderer lab, and demo suite:
   platform/renderer path for shared terminal and web interfaces. The current branch includes `mod.web.ts`,
   `mod.remote.ts`, a Canvas2D web host, a DOM render target, and a GitHub Pages portfolio build for the API Workbench
   under `docs/`.
+- [HTML/CSS-Style Layout](./docs/html-css-layout.md) documents the new markup/CSS authoring path, supported terminal CSS
+  subset, simple solver, optional Yoga solver, and current limitations.
 - The README remains the primary API tour for components, layouts, app primitives, theming, runtime capabilities,
   reactivity, views, examples, and contribution commands.
 
@@ -53,14 +55,16 @@ renderer lab, and demo suite:
 
 `deno.jsonc` now declares the package export map explicitly:
 
-| Import target | Source          | Runtime  | Stability    |
-| ------------- | --------------- | -------- | ------------ |
-| `.`           | `mod.ts`        | terminal | stable       |
-| `./web`       | `mod.web.ts`    | browser  | beta         |
-| `./remote`    | `mod.remote.ts` | remote   | experimental |
+| Import target   | Source                       | Runtime  | Stability    |
+| --------------- | ---------------------------- | -------- | ------------ |
+| `.`             | `mod.ts`                     | terminal | stable       |
+| `./web`         | `mod.web.ts`                 | browser  | beta         |
+| `./remote`      | `mod.remote.ts`              | remote   | experimental |
+| `./layout/yoga` | `src/layout/solvers/yoga.ts` | shared   | experimental |
 
 Use `mod.ts` for full terminal apps, `mod.web.ts` for standalone browser bundles and GitHub Pages demos, and
-`mod.remote.ts` for the hosted terminal/client bridge. The stability manifest is exported as `packageEntrypoints`,
+`mod.remote.ts` for the hosted terminal/client bridge. Use `./layout/yoga` when an app wants the optional Yoga-backed
+Flexbox solver for HTML/CSS-style layout trees. The stability manifest is exported as `packageEntrypoints`,
 `apiSurfacePolicies`, and `packageReleasePolicy` so docs, release tooling, and adopters can inspect the package contract
 without scraping Markdown.
 
@@ -789,6 +793,50 @@ const rects = flexRects(bounds, "row", [
   { id: "main", grow: 1, min: 40 },
 ], 1);
 ```
+
+### HTML/CSS-Style Layout
+
+`parseTuiMarkup()`, `parseCssStylesheet()`, `applyCssCascade()`, and `createMarkupLayout()` provide a first
+renderer-neutral HTML/CSS-style authoring path. The supported subset intentionally targets terminal cells: block/flex
+layout, width/height/min/max sizing, padding, margin, borders, overflow, CSS variables, tag/class/id selectors, child
+and descendant selectors, focus/active/disabled/hover pseudo states, and controller hydration for common controls.
+
+For the full supported subset, output shape, solver notes, and limitations, see
+[HTML/CSS-Style Layout](./docs/html-css-layout.md).
+
+```ts
+import { createMarkupLayout } from "https://deno.land/x/tui@VERSION/mod.ts";
+
+const result = createMarkupLayout({
+  markup: `
+    <window id="main">
+      <div id="toolbar">Tools</div>
+      <scroll-area id="body">Rows and charts</scroll-area>
+    </window>
+  `,
+  css: `
+    window { display: flex; flex-direction: column; width: 100%; height: 100%; }
+    #toolbar { height: 3; }
+    #body { flex: 1; overflow: auto; }
+  `,
+  bounds: { column: 0, row: 0, width: 100, height: 30 },
+});
+
+result.widgets.dispatch({ type: "scroll", id: "body", rows: 3 });
+result.widgets.dispose();
+```
+
+The `widgets` result hydrates common tags such as `button`, `input`, `checkbox`, `slider`, `select`, `radio-group`,
+`textarea`, `tabs`, `tree`, and `scroll-area` into shared controllers with a small renderer-neutral event dispatcher.
+The default solver is dependency-free. The experimental Yoga-backed solver is opt-in:
+
+```ts
+import { createMarkupLayout } from "https://deno.land/x/tui@VERSION/mod.ts";
+import { yogaLayoutSolver } from "https://deno.land/x/tui@VERSION/layout/yoga";
+```
+
+Run `deno task html-css-layout` or `deno task html-css-layout:yoga` to inspect the same markup tree through both
+solvers.
 
 ### Split Panes
 
@@ -2410,43 +2458,44 @@ const preset = findAsciiDemoPreset("mixed-best");
 
 ## Examples
 
-| File                                    | Description                                                  |
-| --------------------------------------- | ------------------------------------------------------------ |
-| `examples/demo.ts`                      | Kitchen-sink demo of all components                          |
-| `examples/calculator.ts`                | Functional calculator built with `GridLayout`                |
-| `examples/layout.ts`                    | Grid layout with draggable, colored buttons                  |
-| `examples/layout_recipe_report.ts`      | Responsive layout recipe report example                      |
-| `examples/app_shell.ts`                 | App primitives, settings-backed routes, commands, and toasts |
-| `examples/command_search_index.ts`      | Scheduler-backed indexed command search demo                 |
-| `examples/dashboard.ts`                 | Dashboard widgets, semantic theme tokens, and key help       |
-| `examples/theme_manifest.ts`            | Serializable theme manifest compiler and diff demo           |
-| `examples/theme_engines.ts`             | Theme engine factory registry and prewarm demo               |
-| `examples/theme_engine_commands.ts`     | Theme engine command surface and catalog demo                |
-| `examples/theme_pipeline.ts`            | Runtime theme transform pipeline and prewarm demo            |
-| `examples/theme_workspace.ts`           | Combined provider, factory, pipeline, and prewarm demo       |
-| `examples/theme_gallery.ts`             | Searchable theme gallery and preview report                  |
-| `examples/theme_resolver.ts`            | Cached theme resolver and renderer lookup demo               |
-| `examples/theme_bindings.ts`            | Grouped component theme binding lifecycle demo               |
-| `examples/worker_pool.ts`               | WorkerPool concurrency example                               |
-| `examples/runtime_workloads.ts`         | Scheduler and worker-pool pressure registry demo             |
-| `examples/action_middleware.ts`         | Action middleware and plugin pipeline example                |
-| `examples/cached_resource.ts`           | Cached async resource loader example                         |
-| `examples/cached_pipeline.ts`           | Cached scheduler-backed data pipeline example                |
-| `examples/data_query.ts`                | Cached async query controller example                        |
-| `examples/form_workflow.ts`             | Form controller, signal binding, validation, and commands    |
-| `examples/table_selection_workflow.ts`  | Data table paging/sorting plus multi-selection commands      |
-| `examples/window_manager_demo.ts`       | Tiling window manager, fullscreen tabs, and file explorer    |
-| `examples/windowing_system_launcher.ts` | File explorer launcher for demos, widgets, and visual apps   |
-| `examples/terminal_command_workflow.ts` | Terminal session planning plus command-surface dispatch      |
-| `examples/three_ascii.ts`               | Interactive 3D ASCII renderer powered by three.js            |
-| `examples/app_plugin_catalog.ts`        | App plugin catalog and Markdown report example               |
-| `examples/adopter_workbench.ts`         | Integrated adopter report across app/runtime/theme/data APIs |
-| `examples/demo_gallery.ts`              | Capability tour across launchers, widgets, renderers, themes |
-| `examples/batteries_included.ts`        | Phase 1-6 readiness report with proof commands               |
-| `app/api_workbench.ts`                  | Interactive API portfolio with resizable windows and themes  |
-| `app/showcase.ts`                       | Full Neon Exodus-style widget and visualization showcase     |
-| `app/neon_exodus.ts`                    | OpenTUI/web Neon Exodus demo suite rebuilt on this TUI stack |
-| `app/main.ts`                           | Live system monitor dashboard with selectable panels         |
+| File                                    | Description                                                    |
+| --------------------------------------- | -------------------------------------------------------------- |
+| `examples/demo.ts`                      | Kitchen-sink demo of all components                            |
+| `examples/calculator.ts`                | Functional calculator built with `GridLayout`                  |
+| `examples/layout.ts`                    | Grid layout with draggable, colored buttons                    |
+| `examples/layout_recipe_report.ts`      | Responsive layout recipe report example                        |
+| `examples/html_css_layout.ts`           | HTML/CSS-style layout tree report with simple and Yoga solvers |
+| `examples/app_shell.ts`                 | App primitives, settings-backed routes, commands, and toasts   |
+| `examples/command_search_index.ts`      | Scheduler-backed indexed command search demo                   |
+| `examples/dashboard.ts`                 | Dashboard widgets, semantic theme tokens, and key help         |
+| `examples/theme_manifest.ts`            | Serializable theme manifest compiler and diff demo             |
+| `examples/theme_engines.ts`             | Theme engine factory registry and prewarm demo                 |
+| `examples/theme_engine_commands.ts`     | Theme engine command surface and catalog demo                  |
+| `examples/theme_pipeline.ts`            | Runtime theme transform pipeline and prewarm demo              |
+| `examples/theme_workspace.ts`           | Combined provider, factory, pipeline, and prewarm demo         |
+| `examples/theme_gallery.ts`             | Searchable theme gallery and preview report                    |
+| `examples/theme_resolver.ts`            | Cached theme resolver and renderer lookup demo                 |
+| `examples/theme_bindings.ts`            | Grouped component theme binding lifecycle demo                 |
+| `examples/worker_pool.ts`               | WorkerPool concurrency example                                 |
+| `examples/runtime_workloads.ts`         | Scheduler and worker-pool pressure registry demo               |
+| `examples/action_middleware.ts`         | Action middleware and plugin pipeline example                  |
+| `examples/cached_resource.ts`           | Cached async resource loader example                           |
+| `examples/cached_pipeline.ts`           | Cached scheduler-backed data pipeline example                  |
+| `examples/data_query.ts`                | Cached async query controller example                          |
+| `examples/form_workflow.ts`             | Form controller, signal binding, validation, and commands      |
+| `examples/table_selection_workflow.ts`  | Data table paging/sorting plus multi-selection commands        |
+| `examples/window_manager_demo.ts`       | Tiling window manager, fullscreen tabs, and file explorer      |
+| `examples/windowing_system_launcher.ts` | File explorer launcher for demos, widgets, and visual apps     |
+| `examples/terminal_command_workflow.ts` | Terminal session planning plus command-surface dispatch        |
+| `examples/three_ascii.ts`               | Interactive 3D ASCII renderer powered by three.js              |
+| `examples/app_plugin_catalog.ts`        | App plugin catalog and Markdown report example                 |
+| `examples/adopter_workbench.ts`         | Integrated adopter report across app/runtime/theme/data APIs   |
+| `examples/demo_gallery.ts`              | Capability tour across launchers, widgets, renderers, themes   |
+| `examples/batteries_included.ts`        | Phase 1-6 readiness report with proof commands                 |
+| `app/api_workbench.ts`                  | Interactive API portfolio with resizable windows and themes    |
+| `app/showcase.ts`                       | Full Neon Exodus-style widget and visualization showcase       |
+| `app/neon_exodus.ts`                    | OpenTUI/web Neon Exodus demo suite rebuilt on this TUI stack   |
+| `app/main.ts`                           | Live system monitor dashboard with selectable panels           |
 
 Run the theme manifest and engine demos with:
 

@@ -3115,6 +3115,1030 @@ var ComboBoxController = class {
   }
 };
 
+// src/components/input.ts
+var InputController = class {
+  text;
+  cursorPosition;
+  validator;
+  password;
+  placeholder;
+  multiCodePointSupport;
+  #ownsText;
+  #ownsCursorPosition;
+  #ownsValidator;
+  #ownsPassword;
+  #ownsPlaceholder;
+  #ownsMultiCodePointSupport;
+  #onChange;
+  #onSubmit;
+  #syncCursor = () => {
+    this.cursorPosition.value = clamp(this.cursorPosition.peek(), 0, this.text.peek().length);
+  };
+  constructor(options = {}) {
+    this.#ownsText = !(options.text instanceof Signal);
+    this.#ownsCursorPosition = !(options.cursorPosition instanceof Signal);
+    this.#ownsValidator = !(options.validator instanceof Signal);
+    this.#ownsPassword = !(options.password instanceof Signal);
+    this.#ownsPlaceholder = !(options.placeholder instanceof Signal);
+    this.#ownsMultiCodePointSupport = !(options.multiCodePointSupport instanceof Signal);
+    this.text = signalify(options.text ?? "");
+    this.cursorPosition = signalify(options.cursorPosition ?? 0);
+    this.validator = signalify(options.validator);
+    this.password = signalify(options.password ?? false);
+    this.placeholder = signalify(options.placeholder);
+    this.multiCodePointSupport = signalify(options.multiCodePointSupport ?? false);
+    this.#onChange = options.onChange;
+    this.#onSubmit = options.onSubmit;
+    this.text.subscribe(this.#syncCursor);
+    this.cursorPosition.subscribe(this.#syncCursor);
+    this.#syncCursor();
+  }
+  setText(value, cursorPosition = value.length) {
+    this.text.value = value;
+    this.cursorPosition.value = clamp(cursorPosition, 0, value.length);
+    void this.#onChange?.(this.text.peek());
+    return this.text.peek();
+  }
+  clear() {
+    return this.setText("", 0);
+  }
+  moveCursor(offset) {
+    return this.setCursorPosition(this.cursorPosition.peek() + offset);
+  }
+  setCursorPosition(position) {
+    this.cursorPosition.value = clamp(position, 0, this.text.peek().length);
+    return this.cursorPosition.peek();
+  }
+  home() {
+    return this.setCursorPosition(0);
+  }
+  end() {
+    return this.setCursorPosition(this.text.peek().length);
+  }
+  insert(character) {
+    if (!this.accepts(character)) return false;
+    const cursorPosition = this.cursorPosition.peek();
+    const value = insertAt(this.text.peek(), cursorPosition, character);
+    this.setText(value, cursorPosition + character.length);
+    return true;
+  }
+  backspace() {
+    const cursorPosition = this.cursorPosition.peek();
+    if (cursorPosition === 0) return false;
+    const value = this.text.peek();
+    this.setText(value.slice(0, cursorPosition - 1) + value.slice(cursorPosition), cursorPosition - 1);
+    return true;
+  }
+  delete() {
+    const cursorPosition = this.cursorPosition.peek();
+    const value = this.text.peek();
+    if (cursorPosition >= value.length) return false;
+    this.setText(value.slice(0, cursorPosition) + value.slice(cursorPosition + 1), cursorPosition);
+    return true;
+  }
+  submit() {
+    const value = this.text.peek();
+    void this.#onSubmit?.(value);
+    return value;
+  }
+  handleKeyPress({ key, ctrl, meta }) {
+    if (ctrl || meta) return "ignored";
+    switch (key) {
+      case "return":
+        this.submit();
+        return "submitted";
+      case "backspace":
+        return this.backspace() ? "changed" : "ignored";
+      case "delete":
+        return this.delete() ? "changed" : "ignored";
+      case "left":
+        this.moveCursor(-1);
+        return "moved";
+      case "right":
+        this.moveCursor(1);
+        return "moved";
+      case "home":
+        this.home();
+        return "moved";
+      case "end":
+        this.end();
+        return "moved";
+      case "space":
+        return this.insert(" ") ? "changed" : "ignored";
+      case "tab":
+        return this.insert("	") ? "changed" : "ignored";
+      default:
+        if (key.length > 1) return "ignored";
+        return this.insert(key) ? "changed" : "ignored";
+    }
+  }
+  accepts(character) {
+    const validator = this.validator.peek();
+    if (!validator) return true;
+    validator.lastIndex = 0;
+    return validator.test(character);
+  }
+  inspect() {
+    const text = this.text.peek();
+    const validator = this.validator.peek();
+    if (validator) validator.lastIndex = 0;
+    return {
+      text,
+      cursorPosition: this.cursorPosition.peek(),
+      length: text.length,
+      empty: text.length === 0,
+      password: this.password.peek(),
+      placeholder: this.placeholder.peek(),
+      valid: validator ? [...text].every((character) => {
+        validator.lastIndex = 0;
+        return validator.test(character);
+      }) : true
+    };
+  }
+  dispose() {
+    this.text.unsubscribe(this.#syncCursor);
+    this.cursorPosition.unsubscribe(this.#syncCursor);
+    if (this.#ownsText) this.text.dispose();
+    if (this.#ownsCursorPosition) this.cursorPosition.dispose();
+    if (this.#ownsValidator) this.validator.dispose();
+    if (this.#ownsPassword) this.password.dispose();
+    if (this.#ownsPlaceholder) this.placeholder.dispose();
+    if (this.#ownsMultiCodePointSupport) this.multiCodePointSupport.dispose();
+  }
+};
+
+// src/components/radio_group.ts
+function visibleRadioOptions(options, activeIndex, height) {
+  const safeHeight = Math.max(0, height);
+  if (safeHeight === 0) return [];
+  const active2 = clampRadioIndex(options, activeIndex);
+  const offset = Math.max(0, Math.min(active2 - Math.floor(safeHeight / 2), Math.max(0, options.length - safeHeight)));
+  return options.slice(offset, offset + safeHeight).map((option, index) => {
+    const optionIndex = offset + index;
+    return {
+      option,
+      index: optionIndex,
+      active: optionIndex === active2 && !option.disabled
+    };
+  });
+}
+function clampRadioIndex(options, activeIndex) {
+  if (options.length === 0) return 0;
+  const clamped = Math.max(0, Math.min(activeIndex, options.length - 1));
+  if (!options[clamped]?.disabled) return clamped;
+  const next = shiftRadioIndex(options, clamped, 1);
+  if (!options[next]?.disabled) return next;
+  const previous = shiftRadioIndex(options, clamped, -1);
+  return options[previous]?.disabled ? clamped : previous;
+}
+function shiftRadioIndex(options, activeIndex, delta) {
+  if (options.length === 0) return 0;
+  let next = Math.max(0, Math.min(activeIndex, options.length - 1));
+  for (let count = 0; count < options.length; count += 1) {
+    next = Math.max(0, Math.min(options.length - 1, next + delta));
+    if (!options[next]?.disabled) return next;
+    if (next === 0 || next === options.length - 1) break;
+  }
+  return activeIndex;
+}
+function optionForValue(options, value) {
+  return options.find((option) => option.value === value);
+}
+var RadioGroupController = class {
+  options;
+  selectedValue;
+  activeIndex;
+  #ownsOptions;
+  #ownsSelectedValue;
+  #ownsActiveIndex;
+  #onChange;
+  constructor(options) {
+    this.#ownsOptions = !(options.options instanceof Signal);
+    this.#ownsSelectedValue = !(options.selectedValue instanceof Signal);
+    this.#ownsActiveIndex = !(options.activeIndex instanceof Signal);
+    this.options = signalify(options.options, { deepObserve: true });
+    this.selectedValue = options.selectedValue instanceof Signal ? options.selectedValue : signalify(options.selectedValue);
+    this.activeIndex = signalify(options.activeIndex ?? 0);
+    this.#onChange = options.onChange;
+    this.activeIndex.value = clampRadioIndex(this.options.peek(), this.activeIndex.peek());
+  }
+  active() {
+    const option = this.options.peek()[clampRadioIndex(this.options.peek(), this.activeIndex.peek())];
+    return option?.disabled ? void 0 : option;
+  }
+  selected() {
+    return optionForValue(this.options.peek(), this.selectedValue.peek());
+  }
+  move(delta) {
+    return this.setActive(shiftRadioIndex(this.options.peek(), this.activeIndex.peek(), delta));
+  }
+  first() {
+    return this.setActive(0);
+  }
+  last() {
+    return this.setActive(this.options.peek().length - 1);
+  }
+  setActive(index) {
+    const next = clampRadioIndex(this.options.peek(), index);
+    this.activeIndex.value = next;
+    return this.active();
+  }
+  selectActive() {
+    const option = this.active();
+    if (option) {
+      this.selectedValue.value = option.value;
+      void this.#onChange?.(option);
+    }
+    return option;
+  }
+  selectIndex(index) {
+    this.activeIndex.value = clampRadioIndex(this.options.peek(), index);
+    return this.selectActive();
+  }
+  selectValue(value) {
+    const index = this.options.peek().findIndex((option2) => option2.value === value);
+    if (index < 0) return void 0;
+    const option = this.options.peek()[index];
+    if (!option || option.disabled) return void 0;
+    this.activeIndex.value = index;
+    this.selectedValue.value = option.value;
+    void this.#onChange?.(option);
+    return option;
+  }
+  handleMousePress(event, groupRow = 0, height = this.options.peek().length) {
+    if (event.ctrl || event.meta || event.shift) return void 0;
+    const rowIndex = stackedRowIndexAt(event.y, groupRow, Math.max(0, height));
+    if (rowIndex === void 0) return void 0;
+    const visible = visibleRadioOptions(this.options.peek(), this.activeIndex.peek(), height);
+    const row = visible[rowIndex];
+    if (!row || row.option.disabled) return void 0;
+    return this.selectIndex(row.index);
+  }
+  handleKeyPress({ key, ctrl, meta, shift }) {
+    if (ctrl || meta || shift) return;
+    if (key === "up") {
+      this.move(-1);
+    } else if (key === "down") {
+      this.move(1);
+    } else if (key === "home") {
+      this.first();
+    } else if (key === "end") {
+      this.last();
+    } else if (key === "return" || key === "space") {
+      this.selectActive();
+    }
+    this.activeIndex.value = clampRadioIndex(this.options.peek(), this.activeIndex.peek());
+  }
+  inspect() {
+    const options = this.options.peek().map((option) => ({ ...option }));
+    const activeIndex = clampRadioIndex(options, this.activeIndex.peek());
+    const active2 = options[activeIndex];
+    const selected = optionForValue(options, this.selectedValue.peek());
+    return {
+      options,
+      optionCount: options.length,
+      activeIndex,
+      active: active2 && !active2.disabled ? { ...active2 } : void 0,
+      selectedValue: this.selectedValue.peek(),
+      selected: selected ? { ...selected } : void 0,
+      empty: options.length === 0
+    };
+  }
+  dispose() {
+    if (this.#ownsOptions) this.options.dispose();
+    if (this.#ownsSelectedValue) this.selectedValue.dispose();
+    if (this.#ownsActiveIndex) this.activeIndex.dispose();
+  }
+};
+
+// src/components/scroll_area.ts
+function maxScrollOffset(contentWidth, contentHeight, viewportWidth, viewportHeight) {
+  return maxViewportOffset(contentWidth, contentHeight, viewportWidth, viewportHeight);
+}
+function clampScrollOffset(offset, maxOffset) {
+  return clampViewportOffset(offset, maxOffset);
+}
+function scrollOffsetBy(offset, maxOffset, columns, rows2) {
+  return viewportOffsetBy(offset, maxOffset, columns, rows2);
+}
+function scrollbarThumb(contentLength, viewportLength, offset) {
+  return viewportThumb(contentLength, viewportLength, offset);
+}
+function scrollbarGlyph(row, thumb) {
+  return viewportThumbGlyph(row, thumb);
+}
+function scrollbarOffsetForPointer(contentLength, viewportLength, pointerIndex) {
+  const content = normalizedScrollDimension(contentLength);
+  const viewport = normalizedScrollDimension(viewportLength);
+  const maxOffset = Math.max(0, content - viewport);
+  if (maxOffset === 0) return 0;
+  const trackLength = Math.max(1, viewport);
+  const local = Math.max(0, Math.min(trackLength - 1, Math.floor(pointerIndex)));
+  const ratio = trackLength <= 1 ? 0 : local / (trackLength - 1);
+  return Math.max(0, Math.min(maxOffset, Math.round(maxOffset * ratio)));
+}
+var ScrollAreaController = class {
+  contentWidth;
+  contentHeight;
+  viewportWidth;
+  viewportHeight;
+  offset;
+  showScrollbar;
+  #ownsContentWidth;
+  #ownsContentHeight;
+  #ownsViewportWidth;
+  #ownsViewportHeight;
+  #ownsOffset;
+  #ownsShowScrollbar;
+  constructor(options = {}) {
+    this.#ownsContentWidth = !(options.contentWidth instanceof Signal);
+    this.#ownsContentHeight = !(options.contentHeight instanceof Signal);
+    this.#ownsViewportWidth = !(options.viewportWidth instanceof Signal);
+    this.#ownsViewportHeight = !(options.viewportHeight instanceof Signal);
+    this.#ownsOffset = !(options.offset instanceof Signal);
+    this.#ownsShowScrollbar = !(options.showScrollbar instanceof Signal);
+    this.contentWidth = signalify(options.contentWidth ?? 0);
+    this.contentHeight = signalify(options.contentHeight ?? 0);
+    this.viewportWidth = signalify(options.viewportWidth ?? 0);
+    this.viewportHeight = signalify(options.viewportHeight ?? 0);
+    this.offset = signalify(options.offset ?? { columns: 0, rows: 0 }, { deepObserve: true });
+    this.showScrollbar = signalify(options.showScrollbar ?? true);
+    this.#clampOffset();
+  }
+  maxOffset() {
+    return maxScrollOffset(
+      this.contentWidth.peek(),
+      this.contentHeight.peek(),
+      this.viewportWidth.peek(),
+      this.viewportHeight.peek()
+    );
+  }
+  scrollBy(columns, rows2) {
+    return this.setOffset(scrollOffsetBy(this.offset.peek(), this.maxOffset(), columns, rows2));
+  }
+  scrollTo(columns, rows2) {
+    return this.setOffset(clampScrollOffset({ columns, rows: rows2 }, this.maxOffset()));
+  }
+  setContentSize(width, height) {
+    this.contentWidth.value = normalizedScrollDimension(width);
+    this.contentHeight.value = normalizedScrollDimension(height);
+    return this.#clampOffset();
+  }
+  setViewportSize(width, height) {
+    this.viewportWidth.value = normalizedScrollDimension(width);
+    this.viewportHeight.value = normalizedScrollDimension(height);
+    return this.#clampOffset();
+  }
+  setScrollbarVisible(visible) {
+    this.showScrollbar.value = visible;
+  }
+  inspect() {
+    return {
+      ...inspectViewport(
+        this.contentWidth.peek(),
+        this.contentHeight.peek(),
+        this.viewportWidth.peek(),
+        this.viewportHeight.peek(),
+        this.offset.peek()
+      ),
+      showScrollbar: this.showScrollbar.peek()
+    };
+  }
+  dispose() {
+    if (this.#ownsContentWidth) this.contentWidth.dispose();
+    if (this.#ownsContentHeight) this.contentHeight.dispose();
+    if (this.#ownsViewportWidth) this.viewportWidth.dispose();
+    if (this.#ownsViewportHeight) this.viewportHeight.dispose();
+    if (this.#ownsOffset) this.offset.dispose();
+    if (this.#ownsShowScrollbar) this.showScrollbar.dispose();
+  }
+  setOffset(offset) {
+    this.offset.value = offset;
+    return offset;
+  }
+  #clampOffset() {
+    return this.setOffset(clampScrollOffset(this.offset.peek(), this.maxOffset()));
+  }
+};
+function normalizedScrollDimension(value) {
+  return Math.max(0, Math.floor(Number.isFinite(value) ? value : 0));
+}
+
+// src/components/slider.ts
+function clampSliderValue(value, min2, max2) {
+  return clamp(value, Math.min(min2, max2), Math.max(min2, max2));
+}
+function sliderValueBy(value, min2, max2, step, delta) {
+  return clampSliderValue(value + step * delta, min2, max2);
+}
+function snapSliderValue(value, min2, max2, step) {
+  const rangeDirection = Math.sign(max2 - min2) || 1;
+  const safeStep = Math.max(Number.EPSILON, Math.abs(step)) * rangeDirection;
+  const snapped = min2 + Math.round((value - min2) / safeStep) * safeStep;
+  return clampSliderValue(snapped, min2, max2);
+}
+function sliderValueAt(track, point, min2, max2, step, orientation) {
+  const span = Math.max(1, orientation === "horizontal" ? track.width - 1 : track.height - 1);
+  const offset = orientation === "horizontal" ? point.column - track.column : point.row - track.row;
+  const normalizedValue = clamp(offset, 0, span) / span;
+  return snapSliderValue(min2 + (max2 - min2) * normalizedValue, min2, max2, step);
+}
+function sliderThumbRectangle(track, value, min2, max2, orientation, adjustThumbSize = false) {
+  const range = Math.max(1, Math.abs(max2 - min2));
+  const normalizedValue = normalize(clampSliderValue(value, min2, max2), min2, max2);
+  if (orientation === "horizontal") {
+    const thumbSize2 = adjustThumbSize ? Math.max(1, Math.round(track.width / range)) : 1;
+    return {
+      column: Math.min(
+        track.column + Math.max(0, track.width - thumbSize2),
+        track.column + Math.round(Math.max(0, track.width - 1) * normalizedValue)
+      ),
+      row: track.row,
+      width: thumbSize2,
+      height: track.height
+    };
+  }
+  const thumbSize = adjustThumbSize ? Math.max(1, Math.round(track.height / range)) : 1;
+  return {
+    column: track.column,
+    row: Math.min(
+      track.row + Math.max(0, track.height - thumbSize),
+      track.row + Math.round(Math.max(0, track.height - 1) * normalizedValue)
+    ),
+    width: track.width,
+    height: thumbSize
+  };
+}
+var SliderController = class {
+  min;
+  max;
+  step;
+  value;
+  adjustThumbSize;
+  orientation;
+  #ownsMin;
+  #ownsMax;
+  #ownsStep;
+  #ownsValue;
+  #ownsAdjustThumbSize;
+  #ownsOrientation;
+  #onChange;
+  constructor(options) {
+    this.#ownsMin = !(options.min instanceof Signal);
+    this.#ownsMax = !(options.max instanceof Signal);
+    this.#ownsStep = !(options.step instanceof Signal);
+    this.#ownsValue = !(options.value instanceof Signal);
+    this.#ownsAdjustThumbSize = !(options.adjustThumbSize instanceof Signal);
+    this.#ownsOrientation = !(options.orientation instanceof Signal);
+    this.min = signalify(options.min);
+    this.max = signalify(options.max);
+    this.step = signalify(options.step);
+    this.value = signalify(options.value);
+    this.adjustThumbSize = signalify(options.adjustThumbSize ?? false);
+    this.orientation = signalify(options.orientation);
+    this.#onChange = options.onChange;
+    this.value.value = clampSliderValue(this.value.peek(), this.min.peek(), this.max.peek());
+  }
+  setValue(value) {
+    const next = clampSliderValue(value, this.min.peek(), this.max.peek());
+    this.value.value = next;
+    void this.#onChange?.(next);
+    return next;
+  }
+  increment(steps = 1) {
+    return this.setValue(sliderValueBy(this.value.peek(), this.min.peek(), this.max.peek(), this.step.peek(), steps));
+  }
+  decrement(steps = 1) {
+    return this.increment(-steps);
+  }
+  setMin() {
+    return this.setValue(this.min.peek());
+  }
+  setMax() {
+    return this.setValue(this.max.peek());
+  }
+  handleKeyPress({ key, ctrl, meta, shift }) {
+    if (ctrl || meta || shift) return;
+    if (key === "up" || key === "right") {
+      this.increment();
+    } else if (key === "down" || key === "left") {
+      this.decrement();
+    } else if (key === "home") {
+      this.setMin();
+    } else if (key === "end") {
+      this.setMax();
+    }
+  }
+  handleDrag(movementX, movementY) {
+    const delta = this.orientation.peek() === "horizontal" ? movementX : movementY;
+    return this.increment(delta);
+  }
+  handleScroll(scroll) {
+    return this.increment(scroll);
+  }
+  handlePointer(track, column, row) {
+    return this.setValue(sliderValueAt(
+      track,
+      { column, row },
+      this.min.peek(),
+      this.max.peek(),
+      this.step.peek(),
+      this.orientation.peek()
+    ));
+  }
+  thumbRectangle(track) {
+    return sliderThumbRectangle(
+      track,
+      this.value.peek(),
+      this.min.peek(),
+      this.max.peek(),
+      this.orientation.peek(),
+      this.adjustThumbSize.peek()
+    );
+  }
+  inspect() {
+    const min2 = this.min.peek();
+    const max2 = this.max.peek();
+    const value = clampSliderValue(this.value.peek(), min2, max2);
+    return {
+      min: min2,
+      max: max2,
+      step: this.step.peek(),
+      value,
+      normalizedValue: normalize(value, min2, max2),
+      orientation: this.orientation.peek(),
+      adjustThumbSize: this.adjustThumbSize.peek(),
+      range: Math.abs(max2 - min2)
+    };
+  }
+  dispose() {
+    if (this.#ownsMin) this.min.dispose();
+    if (this.#ownsMax) this.max.dispose();
+    if (this.#ownsStep) this.step.dispose();
+    if (this.#ownsValue) this.value.dispose();
+    if (this.#ownsAdjustThumbSize) this.adjustThumbSize.dispose();
+    if (this.#ownsOrientation) this.orientation.dispose();
+  }
+};
+
+// src/components/textbox.ts
+var TextLineCache = class {
+  #text = "";
+  #lines = [""];
+  lines(text) {
+    if (text !== this.#text) {
+      this.#text = text;
+      this.#lines = text.split("\n");
+    }
+    return this.#lines;
+  }
+  inspect() {
+    return {
+      text: this.#text,
+      lineCount: this.#lines.length
+    };
+  }
+};
+var TextBoxController = class {
+  text;
+  cursorPosition;
+  validator;
+  multiCodePointSupport;
+  lineHighlighting;
+  lineNumbering;
+  wordWrap;
+  lines;
+  #textLineCache = new TextLineCache();
+  #ownsText;
+  #ownsCursorPosition;
+  #ownsValidator;
+  #ownsMultiCodePointSupport;
+  #ownsLineHighlighting;
+  #ownsLineNumbering;
+  #ownsWordWrap;
+  #onChange;
+  #syncCursor = () => this.clampCursor();
+  constructor(options = {}) {
+    this.#ownsText = !(options.text instanceof Signal);
+    this.#ownsCursorPosition = !(options.cursorPosition instanceof Signal);
+    this.#ownsValidator = !(options.validator instanceof Signal);
+    this.#ownsMultiCodePointSupport = !(options.multiCodePointSupport instanceof Signal);
+    this.#ownsLineHighlighting = !(options.lineHighlighting instanceof Signal);
+    this.#ownsLineNumbering = !(options.lineNumbering instanceof Signal);
+    this.#ownsWordWrap = !(options.wordWrap instanceof Signal);
+    this.text = signalify(options.text ?? "");
+    this.cursorPosition = signalify(options.cursorPosition ?? { x: 0, y: 0 }, { deepObserve: true });
+    this.validator = signalify(options.validator);
+    this.multiCodePointSupport = signalify(options.multiCodePointSupport ?? false);
+    this.lineHighlighting = signalify(options.lineHighlighting ?? false);
+    this.lineNumbering = signalify(options.lineNumbering ?? false);
+    this.wordWrap = signalify(options.wordWrap ?? false);
+    this.#onChange = options.onChange;
+    this.lines = new Computed(() => this.#textLineCache.lines(this.text.value));
+    this.text.subscribe(this.#syncCursor);
+    this.cursorPosition.subscribe(this.#syncCursor);
+    this.#syncCursor();
+  }
+  setText(value, cursorPosition = this.endPosition(value)) {
+    this.text.value = value;
+    this.setCursorPosition(cursorPosition);
+    void this.#onChange?.(this.text.peek());
+    return this.text.peek();
+  }
+  clear() {
+    return this.setText("", { x: 0, y: 0 });
+  }
+  setCursorPosition(position) {
+    const cursor = this.cursorPosition.peek();
+    cursor.y = position.y;
+    cursor.x = position.x;
+    this.clampCursor();
+    this.cursorPosition.forceUpdateValue = true;
+    this.cursorPosition.value = cursor;
+    return { ...this.cursorPosition.peek() };
+  }
+  moveCursor(delta) {
+    const cursor = this.cursorPosition.peek();
+    return this.setCursorPosition({
+      x: cursor.x + (delta.x ?? 0),
+      y: cursor.y + (delta.y ?? 0)
+    });
+  }
+  home() {
+    return this.setCursorPosition({ ...this.cursorPosition.peek(), x: 0 });
+  }
+  end() {
+    const cursor = this.cursorPosition.peek();
+    return this.setCursorPosition({
+      x: this.currentLines()[cursor.y]?.length ?? 0,
+      y: cursor.y
+    });
+  }
+  insert(character) {
+    if (!this.accepts(character)) return false;
+    const cursor = this.cursorPosition.peek();
+    const lines = [...this.currentLines()];
+    const line = lines[cursor.y] ?? "";
+    lines[cursor.y] = insertAt(line, cursor.x, character);
+    this.setText(lines.join("\n"), { x: cursor.x + character.length, y: cursor.y });
+    return true;
+  }
+  newline() {
+    const cursor = this.cursorPosition.peek();
+    const lines = [...this.currentLines()];
+    const line = lines[cursor.y] ?? "";
+    lines[cursor.y] = line.slice(0, cursor.x);
+    lines.splice(cursor.y + 1, 0, line.slice(cursor.x));
+    this.setText(lines.join("\n"), { x: 0, y: cursor.y + 1 });
+    return true;
+  }
+  backspace() {
+    const cursor = this.cursorPosition.peek();
+    const lines = [...this.currentLines()];
+    const line = lines[cursor.y] ?? "";
+    if (cursor.x === 0) {
+      if (cursor.y === 0) return false;
+      const previous = lines[cursor.y - 1] ?? "";
+      lines[cursor.y - 1] = previous + line;
+      lines.splice(cursor.y, 1);
+      this.setText(lines.join("\n"), { x: previous.length, y: cursor.y - 1 });
+      return true;
+    }
+    lines[cursor.y] = line.slice(0, cursor.x - 1) + line.slice(cursor.x);
+    this.setText(lines.join("\n"), { x: cursor.x - 1, y: cursor.y });
+    return true;
+  }
+  delete() {
+    const cursor = this.cursorPosition.peek();
+    const lines = [...this.currentLines()];
+    const line = lines[cursor.y] ?? "";
+    if (cursor.x < line.length) {
+      lines[cursor.y] = line.slice(0, cursor.x) + line.slice(cursor.x + 1);
+      this.setText(lines.join("\n"), cursor);
+      return true;
+    }
+    if (lines.length - 1 <= cursor.y) return false;
+    lines[cursor.y] = line + (lines[cursor.y + 1] ?? "");
+    lines.splice(cursor.y + 1, 1);
+    this.setText(lines.join("\n"), cursor);
+    return true;
+  }
+  handleKeyPress({ key, ctrl, meta }) {
+    if (ctrl || meta) return "ignored";
+    switch (key) {
+      case "left":
+        this.moveCursor({ x: -1 });
+        return "moved";
+      case "right":
+        this.moveCursor({ x: 1 });
+        return "moved";
+      case "up":
+        this.moveCursor({ y: -1 });
+        return "moved";
+      case "down":
+        this.moveCursor({ y: 1 });
+        return "moved";
+      case "home":
+        this.home();
+        return "moved";
+      case "end":
+        this.end();
+        return "moved";
+      case "backspace":
+        return this.backspace() ? "changed" : "ignored";
+      case "delete":
+        return this.delete() ? "changed" : "ignored";
+      case "return":
+        return this.newline() ? "changed" : "ignored";
+      case "space":
+        return this.insert(" ") ? "changed" : "ignored";
+      case "tab":
+        return this.insert("	") ? "changed" : "ignored";
+      default:
+        if (key.length > 1) return "ignored";
+        return this.insert(key) ? "changed" : "ignored";
+    }
+  }
+  accepts(character) {
+    const validator = this.validator.peek();
+    if (!validator) return true;
+    validator.lastIndex = 0;
+    return validator.test(character);
+  }
+  inspect() {
+    const text = this.text.peek();
+    const lines = this.currentLines();
+    const validator = this.validator.peek();
+    return {
+      text,
+      lines,
+      lineCount: lines.length,
+      cursorPosition: { ...this.cursorPosition.peek() },
+      currentLine: lines[this.cursorPosition.peek().y] ?? "",
+      empty: text.length === 0,
+      valid: validator ? [...text].every((character) => {
+        if (character === "\n") return true;
+        validator.lastIndex = 0;
+        return validator.test(character);
+      }) : true,
+      lineHighlighting: this.lineHighlighting.peek(),
+      lineNumbering: this.lineNumbering.peek(),
+      wordWrap: this.wordWrap.peek()
+    };
+  }
+  dispose() {
+    this.text.unsubscribe(this.#syncCursor);
+    this.cursorPosition.unsubscribe(this.#syncCursor);
+    try {
+      this.lines.dispose();
+    } catch {
+    }
+    if (this.#ownsText) this.text.dispose();
+    if (this.#ownsCursorPosition) this.cursorPosition.dispose();
+    if (this.#ownsValidator) this.validator.dispose();
+    if (this.#ownsMultiCodePointSupport) this.multiCodePointSupport.dispose();
+    if (this.#ownsLineHighlighting) this.lineHighlighting.dispose();
+    if (this.#ownsLineNumbering) this.lineNumbering.dispose();
+    if (this.#ownsWordWrap) this.wordWrap.dispose();
+  }
+  clampCursor() {
+    const cursor = this.cursorPosition.peek();
+    const lines = this.currentLines();
+    cursor.y = clamp(cursor.y, 0, Math.max(lines.length - 1, 0));
+    cursor.x = clamp(cursor.x, 0, lines[cursor.y]?.length ?? 0);
+  }
+  currentLines() {
+    return this.#textLineCache.lines(this.text.peek());
+  }
+  endPosition(value) {
+    const lines = this.#textLineCache.lines(value);
+    const y = Math.max(lines.length - 1, 0);
+    return { x: lines[y]?.length ?? 0, y };
+  }
+};
+function wrapTextBoxLines(lines, width, options = {}) {
+  const visual = [];
+  const safeWidth = Math.max(1, Math.floor(width));
+  const wordWrap = options.wordWrap ?? true;
+  for (const [lineIndex, line] of lines.entries()) {
+    if (!wordWrap || line.length <= safeWidth) {
+      visual.push({
+        lineIndex,
+        startColumn: 0,
+        endColumn: line.length,
+        text: cropToWidth(line.replaceAll("	", " "), safeWidth),
+        continuation: false
+      });
+      continue;
+    }
+    if (line.length === 0) {
+      visual.push({ lineIndex, startColumn: 0, endColumn: 0, text: "", continuation: false });
+      continue;
+    }
+    let startColumn = 0;
+    let continuation = false;
+    while (startColumn < line.length) {
+      const remaining = line.slice(startColumn);
+      if (remaining.length <= safeWidth) {
+        visual.push({
+          lineIndex,
+          startColumn,
+          endColumn: line.length,
+          text: remaining.replaceAll("	", " "),
+          continuation
+        });
+        break;
+      }
+      const slice = line.slice(startColumn, startColumn + safeWidth);
+      const space = slice.lastIndexOf(" ");
+      const endColumn = space > 0 ? startColumn + space : startColumn + safeWidth;
+      visual.push({
+        lineIndex,
+        startColumn,
+        endColumn,
+        text: line.slice(startColumn, endColumn).replaceAll("	", " "),
+        continuation
+      });
+      startColumn = space > 0 ? endColumn + 1 : endColumn;
+      while (line[startColumn] === " ") startColumn += 1;
+      continuation = true;
+    }
+  }
+  return visual.length > 0 ? visual : [{ lineIndex: 0, startColumn: 0, endColumn: 0, text: "", continuation: false }];
+}
+
+// src/components/tree.ts
+function flattenTreeRows(nodes, depth = 0, rows2 = []) {
+  for (const node of nodes) {
+    const hasChildren = Boolean(node.children?.length);
+    const expanded = Boolean(node.expanded);
+    const marker = hasChildren ? expanded ? "\u25BE" : "\u25B8" : " ";
+    const index = rows2.length;
+    const text = `${"  ".repeat(depth)}${marker} ${node.label}`;
+    rows2.push({
+      id: node.id,
+      label: node.label,
+      depth,
+      index,
+      hasChildren,
+      expanded,
+      node,
+      text
+    });
+    if (hasChildren && expanded) {
+      flattenTreeRows(node.children, depth + 1, rows2);
+    }
+  }
+  return rows2;
+}
+function inspectTreeRow(row) {
+  return {
+    id: row.id,
+    label: row.label,
+    depth: row.depth,
+    index: row.index,
+    hasChildren: row.hasChildren,
+    expanded: row.expanded,
+    text: row.text
+  };
+}
+var TreeController = class {
+  nodes;
+  selectedIndex;
+  #ownsNodes;
+  #ownsSelectedIndex;
+  #onSelect;
+  #onToggle;
+  #syncSelection = () => {
+    this.selectedIndex.value = clampSelectionIndex(this.visibleRows().length, this.selectedIndex.peek());
+  };
+  constructor(options) {
+    this.#ownsNodes = !(options.nodes instanceof Signal);
+    this.#ownsSelectedIndex = !(options.selectedIndex instanceof Signal);
+    this.nodes = signalify(options.nodes, { deepObserve: true });
+    this.selectedIndex = signalify(options.selectedIndex ?? 0);
+    this.#onSelect = options.onSelect;
+    this.#onToggle = options.onToggle;
+    this.nodes.subscribe(this.#syncSelection);
+    this.#syncSelection();
+  }
+  visibleRows() {
+    return flattenTreeRows(this.nodes.peek());
+  }
+  rowTexts() {
+    return this.visibleRows().map((row) => row.text);
+  }
+  visible(height = this.visibleRows().length) {
+    const rows2 = this.visibleRows();
+    const selected = clampSelectionIndex(rows2.length, this.selectedIndex.peek());
+    const window = selectionWindow(rows2.length, selected, Math.max(0, Math.floor(height)));
+    return rows2.slice(window.start, window.end);
+  }
+  selected() {
+    const rows2 = this.visibleRows();
+    return rows2[clampSelectionIndex(rows2.length, this.selectedIndex.peek())];
+  }
+  move(delta) {
+    return this.setSelectedIndex(this.selectedIndex.peek() + delta);
+  }
+  page(delta, height) {
+    return this.move(delta * Math.max(1, Math.floor(height)));
+  }
+  first() {
+    return this.setSelectedIndex(0);
+  }
+  last() {
+    return this.setSelectedIndex(this.visibleRows().length - 1);
+  }
+  setSelectedIndex(index) {
+    this.selectedIndex.value = clampSelectionIndex(this.visibleRows().length, index);
+    return this.selected();
+  }
+  selectActive() {
+    const row = this.selected();
+    if (row) {
+      void this.#onSelect?.(row, row.index);
+    }
+    return row;
+  }
+  toggleActive() {
+    const row = this.selected();
+    if (!row?.hasChildren) return row;
+    this.setExpanded(row.id, !row.expanded);
+    const next = this.visibleRows().find((entry) => entry.id === row.id) ?? row;
+    void this.#onToggle?.(next, next.expanded);
+    return next;
+  }
+  expandActive() {
+    const row = this.selected();
+    if (!row?.hasChildren || row.expanded) return row;
+    this.setExpanded(row.id, true);
+    const next = this.visibleRows().find((entry) => entry.id === row.id) ?? row;
+    void this.#onToggle?.(next, true);
+    return next;
+  }
+  collapseActive() {
+    const row = this.selected();
+    if (!row?.hasChildren || !row.expanded) return row;
+    this.setExpanded(row.id, false);
+    const next = this.visibleRows().find((entry) => entry.id === row.id) ?? row;
+    void this.#onToggle?.(next, false);
+    return next;
+  }
+  setExpanded(id2, expanded) {
+    let changed = false;
+    const visit = (nodes) => nodes.map((node) => {
+      const children = node.children ? visit(node.children) : void 0;
+      if (node.id !== id2 || !node.children?.length) {
+        return children && children !== node.children ? { ...node, children } : node;
+      }
+      if (Boolean(node.expanded) === expanded) {
+        return children && children !== node.children ? { ...node, children } : node;
+      }
+      changed = true;
+      return { ...node, children, expanded };
+    });
+    const next = visit(this.nodes.peek());
+    if (changed) {
+      this.nodes.value = next;
+      this.#syncSelection();
+    }
+    return changed;
+  }
+  handleKeyPress({ key, ctrl, meta, shift }, height = 1) {
+    if (ctrl || meta || shift) return void 0;
+    if (key === "up") return this.move(-1);
+    if (key === "down") return this.move(1);
+    if (key === "pageup") return this.page(-1, height);
+    if (key === "pagedown") return this.page(1, height);
+    if (key === "home") return this.first();
+    if (key === "end") return this.last();
+    if (key === "left") return this.collapseActive();
+    if (key === "right") return this.expandActive();
+    if (key === "space") return this.toggleActive();
+    if (key === "return") return this.selectActive();
+    return void 0;
+  }
+  inspect(height = this.visibleRows().length) {
+    const rows2 = this.visibleRows();
+    const selectedIndex = clampSelectionIndex(rows2.length, this.selectedIndex.peek());
+    return {
+      nodes: structuredClone(this.nodes.peek()),
+      rows: rows2.map(inspectTreeRow),
+      rowCount: rows2.length,
+      selectedIndex,
+      selected: rows2[selectedIndex] ? inspectTreeRow(rows2[selectedIndex]) : void 0,
+      window: selectionWindow(rows2.length, selectedIndex, Math.max(0, Math.floor(height))),
+      empty: rows2.length === 0
+    };
+  }
+  dispose() {
+    this.nodes.unsubscribe(this.#syncSelection);
+    if (this.#ownsNodes) this.nodes.dispose();
+    if (this.#ownsSelectedIndex) this.selectedIndex.dispose();
+  }
+};
+
 // src/components/data_table.ts
 function createDataTableView(rows2, columns, state = {}, rowKey) {
   const filtered = filterDataRows(rows2, columns, state.query ?? "");
@@ -3307,178 +4331,6 @@ function padCell(value, width) {
   return cropped + " ".repeat(Math.max(0, width - textWidth(cropped)));
 }
 
-// src/components/tree.ts
-function flattenTreeRows(nodes, depth = 0, rows2 = []) {
-  for (const node of nodes) {
-    const hasChildren = Boolean(node.children?.length);
-    const expanded = Boolean(node.expanded);
-    const marker = hasChildren ? expanded ? "\u25BE" : "\u25B8" : " ";
-    const index = rows2.length;
-    const text = `${"  ".repeat(depth)}${marker} ${node.label}`;
-    rows2.push({
-      id: node.id,
-      label: node.label,
-      depth,
-      index,
-      hasChildren,
-      expanded,
-      node,
-      text
-    });
-    if (hasChildren && expanded) {
-      flattenTreeRows(node.children, depth + 1, rows2);
-    }
-  }
-  return rows2;
-}
-function inspectTreeRow(row) {
-  return {
-    id: row.id,
-    label: row.label,
-    depth: row.depth,
-    index: row.index,
-    hasChildren: row.hasChildren,
-    expanded: row.expanded,
-    text: row.text
-  };
-}
-var TreeController = class {
-  nodes;
-  selectedIndex;
-  #ownsNodes;
-  #ownsSelectedIndex;
-  #onSelect;
-  #onToggle;
-  #syncSelection = () => {
-    this.selectedIndex.value = clampSelectionIndex(this.visibleRows().length, this.selectedIndex.peek());
-  };
-  constructor(options) {
-    this.#ownsNodes = !(options.nodes instanceof Signal);
-    this.#ownsSelectedIndex = !(options.selectedIndex instanceof Signal);
-    this.nodes = signalify(options.nodes, { deepObserve: true });
-    this.selectedIndex = signalify(options.selectedIndex ?? 0);
-    this.#onSelect = options.onSelect;
-    this.#onToggle = options.onToggle;
-    this.nodes.subscribe(this.#syncSelection);
-    this.#syncSelection();
-  }
-  visibleRows() {
-    return flattenTreeRows(this.nodes.peek());
-  }
-  rowTexts() {
-    return this.visibleRows().map((row) => row.text);
-  }
-  visible(height = this.visibleRows().length) {
-    const rows2 = this.visibleRows();
-    const selected = clampSelectionIndex(rows2.length, this.selectedIndex.peek());
-    const window = selectionWindow(rows2.length, selected, Math.max(0, Math.floor(height)));
-    return rows2.slice(window.start, window.end);
-  }
-  selected() {
-    const rows2 = this.visibleRows();
-    return rows2[clampSelectionIndex(rows2.length, this.selectedIndex.peek())];
-  }
-  move(delta) {
-    return this.setSelectedIndex(this.selectedIndex.peek() + delta);
-  }
-  page(delta, height) {
-    return this.move(delta * Math.max(1, Math.floor(height)));
-  }
-  first() {
-    return this.setSelectedIndex(0);
-  }
-  last() {
-    return this.setSelectedIndex(this.visibleRows().length - 1);
-  }
-  setSelectedIndex(index) {
-    this.selectedIndex.value = clampSelectionIndex(this.visibleRows().length, index);
-    return this.selected();
-  }
-  selectActive() {
-    const row = this.selected();
-    if (row) {
-      void this.#onSelect?.(row, row.index);
-    }
-    return row;
-  }
-  toggleActive() {
-    const row = this.selected();
-    if (!row?.hasChildren) return row;
-    this.setExpanded(row.id, !row.expanded);
-    const next = this.visibleRows().find((entry) => entry.id === row.id) ?? row;
-    void this.#onToggle?.(next, next.expanded);
-    return next;
-  }
-  expandActive() {
-    const row = this.selected();
-    if (!row?.hasChildren || row.expanded) return row;
-    this.setExpanded(row.id, true);
-    const next = this.visibleRows().find((entry) => entry.id === row.id) ?? row;
-    void this.#onToggle?.(next, true);
-    return next;
-  }
-  collapseActive() {
-    const row = this.selected();
-    if (!row?.hasChildren || !row.expanded) return row;
-    this.setExpanded(row.id, false);
-    const next = this.visibleRows().find((entry) => entry.id === row.id) ?? row;
-    void this.#onToggle?.(next, false);
-    return next;
-  }
-  setExpanded(id2, expanded) {
-    let changed = false;
-    const visit = (nodes) => nodes.map((node) => {
-      const children = node.children ? visit(node.children) : void 0;
-      if (node.id !== id2 || !node.children?.length) {
-        return children && children !== node.children ? { ...node, children } : node;
-      }
-      if (Boolean(node.expanded) === expanded) {
-        return children && children !== node.children ? { ...node, children } : node;
-      }
-      changed = true;
-      return { ...node, children, expanded };
-    });
-    const next = visit(this.nodes.peek());
-    if (changed) {
-      this.nodes.value = next;
-      this.#syncSelection();
-    }
-    return changed;
-  }
-  handleKeyPress({ key, ctrl, meta, shift }, height = 1) {
-    if (ctrl || meta || shift) return void 0;
-    if (key === "up") return this.move(-1);
-    if (key === "down") return this.move(1);
-    if (key === "pageup") return this.page(-1, height);
-    if (key === "pagedown") return this.page(1, height);
-    if (key === "home") return this.first();
-    if (key === "end") return this.last();
-    if (key === "left") return this.collapseActive();
-    if (key === "right") return this.expandActive();
-    if (key === "space") return this.toggleActive();
-    if (key === "return") return this.selectActive();
-    return void 0;
-  }
-  inspect(height = this.visibleRows().length) {
-    const rows2 = this.visibleRows();
-    const selectedIndex = clampSelectionIndex(rows2.length, this.selectedIndex.peek());
-    return {
-      nodes: structuredClone(this.nodes.peek()),
-      rows: rows2.map(inspectTreeRow),
-      rowCount: rows2.length,
-      selectedIndex,
-      selected: rows2[selectedIndex] ? inspectTreeRow(rows2[selectedIndex]) : void 0,
-      window: selectionWindow(rows2.length, selectedIndex, Math.max(0, Math.floor(height))),
-      empty: rows2.length === 0
-    };
-  }
-  dispose() {
-    this.nodes.unsubscribe(this.#syncSelection);
-    if (this.#ownsNodes) this.nodes.dispose();
-    if (this.#ownsSelectedIndex) this.selectedIndex.dispose();
-  }
-};
-
 // src/components/file_explorer.ts
 var FileExplorerController = class {
   root;
@@ -3584,158 +4436,6 @@ function sortExplorerNodes(nodes) {
     children: node.children.length > 0 ? sortExplorerNodes(node.children) : void 0
   }));
 }
-
-// src/components/input.ts
-var InputController = class {
-  text;
-  cursorPosition;
-  validator;
-  password;
-  placeholder;
-  multiCodePointSupport;
-  #ownsText;
-  #ownsCursorPosition;
-  #ownsValidator;
-  #ownsPassword;
-  #ownsPlaceholder;
-  #ownsMultiCodePointSupport;
-  #onChange;
-  #onSubmit;
-  #syncCursor = () => {
-    this.cursorPosition.value = clamp(this.cursorPosition.peek(), 0, this.text.peek().length);
-  };
-  constructor(options = {}) {
-    this.#ownsText = !(options.text instanceof Signal);
-    this.#ownsCursorPosition = !(options.cursorPosition instanceof Signal);
-    this.#ownsValidator = !(options.validator instanceof Signal);
-    this.#ownsPassword = !(options.password instanceof Signal);
-    this.#ownsPlaceholder = !(options.placeholder instanceof Signal);
-    this.#ownsMultiCodePointSupport = !(options.multiCodePointSupport instanceof Signal);
-    this.text = signalify(options.text ?? "");
-    this.cursorPosition = signalify(options.cursorPosition ?? 0);
-    this.validator = signalify(options.validator);
-    this.password = signalify(options.password ?? false);
-    this.placeholder = signalify(options.placeholder);
-    this.multiCodePointSupport = signalify(options.multiCodePointSupport ?? false);
-    this.#onChange = options.onChange;
-    this.#onSubmit = options.onSubmit;
-    this.text.subscribe(this.#syncCursor);
-    this.cursorPosition.subscribe(this.#syncCursor);
-    this.#syncCursor();
-  }
-  setText(value, cursorPosition = value.length) {
-    this.text.value = value;
-    this.cursorPosition.value = clamp(cursorPosition, 0, value.length);
-    void this.#onChange?.(this.text.peek());
-    return this.text.peek();
-  }
-  clear() {
-    return this.setText("", 0);
-  }
-  moveCursor(offset) {
-    return this.setCursorPosition(this.cursorPosition.peek() + offset);
-  }
-  setCursorPosition(position) {
-    this.cursorPosition.value = clamp(position, 0, this.text.peek().length);
-    return this.cursorPosition.peek();
-  }
-  home() {
-    return this.setCursorPosition(0);
-  }
-  end() {
-    return this.setCursorPosition(this.text.peek().length);
-  }
-  insert(character) {
-    if (!this.accepts(character)) return false;
-    const cursorPosition = this.cursorPosition.peek();
-    const value = insertAt(this.text.peek(), cursorPosition, character);
-    this.setText(value, cursorPosition + character.length);
-    return true;
-  }
-  backspace() {
-    const cursorPosition = this.cursorPosition.peek();
-    if (cursorPosition === 0) return false;
-    const value = this.text.peek();
-    this.setText(value.slice(0, cursorPosition - 1) + value.slice(cursorPosition), cursorPosition - 1);
-    return true;
-  }
-  delete() {
-    const cursorPosition = this.cursorPosition.peek();
-    const value = this.text.peek();
-    if (cursorPosition >= value.length) return false;
-    this.setText(value.slice(0, cursorPosition) + value.slice(cursorPosition + 1), cursorPosition);
-    return true;
-  }
-  submit() {
-    const value = this.text.peek();
-    void this.#onSubmit?.(value);
-    return value;
-  }
-  handleKeyPress({ key, ctrl, meta }) {
-    if (ctrl || meta) return "ignored";
-    switch (key) {
-      case "return":
-        this.submit();
-        return "submitted";
-      case "backspace":
-        return this.backspace() ? "changed" : "ignored";
-      case "delete":
-        return this.delete() ? "changed" : "ignored";
-      case "left":
-        this.moveCursor(-1);
-        return "moved";
-      case "right":
-        this.moveCursor(1);
-        return "moved";
-      case "home":
-        this.home();
-        return "moved";
-      case "end":
-        this.end();
-        return "moved";
-      case "space":
-        return this.insert(" ") ? "changed" : "ignored";
-      case "tab":
-        return this.insert("	") ? "changed" : "ignored";
-      default:
-        if (key.length > 1) return "ignored";
-        return this.insert(key) ? "changed" : "ignored";
-    }
-  }
-  accepts(character) {
-    const validator = this.validator.peek();
-    if (!validator) return true;
-    validator.lastIndex = 0;
-    return validator.test(character);
-  }
-  inspect() {
-    const text = this.text.peek();
-    const validator = this.validator.peek();
-    if (validator) validator.lastIndex = 0;
-    return {
-      text,
-      cursorPosition: this.cursorPosition.peek(),
-      length: text.length,
-      empty: text.length === 0,
-      password: this.password.peek(),
-      placeholder: this.placeholder.peek(),
-      valid: validator ? [...text].every((character) => {
-        validator.lastIndex = 0;
-        return validator.test(character);
-      }) : true
-    };
-  }
-  dispose() {
-    this.text.unsubscribe(this.#syncCursor);
-    this.cursorPosition.unsubscribe(this.#syncCursor);
-    if (this.#ownsText) this.text.dispose();
-    if (this.#ownsCursorPosition) this.cursorPosition.dispose();
-    if (this.#ownsValidator) this.validator.dispose();
-    if (this.#ownsPassword) this.password.dispose();
-    if (this.#ownsPlaceholder) this.placeholder.dispose();
-    if (this.#ownsMultiCodePointSupport) this.multiCodePointSupport.dispose();
-  }
-};
 
 // src/components/menu_bar.ts
 function renderMenuBar(items, activeIndex) {
@@ -4022,119 +4722,6 @@ function wrapModalLine(value, width) {
   return rows2;
 }
 
-// src/components/scroll_area.ts
-function maxScrollOffset(contentWidth, contentHeight, viewportWidth, viewportHeight) {
-  return maxViewportOffset(contentWidth, contentHeight, viewportWidth, viewportHeight);
-}
-function clampScrollOffset(offset, maxOffset) {
-  return clampViewportOffset(offset, maxOffset);
-}
-function scrollOffsetBy(offset, maxOffset, columns, rows2) {
-  return viewportOffsetBy(offset, maxOffset, columns, rows2);
-}
-function scrollbarThumb(contentLength, viewportLength, offset) {
-  return viewportThumb(contentLength, viewportLength, offset);
-}
-function scrollbarGlyph(row, thumb) {
-  return viewportThumbGlyph(row, thumb);
-}
-function scrollbarOffsetForPointer(contentLength, viewportLength, pointerIndex) {
-  const content = normalizedScrollDimension(contentLength);
-  const viewport = normalizedScrollDimension(viewportLength);
-  const maxOffset = Math.max(0, content - viewport);
-  if (maxOffset === 0) return 0;
-  const trackLength = Math.max(1, viewport);
-  const local = Math.max(0, Math.min(trackLength - 1, Math.floor(pointerIndex)));
-  const ratio = trackLength <= 1 ? 0 : local / (trackLength - 1);
-  return Math.max(0, Math.min(maxOffset, Math.round(maxOffset * ratio)));
-}
-var ScrollAreaController = class {
-  contentWidth;
-  contentHeight;
-  viewportWidth;
-  viewportHeight;
-  offset;
-  showScrollbar;
-  #ownsContentWidth;
-  #ownsContentHeight;
-  #ownsViewportWidth;
-  #ownsViewportHeight;
-  #ownsOffset;
-  #ownsShowScrollbar;
-  constructor(options = {}) {
-    this.#ownsContentWidth = !(options.contentWidth instanceof Signal);
-    this.#ownsContentHeight = !(options.contentHeight instanceof Signal);
-    this.#ownsViewportWidth = !(options.viewportWidth instanceof Signal);
-    this.#ownsViewportHeight = !(options.viewportHeight instanceof Signal);
-    this.#ownsOffset = !(options.offset instanceof Signal);
-    this.#ownsShowScrollbar = !(options.showScrollbar instanceof Signal);
-    this.contentWidth = signalify(options.contentWidth ?? 0);
-    this.contentHeight = signalify(options.contentHeight ?? 0);
-    this.viewportWidth = signalify(options.viewportWidth ?? 0);
-    this.viewportHeight = signalify(options.viewportHeight ?? 0);
-    this.offset = signalify(options.offset ?? { columns: 0, rows: 0 }, { deepObserve: true });
-    this.showScrollbar = signalify(options.showScrollbar ?? true);
-    this.#clampOffset();
-  }
-  maxOffset() {
-    return maxScrollOffset(
-      this.contentWidth.peek(),
-      this.contentHeight.peek(),
-      this.viewportWidth.peek(),
-      this.viewportHeight.peek()
-    );
-  }
-  scrollBy(columns, rows2) {
-    return this.setOffset(scrollOffsetBy(this.offset.peek(), this.maxOffset(), columns, rows2));
-  }
-  scrollTo(columns, rows2) {
-    return this.setOffset(clampScrollOffset({ columns, rows: rows2 }, this.maxOffset()));
-  }
-  setContentSize(width, height) {
-    this.contentWidth.value = normalizedScrollDimension(width);
-    this.contentHeight.value = normalizedScrollDimension(height);
-    return this.#clampOffset();
-  }
-  setViewportSize(width, height) {
-    this.viewportWidth.value = normalizedScrollDimension(width);
-    this.viewportHeight.value = normalizedScrollDimension(height);
-    return this.#clampOffset();
-  }
-  setScrollbarVisible(visible) {
-    this.showScrollbar.value = visible;
-  }
-  inspect() {
-    return {
-      ...inspectViewport(
-        this.contentWidth.peek(),
-        this.contentHeight.peek(),
-        this.viewportWidth.peek(),
-        this.viewportHeight.peek(),
-        this.offset.peek()
-      ),
-      showScrollbar: this.showScrollbar.peek()
-    };
-  }
-  dispose() {
-    if (this.#ownsContentWidth) this.contentWidth.dispose();
-    if (this.#ownsContentHeight) this.contentHeight.dispose();
-    if (this.#ownsViewportWidth) this.viewportWidth.dispose();
-    if (this.#ownsViewportHeight) this.viewportHeight.dispose();
-    if (this.#ownsOffset) this.offset.dispose();
-    if (this.#ownsShowScrollbar) this.showScrollbar.dispose();
-  }
-  setOffset(offset) {
-    this.offset.value = offset;
-    return offset;
-  }
-  #clampOffset() {
-    return this.setOffset(clampScrollOffset(this.offset.peek(), this.maxOffset()));
-  }
-};
-function normalizedScrollDimension(value) {
-  return Math.max(0, Math.floor(Number.isFinite(value) ? value : 0));
-}
-
 // src/components/progressbar.ts
 var progressBarCharMap = {
   vertical: ["\u2588", "\u{1FB86}", "\u{1FB85}", "\u{1FB84}", "\u{1FB83}", "\u{1FB82}", "\u2594"],
@@ -4292,307 +4879,6 @@ var ProgressBarController = class {
   }
 };
 
-// src/components/radio_group.ts
-function visibleRadioOptions(options, activeIndex, height) {
-  const safeHeight = Math.max(0, height);
-  if (safeHeight === 0) return [];
-  const active2 = clampRadioIndex(options, activeIndex);
-  const offset = Math.max(0, Math.min(active2 - Math.floor(safeHeight / 2), Math.max(0, options.length - safeHeight)));
-  return options.slice(offset, offset + safeHeight).map((option, index) => {
-    const optionIndex = offset + index;
-    return {
-      option,
-      index: optionIndex,
-      active: optionIndex === active2 && !option.disabled
-    };
-  });
-}
-function clampRadioIndex(options, activeIndex) {
-  if (options.length === 0) return 0;
-  const clamped = Math.max(0, Math.min(activeIndex, options.length - 1));
-  if (!options[clamped]?.disabled) return clamped;
-  const next = shiftRadioIndex(options, clamped, 1);
-  if (!options[next]?.disabled) return next;
-  const previous = shiftRadioIndex(options, clamped, -1);
-  return options[previous]?.disabled ? clamped : previous;
-}
-function shiftRadioIndex(options, activeIndex, delta) {
-  if (options.length === 0) return 0;
-  let next = Math.max(0, Math.min(activeIndex, options.length - 1));
-  for (let count = 0; count < options.length; count += 1) {
-    next = Math.max(0, Math.min(options.length - 1, next + delta));
-    if (!options[next]?.disabled) return next;
-    if (next === 0 || next === options.length - 1) break;
-  }
-  return activeIndex;
-}
-function optionForValue(options, value) {
-  return options.find((option) => option.value === value);
-}
-var RadioGroupController = class {
-  options;
-  selectedValue;
-  activeIndex;
-  #ownsOptions;
-  #ownsSelectedValue;
-  #ownsActiveIndex;
-  #onChange;
-  constructor(options) {
-    this.#ownsOptions = !(options.options instanceof Signal);
-    this.#ownsSelectedValue = !(options.selectedValue instanceof Signal);
-    this.#ownsActiveIndex = !(options.activeIndex instanceof Signal);
-    this.options = signalify(options.options, { deepObserve: true });
-    this.selectedValue = options.selectedValue instanceof Signal ? options.selectedValue : signalify(options.selectedValue);
-    this.activeIndex = signalify(options.activeIndex ?? 0);
-    this.#onChange = options.onChange;
-    this.activeIndex.value = clampRadioIndex(this.options.peek(), this.activeIndex.peek());
-  }
-  active() {
-    const option = this.options.peek()[clampRadioIndex(this.options.peek(), this.activeIndex.peek())];
-    return option?.disabled ? void 0 : option;
-  }
-  selected() {
-    return optionForValue(this.options.peek(), this.selectedValue.peek());
-  }
-  move(delta) {
-    return this.setActive(shiftRadioIndex(this.options.peek(), this.activeIndex.peek(), delta));
-  }
-  first() {
-    return this.setActive(0);
-  }
-  last() {
-    return this.setActive(this.options.peek().length - 1);
-  }
-  setActive(index) {
-    const next = clampRadioIndex(this.options.peek(), index);
-    this.activeIndex.value = next;
-    return this.active();
-  }
-  selectActive() {
-    const option = this.active();
-    if (option) {
-      this.selectedValue.value = option.value;
-      void this.#onChange?.(option);
-    }
-    return option;
-  }
-  selectIndex(index) {
-    this.activeIndex.value = clampRadioIndex(this.options.peek(), index);
-    return this.selectActive();
-  }
-  selectValue(value) {
-    const index = this.options.peek().findIndex((option2) => option2.value === value);
-    if (index < 0) return void 0;
-    const option = this.options.peek()[index];
-    if (!option || option.disabled) return void 0;
-    this.activeIndex.value = index;
-    this.selectedValue.value = option.value;
-    void this.#onChange?.(option);
-    return option;
-  }
-  handleMousePress(event, groupRow = 0, height = this.options.peek().length) {
-    if (event.ctrl || event.meta || event.shift) return void 0;
-    const rowIndex = stackedRowIndexAt(event.y, groupRow, Math.max(0, height));
-    if (rowIndex === void 0) return void 0;
-    const visible = visibleRadioOptions(this.options.peek(), this.activeIndex.peek(), height);
-    const row = visible[rowIndex];
-    if (!row || row.option.disabled) return void 0;
-    return this.selectIndex(row.index);
-  }
-  handleKeyPress({ key, ctrl, meta, shift }) {
-    if (ctrl || meta || shift) return;
-    if (key === "up") {
-      this.move(-1);
-    } else if (key === "down") {
-      this.move(1);
-    } else if (key === "home") {
-      this.first();
-    } else if (key === "end") {
-      this.last();
-    } else if (key === "return" || key === "space") {
-      this.selectActive();
-    }
-    this.activeIndex.value = clampRadioIndex(this.options.peek(), this.activeIndex.peek());
-  }
-  inspect() {
-    const options = this.options.peek().map((option) => ({ ...option }));
-    const activeIndex = clampRadioIndex(options, this.activeIndex.peek());
-    const active2 = options[activeIndex];
-    const selected = optionForValue(options, this.selectedValue.peek());
-    return {
-      options,
-      optionCount: options.length,
-      activeIndex,
-      active: active2 && !active2.disabled ? { ...active2 } : void 0,
-      selectedValue: this.selectedValue.peek(),
-      selected: selected ? { ...selected } : void 0,
-      empty: options.length === 0
-    };
-  }
-  dispose() {
-    if (this.#ownsOptions) this.options.dispose();
-    if (this.#ownsSelectedValue) this.selectedValue.dispose();
-    if (this.#ownsActiveIndex) this.activeIndex.dispose();
-  }
-};
-
-// src/components/slider.ts
-function clampSliderValue(value, min2, max2) {
-  return clamp(value, Math.min(min2, max2), Math.max(min2, max2));
-}
-function sliderValueBy(value, min2, max2, step, delta) {
-  return clampSliderValue(value + step * delta, min2, max2);
-}
-function snapSliderValue(value, min2, max2, step) {
-  const rangeDirection = Math.sign(max2 - min2) || 1;
-  const safeStep = Math.max(Number.EPSILON, Math.abs(step)) * rangeDirection;
-  const snapped = min2 + Math.round((value - min2) / safeStep) * safeStep;
-  return clampSliderValue(snapped, min2, max2);
-}
-function sliderValueAt(track, point, min2, max2, step, orientation) {
-  const span = Math.max(1, orientation === "horizontal" ? track.width - 1 : track.height - 1);
-  const offset = orientation === "horizontal" ? point.column - track.column : point.row - track.row;
-  const normalizedValue = clamp(offset, 0, span) / span;
-  return snapSliderValue(min2 + (max2 - min2) * normalizedValue, min2, max2, step);
-}
-function sliderThumbRectangle(track, value, min2, max2, orientation, adjustThumbSize = false) {
-  const range = Math.max(1, Math.abs(max2 - min2));
-  const normalizedValue = normalize(clampSliderValue(value, min2, max2), min2, max2);
-  if (orientation === "horizontal") {
-    const thumbSize2 = adjustThumbSize ? Math.max(1, Math.round(track.width / range)) : 1;
-    return {
-      column: Math.min(
-        track.column + Math.max(0, track.width - thumbSize2),
-        track.column + Math.round(Math.max(0, track.width - 1) * normalizedValue)
-      ),
-      row: track.row,
-      width: thumbSize2,
-      height: track.height
-    };
-  }
-  const thumbSize = adjustThumbSize ? Math.max(1, Math.round(track.height / range)) : 1;
-  return {
-    column: track.column,
-    row: Math.min(
-      track.row + Math.max(0, track.height - thumbSize),
-      track.row + Math.round(Math.max(0, track.height - 1) * normalizedValue)
-    ),
-    width: track.width,
-    height: thumbSize
-  };
-}
-var SliderController = class {
-  min;
-  max;
-  step;
-  value;
-  adjustThumbSize;
-  orientation;
-  #ownsMin;
-  #ownsMax;
-  #ownsStep;
-  #ownsValue;
-  #ownsAdjustThumbSize;
-  #ownsOrientation;
-  #onChange;
-  constructor(options) {
-    this.#ownsMin = !(options.min instanceof Signal);
-    this.#ownsMax = !(options.max instanceof Signal);
-    this.#ownsStep = !(options.step instanceof Signal);
-    this.#ownsValue = !(options.value instanceof Signal);
-    this.#ownsAdjustThumbSize = !(options.adjustThumbSize instanceof Signal);
-    this.#ownsOrientation = !(options.orientation instanceof Signal);
-    this.min = signalify(options.min);
-    this.max = signalify(options.max);
-    this.step = signalify(options.step);
-    this.value = signalify(options.value);
-    this.adjustThumbSize = signalify(options.adjustThumbSize ?? false);
-    this.orientation = signalify(options.orientation);
-    this.#onChange = options.onChange;
-    this.value.value = clampSliderValue(this.value.peek(), this.min.peek(), this.max.peek());
-  }
-  setValue(value) {
-    const next = clampSliderValue(value, this.min.peek(), this.max.peek());
-    this.value.value = next;
-    void this.#onChange?.(next);
-    return next;
-  }
-  increment(steps = 1) {
-    return this.setValue(sliderValueBy(this.value.peek(), this.min.peek(), this.max.peek(), this.step.peek(), steps));
-  }
-  decrement(steps = 1) {
-    return this.increment(-steps);
-  }
-  setMin() {
-    return this.setValue(this.min.peek());
-  }
-  setMax() {
-    return this.setValue(this.max.peek());
-  }
-  handleKeyPress({ key, ctrl, meta, shift }) {
-    if (ctrl || meta || shift) return;
-    if (key === "up" || key === "right") {
-      this.increment();
-    } else if (key === "down" || key === "left") {
-      this.decrement();
-    } else if (key === "home") {
-      this.setMin();
-    } else if (key === "end") {
-      this.setMax();
-    }
-  }
-  handleDrag(movementX, movementY) {
-    const delta = this.orientation.peek() === "horizontal" ? movementX : movementY;
-    return this.increment(delta);
-  }
-  handleScroll(scroll) {
-    return this.increment(scroll);
-  }
-  handlePointer(track, column, row) {
-    return this.setValue(sliderValueAt(
-      track,
-      { column, row },
-      this.min.peek(),
-      this.max.peek(),
-      this.step.peek(),
-      this.orientation.peek()
-    ));
-  }
-  thumbRectangle(track) {
-    return sliderThumbRectangle(
-      track,
-      this.value.peek(),
-      this.min.peek(),
-      this.max.peek(),
-      this.orientation.peek(),
-      this.adjustThumbSize.peek()
-    );
-  }
-  inspect() {
-    const min2 = this.min.peek();
-    const max2 = this.max.peek();
-    const value = clampSliderValue(this.value.peek(), min2, max2);
-    return {
-      min: min2,
-      max: max2,
-      step: this.step.peek(),
-      value,
-      normalizedValue: normalize(value, min2, max2),
-      orientation: this.orientation.peek(),
-      adjustThumbSize: this.adjustThumbSize.peek(),
-      range: Math.abs(max2 - min2)
-    };
-  }
-  dispose() {
-    if (this.#ownsMin) this.min.dispose();
-    if (this.#ownsMax) this.max.dispose();
-    if (this.#ownsStep) this.step.dispose();
-    if (this.#ownsValue) this.value.dispose();
-    if (this.#ownsAdjustThumbSize) this.adjustThumbSize.dispose();
-    if (this.#ownsOrientation) this.orientation.dispose();
-  }
-};
-
 // src/components/statusbar.ts
 function renderStatusBar(left, right, width) {
   const safeWidth = Math.max(0, width);
@@ -4722,292 +5008,6 @@ function truncateStepperText(text, width) {
   if (safeWidth === 0) return "";
   if (safeWidth === 1) return "\u2026";
   return `${text.slice(0, safeWidth - 1)}\u2026`;
-}
-
-// src/components/textbox.ts
-var TextLineCache = class {
-  #text = "";
-  #lines = [""];
-  lines(text) {
-    if (text !== this.#text) {
-      this.#text = text;
-      this.#lines = text.split("\n");
-    }
-    return this.#lines;
-  }
-  inspect() {
-    return {
-      text: this.#text,
-      lineCount: this.#lines.length
-    };
-  }
-};
-var TextBoxController = class {
-  text;
-  cursorPosition;
-  validator;
-  multiCodePointSupport;
-  lineHighlighting;
-  lineNumbering;
-  wordWrap;
-  lines;
-  #textLineCache = new TextLineCache();
-  #ownsText;
-  #ownsCursorPosition;
-  #ownsValidator;
-  #ownsMultiCodePointSupport;
-  #ownsLineHighlighting;
-  #ownsLineNumbering;
-  #ownsWordWrap;
-  #onChange;
-  #syncCursor = () => this.clampCursor();
-  constructor(options = {}) {
-    this.#ownsText = !(options.text instanceof Signal);
-    this.#ownsCursorPosition = !(options.cursorPosition instanceof Signal);
-    this.#ownsValidator = !(options.validator instanceof Signal);
-    this.#ownsMultiCodePointSupport = !(options.multiCodePointSupport instanceof Signal);
-    this.#ownsLineHighlighting = !(options.lineHighlighting instanceof Signal);
-    this.#ownsLineNumbering = !(options.lineNumbering instanceof Signal);
-    this.#ownsWordWrap = !(options.wordWrap instanceof Signal);
-    this.text = signalify(options.text ?? "");
-    this.cursorPosition = signalify(options.cursorPosition ?? { x: 0, y: 0 }, { deepObserve: true });
-    this.validator = signalify(options.validator);
-    this.multiCodePointSupport = signalify(options.multiCodePointSupport ?? false);
-    this.lineHighlighting = signalify(options.lineHighlighting ?? false);
-    this.lineNumbering = signalify(options.lineNumbering ?? false);
-    this.wordWrap = signalify(options.wordWrap ?? false);
-    this.#onChange = options.onChange;
-    this.lines = new Computed(() => this.#textLineCache.lines(this.text.value));
-    this.text.subscribe(this.#syncCursor);
-    this.cursorPosition.subscribe(this.#syncCursor);
-    this.#syncCursor();
-  }
-  setText(value, cursorPosition = this.endPosition(value)) {
-    this.text.value = value;
-    this.setCursorPosition(cursorPosition);
-    void this.#onChange?.(this.text.peek());
-    return this.text.peek();
-  }
-  clear() {
-    return this.setText("", { x: 0, y: 0 });
-  }
-  setCursorPosition(position) {
-    const cursor = this.cursorPosition.peek();
-    cursor.y = position.y;
-    cursor.x = position.x;
-    this.clampCursor();
-    this.cursorPosition.forceUpdateValue = true;
-    this.cursorPosition.value = cursor;
-    return { ...this.cursorPosition.peek() };
-  }
-  moveCursor(delta) {
-    const cursor = this.cursorPosition.peek();
-    return this.setCursorPosition({
-      x: cursor.x + (delta.x ?? 0),
-      y: cursor.y + (delta.y ?? 0)
-    });
-  }
-  home() {
-    return this.setCursorPosition({ ...this.cursorPosition.peek(), x: 0 });
-  }
-  end() {
-    const cursor = this.cursorPosition.peek();
-    return this.setCursorPosition({
-      x: this.currentLines()[cursor.y]?.length ?? 0,
-      y: cursor.y
-    });
-  }
-  insert(character) {
-    if (!this.accepts(character)) return false;
-    const cursor = this.cursorPosition.peek();
-    const lines = [...this.currentLines()];
-    const line = lines[cursor.y] ?? "";
-    lines[cursor.y] = insertAt(line, cursor.x, character);
-    this.setText(lines.join("\n"), { x: cursor.x + character.length, y: cursor.y });
-    return true;
-  }
-  newline() {
-    const cursor = this.cursorPosition.peek();
-    const lines = [...this.currentLines()];
-    const line = lines[cursor.y] ?? "";
-    lines[cursor.y] = line.slice(0, cursor.x);
-    lines.splice(cursor.y + 1, 0, line.slice(cursor.x));
-    this.setText(lines.join("\n"), { x: 0, y: cursor.y + 1 });
-    return true;
-  }
-  backspace() {
-    const cursor = this.cursorPosition.peek();
-    const lines = [...this.currentLines()];
-    const line = lines[cursor.y] ?? "";
-    if (cursor.x === 0) {
-      if (cursor.y === 0) return false;
-      const previous = lines[cursor.y - 1] ?? "";
-      lines[cursor.y - 1] = previous + line;
-      lines.splice(cursor.y, 1);
-      this.setText(lines.join("\n"), { x: previous.length, y: cursor.y - 1 });
-      return true;
-    }
-    lines[cursor.y] = line.slice(0, cursor.x - 1) + line.slice(cursor.x);
-    this.setText(lines.join("\n"), { x: cursor.x - 1, y: cursor.y });
-    return true;
-  }
-  delete() {
-    const cursor = this.cursorPosition.peek();
-    const lines = [...this.currentLines()];
-    const line = lines[cursor.y] ?? "";
-    if (cursor.x < line.length) {
-      lines[cursor.y] = line.slice(0, cursor.x) + line.slice(cursor.x + 1);
-      this.setText(lines.join("\n"), cursor);
-      return true;
-    }
-    if (lines.length - 1 <= cursor.y) return false;
-    lines[cursor.y] = line + (lines[cursor.y + 1] ?? "");
-    lines.splice(cursor.y + 1, 1);
-    this.setText(lines.join("\n"), cursor);
-    return true;
-  }
-  handleKeyPress({ key, ctrl, meta }) {
-    if (ctrl || meta) return "ignored";
-    switch (key) {
-      case "left":
-        this.moveCursor({ x: -1 });
-        return "moved";
-      case "right":
-        this.moveCursor({ x: 1 });
-        return "moved";
-      case "up":
-        this.moveCursor({ y: -1 });
-        return "moved";
-      case "down":
-        this.moveCursor({ y: 1 });
-        return "moved";
-      case "home":
-        this.home();
-        return "moved";
-      case "end":
-        this.end();
-        return "moved";
-      case "backspace":
-        return this.backspace() ? "changed" : "ignored";
-      case "delete":
-        return this.delete() ? "changed" : "ignored";
-      case "return":
-        return this.newline() ? "changed" : "ignored";
-      case "space":
-        return this.insert(" ") ? "changed" : "ignored";
-      case "tab":
-        return this.insert("	") ? "changed" : "ignored";
-      default:
-        if (key.length > 1) return "ignored";
-        return this.insert(key) ? "changed" : "ignored";
-    }
-  }
-  accepts(character) {
-    const validator = this.validator.peek();
-    if (!validator) return true;
-    validator.lastIndex = 0;
-    return validator.test(character);
-  }
-  inspect() {
-    const text = this.text.peek();
-    const lines = this.currentLines();
-    const validator = this.validator.peek();
-    return {
-      text,
-      lines,
-      lineCount: lines.length,
-      cursorPosition: { ...this.cursorPosition.peek() },
-      currentLine: lines[this.cursorPosition.peek().y] ?? "",
-      empty: text.length === 0,
-      valid: validator ? [...text].every((character) => {
-        if (character === "\n") return true;
-        validator.lastIndex = 0;
-        return validator.test(character);
-      }) : true,
-      lineHighlighting: this.lineHighlighting.peek(),
-      lineNumbering: this.lineNumbering.peek(),
-      wordWrap: this.wordWrap.peek()
-    };
-  }
-  dispose() {
-    this.text.unsubscribe(this.#syncCursor);
-    this.cursorPosition.unsubscribe(this.#syncCursor);
-    try {
-      this.lines.dispose();
-    } catch {
-    }
-    if (this.#ownsText) this.text.dispose();
-    if (this.#ownsCursorPosition) this.cursorPosition.dispose();
-    if (this.#ownsValidator) this.validator.dispose();
-    if (this.#ownsMultiCodePointSupport) this.multiCodePointSupport.dispose();
-    if (this.#ownsLineHighlighting) this.lineHighlighting.dispose();
-    if (this.#ownsLineNumbering) this.lineNumbering.dispose();
-    if (this.#ownsWordWrap) this.wordWrap.dispose();
-  }
-  clampCursor() {
-    const cursor = this.cursorPosition.peek();
-    const lines = this.currentLines();
-    cursor.y = clamp(cursor.y, 0, Math.max(lines.length - 1, 0));
-    cursor.x = clamp(cursor.x, 0, lines[cursor.y]?.length ?? 0);
-  }
-  currentLines() {
-    return this.#textLineCache.lines(this.text.peek());
-  }
-  endPosition(value) {
-    const lines = this.#textLineCache.lines(value);
-    const y = Math.max(lines.length - 1, 0);
-    return { x: lines[y]?.length ?? 0, y };
-  }
-};
-function wrapTextBoxLines(lines, width, options = {}) {
-  const visual = [];
-  const safeWidth = Math.max(1, Math.floor(width));
-  const wordWrap = options.wordWrap ?? true;
-  for (const [lineIndex, line] of lines.entries()) {
-    if (!wordWrap || line.length <= safeWidth) {
-      visual.push({
-        lineIndex,
-        startColumn: 0,
-        endColumn: line.length,
-        text: cropToWidth(line.replaceAll("	", " "), safeWidth),
-        continuation: false
-      });
-      continue;
-    }
-    if (line.length === 0) {
-      visual.push({ lineIndex, startColumn: 0, endColumn: 0, text: "", continuation: false });
-      continue;
-    }
-    let startColumn = 0;
-    let continuation = false;
-    while (startColumn < line.length) {
-      const remaining = line.slice(startColumn);
-      if (remaining.length <= safeWidth) {
-        visual.push({
-          lineIndex,
-          startColumn,
-          endColumn: line.length,
-          text: remaining.replaceAll("	", " "),
-          continuation
-        });
-        break;
-      }
-      const slice = line.slice(startColumn, startColumn + safeWidth);
-      const space = slice.lastIndexOf(" ");
-      const endColumn = space > 0 ? startColumn + space : startColumn + safeWidth;
-      visual.push({
-        lineIndex,
-        startColumn,
-        endColumn,
-        text: line.slice(startColumn, endColumn).replaceAll("	", " "),
-        continuation
-      });
-      startColumn = space > 0 ? endColumn + 1 : endColumn;
-      while (line[startColumn] === " ") startColumn += 1;
-      continuation = true;
-    }
-  }
-  return visual.length > 0 ? visual : [{ lineIndex: 0, startColumn: 0, endColumn: 0, text: "", continuation: false }];
 }
 
 // src/three_ascii/demo_presets.ts

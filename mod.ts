@@ -24,6 +24,7 @@ export * from "./src/tui.ts";
 export * from "./src/signals/mod.ts";
 
 export * from "./src/layout/mod.ts";
+export * from "./src/markup/mod.ts";
 
 export * from "./src/components/mod.ts";
 export * from "./src/canvas/mod.ts";

@@ -5,11 +5,12 @@ Deno export map in `deno.jsonc`, README guidance, and release notes should stay 
 
 ## Entrypoints
 
-| Import target | Source          | Runtime  | Stability    | Use it for                                                                                                                     |
-| ------------- | --------------- | -------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------ |
-| `.`           | `mod.ts`        | terminal | stable       | Full Deno terminal apps, reusable widgets, app primitives, themes, runtime helpers, tests, and benchmarks.                     |
-| `./web`       | `mod.web.ts`    | browser  | beta         | Standalone browser bundles, GitHub Pages demos, Canvas2D/DOM hosts, browser input, IndexedDB, Workers, and shared controllers. |
-| `./remote`    | `mod.remote.ts` | remote   | experimental | Browser clients that connect to a hosted terminal stream or future PTY-backed app host.                                        |
+| Import target   | Source                       | Runtime  | Stability    | Use it for                                                                                                                     |
+| --------------- | ---------------------------- | -------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------ |
+| `.`             | `mod.ts`                     | terminal | stable       | Full Deno terminal apps, reusable widgets, app primitives, themes, runtime helpers, tests, and benchmarks.                     |
+| `./web`         | `mod.web.ts`                 | browser  | beta         | Standalone browser bundles, GitHub Pages demos, Canvas2D/DOM hosts, browser input, IndexedDB, Workers, and shared controllers. |
+| `./remote`      | `mod.remote.ts`              | remote   | experimental | Browser clients that connect to a hosted terminal stream or future PTY-backed app host.                                        |
+| `./layout/yoga` | `src/layout/solvers/yoga.ts` | shared   | experimental | Optional Yoga-backed Flexbox solving for HTML/CSS-style layout trees.                                                          |
 
 Local development imports use relative paths:
 
@@ -17,6 +18,7 @@ Local development imports use relative paths:
 import { createThemeProvider, Tui } from "./mod.ts";
 import { createWebTui } from "./mod.web.ts";
 import { RemoteTerminalClient } from "./mod.remote.ts";
+import { yogaLayoutSolver } from "./src/layout/solvers/yoga.ts";
 ```
 
 Published package imports should use the same subpaths:
@@ -25,6 +27,7 @@ Published package imports should use the same subpaths:
 import { Tui } from "jsr:@scope/package";
 import { createWebTui } from "jsr:@scope/package/web";
 import { RemoteTerminalClient } from "jsr:@scope/package/remote";
+import { yogaLayoutSolver } from "jsr:@scope/package/layout/yoga";
 ```
 
 The package is not pinned to a public JSR scope in this repository yet. Choose the final scope during publication, then
@@ -46,6 +49,7 @@ Current marked surfaces:
 - `mod.ts`: stable terminal package.
 - `mod.web.ts`: beta standalone browser package.
 - `mod.remote.ts`: experimental remote-terminal bridge.
+- `src/layout/solvers/yoga.ts`: experimental optional Yoga-backed Flexbox solver.
 - `src/three_ascii/*`: experimental renderer internals and presets, even when re-exported for demos.
 - `app/*`, `examples/*`, and `scripts/*`: internal/demo surfaces.
 
