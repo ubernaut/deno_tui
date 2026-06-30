@@ -18,6 +18,26 @@ export interface TerminalBackendSpawnOptions extends ProcessSessionCommand {
   output?: TerminalOutputController;
 }
 
+/** Options used when reattaching to a backend-owned terminal session. */
+export interface TerminalBackendAttachOptions {
+  columns?: number;
+  rows?: number;
+  output?: TerminalOutputController;
+}
+
+/** Serializable descriptor for a session retained by a backend outside the active window handle. */
+export interface TerminalDetachedSession {
+  id: string;
+  backendId: string;
+  title?: string;
+  commandLine?: string;
+  columns?: number;
+  rows?: number;
+  createdAt?: number;
+  updatedAt?: number;
+  metadata?: Record<string, string>;
+}
+
 /** Serializable inspection snapshot for terminal backend sessions. */
 export interface TerminalSessionHandleInspection {
   id: string;
@@ -28,6 +48,8 @@ export interface TerminalSessionHandleInspection {
   columns: number;
   rows: number;
   resizeSupported: boolean;
+  detached?: boolean;
+  reconnectable?: boolean;
   exit?: ProcessSessionExit;
 }
 
@@ -50,7 +72,15 @@ export interface TerminalBackend {
   readonly id: string;
   readonly label: string;
   readonly pty: boolean;
+  readonly detachable?: boolean;
+  readonly reconnectable?: boolean;
   spawn(options: TerminalBackendSpawnOptions): TerminalSessionHandle;
+  attach?(
+    sessionId: string,
+    options?: TerminalBackendAttachOptions,
+  ): TerminalSessionHandle | Promise<TerminalSessionHandle>;
+  detach?(session: TerminalSessionHandle): Promise<TerminalDetachedSession | undefined>;
+  listDetached?(): Promise<TerminalDetachedSession[]>;
 }
 
 /** Options for configuring the process-backed terminal backend. */
@@ -70,6 +100,8 @@ export class ProcessTerminalBackend implements TerminalBackend {
   readonly id: string;
   readonly label: string;
   readonly pty = false;
+  readonly detachable = false;
+  readonly reconnectable = false;
   readonly #spawn?: ProcessSessionSpawner;
 
   constructor(options: ProcessTerminalBackendOptions = {}) {

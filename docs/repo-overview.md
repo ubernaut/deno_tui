@@ -111,14 +111,14 @@ each phase to proof commands. `examples/form_workflow.ts`, `examples/table_selec
 selection state, command search/dispatch, and terminal session setup. `deno task screenshots` regenerates the JPEG
 terminal screenshots used by the README under `docs/screenshots/`. `app/api_workbench.ts` is the interactive portfolio
 for the same APIs and now includes a New-menu `Terminal Output` window that runs a real subprocess inside the managed
-window layout. The terminal-window layer also exposes backend handles, spawn templates for shell/Deno/project commands,
-attach-session metadata, screen cells, and `syncTerminalWindowLayout()` for propagating window-manager geometry into
-terminal session dimensions. `summarizeTerminalStatus()` turns process inspections, backend handles, and persisted
-terminal descriptors into compact status-bar rows. `WindowManagerController` now supports explicit upsert, rename, and
-reorder operations, and `windowManagerCommands()` binds those window actions into the same command-registry system as
-the rest of the app surface. The API Workbench Terminal Output window exposes workbench/raw input modes so focused
-terminal panes can either keep global shortcuts active or route printable keys to child stdin with visible mode/status
-indicators.
+window layout. The terminal-window layer also exposes backend handles, a lazy backend registry, an optional Sigma PTY
+FFI adapter, spawn templates for shell/Deno/project commands, attach-session metadata, screen cells, and
+`syncTerminalWindowLayout()` for propagating window-manager geometry into terminal session dimensions.
+`summarizeTerminalStatus()` turns process inspections, backend handles, and persisted terminal descriptors into compact
+status-bar rows. `WindowManagerController` now supports explicit upsert, rename, and reorder operations, and
+`windowManagerCommands()` binds those window actions into the same command-registry system as the rest of the app
+surface. The API Workbench Terminal Output window exposes workbench/raw input modes so focused terminal panes can either
+keep global shortcuts active or route printable keys to child stdin with visible mode/status indicators.
 
 Remote terminal support lives in `src/web/remote_terminal.ts`: clients encode browser input and resize events, while
 `RemoteTerminalBridge` connects an explicit transport to a `TerminalSessionHandle` and forwards output, binary frames,

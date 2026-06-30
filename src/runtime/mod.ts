@@ -15,6 +15,8 @@ export * from "./storage.ts";
 export * from "./telemetry.ts";
 export * from "./terminal_capabilities.ts";
 export * from "./terminal_backend.ts";
+export * from "./terminal_backend_registry.ts";
+export * from "./pty_backend.ts";
 export * from "./terminal_templates.ts";
 export * from "./terminal_status.ts";
 export * from "./process_session.ts";

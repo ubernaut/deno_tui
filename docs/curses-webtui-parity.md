@@ -16,8 +16,9 @@ testing helpers.
 - Exported the pad API through the terminal and web package entrypoints and added it to the component catalog.
 - Added process-output terminal window primitives: `TerminalOutputController`, `ProcessSessionController`, and
   `terminalCommands()` for non-PTY command panes with stdout/stderr scrollback.
-- Added backend/session seams for terminal windows: `TerminalBackend`, `TerminalSessionHandle`, terminal screen cells,
-  spawn templates, session descriptors, and window-layout resize synchronization.
+- Added backend/session seams for terminal windows: `TerminalBackend`, `TerminalSessionHandle`, a lazy backend registry,
+  an optional Sigma PTY FFI adapter, terminal screen cells, spawn templates, session descriptors, and window-layout
+  resize synchronization.
 - Added command-registry bindings for managed windows: create, focus, close, minimize, fullscreen, restore, rename, and
   reorder.
 - Added compact terminal status summaries for process state, backend type, dimensions, cwd, exit status, and
@@ -28,7 +29,9 @@ testing helpers.
 
 ## Remaining Priorities
 
-- PTY-backed interactive terminal windows for shell, curses apps, and detach/reattach workflows.
+- Workbench UI wiring for PTY-backed interactive terminal windows; the optional PTY backend exists, but the current demo
+  still defaults to process-backed command panes.
+- A persistent tmux/control-mode or daemon backend for true detach/reattach workflows.
 - Rich attributed text spans inside pads and text boxes, beyond the current string/ANSI-oriented helpers.
 - Higher-level form validation flows that coordinate multiple fields, modals, status bars, and command surfaces.
 - More browser accessibility metadata for web-rendered terminal widgets.

@@ -52,8 +52,8 @@ export function summarizeTerminalStatus(
   const columns = "columns" in source ? source.columns : undefined;
   const rows = "rows" in source ? source.rows : undefined;
   const exit = "exit" in source ? source.exit : undefined;
-  const detached = options.detached ?? false;
-  const reconnectable = options.reconnectable ?? ("reconnectable" in source ? source.reconnectable : false);
+  const detached = options.detached ?? ("detached" in source ? source.detached ?? false : false);
+  const reconnectable = options.reconnectable ?? ("reconnectable" in source ? source.reconnectable ?? false : false);
   const fields = terminalStatusFields({
     title,
     status,

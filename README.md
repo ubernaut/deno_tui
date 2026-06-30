@@ -751,15 +751,17 @@ restart, clear, follow, and copy-command actions. `routeTerminalKeyPress()` and 
 routing layer with reserved host shortcuts for future interactive terminal windows.
 
 The backend-facing layer adds `TerminalBackend`, `TerminalSessionHandle`, `createProcessTerminalBackend()`,
-`TerminalScreenController`, and terminal templates for shell, Deno task, arbitrary command, project task, and attachable
-session metadata. Use `syncTerminalWindowLayout()` when terminal handles live inside a `WindowManagerController`; it
-translates visible window rectangles into terminal columns/rows and only calls backend resize when geometry changes. The
-`summarizeTerminalStatus()` helper formats active process state, backend id, dimensions, exit metadata, cwd,
-detached/reconnectable flags, and command lines for status bars or tab strips. The API Workbench portfolio includes a
-`Terminal: Terminal Output` window under the New menu that demonstrates the flow inside the same window manager used by
-the rest of the demo. That window also includes a Raw input toggle: while a process is running, printable keys route to
-child stdin, Escape returns to workbench mode, and title/status rows show the current terminal input mode and process
-state.
+`TerminalBackendRegistry`, `createSigmaPtyTerminalBackendProvider()`, `TerminalScreenController`, and terminal templates
+for shell, Deno task, arbitrary command, project task, and attachable session metadata. The Sigma PTY adapter is
+optional and lazy: apps opt into the FFI-backed provider, can probe availability, and can fall back to the process
+backend without making core imports load native code. Use `syncTerminalWindowLayout()` when terminal handles live inside
+a `WindowManagerController`; it translates visible window rectangles into terminal columns/rows and only calls backend
+resize when geometry changes. The `summarizeTerminalStatus()` helper formats active process state, backend id,
+dimensions, exit metadata, cwd, detached/reconnectable flags, and command lines for status bars or tab strips. The API
+Workbench portfolio includes a `Terminal: Terminal Output` window under the New menu that demonstrates the flow inside
+the same window manager used by the rest of the demo. That window also includes a Raw input toggle: while a process is
+running, printable keys route to child stdin, Escape returns to workbench mode, and title/status rows show the current
+terminal input mode and process state.
 
 ## Layouts
 

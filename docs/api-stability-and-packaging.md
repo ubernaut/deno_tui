@@ -53,6 +53,8 @@ Current marked surfaces:
 - `src/three_ascii/*`: experimental renderer internals and presets, even when re-exported for demos.
 - `src/runtime/graphics_surface.ts`: experimental raster graphics surface abstraction.
 - `src/runtime/kitty_graphics.ts`: experimental Kitty terminal graphics protocol helpers.
+- `src/runtime/pty_backend.ts`: experimental optional PTY adapter over Sigma PTY FFI. It is lazy and provider-based so
+  normal terminal imports do not require native FFI setup.
 - `app/*`, `examples/*`, and `scripts/*`: internal/demo surfaces.
 
 ## Release Policy
