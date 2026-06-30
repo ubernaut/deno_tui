@@ -14,6 +14,7 @@ export * from "./file_explorer.ts";
 export * from "./frame.ts";
 export * from "./gauge.ts";
 export * from "./input.ts";
+export * from "./interaction.ts";
 export * from "./label.ts";
 export * from "./key_help.ts";
 export * from "./list.ts";

@@ -3,6 +3,7 @@ import type { TextRectangle } from "../canvas/text.ts";
 import { Component, type ComponentOptions } from "../component.ts";
 import { Computed, Signal } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
+import { stackedRowIndexAt } from "./interaction.ts";
 import { Text } from "./text.ts";
 
 export interface RadioOption {
@@ -153,6 +154,11 @@ export class RadioGroupController {
     return option;
   }
 
+  selectIndex(index: number): RadioOption | undefined {
+    this.activeIndex.value = clampRadioIndex(this.options.peek(), index);
+    return this.selectActive();
+  }
+
   selectValue(value: string | undefined): RadioOption | undefined {
     const index = this.options.peek().findIndex((option) => option.value === value);
     if (index < 0) return undefined;
@@ -162,6 +168,20 @@ export class RadioGroupController {
     this.selectedValue.value = option.value;
     void this.#onChange?.(option);
     return option;
+  }
+
+  handleMousePress(
+    event: { y: number; ctrl?: boolean; meta?: boolean; shift?: boolean },
+    groupRow = 0,
+    height = this.options.peek().length,
+  ): RadioOption | undefined {
+    if (event.ctrl || event.meta || event.shift) return undefined;
+    const rowIndex = stackedRowIndexAt(event.y, groupRow, Math.max(0, height));
+    if (rowIndex === undefined) return undefined;
+    const visible = visibleRadioOptions(this.options.peek(), this.activeIndex.peek(), height);
+    const row = visible[rowIndex];
+    if (!row || row.option.disabled) return undefined;
+    return this.selectIndex(row.index);
   }
 
   handleKeyPress({ key, ctrl, meta, shift }: { key: string; ctrl?: boolean; meta?: boolean; shift?: boolean }): void {
@@ -224,6 +244,10 @@ export class RadioGroup extends Component {
     this.activeIndex = this.controller.activeIndex;
 
     this.on("keyPress", (event) => this.controller.handleKeyPress(event));
+    this.on("mousePress", (event) => {
+      if (event.drag || event.release) return;
+      this.controller.handleMousePress(event, this.rectangle.peek().row, this.rectangle.peek().height);
+    });
     if (ownsController) this.on("destroy", () => this.controller.dispose());
   }
 

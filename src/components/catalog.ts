@@ -93,6 +93,7 @@ export const componentCatalog = [
     "component",
     "controller",
     "keyboard",
+    "mouse",
     "selection",
     "themeable",
   ]),
@@ -116,10 +117,12 @@ export const componentCatalog = [
     "themeable",
   ]),
   component("radio-group", "RadioGroup", "input", "Single-choice option group renderer.", [
+    "component",
     "controller",
     "render-helper",
     "selection",
     "keyboard",
+    "mouse",
     "themeable",
   ]),
   component("list", "List", "data", "Selectable list component.", [

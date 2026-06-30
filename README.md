@@ -297,6 +297,13 @@ screens, docs browsers, and plugin marketplaces that need to expose available wi
 JSON-friendly reports and Markdown tables. Run `deno task component-catalog -- --json`, `deno task component-catalog`,
 or `./visualization components -- --category=overlay` to generate catalog output for docs, CI, or marketplace tooling.
 
+Shared interaction helpers in `src/components/interaction.ts` keep row hit testing and mouse selection consistent across
+widgets. `stackedRowIndexAt()`, `stackedRowHitRegions()`, and `hitTestWidgetRegions()` are useful when custom renderers
+draw one option per row and need the same disabled/z-index behavior as built-in controls. Core controllers expose those
+semantics directly where practical: `ComboBoxController.handleMousePress()` selects dropdown rows,
+`RadioGroupController` selects the clicked option row, and `SliderController.handlePointer()` maps a click on the track
+to a snapped value.
+
 `ToastStackController` owns notification queue state for `ToastStack`: `show()`, `push()`, `dismiss()`,
 `dismissLatest()`, `clear()`, and `inspect()` keep notification overlays bounded and testable without local helper
 queues in each app. `toastCommands()` and `bindToastCommands()` expose clear and dismiss-latest actions for command

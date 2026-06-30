@@ -2,6 +2,7 @@
 import { Computed, Signal, SignalOfObject } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
 import { Button, ButtonOptions } from "./button.ts";
+import { stackedRowIndexAt } from "./interaction.ts";
 
 export interface ComboBoxOptions<Items extends string[] = string[]>
   extends Omit<ButtonOptions, "label" | "controller"> {
@@ -145,6 +146,20 @@ export class ComboBoxController<Items extends string[] = string[]> {
     const item = this.setSelectedIndex(index);
     if (item === undefined) return undefined;
     return this.selectActive();
+  }
+
+  itemIndexAt(row: number, listTopRow = 0, itemHeight = 1): number | undefined {
+    return stackedRowIndexAt(row, listTopRow, this.items.peek().length, itemHeight);
+  }
+
+  handleMousePress(
+    event: { y: number; ctrl?: boolean; meta?: boolean; shift?: boolean },
+    listTopRow = 0,
+    itemHeight = 1,
+  ): Items[number] | undefined {
+    if (!this.expanded.peek() || event.ctrl || event.meta || event.shift) return undefined;
+    const index = this.itemIndexAt(event.y, listTopRow, itemHeight);
+    return index === undefined ? undefined : this.selectIndex(index);
   }
 
   handleKeyPress({ key, ctrl, meta, shift }: { key: string; ctrl?: boolean; meta?: boolean; shift?: boolean }) {

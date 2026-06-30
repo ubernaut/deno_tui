@@ -79,6 +79,27 @@ export function sliderValueBy(value: number, min: number, max: number, step: num
   return clampSliderValue(value + step * delta, min, max);
 }
 
+export function snapSliderValue(value: number, min: number, max: number, step: number): number {
+  const rangeDirection = Math.sign(max - min) || 1;
+  const safeStep = Math.max(Number.EPSILON, Math.abs(step)) * rangeDirection;
+  const snapped = min + Math.round((value - min) / safeStep) * safeStep;
+  return clampSliderValue(snapped, min, max);
+}
+
+export function sliderValueAt(
+  track: SliderTrackRectangle,
+  point: { column: number; row: number },
+  min: number,
+  max: number,
+  step: number,
+  orientation: SliderOrientation,
+): number {
+  const span = Math.max(1, orientation === "horizontal" ? track.width - 1 : track.height - 1);
+  const offset = orientation === "horizontal" ? point.column - track.column : point.row - track.row;
+  const normalizedValue = clamp(offset, 0, span) / span;
+  return snapSliderValue(min + (max - min) * normalizedValue, min, max, step);
+}
+
 export function sliderThumbRectangle(
   track: SliderTrackRectangle,
   value: number,
@@ -192,6 +213,17 @@ export class SliderController {
     return this.increment(scroll);
   }
 
+  handlePointer(track: SliderTrackRectangle, column: number, row: number): number {
+    return this.setValue(sliderValueAt(
+      track,
+      { column, row },
+      this.min.peek(),
+      this.max.peek(),
+      this.step.peek(),
+      this.orientation.peek(),
+    ));
+  }
+
   thumbRectangle(track: SliderTrackRectangle): SliderThumbRectangle {
     return sliderThumbRectangle(
       track,
@@ -290,9 +322,10 @@ export class Slider extends Box {
 
     this.on("keyPress", (event) => this.controller.handleKeyPress(event));
 
-    this.on("mousePress", ({ drag, movementX, movementY, ctrl, shift, meta }) => {
-      if (!drag || ctrl || shift || meta) return;
-      this.controller.handleDrag(movementX, movementY);
+    this.on("mousePress", ({ x, y, drag, movementX, movementY, ctrl, shift, meta }) => {
+      if (ctrl || shift || meta) return;
+      if (drag) this.controller.handleDrag(movementX, movementY);
+      else this.controller.handlePointer(this.rectangle.peek(), x, y);
     });
 
     this.on("mouseScroll", ({ scroll }) => {

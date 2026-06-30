@@ -23,6 +23,7 @@ import { ComboBoxController, comboBoxLabel } from "../src/components/combobox.ts
 import { renderEmptyState } from "../src/components/empty_state.ts";
 import { createFileExplorerTree, FileExplorerController } from "../src/components/file_explorer.ts";
 import { InputController } from "../src/components/input.ts";
+import { hitTestWidgetRegions, stackedRowHitRegions, stackedRowIndexAt } from "../src/components/interaction.ts";
 import { labelLineLayout } from "../src/components/label.ts";
 import { renderKeyHelp } from "../src/components/key_help.ts";
 import { ListController, virtualRows, visibleListRows } from "../src/components/list.ts";
@@ -60,7 +61,14 @@ import {
   scrollOffsetBy,
 } from "../src/components/scroll_area.ts";
 import { renderStatusBar } from "../src/components/statusbar.ts";
-import { clampSliderValue, SliderController, sliderThumbRectangle, sliderValueBy } from "../src/components/slider.ts";
+import {
+  clampSliderValue,
+  SliderController,
+  sliderThumbRectangle,
+  sliderValueAt,
+  sliderValueBy,
+  snapSliderValue,
+} from "../src/components/slider.ts";
 import { renderSpinner, spinnerGlyph } from "../src/components/spinner.ts";
 import {
   clampStepperIndex,
@@ -85,6 +93,25 @@ Deno.test("visibleListRows centers the selected item when space allows", () => {
     "> gamma",
     "  delta",
   ]);
+});
+
+Deno.test("shared widget hit helpers map stacked rows and z-ordered regions", () => {
+  assertEquals(stackedRowIndexAt(7, 5, 3), 2);
+  assertEquals(stackedRowIndexAt(8, 5, 3), undefined);
+
+  const regions = stackedRowHitRegions(
+    { column: 4, row: 2, width: 12, height: 3 },
+    ["alpha", "beta", "gamma"],
+    { idPrefix: "option", disabled: (row) => row === "beta" },
+  );
+
+  assertEquals(regions.map((region) => [region.id, region.bounds.row, region.disabled]), [
+    ["option-0", 2, false],
+    ["option-1", 3, true],
+    ["option-2", 4, false],
+  ]);
+  assertEquals(hitTestWidgetRegions(regions, { column: 5, row: 3 }), undefined);
+  assertEquals(hitTestWidgetRegions(regions, { column: 5, row: 4 })?.region.payload, "gamma");
 });
 
 Deno.test("labelLineLayout crops and aligns text inside fixed rectangles", () => {
@@ -586,6 +613,12 @@ Deno.test("ComboBoxController opens navigates selects and inspects state", () =>
   assertEquals(controller.inspect().expanded, false);
   assertEquals(selections, ["beta"]);
   assertEquals(expanded, [true, false]);
+  controller.open();
+  assertEquals(controller.itemIndexAt(12, 10), 2);
+  assertEquals(controller.handleMousePress({ y: 12 }, 10), "gamma");
+  assertEquals(controller.inspect().selectedIndex, 2);
+  assertEquals(controller.inspect().expanded, false);
+  assertEquals(selections, ["beta", "gamma"]);
 
   controller.items.value = ["only"];
   assertEquals(controller.inspect().selectedIndex, 0);
@@ -1314,7 +1347,9 @@ Deno.test("RadioGroupController navigates selects and inspects option state", ()
   assertEquals(controller.selectValue("b"), undefined);
   controller.handleKeyPress(keyPress("end"));
   controller.handleKeyPress(keyPress("space"));
-  assertEquals(changes, ["a", "c"]);
+  assertEquals(controller.handleMousePress({ y: 10 }, 10, 3)?.value, "a");
+  assertEquals(controller.handleMousePress({ y: 11 }, 10, 3), undefined);
+  assertEquals(changes, ["a", "c", "a"]);
   controller.dispose();
   selectedValue.dispose();
 });
@@ -1406,11 +1441,17 @@ Deno.test("SliderController handles keyboard mouse and inspection state", () => 
   controller.handleKeyPress(keyPress("right"));
   controller.handleDrag(2, 0);
   controller.handleScroll(-1);
+  assertEquals(snapSliderValue(5, 0, 10, 2), 6);
+  assertEquals(
+    sliderValueAt({ column: 0, row: 0, width: 11, height: 1 }, { column: 5, row: 0 }, 0, 10, 2, "horizontal"),
+    6,
+  );
+  controller.handlePointer({ column: 0, row: 0, width: 11, height: 1 }, 5, 0);
   controller.handleKeyPress(keyPress("home"));
   controller.handleKeyPress(keyPress("end"));
 
   assertEquals(value.peek(), 10);
-  assertEquals(changes, [6, 10, 8, 0, 10]);
+  assertEquals(changes, [6, 10, 8, 6, 0, 10]);
   assertEquals(controller.inspect(), {
     min: 0,
     max: 10,
