@@ -295,6 +295,8 @@ async function waitFor(condition: () => boolean): Promise<void> {
 }
 
 class FakeGridRenderer implements ThreePanelGridRenderer, ThreeAsciiGridRenderer {
+  readonly scene = {} as Scene;
+  readonly camera = {} as Camera;
   private terminalEdgeBias = 1;
   private terminalGlyphStyle: TerminalGlyphStyle = "blocks";
 

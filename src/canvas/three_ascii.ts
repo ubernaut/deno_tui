@@ -9,6 +9,8 @@ import type { TerminalGlyphStyle } from "../three_ascii/glyphs.ts";
 import { ThreeAsciiRenderer, type ThreeAsciiRendererOptions } from "../three_ascii/renderer.ts";
 
 export interface ThreeAsciiGridRenderer {
+  readonly scene: Scene;
+  readonly camera: Camera;
   setSize(columns: number, rows: number): void;
   setEffectOptions(options: Partial<AcerolaAsciiNodeOptions>): void;
   getTerminalEdgeBias(): number;
