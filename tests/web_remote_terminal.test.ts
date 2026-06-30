@@ -1,7 +1,13 @@
 import { assertEquals } from "./deps.ts";
+import { TerminalOutputController } from "../src/components/terminal_output.ts";
+import type { ProcessSessionCommand, ProcessSessionInspection, ProcessSessionStatus } from "../src/runtime/mod.ts";
+import type { TerminalSessionHandle } from "../src/runtime/terminal_backend.ts";
 import {
+  createRemoteTerminalBridge,
   createRemoteTerminalClient,
   decodeRemoteTerminalClientMessage,
+  decodeRemoteTerminalServerMessage,
+  encodeRemoteTerminalInput,
   encodeRemoteTerminalMessage,
   type RemoteTerminalTransport,
 } from "../mod.remote.ts";
@@ -128,6 +134,96 @@ Deno.test("remote terminal client sends input and emits terminal data", () => {
   });
 });
 
+Deno.test("remote terminal input encoder preserves key paste and mouse buffers", () => {
+  assertEquals(
+    encodeRemoteTerminalInput({
+      kind: "keyPress",
+      event: { key: "up", meta: false, ctrl: false, shift: false, buffer: new Uint8Array() },
+    }),
+    new TextEncoder().encode("\x1b[A"),
+  );
+  assertEquals(
+    encodeRemoteTerminalInput({
+      kind: "paste",
+      event: { key: "paste", text: "paste", buffer: new Uint8Array() },
+    }),
+    new TextEncoder().encode("paste"),
+  );
+  assertEquals(
+    encodeRemoteTerminalInput({
+      kind: "mousePress",
+      event: {
+        key: "mouse",
+        buffer: new Uint8Array([1, 2, 3]),
+        x: 1,
+        y: 2,
+        movementX: 0,
+        movementY: 0,
+        meta: false,
+        ctrl: false,
+        shift: false,
+        drag: false,
+        release: false,
+        button: 0,
+      },
+    }),
+    new Uint8Array([1, 2, 3]),
+  );
+});
+
+Deno.test("remote terminal bridge routes client messages to backend handles", async () => {
+  const transport = new FakeRemoteTerminalTransport();
+  const session = new FakeTerminalSessionHandle();
+  const bridge = createRemoteTerminalBridge(transport, session);
+
+  transport.receive(encodeRemoteTerminalMessage({
+    type: "input",
+    input: {
+      kind: "keyPress",
+      event: { key: "a", meta: false, ctrl: false, shift: false, buffer: new Uint8Array() },
+    },
+  }));
+  await tick();
+  assertEquals(session.writes, ["a"]);
+
+  transport.receive(encodeRemoteTerminalMessage({ type: "resize", size: { columns: 100, rows: 30 } }));
+  await tick();
+  assertEquals(session.columns, 100);
+  assertEquals(session.rows, 30);
+  assertEquals(decodeRemoteTerminalServerMessage(transport.sent.at(-1)!), {
+    type: "resize",
+    size: { columns: 100, rows: 30 },
+  });
+
+  transport.receive(encodeRemoteTerminalMessage({ type: "ping", id: "p1" }));
+  await tick();
+  assertEquals(decodeRemoteTerminalServerMessage(transport.sent.at(-1)!), { type: "pong", id: "p1" });
+
+  session.output.appendText("stdout", "ready", 1);
+  assertEquals(decodeRemoteTerminalServerMessage(transport.sent.at(-1)!), { type: "data", data: "[out] ready\n" });
+  bridge.sendData(new Uint8Array([7, 8]));
+  assertEquals(decodeRemoteTerminalServerMessage(transport.sent.at(-1)!), {
+    type: "binary",
+    data: new Uint8Array([7, 8]),
+  });
+
+  transport.receive("{");
+  await tick();
+  assertEquals(decodeRemoteTerminalServerMessage(transport.sent.at(-1)!).type, "error");
+  assertEquals(bridge.inspectBridge(), {
+    open: true,
+    dataMessages: 2,
+    inputMessages: 1,
+    resizeMessages: 1,
+    errorMessages: 1,
+  });
+
+  const sentBeforeClose = transport.sent.length;
+  bridge.close("done");
+  assertEquals(transport.sent.length, sentBeforeClose + 1);
+  assertEquals(decodeRemoteTerminalServerMessage(transport.sent.at(-1)!), { type: "close", reason: "done" });
+});
+
 class FakeRemoteTerminalTransport implements RemoteTerminalTransport {
   readonly sent: Array<string | Uint8Array> = [];
   #messageListeners: Array<(message: string | Uint8Array) => void> = [];
@@ -160,4 +256,53 @@ class FakeRemoteTerminalTransport implements RemoteTerminalTransport {
   receive(message: string | Uint8Array): void {
     for (const listener of this.#messageListeners) listener(message);
   }
+}
+
+class FakeTerminalSessionHandle implements TerminalSessionHandle {
+  readonly id = "terminal";
+  readonly backendId = "fake";
+  readonly command: ProcessSessionCommand = { command: "demo" };
+  readonly output = new TerminalOutputController();
+  readonly closed = Promise.resolve({ status: "exited" } as ProcessSessionInspection);
+  readonly writes: string[] = [];
+  columns = 80;
+  rows = 24;
+
+  write(data: string | Uint8Array): Promise<boolean> {
+    this.writes.push(typeof data === "string" ? data : new TextDecoder().decode(data));
+    return Promise.resolve(true);
+  }
+
+  resize(columns: number, rows: number): Promise<boolean> {
+    this.columns = columns;
+    this.rows = rows;
+    return Promise.resolve(true);
+  }
+
+  kill(): Promise<boolean> {
+    return Promise.resolve(true);
+  }
+
+  inspect() {
+    const status: ProcessSessionStatus = "running";
+    return {
+      id: this.id,
+      backendId: this.backendId,
+      commandLine: "demo",
+      status,
+      running: true,
+      columns: this.columns,
+      rows: this.rows,
+      resizeSupported: true,
+    };
+  }
+
+  dispose(): Promise<void> {
+    this.output.dispose();
+    return Promise.resolve();
+  }
+}
+
+function tick(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0));
 }

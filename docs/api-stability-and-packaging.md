@@ -9,7 +9,7 @@ Deno export map in `deno.jsonc`, README guidance, and release notes should stay 
 | --------------- | ---------------------------- | -------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------ |
 | `.`             | `mod.ts`                     | terminal | stable       | Full Deno terminal apps, reusable widgets, app primitives, themes, runtime helpers, tests, and benchmarks.                     |
 | `./web`         | `mod.web.ts`                 | browser  | beta         | Standalone browser bundles, GitHub Pages demos, Canvas2D/DOM hosts, browser input, IndexedDB, Workers, and shared controllers. |
-| `./remote`      | `mod.remote.ts`              | remote   | experimental | Browser clients that connect to a hosted terminal stream or future PTY-backed app host.                                        |
+| `./remote`      | `mod.remote.ts`              | remote   | experimental | Browser clients and server bridges that connect transports to hosted terminal session handles.                                 |
 | `./layout/yoga` | `src/layout/solvers/yoga.ts` | shared   | experimental | Optional Yoga-backed Flexbox solving for HTML/CSS-style layout trees.                                                          |
 
 Local development imports use relative paths:
@@ -48,7 +48,7 @@ Current marked surfaces:
 
 - `mod.ts`: stable terminal package.
 - `mod.web.ts`: beta standalone browser package.
-- `mod.remote.ts`: experimental remote-terminal bridge.
+- `mod.remote.ts`: experimental remote-terminal client and bridge.
 - `src/layout/solvers/yoga.ts`: experimental optional Yoga-backed Flexbox solver.
 - `src/three_ascii/*`: experimental renderer internals and presets, even when re-exported for demos.
 - `src/runtime/graphics_surface.ts`: experimental raster graphics surface abstraction.

@@ -2,6 +2,8 @@
 /// <reference lib="dom.iterable" />
 // Copyright 2023 Im-Beast. MIT license.
 import { EventEmitter } from "../event_emitter.ts";
+import { encodeTerminalKeyPress, encodeTerminalPaste } from "../app/terminal_input.ts";
+import { formatTerminalOutputLine, type TerminalOutputLine } from "../components/terminal_output.ts";
 import type { ConsoleSize } from "../types.ts";
 import type {
   KeyPressEvent,
@@ -10,6 +12,7 @@ import type {
   PasteEvent,
   TerminalFocusEvent,
 } from "../input_reader/types.ts";
+import type { TerminalSessionHandle } from "../runtime/terminal_backend.ts";
 
 export type RemoteTerminalInputEvent =
   | { kind: "keyPress"; event: KeyPressEvent }
@@ -53,6 +56,14 @@ export type RemoteTerminalClientEvents = {
   close: { args: [string | undefined] };
   pong: { args: [string] };
 };
+
+export interface RemoteTerminalBridgeInspection {
+  open: boolean;
+  dataMessages: number;
+  inputMessages: number;
+  resizeMessages: number;
+  errorMessages: number;
+}
 
 export class RemoteTerminalClient extends EventEmitter<RemoteTerminalClientEvents> {
   readonly #transport: RemoteTerminalTransport;
@@ -207,7 +218,159 @@ export function createWebSocketRemoteTerminalClient(
   return new RemoteTerminalClient(new WebSocketRemoteTerminalTransport(url, protocols));
 }
 
+export interface RemoteTerminalBridgeOptions {
+  killOnClose?: boolean;
+  sourcePrefix?: boolean;
+}
+
+export class RemoteTerminalBridge {
+  readonly #transport: RemoteTerminalTransport;
+  readonly #session: TerminalSessionHandle;
+  readonly #options: RemoteTerminalBridgeOptions;
+  readonly #removeListeners: Array<() => void>;
+  #open = true;
+  #dataMessages = 0;
+  #inputMessages = 0;
+  #resizeMessages = 0;
+  #errorMessages = 0;
+  #lineCount = 0;
+
+  constructor(
+    transport: RemoteTerminalTransport,
+    session: TerminalSessionHandle,
+    options: RemoteTerminalBridgeOptions = {},
+  ) {
+    this.#transport = transport;
+    this.#session = session;
+    this.#options = options;
+    this.#lineCount = session.output.lines.peek().length;
+    const outputListener = (lines: TerminalOutputLine[]) => this.#sendNewOutputLines(lines);
+    session.output.lines.subscribe(outputListener);
+    this.#removeListeners = [
+      transport.onMessage((message) => void this.#handleClientMessage(message)),
+      transport.onClose((reason) => {
+        const wasOpen = this.#open;
+        this.#open = false;
+        if (this.#options.killOnClose) void this.#session.kill();
+        this.#disposeListeners();
+        if (wasOpen && reason) this.#send({ type: "close", reason });
+      }),
+      () => session.output.lines.unsubscribe(outputListener),
+    ];
+    const removeError = transport.onError?.((error) =>
+      this.#sendError(error instanceof Error ? error.message : String(error))
+    );
+    if (removeError) this.#removeListeners.push(removeError);
+  }
+
+  sendData(data: string | Uint8Array): void {
+    if (typeof data === "string") this.#send({ type: "data", data });
+    else this.#send({ type: "binary", data });
+  }
+
+  close(reason?: string): void {
+    if (!this.#open) return;
+    this.#open = false;
+    this.#send({ type: "close", reason });
+    this.#disposeListeners();
+    this.#transport.close(undefined, reason);
+  }
+
+  inspectBridge(): RemoteTerminalBridgeInspection {
+    return {
+      open: this.#open,
+      dataMessages: this.#dataMessages,
+      inputMessages: this.#inputMessages,
+      resizeMessages: this.#resizeMessages,
+      errorMessages: this.#errorMessages,
+    };
+  }
+
+  async #handleClientMessage(message: string | Uint8Array): Promise<void> {
+    if (!this.#open) return;
+    let decoded: RemoteTerminalClientMessage;
+    try {
+      decoded = decodeRemoteTerminalClientMessage(message);
+    } catch (error) {
+      this.#sendError(error instanceof Error ? error.message : String(error));
+      return;
+    }
+
+    if (decoded.type === "ping") {
+      this.#send({ type: "pong", id: decoded.id });
+      return;
+    }
+    if (decoded.type === "resize") {
+      this.#resizeMessages += 1;
+      const resized = await this.#session.resize(decoded.size.columns, decoded.size.rows);
+      if (!resized && this.#session.inspect().resizeSupported) {
+        this.#sendError("terminal resize was not accepted");
+      }
+      this.#send({ type: "resize", size: decoded.size });
+      return;
+    }
+
+    this.#inputMessages += 1;
+    const bytes = encodeRemoteTerminalInput(decoded.input);
+    if (!bytes) return;
+    const written = await this.#session.write(bytes);
+    if (!written) this.#sendError("terminal input was not accepted");
+  }
+
+  #sendNewOutputLines(lines: readonly TerminalOutputLine[]): void {
+    if (!this.#open || lines.length <= this.#lineCount) return;
+    const next = lines.slice(this.#lineCount);
+    this.#lineCount = lines.length;
+    for (const line of next) {
+      this.#send({
+        type: "data",
+        data: `${formatTerminalOutputLine(line, { sourcePrefix: this.#options.sourcePrefix ?? true })}\n`,
+      });
+    }
+  }
+
+  #sendError(message: string): void {
+    this.#errorMessages += 1;
+    this.#send({ type: "error", message });
+  }
+
+  #send(message: RemoteTerminalServerMessage): void {
+    if (message.type === "data" || message.type === "binary") this.#dataMessages += 1;
+    this.#transport.send(encodeRemoteTerminalServerMessage(message));
+  }
+
+  #disposeListeners(): void {
+    for (const remove of this.#removeListeners) remove();
+    this.#removeListeners.length = 0;
+  }
+}
+
+export function createRemoteTerminalBridge(
+  transport: RemoteTerminalTransport,
+  session: TerminalSessionHandle,
+  options: RemoteTerminalBridgeOptions = {},
+): RemoteTerminalBridge {
+  return new RemoteTerminalBridge(transport, session, options);
+}
+
+export function encodeRemoteTerminalInput(input: RemoteTerminalInputEvent): Uint8Array | undefined {
+  if (input.kind === "keyPress") return encodeTerminalKeyPress(input.event);
+  if (input.kind === "paste") return encodeTerminalPaste(input.event);
+  if (input.event.buffer.byteLength > 0) return new Uint8Array(input.event.buffer);
+  return undefined;
+}
+
 export function encodeRemoteTerminalMessage(message: RemoteTerminalClientMessage): string {
+  return JSON.stringify(message, (_key, value) => {
+    if (value instanceof Uint8Array) {
+      return { __type: "Uint8Array", data: Array.from(value) };
+    }
+    return value;
+  });
+}
+
+export function encodeRemoteTerminalServerMessage(message: RemoteTerminalServerMessage): string | Uint8Array {
+  if (message.type === "binary") return message.data;
   return JSON.stringify(message, (_key, value) => {
     if (value instanceof Uint8Array) {
       return { __type: "Uint8Array", data: Array.from(value) };

@@ -68,6 +68,11 @@ Flexbox solver for HTML/CSS-style layout trees. The stability manifest is export
 `apiSurfacePolicies`, and `packageReleasePolicy` so docs, release tooling, and adopters can inspect the package contract
 without scraping Markdown.
 
+The remote package includes `RemoteTerminalClient` for browser-side hosts and `RemoteTerminalBridge` for server-side
+adapters. A bridge connects a transport to the same `TerminalSessionHandle` used by local terminal windows, routing
+key/paste/mouse/focus input, resize messages, output lines, binary frames, errors, and close events over the shared
+protocol.
+
 ## Fork Highlights
 
 - **Acerola-inspired three.js ASCII backend** — the `ThreeAscii` renderer now drives a WebGPU post-processing path with

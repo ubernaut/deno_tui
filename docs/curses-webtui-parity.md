@@ -22,6 +22,7 @@ testing helpers.
   reorder.
 - Added compact terminal status summaries for process state, backend type, dimensions, cwd, exit status, and
   detached/reconnectable flags.
+- Added a remote terminal client/bridge protocol with input, resize, output, binary, error, and close coverage.
 
 ## Remaining Priorities
 

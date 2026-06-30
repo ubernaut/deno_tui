@@ -99,11 +99,16 @@ backend/session layer.
 
 ### Phase 5: Web And Remote Runtime
 
-- Reuse `src/web/remote_terminal.ts` as the protocol boundary for browser-hosted terminal windows.
-- Add a server-side bridge that connects remote terminal messages to the same backend interface used by local terminal
-  windows.
+- [x] Reuse `src/web/remote_terminal.ts` as the protocol boundary for browser-hosted terminal windows.
+- [x] Add a server-side bridge that connects remote terminal messages to the same backend interface used by local
+      terminal windows.
 - Keep browser demos safe by default: mock terminal windows or connect only to an explicitly configured local bridge.
-- Add remote resize, binary data, paste, focus, error, and close coverage.
+- [x] Add remote resize, binary data, paste, focus, error, and close coverage.
+
+Phase 5 now has `RemoteTerminalBridge`, `createRemoteTerminalBridge()`, `encodeRemoteTerminalInput()`, and
+`encodeRemoteTerminalServerMessage()`. The bridge routes decoded client key/paste/mouse/focus input and resize messages
+to `TerminalSessionHandle`, forwards terminal output lines and binary data back to the transport, and keeps browser
+demos safe by requiring an explicit transport/session bridge.
 
 ## Open Decisions
 

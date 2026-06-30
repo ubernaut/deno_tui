@@ -8,7 +8,7 @@ helpers, and visualization demos on top.
 
 | Path                                                                                                        | Purpose                                                                                                                                                                                                                         |
 | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `mod.ts`, `mod.web.ts`, `mod.remote.ts`                                                                     | Public package entrypoints for the stable terminal package, beta standalone browser package, and experimental remote terminal bridge.                                                                                           |
+| `mod.ts`, `mod.web.ts`, `mod.remote.ts`                                                                     | Public package entrypoints for the stable terminal package, beta standalone browser package, and experimental remote terminal client/bridge.                                                                                    |
 | `src/tui.ts`, `src/canvas/`, `src/component.ts`, `src/view.ts`                                              | Terminal rendering foundation: TUI lifecycle, canvas buffering, draw objects, base components, and scrollable views.                                                                                                            |
 | `src/input_reader/`, `src/input.ts`, `src/focus.ts`, `src/keymap.ts`, `src/selection.ts`, `src/viewport.ts` | Input decoding, keyboard/mouse/paste/focus events, focus traversal, key registries, selection helpers, and viewport math.                                                                                                       |
 | `src/components/`                                                                                           | Widget library and controllers: inputs, menus, tables, virtual lists, pads, trees, dashboards, feedback components, and `ThreeAscii`.                                                                                           |
@@ -117,6 +117,10 @@ terminal session dimensions. `summarizeTerminalStatus()` turns process inspectio
 terminal descriptors into compact status-bar rows. `WindowManagerController` now supports explicit upsert, rename, and
 reorder operations, and `windowManagerCommands()` binds those window actions into the same command-registry system as
 the rest of the app surface.
+
+Remote terminal support lives in `src/web/remote_terminal.ts`: clients encode browser input and resize events, while
+`RemoteTerminalBridge` connects an explicit transport to a `TerminalSessionHandle` and forwards output, binary frames,
+errors, and close messages over the same protocol.
 
 ## Quality Gates
 
