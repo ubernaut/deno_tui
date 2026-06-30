@@ -62,16 +62,19 @@ visible terminal focus indicators are still open.
 
 ### Phase 3: PTY Backend
 
-- Introduce `TerminalBackend` and `TerminalSessionHandle` interfaces that hide platform-specific details:
-  `spawn(command, args, env, cwd, cols, rows)`, `write(data)`, `resize(cols, rows)`, `kill(signal)`, output events, exit
-  events, and disposal.
-- Provide a `ProcessBackend` implementation using `Deno.Command` for Option A/B behavior.
+- [x] Introduce `TerminalBackend` and `TerminalSessionHandle` interfaces that hide platform-specific details:
+      `spawn(command, args, env, cwd, cols, rows)`, `write(data)`, `resize(cols, rows)`, `kill(signal)`, output events,
+      exit events, and disposal.
+- [x] Provide a `ProcessBackend` implementation using `Deno.Command` for Option A/B behavior.
 - Add a PTY implementation behind an optional import or adapter package. Candidate approaches: `deno_pty`, a Node
   compatibility package if stable under Deno, a small Rust/Go sidecar, or tmux/control-mode as a backend.
 - Add a terminal screen model. At minimum support ANSI parsing into cell rows, scrollback, cursor position, alternate
   screen, erase/move sequences, SGR style spans, and resize reflow. Prefer a maintained parser if compatible with Deno.
 - Wire `WindowManagerController.layout()` dimensions into backend resize calls so focused/fullscreen/tiled terminal
   windows update their child terminal size.
+
+Phase 3 now has the backend seam and a non-PTY `ProcessTerminalBackend`. A real PTY adapter, terminal screen model, and
+window-manager resize propagation remain open.
 
 ### Phase 4: Tmux-Like Workspace Behavior
 

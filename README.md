@@ -1985,6 +1985,7 @@ Optional high-performance APIs are surfaced through `src/runtime/mod.ts`:
 - `createTerminalPortabilityReport()` / `formatTerminalPortabilityReport()`
 - `terminalSessionSequences()` / `terminalMouseSequences()` / `createTerminalSessionController()`
 - `ProcessSessionController` / `formatProcessCommandLine()`
+- `TerminalBackend` / `TerminalSessionHandle` / `createProcessTerminalBackend()`
 - `RuntimeRendererBackendRegistry` / `RuntimeRendererBackendController` / `selectRuntimeRendererBackend()` /
   `formatRuntimeRendererBackendCatalogMarkdown()`
 - `RuntimeProfile` / `RuntimeProfileRegistry` / `createRuntimeProfileCatalogReport()` /

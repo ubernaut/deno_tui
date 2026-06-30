@@ -12,6 +12,7 @@ import {
   type ProcessSessionChild,
   ProcessSessionController,
 } from "../src/runtime/process_session.ts";
+import { createProcessTerminalBackend } from "../src/runtime/terminal_backend.ts";
 import type { Key, KeyPressEvent, PasteEvent } from "../src/input_reader/types.ts";
 
 Deno.test("TerminalOutputController bounds stream-tagged scrollback and follow mode", () => {
@@ -226,6 +227,31 @@ Deno.test("terminal input routing preserves reserved keys and writes raw mode by
   resolveStatus({ code: 0, success: true });
   await run;
   await session.dispose();
+});
+
+Deno.test("ProcessTerminalBackend spawns inspectable non-PTY sessions", async () => {
+  const backend = createProcessTerminalBackend({
+    spawn: () => completedChild("backend ok\n", "", { code: 0, success: true }),
+  });
+  const handle = backend.spawn({
+    command: "demo",
+    args: ["--backend"],
+    columns: 100,
+    rows: 30,
+  });
+
+  assertEquals(backend.id, "process");
+  assertEquals(backend.pty, false);
+  assertEquals((await handle.closed).status, "exited");
+  assertEquals(handle.output.lines.peek().some((line) => line.text === "backend ok"), true);
+  assertEquals(handle.inspect().commandLine, "demo --backend");
+  assertEquals(handle.inspect().resizeSupported, false);
+  assertEquals(handle.inspect().columns, 100);
+  assertEquals(handle.inspect().rows, 30);
+  assertEquals(await handle.resize(120, 40), false);
+  assertEquals(handle.inspect().columns, 120);
+  assertEquals(handle.inspect().rows, 40);
+  await handle.dispose();
 });
 
 function commandDisabled(command: Command<TerminalCommandAction>): boolean {
