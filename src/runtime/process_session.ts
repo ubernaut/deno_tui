@@ -24,6 +24,7 @@ export interface ProcessSessionExit {
 
 /** Minimal child process shape used by ProcessSessionController. */
 export interface ProcessSessionChild {
+  stdin?: WritableStream<Uint8Array> | null;
   stdout: ReadableStream<Uint8Array> | null;
   stderr: ReadableStream<Uint8Array> | null;
   status: Promise<{ code: number; signal?: string | null; success: boolean }>;
@@ -146,6 +147,34 @@ export class ProcessSessionController {
     }
   }
 
+  async writeInput(data: string | Uint8Array): Promise<boolean> {
+    if (!this.#child || !this.running || !this.#child.stdin) return false;
+    const bytes = typeof data === "string" ? new TextEncoder().encode(data) : data;
+    const writer = this.#child.stdin.getWriter();
+    try {
+      await writer.write(bytes);
+      return true;
+    } catch (error) {
+      this.#appendSystemLine(`input failed: ${error instanceof Error ? error.message : String(error)}`);
+      return false;
+    } finally {
+      writer.releaseLock();
+    }
+  }
+
+  async closeInput(): Promise<boolean> {
+    if (!this.#child?.stdin) return false;
+    const writer = this.#child.stdin.getWriter();
+    try {
+      await writer.close();
+      return true;
+    } catch {
+      return false;
+    } finally {
+      writer.releaseLock();
+    }
+  }
+
   async restart(command?: ProcessSessionCommand): Promise<boolean> {
     if (this.running) await this.stop();
     return await this.start(command);
@@ -236,7 +265,7 @@ function spawnDenoProcessSessionChild(spec: ProcessSessionCommand): ProcessSessi
     args: [...(spec.args ?? [])],
     cwd: spec.cwd,
     env: spec.env,
-    stdin: "null",
+    stdin: "piped",
     stdout: "piped",
     stderr: "piped",
   }).spawn();

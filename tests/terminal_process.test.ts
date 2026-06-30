@@ -5,12 +5,14 @@ import {
   visibleTerminalOutputLines,
 } from "../src/components/terminal_output.ts";
 import { bindTerminalCommands, type TerminalCommandAction, terminalCommands } from "../src/app/terminal_commands.ts";
+import { encodeTerminalKeyPress, routeTerminalKeyPress, routeTerminalPaste } from "../src/app/terminal_input.ts";
 import { type Command, CommandRegistry } from "../src/app/commands.ts";
 import {
   formatProcessCommandLine,
   type ProcessSessionChild,
   ProcessSessionController,
 } from "../src/runtime/process_session.ts";
+import type { Key, KeyPressEvent, PasteEvent } from "../src/input_reader/types.ts";
 
 Deno.test("TerminalOutputController bounds stream-tagged scrollback and follow mode", () => {
   const output = new TerminalOutputController({ limit: 3 });
@@ -163,6 +165,69 @@ Deno.test("terminalCommands run clear follow and copy process sessions", async (
   await session.dispose();
 });
 
+Deno.test("ProcessSessionController writes encoded input to child stdin", async () => {
+  const writes: string[] = [];
+  let resolveStatus!: (status: { code: number; signal?: string | null; success: boolean }) => void;
+  const status = new Promise<{ code: number; signal?: string | null; success: boolean }>((resolve) => {
+    resolveStatus = resolve;
+  });
+  const session = new ProcessSessionController({
+    command: "demo",
+    spawn: () => ({
+      stdin: writableTextSink(writes),
+      stdout: streamFromText(""),
+      stderr: streamFromText(""),
+      status,
+      kill: () => resolveStatus({ code: 143, signal: "SIGTERM", success: false }),
+    }),
+  });
+
+  const run = session.start();
+  assertEquals(await session.writeInput("abc"), true);
+  assertEquals(writes, ["abc"]);
+  assertEquals(await session.closeInput(), true);
+  resolveStatus({ code: 0, success: true });
+  await run;
+  await session.dispose();
+});
+
+Deno.test("terminal input routing preserves reserved keys and writes raw mode bytes", async () => {
+  const writes: string[] = [];
+  let resolveStatus!: (status: { code: number; signal?: string | null; success: boolean }) => void;
+  const status = new Promise<{ code: number; signal?: string | null; success: boolean }>((resolve) => {
+    resolveStatus = resolve;
+  });
+  const session = new ProcessSessionController({
+    command: "demo",
+    spawn: () => ({
+      stdin: writableTextSink(writes),
+      stdout: streamFromText(""),
+      stderr: streamFromText(""),
+      status,
+      kill: () => resolveStatus({ code: 143, signal: "SIGTERM", success: false }),
+    }),
+  });
+  const run = session.start();
+
+  assertEquals([...encodeTerminalKeyPress(keyPress("up"))!], [...new TextEncoder().encode("\x1b[A")]);
+  assertEquals(await routeTerminalKeyPress(session, keyPress("a"), { mode: "workbench" }), {
+    routed: false,
+    reason: "workbench-mode",
+  });
+  assertEquals(await routeTerminalKeyPress(session, keyPress("c", { ctrl: true }), { mode: "raw" }), {
+    routed: false,
+    reason: "reserved",
+  });
+  assertEquals((await routeTerminalKeyPress(session, keyPress("a"), { mode: "raw" })).reason, "encoded");
+  assertEquals((await routeTerminalKeyPress(session, keyPress("return"), { mode: "raw" })).reason, "encoded");
+  assertEquals((await routeTerminalPaste(session, paste("paste text"), { mode: "raw" })).reason, "encoded");
+  assertEquals(writes, ["a", "\r", "paste text"]);
+
+  resolveStatus({ code: 0, success: true });
+  await run;
+  await session.dispose();
+});
+
 function commandDisabled(command: Command<TerminalCommandAction>): boolean {
   return typeof command.disabled === "function" ? command.disabled() : Boolean(command.disabled);
 }
@@ -187,4 +252,29 @@ function streamFromText(text: string): ReadableStream<Uint8Array> {
       controller.close();
     },
   });
+}
+
+function writableTextSink(writes: string[]): WritableStream<Uint8Array> {
+  return new WritableStream({
+    write(chunk) {
+      writes.push(new TextDecoder().decode(chunk));
+    },
+  });
+}
+
+function keyPress(
+  key: Key,
+  options: Partial<Omit<KeyPressEvent, "key" | "buffer">> = {},
+): KeyPressEvent {
+  return {
+    key,
+    ctrl: options.ctrl ?? false,
+    meta: options.meta ?? false,
+    shift: options.shift ?? false,
+    buffer: new Uint8Array(),
+  };
+}
+
+function paste(text: string): PasteEvent {
+  return { key: "paste", text, buffer: new Uint8Array() };
 }

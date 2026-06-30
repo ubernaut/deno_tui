@@ -742,8 +742,10 @@ buffers reusable across system monitors, worker consoles, and diagnostic panes. 
 `TerminalOutputController` and `ProcessSessionController` are the first terminal-window primitives. They run
 non-interactive subprocesses with `Deno.Command`, stream stdout/stderr/system lines into bounded scrollback, track
 running/exited/failed/cancelled state, and expose `terminalCommands()` / `bindTerminalCommands()` for run, stop,
-restart, clear, follow, and copy-command actions. The API Workbench portfolio includes a `Terminal: Terminal Output`
-window under the New menu that demonstrates the flow inside the same window manager used by the rest of the demo.
+restart, clear, follow, and copy-command actions. `routeTerminalKeyPress()` and `routeTerminalPaste()` add a raw-input
+routing layer with reserved host shortcuts for future interactive terminal windows. The API Workbench portfolio includes
+a `Terminal: Terminal Output` window under the New menu that demonstrates the flow inside the same window manager used
+by the rest of the demo.
 
 ## Layouts
 

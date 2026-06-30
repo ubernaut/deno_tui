@@ -51,10 +51,14 @@ resize propagation, and true curses app support remain in phases 2 and 3.
 
 - Define focus rules for terminal windows: when a terminal window is active, printable keys and paste events go to the
   child process; workbench shortcuts still require an explicit prefix, command palette, or reserved key chord.
-- Add a key-routing adapter from decoded `KeyPressEvent`/paste events to process stdin bytes.
+- [x] Add a key-routing adapter from decoded `KeyPressEvent`/paste events to process stdin bytes.
 - Add terminal-window mode indicators in title bars: normal workbench focus, insert/raw child-input mode, process
   running, exited, failed, or detached.
-- Add tests for key routing, paste routing, stop/restart behavior, and preserving global workbench commands.
+- [x] Add tests for key routing, paste routing, stop/restart behavior, and preserving global workbench commands.
+
+Phase 2 has the reusable primitives: `ProcessSessionController.writeInput()`, `closeInput()`,
+`encodeTerminalKeyPress()`, `routeTerminalKeyPress()`, and `routeTerminalPaste()`. Workbench-level raw-input mode and
+visible terminal focus indicators are still open.
 
 ### Phase 3: PTY Backend
 
