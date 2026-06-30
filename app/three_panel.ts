@@ -213,7 +213,9 @@ export class ThreePanelFrameView {
   private running = false;
   private destroyPending = false;
   private rebuildPending = false;
+  private syncPending = false;
   private failed = false;
+  private disposed = false;
   private frameTimer?: ReturnType<typeof setTimeout>;
   private readonly interaction = defaultInteractionState();
   private baseCameraPosition?: THREE.Vector3;
@@ -235,7 +237,7 @@ export class ThreePanelFrameView {
     this.onUpdate = options.onUpdate;
     this.effect = new Effect(() => this.sync());
     queueMicrotask(() => {
-      if (this.renderer || !this.isVisible()) return;
+      if (this.disposed || this.renderer || !this.isVisible()) return;
       this.sync();
     });
   }
@@ -245,6 +247,8 @@ export class ThreePanelFrameView {
   }
 
   private sync(): void {
+    if (this.disposed) return;
+
     const rect = this.options.rectangle.value;
     const current = this.options.scene.value;
     const ascii = this.options.ascii.value;
@@ -252,6 +256,8 @@ export class ThreePanelFrameView {
     const visible = enabled && !!current && rect.width > 0 && rect.height > 0;
 
     if (!visible || !current) {
+      this.syncPending = false;
+      this.rebuildPending = false;
       this.destroyRenderer();
       this.setGrid([]);
       return;
@@ -289,6 +295,12 @@ export class ThreePanelFrameView {
         terminalGlyphStyle: ascii.terminalGlyphStyle,
       });
       this.setGrid([]);
+    }
+
+    if (this.rendering) {
+      this.running = false;
+      this.syncPending = true;
+      return;
     }
 
     this.renderer?.setSize(rect.width, rect.height);
@@ -359,8 +371,9 @@ export class ThreePanelFrameView {
         this.destroyRenderer();
       }
 
-      if (this.rebuildPending) {
+      if (this.rebuildPending || this.syncPending) {
         this.rebuildPending = false;
+        this.syncPending = false;
         queueMicrotask(() => this.sync());
       } else if (this.running) {
         this.frameTimer = setTimeout(() => void this.renderLoop(), this.frameInterval);
@@ -369,6 +382,7 @@ export class ThreePanelFrameView {
   }
 
   private setGrid(grid: string[][]): void {
+    if (this.disposed) return;
     this.grid.jink(grid);
     this.onUpdate?.();
   }
@@ -452,6 +466,9 @@ export class ThreePanelFrameView {
   }
 
   dispose(): void {
+    this.disposed = true;
+    this.syncPending = false;
+    this.rebuildPending = false;
     this.effect.dispose();
     this.destroyRenderer();
     this.grid.dispose();

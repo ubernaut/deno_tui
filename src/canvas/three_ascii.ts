@@ -6,7 +6,20 @@ import type { Rectangle } from "../types.ts";
 import type { Camera, Scene } from "npm:three@0.183.2";
 import type { AcerolaAsciiNodeOptions } from "../three_ascii/AcerolaAsciiNode.ts";
 import type { TerminalGlyphStyle } from "../three_ascii/glyphs.ts";
-import { ThreeAsciiRenderer } from "../three_ascii/renderer.ts";
+import { ThreeAsciiRenderer, type ThreeAsciiRendererOptions } from "../three_ascii/renderer.ts";
+
+export interface ThreeAsciiGridRenderer {
+  setSize(columns: number, rows: number): void;
+  setEffectOptions(options: Partial<AcerolaAsciiNodeOptions>): void;
+  getTerminalEdgeBias(): number;
+  setTerminalEdgeBias(value: number): void;
+  getTerminalGlyphStyle(): TerminalGlyphStyle;
+  setTerminalGlyphStyle(value: TerminalGlyphStyle): void;
+  renderToAnsiGrid(deltaTime?: number, onFrame?: (deltaTime: number) => void | Promise<void>): Promise<string[][]>;
+  destroy(): void;
+}
+
+export type ThreeAsciiRendererFactory = (options: ThreeAsciiRendererOptions) => ThreeAsciiGridRenderer;
 
 export interface ThreeAsciiObjectOptions extends DrawObjectOptions {
   rectangle: Rectangle | SignalOfObject<Rectangle>;
@@ -18,11 +31,12 @@ export interface ThreeAsciiObjectOptions extends DrawObjectOptions {
   terminalGlyphStyle?: TerminalGlyphStyle;
   effect?: AcerolaAsciiNodeOptions;
   onFrame?: (deltaTime: number) => void | Promise<void>;
+  rendererFactory?: ThreeAsciiRendererFactory;
 }
 
 export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
   override rectangle: Signal<Rectangle>;
-  renderer: ThreeAsciiRenderer;
+  renderer: ThreeAsciiGridRenderer;
   frameInterval: number;
   onFrame?: (deltaTime: number) => void | Promise<void>;
   grid: string[][] = [];
@@ -31,13 +45,19 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
   private rendering = false;
   private running = false;
   private destroyPending = false;
+  private syncPending = false;
   private failed = false;
+  private frameTimer?: ReturnType<typeof setTimeout>;
+  private pendingEffectOptions?: Partial<AcerolaAsciiNodeOptions>;
+  private pendingTerminalEdgeBias?: number;
+  private pendingTerminalGlyphStyle?: TerminalGlyphStyle;
 
   constructor(options: ThreeAsciiObjectOptions) {
     super("three_ascii", { ...options, style: emptyStyle });
 
     this.rectangle = signalify(options.rectangle, { deepObserve: true });
-    this.renderer = new ThreeAsciiRenderer({
+    const rendererFactory = options.rendererFactory ?? ((rendererOptions) => new ThreeAsciiRenderer(rendererOptions));
+    this.renderer = rendererFactory({
       scene: options.scene,
       camera: options.camera,
       columns: options.rectangle instanceof Signal ? options.rectangle.peek().width : options.rectangle.width,
@@ -56,12 +76,18 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
     this.running = true;
     this.failed = false;
     this.destroyPending = false;
+    this.syncPending = false;
     super.draw();
     queueMicrotask(() => void this.renderLoop());
   }
 
   override erase(): void {
     this.running = false;
+    this.syncPending = false;
+    if (this.frameTimer !== undefined) {
+      clearTimeout(this.frameTimer);
+      this.frameTimer = undefined;
+    }
     this.rectangle.unsubscribe(this.handleResize);
     if (this.rendering) {
       this.destroyPending = true;
@@ -105,6 +131,14 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
   }
 
   private readonly handleResize = (rectangle: Rectangle) => {
+    if (this.rendering) {
+      this.running = false;
+      this.syncPending = true;
+      this.moved = true;
+      this.updated = false;
+      this.canvas.updateObjects.push(this);
+      return;
+    }
     this.renderer.setSize(rectangle.width, rectangle.height);
     this.moved = true;
     this.updated = false;
@@ -112,6 +146,12 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
   };
 
   setEffectOptions(options: Partial<AcerolaAsciiNodeOptions>): void {
+    if (this.rendering) {
+      this.pendingEffectOptions = { ...this.pendingEffectOptions, ...options };
+      this.running = false;
+      this.syncPending = true;
+      return;
+    }
     this.renderer.setEffectOptions(options);
   }
 
@@ -120,6 +160,12 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
   }
 
   setTerminalEdgeBias(value: number): void {
+    if (this.rendering) {
+      this.pendingTerminalEdgeBias = value;
+      this.running = false;
+      this.syncPending = true;
+      return;
+    }
     this.renderer.setTerminalEdgeBias(value);
   }
 
@@ -128,6 +174,12 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
   }
 
   setTerminalGlyphStyle(value: TerminalGlyphStyle): void {
+    if (this.rendering) {
+      this.pendingTerminalGlyphStyle = value;
+      this.running = false;
+      this.syncPending = true;
+      return;
+    }
     this.renderer.setTerminalGlyphStyle(value);
   }
 
@@ -147,6 +199,7 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
         const deltaTime = (now - this.lastFrameTime) / 1000;
         this.lastFrameTime = now;
 
+        this.flushPendingRendererOptions();
         this.renderer.setSize(rectangle.width, rectangle.height);
         this.grid = await this.renderer.renderToAnsiGrid(deltaTime, this.onFrame);
 
@@ -166,6 +219,7 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
     } catch (error) {
       this.failed = true;
       this.running = false;
+      this.syncPending = false;
       const rectangle = this.rectangle.peek();
       this.grid = buildFallbackGrid(
         rectangle.width,
@@ -185,11 +239,31 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
       if (this.destroyPending) {
         this.renderer.destroy();
         this.destroyPending = false;
+        this.syncPending = false;
       }
 
-      if (this.running) {
-        setTimeout(() => void this.renderLoop(), this.frameInterval);
+      if (this.syncPending && !this.destroyPending) {
+        this.syncPending = false;
+        this.running = true;
+        this.frameTimer = setTimeout(() => void this.renderLoop(), 0);
+      } else if (this.running) {
+        this.frameTimer = setTimeout(() => void this.renderLoop(), this.frameInterval);
       }
+    }
+  }
+
+  private flushPendingRendererOptions(): void {
+    if (this.pendingEffectOptions) {
+      this.renderer.setEffectOptions(this.pendingEffectOptions);
+      this.pendingEffectOptions = undefined;
+    }
+    if (this.pendingTerminalEdgeBias !== undefined) {
+      this.renderer.setTerminalEdgeBias(this.pendingTerminalEdgeBias);
+      this.pendingTerminalEdgeBias = undefined;
+    }
+    if (this.pendingTerminalGlyphStyle !== undefined) {
+      this.renderer.setTerminalGlyphStyle(this.pendingTerminalGlyphStyle);
+      this.pendingTerminalGlyphStyle = undefined;
     }
   }
 }
