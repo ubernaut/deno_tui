@@ -12,7 +12,7 @@ import {
   type PlatformInputEmitter,
   type TuiPlatform,
 } from "../platform/mod.ts";
-import type { Key, KeyPressEvent, MousePressEvent, MouseScrollEvent } from "../input_reader/types.ts";
+import type { Key, MousePressEvent } from "../input_reader/types.ts";
 
 export interface BrowserPlatformOptions {
   root: HTMLElement;
@@ -106,6 +106,9 @@ export class BrowserInputSource implements InputSource {
       addListener(this.#target, "pointerup", (event) => this.#handlePointer(event as PointerEvent, true)),
       addListener(this.#target, "pointercancel", (event) => this.#handlePointer(event as PointerEvent, true)),
       addListener(this.#target, "wheel", (event) => this.#handleWheel(event as WheelEvent)),
+      addListener(this.#target, "paste", (event) => this.#handlePaste(event as ClipboardEvent)),
+      addListener(this.#target, "focus", () => this.#handleFocus(true)),
+      addListener(this.#target, "blur", () => this.#handleFocus(false)),
     ];
     this.#attached = true;
   }
@@ -199,6 +202,24 @@ export class BrowserInputSource implements InputSource {
       scroll: event.deltaY > 0 ? 1 : event.deltaY < 0 ? -1 : 0,
     });
     event.preventDefault();
+  }
+
+  #handlePaste(event: ClipboardEvent): void {
+    const text = event.clipboardData?.getData("text") ?? "";
+    this.#emitter?.emit("paste", {
+      key: "paste",
+      text,
+      buffer: new TextEncoder().encode(text),
+    });
+    event.preventDefault();
+  }
+
+  #handleFocus(focused: boolean): void {
+    this.#emitter?.emit("terminalFocus", {
+      key: "focus",
+      focused,
+      buffer: new Uint8Array(),
+    });
   }
 
   #cellPosition(event: MouseEvent): { x: number; y: number } {

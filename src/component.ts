@@ -124,6 +124,18 @@ export class Component extends EventEmitter<
         this.emit("mouseScroll", event);
       }
     });
+    tui.on("paste", (event) => {
+      const state = this.state.peek();
+      if (state === "focused" || state === "active") {
+        this.emit("paste", event);
+      }
+    });
+    tui.on("terminalFocus", (event) => {
+      const state = this.state.peek();
+      if (state === "focused" || state === "active") {
+        this.emit("terminalFocus", event);
+      }
+    });
 
     queueMicrotask(() => {
       this.tui.addChild(this);

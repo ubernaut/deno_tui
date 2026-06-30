@@ -7,7 +7,11 @@ import { Computed, Signal } from "./signals/mod.ts";
 import { Style } from "./theme.ts";
 import { Rectangle, Stdin, Stdout } from "./types.ts";
 import {
+  DISABLE_BRACKETED_PASTE,
+  DISABLE_FOCUS_EVENTS,
   DISABLE_MOUSE,
+  ENABLE_BRACKETED_PASTE,
+  ENABLE_FOCUS_EVENTS,
   ENABLE_MOUSE,
   HIDE_CURSOR,
   SHOW_CURSOR,
@@ -26,6 +30,8 @@ export interface TuiOptions {
   refreshRate?: number;
   renderLoop?: RenderLoop;
   enableMouse?: boolean;
+  enableBracketedPaste?: boolean;
+  enableFocusEvents?: boolean;
 }
 
 /**
@@ -60,6 +66,8 @@ export class Tui extends EventEmitter<
   refreshRate: number;
   renderLoop: RenderLoop;
   enableMouse: boolean;
+  enableBracketedPaste: boolean;
+  enableFocusEvents: boolean;
 
   constructor(options: TuiOptions) {
     super();
@@ -75,6 +83,8 @@ export class Tui extends EventEmitter<
       intervalMs: this.refreshRate,
       tick: () => this.canvas.render(),
     });
+    this.enableBracketedPaste = options.enableBracketedPaste ?? false;
+    this.enableFocusEvents = options.enableFocusEvents ?? false;
 
     this.style = options.style;
 
@@ -138,7 +148,12 @@ export class Tui extends EventEmitter<
       box.draw();
     }
 
-    stdout.write(textEncoder.encode(USE_SECONDARY_BUFFER + HIDE_CURSOR + (this.enableMouse ? ENABLE_MOUSE : "")));
+    stdout.write(textEncoder.encode(
+      USE_SECONDARY_BUFFER + HIDE_CURSOR +
+        (this.enableBracketedPaste ? ENABLE_BRACKETED_PASTE : "") +
+        (this.enableFocusEvents ? ENABLE_FOCUS_EVENTS : "") +
+        (this.enableMouse ? ENABLE_MOUSE : ""),
+    ));
 
     this.renderLoop.start();
   }
@@ -152,7 +167,12 @@ export class Tui extends EventEmitter<
       this.stdin.setRaw(false);
     } catch { /**/ }
 
-    this.stdout.write(textEncoder.encode((this.enableMouse ? DISABLE_MOUSE : "") + USE_PRIMARY_BUFFER + SHOW_CURSOR));
+    this.stdout.write(textEncoder.encode(
+      (this.enableMouse ? DISABLE_MOUSE : "") +
+        (this.enableFocusEvents ? DISABLE_FOCUS_EVENTS : "") +
+        (this.enableBracketedPaste ? DISABLE_BRACKETED_PASTE : "") +
+        USE_PRIMARY_BUFFER + SHOW_CURSOR,
+    ));
 
     for (const component of this.components) {
       component.destroy();

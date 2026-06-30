@@ -20,6 +20,10 @@ function snapshot(code: string) {
   return events;
 }
 
+function fullSnapshot(code: string) {
+  return [...decodeBuffer(encoder.encode(code))].map((event) => ({ ...event }));
+}
+
 Deno.test("decodeKey maps xterm function keys", () => {
   assertEquals(decode("\x1bOP").key, "f1");
   assertEquals(decode("\x1bOQ").key, "f2");
@@ -71,4 +75,28 @@ Deno.test("decodeBuffer splits batched mouse press and release events", () => {
   assertEquals(events.map((event) => event.key), ["mouse", "mouse"]);
   assertEquals(events[0]?.release, false);
   assertEquals(events[1]?.release, true);
+});
+
+Deno.test("decodeBuffer emits bracketed paste as one payload event", () => {
+  const events = fullSnapshot("\x1b[200~j\x1b[B\nhello\x1b[201~x");
+
+  assertEquals(events.map((event) => event.key), ["paste", "x"]);
+  assertEquals(events[0], {
+    key: "paste",
+    text: "j\x1b[B\nhello",
+    buffer: encoder.encode("\x1b[200~j\x1b[B\nhello\x1b[201~"),
+  });
+});
+
+Deno.test("decodeBuffer waits for complete bracketed paste payloads", () => {
+  assertEquals(fullSnapshot("\x1b[200~partial paste").length, 0);
+});
+
+Deno.test("decodeBuffer emits terminal focus events", () => {
+  const events = fullSnapshot("\x1b[I\x1b[O");
+
+  assertEquals(events, [
+    { key: "focus", focused: true, buffer: encoder.encode("\x1b[I") },
+    { key: "focus", focused: false, buffer: encoder.encode("\x1b[O") },
+  ]);
 });

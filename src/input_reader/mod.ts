@@ -1,17 +1,32 @@
 // Copyright 2023 Im-Beast. MIT license.
 
-import type { KeyPressEvent, MouseEvent, MousePressEvent, MouseScrollEvent } from "./types.ts";
+import type {
+  InputEvent,
+  KeyPressEvent,
+  MouseEvent,
+  MousePressEvent,
+  MouseScrollEvent,
+  PasteEvent,
+  TerminalFocusEvent,
+} from "./types.ts";
 import type { Stdin } from "../types.ts";
 import { decodeMouseSGR, decodeMouseVT_UTF8 } from "./decoders/mouse.ts";
 import { decodeKey } from "./decoders/keyboard.ts";
+import { decodeBracketedPaste, decodeTerminalFocus } from "./decoders/terminal.ts";
 import type { EmitterEvent, EventEmitter } from "../event_emitter.ts";
 
 export type InputEventRecord = {
+  inputEvent: EmitterEvent<[InputEvent]>;
   keyPress: EmitterEvent<[KeyPressEvent]>;
   mouseEvent: EmitterEvent<[MouseEvent | MousePressEvent | MouseScrollEvent]>;
   mousePress: EmitterEvent<[MousePressEvent]>;
   mouseScroll: EmitterEvent<[MouseScrollEvent]>;
+  paste: EmitterEvent<[PasteEvent]>;
+  terminalFocus: EmitterEvent<[TerminalFocusEvent]>;
 };
+
+const BRACKETED_PASTE_START = new TextEncoder().encode("\x1b[200~");
+const BRACKETED_PASTE_END = new TextEncoder().encode("\x1b[201~");
 
 /**
  * Read keypresses from given stdin, parse them and emit to given emitter.
@@ -41,6 +56,7 @@ export async function emitInputEvents(
     pending = new Uint8Array(remainder);
 
     for (const event of decodeBuffer(complete)) {
+      emitter.emit("inputEvent", event);
       if (event.key === "mouse") {
         emitter.emit("mouseEvent", event);
 
@@ -49,6 +65,10 @@ export async function emitInputEvents(
         } else if ("scroll" in event) {
           emitter.emit("mouseScroll", event);
         }
+      } else if (event.key === "paste") {
+        emitter.emit("paste", event);
+      } else if (event.key === "focus") {
+        emitter.emit("terminalFocus", event);
       } else {
         emitter.emit("keyPress", event);
       }
@@ -67,11 +87,12 @@ const textDecoder = new TextDecoder();
  */
 export function* decodeBuffer(
   buffer: Uint8Array,
-): Generator<KeyPressEvent | MouseEvent | MousePressEvent | MouseScrollEvent, void, void> {
+): Generator<InputEvent, void, void> {
   const { complete } = splitInputBuffer(buffer);
   for (const chunk of iterateInputChunks(complete)) {
     const code = textDecoder.decode(chunk);
-    yield decodeMouseVT_UTF8(chunk, code) ?? decodeMouseSGR(chunk, code) ?? decodeKey(chunk, code);
+    yield decodeBracketedPaste(chunk, code) ?? decodeTerminalFocus(chunk, code) ??
+      decodeMouseVT_UTF8(chunk, code) ?? decodeMouseSGR(chunk, code) ?? decodeKey(chunk, code);
   }
 }
 
@@ -130,6 +151,11 @@ function nextInputBoundary(buffer: Uint8Array, start: number): number | null {
       return null;
     }
 
+    if (startsWithBytes(buffer, BRACKETED_PASTE_START, start)) {
+      const end = indexOfBytes(buffer, BRACKETED_PASTE_END, start + BRACKETED_PASTE_START.length);
+      return end < 0 ? null : end + BRACKETED_PASTE_END.length;
+    }
+
     if (third === 0x4d) {
       return start + 6 <= buffer.length ? start + 6 : null;
     }
@@ -186,4 +212,19 @@ function concatBuffers(left: Uint8Array, right: Uint8Array) {
   merged.set(left);
   merged.set(right, left.length);
   return merged;
+}
+
+function startsWithBytes(buffer: Uint8Array, sequence: Uint8Array, start: number): boolean {
+  if (start + sequence.length > buffer.length) return false;
+  for (let index = 0; index < sequence.length; index += 1) {
+    if (buffer[start + index] !== sequence[index]) return false;
+  }
+  return true;
+}
+
+function indexOfBytes(buffer: Uint8Array, sequence: Uint8Array, start: number): number {
+  for (let index = start; index <= buffer.length - sequence.length; index += 1) {
+    if (startsWithBytes(buffer, sequence, index)) return index;
+  }
+  return -1;
 }

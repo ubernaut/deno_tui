@@ -41,6 +41,28 @@ export interface MouseScrollEvent extends MouseEvent {
   scroll: 1 | 0 | -1;
 }
 
+/** Bracketed paste payload emitted as one event instead of command-like keypresses. */
+export interface PasteEvent {
+  key: "paste";
+  text: string;
+  buffer: Uint8Array;
+}
+
+/** Terminal focus-in/focus-out event from xterm focus tracking mode. */
+export interface TerminalFocusEvent {
+  key: "focus";
+  focused: boolean;
+  buffer: Uint8Array;
+}
+
+export type InputEvent =
+  | KeyPressEvent
+  | MouseEvent
+  | MousePressEvent
+  | MouseScrollEvent
+  | PasteEvent
+  | TerminalFocusEvent;
+
 export type Key =
   | Alphabet
   | Chars

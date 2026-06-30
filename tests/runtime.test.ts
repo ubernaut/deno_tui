@@ -161,6 +161,7 @@ Deno.test("terminal capability helpers detect color input and interaction suppor
     mouse: true,
     sgrMouse: true,
     bracketedPaste: true,
+    focusEvents: true,
     alternateScreen: true,
     cursorShape: true,
   });
@@ -171,13 +172,14 @@ Deno.test("terminal capability helpers detect color input and interaction suppor
     ["mouse", true],
     ["sgrMouse", true],
     ["bracketedPaste", true],
+    ["focusEvents", true],
     ["alternateScreen", true],
     ["cursorShape", true],
   ]);
   assertEquals(
     formatTerminalCapabilities(capabilities).split("\n").slice(0, 3),
     [
-      "Terminal capabilities: 8/8 available, truecolor color",
+      "Terminal capabilities: 9/9 available, truecolor color",
       "ok Interactive TTY",
       "ok Unicode",
     ],
@@ -210,6 +212,7 @@ Deno.test("terminal plans choose portable fallbacks from preferences and detecte
     mouse: true,
     sgrMouse: false,
     bracketedPaste: false,
+    focusEvents: false,
     alternateScreen: true,
     cursorShape: false,
   }, {
@@ -232,6 +235,7 @@ Deno.test("terminal plans choose portable fallbacks from preferences and detecte
       "mouse    vt200",
       "screen   alternate",
       "paste    plain",
+      "focus    plain",
       "links    plain",
     ].join("\n"),
   );
@@ -246,6 +250,7 @@ Deno.test("terminal session helpers compose setup and teardown sequences", () =>
     mouse: true,
     sgrMouse: true,
     bracketedPaste: true,
+    focusEvents: true,
     alternateScreen: true,
     cursorShape: true,
   });
@@ -258,8 +263,8 @@ Deno.test("terminal session helpers compose setup and teardown sequences", () =>
     exit: "\x1b[?1006l\x1b[?1000l",
   });
   assertEquals(terminalSessionSequences({ plan }), {
-    enter: "\x1b[?1049h\x1b[?25l\x1b[?2004h\x1b[?1000h\x1b[?1006h",
-    exit: "\x1b[?1006l\x1b[?1000l\x1b[?2004l\x1b[?25h\x1b[?1049l",
+    enter: "\x1b[?1049h\x1b[?25l\x1b[?2004h\x1b[?1004h\x1b[?1000h\x1b[?1006h",
+    exit: "\x1b[?1006l\x1b[?1000l\x1b[?1004l\x1b[?2004l\x1b[?25h\x1b[?1049l",
   });
   assertEquals(terminalSessionSequences({ plan, hideCursor: false }).enter.includes("\x1b[?25l"), false);
 });
@@ -275,6 +280,7 @@ Deno.test("TerminalSessionController writes enter and exit sequences idempotentl
     mouse: true,
     sgrMouse: false,
     bracketedPaste: false,
+    focusEvents: false,
     alternateScreen: true,
     cursorShape: false,
   });
@@ -289,6 +295,7 @@ Deno.test("TerminalSessionController writes enter and exit sequences idempotentl
     active: false,
     alternateScreen: true,
     bracketedPaste: false,
+    focusEvents: false,
     mouseProtocol: "vt200",
     hideCursor: true,
   });

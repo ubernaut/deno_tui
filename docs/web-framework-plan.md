@@ -213,8 +213,8 @@ runtime wrapper around a shared app host.
 - Added `mod.web.ts` and a smoke test that proves the package imports without the terminal `Tui` export.
 - Implemented `BrowserCellCanvasSink` using Canvas2D and dirty-cell painting.
 - Added `ResizeObserver` sizing in rows/columns from configurable cell metrics.
-- Added keyboard, pointer, and wheel adapters that emit the same input event shapes as terminal readers. Pointer and
-  wheel positions are normalized to terminal cell coordinates. Paste/focus handling remains to be expanded.
+- Added keyboard, pointer, wheel, paste, and focus adapters that emit the same input event shapes as terminal readers.
+  Pointer and wheel positions are normalized to terminal cell coordinates.
 - Added a minimal `createWebTui(root, options)` API.
 - Ported a standalone animated browser demo source in `examples/web/standalone.ts`.
 - Added `examples/web/neon_exodus_page.ts` as the default standalone web demo, backed by the existing Neon Exodus suite

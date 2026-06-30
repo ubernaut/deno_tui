@@ -2,6 +2,7 @@
 
 import {
   characterWidth,
+  cropToWidth,
   getMultiCodePointCharacters,
   insertAt,
   stripStyles,
@@ -35,15 +36,28 @@ Deno.test("utils/strings.ts", async (t) => {
     for (const character of halfWidths) {
       assertEquals(characterWidth(character), 1);
     }
+
+    assertEquals(characterWidth("👀"), 2);
+    assertEquals(characterWidth("👨‍👩‍👧‍👦"), 2);
+    assertEquals(characterWidth("a\u0301"), 1);
+    assertEquals(characterWidth("\u0301"), 0);
   });
 
   await t.step("stripStyles()", () => {
     assertEquals(stripStyles("\x1b[32mHello\x1b[0m"), "Hello");
+    assertEquals(stripStyles("\x1b[2J\x1b[32mHello\x1b[0m"), "Hello");
   });
 
   await t.step("textWidth()", () => {
     assertEquals(textWidth(fullWidths.join("")), fullWidths.length * 2);
     assertEquals(textWidth("Hello"), 5);
+    assertEquals(textWidth("a\u0301👀👨‍👩‍👧‍👦"), 5);
+  });
+
+  await t.step("cropToWidth() preserves graphemes and ANSI cells", () => {
+    assertEquals(cropToWidth("a\u0301👀b", 3), "a\u0301👀");
+    assertEquals(cropToWidth("a\u0301👀b", 2), "a\u0301 ");
+    assertEquals(cropToWidth("\x1b[32m👀\x1b[0mB", 2), "\x1b[32m👀\x1b[0m");
   });
 
   await t.step("getMultiCodePointCharacters() preserves 24-bit SGR cells", () => {

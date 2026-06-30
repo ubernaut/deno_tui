@@ -223,6 +223,47 @@ Deno.test("BrowserInputSource reports pointer positions in terminal cells", () =
   input.dispose();
 });
 
+Deno.test("BrowserInputSource emits paste and focus events", () => {
+  const listeners = new Map<string, EventListener>();
+  const target = {
+    tabIndex: -1,
+    addEventListener: (type: string, listener: EventListener) => void listeners.set(type, listener),
+    removeEventListener: (type: string) => void listeners.delete(type),
+    getBoundingClientRect: () => ({
+      x: 0,
+      y: 0,
+      left: 0,
+      top: 0,
+      right: 80,
+      bottom: 80,
+      width: 80,
+      height: 80,
+      toJSON: () => ({}),
+    }),
+  };
+  const events: unknown[] = [];
+  const input = new BrowserInputSource(target as unknown as HTMLElement);
+
+  input.attach({
+    emit: (type: string, event: unknown) => void events.push([type, event]),
+  } as never);
+
+  listeners.get("focus")?.({} as Event);
+  listeners.get("paste")?.({
+    clipboardData: { getData: (kind: string) => kind === "text" ? "alpha\nbeta" : "" },
+    preventDefault: () => undefined,
+  } as unknown as Event);
+  listeners.get("blur")?.({} as Event);
+
+  assertEquals(events, [
+    ["terminalFocus", { key: "focus", focused: true, buffer: new Uint8Array() }],
+    ["paste", { key: "paste", text: "alpha\nbeta", buffer: new TextEncoder().encode("alpha\nbeta") }],
+    ["terminalFocus", { key: "focus", focused: false, buffer: new Uint8Array() }],
+  ]);
+
+  input.dispose();
+});
+
 Deno.test("renderDomNodeToHtml serializes semantic DOM nodes safely", () => {
   assertEquals(
     renderDomNodeToHtml({

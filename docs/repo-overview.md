@@ -10,7 +10,7 @@ helpers, and visualization demos on top.
 | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `mod.ts`                                                                                                    | Public entrypoint that re-exports the core, components, app, runtime, testing, performance, and renderer modules.                                                                                                               |
 | `src/tui.ts`, `src/canvas/`, `src/component.ts`, `src/view.ts`                                              | Terminal rendering foundation: TUI lifecycle, canvas buffering, draw objects, base components, and scrollable views.                                                                                                            |
-| `src/input_reader/`, `src/input.ts`, `src/focus.ts`, `src/keymap.ts`, `src/selection.ts`, `src/viewport.ts` | Input decoding, keyboard/mouse events, focus traversal, key registries, selection helpers, and viewport math.                                                                                                                   |
+| `src/input_reader/`, `src/input.ts`, `src/focus.ts`, `src/keymap.ts`, `src/selection.ts`, `src/viewport.ts` | Input decoding, keyboard/mouse/paste/focus events, focus traversal, key registries, selection helpers, and viewport math.                                                                                                       |
 | `src/components/`                                                                                           | Widget library and controllers: inputs, menus, tables, virtual lists, trees, dashboards, feedback components, and `ThreeAscii`.                                                                                                 |
 | `src/layout/`                                                                                               | Flex, split pane, responsive breakpoint, and layout recipe helpers.                                                                                                                                                             |
 | `src/app/`                                                                                                  | High-level app primitives: `TuiApp`, actions, routes, commands, settings, plugins, mouse routing, command surfaces, and component-specific command adapters.                                                                    |
@@ -29,15 +29,17 @@ For a complete generated list of public modules, re-exports, and symbols, see [A
 
 - Reactive rendering with `Signal`, `Computed`, `Effect`, lazy computed/effect variants, and component bindings.
 - Canvas-based terminal drawing with z-ordering, intersection-aware repainting, render inspection, and snapshot helpers.
-- Keyboard and mouse input with xterm-style function key decoding, SGR/VT mouse support, drag/release routing, and test
-  event factories.
+- Keyboard and mouse input with xterm-style function key decoding, SGR/VT mouse support, drag/release routing, bracketed
+  paste payloads, terminal focus events, browser parity events, and test event factories.
+- Grapheme-aware text measurement and ANSI-preserving cropping for CJK wide cells, combining marks, emoji, and styled
+  table/list content.
 - Controller-first widgets so state, command wiring, rendering, and tests remain separable.
 - App-level composition through `TuiApp`, `ActionBus`, `RouteManager`, `CommandRegistry`, focus/keymap/mouse managers,
   settings bindings, undo/redo history, and rollback-safe plugins.
 - Catalog/report APIs for components, app plugins, runtime workloads, runtime profiles, renderer backends, theme
   factories, benchmarks, launch targets, and public exports.
 - Runtime plans for Workers, WebGPU, WebGL, OffscreenCanvas, IndexedDB, terminal color depth, Unicode, mouse protocols,
-  bracketed paste, hyperlinks, alternate screen, and terminal setup/teardown sequences.
+  bracketed paste, focus events, hyperlinks, alternate screen, and terminal setup/teardown sequences.
 - Concurrent and cacheable data primitives: `AsyncScheduler`, `WorkerPool`, `AsyncResource`, `CachedAsyncResource`,
   `DataQueryController`, `runDataPipeline()`, `LatestDataPipeline`, and `CachedDataPipeline`.
 - Theme system with semantic tokens, palette presets, theme packs, provider layers, engine factories, pipelines,

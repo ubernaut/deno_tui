@@ -36,6 +36,54 @@ Deno.test("remote terminal protocol preserves input event buffers", () => {
   });
 });
 
+Deno.test("remote terminal protocol preserves paste and focus events", () => {
+  const paste = encodeRemoteTerminalMessage({
+    type: "input",
+    input: {
+      kind: "paste",
+      event: {
+        key: "paste",
+        text: "alpha\nbeta",
+        buffer: new Uint8Array([97, 10, 98]),
+      },
+    },
+  });
+  const focus = encodeRemoteTerminalMessage({
+    type: "input",
+    input: {
+      kind: "terminalFocus",
+      event: {
+        key: "focus",
+        focused: true,
+        buffer: new Uint8Array(),
+      },
+    },
+  });
+
+  assertEquals(decodeRemoteTerminalClientMessage(paste), {
+    type: "input",
+    input: {
+      kind: "paste",
+      event: {
+        key: "paste",
+        text: "alpha\nbeta",
+        buffer: new Uint8Array([97, 10, 98]),
+      },
+    },
+  });
+  assertEquals(decodeRemoteTerminalClientMessage(focus), {
+    type: "input",
+    input: {
+      kind: "terminalFocus",
+      event: {
+        key: "focus",
+        focused: true,
+        buffer: new Uint8Array(),
+      },
+    },
+  });
+});
+
 Deno.test("remote terminal client sends input and emits terminal data", () => {
   const transport = new FakeRemoteTerminalTransport();
   const client = createRemoteTerminalClient(transport);

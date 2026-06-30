@@ -3,12 +3,20 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { EventEmitter } from "../event_emitter.ts";
 import type { ConsoleSize } from "../types.ts";
-import type { KeyPressEvent, MousePressEvent, MouseScrollEvent } from "../input_reader/types.ts";
+import type {
+  KeyPressEvent,
+  MousePressEvent,
+  MouseScrollEvent,
+  PasteEvent,
+  TerminalFocusEvent,
+} from "../input_reader/types.ts";
 
 export type RemoteTerminalInputEvent =
   | { kind: "keyPress"; event: KeyPressEvent }
   | { kind: "mousePress"; event: MousePressEvent }
-  | { kind: "mouseScroll"; event: MouseScrollEvent };
+  | { kind: "mouseScroll"; event: MouseScrollEvent }
+  | { kind: "paste"; event: PasteEvent }
+  | { kind: "terminalFocus"; event: TerminalFocusEvent };
 
 export type RemoteTerminalClientMessage =
   | { type: "input"; input: RemoteTerminalInputEvent }
@@ -83,6 +91,14 @@ export class RemoteTerminalClient extends EventEmitter<RemoteTerminalClientEvent
 
   sendMouseScroll(event: MouseScrollEvent): void {
     this.sendInput({ kind: "mouseScroll", event });
+  }
+
+  sendPaste(event: PasteEvent): void {
+    this.sendInput({ kind: "paste", event });
+  }
+
+  sendTerminalFocus(event: TerminalFocusEvent): void {
+    this.sendInput({ kind: "terminalFocus", event });
   }
 
   resize(size: ConsoleSize): void {

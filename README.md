@@ -19,7 +19,7 @@ renderer lab, and demo suite:
 
 | Area                         | What lives here                                                                                                                                                                                         |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Core terminal UI             | `Tui`, `Canvas`, draw objects, input decoding, views, focus, keymaps, selection, and viewport helpers.                                                                                                  |
+| Core terminal UI             | `Tui`, `Canvas`, draw objects, input decoding, bracketed paste/focus events, grapheme-safe text width, views, focus, keymaps, selection, and viewport helpers.                                          |
 | Widgets                      | Primitive, input, navigation, overlay, data, feedback, dashboard, and visualization components with controller-first APIs.                                                                              |
 | App architecture             | `TuiApp`, action bus, routes, command registry, key binding surfaces, mouse router, settings bindings, history, and disposable plugin lifecycle.                                                        |
 | Plugin/catalog surfaces      | Component catalog, app plugin definition registry, command reports, runtime workload reports, launcher catalog, benchmark catalog, and API inventory.                                                   |
@@ -64,6 +64,10 @@ renderer lab, and demo suite:
   composable without every app rebuilding the same history buffer.
 - **Runtime capability layer** — Workers, WebGPU, WebGL, OffscreenCanvas, and IndexedDB are detected through a
   standards-oriented runtime module with configurable fallbacks.
+- **Terminal input hardening** — bracketed paste is decoded as a single payload event, xterm focus in/out events are
+  exposed, browser input emits matching paste/focus events, and terminal plans can enable the matching escape modes.
+- **Unicode and ANSI-safe text cells** — `textWidth()` and `cropToWidth()` preserve styled spans while measuring
+  grapheme clusters, combining marks, CJK wide cells, emoji, and ZWJ sequences.
 - **Theme engine focus** — semantic tokens, palette presets, named theme packs, runtime providers, component variants,
   composition helpers, and inspection APIs produce normal `Theme` objects while keeping app-level styling reusable.
 
@@ -167,7 +171,8 @@ directly.
   Frame, and more
 - **Flexible layouts** — `GridLayout`, `HorizontalLayout`, and `VerticalLayout` for declarative, proportional
   positioning
-- **Keyboard and mouse input** — full support including drag events
+- **Keyboard, mouse, paste, and focus input** — key decoding, SGR/VT mouse drag/release/scroll events, bracketed paste
+  payloads, and terminal focus events
 - **Views** — scrollable viewports with offset control
 - **Three.js ASCII renderer** — render 3D scenes as ASCII art in the terminal via the `ThreeAscii` component
 - **Styling framework agnostic** — works with any terminal styling library;
@@ -1873,24 +1878,24 @@ Optional high-performance APIs are surfaced through `src/runtime/mod.ts`:
 Use these instead of hard-coding global checks inside components. `formatRuntimeCapabilities()` and
 `formatTerminalCapabilities()` produce readable diagnostic summaries for settings screens and logs, while
 `createRuntimePlan()` and `createTerminalPlan()` turn the same capability sets into deterministic app strategies for
-worker execution, persistent storage, renderer fallback, color depth, Unicode text, mouse protocol, bracketed paste, and
-alternate-screen behavior. `deno task capabilities` prints the runtime summary, terminal summary, default plans,
-built-in runtime profile table, and renderer backend catalog; pass `--json` to that task for structured output.
-`terminalSessionSequences()` and `createTerminalSessionController()` turn a terminal plan into idempotent enter/exit
-setup for alternate screen, cursor visibility, bracketed paste, and mouse protocols using an injectable writer.
-`RuntimeRendererBackendRegistry`, `RuntimeRendererBackendController`, `queryRuntimeRendererBackends()`, and
-`selectRuntimeRendererBackend()` expose the renderer side as a composable catalog: WebGPU three.js ASCII, WebGL canvas,
-and portable CPU terminal backends can be selected, cycled, ranked, filtered, and reported from the same capability
-snapshot used by runtime profiles. `bindRuntimeRendererBackendCommands()` and `bindRuntimeRendererBackendSetting()` wire
-that active backend into command palettes, key help, and persisted settings with the same controller-first shape as
-runtime profiles, while `createRuntimeRendererBackendPlugin()` packages the controller, commands, persistence, keymap
-mirroring, and custom lifecycle hooks into one app plugin. `RuntimeWorkloadRegistry`, `inspectRuntimeWorkload()`,
-`createRuntimeWorkloadReport()`, and `formatRuntimeWorkloadMarkdown()` normalize `AsyncScheduler.inspect()` and
-`WorkerPool.inspect()` into one pressure report for settings panes, demos, and CI logs: capacity, running work, queued
-work, saturation, idle state, and termination state are all exposed through a JSON-friendly shape. The registry adds
-disposer-returning dynamic source registration, replacement-safe unregistering, aggregate inspection, and Markdown
-formatting for apps where plugins own their own schedulers or worker pools. Runtime profiles are named policy presets
-for settings screens and launchers:
+worker execution, persistent storage, renderer fallback, color depth, Unicode text, mouse protocol, bracketed paste,
+focus events, and alternate-screen behavior. `deno task capabilities` prints the runtime summary, terminal summary,
+default plans, built-in runtime profile table, and renderer backend catalog; pass `--json` to that task for structured
+output. `terminalSessionSequences()` and `createTerminalSessionController()` turn a terminal plan into idempotent
+enter/exit setup for alternate screen, cursor visibility, bracketed paste, focus events, and mouse protocols using an
+injectable writer. `RuntimeRendererBackendRegistry`, `RuntimeRendererBackendController`,
+`queryRuntimeRendererBackends()`, and `selectRuntimeRendererBackend()` expose the renderer side as a composable catalog:
+WebGPU three.js ASCII, WebGL canvas, and portable CPU terminal backends can be selected, cycled, ranked, filtered, and
+reported from the same capability snapshot used by runtime profiles. `bindRuntimeRendererBackendCommands()` and
+`bindRuntimeRendererBackendSetting()` wire that active backend into command palettes, key help, and persisted settings
+with the same controller-first shape as runtime profiles, while `createRuntimeRendererBackendPlugin()` packages the
+controller, commands, persistence, keymap mirroring, and custom lifecycle hooks into one app plugin.
+`RuntimeWorkloadRegistry`, `inspectRuntimeWorkload()`, `createRuntimeWorkloadReport()`, and
+`formatRuntimeWorkloadMarkdown()` normalize `AsyncScheduler.inspect()` and `WorkerPool.inspect()` into one pressure
+report for settings panes, demos, and CI logs: capacity, running work, queued work, saturation, idle state, and
+termination state are all exposed through a JSON-friendly shape. The registry adds disposer-returning dynamic source
+registration, replacement-safe unregistering, aggregate inspection, and Markdown formatting for apps where plugins own
+their own schedulers or worker pools. Runtime profiles are named policy presets for settings screens and launchers:
 
 ```ts
 const runtimeProfiles = createRuntimeProfileRegistry();

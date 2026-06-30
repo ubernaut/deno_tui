@@ -17,6 +17,7 @@ export type TerminalCapabilityId =
   | "mouse"
   | "sgrMouse"
   | "bracketedPaste"
+  | "focusEvents"
   | "alternateScreen"
   | "cursorShape";
 
@@ -29,6 +30,7 @@ export interface TerminalCapabilities {
   mouse: boolean;
   sgrMouse: boolean;
   bracketedPaste: boolean;
+  focusEvents: boolean;
   alternateScreen: boolean;
   cursorShape: boolean;
 }
@@ -65,6 +67,7 @@ export interface TerminalPlanOptions {
   preferMouse?: boolean;
   preferAlternateScreen?: boolean;
   preferBracketedPaste?: boolean;
+  preferFocusEvents?: boolean;
   preferHyperlinks?: boolean;
   minimumColorDepth?: TerminalColorDepth;
 }
@@ -77,6 +80,7 @@ export interface TerminalPlan {
   mouseProtocol: TerminalMouseProtocol;
   alternateScreen: boolean;
   bracketedPaste: boolean;
+  focusEvents: boolean;
   hyperlinks: boolean;
   cursorShape: boolean;
   reasons: string[];
@@ -109,6 +113,10 @@ const TERMINAL_CAPABILITY_METADATA: Record<
   bracketedPaste: {
     label: "Bracketed Paste",
     description: "Terminal can distinguish pasted text from typed keys.",
+  },
+  focusEvents: {
+    label: "Focus Events",
+    description: "Terminal can report focus-in and focus-out transitions.",
   },
   alternateScreen: {
     label: "Alternate Screen",
@@ -151,6 +159,7 @@ export function detectTerminalCapabilities(
     mouse: interactive && !isLinuxConsole(term),
     sgrMouse: interactive && modern,
     bracketedPaste: interactive && modern,
+    focusEvents: interactive && modern,
     alternateScreen: interactive,
     cursorShape: interactive && modern,
   };
@@ -222,6 +231,7 @@ export function createTerminalPlan(
 
   const alternateScreen = Boolean((options.preferAlternateScreen ?? true) && capabilities.alternateScreen);
   const bracketedPaste = Boolean((options.preferBracketedPaste ?? true) && capabilities.bracketedPaste);
+  const focusEvents = Boolean((options.preferFocusEvents ?? true) && capabilities.focusEvents);
   const hyperlinks = Boolean((options.preferHyperlinks ?? true) && capabilities.hyperlinks);
 
   return {
@@ -231,6 +241,7 @@ export function createTerminalPlan(
     mouseProtocol,
     alternateScreen,
     bracketedPaste,
+    focusEvents,
     hyperlinks,
     cursorShape: capabilities.cursorShape,
     reasons,
@@ -246,6 +257,7 @@ export function formatTerminalPlan(plan: TerminalPlan): string {
     `mouse    ${plan.mouseProtocol}`,
     `screen   ${plan.alternateScreen ? "alternate" : "inline"}`,
     `paste    ${plan.bracketedPaste ? "bracketed" : "plain"}`,
+    `focus    ${plan.focusEvents ? "events" : "plain"}`,
     `links    ${plan.hyperlinks ? "osc8" : "plain"}`,
   ].join("\n");
 }

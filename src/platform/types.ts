@@ -2,7 +2,13 @@
 import type { EventEmitter } from "../event_emitter.ts";
 import type { Signal } from "../signals/mod.ts";
 import type { ConsoleSize } from "../types.ts";
-import type { KeyPressEvent, MousePressEvent, MouseScrollEvent } from "../input_reader/types.ts";
+import type {
+  KeyPressEvent,
+  MousePressEvent,
+  MouseScrollEvent,
+  PasteEvent,
+  TerminalFocusEvent,
+} from "../input_reader/types.ts";
 
 export interface Disposable {
   dispose(): void;
@@ -23,12 +29,16 @@ export interface PlatformInputEvents {
   keyPress: KeyPressEvent;
   mousePress: MousePressEvent;
   mouseScroll: MouseScrollEvent;
+  paste: PasteEvent;
+  terminalFocus: TerminalFocusEvent;
 }
 
 export type PlatformInputEmitter = EventEmitter<{
   keyPress: { args: [KeyPressEvent] };
   mousePress: { args: [MousePressEvent] };
   mouseScroll: { args: [MouseScrollEvent] };
+  paste: { args: [PasteEvent] };
+  terminalFocus: { args: [TerminalFocusEvent] };
 }>;
 
 export interface InputSource extends Disposable {

@@ -8,9 +8,9 @@ modules and exported symbols that make up the package API.
 - Entrypoint: `mod.ts`
 - Modules: 180
 - Re-export declarations: 179
-- Exported symbols: 1373
-- Documented symbols: 344
-- Documentation coverage: 25.05%
+- Exported symbols: 1380
+- Documented symbols: 348
+- Documentation coverage: 25.22%
 - Duplicate symbols: 0
 - Missing targets: 0
 
@@ -81,7 +81,7 @@ modules and exported symbols that make up the package API.
 | [`src/canvas/mod.ts`](#src-canvas-mod-ts)                                         |          6 |       0 |          0 |
 | [`src/canvas/sink.ts`](#src-canvas-sink-ts)                                       |          0 |       6 |          1 |
 | [`src/canvas/text.ts`](#src-canvas-text-ts)                                       |          0 |       3 |          2 |
-| [`src/canvas/three_ascii.ts`](#src-canvas-three-ascii-ts)                         |          0 |       3 |          0 |
+| [`src/canvas/three_ascii.ts`](#src-canvas-three-ascii-ts)                         |          0 |       6 |          0 |
 | [`src/component.ts`](#src-component-ts)                                           |          0 |       4 |          2 |
 | [`src/components/box.ts`](#src-components-box-ts)                                 |          0 |       1 |          1 |
 | [`src/components/breadcrumbs.ts`](#src-components-breadcrumbs-ts)                 |          0 |       4 |          0 |
@@ -188,7 +188,7 @@ modules and exported symbols that make up the package API.
 | [`src/three_ascii/webgpu_compat.ts`](#src-three-ascii-webgpu-compat-ts)           |          0 |       2 |          0 |
 | [`src/tui.ts`](#src-tui-ts)                                                       |          0 |       2 |          1 |
 | [`src/types.ts`](#src-types-ts)                                                   |          0 |       8 |          8 |
-| [`src/utils/ansi_codes.ts`](#src-utils-ansi-codes-ts)                             |          0 |       8 |          8 |
+| [`src/utils/ansi_codes.ts`](#src-utils-ansi-codes-ts)                             |          0 |      12 |         12 |
 | [`src/utils/async.ts`](#src-utils-async-ts)                                       |          0 |       1 |          1 |
 | [`src/utils/component.ts`](#src-utils-component-ts)                               |          0 |       2 |          2 |
 | [`src/utils/mod.ts`](#src-utils-mod-ts)                                           |          7 |       0 |          0 |
@@ -1035,9 +1035,12 @@ _No direct exported symbols._
 
 | Symbol                           | Kind      | Type Only | JSDoc |
 | -------------------------------- | --------- | --------- | ----- |
+| `buildFallbackGrid`              | function  | no        | no    |
 | `formatThreeAsciiFallbackDetail` | function  | no        | no    |
+| `ThreeAsciiGridRenderer`         | interface | yes       | no    |
 | `ThreeAsciiObject`               | class     | no        | no    |
 | `ThreeAsciiObjectOptions`        | interface | yes       | no    |
+| `ThreeAsciiRendererFactory`      | type      | yes       | no    |
 
 ### src/component.ts
 
@@ -2578,16 +2581,20 @@ _No direct exported symbols._
 
 ### src/utils/ansi_codes.ts
 
-| Symbol                 | Kind     | Type Only | JSDoc |
-| ---------------------- | -------- | --------- | ----- |
-| `CLEAR_SCREEN`         | const    | no        | yes   |
-| `DISABLE_MOUSE`        | const    | no        | yes   |
-| `ENABLE_MOUSE`         | const    | no        | yes   |
-| `HIDE_CURSOR`          | const    | no        | yes   |
-| `moveCursor`           | function | no        | yes   |
-| `SHOW_CURSOR`          | const    | no        | yes   |
-| `USE_PRIMARY_BUFFER`   | const    | no        | yes   |
-| `USE_SECONDARY_BUFFER` | const    | no        | yes   |
+| Symbol                    | Kind     | Type Only | JSDoc |
+| ------------------------- | -------- | --------- | ----- |
+| `CLEAR_SCREEN`            | const    | no        | yes   |
+| `DISABLE_BRACKETED_PASTE` | const    | no        | yes   |
+| `DISABLE_FOCUS_EVENTS`    | const    | no        | yes   |
+| `DISABLE_MOUSE`           | const    | no        | yes   |
+| `ENABLE_BRACKETED_PASTE`  | const    | no        | yes   |
+| `ENABLE_FOCUS_EVENTS`     | const    | no        | yes   |
+| `ENABLE_MOUSE`            | const    | no        | yes   |
+| `HIDE_CURSOR`             | const    | no        | yes   |
+| `moveCursor`              | function | no        | yes   |
+| `SHOW_CURSOR`             | const    | no        | yes   |
+| `USE_PRIMARY_BUFFER`      | const    | no        | yes   |
+| `USE_SECONDARY_BUFFER`    | const    | no        | yes   |
 
 ### src/utils/async.ts
 

@@ -5,7 +5,13 @@ import { Canvas } from "../canvas/canvas.ts";
 import { EventEmitter } from "../event_emitter.ts";
 import { RenderLoop } from "../runtime/render_loop.ts";
 import type { ConsoleSize } from "../types.ts";
-import type { KeyPressEvent, MousePressEvent, MouseScrollEvent } from "../input_reader/types.ts";
+import type {
+  KeyPressEvent,
+  MousePressEvent,
+  MouseScrollEvent,
+  PasteEvent,
+  TerminalFocusEvent,
+} from "../input_reader/types.ts";
 import { BrowserCellCanvasSink, type BrowserCellCanvasSinkOptions } from "./cell_canvas_sink.ts";
 import { BrowserPlatform, type BrowserPlatformOptions } from "./platform.ts";
 
@@ -31,6 +37,8 @@ export type WebTuiHostEvents = {
   keyPress: { args: [KeyPressEvent] };
   mousePress: { args: [MousePressEvent] };
   mouseScroll: { args: [MouseScrollEvent] };
+  paste: { args: [PasteEvent] };
+  terminalFocus: { args: [TerminalFocusEvent] };
   render: { args: [] };
   destroy: { args: [] };
 };

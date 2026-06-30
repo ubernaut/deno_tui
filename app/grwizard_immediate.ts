@@ -1639,7 +1639,7 @@ class ImmediateWizardApp {
       const { complete, remainder } = splitInputBuffer(merged);
       pending = new Uint8Array(remainder);
       for (const decoded of decodeBuffer(complete)) {
-        if (decoded.key === "mouse") {
+        if (decoded.key === "mouse" || decoded.key === "paste" || decoded.key === "focus") {
           continue;
         }
         const keyPress = { ...decoded } satisfies KeyPressEvent;

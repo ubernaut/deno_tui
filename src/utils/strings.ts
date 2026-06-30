@@ -9,6 +9,18 @@ export const UNICODE_CHAR_REGEXP =
   /\ud83c[\udffb-\udfff](?=\ud83c[\udffb-\udfff])|(?:(?:\ud83c\udff4\udb40\udc67\udb40\udc62\udb40(?:\udc65|\udc73|\udc77)\udb40(?:\udc6e|\udc63|\udc6c)\udb40(?:\udc67|\udc74|\udc73)\udb40\udc7f)|[^\ud800-\udfff][\u0300-\u036f\ufe20-\ufe2f\u20d0-\u20ff\u1ab0-\u1aff\u1dc0-\u1dff]?|[\u0300-\u036f\ufe20-\ufe2f\u20d0-\u20ff\u1ab0-\u1aff\u1dc0-\u1dff]|(?:\ud83c[\udde6-\uddff]){2}|[\ud800-\udbff][\udc00-\udfff]|[\ud800-\udfff])[\ufe0e\ufe0f]?(?:[\u0300-\u036f\ufe20-\ufe2f\u20d0-\u20ff\u1ab0-\u1aff\u1dc0-\u1dff]|\ud83c[\udffb-\udfff])?(?:\u200d(?:[^\ud800-\udfff]|(?:\ud83c[\udde6-\uddff]){2}|[\ud800-\udbff][\udc00-\udfff])[\ufe0e\ufe0f]?(?:[\u0300-\u036f\ufe20-\ufe2f\u20d0-\u20ff\u1ab0-\u1aff\u1dc0-\u1dff]|\ud83c[\udffb-\udfff])?)*/g;
 
 const empty: string[] = [];
+const ESC_PATTERN = "\\x1b";
+const BEL_PATTERN = "\\x07";
+const CSI_SEQUENCE_REGEXP = new RegExp(`^${ESC_PATTERN}\\[[0-?]*[ -/]*[@-~]`);
+const ANSI_SEQUENCE_REGEXP = new RegExp(
+  `^${ESC_PATTERN}(?:\\[[0-?]*[ -/]*[@-~]|\\][^${BEL_PATTERN}]*(?:${BEL_PATTERN}|${ESC_PATTERN}\\\\))`,
+);
+const STRIP_CSI_SEQUENCE_REGEXP = new RegExp(`${ESC_PATTERN}\\[[0-?]*[ -/]*[@-~]`, "g");
+const STRIP_OSC_SEQUENCE_REGEXP = new RegExp(
+  `${ESC_PATTERN}\\][^${BEL_PATTERN}]*(?:${BEL_PATTERN}|${ESC_PATTERN}\\\\)`,
+  "g",
+);
+
 /** Converts given text to array of strings which consist of sequences which represent a single character */
 export function getMultiCodePointCharacters(text: string): string[] {
   if (!text) return empty;
@@ -28,7 +40,7 @@ function getStyledCharacters(text: string): string[] {
 
   for (let index = 0; index < text.length;) {
     if (text.charCodeAt(index) === 0x1b) {
-      const match = /^\x1b\[[0-?]*[ -/]*[@-~]/.exec(text.slice(index));
+      const match = CSI_SEQUENCE_REGEXP.exec(text.slice(index));
       if (match) {
         const sequence = match[0];
         if (sequence.endsWith("m")) {
@@ -58,21 +70,9 @@ function isSgrReset(sequence: string): boolean {
 
 /** Strips string of all its styles */
 export function stripStyles(string: string): string {
-  let stripped = "";
-  let ansi = false;
-  const len = string.length;
-  for (let i = 0; i < len; ++i) {
-    const char = string[i];
-    if (char === "\x1b") {
-      ansi = true;
-      i += 2; // [ "\x1b" "[" "X" "m" ] <-- shortest ansi sequence
-    } else if (char === "m" && ansi) {
-      ansi = false;
-    } else if (!ansi) {
-      stripped += char;
-    }
-  }
-  return stripped;
+  return string
+    .replace(STRIP_CSI_SEQUENCE_REGEXP, "")
+    .replace(STRIP_OSC_SEQUENCE_REGEXP, "");
 }
 
 /** Inserts {value} into {string} on given {index} */
@@ -85,26 +85,9 @@ export function textWidth(text: string, start = 0): number {
   if (!text) return 0;
 
   let width = 0;
-  let ansi = false;
-  const len = text.length;
-  loop: for (let i = start; i < len; ++i) {
-    const char = text[i];
-
-    switch (char) {
-      case "\x1b":
-        ansi = true;
-        i += 2;
-        break;
-      case "\n":
-        break loop;
-      default:
-        if (!ansi) {
-          width += characterWidth(char);
-        } else if (isFinalAnsiByte(char)) {
-          ansi = false;
-        }
-        break;
-    }
+  for (const cell of iterateTextCells(start > 0 ? text.slice(start) : text)) {
+    if (cell.plain === "\n") break;
+    width += characterWidth(cell.plain);
   }
 
   return width;
@@ -114,35 +97,75 @@ export function textWidth(text: string, start = 0): number {
 export function cropToWidth(text: string, width: number): string {
   let cropped = "";
   let croppedWidth = 0;
-  let ansi = 0;
 
-  const len = text.length;
-  for (let i = 0; i < len; ++i) {
-    const char = text[i];
+  for (const cell of iterateTextCells(text)) {
+    const plain = cell.plain;
+    if (!plain) {
+      cropped += cell.raw;
+      continue;
+    }
+    if (plain === "\n") break;
+    const charWidth = characterWidth(plain);
 
-    if (char === "\x1b") {
-      ansi = 1;
-    } else if (ansi >= 3 && isFinalAnsiByte(char)) {
-      ansi = 0;
-    } else if (ansi > 0) {
-      ansi += 1;
-    } else {
-      const charWidth = characterWidth(char);
-
-      if (croppedWidth + charWidth > width) {
-        if (croppedWidth + 1 === width) {
-          cropped += " ";
-        }
-        break;
-      } else {
-        croppedWidth += charWidth;
+    if (croppedWidth + charWidth > width) {
+      const leading = cell.raw.slice(0, cell.raw.length - plain.length);
+      if (leading && isAnsiResetOnly(leading)) {
+        cropped += leading;
       }
+      if (croppedWidth + 1 === width) {
+        cropped += " ";
+      }
+      break;
+    } else {
+      croppedWidth += charWidth;
     }
 
-    cropped += char;
+    cropped += cell.raw;
   }
 
   return cropped;
+}
+
+function* iterateTextCells(text: string): Generator<{ raw: string; plain: string }, void, void> {
+  let index = 0;
+  let prefix = "";
+  while (index < text.length) {
+    if (text.charCodeAt(index) === 0x1b) {
+      const sequence = ANSI_SEQUENCE_REGEXP.exec(text.slice(index))?.[0];
+      if (sequence) {
+        prefix += sequence;
+        index += sequence.length;
+        continue;
+      }
+    }
+
+    const char = nextTextCharacter(text, index);
+    yield { raw: prefix + char, plain: char };
+    prefix = "";
+    index += char.length;
+  }
+
+  if (prefix) {
+    yield { raw: prefix, plain: "" };
+  }
+}
+
+function nextTextCharacter(text: string, index: number): string {
+  UNICODE_CHAR_REGEXP.lastIndex = 0;
+  const match = UNICODE_CHAR_REGEXP.exec(text.slice(index));
+  if (match?.index === 0) return match[0];
+  return String.fromCodePoint(text.codePointAt(index) ?? text.charCodeAt(index));
+}
+
+function isAnsiResetOnly(value: string): boolean {
+  if (!value) return false;
+  let index = 0;
+  while (index < value.length) {
+    const sequence = ANSI_SEQUENCE_REGEXP.exec(value.slice(index))?.[0];
+    if (!sequence || !sequence.endsWith("m") || !isSgrReset(sequence)) return false;
+    index += sequence.length;
+  }
+  return true;
 }
 
 export function isFinalAnsiByte(character: string): boolean {
@@ -157,9 +180,23 @@ export function isFinalAnsiByte(character: string): boolean {
  * Originally created by sindresorhus: https://github.com/sindresorhus/is-fullwidth-code-point/blob/main/index.js
  */
 export function characterWidth(character: string): number {
-  const codePoint = character.charCodeAt(0);
+  const plain = stripStyles(character);
+  if (!plain) return 0;
 
-  if (codePoint === 0xD83E || codePoint === 0x200B) {
+  const codePoints = [...plain].map((char) => char.codePointAt(0) ?? 0);
+  if (codePoints.some((codePoint) => codePoint === 0x200d)) return 2;
+  if (codePoints.length === 2 && codePoints.every(isRegionalIndicator)) return 2;
+  if (codePoints.some((codePoint) => codePoint === 0xfe0f) && codePoints.some(isEmojiSymbol)) return 2;
+
+  const codePoint = codePoints[0] ?? 0;
+
+  if (
+    codePoint === 0x200b ||
+    codePoint === 0x200d ||
+    isCombiningMark(codePoint) ||
+    isVariationSelector(codePoint) ||
+    isEmojiModifier(codePoint)
+  ) {
     return 0;
   }
 
@@ -179,6 +216,7 @@ export function characterWidth(character: string): number {
       (0xff01 <= codePoint && codePoint <= 0xff60) ||
       (0xffe0 <= codePoint && codePoint <= 0xffe6) ||
       (0x1b000 <= codePoint && codePoint <= 0x1b001) ||
+      (0x1f000 <= codePoint && codePoint <= 0x1faff) ||
       (0x1f200 <= codePoint && codePoint <= 0x1f251) ||
       (0x20000 <= codePoint && codePoint <= 0x3fffd))
   ) {
@@ -186,6 +224,32 @@ export function characterWidth(character: string): number {
   }
 
   return 1;
+}
+
+function isCombiningMark(codePoint: number): boolean {
+  return (0x0300 <= codePoint && codePoint <= 0x036f) ||
+    (0x1ab0 <= codePoint && codePoint <= 0x1aff) ||
+    (0x1dc0 <= codePoint && codePoint <= 0x1dff) ||
+    (0x20d0 <= codePoint && codePoint <= 0x20ff) ||
+    (0xfe20 <= codePoint && codePoint <= 0xfe2f);
+}
+
+function isVariationSelector(codePoint: number): boolean {
+  return (0xfe00 <= codePoint && codePoint <= 0xfe0f) ||
+    (0xe0100 <= codePoint && codePoint <= 0xe01ef);
+}
+
+function isEmojiModifier(codePoint: number): boolean {
+  return 0x1f3fb <= codePoint && codePoint <= 0x1f3ff;
+}
+
+function isRegionalIndicator(codePoint: number): boolean {
+  return 0x1f1e6 <= codePoint && codePoint <= 0x1f1ff;
+}
+
+function isEmojiSymbol(codePoint: number): boolean {
+  return (0x2600 <= codePoint && codePoint <= 0x27bf) ||
+    (0x1f000 <= codePoint && codePoint <= 0x1faff);
 }
 
 /** Returns capitalized string created from {text} */

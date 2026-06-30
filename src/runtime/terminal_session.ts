@@ -24,6 +24,7 @@ export interface TerminalSessionInspection {
   active: boolean;
   alternateScreen: boolean;
   bracketedPaste: boolean;
+  focusEvents: boolean;
   mouseProtocol: TerminalMouseProtocol;
   hideCursor: boolean;
 }
@@ -47,6 +48,10 @@ export function terminalSessionSequences(options: TerminalSessionOptions): Termi
   if (options.plan.bracketedPaste) {
     enter.push(`${ESC}[?2004h`);
     exit.unshift(`${ESC}[?2004l`);
+  }
+  if (options.plan.focusEvents) {
+    enter.push(`${ESC}[?1004h`);
+    exit.unshift(`${ESC}[?1004l`);
   }
 
   const mouse = terminalMouseSequences(options.plan.mouseProtocol);
@@ -125,6 +130,7 @@ export class TerminalSessionController {
       active: this.#active,
       alternateScreen: this.#options.plan.alternateScreen,
       bracketedPaste: this.#options.plan.bracketedPaste,
+      focusEvents: this.#options.plan.focusEvents,
       mouseProtocol: this.#options.plan.mouseProtocol,
       hideCursor: this.#options.hideCursor ?? true,
     };

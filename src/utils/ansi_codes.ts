@@ -11,6 +11,18 @@ export const ENABLE_MOUSE = "\x1b[?1000h\x1b[?1002h\x1b[?1005h\x1b[?1006h";
 /** ANSI escape code to disable mouse handling */
 export const DISABLE_MOUSE = "\x1b[?1000l\x1b[?1002l\x1b[?1005l\x1b[?1006l";
 
+/** ANSI escape code to enable bracketed paste handling */
+export const ENABLE_BRACKETED_PASTE = "\x1b[?2004h";
+
+/** ANSI escape code to disable bracketed paste handling */
+export const DISABLE_BRACKETED_PASTE = "\x1b[?2004l";
+
+/** ANSI escape code to enable terminal focus reporting */
+export const ENABLE_FOCUS_EVENTS = "\x1b[?1004h";
+
+/** ANSI escape code to disable terminal focus reporting */
+export const DISABLE_FOCUS_EVENTS = "\x1b[?1004l";
+
 /** ANSI escape code to hide terminal cursor  */
 export const HIDE_CURSOR = `\x1b[?25l`;
 
