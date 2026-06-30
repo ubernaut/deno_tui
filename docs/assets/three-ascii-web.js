@@ -588,6 +588,207 @@ function rectangleIntersection(a, b, data) {
   return intersectionObject;
 }
 
+// src/components/catalog.ts
+var componentCatalog = [
+  component("box", "Box", "primitive", "Filled rectangular surface for backgrounds and panels.", [
+    "component",
+    "themeable"
+  ]),
+  component("button", "Button", "input", "Clickable and focusable command button.", [
+    "component",
+    "controller",
+    "keyboard",
+    "mouse",
+    "themeable"
+  ]),
+  component("checkbox", "CheckBox", "input", "Boolean input with keyboard and mouse toggling.", [
+    "component",
+    "controller",
+    "keyboard",
+    "mouse",
+    "themeable"
+  ]),
+  component("combobox", "ComboBox", "input", "Text input with selectable suggestions.", [
+    "component",
+    "controller",
+    "keyboard",
+    "mouse",
+    "selection",
+    "themeable"
+  ]),
+  component("input", "Input", "input", "Single-line text entry.", [
+    "component",
+    "controller",
+    "keyboard",
+    "themeable"
+  ]),
+  component("textbox", "TextBox", "input", "Multi-line text editor with cursor, line numbers, and selection.", [
+    "component",
+    "controller",
+    "keyboard",
+    "themeable"
+  ]),
+  component("slider", "Slider", "input", "Horizontal or vertical numeric slider.", [
+    "component",
+    "controller",
+    "keyboard",
+    "mouse",
+    "themeable"
+  ]),
+  component("radio-group", "RadioGroup", "input", "Single-choice option group renderer.", [
+    "component",
+    "controller",
+    "render-helper",
+    "selection",
+    "keyboard",
+    "mouse",
+    "themeable"
+  ]),
+  component("list", "List", "data", "Selectable list component.", [
+    "component",
+    "controller",
+    "selection",
+    "themeable"
+  ]),
+  component("virtual-list", "VirtualList", "data", "Windowed list component for large item sets.", [
+    "component",
+    "controller",
+    "selection",
+    "virtualized",
+    "themeable"
+  ]),
+  component("table", "Table", "data", "Scrollable table component with headers and selection.", [
+    "component",
+    "controller",
+    "selection",
+    "themeable"
+  ]),
+  component("data-table", "DataTable", "data", "Filtering, sorting, pagination, and row formatting helpers.", [
+    "controller",
+    "render-helper",
+    "selection"
+  ]),
+  component("tree", "Tree", "data", "Hierarchical rows with expansion state.", [
+    "component",
+    "controller",
+    "render-helper",
+    "selection",
+    "keyboard",
+    "themeable"
+  ]),
+  component("file-explorer", "FileExplorer", "data", "Path-aware tree controller for project and file browsers.", [
+    "controller",
+    "selection",
+    "keyboard",
+    "mouse",
+    "themeable"
+  ]),
+  component("tabs", "Tabs", "navigation", "Segmented route or view selector.", [
+    "controller",
+    "render-helper",
+    "selection",
+    "keyboard",
+    "themeable"
+  ]),
+  component("breadcrumbs", "Breadcrumbs", "navigation", "Truncated path and route trail renderer.", [
+    "render-helper"
+  ]),
+  component("stepper", "Stepper", "navigation", "Sequential workflow step indicator.", [
+    "controller",
+    "render-helper",
+    "selection"
+  ]),
+  component("menu-bar", "MenuBar", "navigation", "Top-level command menu row.", [
+    "controller",
+    "render-helper",
+    "selection",
+    "keyboard"
+  ]),
+  component("key-help", "KeyHelp", "navigation", "Formatted key binding help rows.", ["render-helper", "keyboard"]),
+  component("command-palette", "CommandPalette", "overlay", "Filterable command surface.", [
+    "controller",
+    "render-helper",
+    "selection",
+    "keyboard",
+    "async"
+  ]),
+  component("context-menu", "ContextMenu", "overlay", "Selectable contextual command list.", [
+    "controller",
+    "render-helper",
+    "selection",
+    "keyboard",
+    "mouse"
+  ]),
+  component("modal", "Modal", "overlay", "Centered overlay frame and focus target.", [
+    "controller",
+    "render-helper",
+    "keyboard",
+    "mouse",
+    "themeable"
+  ]),
+  component("toast", "ToastStack", "overlay", "Transient notification stack renderer.", [
+    "controller",
+    "render-helper",
+    "async"
+  ]),
+  component("empty-state", "EmptyState", "feedback", "Centered empty, loading, or fallback message.", [
+    "render-helper",
+    "async"
+  ]),
+  component("spinner", "Spinner", "feedback", "Animated status indicator renderer.", [
+    "render-helper",
+    "async"
+  ]),
+  component("progressbar", "ProgressBar", "feedback", "Horizontal or vertical progress component.", [
+    "component",
+    "controller",
+    "themeable"
+  ]),
+  component("statusbar", "StatusBar", "feedback", "Left/right status row renderer.", [
+    "component",
+    "render-helper",
+    "themeable"
+  ]),
+  component("sparkline", "Sparkline", "visualization", "Compact trend renderer for metric arrays.", [
+    "component",
+    "render-helper",
+    "dashboard"
+  ]),
+  component("gauge", "Gauge", "visualization", "Compact labeled value bar renderer.", ["render-helper", "dashboard"]),
+  component("chart", "Chart", "visualization", "Text bar chart renderer.", ["render-helper", "dashboard"]),
+  component("log-viewer", "LogViewer", "data", "Tail-following log row window helpers.", [
+    "controller",
+    "render-helper",
+    "virtualized",
+    "dashboard"
+  ]),
+  component("metric-series", "MetricSeries", "data", "Bounded metric history controller and statistics.", [
+    "controller",
+    "dashboard"
+  ]),
+  component("three-ascii", "ThreeAscii", "visualization", "Three.js scene renderer for terminal ASCII output.", [
+    "component",
+    "three",
+    "dashboard"
+  ]),
+  component("frame", "Frame", "layout", "Bordered component frame.", ["component", "themeable"]),
+  component("window-manager", "WindowManager", "layout", "Tiling window state, fullscreen tabs, and chrome model.", [
+    "controller",
+    "keyboard",
+    "mouse"
+  ]),
+  component("scroll-area", "ScrollArea", "layout", "Viewport and scrollbar helper renderers.", [
+    "controller",
+    "render-helper",
+    "virtualized"
+  ]),
+  component("label", "Label", "primitive", "Aligned text component.", ["component", "themeable"]),
+  component("text", "Text", "primitive", "Raw text draw object.", ["component", "themeable"])
+];
+function component(id2, name, category, description, capabilities) {
+  return { id: id2, name, category, description, capabilities };
+}
+
 // src/theme.ts
 function emptyStyle(text) {
   return text;
@@ -656,6 +857,183 @@ var themePalettes = {
     surface: emptyStyle
   }
 };
+function mergeComponentThemeDefinition(base = {}, extension = {}) {
+  const variants = { ...base.variants ?? {} };
+  for (const [name, variant] of Object.entries(extension.variants ?? {})) {
+    variants[name] = {
+      ...variants[name] ?? {},
+      ...variant
+    };
+  }
+  return {
+    extends: mergeThemeExtends(base.extends, extension.extends),
+    base: {
+      ...base.base ?? {},
+      ...extension.base ?? {}
+    },
+    variants
+  };
+}
+function composeThemeOptions(...options) {
+  const tokens = {};
+  const components = {};
+  for (const option of options) {
+    Object.assign(tokens, option.tokens ?? {});
+    for (const [name, definition] of Object.entries(option.components ?? {})) {
+      components[name] = mergeComponentThemeDefinition(components[name], definition);
+    }
+  }
+  return { tokens, components };
+}
+function createStandardComponentThemeDefinitions(options = {}) {
+  const requested = options.components ? new Set([...options.components].map(normalizeThemeComponentName)) : void 0;
+  const definitions = {};
+  for (const entry of [...componentCatalog].sort((a, b) => a.name.localeCompare(b.name))) {
+    if (requested && !requested.has(normalizeThemeComponentName(entry.id)) && !requested.has(normalizeThemeComponentName(entry.name))) {
+      continue;
+    }
+    definitions[entry.name] = standardComponentDefinition(entry);
+  }
+  if (requested) {
+    const known = new Set(
+      componentCatalog.flatMap((entry) => [normalizeThemeComponentName(entry.id), normalizeThemeComponentName(entry.name)])
+    );
+    for (const name of options.components ?? []) {
+      if (!known.has(normalizeThemeComponentName(name))) {
+        definitions[name] = standardGenericComponentDefinition();
+      }
+    }
+  }
+  return definitions;
+}
+function composeStandardThemeOptions(options = {}) {
+  return composeThemeOptions({ components: createStandardComponentThemeDefinitions() }, options);
+}
+var defaultThemePacks = [
+  { id: "plain", label: "Plain", palette: "plain", options: composeStandardThemeOptions() },
+  { id: "neon", label: "Neon", palette: "neon", options: composeStandardThemeOptions() },
+  { id: "terminal", label: "Terminal", palette: "terminal", options: composeStandardThemeOptions() }
+];
+function standardComponentDefinition(entry) {
+  if (entry.name === "Button") return standardInteractiveComponentDefinition();
+  if (entry.name === "Frame" || entry.name === "Box" || entry.name === "WindowManager") {
+    return standardSurfaceComponentDefinition();
+  }
+  if (entry.category === "data") return standardDataComponentDefinition();
+  if (entry.category === "input" || entry.capabilities.includes("selection")) {
+    return standardInteractiveComponentDefinition();
+  }
+  if (entry.category === "overlay") return standardOverlayComponentDefinition();
+  if (entry.category === "feedback" || entry.category === "visualization") return standardFeedbackComponentDefinition();
+  if (entry.category === "navigation" || entry.category === "layout") return standardSurfaceComponentDefinition();
+  return standardGenericComponentDefinition();
+}
+function standardGenericComponentDefinition() {
+  return {
+    base: {
+      base: "foreground",
+      focused: "accent",
+      active: "success",
+      disabled: "muted"
+    },
+    variants: {
+      muted: { base: "muted" },
+      danger: { base: "danger" },
+      warning: { base: "warning" },
+      success: { base: "success" }
+    }
+  };
+}
+function standardSurfaceComponentDefinition() {
+  return {
+    base: {
+      base: ["surface", "foreground"],
+      focused: ["surface", "accent"],
+      active: ["surface", "success"],
+      disabled: ["surface", "muted"]
+    },
+    variants: {
+      chrome: { base: ["surface", "accent"], active: ["surface", "success"] },
+      quiet: { base: "muted", focused: "accent" },
+      danger: { base: ["surface", "danger"], focused: ["surface", "warning"] }
+    }
+  };
+}
+function standardInteractiveComponentDefinition() {
+  return {
+    base: {
+      base: ["surface", "foreground"],
+      focused: ["surface", "accent"],
+      active: ["surface", "success"],
+      disabled: ["surface", "muted"]
+    },
+    variants: {
+      primary: { base: ["surface", "accent"], active: ["surface", "success"] },
+      quiet: { base: "muted", focused: "accent" },
+      danger: { base: "danger", focused: "warning", active: "danger" },
+      warning: { base: "warning", focused: "accent", active: "warning" },
+      success: { base: "success", focused: "accent", active: "success" }
+    }
+  };
+}
+function standardDataComponentDefinition() {
+  return {
+    base: {
+      base: "foreground",
+      focused: "accent",
+      active: ["surface", "foreground"],
+      disabled: "muted"
+    },
+    variants: {
+      header: { base: ["surface", "accent"], active: ["surface", "success"] },
+      selected: { base: ["surface", "foreground"], focused: ["surface", "accent"], active: ["surface", "success"] },
+      stale: { base: "warning", focused: "accent" },
+      danger: { base: "danger", focused: "warning" }
+    }
+  };
+}
+function standardOverlayComponentDefinition() {
+  return {
+    base: {
+      base: ["surface", "foreground"],
+      focused: ["surface", "accent"],
+      active: ["surface", "success"],
+      disabled: ["surface", "muted"]
+    },
+    variants: {
+      palette: { base: ["surface", "foreground"], focused: ["surface", "accent"], active: ["surface", "success"] },
+      warning: { base: ["surface", "warning"], focused: ["surface", "accent"] },
+      danger: { base: ["surface", "danger"], focused: ["surface", "warning"] }
+    }
+  };
+}
+function standardFeedbackComponentDefinition() {
+  return {
+    base: {
+      base: "foreground",
+      focused: "accent",
+      active: "success",
+      disabled: "muted"
+    },
+    variants: {
+      info: { base: "accent", active: "accent" },
+      success: { base: "success", active: "success" },
+      warning: { base: "warning", active: "warning" },
+      danger: { base: "danger", active: "danger" }
+    }
+  };
+}
+function normalizeThemeComponentName(value) {
+  return value.toLowerCase().replaceAll(/[^a-z0-9]/g, "");
+}
+function mergeThemeExtends(base, extension) {
+  const names = [...normalizeThemeExtends(base), ...normalizeThemeExtends(extension)];
+  return names.length === 0 ? void 0 : [...new Set(names)];
+}
+function normalizeThemeExtends(value) {
+  if (value === void 0) return [];
+  return typeof value === "string" ? [value] : [...value];
+}
 function ansiStyleCodes(spec) {
   const codes = [];
   if (spec.bold) codes.push(1);
@@ -1442,7 +1820,7 @@ function grWizardThemePaletteDefinition(palette) {
   };
 }
 function grWizardThemeOptions(palette) {
-  return {
+  return composeStandardThemeOptions({
     components: {
       Badge: {
         base: {
@@ -1526,7 +1904,7 @@ function grWizardThemeOptions(palette) {
         }
       }
     }
-  };
+  });
 }
 function style(spec) {
   return createAnsiStyle({
@@ -3797,6 +4175,9 @@ var RenderLoop = class {
   #frame = 0;
   #lastStartedAt;
   #lastDurationMs;
+  #totalDurationMs = 0;
+  #maxDurationMs = 0;
+  #overBudgetFrames = 0;
   #lastError;
   constructor(options) {
     this.#tick = options.tick;
@@ -3841,8 +4222,12 @@ var RenderLoop = class {
       running: this.#running,
       frame: this.#frame,
       intervalMs: this.#intervalMs,
+      frameBudgetMs: this.#intervalMs,
       lastStartedAt: this.#lastStartedAt,
       lastDurationMs: this.#lastDurationMs,
+      averageDurationMs: this.#frame === 0 ? 0 : this.#totalDurationMs / this.#frame,
+      maxDurationMs: this.#maxDurationMs,
+      overBudgetFrames: this.#overBudgetFrames,
       lastError: this.#lastError
     };
   }
@@ -3864,7 +4249,11 @@ var RenderLoop = class {
     this.#lastStartedAt = startedAt;
     this.#frame += 1;
     this.#tick({ frame: this.#frame, startedAt, deltaMs });
-    this.#lastDurationMs = Math.max(0, this.#timer.now() - startedAt);
+    const duration = Math.max(0, this.#timer.now() - startedAt);
+    this.#lastDurationMs = duration;
+    this.#totalDurationMs += duration;
+    this.#maxDurationMs = Math.max(this.#maxDurationMs, duration);
+    if (duration > this.#intervalMs) this.#overBudgetFrames += 1;
   }
   #schedule() {
     if (!this.#running) return;
@@ -3882,204 +4271,6 @@ var textEncoder3 = new TextEncoder();
 
 // src/layout/flex_layout.ts
 var MAX_FLEX_SIZE = Number.MAX_SAFE_INTEGER;
-
-// src/components/catalog.ts
-var componentCatalog = [
-  component("box", "Box", "primitive", "Filled rectangular surface for backgrounds and panels.", [
-    "component",
-    "themeable"
-  ]),
-  component("button", "Button", "input", "Clickable and focusable command button.", [
-    "component",
-    "controller",
-    "keyboard",
-    "mouse",
-    "themeable"
-  ]),
-  component("checkbox", "CheckBox", "input", "Boolean input with keyboard and mouse toggling.", [
-    "component",
-    "controller",
-    "keyboard",
-    "mouse",
-    "themeable"
-  ]),
-  component("combobox", "ComboBox", "input", "Text input with selectable suggestions.", [
-    "component",
-    "controller",
-    "keyboard",
-    "selection",
-    "themeable"
-  ]),
-  component("input", "Input", "input", "Single-line text entry.", [
-    "component",
-    "controller",
-    "keyboard",
-    "themeable"
-  ]),
-  component("textbox", "TextBox", "input", "Multi-line text editor with cursor, line numbers, and selection.", [
-    "component",
-    "controller",
-    "keyboard",
-    "themeable"
-  ]),
-  component("slider", "Slider", "input", "Horizontal or vertical numeric slider.", [
-    "component",
-    "controller",
-    "keyboard",
-    "mouse",
-    "themeable"
-  ]),
-  component("radio-group", "RadioGroup", "input", "Single-choice option group renderer.", [
-    "controller",
-    "render-helper",
-    "selection",
-    "keyboard",
-    "themeable"
-  ]),
-  component("list", "List", "data", "Selectable list component.", [
-    "component",
-    "controller",
-    "selection",
-    "themeable"
-  ]),
-  component("virtual-list", "VirtualList", "data", "Windowed list component for large item sets.", [
-    "component",
-    "controller",
-    "selection",
-    "virtualized",
-    "themeable"
-  ]),
-  component("table", "Table", "data", "Scrollable table component with headers and selection.", [
-    "component",
-    "controller",
-    "selection",
-    "themeable"
-  ]),
-  component("data-table", "DataTable", "data", "Filtering, sorting, pagination, and row formatting helpers.", [
-    "controller",
-    "render-helper",
-    "selection"
-  ]),
-  component("tree", "Tree", "data", "Hierarchical rows with expansion state.", [
-    "component",
-    "controller",
-    "render-helper",
-    "selection",
-    "keyboard",
-    "themeable"
-  ]),
-  component("file-explorer", "FileExplorer", "data", "Path-aware tree controller for project and file browsers.", [
-    "controller",
-    "selection",
-    "keyboard",
-    "mouse",
-    "themeable"
-  ]),
-  component("tabs", "Tabs", "navigation", "Segmented route or view selector.", [
-    "controller",
-    "render-helper",
-    "selection",
-    "keyboard",
-    "themeable"
-  ]),
-  component("breadcrumbs", "Breadcrumbs", "navigation", "Truncated path and route trail renderer.", [
-    "render-helper"
-  ]),
-  component("stepper", "Stepper", "navigation", "Sequential workflow step indicator.", [
-    "controller",
-    "render-helper",
-    "selection"
-  ]),
-  component("menu-bar", "MenuBar", "navigation", "Top-level command menu row.", [
-    "controller",
-    "render-helper",
-    "selection",
-    "keyboard"
-  ]),
-  component("key-help", "KeyHelp", "navigation", "Formatted key binding help rows.", ["render-helper", "keyboard"]),
-  component("command-palette", "CommandPalette", "overlay", "Filterable command surface.", [
-    "controller",
-    "render-helper",
-    "selection",
-    "keyboard",
-    "async"
-  ]),
-  component("context-menu", "ContextMenu", "overlay", "Selectable contextual command list.", [
-    "controller",
-    "render-helper",
-    "selection",
-    "keyboard",
-    "mouse"
-  ]),
-  component("modal", "Modal", "overlay", "Centered overlay frame and focus target.", [
-    "controller",
-    "render-helper",
-    "keyboard",
-    "mouse",
-    "themeable"
-  ]),
-  component("toast", "ToastStack", "overlay", "Transient notification stack renderer.", [
-    "controller",
-    "render-helper",
-    "async"
-  ]),
-  component("empty-state", "EmptyState", "feedback", "Centered empty, loading, or fallback message.", [
-    "render-helper",
-    "async"
-  ]),
-  component("spinner", "Spinner", "feedback", "Animated status indicator renderer.", [
-    "render-helper",
-    "async"
-  ]),
-  component("progressbar", "ProgressBar", "feedback", "Horizontal or vertical progress component.", [
-    "component",
-    "controller",
-    "themeable"
-  ]),
-  component("statusbar", "StatusBar", "feedback", "Left/right status row renderer.", [
-    "component",
-    "render-helper",
-    "themeable"
-  ]),
-  component("sparkline", "Sparkline", "visualization", "Compact trend renderer for metric arrays.", [
-    "component",
-    "render-helper",
-    "dashboard"
-  ]),
-  component("gauge", "Gauge", "visualization", "Compact labeled value bar renderer.", ["render-helper", "dashboard"]),
-  component("chart", "Chart", "visualization", "Text bar chart renderer.", ["render-helper", "dashboard"]),
-  component("log-viewer", "LogViewer", "data", "Tail-following log row window helpers.", [
-    "controller",
-    "render-helper",
-    "virtualized",
-    "dashboard"
-  ]),
-  component("metric-series", "MetricSeries", "data", "Bounded metric history controller and statistics.", [
-    "controller",
-    "dashboard"
-  ]),
-  component("three-ascii", "ThreeAscii", "visualization", "Three.js scene renderer for terminal ASCII output.", [
-    "component",
-    "three",
-    "dashboard"
-  ]),
-  component("frame", "Frame", "layout", "Bordered component frame.", ["component", "themeable"]),
-  component("window-manager", "WindowManager", "layout", "Tiling window state, fullscreen tabs, and chrome model.", [
-    "controller",
-    "keyboard",
-    "mouse"
-  ]),
-  component("scroll-area", "ScrollArea", "layout", "Viewport and scrollbar helper renderers.", [
-    "controller",
-    "render-helper",
-    "virtualized"
-  ]),
-  component("label", "Label", "primitive", "Aligned text component.", ["component", "themeable"]),
-  component("text", "Text", "primitive", "Raw text draw object.", ["component", "themeable"])
-];
-function component(id2, name, category, description, capabilities) {
-  return { id: id2, name, category, description, capabilities };
-}
 
 // src/three_ascii/demo_presets.ts
 var fixed = (digits) => (value) => value.toFixed(digits);

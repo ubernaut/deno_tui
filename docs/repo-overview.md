@@ -8,7 +8,7 @@ helpers, and visualization demos on top.
 
 | Path                                                                                                        | Purpose                                                                                                                                                                                                                         |
 | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `mod.ts`                                                                                                    | Public entrypoint that re-exports the core, components, app, runtime, testing, performance, and renderer modules.                                                                                                               |
+| `mod.ts`, `mod.web.ts`, `mod.remote.ts`                                                                     | Public package entrypoints for the stable terminal package, beta standalone browser package, and experimental remote terminal bridge.                                                                                           |
 | `src/tui.ts`, `src/canvas/`, `src/component.ts`, `src/view.ts`                                              | Terminal rendering foundation: TUI lifecycle, canvas buffering, draw objects, base components, and scrollable views.                                                                                                            |
 | `src/input_reader/`, `src/input.ts`, `src/focus.ts`, `src/keymap.ts`, `src/selection.ts`, `src/viewport.ts` | Input decoding, keyboard/mouse/paste/focus events, focus traversal, key registries, selection helpers, and viewport math.                                                                                                       |
 | `src/components/`                                                                                           | Widget library and controllers: inputs, menus, tables, virtual lists, trees, dashboards, feedback components, and `ThreeAscii`.                                                                                                 |
@@ -19,6 +19,7 @@ helpers, and visualization demos on top.
 | `src/three_ascii/`                                                                                          | Three.js ASCII renderer backend, Acerola-style node, glyph/block/mixed terminal glyph mapping, presets, and WebGPU compatibility helpers.                                                                                       |
 | `src/testing/`                                                                                              | Snapshot, test canvas/stdout, deterministic input, and focus test helpers.                                                                                                                                                      |
 | `src/perf/`                                                                                                 | Benchmark runner, summaries, threshold checks, and benchmark catalog reports.                                                                                                                                                   |
+| `src/api_stability.ts`                                                                                      | Package entrypoint manifest, source-tree stability policy, and release checklist metadata.                                                                                                                                      |
 | `app/`                                                                                                      | Full-screen demos and applications, including the system monitor, showcase, API Workbench, Neon Three scenes, and panel/source models.                                                                                          |
 | `examples/`                                                                                                 | Focused runnable examples and report-style demos for individual subsystems.                                                                                                                                                     |
 | `scripts/`                                                                                                  | Contributor tooling: health gate, API inventory, benchmark runner, capability report, component catalog, and visualization launcher metadata.                                                                                   |
@@ -115,12 +116,13 @@ The default contributor gate is:
 deno task health
 ```
 
-It checks formatting, public API exports, API inventory uniqueness, documentation coverage, examples, apps, the full
-test suite, and worker-enabled runtime tests. The API inventory gate currently enforces duplicate-free public exports
-and at least 25% JSDoc coverage:
+It checks formatting, public API exports, API inventory uniqueness, package export-map drift, documentation coverage,
+examples, apps, the full test suite, and worker-enabled runtime tests. The API inventory gate currently enforces
+duplicate-free public exports and 100% JSDoc coverage:
 
 ```sh
-deno task api-inventory -- --check --quiet --fail-duplicates --min-doc-coverage=0.25
+deno task package-check -- --quiet
+deno task api-inventory -- --check --quiet --fail-duplicates --min-doc-coverage=1
 ```
 
 Regenerate the full public API reference with:

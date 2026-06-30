@@ -38,12 +38,29 @@ renderer lab, and demo suite:
   controls.
 - [Repository Overview](./docs/repo-overview.md) summarizes the architecture, module families, demos, and launch
   commands in one place.
+- [API Stability and Packaging](./docs/api-stability-and-packaging.md) defines the Deno export map, stable/beta/
+  experimental tiers, release checklist, and changelog policy.
 - [Browser Framework Plan](./docs/web-framework-plan.md) compares browser delivery options and recommends a hybrid
   platform/renderer path for shared terminal and web interfaces. The current branch includes `mod.web.ts`,
   `mod.remote.ts`, a Canvas2D web host, a DOM render target, and GitHub Pages builds for Neon Exodus, API Workbench, and
   the three ASCII renderer under `docs/`.
 - The README remains the primary API tour for components, layouts, app primitives, theming, runtime capabilities,
   reactivity, views, examples, and contribution commands.
+
+## Package Entrypoints
+
+`deno.jsonc` now declares the package export map explicitly:
+
+| Import target | Source          | Runtime  | Stability    |
+| ------------- | --------------- | -------- | ------------ |
+| `.`           | `mod.ts`        | terminal | stable       |
+| `./web`       | `mod.web.ts`    | browser  | beta         |
+| `./remote`    | `mod.remote.ts` | remote   | experimental |
+
+Use `mod.ts` for full terminal apps, `mod.web.ts` for standalone browser bundles and GitHub Pages demos, and
+`mod.remote.ts` for the hosted terminal/client bridge. The stability manifest is exported as `packageEntrypoints`,
+`apiSurfacePolicies`, and `packageReleasePolicy` so docs, release tooling, and adopters can inspect the package contract
+without scraping Markdown.
 
 ## Fork Highlights
 
@@ -2575,6 +2592,8 @@ deno task capabilities
 deno task runtime-workloads
 deno task benchmark
 deno task api-inventory
+deno task api-reference
+deno task package-check
 deno task component-catalog
 deno task app-plugin-catalog
 deno task adopter-workbench

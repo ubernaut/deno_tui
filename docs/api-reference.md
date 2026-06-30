@@ -6,10 +6,10 @@ modules and exported symbols that make up the package API.
 ## Summary
 
 - Entrypoint: `mod.ts`
-- Modules: 182
-- Re-export declarations: 181
-- Exported symbols: 1422
-- Documented symbols: 1422
+- Modules: 183
+- Re-export declarations: 182
+- Exported symbols: 1449
+- Documented symbols: 1449
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -18,7 +18,8 @@ modules and exported symbols that make up the package API.
 
 | Module                                                                            | Re-exports | Symbols | Documented |
 | --------------------------------------------------------------------------------- | ---------: | ------: | ---------: |
-| [`mod.ts`](#mod-ts)                                                               |         31 |       0 |          0 |
+| [`mod.ts`](#mod-ts)                                                               |         32 |       0 |          0 |
+| [`src/api_stability.ts`](#src-api-stability-ts)                                   |          0 |      14 |         14 |
 | [`src/app/actions.ts`](#src-app-actions-ts)                                       |          0 |       7 |          7 |
 | [`src/app/app.ts`](#src-app-app-ts)                                               |          0 |      13 |         13 |
 | [`src/app/button_commands.ts`](#src-app-button-commands-ts)                       |          0 |       6 |          6 |
@@ -36,7 +37,7 @@ modules and exported symbols that make up the package API.
 | [`src/app/focus_commands.ts`](#src-app-focus-commands-ts)                         |          0 |       7 |          7 |
 | [`src/app/form_bindings.ts`](#src-app-form-bindings-ts)                           |          0 |       2 |          2 |
 | [`src/app/form_commands.ts`](#src-app-form-commands-ts)                           |          0 |       7 |          7 |
-| [`src/app/forms.ts`](#src-app-forms-ts)                                           |          0 |      10 |         10 |
+| [`src/app/forms.ts`](#src-app-forms-ts)                                           |          0 |      17 |         17 |
 | [`src/app/history_bindings.ts`](#src-app-history-bindings-ts)                     |          0 |       6 |          6 |
 | [`src/app/history.ts`](#src-app-history-ts)                                       |          0 |       5 |          5 |
 | [`src/app/input_commands.ts`](#src-app-input-commands-ts)                         |          0 |       6 |          6 |
@@ -181,7 +182,7 @@ modules and exported symbols that make up the package API.
 | [`src/theme_gallery.ts`](#src-theme-gallery-ts)                                   |          0 |      11 |         11 |
 | [`src/theme_resolver.ts`](#src-theme-resolver-ts)                                 |          0 |      15 |         15 |
 | [`src/theme_workspace.ts`](#src-theme-workspace-ts)                               |          0 |       7 |          7 |
-| [`src/theme.ts`](#src-theme-ts)                                                   |          0 |     109 |        109 |
+| [`src/theme.ts`](#src-theme-ts)                                                   |          0 |     115 |        115 |
 | [`src/three_ascii/AcerolaAsciiNode.ts`](#src-three-ascii-acerolaasciinode-ts)     |          0 |       2 |          2 |
 | [`src/three_ascii/demo_presets.ts`](#src-three-ascii-demo-presets-ts)             |          0 |      14 |         14 |
 | [`src/three_ascii/glyphs.ts`](#src-three-ascii-glyphs-ts)                         |          0 |      11 |         11 |
@@ -223,6 +224,7 @@ modules and exported symbols that make up the package API.
 | `src/grwizard_themes.ts`       | star | -     |
 | `src/theme_resolver.ts`        | star | -     |
 | `src/theme_workspace.ts`       | star | -     |
+| `src/api_stability.ts`         | star | -     |
 | `src/types.ts`                 | star | -     |
 | `src/view.ts`                  | star | -     |
 | `src/viewport.ts`              | star | -     |
@@ -240,6 +242,25 @@ modules and exported symbols that make up the package API.
 | `src/perf/mod.ts`              | star | -     |
 
 _No direct exported symbols._
+
+### src/api_stability.ts
+
+| Symbol                            | Kind      | Type Only | JSDoc |
+| --------------------------------- | --------- | --------- | ----- |
+| `ApiStabilityTier`                | type      | yes       | yes   |
+| `apiSurfacePolicies`              | const     | no        | yes   |
+| `ApiSurfacePolicy`                | interface | yes       | yes   |
+| `ApiSurfacePolicyQuery`           | interface | yes       | yes   |
+| `filterApiSurfacePolicies`        | function  | no        | yes   |
+| `filterPackageEntrypoints`        | function  | no        | yes   |
+| `formatPackageEntrypointMarkdown` | function  | no        | yes   |
+| `packageEntrypointFor`            | function  | no        | yes   |
+| `PackageEntrypointManifest`       | interface | yes       | yes   |
+| `PackageEntrypointQuery`          | interface | yes       | yes   |
+| `packageEntrypoints`              | const     | no        | yes   |
+| `packageReleasePolicy`            | const     | no        | yes   |
+| `PackageReleasePolicy`            | interface | yes       | yes   |
+| `PackageRuntime`                  | type      | yes       | yes   |
 
 ### src/app/actions.ts
 
@@ -466,18 +487,25 @@ _No direct exported symbols._
 
 ### src/app/forms.ts
 
-| Symbol                | Kind      | Type Only | JSDoc |
-| --------------------- | --------- | --------- | ----- |
-| `FieldName`           | type      | yes       | yes   |
-| `FieldValidator`      | type      | yes       | yes   |
-| `FormController`      | class     | no        | yes   |
-| `FormField`           | interface | yes       | yes   |
-| `FormFieldInspection` | interface | yes       | yes   |
-| `FormInspection`      | interface | yes       | yes   |
-| `FormSnapshot`        | interface | yes       | yes   |
-| `FormValues`          | type      | yes       | yes   |
-| `minLength`           | function  | no        | yes   |
-| `required`            | function  | no        | yes   |
+| Symbol                       | Kind      | Type Only | JSDoc |
+| ---------------------------- | --------- | --------- | ----- |
+| `FieldName`                  | type      | yes       | yes   |
+| `FieldValidator`             | type      | yes       | yes   |
+| `FormController`             | class     | no        | yes   |
+| `FormControllerOptions`      | interface | yes       | yes   |
+| `FormErrorSummaryItem`       | interface | yes       | yes   |
+| `FormField`                  | interface | yes       | yes   |
+| `FormFieldInspection`        | interface | yes       | yes   |
+| `FormFieldState`             | type      | yes       | yes   |
+| `FormGroupInspection`        | interface | yes       | yes   |
+| `FormInspection`             | interface | yes       | yes   |
+| `FormSchemaAdapter`          | interface | yes       | yes   |
+| `FormSchemaValidationErrors` | type      | yes       | yes   |
+| `FormSnapshot`               | interface | yes       | yes   |
+| `FormSubmitResult`           | interface | yes       | yes   |
+| `FormValues`                 | type      | yes       | yes   |
+| `minLength`                  | function  | no        | yes   |
+| `required`                   | function  | no        | yes   |
 
 ### src/app/history_bindings.ts
 
@@ -2435,117 +2463,123 @@ _No direct exported symbols._
 
 ### src/theme.ts
 
-| Symbol                                | Kind      | Type Only | JSDoc |
-| ------------------------------------- | --------- | --------- | ----- |
-| `AnsiColor`                           | type      | yes       | yes   |
-| `AnsiColorName`                       | type      | yes       | yes   |
-| `AnsiRgbColor`                        | type      | yes       | yes   |
-| `AnsiStyleSpec`                       | interface | yes       | yes   |
-| `AnsiThemeTokenSpecs`                 | type      | yes       | yes   |
-| `assertThemeOptions`                  | function  | no        | yes   |
-| `compileThemeManifestOptions`         | function  | no        | yes   |
-| `compileThemeManifestStateDefinition` | function  | no        | yes   |
-| `compileThemeManifestStyleReference`  | function  | no        | yes   |
-| `ComponentThemeDefinition`            | interface | yes       | yes   |
-| `composeStyles`                       | function  | no        | yes   |
-| `composeThemeOptions`                 | function  | no        | yes   |
-| `createAnsiStyle`                     | function  | no        | yes   |
-| `createAnsiThemeTokens`               | function  | no        | yes   |
-| `createTheme`                         | function  | no        | yes   |
-| `createThemeCatalog`                  | function  | no        | yes   |
-| `createThemeEngine`                   | function  | no        | yes   |
-| `createThemeEngineFromManifest`       | function  | no        | yes   |
-| `createThemeEngineFromPalette`        | function  | no        | yes   |
-| `createThemeLayerStack`               | function  | no        | yes   |
-| `createThemePaletteRegistry`          | function  | no        | yes   |
-| `createThemeProvider`                 | function  | no        | yes   |
-| `createThemeProviderReport`           | function  | no        | yes   |
-| `createThemeRegistry`                 | function  | no        | yes   |
-| `createThemeRegistryFromManifests`    | function  | no        | yes   |
-| `defaultThemePacks`                   | const     | no        | yes   |
-| `defaultThemePaletteDefinitions`      | function  | no        | yes   |
-| `diffThemeEngines`                    | function  | no        | yes   |
-| `emptyStyle`                          | function  | no        | yes   |
-| `formatThemeProviderReportMarkdown`   | function  | no        | yes   |
-| `hierarchizeTheme`                    | function  | no        | yes   |
-| `inspectThemeCoverage`                | function  | no        | yes   |
-| `inspectThemeManifest`                | function  | no        | yes   |
-| `mergeComponentThemeDefinition`       | function  | no        | yes   |
-| `previewThemeManifest`                | function  | no        | yes   |
-| `previewThemeProvider`                | function  | no        | yes   |
-| `replaceEmptyStyle`                   | function  | no        | yes   |
-| `resolveThemeStateDefinition`         | function  | no        | yes   |
-| `resolveThemeStyleReference`          | function  | no        | yes   |
-| `Style`                               | type      | yes       | yes   |
-| `Theme`                               | interface | yes       | yes   |
-| `ThemeCatalog`                        | interface | yes       | yes   |
-| `ThemeCatalogComponent`               | interface | yes       | yes   |
-| `ThemeCatalogLayer`                   | interface | yes       | yes   |
-| `ThemeCatalogTheme`                   | interface | yes       | yes   |
-| `ThemeComponentCoverageInspection`    | interface | yes       | yes   |
-| `ThemeComponentInspection`            | interface | yes       | yes   |
-| `ThemeComponentStateDiff`             | interface | yes       | yes   |
-| `ThemeCoverageInspection`             | interface | yes       | yes   |
-| `ThemeCoverageOptions`                | interface | yes       | yes   |
-| `ThemeEngine`                         | class     | no        | yes   |
-| `ThemeEngineDiff`                     | interface | yes       | yes   |
-| `ThemeEngineDiffOptions`              | interface | yes       | yes   |
-| `ThemeEngineOptions`                  | interface | yes       | yes   |
-| `ThemeInheritanceError`               | class     | no        | yes   |
-| `ThemeInspection`                     | interface | yes       | yes   |
-| `ThemeLayer`                          | interface | yes       | yes   |
-| `ThemeLayerInspection`                | interface | yes       | yes   |
-| `ThemeLayerStack`                     | class     | no        | yes   |
-| `ThemeManifestComponentDefinition`    | interface | yes       | yes   |
-| `ThemeManifestComponentInspection`    | interface | yes       | yes   |
-| `ThemeManifestComponentStatePreview`  | interface | yes       | yes   |
-| `ThemeManifestInspection`             | interface | yes       | yes   |
-| `ThemeManifestOptions`                | interface | yes       | yes   |
-| `ThemeManifestPreview`                | interface | yes       | yes   |
-| `ThemeManifestPreviewOptions`         | interface | yes       | yes   |
-| `ThemeManifestStateDefinition`        | type      | yes       | yes   |
-| `ThemeManifestStyleReference`         | type      | yes       | yes   |
-| `ThemeManifestTokenPreview`           | interface | yes       | yes   |
-| `ThemeManifestVariantInspection`      | interface | yes       | yes   |
-| `ThemePack`                           | interface | yes       | yes   |
-| `themePackFromManifest`               | function  | no        | yes   |
-| `ThemePackInspection`                 | interface | yes       | yes   |
-| `ThemePackManifest`                   | interface | yes       | yes   |
-| `ThemePackNotFoundError`              | class     | no        | yes   |
-| `ThemePalette`                        | interface | yes       | yes   |
-| `ThemePaletteInspection`              | interface | yes       | yes   |
-| `ThemePaletteName`                    | type      | yes       | yes   |
-| `ThemePaletteNotFoundError`           | class     | no        | yes   |
-| `ThemePaletteReference`               | type      | yes       | yes   |
-| `ThemePaletteRegistry`                | class     | no        | yes   |
-| `themePalettes`                       | const     | no        | yes   |
-| `ThemeProvider`                       | class     | no        | yes   |
-| `ThemeProviderComponentStatePreview`  | interface | yes       | yes   |
-| `ThemeProviderInspection`             | interface | yes       | yes   |
-| `ThemeProviderOptions`                | interface | yes       | yes   |
-| `ThemeProviderPreview`                | interface | yes       | yes   |
-| `ThemeProviderPreviewOptions`         | interface | yes       | yes   |
-| `ThemeProviderReport`                 | interface | yes       | yes   |
-| `ThemeProviderReportIssue`            | interface | yes       | yes   |
-| `ThemeProviderReportIssueSource`      | type      | yes       | yes   |
-| `ThemeProviderReportOptions`          | interface | yes       | yes   |
-| `ThemeProviderReportSummary`          | interface | yes       | yes   |
-| `ThemeProviderTokenPreview`           | interface | yes       | yes   |
-| `ThemeRegistry`                       | class     | no        | yes   |
-| `ThemeState`                          | type      | yes       | yes   |
-| `ThemeStateDefinition`                | type      | yes       | yes   |
-| `themeStates`                         | const     | no        | yes   |
-| `ThemeStylePreview`                   | interface | yes       | yes   |
-| `ThemeStyleReference`                 | type      | yes       | yes   |
-| `ThemeTokenDiff`                      | interface | yes       | yes   |
-| `ThemeTokenName`                      | type      | yes       | yes   |
-| `themeTokenNames`                     | const     | no        | yes   |
-| `ThemeTokens`                         | interface | yes       | yes   |
-| `ThemeValidationError`                | class     | no        | yes   |
-| `ThemeValidationIssue`                | interface | yes       | yes   |
-| `ThemeValidationIssueKind`            | type      | yes       | yes   |
-| `ThemeVariantCoverageInspection`      | interface | yes       | yes   |
-| `validateThemeOptions`                | function  | no        | yes   |
+| Symbol                                    | Kind      | Type Only | JSDoc |
+| ----------------------------------------- | --------- | --------- | ----- |
+| `AnsiColor`                               | type      | yes       | yes   |
+| `AnsiColorName`                           | type      | yes       | yes   |
+| `AnsiRgbColor`                            | type      | yes       | yes   |
+| `AnsiStyleSpec`                           | interface | yes       | yes   |
+| `AnsiThemeTokenSpecs`                     | type      | yes       | yes   |
+| `assertThemeOptions`                      | function  | no        | yes   |
+| `compileThemeManifestOptions`             | function  | no        | yes   |
+| `compileThemeManifestStateDefinition`     | function  | no        | yes   |
+| `compileThemeManifestStyleReference`      | function  | no        | yes   |
+| `ComponentThemeDefinition`                | interface | yes       | yes   |
+| `composeStandardThemeOptions`             | function  | no        | yes   |
+| `composeStyles`                           | function  | no        | yes   |
+| `composeThemeOptions`                     | function  | no        | yes   |
+| `createAnsiStyle`                         | function  | no        | yes   |
+| `createAnsiThemeTokens`                   | function  | no        | yes   |
+| `createStandardComponentThemeDefinitions` | function  | no        | yes   |
+| `createTheme`                             | function  | no        | yes   |
+| `createThemeCatalog`                      | function  | no        | yes   |
+| `createThemeEngine`                       | function  | no        | yes   |
+| `createThemeEngineFromManifest`           | function  | no        | yes   |
+| `createThemeEngineFromPalette`            | function  | no        | yes   |
+| `createThemeLayerStack`                   | function  | no        | yes   |
+| `createThemePaletteRegistry`              | function  | no        | yes   |
+| `createThemeProvider`                     | function  | no        | yes   |
+| `createThemeProviderReport`               | function  | no        | yes   |
+| `createThemeRegistry`                     | function  | no        | yes   |
+| `createThemeRegistryFromManifests`        | function  | no        | yes   |
+| `defaultThemePacks`                       | const     | no        | yes   |
+| `defaultThemePaletteDefinitions`          | function  | no        | yes   |
+| `diffThemeEngines`                        | function  | no        | yes   |
+| `emptyStyle`                              | function  | no        | yes   |
+| `formatThemeProviderReportMarkdown`       | function  | no        | yes   |
+| `hierarchizeTheme`                        | function  | no        | yes   |
+| `inspectThemeCoverage`                    | function  | no        | yes   |
+| `inspectThemeManifest`                    | function  | no        | yes   |
+| `inspectThemeStandardization`             | function  | no        | yes   |
+| `mergeComponentThemeDefinition`           | function  | no        | yes   |
+| `previewThemeManifest`                    | function  | no        | yes   |
+| `previewThemeProvider`                    | function  | no        | yes   |
+| `replaceEmptyStyle`                       | function  | no        | yes   |
+| `resolveThemeStateDefinition`             | function  | no        | yes   |
+| `resolveThemeStyleReference`              | function  | no        | yes   |
+| `StandardComponentThemeOptions`           | interface | yes       | yes   |
+| `standardThemeComponentNames`             | function  | no        | yes   |
+| `Style`                                   | type      | yes       | yes   |
+| `Theme`                                   | interface | yes       | yes   |
+| `ThemeCatalog`                            | interface | yes       | yes   |
+| `ThemeCatalogComponent`                   | interface | yes       | yes   |
+| `ThemeCatalogLayer`                       | interface | yes       | yes   |
+| `ThemeCatalogTheme`                       | interface | yes       | yes   |
+| `ThemeComponentCoverageInspection`        | interface | yes       | yes   |
+| `ThemeComponentInspection`                | interface | yes       | yes   |
+| `ThemeComponentStateDiff`                 | interface | yes       | yes   |
+| `ThemeCoverageInspection`                 | interface | yes       | yes   |
+| `ThemeCoverageOptions`                    | interface | yes       | yes   |
+| `ThemeEngine`                             | class     | no        | yes   |
+| `ThemeEngineDiff`                         | interface | yes       | yes   |
+| `ThemeEngineDiffOptions`                  | interface | yes       | yes   |
+| `ThemeEngineOptions`                      | interface | yes       | yes   |
+| `ThemeInheritanceError`                   | class     | no        | yes   |
+| `ThemeInspection`                         | interface | yes       | yes   |
+| `ThemeLayer`                              | interface | yes       | yes   |
+| `ThemeLayerInspection`                    | interface | yes       | yes   |
+| `ThemeLayerStack`                         | class     | no        | yes   |
+| `ThemeManifestComponentDefinition`        | interface | yes       | yes   |
+| `ThemeManifestComponentInspection`        | interface | yes       | yes   |
+| `ThemeManifestComponentStatePreview`      | interface | yes       | yes   |
+| `ThemeManifestInspection`                 | interface | yes       | yes   |
+| `ThemeManifestOptions`                    | interface | yes       | yes   |
+| `ThemeManifestPreview`                    | interface | yes       | yes   |
+| `ThemeManifestPreviewOptions`             | interface | yes       | yes   |
+| `ThemeManifestStateDefinition`            | type      | yes       | yes   |
+| `ThemeManifestStyleReference`             | type      | yes       | yes   |
+| `ThemeManifestTokenPreview`               | interface | yes       | yes   |
+| `ThemeManifestVariantInspection`          | interface | yes       | yes   |
+| `ThemePack`                               | interface | yes       | yes   |
+| `themePackFromManifest`                   | function  | no        | yes   |
+| `ThemePackInspection`                     | interface | yes       | yes   |
+| `ThemePackManifest`                       | interface | yes       | yes   |
+| `ThemePackNotFoundError`                  | class     | no        | yes   |
+| `ThemePalette`                            | interface | yes       | yes   |
+| `ThemePaletteInspection`                  | interface | yes       | yes   |
+| `ThemePaletteName`                        | type      | yes       | yes   |
+| `ThemePaletteNotFoundError`               | class     | no        | yes   |
+| `ThemePaletteReference`                   | type      | yes       | yes   |
+| `ThemePaletteRegistry`                    | class     | no        | yes   |
+| `themePalettes`                           | const     | no        | yes   |
+| `ThemeProvider`                           | class     | no        | yes   |
+| `ThemeProviderComponentStatePreview`      | interface | yes       | yes   |
+| `ThemeProviderInspection`                 | interface | yes       | yes   |
+| `ThemeProviderOptions`                    | interface | yes       | yes   |
+| `ThemeProviderPreview`                    | interface | yes       | yes   |
+| `ThemeProviderPreviewOptions`             | interface | yes       | yes   |
+| `ThemeProviderReport`                     | interface | yes       | yes   |
+| `ThemeProviderReportIssue`                | interface | yes       | yes   |
+| `ThemeProviderReportIssueSource`          | type      | yes       | yes   |
+| `ThemeProviderReportOptions`              | interface | yes       | yes   |
+| `ThemeProviderReportSummary`              | interface | yes       | yes   |
+| `ThemeProviderTokenPreview`               | interface | yes       | yes   |
+| `ThemeRegistry`                           | class     | no        | yes   |
+| `ThemeStandardizationInspection`          | interface | yes       | yes   |
+| `ThemeState`                              | type      | yes       | yes   |
+| `ThemeStateDefinition`                    | type      | yes       | yes   |
+| `themeStates`                             | const     | no        | yes   |
+| `ThemeStylePreview`                       | interface | yes       | yes   |
+| `ThemeStyleReference`                     | type      | yes       | yes   |
+| `ThemeTokenDiff`                          | interface | yes       | yes   |
+| `ThemeTokenName`                          | type      | yes       | yes   |
+| `themeTokenNames`                         | const     | no        | yes   |
+| `ThemeTokens`                             | interface | yes       | yes   |
+| `ThemeValidationError`                    | class     | no        | yes   |
+| `ThemeValidationIssue`                    | interface | yes       | yes   |
+| `ThemeValidationIssueKind`                | type      | yes       | yes   |
+| `ThemeVariantCoverageInspection`          | interface | yes       | yes   |
+| `validateThemeOptions`                    | function  | no        | yes   |
 
 ### src/three_ascii/AcerolaAsciiNode.ts
 

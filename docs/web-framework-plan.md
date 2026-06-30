@@ -241,7 +241,8 @@ runtime wrapper around a shared app host.
 
 ### Phase 5: Framework Polish
 
-- Add package/export docs for terminal, standalone browser, and remote browser-client usage.
+- Added package/export docs for terminal, standalone browser, and remote browser-client usage, backed by
+  `src/api_stability.ts` and `deno task package-check`.
 - Add routing/mount helpers for single-page apps.
 - Add persistent browser settings through the existing `Store`/IndexedDB abstractions.
 - Add docs for embedding one widget, mounting a full app, and sharing code between terminal and browser.

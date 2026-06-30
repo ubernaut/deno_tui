@@ -11,6 +11,7 @@ export * from "./src/theme_gallery.ts";
 export * from "./src/grwizard_themes.ts";
 export * from "./src/theme_resolver.ts";
 export * from "./src/theme_workspace.ts";
+export * from "./src/api_stability.ts";
 export * from "./src/viewport.ts";
 export * from "./src/view.ts";
 

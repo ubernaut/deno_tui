@@ -6,6 +6,7 @@ Deno.test("health script exposes the expected contributor gates", () => {
     "format",
     "public-api",
     "api-inventory",
+    "package-check",
     "api-reference",
     "web-api",
     "remote-api",
@@ -52,8 +53,9 @@ Deno.test("health script exposes the expected contributor gates", () => {
     "--check",
     "--quiet",
     "--fail-duplicates",
-    "--min-doc-coverage=0.25",
+    "--min-doc-coverage=1",
   ]);
+  assertEquals(defaultHealthSteps[3].command, ["deno", "task", "package-check", "--", "--quiet"]);
 });
 
 Deno.test("health results format optional failures without failing the gate", () => {
