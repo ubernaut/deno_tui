@@ -213,7 +213,7 @@ export function formatThreeAsciiFallbackDetail(error: unknown): string {
   return normalized;
 }
 
-function buildFallbackGrid(width: number, height: number, detail: string): string[][] {
+export function buildFallbackGrid(width: number, height: number, detail: string): string[][] {
   const columns = Math.max(1, width);
   const rows = Math.max(1, height);
   const grid = Array.from({ length: rows }, () => Array.from({ length: columns }, () => " "));

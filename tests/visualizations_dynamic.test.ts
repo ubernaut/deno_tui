@@ -1,9 +1,15 @@
 import { assert, assertEquals, assertNotEquals } from "./deps.ts";
 import { AudioRegistry } from "../app/audio.ts";
 import { getSourceFrame } from "../app/sources.ts";
-import { buildVisualizationDrive, renderVisualization, visualizations } from "../app/visualizations.ts";
+import {
+  buildVisualizationDrive,
+  cpuActivityRgb,
+  cpuHexTileLayout,
+  renderVisualization,
+  visualizations,
+} from "../app/visualizations.ts";
 import type { RenderContext, SlotConfig, SourceFrame, SystemSnapshot } from "../app/types.ts";
-import { textWidth } from "../src/utils/strings.ts";
+import { stripStyles, textWidth } from "../src/utils/strings.ts";
 
 const ascii = {
   preset: "opentui-blocks",
@@ -18,6 +24,7 @@ const ascii = {
   blendWithBase: 1,
   depthFalloff: 0.04,
   depthOffset: 150,
+  wireframeThickness: 8,
   edges: false,
   fill: true,
   invertLuminance: false,
@@ -304,6 +311,125 @@ Deno.test("cpu legend exposes every core for scrollable panels", () => {
   assertEquals(source.detailLines.length, 16);
   assertEquals(legend.body.split("\n").length, 17);
   assert(legend.body.includes("015"));
+});
+
+Deno.test("cpu hex grid renders every core with unique truecolor activity shades", () => {
+  assertEquals(cpuActivityRgb(0), [45, 112, 255]);
+  assertEquals(cpuActivityRgb(25), [22, 214, 107]);
+  assertEquals(cpuActivityRgb(50), [255, 226, 74]);
+  assertEquals(cpuActivityRgb(75), [255, 159, 36]);
+  assertEquals(cpuActivityRgb(100), [255, 66, 49]);
+
+  const uniquePercentShades = new Set(
+    Array.from({ length: 101 }, (_, percent) => cpuActivityRgb(percent).join(",")),
+  );
+  assertEquals(uniquePercentShades.size, 101);
+
+  const usages = [0, 25, 50, 75, 100, 6, 14, 33, 42, 58, 61, 70, 83, 91, 97, 99];
+  const manyCoreSystem = {
+    ...calmSystem,
+    cpuOverall: 52,
+    cpuCores: usages.map((usage, index) => ({
+      label: String(index),
+      usage,
+    })),
+  };
+  const rendered = renderVisualization({
+    ...makeContext("cpu-hex-grid", manyCoreSystem, calmSources, 0),
+    width: 36,
+    height: 5,
+  });
+  const lines = rendered.body.split("\n");
+  const gridPlain = stripStyles(lines.slice(2).join("\n"));
+
+  assertEquals((gridPlain.match(/CPU\d{3}/g) ?? []).length, 16);
+  assert(gridPlain.includes("CPU015"));
+  assertEquals(cpuHexTileLayout(manyCoreSystem.cpuCores, 36, 5).length, 16);
+  assertEquals(cpuHexTileLayout(manyCoreSystem.cpuCores, 36, 5)[0]?.height, 2);
+  assert(rendered.body.includes("\x1b[38;2;45;112;255m"));
+  assert(rendered.body.includes("\x1b[38;2;22;214;107m"));
+  assert(rendered.body.includes("\x1b[38;2;255;226;74m"));
+  assert(rendered.body.includes("\x1b[38;2;255;159;36m"));
+  assert(rendered.body.includes("\x1b[38;2;255;66;49m"));
+  for (const line of lines) {
+    assert(textWidth(line) <= 36, `${stripStyles(line)} should fit within the pane`);
+  }
+
+  const highCoreSystem = {
+    ...manyCoreSystem,
+    cpuCores: Array.from({ length: 88 }, (_, index) => ({
+      label: String(index),
+      usage: index % 101,
+    })),
+  };
+  const highCoreGrid = renderVisualization({
+    ...makeContext("cpu-hex-grid", highCoreSystem, calmSources, 0),
+    width: 72,
+    height: 8,
+  });
+  const highCoreLines = highCoreGrid.body.split("\n");
+  const highCorePlain = stripStyles(highCoreLines.slice(2).join("\n"));
+  assertEquals((highCorePlain.match(/CPU\d{3}/g) ?? []).length, 88);
+  assert(highCorePlain.includes("CPU087"));
+  for (const line of highCoreLines) {
+    assert(textWidth(line) <= 72, `${stripStyles(line)} should fit within the pane`);
+  }
+});
+
+Deno.test("cpu hex grid selection shows cpu id range and processes for that processor", () => {
+  const selectedSystem: SystemSnapshot = {
+    ...calmSystem,
+    cpuOverall: 44,
+    cpuCores: Array.from({ length: 4 }, (_, index) => ({
+      label: String(index),
+      usage: 20 + index * 10,
+    })),
+    processes: [
+      {
+        pid: 9001,
+        name: "deno-worker",
+        state: "R",
+        cpuPercent: 34.2,
+        memoryPercent: 2.4,
+        memoryBytes: 128 * 1024 ** 2,
+        processor: 2,
+      },
+      {
+        pid: 9002,
+        name: "renderer",
+        state: "S",
+        cpuPercent: 8.8,
+        memoryPercent: 1.1,
+        memoryBytes: 96 * 1024 ** 2,
+        processor: 2,
+      },
+      {
+        pid: 9003,
+        name: "network",
+        state: "S",
+        cpuPercent: 5.1,
+        memoryPercent: 0.8,
+        memoryBytes: 48 * 1024 ** 2,
+        processor: 1,
+      },
+    ],
+  };
+
+  const rendered = renderVisualization({
+    ...makeContext("cpu-hex-grid", selectedSystem, calmSources, 0),
+    selectedCpuLabel: "2",
+    width: 64,
+    height: 8,
+  });
+  const plain = stripStyles(rendered.body);
+
+  assert(plain.includes("SELECTED CPU ID 2 (0-3)"));
+  assert(plain.includes("TOP PROCESSES LAST SEEN ON CPU"));
+  assert(plain.includes("9001"));
+  assert(plain.includes("deno-worker"));
+  assert(plain.includes("9002"));
+  assert(!plain.includes("9003"));
+  assert(rendered.body.includes("\x1b[1;38;2;5;7;13;48;2;"));
 });
 
 Deno.test("network monitor adapts to narrow and short panes", () => {

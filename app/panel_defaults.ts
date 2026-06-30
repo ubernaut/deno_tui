@@ -7,11 +7,13 @@ const preferredVisualizationIdsBySlot: Record<SlotId, string[]> = {
     "biosignal-strip",
     "telemetry-rack",
     "cpu-monitor",
+    "cpu-hex-grid",
     "field-ring",
     "three-solenoid",
   ],
   cpuLegend: [
     "cpu-legend",
+    "cpu-hex-grid",
     "channel-matrix",
     "telemetry-rack",
     "harmonic-graph",

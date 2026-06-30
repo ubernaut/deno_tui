@@ -2,6 +2,7 @@ import { BoxObject } from "../src/canvas/box.ts";
 import { TextObject, type TextRectangle } from "../src/canvas/text.ts";
 import { ScrollAreaController, scrollbarGlyph, scrollbarThumb } from "../src/components/scroll_area.ts";
 import { handleInput } from "../src/input.ts";
+import type { MousePressEvent, MouseScrollEvent } from "../src/input_reader/types.ts";
 import { WindowManagerController, type WindowManagerWindowInspection } from "../src/layout/mod.ts";
 import { Computed, Effect, Signal } from "../src/signals/mod.ts";
 import { probeCompatibleWebGPUDevice } from "../src/three_ascii/webgpu_compat.ts";
@@ -34,6 +35,7 @@ import {
   layoutIds,
   type MenuLine,
   type MenuState,
+  type PanelRender,
   type Rect,
   type SlotConfig,
   type SlotId,
@@ -377,8 +379,10 @@ shellObjects.push(footerText);
 
 const slotPanels = new Map<SlotId, PanelView>();
 const slotScenes = new Map<SlotId, ThreePanelView>();
+const slotRenders = new Map<SlotId, Computed<PanelRender>>();
 const slotScrolls = new Map<SlotId, ScrollAreaController>();
 const scrollTeardowns: Array<() => void> = [];
+let sceneDragSlot: SlotId | null = null;
 
 for (const slotId of slotIds) {
   const scroll = new ScrollAreaController({ showScrollbar: true });
@@ -407,6 +411,7 @@ for (const slotId of slotIds) {
       height: Math.max(4, rect.value.height - 4),
     });
   });
+  slotRenders.set(slotId, render);
   const selected = new Computed(() => windowManager.activeId.value === slotId);
 
   const panel = new PanelView({
@@ -817,7 +822,23 @@ tui.on("keyPress", (event) => {
 });
 
 tui.on("mousePress", (event) => {
-  if (event.release || menu.peek()) return;
+  if (event.release) {
+    sceneDragSlot = null;
+    return;
+  }
+  if (menu.peek()) return;
+  if (event.drag && sceneDragSlot) {
+    if (rotateSlotScene(sceneDragSlot, event)) return;
+    sceneDragSlot = null;
+  }
+  const sceneSlot = sceneSlotAt(event.x, event.y);
+  if (sceneSlot) {
+    sceneDragSlot = sceneSlot;
+    focusSlot(sceneSlot);
+    if (event.drag) rotateSlotScene(sceneSlot, event);
+    return;
+  }
+  sceneDragSlot = null;
   rebuildHitTargets();
   const target = findHit(event.x, event.y);
   if (!target) return;
@@ -826,6 +847,7 @@ tui.on("mousePress", (event) => {
 
 tui.on("mouseScroll", (event) => {
   if (menu.peek()) return;
+  if (zoomSlotSceneAt(event)) return;
   const hovered = slotAt(event.x, event.y);
   scrollSlot(hovered ?? selectedSlotId.peek(), event.scroll);
 });
@@ -1107,6 +1129,31 @@ function scrollSlot(slotId: SlotId, rows: number): void {
   if (rows === 0) return;
   const scroll = slotScrolls.get(slotId);
   scroll?.scrollBy(0, rows);
+}
+
+function zoomSlotSceneAt(event: MouseScrollEvent): boolean {
+  const slotId = sceneSlotAt(event.x, event.y);
+  if (!slotId) return false;
+  slotScenes.get(slotId)?.zoomBy(event.scroll);
+  focusSlot(slotId);
+  return true;
+}
+
+function rotateSlotScene(slotId: SlotId, event: MousePressEvent): boolean {
+  const scene = slotScenes.get(slotId);
+  if (!scene) return false;
+  scene.rotateBy(event.movementX, event.movementY);
+  focusSlot(slotId);
+  return true;
+}
+
+function sceneSlotAt(x: number, y: number): SlotId | undefined {
+  const slotId = slotAt(x, y);
+  if (!slotId || !threeAsciiAvailable.peek()) return undefined;
+  const panel = slotPanels.get(slotId);
+  const render = slotRenders.get(slotId);
+  if (!panel || !render?.peek().three) return undefined;
+  return contains(panel.bodyRect.peek(), x, y) ? slotId : undefined;
 }
 
 function panelBodyHeight(slotId: SlotId): number {

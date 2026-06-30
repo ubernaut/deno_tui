@@ -67,6 +67,7 @@ function renderThreeFallback(visualizationId: SlotConfig["visualizationId"]) {
       blendWithBase: 1,
       depthFalloff: 0.04,
       depthOffset: 150,
+      wireframeThickness: 8,
       edges: false,
       fill: true,
       invertLuminance: false,

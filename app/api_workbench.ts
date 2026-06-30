@@ -26,6 +26,7 @@ import { renderStatusBar } from "../src/components/statusbar.ts";
 import { renderStepper, StepperController } from "../src/components/stepper.ts";
 import { TextBoxController, wrapTextBoxLines } from "../src/components/textbox.ts";
 import { handleInput } from "../src/input.ts";
+import type { MousePressEvent, MouseScrollEvent } from "../src/input_reader/types.ts";
 import { WindowManagerController } from "../src/layout/mod.ts";
 import { type AsyncStore, createRuntimeStore } from "../src/runtime/storage.ts";
 import { Computed, Signal } from "../src/signals/mod.ts";
@@ -49,7 +50,7 @@ import { getSourceFrame } from "./sources.ts";
 import { makeStyle } from "./styles.ts";
 import { SystemMonitor } from "./system_metrics.ts";
 import { requireInteractiveTerminal } from "./terminal_guard.ts";
-import { ThreePanelView } from "./three_panel.ts";
+import { ThreePanelFrameView } from "./three_panel.ts";
 import type {
   Accent,
   AsciiOptions,
@@ -61,7 +62,7 @@ import type {
   ThreeSceneMode,
   ThreeSceneSignal,
 } from "./types.ts";
-import { renderVisualization, visualizations } from "./visualizations.ts";
+import { cpuHexGridColumnCount, cpuHexTileLayout, renderVisualization, visualizations } from "./visualizations.ts";
 
 type BuiltInWindowId = "explorer" | "inspector" | "data" | "controls" | "logs" | "three";
 type VisualizationWindowId = `viz:${string}`;
@@ -89,6 +90,7 @@ type HitAction =
   | { type: "restore"; id: WindowId }
   | { type: "close"; id: WindowId }
   | { type: "threeConfig"; id: WindowId }
+  | { type: "threeViewport"; id: WindowId }
   | { type: "asciiConfig"; index: number; action?: ConfigHitAction }
   | { type: "theme"; index: number }
   | { type: "newWindow"; index: number }
@@ -97,6 +99,7 @@ type HitAction =
   | { type: "control"; id: ControlId; action?: ControlHitAction; index?: number }
   | { type: "dataRow"; index: number }
   | { type: "explorerRow"; index: number }
+  | { type: "cpuHexTile"; id: VisualizationWindowId; label: string }
   | { type: "windowVScrollbar"; id: WindowId }
   | { type: "windowHScrollbar"; id: WindowId }
   | { type: "workspaceScrollbar" };
@@ -111,6 +114,7 @@ type AsciiNumericKey =
   | "blendWithBase"
   | "depthFalloff"
   | "depthOffset"
+  | "wireframeThickness"
   | "terminalEdgeBias";
 type AsciiToggleKey = "edges" | "fill" | "invertLuminance";
 
@@ -158,7 +162,22 @@ interface NewWindowOption {
 interface SavedWorkspace {
   name: string;
   visualizationIds: string[];
+  windows?: SavedWorkspaceWindow[];
   savedAt: number;
+}
+
+interface SavedWorkspaceWindow {
+  visualizationId: string;
+  ascii?: AsciiOptions;
+}
+
+type WorkspaceNameMode = "save" | "rename";
+type WorkspaceMenuAction = "save" | "open" | "rename" | "delete" | "empty";
+
+interface WorkspaceMenuEntry {
+  label: string;
+  action: WorkspaceMenuAction;
+  workspaceName?: string;
 }
 
 class JsonFileStore<T = unknown> implements AsyncStore<T> {
@@ -247,7 +266,8 @@ const docs = [
   "ScrollAreaController clamps offsets and reports scrollbar thumbs.",
   "DataTableController handles keyed selection, sorting, paging, and filtering.",
   "ModalController provides centered pop-over content with trapped keyboard focus and action buttons.",
-  "ThreePanelView embeds the Acerola three.js ASCII renderer directly inside a managed workbench window.",
+  "ThreePanelFrameView feeds Acerola three.js ASCII cells into the shared workbench frame buffer.",
+  "Three ASCII viewports support mousewheel zoom plus click-drag model rotation.",
   "SliderController and CheckBoxController expose input state without renderer coupling.",
   "Theme selection updates all surfaces through shared semantic tokens.",
   "Window controls demonstrate minimize, maximize, restore, focus, and layout recomposition.",
@@ -275,11 +295,8 @@ const workbenchAudioRegistry = new AudioRegistry([]);
 const workspaceStore = createWorkspaceStore();
 const savedWorkspaces = new Signal<SavedWorkspace[]>(await loadSavedWorkspaces(), { deepObserve: true });
 const threeAsciiAvailable = new Signal(await probeCompatibleWebGPUDevice());
-const ascii = new Signal<AsciiOptions>({
-  ...createDefaultAsciiOptions("sharp"),
-  terminalGlyphStyle: "mixed",
-  preset: "custom",
-});
+const ascii = new Signal<AsciiOptions>(defaultWorkbenchAsciiOptions());
+const windowAscii = new Map<WindowId, Signal<AsciiOptions>>([["three", ascii]]);
 
 const tui = new Tui({
   style: makeStyle({ bg: themes[0]!.background }),
@@ -297,10 +314,13 @@ const newWindowMenuIndex = new Signal(0);
 const workspaceMenuOpen = new Signal(false);
 const workspaceMenuIndex = new Signal(0);
 const workspaceNameDraft = new Signal("");
-const workspaceSaveMode = new Signal(false);
+const workspaceNameMode = new Signal<WorkspaceNameMode | null>(null);
+const workspaceTargetName = new Signal<string | null>(null);
+const activeWorkspaceName = new Signal<string | null>(null);
 const menuFocused = new Signal(false);
 const threeConfigOpen = new Signal(false);
 const threeConfigSelected = new Signal(0);
+const threeConfigWindow = new Signal<WindowId>("three");
 const activeWindow = new Signal<WindowId>("inspector");
 const activeControl = new Signal<ControlId>("button");
 const maximized = new Signal<WindowId | null>(null);
@@ -325,12 +345,16 @@ const windowManager = new WindowManagerController({
 });
 const commandLog = new Signal<string[]>(["ready: API workbench mounted"], { deepObserve: true });
 const dynamicVisualizationWindows = new Signal<Record<VisualizationWindowId, string>>({}, { deepObserve: true });
+const selectedCpuHexTiles = new Signal<Record<VisualizationWindowId, string>>({}, { deepObserve: true });
 const lineSignals: Signal<string>[] = [];
 let hitTargets: Array<{ rect: Rectangle; action: HitAction }> = [];
 let lastVisibleWindow: WindowId | null = null;
 let lastWorkspaceWidth = 0;
 let lastWorkspaceHeight = 0;
 let dropdownOverlay: DropdownOverlay | null = null;
+let threeDragWindow: WindowId | null = null;
+let drawScheduled = false;
+let renderedVisualizationThreePanels = new Set<VisualizationWindowId>();
 type Frame = string[][];
 interface DropdownOverlay {
   kind: "control" | "theme" | "newWindow" | "workspace";
@@ -344,7 +368,7 @@ type WorkbenchThreeScene = { mode: ThreeSceneMode; signal: ThreeSceneSignal };
 interface DynamicThreePanel {
   rectangle: Signal<Rectangle>;
   scene: Signal<WorkbenchThreeScene | null>;
-  panel: ThreePanelView;
+  panel: ThreePanelFrameView;
 }
 
 const menu = new MenuBarController({
@@ -509,7 +533,7 @@ const table = new DataTableController<ProcessRow>({
 });
 const threeBodyRect = new Signal<Rectangle>({ column: 0, row: 0, width: 0, height: 0 }, { deepObserve: true });
 const threeScene = new Computed<{ mode: ThreeSceneMode; signal: ThreeSceneSignal } | null>(() =>
-  modal.openState.value || threeConfigOpen.value || minimized.value.three || !threeAsciiAvailable.value ? null : {
+  minimized.value.three || !threeAsciiAvailable.value ? null : {
     mode: "studio",
     signal: {
       x: density.value.value / 10,
@@ -523,14 +547,13 @@ const threeScene = new Computed<{ mode: ThreeSceneMode; signal: ThreeSceneSignal
     },
   }
 );
-const threePanel = new ThreePanelView({
-  canvas: tui.canvas,
+const threePanel = new ThreePanelFrameView({
   rectangle: threeBodyRect,
   scene: threeScene,
   ascii,
   enabled: threeAsciiAvailable,
-  zIndex: 3,
   frameInterval: 1000 / 18,
+  onUpdate: scheduleDraw,
 });
 const visualizationThreePanels = new Map<VisualizationWindowId, DynamicThreePanel>();
 const visualizationThreeSupport = new Map<string, boolean>();
@@ -556,7 +579,7 @@ tui.on("keyPress", (event) => {
     return;
   }
   if (modal.openState.peek()) {
-    if (workspaceSaveMode.peek() && handleWorkspaceSaveKey(event)) {
+    if (workspaceNameMode.peek() && handleWorkspaceNameKey(event)) {
       draw();
       return;
     }
@@ -594,13 +617,35 @@ tui.on("keyPress", (event) => {
 });
 
 tui.on("mousePress", (event) => {
-  if (event.release) return;
+  if (event.release) {
+    threeDragWindow = null;
+    return;
+  }
+  if (event.drag && threeDragWindow) {
+    if (rotateThreeWindow(threeDragWindow, event)) {
+      draw();
+      return;
+    }
+    threeDragWindow = null;
+  }
   const hit = findHit(event.x, event.y);
+  if (hit?.action.type === "threeViewport") {
+    threeDragWindow = hit.action.id;
+    focusWindowSilently(hit.action.id);
+    if (event.drag) rotateThreeWindow(hit.action.id, event);
+    draw();
+    return;
+  }
+  threeDragWindow = null;
   if (hit) applyHit(hit, event.x, event.y);
   draw();
 });
 
 tui.on("mouseScroll", (event) => {
+  if (zoomThreeWindowAt(event)) {
+    draw();
+    return;
+  }
   const hovered = windowAt(event.x, event.y);
   if (hovered) {
     scrollWindow(hovered, event.shift ? event.scroll * 4 : 0, event.shift ? 0 : event.scroll);
@@ -646,12 +691,16 @@ tui.on("destroy", () => {
   newWindowMenuIndex.dispose();
   workspaceMenuIndex.dispose();
   workspaceNameDraft.dispose();
-  workspaceSaveMode.dispose();
+  workspaceNameMode.dispose();
+  workspaceTargetName.dispose();
+  activeWorkspaceName.dispose();
   savedWorkspaces.dispose();
   menuFocused.dispose();
   threeConfigOpen.dispose();
   threeConfigSelected.dispose();
+  threeConfigWindow.dispose();
   dynamicVisualizationWindows.dispose();
+  selectedCpuHexTiles.dispose();
   commandInput.dispose();
   workflowStepper.dispose();
   progress.dispose();
@@ -669,6 +718,10 @@ tui.on("destroy", () => {
   threeBodyRect.dispose();
   systemMonitor.stop();
   workbenchAudioRegistry.dispose();
+  for (const [id, signal] of windowAscii) {
+    if (id !== "three") signal.dispose();
+  }
+  windowAscii.clear();
   ascii.dispose();
   threeAsciiAvailable.dispose();
 });
@@ -678,6 +731,7 @@ syncTerminalSize();
 draw();
 
 function draw(): void {
+  drawScheduled = false;
   syncTerminalSize();
   ensureLineObjects();
   const width = currentWidth();
@@ -696,6 +750,12 @@ function draw(): void {
   for (let row = height; row < lineSignals.length; row += 1) {
     lineSignals[row]!.value = "";
   }
+}
+
+function scheduleDraw(): void {
+  if (drawScheduled) return;
+  drawScheduled = true;
+  queueMicrotask(draw);
 }
 
 function renderHeader(frame: Frame): void {
@@ -830,7 +890,12 @@ function menuItemRect(menuStart: number, itemId: string, preferredWidth: number,
 function renderWorkspace(frame: Frame): void {
   const bounds = { column: 0, row: 3, width: currentWidth(), height: Math.max(0, currentHeight() - 5) };
   fillRect(frame, bounds, theme().backgroundSoft);
-  if (bounds.width < 2 || bounds.height < 1) return;
+  renderedVisualizationThreePanels = new Set();
+  if (bounds.width < 2 || bounds.height < 1) {
+    setThreeBodyRect({ column: 0, row: 0, width: 0, height: 0 });
+    hideVisualizationThreePanelsExcept(renderedVisualizationThreePanels);
+    return;
+  }
   const layout = workspaceLayout({ column: 0, row: 0, width: Math.max(1, bounds.width - 1), height: bounds.height });
   workspaceScroll.setViewportSize(layout.bounds.width, bounds.height);
   workspaceScroll.setContentSize(layout.bounds.width, layout.contentHeight);
@@ -839,15 +904,11 @@ function renderWorkspace(frame: Frame): void {
   const virtual: Frame = Array.from({ length: Math.max(bounds.height, layout.contentHeight) }, () => []);
   fillRect(virtual, layout.bounds, theme().backgroundSoft);
   const hitStart = hitTargets.length;
-  const renderedVisualizationThree = new Set<VisualizationWindowId>();
   const max = maximized.peek();
   if (max) {
     renderWindow(virtual, max, layout.bounds);
-    updateThreeBodyRect(max === "three" ? layout.bounds : undefined, bounds, offset);
-    if (isVisualizationWindow(max)) {
-      if (updateVisualizationThreePanel(max, layout.bounds, bounds, offset)) renderedVisualizationThree.add(max);
-    }
-    hideUnrenderedVisualizationThreePanels(renderedVisualizationThree);
+    if (max !== "three") setThreeBodyRect({ column: 0, row: 0, width: 0, height: 0 });
+    hideVisualizationThreePanelsExcept(renderedVisualizationThreePanels);
     translateWorkspaceHits(hitStart, bounds.row - offset, bounds);
     blitWorkspace(frame, virtual, bounds, offset, layout.bounds.width);
     renderWorkspaceScrollbar(frame, bounds, layout.contentHeight, offset);
@@ -858,7 +919,7 @@ function renderWorkspace(frame: Frame): void {
   const visible = windowIds().filter((id) => !minimized.peek()[id]);
   if (visible.length === 0) {
     setThreeBodyRect({ column: 0, row: 0, width: 0, height: 0 });
-    hideUnrenderedVisualizationThreePanels(renderedVisualizationThree);
+    hideVisualizationThreePanelsExcept(new Set());
     write(frame, bounds.row + 1, 2, paint(emptyWorkspaceMessage(), { fg: theme().warn }));
     renderShelf(frame);
     return;
@@ -871,14 +932,11 @@ function renderWorkspace(frame: Frame): void {
       renderWindow(virtual, id, rect);
       if (id === "three") {
         renderedThree = true;
-        updateThreeBodyRect(rect, bounds, offset);
-      } else if (isVisualizationWindow(id)) {
-        if (updateVisualizationThreePanel(id, rect, bounds, offset)) renderedVisualizationThree.add(id);
       }
     }
   }
   if (!renderedThree) setThreeBodyRect({ column: 0, row: 0, width: 0, height: 0 });
-  hideUnrenderedVisualizationThreePanels(renderedVisualizationThree);
+  hideVisualizationThreePanelsExcept(renderedVisualizationThreePanels);
   translateWorkspaceHits(hitStart, bounds.row - offset, bounds);
   blitWorkspace(frame, virtual, bounds, offset, layout.bounds.width);
   renderWorkspaceScrollbar(frame, bounds, layout.contentHeight, offset);
@@ -948,7 +1006,8 @@ function renderVisualizationWindow(frame: Frame, id: VisualizationWindowId, rect
     writeRows(frame, rect, [{ text: "Visualization window not found", fg: t.warn, bg: t.surface, bold: true }]);
     return;
   }
-  const rendered = renderVisualization(buildVisualizationContext(visualizationId, rect));
+  const context = buildVisualizationContext(visualizationId, rect, { windowId: id });
+  const rendered = renderVisualization(context);
   const accent = accentColor(rendered.accent);
   const lines = rendered.body.split("\n");
   const useThreeScene = Boolean(rendered.three && threeAsciiAvailable.peek() && rect.width >= 8 && rect.height >= 9);
@@ -967,7 +1026,7 @@ function renderVisualizationWindow(frame: Frame, id: VisualizationWindowId, rect
         bold: rendered.severity !== "info",
       },
       {
-        text: visualizationThreeStatusLine(rendered, option),
+        text: visualizationThreeStatusLine(rendered, option, context.slot.ascii),
         fg: t.buttonActiveText,
         bg: t.buttonActiveBg,
         bold: true,
@@ -981,8 +1040,21 @@ function renderVisualizationWindow(frame: Frame, id: VisualizationWindowId, rect
         paint(fit(rendered.footer, rect.width), { fg: t.muted, bg: t.panelSoft }),
       );
     }
+    const sceneRect = {
+      column: rect.column,
+      row: rect.row + 3,
+      width: rect.width,
+      height: Math.max(0, rect.height - 4),
+    };
+    addHit(sceneRect, { type: "threeViewport", id });
+    const entry = ensureVisualizationThreePanel(id);
+    setSignalRect(entry.rectangle, { column: 0, row: 0, width: sceneRect.width, height: sceneRect.height });
+    entry.scene.value = rendered.three ?? null;
+    renderedVisualizationThreePanels.add(id);
+    renderThreeGrid(frame, sceneRect, entry.panel.grid.peek(), t);
     return;
   }
+  hideVisualizationThreePanel(id);
   writeRows(frame, rect, [
     {
       text: ` ${option.group.toUpperCase()} · ${rendered.title ?? option.label.toUpperCase()} `,
@@ -1004,6 +1076,24 @@ function renderVisualizationWindow(frame: Frame, id: VisualizationWindowId, rect
     })),
     { text: rendered.footer, fg: t.muted, bg: t.panelSoft },
   ]);
+  if (visualizationId === "cpu-hex-grid") {
+    addCpuHexTileHits(id, rect, context);
+  }
+}
+
+function addCpuHexTileHits(id: VisualizationWindowId, rect: Rectangle, context: RenderContext): void {
+  const tiles = cpuHexTileLayout(context.system.cpuCores, context.width, context.height);
+  const bodyHeaderRows = 2;
+  const cpuHexSummaryRows = 2;
+  const rowOffset = rect.row + bodyHeaderRows + cpuHexSummaryRows;
+  for (const tile of tiles) {
+    addHit({
+      column: rect.column + tile.column,
+      row: rowOffset + tile.row,
+      width: tile.width,
+      height: tile.height,
+    }, { type: "cpuHexTile", id, label: tile.label });
+  }
 }
 
 function renderThree(frame: Frame, rect: Rectangle): void {
@@ -1011,11 +1101,44 @@ function renderThree(frame: Frame, rect: Rectangle): void {
   const mode = terminalGlyphStyleLabel(ascii.peek().terminalGlyphStyle).toUpperCase();
   if (threeAsciiAvailable.peek()) {
     writeRows(frame, rect, threeHeaderRows(mode, rect.width, t));
+    const sceneRect = {
+      column: rect.column,
+      row: rect.row + 3,
+      width: rect.width,
+      height: Math.max(0, rect.height - 3),
+    };
+    addHit(sceneRect, { type: "threeViewport", id: "three" });
+    setThreeBodyRect({ column: 0, row: 0, width: sceneRect.width, height: sceneRect.height });
+    renderThreeGrid(frame, sceneRect, threePanel.grid.peek(), t);
     return;
   }
 
+  setThreeBodyRect({ column: 0, row: 0, width: 0, height: 0 });
   const fallback = renderThreeFallback(rect.width, rect.height, t);
   writeRows(frame, rect, fallback);
+}
+
+function renderThreeGrid(frame: Frame, rect: Rectangle, grid: string[][], t: ThemeSpec): void {
+  if (rect.width <= 0 || rect.height <= 0) return;
+
+  if (grid.length === 0) {
+    const message = threeAsciiAvailable.peek() ? "renderer warming up" : "renderer unavailable";
+    write(
+      frame,
+      rect.row + Math.floor(rect.height / 2),
+      rect.column,
+      paint(centerText(message, rect.width), { fg: t.warn, bg: t.surface }),
+    );
+    return;
+  }
+
+  for (let row = 0; row < rect.height; row += 1) {
+    const source = grid[row] ?? [];
+    const target = frame[rect.row + row] ??= [];
+    for (let column = 0; column < rect.width; column += 1) {
+      target[rect.column + column] = source[column] ?? paint(" ", { bg: t.surface });
+    }
+  }
 }
 
 function renderThreeFallback(width: number, height: number, t: ThemeSpec): RowStyle[] {
@@ -1090,7 +1213,7 @@ function renderInspector(frame: Frame, rect: Rectangle): void {
     { text: "viewport  ScrollAreaController", fg: t.good, bg: t.surface },
     { text: "data      DataTableController", fg: t.good, bg: t.surface },
     { text: "controls  SliderController / CheckBoxController", fg: t.good, bg: t.surface },
-    { text: "three     ThreePanelView + Acerola ASCII", fg: t.good, bg: t.surface },
+    { text: "three     ThreePanelFrameView + Acerola ASCII", fg: t.good, bg: t.surface },
     { text: `theme     ${themes[themeIndex.peek()]!.label}`, fg: t.warn, bg: t.surface, bold: true },
     { text: "", bg: t.surface },
     { text: " Recent actions ", fg: t.background, bg: t.border, bold: true },
@@ -1644,6 +1767,7 @@ const threeConfigRows: readonly ThreeConfigRow[] = [
   { kind: "preset", label: "Preset" },
   { kind: "glyphStyle", label: "Glyph style" },
   { kind: "numeric", key: "terminalEdgeBias", label: "Edge glyph bias" },
+  { kind: "numeric", key: "wireframeThickness", label: "Wire thickness" },
   { kind: "toggle", key: "edges", label: "Edge pass" },
   { kind: "toggle", key: "fill", label: "Fill pass" },
   { kind: "toggle", key: "invertLuminance", label: "Invert luminance" },
@@ -1678,9 +1802,10 @@ function renderThreeConfigModal(frame: Frame): void {
   drawFrame(frame, rect, "Three Renderer Config", true);
 
   const inner = inset(rect, 1);
-  const title = `ASCII ${terminalGlyphStyleLabel(ascii.peek().terminalGlyphStyle)} · ${
-    asciiPresetLabelLocal(ascii.peek().preset)
-  }`;
+  const current = configuredAscii().peek();
+  const title = `ASCII ${windowTitle(configuredAsciiWindow())} · ${
+    terminalGlyphStyleLabel(current.terminalGlyphStyle)
+  } · ${asciiPresetLabelLocal(current.preset)}`;
   write(frame, inner.row, inner.column, paint(fit(title, inner.width), { fg: t.accent, bg: t.panelSoft, bold: true }));
   const rowsTop = inner.row + 2;
   const visibleRows = Math.max(0, inner.height - 3);
@@ -1718,7 +1843,7 @@ function renderThreeConfigModal(frame: Frame): void {
 }
 
 function threeConfigRowText(row: ThreeConfigRow): string {
-  const current = ascii.peek();
+  const current = configuredAscii().peek();
   if (row.kind === "preset") {
     return `${row.label.padEnd(18)} [<] ${asciiPresetLabelLocal(current.preset)} [>]`;
   }
@@ -1763,37 +1888,42 @@ function applyThreeConfigRow(index: number, action: ConfigHitAction = "activate"
 
 function stepAsciiPreset(delta: number): void {
   const ids = ASCII_DEMO_PRESETS.map((preset) => preset.id);
-  const current = ascii.peek();
+  const current = configuredAscii().peek();
   const currentIndex = Math.max(0, ids.indexOf(current.preset));
   const nextId = ids[(currentIndex + delta + ids.length) % ids.length]!;
   const next = { ...current };
   applyAsciiPreset(next, nextId);
-  ascii.value = next;
-  pushLog(`three config preset ${asciiPresetLabelLocal(nextId)}`);
+  setConfiguredAscii(next, `three config preset ${asciiPresetLabelLocal(nextId)}`);
 }
 
 function stepAsciiGlyphStyle(delta: number): void {
-  const current = ascii.peek();
+  const current = configuredAscii().peek();
   const index = TERMINAL_GLYPH_STYLES.indexOf(current.terminalGlyphStyle);
   const next = TERMINAL_GLYPH_STYLES[(index + delta + TERMINAL_GLYPH_STYLES.length) % TERMINAL_GLYPH_STYLES.length]!;
-  ascii.value = { ...current, terminalGlyphStyle: next, preset: "custom" };
-  pushLog(`three config glyph style ${terminalGlyphStyleLabel(next)}`);
+  setConfiguredAscii(
+    { ...current, terminalGlyphStyle: next, preset: "custom" },
+    `three config glyph style ${terminalGlyphStyleLabel(next)}`,
+  );
 }
 
 function toggleAsciiOption(key: AsciiToggleKey): void {
-  const current = ascii.peek();
-  ascii.value = { ...current, [key]: !current[key], preset: "custom" };
-  pushLog(`three config ${key} ${!current[key] ? "on" : "off"}`);
+  const current = configuredAscii().peek();
+  setConfiguredAscii(
+    { ...current, [key]: !current[key], preset: "custom" },
+    `three config ${key} ${!current[key] ? "on" : "off"}`,
+  );
 }
 
 function stepAsciiNumeric(key: AsciiNumericKey, delta: number): void {
-  const current = ascii.peek();
+  const current = configuredAscii().peek();
   const values = asciiControlValues(key);
   const currentValue = Number(current[key]);
   const closest = closestValueIndex(values, currentValue);
   const nextValue = values[Math.max(0, Math.min(values.length - 1, closest + delta))]!;
-  ascii.value = { ...current, [key]: nextValue, preset: "custom" };
-  pushLog(`three config ${key} ${formatAsciiControlValue(key, nextValue)}`);
+  setConfiguredAscii(
+    { ...current, [key]: nextValue, preset: "custom" },
+    `three config ${key} ${formatAsciiControlValue(key, nextValue)}`,
+  );
 }
 
 function numericOptionRatio(values: readonly number[], value: number): number {
@@ -1890,7 +2020,7 @@ function windowContentSize(id: WindowId, viewport: Rectangle): { width: number; 
     return { width: Math.max(baseWidth, width), height: Math.max(baseHeight, rows.length + 4) };
   }
   if (id === "three") {
-    return { width: baseWidth, height: Math.max(baseHeight, 24) };
+    return { width: baseWidth, height: baseHeight };
   }
   if (isVisualizationWindow(id)) {
     return visualizationWindowContentSize(id, viewport, baseWidth, baseHeight);
@@ -1912,11 +2042,11 @@ function visualizationWindowContentSize(
     ...viewport,
     width: baseWidth,
     height: baseHeight,
-  }));
+  }, { windowId: id }));
   if (rendered.three && threeAsciiAvailable.peek()) {
     return {
       width: baseWidth,
-      height: Math.max(baseHeight, 22),
+      height: baseHeight,
     };
   }
   const rows = visualizationWindowRows(option, rendered);
@@ -1945,13 +2075,18 @@ function visualizationWindowRows(
 function visualizationThreeStatusLine(
   rendered: PanelRender,
   option: NonNullable<ReturnType<typeof visualizationOption>>,
+  options: AsciiOptions,
 ): string {
   const mode = rendered.three?.mode.toUpperCase() ?? "TEXT";
-  const glyphs = terminalGlyphStyleLabel(ascii.peek().terminalGlyphStyle).toUpperCase();
+  const glyphs = terminalGlyphStyleLabel(options.terminalGlyphStyle).toUpperCase();
   return compactSpaces(`ACEROLA ${mode} · ${glyphs} · ${option.label}`);
 }
 
-function buildVisualizationContext(visualizationId: string, rect: Rectangle): RenderContext {
+function buildVisualizationContext(
+  visualizationId: string,
+  rect: Rectangle,
+  options: { windowId?: VisualizationWindowId } = {},
+): RenderContext {
   const option = visualizationOption(visualizationId);
   const phase = Math.floor(performance.now() / 80);
   const usesRealSystem = option?.group === "Monitor";
@@ -1970,7 +2105,7 @@ function buildVisualizationContext(visualizationId: string, rect: Rectangle): Re
       : ["workbench:primary", "workbench:secondary", "workbench:noise"],
     cycleEnabled: false,
     cycleIntervalMs: 10000,
-    ascii: ascii.peek(),
+    ascii: options.windowId ? asciiForWindow(options.windowId).peek() : ascii.peek(),
   };
   return {
     slot,
@@ -1979,6 +2114,9 @@ function buildVisualizationContext(visualizationId: string, rect: Rectangle): Re
     phase,
     width: Math.max(8, rect.width),
     height: Math.max(4, rect.height - 3),
+    selectedCpuLabel: visualizationId === "cpu-hex-grid" && options.windowId
+      ? selectedCpuHexTiles.peek()[options.windowId]
+      : undefined,
   };
 }
 
@@ -1994,6 +2132,8 @@ function monitorSourceIds(visualizationId: string): string[] {
       return ["sys:cpu", "sys:load"];
     case "cpu-legend":
       return ["sys:cpu-cores"];
+    case "cpu-hex-grid":
+      return ["sys:cpu-cores", "sys:processes"];
     case "gpu-combined-monitor":
       return ["sys:gpu", "sys:gpu-chip", "sys:gpu-memory"];
     case "gpu-chip-monitor":
@@ -2114,6 +2254,7 @@ function syntheticWorkbenchSystem(phase: number, group: NewWindowOption["group"]
       cpuPercent: unitWave(phase + index, 0.09, index * 0.2) * 80,
       memoryPercent: unitWave(phase + index, 0.05, index * 0.15) * 18,
       memoryBytes: (128 + index * 64) * 1024 ** 2,
+      processor: index % cpuCoreCount,
     })),
     alerts: hot > 0.92 ? [{ severity: "warning", title: "WORKBENCH", detail: "LOAD SPIKE" }] : [],
   };
@@ -2230,103 +2371,19 @@ function renderWindowScrollbars(
   }
 }
 
-function updateThreeBodyRect(rect: Rectangle | undefined, viewport: Rectangle, offset: number): void {
-  if (!rect || modal.openState.peek() || threeConfigOpen.peek() || screenDropdownOpen() || minimized.peek().three) {
-    setThreeBodyRect({ column: 0, row: 0, width: 0, height: 0 });
-    return;
-  }
-  const inner = inset(rect, 1);
-  const contentSize = windowContentSize("three", inner);
-  const bodyViewport = windowContentViewport(inner, contentSize.width, contentSize.height);
-  const scroll = windowScroll("three").offset.peek();
-  const sceneRect = { column: 0, row: 3, width: contentSize.width, height: Math.max(0, contentSize.height - 3) };
-  const translated = {
-    ...sceneRect,
-    column: bodyViewport.column + sceneRect.column - scroll.columns,
-    row: bodyViewport.row + viewport.row - offset + sceneRect.row - scroll.rows,
-  };
-  const clipped = clipRect(translated, { ...bodyViewport, row: bodyViewport.row + viewport.row - offset });
-  setThreeBodyRect(clipped.width >= 8 && clipped.height >= 6 ? clipped : { column: 0, row: 0, width: 0, height: 0 });
-}
-
-function hideUnrenderedVisualizationThreePanels(renderedIds: Set<VisualizationWindowId>): void {
-  for (const id of visualizationThreePanels.keys()) {
-    if (!renderedIds.has(id)) hideVisualizationThreePanel(id);
-  }
-}
-
-function updateVisualizationThreePanel(
-  id: VisualizationWindowId,
-  rect: Rectangle,
-  viewport: Rectangle,
-  offset: number,
-): boolean {
-  const visualizationId = dynamicVisualizationWindows.peek()[id];
-  if (
-    !visualizationId || !threeAsciiAvailable.peek() || modal.openState.peek() || threeConfigOpen.peek() ||
-    screenDropdownOpen() || minimized.peek()[id]
-  ) {
-    hideVisualizationThreePanel(id);
-    return false;
-  }
-
-  const inner = inset(rect, 1);
-  const contentSize = windowContentSize(id, inner);
-  const rendered = renderVisualization(buildVisualizationContext(visualizationId, {
-    column: 0,
-    row: 0,
-    width: contentSize.width,
-    height: Math.max(4, contentSize.height - 4),
-  }));
-  if (!rendered.three) {
-    hideVisualizationThreePanel(id);
-    return false;
-  }
-
-  const bodyViewport = windowContentViewport(inner, contentSize.width, contentSize.height);
-  const scroll = windowScroll(id).offset.peek();
-  const sceneRect = visualizationThreeSceneRect(contentSize);
-  const translated = {
-    ...sceneRect,
-    column: bodyViewport.column + sceneRect.column - scroll.columns,
-    row: bodyViewport.row + viewport.row - offset + sceneRect.row - scroll.rows,
-  };
-  const clipped = clipRect(translated, { ...bodyViewport, row: bodyViewport.row + viewport.row - offset });
-
-  if (clipped.width < 8 || clipped.height < 6) {
-    hideVisualizationThreePanel(id);
-    return false;
-  }
-
-  const entry = ensureVisualizationThreePanel(id);
-  setSignalRect(entry.rectangle, clipped);
-  entry.scene.value = rendered.three;
-  return true;
-}
-
-function visualizationThreeSceneRect(contentSize: { width: number; height: number }): Rectangle {
-  return {
-    column: 0,
-    row: 3,
-    width: contentSize.width,
-    height: Math.max(0, contentSize.height - 4),
-  };
-}
-
 function ensureVisualizationThreePanel(id: VisualizationWindowId): DynamicThreePanel {
   const existing = visualizationThreePanels.get(id);
   if (existing) return existing;
 
   const rectangle = new Signal<Rectangle>({ column: 0, row: 0, width: 0, height: 0 }, { deepObserve: true });
   const scene = new Signal<WorkbenchThreeScene | null>(null);
-  const panel = new ThreePanelView({
-    canvas: tui.canvas,
+  const panel = new ThreePanelFrameView({
     rectangle,
     scene,
-    ascii,
+    ascii: asciiForWindow(id),
     enabled: threeAsciiAvailable,
-    zIndex: 4,
     frameInterval: 1000 / 18,
+    onUpdate: scheduleDraw,
   });
   const entry = { rectangle, scene, panel };
   visualizationThreePanels.set(id, entry);
@@ -2338,6 +2395,12 @@ function hideVisualizationThreePanel(id: VisualizationWindowId): void {
   if (!entry) return;
   entry.scene.value = null;
   setSignalRect(entry.rectangle, { column: 0, row: 0, width: 0, height: 0 });
+}
+
+function hideVisualizationThreePanelsExcept(visibleIds: Set<VisualizationWindowId>): void {
+  for (const id of visualizationThreePanels.keys()) {
+    if (!visibleIds.has(id)) hideVisualizationThreePanel(id);
+  }
 }
 
 function disposeVisualizationThreePanel(id: VisualizationWindowId): void {
@@ -2366,6 +2429,86 @@ function setSignalRect(target: Signal<Rectangle>, rect: Rectangle): void {
 
 function screenDropdownOpen(): boolean {
   return themeMenuOpen.peek() || newWindowMenuOpen.peek() || workspaceMenuOpen.peek();
+}
+
+function defaultWorkbenchAsciiOptions(): AsciiOptions {
+  return {
+    ...createDefaultAsciiOptions("sharp"),
+    terminalGlyphStyle: "mixed",
+    preset: "custom",
+  };
+}
+
+function cloneAsciiOptions(options: AsciiOptions): AsciiOptions {
+  return { ...options };
+}
+
+function normalizeAsciiOptions(value: unknown): AsciiOptions {
+  const base = defaultWorkbenchAsciiOptions();
+  if (!value || typeof value !== "object") return base;
+  const candidate = value as Partial<AsciiOptions>;
+  const numeric = <K extends keyof AsciiOptions>(key: K): number => {
+    const next = Number(candidate[key]);
+    return Number.isFinite(next) ? next : Number(base[key]);
+  };
+  return {
+    preset: typeof candidate.preset === "string" ? candidate.preset : base.preset,
+    border: candidate.border === "rounded" || candidate.border === "sharp" || candidate.border === "ascii"
+      ? candidate.border
+      : base.border,
+    terminalGlyphStyle: candidate.terminalGlyphStyle &&
+        TERMINAL_GLYPH_STYLES.includes(candidate.terminalGlyphStyle)
+      ? candidate.terminalGlyphStyle
+      : base.terminalGlyphStyle,
+    terminalEdgeBias: numeric("terminalEdgeBias"),
+    edgeThreshold: numeric("edgeThreshold"),
+    normalThreshold: numeric("normalThreshold"),
+    depthThreshold: numeric("depthThreshold"),
+    exposure: numeric("exposure"),
+    attenuation: numeric("attenuation"),
+    blendWithBase: numeric("blendWithBase"),
+    depthFalloff: numeric("depthFalloff"),
+    depthOffset: numeric("depthOffset"),
+    wireframeThickness: numeric("wireframeThickness"),
+    edges: typeof candidate.edges === "boolean" ? candidate.edges : base.edges,
+    fill: typeof candidate.fill === "boolean" ? candidate.fill : base.fill,
+    invertLuminance: typeof candidate.invertLuminance === "boolean" ? candidate.invertLuminance : base.invertLuminance,
+  };
+}
+
+function asciiForWindow(id: WindowId): Signal<AsciiOptions> {
+  const existing = windowAscii.get(id);
+  if (existing) return existing;
+  const created = new Signal<AsciiOptions>(cloneAsciiOptions(ascii.peek()));
+  windowAscii.set(id, created);
+  return created;
+}
+
+function setAsciiForWindow(id: WindowId, options: AsciiOptions): void {
+  asciiForWindow(id).value = normalizeAsciiOptions(options);
+}
+
+function disposeAsciiForWindow(id: WindowId): void {
+  if (id === "three") return;
+  const signal = windowAscii.get(id);
+  signal?.dispose();
+  windowAscii.delete(id);
+}
+
+function configuredAsciiWindow(): WindowId {
+  const id = threeConfigWindow.peek();
+  return isThreeRenderedWindow(id) ? id : "three";
+}
+
+function configuredAscii(): Signal<AsciiOptions> {
+  return asciiForWindow(configuredAsciiWindow());
+}
+
+function setConfiguredAscii(next: AsciiOptions, message: string): void {
+  const id = configuredAsciiWindow();
+  setAsciiForWindow(id, next);
+  if (isVisualizationWindow(id)) void persistActiveWorkspaceState();
+  pushLog(`${message} (${windowTitle(id)})`);
 }
 
 function isThreeRenderedWindow(id: WindowId): boolean {
@@ -2532,6 +2675,34 @@ function scrollWindow(id: WindowId, columns: number, rows: number): void {
   windowScroll(id).scrollBy(columns, rows);
 }
 
+function zoomThreeWindowAt(event: MouseScrollEvent): boolean {
+  const hit = findHit(event.x, event.y);
+  if (hit?.action.type !== "threeViewport") return false;
+  const panel = threePanelForWindow(hit.action.id);
+  if (!panel) return false;
+  panel.zoomBy(event.scroll);
+  focusWindowSilently(hit.action.id);
+  return true;
+}
+
+function rotateThreeWindow(id: WindowId, event: MousePressEvent): boolean {
+  const panel = threePanelForWindow(id);
+  if (!panel) return false;
+  panel.rotateBy(event.movementX, event.movementY);
+  focusWindowSilently(id);
+  return true;
+}
+
+function threePanelForWindow(id: WindowId): ThreePanelFrameView | undefined {
+  if (id === "three") return threePanel;
+  return isVisualizationWindow(id) ? visualizationThreePanels.get(id)?.panel : undefined;
+}
+
+function focusWindowSilently(id: WindowId): void {
+  windowManager.focus(id);
+  syncWindowSignalsFromManager();
+}
+
 function windowScrollPage(id: WindowId): number {
   return Math.max(1, windowScroll(id).viewportHeight.peek() - 1);
 }
@@ -2543,7 +2714,7 @@ function windowAt(x: number, y: number): WindowId | undefined {
   if (
     action.type === "focus" || action.type === "minimize" || action.type === "maximize" ||
     action.type === "restore" || action.type === "close" || action.type === "windowVScrollbar" ||
-    action.type === "windowHScrollbar"
+    action.type === "windowHScrollbar" || action.type === "threeViewport"
   ) {
     return action.id;
   }
@@ -2628,12 +2799,13 @@ function setTheme(index: number): void {
 
 function openSaveWorkspaceModal(): void {
   closeTopMenus();
-  workspaceSaveMode.value = true;
+  workspaceNameMode.value = "save";
+  workspaceTargetName.value = null;
   workspaceNameDraft.value = defaultWorkspaceName();
   modal.open({
     title: "Save Workspace",
     tone: "confirm",
-    body: workspaceSaveModalBody(),
+    body: workspaceNameModalBody(),
     actions: [
       { id: "workspace-cancel", label: "Cancel" },
       { id: "workspace-save", label: "Save", default: true },
@@ -2642,40 +2814,90 @@ function openSaveWorkspaceModal(): void {
   pushLog("save workspace prompt");
 }
 
-function workspaceSaveModalBody(): string[] {
+function openRenameWorkspaceModal(workspace: SavedWorkspace): void {
+  closeTopMenus();
+  workspaceNameMode.value = "rename";
+  workspaceTargetName.value = workspace.name;
+  workspaceNameDraft.value = workspace.name;
+  modal.open({
+    title: "Rename Workspace",
+    tone: "confirm",
+    body: workspaceNameModalBody(),
+    actions: [
+      { id: "workspace-cancel", label: "Cancel" },
+      { id: "workspace-rename", label: "Rename", default: true },
+    ],
+  });
+  pushLog(`rename workspace prompt ${workspace.name}`);
+}
+
+function openDeleteWorkspaceModal(workspace: SavedWorkspace): void {
+  closeTopMenus();
+  workspaceNameMode.value = null;
+  workspaceTargetName.value = workspace.name;
+  modal.open({
+    title: "Delete Workspace?",
+    tone: "warning",
+    body: [
+      `Delete saved workspace "${workspace.name}"?`,
+      `${workspace.visualizationIds.length} widget window(s) saved in this workspace.`,
+      "This removes the saved workspace only; it does not close any currently open windows.",
+    ],
+    actions: [
+      { id: "workspace-cancel", label: "Cancel" },
+      { id: "workspace-delete", label: "Delete", destructive: true, default: true },
+    ],
+  });
+  pushLog(`delete workspace prompt ${workspace.name}`);
+}
+
+function workspaceNameModalBody(): string[] {
+  const mode = workspaceNameMode.peek();
   const loaded = currentWorkspaceVisualizationIds();
+  const cursor = mode ? "▌" : "";
+  if (mode === "rename") {
+    const workspace = workspaceByName(workspaceTargetName.peek());
+    return [
+      "Rename the saved workspace.",
+      `Name: ${workspaceNameDraft.peek()}${cursor}`,
+      `Current: ${workspace?.name ?? workspaceTargetName.peek() ?? "unknown"}`,
+      `Windows: ${workspace?.visualizationIds.length ?? 0}`,
+      "indexedDB" in globalThis ? "Storage: IndexedDB" : "Storage: Deno JSON fallback",
+    ];
+  }
   return [
     "Name the current set of loaded widget windows.",
-    `Name: ${workspaceNameDraft.peek()}${workspaceSaveMode.peek() ? "▌" : ""}`,
+    `Name: ${workspaceNameDraft.peek()}${cursor}`,
     `Windows: ${loaded.length === 0 ? "none" : loaded.join(", ")}`,
     "indexedDB" in globalThis ? "Storage: IndexedDB" : "Storage: Deno JSON fallback",
   ];
 }
 
-function refreshWorkspaceSaveModal(): void {
-  if (!workspaceSaveMode.peek() || !modal.openState.peek()) return;
-  modal.update({ body: workspaceSaveModalBody() });
+function refreshWorkspaceNameModal(): void {
+  if (!workspaceNameMode.peek() || !modal.openState.peek()) return;
+  modal.update({ body: workspaceNameModalBody() });
 }
 
-function handleWorkspaceSaveKey(event: { key: string; ctrl?: boolean; meta?: boolean }): boolean {
+function handleWorkspaceNameKey(event: { key: string; ctrl?: boolean; meta?: boolean }): boolean {
   if (event.ctrl || event.meta) return false;
   if (event.key === "escape") {
-    workspaceSaveMode.value = false;
+    clearWorkspaceModalState();
     modal.close();
     return true;
   }
   if (event.key === "backspace") {
     workspaceNameDraft.value = workspaceNameDraft.peek().slice(0, -1);
-    refreshWorkspaceSaveModal();
+    refreshWorkspaceNameModal();
     return true;
   }
   if (event.key === "return") {
-    void saveCurrentWorkspace();
+    if (workspaceNameMode.peek() === "rename") void renameWorkspace();
+    else void saveCurrentWorkspace();
     return true;
   }
   if (event.key.length === 1 && textWidth(event.key) === 1) {
     workspaceNameDraft.value = `${workspaceNameDraft.peek()}${event.key}`.slice(0, 48);
-    refreshWorkspaceSaveModal();
+    refreshWorkspaceNameModal();
     return true;
   }
   return false;
@@ -2683,15 +2905,17 @@ function handleWorkspaceSaveKey(event: { key: string; ctrl?: boolean; meta?: boo
 
 async function saveCurrentWorkspace(): Promise<void> {
   const name = normalizeWorkspaceName(workspaceNameDraft.peek());
-  const visualizationIds = currentWorkspaceVisualizationIds();
-  const next: SavedWorkspace = { name, visualizationIds, savedAt: Date.now() };
+  const windows = currentWorkspaceWindows();
+  const visualizationIds = windows.map((window) => window.visualizationId);
+  const next: SavedWorkspace = { name, visualizationIds, windows, savedAt: Date.now() };
   const workspaces = [
     next,
     ...savedWorkspaces.peek().filter((workspace) => workspace.name.toLowerCase() !== name.toLowerCase()),
   ].slice(0, 24);
   savedWorkspaces.value = workspaces;
   await persistSavedWorkspaces();
-  workspaceSaveMode.value = false;
+  activeWorkspaceName.value = name;
+  clearWorkspaceModalState();
   modal.open({
     title: "Workspace Saved",
     tone: "success",
@@ -2701,49 +2925,157 @@ async function saveCurrentWorkspace(): Promise<void> {
   pushLog(`workspace saved ${name}`);
 }
 
-function applyWorkspaceMenuItem(index: number): void {
-  if (index === 0) {
-    openSaveWorkspaceModal();
+async function renameWorkspace(): Promise<void> {
+  const originalName = workspaceTargetName.peek();
+  const workspace = workspaceByName(originalName);
+  if (!workspace) {
+    clearWorkspaceModalState();
+    modal.open({
+      title: "Workspace Missing",
+      tone: "warning",
+      body: [`Workspace "${originalName ?? "unknown"}" no longer exists.`],
+      actions: [{ id: "dismiss", label: "OK", default: true }],
+    });
     return;
   }
-  const workspace = savedWorkspaces.peek()[index - 1];
+
+  const name = normalizeWorkspaceName(workspaceNameDraft.peek());
+  const renamed: SavedWorkspace = { ...workspace, name, savedAt: Date.now() };
+  const workspaces = [
+    renamed,
+    ...savedWorkspaces.peek().filter((entry) =>
+      entry.name.toLowerCase() !== workspace.name.toLowerCase() &&
+      entry.name.toLowerCase() !== name.toLowerCase()
+    ),
+  ].slice(0, 24);
+  savedWorkspaces.value = workspaces;
+  await persistSavedWorkspaces();
+  if (activeWorkspaceName.peek()?.toLowerCase() === workspace.name.toLowerCase()) {
+    activeWorkspaceName.value = name;
+  }
+  clearWorkspaceModalState();
+  modal.open({
+    title: "Workspace Renamed",
+    tone: "success",
+    body: [`${workspace.name} -> ${name}`, `${renamed.visualizationIds.length} widget window(s).`],
+    actions: [{ id: "dismiss", label: "OK", default: true }],
+  });
+  pushLog(`workspace renamed ${workspace.name} -> ${name}`);
+}
+
+async function deleteWorkspace(): Promise<void> {
+  const name = workspaceTargetName.peek();
+  const workspace = workspaceByName(name);
+  if (!workspace) {
+    clearWorkspaceModalState();
+    modal.close();
+    return;
+  }
+  savedWorkspaces.value = savedWorkspaces.peek().filter((entry) =>
+    entry.name.toLowerCase() !== workspace.name.toLowerCase()
+  );
+  await persistSavedWorkspaces();
+  if (activeWorkspaceName.peek()?.toLowerCase() === workspace.name.toLowerCase()) {
+    activeWorkspaceName.value = null;
+  }
+  clearWorkspaceModalState();
+  modal.open({
+    title: "Workspace Deleted",
+    tone: "success",
+    body: [`${workspace.name}`, "Saved workspace removed."],
+    actions: [{ id: "dismiss", label: "OK", default: true }],
+  });
+  pushLog(`workspace deleted ${workspace.name}`);
+}
+
+function clearWorkspaceModalState(): void {
+  workspaceNameMode.value = null;
+  workspaceTargetName.value = null;
+}
+
+function applyWorkspaceMenuItem(index: number): void {
+  const entry = workspaceMenuEntries()[index];
+  if (!entry) return;
+  if (entry.action === "save") return openSaveWorkspaceModal();
+  if (entry.action === "empty") return;
+  const workspace = workspaceByName(entry.workspaceName);
   if (!workspace) return;
-  loadWorkspace(workspace);
+  if (entry.action === "open") return loadWorkspace(workspace);
+  if (entry.action === "rename") return openRenameWorkspaceModal(workspace);
+  if (entry.action === "delete") return openDeleteWorkspaceModal(workspace);
 }
 
 function loadWorkspace(workspace: SavedWorkspace): void {
   closeTopMenus();
-  const target = new Set(workspace.visualizationIds);
-  for (const id of windowManager.ids()) {
-    if (isVisualizationWindow(id as WindowId)) {
-      const visualizationId = dynamicVisualizationWindows.peek()[id as VisualizationWindowId];
-      if (!visualizationId || !target.has(visualizationId)) closeWindow(id as WindowId);
-    }
+  closeAllWindowsForWorkspaceLoad();
+  for (const entry of workspaceWindowEntries(workspace)) {
+    addVisualizationWindow(visualizationOption(entry.visualizationId), { ascii: entry.ascii });
   }
-  for (const visualizationId of workspace.visualizationIds) {
-    addVisualizationWindow(visualizationOption(visualizationId));
-  }
+  activeWorkspaceName.value = workspace.name;
+  workspaceScroll.scrollTo(0, 0);
   pushLog(`workspace loaded ${workspace.name}`);
 }
 
-function workspaceMenuLabels(): string[] {
-  const labels = ["[+] Save Current..."];
-  for (const workspace of savedWorkspaces.peek()) {
-    labels.push(`[ ] ${workspace.name} (${workspace.visualizationIds.length})`);
+function closeAllWindowsForWorkspaceLoad(): void {
+  const ids = windowManager.ids() as WindowId[];
+  if (ids.length === 0) return;
+
+  const selected = { ...selectedCpuHexTiles.peek() };
+  let selectedChanged = false;
+  for (const id of ids) {
+    if (isVisualizationWindow(id)) {
+      disposeVisualizationThreePanel(id);
+      disposeAsciiForWindow(id);
+      if (id in selected) {
+        delete selected[id];
+        selectedChanged = true;
+      }
+    }
+    windowManager.close(id);
   }
-  if (labels.length === 1) labels.push("    No saved workspaces");
-  return labels;
+  if (selectedChanged) selectedCpuHexTiles.value = selected;
+  syncWindowSignalsFromManager();
+  pushLog(`closed ${ids.length} window(s) for workspace load`);
+}
+
+function workspaceMenuEntries(): WorkspaceMenuEntry[] {
+  const entries: WorkspaceMenuEntry[] = [{ label: "[+] Save Current...", action: "save" }];
+  const workspaces = savedWorkspaces.peek();
+  for (const workspace of workspaces) {
+    entries.push(
+      {
+        label: `[>] Open ${workspace.name} (${workspace.visualizationIds.length})`,
+        action: "open",
+        workspaceName: workspace.name,
+      },
+      { label: `[~] Rename ${workspace.name}`, action: "rename", workspaceName: workspace.name },
+      { label: `[x] Delete ${workspace.name}`, action: "delete", workspaceName: workspace.name },
+    );
+  }
+  if (workspaces.length === 0) entries.push({ label: "    No saved workspaces", action: "empty" });
+  return entries;
+}
+
+function workspaceMenuLabels(): string[] {
+  return workspaceMenuEntries().map((entry) => entry.label);
 }
 
 function workspaceMenuItemCount(): number {
-  return Math.max(1, savedWorkspaces.peek().length + 1);
+  return workspaceMenuEntries().length;
 }
 
 function currentWorkspaceVisualizationIds(): string[] {
+  return currentWorkspaceWindows().map((window) => window.visualizationId);
+}
+
+function currentWorkspaceWindows(): SavedWorkspaceWindow[] {
   return windowManager.ids()
     .filter((id) => isVisualizationWindow(id as WindowId))
-    .map((id) => dynamicVisualizationWindows.peek()[id as VisualizationWindowId])
-    .filter((id): id is string => Boolean(id));
+    .flatMap((id): SavedWorkspaceWindow[] => {
+      const windowId = id as VisualizationWindowId;
+      const visualizationId = dynamicVisualizationWindows.peek()[windowId];
+      return visualizationId ? [{ visualizationId, ascii: cloneAsciiOptions(asciiForWindow(windowId).peek()) }] : [];
+    });
 }
 
 function defaultWorkspaceName(): string {
@@ -2754,6 +3086,39 @@ function defaultWorkspaceName(): string {
 function normalizeWorkspaceName(name: string): string {
   const trimmed = name.replace(/\s+/g, " ").trim();
   return trimmed.length > 0 ? trimmed : defaultWorkspaceName();
+}
+
+function workspaceByName(name: string | null | undefined): SavedWorkspace | undefined {
+  if (!name) return undefined;
+  return savedWorkspaces.peek().find((workspace) => workspace.name.toLowerCase() === name.toLowerCase());
+}
+
+function workspaceWindowEntries(workspace: SavedWorkspace): SavedWorkspaceWindow[] {
+  if (workspace.windows?.length) {
+    return workspace.windows.map((entry) => ({
+      visualizationId: entry.visualizationId,
+      ascii: entry.ascii ? normalizeAsciiOptions(entry.ascii) : undefined,
+    }));
+  }
+  return workspace.visualizationIds.map((visualizationId) => ({ visualizationId }));
+}
+
+async function persistActiveWorkspaceState(): Promise<void> {
+  const name = activeWorkspaceName.peek();
+  const workspace = workspaceByName(name);
+  if (!workspace) return;
+  const windows = currentWorkspaceWindows();
+  const next: SavedWorkspace = {
+    ...workspace,
+    visualizationIds: windows.map((window) => window.visualizationId),
+    windows,
+    savedAt: Date.now(),
+  };
+  savedWorkspaces.value = [
+    next,
+    ...savedWorkspaces.peek().filter((entry) => entry.name.toLowerCase() !== workspace.name.toLowerCase()),
+  ].slice(0, 24);
+  await persistSavedWorkspaces();
 }
 
 async function loadSavedWorkspaces(): Promise<SavedWorkspace[]> {
@@ -2774,13 +3139,29 @@ function normalizeSavedWorkspaces(value: unknown): SavedWorkspace[] {
     if (!entry || typeof entry !== "object") return [];
     const candidate = entry as Partial<SavedWorkspace>;
     const name = typeof candidate.name === "string" ? normalizeWorkspaceName(candidate.name) : "";
-    const visualizationIds = Array.isArray(candidate.visualizationIds)
+    const windows = Array.isArray(candidate.windows)
+      ? candidate.windows.flatMap((windowEntry): SavedWorkspaceWindow[] => {
+        if (!windowEntry || typeof windowEntry !== "object") return [];
+        const candidateWindow = windowEntry as Partial<SavedWorkspaceWindow>;
+        if (typeof candidateWindow.visualizationId !== "string" || !validIds.has(candidateWindow.visualizationId)) {
+          return [];
+        }
+        return [{
+          visualizationId: candidateWindow.visualizationId,
+          ascii: candidateWindow.ascii ? normalizeAsciiOptions(candidateWindow.ascii) : undefined,
+        }];
+      })
+      : [];
+    const visualizationIds = windows.length > 0
+      ? windows.map((window) => window.visualizationId)
+      : Array.isArray(candidate.visualizationIds)
       ? candidate.visualizationIds.filter((id): id is string => typeof id === "string" && validIds.has(id))
       : [];
     if (!name) return [];
     return [{
       name,
       visualizationIds,
+      windows: windows.length > 0 ? windows : undefined,
       savedAt: typeof candidate.savedAt === "number" ? candidate.savedAt : 0,
     }];
   }).slice(0, 24);
@@ -2845,8 +3226,10 @@ function openHelpModal(): void {
       "Use G from any Three ASCII, Neon 3D, or NGE primitive window to open renderer config. In config, use Up/Down to select settings and Left/Right or Enter to change them.",
       "Use arrows in the Data Table, Explorer, Logs, and overflow windows. In Data Table, S cycles the sort column. Shift+Left/Right scrolls horizontally when content is wider than the pane.",
       "In Controls, arrows adjust sliders, radio groups, combo boxes, steppers, and dropdown selections. Enter or Space activates the selected control.",
+      "Three ASCII widgets: mousewheel over the rendered scene zooms; click and drag the scene to rotate the model.",
       "Mouse: click windows to focus them, click rows to select them, click controls to change values, drag or click scrollbars to move through overflow content.",
       "Use the New menu to add Monitor, Neon Exodus, and Neon 3D widget windows to the workspace.",
+      "Use the Workspace menu to save, open, rename, or delete workspace layouts. Opening a saved workspace replaces the currently loaded widget windows.",
       "Use the Theme menu to switch palettes. Click the [x] button in the top-right menu bar or press Q to open quit confirmation.",
     ],
     actions: [
@@ -2862,10 +3245,18 @@ function applyModalAction(actionId: string): void {
     void saveCurrentWorkspace();
     return;
   }
+  if (actionId === "workspace-rename") {
+    void renameWorkspace();
+    return;
+  }
+  if (actionId === "workspace-delete") {
+    void deleteWorkspace();
+    return;
+  }
   if (actionId === "workspace-cancel") {
-    workspaceSaveMode.value = false;
+    clearWorkspaceModalState();
     modal.close();
-    pushLog("workspace save cancelled");
+    pushLog("workspace action cancelled");
     return;
   }
   if (actionId === "details") {
@@ -2925,6 +3316,7 @@ function applyHit(target: { rect: Rectangle; action: HitAction }, x: number, y: 
   else if (action.type === "minimize") minimize(action.id);
   else if (action.type === "maximize") toggleMaximize(action.id);
   else if (action.type === "close") closeWindow(action.id);
+  else if (action.type === "threeViewport") focus(action.id);
   else if (action.type === "threeConfig") openThreeConfigModal(action.id);
   else if (action.type === "asciiConfig") applyThreeConfigRow(action.index, action.action ?? "activate");
   else if (action.type === "restore") {
@@ -2937,6 +3329,7 @@ function applyHit(target: { rect: Rectangle; action: HitAction }, x: number, y: 
     if (action.index >= 0) modal.activateAction(action.index);
   } else if (action.type === "dataRow") selectDataRow(action.index);
   else if (action.type === "explorerRow") selectExplorerRow(action.index);
+  else if (action.type === "cpuHexTile") selectCpuHexTile(action.id, action.label);
   else if (action.type === "newWindow") {
     toggleVisualizationWindow(newWindowOptions[action.index], { keepMenuOpen: true });
   } else if (action.type === "workspace") applyWorkspaceMenuItem(action.index);
@@ -2968,6 +3361,7 @@ function openThreeConfigModal(id: WindowId): void {
   if (!isThreeRenderedWindow(id)) return;
   modal.close();
   closeTopMenus();
+  threeConfigWindow.value = id;
   threeConfigOpen.value = true;
   threeConfigSelected.value = 0;
   focus(id);
@@ -2998,6 +3392,7 @@ function handleWorkbenchKey(event: { key: string; ctrl?: boolean; meta?: boolean
   else if (event.key === "0") restoreNextMinimizedWindow();
   else if (event.key === "[") adjustTileDensity(-1);
   else if (event.key === "]") adjustTileDensity(1);
+  else if (handleCpuHexGridKey(event)) return;
   else if (event.key === "pageup") scrollWindow(activeWindow.peek(), 0, -windowScrollPage(activeWindow.peek()));
   else if (event.key === "pagedown") scrollWindow(activeWindow.peek(), 0, windowScrollPage(activeWindow.peek()));
   else if (event.key === "home") windowScrolls.get(activeWindow.peek())?.scrollTo(0, 0);
@@ -3019,6 +3414,45 @@ function handleWorkbenchKey(event: { key: string; ctrl?: boolean; meta?: boolean
   else if (event.key === "right") scrollWindow(activeWindow.peek(), 1, 0);
   else if (event.key === "up") scrollWindow(activeWindow.peek(), 0, -1);
   else if (event.key === "down") scrollWindow(activeWindow.peek(), 0, 1);
+}
+
+function handleCpuHexGridKey(event: { key: string; ctrl?: boolean; meta?: boolean; shift?: boolean }): boolean {
+  if (event.ctrl || event.meta || event.shift) return false;
+  const key = event.key;
+  if (key !== "left" && key !== "right" && key !== "up" && key !== "down" && key !== "home" && key !== "end") {
+    return false;
+  }
+
+  const id = activeWindow.peek();
+  if (!isVisualizationWindow(id) || dynamicVisualizationWindows.peek()[id] !== "cpu-hex-grid") return false;
+
+  const system = systemMonitor.snapshot.peek();
+  const cores = system.cpuCores;
+  if (cores.length === 0) return true;
+
+  const currentLabel = selectedCpuHexTiles.peek()[id];
+  const currentIndex = Math.max(0, cores.findIndex((core) => core.label === currentLabel));
+  const scroll = windowScroll(id);
+  const columns = cpuHexGridColumnCount(
+    cores,
+    Math.max(8, scroll.contentWidth.peek()),
+    Math.max(4, scroll.viewportHeight.peek()),
+  );
+  const rawNextIndex = key === "home"
+    ? 0
+    : key === "end"
+    ? cores.length - 1
+    : key === "left"
+    ? currentIndex - 1
+    : key === "right"
+    ? currentIndex + 1
+    : key === "up"
+    ? currentIndex - columns
+    : currentIndex + columns;
+  const nextIndex = Math.max(0, Math.min(cores.length - 1, rawNextIndex));
+
+  selectCpuHexTile(id, cores[nextIndex]!.label);
+  return true;
 }
 
 function handleMenuFocusKey(event: { key: string; ctrl?: boolean; meta?: boolean; shift?: boolean }): void {
@@ -3198,6 +3632,9 @@ function handleThreeConfigKey(event: { key: string; shift?: boolean }): void {
 function closeWindow(id: WindowId): void {
   if (isVisualizationWindow(id)) {
     disposeVisualizationThreePanel(id);
+    disposeAsciiForWindow(id);
+    const { [id]: _removed, ...remainingSelections } = selectedCpuHexTiles.peek();
+    selectedCpuHexTiles.value = remainingSelections;
   }
   windowManager.close(id);
   syncWindowSignalsFromManager();
@@ -3206,7 +3643,7 @@ function closeWindow(id: WindowId): void {
 
 function toggleVisualizationWindow(
   option: NewWindowOption | undefined,
-  options: { keepMenuOpen?: boolean } = {},
+  options: { keepMenuOpen?: boolean; ascii?: AsciiOptions } = {},
 ): void {
   if (!option) return;
   if (isVisualizationLoaded(option.id)) {
@@ -3218,10 +3655,15 @@ function toggleVisualizationWindow(
   addVisualizationWindow(option, options);
 }
 
-function addVisualizationWindow(option: NewWindowOption | undefined, options: { keepMenuOpen?: boolean } = {}): void {
+function addVisualizationWindow(
+  option: NewWindowOption | undefined,
+  options: { keepMenuOpen?: boolean; ascii?: AsciiOptions } = {},
+): void {
   if (!option) return;
   const id = visualizationWindowId(option.id);
   if (!options.keepMenuOpen) closeTopMenus();
+  if (options.ascii) setAsciiForWindow(id, options.ascii);
+  else asciiForWindow(id);
   if (!windowManager.ids({ includeClosed: true }).includes(id)) {
     dynamicVisualizationWindows.value = { ...dynamicVisualizationWindows.peek(), [id]: option.id };
     windowScrolls.set(id, new ScrollAreaController({ showScrollbar: true }));
@@ -3333,6 +3775,48 @@ function selectExplorerRow(index: number): void {
   if (entry?.kind === "file") explorer.openActive();
   else if (entry?.kind === "directory") explorer.tree.toggleActive();
   pushLog(`explorer ${entry?.path ?? index}`);
+}
+
+function selectCpuHexTile(id: VisualizationWindowId, label: string): void {
+  if (dynamicVisualizationWindows.peek()[id] !== "cpu-hex-grid") return;
+  selectedCpuHexTiles.value = { ...selectedCpuHexTiles.peek(), [id]: label };
+  windowManager.focus(id);
+  syncWindowSignalsFromManager();
+  ensureCpuHexTileVisible(id, label);
+  const processes = processesForCpuLabel(label, systemMonitor.snapshot.peek()).slice(0, 3);
+  const processLabel = processes.length > 0
+    ? processes.map((process) => `${process.name}:${process.cpuPercent.toFixed(0)}%`).join(", ")
+    : "no top process in sample";
+  pushLog(`cpu ${label} selected: ${processLabel}`);
+}
+
+function processesForCpuLabel(label: string, system: SystemSnapshot) {
+  const cpuId = Number(label);
+  return Number.isFinite(cpuId)
+    ? system.processes.filter((process) => process.processor === cpuId)
+    : system.processes.filter((process) => String(process.processor) === label);
+}
+
+function ensureCpuHexTileVisible(id: VisualizationWindowId, label: string): void {
+  const scroll = windowScrolls.get(id);
+  if (!scroll) return;
+  const system = systemMonitor.snapshot.peek();
+  const tile = cpuHexTileLayout(
+    system.cpuCores,
+    Math.max(8, scroll.contentWidth.peek()),
+    Math.max(4, scroll.viewportHeight.peek()),
+  ).find((entry) => entry.label === label);
+  if (!tile) return;
+
+  const bodyHeaderRows = 2;
+  const cpuHexSummaryRows = 2;
+  const tileRow = bodyHeaderRows + cpuHexSummaryRows + tile.row;
+  const offset = scroll.offset.peek();
+  if (tileRow < offset.rows) {
+    scroll.scrollTo(offset.columns, tileRow);
+  } else if (tileRow >= offset.rows + scroll.viewportHeight.peek()) {
+    scroll.scrollTo(offset.columns, tileRow - Math.max(0, scroll.viewportHeight.peek() - 1));
+  }
 }
 
 function setSliderFromPointer(controller: SliderController, rect: Rectangle, x: number): void {

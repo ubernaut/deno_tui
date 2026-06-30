@@ -33,6 +33,7 @@ export function buildAsciiOptionsFromPreset(presetId: string, border: BorderMode
     blendWithBase: effect.blendWithBase ?? 0.24,
     depthFalloff: effect.depthFalloff ?? 0.18,
     depthOffset: effect.depthOffset ?? 110,
+    wireframeThickness: 8,
     edges: effect.edges ?? true,
     fill: effect.fill ?? true,
     invertLuminance: effect.invertLuminance ?? false,
@@ -87,6 +88,7 @@ export function asciiControlValues(
     | "blendWithBase"
     | "depthFalloff"
     | "depthOffset"
+    | "wireframeThickness"
     | "terminalEdgeBias"
   >,
 ) {
@@ -107,6 +109,8 @@ export function asciiControlValues(
       return [0, 0.08, 0.14, 0.18, 0.24, 0.32, 0.4];
     case "depthOffset":
       return [0, 60, 90, 105, 110, 116, 140, 180];
+    case "wireframeThickness":
+      return [0.5, 0.75, 1, 1.4, 1.8, 2, 2.4, 3, 4, 6, 8, 12, 16, 24, 32];
     case "terminalEdgeBias":
       return [0.6, 0.8, 0.92, 1, 1.15, 1.3, 1.4, 1.6, 1.8];
   }
@@ -123,6 +127,7 @@ export function formatAsciiControlValue(
     | "blendWithBase"
     | "depthFalloff"
     | "depthOffset"
+    | "wireframeThickness"
     | "terminalEdgeBias"
   >,
   value: number,

@@ -6,6 +6,7 @@ import {
   asciiDemoPresetSummaries,
   findAsciiDemoPreset,
 } from "../src/three_ascii/demo_presets.ts";
+import { asciiControlValues, createDefaultAsciiOptions } from "../app/ascii_options.ts";
 
 Deno.test("ascii demo preset helpers expose stable ids and style filters", () => {
   assertEquals(asciiDemoPresetIds().slice(0, 3), ["opentui-blocks", "glyph-atlas", "mixed-best"]);
@@ -41,4 +42,12 @@ Deno.test("asciiDemoPresets returns clones instead of the shared preset table", 
   preset.effect.edgeThreshold = 123;
 
   assertNotEquals(ASCII_DEMO_PRESETS[0]?.effect.edgeThreshold, 123);
+});
+
+Deno.test("workbench ascii defaults favor terminal-visible wire thickness", () => {
+  assertEquals(createDefaultAsciiOptions("sharp").wireframeThickness, 8);
+
+  const values = asciiControlValues("wireframeThickness");
+  assertEquals(values.includes(8), true);
+  assertEquals(values.at(-1), 32);
 });

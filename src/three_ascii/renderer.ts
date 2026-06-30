@@ -668,6 +668,7 @@ export class ThreeAsciiRenderer {
     this.asciiNode?.dispose();
     this.asciiNode = undefined;
 
+    this.renderer?.setAnimationLoop?.(null);
     this.renderer?.dispose();
     this.renderer = undefined;
     this.device = undefined;

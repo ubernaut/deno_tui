@@ -860,6 +860,7 @@ function renderVisualizationBody(
       blendWithBase: 0,
       depthFalloff: 1,
       depthOffset: 0,
+      wireframeThickness: 8,
       edges: false,
       fill: true,
       invertLuminance: false,

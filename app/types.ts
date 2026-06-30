@@ -80,6 +80,7 @@ export interface AsciiOptions {
   blendWithBase: number;
   depthFalloff: number;
   depthOffset: number;
+  wireframeThickness: number;
   edges: boolean;
   fill: boolean;
   invertLuminance: boolean;
@@ -147,6 +148,7 @@ export interface ProcessSnapshot {
   cpuPercent: number;
   memoryPercent: number;
   memoryBytes: number;
+  processor?: number;
 }
 
 export interface GpuSnapshot {
@@ -257,6 +259,7 @@ export interface RenderContext {
   phase: number;
   width: number;
   height: number;
+  selectedCpuLabel?: string;
 }
 
 export type MenuKind = "help" | "routing" | "layout" | "options";

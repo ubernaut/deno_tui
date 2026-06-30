@@ -12,41 +12,48 @@ const empty: string[] = [];
 /** Converts given text to array of strings which consist of sequences which represent a single character */
 export function getMultiCodePointCharacters(text: string): string[] {
   if (!text) return empty;
+
+  if (text.includes("\x1b")) {
+    return getStyledCharacters(text);
+  }
+
   const matched = text.match(UNICODE_CHAR_REGEXP);
 
-  if (matched?.includes("\x1b")) {
-    const arr: string[] = [];
-    let i = 0;
-    let ansi = 0;
-    let lastStyle = "";
-    for (const char of matched) {
-      arr[i] ??= "";
-      arr[i] += lastStyle + char;
+  return matched ?? empty;
+}
 
-      if (char === "\x1b") {
-        ++ansi;
-        lastStyle += "\x1b";
-      } else if (ansi) {
-        lastStyle += char;
+function getStyledCharacters(text: string): string[] {
+  const cells: string[] = [];
+  let style = "";
 
-        if (ansi === 3 && char === "m" && lastStyle[lastStyle.length - 2] === "0") {
-          lastStyle = "";
+  for (let index = 0; index < text.length;) {
+    if (text.charCodeAt(index) === 0x1b) {
+      const match = /^\x1b\[[0-?]*[ -/]*[@-~]/.exec(text.slice(index));
+      if (match) {
+        const sequence = match[0];
+        if (sequence.endsWith("m")) {
+          style = isSgrReset(sequence) ? "" : style + sequence;
         }
-
-        if (char === "m") {
-          ansi = 0;
-        } else {
-          ++ansi;
-        }
-      } else {
-        ++i;
+        index += sequence.length;
+        continue;
       }
     }
 
-    return arr;
+    UNICODE_CHAR_REGEXP.lastIndex = 0;
+    const match = UNICODE_CHAR_REGEXP.exec(text.slice(index));
+    const char = match?.index === 0
+      ? match[0]
+      : String.fromCodePoint(text.codePointAt(index) ?? text.charCodeAt(index));
+    cells.push(style ? `${style}${char}\x1b[0m` : char);
+    index += char.length;
   }
 
-  return matched ?? empty;
+  return cells;
+}
+
+function isSgrReset(sequence: string): boolean {
+  const body = sequence.slice(2, -1);
+  return body === "" || body === "0";
 }
 
 /** Strips string of all its styles */

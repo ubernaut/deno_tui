@@ -356,6 +356,7 @@ export class SystemMonitor {
         cpuPercent,
         memoryPercent: clamp((parsed.memoryBytes / totalMemory) * 100, 0, 100),
         memoryBytes: parsed.memoryBytes,
+        processor: parsed.processor,
       });
     }
 
@@ -377,11 +378,13 @@ function parseProcessStat(stat: string, pageSize: number) {
   const utime = Number(tail[11] ?? 0);
   const stime = Number(tail[12] ?? 0);
   const rssPages = Number(tail[21] ?? 0);
+  const processor = Number(tail[36] ?? Number.NaN);
   return {
     name,
     state,
     cpuTime: utime + stime,
     memoryBytes: rssPages * pageSize,
+    processor: Number.isFinite(processor) ? processor : undefined,
   };
 }
 

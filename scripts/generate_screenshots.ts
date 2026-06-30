@@ -62,7 +62,7 @@ const targets: ScreenshotTarget[] = [
     rows: 36,
     command: ["deno", "task", "api-workbench"],
     mode: "pty",
-    timeoutMs: 1200,
+    timeoutMs: 6000,
   },
   {
     filename: "demo-gallery.jpg",
@@ -110,7 +110,7 @@ const targets: ScreenshotTarget[] = [
     rows: 36,
     command: ["deno", "task", "viz"],
     mode: "pty",
-    timeoutMs: 1600,
+    timeoutMs: 4600,
   },
   {
     filename: "dashboard.jpg",
