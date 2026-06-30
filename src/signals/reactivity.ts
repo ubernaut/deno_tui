@@ -1,20 +1,26 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { Signal } from "./signal.ts";
 
+/** Public type alias for a reactive. */
 export type Reactive<T> = T & {
   [IS_REACTIVE]: true;
   [ORIGINAL_REF]: T;
   [CONNECTED_SIGNAL]: Signal<T>;
 };
 
+/** Built-in iS REACTIVE definitions. */
 export const IS_REACTIVE = Symbol("reactive");
+/** Built-in oRIGINAL REF definitions. */
 export const ORIGINAL_REF = Symbol("original_ref");
+/** Built-in cONNECTED SIGNAL definitions. */
 export const CONNECTED_SIGNAL = Symbol("connected_signal");
 
+/** Public helper for is Reactive. */
 export function isReactive<T>(input: T): input is Reactive<T> {
   return input instanceof Object && IS_REACTIVE in input;
 }
 
+/** Public helper for get Connected Signal. */
 export function getConnectedSignal<T extends object>(
   input: T | Reactive<T>,
 ): Signal<T> {
@@ -25,6 +31,7 @@ export function getConnectedSignal<T extends object>(
   throw "Failed to get connected signal as input isn't reactive";
 }
 
+/** Public helper for get Original Ref. */
 export function getOriginalRef<T extends object>(input: T | Reactive<T>): T {
   if (isReactive(input)) {
     return input[ORIGINAL_REF];

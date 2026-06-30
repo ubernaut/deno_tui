@@ -1,20 +1,24 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { Signal } from "../signals/mod.ts";
 
+/** Public interface describing a route. */
 export interface Route {
   id: string;
   title?: string;
 }
 
+/** Options for configuring route Register. */
 export interface RouteRegisterOptions {
   activate?: boolean;
   replace?: boolean;
 }
 
+/** Options for configuring route Unregister. */
 export interface RouteUnregisterOptions {
   fallbackRouteId?: string;
 }
 
+/** Serializable inspection snapshot for route. */
 export interface RouteInspection<TRoute extends Route = Route> {
   count: number;
   activeRouteId: string;
@@ -24,6 +28,7 @@ export interface RouteInspection<TRoute extends Route = Route> {
   routes: TRoute[];
 }
 
+/** Public class implementing a route Manager. */
 export class RouteManager<TRoute extends Route = Route> {
   readonly routes: Signal<TRoute[]>;
   readonly activeRouteId: Signal<string>;

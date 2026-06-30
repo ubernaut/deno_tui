@@ -18,6 +18,7 @@ import type { Route } from "./router.ts";
 import type { SettingsController } from "./settings.ts";
 import { bindDataQuerySetting, type DataQuerySettingBindingOptions, type SettingBinding } from "./settings_bindings.ts";
 
+/** Options for configuring data Query Plugin. */
 export interface DataQueryPluginOptions<
   TRow extends Record<string, unknown>,
   TParams extends DataQueryParams = DataQueryParams,
@@ -37,6 +38,7 @@ export interface DataQueryPluginOptions<
   install?: (context: DataQueryPluginInstallContext<TRow, TParams>) => AppPluginDisposer;
 }
 
+/** Context object passed to data Query Plugin Install callbacks. */
 export interface DataQueryPluginInstallContext<
   TRow extends Record<string, unknown>,
   TParams extends DataQueryParams = DataQueryParams,
@@ -48,6 +50,7 @@ export interface DataQueryPluginInstallContext<
   paramsSetting?: SettingBinding<ReturnType<DataQueryController<TRow>["params"]["peek"]>, unknown>;
 }
 
+/** Serializable inspection snapshot for data Query Plugin. */
 export interface DataQueryPluginInspection<TRow = unknown> {
   id?: string;
   label?: string;
@@ -60,6 +63,7 @@ export interface DataQueryPluginInspection<TRow = unknown> {
   keymapMirroringEnabled: boolean;
 }
 
+/** Public interface describing a data Query App Plugin. */
 export interface DataQueryAppPlugin<
   TRow extends Record<string, unknown>,
   TAction extends Action = DataQueryCommandAction<TRow>,
@@ -69,6 +73,7 @@ export interface DataQueryAppPlugin<
   inspect(): DataQueryPluginInspection<TRow>;
 }
 
+/** Creates an data Query Plugin. */
 export function createDataQueryPlugin<
   TRow extends Record<string, unknown>,
   TAction extends Action = DataQueryCommandAction<TRow>,

@@ -3,17 +3,21 @@ import type { RadioGroupController, RadioGroupInspection, RadioOption } from "..
 import type { Action } from "./actions.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
+/** Identifier union for radio Group Command variants. */
 export type RadioGroupCommandKind = "first" | "previous" | "next" | "last" | "select" | "option";
 
+/** Action union emitted by radio Group Command command helpers. */
 export type RadioGroupCommandAction =
   | Action<"radioGroup.changed", RadioGroupCommandPayload>
   | Action<"radioGroup.optionSelected", RadioGroupCommandPayload & { option: RadioOption }>;
 
+/** Payload carried by radio Group Command actions. */
 export interface RadioGroupCommandPayload {
   id: string;
   inspection: RadioGroupInspection;
 }
 
+/** Options for configuring radio Group Command. */
 export interface RadioGroupCommandOptions {
   id?: string;
   idPrefix?: string;
@@ -25,6 +29,7 @@ export interface RadioGroupCommandOptions {
   optionLabel?: (option: RadioOption, index: number) => string;
 }
 
+/** Builds command definitions for radio Group. */
 export function radioGroupCommands<TAction extends Action = RadioGroupCommandAction>(
   controller: RadioGroupController,
   options: RadioGroupCommandOptions = {},
@@ -97,6 +102,7 @@ export function radioGroupCommands<TAction extends Action = RadioGroupCommandAct
   return commands;
 }
 
+/** Binds radio Group Commands behavior and returns a disposer when applicable. */
 export function bindRadioGroupCommands<TAction extends Action = RadioGroupCommandAction>(
   registry: CommandRegistry<TAction>,
   controller: RadioGroupController,

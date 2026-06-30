@@ -1,6 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { Style, Theme, ThemeEngine, ThemeProvider, ThemeState } from "./theme.ts";
 
+/** Serializable inspection snapshot for theme Engine Cache. */
 export interface ThemeEngineCacheInspection {
   themeEntries: number;
   styleEntries: number;
@@ -8,10 +9,12 @@ export interface ThemeEngineCacheInspection {
   misses: number;
 }
 
+/** Serializable inspection snapshot for theme Provider Cache. */
 export interface ThemeProviderCacheInspection extends ThemeEngineCacheInspection {
   activeId: string;
 }
 
+/** Public class implementing a theme Engine Cache. */
 export class ThemeEngineCache {
   readonly engine: ThemeEngine;
   #themes = new Map<string, Theme>();
@@ -66,6 +69,7 @@ export class ThemeEngineCache {
   }
 }
 
+/** Public class implementing a theme Provider Cache. */
 export class ThemeProviderCache {
   readonly provider: ThemeProvider;
   #cache: ThemeEngineCache;
@@ -115,10 +119,12 @@ export class ThemeProviderCache {
   }
 }
 
+/** Creates an theme Engine Cache. */
 export function createThemeEngineCache(engine: ThemeEngine): ThemeEngineCache {
   return new ThemeEngineCache(engine);
 }
 
+/** Creates an theme Provider Cache. */
 export function createThemeProviderCache(provider: ThemeProvider): ThemeProviderCache {
   return new ThemeProviderCache(provider);
 }

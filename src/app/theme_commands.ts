@@ -4,26 +4,31 @@ import type { ThemeProviderPreview, ThemeProviderPreviewOptions } from "../theme
 import type { Action } from "./actions.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
+/** Action union emitted by theme Command command helpers. */
 export type ThemeCommandAction =
   | Action<"theme.changed", ThemeChangedPayload>
   | Action<"theme.layer.changed", ThemeLayerChangedPayload>
   | Action<"theme.previewed", ThemePreviewPayload>;
 
+/** Payload carried by theme Changed actions. */
 export interface ThemeChangedPayload {
   id: string;
   previousId: string;
   direction?: number;
 }
 
+/** Payload carried by theme Layer Changed actions. */
 export interface ThemeLayerChangedPayload {
   id: string;
   enabled: boolean;
 }
 
+/** Payload carried by theme Preview actions. */
 export interface ThemePreviewPayload {
   preview: ThemeProviderPreview;
 }
 
+/** Options for configuring theme Command. */
 export interface ThemeCommandOptions {
   group?: string;
   themePrefix?: string;
@@ -38,6 +43,7 @@ export interface ThemeCommandOptions {
   preview?: ThemeProviderPreviewOptions;
 }
 
+/** Builds command definitions for theme. */
 export function themeCommands(
   provider: ThemeProvider,
   options: ThemeCommandOptions = {},
@@ -49,6 +55,7 @@ export function themeCommands(
   ];
 }
 
+/** Binds theme Commands behavior and returns a disposer when applicable. */
 export function bindThemeCommands<TAction extends Action = ThemeCommandAction>(
   registry: CommandRegistry<TAction>,
   provider: ThemeProvider,
@@ -57,6 +64,7 @@ export function bindThemeCommands<TAction extends Action = ThemeCommandAction>(
   return registry.registerAll(themeCommands(provider, options) as unknown as Command<TAction>[]);
 }
 
+/** Builds command definitions for theme Selection. */
 export function themeSelectionCommands(
   provider: ThemeProvider,
   options: ThemeCommandOptions = {},
@@ -116,6 +124,7 @@ export function themeSelectionCommands(
   return commands;
 }
 
+/** Builds command definitions for theme Preview. */
 export function themePreviewCommands(
   provider: ThemeProvider,
   options: ThemeCommandOptions = {},
@@ -139,6 +148,7 @@ export function themePreviewCommands(
   ];
 }
 
+/** Builds command definitions for theme Layer. */
 export function themeLayerCommands(
   target: ThemeProvider | ThemeLayerStack,
   options: ThemeCommandOptions = {},

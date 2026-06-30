@@ -7,17 +7,20 @@ import { Text } from "./text.ts";
 
 const DEFAULT_LOG_LINE_LIMIT = 500;
 
+/** Options for configuring log Viewer. */
 export interface LogViewerOptions extends ComponentOptions {
   lines: string[] | Signal<string[]>;
   follow?: boolean;
 }
 
+/** Options for configuring log Viewer Controller. */
 export interface LogViewerControllerOptions {
   lines?: string[] | Signal<string[]>;
   limit?: number | Signal<number>;
   follow?: boolean | Signal<boolean>;
 }
 
+/** Serializable inspection snapshot for log Viewer. */
 export interface LogViewerInspection {
   lines: string[];
   lineCount: number;
@@ -27,11 +30,13 @@ export interface LogViewerInspection {
   empty: boolean;
 }
 
+/** Public helper for visible Log Lines. */
 export function visibleLogLines(lines: readonly string[], height: number, follow = true): string[] {
   const safeHeight = Math.max(0, height);
   return (follow ? lines.slice(-safeHeight) : lines.slice(0, safeHeight)).map((line) => line);
 }
 
+/** State controller for log Viewer behavior. */
 export class LogViewerController {
   readonly lines: Signal<string[]>;
   readonly limit: Signal<number>;
@@ -105,6 +110,7 @@ export class LogViewerController {
   }
 }
 
+/** Public class implementing a log Viewer. */
 export class LogViewer extends Component {
   constructor(private readonly options: LogViewerOptions) {
     super(options);

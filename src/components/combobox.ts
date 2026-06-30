@@ -4,6 +4,7 @@ import { signalify } from "../utils/signals.ts";
 import { Button, ButtonOptions } from "./button.ts";
 import { stackedRowIndexAt } from "./interaction.ts";
 
+/** Options for configuring combo Box. */
 export interface ComboBoxOptions<Items extends string[] = string[]>
   extends Omit<ButtonOptions, "label" | "controller"> {
   placeholder?: string;
@@ -15,6 +16,7 @@ export interface ComboBoxOptions<Items extends string[] = string[]>
   onExpandedChange?: (expanded: boolean) => void | Promise<void>;
 }
 
+/** Options for configuring combo Box Controller. */
 export interface ComboBoxControllerOptions<Items extends string[] = string[]> {
   placeholder?: string | Signal<string>;
   items: Items | SignalOfObject<Items>;
@@ -24,6 +26,7 @@ export interface ComboBoxControllerOptions<Items extends string[] = string[]> {
   onExpandedChange?: (expanded: boolean) => void | Promise<void>;
 }
 
+/** Serializable inspection snapshot for combo Box. */
 export interface ComboBoxInspection {
   items: string[];
   itemCount: number;
@@ -35,11 +38,13 @@ export interface ComboBoxInspection {
   empty: boolean;
 }
 
+/** Clamps combo Box Index to its valid range. */
 export function clampComboBoxIndex(items: readonly string[], index: number | undefined): number | undefined {
   if (items.length === 0 || index === undefined || !Number.isFinite(index)) return undefined;
   return Math.max(0, Math.min(Math.floor(index), items.length - 1));
 }
 
+/** Public helper for combo Box Label. */
 export function comboBoxLabel(
   items: readonly string[],
   selectedIndex: number | undefined,
@@ -49,6 +54,7 @@ export function comboBoxLabel(
   return selected === undefined ? placeholder : items[selected] ?? placeholder;
 }
 
+/** State controller for combo Box behavior. */
 export class ComboBoxController<Items extends string[] = string[]> {
   readonly items: Signal<Items>;
   readonly selectedIndex: Signal<number | undefined>;

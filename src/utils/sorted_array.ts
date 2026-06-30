@@ -1,5 +1,6 @@
 // Copyright 2023 Im-Beast. MIT license.
 
+/** Public type alias for a compare Fn. */
 export type CompareFn<T> = (a: T, b: T) => number;
 
 /**

@@ -2,6 +2,7 @@
 import type { Signal } from "../signals/mod.ts";
 import type { AsyncResource, AsyncResourceState } from "./resource.ts";
 
+/** Options for configuring resource Params Binding. */
 export interface ResourceParamsBindingOptions<TParams, TData> {
   initialLoad?: boolean;
   debounceMs?: number;
@@ -10,6 +11,7 @@ export interface ResourceParamsBindingOptions<TParams, TData> {
   onError?: (error: unknown) => void | Promise<void>;
 }
 
+/** Serializable inspection snapshot for resource Params Binding. */
 export interface ResourceParamsBindingInspection<TParams, TData> {
   disposed: boolean;
   pending: boolean;
@@ -19,6 +21,7 @@ export interface ResourceParamsBindingInspection<TParams, TData> {
   resource: ReturnType<AsyncResource<TParams, TData>["inspect"]>;
 }
 
+/** Public type alias for a resource Params Binding Handle. */
 export type ResourceParamsBindingHandle<TParams, TData> = (() => void) & {
   dispose(): void;
   flush(): void;
@@ -26,6 +29,7 @@ export type ResourceParamsBindingHandle<TParams, TData> = (() => void) & {
   inspect(): ResourceParamsBindingInspection<TParams, TData>;
 };
 
+/** Binds resource Params behavior and returns a disposer when applicable. */
 export function bindResourceParams<TParams, TData>(
   resource: AsyncResource<TParams, TData>,
   params: Signal<TParams>,

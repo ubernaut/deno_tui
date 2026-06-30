@@ -4,8 +4,10 @@ import type { Action } from "./actions.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 import type { Route, RouteManager } from "./router.ts";
 
+/** Identifier union for route Command variants. */
 export type RouteCommandKind = "previous" | "next" | "select";
 
+/** Options for configuring route Command. */
 export interface RouteCommandOptions<TRoute extends Route = Route> {
   idPrefix?: string;
   group?: string;
@@ -17,14 +19,17 @@ export interface RouteCommandOptions<TRoute extends Route = Route> {
   label?: (route: TRoute) => string;
 }
 
+/** Options for configuring route Signal Binding. */
 export interface RouteSignalBindingOptions {
   initialSync?: "route" | "signal";
   fallbackRouteId?: string;
   onInvalidRoute?: (routeId: string) => void;
 }
 
+/** Public type alias for a route Id Source. */
 export type RouteIdSource = readonly string[] | Signal<readonly string[]>;
 
+/** Options for configuring route Index Binding. */
 export interface RouteIndexBindingOptions {
   routeIds?: RouteIdSource;
   initialSync?: "route" | "index";
@@ -32,6 +37,7 @@ export interface RouteIndexBindingOptions {
   onInvalidIndex?: (index: number) => void;
 }
 
+/** Binds route Signal behavior and returns a disposer when applicable. */
 export function bindRouteSignal<TRoute extends Route = Route>(
   routes: RouteManager<TRoute>,
   routeId: Signal<string>,
@@ -85,6 +91,7 @@ export function bindRouteSignal<TRoute extends Route = Route>(
   };
 }
 
+/** Binds route Index behavior and returns a disposer when applicable. */
 export function bindRouteIndex<TRoute extends Route = Route>(
   routes: RouteManager<TRoute>,
   activeIndex: Signal<number>,
@@ -178,6 +185,7 @@ export function bindRouteIndex<TRoute extends Route = Route>(
   };
 }
 
+/** Builds command definitions for route. */
 export function routeCommands<TAction extends Action = Action, TRoute extends Route = Route>(
   routes: RouteManager<TRoute>,
   options: RouteCommandOptions<TRoute> = {},
@@ -231,6 +239,7 @@ export function routeCommands<TAction extends Action = Action, TRoute extends Ro
   return commands;
 }
 
+/** Binds route Commands behavior and returns a disposer when applicable. */
 export function bindRouteCommands<TAction extends Action = Action, TRoute extends Route = Route>(
   registry: CommandRegistry<TAction>,
   routes: RouteManager<TRoute>,

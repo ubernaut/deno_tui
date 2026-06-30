@@ -15,12 +15,14 @@ import { signalify } from "../utils/signals.ts";
 import { cropToWidth, insertAt } from "../utils/strings.ts";
 import type { KeyPressEvent } from "../input_reader/types.ts";
 
+/** Public interface describing an input Theme. */
 export interface InputTheme extends Theme {
   value: Theme;
   cursor: Theme;
   placeholder: Theme;
 }
 
+/** Public interface describing an input Rectangle. */
 export interface InputRectangle {
   column: number;
   row: number;
@@ -28,6 +30,7 @@ export interface InputRectangle {
   height?: 1;
 }
 
+/** Options for configuring input. */
 export interface InputOptions extends Omit<ComponentOptions, "rectangle"> {
   text?: string | Signal<string>;
   validator?: RegExp | Signal<RegExp | undefined>;
@@ -42,6 +45,7 @@ export interface InputOptions extends Omit<ComponentOptions, "rectangle"> {
   theme: DeepPartial<InputTheme, "cursor">;
 }
 
+/** Options for configuring input Controller. */
 export interface InputControllerOptions {
   text?: string | Signal<string>;
   cursorPosition?: number | Signal<number>;
@@ -53,6 +57,7 @@ export interface InputControllerOptions {
   onSubmit?: (value: string) => void | Promise<void>;
 }
 
+/** Serializable inspection snapshot for input. */
 export interface InputInspection {
   text: string;
   cursorPosition: number;
@@ -63,12 +68,14 @@ export interface InputInspection {
   valid: boolean;
 }
 
+/** Public type alias for an input Edit Result. */
 export type InputEditResult =
   | "changed"
   | "submitted"
   | "moved"
   | "ignored";
 
+/** State controller for input behavior. */
 export class InputController {
   readonly text: Signal<string>;
   readonly cursorPosition: Signal<number>;

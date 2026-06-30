@@ -3,8 +3,10 @@ import { Signal } from "../signals/mod.ts";
 import type { AsyncScheduler } from "./scheduler.ts";
 import type { AsyncStore } from "./storage.ts";
 
+/** Public type alias for an async Resource Status. */
 export type AsyncResourceStatus = "idle" | "loading" | "success" | "error";
 
+/** State snapshot for async Resource. */
 export interface AsyncResourceState<TData = unknown, TParams = unknown> {
   status: AsyncResourceStatus;
   data?: TData;
@@ -13,16 +15,19 @@ export interface AsyncResourceState<TData = unknown, TParams = unknown> {
   revision: number;
 }
 
+/** Context object passed to async Resource callbacks. */
 export interface AsyncResourceContext<TParams = unknown> {
   signal: AbortSignal;
   params: TParams;
   revision: number;
 }
 
+/** Public type alias for an async Resource Loader. */
 export type AsyncResourceLoader<TParams, TData> = (
   context: AsyncResourceContext<TParams>,
 ) => TData | Promise<TData>;
 
+/** Options for configuring async Resource. */
 export interface AsyncResourceOptions<TParams, TData> {
   loader: AsyncResourceLoader<TParams, TData>;
   scheduler?: AsyncScheduler;
@@ -32,6 +37,7 @@ export interface AsyncResourceOptions<TParams, TData> {
   keepPreviousData?: boolean;
 }
 
+/** Serializable inspection snapshot for async Resource. */
 export interface AsyncResourceInspection<TData = unknown, TParams = unknown>
   extends AsyncResourceState<TData, TParams> {
   loading: boolean;
@@ -40,8 +46,10 @@ export interface AsyncResourceInspection<TData = unknown, TParams = unknown>
   aborted: boolean;
 }
 
+/** Key union for async Resource Cache values. */
 export type AsyncResourceCacheKey<TParams> = string | ((params: TParams) => string);
 
+/** Options for configuring cached Async Resource. */
 export interface CachedAsyncResourceOptions<TParams, TData, Stored = TData>
   extends AsyncResourceOptions<TParams, TData> {
   store?: AsyncStore<Stored>;
@@ -51,12 +59,14 @@ export interface CachedAsyncResourceOptions<TParams, TData, Stored = TData>
   onCacheError?: (error: unknown) => void;
 }
 
+/** Serializable inspection snapshot for cached Async Resource. */
 export interface CachedAsyncResourceInspection<TData = unknown, TParams = unknown>
   extends AsyncResourceInspection<TData, TParams> {
   cached: boolean;
   key?: string;
 }
 
+/** Public class implementing an async Resource. */
 export class AsyncResource<TParams = void, TData = unknown> {
   readonly state: Signal<AsyncResourceState<TData, TParams>>;
   readonly #loader: AsyncResourceLoader<TParams, TData>;
@@ -183,6 +193,7 @@ export class AsyncResource<TParams = void, TData = unknown> {
   }
 }
 
+/** Error thrown for invalid async Resource Params operations. */
 export class AsyncResourceParamsError extends Error {
   constructor() {
     super("AsyncResource cannot reload before params have been provided.");
@@ -190,12 +201,14 @@ export class AsyncResourceParamsError extends Error {
   }
 }
 
+/** Creates an async Resource. */
 export function createAsyncResource<TParams, TData>(
   options: AsyncResourceOptions<TParams, TData>,
 ): AsyncResource<TParams, TData> {
   return new AsyncResource(options);
 }
 
+/** Public class implementing a cached Async Resource. */
 export class CachedAsyncResource<TParams = void, TData = unknown, Stored = TData> {
   readonly resource: AsyncResource<TParams, TData>;
   readonly state: Signal<AsyncResourceState<TData, TParams>>;
@@ -303,6 +316,7 @@ export class CachedAsyncResource<TParams = void, TData = unknown, Stored = TData
   }
 }
 
+/** Creates an cached Async Resource. */
 export function createCachedAsyncResource<TParams, TData, Stored = TData>(
   options: CachedAsyncResourceOptions<TParams, TData, Stored>,
 ): CachedAsyncResource<TParams, TData, Stored> {

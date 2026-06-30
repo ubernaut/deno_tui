@@ -4,6 +4,7 @@ import type { ConsoleSize, Stdout } from "../types.ts";
 
 const ANSI_PATTERN = /\x1b\[[0-?]*[ -/]*[@-~]/g;
 
+/** Public interface describing a test Stdout. */
 export interface TestStdout {
   readonly chunks: Uint8Array[];
   readonly text: string;
@@ -11,19 +12,23 @@ export interface TestStdout {
   clear(): void;
 }
 
+/** Options for configuring test Canvas. */
 export interface TestCanvasOptions {
   size?: ConsoleSize;
   stdout?: TestStdout;
 }
 
+/** Public helper for strip Ansi. */
 export function stripAnsi(value: string): string {
   return value.replace(ANSI_PATTERN, "");
 }
 
+/** Public helper for normalize Terminal Snapshot. */
 export function normalizeTerminalSnapshot(value: string): string {
   return stripAnsi(value).replace(/[ \t]+$/gm, "").trimEnd();
 }
 
+/** Public helper for frame Buffer To Snapshot. */
 export function frameBufferToSnapshot(frameBuffer: readonly (readonly (string | Uint8Array | undefined)[])[]): string {
   const decoder = new TextDecoder();
   return normalizeTerminalSnapshot(
@@ -39,6 +44,7 @@ export function frameBufferToSnapshot(frameBuffer: readonly (readonly (string | 
   );
 }
 
+/** Creates an test Stdout. */
 export function createTestStdout(): TestStdout {
   const decoder = new TextDecoder();
   const chunks: Uint8Array[] = [];
@@ -57,6 +63,7 @@ export function createTestStdout(): TestStdout {
   };
 }
 
+/** Creates an test Canvas. */
 export function createTestCanvas(options: TestCanvasOptions = {}): Canvas {
   return new Canvas({
     stdout: (options.stdout ?? createTestStdout()) as unknown as Stdout,
@@ -64,15 +71,18 @@ export function createTestCanvas(options: TestCanvasOptions = {}): Canvas {
   });
 }
 
+/** Public helper for canvas Snapshot. */
 export function canvasSnapshot(canvas: Canvas): string {
   return frameBufferToSnapshot(canvas.frameBuffer);
 }
 
+/** Public helper for canvas Row Text. */
 export function canvasRowText(canvas: Canvas, row: number, width = canvas.size.peek().columns): string {
   return Array.from({ length: Math.max(0, width) }, (_, column) => String(canvas.frameBuffer[row]?.[column] ?? " "))
     .join("");
 }
 
+/** Public interface describing a terminal Snapshot Mismatch. */
 export interface TerminalSnapshotMismatch {
   line: number;
   column: number;
@@ -80,6 +90,7 @@ export interface TerminalSnapshotMismatch {
   actual: string;
 }
 
+/** Public interface describing a terminal Snapshot Comparison. */
 export interface TerminalSnapshotComparison {
   pass: boolean;
   expected: string;
@@ -87,10 +98,12 @@ export interface TerminalSnapshotComparison {
   mismatches: TerminalSnapshotMismatch[];
 }
 
+/** Options for configuring terminal Snapshot Diff. */
 export interface TerminalSnapshotDiffOptions {
   maxMismatches?: number;
 }
 
+/** Public helper for compare Terminal Snapshot. */
 export function compareTerminalSnapshot(
   actual: string,
   expected: string,
@@ -125,6 +138,7 @@ export function compareTerminalSnapshot(
   };
 }
 
+/** Formats terminal Snapshot Diff for display or diagnostics. */
 export function formatTerminalSnapshotDiff(
   comparison: TerminalSnapshotComparison,
 ): string {
@@ -140,6 +154,7 @@ export function formatTerminalSnapshotDiff(
   return lines.join("\n");
 }
 
+/** Public helper for assert Terminal Snapshot. */
 export function assertTerminalSnapshot(
   actual: string,
   expected: string,

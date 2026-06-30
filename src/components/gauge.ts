@@ -4,6 +4,7 @@ import { Component, type ComponentOptions } from "../component.ts";
 import { Computed, type Signal } from "../signals/mod.ts";
 import { Text } from "./text.ts";
 
+/** Options for configuring gauge. */
 export interface GaugeOptions extends ComponentOptions {
   value: number | Signal<number>;
   min?: number;
@@ -11,6 +12,7 @@ export interface GaugeOptions extends ComponentOptions {
   label?: string;
 }
 
+/** Renders gauge into deterministic text rows. */
 export function renderGauge(value: number, width: number, min = 0, max = 1, label = ""): string {
   const safeWidth = Math.max(0, width);
   if (safeWidth === 0) return "";
@@ -21,6 +23,7 @@ export function renderGauge(value: number, width: number, min = 0, max = 1, labe
   return `${prefix}[${"█".repeat(filled)}${" ".repeat(Math.max(0, barWidth - filled))}]`.slice(0, safeWidth);
 }
 
+/** Public class implementing a gauge. */
 export class Gauge extends Component {
   constructor(private readonly options: GaugeOptions) {
     super(options);

@@ -51,6 +51,7 @@ const _renderSize = /* @__PURE__ */ new Vector2();
 
 let _rendererState: unknown;
 
+/** Options for configuring acerola Ascii Node. */
 export interface AcerolaAsciiNodeOptions {
   resolutionScale?: number;
   zoom?: number;
@@ -107,6 +108,7 @@ function copyOffsetValue(target: Vector2, input: Vector2 | { x: number; y: numbe
   target.set(input.x, input.y);
 }
 
+/** Public class implementing an acerola Ascii Node. */
 export class AcerolaAsciiNode extends TempNode {
   readonly colorNode: any;
   readonly depthNode: any;

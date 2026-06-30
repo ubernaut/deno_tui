@@ -2,19 +2,24 @@
 import { Signal } from "../signals/mod.ts";
 import { DisposableStack } from "./disposables.ts";
 
+/** Public type alias for a form Values. */
 export type FormValues = object;
+/** Public type alias for a field Name. */
 export type FieldName<TValues extends FormValues> = keyof TValues & string;
+/** Public type alias for a field Validator. */
 export type FieldValidator<TValue = unknown, TValues extends FormValues = FormValues> = (
   value: TValue,
   values: TValues,
 ) => string | undefined;
 
+/** Public interface describing a form Field. */
 export interface FormField<TValue = unknown, TValues extends FormValues = FormValues> {
   name: FieldName<TValues>;
   initialValue: TValue;
   validators?: readonly FieldValidator<TValue, TValues>[];
 }
 
+/** Public interface describing a form Snapshot. */
 export interface FormSnapshot<TValues extends FormValues = FormValues> {
   values: TValues;
   errors: Record<string, string[]>;
@@ -23,6 +28,7 @@ export interface FormSnapshot<TValues extends FormValues = FormValues> {
   valid: boolean;
 }
 
+/** Serializable inspection snapshot for form Field. */
 export interface FormFieldInspection<TValues extends FormValues = FormValues> {
   name: FieldName<TValues>;
   touched: boolean;
@@ -31,6 +37,7 @@ export interface FormFieldInspection<TValues extends FormValues = FormValues> {
   valid: boolean;
 }
 
+/** Serializable inspection snapshot for form. */
 export interface FormInspection<TValues extends FormValues = FormValues> extends FormSnapshot<TValues> {
   fields: Array<FormFieldInspection<TValues>>;
   fieldCount: number;
@@ -41,6 +48,7 @@ export interface FormInspection<TValues extends FormValues = FormValues> extends
   touchedForm: boolean;
 }
 
+/** State controller for form behavior. */
 export class FormController<TValues extends FormValues = FormValues> {
   readonly values: Signal<TValues>;
   readonly errors = new Signal<Record<string, string[]>>({}, { deepObserve: true });
@@ -227,6 +235,7 @@ export class FormController<TValues extends FormValues = FormValues> {
   }
 }
 
+/** Public helper for required. */
 export function required(message = "Required"): FieldValidator<unknown> {
   return (value) => {
     if (value === undefined || value === null || value === "") return message;
@@ -234,6 +243,7 @@ export function required(message = "Required"): FieldValidator<unknown> {
   };
 }
 
+/** Public helper for min Length. */
 export function minLength(length: number, message = `Must be at least ${length} characters`): FieldValidator<unknown> {
   return (value) => {
     return typeof value === "string" && value.length < length ? message : undefined;

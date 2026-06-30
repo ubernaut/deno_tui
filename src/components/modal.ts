@@ -7,8 +7,10 @@ import { Box } from "./box.ts";
 import { Frame } from "./frame.ts";
 import { Text } from "./text.ts";
 
+/** Public type alias for a modal Tone. */
 export type ModalTone = "info" | "confirm" | "success" | "warning" | "error";
 
+/** Public interface describing a modal Action. */
 export interface ModalAction {
   id: string;
   label: string;
@@ -17,6 +19,7 @@ export interface ModalAction {
   destructive?: boolean;
 }
 
+/** Public interface describing a modal Content. */
 export interface ModalContent {
   title: string;
   body?: string | string[];
@@ -24,6 +27,7 @@ export interface ModalContent {
   actions?: ModalAction[];
 }
 
+/** Options for configuring modal Controller. */
 export interface ModalControllerOptions extends ModalContent {
   open?: boolean;
   selectedActionIndex?: number;
@@ -32,6 +36,7 @@ export interface ModalControllerOptions extends ModalContent {
   onOpenChange?: (open: boolean, inspection: ModalInspection) => void | Promise<void>;
 }
 
+/** Serializable inspection snapshot for modal. */
 export interface ModalInspection {
   open: boolean;
   title: string;
@@ -42,17 +47,20 @@ export interface ModalInspection {
   selectedAction?: ModalAction;
 }
 
+/** Options for configuring render Modal Rows. */
 export interface RenderModalRowsOptions {
   width: number;
   height?: number;
   showTone?: boolean;
 }
 
+/** Options for configuring modal. */
 export interface ModalOptions extends ComponentOptions {
   title?: string;
   body?: string;
 }
 
+/** State controller for modal behavior. */
 export class ModalController {
   readonly openState: Signal<boolean>;
   readonly title: Signal<string>;
@@ -176,6 +184,7 @@ export class ModalController {
   }
 }
 
+/** Renders modal Rows into deterministic text rows. */
 export function renderModalRows(inspection: ModalInspection, options: RenderModalRowsOptions): string[] {
   const width = Math.max(0, Math.floor(options.width));
   if (width <= 0) return [];
@@ -194,6 +203,7 @@ export function renderModalRows(inspection: ModalInspection, options: RenderModa
   return [...rows.slice(0, height - 1), actions];
 }
 
+/** Public helper for modal Content Height. */
 export function modalContentHeight(inspection: ModalInspection, width: number): number {
   return renderModalRows(inspection, { width }).length + 2;
 }
@@ -249,6 +259,7 @@ function wrapModalLine(value: string, width: number): string[] {
   return rows;
 }
 
+/** Public class implementing a modal. */
 export class Modal extends Component {
   constructor(private readonly options: ModalOptions) {
     super(options);

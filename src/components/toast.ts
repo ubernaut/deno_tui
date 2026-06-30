@@ -5,20 +5,24 @@ import { Computed, Signal } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
 import { Text } from "./text.ts";
 
+/** Public type alias for a toast Level. */
 export type ToastLevel = "info" | "success" | "warning" | "error";
 
+/** Public interface describing a toast Message. */
 export interface ToastMessage {
   id: string;
   message: string;
   level?: ToastLevel;
 }
 
+/** Options for configuring toast Stack Controller. */
 export interface ToastStackControllerOptions {
   messages?: ToastMessage[] | Signal<ToastMessage[]>;
   limit?: number | Signal<number>;
   idFactory?: () => string;
 }
 
+/** Serializable inspection snapshot for toast Stack. */
 export interface ToastStackInspection {
   messages: ToastMessage[];
   count: number;
@@ -26,15 +30,18 @@ export interface ToastStackInspection {
   empty: boolean;
 }
 
+/** Options for configuring toast Stack. */
 export interface ToastStackOptions extends ComponentOptions {
   messages: ToastMessage[] | Signal<ToastMessage[]>;
 }
 
+/** Renders toast into deterministic text rows. */
 export function renderToast(message: ToastMessage): string {
   const level = (message.level ?? "info").toUpperCase();
   return `[${level}] ${message.message}`;
 }
 
+/** State controller for toast Stack behavior. */
 export class ToastStackController {
   readonly messages: Signal<ToastMessage[]>;
   readonly limit: Signal<number>;
@@ -102,6 +109,7 @@ export class ToastStackController {
   }
 }
 
+/** Public class implementing a toast Stack. */
 export class ToastStack extends Component {
   messages: Signal<ToastMessage[]>;
 

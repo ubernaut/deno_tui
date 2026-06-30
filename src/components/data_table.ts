@@ -5,8 +5,10 @@ import { Computed, Signal } from "../signals/mod.ts";
 import { clamp } from "../utils/numbers.ts";
 import { cropToWidth, textWidth } from "../utils/strings.ts";
 
+/** Public type alias for a sort Direction. */
 export type SortDirection = "asc" | "desc";
 
+/** Public interface describing a data Column. */
 export interface DataColumn<TRow extends Record<string, unknown> = Record<string, unknown>> {
   id: keyof TRow & string;
   label?: string;
@@ -15,11 +17,13 @@ export interface DataColumn<TRow extends Record<string, unknown> = Record<string
   format?: (value: TRow[keyof TRow], row: TRow) => string;
 }
 
+/** Public interface describing a data Sort. */
 export interface DataSort {
   columnId: string;
   direction: SortDirection;
 }
 
+/** State snapshot for data Table. */
 export interface DataTableState {
   query?: string;
   sort?: DataSort;
@@ -29,6 +33,7 @@ export interface DataTableState {
   selectedKey?: string;
 }
 
+/** Public interface describing a data Table View. */
 export interface DataTableView<TRow extends Record<string, unknown> = Record<string, unknown>> {
   rows: TRow[];
   totalRows: number;
@@ -40,6 +45,7 @@ export interface DataTableView<TRow extends Record<string, unknown> = Record<str
   selectedRow?: TRow;
 }
 
+/** Options for configuring data Table Controller. */
 export interface DataTableControllerOptions<TRow extends Record<string, unknown> = Record<string, unknown>> {
   rows: readonly TRow[] | Signal<readonly TRow[]>;
   columns: readonly DataColumn<TRow>[] | Signal<readonly DataColumn<TRow>[]>;
@@ -47,6 +53,7 @@ export interface DataTableControllerOptions<TRow extends Record<string, unknown>
   rowKey?: (row: TRow, index: number) => string;
 }
 
+/** Serializable inspection snapshot for data Table. */
 export interface DataTableInspection<TRow extends Record<string, unknown> = Record<string, unknown>> {
   rowCount: number;
   visibleRowCount: number;
@@ -61,6 +68,7 @@ export interface DataTableInspection<TRow extends Record<string, unknown> = Reco
   selectedRow?: TRow;
 }
 
+/** Creates an data Table View. */
 export function createDataTableView<TRow extends Record<string, unknown>>(
   rows: readonly TRow[],
   columns: readonly DataColumn<TRow>[],
@@ -92,6 +100,7 @@ export function createDataTableView<TRow extends Record<string, unknown>>(
   };
 }
 
+/** State controller for data Table behavior. */
 export class DataTableController<TRow extends Record<string, unknown> = Record<string, unknown>> {
   readonly rows: Signal<readonly TRow[]>;
   readonly columns: Signal<readonly DataColumn<TRow>[]>;
@@ -227,6 +236,7 @@ export class DataTableController<TRow extends Record<string, unknown> = Record<s
   }
 }
 
+/** Public helper for filter Data Rows. */
 export function filterDataRows<TRow extends Record<string, unknown>>(
   rows: readonly TRow[],
   columns: readonly DataColumn<TRow>[],
@@ -240,6 +250,7 @@ export function filterDataRows<TRow extends Record<string, unknown>>(
   });
 }
 
+/** Public helper for sort Data Rows. */
 export function sortDataRows<TRow extends Record<string, unknown>>(
   rows: readonly TRow[],
   sort?: DataSort,
@@ -249,6 +260,7 @@ export function sortDataRows<TRow extends Record<string, unknown>>(
   return [...rows].sort((left, right) => compareCells(left[sort.columnId], right[sort.columnId]) * direction);
 }
 
+/** Renders data Table Header into deterministic text rows. */
 export function renderDataTableHeader<TRow extends Record<string, unknown>>(
   columns: readonly DataColumn<TRow>[],
   sort?: DataSort,
@@ -259,6 +271,7 @@ export function renderDataTableHeader<TRow extends Record<string, unknown>>(
   }).join(" ");
 }
 
+/** Renders data Table Rows into deterministic text rows. */
 export function renderDataTableRows<TRow extends Record<string, unknown>>(
   rows: readonly TRow[],
   columns: readonly DataColumn<TRow>[],
@@ -274,6 +287,7 @@ export function renderDataTableRows<TRow extends Record<string, unknown>>(
   });
 }
 
+/** Public helper for next Sort. */
 export function nextSort(current: DataSort | undefined, columnId: string): DataSort {
   if (current?.columnId === columnId && current.direction === "asc") {
     return { columnId, direction: "desc" };
@@ -281,6 +295,7 @@ export function nextSort(current: DataSort | undefined, columnId: string): DataS
   return { columnId, direction: "asc" };
 }
 
+/** Public helper for can Sort Column. */
 export function canSortColumn<TRow extends Record<string, unknown>>(
   columns: readonly DataColumn<TRow>[],
   columnId: string,

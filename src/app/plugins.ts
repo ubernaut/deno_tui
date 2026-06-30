@@ -9,12 +9,14 @@ import { DisposableStack } from "./disposables.ts";
 import type { MouseInteractionTarget } from "./mouse_bindings.ts";
 import type { Route, RouteRegisterOptions, RouteUnregisterOptions } from "./router.ts";
 
+/** Public interface describing an app Plugin Route. */
 export interface AppPluginRoute<TRoute extends Route = Route> {
   route: TRoute;
   options?: RouteRegisterOptions;
   unregisterOptions?: RouteUnregisterOptions;
 }
 
+/** Public interface describing an app Plugin Definition. */
 export interface AppPluginDefinition<TAction extends Action = Action, TRoute extends Route = Route> {
   id?: string;
   label?: string;
@@ -30,6 +32,7 @@ export interface AppPluginDefinition<TAction extends Action = Action, TRoute ext
   install?: (app: TuiApp<TAction, TRoute>) => AppPluginDisposer;
 }
 
+/** Serializable inspection snapshot for app Plugin Definition. */
 export interface AppPluginDefinitionInspection {
   id?: string;
   label?: string;
@@ -45,6 +48,7 @@ export interface AppPluginDefinitionInspection {
   hasInstaller: boolean;
 }
 
+/** Public interface describing an app Plugin Catalog Query. */
 export interface AppPluginCatalogQuery {
   search?: string;
   tag?: string;
@@ -58,6 +62,7 @@ export interface AppPluginCatalogQuery {
   hasInstaller?: boolean;
 }
 
+/** Serializable inspection snapshot for app Plugin Catalog. */
 export interface AppPluginCatalogInspection {
   count: number;
   routeCount: number;
@@ -71,27 +76,32 @@ export interface AppPluginCatalogInspection {
   tags: string[];
 }
 
+/** Structured report returned by app Plugin Catalog helpers. */
 export interface AppPluginCatalogReport {
   plugins: AppPluginDefinitionInspection[];
   inspection: AppPluginCatalogInspection;
 }
 
+/** Options for configuring app Plugin Catalog Report. */
 export interface AppPluginCatalogReportOptions<TAction extends Action = Action, TRoute extends Route = Route> {
   plugins: readonly AppPluginDefinition<TAction, TRoute>[];
   query?: AppPluginCatalogQuery;
 }
 
+/** Options for configuring app Plugin Catalog Markdown. */
 export interface AppPluginCatalogMarkdownOptions<TAction extends Action = Action, TRoute extends Route = Route>
   extends AppPluginCatalogReportOptions<TAction, TRoute> {
   title?: string;
   includeSummary?: boolean;
 }
 
+/** Serializable inspection snapshot for app Plugin Definition Registry. */
 export interface AppPluginDefinitionRegistryInspection extends AppPluginCatalogInspection {
   ids: string[];
   anonymous: number;
 }
 
+/** Creates an app Plugin. */
 export function createAppPlugin<TAction extends Action = Action, TRoute extends Route = Route>(
   definition: AppPluginDefinition<TAction, TRoute>,
 ): AppPlugin<TAction, TRoute> {
@@ -142,6 +152,7 @@ export function createAppPlugin<TAction extends Action = Action, TRoute extends 
   };
 }
 
+/** Creates a serializable inspection snapshot for app Plugin Definition. */
 export function inspectAppPluginDefinition<TAction extends Action = Action, TRoute extends Route = Route>(
   definition: AppPluginDefinition<TAction, TRoute>,
 ): AppPluginDefinitionInspection {
@@ -161,6 +172,7 @@ export function inspectAppPluginDefinition<TAction extends Action = Action, TRou
   };
 }
 
+/** Queries app Plugin Definitions records with deterministic filtering. */
 export function queryAppPluginDefinitions<TAction extends Action = Action, TRoute extends Route = Route>(
   definitions: readonly AppPluginDefinition<TAction, TRoute>[],
   query: AppPluginCatalogQuery = {},
@@ -171,6 +183,7 @@ export function queryAppPluginDefinitions<TAction extends Action = Action, TRout
     .sort((left, right) => (left.label ?? left.id ?? "").localeCompare(right.label ?? right.id ?? ""));
 }
 
+/** Creates a serializable inspection snapshot for app Plugin Catalog. */
 export function inspectAppPluginCatalog(
   plugins: readonly AppPluginDefinitionInspection[],
 ): AppPluginCatalogInspection {
@@ -188,6 +201,7 @@ export function inspectAppPluginCatalog(
   };
 }
 
+/** Creates an app Plugin Catalog Report. */
 export function createAppPluginCatalogReport<TAction extends Action = Action, TRoute extends Route = Route>(
   options: AppPluginCatalogReportOptions<TAction, TRoute>,
 ): AppPluginCatalogReport {
@@ -198,6 +212,7 @@ export function createAppPluginCatalogReport<TAction extends Action = Action, TR
   };
 }
 
+/** Formats app Plugin Catalog Markdown for display or diagnostics. */
 export function formatAppPluginCatalogMarkdown<TAction extends Action = Action, TRoute extends Route = Route>(
   options: AppPluginCatalogMarkdownOptions<TAction, TRoute>,
 ): string {
@@ -223,6 +238,7 @@ export function formatAppPluginCatalogMarkdown<TAction extends Action = Action, 
   return lines.join("\n");
 }
 
+/** Registry for storing and querying app Plugin Definition definitions. */
 export class AppPluginDefinitionRegistry<TAction extends Action = Action, TRoute extends Route = Route> {
   readonly #definitions: AppPluginDefinition<TAction, TRoute>[] = [];
 
@@ -302,6 +318,7 @@ export class AppPluginDefinitionRegistry<TAction extends Action = Action, TRoute
   }
 }
 
+/** Creates an app Plugin Definition Registry. */
 export function createAppPluginDefinitionRegistry<TAction extends Action = Action, TRoute extends Route = Route>(
   definitions: readonly AppPluginDefinition<TAction, TRoute>[] = [],
 ): AppPluginDefinitionRegistry<TAction, TRoute> {

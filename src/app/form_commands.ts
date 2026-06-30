@@ -3,6 +3,7 @@ import type { Action } from "./actions.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 import type { FieldName, FormController, FormSnapshot, FormValues } from "./forms.ts";
 
+/** Identifier union for form Command variants. */
 export type FormCommandKind =
   | "validate"
   | "reset"
@@ -10,6 +11,7 @@ export type FormCommandKind =
   | "validateField"
   | "touchField";
 
+/** Action union emitted by form Command command helpers. */
 export type FormCommandAction<TValues extends FormValues = FormValues> =
   | Action<"form.validated", FormCommandSnapshotPayload<TValues> & { valid: boolean }>
   | Action<"form.reset", FormCommandSnapshotPayload<TValues>>
@@ -17,16 +19,19 @@ export type FormCommandAction<TValues extends FormValues = FormValues> =
   | Action<"form.field.validated", FormFieldCommandPayload<TValues> & { valid: boolean }>
   | Action<"form.field.touched", FormFieldCommandPayload<TValues>>;
 
+/** Payload carried by form Command Snapshot actions. */
 export interface FormCommandSnapshotPayload<TValues extends FormValues = FormValues> {
   id: string;
   snapshot: FormSnapshot<TValues>;
 }
 
+/** Payload carried by form Field Command actions. */
 export interface FormFieldCommandPayload<TValues extends FormValues = FormValues>
   extends FormCommandSnapshotPayload<TValues> {
   field: FieldName<TValues>;
 }
 
+/** Options for configuring form Command. */
 export interface FormCommandOptions<TValues extends FormValues = FormValues> {
   id?: string;
   idPrefix?: string;
@@ -39,6 +44,7 @@ export interface FormCommandOptions<TValues extends FormValues = FormValues> {
   fieldId?: (field: FieldName<TValues>) => string;
 }
 
+/** Builds command definitions for form. */
 export function formCommands<
   TValues extends FormValues = FormValues,
   TAction extends Action = FormCommandAction<TValues>,
@@ -132,6 +138,7 @@ export function formCommands<
   return commands;
 }
 
+/** Binds form Commands behavior and returns a disposer when applicable. */
 export function bindFormCommands<
   TValues extends FormValues = FormValues,
   TAction extends Action = FormCommandAction<TValues>,

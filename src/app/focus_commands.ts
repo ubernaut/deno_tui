@@ -3,12 +3,15 @@ import type { Focusable, FocusManager, FocusManagerInspection } from "../focus.t
 import type { Action } from "./actions.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
+/** Identifier union for focus Command variants. */
 export type FocusCommandKind = "next" | "previous" | "clear" | "target";
 
+/** Action union emitted by focus Command command helpers. */
 export type FocusCommandAction =
   | Action<"focus.changed", FocusCommandPayload>
   | Action<"focus.cleared", FocusCommandPayload>;
 
+/** Public interface describing a focus Command Target. */
 export interface FocusCommandTarget {
   id: string;
   label: string;
@@ -16,12 +19,14 @@ export interface FocusCommandTarget {
   keywords?: readonly string[];
 }
 
+/** Payload carried by focus Command actions. */
 export interface FocusCommandPayload {
   id: string;
   index: number;
   inspection: FocusManagerInspection;
 }
 
+/** Options for configuring focus Command. */
 export interface FocusCommandOptions {
   id?: string;
   idPrefix?: string;
@@ -33,6 +38,7 @@ export interface FocusCommandOptions {
   labels?: Partial<Record<FocusCommandKind, string>>;
 }
 
+/** Builds command definitions for focus. */
 export function focusCommands<TAction extends Action = FocusCommandAction>(
   manager: FocusManager,
   options: FocusCommandOptions = {},
@@ -111,6 +117,7 @@ export function focusCommands<TAction extends Action = FocusCommandAction>(
   return commands;
 }
 
+/** Binds focus Commands behavior and returns a disposer when applicable. */
 export function bindFocusCommands<TAction extends Action = FocusCommandAction>(
   registry: CommandRegistry<TAction>,
   manager: FocusManager,

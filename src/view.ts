@@ -8,6 +8,7 @@ interface ViewOptions {
   rectangle: Rectangle;
 }
 
+/** Public class implementing a view. */
 export class View {
   offset: Signal<Offset>;
   maxOffset: Signal<Offset>;

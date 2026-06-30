@@ -11,6 +11,7 @@ import { Signal, SignalOfObject } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
 import { Subscription } from "../signals/types.ts";
 
+/** Options for configuring draw Object. */
 export interface DrawObjectOptions {
   canvas: Canvas;
 

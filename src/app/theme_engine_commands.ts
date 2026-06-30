@@ -12,21 +12,25 @@ import type { ThemeWorkspace } from "../theme_workspace.ts";
 import type { Action } from "./actions.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
+/** Action union emitted by theme Engine Command command helpers. */
 export type ThemeEngineCommandAction =
   | Action<"theme.engine.previewed", ThemeEnginePreviewPayload>
   | Action<"theme.engine.catalog.reported", ThemeEngineCatalogPayload>;
 
+/** Payload carried by theme Engine Preview actions. */
 export interface ThemeEnginePreviewPayload {
   id: string;
   inspection: ThemeEngineFactoryInspection;
   engine: ThemeInspection;
 }
 
+/** Payload carried by theme Engine Catalog actions. */
 export interface ThemeEngineCatalogPayload {
   report: ThemeEngineFactoryCatalogReport;
   markdown?: string;
 }
 
+/** Options for configuring theme Engine Command. */
 export interface ThemeEngineCommandOptions {
   group?: string;
   prefix?: string;
@@ -41,8 +45,10 @@ export interface ThemeEngineCommandOptions {
   pipelines?: Iterable<string> | false;
 }
 
+/** Public type alias for a theme Engine Command Source. */
 export type ThemeEngineCommandSource = ThemeWorkspace | ThemeEngineFactoryRegistry;
 
+/** Builds command definitions for theme Engine. */
 export function themeEngineCommands(
   source: ThemeEngineCommandSource,
   options: ThemeEngineCommandOptions = {},
@@ -53,6 +59,7 @@ export function themeEngineCommands(
   ];
 }
 
+/** Binds theme Engine Commands behavior and returns a disposer when applicable. */
 export function bindThemeEngineCommands<TAction extends Action = ThemeEngineCommandAction>(
   registry: CommandRegistry<TAction>,
   source: ThemeEngineCommandSource,
@@ -61,6 +68,7 @@ export function bindThemeEngineCommands<TAction extends Action = ThemeEngineComm
   return registry.registerAll(themeEngineCommands(source, options) as unknown as Command<TAction>[]);
 }
 
+/** Builds command definitions for theme Engine Factory. */
 export function themeEngineFactoryCommands(
   source: ThemeEngineCommandSource,
   options: ThemeEngineCommandOptions = {},
@@ -103,6 +111,7 @@ export function themeEngineFactoryCommands(
   }));
 }
 
+/** Builds command definitions for theme Engine Catalog. */
 export function themeEngineCatalogCommands(
   source: ThemeEngineCommandSource,
   options: ThemeEngineCommandOptions = {},

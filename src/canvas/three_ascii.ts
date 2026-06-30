@@ -8,6 +8,7 @@ import type { AcerolaAsciiNodeOptions } from "../three_ascii/AcerolaAsciiNode.ts
 import type { TerminalGlyphStyle } from "../three_ascii/glyphs.ts";
 import { ThreeAsciiRenderer, type ThreeAsciiRendererOptions } from "../three_ascii/renderer.ts";
 
+/** Public interface describing a three Ascii Grid Renderer. */
 export interface ThreeAsciiGridRenderer {
   readonly scene: Scene;
   readonly camera: Camera;
@@ -21,8 +22,10 @@ export interface ThreeAsciiGridRenderer {
   destroy(): void;
 }
 
+/** Public type alias for a three Ascii Renderer Factory. */
 export type ThreeAsciiRendererFactory = (options: ThreeAsciiRendererOptions) => ThreeAsciiGridRenderer;
 
+/** Options for configuring three Ascii Object. */
 export interface ThreeAsciiObjectOptions extends DrawObjectOptions {
   rectangle: Rectangle | SignalOfObject<Rectangle>;
   scene: Scene;
@@ -36,6 +39,7 @@ export interface ThreeAsciiObjectOptions extends DrawObjectOptions {
   rendererFactory?: ThreeAsciiRendererFactory;
 }
 
+/** Public class implementing a three Ascii Object. */
 export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
   override rectangle: Signal<Rectangle>;
   renderer: ThreeAsciiGridRenderer;
@@ -270,6 +274,7 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
   }
 }
 
+/** Formats three Ascii Fallback Detail for display or diagnostics. */
 export function formatThreeAsciiFallbackDetail(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error ?? "");
   const normalized = message.replace(/\s+/g, " ").trim();
@@ -289,6 +294,7 @@ export function formatThreeAsciiFallbackDetail(error: unknown): string {
   return normalized;
 }
 
+/** Public helper for build Fallback Grid. */
 export function buildFallbackGrid(width: number, height: number, detail: string): string[][] {
   const columns = Math.max(1, width);
   const rows = Math.max(1, height);

@@ -5,8 +5,10 @@ import { Computed, Signal } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
 import { Text } from "./text.ts";
 
+/** Public type alias for a stepper Orientation. */
 export type StepperOrientation = "horizontal" | "vertical";
 
+/** Public interface describing a stepper Step. */
 export interface StepperStep {
   id: string;
   label: string;
@@ -14,6 +16,7 @@ export interface StepperStep {
   completed?: boolean;
 }
 
+/** Options for configuring stepper. */
 export interface StepperOptions extends ComponentOptions {
   steps: StepperStep[] | Signal<StepperStep[]>;
   activeIndex?: number | Signal<number>;
@@ -23,6 +26,7 @@ export interface StepperOptions extends ComponentOptions {
   onChange?: (step: StepperStep, index: number) => void | Promise<void>;
 }
 
+/** Options for configuring stepper Controller. */
 export interface StepperControllerOptions {
   steps: StepperStep[] | Signal<StepperStep[]>;
   activeIndex?: number | Signal<number>;
@@ -30,6 +34,7 @@ export interface StepperControllerOptions {
   onChange?: (step: StepperStep, index: number) => void | Promise<void>;
 }
 
+/** Serializable inspection snapshot for stepper. */
 export interface StepperInspection {
   steps: StepperStep[];
   stepCount: number;
@@ -39,6 +44,7 @@ export interface StepperInspection {
   empty: boolean;
 }
 
+/** Renders stepper into deterministic text rows. */
 export function renderStepper(
   steps: readonly StepperStep[],
   activeIndex: number,
@@ -55,6 +61,7 @@ export function renderStepper(
   return [text.length <= width ? text : truncateStepperText(text, width)];
 }
 
+/** Clamps stepper Index to its valid range. */
 export function clampStepperIndex(steps: readonly StepperStep[], activeIndex: number): number {
   if (steps.length === 0) return 0;
   const clamped = Math.max(0, Math.min(activeIndex, steps.length - 1));
@@ -65,6 +72,7 @@ export function clampStepperIndex(steps: readonly StepperStep[], activeIndex: nu
   return steps[previous]?.disabled ? clamped : previous;
 }
 
+/** Moves stepper Index by a relative offset. */
 export function shiftStepperIndex(steps: readonly StepperStep[], activeIndex: number, delta: number): number {
   if (steps.length === 0) return 0;
   let next = Math.max(0, Math.min(activeIndex, steps.length - 1));
@@ -76,11 +84,13 @@ export function shiftStepperIndex(steps: readonly StepperStep[], activeIndex: nu
   return activeIndex;
 }
 
+/** Public helper for step For Index. */
 export function stepForIndex(steps: readonly StepperStep[], activeIndex: number): StepperStep | undefined {
   const step = steps[clampStepperIndex(steps, activeIndex)];
   return step?.disabled ? undefined : step;
 }
 
+/** State controller for stepper behavior. */
 export class StepperController {
   readonly steps: Signal<StepperStep[]>;
   readonly activeIndex: Signal<number>;
@@ -184,6 +194,7 @@ function truncateStepperText(text: string, width: number): string {
   return `${text.slice(0, safeWidth - 1)}…`;
 }
 
+/** Public class implementing a stepper. */
 export class Stepper extends Component {
   steps: Signal<StepperStep[]>;
   activeIndex: Signal<number>;

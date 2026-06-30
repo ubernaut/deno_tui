@@ -6,11 +6,11 @@ modules and exported symbols that make up the package API.
 ## Summary
 
 - Entrypoint: `mod.ts`
-- Modules: 180
-- Re-export declarations: 179
-- Exported symbols: 1380
-- Documented symbols: 348
-- Documentation coverage: 25.22%
+- Modules: 182
+- Re-export declarations: 181
+- Exported symbols: 1422
+- Documented symbols: 1422
+- Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
 
@@ -21,182 +21,184 @@ modules and exported symbols that make up the package API.
 | [`mod.ts`](#mod-ts)                                                               |         31 |       0 |          0 |
 | [`src/app/actions.ts`](#src-app-actions-ts)                                       |          0 |       7 |          7 |
 | [`src/app/app.ts`](#src-app-app-ts)                                               |          0 |      13 |         13 |
-| [`src/app/button_commands.ts`](#src-app-button-commands-ts)                       |          0 |       6 |          0 |
-| [`src/app/checkbox_commands.ts`](#src-app-checkbox-commands-ts)                   |          0 |       6 |          0 |
-| [`src/app/combobox_commands.ts`](#src-app-combobox-commands-ts)                   |          0 |       6 |          0 |
-| [`src/app/command_bindings.ts`](#src-app-command-bindings-ts)                     |          0 |      26 |          0 |
-| [`src/app/command_search_index.ts`](#src-app-command-search-index-ts)             |          0 |      11 |          0 |
-| [`src/app/commands.ts`](#src-app-commands-ts)                                     |          0 |       8 |          0 |
-| [`src/app/component_commands.ts`](#src-app-component-commands-ts)                 |          0 |       5 |          0 |
-| [`src/app/data_query_bindings.ts`](#src-app-data-query-bindings-ts)               |          0 |      12 |          0 |
-| [`src/app/data_query_commands.ts`](#src-app-data-query-commands-ts)               |          0 |       7 |          0 |
-| [`src/app/data_query_plugin.ts`](#src-app-data-query-plugin-ts)                   |          0 |       5 |          0 |
-| [`src/app/data_table_commands.ts`](#src-app-data-table-commands-ts)               |          0 |       4 |          0 |
-| [`src/app/disposables.ts`](#src-app-disposables-ts)                               |          0 |       6 |          0 |
-| [`src/app/focus_commands.ts`](#src-app-focus-commands-ts)                         |          0 |       7 |          0 |
-| [`src/app/form_bindings.ts`](#src-app-form-bindings-ts)                           |          0 |       2 |          0 |
-| [`src/app/form_commands.ts`](#src-app-form-commands-ts)                           |          0 |       7 |          0 |
-| [`src/app/forms.ts`](#src-app-forms-ts)                                           |          0 |      10 |          0 |
-| [`src/app/history_bindings.ts`](#src-app-history-bindings-ts)                     |          0 |       6 |          0 |
-| [`src/app/history.ts`](#src-app-history-ts)                                       |          0 |       5 |          0 |
-| [`src/app/input_commands.ts`](#src-app-input-commands-ts)                         |          0 |       6 |          0 |
-| [`src/app/list_commands.ts`](#src-app-list-commands-ts)                           |          0 |       6 |          0 |
-| [`src/app/log_viewer_commands.ts`](#src-app-log-viewer-commands-ts)               |          0 |       6 |          0 |
-| [`src/app/menu_bar_commands.ts`](#src-app-menu-bar-commands-ts)                   |          0 |       6 |          0 |
-| [`src/app/metric_series_commands.ts`](#src-app-metric-series-commands-ts)         |          0 |       6 |          0 |
+| [`src/app/button_commands.ts`](#src-app-button-commands-ts)                       |          0 |       6 |          6 |
+| [`src/app/checkbox_commands.ts`](#src-app-checkbox-commands-ts)                   |          0 |       6 |          6 |
+| [`src/app/combobox_commands.ts`](#src-app-combobox-commands-ts)                   |          0 |       6 |          6 |
+| [`src/app/command_bindings.ts`](#src-app-command-bindings-ts)                     |          0 |      26 |         26 |
+| [`src/app/command_search_index.ts`](#src-app-command-search-index-ts)             |          0 |      11 |         11 |
+| [`src/app/commands.ts`](#src-app-commands-ts)                                     |          0 |       8 |          8 |
+| [`src/app/component_commands.ts`](#src-app-component-commands-ts)                 |          0 |       5 |          5 |
+| [`src/app/data_query_bindings.ts`](#src-app-data-query-bindings-ts)               |          0 |      12 |         12 |
+| [`src/app/data_query_commands.ts`](#src-app-data-query-commands-ts)               |          0 |       7 |          7 |
+| [`src/app/data_query_plugin.ts`](#src-app-data-query-plugin-ts)                   |          0 |       5 |          5 |
+| [`src/app/data_table_commands.ts`](#src-app-data-table-commands-ts)               |          0 |       4 |          4 |
+| [`src/app/disposables.ts`](#src-app-disposables-ts)                               |          0 |       6 |          6 |
+| [`src/app/focus_commands.ts`](#src-app-focus-commands-ts)                         |          0 |       7 |          7 |
+| [`src/app/form_bindings.ts`](#src-app-form-bindings-ts)                           |          0 |       2 |          2 |
+| [`src/app/form_commands.ts`](#src-app-form-commands-ts)                           |          0 |       7 |          7 |
+| [`src/app/forms.ts`](#src-app-forms-ts)                                           |          0 |      10 |         10 |
+| [`src/app/history_bindings.ts`](#src-app-history-bindings-ts)                     |          0 |       6 |          6 |
+| [`src/app/history.ts`](#src-app-history-ts)                                       |          0 |       5 |          5 |
+| [`src/app/input_commands.ts`](#src-app-input-commands-ts)                         |          0 |       6 |          6 |
+| [`src/app/list_commands.ts`](#src-app-list-commands-ts)                           |          0 |       6 |          6 |
+| [`src/app/log_viewer_commands.ts`](#src-app-log-viewer-commands-ts)               |          0 |       6 |          6 |
+| [`src/app/menu_bar_commands.ts`](#src-app-menu-bar-commands-ts)                   |          0 |       6 |          6 |
+| [`src/app/metric_series_commands.ts`](#src-app-metric-series-commands-ts)         |          0 |       6 |          6 |
 | [`src/app/mod.ts`](#src-app-mod-ts)                                               |         55 |       0 |          0 |
-| [`src/app/mouse_bindings.ts`](#src-app-mouse-bindings-ts)                         |          0 |      10 |          0 |
-| [`src/app/plugins.ts`](#src-app-plugins-ts)                                       |          0 |      17 |          0 |
-| [`src/app/progress_bar_commands.ts`](#src-app-progress-bar-commands-ts)           |          0 |       6 |          0 |
-| [`src/app/radio_group_commands.ts`](#src-app-radio-group-commands-ts)             |          0 |       6 |          0 |
-| [`src/app/route_bindings.ts`](#src-app-route-bindings-ts)                         |          0 |       9 |          0 |
-| [`src/app/router.ts`](#src-app-router-ts)                                         |          0 |       5 |          0 |
-| [`src/app/runtime_profile_commands.ts`](#src-app-runtime-profile-commands-ts)     |          0 |       5 |          0 |
-| [`src/app/runtime_profile_plugin.ts`](#src-app-runtime-profile-plugin-ts)         |          0 |       5 |          0 |
-| [`src/app/runtime_renderer_commands.ts`](#src-app-runtime-renderer-commands-ts)   |          0 |       5 |          0 |
-| [`src/app/runtime_renderer_plugin.ts`](#src-app-runtime-renderer-plugin-ts)       |          0 |       5 |          0 |
-| [`src/app/runtime_workload_commands.ts`](#src-app-runtime-workload-commands-ts)   |          0 |       5 |          0 |
-| [`src/app/scroll_area_commands.ts`](#src-app-scroll-area-commands-ts)             |          0 |       6 |          0 |
-| [`src/app/selection_bindings.ts`](#src-app-selection-bindings-ts)                 |          0 |       8 |          0 |
-| [`src/app/settings_bindings.ts`](#src-app-settings-bindings-ts)                   |          0 |      21 |          4 |
-| [`src/app/settings_commands.ts`](#src-app-settings-commands-ts)                   |          0 |       5 |          0 |
-| [`src/app/settings.ts`](#src-app-settings-ts)                                     |          0 |       5 |          0 |
-| [`src/app/slider_commands.ts`](#src-app-slider-commands-ts)                       |          0 |       6 |          0 |
-| [`src/app/split_pane_commands.ts`](#src-app-split-pane-commands-ts)               |          0 |       7 |          0 |
-| [`src/app/stepper_commands.ts`](#src-app-stepper-commands-ts)                     |          0 |       6 |          0 |
-| [`src/app/surface_bindings.ts`](#src-app-surface-bindings-ts)                     |          0 |       2 |          0 |
-| [`src/app/table_commands.ts`](#src-app-table-commands-ts)                         |          0 |       6 |          0 |
-| [`src/app/tabs_commands.ts`](#src-app-tabs-commands-ts)                           |          0 |       6 |          0 |
-| [`src/app/textbox_commands.ts`](#src-app-textbox-commands-ts)                     |          0 |       6 |          0 |
-| [`src/app/theme_commands.ts`](#src-app-theme-commands-ts)                         |          0 |      10 |          0 |
-| [`src/app/theme_engine_commands.ts`](#src-app-theme-engine-commands-ts)           |          0 |       9 |          0 |
-| [`src/app/theme_pipeline_commands.ts`](#src-app-theme-pipeline-commands-ts)       |          0 |       5 |          0 |
-| [`src/app/theme_plugin.ts`](#src-app-theme-plugin-ts)                             |          0 |       8 |          0 |
-| [`src/app/theme_workspace_plugin.ts`](#src-app-theme-workspace-plugin-ts)         |          0 |       5 |          0 |
-| [`src/app/toast_commands.ts`](#src-app-toast-commands-ts)                         |          0 |       6 |          0 |
-| [`src/app/tree_commands.ts`](#src-app-tree-commands-ts)                           |          0 |       6 |          0 |
-| [`src/canvas/box.ts`](#src-canvas-box-ts)                                         |          0 |       2 |          1 |
+| [`src/app/mouse_bindings.ts`](#src-app-mouse-bindings-ts)                         |          0 |      10 |         10 |
+| [`src/app/plugins.ts`](#src-app-plugins-ts)                                       |          0 |      17 |         17 |
+| [`src/app/progress_bar_commands.ts`](#src-app-progress-bar-commands-ts)           |          0 |       6 |          6 |
+| [`src/app/radio_group_commands.ts`](#src-app-radio-group-commands-ts)             |          0 |       6 |          6 |
+| [`src/app/route_bindings.ts`](#src-app-route-bindings-ts)                         |          0 |       9 |          9 |
+| [`src/app/router.ts`](#src-app-router-ts)                                         |          0 |       5 |          5 |
+| [`src/app/runtime_profile_commands.ts`](#src-app-runtime-profile-commands-ts)     |          0 |       5 |          5 |
+| [`src/app/runtime_profile_plugin.ts`](#src-app-runtime-profile-plugin-ts)         |          0 |       5 |          5 |
+| [`src/app/runtime_renderer_commands.ts`](#src-app-runtime-renderer-commands-ts)   |          0 |       5 |          5 |
+| [`src/app/runtime_renderer_plugin.ts`](#src-app-runtime-renderer-plugin-ts)       |          0 |       5 |          5 |
+| [`src/app/runtime_workload_commands.ts`](#src-app-runtime-workload-commands-ts)   |          0 |       5 |          5 |
+| [`src/app/scroll_area_commands.ts`](#src-app-scroll-area-commands-ts)             |          0 |       6 |          6 |
+| [`src/app/selection_bindings.ts`](#src-app-selection-bindings-ts)                 |          0 |       8 |          8 |
+| [`src/app/settings_bindings.ts`](#src-app-settings-bindings-ts)                   |          0 |      21 |         21 |
+| [`src/app/settings_commands.ts`](#src-app-settings-commands-ts)                   |          0 |       5 |          5 |
+| [`src/app/settings.ts`](#src-app-settings-ts)                                     |          0 |       5 |          5 |
+| [`src/app/slider_commands.ts`](#src-app-slider-commands-ts)                       |          0 |       6 |          6 |
+| [`src/app/split_pane_commands.ts`](#src-app-split-pane-commands-ts)               |          0 |       7 |          7 |
+| [`src/app/stepper_commands.ts`](#src-app-stepper-commands-ts)                     |          0 |       6 |          6 |
+| [`src/app/surface_bindings.ts`](#src-app-surface-bindings-ts)                     |          0 |       2 |          2 |
+| [`src/app/table_commands.ts`](#src-app-table-commands-ts)                         |          0 |       6 |          6 |
+| [`src/app/tabs_commands.ts`](#src-app-tabs-commands-ts)                           |          0 |       6 |          6 |
+| [`src/app/textbox_commands.ts`](#src-app-textbox-commands-ts)                     |          0 |       6 |          6 |
+| [`src/app/theme_commands.ts`](#src-app-theme-commands-ts)                         |          0 |      10 |         10 |
+| [`src/app/theme_engine_commands.ts`](#src-app-theme-engine-commands-ts)           |          0 |       9 |          9 |
+| [`src/app/theme_pipeline_commands.ts`](#src-app-theme-pipeline-commands-ts)       |          0 |       5 |          5 |
+| [`src/app/theme_plugin.ts`](#src-app-theme-plugin-ts)                             |          0 |       8 |          8 |
+| [`src/app/theme_workspace_plugin.ts`](#src-app-theme-workspace-plugin-ts)         |          0 |       5 |          5 |
+| [`src/app/toast_commands.ts`](#src-app-toast-commands-ts)                         |          0 |       6 |          6 |
+| [`src/app/tree_commands.ts`](#src-app-tree-commands-ts)                           |          0 |       6 |          6 |
+| [`src/canvas/box.ts`](#src-canvas-box-ts)                                         |          0 |       2 |          2 |
 | [`src/canvas/canvas.ts`](#src-canvas-canvas-ts)                                   |          0 |       4 |          4 |
-| [`src/canvas/draw_object.ts`](#src-canvas-draw-object-ts)                         |          0 |       2 |          1 |
+| [`src/canvas/draw_object.ts`](#src-canvas-draw-object-ts)                         |          0 |       2 |          2 |
 | [`src/canvas/mod.ts`](#src-canvas-mod-ts)                                         |          6 |       0 |          0 |
-| [`src/canvas/sink.ts`](#src-canvas-sink-ts)                                       |          0 |       6 |          1 |
-| [`src/canvas/text.ts`](#src-canvas-text-ts)                                       |          0 |       3 |          2 |
-| [`src/canvas/three_ascii.ts`](#src-canvas-three-ascii-ts)                         |          0 |       6 |          0 |
-| [`src/component.ts`](#src-component-ts)                                           |          0 |       4 |          2 |
+| [`src/canvas/sink.ts`](#src-canvas-sink-ts)                                       |          0 |       6 |          6 |
+| [`src/canvas/text.ts`](#src-canvas-text-ts)                                       |          0 |       3 |          3 |
+| [`src/canvas/three_ascii.ts`](#src-canvas-three-ascii-ts)                         |          0 |       6 |          6 |
+| [`src/component.ts`](#src-component-ts)                                           |          0 |       4 |          4 |
 | [`src/components/box.ts`](#src-components-box-ts)                                 |          0 |       1 |          1 |
-| [`src/components/breadcrumbs.ts`](#src-components-breadcrumbs-ts)                 |          0 |       4 |          0 |
-| [`src/components/button.ts`](#src-components-button-ts)                           |          0 |       5 |          1 |
+| [`src/components/breadcrumbs.ts`](#src-components-breadcrumbs-ts)                 |          0 |       4 |          4 |
+| [`src/components/button.ts`](#src-components-button-ts)                           |          0 |       5 |          5 |
 | [`src/components/catalog.ts`](#src-components-catalog-ts)                         |          0 |      19 |         19 |
-| [`src/components/chart.ts`](#src-components-chart-ts)                             |          0 |       3 |          0 |
-| [`src/components/checkbox.ts`](#src-components-checkbox-ts)                       |          0 |       7 |          1 |
-| [`src/components/combobox.ts`](#src-components-combobox-ts)                       |          0 |       7 |          1 |
-| [`src/components/command_palette.ts`](#src-components-command-palette-ts)         |          0 |      12 |          0 |
-| [`src/components/context_menu.ts`](#src-components-context-menu-ts)               |          0 |      10 |          0 |
-| [`src/components/data_table.ts`](#src-components-data-table-ts)                   |          0 |      15 |          0 |
-| [`src/components/empty_state.ts`](#src-components-empty-state-ts)                 |          0 |       4 |          0 |
-| [`src/components/file_explorer.ts`](#src-components-file-explorer-ts)             |          0 |       7 |          0 |
-| [`src/components/frame.ts`](#src-components-frame-ts)                             |          0 |       4 |          1 |
-| [`src/components/gauge.ts`](#src-components-gauge-ts)                             |          0 |       3 |          0 |
-| [`src/components/input.ts`](#src-components-input-ts)                             |          0 |       8 |          1 |
-| [`src/components/key_help.ts`](#src-components-key-help-ts)                       |          0 |       3 |          0 |
-| [`src/components/label.ts`](#src-components-label-ts)                             |          0 |       6 |          5 |
-| [`src/components/list.ts`](#src-components-list-ts)                               |          0 |       8 |          0 |
-| [`src/components/log_viewer.ts`](#src-components-log-viewer-ts)                   |          0 |       6 |          0 |
-| [`src/components/menu_bar.ts`](#src-components-menu-bar-ts)                       |          0 |      10 |          0 |
-| [`src/components/metric_series.ts`](#src-components-metric-series-ts)             |          0 |      10 |          0 |
-| [`src/components/mod.ts`](#src-components-mod-ts)                                 |         38 |       0 |          0 |
-| [`src/components/modal.ts`](#src-components-modal-ts)                             |          0 |      11 |          0 |
-| [`src/components/progressbar.ts`](#src-components-progressbar-ts)                 |          0 |      15 |          1 |
-| [`src/components/radio_group.ts`](#src-components-radio-group-ts)                 |          0 |      11 |          0 |
-| [`src/components/scroll_area.ts`](#src-components-scroll-area-ts)                 |          0 |      12 |          0 |
-| [`src/components/slider.ts`](#src-components-slider-ts)                           |          0 |      12 |          1 |
-| [`src/components/sparkline.ts`](#src-components-sparkline-ts)                     |          0 |       3 |          0 |
-| [`src/components/spinner.ts`](#src-components-spinner-ts)                         |          0 |       6 |          0 |
-| [`src/components/statusbar.ts`](#src-components-statusbar-ts)                     |          0 |       3 |          0 |
-| [`src/components/stepper.ts`](#src-components-stepper-ts)                         |          0 |      11 |          0 |
-| [`src/components/table.ts`](#src-components-table-ts)                             |          0 |      12 |          1 |
-| [`src/components/tabs.ts`](#src-components-tabs-ts)                               |          0 |      10 |          0 |
-| [`src/components/text.ts`](#src-components-text-ts)                               |          0 |       2 |          1 |
-| [`src/components/textbox.ts`](#src-components-textbox-ts)                         |          0 |      14 |          1 |
-| [`src/components/three_ascii.ts`](#src-components-three-ascii-ts)                 |          0 |       2 |          0 |
-| [`src/components/toast.ts`](#src-components-toast-ts)                             |          0 |       8 |          0 |
-| [`src/components/tree.ts`](#src-components-tree-ts)                               |          0 |      11 |          0 |
-| [`src/components/virtual_list.ts`](#src-components-virtual-list-ts)               |          0 |       8 |          0 |
+| [`src/components/chart.ts`](#src-components-chart-ts)                             |          0 |       3 |          3 |
+| [`src/components/checkbox.ts`](#src-components-checkbox-ts)                       |          0 |       7 |          7 |
+| [`src/components/combobox.ts`](#src-components-combobox-ts)                       |          0 |       7 |          7 |
+| [`src/components/command_palette.ts`](#src-components-command-palette-ts)         |          0 |      12 |         12 |
+| [`src/components/context_menu.ts`](#src-components-context-menu-ts)               |          0 |      10 |         10 |
+| [`src/components/data_table.ts`](#src-components-data-table-ts)                   |          0 |      15 |         15 |
+| [`src/components/empty_state.ts`](#src-components-empty-state-ts)                 |          0 |       4 |          4 |
+| [`src/components/file_explorer.ts`](#src-components-file-explorer-ts)             |          0 |       7 |          7 |
+| [`src/components/frame.ts`](#src-components-frame-ts)                             |          0 |       4 |          4 |
+| [`src/components/gauge.ts`](#src-components-gauge-ts)                             |          0 |       3 |          3 |
+| [`src/components/input.ts`](#src-components-input-ts)                             |          0 |       8 |          8 |
+| [`src/components/interaction.ts`](#src-components-interaction-ts)                 |          0 |       7 |          7 |
+| [`src/components/key_help.ts`](#src-components-key-help-ts)                       |          0 |       3 |          3 |
+| [`src/components/label.ts`](#src-components-label-ts)                             |          0 |       6 |          6 |
+| [`src/components/list.ts`](#src-components-list-ts)                               |          0 |       8 |          8 |
+| [`src/components/log_viewer.ts`](#src-components-log-viewer-ts)                   |          0 |       6 |          6 |
+| [`src/components/menu_bar.ts`](#src-components-menu-bar-ts)                       |          0 |      10 |         10 |
+| [`src/components/metric_series.ts`](#src-components-metric-series-ts)             |          0 |      10 |         10 |
+| [`src/components/mod.ts`](#src-components-mod-ts)                                 |         39 |       0 |          0 |
+| [`src/components/modal.ts`](#src-components-modal-ts)                             |          0 |      11 |         11 |
+| [`src/components/progressbar.ts`](#src-components-progressbar-ts)                 |          0 |      15 |         15 |
+| [`src/components/radio_group.ts`](#src-components-radio-group-ts)                 |          0 |      11 |         11 |
+| [`src/components/scroll_area.ts`](#src-components-scroll-area-ts)                 |          0 |      12 |         12 |
+| [`src/components/slider.ts`](#src-components-slider-ts)                           |          0 |      14 |         14 |
+| [`src/components/sparkline.ts`](#src-components-sparkline-ts)                     |          0 |       3 |          3 |
+| [`src/components/spinner.ts`](#src-components-spinner-ts)                         |          0 |       6 |          6 |
+| [`src/components/statusbar.ts`](#src-components-statusbar-ts)                     |          0 |       3 |          3 |
+| [`src/components/stepper.ts`](#src-components-stepper-ts)                         |          0 |      11 |         11 |
+| [`src/components/table.ts`](#src-components-table-ts)                             |          0 |      12 |         12 |
+| [`src/components/tabs.ts`](#src-components-tabs-ts)                               |          0 |      10 |         10 |
+| [`src/components/text.ts`](#src-components-text-ts)                               |          0 |       2 |          2 |
+| [`src/components/textbox.ts`](#src-components-textbox-ts)                         |          0 |      14 |         14 |
+| [`src/components/three_ascii.ts`](#src-components-three-ascii-ts)                 |          0 |       2 |          2 |
+| [`src/components/toast.ts`](#src-components-toast-ts)                             |          0 |       8 |          8 |
+| [`src/components/tree.ts`](#src-components-tree-ts)                               |          0 |      11 |         11 |
+| [`src/components/virtual_list.ts`](#src-components-virtual-list-ts)               |          0 |       8 |          8 |
 | [`src/controls.ts`](#src-controls-ts)                                             |          0 |       2 |          2 |
-| [`src/event_emitter.ts`](#src-event-emitter-ts)                                   |          0 |       5 |          3 |
-| [`src/focus.ts`](#src-focus-ts)                                                   |          0 |       7 |          0 |
+| [`src/event_emitter.ts`](#src-event-emitter-ts)                                   |          0 |       5 |          5 |
+| [`src/focus.ts`](#src-focus-ts)                                                   |          0 |       7 |          7 |
 | [`src/grwizard_themes.ts`](#src-grwizard-themes-ts)                               |          0 |       5 |          5 |
-| [`src/input_reader/mod.ts`](#src-input-reader-mod-ts)                             |          0 |       2 |          1 |
+| [`src/input_reader/mod.ts`](#src-input-reader-mod-ts)                             |          0 |       2 |          2 |
 | [`src/input.ts`](#src-input-ts)                                                   |          0 |       1 |          1 |
-| [`src/keymap.ts`](#src-keymap-ts)                                                 |          0 |       6 |          0 |
-| [`src/layout/errors.ts`](#src-layout-errors-ts)                                   |          0 |       2 |          0 |
-| [`src/layout/flex_layout.ts`](#src-layout-flex-layout-ts)                         |          0 |       3 |          0 |
-| [`src/layout/grid_layout.ts`](#src-layout-grid-layout-ts)                         |          0 |       3 |          1 |
+| [`src/keymap.ts`](#src-keymap-ts)                                                 |          0 |       6 |          6 |
+| [`src/layout/errors.ts`](#src-layout-errors-ts)                                   |          0 |       2 |          2 |
+| [`src/layout/flex_layout.ts`](#src-layout-flex-layout-ts)                         |          0 |       3 |          3 |
+| [`src/layout/grid_layout.ts`](#src-layout-grid-layout-ts)                         |          0 |       3 |          3 |
 | [`src/layout/horizontal_layout.ts`](#src-layout-horizontal-layout-ts)             |          0 |       1 |          1 |
-| [`src/layout/mod.ts`](#src-layout-mod-ts)                                         |         10 |       0 |          0 |
-| [`src/layout/recipe.ts`](#src-layout-recipe-ts)                                   |          0 |      18 |          5 |
-| [`src/layout/responsive.ts`](#src-layout-responsive-ts)                           |          0 |      14 |          3 |
-| [`src/layout/split_pane.ts`](#src-layout-split-pane-ts)                           |          0 |      10 |          0 |
-| [`src/layout/types.ts`](#src-layout-types-ts)                                     |          0 |       3 |          0 |
+| [`src/layout/mod.ts`](#src-layout-mod-ts)                                         |         11 |       0 |          0 |
+| [`src/layout/overlay.ts`](#src-layout-overlay-ts)                                 |          0 |      19 |         19 |
+| [`src/layout/recipe.ts`](#src-layout-recipe-ts)                                   |          0 |      18 |         18 |
+| [`src/layout/responsive.ts`](#src-layout-responsive-ts)                           |          0 |      14 |         14 |
+| [`src/layout/split_pane.ts`](#src-layout-split-pane-ts)                           |          0 |      10 |         10 |
+| [`src/layout/types.ts`](#src-layout-types-ts)                                     |          0 |       3 |          3 |
 | [`src/layout/vertical_layout.ts`](#src-layout-vertical-layout-ts)                 |          0 |       1 |          1 |
-| [`src/layout/window_manager.ts`](#src-layout-window-manager-ts)                   |          0 |       7 |          0 |
+| [`src/layout/window_manager.ts`](#src-layout-window-manager-ts)                   |          0 |      10 |         10 |
 | [`src/perf/benchmark.ts`](#src-perf-benchmark-ts)                                 |          0 |      19 |         19 |
 | [`src/perf/mod.ts`](#src-perf-mod-ts)                                             |          1 |       0 |          0 |
-| [`src/runtime/capabilities.ts`](#src-runtime-capabilities-ts)                     |          0 |      16 |         13 |
-| [`src/runtime/data_pipeline_bindings.ts`](#src-runtime-data-pipeline-bindings-ts) |          0 |       4 |          0 |
+| [`src/runtime/capabilities.ts`](#src-runtime-capabilities-ts)                     |          0 |      16 |         16 |
+| [`src/runtime/data_pipeline_bindings.ts`](#src-runtime-data-pipeline-bindings-ts) |          0 |       4 |          4 |
 | [`src/runtime/data_pipeline.ts`](#src-runtime-data-pipeline-ts)                   |          0 |      19 |         19 |
-| [`src/runtime/data_query.ts`](#src-runtime-data-query-ts)                         |          0 |      15 |          0 |
+| [`src/runtime/data_query.ts`](#src-runtime-data-query-ts)                         |          0 |      15 |         15 |
 | [`src/runtime/mod.ts`](#src-runtime-mod-ts)                                       |         15 |       0 |          0 |
-| [`src/runtime/profiles.ts`](#src-runtime-profiles-ts)                             |          0 |      24 |          3 |
-| [`src/runtime/render_loop.ts`](#src-runtime-render-loop-ts)                       |          0 |       7 |          1 |
-| [`src/runtime/renderer_backends.ts`](#src-runtime-renderer-backends-ts)           |          0 |      24 |          0 |
-| [`src/runtime/resource_bindings.ts`](#src-runtime-resource-bindings-ts)           |          0 |       4 |          0 |
-| [`src/runtime/resource.ts`](#src-runtime-resource-ts)                             |          0 |      14 |          0 |
+| [`src/runtime/profiles.ts`](#src-runtime-profiles-ts)                             |          0 |      24 |         24 |
+| [`src/runtime/render_loop.ts`](#src-runtime-render-loop-ts)                       |          0 |       7 |          7 |
+| [`src/runtime/renderer_backends.ts`](#src-runtime-renderer-backends-ts)           |          0 |      24 |         24 |
+| [`src/runtime/resource_bindings.ts`](#src-runtime-resource-bindings-ts)           |          0 |       4 |          4 |
+| [`src/runtime/resource.ts`](#src-runtime-resource-ts)                             |          0 |      14 |         14 |
 | [`src/runtime/scheduler.ts`](#src-runtime-scheduler-ts)                           |          0 |      13 |         13 |
-| [`src/runtime/storage.ts`](#src-runtime-storage-ts)                               |          0 |       9 |          0 |
+| [`src/runtime/storage.ts`](#src-runtime-storage-ts)                               |          0 |       9 |          9 |
 | [`src/runtime/telemetry.ts`](#src-runtime-telemetry-ts)                           |          0 |      15 |         15 |
-| [`src/runtime/terminal_capabilities.ts`](#src-runtime-terminal-capabilities-ts)   |          0 |      16 |         16 |
+| [`src/runtime/terminal_capabilities.ts`](#src-runtime-terminal-capabilities-ts)   |          0 |      27 |         27 |
 | [`src/runtime/terminal_session.ts`](#src-runtime-terminal-session-ts)             |          0 |       8 |          8 |
-| [`src/runtime/worker_pool.ts`](#src-runtime-worker-pool-ts)                       |          0 |      12 |          0 |
-| [`src/selection.ts`](#src-selection-ts)                                           |          0 |      16 |         15 |
+| [`src/runtime/worker_pool.ts`](#src-runtime-worker-pool-ts)                       |          0 |      12 |         12 |
+| [`src/selection.ts`](#src-selection-ts)                                           |          0 |      16 |         16 |
 | [`src/signals/computed.ts`](#src-signals-computed-ts)                             |          0 |       3 |          3 |
-| [`src/signals/dependency_tracking.ts`](#src-signals-dependency-tracking-ts)       |          0 |       3 |          2 |
+| [`src/signals/dependency_tracking.ts`](#src-signals-dependency-tracking-ts)       |          0 |       3 |          3 |
 | [`src/signals/effect.ts`](#src-signals-effect-ts)                                 |          0 |       2 |          2 |
 | [`src/signals/flusher.ts`](#src-signals-flusher-ts)                               |          0 |       1 |          1 |
 | [`src/signals/lazy_computed.ts`](#src-signals-lazy-computed-ts)                   |          0 |       1 |          1 |
 | [`src/signals/lazy_effect.ts`](#src-signals-lazy-effect-ts)                       |          0 |       1 |          1 |
 | [`src/signals/mod.ts`](#src-signals-mod-ts)                                       |          9 |       0 |          0 |
-| [`src/signals/reactivity.ts`](#src-signals-reactivity-ts)                         |          0 |      11 |          4 |
-| [`src/signals/signal.ts`](#src-signals-signal-ts)                                 |          0 |       5 |          4 |
+| [`src/signals/reactivity.ts`](#src-signals-reactivity-ts)                         |          0 |      11 |         11 |
+| [`src/signals/signal.ts`](#src-signals-signal-ts)                                 |          0 |       5 |          5 |
 | [`src/signals/types.ts`](#src-signals-types-ts)                                   |          0 |       4 |          4 |
-| [`src/testing/input.ts`](#src-testing-input-ts)                                   |          0 |       7 |          0 |
+| [`src/testing/input.ts`](#src-testing-input-ts)                                   |          0 |       7 |          7 |
 | [`src/testing/mod.ts`](#src-testing-mod-ts)                                       |          2 |       0 |          0 |
-| [`src/testing/snapshot.ts`](#src-testing-snapshot-ts)                             |          0 |      15 |          0 |
-| [`src/theme_binding.ts`](#src-theme-binding-ts)                                   |          0 |       8 |          6 |
-| [`src/theme_engine_cache.ts`](#src-theme-engine-cache-ts)                         |          0 |       6 |          0 |
-| [`src/theme_engine_factory.ts`](#src-theme-engine-factory-ts)                     |          0 |      19 |         17 |
-| [`src/theme_engine_pipeline.ts`](#src-theme-engine-pipeline-ts)                   |          0 |      12 |          1 |
+| [`src/testing/snapshot.ts`](#src-testing-snapshot-ts)                             |          0 |      15 |         15 |
+| [`src/theme_binding.ts`](#src-theme-binding-ts)                                   |          0 |       8 |          8 |
+| [`src/theme_engine_cache.ts`](#src-theme-engine-cache-ts)                         |          0 |       6 |          6 |
+| [`src/theme_engine_factory.ts`](#src-theme-engine-factory-ts)                     |          0 |      19 |         19 |
+| [`src/theme_engine_pipeline.ts`](#src-theme-engine-pipeline-ts)                   |          0 |      12 |         12 |
 | [`src/theme_gallery.ts`](#src-theme-gallery-ts)                                   |          0 |      11 |         11 |
-| [`src/theme_resolver.ts`](#src-theme-resolver-ts)                                 |          0 |      15 |          0 |
+| [`src/theme_resolver.ts`](#src-theme-resolver-ts)                                 |          0 |      15 |         15 |
 | [`src/theme_workspace.ts`](#src-theme-workspace-ts)                               |          0 |       7 |          7 |
-| [`src/theme.ts`](#src-theme-ts)                                                   |          0 |     109 |         20 |
-| [`src/three_ascii/AcerolaAsciiNode.ts`](#src-three-ascii-acerolaasciinode-ts)     |          0 |       2 |          0 |
-| [`src/three_ascii/demo_presets.ts`](#src-three-ascii-demo-presets-ts)             |          0 |      14 |          0 |
-| [`src/three_ascii/glyphs.ts`](#src-three-ascii-glyphs-ts)                         |          0 |      11 |          0 |
+| [`src/theme.ts`](#src-theme-ts)                                                   |          0 |     109 |        109 |
+| [`src/three_ascii/AcerolaAsciiNode.ts`](#src-three-ascii-acerolaasciinode-ts)     |          0 |       2 |          2 |
+| [`src/three_ascii/demo_presets.ts`](#src-three-ascii-demo-presets-ts)             |          0 |      14 |         14 |
+| [`src/three_ascii/glyphs.ts`](#src-three-ascii-glyphs-ts)                         |          0 |      11 |         11 |
 | [`src/three_ascii/mod.ts`](#src-three-ascii-mod-ts)                               |          5 |       0 |          0 |
-| [`src/three_ascii/renderer.ts`](#src-three-ascii-renderer-ts)                     |          0 |       2 |          0 |
-| [`src/three_ascii/webgpu_compat.ts`](#src-three-ascii-webgpu-compat-ts)           |          0 |       2 |          0 |
-| [`src/tui.ts`](#src-tui-ts)                                                       |          0 |       2 |          1 |
+| [`src/three_ascii/renderer.ts`](#src-three-ascii-renderer-ts)                     |          0 |       2 |          2 |
+| [`src/three_ascii/webgpu_compat.ts`](#src-three-ascii-webgpu-compat-ts)           |          0 |       2 |          2 |
+| [`src/tui.ts`](#src-tui-ts)                                                       |          0 |       2 |          2 |
 | [`src/types.ts`](#src-types-ts)                                                   |          0 |       8 |          8 |
 | [`src/utils/ansi_codes.ts`](#src-utils-ansi-codes-ts)                             |          0 |      12 |         12 |
 | [`src/utils/async.ts`](#src-utils-async-ts)                                       |          0 |       1 |          1 |
 | [`src/utils/component.ts`](#src-utils-component-ts)                               |          0 |       2 |          2 |
 | [`src/utils/mod.ts`](#src-utils-mod-ts)                                           |          7 |       0 |          0 |
-| [`src/utils/numbers.ts`](#src-utils-numbers-ts)                                   |          0 |       6 |          5 |
+| [`src/utils/numbers.ts`](#src-utils-numbers-ts)                                   |          0 |       6 |          6 |
 | [`src/utils/signals.ts`](#src-utils-signals-ts)                                   |          0 |       1 |          1 |
-| [`src/utils/sorted_array.ts`](#src-utils-sorted-array-ts)                         |          0 |       2 |          1 |
-| [`src/utils/strings.ts`](#src-utils-strings-ts)                                   |          0 |       9 |          8 |
-| [`src/view.ts`](#src-view-ts)                                                     |          0 |       1 |          0 |
+| [`src/utils/sorted_array.ts`](#src-utils-sorted-array-ts)                         |          0 |       2 |          2 |
+| [`src/utils/strings.ts`](#src-utils-strings-ts)                                   |          0 |       9 |          9 |
+| [`src/view.ts`](#src-view-ts)                                                     |          0 |       1 |          1 |
 | [`src/viewport.ts`](#src-viewport-ts)                                             |          0 |      10 |         10 |
 
 ## Modules
@@ -273,285 +275,285 @@ _No direct exported symbols._
 
 | Symbol                 | Kind      | Type Only | JSDoc |
 | ---------------------- | --------- | --------- | ----- |
-| `bindButtonCommands`   | function  | no        | no    |
-| `ButtonCommandAction`  | type      | yes       | no    |
-| `ButtonCommandKind`    | type      | yes       | no    |
-| `ButtonCommandOptions` | interface | yes       | no    |
-| `ButtonCommandPayload` | interface | yes       | no    |
-| `buttonCommands`       | function  | no        | no    |
+| `bindButtonCommands`   | function  | no        | yes   |
+| `ButtonCommandAction`  | type      | yes       | yes   |
+| `ButtonCommandKind`    | type      | yes       | yes   |
+| `ButtonCommandOptions` | interface | yes       | yes   |
+| `ButtonCommandPayload` | interface | yes       | yes   |
+| `buttonCommands`       | function  | no        | yes   |
 
 ### src/app/checkbox_commands.ts
 
 | Symbol                   | Kind      | Type Only | JSDoc |
 | ------------------------ | --------- | --------- | ----- |
-| `bindCheckBoxCommands`   | function  | no        | no    |
-| `CheckBoxCommandAction`  | type      | yes       | no    |
-| `CheckBoxCommandKind`    | type      | yes       | no    |
-| `CheckBoxCommandOptions` | interface | yes       | no    |
-| `CheckBoxCommandPayload` | interface | yes       | no    |
-| `checkBoxCommands`       | function  | no        | no    |
+| `bindCheckBoxCommands`   | function  | no        | yes   |
+| `CheckBoxCommandAction`  | type      | yes       | yes   |
+| `CheckBoxCommandKind`    | type      | yes       | yes   |
+| `CheckBoxCommandOptions` | interface | yes       | yes   |
+| `CheckBoxCommandPayload` | interface | yes       | yes   |
+| `checkBoxCommands`       | function  | no        | yes   |
 
 ### src/app/combobox_commands.ts
 
 | Symbol                   | Kind      | Type Only | JSDoc |
 | ------------------------ | --------- | --------- | ----- |
-| `bindComboBoxCommands`   | function  | no        | no    |
-| `ComboBoxCommandAction`  | type      | yes       | no    |
-| `ComboBoxCommandKind`    | type      | yes       | no    |
-| `ComboBoxCommandOptions` | interface | yes       | no    |
-| `ComboBoxCommandPayload` | interface | yes       | no    |
-| `comboBoxCommands`       | function  | no        | no    |
+| `bindComboBoxCommands`   | function  | no        | yes   |
+| `ComboBoxCommandAction`  | type      | yes       | yes   |
+| `ComboBoxCommandKind`    | type      | yes       | yes   |
+| `ComboBoxCommandOptions` | interface | yes       | yes   |
+| `ComboBoxCommandPayload` | interface | yes       | yes   |
+| `comboBoxCommands`       | function  | no        | yes   |
 
 ### src/app/command_bindings.ts
 
 | Symbol                              | Kind      | Type Only | JSDoc |
 | ----------------------------------- | --------- | --------- | ----- |
-| `bindCommandKeymap`                 | function  | no        | no    |
-| `bindCommandKeys`                   | function  | no        | no    |
-| `bindCommandSurface`                | function  | no        | no    |
-| `commandForKeyEvent`                | function  | no        | no    |
-| `CommandKeyBindingConflict`         | interface | yes       | no    |
-| `CommandKeyBindingInspection`       | interface | yes       | no    |
-| `CommandKeyBindingMarkdownOptions`  | interface | yes       | no    |
-| `CommandKeyBindingOptions`          | interface | yes       | no    |
-| `CommandKeyBindingReport`           | interface | yes       | no    |
-| `CommandKeyBindingReportInspection` | interface | yes       | no    |
-| `CommandKeyBindingReportOptions`    | interface | yes       | no    |
-| `CommandKeymapBindingOptions`       | interface | yes       | no    |
-| `CommandKeyTarget`                  | interface | yes       | no    |
-| `CommandSearchMatch`                | interface | yes       | no    |
-| `CommandSearchOptions`              | interface | yes       | no    |
-| `CommandSurfaceController`          | interface | yes       | no    |
-| `CommandSurfaceItem`                | interface | yes       | no    |
-| `commandSurfaceItems`               | function  | no        | no    |
-| `CommandSurfaceOptions`             | interface | yes       | no    |
-| `createCommandKeyBindingReport`     | function  | no        | no    |
-| `createCommandSurface`              | function  | no        | no    |
-| `executeCommandSurfaceItem`         | function  | no        | no    |
-| `formatCommandKeyBindingMarkdown`   | function  | no        | no    |
-| `inspectCommandKeyBindings`         | function  | no        | no    |
-| `rankCommandSurfaceItems`           | function  | no        | no    |
-| `searchCommandSurfaceItems`         | function  | no        | no    |
+| `bindCommandKeymap`                 | function  | no        | yes   |
+| `bindCommandKeys`                   | function  | no        | yes   |
+| `bindCommandSurface`                | function  | no        | yes   |
+| `commandForKeyEvent`                | function  | no        | yes   |
+| `CommandKeyBindingConflict`         | interface | yes       | yes   |
+| `CommandKeyBindingInspection`       | interface | yes       | yes   |
+| `CommandKeyBindingMarkdownOptions`  | interface | yes       | yes   |
+| `CommandKeyBindingOptions`          | interface | yes       | yes   |
+| `CommandKeyBindingReport`           | interface | yes       | yes   |
+| `CommandKeyBindingReportInspection` | interface | yes       | yes   |
+| `CommandKeyBindingReportOptions`    | interface | yes       | yes   |
+| `CommandKeymapBindingOptions`       | interface | yes       | yes   |
+| `CommandKeyTarget`                  | interface | yes       | yes   |
+| `CommandSearchMatch`                | interface | yes       | yes   |
+| `CommandSearchOptions`              | interface | yes       | yes   |
+| `CommandSurfaceController`          | interface | yes       | yes   |
+| `CommandSurfaceItem`                | interface | yes       | yes   |
+| `commandSurfaceItems`               | function  | no        | yes   |
+| `CommandSurfaceOptions`             | interface | yes       | yes   |
+| `createCommandKeyBindingReport`     | function  | no        | yes   |
+| `createCommandSurface`              | function  | no        | yes   |
+| `executeCommandSurfaceItem`         | function  | no        | yes   |
+| `formatCommandKeyBindingMarkdown`   | function  | no        | yes   |
+| `inspectCommandKeyBindings`         | function  | no        | yes   |
+| `rankCommandSurfaceItems`           | function  | no        | yes   |
+| `searchCommandSurfaceItems`         | function  | no        | yes   |
 
 ### src/app/command_search_index.ts
 
 | Symbol                            | Kind      | Type Only | JSDoc |
 | --------------------------------- | --------- | --------- | ----- |
-| `CommandSearchIndex`              | interface | yes       | no    |
-| `CommandSearchIndexEntry`         | interface | yes       | no    |
-| `CommandSearchIndexField`         | interface | yes       | no    |
-| `CommandSearchIndexInspection`    | interface | yes       | no    |
-| `CommandSearchIndexOptions`       | interface | yes       | no    |
-| `createCommandSearchIndex`        | function  | no        | no    |
-| `createIndexedCommandSurface`     | function  | no        | no    |
-| `IndexedCommandSearchOptions`     | interface | yes       | no    |
-| `IndexedCommandSurfaceController` | interface | yes       | no    |
-| `IndexedCommandSurfaceInspection` | interface | yes       | no    |
-| `searchCommandSearchIndex`        | function  | no        | no    |
+| `CommandSearchIndex`              | interface | yes       | yes   |
+| `CommandSearchIndexEntry`         | interface | yes       | yes   |
+| `CommandSearchIndexField`         | interface | yes       | yes   |
+| `CommandSearchIndexInspection`    | interface | yes       | yes   |
+| `CommandSearchIndexOptions`       | interface | yes       | yes   |
+| `createCommandSearchIndex`        | function  | no        | yes   |
+| `createIndexedCommandSurface`     | function  | no        | yes   |
+| `IndexedCommandSearchOptions`     | interface | yes       | yes   |
+| `IndexedCommandSurfaceController` | interface | yes       | yes   |
+| `IndexedCommandSurfaceInspection` | interface | yes       | yes   |
+| `searchCommandSearchIndex`        | function  | no        | yes   |
 
 ### src/app/commands.ts
 
 | Symbol                      | Kind      | Type Only | JSDoc |
 | --------------------------- | --------- | --------- | ----- |
-| `Command`                   | interface | yes       | no    |
-| `CommandActionFactory`      | type      | yes       | no    |
-| `CommandDispatch`           | type      | yes       | no    |
-| `CommandInspection`         | interface | yes       | no    |
-| `CommandProjection`         | interface | yes       | no    |
-| `CommandRegistry`           | class     | no        | no    |
-| `CommandRegistryInspection` | interface | yes       | no    |
-| `CommandRegistryListener`   | type      | yes       | no    |
+| `Command`                   | interface | yes       | yes   |
+| `CommandActionFactory`      | type      | yes       | yes   |
+| `CommandDispatch`           | type      | yes       | yes   |
+| `CommandInspection`         | interface | yes       | yes   |
+| `CommandProjection`         | interface | yes       | yes   |
+| `CommandRegistry`           | class     | no        | yes   |
+| `CommandRegistryInspection` | interface | yes       | yes   |
+| `CommandRegistryListener`   | type      | yes       | yes   |
 
 ### src/app/component_commands.ts
 
 | Symbol                            | Kind      | Type Only | JSDoc |
 | --------------------------------- | --------- | --------- | ----- |
-| `bindComponentCatalogCommands`    | function  | no        | no    |
-| `ComponentCatalogCommandAction`   | type      | yes       | no    |
-| `ComponentCatalogCommandOptions`  | interface | yes       | no    |
-| `componentCatalogCommands`        | function  | no        | no    |
-| `inspectComponentCatalogCommands` | function  | no        | no    |
+| `bindComponentCatalogCommands`    | function  | no        | yes   |
+| `ComponentCatalogCommandAction`   | type      | yes       | yes   |
+| `ComponentCatalogCommandOptions`  | interface | yes       | yes   |
+| `componentCatalogCommands`        | function  | no        | yes   |
+| `inspectComponentCatalogCommands` | function  | no        | yes   |
 
 ### src/app/data_query_bindings.ts
 
 | Symbol                             | Kind      | Type Only | JSDoc |
 | ---------------------------------- | --------- | --------- | ----- |
-| `bindDataQueryParams`              | function  | no        | no    |
-| `bindDataQueryResult`              | function  | no        | no    |
-| `bindDataQueryTable`               | function  | no        | no    |
-| `DataQueryParamsBindingHandle`     | type      | yes       | no    |
-| `DataQueryParamsBindingInspection` | interface | yes       | no    |
-| `DataQueryParamsBindingOptions`    | interface | yes       | no    |
-| `DataQueryResultBindingHandle`     | type      | yes       | no    |
-| `DataQueryResultBindingInspection` | interface | yes       | no    |
-| `DataQueryResultBindingOptions`    | interface | yes       | no    |
-| `DataQueryTableBindingHandle`      | type      | yes       | no    |
-| `DataQueryTableBindingInspection`  | interface | yes       | no    |
-| `DataQueryTableBindingOptions`     | interface | yes       | no    |
+| `bindDataQueryParams`              | function  | no        | yes   |
+| `bindDataQueryResult`              | function  | no        | yes   |
+| `bindDataQueryTable`               | function  | no        | yes   |
+| `DataQueryParamsBindingHandle`     | type      | yes       | yes   |
+| `DataQueryParamsBindingInspection` | interface | yes       | yes   |
+| `DataQueryParamsBindingOptions`    | interface | yes       | yes   |
+| `DataQueryResultBindingHandle`     | type      | yes       | yes   |
+| `DataQueryResultBindingInspection` | interface | yes       | yes   |
+| `DataQueryResultBindingOptions`    | interface | yes       | yes   |
+| `DataQueryTableBindingHandle`      | type      | yes       | yes   |
+| `DataQueryTableBindingInspection`  | interface | yes       | yes   |
+| `DataQueryTableBindingOptions`     | interface | yes       | yes   |
 
 ### src/app/data_query_commands.ts
 
 | Symbol                    | Kind      | Type Only | JSDoc |
 | ------------------------- | --------- | --------- | ----- |
-| `bindDataQueryCommands`   | function  | no        | no    |
-| `DataQueryCommandAction`  | type      | yes       | no    |
-| `DataQueryCommandKind`    | type      | yes       | no    |
-| `DataQueryCommandOptions` | interface | yes       | no    |
-| `DataQueryCommandPayload` | interface | yes       | no    |
-| `dataQueryCommands`       | function  | no        | no    |
-| `DataQuerySortCommand`    | interface | yes       | no    |
+| `bindDataQueryCommands`   | function  | no        | yes   |
+| `DataQueryCommandAction`  | type      | yes       | yes   |
+| `DataQueryCommandKind`    | type      | yes       | yes   |
+| `DataQueryCommandOptions` | interface | yes       | yes   |
+| `DataQueryCommandPayload` | interface | yes       | yes   |
+| `dataQueryCommands`       | function  | no        | yes   |
+| `DataQuerySortCommand`    | interface | yes       | yes   |
 
 ### src/app/data_query_plugin.ts
 
 | Symbol                          | Kind      | Type Only | JSDoc |
 | ------------------------------- | --------- | --------- | ----- |
-| `createDataQueryPlugin`         | function  | no        | no    |
-| `DataQueryAppPlugin`            | interface | yes       | no    |
-| `DataQueryPluginInspection`     | interface | yes       | no    |
-| `DataQueryPluginInstallContext` | interface | yes       | no    |
-| `DataQueryPluginOptions`        | interface | yes       | no    |
+| `createDataQueryPlugin`         | function  | no        | yes   |
+| `DataQueryAppPlugin`            | interface | yes       | yes   |
+| `DataQueryPluginInspection`     | interface | yes       | yes   |
+| `DataQueryPluginInstallContext` | interface | yes       | yes   |
+| `DataQueryPluginOptions`        | interface | yes       | yes   |
 
 ### src/app/data_table_commands.ts
 
 | Symbol                    | Kind      | Type Only | JSDoc |
 | ------------------------- | --------- | --------- | ----- |
-| `bindDataTableCommands`   | function  | no        | no    |
-| `DataTableCommandKind`    | type      | yes       | no    |
-| `DataTableCommandOptions` | interface | yes       | no    |
-| `dataTableCommands`       | function  | no        | no    |
+| `bindDataTableCommands`   | function  | no        | yes   |
+| `DataTableCommandKind`    | type      | yes       | yes   |
+| `DataTableCommandOptions` | interface | yes       | yes   |
+| `dataTableCommands`       | function  | no        | yes   |
 
 ### src/app/disposables.ts
 
 | Symbol                      | Kind      | Type Only | JSDoc |
 | --------------------------- | --------- | --------- | ----- |
-| `createDisposableStack`     | function  | no        | no    |
-| `DisposableStack`           | class     | no        | no    |
-| `DisposableStackInspection` | interface | yes       | no    |
-| `Disposer`                  | type      | yes       | no    |
-| `disposeReverse`            | function  | no        | no    |
-| `MaybeDisposer`             | type      | yes       | no    |
+| `createDisposableStack`     | function  | no        | yes   |
+| `DisposableStack`           | class     | no        | yes   |
+| `DisposableStackInspection` | interface | yes       | yes   |
+| `Disposer`                  | type      | yes       | yes   |
+| `disposeReverse`            | function  | no        | yes   |
+| `MaybeDisposer`             | type      | yes       | yes   |
 
 ### src/app/focus_commands.ts
 
 | Symbol                | Kind      | Type Only | JSDoc |
 | --------------------- | --------- | --------- | ----- |
-| `bindFocusCommands`   | function  | no        | no    |
-| `FocusCommandAction`  | type      | yes       | no    |
-| `FocusCommandKind`    | type      | yes       | no    |
-| `FocusCommandOptions` | interface | yes       | no    |
-| `FocusCommandPayload` | interface | yes       | no    |
-| `focusCommands`       | function  | no        | no    |
-| `FocusCommandTarget`  | interface | yes       | no    |
+| `bindFocusCommands`   | function  | no        | yes   |
+| `FocusCommandAction`  | type      | yes       | yes   |
+| `FocusCommandKind`    | type      | yes       | yes   |
+| `FocusCommandOptions` | interface | yes       | yes   |
+| `FocusCommandPayload` | interface | yes       | yes   |
+| `focusCommands`       | function  | no        | yes   |
+| `FocusCommandTarget`  | interface | yes       | yes   |
 
 ### src/app/form_bindings.ts
 
 | Symbol                    | Kind      | Type Only | JSDoc |
 | ------------------------- | --------- | --------- | ----- |
-| `bindFormField`           | function  | no        | no    |
-| `FormFieldBindingOptions` | interface | yes       | no    |
+| `bindFormField`           | function  | no        | yes   |
+| `FormFieldBindingOptions` | interface | yes       | yes   |
 
 ### src/app/form_commands.ts
 
 | Symbol                       | Kind      | Type Only | JSDoc |
 | ---------------------------- | --------- | --------- | ----- |
-| `bindFormCommands`           | function  | no        | no    |
-| `FormCommandAction`          | type      | yes       | no    |
-| `FormCommandKind`            | type      | yes       | no    |
-| `FormCommandOptions`         | interface | yes       | no    |
-| `formCommands`               | function  | no        | no    |
-| `FormCommandSnapshotPayload` | interface | yes       | no    |
-| `FormFieldCommandPayload`    | interface | yes       | no    |
+| `bindFormCommands`           | function  | no        | yes   |
+| `FormCommandAction`          | type      | yes       | yes   |
+| `FormCommandKind`            | type      | yes       | yes   |
+| `FormCommandOptions`         | interface | yes       | yes   |
+| `formCommands`               | function  | no        | yes   |
+| `FormCommandSnapshotPayload` | interface | yes       | yes   |
+| `FormFieldCommandPayload`    | interface | yes       | yes   |
 
 ### src/app/forms.ts
 
 | Symbol                | Kind      | Type Only | JSDoc |
 | --------------------- | --------- | --------- | ----- |
-| `FieldName`           | type      | yes       | no    |
-| `FieldValidator`      | type      | yes       | no    |
-| `FormController`      | class     | no        | no    |
-| `FormField`           | interface | yes       | no    |
-| `FormFieldInspection` | interface | yes       | no    |
-| `FormInspection`      | interface | yes       | no    |
-| `FormSnapshot`        | interface | yes       | no    |
-| `FormValues`          | type      | yes       | no    |
-| `minLength`           | function  | no        | no    |
-| `required`            | function  | no        | no    |
+| `FieldName`           | type      | yes       | yes   |
+| `FieldValidator`      | type      | yes       | yes   |
+| `FormController`      | class     | no        | yes   |
+| `FormField`           | interface | yes       | yes   |
+| `FormFieldInspection` | interface | yes       | yes   |
+| `FormInspection`      | interface | yes       | yes   |
+| `FormSnapshot`        | interface | yes       | yes   |
+| `FormValues`          | type      | yes       | yes   |
+| `minLength`           | function  | no        | yes   |
+| `required`            | function  | no        | yes   |
 
 ### src/app/history_bindings.ts
 
 | Symbol                       | Kind      | Type Only | JSDoc |
 | ---------------------------- | --------- | --------- | ----- |
-| `bindHistoryCommands`        | function  | no        | no    |
-| `bindRouteHistory`           | function  | no        | no    |
-| `HistoryCommandKind`         | type      | yes       | no    |
-| `HistoryCommandOptions`      | interface | yes       | no    |
-| `historyCommands`            | function  | no        | no    |
-| `RouteHistoryBindingOptions` | interface | yes       | no    |
+| `bindHistoryCommands`        | function  | no        | yes   |
+| `bindRouteHistory`           | function  | no        | yes   |
+| `HistoryCommandKind`         | type      | yes       | yes   |
+| `HistoryCommandOptions`      | interface | yes       | yes   |
+| `historyCommands`            | function  | no        | yes   |
+| `RouteHistoryBindingOptions` | interface | yes       | yes   |
 
 ### src/app/history.ts
 
 | Symbol                   | Kind      | Type Only | JSDoc |
 | ------------------------ | --------- | --------- | ----- |
-| `HistoryEntryInspection` | interface | yes       | no    |
-| `HistoryInspection`      | interface | yes       | no    |
-| `HistoryStack`           | class     | no        | no    |
-| `HistoryStackOptions`    | interface | yes       | no    |
-| `HistoryTransaction`     | interface | yes       | no    |
+| `HistoryEntryInspection` | interface | yes       | yes   |
+| `HistoryInspection`      | interface | yes       | yes   |
+| `HistoryStack`           | class     | no        | yes   |
+| `HistoryStackOptions`    | interface | yes       | yes   |
+| `HistoryTransaction`     | interface | yes       | yes   |
 
 ### src/app/input_commands.ts
 
 | Symbol                | Kind      | Type Only | JSDoc |
 | --------------------- | --------- | --------- | ----- |
-| `bindInputCommands`   | function  | no        | no    |
-| `InputCommandAction`  | type      | yes       | no    |
-| `InputCommandKind`    | type      | yes       | no    |
-| `InputCommandOptions` | interface | yes       | no    |
-| `InputCommandPayload` | interface | yes       | no    |
-| `inputCommands`       | function  | no        | no    |
+| `bindInputCommands`   | function  | no        | yes   |
+| `InputCommandAction`  | type      | yes       | yes   |
+| `InputCommandKind`    | type      | yes       | yes   |
+| `InputCommandOptions` | interface | yes       | yes   |
+| `InputCommandPayload` | interface | yes       | yes   |
+| `inputCommands`       | function  | no        | yes   |
 
 ### src/app/list_commands.ts
 
 | Symbol               | Kind      | Type Only | JSDoc |
 | -------------------- | --------- | --------- | ----- |
-| `bindListCommands`   | function  | no        | no    |
-| `ListCommandAction`  | type      | yes       | no    |
-| `ListCommandKind`    | type      | yes       | no    |
-| `ListCommandOptions` | interface | yes       | no    |
-| `ListCommandPayload` | interface | yes       | no    |
-| `listCommands`       | function  | no        | no    |
+| `bindListCommands`   | function  | no        | yes   |
+| `ListCommandAction`  | type      | yes       | yes   |
+| `ListCommandKind`    | type      | yes       | yes   |
+| `ListCommandOptions` | interface | yes       | yes   |
+| `ListCommandPayload` | interface | yes       | yes   |
+| `listCommands`       | function  | no        | yes   |
 
 ### src/app/log_viewer_commands.ts
 
 | Symbol                    | Kind      | Type Only | JSDoc |
 | ------------------------- | --------- | --------- | ----- |
-| `bindLogViewerCommands`   | function  | no        | no    |
-| `LogViewerCommandAction`  | type      | yes       | no    |
-| `LogViewerCommandKind`    | type      | yes       | no    |
-| `LogViewerCommandOptions` | interface | yes       | no    |
-| `LogViewerCommandPayload` | interface | yes       | no    |
-| `logViewerCommands`       | function  | no        | no    |
+| `bindLogViewerCommands`   | function  | no        | yes   |
+| `LogViewerCommandAction`  | type      | yes       | yes   |
+| `LogViewerCommandKind`    | type      | yes       | yes   |
+| `LogViewerCommandOptions` | interface | yes       | yes   |
+| `LogViewerCommandPayload` | interface | yes       | yes   |
+| `logViewerCommands`       | function  | no        | yes   |
 
 ### src/app/menu_bar_commands.ts
 
 | Symbol                  | Kind      | Type Only | JSDoc |
 | ----------------------- | --------- | --------- | ----- |
-| `bindMenuBarCommands`   | function  | no        | no    |
-| `MenuBarCommandAction`  | type      | yes       | no    |
-| `MenuBarCommandKind`    | type      | yes       | no    |
-| `MenuBarCommandOptions` | interface | yes       | no    |
-| `MenuBarCommandPayload` | interface | yes       | no    |
-| `menuBarCommands`       | function  | no        | no    |
+| `bindMenuBarCommands`   | function  | no        | yes   |
+| `MenuBarCommandAction`  | type      | yes       | yes   |
+| `MenuBarCommandKind`    | type      | yes       | yes   |
+| `MenuBarCommandOptions` | interface | yes       | yes   |
+| `MenuBarCommandPayload` | interface | yes       | yes   |
+| `menuBarCommands`       | function  | no        | yes   |
 
 ### src/app/metric_series_commands.ts
 
 | Symbol                       | Kind      | Type Only | JSDoc |
 | ---------------------------- | --------- | --------- | ----- |
-| `bindMetricSeriesCommands`   | function  | no        | no    |
-| `MetricSeriesCommandAction`  | type      | yes       | no    |
-| `MetricSeriesCommandKind`    | type      | yes       | no    |
-| `MetricSeriesCommandOptions` | interface | yes       | no    |
-| `MetricSeriesCommandPayload` | interface | yes       | no    |
-| `metricSeriesCommands`       | function  | no        | no    |
+| `bindMetricSeriesCommands`   | function  | no        | yes   |
+| `MetricSeriesCommandAction`  | type      | yes       | yes   |
+| `MetricSeriesCommandKind`    | type      | yes       | yes   |
+| `MetricSeriesCommandOptions` | interface | yes       | yes   |
+| `MetricSeriesCommandPayload` | interface | yes       | yes   |
+| `metricSeriesCommands`       | function  | no        | yes   |
 
 ### src/app/mod.ts
 
@@ -619,158 +621,158 @@ _No direct exported symbols._
 
 | Symbol                           | Kind      | Type Only | JSDoc |
 | -------------------------------- | --------- | --------- | ----- |
-| `bindMouseInteractions`          | function  | no        | no    |
-| `createMouseInteractionRouter`   | function  | no        | no    |
-| `MouseInteractionContext`        | interface | yes       | no    |
-| `MouseInteractionDispatchResult` | interface | yes       | no    |
-| `MouseInteractionEvent`          | type      | yes       | no    |
-| `MouseInteractionHandler`        | type      | yes       | no    |
-| `MouseInteractionInspection`     | interface | yes       | no    |
-| `MouseInteractionKind`           | type      | yes       | no    |
-| `MouseInteractionRouter`         | class     | no        | no    |
-| `MouseInteractionTarget`         | interface | yes       | no    |
+| `bindMouseInteractions`          | function  | no        | yes   |
+| `createMouseInteractionRouter`   | function  | no        | yes   |
+| `MouseInteractionContext`        | interface | yes       | yes   |
+| `MouseInteractionDispatchResult` | interface | yes       | yes   |
+| `MouseInteractionEvent`          | type      | yes       | yes   |
+| `MouseInteractionHandler`        | type      | yes       | yes   |
+| `MouseInteractionInspection`     | interface | yes       | yes   |
+| `MouseInteractionKind`           | type      | yes       | yes   |
+| `MouseInteractionRouter`         | class     | no        | yes   |
+| `MouseInteractionTarget`         | interface | yes       | yes   |
 
 ### src/app/plugins.ts
 
 | Symbol                                  | Kind      | Type Only | JSDoc |
 | --------------------------------------- | --------- | --------- | ----- |
-| `AppPluginCatalogInspection`            | interface | yes       | no    |
-| `AppPluginCatalogMarkdownOptions`       | interface | yes       | no    |
-| `AppPluginCatalogQuery`                 | interface | yes       | no    |
-| `AppPluginCatalogReport`                | interface | yes       | no    |
-| `AppPluginCatalogReportOptions`         | interface | yes       | no    |
-| `AppPluginDefinition`                   | interface | yes       | no    |
-| `AppPluginDefinitionInspection`         | interface | yes       | no    |
-| `AppPluginDefinitionRegistry`           | class     | no        | no    |
-| `AppPluginDefinitionRegistryInspection` | interface | yes       | no    |
-| `AppPluginRoute`                        | interface | yes       | no    |
-| `createAppPlugin`                       | function  | no        | no    |
-| `createAppPluginCatalogReport`          | function  | no        | no    |
-| `createAppPluginDefinitionRegistry`     | function  | no        | no    |
-| `formatAppPluginCatalogMarkdown`        | function  | no        | no    |
-| `inspectAppPluginCatalog`               | function  | no        | no    |
-| `inspectAppPluginDefinition`            | function  | no        | no    |
-| `queryAppPluginDefinitions`             | function  | no        | no    |
+| `AppPluginCatalogInspection`            | interface | yes       | yes   |
+| `AppPluginCatalogMarkdownOptions`       | interface | yes       | yes   |
+| `AppPluginCatalogQuery`                 | interface | yes       | yes   |
+| `AppPluginCatalogReport`                | interface | yes       | yes   |
+| `AppPluginCatalogReportOptions`         | interface | yes       | yes   |
+| `AppPluginDefinition`                   | interface | yes       | yes   |
+| `AppPluginDefinitionInspection`         | interface | yes       | yes   |
+| `AppPluginDefinitionRegistry`           | class     | no        | yes   |
+| `AppPluginDefinitionRegistryInspection` | interface | yes       | yes   |
+| `AppPluginRoute`                        | interface | yes       | yes   |
+| `createAppPlugin`                       | function  | no        | yes   |
+| `createAppPluginCatalogReport`          | function  | no        | yes   |
+| `createAppPluginDefinitionRegistry`     | function  | no        | yes   |
+| `formatAppPluginCatalogMarkdown`        | function  | no        | yes   |
+| `inspectAppPluginCatalog`               | function  | no        | yes   |
+| `inspectAppPluginDefinition`            | function  | no        | yes   |
+| `queryAppPluginDefinitions`             | function  | no        | yes   |
 
 ### src/app/progress_bar_commands.ts
 
 | Symbol                      | Kind      | Type Only | JSDoc |
 | --------------------------- | --------- | --------- | ----- |
-| `bindProgressBarCommands`   | function  | no        | no    |
-| `ProgressBarCommandAction`  | type      | yes       | no    |
-| `ProgressBarCommandKind`    | type      | yes       | no    |
-| `ProgressBarCommandOptions` | interface | yes       | no    |
-| `ProgressBarCommandPayload` | interface | yes       | no    |
-| `progressBarCommands`       | function  | no        | no    |
+| `bindProgressBarCommands`   | function  | no        | yes   |
+| `ProgressBarCommandAction`  | type      | yes       | yes   |
+| `ProgressBarCommandKind`    | type      | yes       | yes   |
+| `ProgressBarCommandOptions` | interface | yes       | yes   |
+| `ProgressBarCommandPayload` | interface | yes       | yes   |
+| `progressBarCommands`       | function  | no        | yes   |
 
 ### src/app/radio_group_commands.ts
 
 | Symbol                     | Kind      | Type Only | JSDoc |
 | -------------------------- | --------- | --------- | ----- |
-| `bindRadioGroupCommands`   | function  | no        | no    |
-| `RadioGroupCommandAction`  | type      | yes       | no    |
-| `RadioGroupCommandKind`    | type      | yes       | no    |
-| `RadioGroupCommandOptions` | interface | yes       | no    |
-| `RadioGroupCommandPayload` | interface | yes       | no    |
-| `radioGroupCommands`       | function  | no        | no    |
+| `bindRadioGroupCommands`   | function  | no        | yes   |
+| `RadioGroupCommandAction`  | type      | yes       | yes   |
+| `RadioGroupCommandKind`    | type      | yes       | yes   |
+| `RadioGroupCommandOptions` | interface | yes       | yes   |
+| `RadioGroupCommandPayload` | interface | yes       | yes   |
+| `radioGroupCommands`       | function  | no        | yes   |
 
 ### src/app/route_bindings.ts
 
 | Symbol                      | Kind      | Type Only | JSDoc |
 | --------------------------- | --------- | --------- | ----- |
-| `bindRouteCommands`         | function  | no        | no    |
-| `bindRouteIndex`            | function  | no        | no    |
-| `bindRouteSignal`           | function  | no        | no    |
-| `RouteCommandKind`          | type      | yes       | no    |
-| `RouteCommandOptions`       | interface | yes       | no    |
-| `routeCommands`             | function  | no        | no    |
-| `RouteIdSource`             | type      | yes       | no    |
-| `RouteIndexBindingOptions`  | interface | yes       | no    |
-| `RouteSignalBindingOptions` | interface | yes       | no    |
+| `bindRouteCommands`         | function  | no        | yes   |
+| `bindRouteIndex`            | function  | no        | yes   |
+| `bindRouteSignal`           | function  | no        | yes   |
+| `RouteCommandKind`          | type      | yes       | yes   |
+| `RouteCommandOptions`       | interface | yes       | yes   |
+| `routeCommands`             | function  | no        | yes   |
+| `RouteIdSource`             | type      | yes       | yes   |
+| `RouteIndexBindingOptions`  | interface | yes       | yes   |
+| `RouteSignalBindingOptions` | interface | yes       | yes   |
 
 ### src/app/router.ts
 
 | Symbol                   | Kind      | Type Only | JSDoc |
 | ------------------------ | --------- | --------- | ----- |
-| `Route`                  | interface | yes       | no    |
-| `RouteInspection`        | interface | yes       | no    |
-| `RouteManager`           | class     | no        | no    |
-| `RouteRegisterOptions`   | interface | yes       | no    |
-| `RouteUnregisterOptions` | interface | yes       | no    |
+| `Route`                  | interface | yes       | yes   |
+| `RouteInspection`        | interface | yes       | yes   |
+| `RouteManager`           | class     | no        | yes   |
+| `RouteRegisterOptions`   | interface | yes       | yes   |
+| `RouteUnregisterOptions` | interface | yes       | yes   |
 
 ### src/app/runtime_profile_commands.ts
 
 | Symbol                         | Kind      | Type Only | JSDoc |
 | ------------------------------ | --------- | --------- | ----- |
-| `bindRuntimeProfileCommands`   | function  | no        | no    |
-| `RuntimeProfileChangedPayload` | interface | yes       | no    |
-| `RuntimeProfileCommandAction`  | type      | yes       | no    |
-| `RuntimeProfileCommandOptions` | interface | yes       | no    |
-| `runtimeProfileCommands`       | function  | no        | no    |
+| `bindRuntimeProfileCommands`   | function  | no        | yes   |
+| `RuntimeProfileChangedPayload` | interface | yes       | yes   |
+| `RuntimeProfileCommandAction`  | type      | yes       | yes   |
+| `RuntimeProfileCommandOptions` | interface | yes       | yes   |
+| `runtimeProfileCommands`       | function  | no        | yes   |
 
 ### src/app/runtime_profile_plugin.ts
 
 | Symbol                               | Kind      | Type Only | JSDoc |
 | ------------------------------------ | --------- | --------- | ----- |
-| `createRuntimeProfilePlugin`         | function  | no        | no    |
-| `RuntimeProfileAppPlugin`            | interface | yes       | no    |
-| `RuntimeProfilePluginInspection`     | interface | yes       | no    |
-| `RuntimeProfilePluginInstallContext` | interface | yes       | no    |
-| `RuntimeProfilePluginOptions`        | interface | yes       | no    |
+| `createRuntimeProfilePlugin`         | function  | no        | yes   |
+| `RuntimeProfileAppPlugin`            | interface | yes       | yes   |
+| `RuntimeProfilePluginInspection`     | interface | yes       | yes   |
+| `RuntimeProfilePluginInstallContext` | interface | yes       | yes   |
+| `RuntimeProfilePluginOptions`        | interface | yes       | yes   |
 
 ### src/app/runtime_renderer_commands.ts
 
 | Symbol                                 | Kind      | Type Only | JSDoc |
 | -------------------------------------- | --------- | --------- | ----- |
-| `bindRuntimeRendererBackendCommands`   | function  | no        | no    |
-| `RuntimeRendererBackendChangedPayload` | interface | yes       | no    |
-| `RuntimeRendererBackendCommandAction`  | type      | yes       | no    |
-| `RuntimeRendererBackendCommandOptions` | interface | yes       | no    |
-| `runtimeRendererBackendCommands`       | function  | no        | no    |
+| `bindRuntimeRendererBackendCommands`   | function  | no        | yes   |
+| `RuntimeRendererBackendChangedPayload` | interface | yes       | yes   |
+| `RuntimeRendererBackendCommandAction`  | type      | yes       | yes   |
+| `RuntimeRendererBackendCommandOptions` | interface | yes       | yes   |
+| `runtimeRendererBackendCommands`       | function  | no        | yes   |
 
 ### src/app/runtime_renderer_plugin.ts
 
 | Symbol                                       | Kind      | Type Only | JSDoc |
 | -------------------------------------------- | --------- | --------- | ----- |
-| `createRuntimeRendererBackendPlugin`         | function  | no        | no    |
-| `RuntimeRendererBackendAppPlugin`            | interface | yes       | no    |
-| `RuntimeRendererBackendPluginInspection`     | interface | yes       | no    |
-| `RuntimeRendererBackendPluginInstallContext` | interface | yes       | no    |
-| `RuntimeRendererBackendPluginOptions`        | interface | yes       | no    |
+| `createRuntimeRendererBackendPlugin`         | function  | no        | yes   |
+| `RuntimeRendererBackendAppPlugin`            | interface | yes       | yes   |
+| `RuntimeRendererBackendPluginInspection`     | interface | yes       | yes   |
+| `RuntimeRendererBackendPluginInstallContext` | interface | yes       | yes   |
+| `RuntimeRendererBackendPluginOptions`        | interface | yes       | yes   |
 
 ### src/app/runtime_workload_commands.ts
 
 | Symbol                           | Kind      | Type Only | JSDoc |
 | -------------------------------- | --------- | --------- | ----- |
-| `bindRuntimeWorkloadCommands`    | function  | no        | no    |
-| `RuntimeWorkloadCommandAction`   | type      | yes       | no    |
-| `RuntimeWorkloadCommandOptions`  | interface | yes       | no    |
-| `runtimeWorkloadCommands`        | function  | no        | no    |
-| `RuntimeWorkloadReportedPayload` | interface | yes       | no    |
+| `bindRuntimeWorkloadCommands`    | function  | no        | yes   |
+| `RuntimeWorkloadCommandAction`   | type      | yes       | yes   |
+| `RuntimeWorkloadCommandOptions`  | interface | yes       | yes   |
+| `runtimeWorkloadCommands`        | function  | no        | yes   |
+| `RuntimeWorkloadReportedPayload` | interface | yes       | yes   |
 
 ### src/app/scroll_area_commands.ts
 
 | Symbol                     | Kind      | Type Only | JSDoc |
 | -------------------------- | --------- | --------- | ----- |
-| `bindScrollAreaCommands`   | function  | no        | no    |
-| `ScrollAreaCommandAction`  | type      | yes       | no    |
-| `ScrollAreaCommandKind`    | type      | yes       | no    |
-| `ScrollAreaCommandOptions` | interface | yes       | no    |
-| `ScrollAreaCommandPayload` | interface | yes       | no    |
-| `scrollAreaCommands`       | function  | no        | no    |
+| `bindScrollAreaCommands`   | function  | no        | yes   |
+| `ScrollAreaCommandAction`  | type      | yes       | yes   |
+| `ScrollAreaCommandKind`    | type      | yes       | yes   |
+| `ScrollAreaCommandOptions` | interface | yes       | yes   |
+| `ScrollAreaCommandPayload` | interface | yes       | yes   |
+| `scrollAreaCommands`       | function  | no        | yes   |
 
 ### src/app/selection_bindings.ts
 
 | Symbol                         | Kind      | Type Only | JSDoc |
 | ------------------------------ | --------- | --------- | ----- |
-| `bindSelectionCommands`        | function  | no        | no    |
-| `bindSelectionValue`           | function  | no        | no    |
-| `SelectionCommandKind`         | type      | yes       | no    |
-| `SelectionCommandOptions`      | interface | yes       | no    |
-| `selectionCommands`            | function  | no        | no    |
-| `SelectionItemsSource`         | type      | yes       | no    |
-| `SelectionPageSize`            | type      | yes       | no    |
-| `SelectionValueBindingOptions` | interface | yes       | no    |
+| `bindSelectionCommands`        | function  | no        | yes   |
+| `bindSelectionValue`           | function  | no        | yes   |
+| `SelectionCommandKind`         | type      | yes       | yes   |
+| `SelectionCommandOptions`      | interface | yes       | yes   |
+| `selectionCommands`            | function  | no        | yes   |
+| `SelectionItemsSource`         | type      | yes       | yes   |
+| `SelectionPageSize`            | type      | yes       | yes   |
+| `SelectionValueBindingOptions` | interface | yes       | yes   |
 
 ### src/app/settings_bindings.ts
 
@@ -778,210 +780,210 @@ _No direct exported symbols._
 | --------------------------------------------- | --------- | --------- | ----- |
 | `bindDataQuerySetting`                        | function  | no        | yes   |
 | `bindDataTableSetting`                        | function  | no        | yes   |
-| `bindRouteSetting`                            | function  | no        | no    |
-| `bindRuntimeProfileSetting`                   | function  | no        | no    |
-| `bindRuntimeRendererBackendSetting`           | function  | no        | no    |
-| `bindSettingSignal`                           | function  | no        | no    |
-| `bindSplitPaneSetting`                        | function  | no        | no    |
-| `bindThemeLayerSetting`                       | function  | no        | no    |
-| `bindThemePipelineSetting`                    | function  | no        | no    |
-| `bindThemeSetting`                            | function  | no        | no    |
+| `bindRouteSetting`                            | function  | no        | yes   |
+| `bindRuntimeProfileSetting`                   | function  | no        | yes   |
+| `bindRuntimeRendererBackendSetting`           | function  | no        | yes   |
+| `bindSettingSignal`                           | function  | no        | yes   |
+| `bindSplitPaneSetting`                        | function  | no        | yes   |
+| `bindThemeLayerSetting`                       | function  | no        | yes   |
+| `bindThemePipelineSetting`                    | function  | no        | yes   |
+| `bindThemeSetting`                            | function  | no        | yes   |
 | `DataQuerySettingBindingOptions`              | interface | yes       | yes   |
 | `DataTableSettingBindingOptions`              | interface | yes       | yes   |
-| `RouteSettingBindingOptions`                  | interface | yes       | no    |
-| `RuntimeProfileSettingBindingOptions`         | interface | yes       | no    |
-| `RuntimeRendererBackendSettingBindingOptions` | interface | yes       | no    |
-| `SettingBinding`                              | interface | yes       | no    |
-| `SettingSignalBindingOptions`                 | interface | yes       | no    |
-| `SplitPaneSettingBindingOptions`              | interface | yes       | no    |
-| `ThemeLayerSettingBindingOptions`             | interface | yes       | no    |
-| `ThemePipelineSettingBindingOptions`          | interface | yes       | no    |
-| `ThemeSettingBindingOptions`                  | interface | yes       | no    |
+| `RouteSettingBindingOptions`                  | interface | yes       | yes   |
+| `RuntimeProfileSettingBindingOptions`         | interface | yes       | yes   |
+| `RuntimeRendererBackendSettingBindingOptions` | interface | yes       | yes   |
+| `SettingBinding`                              | interface | yes       | yes   |
+| `SettingSignalBindingOptions`                 | interface | yes       | yes   |
+| `SplitPaneSettingBindingOptions`              | interface | yes       | yes   |
+| `ThemeLayerSettingBindingOptions`             | interface | yes       | yes   |
+| `ThemePipelineSettingBindingOptions`          | interface | yes       | yes   |
+| `ThemeSettingBindingOptions`                  | interface | yes       | yes   |
 
 ### src/app/settings_commands.ts
 
 | Symbol                   | Kind      | Type Only | JSDoc |
 | ------------------------ | --------- | --------- | ----- |
-| `bindSettingsCommands`   | function  | no        | no    |
-| `SettingsCommandAction`  | type      | yes       | no    |
-| `SettingsCommandKind`    | type      | yes       | no    |
-| `SettingsCommandOptions` | interface | yes       | no    |
-| `settingsCommands`       | function  | no        | no    |
+| `bindSettingsCommands`   | function  | no        | yes   |
+| `SettingsCommandAction`  | type      | yes       | yes   |
+| `SettingsCommandKind`    | type      | yes       | yes   |
+| `SettingsCommandOptions` | interface | yes       | yes   |
+| `settingsCommands`       | function  | no        | yes   |
 
 ### src/app/settings.ts
 
 | Symbol                         | Kind      | Type Only | JSDoc |
 | ------------------------------ | --------- | --------- | ----- |
-| `AppSettingDefinition`         | interface | yes       | no    |
-| `createSettingsController`     | function  | no        | no    |
-| `SettingsController`           | class     | no        | no    |
-| `SettingsControllerInspection` | interface | yes       | no    |
-| `SettingsControllerOptions`    | interface | yes       | no    |
+| `AppSettingDefinition`         | interface | yes       | yes   |
+| `createSettingsController`     | function  | no        | yes   |
+| `SettingsController`           | class     | no        | yes   |
+| `SettingsControllerInspection` | interface | yes       | yes   |
+| `SettingsControllerOptions`    | interface | yes       | yes   |
 
 ### src/app/slider_commands.ts
 
 | Symbol                 | Kind      | Type Only | JSDoc |
 | ---------------------- | --------- | --------- | ----- |
-| `bindSliderCommands`   | function  | no        | no    |
-| `SliderCommandAction`  | type      | yes       | no    |
-| `SliderCommandKind`    | type      | yes       | no    |
-| `SliderCommandOptions` | interface | yes       | no    |
-| `SliderCommandPayload` | interface | yes       | no    |
-| `sliderCommands`       | function  | no        | no    |
+| `bindSliderCommands`   | function  | no        | yes   |
+| `SliderCommandAction`  | type      | yes       | yes   |
+| `SliderCommandKind`    | type      | yes       | yes   |
+| `SliderCommandOptions` | interface | yes       | yes   |
+| `SliderCommandPayload` | interface | yes       | yes   |
+| `sliderCommands`       | function  | no        | yes   |
 
 ### src/app/split_pane_commands.ts
 
 | Symbol                     | Kind      | Type Only | JSDoc |
 | -------------------------- | --------- | --------- | ----- |
-| `bindSplitPaneCommands`    | function  | no        | no    |
-| `SplitPaneBoundsSource`    | type      | yes       | no    |
-| `SplitPaneCommandAction`   | type      | yes       | no    |
-| `SplitPaneCommandKind`     | type      | yes       | no    |
-| `SplitPaneCommandOptions`  | interface | yes       | no    |
-| `splitPaneCommands`        | function  | no        | no    |
-| `SplitPaneSnapshotPayload` | interface | yes       | no    |
+| `bindSplitPaneCommands`    | function  | no        | yes   |
+| `SplitPaneBoundsSource`    | type      | yes       | yes   |
+| `SplitPaneCommandAction`   | type      | yes       | yes   |
+| `SplitPaneCommandKind`     | type      | yes       | yes   |
+| `SplitPaneCommandOptions`  | interface | yes       | yes   |
+| `splitPaneCommands`        | function  | no        | yes   |
+| `SplitPaneSnapshotPayload` | interface | yes       | yes   |
 
 ### src/app/stepper_commands.ts
 
 | Symbol                  | Kind      | Type Only | JSDoc |
 | ----------------------- | --------- | --------- | ----- |
-| `bindStepperCommands`   | function  | no        | no    |
-| `StepperCommandAction`  | type      | yes       | no    |
-| `StepperCommandKind`    | type      | yes       | no    |
-| `StepperCommandOptions` | interface | yes       | no    |
-| `StepperCommandPayload` | interface | yes       | no    |
-| `stepperCommands`       | function  | no        | no    |
+| `bindStepperCommands`   | function  | no        | yes   |
+| `StepperCommandAction`  | type      | yes       | yes   |
+| `StepperCommandKind`    | type      | yes       | yes   |
+| `StepperCommandOptions` | interface | yes       | yes   |
+| `StepperCommandPayload` | interface | yes       | yes   |
+| `stepperCommands`       | function  | no        | yes   |
 
 ### src/app/surface_bindings.ts
 
 | Symbol                     | Kind      | Type Only | JSDoc |
 | -------------------------- | --------- | --------- | ----- |
-| `bindModalFocus`           | function  | no        | no    |
-| `ModalFocusBindingOptions` | interface | yes       | no    |
+| `bindModalFocus`           | function  | no        | yes   |
+| `ModalFocusBindingOptions` | interface | yes       | yes   |
 
 ### src/app/table_commands.ts
 
 | Symbol                | Kind      | Type Only | JSDoc |
 | --------------------- | --------- | --------- | ----- |
-| `bindTableCommands`   | function  | no        | no    |
-| `TableCommandAction`  | type      | yes       | no    |
-| `TableCommandKind`    | type      | yes       | no    |
-| `TableCommandOptions` | interface | yes       | no    |
-| `TableCommandPayload` | interface | yes       | no    |
-| `tableCommands`       | function  | no        | no    |
+| `bindTableCommands`   | function  | no        | yes   |
+| `TableCommandAction`  | type      | yes       | yes   |
+| `TableCommandKind`    | type      | yes       | yes   |
+| `TableCommandOptions` | interface | yes       | yes   |
+| `TableCommandPayload` | interface | yes       | yes   |
+| `tableCommands`       | function  | no        | yes   |
 
 ### src/app/tabs_commands.ts
 
 | Symbol               | Kind      | Type Only | JSDoc |
 | -------------------- | --------- | --------- | ----- |
-| `bindTabsCommands`   | function  | no        | no    |
-| `TabsCommandAction`  | type      | yes       | no    |
-| `TabsCommandKind`    | type      | yes       | no    |
-| `TabsCommandOptions` | interface | yes       | no    |
-| `TabsCommandPayload` | interface | yes       | no    |
-| `tabsCommands`       | function  | no        | no    |
+| `bindTabsCommands`   | function  | no        | yes   |
+| `TabsCommandAction`  | type      | yes       | yes   |
+| `TabsCommandKind`    | type      | yes       | yes   |
+| `TabsCommandOptions` | interface | yes       | yes   |
+| `TabsCommandPayload` | interface | yes       | yes   |
+| `tabsCommands`       | function  | no        | yes   |
 
 ### src/app/textbox_commands.ts
 
 | Symbol                  | Kind      | Type Only | JSDoc |
 | ----------------------- | --------- | --------- | ----- |
-| `bindTextBoxCommands`   | function  | no        | no    |
-| `TextBoxCommandAction`  | type      | yes       | no    |
-| `TextBoxCommandKind`    | type      | yes       | no    |
-| `TextBoxCommandOptions` | interface | yes       | no    |
-| `TextBoxCommandPayload` | interface | yes       | no    |
-| `textBoxCommands`       | function  | no        | no    |
+| `bindTextBoxCommands`   | function  | no        | yes   |
+| `TextBoxCommandAction`  | type      | yes       | yes   |
+| `TextBoxCommandKind`    | type      | yes       | yes   |
+| `TextBoxCommandOptions` | interface | yes       | yes   |
+| `TextBoxCommandPayload` | interface | yes       | yes   |
+| `textBoxCommands`       | function  | no        | yes   |
 
 ### src/app/theme_commands.ts
 
 | Symbol                     | Kind      | Type Only | JSDoc |
 | -------------------------- | --------- | --------- | ----- |
-| `bindThemeCommands`        | function  | no        | no    |
-| `ThemeChangedPayload`      | interface | yes       | no    |
-| `ThemeCommandAction`       | type      | yes       | no    |
-| `ThemeCommandOptions`      | interface | yes       | no    |
-| `themeCommands`            | function  | no        | no    |
-| `ThemeLayerChangedPayload` | interface | yes       | no    |
-| `themeLayerCommands`       | function  | no        | no    |
-| `themePreviewCommands`     | function  | no        | no    |
-| `ThemePreviewPayload`      | interface | yes       | no    |
-| `themeSelectionCommands`   | function  | no        | no    |
+| `bindThemeCommands`        | function  | no        | yes   |
+| `ThemeChangedPayload`      | interface | yes       | yes   |
+| `ThemeCommandAction`       | type      | yes       | yes   |
+| `ThemeCommandOptions`      | interface | yes       | yes   |
+| `themeCommands`            | function  | no        | yes   |
+| `ThemeLayerChangedPayload` | interface | yes       | yes   |
+| `themeLayerCommands`       | function  | no        | yes   |
+| `themePreviewCommands`     | function  | no        | yes   |
+| `ThemePreviewPayload`      | interface | yes       | yes   |
+| `themeSelectionCommands`   | function  | no        | yes   |
 
 ### src/app/theme_engine_commands.ts
 
 | Symbol                       | Kind      | Type Only | JSDoc |
 | ---------------------------- | --------- | --------- | ----- |
-| `bindThemeEngineCommands`    | function  | no        | no    |
-| `themeEngineCatalogCommands` | function  | no        | no    |
-| `ThemeEngineCatalogPayload`  | interface | yes       | no    |
-| `ThemeEngineCommandAction`   | type      | yes       | no    |
-| `ThemeEngineCommandOptions`  | interface | yes       | no    |
-| `themeEngineCommands`        | function  | no        | no    |
-| `ThemeEngineCommandSource`   | type      | yes       | no    |
-| `themeEngineFactoryCommands` | function  | no        | no    |
-| `ThemeEnginePreviewPayload`  | interface | yes       | no    |
+| `bindThemeEngineCommands`    | function  | no        | yes   |
+| `themeEngineCatalogCommands` | function  | no        | yes   |
+| `ThemeEngineCatalogPayload`  | interface | yes       | yes   |
+| `ThemeEngineCommandAction`   | type      | yes       | yes   |
+| `ThemeEngineCommandOptions`  | interface | yes       | yes   |
+| `themeEngineCommands`        | function  | no        | yes   |
+| `ThemeEngineCommandSource`   | type      | yes       | yes   |
+| `themeEngineFactoryCommands` | function  | no        | yes   |
+| `ThemeEnginePreviewPayload`  | interface | yes       | yes   |
 
 ### src/app/theme_pipeline_commands.ts
 
 | Symbol                            | Kind      | Type Only | JSDoc |
 | --------------------------------- | --------- | --------- | ----- |
-| `bindThemePipelineCommands`       | function  | no        | no    |
-| `ThemePipelineCommandAction`      | type      | yes       | no    |
-| `ThemePipelineCommandOptions`     | interface | yes       | no    |
-| `themePipelineCommands`           | function  | no        | no    |
-| `ThemePipelineStepChangedPayload` | interface | yes       | no    |
+| `bindThemePipelineCommands`       | function  | no        | yes   |
+| `ThemePipelineCommandAction`      | type      | yes       | yes   |
+| `ThemePipelineCommandOptions`     | interface | yes       | yes   |
+| `themePipelineCommands`           | function  | no        | yes   |
+| `ThemePipelineStepChangedPayload` | interface | yes       | yes   |
 
 ### src/app/theme_plugin.ts
 
 | Symbol                              | Kind      | Type Only | JSDoc |
 | ----------------------------------- | --------- | --------- | ----- |
-| `createThemePlugin`                 | function  | no        | no    |
-| `ThemeAppPlugin`                    | interface | yes       | no    |
-| `ThemePluginInspection`             | interface | yes       | no    |
-| `ThemePluginInstallContext`         | interface | yes       | no    |
-| `ThemePluginOptions`                | interface | yes       | no    |
-| `ThemePluginPipelineCommandOptions` | type      | yes       | no    |
-| `ThemePluginPipelineSettingOption`  | type      | yes       | no    |
-| `ThemePluginPipelineSettingOptions` | type      | yes       | no    |
+| `createThemePlugin`                 | function  | no        | yes   |
+| `ThemeAppPlugin`                    | interface | yes       | yes   |
+| `ThemePluginInspection`             | interface | yes       | yes   |
+| `ThemePluginInstallContext`         | interface | yes       | yes   |
+| `ThemePluginOptions`                | interface | yes       | yes   |
+| `ThemePluginPipelineCommandOptions` | type      | yes       | yes   |
+| `ThemePluginPipelineSettingOption`  | type      | yes       | yes   |
+| `ThemePluginPipelineSettingOptions` | type      | yes       | yes   |
 
 ### src/app/theme_workspace_plugin.ts
 
 | Symbol                               | Kind      | Type Only | JSDoc |
 | ------------------------------------ | --------- | --------- | ----- |
-| `createThemeWorkspacePlugin`         | function  | no        | no    |
-| `ThemeWorkspaceAppPlugin`            | interface | yes       | no    |
-| `ThemeWorkspacePluginInspection`     | interface | yes       | no    |
-| `ThemeWorkspacePluginInstallContext` | interface | yes       | no    |
-| `ThemeWorkspacePluginOptions`        | interface | yes       | no    |
+| `createThemeWorkspacePlugin`         | function  | no        | yes   |
+| `ThemeWorkspaceAppPlugin`            | interface | yes       | yes   |
+| `ThemeWorkspacePluginInspection`     | interface | yes       | yes   |
+| `ThemeWorkspacePluginInstallContext` | interface | yes       | yes   |
+| `ThemeWorkspacePluginOptions`        | interface | yes       | yes   |
 
 ### src/app/toast_commands.ts
 
 | Symbol                | Kind      | Type Only | JSDoc |
 | --------------------- | --------- | --------- | ----- |
-| `bindToastCommands`   | function  | no        | no    |
-| `ToastCommandAction`  | type      | yes       | no    |
-| `ToastCommandKind`    | type      | yes       | no    |
-| `ToastCommandOptions` | interface | yes       | no    |
-| `ToastCommandPayload` | interface | yes       | no    |
-| `toastCommands`       | function  | no        | no    |
+| `bindToastCommands`   | function  | no        | yes   |
+| `ToastCommandAction`  | type      | yes       | yes   |
+| `ToastCommandKind`    | type      | yes       | yes   |
+| `ToastCommandOptions` | interface | yes       | yes   |
+| `ToastCommandPayload` | interface | yes       | yes   |
+| `toastCommands`       | function  | no        | yes   |
 
 ### src/app/tree_commands.ts
 
 | Symbol               | Kind      | Type Only | JSDoc |
 | -------------------- | --------- | --------- | ----- |
-| `bindTreeCommands`   | function  | no        | no    |
-| `TreeCommandAction`  | type      | yes       | no    |
-| `TreeCommandKind`    | type      | yes       | no    |
-| `TreeCommandOptions` | interface | yes       | no    |
-| `TreeCommandPayload` | interface | yes       | no    |
-| `treeCommands`       | function  | no        | no    |
+| `bindTreeCommands`   | function  | no        | yes   |
+| `TreeCommandAction`  | type      | yes       | yes   |
+| `TreeCommandKind`    | type      | yes       | yes   |
+| `TreeCommandOptions` | interface | yes       | yes   |
+| `TreeCommandPayload` | interface | yes       | yes   |
+| `treeCommands`       | function  | no        | yes   |
 
 ### src/canvas/box.ts
 
 | Symbol             | Kind      | Type Only | JSDoc |
 | ------------------ | --------- | --------- | ----- |
 | `BoxObject`        | class     | no        | yes   |
-| `BoxObjectOptions` | interface | yes       | no    |
+| `BoxObjectOptions` | interface | yes       | yes   |
 
 ### src/canvas/canvas.ts
 
@@ -997,7 +999,7 @@ _No direct exported symbols._
 | Symbol              | Kind      | Type Only | JSDoc |
 | ------------------- | --------- | --------- | ----- |
 | `DrawObject`        | class     | no        | yes   |
-| `DrawObjectOptions` | interface | yes       | no    |
+| `DrawObjectOptions` | interface | yes       | yes   |
 
 ### src/canvas/mod.ts
 
@@ -1017,37 +1019,37 @@ _No direct exported symbols._
 | Symbol                  | Kind      | Type Only | JSDoc |
 | ----------------------- | --------- | --------- | ----- |
 | `AnsiCanvasSink`        | class     | no        | yes   |
-| `AnsiCanvasSinkOptions` | interface | yes       | no    |
-| `CanvasCellSink`        | interface | yes       | no    |
-| `CanvasCellUpdate`      | interface | yes       | no    |
-| `CanvasStdout`          | interface | yes       | no    |
-| `MemoryCanvasSink`      | class     | no        | no    |
+| `AnsiCanvasSinkOptions` | interface | yes       | yes   |
+| `CanvasCellSink`        | interface | yes       | yes   |
+| `CanvasCellUpdate`      | interface | yes       | yes   |
+| `CanvasStdout`          | interface | yes       | yes   |
+| `MemoryCanvasSink`      | class     | no        | yes   |
 
 ### src/canvas/text.ts
 
 | Symbol              | Kind      | Type Only | JSDoc |
 | ------------------- | --------- | --------- | ----- |
 | `TextObject`        | class     | no        | yes   |
-| `TextObjectOptions` | interface | yes       | no    |
+| `TextObjectOptions` | interface | yes       | yes   |
 | `TextRectangle`     | type      | yes       | yes   |
 
 ### src/canvas/three_ascii.ts
 
 | Symbol                           | Kind      | Type Only | JSDoc |
 | -------------------------------- | --------- | --------- | ----- |
-| `buildFallbackGrid`              | function  | no        | no    |
-| `formatThreeAsciiFallbackDetail` | function  | no        | no    |
-| `ThreeAsciiGridRenderer`         | interface | yes       | no    |
-| `ThreeAsciiObject`               | class     | no        | no    |
-| `ThreeAsciiObjectOptions`        | interface | yes       | no    |
-| `ThreeAsciiRendererFactory`      | type      | yes       | no    |
+| `buildFallbackGrid`              | function  | no        | yes   |
+| `formatThreeAsciiFallbackDetail` | function  | no        | yes   |
+| `ThreeAsciiGridRenderer`         | interface | yes       | yes   |
+| `ThreeAsciiObject`               | class     | no        | yes   |
+| `ThreeAsciiObjectOptions`        | interface | yes       | yes   |
+| `ThreeAsciiRendererFactory`      | type      | yes       | yes   |
 
 ### src/component.ts
 
 | Symbol             | Kind      | Type Only | JSDoc |
 | ------------------ | --------- | --------- | ----- |
-| `Component`        | class     | no        | no    |
-| `ComponentOptions` | interface | yes       | no    |
+| `Component`        | class     | no        | yes   |
+| `ComponentOptions` | interface | yes       | yes   |
 | `ComponentState`   | type      | yes       | yes   |
 | `Interaction`      | interface | yes       | yes   |
 
@@ -1061,20 +1063,20 @@ _No direct exported symbols._
 
 | Symbol               | Kind      | Type Only | JSDoc |
 | -------------------- | --------- | --------- | ----- |
-| `BreadcrumbItem`     | interface | yes       | no    |
-| `Breadcrumbs`        | class     | no        | no    |
-| `BreadcrumbsOptions` | interface | yes       | no    |
-| `renderBreadcrumbs`  | function  | no        | no    |
+| `BreadcrumbItem`     | interface | yes       | yes   |
+| `Breadcrumbs`        | class     | no        | yes   |
+| `BreadcrumbsOptions` | interface | yes       | yes   |
+| `renderBreadcrumbs`  | function  | no        | yes   |
 
 ### src/components/button.ts
 
 | Symbol                    | Kind      | Type Only | JSDoc |
 | ------------------------- | --------- | --------- | ----- |
 | `Button`                  | class     | no        | yes   |
-| `ButtonController`        | class     | no        | no    |
-| `ButtonControllerOptions` | interface | yes       | no    |
-| `ButtonInspection`        | interface | yes       | no    |
-| `ButtonOptions`           | interface | yes       | no    |
+| `ButtonController`        | class     | no        | yes   |
+| `ButtonControllerOptions` | interface | yes       | yes   |
+| `ButtonInspection`        | interface | yes       | yes   |
+| `ButtonOptions`           | interface | yes       | yes   |
 
 ### src/components/catalog.ts
 
@@ -1104,144 +1106,156 @@ _No direct exported symbols._
 
 | Symbol           | Kind      | Type Only | JSDoc |
 | ---------------- | --------- | --------- | ----- |
-| `Chart`          | class     | no        | no    |
-| `ChartOptions`   | interface | yes       | no    |
-| `renderBarChart` | function  | no        | no    |
+| `Chart`          | class     | no        | yes   |
+| `ChartOptions`   | interface | yes       | yes   |
+| `renderBarChart` | function  | no        | yes   |
 
 ### src/components/checkbox.ts
 
 | Symbol                      | Kind      | Type Only | JSDoc |
 | --------------------------- | --------- | --------- | ----- |
 | `CheckBox`                  | class     | no        | yes   |
-| `CheckBoxController`        | class     | no        | no    |
-| `CheckBoxControllerOptions` | interface | yes       | no    |
-| `CheckBoxInspection`        | interface | yes       | no    |
-| `CheckBoxOptions`           | interface | yes       | no    |
-| `Mark`                      | enum      | no        | no    |
-| `renderCheckBoxMark`        | function  | no        | no    |
+| `CheckBoxController`        | class     | no        | yes   |
+| `CheckBoxControllerOptions` | interface | yes       | yes   |
+| `CheckBoxInspection`        | interface | yes       | yes   |
+| `CheckBoxOptions`           | interface | yes       | yes   |
+| `Mark`                      | enum      | no        | yes   |
+| `renderCheckBoxMark`        | function  | no        | yes   |
 
 ### src/components/combobox.ts
 
 | Symbol                      | Kind      | Type Only | JSDoc |
 | --------------------------- | --------- | --------- | ----- |
-| `clampComboBoxIndex`        | function  | no        | no    |
+| `clampComboBoxIndex`        | function  | no        | yes   |
 | `ComboBox`                  | class     | no        | yes   |
-| `ComboBoxController`        | class     | no        | no    |
-| `ComboBoxControllerOptions` | interface | yes       | no    |
-| `ComboBoxInspection`        | interface | yes       | no    |
-| `comboBoxLabel`             | function  | no        | no    |
-| `ComboBoxOptions`           | interface | yes       | no    |
+| `ComboBoxController`        | class     | no        | yes   |
+| `ComboBoxControllerOptions` | interface | yes       | yes   |
+| `ComboBoxInspection`        | interface | yes       | yes   |
+| `comboBoxLabel`             | function  | no        | yes   |
+| `ComboBoxOptions`           | interface | yes       | yes   |
 
 ### src/components/command_palette.ts
 
 | Symbol                            | Kind      | Type Only | JSDoc |
 | --------------------------------- | --------- | --------- | ----- |
-| `clampCommandPaletteSelection`    | function  | no        | no    |
-| `CommandPalette`                  | class     | no        | no    |
-| `CommandPaletteController`        | class     | no        | no    |
-| `CommandPaletteControllerOptions` | interface | yes       | no    |
-| `CommandPaletteInspection`        | interface | yes       | no    |
-| `CommandPaletteItem`              | interface | yes       | no    |
-| `CommandPaletteMatch`             | interface | yes       | no    |
-| `CommandPaletteOptions`           | interface | yes       | no    |
-| `filterCommandPaletteItems`       | function  | no        | no    |
-| `rankCommandPaletteItems`         | function  | no        | no    |
-| `renderCommandPaletteRows`        | function  | no        | no    |
-| `shiftCommandPaletteSelection`    | function  | no        | no    |
+| `clampCommandPaletteSelection`    | function  | no        | yes   |
+| `CommandPalette`                  | class     | no        | yes   |
+| `CommandPaletteController`        | class     | no        | yes   |
+| `CommandPaletteControllerOptions` | interface | yes       | yes   |
+| `CommandPaletteInspection`        | interface | yes       | yes   |
+| `CommandPaletteItem`              | interface | yes       | yes   |
+| `CommandPaletteMatch`             | interface | yes       | yes   |
+| `CommandPaletteOptions`           | interface | yes       | yes   |
+| `filterCommandPaletteItems`       | function  | no        | yes   |
+| `rankCommandPaletteItems`         | function  | no        | yes   |
+| `renderCommandPaletteRows`        | function  | no        | yes   |
+| `shiftCommandPaletteSelection`    | function  | no        | yes   |
 
 ### src/components/context_menu.ts
 
 | Symbol                         | Kind      | Type Only | JSDoc |
 | ------------------------------ | --------- | --------- | ----- |
-| `clampContextMenuSelection`    | function  | no        | no    |
-| `ContextMenu`                  | class     | no        | no    |
-| `ContextMenuController`        | class     | no        | no    |
-| `ContextMenuControllerOptions` | interface | yes       | no    |
-| `ContextMenuInspection`        | interface | yes       | no    |
-| `ContextMenuItem`              | interface | yes       | no    |
-| `ContextMenuOptions`           | interface | yes       | no    |
-| `renderContextMenuRows`        | function  | no        | no    |
-| `shiftContextMenuSelection`    | function  | no        | no    |
-| `visibleContextMenuItems`      | function  | no        | no    |
+| `clampContextMenuSelection`    | function  | no        | yes   |
+| `ContextMenu`                  | class     | no        | yes   |
+| `ContextMenuController`        | class     | no        | yes   |
+| `ContextMenuControllerOptions` | interface | yes       | yes   |
+| `ContextMenuInspection`        | interface | yes       | yes   |
+| `ContextMenuItem`              | interface | yes       | yes   |
+| `ContextMenuOptions`           | interface | yes       | yes   |
+| `renderContextMenuRows`        | function  | no        | yes   |
+| `shiftContextMenuSelection`    | function  | no        | yes   |
+| `visibleContextMenuItems`      | function  | no        | yes   |
 
 ### src/components/data_table.ts
 
 | Symbol                       | Kind      | Type Only | JSDoc |
 | ---------------------------- | --------- | --------- | ----- |
-| `canSortColumn`              | function  | no        | no    |
-| `createDataTableView`        | function  | no        | no    |
-| `DataColumn`                 | interface | yes       | no    |
-| `DataSort`                   | interface | yes       | no    |
-| `DataTableController`        | class     | no        | no    |
-| `DataTableControllerOptions` | interface | yes       | no    |
-| `DataTableInspection`        | interface | yes       | no    |
-| `DataTableState`             | interface | yes       | no    |
-| `DataTableView`              | interface | yes       | no    |
-| `filterDataRows`             | function  | no        | no    |
-| `nextSort`                   | function  | no        | no    |
-| `renderDataTableHeader`      | function  | no        | no    |
-| `renderDataTableRows`        | function  | no        | no    |
-| `sortDataRows`               | function  | no        | no    |
-| `SortDirection`              | type      | yes       | no    |
+| `canSortColumn`              | function  | no        | yes   |
+| `createDataTableView`        | function  | no        | yes   |
+| `DataColumn`                 | interface | yes       | yes   |
+| `DataSort`                   | interface | yes       | yes   |
+| `DataTableController`        | class     | no        | yes   |
+| `DataTableControllerOptions` | interface | yes       | yes   |
+| `DataTableInspection`        | interface | yes       | yes   |
+| `DataTableState`             | interface | yes       | yes   |
+| `DataTableView`              | interface | yes       | yes   |
+| `filterDataRows`             | function  | no        | yes   |
+| `nextSort`                   | function  | no        | yes   |
+| `renderDataTableHeader`      | function  | no        | yes   |
+| `renderDataTableRows`        | function  | no        | yes   |
+| `sortDataRows`               | function  | no        | yes   |
+| `SortDirection`              | type      | yes       | yes   |
 
 ### src/components/empty_state.ts
 
 | Symbol              | Kind      | Type Only | JSDoc |
 | ------------------- | --------- | --------- | ----- |
-| `EmptyState`        | class     | no        | no    |
-| `EmptyStateContent` | interface | yes       | no    |
-| `EmptyStateOptions` | interface | yes       | no    |
-| `renderEmptyState`  | function  | no        | no    |
+| `EmptyState`        | class     | no        | yes   |
+| `EmptyStateContent` | interface | yes       | yes   |
+| `EmptyStateOptions` | interface | yes       | yes   |
+| `renderEmptyState`  | function  | no        | yes   |
 
 ### src/components/file_explorer.ts
 
 | Symbol                          | Kind      | Type Only | JSDoc |
 | ------------------------------- | --------- | --------- | ----- |
-| `createFileExplorerTree`        | function  | no        | no    |
-| `FileExplorerController`        | class     | no        | no    |
-| `FileExplorerControllerOptions` | interface | yes       | no    |
-| `FileExplorerEntry`             | interface | yes       | no    |
-| `FileExplorerInspection`        | interface | yes       | no    |
-| `FileExplorerNode`              | interface | yes       | no    |
-| `FileExplorerNodeKind`          | type      | yes       | no    |
+| `createFileExplorerTree`        | function  | no        | yes   |
+| `FileExplorerController`        | class     | no        | yes   |
+| `FileExplorerControllerOptions` | interface | yes       | yes   |
+| `FileExplorerEntry`             | interface | yes       | yes   |
+| `FileExplorerInspection`        | interface | yes       | yes   |
+| `FileExplorerNode`              | interface | yes       | yes   |
+| `FileExplorerNodeKind`          | type      | yes       | yes   |
 
 ### src/components/frame.ts
 
 | Symbol                       | Kind      | Type Only | JSDoc |
 | ---------------------------- | --------- | --------- | ----- |
 | `Frame`                      | class     | no        | yes   |
-| `FrameOptions`               | interface | yes       | no    |
-| `FrameUnicodeCharacters`     | const     | no        | no    |
-| `FrameUnicodeCharactersType` | type      | yes       | no    |
+| `FrameOptions`               | interface | yes       | yes   |
+| `FrameUnicodeCharacters`     | const     | no        | yes   |
+| `FrameUnicodeCharactersType` | type      | yes       | yes   |
 
 ### src/components/gauge.ts
 
 | Symbol         | Kind      | Type Only | JSDoc |
 | -------------- | --------- | --------- | ----- |
-| `Gauge`        | class     | no        | no    |
-| `GaugeOptions` | interface | yes       | no    |
-| `renderGauge`  | function  | no        | no    |
+| `Gauge`        | class     | no        | yes   |
+| `GaugeOptions` | interface | yes       | yes   |
+| `renderGauge`  | function  | no        | yes   |
 
 ### src/components/input.ts
 
 | Symbol                   | Kind      | Type Only | JSDoc |
 | ------------------------ | --------- | --------- | ----- |
 | `Input`                  | class     | no        | yes   |
-| `InputController`        | class     | no        | no    |
-| `InputControllerOptions` | interface | yes       | no    |
-| `InputEditResult`        | type      | yes       | no    |
-| `InputInspection`        | interface | yes       | no    |
-| `InputOptions`           | interface | yes       | no    |
-| `InputRectangle`         | interface | yes       | no    |
-| `InputTheme`             | interface | yes       | no    |
+| `InputController`        | class     | no        | yes   |
+| `InputControllerOptions` | interface | yes       | yes   |
+| `InputEditResult`        | type      | yes       | yes   |
+| `InputInspection`        | interface | yes       | yes   |
+| `InputOptions`           | interface | yes       | yes   |
+| `InputRectangle`         | interface | yes       | yes   |
+| `InputTheme`             | interface | yes       | yes   |
+
+### src/components/interaction.ts
+
+| Symbol                    | Kind      | Type Only | JSDoc |
+| ------------------------- | --------- | --------- | ----- |
+| `hitTestWidgetRegions`    | function  | no        | yes   |
+| `pointInWidgetRegion`     | function  | no        | yes   |
+| `stackedRowHitRegions`    | function  | no        | yes   |
+| `stackedRowIndexAt`       | function  | no        | yes   |
+| `WidgetHit`               | interface | yes       | yes   |
+| `WidgetHitRegion`         | interface | yes       | yes   |
+| `WidgetInteractionMethod` | type      | yes       | yes   |
 
 ### src/components/key_help.ts
 
 | Symbol           | Kind      | Type Only | JSDoc |
 | ---------------- | --------- | --------- | ----- |
-| `KeyHelp`        | class     | no        | no    |
-| `KeyHelpOptions` | interface | yes       | no    |
-| `renderKeyHelp`  | function  | no        | no    |
+| `KeyHelp`        | class     | no        | yes   |
+| `KeyHelpOptions` | interface | yes       | yes   |
+| `renderKeyHelp`  | function  | no        | yes   |
 
 ### src/components/label.ts
 
@@ -1251,62 +1265,62 @@ _No direct exported symbols._
 | `LabelAlign`      | interface | yes       | yes   |
 | `labelLineLayout` | function  | no        | yes   |
 | `LabelLineLayout` | interface | yes       | yes   |
-| `LabelOptions`    | interface | yes       | no    |
+| `LabelOptions`    | interface | yes       | yes   |
 | `LabelRectangle`  | type      | yes       | yes   |
 
 ### src/components/list.ts
 
 | Symbol                  | Kind      | Type Only | JSDoc |
 | ----------------------- | --------- | --------- | ----- |
-| `List`                  | class     | no        | no    |
-| `ListController`        | class     | no        | no    |
-| `ListControllerOptions` | interface | yes       | no    |
-| `ListInspection`        | interface | yes       | no    |
-| `ListOptions`           | interface | yes       | no    |
-| `VirtualRow`            | interface | yes       | no    |
-| `virtualRows`           | function  | no        | no    |
-| `visibleListRows`       | function  | no        | no    |
+| `List`                  | class     | no        | yes   |
+| `ListController`        | class     | no        | yes   |
+| `ListControllerOptions` | interface | yes       | yes   |
+| `ListInspection`        | interface | yes       | yes   |
+| `ListOptions`           | interface | yes       | yes   |
+| `VirtualRow`            | interface | yes       | yes   |
+| `virtualRows`           | function  | no        | yes   |
+| `visibleListRows`       | function  | no        | yes   |
 
 ### src/components/log_viewer.ts
 
 | Symbol                       | Kind      | Type Only | JSDoc |
 | ---------------------------- | --------- | --------- | ----- |
-| `LogViewer`                  | class     | no        | no    |
-| `LogViewerController`        | class     | no        | no    |
-| `LogViewerControllerOptions` | interface | yes       | no    |
-| `LogViewerInspection`        | interface | yes       | no    |
-| `LogViewerOptions`           | interface | yes       | no    |
-| `visibleLogLines`            | function  | no        | no    |
+| `LogViewer`                  | class     | no        | yes   |
+| `LogViewerController`        | class     | no        | yes   |
+| `LogViewerControllerOptions` | interface | yes       | yes   |
+| `LogViewerInspection`        | interface | yes       | yes   |
+| `LogViewerOptions`           | interface | yes       | yes   |
+| `visibleLogLines`            | function  | no        | yes   |
 
 ### src/components/menu_bar.ts
 
 | Symbol                     | Kind      | Type Only | JSDoc |
 | -------------------------- | --------- | --------- | ----- |
-| `clampMenuIndex`           | function  | no        | no    |
-| `MenuBar`                  | class     | no        | no    |
-| `MenuBarController`        | class     | no        | no    |
-| `MenuBarControllerOptions` | interface | yes       | no    |
-| `MenuBarInspection`        | interface | yes       | no    |
-| `MenuBarItem`              | interface | yes       | no    |
-| `MenuBarOptions`           | interface | yes       | no    |
-| `menuItemForIndex`         | function  | no        | no    |
-| `renderMenuBar`            | function  | no        | no    |
-| `shiftMenuIndex`           | function  | no        | no    |
+| `clampMenuIndex`           | function  | no        | yes   |
+| `MenuBar`                  | class     | no        | yes   |
+| `MenuBarController`        | class     | no        | yes   |
+| `MenuBarControllerOptions` | interface | yes       | yes   |
+| `MenuBarInspection`        | interface | yes       | yes   |
+| `MenuBarItem`              | interface | yes       | yes   |
+| `MenuBarOptions`           | interface | yes       | yes   |
+| `menuItemForIndex`         | function  | no        | yes   |
+| `renderMenuBar`            | function  | no        | yes   |
+| `shiftMenuIndex`           | function  | no        | yes   |
 
 ### src/components/metric_series.ts
 
 | Symbol                          | Kind      | Type Only | JSDoc |
 | ------------------------------- | --------- | --------- | ----- |
-| `DEFAULT_METRIC_SERIES_LIMIT`   | const     | no        | no    |
-| `MetricClampRange`              | interface | yes       | no    |
-| `MetricSeriesController`        | class     | no        | no    |
-| `MetricSeriesControllerOptions` | interface | yes       | no    |
-| `MetricSeriesInspection`        | interface | yes       | no    |
-| `metricSeriesStats`             | function  | no        | no    |
-| `MetricSeriesStats`             | interface | yes       | no    |
-| `normalizeMetricLimit`          | function  | no        | no    |
-| `normalizeMetricValue`          | function  | no        | no    |
-| `pushMetricValue`               | function  | no        | no    |
+| `DEFAULT_METRIC_SERIES_LIMIT`   | const     | no        | yes   |
+| `MetricClampRange`              | interface | yes       | yes   |
+| `MetricSeriesController`        | class     | no        | yes   |
+| `MetricSeriesControllerOptions` | interface | yes       | yes   |
+| `MetricSeriesInspection`        | interface | yes       | yes   |
+| `metricSeriesStats`             | function  | no        | yes   |
+| `MetricSeriesStats`             | interface | yes       | yes   |
+| `normalizeMetricLimit`          | function  | no        | yes   |
+| `normalizeMetricValue`          | function  | no        | yes   |
+| `pushMetricValue`               | function  | no        | yes   |
 
 ### src/components/mod.ts
 
@@ -1327,6 +1341,7 @@ _No direct exported symbols._
 | `src/components/frame.ts`           | star | -     |
 | `src/components/gauge.ts`           | star | -     |
 | `src/components/input.ts`           | star | -     |
+| `src/components/interaction.ts`     | star | -     |
 | `src/components/label.ts`           | star | -     |
 | `src/components/key_help.ts`        | star | -     |
 | `src/components/list.ts`            | star | -     |
@@ -1357,237 +1372,239 @@ _No direct exported symbols._
 
 | Symbol                   | Kind      | Type Only | JSDoc |
 | ------------------------ | --------- | --------- | ----- |
-| `Modal`                  | class     | no        | no    |
-| `ModalAction`            | interface | yes       | no    |
-| `ModalContent`           | interface | yes       | no    |
-| `modalContentHeight`     | function  | no        | no    |
-| `ModalController`        | class     | no        | no    |
-| `ModalControllerOptions` | interface | yes       | no    |
-| `ModalInspection`        | interface | yes       | no    |
-| `ModalOptions`           | interface | yes       | no    |
-| `ModalTone`              | type      | yes       | no    |
-| `renderModalRows`        | function  | no        | no    |
-| `RenderModalRowsOptions` | interface | yes       | no    |
+| `Modal`                  | class     | no        | yes   |
+| `ModalAction`            | interface | yes       | yes   |
+| `ModalContent`           | interface | yes       | yes   |
+| `modalContentHeight`     | function  | no        | yes   |
+| `ModalController`        | class     | no        | yes   |
+| `ModalControllerOptions` | interface | yes       | yes   |
+| `ModalInspection`        | interface | yes       | yes   |
+| `ModalOptions`           | interface | yes       | yes   |
+| `ModalTone`              | type      | yes       | yes   |
+| `renderModalRows`        | function  | no        | yes   |
+| `RenderModalRowsOptions` | interface | yes       | yes   |
 
 ### src/components/progressbar.ts
 
 | Symbol                         | Kind      | Type Only | JSDoc |
 | ------------------------------ | --------- | --------- | ----- |
-| `clampProgressValue`           | function  | no        | no    |
+| `clampProgressValue`           | function  | no        | yes   |
 | `ProgressBar`                  | class     | no        | yes   |
-| `progressBarCharMap`           | const     | no        | no    |
-| `ProgressBarCharMapType`       | type      | yes       | no    |
-| `ProgressBarController`        | class     | no        | no    |
-| `ProgressBarControllerOptions` | interface | yes       | no    |
-| `ProgressBarDirection`         | type      | yes       | no    |
-| `ProgressBarInspection`        | interface | yes       | no    |
-| `ProgressBarOptions`           | interface | yes       | no    |
-| `ProgressBarOrientation`       | type      | yes       | no    |
-| `ProgressBarTheme`             | interface | yes       | no    |
-| `ProgressBarTrackRectangle`    | interface | yes       | no    |
-| `progressRatio`                | function  | no        | no    |
-| `progressRectangle`            | function  | no        | no    |
-| `progressSmoothLine`           | function  | no        | no    |
+| `progressBarCharMap`           | const     | no        | yes   |
+| `ProgressBarCharMapType`       | type      | yes       | yes   |
+| `ProgressBarController`        | class     | no        | yes   |
+| `ProgressBarControllerOptions` | interface | yes       | yes   |
+| `ProgressBarDirection`         | type      | yes       | yes   |
+| `ProgressBarInspection`        | interface | yes       | yes   |
+| `ProgressBarOptions`           | interface | yes       | yes   |
+| `ProgressBarOrientation`       | type      | yes       | yes   |
+| `ProgressBarTheme`             | interface | yes       | yes   |
+| `ProgressBarTrackRectangle`    | interface | yes       | yes   |
+| `progressRatio`                | function  | no        | yes   |
+| `progressRectangle`            | function  | no        | yes   |
+| `progressSmoothLine`           | function  | no        | yes   |
 
 ### src/components/radio_group.ts
 
 | Symbol                        | Kind      | Type Only | JSDoc |
 | ----------------------------- | --------- | --------- | ----- |
-| `clampRadioIndex`             | function  | no        | no    |
-| `optionForValue`              | function  | no        | no    |
-| `RadioGroup`                  | class     | no        | no    |
-| `RadioGroupController`        | class     | no        | no    |
-| `RadioGroupControllerOptions` | interface | yes       | no    |
-| `RadioGroupInspection`        | interface | yes       | no    |
-| `RadioGroupOptions`           | interface | yes       | no    |
-| `RadioOption`                 | interface | yes       | no    |
-| `renderRadioGroupRows`        | function  | no        | no    |
-| `shiftRadioIndex`             | function  | no        | no    |
-| `visibleRadioOptions`         | function  | no        | no    |
+| `clampRadioIndex`             | function  | no        | yes   |
+| `optionForValue`              | function  | no        | yes   |
+| `RadioGroup`                  | class     | no        | yes   |
+| `RadioGroupController`        | class     | no        | yes   |
+| `RadioGroupControllerOptions` | interface | yes       | yes   |
+| `RadioGroupInspection`        | interface | yes       | yes   |
+| `RadioGroupOptions`           | interface | yes       | yes   |
+| `RadioOption`                 | interface | yes       | yes   |
+| `renderRadioGroupRows`        | function  | no        | yes   |
+| `shiftRadioIndex`             | function  | no        | yes   |
+| `visibleRadioOptions`         | function  | no        | yes   |
 
 ### src/components/scroll_area.ts
 
 | Symbol                        | Kind      | Type Only | JSDoc |
 | ----------------------------- | --------- | --------- | ----- |
-| `clampScrollOffset`           | function  | no        | no    |
-| `maxScrollOffset`             | function  | no        | no    |
-| `ScrollArea`                  | class     | no        | no    |
-| `ScrollAreaController`        | class     | no        | no    |
-| `ScrollAreaControllerOptions` | interface | yes       | no    |
-| `ScrollAreaInspection`        | interface | yes       | no    |
-| `ScrollAreaOptions`           | interface | yes       | no    |
-| `scrollbarGlyph`              | function  | no        | no    |
-| `scrollbarOffsetForPointer`   | function  | no        | no    |
-| `scrollbarThumb`              | function  | no        | no    |
-| `ScrollbarThumb`              | type      | yes       | no    |
-| `scrollOffsetBy`              | function  | no        | no    |
+| `clampScrollOffset`           | function  | no        | yes   |
+| `maxScrollOffset`             | function  | no        | yes   |
+| `ScrollArea`                  | class     | no        | yes   |
+| `ScrollAreaController`        | class     | no        | yes   |
+| `ScrollAreaControllerOptions` | interface | yes       | yes   |
+| `ScrollAreaInspection`        | interface | yes       | yes   |
+| `ScrollAreaOptions`           | interface | yes       | yes   |
+| `scrollbarGlyph`              | function  | no        | yes   |
+| `scrollbarOffsetForPointer`   | function  | no        | yes   |
+| `scrollbarThumb`              | function  | no        | yes   |
+| `ScrollbarThumb`              | type      | yes       | yes   |
+| `scrollOffsetBy`              | function  | no        | yes   |
 
 ### src/components/slider.ts
 
 | Symbol                    | Kind      | Type Only | JSDoc |
 | ------------------------- | --------- | --------- | ----- |
-| `clampSliderValue`        | function  | no        | no    |
+| `clampSliderValue`        | function  | no        | yes   |
 | `Slider`                  | class     | no        | yes   |
-| `SliderController`        | class     | no        | no    |
-| `SliderControllerOptions` | interface | yes       | no    |
-| `SliderInspection`        | interface | yes       | no    |
-| `SliderOptions`           | interface | yes       | no    |
-| `SliderOrientation`       | type      | yes       | no    |
-| `SliderTheme`             | interface | yes       | no    |
-| `sliderThumbRectangle`    | function  | no        | no    |
-| `SliderThumbRectangle`    | interface | yes       | no    |
-| `SliderTrackRectangle`    | interface | yes       | no    |
-| `sliderValueBy`           | function  | no        | no    |
+| `SliderController`        | class     | no        | yes   |
+| `SliderControllerOptions` | interface | yes       | yes   |
+| `SliderInspection`        | interface | yes       | yes   |
+| `SliderOptions`           | interface | yes       | yes   |
+| `SliderOrientation`       | type      | yes       | yes   |
+| `SliderTheme`             | interface | yes       | yes   |
+| `sliderThumbRectangle`    | function  | no        | yes   |
+| `SliderThumbRectangle`    | interface | yes       | yes   |
+| `SliderTrackRectangle`    | interface | yes       | yes   |
+| `sliderValueAt`           | function  | no        | yes   |
+| `sliderValueBy`           | function  | no        | yes   |
+| `snapSliderValue`         | function  | no        | yes   |
 
 ### src/components/sparkline.ts
 
 | Symbol             | Kind      | Type Only | JSDoc |
 | ------------------ | --------- | --------- | ----- |
-| `renderSparkline`  | function  | no        | no    |
-| `Sparkline`        | class     | no        | no    |
-| `SparklineOptions` | interface | yes       | no    |
+| `renderSparkline`  | function  | no        | yes   |
+| `Sparkline`        | class     | no        | yes   |
+| `SparklineOptions` | interface | yes       | yes   |
 
 ### src/components/spinner.ts
 
 | Symbol                   | Kind      | Type Only | JSDoc |
 | ------------------------ | --------- | --------- | ----- |
-| `DEFAULT_SPINNER_FRAMES` | const     | no        | no    |
-| `renderSpinner`          | function  | no        | no    |
-| `Spinner`                | class     | no        | no    |
-| `spinnerGlyph`           | function  | no        | no    |
-| `SpinnerOptions`         | interface | yes       | no    |
-| `SpinnerStatus`          | type      | yes       | no    |
+| `DEFAULT_SPINNER_FRAMES` | const     | no        | yes   |
+| `renderSpinner`          | function  | no        | yes   |
+| `Spinner`                | class     | no        | yes   |
+| `spinnerGlyph`           | function  | no        | yes   |
+| `SpinnerOptions`         | interface | yes       | yes   |
+| `SpinnerStatus`          | type      | yes       | yes   |
 
 ### src/components/statusbar.ts
 
 | Symbol             | Kind      | Type Only | JSDoc |
 | ------------------ | --------- | --------- | ----- |
-| `renderStatusBar`  | function  | no        | no    |
-| `StatusBar`        | class     | no        | no    |
-| `StatusBarOptions` | interface | yes       | no    |
+| `renderStatusBar`  | function  | no        | yes   |
+| `StatusBar`        | class     | no        | yes   |
+| `StatusBarOptions` | interface | yes       | yes   |
 
 ### src/components/stepper.ts
 
 | Symbol                     | Kind      | Type Only | JSDoc |
 | -------------------------- | --------- | --------- | ----- |
-| `clampStepperIndex`        | function  | no        | no    |
-| `renderStepper`            | function  | no        | no    |
-| `shiftStepperIndex`        | function  | no        | no    |
-| `stepForIndex`             | function  | no        | no    |
-| `Stepper`                  | class     | no        | no    |
-| `StepperController`        | class     | no        | no    |
-| `StepperControllerOptions` | interface | yes       | no    |
-| `StepperInspection`        | interface | yes       | no    |
-| `StepperOptions`           | interface | yes       | no    |
-| `StepperOrientation`       | type      | yes       | no    |
-| `StepperStep`              | interface | yes       | no    |
+| `clampStepperIndex`        | function  | no        | yes   |
+| `renderStepper`            | function  | no        | yes   |
+| `shiftStepperIndex`        | function  | no        | yes   |
+| `stepForIndex`             | function  | no        | yes   |
+| `Stepper`                  | class     | no        | yes   |
+| `StepperController`        | class     | no        | yes   |
+| `StepperControllerOptions` | interface | yes       | yes   |
+| `StepperInspection`        | interface | yes       | yes   |
+| `StepperOptions`           | interface | yes       | yes   |
+| `StepperOrientation`       | type      | yes       | yes   |
+| `StepperStep`              | interface | yes       | yes   |
 
 ### src/components/table.ts
 
 | Symbol                       | Kind      | Type Only | JSDoc |
 | ---------------------------- | --------- | --------- | ----- |
-| `clampTableRow`              | function  | no        | no    |
+| `clampTableRow`              | function  | no        | yes   |
 | `Table`                      | class     | no        | yes   |
-| `TableController`            | class     | no        | no    |
-| `TableControllerOptions`     | interface | yes       | no    |
-| `TableHeader`                | type      | yes       | no    |
-| `TableInspection`            | interface | yes       | no    |
-| `tableMaxOffset`             | function  | no        | no    |
-| `TableOptions`               | interface | yes       | no    |
-| `TableTheme`                 | interface | yes       | no    |
-| `TableUnicodeCharacters`     | const     | no        | no    |
-| `TableUnicodeCharactersType` | type      | yes       | no    |
-| `tableVisibleCapacity`       | function  | no        | no    |
+| `TableController`            | class     | no        | yes   |
+| `TableControllerOptions`     | interface | yes       | yes   |
+| `TableHeader`                | type      | yes       | yes   |
+| `TableInspection`            | interface | yes       | yes   |
+| `tableMaxOffset`             | function  | no        | yes   |
+| `TableOptions`               | interface | yes       | yes   |
+| `TableTheme`                 | interface | yes       | yes   |
+| `TableUnicodeCharacters`     | const     | no        | yes   |
+| `TableUnicodeCharactersType` | type      | yes       | yes   |
+| `tableVisibleCapacity`       | function  | no        | yes   |
 
 ### src/components/tabs.ts
 
 | Symbol                  | Kind      | Type Only | JSDoc |
 | ----------------------- | --------- | --------- | ----- |
-| `clampTabIndex`         | function  | no        | no    |
-| `renderTabs`            | function  | no        | no    |
-| `shiftTabIndex`         | function  | no        | no    |
-| `tabForIndex`           | function  | no        | no    |
-| `TabItem`               | interface | yes       | no    |
-| `Tabs`                  | class     | no        | no    |
-| `TabsController`        | class     | no        | no    |
-| `TabsControllerOptions` | interface | yes       | no    |
-| `TabsInspection`        | interface | yes       | no    |
-| `TabsOptions`           | interface | yes       | no    |
+| `clampTabIndex`         | function  | no        | yes   |
+| `renderTabs`            | function  | no        | yes   |
+| `shiftTabIndex`         | function  | no        | yes   |
+| `tabForIndex`           | function  | no        | yes   |
+| `TabItem`               | interface | yes       | yes   |
+| `Tabs`                  | class     | no        | yes   |
+| `TabsController`        | class     | no        | yes   |
+| `TabsControllerOptions` | interface | yes       | yes   |
+| `TabsInspection`        | interface | yes       | yes   |
+| `TabsOptions`           | interface | yes       | yes   |
 
 ### src/components/text.ts
 
 | Symbol        | Kind      | Type Only | JSDoc |
 | ------------- | --------- | --------- | ----- |
 | `Text`        | class     | no        | yes   |
-| `TextOptions` | interface | yes       | no    |
+| `TextOptions` | interface | yes       | yes   |
 
 ### src/components/textbox.ts
 
 | Symbol                     | Kind      | Type Only | JSDoc |
 | -------------------------- | --------- | --------- | ----- |
-| `CursorPosition`           | interface | yes       | no    |
+| `CursorPosition`           | interface | yes       | yes   |
 | `TextBox`                  | class     | no        | yes   |
-| `TextBoxController`        | class     | no        | no    |
-| `TextBoxControllerOptions` | interface | yes       | no    |
-| `TextBoxEditResult`        | type      | yes       | no    |
-| `TextBoxInspection`        | interface | yes       | no    |
-| `TextBoxOptions`           | interface | yes       | no    |
-| `TextBoxTheme`             | interface | yes       | no    |
-| `textBoxVisualCursor`      | function  | no        | no    |
-| `TextBoxVisualCursor`      | interface | yes       | no    |
-| `TextBoxVisualLine`        | interface | yes       | no    |
-| `TextLineCache`            | class     | no        | no    |
-| `TextLineCacheInspection`  | interface | yes       | no    |
-| `wrapTextBoxLines`         | function  | no        | no    |
+| `TextBoxController`        | class     | no        | yes   |
+| `TextBoxControllerOptions` | interface | yes       | yes   |
+| `TextBoxEditResult`        | type      | yes       | yes   |
+| `TextBoxInspection`        | interface | yes       | yes   |
+| `TextBoxOptions`           | interface | yes       | yes   |
+| `TextBoxTheme`             | interface | yes       | yes   |
+| `textBoxVisualCursor`      | function  | no        | yes   |
+| `TextBoxVisualCursor`      | interface | yes       | yes   |
+| `TextBoxVisualLine`        | interface | yes       | yes   |
+| `TextLineCache`            | class     | no        | yes   |
+| `TextLineCacheInspection`  | interface | yes       | yes   |
+| `wrapTextBoxLines`         | function  | no        | yes   |
 
 ### src/components/three_ascii.ts
 
 | Symbol              | Kind      | Type Only | JSDoc |
 | ------------------- | --------- | --------- | ----- |
-| `ThreeAscii`        | class     | no        | no    |
-| `ThreeAsciiOptions` | interface | yes       | no    |
+| `ThreeAscii`        | class     | no        | yes   |
+| `ThreeAsciiOptions` | interface | yes       | yes   |
 
 ### src/components/toast.ts
 
 | Symbol                        | Kind      | Type Only | JSDoc |
 | ----------------------------- | --------- | --------- | ----- |
-| `renderToast`                 | function  | no        | no    |
-| `ToastLevel`                  | type      | yes       | no    |
-| `ToastMessage`                | interface | yes       | no    |
-| `ToastStack`                  | class     | no        | no    |
-| `ToastStackController`        | class     | no        | no    |
-| `ToastStackControllerOptions` | interface | yes       | no    |
-| `ToastStackInspection`        | interface | yes       | no    |
-| `ToastStackOptions`           | interface | yes       | no    |
+| `renderToast`                 | function  | no        | yes   |
+| `ToastLevel`                  | type      | yes       | yes   |
+| `ToastMessage`                | interface | yes       | yes   |
+| `ToastStack`                  | class     | no        | yes   |
+| `ToastStackController`        | class     | no        | yes   |
+| `ToastStackControllerOptions` | interface | yes       | yes   |
+| `ToastStackInspection`        | interface | yes       | yes   |
+| `ToastStackOptions`           | interface | yes       | yes   |
 
 ### src/components/tree.ts
 
 | Symbol                  | Kind      | Type Only | JSDoc |
 | ----------------------- | --------- | --------- | ----- |
-| `flattenTree`           | function  | no        | no    |
-| `flattenTreeRows`       | function  | no        | no    |
-| `inspectTreeRow`        | function  | no        | no    |
-| `Tree`                  | class     | no        | no    |
-| `TreeController`        | class     | no        | no    |
-| `TreeControllerOptions` | interface | yes       | no    |
-| `TreeInspection`        | interface | yes       | no    |
-| `TreeNode`              | interface | yes       | no    |
-| `TreeOptions`           | interface | yes       | no    |
-| `TreeRow`               | interface | yes       | no    |
-| `TreeRowInspection`     | interface | yes       | no    |
+| `flattenTree`           | function  | no        | yes   |
+| `flattenTreeRows`       | function  | no        | yes   |
+| `inspectTreeRow`        | function  | no        | yes   |
+| `Tree`                  | class     | no        | yes   |
+| `TreeController`        | class     | no        | yes   |
+| `TreeControllerOptions` | interface | yes       | yes   |
+| `TreeInspection`        | interface | yes       | yes   |
+| `TreeNode`              | interface | yes       | yes   |
+| `TreeOptions`           | interface | yes       | yes   |
+| `TreeRow`               | interface | yes       | yes   |
+| `TreeRowInspection`     | interface | yes       | yes   |
 
 ### src/components/virtual_list.ts
 
 | Symbol                         | Kind      | Type Only | JSDoc |
 | ------------------------------ | --------- | --------- | ----- |
-| `renderVirtualListRows`        | function  | no        | no    |
-| `VirtualList`                  | class     | no        | no    |
-| `VirtualListController`        | class     | no        | no    |
-| `VirtualListControllerOptions` | interface | yes       | no    |
-| `VirtualListInspection`        | interface | yes       | no    |
-| `VirtualListOptions`           | interface | yes       | no    |
-| `VirtualListRow`               | interface | yes       | no    |
-| `virtualListRows`              | function  | no        | no    |
+| `renderVirtualListRows`        | function  | no        | yes   |
+| `VirtualList`                  | class     | no        | yes   |
+| `VirtualListController`        | class     | no        | yes   |
+| `VirtualListControllerOptions` | interface | yes       | yes   |
+| `VirtualListInspection`        | interface | yes       | yes   |
+| `VirtualListOptions`           | interface | yes       | yes   |
+| `VirtualListRow`               | interface | yes       | yes   |
+| `virtualListRows`              | function  | no        | yes   |
 
 ### src/controls.ts
 
@@ -1602,21 +1619,21 @@ _No direct exported symbols._
 | ------------------------ | --------- | --------- | ----- |
 | `EmitterEvent`           | type      | yes       | yes   |
 | `EventEmitter`           | class     | no        | yes   |
-| `EventEmitterInspection` | interface | yes       | no    |
+| `EventEmitterInspection` | interface | yes       | yes   |
 | `EventListener`          | type      | yes       | yes   |
-| `EventRecord`            | type      | yes       | no    |
+| `EventRecord`            | type      | yes       | yes   |
 
 ### src/focus.ts
 
 | Symbol                   | Kind      | Type Only | JSDoc |
 | ------------------------ | --------- | --------- | ----- |
-| `bindFocusNavigation`    | function  | no        | no    |
-| `Focusable`              | interface | yes       | no    |
-| `FocusManager`           | class     | no        | no    |
-| `FocusManagerInspection` | interface | yes       | no    |
-| `FocusNavigationOptions` | interface | yes       | no    |
-| `FocusNavigationTarget`  | interface | yes       | no    |
-| `FocusScope`             | class     | no        | no    |
+| `bindFocusNavigation`    | function  | no        | yes   |
+| `Focusable`              | interface | yes       | yes   |
+| `FocusManager`           | class     | no        | yes   |
+| `FocusManagerInspection` | interface | yes       | yes   |
+| `FocusNavigationOptions` | interface | yes       | yes   |
+| `FocusNavigationTarget`  | interface | yes       | yes   |
+| `FocusScope`             | class     | no        | yes   |
 
 ### src/grwizard_themes.ts
 
@@ -1633,7 +1650,7 @@ _No direct exported symbols._
 | Symbol             | Kind     | Type Only | JSDoc |
 | ------------------ | -------- | --------- | ----- |
 | `emitInputEvents`  | function | no        | yes   |
-| `InputEventRecord` | type     | yes       | no    |
+| `InputEventRecord` | type     | yes       | yes   |
 
 ### src/input.ts
 
@@ -1645,35 +1662,35 @@ _No direct exported symbols._
 
 | Symbol                 | Kind      | Type Only | JSDoc |
 | ---------------------- | --------- | --------- | ----- |
-| `bindingId`            | function  | no        | no    |
-| `formatKeyBinding`     | function  | no        | no    |
-| `KeyBinding`           | interface | yes       | no    |
-| `KeyBindingInspection` | interface | yes       | no    |
-| `KeymapInspection`     | interface | yes       | no    |
-| `KeymapRegistry`       | class     | no        | no    |
+| `bindingId`            | function  | no        | yes   |
+| `formatKeyBinding`     | function  | no        | yes   |
+| `KeyBinding`           | interface | yes       | yes   |
+| `KeyBindingInspection` | interface | yes       | yes   |
+| `KeymapInspection`     | interface | yes       | yes   |
+| `KeymapRegistry`       | class     | no        | yes   |
 
 ### src/layout/errors.ts
 
 | Symbol                              | Kind  | Type Only | JSDoc |
 | ----------------------------------- | ----- | --------- | ----- |
-| `LayoutInvalidElementsPatternError` | class | no        | no    |
-| `LayoutMissingElementError`         | class | no        | no    |
+| `LayoutInvalidElementsPatternError` | class | no        | yes   |
+| `LayoutMissingElementError`         | class | no        | yes   |
 
 ### src/layout/flex_layout.ts
 
 | Symbol          | Kind      | Type Only | JSDoc |
 | --------------- | --------- | --------- | ----- |
-| `FlexDirection` | type      | yes       | no    |
-| `FlexItem`      | interface | yes       | no    |
-| `flexRects`     | function  | no        | no    |
+| `FlexDirection` | type      | yes       | yes   |
+| `FlexItem`      | interface | yes       | yes   |
+| `flexRects`     | function  | no        | yes   |
 
 ### src/layout/grid_layout.ts
 
 | Symbol              | Kind      | Type Only | JSDoc |
 | ------------------- | --------- | --------- | ----- |
 | `GridLayout`        | class     | no        | yes   |
-| `GridLayoutElement` | interface | yes       | no    |
-| `GridLayoutOptions` | interface | yes       | no    |
+| `GridLayoutElement` | interface | yes       | yes   |
+| `GridLayoutOptions` | interface | yes       | yes   |
 
 ### src/layout/horizontal_layout.ts
 
@@ -1695,47 +1712,72 @@ _No direct exported symbols._
 | `src/layout/split_pane.ts`        | star | -     |
 | `src/layout/recipe.ts`            | star | -     |
 | `src/layout/window_manager.ts`    | star | -     |
+| `src/layout/overlay.ts`           | star | -     |
 
 _No direct exported symbols._
+
+### src/layout/overlay.ts
+
+| Symbol                     | Kind      | Type Only | JSDoc |
+| -------------------------- | --------- | --------- | ----- |
+| `clampRectToBounds`        | function  | no        | yes   |
+| `hitTestOverlaySurfaces`   | function  | no        | yes   |
+| `OverlayHit`               | interface | yes       | yes   |
+| `OverlayKind`              | type      | yes       | yes   |
+| `OverlayLayer`             | type      | yes       | yes   |
+| `overlayLayerZIndex`       | function  | no        | yes   |
+| `OverlayPoint`             | interface | yes       | yes   |
+| `OverlayPointerResult`     | interface | yes       | yes   |
+| `OverlaySize`              | interface | yes       | yes   |
+| `OverlayStackController`   | class     | no        | yes   |
+| `OverlayStackInspection`   | interface | yes       | yes   |
+| `OverlayStackOptions`      | interface | yes       | yes   |
+| `OverlaySurface`           | interface | yes       | yes   |
+| `OverlaySurfaceInspection` | interface | yes       | yes   |
+| `placePopover`             | function  | no        | yes   |
+| `pointInRect`              | function  | no        | yes   |
+| `PopoverPlacement`         | type      | yes       | yes   |
+| `PopoverPlacementOptions`  | interface | yes       | yes   |
+| `sortOverlaySurfaces`      | function  | no        | yes   |
 
 ### src/layout/recipe.ts
 
 | Symbol                             | Kind      | Type Only | JSDoc |
 | ---------------------------------- | --------- | --------- | ----- |
-| `createLayoutRecipeController`     | function  | no        | no    |
+| `createLayoutRecipeController`     | function  | no        | yes   |
 | `formatLayoutRecipeMarkdown`       | function  | no        | yes   |
 | `inspectLayoutRecipe`              | function  | no        | yes   |
 | `LayoutRecipeBreakpointInspection` | interface | yes       | yes   |
-| `LayoutRecipeController`           | class     | no        | no    |
-| `LayoutRecipeControllerInspection` | interface | yes       | no    |
+| `LayoutRecipeController`           | class     | no        | yes   |
+| `LayoutRecipeControllerInspection` | interface | yes       | yes   |
 | `LayoutRecipeInspection`           | interface | yes       | yes   |
 | `LayoutRecipeMarkdownOptions`      | interface | yes       | yes   |
-| `layoutRecipeSlots`                | function  | no        | no    |
-| `LayoutRegion`                     | type      | yes       | no    |
-| `LayoutRegionDirection`            | type      | yes       | no    |
-| `LayoutRegionDock`                 | interface | yes       | no    |
-| `LayoutRegionEdge`                 | type      | yes       | no    |
-| `LayoutRegionLeaf`                 | interface | yes       | no    |
-| `LayoutRegionSplit`                | interface | yes       | no    |
-| `ResolvedLayoutRecipe`             | interface | yes       | no    |
-| `resolveLayoutRecipe`              | function  | no        | no    |
-| `ResponsiveLayoutRecipe`           | interface | yes       | no    |
+| `layoutRecipeSlots`                | function  | no        | yes   |
+| `LayoutRegion`                     | type      | yes       | yes   |
+| `LayoutRegionDirection`            | type      | yes       | yes   |
+| `LayoutRegionDock`                 | interface | yes       | yes   |
+| `LayoutRegionEdge`                 | type      | yes       | yes   |
+| `LayoutRegionLeaf`                 | interface | yes       | yes   |
+| `LayoutRegionSplit`                | interface | yes       | yes   |
+| `ResolvedLayoutRecipe`             | interface | yes       | yes   |
+| `resolveLayoutRecipe`              | function  | no        | yes   |
+| `ResponsiveLayoutRecipe`           | interface | yes       | yes   |
 
 ### src/layout/responsive.ts
 
 | Symbol                 | Kind      | Type Only | JSDoc |
 | ---------------------- | --------- | --------- | ----- |
-| `adaptiveGrid`         | function  | no        | no    |
-| `AdaptiveGrid`         | interface | yes       | no    |
-| `adaptiveGridItemRect` | function  | no        | no    |
-| `AdaptiveGridOptions`  | interface | yes       | no    |
-| `adaptiveGridPage`     | function  | no        | no    |
-| `AdaptiveGridPage`     | interface | yes       | no    |
-| `Breakpoint`           | interface | yes       | no    |
-| `dockRect`             | function  | no        | no    |
-| `insetRect`            | function  | no        | no    |
-| `resolveBreakpoint`    | function  | no        | no    |
-| `splitRect`            | function  | no        | no    |
+| `adaptiveGrid`         | function  | no        | yes   |
+| `AdaptiveGrid`         | interface | yes       | yes   |
+| `adaptiveGridItemRect` | function  | no        | yes   |
+| `AdaptiveGridOptions`  | interface | yes       | yes   |
+| `adaptiveGridPage`     | function  | no        | yes   |
+| `AdaptiveGridPage`     | interface | yes       | yes   |
+| `Breakpoint`           | interface | yes       | yes   |
+| `dockRect`             | function  | no        | yes   |
+| `insetRect`            | function  | no        | yes   |
+| `resolveBreakpoint`    | function  | no        | yes   |
+| `splitRect`            | function  | no        | yes   |
 | `TileLayout`           | interface | yes       | yes   |
 | `TileLayoutOptions`    | interface | yes       | yes   |
 | `tileRects`            | function  | no        | yes   |
@@ -1744,24 +1786,24 @@ _No direct exported symbols._
 
 | Symbol                       | Kind      | Type Only | JSDoc |
 | ---------------------------- | --------- | --------- | ----- |
-| `createSplitPaneController`  | function  | no        | no    |
-| `resizeSplitPane`            | function  | no        | no    |
-| `resizeSplitPaneRatio`       | function  | no        | no    |
-| `SplitPaneController`        | class     | no        | no    |
-| `SplitPaneControllerOptions` | interface | yes       | no    |
-| `SplitPaneDirection`         | type      | yes       | no    |
-| `SplitPaneOptions`           | interface | yes       | no    |
-| `splitPaneRects`             | function  | no        | no    |
-| `SplitPaneRects`             | interface | yes       | no    |
-| `SplitPaneResizeMode`        | type      | yes       | no    |
+| `createSplitPaneController`  | function  | no        | yes   |
+| `resizeSplitPane`            | function  | no        | yes   |
+| `resizeSplitPaneRatio`       | function  | no        | yes   |
+| `SplitPaneController`        | class     | no        | yes   |
+| `SplitPaneControllerOptions` | interface | yes       | yes   |
+| `SplitPaneDirection`         | type      | yes       | yes   |
+| `SplitPaneOptions`           | interface | yes       | yes   |
+| `splitPaneRects`             | function  | no        | yes   |
+| `SplitPaneRects`             | interface | yes       | yes   |
+| `SplitPaneResizeMode`        | type      | yes       | yes   |
 
 ### src/layout/types.ts
 
 | Symbol          | Kind      | Type Only | JSDoc |
 | --------------- | --------- | --------- | ----- |
-| `Layout`        | interface | yes       | no    |
-| `LayoutElement` | interface | yes       | no    |
-| `LayoutOptions` | interface | yes       | no    |
+| `Layout`        | interface | yes       | yes   |
+| `LayoutElement` | interface | yes       | yes   |
+| `LayoutOptions` | interface | yes       | yes   |
 
 ### src/layout/vertical_layout.ts
 
@@ -1773,13 +1815,16 @@ _No direct exported symbols._
 
 | Symbol                          | Kind      | Type Only | JSDoc |
 | ------------------------------- | --------- | --------- | ----- |
-| `WindowManagerController`       | class     | no        | no    |
-| `WindowManagerLayoutInspection` | interface | yes       | no    |
-| `WindowManagerLayoutOptions`    | interface | yes       | no    |
-| `WindowManagerOptions`          | interface | yes       | no    |
-| `WindowManagerWindow`           | interface | yes       | no    |
-| `WindowManagerWindowInspection` | interface | yes       | no    |
-| `WindowManagerWindowState`      | type      | yes       | no    |
+| `WINDOW_MANAGER_LAYER_Z_INDEX`  | const     | no        | yes   |
+| `WindowManagerController`       | class     | no        | yes   |
+| `WindowManagerLayer`            | type      | yes       | yes   |
+| `WindowManagerLayoutInspection` | interface | yes       | yes   |
+| `WindowManagerLayoutOptions`    | interface | yes       | yes   |
+| `WindowManagerOptions`          | interface | yes       | yes   |
+| `WindowManagerWindow`           | interface | yes       | yes   |
+| `WindowManagerWindowInspection` | interface | yes       | yes   |
+| `WindowManagerWindowState`      | type      | yes       | yes   |
+| `windowManagerZOrder`           | function  | no        | yes   |
 
 ### src/perf/benchmark.ts
 
@@ -1829,19 +1874,19 @@ _No direct exported symbols._
 | `RuntimePlan`                  | interface | yes       | yes   |
 | `RuntimePlanDecision`          | interface | yes       | yes   |
 | `RuntimePlanOptions`           | interface | yes       | yes   |
-| `RuntimeRendererStrategy`      | type      | yes       | no    |
-| `RuntimeStorageStrategy`       | type      | yes       | no    |
-| `RuntimeWorkerStrategy`        | type      | yes       | no    |
+| `RuntimeRendererStrategy`      | type      | yes       | yes   |
+| `RuntimeStorageStrategy`       | type      | yes       | yes   |
+| `RuntimeWorkerStrategy`        | type      | yes       | yes   |
 | `summarizeRuntimeCapabilities` | function  | no        | yes   |
 
 ### src/runtime/data_pipeline_bindings.ts
 
 | Symbol                          | Kind      | Type Only | JSDoc |
 | ------------------------------- | --------- | --------- | ----- |
-| `bindDataPipeline`              | function  | no        | no    |
-| `DataPipelineBinding`           | interface | yes       | no    |
-| `DataPipelineBindingInspection` | interface | yes       | no    |
-| `DataPipelineBindingOptions`    | interface | yes       | no    |
+| `bindDataPipeline`              | function  | no        | yes   |
+| `DataPipelineBinding`           | interface | yes       | yes   |
+| `DataPipelineBindingInspection` | interface | yes       | yes   |
+| `DataPipelineBindingOptions`    | interface | yes       | yes   |
 
 ### src/runtime/data_pipeline.ts
 
@@ -1871,21 +1916,21 @@ _No direct exported symbols._
 
 | Symbol                       | Kind      | Type Only | JSDoc |
 | ---------------------------- | --------- | --------- | ----- |
-| `createDataQueryController`  | function  | no        | no    |
-| `DataQueryController`        | class     | no        | no    |
-| `DataQueryControllerOptions` | interface | yes       | no    |
-| `DataQueryFilters`           | type      | yes       | no    |
-| `DataQueryInspection`        | interface | yes       | no    |
-| `DataQueryParams`            | interface | yes       | no    |
-| `DataQueryResult`            | interface | yes       | no    |
-| `DataQuerySort`              | interface | yes       | no    |
-| `DataQuerySortDirection`     | type      | yes       | no    |
-| `LocalDataQueryOptions`      | interface | yes       | no    |
-| `nextDataQuerySort`          | function  | no        | no    |
-| `normalizeDataQueryParams`   | function  | no        | no    |
-| `NormalizedDataQueryParams`  | interface | yes       | no    |
-| `pageDataQueryRows`          | function  | no        | no    |
-| `queryLocalData`             | function  | no        | no    |
+| `createDataQueryController`  | function  | no        | yes   |
+| `DataQueryController`        | class     | no        | yes   |
+| `DataQueryControllerOptions` | interface | yes       | yes   |
+| `DataQueryFilters`           | type      | yes       | yes   |
+| `DataQueryInspection`        | interface | yes       | yes   |
+| `DataQueryParams`            | interface | yes       | yes   |
+| `DataQueryResult`            | interface | yes       | yes   |
+| `DataQuerySort`              | interface | yes       | yes   |
+| `DataQuerySortDirection`     | type      | yes       | yes   |
+| `LocalDataQueryOptions`      | interface | yes       | yes   |
+| `nextDataQuerySort`          | function  | no        | yes   |
+| `normalizeDataQueryParams`   | function  | no        | yes   |
+| `NormalizedDataQueryParams`  | interface | yes       | yes   |
+| `pageDataQueryRows`          | function  | no        | yes   |
+| `queryLocalData`             | function  | no        | yes   |
 
 ### src/runtime/mod.ts
 
@@ -1913,99 +1958,99 @@ _No direct exported symbols._
 
 | Symbol                                 | Kind      | Type Only | JSDoc |
 | -------------------------------------- | --------- | --------- | ----- |
-| `createRuntimeProfile`                 | function  | no        | no    |
-| `createRuntimeProfileCatalogReport`    | function  | no        | no    |
-| `createRuntimeProfileController`       | function  | no        | no    |
-| `createRuntimeProfileRegistry`         | function  | no        | no    |
-| `findRuntimeProfile`                   | function  | no        | no    |
-| `formatRuntimeProfileCatalogMarkdown`  | function  | no        | no    |
-| `inspectRuntimeProfileCatalog`         | function  | no        | no    |
-| `queryRuntimeProfiles`                 | function  | no        | no    |
+| `createRuntimeProfile`                 | function  | no        | yes   |
+| `createRuntimeProfileCatalogReport`    | function  | no        | yes   |
+| `createRuntimeProfileController`       | function  | no        | yes   |
+| `createRuntimeProfileRegistry`         | function  | no        | yes   |
+| `findRuntimeProfile`                   | function  | no        | yes   |
+| `formatRuntimeProfileCatalogMarkdown`  | function  | no        | yes   |
+| `inspectRuntimeProfileCatalog`         | function  | no        | yes   |
+| `queryRuntimeProfiles`                 | function  | no        | yes   |
 | `RuntimeProfile`                       | class     | no        | yes   |
-| `RuntimeProfileCatalogInspection`      | interface | yes       | no    |
-| `RuntimeProfileCatalogMarkdownOptions` | interface | yes       | no    |
-| `RuntimeProfileCatalogQuery`           | interface | yes       | no    |
-| `RuntimeProfileCatalogReport`          | interface | yes       | no    |
-| `RuntimeProfileCatalogReportOptions`   | interface | yes       | no    |
+| `RuntimeProfileCatalogInspection`      | interface | yes       | yes   |
+| `RuntimeProfileCatalogMarkdownOptions` | interface | yes       | yes   |
+| `RuntimeProfileCatalogQuery`           | interface | yes       | yes   |
+| `RuntimeProfileCatalogReport`          | interface | yes       | yes   |
+| `RuntimeProfileCatalogReportOptions`   | interface | yes       | yes   |
 | `RuntimeProfileController`             | class     | no        | yes   |
-| `RuntimeProfileControllerInspection`   | interface | yes       | no    |
-| `RuntimeProfileControllerOptions`      | interface | yes       | no    |
-| `RuntimeProfileDefinition`             | interface | yes       | no    |
-| `runtimeProfileDefinitions`            | const     | no        | no    |
-| `RuntimeProfileInspection`             | interface | yes       | no    |
-| `RuntimeProfileNotFoundError`          | class     | no        | no    |
-| `RuntimeProfilePlanInspection`         | interface | yes       | no    |
+| `RuntimeProfileControllerInspection`   | interface | yes       | yes   |
+| `RuntimeProfileControllerOptions`      | interface | yes       | yes   |
+| `RuntimeProfileDefinition`             | interface | yes       | yes   |
+| `runtimeProfileDefinitions`            | const     | no        | yes   |
+| `RuntimeProfileInspection`             | interface | yes       | yes   |
+| `RuntimeProfileNotFoundError`          | class     | no        | yes   |
+| `RuntimeProfilePlanInspection`         | interface | yes       | yes   |
 | `RuntimeProfileRegistry`               | class     | no        | yes   |
-| `runtimeProfiles`                      | function  | no        | no    |
+| `runtimeProfiles`                      | function  | no        | yes   |
 
 ### src/runtime/render_loop.ts
 
 | Symbol                   | Kind      | Type Only | JSDoc |
 | ------------------------ | --------- | --------- | ----- |
-| `createRenderLoop`       | function  | no        | no    |
-| `defaultRenderLoopTimer` | const     | no        | no    |
+| `createRenderLoop`       | function  | no        | yes   |
+| `defaultRenderLoopTimer` | const     | no        | yes   |
 | `RenderLoop`             | class     | no        | yes   |
-| `RenderLoopFrame`        | interface | yes       | no    |
-| `RenderLoopInspection`   | interface | yes       | no    |
-| `RenderLoopOptions`      | interface | yes       | no    |
-| `RenderLoopTimer`        | interface | yes       | no    |
+| `RenderLoopFrame`        | interface | yes       | yes   |
+| `RenderLoopInspection`   | interface | yes       | yes   |
+| `RenderLoopOptions`      | interface | yes       | yes   |
+| `RenderLoopTimer`        | interface | yes       | yes   |
 
 ### src/runtime/renderer_backends.ts
 
 | Symbol                                        | Kind      | Type Only | JSDoc |
 | --------------------------------------------- | --------- | --------- | ----- |
-| `createRuntimeRendererBackend`                | function  | no        | no    |
-| `createRuntimeRendererBackendCatalogReport`   | function  | no        | no    |
-| `createRuntimeRendererBackendController`      | function  | no        | no    |
-| `createRuntimeRendererBackendRegistry`        | function  | no        | no    |
-| `formatRuntimeRendererBackendCatalogMarkdown` | function  | no        | no    |
-| `inspectRuntimeRendererBackendCatalog`        | function  | no        | no    |
-| `inspectRuntimeRendererBackends`              | function  | no        | no    |
-| `queryRuntimeRendererBackends`                | function  | no        | no    |
-| `RuntimeRendererBackend`                      | class     | no        | no    |
-| `RuntimeRendererBackendCatalogInspection`     | interface | yes       | no    |
-| `RuntimeRendererBackendCatalogOptions`        | interface | yes       | no    |
-| `RuntimeRendererBackendCatalogReport`         | interface | yes       | no    |
-| `RuntimeRendererBackendController`            | class     | no        | no    |
-| `RuntimeRendererBackendControllerInspection`  | interface | yes       | no    |
-| `RuntimeRendererBackendControllerOptions`     | interface | yes       | no    |
-| `RuntimeRendererBackendDefinition`            | interface | yes       | no    |
-| `runtimeRendererBackendDefinitions`           | const     | no        | no    |
-| `RuntimeRendererBackendInspection`            | interface | yes       | no    |
-| `RuntimeRendererBackendMarkdownOptions`       | interface | yes       | no    |
-| `RuntimeRendererBackendQuery`                 | interface | yes       | no    |
-| `RuntimeRendererBackendRegistry`              | class     | no        | no    |
-| `runtimeRendererBackends`                     | function  | no        | no    |
-| `RuntimeRendererBackendSelectionOptions`      | interface | yes       | no    |
-| `selectRuntimeRendererBackend`                | function  | no        | no    |
+| `createRuntimeRendererBackend`                | function  | no        | yes   |
+| `createRuntimeRendererBackendCatalogReport`   | function  | no        | yes   |
+| `createRuntimeRendererBackendController`      | function  | no        | yes   |
+| `createRuntimeRendererBackendRegistry`        | function  | no        | yes   |
+| `formatRuntimeRendererBackendCatalogMarkdown` | function  | no        | yes   |
+| `inspectRuntimeRendererBackendCatalog`        | function  | no        | yes   |
+| `inspectRuntimeRendererBackends`              | function  | no        | yes   |
+| `queryRuntimeRendererBackends`                | function  | no        | yes   |
+| `RuntimeRendererBackend`                      | class     | no        | yes   |
+| `RuntimeRendererBackendCatalogInspection`     | interface | yes       | yes   |
+| `RuntimeRendererBackendCatalogOptions`        | interface | yes       | yes   |
+| `RuntimeRendererBackendCatalogReport`         | interface | yes       | yes   |
+| `RuntimeRendererBackendController`            | class     | no        | yes   |
+| `RuntimeRendererBackendControllerInspection`  | interface | yes       | yes   |
+| `RuntimeRendererBackendControllerOptions`     | interface | yes       | yes   |
+| `RuntimeRendererBackendDefinition`            | interface | yes       | yes   |
+| `runtimeRendererBackendDefinitions`           | const     | no        | yes   |
+| `RuntimeRendererBackendInspection`            | interface | yes       | yes   |
+| `RuntimeRendererBackendMarkdownOptions`       | interface | yes       | yes   |
+| `RuntimeRendererBackendQuery`                 | interface | yes       | yes   |
+| `RuntimeRendererBackendRegistry`              | class     | no        | yes   |
+| `runtimeRendererBackends`                     | function  | no        | yes   |
+| `RuntimeRendererBackendSelectionOptions`      | interface | yes       | yes   |
+| `selectRuntimeRendererBackend`                | function  | no        | yes   |
 
 ### src/runtime/resource_bindings.ts
 
 | Symbol                            | Kind      | Type Only | JSDoc |
 | --------------------------------- | --------- | --------- | ----- |
-| `bindResourceParams`              | function  | no        | no    |
-| `ResourceParamsBindingHandle`     | type      | yes       | no    |
-| `ResourceParamsBindingInspection` | interface | yes       | no    |
-| `ResourceParamsBindingOptions`    | interface | yes       | no    |
+| `bindResourceParams`              | function  | no        | yes   |
+| `ResourceParamsBindingHandle`     | type      | yes       | yes   |
+| `ResourceParamsBindingInspection` | interface | yes       | yes   |
+| `ResourceParamsBindingOptions`    | interface | yes       | yes   |
 
 ### src/runtime/resource.ts
 
 | Symbol                          | Kind      | Type Only | JSDoc |
 | ------------------------------- | --------- | --------- | ----- |
-| `AsyncResource`                 | class     | no        | no    |
-| `AsyncResourceCacheKey`         | type      | yes       | no    |
-| `AsyncResourceContext`          | interface | yes       | no    |
-| `AsyncResourceInspection`       | interface | yes       | no    |
-| `AsyncResourceLoader`           | type      | yes       | no    |
-| `AsyncResourceOptions`          | interface | yes       | no    |
-| `AsyncResourceParamsError`      | class     | no        | no    |
-| `AsyncResourceState`            | interface | yes       | no    |
-| `AsyncResourceStatus`           | type      | yes       | no    |
-| `CachedAsyncResource`           | class     | no        | no    |
-| `CachedAsyncResourceInspection` | interface | yes       | no    |
-| `CachedAsyncResourceOptions`    | interface | yes       | no    |
-| `createAsyncResource`           | function  | no        | no    |
-| `createCachedAsyncResource`     | function  | no        | no    |
+| `AsyncResource`                 | class     | no        | yes   |
+| `AsyncResourceCacheKey`         | type      | yes       | yes   |
+| `AsyncResourceContext`          | interface | yes       | yes   |
+| `AsyncResourceInspection`       | interface | yes       | yes   |
+| `AsyncResourceLoader`           | type      | yes       | yes   |
+| `AsyncResourceOptions`          | interface | yes       | yes   |
+| `AsyncResourceParamsError`      | class     | no        | yes   |
+| `AsyncResourceState`            | interface | yes       | yes   |
+| `AsyncResourceStatus`           | type      | yes       | yes   |
+| `CachedAsyncResource`           | class     | no        | yes   |
+| `CachedAsyncResourceInspection` | interface | yes       | yes   |
+| `CachedAsyncResourceOptions`    | interface | yes       | yes   |
+| `createAsyncResource`           | function  | no        | yes   |
+| `createCachedAsyncResource`     | function  | no        | yes   |
 
 ### src/runtime/scheduler.ts
 
@@ -2029,15 +2074,15 @@ _No direct exported symbols._
 
 | Symbol                    | Kind      | Type Only | JSDoc |
 | ------------------------- | --------- | --------- | ----- |
-| `AsyncStore`              | interface | yes       | no    |
-| `createPersistentSignal`  | function  | no        | no    |
-| `createRuntimeStore`      | function  | no        | no    |
-| `IndexedDbStore`          | class     | no        | no    |
-| `IndexedDbStoreOptions`   | interface | yes       | no    |
-| `MemoryStore`             | class     | no        | no    |
-| `PersistentSignal`        | class     | no        | no    |
-| `PersistentSignalOptions` | interface | yes       | no    |
-| `RuntimeStoreOptions`     | interface | yes       | no    |
+| `AsyncStore`              | interface | yes       | yes   |
+| `createPersistentSignal`  | function  | no        | yes   |
+| `createRuntimeStore`      | function  | no        | yes   |
+| `IndexedDbStore`          | class     | no        | yes   |
+| `IndexedDbStoreOptions`   | interface | yes       | yes   |
+| `MemoryStore`             | class     | no        | yes   |
+| `PersistentSignal`        | class     | no        | yes   |
+| `PersistentSignalOptions` | interface | yes       | yes   |
+| `RuntimeStoreOptions`     | interface | yes       | yes   |
 
 ### src/runtime/telemetry.ts
 
@@ -2064,9 +2109,13 @@ _No direct exported symbols._
 | Symbol                               | Kind      | Type Only | JSDoc |
 | ------------------------------------ | --------- | --------- | ----- |
 | `createTerminalPlan`                 | function  | no        | yes   |
+| `createTerminalPortabilityReport`    | function  | no        | yes   |
 | `detectTerminalCapabilities`         | function  | no        | yes   |
+| `detectTerminalEnvironment`          | function  | no        | yes   |
 | `formatTerminalCapabilities`         | function  | no        | yes   |
+| `formatTerminalEnvironment`          | function  | no        | yes   |
 | `formatTerminalPlan`                 | function  | no        | yes   |
+| `formatTerminalPortabilityReport`    | function  | no        | yes   |
 | `summarizeTerminalCapabilities`      | function  | no        | yes   |
 | `TerminalCapabilities`               | interface | yes       | yes   |
 | `TerminalCapabilityDetectionOptions` | interface | yes       | yes   |
@@ -2075,9 +2124,16 @@ _No direct exported symbols._
 | `TerminalCapabilityId`               | type      | yes       | yes   |
 | `TerminalCapabilitySummary`          | interface | yes       | yes   |
 | `TerminalColorDepth`                 | type      | yes       | yes   |
+| `TerminalDiagnostic`                 | interface | yes       | yes   |
+| `TerminalDiagnosticSeverity`         | type      | yes       | yes   |
+| `TerminalEnvironment`                | interface | yes       | yes   |
+| `terminalEnvironmentDiagnostics`     | function  | no        | yes   |
 | `TerminalMouseProtocol`              | type      | yes       | yes   |
+| `TerminalMultiplexer`                | type      | yes       | yes   |
 | `TerminalPlan`                       | interface | yes       | yes   |
 | `TerminalPlanOptions`                | interface | yes       | yes   |
+| `TerminalPortabilityReport`          | interface | yes       | yes   |
+| `TerminalPortabilityReportOptions`   | interface | yes       | yes   |
 | `TerminalTextMode`                   | type      | yes       | yes   |
 
 ### src/runtime/terminal_session.ts
@@ -2097,18 +2153,18 @@ _No direct exported symbols._
 
 | Symbol                      | Kind      | Type Only | JSDoc |
 | --------------------------- | --------- | --------- | ----- |
-| `installWorkerHandler`      | function  | no        | no    |
-| `runWorkerBatch`            | function  | no        | no    |
-| `WorkerBatchOptions`        | interface | yes       | no    |
-| `WorkerBatchResult`         | interface | yes       | no    |
-| `WorkerFactory`             | type      | yes       | no    |
-| `WorkerHandler`             | type      | yes       | no    |
-| `WorkerLike`                | interface | yes       | no    |
-| `WorkerPool`                | class     | no        | no    |
-| `WorkerPoolInspection`      | interface | yes       | no    |
-| `WorkerPoolOptions`         | interface | yes       | no    |
-| `WorkerPoolRunOptions`      | interface | yes       | no    |
-| `WorkerPoolTerminatedError` | class     | no        | no    |
+| `installWorkerHandler`      | function  | no        | yes   |
+| `runWorkerBatch`            | function  | no        | yes   |
+| `WorkerBatchOptions`        | interface | yes       | yes   |
+| `WorkerBatchResult`         | interface | yes       | yes   |
+| `WorkerFactory`             | type      | yes       | yes   |
+| `WorkerHandler`             | type      | yes       | yes   |
+| `WorkerLike`                | interface | yes       | yes   |
+| `WorkerPool`                | class     | no        | yes   |
+| `WorkerPoolInspection`      | interface | yes       | yes   |
+| `WorkerPoolOptions`         | interface | yes       | yes   |
+| `WorkerPoolRunOptions`      | interface | yes       | yes   |
+| `WorkerPoolTerminatedError` | class     | no        | yes   |
 
 ### src/selection.ts
 
@@ -2117,7 +2173,7 @@ _No direct exported symbols._
 | `clampSelectionIndex`        | function  | no        | yes   |
 | `createSelection`            | function  | no        | yes   |
 | `moveSelection`              | function  | no        | yes   |
-| `normalizeSelection`         | function  | no        | no    |
+| `normalizeSelection`         | function  | no        | yes   |
 | `selectedValues`             | function  | no        | yes   |
 | `selectIndex`                | function  | no        | yes   |
 | `SelectionController`        | class     | no        | yes   |
@@ -2143,7 +2199,7 @@ _No direct exported symbols._
 
 | Symbol                 | Kind     | Type Only | JSDoc |
 | ---------------------- | -------- | --------- | ----- |
-| `activeSignals`        | variable | no        | no    |
+| `activeSignals`        | variable | no        | yes   |
 | `optimizeDependencies` | function | no        | yes   |
 | `trackDependencies`    | function | no        | yes   |
 
@@ -2192,17 +2248,17 @@ _No direct exported symbols._
 
 | Symbol                         | Kind     | Type Only | JSDoc |
 | ------------------------------ | -------- | --------- | ----- |
-| `CONNECTED_SIGNAL`             | const    | no        | no    |
-| `getConnectedSignal`           | function | no        | no    |
-| `getOriginalRef`               | function | no        | no    |
-| `IS_REACTIVE`                  | const    | no        | no    |
-| `isReactive`                   | function | no        | no    |
+| `CONNECTED_SIGNAL`             | const    | no        | yes   |
+| `getConnectedSignal`           | function | no        | yes   |
+| `getOriginalRef`               | function | no        | yes   |
+| `IS_REACTIVE`                  | const    | no        | yes   |
+| `isReactive`                   | function | no        | yes   |
 | `makeArrayMethodsReactive`     | function | no        | yes   |
 | `makeMapMethodsReactive`       | function | no        | yes   |
 | `makeObjectPropertiesReactive` | function | no        | yes   |
 | `makeSetMethodsReactive`       | function | no        | yes   |
-| `ORIGINAL_REF`                 | const    | no        | no    |
-| `Reactive`                     | type     | yes       | no    |
+| `ORIGINAL_REF`                 | const    | no        | yes   |
+| `Reactive`                     | type     | yes       | yes   |
 
 ### src/signals/signal.ts
 
@@ -2212,7 +2268,7 @@ _No direct exported symbols._
 | `SignalDeepObserveTypeofError` | class     | no        | yes   |
 | `SignalInspection`             | interface | yes       | yes   |
 | `SignalOfObject`               | type      | yes       | yes   |
-| `SignalOptions`                | interface | yes       | no    |
+| `SignalOptions`                | interface | yes       | yes   |
 
 ### src/signals/types.ts
 
@@ -2227,13 +2283,13 @@ _No direct exported symbols._
 
 | Symbol                  | Kind      | Type Only | JSDoc |
 | ----------------------- | --------- | --------- | ----- |
-| `createTestFocusable`   | function  | no        | no    |
-| `createTestKeyPress`    | function  | no        | no    |
-| `createTestMousePress`  | function  | no        | no    |
-| `createTestMouseScroll` | function  | no        | no    |
-| `TestKeyPressOptions`   | interface | yes       | no    |
-| `TestKeyPressTarget`    | class     | no        | no    |
-| `TestMouseTarget`       | class     | no        | no    |
+| `createTestFocusable`   | function  | no        | yes   |
+| `createTestKeyPress`    | function  | no        | yes   |
+| `createTestMousePress`  | function  | no        | yes   |
+| `createTestMouseScroll` | function  | no        | yes   |
+| `TestKeyPressOptions`   | interface | yes       | yes   |
+| `TestKeyPressTarget`    | class     | no        | yes   |
+| `TestMouseTarget`       | class     | no        | yes   |
 
 ### src/testing/mod.ts
 
@@ -2248,21 +2304,21 @@ _No direct exported symbols._
 
 | Symbol                        | Kind      | Type Only | JSDoc |
 | ----------------------------- | --------- | --------- | ----- |
-| `assertTerminalSnapshot`      | function  | no        | no    |
-| `canvasRowText`               | function  | no        | no    |
-| `canvasSnapshot`              | function  | no        | no    |
-| `compareTerminalSnapshot`     | function  | no        | no    |
-| `createTestCanvas`            | function  | no        | no    |
-| `createTestStdout`            | function  | no        | no    |
-| `formatTerminalSnapshotDiff`  | function  | no        | no    |
-| `frameBufferToSnapshot`       | function  | no        | no    |
-| `normalizeTerminalSnapshot`   | function  | no        | no    |
-| `stripAnsi`                   | function  | no        | no    |
-| `TerminalSnapshotComparison`  | interface | yes       | no    |
-| `TerminalSnapshotDiffOptions` | interface | yes       | no    |
-| `TerminalSnapshotMismatch`    | interface | yes       | no    |
-| `TestCanvasOptions`           | interface | yes       | no    |
-| `TestStdout`                  | interface | yes       | no    |
+| `assertTerminalSnapshot`      | function  | no        | yes   |
+| `canvasRowText`               | function  | no        | yes   |
+| `canvasSnapshot`              | function  | no        | yes   |
+| `compareTerminalSnapshot`     | function  | no        | yes   |
+| `createTestCanvas`            | function  | no        | yes   |
+| `createTestStdout`            | function  | no        | yes   |
+| `formatTerminalSnapshotDiff`  | function  | no        | yes   |
+| `frameBufferToSnapshot`       | function  | no        | yes   |
+| `normalizeTerminalSnapshot`   | function  | no        | yes   |
+| `stripAnsi`                   | function  | no        | yes   |
+| `TerminalSnapshotComparison`  | interface | yes       | yes   |
+| `TerminalSnapshotDiffOptions` | interface | yes       | yes   |
+| `TerminalSnapshotMismatch`    | interface | yes       | yes   |
+| `TestCanvasOptions`           | interface | yes       | yes   |
+| `TestStdout`                  | interface | yes       | yes   |
 
 ### src/theme_binding.ts
 
@@ -2274,19 +2330,19 @@ _No direct exported symbols._
 | `ComponentThemeBindingGroup`           | class     | no        | yes   |
 | `ComponentThemeBindingGroupInspection` | interface | yes       | yes   |
 | `ComponentThemeBindingInspection`      | interface | yes       | yes   |
-| `ComponentThemeBindingOptions`         | interface | yes       | no    |
-| `ThemeBindable`                        | interface | yes       | no    |
+| `ComponentThemeBindingOptions`         | interface | yes       | yes   |
+| `ThemeBindable`                        | interface | yes       | yes   |
 
 ### src/theme_engine_cache.ts
 
 | Symbol                         | Kind      | Type Only | JSDoc |
 | ------------------------------ | --------- | --------- | ----- |
-| `createThemeEngineCache`       | function  | no        | no    |
-| `createThemeProviderCache`     | function  | no        | no    |
-| `ThemeEngineCache`             | class     | no        | no    |
-| `ThemeEngineCacheInspection`   | interface | yes       | no    |
-| `ThemeProviderCache`           | class     | no        | no    |
-| `ThemeProviderCacheInspection` | interface | yes       | no    |
+| `createThemeEngineCache`       | function  | no        | yes   |
+| `createThemeProviderCache`     | function  | no        | yes   |
+| `ThemeEngineCache`             | class     | no        | yes   |
+| `ThemeEngineCacheInspection`   | interface | yes       | yes   |
+| `ThemeProviderCache`           | class     | no        | yes   |
+| `ThemeProviderCacheInspection` | interface | yes       | yes   |
 
 ### src/theme_engine_factory.ts
 
@@ -2302,10 +2358,10 @@ _No direct exported symbols._
 | `ThemeEngineFactory`                       | class     | no        | yes   |
 | `ThemeEngineFactoryBuildResult`            | interface | yes       | yes   |
 | `ThemeEngineFactoryCatalogInspection`      | interface | yes       | yes   |
-| `ThemeEngineFactoryCatalogMarkdownOptions` | interface | yes       | no    |
+| `ThemeEngineFactoryCatalogMarkdownOptions` | interface | yes       | yes   |
 | `ThemeEngineFactoryCatalogQuery`           | interface | yes       | yes   |
 | `ThemeEngineFactoryCatalogReport`          | interface | yes       | yes   |
-| `ThemeEngineFactoryCatalogReportOptions`   | interface | yes       | no    |
+| `ThemeEngineFactoryCatalogReportOptions`   | interface | yes       | yes   |
 | `ThemeEngineFactoryDefinition`             | interface | yes       | yes   |
 | `ThemeEngineFactoryInspection`             | interface | yes       | yes   |
 | `ThemeEngineFactoryNotFoundError`          | class     | no        | yes   |
@@ -2316,18 +2372,18 @@ _No direct exported symbols._
 
 | Symbol                              | Kind      | Type Only | JSDoc |
 | ----------------------------------- | --------- | --------- | ----- |
-| `createThemeEnginePipeline`         | function  | no        | no    |
-| `prewarmThemeEnginePipelines`       | function  | no        | no    |
+| `createThemeEnginePipeline`         | function  | no        | yes   |
+| `prewarmThemeEnginePipelines`       | function  | no        | yes   |
 | `ThemeEnginePipeline`               | class     | no        | yes   |
-| `ThemeEnginePipelineBuildResult`    | interface | yes       | no    |
-| `ThemeEnginePipelineContext`        | interface | yes       | no    |
-| `ThemeEnginePipelineDefinition`     | interface | yes       | no    |
-| `ThemeEnginePipelineInspection`     | interface | yes       | no    |
-| `ThemeEnginePipelineListener`       | type      | yes       | no    |
-| `ThemeEnginePipelinePrewarmOptions` | interface | yes       | no    |
-| `ThemeEnginePipelineStepDefinition` | interface | yes       | no    |
-| `ThemeEnginePipelineStepInspection` | interface | yes       | no    |
-| `ThemeEnginePipelineTransform`      | type      | yes       | no    |
+| `ThemeEnginePipelineBuildResult`    | interface | yes       | yes   |
+| `ThemeEnginePipelineContext`        | interface | yes       | yes   |
+| `ThemeEnginePipelineDefinition`     | interface | yes       | yes   |
+| `ThemeEnginePipelineInspection`     | interface | yes       | yes   |
+| `ThemeEnginePipelineListener`       | type      | yes       | yes   |
+| `ThemeEnginePipelinePrewarmOptions` | interface | yes       | yes   |
+| `ThemeEnginePipelineStepDefinition` | interface | yes       | yes   |
+| `ThemeEnginePipelineStepInspection` | interface | yes       | yes   |
+| `ThemeEnginePipelineTransform`      | type      | yes       | yes   |
 
 ### src/theme_gallery.ts
 
@@ -2349,21 +2405,21 @@ _No direct exported symbols._
 
 | Symbol                           | Kind      | Type Only | JSDoc |
 | -------------------------------- | --------- | --------- | ----- |
-| `componentThemeStyleRequests`    | function  | no        | no    |
-| `createThemeEngineResolver`      | function  | no        | no    |
-| `createThemeProviderResolver`    | function  | no        | no    |
-| `createThemeResolutionSnapshot`  | function  | no        | no    |
-| `formatThemeResolutionMarkdown`  | function  | no        | no    |
-| `ThemeEngineResolver`            | class     | no        | no    |
-| `ThemeProviderResolver`          | class     | no        | no    |
-| `ThemeResolutionSnapshot`        | interface | yes       | no    |
-| `ThemeResolutionSnapshotOptions` | interface | yes       | no    |
-| `ThemeResolver`                  | interface | yes       | no    |
-| `ThemeResolverMarkdownOptions`   | interface | yes       | no    |
-| `ThemeStyleRequest`              | interface | yes       | no    |
-| `ThemeStyleResolution`           | interface | yes       | no    |
-| `ThemeTokenRequest`              | interface | yes       | no    |
-| `ThemeTokenResolution`           | interface | yes       | no    |
+| `componentThemeStyleRequests`    | function  | no        | yes   |
+| `createThemeEngineResolver`      | function  | no        | yes   |
+| `createThemeProviderResolver`    | function  | no        | yes   |
+| `createThemeResolutionSnapshot`  | function  | no        | yes   |
+| `formatThemeResolutionMarkdown`  | function  | no        | yes   |
+| `ThemeEngineResolver`            | class     | no        | yes   |
+| `ThemeProviderResolver`          | class     | no        | yes   |
+| `ThemeResolutionSnapshot`        | interface | yes       | yes   |
+| `ThemeResolutionSnapshotOptions` | interface | yes       | yes   |
+| `ThemeResolver`                  | interface | yes       | yes   |
+| `ThemeResolverMarkdownOptions`   | interface | yes       | yes   |
+| `ThemeStyleRequest`              | interface | yes       | yes   |
+| `ThemeStyleResolution`           | interface | yes       | yes   |
+| `ThemeTokenRequest`              | interface | yes       | yes   |
+| `ThemeTokenResolution`           | interface | yes       | yes   |
 
 ### src/theme_workspace.ts
 
@@ -2381,157 +2437,157 @@ _No direct exported symbols._
 
 | Symbol                                | Kind      | Type Only | JSDoc |
 | ------------------------------------- | --------- | --------- | ----- |
-| `AnsiColor`                           | type      | yes       | no    |
-| `AnsiColorName`                       | type      | yes       | no    |
-| `AnsiRgbColor`                        | type      | yes       | no    |
-| `AnsiStyleSpec`                       | interface | yes       | no    |
-| `AnsiThemeTokenSpecs`                 | type      | yes       | no    |
-| `assertThemeOptions`                  | function  | no        | no    |
-| `compileThemeManifestOptions`         | function  | no        | no    |
-| `compileThemeManifestStateDefinition` | function  | no        | no    |
-| `compileThemeManifestStyleReference`  | function  | no        | no    |
-| `ComponentThemeDefinition`            | interface | yes       | no    |
-| `composeStyles`                       | function  | no        | no    |
-| `composeThemeOptions`                 | function  | no        | no    |
-| `createAnsiStyle`                     | function  | no        | no    |
-| `createAnsiThemeTokens`               | function  | no        | no    |
-| `createTheme`                         | function  | no        | no    |
-| `createThemeCatalog`                  | function  | no        | no    |
-| `createThemeEngine`                   | function  | no        | no    |
-| `createThemeEngineFromManifest`       | function  | no        | no    |
+| `AnsiColor`                           | type      | yes       | yes   |
+| `AnsiColorName`                       | type      | yes       | yes   |
+| `AnsiRgbColor`                        | type      | yes       | yes   |
+| `AnsiStyleSpec`                       | interface | yes       | yes   |
+| `AnsiThemeTokenSpecs`                 | type      | yes       | yes   |
+| `assertThemeOptions`                  | function  | no        | yes   |
+| `compileThemeManifestOptions`         | function  | no        | yes   |
+| `compileThemeManifestStateDefinition` | function  | no        | yes   |
+| `compileThemeManifestStyleReference`  | function  | no        | yes   |
+| `ComponentThemeDefinition`            | interface | yes       | yes   |
+| `composeStyles`                       | function  | no        | yes   |
+| `composeThemeOptions`                 | function  | no        | yes   |
+| `createAnsiStyle`                     | function  | no        | yes   |
+| `createAnsiThemeTokens`               | function  | no        | yes   |
+| `createTheme`                         | function  | no        | yes   |
+| `createThemeCatalog`                  | function  | no        | yes   |
+| `createThemeEngine`                   | function  | no        | yes   |
+| `createThemeEngineFromManifest`       | function  | no        | yes   |
 | `createThemeEngineFromPalette`        | function  | no        | yes   |
-| `createThemeLayerStack`               | function  | no        | no    |
+| `createThemeLayerStack`               | function  | no        | yes   |
 | `createThemePaletteRegistry`          | function  | no        | yes   |
-| `createThemeProvider`                 | function  | no        | no    |
+| `createThemeProvider`                 | function  | no        | yes   |
 | `createThemeProviderReport`           | function  | no        | yes   |
-| `createThemeRegistry`                 | function  | no        | no    |
-| `createThemeRegistryFromManifests`    | function  | no        | no    |
-| `defaultThemePacks`                   | const     | no        | no    |
+| `createThemeRegistry`                 | function  | no        | yes   |
+| `createThemeRegistryFromManifests`    | function  | no        | yes   |
+| `defaultThemePacks`                   | const     | no        | yes   |
 | `defaultThemePaletteDefinitions`      | function  | no        | yes   |
-| `diffThemeEngines`                    | function  | no        | no    |
+| `diffThemeEngines`                    | function  | no        | yes   |
 | `emptyStyle`                          | function  | no        | yes   |
 | `formatThemeProviderReportMarkdown`   | function  | no        | yes   |
 | `hierarchizeTheme`                    | function  | no        | yes   |
-| `inspectThemeCoverage`                | function  | no        | no    |
-| `inspectThemeManifest`                | function  | no        | no    |
-| `mergeComponentThemeDefinition`       | function  | no        | no    |
-| `previewThemeManifest`                | function  | no        | no    |
-| `previewThemeProvider`                | function  | no        | no    |
+| `inspectThemeCoverage`                | function  | no        | yes   |
+| `inspectThemeManifest`                | function  | no        | yes   |
+| `mergeComponentThemeDefinition`       | function  | no        | yes   |
+| `previewThemeManifest`                | function  | no        | yes   |
+| `previewThemeProvider`                | function  | no        | yes   |
 | `replaceEmptyStyle`                   | function  | no        | yes   |
-| `resolveThemeStateDefinition`         | function  | no        | no    |
-| `resolveThemeStyleReference`          | function  | no        | no    |
+| `resolveThemeStateDefinition`         | function  | no        | yes   |
+| `resolveThemeStyleReference`          | function  | no        | yes   |
 | `Style`                               | type      | yes       | yes   |
 | `Theme`                               | interface | yes       | yes   |
-| `ThemeCatalog`                        | interface | yes       | no    |
-| `ThemeCatalogComponent`               | interface | yes       | no    |
-| `ThemeCatalogLayer`                   | interface | yes       | no    |
-| `ThemeCatalogTheme`                   | interface | yes       | no    |
-| `ThemeComponentCoverageInspection`    | interface | yes       | no    |
-| `ThemeComponentInspection`            | interface | yes       | no    |
-| `ThemeComponentStateDiff`             | interface | yes       | no    |
-| `ThemeCoverageInspection`             | interface | yes       | no    |
-| `ThemeCoverageOptions`                | interface | yes       | no    |
-| `ThemeEngine`                         | class     | no        | no    |
-| `ThemeEngineDiff`                     | interface | yes       | no    |
-| `ThemeEngineDiffOptions`              | interface | yes       | no    |
-| `ThemeEngineOptions`                  | interface | yes       | no    |
-| `ThemeInheritanceError`               | class     | no        | no    |
-| `ThemeInspection`                     | interface | yes       | no    |
-| `ThemeLayer`                          | interface | yes       | no    |
-| `ThemeLayerInspection`                | interface | yes       | no    |
-| `ThemeLayerStack`                     | class     | no        | no    |
-| `ThemeManifestComponentDefinition`    | interface | yes       | no    |
-| `ThemeManifestComponentInspection`    | interface | yes       | no    |
-| `ThemeManifestComponentStatePreview`  | interface | yes       | no    |
-| `ThemeManifestInspection`             | interface | yes       | no    |
-| `ThemeManifestOptions`                | interface | yes       | no    |
-| `ThemeManifestPreview`                | interface | yes       | no    |
-| `ThemeManifestPreviewOptions`         | interface | yes       | no    |
-| `ThemeManifestStateDefinition`        | type      | yes       | no    |
-| `ThemeManifestStyleReference`         | type      | yes       | no    |
-| `ThemeManifestTokenPreview`           | interface | yes       | no    |
-| `ThemeManifestVariantInspection`      | interface | yes       | no    |
-| `ThemePack`                           | interface | yes       | no    |
-| `themePackFromManifest`               | function  | no        | no    |
-| `ThemePackInspection`                 | interface | yes       | no    |
-| `ThemePackManifest`                   | interface | yes       | no    |
-| `ThemePackNotFoundError`              | class     | no        | no    |
+| `ThemeCatalog`                        | interface | yes       | yes   |
+| `ThemeCatalogComponent`               | interface | yes       | yes   |
+| `ThemeCatalogLayer`                   | interface | yes       | yes   |
+| `ThemeCatalogTheme`                   | interface | yes       | yes   |
+| `ThemeComponentCoverageInspection`    | interface | yes       | yes   |
+| `ThemeComponentInspection`            | interface | yes       | yes   |
+| `ThemeComponentStateDiff`             | interface | yes       | yes   |
+| `ThemeCoverageInspection`             | interface | yes       | yes   |
+| `ThemeCoverageOptions`                | interface | yes       | yes   |
+| `ThemeEngine`                         | class     | no        | yes   |
+| `ThemeEngineDiff`                     | interface | yes       | yes   |
+| `ThemeEngineDiffOptions`              | interface | yes       | yes   |
+| `ThemeEngineOptions`                  | interface | yes       | yes   |
+| `ThemeInheritanceError`               | class     | no        | yes   |
+| `ThemeInspection`                     | interface | yes       | yes   |
+| `ThemeLayer`                          | interface | yes       | yes   |
+| `ThemeLayerInspection`                | interface | yes       | yes   |
+| `ThemeLayerStack`                     | class     | no        | yes   |
+| `ThemeManifestComponentDefinition`    | interface | yes       | yes   |
+| `ThemeManifestComponentInspection`    | interface | yes       | yes   |
+| `ThemeManifestComponentStatePreview`  | interface | yes       | yes   |
+| `ThemeManifestInspection`             | interface | yes       | yes   |
+| `ThemeManifestOptions`                | interface | yes       | yes   |
+| `ThemeManifestPreview`                | interface | yes       | yes   |
+| `ThemeManifestPreviewOptions`         | interface | yes       | yes   |
+| `ThemeManifestStateDefinition`        | type      | yes       | yes   |
+| `ThemeManifestStyleReference`         | type      | yes       | yes   |
+| `ThemeManifestTokenPreview`           | interface | yes       | yes   |
+| `ThemeManifestVariantInspection`      | interface | yes       | yes   |
+| `ThemePack`                           | interface | yes       | yes   |
+| `themePackFromManifest`               | function  | no        | yes   |
+| `ThemePackInspection`                 | interface | yes       | yes   |
+| `ThemePackManifest`                   | interface | yes       | yes   |
+| `ThemePackNotFoundError`              | class     | no        | yes   |
 | `ThemePalette`                        | interface | yes       | yes   |
 | `ThemePaletteInspection`              | interface | yes       | yes   |
-| `ThemePaletteName`                    | type      | yes       | no    |
+| `ThemePaletteName`                    | type      | yes       | yes   |
 | `ThemePaletteNotFoundError`           | class     | no        | yes   |
 | `ThemePaletteReference`               | type      | yes       | yes   |
 | `ThemePaletteRegistry`                | class     | no        | yes   |
-| `themePalettes`                       | const     | no        | no    |
-| `ThemeProvider`                       | class     | no        | no    |
-| `ThemeProviderComponentStatePreview`  | interface | yes       | no    |
-| `ThemeProviderInspection`             | interface | yes       | no    |
-| `ThemeProviderOptions`                | interface | yes       | no    |
-| `ThemeProviderPreview`                | interface | yes       | no    |
-| `ThemeProviderPreviewOptions`         | interface | yes       | no    |
+| `themePalettes`                       | const     | no        | yes   |
+| `ThemeProvider`                       | class     | no        | yes   |
+| `ThemeProviderComponentStatePreview`  | interface | yes       | yes   |
+| `ThemeProviderInspection`             | interface | yes       | yes   |
+| `ThemeProviderOptions`                | interface | yes       | yes   |
+| `ThemeProviderPreview`                | interface | yes       | yes   |
+| `ThemeProviderPreviewOptions`         | interface | yes       | yes   |
 | `ThemeProviderReport`                 | interface | yes       | yes   |
 | `ThemeProviderReportIssue`            | interface | yes       | yes   |
 | `ThemeProviderReportIssueSource`      | type      | yes       | yes   |
 | `ThemeProviderReportOptions`          | interface | yes       | yes   |
 | `ThemeProviderReportSummary`          | interface | yes       | yes   |
-| `ThemeProviderTokenPreview`           | interface | yes       | no    |
-| `ThemeRegistry`                       | class     | no        | no    |
-| `ThemeState`                          | type      | yes       | no    |
-| `ThemeStateDefinition`                | type      | yes       | no    |
-| `themeStates`                         | const     | no        | no    |
-| `ThemeStylePreview`                   | interface | yes       | no    |
-| `ThemeStyleReference`                 | type      | yes       | no    |
-| `ThemeTokenDiff`                      | interface | yes       | no    |
-| `ThemeTokenName`                      | type      | yes       | no    |
-| `themeTokenNames`                     | const     | no        | no    |
-| `ThemeTokens`                         | interface | yes       | no    |
-| `ThemeValidationError`                | class     | no        | no    |
-| `ThemeValidationIssue`                | interface | yes       | no    |
-| `ThemeValidationIssueKind`            | type      | yes       | no    |
-| `ThemeVariantCoverageInspection`      | interface | yes       | no    |
-| `validateThemeOptions`                | function  | no        | no    |
+| `ThemeProviderTokenPreview`           | interface | yes       | yes   |
+| `ThemeRegistry`                       | class     | no        | yes   |
+| `ThemeState`                          | type      | yes       | yes   |
+| `ThemeStateDefinition`                | type      | yes       | yes   |
+| `themeStates`                         | const     | no        | yes   |
+| `ThemeStylePreview`                   | interface | yes       | yes   |
+| `ThemeStyleReference`                 | type      | yes       | yes   |
+| `ThemeTokenDiff`                      | interface | yes       | yes   |
+| `ThemeTokenName`                      | type      | yes       | yes   |
+| `themeTokenNames`                     | const     | no        | yes   |
+| `ThemeTokens`                         | interface | yes       | yes   |
+| `ThemeValidationError`                | class     | no        | yes   |
+| `ThemeValidationIssue`                | interface | yes       | yes   |
+| `ThemeValidationIssueKind`            | type      | yes       | yes   |
+| `ThemeVariantCoverageInspection`      | interface | yes       | yes   |
+| `validateThemeOptions`                | function  | no        | yes   |
 
 ### src/three_ascii/AcerolaAsciiNode.ts
 
 | Symbol                    | Kind      | Type Only | JSDoc |
 | ------------------------- | --------- | --------- | ----- |
-| `AcerolaAsciiNode`        | class     | no        | no    |
-| `AcerolaAsciiNodeOptions` | interface | yes       | no    |
+| `AcerolaAsciiNode`        | class     | no        | yes   |
+| `AcerolaAsciiNodeOptions` | interface | yes       | yes   |
 
 ### src/three_ascii/demo_presets.ts
 
 | Symbol                          | Kind      | Type Only | JSDoc |
 | ------------------------------- | --------- | --------- | ----- |
-| `ASCII_DEMO_PRESETS`            | const     | no        | no    |
-| `ASCII_NUMERIC_CONTROLS`        | const     | no        | no    |
-| `ASCII_TOGGLE_CONTROLS`         | const     | no        | no    |
-| `AsciiDemoPreset`               | interface | yes       | no    |
-| `asciiDemoPresetIds`            | function  | no        | no    |
-| `asciiDemoPresets`              | function  | no        | no    |
-| `asciiDemoPresetSummaries`      | function  | no        | no    |
-| `AsciiDemoPresetSummary`        | interface | yes       | no    |
-| `AsciiNumericControlDefinition` | interface | yes       | no    |
-| `AsciiNumericControlKey`        | type      | yes       | no    |
-| `AsciiToggleControlDefinition`  | interface | yes       | no    |
-| `AsciiToggleControlKey`         | type      | yes       | no    |
-| `DEFAULT_ASCII_DEMO_EFFECT`     | const     | no        | no    |
-| `findAsciiDemoPreset`           | function  | no        | no    |
+| `ASCII_DEMO_PRESETS`            | const     | no        | yes   |
+| `ASCII_NUMERIC_CONTROLS`        | const     | no        | yes   |
+| `ASCII_TOGGLE_CONTROLS`         | const     | no        | yes   |
+| `AsciiDemoPreset`               | interface | yes       | yes   |
+| `asciiDemoPresetIds`            | function  | no        | yes   |
+| `asciiDemoPresets`              | function  | no        | yes   |
+| `asciiDemoPresetSummaries`      | function  | no        | yes   |
+| `AsciiDemoPresetSummary`        | interface | yes       | yes   |
+| `AsciiNumericControlDefinition` | interface | yes       | yes   |
+| `AsciiNumericControlKey`        | type      | yes       | yes   |
+| `AsciiToggleControlDefinition`  | interface | yes       | yes   |
+| `AsciiToggleControlKey`         | type      | yes       | yes   |
+| `DEFAULT_ASCII_DEMO_EFFECT`     | const     | no        | yes   |
+| `findAsciiDemoPreset`           | function  | no        | yes   |
 
 ### src/three_ascii/glyphs.ts
 
 | Symbol                      | Kind     | Type Only | JSDoc |
 | --------------------------- | -------- | --------- | ----- |
-| `ASCII_FILL_GLYPHS`         | const    | no        | no    |
-| `bucketAsciiLuminance`      | function | no        | no    |
-| `classifyEdgeDirection`     | function | no        | no    |
-| `EDGE_GLYPHS`               | const    | no        | no    |
-| `EdgeDirection`             | type     | yes       | no    |
-| `FILL_GLYPHS`               | const    | no        | no    |
-| `glyphForTile`              | function | no        | no    |
-| `pickDominantEdgeDirection` | function | no        | no    |
-| `TERMINAL_GLYPH_STYLES`     | const    | no        | no    |
-| `TERMINAL_GLYPHS`           | const    | no        | no    |
-| `TerminalGlyphStyle`        | type     | yes       | no    |
+| `ASCII_FILL_GLYPHS`         | const    | no        | yes   |
+| `bucketAsciiLuminance`      | function | no        | yes   |
+| `classifyEdgeDirection`     | function | no        | yes   |
+| `EDGE_GLYPHS`               | const    | no        | yes   |
+| `EdgeDirection`             | type     | yes       | yes   |
+| `FILL_GLYPHS`               | const    | no        | yes   |
+| `glyphForTile`              | function | no        | yes   |
+| `pickDominantEdgeDirection` | function | no        | yes   |
+| `TERMINAL_GLYPH_STYLES`     | const    | no        | yes   |
+| `TERMINAL_GLYPHS`           | const    | no        | yes   |
+| `TerminalGlyphStyle`        | type     | yes       | yes   |
 
 ### src/three_ascii/mod.ts
 
@@ -2549,22 +2605,22 @@ _No direct exported symbols._
 
 | Symbol                      | Kind      | Type Only | JSDoc |
 | --------------------------- | --------- | --------- | ----- |
-| `ThreeAsciiRenderer`        | class     | no        | no    |
-| `ThreeAsciiRendererOptions` | interface | yes       | no    |
+| `ThreeAsciiRenderer`        | class     | no        | yes   |
+| `ThreeAsciiRendererOptions` | interface | yes       | yes   |
 
 ### src/three_ascii/webgpu_compat.ts
 
 | Symbol                        | Kind     | Type Only | JSDoc |
 | ----------------------------- | -------- | --------- | ----- |
-| `getCompatibleWebGPUDevice`   | function | no        | no    |
-| `probeCompatibleWebGPUDevice` | function | no        | no    |
+| `getCompatibleWebGPUDevice`   | function | no        | yes   |
+| `probeCompatibleWebGPUDevice` | function | no        | yes   |
 
 ### src/tui.ts
 
 | Symbol       | Kind      | Type Only | JSDoc |
 | ------------ | --------- | --------- | ----- |
 | `Tui`        | class     | no        | yes   |
-| `TuiOptions` | interface | yes       | no    |
+| `TuiOptions` | interface | yes       | yes   |
 
 ### src/types.ts
 
@@ -2632,7 +2688,7 @@ _No direct exported symbols._
 | `fitsInRectangle`       | function | no        | yes   |
 | `normalize`             | function | no        | yes   |
 | `rectangleEquals`       | function | no        | yes   |
-| `rectangleIntersection` | function | no        | no    |
+| `rectangleIntersection` | function | no        | yes   |
 
 ### src/utils/signals.ts
 
@@ -2644,7 +2700,7 @@ _No direct exported symbols._
 
 | Symbol        | Kind  | Type Only | JSDoc |
 | ------------- | ----- | --------- | ----- |
-| `CompareFn`   | type  | yes       | no    |
+| `CompareFn`   | type  | yes       | yes   |
 | `SortedArray` | class | no        | yes   |
 
 ### src/utils/strings.ts
@@ -2656,7 +2712,7 @@ _No direct exported symbols._
 | `cropToWidth`                 | function | no        | yes   |
 | `getMultiCodePointCharacters` | function | no        | yes   |
 | `insertAt`                    | function | no        | yes   |
-| `isFinalAnsiByte`             | function | no        | no    |
+| `isFinalAnsiByte`             | function | no        | yes   |
 | `stripStyles`                 | function | no        | yes   |
 | `textWidth`                   | function | no        | yes   |
 | `UNICODE_CHAR_REGEXP`         | const    | no        | yes   |
@@ -2665,7 +2721,7 @@ _No direct exported symbols._
 
 | Symbol | Kind  | Type Only | JSDoc |
 | ------ | ----- | --------- | ----- |
-| `View` | class | no        | no    |
+| `View` | class | no        | yes   |
 
 ### src/viewport.ts
 

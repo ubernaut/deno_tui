@@ -3,14 +3,17 @@ import type { ThemeEnginePipeline } from "../theme_engine_pipeline.ts";
 import type { Action } from "./actions.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
+/** Action union emitted by theme Pipeline Command command helpers. */
 export type ThemePipelineCommandAction = Action<"theme.pipeline.step.changed", ThemePipelineStepChangedPayload>;
 
+/** Payload carried by theme Pipeline Step Changed actions. */
 export interface ThemePipelineStepChangedPayload {
   pipelineId: string;
   id: string;
   enabled: boolean;
 }
 
+/** Options for configuring theme Pipeline Command. */
 export interface ThemePipelineCommandOptions {
   group?: string;
   prefix?: string;
@@ -20,6 +23,7 @@ export interface ThemePipelineCommandOptions {
   disableInactiveStepStates?: boolean;
 }
 
+/** Builds command definitions for theme Pipeline. */
 export function themePipelineCommands(
   pipeline: ThemeEnginePipeline,
   options: ThemePipelineCommandOptions = {},
@@ -87,6 +91,7 @@ export function themePipelineCommands(
   return commands;
 }
 
+/** Binds theme Pipeline Commands behavior and returns a disposer when applicable. */
 export function bindThemePipelineCommands<TAction extends Action = ThemePipelineCommandAction>(
   registry: CommandRegistry<TAction>,
   pipeline: ThemeEnginePipeline,

@@ -1,4 +1,5 @@
 // Copyright 2023 Im-Beast. MIT license.
+/** Public interface describing a history Transaction. */
 export interface HistoryTransaction {
   id?: string;
   label: string;
@@ -7,10 +8,12 @@ export interface HistoryTransaction {
   redo: () => void | Promise<void>;
 }
 
+/** Options for configuring history Stack. */
 export interface HistoryStackOptions {
   capacity?: number;
 }
 
+/** Serializable inspection snapshot for history. */
 export interface HistoryInspection {
   canUndo: boolean;
   canRedo: boolean;
@@ -20,12 +23,14 @@ export interface HistoryInspection {
   nextRedo?: HistoryEntryInspection;
 }
 
+/** Serializable inspection snapshot for history Entry. */
 export interface HistoryEntryInspection {
   id?: string;
   label: string;
   group?: string;
 }
 
+/** Public class implementing a history Stack. */
 export class HistoryStack {
   readonly #undoStack: HistoryTransaction[] = [];
   readonly #redoStack: HistoryTransaction[] = [];

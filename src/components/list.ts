@@ -6,6 +6,7 @@ import { Computed, Signal } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
 import { Text } from "./text.ts";
 
+/** Options for configuring list. */
 export interface ListOptions extends ComponentOptions {
   items: string[] | Signal<string[]>;
   selectedIndex?: number | Signal<number>;
@@ -13,12 +14,14 @@ export interface ListOptions extends ComponentOptions {
   onSelect?: (item: string, index: number) => void | Promise<void>;
 }
 
+/** Public interface describing a virtual Row. */
 export interface VirtualRow<T> {
   item: T;
   index: number;
   selected: boolean;
 }
 
+/** Public helper for virtual Rows. */
 export function virtualRows<T>(
   items: readonly T[],
   selectedIndex: number,
@@ -34,16 +37,19 @@ export function virtualRows<T>(
   }));
 }
 
+/** Public helper for visible List Rows. */
 export function visibleListRows(items: readonly string[], selectedIndex: number, height: number): string[] {
   return virtualRows(items, selectedIndex, height).map((row) => `${row.selected ? ">" : " "} ${row.item}`);
 }
 
+/** Options for configuring list Controller. */
 export interface ListControllerOptions {
   items: string[] | Signal<string[]>;
   selectedIndex?: number | Signal<number>;
   onSelect?: (item: string, index: number) => void | Promise<void>;
 }
 
+/** Serializable inspection snapshot for list. */
 export interface ListInspection {
   items: string[];
   itemCount: number;
@@ -53,6 +59,7 @@ export interface ListInspection {
   empty: boolean;
 }
 
+/** State controller for list behavior. */
 export class ListController {
   readonly items: Signal<string[]>;
   readonly selectedIndex: Signal<number>;
@@ -146,6 +153,7 @@ export class ListController {
   }
 }
 
+/** Public class implementing a list. */
 export class List extends Component {
   items: Signal<string[]>;
   selectedIndex: Signal<number>;

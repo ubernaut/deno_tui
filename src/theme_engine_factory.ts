@@ -79,11 +79,13 @@ export interface ThemeEngineFactoryCatalogReport {
   inspection: ThemeEngineFactoryCatalogInspection;
 }
 
+/** Options for configuring theme Engine Factory Catalog Report. */
 export interface ThemeEngineFactoryCatalogReportOptions {
   factories: Iterable<ThemeEngineFactory | ThemeEngineFactoryDefinition>;
   query?: ThemeEngineFactoryCatalogQuery;
 }
 
+/** Options for configuring theme Engine Factory Catalog Markdown. */
 export interface ThemeEngineFactoryCatalogMarkdownOptions extends ThemeEngineFactoryCatalogReportOptions {
   title?: string;
   includeSummary?: boolean;

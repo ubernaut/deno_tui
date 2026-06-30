@@ -5,6 +5,7 @@ import { Computed, Signal } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
 import { List } from "./list.ts";
 
+/** Public interface describing a tree Node. */
 export interface TreeNode {
   id: string;
   label: string;
@@ -12,6 +13,7 @@ export interface TreeNode {
   expanded?: boolean;
 }
 
+/** Options for configuring tree. */
 export interface TreeOptions extends ComponentOptions {
   nodes: TreeNode[] | Signal<TreeNode[]>;
   selectedIndex?: number | Signal<number>;
@@ -20,6 +22,7 @@ export interface TreeOptions extends ComponentOptions {
   onToggle?: (row: TreeRow, expanded: boolean) => void | Promise<void>;
 }
 
+/** Public interface describing a tree Row. */
 export interface TreeRow {
   id: string;
   label: string;
@@ -31,6 +34,7 @@ export interface TreeRow {
   text: string;
 }
 
+/** Options for configuring tree Controller. */
 export interface TreeControllerOptions {
   nodes: TreeNode[] | Signal<TreeNode[]>;
   selectedIndex?: number | Signal<number>;
@@ -38,6 +42,7 @@ export interface TreeControllerOptions {
   onToggle?: (row: TreeRow, expanded: boolean) => void | Promise<void>;
 }
 
+/** Serializable inspection snapshot for tree Row. */
 export interface TreeRowInspection {
   id: string;
   label: string;
@@ -48,6 +53,7 @@ export interface TreeRowInspection {
   text: string;
 }
 
+/** Serializable inspection snapshot for tree. */
 export interface TreeInspection {
   nodes: TreeNode[];
   rows: TreeRowInspection[];
@@ -58,6 +64,7 @@ export interface TreeInspection {
   empty: boolean;
 }
 
+/** Public helper for flatten Tree Rows. */
 export function flattenTreeRows(nodes: readonly TreeNode[], depth = 0, rows: TreeRow[] = []): TreeRow[] {
   for (const node of nodes) {
     const hasChildren = Boolean(node.children?.length);
@@ -82,10 +89,12 @@ export function flattenTreeRows(nodes: readonly TreeNode[], depth = 0, rows: Tre
   return rows;
 }
 
+/** Public helper for flatten Tree. */
 export function flattenTree(nodes: readonly TreeNode[], depth = 0): string[] {
   return flattenTreeRows(nodes, depth).map((row) => row.text);
 }
 
+/** Creates a serializable inspection snapshot for tree Row. */
 export function inspectTreeRow(row: TreeRow): TreeRowInspection {
   return {
     id: row.id,
@@ -98,6 +107,7 @@ export function inspectTreeRow(row: TreeRow): TreeRowInspection {
   };
 }
 
+/** State controller for tree behavior. */
 export class TreeController {
   readonly nodes: Signal<TreeNode[]>;
   readonly selectedIndex: Signal<number>;
@@ -258,6 +268,7 @@ export class TreeController {
   }
 }
 
+/** Public class implementing a tree. */
 export class Tree extends Component {
   nodes: Signal<TreeNode[]>;
   selectedIndex: Signal<number>;

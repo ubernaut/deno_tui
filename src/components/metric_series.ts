@@ -1,11 +1,13 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { Signal } from "../signals/mod.ts";
 
+/** Public interface describing a metric Clamp Range. */
 export interface MetricClampRange {
   min?: number;
   max?: number;
 }
 
+/** Public interface describing a metric Series Stats. */
 export interface MetricSeriesStats {
   count: number;
   min: number;
@@ -15,12 +17,14 @@ export interface MetricSeriesStats {
   sum: number;
 }
 
+/** Options for configuring metric Series Controller. */
 export interface MetricSeriesControllerOptions {
   limit?: number;
   initialValues?: readonly number[];
   clamp?: boolean | MetricClampRange;
 }
 
+/** Serializable inspection snapshot for metric Series. */
 export interface MetricSeriesInspection {
   values: number[];
   stats: MetricSeriesStats;
@@ -28,8 +32,10 @@ export interface MetricSeriesInspection {
   empty: boolean;
 }
 
+/** Built-in dEFAULT METRIC SERIES LIMIT definitions. */
 export const DEFAULT_METRIC_SERIES_LIMIT = 60;
 
+/** Public helper for normalize Metric Value. */
 export function normalizeMetricValue(value: number, clamp?: boolean | MetricClampRange): number {
   let normalized = Number.isFinite(value) ? value : 0;
   if (!clamp) return normalized;
@@ -40,10 +46,12 @@ export function normalizeMetricValue(value: number, clamp?: boolean | MetricClam
   return normalized;
 }
 
+/** Public helper for normalize Metric Limit. */
 export function normalizeMetricLimit(limit: number): number {
   return Math.max(0, Math.floor(Number.isFinite(limit) ? limit : 0));
 }
 
+/** Public helper for push Metric Value. */
 export function pushMetricValue(
   values: readonly number[],
   value: number,
@@ -58,6 +66,7 @@ export function pushMetricValue(
   return next;
 }
 
+/** Public helper for metric Series Stats. */
 export function metricSeriesStats(values: readonly number[]): MetricSeriesStats {
   if (!values.length) {
     return { count: 0, min: 0, max: 0, latest: 0, average: 0, sum: 0 };
@@ -84,6 +93,7 @@ export function metricSeriesStats(values: readonly number[]): MetricSeriesStats 
   };
 }
 
+/** State controller for metric Series behavior. */
 export class MetricSeriesController {
   readonly values: Signal<number[]>;
   readonly stats: Signal<MetricSeriesStats>;

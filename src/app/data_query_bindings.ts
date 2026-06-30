@@ -4,6 +4,7 @@ import type { DataQueryController, DataQueryParams, DataQueryResult } from "../r
 import type { AsyncResourceState } from "../runtime/resource.ts";
 import type { Signal } from "../signals/mod.ts";
 
+/** Options for configuring data Query Params Binding. */
 export interface DataQueryParamsBindingOptions<TRow, TParams extends DataQueryParams = DataQueryParams> {
   initialLoad?: boolean;
   initialRestore?: boolean;
@@ -14,6 +15,7 @@ export interface DataQueryParamsBindingOptions<TRow, TParams extends DataQueryPa
   onError?: (error: unknown, params: TParams) => void | Promise<void>;
 }
 
+/** Serializable inspection snapshot for data Query Params Binding. */
 export interface DataQueryParamsBindingInspection<TParams extends DataQueryParams = DataQueryParams> {
   disposed: boolean;
   pending: boolean;
@@ -23,6 +25,7 @@ export interface DataQueryParamsBindingInspection<TParams extends DataQueryParam
   query: ReturnType<DataQueryController["inspect"]>;
 }
 
+/** Public type alias for a data Query Params Binding Handle. */
 export type DataQueryParamsBindingHandle<TParams extends DataQueryParams = DataQueryParams> = (() => void) & {
   dispose(): void;
   flush(): void;
@@ -31,6 +34,7 @@ export type DataQueryParamsBindingHandle<TParams extends DataQueryParams = DataQ
   inspect(): DataQueryParamsBindingInspection<TParams>;
 };
 
+/** Options for configuring data Query Result Binding. */
 export interface DataQueryResultBindingOptions<TRow> {
   initialSync?: boolean;
   includeLoadingData?: boolean;
@@ -38,6 +42,7 @@ export interface DataQueryResultBindingOptions<TRow> {
   onSync?: (result: DataQueryResult<TRow>, state: AsyncResourceState<DataQueryResult<TRow>>) => void;
 }
 
+/** Serializable inspection snapshot for data Query Result Binding. */
 export interface DataQueryResultBindingInspection {
   disposed: boolean;
   rowCount: number;
@@ -47,12 +52,14 @@ export interface DataQueryResultBindingInspection {
   pageCount: number;
 }
 
+/** Public type alias for a data Query Result Binding Handle. */
 export type DataQueryResultBindingHandle = (() => void) & {
   dispose(): void;
   sync(): void;
   inspect(): DataQueryResultBindingInspection;
 };
 
+/** Options for configuring data Query Table Binding. */
 export interface DataQueryTableBindingOptions<TRow extends Record<string, unknown>>
   extends DataQueryResultBindingOptions<TRow> {
   resetLocalQuery?: boolean;
@@ -62,16 +69,19 @@ export interface DataQueryTableBindingOptions<TRow extends Record<string, unknow
   preserveSelectedKey?: boolean;
 }
 
+/** Serializable inspection snapshot for data Query Table Binding. */
 export interface DataQueryTableBindingInspection extends DataQueryResultBindingInspection {
   table: ReturnType<DataTableController["inspect"]>;
 }
 
+/** Public type alias for a data Query Table Binding Handle. */
 export type DataQueryTableBindingHandle = (() => void) & {
   dispose(): void;
   sync(): void;
   inspect(): DataQueryTableBindingInspection;
 };
 
+/** Binds data Query Params behavior and returns a disposer when applicable. */
 export function bindDataQueryParams<
   TRow,
   TParams extends DataQueryParams = DataQueryParams,
@@ -160,6 +170,7 @@ export function bindDataQueryParams<
   });
 }
 
+/** Binds data Query Result behavior and returns a disposer when applicable. */
 export function bindDataQueryResult<TRow>(
   query: DataQueryController<TRow>,
   rows: Signal<readonly TRow[]>,
@@ -202,6 +213,7 @@ export function bindDataQueryResult<TRow>(
   });
 }
 
+/** Binds data Query Table behavior and returns a disposer when applicable. */
 export function bindDataQueryTable<TRow extends Record<string, unknown>>(
   query: DataQueryController<TRow>,
   table: DataTableController<TRow>,

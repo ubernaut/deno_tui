@@ -8,10 +8,12 @@ import type { Rectangle } from "../types.ts";
 import type { Layout, LayoutElement, LayoutOptions } from "./types.ts";
 import { Effect } from "../signals/effect.ts";
 
+/** Options for configuring grid Layout. */
 export interface GridLayoutOptions<T extends string> extends Omit<LayoutOptions<T>, "pattern"> {
   pattern: T[][] | Signal<T[][]>;
 }
 
+/** Public interface describing a grid Layout Element. */
 export interface GridLayoutElement<T extends string> extends Omit<LayoutElement<T>, "unitLength"> {
   unitLengthX: number;
   unitLengthY: number;

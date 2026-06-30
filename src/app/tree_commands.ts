@@ -3,6 +3,7 @@ import type { TreeController, TreeInspection, TreeRowInspection } from "../compo
 import type { Action } from "./actions.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
+/** Identifier union for tree Command variants. */
 export type TreeCommandKind =
   | "first"
   | "previous"
@@ -14,16 +15,19 @@ export type TreeCommandKind =
   | "select"
   | "node";
 
+/** Action union emitted by tree Command command helpers. */
 export type TreeCommandAction =
   | Action<"tree.changed", TreeCommandPayload>
   | Action<"tree.nodeToggled", TreeCommandPayload & { row: TreeRowInspection; expanded: boolean }>
   | Action<"tree.nodeSelected", TreeCommandPayload & { row: TreeRowInspection }>;
 
+/** Payload carried by tree Command actions. */
 export interface TreeCommandPayload {
   id: string;
   inspection: TreeInspection;
 }
 
+/** Options for configuring tree Command. */
 export interface TreeCommandOptions {
   id?: string;
   idPrefix?: string;
@@ -36,6 +40,7 @@ export interface TreeCommandOptions {
   nodeLabel?: (row: TreeRowInspection) => string;
 }
 
+/** Builds command definitions for tree. */
 export function treeCommands<TAction extends Action = TreeCommandAction>(
   controller: TreeController,
   options: TreeCommandOptions = {},
@@ -138,6 +143,7 @@ export function treeCommands<TAction extends Action = TreeCommandAction>(
   return commands;
 }
 
+/** Binds tree Commands behavior and returns a disposer when applicable. */
 export function bindTreeCommands<TAction extends Action = TreeCommandAction>(
   registry: CommandRegistry<TAction>,
   controller: TreeController,

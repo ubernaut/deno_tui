@@ -1,9 +1,13 @@
 // The browser compositor samples the edge LUT with a flipped Y coordinate.
 // When we map edge directions directly to terminal glyphs, the diagonal
 // characters must be swapped to match the browser's visible output.
+/** Built-in eDGE GLYPHS definitions. */
 export const EDGE_GLYPHS = [" ", "|", "-", "\\", "/"] as const;
+/** Built-in fILL GLYPHS definitions. */
 export const FILL_GLYPHS = [" ", "▁", "▂", "▃", "▄", "▅", "▆", "▇", "█", "█"] as const;
+/** Built-in aSCII FILL GLYPHS definitions. */
 export const ASCII_FILL_GLYPHS = [" ", ".", ":", "-", "=", "+", "*", "#", "%", "@"] as const;
+/** Built-in tERMINAL GLYPHS definitions. */
 export const TERMINAL_GLYPHS = [
   " ",
   "|",
@@ -22,13 +26,17 @@ export const TERMINAL_GLYPHS = [
   "█",
 ] as const;
 
+/** Built-in tERMINAL GLYPH STYLES definitions. */
 export const TERMINAL_GLYPH_STYLES = ["blocks", "glyphs", "mixed"] as const;
+/** Public type alias for a terminal Glyph Style. */
 export type TerminalGlyphStyle = typeof TERMINAL_GLYPH_STYLES[number];
 
 const MIN_VISIBLE_LUMINANCE = 0.015;
 
+/** Public type alias for an edge Direction. */
 export type EdgeDirection = -1 | 0 | 1 | 2 | 3;
 
+/** Public helper for classify Edge Direction. */
 export function classifyEdgeDirection(theta: number, hasEdge: boolean): EdgeDirection {
   if (!hasEdge || Number.isNaN(theta)) return -1;
 
@@ -53,6 +61,7 @@ export function classifyEdgeDirection(theta: number, hasEdge: boolean): EdgeDire
   return -1;
 }
 
+/** Public helper for bucket Ascii Luminance. */
 export function bucketAsciiLuminance(
   luminance: number,
   exposure = 1,
@@ -72,6 +81,7 @@ export function bucketAsciiLuminance(
   return Math.max(1, Math.min(9, Math.floor(value * 9) + 1));
 }
 
+/** Public helper for pick Dominant Edge Direction. */
 export function pickDominantEdgeDirection(
   directions: Iterable<EdgeDirection>,
   edgeThreshold = 8,
@@ -98,6 +108,7 @@ export function pickDominantEdgeDirection(
   return bestCount < edgeThreshold ? -1 : bestDirection;
 }
 
+/** Public helper for glyph For Tile. */
 export function glyphForTile(
   direction: EdgeDirection,
   luminanceBucket: number,

@@ -19,16 +19,19 @@ import { bindRouteSignal, type RouteSignalBindingOptions } from "./route_binding
 import type { Route, RouteManager } from "./router.ts";
 import type { AppSettingDefinition, SettingsController } from "./settings.ts";
 
+/** Public interface describing a setting Binding. */
 export interface SettingBinding<T, Stored = T> {
   setting: PersistentSignal<T, Stored>;
   dispose: () => void;
 }
 
+/** Options for configuring setting Signal Binding. */
 export interface SettingSignalBindingOptions<T> {
   initialSync?: "setting" | "signal";
   equals?: (left: T, right: T) => boolean;
 }
 
+/** Options for configuring route Setting Binding. */
 export interface RouteSettingBindingOptions<Stored = string>
   extends Omit<SettingSignalBindingOptions<string>, "initialSync">, RouteSignalBindingOptions {
   key?: string;
@@ -38,6 +41,7 @@ export interface RouteSettingBindingOptions<Stored = string>
   deserialize?: (value: Stored) => string;
 }
 
+/** Options for configuring theme Setting Binding. */
 export interface ThemeSettingBindingOptions<Stored = string> extends SettingSignalBindingOptions<string> {
   key?: string;
   initialValue?: string;
@@ -46,6 +50,7 @@ export interface ThemeSettingBindingOptions<Stored = string> extends SettingSign
   deserialize?: (value: Stored) => string;
 }
 
+/** Options for configuring theme Layer Setting Binding. */
 export interface ThemeLayerSettingBindingOptions<Stored = readonly string[]>
   extends SettingSignalBindingOptions<readonly string[]> {
   key?: string;
@@ -55,6 +60,7 @@ export interface ThemeLayerSettingBindingOptions<Stored = readonly string[]>
   deserialize?: (value: Stored) => readonly string[];
 }
 
+/** Options for configuring theme Pipeline Setting Binding. */
 export interface ThemePipelineSettingBindingOptions<Stored = readonly string[]>
   extends SettingSignalBindingOptions<readonly string[]> {
   key?: string;
@@ -64,6 +70,7 @@ export interface ThemePipelineSettingBindingOptions<Stored = readonly string[]>
   deserialize?: (value: Stored) => readonly string[];
 }
 
+/** Options for configuring runtime Profile Setting Binding. */
 export interface RuntimeProfileSettingBindingOptions<Stored = string> extends SettingSignalBindingOptions<string> {
   key?: string;
   initialValue?: string;
@@ -72,6 +79,7 @@ export interface RuntimeProfileSettingBindingOptions<Stored = string> extends Se
   deserialize?: (value: Stored) => string;
 }
 
+/** Options for configuring runtime Renderer Backend Setting Binding. */
 export interface RuntimeRendererBackendSettingBindingOptions<Stored = string>
   extends SettingSignalBindingOptions<string> {
   key?: string;
@@ -81,6 +89,7 @@ export interface RuntimeRendererBackendSettingBindingOptions<Stored = string>
   deserialize?: (value: Stored) => string;
 }
 
+/** Options for configuring split Pane Setting Binding. */
 export interface SplitPaneSettingBindingOptions<Stored = SplitPaneControllerOptions>
   extends SettingSignalBindingOptions<SplitPaneControllerOptions> {
   key?: string;
@@ -112,6 +121,7 @@ export interface DataQuerySettingBindingOptions<
   deserialize?: (value: Stored) => NormalizedDataQueryParams<TFilters>;
 }
 
+/** Binds setting Signal behavior and returns a disposer when applicable. */
 export function bindSettingSignal<T, Stored = T>(
   setting: PersistentSignal<T, Stored>,
   target: Signal<T>,
@@ -162,6 +172,7 @@ export function bindSettingSignal<T, Stored = T>(
   };
 }
 
+/** Binds route Setting behavior and returns a disposer when applicable. */
 export function bindRouteSetting<TRoute extends Route = Route, Stored = string>(
   routes: RouteManager<TRoute>,
   settings: SettingsController,
@@ -182,6 +193,7 @@ export function bindRouteSetting<TRoute extends Route = Route, Stored = string>(
   return { setting, dispose };
 }
 
+/** Binds theme Setting behavior and returns a disposer when applicable. */
 export function bindThemeSetting<Stored = string>(
   provider: ThemeProvider,
   settings: SettingsController,
@@ -216,6 +228,7 @@ export function bindThemeSetting<Stored = string>(
   };
 }
 
+/** Binds theme Layer Setting behavior and returns a disposer when applicable. */
 export function bindThemeLayerSetting<Stored = readonly string[]>(
   target: ThemeProvider | ThemeLayerStack,
   settings: SettingsController,
@@ -276,6 +289,7 @@ export function bindThemeLayerSetting<Stored = readonly string[]>(
   };
 }
 
+/** Binds theme Pipeline Setting behavior and returns a disposer when applicable. */
 export function bindThemePipelineSetting<Stored = readonly string[]>(
   pipeline: ThemeEnginePipeline,
   settings: SettingsController,
@@ -343,6 +357,7 @@ export function bindThemePipelineSetting<Stored = readonly string[]>(
   };
 }
 
+/** Binds runtime Profile Setting behavior and returns a disposer when applicable. */
 export function bindRuntimeProfileSetting<Stored = string>(
   controller: RuntimeProfileController,
   settings: SettingsController,
@@ -411,6 +426,7 @@ export function bindRuntimeProfileSetting<Stored = string>(
   };
 }
 
+/** Binds runtime Renderer Backend Setting behavior and returns a disposer when applicable. */
 export function bindRuntimeRendererBackendSetting<Stored = string>(
   controller: RuntimeRendererBackendController,
   settings: SettingsController,
@@ -479,6 +495,7 @@ export function bindRuntimeRendererBackendSetting<Stored = string>(
   };
 }
 
+/** Binds split Pane Setting behavior and returns a disposer when applicable. */
 export function bindSplitPaneSetting<Stored = SplitPaneControllerOptions>(
   controller: SplitPaneController,
   settings: SettingsController,

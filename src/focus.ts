@@ -3,16 +3,19 @@ import type { Component } from "./component.ts";
 import { DisposableStack } from "./app/disposables.ts";
 import type { KeyPressEvent } from "./input_reader/types.ts";
 
+/** Public interface describing a focusable. */
 export interface Focusable {
   state: Component["state"];
 }
 
+/** Serializable inspection snapshot for focus Manager. */
 export interface FocusManagerInspection {
   count: number;
   index: number;
   hasFocus: boolean;
 }
 
+/** Public class implementing a focus Manager. */
 export class FocusManager {
   readonly items: Focusable[] = [];
   index = -1;
@@ -105,16 +108,19 @@ export class FocusManager {
   }
 }
 
+/** Public interface describing a focus Navigation Target. */
 export interface FocusNavigationTarget {
   on(type: "keyPress", listener: (event: KeyPressEvent) => void | Promise<void>): () => void;
 }
 
+/** Options for configuring focus Navigation. */
 export interface FocusNavigationOptions {
   key?: KeyPressEvent["key"];
   reverseWithShift?: boolean;
   items?: readonly Focusable[];
 }
 
+/** Binds focus Navigation behavior and returns a disposer when applicable. */
 export function bindFocusNavigation(
   target: FocusNavigationTarget,
   manager: FocusManager,
@@ -136,6 +142,7 @@ export function bindFocusNavigation(
   });
 }
 
+/** Public class implementing a focus Scope. */
 export class FocusScope {
   private previous?: Focusable;
   private previousItems: Focusable[] = [];

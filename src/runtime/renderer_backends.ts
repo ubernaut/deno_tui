@@ -7,6 +7,7 @@ import {
 } from "./capabilities.ts";
 import { Signal } from "../signals/mod.ts";
 
+/** Public interface describing a runtime Renderer Backend Definition. */
 export interface RuntimeRendererBackendDefinition {
   id: string;
   label?: string;
@@ -17,6 +18,7 @@ export interface RuntimeRendererBackendDefinition {
   priority?: number;
 }
 
+/** Serializable inspection snapshot for runtime Renderer Backend. */
 export interface RuntimeRendererBackendInspection {
   id: string;
   label: string;
@@ -30,6 +32,7 @@ export interface RuntimeRendererBackendInspection {
   accelerated: boolean;
 }
 
+/** Public interface describing a runtime Renderer Backend Query. */
 export interface RuntimeRendererBackendQuery {
   search?: string;
   strategy?: RuntimeRendererStrategy;
@@ -38,6 +41,7 @@ export interface RuntimeRendererBackendQuery {
   accelerated?: boolean;
 }
 
+/** Serializable inspection snapshot for runtime Renderer Backend Catalog. */
 export interface RuntimeRendererBackendCatalogInspection {
   count: number;
   available: number;
@@ -47,6 +51,7 @@ export interface RuntimeRendererBackendCatalogInspection {
   tags: string[];
 }
 
+/** Structured report returned by runtime Renderer Backend Catalog helpers. */
 export interface RuntimeRendererBackendCatalogReport {
   backends: RuntimeRendererBackendInspection[];
   selected?: RuntimeRendererBackendInspection;
@@ -54,6 +59,7 @@ export interface RuntimeRendererBackendCatalogReport {
   capabilities: RuntimeCapabilities;
 }
 
+/** Options for configuring runtime Renderer Backend Catalog. */
 export interface RuntimeRendererBackendCatalogOptions {
   backends?: Iterable<RuntimeRendererBackend | RuntimeRendererBackendDefinition>;
   capabilities?: RuntimeCapabilities;
@@ -61,17 +67,20 @@ export interface RuntimeRendererBackendCatalogOptions {
   select?: RuntimeRendererBackendSelectionOptions | false;
 }
 
+/** Options for configuring runtime Renderer Backend Markdown. */
 export interface RuntimeRendererBackendMarkdownOptions extends RuntimeRendererBackendCatalogOptions {
   title?: string;
   includeSummary?: boolean;
 }
 
+/** Options for configuring runtime Renderer Backend Selection. */
 export interface RuntimeRendererBackendSelectionOptions {
   strategy?: RuntimeRendererStrategy;
   tag?: string;
   allowCpuFallback?: boolean;
 }
 
+/** Options for configuring runtime Renderer Backend Controller. */
 export interface RuntimeRendererBackendControllerOptions {
   registry?: RuntimeRendererBackendRegistry;
   backends?: Iterable<RuntimeRendererBackend | RuntimeRendererBackendDefinition>;
@@ -81,6 +90,7 @@ export interface RuntimeRendererBackendControllerOptions {
   onInvalidBackend?: (id: string) => void;
 }
 
+/** Serializable inspection snapshot for runtime Renderer Backend Controller. */
 export interface RuntimeRendererBackendControllerInspection {
   activeId: string;
   active?: RuntimeRendererBackendInspection;
@@ -90,6 +100,7 @@ export interface RuntimeRendererBackendControllerInspection {
   selected?: RuntimeRendererBackendInspection;
 }
 
+/** Public constant for a runtime Renderer Backend Definitions. */
 export const runtimeRendererBackendDefinitions = [
   {
     id: "webgpu-three-ascii",
@@ -120,6 +131,7 @@ export const runtimeRendererBackendDefinitions = [
   },
 ] as const satisfies readonly RuntimeRendererBackendDefinition[];
 
+/** Public class implementing a runtime Renderer Backend. */
 export class RuntimeRendererBackend {
   readonly id: string;
   readonly label: string;
@@ -156,6 +168,7 @@ export class RuntimeRendererBackend {
   }
 }
 
+/** Registry for storing and querying runtime Renderer Backend definitions. */
 export class RuntimeRendererBackendRegistry {
   readonly #backends = new Map<string, RuntimeRendererBackend>();
 
@@ -211,6 +224,7 @@ export class RuntimeRendererBackendRegistry {
   }
 }
 
+/** State controller for runtime Renderer Backend behavior. */
 export class RuntimeRendererBackendController {
   readonly registry: RuntimeRendererBackendRegistry;
   readonly activeId: Signal<string>;
@@ -306,28 +320,33 @@ export class RuntimeRendererBackendController {
   }
 }
 
+/** Creates an runtime Renderer Backend. */
 export function createRuntimeRendererBackend(
   definition: RuntimeRendererBackendDefinition,
 ): RuntimeRendererBackend {
   return new RuntimeRendererBackend(definition);
 }
 
+/** Creates an runtime Renderer Backend Registry. */
 export function createRuntimeRendererBackendRegistry(
   backends: Iterable<RuntimeRendererBackend | RuntimeRendererBackendDefinition> = runtimeRendererBackendDefinitions,
 ): RuntimeRendererBackendRegistry {
   return new RuntimeRendererBackendRegistry(backends);
 }
 
+/** Creates an runtime Renderer Backend Controller. */
 export function createRuntimeRendererBackendController(
   options: RuntimeRendererBackendControllerOptions = {},
 ): RuntimeRendererBackendController {
   return new RuntimeRendererBackendController(options);
 }
 
+/** Public helper for runtime Renderer Backends. */
 export function runtimeRendererBackends(): RuntimeRendererBackend[] {
   return runtimeRendererBackendDefinitions.map(createRuntimeRendererBackend);
 }
 
+/** Creates a serializable inspection snapshot for runtime Renderer Backends. */
 export function inspectRuntimeRendererBackends(
   backends: Iterable<RuntimeRendererBackend | RuntimeRendererBackendDefinition>,
   capabilities: RuntimeCapabilities = detectRuntimeCapabilities(),
@@ -335,6 +354,7 @@ export function inspectRuntimeRendererBackends(
   return normalizeRendererBackends(backends).map((backend) => backend.inspect(capabilities));
 }
 
+/** Queries runtime Renderer Backends records with deterministic filtering. */
 export function queryRuntimeRendererBackends(
   backends: Iterable<RuntimeRendererBackend | RuntimeRendererBackendDefinition>,
   query: RuntimeRendererBackendQuery = {},
@@ -345,6 +365,7 @@ export function queryRuntimeRendererBackends(
     .sort(compareRendererBackendInspections);
 }
 
+/** Creates a serializable inspection snapshot for runtime Renderer Backend Catalog. */
 export function inspectRuntimeRendererBackendCatalog(
   backends: readonly RuntimeRendererBackendInspection[],
 ): RuntimeRendererBackendCatalogInspection {
@@ -358,6 +379,7 @@ export function inspectRuntimeRendererBackendCatalog(
   };
 }
 
+/** Public helper for select Runtime Renderer Backend. */
 export function selectRuntimeRendererBackend(
   backends: Iterable<RuntimeRendererBackend | RuntimeRendererBackendDefinition>,
   capabilities: RuntimeCapabilities = detectRuntimeCapabilities(),
@@ -374,6 +396,7 @@ export function selectRuntimeRendererBackend(
   return candidates[0];
 }
 
+/** Creates an runtime Renderer Backend Catalog Report. */
 export function createRuntimeRendererBackendCatalogReport(
   options: RuntimeRendererBackendCatalogOptions = {},
 ): RuntimeRendererBackendCatalogReport {
@@ -391,6 +414,7 @@ export function createRuntimeRendererBackendCatalogReport(
   };
 }
 
+/** Formats runtime Renderer Backend Catalog Markdown for display or diagnostics. */
 export function formatRuntimeRendererBackendCatalogMarkdown(
   options: RuntimeRendererBackendMarkdownOptions = {},
 ): string {

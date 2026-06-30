@@ -1,6 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { Rectangle } from "../types.ts";
 
+/** Public interface describing a flex Item. */
 export interface FlexItem<T extends string = string> {
   id: T;
   basis?: number;
@@ -10,10 +11,12 @@ export interface FlexItem<T extends string = string> {
   max?: number;
 }
 
+/** Public type alias for a flex Direction. */
 export type FlexDirection = "row" | "column";
 
 const MAX_FLEX_SIZE = Number.MAX_SAFE_INTEGER;
 
+/** Public helper for flex Rects. */
 export function flexRects<T extends string>(
   bounds: Rectangle,
   direction: FlexDirection,

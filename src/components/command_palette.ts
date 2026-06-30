@@ -7,6 +7,7 @@ import { List, visibleListRows } from "./list.ts";
 import { Text } from "./text.ts";
 import type { KeyPressEvent } from "../input_reader/types.ts";
 
+/** Public interface describing a command Palette Item. */
 export interface CommandPaletteItem {
   id: string;
   label: string;
@@ -14,6 +15,7 @@ export interface CommandPaletteItem {
   disabled?: boolean;
 }
 
+/** Options for configuring command Palette. */
 export interface CommandPaletteOptions extends ComponentOptions {
   items: CommandPaletteItem[] | Signal<CommandPaletteItem[]>;
   query?: string | Signal<string>;
@@ -22,12 +24,14 @@ export interface CommandPaletteOptions extends ComponentOptions {
   onSelect?: (item: CommandPaletteItem) => void | Promise<void>;
 }
 
+/** Options for configuring command Palette Controller. */
 export interface CommandPaletteControllerOptions {
   items: CommandPaletteItem[] | Signal<CommandPaletteItem[]>;
   query?: string | Signal<string>;
   selectedIndex?: number | Signal<number>;
 }
 
+/** Serializable inspection snapshot for command Palette. */
 export interface CommandPaletteInspection {
   query: string;
   selectedIndex: number;
@@ -35,12 +39,14 @@ export interface CommandPaletteInspection {
   selected?: CommandPaletteItem;
 }
 
+/** Public interface describing a command Palette Match. */
 export interface CommandPaletteMatch {
   item: CommandPaletteItem;
   score: number;
   matched: string[];
 }
 
+/** Public helper for filter Command Palette Items. */
 export function filterCommandPaletteItems(
   items: readonly CommandPaletteItem[],
   query: string,
@@ -48,6 +54,7 @@ export function filterCommandPaletteItems(
   return rankCommandPaletteItems(items, query).map((match) => match.item);
 }
 
+/** Public helper for rank Command Palette Items. */
 export function rankCommandPaletteItems(
   items: readonly CommandPaletteItem[],
   query: string,
@@ -72,6 +79,7 @@ export function rankCommandPaletteItems(
     .map(({ index: _index, ...match }) => match);
 }
 
+/** Moves command Palette Selection by a relative offset. */
 export function shiftCommandPaletteSelection(
   items: readonly CommandPaletteItem[],
   selectedIndex: number,
@@ -87,6 +95,7 @@ export function shiftCommandPaletteSelection(
   return selectedIndex;
 }
 
+/** Clamps command Palette Selection to its valid range. */
 export function clampCommandPaletteSelection(
   items: readonly CommandPaletteItem[],
   selectedIndex: number,
@@ -101,6 +110,7 @@ export function clampCommandPaletteSelection(
   return items[previous]?.disabled ? clamped : previous;
 }
 
+/** State controller for command Palette behavior. */
 export class CommandPaletteController {
   readonly items: Signal<CommandPaletteItem[]>;
   readonly query: Signal<string>;
@@ -195,6 +205,7 @@ export class CommandPaletteController {
   }
 }
 
+/** Public class implementing a command Palette. */
 export class CommandPalette extends Component {
   items: Signal<CommandPaletteItem[]>;
   query: Signal<string>;
@@ -262,6 +273,7 @@ export class CommandPalette extends Component {
   }
 }
 
+/** Renders command Palette Rows into deterministic text rows. */
 export function renderCommandPaletteRows(
   items: readonly CommandPaletteItem[],
   query: string,

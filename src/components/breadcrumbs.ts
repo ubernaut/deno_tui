@@ -5,17 +5,20 @@ import { Computed, Signal } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
 import { Text } from "./text.ts";
 
+/** Public interface describing a breadcrumb Item. */
 export interface BreadcrumbItem {
   id: string;
   label: string;
 }
 
+/** Options for configuring breadcrumbs. */
 export interface BreadcrumbsOptions extends ComponentOptions {
   items: BreadcrumbItem[] | Signal<BreadcrumbItem[]>;
   separator?: string | Signal<string>;
   maxWidth?: number | Signal<number>;
 }
 
+/** Renders breadcrumbs into deterministic text rows. */
 export function renderBreadcrumbs(
   items: readonly BreadcrumbItem[],
   separator = "/",
@@ -34,6 +37,7 @@ export function renderBreadcrumbs(
   return `${prefix}${last}`.slice(0, safeWidth - 1) + "…";
 }
 
+/** Public class implementing a breadcrumbs. */
 export class Breadcrumbs extends Component {
   items: Signal<BreadcrumbItem[]>;
   separator: Signal<string>;

@@ -14,8 +14,10 @@ export type EmitterEvent<Args extends unknown[] = unknown[]> = {
   args: Args;
 };
 
+/** Public type alias for an event Record. */
 export type EventRecord = Record<string, EmitterEvent>;
 
+/** Serializable inspection snapshot for event Emitter. */
 export interface EventEmitterInspection {
   eventCount: number;
   listenerCount: number;

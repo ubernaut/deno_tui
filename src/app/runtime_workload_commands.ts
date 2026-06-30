@@ -3,13 +3,16 @@ import type { RuntimeWorkloadRegistry, RuntimeWorkloadReport } from "../runtime/
 import type { Action } from "./actions.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
+/** Action union emitted by runtime Workload Command command helpers. */
 export type RuntimeWorkloadCommandAction = Action<"runtime.workloads.reported", RuntimeWorkloadReportedPayload>;
 
+/** Payload carried by runtime Workload Reported actions. */
 export interface RuntimeWorkloadReportedPayload {
   report: RuntimeWorkloadReport;
   markdown?: string;
 }
 
+/** Options for configuring runtime Workload Command. */
 export interface RuntimeWorkloadCommandOptions {
   group?: string;
   prefix?: string;
@@ -18,6 +21,7 @@ export interface RuntimeWorkloadCommandOptions {
   disableEmpty?: boolean;
 }
 
+/** Builds command definitions for runtime Workload. */
 export function runtimeWorkloadCommands(
   workloads: RuntimeWorkloadRegistry,
   options: RuntimeWorkloadCommandOptions = {},
@@ -48,6 +52,7 @@ export function runtimeWorkloadCommands(
   ];
 }
 
+/** Binds runtime Workload Commands behavior and returns a disposer when applicable. */
 export function bindRuntimeWorkloadCommands<TAction extends Action = RuntimeWorkloadCommandAction>(
   registry: CommandRegistry<TAction>,
   workloads: RuntimeWorkloadRegistry,

@@ -2,9 +2,12 @@
 import type { MousePressEvent, MouseScrollEvent } from "../input_reader/types.ts";
 import type { Rectangle } from "../types.ts";
 
+/** Public type alias for a mouse Interaction Event. */
 export type MouseInteractionEvent = MousePressEvent | MouseScrollEvent;
+/** Identifier union for mouse Interaction variants. */
 export type MouseInteractionKind = "press" | "drag" | "release" | "scroll";
 
+/** Context object passed to mouse Interaction callbacks. */
 export interface MouseInteractionContext<TPayload = unknown> {
   id: string;
   bounds: Rectangle;
@@ -15,11 +18,13 @@ export interface MouseInteractionContext<TPayload = unknown> {
   payload?: TPayload;
 }
 
+/** Callback signature for handling mouse Interaction events. */
 export type MouseInteractionHandler<TEvent extends MouseInteractionEvent, TPayload = unknown> = (
   event: TEvent,
   context: MouseInteractionContext<TPayload>,
 ) => void | boolean | Promise<void | boolean>;
 
+/** Public interface describing a mouse Interaction Target. */
 export interface MouseInteractionTarget<TPayload = unknown> {
   id: string;
   bounds: Rectangle | (() => Rectangle);
@@ -33,6 +38,7 @@ export interface MouseInteractionTarget<TPayload = unknown> {
   onScroll?: MouseInteractionHandler<MouseScrollEvent, TPayload>;
 }
 
+/** Serializable inspection snapshot for mouse Interaction. */
 export interface MouseInteractionInspection {
   id: string;
   bounds: Rectangle;
@@ -45,6 +51,7 @@ export interface MouseInteractionInspection {
   hasScrollHandler: boolean;
 }
 
+/** Public interface describing a mouse Interaction Dispatch Result. */
 export interface MouseInteractionDispatchResult {
   handled: boolean;
   targetId?: string;
@@ -56,6 +63,7 @@ interface RegisteredMouseInteractionTarget<TPayload = unknown> extends MouseInte
   sequence: number;
 }
 
+/** Public class implementing a mouse Interaction Router. */
 export class MouseInteractionRouter {
   readonly #targets = new Map<string, RegisteredMouseInteractionTarget>();
   #sequence = 0;
@@ -163,10 +171,12 @@ export class MouseInteractionRouter {
   }
 }
 
+/** Creates an mouse Interaction Router. */
 export function createMouseInteractionRouter(): MouseInteractionRouter {
   return new MouseInteractionRouter();
 }
 
+/** Binds mouse Interactions behavior and returns a disposer when applicable. */
 export function bindMouseInteractions<
   TTarget extends {
     on(type: "mousePress", listener: (event: MousePressEvent) => void | Promise<void>): () => void;

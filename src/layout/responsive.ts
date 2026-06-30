@@ -1,12 +1,14 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { Rectangle } from "../types.ts";
 
+/** Public interface describing a breakpoint. */
 export interface Breakpoint {
   id: string;
   minWidth?: number;
   minHeight?: number;
 }
 
+/** Options for configuring adaptive Grid. */
 export interface AdaptiveGridOptions {
   itemCount: number;
   minColumnWidth: number;
@@ -16,6 +18,7 @@ export interface AdaptiveGridOptions {
   gap?: number;
 }
 
+/** Public interface describing an adaptive Grid. */
 export interface AdaptiveGrid {
   columns: number;
   rows: number;
@@ -24,6 +27,7 @@ export interface AdaptiveGrid {
   pageSize: number;
 }
 
+/** Public interface describing an adaptive Grid Page. */
 export interface AdaptiveGridPage {
   grid: AdaptiveGrid;
   pageStart: number;
@@ -51,6 +55,7 @@ export interface TileLayout {
   rects: Rectangle[];
 }
 
+/** Resolves breakpoint from the provided inputs. */
 export function resolveBreakpoint(bounds: Rectangle, breakpoints: readonly Breakpoint[]): string {
   const matches = breakpoints
     .filter((breakpoint) => bounds.width >= (breakpoint.minWidth ?? 0) && bounds.height >= (breakpoint.minHeight ?? 0))
@@ -58,6 +63,7 @@ export function resolveBreakpoint(bounds: Rectangle, breakpoints: readonly Break
   return matches[0]?.id ?? breakpoints[0]?.id ?? "";
 }
 
+/** Public helper for inset Rect. */
 export function insetRect(rect: Rectangle, inset: number): Rectangle {
   const safeInset = Math.max(0, inset);
   return {
@@ -68,6 +74,7 @@ export function insetRect(rect: Rectangle, inset: number): Rectangle {
   };
 }
 
+/** Public helper for adaptive Grid. */
 export function adaptiveGrid(bounds: Rectangle, options: AdaptiveGridOptions): AdaptiveGrid {
   const gap = Math.max(0, Math.floor(options.gap ?? 1));
   const itemCount = Math.max(0, Math.floor(options.itemCount));
@@ -94,6 +101,7 @@ export function adaptiveGrid(bounds: Rectangle, options: AdaptiveGridOptions): A
   };
 }
 
+/** Public helper for adaptive Grid Page. */
 export function adaptiveGridPage(
   bounds: Rectangle,
   selectedIndex: number,
@@ -112,6 +120,7 @@ export function adaptiveGridPage(
   };
 }
 
+/** Public helper for adaptive Grid Item Rect. */
 export function adaptiveGridItemRect(bounds: Rectangle, grid: AdaptiveGrid, localIndex: number, gap = 1): Rectangle {
   const safeGap = Math.max(0, Math.floor(gap));
   const column = Math.max(0, Math.floor(localIndex)) % grid.columns;
@@ -220,6 +229,7 @@ export function tileRects(bounds: Rectangle, options: TileLayoutOptions): TileLa
   };
 }
 
+/** Public helper for split Rect. */
 export function splitRect(rect: Rectangle, direction: "row" | "column", firstSize: number, gap = 0) {
   const safeGap = Math.max(0, gap);
   const size = Math.max(0, Math.floor(firstSize));
@@ -250,6 +260,7 @@ export function splitRect(rect: Rectangle, direction: "row" | "column", firstSiz
   };
 }
 
+/** Public helper for dock Rect. */
 export function dockRect(rect: Rectangle, edge: "top" | "right" | "bottom" | "left", size: number, gap = 0) {
   const safeSize = Math.max(0, Math.floor(size));
   const safeGap = Math.max(0, gap);

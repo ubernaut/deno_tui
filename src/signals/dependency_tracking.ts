@@ -1,6 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { Dependant, Dependency } from "./types.ts";
 
+/** Public API symbol for active Signals. */
 export let activeSignals: Set<Dependency> | undefined;
 let incoming = 0;
 

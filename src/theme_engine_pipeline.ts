@@ -8,17 +8,20 @@ import {
   themeTokenNames,
 } from "./theme.ts";
 
+/** Context object passed to theme Engine Pipeline callbacks. */
 export interface ThemeEnginePipelineContext {
   pipelineId: string;
   stepId: string;
   index: number;
 }
 
+/** Public type alias for a theme Engine Pipeline Transform. */
 export type ThemeEnginePipelineTransform = (
   engine: ThemeEngine,
   context: ThemeEnginePipelineContext,
 ) => ThemeEngine | ThemeEngineOptions;
 
+/** Public interface describing a theme Engine Pipeline Step Definition. */
 export interface ThemeEnginePipelineStepDefinition {
   id: string;
   label?: string;
@@ -28,6 +31,7 @@ export interface ThemeEnginePipelineStepDefinition {
   transform?: ThemeEnginePipelineTransform;
 }
 
+/** Public interface describing a theme Engine Pipeline Definition. */
 export interface ThemeEnginePipelineDefinition {
   id: string;
   label?: string;
@@ -35,6 +39,7 @@ export interface ThemeEnginePipelineDefinition {
   steps?: Iterable<ThemeEnginePipelineStepDefinition>;
 }
 
+/** Serializable inspection snapshot for theme Engine Pipeline Step. */
 export interface ThemeEnginePipelineStepInspection {
   id: string;
   label: string;
@@ -46,6 +51,7 @@ export interface ThemeEnginePipelineStepInspection {
   variants: Record<string, string[]>;
 }
 
+/** Serializable inspection snapshot for theme Engine Pipeline. */
 export interface ThemeEnginePipelineInspection {
   id: string;
   label: string;
@@ -55,14 +61,17 @@ export interface ThemeEnginePipelineInspection {
   steps: ThemeEnginePipelineStepInspection[];
 }
 
+/** Public interface describing a theme Engine Pipeline Build Result. */
 export interface ThemeEnginePipelineBuildResult {
   id: string;
   engine: ThemeEngine;
   inspection: ThemeEnginePipelineInspection;
 }
 
+/** Public type alias for a theme Engine Pipeline Listener. */
 export type ThemeEnginePipelineListener = () => void;
 
+/** Options for configuring theme Engine Pipeline Prewarm. */
 export interface ThemeEnginePipelinePrewarmOptions extends ScheduledTaskOptions {
   scheduler?: AsyncScheduler;
   ids?: Iterable<string>;
@@ -213,10 +222,12 @@ export class ThemeEnginePipeline {
   }
 }
 
+/** Creates an theme Engine Pipeline. */
 export function createThemeEnginePipeline(definition: ThemeEnginePipelineDefinition): ThemeEnginePipeline {
   return new ThemeEnginePipeline(definition);
 }
 
+/** Public helper for prewarm Theme Engine Pipelines. */
 export async function prewarmThemeEnginePipelines(
   pipelines: readonly ThemeEnginePipeline[],
   options: ThemeEnginePipelinePrewarmOptions = {},

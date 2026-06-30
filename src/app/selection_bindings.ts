@@ -4,8 +4,10 @@ import { Signal } from "../signals/mod.ts";
 import type { Action } from "./actions.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
+/** Public type alias for a selection Items Source. */
 export type SelectionItemsSource<TItems extends readonly unknown[]> = TItems | Signal<TItems>;
 
+/** Identifier union for selection Command variants. */
 export type SelectionCommandKind =
   | "first"
   | "previous"
@@ -16,8 +18,10 @@ export type SelectionCommandKind =
   | "toggle"
   | "clear";
 
+/** Public type alias for a selection Page Size. */
 export type SelectionPageSize = number | Signal<number> | (() => number);
 
+/** Options for configuring selection Command. */
 export interface SelectionCommandOptions {
   idPrefix?: string;
   group?: string;
@@ -28,6 +32,7 @@ export interface SelectionCommandOptions {
   labels?: Partial<Record<SelectionCommandKind, string>>;
 }
 
+/** Options for configuring selection Value Binding. */
 export interface SelectionValueBindingOptions<TItem, TValue = TItem> {
   valueForItem?: (item: TItem, index: number) => TValue;
   equals?: (left: TValue, right: TValue) => boolean;
@@ -36,6 +41,7 @@ export interface SelectionValueBindingOptions<TItem, TValue = TItem> {
   onMissingValue?: (value: TValue) => void;
 }
 
+/** Binds selection Value behavior and returns a disposer when applicable. */
 export function bindSelectionValue<TItems extends readonly unknown[], TValue = TItems[number]>(
   selection: SelectionController,
   items: SelectionItemsSource<TItems>,
@@ -138,6 +144,7 @@ export function bindSelectionValue<TItems extends readonly unknown[], TValue = T
   };
 }
 
+/** Builds command definitions for selection. */
 export function selectionCommands<TAction extends Action = Action>(
   selection: SelectionController,
   options: SelectionCommandOptions = {},
@@ -223,6 +230,7 @@ export function selectionCommands<TAction extends Action = Action>(
   return commands;
 }
 
+/** Binds selection Commands behavior and returns a disposer when applicable. */
 export function bindSelectionCommands<TAction extends Action = Action>(
   registry: CommandRegistry<TAction>,
   selection: SelectionController,

@@ -3,14 +3,17 @@ import type { RuntimeProfileController } from "../runtime/profiles.ts";
 import type { Action } from "./actions.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
+/** Action union emitted by runtime Profile Command command helpers. */
 export type RuntimeProfileCommandAction = Action<"runtime.profile.changed", RuntimeProfileChangedPayload>;
 
+/** Payload carried by runtime Profile Changed actions. */
 export interface RuntimeProfileChangedPayload {
   id: string;
   previousId: string;
   direction?: number;
 }
 
+/** Options for configuring runtime Profile Command. */
 export interface RuntimeProfileCommandOptions {
   group?: string;
   prefix?: string;
@@ -19,6 +22,7 @@ export interface RuntimeProfileCommandOptions {
   disableActiveProfile?: boolean;
 }
 
+/** Builds command definitions for runtime Profile. */
 export function runtimeProfileCommands(
   controller: RuntimeProfileController,
   options: RuntimeProfileCommandOptions = {},
@@ -79,6 +83,7 @@ export function runtimeProfileCommands(
   return commands;
 }
 
+/** Binds runtime Profile Commands behavior and returns a disposer when applicable. */
 export function bindRuntimeProfileCommands<TAction extends Action = RuntimeProfileCommandAction>(
   registry: CommandRegistry<TAction>,
   controller: RuntimeProfileController,

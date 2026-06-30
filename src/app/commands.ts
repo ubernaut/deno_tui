@@ -3,10 +3,12 @@ import { bindingId, type KeyBinding } from "../keymap.ts";
 import type { Action } from "./actions.ts";
 import { DisposableStack } from "./disposables.ts";
 
+/** Public type alias for a command Action Factory. */
 export type CommandActionFactory<TAction extends Action = Action> = (
   command: Command<TAction>,
 ) => TAction | void | Promise<TAction | void>;
 
+/** Public interface describing a command. */
 export interface Command<TAction extends Action = Action> {
   id: string;
   label: string;
@@ -18,6 +20,7 @@ export interface Command<TAction extends Action = Action> {
   action?: TAction | CommandActionFactory<TAction>;
 }
 
+/** Public interface describing a command Projection. */
 export interface CommandProjection {
   id: string;
   label: string;
@@ -25,6 +28,7 @@ export interface CommandProjection {
   disabled?: boolean;
 }
 
+/** Serializable inspection snapshot for command. */
 export interface CommandInspection {
   id: string;
   label: string;
@@ -36,6 +40,7 @@ export interface CommandInspection {
   hasAction: boolean;
 }
 
+/** Serializable inspection snapshot for command Registry. */
 export interface CommandRegistryInspection {
   count: number;
   enabled: number;
@@ -44,9 +49,12 @@ export interface CommandRegistryInspection {
   commands: CommandInspection[];
 }
 
+/** Public type alias for a command Dispatch. */
 export type CommandDispatch<TAction extends Action = Action> = (action: TAction) => void | Promise<void>;
+/** Public type alias for a command Registry Listener. */
 export type CommandRegistryListener = () => void;
 
+/** Registry for storing and querying command definitions. */
 export class CommandRegistry<TAction extends Action = Action> {
   private readonly commands = new Map<string, Command<TAction>>();
   private readonly listeners = new Set<CommandRegistryListener>();

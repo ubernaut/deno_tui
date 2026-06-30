@@ -4,6 +4,7 @@ import { Component, ComponentOptions } from "../component.ts";
 import { Signal, SignalOfObject } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
 
+/** Options for configuring text. */
 export interface TextOptions extends Omit<ComponentOptions, "rectangle"> {
   text: string | Signal<string>;
   overwriteWidth?: boolean | Signal<boolean>;

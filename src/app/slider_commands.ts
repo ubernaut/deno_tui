@@ -3,16 +3,20 @@ import type { SliderController, SliderInspection } from "../components/slider.ts
 import type { Action } from "./actions.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
+/** Identifier union for slider Command variants. */
 export type SliderCommandKind = "decrement" | "increment" | "min" | "max" | "value";
 
+/** Action union emitted by slider Command command helpers. */
 export type SliderCommandAction = Action<"slider.changed", SliderCommandPayload>;
 
+/** Payload carried by slider Command actions. */
 export interface SliderCommandPayload {
   id: string;
   value: number;
   inspection: SliderInspection;
 }
 
+/** Options for configuring slider Command. */
 export interface SliderCommandOptions {
   id?: string;
   idPrefix?: string;
@@ -26,6 +30,7 @@ export interface SliderCommandOptions {
   valueLabel?: (value: number) => string;
 }
 
+/** Builds command definitions for slider. */
 export function sliderCommands<TAction extends Action = SliderCommandAction>(
   controller: SliderController,
   options: SliderCommandOptions = {},
@@ -102,6 +107,7 @@ export function sliderCommands<TAction extends Action = SliderCommandAction>(
   return commands;
 }
 
+/** Binds slider Commands behavior and returns a disposer when applicable. */
 export function bindSliderCommands<TAction extends Action = SliderCommandAction>(
   registry: CommandRegistry<TAction>,
   controller: SliderController,

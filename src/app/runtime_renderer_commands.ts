@@ -3,11 +3,13 @@ import type { RuntimeRendererBackendController } from "../runtime/renderer_backe
 import type { Action } from "./actions.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
+/** Action union emitted by runtime Renderer Backend Command command helpers. */
 export type RuntimeRendererBackendCommandAction = Action<
   "runtime.renderer.changed",
   RuntimeRendererBackendChangedPayload
 >;
 
+/** Payload carried by runtime Renderer Backend Changed actions. */
 export interface RuntimeRendererBackendChangedPayload {
   id: string;
   previousId: string;
@@ -15,6 +17,7 @@ export interface RuntimeRendererBackendChangedPayload {
   selected?: boolean;
 }
 
+/** Options for configuring runtime Renderer Backend Command. */
 export interface RuntimeRendererBackendCommandOptions {
   group?: string;
   prefix?: string;
@@ -24,6 +27,7 @@ export interface RuntimeRendererBackendCommandOptions {
   disableActiveBackend?: boolean;
 }
 
+/** Builds command definitions for runtime Renderer Backend. */
 export function runtimeRendererBackendCommands(
   controller: RuntimeRendererBackendController,
   options: RuntimeRendererBackendCommandOptions = {},
@@ -112,6 +116,7 @@ export function runtimeRendererBackendCommands(
   return commands;
 }
 
+/** Binds runtime Renderer Backend Commands behavior and returns a disposer when applicable. */
 export function bindRuntimeRendererBackendCommands<
   TAction extends Action = RuntimeRendererBackendCommandAction,
 >(

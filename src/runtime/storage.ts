@@ -1,12 +1,14 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { Signal, type SignalOptions } from "../signals/mod.ts";
 
+/** Public interface describing an async Store. */
 export interface AsyncStore<T = unknown> {
   get(key: string): Promise<T | undefined>;
   set(key: string, value: T): Promise<void>;
   delete(key: string): Promise<void>;
 }
 
+/** Public class implementing a memory Store. */
 export class MemoryStore<T = unknown> implements AsyncStore<T> {
   private readonly values = new Map<string, T>();
 
@@ -23,17 +25,20 @@ export class MemoryStore<T = unknown> implements AsyncStore<T> {
   }
 }
 
+/** Options for configuring indexed Db Store. */
 export interface IndexedDbStoreOptions {
   databaseName: string;
   storeName?: string;
   version?: number;
 }
 
+/** Options for configuring runtime Store. */
 export interface RuntimeStoreOptions extends IndexedDbStoreOptions {
   preferIndexedDb?: boolean;
   scope?: typeof globalThis;
 }
 
+/** Options for configuring persistent Signal. */
 export interface PersistentSignalOptions<T, Stored = T> {
   key: string;
   initialValue: T;
@@ -74,6 +79,7 @@ interface MinimalIndexedDb {
   open(databaseName: string, version: number): MinimalIdbOpenRequest;
 }
 
+/** Public class implementing an indexed Db Store. */
 export class IndexedDbStore<T = unknown> implements AsyncStore<T> {
   private readonly storeName: string;
   private readonly databasePromise: Promise<MinimalIdbDatabase>;
@@ -103,6 +109,7 @@ export class IndexedDbStore<T = unknown> implements AsyncStore<T> {
   }
 }
 
+/** Creates an runtime Store. */
 export function createRuntimeStore<T = unknown>(options: RuntimeStoreOptions): AsyncStore<T> {
   if (options.preferIndexedDb !== false && "indexedDB" in (options.scope ?? globalThis)) {
     return new IndexedDbStore<T>(options);
@@ -110,6 +117,7 @@ export function createRuntimeStore<T = unknown>(options: RuntimeStoreOptions): A
   return new MemoryStore<T>();
 }
 
+/** Public class implementing a persistent Signal. */
 export class PersistentSignal<T, Stored = T> {
   readonly value: Signal<T>;
   readonly ready: Promise<T>;
@@ -200,6 +208,7 @@ export class PersistentSignal<T, Stored = T> {
   }
 }
 
+/** Creates an persistent Signal. */
 export function createPersistentSignal<T, Stored = T>(
   options: PersistentSignalOptions<T, Stored>,
 ): PersistentSignal<T, Stored> {

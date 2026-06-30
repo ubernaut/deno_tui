@@ -3,6 +3,7 @@ import type { CursorPosition, TextBoxController, TextBoxInspection } from "../co
 import type { Action } from "./actions.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
+/** Identifier union for text Box Command variants. */
 export type TextBoxCommandKind =
   | "clear"
   | "home"
@@ -13,15 +14,18 @@ export type TextBoxCommandKind =
   | "down"
   | "value";
 
+/** Action union emitted by text Box Command command helpers. */
 export type TextBoxCommandAction =
   | Action<"textbox.changed", TextBoxCommandPayload>
   | Action<"textbox.cursorMoved", TextBoxCommandPayload>;
 
+/** Payload carried by text Box Command actions. */
 export interface TextBoxCommandPayload {
   id: string;
   inspection: TextBoxInspection;
 }
 
+/** Options for configuring text Box Command. */
 export interface TextBoxCommandOptions {
   id?: string;
   idPrefix?: string;
@@ -34,6 +38,7 @@ export interface TextBoxCommandOptions {
   valueLabel?: (value: string) => string;
 }
 
+/** Builds command definitions for text Box. */
 export function textBoxCommands<TAction extends Action = TextBoxCommandAction>(
   controller: TextBoxController,
   options: TextBoxCommandOptions = {},
@@ -136,6 +141,7 @@ export function textBoxCommands<TAction extends Action = TextBoxCommandAction>(
   return commands;
 }
 
+/** Binds text Box Commands behavior and returns a disposer when applicable. */
 export function bindTextBoxCommands<TAction extends Action = TextBoxCommandAction>(
   registry: CommandRegistry<TAction>,
   controller: TextBoxController,

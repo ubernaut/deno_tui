@@ -15,6 +15,7 @@ import { Computed, Signal } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
 import { Text } from "./text.ts";
 
+/** Public interface describing a virtual List Row. */
 export interface VirtualListRow<T> {
   item: T;
   index: number;
@@ -23,6 +24,7 @@ export interface VirtualListRow<T> {
   text: string;
 }
 
+/** Options for configuring virtual List. */
 export interface VirtualListOptions<T> extends ComponentOptions {
   items: T[] | Signal<T[]>;
   mode?: SelectionMode | Signal<SelectionMode>;
@@ -32,6 +34,7 @@ export interface VirtualListOptions<T> extends ComponentOptions {
   onSelect?: (item: T, index: number, state: SelectionState) => void | Promise<void>;
 }
 
+/** Options for configuring virtual List Controller. */
 export interface VirtualListControllerOptions<T, TValue = T> {
   items: T[] | Signal<T[]>;
   mode?: SelectionMode | Signal<SelectionMode>;
@@ -40,6 +43,7 @@ export interface VirtualListControllerOptions<T, TValue = T> {
   valueForItem?: (item: T, index: number) => TValue;
 }
 
+/** Serializable inspection snapshot for virtual List. */
 export interface VirtualListInspection<T> {
   itemCount: number;
   mode: SelectionMode;
@@ -49,6 +53,7 @@ export interface VirtualListInspection<T> {
   window: { start: number; end: number };
 }
 
+/** Public helper for virtual List Rows. */
 export function virtualListRows<T>(
   items: readonly T[],
   state: SelectionState,
@@ -69,6 +74,7 @@ export function virtualListRows<T>(
   });
 }
 
+/** Renders virtual List Rows into deterministic text rows. */
 export function renderVirtualListRows<T>(
   items: readonly T[],
   state: SelectionState,
@@ -82,6 +88,7 @@ export function renderVirtualListRows<T>(
   });
 }
 
+/** State controller for virtual List behavior. */
 export class VirtualListController<T, TValue = T> {
   readonly items: Signal<T[]>;
   readonly rows: Signal<Array<VirtualListRow<T>>>;
@@ -250,6 +257,7 @@ export class VirtualListController<T, TValue = T> {
   }
 }
 
+/** Public class implementing a virtual List. */
 export class VirtualList<T> extends Component {
   readonly items: Signal<T[]>;
   readonly selection: SelectionController;

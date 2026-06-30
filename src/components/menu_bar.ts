@@ -5,12 +5,14 @@ import { Computed, Signal } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
 import { Text } from "./text.ts";
 
+/** Public interface describing a menu Bar Item. */
 export interface MenuBarItem {
   id: string;
   label: string;
   disabled?: boolean;
 }
 
+/** Options for configuring menu Bar. */
 export interface MenuBarOptions extends ComponentOptions {
   items: MenuBarItem[] | Signal<MenuBarItem[]>;
   activeIndex?: number | Signal<number>;
@@ -19,6 +21,7 @@ export interface MenuBarOptions extends ComponentOptions {
   onSelect?: (item: MenuBarItem, index: number) => void | Promise<void>;
 }
 
+/** Options for configuring menu Bar Controller. */
 export interface MenuBarControllerOptions {
   items: MenuBarItem[] | Signal<MenuBarItem[]>;
   activeIndex?: number | Signal<number>;
@@ -26,6 +29,7 @@ export interface MenuBarControllerOptions {
   onSelect?: (item: MenuBarItem, index: number) => void | Promise<void>;
 }
 
+/** Serializable inspection snapshot for menu Bar. */
 export interface MenuBarInspection {
   items: MenuBarItem[];
   itemCount: number;
@@ -34,6 +38,7 @@ export interface MenuBarInspection {
   empty: boolean;
 }
 
+/** Renders menu Bar into deterministic text rows. */
 export function renderMenuBar(items: readonly MenuBarItem[], activeIndex: number): string {
   return items.map((item, index) => {
     const label = item.disabled ? `(${item.label})` : item.label;
@@ -41,6 +46,7 @@ export function renderMenuBar(items: readonly MenuBarItem[], activeIndex: number
   }).join(" ");
 }
 
+/** Moves menu Index by a relative offset. */
 export function shiftMenuIndex(items: readonly MenuBarItem[], activeIndex: number, delta: number): number {
   if (items.length === 0) return -1;
   let next = activeIndex;
@@ -51,6 +57,7 @@ export function shiftMenuIndex(items: readonly MenuBarItem[], activeIndex: numbe
   return activeIndex;
 }
 
+/** Clamps menu Index to its valid range. */
 export function clampMenuIndex(items: readonly MenuBarItem[], activeIndex: number): number {
   if (items.length === 0) return -1;
   const clamped = Math.max(0, Math.min(activeIndex, items.length - 1));
@@ -61,11 +68,13 @@ export function clampMenuIndex(items: readonly MenuBarItem[], activeIndex: numbe
   return items[previous]?.disabled ? clamped : previous;
 }
 
+/** Public helper for menu Item For Index. */
 export function menuItemForIndex(items: readonly MenuBarItem[], activeIndex: number): MenuBarItem | undefined {
   const item = items[clampMenuIndex(items, activeIndex)];
   return item?.disabled ? undefined : item;
 }
 
+/** State controller for menu Bar behavior. */
 export class MenuBarController {
   readonly items: Signal<MenuBarItem[]>;
   readonly activeIndex: Signal<number>;
@@ -155,6 +164,7 @@ export class MenuBarController {
   }
 }
 
+/** Public class implementing a menu Bar. */
 export class MenuBar extends Component {
   items: Signal<MenuBarItem[]>;
   activeIndex: Signal<number>;

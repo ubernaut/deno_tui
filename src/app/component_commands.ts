@@ -8,8 +8,10 @@ import {
 import type { Action } from "./actions.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
+/** Action union emitted by component Catalog Command command helpers. */
 export type ComponentCatalogCommandAction = Action<"component.selected", ComponentCatalogEntry>;
 
+/** Options for configuring component Catalog Command. */
 export interface ComponentCatalogCommandOptions<TAction extends Action = ComponentCatalogCommandAction> {
   idPrefix?: string;
   group?: string;
@@ -21,6 +23,7 @@ export interface ComponentCatalogCommandOptions<TAction extends Action = Compone
   action?: (entry: ComponentCatalogEntry) => TAction | void | Promise<TAction | void>;
 }
 
+/** Builds command definitions for component Catalog. */
 export function componentCatalogCommands<TAction extends Action = ComponentCatalogCommandAction>(
   options: ComponentCatalogCommandOptions<TAction> = {},
 ): Command<TAction>[] {
@@ -42,6 +45,7 @@ export function componentCatalogCommands<TAction extends Action = ComponentCatal
   }));
 }
 
+/** Binds component Catalog Commands behavior and returns a disposer when applicable. */
 export function bindComponentCatalogCommands<TAction extends Action = ComponentCatalogCommandAction>(
   registry: CommandRegistry<TAction>,
   options: ComponentCatalogCommandOptions<TAction> = {},
@@ -49,6 +53,7 @@ export function bindComponentCatalogCommands<TAction extends Action = ComponentC
   return registry.registerAll(componentCatalogCommands<TAction>(options));
 }
 
+/** Creates a serializable inspection snapshot for component Catalog Commands. */
 export function inspectComponentCatalogCommands(options: ComponentCatalogCommandOptions = {}) {
   const entries = options.entries ?? queryComponents(options.query);
   return {

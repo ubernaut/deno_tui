@@ -3,6 +3,7 @@ import type { ComboBoxController, ComboBoxInspection } from "../components/combo
 import type { Action } from "./actions.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
+/** Identifier union for combo Box Command variants. */
 export type ComboBoxCommandKind =
   | "open"
   | "close"
@@ -14,16 +15,19 @@ export type ComboBoxCommandKind =
   | "select"
   | "item";
 
+/** Action union emitted by combo Box Command command helpers. */
 export type ComboBoxCommandAction =
   | Action<"comboBox.changed", ComboBoxCommandPayload>
   | Action<"comboBox.expandedChanged", ComboBoxCommandPayload & { expanded: boolean }>
   | Action<"comboBox.itemSelected", ComboBoxCommandPayload & { item: string; index: number }>;
 
+/** Payload carried by combo Box Command actions. */
 export interface ComboBoxCommandPayload {
   id: string;
   inspection: ComboBoxInspection;
 }
 
+/** Options for configuring combo Box Command. */
 export interface ComboBoxCommandOptions {
   id?: string;
   idPrefix?: string;
@@ -36,6 +40,7 @@ export interface ComboBoxCommandOptions {
   itemLabel?: (item: string, index: number) => string;
 }
 
+/** Builds command definitions for combo Box. */
 export function comboBoxCommands<TAction extends Action = ComboBoxCommandAction, Items extends string[] = string[]>(
   controller: ComboBoxController<Items>,
   options: ComboBoxCommandOptions = {},
@@ -124,6 +129,7 @@ export function comboBoxCommands<TAction extends Action = ComboBoxCommandAction,
   return commands;
 }
 
+/** Binds combo Box Commands behavior and returns a disposer when applicable. */
 export function bindComboBoxCommands<TAction extends Action = ComboBoxCommandAction, Items extends string[] = string[]>(
   registry: CommandRegistry<TAction>,
   controller: ComboBoxController<Items>,

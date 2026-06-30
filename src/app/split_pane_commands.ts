@@ -5,6 +5,7 @@ import type { Rectangle } from "../types.ts";
 import type { Action } from "./actions.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
+/** Identifier union for split Pane Command variants. */
 export type SplitPaneCommandKind =
   | "shrinkFirst"
   | "growFirst"
@@ -13,22 +14,26 @@ export type SplitPaneCommandKind =
   | "ratio"
   | "reset";
 
+/** Action union emitted by split Pane Command command helpers. */
 export type SplitPaneCommandAction =
   | Action<"splitPane.resized", SplitPaneSnapshotPayload>
   | Action<"splitPane.directionChanged", SplitPaneSnapshotPayload>
   | Action<"splitPane.ratioChanged", SplitPaneSnapshotPayload>
   | Action<"splitPane.reset", SplitPaneSnapshotPayload>;
 
+/** Payload carried by split Pane Snapshot actions. */
 export interface SplitPaneSnapshotPayload {
   id: string;
   snapshot: SplitPaneControllerOptions;
 }
 
+/** Public type alias for a split Pane Bounds Source. */
 export type SplitPaneBoundsSource =
   | Rectangle
   | Signal<Rectangle>
   | (() => Rectangle);
 
+/** Options for configuring split Pane Command. */
 export interface SplitPaneCommandOptions {
   id?: string;
   idPrefix?: string;
@@ -44,6 +49,7 @@ export interface SplitPaneCommandOptions {
   ratioLabel?: (ratio: number) => string;
 }
 
+/** Builds command definitions for split Pane. */
 export function splitPaneCommands<TAction extends Action = SplitPaneCommandAction>(
   controller: SplitPaneController,
   options: SplitPaneCommandOptions = {},
@@ -134,6 +140,7 @@ export function splitPaneCommands<TAction extends Action = SplitPaneCommandActio
   return commands;
 }
 
+/** Binds split Pane Commands behavior and returns a disposer when applicable. */
 export function bindSplitPaneCommands<TAction extends Action = SplitPaneCommandAction>(
   registry: CommandRegistry<TAction>,
   controller: SplitPaneController,

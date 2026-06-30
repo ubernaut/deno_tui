@@ -3,17 +3,21 @@ import type { TabItem, TabsController, TabsInspection } from "../components/tabs
 import type { Action } from "./actions.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
+/** Identifier union for tabs Command variants. */
 export type TabsCommandKind = "first" | "previous" | "next" | "last" | "tab";
 
+/** Action union emitted by tabs Command command helpers. */
 export type TabsCommandAction =
   | Action<"tabs.changed", TabsCommandPayload>
   | Action<"tabs.tabSelected", TabsCommandPayload & { tab: TabItem }>;
 
+/** Payload carried by tabs Command actions. */
 export interface TabsCommandPayload {
   id: string;
   inspection: TabsInspection;
 }
 
+/** Options for configuring tabs Command. */
 export interface TabsCommandOptions {
   id?: string;
   idPrefix?: string;
@@ -24,6 +28,7 @@ export interface TabsCommandOptions {
   tabLabel?: (tab: TabItem, index: number) => string;
 }
 
+/** Builds command definitions for tabs. */
 export function tabsCommands<TAction extends Action = TabsCommandAction>(
   controller: TabsController,
   options: TabsCommandOptions = {},
@@ -70,6 +75,7 @@ export function tabsCommands<TAction extends Action = TabsCommandAction>(
   return commands;
 }
 
+/** Binds tabs Commands behavior and returns a disposer when applicable. */
 export function bindTabsCommands<TAction extends Action = TabsCommandAction>(
   registry: CommandRegistry<TAction>,
   controller: TabsController,

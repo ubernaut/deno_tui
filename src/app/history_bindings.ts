@@ -4,8 +4,10 @@ import type { HistoryStack } from "./history.ts";
 import type { Action } from "./actions.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
+/** Identifier union for history Command variants. */
 export type HistoryCommandKind = "undo" | "redo" | "clear";
 
+/** Options for configuring history Command. */
 export interface HistoryCommandOptions {
   idPrefix?: string;
   group?: string;
@@ -13,6 +15,7 @@ export interface HistoryCommandOptions {
   labels?: Partial<Record<HistoryCommandKind, string>>;
 }
 
+/** Options for configuring route History Binding. */
 export interface RouteHistoryBindingOptions<TRoute extends Route = Route> {
   group?: string;
   label?: (previousRoute: TRoute, nextRoute: TRoute) => string;
@@ -20,6 +23,7 @@ export interface RouteHistoryBindingOptions<TRoute extends Route = Route> {
   navigate?: (routeId: string) => void | Promise<void>;
 }
 
+/** Binds route History behavior and returns a disposer when applicable. */
 export function bindRouteHistory<TRoute extends Route = Route>(
   routes: RouteManager<TRoute>,
   history: HistoryStack,
@@ -64,6 +68,7 @@ export function bindRouteHistory<TRoute extends Route = Route>(
   };
 }
 
+/** Builds command definitions for history. */
 export function historyCommands<TAction extends Action = Action>(
   history: HistoryStack,
   options: HistoryCommandOptions = {},
@@ -107,6 +112,7 @@ export function historyCommands<TAction extends Action = Action>(
   return commands;
 }
 
+/** Binds history Commands behavior and returns a disposer when applicable. */
 export function bindHistoryCommands<TAction extends Action = Action>(
   registry: CommandRegistry<TAction>,
   history: HistoryStack,

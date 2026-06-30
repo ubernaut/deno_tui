@@ -11,12 +11,15 @@ import type { DeepPartial } from "../types.ts";
 import { Computed, Signal } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
 
+/** Public type alias for a slider Orientation. */
 export type SliderOrientation = "vertical" | "horizontal";
 
+/** Public interface describing a slider Theme. */
 export interface SliderTheme extends Theme {
   thumb: Theme;
 }
 
+/** Options for configuring slider. */
 export interface SliderOptions extends ComponentOptions {
   min: number | Signal<number>;
   max: number | Signal<number>;
@@ -36,6 +39,7 @@ export interface SliderOptions extends ComponentOptions {
   onChange?: (value: number) => void | Promise<void>;
 }
 
+/** Options for configuring slider Controller. */
 export interface SliderControllerOptions {
   min: number | Signal<number>;
   max: number | Signal<number>;
@@ -46,6 +50,7 @@ export interface SliderControllerOptions {
   onChange?: (value: number) => void | Promise<void>;
 }
 
+/** Serializable inspection snapshot for slider. */
 export interface SliderInspection {
   min: number;
   max: number;
@@ -57,6 +62,7 @@ export interface SliderInspection {
   range: number;
 }
 
+/** Public interface describing a slider Thumb Rectangle. */
 export interface SliderThumbRectangle {
   column: number;
   row: number;
@@ -64,6 +70,7 @@ export interface SliderThumbRectangle {
   height: number;
 }
 
+/** Public interface describing a slider Track Rectangle. */
 export interface SliderTrackRectangle {
   column: number;
   row: number;
@@ -71,14 +78,17 @@ export interface SliderTrackRectangle {
   height: number;
 }
 
+/** Clamps slider Value to its valid range. */
 export function clampSliderValue(value: number, min: number, max: number): number {
   return clamp(value, Math.min(min, max), Math.max(min, max));
 }
 
+/** Public helper for slider Value By. */
 export function sliderValueBy(value: number, min: number, max: number, step: number, delta: number): number {
   return clampSliderValue(value + step * delta, min, max);
 }
 
+/** Public helper for snap Slider Value. */
 export function snapSliderValue(value: number, min: number, max: number, step: number): number {
   const rangeDirection = Math.sign(max - min) || 1;
   const safeStep = Math.max(Number.EPSILON, Math.abs(step)) * rangeDirection;
@@ -86,6 +96,7 @@ export function snapSliderValue(value: number, min: number, max: number, step: n
   return clampSliderValue(snapped, min, max);
 }
 
+/** Public helper for slider Value At. */
 export function sliderValueAt(
   track: SliderTrackRectangle,
   point: { column: number; row: number },
@@ -100,6 +111,7 @@ export function sliderValueAt(
   return snapSliderValue(min + (max - min) * normalizedValue, min, max, step);
 }
 
+/** Public helper for slider Thumb Rectangle. */
 export function sliderThumbRectangle(
   track: SliderTrackRectangle,
   value: number,
@@ -136,6 +148,7 @@ export function sliderThumbRectangle(
   };
 }
 
+/** State controller for slider behavior. */
 export class SliderController {
   readonly min: Signal<number>;
   readonly max: Signal<number>;

@@ -15,6 +15,7 @@ export function replaceEmptyStyle(style: Style, replacement: Style): Style {
   return style === emptyStyle ? replacement : style;
 }
 
+/** Public type alias for an ansi Color Name. */
 export type AnsiColorName =
   | "black"
   | "red"
@@ -33,7 +34,9 @@ export type AnsiColorName =
   | "brightCyan"
   | "brightWhite";
 
+/** Public type alias for an ansi Rgb Color. */
 export type AnsiRgbColor = readonly [red: number, green: number, blue: number];
+/** Public type alias for an ansi Color. */
 export type AnsiColor = AnsiColorName | AnsiRgbColor | number;
 
 const ANSI_COLOR_NAMES: readonly AnsiColorName[] = [
@@ -55,6 +58,7 @@ const ANSI_COLOR_NAMES: readonly AnsiColorName[] = [
   "brightWhite",
 ];
 
+/** Public interface describing an ansi Style Spec. */
 export interface AnsiStyleSpec {
   foreground?: AnsiColor;
   background?: AnsiColor;
@@ -66,8 +70,10 @@ export interface AnsiStyleSpec {
   strikethrough?: boolean;
 }
 
+/** Public type alias for an ansi Theme Token Specs. */
 export type AnsiThemeTokenSpecs = Partial<Record<ThemeTokenName, AnsiStyleSpec>>;
 
+/** Creates an ansi Style. */
 export function createAnsiStyle(spec: AnsiStyleSpec): Style {
   const codes = ansiStyleCodes(spec);
   if (codes.length === 0) return emptyStyle;
@@ -75,6 +81,7 @@ export function createAnsiStyle(spec: AnsiStyleSpec): Style {
   return (value) => `${open}${value}\x1b[0m`;
 }
 
+/** Creates an ansi Theme Tokens. */
 export function createAnsiThemeTokens(specs: AnsiThemeTokenSpecs): Partial<ThemeTokens> {
   const tokens: Partial<ThemeTokens> = {};
   for (const [name, spec] of Object.entries(specs) as [ThemeTokenName, AnsiStyleSpec][]) {
@@ -113,6 +120,7 @@ export interface Theme {
   disabled: Style;
 }
 
+/** Public interface describing a theme Tokens. */
 export interface ThemeTokens {
   foreground: Style;
   muted: Style;
@@ -123,7 +131,9 @@ export interface ThemeTokens {
   surface: Style;
 }
 
+/** Public type alias for a theme Token Name. */
 export type ThemeTokenName = keyof ThemeTokens;
+/** Public constant for a theme Token Names. */
 export const themeTokenNames = [
   "foreground",
   "muted",
@@ -133,26 +143,33 @@ export const themeTokenNames = [
   "danger",
   "surface",
 ] as const satisfies readonly ThemeTokenName[];
+/** Public type alias for a theme Style Reference. */
 export type ThemeStyleReference = Style | ThemeTokenName | readonly ThemeStyleReference[];
+/** Public type alias for a theme State Definition. */
 export type ThemeStateDefinition = Partial<Record<ThemeState, ThemeStyleReference>>;
 
+/** Public type alias for a theme Manifest Style Reference. */
 export type ThemeManifestStyleReference =
   | string
   | AnsiStyleSpec
   | readonly ThemeManifestStyleReference[];
+/** Public type alias for a theme Manifest State Definition. */
 export type ThemeManifestStateDefinition = Partial<Record<ThemeState, ThemeManifestStyleReference>>;
 
+/** Public interface describing a theme Manifest Component Definition. */
 export interface ThemeManifestComponentDefinition {
   extends?: string | readonly string[];
   base?: ThemeManifestStateDefinition;
   variants?: Record<string, ThemeManifestStateDefinition>;
 }
 
+/** Options for configuring theme Manifest. */
 export interface ThemeManifestOptions {
   tokens?: Partial<Record<ThemeTokenName, AnsiStyleSpec>>;
   components?: Record<string, ThemeManifestComponentDefinition>;
 }
 
+/** Creates an theme. */
 export function createTheme(tokens: Partial<ThemeTokens> = {}): Theme & { tokens: ThemeTokens } {
   const fallback = tokens.foreground ?? emptyStyle;
   return {
@@ -172,20 +189,25 @@ export function createTheme(tokens: Partial<ThemeTokens> = {}): Theme & { tokens
   };
 }
 
+/** Public type alias for a theme State. */
 export type ThemeState = keyof Theme;
+/** Public constant for a theme States. */
 export const themeStates = ["base", "focused", "active", "disabled"] as const satisfies readonly ThemeState[];
 
+/** Public interface describing a component Theme Definition. */
 export interface ComponentThemeDefinition {
   extends?: string | readonly string[];
   base?: ThemeStateDefinition;
   variants?: Record<string, ThemeStateDefinition>;
 }
 
+/** Options for configuring theme Engine. */
 export interface ThemeEngineOptions {
   tokens?: Partial<ThemeTokens>;
   components?: Record<string, ComponentThemeDefinition>;
 }
 
+/** Public interface describing a theme Layer. */
 export interface ThemeLayer {
   id: string;
   label?: string;
@@ -193,6 +215,7 @@ export interface ThemeLayer {
   options: ThemeEngineOptions;
 }
 
+/** Serializable inspection snapshot for theme Layer. */
 export interface ThemeLayerInspection {
   id: string;
   label: string;
@@ -200,16 +223,19 @@ export interface ThemeLayerInspection {
   components: ThemeComponentInspection[];
 }
 
+/** Serializable inspection snapshot for theme Component. */
 export interface ThemeComponentInspection {
   name: string;
   variants: string[];
 }
 
+/** Serializable inspection snapshot for theme. */
 export interface ThemeInspection {
   tokens: Array<keyof ThemeTokens>;
   components: ThemeComponentInspection[];
 }
 
+/** Serializable inspection snapshot for theme Variant Coverage. */
 export interface ThemeVariantCoverageInspection {
   name: string;
   states: ThemeState[];
@@ -217,6 +243,7 @@ export interface ThemeVariantCoverageInspection {
   complete: boolean;
 }
 
+/** Serializable inspection snapshot for theme Component Coverage. */
 export interface ThemeComponentCoverageInspection {
   name: string;
   extends: string[];
@@ -227,6 +254,7 @@ export interface ThemeComponentCoverageInspection {
   complete: boolean;
 }
 
+/** Serializable inspection snapshot for theme Coverage. */
 export interface ThemeCoverageInspection {
   componentCount: number;
   variantCount: number;
@@ -237,16 +265,19 @@ export interface ThemeCoverageInspection {
   components: ThemeComponentCoverageInspection[];
 }
 
+/** Options for configuring theme Coverage. */
 export interface ThemeCoverageOptions {
   components?: Iterable<string>;
   variants?: (component: string, definition: ComponentThemeDefinition) => Iterable<string>;
 }
 
+/** Identifier union for theme Validation Issue variants. */
 export type ThemeValidationIssueKind =
   | "unknown-token"
   | "unknown-component"
   | "inheritance-cycle";
 
+/** Public interface describing a theme Validation Issue. */
 export interface ThemeValidationIssue {
   kind: ThemeValidationIssueKind;
   path: string;
@@ -257,17 +288,20 @@ export interface ThemeValidationIssue {
   reference?: string;
 }
 
+/** Public interface describing a theme Style Preview. */
 export interface ThemeStylePreview {
   raw: string;
   styled: string;
 }
 
+/** Public interface describing a theme Token Diff. */
 export interface ThemeTokenDiff {
   token: ThemeTokenName;
   before: ThemeStylePreview;
   after: ThemeStylePreview;
 }
 
+/** Public interface describing a theme Component State Diff. */
 export interface ThemeComponentStateDiff {
   component: string;
   variant: string;
@@ -276,12 +310,14 @@ export interface ThemeComponentStateDiff {
   after: ThemeStylePreview;
 }
 
+/** Public interface describing a theme Engine Diff. */
 export interface ThemeEngineDiff {
   sample: string;
   tokens: ThemeTokenDiff[];
   components: ThemeComponentStateDiff[];
 }
 
+/** Options for configuring theme Engine Diff. */
 export interface ThemeEngineDiffOptions {
   sample?: string;
   components?: Iterable<string>;
@@ -289,11 +325,13 @@ export interface ThemeEngineDiffOptions {
   includeUnchanged?: boolean;
 }
 
+/** Serializable inspection snapshot for theme Manifest Variant. */
 export interface ThemeManifestVariantInspection {
   name: string;
   states: ThemeState[];
 }
 
+/** Serializable inspection snapshot for theme Manifest Component. */
 export interface ThemeManifestComponentInspection {
   name: string;
   extends: string[];
@@ -301,6 +339,7 @@ export interface ThemeManifestComponentInspection {
   variants: ThemeManifestVariantInspection[];
 }
 
+/** Serializable inspection snapshot for theme Manifest. */
 export interface ThemeManifestInspection {
   id: string;
   label: string;
@@ -310,11 +349,13 @@ export interface ThemeManifestInspection {
   issues: ThemeValidationIssue[];
 }
 
+/** Public interface describing a theme Manifest Token Preview. */
 export interface ThemeManifestTokenPreview {
   token: ThemeTokenName;
   preview: ThemeStylePreview;
 }
 
+/** Public interface describing a theme Manifest Component State Preview. */
 export interface ThemeManifestComponentStatePreview {
   component: string;
   variant: string;
@@ -322,6 +363,7 @@ export interface ThemeManifestComponentStatePreview {
   preview: ThemeStylePreview;
 }
 
+/** Public interface describing a theme Manifest Preview. */
 export interface ThemeManifestPreview {
   sample: string;
   manifest: ThemeManifestInspection;
@@ -329,6 +371,7 @@ export interface ThemeManifestPreview {
   components: ThemeManifestComponentStatePreview[];
 }
 
+/** Options for configuring theme Manifest Preview. */
 export interface ThemeManifestPreviewOptions {
   sample?: string;
   components?: Iterable<string>;
@@ -337,11 +380,13 @@ export interface ThemeManifestPreviewOptions {
   tokens?: Iterable<ThemeTokenName>;
 }
 
+/** Public interface describing a theme Provider Token Preview. */
 export interface ThemeProviderTokenPreview {
   token: ThemeTokenName;
   preview: ThemeStylePreview;
 }
 
+/** Public interface describing a theme Provider Component State Preview. */
 export interface ThemeProviderComponentStatePreview {
   component: string;
   variant: string;
@@ -349,6 +394,7 @@ export interface ThemeProviderComponentStatePreview {
   preview: ThemeStylePreview;
 }
 
+/** Public interface describing a theme Provider Preview. */
 export interface ThemeProviderPreview {
   sample: string;
   activeId: string;
@@ -358,6 +404,7 @@ export interface ThemeProviderPreview {
   components: ThemeProviderComponentStatePreview[];
 }
 
+/** Options for configuring theme Provider Preview. */
 export interface ThemeProviderPreviewOptions {
   sample?: string;
   components?: Iterable<string>;
@@ -406,6 +453,7 @@ export interface ThemeProviderReportOptions {
   coverage?: ThemeCoverageOptions | false;
 }
 
+/** Public type alias for a theme Palette Name. */
 export type ThemePaletteName = "plain" | "neon" | "terminal";
 /** Built-in palette id or custom palette definition accepted by theme engines. */
 export type ThemePaletteReference = ThemePaletteName | ThemePalette;
@@ -424,6 +472,7 @@ export interface ThemePaletteInspection {
   tokens: ThemeTokenName[];
 }
 
+/** Public constant for a theme Palettes. */
 export const themePalettes: Record<ThemePaletteName, Partial<ThemeTokens>> = {
   plain: {
     foreground: emptyStyle,
@@ -537,6 +586,7 @@ export class ThemePaletteNotFoundError extends Error {
   }
 }
 
+/** Public helper for merge Component Theme Definition. */
 export function mergeComponentThemeDefinition(
   base: ComponentThemeDefinition = {},
   extension: ComponentThemeDefinition = {},
@@ -559,6 +609,7 @@ export function mergeComponentThemeDefinition(
   };
 }
 
+/** Public helper for compose Styles. */
 export function composeStyles(...styles: Style[]): Style {
   const active = styles.filter((style) => style !== emptyStyle);
   if (active.length === 0) return emptyStyle;
@@ -566,6 +617,7 @@ export function composeStyles(...styles: Style[]): Style {
   return (value) => active.reduce((text, style) => style(text), value);
 }
 
+/** Resolves theme Style Reference from the provided inputs. */
 export function resolveThemeStyleReference(reference: ThemeStyleReference, tokens: ThemeTokens): Style {
   if (isThemeStyleReferencePipeline(reference)) {
     return composeStyles(...reference.map((part) => resolveThemeStyleReference(part, tokens)));
@@ -573,6 +625,7 @@ export function resolveThemeStyleReference(reference: ThemeStyleReference, token
   return typeof reference === "string" ? tokens[reference] : reference;
 }
 
+/** Resolves theme State Definition from the provided inputs. */
 export function resolveThemeStateDefinition(
   definition: ThemeStateDefinition = {},
   tokens: ThemeTokens,
@@ -585,6 +638,7 @@ export function resolveThemeStateDefinition(
   return resolved;
 }
 
+/** Public helper for compose Theme Options. */
 export function composeThemeOptions(...options: ThemeEngineOptions[]): ThemeEngineOptions {
   const tokens: Partial<ThemeTokens> = {};
   const components: Record<string, ComponentThemeDefinition> = {};
@@ -599,6 +653,7 @@ export function composeThemeOptions(...options: ThemeEngineOptions[]): ThemeEngi
   return { tokens, components };
 }
 
+/** Public helper for compile Theme Manifest Style Reference. */
 export function compileThemeManifestStyleReference(
   reference: ThemeManifestStyleReference,
 ): ThemeStyleReference {
@@ -608,6 +663,7 @@ export function compileThemeManifestStyleReference(
   return typeof reference === "string" ? reference as ThemeTokenName : createAnsiStyle(reference);
 }
 
+/** Public helper for compile Theme Manifest State Definition. */
 export function compileThemeManifestStateDefinition(
   definition: ThemeManifestStateDefinition = {},
 ): ThemeStateDefinition {
@@ -619,6 +675,7 @@ export function compileThemeManifestStateDefinition(
   return output;
 }
 
+/** Public helper for compile Theme Manifest Options. */
 export function compileThemeManifestOptions(manifest: ThemeManifestOptions = {}): ThemeEngineOptions {
   const components: Record<string, ComponentThemeDefinition> = {};
 
@@ -641,6 +698,7 @@ export function compileThemeManifestOptions(manifest: ThemeManifestOptions = {})
   });
 }
 
+/** Public helper for theme Pack From Manifest. */
 export function themePackFromManifest(manifest: ThemePackManifest): ThemePack {
   return {
     id: manifest.id,
@@ -650,6 +708,7 @@ export function themePackFromManifest(manifest: ThemePackManifest): ThemePack {
   };
 }
 
+/** Creates an theme Engine From Manifest. */
 export function createThemeEngineFromManifest(
   manifest: Pick<ThemePackManifest, "palette" | "options">,
   overrides: ThemeEngineOptions = {},
@@ -660,10 +719,12 @@ export function createThemeEngineFromManifest(
   );
 }
 
+/** Creates an theme Registry From Manifests. */
 export function createThemeRegistryFromManifests(manifests: Iterable<ThemePackManifest>): ThemeRegistry {
   return createThemeRegistry([...manifests].map(themePackFromManifest));
 }
 
+/** Creates a serializable inspection snapshot for theme Manifest. */
 export function inspectThemeManifest(manifest: ThemePackManifest): ThemeManifestInspection {
   const options = compileThemeManifestOptions(manifest.options);
   const components = manifest.options?.components ?? {};
@@ -689,6 +750,7 @@ export function inspectThemeManifest(manifest: ThemePackManifest): ThemeManifest
   };
 }
 
+/** Public helper for preview Theme Manifest. */
 export function previewThemeManifest(
   manifest: ThemePackManifest,
   options: ThemeManifestPreviewOptions = {},
@@ -723,6 +785,7 @@ export function previewThemeManifest(
   };
 }
 
+/** Public helper for validate Theme Options. */
 export function validateThemeOptions(options: ThemeEngineOptions): ThemeValidationIssue[] {
   const normalized = composeThemeOptions(options);
   const components = normalized.components ?? {};
@@ -767,6 +830,7 @@ export function validateThemeOptions(options: ThemeEngineOptions): ThemeValidati
   return issues;
 }
 
+/** Public helper for assert Theme Options. */
 export function assertThemeOptions(options: ThemeEngineOptions): void {
   const issues = validateThemeOptions(options);
   if (issues.length > 0) {
@@ -774,6 +838,7 @@ export function assertThemeOptions(options: ThemeEngineOptions): void {
   }
 }
 
+/** Public helper for diff Theme Engines. */
 export function diffThemeEngines(
   before: ThemeEngine,
   after: ThemeEngine,
@@ -816,6 +881,7 @@ export function diffThemeEngines(
   return { sample, tokens: tokenDiffs, components: componentDiffs };
 }
 
+/** Creates a serializable inspection snapshot for theme Coverage. */
 export function inspectThemeCoverage(
   options: ThemeEngineOptions,
   coverageOptions: ThemeCoverageOptions = {},
@@ -842,6 +908,7 @@ export function inspectThemeCoverage(
   };
 }
 
+/** Creates an theme Engine. */
 export function createThemeEngine(
   palette: ThemePaletteReference = "plain",
   options: Omit<ThemeEngineOptions, "tokens"> & { tokens?: Partial<ThemeTokens> } = {},
@@ -863,6 +930,7 @@ export function createThemeEngineFromPalette(
   });
 }
 
+/** Public interface describing a theme Pack. */
 export interface ThemePack {
   id: string;
   label?: string;
@@ -871,6 +939,7 @@ export interface ThemePack {
   options?: ThemeEngineOptions;
 }
 
+/** Public interface describing a theme Pack Manifest. */
 export interface ThemePackManifest {
   id: string;
   label?: string;
@@ -879,6 +948,7 @@ export interface ThemePackManifest {
   options?: ThemeManifestOptions;
 }
 
+/** Serializable inspection snapshot for theme Pack. */
 export interface ThemePackInspection {
   id: string;
   label: string;
@@ -886,6 +956,7 @@ export interface ThemePackInspection {
   components: ThemeComponentInspection[];
 }
 
+/** Serializable inspection snapshot for theme Provider. */
 export interface ThemeProviderInspection {
   activeId: string;
   themes: ThemePackInspection[];
@@ -893,18 +964,22 @@ export interface ThemeProviderInspection {
   engine: ThemeInspection;
 }
 
+/** Public interface describing a theme Catalog Theme. */
 export interface ThemeCatalogTheme extends ThemePackInspection {
   active: boolean;
 }
 
+/** Public interface describing a theme Catalog Layer. */
 export interface ThemeCatalogLayer extends ThemeLayerInspection {
   active: boolean;
 }
 
+/** Public interface describing a theme Catalog Component. */
 export interface ThemeCatalogComponent extends ThemeComponentInspection {
   variants: string[];
 }
 
+/** Public interface describing a theme Catalog. */
 export interface ThemeCatalog {
   activeId: string;
   tokens: ThemeTokenName[];
@@ -914,6 +989,7 @@ export interface ThemeCatalog {
   components: ThemeCatalogComponent[];
 }
 
+/** Public class implementing a theme Layer Stack. */
 export class ThemeLayerStack {
   readonly options: Computed<ThemeEngineOptions>;
   readonly #layers = new Map<string, ThemeLayer>();
@@ -1051,6 +1127,7 @@ export class ThemeLayerStack {
   }
 }
 
+/** Registry for storing and querying theme definitions. */
 export class ThemeRegistry {
   readonly #packs = new Map<string, ThemePack>();
 
@@ -1111,6 +1188,7 @@ export class ThemeRegistry {
   }
 }
 
+/** Error thrown for invalid theme Pack Not Found operations. */
 export class ThemePackNotFoundError extends Error {
   constructor(id: string) {
     super(`Theme pack "${id}" is not registered`);
@@ -1118,6 +1196,7 @@ export class ThemePackNotFoundError extends Error {
   }
 }
 
+/** Options for configuring theme Provider. */
 export interface ThemeProviderOptions {
   registry?: ThemeRegistry;
   activeId?: string | Signal<string>;
@@ -1128,6 +1207,7 @@ export interface ThemeProviderOptions {
   onError?: (error: unknown) => void;
 }
 
+/** Public class implementing a theme Provider. */
 export class ThemeProvider {
   readonly registry: ThemeRegistry;
   readonly activeId: Signal<string>;
@@ -1276,6 +1356,7 @@ export class ThemeProvider {
   }
 }
 
+/** Public constant for a default Theme Packs. */
 export const defaultThemePacks: ThemePack[] = [
   { id: "plain", label: "Plain", palette: "plain" },
   { id: "neon", label: "Neon", palette: "neon" },
@@ -1298,18 +1379,22 @@ export function createThemePaletteRegistry(
   return new ThemePaletteRegistry(palettes);
 }
 
+/** Creates an theme Registry. */
 export function createThemeRegistry(packs: Iterable<ThemePack> = defaultThemePacks): ThemeRegistry {
   return new ThemeRegistry(packs);
 }
 
+/** Creates an theme Layer Stack. */
 export function createThemeLayerStack(layers: Iterable<ThemeLayer> = []): ThemeLayerStack {
   return new ThemeLayerStack(layers);
 }
 
+/** Creates an theme Provider. */
 export function createThemeProvider(options: ThemeProviderOptions = {}): ThemeProvider {
   return new ThemeProvider(options);
 }
 
+/** Creates an theme Catalog. */
 export function createThemeCatalog(provider: ThemeProvider): ThemeCatalog {
   const inspection = provider.inspect();
   return {
@@ -1332,6 +1417,7 @@ export function createThemeCatalog(provider: ThemeProvider): ThemeCatalog {
   };
 }
 
+/** Public helper for preview Theme Provider. */
 export function previewThemeProvider(
   provider: ThemeProvider,
   options: ThemeProviderPreviewOptions = {},
@@ -1477,6 +1563,7 @@ export function formatThemeProviderReportMarkdown(
   return lines.join("\n");
 }
 
+/** Public class implementing a theme Engine. */
 export class ThemeEngine {
   readonly theme: Theme & { tokens: ThemeTokens };
   private readonly components: Record<string, ComponentThemeDefinition>;
@@ -1553,6 +1640,7 @@ export class ThemeEngine {
   }
 }
 
+/** Error thrown for invalid theme Inheritance operations. */
 export class ThemeInheritanceError extends Error {
   constructor(chain: string[]) {
     super(`Theme component inheritance cycle detected: ${chain.join(" -> ")}`);
@@ -1560,6 +1648,7 @@ export class ThemeInheritanceError extends Error {
   }
 }
 
+/** Error thrown for invalid theme Validation operations. */
 export class ThemeValidationError extends Error {
   readonly issues: ThemeValidationIssue[];
 

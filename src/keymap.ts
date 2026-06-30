@@ -1,6 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { DisposableStack } from "./app/disposables.ts";
 
+/** Public interface describing a key Binding. */
 export interface KeyBinding {
   key: string;
   description: string;
@@ -10,16 +11,19 @@ export interface KeyBinding {
   shift?: boolean;
 }
 
+/** Serializable inspection snapshot for key Binding. */
 export interface KeyBindingInspection extends KeyBinding {
   id: string;
 }
 
+/** Serializable inspection snapshot for keymap. */
 export interface KeymapInspection {
   count: number;
   groups: string[];
   bindings: KeyBindingInspection[];
 }
 
+/** Registry for storing and querying keymap definitions. */
 export class KeymapRegistry {
   readonly bindings = new Map<string, KeyBinding>();
 
@@ -94,10 +98,12 @@ export class KeymapRegistry {
   }
 }
 
+/** Binds ing Id behavior and returns a disposer when applicable. */
 export function bindingId(binding: Pick<KeyBinding, "key" | "ctrl" | "meta" | "shift">): string {
   return `${binding.ctrl ? "C-" : ""}${binding.meta ? "M-" : ""}${binding.shift ? "S-" : ""}${binding.key}`;
 }
 
+/** Formats key Binding for display or diagnostics. */
 export function formatKeyBinding(binding: KeyBinding): string {
   return `${bindingId(binding)} ${binding.description}`;
 }

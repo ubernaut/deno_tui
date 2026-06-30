@@ -5,8 +5,10 @@ import { Computed, Signal } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
 import { Text } from "./text.ts";
 
+/** Public type alias for a spinner Status. */
 export type SpinnerStatus = "idle" | "loading" | "success" | "error";
 
+/** Options for configuring spinner. */
 export interface SpinnerOptions extends ComponentOptions {
   label?: string | Signal<string>;
   status?: SpinnerStatus | Signal<SpinnerStatus>;
@@ -16,8 +18,10 @@ export interface SpinnerOptions extends ComponentOptions {
   intervalMs?: number;
 }
 
+/** Built-in dEFAULT SPINNER FRAMES definitions. */
 export const DEFAULT_SPINNER_FRAMES = ["|", "/", "-", "\\"];
 
+/** Renders spinner into deterministic text rows. */
 export function renderSpinner(
   label = "",
   status: SpinnerStatus = "loading",
@@ -30,6 +34,7 @@ export function renderSpinner(
   return truncateSpinner(text, width);
 }
 
+/** Public helper for spinner Glyph. */
 export function spinnerGlyph(
   status: SpinnerStatus,
   frameIndex = 0,
@@ -50,6 +55,7 @@ function truncateSpinner(text: string, width: number): string {
   return `${text.slice(0, safeWidth - 1)}…`;
 }
 
+/** Public class implementing a spinner. */
 export class Spinner extends Component {
   readonly label: Signal<string>;
   readonly status: Signal<SpinnerStatus>;

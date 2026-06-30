@@ -39,6 +39,7 @@ export function createSelection(length: number, activeIndex = 0, mode: Selection
   return normalizeSelection({ activeIndex, anchorIndex: activeIndex, selected: [activeIndex] }, length, mode);
 }
 
+/** Public helper for normalize Selection. */
 export function normalizeSelection(
   state: Partial<SelectionState>,
   length: number,

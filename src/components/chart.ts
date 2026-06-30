@@ -4,10 +4,12 @@ import type { TextRectangle } from "../canvas/text.ts";
 import { Computed, type Signal } from "../signals/mod.ts";
 import { Text } from "./text.ts";
 
+/** Options for configuring chart. */
 export interface ChartOptions extends ComponentOptions {
   values: number[] | Signal<number[]>;
 }
 
+/** Renders bar Chart into deterministic text rows. */
 export function renderBarChart(values: readonly number[], width: number, height: number): string[] {
   const safeWidth = Math.max(0, width);
   const safeHeight = Math.max(0, height);
@@ -19,6 +21,7 @@ export function renderBarChart(values: readonly number[], width: number, height:
   });
 }
 
+/** Public class implementing a chart. */
 export class Chart extends Component {
   constructor(private readonly options: ChartOptions) {
     super(options);

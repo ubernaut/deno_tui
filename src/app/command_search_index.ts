@@ -12,18 +12,21 @@ import {
   executeCommandSurfaceItem,
 } from "./command_bindings.ts";
 
+/** Public interface describing a command Search Index Field. */
 export interface CommandSearchIndexField {
   value: string;
   normalized: string;
   weight: number;
 }
 
+/** Entry record used by command Search Index catalogs or renderers. */
 export interface CommandSearchIndexEntry {
   item: CommandSurfaceItem;
   fields: CommandSearchIndexField[];
   index: number;
 }
 
+/** Serializable inspection snapshot for command Search Index. */
 export interface CommandSearchIndexInspection {
   count: number;
   disabled: number;
@@ -31,17 +34,20 @@ export interface CommandSearchIndexInspection {
   keywordCount: number;
 }
 
+/** Public interface describing a command Search Index. */
 export interface CommandSearchIndex {
   entries: CommandSearchIndexEntry[];
   inspection: CommandSearchIndexInspection;
 }
 
+/** Options for configuring command Search Index. */
 export interface CommandSearchIndexOptions {
   labelWeight?: number;
   idWeight?: number;
   keywordWeight?: number;
 }
 
+/** Options for configuring indexed Command Search. */
 export interface IndexedCommandSearchOptions extends CommandSearchOptions, CommandSearchIndexOptions {
   scheduler?: AsyncScheduler;
   priority?: number;
@@ -54,6 +60,7 @@ export interface IndexedCommandSearchOptions extends CommandSearchOptions, Comma
   onCacheError?: (error: unknown) => void;
 }
 
+/** Serializable inspection snapshot for indexed Command Surface. */
 export interface IndexedCommandSurfaceInspection extends CommandSearchIndexInspection {
   query: string;
   matchCount: number;
@@ -63,6 +70,7 @@ export interface IndexedCommandSurfaceInspection extends CommandSearchIndexInspe
   disposed: boolean;
 }
 
+/** Public interface describing an indexed Command Surface Controller. */
 export interface IndexedCommandSurfaceController<TAction extends Action = Action> {
   readonly index: Signal<CommandSearchIndex>;
   readonly items: Signal<CommandSurfaceItem[]>;
@@ -79,6 +87,7 @@ export interface IndexedCommandSurfaceController<TAction extends Action = Action
   dispose(): void;
 }
 
+/** Creates an command Search Index. */
 export function createCommandSearchIndex(
   items: readonly CommandSurfaceItem[],
   options: CommandSearchIndexOptions = {},
@@ -95,6 +104,7 @@ export function createCommandSearchIndex(
   };
 }
 
+/** Public helper for search Command Search Index. */
 export function searchCommandSearchIndex(
   index: CommandSearchIndex,
   query: string,
@@ -124,6 +134,7 @@ export function searchCommandSearchIndex(
   return ranked.slice(0, limit).map(({ index: _index, ...match }) => match);
 }
 
+/** Creates an indexed Command Surface. */
 export function createIndexedCommandSurface<TAction extends Action = Action>(
   registry: CommandRegistry<TAction>,
   dispatch?: CommandDispatch<TAction>,

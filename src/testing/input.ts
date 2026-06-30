@@ -4,6 +4,7 @@ import type { Focusable, FocusNavigationTarget } from "../focus.ts";
 import type { KeyPressEvent, MousePressEvent, MouseScrollEvent } from "../input_reader/types.ts";
 import { Signal } from "../signals/mod.ts";
 
+/** Options for configuring test Key Press. */
 export interface TestKeyPressOptions {
   ctrl?: boolean;
   meta?: boolean;
@@ -11,6 +12,7 @@ export interface TestKeyPressOptions {
   buffer?: Uint8Array;
 }
 
+/** Creates an test Key Press. */
 export function createTestKeyPress(
   key: KeyPressEvent["key"],
   options: TestKeyPressOptions = {},
@@ -24,6 +26,7 @@ export function createTestKeyPress(
   };
 }
 
+/** Creates an test Mouse Scroll. */
 export function createTestMouseScroll(
   scroll: MouseScrollEvent["scroll"],
   options: Partial<Omit<MouseScrollEvent, "key" | "scroll" | "buffer">> & { buffer?: Uint8Array } = {},
@@ -43,6 +46,7 @@ export function createTestMouseScroll(
   };
 }
 
+/** Creates an test Mouse Press. */
 export function createTestMousePress(
   options: Partial<Omit<MousePressEvent, "key" | "buffer">> & { buffer?: Uint8Array } = {},
 ): MousePressEvent {
@@ -62,10 +66,12 @@ export function createTestMousePress(
   };
 }
 
+/** Creates an test Focusable. */
 export function createTestFocusable(initialState: ComponentState = "base"): Focusable {
   return { state: new Signal<ComponentState>(initialState) };
 }
 
+/** Public class implementing a test Key Press Target. */
 export class TestKeyPressTarget implements FocusNavigationTarget {
   private readonly listeners = new Set<(event: KeyPressEvent) => void | Promise<void>>();
 
@@ -90,6 +96,7 @@ export class TestKeyPressTarget implements FocusNavigationTarget {
   }
 }
 
+/** Public class implementing a test Mouse Target. */
 export class TestMouseTarget {
   private readonly pressListeners = new Set<(event: MousePressEvent) => void | Promise<void>>();
   private readonly scrollListeners = new Set<(event: MouseScrollEvent) => void | Promise<void>>();

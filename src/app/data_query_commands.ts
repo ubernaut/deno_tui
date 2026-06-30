@@ -3,6 +3,7 @@ import type { DataQueryController, DataQueryInspection, DataQuerySort } from "..
 import type { Action } from "./actions.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
+/** Identifier union for data Query Command variants. */
 export type DataQueryCommandKind =
   | "reload"
   | "restore"
@@ -14,6 +15,7 @@ export type DataQueryCommandKind =
   | "pageSize"
   | "sort";
 
+/** Action union emitted by data Query Command command helpers. */
 export type DataQueryCommandAction<TRow = unknown> =
   | Action<"dataQuery.loaded", DataQueryCommandPayload<TRow>>
   | Action<"dataQuery.restored", DataQueryCommandPayload<TRow>>
@@ -24,17 +26,20 @@ export type DataQueryCommandAction<TRow = unknown> =
   | Action<"dataQuery.pageSizeChanged", DataQueryCommandPayload<TRow> & { pageSize: number }>
   | Action<"dataQuery.sortChanged", DataQueryCommandPayload<TRow> & { sort?: DataQuerySort }>;
 
+/** Payload carried by data Query Command actions. */
 export interface DataQueryCommandPayload<TRow = unknown> {
   id: string;
   inspection: DataQueryInspection<TRow>;
 }
 
+/** Public interface describing a data Query Sort Command. */
 export interface DataQuerySortCommand {
   field: string;
   label?: string;
   keywords?: readonly string[];
 }
 
+/** Options for configuring data Query Command. */
 export interface DataQueryCommandOptions {
   id?: string;
   idPrefix?: string;
@@ -53,6 +58,7 @@ export interface DataQueryCommandOptions {
   labels?: Partial<Record<DataQueryCommandKind, string>>;
 }
 
+/** Builds command definitions for data Query. */
 export function dataQueryCommands<
   TRow = unknown,
   TAction extends Action = DataQueryCommandAction<TRow>,
@@ -220,6 +226,7 @@ export function dataQueryCommands<
   return commands;
 }
 
+/** Binds data Query Commands behavior and returns a disposer when applicable. */
 export function bindDataQueryCommands<
   TRow = unknown,
   TAction extends Action = DataQueryCommandAction<TRow>,

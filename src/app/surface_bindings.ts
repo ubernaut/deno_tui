@@ -2,11 +2,13 @@
 import { type Focusable, type FocusManager, type FocusNavigationTarget, FocusScope } from "../focus.ts";
 import type { Signal } from "../signals/mod.ts";
 
+/** Options for configuring modal Focus Binding. */
 export interface ModalFocusBindingOptions {
   initialIndex?: number;
   closeOnEscape?: boolean;
 }
 
+/** Binds modal Focus behavior and returns a disposer when applicable. */
 export function bindModalFocus(
   target: FocusNavigationTarget,
   visible: Signal<boolean>,

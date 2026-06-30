@@ -7,15 +7,19 @@ import {
   type CachedAsyncResourceOptions,
 } from "./resource.ts";
 
+/** Public type alias for a data Query Sort Direction. */
 export type DataQuerySortDirection = "asc" | "desc";
 
+/** Public interface describing a data Query Sort. */
 export interface DataQuerySort {
   field: string;
   direction: DataQuerySortDirection;
 }
 
+/** Public type alias for a data Query Filters. */
 export type DataQueryFilters = Record<string, unknown>;
 
+/** Public interface describing a data Query Params. */
 export interface DataQueryParams<TFilters extends DataQueryFilters = DataQueryFilters> {
   query?: string;
   filters?: TFilters;
@@ -24,11 +28,13 @@ export interface DataQueryParams<TFilters extends DataQueryFilters = DataQueryFi
   pageSize?: number;
 }
 
+/** Public interface describing a normalized Data Query Params. */
 export interface NormalizedDataQueryParams<TFilters extends DataQueryFilters = DataQueryFilters>
   extends Required<Pick<DataQueryParams<TFilters>, "query" | "filters" | "page" | "pageSize">> {
   sort?: DataQuerySort;
 }
 
+/** Public interface describing a data Query Result. */
 export interface DataQueryResult<TRow = unknown> {
   rows: TRow[];
   totalRows: number;
@@ -37,12 +43,14 @@ export interface DataQueryResult<TRow = unknown> {
   pageCount: number;
 }
 
+/** Options for configuring local Data Query. */
 export interface LocalDataQueryOptions<TRow, TFilters extends DataQueryFilters = DataQueryFilters> {
   searchable?: readonly (keyof TRow & string)[] | ((row: TRow) => readonly unknown[]);
   filter?: (row: TRow, filters: TFilters) => boolean;
   compare?: (left: unknown, right: unknown, sort: DataQuerySort) => number;
 }
 
+/** Options for configuring data Query Controller. */
 export interface DataQueryControllerOptions<
   TRow,
   TFilters extends DataQueryFilters = DataQueryFilters,
@@ -60,6 +68,7 @@ export interface DataQueryControllerOptions<
   initialParams?: DataQueryParams<TFilters>;
 }
 
+/** Serializable inspection snapshot for data Query. */
 export interface DataQueryInspection<TRow = unknown, TFilters extends DataQueryFilters = DataQueryFilters>
   extends CachedAsyncResourceInspection<DataQueryResult<TRow>, NormalizedDataQueryParams<TFilters>> {
   params: NormalizedDataQueryParams<TFilters>;
@@ -68,6 +77,7 @@ export interface DataQueryInspection<TRow = unknown, TFilters extends DataQueryF
   pageCount: number;
 }
 
+/** State controller for data Query behavior. */
 export class DataQueryController<
   TRow = unknown,
   TFilters extends DataQueryFilters = DataQueryFilters,
@@ -175,6 +185,7 @@ export class DataQueryController<
   }
 }
 
+/** Creates an data Query Controller. */
 export function createDataQueryController<
   TRow,
   TFilters extends DataQueryFilters = DataQueryFilters,
@@ -185,6 +196,7 @@ export function createDataQueryController<
   return new DataQueryController(options);
 }
 
+/** Public helper for normalize Data Query Params. */
 export function normalizeDataQueryParams<TFilters extends DataQueryFilters = DataQueryFilters>(
   params: DataQueryParams<TFilters> = {},
   fallback: NormalizedDataQueryParams<TFilters> = {
@@ -203,11 +215,13 @@ export function normalizeDataQueryParams<TFilters extends DataQueryFilters = Dat
   };
 }
 
+/** Public helper for next Data Query Sort. */
 export function nextDataQuerySort(sort: DataQuerySort | undefined, field: string): DataQuerySort | undefined {
   if (sort?.field !== field) return { field, direction: "asc" };
   return sort.direction === "asc" ? { field, direction: "desc" } : undefined;
 }
 
+/** Queries local Data records with deterministic filtering. */
 export function queryLocalData<
   TRow extends Record<string, unknown>,
   TFilters extends DataQueryFilters = DataQueryFilters,
@@ -223,6 +237,7 @@ export function queryLocalData<
   return pageDataQueryRows(sorted, normalized);
 }
 
+/** Public helper for page Data Query Rows. */
 export function pageDataQueryRows<TRow>(
   rows: readonly TRow[],
   params: DataQueryParams,

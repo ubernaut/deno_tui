@@ -3,6 +3,7 @@ import type { ScrollAreaController, ScrollAreaInspection } from "../components/s
 import type { Action } from "./actions.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
+/** Identifier union for scroll Area Command variants. */
 export type ScrollAreaCommandKind =
   | "up"
   | "down"
@@ -15,15 +16,18 @@ export type ScrollAreaCommandKind =
   | "showScrollbar"
   | "hideScrollbar";
 
+/** Action union emitted by scroll Area Command command helpers. */
 export type ScrollAreaCommandAction =
   | Action<"scrollArea.scrolled", ScrollAreaCommandPayload>
   | Action<"scrollArea.scrollbarChanged", ScrollAreaCommandPayload & { visible: boolean }>;
 
+/** Payload carried by scroll Area Command actions. */
 export interface ScrollAreaCommandPayload {
   id: string;
   inspection: ScrollAreaInspection;
 }
 
+/** Options for configuring scroll Area Command. */
 export interface ScrollAreaCommandOptions {
   id?: string;
   idPrefix?: string;
@@ -36,6 +40,7 @@ export interface ScrollAreaCommandOptions {
   labels?: Partial<Record<ScrollAreaCommandKind, string>>;
 }
 
+/** Builds command definitions for scroll Area. */
 export function scrollAreaCommands<TAction extends Action = ScrollAreaCommandAction>(
   controller: ScrollAreaController,
   options: ScrollAreaCommandOptions = {},
@@ -151,6 +156,7 @@ export function scrollAreaCommands<TAction extends Action = ScrollAreaCommandAct
   return commands;
 }
 
+/** Binds scroll Area Commands behavior and returns a disposer when applicable. */
 export function bindScrollAreaCommands<TAction extends Action = ScrollAreaCommandAction>(
   registry: CommandRegistry<TAction>,
   controller: ScrollAreaController,

@@ -2,6 +2,7 @@
 import type { SignalOptions } from "../signals/mod.ts";
 import { type AsyncStore, PersistentSignal } from "../runtime/storage.ts";
 
+/** Public interface describing an app Setting Definition. */
 export interface AppSettingDefinition<T, Stored = T> {
   key: string;
   initialValue: T;
@@ -10,18 +11,21 @@ export interface AppSettingDefinition<T, Stored = T> {
   deserialize?: (value: Stored) => T;
 }
 
+/** Options for configuring settings Controller. */
 export interface SettingsControllerOptions {
   store: AsyncStore<unknown>;
   namespace?: string;
   onError?: (error: unknown) => void;
 }
 
+/** Serializable inspection snapshot for settings Controller. */
 export interface SettingsControllerInspection {
   namespace: string;
   keys: string[];
   localKeys: string[];
 }
 
+/** State controller for settings behavior. */
 export class SettingsController {
   readonly namespace: string;
   readonly store: AsyncStore<unknown>;
@@ -114,6 +118,7 @@ export class SettingsController {
   }
 }
 
+/** Creates an settings Controller. */
 export function createSettingsController(options: SettingsControllerOptions): SettingsController {
   return new SettingsController(options);
 }

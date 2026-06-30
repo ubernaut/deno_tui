@@ -24,15 +24,19 @@ import {
 import { createThemeProvider, type ThemeProvider, type ThemeProviderOptions } from "../theme.ts";
 import type { ThemeEnginePipeline } from "../theme_engine_pipeline.ts";
 
+/** Public type alias for a theme Plugin Pipeline Setting Option. */
 export type ThemePluginPipelineSettingOption = boolean | ThemePipelineSettingBindingOptions<unknown>;
+/** Public type alias for a theme Plugin Pipeline Setting Options. */
 export type ThemePluginPipelineSettingOptions =
   | ThemePluginPipelineSettingOption
   | Record<string, ThemePluginPipelineSettingOption>;
+/** Public type alias for a theme Plugin Pipeline Command Options. */
 export type ThemePluginPipelineCommandOptions =
   | boolean
   | ThemePipelineCommandOptions
   | Record<string, boolean | ThemePipelineCommandOptions>;
 
+/** Options for configuring theme Plugin. */
 export interface ThemePluginOptions {
   id?: string;
   label?: string;
@@ -49,6 +53,7 @@ export interface ThemePluginOptions {
   install?: (context: ThemePluginInstallContext) => AppPluginDisposer;
 }
 
+/** Context object passed to theme Plugin Install callbacks. */
 export interface ThemePluginInstallContext {
   app: TuiApp<Action, Route>;
   provider: ThemeProvider;
@@ -58,6 +63,7 @@ export interface ThemePluginInstallContext {
   pipelineSettings: Record<string, SettingBinding<readonly string[], unknown>>;
 }
 
+/** Serializable inspection snapshot for theme Plugin. */
 export interface ThemePluginInspection {
   id?: string;
   label?: string;
@@ -72,6 +78,7 @@ export interface ThemePluginInspection {
   keymapMirroringEnabled: boolean;
 }
 
+/** Public interface describing a theme App Plugin. */
 export interface ThemeAppPlugin<
   TAction extends Action = ThemeCommandAction | ThemePipelineCommandAction,
   TRoute extends Route = Route,
@@ -81,6 +88,7 @@ export interface ThemeAppPlugin<
   inspect(): ThemePluginInspection;
 }
 
+/** Creates an theme Plugin. */
 export function createThemePlugin<
   TAction extends Action = ThemeCommandAction | ThemePipelineCommandAction,
   TRoute extends Route = Route,

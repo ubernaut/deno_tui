@@ -1,12 +1,16 @@
 // Copyright 2023 Im-Beast. MIT license.
+/** Function signature used to dispose  resources. */
 export type Disposer = () => void;
+/** Function signature used to dispose maybe resources. */
 export type MaybeDisposer = Disposer | void | undefined;
 
+/** Serializable inspection snapshot for disposable Stack. */
 export interface DisposableStackInspection {
   disposed: boolean;
   size: number;
 }
 
+/** Public class implementing a disposable Stack. */
 export class DisposableStack {
   #disposed = false;
   readonly #disposers: Disposer[] = [];
@@ -64,10 +68,12 @@ export class DisposableStack {
   }
 }
 
+/** Creates an disposable Stack. */
 export function createDisposableStack(disposers: Iterable<MaybeDisposer> = []): DisposableStack {
   return new DisposableStack(disposers);
 }
 
+/** Public helper for dispose Reverse. */
 export function disposeReverse(disposers: Iterable<MaybeDisposer>): void {
   createDisposableStack(disposers).dispose();
 }

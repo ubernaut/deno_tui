@@ -3,6 +3,7 @@ import type { DataTableController } from "../components/data_table.ts";
 import type { Action } from "./actions.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
+/** Identifier union for data Table Command variants. */
 export type DataTableCommandKind =
   | "first"
   | "previous"
@@ -13,6 +14,7 @@ export type DataTableCommandKind =
   | "clearQuery"
   | "sort";
 
+/** Options for configuring data Table Command. */
 export interface DataTableCommandOptions {
   idPrefix?: string;
   group?: string;
@@ -24,6 +26,7 @@ export interface DataTableCommandOptions {
   labels?: Partial<Record<DataTableCommandKind, string>>;
 }
 
+/** Builds command definitions for data Table. */
 export function dataTableCommands<
   TAction extends Action = Action,
   TRow extends Record<string, unknown> = Record<string, unknown>,
@@ -122,6 +125,7 @@ export function dataTableCommands<
   return commands;
 }
 
+/** Binds data Table Commands behavior and returns a disposer when applicable. */
 export function bindDataTableCommands<
   TAction extends Action = Action,
   TRow extends Record<string, unknown> = Record<string, unknown>,

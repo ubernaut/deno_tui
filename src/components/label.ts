@@ -30,6 +30,7 @@ export interface LabelLineLayout {
   rectangle: TextRectangle;
 }
 
+/** Options for configuring label. */
 export interface LabelOptions extends Omit<ComponentOptions, "rectangle"> {
   text: string | Signal<string>;
   rectangle: LabelRectangle | SignalOfObject<LabelRectangle>;

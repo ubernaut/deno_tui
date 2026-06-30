@@ -12,11 +12,13 @@ import { Computed, Effect, Signal } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
 import { KeyPressEvent } from "../input_reader/types.ts";
 
+/** Public interface describing a cursor Position. */
 export interface CursorPosition {
   x: number;
   y: number;
 }
 
+/** Public interface describing a text Box Theme. */
 export interface TextBoxTheme extends Theme {
   value: Theme;
   cursor: Theme;
@@ -26,6 +28,7 @@ export interface TextBoxTheme extends Theme {
   highlightedLine: Theme;
 }
 
+/** Options for configuring text Box. */
 export interface TextBoxOptions extends ComponentOptions {
   text?: string | Signal<string>;
   validator?: RegExp | Signal<RegExp | undefined>;
@@ -44,6 +47,7 @@ export interface TextBoxOptions extends ComponentOptions {
   keyboardHandler?: (keyPress: KeyPressEvent) => void;
 }
 
+/** Options for configuring text Box Controller. */
 export interface TextBoxControllerOptions {
   text?: string | Signal<string>;
   cursorPosition?: CursorPosition | Signal<CursorPosition>;
@@ -55,6 +59,7 @@ export interface TextBoxControllerOptions {
   onChange?: (value: string) => void | Promise<void>;
 }
 
+/** Serializable inspection snapshot for text Box. */
 export interface TextBoxInspection {
   text: string;
   lines: readonly string[];
@@ -68,13 +73,16 @@ export interface TextBoxInspection {
   wordWrap: boolean;
 }
 
+/** Public type alias for a text Box Edit Result. */
 export type TextBoxEditResult = "changed" | "moved" | "ignored";
 
+/** Serializable inspection snapshot for text Line Cache. */
 export interface TextLineCacheInspection {
   text: string;
   lineCount: number;
 }
 
+/** Public interface describing a text Box Visual Line. */
 export interface TextBoxVisualLine {
   lineIndex: number;
   startColumn: number;
@@ -83,12 +91,14 @@ export interface TextBoxVisualLine {
   continuation: boolean;
 }
 
+/** Public interface describing a text Box Visual Cursor. */
 export interface TextBoxVisualCursor {
   row: number;
   column: number;
   line: TextBoxVisualLine;
 }
 
+/** Public class implementing a text Line Cache. */
 export class TextLineCache {
   #text = "";
   #lines: readonly string[] = [""];
@@ -109,6 +119,7 @@ export class TextLineCache {
   }
 }
 
+/** State controller for text Box behavior. */
 export class TextBoxController {
   readonly text: Signal<string>;
   readonly cursorPosition: Signal<CursorPosition>;
@@ -350,6 +361,7 @@ export class TextBoxController {
   }
 }
 
+/** Public helper for wrap Text Box Lines. */
 export function wrapTextBoxLines(
   lines: readonly string[],
   width: number,
@@ -409,6 +421,7 @@ export function wrapTextBoxLines(
   return visual.length > 0 ? visual : [{ lineIndex: 0, startColumn: 0, endColumn: 0, text: "", continuation: false }];
 }
 
+/** Public helper for text Box Visual Cursor. */
 export function textBoxVisualCursor(
   lines: readonly string[],
   cursor: CursorPosition,

@@ -1,7 +1,9 @@
 import type { AcerolaAsciiNodeOptions } from "./AcerolaAsciiNode.ts";
 import type { TerminalGlyphStyle } from "./glyphs.ts";
 
+/** Key union for ascii Toggle Control values. */
 export type AsciiToggleControlKey = "edges" | "fill" | "invertLuminance";
+/** Key union for ascii Numeric Control values. */
 export type AsciiNumericControlKey =
   | "edgeThreshold"
   | "normalThreshold"
@@ -12,6 +14,7 @@ export type AsciiNumericControlKey =
   | "depthFalloff"
   | "depthOffset";
 
+/** Public interface describing an ascii Demo Preset. */
 export interface AsciiDemoPreset {
   id: string;
   label: string;
@@ -21,6 +24,7 @@ export interface AsciiDemoPreset {
   terminalGlyphStyle?: TerminalGlyphStyle;
 }
 
+/** Public interface describing an ascii Demo Preset Summary. */
 export interface AsciiDemoPresetSummary {
   id: string;
   label: string;
@@ -31,6 +35,7 @@ export interface AsciiDemoPresetSummary {
   fill: boolean;
 }
 
+/** Public interface describing an ascii Numeric Control Definition. */
 export interface AsciiNumericControlDefinition {
   key: AsciiNumericControlKey;
   label: string;
@@ -40,6 +45,7 @@ export interface AsciiNumericControlDefinition {
   format?: (value: number) => string;
 }
 
+/** Public interface describing an ascii Toggle Control Definition. */
 export interface AsciiToggleControlDefinition {
   key: AsciiToggleControlKey;
   label: string;
@@ -47,6 +53,7 @@ export interface AsciiToggleControlDefinition {
 
 const fixed = (digits: number) => (value: number): string => value.toFixed(digits);
 
+/** Built-in dEFAULT ASCII DEMO EFFECT definitions. */
 export const DEFAULT_ASCII_DEMO_EFFECT: AcerolaAsciiNodeOptions = {
   exposure: 1.1,
   attenuation: 1,
@@ -63,6 +70,7 @@ export const DEFAULT_ASCII_DEMO_EFFECT: AcerolaAsciiNodeOptions = {
   invertLuminance: false,
 };
 
+/** Built-in aSCII NUMERIC CONTROLS definitions. */
 export const ASCII_NUMERIC_CONTROLS: readonly AsciiNumericControlDefinition[] = [
   { key: "edgeThreshold", label: "Edge threshold", min: 2, max: 20, step: 0.5, format: fixed(1) },
   { key: "normalThreshold", label: "Normal edge", min: 0.05, max: 0.4, step: 0.01, format: fixed(2) },
@@ -74,12 +82,14 @@ export const ASCII_NUMERIC_CONTROLS: readonly AsciiNumericControlDefinition[] = 
   { key: "depthOffset", label: "Fog offset", min: 0, max: 180, step: 1, format: fixed(0) },
 ] as const;
 
+/** Built-in aSCII TOGGLE CONTROLS definitions. */
 export const ASCII_TOGGLE_CONTROLS: readonly AsciiToggleControlDefinition[] = [
   { key: "edges", label: "Edges" },
   { key: "fill", label: "Fill" },
   { key: "invertLuminance", label: "Invert fill" },
 ] as const;
 
+/** Built-in aSCII DEMO PRESETS definitions. */
 export const ASCII_DEMO_PRESETS: readonly AsciiDemoPreset[] = [
   {
     id: "opentui-blocks",
@@ -233,22 +243,26 @@ export const ASCII_DEMO_PRESETS: readonly AsciiDemoPreset[] = [
   },
 ] as const;
 
+/** Public helper for ascii Demo Preset Ids. */
 export function asciiDemoPresetIds(style?: TerminalGlyphStyle): string[] {
   return asciiDemoPresets(style).map((preset) => preset.id);
 }
 
+/** Public helper for ascii Demo Presets. */
 export function asciiDemoPresets(style?: TerminalGlyphStyle): AsciiDemoPreset[] {
   return ASCII_DEMO_PRESETS
     .filter((preset) => style === undefined || (preset.terminalGlyphStyle ?? "blocks") === style)
     .map(cloneAsciiDemoPreset);
 }
 
+/** Finds a matching ascii Demo Preset record when one exists. */
 export function findAsciiDemoPreset(id: string, fallbackId = ASCII_DEMO_PRESETS[0]?.id): AsciiDemoPreset | undefined {
   const preset = ASCII_DEMO_PRESETS.find((candidate) => candidate.id === id) ??
     ASCII_DEMO_PRESETS.find((candidate) => candidate.id === fallbackId);
   return preset ? cloneAsciiDemoPreset(preset) : undefined;
 }
 
+/** Public helper for ascii Demo Preset Summaries. */
 export function asciiDemoPresetSummaries(style?: TerminalGlyphStyle): AsciiDemoPresetSummary[] {
   return asciiDemoPresets(style).map((preset) => ({
     id: preset.id,

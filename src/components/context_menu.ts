@@ -6,6 +6,7 @@ import { Computed, Signal } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
 import { Text } from "./text.ts";
 
+/** Public interface describing a context Menu Item. */
 export interface ContextMenuItem {
   id: string;
   label: string;
@@ -13,6 +14,7 @@ export interface ContextMenuItem {
   separatorBefore?: boolean;
 }
 
+/** Options for configuring context Menu. */
 export interface ContextMenuOptions extends ComponentOptions {
   items: ContextMenuItem[] | Signal<ContextMenuItem[]>;
   selectedIndex?: number | Signal<number>;
@@ -20,17 +22,20 @@ export interface ContextMenuOptions extends ComponentOptions {
   onSelect?: (item: ContextMenuItem) => void | Promise<void>;
 }
 
+/** Options for configuring context Menu Controller. */
 export interface ContextMenuControllerOptions {
   items: ContextMenuItem[] | Signal<ContextMenuItem[]>;
   selectedIndex?: number | Signal<number>;
 }
 
+/** Serializable inspection snapshot for context Menu. */
 export interface ContextMenuInspection {
   selectedIndex: number;
   itemCount: number;
   selected?: ContextMenuItem;
 }
 
+/** Renders context Menu Rows into deterministic text rows. */
 export function renderContextMenuRows(
   items: readonly ContextMenuItem[],
   selectedIndex: number,
@@ -44,6 +49,7 @@ export function renderContextMenuRows(
   });
 }
 
+/** Public helper for visible Context Menu Items. */
 export function visibleContextMenuItems(
   items: readonly ContextMenuItem[],
   selectedIndex: number,
@@ -64,6 +70,7 @@ export function visibleContextMenuItems(
   });
 }
 
+/** Clamps context Menu Selection to its valid range. */
 export function clampContextMenuSelection(items: readonly ContextMenuItem[], selectedIndex: number): number {
   if (items.length === 0) return 0;
   const clamped = Math.max(0, Math.min(selectedIndex, items.length - 1));
@@ -75,6 +82,7 @@ export function clampContextMenuSelection(items: readonly ContextMenuItem[], sel
   return isSelectableContextItem(items[previous]) ? previous : clamped;
 }
 
+/** Moves context Menu Selection by a relative offset. */
 export function shiftContextMenuSelection(
   items: readonly ContextMenuItem[],
   selectedIndex: number,
@@ -94,6 +102,7 @@ function isSelectableContextItem(item: ContextMenuItem | undefined): boolean {
   return !!item && !item.disabled && !item.separatorBefore;
 }
 
+/** State controller for context Menu behavior. */
 export class ContextMenuController {
   readonly items: Signal<ContextMenuItem[]>;
   readonly selectedIndex: Signal<number>;
@@ -162,6 +171,7 @@ export class ContextMenuController {
   }
 }
 
+/** Public class implementing a context Menu. */
 export class ContextMenu extends Component {
   items: Signal<ContextMenuItem[]>;
   selectedIndex: Signal<number>;

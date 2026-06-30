@@ -3,17 +3,21 @@ import type { StepperController, StepperInspection, StepperStep } from "../compo
 import type { Action } from "./actions.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
+/** Identifier union for stepper Command variants. */
 export type StepperCommandKind = "first" | "previous" | "next" | "last" | "step";
 
+/** Action union emitted by stepper Command command helpers. */
 export type StepperCommandAction =
   | Action<"stepper.changed", StepperCommandPayload>
   | Action<"stepper.stepSelected", StepperCommandPayload & { step: StepperStep }>;
 
+/** Payload carried by stepper Command actions. */
 export interface StepperCommandPayload {
   id: string;
   inspection: StepperInspection;
 }
 
+/** Options for configuring stepper Command. */
 export interface StepperCommandOptions {
   id?: string;
   idPrefix?: string;
@@ -24,6 +28,7 @@ export interface StepperCommandOptions {
   stepLabel?: (step: StepperStep, index: number) => string;
 }
 
+/** Builds command definitions for stepper. */
 export function stepperCommands<TAction extends Action = StepperCommandAction>(
   controller: StepperController,
   options: StepperCommandOptions = {},
@@ -76,6 +81,7 @@ export function stepperCommands<TAction extends Action = StepperCommandAction>(
   return commands;
 }
 
+/** Binds stepper Commands behavior and returns a disposer when applicable. */
 export function bindStepperCommands<TAction extends Action = StepperCommandAction>(
   registry: CommandRegistry<TAction>,
   controller: StepperController,

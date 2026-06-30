@@ -267,6 +267,7 @@ type ThreeBackendRenderer = WebGPURenderer & {
   };
 };
 
+/** Options for configuring three Ascii Renderer. */
 export interface ThreeAsciiRendererOptions {
   scene: Scene;
   camera: Camera;
@@ -429,6 +430,7 @@ function shouldUseGohu11EdgeGlyph(
   );
 }
 
+/** Public class implementing a three Ascii Renderer. */
 export class ThreeAsciiRenderer {
   readonly scene: Scene;
   readonly camera: Camera;

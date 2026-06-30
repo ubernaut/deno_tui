@@ -18,6 +18,7 @@ import {
   type RuntimeProfileCommandOptions,
 } from "./runtime_profile_commands.ts";
 
+/** Options for configuring runtime Profile Plugin. */
 export interface RuntimeProfilePluginOptions {
   id?: string;
   label?: string;
@@ -30,12 +31,14 @@ export interface RuntimeProfilePluginOptions {
   install?: (context: RuntimeProfilePluginInstallContext) => AppPluginDisposer;
 }
 
+/** Context object passed to runtime Profile Plugin Install callbacks. */
 export interface RuntimeProfilePluginInstallContext {
   app: TuiApp<Action, Route>;
   controller: RuntimeProfileController;
   profileSetting?: SettingBinding<string, unknown>;
 }
 
+/** Serializable inspection snapshot for runtime Profile Plugin. */
 export interface RuntimeProfilePluginInspection {
   id?: string;
   label?: string;
@@ -46,6 +49,7 @@ export interface RuntimeProfilePluginInspection {
   keymapMirroringEnabled: boolean;
 }
 
+/** Public interface describing a runtime Profile App Plugin. */
 export interface RuntimeProfileAppPlugin<
   TAction extends Action = RuntimeProfileCommandAction,
   TRoute extends Route = Route,
@@ -54,6 +58,7 @@ export interface RuntimeProfileAppPlugin<
   inspect(): RuntimeProfilePluginInspection;
 }
 
+/** Creates an runtime Profile Plugin. */
 export function createRuntimeProfilePlugin<
   TAction extends Action = RuntimeProfileCommandAction,
   TRoute extends Route = Route,

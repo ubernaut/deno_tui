@@ -12,23 +12,29 @@ import type { DeepPartial } from "../types.ts";
 import { Computed, Signal, SignalOfObject } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
 
+/** Public type alias for a progress Bar Char Map Type. */
 export type ProgressBarCharMapType = {
   vertical: string[];
   horizontal: string[];
 };
 
+/** Public constant for a progress Bar Char Map. */
 export const progressBarCharMap: ProgressBarCharMapType = {
   vertical: ["█", "🮆", "🮅", "🮄", "🮃", "🮂", "▔"],
   horizontal: ["█", "▉", "▉", "▊", "▋", "▍", "▎", "▏"],
 };
 
+/** Public type alias for a progress Bar Orientation. */
 export type ProgressBarOrientation = "vertical" | "horizontal";
+/** Public type alias for a progress Bar Direction. */
 export type ProgressBarDirection = "normal" | "reversed";
 
+/** Public interface describing a progress Bar Theme. */
 export interface ProgressBarTheme extends Theme {
   progress: Theme;
 }
 
+/** Options for configuring progress Bar. */
 export interface ProgressBarOptions extends ComponentOptions {
   min: number | Signal<number>;
   max: number | Signal<number>;
@@ -43,6 +49,7 @@ export interface ProgressBarOptions extends ComponentOptions {
   theme: DeepPartial<ProgressBarTheme, "progress">;
 }
 
+/** Options for configuring progress Bar Controller. */
 export interface ProgressBarControllerOptions {
   min: number | Signal<number>;
   max: number | Signal<number>;
@@ -54,6 +61,7 @@ export interface ProgressBarControllerOptions {
   onChange?: (value: number) => void | Promise<void>;
 }
 
+/** Serializable inspection snapshot for progress Bar. */
 export interface ProgressBarInspection {
   min: number;
   max: number;
@@ -66,6 +74,7 @@ export interface ProgressBarInspection {
   empty: boolean;
 }
 
+/** Public interface describing a progress Bar Track Rectangle. */
 export interface ProgressBarTrackRectangle {
   column: number;
   row: number;
@@ -73,10 +82,12 @@ export interface ProgressBarTrackRectangle {
   height: number;
 }
 
+/** Clamps progress Value to its valid range. */
 export function clampProgressValue(value: number, min: number, max: number): number {
   return Math.max(Math.min(value, Math.max(min, max)), Math.min(min, max));
 }
 
+/** Public helper for progress Ratio. */
 export function progressRatio(
   value: number,
   min: number,
@@ -87,6 +98,7 @@ export function progressRatio(
   return direction === "reversed" ? 1 - ratio : ratio;
 }
 
+/** Public helper for progress Rectangle. */
 export function progressRectangle(
   track: ProgressBarTrackRectangle,
   value: number,
@@ -111,6 +123,7 @@ export function progressRectangle(
     };
 }
 
+/** Public helper for progress Smooth Line. */
 export function progressSmoothLine(
   offset: number,
   width: number,
@@ -140,6 +153,7 @@ export function progressSmoothLine(
   return remainder < step ? "" : chars[chars.length - Math.max(Math.round(remainder / step), 1)].repeat(width);
 }
 
+/** State controller for progress Bar behavior. */
 export class ProgressBarController {
   readonly min: Signal<number>;
   readonly max: Signal<number>;

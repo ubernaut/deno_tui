@@ -3,17 +3,21 @@ import type { MenuBarController, MenuBarInspection, MenuBarItem } from "../compo
 import type { Action } from "./actions.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
+/** Identifier union for menu Bar Command variants. */
 export type MenuBarCommandKind = "first" | "previous" | "next" | "last" | "select" | "item";
 
+/** Action union emitted by menu Bar Command command helpers. */
 export type MenuBarCommandAction =
   | Action<"menuBar.changed", MenuBarCommandPayload>
   | Action<"menuBar.itemSelected", MenuBarCommandPayload & { item: MenuBarItem }>;
 
+/** Payload carried by menu Bar Command actions. */
 export interface MenuBarCommandPayload {
   id: string;
   inspection: MenuBarInspection;
 }
 
+/** Options for configuring menu Bar Command. */
 export interface MenuBarCommandOptions {
   id?: string;
   idPrefix?: string;
@@ -25,6 +29,7 @@ export interface MenuBarCommandOptions {
   itemLabel?: (item: MenuBarItem, index: number) => string;
 }
 
+/** Builds command definitions for menu Bar. */
 export function menuBarCommands<TAction extends Action = MenuBarCommandAction>(
   controller: MenuBarController,
   options: MenuBarCommandOptions = {},
@@ -96,6 +101,7 @@ export function menuBarCommands<TAction extends Action = MenuBarCommandAction>(
   return commands;
 }
 
+/** Binds menu Bar Commands behavior and returns a disposer when applicable. */
 export function bindMenuBarCommands<TAction extends Action = MenuBarCommandAction>(
   registry: CommandRegistry<TAction>,
   controller: MenuBarController,

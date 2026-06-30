@@ -3,17 +3,21 @@ import type { MetricSeriesController, MetricSeriesInspection } from "../componen
 import type { Action } from "./actions.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
+/** Identifier union for metric Series Command variants. */
 export type MetricSeriesCommandKind = "clear" | "limit";
 
+/** Action union emitted by metric Series Command command helpers. */
 export type MetricSeriesCommandAction =
   | Action<"metricSeries.cleared", MetricSeriesCommandPayload>
   | Action<"metricSeries.limitChanged", MetricSeriesCommandPayload & { limit: number }>;
 
+/** Payload carried by metric Series Command actions. */
 export interface MetricSeriesCommandPayload {
   id: string;
   inspection: MetricSeriesInspection;
 }
 
+/** Options for configuring metric Series Command. */
 export interface MetricSeriesCommandOptions {
   id?: string;
   idPrefix?: string;
@@ -26,6 +30,7 @@ export interface MetricSeriesCommandOptions {
   limitLabel?: (limit: number) => string;
 }
 
+/** Builds command definitions for metric Series. */
 export function metricSeriesCommands<TAction extends Action = MetricSeriesCommandAction>(
   series: MetricSeriesController,
   options: MetricSeriesCommandOptions = {},
@@ -77,6 +82,7 @@ export function metricSeriesCommands<TAction extends Action = MetricSeriesComman
   return commands;
 }
 
+/** Binds metric Series Commands behavior and returns a disposer when applicable. */
 export function bindMetricSeriesCommands<TAction extends Action = MetricSeriesCommandAction>(
   registry: CommandRegistry<TAction>,
   series: MetricSeriesController,

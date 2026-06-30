@@ -3,16 +3,20 @@ import type { CheckBoxController, CheckBoxInspection } from "../components/check
 import type { Action } from "./actions.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
+/** Identifier union for check Box Command variants. */
 export type CheckBoxCommandKind = "toggle" | "check" | "uncheck";
 
+/** Action union emitted by check Box Command command helpers. */
 export type CheckBoxCommandAction = Action<"checkbox.changed", CheckBoxCommandPayload>;
 
+/** Payload carried by check Box Command actions. */
 export interface CheckBoxCommandPayload {
   id: string;
   checked: boolean;
   inspection: CheckBoxInspection;
 }
 
+/** Options for configuring check Box Command. */
 export interface CheckBoxCommandOptions {
   id?: string;
   idPrefix?: string;
@@ -22,6 +26,7 @@ export interface CheckBoxCommandOptions {
   labels?: Partial<Record<CheckBoxCommandKind, string>>;
 }
 
+/** Builds command definitions for check Box. */
 export function checkBoxCommands<TAction extends Action = CheckBoxCommandAction>(
   controller: CheckBoxController,
   options: CheckBoxCommandOptions = {},
@@ -74,6 +79,7 @@ export function checkBoxCommands<TAction extends Action = CheckBoxCommandAction>
   return commands;
 }
 
+/** Binds check Box Commands behavior and returns a disposer when applicable. */
 export function bindCheckBoxCommands<TAction extends Action = CheckBoxCommandAction>(
   registry: CommandRegistry<TAction>,
   controller: CheckBoxController,

@@ -41,7 +41,9 @@ const intersectionObject = { column: 0, row: 0, width: 0, height: 0 };
  * **It gets reused to save CPU usage and minimize GC.**
  */
 export function rectangleIntersection(a: Rectangle, b: Rectangle, data?: false): boolean;
+/** Public helper for rectangle Intersection. */
 export function rectangleIntersection(a: Rectangle, b: Rectangle, data: true): false | Rectangle;
+/** Public helper for rectangle Intersection. */
 export function rectangleIntersection(a: Rectangle, b: Rectangle, data?: boolean): boolean | Rectangle {
   const { column: c1, row: r1, width: w1, height: h1 } = a;
   if (w1 === 0 || h1 === 0) false;

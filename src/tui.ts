@@ -22,6 +22,7 @@ import { RenderLoop } from "./runtime/render_loop.ts";
 
 const textEncoder = new TextEncoder();
 
+/** Options for configuring tui. */
 export interface TuiOptions {
   style?: Style;
   stdin?: Stdin;

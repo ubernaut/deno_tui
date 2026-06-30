@@ -12,6 +12,7 @@ const centerAlign: LabelAlign = {
   vertical: "center",
 };
 
+/** Options for configuring button. */
 export interface ButtonOptions extends ComponentOptions {
   label?: {
     text: string | Signal<string>;
@@ -22,12 +23,14 @@ export interface ButtonOptions extends ComponentOptions {
   onPress?: (inspection: ButtonInspection) => void | Promise<void>;
 }
 
+/** Options for configuring button Controller. */
 export interface ButtonControllerOptions {
   label?: string | Signal<string>;
   disabled?: boolean | Signal<boolean>;
   onPress?: (inspection: ButtonInspection) => void | Promise<void>;
 }
 
+/** Serializable inspection snapshot for button. */
 export interface ButtonInspection {
   label: string;
   disabled: boolean;
@@ -36,6 +39,7 @@ export interface ButtonInspection {
   lastMethod?: "keyboard" | "mouse";
 }
 
+/** State controller for button behavior. */
 export class ButtonController {
   readonly label: Signal<string>;
   readonly disabled: Signal<boolean>;

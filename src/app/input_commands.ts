@@ -3,6 +3,7 @@ import type { InputController, InputInspection } from "../components/input.ts";
 import type { Action } from "./actions.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
+/** Identifier union for input Command variants. */
 export type InputCommandKind =
   | "submit"
   | "clear"
@@ -12,16 +13,19 @@ export type InputCommandKind =
   | "right"
   | "value";
 
+/** Action union emitted by input Command command helpers. */
 export type InputCommandAction =
   | Action<"input.submitted", InputCommandPayload & { value: string }>
   | Action<"input.changed", InputCommandPayload>
   | Action<"input.cursorMoved", InputCommandPayload>;
 
+/** Payload carried by input Command actions. */
 export interface InputCommandPayload {
   id: string;
   inspection: InputInspection;
 }
 
+/** Options for configuring input Command. */
 export interface InputCommandOptions {
   id?: string;
   idPrefix?: string;
@@ -35,6 +39,7 @@ export interface InputCommandOptions {
   valueLabel?: (value: string) => string;
 }
 
+/** Builds command definitions for input. */
 export function inputCommands<TAction extends Action = InputCommandAction>(
   controller: InputController,
   options: InputCommandOptions = {},
@@ -130,6 +135,7 @@ export function inputCommands<TAction extends Action = InputCommandAction>(
   return commands;
 }
 
+/** Binds input Commands behavior and returns a disposer when applicable. */
 export function bindInputCommands<TAction extends Action = InputCommandAction>(
   registry: CommandRegistry<TAction>,
   controller: InputController,

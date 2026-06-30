@@ -15,6 +15,7 @@ import { decodeKey } from "./decoders/keyboard.ts";
 import { decodeBracketedPaste, decodeTerminalFocus } from "./decoders/terminal.ts";
 import type { EmitterEvent, EventEmitter } from "../event_emitter.ts";
 
+/** Public type alias for an input Event Record. */
 export type InputEventRecord = {
   inputEvent: EmitterEvent<[InputEvent]>;
   keyPress: EmitterEvent<[KeyPressEvent]>;

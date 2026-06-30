@@ -3,12 +3,15 @@ import type { Action } from "./actions.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 import type { SettingsController } from "./settings.ts";
 
+/** Identifier union for settings Command variants. */
 export type SettingsCommandKind = "reset" | "resetAll";
 
+/** Action union emitted by settings Command command helpers. */
 export type SettingsCommandAction =
   | Action<"settings.reset", { key: string }>
   | Action<"settings.resetAll", { keys: string[] }>;
 
+/** Options for configuring settings Command. */
 export interface SettingsCommandOptions {
   idPrefix?: string;
   group?: string;
@@ -20,6 +23,7 @@ export interface SettingsCommandOptions {
   keyId?: (key: string) => string;
 }
 
+/** Builds command definitions for settings. */
 export function settingsCommands<TAction extends Action = SettingsCommandAction>(
   settings: SettingsController,
   options: SettingsCommandOptions = {},
@@ -69,6 +73,7 @@ export function settingsCommands<TAction extends Action = SettingsCommandAction>
   return commands;
 }
 
+/** Binds settings Commands behavior and returns a disposer when applicable. */
 export function bindSettingsCommands<TAction extends Action = SettingsCommandAction>(
   registry: CommandRegistry<TAction>,
   settings: SettingsController,

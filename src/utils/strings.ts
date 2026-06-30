@@ -168,6 +168,7 @@ function isAnsiResetOnly(value: string): boolean {
   return true;
 }
 
+/** Public helper for is Final Ansi Byte. */
 export function isFinalAnsiByte(character: string): boolean {
   const codePoint = character.charCodeAt(0);
   // don't include 0x70–0x7E range because its considered "private"

@@ -3,9 +3,12 @@ import type { Rectangle } from "../types.ts";
 import { Computed, Signal } from "../signals/mod.ts";
 import { dockRect, insetRect, resolveBreakpoint, splitRect } from "./responsive.ts";
 
+/** Public type alias for a layout Region Direction. */
 export type LayoutRegionDirection = "row" | "column";
+/** Public type alias for a layout Region Edge. */
 export type LayoutRegionEdge = "top" | "right" | "bottom" | "left";
 
+/** Public interface describing a layout Region Leaf. */
 export interface LayoutRegionLeaf<T extends string = string> {
   id: T;
   hidden?: boolean;
@@ -14,6 +17,7 @@ export interface LayoutRegionLeaf<T extends string = string> {
   minHeight?: number;
 }
 
+/** Public interface describing a layout Region Split. */
 export interface LayoutRegionSplit<T extends string = string> {
   split: LayoutRegionDirection;
   firstSize?: number;
@@ -23,6 +27,7 @@ export interface LayoutRegionSplit<T extends string = string> {
   second: LayoutRegion<T>;
 }
 
+/** Public interface describing a layout Region Dock. */
 export interface LayoutRegionDock<T extends string = string> {
   dock: LayoutRegionEdge;
   size: number;
@@ -31,17 +36,20 @@ export interface LayoutRegionDock<T extends string = string> {
   body: LayoutRegion<T>;
 }
 
+/** Public type alias for a layout Region. */
 export type LayoutRegion<T extends string = string> =
   | LayoutRegionLeaf<T>
   | LayoutRegionSplit<T>
   | LayoutRegionDock<T>;
 
+/** Public interface describing a responsive Layout Recipe. */
 export interface ResponsiveLayoutRecipe<T extends string = string> {
   breakpoints: readonly { id: string; minWidth?: number; minHeight?: number }[];
   layouts: Record<string, LayoutRegion<T>>;
   fallback?: string;
 }
 
+/** Public interface describing a resolved Layout Recipe. */
 export interface ResolvedLayoutRecipe<T extends string = string> {
   breakpoint: string;
   rects: Partial<Record<T, Rectangle>>;
@@ -71,10 +79,12 @@ export interface LayoutRecipeMarkdownOptions {
   includeSummary?: boolean;
 }
 
+/** Serializable inspection snapshot for layout Recipe Controller. */
 export interface LayoutRecipeControllerInspection<T extends string = string> extends ResolvedLayoutRecipe<T> {
   slots: T[];
 }
 
+/** State controller for layout Recipe behavior. */
 export class LayoutRecipeController<T extends string = string> {
   readonly bounds: Signal<Rectangle>;
   readonly resolved: Computed<ResolvedLayoutRecipe<T>>;
@@ -125,6 +135,7 @@ export class LayoutRecipeController<T extends string = string> {
   }
 }
 
+/** Resolves layout Recipe from the provided inputs. */
 export function resolveLayoutRecipe<T extends string>(
   bounds: Rectangle,
   recipe: ResponsiveLayoutRecipe<T>,
@@ -138,6 +149,7 @@ export function resolveLayoutRecipe<T extends string>(
   return { breakpoint, rects };
 }
 
+/** Public helper for layout Recipe Slots. */
 export function layoutRecipeSlots<T extends string>(region: LayoutRegion<T>): T[] {
   const slots = new Set<T>();
   visitRegion(region, (leaf) => {
@@ -210,6 +222,7 @@ export function formatLayoutRecipeMarkdown<T extends string>(
   return lines.join("\n");
 }
 
+/** Creates an layout Recipe Controller. */
 export function createLayoutRecipeController<T extends string>(
   bounds: Rectangle | Signal<Rectangle>,
   recipe: ResponsiveLayoutRecipe<T>,

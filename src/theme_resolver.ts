@@ -18,27 +18,32 @@ import {
   type ThemeProviderCacheInspection,
 } from "./theme_engine_cache.ts";
 
+/** Public interface describing a theme Style Request. */
 export interface ThemeStyleRequest {
   component: string;
   state: ThemeState;
   variant?: string;
 }
 
+/** Public interface describing a theme Token Request. */
 export interface ThemeTokenRequest {
   token: ThemeTokenName;
 }
 
+/** Public interface describing a theme Style Resolution. */
 export interface ThemeStyleResolution extends ThemeStyleRequest {
   variant: string;
   style: Style;
   preview: string;
 }
 
+/** Public interface describing a theme Token Resolution. */
 export interface ThemeTokenResolution extends ThemeTokenRequest {
   style: Style;
   preview: string;
 }
 
+/** Public interface describing a theme Resolution Snapshot. */
 export interface ThemeResolutionSnapshot {
   sample: string;
   tokens: ThemeTokenResolution[];
@@ -46,12 +51,14 @@ export interface ThemeResolutionSnapshot {
   cache: ThemeEngineCacheInspection | ThemeProviderCacheInspection;
 }
 
+/** Options for configuring theme Resolution Snapshot. */
 export interface ThemeResolutionSnapshotOptions {
   sample?: string;
   tokens?: Iterable<ThemeTokenName>;
   styles?: Iterable<ThemeStyleRequest>;
 }
 
+/** Public interface describing a theme Resolver. */
 export interface ThemeResolver {
   token(token: ThemeTokenName): Style;
   resolve(component: string, state: ThemeState, variant?: string): Style;
@@ -62,11 +69,13 @@ export interface ThemeResolver {
   dispose(): void;
 }
 
+/** Options for configuring theme Resolver Markdown. */
 export interface ThemeResolverMarkdownOptions extends ThemeResolutionSnapshotOptions {
   title?: string;
   includeCache?: boolean;
 }
 
+/** Public class implementing a theme Engine Resolver. */
 export class ThemeEngineResolver implements ThemeResolver {
   readonly engine: ThemeEngine;
   readonly #cache: ThemeEngineCache;
@@ -111,6 +120,7 @@ export class ThemeEngineResolver implements ThemeResolver {
   }
 }
 
+/** Public class implementing a theme Provider Resolver. */
 export class ThemeProviderResolver implements ThemeResolver {
   readonly provider: ThemeProvider;
   readonly #cache: ThemeProviderCache;
@@ -155,14 +165,17 @@ export class ThemeProviderResolver implements ThemeResolver {
   }
 }
 
+/** Creates an theme Engine Resolver. */
 export function createThemeEngineResolver(engine: ThemeEngine): ThemeEngineResolver {
   return new ThemeEngineResolver(engine);
 }
 
+/** Creates an theme Provider Resolver. */
 export function createThemeProviderResolver(provider: ThemeProvider): ThemeProviderResolver {
   return new ThemeProviderResolver(provider);
 }
 
+/** Creates an theme Resolution Snapshot. */
 export function createThemeResolutionSnapshot(
   resolver: ThemeResolver,
   options: ThemeResolutionSnapshotOptions = {},
@@ -195,6 +208,7 @@ export function createThemeResolutionSnapshot(
   };
 }
 
+/** Public helper for component Theme Style Requests. */
 export function componentThemeStyleRequests(
   components: Iterable<string>,
   options: { variants?: (component: string) => Iterable<string>; states?: Iterable<ThemeState> } = {},
@@ -206,6 +220,7 @@ export function componentThemeStyleRequests(
   });
 }
 
+/** Formats theme Resolution Markdown for display or diagnostics. */
 export function formatThemeResolutionMarkdown(
   resolver: ThemeResolver,
   options: ThemeResolverMarkdownOptions = {},

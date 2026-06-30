@@ -27,8 +27,11 @@ export interface RuntimeCapabilitySummary {
   entries: RuntimeCapabilityEntry[];
 }
 
+/** Public type alias for a runtime Worker Strategy. */
 export type RuntimeWorkerStrategy = "worker-pool" | "main-thread";
+/** Public type alias for a runtime Storage Strategy. */
 export type RuntimeStorageStrategy = "indexeddb" | "memory";
+/** Public type alias for a runtime Renderer Strategy. */
 export type RuntimeRendererStrategy = "webgpu" | "webgl" | "cpu";
 
 /** Preferences for deriving runtime strategies from detected capabilities. */

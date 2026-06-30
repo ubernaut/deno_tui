@@ -4,11 +4,13 @@ import type { TextRectangle } from "../canvas/text.ts";
 import { Computed, type Signal } from "../signals/mod.ts";
 import { Text } from "./text.ts";
 
+/** Options for configuring status Bar. */
 export interface StatusBarOptions extends ComponentOptions {
   left: string | Signal<string>;
   right?: string | Signal<string>;
 }
 
+/** Renders status Bar into deterministic text rows. */
 export function renderStatusBar(left: string, right: string, width: number): string {
   const safeWidth = Math.max(0, width);
   const leftText = left.slice(0, safeWidth);
@@ -17,6 +19,7 @@ export function renderStatusBar(left: string, right: string, width: number): str
   return `${leftText}${" ".repeat(gap)}${rightText}`.slice(0, safeWidth);
 }
 
+/** Public class implementing a status Bar. */
 export class StatusBar extends Component {
   constructor(private readonly options: StatusBarOptions) {
     super(options);

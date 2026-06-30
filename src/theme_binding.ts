@@ -3,10 +3,12 @@ import type { Component } from "./component.ts";
 import { Computed, Signal } from "./signals/mod.ts";
 import type { Theme, ThemeProvider } from "./theme.ts";
 
+/** Public interface describing a theme Bindable. */
 export interface ThemeBindable {
   setTheme(theme: Theme): void;
 }
 
+/** Options for configuring component Theme Binding. */
 export interface ComponentThemeBindingOptions {
   variant?: string | Signal<string>;
   abortSignal?: AbortSignal;

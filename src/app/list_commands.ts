@@ -3,17 +3,21 @@ import type { ListController, ListInspection } from "../components/list.ts";
 import type { Action } from "./actions.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
+/** Identifier union for list Command variants. */
 export type ListCommandKind = "first" | "previous" | "next" | "last" | "select" | "item";
 
+/** Action union emitted by list Command command helpers. */
 export type ListCommandAction =
   | Action<"list.changed", ListCommandPayload>
   | Action<"list.itemSelected", ListCommandPayload & { item: string; index: number }>;
 
+/** Payload carried by list Command actions. */
 export interface ListCommandPayload {
   id: string;
   inspection: ListInspection;
 }
 
+/** Options for configuring list Command. */
 export interface ListCommandOptions {
   id?: string;
   idPrefix?: string;
@@ -25,6 +29,7 @@ export interface ListCommandOptions {
   itemLabel?: (item: string, index: number) => string;
 }
 
+/** Builds command definitions for list. */
 export function listCommands<TAction extends Action = ListCommandAction>(
   controller: ListController,
   options: ListCommandOptions = {},
@@ -94,6 +99,7 @@ export function listCommands<TAction extends Action = ListCommandAction>(
   return commands;
 }
 
+/** Binds list Commands behavior and returns a disposer when applicable. */
 export function bindListCommands<TAction extends Action = ListCommandAction>(
   registry: CommandRegistry<TAction>,
   controller: ListController,

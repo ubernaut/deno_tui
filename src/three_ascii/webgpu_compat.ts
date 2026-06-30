@@ -77,6 +77,7 @@ function patchShaderModules(device: GPUDevice): GPUDevice {
   return device;
 }
 
+/** Public helper for get Compatible Web GPUDevice. */
 export async function getCompatibleWebGPUDevice(): Promise<GPUDevice> {
   ensureAnimationFrame();
 
@@ -106,6 +107,7 @@ export async function getCompatibleWebGPUDevice(): Promise<GPUDevice> {
   return await compatibleDevicePromise;
 }
 
+/** Public helper for probe Compatible Web GPUDevice. */
 export async function probeCompatibleWebGPUDevice(): Promise<boolean> {
   try {
     await getCompatibleWebGPUDevice();

@@ -6,12 +6,14 @@ import { signalify } from "../utils/signals.ts";
 import { clamp } from "../utils/numbers.ts";
 import { Text } from "./text.ts";
 
+/** Public interface describing a tab Item. */
 export interface TabItem {
   id: string;
   label: string;
   disabled?: boolean;
 }
 
+/** Options for configuring tabs. */
 export interface TabsOptions extends ComponentOptions {
   tabs: TabItem[] | Signal<TabItem[]>;
   activeIndex?: number | Signal<number>;
@@ -19,12 +21,14 @@ export interface TabsOptions extends ComponentOptions {
   onChange?: (tab: TabItem, index: number) => void | Promise<void>;
 }
 
+/** Options for configuring tabs Controller. */
 export interface TabsControllerOptions {
   tabs: TabItem[] | Signal<TabItem[]>;
   activeIndex?: number | Signal<number>;
   onChange?: (tab: TabItem, index: number) => void | Promise<void>;
 }
 
+/** Serializable inspection snapshot for tabs. */
 export interface TabsInspection {
   tabs: TabItem[];
   tabCount: number;
@@ -33,6 +37,7 @@ export interface TabsInspection {
   empty: boolean;
 }
 
+/** Renders tabs into deterministic text rows. */
 export function renderTabs(tabs: readonly TabItem[], activeIndex: number): string {
   const active = clampTabIndex(tabs, activeIndex);
   return tabs.map((tab, index) => {
@@ -41,6 +46,7 @@ export function renderTabs(tabs: readonly TabItem[], activeIndex: number): strin
   }).join(" ");
 }
 
+/** Clamps tab Index to its valid range. */
 export function clampTabIndex(tabs: readonly TabItem[], activeIndex: number): number {
   if (tabs.length === 0) return -1;
   const clamped = clamp(activeIndex, 0, tabs.length - 1);
@@ -51,6 +57,7 @@ export function clampTabIndex(tabs: readonly TabItem[], activeIndex: number): nu
   return tabs[previous]?.disabled ? clamped : previous;
 }
 
+/** Moves tab Index by a relative offset. */
 export function shiftTabIndex(tabs: readonly TabItem[], activeIndex: number, delta: number): number {
   if (tabs.length === 0) return -1;
   let next = clamp(activeIndex, 0, tabs.length - 1);
@@ -61,11 +68,13 @@ export function shiftTabIndex(tabs: readonly TabItem[], activeIndex: number, del
   return activeIndex;
 }
 
+/** Public helper for tab For Index. */
 export function tabForIndex(tabs: readonly TabItem[], activeIndex: number): TabItem | undefined {
   const tab = tabs[clampTabIndex(tabs, activeIndex)];
   return tab?.disabled ? undefined : tab;
 }
 
+/** State controller for tabs behavior. */
 export class TabsController {
   readonly tabs: Signal<TabItem[]>;
   readonly activeIndex: Signal<number>;
@@ -141,6 +150,7 @@ export class TabsController {
   }
 }
 
+/** Public class implementing a tabs. */
 export class Tabs extends Component {
   tabs: Signal<TabItem[]>;
   activeIndex: Signal<number>;

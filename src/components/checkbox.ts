@@ -4,31 +4,37 @@ import { Computed, Signal } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
 import { Button } from "./button.ts";
 
+/** Enum values for a mark. */
 export enum Mark {
   Check = "✓",
   Cross = "✗",
 }
 
+/** Options for configuring check Box. */
 export interface CheckBoxOptions extends ComponentOptions {
   checked: boolean | Signal<boolean>;
   controller?: CheckBoxController;
   onChange?: (checked: boolean) => void | Promise<void>;
 }
 
+/** Options for configuring check Box Controller. */
 export interface CheckBoxControllerOptions {
   checked: boolean | Signal<boolean>;
   onChange?: (checked: boolean) => void | Promise<void>;
 }
 
+/** Serializable inspection snapshot for check Box. */
 export interface CheckBoxInspection {
   checked: boolean;
   mark: Mark;
 }
 
+/** Renders check Box Mark into deterministic text rows. */
 export function renderCheckBoxMark(checked: boolean): Mark {
   return checked ? Mark.Check : Mark.Cross;
 }
 
+/** State controller for check Box behavior. */
 export class CheckBoxController {
   readonly checked: Signal<boolean>;
   readonly #ownsChecked: boolean;

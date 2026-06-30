@@ -3,17 +3,21 @@ import type { LogViewerController, LogViewerInspection } from "../components/log
 import type { Action } from "./actions.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
+/** Identifier union for log Viewer Command variants. */
 export type LogViewerCommandKind = "clear" | "toggleFollow";
 
+/** Action union emitted by log Viewer Command command helpers. */
 export type LogViewerCommandAction =
   | Action<"logViewer.cleared", LogViewerCommandPayload>
   | Action<"logViewer.followChanged", LogViewerCommandPayload & { follow: boolean }>;
 
+/** Payload carried by log Viewer Command actions. */
 export interface LogViewerCommandPayload {
   id: string;
   inspection: LogViewerInspection;
 }
 
+/** Options for configuring log Viewer Command. */
 export interface LogViewerCommandOptions {
   id?: string;
   idPrefix?: string;
@@ -24,6 +28,7 @@ export interface LogViewerCommandOptions {
   labels?: Partial<Record<LogViewerCommandKind, string>>;
 }
 
+/** Builds command definitions for log Viewer. */
 export function logViewerCommands<TAction extends Action = LogViewerCommandAction>(
   controller: LogViewerController,
   options: LogViewerCommandOptions = {},
@@ -70,6 +75,7 @@ export function logViewerCommands<TAction extends Action = LogViewerCommandActio
   return commands;
 }
 
+/** Binds log Viewer Commands behavior and returns a disposer when applicable. */
 export function bindLogViewerCommands<TAction extends Action = LogViewerCommandAction>(
   registry: CommandRegistry<TAction>,
   controller: LogViewerController,

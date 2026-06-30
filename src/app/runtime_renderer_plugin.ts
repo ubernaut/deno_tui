@@ -21,6 +21,7 @@ import {
   type RuntimeRendererBackendCommandOptions,
 } from "./runtime_renderer_commands.ts";
 
+/** Options for configuring runtime Renderer Backend Plugin. */
 export interface RuntimeRendererBackendPluginOptions {
   id?: string;
   label?: string;
@@ -33,12 +34,14 @@ export interface RuntimeRendererBackendPluginOptions {
   install?: (context: RuntimeRendererBackendPluginInstallContext) => AppPluginDisposer;
 }
 
+/** Context object passed to runtime Renderer Backend Plugin Install callbacks. */
 export interface RuntimeRendererBackendPluginInstallContext {
   app: TuiApp<Action, Route>;
   controller: RuntimeRendererBackendController;
   backendSetting?: SettingBinding<string, unknown>;
 }
 
+/** Serializable inspection snapshot for runtime Renderer Backend Plugin. */
 export interface RuntimeRendererBackendPluginInspection {
   id?: string;
   label?: string;
@@ -49,6 +52,7 @@ export interface RuntimeRendererBackendPluginInspection {
   keymapMirroringEnabled: boolean;
 }
 
+/** Public interface describing a runtime Renderer Backend App Plugin. */
 export interface RuntimeRendererBackendAppPlugin<
   TAction extends Action = RuntimeRendererBackendCommandAction,
   TRoute extends Route = Route,
@@ -57,6 +61,7 @@ export interface RuntimeRendererBackendAppPlugin<
   inspect(): RuntimeRendererBackendPluginInspection;
 }
 
+/** Creates an runtime Renderer Backend Plugin. */
 export function createRuntimeRendererBackendPlugin<
   TAction extends Action = RuntimeRendererBackendCommandAction,
   TRoute extends Route = Route,

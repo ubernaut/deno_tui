@@ -3,11 +3,13 @@ import type { Rectangle } from "../types.ts";
 import { Signal } from "../signals/mod.ts";
 import { type TileLayoutOptions, tileRects } from "./responsive.ts";
 
+/** Public type alias for a window Manager Window State. */
 export type WindowManagerWindowState = "normal" | "minimized" | "fullscreen" | "closed";
 
 /** Render layer used by window manager inspections. */
 export type WindowManagerLayer = "closed" | "minimized" | "window" | "fullscreen";
 
+/** Public interface describing a window Manager Window. */
 export interface WindowManagerWindow {
   id: string;
   title: string;
@@ -18,6 +20,7 @@ export interface WindowManagerWindow {
   minHeight?: number;
 }
 
+/** Options for configuring window Manager. */
 export interface WindowManagerOptions {
   windows: readonly WindowManagerWindow[];
   activeId?: string;
@@ -25,11 +28,13 @@ export interface WindowManagerOptions {
   tileOptions?: Partial<Omit<TileLayoutOptions, "itemCount">>;
 }
 
+/** Options for configuring window Manager Layout. */
 export interface WindowManagerLayoutOptions {
   bounds: Rectangle;
   tileOptions?: Partial<Omit<TileLayoutOptions, "itemCount">>;
 }
 
+/** Serializable inspection snapshot for window Manager Window. */
 export interface WindowManagerWindowInspection extends WindowManagerWindow {
   state: WindowManagerWindowState;
   layer: WindowManagerLayer;
@@ -41,6 +46,7 @@ export interface WindowManagerWindowInspection extends WindowManagerWindow {
   rect?: Rectangle;
 }
 
+/** Serializable inspection snapshot for window Manager Layout. */
 export interface WindowManagerLayoutInspection {
   bounds: Rectangle;
   contentHeight: number;
@@ -60,6 +66,7 @@ export const WINDOW_MANAGER_LAYER_Z_INDEX: Record<WindowManagerLayer, number> = 
   fullscreen: 3_000,
 };
 
+/** State controller for window Manager behavior. */
 export class WindowManagerController {
   readonly windows: Signal<WindowManagerWindow[]>;
   readonly activeId: Signal<string | undefined>;

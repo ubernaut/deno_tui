@@ -6,6 +6,7 @@ import type { Rectangle } from "../types.ts";
 import { signalify } from "../utils/signals.ts";
 import { Subscription } from "../signals/types.ts";
 
+/** Options for configuring box Object. */
 export interface BoxObjectOptions extends DrawObjectOptions {
   rectangle: Rectangle | SignalOfObject<Rectangle>;
   filler?: string | Signal<string>;

@@ -2,8 +2,10 @@
 import { Signal } from "../signals/mod.ts";
 import type { Rectangle } from "../types.ts";
 
+/** Public type alias for a split Pane Direction. */
 export type SplitPaneDirection = "row" | "column";
 
+/** Options for configuring split Pane. */
 export interface SplitPaneOptions {
   direction: SplitPaneDirection;
   ratio?: number;
@@ -14,6 +16,7 @@ export interface SplitPaneOptions {
   gap?: number;
 }
 
+/** Public interface describing a split Pane Rects. */
 export interface SplitPaneRects {
   first: Rectangle;
   separator: Rectangle;
@@ -22,12 +25,15 @@ export interface SplitPaneRects {
   ratio: number;
 }
 
+/** Public type alias for a split Pane Resize Mode. */
 export type SplitPaneResizeMode = "size" | "ratio";
 
+/** Options for configuring split Pane Controller. */
 export interface SplitPaneControllerOptions extends SplitPaneOptions {
   resizeMode?: SplitPaneResizeMode;
 }
 
+/** Public helper for split Pane Rects. */
 export function splitPaneRects(bounds: Rectangle, options: SplitPaneOptions): SplitPaneRects {
   const direction = options.direction;
   const mainSize = direction === "row" ? bounds.width : bounds.height;
@@ -58,6 +64,7 @@ export function splitPaneRects(bounds: Rectangle, options: SplitPaneOptions): Sp
   };
 }
 
+/** Public helper for resize Split Pane. */
 export function resizeSplitPane(bounds: Rectangle, options: SplitPaneOptions, delta: number): SplitPaneOptions {
   const current = splitPaneRects(bounds, options);
   return {
@@ -69,6 +76,7 @@ export function resizeSplitPane(bounds: Rectangle, options: SplitPaneOptions, de
   };
 }
 
+/** Public helper for resize Split Pane Ratio. */
 export function resizeSplitPaneRatio(bounds: Rectangle, options: SplitPaneOptions, delta: number): SplitPaneOptions {
   const resized = resizeSplitPane(bounds, options, delta);
   const rects = splitPaneRects(bounds, resized);
@@ -79,6 +87,7 @@ export function resizeSplitPaneRatio(bounds: Rectangle, options: SplitPaneOption
   };
 }
 
+/** State controller for split Pane behavior. */
 export class SplitPaneController {
   readonly options: Signal<SplitPaneOptions>;
   readonly resizeMode: Signal<SplitPaneResizeMode>;
@@ -146,6 +155,7 @@ export class SplitPaneController {
   }
 }
 
+/** Creates an split Pane Controller. */
 export function createSplitPaneController(options: SplitPaneControllerOptions): SplitPaneController {
   return new SplitPaneController(options);
 }

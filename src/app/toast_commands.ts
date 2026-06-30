@@ -3,16 +3,20 @@ import type { ToastStackController, ToastStackInspection } from "../components/t
 import type { Action } from "./actions.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
+/** Identifier union for toast Command variants. */
 export type ToastCommandKind = "clear" | "dismissLatest";
 
+/** Action union emitted by toast Command command helpers. */
 export type ToastCommandAction =
   | Action<"toast.cleared", ToastCommandPayload>
   | Action<"toast.dismissed", ToastCommandPayload & { dismissedId?: string }>;
 
+/** Payload carried by toast Command actions. */
 export interface ToastCommandPayload {
   inspection: ToastStackInspection;
 }
 
+/** Options for configuring toast Command. */
 export interface ToastCommandOptions {
   idPrefix?: string;
   group?: string;
@@ -22,6 +26,7 @@ export interface ToastCommandOptions {
   labels?: Partial<Record<ToastCommandKind, string>>;
 }
 
+/** Builds command definitions for toast. */
 export function toastCommands<TAction extends Action = ToastCommandAction>(
   controller: ToastStackController,
   options: ToastCommandOptions = {},
@@ -68,6 +73,7 @@ export function toastCommands<TAction extends Action = ToastCommandAction>(
   return commands;
 }
 
+/** Binds toast Commands behavior and returns a disposer when applicable. */
 export function bindToastCommands<TAction extends Action = ToastCommandAction>(
   registry: CommandRegistry<TAction>,
   controller: ToastStackController,

@@ -3,6 +3,7 @@ import type { TableController, TableInspection } from "../components/table.ts";
 import type { Action } from "./actions.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
+/** Identifier union for table Command variants. */
 export type TableCommandKind =
   | "first"
   | "previous"
@@ -12,15 +13,18 @@ export type TableCommandKind =
   | "pageNext"
   | "select";
 
+/** Action union emitted by table Command command helpers. */
 export type TableCommandAction =
   | Action<"table.changed", TableCommandPayload>
   | Action<"table.rowSelected", TableCommandPayload & { row: number }>;
 
+/** Payload carried by table Command actions. */
 export interface TableCommandPayload {
   id: string;
   inspection: TableInspection;
 }
 
+/** Options for configuring table Command. */
 export interface TableCommandOptions {
   id?: string;
   idPrefix?: string;
@@ -31,6 +35,7 @@ export interface TableCommandOptions {
   labels?: Partial<Record<TableCommandKind, string>>;
 }
 
+/** Builds command definitions for table. */
 export function tableCommands<TAction extends Action = TableCommandAction>(
   controller: TableController,
   options: TableCommandOptions = {},
@@ -127,6 +132,7 @@ export function tableCommands<TAction extends Action = TableCommandAction>(
   return commands;
 }
 
+/** Binds table Commands behavior and returns a disposer when applicable. */
 export function bindTableCommands<TAction extends Action = TableCommandAction>(
   registry: CommandRegistry<TAction>,
   controller: TableController,

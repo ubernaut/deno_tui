@@ -5,6 +5,7 @@ import { ThreeAsciiObject } from "../canvas/three_ascii.ts";
 import type { AcerolaAsciiNodeOptions } from "../three_ascii/AcerolaAsciiNode.ts";
 import type { TerminalGlyphStyle } from "../three_ascii/glyphs.ts";
 
+/** Options for configuring three Ascii. */
 export interface ThreeAsciiOptions extends ComponentOptions {
   scene: Scene;
   camera: Camera;
@@ -16,6 +17,7 @@ export interface ThreeAsciiOptions extends ComponentOptions {
   onFrame?: (deltaTime: number) => void | Promise<void>;
 }
 
+/** Public class implementing a three Ascii. */
 export class ThreeAscii extends Component {
   declare drawnObjects: { three_ascii: ThreeAsciiObject };
 

@@ -7,6 +7,7 @@ import {
   runDataPipeline,
 } from "./data_pipeline.ts";
 
+/** Options for configuring data Pipeline Binding. */
 export interface DataPipelineBindingOptions<TOutput> extends Omit<DataPipelineOptions, "signal" | "revision"> {
   initialRun?: boolean;
   debounceMs?: number;
@@ -15,6 +16,7 @@ export interface DataPipelineBindingOptions<TOutput> extends Omit<DataPipelineOp
   onError?: (error: unknown, revision: number) => void | Promise<void>;
 }
 
+/** Serializable inspection snapshot for data Pipeline Binding. */
 export interface DataPipelineBindingInspection {
   revision: number;
   running: boolean;
@@ -22,6 +24,7 @@ export interface DataPipelineBindingInspection {
   disposed: boolean;
 }
 
+/** Public interface describing a data Pipeline Binding. */
 export interface DataPipelineBinding<TInput> {
   (): void;
   dispose(): void;
@@ -31,6 +34,7 @@ export interface DataPipelineBinding<TInput> {
   inspect(): DataPipelineBindingInspection;
 }
 
+/** Binds data Pipeline behavior and returns a disposer when applicable. */
 export function bindDataPipeline<TInput, TOutput>(
   input: Signal<TInput>,
   output: Signal<TOutput | undefined>,

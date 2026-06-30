@@ -7,6 +7,7 @@ import { TextObject } from "../canvas/text.ts";
 import { Computed, Signal } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
 
+/** Public constant for a frame Unicode Characters. */
 export const FrameUnicodeCharacters = {
   sharp: {
     topLeft: "┌",
@@ -26,10 +27,12 @@ export const FrameUnicodeCharacters = {
   },
 };
 
+/** Public type alias for a frame Unicode Characters Type. */
 export type FrameUnicodeCharactersType = {
   [key in keyof typeof FrameUnicodeCharacters["rounded"]]: string;
 };
 
+/** Options for configuring frame. */
 export interface FrameOptions extends ComponentOptions {
   charMap: keyof typeof FrameUnicodeCharacters | FrameUnicodeCharactersType;
 }

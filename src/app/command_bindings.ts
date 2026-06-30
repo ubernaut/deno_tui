@@ -5,6 +5,7 @@ import { Signal } from "../signals/mod.ts";
 import type { Action } from "./actions.ts";
 import type { Command, CommandDispatch, CommandRegistry } from "./commands.ts";
 
+/** Public interface describing a command Surface Item. */
 export interface CommandSurfaceItem {
   id: string;
   label: string;
@@ -12,34 +13,41 @@ export interface CommandSurfaceItem {
   disabled?: boolean;
 }
 
+/** Public interface describing a command Key Target. */
 export interface CommandKeyTarget {
   on(type: "keyPress", listener: (event: KeyPressEvent) => void | Promise<void>): () => void;
 }
 
+/** Options for configuring command Key Binding. */
 export interface CommandKeyBindingOptions {
   group?: string;
 }
 
+/** Options for configuring command Surface. */
 export interface CommandSurfaceOptions extends CommandKeyBindingOptions {
   includeDisabled?: boolean;
   includeBindingsInKeywords?: boolean;
 }
 
+/** Public interface describing a command Search Match. */
 export interface CommandSearchMatch {
   item: CommandSurfaceItem;
   score: number;
   matched: string[];
 }
 
+/** Options for configuring command Search. */
 export interface CommandSearchOptions extends CommandSurfaceOptions {
   query?: string;
   limit?: number;
 }
 
+/** Options for configuring command Keymap Binding. */
 export interface CommandKeymapBindingOptions extends CommandKeyBindingOptions {
   includeDisabled?: boolean;
 }
 
+/** Serializable inspection snapshot for command Key Binding. */
 export interface CommandKeyBindingInspection {
   commandId: string;
   label: string;
@@ -52,12 +60,14 @@ export interface CommandKeyBindingInspection {
   shift?: boolean;
 }
 
+/** Public interface describing a command Key Binding Conflict. */
 export interface CommandKeyBindingConflict {
   bindingId: string;
   groups: string[];
   commands: CommandKeyBindingInspection[];
 }
 
+/** Serializable inspection snapshot for command Key Binding Report. */
 export interface CommandKeyBindingReportInspection {
   count: number;
   groups: string[];
@@ -65,21 +75,25 @@ export interface CommandKeyBindingReportInspection {
   conflictingCommandCount: number;
 }
 
+/** Structured report returned by command Key Binding helpers. */
 export interface CommandKeyBindingReport {
   bindings: CommandKeyBindingInspection[];
   conflicts: CommandKeyBindingConflict[];
   inspection: CommandKeyBindingReportInspection;
 }
 
+/** Options for configuring command Key Binding Report. */
 export interface CommandKeyBindingReportOptions extends CommandKeymapBindingOptions {
   includeUnbound?: boolean;
 }
 
+/** Options for configuring command Key Binding Markdown. */
 export interface CommandKeyBindingMarkdownOptions extends CommandKeyBindingReportOptions {
   title?: string;
   includeSummary?: boolean;
 }
 
+/** Public interface describing a command Surface Controller. */
 export interface CommandSurfaceController<TAction extends Action = Action> {
   readonly items: Signal<CommandSurfaceItem[]>;
   refresh(): CommandSurfaceItem[];
@@ -87,6 +101,7 @@ export interface CommandSurfaceController<TAction extends Action = Action> {
   dispose(): void;
 }
 
+/** Public helper for command For Key Event. */
 export function commandForKeyEvent<TAction extends Action = Action>(
   registry: CommandRegistry<TAction>,
   event: KeyPressEvent,
@@ -98,6 +113,7 @@ export function commandForKeyEvent<TAction extends Action = Action>(
   });
 }
 
+/** Binds command Keys behavior and returns a disposer when applicable. */
 export function bindCommandKeys<TAction extends Action = Action>(
   target: CommandKeyTarget,
   registry: CommandRegistry<TAction>,
@@ -112,6 +128,7 @@ export function bindCommandKeys<TAction extends Action = Action>(
   });
 }
 
+/** Binds command Keymap behavior and returns a disposer when applicable. */
 export function bindCommandKeymap<TAction extends Action = Action>(
   registry: CommandRegistry<TAction>,
   keymap: KeymapRegistry,
@@ -140,6 +157,7 @@ export function bindCommandKeymap<TAction extends Action = Action>(
   };
 }
 
+/** Public helper for command Surface Items. */
 export function commandSurfaceItems<TAction extends Action = Action>(
   registry: CommandRegistry<TAction>,
   options: CommandSurfaceOptions = {},
@@ -156,6 +174,7 @@ export function commandSurfaceItems<TAction extends Action = Action>(
     }));
 }
 
+/** Public helper for search Command Surface Items. */
 export function searchCommandSurfaceItems<TAction extends Action = Action>(
   registry: CommandRegistry<TAction>,
   options: CommandSearchOptions = {},
@@ -164,6 +183,7 @@ export function searchCommandSurfaceItems<TAction extends Action = Action>(
     .map((match) => match.item);
 }
 
+/** Public helper for rank Command Surface Items. */
 export function rankCommandSurfaceItems(
   items: readonly CommandSurfaceItem[],
   query: string,
@@ -193,6 +213,7 @@ export function rankCommandSurfaceItems(
   return ranked.slice(0, limit).map(({ index: _index, ...match }) => match);
 }
 
+/** Public helper for execute Command Surface Item. */
 export function executeCommandSurfaceItem<TAction extends Action = Action>(
   registry: CommandRegistry<TAction>,
   item: Pick<CommandSurfaceItem, "id">,
@@ -201,6 +222,7 @@ export function executeCommandSurfaceItem<TAction extends Action = Action>(
   return registry.execute(item.id, dispatch);
 }
 
+/** Creates an command Surface. */
 export function createCommandSurface<TAction extends Action = Action>(
   registry: CommandRegistry<TAction>,
   dispatch?: CommandDispatch<TAction>,
@@ -230,6 +252,7 @@ export function createCommandSurface<TAction extends Action = Action>(
   };
 }
 
+/** Binds command Surface behavior and returns a disposer when applicable. */
 export function bindCommandSurface<TAction extends Action = Action>(
   registry: CommandRegistry<TAction>,
   items: Signal<CommandSurfaceItem[]>,
@@ -243,6 +266,7 @@ export function bindCommandSurface<TAction extends Action = Action>(
   return unsubscribe;
 }
 
+/** Creates a serializable inspection snapshot for command Key Bindings. */
 export function inspectCommandKeyBindings<TAction extends Action = Action>(
   registry: CommandRegistry<TAction>,
   options: CommandKeyBindingReportOptions = {},
@@ -272,6 +296,7 @@ export function inspectCommandKeyBindings<TAction extends Action = Action>(
     );
 }
 
+/** Creates an command Key Binding Report. */
 export function createCommandKeyBindingReport<TAction extends Action = Action>(
   registry: CommandRegistry<TAction>,
   options: CommandKeyBindingReportOptions = {},
@@ -290,6 +315,7 @@ export function createCommandKeyBindingReport<TAction extends Action = Action>(
   };
 }
 
+/** Formats command Key Binding Markdown for display or diagnostics. */
 export function formatCommandKeyBindingMarkdown<TAction extends Action = Action>(
   registry: CommandRegistry<TAction>,
   options: CommandKeyBindingMarkdownOptions = {},

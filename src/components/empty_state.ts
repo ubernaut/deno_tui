@@ -5,6 +5,7 @@ import { Computed, Signal } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
 import { Text } from "./text.ts";
 
+/** Options for configuring empty State. */
 export interface EmptyStateOptions extends ComponentOptions {
   title: string | Signal<string>;
   message?: string | Signal<string>;
@@ -13,6 +14,7 @@ export interface EmptyStateOptions extends ComponentOptions {
   center?: boolean | Signal<boolean>;
 }
 
+/** Public interface describing an empty State Content. */
 export interface EmptyStateContent {
   title: string;
   message?: string;
@@ -20,6 +22,7 @@ export interface EmptyStateContent {
   icon?: string;
 }
 
+/** Renders empty State into deterministic text rows. */
 export function renderEmptyState(
   content: EmptyStateContent,
   width: number,
@@ -51,6 +54,7 @@ function fitEmptyStateLine(line: string, width: number): string {
   return `${line.slice(0, safeWidth - 1)}…`;
 }
 
+/** Public class implementing an empty State. */
 export class EmptyState extends Component {
   readonly title: Signal<string>;
   readonly message: Signal<string>;

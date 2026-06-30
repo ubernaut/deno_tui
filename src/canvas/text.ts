@@ -15,6 +15,7 @@ import { Subscription } from "../signals/types.ts";
  */
 export type TextRectangle = { column: number; row: number; width?: number };
 
+/** Options for configuring text Object. */
 export interface TextObjectOptions extends DrawObjectOptions {
   value: string | Signal<string>;
   overwriteRectangle?: boolean | Signal<boolean>;

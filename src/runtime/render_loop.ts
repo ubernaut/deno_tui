@@ -1,11 +1,13 @@
 // Copyright 2023 Im-Beast. MIT license.
 
+/** Public interface describing a render Loop Frame. */
 export interface RenderLoopFrame {
   frame: number;
   startedAt: number;
   deltaMs: number;
 }
 
+/** Serializable inspection snapshot for render Loop. */
 export interface RenderLoopInspection {
   running: boolean;
   frame: number;
@@ -15,12 +17,14 @@ export interface RenderLoopInspection {
   lastError?: unknown;
 }
 
+/** Public interface describing a render Loop Timer. */
 export interface RenderLoopTimer {
   setTimeout(callback: () => void, delay: number): unknown;
   clearTimeout(handle: unknown): void;
   now(): number;
 }
 
+/** Options for configuring render Loop. */
 export interface RenderLoopOptions {
   intervalMs?: number;
   immediate?: boolean;
@@ -128,10 +132,12 @@ export class RenderLoop {
   }
 }
 
+/** Creates an render Loop. */
 export function createRenderLoop(options: RenderLoopOptions): RenderLoop {
   return new RenderLoop(options);
 }
 
+/** Public constant for a default Render Loop Timer. */
 export const defaultRenderLoopTimer: RenderLoopTimer = {
   setTimeout: (callback, delay) => setTimeout(callback, delay),
   clearTimeout: (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>),

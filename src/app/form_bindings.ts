@@ -2,6 +2,7 @@
 import type { Signal } from "../signals/mod.ts";
 import type { FieldName, FormController, FormValues } from "./forms.ts";
 
+/** Options for configuring form Field Binding. */
 export interface FormFieldBindingOptions<TField, TTarget = TField> {
   parse?: (value: TTarget) => TField;
   format?: (value: TField) => TTarget;
@@ -10,6 +11,7 @@ export interface FormFieldBindingOptions<TField, TTarget = TField> {
   validateOnBind?: boolean;
 }
 
+/** Binds form Field behavior and returns a disposer when applicable. */
 export function bindFormField<
   TValues extends FormValues,
   TName extends FieldName<TValues>,

@@ -3,16 +3,20 @@ import type { ProgressBarController, ProgressBarInspection } from "../components
 import type { Action } from "./actions.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
+/** Identifier union for progress Bar Command variants. */
 export type ProgressBarCommandKind = "decrement" | "increment" | "min" | "max" | "value";
 
+/** Action union emitted by progress Bar Command command helpers. */
 export type ProgressBarCommandAction = Action<"progressBar.changed", ProgressBarCommandPayload>;
 
+/** Payload carried by progress Bar Command actions. */
 export interface ProgressBarCommandPayload {
   id: string;
   value: number;
   inspection: ProgressBarInspection;
 }
 
+/** Options for configuring progress Bar Command. */
 export interface ProgressBarCommandOptions {
   id?: string;
   idPrefix?: string;
@@ -26,6 +30,7 @@ export interface ProgressBarCommandOptions {
   valueLabel?: (value: number) => string;
 }
 
+/** Builds command definitions for progress Bar. */
 export function progressBarCommands<TAction extends Action = ProgressBarCommandAction>(
   controller: ProgressBarController,
   options: ProgressBarCommandOptions = {},
@@ -102,6 +107,7 @@ export function progressBarCommands<TAction extends Action = ProgressBarCommandA
   return commands;
 }
 
+/** Binds progress Bar Commands behavior and returns a disposer when applicable. */
 export function bindProgressBarCommands<TAction extends Action = ProgressBarCommandAction>(
   registry: CommandRegistry<TAction>,
   controller: ProgressBarController,

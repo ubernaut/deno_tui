@@ -5,15 +5,18 @@ import { Computed } from "../signals/mod.ts";
 import { formatKeyBinding, type KeyBinding, type KeymapRegistry } from "../keymap.ts";
 import { Text } from "./text.ts";
 
+/** Options for configuring key Help. */
 export interface KeyHelpOptions extends ComponentOptions {
   bindings: readonly KeyBinding[] | KeymapRegistry;
   group?: string;
 }
 
+/** Renders key Help into deterministic text rows. */
 export function renderKeyHelp(bindings: readonly KeyBinding[], width: number): string {
   return bindings.map(formatKeyBinding).join("  ").slice(0, Math.max(0, width));
 }
 
+/** Public class implementing a key Help. */
 export class KeyHelp extends Component {
   constructor(private readonly options: KeyHelpOptions) {
     super(options);

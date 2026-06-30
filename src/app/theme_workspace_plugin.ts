@@ -22,6 +22,7 @@ import {
 } from "./theme_plugin.ts";
 import { createThemeWorkspace, type ThemeWorkspace, type ThemeWorkspaceOptions } from "../theme_workspace.ts";
 
+/** Options for configuring theme Workspace Plugin. */
 export interface ThemeWorkspacePluginOptions {
   id?: string;
   label?: string;
@@ -38,10 +39,12 @@ export interface ThemeWorkspacePluginOptions {
   install?: (context: ThemeWorkspacePluginInstallContext) => AppPluginDisposer;
 }
 
+/** Context object passed to theme Workspace Plugin Install callbacks. */
 export interface ThemeWorkspacePluginInstallContext extends ThemePluginInstallContext {
   workspace: ThemeWorkspace;
 }
 
+/** Serializable inspection snapshot for theme Workspace Plugin. */
 export interface ThemeWorkspacePluginInspection {
   id?: string;
   label?: string;
@@ -50,6 +53,7 @@ export interface ThemeWorkspacePluginInspection {
   workspace: ReturnType<ThemeWorkspace["inspect"]>;
 }
 
+/** Public interface describing a theme Workspace App Plugin. */
 export interface ThemeWorkspaceAppPlugin<
   TAction extends Action = ThemeCommandAction | ThemePipelineCommandAction | ThemeEngineCommandAction,
   TRoute extends Route = Route,
@@ -58,6 +62,7 @@ export interface ThemeWorkspaceAppPlugin<
   inspect(): ThemeWorkspacePluginInspection;
 }
 
+/** Creates an theme Workspace Plugin. */
 export function createThemeWorkspacePlugin<
   TAction extends Action = ThemeCommandAction | ThemePipelineCommandAction | ThemeEngineCommandAction,
   TRoute extends Route = Route,

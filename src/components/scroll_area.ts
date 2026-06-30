@@ -17,6 +17,7 @@ import {
 } from "../viewport.ts";
 import { Text } from "./text.ts";
 
+/** Options for configuring scroll Area. */
 export interface ScrollAreaOptions extends ComponentOptions {
   contentWidth?: number | Signal<number>;
   contentHeight?: number | Signal<number>;
@@ -24,6 +25,7 @@ export interface ScrollAreaOptions extends ComponentOptions {
   showScrollbar?: boolean | Signal<boolean>;
 }
 
+/** Options for configuring scroll Area Controller. */
 export interface ScrollAreaControllerOptions {
   contentWidth?: number | Signal<number>;
   contentHeight?: number | Signal<number>;
@@ -33,12 +35,15 @@ export interface ScrollAreaControllerOptions {
   showScrollbar?: boolean | Signal<boolean>;
 }
 
+/** Serializable inspection snapshot for scroll Area. */
 export interface ScrollAreaInspection extends ViewportInspection {
   showScrollbar: boolean;
 }
 
+/** Public type alias for a scrollbar Thumb. */
 export type ScrollbarThumb = ViewportThumb;
 
+/** Public helper for max Scroll Offset. */
 export function maxScrollOffset(
   contentWidth: number,
   contentHeight: number,
@@ -48,22 +53,27 @@ export function maxScrollOffset(
   return maxViewportOffset(contentWidth, contentHeight, viewportWidth, viewportHeight);
 }
 
+/** Clamps scroll Offset to its valid range. */
 export function clampScrollOffset(offset: Offset, maxOffset: Offset): Offset {
   return clampViewportOffset(offset, maxOffset);
 }
 
+/** Public helper for scroll Offset By. */
 export function scrollOffsetBy(offset: Offset, maxOffset: Offset, columns: number, rows: number): Offset {
   return viewportOffsetBy(offset, maxOffset, columns, rows);
 }
 
+/** Public helper for scrollbar Thumb. */
 export function scrollbarThumb(contentLength: number, viewportLength: number, offset: number): ScrollbarThumb {
   return viewportThumb(contentLength, viewportLength, offset);
 }
 
+/** Public helper for scrollbar Glyph. */
 export function scrollbarGlyph(row: number, thumb: ScrollbarThumb): string {
   return viewportThumbGlyph(row, thumb);
 }
 
+/** Public helper for scrollbar Offset For Pointer. */
 export function scrollbarOffsetForPointer(
   contentLength: number,
   viewportLength: number,
@@ -79,6 +89,7 @@ export function scrollbarOffsetForPointer(
   return Math.max(0, Math.min(maxOffset, Math.round(maxOffset * ratio)));
 }
 
+/** State controller for scroll Area behavior. */
 export class ScrollAreaController {
   readonly contentWidth: Signal<number>;
   readonly contentHeight: Signal<number>;
@@ -174,6 +185,7 @@ export class ScrollAreaController {
   }
 }
 
+/** Public class implementing a scroll Area. */
 export class ScrollArea extends Component {
   readonly contentWidth: Signal<number>;
   readonly contentHeight: Signal<number>;

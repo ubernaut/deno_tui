@@ -17,6 +17,7 @@ export class SignalDeepObserveTypeofError extends Error {
   }
 }
 
+/** Options for configuring signal. */
 export interface SignalOptions<T> {
   /**
    * @requires T to be `typeof 'object'`

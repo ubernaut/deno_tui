@@ -6,12 +6,14 @@ import { signalify } from "../utils/signals.ts";
 import { stackedRowIndexAt } from "./interaction.ts";
 import { Text } from "./text.ts";
 
+/** Public interface describing a radio Option. */
 export interface RadioOption {
   value: string;
   label: string;
   disabled?: boolean;
 }
 
+/** Options for configuring radio Group. */
 export interface RadioGroupOptions extends ComponentOptions {
   options: RadioOption[] | Signal<RadioOption[]>;
   selectedValue?: string | undefined | Signal<string> | Signal<string | undefined>;
@@ -20,6 +22,7 @@ export interface RadioGroupOptions extends ComponentOptions {
   onChange?: (option: RadioOption) => void | Promise<void>;
 }
 
+/** Options for configuring radio Group Controller. */
 export interface RadioGroupControllerOptions {
   options: RadioOption[] | Signal<RadioOption[]>;
   selectedValue?: string | undefined | Signal<string> | Signal<string | undefined>;
@@ -27,6 +30,7 @@ export interface RadioGroupControllerOptions {
   onChange?: (option: RadioOption) => void | Promise<void>;
 }
 
+/** Serializable inspection snapshot for radio Group. */
 export interface RadioGroupInspection {
   options: RadioOption[];
   optionCount: number;
@@ -37,6 +41,7 @@ export interface RadioGroupInspection {
   empty: boolean;
 }
 
+/** Renders radio Group Rows into deterministic text rows. */
 export function renderRadioGroupRows(
   options: readonly RadioOption[],
   selectedValue: string | undefined,
@@ -52,6 +57,7 @@ export function renderRadioGroupRows(
   });
 }
 
+/** Public helper for visible Radio Options. */
 export function visibleRadioOptions(
   options: readonly RadioOption[],
   activeIndex: number,
@@ -71,6 +77,7 @@ export function visibleRadioOptions(
   });
 }
 
+/** Clamps radio Index to its valid range. */
 export function clampRadioIndex(options: readonly RadioOption[], activeIndex: number): number {
   if (options.length === 0) return 0;
   const clamped = Math.max(0, Math.min(activeIndex, options.length - 1));
@@ -81,6 +88,7 @@ export function clampRadioIndex(options: readonly RadioOption[], activeIndex: nu
   return options[previous]?.disabled ? clamped : previous;
 }
 
+/** Moves radio Index by a relative offset. */
 export function shiftRadioIndex(options: readonly RadioOption[], activeIndex: number, delta: number): number {
   if (options.length === 0) return 0;
   let next = Math.max(0, Math.min(activeIndex, options.length - 1));
@@ -92,10 +100,12 @@ export function shiftRadioIndex(options: readonly RadioOption[], activeIndex: nu
   return activeIndex;
 }
 
+/** Public helper for option For Value. */
 export function optionForValue(options: readonly RadioOption[], value: string | undefined): RadioOption | undefined {
   return options.find((option) => option.value === value);
 }
 
+/** State controller for radio Group behavior. */
 export class RadioGroupController {
   readonly options: Signal<RadioOption[]>;
   readonly selectedValue: Signal<string | undefined>;
@@ -223,6 +233,7 @@ export class RadioGroupController {
   }
 }
 
+/** Public class implementing a radio Group. */
 export class RadioGroup extends Component {
   options: Signal<RadioOption[]>;
   selectedValue: Signal<string | undefined>;

@@ -3,17 +3,21 @@ import type { ButtonController, ButtonInspection } from "../components/button.ts
 import type { Action } from "./actions.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
+/** Identifier union for button Command variants. */
 export type ButtonCommandKind = "press" | "enable" | "disable";
 
+/** Action union emitted by button Command command helpers. */
 export type ButtonCommandAction =
   | Action<"button.pressed", ButtonCommandPayload>
   | Action<"button.changed", ButtonCommandPayload>;
 
+/** Payload carried by button Command actions. */
 export interface ButtonCommandPayload {
   id: string;
   inspection: ButtonInspection;
 }
 
+/** Options for configuring button Command. */
 export interface ButtonCommandOptions {
   id?: string;
   idPrefix?: string;
@@ -23,6 +27,7 @@ export interface ButtonCommandOptions {
   labels?: Partial<Record<ButtonCommandKind, string>>;
 }
 
+/** Builds command definitions for button. */
 export function buttonCommands<TAction extends Action = ButtonCommandAction>(
   controller: ButtonController,
   options: ButtonCommandOptions = {},
@@ -74,6 +79,7 @@ export function buttonCommands<TAction extends Action = ButtonCommandAction>(
   return commands;
 }
 
+/** Binds button Commands behavior and returns a disposer when applicable. */
 export function bindButtonCommands<TAction extends Action = ButtonCommandAction>(
   registry: CommandRegistry<TAction>,
   controller: ButtonController,

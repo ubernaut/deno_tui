@@ -3,20 +3,24 @@ import { Signal } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
 import { TreeController, type TreeInspection, type TreeNode, type TreeRow } from "./tree.ts";
 
+/** Identifier union for file Explorer Node variants. */
 export type FileExplorerNodeKind = "file" | "directory";
 
+/** Public interface describing a file Explorer Node. */
 export interface FileExplorerNode extends TreeNode {
   kind: FileExplorerNodeKind;
   path: string;
   children?: readonly FileExplorerNode[];
 }
 
+/** Options for configuring file Explorer Controller. */
 export interface FileExplorerControllerOptions {
   root: FileExplorerNode[] | Signal<FileExplorerNode[]>;
   selectedIndex?: number | Signal<number>;
   onOpen?: (entry: FileExplorerEntry) => void | Promise<void>;
 }
 
+/** Entry record used by file Explorer catalogs or renderers. */
 export interface FileExplorerEntry {
   id: string;
   label: string;
@@ -27,11 +31,13 @@ export interface FileExplorerEntry {
   text: string;
 }
 
+/** Serializable inspection snapshot for file Explorer. */
 export interface FileExplorerInspection extends Omit<TreeInspection, "nodes" | "rows" | "selected"> {
   entries: FileExplorerEntry[];
   selected?: FileExplorerEntry;
 }
 
+/** State controller for file Explorer behavior. */
 export class FileExplorerController {
   readonly root: Signal<FileExplorerNode[]>;
   readonly tree: TreeController;
@@ -97,6 +103,7 @@ export class FileExplorerController {
   }
 }
 
+/** Creates an file Explorer Tree. */
 export function createFileExplorerTree(paths: readonly string[]): FileExplorerNode[] {
   const root: MutableFileExplorerNode[] = [];
   for (const path of paths) {

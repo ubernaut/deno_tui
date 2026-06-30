@@ -12,6 +12,7 @@ import { Computed, Effect, Signal } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
 import type { KeyPressEvent, MouseEvent, MousePressEvent, MouseScrollEvent } from "../input_reader/types.ts";
 
+/** Public constant for a table Unicode Characters. */
 export const TableUnicodeCharacters = {
   sharp: {
     topLeft: "┌",
@@ -35,20 +36,24 @@ export const TableUnicodeCharacters = {
   },
 };
 
+/** Public type alias for a table Unicode Characters Type. */
 export type TableUnicodeCharactersType = {
   [key in keyof typeof TableUnicodeCharacters["rounded"]]: string;
 };
 
+/** Public interface describing a table Theme. */
 export interface TableTheme extends Theme {
   frame: Theme;
   header: Theme;
   selectedRow: Theme;
 }
 
+/** Public type alias for a table Header. */
 export type TableHeader<WidthDefined extends boolean> = {
   title: string;
 } & (WidthDefined extends true ? { width: number } : { width?: number });
 
+/** Options for configuring table. */
 export interface TableOptions extends Omit<ComponentOptions, "rectangle"> {
   theme: DeepPartial<TableTheme, "frame" | "header" | "selectedRow">;
   headers: TableHeader<false>[];
@@ -61,6 +66,7 @@ export interface TableOptions extends Omit<ComponentOptions, "rectangle"> {
   onSelect?: (row: number) => void | Promise<void>;
 }
 
+/** Options for configuring table Controller. */
 export interface TableControllerOptions {
   rowCount?: number | Signal<number>;
   viewportHeight?: number | Signal<number>;
@@ -69,6 +75,7 @@ export interface TableControllerOptions {
   onSelect?: (row: number) => void | Promise<void>;
 }
 
+/** Serializable inspection snapshot for table. */
 export interface TableInspection {
   rowCount: number;
   selectedRow: number;
@@ -79,18 +86,22 @@ export interface TableInspection {
   empty: boolean;
 }
 
+/** Public helper for table Visible Capacity. */
 export function tableVisibleCapacity(viewportHeight: number): number {
   return Math.max(0, Math.floor(viewportHeight) - 4);
 }
 
+/** Public helper for table Max Offset. */
 export function tableMaxOffset(rowCount: number, viewportHeight: number): number {
   return Math.max(0, Math.floor(rowCount) - tableVisibleCapacity(viewportHeight));
 }
 
+/** Clamps table Row to its valid range. */
 export function clampTableRow(row: number, rowCount: number): number {
   return clamp(Math.floor(row), 0, Math.max(0, Math.floor(rowCount) - 1));
 }
 
+/** State controller for table behavior. */
 export class TableController {
   readonly rowCount: Signal<number>;
   readonly viewportHeight: Signal<number>;

@@ -4,21 +4,25 @@ import type { CanvasRenderStats } from "./canvas.ts";
 
 const textEncoder = new TextEncoder();
 
+/** Public interface describing a canvas Stdout. */
 export interface CanvasStdout {
   writeSync(data: Uint8Array): number;
 }
 
+/** Public interface describing a canvas Cell Update. */
 export interface CanvasCellUpdate {
   row: number;
   column: number;
   value: string | Uint8Array;
 }
 
+/** Public interface describing a canvas Cell Sink. */
 export interface CanvasCellSink {
   resize?(columns: number, rows: number): void;
   flush(updates: readonly CanvasCellUpdate[], stats: CanvasRenderStats): void;
 }
 
+/** Options for configuring ansi Canvas Sink. */
 export interface AnsiCanvasSinkOptions {
   stdout: CanvasStdout;
   flushLimit?: number;
@@ -65,6 +69,7 @@ export class AnsiCanvasSink implements CanvasCellSink {
   }
 }
 
+/** Public class implementing a memory Canvas Sink. */
 export class MemoryCanvasSink implements CanvasCellSink {
   readonly updates: CanvasCellUpdate[] = [];
   lastStats?: CanvasRenderStats;

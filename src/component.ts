@@ -11,6 +11,7 @@ import { InputEventRecord } from "./input_reader/mod.ts";
 import { Computed, Signal, SignalOfObject } from "./signals/mod.ts";
 import { signalify } from "./utils/signals.ts";
 
+/** Options for configuring component. */
 export interface ComponentOptions {
   tui?: Tui;
   theme: Partial<Theme>;
@@ -30,6 +31,7 @@ export interface Interaction {
 /** Possible states of a component */
 export type ComponentState = keyof Theme;
 
+/** Public class implementing a component. */
 export class Component extends EventEmitter<
   { destroy: EmitterEvent<[Component]> } & InputEventRecord
 > {

@@ -1,4 +1,5 @@
 // Copyright 2023 Im-Beast. MIT license.
+/** Options for configuring worker Pool. */
 export interface WorkerPoolOptions {
   workerUrl: string | URL;
   size?: number;
@@ -7,10 +8,12 @@ export interface WorkerPoolOptions {
   workerFactory?: WorkerFactory;
 }
 
+/** Options for configuring worker Pool Run. */
 export interface WorkerPoolRunOptions {
   signal?: AbortSignal;
 }
 
+/** Serializable inspection snapshot for worker Pool. */
 export interface WorkerPoolInspection {
   size: number;
   pending: number;
@@ -19,16 +22,19 @@ export interface WorkerPoolInspection {
   nextWorkerIndex: number;
 }
 
+/** Options for configuring worker Batch. */
 export interface WorkerBatchOptions {
   signal?: AbortSignal;
 }
 
+/** Public interface describing a worker Batch Result. */
 export interface WorkerBatchResult<TPayload, TResult> {
   input: TPayload;
   index: number;
   value: TResult;
 }
 
+/** Public interface describing a worker Like. */
 export interface WorkerLike {
   onmessage: ((event: MessageEvent<unknown>) => void) | null;
   onerror: ((event: ErrorEvent) => void) | null;
@@ -36,11 +42,13 @@ export interface WorkerLike {
   terminate(): void;
 }
 
+/** Public type alias for a worker Factory. */
 export type WorkerFactory = (
   workerUrl: string | URL,
   options: WorkerOptions,
 ) => WorkerLike;
 
+/** Error thrown for invalid worker Pool Terminated operations. */
 export class WorkerPoolTerminatedError extends Error {
   constructor() {
     super("WorkerPool was terminated.");
@@ -66,6 +74,7 @@ interface PendingTask<TResult> {
   cleanup?: () => void;
 }
 
+/** Public class implementing a worker Pool. */
 export class WorkerPool<TPayload = unknown, TResult = unknown> {
   private readonly workers: WorkerLike[] = [];
   private readonly pending = new Map<number, PendingTask<TResult>>();
@@ -191,6 +200,7 @@ export class WorkerPool<TPayload = unknown, TResult = unknown> {
   }
 }
 
+/** Public helper for run Worker Batch. */
 export async function runWorkerBatch<TPayload, TResult>(
   pool: WorkerPool<TPayload, TResult>,
   inputs: readonly TPayload[],
@@ -208,8 +218,10 @@ function createAbortError(): Error {
   return new DOMException("Worker task was aborted.", "AbortError");
 }
 
+/** Callback signature for handling worker events. */
 export type WorkerHandler<TPayload = unknown, TResult = unknown> = (payload: TPayload) => TResult | Promise<TResult>;
 
+/** Public helper for install Worker Handler. */
 export function installWorkerHandler<TPayload = unknown, TResult = unknown>(
   handler: WorkerHandler<TPayload, TResult>,
 ): void {

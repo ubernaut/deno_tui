@@ -11,6 +11,7 @@ import {
 } from "./capabilities.ts";
 import { Signal } from "../signals/mod.ts";
 
+/** Public interface describing a runtime Profile Definition. */
 export interface RuntimeProfileDefinition {
   id: string;
   label?: string;
@@ -20,6 +21,7 @@ export interface RuntimeProfileDefinition {
   priority?: number;
 }
 
+/** Serializable inspection snapshot for runtime Profile. */
 export interface RuntimeProfileInspection {
   id: string;
   label: string;
@@ -29,6 +31,7 @@ export interface RuntimeProfileInspection {
   priority: number;
 }
 
+/** Serializable inspection snapshot for runtime Profile Plan. */
 export interface RuntimeProfilePlanInspection extends RuntimeProfileInspection {
   plan: RuntimePlan;
   strategies: {
@@ -43,6 +46,7 @@ export interface RuntimeProfilePlanInspection extends RuntimeProfileInspection {
   };
 }
 
+/** Public interface describing a runtime Profile Catalog Query. */
 export interface RuntimeProfileCatalogQuery {
   search?: string;
   tag?: string;
@@ -52,6 +56,7 @@ export interface RuntimeProfileCatalogQuery {
   accelerated?: boolean;
 }
 
+/** Serializable inspection snapshot for runtime Profile Catalog. */
 export interface RuntimeProfileCatalogInspection {
   count: number;
   accelerated: number;
@@ -61,23 +66,27 @@ export interface RuntimeProfileCatalogInspection {
   tags: string[];
 }
 
+/** Structured report returned by runtime Profile Catalog helpers. */
 export interface RuntimeProfileCatalogReport {
   profiles: RuntimeProfilePlanInspection[];
   inspection: RuntimeProfileCatalogInspection;
   capabilities: RuntimeCapabilities;
 }
 
+/** Options for configuring runtime Profile Catalog Report. */
 export interface RuntimeProfileCatalogReportOptions {
   profiles?: Iterable<RuntimeProfile | RuntimeProfileDefinition>;
   capabilities?: RuntimeCapabilities;
   query?: RuntimeProfileCatalogQuery;
 }
 
+/** Options for configuring runtime Profile Catalog Markdown. */
 export interface RuntimeProfileCatalogMarkdownOptions extends RuntimeProfileCatalogReportOptions {
   title?: string;
   includeSummary?: boolean;
 }
 
+/** Options for configuring runtime Profile Controller. */
 export interface RuntimeProfileControllerOptions {
   registry?: RuntimeProfileRegistry;
   profiles?: Iterable<RuntimeProfile | RuntimeProfileDefinition>;
@@ -86,6 +95,7 @@ export interface RuntimeProfileControllerOptions {
   onInvalidProfile?: (id: string) => void;
 }
 
+/** Serializable inspection snapshot for runtime Profile Controller. */
 export interface RuntimeProfileControllerInspection {
   activeId: string;
   active?: RuntimeProfileInspection;
@@ -94,6 +104,7 @@ export interface RuntimeProfileControllerInspection {
   plan?: RuntimePlan;
 }
 
+/** Public constant for a runtime Profile Definitions. */
 export const runtimeProfileDefinitions = [
   {
     id: "balanced",
@@ -334,6 +345,7 @@ export class RuntimeProfileController {
   }
 }
 
+/** Error thrown for invalid runtime Profile Not Found operations. */
 export class RuntimeProfileNotFoundError extends Error {
   constructor(id: string) {
     super(`Runtime profile "${id}" is not registered`);
@@ -341,26 +353,31 @@ export class RuntimeProfileNotFoundError extends Error {
   }
 }
 
+/** Creates an runtime Profile. */
 export function createRuntimeProfile(definition: RuntimeProfileDefinition): RuntimeProfile {
   return new RuntimeProfile(definition);
 }
 
+/** Creates an runtime Profile Registry. */
 export function createRuntimeProfileRegistry(
   profiles: Iterable<RuntimeProfile | RuntimeProfileDefinition> = runtimeProfileDefinitions,
 ): RuntimeProfileRegistry {
   return new RuntimeProfileRegistry(profiles);
 }
 
+/** Creates an runtime Profile Controller. */
 export function createRuntimeProfileController(
   options: RuntimeProfileControllerOptions = {},
 ): RuntimeProfileController {
   return new RuntimeProfileController(options);
 }
 
+/** Public helper for runtime Profiles. */
 export function runtimeProfiles(): RuntimeProfile[] {
   return runtimeProfileDefinitions.map(createRuntimeProfile);
 }
 
+/** Finds a matching runtime Profile record when one exists. */
 export function findRuntimeProfile(idOrLabel: string): RuntimeProfile | undefined {
   const normalized = normalizeProfileLookup(idOrLabel);
   return runtimeProfiles().find((profile) =>
@@ -368,6 +385,7 @@ export function findRuntimeProfile(idOrLabel: string): RuntimeProfile | undefine
   );
 }
 
+/** Queries runtime Profiles records with deterministic filtering. */
 export function queryRuntimeProfiles(
   profiles: Iterable<RuntimeProfile | RuntimeProfileDefinition> = runtimeProfileDefinitions,
   query: RuntimeProfileCatalogQuery = {},
@@ -379,6 +397,7 @@ export function queryRuntimeProfiles(
     .sort((left, right) => right.priority - left.priority || left.label.localeCompare(right.label));
 }
 
+/** Creates a serializable inspection snapshot for runtime Profile Catalog. */
 export function inspectRuntimeProfileCatalog(
   profiles: readonly RuntimeProfilePlanInspection[],
 ): RuntimeProfileCatalogInspection {
@@ -395,6 +414,7 @@ export function inspectRuntimeProfileCatalog(
   };
 }
 
+/** Creates an runtime Profile Catalog Report. */
 export function createRuntimeProfileCatalogReport(
   options: RuntimeProfileCatalogReportOptions = {},
 ): RuntimeProfileCatalogReport {
@@ -407,6 +427,7 @@ export function createRuntimeProfileCatalogReport(
   };
 }
 
+/** Formats runtime Profile Catalog Markdown for display or diagnostics. */
 export function formatRuntimeProfileCatalogMarkdown(options: RuntimeProfileCatalogMarkdownOptions = {}): string {
   const report = createRuntimeProfileCatalogReport(options);
   const lines = [`# ${options.title ?? "Runtime Profiles"}`, ""];

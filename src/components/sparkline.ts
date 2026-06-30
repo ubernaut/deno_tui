@@ -6,10 +6,12 @@ import { Text } from "./text.ts";
 
 const SPARKLINE_GLYPHS = ["▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"] as const;
 
+/** Options for configuring sparkline. */
 export interface SparklineOptions extends ComponentOptions {
   values: number[] | Signal<number[]>;
 }
 
+/** Renders sparkline into deterministic text rows. */
 export function renderSparkline(values: readonly number[], width: number): string {
   const safeWidth = Math.max(0, width);
   if (safeWidth === 0) return "";
@@ -34,6 +36,7 @@ function sampleSeries(values: readonly number[], width: number): number[] {
   });
 }
 
+/** Public class implementing a sparkline. */
 export class Sparkline extends Component {
   constructor(private readonly options: SparklineOptions) {
     super(options);
