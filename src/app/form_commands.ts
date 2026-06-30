@@ -5,6 +5,7 @@ import type { FieldName, FormController, FormSnapshot, FormValues } from "./form
 
 /** Identifier union for form Command variants. */
 export type FormCommandKind =
+  | "submit"
   | "validate"
   | "reset"
   | "touchAll"
@@ -13,6 +14,7 @@ export type FormCommandKind =
 
 /** Action union emitted by form Command command helpers. */
 export type FormCommandAction<TValues extends FormValues = FormValues> =
+  | Action<"form.submitted", FormCommandSnapshotPayload<TValues> & { valid: boolean; submitted: boolean }>
   | Action<"form.validated", FormCommandSnapshotPayload<TValues> & { valid: boolean }>
   | Action<"form.reset", FormCommandSnapshotPayload<TValues>>
   | Action<"form.touched", FormCommandSnapshotPayload<TValues>>
@@ -42,6 +44,7 @@ export interface FormCommandOptions<TValues extends FormValues = FormValues> {
   labels?: Partial<Record<FormCommandKind, string>>;
   fieldLabel?: (field: FieldName<TValues>) => string;
   fieldId?: (field: FieldName<TValues>) => string;
+  onSubmit?: (snapshot: FormSnapshot<TValues>) => void | Promise<void>;
 }
 
 /** Builds command definitions for form. */
@@ -69,6 +72,20 @@ export function formCommands<
 
   if (options.includeFormCommands ?? true) {
     commands.push(
+      {
+        id: `${idPrefix}.submit`,
+        label: label("submit", "Submit Form"),
+        group,
+        keywords: ["form", "submit"],
+        disabled: () => empty() || !form.canSubmit(),
+        action: async () => {
+          const result = await form.submit(options.onSubmit);
+          return {
+            type: "form.submitted",
+            payload: { id, snapshot: result.snapshot, valid: result.valid, submitted: result.submitted },
+          } as TAction;
+        },
+      },
       {
         id: `${idPrefix}.validate`,
         label: label("validate", "Validate Form"),

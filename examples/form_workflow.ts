@@ -16,36 +16,48 @@ interface SettingsForm {
   renderer: string;
 }
 
-const form = new FormController<SettingsForm>([
-  {
-    name: "project",
-    initialValue: "deno-tui",
-    validators: [
-      (value) =>
-        typeof value === "string" && value.trim().length >= 3
-          ? undefined
-          : "Project name must be at least 3 characters.",
+const form = new FormController<SettingsForm>({
+  schema: {
+    fields: [
+      {
+        name: "project",
+        label: "Project",
+        group: "identity",
+        initialValue: "deno-tui",
+        validators: [
+          (value) =>
+            typeof value === "string" && value.trim().length >= 3
+              ? undefined
+              : "Project name must be at least 3 characters.",
+        ],
+      },
+      {
+        name: "refreshRate",
+        label: "Refresh rate",
+        group: "runtime",
+        initialValue: 30,
+        validators: [
+          (value) =>
+            typeof value === "number" && value >= 1 && value <= 120 ? undefined : "Refresh rate must be 1-120 FPS.",
+        ],
+      },
+      {
+        name: "renderer",
+        label: "Renderer",
+        group: "runtime",
+        initialValue: "mixed",
+        readOnly: true,
+        validators: [
+          (value) =>
+            typeof value === "string" && ["blocks", "glyphs", "mixed"].includes(value)
+              ? undefined
+              : "Unknown renderer mode.",
+        ],
+      },
     ],
+    validate: (values) => values.project === "root" ? { project: "Project name is reserved." } : {},
   },
-  {
-    name: "refreshRate",
-    initialValue: 30,
-    validators: [
-      (value) =>
-        typeof value === "number" && value >= 1 && value <= 120 ? undefined : "Refresh rate must be 1-120 FPS.",
-    ],
-  },
-  {
-    name: "renderer",
-    initialValue: "mixed",
-    validators: [
-      (value) =>
-        typeof value === "string" && ["blocks", "glyphs", "mixed"].includes(value)
-          ? undefined
-          : "Unknown renderer mode.",
-    ],
-  },
-]);
+});
 
 const projectInput = new Signal("ui");
 const refreshInput = new Signal("144");
@@ -64,11 +76,15 @@ const disposeRenderer = bindFormField(form, "renderer", rendererInput, {
 });
 
 const registry = new CommandRegistry<FormCommandAction<SettingsForm>>();
+const submitted: string[] = [];
 const disposeCommands = bindFormCommands(registry, form, {
   id: "settings",
   idPrefix: "settings",
   group: "settings-form",
   includeFieldCommands: true,
+  onSubmit: (snapshot) => {
+    submitted.push(JSON.stringify(snapshot.values));
+  },
   fieldLabel: (field) => field.replace(/[A-Z]/g, (match) => ` ${match.toLowerCase()}`),
 });
 
@@ -86,6 +102,9 @@ projectInput.value = "deno-tui";
 await registry.execute("settings.validate", (action) => {
   events.push(`${action.type}:${action.payload && "valid" in action.payload ? action.payload.valid : "snapshot"}`);
 });
+await registry.execute("settings.submit", (action) => {
+  events.push(`${action.type}:${action.payload && "submitted" in action.payload ? action.payload.submitted : false}`);
+});
 
 const snapshot = form.inspect();
 
@@ -96,7 +115,13 @@ console.log(`Valid: ${snapshot.valid}`);
 console.log(`Dirty fields: ${snapshot.dirtyFields.join(", ") || "none"}`);
 console.log(`Touched fields: ${snapshot.touchedFields.join(", ") || "none"}`);
 console.log(`Error fields: ${snapshot.errorFields.join(", ") || "none"}`);
+console.log(`Read-only fields: ${snapshot.readOnlyFields.join(", ") || "none"}`);
+console.log(`Groups: ${snapshot.groups.map((group) => `${group.id}:${group.fields.length}`).join(", ")}`);
+console.log(
+  `Error summary: ${snapshot.errorSummary.map((item) => `${item.name}:${item.errors.join("/")}`).join(", ") || "none"}`,
+);
 console.log(`Values: ${JSON.stringify(snapshot.values)}`);
+console.log(`Submitted: ${submitted.join(" | ") || "none"}`);
 console.log(`Commands: ${registry.inspect().count} (${registry.inspect().groups.join(", ")})`);
 console.log(
   `Search hits: ${

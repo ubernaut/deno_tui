@@ -3,7 +3,7 @@ import { Signal } from "../src/signals/mod.ts";
 import { bindFormField } from "../src/app/form_bindings.ts";
 import { bindFormCommands, formCommands } from "../src/app/form_commands.ts";
 import type { FormCommandAction } from "../src/app/form_commands.ts";
-import { FormController, minLength, required } from "../src/app/forms.ts";
+import { FormController, type FormSnapshot, minLength, required } from "../src/app/forms.ts";
 import { CommandRegistry } from "../src/app/commands.ts";
 
 interface SettingsForm extends Record<string, unknown> {
@@ -74,15 +74,36 @@ Deno.test("FormController registers fields with disposers and inspects aggregate
     dirty: { route: true, label: true },
     valid: false,
     fields: [
-      { name: "route", touched: true, dirty: true, errors: [], valid: true },
-      { name: "label", touched: true, dirty: true, errors: ["Must be at least 3 characters"], valid: false },
+      { name: "route", touched: true, dirty: true, disabled: false, readOnly: false, errors: [], valid: true },
+      {
+        name: "label",
+        touched: true,
+        dirty: true,
+        disabled: false,
+        readOnly: false,
+        errors: ["Must be at least 3 characters"],
+        valid: false,
+      },
     ],
+    groups: [{
+      id: "default",
+      label: "Default",
+      fields: ["route", "label"],
+      valid: false,
+      dirty: true,
+      touched: true,
+      errorCount: 1,
+    }],
+    errorSummary: [{ name: "label", errors: ["Must be at least 3 characters"] }],
     fieldCount: 2,
     touchedFields: ["route", "label"],
     dirtyFields: ["route", "label"],
     errorFields: ["label"],
+    disabledFields: [],
+    readOnlyFields: [],
     dirtyForm: true,
     touchedForm: true,
+    submittable: true,
   });
 
   disposeFields();
@@ -93,6 +114,51 @@ Deno.test("FormController registers fields with disposers and inspects aggregate
   assertEquals(empty.touched, {});
   assertEquals(empty.dirty, {});
   assertEquals(empty.valid, true);
+  form.dispose();
+});
+
+Deno.test("FormController supports groups disabled readonly schema validation and submit", async () => {
+  const submitted: Array<FormSnapshot<SettingsForm>> = [];
+  const form = new FormController<SettingsForm>({
+    schema: {
+      fields: [
+        { name: "route", label: "Route", group: "routing", initialValue: "overview" },
+        { name: "label", label: "Label", group: "metadata", initialValue: "Panel", readOnly: true },
+      ],
+      validate: (values) => values.route === "forbidden" ? { route: "Route is not available" } : {},
+    },
+  });
+
+  assertEquals(form.setValue("label", "Runtime"), false);
+  assertEquals(form.getValue("label"), "Panel");
+  assertEquals(form.setValue("route", "forbidden"), true);
+  assertEquals(form.validate(), false);
+  assertEquals(form.inspect().errorSummary, [{
+    name: "route",
+    label: "Route",
+    group: "routing",
+    errors: ["Route is not available"],
+  }]);
+
+  assertEquals(form.setFieldDisabled("route", true), true);
+  assertEquals(form.validate(), true);
+  assertEquals(form.inspect().disabledFields, ["route"]);
+  assertEquals(form.setValue("route", "runtime"), false);
+  assertEquals(form.setFieldDisabled("route", false), true);
+  assertEquals(form.setValue("route", "runtime"), true);
+
+  const result = await form.submit((snapshot) => void submitted.push(snapshot));
+  assertEquals(result, {
+    valid: true,
+    submitted: true,
+    snapshot: form.snapshot(),
+  });
+  assertEquals(submitted[0]!.values, { route: "runtime", label: "Panel" });
+  assertEquals(form.inspect().groups.map((group) => [group.id, group.fields, group.valid]), [
+    ["routing", ["route"], true],
+    ["metadata", ["label"], true],
+  ]);
+  assertEquals(form.inspect().readOnlyFields, ["label"]);
   form.dispose();
 });
 
@@ -130,6 +196,7 @@ Deno.test("formCommands validate reset touch and field actions", async () => {
     ["settingsForm.field.label.validate", "Check Field: LABEL"],
     ["settingsForm.field.route.validate", "Check Field: ROUTE"],
     ["settingsForm.reset", "Reset Form"],
+    ["settingsForm.submit", "Submit Form"],
     ["settingsForm.touchAll", "Touch All Fields"],
     ["settingsForm.field.label.touch", "Touch Field: LABEL"],
     ["settingsForm.field.route.touch", "Touch Field: ROUTE"],
@@ -153,6 +220,8 @@ Deno.test("formCommands validate reset touch and field actions", async () => {
   assertEquals(await registry.execute("settingsForm.reset", (action) => void actions.push(action)), true);
   assertEquals(form.snapshot().values, { route: "overview", label: "" });
   assertEquals(actions[2]!.type, "form.reset");
+  assertEquals(await registry.execute("settingsForm.submit", (action) => void actions.push(action)), true);
+  assertEquals(actions[3]!.type, "form.submitted");
 
   dispose();
   assertEquals(registry.list("settings"), []);
@@ -163,6 +232,7 @@ Deno.test("formCommands can omit field commands and disable empty forms", () => 
   const commands = formCommands(form, { includeFieldCommands: false });
 
   assertEquals(commands.map((command) => [command.id, commandDisabled(command)]), [
+    ["form.submit", true],
     ["form.validate", true],
     ["form.reset", true],
     ["form.touchAll", true],
