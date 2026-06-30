@@ -14,7 +14,7 @@ const components = createComponentCatalogReport();
 const launchers = createVisualizationLaunchReport();
 const renderers = createRuntimeRendererBackendCatalogReport({ capabilities: runtime });
 const themes = createThemeProviderReport(createThemeProvider(), {
-  preview: { tokens: ["foreground", "background", "accent", "success"], components: ["panel", "button", "table"] },
+  preview: { tokens: ["foreground", "surface", "accent", "success"], components: ["StatusBar", "Button", "Table"] },
 });
 
 const phases = [

@@ -1,11 +1,13 @@
 import {
   createThemeGallery,
   createThemeProvider,
+  createThemeProviderReport,
   createThemeRegistry,
   filterThemeGalleryItems,
   formatThemeProviderReportMarkdown,
   grWizardThemePacks,
   selectThemeGalleryItem,
+  standardThemeComponentNames,
 } from "../mod.ts";
 
 interface ThemeGalleryArgs {
@@ -42,6 +44,20 @@ const provider = createThemeProvider({
   ],
 });
 
+const showcaseComponents = [
+  "Badge",
+  "Button",
+  "DataTable",
+  "Frame",
+  "Input",
+  "Modal",
+  "ProgressBar",
+  "StatusBar",
+  "Table",
+  "ThreeAscii",
+  "WindowManager",
+] as const;
+
 if (args.select) {
   const selection = selectThemeGalleryItem(provider, args.select, galleryOptions(args.query));
   if (!selection.selected) {
@@ -50,9 +66,18 @@ if (args.select) {
 }
 
 const gallery = createThemeGallery(provider, galleryOptions(args.query));
+const standardReport = createThemeProviderReport(provider, {
+  preview: false,
+  coverage: { components: standardThemeComponentNames() },
+});
 
 console.log("Theme gallery demo");
 console.log(`active=${gallery.activeId} query=${gallery.query || "(none)"} themes=${gallery.count}`);
+console.log(
+  `standard coverage=${
+    standardReport.summary.completeCoverage ? "complete" : "incomplete"
+  } components=${standardReport.summary.componentCount} missing-states=${standardReport.summary.missingStateCount}`,
+);
 console.log("select with: deno task theme-gallery -- --select grwizard-forge");
 console.log("");
 
@@ -84,7 +109,7 @@ console.log("");
 console.log(formatThemeProviderReportMarkdown(provider, {
   title: "Theme Provider Audit",
   preview: false,
-  coverage: { components: ["Badge", "Button", "DataTable", "StatusBar", "Text"] },
+  coverage: { components: showcaseComponents },
 }));
 
 function galleryOptions(query: string) {
@@ -92,7 +117,7 @@ function galleryOptions(query: string) {
     query,
     sample: "LIVE",
     tokens: ["foreground", "muted", "accent", "success", "warning", "danger"] as const,
-    components: ["Badge", "Button", "DataTable", "StatusBar", "Text"],
+    components: showcaseComponents,
     states: ["base", "focused", "active"] as const,
   };
 }

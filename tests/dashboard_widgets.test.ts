@@ -16,10 +16,12 @@ import { renderSparkline } from "../src/components/sparkline.ts";
 import {
   assertThemeOptions,
   compileThemeManifestOptions,
+  composeStandardThemeOptions,
   composeStyles,
   composeThemeOptions,
   createAnsiStyle,
   createAnsiThemeTokens,
+  createStandardComponentThemeDefinitions,
   createTheme,
   createThemeCatalog,
   createThemeEngine,
@@ -38,9 +40,11 @@ import {
   formatThemeProviderReportMarkdown,
   inspectThemeCoverage,
   inspectThemeManifest,
+  inspectThemeStandardization,
   mergeComponentThemeDefinition,
   previewThemeManifest,
   previewThemeProvider,
+  standardThemeComponentNames,
   type Theme,
   ThemeEngine,
   type ThemeEngineOptions,
@@ -691,6 +695,23 @@ Deno.test("inspectThemeCoverage reports authored state coverage after inheritanc
       },
     ],
   });
+});
+
+Deno.test("standard component themes cover the public widget catalog", () => {
+  const names = standardThemeComponentNames();
+  const definitions = createStandardComponentThemeDefinitions();
+  const options = composeStandardThemeOptions();
+  const audit = inspectThemeStandardization(options);
+
+  assertEquals(names.includes("Button"), true);
+  assertEquals(names.includes("ThreeAscii"), true);
+  assertEquals(Object.keys(definitions), names);
+  assertEquals(audit.missingComponents, []);
+  assertEquals(audit.extraComponents, []);
+  assertEquals(audit.coverage.complete, true);
+  assertEquals(audit.complete, true);
+  assertEquals(new ThemeEngine(options).variants("Button"), ["danger", "primary", "quiet", "success", "warning"]);
+  assertEquals(new ThemeEngine(options).variants("DataTable"), ["danger", "header", "selected", "stale"]);
 });
 
 Deno.test("ThemeEngine supports component inheritance and aliases", () => {

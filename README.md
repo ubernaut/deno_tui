@@ -2537,8 +2537,13 @@ deno task theme-gallery -- brass
 ```
 
 It prints all registered palette cards with styled token samples, component-state previews, descriptions, active layer
-ids, and an active marker. The selectable pack ids are `grwizard-arcane`, `grwizard-forge`, `grwizard-grove`,
-`grwizard-velvet`, `grwizard-parchment`, and `grwizard-seaglass`.
+ids, and an active marker. The built-in packs and grWizard packs now compose the shared standard component theme map, so
+the catalog surface has semantic defaults for widgets such as `Button`, `DataTable`, `Frame`, `Modal`, `ProgressBar`,
+`Table`, `ThreeAscii`, and `WindowManager` instead of one-off demo styles. Use
+`createStandardComponentThemeDefinitions()`, `composeStandardThemeOptions()`, `standardThemeComponentNames()`, and
+`inspectThemeStandardization()` to apply or audit the same coverage in application themes. The selectable pack ids are
+`grwizard-unit01`, `grwizard-section9`, `grwizard-arcane`, `grwizard-forge`, `grwizard-grove`, `grwizard-velvet`,
+`grwizard-parchment`, and `grwizard-seaglass`.
 
 Direct Deno tasks are also available:
 

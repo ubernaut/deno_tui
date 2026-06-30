@@ -1,4 +1,5 @@
 // Copyright 2023 Im-Beast. MIT license.
+import { componentCatalog, type ComponentCatalogEntry } from "./components/catalog.ts";
 import { Computed, Signal } from "./signals/mod.ts";
 import type { AsyncStore } from "./runtime/storage.ts";
 
@@ -269,6 +270,21 @@ export interface ThemeCoverageInspection {
 export interface ThemeCoverageOptions {
   components?: Iterable<string>;
   variants?: (component: string, definition: ComponentThemeDefinition) => Iterable<string>;
+}
+
+/** Options for creating the library-standard component theme definitions. */
+export interface StandardComponentThemeOptions {
+  components?: Iterable<string>;
+}
+
+/** Serializable audit result for standard component theme coverage. */
+export interface ThemeStandardizationInspection {
+  expectedComponents: string[];
+  themedComponents: string[];
+  missingComponents: string[];
+  extraComponents: string[];
+  coverage: ThemeCoverageInspection;
+  complete: boolean;
 }
 
 /** Identifier union for theme Validation Issue variants. */
@@ -651,6 +667,73 @@ export function composeThemeOptions(...options: ThemeEngineOptions[]): ThemeEngi
   }
 
   return { tokens, components };
+}
+
+/** Returns the canonical component names covered by the standard theme preset. */
+export function standardThemeComponentNames(): string[] {
+  return componentCatalog.map((entry) => entry.name).sort((a, b) => a.localeCompare(b));
+}
+
+/** Creates component theme definitions for the built-in widget catalog. */
+export function createStandardComponentThemeDefinitions(
+  options: StandardComponentThemeOptions = {},
+): Record<string, ComponentThemeDefinition> {
+  const requested = options.components ? new Set([...options.components].map(normalizeThemeComponentName)) : undefined;
+  const definitions: Record<string, ComponentThemeDefinition> = {};
+
+  for (const entry of [...componentCatalog].sort((a, b) => a.name.localeCompare(b.name))) {
+    if (
+      requested && !requested.has(normalizeThemeComponentName(entry.id)) &&
+      !requested.has(normalizeThemeComponentName(entry.name))
+    ) {
+      continue;
+    }
+    definitions[entry.name] = standardComponentDefinition(entry);
+  }
+
+  if (requested) {
+    const known = new Set(
+      componentCatalog.flatMap((
+        entry,
+      ) => [normalizeThemeComponentName(entry.id), normalizeThemeComponentName(entry.name)]),
+    );
+    for (const name of options.components ?? []) {
+      if (!known.has(normalizeThemeComponentName(name))) {
+        definitions[name] = standardGenericComponentDefinition();
+      }
+    }
+  }
+
+  return definitions;
+}
+
+/** Composes user options on top of the standard component theme definitions. */
+export function composeStandardThemeOptions(options: ThemeEngineOptions = {}): ThemeEngineOptions {
+  return composeThemeOptions({ components: createStandardComponentThemeDefinitions() }, options);
+}
+
+/** Audits whether a theme option set covers the standard widget component surface. */
+export function inspectThemeStandardization(
+  options: ThemeEngineOptions,
+  coverageOptions: ThemeCoverageOptions = {},
+): ThemeStandardizationInspection {
+  const expectedComponents = [...(coverageOptions.components ?? standardThemeComponentNames())].sort((a, b) =>
+    a.localeCompare(b)
+  );
+  const expected = new Set(expectedComponents);
+  const themedComponents = Object.keys(composeThemeOptions(options).components ?? {}).sort((a, b) =>
+    a.localeCompare(b)
+  );
+  const coverage = inspectThemeCoverage(options, { ...coverageOptions, components: expectedComponents });
+
+  return {
+    expectedComponents,
+    themedComponents,
+    missingComponents: expectedComponents.filter((name) => !themedComponents.includes(name)),
+    extraComponents: themedComponents.filter((name) => !expected.has(name)),
+    coverage,
+    complete: coverage.complete && expectedComponents.every((name) => themedComponents.includes(name)),
+  };
 }
 
 /** Public helper for compile Theme Manifest Style Reference. */
@@ -1358,9 +1441,9 @@ export class ThemeProvider {
 
 /** Public constant for a default Theme Packs. */
 export const defaultThemePacks: ThemePack[] = [
-  { id: "plain", label: "Plain", palette: "plain" },
-  { id: "neon", label: "Neon", palette: "neon" },
-  { id: "terminal", label: "Terminal", palette: "terminal" },
+  { id: "plain", label: "Plain", palette: "plain", options: composeStandardThemeOptions() },
+  { id: "neon", label: "Neon", palette: "neon", options: composeStandardThemeOptions() },
+  { id: "terminal", label: "Terminal", palette: "terminal", options: composeStandardThemeOptions() },
 ];
 
 /** Returns the built-in palette definitions as registerable palette objects. */
@@ -1657,6 +1740,126 @@ export class ThemeValidationError extends Error {
     this.name = "ThemeValidationError";
     this.issues = issues;
   }
+}
+
+function standardComponentDefinition(entry: ComponentCatalogEntry): ComponentThemeDefinition {
+  if (entry.name === "Button") return standardInteractiveComponentDefinition();
+  if (entry.name === "Frame" || entry.name === "Box" || entry.name === "WindowManager") {
+    return standardSurfaceComponentDefinition();
+  }
+  if (entry.category === "data") return standardDataComponentDefinition();
+  if (entry.category === "input" || entry.capabilities.includes("selection")) {
+    return standardInteractiveComponentDefinition();
+  }
+  if (entry.category === "overlay") return standardOverlayComponentDefinition();
+  if (entry.category === "feedback" || entry.category === "visualization") return standardFeedbackComponentDefinition();
+  if (entry.category === "navigation" || entry.category === "layout") return standardSurfaceComponentDefinition();
+  return standardGenericComponentDefinition();
+}
+
+function standardGenericComponentDefinition(): ComponentThemeDefinition {
+  return {
+    base: {
+      base: "foreground",
+      focused: "accent",
+      active: "success",
+      disabled: "muted",
+    },
+    variants: {
+      muted: { base: "muted" },
+      danger: { base: "danger" },
+      warning: { base: "warning" },
+      success: { base: "success" },
+    },
+  };
+}
+
+function standardSurfaceComponentDefinition(): ComponentThemeDefinition {
+  return {
+    base: {
+      base: ["surface", "foreground"],
+      focused: ["surface", "accent"],
+      active: ["surface", "success"],
+      disabled: ["surface", "muted"],
+    },
+    variants: {
+      chrome: { base: ["surface", "accent"], active: ["surface", "success"] },
+      quiet: { base: "muted", focused: "accent" },
+      danger: { base: ["surface", "danger"], focused: ["surface", "warning"] },
+    },
+  };
+}
+
+function standardInteractiveComponentDefinition(): ComponentThemeDefinition {
+  return {
+    base: {
+      base: ["surface", "foreground"],
+      focused: ["surface", "accent"],
+      active: ["surface", "success"],
+      disabled: ["surface", "muted"],
+    },
+    variants: {
+      primary: { base: ["surface", "accent"], active: ["surface", "success"] },
+      quiet: { base: "muted", focused: "accent" },
+      danger: { base: "danger", focused: "warning", active: "danger" },
+      warning: { base: "warning", focused: "accent", active: "warning" },
+      success: { base: "success", focused: "accent", active: "success" },
+    },
+  };
+}
+
+function standardDataComponentDefinition(): ComponentThemeDefinition {
+  return {
+    base: {
+      base: "foreground",
+      focused: "accent",
+      active: ["surface", "foreground"],
+      disabled: "muted",
+    },
+    variants: {
+      header: { base: ["surface", "accent"], active: ["surface", "success"] },
+      selected: { base: ["surface", "foreground"], focused: ["surface", "accent"], active: ["surface", "success"] },
+      stale: { base: "warning", focused: "accent" },
+      danger: { base: "danger", focused: "warning" },
+    },
+  };
+}
+
+function standardOverlayComponentDefinition(): ComponentThemeDefinition {
+  return {
+    base: {
+      base: ["surface", "foreground"],
+      focused: ["surface", "accent"],
+      active: ["surface", "success"],
+      disabled: ["surface", "muted"],
+    },
+    variants: {
+      palette: { base: ["surface", "foreground"], focused: ["surface", "accent"], active: ["surface", "success"] },
+      warning: { base: ["surface", "warning"], focused: ["surface", "accent"] },
+      danger: { base: ["surface", "danger"], focused: ["surface", "warning"] },
+    },
+  };
+}
+
+function standardFeedbackComponentDefinition(): ComponentThemeDefinition {
+  return {
+    base: {
+      base: "foreground",
+      focused: "accent",
+      active: "success",
+      disabled: "muted",
+    },
+    variants: {
+      info: { base: "accent", active: "accent" },
+      success: { base: "success", active: "success" },
+      warning: { base: "warning", active: "warning" },
+      danger: { base: "danger", active: "danger" },
+    },
+  };
+}
+
+function normalizeThemeComponentName(value: string): string {
+  return value.toLowerCase().replaceAll(/[^a-z0-9]/g, "");
 }
 
 function mergeThemeExtends(

@@ -1,5 +1,11 @@
 // Copyright 2023 Im-Beast. MIT license.
-import { createAnsiStyle, type ThemeEngineOptions, type ThemePack, type ThemePalette } from "./theme.ts";
+import {
+  composeStandardThemeOptions,
+  createAnsiStyle,
+  type ThemeEngineOptions,
+  type ThemePack,
+  type ThemePalette,
+} from "./theme.ts";
 
 /** Full color palette adapted from the GeoRefine grWizard Textual themes. */
 export interface GrWizardThemePalette {
@@ -269,7 +275,7 @@ export function grWizardThemePaletteDefinition(palette: GrWizardThemePalette): T
 
 /** Builds component variants that mirror the grWizard status, review, and focus treatments. */
 export function grWizardThemeOptions(palette: GrWizardThemePalette): ThemeEngineOptions {
-  return {
+  return composeStandardThemeOptions({
     components: {
       Badge: {
         base: {
@@ -353,7 +359,7 @@ export function grWizardThemeOptions(palette: GrWizardThemePalette): ThemeEngine
         },
       },
     },
-  };
+  });
 }
 
 function style(spec: { foreground?: string; background?: string; bold?: boolean; dim?: boolean; italic?: boolean }) {
