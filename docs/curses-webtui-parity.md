@@ -23,6 +23,8 @@ testing helpers.
 - Added compact terminal status summaries for process state, backend type, dimensions, cwd, exit status, and
   detached/reconnectable flags.
 - Added a remote terminal client/bridge protocol with input, resize, output, binary, error, and close coverage.
+- Added workbench terminal focus rules and visible workbench/raw input mode indicators for process-backed terminal
+  panes.
 
 ## Remaining Priorities
 

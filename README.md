@@ -757,7 +757,9 @@ translates visible window rectangles into terminal columns/rows and only calls b
 `summarizeTerminalStatus()` helper formats active process state, backend id, dimensions, exit metadata, cwd,
 detached/reconnectable flags, and command lines for status bars or tab strips. The API Workbench portfolio includes a
 `Terminal: Terminal Output` window under the New menu that demonstrates the flow inside the same window manager used by
-the rest of the demo.
+the rest of the demo. That window also includes a Raw input toggle: while a process is running, printable keys route to
+child stdin, Escape returns to workbench mode, and title/status rows show the current terminal input mode and process
+state.
 
 ## Layouts
 

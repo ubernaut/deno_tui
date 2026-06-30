@@ -116,7 +116,9 @@ attach-session metadata, screen cells, and `syncTerminalWindowLayout()` for prop
 terminal session dimensions. `summarizeTerminalStatus()` turns process inspections, backend handles, and persisted
 terminal descriptors into compact status-bar rows. `WindowManagerController` now supports explicit upsert, rename, and
 reorder operations, and `windowManagerCommands()` binds those window actions into the same command-registry system as
-the rest of the app surface.
+the rest of the app surface. The API Workbench Terminal Output window exposes workbench/raw input modes so focused
+terminal panes can either keep global shortcuts active or route printable keys to child stdin with visible mode/status
+indicators.
 
 Remote terminal support lives in `src/web/remote_terminal.ts`: clients encode browser input and resize events, while
 `RemoteTerminalBridge` connects an explicit transport to a `TerminalSessionHandle` and forwards output, binary frames,

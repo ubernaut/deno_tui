@@ -27,11 +27,13 @@ import { renderStepper, StepperController } from "../src/components/stepper.ts";
 import { formatTerminalOutputLine } from "../src/components/terminal_output.ts";
 import { TextBoxController, wrapTextBoxLines } from "../src/components/textbox.ts";
 import { handleInput } from "../src/input.ts";
-import type { MousePressEvent, MouseScrollEvent } from "../src/input_reader/types.ts";
+import type { KeyPressEvent, MousePressEvent, MouseScrollEvent } from "../src/input_reader/types.ts";
+import { routeTerminalKeyPress, type TerminalInputMode } from "../src/app/terminal_input.ts";
 import { WindowManagerController } from "../src/layout/mod.ts";
 import { createKittyGraphicsSurface, type GraphicsSurface } from "../src/runtime/graphics_surface.ts";
 import { formatProcessCommandLine, ProcessSessionController } from "../src/runtime/process_session.ts";
 import { type AsyncStore, createRuntimeStore } from "../src/runtime/storage.ts";
+import { summarizeTerminalStatus } from "../src/runtime/terminal_status.ts";
 import { Computed, Signal } from "../src/signals/mod.ts";
 import { probeCompatibleWebGPUDevice } from "../src/three_ascii/webgpu_compat.ts";
 import { Tui } from "../src/tui.ts";
@@ -139,7 +141,7 @@ type HitAction =
 type ControlHitAction = "previous" | "next" | "activate" | "set" | "focus" | "toggle";
 type ConfigHitAction = "previous" | "next" | "activate";
 type AsciiConfigModalAction = "cancel" | "apply" | "ok";
-type TerminalOutputAction = "run" | "stop" | "restart" | "clear" | "follow" | "copy";
+type TerminalOutputAction = "run" | "stop" | "restart" | "clear" | "follow" | "copy" | "raw";
 type ButtonTone = "default" | "danger" | "warning" | "success" | "muted";
 type AsciiNumericKey =
   | "edgeThreshold"
@@ -370,20 +372,32 @@ const terminalOutputSession = new ProcessSessionController({
     [
       "const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));",
       "console.log('deno_tui terminal output window');",
-      "for (let index = 1; index <= 6; index += 1) {",
+      "console.log('press I in the workbench to enter raw input mode; Escape returns to workbench mode');",
+      "const reader = Deno.stdin.readable.getReader();",
+      "const decoder = new TextDecoder();",
+      "for (let index = 1; index <= 20; index += 1) {",
       "  console.log(`stdout frame ${index}  ${new Date().toISOString()}`);",
       "  if (index % 3 === 0) console.error(`stderr checkpoint ${index}`);",
-      "  await sleep(120);",
+      "  const input = await Promise.race([reader.read(), sleep(250).then(() => undefined)]);",
+      "  if (input?.value) console.log(`stdin bytes ${Array.from(input.value).join(',')}  text=${JSON.stringify(decoder.decode(input.value))}`);",
+      "  if (input?.done) break;",
       "}",
       "console.log('process complete');",
     ].join("\n"),
   ],
   limit: 400,
 });
-terminalOutputSession.status.subscribe(scheduleDraw);
+const terminalInputMode = new Signal<TerminalInputMode>("workbench");
+terminalOutputSession.status.subscribe((status) => {
+  if (status !== "running" && terminalInputMode.peek() === "raw") {
+    terminalInputMode.value = "workbench";
+  }
+  scheduleDraw();
+});
 terminalOutputSession.exit.subscribe(scheduleDraw);
 terminalOutputSession.output.lines.subscribe(scheduleDraw);
 terminalOutputSession.output.follow.subscribe(scheduleDraw);
+terminalInputMode.subscribe(scheduleDraw);
 
 function createWorkbenchKittySurface(force: boolean): GraphicsSurface {
   const canForce = force && (!Deno.env.get("TMUX") || tmuxPassthroughAllowed);
@@ -860,6 +874,7 @@ tui.on("destroy", () => {
   threeGraphicsRect.dispose();
   void clearKittyGraphicsSurfaces();
   void terminalOutputSession.dispose();
+  terminalInputMode.dispose();
   systemMonitor.stop();
   workbenchAudioRegistry.dispose();
   for (const [id, signal] of windowAscii) {
@@ -1716,12 +1731,16 @@ function renderTerminalOutput(frame: Frame, rect: Rectangle): void {
     : inspection.status === "cancelled"
     ? t.warn
     : t.accent;
-  const statusText = `${inspection.status.toUpperCase()}  ${inspection.commandLine}`;
+  const statusSummary = summarizeTerminalStatus(inspection, {
+    title: terminalInputModeLabel(),
+    backendId: "process",
+    width: rect.width,
+  });
   write(
     frame,
     row,
     rect.column,
-    paint(fit(statusText, rect.width), {
+    paint(fit(statusSummary.text, rect.width), {
       fg: contrastText(statusTone, t.background, t.text),
       bg: statusTone,
       bold: true,
@@ -1729,7 +1748,9 @@ function renderTerminalOutput(frame: Frame, rect: Rectangle): void {
   );
   row += 1;
 
-  const hint = "keys: P run  S stop  U restart  K clear  V follow  Y copy";
+  const hint = terminalInputMode.peek() === "raw"
+    ? "raw input: printable keys go to child process  Esc workbench mode  Ctrl+C reserved"
+    : "keys: P run  S stop  U restart  K clear  V follow  Y copy  I raw input";
   write(frame, row, rect.column, paint(fit(hint, rect.width), { fg: t.soft, bg: t.panelSoft }));
   row += 1;
 
@@ -1789,6 +1810,7 @@ function renderTerminalOutputToolbar(frame: Frame, rect: Rectangle, startRow: nu
   addButton("Restart", "restart", { tone: "warning" });
   addButton("Clear", "clear", { disabled: terminalOutputSession.output.lines.peek().length === 0, tone: "muted" });
   addButton("Follow", "follow", { active: terminalOutputSession.output.follow.peek() });
+  addButton("Raw", "raw", { active: terminalInputMode.peek() === "raw", disabled: !terminalOutputSession.running });
   addButton("Copy Cmd", "copy", { tone: "muted" });
   return Math.min(bottom, row + 1);
 }
@@ -1800,6 +1822,24 @@ function terminalOutputLineStyle(
   if (source === "stderr") return { fg: t.danger, bg: t.surface, bold: true };
   if (source === "system") return { fg: t.warn, bg: t.panelSoft, bold: true };
   return { fg: t.text, bg: t.surface };
+}
+
+function terminalInputModeLabel(): string {
+  return terminalInputMode.peek() === "raw" ? "RAW INPUT" : "WORKBENCH";
+}
+
+function toggleTerminalInputMode(): void {
+  if (terminalInputMode.peek() === "raw") {
+    terminalInputMode.value = "workbench";
+    pushLog("terminal input workbench mode");
+    return;
+  }
+  if (!terminalOutputSession.running) {
+    pushLog("terminal raw input requires running process");
+    return;
+  }
+  terminalInputMode.value = "raw";
+  pushLog("terminal input raw mode");
 }
 
 function renderHtmlCssLayout(frame: Frame, rect: Rectangle): void {
@@ -3749,6 +3789,7 @@ function openHelpModal(): void {
       "Mouse: click windows to focus them, click rows to select them, click controls to change values, drag or click scrollbars to move through overflow content.",
       "Use the New menu to add Monitor, Neon Exodus, and Neon 3D widget windows to the workspace.",
       "The New menu also includes Terminal Output and HTML/CSS Layout windows for process output and markup/CSS layout demos.",
+      "In Terminal Output, P/S/U/K/V/Y run, stop, restart, clear, follow, and copy the command. Press I while the process is running to send printable keys to child stdin; Escape returns to workbench mode.",
       "Use the Workspace menu to save, open, rename, or delete workspace layouts. Opening a saved workspace replaces the currently loaded widget windows.",
       "Use the Theme menu to switch palettes. Click the [x] button in the top-right menu bar or press Q to open quit confirmation.",
     ],
@@ -3898,6 +3939,8 @@ async function applyTerminalOutputAction(action: TerminalOutputAction): Promise<
   } else if (action === "follow") {
     const follow = terminalOutputSession.output.toggleFollow();
     pushLog(`terminal follow ${follow ? "on" : "off"}`);
+  } else if (action === "raw") {
+    toggleTerminalInputMode();
   } else if (action === "copy") {
     pushLog(`terminal command ${formatProcessCommandLine(terminalOutputSession.command.peek())}`);
   }
@@ -3922,13 +3965,14 @@ function closeThreeConfigModal(): void {
   pushLog("three config closed");
 }
 
-function handleWorkbenchKey(event: { key: string; ctrl?: boolean; meta?: boolean; shift?: boolean }): void {
+function handleWorkbenchKey(event: KeyPressEvent): void {
+  if (activeWindow.peek() === TERMINAL_OUTPUT_WINDOW_ID && handleTerminalOutputKey(event)) return;
   if (event.ctrl || event.meta) return;
   if (event.key === "q") openQuitModal();
   else if (event.key === "f10") focusMenu();
   else if (event.key === "?" || event.key === "h") openHelpModal();
   else if (event.key === "n") openNewWindowMenu();
-  else if (event.key === "T" || (event.key === "t" && event.shift)) openThemeMenu();
+  else if (event.key === "t" && event.shift) openThemeMenu();
   else if (event.key === "t") setTheme(themeIndex.peek() + 1);
   else if (event.key === "g") openThreeConfigModal(activeWindow.peek());
   else if (event.key === "c") closeWindow(activeWindow.peek());
@@ -3953,9 +3997,8 @@ function handleWorkbenchKey(event: { key: string; ctrl?: boolean; meta?: boolean
   else if (activeWindow.peek() === "explorer" && explorerKeys.has(event.key)) {
     explorer.handleKeyPress(event, Math.max(1, currentHeight() - 8));
   } else if (activeWindow.peek() === "controls") handleControlsKey(event);
-  else if (activeWindow.peek() === TERMINAL_OUTPUT_WINDOW_ID && handleTerminalOutputKey(event)) return;
   else if (activeWindow.peek() === "data" && event.key.toLowerCase() === "s") {
-    cycleDataSortColumn(event.shift || event.key === "S" ? -1 : 1);
+    cycleDataSortColumn(event.shift ? -1 : 1);
   } else if (activeWindow.peek() === "data") table.handleKeyPress(event as never);
   else if (event.key === "+" || event.key === "=") density.increment();
   else if (event.key === "-" || event.key === "_") density.decrement();
@@ -3966,7 +4009,22 @@ function handleWorkbenchKey(event: { key: string; ctrl?: boolean; meta?: boolean
   else if (event.key === "down") scrollWindow(activeWindow.peek(), 0, 1);
 }
 
-function handleTerminalOutputKey(event: { key: string; ctrl?: boolean; meta?: boolean; shift?: boolean }): boolean {
+function handleTerminalOutputKey(event: KeyPressEvent): boolean {
+  if (terminalInputMode.peek() === "raw") {
+    if (event.key === "escape") {
+      terminalInputMode.value = "workbench";
+      pushLog("terminal input workbench mode");
+      return true;
+    }
+    if (event.meta || event.key === "f10" || (event.ctrl && event.key === "c")) return false;
+    void routeTerminalKeyPress(terminalOutputSession, event, { mode: "raw" }).then((decision) => {
+      if (!decision.routed && decision.reason !== "reserved") {
+        pushLog(`terminal input ${decision.reason}`);
+      }
+      scheduleDraw();
+    });
+    return true;
+  }
   if (event.ctrl || event.meta) return false;
   const key = event.key.toLowerCase();
   const action = key === "p"
@@ -3981,6 +4039,8 @@ function handleTerminalOutputKey(event: { key: string; ctrl?: boolean; meta?: bo
     ? "follow"
     : key === "y"
     ? "copy"
+    : key === "i"
+    ? "raw"
     : undefined;
   if (!action) return false;
   void applyTerminalOutputAction(action);
@@ -4903,8 +4963,13 @@ function windowTitle(id: WindowId): string {
     : id === "htmlLayout"
     ? "HTML/CSS Layout"
     : id === TERMINAL_OUTPUT_WINDOW_ID
-    ? "Terminal Output"
+    ? terminalOutputWindowTitle()
     : "Three ASCII";
+}
+
+function terminalOutputWindowTitle(): string {
+  const mode = terminalInputMode.peek() === "raw" ? "RAW" : "WB";
+  return `Terminal Output ${mode} ${terminalOutputSession.status.peek().toUpperCase()}`;
 }
 
 function windowIds(): WindowId[] {
