@@ -187,6 +187,8 @@ export function tileRects(bounds: Rectangle, options: TileLayoutOptions): TileLa
     };
   }
 
+  const stretchSparseColumns = best.contentHeight <= height;
+  const layoutBottom = bounds.row + (stretchSparseColumns ? height : best.contentHeight);
   const rects = Array.from({ length: itemCount }, (_, index): Rectangle => {
     const columnIndex = index % best.columns;
     const rowIndex = Math.floor(index / best.columns);
@@ -194,11 +196,19 @@ export function tileRects(bounds: Rectangle, options: TileLayoutOptions): TileLa
     const row = bounds.row + rowIndex * (best.tileHeight + gap);
     const lastColumn = columnIndex === best.columns - 1;
     const lastRow = rowIndex === best.rows - 1;
+    const lastInColumn = index + best.columns >= itemCount;
     return {
       column,
       row,
       width: Math.max(0, lastColumn ? bounds.column + width - column : best.tileWidth),
-      height: Math.max(0, lastRow ? bounds.row + best.contentHeight - row : best.tileHeight),
+      height: Math.max(
+        0,
+        stretchSparseColumns && lastInColumn
+          ? layoutBottom - row
+          : lastRow
+          ? bounds.row + best.contentHeight - row
+          : best.tileHeight,
+      ),
     };
   });
 

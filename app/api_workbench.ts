@@ -92,6 +92,8 @@ type HitAction =
   | { type: "threeConfig"; id: WindowId }
   | { type: "threeViewport"; id: WindowId }
   | { type: "asciiConfig"; index: number; action?: ConfigHitAction }
+  | { type: "asciiConfigAction"; action: AsciiConfigModalAction }
+  | { type: "asciiConfigBackdrop" }
   | { type: "theme"; index: number }
   | { type: "newWindow"; index: number }
   | { type: "workspace"; index: number }
@@ -105,6 +107,8 @@ type HitAction =
   | { type: "workspaceScrollbar" };
 type ControlHitAction = "previous" | "next" | "activate" | "set" | "focus" | "toggle";
 type ConfigHitAction = "previous" | "next" | "activate";
+type AsciiConfigModalAction = "cancel" | "apply" | "ok";
+type ButtonTone = "default" | "danger" | "warning" | "success" | "muted";
 type AsciiNumericKey =
   | "edgeThreshold"
   | "normalThreshold"
@@ -321,6 +325,7 @@ const menuFocused = new Signal(false);
 const threeConfigOpen = new Signal(false);
 const threeConfigSelected = new Signal(0);
 const threeConfigWindow = new Signal<WindowId>("three");
+const threeConfigBaseline = new Signal<AsciiOptions | null>(null);
 const activeWindow = new Signal<WindowId>("inspector");
 const activeControl = new Signal<ControlId>("button");
 const maximized = new Signal<WindowId | null>(null);
@@ -699,6 +704,7 @@ tui.on("destroy", () => {
   threeConfigOpen.dispose();
   threeConfigSelected.dispose();
   threeConfigWindow.dispose();
+  threeConfigBaseline.dispose();
   dynamicVisualizationWindows.dispose();
   selectedCpuHexTiles.dispose();
   commandInput.dispose();
@@ -765,7 +771,7 @@ function renderHeader(frame: Frame): void {
   fillRow(frame, 1, t.panel);
   write(frame, 0, 0, paint(" API WORKBENCH ", { fg: t.background, bg: t.accent, bold: true }));
   const menuStart = 17;
-  const closeLabel = width >= 20 ? " [x] " : "";
+  const closeLabel = width >= 20 ? buttonText("x", { compact: true }) : "";
   const closeWidth = textWidth(closeLabel);
   const menuWidth = Math.max(0, width - menuStart - closeWidth);
   renderMenuHits(menuStart, 0, menuWidth);
@@ -780,7 +786,7 @@ function renderHeader(frame: Frame): void {
   );
   if (closeLabel) {
     const closeColumn = Math.max(0, width - closeWidth);
-    write(frame, 0, closeColumn, paint(closeLabel, { fg: t.background, bg: t.danger, bold: true }));
+    writeButton(frame, 0, closeColumn, "x", { compact: true, tone: "danger" });
     addHit({ column: closeColumn, row: 0, width: closeWidth, height: 1 }, { type: "quit" });
   }
   if (themeMenuOpen.peek()) {
@@ -954,21 +960,22 @@ function renderWindow(frame: Frame, id: WindowId, rect: Rectangle): void {
   const restoreX = rect.column + rect.width - 8;
   const maxX = rect.column + rect.width - 12;
   const minX = rect.column + rect.width - 16;
-  const configLabel = "[config]";
-  const configX = minX - textWidth(configLabel) - 1;
+  const configLabel = buttonText("config");
+  const configWidth = textWidth(configLabel);
+  const configX = minX - configWidth - 1;
   if (rect.width >= 22) {
-    write(frame, buttonRow, minX, paint("[-]", { fg: t.background, bg: t.warn, bold: true }));
-    write(frame, buttonRow, maxX, paint("[□]", { fg: t.background, bg: t.good, bold: true }));
-    write(frame, buttonRow, restoreX, paint("[↺]", { fg: t.background, bg: t.border, bold: true }));
-    write(frame, buttonRow, closeX, paint("[x]", { fg: t.background, bg: t.danger, bold: true }));
+    writeButton(frame, buttonRow, minX, "-", { compact: true, tone: "warning" });
+    writeButton(frame, buttonRow, maxX, "□", { compact: true, tone: "success" });
+    writeButton(frame, buttonRow, restoreX, "↺", { compact: true, tone: "muted" });
+    writeButton(frame, buttonRow, closeX, "x", { compact: true, tone: "danger" });
     addHit({ column: minX, row: buttonRow, width: 3, height: 1 }, { type: "minimize", id });
     addHit({ column: maxX, row: buttonRow, width: 3, height: 1 }, { type: "maximize", id });
     addHit({ column: restoreX, row: buttonRow, width: 3, height: 1 }, { type: "restore", id });
     addHit({ column: closeX, row: buttonRow, width: 3, height: 1 }, { type: "close", id });
   }
   if (isThreeRenderedWindow(id) && configX > rect.column + textWidth(windowTitle(id)) + 3) {
-    write(frame, buttonRow, configX, paint(configLabel, buttonPaintOptions(t, "base")));
-    addHit({ column: configX, row: buttonRow, width: textWidth(configLabel), height: 1 }, { type: "threeConfig", id });
+    writeButton(frame, buttonRow, configX, "config");
+    addHit({ column: configX, row: buttonRow, width: configWidth, height: 1 }, { type: "threeConfig", id });
   }
 
   const inner = inset(rect, 1);
@@ -1363,17 +1370,17 @@ function renderControls(frame: Frame, rect: Rectangle): void {
   const progressTrack = `${"█".repeat(progressFilled)}${"░".repeat(Math.max(0, progressTrackWidth - progressFilled))}`;
   writeControl(
     "button",
-    `[ Run Action ] presses=${actionButton.pressCount.peek()}`,
+    `${buttonText("Run Action")} presses=${actionButton.pressCount.peek()}`,
     { button: true },
   );
   writeControl(
     "genericButton",
-    `[ Generic Button ] presses=${genericButton.pressCount.peek()}`,
+    `${buttonText("Generic Button")} presses=${genericButton.pressCount.peek()}`,
     { button: true },
   );
   writeControl(
     "modal",
-    `[ Open Modal ] state=${modal.openState.peek() ? "open" : "closed"}`,
+    `${buttonText("Open Modal")} state=${modal.openState.peek() ? "open" : "closed"}`,
     { button: true },
   );
   writeControl("slider", `Slider    ${track} ${density.value.peek()}/10`, {
@@ -1622,10 +1629,10 @@ function renderShelf(frame: Frame): void {
   write(frame, row, column, paint("minimized ", { fg: theme().muted, bg: theme().backgroundSoft }));
   column += 10;
   for (const id of entries) {
-    const label = `[${windowTitle(id)}]`;
-    write(frame, row, column, paint(label, { fg: theme().background, bg: theme().border, bold: true }));
-    addHit({ column, row, width: textWidth(label), height: 1 }, { type: "restore", id });
-    column += textWidth(label) + 1;
+    const label = windowTitle(id);
+    const width = writeButton(frame, row, column, label, { tone: "muted" });
+    addHit({ column, row, width, height: 1 }, { type: "restore", id });
+    column += width + 1;
   }
 }
 
@@ -1641,19 +1648,14 @@ function renderWindowTabs(frame: Frame): void {
     const selected = tab.fullscreen;
     const hidden = tab.minimized;
     const marker = selected ? "●" : hidden ? "○" : " ";
-    const label = `[${marker} ${windowTitle(id)}]`;
-    const width = Math.min(textWidth(label), Math.max(0, currentWidth() - column));
+    const label = `${marker} ${windowTitle(id)}`;
+    const width = Math.min(textWidth(buttonText(label)), Math.max(0, currentWidth() - column));
     if (width <= 0) break;
-    write(
-      frame,
-      row,
-      column,
-      paint(fit(label, width), {
-        fg: selected ? t.background : hidden ? t.muted : t.text,
-        bg: selected ? t.accent : hidden ? t.panel : t.panelSoft,
-        bold: selected,
-      }),
-    );
+    writeButton(frame, row, column, label, {
+      state: selected ? "active" : "base",
+      tone: hidden ? "muted" : "default",
+      maxWidth: width,
+    });
     addHit({ column, row, width, height: 1 }, { type: "windowTab", id });
     column += width + 1;
   }
@@ -1733,25 +1735,12 @@ function renderModalOverlay(frame: Frame): void {
   const actionRow = inner.row + Math.min(rows.length, inner.height) - 1;
   let cursor = inner.column;
   for (const [index, action] of inspection.actions.entries()) {
-    const label = action.disabled
-      ? `( ${action.label} )`
-      : index === inspection.selectedActionIndex
-      ? `[ ${action.label} ]`
-      : `  ${action.label}  `;
-    const width = textWidth(label);
+    const width = textWidth(buttonText(action.label));
     if (cursor + width > inner.column + inner.width) break;
-    write(
-      frame,
-      actionRow,
-      cursor,
-      paint(
-        label,
-        action.destructive ? dangerButtonPaintOptions(t, action.disabled) : buttonPaintOptions(
-          t,
-          action.disabled ? "disabled" : index === inspection.selectedActionIndex ? "active" : "base",
-        ),
-      ),
-    );
+    writeButton(frame, actionRow, cursor, action.label, {
+      state: action.disabled ? "disabled" : index === inspection.selectedActionIndex ? "active" : "base",
+      tone: action.destructive ? "danger" : "default",
+    });
     addHit({ column: cursor, row: actionRow, width, height: 1 }, { type: "modalAction", index });
     cursor += width + 1;
   }
@@ -1784,9 +1773,9 @@ const threeConfigRows: readonly ThreeConfigRow[] = [
 function renderThreeConfigModal(frame: Frame): void {
   const t = theme();
   const screen = { column: 0, row: 0, width: currentWidth(), height: currentHeight() };
-  addHit(screen, { type: "asciiConfig", index: -1 });
+  addHit(screen, { type: "asciiConfigBackdrop" });
   const width = Math.min(Math.max(54, currentWidth() - 8), 82);
-  const height = Math.min(Math.max(14, threeConfigRows.length + 5), Math.max(8, currentHeight() - 4));
+  const height = Math.min(Math.max(16, threeConfigRows.length + 7), Math.max(10, currentHeight() - 4));
   const rect = {
     column: Math.max(0, Math.floor((currentWidth() - width) / 2)),
     row: Math.max(1, Math.floor((currentHeight() - height) / 2)),
@@ -1808,7 +1797,9 @@ function renderThreeConfigModal(frame: Frame): void {
   } · ${asciiPresetLabelLocal(current.preset)}`;
   write(frame, inner.row, inner.column, paint(fit(title, inner.width), { fg: t.accent, bg: t.panelSoft, bold: true }));
   const rowsTop = inner.row + 2;
-  const visibleRows = Math.max(0, inner.height - 3);
+  const actionRow = inner.row + inner.height - 2;
+  const footerRow = inner.row + inner.height - 1;
+  const visibleRows = Math.max(0, actionRow - rowsTop);
   for (let visibleIndex = 0; visibleIndex < Math.min(visibleRows, threeConfigRows.length); visibleIndex += 1) {
     const rowIndex = visibleIndex;
     const row = threeConfigRows[rowIndex]!;
@@ -1830,10 +1821,27 @@ function renderThreeConfigModal(frame: Frame): void {
       action: "next",
     });
   }
-  const footer = "Up/Down select  Left/Right change  Enter toggle  Esc close";
+  let actionColumn = inner.column;
+  for (
+    const action of [
+      { id: "cancel" as const, label: "Cancel", tone: "muted" as const },
+      { id: "apply" as const, label: "Apply", tone: "default" as const },
+      { id: "ok" as const, label: "OK", tone: "success" as const },
+    ]
+  ) {
+    const width = textWidth(buttonText(action.label));
+    if (actionColumn + width > inner.column + inner.width) break;
+    writeButton(frame, actionRow, actionColumn, action.label, { tone: action.tone });
+    addHit({ column: actionColumn, row: actionRow, width, height: 1 }, {
+      type: "asciiConfigAction",
+      action: action.id,
+    });
+    actionColumn += width + 1;
+  }
+  const footer = "Up/Down select  Left/Right change  Enter toggle  A apply  O OK  Esc cancel";
   write(
     frame,
-    inner.row + inner.height - 1,
+    footerRow,
     inner.column,
     paint(fit(footer, inner.width), {
       fg: t.muted,
@@ -1869,7 +1877,7 @@ function threeConfigRowText(row: ThreeConfigRow): string {
 
 function applyThreeConfigRow(index: number, action: ConfigHitAction = "activate"): void {
   if (index < 0) {
-    closeThreeConfigModal();
+    applyThreeConfigModalAction("cancel");
     return;
   }
   const row = threeConfigRows[index];
@@ -1893,7 +1901,7 @@ function stepAsciiPreset(delta: number): void {
   const nextId = ids[(currentIndex + delta + ids.length) % ids.length]!;
   const next = { ...current };
   applyAsciiPreset(next, nextId);
-  setConfiguredAscii(next, `three config preset ${asciiPresetLabelLocal(nextId)}`);
+  setConfiguredAscii(next, `three config preset ${asciiPresetLabelLocal(nextId)}`, { persist: false });
 }
 
 function stepAsciiGlyphStyle(delta: number): void {
@@ -1903,6 +1911,7 @@ function stepAsciiGlyphStyle(delta: number): void {
   setConfiguredAscii(
     { ...current, terminalGlyphStyle: next, preset: "custom" },
     `three config glyph style ${terminalGlyphStyleLabel(next)}`,
+    { persist: false },
   );
 }
 
@@ -1911,6 +1920,7 @@ function toggleAsciiOption(key: AsciiToggleKey): void {
   setConfiguredAscii(
     { ...current, [key]: !current[key], preset: "custom" },
     `three config ${key} ${!current[key] ? "on" : "off"}`,
+    { persist: false },
   );
 }
 
@@ -1923,6 +1933,7 @@ function stepAsciiNumeric(key: AsciiNumericKey, delta: number): void {
   setConfiguredAscii(
     { ...current, [key]: nextValue, preset: "custom" },
     `three config ${key} ${formatAsciiControlValue(key, nextValue)}`,
+    { persist: false },
   );
 }
 
@@ -2504,11 +2515,31 @@ function configuredAscii(): Signal<AsciiOptions> {
   return asciiForWindow(configuredAsciiWindow());
 }
 
-function setConfiguredAscii(next: AsciiOptions, message: string): void {
+function setConfiguredAscii(
+  next: AsciiOptions,
+  message: string,
+  options: { persist?: boolean } = {},
+): void {
   const id = configuredAsciiWindow();
   setAsciiForWindow(id, next);
-  if (isVisualizationWindow(id)) void persistActiveWorkspaceState();
+  if (options.persist !== false && isVisualizationWindow(id)) void persistActiveWorkspaceState();
   pushLog(`${message} (${windowTitle(id)})`);
+}
+
+function applyThreeConfigModalAction(action: AsciiConfigModalAction): void {
+  if (action === "cancel") {
+    const baseline = threeConfigBaseline.peek();
+    if (baseline) {
+      setConfiguredAscii(cloneAsciiOptions(baseline), "three config cancelled", { persist: true });
+    }
+    closeThreeConfigModal();
+    return;
+  }
+
+  const current = cloneAsciiOptions(configuredAscii().peek());
+  setConfiguredAscii(current, action === "apply" ? "three config applied" : "three config ok", { persist: true });
+  threeConfigBaseline.value = cloneAsciiOptions(current);
+  if (action === "ok") closeThreeConfigModal();
 }
 
 function isThreeRenderedWindow(id: WindowId): boolean {
@@ -3319,6 +3350,8 @@ function applyHit(target: { rect: Rectangle; action: HitAction }, x: number, y: 
   else if (action.type === "threeViewport") focus(action.id);
   else if (action.type === "threeConfig") openThreeConfigModal(action.id);
   else if (action.type === "asciiConfig") applyThreeConfigRow(action.index, action.action ?? "activate");
+  else if (action.type === "asciiConfigAction") applyThreeConfigModalAction(action.action);
+  else if (action.type === "asciiConfigBackdrop") return;
   else if (action.type === "restore") {
     windowManager.restore(action.id);
     syncWindowSignalsFromManager();
@@ -3362,6 +3395,7 @@ function openThreeConfigModal(id: WindowId): void {
   modal.close();
   closeTopMenus();
   threeConfigWindow.value = id;
+  threeConfigBaseline.value = cloneAsciiOptions(asciiForWindow(id).peek());
   threeConfigOpen.value = true;
   threeConfigSelected.value = 0;
   focus(id);
@@ -3370,6 +3404,7 @@ function openThreeConfigModal(id: WindowId): void {
 
 function closeThreeConfigModal(): void {
   threeConfigOpen.value = false;
+  threeConfigBaseline.value = null;
   pushLog("three config closed");
 }
 
@@ -3608,7 +3643,15 @@ function restoreNextMinimizedWindow(): void {
 
 function handleThreeConfigKey(event: { key: string; shift?: boolean }): void {
   if (event.key === "escape" || event.key === "q") {
-    closeThreeConfigModal();
+    applyThreeConfigModalAction("cancel");
+    return;
+  }
+  if (event.key === "a" || event.key === "A") {
+    applyThreeConfigModalAction("apply");
+    return;
+  }
+  if (event.key === "o" || event.key === "O") {
+    applyThreeConfigModalAction("ok");
     return;
   }
   if (event.key === "up") {
@@ -4092,6 +4135,7 @@ function toStyledCells(value: string): string[] {
   let style = "";
   for (let index = 0; index < value.length;) {
     if (value.charCodeAt(index) === 0x1b) {
+      // deno-lint-ignore no-control-regex -- ANSI escape parsing intentionally matches ESC.
       const match = /^\x1b\[[0-9;]*m/.exec(value.slice(index));
       if (match) {
         const sequence = match[0];
@@ -4125,26 +4169,63 @@ function paint(text: string, options: { fg?: string; bg?: string; bold?: boolean
   return makeStyle({ fg: options.fg ?? theme().text, bg: options.bg, bold: options.bold })(text);
 }
 
-function pill(text: string, t = theme()): string {
-  return paint(` ${text} `, buttonPaintOptions(t, "active"));
+function buttonText(label: string, options: { compact?: boolean } = {}): string {
+  const safeLabel = label.trim();
+  return options.compact ? `[${safeLabel}]` : `[ ${safeLabel} ]`;
+}
+
+function writeButton(
+  frame: Frame,
+  row: number,
+  column: number,
+  label: string,
+  options: {
+    state?: "base" | "active" | "disabled";
+    tone?: ButtonTone;
+    compact?: boolean;
+    maxWidth?: number;
+  } = {},
+): number {
+  const text = buttonText(label, { compact: options.compact });
+  const width = Math.max(0, Math.min(textWidth(text), options.maxWidth ?? textWidth(text)));
+  if (width <= 0) return 0;
+  write(
+    frame,
+    row,
+    column,
+    paint(fit(text, width), buttonPaintOptions(theme(), options.state ?? "base", options.tone ?? "default")),
+  );
+  return width;
 }
 
 function buttonPaintOptions(
   t: ThemeSpec,
   state: "base" | "active" | "disabled" = "base",
+  tone: ButtonTone = "default",
 ): { fg: string; bg: string; bold: boolean } {
   if (state === "disabled") {
     return { fg: t.buttonMutedText, bg: t.buttonMutedBg, bold: false };
   }
-  if (state === "active") {
-    return { fg: t.buttonActiveText, bg: t.buttonActiveBg, bold: true };
+  const toneBg = tone === "danger"
+    ? t.danger
+    : tone === "warning"
+    ? t.warn
+    : tone === "success"
+    ? t.good
+    : tone === "muted"
+    ? t.border
+    : undefined;
+  if (toneBg) {
+    return { fg: contrastText(toneBg, t.background, t.text), bg: toneBg, bold: true };
   }
-  return { fg: t.buttonText, bg: t.buttonBg, bold: true };
-}
-
-function dangerButtonPaintOptions(t: ThemeSpec, disabled?: boolean): { fg: string; bg: string; bold: boolean } {
-  if (disabled) return buttonPaintOptions(t, "disabled");
-  return { fg: contrastText(t.danger, t.background, t.text), bg: t.danger, bold: true };
+  if (state === "active") {
+    return {
+      fg: contrastText(t.buttonActiveBg, t.background, t.text),
+      bg: t.buttonActiveBg,
+      bold: true,
+    };
+  }
+  return { fg: contrastText(t.buttonBg, t.background, t.text), bg: t.buttonBg, bold: true };
 }
 
 function contrastText(background: string, dark: string, light: string): string {

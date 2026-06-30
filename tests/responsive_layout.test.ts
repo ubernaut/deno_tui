@@ -116,8 +116,9 @@ Deno.test("tileRects chooses wider grids instead of only one or two columns", ()
   assertEquals(mediumWide.columns, 3);
   assertEquals(mediumWide.rows, 2);
   assertEquals(mediumWide.rects[0], { column: 2, row: 3, width: 39, height: 14 });
-  assertEquals(mediumWide.rects[2], { column: 82, row: 3, width: 40, height: 14 });
-  assertEquals(mediumWide.rects[3], { column: 2, row: 18, width: 39, height: 14 });
+  assertEquals(mediumWide.rects[1], { column: 42, row: 3, width: 39, height: 30 });
+  assertEquals(mediumWide.rects[2], { column: 82, row: 3, width: 40, height: 30 });
+  assertEquals(mediumWide.rects[3], { column: 2, row: 18, width: 39, height: 15 });
 
   const extraWide = tileRects({ column: 2, row: 3, width: 150, height: 30 }, {
     itemCount: 4,
@@ -146,6 +147,7 @@ Deno.test("tileRects can overflow vertically for scrollable tiled panes", () => 
   assertEquals(layout.columns, 2);
   assertEquals(layout.rows, 2);
   assertEquals(layout.contentHeight, 17);
+  assertEquals(layout.rects[1], { column: 40, row: 0, width: 40, height: 8 });
   assertEquals(layout.rects[2], { column: 0, row: 9, width: 39, height: 8 });
 });
 
