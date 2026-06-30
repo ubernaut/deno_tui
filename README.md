@@ -749,8 +749,10 @@ The backend-facing layer adds `TerminalBackend`, `TerminalSessionHandle`, `creat
 `TerminalScreenController`, and terminal templates for shell, Deno task, arbitrary command, project task, and attachable
 session metadata. Use `syncTerminalWindowLayout()` when terminal handles live inside a `WindowManagerController`; it
 translates visible window rectangles into terminal columns/rows and only calls backend resize when geometry changes. The
-API Workbench portfolio includes a `Terminal: Terminal Output` window under the New menu that demonstrates the flow
-inside the same window manager used by the rest of the demo.
+`summarizeTerminalStatus()` helper formats active process state, backend id, dimensions, exit metadata, cwd,
+detached/reconnectable flags, and command lines for status bars or tab strips. The API Workbench portfolio includes a
+`Terminal: Terminal Output` window under the New menu that demonstrates the flow inside the same window manager used by
+the rest of the demo.
 
 ## Layouts
 
@@ -2003,6 +2005,7 @@ Optional high-performance APIs are surfaced through `src/runtime/mod.ts`:
 - `shellTerminalTemplate()` / `denoTaskTerminalTemplate()` / `commandTerminalTemplate()` /
   `projectTaskTerminalTemplate()`
 - `attachTerminalTemplate()` / `createTerminalTemplateSession()` / `describeTerminalTemplateSession()`
+- `summarizeTerminalStatus()` / `terminalStatusFields()`
 - `TerminalScreenController`
 - `RuntimeRendererBackendRegistry` / `RuntimeRendererBackendController` / `selectRuntimeRendererBackend()` /
   `formatRuntimeRendererBackendCatalogMarkdown()`

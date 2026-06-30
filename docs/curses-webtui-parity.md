@@ -20,6 +20,8 @@ testing helpers.
   spawn templates, session descriptors, and window-layout resize synchronization.
 - Added command-registry bindings for managed windows: create, focus, close, minimize, fullscreen, restore, rename, and
   reorder.
+- Added compact terminal status summaries for process state, backend type, dimensions, cwd, exit status, and
+  detached/reconnectable flags.
 
 ## Remaining Priorities
 

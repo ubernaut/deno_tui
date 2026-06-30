@@ -87,13 +87,15 @@ handles. A real PTY adapter remains open.
 - [x] Add session persistence metadata: command, cwd, env overrides, title, scrollback policy, restart policy, and
       whether the window is reconnectable.
 - Add optional detach/reattach support if the backend can keep sessions alive outside the workbench process.
-- Add status bar summaries for active process, exit code, cwd, backend type, dimensions, and detached/running state.
+- [x] Add status bar summaries for active process, exit code, cwd, backend type, dimensions, and detached/running state.
 
 Phase 4 now has `shellTerminalTemplate()`, `denoTaskTerminalTemplate()`, `commandTerminalTemplate()`,
 `projectTaskTerminalTemplate()`, `attachTerminalTemplate()`, `createTerminalTemplateSession()`, serializable terminal
 session descriptors, `WindowManagerController.upsert()` / `rename()` / `move()`, and `windowManagerCommands()` /
 `bindWindowManagerCommands()` for command-registry driven creation, focus, close, rename, fullscreen, minimize, restore,
-and reordering. Status summaries and true detach/reattach still depend on the next backend/session layer.
+and reordering. `summarizeTerminalStatus()` and `terminalStatusFields()` provide compact status-bar text from process
+inspections, backend handles, or persisted terminal descriptors. True detach/reattach still depends on the next
+backend/session layer.
 
 ### Phase 5: Web And Remote Runtime
 
