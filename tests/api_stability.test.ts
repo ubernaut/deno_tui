@@ -35,6 +35,7 @@ Deno.test("api surface policies mark public experimental and demo-only code", ()
     "src/layout/solvers/yoga.ts",
     "src/three_ascii/*",
     "src/runtime/kitty_graphics.ts",
+    "src/runtime/graphics_surface.ts",
   ]);
   assertEquals(filterApiSurfacePolicies({ stability: "internal" }).map((policy) => policy.pattern), [
     "app/*",

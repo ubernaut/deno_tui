@@ -14,6 +14,7 @@ quickly, but the affected entrypoint or module family should be named here.
   dispatch helpers, and custom registry support.
 - Added experimental Kitty graphics protocol helpers for command encoding, payload chunking, tmux passthrough wrapping,
   delete commands, and terminal support detection.
+- Added a renderer-neutral graphics surface interface with no-op and Kitty command-surface implementations.
 - Added the experimental `./layout/yoga` package subpath for the optional Yoga-backed Flexbox solver.
 - Added a package stability manifest for terminal, browser, remote, experimental, and demo-only surfaces.
 - Added `deno task package-check` to verify the Deno export map stays aligned with the stability manifest.

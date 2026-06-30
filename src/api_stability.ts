@@ -150,6 +150,14 @@ export const apiSurfacePolicies = [
       "Pure Kitty graphics protocol helpers. Useful for terminal image backends, but the graphics surface API is still forming.",
   },
   {
+    pattern: "src/runtime/graphics_surface.ts",
+    runtime: "shared",
+    stability: "experimental",
+    public: true,
+    description:
+      "Renderer-neutral raster graphics surface abstraction. Useful for Kitty and browser backends, but lifecycle semantics may evolve.",
+  },
+  {
     pattern: "app/*",
     runtime: "demo",
     stability: "internal",

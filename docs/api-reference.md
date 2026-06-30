@@ -6,10 +6,10 @@ modules and exported symbols that make up the package API.
 ## Summary
 
 - Entrypoint: `mod.ts`
-- Modules: 196
-- Re-export declarations: 195
-- Exported symbols: 1572
-- Documented symbols: 1572
+- Modules: 197
+- Re-export declarations: 196
+- Exported symbols: 1587
+- Documented symbols: 1587
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -161,8 +161,9 @@ modules and exported symbols that make up the package API.
 | [`src/runtime/data_pipeline_bindings.ts`](#src-runtime-data-pipeline-bindings-ts) |          0 |       4 |          4 |
 | [`src/runtime/data_pipeline.ts`](#src-runtime-data-pipeline-ts)                   |          0 |      19 |         19 |
 | [`src/runtime/data_query.ts`](#src-runtime-data-query-ts)                         |          0 |      15 |         15 |
+| [`src/runtime/graphics_surface.ts`](#src-runtime-graphics-surface-ts)             |          0 |      15 |         15 |
 | [`src/runtime/kitty_graphics.ts`](#src-runtime-kitty-graphics-ts)                 |          0 |      25 |         25 |
-| [`src/runtime/mod.ts`](#src-runtime-mod-ts)                                       |         16 |       0 |          0 |
+| [`src/runtime/mod.ts`](#src-runtime-mod-ts)                                       |         17 |       0 |          0 |
 | [`src/runtime/profiles.ts`](#src-runtime-profiles-ts)                             |          0 |      24 |         24 |
 | [`src/runtime/render_loop.ts`](#src-runtime-render-loop-ts)                       |          0 |       7 |          7 |
 | [`src/runtime/renderer_backends.ts`](#src-runtime-renderer-backends-ts)           |          0 |      24 |         24 |
@@ -2145,6 +2146,26 @@ _No direct exported symbols._
 | `pageDataQueryRows`          | function  | no        | yes   |
 | `queryLocalData`             | function  | no        | yes   |
 
+### src/runtime/graphics_surface.ts
+
+| Symbol                        | Kind      | Type Only | JSDoc |
+| ----------------------------- | --------- | --------- | ----- |
+| `createKittyGraphicsSurface`  | function  | no        | yes   |
+| `createNoopGraphicsSurface`   | function  | no        | yes   |
+| `GraphicsClearScope`          | type      | yes       | yes   |
+| `GraphicsDeleteMode`          | type      | yes       | yes   |
+| `GraphicsHandle`              | interface | yes       | yes   |
+| `GraphicsImage`               | interface | yes       | yes   |
+| `GraphicsImageEncoding`       | type      | yes       | yes   |
+| `GraphicsPlacement`           | interface | yes       | yes   |
+| `GraphicsSurface`             | interface | yes       | yes   |
+| `GraphicsSurfaceInspection`   | interface | yes       | yes   |
+| `GraphicsSurfaceKind`         | type      | yes       | yes   |
+| `GraphicsSurfaceWriter`       | interface | yes       | yes   |
+| `KittyGraphicsSurface`        | class     | no        | yes   |
+| `KittyGraphicsSurfaceOptions` | interface | yes       | yes   |
+| `NoopGraphicsSurface`         | class     | no        | yes   |
+
 ### src/runtime/kitty_graphics.ts
 
 | Symbol                                | Kind      | Type Only | JSDoc |
@@ -2183,6 +2204,7 @@ _No direct exported symbols._
 | `src/runtime/data_pipeline.ts`          | star | -     |
 | `src/runtime/data_pipeline_bindings.ts` | star | -     |
 | `src/runtime/data_query.ts`             | star | -     |
+| `src/runtime/graphics_surface.ts`       | star | -     |
 | `src/runtime/kitty_graphics.ts`         | star | -     |
 | `src/runtime/profiles.ts`               | star | -     |
 | `src/runtime/renderer_backends.ts`      | star | -     |
