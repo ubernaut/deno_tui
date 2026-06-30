@@ -116,15 +116,18 @@ Phase 5 now has `RemoteTerminalBridge`, `createRemoteTerminalBridge()`, `encodeR
 to `TerminalSessionHandle`, forwards terminal output lines and binary data back to the transport, and keeps browser
 demos safe by requiring an explicit transport/session bridge.
 
-## Open Decisions
+## Decisions And Follow-Ups
 
 - Terminal windows are both reusable library primitives and workbench demo features.
 - Sigma PTY FFI is the first optional PTY provider. A tmux/control-mode provider remains the likely next provider if
   persistent detach/reattach becomes a product requirement.
 - Current terminal focus uses an explicit workbench/raw-input mode. A tmux-style prefix key could still be added as an
   alternate binding policy.
-- Decide whether scrollback is owned by the terminal screen model, the backend, or both.
-- Decide how much ANSI support is required for the first interactive milestone.
+- Line-oriented command scrollback is owned by `TerminalOutputController`; terminal-cell scrollback is owned by
+  `TerminalScreenController`; backends should remain transport/session adapters unless a future provider exposes native
+  scrollback.
+- The first interactive milestone supports common SGR, cursor movement, erase, resize, and alternate-screen behavior. A
+  richer ANSI parser remains a future hardening item, not a blocker for this milestone.
 
 ## Acceptance Checks
 
