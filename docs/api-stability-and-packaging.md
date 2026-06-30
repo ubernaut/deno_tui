@@ -51,6 +51,7 @@ Current marked surfaces:
 - `mod.remote.ts`: experimental remote-terminal bridge.
 - `src/layout/solvers/yoga.ts`: experimental optional Yoga-backed Flexbox solver.
 - `src/three_ascii/*`: experimental renderer internals and presets, even when re-exported for demos.
+- `src/runtime/kitty_graphics.ts`: experimental Kitty terminal graphics protocol helpers.
 - `app/*`, `examples/*`, and `scripts/*`: internal/demo surfaces.
 
 ## Release Policy

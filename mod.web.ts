@@ -36,6 +36,7 @@ export * from "./src/runtime/capabilities.ts";
 export * from "./src/runtime/data_pipeline.ts";
 export * from "./src/runtime/data_pipeline_bindings.ts";
 export * from "./src/runtime/data_query.ts";
+export * from "./src/runtime/kitty_graphics.ts";
 export * from "./src/runtime/profiles.ts";
 export * from "./src/runtime/renderer_backends.ts";
 export * from "./src/runtime/resource.ts";

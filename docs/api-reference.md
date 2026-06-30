@@ -6,10 +6,10 @@ modules and exported symbols that make up the package API.
 ## Summary
 
 - Entrypoint: `mod.ts`
-- Modules: 195
-- Re-export declarations: 194
-- Exported symbols: 1547
-- Documented symbols: 1547
+- Modules: 196
+- Re-export declarations: 195
+- Exported symbols: 1572
+- Documented symbols: 1572
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -161,7 +161,8 @@ modules and exported symbols that make up the package API.
 | [`src/runtime/data_pipeline_bindings.ts`](#src-runtime-data-pipeline-bindings-ts) |          0 |       4 |          4 |
 | [`src/runtime/data_pipeline.ts`](#src-runtime-data-pipeline-ts)                   |          0 |      19 |         19 |
 | [`src/runtime/data_query.ts`](#src-runtime-data-query-ts)                         |          0 |      15 |         15 |
-| [`src/runtime/mod.ts`](#src-runtime-mod-ts)                                       |         15 |       0 |          0 |
+| [`src/runtime/kitty_graphics.ts`](#src-runtime-kitty-graphics-ts)                 |          0 |      25 |         25 |
+| [`src/runtime/mod.ts`](#src-runtime-mod-ts)                                       |         16 |       0 |          0 |
 | [`src/runtime/profiles.ts`](#src-runtime-profiles-ts)                             |          0 |      24 |         24 |
 | [`src/runtime/render_loop.ts`](#src-runtime-render-loop-ts)                       |          0 |       7 |          7 |
 | [`src/runtime/renderer_backends.ts`](#src-runtime-renderer-backends-ts)           |          0 |      24 |         24 |
@@ -2144,6 +2145,36 @@ _No direct exported symbols._
 | `pageDataQueryRows`          | function  | no        | yes   |
 | `queryLocalData`             | function  | no        | yes   |
 
+### src/runtime/kitty_graphics.ts
+
+| Symbol                                | Kind      | Type Only | JSDoc |
+| ------------------------------------- | --------- | --------- | ----- |
+| `chunkKittyGraphicsCommand`           | function  | no        | yes   |
+| `createKittyGraphicsDeleteCommand`    | function  | no        | yes   |
+| `createKittyGraphicsTransmitCommands` | function  | no        | yes   |
+| `detectKittyGraphicsCapability`       | function  | no        | yes   |
+| `encodeKittyGraphicsCommand`          | function  | no        | yes   |
+| `encodeKittyGraphicsControl`          | function  | no        | yes   |
+| `encodeKittyGraphicsPayload`          | function  | no        | yes   |
+| `inspectKittyGraphicsCommand`         | function  | no        | yes   |
+| `KITTY_GRAPHICS_END`                  | const     | no        | yes   |
+| `KITTY_GRAPHICS_START`                | const     | no        | yes   |
+| `KittyGraphicsAction`                 | type      | yes       | yes   |
+| `KittyGraphicsCapability`             | interface | yes       | yes   |
+| `KittyGraphicsChunkOptions`           | interface | yes       | yes   |
+| `KittyGraphicsCommandInspection`      | interface | yes       | yes   |
+| `KittyGraphicsCommandOptions`         | interface | yes       | yes   |
+| `KittyGraphicsControl`                | type      | yes       | yes   |
+| `KittyGraphicsControlValue`           | type      | yes       | yes   |
+| `KittyGraphicsDeleteOptions`          | interface | yes       | yes   |
+| `KittyGraphicsDetectionOptions`       | interface | yes       | yes   |
+| `KittyGraphicsFormat`                 | type      | yes       | yes   |
+| `KittyGraphicsMode`                   | type      | yes       | yes   |
+| `KittyGraphicsQuietMode`              | type      | yes       | yes   |
+| `KittyGraphicsTransmissionMedium`     | type      | yes       | yes   |
+| `KittyGraphicsTransmitOptions`        | interface | yes       | yes   |
+| `wrapKittyGraphicsForTmux`            | function  | no        | yes   |
+
 ### src/runtime/mod.ts
 
 | Re-export Target                        | Kind | Names |
@@ -2152,6 +2183,7 @@ _No direct exported symbols._
 | `src/runtime/data_pipeline.ts`          | star | -     |
 | `src/runtime/data_pipeline_bindings.ts` | star | -     |
 | `src/runtime/data_query.ts`             | star | -     |
+| `src/runtime/kitty_graphics.ts`         | star | -     |
 | `src/runtime/profiles.ts`               | star | -     |
 | `src/runtime/renderer_backends.ts`      | star | -     |
 | `src/runtime/resource.ts`               | star | -     |

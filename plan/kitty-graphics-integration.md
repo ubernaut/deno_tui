@@ -140,7 +140,7 @@ Manual visual tests:
 
 ## Implementation Order
 
-1. Add capability model and pure encoder with tests.
+1. Add capability model and pure encoder with tests. Status: implemented in `src/runtime/kitty_graphics.ts`.
 2. Add `GraphicsSurface` abstraction and no-op/ANSI fallback implementation.
 3. Add Kitty terminal graphics surface with direct payload mode.
 4. Add image lifecycle integration to the window manager and scroll/resize events.

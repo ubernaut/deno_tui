@@ -142,6 +142,14 @@ export const apiSurfacePolicies = [
       "Three.js/WebGPU ASCII renderer internals and presets. Useful now, but renderer hooks may keep moving.",
   },
   {
+    pattern: "src/runtime/kitty_graphics.ts",
+    runtime: "terminal",
+    stability: "experimental",
+    public: true,
+    description:
+      "Pure Kitty graphics protocol helpers. Useful for terminal image backends, but the graphics surface API is still forming.",
+  },
+  {
     pattern: "app/*",
     runtime: "demo",
     stability: "internal",

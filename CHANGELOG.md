@@ -12,6 +12,8 @@ quickly, but the affected entrypoint or module family should be named here.
   computed layout boxes, and a runnable `deno task html-css-layout` example.
 - Added markup widget hydration for common controls, including a default registry, focus order, controller lookup,
   dispatch helpers, and custom registry support.
+- Added experimental Kitty graphics protocol helpers for command encoding, payload chunking, tmux passthrough wrapping,
+  delete commands, and terminal support detection.
 - Added the experimental `./layout/yoga` package subpath for the optional Yoga-backed Flexbox solver.
 - Added a package stability manifest for terminal, browser, remote, experimental, and demo-only surfaces.
 - Added `deno task package-check` to verify the Deno export map stays aligned with the stability manifest.
