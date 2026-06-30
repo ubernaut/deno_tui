@@ -14,7 +14,10 @@ const layout = createMarkupLayout({
           Themes
         </panel>
         <scroll-area id="content" class="surface">
-          HTML-like markup and CSS-like layout now compile into terminal cells.
+          <panel id="cpu" class="metric">CPU 42%</panel>
+          <panel id="mem" class="metric">Memory 71%</panel>
+          <panel id="gpu" class="metric">GPU 63%</panel>
+          <panel id="net" class="metric">Network 18%</panel>
         </scroll-area>
       </div>
       <statusbar id="status">solver=${useYoga ? "yoga" : "simple"} | resize-safe cell layout</statusbar>
@@ -57,9 +60,20 @@ const layout = createMarkupLayout({
     }
 
     #content {
+      display: flex;
       flex: 1;
+      flex-wrap: wrap;
+      align-items: start;
+      gap: 1;
       padding: 1;
       overflow: auto;
+    }
+
+    .metric {
+      width: 18;
+      height: 5;
+      padding: 1;
+      border: 1 single var(--accent);
     }
   `,
   bounds: { column: 0, row: 0, width: 100, height: 30 },

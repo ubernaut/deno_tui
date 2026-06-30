@@ -28,6 +28,8 @@ const ascii = {
   edges: false,
   fill: true,
   invertLuminance: false,
+  kittyGraphics: false,
+  kittyDisableAscii: true,
 };
 
 const calmSystem: SystemSnapshot = {

@@ -71,6 +71,8 @@ function renderThreeFallback(visualizationId: SlotConfig["visualizationId"]) {
       edges: false,
       fill: true,
       invertLuminance: false,
+      kittyGraphics: false,
+      kittyDisableAscii: true,
     },
   };
 

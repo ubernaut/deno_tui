@@ -18,6 +18,7 @@ import {
   TextBoxController,
   TreeController,
 } from "../mod.ts";
+import { createHtmlCssLayoutDemo } from "../app/html_css_layout_demo.ts";
 import { yogaLayoutSolver } from "../src/layout/solvers/yoga.ts";
 import type { LayoutNode } from "../mod.ts";
 
@@ -64,9 +65,10 @@ Deno.test("applyCssCascade resolves selectors variables pseudo states and inline
 
   const styled = applyCssCascade(document.root, stylesheet, { states: { run: ["focus"] } });
   const run = findLayoutNode(styled, "run")!;
+  const toolbar = findLayoutNode(styled, "toolbar")!;
 
   assertEquals(
-    matchesCssSelector(".toolbar > button:focus", run, [styled, findLayoutNode(styled, "toolbar")!], {
+    matchesCssSelector(".toolbar > button:focus", run, [styled, toolbar], {
       run: ["focus"],
     }),
     true,
@@ -75,6 +77,45 @@ Deno.test("applyCssCascade resolves selectors variables pseudo states and inline
   assertEquals(run.style.height, { unit: "cell", value: 3 });
   assertEquals(run.style.backgroundColor, "#102030");
   assertEquals(run.style.color, "yellow");
+});
+
+Deno.test("applyCssCascade parses flex flow shorthand into direction and wrapping", () => {
+  const document = parseTuiMarkup(`
+    <window id="main">
+      <panel id="a"></panel>
+      <panel id="b"></panel>
+    </window>
+  `);
+  const stylesheet = parseCssStylesheet(`
+    window {
+      display: flex;
+      flex-flow: column wrap-reverse;
+    }
+  `);
+
+  const styled = applyCssCascade(document.root, stylesheet);
+
+  assertEquals(styled.style.flexDirection, "column");
+  assertEquals(styled.style.flexWrap, "wrap-reverse");
+});
+
+Deno.test("applyCssCascade parses absolute positioning inset declarations", () => {
+  const document = parseTuiMarkup(`<panel id="badge"></panel>`);
+  const stylesheet = parseCssStylesheet(`
+    panel {
+      position: absolute;
+      inset: 1 2 auto auto;
+      left: 4;
+    }
+  `);
+
+  const styled = applyCssCascade(document.root, stylesheet);
+
+  assertEquals(styled.style.position, "absolute");
+  assertEquals(styled.style.inset.top, { unit: "cell", value: 1 });
+  assertEquals(styled.style.inset.right, { unit: "cell", value: 2 });
+  assertEquals(styled.style.inset.bottom, { unit: "auto", value: 0 });
+  assertEquals(styled.style.inset.left, { unit: "cell", value: 4 });
 });
 
 Deno.test("createMarkupLayout computes flex boxes from HTML and CSS subset", () => {
@@ -117,6 +158,116 @@ Deno.test("createMarkupLayout computes flex boxes from HTML and CSS subset", () 
   assertEquals(body.rect, { column: 0, row: 3, width: 80, height: 21 });
   assertEquals(body.overflowY, "auto");
   assertEquals(body.hitRegions[0]!.payload, { nodeId: "body", tag: "scroll-area" });
+});
+
+Deno.test("createMarkupLayout wraps flex rows in the simple solver", () => {
+  const result = createMarkupLayout({
+    markup: `
+      <window id="main">
+        <panel id="a">A</panel>
+        <panel id="b">B</panel>
+        <panel id="c">C</panel>
+      </window>
+    `,
+    css: `
+      window {
+        display: flex;
+        flex-flow: row wrap;
+        align-items: start;
+        width: 100%;
+        height: 100%;
+        gap: 1;
+      }
+
+      panel {
+        width: 4;
+        height: 1;
+      }
+    `,
+    bounds: { column: 0, row: 0, width: 10, height: 6 },
+  });
+
+  assertEquals(result.layout.byId.get("a")!.rect, { column: 0, row: 0, width: 4, height: 1 });
+  assertEquals(result.layout.byId.get("b")!.rect, { column: 5, row: 0, width: 4, height: 1 });
+  assertEquals(result.layout.byId.get("c")!.rect, { column: 0, row: 2, width: 4, height: 1 });
+});
+
+Deno.test("createMarkupLayout applies simple solver justify-content to flex rows", () => {
+  const result = createMarkupLayout({
+    markup: `
+      <window id="main">
+        <panel id="a">A</panel>
+        <panel id="b">B</panel>
+      </window>
+    `,
+    css: `
+      window {
+        display: flex;
+        justify-content: center;
+        align-items: start;
+        width: 100%;
+        height: 100%;
+      }
+
+      panel {
+        width: 2;
+        height: 1;
+      }
+    `,
+    bounds: { column: 0, row: 0, width: 12, height: 3 },
+  });
+
+  assertEquals(result.layout.byId.get("a")!.rect, { column: 4, row: 0, width: 2, height: 1 });
+  assertEquals(result.layout.byId.get("b")!.rect, { column: 6, row: 0, width: 2, height: 1 });
+});
+
+Deno.test("createMarkupLayout positions absolute children without affecting simple solver flow", () => {
+  const result = createMarkupLayout({
+    markup: `
+      <window id="main">
+        <panel id="flow">Flow</panel>
+        <panel id="badge">Badge</panel>
+      </window>
+    `,
+    css: `
+      window {
+        width: 100%;
+        height: 100%;
+      }
+
+      #flow {
+        height: 3;
+      }
+
+      #badge {
+        position: absolute;
+        top: 1;
+        right: 2;
+        width: 6;
+        height: 2;
+      }
+    `,
+    bounds: { column: 0, row: 0, width: 20, height: 10 },
+  });
+
+  assertEquals(result.layout.byId.get("flow")!.rect, { column: 0, row: 0, width: 20, height: 3 });
+  assertEquals(result.layout.byId.get("badge")!.rect, { column: 12, row: 1, width: 6, height: 2 });
+});
+
+Deno.test("createHtmlCssLayoutDemo drives wrapped flex and absolute portfolio boxes", () => {
+  const result = createHtmlCssLayoutDemo({ column: 0, row: 0, width: 50, height: 18 });
+
+  const stage = result.layout.byId.get("layout-stage")!;
+  const cpu = result.layout.byId.get("metric-cpu")!;
+  const gpu = result.layout.byId.get("metric-gpu")!;
+  const net = result.layout.byId.get("metric-net")!;
+  const badge = result.layout.byId.get("layout-badge")!;
+
+  assertEquals(stage.rect.width > 0, true);
+  assertEquals(cpu.rect.row, gpu.rect.row);
+  assertEquals(net.rect.row > cpu.rect.row, true);
+  assertEquals(badge.rect.column + badge.rect.width, stage.contentRect.column + stage.contentRect.width - 2);
+  assertEquals(badge.rect.row, stage.contentRect.row + 1);
 });
 
 Deno.test("createMarkupLayout hydrates common widgets and dispatches controller events", () => {
@@ -284,6 +435,73 @@ Deno.test("yogaLayoutSolver computes basic flex boxes through the markup API", (
 
   assertEquals(result.layout.byId.get("toolbar")!.rect, { column: 0, row: 0, width: 80, height: 3 });
   assertEquals(result.layout.byId.get("body")!.rect, { column: 0, row: 3, width: 80, height: 21 });
+});
+
+Deno.test("yogaLayoutSolver accepts wrapped flex rows through the markup API", () => {
+  const result = createMarkupLayout({
+    markup: `
+      <window id="main">
+        <panel id="a">A</panel>
+        <panel id="b">B</panel>
+        <panel id="c">C</panel>
+      </window>
+    `,
+    css: `
+      window {
+        display: flex;
+        flex-flow: row wrap;
+        align-items: start;
+        width: 100%;
+        height: 100%;
+        gap: 1;
+      }
+
+      panel {
+        width: 4;
+        height: 1;
+      }
+    `,
+    bounds: { column: 0, row: 0, width: 10, height: 6 },
+    solver: yogaLayoutSolver(),
+  });
+
+  assertEquals(result.layout.byId.get("a")!.rect, { column: 0, row: 0, width: 4, height: 1 });
+  assertEquals(result.layout.byId.get("b")!.rect, { column: 5, row: 0, width: 4, height: 1 });
+  assertEquals(result.layout.byId.get("c")!.rect, { column: 0, row: 2, width: 4, height: 1 });
+});
+
+Deno.test("yogaLayoutSolver positions absolute children through the markup API", () => {
+  const result = createMarkupLayout({
+    markup: `
+      <window id="main">
+        <panel id="flow">Flow</panel>
+        <panel id="badge">Badge</panel>
+      </window>
+    `,
+    css: `
+      window {
+        width: 100%;
+        height: 100%;
+      }
+
+      #flow {
+        height: 3;
+      }
+
+      #badge {
+        position: absolute;
+        top: 1;
+        right: 2;
+        width: 6;
+        height: 2;
+      }
+    `,
+    bounds: { column: 0, row: 0, width: 20, height: 10 },
+    solver: yogaLayoutSolver(),
+  });
+
+  assertEquals(result.layout.byId.get("flow")!.rect, { column: 0, row: 0, width: 20, height: 3 });
+  assertEquals(result.layout.byId.get("badge")!.rect, { column: 12, row: 1, width: 6, height: 2 });
 });
 
 function findLayoutNode(node: LayoutNode, id: string): LayoutNode | undefined {

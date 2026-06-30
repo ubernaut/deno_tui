@@ -798,8 +798,9 @@ const rects = flexRects(bounds, "row", [
 
 `parseTuiMarkup()`, `parseCssStylesheet()`, `applyCssCascade()`, and `createMarkupLayout()` provide a first
 renderer-neutral HTML/CSS-style authoring path. The supported subset intentionally targets terminal cells: block/flex
-layout, width/height/min/max sizing, padding, margin, borders, overflow, CSS variables, tag/class/id selectors, child
-and descendant selectors, focus/active/disabled/hover pseudo states, and controller hydration for common controls.
+layout with wrapped flex rows/columns and absolute-positioned children, width/height/min/max sizing, padding, margin,
+borders, overflow, CSS variables, tag/class/id selectors, child and descendant selectors, focus/active/disabled/hover
+pseudo states, and controller hydration for common controls.
 
 For the full supported subset, output shape, solver notes, and limitations, see
 [HTML/CSS-Style Layout](./docs/html-css-layout.md).
@@ -817,7 +818,7 @@ const result = createMarkupLayout({
   css: `
     window { display: flex; flex-direction: column; width: 100%; height: 100%; }
     #toolbar { height: 3; }
-    #body { flex: 1; overflow: auto; }
+    #body { display: flex; flex: 1; flex-wrap: wrap; overflow: auto; }
   `,
   bounds: { column: 0, row: 0, width: 100, height: 30 },
 });
@@ -836,7 +837,8 @@ import { yogaLayoutSolver } from "https://deno.land/x/tui@VERSION/layout/yoga";
 ```
 
 Run `deno task html-css-layout` or `deno task html-css-layout:yoga` to inspect the same markup tree through both
-solvers.
+solvers. The API Workbench portfolio also exposes this as a live window: launch `./visualization portfolio` or
+`deno task api-workbench`, open `New`, and toggle `Layout: HTML/CSS Layout`.
 
 ### Split Panes
 
@@ -2526,9 +2528,10 @@ launch the selected demo, and press `Esc` or `q` to exit. `./visualization --lis
 opening the selector.
 
 `./visualization portfolio` launches the API Workbench with resizable windows, minimize/maximize/restore controls,
-interactive menu bars, split panes, scrollable sections, data tables, form controls, and a theme selector. When panes no
-longer fit, the workbench becomes a scrollable virtual workspace; mouse wheels scroll the workspace, log panes retain
-their own scrollbar, and clicking a scrollbar track jumps directly to that content position.
+interactive menu bars, split panes, scrollable sections, data tables, form controls, a theme selector, an HTML/CSS
+layout window, and the Three ASCII renderer. When panes no longer fit, the workbench becomes a scrollable virtual
+workspace; mouse wheels scroll the workspace, log panes retain their own scrollbar, and clicking a scrollbar track jumps
+directly to that content position.
 
 `./visualization batteries` prints the phase 1-6 readiness report. It links each phase to concrete APIs, launch targets,
 and verification commands, which makes it the fastest adopter-oriented overview after `./visualization gallery`.

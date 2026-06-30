@@ -84,6 +84,8 @@ export interface AsciiOptions {
   edges: boolean;
   fill: boolean;
   invertLuminance: boolean;
+  kittyGraphics: boolean;
+  kittyDisableAscii: boolean;
 }
 
 export interface SlotConfig {

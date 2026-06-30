@@ -455,6 +455,20 @@ Recommended routing:
 
 ## Implementation Phases
 
+### Current Implementation Checkpoint
+
+- The renderer-neutral `LayoutNode`, `ComputedLayoutStyle`, `ComputedLayoutBox`, and `LayoutSolver` boundary are in
+  place.
+- The lightweight CSS parser/cascade supports selectors, specificity, variables, inline styles, pseudo states, and the
+  documented terminal-cell layout declarations.
+- Markup hydration maps common controls onto existing controller classes.
+- The default TypeScript solver supports block layout, flex row/column layout, wrapped flex rows/columns,
+  `justify-content`, `align-items`, absolute-positioned children, gaps, box edges, overflow metadata, and hit regions.
+- The optional Yoga solver consumes the same normalized style model and now maps `flex-wrap`/`flex-flow` into Yoga's
+  Flexbox implementation plus `inset`/side offsets into Yoga absolute positioning.
+- The next high-value solver work is grid/block parity and either a Taffy WASM adapter or a Taffy-compatible internal
+  style mapping layer.
+
 ### Phase 0: Spike And Lock Decisions
 
 - Add a small solver spike under `tests/fixtures` or `scripts/spikes`.

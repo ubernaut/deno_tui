@@ -3,9 +3,18 @@ import { Signal } from "../src/signals/mod.ts";
 import { createDefaultAsciiOptions } from "../app/ascii_options.ts";
 import { ThreePanelFrameView, type ThreePanelGridRenderer, type ThreeSceneState } from "../app/three_panel.ts";
 import { Canvas, MemoryCanvasSink, type ThreeAsciiGridRenderer, ThreeAsciiObject } from "../src/canvas/mod.ts";
+import type {
+  GraphicsDeleteMode,
+  GraphicsHandle,
+  GraphicsImage,
+  GraphicsPlacement,
+  GraphicsSurface,
+  GraphicsSurfaceInspection,
+} from "../src/runtime/graphics_surface.ts";
 import { emptyStyle } from "../src/theme.ts";
 import type { Camera, Scene } from "npm:three@0.183.2";
 import type { TerminalGlyphStyle } from "../src/three_ascii/glyphs.ts";
+import type { ThreeAsciiRenderFrameOptions } from "../src/three_ascii/renderer.ts";
 
 Deno.test("ThreePanelFrameView stays inert while disabled", async () => {
   const rectangle = new Signal({ column: 0, row: 0, width: 12, height: 6 }, { deepObserve: true });
@@ -208,6 +217,43 @@ Deno.test("ThreePanelFrameView disposes safely while a frame is rendering", asyn
   enabled.dispose();
 });
 
+Deno.test("ThreePanelFrameView can use Kitty image frames without drawing ASCII cells", async () => {
+  const rectangle = new Signal({ column: 0, row: 0, width: 8, height: 4 }, { deepObserve: true });
+  const graphicsRectangle = new Signal({ column: 5, row: 6, width: 8, height: 4 }, { deepObserve: true });
+  const scene = new Signal<ThreeSceneState | null>(sceneState());
+  const ascii = new Signal({
+    ...createDefaultAsciiOptions("sharp"),
+    kittyGraphics: true,
+    kittyDisableAscii: true,
+  });
+  const enabled = new Signal(true);
+  const surface = new FakeGraphicsSurface();
+  const panel = new ThreePanelFrameView({
+    rectangle,
+    graphicsRectangle,
+    scene,
+    ascii,
+    enabled,
+    graphicsSurface: surface,
+    frameInterval: 1000 / 30,
+    rendererFactory: (options) => new FakeGridRenderer(options.columns, options.rows),
+  });
+
+  try {
+    await waitFor(() => surface.puts.length >= 1);
+    assertEquals(panel.grid.peek(), Array.from({ length: 4 }, () => Array.from({ length: 8 }, () => " ")));
+    assertEquals(surface.puts[0]!.image.format, 32);
+    assertEquals(surface.puts[0]!.placement, { column: 5, row: 6, width: 8, height: 4, zIndex: 1 });
+  } finally {
+    panel.dispose();
+    rectangle.dispose();
+    graphicsRectangle.dispose();
+    scene.dispose();
+    ascii.dispose();
+    enabled.dispose();
+  }
+});
+
 Deno.test("ThreeAsciiObject defers resize while a frame is rendering", async () => {
   const rectangle = new Signal({ column: 0, row: 0, width: 12, height: 6 }, { deepObserve: true });
   const sink = new MemoryCanvasSink();
@@ -336,7 +382,70 @@ class FakeGridRenderer implements ThreePanelGridRenderer, ThreeAsciiGridRenderer
     );
   }
 
+  async renderFrame(
+    deltaTime?: number,
+    onFrame?: (deltaTime: number) => void | Promise<void>,
+    options: ThreeAsciiRenderFrameOptions = { ansi: true },
+  ) {
+    const frame: {
+      grid?: string[][];
+      image?: { data: Uint8Array; encoding: "bytes"; format: 32; pixelWidth: number; pixelHeight: number };
+    } = {};
+    if (options.ansi ?? true) {
+      frame.grid = await this.renderToAnsiGrid(deltaTime, onFrame);
+    } else {
+      await onFrame?.(deltaTime ?? 0.016);
+    }
+    if (options.image) {
+      frame.image = {
+        data: new Uint8Array(this.columns * this.rows * 4),
+        encoding: "bytes",
+        format: 32,
+        pixelWidth: this.columns * 8,
+        pixelHeight: this.rows * 8,
+      };
+    }
+    return frame;
+  }
+
   destroy(): void {}
+}
+
+class FakeGraphicsSurface implements GraphicsSurface {
+  readonly kind = "kitty" as const;
+  readonly puts: Array<{ image: GraphicsImage; placement: GraphicsPlacement }> = [];
+  readonly deleted: Array<{ handle: GraphicsHandle; mode?: GraphicsDeleteMode }> = [];
+  private nextId = 1;
+
+  async putImage(image: GraphicsImage, placement: GraphicsPlacement): Promise<GraphicsHandle> {
+    this.puts.push({ image, placement });
+    return {
+      id: `kitty:${this.nextId}:1`,
+      kind: this.kind,
+      imageId: this.nextId++,
+      placementId: 1,
+      placement,
+    };
+  }
+
+  async moveImage(): Promise<void> {}
+
+  async deleteImage(handle: GraphicsHandle, mode?: GraphicsDeleteMode): Promise<void> {
+    this.deleted.push({ handle, mode });
+  }
+
+  async clear(): Promise<void> {}
+
+  inspect(): GraphicsSurfaceInspection {
+    return {
+      kind: this.kind,
+      available: true,
+      handles: [],
+      commandCount: this.puts.length + this.deleted.length,
+      mode: "direct",
+      reason: "test",
+    };
+  }
 }
 
 class SlowGridRenderer extends FakeGridRenderer {

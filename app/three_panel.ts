@@ -2,7 +2,14 @@ import { type Canvas } from "../src/canvas/canvas.ts";
 import { buildFallbackGrid, formatThreeAsciiFallbackDetail, ThreeAsciiObject } from "../src/canvas/three_ascii.ts";
 import { Effect, Signal, type SignalOfObject } from "../src/signals/mod.ts";
 import { emptyStyle } from "../src/theme.ts";
-import { ThreeAsciiRenderer, type ThreeAsciiRendererOptions } from "../src/three_ascii/renderer.ts";
+import type { GraphicsHandle, GraphicsSurface } from "../src/runtime/graphics_surface.ts";
+import {
+  type ThreeAsciiImageFrame,
+  ThreeAsciiRenderer,
+  type ThreeAsciiRendererOptions,
+  type ThreeAsciiRenderFrame,
+  type ThreeAsciiRenderFrameOptions,
+} from "../src/three_ascii/renderer.ts";
 import * as THREE from "npm:three@0.183.2";
 import { asciiEffectOptions } from "./ascii_options.ts";
 import { createNeonThreeScene, type NeonThreeSceneBundle } from "./neon_three.ts";
@@ -25,6 +32,11 @@ export interface ThreePanelGridRenderer {
   setTerminalEdgeBias(value: number): void;
   setTerminalGlyphStyle(value: AsciiOptions["terminalGlyphStyle"]): void;
   renderToAnsiGrid(deltaTime?: number, onFrame?: (deltaTime: number) => void | Promise<void>): Promise<string[][]>;
+  renderFrame?(
+    deltaTime?: number,
+    onFrame?: (deltaTime: number) => void | Promise<void>,
+    options?: ThreeAsciiRenderFrameOptions,
+  ): Promise<ThreeAsciiRenderFrame>;
   destroy(): void;
 }
 
@@ -221,6 +233,7 @@ export class ThreePanelFrameView {
   private baseCameraPosition?: THREE.Vector3;
   private baseCameraQuaternion?: THREE.Quaternion;
   private baseSceneRotation?: THREE.Euler;
+  private graphicsHandle?: GraphicsHandle;
 
   constructor(
     private readonly options: {
@@ -228,6 +241,8 @@ export class ThreePanelFrameView {
       scene: SignalOfObject<ThreeSceneState | null>;
       ascii: SignalOfObject<AsciiOptions>;
       enabled?: boolean | Signal<boolean>;
+      graphicsSurface?: GraphicsSurface | (() => GraphicsSurface | null | undefined);
+      graphicsRectangle?: SignalOfObject<Rect>;
       frameInterval?: number;
       onUpdate?: () => void;
       rendererFactory?: ThreePanelRendererFactory;
@@ -259,6 +274,7 @@ export class ThreePanelFrameView {
       this.syncPending = false;
       this.rebuildPending = false;
       this.destroyRenderer();
+      void this.clearGraphicsImage();
       this.setGrid([]);
       return;
     }
@@ -344,22 +360,40 @@ export class ThreePanelFrameView {
       this.lastFrameTime = now;
 
       renderer.setSize(rect.width, rect.height);
-      const grid = await renderer.renderToAnsiGrid(deltaTime, () => {
+      const ascii = this.options.ascii.peek();
+      const graphicsSurface = this.resolveGraphicsSurface();
+      const graphicsRectangle = this.options.graphicsRectangle?.peek() ?? rect;
+      const kittyActive = Boolean(
+        ascii.kittyGraphics && graphicsSurface?.inspect().available && graphicsRectangle.width > 0 &&
+          graphicsRectangle.height > 0,
+      );
+      const renderAscii = !kittyActive || !ascii.kittyDisableAscii;
+      const onFrame = () => {
         const latest = this.options.scene.peek();
         if (!latest) return;
         bundle.tick(performance.now(), latest.signal);
         this.applyInteraction();
-      });
+      };
+      const frame = kittyActive && renderer.renderFrame
+        ? await renderer.renderFrame(deltaTime, onFrame, { ansi: renderAscii, image: true })
+        : { grid: await renderer.renderToAnsiGrid(deltaTime, onFrame) };
 
       if (!this.running) {
         return;
       }
 
+      if (kittyActive && frame.image && graphicsSurface) {
+        await this.putGraphicsImage(graphicsSurface, frame.image, graphicsRectangle);
+      } else {
+        await this.clearGraphicsImage();
+      }
+
       this.failed = false;
-      this.setGrid(grid);
+      this.setGrid(renderAscii ? frame.grid ?? [] : blankGrid(rect.width, rect.height));
     } catch (error) {
       this.failed = true;
       this.running = false;
+      await this.clearGraphicsImage();
       const rect = this.options.rectangle.peek();
       this.setGrid(buildFallbackGrid(rect.width, rect.height, formatThreeAsciiFallbackDetail(error)));
       this.destroyPending = true;
@@ -456,6 +490,7 @@ export class ThreePanelFrameView {
 
     this.renderer?.destroy();
     this.renderer = undefined;
+    void this.clearGraphicsImage();
     this.bundle?.dispose();
     this.bundle = undefined;
     this.activeMode = undefined;
@@ -471,6 +506,50 @@ export class ThreePanelFrameView {
     this.rebuildPending = false;
     this.effect.dispose();
     this.destroyRenderer();
+    void this.clearGraphicsImage();
     this.grid.dispose();
   }
+
+  private resolveGraphicsSurface(): GraphicsSurface | undefined {
+    const configured = this.options.graphicsSurface;
+    return typeof configured === "function" ? configured() ?? undefined : configured;
+  }
+
+  private async putGraphicsImage(
+    surface: GraphicsSurface,
+    image: ThreeAsciiImageFrame,
+    rect: Rect,
+  ): Promise<void> {
+    if (this.disposed || rect.width <= 0 || rect.height <= 0) return;
+    if (this.graphicsHandle) {
+      await surface.deleteImage(this.graphicsHandle, "image").catch(() => {});
+      this.graphicsHandle = undefined;
+    }
+    this.graphicsHandle = await surface.putImage({
+      data: image.data,
+      encoding: image.encoding,
+      format: image.format,
+      pixelWidth: image.pixelWidth,
+      pixelHeight: image.pixelHeight,
+    }, {
+      column: rect.column,
+      row: rect.row,
+      width: rect.width,
+      height: rect.height,
+      zIndex: 1,
+    });
+  }
+
+  private async clearGraphicsImage(): Promise<void> {
+    const handle = this.graphicsHandle;
+    if (!handle) return;
+    this.graphicsHandle = undefined;
+    const surface = this.resolveGraphicsSurface();
+    if (!surface) return;
+    await surface.deleteImage(handle, "image").catch(() => {});
+  }
+}
+
+function blankGrid(width: number, height: number): string[][] {
+  return Array.from({ length: Math.max(0, height) }, () => Array.from({ length: Math.max(0, width) }, () => " "));
 }

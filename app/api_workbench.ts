@@ -28,6 +28,7 @@ import { TextBoxController, wrapTextBoxLines } from "../src/components/textbox.t
 import { handleInput } from "../src/input.ts";
 import type { MousePressEvent, MouseScrollEvent } from "../src/input_reader/types.ts";
 import { WindowManagerController } from "../src/layout/mod.ts";
+import { createKittyGraphicsSurface, type GraphicsSurface } from "../src/runtime/graphics_surface.ts";
 import { type AsyncStore, createRuntimeStore } from "../src/runtime/storage.ts";
 import { Computed, Signal } from "../src/signals/mod.ts";
 import { probeCompatibleWebGPUDevice } from "../src/three_ascii/webgpu_compat.ts";
@@ -36,6 +37,12 @@ import type { Rectangle } from "../src/types.ts";
 import { stripStyles, textWidth } from "../src/utils/strings.ts";
 import { AudioRegistry } from "./audio.ts";
 import { grWizardThemePalettes } from "../src/grwizard_themes.ts";
+import {
+  createHtmlCssLayoutDemo,
+  HTML_CSS_LAYOUT_OPTION_ID,
+  HTML_CSS_LAYOUT_WINDOW_ID,
+  htmlCssLayoutDemoBoxLabel,
+} from "./html_css_layout_demo.ts";
 import {
   applyAsciiPreset,
   ASCII_DEMO_PRESETS,
@@ -63,11 +70,20 @@ import type {
   ThreeSceneSignal,
 } from "./types.ts";
 import { cpuHexGridColumnCount, cpuHexTileLayout, renderVisualization, visualizations } from "./visualizations.ts";
+import type { ComputedLayoutBox } from "../src/layout/mod.ts";
 
-type BuiltInWindowId = "explorer" | "inspector" | "data" | "controls" | "logs" | "three";
+type BuiltInWindowId = "explorer" | "inspector" | "data" | "controls" | "logs" | "three" | "htmlLayout";
 type VisualizationWindowId = `viz:${string}`;
 type WindowId = BuiltInWindowId | VisualizationWindowId;
-const builtInWindowOrder: readonly BuiltInWindowId[] = ["explorer", "inspector", "data", "controls", "logs", "three"];
+const builtInWindowOrder: readonly BuiltInWindowId[] = [
+  "explorer",
+  "inspector",
+  "data",
+  "controls",
+  "logs",
+  "three",
+  "htmlLayout",
+];
 type ControlId =
   | "button"
   | "genericButton"
@@ -121,6 +137,7 @@ type AsciiNumericKey =
   | "wireframeThickness"
   | "terminalEdgeBias";
 type AsciiToggleKey = "edges" | "fill" | "invertLuminance";
+type AsciiKittyKey = "kittyGraphics" | "kittyDisableAscii";
 
 interface ThemeSpec {
   id: string;
@@ -159,7 +176,7 @@ interface ProcessRow extends Record<string, unknown> {
 interface NewWindowOption {
   id: string;
   label: string;
-  group: "Monitor" | "Neon" | "Neon 3D";
+  group: "Layout" | "Monitor" | "Neon" | "Neon 3D";
   description: string;
 }
 
@@ -269,6 +286,7 @@ const docs = [
   "tileRects balances panes across one, two, three, or four columns.",
   "ScrollAreaController clamps offsets and reports scrollbar thumbs.",
   "DataTableController handles keyed selection, sorting, paging, and filtering.",
+  "HTML/CSS Layout window runs markup, cascade, wrapped flex, and absolute positioning through LayoutEngine.",
   "ModalController provides centered pop-over content with trapped keyboard focus and action buttons.",
   "ThreePanelFrameView feeds Acerola three.js ASCII cells into the shared workbench frame buffer.",
   "Three ASCII viewports support mousewheel zoom plus click-drag model rotation.",
@@ -283,12 +301,19 @@ const docs = [
 ];
 const explorerKeys = new Set(["up", "down", "left", "right", "pageup", "pagedown", "home", "end", "space", "return"]);
 const neonDemoIds = new Set(neonDemos.map((demo) => demo.id));
-const newWindowOptions: NewWindowOption[] = visualizations.map((entry) => ({
+const htmlCssLayoutWindowOption: NewWindowOption = {
+  id: HTML_CSS_LAYOUT_OPTION_ID,
+  label: "HTML/CSS Layout",
+  group: "Layout",
+  description: "Renderer-neutral markup, CSS cascade, wrapped flex boxes, and absolute positioning.",
+};
+const visualizationWindowOptions: NewWindowOption[] = visualizations.map((entry) => ({
   id: entry.id,
   label: entry.name,
   group: entry.id.startsWith("three-") ? "Neon 3D" : neonDemoIds.has(entry.id) ? "Neon" : "Monitor",
   description: entry.description,
 }));
+const newWindowOptions: NewWindowOption[] = [htmlCssLayoutWindowOption, ...visualizationWindowOptions];
 const WORKSPACE_STORE_KEY = "api-workbench.workspaces";
 
 requireInteractiveTerminal("deno task api-workbench");
@@ -301,12 +326,56 @@ const savedWorkspaces = new Signal<SavedWorkspace[]>(await loadSavedWorkspaces()
 const threeAsciiAvailable = new Signal(await probeCompatibleWebGPUDevice());
 const ascii = new Signal<AsciiOptions>(defaultWorkbenchAsciiOptions());
 const windowAscii = new Map<WindowId, Signal<AsciiOptions>>([["three", ascii]]);
+const tmuxPassthroughAllowed = await detectWorkbenchTmuxPassthrough();
 
 const tui = new Tui({
   style: makeStyle({ bg: themes[0]!.background }),
   refreshRate: 1000 / 24,
   enableMouse: true,
 });
+const kittyTextEncoder = new TextEncoder();
+const autoKittyGraphicsSurface: GraphicsSurface = createWorkbenchKittySurface(false);
+const forcedKittyGraphicsSurface: GraphicsSurface = createWorkbenchKittySurface(true);
+
+function createWorkbenchKittySurface(force: boolean): GraphicsSurface {
+  const canForce = force && (!Deno.env.get("TMUX") || tmuxPassthroughAllowed);
+  return createKittyGraphicsSurface({
+    writer: {
+      write: (data) => {
+        tui.stdout.writeSync(kittyTextEncoder.encode(data));
+      },
+    },
+    detection: canForce && Deno.env.get("TMUX") ? { tmuxPassthrough: true } : undefined,
+    force: canForce,
+    quiet: 2,
+    maxChunkBytes: 16384,
+  });
+}
+
+function kittyGraphicsSurfaceFor(options: AsciiOptions): GraphicsSurface {
+  return options.kittyGraphics ? forcedKittyGraphicsSurface : autoKittyGraphicsSurface;
+}
+
+async function clearKittyGraphicsSurfaces(): Promise<void> {
+  await Promise.all([
+    autoKittyGraphicsSurface.clear("visible"),
+    forcedKittyGraphicsSurface.clear("visible"),
+  ]);
+}
+
+async function detectWorkbenchTmuxPassthrough(): Promise<boolean> {
+  if (!Deno.env.get("TMUX")) return true;
+  try {
+    const output = await new Deno.Command("tmux", {
+      args: ["show-options", "-gqv", "allow-passthrough"],
+    }).output();
+    if (!output.success) return false;
+    const value = new TextDecoder().decode(output.stdout).trim().toLowerCase();
+    return value === "on" || value === "all" || value === "1" || value === "yes";
+  } catch {
+    return false;
+  }
+}
 
 handleInput(tui);
 tui.dispatch();
@@ -346,6 +415,7 @@ const windowManager = new WindowManagerController({
     { id: "controls", title: "Controls", minWidth: 40, minHeight: 18 },
     { id: "logs", title: "Logs", minWidth: 36, minHeight: 12 },
     { id: "three", title: "Three ASCII", minWidth: 42, minHeight: 16 },
+    { id: HTML_CSS_LAYOUT_WINDOW_ID, title: "HTML/CSS Layout", minWidth: 46, minHeight: 16, state: "closed" },
   ],
 });
 const commandLog = new Signal<string[]>(["ready: API workbench mounted"], { deepObserve: true });
@@ -358,6 +428,8 @@ let lastWorkspaceWidth = 0;
 let lastWorkspaceHeight = 0;
 let dropdownOverlay: DropdownOverlay | null = null;
 let threeDragWindow: WindowId | null = null;
+let windowRenderContext: WindowRenderContext | null = null;
+let workspacePlacementContext: WorkspacePlacementContext | null = null;
 let drawScheduled = false;
 let renderedVisualizationThreePanels = new Set<VisualizationWindowId>();
 type Frame = string[][];
@@ -372,8 +444,18 @@ interface DropdownOverlay {
 type WorkbenchThreeScene = { mode: ThreeSceneMode; signal: ThreeSceneSignal };
 interface DynamicThreePanel {
   rectangle: Signal<Rectangle>;
+  graphicsRectangle: Signal<Rectangle>;
   scene: Signal<WorkbenchThreeScene | null>;
   panel: ThreePanelFrameView;
+}
+interface WindowRenderContext {
+  viewport: Rectangle;
+  offset: { columns: number; rows: number };
+}
+interface WorkspacePlacementContext {
+  rowDelta: number;
+  columnDelta: number;
+  clip: Rectangle;
 }
 
 const menu = new MenuBarController({
@@ -537,6 +619,7 @@ const table = new DataTableController<ProcessRow>({
   initialState: { pageSize: 5, sort: { columnId: "latency", direction: "asc" } },
 });
 const threeBodyRect = new Signal<Rectangle>({ column: 0, row: 0, width: 0, height: 0 }, { deepObserve: true });
+const threeGraphicsRect = new Signal<Rectangle>({ column: 0, row: 0, width: 0, height: 0 }, { deepObserve: true });
 const threeScene = new Computed<{ mode: ThreeSceneMode; signal: ThreeSceneSignal } | null>(() =>
   minimized.value.three || !threeAsciiAvailable.value ? null : {
     mode: "studio",
@@ -554,9 +637,11 @@ const threeScene = new Computed<{ mode: ThreeSceneMode; signal: ThreeSceneSignal
 );
 const threePanel = new ThreePanelFrameView({
   rectangle: threeBodyRect,
+  graphicsRectangle: threeGraphicsRect,
   scene: threeScene,
   ascii,
   enabled: threeAsciiAvailable,
+  graphicsSurface: () => kittyGraphicsSurfaceFor(ascii.peek()),
   frameInterval: 1000 / 18,
   onUpdate: scheduleDraw,
 });
@@ -718,10 +803,13 @@ tui.on("destroy", () => {
     entry.panel.dispose();
     entry.scene.dispose();
     entry.rectangle.dispose();
+    entry.graphicsRectangle.dispose();
   }
   visualizationThreePanels.clear();
   threeScene.dispose();
   threeBodyRect.dispose();
+  threeGraphicsRect.dispose();
+  void clearKittyGraphicsSurfaces();
   systemMonitor.stop();
   workbenchAudioRegistry.dispose();
   for (const [id, signal] of windowAscii) {
@@ -899,6 +987,7 @@ function renderWorkspace(frame: Frame): void {
   renderedVisualizationThreePanels = new Set();
   if (bounds.width < 2 || bounds.height < 1) {
     setThreeBodyRect({ column: 0, row: 0, width: 0, height: 0 });
+    setThreeGraphicsRect({ column: 0, row: 0, width: 0, height: 0 });
     hideVisualizationThreePanelsExcept(renderedVisualizationThreePanels);
     return;
   }
@@ -912,8 +1001,11 @@ function renderWorkspace(frame: Frame): void {
   const hitStart = hitTargets.length;
   const max = maximized.peek();
   if (max) {
-    renderWindow(virtual, max, layout.bounds);
-    if (max !== "three") setThreeBodyRect({ column: 0, row: 0, width: 0, height: 0 });
+    withWorkspacePlacement(bounds, offset, () => renderWindow(virtual, max, layout.bounds));
+    if (max !== "three") {
+      setThreeBodyRect({ column: 0, row: 0, width: 0, height: 0 });
+      setThreeGraphicsRect({ column: 0, row: 0, width: 0, height: 0 });
+    }
     hideVisualizationThreePanelsExcept(renderedVisualizationThreePanels);
     translateWorkspaceHits(hitStart, bounds.row - offset, bounds);
     blitWorkspace(frame, virtual, bounds, offset, layout.bounds.width);
@@ -925,6 +1017,7 @@ function renderWorkspace(frame: Frame): void {
   const visible = windowIds().filter((id) => !minimized.peek()[id]);
   if (visible.length === 0) {
     setThreeBodyRect({ column: 0, row: 0, width: 0, height: 0 });
+    setThreeGraphicsRect({ column: 0, row: 0, width: 0, height: 0 });
     hideVisualizationThreePanelsExcept(new Set());
     write(frame, bounds.row + 1, 2, paint(emptyWorkspaceMessage(), { fg: theme().warn }));
     renderShelf(frame);
@@ -932,16 +1025,21 @@ function renderWorkspace(frame: Frame): void {
   }
 
   let renderedThree = false;
-  for (const id of visible) {
-    const rect = layout.rects.get(id);
-    if (rect) {
-      renderWindow(virtual, id, rect);
-      if (id === "three") {
-        renderedThree = true;
+  withWorkspacePlacement(bounds, offset, () => {
+    for (const id of visible) {
+      const rect = layout.rects.get(id);
+      if (rect) {
+        renderWindow(virtual, id, rect);
+        if (id === "three") {
+          renderedThree = true;
+        }
       }
     }
+  });
+  if (!renderedThree) {
+    setThreeBodyRect({ column: 0, row: 0, width: 0, height: 0 });
+    setThreeGraphicsRect({ column: 0, row: 0, width: 0, height: 0 });
   }
-  if (!renderedThree) setThreeBodyRect({ column: 0, row: 0, width: 0, height: 0 });
   hideVisualizationThreePanelsExcept(renderedVisualizationThreePanels);
   translateWorkspaceHits(hitStart, bounds.row - offset, bounds);
   blitWorkspace(frame, virtual, bounds, offset, layout.bounds.width);
@@ -988,7 +1086,13 @@ function renderWindow(frame: Frame, id: WindowId, rect: Rectangle): void {
   const contentFrame: Frame = Array.from({ length: contentSize.height }, () => []);
   fillRect(contentFrame, { column: 0, row: 0, width: contentSize.width, height: contentSize.height }, t.surface);
   const contentHitStart = hitTargets.length;
-  renderWindowContent(contentFrame, id, { column: 0, row: 0, width: contentSize.width, height: contentSize.height });
+  const previousWindowRenderContext = windowRenderContext;
+  windowRenderContext = { viewport, offset: scroll.offset.peek() };
+  try {
+    renderWindowContent(contentFrame, id, { column: 0, row: 0, width: contentSize.width, height: contentSize.height });
+  } finally {
+    windowRenderContext = previousWindowRenderContext;
+  }
   translateDropdownOverlayForWindow(id, viewport, scroll.offset.peek());
   translateContentHits(contentHitStart, viewport, scroll.offset.peek());
   blitWindowContent(frame, contentFrame, viewport, scroll.offset.peek());
@@ -1001,6 +1105,7 @@ function renderWindowContent(frame: Frame, id: WindowId, rect: Rectangle): void 
   else if (id === "data") renderData(frame, rect);
   else if (id === "controls") renderControls(frame, rect);
   else if (id === "logs") renderLogs(frame, rect);
+  else if (id === "htmlLayout") renderHtmlCssLayout(frame, rect);
   else if (isVisualizationWindow(id)) renderVisualizationWindow(frame, id, rect);
   else renderThree(frame, rect);
 }
@@ -1056,6 +1161,7 @@ function renderVisualizationWindow(frame: Frame, id: VisualizationWindowId, rect
     addHit(sceneRect, { type: "threeViewport", id });
     const entry = ensureVisualizationThreePanel(id);
     setSignalRect(entry.rectangle, { column: 0, row: 0, width: sceneRect.width, height: sceneRect.height });
+    setSignalRect(entry.graphicsRectangle, contentRectToGraphicsRect(sceneRect));
     entry.scene.value = rendered.three ?? null;
     renderedVisualizationThreePanels.add(id);
     renderThreeGrid(frame, sceneRect, entry.panel.grid.peek(), t);
@@ -1105,7 +1211,7 @@ function addCpuHexTileHits(id: VisualizationWindowId, rect: Rectangle, context: 
 
 function renderThree(frame: Frame, rect: Rectangle): void {
   const t = theme();
-  const mode = terminalGlyphStyleLabel(ascii.peek().terminalGlyphStyle).toUpperCase();
+  const mode = threeRendererModeLabel(ascii.peek()).toUpperCase();
   if (threeAsciiAvailable.peek()) {
     writeRows(frame, rect, threeHeaderRows(mode, rect.width, t));
     const sceneRect = {
@@ -1116,11 +1222,13 @@ function renderThree(frame: Frame, rect: Rectangle): void {
     };
     addHit(sceneRect, { type: "threeViewport", id: "three" });
     setThreeBodyRect({ column: 0, row: 0, width: sceneRect.width, height: sceneRect.height });
+    setThreeGraphicsRect(contentRectToGraphicsRect(sceneRect));
     renderThreeGrid(frame, sceneRect, threePanel.grid.peek(), t);
     return;
   }
 
   setThreeBodyRect({ column: 0, row: 0, width: 0, height: 0 });
+  setThreeGraphicsRect({ column: 0, row: 0, width: 0, height: 0 });
   const fallback = renderThreeFallback(rect.width, rect.height, t);
   writeRows(frame, rect, fallback);
 }
@@ -1542,6 +1650,133 @@ function renderLogs(frame: Frame, rect: Rectangle): void {
   );
 }
 
+function renderHtmlCssLayout(frame: Frame, rect: Rectangle): void {
+  const t = theme();
+  const result = createHtmlCssLayoutDemo(rect);
+  const boxes = result.layout.boxes
+    .filter((box) => box.visible)
+    .sort((left, right) => left.zIndex - right.zIndex || boxPaintOrder(left) - boxPaintOrder(right));
+
+  for (const box of boxes) {
+    renderHtmlCssLayoutBox(frame, box, rect, t);
+  }
+
+  const summaryRows = [
+    "parseTuiMarkup -> parseCssStylesheet -> applyCssCascade -> LayoutEngine",
+    "Default solver now supports flex-wrap/flex-flow plus absolute inset placement.",
+    "Resize this window: metric cards wrap; amber badge stays anchored top-right.",
+  ];
+  const summaryStart = Math.max(rect.row, rect.row + rect.height - summaryRows.length);
+  for (let index = 0; index < summaryRows.length && summaryStart + index < rect.row + rect.height; index += 1) {
+    write(
+      frame,
+      summaryStart + index,
+      rect.column,
+      paint(fit(summaryRows[index]!, rect.width), {
+        fg: index === 0 ? t.accent : t.soft,
+        bg: t.panelSoft,
+        bold: index === 0,
+      }),
+    );
+  }
+}
+
+function renderHtmlCssLayoutBox(
+  frame: Frame,
+  box: ComputedLayoutBox,
+  bounds: Rectangle,
+  t: ThemeSpec,
+): void {
+  const rect = clipRect(box.rect, bounds);
+  if (rect.width <= 0 || rect.height <= 0) return;
+  const style = htmlCssLayoutBoxStyle(box, t);
+  fillRect(frame, rect, style.bg);
+  if (box.id !== "layout-demo") {
+    drawHtmlCssLayoutOutline(frame, rect, style.border, style.bg, style.bold);
+  }
+
+  const content = clipRect(box.contentRect, bounds);
+  if (content.width <= 0 || content.height <= 0) return;
+  const label = htmlCssLayoutDemoBoxLabel(box);
+  write(
+    frame,
+    content.row,
+    content.column,
+    paint(fit(label, content.width), {
+      fg: style.fg,
+      bg: style.bg,
+      bold: style.bold,
+    }),
+  );
+  if (content.height > 1 && box.text) {
+    write(
+      frame,
+      content.row + 1,
+      content.column,
+      paint(fit(box.text, content.width), { fg: t.text, bg: style.bg }),
+    );
+  }
+  if (content.height > 2 && box.id.startsWith("metric-")) {
+    const detail = `${box.rect.width}x${box.rect.height}  content ${box.contentRect.width}x${box.contentRect.height}`;
+    write(frame, content.row + 2, content.column, paint(fit(detail, content.width), { fg: t.muted, bg: style.bg }));
+  }
+}
+
+function htmlCssLayoutBoxStyle(
+  box: ComputedLayoutBox,
+  t: ThemeSpec,
+): { fg: string; bg: string; border: string; bold?: boolean } {
+  if (box.id === "layout-toolbar") {
+    return { fg: contrastText(t.accentDeep, t.background, t.text), bg: t.accentDeep, border: t.accent, bold: true };
+  }
+  if (box.id === "layout-stage") {
+    return { fg: t.text, bg: t.panelSoft, border: t.borderStrong, bold: true };
+  }
+  if (box.id === "layout-badge") {
+    return { fg: contrastText(t.warn, t.background, t.text), bg: t.warn, border: t.danger, bold: true };
+  }
+  if (box.id === "layout-footer") {
+    return { fg: t.muted, bg: t.panel, border: t.border };
+  }
+  if (box.id === "metric-cpu") {
+    return { fg: t.buttonActiveText, bg: t.buttonActiveBg, border: t.accent, bold: true };
+  }
+  if (box.id.startsWith("metric-")) {
+    return { fg: t.text, bg: t.panel, border: t.accent };
+  }
+  return { fg: t.text, bg: t.surface, border: t.border };
+}
+
+function boxPaintOrder(box: ComputedLayoutBox): number {
+  if (box.id === "layout-demo") return 0;
+  if (box.id === "layout-stage") return 1;
+  if (box.id.startsWith("metric-")) return 2;
+  if (box.id === "layout-badge") return 3;
+  return 2;
+}
+
+function drawHtmlCssLayoutOutline(
+  frame: Frame,
+  rect: Rectangle,
+  fg: string,
+  bg: string,
+  bold = false,
+): void {
+  if (rect.width < 2 || rect.height < 2) return;
+  const style = { fg, bg, bold };
+  write(frame, rect.row, rect.column, paint(`┌${"─".repeat(Math.max(0, rect.width - 2))}┐`, style));
+  for (let row = rect.row + 1; row < rect.row + rect.height - 1; row += 1) {
+    write(frame, row, rect.column, paint("│", style));
+    write(frame, row, rect.column + rect.width - 1, paint("│", style));
+  }
+  write(
+    frame,
+    rect.row + rect.height - 1,
+    rect.column,
+    paint(`└${"─".repeat(Math.max(0, rect.width - 2))}┘`, style),
+  );
+}
+
 function writeWrappedOptions(
   frame: Frame,
   rect: Rectangle,
@@ -1749,12 +1984,15 @@ function renderModalOverlay(frame: Frame): void {
 type ThreeConfigRow =
   | { kind: "preset"; label: string }
   | { kind: "glyphStyle"; label: string }
+  | { kind: "kitty"; key: AsciiKittyKey; label: string }
   | { kind: "toggle"; key: AsciiToggleKey; label: string }
   | { kind: "numeric"; key: AsciiNumericKey; label: string };
 
 const threeConfigRows: readonly ThreeConfigRow[] = [
   { kind: "preset", label: "Preset" },
   { kind: "glyphStyle", label: "Glyph style" },
+  { kind: "kitty", key: "kittyGraphics", label: "Kitty graphics" },
+  { kind: "kitty", key: "kittyDisableAscii", label: "Disable ASCII under Kitty" },
   { kind: "numeric", key: "terminalEdgeBias", label: "Edge glyph bias" },
   { kind: "numeric", key: "wireframeThickness", label: "Wire thickness" },
   { kind: "toggle", key: "edges", label: "Edge pass" },
@@ -1866,6 +2104,10 @@ function threeConfigRowText(row: ThreeConfigRow): string {
   if (row.kind === "toggle") {
     return `${row.label.padEnd(18)} ${current[row.key] ? "[x]" : "[ ]"}`;
   }
+  if (row.kind === "kitty") {
+    const status = row.key === "kittyGraphics" ? kittyGraphicsStatus() : "applies only when Kitty is active";
+    return `${row.label.padEnd(26)} ${current[row.key] ? "[x]" : "[ ]"} ${status}`;
+  }
   const value = Number(current[row.key]);
   const values = asciiControlValues(row.key);
   const ratio = numericOptionRatio(values, value);
@@ -1887,6 +2129,8 @@ function applyThreeConfigRow(index: number, action: ConfigHitAction = "activate"
     stepAsciiPreset(action === "previous" ? -1 : 1);
   } else if (row.kind === "glyphStyle") {
     stepAsciiGlyphStyle(action === "previous" ? -1 : 1);
+  } else if (row.kind === "kitty") {
+    toggleAsciiKittyOption(row.key);
   } else if (row.kind === "toggle") {
     toggleAsciiOption(row.key);
   } else {
@@ -1922,6 +2166,25 @@ function toggleAsciiOption(key: AsciiToggleKey): void {
     `three config ${key} ${!current[key] ? "on" : "off"}`,
     { persist: false },
   );
+}
+
+function toggleAsciiKittyOption(key: AsciiKittyKey): void {
+  const current = configuredAscii().peek();
+  const next = !current[key];
+  setConfiguredAscii(
+    { ...current, [key]: next, preset: "custom" },
+    `three config ${key} ${next ? "on" : "off"}`,
+    { persist: false },
+  );
+}
+
+function kittyGraphicsStatus(): string {
+  if (configuredAscii().peek().kittyGraphics && Deno.env.get("TMUX") && !tmuxPassthroughAllowed) {
+    return "[unavailable: tmux allow-passthrough off]";
+  }
+  const inspection = kittyGraphicsSurfaceFor(configuredAscii().peek()).inspect();
+  if (inspection.available) return `[${inspection.mode ?? "available"}]`;
+  return `[unavailable: ${inspection.reason ?? "not detected"}]`;
 }
 
 function stepAsciiNumeric(key: AsciiNumericKey, delta: number): void {
@@ -2033,6 +2296,9 @@ function windowContentSize(id: WindowId, viewport: Rectangle): { width: number; 
   if (id === "three") {
     return { width: baseWidth, height: baseHeight };
   }
+  if (id === "htmlLayout") {
+    return { width: baseWidth, height: Math.max(baseHeight, 20) };
+  }
   if (isVisualizationWindow(id)) {
     return visualizationWindowContentSize(id, viewport, baseWidth, baseHeight);
   }
@@ -2089,8 +2355,14 @@ function visualizationThreeStatusLine(
   options: AsciiOptions,
 ): string {
   const mode = rendered.three?.mode.toUpperCase() ?? "TEXT";
-  const glyphs = terminalGlyphStyleLabel(options.terminalGlyphStyle).toUpperCase();
-  return compactSpaces(`ACEROLA ${mode} · ${glyphs} · ${option.label}`);
+  return compactSpaces(`ACEROLA ${mode} · ${threeRendererModeLabel(options).toUpperCase()} · ${option.label}`);
+}
+
+function threeRendererModeLabel(options: AsciiOptions): string {
+  const glyphs = terminalGlyphStyleLabel(options.terminalGlyphStyle);
+  if (!options.kittyGraphics) return glyphs;
+  const suffix = options.kittyDisableAscii ? "Kitty only" : "Kitty + ASCII";
+  return `${glyphs} · ${suffix}`;
 }
 
 function buildVisualizationContext(
@@ -2387,16 +2659,19 @@ function ensureVisualizationThreePanel(id: VisualizationWindowId): DynamicThreeP
   if (existing) return existing;
 
   const rectangle = new Signal<Rectangle>({ column: 0, row: 0, width: 0, height: 0 }, { deepObserve: true });
+  const graphicsRectangle = new Signal<Rectangle>({ column: 0, row: 0, width: 0, height: 0 }, { deepObserve: true });
   const scene = new Signal<WorkbenchThreeScene | null>(null);
   const panel = new ThreePanelFrameView({
     rectangle,
+    graphicsRectangle,
     scene,
     ascii: asciiForWindow(id),
     enabled: threeAsciiAvailable,
+    graphicsSurface: () => kittyGraphicsSurfaceFor(asciiForWindow(id).peek()),
     frameInterval: 1000 / 18,
     onUpdate: scheduleDraw,
   });
-  const entry = { rectangle, scene, panel };
+  const entry = { rectangle, graphicsRectangle, scene, panel };
   visualizationThreePanels.set(id, entry);
   return entry;
 }
@@ -2406,6 +2681,7 @@ function hideVisualizationThreePanel(id: VisualizationWindowId): void {
   if (!entry) return;
   entry.scene.value = null;
   setSignalRect(entry.rectangle, { column: 0, row: 0, width: 0, height: 0 });
+  setSignalRect(entry.graphicsRectangle, { column: 0, row: 0, width: 0, height: 0 });
 }
 
 function hideVisualizationThreePanelsExcept(visibleIds: Set<VisualizationWindowId>): void {
@@ -2420,11 +2696,16 @@ function disposeVisualizationThreePanel(id: VisualizationWindowId): void {
   entry.panel.dispose();
   entry.scene.dispose();
   entry.rectangle.dispose();
+  entry.graphicsRectangle.dispose();
   visualizationThreePanels.delete(id);
 }
 
 function setThreeBodyRect(rect: Rectangle): void {
   setSignalRect(threeBodyRect, rect);
+}
+
+function setThreeGraphicsRect(rect: Rectangle): void {
+  setSignalRect(threeGraphicsRect, rect);
 }
 
 function setSignalRect(target: Signal<Rectangle>, rect: Rectangle): void {
@@ -2484,6 +2765,10 @@ function normalizeAsciiOptions(value: unknown): AsciiOptions {
     edges: typeof candidate.edges === "boolean" ? candidate.edges : base.edges,
     fill: typeof candidate.fill === "boolean" ? candidate.fill : base.fill,
     invertLuminance: typeof candidate.invertLuminance === "boolean" ? candidate.invertLuminance : base.invertLuminance,
+    kittyGraphics: typeof candidate.kittyGraphics === "boolean" ? candidate.kittyGraphics : base.kittyGraphics,
+    kittyDisableAscii: typeof candidate.kittyDisableAscii === "boolean"
+      ? candidate.kittyDisableAscii
+      : base.kittyDisableAscii,
   };
 }
 
@@ -2578,6 +2863,48 @@ function translateWorkspaceHits(startIndex: number, rowDelta: number, clip: Rect
     }
     target.rect = clipRect(translated, clip);
   }
+}
+
+function withWorkspacePlacement(bounds: Rectangle, offset: number, render: () => void): void {
+  const previous = workspacePlacementContext;
+  workspacePlacementContext = {
+    rowDelta: bounds.row - offset,
+    columnDelta: bounds.column,
+    clip: bounds,
+  };
+  try {
+    render();
+  } finally {
+    workspacePlacementContext = previous;
+  }
+}
+
+function contentRectToGraphicsRect(rect: Rectangle): Rectangle {
+  const windowContext = windowRenderContext;
+  if (!windowContext) return rect;
+  const windowRect = {
+    column: windowContext.viewport.column + rect.column - windowContext.offset.columns,
+    row: windowContext.viewport.row + rect.row - windowContext.offset.rows,
+    width: rect.width,
+    height: rect.height,
+  };
+  const visibleInWindow = clipRect(windowRect, windowContext.viewport);
+  if (visibleInWindow.width !== rect.width || visibleInWindow.height !== rect.height) {
+    return { column: visibleInWindow.column, row: visibleInWindow.row, width: 0, height: 0 };
+  }
+
+  const workspaceContext = workspacePlacementContext;
+  if (!workspaceContext) return windowRect;
+  const screenRect = {
+    ...windowRect,
+    column: windowRect.column + workspaceContext.columnDelta,
+    row: windowRect.row + workspaceContext.rowDelta,
+  };
+  const visibleOnScreen = clipRect(screenRect, workspaceContext.clip);
+  if (visibleOnScreen.width !== rect.width || visibleOnScreen.height !== rect.height) {
+    return { column: visibleOnScreen.column, row: visibleOnScreen.row, width: 0, height: 0 };
+  }
+  return screenRect;
 }
 
 function blitWorkspace(frame: Frame, virtual: Frame, bounds: Rectangle, offset: number, width: number): void {
@@ -3165,7 +3492,7 @@ async function persistSavedWorkspaces(): Promise<void> {
 
 function normalizeSavedWorkspaces(value: unknown): SavedWorkspace[] {
   if (!Array.isArray(value)) return [];
-  const validIds = new Set(newWindowOptions.map((option) => option.id));
+  const validIds = new Set(visualizationWindowOptions.map((option) => option.id));
   return value.flatMap((entry): SavedWorkspace[] => {
     if (!entry || typeof entry !== "object") return [];
     const candidate = entry as Partial<SavedWorkspace>;
@@ -3260,6 +3587,7 @@ function openHelpModal(): void {
       "Three ASCII widgets: mousewheel over the rendered scene zooms; click and drag the scene to rotate the model.",
       "Mouse: click windows to focus them, click rows to select them, click controls to change values, drag or click scrollbars to move through overflow content.",
       "Use the New menu to add Monitor, Neon Exodus, and Neon 3D widget windows to the workspace.",
+      "The New menu also includes an HTML/CSS Layout window that renders a live markup/CSS layout tree.",
       "Use the Workspace menu to save, open, rename, or delete workspace layouts. Opening a saved workspace replaces the currently loaded widget windows.",
       "Use the Theme menu to switch palettes. Click the [x] button in the top-right menu bar or press Q to open quit confirmation.",
     ],
@@ -3364,7 +3692,7 @@ function applyHit(target: { rect: Rectangle; action: HitAction }, x: number, y: 
   else if (action.type === "explorerRow") selectExplorerRow(action.index);
   else if (action.type === "cpuHexTile") selectCpuHexTile(action.id, action.label);
   else if (action.type === "newWindow") {
-    toggleVisualizationWindow(newWindowOptions[action.index], { keepMenuOpen: true });
+    toggleNewWindowOption(newWindowOptions[action.index], { keepMenuOpen: true });
   } else if (action.type === "workspace") applyWorkspaceMenuItem(action.index);
   else if (action.type === "windowVScrollbar") {
     const scroll = windowScroll(action.id);
@@ -3554,7 +3882,7 @@ function handleScreenDropdownKey(event: { key: string; ctrl?: boolean; meta?: bo
     else if (event.key === "pageup") newWindowMenuIndex.value = Math.max(0, newWindowMenuIndex.peek() - 6);
     else if (event.key === "pagedown") newWindowMenuIndex.value = Math.min(count - 1, newWindowMenuIndex.peek() + 6);
     else if (event.key === "return" || event.key === "space") {
-      toggleVisualizationWindow(newWindowOptions[newWindowMenuIndex.peek()], { keepMenuOpen: true });
+      toggleNewWindowOption(newWindowOptions[newWindowMenuIndex.peek()], { keepMenuOpen: true });
     }
     return;
   }
@@ -3693,6 +4021,36 @@ function closeWindow(id: WindowId): void {
   pushLog(`close ${windowTitle(id)}`);
 }
 
+function toggleNewWindowOption(
+  option: NewWindowOption | undefined,
+  options: { keepMenuOpen?: boolean; ascii?: AsciiOptions } = {},
+): void {
+  if (!option) return;
+  if (option.id === HTML_CSS_LAYOUT_OPTION_ID) {
+    toggleBuiltInWindow(HTML_CSS_LAYOUT_WINDOW_ID, options);
+    return;
+  }
+  toggleVisualizationWindow(option, options);
+}
+
+function toggleBuiltInWindow(
+  id: BuiltInWindowId,
+  options: { keepMenuOpen?: boolean } = {},
+): void {
+  if (windowManager.ids().includes(id)) {
+    closeWindow(id);
+    if (!options.keepMenuOpen) closeTopMenus();
+    else menuFocused.value = true;
+    return;
+  }
+  if (!options.keepMenuOpen) closeTopMenus();
+  windowManager.restore(id);
+  syncWindowSignalsFromManager();
+  focus(id);
+  if (options.keepMenuOpen) menuFocused.value = true;
+  pushLog(`add window ${windowTitle(id)}`);
+}
+
 function toggleVisualizationWindow(
   option: NewWindowOption | undefined,
   options: { keepMenuOpen?: boolean; ascii?: AsciiOptions } = {},
@@ -3742,8 +4100,14 @@ function isVisualizationLoaded(visualizationId: string): boolean {
   return windowManager.ids().includes(id);
 }
 
+function isNewWindowOptionLoaded(option: NewWindowOption): boolean {
+  return option.id === HTML_CSS_LAYOUT_OPTION_ID
+    ? windowManager.ids().includes(HTML_CSS_LAYOUT_WINDOW_ID)
+    : isVisualizationLoaded(option.id);
+}
+
 function newWindowMenuLabel(option: NewWindowOption): string {
-  return `${isVisualizationLoaded(option.id) ? "[x]" : "[ ]"} ${option.group}: ${option.label}`;
+  return `${isNewWindowOptionLoaded(option) ? "[x]" : "[ ]"} ${option.group}: ${option.label}`;
 }
 
 function visualizationWindowMinimums(option: NewWindowOption): { minWidth: number; minHeight: number } {
@@ -4322,6 +4686,8 @@ function windowTitle(id: WindowId): string {
     ? "Controls"
     : id === "logs"
     ? "Logs"
+    : id === "htmlLayout"
+    ? "HTML/CSS Layout"
     : "Three ASCII";
 }
 
@@ -4338,7 +4704,7 @@ function visualizationWindowId(visualizationId: string): VisualizationWindowId {
 }
 
 function visualizationOption(visualizationId: string | undefined): NewWindowOption | undefined {
-  return visualizationId ? newWindowOptions.find((entry) => entry.id === visualizationId) : undefined;
+  return visualizationId ? visualizationWindowOptions.find((entry) => entry.id === visualizationId) : undefined;
 }
 
 function accentColor(accent: Accent): string {

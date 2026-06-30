@@ -864,6 +864,8 @@ function renderVisualizationBody(
       edges: false,
       fill: true,
       invertLuminance: false,
+      kittyGraphics: false,
+      kittyDisableAscii: true,
     },
   };
   const panel = renderVisualization({

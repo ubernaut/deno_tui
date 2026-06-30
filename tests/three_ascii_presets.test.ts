@@ -45,7 +45,10 @@ Deno.test("asciiDemoPresets returns clones instead of the shared preset table", 
 });
 
 Deno.test("workbench ascii defaults favor terminal-visible wire thickness", () => {
-  assertEquals(createDefaultAsciiOptions("sharp").wireframeThickness, 8);
+  const options = createDefaultAsciiOptions("sharp");
+  assertEquals(options.wireframeThickness, 8);
+  assertEquals(options.kittyGraphics, false);
+  assertEquals(options.kittyDisableAscii, false);
 
   const values = asciiControlValues("wireframeThickness");
   assertEquals(values.includes(8), true);

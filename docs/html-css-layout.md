@@ -19,7 +19,8 @@ Implemented pieces:
 - `hydrateMarkupWidgets()` and the `widgets` result from `createMarkupLayout()` create shared controllers for common
   markup controls and expose a renderer-neutral event dispatcher.
 - `LayoutEngine` delegates layout to pluggable `LayoutSolver` backends.
-- The default `simpleLayoutSolver()` is dependency-free and supports practical block/flex layout.
+- The default `simpleLayoutSolver()` is dependency-free and supports practical block/flex layout, including wrapped flex
+  rows/columns and absolute-positioned children for terminal-cell containers.
 - `./layout/yoga` exposes an experimental Yoga-backed Flexbox solver.
 - `examples/html_css_layout.ts` reports the computed tree through the simple solver or Yoga.
 
@@ -67,6 +68,7 @@ const result = createMarkupLayout({
     #main {
       display: flex;
       flex: 1;
+      flex-wrap: wrap;
       gap: 2;
       overflow: auto;
     }
@@ -101,6 +103,13 @@ Run the report demo:
 ```bash
 deno task html-css-layout
 deno task html-css-layout:yoga
+```
+
+Run the portfolio window demo:
+
+```bash
+./visualization portfolio
+# Open New, then toggle "Layout: HTML/CSS Layout"
 ```
 
 ## Yoga Solver
@@ -221,7 +230,10 @@ Properties:
 
 - `display: block | flex | grid | none`
 - `position: relative | absolute`
+- `inset`, `top`, `right`, `bottom`, `left`
 - `flex-direction`
+- `flex-wrap`
+- `flex-flow`
 - `flex-grow`
 - `flex-shrink`
 - `flex-basis`

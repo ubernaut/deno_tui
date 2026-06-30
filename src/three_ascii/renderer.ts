@@ -279,6 +279,27 @@ export interface ThreeAsciiRendererOptions {
   effect?: AcerolaAsciiNodeOptions;
 }
 
+/** Raw image frame emitted by the Acerola three Ascii renderer. */
+export interface ThreeAsciiImageFrame {
+  data: Uint8Array;
+  encoding: "bytes";
+  format: 32;
+  pixelWidth: number;
+  pixelHeight: number;
+}
+
+/** Output selection for one three Ascii renderer pass. */
+export interface ThreeAsciiRenderFrameOptions {
+  ansi?: boolean;
+  image?: boolean;
+}
+
+/** Combined render output from one three Ascii renderer pass. */
+export interface ThreeAsciiRenderFrame {
+  grid?: string[][];
+  image?: ThreeAsciiImageFrame;
+}
+
 function colorValue(input: Color | string | number | undefined, fallback: number): Color {
   return input instanceof Color ? input.clone() : new Color(input ?? fallback);
 }
@@ -539,21 +560,67 @@ export class ThreeAsciiRenderer {
     deltaTime = 0,
     onFrame?: (deltaTime: number) => void | Promise<void>,
   ): Promise<string[][]> {
+    const frame = await this.renderFrame(deltaTime, onFrame, { ansi: true });
+    return frame.grid ?? [];
+  }
+
+  async renderToImageFrame(
+    deltaTime = 0,
+    onFrame?: (deltaTime: number) => void | Promise<void>,
+  ): Promise<ThreeAsciiImageFrame> {
+    const frame = await this.renderFrame(deltaTime, onFrame, { ansi: false, image: true });
+    if (!frame.image) {
+      throw new Error("ThreeAsciiRenderer did not produce an image frame.");
+    }
+    return frame.image;
+  }
+
+  async renderFrame(
+    deltaTime = 0,
+    onFrame?: (deltaTime: number) => void | Promise<void>,
+    options: ThreeAsciiRenderFrameOptions = { ansi: true },
+  ): Promise<ThreeAsciiRenderFrame> {
+    const renderAnsi = options.ansi ?? true;
+    const renderImage = options.image ?? false;
+
     if (this.columns <= 0 || this.rows <= 0) {
-      return [];
+      return { grid: renderAnsi ? [] : undefined };
     }
 
-    await this.init();
+    await this.renderScene(deltaTime, onFrame);
 
+    const frame: ThreeAsciiRenderFrame = {};
+    if (renderImage) {
+      frame.image = {
+        data: await this.canvas.context.readRGBA(),
+        encoding: "bytes",
+        format: 32,
+        pixelWidth: this.canvas.width,
+        pixelHeight: this.canvas.height,
+      };
+    }
+
+    if (renderAnsi) {
+      frame.grid = await this.computeAnsiGrid();
+    }
+
+    return frame;
+  }
+
+  private async renderScene(
+    deltaTime: number,
+    onFrame?: (deltaTime: number) => void | Promise<void>,
+  ): Promise<void> {
+    await this.init();
     if (onFrame) {
       await onFrame(deltaTime);
     }
-
     this.applySize();
     this.updateCameraAspect();
-
     this.renderPipeline!.render();
+  }
 
+  private async computeAnsiGrid(): Promise<string[][]> {
     await this.ensureComputeResources();
     const effectState = this.getEffectState();
     this.writeUniforms(effectState);

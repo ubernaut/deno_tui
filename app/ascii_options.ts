@@ -37,6 +37,8 @@ export function buildAsciiOptionsFromPreset(presetId: string, border: BorderMode
     edges: effect.edges ?? true,
     fill: effect.fill ?? true,
     invertLuminance: effect.invertLuminance ?? false,
+    kittyGraphics: false,
+    kittyDisableAscii: false,
   };
 }
 
@@ -52,8 +54,10 @@ export function terminalGlyphStyleLabel(style: TerminalGlyphStyle) {
 }
 
 export function applyAsciiPreset(target: AsciiOptions, presetId: string) {
+  const kittyGraphics = target.kittyGraphics;
+  const kittyDisableAscii = target.kittyDisableAscii;
   const next = buildAsciiOptionsFromPreset(presetId, target.border);
-  Object.assign(target, next);
+  Object.assign(target, next, { kittyGraphics, kittyDisableAscii });
 }
 
 export function asciiPresetLabel(presetId: string) {

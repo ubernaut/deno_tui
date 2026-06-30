@@ -6,7 +6,13 @@ import type { Rectangle } from "../types.ts";
 import type { Camera, Scene } from "npm:three@0.183.2";
 import type { AcerolaAsciiNodeOptions } from "../three_ascii/AcerolaAsciiNode.ts";
 import type { TerminalGlyphStyle } from "../three_ascii/glyphs.ts";
-import { ThreeAsciiRenderer, type ThreeAsciiRendererOptions } from "../three_ascii/renderer.ts";
+import {
+  type ThreeAsciiImageFrame,
+  ThreeAsciiRenderer,
+  type ThreeAsciiRendererOptions,
+  type ThreeAsciiRenderFrame,
+  type ThreeAsciiRenderFrameOptions,
+} from "../three_ascii/renderer.ts";
 
 /** Public interface describing a three Ascii Grid Renderer. */
 export interface ThreeAsciiGridRenderer {
@@ -19,6 +25,15 @@ export interface ThreeAsciiGridRenderer {
   getTerminalGlyphStyle(): TerminalGlyphStyle;
   setTerminalGlyphStyle(value: TerminalGlyphStyle): void;
   renderToAnsiGrid(deltaTime?: number, onFrame?: (deltaTime: number) => void | Promise<void>): Promise<string[][]>;
+  renderToImageFrame?(
+    deltaTime?: number,
+    onFrame?: (deltaTime: number) => void | Promise<void>,
+  ): Promise<ThreeAsciiImageFrame>;
+  renderFrame?(
+    deltaTime?: number,
+    onFrame?: (deltaTime: number) => void | Promise<void>,
+    options?: ThreeAsciiRenderFrameOptions,
+  ): Promise<ThreeAsciiRenderFrame>;
   destroy(): void;
 }
 

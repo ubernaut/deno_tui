@@ -125,6 +125,7 @@ function applyYogaStyle(node: YogaNode, style: ComputedLayoutStyle): void {
   node.setFlexDirection(
     style.display === "flex" && style.flexDirection === "row" ? Yoga.FLEX_DIRECTION_ROW : Yoga.FLEX_DIRECTION_COLUMN,
   );
+  node.setFlexWrap(yogaFlexWrap(style.flexWrap));
   node.setFlexGrow(style.flexGrow);
   node.setFlexShrink(style.flexShrink);
   applyYogaLength(node, "width", style.width);
@@ -140,6 +141,7 @@ function applyYogaStyle(node: YogaNode, style: ComputedLayoutStyle): void {
   node.setGap(Yoga.GUTTER_COLUMN, style.columnGap || style.gap);
   node.setGap(Yoga.GUTTER_ROW, style.rowGap || style.gap);
   node.setPositionType(style.position === "absolute" ? Yoga.POSITION_TYPE_ABSOLUTE : Yoga.POSITION_TYPE_RELATIVE);
+  setYogaPositionEdges(node, style.inset);
   setYogaEdges(node, "setMargin", style.margin);
   setYogaEdges(node, "setPadding", style.padding);
   setYogaEdges(node, "setBorder", style.border);
@@ -189,6 +191,22 @@ function setYogaEdges(
   node[method](Yoga.EDGE_LEFT, edges.left);
 }
 
+function setYogaPositionEdges(
+  node: YogaNode,
+  edges: ComputedLayoutStyle["inset"],
+): void {
+  applyYogaPosition(node, Yoga.EDGE_TOP, edges.top);
+  applyYogaPosition(node, Yoga.EDGE_RIGHT, edges.right);
+  applyYogaPosition(node, Yoga.EDGE_BOTTOM, edges.bottom);
+  applyYogaPosition(node, Yoga.EDGE_LEFT, edges.left);
+}
+
+function applyYogaPosition(node: YogaNode, edge: number, length: LayoutLengthValue): void {
+  if (length.unit === "auto" || length.unit === "fr") return;
+  if (length.unit === "percent") node.setPositionPercent(edge, length.value);
+  else node.setPosition(edge, length.value);
+}
+
 function yogaAlign(value: LayoutAlignItems): number {
   switch (value) {
     case "center":
@@ -214,6 +232,17 @@ function yogaJustify(value: LayoutJustifyContent): number {
       return Yoga.JUSTIFY_SPACE_AROUND;
     default:
       return Yoga.JUSTIFY_FLEX_START;
+  }
+}
+
+function yogaFlexWrap(value: ComputedLayoutStyle["flexWrap"]): number {
+  switch (value) {
+    case "wrap":
+      return Yoga.WRAP_WRAP;
+    case "wrap-reverse":
+      return Yoga.WRAP_WRAP_REVERSE;
+    default:
+      return Yoga.WRAP_NO_WRAP;
   }
 }
 

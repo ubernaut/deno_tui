@@ -114,6 +114,18 @@ Deno.test("Kitty graphics capability detection is conservative around tmux", () 
   assertEquals(tmuxPassthrough.supported, true);
   assertEquals(tmuxPassthrough.mode, "tmux-passthrough");
 
+  const forcedTmuxPassthrough = detectKittyGraphicsCapability({
+    env: {
+      TERM: "tmux-256color",
+      TMUX: "/tmp/tmux",
+    },
+    force: true,
+    tmuxPassthrough: true,
+    isTty: true,
+  });
+  assertEquals(forcedTmuxPassthrough.supported, true);
+  assertEquals(forcedTmuxPassthrough.mode, "tmux-passthrough");
+
   const disabled = detectKittyGraphicsCapability({
     env: { KITTY_WINDOW_ID: "1", DENO_TUI_KITTY: "0" },
     isTty: true,
