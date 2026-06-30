@@ -46,6 +46,7 @@ export const defaultHealthSteps: readonly HealthStep[] = [
   { name: "workspace-launcher", command: ["deno", "check", "examples/windowing_system_launcher.ts"] },
   { name: "terminal-command", command: ["deno", "check", "examples/terminal_command_workflow.ts"] },
   { name: "runtime-workloads", command: ["deno", "check", "examples/runtime_workloads.ts"] },
+  { name: "e2e", command: ["deno", "task", "e2e", "--", "--quiet"] },
   { name: "theme-engines", command: ["deno", "check", "examples/theme_engines.ts"] },
   { name: "theme-engine-commands", command: ["deno", "check", "examples/theme_engine_commands.ts"] },
   { name: "theme-pipeline", command: ["deno", "check", "examples/theme_pipeline.ts"] },

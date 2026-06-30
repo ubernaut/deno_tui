@@ -2590,6 +2590,7 @@ deno task theme-resolver
 deno task theme-bindings
 deno task capabilities
 deno task runtime-workloads
+deno task e2e
 deno task benchmark
 deno task api-inventory
 deno task api-reference

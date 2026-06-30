@@ -20,6 +20,7 @@
     "theme-bindings": "deno run -A ./examples/theme_bindings.ts",
     "capabilities": "deno run -A ./scripts/capabilities.ts",
     "runtime-workloads": "deno run -A ./examples/runtime_workloads.ts",
+    "e2e": "deno run -A ./scripts/e2e.ts",
     "benchmark": "deno run -A ./scripts/benchmark.ts",
     "api-inventory": "deno run -A ./scripts/api_inventory.ts",
     "api-reference": "deno run -A ./scripts/api_reference.ts",

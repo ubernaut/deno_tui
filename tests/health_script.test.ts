@@ -26,6 +26,7 @@ Deno.test("health script exposes the expected contributor gates", () => {
     "workspace-launcher",
     "terminal-command",
     "runtime-workloads",
+    "e2e",
     "theme-engines",
     "theme-engine-commands",
     "theme-pipeline",
