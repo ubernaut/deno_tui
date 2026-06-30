@@ -613,6 +613,13 @@ function viewportOffsetBy(offset, maxOffset, columns, rows2) {
     rows: offset.rows + rows2
   }, maxOffset);
 }
+function viewportWindow(length, activeIndex, capacity) {
+  const safeCapacity = Math.max(0, Math.floor(capacity));
+  if (length <= 0 || safeCapacity <= 0) return { start: 0, end: 0 };
+  const active2 = clamp(Math.floor(activeIndex), 0, length - 1);
+  const start = Math.max(0, Math.min(active2 - Math.floor(safeCapacity / 2), Math.max(0, length - safeCapacity)));
+  return { start, end: Math.min(length, start + safeCapacity) };
+}
 function viewportThumb(contentLength, viewportLength, offset) {
   const viewport = Math.max(0, viewportLength);
   const content = Math.max(0, contentLength);
@@ -665,6 +672,9 @@ function inspectViewport(contentWidth, contentHeight, viewportWidth, viewportHei
 function clampSelectionIndex(length, index) {
   if (length <= 0) return 0;
   return Math.max(0, Math.min(Math.floor(index), length - 1));
+}
+function selectionWindow(length, activeIndex, capacity) {
+  return viewportWindow(length, activeIndex, capacity);
 }
 
 // src/theme.ts
@@ -1019,54 +1029,54 @@ var DrawObject = class {
 // src/utils/strings.ts
 var UNICODE_CHAR_REGEXP = /\ud83c[\udffb-\udfff](?=\ud83c[\udffb-\udfff])|(?:(?:\ud83c\udff4\udb40\udc67\udb40\udc62\udb40(?:\udc65|\udc73|\udc77)\udb40(?:\udc6e|\udc63|\udc6c)\udb40(?:\udc67|\udc74|\udc73)\udb40\udc7f)|[^\ud800-\udfff][\u0300-\u036f\ufe20-\ufe2f\u20d0-\u20ff\u1ab0-\u1aff\u1dc0-\u1dff]?|[\u0300-\u036f\ufe20-\ufe2f\u20d0-\u20ff\u1ab0-\u1aff\u1dc0-\u1dff]|(?:\ud83c[\udde6-\uddff]){2}|[\ud800-\udbff][\udc00-\udfff]|[\ud800-\udfff])[\ufe0e\ufe0f]?(?:[\u0300-\u036f\ufe20-\ufe2f\u20d0-\u20ff\u1ab0-\u1aff\u1dc0-\u1dff]|\ud83c[\udffb-\udfff])?(?:\u200d(?:[^\ud800-\udfff]|(?:\ud83c[\udde6-\uddff]){2}|[\ud800-\udbff][\udc00-\udfff])[\ufe0e\ufe0f]?(?:[\u0300-\u036f\ufe20-\ufe2f\u20d0-\u20ff\u1ab0-\u1aff\u1dc0-\u1dff]|\ud83c[\udffb-\udfff])?)*/g;
 var empty = [];
+var ESC_PATTERN = "\\x1b";
+var BEL_PATTERN = "\\x07";
+var CSI_SEQUENCE_REGEXP = new RegExp(`^${ESC_PATTERN}\\[[0-?]*[ -/]*[@-~]`);
+var ANSI_SEQUENCE_REGEXP = new RegExp(
+  `^${ESC_PATTERN}(?:\\[[0-?]*[ -/]*[@-~]|\\][^${BEL_PATTERN}]*(?:${BEL_PATTERN}|${ESC_PATTERN}\\\\))`
+);
+var STRIP_CSI_SEQUENCE_REGEXP = new RegExp(`${ESC_PATTERN}\\[[0-?]*[ -/]*[@-~]`, "g");
+var STRIP_OSC_SEQUENCE_REGEXP = new RegExp(
+  `${ESC_PATTERN}\\][^${BEL_PATTERN}]*(?:${BEL_PATTERN}|${ESC_PATTERN}\\\\)`,
+  "g"
+);
 function getMultiCodePointCharacters(text) {
   if (!text) return empty;
-  const matched = text.match(UNICODE_CHAR_REGEXP);
-  if (matched?.includes("\x1B")) {
-    const arr = [];
-    let i = 0;
-    let ansi = 0;
-    let lastStyle = "";
-    for (const char of matched) {
-      arr[i] ??= "";
-      arr[i] += lastStyle + char;
-      if (char === "\x1B") {
-        ++ansi;
-        lastStyle += "\x1B";
-      } else if (ansi) {
-        lastStyle += char;
-        if (ansi === 3 && char === "m" && lastStyle[lastStyle.length - 2] === "0") {
-          lastStyle = "";
-        }
-        if (char === "m") {
-          ansi = 0;
-        } else {
-          ++ansi;
-        }
-      } else {
-        ++i;
-      }
-    }
-    return arr;
+  if (text.includes("\x1B")) {
+    return getStyledCharacters(text);
   }
+  const matched = text.match(UNICODE_CHAR_REGEXP);
   return matched ?? empty;
 }
-function stripStyles(string) {
-  let stripped = "";
-  let ansi = false;
-  const len = string.length;
-  for (let i = 0; i < len; ++i) {
-    const char = string[i];
-    if (char === "\x1B") {
-      ansi = true;
-      i += 2;
-    } else if (char === "m" && ansi) {
-      ansi = false;
-    } else if (!ansi) {
-      stripped += char;
+function getStyledCharacters(text) {
+  const cells = [];
+  let style2 = "";
+  for (let index = 0; index < text.length; ) {
+    if (text.charCodeAt(index) === 27) {
+      const match2 = CSI_SEQUENCE_REGEXP.exec(text.slice(index));
+      if (match2) {
+        const sequence = match2[0];
+        if (sequence.endsWith("m")) {
+          style2 = isSgrReset(sequence) ? "" : style2 + sequence;
+        }
+        index += sequence.length;
+        continue;
+      }
     }
+    UNICODE_CHAR_REGEXP.lastIndex = 0;
+    const match = UNICODE_CHAR_REGEXP.exec(text.slice(index));
+    const char = match?.index === 0 ? match[0] : String.fromCodePoint(text.codePointAt(index) ?? text.charCodeAt(index));
+    cells.push(style2 ? `${style2}${char}\x1B[0m` : char);
+    index += char.length;
   }
-  return stripped;
+  return cells;
+}
+function isSgrReset(sequence) {
+  const body = sequence.slice(2, -1);
+  return body === "" || body === "0";
+}
+function stripStyles(string) {
+  return string.replace(STRIP_CSI_SEQUENCE_REGEXP, "").replace(STRIP_OSC_SEQUENCE_REGEXP, "");
 }
 function insertAt(string, index, value) {
   return string.slice(0, index) + value + string.slice(index);
@@ -1074,69 +1084,106 @@ function insertAt(string, index, value) {
 function textWidth(text, start = 0) {
   if (!text) return 0;
   let width = 0;
-  let ansi = false;
-  const len = text.length;
-  loop: for (let i = start; i < len; ++i) {
-    const char = text[i];
-    switch (char) {
-      case "\x1B":
-        ansi = true;
-        i += 2;
-        break;
-      case "\n":
-        break loop;
-      default:
-        if (!ansi) {
-          width += characterWidth(char);
-        } else if (isFinalAnsiByte(char)) {
-          ansi = false;
-        }
-        break;
-    }
+  for (const cell of iterateTextCells(start > 0 ? text.slice(start) : text)) {
+    if (cell.plain === "\n") break;
+    width += characterWidth(cell.plain);
   }
   return width;
 }
 function cropToWidth(text, width) {
   let cropped = "";
   let croppedWidth = 0;
-  let ansi = 0;
-  const len = text.length;
-  for (let i = 0; i < len; ++i) {
-    const char = text[i];
-    if (char === "\x1B") {
-      ansi = 1;
-    } else if (ansi >= 3 && isFinalAnsiByte(char)) {
-      ansi = 0;
-    } else if (ansi > 0) {
-      ansi += 1;
-    } else {
-      const charWidth = characterWidth(char);
-      if (croppedWidth + charWidth > width) {
-        if (croppedWidth + 1 === width) {
-          cropped += " ";
-        }
-        break;
-      } else {
-        croppedWidth += charWidth;
-      }
+  for (const cell of iterateTextCells(text)) {
+    const plain = cell.plain;
+    if (!plain) {
+      cropped += cell.raw;
+      continue;
     }
-    cropped += char;
+    if (plain === "\n") break;
+    const charWidth = characterWidth(plain);
+    if (croppedWidth + charWidth > width) {
+      const leading = cell.raw.slice(0, cell.raw.length - plain.length);
+      if (leading && isAnsiResetOnly(leading)) {
+        cropped += leading;
+      }
+      if (croppedWidth + 1 === width) {
+        cropped += " ";
+      }
+      break;
+    } else {
+      croppedWidth += charWidth;
+    }
+    cropped += cell.raw;
   }
   return cropped;
 }
-function isFinalAnsiByte(character) {
-  const codePoint = character.charCodeAt(0);
-  return codePoint >= 64 && codePoint < 112;
+function* iterateTextCells(text) {
+  let index = 0;
+  let prefix = "";
+  while (index < text.length) {
+    if (text.charCodeAt(index) === 27) {
+      const sequence = ANSI_SEQUENCE_REGEXP.exec(text.slice(index))?.[0];
+      if (sequence) {
+        prefix += sequence;
+        index += sequence.length;
+        continue;
+      }
+    }
+    const char = nextTextCharacter(text, index);
+    yield { raw: prefix + char, plain: char };
+    prefix = "";
+    index += char.length;
+  }
+  if (prefix) {
+    yield { raw: prefix, plain: "" };
+  }
+}
+function nextTextCharacter(text, index) {
+  UNICODE_CHAR_REGEXP.lastIndex = 0;
+  const match = UNICODE_CHAR_REGEXP.exec(text.slice(index));
+  if (match?.index === 0) return match[0];
+  return String.fromCodePoint(text.codePointAt(index) ?? text.charCodeAt(index));
+}
+function isAnsiResetOnly(value) {
+  if (!value) return false;
+  let index = 0;
+  while (index < value.length) {
+    const sequence = ANSI_SEQUENCE_REGEXP.exec(value.slice(index))?.[0];
+    if (!sequence || !sequence.endsWith("m") || !isSgrReset(sequence)) return false;
+    index += sequence.length;
+  }
+  return true;
 }
 function characterWidth(character) {
-  const codePoint = character.charCodeAt(0);
-  if (codePoint === 55358 || codePoint === 8203) {
+  const plain = stripStyles(character);
+  if (!plain) return 0;
+  const codePoints = [...plain].map((char) => char.codePointAt(0) ?? 0);
+  if (codePoints.some((codePoint2) => codePoint2 === 8205)) return 2;
+  if (codePoints.length === 2 && codePoints.every(isRegionalIndicator)) return 2;
+  if (codePoints.some((codePoint2) => codePoint2 === 65039) && codePoints.some(isEmojiSymbol)) return 2;
+  const codePoint = codePoints[0] ?? 0;
+  if (codePoint === 8203 || codePoint === 8205 || isCombiningMark(codePoint) || isVariationSelector(codePoint) || isEmojiModifier(codePoint)) {
     return 0;
   }
-  if (codePoint >= 4352 && (codePoint <= 4447 || codePoint === 9001 || codePoint === 9002 || 11904 <= codePoint && codePoint <= 12871 && codePoint !== 12351 || 12880 <= codePoint && codePoint <= 19903 || 19968 <= codePoint && codePoint <= 42182 || 43360 <= codePoint && codePoint <= 43388 || 44032 <= codePoint && codePoint <= 55203 || 63744 <= codePoint && codePoint <= 64255 || 65040 <= codePoint && codePoint <= 65049 || 65072 <= codePoint && codePoint <= 65131 || 65281 <= codePoint && codePoint <= 65376 || 65504 <= codePoint && codePoint <= 65510 || 110592 <= codePoint && codePoint <= 110593 || 127488 <= codePoint && codePoint <= 127569 || 131072 <= codePoint && codePoint <= 262141)) {
+  if (codePoint >= 4352 && (codePoint <= 4447 || codePoint === 9001 || codePoint === 9002 || 11904 <= codePoint && codePoint <= 12871 && codePoint !== 12351 || 12880 <= codePoint && codePoint <= 19903 || 19968 <= codePoint && codePoint <= 42182 || 43360 <= codePoint && codePoint <= 43388 || 44032 <= codePoint && codePoint <= 55203 || 63744 <= codePoint && codePoint <= 64255 || 65040 <= codePoint && codePoint <= 65049 || 65072 <= codePoint && codePoint <= 65131 || 65281 <= codePoint && codePoint <= 65376 || 65504 <= codePoint && codePoint <= 65510 || 110592 <= codePoint && codePoint <= 110593 || 126976 <= codePoint && codePoint <= 129791 || 127488 <= codePoint && codePoint <= 127569 || 131072 <= codePoint && codePoint <= 262141)) {
     return 2;
   }
   return 1;
+}
+function isCombiningMark(codePoint) {
+  return 768 <= codePoint && codePoint <= 879 || 6832 <= codePoint && codePoint <= 6911 || 7616 <= codePoint && codePoint <= 7679 || 8400 <= codePoint && codePoint <= 8447 || 65056 <= codePoint && codePoint <= 65071;
+}
+function isVariationSelector(codePoint) {
+  return 65024 <= codePoint && codePoint <= 65039 || 917760 <= codePoint && codePoint <= 917999;
+}
+function isEmojiModifier(codePoint) {
+  return 127995 <= codePoint && codePoint <= 127999;
+}
+function isRegionalIndicator(codePoint) {
+  return 127462 <= codePoint && codePoint <= 127487;
+}
+function isEmojiSymbol(codePoint) {
+  return 9728 <= codePoint && codePoint <= 10175 || 126976 <= codePoint && codePoint <= 129791;
 }
 
 // src/canvas/text.ts
@@ -1652,6 +1699,8 @@ var mouseEvent = {
 var lastMouseEvent = { ...mouseEvent };
 
 // src/input_reader/mod.ts
+var BRACKETED_PASTE_START = new TextEncoder().encode("\x1B[200~");
+var BRACKETED_PASTE_END = new TextEncoder().encode("\x1B[201~");
 var textDecoder = new TextDecoder();
 
 // src/canvas/box.ts
@@ -2333,127 +2382,78 @@ var textEncoder3 = new TextEncoder();
 // src/layout/flex_layout.ts
 var MAX_FLEX_SIZE = Number.MAX_SAFE_INTEGER;
 
-// src/layout/split_pane.ts
-function splitPaneRects(bounds, options) {
-  const direction = options.direction;
-  const mainSize = direction === "row" ? bounds.width : bounds.height;
-  const crossSize = direction === "row" ? bounds.height : bounds.width;
+// src/layout/responsive.ts
+function tileRects(bounds, options) {
+  const itemCount = Math.max(0, Math.floor(options.itemCount));
+  if (itemCount === 0) return { columns: 0, rows: 0, contentHeight: 0, rects: [] };
   const gap = Math.max(0, Math.floor(options.gap ?? 1));
-  const available = Math.max(0, mainSize - gap);
-  const firstSize = resolveFirstPaneSize(available, options);
-  const secondSize = Math.max(0, available - firstSize);
-  if (direction === "row") {
-    const separatorColumn = bounds.column + firstSize;
-    return {
-      first: { column: bounds.column, row: bounds.row, width: firstSize, height: crossSize },
-      separator: { column: separatorColumn, row: bounds.row, width: gap, height: crossSize },
-      second: { column: separatorColumn + gap, row: bounds.row, width: secondSize, height: crossSize },
-      firstSize,
-      ratio: ratioFor(firstSize, available)
-    };
-  }
-  const separatorRow = bounds.row + firstSize;
-  return {
-    first: { column: bounds.column, row: bounds.row, width: crossSize, height: firstSize },
-    separator: { column: bounds.column, row: separatorRow, width: crossSize, height: gap },
-    second: { column: bounds.column, row: separatorRow + gap, width: crossSize, height: secondSize },
-    firstSize,
-    ratio: ratioFor(firstSize, available)
-  };
-}
-function resizeSplitPane(bounds, options, delta) {
-  const current = splitPaneRects(bounds, options);
-  return {
-    ...options,
-    firstSize: resolveFirstPaneSize(
-      paneAvailableSize(bounds, options.direction, options.gap),
-      { ...options, firstSize: current.firstSize + Math.floor(delta) }
-    )
-  };
-}
-function resizeSplitPaneRatio(bounds, options, delta) {
-  const resized = resizeSplitPane(bounds, options, delta);
-  const rects = splitPaneRects(bounds, resized);
-  return {
-    ...resized,
-    firstSize: void 0,
-    ratio: rects.ratio
-  };
-}
-var SplitPaneController = class {
-  options;
-  resizeMode;
-  constructor(options) {
-    const { resizeMode = "size", ...splitOptions } = options;
-    this.options = new Signal({ ...splitOptions });
-    this.resizeMode = new Signal(resizeMode);
-  }
-  rects(bounds) {
-    return splitPaneRects(bounds, this.options.peek());
-  }
-  resize(bounds, delta) {
-    this.options.value = this.resizeMode.peek() === "ratio" ? resizeSplitPaneRatio(bounds, this.options.peek(), delta) : resizeSplitPane(bounds, this.options.peek(), delta);
-    return this.rects(bounds);
-  }
-  update(options) {
-    const { resizeMode, ...splitOptions } = options;
-    if (resizeMode) {
-      this.resizeMode.value = resizeMode;
+  const width = Math.max(0, Math.floor(bounds.width));
+  const height = Math.max(0, Math.floor(bounds.height));
+  const minTileWidth = Math.max(1, Math.floor(options.minTileWidth));
+  const minTileHeight = Math.max(1, Math.floor(options.minTileHeight));
+  const maxColumns = Math.max(1, Math.min(itemCount, Math.floor(options.maxColumns ?? itemCount)));
+  const maxRows = Math.max(1, Math.floor(options.maxRows ?? itemCount));
+  const targetAspectRatio = Math.max(0.1, options.targetAspectRatio ?? 2.4);
+  const columnsByWidth = Math.max(1, Math.floor((width + gap) / (minTileWidth + gap)));
+  const upperColumns = Math.max(1, Math.min(maxColumns, columnsByWidth, itemCount));
+  const allowVerticalOverflow = options.allowVerticalOverflow ?? false;
+  let best;
+  for (let columns = 1; columns <= upperColumns; columns += 1) {
+    const rows2 = Math.ceil(itemCount / columns);
+    if (rows2 > maxRows && !allowVerticalOverflow) continue;
+    const tileWidth = Math.max(0, Math.floor((width - gap * Math.max(0, columns - 1)) / columns));
+    const fitHeight = Math.floor((height - gap * Math.max(0, rows2 - 1)) / rows2);
+    const tileHeight = allowVerticalOverflow ? Math.max(minTileHeight, fitHeight) : fitHeight;
+    if (tileWidth < minTileWidth || tileHeight < minTileHeight) continue;
+    const contentHeight = rows2 * tileHeight + gap * Math.max(0, rows2 - 1);
+    const overflow = Math.max(0, contentHeight - height);
+    const aspect = tileWidth / Math.max(1, tileHeight);
+    const aspectPenalty = Math.abs(Math.log(aspect / targetAspectRatio));
+    const emptySlots = columns * rows2 - itemCount;
+    const rowPenalty = rows2 > maxRows ? (rows2 - maxRows) * 6 : 0;
+    const score = overflow * 20 + aspectPenalty * 12 + emptySlots * 2 + rowPenalty - columns * 0.5;
+    if (!best || score < best.score) {
+      best = { columns, rows: rows2, tileWidth, tileHeight, contentHeight, score };
     }
-    this.options.value = {
-      ...this.options.peek(),
-      ...splitOptions
+  }
+  if (!best) {
+    const rows2 = itemCount;
+    const tileHeight = allowVerticalOverflow ? minTileHeight : Math.max(0, Math.floor((height - gap * Math.max(0, rows2 - 1)) / rows2));
+    best = {
+      columns: 1,
+      rows: rows2,
+      tileWidth: width,
+      tileHeight,
+      contentHeight: rows2 * tileHeight + gap * Math.max(0, rows2 - 1),
+      score: 0
     };
   }
-  setRatio(ratio) {
-    this.options.value = {
-      ...this.options.peek(),
-      firstSize: void 0,
-      ratio: clampRatio(ratio)
-    };
-  }
-  setFirstSize(firstSize) {
-    this.options.value = {
-      ...this.options.peek(),
-      firstSize: Math.max(0, Math.floor(firstSize))
-    };
-  }
-  setDirection(direction) {
-    this.options.value = {
-      ...this.options.peek(),
-      direction
-    };
-  }
-  snapshot() {
+  const stretchSparseColumns = best.contentHeight <= height;
+  const layoutBottom = bounds.row + (stretchSparseColumns ? height : best.contentHeight);
+  const rects = Array.from({ length: itemCount }, (_, index) => {
+    const columnIndex = index % best.columns;
+    const rowIndex = Math.floor(index / best.columns);
+    const column = bounds.column + columnIndex * (best.tileWidth + gap);
+    const row = bounds.row + rowIndex * (best.tileHeight + gap);
+    const lastColumn = columnIndex === best.columns - 1;
+    const lastRow = rowIndex === best.rows - 1;
+    const lastInColumn = index + best.columns >= itemCount;
     return {
-      ...this.options.peek(),
-      resizeMode: this.resizeMode.peek()
+      column,
+      row,
+      width: Math.max(0, lastColumn ? bounds.column + width - column : best.tileWidth),
+      height: Math.max(
+        0,
+        stretchSparseColumns && lastInColumn ? layoutBottom - row : lastRow ? bounds.row + best.contentHeight - row : best.tileHeight
+      )
     };
-  }
-  dispose() {
-    this.options.dispose();
-    this.resizeMode.dispose();
-  }
-};
-function resolveFirstPaneSize(available, options) {
-  if (available <= 0) return 0;
-  const minFirst = Math.max(0, Math.floor(options.minFirst ?? 0));
-  const minSecond = Math.max(0, Math.floor(options.minSecond ?? 0));
-  const maxBySecond = Math.max(0, available - minSecond);
-  const maxFirst = Math.min(maxBySecond, Math.max(minFirst, Math.floor(options.maxFirst ?? available)));
-  const requested = options.firstSize == null ? Math.floor(available * clampRatio(options.ratio ?? 0.5)) : Math.floor(options.firstSize);
-  return Math.max(0, Math.min(maxFirst, Math.max(minFirst, requested)));
-}
-function paneAvailableSize(bounds, direction, gap = 1) {
-  const mainSize = direction === "row" ? bounds.width : bounds.height;
-  return Math.max(0, mainSize - Math.max(0, Math.floor(gap)));
-}
-function ratioFor(size, available) {
-  return available <= 0 ? 0 : size / available;
-}
-function clampRatio(value) {
-  if (Number.isNaN(value)) return 0.5;
-  return Math.max(0, Math.min(1, value));
+  });
+  return {
+    columns: best.columns,
+    rows: best.rows,
+    contentHeight: best.contentHeight,
+    rects
+  };
 }
 
 // src/components/button.ts
@@ -2598,6 +2598,13 @@ var componentCatalog = [
     "keyboard",
     "themeable"
   ]),
+  component("file-explorer", "FileExplorer", "data", "Path-aware tree controller for project and file browsers.", [
+    "controller",
+    "selection",
+    "keyboard",
+    "mouse",
+    "themeable"
+  ]),
   component("tabs", "Tabs", "navigation", "Segmented route or view selector.", [
     "controller",
     "render-helper",
@@ -2635,8 +2642,10 @@ var componentCatalog = [
     "mouse"
   ]),
   component("modal", "Modal", "overlay", "Centered overlay frame and focus target.", [
+    "controller",
     "render-helper",
     "keyboard",
+    "mouse",
     "themeable"
   ]),
   component("toast", "ToastStack", "overlay", "Transient notification stack renderer.", [
@@ -2685,6 +2694,11 @@ var componentCatalog = [
     "dashboard"
   ]),
   component("frame", "Frame", "layout", "Bordered component frame.", ["component", "themeable"]),
+  component("window-manager", "WindowManager", "layout", "Tiling window state, fullscreen tabs, and chrome model.", [
+    "controller",
+    "keyboard",
+    "mouse"
+  ]),
   component("scroll-area", "ScrollArea", "layout", "Viewport and scrollbar helper renderers.", [
     "controller",
     "render-helper",
@@ -3080,6 +3094,284 @@ function padCell(value, width) {
   return cropped + " ".repeat(Math.max(0, width - textWidth(cropped)));
 }
 
+// src/components/tree.ts
+function flattenTreeRows(nodes, depth = 0, rows2 = []) {
+  for (const node of nodes) {
+    const hasChildren = Boolean(node.children?.length);
+    const expanded = Boolean(node.expanded);
+    const marker = hasChildren ? expanded ? "\u25BE" : "\u25B8" : " ";
+    const index = rows2.length;
+    const text = `${"  ".repeat(depth)}${marker} ${node.label}`;
+    rows2.push({
+      id: node.id,
+      label: node.label,
+      depth,
+      index,
+      hasChildren,
+      expanded,
+      node,
+      text
+    });
+    if (hasChildren && expanded) {
+      flattenTreeRows(node.children, depth + 1, rows2);
+    }
+  }
+  return rows2;
+}
+function inspectTreeRow(row) {
+  return {
+    id: row.id,
+    label: row.label,
+    depth: row.depth,
+    index: row.index,
+    hasChildren: row.hasChildren,
+    expanded: row.expanded,
+    text: row.text
+  };
+}
+var TreeController = class {
+  nodes;
+  selectedIndex;
+  #ownsNodes;
+  #ownsSelectedIndex;
+  #onSelect;
+  #onToggle;
+  #syncSelection = () => {
+    this.selectedIndex.value = clampSelectionIndex(this.visibleRows().length, this.selectedIndex.peek());
+  };
+  constructor(options) {
+    this.#ownsNodes = !(options.nodes instanceof Signal);
+    this.#ownsSelectedIndex = !(options.selectedIndex instanceof Signal);
+    this.nodes = signalify(options.nodes, { deepObserve: true });
+    this.selectedIndex = signalify(options.selectedIndex ?? 0);
+    this.#onSelect = options.onSelect;
+    this.#onToggle = options.onToggle;
+    this.nodes.subscribe(this.#syncSelection);
+    this.#syncSelection();
+  }
+  visibleRows() {
+    return flattenTreeRows(this.nodes.peek());
+  }
+  rowTexts() {
+    return this.visibleRows().map((row) => row.text);
+  }
+  visible(height = this.visibleRows().length) {
+    const rows2 = this.visibleRows();
+    const selected = clampSelectionIndex(rows2.length, this.selectedIndex.peek());
+    const window = selectionWindow(rows2.length, selected, Math.max(0, Math.floor(height)));
+    return rows2.slice(window.start, window.end);
+  }
+  selected() {
+    const rows2 = this.visibleRows();
+    return rows2[clampSelectionIndex(rows2.length, this.selectedIndex.peek())];
+  }
+  move(delta) {
+    return this.setSelectedIndex(this.selectedIndex.peek() + delta);
+  }
+  page(delta, height) {
+    return this.move(delta * Math.max(1, Math.floor(height)));
+  }
+  first() {
+    return this.setSelectedIndex(0);
+  }
+  last() {
+    return this.setSelectedIndex(this.visibleRows().length - 1);
+  }
+  setSelectedIndex(index) {
+    this.selectedIndex.value = clampSelectionIndex(this.visibleRows().length, index);
+    return this.selected();
+  }
+  selectActive() {
+    const row = this.selected();
+    if (row) {
+      void this.#onSelect?.(row, row.index);
+    }
+    return row;
+  }
+  toggleActive() {
+    const row = this.selected();
+    if (!row?.hasChildren) return row;
+    this.setExpanded(row.id, !row.expanded);
+    const next = this.visibleRows().find((entry) => entry.id === row.id) ?? row;
+    void this.#onToggle?.(next, next.expanded);
+    return next;
+  }
+  expandActive() {
+    const row = this.selected();
+    if (!row?.hasChildren || row.expanded) return row;
+    this.setExpanded(row.id, true);
+    const next = this.visibleRows().find((entry) => entry.id === row.id) ?? row;
+    void this.#onToggle?.(next, true);
+    return next;
+  }
+  collapseActive() {
+    const row = this.selected();
+    if (!row?.hasChildren || !row.expanded) return row;
+    this.setExpanded(row.id, false);
+    const next = this.visibleRows().find((entry) => entry.id === row.id) ?? row;
+    void this.#onToggle?.(next, false);
+    return next;
+  }
+  setExpanded(id2, expanded) {
+    let changed = false;
+    const visit = (nodes) => nodes.map((node) => {
+      const children = node.children ? visit(node.children) : void 0;
+      if (node.id !== id2 || !node.children?.length) {
+        return children && children !== node.children ? { ...node, children } : node;
+      }
+      if (Boolean(node.expanded) === expanded) {
+        return children && children !== node.children ? { ...node, children } : node;
+      }
+      changed = true;
+      return { ...node, children, expanded };
+    });
+    const next = visit(this.nodes.peek());
+    if (changed) {
+      this.nodes.value = next;
+      this.#syncSelection();
+    }
+    return changed;
+  }
+  handleKeyPress({ key, ctrl, meta, shift }, height = 1) {
+    if (ctrl || meta || shift) return void 0;
+    if (key === "up") return this.move(-1);
+    if (key === "down") return this.move(1);
+    if (key === "pageup") return this.page(-1, height);
+    if (key === "pagedown") return this.page(1, height);
+    if (key === "home") return this.first();
+    if (key === "end") return this.last();
+    if (key === "left") return this.collapseActive();
+    if (key === "right") return this.expandActive();
+    if (key === "space") return this.toggleActive();
+    if (key === "return") return this.selectActive();
+    return void 0;
+  }
+  inspect(height = this.visibleRows().length) {
+    const rows2 = this.visibleRows();
+    const selectedIndex = clampSelectionIndex(rows2.length, this.selectedIndex.peek());
+    return {
+      nodes: structuredClone(this.nodes.peek()),
+      rows: rows2.map(inspectTreeRow),
+      rowCount: rows2.length,
+      selectedIndex,
+      selected: rows2[selectedIndex] ? inspectTreeRow(rows2[selectedIndex]) : void 0,
+      window: selectionWindow(rows2.length, selectedIndex, Math.max(0, Math.floor(height))),
+      empty: rows2.length === 0
+    };
+  }
+  dispose() {
+    this.nodes.unsubscribe(this.#syncSelection);
+    if (this.#ownsNodes) this.nodes.dispose();
+    if (this.#ownsSelectedIndex) this.selectedIndex.dispose();
+  }
+};
+
+// src/components/file_explorer.ts
+var FileExplorerController = class {
+  root;
+  tree;
+  #onOpen;
+  #ownsRoot;
+  constructor(options) {
+    this.#ownsRoot = !(options.root instanceof Signal);
+    this.root = signalify(options.root, { deepObserve: true });
+    this.tree = new TreeController({
+      nodes: this.root,
+      selectedIndex: options.selectedIndex,
+      onSelect: (row) => {
+        const entry = fileExplorerEntry(row);
+        if (entry.kind === "directory") this.tree.toggleActive();
+        else void this.#onOpen?.(entry);
+      }
+    });
+    this.#onOpen = options.onOpen;
+  }
+  entries() {
+    return this.tree.visibleRows().map(fileExplorerEntry);
+  }
+  selected() {
+    const row = this.tree.selected();
+    return row ? fileExplorerEntry(row) : void 0;
+  }
+  openActive() {
+    const entry = this.selected();
+    if (!entry) return void 0;
+    if (entry.kind === "directory") {
+      this.tree.toggleActive();
+    } else {
+      void this.#onOpen?.(entry);
+    }
+    return entry;
+  }
+  handleKeyPress(event, height = 1) {
+    if (event.key === "return") return this.openActive();
+    this.tree.handleKeyPress(event, height);
+    return this.selected();
+  }
+  inspect(height) {
+    const inspection = this.tree.inspect(height);
+    return {
+      rowCount: inspection.rowCount,
+      selectedIndex: inspection.selectedIndex,
+      window: inspection.window,
+      empty: inspection.empty,
+      entries: this.entries(),
+      selected: this.selected()
+    };
+  }
+  dispose() {
+    this.tree.dispose();
+    if (this.#ownsRoot) this.root.dispose();
+  }
+};
+function createFileExplorerTree(paths) {
+  const root2 = [];
+  for (const path of paths) {
+    const parts = path.split("/").filter(Boolean);
+    let current = root2;
+    let accumulated = "";
+    for (const [index, part] of parts.entries()) {
+      accumulated = `${accumulated}/${part}`;
+      const isFile = index === parts.length - 1 && /\.[^/.]+$/.test(part);
+      let node = current.find((entry) => entry.label === part);
+      if (!node) {
+        node = {
+          id: accumulated,
+          label: part,
+          path: accumulated,
+          kind: isFile ? "file" : "directory",
+          expanded: index < 2,
+          children: []
+        };
+        current.push(node);
+      }
+      current = node.children;
+    }
+  }
+  return sortExplorerNodes(root2);
+}
+function fileExplorerEntry(row) {
+  const node = row.node;
+  return {
+    id: row.id,
+    label: row.label,
+    path: node.path,
+    kind: node.kind,
+    depth: row.depth,
+    expanded: row.expanded,
+    text: `${"  ".repeat(row.depth)}${node.kind === "directory" ? row.expanded ? "\u25BE" : "\u25B8" : "\xB7"} ${row.label}`
+  };
+}
+function sortExplorerNodes(nodes) {
+  return [...nodes].sort((left, right) => {
+    if (left.kind !== right.kind) return left.kind === "directory" ? -1 : 1;
+    return left.label.localeCompare(right.label);
+  }).map((node) => ({
+    ...node,
+    children: node.children.length > 0 ? sortExplorerNodes(node.children) : void 0
+  }));
+}
+
 // src/components/input.ts
 var InputController = class {
   text;
@@ -3339,6 +3631,183 @@ var MenuBarController = class {
     if (this.#ownsActiveIndex) this.activeIndex.dispose();
   }
 };
+
+// src/components/modal.ts
+var ModalController = class {
+  openState;
+  title;
+  body;
+  tone;
+  actions;
+  selectedActionIndex;
+  closeOnEscape;
+  #onAction;
+  #onOpenChange;
+  constructor(options = { title: "" }) {
+    this.openState = new Signal(options.open ?? false);
+    this.title = new Signal(options.title ?? "");
+    this.body = new Signal(normalizeModalBody(options.body), { deepObserve: true });
+    this.tone = new Signal(options.tone ?? "info");
+    this.actions = new Signal(normalizeModalActions(options.actions), { deepObserve: true });
+    this.selectedActionIndex = new Signal(
+      clampModalActionIndex(
+        this.actions.peek(),
+        options.selectedActionIndex ?? defaultModalActionIndex(this.actions.peek())
+      )
+    );
+    this.closeOnEscape = new Signal(options.closeOnEscape ?? true);
+    this.#onAction = options.onAction;
+    this.#onOpenChange = options.onOpenChange;
+  }
+  open(content) {
+    if (content) this.update(content);
+    this.openState.value = true;
+    const inspection = this.inspect();
+    void this.#onOpenChange?.(true, inspection);
+    return inspection;
+  }
+  close() {
+    this.openState.value = false;
+    const inspection = this.inspect();
+    void this.#onOpenChange?.(false, inspection);
+    return inspection;
+  }
+  toggle(content) {
+    return this.openState.peek() ? this.close() : this.open(content);
+  }
+  update(content) {
+    if (content.title !== void 0) this.title.value = content.title;
+    if (content.body !== void 0) this.body.value = normalizeModalBody(content.body);
+    if (content.tone !== void 0) this.tone.value = content.tone;
+    if (content.actions !== void 0) {
+      this.actions.value = normalizeModalActions(content.actions);
+      this.selectedActionIndex.value = defaultModalActionIndex(this.actions.peek());
+    } else {
+      this.selectedActionIndex.value = clampModalActionIndex(this.actions.peek(), this.selectedActionIndex.peek());
+    }
+    return this.inspect();
+  }
+  setSelectedActionIndex(index) {
+    this.selectedActionIndex.value = clampModalActionIndex(this.actions.peek(), index);
+    return this.selectedAction();
+  }
+  moveAction(delta) {
+    const actions = this.actions.peek();
+    if (actions.length === 0) return void 0;
+    let next = this.selectedActionIndex.peek();
+    for (let count = 0; count < actions.length; count += 1) {
+      next = (next + delta + actions.length) % actions.length;
+      if (!actions[next]?.disabled) return this.setSelectedActionIndex(next);
+    }
+    return this.selectedAction();
+  }
+  selectedAction() {
+    return this.actions.peek()[clampModalActionIndex(this.actions.peek(), this.selectedActionIndex.peek())];
+  }
+  activateAction(index = this.selectedActionIndex.peek()) {
+    const action = this.actions.peek()[clampModalActionIndex(this.actions.peek(), index)];
+    if (!action || action.disabled) return void 0;
+    this.selectedActionIndex.value = clampModalActionIndex(this.actions.peek(), index);
+    const inspection = this.inspect();
+    void this.#onAction?.({ ...action }, inspection);
+    return action;
+  }
+  handleKeyPress({ key, ctrl, meta, shift }) {
+    if (!this.openState.peek() || ctrl || meta) return void 0;
+    if (key === "escape" && this.closeOnEscape.peek()) return this.close();
+    if (key === "left" || key === "tab" && shift) return this.moveAction(-1);
+    if (key === "right" || key === "tab") return this.moveAction(1);
+    if (key === "return" || key === "space") return this.activateAction();
+    return void 0;
+  }
+  inspect() {
+    const actions = this.actions.peek().map((action) => ({ ...action }));
+    const selectedActionIndex = clampModalActionIndex(actions, this.selectedActionIndex.peek());
+    return {
+      open: this.openState.peek(),
+      title: this.title.peek(),
+      body: [...this.body.peek()],
+      tone: this.tone.peek(),
+      actions,
+      selectedActionIndex,
+      selectedAction: actions[selectedActionIndex] ? { ...actions[selectedActionIndex] } : void 0
+    };
+  }
+  dispose() {
+    this.openState.dispose();
+    this.title.dispose();
+    this.body.dispose();
+    this.tone.dispose();
+    this.actions.dispose();
+    this.selectedActionIndex.dispose();
+    this.closeOnEscape.dispose();
+  }
+};
+function renderModalRows(inspection, options) {
+  const width = Math.max(0, Math.floor(options.width));
+  if (width <= 0) return [];
+  const innerWidth = Math.max(0, width - 4);
+  const tone = options.showTone === false ? "" : `[${inspection.tone.toUpperCase()}] `;
+  const rows2 = [
+    cropToWidth(`${tone}${inspection.title}`, innerWidth),
+    "",
+    ...inspection.body.flatMap((line) => wrapModalLine(line, innerWidth))
+  ];
+  const actions = renderModalActions(inspection.actions, inspection.selectedActionIndex, innerWidth);
+  if (actions) rows2.push("", actions);
+  const height = options.height === void 0 ? rows2.length : Math.max(0, Math.floor(options.height));
+  if (options.height === void 0 || height <= 0 || rows2.length <= height) return rows2;
+  if (!actions || height === 1) return rows2.slice(0, height);
+  return [...rows2.slice(0, height - 1), actions];
+}
+function modalContentHeight(inspection, width) {
+  return renderModalRows(inspection, { width }).length + 2;
+}
+function normalizeModalBody(body) {
+  if (Array.isArray(body)) return body.flatMap((line) => `${line}`.split("\n"));
+  return body === void 0 ? [] : `${body}`.split("\n");
+}
+function normalizeModalActions(actions) {
+  return (actions ?? [{ id: "ok", label: "OK", default: true }]).map((action) => ({ ...action }));
+}
+function defaultModalActionIndex(actions) {
+  const preferred = actions.findIndex((action) => action.default && !action.disabled);
+  if (preferred >= 0) return preferred;
+  return actions.findIndex((action) => !action.disabled);
+}
+function clampModalActionIndex(actions, index) {
+  if (actions.length === 0) return -1;
+  const clamped = Math.max(0, Math.min(Math.floor(index), actions.length - 1));
+  if (!actions[clamped]?.disabled) return clamped;
+  const fallback = defaultModalActionIndex(actions);
+  return fallback >= 0 ? fallback : clamped;
+}
+function renderModalActions(actions, selectedIndex, width) {
+  const row = actions.map((action, index) => {
+    const label = action.disabled ? `(${action.label})` : action.label;
+    const token = index === selectedIndex ? `[ ${label} ]` : `  ${label}  `;
+    return action.destructive ? `!${token}!` : token;
+  }).join(" ");
+  return cropToWidth(row, width);
+}
+function wrapModalLine(value, width) {
+  if (width <= 0) return [""];
+  const words = value.split(/\s+/).filter(Boolean);
+  if (words.length === 0) return [""];
+  const rows2 = [];
+  let line = "";
+  for (const word of words) {
+    const next = line ? `${line} ${word}` : word;
+    if (textWidth(next) <= width) {
+      line = next;
+    } else {
+      if (line) rows2.push(cropToWidth(line, width));
+      line = cropToWidth(word, width);
+    }
+  }
+  if (line) rows2.push(cropToWidth(line, width));
+  return rows2;
+}
 
 // src/components/progressbar.ts
 var progressBarCharMap = {
@@ -4712,7 +5181,10 @@ var BrowserInputSource = class {
       addListener(this.#target, "pointermove", (event) => this.#handlePointerMove(event)),
       addListener(this.#target, "pointerup", (event) => this.#handlePointer(event, true)),
       addListener(this.#target, "pointercancel", (event) => this.#handlePointer(event, true)),
-      addListener(this.#target, "wheel", (event) => this.#handleWheel(event))
+      addListener(this.#target, "wheel", (event) => this.#handleWheel(event)),
+      addListener(this.#target, "paste", (event) => this.#handlePaste(event)),
+      addListener(this.#target, "focus", () => this.#handleFocus(true)),
+      addListener(this.#target, "blur", () => this.#handleFocus(false))
     ];
     this.#attached = true;
   }
@@ -4799,6 +5271,22 @@ var BrowserInputSource = class {
       scroll: event.deltaY > 0 ? 1 : event.deltaY < 0 ? -1 : 0
     });
     event.preventDefault();
+  }
+  #handlePaste(event) {
+    const text = event.clipboardData?.getData("text") ?? "";
+    this.#emitter?.emit("paste", {
+      key: "paste",
+      text,
+      buffer: new TextEncoder().encode(text)
+    });
+    event.preventDefault();
+  }
+  #handleFocus(focused) {
+    this.#emitter?.emit("terminalFocus", {
+      key: "focus",
+      focused,
+      buffer: new Uint8Array()
+    });
   }
   #cellPosition(event) {
     const rect = this.#target.getBoundingClientRect();
@@ -4975,8 +5463,9 @@ function makeStyle(options = {}) {
 // examples/web/api_workbench_page.ts
 var root = document.querySelector("#api-workbench");
 if (!root) throw new Error("Missing #api-workbench mount element.");
+var mount = root;
 var host = createWebTui({
-  root,
+  root: mount,
   refreshRate: 1e3 / 30,
   sinkOptions: {
     cellWidth: 9,
@@ -5001,49 +5490,68 @@ var themes = grWizardThemePalettes.map((palette) => ({
   muted: palette.textMuted,
   soft: palette.textSoft,
   good: palette.success,
-  warn: palette.warning
+  warn: palette.warning,
+  danger: palette.danger,
+  buttonBg: palette.accentDeep,
+  buttonActiveBg: palette.accent,
+  buttonMutedBg: palette.panelAlt
 }));
 var rows = [
+  { id: "explorer", surface: "FileExplorer", state: "browsing", ms: 3 },
   { id: "menu", surface: "MenuBar", state: "active", ms: 2 },
-  { id: "split", surface: "SplitPane", state: "resized", ms: 5 },
+  { id: "tiles", surface: "Tile Layout", state: "balanced", ms: 5 },
   { id: "table", surface: "DataTable", state: "sorted", ms: 8 },
   { id: "scroll", surface: "ScrollArea", state: "tracking", ms: 3 },
   { id: "theme", surface: "Theme", state: "bound", ms: 4 },
-  { id: "mouse", surface: "Pointer", state: "captured", ms: 1 }
+  { id: "mouse", surface: "Pointer", state: "captured", ms: 1 },
+  { id: "three", surface: "Three ASCII", state: "preview", ms: 6 }
 ];
 var docs = [
   "Click panel buttons to minimize, maximize, or restore.",
-  "Click theme names to switch the whole workbench.",
-  "Use Tab, 1-4, M, F, R, T, [ and ] from the keyboard.",
+  "Open the Theme menu for the same dropdown-style theme selector as the terminal workbench.",
+  "Use Tab, 1-6, M, F, R, T, H, Q, [ and ] from the keyboard.",
   "The browser host maps pointer cells to the same mouse events as the terminal.",
   "Resize the browser: the terminal grid recalculates from CSS dimensions.",
+  "The web workbench includes Explorer, Data, Controls, Logs, and a browser-safe Three ASCII preview pane.",
   "The demo uses public controllers and canvas primitives from mod.web.ts."
 ];
+var panelIds = ["explorer", "inspector", "data", "controls", "logs", "three"];
+var explorerKeys = /* @__PURE__ */ new Set(["up", "down", "left", "right", "pageup", "pagedown", "home", "end", "space", "return"]);
 var themeIndex = new Signal(0);
 var active = new Signal("inspector");
 var maximized = new Signal(null);
 var minimized = new Signal({
+  explorer: false,
   inspector: false,
   data: false,
   controls: false,
-  logs: false
+  logs: false,
+  three: false
 }, { deepObserve: true });
+var themeMenuOpen = new Signal(false);
+var tileDensity = new Signal(0);
 var lineSignals = [];
 var log = new Signal(["ready: web api workbench mounted"], { deepObserve: true });
 var hitTargets = [];
 var lastVisiblePanel = null;
 var lastWorkspaceWidth = 0;
 var lastWorkspaceHeight = 0;
+var dropdownOverlay = null;
 var menu = new MenuBarController({
   items: ["File", "View", "Layout", "Theme", "Help"].map((label) => ({ id: label.toLowerCase(), label })),
-  onSelect: (item) => push(`menu ${item.label}`)
-});
-var split = new SplitPaneController({
-  direction: "row",
-  ratio: 0.5,
-  minFirst: 28,
-  minSecond: 28,
-  resizeMode: "ratio"
+  onSelect: (item) => {
+    if (item.id === "theme") {
+      themeMenuOpen.value = !themeMenuOpen.peek();
+      push(`${themeMenuOpen.peek() ? "open" : "close"} theme menu`);
+      return;
+    }
+    themeMenuOpen.value = false;
+    if (item.id === "help") {
+      openHelpModal();
+      return;
+    }
+    push(`menu ${item.label}`);
+  }
 });
 var workspaceScroll = new ScrollAreaController({ showScrollbar: true });
 var logScroll = new ScrollAreaController({ showScrollbar: true });
@@ -5052,6 +5560,21 @@ var live = new CheckBoxController({ checked: true });
 var compact = new CheckBoxController({ checked: false });
 var actionButton = new ButtonController({ label: "Run Action", onPress: () => push("button pressed") });
 var genericButton = new ButtonController({ label: "Generic Button", onPress: () => push("generic button pressed") });
+var modalButton = new ButtonController({ label: "Open Modal", onPress: () => openWorkbenchModal() });
+var modal = new ModalController({
+  title: "Confirm Action",
+  tone: "confirm",
+  body: [
+    "The web workbench uses the same ModalController shape as the terminal app.",
+    "Use Tab or arrows to move actions, Enter to activate, Escape to close."
+  ],
+  actions: [
+    { id: "cancel", label: "Cancel" },
+    { id: "details", label: "Details" },
+    { id: "confirm", label: "Confirm", default: true }
+  ],
+  onAction: (action) => applyModalAction(action.id)
+});
 var radio = new RadioGroupController({
   options: [
     { value: "fast", label: "Fast" },
@@ -5096,6 +5619,22 @@ var textBox = new TextBoxController({
   wordWrap: true
 });
 var activeControl = new Signal("button");
+var explorer = new FileExplorerController({
+  root: createFileExplorerTree([
+    "/README.md",
+    "/mod.web.ts",
+    "/examples/web/api_workbench_page.ts",
+    "/examples/web/neon_exodus_page.ts",
+    "/examples/web/three_ascii_page.ts",
+    "/src/web/host.ts",
+    "/src/web/platform.ts",
+    "/src/components/modal.ts",
+    "/src/components/file_explorer.ts",
+    "/src/layout/responsive.ts",
+    "/tests/web_runtime.test.ts"
+  ]),
+  onOpen: (entry) => push(`open ${entry.path}`)
+});
 var table = new DataTableController({
   rows,
   columns: [
@@ -5118,30 +5657,45 @@ host.platform.size.subscribe(() => {
   ensureLines();
   draw();
 });
-host.on("keyPress", ({ key }) => {
+host.on("keyPress", (event) => {
+  const { key } = event;
+  if (modal.openState.peek()) {
+    modal.handleKeyPress(event);
+    draw();
+    return;
+  }
+  if (themeMenuOpen.peek()) {
+    handleThemeMenuKey(event);
+    draw();
+    return;
+  }
   if (isTextControlActive() && (key === "escape" || key === "tab")) {
     blurTextControl();
     draw();
     return;
   }
   if (isTextControlActive()) {
-    handleControlsKey({ key, ctrl: false, meta: false, shift: false });
+    handleControlsKey(event);
     draw();
     return;
   }
   if (key === "tab" && active.peek() === "controls") focusNextControl();
   else if (key === "tab") focusNext();
-  else if (key === "1") focus("inspector");
-  else if (key === "2") focus("data");
-  else if (key === "3") focus("controls");
-  else if (key === "4") focus("logs");
+  else if (focusPanelByNumber(key)) return draw();
+  else if (key === "h" || key === "?") openHelpModal();
+  else if (key === "q") openQuitModal();
   else if (key === "m") minimize(active.peek());
   else if (key === "f" || key === "return") toggleMax(active.peek());
   else if (key === "r" || key === "escape") restore();
-  else if (key === "t") setTheme(themeIndex.peek() + 1);
-  else if (key === "[") resizeSplit(-4);
-  else if (key === "]") resizeSplit(4);
-  else if (active.peek() === "controls") handleControlsKey({ key, ctrl: false, meta: false, shift: false });
+  else if (key === "t") themeMenuOpen.value = !themeMenuOpen.peek();
+  else if (key === "[") adjustTileDensity(-1);
+  else if (key === "]") adjustTileDensity(1);
+  else if (active.peek() === "controls") handleControlsKey(event);
+  else if (active.peek() === "explorer" && explorerKeys.has(key)) {
+    explorer.handleKeyPress(event, Math.max(1, rowsCount() - 8));
+  } else if (active.peek() === "data" && key.toLowerCase() === "s") {
+    cycleDataSortColumn(event.shift ? -1 : 1);
+  } else if (active.peek() === "data") table.handleKeyPress(event);
   else if (key === "+" || key === "=") slider.increment();
   else if (key === "-") slider.decrement();
   else if (key === "space") live.toggle();
@@ -5175,6 +5729,8 @@ globalThis.addEventListener("beforeunload", () => {
   logScroll.dispose();
   actionButton.dispose();
   genericButton.dispose();
+  modalButton.dispose();
+  modal.dispose();
   radio.dispose();
   combo.dispose();
   dropdown.dispose();
@@ -5183,23 +5739,50 @@ globalThis.addEventListener("beforeunload", () => {
   progress.dispose();
   textBox.dispose();
   compact.dispose();
+  explorer.dispose();
+  themeMenuOpen.dispose();
+  tileDensity.dispose();
   host.destroy();
 });
 function draw() {
   hitTargets = [];
+  dropdownOverlay = null;
   const width = cols();
   const height = rowsCount();
   const frame = Array.from({ length: height }, () => paint(" ".repeat(width), theme().text, theme().bg));
   write(frame, 0, 0, paint(" ".repeat(width), theme().text, theme().bgAlt));
   write(frame, 1, 0, paint(" ".repeat(width), theme().text, theme().panel));
   write(frame, 0, 1, paint(` API WORKBENCH `, theme().bg, theme().accent, true));
+  const closeLabel = buttonText("x", true);
+  const closeWidth = textWidth(closeLabel);
+  const menuWidth = Math.max(0, width - 18 - closeWidth);
+  renderMenuHits(17, 0, menuWidth);
   write(
     frame,
     0,
     17,
-    paint(fit(renderMenuBar(menu.items.peek(), menu.activeIndex.peek()), width - 18), theme().text, theme().bgAlt)
+    paint(fit(renderMenuBar(menu.items.peek(), menu.activeIndex.peek()), menuWidth), theme().text, theme().bgAlt)
   );
-  drawThemes(frame, width);
+  if (width >= 22) {
+    writeButton(frame, 0, width - closeWidth, "x", { compact: true, tone: "danger" });
+    hitTargets.push({
+      rect: { column: width - closeWidth, row: 0, width: closeWidth, height: 1 },
+      hit: { type: "quit" }
+    });
+  }
+  if (themeMenuOpen.peek()) {
+    dropdownOverlay = {
+      kind: "theme",
+      rect: menuItemRect(
+        17,
+        "theme",
+        Math.max(22, ...themes.map((entry) => textWidth(entry.label) + 6)),
+        themes.length + 2
+      ),
+      items: themes.map((entry) => entry.label),
+      selectedIndex: themeIndex.peek()
+    };
+  }
   const body = { column: 1, row: 3, width: Math.max(10, width - 2), height: Math.max(6, height - 5) };
   const layout = workspaceLayout({
     column: 0,
@@ -5220,7 +5803,7 @@ function draw() {
   if (maximized.peek()) {
     renderPanel(virtual, maximized.peek(), layout.bounds);
   } else {
-    const visible = ["inspector", "data", "controls", "logs"].filter((id2) => !minimized.peek()[id2]);
+    const visible = panelIds.filter((id2) => !minimized.peek()[id2]);
     if (visible.length === 0) {
       write(virtual, 1, 2, paint("All panels minimized. Press R or click restore."));
       hitTargets.push({ rect: { ...layout.bounds, row: 0 }, hit: { type: "restore" } });
@@ -5234,12 +5817,15 @@ function draw() {
   translateWorkspaceHits(hitStart, body.column, body.row - offset, body);
   blitWorkspace(frame, virtual, body, offset, layout.bounds.width);
   renderWorkspaceScrollbar(frame, body, layout.contentHeight, offset);
-  renderShelf(frame);
+  maximized.peek() ? renderWindowTabs(frame) : renderShelf(frame);
+  renderDropdownOverlay(frame);
+  renderModalOverlay(frame);
+  const densityLabel = tileDensity.peek() === 0 ? "balanced" : tileDensity.peek() > 0 ? "dense" : "wide";
   frame[height - 1] = fit(
     paint(
       renderStatusBar(
-        `focus ${active.peek()} | ${theme().label} | split ${Math.round((split.snapshot().ratio ?? 0) * 100)}%`,
-        "click controls or use keyboard",
+        `focus ${active.peek()} | ${theme().label} | tiles ${densityLabel}`,
+        "1-6 focus  T theme  H help  Q quit  click controls",
         width
       ),
       theme().text,
@@ -5258,10 +5844,57 @@ function renderShelf(frame) {
   write(frame, row, column, paint("minimized ", theme().muted, theme().bgAlt));
   column += 10;
   for (const [id2] of hidden) {
-    const label = `[${id2}]`;
-    write(frame, row, column, paint(label, theme().bg, theme().border, true));
-    hitTargets.push({ rect: { column, row, width: label.length, height: 1 }, hit: { type: "restore", id: id2 } });
-    column += label.length + 1;
+    const width = writeButton(frame, row, column, panelTitle(id2), { tone: "muted" });
+    hitTargets.push({ rect: { column, row, width, height: 1 }, hit: { type: "restore", id: id2 } });
+    column += width + 1;
+  }
+}
+function renderMenuHits(column, row, width) {
+  let cursor = column;
+  for (const [index, item] of menu.items.peek().entries()) {
+    const token = index === menu.activeIndex.peek() ? `[${item.label}]` : item.label;
+    const tokenWidth = textWidth(token);
+    if (cursor + tokenWidth > column + width) break;
+    hitTargets.push({ rect: { column: cursor, row, width: tokenWidth, height: 1 }, hit: { type: "menu", index } });
+    cursor += tokenWidth + 1;
+  }
+}
+function menuItemRect(menuStart, itemId, preferredWidth, preferredHeight) {
+  let cursor = menuStart;
+  for (const [index, item] of menu.items.peek().entries()) {
+    const token = index === menu.activeIndex.peek() ? `[${item.label}]` : item.label;
+    if (item.id === itemId) {
+      return {
+        column: cursor,
+        row: 1,
+        width: Math.min(preferredWidth, Math.max(20, cols() - cursor)),
+        height: preferredHeight
+      };
+    }
+    cursor += textWidth(token) + 1;
+  }
+  return { column: menuStart, row: 1, width: Math.min(preferredWidth, cols()), height: preferredHeight };
+}
+function renderWindowTabs(frame) {
+  const row = rowsCount() - 2;
+  let column = 2;
+  write(frame, row, column, paint("windows ", theme().muted, theme().bgAlt));
+  column += 8;
+  for (const id2 of panelIds) {
+    if (column >= cols() - 1) break;
+    const selected = maximized.peek() === id2;
+    const hidden = minimized.peek()[id2];
+    const marker = selected ? "\u25CF" : hidden ? "\u25CB" : " ";
+    const label = `${marker} ${panelTitle(id2)}`;
+    const width = Math.min(textWidth(buttonText(label)), Math.max(0, cols() - column));
+    if (width <= 0) break;
+    writeButton(frame, row, column, label, {
+      state: selected ? "active" : "base",
+      tone: hidden ? "muted" : "default",
+      maxWidth: width
+    });
+    hitTargets.push({ rect: { column, row, width, height: 1 }, hit: { type: "restore", id: id2 } });
+    column += width + 1;
   }
 }
 function renderPanel(frame, id2, rect) {
@@ -5270,13 +5903,18 @@ function renderPanel(frame, id2, rect) {
   const selected = active.peek() === id2;
   fillRect(frame, rect, selected ? theme().panelAlt : theme().panel);
   const border = selected ? theme().accent : theme().borderStrong;
-  const top = `\u250C ${id2.toUpperCase()} ${"\u2500".repeat(Math.max(0, rect.width - id2.length - 24))} [-] [\u25A1] [\u21BA] [x] \u2510`;
+  const title = panelTitle(id2).toUpperCase();
+  const top = `\u250C ${title} ${"\u2500".repeat(Math.max(0, rect.width - title.length - 24))}             \u2510`;
   write(
     frame,
     rect.row,
     rect.column,
     paint(fit(top, rect.width), border, selected ? theme().panelAlt : theme().panel, selected)
   );
+  writeButton(frame, rect.row, rect.column + rect.width - 16, "-", { compact: true, tone: "warning" });
+  writeButton(frame, rect.row, rect.column + rect.width - 12, "\u25A1", { compact: true, tone: "success" });
+  writeButton(frame, rect.row, rect.column + rect.width - 8, "\u21BA", { compact: true, tone: "muted" });
+  writeButton(frame, rect.row, rect.column + rect.width - 4, "x", { compact: true, tone: "danger" });
   hitTargets.push({
     rect: { column: rect.column + rect.width - 16, row: rect.row, width: 3, height: 1 },
     hit: { type: "min", id: id2 }
@@ -5314,10 +5952,12 @@ function renderPanel(frame, id2, rect) {
     height: Math.max(0, rect.height - 2)
   };
   fillRect(frame, inner, theme().surface);
-  if (id2 === "controls") renderControls(frame, inner);
+  if (id2 === "explorer") renderExplorer(frame, inner);
+  else if (id2 === "controls") renderControls(frame, inner);
   else if (id2 === "logs") renderLogs(frame, inner);
+  else if (id2 === "three") renderThreePreview(frame, inner);
   else {
-    const lines = panelLines(id2, inner.width, inner.height);
+    const lines = panelLines(id2, inner.height);
     lines.forEach((line, index) => {
       const style2 = panelLineStyle(id2, index);
       write(frame, inner.row + index, inner.column, paint(fit(line, inner.width), style2.fg, style2.bg, style2.bold));
@@ -5331,6 +5971,9 @@ function renderPanel(frame, id2, rect) {
       }
     }
   }
+}
+function panelTitle(id2) {
+  return id2 === "explorer" ? "Explorer" : id2 === "data" ? "Data Table" : id2 === "three" ? "Three ASCII" : id2[0].toUpperCase() + id2.slice(1);
 }
 function renderLogs(frame, rect) {
   const lines = [...docs, ...log.peek()];
@@ -5349,30 +5992,82 @@ function renderLogs(frame, rect) {
     write(frame, rect.row + row, column, paint(scrollbarGlyph(row, thumb), theme().accent, theme().surface, true));
   }
 }
-function panelLines(id2, width, height) {
+function renderExplorer(frame, rect) {
+  const visible = explorer.tree.visibleRows();
+  const selectedIndex = explorer.tree.selectedIndex.peek();
+  visible.slice(0, rect.height).forEach((row, offset) => {
+    const selected = row.index === selectedIndex;
+    const node = row.node;
+    const icon = row.hasChildren ? row.expanded ? "\u25BE" : "\u25B8" : node.kind === "file" ? "\xB7" : " ";
+    const label = `${"  ".repeat(row.depth)}${icon} ${row.label}`;
+    write(
+      frame,
+      rect.row + offset,
+      rect.column,
+      paint(
+        fit(label, rect.width),
+        selected ? contrastText(theme().warn, theme().bg, theme().text) : node.kind === "directory" ? theme().good : theme().text,
+        selected ? theme().warn : theme().surface,
+        selected || node.kind === "directory"
+      )
+    );
+    hitTargets.push({
+      rect: { column: rect.column, row: rect.row + offset, width: rect.width, height: 1 },
+      hit: { type: "explorerRow", index: row.index }
+    });
+  });
+}
+function renderThreePreview(frame, rect) {
+  const phase = Math.floor(performance.now() / 90);
+  const mode = ["BLOCKS", "GLYPHS", "MIXED"][Math.abs(tileDensity.peek()) % 3] ?? "MIXED";
+  const rows2 = [
+    ` ACEROLA THREE ASCII \xB7 ${mode} \xB7 WEB SAFE PREVIEW `,
+    "Full WebGPU renderer is mounted below this workbench on the Pages build.",
+    "Use the standalone Three demo for live WebGPU; this pane mirrors controls and state.",
+    "",
+    ...asciiOrb(rect.width, Math.max(3, rect.height - 6), phase),
+    "",
+    `preset mixed-best  glyph ${mode.toLowerCase()}  density ${tileDensity.peek()}  theme ${theme().label}`
+  ].slice(0, rect.height);
+  rows2.forEach((line, index) => {
+    const header = index === 0;
+    const accent = index % 3 === 0 ? theme().accent : index % 3 === 1 ? theme().good : theme().warn;
+    write(
+      frame,
+      rect.row + index,
+      rect.column,
+      paint(
+        fit(line, rect.width),
+        header ? contrastText(theme().accent, theme().bg, theme().text) : accent,
+        header ? theme().accent : theme().surface,
+        header || index > 3
+      )
+    );
+  });
+}
+function asciiOrb(width, height, phase) {
+  const columns = Math.max(8, width);
+  const rows2 = Math.max(3, height);
+  const glyphs = " .:-=+*#%@";
+  return Array.from({ length: rows2 }, (_, row) => {
+    let line = "";
+    for (let column = 0; column < columns; column += 1) {
+      const x = column / Math.max(1, columns - 1) * 2 - 1;
+      const y = row / Math.max(1, rows2 - 1) * 2 - 1;
+      const ring = Math.abs(Math.sqrt(x * x * 2.8 + y * y * 1.8) - 0.62);
+      const wave = Math.sin(column * 0.32 + phase * 0.18) + Math.cos(row * 0.7 - phase * 0.14);
+      const value = Math.max(0, Math.min(1, 1 - ring * 3.5 + wave * 0.15));
+      line += glyphs[Math.floor(value * (glyphs.length - 1))] ?? " ";
+    }
+    return line;
+  });
+}
+function panelLines(id2, height) {
   const source = id2 === "data" ? [
     renderDataTableHeader(table.columns.peek(), table.state.peek().sort),
     ...renderDataTableRows(table.view.peek().rows, table.columns.peek(), table.view.peek().selectedIndex)
   ] : id2 === "controls" ? [] : id2 === "logs" ? [...log.peek()].slice(-Math.max(1, height)) : ["API Workbench Web", ...docs];
   return source.slice(0, height);
-}
-function drawThemes(frame, width) {
-  let column = Math.max(2, width - themes.reduce((total, entry) => total + entry.label.length + 4, 0));
-  themes.forEach((entry, index) => {
-    const label = ` ${entry.label} `;
-    write(
-      frame,
-      1,
-      column,
-      paint(
-        label,
-        index === themeIndex.peek() ? theme().bg : entry.soft,
-        index === themeIndex.peek() ? entry.accent : theme().panel
-      )
-    );
-    hitTargets.push({ rect: { column, row: 1, width: label.length, height: 1 }, hit: { type: "theme", index } });
-    column += label.length + 1;
-  });
 }
 function ensureLines() {
   for (let row = lineSignals.length; row < rowsCount(); row++) {
@@ -5392,13 +6087,19 @@ function ensureLines() {
 }
 function applyHit(target, x, y) {
   const hit = target.hit;
-  if (hit.type === "focus") focus(hit.id);
+  if (hit.type === "menu") {
+    menu.setActive(hit.index);
+    menu.selectActive();
+  } else if (hit.type === "quit") openQuitModal();
+  else if (hit.type === "focus") focus(hit.id);
   else if (hit.type === "min") minimize(hit.id);
   else if (hit.type === "max") toggleMax(hit.id);
   else if (hit.type === "close") closePanel(hit.id);
   else if (hit.type === "restore") hit.id ? restorePanel(hit.id) : restore();
   else if (hit.type === "control") applyControlHit(hit.id, hit.action ?? "activate", target.rect, x, hit.index);
+  else if (hit.type === "modalAction" && hit.index >= 0) modal.activateAction(hit.index);
   else if (hit.type === "dataRow") selectDataRow(hit.index);
+  else if (hit.type === "explorerRow") selectExplorerRow(hit.index);
   else if (hit.type === "logScrollbar") {
     const lines = docs.length + log.peek().length;
     logScroll.scrollTo(0, scrollbarOffsetForPointer(lines, target.rect.height, y - target.rect.row));
@@ -5415,7 +6116,8 @@ function focus(id2) {
   push(`focus ${id2}`);
 }
 function focusNext() {
-  const ids = ["inspector", "data", "controls", "logs"];
+  const ids = panelIds.filter((id2) => !minimized.peek()[id2]);
+  if (ids.length === 0) return;
   focus(ids[(ids.indexOf(active.peek()) + 1) % ids.length]);
 }
 function minimize(id2) {
@@ -5426,7 +6128,7 @@ function minimize(id2) {
 function closePanel(id2) {
   minimized.value[id2] = true;
   if (maximized.peek() === id2) maximized.value = null;
-  const next = ["inspector", "data", "controls", "logs"].find((panel) => !minimized.peek()[panel]);
+  const next = panelIds.find((panel) => !minimized.peek()[panel]);
   if (next) active.value = next;
   push(`close ${id2}`);
 }
@@ -5441,22 +6143,53 @@ function restorePanel(id2) {
 }
 function restore() {
   maximized.value = null;
-  minimized.value = { inspector: false, data: false, controls: false, logs: false };
+  minimized.value = { explorer: false, inspector: false, data: false, controls: false, logs: false, three: false };
   push("restore all");
 }
 function setTheme(index) {
   themeIndex.value = (index % themes.length + themes.length) % themes.length;
+  themeMenuOpen.value = false;
   push(`theme ${theme().label}`);
 }
-function resizeSplit(delta) {
-  split.resize({ column: 0, row: 0, width: cols(), height: rowsCount() }, delta);
-  push(`resize ${delta}`);
+function handleThemeMenuKey(event) {
+  if (event.key === "escape" || event.key === "tab") {
+    themeMenuOpen.value = false;
+    return;
+  }
+  if (event.key === "up") themeIndex.value = (themeIndex.peek() - 1 + themes.length) % themes.length;
+  else if (event.key === "down") themeIndex.value = (themeIndex.peek() + 1) % themes.length;
+  else if (event.key === "home") themeIndex.value = 0;
+  else if (event.key === "end") themeIndex.value = themes.length - 1;
+  else if (event.key === "return" || event.key === "space") setTheme(themeIndex.peek());
 }
-function splitRects(direction, rect, ratio) {
-  const controller = new SplitPaneController({ direction, ratio, minFirst: 6, minSecond: 6, resizeMode: "ratio" });
-  const result = controller.resize(rect, 0);
-  controller.dispose();
-  return result;
+function focusPanelByNumber(key) {
+  const index = Number.parseInt(key, 10);
+  if (!Number.isInteger(index) || index < 1) return false;
+  const id2 = panelIds[index - 1];
+  if (!id2) return false;
+  focus(id2);
+  return true;
+}
+function cycleDataSortColumn(delta) {
+  const sortable = table.columns.peek().filter((column) => column.sortable !== false);
+  if (sortable.length === 0) return;
+  const current = table.state.peek().sort?.columnId;
+  const index = Math.max(0, sortable.findIndex((column) => column.id === current));
+  const next = sortable[(index + delta + sortable.length) % sortable.length];
+  table.toggleSort(next.id);
+  push(`sort data by ${next.label}`);
+}
+function selectExplorerRow(index) {
+  active.value = "explorer";
+  explorer.tree.setSelectedIndex(index);
+  const entry = explorer.selected();
+  if (entry?.kind === "file") explorer.openActive();
+  else if (entry?.kind === "directory") explorer.tree.toggleActive();
+  push(`explorer ${entry?.path ?? index}`);
+}
+function adjustTileDensity(delta) {
+  tileDensity.value = Math.max(-3, Math.min(3, tileDensity.peek() + delta));
+  push(`tile density ${tileDensity.peek()}`);
 }
 function workspaceLayout(bounds) {
   const rects = /* @__PURE__ */ new Map();
@@ -5465,42 +6198,23 @@ function workspaceLayout(bounds) {
     rects.set(max2, bounds);
     return { bounds, contentHeight: bounds.height, rects };
   }
-  const visible = ["inspector", "data", "controls", "logs"].filter((id2) => !minimized.peek()[id2]);
+  const visible = panelIds.filter((id2) => !minimized.peek()[id2]);
   if (visible.length === 0) return { bounds, contentHeight: bounds.height, rects };
-  const stacked = bounds.width < 88 || bounds.height < 18 || visible.length < 4;
-  if (stacked) {
-    const stackedRects = stackWorkspaceRects(bounds, visible);
-    for (const [index, id2] of visible.entries()) rects.set(id2, stackedRects[index]);
-    const bottom2 = stackedRects.reduce((maxRow, rect) => Math.max(maxRow, rect.row + rect.height), bounds.row);
-    return { bounds, contentHeight: Math.max(bounds.height, bottom2 - bounds.row), rects };
-  }
-  const rows2 = splitRects("column", bounds, 0.46);
-  const top = split.resize(rows2.first, 0);
-  const bottom = split.resize(rows2.second, 0);
-  rects.set("inspector", top.first);
-  rects.set("data", top.second);
-  rects.set("controls", bottom.first);
-  rects.set("logs", bottom.second);
-  return { bounds, contentHeight: bounds.height, rects };
-}
-function stackWorkspaceRects(bounds, ids) {
-  const gap = ids.length > 1 ? 1 : 0;
-  const preferred = ids.map((id2) => preferredPanelHeight(id2, bounds.width));
-  const preferredTotal = preferred.reduce((total, height) => total + height, 0) + gap * Math.max(0, ids.length - 1);
-  if (preferredTotal <= bounds.height) return stackRects(bounds, ids.length);
-  let row = bounds.row;
-  return ids.map((id2, index) => {
-    const height = preferred[index] ?? preferredPanelHeight(id2, bounds.width);
-    const rect = { column: bounds.column, row, width: bounds.width, height };
-    row += height + gap;
-    return rect;
+  const densityOffset = tileDensity.peek() * 4;
+  const layout = tileRects(bounds, {
+    itemCount: visible.length,
+    minTileWidth: Math.max(26, 38 - densityOffset),
+    minTileHeight: 10,
+    maxColumns: bounds.width >= 172 ? 4 : 3,
+    targetAspectRatio: 2.25 + tileDensity.peek() * 0.12,
+    allowVerticalOverflow: true,
+    gap: 1
   });
-}
-function preferredPanelHeight(id2, width) {
-  if (id2 === "controls") return width < 56 ? 22 : 18;
-  if (id2 === "data") return 12;
-  if (id2 === "logs") return 12;
-  return 11;
+  for (const [index, id2] of visible.entries()) {
+    const rect = layout.rects[index];
+    if (rect) rects.set(id2, rect);
+  }
+  return { bounds, contentHeight: Math.max(bounds.height, layout.contentHeight), rects };
 }
 function translateWorkspaceHits(startIndex, columnDelta, rowDelta, clip) {
   for (let index = hitTargets.length - 1; index >= startIndex; index -= 1) {
@@ -5530,6 +6244,102 @@ function renderWorkspaceScrollbar(frame, bounds, contentHeight, offset) {
     write(frame, bounds.row + row, column, paint(scrollbarGlyph(row, thumb), theme().accent, theme().bgAlt, true));
   }
 }
+function renderDropdownOverlay(frame) {
+  const overlay = dropdownOverlay;
+  if (!overlay || overlay.items.length === 0) return;
+  const rect = clipRect(overlay.rect, { column: 0, row: 0, width: cols(), height: rowsCount() });
+  if (rect.width < 8 || rect.height < 1) return;
+  fillRect(frame, rect, theme().panelAlt);
+  write(
+    frame,
+    rect.row,
+    rect.column,
+    paint(`\u250C${"\u2500".repeat(Math.max(0, rect.width - 2))}\u2510`, theme().accent, theme().panelAlt, true)
+  );
+  for (const [index, item] of overlay.items.entries()) {
+    const row = rect.row + 1 + index;
+    if (row >= rect.row + rect.height - 1) break;
+    const selected = overlay.selectedIndex === index;
+    const marker = selected ? "\u25CF" : "\u25CB";
+    write(
+      frame,
+      row,
+      rect.column,
+      paint(
+        `\u2502 ${fit(`${marker} ${item}`, rect.width - 4)} \u2502`,
+        selected ? contrastText(theme().warn, theme().bg, theme().text) : theme().text,
+        selected ? theme().warn : theme().panelAlt,
+        selected
+      )
+    );
+    hitTargets.push({
+      rect: { column: rect.column + 1, row, width: Math.max(0, rect.width - 2), height: 1 },
+      hit: { type: "theme", index }
+    });
+  }
+  write(
+    frame,
+    rect.row + rect.height - 1,
+    rect.column,
+    paint(`\u2514${"\u2500".repeat(Math.max(0, rect.width - 2))}\u2518`, theme().accent, theme().panelAlt, true)
+  );
+}
+function renderModalOverlay(frame) {
+  if (!modal.openState.peek()) return;
+  hitTargets.push({
+    rect: { column: 0, row: 0, width: cols(), height: rowsCount() },
+    hit: { type: "modalAction", index: -1 }
+  });
+  const inspection = modal.inspect();
+  const width = Math.min(Math.max(38, cols() - 8), 74);
+  const contentHeight = modalContentHeight(inspection, width);
+  const height = Math.min(Math.max(9, contentHeight), Math.max(7, rowsCount() - 6));
+  const rect = {
+    column: Math.max(0, Math.floor((cols() - width) / 2)),
+    row: Math.max(1, Math.floor((rowsCount() - height) / 2)),
+    width,
+    height
+  };
+  const shadow = clipRect({ column: rect.column + 2, row: rect.row + 1, width: rect.width, height: rect.height }, {
+    column: 0,
+    row: 0,
+    width: cols(),
+    height: rowsCount()
+  });
+  if (shadow.width > 0 && shadow.height > 0) fillRect(frame, shadow, theme().bg);
+  fillRect(frame, rect, theme().panelAlt);
+  drawFrame(frame, rect, inspection.title, true);
+  const inner = { column: rect.column + 1, row: rect.row + 1, width: rect.width - 2, height: rect.height - 2 };
+  const rows2 = renderModalRows(inspection, { width: rect.width, height: inner.height });
+  for (let index = 0; index < rows2.length && index < inner.height; index += 1) {
+    const actionRow2 = inspection.actions.length > 0 && index === rows2.length - 1;
+    const titleRow = index === 0;
+    write(
+      frame,
+      inner.row + index,
+      inner.column,
+      paint(
+        fit(actionRow2 ? "" : rows2[index], inner.width),
+        titleRow ? theme().accent : theme().text,
+        actionRow2 ? theme().panel : theme().panelAlt,
+        actionRow2 || titleRow
+      )
+    );
+  }
+  if (inspection.actions.length === 0 || rows2.length === 0) return;
+  const actionRow = inner.row + Math.min(rows2.length, inner.height) - 1;
+  let column = inner.column;
+  for (const [index, action] of inspection.actions.entries()) {
+    const width2 = textWidth(buttonText(action.label));
+    if (column + width2 > inner.column + inner.width) break;
+    writeButton(frame, actionRow, column, action.label, {
+      state: action.disabled ? "disabled" : index === inspection.selectedActionIndex ? "active" : "base",
+      tone: action.destructive ? "danger" : "default"
+    });
+    hitTargets.push({ rect: { column, row: actionRow, width: width2, height: 1 }, hit: { type: "modalAction", index } });
+    column += width2 + 1;
+  }
+}
 function ensureActivePanelVisible(layout, viewportHeight) {
   const activePanel = active.peek();
   const activeRect = layout.rects.get(activePanel);
@@ -5552,21 +6362,6 @@ function ensureActivePanelVisible(layout, viewportHeight) {
     workspaceScroll.scrollTo(0, bottom - viewportHeight);
   }
 }
-function stackRects(rect, count) {
-  if (count <= 0) return [];
-  const gap = rect.height >= count * 5 ? 1 : 0;
-  const available = Math.max(0, rect.height - gap * (count - 1));
-  let row = rect.row;
-  let remaining = available;
-  return Array.from({ length: count }, (_, index) => {
-    const slots = count - index;
-    const height = index === count - 1 ? remaining : Math.max(4, Math.floor(remaining / slots));
-    const next = { column: rect.column, row, width: rect.width, height };
-    row += height + gap;
-    remaining = Math.max(0, remaining - height);
-    return next;
-  });
-}
 function panelLineStyle(id2, index) {
   const t = theme();
   if (id2 === "data" && index === 0) {
@@ -5584,23 +6379,150 @@ function panelLineStyle(id2, index) {
 function push(message) {
   log.value = [...log.peek(), `${(/* @__PURE__ */ new Date()).toLocaleTimeString()} ${message}`].slice(-40);
 }
+function openWorkbenchModal() {
+  themeMenuOpen.value = false;
+  modal.open({
+    title: "Confirm Action",
+    tone: "confirm",
+    body: [
+      "Modal windows sit above the browser workbench and use the same renderer-neutral controller as terminal modals.",
+      "Keyboard focus is trapped while the modal is open. Use Tab, arrows, Enter, Escape, or click an action."
+    ],
+    actions: [
+      { id: "cancel", label: "Cancel" },
+      { id: "details", label: "Details" },
+      { id: "confirm", label: "Confirm", default: true }
+    ]
+  });
+  push("modal opened");
+}
+function openHelpModal() {
+  themeMenuOpen.value = false;
+  modal.open({
+    title: "Web Workbench Help",
+    tone: "info",
+    body: [
+      "Keyboard: Tab cycles panels. Use 1-6 to focus Explorer, Inspector, Data, Controls, Logs, and Three ASCII.",
+      "Use M to minimize, F or Enter to maximize/restore, R to restore all panels, T for themes, H for help, and Q to quit.",
+      "Controls: arrow keys adjust sliders, radio groups, combo boxes, steppers, and dropdowns. Enter or Space activates.",
+      "Mouse: click panels to focus, click rows to select, click controls to change values, and click scrollbars to jump.",
+      "Resize the browser. The same tiled layout helper used by the terminal workbench recomputes panel geometry."
+    ],
+    actions: [
+      { id: "dismiss", label: "Dismiss", default: true },
+      { id: "controls", label: "Focus Controls" }
+    ]
+  });
+  push("help opened");
+}
+function openQuitModal() {
+  themeMenuOpen.value = false;
+  modal.open({
+    title: "Close Web Workbench?",
+    tone: "warning",
+    body: [
+      "Hide the API workbench browser demo?",
+      "This only removes the demo host from the page; reload the page to mount it again."
+    ],
+    actions: [
+      { id: "cancel", label: "Cancel" },
+      { id: "quit", label: "Close", destructive: true, default: true }
+    ]
+  });
+  push("quit confirmation");
+}
+function applyModalAction(actionId) {
+  if (actionId === "details") {
+    modal.open({
+      title: "Modal Details",
+      tone: "info",
+      body: [
+        "ModalController owns open state, body rows, action focus, and keyboard behavior.",
+        "The browser renderer adds a centered overlay, backdrop click blocking, and theme-aware action buttons."
+      ],
+      actions: [
+        { id: "back", label: "Back" },
+        { id: "confirm", label: "Confirm", default: true },
+        { id: "dismiss", label: "Dismiss" }
+      ]
+    });
+    push("modal details");
+    return;
+  }
+  if (actionId === "back") {
+    openWorkbenchModal();
+    return;
+  }
+  if (actionId === "confirm") {
+    modal.open({
+      title: "Action Confirmed",
+      tone: "success",
+      body: "The web modal action completed.",
+      actions: [{ id: "dismiss", label: "Dismiss", default: true }]
+    });
+    push("modal confirmed");
+    return;
+  }
+  if (actionId === "controls") {
+    modal.close();
+    focus("controls");
+    return;
+  }
+  if (actionId === "quit") {
+    mount.style.display = "none";
+    modal.close();
+    push("web workbench hidden");
+    return;
+  }
+  modal.close();
+  push(`modal ${actionId}`);
+}
 function renderControls(frame, rect) {
   let row = rect.row;
   const t = theme();
   const writeControl = (id2, value, options = {}) => {
     if (row >= rect.row + rect.height) return;
     const selected = activeControl.peek() === id2;
-    write(
-      frame,
-      row,
-      rect.column,
-      paint(
-        fit(`${selected && !options.indent ? ">" : " "} ${options.indent ? "  " : ""}${value}`, rect.width),
-        selected ? t.bg : t.text,
-        selected ? t.warn : t.surface,
-        selected
-      )
-    );
+    const prefix = `${selected && !options.indent ? ">" : " "} ${options.indent ? "  " : ""}`;
+    if (options.button) {
+      const match = /^(\[[^\]]+\])(.*)$/.exec(value);
+      const button = match?.[1] ?? value;
+      const detail = match?.[2] ?? "";
+      write(frame, row, rect.column, paint(" ".repeat(rect.width), t.text, t.surface));
+      write(
+        frame,
+        row,
+        rect.column,
+        paint(fit(prefix, rect.width), selected ? t.bg : t.text, selected ? t.warn : t.surface, selected)
+      );
+      let column = rect.column + textWidth(prefix);
+      const buttonWidth = Math.max(0, rect.width - textWidth(prefix));
+      writeButton(frame, row, column, button.replace(/^\[\s*|\s*\]$/g, ""), {
+        state: selected ? "active" : "base",
+        maxWidth: buttonWidth
+      });
+      column += Math.min(textWidth(button), buttonWidth);
+      if (column < rect.column + rect.width) {
+        write(
+          frame,
+          row,
+          column,
+          paint(fit(detail, rect.column + rect.width - column), selected ? t.warn : t.text, t.surface, selected)
+        );
+      }
+    } else {
+      write(
+        frame,
+        row,
+        rect.column,
+        paint(
+          fit(`${prefix}${value}`, rect.width),
+          selected ? t.bg : t.text,
+          selected ? t.warn : t.surface,
+          selected
+        )
+      );
+    }
     hitTargets.push({
       rect: { column: rect.column, row, width: rect.width, height: 1 },
       hit: { type: "control", id: id2, action: options.action ?? "activate", index: options.index }
@@ -5628,8 +6550,13 @@ function renderControls(frame, rect) {
   const progressWidth = Math.max(8, Math.min(18, rect.width - 18));
   const progressFilled = Math.round(progress.ratio() * progressWidth);
   const progressTrack = `${"\u2588".repeat(progressFilled)}${"\u2591".repeat(progressWidth - progressFilled)}`;
-  writeControl("button", `[ Run Action ] presses=${actionButton.pressCount.peek()}`);
-  writeControl("genericButton", `[ Generic Button ] presses=${genericButton.pressCount.peek()}`);
+  writeControl("button", `${buttonText("Run Action")} presses=${actionButton.pressCount.peek()}`, { button: true });
+  writeControl("genericButton", `${buttonText("Generic Button")} presses=${genericButton.pressCount.peek()}`, {
+    button: true
+  });
+  writeControl("modal", `${buttonText("Open Modal")} state=${modal.openState.peek() ? "open" : "closed"}`, {
+    button: true
+  });
   writeControl("slider", `Slider    ${sliderTrack} ${slider.value.peek()}/10`, {
     previous: true,
     next: true
@@ -5638,23 +6565,18 @@ function renderControls(frame, rect) {
     rect: { column: rect.column + 12, row: row - 1, width: 10, height: 1 },
     hit: { type: "control", id: "slider", action: "set" }
   });
-  writeControl(
-    "checkbox",
-    `Checkboxes  ${renderCheckBoxMark(live.checked.peek())} live preview  ${renderCheckBoxMark(compact.checked.peek())} compact rows`
-  );
-  hitTargets.push({
-    rect: { column: rect.column + 13, row: row - 1, width: 16, height: 1 },
-    hit: { type: "control", id: "checkbox", action: "activate", index: 0 }
-  });
-  hitTargets.push({
-    rect: { column: rect.column + 29, row: row - 1, width: 16, height: 1 },
-    hit: { type: "control", id: "checkbox", action: "next", index: 1 }
-  });
-  writeControl("radio", `Radio     ${renderInlineRadioOptions()}`, {
+  writeControl("checkbox", "Checkboxes");
+  writeControl("checkbox", `${renderCheckBoxMark(live.checked.peek())} live preview`, { indent: true, index: 0 });
+  writeControl("checkbox", `${renderCheckBoxMark(compact.checked.peek())} compact rows`, { indent: true, index: 1 });
+  writeControl("radio", "Radio", {
     previous: true,
     next: true
   });
-  addInlineRadioHits(rect, row - 1);
+  for (const [index, option] of radio.options.peek().entries()) {
+    const mark = option.value === radio.selectedValue.peek() ? "\u25CF" : "\u25CB";
+    const cursor = index === radio.activeIndex.peek() ? ">" : " ";
+    writeControl("radio", `${cursor} ${mark} ${option.label}`, { indent: true, index });
+  }
   writeControl("combo", `Theme combo  ${combo.expanded.peek() ? "v" : ">"} ${combo.label()}`, {
     previous: true,
     next: true
@@ -5665,13 +6587,15 @@ function renderControls(frame, rect) {
     action: "toggle"
   });
   if (dropdown.expanded.peek()) {
-    for (const [index, item] of dropdown.items.peek().entries()) {
-      writeControl("dropdown", `${dropdown.selectedIndex.peek() === index ? "\u25CF" : "\u25CB"} ${item}`, {
-        indent: true,
-        action: "activate",
-        index
-      });
-    }
+    renderControlDropdownPopover(frame, {
+      column: rect.column + 2,
+      row,
+      width: Math.min(
+        Math.max(16, Math.max(...dropdown.items.peek().map((item) => textWidth(item))) + 6),
+        Math.max(16, rect.width - 4)
+      ),
+      height: dropdown.items.peek().length + 2
+    });
   }
   writeControl("input", `Input     ${input.text.peek()}${activeControl.peek() === "input" ? "|" : ""}`, {
     action: "focus"
@@ -5790,29 +6714,6 @@ function wrappedOptionRowCount(items, width) {
   }
   return rows2;
 }
-function renderInlineRadioOptions() {
-  const options = radio.options.peek();
-  const active2 = radio.activeIndex.peek();
-  const selected = radio.selectedValue.peek();
-  return options.map((option, index) => {
-    const cursor = index === active2 ? ">" : " ";
-    const mark = option.value === selected ? "\u25CF" : "\u25CB";
-    return `${cursor} ${mark} ${option.label}`;
-  }).join("  ");
-}
-function addInlineRadioHits(rect, row) {
-  let column = rect.column + 12;
-  for (const [index, option] of radio.options.peek().entries()) {
-    const width = textWidth(
-      `${index === radio.activeIndex.peek() ? ">" : " "} ${option.value === radio.selectedValue.peek() ? "\u25CF" : "\u25CB"} ${option.label}`
-    );
-    hitTargets.push({
-      rect: { column, row, width, height: 1 },
-      hit: { type: "control", id: "radio", action: "activate", index }
-    });
-    column += width + 2;
-  }
-}
 function addInlineStepperHits(rect, row) {
   const steps = stepper.steps.peek();
   let column = rect.column + 12;
@@ -5828,6 +6729,42 @@ function addInlineStepperHits(rect, row) {
     column += width + 3;
   }
 }
+function renderControlDropdownPopover(frame, rect) {
+  const t = theme();
+  fillRect(frame, rect, t.panelAlt);
+  write(
+    frame,
+    rect.row,
+    rect.column,
+    paint(`\u250C${"\u2500".repeat(Math.max(0, rect.width - 2))}\u2510`, t.accent, t.panelAlt, true)
+  );
+  for (const [index, item] of dropdown.items.peek().entries()) {
+    const selected = dropdown.selectedIndex.peek() === index;
+    const marker = selected ? "\u25CF" : "\u25CB";
+    const row = rect.row + 1 + index;
+    write(
+      frame,
+      row,
+      rect.column,
+      paint(
+        `\u2502 ${fit(`${marker} ${item}`, rect.width - 4)} \u2502`,
+        selected ? contrastText(t.warn, t.bg, t.text) : t.text,
+        selected ? t.warn : t.panelAlt,
+        selected
+      )
+    );
+    hitTargets.push({
+      rect: { column: rect.column + 1, row, width: Math.max(0, rect.width - 2), height: 1 },
+      hit: { type: "control", id: "dropdown", action: "activate", index }
+    });
+  }
+  write(
+    frame,
+    rect.row + rect.height - 1,
+    rect.column,
+    paint(`\u2514${"\u2500".repeat(Math.max(0, rect.width - 2))}\u2518`, t.accent, t.panelAlt, true)
+  );
+}
 function applyControlHit(id2, action, rect, x, index) {
   active.value = "controls";
   activeControl.value = id2;
@@ -5837,6 +6774,7 @@ function applyControlHit(id2, action, rect, x, index) {
   }
   if (id2 === "button") actionButton.press("mouse");
   else if (id2 === "genericButton") genericButton.press("mouse");
+  else if (id2 === "modal") modalButton.press("mouse");
   else if (id2 === "slider") {
     if (action === "set" && rect && x !== void 0) setSliderFromPointer(slider, rect, x);
     else action === "previous" ? slider.decrement() : slider.increment();
@@ -5908,6 +6846,7 @@ function controlAt(delta) {
   const ids = [
     "button",
     "genericButton",
+    "modal",
     "slider",
     "checkbox",
     "radio",
@@ -5941,6 +6880,46 @@ function fillRect(frame, rect, bg) {
   for (let row = rect.row; row < rect.row + rect.height; row += 1) {
     write(frame, row, rect.column, paint(" ".repeat(Math.max(0, rect.width)), theme().text, bg));
   }
+}
+function drawFrame(frame, rect, title, selected) {
+  const border = selected ? theme().accent : theme().borderStrong;
+  const bg = selected ? theme().panelAlt : theme().panel;
+  write(frame, rect.row, rect.column, paint(`\u250C${"\u2500".repeat(Math.max(0, rect.width - 2))}\u2510`, border, bg, selected));
+  for (let row = rect.row + 1; row < rect.row + rect.height - 1; row += 1) {
+    write(frame, row, rect.column, paint("\u2502", border, bg, selected));
+    write(frame, row, rect.column + rect.width - 1, paint("\u2502", border, bg, selected));
+  }
+  write(
+    frame,
+    rect.row + rect.height - 1,
+    rect.column,
+    paint(`\u2514${"\u2500".repeat(Math.max(0, rect.width - 2))}\u2518`, border, bg, selected)
+  );
+  write(
+    frame,
+    rect.row,
+    rect.column + 2,
+    paint(` ${title.toUpperCase()} `, theme().bg, selected ? theme().accent : theme().border, true)
+  );
+}
+function buttonText(label, compact2 = false) {
+  const safeLabel = label.trim();
+  return compact2 ? `[${safeLabel}]` : `[ ${safeLabel} ]`;
+}
+function writeButton(frame, row, column, label, options = {}) {
+  const text = buttonText(label, options.compact);
+  const width = Math.max(0, Math.min(textWidth(text), options.maxWidth ?? textWidth(text)));
+  if (width <= 0) return 0;
+  const style2 = buttonPaintOptions(options.state ?? "base", options.tone ?? "default");
+  write(frame, row, column, paint(fit(text, width), style2.fg, style2.bg, style2.bold));
+  return width;
+}
+function buttonPaintOptions(state = "base", tone = "default") {
+  if (state === "disabled") return { fg: theme().muted, bg: theme().buttonMutedBg, bold: false };
+  const toneBg = tone === "danger" ? theme().danger : tone === "warning" ? theme().warn : tone === "success" ? theme().good : tone === "muted" ? theme().border : void 0;
+  if (toneBg) return { fg: contrastText(toneBg, theme().bg, theme().text), bg: toneBg, bold: true };
+  const bg = state === "active" ? theme().buttonActiveBg : theme().buttonBg;
+  return { fg: contrastText(bg, theme().bg, theme().text), bg, bold: true };
 }
 function paint(value, fg = theme().text, bg = theme().bg, bold = false) {
   return makeStyle({ fg, bg, bold })(value);

@@ -16,3 +16,8 @@ workbench portfolio expected by the fork.
 - `deno task web:pages:build`
 - `git diff --check`
 - Pages output committed and pushed.
+
+## Completion Notes
+
+- Ran `deno task web:pages:build` after the web parity update.
+- The tracked Pages source entrypoint changed; generated `docs/assets` bundles were refreshed locally by the build.

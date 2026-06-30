@@ -7,16 +7,21 @@ import {
   ComboBoxController,
   Computed,
   createAnsiStyle,
+  createFileExplorerTree,
   createWebTui,
   DataTableController,
+  FileExplorerController,
   InputController,
   MenuBarController,
+  modalContentHeight,
+  ModalController,
   ProgressBarController,
   RadioGroupController,
   renderCheckBoxMark,
   renderDataTableHeader,
   renderDataTableRows,
   renderMenuBar,
+  renderModalRows,
   renderStatusBar,
   renderStepper,
   ScrollAreaController,
@@ -25,12 +30,12 @@ import {
   scrollbarThumb,
   Signal,
   SliderController,
-  SplitPaneController,
   StepperController,
   TextBoxController,
   TextObject,
   type TextRectangle,
   textWidth,
+  tileRects,
   wrapTextBoxLines,
 } from "../../mod.web.ts";
 import { grWizardThemePalettes } from "../../src/grwizard_themes.ts";
@@ -38,10 +43,11 @@ import type { Rectangle } from "../../src/types.ts";
 import { stripStyles } from "../../src/utils/strings.ts";
 import { makeStyle } from "../../app/styles.ts";
 
-type PanelId = "inspector" | "data" | "controls" | "logs";
+type PanelId = "explorer" | "inspector" | "data" | "controls" | "logs" | "three";
 type ControlId =
   | "button"
   | "genericButton"
+  | "modal"
   | "slider"
   | "checkbox"
   | "radio"
@@ -51,17 +57,29 @@ type ControlId =
   | "stepper"
   | "textbox";
 type Hit =
+  | { type: "menu"; index: number }
+  | { type: "quit" }
   | { type: "focus"; id: PanelId }
   | { type: "min"; id: PanelId }
   | { type: "max"; id: PanelId }
   | { type: "restore"; id?: PanelId }
   | { type: "close"; id: PanelId }
   | { type: "theme"; index: number }
+  | { type: "modalAction"; index: number }
   | { type: "control"; id: ControlId; action?: ControlHitAction; index?: number }
   | { type: "dataRow"; index: number }
+  | { type: "explorerRow"; index: number }
   | { type: "logScrollbar" }
   | { type: "workspaceScrollbar" };
 type ControlHitAction = "previous" | "next" | "activate" | "set" | "focus" | "toggle";
+type ButtonTone = "default" | "danger" | "warning" | "success" | "muted";
+
+interface DropdownOverlay {
+  kind: "theme" | "control";
+  rect: Rectangle;
+  items: string[];
+  selectedIndex?: number;
+}
 
 interface ThemeSpec {
   label: string;
@@ -79,6 +97,10 @@ interface ThemeSpec {
   soft: string;
   good: string;
   warn: string;
+  danger: string;
+  buttonBg: string;
+  buttonActiveBg: string;
+  buttonMutedBg: string;
 }
 
 interface Row extends Record<string, unknown> {
@@ -90,9 +112,10 @@ interface Row extends Record<string, unknown> {
 
 const root = document.querySelector<HTMLElement>("#api-workbench");
 if (!root) throw new Error("Missing #api-workbench mount element.");
+const mount = root;
 
 const host = createWebTui({
-  root,
+  root: mount,
   refreshRate: 1000 / 30,
   sinkOptions: {
     cellWidth: 9,
@@ -119,50 +142,69 @@ const themes: ThemeSpec[] = grWizardThemePalettes.map((palette) => ({
   soft: palette.textSoft,
   good: palette.success,
   warn: palette.warning,
+  danger: palette.danger,
+  buttonBg: palette.accentDeep,
+  buttonActiveBg: palette.accent,
+  buttonMutedBg: palette.panelAlt,
 }));
 const rows: Row[] = [
+  { id: "explorer", surface: "FileExplorer", state: "browsing", ms: 3 },
   { id: "menu", surface: "MenuBar", state: "active", ms: 2 },
-  { id: "split", surface: "SplitPane", state: "resized", ms: 5 },
+  { id: "tiles", surface: "Tile Layout", state: "balanced", ms: 5 },
   { id: "table", surface: "DataTable", state: "sorted", ms: 8 },
   { id: "scroll", surface: "ScrollArea", state: "tracking", ms: 3 },
   { id: "theme", surface: "Theme", state: "bound", ms: 4 },
   { id: "mouse", surface: "Pointer", state: "captured", ms: 1 },
+  { id: "three", surface: "Three ASCII", state: "preview", ms: 6 },
 ];
 const docs = [
   "Click panel buttons to minimize, maximize, or restore.",
-  "Click theme names to switch the whole workbench.",
-  "Use Tab, 1-4, M, F, R, T, [ and ] from the keyboard.",
+  "Open the Theme menu for the same dropdown-style theme selector as the terminal workbench.",
+  "Use Tab, 1-6, M, F, R, T, H, Q, [ and ] from the keyboard.",
   "The browser host maps pointer cells to the same mouse events as the terminal.",
   "Resize the browser: the terminal grid recalculates from CSS dimensions.",
+  "The web workbench includes Explorer, Data, Controls, Logs, and a browser-safe Three ASCII preview pane.",
   "The demo uses public controllers and canvas primitives from mod.web.ts.",
 ];
+const panelIds: readonly PanelId[] = ["explorer", "inspector", "data", "controls", "logs", "three"];
+const explorerKeys = new Set(["up", "down", "left", "right", "pageup", "pagedown", "home", "end", "space", "return"]);
 
 const themeIndex = new Signal(0);
 const active = new Signal<PanelId>("inspector");
 const maximized = new Signal<PanelId | null>(null);
 const minimized = new Signal<Record<PanelId, boolean>>({
+  explorer: false,
   inspector: false,
   data: false,
   controls: false,
   logs: false,
+  three: false,
 }, { deepObserve: true });
+const themeMenuOpen = new Signal(false);
+const tileDensity = new Signal(0);
 const lineSignals: Signal<string>[] = [];
 const log = new Signal<string[]>(["ready: web api workbench mounted"], { deepObserve: true });
 let hitTargets: Array<{ rect: Rectangle; hit: Hit }> = [];
 let lastVisiblePanel: PanelId | null = null;
 let lastWorkspaceWidth = 0;
 let lastWorkspaceHeight = 0;
+let dropdownOverlay: DropdownOverlay | null = null;
 
 const menu = new MenuBarController({
   items: ["File", "View", "Layout", "Theme", "Help"].map((label) => ({ id: label.toLowerCase(), label })),
-  onSelect: (item) => push(`menu ${item.label}`),
-});
-const split = new SplitPaneController({
-  direction: "row",
-  ratio: 0.5,
-  minFirst: 28,
-  minSecond: 28,
-  resizeMode: "ratio",
+  onSelect: (item) => {
+    if (item.id === "theme") {
+      themeMenuOpen.value = !themeMenuOpen.peek();
+      push(`${themeMenuOpen.peek() ? "open" : "close"} theme menu`);
+      return;
+    }
+    themeMenuOpen.value = false;
+    if (item.id === "help") {
+      openHelpModal();
+      return;
+    }
+    push(`menu ${item.label}`);
+  },
 });
 const workspaceScroll = new ScrollAreaController({ showScrollbar: true });
 const logScroll = new ScrollAreaController({ showScrollbar: true });
@@ -171,6 +213,21 @@ const live = new CheckBoxController({ checked: true });
 const compact = new CheckBoxController({ checked: false });
 const actionButton = new ButtonController({ label: "Run Action", onPress: () => push("button pressed") });
 const genericButton = new ButtonController({ label: "Generic Button", onPress: () => push("generic button pressed") });
+const modalButton = new ButtonController({ label: "Open Modal", onPress: () => openWorkbenchModal() });
+const modal = new ModalController({
+  title: "Confirm Action",
+  tone: "confirm",
+  body: [
+    "The web workbench uses the same ModalController shape as the terminal app.",
+    "Use Tab or arrows to move actions, Enter to activate, Escape to close.",
+  ],
+  actions: [
+    { id: "cancel", label: "Cancel" },
+    { id: "details", label: "Details" },
+    { id: "confirm", label: "Confirm", default: true },
+  ],
+  onAction: (action) => applyModalAction(action.id),
+});
 const radio = new RadioGroupController({
   options: [
     { value: "fast", label: "Fast" },
@@ -215,6 +272,22 @@ const textBox = new TextBoxController({
   wordWrap: true,
 });
 const activeControl = new Signal<ControlId>("button");
+const explorer = new FileExplorerController({
+  root: createFileExplorerTree([
+    "/README.md",
+    "/mod.web.ts",
+    "/examples/web/api_workbench_page.ts",
+    "/examples/web/neon_exodus_page.ts",
+    "/examples/web/three_ascii_page.ts",
+    "/src/web/host.ts",
+    "/src/web/platform.ts",
+    "/src/components/modal.ts",
+    "/src/components/file_explorer.ts",
+    "/src/layout/responsive.ts",
+    "/tests/web_runtime.test.ts",
+  ]),
+  onOpen: (entry) => push(`open ${entry.path}`),
+});
 const table = new DataTableController<Row>({
   rows,
   columns: [
@@ -240,30 +313,45 @@ host.platform.size.subscribe(() => {
   draw();
 });
 
-host.on("keyPress", ({ key }) => {
+host.on("keyPress", (event) => {
+  const { key } = event;
+  if (modal.openState.peek()) {
+    modal.handleKeyPress(event);
+    draw();
+    return;
+  }
+  if (themeMenuOpen.peek()) {
+    handleThemeMenuKey(event);
+    draw();
+    return;
+  }
   if (isTextControlActive() && (key === "escape" || key === "tab")) {
     blurTextControl();
     draw();
     return;
   }
   if (isTextControlActive()) {
-    handleControlsKey({ key, ctrl: false, meta: false, shift: false });
+    handleControlsKey(event);
     draw();
     return;
   }
   if (key === "tab" && active.peek() === "controls") focusNextControl();
   else if (key === "tab") focusNext();
-  else if (key === "1") focus("inspector");
-  else if (key === "2") focus("data");
-  else if (key === "3") focus("controls");
-  else if (key === "4") focus("logs");
+  else if (focusPanelByNumber(key)) return draw();
+  else if (key === "h" || key === "?") openHelpModal();
+  else if (key === "q") openQuitModal();
   else if (key === "m") minimize(active.peek());
   else if (key === "f" || key === "return") toggleMax(active.peek());
   else if (key === "r" || key === "escape") restore();
-  else if (key === "t") setTheme(themeIndex.peek() + 1);
-  else if (key === "[") resizeSplit(-4);
-  else if (key === "]") resizeSplit(4);
-  else if (active.peek() === "controls") handleControlsKey({ key, ctrl: false, meta: false, shift: false });
+  else if (key === "t") themeMenuOpen.value = !themeMenuOpen.peek();
+  else if (key === "[") adjustTileDensity(-1);
+  else if (key === "]") adjustTileDensity(1);
+  else if (active.peek() === "controls") handleControlsKey(event);
+  else if (active.peek() === "explorer" && explorerKeys.has(key)) {
+    explorer.handleKeyPress(event, Math.max(1, rowsCount() - 8));
+  } else if (active.peek() === "data" && key.toLowerCase() === "s") {
+    cycleDataSortColumn(event.shift ? -1 : 1);
+  } else if (active.peek() === "data") table.handleKeyPress(event as never);
   else if (key === "+" || key === "=") slider.increment();
   else if (key === "-") slider.decrement();
   else if (key === "space") live.toggle();
@@ -300,6 +388,8 @@ globalThis.addEventListener("beforeunload", () => {
   logScroll.dispose();
   actionButton.dispose();
   genericButton.dispose();
+  modalButton.dispose();
+  modal.dispose();
   radio.dispose();
   combo.dispose();
   dropdown.dispose();
@@ -308,24 +398,51 @@ globalThis.addEventListener("beforeunload", () => {
   progress.dispose();
   textBox.dispose();
   compact.dispose();
+  explorer.dispose();
+  themeMenuOpen.dispose();
+  tileDensity.dispose();
   host.destroy();
 });
 
 function draw(): void {
   hitTargets = [];
+  dropdownOverlay = null;
   const width = cols();
   const height = rowsCount();
   const frame = Array.from({ length: height }, () => paint(" ".repeat(width), theme().text, theme().bg));
   write(frame, 0, 0, paint(" ".repeat(width), theme().text, theme().bgAlt));
   write(frame, 1, 0, paint(" ".repeat(width), theme().text, theme().panel));
   write(frame, 0, 1, paint(` API WORKBENCH `, theme().bg, theme().accent, true));
+  const closeLabel = buttonText("x", true);
+  const closeWidth = textWidth(closeLabel);
+  const menuWidth = Math.max(0, width - 18 - closeWidth);
+  renderMenuHits(17, 0, menuWidth);
   write(
     frame,
     0,
     17,
-    paint(fit(renderMenuBar(menu.items.peek(), menu.activeIndex.peek()), width - 18), theme().text, theme().bgAlt),
+    paint(fit(renderMenuBar(menu.items.peek(), menu.activeIndex.peek()), menuWidth), theme().text, theme().bgAlt),
   );
-  drawThemes(frame, width);
+  if (width >= 22) {
+    writeButton(frame, 0, width - closeWidth, "x", { compact: true, tone: "danger" });
+    hitTargets.push({
+      rect: { column: width - closeWidth, row: 0, width: closeWidth, height: 1 },
+      hit: { type: "quit" },
+    });
+  }
+  if (themeMenuOpen.peek()) {
+    dropdownOverlay = {
+      kind: "theme",
+      rect: menuItemRect(
+        17,
+        "theme",
+        Math.max(22, ...themes.map((entry) => textWidth(entry.label) + 6)),
+        themes.length + 2,
+      ),
+      items: themes.map((entry) => entry.label),
+      selectedIndex: themeIndex.peek(),
+    };
+  }
   const body = { column: 1, row: 3, width: Math.max(10, width - 2), height: Math.max(6, height - 5) };
   const layout = workspaceLayout({
     column: 0,
@@ -346,7 +463,7 @@ function draw(): void {
   if (maximized.peek()) {
     renderPanel(virtual, maximized.peek()!, layout.bounds);
   } else {
-    const visible = (["inspector", "data", "controls", "logs"] as PanelId[]).filter((id) => !minimized.peek()[id]);
+    const visible = panelIds.filter((id) => !minimized.peek()[id]);
     if (visible.length === 0) {
       write(virtual, 1, 2, paint("All panels minimized. Press R or click restore."));
       hitTargets.push({ rect: { ...layout.bounds, row: 0 }, hit: { type: "restore" } });
@@ -360,12 +477,15 @@ function draw(): void {
   translateWorkspaceHits(hitStart, body.column, body.row - offset, body);
   blitWorkspace(frame, virtual, body, offset, layout.bounds.width);
   renderWorkspaceScrollbar(frame, body, layout.contentHeight, offset);
-  renderShelf(frame);
+  maximized.peek() ? renderWindowTabs(frame) : renderShelf(frame);
+  renderDropdownOverlay(frame);
+  renderModalOverlay(frame);
+  const densityLabel = tileDensity.peek() === 0 ? "balanced" : tileDensity.peek() > 0 ? "dense" : "wide";
   frame[height - 1] = fit(
     paint(
       renderStatusBar(
-        `focus ${active.peek()} | ${theme().label} | split ${Math.round((split.snapshot().ratio ?? 0) * 100)}%`,
-        "click controls or use keyboard",
+        `focus ${active.peek()} | ${theme().label} | tiles ${densityLabel}`,
+        "1-6 focus  T theme  H help  Q quit  click controls",
         width,
       ),
       theme().text,
@@ -385,10 +505,60 @@ function renderShelf(frame: string[]): void {
   write(frame, row, column, paint("minimized ", theme().muted, theme().bgAlt));
   column += 10;
   for (const [id] of hidden) {
-    const label = `[${id}]`;
-    write(frame, row, column, paint(label, theme().bg, theme().border, true));
-    hitTargets.push({ rect: { column, row, width: label.length, height: 1 }, hit: { type: "restore", id } });
-    column += label.length + 1;
+    const width = writeButton(frame, row, column, panelTitle(id), { tone: "muted" });
+    hitTargets.push({ rect: { column, row, width, height: 1 }, hit: { type: "restore", id } });
+    column += width + 1;
+  }
+}
+
+function renderMenuHits(column: number, row: number, width: number): void {
+  let cursor = column;
+  for (const [index, item] of menu.items.peek().entries()) {
+    const token = index === menu.activeIndex.peek() ? `[${item.label}]` : item.label;
+    const tokenWidth = textWidth(token);
+    if (cursor + tokenWidth > column + width) break;
+    hitTargets.push({ rect: { column: cursor, row, width: tokenWidth, height: 1 }, hit: { type: "menu", index } });
+    cursor += tokenWidth + 1;
+  }
+}
+
+function menuItemRect(menuStart: number, itemId: string, preferredWidth: number, preferredHeight: number): Rectangle {
+  let cursor = menuStart;
+  for (const [index, item] of menu.items.peek().entries()) {
+    const token = index === menu.activeIndex.peek() ? `[${item.label}]` : item.label;
+    if (item.id === itemId) {
+      return {
+        column: cursor,
+        row: 1,
+        width: Math.min(preferredWidth, Math.max(20, cols() - cursor)),
+        height: preferredHeight,
+      };
+    }
+    cursor += textWidth(token) + 1;
+  }
+  return { column: menuStart, row: 1, width: Math.min(preferredWidth, cols()), height: preferredHeight };
+}
+
+function renderWindowTabs(frame: string[]): void {
+  const row = rowsCount() - 2;
+  let column = 2;
+  write(frame, row, column, paint("windows ", theme().muted, theme().bgAlt));
+  column += 8;
+  for (const id of panelIds) {
+    if (column >= cols() - 1) break;
+    const selected = maximized.peek() === id;
+    const hidden = minimized.peek()[id];
+    const marker = selected ? "●" : hidden ? "○" : " ";
+    const label = `${marker} ${panelTitle(id)}`;
+    const width = Math.min(textWidth(buttonText(label)), Math.max(0, cols() - column));
+    if (width <= 0) break;
+    writeButton(frame, row, column, label, {
+      state: selected ? "active" : "base",
+      tone: hidden ? "muted" : "default",
+      maxWidth: width,
+    });
+    hitTargets.push({ rect: { column, row, width, height: 1 }, hit: { type: "restore", id } });
+    column += width + 1;
   }
 }
 
@@ -398,13 +568,18 @@ function renderPanel(frame: string[], id: PanelId, rect: Rectangle): void {
   const selected = active.peek() === id;
   fillRect(frame, rect, selected ? theme().panelAlt : theme().panel);
   const border = selected ? theme().accent : theme().borderStrong;
-  const top = `┌ ${id.toUpperCase()} ${"─".repeat(Math.max(0, rect.width - id.length - 24))} [-] [□] [↺] [x] ┐`;
+  const title = panelTitle(id).toUpperCase();
+  const top = `┌ ${title} ${"─".repeat(Math.max(0, rect.width - title.length - 24))}             ┐`;
   write(
     frame,
     rect.row,
     rect.column,
     paint(fit(top, rect.width), border, selected ? theme().panelAlt : theme().panel, selected),
   );
+  writeButton(frame, rect.row, rect.column + rect.width - 16, "-", { compact: true, tone: "warning" });
+  writeButton(frame, rect.row, rect.column + rect.width - 12, "□", { compact: true, tone: "success" });
+  writeButton(frame, rect.row, rect.column + rect.width - 8, "↺", { compact: true, tone: "muted" });
+  writeButton(frame, rect.row, rect.column + rect.width - 4, "x", { compact: true, tone: "danger" });
   hitTargets.push({
     rect: { column: rect.column + rect.width - 16, row: rect.row, width: 3, height: 1 },
     hit: { type: "min", id },
@@ -442,10 +617,12 @@ function renderPanel(frame: string[], id: PanelId, rect: Rectangle): void {
     height: Math.max(0, rect.height - 2),
   };
   fillRect(frame, inner, theme().surface);
-  if (id === "controls") renderControls(frame, inner);
+  if (id === "explorer") renderExplorer(frame, inner);
+  else if (id === "controls") renderControls(frame, inner);
   else if (id === "logs") renderLogs(frame, inner);
+  else if (id === "three") renderThreePreview(frame, inner);
   else {
-    const lines = panelLines(id, inner.width, inner.height);
+    const lines = panelLines(id, inner.height);
     lines.forEach((line, index) => {
       const style = panelLineStyle(id, index);
       write(frame, inner.row + index, inner.column, paint(fit(line, inner.width), style.fg, style.bg, style.bold));
@@ -459,6 +636,16 @@ function renderPanel(frame: string[], id: PanelId, rect: Rectangle): void {
       }
     }
   }
+}
+
+function panelTitle(id: PanelId): string {
+  return id === "explorer"
+    ? "Explorer"
+    : id === "data"
+    ? "Data Table"
+    : id === "three"
+    ? "Three ASCII"
+    : id[0]!.toUpperCase() + id.slice(1);
 }
 
 function renderLogs(frame: string[], rect: Rectangle): void {
@@ -479,7 +666,84 @@ function renderLogs(frame: string[], rect: Rectangle): void {
   }
 }
 
-function panelLines(id: PanelId, width: number, height: number): string[] {
+function renderExplorer(frame: string[], rect: Rectangle): void {
+  const visible = explorer.tree.visibleRows();
+  const selectedIndex = explorer.tree.selectedIndex.peek();
+  visible.slice(0, rect.height).forEach((row, offset) => {
+    const selected = row.index === selectedIndex;
+    const node = row.node as { kind?: string; path?: string };
+    const icon = row.hasChildren ? row.expanded ? "▾" : "▸" : node.kind === "file" ? "·" : " ";
+    const label = `${"  ".repeat(row.depth)}${icon} ${row.label}`;
+    write(
+      frame,
+      rect.row + offset,
+      rect.column,
+      paint(
+        fit(label, rect.width),
+        selected
+          ? contrastText(theme().warn, theme().bg, theme().text)
+          : node.kind === "directory"
+          ? theme().good
+          : theme().text,
+        selected ? theme().warn : theme().surface,
+        selected || node.kind === "directory",
+      ),
+    );
+    hitTargets.push({
+      rect: { column: rect.column, row: rect.row + offset, width: rect.width, height: 1 },
+      hit: { type: "explorerRow", index: row.index },
+    });
+  });
+}
+
+function renderThreePreview(frame: string[], rect: Rectangle): void {
+  const phase = Math.floor(performance.now() / 90);
+  const mode = ["BLOCKS", "GLYPHS", "MIXED"][Math.abs(tileDensity.peek()) % 3] ?? "MIXED";
+  const rows = [
+    ` ACEROLA THREE ASCII · ${mode} · WEB SAFE PREVIEW `,
+    "Full WebGPU renderer is mounted below this workbench on the Pages build.",
+    "Use the standalone Three demo for live WebGPU; this pane mirrors controls and state.",
+    "",
+    ...asciiOrb(rect.width, Math.max(3, rect.height - 6), phase),
+    "",
+    `preset mixed-best  glyph ${mode.toLowerCase()}  density ${tileDensity.peek()}  theme ${theme().label}`,
+  ].slice(0, rect.height);
+  rows.forEach((line, index) => {
+    const header = index === 0;
+    const accent = index % 3 === 0 ? theme().accent : index % 3 === 1 ? theme().good : theme().warn;
+    write(
+      frame,
+      rect.row + index,
+      rect.column,
+      paint(
+        fit(line, rect.width),
+        header ? contrastText(theme().accent, theme().bg, theme().text) : accent,
+        header ? theme().accent : theme().surface,
+        header || index > 3,
+      ),
+    );
+  });
+}
+
+function asciiOrb(width: number, height: number, phase: number): string[] {
+  const columns = Math.max(8, width);
+  const rows = Math.max(3, height);
+  const glyphs = " .:-=+*#%@";
+  return Array.from({ length: rows }, (_, row) => {
+    let line = "";
+    for (let column = 0; column < columns; column += 1) {
+      const x = (column / Math.max(1, columns - 1)) * 2 - 1;
+      const y = (row / Math.max(1, rows - 1)) * 2 - 1;
+      const ring = Math.abs(Math.sqrt(x * x * 2.8 + y * y * 1.8) - 0.62);
+      const wave = Math.sin(column * 0.32 + phase * 0.18) + Math.cos(row * 0.7 - phase * 0.14);
+      const value = Math.max(0, Math.min(1, 1 - ring * 3.5 + wave * 0.15));
+      line += glyphs[Math.floor(value * (glyphs.length - 1))] ?? " ";
+    }
+    return line;
+  });
+}
+
+function panelLines(id: PanelId, height: number): string[] {
   const source = id === "data"
     ? [
       renderDataTableHeader(table.columns.peek(), table.state.peek().sort),
@@ -491,25 +755,6 @@ function panelLines(id: PanelId, width: number, height: number): string[] {
     ? [...log.peek()].slice(-Math.max(1, height))
     : ["API Workbench Web", ...docs];
   return source.slice(0, height);
-}
-
-function drawThemes(frame: string[], width: number): void {
-  let column = Math.max(2, width - themes.reduce((total, entry) => total + entry.label.length + 4, 0));
-  themes.forEach((entry, index) => {
-    const label = ` ${entry.label} `;
-    write(
-      frame,
-      1,
-      column,
-      paint(
-        label,
-        index === themeIndex.peek() ? theme().bg : entry.soft,
-        index === themeIndex.peek() ? entry.accent : theme().panel,
-      ),
-    );
-    hitTargets.push({ rect: { column, row: 1, width: label.length, height: 1 }, hit: { type: "theme", index } });
-    column += label.length + 1;
-  });
 }
 
 function ensureLines(): void {
@@ -531,13 +776,19 @@ function ensureLines(): void {
 
 function applyHit(target: { rect: Rectangle; hit: Hit }, x: number, y: number): void {
   const hit = target.hit;
-  if (hit.type === "focus") focus(hit.id);
+  if (hit.type === "menu") {
+    menu.setActive(hit.index);
+    menu.selectActive();
+  } else if (hit.type === "quit") openQuitModal();
+  else if (hit.type === "focus") focus(hit.id);
   else if (hit.type === "min") minimize(hit.id);
   else if (hit.type === "max") toggleMax(hit.id);
   else if (hit.type === "close") closePanel(hit.id);
   else if (hit.type === "restore") hit.id ? restorePanel(hit.id) : restore();
   else if (hit.type === "control") applyControlHit(hit.id, hit.action ?? "activate", target.rect, x, hit.index);
+  else if (hit.type === "modalAction" && hit.index >= 0) modal.activateAction(hit.index);
   else if (hit.type === "dataRow") selectDataRow(hit.index);
+  else if (hit.type === "explorerRow") selectExplorerRow(hit.index);
   else if (hit.type === "logScrollbar") {
     const lines = docs.length + log.peek().length;
     logScroll.scrollTo(0, scrollbarOffsetForPointer(lines, target.rect.height, y - target.rect.row));
@@ -555,7 +806,8 @@ function focus(id: PanelId): void {
   push(`focus ${id}`);
 }
 function focusNext(): void {
-  const ids: PanelId[] = ["inspector", "data", "controls", "logs"];
+  const ids = panelIds.filter((id) => !minimized.peek()[id]);
+  if (ids.length === 0) return;
   focus(ids[(ids.indexOf(active.peek()) + 1) % ids.length]!);
 }
 function minimize(id: PanelId): void {
@@ -566,7 +818,7 @@ function minimize(id: PanelId): void {
 function closePanel(id: PanelId): void {
   minimized.value[id] = true;
   if (maximized.peek() === id) maximized.value = null;
-  const next = (["inspector", "data", "controls", "logs"] as PanelId[]).find((panel) => !minimized.peek()[panel]);
+  const next = panelIds.find((panel) => !minimized.peek()[panel]);
   if (next) active.value = next;
   push(`close ${id}`);
 }
@@ -581,22 +833,57 @@ function restorePanel(id: PanelId): void {
 }
 function restore(): void {
   maximized.value = null;
-  minimized.value = { inspector: false, data: false, controls: false, logs: false };
+  minimized.value = { explorer: false, inspector: false, data: false, controls: false, logs: false, three: false };
   push("restore all");
 }
 function setTheme(index: number): void {
   themeIndex.value = ((index % themes.length) + themes.length) % themes.length;
+  themeMenuOpen.value = false;
   push(`theme ${theme().label}`);
 }
-function resizeSplit(delta: number): void {
-  split.resize({ column: 0, row: 0, width: cols(), height: rowsCount() }, delta);
-  push(`resize ${delta}`);
+
+function handleThemeMenuKey(event: { key: string; shift?: boolean }): void {
+  if (event.key === "escape" || event.key === "tab") {
+    themeMenuOpen.value = false;
+    return;
+  }
+  if (event.key === "up") themeIndex.value = (themeIndex.peek() - 1 + themes.length) % themes.length;
+  else if (event.key === "down") themeIndex.value = (themeIndex.peek() + 1) % themes.length;
+  else if (event.key === "home") themeIndex.value = 0;
+  else if (event.key === "end") themeIndex.value = themes.length - 1;
+  else if (event.key === "return" || event.key === "space") setTheme(themeIndex.peek());
 }
-function splitRects(direction: "row" | "column", rect: Rectangle, ratio: number) {
-  const controller = new SplitPaneController({ direction, ratio, minFirst: 6, minSecond: 6, resizeMode: "ratio" });
-  const result = controller.resize(rect, 0);
-  controller.dispose();
-  return result;
+
+function focusPanelByNumber(key: string): boolean {
+  const index = Number.parseInt(key, 10);
+  if (!Number.isInteger(index) || index < 1) return false;
+  const id = panelIds[index - 1];
+  if (!id) return false;
+  focus(id);
+  return true;
+}
+
+function cycleDataSortColumn(delta: number): void {
+  const sortable = table.columns.peek().filter((column) => column.sortable !== false);
+  if (sortable.length === 0) return;
+  const current = table.state.peek().sort?.columnId;
+  const index = Math.max(0, sortable.findIndex((column) => column.id === current));
+  const next = sortable[(index + delta + sortable.length) % sortable.length]!;
+  table.toggleSort(next.id);
+  push(`sort data by ${next.label}`);
+}
+
+function selectExplorerRow(index: number): void {
+  active.value = "explorer";
+  explorer.tree.setSelectedIndex(index);
+  const entry = explorer.selected();
+  if (entry?.kind === "file") explorer.openActive();
+  else if (entry?.kind === "directory") explorer.tree.toggleActive();
+  push(`explorer ${entry?.path ?? index}`);
+}
+function adjustTileDensity(delta: number): void {
+  tileDensity.value = Math.max(-3, Math.min(3, tileDensity.peek() + delta));
+  push(`tile density ${tileDensity.peek()}`);
 }
 
 function workspaceLayout(bounds: Rectangle): {
@@ -610,44 +897,23 @@ function workspaceLayout(bounds: Rectangle): {
     rects.set(max, bounds);
     return { bounds, contentHeight: bounds.height, rects };
   }
-  const visible = (["inspector", "data", "controls", "logs"] as PanelId[]).filter((id) => !minimized.peek()[id]);
+  const visible = panelIds.filter((id) => !minimized.peek()[id]);
   if (visible.length === 0) return { bounds, contentHeight: bounds.height, rects };
-  const stacked = bounds.width < 88 || bounds.height < 18 || visible.length < 4;
-  if (stacked) {
-    const stackedRects = stackWorkspaceRects(bounds, visible);
-    for (const [index, id] of visible.entries()) rects.set(id, stackedRects[index]!);
-    const bottom = stackedRects.reduce((maxRow, rect) => Math.max(maxRow, rect.row + rect.height), bounds.row);
-    return { bounds, contentHeight: Math.max(bounds.height, bottom - bounds.row), rects };
-  }
-  const rows = splitRects("column", bounds, 0.46);
-  const top = split.resize(rows.first, 0);
-  const bottom = split.resize(rows.second, 0);
-  rects.set("inspector", top.first);
-  rects.set("data", top.second);
-  rects.set("controls", bottom.first);
-  rects.set("logs", bottom.second);
-  return { bounds, contentHeight: bounds.height, rects };
-}
-
-function stackWorkspaceRects(bounds: Rectangle, ids: PanelId[]): Rectangle[] {
-  const gap = ids.length > 1 ? 1 : 0;
-  const preferred = ids.map((id) => preferredPanelHeight(id, bounds.width));
-  const preferredTotal = preferred.reduce((total, height) => total + height, 0) + gap * Math.max(0, ids.length - 1);
-  if (preferredTotal <= bounds.height) return stackRects(bounds, ids.length);
-  let row = bounds.row;
-  return ids.map((id, index) => {
-    const height = preferred[index] ?? preferredPanelHeight(id, bounds.width);
-    const rect = { column: bounds.column, row, width: bounds.width, height };
-    row += height + gap;
-    return rect;
+  const densityOffset = tileDensity.peek() * 4;
+  const layout = tileRects(bounds, {
+    itemCount: visible.length,
+    minTileWidth: Math.max(26, 38 - densityOffset),
+    minTileHeight: 10,
+    maxColumns: bounds.width >= 172 ? 4 : 3,
+    targetAspectRatio: 2.25 + tileDensity.peek() * 0.12,
+    allowVerticalOverflow: true,
+    gap: 1,
   });
-}
-
-function preferredPanelHeight(id: PanelId, width: number): number {
-  if (id === "controls") return width < 56 ? 22 : 18;
-  if (id === "data") return 12;
-  if (id === "logs") return 12;
-  return 11;
+  for (const [index, id] of visible.entries()) {
+    const rect = layout.rects[index];
+    if (rect) rects.set(id, rect);
+  }
+  return { bounds, contentHeight: Math.max(bounds.height, layout.contentHeight), rects };
 }
 
 function translateWorkspaceHits(startIndex: number, columnDelta: number, rowDelta: number, clip: Rectangle): void {
@@ -681,6 +947,104 @@ function renderWorkspaceScrollbar(frame: string[], bounds: Rectangle, contentHei
   }
 }
 
+function renderDropdownOverlay(frame: string[]): void {
+  const overlay = dropdownOverlay;
+  if (!overlay || overlay.items.length === 0) return;
+  const rect = clipRect(overlay.rect, { column: 0, row: 0, width: cols(), height: rowsCount() });
+  if (rect.width < 8 || rect.height < 1) return;
+  fillRect(frame, rect, theme().panelAlt);
+  write(
+    frame,
+    rect.row,
+    rect.column,
+    paint(`┌${"─".repeat(Math.max(0, rect.width - 2))}┐`, theme().accent, theme().panelAlt, true),
+  );
+  for (const [index, item] of overlay.items.entries()) {
+    const row = rect.row + 1 + index;
+    if (row >= rect.row + rect.height - 1) break;
+    const selected = overlay.selectedIndex === index;
+    const marker = selected ? "●" : "○";
+    write(
+      frame,
+      row,
+      rect.column,
+      paint(
+        `│ ${fit(`${marker} ${item}`, rect.width - 4)} │`,
+        selected ? contrastText(theme().warn, theme().bg, theme().text) : theme().text,
+        selected ? theme().warn : theme().panelAlt,
+        selected,
+      ),
+    );
+    hitTargets.push({
+      rect: { column: rect.column + 1, row, width: Math.max(0, rect.width - 2), height: 1 },
+      hit: { type: "theme", index },
+    });
+  }
+  write(
+    frame,
+    rect.row + rect.height - 1,
+    rect.column,
+    paint(`└${"─".repeat(Math.max(0, rect.width - 2))}┘`, theme().accent, theme().panelAlt, true),
+  );
+}
+
+function renderModalOverlay(frame: string[]): void {
+  if (!modal.openState.peek()) return;
+  hitTargets.push({
+    rect: { column: 0, row: 0, width: cols(), height: rowsCount() },
+    hit: { type: "modalAction", index: -1 },
+  });
+  const inspection = modal.inspect();
+  const width = Math.min(Math.max(38, cols() - 8), 74);
+  const contentHeight = modalContentHeight(inspection, width);
+  const height = Math.min(Math.max(9, contentHeight), Math.max(7, rowsCount() - 6));
+  const rect = {
+    column: Math.max(0, Math.floor((cols() - width) / 2)),
+    row: Math.max(1, Math.floor((rowsCount() - height) / 2)),
+    width,
+    height,
+  };
+  const shadow = clipRect({ column: rect.column + 2, row: rect.row + 1, width: rect.width, height: rect.height }, {
+    column: 0,
+    row: 0,
+    width: cols(),
+    height: rowsCount(),
+  });
+  if (shadow.width > 0 && shadow.height > 0) fillRect(frame, shadow, theme().bg);
+  fillRect(frame, rect, theme().panelAlt);
+  drawFrame(frame, rect, inspection.title, true);
+  const inner = { column: rect.column + 1, row: rect.row + 1, width: rect.width - 2, height: rect.height - 2 };
+  const rows = renderModalRows(inspection, { width: rect.width, height: inner.height });
+  for (let index = 0; index < rows.length && index < inner.height; index += 1) {
+    const actionRow = inspection.actions.length > 0 && index === rows.length - 1;
+    const titleRow = index === 0;
+    write(
+      frame,
+      inner.row + index,
+      inner.column,
+      paint(
+        fit(actionRow ? "" : rows[index]!, inner.width),
+        titleRow ? theme().accent : theme().text,
+        actionRow ? theme().panel : theme().panelAlt,
+        actionRow || titleRow,
+      ),
+    );
+  }
+  if (inspection.actions.length === 0 || rows.length === 0) return;
+  const actionRow = inner.row + Math.min(rows.length, inner.height) - 1;
+  let column = inner.column;
+  for (const [index, action] of inspection.actions.entries()) {
+    const width = textWidth(buttonText(action.label));
+    if (column + width > inner.column + inner.width) break;
+    writeButton(frame, actionRow, column, action.label, {
+      state: action.disabled ? "disabled" : index === inspection.selectedActionIndex ? "active" : "base",
+      tone: action.destructive ? "danger" : "default",
+    });
+    hitTargets.push({ rect: { column, row: actionRow, width, height: 1 }, hit: { type: "modalAction", index } });
+    column += width + 1;
+  }
+}
+
 function ensureActivePanelVisible(
   layout: { bounds: Rectangle; contentHeight: number; rects: Map<PanelId, Rectangle> },
   viewportHeight: number,
@@ -710,22 +1074,6 @@ function ensureActivePanelVisible(
   }
 }
 
-function stackRects(rect: Rectangle, count: number): Rectangle[] {
-  if (count <= 0) return [];
-  const gap = rect.height >= count * 5 ? 1 : 0;
-  const available = Math.max(0, rect.height - gap * (count - 1));
-  let row = rect.row;
-  let remaining = available;
-  return Array.from({ length: count }, (_, index) => {
-    const slots = count - index;
-    const height = index === count - 1 ? remaining : Math.max(4, Math.floor(remaining / slots));
-    const next = { column: rect.column, row, width: rect.width, height };
-    row += height + gap;
-    remaining = Math.max(0, remaining - height);
-    return next;
-  });
-}
-
 function panelLineStyle(id: PanelId, index: number): { fg: string; bg: string; bold?: boolean } {
   const t = theme();
   if (id === "data" && index === 0) {
@@ -744,6 +1092,108 @@ function push(message: string): void {
   log.value = [...log.peek(), `${new Date().toLocaleTimeString()} ${message}`].slice(-40);
 }
 
+function openWorkbenchModal(): void {
+  themeMenuOpen.value = false;
+  modal.open({
+    title: "Confirm Action",
+    tone: "confirm",
+    body: [
+      "Modal windows sit above the browser workbench and use the same renderer-neutral controller as terminal modals.",
+      "Keyboard focus is trapped while the modal is open. Use Tab, arrows, Enter, Escape, or click an action.",
+    ],
+    actions: [
+      { id: "cancel", label: "Cancel" },
+      { id: "details", label: "Details" },
+      { id: "confirm", label: "Confirm", default: true },
+    ],
+  });
+  push("modal opened");
+}
+
+function openHelpModal(): void {
+  themeMenuOpen.value = false;
+  modal.open({
+    title: "Web Workbench Help",
+    tone: "info",
+    body: [
+      "Keyboard: Tab cycles panels. Use 1-6 to focus Explorer, Inspector, Data, Controls, Logs, and Three ASCII.",
+      "Use M to minimize, F or Enter to maximize/restore, R to restore all panels, T for themes, H for help, and Q to quit.",
+      "Controls: arrow keys adjust sliders, radio groups, combo boxes, steppers, and dropdowns. Enter or Space activates.",
+      "Mouse: click panels to focus, click rows to select, click controls to change values, and click scrollbars to jump.",
+      "Resize the browser. The same tiled layout helper used by the terminal workbench recomputes panel geometry.",
+    ],
+    actions: [
+      { id: "dismiss", label: "Dismiss", default: true },
+      { id: "controls", label: "Focus Controls" },
+    ],
+  });
+  push("help opened");
+}
+
+function openQuitModal(): void {
+  themeMenuOpen.value = false;
+  modal.open({
+    title: "Close Web Workbench?",
+    tone: "warning",
+    body: [
+      "Hide the API workbench browser demo?",
+      "This only removes the demo host from the page; reload the page to mount it again.",
+    ],
+    actions: [
+      { id: "cancel", label: "Cancel" },
+      { id: "quit", label: "Close", destructive: true, default: true },
+    ],
+  });
+  push("quit confirmation");
+}
+
+function applyModalAction(actionId: string): void {
+  if (actionId === "details") {
+    modal.open({
+      title: "Modal Details",
+      tone: "info",
+      body: [
+        "ModalController owns open state, body rows, action focus, and keyboard behavior.",
+        "The browser renderer adds a centered overlay, backdrop click blocking, and theme-aware action buttons.",
+      ],
+      actions: [
+        { id: "back", label: "Back" },
+        { id: "confirm", label: "Confirm", default: true },
+        { id: "dismiss", label: "Dismiss" },
+      ],
+    });
+    push("modal details");
+    return;
+  }
+  if (actionId === "back") {
+    openWorkbenchModal();
+    return;
+  }
+  if (actionId === "confirm") {
+    modal.open({
+      title: "Action Confirmed",
+      tone: "success",
+      body: "The web modal action completed.",
+      actions: [{ id: "dismiss", label: "Dismiss", default: true }],
+    });
+    push("modal confirmed");
+    return;
+  }
+  if (actionId === "controls") {
+    modal.close();
+    focus("controls");
+    return;
+  }
+  if (actionId === "quit") {
+    mount.style.display = "none";
+    modal.close();
+    push("web workbench hidden");
+    return;
+  }
+  modal.close();
+  push(`modal ${actionId}`);
+}
+
 function renderControls(frame: string[], rect: Rectangle): void {
   let row = rect.row;
   const t = theme();
@@ -756,21 +1206,51 @@ function renderControls(frame: string[], rect: Rectangle): void {
       action?: ControlHitAction;
       indent?: boolean;
       index?: number;
+      button?: boolean;
     } = {},
   ) => {
     if (row >= rect.row + rect.height) return;
     const selected = activeControl.peek() === id;
-    write(
-      frame,
-      row,
-      rect.column,
-      paint(
-        fit(`${selected && !options.indent ? ">" : " "} ${options.indent ? "  " : ""}${value}`, rect.width),
-        selected ? t.bg : t.text,
-        selected ? t.warn : t.surface,
-        selected,
-      ),
-    );
+    const prefix = `${selected && !options.indent ? ">" : " "} ${options.indent ? "  " : ""}`;
+    if (options.button) {
+      const match = /^(\[[^\]]+\])(.*)$/.exec(value);
+      const button = match?.[1] ?? value;
+      const detail = match?.[2] ?? "";
+      write(frame, row, rect.column, paint(" ".repeat(rect.width), t.text, t.surface));
+      write(
+        frame,
+        row,
+        rect.column,
+        paint(fit(prefix, rect.width), selected ? t.bg : t.text, selected ? t.warn : t.surface, selected),
+      );
+      let column = rect.column + textWidth(prefix);
+      const buttonWidth = Math.max(0, rect.width - textWidth(prefix));
+      writeButton(frame, row, column, button.replace(/^\[\s*|\s*\]$/g, ""), {
+        state: selected ? "active" : "base",
+        maxWidth: buttonWidth,
+      });
+      column += Math.min(textWidth(button), buttonWidth);
+      if (column < rect.column + rect.width) {
+        write(
+          frame,
+          row,
+          column,
+          paint(fit(detail, rect.column + rect.width - column), selected ? t.warn : t.text, t.surface, selected),
+        );
+      }
+    } else {
+      write(
+        frame,
+        row,
+        rect.column,
+        paint(
+          fit(`${prefix}${value}`, rect.width),
+          selected ? t.bg : t.text,
+          selected ? t.warn : t.surface,
+          selected,
+        ),
+      );
+    }
     hitTargets.push({
       rect: { column: rect.column, row, width: rect.width, height: 1 },
       hit: { type: "control", id, action: options.action ?? "activate", index: options.index },
@@ -798,8 +1278,13 @@ function renderControls(frame: string[], rect: Rectangle): void {
   const progressWidth = Math.max(8, Math.min(18, rect.width - 18));
   const progressFilled = Math.round(progress.ratio() * progressWidth);
   const progressTrack = `${"█".repeat(progressFilled)}${"░".repeat(progressWidth - progressFilled)}`;
-  writeControl("button", `[ Run Action ] presses=${actionButton.pressCount.peek()}`);
-  writeControl("genericButton", `[ Generic Button ] presses=${genericButton.pressCount.peek()}`);
+  writeControl("button", `${buttonText("Run Action")} presses=${actionButton.pressCount.peek()}`, { button: true });
+  writeControl("genericButton", `${buttonText("Generic Button")} presses=${genericButton.pressCount.peek()}`, {
+    button: true,
+  });
+  writeControl("modal", `${buttonText("Open Modal")} state=${modal.openState.peek() ? "open" : "closed"}`, {
+    button: true,
+  });
   writeControl("slider", `Slider    ${sliderTrack} ${slider.value.peek()}/10`, {
     previous: true,
     next: true,
@@ -808,25 +1293,18 @@ function renderControls(frame: string[], rect: Rectangle): void {
     rect: { column: rect.column + 12, row: row - 1, width: 10, height: 1 },
     hit: { type: "control", id: "slider", action: "set" },
   });
-  writeControl(
-    "checkbox",
-    `Checkboxes  ${renderCheckBoxMark(live.checked.peek())} live preview  ${
-      renderCheckBoxMark(compact.checked.peek())
-    } compact rows`,
-  );
-  hitTargets.push({
-    rect: { column: rect.column + 13, row: row - 1, width: 16, height: 1 },
-    hit: { type: "control", id: "checkbox", action: "activate", index: 0 },
-  });
-  hitTargets.push({
-    rect: { column: rect.column + 29, row: row - 1, width: 16, height: 1 },
-    hit: { type: "control", id: "checkbox", action: "next", index: 1 },
-  });
-  writeControl("radio", `Radio     ${renderInlineRadioOptions()}`, {
+  writeControl("checkbox", "Checkboxes");
+  writeControl("checkbox", `${renderCheckBoxMark(live.checked.peek())} live preview`, { indent: true, index: 0 });
+  writeControl("checkbox", `${renderCheckBoxMark(compact.checked.peek())} compact rows`, { indent: true, index: 1 });
+  writeControl("radio", "Radio", {
     previous: true,
     next: true,
   });
-  addInlineRadioHits(rect, row - 1);
+  for (const [index, option] of radio.options.peek().entries()) {
+    const mark = option.value === radio.selectedValue.peek() ? "●" : "○";
+    const cursor = index === radio.activeIndex.peek() ? ">" : " ";
+    writeControl("radio", `${cursor} ${mark} ${option.label}`, { indent: true, index });
+  }
   writeControl("combo", `Theme combo  ${combo.expanded.peek() ? "v" : ">"} ${combo.label()}`, {
     previous: true,
     next: true,
@@ -837,13 +1315,15 @@ function renderControls(frame: string[], rect: Rectangle): void {
     action: "toggle",
   });
   if (dropdown.expanded.peek()) {
-    for (const [index, item] of dropdown.items.peek().entries()) {
-      writeControl("dropdown", `${dropdown.selectedIndex.peek() === index ? "●" : "○"} ${item}`, {
-        indent: true,
-        action: "activate",
-        index,
-      });
-    }
+    renderControlDropdownPopover(frame, {
+      column: rect.column + 2,
+      row,
+      width: Math.min(
+        Math.max(16, Math.max(...dropdown.items.peek().map((item) => textWidth(item))) + 6),
+        Math.max(16, rect.width - 4),
+      ),
+      height: dropdown.items.peek().length + 2,
+    });
   }
   writeControl("input", `Input     ${input.text.peek()}${activeControl.peek() === "input" ? "|" : ""}`, {
     action: "focus",
@@ -978,33 +1458,6 @@ function wrappedOptionRowCount(items: readonly string[], width: number): number 
   return rows;
 }
 
-function renderInlineRadioOptions(): string {
-  const options = radio.options.peek();
-  const active = radio.activeIndex.peek();
-  const selected = radio.selectedValue.peek();
-  return options.map((option, index) => {
-    const cursor = index === active ? ">" : " ";
-    const mark = option.value === selected ? "●" : "○";
-    return `${cursor} ${mark} ${option.label}`;
-  }).join("  ");
-}
-
-function addInlineRadioHits(rect: Rectangle, row: number): void {
-  let column = rect.column + 12;
-  for (const [index, option] of radio.options.peek().entries()) {
-    const width = textWidth(
-      `${index === radio.activeIndex.peek() ? ">" : " "} ${
-        option.value === radio.selectedValue.peek() ? "●" : "○"
-      } ${option.label}`,
-    );
-    hitTargets.push({
-      rect: { column, row, width, height: 1 },
-      hit: { type: "control", id: "radio", action: "activate", index },
-    });
-    column += width + 2;
-  }
-}
-
 function addInlineStepperHits(rect: Rectangle, row: number): void {
   const steps = stepper.steps.peek();
   let column = rect.column + 12;
@@ -1019,6 +1472,43 @@ function addInlineStepperHits(rect: Rectangle, row: number): void {
     });
     column += width + 3;
   }
+}
+
+function renderControlDropdownPopover(frame: string[], rect: Rectangle): void {
+  const t = theme();
+  fillRect(frame, rect, t.panelAlt);
+  write(
+    frame,
+    rect.row,
+    rect.column,
+    paint(`┌${"─".repeat(Math.max(0, rect.width - 2))}┐`, t.accent, t.panelAlt, true),
+  );
+  for (const [index, item] of dropdown.items.peek().entries()) {
+    const selected = dropdown.selectedIndex.peek() === index;
+    const marker = selected ? "●" : "○";
+    const row = rect.row + 1 + index;
+    write(
+      frame,
+      row,
+      rect.column,
+      paint(
+        `│ ${fit(`${marker} ${item}`, rect.width - 4)} │`,
+        selected ? contrastText(t.warn, t.bg, t.text) : t.text,
+        selected ? t.warn : t.panelAlt,
+        selected,
+      ),
+    );
+    hitTargets.push({
+      rect: { column: rect.column + 1, row, width: Math.max(0, rect.width - 2), height: 1 },
+      hit: { type: "control", id: "dropdown", action: "activate", index },
+    });
+  }
+  write(
+    frame,
+    rect.row + rect.height - 1,
+    rect.column,
+    paint(`└${"─".repeat(Math.max(0, rect.width - 2))}┘`, t.accent, t.panelAlt, true),
+  );
 }
 
 function applyControlHit(
@@ -1036,6 +1526,7 @@ function applyControlHit(
   }
   if (id === "button") actionButton.press("mouse");
   else if (id === "genericButton") genericButton.press("mouse");
+  else if (id === "modal") modalButton.press("mouse");
   else if (id === "slider") {
     if (action === "set" && rect && x !== undefined) setSliderFromPointer(slider, rect, x);
     else action === "previous" ? slider.decrement() : slider.increment();
@@ -1112,6 +1603,7 @@ function controlAt(delta: number): ControlId {
   const ids: ControlId[] = [
     "button",
     "genericButton",
+    "modal",
     "slider",
     "checkbox",
     "radio",
@@ -1149,6 +1641,73 @@ function fillRect(frame: string[], rect: Rectangle, bg: string): void {
     write(frame, row, rect.column, paint(" ".repeat(Math.max(0, rect.width)), theme().text, bg));
   }
 }
+
+function drawFrame(frame: string[], rect: Rectangle, title: string, selected: boolean): void {
+  const border = selected ? theme().accent : theme().borderStrong;
+  const bg = selected ? theme().panelAlt : theme().panel;
+  write(frame, rect.row, rect.column, paint(`┌${"─".repeat(Math.max(0, rect.width - 2))}┐`, border, bg, selected));
+  for (let row = rect.row + 1; row < rect.row + rect.height - 1; row += 1) {
+    write(frame, row, rect.column, paint("│", border, bg, selected));
+    write(frame, row, rect.column + rect.width - 1, paint("│", border, bg, selected));
+  }
+  write(
+    frame,
+    rect.row + rect.height - 1,
+    rect.column,
+    paint(`└${"─".repeat(Math.max(0, rect.width - 2))}┘`, border, bg, selected),
+  );
+  write(
+    frame,
+    rect.row,
+    rect.column + 2,
+    paint(` ${title.toUpperCase()} `, theme().bg, selected ? theme().accent : theme().border, true),
+  );
+}
+
+function buttonText(label: string, compact = false): string {
+  const safeLabel = label.trim();
+  return compact ? `[${safeLabel}]` : `[ ${safeLabel} ]`;
+}
+
+function writeButton(
+  frame: string[],
+  row: number,
+  column: number,
+  label: string,
+  options: {
+    state?: "base" | "active" | "disabled";
+    tone?: ButtonTone;
+    compact?: boolean;
+    maxWidth?: number;
+  } = {},
+): number {
+  const text = buttonText(label, options.compact);
+  const width = Math.max(0, Math.min(textWidth(text), options.maxWidth ?? textWidth(text)));
+  if (width <= 0) return 0;
+  const style = buttonPaintOptions(options.state ?? "base", options.tone ?? "default");
+  write(frame, row, column, paint(fit(text, width), style.fg, style.bg, style.bold));
+  return width;
+}
+
+function buttonPaintOptions(
+  state: "base" | "active" | "disabled" = "base",
+  tone: ButtonTone = "default",
+): { fg: string; bg: string; bold: boolean } {
+  if (state === "disabled") return { fg: theme().muted, bg: theme().buttonMutedBg, bold: false };
+  const toneBg = tone === "danger"
+    ? theme().danger
+    : tone === "warning"
+    ? theme().warn
+    : tone === "success"
+    ? theme().good
+    : tone === "muted"
+    ? theme().border
+    : undefined;
+  if (toneBg) return { fg: contrastText(toneBg, theme().bg, theme().text), bg: toneBg, bold: true };
+  const bg = state === "active" ? theme().buttonActiveBg : theme().buttonBg;
+  return { fg: contrastText(bg, theme().bg, theme().text), bg, bold: true };
+}
+
 function paint(value: string, fg = theme().text, bg = theme().bg, bold = false): string {
   return makeStyle({ fg, bg, bold })(value);
 }

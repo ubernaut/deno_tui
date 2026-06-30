@@ -820,93 +820,121 @@ var BoxObject = class extends DrawObject {
 // src/utils/strings.ts
 var UNICODE_CHAR_REGEXP = /\ud83c[\udffb-\udfff](?=\ud83c[\udffb-\udfff])|(?:(?:\ud83c\udff4\udb40\udc67\udb40\udc62\udb40(?:\udc65|\udc73|\udc77)\udb40(?:\udc6e|\udc63|\udc6c)\udb40(?:\udc67|\udc74|\udc73)\udb40\udc7f)|[^\ud800-\udfff][\u0300-\u036f\ufe20-\ufe2f\u20d0-\u20ff\u1ab0-\u1aff\u1dc0-\u1dff]?|[\u0300-\u036f\ufe20-\ufe2f\u20d0-\u20ff\u1ab0-\u1aff\u1dc0-\u1dff]|(?:\ud83c[\udde6-\uddff]){2}|[\ud800-\udbff][\udc00-\udfff]|[\ud800-\udfff])[\ufe0e\ufe0f]?(?:[\u0300-\u036f\ufe20-\ufe2f\u20d0-\u20ff\u1ab0-\u1aff\u1dc0-\u1dff]|\ud83c[\udffb-\udfff])?(?:\u200d(?:[^\ud800-\udfff]|(?:\ud83c[\udde6-\uddff]){2}|[\ud800-\udbff][\udc00-\udfff])[\ufe0e\ufe0f]?(?:[\u0300-\u036f\ufe20-\ufe2f\u20d0-\u20ff\u1ab0-\u1aff\u1dc0-\u1dff]|\ud83c[\udffb-\udfff])?)*/g;
 var empty = [];
+var ESC_PATTERN = "\\x1b";
+var BEL_PATTERN = "\\x07";
+var CSI_SEQUENCE_REGEXP = new RegExp(`^${ESC_PATTERN}\\[[0-?]*[ -/]*[@-~]`);
+var ANSI_SEQUENCE_REGEXP = new RegExp(
+  `^${ESC_PATTERN}(?:\\[[0-?]*[ -/]*[@-~]|\\][^${BEL_PATTERN}]*(?:${BEL_PATTERN}|${ESC_PATTERN}\\\\))`
+);
+var STRIP_CSI_SEQUENCE_REGEXP = new RegExp(`${ESC_PATTERN}\\[[0-?]*[ -/]*[@-~]`, "g");
+var STRIP_OSC_SEQUENCE_REGEXP = new RegExp(
+  `${ESC_PATTERN}\\][^${BEL_PATTERN}]*(?:${BEL_PATTERN}|${ESC_PATTERN}\\\\)`,
+  "g"
+);
 function getMultiCodePointCharacters(text) {
   if (!text) return empty;
-  const matched = text.match(UNICODE_CHAR_REGEXP);
-  if (matched?.includes("\x1B")) {
-    const arr = [];
-    let i = 0;
-    let ansi = 0;
-    let lastStyle = "";
-    for (const char of matched) {
-      arr[i] ??= "";
-      arr[i] += lastStyle + char;
-      if (char === "\x1B") {
-        ++ansi;
-        lastStyle += "\x1B";
-      } else if (ansi) {
-        lastStyle += char;
-        if (ansi === 3 && char === "m" && lastStyle[lastStyle.length - 2] === "0") {
-          lastStyle = "";
-        }
-        if (char === "m") {
-          ansi = 0;
-        } else {
-          ++ansi;
-        }
-      } else {
-        ++i;
-      }
-    }
-    return arr;
+  if (text.includes("\x1B")) {
+    return getStyledCharacters(text);
   }
+  const matched = text.match(UNICODE_CHAR_REGEXP);
   return matched ?? empty;
 }
-function stripStyles(string) {
-  let stripped = "";
-  let ansi = false;
-  const len = string.length;
-  for (let i = 0; i < len; ++i) {
-    const char = string[i];
-    if (char === "\x1B") {
-      ansi = true;
-      i += 2;
-    } else if (char === "m" && ansi) {
-      ansi = false;
-    } else if (!ansi) {
-      stripped += char;
+function getStyledCharacters(text) {
+  const cells = [];
+  let style = "";
+  for (let index = 0; index < text.length; ) {
+    if (text.charCodeAt(index) === 27) {
+      const match2 = CSI_SEQUENCE_REGEXP.exec(text.slice(index));
+      if (match2) {
+        const sequence = match2[0];
+        if (sequence.endsWith("m")) {
+          style = isSgrReset(sequence) ? "" : style + sequence;
+        }
+        index += sequence.length;
+        continue;
+      }
     }
+    UNICODE_CHAR_REGEXP.lastIndex = 0;
+    const match = UNICODE_CHAR_REGEXP.exec(text.slice(index));
+    const char = match?.index === 0 ? match[0] : String.fromCodePoint(text.codePointAt(index) ?? text.charCodeAt(index));
+    cells.push(style ? `${style}${char}\x1B[0m` : char);
+    index += char.length;
   }
-  return stripped;
+  return cells;
+}
+function isSgrReset(sequence) {
+  const body = sequence.slice(2, -1);
+  return body === "" || body === "0";
+}
+function stripStyles(string) {
+  return string.replace(STRIP_CSI_SEQUENCE_REGEXP, "").replace(STRIP_OSC_SEQUENCE_REGEXP, "");
 }
 function textWidth(text, start = 0) {
   if (!text) return 0;
   let width = 0;
-  let ansi = false;
-  const len = text.length;
-  loop: for (let i = start; i < len; ++i) {
-    const char = text[i];
-    switch (char) {
-      case "\x1B":
-        ansi = true;
-        i += 2;
-        break;
-      case "\n":
-        break loop;
-      default:
-        if (!ansi) {
-          width += characterWidth(char);
-        } else if (isFinalAnsiByte(char)) {
-          ansi = false;
-        }
-        break;
-    }
+  for (const cell of iterateTextCells(start > 0 ? text.slice(start) : text)) {
+    if (cell.plain === "\n") break;
+    width += characterWidth(cell.plain);
   }
   return width;
 }
-function isFinalAnsiByte(character) {
-  const codePoint = character.charCodeAt(0);
-  return codePoint >= 64 && codePoint < 112;
+function* iterateTextCells(text) {
+  let index = 0;
+  let prefix = "";
+  while (index < text.length) {
+    if (text.charCodeAt(index) === 27) {
+      const sequence = ANSI_SEQUENCE_REGEXP.exec(text.slice(index))?.[0];
+      if (sequence) {
+        prefix += sequence;
+        index += sequence.length;
+        continue;
+      }
+    }
+    const char = nextTextCharacter(text, index);
+    yield { raw: prefix + char, plain: char };
+    prefix = "";
+    index += char.length;
+  }
+  if (prefix) {
+    yield { raw: prefix, plain: "" };
+  }
+}
+function nextTextCharacter(text, index) {
+  UNICODE_CHAR_REGEXP.lastIndex = 0;
+  const match = UNICODE_CHAR_REGEXP.exec(text.slice(index));
+  if (match?.index === 0) return match[0];
+  return String.fromCodePoint(text.codePointAt(index) ?? text.charCodeAt(index));
 }
 function characterWidth(character) {
-  const codePoint = character.charCodeAt(0);
-  if (codePoint === 55358 || codePoint === 8203) {
+  const plain = stripStyles(character);
+  if (!plain) return 0;
+  const codePoints = [...plain].map((char) => char.codePointAt(0) ?? 0);
+  if (codePoints.some((codePoint2) => codePoint2 === 8205)) return 2;
+  if (codePoints.length === 2 && codePoints.every(isRegionalIndicator)) return 2;
+  if (codePoints.some((codePoint2) => codePoint2 === 65039) && codePoints.some(isEmojiSymbol)) return 2;
+  const codePoint = codePoints[0] ?? 0;
+  if (codePoint === 8203 || codePoint === 8205 || isCombiningMark(codePoint) || isVariationSelector(codePoint) || isEmojiModifier(codePoint)) {
     return 0;
   }
-  if (codePoint >= 4352 && (codePoint <= 4447 || codePoint === 9001 || codePoint === 9002 || 11904 <= codePoint && codePoint <= 12871 && codePoint !== 12351 || 12880 <= codePoint && codePoint <= 19903 || 19968 <= codePoint && codePoint <= 42182 || 43360 <= codePoint && codePoint <= 43388 || 44032 <= codePoint && codePoint <= 55203 || 63744 <= codePoint && codePoint <= 64255 || 65040 <= codePoint && codePoint <= 65049 || 65072 <= codePoint && codePoint <= 65131 || 65281 <= codePoint && codePoint <= 65376 || 65504 <= codePoint && codePoint <= 65510 || 110592 <= codePoint && codePoint <= 110593 || 127488 <= codePoint && codePoint <= 127569 || 131072 <= codePoint && codePoint <= 262141)) {
+  if (codePoint >= 4352 && (codePoint <= 4447 || codePoint === 9001 || codePoint === 9002 || 11904 <= codePoint && codePoint <= 12871 && codePoint !== 12351 || 12880 <= codePoint && codePoint <= 19903 || 19968 <= codePoint && codePoint <= 42182 || 43360 <= codePoint && codePoint <= 43388 || 44032 <= codePoint && codePoint <= 55203 || 63744 <= codePoint && codePoint <= 64255 || 65040 <= codePoint && codePoint <= 65049 || 65072 <= codePoint && codePoint <= 65131 || 65281 <= codePoint && codePoint <= 65376 || 65504 <= codePoint && codePoint <= 65510 || 110592 <= codePoint && codePoint <= 110593 || 126976 <= codePoint && codePoint <= 129791 || 127488 <= codePoint && codePoint <= 127569 || 131072 <= codePoint && codePoint <= 262141)) {
     return 2;
   }
   return 1;
+}
+function isCombiningMark(codePoint) {
+  return 768 <= codePoint && codePoint <= 879 || 6832 <= codePoint && codePoint <= 6911 || 7616 <= codePoint && codePoint <= 7679 || 8400 <= codePoint && codePoint <= 8447 || 65056 <= codePoint && codePoint <= 65071;
+}
+function isVariationSelector(codePoint) {
+  return 65024 <= codePoint && codePoint <= 65039 || 917760 <= codePoint && codePoint <= 917999;
+}
+function isEmojiModifier(codePoint) {
+  return 127995 <= codePoint && codePoint <= 127999;
+}
+function isRegionalIndicator(codePoint) {
+  return 127462 <= codePoint && codePoint <= 127487;
+}
+function isEmojiSymbol(codePoint) {
+  return 9728 <= codePoint && codePoint <= 10175 || 126976 <= codePoint && codePoint <= 129791;
 }
 
 // src/canvas/text.ts
@@ -1875,7 +1903,10 @@ var BrowserInputSource = class {
       addListener(this.#target, "pointermove", (event) => this.#handlePointerMove(event)),
       addListener(this.#target, "pointerup", (event) => this.#handlePointer(event, true)),
       addListener(this.#target, "pointercancel", (event) => this.#handlePointer(event, true)),
-      addListener(this.#target, "wheel", (event) => this.#handleWheel(event))
+      addListener(this.#target, "wheel", (event) => this.#handleWheel(event)),
+      addListener(this.#target, "paste", (event) => this.#handlePaste(event)),
+      addListener(this.#target, "focus", () => this.#handleFocus(true)),
+      addListener(this.#target, "blur", () => this.#handleFocus(false))
     ];
     this.#attached = true;
   }
@@ -1962,6 +1993,22 @@ var BrowserInputSource = class {
       scroll: event.deltaY > 0 ? 1 : event.deltaY < 0 ? -1 : 0
     });
     event.preventDefault();
+  }
+  #handlePaste(event) {
+    const text = event.clipboardData?.getData("text") ?? "";
+    this.#emitter?.emit("paste", {
+      key: "paste",
+      text,
+      buffer: new TextEncoder().encode(text)
+    });
+    event.preventDefault();
+  }
+  #handleFocus(focused) {
+    this.#emitter?.emit("terminalFocus", {
+      key: "focus",
+      focused,
+      buffer: new Uint8Array()
+    });
   }
   #cellPosition(event) {
     const rect = this.#target.getBoundingClientRect();
@@ -2302,6 +2349,7 @@ function buildAsciiOptionsFromPreset(presetId, border) {
     blendWithBase: effect.blendWithBase ?? 0.24,
     depthFalloff: effect.depthFalloff ?? 0.18,
     depthOffset: effect.depthOffset ?? 110,
+    wireframeThickness: 8,
     edges: effect.edges ?? true,
     fill: effect.fill ?? true,
     invertLuminance: effect.invertLuminance ?? false
@@ -2636,6 +2684,30 @@ var monitorVisualizations = [
     description: "Bottom-style CPU overview and history plot."
   },
   { id: "cpu-legend", name: "CPU Legend", accent: "signal", description: "Per-core legend wall." },
+  {
+    id: "cpu-hex-grid",
+    name: "CPU Hex Grid",
+    accent: "signal",
+    description: "Per-core hex tile activity map with truecolor load shading."
+  },
+  {
+    id: "gpu-combined-monitor",
+    name: "GPU Fusion",
+    accent: "violet",
+    description: "Combined GPU chip and VRAM pressure view."
+  },
+  {
+    id: "gpu-chip-monitor",
+    name: "GPU Chip",
+    accent: "violet",
+    description: "GPU utilization, thermals, power, and clocks."
+  },
+  {
+    id: "gpu-memory-monitor",
+    name: "GPU Memory",
+    accent: "phosphor",
+    description: "Dedicated GPU memory bank pressure."
+  },
   { id: "memory-monitor", name: "Memory Monitor", accent: "phosphor", description: "Memory, swap, and load pressure." },
   { id: "temperature-monitor", name: "Temperature Monitor", accent: "violet", description: "Thermal zone readout." },
   { id: "disk-monitor", name: "Disk Monitor", accent: "amber", description: "Filesystem capacity board." },
@@ -2703,6 +2775,25 @@ var visualizations = [
   })
 ];
 var visualizationMap = new Map(visualizations.map((entry) => [entry.id, entry]));
+var neonDemoIds = new Set(demos.map((demo) => demo.id));
+var textOnlyNeonDemoIds = /* @__PURE__ */ new Set(["warning-stack", "event-log", "component-index"]);
+var ngePrimitiveSceneModes = {
+  "counter-board": "counter",
+  "profile-card": "plug",
+  "live-feed": "surveillance",
+  "channel-matrix": "relay",
+  "telemetry-rack": "rack",
+  "biosignal-strip": "biosignal",
+  "harmonic-graph": "harmonic",
+  "psychograph": "psychograph",
+  "field-ring": "field",
+  "hex-heatmap": "heat",
+  "magi-board": "magi",
+  "route-board": "route",
+  "gate-status": "gate",
+  "tactical-map": "command",
+  "network-topology": "topology"
+};
 function renderVisualization(context) {
   const descriptor = visualizationMap.get(context.slot.visualizationId) ?? visualizations[0];
   const panel = (() => {
@@ -2725,6 +2816,14 @@ function renderVisualization(context) {
         return renderCpuMonitor(context);
       case "cpu-legend":
         return renderCpuLegend(context);
+      case "cpu-hex-grid":
+        return renderCpuHexGrid(context);
+      case "gpu-combined-monitor":
+        return renderGpuCombinedMonitor(context);
+      case "gpu-chip-monitor":
+        return renderGpuChipMonitor(context);
+      case "gpu-memory-monitor":
+        return renderGpuMemoryMonitor(context);
       case "memory-monitor":
         return renderMemoryMonitor(context);
       case "temperature-monitor":
@@ -2775,16 +2874,45 @@ function renderVisualization(context) {
         return renderTelemetryRack(context);
     }
   })();
-  const footerBase = panel.footer || sourceFooter(context.sources);
+  const enhancedPanel = applyNgePrimitiveScene(context, panel);
+  const footerBase = enhancedPanel.footer || sourceFooter(context.sources);
   return {
     title: descriptor.name.toUpperCase(),
-    accent: panel.accent ?? descriptor.accent,
-    severity: panel.severity ?? "info",
-    alert: panel.alert ?? "",
-    body: panel.body,
+    accent: enhancedPanel.accent ?? descriptor.accent,
+    severity: enhancedPanel.severity ?? "info",
+    alert: enhancedPanel.alert ?? "",
+    body: enhancedPanel.body,
     footer: footerBase,
-    three: panel.three
+    three: enhancedPanel.three
   };
+}
+function applyNgePrimitiveScene(context, panel) {
+  const visualizationId = context.slot.visualizationId;
+  if (!neonDemoIds.has(visualizationId) || textOnlyNeonDemoIds.has(visualizationId)) {
+    return panel;
+  }
+  if (panel.three) {
+    return {
+      ...panel,
+      footer: appendSceneFooter(panel.footer, panel.three.mode, context.width)
+    };
+  }
+  const mode = ngePrimitiveSceneModes[visualizationId];
+  if (!mode) return panel;
+  const drive = buildVisualizationDrive(context, Math.max(32, context.width));
+  return {
+    ...panel,
+    footer: appendSceneFooter(panel.footer, mode, context.width),
+    three: {
+      mode,
+      signal: driveThreeSignal(context, drive, mode)
+    }
+  };
+}
+function appendSceneFooter(footer, mode, width) {
+  const suffix = `${modeLabel(mode)} PRIMITIVES`;
+  if (!footer) return suffix;
+  return `${crop(footer, Math.max(0, width - suffix.length - 3))} / ${suffix}`;
 }
 function buildVisualizationDrive(context, width = 48) {
   const sampleWidth = Math.max(8, width);
@@ -2929,16 +3057,347 @@ function renderCpuLegend(context) {
   const drive = buildVisualizationDrive(context, 24);
   const lines = [
     `TOTAL  ${formatPercent(context.system.cpuOverall)}`,
-    ...context.system.cpuCores.map(
-      (core) => `${core.label.padStart(3, "0")} ${miniMeter(core.usage / 100, 6, drive.hazard)} ${formatPercent(core.usage)}`
-    )
+    ...cpuLegendRows(context.system.cpuCores, context.width, drive.hazard)
   ];
   return {
-    body: lines.slice(0, Math.max(1, context.height)).join("\n"),
+    body: lines.join("\n"),
     footer: `CORES ${String(context.system.cpuCores.length).padStart(2, "0")}  LOAD ${(drive.current * 100).toFixed(0)}%`,
     alert: context.system.cpuOverall >= 88 ? "PULSE LIMIT" : drive.divergence >= 0.6 ? "CORE DESYNC" : "",
     accent: context.system.cpuOverall >= 88 ? "alarm" : drive.divergence >= 0.6 ? "amber" : "signal",
     severity: context.system.cpuOverall >= 88 ? "alarm" : drive.divergence >= 0.6 ? "warning" : "info"
+  };
+}
+var cpuHexColorStops = [
+  { percent: 0, rgb: [45, 112, 255] },
+  { percent: 25, rgb: [22, 214, 107] },
+  { percent: 50, rgb: [255, 226, 74] },
+  { percent: 75, rgb: [255, 159, 36] },
+  { percent: 100, rgb: [255, 66, 49] }
+];
+function cpuActivityRgb(percent) {
+  const value = Number.isFinite(percent) ? clamp(percent, 0, 100) : 0;
+  const upperIndex = cpuHexColorStops.findIndex((stop) => value <= stop.percent);
+  const upper = cpuHexColorStops[Math.max(0, upperIndex)] ?? cpuHexColorStops[cpuHexColorStops.length - 1];
+  const lower = cpuHexColorStops[Math.max(0, upperIndex - 1)] ?? upper;
+  const span = Math.max(1, upper.percent - lower.percent);
+  const position = clamp((value - lower.percent) / span, 0, 1);
+  return [
+    Math.round(lerp(lower.rgb[0], upper.rgb[0], position)),
+    Math.round(lerp(lower.rgb[1], upper.rgb[1], position)),
+    Math.round(lerp(lower.rgb[2], upper.rgb[2], position))
+  ];
+}
+function lerp(start, end, position) {
+  return start + (end - start) * position;
+}
+function cpuHexTileLayout(cores, width, height) {
+  if (cores.length === 0) return [];
+  const labelWidth = Math.max(3, ...cores.map((core) => core.label.length));
+  const mode = cpuHexTileMode(width, height, cores.length, labelWidth);
+  const tileWidth = cpuHexTileWidth(mode, labelWidth);
+  const tileHeight = cpuHexTileHeight(mode);
+  const columns = cpuHexColumns(width, tileWidth);
+  return cores.map((core, index) => {
+    const logicalRow = Math.floor(index / columns);
+    const columnIndex = index % columns;
+    const indent = logicalRow % 2 === 1 ? cpuHexIndent(width, tileWidth) : 0;
+    return {
+      core,
+      label: core.label,
+      column: indent + columnIndex * (tileWidth + 1),
+      row: logicalRow * tileHeight,
+      width: tileWidth,
+      height: tileHeight
+    };
+  });
+}
+function renderCpuHexGrid(context) {
+  const { system, width, height } = context;
+  const drive = buildVisualizationDrive(context, Math.max(width, 48));
+  const cores = system.cpuCores;
+  if (cores.length === 0) {
+    return {
+      body: "NO CORE DATA",
+      footer: `HOST ${system.hostname.toUpperCase()}  LOAD ${system.loadavg.map((value) => value.toFixed(2)).join("/")}`,
+      alert: "",
+      accent: "signal",
+      severity: "info"
+    };
+  }
+  const hotCore = cores.reduce((hot, core) => core.usage > hot.usage ? core : hot, cores[0]);
+  const selectedCore = selectedCpuCore(cores, context.selectedCpuLabel);
+  const lines = [
+    crop(
+      `AVG ${formatPercent(system.cpuOverall)}  CORES ${cores.length}  HOT CPU${hotCore.label} ${formatPercent(hotCore.usage)}`,
+      width
+    ),
+    cpuHexGradientLegend(width),
+    ...cpuHexGridRows(cores, width, height, selectedCore?.label),
+    "",
+    ...cpuHexSelectionLines(system, selectedCore, width)
+  ];
+  return {
+    body: lines.join("\n"),
+    footer: `HEX GRID  BLUE 0  GREEN 25  YELLOW 50  ORANGE 75  RED 100`,
+    alert: system.cpuOverall >= 88 ? "PULSE LIMIT" : drive.divergence >= 0.6 ? "CORE DESYNC" : "",
+    accent: system.cpuOverall >= 88 ? "alarm" : system.cpuOverall >= 72 ? "amber" : "signal",
+    severity: severityForValue(system.cpuOverall, 72, 88)
+  };
+}
+function cpuHexGradientLegend(width) {
+  const stops = [
+    ["0", 0],
+    ["25", 25],
+    ["50", 50],
+    ["75", 75],
+    ["100", 100]
+  ];
+  const full = `LOAD ${stops.map(([label, percent]) => `${cpuHexColorize(percent, "\u2B22")}${label}`).join(" ")}`;
+  if (width >= 26) return full;
+  if (width >= 10) return stops.map(([, percent]) => cpuHexColorize(percent, "\u2B22")).join(" ");
+  return stops.slice(0, Math.max(1, Math.min(width, stops.length))).map(([, percent]) => cpuHexColorize(percent, "\u2B22")).join("");
+}
+function cpuHexGridRows(cores, width, height, selectedCpuLabel) {
+  const labelWidth = Math.max(3, ...cores.map((core) => core.label.length));
+  const mode = cpuHexTileMode(width, height, cores.length, labelWidth);
+  const tileWidth = cpuHexTileWidth(mode, labelWidth);
+  const layout = cpuHexTileLayout(cores, width, height);
+  const rows = Math.max(1, Math.max(...layout.map((tile) => tile.row + tile.height)));
+  const cursors = Array.from({ length: rows }, () => 0);
+  const lines = Array.from({ length: rows }, () => "");
+  for (const tile of layout) {
+    const rendered = cpuHexTile(tile.core, mode, labelWidth, tileWidth, tile.label === selectedCpuLabel);
+    for (let lineIndex = 0; lineIndex < rendered.length; lineIndex += 1) {
+      const row = tile.row + lineIndex;
+      const padding = Math.max(0, tile.column - cursors[row]);
+      lines[row] += " ".repeat(padding) + rendered[lineIndex];
+      cursors[row] = tile.column + tile.width;
+    }
+  }
+  return lines;
+}
+function cpuHexTileMode(width, height, coreCount, labelWidth) {
+  const cellWidth = cpuHexTileWidth("cell", labelWidth);
+  const cellColumns = cpuHexColumns(width, cellWidth);
+  const cellRows = Math.ceil(coreCount / cellColumns) * cpuHexTileHeight("cell");
+  if (width >= 32 && height >= 5) {
+    return "cell";
+  }
+  if (width >= 72 && cellRows <= Math.max(4, height + 4)) {
+    return "cell";
+  }
+  return width >= 18 ? "labeled" : "compact";
+}
+function cpuHexTileWidth(mode, labelWidth) {
+  switch (mode) {
+    case "cell":
+      return labelWidth + 5;
+    case "labeled":
+      return labelWidth + 1;
+    case "compact":
+      return 1;
+  }
+}
+function cpuHexTileHeight(mode) {
+  return mode === "cell" ? 2 : 1;
+}
+function cpuHexColumns(width, tileWidth) {
+  const available = Math.max(1, width - cpuHexIndent(width, tileWidth));
+  return Math.max(1, Math.floor((available + 1) / (tileWidth + 1)));
+}
+function cpuHexIndent(width, tileWidth) {
+  return width >= tileWidth * 3 ? Math.floor(tileWidth / 2) : 0;
+}
+function cpuHexTile(core, mode, labelWidth, tileWidth, selected = false) {
+  const label = core.label.padStart(labelWidth, "0");
+  const usage = Number.isFinite(core.usage) ? clamp(core.usage, 0, 100) : 0;
+  const percent = `${Math.round(usage).toString().padStart(3, " ")}%`;
+  if (mode === "cell") {
+    const innerWidth = Math.max(2, tileWidth - 2);
+    const top = `\u2571${centerText(`CPU${label}`, innerWidth)}\u2572`;
+    const bottom = `\u2572${centerText(percent, innerWidth)}\u2571`;
+    return [
+      cpuHexColorize(usage, top.padEnd(tileWidth, " "), selected, "top"),
+      cpuHexColorize(usage, bottom.padEnd(tileWidth, " "), selected, "bottom")
+    ];
+  }
+  const text = mode === "labeled" ? `\u2B22${label}` : "\u2B22";
+  return [cpuHexColorize(usage, text.padEnd(tileWidth, " "), selected, "compact")];
+}
+function centerText(text, width) {
+  if (text.length >= width) return text.slice(0, width);
+  const left = Math.floor((width - text.length) / 2);
+  return `${" ".repeat(left)}${text}${" ".repeat(width - text.length - left)}`;
+}
+function cpuHexColorize(percent, text, selected = false, part = "compact") {
+  const [r, g, b] = cpuActivityRgb(percent);
+  if (selected) {
+    return `\x1B[1;38;2;5;7;13;48;2;${r};${g};${b}m${text}\x1B[0m`;
+  }
+  if (part !== "compact") {
+    const backgroundScale = part === "top" ? 0.13 : 0.18;
+    const bg = [
+      Math.max(0, Math.round(r * backgroundScale)),
+      Math.max(0, Math.round(g * backgroundScale)),
+      Math.max(0, Math.round(b * backgroundScale))
+    ];
+    return `\x1B[38;2;${r};${g};${b};48;2;${bg[0]};${bg[1]};${bg[2]}m${text}\x1B[0m`;
+  }
+  return `\x1B[38;2;${r};${g};${b}m${text}\x1B[0m`;
+}
+function selectedCpuCore(cores, selectedCpuLabel) {
+  if (!selectedCpuLabel) return void 0;
+  const selectedNumber = Number(selectedCpuLabel);
+  return cores.find(
+    (core) => core.label === selectedCpuLabel || Number.isFinite(selectedNumber) && Number(core.label) === selectedNumber
+  );
+}
+function cpuHexSelectionLines(system, core, width) {
+  if (!core) {
+    return [crop("SELECT A HEX TILE FOR CPU ID + PROCESS SAMPLE", width)];
+  }
+  const range = cpuIdRange(system.cpuCores);
+  const header = crop(
+    `SELECTED CPU ID ${core.label}${range ? ` (${range})` : ""}  LOAD ${formatPercent(core.usage)}`,
+    width
+  );
+  const hasProcessorSamples = system.processes.some((process) => Number.isFinite(process.processor));
+  if (!hasProcessorSamples) {
+    return [header, crop("PROCESSOR FIELD UNAVAILABLE IN THIS SAMPLE", width)];
+  }
+  const cpuId = Number(core.label);
+  const matches = Number.isFinite(cpuId) ? system.processes.filter((process) => process.processor === cpuId) : system.processes.filter((process) => String(process.processor) === core.label);
+  if (matches.length === 0) {
+    return [header, crop("NO TOP PROCESS LAST SEEN ON THIS CPU", width)];
+  }
+  const rows = [
+    header,
+    crop("TOP PROCESSES LAST SEEN ON CPU", width),
+    crop(width >= 48 ? "PID      CPU%   MEM%  S  NAME" : "PID     CPU%  MEM% NAME", width),
+    ...matches.slice(0, width >= 48 ? 6 : 4).map((process) => cpuHexProcessLine(process, width))
+  ];
+  return rows;
+}
+function cpuIdRange(cores) {
+  const ids = cores.map((core) => Number(core.label)).filter(Number.isFinite);
+  if (ids.length !== cores.length || ids.length === 0) return "";
+  return `${Math.min(...ids)}-${Math.max(...ids)}`;
+}
+function cpuHexProcessLine(process, width) {
+  const nameWidth = width >= 48 ? Math.max(8, width - 27) : Math.max(6, width - 21);
+  const name = crop(process.name, nameWidth).padEnd(nameWidth, " ");
+  if (width >= 48) {
+    return crop(
+      `${String(process.pid).padEnd(8, " ")}${process.cpuPercent.toFixed(1).padStart(6, " ")} ${process.memoryPercent.toFixed(1).padStart(6, " ")}  ${crop(process.state, 1).padEnd(1, " ")}  ${name}`,
+      width
+    );
+  }
+  return crop(
+    `${String(process.pid).padEnd(7, " ")}${process.cpuPercent.toFixed(0).padStart(4, " ")}% ${process.memoryPercent.toFixed(0).padStart(4, " ")}% ${name}`,
+    width
+  );
+}
+function cpuLegendRows(cores, width, hazard) {
+  if (cores.length === 0) return ["NO CORE DATA"];
+  const sample = coreLegendCell(cores[0], hazard);
+  const cellWidth = Math.max(12, sample.length);
+  const columns = Math.max(1, Math.min(8, Math.floor((Math.max(12, width) + 2) / (cellWidth + 2))));
+  const rows = Math.ceil(cores.length / columns);
+  return Array.from({ length: rows }, (_, row) => {
+    const cells = Array.from({ length: columns }, (_2, column) => {
+      const core = cores[row + column * rows];
+      return core ? coreLegendCell(core, hazard).padEnd(cellWidth, " ") : "";
+    }).filter(Boolean);
+    return crop(cells.join("  "), Math.max(12, width));
+  });
+}
+function coreLegendCell(core, hazard) {
+  return `${core.label.padStart(3, "0")} ${miniMeter(core.usage / 100, 6, hazard)} ${formatPercent(core.usage)}`;
+}
+function renderGpuCombinedMonitor(context) {
+  const { system, width, height } = context;
+  const drive = buildVisualizationDrive(context, Math.max(width, 48));
+  if (!system.gpu.available) return renderGpuOfflinePanel("GPU FUSION OFFLINE", "violet");
+  const graphHeight = Math.max(2, Math.floor((height - 5) / 2));
+  const chipGraph = plotHistory(
+    system.gpuUtilizationHistory,
+    Math.max(12, width),
+    graphHeight,
+    monitorGlyph(drive, "violet")
+  );
+  const memoryGraph = plotHistory(
+    system.gpuMemoryHistory,
+    Math.max(12, width),
+    graphHeight,
+    monitorGlyph(drive, "phosphor")
+  );
+  return {
+    body: [
+      crop(system.gpu.name.toUpperCase(), width),
+      `CHIP ${formatPercent(system.gpu.utilizationPercent)} ${miniMeter(system.gpu.utilizationPercent / 100, 12, drive.hazard)}`,
+      chipGraph,
+      `VRAM ${formatPercent(system.gpu.memoryPercent)} ${formatBytes(system.gpu.memoryUsed)} / ${formatBytes(system.gpu.memoryTotal)}`,
+      memoryGraph,
+      `TEMP ${formatNullable(system.gpu.temperatureCelsius, "C")}  POWER ${formatNullable(system.gpu.powerWatts, "W")}`
+    ].join("\n"),
+    footer: `GPU FUSION  GFX ${formatNullable(system.gpu.graphicsClockMhz, "MHz")}  MEMCLK ${formatNullable(system.gpu.memoryClockMhz, "MHz")}`,
+    alert: gpuAlert(context),
+    accent: gpuAccent(system.gpu.utilizationPercent, system.gpu.memoryPercent, true),
+    severity: gpuSeverity(system.gpu.utilizationPercent, system.gpu.memoryPercent)
+  };
+}
+function renderGpuChipMonitor(context) {
+  const { system, width, height } = context;
+  const drive = buildVisualizationDrive(context, Math.max(width, 40));
+  if (!system.gpu.available) return renderGpuOfflinePanel("GPU CHIP OFFLINE", "violet");
+  const graphHeight = Math.max(3, height - 5);
+  const graph = plotHistory(
+    system.gpuUtilizationHistory,
+    Math.max(12, width),
+    graphHeight,
+    monitorGlyph(drive, "violet")
+  );
+  const pulse = gpuPulseGlyphs(
+    system.gpu.utilizationPercent / 100,
+    Math.min(18, Math.max(8, width - 14)),
+    drive.hazard
+  );
+  return {
+    body: [
+      `${crop(system.gpu.name.toUpperCase(), Math.max(8, width - 8))} CORE`,
+      `UTIL ${formatPercent(system.gpu.utilizationPercent)} ${pulse}`,
+      graph,
+      `TEMP ${formatNullable(system.gpu.temperatureCelsius, "C")}  POWER ${formatNullable(system.gpu.powerWatts, "W")}`,
+      `GFX ${formatNullable(system.gpu.graphicsClockMhz, "MHz")}  MEMORY ${formatNullable(system.gpu.memoryClockMhz, "MHz")}`
+    ].join("\n"),
+    footer: `CHIP BUS  VOLATILITY ${(drive.volatility * 100).toFixed(0)}%  SURGE ${(Math.max(0, drive.slope) * 100).toFixed(0)}%`,
+    alert: system.gpu.utilizationPercent >= 95 ? "GPU EXECUTION WALL" : drive.volatility >= 0.58 ? "GPU PULSE SHEAR" : "",
+    accent: gpuAccent(system.gpu.utilizationPercent, 0, true),
+    severity: gpuSeverity(system.gpu.utilizationPercent, 0)
+  };
+}
+function renderGpuMemoryMonitor(context) {
+  const { system, width, height } = context;
+  const drive = buildVisualizationDrive(context, Math.max(width, 40));
+  if (!system.gpu.available) return renderGpuOfflinePanel("GPU MEMORY OFFLINE", "phosphor");
+  const bankCount = Math.max(4, Math.min(12, Math.floor(width / 5)));
+  const banks = Array.from({ length: bankCount }, (_, index) => {
+    const phaseShift = Math.sin(context.phase * 0.11 + index * 0.9) * 0.06;
+    return clamp(system.gpu.memoryPercent / 100 + phaseShift, 0, 1);
+  });
+  const bankRows = barChart(banks, bankCount * 3, Math.max(3, Math.min(8, height - 5)), [" ", "\u2591", "\u2592", "\u2593", "\u2588"]);
+  return {
+    body: [
+      `VRAM ${formatPercent(system.gpu.memoryPercent)} ${miniMeter(system.gpu.memoryPercent / 100, 14, drive.hazard)}`,
+      `${formatBytes(system.gpu.memoryUsed)} USED`,
+      `${formatBytes(Math.max(0, system.gpu.memoryTotal - system.gpu.memoryUsed))} FREE`,
+      bankRows,
+      `TOTAL ${formatBytes(system.gpu.memoryTotal)}  MEMCLK ${formatNullable(system.gpu.memoryClockMhz, "MHz")}`
+    ].join("\n"),
+    footer: `VRAM BANKS ${bankCount}  FRAGMENT ${(drive.divergence * 100).toFixed(0)}%`,
+    alert: system.gpu.memoryPercent >= 92 ? "VRAM CAPACITY WALL" : system.gpu.memoryPercent >= 78 ? "VRAM PRESSURE" : "",
+    accent: gpuAccent(0, system.gpu.memoryPercent, true),
+    severity: gpuSeverity(0, system.gpu.memoryPercent)
   };
 }
 function renderMemoryMonitor(context) {
@@ -2993,36 +3452,151 @@ function renderDiskMonitor(context) {
   };
 }
 function renderNetworkMonitor(context) {
-  const { system, width, height } = context;
-  const drive = buildVisualizationDrive(context, Math.max(width, 48));
-  const graphHeight = Math.max(3, height - 4);
-  const rx = plotHistory(system.rxHistory, Math.max(12, width), graphHeight, monitorGlyph(drive, "signal"));
-  const tx = plotHistory(system.txHistory, Math.max(12, width), graphHeight, monitorGlyph(drive, "amber"));
+  const { system } = context;
+  const width = Math.max(1, context.width);
+  const height = Math.max(1, context.height);
+  const drive = buildVisualizationDrive(context, Math.max(width, 24));
+  const alert = networkAlert(context);
+  const network = busiestNetwork(system.networks);
+  const isSurging = Boolean(network && network.rxRate + network.txRate > 125e6);
   return {
-    body: [
-      `RX BUS`,
-      rx,
-      `TX BUS`,
-      tx,
-      ...system.networks.slice(0, 2).map(
-        (network) => `${network.name.toUpperCase()} ${formatRate(network.rxRate)}\u2193 ${formatRate(network.txRate)}\u2191`
-      )
-    ].join("\n"),
-    footer: system.networks[0] ? `${system.networks[0].name.toUpperCase()} ${system.networks[0].addresses[0] ?? "NO ADDRESS"}  BURST ${(drive.volatility * 100).toFixed(0)}%` : "NO ACTIVE INTERFACES",
-    alert: networkAlert(context),
-    accent: context.system.networks[0] && context.system.networks[0].rxRate + context.system.networks[0].txRate > 125e6 ? "amber" : "signal",
-    severity: context.system.networks[0] && context.system.networks[0].rxRate + context.system.networks[0].txRate > 125e6 ? "warning" : "info"
+    body: networkMonitorLines(system, drive, width, height).join("\n"),
+    footer: networkFooter(system, drive, width),
+    alert,
+    accent: isSurging ? "amber" : "signal",
+    severity: isSurging ? "warning" : "info"
   };
+}
+function networkMonitorLines(system, drive, width, height) {
+  const lineBudget = Math.max(1, height);
+  const chartWidth = Math.max(1, width);
+  if (lineBudget <= 3 || width < 20) {
+    return fitNetworkLines(
+      [
+        networkSummaryLine(system, width),
+        compactNetworkTrace(system, chartWidth),
+        ...networkInterfaceRows(system, width, lineBudget - 2)
+      ],
+      width,
+      lineBudget
+    );
+  }
+  if (lineBudget <= 6) {
+    const interfaceRows2 = Math.min(system.networks.length, Math.max(0, lineBudget - 3));
+    const chartHeight = Math.max(1, lineBudget - 1 - interfaceRows2);
+    return fitNetworkLines(
+      [
+        width >= 32 ? "RX/TX BUS" : "RX/TX",
+        ...plotHistory(
+          combinedNetworkHistory(system),
+          chartWidth,
+          chartHeight,
+          monitorGlyph(drive, "signal")
+        ).split("\n"),
+        ...networkInterfaceRows(system, width, interfaceRows2)
+      ],
+      width,
+      lineBudget
+    );
+  }
+  const interfaceRows = Math.min(system.networks.length, width >= 36 ? 2 : 1, Math.max(0, lineBudget - 6));
+  const graphRows = Math.max(2, lineBudget - 2 - interfaceRows);
+  const rxHeight = Math.max(1, Math.floor(graphRows / 2));
+  const txHeight = Math.max(1, graphRows - rxHeight);
+  return fitNetworkLines(
+    [
+      width >= 28 ? "RX BUS" : "RX",
+      ...plotHistory(system.rxHistory, chartWidth, rxHeight, monitorGlyph(drive, "signal")).split("\n"),
+      width >= 28 ? "TX BUS" : "TX",
+      ...plotHistory(system.txHistory, chartWidth, txHeight, monitorGlyph(drive, "amber")).split("\n"),
+      ...networkInterfaceRows(system, width, interfaceRows)
+    ],
+    width,
+    lineBudget
+  );
+}
+function networkSummaryLine(system, width) {
+  const network = busiestNetwork(system.networks);
+  if (!network) {
+    return "NET IDLE";
+  }
+  const name = crop(network.name.toUpperCase(), width < 24 ? 5 : 10);
+  if (width < 28) {
+    return `NET ${name} ${compactRate(network.rxRate)}\u2193 ${compactRate(network.txRate)}\u2191`;
+  }
+  return `NET ${name} RX ${formatRate(network.rxRate)}  TX ${formatRate(network.txRate)}`;
+}
+function compactNetworkTrace(system, width) {
+  const rx = sampleSeries(system.rxHistory, width);
+  const tx = sampleSeries(system.txHistory, width);
+  return Array.from({ length: width }, (_, index) => {
+    const rxValue = rx[index] ?? 0;
+    const txValue = tx[index] ?? 0;
+    const combined = Math.max(rxValue, txValue);
+    if (combined >= 0.82) return "\u2588";
+    if (rxValue >= 0.5 && txValue >= 0.5) return "\u2593";
+    if (rxValue >= txValue && rxValue >= 0.22) return "\u2584";
+    if (txValue > rxValue && txValue >= 0.22) return "\u2580";
+    return "\xB7";
+  }).join("");
+}
+function networkInterfaceRows(system, width, count) {
+  if (count <= 0) {
+    return [];
+  }
+  if (system.networks.length === 0) {
+    return ["NO ACTIVE INTERFACES"];
+  }
+  return system.networks.slice(0, count).map((network) => networkInterfaceLine(network, width));
+}
+function networkInterfaceLine(network, width) {
+  const name = crop(network.name.toUpperCase(), width < 28 ? 6 : 10);
+  if (width < 30) {
+    return `${name} R${compactRate(network.rxRate)} T${compactRate(network.txRate)}`;
+  }
+  if (width < 48) {
+    return `${name.padEnd(10, " ")} R ${formatRate(network.rxRate)}  T ${formatRate(network.txRate)}`;
+  }
+  const address = network.addresses[0] ? ` ${network.addresses[0]}` : "";
+  return `${name.padEnd(10, " ")}${address}  RX ${formatRate(network.rxRate)}  TX ${formatRate(network.txRate)}`;
+}
+function networkFooter(system, drive, width) {
+  const network = busiestNetwork(system.networks);
+  if (!network) {
+    return "NO ACTIVE INTERFACES";
+  }
+  const name = crop(network.name.toUpperCase(), width < 30 ? 6 : 10);
+  if (width < 34) {
+    return crop(`${name} ${compactRate(network.rxRate)}\u2193 ${compactRate(network.txRate)}\u2191`, width);
+  }
+  const address = network.addresses[0] ?? "NO ADDRESS";
+  return crop(
+    `${name} ${address}  RX ${formatRate(network.rxRate)}  TX ${formatRate(network.txRate)}  BURST ${(drive.volatility * 100).toFixed(0)}%`,
+    width
+  );
+}
+function combinedNetworkHistory(system) {
+  const length = Math.max(system.rxHistory.length, system.txHistory.length, 1);
+  return Array.from(
+    { length },
+    (_, index) => Math.max(system.rxHistory[index] ?? 0, system.txHistory[index] ?? 0)
+  );
+}
+function compactRate(value) {
+  return formatRate(value).replace(/\s+/g, "").replace("KiB/s", "K/s").replace("MiB/s", "M/s").replace("GiB/s", "G/s").replace("TiB/s", "T/s");
+}
+function fitNetworkLines(lines, width, height) {
+  return lines.slice(0, Math.max(1, height)).map((line) => crop(line.trimEnd(), width));
 }
 function renderProcessMonitor(context) {
   const drive = buildVisualizationDrive(context, 24);
   const header = "PID     NAME             CPU%   MEM%";
-  const rows = context.system.processes.slice(0, Math.max(1, context.height - 1)).map(
+  const rows = context.system.processes.slice(0, 100).map(
     (process) => `${String(process.pid).padEnd(7, " ")}${crop(process.name, 16).padEnd(16, " ")}${process.cpuPercent.toFixed(1).padStart(6, " ")}${process.memoryPercent.toFixed(1).padStart(7, " ")}`
   );
   return {
     body: [header, ...rows].join("\n"),
-    footer: context.system.processes[0] ? `HOT ${context.system.processes[0].name.toUpperCase()} ${context.system.processes[0].cpuPercent.toFixed(1)}% CPU  RISE ${(Math.max(0, drive.slope) * 100).toFixed(0)}%` : "PROCESS TABLE EMPTY",
+    footer: context.system.processes[0] ? `HOT ${context.system.processes[0].name.toUpperCase()} ${context.system.processes[0].cpuPercent.toFixed(1)}% CPU  TOP ${Math.min(100, context.system.processes.length)}  RISE ${(Math.max(0, drive.slope) * 100).toFixed(0)}%` : "PROCESS TABLE EMPTY",
     alert: context.system.processes[0]?.cpuPercent >= 90 ? "PROCESS SPIKE DETECTED" : "",
     accent: context.system.processes[0]?.cpuPercent >= 90 ? "alarm" : "amber",
     severity: context.system.processes[0]?.cpuPercent >= 90 ? "alarm" : "info"
@@ -3067,6 +3641,34 @@ function renderThreeFallbackBody(context, drive, mode) {
         return routeBoard(width, chartHeight, drive, THREE_FALLBACK_BLOCKS);
       case "studio":
         return harmonicField(width, chartHeight, drive, "\u25C6");
+      case "emergency":
+      case "counter":
+      case "relay":
+        return routeBoard(width, chartHeight, drive, [" ", "\u2591", "\u2592", "\u2593", "\u2588"]);
+      case "launch":
+      case "gate":
+      case "route":
+        return signalChart(drive.spreadSeries, width, chartHeight, drive.hazard >= 0.78 ? "\u2593" : "\u2592");
+      case "harmonic":
+        return harmonicField(width, chartHeight, drive, monitorGlyph(drive, "violet"));
+      case "field":
+        return circularField(width, chartHeight, drive);
+      case "magi":
+      case "angel":
+      case "plug":
+      case "rack":
+      case "heat":
+      case "command":
+        return heatmap(width, chartHeight, drive, THREE_FALLBACK_BLOCKS);
+      case "target":
+        return circularField(width, chartHeight, drive);
+      case "waveform":
+      case "scope":
+      case "biosignal":
+      case "psychograph":
+      case "surveillance":
+      case "topology":
+        return psychograph(width, chartHeight, drive, monitorGlyph(drive, "signal"));
     }
   })();
   return [...infoLines, chart].join("\n");
@@ -3315,6 +3917,48 @@ function modeLabel(mode) {
       return "SOLENOID";
     case "studio":
       return "ACEROLA";
+    case "emergency":
+      return "EMERGENCY";
+    case "counter":
+      return "COUNTER";
+    case "plug":
+      return "TEST PLUG";
+    case "surveillance":
+      return "SURVEIL";
+    case "relay":
+      return "RELAY";
+    case "rack":
+      return "RACK";
+    case "scope":
+      return "SCOPE";
+    case "biosignal":
+      return "BIOSIGNAL";
+    case "harmonic":
+      return "HARMONIC";
+    case "psychograph":
+      return "PSYCHO";
+    case "field":
+      return "FIELD";
+    case "heat":
+      return "HEX FIELD";
+    case "route":
+      return "ROUTE";
+    case "topology":
+      return "TOPOLOGY";
+    case "command":
+      return "COMMAND";
+    case "launch":
+      return "LAUNCH";
+    case "magi":
+      return "MAGI";
+    case "target":
+      return "TARGET";
+    case "waveform":
+      return "WAVEFORM";
+    case "angel":
+      return "ANGEL";
+    case "gate":
+      return "GATE";
   }
 }
 function fallbackSource(phase2) {
@@ -3345,6 +3989,44 @@ function heatMeter(value, heat) {
   const width = heat >= 0.9 ? 5 : 4;
   return miniMeter(value, width, heat);
 }
+function gpuPulseGlyphs(value, width, heat) {
+  const fill = Math.round(clamp(value, 0, 1) * width);
+  const active = heat >= 0.85 ? "\u25C6" : "\u25C7";
+  return active.repeat(fill).padEnd(width, "\xB7");
+}
+function renderGpuOfflinePanel(message, accent) {
+  return {
+    body: [
+      message,
+      "NVIDIA-SMI TELEMETRY NOT AVAILABLE",
+      "GPU PANEL WILL AUTO-LINK WHEN DRIVER METRICS APPEAR"
+    ].join("\n"),
+    footer: "GPU BUS OFFLINE",
+    alert: "",
+    accent,
+    severity: "info"
+  };
+}
+function gpuAccent(utilization, memory, available) {
+  if (!available) return "violet";
+  const pressure = Math.max(utilization, memory);
+  return pressure >= 92 ? "alarm" : pressure >= 75 ? "amber" : memory > utilization ? "phosphor" : "violet";
+}
+function gpuSeverity(utilization, memory) {
+  const pressure = Math.max(utilization, memory);
+  return pressure >= 92 ? "alarm" : pressure >= 75 ? "warning" : "info";
+}
+function gpuAlert(context) {
+  const { gpu } = context.system;
+  if (!gpu.available) return "";
+  if (gpu.memoryPercent >= 92) return "VRAM LIMIT";
+  if (gpu.utilizationPercent >= 95) return "GPU EXECUTION WALL";
+  if ((gpu.temperatureCelsius ?? 0) >= 84) return "GPU THERMAL LIMIT";
+  return "";
+}
+function formatNullable(value, suffix) {
+  return value === null ? "--" : `${value.toFixed(value >= 100 ? 0 : 1)}${suffix}`;
+}
 function alertText(context) {
   const alert = context.system.alerts[0];
   return alert ? `${alert.title} / ${alert.detail}` : "";
@@ -3365,12 +4047,20 @@ function driveAlert(drive) {
   return "";
 }
 function networkAlert(context) {
-  const network = context.system.networks[0];
+  const network = busiestNetwork(context.system.networks);
   if (!network) {
     return "";
   }
   const totalRate = network.rxRate + network.txRate;
   return totalRate > 125e6 ? `${network.name.toUpperCase()} SURGE ABOVE ${formatRate(totalRate)}` : "";
+}
+function busiestNetwork(networks) {
+  return networks.reduce((busiest, network) => {
+    if (!busiest) {
+      return network;
+    }
+    return network.rxRate + network.txRate > busiest.rxRate + busiest.txRate ? network : busiest;
+  }, void 0);
 }
 function severityForValue(value, warning, alarm) {
   if (value >= alarm) {
@@ -3449,6 +4139,48 @@ function modeTwist(mode) {
       return { phase: 21, speed: 0.14, offset: 0.22, lift: 0.28 };
     case "studio":
       return { phase: 25, speed: 0.09, offset: 0.3, lift: 0.2 };
+    case "emergency":
+      return { phase: 29, speed: 0.16, offset: 0.32, lift: 0.16 };
+    case "counter":
+      return { phase: 31, speed: 0.13, offset: 0.18, lift: 0.12 };
+    case "plug":
+      return { phase: 32, speed: 0.08, offset: 0.16, lift: 0.3 };
+    case "surveillance":
+      return { phase: 34, speed: 0.09, offset: 0.24, lift: 0.18 };
+    case "relay":
+      return { phase: 35, speed: 0.15, offset: 0.26, lift: 0.2 };
+    case "rack":
+      return { phase: 36, speed: 0.14, offset: 0.2, lift: 0.16 };
+    case "scope":
+      return { phase: 38, speed: 0.18, offset: 0.34, lift: 0.34 };
+    case "biosignal":
+      return { phase: 38, speed: 0.2, offset: 0.32, lift: 0.3 };
+    case "harmonic":
+      return { phase: 39, speed: 0.09, offset: 0.22, lift: 0.24 };
+    case "psychograph":
+      return { phase: 40, speed: 0.17, offset: 0.36, lift: 0.32 };
+    case "field":
+      return { phase: 41, speed: 0.13, offset: 0.28, lift: 0.24 };
+    case "heat":
+      return { phase: 39, speed: 0.1, offset: 0.22, lift: 0.42 };
+    case "route":
+      return { phase: 40, speed: 0.1, offset: 0.2, lift: 0.48 };
+    case "topology":
+      return { phase: 42, speed: 0.09, offset: 0.22, lift: 0.24 };
+    case "command":
+      return { phase: 44, speed: 0.07, offset: 0.16, lift: 0.18 };
+    case "launch":
+      return { phase: 33, speed: 0.1, offset: 0.2, lift: 0.5 };
+    case "magi":
+      return { phase: 37, speed: 0.06, offset: 0.14, lift: 0.18 };
+    case "target":
+      return { phase: 41, speed: 0.13, offset: 0.28, lift: 0.22 };
+    case "waveform":
+      return { phase: 45, speed: 0.18, offset: 0.34, lift: 0.34 };
+    case "angel":
+      return { phase: 49, speed: 0.08, offset: 0.22, lift: 0.48 };
+    case "gate":
+      return { phase: 53, speed: 0.12, offset: 0.18, lift: 0.42 };
   }
 }
 function sourceWarnings(sources, drive) {
@@ -3980,6 +4712,20 @@ function syntheticSystemSnapshot(demo, phase2) {
     cpuOverall: hot * 100,
     cpuCores: [],
     cpuHistory: Array.from({ length: 64 }, (_, index) => unitWave(phase2 + index, 0.08, 0.03) * 100),
+    gpu: {
+      available: true,
+      name: "NEON RENDER CORE",
+      utilizationPercent: hot * 100,
+      memoryUsed: hot * 18 * 1024 ** 3,
+      memoryTotal: 24 * 1024 ** 3,
+      memoryPercent: hot * 75,
+      temperatureCelsius: 36 + hot * 47,
+      powerWatts: 85 + hot * 220,
+      graphicsClockMhz: 1500 + hot * 950,
+      memoryClockMhz: 9e3 + hot * 1200
+    },
+    gpuUtilizationHistory: Array.from({ length: 64 }, (_, index) => unitWave(phase2 + index, 0.075, 0.29)),
+    gpuMemoryHistory: Array.from({ length: 64 }, (_, index) => unitWave(phase2 + index, 0.045, 0.51)),
     memory: {
       total: 32 * 1024 ** 3,
       used: hot * 24 * 1024 ** 3,

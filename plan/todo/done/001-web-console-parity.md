@@ -19,3 +19,11 @@ controls, mouse interactions, keyboard interactions, theming, window controls, m
 - `deno task web:test`
 - Targeted `deno check` for touched web files.
 - Manual or scripted smoke of the browser build where practical.
+
+## Completion Notes
+
+- Web API workbench now includes Explorer, Inspector, Data, Controls, Logs, and Three ASCII preview panes.
+- Browser workbench uses the shared tiled layout solver instead of the older split-only layout.
+- Added top menu hit targets, theme dropdown, modal/help/quit workflows, unified button styling, vertical radio and
+  checkbox controls, and popover dropdown behavior.
+- Verified with `deno task web:demo:check`, `deno task web:test`, and `deno check examples/web/api_workbench_page.ts`.
