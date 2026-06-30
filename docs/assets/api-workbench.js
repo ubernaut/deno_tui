@@ -5190,6 +5190,9 @@ var ASCII_DEMO_PRESETS = [
   }
 ];
 
+// src/app/terminal_input.ts
+var textEncoder4 = new TextEncoder();
+
 // src/runtime/terminal_session.ts
 var ENCODER = new TextEncoder();
 

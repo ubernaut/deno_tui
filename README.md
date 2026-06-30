@@ -743,9 +743,14 @@ buffers reusable across system monitors, worker consoles, and diagnostic panes. 
 non-interactive subprocesses with `Deno.Command`, stream stdout/stderr/system lines into bounded scrollback, track
 running/exited/failed/cancelled state, and expose `terminalCommands()` / `bindTerminalCommands()` for run, stop,
 restart, clear, follow, and copy-command actions. `routeTerminalKeyPress()` and `routeTerminalPaste()` add a raw-input
-routing layer with reserved host shortcuts for future interactive terminal windows. The API Workbench portfolio includes
-a `Terminal: Terminal Output` window under the New menu that demonstrates the flow inside the same window manager used
-by the rest of the demo.
+routing layer with reserved host shortcuts for future interactive terminal windows.
+
+The backend-facing layer adds `TerminalBackend`, `TerminalSessionHandle`, `createProcessTerminalBackend()`,
+`TerminalScreenController`, and terminal templates for shell, Deno task, arbitrary command, project task, and attachable
+session metadata. Use `syncTerminalWindowLayout()` when terminal handles live inside a `WindowManagerController`; it
+translates visible window rectangles into terminal columns/rows and only calls backend resize when geometry changes. The
+API Workbench portfolio includes a `Terminal: Terminal Output` window under the New menu that demonstrates the flow
+inside the same window manager used by the rest of the demo.
 
 ## Layouts
 
@@ -1039,6 +1044,7 @@ This fork exports lightweight app primitives for larger TUIs:
 - `SelectionController` and selection helpers
 - `SettingsController`
 - `runtimeWorkloadCommands()` / `bindRuntimeWorkloadCommands()`
+- `syncTerminalWindowLayout()` / `terminalWindowContentSize()`
 - viewport helpers such as `viewportWindow()`, `viewportOffsetBy()`, and `viewportThumb()`
 
 They are optional and composable. Existing component-first apps continue to work. Use `FocusManager.register()` or
@@ -1986,6 +1992,9 @@ Optional high-performance APIs are surfaced through `src/runtime/mod.ts`:
 - `terminalSessionSequences()` / `terminalMouseSequences()` / `createTerminalSessionController()`
 - `ProcessSessionController` / `formatProcessCommandLine()`
 - `TerminalBackend` / `TerminalSessionHandle` / `createProcessTerminalBackend()`
+- `shellTerminalTemplate()` / `denoTaskTerminalTemplate()` / `commandTerminalTemplate()` /
+  `projectTaskTerminalTemplate()`
+- `attachTerminalTemplate()` / `createTerminalTemplateSession()` / `describeTerminalTemplateSession()`
 - `TerminalScreenController`
 - `RuntimeRendererBackendRegistry` / `RuntimeRendererBackendController` / `selectRuntimeRendererBackend()` /
   `formatRuntimeRendererBackendCatalogMarkdown()`

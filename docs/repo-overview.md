@@ -111,7 +111,9 @@ each phase to proof commands. `examples/form_workflow.ts`, `examples/table_selec
 selection state, command search/dispatch, and terminal session setup. `deno task screenshots` regenerates the JPEG
 terminal screenshots used by the README under `docs/screenshots/`. `app/api_workbench.ts` is the interactive portfolio
 for the same APIs and now includes a New-menu `Terminal Output` window that runs a real subprocess inside the managed
-window layout.
+window layout. The terminal-window layer also exposes backend handles, spawn templates for shell/Deno/project commands,
+attach-session metadata, screen cells, and `syncTerminalWindowLayout()` for propagating window-manager geometry into
+terminal session dimensions.
 
 ## Quality Gates
 

@@ -71,22 +71,28 @@ visible terminal focus indicators are still open.
 - [x] Add a terminal screen model. At minimum support ANSI parsing into cell rows, scrollback, cursor position,
       alternate screen, erase/move sequences, SGR style spans, and resize reflow. Prefer a maintained parser if
       compatible with Deno.
-- Wire `WindowManagerController.layout()` dimensions into backend resize calls so focused/fullscreen/tiled terminal
-  windows update their child terminal size.
+- [x] Wire `WindowManagerController.layout()` dimensions into backend resize calls so focused/fullscreen/tiled terminal
+      windows update their child terminal size.
 
-Phase 3 now has the backend seam, a non-PTY `ProcessTerminalBackend`, and a lightweight `TerminalScreenController`. A
-real PTY adapter and window-manager resize propagation remain open.
+Phase 3 now has the backend seam, a non-PTY `ProcessTerminalBackend`, a lightweight `TerminalScreenController`, and
+`syncTerminalWindowLayout()` for app-level geometry propagation from `WindowManagerController.layout()` to backend
+handles. A real PTY adapter remains open.
 
 ### Phase 4: Tmux-Like Workspace Behavior
 
-- Add terminal window creation from templates: shell, `deno task`, arbitrary command, project task, and attach existing
-  session.
+- [x] Add terminal window creation from templates: shell, `deno task`, arbitrary command, project task, and attach
+      metadata for existing session.
 - Add split/window commands that map naturally to the current window manager: new terminal, close, rename,
   next/previous, fullscreen, tile, minimize, restore, and move order.
-- Add session persistence metadata: command, cwd, env overrides, title, scrollback policy, restart policy, and whether
-  the window is reconnectable.
+- [x] Add session persistence metadata: command, cwd, env overrides, title, scrollback policy, restart policy, and
+      whether the window is reconnectable.
 - Add optional detach/reattach support if the backend can keep sessions alive outside the workbench process.
 - Add status bar summaries for active process, exit code, cwd, backend type, dimensions, and detached/running state.
+
+Phase 4 now has `shellTerminalTemplate()`, `denoTaskTerminalTemplate()`, `commandTerminalTemplate()`,
+`projectTaskTerminalTemplate()`, `attachTerminalTemplate()`, `createTerminalTemplateSession()`, and serializable
+terminal session descriptors. Window-manager command bindings, status summaries, and true detach/reattach still depend
+on the next backend/session layer.
 
 ### Phase 5: Web And Remote Runtime
 
