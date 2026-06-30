@@ -9,3 +9,4 @@ export * from "./responsive.ts";
 export * from "./split_pane.ts";
 export * from "./recipe.ts";
 export * from "./window_manager.ts";
+export * from "./overlay.ts";

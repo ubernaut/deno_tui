@@ -1,6 +1,9 @@
 import {
   createFileExplorerTree,
   FileExplorerController,
+  OverlayStackController,
+  type OverlaySurfaceInspection,
+  placePopover,
   WindowManagerController,
   type WindowManagerWindowInspection,
 } from "../mod.ts";
@@ -44,6 +47,36 @@ manager.restore("inspector");
 manager.restore();
 manager.focusNext();
 const restored = manager.layout({ bounds: { column: 0, row: 0, width: 84, height: 26 } });
+const menuRect = placePopover(
+  { column: 4, row: 1, width: 10, height: 1 },
+  { width: 24, height: 6 },
+  { column: 0, row: 0, width: 84, height: 26 },
+  { placement: "bottom-start", margin: 1 },
+);
+const overlays = new OverlayStackController({
+  surfaces: [
+    { id: "workspace", kind: "workspace", rect: { column: 0, row: 0, width: 84, height: 26 } },
+    { id: "active-window", kind: "window", rect: restored.visible.at(-1)?.rect ?? restored.bounds },
+    { id: "file-menu", kind: "menu", rect: menuRect },
+    {
+      id: "confirm-close",
+      kind: "modal",
+      rect: { column: 20, row: 8, width: 44, height: 8 },
+      closeOnOutsideClick: true,
+    },
+    {
+      id: "confirm-ok",
+      kind: "custom",
+      layer: "modal",
+      ownerId: "confirm-close",
+      rect: { column: 47, row: 14, width: 8, height: 1 },
+    },
+  ],
+});
+const modalButtonHit = overlays.hitTest({ column: 48, row: 14 });
+const blockedHit = overlays.hitTest({ column: menuRect.column + 1, row: menuRect.row + 1 });
+const outsideClick = overlays.handlePointerDown({ column: menuRect.column + 1, row: menuRect.row + 1 });
+const menuHit = overlays.hitTest({ column: menuRect.column + 1, row: menuRect.row + 1 });
 
 explorer.tree.setSelectedIndex(1);
 explorer.openActive();
@@ -62,6 +95,13 @@ console.log(`Visible fullscreen pane: ${fullscreen.visible.map((entry) => entry.
 console.log("");
 console.log("## Responsive Workspace 84x26 After Restore");
 console.log(formatWindowGrid(restored.visible));
+console.log("");
+console.log("## Overlay Stack");
+console.log(formatOverlayGrid(overlays.inspect().zOrder));
+console.log(`Modal button hit: ${modalButtonHit?.surface.id ?? "none"}`);
+console.log(`Background hit while modal is open: ${blockedHit?.surface.id ?? "blocked"}`);
+console.log(`Outside click closed: ${outsideClick.closedIds.join(", ") || "none"}`);
+console.log(`Menu hit after close: ${menuHit?.surface.id ?? "none"}`);
 console.log("");
 console.log("## File Explorer");
 console.log(
@@ -88,6 +128,7 @@ console.log(
 
 explorer.dispose();
 manager.dispose();
+overlays.dispose();
 
 function formatWindowGrid(windows: readonly WindowManagerWindowInspection[]): string {
   const rows = windows.map((entry) => {
@@ -109,4 +150,18 @@ function formatWindowGrid(windows: readonly WindowManagerWindowInspection[]): st
 
 function pad(value: string, width: number): string {
   return value.length >= width ? value.slice(0, width) : value + " ".repeat(width - value.length);
+}
+
+function formatOverlayGrid(surfaces: readonly OverlaySurfaceInspection[]): string {
+  const rows = surfaces.map((entry) => {
+    const rect = `${entry.rect.width}x${entry.rect.height}@${entry.rect.column},${entry.rect.row}`;
+    return `| ${pad(entry.id, 14)} | ${pad(entry.kind, 9)} | ${pad(entry.layer, 9)} | ${pad(`${entry.zIndex}`, 6)} | ${
+      pad(rect, 14)
+    } |`;
+  });
+  return [
+    "| Surface        | Kind      | Layer     | Z      | Rect           |",
+    "| ---            | ---       | ---       | ---    | ---            |",
+    ...rows,
+  ].join("\n");
 }

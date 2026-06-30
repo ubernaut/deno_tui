@@ -848,6 +848,28 @@ manager.fullscreen("editor");
 manager.selectTab("logs");
 ```
 
+`layout.zOrder` sorts non-closed windows from back to front with explicit `layer` and `zIndex` metadata, so terminal,
+web, and snapshot renderers can share the same stacking rules. `OverlayStackController` handles the next layer up:
+menus, popovers, modal blockers, modal-owned action hit targets, outside-click closure, and topmost hit testing. Popover
+placement is pure geometry, so dropdown lists can render above existing content without disturbing the layout below:
+
+```ts
+const menuRect = placePopover(anchorRect, { width: 24, height: 8 }, viewport, {
+  placement: "bottom-start",
+  margin: 1,
+});
+
+const overlays = new OverlayStackController({
+  surfaces: [
+    { id: "file-menu", kind: "menu", rect: menuRect },
+    { id: "confirm-close", kind: "modal", rect: modalRect, closeOnOutsideClick: true },
+    { id: "confirm-ok", ownerId: "confirm-close", layer: "modal", kind: "custom", rect: okButtonRect },
+  ],
+});
+
+const hit = overlays.handlePointerDown({ column, row });
+```
+
 Responsive helpers are also exported for common app shell layout:
 
 - `resolveBreakpoint()`
@@ -856,6 +878,9 @@ Responsive helpers are also exported for common app shell layout:
 - `dockRect()`
 - `tileRects()`
 - `WindowManagerController`
+- `OverlayStackController`
+- `placePopover()`
+- `hitTestOverlaySurfaces()`
 - `resolveLayoutRecipe()`
 - `createLayoutRecipeController()`
 - `layoutRecipeSlots()`

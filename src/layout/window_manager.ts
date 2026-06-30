@@ -5,6 +5,9 @@ import { type TileLayoutOptions, tileRects } from "./responsive.ts";
 
 export type WindowManagerWindowState = "normal" | "minimized" | "fullscreen" | "closed";
 
+/** Render layer used by window manager inspections. */
+export type WindowManagerLayer = "closed" | "minimized" | "window" | "fullscreen";
+
 export interface WindowManagerWindow {
   id: string;
   title: string;
@@ -29,6 +32,8 @@ export interface WindowManagerLayoutOptions {
 
 export interface WindowManagerWindowInspection extends WindowManagerWindow {
   state: WindowManagerWindowState;
+  layer: WindowManagerLayer;
+  zIndex: number;
   active: boolean;
   fullscreen: boolean;
   minimized: boolean;
@@ -44,7 +49,16 @@ export interface WindowManagerLayoutInspection {
   windows: WindowManagerWindowInspection[];
   visible: WindowManagerWindowInspection[];
   tabs: WindowManagerWindowInspection[];
+  zOrder: WindowManagerWindowInspection[];
 }
+
+/** Base z-index values used by the renderer-neutral window manager. */
+export const WINDOW_MANAGER_LAYER_Z_INDEX: Record<WindowManagerLayer, number> = {
+  closed: 0,
+  minimized: 1_000,
+  window: 2_000,
+  fullscreen: 3_000,
+};
 
 export class WindowManagerController {
   readonly windows: Signal<WindowManagerWindow[]>;
@@ -190,6 +204,7 @@ export class WindowManagerController {
       windows: inspected,
       visible: inspected.filter((entry) => entry.rect !== undefined),
       tabs: inspected.filter((entry) => !entry.closed),
+      zOrder: windowManagerZOrder(inspected),
     };
   }
 
@@ -224,6 +239,15 @@ export class WindowManagerController {
   }
 }
 
+/** Sorts inspected windows from back to front for renderer-neutral drawing and hit testing. */
+export function windowManagerZOrder(
+  windows: readonly WindowManagerWindowInspection[],
+): WindowManagerWindowInspection[] {
+  return [...windows]
+    .filter((entry) => !entry.closed)
+    .sort((left, right) => left.zIndex - right.zIndex || (left.order ?? 0) - (right.order ?? 0));
+}
+
 function normalizeWindows(windows: readonly WindowManagerWindow[]): WindowManagerWindow[] {
   return windows.map((entry, index) => ({
     ...entry,
@@ -251,13 +275,28 @@ function inspectWindow(
   rect: Rectangle | undefined,
 ): WindowManagerWindowInspection {
   const state = windowState(window);
+  const fullscreen = window.id === fullscreenId;
+  const active = window.id === activeId;
+  const layer = windowLayer(state, fullscreen);
   return {
     ...window,
     state,
-    active: window.id === activeId,
-    fullscreen: window.id === fullscreenId,
+    layer,
+    zIndex: windowZIndex(window, layer, active),
+    active,
+    fullscreen,
     minimized: state === "minimized",
     closed: state === "closed",
     rect,
   };
+}
+
+function windowLayer(state: WindowManagerWindowState, fullscreen: boolean): WindowManagerLayer {
+  if (state === "closed") return "closed";
+  if (state === "minimized") return "minimized";
+  return fullscreen ? "fullscreen" : "window";
+}
+
+function windowZIndex(window: WindowManagerWindow, layer: WindowManagerLayer, active: boolean): number {
+  return WINDOW_MANAGER_LAYER_Z_INDEX[layer] + (window.order ?? 0) + (active ? 500 : 0);
 }
