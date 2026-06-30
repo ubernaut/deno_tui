@@ -25,6 +25,7 @@ export * from "./log_viewer_commands.ts";
 export * from "./menu_bar_commands.ts";
 export * from "./metric_series_commands.ts";
 export * from "./mouse_bindings.ts";
+export * from "./pad_commands.ts";
 export * from "./plugins.ts";
 export * from "./progress_bar_commands.ts";
 export * from "./radio_group_commands.ts";

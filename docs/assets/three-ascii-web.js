@@ -782,6 +782,13 @@ var componentCatalog = [
     "render-helper",
     "virtualized"
   ]),
+  component("pad", "Pad", "layout", "Off-screen scrollable text surface with viewport slicing and cursor reveal.", [
+    "controller",
+    "render-helper",
+    "virtualized",
+    "keyboard",
+    "mouse"
+  ]),
   component("label", "Label", "primitive", "Aligned text component.", ["component", "themeable"]),
   component("text", "Text", "primitive", "Raw text draw object.", ["component", "themeable"])
 ];

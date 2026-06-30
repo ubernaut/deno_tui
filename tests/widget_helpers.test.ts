@@ -5,6 +5,7 @@ import { bindComboBoxCommands, comboBoxCommands } from "../src/app/combobox_comm
 import { bindInputCommands, inputCommands } from "../src/app/input_commands.ts";
 import { bindListCommands, listCommands } from "../src/app/list_commands.ts";
 import { bindMenuBarCommands, menuBarCommands } from "../src/app/menu_bar_commands.ts";
+import { bindPadCommands, padCommands } from "../src/app/pad_commands.ts";
 import { bindProgressBarCommands, progressBarCommands } from "../src/app/progress_bar_commands.ts";
 import { bindRadioGroupCommands, radioGroupCommands } from "../src/app/radio_group_commands.ts";
 import { bindScrollAreaCommands, scrollAreaCommands } from "../src/app/scroll_area_commands.ts";
@@ -35,6 +36,7 @@ import {
   shiftMenuIndex,
 } from "../src/components/menu_bar.ts";
 import { ModalController, renderModalRows } from "../src/components/modal.ts";
+import { clampPadCursor, measurePadContent, PadController, renderPadRows } from "../src/components/pad.ts";
 import {
   clampProgressValue,
   ProgressBarController,
@@ -1768,6 +1770,86 @@ Deno.test("scrollAreaCommands drive movement and scrollbar visibility", async ()
     payload: {
       id: "main",
       visible: false,
+      inspection: controller.inspect(),
+    },
+  });
+
+  dispose();
+  assertEquals(registry.list("viewport"), []);
+  controller.dispose();
+});
+
+Deno.test("pad helpers render off-screen content slices", () => {
+  const content = ["alpha", "beta-gamma", "delta"];
+
+  assertEquals(measurePadContent(content), { width: 10, height: 3 });
+  assertEquals(clampPadCursor({ row: 20, column: -4 }, { width: 10, height: 3 }), { row: 2, column: 0 });
+  assertEquals(renderPadRows(content, { width: 4, height: 3, offset: { columns: 2, rows: 1 } }), [
+    { row: 0, sourceRow: 1, text: "ta-g" },
+    { row: 1, sourceRow: 2, text: "lta " },
+    { row: 2, sourceRow: 3, text: "    " },
+  ]);
+  assertEquals(renderPadRows("a\nb", { width: 3, height: 2, fill: "." }).map((row) => row.text), ["a..", "b.."]);
+});
+
+Deno.test("PadController writes content reveals cursor and maps scrollbars", () => {
+  const controller = new PadController({
+    content: ["alpha", "beta", "gamma", "delta"],
+    viewportWidth: 4,
+    viewportHeight: 2,
+  });
+
+  assertEquals(controller.write(2, 3, "XYZ"), { width: 6, height: 4 });
+  assertEquals(controller.lines()[2], "gamXYZ");
+  assertEquals(controller.setCursor(3, 5), { row: 3, column: 5 });
+  assertEquals(controller.scroll.offset.peek(), { columns: 2, rows: 2 });
+  assertEquals(controller.viewportRows().map((row) => row.text), ["mXYZ", "lta "]);
+  assertEquals(controller.scrollbarOffsetForPointer("vertical", 1), 2);
+  assertEquals(controller.handleKeyPress(keyPress("up")), { columns: 2, rows: 1 });
+  assertEquals(controller.handleKeyPress(keyPress("left")), { columns: 1, rows: 1 });
+  assertEquals(controller.inspect().cursor, { row: 3, column: 5 });
+
+  controller.appendLine("epsilon");
+  assertEquals(controller.inspect().contentHeight, 5);
+  assertEquals(controller.clear(), { width: 0, height: 0 });
+  assertEquals(controller.inspect().offset, { columns: 0, rows: 0 });
+  controller.dispose();
+});
+
+Deno.test("padCommands expose movement and cursor reveal actions", async () => {
+  const controller = new PadController({
+    content: ["alpha", "beta", "gamma", "delta"],
+    viewportWidth: 2,
+    viewportHeight: 2,
+  });
+  const registry = new CommandRegistry();
+  const actions: unknown[] = [];
+  const dispose = bindPadCommands(registry, controller, {
+    id: "log",
+    idPrefix: "pad.log",
+    group: "viewport",
+  });
+
+  assertEquals(padCommands(new PadController()).map((command) => command.id), [
+    "pad.up",
+    "pad.down",
+    "pad.left",
+    "pad.right",
+    "pad.pageUp",
+    "pad.pageDown",
+    "pad.home",
+    "pad.end",
+    "pad.cursor.reveal",
+  ]);
+  assertEquals(await registry.execute("pad.log.pageDown", (action) => void actions.push(action)), true);
+  assertEquals(controller.scroll.offset.peek(), { columns: 0, rows: 1 });
+  controller.setCursor(3, 4, { reveal: false });
+  assertEquals(await registry.execute("pad.log.cursor.reveal", (action) => void actions.push(action)), true);
+  assertEquals(controller.scroll.offset.peek(), { columns: 3, rows: 2 });
+  assertEquals(actions.at(-1), {
+    type: "pad.cursorRevealed",
+    payload: {
+      id: "log",
       inspection: controller.inspect(),
     },
   });

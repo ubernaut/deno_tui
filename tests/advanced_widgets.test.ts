@@ -45,6 +45,7 @@ Deno.test("component catalog exposes searchable widget metadata", () => {
 
   assertEquals(ids.includes("command-palette"), true);
   assertEquals(ids.includes("three-ascii"), true);
+  assertEquals(ids.includes("pad"), true);
   assertEquals(findComponent("Command Palette")?.id, "command-palette");
   assertEquals(findComponent("ThreeAscii")?.capabilities.includes("three"), true);
   assertEquals(findComponent("missing"), undefined);
@@ -96,6 +97,7 @@ Deno.test("component catalog groups widgets by category and capability", () => {
     "metric-series",
     "window-manager",
     "scroll-area",
+    "pad",
   ]);
 });
 

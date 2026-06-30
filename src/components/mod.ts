@@ -22,6 +22,7 @@ export * from "./log_viewer.ts";
 export * from "./menu_bar.ts";
 export * from "./metric_series.ts";
 export * from "./modal.ts";
+export * from "./pad.ts";
 export * from "./progressbar.ts";
 export * from "./radio_group.ts";
 export * from "./scroll_area.ts";

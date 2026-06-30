@@ -23,8 +23,12 @@ problems found during real interaction.
 ## Completion Notes
 
 - Regenerated screenshots and visually inspected the refreshed component catalog capture.
-- Replaced the component catalog screenshot target with a terminal-friendly compact report so long Markdown tables do not clip.
-- Drove real detached `tmux` sessions for the visualization launcher, API Workbench, Neon Exodus, Three ASCII, workspace launcher, and monitor shell.
-- Fixed API Workbench dropdown keyboard trapping so `Q`, `H`, and `?` remain available while persistent screen dropdowns are open.
-- Fixed the monitor shell menu handler so `Q` continues to honor the advertised exit shortcut while `Escape` closes the menu.
+- Replaced the component catalog screenshot target with a terminal-friendly compact report so long Markdown tables do
+  not clip.
+- Drove real detached `tmux` sessions for the visualization launcher, API Workbench, Neon Exodus, Three ASCII, workspace
+  launcher, and monitor shell.
+- Fixed API Workbench dropdown keyboard trapping so `Q`, `H`, and `?` remain available while persistent screen dropdowns
+  are open.
+- Fixed the monitor shell menu handler so `Q` continues to honor the advertised exit shortcut while `Escape` closes the
+  menu.
 - Ran focused formatting, tests, and type checks for the changed manual-pass files.

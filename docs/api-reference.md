@@ -6,10 +6,10 @@ modules and exported symbols that make up the package API.
 ## Summary
 
 - Entrypoint: `mod.ts`
-- Modules: 183
-- Re-export declarations: 182
-- Exported symbols: 1449
-- Documented symbols: 1449
+- Modules: 185
+- Re-export declarations: 184
+- Exported symbols: 1468
+- Documented symbols: 1468
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -45,8 +45,9 @@ modules and exported symbols that make up the package API.
 | [`src/app/log_viewer_commands.ts`](#src-app-log-viewer-commands-ts)               |          0 |       6 |          6 |
 | [`src/app/menu_bar_commands.ts`](#src-app-menu-bar-commands-ts)                   |          0 |       6 |          6 |
 | [`src/app/metric_series_commands.ts`](#src-app-metric-series-commands-ts)         |          0 |       6 |          6 |
-| [`src/app/mod.ts`](#src-app-mod-ts)                                               |         55 |       0 |          0 |
+| [`src/app/mod.ts`](#src-app-mod-ts)                                               |         56 |       0 |          0 |
 | [`src/app/mouse_bindings.ts`](#src-app-mouse-bindings-ts)                         |          0 |      10 |         10 |
+| [`src/app/pad_commands.ts`](#src-app-pad-commands-ts)                             |          0 |       6 |          6 |
 | [`src/app/plugins.ts`](#src-app-plugins-ts)                                       |          0 |      17 |         17 |
 | [`src/app/progress_bar_commands.ts`](#src-app-progress-bar-commands-ts)           |          0 |       6 |          6 |
 | [`src/app/radio_group_commands.ts`](#src-app-radio-group-commands-ts)             |          0 |       6 |          6 |
@@ -106,8 +107,9 @@ modules and exported symbols that make up the package API.
 | [`src/components/log_viewer.ts`](#src-components-log-viewer-ts)                   |          0 |       6 |          6 |
 | [`src/components/menu_bar.ts`](#src-components-menu-bar-ts)                       |          0 |      10 |         10 |
 | [`src/components/metric_series.ts`](#src-components-metric-series-ts)             |          0 |      10 |         10 |
-| [`src/components/mod.ts`](#src-components-mod-ts)                                 |         39 |       0 |          0 |
+| [`src/components/mod.ts`](#src-components-mod-ts)                                 |         40 |       0 |          0 |
 | [`src/components/modal.ts`](#src-components-modal-ts)                             |          0 |      11 |         11 |
+| [`src/components/pad.ts`](#src-components-pad-ts)                                 |          0 |      13 |         13 |
 | [`src/components/progressbar.ts`](#src-components-progressbar-ts)                 |          0 |      15 |         15 |
 | [`src/components/radio_group.ts`](#src-components-radio-group-ts)                 |          0 |      11 |         11 |
 | [`src/components/scroll_area.ts`](#src-components-scroll-area-ts)                 |          0 |      12 |         12 |
@@ -613,6 +615,7 @@ _No direct exported symbols._
 | `src/app/menu_bar_commands.ts`         | star | -     |
 | `src/app/metric_series_commands.ts`    | star | -     |
 | `src/app/mouse_bindings.ts`            | star | -     |
+| `src/app/pad_commands.ts`              | star | -     |
 | `src/app/plugins.ts`                   | star | -     |
 | `src/app/progress_bar_commands.ts`     | star | -     |
 | `src/app/radio_group_commands.ts`      | star | -     |
@@ -659,6 +662,17 @@ _No direct exported symbols._
 | `MouseInteractionKind`           | type      | yes       | yes   |
 | `MouseInteractionRouter`         | class     | no        | yes   |
 | `MouseInteractionTarget`         | interface | yes       | yes   |
+
+### src/app/pad_commands.ts
+
+| Symbol              | Kind      | Type Only | JSDoc |
+| ------------------- | --------- | --------- | ----- |
+| `bindPadCommands`   | function  | no        | yes   |
+| `PadCommandAction`  | type      | yes       | yes   |
+| `PadCommandKind`    | type      | yes       | yes   |
+| `PadCommandOptions` | interface | yes       | yes   |
+| `PadCommandPayload` | interface | yes       | yes   |
+| `padCommands`       | function  | no        | yes   |
 
 ### src/app/plugins.ts
 
@@ -1377,6 +1391,7 @@ _No direct exported symbols._
 | `src/components/menu_bar.ts`        | star | -     |
 | `src/components/metric_series.ts`   | star | -     |
 | `src/components/modal.ts`           | star | -     |
+| `src/components/pad.ts`             | star | -     |
 | `src/components/progressbar.ts`     | star | -     |
 | `src/components/radio_group.ts`     | star | -     |
 | `src/components/scroll_area.ts`     | star | -     |
@@ -1411,6 +1426,24 @@ _No direct exported symbols._
 | `ModalTone`              | type      | yes       | yes   |
 | `renderModalRows`        | function  | no        | yes   |
 | `RenderModalRowsOptions` | interface | yes       | yes   |
+
+### src/components/pad.ts
+
+| Symbol                 | Kind      | Type Only | JSDoc |
+| ---------------------- | --------- | --------- | ----- |
+| `clampPadCursor`       | function  | no        | yes   |
+| `measurePadContent`    | function  | no        | yes   |
+| `normalizePadLines`    | function  | no        | yes   |
+| `PadContent`           | type      | yes       | yes   |
+| `PadContentSize`       | interface | yes       | yes   |
+| `PadController`        | class     | no        | yes   |
+| `PadControllerOptions` | interface | yes       | yes   |
+| `PadCursor`            | interface | yes       | yes   |
+| `PadInspection`        | interface | yes       | yes   |
+| `PadRevealOptions`     | interface | yes       | yes   |
+| `PadViewportRow`       | interface | yes       | yes   |
+| `renderPadRows`        | function  | no        | yes   |
+| `RenderPadRowsOptions` | interface | yes       | yes   |
 
 ### src/components/progressbar.ts
 

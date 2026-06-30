@@ -871,6 +871,13 @@ var componentCatalog = [
     "render-helper",
     "virtualized"
   ]),
+  component("pad", "Pad", "layout", "Off-screen scrollable text surface with viewport slicing and cursor reveal.", [
+    "controller",
+    "render-helper",
+    "virtualized",
+    "keyboard",
+    "mouse"
+  ]),
   component("label", "Label", "primitive", "Aligned text component.", ["component", "themeable"]),
   component("text", "Text", "primitive", "Raw text draw object.", ["component", "themeable"])
 ];
@@ -4015,6 +4022,119 @@ function wrapModalLine(value, width) {
   return rows2;
 }
 
+// src/components/scroll_area.ts
+function maxScrollOffset(contentWidth, contentHeight, viewportWidth, viewportHeight) {
+  return maxViewportOffset(contentWidth, contentHeight, viewportWidth, viewportHeight);
+}
+function clampScrollOffset(offset, maxOffset) {
+  return clampViewportOffset(offset, maxOffset);
+}
+function scrollOffsetBy(offset, maxOffset, columns, rows2) {
+  return viewportOffsetBy(offset, maxOffset, columns, rows2);
+}
+function scrollbarThumb(contentLength, viewportLength, offset) {
+  return viewportThumb(contentLength, viewportLength, offset);
+}
+function scrollbarGlyph(row, thumb) {
+  return viewportThumbGlyph(row, thumb);
+}
+function scrollbarOffsetForPointer(contentLength, viewportLength, pointerIndex) {
+  const content = normalizedScrollDimension(contentLength);
+  const viewport = normalizedScrollDimension(viewportLength);
+  const maxOffset = Math.max(0, content - viewport);
+  if (maxOffset === 0) return 0;
+  const trackLength = Math.max(1, viewport);
+  const local = Math.max(0, Math.min(trackLength - 1, Math.floor(pointerIndex)));
+  const ratio = trackLength <= 1 ? 0 : local / (trackLength - 1);
+  return Math.max(0, Math.min(maxOffset, Math.round(maxOffset * ratio)));
+}
+var ScrollAreaController = class {
+  contentWidth;
+  contentHeight;
+  viewportWidth;
+  viewportHeight;
+  offset;
+  showScrollbar;
+  #ownsContentWidth;
+  #ownsContentHeight;
+  #ownsViewportWidth;
+  #ownsViewportHeight;
+  #ownsOffset;
+  #ownsShowScrollbar;
+  constructor(options = {}) {
+    this.#ownsContentWidth = !(options.contentWidth instanceof Signal);
+    this.#ownsContentHeight = !(options.contentHeight instanceof Signal);
+    this.#ownsViewportWidth = !(options.viewportWidth instanceof Signal);
+    this.#ownsViewportHeight = !(options.viewportHeight instanceof Signal);
+    this.#ownsOffset = !(options.offset instanceof Signal);
+    this.#ownsShowScrollbar = !(options.showScrollbar instanceof Signal);
+    this.contentWidth = signalify(options.contentWidth ?? 0);
+    this.contentHeight = signalify(options.contentHeight ?? 0);
+    this.viewportWidth = signalify(options.viewportWidth ?? 0);
+    this.viewportHeight = signalify(options.viewportHeight ?? 0);
+    this.offset = signalify(options.offset ?? { columns: 0, rows: 0 }, { deepObserve: true });
+    this.showScrollbar = signalify(options.showScrollbar ?? true);
+    this.#clampOffset();
+  }
+  maxOffset() {
+    return maxScrollOffset(
+      this.contentWidth.peek(),
+      this.contentHeight.peek(),
+      this.viewportWidth.peek(),
+      this.viewportHeight.peek()
+    );
+  }
+  scrollBy(columns, rows2) {
+    return this.setOffset(scrollOffsetBy(this.offset.peek(), this.maxOffset(), columns, rows2));
+  }
+  scrollTo(columns, rows2) {
+    return this.setOffset(clampScrollOffset({ columns, rows: rows2 }, this.maxOffset()));
+  }
+  setContentSize(width, height) {
+    this.contentWidth.value = normalizedScrollDimension(width);
+    this.contentHeight.value = normalizedScrollDimension(height);
+    return this.#clampOffset();
+  }
+  setViewportSize(width, height) {
+    this.viewportWidth.value = normalizedScrollDimension(width);
+    this.viewportHeight.value = normalizedScrollDimension(height);
+    return this.#clampOffset();
+  }
+  setScrollbarVisible(visible) {
+    this.showScrollbar.value = visible;
+  }
+  inspect() {
+    return {
+      ...inspectViewport(
+        this.contentWidth.peek(),
+        this.contentHeight.peek(),
+        this.viewportWidth.peek(),
+        this.viewportHeight.peek(),
+        this.offset.peek()
+      ),
+      showScrollbar: this.showScrollbar.peek()
+    };
+  }
+  dispose() {
+    if (this.#ownsContentWidth) this.contentWidth.dispose();
+    if (this.#ownsContentHeight) this.contentHeight.dispose();
+    if (this.#ownsViewportWidth) this.viewportWidth.dispose();
+    if (this.#ownsViewportHeight) this.viewportHeight.dispose();
+    if (this.#ownsOffset) this.offset.dispose();
+    if (this.#ownsShowScrollbar) this.showScrollbar.dispose();
+  }
+  setOffset(offset) {
+    this.offset.value = offset;
+    return offset;
+  }
+  #clampOffset() {
+    return this.setOffset(clampScrollOffset(this.offset.peek(), this.maxOffset()));
+  }
+};
+function normalizedScrollDimension(value) {
+  return Math.max(0, Math.floor(Number.isFinite(value) ? value : 0));
+}
+
 // src/components/progressbar.ts
 var progressBarCharMap = {
   vertical: ["\u2588", "\u{1FB86}", "\u{1FB85}", "\u{1FB84}", "\u{1FB83}", "\u{1FB82}", "\u2594"],
@@ -4315,119 +4435,6 @@ var RadioGroupController = class {
     if (this.#ownsActiveIndex) this.activeIndex.dispose();
   }
 };
-
-// src/components/scroll_area.ts
-function maxScrollOffset(contentWidth, contentHeight, viewportWidth, viewportHeight) {
-  return maxViewportOffset(contentWidth, contentHeight, viewportWidth, viewportHeight);
-}
-function clampScrollOffset(offset, maxOffset) {
-  return clampViewportOffset(offset, maxOffset);
-}
-function scrollOffsetBy(offset, maxOffset, columns, rows2) {
-  return viewportOffsetBy(offset, maxOffset, columns, rows2);
-}
-function scrollbarThumb(contentLength, viewportLength, offset) {
-  return viewportThumb(contentLength, viewportLength, offset);
-}
-function scrollbarGlyph(row, thumb) {
-  return viewportThumbGlyph(row, thumb);
-}
-function scrollbarOffsetForPointer(contentLength, viewportLength, pointerIndex) {
-  const content = normalizedScrollDimension(contentLength);
-  const viewport = normalizedScrollDimension(viewportLength);
-  const maxOffset = Math.max(0, content - viewport);
-  if (maxOffset === 0) return 0;
-  const trackLength = Math.max(1, viewport);
-  const local = Math.max(0, Math.min(trackLength - 1, Math.floor(pointerIndex)));
-  const ratio = trackLength <= 1 ? 0 : local / (trackLength - 1);
-  return Math.max(0, Math.min(maxOffset, Math.round(maxOffset * ratio)));
-}
-var ScrollAreaController = class {
-  contentWidth;
-  contentHeight;
-  viewportWidth;
-  viewportHeight;
-  offset;
-  showScrollbar;
-  #ownsContentWidth;
-  #ownsContentHeight;
-  #ownsViewportWidth;
-  #ownsViewportHeight;
-  #ownsOffset;
-  #ownsShowScrollbar;
-  constructor(options = {}) {
-    this.#ownsContentWidth = !(options.contentWidth instanceof Signal);
-    this.#ownsContentHeight = !(options.contentHeight instanceof Signal);
-    this.#ownsViewportWidth = !(options.viewportWidth instanceof Signal);
-    this.#ownsViewportHeight = !(options.viewportHeight instanceof Signal);
-    this.#ownsOffset = !(options.offset instanceof Signal);
-    this.#ownsShowScrollbar = !(options.showScrollbar instanceof Signal);
-    this.contentWidth = signalify(options.contentWidth ?? 0);
-    this.contentHeight = signalify(options.contentHeight ?? 0);
-    this.viewportWidth = signalify(options.viewportWidth ?? 0);
-    this.viewportHeight = signalify(options.viewportHeight ?? 0);
-    this.offset = signalify(options.offset ?? { columns: 0, rows: 0 }, { deepObserve: true });
-    this.showScrollbar = signalify(options.showScrollbar ?? true);
-    this.#clampOffset();
-  }
-  maxOffset() {
-    return maxScrollOffset(
-      this.contentWidth.peek(),
-      this.contentHeight.peek(),
-      this.viewportWidth.peek(),
-      this.viewportHeight.peek()
-    );
-  }
-  scrollBy(columns, rows2) {
-    return this.setOffset(scrollOffsetBy(this.offset.peek(), this.maxOffset(), columns, rows2));
-  }
-  scrollTo(columns, rows2) {
-    return this.setOffset(clampScrollOffset({ columns, rows: rows2 }, this.maxOffset()));
-  }
-  setContentSize(width, height) {
-    this.contentWidth.value = normalizedScrollDimension(width);
-    this.contentHeight.value = normalizedScrollDimension(height);
-    return this.#clampOffset();
-  }
-  setViewportSize(width, height) {
-    this.viewportWidth.value = normalizedScrollDimension(width);
-    this.viewportHeight.value = normalizedScrollDimension(height);
-    return this.#clampOffset();
-  }
-  setScrollbarVisible(visible) {
-    this.showScrollbar.value = visible;
-  }
-  inspect() {
-    return {
-      ...inspectViewport(
-        this.contentWidth.peek(),
-        this.contentHeight.peek(),
-        this.viewportWidth.peek(),
-        this.viewportHeight.peek(),
-        this.offset.peek()
-      ),
-      showScrollbar: this.showScrollbar.peek()
-    };
-  }
-  dispose() {
-    if (this.#ownsContentWidth) this.contentWidth.dispose();
-    if (this.#ownsContentHeight) this.contentHeight.dispose();
-    if (this.#ownsViewportWidth) this.viewportWidth.dispose();
-    if (this.#ownsViewportHeight) this.viewportHeight.dispose();
-    if (this.#ownsOffset) this.offset.dispose();
-    if (this.#ownsShowScrollbar) this.showScrollbar.dispose();
-  }
-  setOffset(offset) {
-    this.offset.value = offset;
-    return offset;
-  }
-  #clampOffset() {
-    return this.setOffset(clampScrollOffset(this.offset.peek(), this.maxOffset()));
-  }
-};
-function normalizedScrollDimension(value) {
-  return Math.max(0, Math.floor(Number.isFinite(value) ? value : 0));
-}
 
 // src/components/slider.ts
 function clampSliderValue(value, min2, max2) {

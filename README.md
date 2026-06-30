@@ -38,6 +38,8 @@ renderer lab, and demo suite:
   controls.
 - [Repository Overview](./docs/repo-overview.md) summarizes the architecture, module families, demos, and launch
   commands in one place.
+- [Curses and WebTUI Parity](./docs/curses-webtui-parity.md) tracks robust terminal/web toolkit expectations, the new
+  pad primitive, and remaining priorities.
 - [API Stability and Packaging](./docs/api-stability-and-packaging.md) defines the Deno export map, stable/beta/
   experimental tiers, release checklist, and changelog policy.
 - [Browser Framework Plan](./docs/web-framework-plan.md) compares browser delivery options and recommends a hybrid
@@ -74,9 +76,9 @@ without scraping Markdown.
   with the Acerola ASCII studio scene.
 - **System monitor dashboard** — `deno task viz` renders CPU, memory, disk, network, process, and 3D panels with
   selectable inputs and visualizations.
-- **Expanded widget surface** — List, Tabs, Breadcrumbs, MenuBar, ContextMenu, RadioGroup, ScrollArea, Modal, KeyHelp,
-  CommandPalette, Tree, ToastStack, Sparkline, Gauge, Chart, LogViewer, and StatusBar build on the original component
-  set.
+- **Expanded widget surface** — List, Tabs, Breadcrumbs, MenuBar, ContextMenu, RadioGroup, ScrollArea, Pad, Modal,
+  KeyHelp, CommandPalette, Tree, ToastStack, Sparkline, Gauge, Chart, LogViewer, and StatusBar build on the original
+  component set.
 - **Dashboard data controllers** — bounded metric series state keeps charts, sparklines, gauges, and telemetry panels
   composable without every app rebuilding the same history buffer.
 - **Runtime capability layer** — Workers, WebGPU, WebGL, OffscreenCanvas, and IndexedDB are detected through a
@@ -285,12 +287,12 @@ deno task demo
 | `ThreeAscii`  | Renders a three.js scene as ASCII art in the terminal      |
 
 Additional fork components include `List`, `VirtualList`, `Tabs`, `Breadcrumbs`, `Stepper`, `Spinner`, `EmptyState`,
-`MenuBar`, `ContextMenu`, `RadioGroup`, `ScrollArea`, `Modal`, `KeyHelp`, `CommandPalette`, `Tree`, `FileExplorer`,
-`ToastStack`, `Sparkline`, `Gauge`, `Chart`, `LogViewer`, and `StatusBar`. `VirtualList` combines viewport windowing and
-`SelectionController` for large custom data views, while `Spinner` and `EmptyState` pair naturally with `AsyncResource`
-loading/empty/error state. `componentCatalog`, `listComponents()`, `findComponent()`, `componentsByCategory()`,
-`componentsWithCapability()`, `queryComponents()`, and `inspectComponentCatalog()` provide an inspectable widget
-inventory for docs, launchers, settings screens, and command palettes:
+`MenuBar`, `ContextMenu`, `RadioGroup`, `ScrollArea`, `Pad`, `Modal`, `KeyHelp`, `CommandPalette`, `Tree`,
+`FileExplorer`, `ToastStack`, `Sparkline`, `Gauge`, `Chart`, `LogViewer`, and `StatusBar`. `VirtualList` combines
+viewport windowing and `SelectionController` for large custom data views, while `Spinner` and `EmptyState` pair
+naturally with `AsyncResource` loading/empty/error state. `componentCatalog`, `listComponents()`, `findComponent()`,
+`componentsByCategory()`, `componentsWithCapability()`, `queryComponents()`, and `inspectComponentCatalog()` provide an
+inspectable widget inventory for docs, launchers, settings screens, and command palettes:
 
 ```ts
 const overlays = componentsByCategory("overlay");
@@ -1465,6 +1467,24 @@ clicks on a scrollbar track to a clamped content offset, so terminal and web ren
 position" behavior without duplicating math. `scrollAreaCommands()` and `bindScrollAreaCommands()` expose movement,
 page, edge, and optional scrollbar visibility actions through the command registry for scrollable panes that are
 controlled by menus, key bindings, palettes, or plugins.
+
+For curses-style off-screen surfaces, `PadController` combines that viewport state with mutable text content:
+
+```ts
+const pad = new PadController({
+  content: ["alpha", "beta", "gamma"],
+  viewportWidth: 40,
+  viewportHeight: 10,
+});
+
+pad.write(20, 8, "late-arriving diagnostic");
+pad.setCursor(20, 8); // reveals the cursor if it moved out of view
+const rows = pad.viewportRows().map((row) => row.text);
+const stopPadCommands = bindPadCommands(app.commands, pad, { idPrefix: "logs.pad" });
+```
+
+`PadController` is renderer-neutral: terminal canvases, DOM renderers, remote sessions, and tests can all share the same
+content slicing, cursor reveal, keyboard scrolling, horizontal/vertical offsets, and scrollbar pointer mapping.
 
 ## Theming
 

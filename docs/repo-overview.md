@@ -11,7 +11,7 @@ helpers, and visualization demos on top.
 | `mod.ts`, `mod.web.ts`, `mod.remote.ts`                                                                     | Public package entrypoints for the stable terminal package, beta standalone browser package, and experimental remote terminal bridge.                                                                                           |
 | `src/tui.ts`, `src/canvas/`, `src/component.ts`, `src/view.ts`                                              | Terminal rendering foundation: TUI lifecycle, canvas buffering, draw objects, base components, and scrollable views.                                                                                                            |
 | `src/input_reader/`, `src/input.ts`, `src/focus.ts`, `src/keymap.ts`, `src/selection.ts`, `src/viewport.ts` | Input decoding, keyboard/mouse/paste/focus events, focus traversal, key registries, selection helpers, and viewport math.                                                                                                       |
-| `src/components/`                                                                                           | Widget library and controllers: inputs, menus, tables, virtual lists, trees, dashboards, feedback components, and `ThreeAscii`.                                                                                                 |
+| `src/components/`                                                                                           | Widget library and controllers: inputs, menus, tables, virtual lists, pads, trees, dashboards, feedback components, and `ThreeAscii`.                                                                                           |
 | `src/layout/`                                                                                               | Flex, split pane, responsive breakpoint, and layout recipe helpers.                                                                                                                                                             |
 | `src/app/`                                                                                                  | High-level app primitives: `TuiApp`, actions, routes, commands, settings, plugins, mouse routing, command surfaces, and component-specific command adapters.                                                                    |
 | `src/runtime/`                                                                                              | Capability detection, runtime/terminal plans, terminal session setup, scheduler, render loop, worker pool, stores, cached resources, data pipelines, data queries, renderer backend registry, profiles, and workload telemetry. |
@@ -34,7 +34,8 @@ For a complete generated list of public modules, re-exports, and symbols, see [A
   paste payloads, terminal focus events, browser parity events, and test event factories.
 - Grapheme-aware text measurement and ANSI-preserving cropping for CJK wide cells, combining marks, emoji, and styled
   table/list content.
-- Controller-first widgets so state, command wiring, rendering, and tests remain separable.
+- Controller-first widgets so state, command wiring, rendering, and tests remain separable, including curses-style pads
+  for large off-screen text surfaces.
 - App-level composition through `TuiApp`, `ActionBus`, `RouteManager`, `CommandRegistry`, focus/keymap/mouse managers,
   settings bindings, undo/redo history, and rollback-safe plugins.
 - Catalog/report APIs for components, app plugins, runtime workloads, runtime profiles, renderer backends, theme
