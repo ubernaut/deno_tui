@@ -853,7 +853,11 @@ tui.on("mouseScroll", (event) => {
 });
 
 function handleMenuKey(key: string, currentMenu: MenuState) {
-  if (key === "escape" || key === "q") {
+  if (key === "q") {
+    tui.emit("destroy");
+    return;
+  }
+  if (key === "escape") {
     menu.value = null;
     return;
   }

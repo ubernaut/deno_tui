@@ -5,6 +5,7 @@ import {
   componentCatalogCommands,
   inspectComponentCatalogCommands,
 } from "../src/app/component_commands.ts";
+import { formatComponentCatalogTerminal } from "../scripts/component_catalog.ts";
 import { CommandRegistry } from "../src/app/commands.ts";
 import { bindToastCommands, toastCommands } from "../src/app/toast_commands.ts";
 import {
@@ -184,6 +185,16 @@ Deno.test("component catalog reports serialize filtered entries and markdown", (
       "| ThreeAscii | visualization | component, three, dashboard | Three.js scene renderer for terminal ASCII output. |",
     ].join("\n"),
   );
+});
+
+Deno.test("component catalog terminal report wraps long rows for screenshots", () => {
+  const report = createComponentCatalogReport({ query: { category: "input" } });
+  const terminal = formatComponentCatalogTerminal(report, { width: 72, maxCapabilities: 3 });
+
+  assertEquals(terminal.includes("## Input (7)"), true);
+  assertEquals(terminal.includes("TextBox"), true);
+  assertEquals(terminal.includes("Use --json for machine-readable metadata"), true);
+  assertEquals(terminal.split("\n").every((line) => line.length <= 72), true);
 });
 
 Deno.test("component catalog commands project widgets into command surfaces", async () => {

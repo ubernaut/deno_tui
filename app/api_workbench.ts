@@ -3512,6 +3512,15 @@ function handleMenuFocusKey(event: { key: string; ctrl?: boolean; meta?: boolean
 
 function handleScreenDropdownKey(event: { key: string; ctrl?: boolean; meta?: boolean; shift?: boolean }): void {
   if (event.ctrl || event.meta) return;
+  if (event.key === "q") {
+    openQuitModal();
+    return;
+  }
+  if (event.key === "?" || event.key === "h") {
+    closeTopMenus();
+    openHelpModal();
+    return;
+  }
   if (event.key === "escape") {
     closeTopMenus();
     return;

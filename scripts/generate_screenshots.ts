@@ -79,7 +79,7 @@ const targets: ScreenshotTarget[] = [
     theme: "gallery",
     columns: 120,
     rows: 36,
-    command: ["deno", "task", "component-catalog"],
+    command: ["deno", "task", "component-catalog", "--", "--terminal"],
     mode: "stdout",
   },
   {
