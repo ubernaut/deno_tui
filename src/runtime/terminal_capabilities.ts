@@ -9,6 +9,12 @@ export type TerminalMouseProtocol = "none" | "x10" | "vt200" | "sgr";
 /** Text rendering strategy selected from terminal capabilities. */
 export type TerminalTextMode = "ascii" | "unicode";
 
+/** Terminal multiplexer detected from environment variables. */
+export type TerminalMultiplexer = "none" | "tmux" | "screen";
+
+/** Severity for terminal portability diagnostics. */
+export type TerminalDiagnosticSeverity = "info" | "warning";
+
 /** Stable identifier for one terminal capability flag. */
 export type TerminalCapabilityId =
   | "interactive"
@@ -33,6 +39,31 @@ export interface TerminalCapabilities {
   focusEvents: boolean;
   alternateScreen: boolean;
   cursorShape: boolean;
+}
+
+/** Terminal environment metadata used for portability diagnostics. */
+export interface TerminalEnvironment {
+  term: string;
+  termProgram: string;
+  colorTerm: string;
+  locale: string;
+  isTty: boolean;
+  interactive: boolean;
+  multiplexer: TerminalMultiplexer;
+  remote: boolean;
+  colorDepth: TerminalColorDepth;
+  truecolor: boolean;
+  noColor: boolean;
+  forceColor?: string;
+  unicodeLocale: boolean;
+}
+
+/** Human-readable terminal diagnostic for setup panes, logs, and support reports. */
+export interface TerminalDiagnostic {
+  id: string;
+  severity: TerminalDiagnosticSeverity;
+  message: string;
+  suggestion?: string;
 }
 
 /** Display metadata for one terminal capability. */
@@ -84,6 +115,20 @@ export interface TerminalPlan {
   hyperlinks: boolean;
   cursorShape: boolean;
   reasons: string[];
+}
+
+/** Options for building a complete terminal portability report. */
+export interface TerminalPortabilityReportOptions {
+  detection?: TerminalCapabilityDetectionOptions;
+  plan?: TerminalPlanOptions;
+}
+
+/** Complete terminal capability, environment, plan, and diagnostic report. */
+export interface TerminalPortabilityReport {
+  environment: TerminalEnvironment;
+  capabilities: TerminalCapabilities;
+  plan: TerminalPlan;
+  diagnostics: TerminalDiagnostic[];
 }
 
 const TERMINAL_CAPABILITY_METADATA: Record<
@@ -139,29 +184,54 @@ const COLOR_DEPTH_RANK: Record<TerminalColorDepth, number> = {
 export function detectTerminalCapabilities(
   options: TerminalCapabilityDetectionOptions = {},
 ): TerminalCapabilities {
+  const environment = detectTerminalEnvironment(options);
+  const env = createEnvReader(options.env);
+  const unicode = environment.interactive && environment.unicodeLocale;
+  const modern = isModernTerminal(environment.term, environment.termProgram, env);
+
+  return {
+    interactive: environment.interactive,
+    colorDepth: environment.colorDepth,
+    unicode,
+    hyperlinks: environment.interactive && supportsHyperlinks(environment.term, environment.termProgram, env),
+    mouse: environment.interactive && !isLinuxConsole(environment.term),
+    sgrMouse: environment.interactive && modern,
+    bracketedPaste: environment.interactive && modern,
+    focusEvents: environment.interactive && modern,
+    alternateScreen: environment.interactive,
+    cursorShape: environment.interactive && modern,
+  };
+}
+
+/** Detects terminal environment metadata used to explain portability decisions. */
+export function detectTerminalEnvironment(
+  options: TerminalCapabilityDetectionOptions = {},
+): TerminalEnvironment {
   const env = createEnvReader(options.env);
   const term = env("TERM") ?? "";
   const termProgram = env("TERM_PROGRAM") ?? "";
   const colorTerm = env("COLORTERM") ?? "";
+  const locale = [env("LC_ALL"), env("LC_CTYPE"), env("LANG")].filter(Boolean).join(" ");
   const isTty = options.isTty ?? safeIsTerminal();
   const noColor = options.noColor ?? Boolean(env("NO_COLOR"));
   const forceColor = options.forceColor ?? env("FORCE_COLOR");
   const interactive = isTty && !isDumbTerminal(term);
   const colorDepth = detectColorDepth({ term, colorTerm, noColor, forceColor, interactive });
-  const unicode = interactive && supportsUnicode(env, options.platform);
-  const modern = isModernTerminal(term, termProgram, env);
 
   return {
+    term,
+    termProgram,
+    colorTerm,
+    locale,
+    isTty,
     interactive,
+    multiplexer: detectTerminalMultiplexer(term, env),
+    remote: isRemoteTerminal(env),
     colorDepth,
-    unicode,
-    hyperlinks: interactive && supportsHyperlinks(term, termProgram, env),
-    mouse: interactive && !isLinuxConsole(term),
-    sgrMouse: interactive && modern,
-    bracketedPaste: interactive && modern,
-    focusEvents: interactive && modern,
-    alternateScreen: interactive,
-    cursorShape: interactive && modern,
+    truecolor: colorDepth === "truecolor",
+    noColor,
+    forceColor: forceColor === undefined ? undefined : String(forceColor),
+    unicodeLocale: supportsUnicode(env, options.platform),
   };
 }
 
@@ -198,6 +268,108 @@ export function formatTerminalCapabilities(
   return [
     `Terminal capabilities: ${summary.available}/${summary.total} available, ${summary.colorDepth} color`,
     ...rows,
+  ].join("\n");
+}
+
+/** Returns setup diagnostics for terminal, SSH, tmux/screen, Unicode, and color behavior. */
+export function terminalEnvironmentDiagnostics(
+  environment: TerminalEnvironment = detectTerminalEnvironment(),
+): TerminalDiagnostic[] {
+  const diagnostics: TerminalDiagnostic[] = [];
+
+  if (!environment.interactive) {
+    diagnostics.push({
+      id: "non-interactive",
+      severity: "warning",
+      message: "Stdout is not an interactive terminal, so full-screen TUI escape setup should be skipped.",
+      suggestion: "Run from a TTY for interactive demos, or use report/web tasks for CI and noninteractive logs.",
+    });
+  }
+
+  if (!environment.unicodeLocale) {
+    diagnostics.push({
+      id: "non-utf8-locale",
+      severity: "warning",
+      message: "The locale does not advertise UTF-8, so box drawing and wide glyph rendering may degrade.",
+      suggestion: "Use a UTF-8 locale such as LANG=en_US.UTF-8 or set preferUnicode=false in the terminal plan.",
+    });
+  }
+
+  if (environment.noColor) {
+    diagnostics.push({
+      id: "no-color",
+      severity: "info",
+      message: "NO_COLOR is set, so color output is intentionally disabled unless FORCE_COLOR overrides it.",
+    });
+  }
+
+  if (environment.colorDepth === "none" && environment.interactive && !environment.noColor) {
+    diagnostics.push({
+      id: "color-depth-none",
+      severity: "warning",
+      message: "No terminal color depth was detected for an interactive session.",
+      suggestion: "Use TERM=xterm-256color or FORCE_COLOR=2/3 when the terminal is known to support richer color.",
+    });
+  }
+
+  if (environment.multiplexer === "tmux") {
+    if (environment.truecolor) {
+      diagnostics.push({
+        id: "tmux-truecolor",
+        severity: "info",
+        message: "tmux is active and 24-bit color appears available.",
+      });
+    } else {
+      diagnostics.push({
+        id: "tmux-truecolor-missing",
+        severity: "warning",
+        message: "tmux is active but 24-bit color was not detected.",
+        suggestion:
+          'Use `set -g default-terminal "tmux-256color"` and `set -as terminal-overrides ",*:Tc"` in tmux.conf, then reload tmux.',
+      });
+    }
+  } else if (environment.multiplexer === "screen" && environment.colorDepth !== "truecolor") {
+    diagnostics.push({
+      id: "screen-color-limited",
+      severity: "info",
+      message: "GNU screen is active and may limit color or mouse reporting depending on terminfo.",
+    });
+  }
+
+  if (environment.remote) {
+    diagnostics.push({
+      id: "remote-session",
+      severity: "info",
+      message: "An SSH-style remote session was detected.",
+      suggestion: "Forward TERM, COLORTERM, and locale values consistently when terminal color or Unicode degrades.",
+    });
+  }
+
+  return diagnostics;
+}
+
+/** Formats terminal environment metadata and diagnostics as concise CLI/status text. */
+export function formatTerminalEnvironment(
+  environment: TerminalEnvironment = detectTerminalEnvironment(),
+): string {
+  const diagnostics = terminalEnvironmentDiagnostics(environment);
+  return [
+    "Terminal environment:",
+    `term     ${environment.term || "(unset)"}`,
+    `program  ${environment.termProgram || "(unset)"}`,
+    `color    ${environment.colorDepth}${environment.colorTerm ? ` (${environment.colorTerm})` : ""}`,
+    `tty      ${environment.isTty ? "yes" : "no"}`,
+    `mux      ${environment.multiplexer}`,
+    `remote   ${environment.remote ? "yes" : "no"}`,
+    `locale   ${environment.locale || "(unset)"}`,
+    "Diagnostics:",
+    ...(diagnostics.length
+      ? diagnostics.map((diagnostic) =>
+        `${diagnostic.severity} ${diagnostic.id}: ${diagnostic.message}${
+          diagnostic.suggestion ? ` ${diagnostic.suggestion}` : ""
+        }`
+      )
+      : ["none"]),
   ].join("\n");
 }
 
@@ -262,6 +434,34 @@ export function formatTerminalPlan(plan: TerminalPlan): string {
   ].join("\n");
 }
 
+/** Builds a complete terminal portability report from one detection snapshot. */
+export function createTerminalPortabilityReport(
+  options: TerminalPortabilityReportOptions = {},
+): TerminalPortabilityReport {
+  const environment = detectTerminalEnvironment(options.detection);
+  const capabilities = detectTerminalCapabilities(options.detection);
+  const plan = createTerminalPlan(capabilities, options.plan);
+  return {
+    environment,
+    capabilities,
+    plan,
+    diagnostics: terminalEnvironmentDiagnostics(environment),
+  };
+}
+
+/** Formats a complete terminal portability report for support dumps and diagnostics panes. */
+export function formatTerminalPortabilityReport(
+  report: TerminalPortabilityReport = createTerminalPortabilityReport(),
+): string {
+  return [
+    formatTerminalEnvironment(report.environment),
+    "",
+    formatTerminalCapabilities(report.capabilities),
+    "",
+    formatTerminalPlan(report.plan),
+  ].join("\n");
+}
+
 function createEnvReader(
   env: TerminalCapabilityDetectionOptions["env"],
 ): (name: string) => string | undefined {
@@ -298,6 +498,7 @@ function detectColorDepth(options: {
   if (options.forceColor === "2" || options.forceColor === "256") return "ansi256";
   if (options.forceColor) return "ansi16";
   if (/truecolor|24bit/i.test(options.colorTerm)) return "truecolor";
+  if (/-direct$/i.test(options.term) || /truecolor|24bit/i.test(options.term)) return "truecolor";
   if (/-256(color)?$/i.test(options.term) || /256color/i.test(options.term)) return "ansi256";
   return options.interactive ? "ansi16" : "none";
 }
@@ -337,6 +538,19 @@ function isDumbTerminal(term: string): boolean {
 
 function isLinuxConsole(term: string): boolean {
   return /^linux$/i.test(term);
+}
+
+function detectTerminalMultiplexer(
+  term: string,
+  env: (name: string) => string | undefined,
+): TerminalMultiplexer {
+  if (env("TMUX") || /^tmux/i.test(term)) return "tmux";
+  if (env("STY") || /^screen/i.test(term)) return "screen";
+  return "none";
+}
+
+function isRemoteTerminal(env: (name: string) => string | undefined): boolean {
+  return Boolean(env("SSH_TTY") || env("SSH_CONNECTION") || env("SSH_CLIENT"));
 }
 
 function chooseColorDepth(

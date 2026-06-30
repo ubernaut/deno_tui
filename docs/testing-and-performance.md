@@ -41,8 +41,10 @@ These helpers are intentionally small and do not choose a test framework. They w
 - `createRuntimePlan()` / `formatRuntimePlan()` for deterministic worker, storage, and renderer fallback decisions.
 - `detectTerminalCapabilities()` plus `createTerminalPlan()` / `formatTerminalPlan()` for deterministic color, Unicode,
   mouse protocol, bracketed paste, hyperlink, and alternate-screen decisions.
+- `detectTerminalEnvironment()`, `terminalEnvironmentDiagnostics()`, and `createTerminalPortabilityReport()` for
+  tmux/SSH, truecolor, locale, TTY, and noninteractive diagnostics.
 - `terminalSessionSequences()` and `createTerminalSessionController()` for testable terminal enter/exit setup with an
-  injectable writer.
+  injectable writer. Noninteractive terminal plans intentionally emit no setup or teardown escape sequences.
 - `RuntimeProfile`, `RuntimeProfileRegistry`, and runtime profile catalog helpers for named, queryable policies such as
   balanced, throughput, portable, and ephemeral execution.
 - `inspectRuntimeWorkload()`, `createRuntimeWorkloadReport()`, and `formatRuntimeWorkloadMarkdown()` for scheduler and
@@ -86,8 +88,10 @@ Runtime profiles let apps expose strategy choices as data instead of hard-coded 
 `bindRuntimeProfileSetting()`, and expose `bindRuntimeProfileCommands()` through command palettes or menus.
 `createRuntimeProfilePlugin()` installs that controller, command surface, optional keymap mirroring, and setting
 persistence through the same disposable app-plugin lifecycle as theme and route modules. Run `deno task capabilities`
-for the current capability summary, default plan, and built-in profile table, or `deno task capabilities -- --json` for
-machine-readable reports.
+for the current capability summary, terminal environment diagnostics, default plan, and built-in profile table, or
+`deno task capabilities -- --json` for machine-readable reports. When color works over raw SSH but degrades inside tmux,
+the terminal diagnostics should report `tmux-truecolor-missing`; configure tmux with
+`set -g default-terminal "tmux-256color"` and `set -as terminal-overrides ",*:Tc"`, then reload or restart tmux.
 
 `BenchmarkRunner` supports per-case `category`, `description`, `tags`, `iterations`, `warmupIterations`, `maxAverageMs`,
 and `maxTotalMs`. Pass `{ now }` in `BenchmarkRunnerOptions` to make benchmark unit tests deterministic, use

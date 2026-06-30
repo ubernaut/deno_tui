@@ -1848,7 +1848,9 @@ Optional high-performance APIs are surfaced through `src/runtime/mod.ts`:
 - `createRuntimePlan()` / `formatRuntimePlan()`
 - `detectTerminalCapabilities()` / `terminalCapabilityEntries()` / `summarizeTerminalCapabilities()` /
   `formatTerminalCapabilities()`
+- `detectTerminalEnvironment()` / `formatTerminalEnvironment()` / `terminalEnvironmentDiagnostics()`
 - `createTerminalPlan()` / `formatTerminalPlan()`
+- `createTerminalPortabilityReport()` / `formatTerminalPortabilityReport()`
 - `terminalSessionSequences()` / `terminalMouseSequences()` / `createTerminalSessionController()`
 - `RuntimeRendererBackendRegistry` / `RuntimeRendererBackendController` / `selectRuntimeRendererBackend()` /
   `formatRuntimeRendererBackendCatalogMarkdown()`
@@ -1875,27 +1877,33 @@ Optional high-performance APIs are surfaced through `src/runtime/mod.ts`:
 - `createRuntimeStore()`
 - `createPersistentSignal()` / `PersistentSignal`
 
-Use these instead of hard-coding global checks inside components. `formatRuntimeCapabilities()` and
-`formatTerminalCapabilities()` produce readable diagnostic summaries for settings screens and logs, while
-`createRuntimePlan()` and `createTerminalPlan()` turn the same capability sets into deterministic app strategies for
-worker execution, persistent storage, renderer fallback, color depth, Unicode text, mouse protocol, bracketed paste,
-focus events, and alternate-screen behavior. `deno task capabilities` prints the runtime summary, terminal summary,
-default plans, built-in runtime profile table, and renderer backend catalog; pass `--json` to that task for structured
-output. `terminalSessionSequences()` and `createTerminalSessionController()` turn a terminal plan into idempotent
-enter/exit setup for alternate screen, cursor visibility, bracketed paste, focus events, and mouse protocols using an
-injectable writer. `RuntimeRendererBackendRegistry`, `RuntimeRendererBackendController`,
-`queryRuntimeRendererBackends()`, and `selectRuntimeRendererBackend()` expose the renderer side as a composable catalog:
-WebGPU three.js ASCII, WebGL canvas, and portable CPU terminal backends can be selected, cycled, ranked, filtered, and
-reported from the same capability snapshot used by runtime profiles. `bindRuntimeRendererBackendCommands()` and
-`bindRuntimeRendererBackendSetting()` wire that active backend into command palettes, key help, and persisted settings
-with the same controller-first shape as runtime profiles, while `createRuntimeRendererBackendPlugin()` packages the
-controller, commands, persistence, keymap mirroring, and custom lifecycle hooks into one app plugin.
-`RuntimeWorkloadRegistry`, `inspectRuntimeWorkload()`, `createRuntimeWorkloadReport()`, and
-`formatRuntimeWorkloadMarkdown()` normalize `AsyncScheduler.inspect()` and `WorkerPool.inspect()` into one pressure
-report for settings panes, demos, and CI logs: capacity, running work, queued work, saturation, idle state, and
-termination state are all exposed through a JSON-friendly shape. The registry adds disposer-returning dynamic source
-registration, replacement-safe unregistering, aggregate inspection, and Markdown formatting for apps where plugins own
-their own schedulers or worker pools. Runtime profiles are named policy presets for settings screens and launchers:
+Use these instead of hard-coding global checks inside components. `formatRuntimeCapabilities()`,
+`formatTerminalCapabilities()`, and `formatTerminalEnvironment()` produce readable diagnostic summaries for settings
+screens and logs, while `createRuntimePlan()` and `createTerminalPlan()` turn the same capability sets into
+deterministic app strategies for worker execution, persistent storage, renderer fallback, color depth, Unicode text,
+mouse protocol, bracketed paste, focus events, and alternate-screen behavior. `deno task capabilities` prints the
+runtime summary, terminal summary, terminal environment diagnostics, default plans, built-in runtime profile table, and
+renderer backend catalog; pass `--json` to that task for structured output. `terminalEnvironmentDiagnostics()` explains
+common portability issues such as noninteractive stdout, non-UTF-8 locales, SSH sessions, and tmux truecolor
+degradation. When tmux reports only 256-color output, configure tmux with `set -g default-terminal "tmux-256color"` and
+`set -as terminal-overrides ",*:Tc"`, then reload tmux. `createTerminalPortabilityReport()` combines the environment,
+capabilities, plan, and diagnostics into one support-friendly object. `terminalSessionSequences()` and
+`createTerminalSessionController()` turn a terminal plan into idempotent enter/exit setup for alternate screen, cursor
+visibility, bracketed paste, focus events, and mouse protocols using an injectable writer; noninteractive terminal plans
+skip escape setup so report tasks do not leak cursor or alternate-screen codes. `RuntimeRendererBackendRegistry`,
+`RuntimeRendererBackendController`, `queryRuntimeRendererBackends()`, and `selectRuntimeRendererBackend()` expose the
+renderer side as a composable catalog: WebGPU three.js ASCII, WebGL canvas, and portable CPU terminal backends can be
+selected, cycled, ranked, filtered, and reported from the same capability snapshot used by runtime profiles.
+`bindRuntimeRendererBackendCommands()` and `bindRuntimeRendererBackendSetting()` wire that active backend into command
+palettes, key help, and persisted settings with the same controller-first shape as runtime profiles, while
+`createRuntimeRendererBackendPlugin()` packages the controller, commands, persistence, keymap mirroring, and custom
+lifecycle hooks into one app plugin. `RuntimeWorkloadRegistry`, `inspectRuntimeWorkload()`,
+`createRuntimeWorkloadReport()`, and `formatRuntimeWorkloadMarkdown()` normalize `AsyncScheduler.inspect()` and
+`WorkerPool.inspect()` into one pressure report for settings panes, demos, and CI logs: capacity, running work, queued
+work, saturation, idle state, and termination state are all exposed through a JSON-friendly shape. The registry adds
+disposer-returning dynamic source registration, replacement-safe unregistering, aggregate inspection, and Markdown
+formatting for apps where plugins own their own schedulers or worker pools. Runtime profiles are named policy presets
+for settings screens and launchers:
 
 ```ts
 const runtimeProfiles = createRuntimeProfileRegistry();

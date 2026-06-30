@@ -36,25 +36,27 @@ const ENCODER = new TextEncoder();
 export function terminalSessionSequences(options: TerminalSessionOptions): TerminalSessionSequences {
   const enter: string[] = [];
   const exit: string[] = [];
+  const interactive = options.plan.capabilities.interactive;
+  const hideCursor = interactive && (options.hideCursor ?? true);
 
-  if (options.plan.alternateScreen) {
+  if (interactive && options.plan.alternateScreen) {
     enter.push(`${ESC}[?1049h`);
     exit.unshift(`${ESC}[?1049l`);
   }
-  if (options.hideCursor ?? true) {
+  if (hideCursor) {
     enter.push(`${ESC}[?25l`);
     exit.unshift(`${ESC}[?25h`);
   }
-  if (options.plan.bracketedPaste) {
+  if (interactive && options.plan.bracketedPaste) {
     enter.push(`${ESC}[?2004h`);
     exit.unshift(`${ESC}[?2004l`);
   }
-  if (options.plan.focusEvents) {
+  if (interactive && options.plan.focusEvents) {
     enter.push(`${ESC}[?1004h`);
     exit.unshift(`${ESC}[?1004l`);
   }
 
-  const mouse = terminalMouseSequences(options.plan.mouseProtocol);
+  const mouse = terminalMouseSequences(interactive ? options.plan.mouseProtocol : "none");
   if (mouse.enter) enter.push(mouse.enter);
   if (mouse.exit) exit.unshift(mouse.exit);
 
@@ -126,13 +128,14 @@ export class TerminalSessionController {
   }
 
   inspect(): TerminalSessionInspection {
+    const interactive = this.#options.plan.capabilities.interactive;
     return {
       active: this.#active,
-      alternateScreen: this.#options.plan.alternateScreen,
-      bracketedPaste: this.#options.plan.bracketedPaste,
-      focusEvents: this.#options.plan.focusEvents,
-      mouseProtocol: this.#options.plan.mouseProtocol,
-      hideCursor: this.#options.hideCursor ?? true,
+      alternateScreen: interactive && this.#options.plan.alternateScreen,
+      bracketedPaste: interactive && this.#options.plan.bracketedPaste,
+      focusEvents: interactive && this.#options.plan.focusEvents,
+      mouseProtocol: interactive ? this.#options.plan.mouseProtocol : "none",
+      hideCursor: interactive && (this.#options.hideCursor ?? true),
     };
   }
 

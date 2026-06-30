@@ -9,10 +9,15 @@ import {
 } from "../src/runtime/capabilities.ts";
 import {
   createTerminalPlan,
+  createTerminalPortabilityReport,
   detectTerminalCapabilities,
+  detectTerminalEnvironment,
   formatTerminalCapabilities,
+  formatTerminalEnvironment,
   formatTerminalPlan,
+  formatTerminalPortabilityReport,
   terminalCapabilityEntries,
+  terminalEnvironmentDiagnostics,
 } from "../src/runtime/terminal_capabilities.ts";
 import {
   createTerminalSessionController,
@@ -241,6 +246,35 @@ Deno.test("terminal plans choose portable fallbacks from preferences and detecte
   );
 });
 
+Deno.test("terminal environment diagnostics explain tmux ssh and color fallback", () => {
+  const detection = {
+    isTty: true,
+    platform: "linux",
+    env: {
+      TERM: "screen-256color",
+      TMUX: "/tmp/tmux-1000/default,123,0",
+      SSH_TTY: "/dev/pts/4",
+      LANG: "en_US.UTF-8",
+    },
+  };
+  const environment = detectTerminalEnvironment(detection);
+  const diagnostics = terminalEnvironmentDiagnostics(environment);
+  const report = createTerminalPortabilityReport({ detection });
+
+  assertEquals(environment.multiplexer, "tmux");
+  assertEquals(environment.remote, true);
+  assertEquals(environment.colorDepth, "ansi256");
+  assertEquals(environment.truecolor, false);
+  assertEquals(diagnostics.map((diagnostic) => diagnostic.id), [
+    "tmux-truecolor-missing",
+    "remote-session",
+  ]);
+  assertEquals(formatTerminalEnvironment(environment).includes("mux      tmux"), true);
+  assertEquals(report.environment.multiplexer, "tmux");
+  assertEquals(report.plan.colorDepth, "ansi256");
+  assertEquals(formatTerminalPortabilityReport(report).includes("Terminal environment:"), true);
+});
+
 Deno.test("terminal session helpers compose setup and teardown sequences", () => {
   const plan = createTerminalPlan({
     interactive: true,
@@ -267,6 +301,24 @@ Deno.test("terminal session helpers compose setup and teardown sequences", () =>
     exit: "\x1b[?1006l\x1b[?1000l\x1b[?1004l\x1b[?2004l\x1b[?25h\x1b[?1049l",
   });
   assertEquals(terminalSessionSequences({ plan, hideCursor: false }).enter.includes("\x1b[?25l"), false);
+});
+
+Deno.test("terminal session helpers skip setup sequences for noninteractive plans", () => {
+  const plan = createTerminalPlan(detectTerminalCapabilities({
+    isTty: false,
+    env: { TERM: "xterm-256color", LANG: "en_US.UTF-8" },
+    platform: "linux",
+  }));
+
+  assertEquals(terminalSessionSequences({ plan }), { enter: "", exit: "" });
+  assertEquals(createTerminalSessionController({ write: () => 0 }, { plan }).inspect(), {
+    active: false,
+    alternateScreen: false,
+    bracketedPaste: false,
+    focusEvents: false,
+    mouseProtocol: "none",
+    hideCursor: false,
+  });
 });
 
 Deno.test("TerminalSessionController writes enter and exit sequences idempotently", async () => {
