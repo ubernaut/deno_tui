@@ -18,6 +18,8 @@ testing helpers.
   `terminalCommands()` for non-PTY command panes with stdout/stderr scrollback.
 - Added backend/session seams for terminal windows: `TerminalBackend`, `TerminalSessionHandle`, terminal screen cells,
   spawn templates, session descriptors, and window-layout resize synchronization.
+- Added command-registry bindings for managed windows: create, focus, close, minimize, fullscreen, restore, rename, and
+  reorder.
 
 ## Remaining Priorities
 

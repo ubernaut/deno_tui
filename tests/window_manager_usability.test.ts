@@ -1,10 +1,13 @@
 import { assertEquals } from "./deps.ts";
 import {
+  bindWindowManagerCommands,
+  CommandRegistry,
   createFileExplorerTree,
   FileExplorerController,
   OverlayStackController,
   placePopover,
   pointInRect,
+  type WindowManagerCommandAction,
   WindowManagerController,
 } from "../mod.ts";
 
@@ -59,6 +62,84 @@ Deno.test("window manager keeps closed windows out of focus and tab loops", () =
   assertEquals(manager.focusNext()?.id, "three");
   manager.close("three");
   assertEquals(manager.inspect().windows.find((entry) => entry.id === "three")?.closed, false);
+  manager.dispose();
+});
+
+Deno.test("window manager can upsert rename and reorder managed windows", () => {
+  const manager = new WindowManagerController({
+    activeId: "editor",
+    windows: [
+      { id: "explorer", title: "Explorer" },
+      { id: "editor", title: "Editor" },
+      { id: "logs", title: "Logs" },
+    ],
+  });
+
+  manager.upsert({ id: "terminal", title: "Terminal", minWidth: 40, minHeight: 12 });
+  assertEquals(manager.ids(), ["explorer", "editor", "logs", "terminal"]);
+  assertEquals(manager.rename("terminal", "Shell")?.title, "Shell");
+  assertEquals(manager.move("terminal", -2)?.id, "terminal");
+  assertEquals(manager.ids(), ["explorer", "terminal", "editor", "logs"]);
+
+  manager.upsert({ id: "terminal", title: "Shell Output", state: "minimized" });
+  assertEquals(manager.inspect().windows.find((entry) => entry.id === "terminal")?.title, "Shell Output");
+  assertEquals(manager.inspect().windows.find((entry) => entry.id === "terminal")?.minimized, true);
+  manager.dispose();
+});
+
+Deno.test("window manager commands create focus rename move and update window state", async () => {
+  const manager = new WindowManagerController({
+    activeId: "editor",
+    windows: [
+      { id: "explorer", title: "Explorer" },
+      { id: "editor", title: "Editor" },
+    ],
+  });
+  const registry = new CommandRegistry<WindowManagerCommandAction>();
+  const actions: WindowManagerCommandAction[] = [];
+  let nextWindow = 0;
+  const dispose = bindWindowManagerCommands(registry, manager, {
+    idPrefix: "wm",
+    createWindow: () => {
+      nextWindow += 1;
+      return { id: `terminal-${nextWindow}`, title: `Terminal ${nextWindow}`, minWidth: 40, minHeight: 12 };
+    },
+    renameWindow: (window) => `${window.title} Renamed`,
+    includeWindowCommands: true,
+  });
+
+  assertEquals(await registry.execute("wm.newWindow", (action) => void actions.push(action)), true);
+  assertEquals(manager.active()?.id, "terminal-1");
+  assertEquals(actions.at(-1)?.type, "windowManager.created");
+  assertEquals(actions.at(-1)?.payload?.window?.id, "terminal-1");
+
+  assertEquals(await registry.execute("wm.rename", (action) => void actions.push(action)), true);
+  assertEquals(manager.active()?.title, "Terminal 1 Renamed");
+  assertEquals(actions.at(-1)?.type, "windowManager.renamed");
+
+  assertEquals(await registry.execute("wm.moveBackward", (action) => void actions.push(action)), true);
+  assertEquals(manager.ids(), ["explorer", "terminal-1", "editor"]);
+  assertEquals(actions.at(-1)?.type, "windowManager.moved");
+
+  assertEquals(await registry.execute("wm.focusNext", (action) => void actions.push(action)), true);
+  assertEquals(manager.active()?.id, "editor");
+  assertEquals(await registry.execute("wm.fullscreen", (action) => void actions.push(action)), true);
+  assertEquals(manager.inspect().fullscreenId, "editor");
+
+  assertEquals(await registry.execute("wm.minimize", (action) => void actions.push(action)), true);
+  assertEquals(manager.inspect().windows.find((entry) => entry.id === "editor")?.minimized, true);
+  assertEquals(manager.inspect().fullscreenId, undefined);
+
+  assertEquals(await registry.execute("wm.restoreAll", (action) => void actions.push(action)), true);
+  assertEquals(manager.inspect().windows.find((entry) => entry.id === "editor")?.minimized, false);
+
+  manager.focus("terminal-1");
+  assertEquals(await registry.execute("wm.close", (action) => void actions.push(action)), true);
+  assertEquals(manager.ids(), ["explorer", "editor"]);
+  assertEquals(actions.at(-1)?.type, "windowManager.closed");
+
+  dispose();
+  assertEquals(registry.list("window"), []);
   manager.dispose();
 });
 

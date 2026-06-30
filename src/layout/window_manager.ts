@@ -96,6 +96,47 @@ export class WindowManagerController {
     return this.windows.peek().find((entry) => entry.id === this.activeId.peek());
   }
 
+  upsert(window: WindowManagerWindow): WindowManagerWindow {
+    const windows = this.windows.peek();
+    const existing = windows.find((entry) => entry.id === window.id);
+    const next: WindowManagerWindow = {
+      ...existing,
+      ...window,
+      state: window.state ?? existing?.state ?? "normal",
+      order: window.order ?? existing?.order ?? nextWindowOrder(windows),
+    };
+    this.windows.value = existing ? windows.map((entry) => entry.id === window.id ? next : entry) : [...windows, next];
+    this.#repairState();
+    return this.#window(window.id)!;
+  }
+
+  rename(id: string, title: string): WindowManagerWindow | undefined {
+    const window = this.#window(id);
+    if (!window) return undefined;
+    const normalizedTitle = title.trim();
+    if (!normalizedTitle) return window;
+    this.windows.value = this.windows.peek().map((entry) =>
+      entry.id === id ? { ...entry, title: normalizedTitle } : entry
+    );
+    this.#repairState();
+    return this.#window(id);
+  }
+
+  move(id: string, delta: number): WindowManagerWindow | undefined {
+    const windows = this.orderedWindows({ includeClosed: true });
+    const index = windows.findIndex((entry) => entry.id === id);
+    if (index < 0) return undefined;
+    const target = Math.max(0, Math.min(windows.length - 1, index + Math.trunc(delta)));
+    if (target === index) return this.#window(id);
+    const reordered = [...windows];
+    const [window] = reordered.splice(index, 1);
+    reordered.splice(target, 0, window!);
+    const order = new Map(reordered.map((entry, nextOrder) => [entry.id, nextOrder]));
+    this.windows.value = this.windows.peek().map((entry) => ({ ...entry, order: order.get(entry.id) ?? entry.order }));
+    this.#repairState();
+    return this.#window(id);
+  }
+
   focus(id: string): WindowManagerWindow | undefined {
     const window = this.#window(id);
     if (!window || windowState(window) === "closed") return undefined;
@@ -261,6 +302,10 @@ function normalizeWindows(windows: readonly WindowManagerWindow[]): WindowManage
     state: entry.state ?? "normal",
     order: entry.order ?? index,
   }));
+}
+
+function nextWindowOrder(windows: readonly WindowManagerWindow[]): number {
+  return windows.length === 0 ? 0 : Math.max(...windows.map((entry) => entry.order ?? 0)) + 1;
 }
 
 function normalizeWindowId(windows: readonly WindowManagerWindow[], id?: string | null): string | undefined {

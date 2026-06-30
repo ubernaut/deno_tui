@@ -920,7 +920,8 @@ for (const [index, panel] of panels.entries()) {
 ```
 
 `WindowManagerController` wraps the tiling primitives with mini window-system state: ordered windows, active focus,
-minimize/restore/close, fullscreen selection, fullscreen tab switching, and solved rectangles for the renderer:
+upsert/rename/reorder operations, minimize/restore/close, fullscreen selection, fullscreen tab switching, and solved
+rectangles for the renderer:
 
 ```ts
 const manager = new WindowManagerController({
@@ -933,14 +934,20 @@ const manager = new WindowManagerController({
 });
 
 const layout = manager.layout({ bounds: tui.rectangle.value });
+manager.upsert({ id: "terminal", title: "Terminal", minWidth: 48 });
+manager.rename("terminal", "Shell");
+manager.move("terminal", -1);
 manager.fullscreen("editor");
 manager.selectTab("logs");
 ```
 
 `layout.zOrder` sorts non-closed windows from back to front with explicit `layer` and `zIndex` metadata, so terminal,
-web, and snapshot renderers can share the same stacking rules. `OverlayStackController` handles the next layer up:
-menus, popovers, modal blockers, modal-owned action hit targets, outside-click closure, and topmost hit testing. Popover
-placement is pure geometry, so dropdown lists can render above existing content without disturbing the layout below:
+web, and snapshot renderers can share the same stacking rules. `windowManagerCommands()` and
+`bindWindowManagerCommands()` project new-window, focus, minimize, close, fullscreen, restore, move, and rename actions
+into the shared command registry so menu bars, palettes, keymaps, and terminal workspace launchers can drive the same
+manager without renderer-specific glue. `OverlayStackController` handles the next layer up: menus, popovers, modal
+blockers, modal-owned action hit targets, outside-click closure, and topmost hit testing. Popover placement is pure
+geometry, so dropdown lists can render above existing content without disturbing the layout below:
 
 ```ts
 const menuRect = placePopover(anchorRect, { width: 24, height: 8 }, viewport, {
@@ -1043,6 +1050,7 @@ This fork exports lightweight app primitives for larger TUIs:
 - `MouseInteractionRouter`
 - `SelectionController` and selection helpers
 - `SettingsController`
+- `windowManagerCommands()` / `bindWindowManagerCommands()`
 - `runtimeWorkloadCommands()` / `bindRuntimeWorkloadCommands()`
 - `syncTerminalWindowLayout()` / `terminalWindowContentSize()`
 - viewport helpers such as `viewportWindow()`, `viewportOffsetBy()`, and `viewportThumb()`

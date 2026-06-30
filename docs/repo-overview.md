@@ -113,7 +113,9 @@ terminal screenshots used by the README under `docs/screenshots/`. `app/api_work
 for the same APIs and now includes a New-menu `Terminal Output` window that runs a real subprocess inside the managed
 window layout. The terminal-window layer also exposes backend handles, spawn templates for shell/Deno/project commands,
 attach-session metadata, screen cells, and `syncTerminalWindowLayout()` for propagating window-manager geometry into
-terminal session dimensions.
+terminal session dimensions. `WindowManagerController` now supports explicit upsert, rename, and reorder operations, and
+`windowManagerCommands()` binds those window actions into the same command-registry system as the rest of the app
+surface.
 
 ## Quality Gates
 
