@@ -661,12 +661,34 @@ Deno.test("AsyncScheduler inspects capacity and waits for idle", async () => {
 
   assertEquals(scheduler.capacity(), 1);
   assertEquals(scheduler.idle(), false);
-  assertEquals(scheduler.inspect(), { concurrency: 1, running: 1, pending: 1, idle: false });
+  assertEquals(scheduler.inspect(), {
+    concurrency: 1,
+    running: 1,
+    pending: 1,
+    idle: false,
+    scheduled: 2,
+    completed: 0,
+    failed: 0,
+    cancelled: 0,
+    maxRunning: 1,
+    maxPending: 1,
+  });
 
   releaseFirst.resolve();
   await Promise.all([first, second, idle]);
 
-  assertEquals(scheduler.inspect(), { concurrency: 1, running: 0, pending: 0, idle: true });
+  assertEquals(scheduler.inspect(), {
+    concurrency: 1,
+    running: 0,
+    pending: 0,
+    idle: true,
+    scheduled: 2,
+    completed: 2,
+    failed: 0,
+    cancelled: 0,
+    maxRunning: 1,
+    maxPending: 1,
+  });
   assertEquals(order, ["first:start", "first:end", "second", "idle"]);
 });
 
@@ -690,8 +712,12 @@ Deno.test("RenderLoop runs immediate ticks through an injectable timer", () => {
     running: true,
     frame: 2,
     intervalMs: 25,
+    frameBudgetMs: 25,
     lastStartedAt: 25,
     lastDurationMs: 0,
+    averageDurationMs: 0,
+    maxDurationMs: 0,
+    overBudgetFrames: 0,
     lastError: undefined,
   });
 
@@ -721,6 +747,32 @@ Deno.test("RenderLoop supports delayed start manual steps and interval updates",
   timer.flushNext();
   assertEquals(frames, [1, 2]);
   assertEquals(timer.lastDelay(), 5);
+});
+
+Deno.test("RenderLoop tracks duration pressure against the frame budget", () => {
+  const timer = new TestRenderLoopTimer();
+  const loop = new RenderLoop({
+    intervalMs: 10,
+    immediate: false,
+    timer,
+    tick: ({ frame }) => timer.advance(frame === 1 ? 12 : 4),
+  });
+
+  loop.step();
+  loop.step();
+
+  assertEquals(loop.inspect(), {
+    running: false,
+    frame: 2,
+    intervalMs: 10,
+    frameBudgetMs: 10,
+    lastStartedAt: 12,
+    lastDurationMs: 4,
+    averageDurationMs: 8,
+    maxDurationMs: 12,
+    overBudgetFrames: 1,
+    lastError: undefined,
+  });
 });
 
 Deno.test("RenderLoop reports errors and stops after failed ticks", () => {
@@ -756,7 +808,18 @@ Deno.test("AsyncScheduler can clear queued work without stopping active work", a
   assertEquals(scheduler.clearPending(reason), 1);
   assertEquals(await second, reason);
   assertEquals(ran, false);
-  assertEquals(scheduler.inspect(), { concurrency: 1, running: 1, pending: 0, idle: false });
+  assertEquals(scheduler.inspect(), {
+    concurrency: 1,
+    running: 1,
+    pending: 0,
+    idle: false,
+    scheduled: 2,
+    completed: 0,
+    failed: 0,
+    cancelled: 1,
+    maxRunning: 1,
+    maxPending: 1,
+  });
 
   releaseFirst.resolve();
   await first;
@@ -787,7 +850,18 @@ Deno.test("AsyncScheduler schedule exposes cancellable task handles", async () =
   releaseFirst.resolve();
   await first.promise;
   assertEquals(first.inspect(), { priority: 1, sequence: 0, status: "settled" });
-  assertEquals(scheduler.inspect(), { concurrency: 1, running: 0, pending: 0, idle: true });
+  assertEquals(scheduler.inspect(), {
+    concurrency: 1,
+    running: 0,
+    pending: 0,
+    idle: true,
+    scheduled: 2,
+    completed: 1,
+    failed: 0,
+    cancelled: 1,
+    maxRunning: 1,
+    maxPending: 1,
+  });
 });
 
 Deno.test("AsyncScheduler schedule handles running and aborted task states", async () => {
@@ -807,6 +881,29 @@ Deno.test("AsyncScheduler schedule handles running and aborted task states", asy
   releaseFirst.resolve();
   await first.promise;
   assertEquals(first.inspect().status, "settled");
+});
+
+Deno.test("AsyncScheduler records failed task telemetry", async () => {
+  const scheduler = new AsyncScheduler({ concurrency: 2 });
+  const failure = new Error("task failed");
+
+  const error = await scheduler.run(() => {
+    throw failure;
+  }).catch((caught) => caught);
+
+  assertEquals(error, failure);
+  assertEquals(scheduler.inspect(), {
+    concurrency: 2,
+    running: 0,
+    pending: 0,
+    idle: true,
+    scheduled: 1,
+    completed: 0,
+    failed: 1,
+    cancelled: 0,
+    maxRunning: 1,
+    maxPending: 1,
+  });
 });
 
 Deno.test("runTaskBatch preserves input order while using scheduler priority", async () => {
@@ -835,7 +932,18 @@ Deno.test("runTaskBatch preserves input order while using scheduler priority", a
   });
 
   await Promise.resolve();
-  assertEquals(scheduler.inspect(), { concurrency: 1, running: 1, pending: 2, idle: false });
+  assertEquals(scheduler.inspect(), {
+    concurrency: 1,
+    running: 1,
+    pending: 2,
+    idle: false,
+    scheduled: 3,
+    completed: 0,
+    failed: 0,
+    cancelled: 0,
+    maxRunning: 1,
+    maxPending: 2,
+  });
 
   releaseFirst.resolve();
   const results = await batch;
@@ -869,7 +977,18 @@ Deno.test("runTaskBatch supports abortable batch work", async () => {
   const error = await batch;
   assertEquals(error.name, "AbortError");
   await scheduler.waitForIdle();
-  assertEquals(scheduler.inspect(), { concurrency: 1, running: 0, pending: 0, idle: true });
+  assertEquals(scheduler.inspect(), {
+    concurrency: 1,
+    running: 0,
+    pending: 0,
+    idle: true,
+    scheduled: 2,
+    completed: 1,
+    failed: 0,
+    cancelled: 1,
+    maxRunning: 1,
+    maxPending: 1,
+  });
 });
 
 Deno.test("MemoryStore implements the async store contract", async () => {
@@ -1052,6 +1171,12 @@ Deno.test("runtime workload telemetry normalizes schedulers and worker pools", (
       running: 2,
       pending: 1,
       idle: false,
+      scheduled: 3,
+      completed: 0,
+      failed: 0,
+      cancelled: 0,
+      maxRunning: 2,
+      maxPending: 1,
     }),
   };
   const report = createRuntimeWorkloadReport({

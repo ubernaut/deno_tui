@@ -18,7 +18,18 @@ const registry = createAppPluginDefinitionRegistry([
     commands: [{ id: "runtime.report", label: "Runtime Report" }],
     workloadSources: [{
       id: "runtime-workloads",
-      inspect: () => ({ concurrency: 2, running: 0, pending: 0, idle: true }),
+      inspect: () => ({
+        concurrency: 2,
+        running: 0,
+        pending: 0,
+        idle: true,
+        scheduled: 0,
+        completed: 0,
+        failed: 0,
+        cancelled: 0,
+        maxRunning: 0,
+        maxPending: 0,
+      }),
     }],
   },
   {

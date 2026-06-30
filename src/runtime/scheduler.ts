@@ -33,6 +33,7 @@ export interface ScheduledTaskHandle<T> {
 interface QueuedTask {
   run: () => void;
   reject: (error: unknown) => void;
+  cancel: (reason: unknown) => boolean;
   signal?: AbortSignal;
   abort?: () => void;
   priority: number;
@@ -45,6 +46,12 @@ export interface AsyncSchedulerInspection {
   running: number;
   pending: number;
   idle: boolean;
+  scheduled: number;
+  completed: number;
+  failed: number;
+  cancelled: number;
+  maxRunning: number;
+  maxPending: number;
 }
 
 /** Batch item with optional per-item task, priority, and cancellation. */
@@ -71,6 +78,12 @@ export class AsyncScheduler {
   private readonly concurrency: number;
   private active = 0;
   private sequence = 0;
+  private scheduled = 0;
+  private completed = 0;
+  private failed = 0;
+  private cancelled = 0;
+  private maxRunning = 0;
+  private maxPending = 0;
   private readonly queue: QueuedTask[] = [];
   private readonly idleResolvers = new Set<() => void>();
 
@@ -91,41 +104,60 @@ export class AsyncScheduler {
     let abort: (() => void) | undefined;
     const priority = options.priority ?? 0;
     const sequence = this.sequence++;
+    this.scheduled += 1;
 
     const promise = new Promise<T>((resolve, reject) => {
       if (options.signal?.aborted) {
         status = "cancelled";
+        this.cancelled += 1;
         reject(createAbortError());
         return;
       }
+
+      const cancelQueued = (reason: unknown): boolean => {
+        if (!queued || status !== "queued") return false;
+        if (queued.signal && queued.abort) {
+          queued.signal.removeEventListener("abort", queued.abort);
+        }
+        status = "cancelled";
+        this.cancelled += 1;
+        reject(reason);
+        this.resolveIdleIfNeeded();
+        return true;
+      };
 
       queued = {
         priority,
         sequence,
         reject,
         signal: options.signal,
+        cancel: cancelQueued,
         run: () => {
           options.signal?.removeEventListener("abort", abort!);
           if (options.signal?.aborted) {
             status = "cancelled";
+            this.cancelled += 1;
             reject(createAbortError());
             return;
           }
 
           status = "running";
           this.active += 1;
-          const finish = () => {
+          this.maxRunning = Math.max(this.maxRunning, this.active);
+          const finish = (outcome: "completed" | "failed") => {
             status = "settled";
             this.active -= 1;
+            if (outcome === "completed") this.completed += 1;
+            else this.failed += 1;
             this.drain();
           };
           Promise.resolve()
             .then(task)
             .then((value) => {
-              finish();
+              finish("completed");
               resolve(value);
             }, (error) => {
-              finish();
+              finish("failed");
               reject(error);
             });
         },
@@ -136,9 +168,7 @@ export class AsyncScheduler {
         const index = this.queue.indexOf(queued);
         if (index >= 0) {
           this.queue.splice(index, 1);
-          status = "cancelled";
-          reject(createAbortError());
-          this.resolveIdleIfNeeded();
+          queued.cancel(createAbortError());
         }
       };
       queued.abort = abort;
@@ -154,13 +184,7 @@ export class AsyncScheduler {
         const index = this.queue.indexOf(queued);
         if (index < 0) return false;
         this.queue.splice(index, 1);
-        if (queued.signal && queued.abort) {
-          queued.signal.removeEventListener("abort", queued.abort);
-        }
-        status = "cancelled";
-        queued.reject(reason);
-        this.resolveIdleIfNeeded();
-        return true;
+        return queued.cancel(reason);
       },
       inspect: () => ({ priority, sequence, status }),
     };
@@ -198,10 +222,7 @@ export class AsyncScheduler {
   clearPending(reason: unknown = createAbortError()): number {
     const queued = this.queue.splice(0);
     for (const task of queued) {
-      if (task.signal && task.abort) {
-        task.signal.removeEventListener("abort", task.abort);
-      }
-      task.reject(reason);
+      task.cancel(reason);
     }
     this.resolveIdleIfNeeded();
     return queued.length;
@@ -214,6 +235,12 @@ export class AsyncScheduler {
       running: this.running(),
       pending: this.pending(),
       idle: this.idle(),
+      scheduled: this.scheduled,
+      completed: this.completed,
+      failed: this.failed,
+      cancelled: this.cancelled,
+      maxRunning: this.maxRunning,
+      maxPending: this.maxPending,
     };
   }
 
@@ -227,6 +254,7 @@ export class AsyncScheduler {
     } else {
       this.queue.splice(index, 0, task);
     }
+    this.maxPending = Math.max(this.maxPending, this.queue.length);
   }
 
   private drain(): void {

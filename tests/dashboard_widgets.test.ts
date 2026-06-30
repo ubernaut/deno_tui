@@ -991,7 +991,18 @@ Deno.test("prewarmThemeEngines accepts a scheduler and preserves input order", a
   assertEquals(results[0].engine.component("Button").base("x"), "first:x");
   assertEquals(results[1].engine.component("Button").base("x"), "second:x");
   assertEquals(results[0].engine.variants("Button"), ["preview"]);
-  assertEquals(scheduler.inspect(), { concurrency: 1, running: 0, pending: 0, idle: true });
+  assertEquals(scheduler.inspect(), {
+    concurrency: 1,
+    running: 0,
+    pending: 0,
+    idle: true,
+    scheduled: 2,
+    completed: 2,
+    failed: 0,
+    cancelled: 0,
+    maxRunning: 1,
+    maxPending: 1,
+  });
 });
 
 Deno.test("ThemeEnginePipeline applies ordered theme transforms and exposes inspection", () => {
@@ -1133,7 +1144,18 @@ Deno.test("prewarmThemeEnginePipelines builds selected pipelines through a sched
   assertEquals(warmed.map((result) => result.id), ["second"]);
   assertEquals(warmed[0].engine.component("Button").base("x"), "second:x");
   assertEquals(warmed[0].inspection.activeStepCount, 1);
-  assertEquals(scheduler.inspect(), { concurrency: 1, running: 0, pending: 0, idle: true });
+  assertEquals(scheduler.inspect(), {
+    concurrency: 1,
+    running: 0,
+    pending: 0,
+    idle: true,
+    scheduled: 1,
+    completed: 1,
+    failed: 0,
+    cancelled: 0,
+    maxRunning: 1,
+    maxPending: 1,
+  });
 });
 
 Deno.test("ThemeWorkspace composes provider factories pipelines and inspection", () => {
@@ -1225,7 +1247,18 @@ Deno.test("ThemeWorkspace prewarms factories pipelines and active provider throu
   assertEquals(warmed.pipelines.map((result) => result.id), ["runtime"]);
   assertEquals(warmed.pipelines[0].engine.component("Badge").focused("x"), "focus:x");
   assertEquals(warmed.activeProvider?.component("Badge").base("x"), "base:x");
-  assertEquals(warmed.scheduler, { concurrency: 2, running: 0, pending: 0, idle: true });
+  assertEquals(warmed.scheduler, {
+    concurrency: 2,
+    running: 0,
+    pending: 0,
+    idle: true,
+    scheduled: 3,
+    completed: 3,
+    failed: 0,
+    cancelled: 0,
+    maxRunning: 2,
+    maxPending: 1,
+  });
   assertEquals(scheduler.inspect(), warmed.scheduler);
 });
 

@@ -66,6 +66,7 @@ interface RegisteredMouseInteractionTarget<TPayload = unknown> extends MouseInte
 /** Public class implementing a mouse Interaction Router. */
 export class MouseInteractionRouter {
   readonly #targets = new Map<string, RegisteredMouseInteractionTarget>();
+  #orderedTargets?: RegisteredMouseInteractionTarget[];
   #sequence = 0;
   #captureId?: string;
 
@@ -75,6 +76,7 @@ export class MouseInteractionRouter {
       sequence: this.#sequence++,
     };
     this.#targets.set(target.id, registered as RegisteredMouseInteractionTarget);
+    this.#orderedTargets = undefined;
     return () => {
       if (this.#targets.get(target.id) === registered) {
         this.unregister(target.id);
@@ -86,12 +88,15 @@ export class MouseInteractionRouter {
     if (this.#captureId === id) {
       this.#captureId = undefined;
     }
-    return this.#targets.delete(id);
+    const removed = this.#targets.delete(id);
+    if (removed) this.#orderedTargets = undefined;
+    return removed;
   }
 
   clear(): void {
     this.#captureId = undefined;
     this.#targets.clear();
+    this.#orderedTargets = undefined;
   }
 
   has(id: string): boolean {
@@ -157,7 +162,7 @@ export class MouseInteractionRouter {
   }
 
   hitTest(x: number, y: number, kind: MouseInteractionKind = "press"): RegisteredMouseInteractionTarget | undefined {
-    return this.targets().find((target) =>
+    return this.#ordered().find((target) =>
       !disabled(target) &&
       contains(boundsOf(target), x, y) &&
       handlerFor(target, kind) !== undefined
@@ -165,9 +170,14 @@ export class MouseInteractionRouter {
   }
 
   targets(): RegisteredMouseInteractionTarget[] {
-    return [...this.#targets.values()].sort((left, right) =>
+    return [...this.#ordered()];
+  }
+
+  #ordered(): RegisteredMouseInteractionTarget[] {
+    this.#orderedTargets ??= [...this.#targets.values()].sort((left, right) =>
       (right.zIndex ?? 0) - (left.zIndex ?? 0) || right.sequence - left.sequence
     );
+    return this.#orderedTargets;
   }
 }
 

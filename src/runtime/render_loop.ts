@@ -12,8 +12,12 @@ export interface RenderLoopInspection {
   running: boolean;
   frame: number;
   intervalMs: number;
+  frameBudgetMs: number;
   lastStartedAt?: number;
   lastDurationMs?: number;
+  averageDurationMs: number;
+  maxDurationMs: number;
+  overBudgetFrames: number;
   lastError?: unknown;
 }
 
@@ -45,6 +49,9 @@ export class RenderLoop {
   #frame = 0;
   #lastStartedAt: number | undefined;
   #lastDurationMs: number | undefined;
+  #totalDurationMs = 0;
+  #maxDurationMs = 0;
+  #overBudgetFrames = 0;
   #lastError: unknown;
 
   constructor(options: RenderLoopOptions) {
@@ -98,8 +105,12 @@ export class RenderLoop {
       running: this.#running,
       frame: this.#frame,
       intervalMs: this.#intervalMs,
+      frameBudgetMs: this.#intervalMs,
       lastStartedAt: this.#lastStartedAt,
       lastDurationMs: this.#lastDurationMs,
+      averageDurationMs: this.#frame === 0 ? 0 : this.#totalDurationMs / this.#frame,
+      maxDurationMs: this.#maxDurationMs,
+      overBudgetFrames: this.#overBudgetFrames,
       lastError: this.#lastError,
     };
   }
@@ -123,7 +134,11 @@ export class RenderLoop {
     this.#lastStartedAt = startedAt;
     this.#frame += 1;
     this.#tick({ frame: this.#frame, startedAt, deltaMs });
-    this.#lastDurationMs = Math.max(0, this.#timer.now() - startedAt);
+    const duration = Math.max(0, this.#timer.now() - startedAt);
+    this.#lastDurationMs = duration;
+    this.#totalDurationMs += duration;
+    this.#maxDurationMs = Math.max(this.#maxDurationMs, duration);
+    if (duration > this.#intervalMs) this.#overBudgetFrames += 1;
   }
 
   #schedule(): void {

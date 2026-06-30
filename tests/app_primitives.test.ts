@@ -930,6 +930,12 @@ Deno.test("indexed command surfaces refresh through schedulers and execute regis
       running: 0,
       pending: 0,
       idle: true,
+      scheduled: 0,
+      completed: 0,
+      failed: 0,
+      cancelled: 0,
+      maxRunning: 0,
+      maxPending: 0,
     },
     cached: false,
     cacheKey: undefined,
@@ -945,6 +951,8 @@ Deno.test("indexed command surfaces refresh through schedulers and execute regis
     action: { type: "ran", payload: "monitor" },
   });
   await surface.refresh();
+  assertEquals(scheduler.inspect().completed, 2);
+  assertEquals(scheduler.inspect().maxRunning, 1);
   assertEquals(surface.items.peek().map((item) => item.id), ["route.home", "route.system-monitor"]);
   surface.query.value = "runtime";
   assertEquals(surface.matches.peek().map((match) => match.item.id), ["route.system-monitor"]);
@@ -1774,7 +1782,18 @@ Deno.test("app plugin catalog reports filter plugin definitions for docs and mar
       }],
       workloadSources: [{
         id: "settings-work",
-        inspect: () => ({ concurrency: 1, running: 0, pending: 0, idle: true }),
+        inspect: () => ({
+          concurrency: 1,
+          running: 0,
+          pending: 0,
+          idle: true,
+          scheduled: 0,
+          completed: 0,
+          failed: 0,
+          cancelled: 0,
+          maxRunning: 0,
+          maxPending: 0,
+        }),
       }],
     },
     {
@@ -1843,7 +1862,18 @@ Deno.test("app plugin definition registries manage query and markdown catalogs",
     tags: ["runtime"],
     workloadSources: [{
       id: "runtime-work",
-      inspect: () => ({ concurrency: 1, running: 0, pending: 0, idle: true }),
+      inspect: () => ({
+        concurrency: 1,
+        running: 0,
+        pending: 0,
+        idle: true,
+        scheduled: 0,
+        completed: 0,
+        failed: 0,
+        cancelled: 0,
+        maxRunning: 0,
+        maxPending: 0,
+      }),
     }],
   };
   const registry = createAppPluginDefinitionRegistry([settings]);
@@ -1895,7 +1925,18 @@ Deno.test("createAppPlugin rolls back declarative registrations when install fai
     }],
     workloadSources: [{
       id: "admin-work",
-      inspect: () => ({ concurrency: 1, running: 0, pending: 0, idle: true }),
+      inspect: () => ({
+        concurrency: 1,
+        running: 0,
+        pending: 0,
+        idle: true,
+        scheduled: 0,
+        completed: 0,
+        failed: 0,
+        cancelled: 0,
+        maxRunning: 0,
+        maxPending: 0,
+      }),
     }],
     install() {
       throw new Error("boom");

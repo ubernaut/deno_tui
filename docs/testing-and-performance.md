@@ -65,6 +65,9 @@ pending callers, `pendingCount()` exposes lightweight backpressure state, and `w
 deterministic worker without starting real threads. Use `createRuntimeWorkloadReport()` when a demo, settings pane, or
 CI log needs one view over both scheduler queues and worker pools. It reports capacity, running work, queued work,
 saturation, idle state, and termination state without requiring callers to special-case each runtime primitive.
+`AsyncScheduler.inspect()` additionally reports scheduled, completed, failed, cancelled, max-running, and max-pending
+counters for queue pressure diagnostics. `RenderLoop.inspect()` reports frame budget, last/average/max tick duration,
+and over-budget frame counts so renderers can expose frame pressure without adding their own timers.
 
 `DataQueryController` is the shared runtime primitive for async table, catalog, picker, and dashboard datasets. It wraps
 `CachedAsyncResource`, exposes normalized `params`, `state`, and `result` signals, and keeps query, filter, sort, page,
@@ -102,6 +105,20 @@ for CLI reports and machine-readable logs. Use `inspect()` plus `createBenchmark
 without running workloads. Run `deno task benchmark -- --list` for the readable catalog,
 `deno task benchmark -- --list --json` for structured catalog output, or `deno task benchmark -- --json` for structured
 timing output; threshold failures exit nonzero.
+
+The default benchmark catalog intentionally covers high-volume TUI paths rather than microbenchmarks only:
+
+- `layout/flex-rects-3-pane` and `layout/tile-rects-resize-wall` for pane solving and frequent terminal resize.
+- `render/sparkline-80` and `render/render-loop-300-steps` for dashboard text rendering and render-loop telemetry.
+- `data/table-select-100k` and `data/list-visible-50k` for large table/list navigation.
+- `input/mouse-hit-test-500-targets` for dense mouse-aware regions.
+- `widgets/theme-standard-39-components` for full component theme catalog coverage.
+- `runtime/scheduler-batch-100` for bounded async scheduling pressure.
+
+Thresholds are deliberately conservative smoke limits. When a case fails, first rerun with `--json` to compare total and
+average timings, then inspect whether the workload should move to an `AsyncScheduler`, `WorkerPool`, cached data
+pipeline, virtualized viewport, or renderer-specific fallback. Tighten thresholds only after the relevant path is stable
+on the slowest supported development machine.
 
 Run the default suite without broad permissions:
 

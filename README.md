@@ -2525,8 +2525,10 @@ for custom launchers, docs pages, and CI reports without duplicating aliases or 
 per-case timings plus an aggregate summary; `deno task benchmark -- --list` prints the benchmark catalog without running
 workloads, `deno task benchmark -- --list --json` emits that catalog as structured data, and
 `deno task benchmark -- --json` emits the same threshold-aware timing summary as structured data and exits nonzero when
-a case fails its limits. The catalog path is backed by `BenchmarkRunner.inspect()`, `createBenchmarkCatalogReport()`,
-and `formatBenchmarkCatalogMarkdown()` so launchers and docs can reuse the same case metadata.
+a case fails its limits. The catalog covers large table/list navigation, dense mouse hit testing, frequent resize
+layout, many themed widgets, render-loop stepping, and scheduler batch pressure. The catalog path is backed by
+`BenchmarkRunner.inspect()`, `createBenchmarkCatalogReport()`, and `formatBenchmarkCatalogMarkdown()` so launchers and
+docs can reuse the same case metadata.
 
 The theme gallery now uses the exported grWizard palette suite and supports explicit selection:
 
