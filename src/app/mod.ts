@@ -47,6 +47,7 @@ export * from "./stepper_commands.ts";
 export * from "./surface_bindings.ts";
 export * from "./table_commands.ts";
 export * from "./tabs_commands.ts";
+export * from "./terminal_commands.ts";
 export * from "./textbox_commands.ts";
 export * from "./theme_commands.ts";
 export * from "./theme_engine_commands.ts";

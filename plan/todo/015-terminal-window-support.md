@@ -10,7 +10,8 @@ workspace.
 
 - **Option A: command output windows.** Spawn commands with `Deno.Command`, stream stdout/stderr into a
   `LogViewerController`-style buffer, and expose stop/restart/clear/follow actions. This is the fastest useful path and
-  works well for build logs, test runs, long-running servers, and task launchers, but it is not a real interactive shell.
+  works well for build logs, test runs, long-running servers, and task launchers, but it is not a real interactive
+  shell.
 - **Option B: subprocess stdin/stdout windows.** Keep `Deno.Command` pipes open, route focused key presses to stdin, and
   render output as a scrollback pane. This supports simple REPLs and prompts, but without a PTY many terminal programs
   will not detect an interactive terminal, cursor movement and full-screen apps will be unreliable, and window resizing
@@ -24,23 +25,27 @@ workspace.
 
 ## Recommended Path
 
-Start with Option A as an incremental library feature, then build the runtime seams needed for Option C. Avoid committing
-to Option D unless persistent remote sessions are the main product goal.
+Start with Option A as an incremental library feature, then build the runtime seams needed for Option C. Avoid
+committing to Option D unless persistent remote sessions are the main product goal.
 
 ## Work
 
 ### Phase 1: Process Output Windows
 
-- Add `src/runtime/process_session.ts` with a controller for command lifecycle, stdout/stderr streaming, exit status,
-  cancellation, restart, and bounded scrollback.
-- Add `src/components/terminal_output.ts` or extend the log viewer with terminal-specific metadata: stream source,
-  running/exited state, exit code, follow mode, and clear/copy-ready inspection.
-- Add command-surface helpers under `src/app/` for `terminal.run`, `terminal.stop`, `terminal.restart`,
-  `terminal.clear`, `terminal.toggleFollow`, and `terminal.copyCommand`.
-- Update `app/api_workbench.ts` and/or `examples/windowing_system_launcher.ts` to open command output windows through
-  `WindowManagerController` instead of launching a task only after the workbench exits.
-- Preserve the existing terminal session cleanup behavior from `src/runtime/terminal_session.ts`; process windows should
-  not interfere with the host app alternate screen, mouse, paste, or cursor teardown.
+- [x] Add `src/runtime/process_session.ts` with a controller for command lifecycle, stdout/stderr streaming, exit
+      status, cancellation, restart, and bounded scrollback.
+- [x] Add `src/components/terminal_output.ts` or extend the log viewer with terminal-specific metadata: stream source,
+      running/exited state, exit code, follow mode, and clear/copy-ready inspection.
+- [x] Add command-surface helpers under `src/app/` for `terminal.run`, `terminal.stop`, `terminal.restart`,
+      `terminal.clear`, `terminal.toggleFollow`, and `terminal.copyCommand`.
+- [x] Update `app/api_workbench.ts` and/or `examples/windowing_system_launcher.ts` to open command output windows
+      through `WindowManagerController` instead of launching a task only after the workbench exits.
+- [x] Preserve the existing terminal session cleanup behavior from `src/runtime/terminal_session.ts`; process windows
+      should not interfere with the host app alternate screen, mouse, paste, or cursor teardown.
+
+Phase 1 landed as a non-PTY command-output primitive. It is useful for build logs, task runners, and diagnostics, and is
+demonstrated by the API Workbench `Terminal: Terminal Output` window. Interactive stdin routing, terminal geometry
+resize propagation, and true curses app support remain in phases 2 and 3.
 
 ### Phase 2: Interactive Stdin Routing
 
@@ -54,12 +59,11 @@ to Option D unless persistent remote sessions are the main product goal.
 ### Phase 3: PTY Backend
 
 - Introduce `TerminalBackend` and `TerminalSessionHandle` interfaces that hide platform-specific details:
-  `spawn(command, args, env, cwd, cols, rows)`, `write(data)`, `resize(cols, rows)`, `kill(signal)`, output events,
-  exit events, and disposal.
+  `spawn(command, args, env, cwd, cols, rows)`, `write(data)`, `resize(cols, rows)`, `kill(signal)`, output events, exit
+  events, and disposal.
 - Provide a `ProcessBackend` implementation using `Deno.Command` for Option A/B behavior.
-- Add a PTY implementation behind an optional import or adapter package. Candidate approaches:
-  `deno_pty`, a Node compatibility package if stable under Deno, a small Rust/Go sidecar, or tmux/control-mode as a
-  backend.
+- Add a PTY implementation behind an optional import or adapter package. Candidate approaches: `deno_pty`, a Node
+  compatibility package if stable under Deno, a small Rust/Go sidecar, or tmux/control-mode as a backend.
 - Add a terminal screen model. At minimum support ANSI parsing into cell rows, scrollback, cursor position, alternate
   screen, erase/move sequences, SGR style spans, and resize reflow. Prefer a maintained parser if compatible with Deno.
 - Wire `WindowManagerController.layout()` dimensions into backend resize calls so focused/fullscreen/tiled terminal
@@ -69,8 +73,8 @@ to Option D unless persistent remote sessions are the main product goal.
 
 - Add terminal window creation from templates: shell, `deno task`, arbitrary command, project task, and attach existing
   session.
-- Add split/window commands that map naturally to the current window manager: new terminal, close, rename, next/previous,
-  fullscreen, tile, minimize, restore, and move order.
+- Add split/window commands that map naturally to the current window manager: new terminal, close, rename,
+  next/previous, fullscreen, tile, minimize, restore, and move order.
 - Add session persistence metadata: command, cwd, env overrides, title, scrollback policy, restart policy, and whether
   the window is reconnectable.
 - Add optional detach/reattach support if the backend can keep sessions alive outside the workbench process.

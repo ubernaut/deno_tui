@@ -14,9 +14,12 @@ testing helpers.
 - Added `padCommands()` and `bindPadCommands()` so pads can be controlled from menus, command palettes, keymaps, and
   plugins.
 - Exported the pad API through the terminal and web package entrypoints and added it to the component catalog.
+- Added process-output terminal window primitives: `TerminalOutputController`, `ProcessSessionController`, and
+  `terminalCommands()` for non-PTY command panes with stdout/stderr scrollback.
 
 ## Remaining Priorities
 
+- PTY-backed interactive terminal windows for shell, curses apps, resize propagation, and detach/reattach workflows.
 - Rich attributed text spans inside pads and text boxes, beyond the current string/ANSI-oriented helpers.
 - Higher-level form validation flows that coordinate multiple fields, modals, status bars, and command surfaces.
 - More browser accessibility metadata for web-rendered terminal widgets.

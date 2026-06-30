@@ -24,11 +24,13 @@ import {
 import { SliderController } from "../src/components/slider.ts";
 import { renderStatusBar } from "../src/components/statusbar.ts";
 import { renderStepper, StepperController } from "../src/components/stepper.ts";
+import { formatTerminalOutputLine } from "../src/components/terminal_output.ts";
 import { TextBoxController, wrapTextBoxLines } from "../src/components/textbox.ts";
 import { handleInput } from "../src/input.ts";
 import type { MousePressEvent, MouseScrollEvent } from "../src/input_reader/types.ts";
 import { WindowManagerController } from "../src/layout/mod.ts";
 import { createKittyGraphicsSurface, type GraphicsSurface } from "../src/runtime/graphics_surface.ts";
+import { formatProcessCommandLine, ProcessSessionController } from "../src/runtime/process_session.ts";
 import { type AsyncStore, createRuntimeStore } from "../src/runtime/storage.ts";
 import { Computed, Signal } from "../src/signals/mod.ts";
 import { probeCompatibleWebGPUDevice } from "../src/three_ascii/webgpu_compat.ts";
@@ -72,7 +74,18 @@ import type {
 import { cpuHexGridColumnCount, cpuHexTileLayout, renderVisualization, visualizations } from "./visualizations.ts";
 import type { ComputedLayoutBox } from "../src/layout/mod.ts";
 
-type BuiltInWindowId = "explorer" | "inspector" | "data" | "controls" | "logs" | "three" | "htmlLayout";
+const TERMINAL_OUTPUT_WINDOW_ID = "terminalOutput";
+const TERMINAL_OUTPUT_OPTION_ID = "terminal-output";
+
+type BuiltInWindowId =
+  | "explorer"
+  | "inspector"
+  | "data"
+  | "controls"
+  | "logs"
+  | "three"
+  | "htmlLayout"
+  | typeof TERMINAL_OUTPUT_WINDOW_ID;
 type VisualizationWindowId = `viz:${string}`;
 type WindowId = BuiltInWindowId | VisualizationWindowId;
 const builtInWindowOrder: readonly BuiltInWindowId[] = [
@@ -83,6 +96,7 @@ const builtInWindowOrder: readonly BuiltInWindowId[] = [
   "logs",
   "three",
   "htmlLayout",
+  TERMINAL_OUTPUT_WINDOW_ID,
 ];
 type ControlId =
   | "button"
@@ -115,6 +129,7 @@ type HitAction =
   | { type: "workspace"; index: number }
   | { type: "modalAction"; index: number }
   | { type: "control"; id: ControlId; action?: ControlHitAction; index?: number }
+  | { type: "terminalOutput"; action: TerminalOutputAction }
   | { type: "dataRow"; index: number }
   | { type: "explorerRow"; index: number }
   | { type: "cpuHexTile"; id: VisualizationWindowId; label: string }
@@ -124,6 +139,7 @@ type HitAction =
 type ControlHitAction = "previous" | "next" | "activate" | "set" | "focus" | "toggle";
 type ConfigHitAction = "previous" | "next" | "activate";
 type AsciiConfigModalAction = "cancel" | "apply" | "ok";
+type TerminalOutputAction = "run" | "stop" | "restart" | "clear" | "follow" | "copy";
 type ButtonTone = "default" | "danger" | "warning" | "success" | "muted";
 type AsciiNumericKey =
   | "edgeThreshold"
@@ -176,7 +192,7 @@ interface ProcessRow extends Record<string, unknown> {
 interface NewWindowOption {
   id: string;
   label: string;
-  group: "Layout" | "Monitor" | "Neon" | "Neon 3D";
+  group: "Layout" | "Monitor" | "Neon" | "Neon 3D" | "Terminal";
   description: string;
 }
 
@@ -287,6 +303,7 @@ const docs = [
   "ScrollAreaController clamps offsets and reports scrollbar thumbs.",
   "DataTableController handles keyed selection, sorting, paging, and filtering.",
   "HTML/CSS Layout window runs markup, cascade, wrapped flex, and absolute positioning through LayoutEngine.",
+  "Terminal Output window runs a real subprocess, streams stdout/stderr, and keeps bounded scrollback.",
   "ModalController provides centered pop-over content with trapped keyboard focus and action buttons.",
   "ThreePanelFrameView feeds Acerola three.js ASCII cells into the shared workbench frame buffer.",
   "Three ASCII viewports support mousewheel zoom plus click-drag model rotation.",
@@ -307,13 +324,23 @@ const htmlCssLayoutWindowOption: NewWindowOption = {
   group: "Layout",
   description: "Renderer-neutral markup, CSS cascade, wrapped flex boxes, and absolute positioning.",
 };
+const terminalOutputWindowOption: NewWindowOption = {
+  id: TERMINAL_OUTPUT_OPTION_ID,
+  label: "Terminal Output",
+  group: "Terminal",
+  description: "Run a subprocess inside a managed workbench window with stdout/stderr scrollback.",
+};
 const visualizationWindowOptions: NewWindowOption[] = visualizations.map((entry) => ({
   id: entry.id,
   label: entry.name,
   group: entry.id.startsWith("three-") ? "Neon 3D" : neonDemoIds.has(entry.id) ? "Neon" : "Monitor",
   description: entry.description,
 }));
-const newWindowOptions: NewWindowOption[] = [htmlCssLayoutWindowOption, ...visualizationWindowOptions];
+const newWindowOptions: NewWindowOption[] = [
+  terminalOutputWindowOption,
+  htmlCssLayoutWindowOption,
+  ...visualizationWindowOptions,
+];
 const WORKSPACE_STORE_KEY = "api-workbench.workspaces";
 
 requireInteractiveTerminal("deno task api-workbench");
@@ -336,6 +363,27 @@ const tui = new Tui({
 const kittyTextEncoder = new TextEncoder();
 const autoKittyGraphicsSurface: GraphicsSurface = createWorkbenchKittySurface(false);
 const forcedKittyGraphicsSurface: GraphicsSurface = createWorkbenchKittySurface(true);
+const terminalOutputSession = new ProcessSessionController({
+  command: Deno.execPath(),
+  args: [
+    "eval",
+    [
+      "const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));",
+      "console.log('deno_tui terminal output window');",
+      "for (let index = 1; index <= 6; index += 1) {",
+      "  console.log(`stdout frame ${index}  ${new Date().toISOString()}`);",
+      "  if (index % 3 === 0) console.error(`stderr checkpoint ${index}`);",
+      "  await sleep(120);",
+      "}",
+      "console.log('process complete');",
+    ].join("\n"),
+  ],
+  limit: 400,
+});
+terminalOutputSession.status.subscribe(scheduleDraw);
+terminalOutputSession.exit.subscribe(scheduleDraw);
+terminalOutputSession.output.lines.subscribe(scheduleDraw);
+terminalOutputSession.output.follow.subscribe(scheduleDraw);
 
 function createWorkbenchKittySurface(force: boolean): GraphicsSurface {
   const canForce = force && (!Deno.env.get("TMUX") || tmuxPassthroughAllowed);
@@ -416,6 +464,7 @@ const windowManager = new WindowManagerController({
     { id: "logs", title: "Logs", minWidth: 36, minHeight: 12 },
     { id: "three", title: "Three ASCII", minWidth: 42, minHeight: 16 },
     { id: HTML_CSS_LAYOUT_WINDOW_ID, title: "HTML/CSS Layout", minWidth: 46, minHeight: 16, state: "closed" },
+    { id: TERMINAL_OUTPUT_WINDOW_ID, title: "Terminal Output", minWidth: 48, minHeight: 14, state: "closed" },
   ],
 });
 const commandLog = new Signal<string[]>(["ready: API workbench mounted"], { deepObserve: true });
@@ -810,6 +859,7 @@ tui.on("destroy", () => {
   threeBodyRect.dispose();
   threeGraphicsRect.dispose();
   void clearKittyGraphicsSurfaces();
+  void terminalOutputSession.dispose();
   systemMonitor.stop();
   workbenchAudioRegistry.dispose();
   for (const [id, signal] of windowAscii) {
@@ -1106,6 +1156,7 @@ function renderWindowContent(frame: Frame, id: WindowId, rect: Rectangle): void 
   else if (id === "controls") renderControls(frame, rect);
   else if (id === "logs") renderLogs(frame, rect);
   else if (id === "htmlLayout") renderHtmlCssLayout(frame, rect);
+  else if (id === TERMINAL_OUTPUT_WINDOW_ID) renderTerminalOutput(frame, rect);
   else if (isVisualizationWindow(id)) renderVisualizationWindow(frame, id, rect);
   else renderThree(frame, rect);
 }
@@ -1648,6 +1699,107 @@ function renderLogs(frame: Frame, rect: Rectangle): void {
       bg: t.surface,
     })),
   );
+}
+
+function renderTerminalOutput(frame: Frame, rect: Rectangle): void {
+  const t = theme();
+  fillRect(frame, rect, t.surface);
+  const inspection = terminalOutputSession.inspect();
+  let row = rect.row;
+  row = renderTerminalOutputToolbar(frame, rect, row);
+  if (row >= rect.row + rect.height) return;
+
+  const statusTone = inspection.status === "running"
+    ? t.good
+    : inspection.status === "failed"
+    ? t.danger
+    : inspection.status === "cancelled"
+    ? t.warn
+    : t.accent;
+  const statusText = `${inspection.status.toUpperCase()}  ${inspection.commandLine}`;
+  write(
+    frame,
+    row,
+    rect.column,
+    paint(fit(statusText, rect.width), {
+      fg: contrastText(statusTone, t.background, t.text),
+      bg: statusTone,
+      bold: true,
+    }),
+  );
+  row += 1;
+
+  const hint = "keys: P run  S stop  U restart  K clear  V follow  Y copy";
+  write(frame, row, rect.column, paint(fit(hint, rect.width), { fg: t.soft, bg: t.panelSoft }));
+  row += 1;
+
+  const outputHeight = Math.max(0, rect.row + rect.height - row);
+  const lines = terminalOutputSession.output.visible(outputHeight);
+  if (lines.length === 0) {
+    write(
+      frame,
+      row,
+      rect.column,
+      paint(fit("No output yet. Press [Run] to start the demo command.", rect.width), {
+        fg: t.muted,
+        bg: t.surface,
+      }),
+    );
+    return;
+  }
+
+  for (let index = 0; index < Math.min(outputHeight, lines.length); index += 1) {
+    const line = lines[index]!;
+    const style = terminalOutputLineStyle(line.source, t);
+    write(
+      frame,
+      row + index,
+      rect.column,
+      paint(fit(formatTerminalOutputLine(line, { sourcePrefix: true }), rect.width), style),
+    );
+  }
+}
+
+function renderTerminalOutputToolbar(frame: Frame, rect: Rectangle, startRow: number): number {
+  const bottom = rect.row + rect.height;
+  let row = startRow;
+  let column = rect.column;
+  const gap = 1;
+  const addButton = (
+    label: string,
+    action: TerminalOutputAction,
+    options: { disabled?: boolean; tone?: ButtonTone; active?: boolean } = {},
+  ) => {
+    const width = textWidth(buttonText(label));
+    if (column > rect.column && column + width > rect.column + rect.width) {
+      row += 1;
+      column = rect.column;
+    }
+    if (row >= bottom) return;
+    const state = options.disabled ? "disabled" : options.active ? "active" : "base";
+    const written = writeButton(frame, row, column, label, { state, tone: options.tone });
+    if (!options.disabled) {
+      addHit({ column, row, width: written, height: 1 }, { type: "terminalOutput", action });
+    }
+    column += written + gap;
+  };
+
+  addButton("Run", "run", { disabled: terminalOutputSession.running, tone: "success" });
+  addButton("Stop", "stop", { disabled: !terminalOutputSession.running, tone: "danger" });
+  addButton("Restart", "restart", { tone: "warning" });
+  addButton("Clear", "clear", { disabled: terminalOutputSession.output.lines.peek().length === 0, tone: "muted" });
+  addButton("Follow", "follow", { active: terminalOutputSession.output.follow.peek() });
+  addButton("Copy Cmd", "copy", { tone: "muted" });
+  return Math.min(bottom, row + 1);
+}
+
+function terminalOutputLineStyle(
+  source: "stdout" | "stderr" | "system",
+  t: ThemeSpec,
+): { fg: string; bg: string; bold?: boolean } {
+  if (source === "stderr") return { fg: t.danger, bg: t.surface, bold: true };
+  if (source === "system") return { fg: t.warn, bg: t.panelSoft, bold: true };
+  return { fg: t.text, bg: t.surface };
 }
 
 function renderHtmlCssLayout(frame: Frame, rect: Rectangle): void {
@@ -2298,6 +2450,15 @@ function windowContentSize(id: WindowId, viewport: Rectangle): { width: number; 
   }
   if (id === "htmlLayout") {
     return { width: baseWidth, height: Math.max(baseHeight, 20) };
+  }
+  if (id === TERMINAL_OUTPUT_WINDOW_ID) {
+    const outputWidth = maxTextWidth(
+      terminalOutputSession.output.lines.peek().map((line) => formatTerminalOutputLine(line, { sourcePrefix: true })),
+    );
+    return {
+      width: Math.max(baseWidth, Math.min(120, Math.max(64, outputWidth + 2))),
+      height: Math.max(baseHeight, terminalOutputSession.output.lines.peek().length + 4, 16),
+    };
   }
   if (isVisualizationWindow(id)) {
     return visualizationWindowContentSize(id, viewport, baseWidth, baseHeight);
@@ -3587,7 +3748,7 @@ function openHelpModal(): void {
       "Three ASCII widgets: mousewheel over the rendered scene zooms; click and drag the scene to rotate the model.",
       "Mouse: click windows to focus them, click rows to select them, click controls to change values, drag or click scrollbars to move through overflow content.",
       "Use the New menu to add Monitor, Neon Exodus, and Neon 3D widget windows to the workspace.",
-      "The New menu also includes an HTML/CSS Layout window that renders a live markup/CSS layout tree.",
+      "The New menu also includes Terminal Output and HTML/CSS Layout windows for process output and markup/CSS layout demos.",
       "Use the Workspace menu to save, open, rename, or delete workspace layouts. Opening a saved workspace replaces the currently loaded widget windows.",
       "Use the Theme menu to switch palettes. Click the [x] button in the top-right menu bar or press Q to open quit confirmation.",
     ],
@@ -3686,6 +3847,8 @@ function applyHit(target: { rect: Rectangle; action: HitAction }, x: number, y: 
     pushLog(`restore ${windowTitle(action.id)}`);
   } else if (action.type === "control") {
     applyControlHit(action.id, action.action ?? "activate", target.rect, x, action.index);
+  } else if (action.type === "terminalOutput") {
+    void applyTerminalOutputAction(action.action);
   } else if (action.type === "modalAction") {
     if (action.index >= 0) modal.activateAction(action.index);
   } else if (action.type === "dataRow") selectDataRow(action.index);
@@ -3716,6 +3879,29 @@ function applyHit(target: { rect: Rectangle; action: HitAction }, x: number, y: 
       scrollbarOffsetForPointer(workspaceScroll.contentHeight.peek(), target.rect.height, y - target.rect.row),
     );
   } else if (action.type === "theme") setTheme(action.index);
+}
+
+async function applyTerminalOutputAction(action: TerminalOutputAction): Promise<void> {
+  focus(TERMINAL_OUTPUT_WINDOW_ID);
+  if (action === "run") {
+    await terminalOutputSession.start();
+    pushLog("terminal run");
+  } else if (action === "stop") {
+    await terminalOutputSession.stop();
+    pushLog("terminal stop");
+  } else if (action === "restart") {
+    await terminalOutputSession.restart();
+    pushLog("terminal restart");
+  } else if (action === "clear") {
+    terminalOutputSession.clearOutput();
+    pushLog("terminal clear");
+  } else if (action === "follow") {
+    const follow = terminalOutputSession.output.toggleFollow();
+    pushLog(`terminal follow ${follow ? "on" : "off"}`);
+  } else if (action === "copy") {
+    pushLog(`terminal command ${formatProcessCommandLine(terminalOutputSession.command.peek())}`);
+  }
+  scheduleDraw();
 }
 
 function openThreeConfigModal(id: WindowId): void {
@@ -3767,6 +3953,7 @@ function handleWorkbenchKey(event: { key: string; ctrl?: boolean; meta?: boolean
   else if (activeWindow.peek() === "explorer" && explorerKeys.has(event.key)) {
     explorer.handleKeyPress(event, Math.max(1, currentHeight() - 8));
   } else if (activeWindow.peek() === "controls") handleControlsKey(event);
+  else if (activeWindow.peek() === TERMINAL_OUTPUT_WINDOW_ID && handleTerminalOutputKey(event)) return;
   else if (activeWindow.peek() === "data" && event.key.toLowerCase() === "s") {
     cycleDataSortColumn(event.shift || event.key === "S" ? -1 : 1);
   } else if (activeWindow.peek() === "data") table.handleKeyPress(event as never);
@@ -3777,6 +3964,27 @@ function handleWorkbenchKey(event: { key: string; ctrl?: boolean; meta?: boolean
   else if (event.key === "right") scrollWindow(activeWindow.peek(), 1, 0);
   else if (event.key === "up") scrollWindow(activeWindow.peek(), 0, -1);
   else if (event.key === "down") scrollWindow(activeWindow.peek(), 0, 1);
+}
+
+function handleTerminalOutputKey(event: { key: string; ctrl?: boolean; meta?: boolean; shift?: boolean }): boolean {
+  if (event.ctrl || event.meta) return false;
+  const key = event.key.toLowerCase();
+  const action = key === "p"
+    ? "run"
+    : key === "s"
+    ? "stop"
+    : key === "u"
+    ? "restart"
+    : key === "k"
+    ? "clear"
+    : key === "v"
+    ? "follow"
+    : key === "y"
+    ? "copy"
+    : undefined;
+  if (!action) return false;
+  void applyTerminalOutputAction(action);
+  return true;
 }
 
 function handleCpuHexGridKey(event: { key: string; ctrl?: boolean; meta?: boolean; shift?: boolean }): boolean {
@@ -4030,6 +4238,10 @@ function toggleNewWindowOption(
     toggleBuiltInWindow(HTML_CSS_LAYOUT_WINDOW_ID, options);
     return;
   }
+  if (option.id === TERMINAL_OUTPUT_OPTION_ID) {
+    toggleBuiltInWindow(TERMINAL_OUTPUT_WINDOW_ID, options);
+    return;
+  }
   toggleVisualizationWindow(option, options);
 }
 
@@ -4103,6 +4315,8 @@ function isVisualizationLoaded(visualizationId: string): boolean {
 function isNewWindowOptionLoaded(option: NewWindowOption): boolean {
   return option.id === HTML_CSS_LAYOUT_OPTION_ID
     ? windowManager.ids().includes(HTML_CSS_LAYOUT_WINDOW_ID)
+    : option.id === TERMINAL_OUTPUT_OPTION_ID
+    ? windowManager.ids().includes(TERMINAL_OUTPUT_WINDOW_ID)
     : isVisualizationLoaded(option.id);
 }
 
@@ -4688,6 +4902,8 @@ function windowTitle(id: WindowId): string {
     ? "Logs"
     : id === "htmlLayout"
     ? "HTML/CSS Layout"
+    : id === TERMINAL_OUTPUT_WINDOW_ID
+    ? "Terminal Output"
     : "Three ASCII";
 }
 

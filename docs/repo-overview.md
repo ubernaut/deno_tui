@@ -42,6 +42,8 @@ For a complete generated list of public modules, re-exports, and symbols, see [A
   factories, benchmarks, launch targets, and public exports.
 - Runtime plans for Workers, WebGPU, WebGL, OffscreenCanvas, IndexedDB, terminal color depth, Unicode, mouse protocols,
   bracketed paste, focus events, hyperlinks, alternate screen, and terminal setup/teardown sequences.
+- Process output sessions for managed command windows with stdout/stderr scrollback, exit metadata, cancellation,
+  restart, and command-surface bindings.
 - Concurrent and cacheable data primitives: `AsyncScheduler`, `WorkerPool`, `AsyncResource`, `CachedAsyncResource`,
   `DataQueryController`, `runDataPipeline()`, `LatestDataPipeline`, and `CachedDataPipeline`.
 - Theme system with semantic tokens, palette presets, theme packs, provider layers, engine factories, pipelines,
@@ -107,7 +109,9 @@ capabilities, and recommended demo path. `examples/batteries_included.ts` is the
 each phase to proof commands. `examples/form_workflow.ts`, `examples/table_selection_workflow.ts`, and
 `examples/terminal_command_workflow.ts` are API capability demos for form bindings, command adapters, data table state,
 selection state, command search/dispatch, and terminal session setup. `deno task screenshots` regenerates the JPEG
-terminal screenshots used by the README under `docs/screenshots/`.
+terminal screenshots used by the README under `docs/screenshots/`. `app/api_workbench.ts` is the interactive portfolio
+for the same APIs and now includes a New-menu `Terminal Output` window that runs a real subprocess inside the managed
+window layout.
 
 ## Quality Gates
 

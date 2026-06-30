@@ -33,6 +33,7 @@ export * from "./statusbar.ts";
 export * from "./stepper.ts";
 export * from "./table.ts";
 export * from "./tabs.ts";
+export * from "./terminal_output.ts";
 export * from "./text.ts";
 export * from "./textbox.ts";
 export * from "./three_ascii.ts";

@@ -739,6 +739,12 @@ limit, and empty state for status panels, tests, and plugin diagnostics.
 buffers reusable across system monitors, worker consoles, and diagnostic panes. `logViewerCommands()` and
 `bindLogViewerCommands()` expose clear and follow-toggle actions through the shared command registry.
 
+`TerminalOutputController` and `ProcessSessionController` are the first terminal-window primitives. They run
+non-interactive subprocesses with `Deno.Command`, stream stdout/stderr/system lines into bounded scrollback, track
+running/exited/failed/cancelled state, and expose `terminalCommands()` / `bindTerminalCommands()` for run, stop,
+restart, clear, follow, and copy-command actions. The API Workbench portfolio includes a `Terminal: Terminal Output`
+window under the New menu that demonstrates the flow inside the same window manager used by the rest of the demo.
+
 ## Layouts
 
 Layouts compute reactive `Rectangle` signals for each named element. Pass them directly as a component's `rectangle`.
@@ -1976,6 +1982,7 @@ Optional high-performance APIs are surfaced through `src/runtime/mod.ts`:
 - `createTerminalPlan()` / `formatTerminalPlan()`
 - `createTerminalPortabilityReport()` / `formatTerminalPortabilityReport()`
 - `terminalSessionSequences()` / `terminalMouseSequences()` / `createTerminalSessionController()`
+- `ProcessSessionController` / `formatProcessCommandLine()`
 - `RuntimeRendererBackendRegistry` / `RuntimeRendererBackendController` / `selectRuntimeRendererBackend()` /
   `formatRuntimeRendererBackendCatalogMarkdown()`
 - `RuntimeProfile` / `RuntimeProfileRegistry` / `createRuntimeProfileCatalogReport()` /
@@ -2494,7 +2501,7 @@ const preset = findAsciiDemoPreset("mixed-best");
 | `examples/adopter_workbench.ts`         | Integrated adopter report across app/runtime/theme/data APIs   |
 | `examples/demo_gallery.ts`              | Capability tour across launchers, widgets, renderers, themes   |
 | `examples/batteries_included.ts`        | Phase 1-6 readiness report with proof commands                 |
-| `app/api_workbench.ts`                  | Interactive API portfolio with resizable windows and themes    |
+| `app/api_workbench.ts`                  | API portfolio with terminal output and themes                  |
 | `app/showcase.ts`                       | Full Neon Exodus-style widget and visualization showcase       |
 | `app/neon_exodus.ts`                    | OpenTUI/web Neon Exodus demo suite rebuilt on this TUI stack   |
 | `app/main.ts`                           | Live system monitor dashboard with selectable panels           |
