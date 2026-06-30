@@ -22,7 +22,8 @@ Identify and implement missing features needed for a robust curses-style Deno TU
 ## Completion Notes
 
 - Documented the parity analysis in `docs/curses-webtui-parity.md`.
-- Closed the highest-leverage missing curses primitive by adding `PadController` for off-screen scrollable text surfaces.
+- Closed the highest-leverage missing curses primitive by adding `PadController` for off-screen scrollable text
+  surfaces.
 - Added renderer-neutral pad helpers for content measurement, row slicing, cursor clamping, keyboard scrolling, cursor
   reveal, and scrollbar pointer mapping.
 - Added `padCommands()` and `bindPadCommands()` for command palettes, menus, keymaps, and plugin-driven apps.

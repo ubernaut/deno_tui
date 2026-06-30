@@ -30,8 +30,8 @@ The repo already has useful browser-ready pieces:
   client and WebSocket transport.
 - `examples/web/standalone.ts` demonstrates a browser-only app using the shared `Canvas`, `BoxObject`, `TextObject`,
   ANSI theme styles, and Canvas2D sink.
-- `examples/web/neon_exodus_page.ts` is the default GitHub Pages source. `deno task web:pages:build` bundles it into
-  `docs/index.html` and `docs/assets/neon-exodus.js`.
+- `examples/web/api_workbench_page.ts` is the default GitHub Pages source. `deno task web:pages:build` bundles it into
+  `docs/index.html` and `docs/assets/api-workbench.js`.
 - Signals, controllers, commands, plugins, layouts, theme engines, data resources, worker pools, settings, and runtime
   capability planning are mostly platform-neutral.
 - `Canvas` now flushes changed cells through `CanvasCellSink`; terminal output is handled by `AnsiCanvasSink`, and
@@ -250,7 +250,7 @@ runtime wrapper around a shared app host.
   switching.
 - Ship browser examples with screenshots or short clips generated from real browser runs.
 - Added a GitHub Pages build script: `deno task web:pages:build` generates `docs/index.html` and
-  `docs/assets/neon-exodus.js`, with Neon Exodus as the default page.
+  `docs/assets/api-workbench.js`, with the API Workbench portfolio as the default page.
 
 ### Remote Bridge Track
 

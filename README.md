@@ -44,8 +44,8 @@ renderer lab, and demo suite:
   experimental tiers, release checklist, and changelog policy.
 - [Browser Framework Plan](./docs/web-framework-plan.md) compares browser delivery options and recommends a hybrid
   platform/renderer path for shared terminal and web interfaces. The current branch includes `mod.web.ts`,
-  `mod.remote.ts`, a Canvas2D web host, a DOM render target, and GitHub Pages builds for Neon Exodus, API Workbench, and
-  the three ASCII renderer under `docs/`.
+  `mod.remote.ts`, a Canvas2D web host, a DOM render target, and a GitHub Pages portfolio build for the API Workbench
+  under `docs/`.
 - The README remains the primary API tour for components, layouts, app primitives, theming, runtime capabilities,
   reactivity, views, examples, and contribution commands.
 
