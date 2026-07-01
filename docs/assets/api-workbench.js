@@ -8484,6 +8484,9 @@ var ASCII_DEMO_PRESETS = [
   }
 ];
 
+// src/three_ascii/options.ts
+var presetMap = new Map(ASCII_DEMO_PRESETS.map((preset) => [preset.id, preset]));
+
 // src/app/hit_targets.ts
 function contains(rect, x, y) {
   return x >= rect.column && x < rect.column + rect.width && y >= rect.row && y < rect.row + rect.height;
