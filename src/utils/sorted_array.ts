@@ -23,7 +23,10 @@ export class SortedArray<T = unknown> extends Array<T> {
 
   remove(...items: T[]): number {
     for (const item of items) {
-      this.splice(this.indexOf(item), 1);
+      const index = this.indexOf(item);
+      if (index >= 0) {
+        this.splice(index, 1);
+      }
     }
     return this.length;
   }

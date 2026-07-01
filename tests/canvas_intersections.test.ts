@@ -163,6 +163,44 @@ Deno.test("canvas intersection updates use row-indexed candidates for sparse pan
   assertEquals(canvas.inspectRender().intersectionCandidateChecks <= boxes.length, true);
 });
 
+Deno.test("canvas rerenders overlapping cells when z-index order changes", () => {
+  const canvas = createTestCanvas({ size: { columns: 12, rows: 2 } });
+  const overlayZIndex = new Signal(2);
+  const background = new BoxObject({
+    canvas,
+    rectangle: { column: 0, row: 0, width: 12, height: 2 },
+    filler: ".",
+    style: (text: string) => text,
+    zIndex: 1,
+  });
+  const overlay = new TextObject({
+    canvas,
+    rectangle: { column: 2, row: 0, width: 4 },
+    value: "HELP",
+    overwriteRectangle: true,
+    style: (text: string) => text,
+    zIndex: overlayZIndex,
+  });
+
+  background.draw();
+  overlay.draw();
+  canvas.render();
+
+  assertEquals(canvasRowText(canvas, 0, 12), "..HELP......");
+
+  overlayZIndex.value = 0;
+  canvas.render();
+
+  assertEquals(canvasRowText(canvas, 0, 12), "............");
+  assertEquals(canvas.drawnOrderVersion, 3);
+
+  overlayZIndex.value = 3;
+  canvas.render();
+
+  assertEquals(canvasRowText(canvas, 0, 12), "..HELP......");
+  assertEquals(canvas.drawnOrderVersion, 4);
+});
+
 Deno.test("draw objects track views attached after construction", () => {
   const canvas = createTestCanvas({ size: { columns: 12, rows: 3 } });
   const view = new Signal<View | undefined>(undefined);

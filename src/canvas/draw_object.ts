@@ -55,6 +55,7 @@ export class DrawObject<Type extends string = string> {
   moved: boolean;
 
   #styleSubscription: Subscription<Style>;
+  #zIndexSubscription: Subscription<number>;
   #viewSubscription: Subscription<View | undefined>;
   #viewRectangleSubscription: Subscription<Rectangle>;
   #viewOffsetSubscription: Subscription<Offset>;
@@ -96,6 +97,13 @@ export class DrawObject<Type extends string = string> {
         updateObjects.push(objectUnder);
       }
     };
+    this.#zIndexSubscription = () => {
+      this.canvas.resortDrawnObjects();
+      this.previousRectangle = undefined;
+      this.moved = true;
+      this.updated = false;
+      updateObjects.push(this);
+    };
 
     this.#viewSubscription = (view) => this.#attachView(view);
     this.#viewRectangleSubscription = () => this.#syncView();
@@ -108,6 +116,7 @@ export class DrawObject<Type extends string = string> {
 
   draw(): void {
     this.style.subscribe(this.#styleSubscription);
+    this.zIndex.subscribe(this.#zIndexSubscription);
 
     this.rendered = false;
 
@@ -125,14 +134,17 @@ export class DrawObject<Type extends string = string> {
     }
 
     this.canvas.drawnObjects.push(this);
+    this.canvas.drawnOrderVersion += 1;
   }
 
   erase(): void {
     this.style.unsubscribe(this.#styleSubscription);
+    this.zIndex.unsubscribe(this.#zIndexSubscription);
 
     const { drawnObjects } = this.canvas;
 
     drawnObjects.remove(this);
+    this.canvas.drawnOrderVersion += 1;
 
     for (const object of drawnObjects) {
       object.objectsUnder.delete(this);

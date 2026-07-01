@@ -1230,7 +1230,10 @@ var SortedArray = class extends Array {
   }
   remove(...items) {
     for (const item of items) {
-      this.splice(this.indexOf(item), 1);
+      const index = this.indexOf(item);
+      if (index >= 0) {
+        this.splice(index, 1);
+      }
     }
     return this.length;
   }
@@ -1256,6 +1259,7 @@ var DrawObject = class {
   updated;
   moved;
   #styleSubscription;
+  #zIndexSubscription;
   #viewSubscription;
   #viewRectangleSubscription;
   #viewOffsetSubscription;
@@ -1287,6 +1291,13 @@ var DrawObject = class {
         updateObjects.push(objectUnder);
       }
     };
+    this.#zIndexSubscription = () => {
+      this.canvas.resortDrawnObjects();
+      this.previousRectangle = void 0;
+      this.moved = true;
+      this.updated = false;
+      updateObjects.push(this);
+    };
     this.#viewSubscription = (view) => this.#attachView(view);
     this.#viewRectangleSubscription = () => this.#syncView();
     this.#viewOffsetSubscription = () => this.#syncView();
@@ -1296,6 +1307,7 @@ var DrawObject = class {
   }
   draw() {
     this.style.subscribe(this.#styleSubscription);
+    this.zIndex.subscribe(this.#zIndexSubscription);
     this.rendered = false;
     const { objectsUnder } = this;
     const { updateObjects } = this.canvas;
@@ -1308,11 +1320,14 @@ var DrawObject = class {
       updateObjects.push(objectUnder);
     }
     this.canvas.drawnObjects.push(this);
+    this.canvas.drawnOrderVersion += 1;
   }
   erase() {
     this.style.unsubscribe(this.#styleSubscription);
+    this.zIndex.unsubscribe(this.#zIndexSubscription);
     const { drawnObjects } = this.canvas;
     drawnObjects.remove(this);
+    this.canvas.drawnOrderVersion += 1;
     for (const object of drawnObjects) {
       object.objectsUnder.delete(this);
     }
@@ -2450,6 +2465,7 @@ var Canvas = class extends EventEmitter {
   updateObjects;
   resizeNeeded;
   lastRenderStats;
+  drawnOrderVersion;
   constructor(options) {
     super();
     this.frameBuffer = [];
@@ -2466,6 +2482,7 @@ var Canvas = class extends EventEmitter {
     this.updateObjects = [];
     this.resizeNeeded = false;
     this.lastRenderStats = emptyRenderStats();
+    this.drawnOrderVersion = 0;
     this.size = signalify(options.size, { deepObserve: true });
     this.size.subscribe(() => {
       this.resizeNeeded = true;
@@ -2474,6 +2491,10 @@ var Canvas = class extends EventEmitter {
     });
     const { columns, rows: rows2 } = this.size.peek();
     this.sink.resize?.(columns, rows2);
+  }
+  resortDrawnObjects() {
+    this.drawnObjects.sort(this.drawnObjects.compareFn);
+    this.drawnOrderVersion += 1;
   }
   resize() {
     const { columns, rows: rows2 } = this.size.peek();

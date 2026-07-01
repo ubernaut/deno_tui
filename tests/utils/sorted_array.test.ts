@@ -11,5 +11,7 @@ Deno.test("utils/sorted_array.ts", async (t) => {
     assertEquals([...array], [100, 11, 10, 1, -2, -5, -1000]);
     array.remove(11);
     assertEquals([...array], [100, 10, 1, -2, -5, -1000]);
+    array.remove(404);
+    assertEquals([...array], [100, 10, 1, -2, -5, -1000]);
   });
 });

@@ -65,6 +65,7 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
   updateObjects: DrawObject[];
   resizeNeeded: boolean;
   lastRenderStats: CanvasRenderStats;
+  drawnOrderVersion: number;
 
   constructor(options: CanvasOptions) {
     super();
@@ -83,6 +84,7 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
     this.updateObjects = [];
     this.resizeNeeded = false;
     this.lastRenderStats = emptyRenderStats();
+    this.drawnOrderVersion = 0;
 
     this.size = signalify(options.size, { deepObserve: true });
 
@@ -93,6 +95,11 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
     });
     const { columns, rows } = this.size.peek();
     this.sink.resize?.(columns, rows);
+  }
+
+  resortDrawnObjects(): void {
+    this.drawnObjects.sort(this.drawnObjects.compareFn);
+    this.drawnOrderVersion += 1;
   }
 
   resize() {

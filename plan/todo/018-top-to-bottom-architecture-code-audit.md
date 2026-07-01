@@ -137,7 +137,7 @@ Work:
 - [x] Add row-range invalidation helpers on `DrawObject` so rectangle, movement, erase, and dirty-overlap paths share
       one clipping path instead of expanding every caller through duplicate cell loops.
 - [x] Add a spatial or layer-indexed structure for overlap queries so moved overlays do not require full object scans.
-- [ ] Cache z-order/version metadata and invalidate only when object order or geometry changes.
+- [x] Cache z-order/version metadata and invalidate only when object order or geometry changes.
 - [x] Add optional render stats for dirty rectangle count, dirty cell count, full redraw count, and intersection query
       cost.
 - [x] Keep the current cell sink contract stable while allowing future sinks to consume row ranges.
