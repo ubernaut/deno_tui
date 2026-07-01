@@ -27,9 +27,89 @@ type DiskCache = {
   disks: DiskSnapshot[];
 };
 
+export interface SystemMetricsDirEntry {
+  name: string;
+  isDirectory: boolean;
+}
+
+export interface SystemMetricsCommandOutput {
+  success: boolean;
+  stdout: Uint8Array;
+}
+
+export interface SystemMetricsNetworkInterface {
+  name: string;
+  address: string;
+}
+
+export interface SystemMetricsProvider {
+  now(): number;
+  hostname(): string;
+  osRelease(): string;
+  hardwareConcurrency(): number;
+  systemMemoryInfo(): Deno.SystemMemoryInfo;
+  loadavg(): [number, number, number];
+  networkInterfaces(): SystemMetricsNetworkInterface[];
+  readTextFile(path: string): Promise<string>;
+  readDir(path: string): AsyncIterable<SystemMetricsDirEntry>;
+  command(command: string, args: string[]): Promise<SystemMetricsCommandOutput>;
+}
+
+export class DenoSystemMetricsProvider implements SystemMetricsProvider {
+  now(): number {
+    return Date.now();
+  }
+
+  hostname(): string {
+    return Deno.hostname();
+  }
+
+  osRelease(): string {
+    return Deno.osRelease();
+  }
+
+  hardwareConcurrency(): number {
+    return navigator.hardwareConcurrency || 1;
+  }
+
+  systemMemoryInfo(): Deno.SystemMemoryInfo {
+    return Deno.systemMemoryInfo();
+  }
+
+  loadavg(): [number, number, number] {
+    const loadavg = Deno.loadavg();
+    return [loadavg[0] ?? 0, loadavg[1] ?? 0, loadavg[2] ?? 0];
+  }
+
+  networkInterfaces(): SystemMetricsNetworkInterface[] {
+    return Deno.networkInterfaces();
+  }
+
+  readTextFile(path: string): Promise<string> {
+    return Deno.readTextFile(path);
+  }
+
+  readDir(path: string): AsyncIterable<SystemMetricsDirEntry> {
+    return Deno.readDir(path);
+  }
+
+  async command(command: string, args: string[]): Promise<SystemMetricsCommandOutput> {
+    const result = await new Deno.Command(command, {
+      args,
+      stdout: "piped",
+      stderr: "null",
+    }).output();
+    return {
+      success: result.success,
+      stdout: result.stdout,
+    };
+  }
+}
+
 export class SystemMonitor {
   snapshot: Signal<SystemSnapshot>;
 
+  #provider: SystemMetricsProvider;
   #cpuTimes: CpuTimes[] = [];
   #netCounters = new Map<string, NetCounters>();
   #processCpu = new Map<number, number>();
@@ -41,10 +121,11 @@ export class SystemMonitor {
   #hostname: string;
   #osRelease: string;
 
-  constructor(historyLength = 60) {
+  constructor(historyLength = 60, provider: SystemMetricsProvider = new DenoSystemMetricsProvider()) {
+    this.#provider = provider;
     this.#historyLength = historyLength;
-    this.#hostname = safeHostname();
-    this.#osRelease = safeOsRelease();
+    this.#hostname = safeHostname(provider);
+    this.#osRelease = safeOsRelease(provider);
     this.snapshot = new Signal(emptySnapshot(this.#hostname, this.#osRelease, historyLength));
   }
 
@@ -76,17 +157,17 @@ export class SystemMonitor {
         gpu,
         rawProcesses,
       ] = await Promise.all([
-        Deno.readTextFile("/proc/stat"),
-        Deno.readTextFile("/proc/uptime"),
-        Deno.readTextFile("/proc/net/dev"),
-        sampleTemperatures(),
+        this.#provider.readTextFile("/proc/stat"),
+        this.#provider.readTextFile("/proc/uptime"),
+        this.#provider.readTextFile("/proc/net/dev"),
+        sampleTemperatures(this.#provider),
         this.#sampleDisks(),
-        sampleGpu(current.gpu),
+        sampleGpu(this.#provider, current.gpu),
         this.#collectProcessStats(),
       ]);
 
       const cpuSample = this.#sampleCpu(cpuText, current);
-      const memoryInfo = Deno.systemMemoryInfo();
+      const memoryInfo = this.#provider.systemMemoryInfo();
       const memoryUsed = memoryInfo.total - memoryInfo.available;
       const swapUsed = memoryInfo.swapTotal - memoryInfo.swapFree;
       const memoryPercent = memoryInfo.total > 0 ? (memoryUsed / memoryInfo.total) * 100 : 0;
@@ -94,10 +175,10 @@ export class SystemMonitor {
       const networkSample = this.#sampleNetwork(netText);
       const processes = this.#finalizeProcesses(rawProcesses, cpuSample.totalDelta, memoryInfo.total);
       const uptimeSeconds = Number.parseFloat(uptimeText.split(" ")[0] ?? "0");
-      const loadavg = Deno.loadavg();
+      const loadavg = this.#provider.loadavg();
 
       const nextSnapshot: SystemSnapshot = {
-        timestamp: Date.now(),
+        timestamp: this.#provider.now(),
         hostname: this.#hostname,
         osRelease: this.#osRelease,
         uptimeSeconds,
@@ -199,8 +280,8 @@ export class SystemMonitor {
   }
 
   #sampleNetwork(text: string) {
-    const sampledAt = Date.now();
-    const interfaces = Deno.networkInterfaces();
+    const sampledAt = this.#provider.now();
+    const interfaces = this.#provider.networkInterfaces();
     const addressMap = new Map<string, string[]>();
     for (const entry of interfaces) {
       if (entry.name === "lo") {
@@ -260,16 +341,12 @@ export class SystemMonitor {
   }
 
   async #sampleDisks() {
-    const now = Date.now();
+    const now = this.#provider.now();
     if (now - this.#diskCache.sampledAt < 10_000 && this.#diskCache.disks.length > 0) {
       return this.#diskCache.disks;
     }
 
-    const result = await new Deno.Command("df", {
-      args: ["-B1P", "-x", "tmpfs", "-x", "devtmpfs", "-x", "squashfs"],
-      stdout: "piped",
-      stderr: "null",
-    }).output();
+    const result = await this.#provider.command("df", ["-B1P", "-x", "tmpfs", "-x", "devtmpfs", "-x", "squashfs"]);
 
     const output = new TextDecoder().decode(result.stdout);
     const lines = output.split("\n").slice(1).filter(Boolean);
@@ -307,7 +384,7 @@ export class SystemMonitor {
 
   async #collectProcessStats() {
     const entries: number[] = [];
-    for await (const entry of Deno.readDir("/proc")) {
+    for await (const entry of this.#provider.readDir("/proc")) {
       if (entry.isDirectory && /^\d+$/.test(entry.name)) {
         entries.push(Number(entry.name));
       }
@@ -315,7 +392,7 @@ export class SystemMonitor {
 
     const stats = await Promise.allSettled(
       entries.map(async (pid) => {
-        const stat = await Deno.readTextFile(`/proc/${pid}/stat`);
+        const stat = await this.#provider.readTextFile(`/proc/${pid}/stat`);
         return { pid, stat };
       }),
     );
@@ -328,7 +405,7 @@ export class SystemMonitor {
     totalDelta: number,
     totalMemory: number,
   ) {
-    const cpuCount = Math.max(1, navigator.hardwareConcurrency || 1);
+    const cpuCount = Math.max(1, this.#provider.hardwareConcurrency());
 
     const nextProcessCpu = new Map<number, number>();
     const processes: ProcessSnapshot[] = [];
@@ -388,18 +465,18 @@ function parseProcessStat(stat: string, pageSize: number) {
   };
 }
 
-async function sampleTemperatures() {
+async function sampleTemperatures(provider: SystemMetricsProvider) {
   const zones: TemperatureSnapshot[] = [];
   try {
-    for await (const entry of Deno.readDir("/sys/class/thermal")) {
+    for await (const entry of provider.readDir("/sys/class/thermal")) {
       if (!entry.name.startsWith("thermal_zone")) {
         continue;
       }
 
       const base = `/sys/class/thermal/${entry.name}`;
       const [labelText, tempText] = await Promise.all([
-        Deno.readTextFile(`${base}/type`).catch(() => ""),
-        Deno.readTextFile(`${base}/temp`).catch(() => ""),
+        provider.readTextFile(`${base}/type`).catch(() => ""),
+        provider.readTextFile(`${base}/temp`).catch(() => ""),
       ]);
 
       const celsius = Number.parseFloat(tempText.trim());
@@ -419,16 +496,12 @@ async function sampleTemperatures() {
   return zones.sort((a, b) => b.celsius - a.celsius);
 }
 
-async function sampleGpu(current: GpuSnapshot): Promise<GpuSnapshot> {
+async function sampleGpu(provider: SystemMetricsProvider, current: GpuSnapshot): Promise<GpuSnapshot> {
   try {
-    const result = await new Deno.Command("nvidia-smi", {
-      args: [
-        "--query-gpu=name,utilization.gpu,memory.used,memory.total,temperature.gpu,power.draw,clocks.gr,clocks.mem",
-        "--format=csv,noheader,nounits",
-      ],
-      stdout: "piped",
-      stderr: "null",
-    }).output();
+    const result = await provider.command("nvidia-smi", [
+      "--query-gpu=name,utilization.gpu,memory.used,memory.total,temperature.gpu,power.draw,clocks.gr,clocks.mem",
+      "--format=csv,noheader,nounits",
+    ]);
     if (!result.success) return current.available ? current : emptyGpuSnapshot();
 
     const rows = new TextDecoder().decode(result.stdout).trim().split("\n").filter(Boolean);
@@ -638,17 +711,17 @@ function emptySnapshot(hostname: string, osRelease: string, historyLength: numbe
   };
 }
 
-function safeHostname() {
+function safeHostname(provider: SystemMetricsProvider) {
   try {
-    return Deno.hostname();
+    return provider.hostname();
   } catch {
     return "unknown-host";
   }
 }
 
-function safeOsRelease() {
+function safeOsRelease(provider: SystemMetricsProvider) {
   try {
-    return Deno.osRelease();
+    return provider.osRelease();
   } catch {
     return "unknown-os";
   }

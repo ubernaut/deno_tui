@@ -21,6 +21,13 @@ import {
   tileRects,
   visibleListRows,
 } from "../mod.ts";
+import {
+  type SystemMetricsCommandOutput,
+  type SystemMetricsDirEntry,
+  type SystemMetricsNetworkInterface,
+  type SystemMetricsProvider,
+  SystemMonitor,
+} from "../app/system_metrics.ts";
 
 const sparklineValues = Array.from({ length: 200 }, (_, index) => Math.sin(index / 8));
 const threeAsciiColumns = 96;
@@ -131,6 +138,130 @@ function runCanvasOverlapWorkload(): void {
     throw new Error("canvas overlap workload did not flush any cells");
   }
 }
+
+class BenchmarkMetricsProvider implements SystemMetricsProvider {
+  step = 0;
+  readonly pids = Array.from({ length: 150 }, (_, index) => 1_000 + index);
+
+  advance(): void {
+    this.step += 1;
+  }
+
+  now(): number {
+    return 1_000 + this.step * 11_000;
+  }
+
+  hostname(): string {
+    return "bench-host";
+  }
+
+  osRelease(): string {
+    return "bench-os";
+  }
+
+  hardwareConcurrency(): number {
+    return 16;
+  }
+
+  systemMemoryInfo(): Deno.SystemMemoryInfo {
+    return {
+      total: 64 * 1024 ** 3,
+      free: 16 * 1024 ** 3,
+      available: 24 * 1024 ** 3,
+      buffers: 0,
+      cached: 8 * 1024 ** 3,
+      swapTotal: 8 * 1024 ** 3,
+      swapFree: 6 * 1024 ** 3,
+    };
+  }
+
+  loadavg(): [number, number, number] {
+    return [2.5, 2.25, 2];
+  }
+
+  networkInterfaces(): SystemMetricsNetworkInterface[] {
+    return [{ name: "eth0", address: "192.0.2.20" }];
+  }
+
+  async readTextFile(path: string): Promise<string> {
+    if (path === "/proc/stat") return benchmarkProcStat(this.step);
+    if (path === "/proc/uptime") return `${10_000 + this.step}.00 0.00\n`;
+    if (path === "/proc/net/dev") return benchmarkProcNetDev(this.step);
+    if (path.startsWith("/proc/") && path.endsWith("/stat")) {
+      const pid = Number(path.split("/")[2] ?? 0);
+      return benchmarkProcessStat(pid, this.step);
+    }
+    if (path === "/sys/class/thermal/thermal_zone0/type") return "bench_pkg\n";
+    if (path === "/sys/class/thermal/thermal_zone0/temp") return "61000\n";
+    throw new Error(`missing benchmark fixture: ${path}`);
+  }
+
+  async *readDir(path: string): AsyncIterable<SystemMetricsDirEntry> {
+    if (path === "/proc") {
+      for (const pid of this.pids) {
+        yield { name: String(pid), isDirectory: true };
+      }
+      return;
+    }
+    if (path === "/sys/class/thermal") {
+      yield { name: "thermal_zone0", isDirectory: true };
+    }
+  }
+
+  async command(command: string, _args: string[]): Promise<SystemMetricsCommandOutput> {
+    if (command === "df") {
+      return commandOutput([
+        "Filesystem 1B-blocks Used Available Use% Mounted on",
+        "/dev/nvme0n1p2 1000000000 610000000 390000000 61% /",
+        "/dev/nvme1n1p1 2000000000 900000000 1100000000 45% /data",
+      ].join("\n"));
+    }
+    if (command === "nvidia-smi") {
+      return commandOutput("Bench GPU, 82, 8192, 24576, 71, 220, 2100, 10500\n");
+    }
+    return { success: false, stdout: new Uint8Array() };
+  }
+}
+
+function commandOutput(output: string): SystemMetricsCommandOutput {
+  return {
+    success: true,
+    stdout: new TextEncoder().encode(output),
+  };
+}
+
+function benchmarkProcStat(step: number): string {
+  const busy = 1_000 + step * 80;
+  const idle = 8_000 + step * 120;
+  const rows = [`cpu ${busy} 0 ${busy} ${idle} 0 0 0 0 0 0`];
+  for (let core = 0; core < 16; core += 1) {
+    rows.push(`cpu${core} ${busy + core * 7} 0 ${busy + core * 3} ${idle + core * 11} 0 0 0 0 0 0`);
+  }
+  return rows.join("\n");
+}
+
+function benchmarkProcNetDev(step: number): string {
+  const rxBytes = 1_000_000 + step * 1_500_000;
+  const txBytes = 2_000_000 + step * 900_000;
+  return [
+    "Inter-|   Receive                                                |  Transmit",
+    " face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed",
+    `  eth0: ${rxBytes} 0 0 0 0 0 0 0 ${txBytes} 0 0 0 0 0 0 0`,
+  ].join("\n");
+}
+
+function benchmarkProcessStat(pid: number, step: number): string {
+  const tail = Array.from({ length: 37 }, () => "0");
+  tail[0] = "R";
+  tail[11] = String(pid * 10 + step * ((pid % 9) + 1));
+  tail[12] = String(step * ((pid % 5) + 1));
+  tail[21] = String(256 + (pid % 4096));
+  tail[36] = String(pid % 16);
+  return `${pid} (bench-${pid}) ${tail.join(" ")}`;
+}
+
+const metricsProvider = new BenchmarkMetricsProvider();
+const metricsMonitor = new SystemMonitor(16, metricsProvider);
 
 /** High-volume UI, runtime, and rendering benchmark workloads used by the benchmark CLI. */
 export const benchmarkCases: BenchmarkCase[] = [
@@ -276,6 +407,22 @@ export const benchmarkCases: BenchmarkCase[] = [
     run: () => {
       for (let index = 0; index < 100; index += 1) {
         visibleListRows(largeListItems, (index * 499) % largeListItems.length, 36);
+      }
+    },
+  },
+  {
+    name: "data/system-monitor-fixture-sample",
+    category: "data",
+    description: "Sample fixture-backed CPU, memory, network, disk, GPU, and 150 process metrics.",
+    tags: ["data", "monitor", "processes", "fixtures"],
+    iterations: 80,
+    maxAverageMs: 5,
+    run: async () => {
+      metricsProvider.advance();
+      await metricsMonitor.sample();
+      const snapshot = metricsMonitor.snapshot.peek();
+      if (snapshot.processes.length !== 100 || snapshot.cpuCores.length !== 16) {
+        throw new Error("system monitor fixture sample did not produce expected rows");
       }
     },
   },

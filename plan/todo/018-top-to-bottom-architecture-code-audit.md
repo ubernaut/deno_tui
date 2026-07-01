@@ -69,12 +69,12 @@ Current evidence:
 
 Work:
 
-- [ ] Add benchmarks for `Canvas` with many overlapping windows, moving overlays, full-screen modal open/close, and
+- [x] Add benchmarks for `Canvas` with many overlapping windows, moving overlays, full-screen modal open/close, and
       resize churn.
 - [ ] Add a deterministic API Workbench render benchmark using fixed signals and synthetic windows.
-- [ ] Add text measurement/cropping benchmarks for ANSI-heavy table/list rows and button-heavy titlebars.
+- [x] Add text measurement/cropping benchmarks for ANSI-heavy table/list rows and button-heavy titlebars.
 - [ ] Add system monitor fixture benchmarks for CPU/process/network parsing without touching live `/proc`.
-- [ ] Add Three ASCII CPU-side grid assembly/readback benchmarks with an injectable renderer or captured buffers.
+- [x] Add Three ASCII CPU-side grid assembly/readback benchmarks with an injectable renderer or captured buffers.
 - [ ] Record thresholds in the benchmark catalog and wire the most useful non-flaky cases into health or e2e.
 
 Acceptance checks:
@@ -96,12 +96,12 @@ Current evidence:
 Work:
 
 - [ ] Add a batched update/transaction API for groups of related signal mutations.
-- [ ] Add recursion/cycle detection with actionable diagnostics that include the signal/effect inspection path where
+- [x] Add recursion/cycle detection with actionable diagnostics that include the signal/effect inspection path where
       available.
 - [ ] Provide a scheduler-backed propagation mode for UI frame updates so noisy state changes coalesce into one draw.
 - [ ] Audit app/workbench/Three panel code and replace ad hoc `queueMicrotask()` draw coalescing where the signal layer
       can own the behavior.
-- [ ] Replace string throws in signal/reactivity internals with typed `Error` subclasses.
+- [x] Replace string throws in signal/reactivity internals with typed `Error` subclasses.
 
 Acceptance checks:
 
@@ -131,7 +131,7 @@ Work:
 Acceptance checks:
 
 - [ ] Snapshot tests prove no stale cells after erase, move, resize, and overlapping z-index changes.
-- [ ] New benchmarks show improved behavior for many overlapping panes and modal open/close.
+- [x] New benchmarks show improved behavior for many overlapping panes and modal open/close.
 - [ ] Browser canvas sink and ANSI stdout sink both pass the same render invalidation tests.
 
 ### P1: Stabilize Three ASCII Lifecycle And Readback Performance
@@ -151,7 +151,7 @@ Work:
 - [ ] Add cancel tokens/generation ids so stale frames cannot update disposed or rebuilt panels.
 - [ ] Pool GPU readback buffers and avoid recreating CPU arrays when size is unchanged.
 - [ ] Explore packing fill/edge/color output into fewer readbacks or a single mapped buffer.
-- [ ] Cache repeated ANSI foreground/background sequences within a frame.
+- [x] Cache repeated ANSI foreground/background sequences within a frame.
 - [ ] Move Kitty image/ASCII dual-render policy into a reusable renderer option object rather than workbench-local
       conditionals.
 
