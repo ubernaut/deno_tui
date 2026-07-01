@@ -173,6 +173,7 @@ Acceptance checks:
 
 - [ ] Tests close, resize, hide, maximize, and reconfigure Three windows while frames are in flight.
 - [ ] Three ASCII benchmarks track CPU grid assembly and GPU readback cost separately.
+  - [x] Added a separate deterministic readback-copy benchmark for fill, edge, and color buffer payloads.
 - [ ] Workbench and standalone Three demos share the same config normalization and lifecycle helpers.
 
 ### P2: Make System Metrics Provider-Based And Testable

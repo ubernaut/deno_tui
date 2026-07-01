@@ -39,6 +39,14 @@ const threeAsciiCellCount = threeAsciiColumns * threeAsciiRows;
 const threeAsciiFillGlyphs = new Float32Array(threeAsciiCellCount);
 const threeAsciiEdgeGlyphs = new Float32Array(threeAsciiCellCount * 4);
 const threeAsciiColors = new Float32Array(threeAsciiCellCount * 4);
+const threeAsciiReadbackFillSource = new Float32Array(threeAsciiCellCount);
+const threeAsciiReadbackEdgeSource = new Float32Array(threeAsciiCellCount * 4);
+const threeAsciiReadbackColorSource = new Float32Array(threeAsciiCellCount * 4);
+const threeAsciiReadbackFillCpu = new Float32Array(threeAsciiCellCount);
+const threeAsciiReadbackEdgeCpu = new Float32Array(threeAsciiCellCount * 4);
+const threeAsciiReadbackColorCpu = new Float32Array(threeAsciiCellCount * 4);
+let threeAsciiReadbackCursor = 0;
+let threeAsciiReadbackChecksum = 0;
 const ansiRichRows = Array.from({ length: 250 }, (_, index) => {
   const red = (index * 17) % 256;
   const green = (index * 29) % 256;
@@ -73,6 +81,9 @@ for (let index = 0; index < threeAsciiCellCount; index += 1) {
   threeAsciiColors[colorOffset + 2] = ((x + y) % 20) / 19;
   threeAsciiColors[colorOffset + 3] = 1;
 }
+threeAsciiReadbackFillSource.set(threeAsciiFillGlyphs);
+threeAsciiReadbackEdgeSource.set(threeAsciiEdgeGlyphs);
+threeAsciiReadbackColorSource.set(threeAsciiColors);
 
 for (let index = 0; index < 500; index += 1) {
   mouseRouter.register({
@@ -242,6 +253,27 @@ function runApiWorkbenchFrameWorkload(): void {
 
   if ((sink.lastStats?.flushedCells ?? 0) === 0) {
     throw new Error("API Workbench frame workload did not flush any cells");
+  }
+}
+
+function runThreeAsciiReadbackCopyWorkload(): void {
+  threeAsciiReadbackFillCpu.set(threeAsciiReadbackFillSource);
+  threeAsciiReadbackEdgeCpu.set(threeAsciiReadbackEdgeSource);
+  threeAsciiReadbackColorCpu.set(threeAsciiReadbackColorSource);
+
+  const fillIndex = threeAsciiReadbackCursor % threeAsciiReadbackFillCpu.length;
+  const edgeIndex = (threeAsciiReadbackCursor * 3) % threeAsciiReadbackEdgeCpu.length;
+  const colorIndex = (threeAsciiReadbackCursor * 5) % threeAsciiReadbackColorCpu.length;
+  threeAsciiReadbackCursor = (threeAsciiReadbackCursor + 17) % threeAsciiReadbackColorCpu.length;
+  threeAsciiReadbackChecksum = (
+    threeAsciiReadbackChecksum +
+    threeAsciiReadbackFillCpu[fillIndex] +
+    threeAsciiReadbackEdgeCpu[edgeIndex] +
+    threeAsciiReadbackColorCpu[colorIndex]
+  ) % 1_000_000;
+
+  if (!Number.isFinite(threeAsciiReadbackChecksum)) {
+    throw new Error("three Ascii readback copy produced invalid data");
   }
 }
 
@@ -512,6 +544,15 @@ export const benchmarkCases: BenchmarkCase[] = [
         throw new Error("three Ascii grid dimensions changed");
       }
     },
+  },
+  {
+    name: "render/three-ascii-readback-copy-96x40",
+    category: "render",
+    description: "Copy a 96x40 Three Ascii fill, edge, and color readback payload into CPU-visible buffers.",
+    tags: ["render", "three", "ascii", "readback"],
+    iterations: 1_000,
+    maxAverageMs: 2,
+    run: runThreeAsciiReadbackCopyWorkload,
   },
   {
     name: "render/render-loop-300-steps",
