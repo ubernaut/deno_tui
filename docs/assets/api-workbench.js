@@ -7951,6 +7951,8 @@ var TerminalScreenController = class {
   #savedCursor;
   #title;
   #scrollRegion;
+  #cursorVisible = true;
+  #privateModes = /* @__PURE__ */ new Set();
   constructor(options = {}) {
     this.#columns = normalizeDimension(options.columns, DEFAULT_COLUMNS);
     this.#rows = normalizeDimension(options.rows, DEFAULT_ROWS);
@@ -8018,6 +8020,8 @@ var TerminalScreenController = class {
       columns: this.#columns,
       rows: this.#rows,
       cursor: this.cursor,
+      cursorVisible: this.#cursorVisible,
+      privateModes: Array.from(this.#privateModes).sort((left, right) => left - right),
       scrollbackRows: this.#scrollback.length,
       alternate: this.alternate,
       title: this.#title
@@ -8070,7 +8074,7 @@ var TerminalScreenController = class {
     }
     const params = parseParams(sequence.params);
     if (sequence.private && (sequence.command === "h" || sequence.command === "l")) {
-      if (params.includes(1049)) sequence.command === "h" ? this.#enterAlternate() : this.#exitAlternate();
+      this.#applyPrivateModes(params, sequence.command === "h");
       return;
     }
     switch (sequence.command) {
@@ -8136,6 +8140,16 @@ var TerminalScreenController = class {
     const code = payload.slice(0, separator);
     if (code !== "0" && code !== "2") return;
     this.#title = payload.slice(separator + 1);
+  }
+  #applyPrivateModes(params, enabled) {
+    for (const mode of params) {
+      if (mode === 25) this.#cursorVisible = enabled;
+      else {
+        if (enabled) this.#privateModes.add(mode);
+        else this.#privateModes.delete(mode);
+        if (mode === 1049) enabled ? this.#enterAlternate() : this.#exitAlternate();
+      }
+    }
   }
   #applySgr(params) {
     const values = params.length === 0 ? [0] : params;

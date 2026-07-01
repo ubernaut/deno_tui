@@ -69,6 +69,21 @@ Deno.test("TerminalScreenController tracks OSC title sequences", () => {
   assertEquals(screen.inspect().title, "editor");
 });
 
+Deno.test("TerminalScreenController tracks DEC private modes", () => {
+  const screen = new TerminalScreenController({ columns: 8, rows: 2 });
+
+  assertEquals(screen.inspect().cursorVisible, true);
+  assertEquals(screen.inspect().privateModes, []);
+
+  screen.write("\x1b[?25l\x1b[?1000;1006h");
+  assertEquals(screen.inspect().cursorVisible, false);
+  assertEquals(screen.inspect().privateModes, [1000, 1006]);
+
+  screen.write("\x1b[?25h\x1b[?1000l");
+  assertEquals(screen.inspect().cursorVisible, true);
+  assertEquals(screen.inspect().privateModes, [1006]);
+});
+
 Deno.test("TerminalScreenController inserts and deletes characters", () => {
   const screen = new TerminalScreenController({ columns: 8, rows: 2 });
 

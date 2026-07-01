@@ -58,3 +58,5 @@ developer workflows.
 - Added CSI insert/delete character and line operations for common screen-editing terminal output.
 - Added DEC scroll-region support so full-screen shell apps can scroll bounded panes without disturbing fixed headers,
   footers, or surrounding terminal content.
+- Added DEC private-mode inspection, including cursor visibility and mouse-reporting mode state, so render adapters can
+  respond to terminal modes instead of discarding them.

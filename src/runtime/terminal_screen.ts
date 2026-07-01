@@ -26,6 +26,8 @@ export interface TerminalScreenInspection {
   columns: number;
   rows: number;
   cursor: TerminalScreenCursor;
+  cursorVisible: boolean;
+  privateModes: number[];
   scrollbackRows: number;
   alternate: boolean;
   title?: string;
@@ -52,6 +54,8 @@ export class TerminalScreenController {
   #savedCursor?: TerminalScreenCursor;
   #title?: string;
   #scrollRegion: TerminalScreenScrollRegion;
+  #cursorVisible = true;
+  #privateModes = new Set<number>();
 
   constructor(options: TerminalScreenControllerOptions = {}) {
     this.#columns = normalizeDimension(options.columns, DEFAULT_COLUMNS);
@@ -131,6 +135,8 @@ export class TerminalScreenController {
       columns: this.#columns,
       rows: this.#rows,
       cursor: this.cursor,
+      cursorVisible: this.#cursorVisible,
+      privateModes: Array.from(this.#privateModes).sort((left, right) => left - right),
       scrollbackRows: this.#scrollback.length,
       alternate: this.alternate,
       title: this.#title,
@@ -187,7 +193,7 @@ export class TerminalScreenController {
     }
     const params = parseParams(sequence.params);
     if (sequence.private && (sequence.command === "h" || sequence.command === "l")) {
-      if (params.includes(1049)) sequence.command === "h" ? this.#enterAlternate() : this.#exitAlternate();
+      this.#applyPrivateModes(params, sequence.command === "h");
       return;
     }
     switch (sequence.command) {
@@ -254,6 +260,17 @@ export class TerminalScreenController {
     const code = payload.slice(0, separator);
     if (code !== "0" && code !== "2") return;
     this.#title = payload.slice(separator + 1);
+  }
+
+  #applyPrivateModes(params: number[], enabled: boolean): void {
+    for (const mode of params) {
+      if (mode === 25) this.#cursorVisible = enabled;
+      else {
+        if (enabled) this.#privateModes.add(mode);
+        else this.#privateModes.delete(mode);
+        if (mode === 1049) enabled ? this.#enterAlternate() : this.#exitAlternate();
+      }
+    }
   }
 
   #applySgr(params: number[]): void {
