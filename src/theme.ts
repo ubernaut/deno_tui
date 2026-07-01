@@ -54,6 +54,7 @@ import {
   themeProviderActiveOptions as themeProviderActiveOptionsCore,
 } from "./theme_provider_inspection.ts";
 import { createThemeCatalogFromInspection, previewThemeProviderCore } from "./theme_provider_preview.ts";
+import { createThemeProviderReportCore } from "./theme_provider_report_builder.ts";
 
 /** Function that's supposed to return styled text given string as parameter */
 export type Style = StyleInternal;
@@ -1041,38 +1042,12 @@ export function createThemeProviderReport(
   provider: ThemeProvider,
   options: ThemeProviderReportOptions = {},
 ): ThemeProviderReport {
-  const catalog = provider.catalog();
-  const activeLayers = provider.layers.activeIds();
-  const coverageOptions = options.coverage === false ? undefined : options.coverage ?? {};
-  const coverage = coverageOptions
-    ? inspectThemeCoverage(themeProviderActiveOptionsCore(provider), {
-      components: catalog.components.map((component) => component.name),
-      ...coverageOptions,
-    })
-    : undefined;
-  const preview = options.preview === false ? undefined : previewThemeProvider(provider, options.preview ?? {});
-  const issues = inspectThemeProviderIssuesCore(provider, validateThemeOptions);
-  const variantCount = catalog.components.reduce((total, component) => total + component.variants.length, 0);
-
-  return {
-    title: options.title ?? "Theme Provider Report",
-    activeId: catalog.activeId,
-    activeLayers,
-    catalog,
-    preview,
-    coverage,
-    issues,
-    summary: {
-      themeCount: catalog.themes.length,
-      layerCount: catalog.layers.length,
-      activeLayerCount: activeLayers.length,
-      componentCount: catalog.components.length,
-      variantCount,
-      issueCount: issues.length,
-      missingStateCount: coverage?.missingStateCount ?? 0,
-      completeCoverage: coverage?.complete ?? true,
-    },
-  };
+  return createThemeProviderReportCore(provider, options, {
+    activeOptions: themeProviderActiveOptionsCore,
+    inspectCoverage: inspectThemeCoverage,
+    inspectIssues: (reportProvider) => inspectThemeProviderIssuesCore(reportProvider, validateThemeOptions),
+    previewProvider: previewThemeProvider,
+  });
 }
 
 /** Formats a theme provider report as Markdown for demos, docs, and CI summaries. */

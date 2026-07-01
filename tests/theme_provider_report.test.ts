@@ -1,6 +1,74 @@
 import { assertEquals } from "./deps.ts";
-import type { ThemeProviderReport } from "../src/theme.ts";
+import type { ThemeCoverageOptions, ThemeEngineOptions, ThemeProviderReport } from "../src/theme.ts";
+import { createThemeProvider, createThemeRegistry } from "../src/theme.ts";
+import { createThemeProviderReportCore } from "../src/theme_provider_report_builder.ts";
 import { formatThemeProviderReportMarkdownFromReport } from "../src/theme_provider_report.ts";
+
+Deno.test("theme provider report builder assembles injected coverage preview and issues", () => {
+  const provider = createThemeProvider({
+    registry: createThemeRegistry([
+      {
+        id: "ops",
+        label: "Ops",
+        options: {
+          components: {
+            button: {
+              base: { active: "accent" },
+              variants: { danger: { active: "danger" } },
+            },
+          },
+        },
+      },
+    ]),
+    activeId: "ops",
+  });
+  const capturedCoverageOptions: ThemeCoverageOptions[] = [];
+
+  const report = createThemeProviderReportCore(provider, { title: "Ops Report", preview: { sample: "OK" } }, {
+    activeOptions: () => ({ components: {} }),
+    inspectCoverage: (_options: ThemeEngineOptions, coverageOptions: ThemeCoverageOptions) => {
+      capturedCoverageOptions.push(coverageOptions);
+      return {
+        componentCount: 1,
+        variantCount: 2,
+        stateCount: 8,
+        coveredStateCount: 7,
+        missingStateCount: 1,
+        complete: false,
+        components: [],
+      };
+    },
+    inspectIssues: () => [{
+      kind: "unknown-token",
+      path: "components.button.default.active",
+      message: "bad token",
+      source: "theme",
+      sourceId: "ops",
+    }],
+    previewProvider: (_provider, options) => ({
+      sample: options.sample ?? "",
+      activeId: "ops",
+      activeLayers: [],
+      catalog: provider.catalog(),
+      tokens: [],
+      components: [],
+    }),
+  });
+
+  assertEquals(report.title, "Ops Report");
+  assertEquals(report.preview?.sample, "OK");
+  assertEquals(report.summary, {
+    themeCount: 1,
+    layerCount: 0,
+    activeLayerCount: 0,
+    componentCount: 1,
+    variantCount: 2,
+    issueCount: 1,
+    missingStateCount: 1,
+    completeCoverage: false,
+  });
+  assertEquals([...(capturedCoverageOptions[0].components ?? [])], ["button"]);
+});
 
 Deno.test("theme provider report formatter escapes tables and includes diagnostics", () => {
   const report: ThemeProviderReport = {
