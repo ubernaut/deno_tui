@@ -121,6 +121,8 @@ Work:
 - [x] Add system monitor fixture benchmarks for CPU/process/network parsing without touching live `/proc`.
 - [x] Add Three ASCII CPU-side grid assembly/readback benchmarks with an injectable renderer or captured buffers.
 - [x] Add terminal-screen replay benchmarks for PTY-style byte transcripts and common OSC/CSI/SGR screen mutations.
+  - [x] Reused terminal input text encoders/decoders across process, PTY, canvas, browser canvas, and remote terminal
+        paths so repeated input and dirty-cell flushes do not allocate codecs per message or frame.
 - [x] Record thresholds in the benchmark catalog and wire the most useful non-flaky cases into health or e2e.
 
 Acceptance checks:
@@ -181,6 +183,8 @@ Work:
 - [x] Add row-range invalidation helpers on `DrawObject` so rectangle, movement, erase, and dirty-overlap paths share
       one clipping path instead of expanding every caller through duplicate cell loops.
 - [x] Add a spatial or layer-indexed structure for overlap queries so moved overlays do not require full object scans.
+  - [x] Tightened row-indexed canvas spatial queries with horizontal overlap filtering, reducing candidate checks for
+        dense but non-overlapping columns while preserving unique row-overlap behavior.
 - [x] Cache z-order/version metadata and invalidate only when object order or geometry changes.
 - [x] Add optional render stats for dirty rectangle count, dirty cell count, full redraw count, and intersection query
       cost.
@@ -331,6 +335,8 @@ Acceptance checks:
         workbench frame cell splitting utilities.
   - [x] Reused a `TextDecoder` inside `TerminalScreenController` for byte-buffer writes and added a terminal-screen
         replay benchmark to keep PTY transcript handling bounded.
+  - [x] Replaced per-cell blank-row callbacks with filled frozen blank-cell rows, cutting terminal transcript replay
+        allocation overhead while keeping cell mutation tests green.
 
 ### P2: Consolidate Layout, Markup, And Widget Hydration
 
