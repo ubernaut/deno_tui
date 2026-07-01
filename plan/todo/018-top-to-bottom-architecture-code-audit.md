@@ -117,6 +117,10 @@ Work:
         leaving terminal and web adapters to call one scroll/update controller.
   - [x] Added reusable workbench row-buffer preparation helpers and migrated terminal/web workspace virtual frames off
         per-redraw outer row array allocation.
+  - [x] Added caller-owned visible menu-slice buffers and migrated terminal top-menu popovers off per-frame slice/index
+        allocation.
+  - [x] Hoisted static theme menu labels in terminal and browser workbench adapters so repeated redraws reuse measured
+        dropdown labels.
 - [x] Replace duplicated theme/window/menu persistence code with a shared versioned serializer.
   - [x] Extracted shared workbench workspace normalization, panel-state normalization, upsert, rename, delete, lookup,
         and legacy window-entry expansion helpers into `src/app/workbench_workspace.ts`.
@@ -272,6 +276,8 @@ Work:
       linear RGB, foreground ANSI, and repeated cell strings warm across stable frames.
 - [x] Let long-lived Three renderers opt into reusable ANSI grid row storage, avoiding per-frame grid/row allocation
       while preserving fresh output arrays for standalone assembler callers.
+- [x] Replaced the standalone ANSI grid factory's `Array.from()` construction with explicit row allocation so one-shot
+      assembler calls avoid callback allocation while preserving fresh output rows.
 - [x] Build ANSI grids directly from mapped GPU readback views in `ThreeAsciiRenderer`, eliminating the per-frame
       fill/edge/color CPU array copy before terminal grid assembly.
 - [x] Skipped edge compute/copy/readback work entirely for block-style renderer configs with edges disabled, reducing
