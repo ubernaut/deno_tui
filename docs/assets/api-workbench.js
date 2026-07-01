@@ -8714,6 +8714,49 @@ function moveWorkbenchMenuIndex(current, count, event, options = {}) {
   }
 }
 
+// src/app/workbench_titlebar.ts
+function layoutWorkbenchTitlebar(options) {
+  const controlsMinWidth = options.controlsMinWidth ?? 22;
+  const configLabel = options.configLabel ?? "config";
+  const buttons = [];
+  const row = options.rect.row;
+  const rightBorderColumn = options.rect.column + options.rect.width - 1;
+  const hasWindowControls = options.rect.width >= controlsMinWidth;
+  let leftmostControlColumn = rightBorderColumn;
+  if (hasWindowControls) {
+    const specs = [
+      { kind: "close", label: "x", tone: "danger", compact: true },
+      { kind: "restore", label: "\u21BA", tone: "muted", compact: true },
+      { kind: "maximize", label: "\u25A1", tone: "success", compact: true },
+      { kind: "minimize", label: "-", tone: "warning", compact: true }
+    ];
+    let cursor = rightBorderColumn;
+    for (const spec of specs) {
+      const width = textWidth(buttonText(spec.label, { compact: spec.compact }));
+      const column = cursor - width;
+      buttons.push({ ...spec, rect: { column, row, width, height: 1 } });
+      leftmostControlColumn = column;
+      cursor = column - 1;
+    }
+  }
+  const configWidth = textWidth(buttonText(configLabel));
+  const configColumn = leftmostControlColumn - configWidth - 1;
+  const titleEnd = options.rect.column + textWidth(options.title) + 3;
+  if (options.showConfig && configColumn > titleEnd) {
+    buttons.push({
+      kind: "config",
+      label: configLabel,
+      tone: "default",
+      compact: false,
+      rect: { column: configColumn, row, width: configWidth, height: 1 }
+    });
+  }
+  return {
+    buttons: buttons.sort((left, right) => left.rect.column - right.rect.column),
+    hasWindowControls
+  };
+}
+
 // src/app/workbench_workspace.ts
 function defaultWorkbenchMinimizedState(panelIds2, minimized2 = {}) {
   const state = {};
@@ -10985,26 +11028,14 @@ function renderPanel(frame, id2, rect) {
     rect.column,
     paint(fit(top, rect.width), border, selected ? theme().panelAlt : theme().panel, selected)
   );
-  writeButton(frame, rect.row, rect.column + rect.width - 16, "-", { compact: true, tone: "warning" });
-  writeButton(frame, rect.row, rect.column + rect.width - 12, "\u25A1", { compact: true, tone: "success" });
-  writeButton(frame, rect.row, rect.column + rect.width - 8, "\u21BA", { compact: true, tone: "muted" });
-  writeButton(frame, rect.row, rect.column + rect.width - 4, "x", { compact: true, tone: "danger" });
-  hitTargets.push({
-    rect: { column: rect.column + rect.width - 16, row: rect.row, width: 3, height: 1 },
-    hit: { type: "min", id: id2 }
-  });
-  hitTargets.push({
-    rect: { column: rect.column + rect.width - 12, row: rect.row, width: 3, height: 1 },
-    hit: { type: "max", id: id2 }
-  });
-  hitTargets.push({
-    rect: { column: rect.column + rect.width - 8, row: rect.row, width: 3, height: 1 },
-    hit: { type: "restore", id: id2 }
-  });
-  hitTargets.push({
-    rect: { column: rect.column + rect.width - 4, row: rect.row, width: 3, height: 1 },
-    hit: { type: "close", id: id2 }
-  });
+  for (const button of layoutWorkbenchTitlebar({ rect, title: panelTitle(id2) }).buttons) {
+    if (button.kind === "config") continue;
+    writeButton(frame, button.rect.row, button.rect.column, button.label, {
+      compact: button.compact,
+      tone: button.tone
+    });
+    hitTargets.push({ rect: button.rect, hit: panelTitlebarHit(id2, button.kind) });
+  }
   for (let r = 1; r < rect.height - 1; r++) {
     write(
       frame,
@@ -11047,6 +11078,12 @@ function renderPanel(frame, id2, rect) {
       }
     }
   }
+}
+function panelTitlebarHit(id2, kind) {
+  if (kind === "minimize") return { type: "min", id: id2 };
+  if (kind === "maximize") return { type: "max", id: id2 };
+  if (kind === "close") return { type: "close", id: id2 };
+  return { type: "restore", id: id2 };
 }
 function panelTitle(id2) {
   return id2 === "explorer" ? "Explorer" : id2 === "data" ? "Data Table" : id2 === "three" ? "Three ASCII" : id2 === "htmlLayout" ? "HTML/CSS Layout" : id2 === "terminal" ? "Terminal" : id2[0].toUpperCase() + id2.slice(1);

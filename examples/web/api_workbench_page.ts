@@ -24,6 +24,7 @@ import {
   intersects,
   isWorkbenchMenuActivationKey,
   isWorkbenchMenuCloseKey,
+  layoutWorkbenchTitlebar,
   MenuBarController,
   modalContentHeight,
   ModalController,
@@ -52,6 +53,7 @@ import {
   toStyledCells,
   WindowManagerController,
   type WorkbenchPanelWorkspaceState,
+  type WorkbenchTitlebarButtonKind,
   wrapTextBoxLines,
 } from "../../mod.web.ts";
 import { grWizardThemePalettes } from "../../src/grwizard_themes.ts";
@@ -747,26 +749,14 @@ function renderPanel(frame: string[], id: PanelId, rect: Rectangle): void {
     rect.column,
     paint(fit(top, rect.width), border, selected ? theme().panelAlt : theme().panel, selected),
   );
-  writeButton(frame, rect.row, rect.column + rect.width - 16, "-", { compact: true, tone: "warning" });
-  writeButton(frame, rect.row, rect.column + rect.width - 12, "□", { compact: true, tone: "success" });
-  writeButton(frame, rect.row, rect.column + rect.width - 8, "↺", { compact: true, tone: "muted" });
-  writeButton(frame, rect.row, rect.column + rect.width - 4, "x", { compact: true, tone: "danger" });
-  hitTargets.push({
-    rect: { column: rect.column + rect.width - 16, row: rect.row, width: 3, height: 1 },
-    hit: { type: "min", id },
-  });
-  hitTargets.push({
-    rect: { column: rect.column + rect.width - 12, row: rect.row, width: 3, height: 1 },
-    hit: { type: "max", id },
-  });
-  hitTargets.push({
-    rect: { column: rect.column + rect.width - 8, row: rect.row, width: 3, height: 1 },
-    hit: { type: "restore", id },
-  });
-  hitTargets.push({
-    rect: { column: rect.column + rect.width - 4, row: rect.row, width: 3, height: 1 },
-    hit: { type: "close", id },
-  });
+  for (const button of layoutWorkbenchTitlebar({ rect, title: panelTitle(id) }).buttons) {
+    if (button.kind === "config") continue;
+    writeButton(frame, button.rect.row, button.rect.column, button.label, {
+      compact: button.compact,
+      tone: button.tone,
+    });
+    hitTargets.push({ rect: button.rect, hit: panelTitlebarHit(id, button.kind) });
+  }
   for (let r = 1; r < rect.height - 1; r++) {
     write(
       frame,
@@ -809,6 +799,13 @@ function renderPanel(frame: string[], id: PanelId, rect: Rectangle): void {
       }
     }
   }
+}
+
+function panelTitlebarHit(id: PanelId, kind: WorkbenchTitlebarButtonKind): Hit {
+  if (kind === "minimize") return { type: "min", id };
+  if (kind === "maximize") return { type: "max", id };
+  if (kind === "close") return { type: "close", id };
+  return { type: "restore", id };
 }
 
 function panelTitle(id: PanelId): string {

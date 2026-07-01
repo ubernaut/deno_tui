@@ -34,6 +34,7 @@ import {
   type WorkbenchFrame,
   writeFrame,
 } from "../src/app/workbench_frame.ts";
+import { layoutWorkbenchTitlebar, type WorkbenchTitlebarButtonKind } from "../src/app/workbench_titlebar.ts";
 import {
   createWorkbenchVisualizationWindowOptions,
   isWorkbenchVisualizationWindowId,
@@ -1184,27 +1185,18 @@ function renderWindow(frame: Frame, id: WindowId, rect: Rectangle): void {
   const active = activeWindow.peek() === id;
   addHit(rect, { type: "focus", id });
   drawFrame(frame, rect, windowTitle(id), active);
-  const buttonRow = rect.row;
-  const closeX = rect.column + rect.width - 4;
-  const restoreX = rect.column + rect.width - 8;
-  const maxX = rect.column + rect.width - 12;
-  const minX = rect.column + rect.width - 16;
-  const configLabel = buttonText("config");
-  const configWidth = textWidth(configLabel);
-  const configX = minX - configWidth - 1;
-  if (rect.width >= 22) {
-    writeButton(frame, buttonRow, minX, "-", { compact: true, tone: "warning" });
-    writeButton(frame, buttonRow, maxX, "□", { compact: true, tone: "success" });
-    writeButton(frame, buttonRow, restoreX, "↺", { compact: true, tone: "muted" });
-    writeButton(frame, buttonRow, closeX, "x", { compact: true, tone: "danger" });
-    addHit({ column: minX, row: buttonRow, width: 3, height: 1 }, { type: "minimize", id });
-    addHit({ column: maxX, row: buttonRow, width: 3, height: 1 }, { type: "maximize", id });
-    addHit({ column: restoreX, row: buttonRow, width: 3, height: 1 }, { type: "restore", id });
-    addHit({ column: closeX, row: buttonRow, width: 3, height: 1 }, { type: "close", id });
-  }
-  if (isThreeRenderedWindow(id) && configX > rect.column + textWidth(windowTitle(id)) + 3) {
-    writeButton(frame, buttonRow, configX, "config");
-    addHit({ column: configX, row: buttonRow, width: configWidth, height: 1 }, { type: "threeConfig", id });
+  for (
+    const button of layoutWorkbenchTitlebar({
+      rect,
+      title: windowTitle(id),
+      showConfig: isThreeRenderedWindow(id),
+    }).buttons
+  ) {
+    writeButton(frame, button.rect.row, button.rect.column, button.label, {
+      compact: button.compact,
+      tone: button.tone,
+    });
+    addHit(button.rect, titlebarHit(id, button.kind));
   }
 
   const inner = inset(rect, 1);
@@ -1228,6 +1220,14 @@ function renderWindow(frame: Frame, id: WindowId, rect: Rectangle): void {
   translateContentHits(contentHitStart, viewport, scroll.offset.peek());
   blitWindowContent(frame, contentFrame, viewport, scroll.offset.peek());
   renderWindowScrollbars(frame, id, inner, viewport, contentSize);
+}
+
+function titlebarHit(id: WindowId, kind: WorkbenchTitlebarButtonKind): HitAction {
+  if (kind === "config") return { type: "threeConfig", id };
+  if (kind === "minimize") return { type: "minimize", id };
+  if (kind === "maximize") return { type: "maximize", id };
+  if (kind === "close") return { type: "close", id };
+  return { type: "restore", id };
 }
 
 function renderWindowContent(frame: Frame, id: WindowId, rect: Rectangle): void {

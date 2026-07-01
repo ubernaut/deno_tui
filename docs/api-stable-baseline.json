@@ -3398,6 +3398,48 @@
       "documented": true
     },
     {
+      "module": "src/app/workbench_titlebar.ts",
+      "name": "layoutWorkbenchTitlebar",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_titlebar.ts",
+      "name": "WorkbenchTitlebarButton",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_titlebar.ts",
+      "name": "WorkbenchTitlebarButtonKind",
+      "kind": "type",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_titlebar.ts",
+      "name": "WorkbenchTitlebarButtonTone",
+      "kind": "type",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_titlebar.ts",
+      "name": "WorkbenchTitlebarLayout",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_titlebar.ts",
+      "name": "WorkbenchTitlebarLayoutOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
       "module": "src/app/workbench_window_registry.ts",
       "name": "createWorkbenchVisualizationWindowOptions",
       "kind": "function",

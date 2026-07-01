@@ -53,6 +53,8 @@ Work:
         built-ins, visualization grouping, loaded-state labels, managed visualization ids, and minimum window sizes.
   - [x] Extracted shared dropdown/menu key helpers into `src/app/workbench_menu.ts` and migrated terminal/web workbench
         dropdown handlers to the same movement, activation, and close semantics.
+  - [x] Extracted renderer-neutral titlebar control layout into `src/app/workbench_titlebar.ts` and migrated terminal/
+        web workbench titlebar button hit geometry to it.
 - [ ] Make the terminal workbench and web workbench thin render adapters over the same controller/model.
   - [x] Exposed the shared frame and hit-target helpers through `src/app/mod.ts` and migrated the web API Workbench page
         to reuse exported text-fit, ANSI-cell, contrast, and geometry helpers.
