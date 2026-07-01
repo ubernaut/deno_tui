@@ -8518,70 +8518,6 @@ var ASCII_DEMO_PRESETS = [
 // src/three_ascii/options.ts
 var presetMap = new Map(ASCII_DEMO_PRESETS.map((preset) => [preset.id, preset]));
 
-// src/app/hit_targets.ts
-var HitTargetStack = class {
-  #targets = [];
-  get length() {
-    return this.#targets.length;
-  }
-  add(rect, action) {
-    this.#targets.push({ rect, action });
-  }
-  clear() {
-    this.#targets = [];
-  }
-  at(index) {
-    return this.#targets[index];
-  }
-  remove(index) {
-    this.#targets.splice(index, 1);
-  }
-  updateRect(index, rect) {
-    const target = this.#targets[index];
-    if (!target) return;
-    target.rect = rect;
-  }
-  find(x, y) {
-    for (let index = this.#targets.length - 1; index >= 0; index -= 1) {
-      const target = this.#targets[index];
-      if (contains(target.rect, x, y)) return target;
-    }
-  }
-  entries() {
-    return this.#targets.map((target) => ({ rect: { ...target.rect }, action: target.action }));
-  }
-};
-function translateHitTargets(targets, options) {
-  const columnDelta = options.columnDelta ?? 0;
-  const rowDelta = options.rowDelta ?? 0;
-  for (let index = targets.length - 1; index >= options.startIndex; index -= 1) {
-    const target = targets.at(index);
-    const translated = {
-      ...target.rect,
-      column: target.rect.column + columnDelta,
-      row: target.rect.row + rowDelta
-    };
-    if (!intersects(translated, options.clip)) {
-      targets.remove(index);
-      continue;
-    }
-    targets.updateRect(index, clipRect(translated, options.clip));
-  }
-}
-function contains(rect, x, y) {
-  return x >= rect.column && x < rect.column + rect.width && y >= rect.row && y < rect.row + rect.height;
-}
-function intersects(left, right) {
-  return left.column < right.column + right.width && left.column + left.width > right.column && left.row < right.row + right.height && left.row + left.height > right.row;
-}
-function clipRect(rect, clip) {
-  const column = Math.max(rect.column, clip.column);
-  const row = Math.max(rect.row, clip.row);
-  const right = Math.min(rect.column + rect.width, clip.column + clip.width);
-  const bottom = Math.min(rect.row + rect.height, clip.row + clip.height);
-  return { column, row, width: Math.max(0, right - column), height: Math.max(0, bottom - row) };
-}
-
 // src/runtime/storage.ts
 var MemoryStore = class {
   values = /* @__PURE__ */ new Map();
@@ -8706,6 +8642,70 @@ function errorMessage(error) {
 
 // src/app/terminal_input.ts
 var textEncoder4 = new TextEncoder();
+
+// src/app/hit_targets.ts
+var HitTargetStack = class {
+  #targets = [];
+  get length() {
+    return this.#targets.length;
+  }
+  add(rect, action) {
+    this.#targets.push({ rect, action });
+  }
+  clear() {
+    this.#targets = [];
+  }
+  at(index) {
+    return this.#targets[index];
+  }
+  remove(index) {
+    this.#targets.splice(index, 1);
+  }
+  updateRect(index, rect) {
+    const target = this.#targets[index];
+    if (!target) return;
+    target.rect = rect;
+  }
+  find(x, y) {
+    for (let index = this.#targets.length - 1; index >= 0; index -= 1) {
+      const target = this.#targets[index];
+      if (contains(target.rect, x, y)) return target;
+    }
+  }
+  entries() {
+    return this.#targets.map((target) => ({ rect: { ...target.rect }, action: target.action }));
+  }
+};
+function translateHitTargets(targets, options) {
+  const columnDelta = options.columnDelta ?? 0;
+  const rowDelta = options.rowDelta ?? 0;
+  for (let index = targets.length - 1; index >= options.startIndex; index -= 1) {
+    const target = targets.at(index);
+    const translated = {
+      ...target.rect,
+      column: target.rect.column + columnDelta,
+      row: target.rect.row + rowDelta
+    };
+    if (!intersects(translated, options.clip)) {
+      targets.remove(index);
+      continue;
+    }
+    targets.updateRect(index, clipRect(translated, options.clip));
+  }
+}
+function contains(rect, x, y) {
+  return x >= rect.column && x < rect.column + rect.width && y >= rect.row && y < rect.row + rect.height;
+}
+function intersects(left, right) {
+  return left.column < right.column + right.width && left.column + left.width > right.column && left.row < right.row + right.height && left.row + left.height > right.row;
+}
+function clipRect(rect, clip) {
+  const column = Math.max(rect.column, clip.column);
+  const row = Math.max(rect.row, clip.row);
+  const right = Math.min(rect.column + rect.width, clip.column + clip.width);
+  const bottom = Math.min(rect.row + rect.height, clip.row + clip.height);
+  return { column, row, width: Math.max(0, right - column), height: Math.max(0, bottom - row) };
+}
 
 // src/app/workbench_frame.ts
 function toStyledCells(value) {

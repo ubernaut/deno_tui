@@ -45,6 +45,8 @@ Work:
       persistence, modal lifecycle, dropdown/popover lifecycle, and command dispatch.
   - [x] Added `src/app/workbench/mod.ts` as a renderer-neutral facade over the extracted helper modules, with a smoke
         test covering representative frame, viewport, titlebar, and hit-target exports.
+  - [x] Routed the public app barrel through `src/app/workbench/mod.ts` so root exports, terminal demos, and web demos
+        share one workbench helper boundary without changing the stable API inventory.
 - [ ] Move generic frame helpers, hit-target translation, scrollable-window sizing, titlebar button logic, shelf/tab
       logic, and workspace save/load normalization out of `app/api_workbench.ts`.
   - [x] Extracted sparse frame writing, row slicing, text fitting, button labels, and contrast helpers into
@@ -77,11 +79,14 @@ Work:
 
 Acceptance checks:
 
-- [ ] Terminal and web workbenches consume the same core controller package.
+- [x] Terminal and web workbenches consume the same core controller package.
+  - [x] `app/api_workbench.ts`, `src/app/mod.ts`, and `examples/web/api_workbench_page.ts` now reach shared workbench
+        frame, hit, menu, shelf, titlebar, viewport, window-registry, and workspace helpers through exported facade
+        paths.
 - [ ] Shared unit tests cover focus, minimize/maximize/restore/close, scrollbars, dropdowns, modals, workspace
       open/save, and keyboard-only operation.
-- [ ] `deno task api-workbench:check`
-- [ ] `deno task web:demo:check`
+- [x] `deno task api-workbench:check`
+- [x] `deno task web:demo:check`
 - [ ] `deno task health`
 
 ### P1: Add Real Integration Performance Benchmarks
