@@ -179,6 +179,8 @@ Work:
         instead of once per rendered line.
   - [x] Reworked CPU hex-grid label measurement, tile layout, row buffers, and selected CPU range projection to avoid
         map/spread/filter allocation in the visual monitor path.
+  - [x] Reworked reusable list, virtual-list, context-menu, stepper, radio-group, and log-viewer draw loops to avoid
+        discarded `Array.from()` allocations; log viewer now shares one visible-row computation across rendered lines.
 
 Acceptance checks:
 
