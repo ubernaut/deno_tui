@@ -7,6 +7,7 @@ import {
   createMarkupLayout,
   hydrateMarkupWidgets,
   InputController,
+  LayoutMeasurementCache,
   MarkupWidgetHydrationRegistry,
   matchesCssMedia,
   matchesCssSelector,
@@ -15,6 +16,7 @@ import {
   parseTuiMarkup,
   RadioGroupController,
   ScrollAreaController,
+  simpleLayoutSolver,
   SliderController,
   TabsController,
   TextBoxController,
@@ -438,6 +440,44 @@ Deno.test("createMarkupLayout wraps flex rows in the simple solver", () => {
   assertEquals(result.layout.byId.get("a")!.rect, { column: 0, row: 0, width: 4, height: 1 });
   assertEquals(result.layout.byId.get("b")!.rect, { column: 5, row: 0, width: 4, height: 1 });
   assertEquals(result.layout.byId.get("c")!.rect, { column: 0, row: 2, width: 4, height: 1 });
+});
+
+Deno.test("createMarkupLayout reuses intrinsic measurements in the simple solver", () => {
+  const cache = new LayoutMeasurementCache();
+  const solver = simpleLayoutSolver({ intrinsicMeasurementCache: cache });
+  const options = {
+    markup: `
+      <window id="main">
+        <panel id="a">A longer text value that wraps in narrow panes</panel>
+        <panel id="b">A longer text value that wraps in narrow panes</panel>
+      </window>
+    `,
+    css: `
+      window {
+        display: flex;
+        flex-flow: row wrap;
+        width: 100%;
+        height: 100%;
+      }
+
+      panel {
+        width: auto;
+        height: auto;
+      }
+    `,
+    bounds: { column: 0, row: 0, width: 24, height: 8 },
+    solver,
+  };
+
+  const first = createMarkupLayout(options);
+  const afterFirst = cache.stats();
+  const second = createMarkupLayout(options);
+  const afterSecond = cache.stats();
+
+  assert(afterFirst.entries > 0);
+  assert(afterSecond.hits > afterFirst.hits);
+  assertEquals(second.layout.byId.get("a")!.rect, first.layout.byId.get("a")!.rect);
+  assertEquals(second.layout.byId.get("b")!.rect, first.layout.byId.get("b")!.rect);
 });
 
 Deno.test("createMarkupLayout applies simple solver justify-content to flex rows", () => {

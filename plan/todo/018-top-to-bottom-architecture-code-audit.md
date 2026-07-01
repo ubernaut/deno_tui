@@ -224,7 +224,7 @@ Current evidence:
 Work:
 
 - [ ] Create a compatibility suite of markup/CSS fixtures with expected terminal-cell boxes.
-- [ ] Add intrinsic text and widget measurement caches keyed by content, style, and available width.
+- [x] Add intrinsic text and widget measurement caches keyed by content, style, and available width.
 - [ ] Define one overflow/scroll contract shared by layout boxes, pads, scroll areas, and workbench windows.
 - [ ] Move demo-specific hydrated widget examples into reusable fixture/demo modules.
 - [ ] Expand Yoga parity tests and document unsupported CSS explicitly.

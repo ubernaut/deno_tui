@@ -21,6 +21,8 @@ import {
   tileRects,
   visibleListRows,
 } from "../mod.ts";
+import { createHtmlCssLayoutDemo } from "../app/html_css_layout_demo.ts";
+import { LayoutMeasurementCache, simpleLayoutSolver } from "../src/layout/mod.ts";
 import {
   type SystemMetricsCommandOutput,
   type SystemMetricsDirEntry,
@@ -262,6 +264,8 @@ function benchmarkProcessStat(pid: number, step: number): string {
 
 const metricsProvider = new BenchmarkMetricsProvider();
 const metricsMonitor = new SystemMonitor(16, metricsProvider);
+const markupLayoutCache = new LayoutMeasurementCache();
+const markupLayoutSolver = simpleLayoutSolver({ intrinsicMeasurementCache: markupLayoutCache });
 
 /** High-volume UI, runtime, and rendering benchmark workloads used by the benchmark CLI. */
 export const benchmarkCases: BenchmarkCase[] = [
@@ -297,6 +301,22 @@ export const benchmarkCases: BenchmarkCase[] = [
           gap: 1,
           allowVerticalOverflow: true,
         });
+      }
+    },
+  },
+  {
+    name: "layout/html-css-demo-solve",
+    category: "layout",
+    description: "Parse, cascade, and solve the HTML/CSS layout portfolio demo with cached intrinsic measurements.",
+    tags: ["layout", "html", "css", "cache"],
+    iterations: 300,
+    maxAverageMs: 8,
+    run: () => {
+      const result = createHtmlCssLayoutDemo({ column: 0, row: 0, width: 96, height: 32 }, {
+        solver: markupLayoutSolver,
+      });
+      if (!result.layout.byId.has("layout-stage")) {
+        throw new Error("HTML/CSS layout demo did not produce expected boxes");
       }
     },
   },

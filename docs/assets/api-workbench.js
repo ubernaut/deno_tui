@@ -3601,12 +3601,58 @@ function splitClassList(value) {
   return value?.split(/\s+/).filter(Boolean) ?? [];
 }
 
+// src/layout/measurement.ts
+var LayoutMeasurementCache = class {
+  maxEntries;
+  #entries = /* @__PURE__ */ new Map();
+  #hits = 0;
+  #misses = 0;
+  constructor(options = {}) {
+    this.maxEntries = Math.max(1, Math.floor(options.maxEntries ?? 4096));
+  }
+  get(key) {
+    const value = this.#entries.get(key);
+    if (!value) {
+      this.#misses += 1;
+      return void 0;
+    }
+    this.#hits += 1;
+    return { ...value };
+  }
+  set(key, value) {
+    if (!this.#entries.has(key) && this.#entries.size >= this.maxEntries) {
+      const oldest = this.#entries.keys().next().value;
+      if (oldest !== void 0) this.#entries.delete(oldest);
+    }
+    this.#entries.set(key, {
+      width: Math.max(0, Math.floor(value.width)),
+      height: Math.max(0, Math.floor(value.height))
+    });
+  }
+  clear() {
+    this.#entries.clear();
+    this.#hits = 0;
+    this.#misses = 0;
+  }
+  stats() {
+    return {
+      entries: this.#entries.size,
+      hits: this.#hits,
+      misses: this.#misses
+    };
+  }
+};
+
 // src/layout/solvers/simple.ts
 var SimpleLayoutSolver = class {
   id = "simple";
   #defaultTextHeight;
+  #intrinsicMeasurementCache;
   constructor(options = {}) {
     this.#defaultTextHeight = Math.max(1, Math.floor(options.defaultTextHeight ?? 1));
+    this.#intrinsicMeasurementCache = options.intrinsicMeasurementCache === false ? void 0 : options.intrinsicMeasurementCache ?? new LayoutMeasurementCache({
+      maxEntries: options.maxIntrinsicCacheEntries
+    });
   }
   supports() {
     return true;
@@ -3626,7 +3672,14 @@ var SimpleLayoutSolver = class {
     const style2 = node.style;
     const margin = isRoot ? { top: 0, right: 0, bottom: 0, left: 0 } : style2.margin;
     const outer = shrinkByMargin(allocated, margin);
-    const rect = resolveNodeRect(node, outer, isRoot, fillAllocated, this.#defaultTextHeight);
+    const rect = resolveNodeRect(
+      node,
+      outer,
+      isRoot,
+      fillAllocated,
+      this.#defaultTextHeight,
+      this.#intrinsicMeasurementCache
+    );
     const contentRect = contentRectangle(rect, style2);
     const visible = style2.visibility === "visible" && style2.display !== "none";
     const flowChildren = style2.display === "flex" ? this.#layoutFlexChildren(node, contentRect) : style2.display === "grid" ? this.#layoutGridChildren(node, contentRect) : this.#layoutBlockChildren(node, contentRect);
@@ -3660,7 +3713,12 @@ var SimpleLayoutSolver = class {
     let cursor = bounds.row;
     for (const child of children) {
       const childMargins = child.style.margin;
-      const preferred = preferredBlockChildSize(child, bounds, this.#defaultTextHeight);
+      const preferred = preferredBlockChildSize(
+        child,
+        bounds,
+        this.#defaultTextHeight,
+        this.#intrinsicMeasurementCache
+      );
       const availableHeight = Math.max(0, bounds.row + bounds.height - cursor);
       const allocatedHeight = Math.max(
         preferred.height + childMargins.top + childMargins.bottom,
@@ -3691,7 +3749,13 @@ var SimpleLayoutSolver = class {
       direction === "row" ? node.style.rowGap || node.style.gap : node.style.columnGap || node.style.gap
     );
     const items = children.map((child) => {
-      const basis = preferredFlexBasis(child, bounds, direction, this.#defaultTextHeight);
+      const basis = preferredFlexBasis(
+        child,
+        bounds,
+        direction,
+        this.#defaultTextHeight,
+        this.#intrinsicMeasurementCache
+      );
       const minimum = resolveFlexMinimum(child, bounds, direction);
       const maximum = resolveFlexMaximum(child, bounds, direction);
       const max2 = child.style.flexGrow === 0 ? Math.max(minimum, Math.min(maximum ?? basis, basis)) : maximum;
@@ -3703,7 +3767,13 @@ var SimpleLayoutSolver = class {
         shrink: child.style.flexShrink,
         min: minimum,
         max: max2,
-        crossSize: preferredFlexCrossSize(child, bounds, direction, this.#defaultTextHeight)
+        crossSize: preferredFlexCrossSize(
+          child,
+          bounds,
+          direction,
+          this.#defaultTextHeight,
+          this.#intrinsicMeasurementCache
+        )
       };
     });
     const lines = node.style.flexWrap === "nowrap" ? [items] : wrapFlexLines(items, mainSize(bounds, direction), mainGap);
@@ -3775,7 +3845,10 @@ var SimpleLayoutSolver = class {
   }
   #layoutAbsoluteChildren(node, bounds) {
     return layoutAbsoluteChildren(node).map((child) => {
-      return this.#layoutNode(child, absoluteChildBounds(child, bounds, this.#defaultTextHeight));
+      return this.#layoutNode(
+        child,
+        absoluteChildBounds(child, bounds, this.#defaultTextHeight, this.#intrinsicMeasurementCache)
+      );
     });
   }
 };
@@ -4024,9 +4097,9 @@ function shrinkByMargin(rect, margin) {
     height: Math.max(0, rect.height - margin.top - margin.bottom)
   };
 }
-function resolveNodeRect(node, allocated, isRoot, fillAllocated, defaultTextHeight) {
+function resolveNodeRect(node, allocated, isRoot, fillAllocated, defaultTextHeight, measurementCache) {
   const style2 = node.style;
-  const intrinsic = measureNodeIntrinsic(node, Math.max(1, allocated.width), defaultTextHeight);
+  const intrinsic = measureNodeIntrinsic(node, Math.max(1, allocated.width), defaultTextHeight, measurementCache);
   const fallbackWidth = allocated.width;
   const fallbackHeight = isRoot || fillAllocated ? allocated.height : intrinsic.height || allocated.height;
   const width = clampLayoutSize(
@@ -4060,8 +4133,8 @@ function contentRectangle(rect, style2) {
     height: Math.max(0, rect.height - top - bottom)
   };
 }
-function preferredBlockChildSize(node, bounds, defaultTextHeight) {
-  const intrinsic = measureNodeIntrinsic(node, Math.max(1, bounds.width), defaultTextHeight);
+function preferredBlockChildSize(node, bounds, defaultTextHeight, measurementCache) {
+  const intrinsic = measureNodeIntrinsic(node, Math.max(1, bounds.width), defaultTextHeight, measurementCache);
   const width = resolveLayoutLength(node.style.width, bounds.width, bounds.width);
   const height = resolveLayoutLength(
     node.style.height,
@@ -4073,13 +4146,13 @@ function preferredBlockChildSize(node, bounds, defaultTextHeight) {
     height: clampLayoutSize(height, bounds.height, node.style.minHeight, node.style.maxHeight)
   };
 }
-function absoluteChildBounds(node, containingBlock, defaultTextHeight) {
+function absoluteChildBounds(node, containingBlock, defaultTextHeight, measurementCache) {
   const style2 = node.style;
   const left = resolveInset(style2.inset.left, containingBlock.width);
   const right = resolveInset(style2.inset.right, containingBlock.width);
   const top = resolveInset(style2.inset.top, containingBlock.height);
   const bottom = resolveInset(style2.inset.bottom, containingBlock.height);
-  const intrinsic = preferredBlockChildSize(node, containingBlock, defaultTextHeight);
+  const intrinsic = preferredBlockChildSize(node, containingBlock, defaultTextHeight, measurementCache);
   const width = left !== void 0 && right !== void 0 ? Math.max(0, containingBlock.width - left - right) : clampLayoutSize(
     resolveLayoutLength(style2.width, containingBlock.width, Math.min(containingBlock.width, intrinsic.width)),
     containingBlock.width,
@@ -4099,20 +4172,20 @@ function absoluteChildBounds(node, containingBlock, defaultTextHeight) {
 function resolveInset(value, available) {
   return value.unit === "auto" ? void 0 : resolveLayoutLength(value, available, 0);
 }
-function preferredFlexBasis(node, bounds, direction, defaultTextHeight) {
+function preferredFlexBasis(node, bounds, direction, defaultTextHeight, measurementCache) {
   const mainAvailable = direction === "row" ? bounds.width : bounds.height;
   const mainLength = direction === "row" ? node.style.width : node.style.height;
   if (node.style.flexBasis.unit !== "auto") return resolveLayoutLength(node.style.flexBasis, mainAvailable, 0);
   if (mainLength.unit !== "auto") return resolveLayoutLength(mainLength, mainAvailable, 0);
-  const intrinsic = measureNodeIntrinsic(node, Math.max(1, bounds.width), defaultTextHeight);
+  const intrinsic = measureNodeIntrinsic(node, Math.max(1, bounds.width), defaultTextHeight, measurementCache);
   const fallback = direction === "row" ? intrinsic.width : intrinsic.height;
   return Math.max(1, fallback);
 }
-function preferredFlexCrossSize(node, bounds, direction, defaultTextHeight) {
+function preferredFlexCrossSize(node, bounds, direction, defaultTextHeight, measurementCache) {
   const crossAvailable = direction === "row" ? bounds.height : bounds.width;
   const crossLength = direction === "row" ? node.style.height : node.style.width;
   if (crossLength.unit !== "auto") return resolveLayoutLength(crossLength, crossAvailable, 0);
-  const intrinsic = measureNodeIntrinsic(node, Math.max(1, bounds.width), defaultTextHeight);
+  const intrinsic = measureNodeIntrinsic(node, Math.max(1, bounds.width), defaultTextHeight, measurementCache);
   const fallback = direction === "row" ? intrinsic.height : intrinsic.width;
   const min2 = direction === "row" ? node.style.minHeight : node.style.minWidth;
   const max2 = direction === "row" ? node.style.maxHeight : node.style.maxWidth;
@@ -4202,30 +4275,48 @@ function alignFlexItemRect(rect, item, direction, alignItems) {
   else if (alignItems === "center") offset = Math.floor((availableCross - size) / 2);
   return direction === "row" ? { ...rect, row: rect.row + offset, height: size } : { ...rect, column: rect.column + offset, width: size };
 }
-function measureNodeIntrinsic(node, availableWidth, defaultTextHeight) {
+function measureNodeIntrinsic(node, availableWidth, defaultTextHeight, measurementCache) {
+  const cacheKey = measurementCache ? intrinsicMeasurementCacheKey(node, availableWidth, defaultTextHeight) : void 0;
+  if (cacheKey) {
+    const cached = measurementCache?.get(cacheKey);
+    if (cached) return cached;
+  }
+  let measured;
   if (node.intrinsic?.width !== void 0 || node.intrinsic?.height !== void 0) {
-    return {
+    measured = {
       width: Math.max(0, Math.floor(node.intrinsic.width ?? 0)),
       height: Math.max(defaultTextHeight, Math.floor(node.intrinsic.height ?? defaultTextHeight))
     };
+    if (cacheKey) measurementCache?.set(cacheKey, measured);
+    return measured;
   }
   if (node.text) {
-    return measureTextIntrinsic(node.text, availableWidth, defaultTextHeight);
+    measured = measureTextIntrinsic(node.text, availableWidth, defaultTextHeight);
+    if (cacheKey) measurementCache?.set(cacheKey, measured);
+    return measured;
   }
   if (node.children.length === 0) {
-    return { width: 1, height: defaultTextHeight };
+    measured = { width: 1, height: defaultTextHeight };
+    if (cacheKey) measurementCache?.set(cacheKey, measured);
+    return measured;
   }
-  const childSizes = node.children.map((child) => measureNodeIntrinsic(child, availableWidth, defaultTextHeight));
+  const childSizes = node.children.map(
+    (child) => measureNodeIntrinsic(child, availableWidth, defaultTextHeight, measurementCache)
+  );
   if (node.style.display === "flex" && node.style.flexDirection === "row") {
-    return {
+    measured = {
       width: childSizes.reduce((sum2, size) => sum2 + size.width, 0) + Math.max(0, childSizes.length - 1) * node.style.columnGap,
       height: Math.max(defaultTextHeight, ...childSizes.map((size) => size.height))
     };
+    if (cacheKey) measurementCache?.set(cacheKey, measured);
+    return measured;
   }
-  return {
+  measured = {
     width: Math.max(1, ...childSizes.map((size) => size.width)),
     height: childSizes.reduce((sum2, size) => sum2 + Math.max(defaultTextHeight, size.height), 0)
   };
+  if (cacheKey) measurementCache?.set(cacheKey, measured);
+  return measured;
 }
 function measureTextIntrinsic(text, availableWidth, defaultTextHeight) {
   const lines = text.split(/\r?\n/);
@@ -4233,6 +4324,33 @@ function measureTextIntrinsic(text, availableWidth, defaultTextHeight) {
   const wrapWidth = Math.max(1, availableWidth);
   const height = lines.reduce((sum2, line) => sum2 + Math.max(1, Math.ceil(textWidth(line) / wrapWidth)), 0);
   return { width, height: Math.max(defaultTextHeight, height) };
+}
+function intrinsicMeasurementCacheKey(node, availableWidth, defaultTextHeight) {
+  return [
+    "v1",
+    Math.max(1, Math.floor(availableWidth)),
+    Math.max(1, Math.floor(defaultTextHeight)),
+    node.tag,
+    node.text ?? "",
+    node.intrinsic?.width ?? "",
+    node.intrinsic?.height ?? "",
+    node.style.display,
+    node.style.flexDirection,
+    node.style.columnGap,
+    ...node.children.map((child) => intrinsicNodeSignature(child))
+  ].join("");
+}
+function intrinsicNodeSignature(node) {
+  return [
+    node.tag,
+    node.text ?? "",
+    node.intrinsic?.width ?? "",
+    node.intrinsic?.height ?? "",
+    node.style.display,
+    node.style.flexDirection,
+    node.style.columnGap,
+    node.children.map((child) => intrinsicNodeSignature(child)).join("")
+  ].join("");
 }
 function scrollSize(node, contentRect, children) {
   const textSize = node.text ? measureTextIntrinsic(node.text, Math.max(1, contentRect.width), 1) : { width: 0, height: 0 };

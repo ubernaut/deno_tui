@@ -13,4 +13,5 @@ export * from "./overlay.ts";
 export * from "./style.ts";
 export * from "./solver.ts";
 export * from "./engine.ts";
+export * from "./measurement.ts";
 export * from "./solvers/simple.ts";

@@ -2,6 +2,7 @@
 import { textWidth } from "../../utils/strings.ts";
 import type { WidgetHitRegion } from "../../components/interaction.ts";
 import type { Rectangle } from "../../types.ts";
+import { LayoutMeasurementCache } from "../measurement.ts";
 import { type FlexDirection, type FlexItem, flexRects } from "../flex_layout.ts";
 import {
   clampLayoutSize,
@@ -24,15 +25,23 @@ import {
 /** Options for configuring the built-in TypeScript layout solver. */
 export interface SimpleLayoutSolverOptions {
   defaultTextHeight?: number;
+  intrinsicMeasurementCache?: LayoutMeasurementCache | false;
+  maxIntrinsicCacheEntries?: number;
 }
 
 /** Built-in deterministic block/flex layout solver for terminal-cell rectangles. */
 export class SimpleLayoutSolver implements LayoutSolver {
   readonly id = "simple";
   readonly #defaultTextHeight: number;
+  readonly #intrinsicMeasurementCache?: LayoutMeasurementCache;
 
   constructor(options: SimpleLayoutSolverOptions = {}) {
     this.#defaultTextHeight = Math.max(1, Math.floor(options.defaultTextHeight ?? 1));
+    this.#intrinsicMeasurementCache = options.intrinsicMeasurementCache === false
+      ? undefined
+      : options.intrinsicMeasurementCache ?? new LayoutMeasurementCache({
+        maxEntries: options.maxIntrinsicCacheEntries,
+      });
   }
 
   supports(): boolean {
@@ -55,7 +64,14 @@ export class SimpleLayoutSolver implements LayoutSolver {
     const style = node.style;
     const margin = isRoot ? { top: 0, right: 0, bottom: 0, left: 0 } : style.margin;
     const outer = shrinkByMargin(allocated, margin);
-    const rect = resolveNodeRect(node, outer, isRoot, fillAllocated, this.#defaultTextHeight);
+    const rect = resolveNodeRect(
+      node,
+      outer,
+      isRoot,
+      fillAllocated,
+      this.#defaultTextHeight,
+      this.#intrinsicMeasurementCache,
+    );
     const contentRect = contentRectangle(rect, style);
     const visible = style.visibility === "visible" && style.display !== "none";
     const flowChildren = style.display === "flex"
@@ -96,7 +112,12 @@ export class SimpleLayoutSolver implements LayoutSolver {
 
     for (const child of children) {
       const childMargins = child.style.margin;
-      const preferred = preferredBlockChildSize(child, bounds, this.#defaultTextHeight);
+      const preferred = preferredBlockChildSize(
+        child,
+        bounds,
+        this.#defaultTextHeight,
+        this.#intrinsicMeasurementCache,
+      );
       const availableHeight = Math.max(0, bounds.row + bounds.height - cursor);
       const allocatedHeight = Math.max(
         preferred.height + childMargins.top + childMargins.bottom,
@@ -130,7 +151,13 @@ export class SimpleLayoutSolver implements LayoutSolver {
       direction === "row" ? node.style.rowGap || node.style.gap : node.style.columnGap || node.style.gap,
     );
     const items = children.map((child): FlexLayoutItem => {
-      const basis = preferredFlexBasis(child, bounds, direction, this.#defaultTextHeight);
+      const basis = preferredFlexBasis(
+        child,
+        bounds,
+        direction,
+        this.#defaultTextHeight,
+        this.#intrinsicMeasurementCache,
+      );
       const minimum = resolveFlexMinimum(child, bounds, direction);
       const maximum = resolveFlexMaximum(child, bounds, direction);
       const max = child.style.flexGrow === 0 ? Math.max(minimum, Math.min(maximum ?? basis, basis)) : maximum;
@@ -142,7 +169,13 @@ export class SimpleLayoutSolver implements LayoutSolver {
         shrink: child.style.flexShrink,
         min: minimum,
         max,
-        crossSize: preferredFlexCrossSize(child, bounds, direction, this.#defaultTextHeight),
+        crossSize: preferredFlexCrossSize(
+          child,
+          bounds,
+          direction,
+          this.#defaultTextHeight,
+          this.#intrinsicMeasurementCache,
+        ),
       };
     });
     const lines = node.style.flexWrap === "nowrap"
@@ -224,7 +257,10 @@ export class SimpleLayoutSolver implements LayoutSolver {
 
   #layoutAbsoluteChildren(node: LayoutNode, bounds: Rectangle): ComputedLayoutBox[] {
     return layoutAbsoluteChildren(node).map((child) => {
-      return this.#layoutNode(child, absoluteChildBounds(child, bounds, this.#defaultTextHeight));
+      return this.#layoutNode(
+        child,
+        absoluteChildBounds(child, bounds, this.#defaultTextHeight, this.#intrinsicMeasurementCache),
+      );
     });
   }
 }
@@ -580,9 +616,10 @@ function resolveNodeRect(
   isRoot: boolean,
   fillAllocated: boolean,
   defaultTextHeight: number,
+  measurementCache?: LayoutMeasurementCache,
 ): Rectangle {
   const style = node.style;
-  const intrinsic = measureNodeIntrinsic(node, Math.max(1, allocated.width), defaultTextHeight);
+  const intrinsic = measureNodeIntrinsic(node, Math.max(1, allocated.width), defaultTextHeight, measurementCache);
   const fallbackWidth = allocated.width;
   const fallbackHeight = isRoot || fillAllocated ? allocated.height : intrinsic.height || allocated.height;
   const width = clampLayoutSize(
@@ -622,8 +659,9 @@ function preferredBlockChildSize(
   node: LayoutNode,
   bounds: Rectangle,
   defaultTextHeight: number,
+  measurementCache?: LayoutMeasurementCache,
 ): LayoutIntrinsicSize {
-  const intrinsic = measureNodeIntrinsic(node, Math.max(1, bounds.width), defaultTextHeight);
+  const intrinsic = measureNodeIntrinsic(node, Math.max(1, bounds.width), defaultTextHeight, measurementCache);
   const width = resolveLayoutLength(node.style.width, bounds.width, bounds.width);
   const height = resolveLayoutLength(
     node.style.height,
@@ -640,13 +678,14 @@ function absoluteChildBounds(
   node: LayoutNode,
   containingBlock: Rectangle,
   defaultTextHeight: number,
+  measurementCache?: LayoutMeasurementCache,
 ): Rectangle {
   const style = node.style;
   const left = resolveInset(style.inset.left, containingBlock.width);
   const right = resolveInset(style.inset.right, containingBlock.width);
   const top = resolveInset(style.inset.top, containingBlock.height);
   const bottom = resolveInset(style.inset.bottom, containingBlock.height);
-  const intrinsic = preferredBlockChildSize(node, containingBlock, defaultTextHeight);
+  const intrinsic = preferredBlockChildSize(node, containingBlock, defaultTextHeight, measurementCache);
   const width = left !== undefined && right !== undefined
     ? Math.max(0, containingBlock.width - left - right)
     : clampLayoutSize(
@@ -686,12 +725,13 @@ function preferredFlexBasis(
   bounds: Rectangle,
   direction: FlexDirection,
   defaultTextHeight: number,
+  measurementCache?: LayoutMeasurementCache,
 ): number {
   const mainAvailable = direction === "row" ? bounds.width : bounds.height;
   const mainLength = direction === "row" ? node.style.width : node.style.height;
   if (node.style.flexBasis.unit !== "auto") return resolveLayoutLength(node.style.flexBasis, mainAvailable, 0);
   if (mainLength.unit !== "auto") return resolveLayoutLength(mainLength, mainAvailable, 0);
-  const intrinsic = measureNodeIntrinsic(node, Math.max(1, bounds.width), defaultTextHeight);
+  const intrinsic = measureNodeIntrinsic(node, Math.max(1, bounds.width), defaultTextHeight, measurementCache);
   const fallback = direction === "row" ? intrinsic.width : intrinsic.height;
   return Math.max(1, fallback);
 }
@@ -701,11 +741,12 @@ function preferredFlexCrossSize(
   bounds: Rectangle,
   direction: FlexDirection,
   defaultTextHeight: number,
+  measurementCache?: LayoutMeasurementCache,
 ): number {
   const crossAvailable = direction === "row" ? bounds.height : bounds.width;
   const crossLength = direction === "row" ? node.style.height : node.style.width;
   if (crossLength.unit !== "auto") return resolveLayoutLength(crossLength, crossAvailable, 0);
-  const intrinsic = measureNodeIntrinsic(node, Math.max(1, bounds.width), defaultTextHeight);
+  const intrinsic = measureNodeIntrinsic(node, Math.max(1, bounds.width), defaultTextHeight, measurementCache);
   const fallback = direction === "row" ? intrinsic.height : intrinsic.width;
   const min = direction === "row" ? node.style.minHeight : node.style.minWidth;
   const max = direction === "row" ? node.style.maxHeight : node.style.maxWidth;
@@ -842,32 +883,52 @@ function measureNodeIntrinsic(
   node: LayoutNode,
   availableWidth: number,
   defaultTextHeight: number,
+  measurementCache?: LayoutMeasurementCache,
 ): LayoutIntrinsicSize {
+  const cacheKey = measurementCache ? intrinsicMeasurementCacheKey(node, availableWidth, defaultTextHeight) : undefined;
+  if (cacheKey) {
+    const cached = measurementCache?.get(cacheKey);
+    if (cached) return cached;
+  }
+
+  let measured: LayoutIntrinsicSize;
   if (node.intrinsic?.width !== undefined || node.intrinsic?.height !== undefined) {
-    return {
+    measured = {
       width: Math.max(0, Math.floor(node.intrinsic.width ?? 0)),
       height: Math.max(defaultTextHeight, Math.floor(node.intrinsic.height ?? defaultTextHeight)),
     };
+    if (cacheKey) measurementCache?.set(cacheKey, measured);
+    return measured;
   }
   if (node.text) {
-    return measureTextIntrinsic(node.text, availableWidth, defaultTextHeight);
+    measured = measureTextIntrinsic(node.text, availableWidth, defaultTextHeight);
+    if (cacheKey) measurementCache?.set(cacheKey, measured);
+    return measured;
   }
   if (node.children.length === 0) {
-    return { width: 1, height: defaultTextHeight };
+    measured = { width: 1, height: defaultTextHeight };
+    if (cacheKey) measurementCache?.set(cacheKey, measured);
+    return measured;
   }
 
-  const childSizes = node.children.map((child) => measureNodeIntrinsic(child, availableWidth, defaultTextHeight));
+  const childSizes = node.children.map((child) =>
+    measureNodeIntrinsic(child, availableWidth, defaultTextHeight, measurementCache)
+  );
   if (node.style.display === "flex" && node.style.flexDirection === "row") {
-    return {
+    measured = {
       width: childSizes.reduce((sum, size) => sum + size.width, 0) +
         Math.max(0, childSizes.length - 1) * node.style.columnGap,
       height: Math.max(defaultTextHeight, ...childSizes.map((size) => size.height)),
     };
+    if (cacheKey) measurementCache?.set(cacheKey, measured);
+    return measured;
   }
-  return {
+  measured = {
     width: Math.max(1, ...childSizes.map((size) => size.width)),
     height: childSizes.reduce((sum, size) => sum + Math.max(defaultTextHeight, size.height), 0),
   };
+  if (cacheKey) measurementCache?.set(cacheKey, measured);
+  return measured;
 }
 
 function measureTextIntrinsic(text: string, availableWidth: number, defaultTextHeight: number): LayoutIntrinsicSize {
@@ -876,6 +937,35 @@ function measureTextIntrinsic(text: string, availableWidth: number, defaultTextH
   const wrapWidth = Math.max(1, availableWidth);
   const height = lines.reduce((sum, line) => sum + Math.max(1, Math.ceil(textWidth(line) / wrapWidth)), 0);
   return { width, height: Math.max(defaultTextHeight, height) };
+}
+
+function intrinsicMeasurementCacheKey(node: LayoutNode, availableWidth: number, defaultTextHeight: number): string {
+  return [
+    "v1",
+    Math.max(1, Math.floor(availableWidth)),
+    Math.max(1, Math.floor(defaultTextHeight)),
+    node.tag,
+    node.text ?? "",
+    node.intrinsic?.width ?? "",
+    node.intrinsic?.height ?? "",
+    node.style.display,
+    node.style.flexDirection,
+    node.style.columnGap,
+    ...node.children.map((child) => intrinsicNodeSignature(child)),
+  ].join("\u001f");
+}
+
+function intrinsicNodeSignature(node: LayoutNode): string {
+  return [
+    node.tag,
+    node.text ?? "",
+    node.intrinsic?.width ?? "",
+    node.intrinsic?.height ?? "",
+    node.style.display,
+    node.style.flexDirection,
+    node.style.columnGap,
+    node.children.map((child) => intrinsicNodeSignature(child)).join("\u001e"),
+  ].join("\u001f");
 }
 
 function scrollSize(
