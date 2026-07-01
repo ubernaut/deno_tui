@@ -11,21 +11,17 @@ import {
   type ThreeAsciiRenderFrame,
   type ThreeAsciiRenderFrameOptions,
 } from "../src/three_ascii/renderer.ts";
-import * as THREE from "npm:three@0.183.2";
 import { asciiEffectOptions } from "./ascii_options.ts";
 import { createNeonThreeScene, type NeonThreeSceneBundle } from "./neon_three.ts";
+import { ThreePanelInteractionController, type ThreePanelInteractionState } from "./three_panel_interaction.ts";
 import { resolveThreePanelLifecycleState, type ThreePanelLifecycleState } from "./three_panel_lifecycle.ts";
 import type { AsciiOptions, Rect, ThreeSceneMode, ThreeSceneSignal } from "./types.ts";
+
+export type { ThreePanelInteractionState } from "./three_panel_interaction.ts";
 
 export interface ThreeSceneState {
   mode: ThreeSceneMode;
   signal: ThreeSceneSignal;
-}
-
-export interface ThreePanelInteractionState {
-  rotationX: number;
-  rotationY: number;
-  zoom: number;
 }
 
 export interface ThreePanelRenderPolicyInput {
@@ -72,24 +68,6 @@ export interface ThreePanelGridRenderer {
 
 export type ThreePanelRendererFactory = (options: ThreeAsciiRendererOptions) => ThreePanelGridRenderer;
 
-const minInteractionZoom = 0.35;
-const maxInteractionZoom = 3.25;
-const zoomStep = 1.14;
-const rotationSensitivity = 0.035;
-
-function defaultInteractionState(): ThreePanelInteractionState {
-  return { rotationX: 0, rotationY: 0, zoom: 1 };
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value));
-}
-
-function normalizeRadians(value: number): number {
-  const full = Math.PI * 2;
-  return ((value + Math.PI) % full + full) % full - Math.PI;
-}
-
 export function resolveThreePanelRenderPolicy(input: ThreePanelRenderPolicyInput): ThreePanelRenderPolicy {
   const kittyRequested = input.ascii.kittyGraphics;
   const kittyActive = Boolean(
@@ -115,10 +93,7 @@ export class ThreePanelView {
   private activeWireframeThickness?: number;
   private readonly effect: Effect;
   private readonly onUpdate?: () => void;
-  private readonly interaction = defaultInteractionState();
-  private baseCameraPosition?: THREE.Vector3;
-  private baseCameraQuaternion?: THREE.Quaternion;
-  private baseSceneRotation?: THREE.Euler;
+  private readonly interaction = new ThreePanelInteractionController();
 
   constructor(options: {
     canvas: Canvas;
@@ -153,7 +128,7 @@ export class ThreePanelView {
         this.bundle = bundle;
         this.activeMode = current.mode;
         this.activeWireframeThickness = ascii.wireframeThickness;
-        this.captureBaseTransform(bundle);
+        this.interaction.captureBaseTransform(bundle);
         this.object = new ThreeAsciiObject({
           canvas: options.canvas,
           rectangle: options.rectangle,
@@ -171,10 +146,10 @@ export class ThreePanelView {
               return;
             }
             bundle.tick(performance.now(), latest.signal);
-            this.applyInteraction();
+            this.interaction.apply(this.bundle);
           },
         });
-        this.applyInteraction();
+        this.interaction.apply(this.bundle);
         this.object.draw();
         return;
       }
@@ -187,57 +162,29 @@ export class ThreePanelView {
 
   rotateBy(deltaColumns: number, deltaRows: number): ThreePanelInteractionState {
     if (deltaColumns === 0 && deltaRows === 0) return this.inspectInteraction();
-    this.interaction.rotationY = normalizeRadians(this.interaction.rotationY + deltaColumns * rotationSensitivity);
-    this.interaction.rotationX = clamp(
-      this.interaction.rotationX + deltaRows * rotationSensitivity,
-      -Math.PI,
-      Math.PI,
-    );
-    this.applyInteraction();
+    const state = this.interaction.rotateBy(deltaColumns, deltaRows);
+    this.interaction.apply(this.bundle);
     this.onUpdate?.();
-    return this.inspectInteraction();
+    return state;
   }
 
   zoomBy(scrollSteps: number): ThreePanelInteractionState {
     if (scrollSteps === 0) return this.inspectInteraction();
-    this.interaction.zoom = clamp(
-      this.interaction.zoom * Math.pow(zoomStep, -scrollSteps),
-      minInteractionZoom,
-      maxInteractionZoom,
-    );
-    this.applyInteraction();
+    const state = this.interaction.zoomBy(scrollSteps);
+    this.interaction.apply(this.bundle);
     this.onUpdate?.();
-    return this.inspectInteraction();
+    return state;
   }
 
   resetInteraction(): ThreePanelInteractionState {
-    Object.assign(this.interaction, defaultInteractionState());
-    this.applyInteraction();
+    const state = this.interaction.reset();
+    this.interaction.apply(this.bundle);
     this.onUpdate?.();
-    return this.inspectInteraction();
+    return state;
   }
 
   inspectInteraction(): ThreePanelInteractionState {
-    return { ...this.interaction };
-  }
-
-  private captureBaseTransform(bundle: NeonThreeSceneBundle): void {
-    this.baseCameraPosition = bundle.camera.position.clone();
-    this.baseCameraQuaternion = bundle.camera.quaternion.clone();
-    this.baseSceneRotation = bundle.scene.rotation.clone();
-  }
-
-  private applyInteraction(): void {
-    if (!this.bundle || !this.baseCameraPosition || !this.baseCameraQuaternion || !this.baseSceneRotation) return;
-    const cameraDistanceScale = 1 / this.interaction.zoom;
-    this.bundle.camera.position.copy(this.baseCameraPosition).multiplyScalar(cameraDistanceScale);
-    this.bundle.camera.quaternion.copy(this.baseCameraQuaternion);
-    this.bundle.scene.rotation.set(
-      this.baseSceneRotation.x + this.interaction.rotationX,
-      this.baseSceneRotation.y + this.interaction.rotationY,
-      this.baseSceneRotation.z,
-      this.baseSceneRotation.order,
-    );
+    return this.interaction.inspect();
   }
 
   private destroy() {
@@ -247,9 +194,7 @@ export class ThreePanelView {
     this.bundle = undefined;
     this.activeMode = undefined;
     this.activeWireframeThickness = undefined;
-    this.baseCameraPosition = undefined;
-    this.baseCameraQuaternion = undefined;
-    this.baseSceneRotation = undefined;
+    this.interaction.clearBaseTransform();
   }
 
   dispose(): void {
@@ -280,10 +225,7 @@ export class ThreePanelFrameView {
   private disposed = false;
   private frameGeneration = 0;
   private frameTimer?: ReturnType<typeof setTimeout>;
-  private readonly interaction = defaultInteractionState();
-  private baseCameraPosition?: THREE.Vector3;
-  private baseCameraQuaternion?: THREE.Quaternion;
-  private baseSceneRotation?: THREE.Euler;
+  private readonly interaction = new ThreePanelInteractionController();
   private graphicsHandle?: GraphicsHandle;
 
   constructor(
@@ -370,7 +312,7 @@ export class ThreePanelFrameView {
       this.bundle = bundle;
       this.activeMode = current.mode;
       this.activeWireframeThickness = ascii.wireframeThickness;
-      this.captureBaseTransform(bundle);
+      this.interaction.captureBaseTransform(bundle);
       this.failed = false;
       const rendererFactory = this.options.rendererFactory ??
         ((rendererOptions) => new ThreeAsciiRenderer(rendererOptions));
@@ -462,7 +404,7 @@ export class ThreePanelFrameView {
         const latest = this.options.scene.peek();
         if (!latest) return;
         bundle.tick(performance.now(), latest.signal);
-        this.applyInteraction();
+        this.interaction.apply(this.bundle);
       };
       const frame = policy.kittyActive && renderer.renderFrame
         ? await renderer.renderFrame(deltaTime, onFrame, policy.frameOptions)
@@ -546,57 +488,29 @@ export class ThreePanelFrameView {
 
   rotateBy(deltaColumns: number, deltaRows: number): ThreePanelInteractionState {
     if (deltaColumns === 0 && deltaRows === 0) return this.inspectInteraction();
-    this.interaction.rotationY = normalizeRadians(this.interaction.rotationY + deltaColumns * rotationSensitivity);
-    this.interaction.rotationX = clamp(
-      this.interaction.rotationX + deltaRows * rotationSensitivity,
-      -Math.PI,
-      Math.PI,
-    );
-    this.applyInteraction();
+    const state = this.interaction.rotateBy(deltaColumns, deltaRows);
+    this.interaction.apply(this.bundle);
     this.onUpdate?.();
-    return this.inspectInteraction();
+    return state;
   }
 
   zoomBy(scrollSteps: number): ThreePanelInteractionState {
     if (scrollSteps === 0) return this.inspectInteraction();
-    this.interaction.zoom = clamp(
-      this.interaction.zoom * Math.pow(zoomStep, -scrollSteps),
-      minInteractionZoom,
-      maxInteractionZoom,
-    );
-    this.applyInteraction();
+    const state = this.interaction.zoomBy(scrollSteps);
+    this.interaction.apply(this.bundle);
     this.onUpdate?.();
-    return this.inspectInteraction();
+    return state;
   }
 
   resetInteraction(): ThreePanelInteractionState {
-    Object.assign(this.interaction, defaultInteractionState());
-    this.applyInteraction();
+    const state = this.interaction.reset();
+    this.interaction.apply(this.bundle);
     this.onUpdate?.();
-    return this.inspectInteraction();
+    return state;
   }
 
   inspectInteraction(): ThreePanelInteractionState {
-    return { ...this.interaction };
-  }
-
-  private captureBaseTransform(bundle: NeonThreeSceneBundle): void {
-    this.baseCameraPosition = bundle.camera.position.clone();
-    this.baseCameraQuaternion = bundle.camera.quaternion.clone();
-    this.baseSceneRotation = bundle.scene.rotation.clone();
-  }
-
-  private applyInteraction(): void {
-    if (!this.bundle || !this.baseCameraPosition || !this.baseCameraQuaternion || !this.baseSceneRotation) return;
-    const cameraDistanceScale = 1 / this.interaction.zoom;
-    this.bundle.camera.position.copy(this.baseCameraPosition).multiplyScalar(cameraDistanceScale);
-    this.bundle.camera.quaternion.copy(this.baseCameraQuaternion);
-    this.bundle.scene.rotation.set(
-      this.baseSceneRotation.x + this.interaction.rotationX,
-      this.baseSceneRotation.y + this.interaction.rotationY,
-      this.baseSceneRotation.z,
-      this.baseSceneRotation.order,
-    );
+    return this.interaction.inspect();
   }
 
   private destroyRenderer(): void {
@@ -619,9 +533,7 @@ export class ThreePanelFrameView {
     this.bundle = undefined;
     this.activeMode = undefined;
     this.activeWireframeThickness = undefined;
-    this.baseCameraPosition = undefined;
-    this.baseCameraQuaternion = undefined;
-    this.baseSceneRotation = undefined;
+    this.interaction.clearBaseTransform();
   }
 
   dispose(): void {
