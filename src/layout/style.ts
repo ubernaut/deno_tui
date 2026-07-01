@@ -36,6 +36,7 @@ export interface LayoutLengthValue {
 /** Public interface describing a one-dimensional CSS-grid placement. */
 export interface LayoutGridPlacement {
   start?: number;
+  end?: number;
   span?: number;
 }
 
@@ -271,7 +272,10 @@ export function parseGridPlacement(
   if (endSpan !== undefined) {
     placement.span = endSpan;
   } else if (placement.start !== undefined && endLine !== undefined) {
+    placement.end = endLine;
     placement.span = Math.max(1, endLine - placement.start);
+  } else if (endLine !== undefined) {
+    placement.end = endLine;
   }
 
   if (placement.start === undefined && placement.span === undefined) return { ...fallback };
@@ -366,6 +370,18 @@ export function applyLayoutDeclaration(
       break;
     case "grid-row":
       next.gridRow = parseGridPlacement(resolved, next.gridRow);
+      break;
+    case "grid-column-start":
+      next.gridColumn = applyGridPlacementLonghand(next.gridColumn, "start", resolved);
+      break;
+    case "grid-column-end":
+      next.gridColumn = applyGridPlacementLonghand(next.gridColumn, "end", resolved);
+      break;
+    case "grid-row-start":
+      next.gridRow = applyGridPlacementLonghand(next.gridRow, "start", resolved);
+      break;
+    case "grid-row-end":
+      next.gridRow = applyGridPlacementLonghand(next.gridRow, "end", resolved);
       break;
     case "width":
       next.width = parseLayoutLength(resolved, next.width);
@@ -546,6 +562,32 @@ function parsePositiveInteger(value: string): number | undefined {
   if (!/^\d+$/.test(value)) return undefined;
   const parsed = Math.floor(Number.parseFloat(value));
   return parsed > 0 ? parsed : undefined;
+}
+
+function applyGridPlacementLonghand(
+  placement: LayoutGridPlacement,
+  edge: "start" | "end",
+  value: string,
+): LayoutGridPlacement {
+  const trimmed = value.trim().toLowerCase();
+  const next = { ...placement };
+  if (!trimmed || trimmed === "auto") {
+    delete next[edge];
+    if (next.start === undefined || next.end === undefined) delete next.span;
+    return next;
+  }
+
+  const span = parseGridSpan(trimmed);
+  if (span !== undefined) {
+    next.span = span;
+    return next;
+  }
+
+  const line = parsePositiveInteger(trimmed);
+  if (line === undefined) return next;
+  next[edge] = line;
+  if (next.start !== undefined && next.end !== undefined) next.span = Math.max(1, next.end - next.start);
+  return next;
 }
 
 function applyBoxEdge(edges: BoxEdges<number>, edge: string, value: number): BoxEdges<number> {

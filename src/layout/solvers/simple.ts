@@ -267,12 +267,10 @@ function placeGridChildren(children: readonly LayoutNode[], bounds: GridPlacemen
   const autoRows = bounds.rows > 0 ? bounds.rows : Math.max(1, Math.ceil(Math.sqrt(children.length)));
   const candidates = children.map((child): GridPlacementCandidate => ({
     node: child,
-    columnSpan: Math.max(1, child.style.gridColumn.span ?? 1),
-    rowSpan: Math.max(1, child.style.gridRow.span ?? 1),
-    explicitColumn: child.style.gridColumn.start !== undefined
-      ? Math.max(0, child.style.gridColumn.start - 1)
-      : undefined,
-    explicitRow: child.style.gridRow.start !== undefined ? Math.max(0, child.style.gridRow.start - 1) : undefined,
+    columnSpan: gridPlacementSpan(child.style.gridColumn),
+    rowSpan: gridPlacementSpan(child.style.gridRow),
+    explicitColumn: gridPlacementStart(child.style.gridColumn),
+    explicitRow: gridPlacementStart(child.style.gridRow),
   }));
   const placementOrder = [
     ...candidates.filter((candidate) => candidate.explicitColumn !== undefined && candidate.explicitRow !== undefined),
@@ -431,6 +429,20 @@ function occupyGridCells(
 
 function gridCellKey(row: number, column: number): string {
   return `${row}:${column}`;
+}
+
+function gridPlacementSpan(placement: ComputedLayoutStyle["gridColumn"]): number {
+  if (placement.span !== undefined) return Math.max(1, placement.span);
+  if (placement.start !== undefined && placement.end !== undefined) return Math.max(1, placement.end - placement.start);
+  return 1;
+}
+
+function gridPlacementStart(placement: ComputedLayoutStyle["gridColumn"]): number | undefined {
+  if (placement.start !== undefined) return Math.max(0, placement.start - 1);
+  if (placement.end !== undefined && placement.span !== undefined) {
+    return Math.max(0, placement.end - placement.span - 1);
+  }
+  return undefined;
 }
 
 function resolveGridTracks(

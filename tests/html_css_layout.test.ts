@@ -141,6 +141,36 @@ Deno.test("applyCssCascade parses grid templates placement and auto flow", () =>
   assertEquals(wide.style.gridRow, { start: 1, span: 2 });
 });
 
+Deno.test("applyCssCascade parses grid line longhands", () => {
+  const document = parseTuiMarkup(`
+    <window id="main">
+      <panel id="span"></panel>
+      <panel id="ended"></panel>
+    </window>
+  `);
+  const stylesheet = parseCssStylesheet(`
+    #span {
+      grid-column-start: 2;
+      grid-column-end: 4;
+      grid-row-start: 1;
+      grid-row-end: span 2;
+    }
+
+    #ended {
+      grid-column-end: 5;
+      grid-column-start: span 2;
+    }
+  `);
+
+  const styled = applyCssCascade(document.root, stylesheet);
+  const span = findLayoutNode(styled, "span")!;
+  const ended = findLayoutNode(styled, "ended")!;
+
+  assertEquals(span.style.gridColumn, { start: 2, end: 4, span: 2 });
+  assertEquals(span.style.gridRow, { start: 1, span: 2 });
+  assertEquals(ended.style.gridColumn, { end: 5, span: 2 });
+});
+
 Deno.test("parseCssStylesheet keeps terminal-cell media query metadata", () => {
   const stylesheet = parseCssStylesheet(`
     panel {
@@ -226,6 +256,42 @@ Deno.test("createMarkupLayout computes CSS grid tracks and item placement", () =
   assertEquals(result.layout.byId.get("a")!.rect, { column: 11, row: 0, width: 13, height: 8 });
   assertEquals(result.layout.byId.get("b")!.rect, { column: 0, row: 3, width: 10, height: 5 });
   assertEquals(result.layout.byId.get("c")!.rect, { column: 0, row: 0, width: 10, height: 2 });
+});
+
+Deno.test("createMarkupLayout supports grid numeric end lines and longhands", () => {
+  const result = createMarkupLayout({
+    markup: `
+      <window id="main">
+        <panel id="wide">Wide</panel>
+        <panel id="from-end">From end</panel>
+      </window>
+    `,
+    css: `
+      window {
+        display: grid;
+        grid-template-columns: repeat(4, 5);
+        grid-template-rows: 2 2;
+        gap: 1;
+        width: 23;
+        height: 5;
+      }
+
+      #wide {
+        grid-column: 2 / 4;
+        grid-row: 1;
+      }
+
+      #from-end {
+        grid-column-end: 5;
+        grid-column-start: span 2;
+        grid-row-start: 2;
+      }
+    `,
+    bounds: { column: 0, row: 0, width: 40, height: 8 },
+  });
+
+  assertEquals(result.layout.byId.get("wide")!.rect, { column: 6, row: 0, width: 11, height: 2 });
+  assertEquals(result.layout.byId.get("from-end")!.rect, { column: 12, row: 3, width: 11, height: 2 });
 });
 
 Deno.test("applyCssCascade parses absolute positioning inset declarations", () => {

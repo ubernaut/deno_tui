@@ -118,8 +118,9 @@ Responsive rules use terminal-cell dimensions:
 `cascade.viewport`.
 
 CSS Grid support is intentionally a terminal-cell subset. The default solver supports explicit tracks, `repeat(n, ...)`,
-`fr` track distribution, `gap`, `grid-auto-flow: row | column`, implicit auto tracks, and `grid-column`/`grid-row`
-placements with numeric lines or `span`.
+`fr` track distribution, `gap`, `grid-auto-flow: row | column`, implicit auto tracks, `grid-column`/`grid-row`
+placements, and `grid-column-start`/`grid-column-end`/`grid-row-start`/`grid-row-end` longhands with numeric lines or
+`span`.
 
 ```css
 #main {
@@ -284,6 +285,8 @@ Properties:
 - `grid-auto-flow`
 - `grid-column`
 - `grid-row`
+- `grid-column-start`, `grid-column-end`
+- `grid-row-start`, `grid-row-end`
 - `width`, `height`
 - `min-width`, `min-height`
 - `max-width`, `max-height`
