@@ -84,3 +84,5 @@ developer workflows.
   erase) to reduce rendering drift in full-screen shell applications.
 - Added configurable tab-stop handling (`ESC H`, `CSI g`, `CSI 3g`) so shell apps that customize tab columns are no
   longer forced through fixed 8-column stops.
+- Added DEC autowrap mode handling (`CSI ? 7 h/l`) so full-screen apps can overwrite the right edge without forced line
+  wrapping when they disable wrap mode.

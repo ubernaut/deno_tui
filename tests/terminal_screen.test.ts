@@ -143,6 +143,20 @@ Deno.test("TerminalScreenController tracks DEC private modes", () => {
   assertEquals(screen.inspect().privateModes, [1006]);
 });
 
+Deno.test("TerminalScreenController supports DEC autowrap mode", () => {
+  const screen = new TerminalScreenController({ columns: 4, rows: 2 });
+
+  screen.write("\x1b[?7labcdE");
+  assertEquals(screen.textRows(), ["abcE", ""]);
+  assertEquals(screen.inspect().cursor, { column: 3, row: 0 });
+  assertEquals(screen.inspect().privateModes, []);
+
+  screen.write("\x1b[?7hF");
+  assertEquals(screen.textRows(), ["abcF", ""]);
+  assertEquals(screen.inspect().cursor, { column: 0, row: 1 });
+  assertEquals(screen.inspect().privateModes, [7]);
+});
+
 Deno.test("TerminalScreenController tracks cursor style sequences", () => {
   const screen = new TerminalScreenController({ columns: 8, rows: 2 });
 

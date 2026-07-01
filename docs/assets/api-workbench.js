@@ -8939,6 +8939,7 @@ var TerminalScreenController = class {
   #cursorStyle = { shape: "block", blinking: true };
   #privateModes = /* @__PURE__ */ new Set();
   #originMode = false;
+  #autoWrap = true;
   #tabStops;
   constructor(options = {}) {
     this.#columns = normalizeDimension(options.columns, DEFAULT_COLUMNS);
@@ -9039,6 +9040,7 @@ var TerminalScreenController = class {
     const row = this.#state.cells[this.#state.cursor.row];
     row[this.#state.cursor.column] = this.#styledCell(char);
     if (this.#state.cursor.column >= this.#columns - 1) {
+      if (!this.#autoWrap) return;
       this.#state.cursor.column = 0;
       this.#newline();
     } else {
@@ -9193,6 +9195,7 @@ var TerminalScreenController = class {
             row: enabled ? this.#scrollRegion.top : 0
           };
         }
+        if (mode === 7) this.#autoWrap = enabled;
         if (mode === 1049) enabled ? this.#enterAlternate() : this.#exitAlternate();
       }
     }

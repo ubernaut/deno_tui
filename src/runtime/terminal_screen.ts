@@ -67,6 +67,7 @@ export class TerminalScreenController {
   #cursorStyle: TerminalScreenCursorStyle = { shape: "block", blinking: true };
   #privateModes = new Set<number>();
   #originMode = false;
+  #autoWrap = true;
   #tabStops: Set<number>;
 
   constructor(options: TerminalScreenControllerOptions = {}) {
@@ -181,6 +182,7 @@ export class TerminalScreenController {
     const row = this.#state.cells[this.#state.cursor.row]!;
     row[this.#state.cursor.column] = this.#styledCell(char);
     if (this.#state.cursor.column >= this.#columns - 1) {
+      if (!this.#autoWrap) return;
       this.#state.cursor.column = 0;
       this.#newline();
     } else {
@@ -341,6 +343,7 @@ export class TerminalScreenController {
             row: enabled ? this.#scrollRegion.top : 0,
           };
         }
+        if (mode === 7) this.#autoWrap = enabled;
         if (mode === 1049) enabled ? this.#enterAlternate() : this.#exitAlternate();
       }
     }
