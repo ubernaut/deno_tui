@@ -14,6 +14,16 @@ export interface WorkbenchWorkspace<TAscii = unknown> {
   savedAt: number;
 }
 
+/** Current version for serialized workbench workspace collections. */
+export const WORKBENCH_WORKSPACE_STORAGE_VERSION = 1;
+
+/** Versioned persisted workbench workspace collection shared by renderer adapters. */
+export interface WorkbenchWorkspaceStorage<TAscii = unknown> {
+  version: typeof WORKBENCH_WORKSPACE_STORAGE_VERSION;
+  savedAt: number;
+  workspaces: WorkbenchWorkspace<TAscii>[];
+}
+
 /** Options used to normalize persisted workbench workspaces. */
 export interface NormalizeWorkbenchWorkspacesOptions<TAscii = unknown> {
   validVisualizationIds: Iterable<string>;
@@ -110,6 +120,33 @@ export function normalizeWorkbenchWorkspaces<TAscii = unknown>(
       savedAt: typeof candidate.savedAt === "number" && Number.isFinite(candidate.savedAt) ? candidate.savedAt : 0,
     }];
   }).slice(0, limit);
+}
+
+/** Serializes workspaces into the current versioned storage envelope. */
+export function serializeWorkbenchWorkspaces<TAscii>(
+  workspaces: readonly WorkbenchWorkspace<TAscii>[],
+  savedAt = Date.now(),
+): WorkbenchWorkspaceStorage<TAscii> {
+  return {
+    version: WORKBENCH_WORKSPACE_STORAGE_VERSION,
+    savedAt,
+    workspaces: workspaces.map((workspace) => ({
+      ...workspace,
+      visualizationIds: [...workspace.visualizationIds],
+      windows: workspace.windows?.map((window) => ({ ...window })),
+    })),
+  };
+}
+
+/** Normalizes current and legacy persisted workspace storage shapes. */
+export function normalizeWorkbenchWorkspaceStorage<TAscii = unknown>(
+  value: unknown,
+  options: NormalizeWorkbenchWorkspacesOptions<TAscii>,
+): WorkbenchWorkspace<TAscii>[] {
+  if (Array.isArray(value)) return normalizeWorkbenchWorkspaces(value, options);
+  if (!value || typeof value !== "object") return [];
+  const candidate = value as Partial<WorkbenchWorkspaceStorage<TAscii>>;
+  return normalizeWorkbenchWorkspaces(candidate.workspaces, options);
 }
 
 /** Returns normalized window entries for a workspace, expanding legacy visualizationIds when needed. */

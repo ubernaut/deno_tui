@@ -6,8 +6,11 @@ import {
   normalizeWorkbenchPanelWorkspaceState,
   normalizeWorkbenchWorkspaceName,
   normalizeWorkbenchWorkspaces,
+  normalizeWorkbenchWorkspaceStorage,
   renameWorkbenchWorkspace,
+  serializeWorkbenchWorkspaces,
   upsertWorkbenchWorkspace,
+  WORKBENCH_WORKSPACE_STORAGE_VERSION,
   type WorkbenchWorkspace,
   workbenchWorkspaceWindowEntries,
 } from "../src/app/mod.ts";
@@ -74,6 +77,44 @@ Deno.test("workbench workspace helpers normalize saved and legacy workspace entr
   assertEquals(workbenchWorkspaceWindowEntries(workspaces[0]!, { validVisualizationIds: ["cpu", "gpu"] }), [
     { visualizationId: "cpu" },
   ]);
+});
+
+Deno.test("workbench workspace helpers serialize versioned storage and migrate legacy arrays", () => {
+  const workspace: WorkbenchWorkspace<{ style: string }> = {
+    name: "Alpha",
+    visualizationIds: ["cpu"],
+    windows: [{ visualizationId: "cpu", ascii: { style: "blocks" } }],
+    savedAt: 10,
+  };
+  const storage = serializeWorkbenchWorkspaces([workspace], 20);
+  workspace.visualizationIds.push("gpu");
+  workspace.windows?.push({ visualizationId: "gpu", ascii: { style: "glyphs" } });
+
+  assertEquals(storage, {
+    version: WORKBENCH_WORKSPACE_STORAGE_VERSION,
+    savedAt: 20,
+    workspaces: [{
+      name: "Alpha",
+      visualizationIds: ["cpu"],
+      windows: [{ visualizationId: "cpu", ascii: { style: "blocks" } }],
+      savedAt: 10,
+    }],
+  });
+  assertEquals(
+    normalizeWorkbenchWorkspaceStorage(storage, {
+      validVisualizationIds: ["cpu", "gpu"],
+      normalizeAscii: (value) => typeof value === "object" && value ? value as { style: string } : undefined,
+    }),
+    storage.workspaces,
+  );
+  assertEquals(
+    normalizeWorkbenchWorkspaceStorage([{
+      name: "Legacy",
+      visualizationIds: ["gpu", "missing"],
+      savedAt: 30,
+    }], { validVisualizationIds: ["cpu", "gpu"] }),
+    [{ name: "Legacy", visualizationIds: ["gpu"], windows: undefined, savedAt: 30 }],
+  );
 });
 
 Deno.test("workbench workspace helpers upsert rename find and delete by case-insensitive name", () => {

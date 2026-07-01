@@ -54,10 +54,10 @@ Work:
         to reuse exported text-fit, ANSI-cell, contrast, and geometry helpers.
   - [x] Migrated web API Workbench tiling through `WindowManagerController` so terminal and web layouts share the same
         fullscreen/minimized/adaptive tile engine.
-- [ ] Replace duplicated theme/window/menu persistence code with a shared versioned serializer.
+- [x] Replace duplicated theme/window/menu persistence code with a shared versioned serializer.
   - [x] Extracted shared workbench workspace normalization, panel-state normalization, upsert, rename, delete, lookup,
         and legacy window-entry expansion helpers into `src/app/workbench_workspace.ts`.
-- [ ] Add a migration path for existing saved workspace state.
+- [x] Add a migration path for existing saved workspace state.
 
 Acceptance checks:
 

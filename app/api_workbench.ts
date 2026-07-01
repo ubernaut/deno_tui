@@ -43,8 +43,9 @@ import {
   deleteWorkbenchWorkspace,
   findWorkbenchWorkspace,
   normalizeWorkbenchWorkspaceName,
-  normalizeWorkbenchWorkspaces,
+  normalizeWorkbenchWorkspaceStorage,
   renameWorkbenchWorkspace,
+  serializeWorkbenchWorkspaces,
   upsertWorkbenchWorkspace,
   type WorkbenchWorkspace,
   type WorkbenchWorkspaceWindow,
@@ -3875,13 +3876,13 @@ async function loadSavedWorkspaces(): Promise<SavedWorkspace[]> {
 }
 
 async function persistSavedWorkspaces(): Promise<void> {
-  await workspaceStore.set(WORKSPACE_STORE_KEY, savedWorkspaces.peek()).catch((error) => {
+  await workspaceStore.set(WORKSPACE_STORE_KEY, serializeWorkbenchWorkspaces(savedWorkspaces.peek())).catch((error) => {
     pushLog(`workspace save failed ${error instanceof Error ? error.message : "unknown"}`);
   });
 }
 
 function normalizeSavedWorkspaces(value: unknown): SavedWorkspace[] {
-  return normalizeWorkbenchWorkspaces(value, {
+  return normalizeWorkbenchWorkspaceStorage(value, {
     validVisualizationIds: visualizationWindowOptions.map((option) => option.id),
     normalizeName: (name, index) => normalizeWorkbenchWorkspaceName(name, `Workspace ${index + 1}`),
     normalizeAscii: (candidate) =>
