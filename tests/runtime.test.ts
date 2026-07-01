@@ -52,7 +52,13 @@ import {
   inspectRuntimeWorkload,
 } from "../src/runtime/telemetry.ts";
 import { createRenderLoop, RenderLoop } from "../src/runtime/render_loop.ts";
-import { DiagnosticsCollector, formatDiagnostics } from "../src/runtime/diagnostics.ts";
+import {
+  DiagnosticsCollector,
+  formatDiagnostics,
+  formatDiagnosticsMarkdown,
+  formatDiagnosticStatus,
+  summarizeDiagnostics,
+} from "../src/runtime/diagnostics.ts";
 import { createPersistentSignal, createRuntimeStore, MemoryStore } from "../src/runtime/storage.ts";
 import { runWorkerBatch, type WorkerLike, WorkerPool, WorkerPoolTerminatedError } from "../src/runtime/worker_pool.ts";
 
@@ -138,6 +144,55 @@ Deno.test("DiagnosticsCollector records bounded structured fallback diagnostics"
 
   assertEquals(events, [1, 2, undefined]);
   assertEquals(formatDiagnostics(diagnostics.entries()), "Diagnostics: none");
+});
+
+Deno.test("diagnostic report helpers summarize status bars and markdown", () => {
+  const diagnostics = new DiagnosticsCollector();
+  diagnostics.report({
+    source: "storage",
+    code: "indexeddb-unavailable",
+    severity: "info",
+    message: "IndexedDB unavailable; using memory store.",
+    time: 10,
+  });
+  diagnostics.report({
+    source: "process",
+    code: "spawn-failed",
+    severity: "error",
+    message: "Process failed | command missing",
+    detail: "ENOENT\nmissing",
+    time: 11,
+    context: { command: "missing-demo" },
+  });
+
+  const entries = diagnostics.entries();
+  const summary = summarizeDiagnostics(entries);
+  assertEquals(summary.count, 2);
+  assertEquals(summary.ok, false);
+  assertEquals(summary.highestSeverity, "error");
+  assertEquals(summary.bySeverity, { debug: 0, info: 1, warning: 0, error: 1 });
+  assertEquals(summary.latest?.context, { command: "missing-demo" });
+  summary.latest!.context!.command = "mutated";
+  assertEquals(diagnostics.entries().at(-1)?.context, { command: "missing-demo" });
+
+  assertEquals(
+    formatDiagnosticStatus(entries, { label: "runtime" }),
+    "runtime 2 error (1 error, 1 info) latest process/spawn-failed",
+  );
+  assertEquals(formatDiagnosticStatus([], { label: "runtime" }), "runtime ok");
+  assertEquals(
+    formatDiagnosticsMarkdown(entries, "Runtime Diagnostics"),
+    [
+      "# Runtime Diagnostics",
+      "",
+      "2 diagnostic(s), highest severity: error.",
+      "",
+      "| Severity | Source | Code | Message | Detail |",
+      "| --- | --- | --- | --- | --- |",
+      "| info | storage | indexeddb-unavailable | IndexedDB unavailable; using memory store. |  |",
+      "| error | process | spawn-failed | Process failed \\| command missing | ENOENT missing |",
+    ].join("\n"),
+  );
 });
 
 Deno.test("runtime plans choose worker storage and renderer strategies", () => {

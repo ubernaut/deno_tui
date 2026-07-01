@@ -27,6 +27,21 @@ export interface DiagnosticsInspection {
   entries: DiagnosticEntry[];
 }
 
+/** Compact aggregate for status bars and degraded-backend reports. */
+export interface DiagnosticStatusSummary {
+  count: number;
+  ok: boolean;
+  highestSeverity?: DiagnosticSeverity;
+  bySeverity: Record<DiagnosticSeverity, number>;
+  latest?: DiagnosticEntry;
+}
+
+/** Options for formatting one-line diagnostic status output. */
+export interface DiagnosticStatusFormatOptions {
+  label?: string;
+  includeLatest?: boolean;
+}
+
 /** Listener called when diagnostics are reported or cleared. */
 export type DiagnosticListener = (entry: DiagnosticEntry | undefined) => void;
 
@@ -100,4 +115,94 @@ export function formatDiagnostics(entries: readonly DiagnosticEntry[]): string {
       }`
     )
     .join("\n");
+}
+
+/** Summarizes diagnostics for status bars without exposing raw log volume. */
+export function summarizeDiagnostics(entries: readonly DiagnosticEntry[]): DiagnosticStatusSummary {
+  const bySeverity: Record<DiagnosticSeverity, number> = {
+    debug: 0,
+    info: 0,
+    warning: 0,
+    error: 0,
+  };
+  let highestSeverity: DiagnosticSeverity | undefined;
+  for (const entry of entries) {
+    bySeverity[entry.severity] += 1;
+    if (!highestSeverity || severityWeight(entry.severity) > severityWeight(highestSeverity)) {
+      highestSeverity = entry.severity;
+    }
+  }
+  return {
+    count: entries.length,
+    ok: entries.length === 0,
+    highestSeverity,
+    bySeverity,
+    latest: cloneDiagnosticEntry(entries.at(-1)),
+  };
+}
+
+/** Formats a compact status-bar segment for degraded optional backends. */
+export function formatDiagnosticStatus(
+  entries: readonly DiagnosticEntry[],
+  options: DiagnosticStatusFormatOptions = {},
+): string {
+  const label = options.label ?? "diagnostics";
+  const summary = summarizeDiagnostics(entries);
+  if (summary.ok) return `${label} ok`;
+
+  const counts = (["error", "warning", "info", "debug"] as const)
+    .filter((severity) => summary.bySeverity[severity] > 0)
+    .map((severity) => `${summary.bySeverity[severity]} ${severity}`)
+    .join(", ");
+  const latest = options.includeLatest !== false && summary.latest
+    ? ` latest ${summary.latest.source}/${summary.latest.code}`
+    : "";
+  return `${label} ${summary.count} ${summary.highestSeverity}${counts ? ` (${counts})` : ""}${latest}`;
+}
+
+/** Formats a markdown diagnostics report suitable for logs, docs, and modal details. */
+export function formatDiagnosticsMarkdown(
+  entries: readonly DiagnosticEntry[],
+  title = "Diagnostics",
+): string {
+  const summary = summarizeDiagnostics(entries);
+  const lines = [
+    `# ${title}`,
+    "",
+    summary.ok
+      ? "No diagnostics recorded."
+      : `${summary.count} diagnostic(s), highest severity: ${summary.highestSeverity}.`,
+  ];
+  if (summary.ok) return lines.join("\n");
+
+  lines.push("", "| Severity | Source | Code | Message | Detail |", "| --- | --- | --- | --- | --- |");
+  for (const entry of entries) {
+    lines.push(
+      `| ${entry.severity} | ${entry.source} | ${entry.code} | ${escapeMarkdownTableCell(entry.message)} | ${
+        escapeMarkdownTableCell(entry.detail ?? "")
+      } |`,
+    );
+  }
+  return lines.join("\n");
+}
+
+function cloneDiagnosticEntry(entry: DiagnosticEntry | undefined): DiagnosticEntry | undefined {
+  return entry ? { ...entry, context: entry.context ? { ...entry.context } : undefined } : undefined;
+}
+
+function severityWeight(severity: DiagnosticSeverity): number {
+  switch (severity) {
+    case "error":
+      return 4;
+    case "warning":
+      return 3;
+    case "info":
+      return 2;
+    case "debug":
+      return 1;
+  }
+}
+
+function escapeMarkdownTableCell(value: string): string {
+  return value.replaceAll("|", "\\|").replaceAll("\n", " ");
 }
