@@ -173,6 +173,8 @@ Work:
         monitor and Neon panel render paths.
   - [x] Reworked `buildVisualizationDrive()` to avoid temporary source/value arrays, spread min/max calls, and sampled
         `Array.from()` helpers in the dynamic visualization hot path.
+  - [x] Reworked CPU legend, network compact trace/history, and GPU memory bank render paths to avoid nested temporary
+        arrays in frame-critical monitor widgets.
 
 Acceptance checks:
 
