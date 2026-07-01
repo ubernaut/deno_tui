@@ -381,7 +381,7 @@ export class ThreeAsciiAnsiGridAssembler {
         let foregroundRed = this.toByte(colors[colorOffset] ?? 0);
         let foregroundGreen = this.toByte(colors[colorOffset + 1] ?? 0);
         let foregroundBlue = this.toByte(colors[colorOffset + 2] ?? 0);
-        if (terminalGlyphStyle === "blocks" && glyph === "█") {
+        if (terminalGlyphStyle === "blocks" && glyph === "█" && fillGlyphIndex < 14) {
           const amount = fillBucketFromGlyphIndex(fillGlyphIndex) / 9;
           foregroundRed = mixByteChannel(this.backgroundRed, foregroundRed, amount);
           foregroundGreen = mixByteChannel(this.backgroundGreen, foregroundGreen, amount);
