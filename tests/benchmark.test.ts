@@ -124,8 +124,8 @@ Deno.test("benchmark CLI catalog covers high-volume TUI workloads", () => {
   const report = createBenchmarkCatalogReport({ cases: benchmarkCases });
   const names = report.cases.map((entry) => entry.name);
 
-  assertEquals(report.inspection.count, 18);
-  assertEquals(report.inspection.thresholded, 18);
+  assertEquals(report.inspection.count, 19);
+  assertEquals(report.inspection.thresholded, 19);
   assertEquals(report.inspection.categories, ["data", "input", "layout", "render", "runtime", "widgets"]);
   assertEquals(names.includes("data/table-select-100k"), true);
   assertEquals(names.includes("data/list-visible-50k"), true);
@@ -138,11 +138,16 @@ Deno.test("benchmark CLI catalog covers high-volume TUI workloads", () => {
   assertEquals(names.includes("render/canvas-overlap-modal-churn"), true);
   assertEquals(names.includes("render/canvas-dirty-region-400-rects"), true);
   assertEquals(names.includes("render/three-ascii-ansi-grid-96x40"), true);
+  assertEquals(names.includes("render/three-ascii-ansi-grid-solid-96x40"), true);
   assertEquals(names.includes("render/three-ascii-ansi-grid-sparse-96x40"), true);
   assertEquals(names.includes("render/three-ascii-readback-copy-96x40"), true);
   assertEquals(
     queryBenchmarkCases(benchmarkCases, { tag: "assembly" }).map((entry) => entry.name),
-    ["render/three-ascii-ansi-grid-96x40", "render/three-ascii-ansi-grid-sparse-96x40"],
+    [
+      "render/three-ascii-ansi-grid-96x40",
+      "render/three-ascii-ansi-grid-solid-96x40",
+      "render/three-ascii-ansi-grid-sparse-96x40",
+    ],
   );
   assertEquals(
     queryBenchmarkCases(benchmarkCases, { tag: "readback" }).map((entry) => entry.name),

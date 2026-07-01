@@ -40,6 +40,9 @@ const threeAsciiCellCount = threeAsciiColumns * threeAsciiRows;
 const threeAsciiFillGlyphs = new Float32Array(threeAsciiCellCount);
 const threeAsciiEdgeGlyphs = new Float32Array(threeAsciiCellCount * 4);
 const threeAsciiColors = new Float32Array(threeAsciiCellCount * 4);
+const threeAsciiSolidFillGlyphs = new Float32Array(threeAsciiCellCount);
+const threeAsciiSolidEdgeGlyphs = new Float32Array(threeAsciiCellCount * 4);
+const threeAsciiSolidColors = new Float32Array(threeAsciiCellCount * 4);
 const threeAsciiSparseFillGlyphs = new Float32Array(threeAsciiCellCount);
 const threeAsciiSparseEdgeGlyphs = new Float32Array(threeAsciiCellCount * 4);
 const threeAsciiSparseColors = new Float32Array(threeAsciiCellCount * 4);
@@ -96,6 +99,18 @@ for (let index = 0; index < threeAsciiCellCount; index += 1) {
   threeAsciiColors[colorOffset + 1] = (y % 12) / 11;
   threeAsciiColors[colorOffset + 2] = ((x + y) % 20) / 19;
   threeAsciiColors[colorOffset + 3] = 1;
+
+  threeAsciiSolidFillGlyphs[index] = 14;
+  threeAsciiSolidColors[colorOffset] = 0.18;
+  threeAsciiSolidColors[colorOffset + 1] = 0.9;
+  threeAsciiSolidColors[colorOffset + 2] = 0.72;
+  threeAsciiSolidColors[colorOffset + 3] = 1;
+  if (x === y || x === threeAsciiColumns - y - 1 || x % 24 === 0) {
+    threeAsciiSolidEdgeGlyphs[edgeOffset] = 1 + (x % 4);
+    threeAsciiSolidEdgeGlyphs[edgeOffset + 1] = 18;
+    threeAsciiSolidEdgeGlyphs[edgeOffset + 2] = 24;
+    threeAsciiSolidEdgeGlyphs[edgeOffset + 3] = 2;
+  }
 
   const sparseColorOffset = index * 4;
   threeAsciiSparseColors[sparseColorOffset] = (x % 16) / 15;
@@ -609,6 +624,29 @@ export const benchmarkCases: BenchmarkCase[] = [
       });
       if (grid.length !== threeAsciiRows || grid[0]?.length !== threeAsciiColumns) {
         throw new Error("three Ascii grid dimensions changed");
+      }
+    },
+  },
+  {
+    name: "render/three-ascii-ansi-grid-solid-96x40",
+    category: "render",
+    description: "CPU-assemble a repeated-color block-heavy Three ASCII grid with cached ANSI cell strings.",
+    tags: ["render", "three", "ascii", "ansi", "cpu", "assembly", "cache"],
+    iterations: 200,
+    maxAverageMs: 6,
+    run: () => {
+      const grid = buildThreeAsciiAnsiGrid({
+        columns: threeAsciiColumns,
+        rows: threeAsciiRows,
+        fillGlyphs: threeAsciiSolidFillGlyphs,
+        edgeGlyphs: threeAsciiSolidEdgeGlyphs,
+        colors: threeAsciiSolidColors,
+        terminalGlyphStyle: "blocks",
+        terminalEdgeBias: 1.15,
+        backgroundColor: 0x000000,
+      });
+      if (grid.length !== threeAsciiRows || grid[0]?.length !== threeAsciiColumns) {
+        throw new Error("solid three Ascii grid dimensions changed");
       }
     },
   },
