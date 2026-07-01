@@ -126,7 +126,9 @@ Acceptance checks:
   - [x] Added coverage for convergent self-updating effects, computed/effect disposal during propagation, mutually
         recursive computed graph cycles, effect pause/resume, and batched mutation flush ordering.
 - [x] Existing `tests/signals.test.ts` stays green.
-- [ ] Workbench close/rearrange/resize tests include a regression for previous recursive render crashes.
+- [x] Workbench close/rearrange/resize tests include a regression for previous recursive render crashes.
+  - [x] Added a shared `WindowManagerController` churn test that repeatedly fullscreen toggles, reorders, minimizes,
+        restores, closes, reopens, and relayouts windows while asserting active/fullscreen/z-order invariants.
 
 ### P1: Improve Canvas Dirty-Region Rendering
 

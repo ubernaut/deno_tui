@@ -169,6 +169,57 @@ Deno.test("window manager exposes deterministic window z-order", () => {
   manager.dispose();
 });
 
+Deno.test("window manager survives close rearrange resize churn without invalid active state", () => {
+  const manager = new WindowManagerController({
+    activeId: "win-0",
+    windows: Array.from({ length: 9 }, (_, index) => ({
+      id: `win-${index}`,
+      title: `Window ${index}`,
+      minWidth: 24 + index,
+      minHeight: 7 + index % 3,
+    })),
+  });
+  const bounds = [
+    { column: 0, row: 0, width: 180, height: 44 },
+    { column: 0, row: 0, width: 96, height: 28 },
+    { column: 0, row: 0, width: 58, height: 20 },
+    { column: 0, row: 0, width: 132, height: 32 },
+  ];
+
+  for (let cycle = 0; cycle < 24; cycle += 1) {
+    const active = manager.active()?.id ?? manager.ids()[0];
+    if (active) {
+      manager.focus(active);
+      manager.fullscreen(active);
+      assertWindowManagerInvariants(manager.layout({ bounds: bounds[cycle % bounds.length]! }));
+      manager.fullscreen(active);
+      manager.move(active, cycle % 2 === 0 ? 1 : -1);
+    }
+
+    const target = `win-${cycle % 9}`;
+    if (cycle % 4 === 0) {
+      manager.minimize(target);
+    } else if (cycle % 4 === 1) {
+      manager.restore(target);
+    } else if (cycle % 4 === 2) {
+      manager.close(target);
+    } else {
+      manager.upsert({ id: target, title: `Window ${target} restored`, state: "normal" });
+    }
+
+    assertWindowManagerInvariants(manager.layout({ bounds: bounds[(cycle + 1) % bounds.length]! }));
+  }
+
+  for (const id of manager.ids()) {
+    manager.close(id);
+    assertWindowManagerInvariants(manager.layout({ bounds: bounds[0]! }));
+  }
+
+  assertEquals(manager.inspect().activeId, undefined);
+  assertEquals(manager.inspect().fullscreenId, undefined);
+  manager.dispose();
+});
+
 Deno.test("overlay stack places popovers and blocks background hits behind modals", () => {
   const popover = placePopover(
     { column: 70, row: 18, width: 8, height: 2 },
@@ -243,3 +294,23 @@ Deno.test("file explorer exposes indented entries and mouse-style row selection"
   ]);
   explorer.dispose();
 });
+
+function assertWindowManagerInvariants(layout: ReturnType<WindowManagerController["layout"]>): void {
+  const open = new Set(layout.windows.filter((entry) => !entry.closed).map((entry) => entry.id));
+  if (layout.activeId !== undefined) {
+    assertEquals(open.has(layout.activeId), true);
+  }
+  if (layout.fullscreenId !== undefined) {
+    assertEquals(open.has(layout.fullscreenId), true);
+  }
+  assertEquals(layout.tabs.every((entry) => open.has(entry.id)), true);
+  assertEquals(layout.zOrder.every((entry) => open.has(entry.id)), true);
+  assertEquals(
+    layout.visible.every((entry) =>
+      entry.rect !== undefined && entry.rect.width >= 0 && entry.rect.height >= 0 &&
+      entry.rect.column >= layout.bounds.column && entry.rect.row >= layout.bounds.row
+    ),
+    true,
+  );
+  assertEquals(layout.contentHeight >= layout.bounds.height, true);
+}
