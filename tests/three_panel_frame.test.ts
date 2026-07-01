@@ -112,6 +112,7 @@ Deno.test("ThreePanelFrameView stays inert while disabled", async () => {
 
   assertEquals(panel.grid.peek(), []);
   assertEquals(updates, 1);
+  assertEquals(panel.inspectLifecycle().state, "idle");
 
   scene.value = null;
   await new Promise((resolve) => setTimeout(resolve, 0));
@@ -120,6 +121,7 @@ Deno.test("ThreePanelFrameView stays inert while disabled", async () => {
   assertEquals(updates, 2);
 
   panel.dispose();
+  assertEquals(panel.inspectLifecycle().state, "disposed");
   rectangle.dispose();
   scene.dispose();
   ascii.dispose();
@@ -226,9 +228,12 @@ Deno.test("ThreePanelFrameView defers resize while a frame is rendering", async 
 
   try {
     await waitFor(() => (renderer?.startCount ?? 0) >= 1);
+    assertEquals(panel.inspectLifecycle().state, "rendering");
     rectangle.value = { column: 0, row: 0, width: 20, height: 8 };
     await new Promise((resolve) => setTimeout(resolve, 0));
 
+    assertEquals(panel.inspectLifecycle().state, "stopping");
+    assertEquals(panel.inspectLifecycle().syncPending, true);
     assertEquals(renderer?.setSizeDuringRender, 0);
     renderer?.completeFrame();
 
@@ -267,8 +272,10 @@ Deno.test("ThreePanelFrameView disposes safely while a frame is rendering", asyn
   });
 
   await waitFor(() => (renderer?.startCount ?? 0) >= 1);
+  assertEquals(panel.inspectLifecycle().state, "rendering");
   const updatesBeforeDispose = updates;
   panel.dispose();
+  assertEquals(panel.inspectLifecycle().state, "disposed");
   renderer?.completeFrame();
 
   await waitFor(() => renderer?.destroyed === true);

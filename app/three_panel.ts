@@ -40,6 +40,22 @@ export interface ThreePanelRenderPolicy {
   frameOptions: ThreeAsciiRenderFrameOptions;
 }
 
+export type ThreePanelLifecycleState = "idle" | "initializing" | "rendering" | "stopping" | "failed" | "disposed";
+
+export interface ThreePanelLifecycleInspection {
+  state: ThreePanelLifecycleState;
+  running: boolean;
+  rendering: boolean;
+  failed: boolean;
+  disposed: boolean;
+  hasRenderer: boolean;
+  hasGraphicsHandle: boolean;
+  destroyPending: boolean;
+  rebuildPending: boolean;
+  syncPending: boolean;
+  frameGeneration: number;
+}
+
 export interface ThreePanelGridRenderer {
   setSize(columns: number, rows: number): void;
   setEffectOptions(options: ReturnType<typeof asciiEffectOptions>): void;
@@ -294,6 +310,22 @@ export class ThreePanelFrameView {
     return !this.failed;
   }
 
+  inspectLifecycle(): ThreePanelLifecycleInspection {
+    return {
+      state: this.lifecycleState(),
+      running: this.running,
+      rendering: this.rendering,
+      failed: this.failed,
+      disposed: this.disposed,
+      hasRenderer: this.renderer !== undefined,
+      hasGraphicsHandle: this.graphicsHandle !== undefined,
+      destroyPending: this.destroyPending,
+      rebuildPending: this.rebuildPending,
+      syncPending: this.syncPending,
+      frameGeneration: this.frameGeneration,
+    };
+  }
+
   private sync(): void {
     if (this.disposed) return;
 
@@ -371,6 +403,15 @@ export class ThreePanelFrameView {
     const current = this.options.scene.peek();
     const enabled = this.options.enabled instanceof Signal ? this.options.enabled.peek() : this.options.enabled ?? true;
     return enabled && !!current && rect.width > 0 && rect.height > 0;
+  }
+
+  private lifecycleState(): ThreePanelLifecycleState {
+    if (this.disposed) return "disposed";
+    if (this.failed) return "failed";
+    if (this.destroyPending || this.rebuildPending || this.syncPending) return "stopping";
+    if (this.rendering) return "rendering";
+    if (this.renderer && this.isVisible() && this.grid.peek().length === 0) return "initializing";
+    return "idle";
   }
 
   private async renderLoop(): Promise<void> {
