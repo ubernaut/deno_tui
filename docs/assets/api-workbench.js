@@ -9067,6 +9067,7 @@ var TerminalScreenController = class {
   #autoWrap = true;
   #insertMode = false;
   #tabStops;
+  #decoder = new TextDecoder();
   constructor(options = {}) {
     this.#columns = normalizeDimension(options.columns, DEFAULT_COLUMNS);
     this.#rows = normalizeDimension(options.rows, DEFAULT_ROWS);
@@ -9091,7 +9092,7 @@ var TerminalScreenController = class {
     return this.#mainState !== void 0;
   }
   write(data) {
-    const text = typeof data === "string" ? data : new TextDecoder().decode(data);
+    const text = typeof data === "string" ? data : this.#decoder.decode(data);
     for (let index = 0; index < text.length; ) {
       const char = text[index];
       if (char === "\x1B") {

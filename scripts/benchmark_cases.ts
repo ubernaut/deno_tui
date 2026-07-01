@@ -26,6 +26,7 @@ import {
 } from "../mod.ts";
 import { createHtmlCssLayoutDemo } from "../app/html_css_layout_demo.ts";
 import { LayoutMeasurementCache, simpleLayoutSolver } from "../src/layout/mod.ts";
+import { TerminalScreenController } from "../src/runtime/terminal_screen.ts";
 import {
   type SystemMetricsCommandOutput,
   type SystemMetricsDirEntry,
@@ -68,6 +69,19 @@ const ansiRichRows = Array.from({ length: 250 }, (_, index) => {
     `\x1b[48;2;${blue};${red};${green}m ${"█".repeat((index % 18) + 1)} \x1b[0m ` +
     `cpu=${(index * 7) % 100}% mem=${(index * 13) % 100}%`;
 });
+const terminalScreenTranscript = [
+  "\x1b]0;cos@old-donkey:~/projects/deno_tui\x07",
+  "\x1b[?25l",
+  "cos@old-donkey:~/projects/deno_tui$ deno task health\r\n",
+  "\x1b[38;5;34mTask\x1b[0m health deno run -A ./scripts/health.ts\r\n",
+  "Checked 523 files\r\n",
+  "\x1b[38;2;120;200;255mok\x1b[0m benchmark summary: 23 cases, 0 failed\r\n",
+  "\x1b[?1049h\x1b[1;1H\x1b[1;32mFULLSCREEN APP\x1b[0m\r\n\x1b[6 q",
+  "\x1b[4hinsert\x1b[4l replace\x1b[2;1H\x1b[2Kready",
+  "\x1b[?1049l\x1b[?25h",
+  "\x1b]8;id=docs;https://example.test/docs\x1b\\docs\x1b]8;;\x1b\\\r\n",
+];
+const terminalScreenChunks = terminalScreenTranscript.map((chunk) => new TextEncoder().encode(chunk));
 const largeListItems = Array.from({ length: 50_000 }, (_, index) => `process-${index.toString().padStart(5, "0")}`);
 const largeTable = new TableController({ rowCount: 100_000, viewportHeight: 44 });
 const resizeBounds = Array.from({ length: 96 }, (_, index) => ({
@@ -815,6 +829,22 @@ export const benchmarkCases: BenchmarkCase[] = [
       for (let index = 0; index < 300; index += 1) loop.step();
       if (frames !== 300) throw new Error("render loop dropped a manual step");
       loop.inspect();
+    },
+  },
+  {
+    name: "runtime/terminal-screen-replay",
+    category: "runtime",
+    description: "Replay a colored PTY-style byte transcript through the terminal screen model.",
+    tags: ["runtime", "terminal", "ansi", "screen"],
+    iterations: 500,
+    maxAverageMs: 2,
+    run: () => {
+      const screen = new TerminalScreenController({ columns: 96, rows: 12, scrollbackLimit: 32 });
+      for (const chunk of terminalScreenChunks) screen.write(chunk);
+      const inspection = screen.inspect();
+      if (inspection.title !== "cos@old-donkey:~/projects/deno_tui" || inspection.cursorVisible !== true) {
+        throw new Error("terminal screen replay lost metadata");
+      }
     },
   },
   {

@@ -75,6 +75,7 @@ export class TerminalScreenController {
   #autoWrap = true;
   #insertMode = false;
   #tabStops: Set<number>;
+  readonly #decoder = new TextDecoder();
 
   constructor(options: TerminalScreenControllerOptions = {}) {
     this.#columns = normalizeDimension(options.columns, DEFAULT_COLUMNS);
@@ -105,7 +106,7 @@ export class TerminalScreenController {
   }
 
   write(data: string | Uint8Array): void {
-    const text = typeof data === "string" ? data : new TextDecoder().decode(data);
+    const text = typeof data === "string" ? data : this.#decoder.decode(data);
     for (let index = 0; index < text.length;) {
       const char = text[index]!;
       if (char === "\x1b") {
