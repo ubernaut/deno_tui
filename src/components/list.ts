@@ -181,7 +181,8 @@ export class List extends Component {
     super.draw();
 
     const lines = new Computed(() => this.controller.rows(this.rectangle.value.height));
-    Array.from({ length: this.rectangle.peek().height }, (_, index) => {
+    const height = this.rectangle.peek().height;
+    for (let index = 0; index < height; index++) {
       const row = new Text({
         parent: this,
         theme: this.theme,
@@ -197,7 +198,6 @@ export class List extends Component {
       });
       row.subComponentOf = this;
       this.subComponents[`row-${index}`] = row;
-      return row;
-    });
+    }
   }
 }

@@ -204,7 +204,8 @@ export class ContextMenu extends Component {
     const rows = new Computed(() =>
       renderContextMenuRows(this.items.value, this.selectedIndex.value, this.rectangle.value.height)
     );
-    Array.from({ length: this.rectangle.peek().height }, (_, index) => {
+    const height = this.rectangle.peek().height;
+    for (let index = 0; index < height; index++) {
       const text = new Text({
         parent: this,
         theme: this.theme,
@@ -220,6 +221,6 @@ export class ContextMenu extends Component {
       });
       text.subComponentOf = this;
       this.subComponents[`row-${index}`] = text;
-    });
+    }
   }
 }

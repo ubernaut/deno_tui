@@ -118,15 +118,17 @@ export class LogViewer extends Component {
 
   override draw(): void {
     super.draw();
-    Array.from({ length: this.rectangle.peek().height }, (_, index) => {
+    const visibleRows = new Computed(() => {
+      const lines = Array.isArray(this.options.lines) ? this.options.lines : this.options.lines.value;
+      return visibleLogLines(lines, this.rectangle.value.height, this.options.follow ?? true);
+    });
+    const height = this.rectangle.peek().height;
+    for (let index = 0; index < height; index++) {
       const line = new Text({
         parent: this,
         theme: this.theme,
         zIndex: this.zIndex,
-        text: new Computed(() => {
-          const lines = Array.isArray(this.options.lines) ? this.options.lines : this.options.lines.value;
-          return visibleLogLines(lines, this.rectangle.value.height, this.options.follow ?? true)[index] ?? "";
-        }),
+        text: new Computed(() => visibleRows.value[index] ?? ""),
         overwriteWidth: true,
         rectangle: new Computed<TextRectangle>(() => ({
           column: this.rectangle.value.column,
@@ -137,7 +139,7 @@ export class LogViewer extends Component {
       });
       line.subComponentOf = this;
       this.subComponents[`line-${index}`] = line;
-    });
+    }
   }
 }
 

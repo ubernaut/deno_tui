@@ -305,7 +305,8 @@ export class VirtualList<T> extends Component {
         return `${cursor} ${marker} ${row.text}`;
       })
     );
-    Array.from({ length: this.rectangle.peek().height }, (_, index) => {
+    const height = this.rectangle.peek().height;
+    for (let index = 0; index < height; index++) {
       const row = new Text({
         parent: this,
         theme: this.theme,
@@ -321,7 +322,6 @@ export class VirtualList<T> extends Component {
       });
       row.subComponentOf = this;
       this.subComponents[`row-${index}`] = row;
-      return row;
-    });
+    }
   }
 }
