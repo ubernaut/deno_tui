@@ -663,12 +663,12 @@ function parseProcessStat(stat: string, pageSize: number) {
     return null;
   }
   const name = stat.slice(open + 1, close);
-  const tail = stat.slice(close + 2).trim().split(/\s+/);
-  const state = tail[0] ?? "?";
-  const utime = Number(tail[11] ?? 0);
-  const stime = Number(tail[12] ?? 0);
-  const rssPages = Number(tail[21] ?? 0);
-  const processor = Number(tail[36] ?? Number.NaN);
+  const fields = readProcessStatFields(stat, close + 2);
+  const state = fields.state ?? "?";
+  const utime = fields.utime ?? 0;
+  const stime = fields.stime ?? 0;
+  const rssPages = fields.rssPages ?? 0;
+  const processor = fields.processor ?? Number.NaN;
   return {
     name,
     state,
@@ -676,6 +676,49 @@ function parseProcessStat(stat: string, pageSize: number) {
     memoryBytes: rssPages * pageSize,
     processor: Number.isFinite(processor) ? processor : undefined,
   };
+}
+
+function readProcessStatFields(stat: string, start: number): {
+  state?: string;
+  utime?: number;
+  stime?: number;
+  rssPages?: number;
+  processor?: number;
+} {
+  let tokenIndex = 0;
+  let tokenStart = -1;
+  let state: string | undefined;
+  let utime: number | undefined;
+  let stime: number | undefined;
+  let rssPages: number | undefined;
+  let processor: number | undefined;
+
+  for (let index = start; index <= stat.length; index += 1) {
+    const code = index < stat.length ? stat.charCodeAt(index) : 32;
+    const isWhitespace = code === 32 || code === 9 || code === 10 || code === 13;
+    if (isWhitespace) {
+      if (tokenStart !== -1) {
+        if (tokenIndex === 0) {
+          state = stat.slice(tokenStart, index);
+        } else if (tokenIndex === 11) {
+          utime = Number(stat.slice(tokenStart, index));
+        } else if (tokenIndex === 12) {
+          stime = Number(stat.slice(tokenStart, index));
+        } else if (tokenIndex === 21) {
+          rssPages = Number(stat.slice(tokenStart, index));
+        } else if (tokenIndex === 36) {
+          processor = Number(stat.slice(tokenStart, index));
+          break;
+        }
+        tokenIndex += 1;
+        tokenStart = -1;
+      }
+    } else if (tokenStart === -1) {
+      tokenStart = index;
+    }
+  }
+
+  return { state, utime, stime, rssPages, processor };
 }
 
 async function sampleTemperatures(provider: SystemMetricsProvider): Promise<TemperatureSample> {

@@ -124,6 +124,8 @@ Work:
   - [x] Reused terminal input text encoders/decoders across process, PTY, canvas, browser canvas, and remote terminal
         paths so repeated input and dirty-cell flushes do not allocate codecs per message or frame.
 - [x] Record thresholds in the benchmark catalog and wire the most useful non-flaky cases into health or e2e.
+  - [x] Added benchmark CLI selectors for filtering by name/search, category, tag, and thresholded status so long
+        optimization passes can rerun only the relevant integration workload before the full health gate.
 
 Acceptance checks:
 
@@ -235,6 +237,8 @@ Work:
       while preserving fresh output arrays for standalone assembler callers.
 - [x] Build ANSI grids directly from mapped GPU readback views in `ThreeAsciiRenderer`, eliminating the per-frame
       fill/edge/color CPU array copy before terminal grid assembly.
+  - [x] Skipped edge compute/copy/readback work entirely for block-style renderer configs with edges disabled, reducing
+        mapped readback bytes and CPU grid inputs for the default solid/block visualization path.
 
 Acceptance checks:
 
@@ -266,6 +270,9 @@ Current evidence:
 Work:
 
 - [x] Extract provider interfaces for CPU, memory, process, disk, network, temperature, and GPU metrics.
+  - [x] Split the system provider contract and Deno-backed provider implementation into
+        `app/system_metrics_provider.ts`, leaving `app/system_metrics.ts` focused on sampling, diagnostics, and snapshot
+        assembly while preserving compatibility re-exports.
 - [x] Add Linux provider implementations plus fixture providers for tests and demos.
 - [x] Add structured sampler diagnostics: unavailable source, permission denied, command missing, timeout, stale data,
       and sample duration.
@@ -275,6 +282,8 @@ Work:
 - [x] Keep monitor snapshots advancing when required `/proc` reads or process scans fail, with structured per-source
       diagnostics for unavailable CPU, uptime, network, and process data.
 - [x] Bound expensive process scans and support configurable process limits, sort keys, and refresh cadence.
+  - [x] Replaced allocation-heavy `/proc/<pid>/stat` tail splitting with targeted field scanning for process state, CPU
+        time, RSS, and processor id in the sampler hot path.
 - [x] Add GPU provider abstraction for NVIDIA now and future AMD/Intel support later.
 - [x] Extract GPU monitor visualization rendering into a dedicated module with injected chart/meter primitives and
       focused tests for offline, pressure, alert, and narrow-panel behavior.
