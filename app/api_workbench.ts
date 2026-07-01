@@ -74,7 +74,7 @@ import { WindowManagerController } from "../src/layout/mod.ts";
 import { createKittyGraphicsSurface, type GraphicsSurface } from "../src/runtime/graphics_surface.ts";
 import { formatProcessCommandLine, ProcessSessionController } from "../src/runtime/process_session.ts";
 import { MicrotaskScheduler } from "../src/runtime/render_loop.ts";
-import { type AsyncStore, createRuntimeStore } from "../src/runtime/storage.ts";
+import { type AsyncStore, createRuntimeStore, JsonFileStore } from "../src/runtime/storage.ts";
 import { type TerminalBackend } from "../src/runtime/terminal_backend.ts";
 import { TerminalShellController } from "../src/runtime/terminal_shell.ts";
 import {
@@ -259,37 +259,6 @@ interface WorkspaceMenuEntry {
   label: string;
   action: WorkspaceMenuAction;
   workspaceName?: string;
-}
-
-class JsonFileStore<T = unknown> implements AsyncStore<T> {
-  constructor(private readonly path: string) {}
-
-  async get(key: string): Promise<T | undefined> {
-    const values = await this.#read();
-    return values[key] as T | undefined;
-  }
-
-  async set(key: string, value: T): Promise<void> {
-    const values = await this.#read();
-    values[key] = value;
-    await Deno.writeTextFile(this.path, `${JSON.stringify(values, null, 2)}\n`);
-  }
-
-  async delete(key: string): Promise<void> {
-    const values = await this.#read();
-    delete values[key];
-    await Deno.writeTextFile(this.path, `${JSON.stringify(values, null, 2)}\n`);
-  }
-
-  async #read(): Promise<Record<string, unknown>> {
-    try {
-      const parsed = JSON.parse(await Deno.readTextFile(this.path));
-      return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed as Record<string, unknown> : {};
-    } catch (error) {
-      if (error instanceof Deno.errors.NotFound) return {};
-      throw error;
-    }
-  }
 }
 
 const themes: ThemeSpec[] = grWizardThemePalettes.map((palette) => ({

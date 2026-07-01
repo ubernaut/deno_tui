@@ -77,6 +77,8 @@ Work:
 - [x] Replace duplicated theme/window/menu persistence code with a shared versioned serializer.
   - [x] Extracted shared workbench workspace normalization, panel-state normalization, upsert, rename, delete, lookup,
         and legacy window-entry expansion helpers into `src/app/workbench_workspace.ts`.
+  - [x] Promoted the terminal workbench JSON-file fallback store into `JsonFileStore` in `src/runtime/storage.ts`,
+        leaving the workbench on the shared `AsyncStore` abstraction instead of demo-local file persistence.
 - [x] Add a migration path for existing saved workspace state.
 
 Acceptance checks:

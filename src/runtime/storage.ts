@@ -26,6 +26,55 @@ export class MemoryStore<T = unknown> implements AsyncStore<T> {
   }
 }
 
+/** Public class implementing a Deno JSON-file backed Store. */
+export class JsonFileStore<T = unknown> implements AsyncStore<T> {
+  private readonly readTextFile: (path: string) => Promise<string>;
+  private readonly writeTextFile: (path: string, data: string) => Promise<void>;
+  private readonly isNotFound: (error: unknown) => boolean;
+
+  constructor(
+    private readonly path: string,
+    fileSystem: {
+      readTextFile?: (path: string) => Promise<string>;
+      writeTextFile?: (path: string, data: string) => Promise<void>;
+      isNotFound?: (error: unknown) => boolean;
+    } = {},
+  ) {
+    this.readTextFile = fileSystem.readTextFile ?? Deno.readTextFile;
+    this.writeTextFile = fileSystem.writeTextFile ?? Deno.writeTextFile;
+    this.isNotFound = fileSystem.isNotFound ?? ((error) => error instanceof Deno.errors.NotFound);
+  }
+
+  async get(key: string): Promise<T | undefined> {
+    const values = await this.#read();
+    return values[key] as T | undefined;
+  }
+
+  async set(key: string, value: T): Promise<void> {
+    const values = await this.#read();
+    values[key] = value;
+    await this.writeTextFile(this.path, `${JSON.stringify(values, null, 2)}\n`);
+  }
+
+  async delete(key: string): Promise<void> {
+    const values = await this.#read();
+    delete values[key];
+    await this.writeTextFile(this.path, `${JSON.stringify(values, null, 2)}\n`);
+  }
+
+  async #read(): Promise<Record<string, unknown>> {
+    try {
+      const content = await this.readTextFile(this.path);
+      if (content.trim() === "") return {};
+      const parsed = JSON.parse(content);
+      return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed as Record<string, unknown> : {};
+    } catch (error) {
+      if (this.isNotFound(error)) return {};
+      throw error;
+    }
+  }
+}
+
 /** Options for configuring indexed Db Store. */
 export interface IndexedDbStoreOptions {
   databaseName: string;

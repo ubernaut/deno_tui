@@ -9657,6 +9657,13 @@
     },
     {
       "module": "src/runtime/storage.ts",
+      "name": "JsonFileStore",
+      "kind": "class",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/runtime/storage.ts",
       "name": "MemoryStore",
       "kind": "class",
       "typeOnly": false,

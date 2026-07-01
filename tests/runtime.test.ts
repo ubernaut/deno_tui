@@ -59,7 +59,7 @@ import {
   formatDiagnosticStatus,
   summarizeDiagnostics,
 } from "../src/runtime/diagnostics.ts";
-import { createPersistentSignal, createRuntimeStore, MemoryStore } from "../src/runtime/storage.ts";
+import { createPersistentSignal, createRuntimeStore, JsonFileStore, MemoryStore } from "../src/runtime/storage.ts";
 import { runWorkerBatch, type WorkerLike, WorkerPool, WorkerPoolTerminatedError } from "../src/runtime/worker_pool.ts";
 
 Deno.test("detectRuntimeCapabilities accepts an injected scope", () => {
@@ -1151,6 +1151,35 @@ Deno.test("MemoryStore implements the async store contract", async () => {
   assertEquals(await store.get("answer"), 42);
   await store.delete("answer");
   assertEquals(await store.get("answer"), undefined);
+});
+
+Deno.test("JsonFileStore persists async store values through an injected JSON file adapter", async () => {
+  const files = new Map<string, string>();
+  const missing = new Error("missing");
+  const fileSystem = {
+    readTextFile: async (path: string) => {
+      const value = files.get(path);
+      if (value === undefined) throw missing;
+      return value;
+    },
+    writeTextFile: async (path: string, data: string) => {
+      files.set(path, data);
+    },
+    isNotFound: (error: unknown) => error === missing,
+  };
+  const path = "workspaces.json";
+  const store = new JsonFileStore<number>(path, fileSystem);
+
+  assertEquals(await store.get("missing"), undefined);
+  await store.set("answer", 42);
+  assertEquals(await store.get("answer"), 42);
+  assertEquals(JSON.parse(files.get(path) ?? "{}"), { answer: 42 });
+
+  const restored = new JsonFileStore<number>(path, fileSystem);
+  assertEquals(await restored.get("answer"), 42);
+  await restored.delete("answer");
+  assertEquals(await restored.get("answer"), undefined);
+  assertEquals(JSON.parse(files.get(path) ?? "{}"), {});
 });
 
 Deno.test("createRuntimeStore falls back to memory without IndexedDB", async () => {
