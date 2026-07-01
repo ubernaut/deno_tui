@@ -122,11 +122,9 @@ export class ThreeAsciiAnsiGridAssembler {
           glyphCells.set(glyph, cell);
         }
 
-        if (glyph === "█" || terminalGlyphStyle === "blocks") {
-          lastForegroundKey = foregroundKey;
-          lastGlyph = glyph;
-          lastCell = cell;
-        }
+        lastForegroundKey = foregroundKey;
+        lastGlyph = glyph;
+        lastCell = cell;
 
         outputRow[column] = cell;
       }
