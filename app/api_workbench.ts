@@ -26,6 +26,18 @@ import { renderStatusBar } from "../src/components/statusbar.ts";
 import { renderStepper, StepperController } from "../src/components/stepper.ts";
 import { formatTerminalOutputLine } from "../src/components/terminal_output.ts";
 import { TextBoxController, wrapTextBoxLines } from "../src/components/textbox.ts";
+import {
+  buttonText,
+  centerCellText as centerText,
+  contrastText,
+  fillFrameRect,
+  fillFrameRow,
+  fitCellText as fit,
+  renderFrameRow,
+  renderFrameSlice,
+  type WorkbenchFrame,
+  writeFrame,
+} from "../src/app/workbench_frame.ts";
 import { handleInput } from "../src/input.ts";
 import type { KeyPressEvent, MousePressEvent, MouseScrollEvent, PasteEvent } from "../src/input_reader/types.ts";
 import { routeTerminalKeyPress, routeTerminalPaste, type TerminalInputMode } from "../src/app/terminal_input.ts";
@@ -535,7 +547,7 @@ let windowRenderContext: WindowRenderContext | null = null;
 let workspacePlacementContext: WorkspacePlacementContext | null = null;
 const drawScheduler = new MicrotaskScheduler();
 let renderedVisualizationThreePanels = new Set<VisualizationWindowId>();
-type Frame = string[][];
+type Frame = WorkbenchFrame;
 interface DropdownOverlay {
   kind: "control" | "theme" | "newWindow" | "workspace";
   coordinate: "workspace" | "screen";
@@ -4955,38 +4967,15 @@ function writeRows(frame: Frame, rect: Rectangle, rows: RowStyle[]): void {
 }
 
 function write(frame: Frame, row: number, column: number, value: string): void {
-  if (row < 0 || row >= frame.length || column >= currentWidth()) return;
-  const cells = frame[row] ??= [];
-  const styledCells = toStyledCells(value);
-  for (let index = 0; index < styledCells.length && column + index < currentWidth(); index += 1) {
-    cells[column + index] = styledCells[index]!;
-  }
+  writeFrame(frame, currentWidth(), row, column, value);
 }
 
 function fillRow(frame: Frame, row: number, bg: string): void {
-  write(frame, row, 0, makeStyle({ bg })(" ".repeat(currentWidth())));
+  fillFrameRow(frame, currentWidth(), row, makeStyle({ bg }));
 }
 
 function fillRect(frame: Frame, rect: Rectangle, bg: string): void {
-  for (let row = rect.row; row < rect.row + rect.height; row += 1) {
-    write(frame, row, rect.column, makeStyle({ bg })(" ".repeat(Math.max(0, rect.width))));
-  }
-}
-
-function renderFrameRow(cells: string[], width: number): string {
-  const row: string[] = [];
-  for (let column = 0; column < width; column += 1) {
-    row.push(cells[column] ?? " ");
-  }
-  return row.join("");
-}
-
-function renderFrameSlice(cells: string[], start: number, width: number): string {
-  const row: string[] = [];
-  for (let column = 0; column < width; column += 1) {
-    row.push(cells[start + column] ?? " ");
-  }
-  return row.join("");
+  fillFrameRect(frame, currentWidth(), rect, makeStyle({ bg }));
 }
 
 function maxTextWidth(values: readonly string[]): number {
@@ -5070,48 +5059,8 @@ function compactSpaces(value: string): string {
   return value.replace(/\s+/g, " ").trim();
 }
 
-function toStyledCells(value: string): string[] {
-  const cells: string[] = [];
-  let style = "";
-  for (let index = 0; index < value.length;) {
-    if (value.charCodeAt(index) === 0x1b) {
-      // deno-lint-ignore no-control-regex -- ANSI escape parsing intentionally matches ESC.
-      const match = /^\x1b\[[0-9;]*m/.exec(value.slice(index));
-      if (match) {
-        const sequence = match[0];
-        style = sequence.includes("[0m") ? "" : style + sequence;
-        index += sequence.length;
-        continue;
-      }
-    }
-    const char = value[index]!;
-    cells.push(style ? `${style}${char}\x1b[0m` : char);
-    index += char.length;
-  }
-  return cells;
-}
-
-function fit(value: string, width: number): string {
-  const visible = textWidth(value);
-  if (visible === width) return value;
-  if (visible < width) return value + " ".repeat(Math.max(0, width - visible));
-  const plain = stripStyles(value);
-  return `${plain.slice(0, Math.max(0, width - 1))}…`;
-}
-
-function centerText(value: string, width: number): string {
-  const cropped = fit(value, width);
-  const remaining = Math.max(0, width - textWidth(cropped));
-  return `${" ".repeat(Math.floor(remaining / 2))}${cropped}`;
-}
-
 function paint(text: string, options: { fg?: string; bg?: string; bold?: boolean } = {}): string {
   return makeStyle({ fg: options.fg ?? theme().text, bg: options.bg, bold: options.bold })(text);
-}
-
-function buttonText(label: string, options: { compact?: boolean } = {}): string {
-  const safeLabel = label.trim();
-  return options.compact ? `[${safeLabel}]` : `[ ${safeLabel} ]`;
 }
 
 function writeButton(
@@ -5166,40 +5115,6 @@ function buttonPaintOptions(
     };
   }
   return { fg: contrastText(t.buttonBg, t.background, t.text), bg: t.buttonBg, bold: true };
-}
-
-function contrastText(background: string, dark: string, light: string): string {
-  const bg = parseHexColor(background);
-  const darkRgb = parseHexColor(dark);
-  const lightRgb = parseHexColor(light);
-  if (!bg || !darkRgb || !lightRgb) return relativeLuminance(bg ?? [0, 0, 0]) > 0.5 ? dark : light;
-  return contrastRatio(bg, lightRgb) >= contrastRatio(bg, darkRgb) ? light : dark;
-}
-
-function contrastRatio(left: [number, number, number], right: [number, number, number]): number {
-  const leftLum = relativeLuminance(left);
-  const rightLum = relativeLuminance(right);
-  const brightest = Math.max(leftLum, rightLum);
-  const darkest = Math.min(leftLum, rightLum);
-  return (brightest + 0.05) / (darkest + 0.05);
-}
-
-function relativeLuminance([red, green, blue]: [number, number, number]): number {
-  const [r, g, b] = [red, green, blue].map((channel) => {
-    const value = channel / 255;
-    return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
-  });
-  return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!;
-}
-
-function parseHexColor(value: string): [number, number, number] | undefined {
-  const color = value.trim().replace(/^#/, "");
-  if (!/^[\da-f]{6}$/i.test(color)) return undefined;
-  return [0, 2, 4].map((index) => Number.parseInt(color.slice(index, index + 2), 16)) as [
-    number,
-    number,
-    number,
-  ];
 }
 
 function addHit(rect: Rectangle, action: HitAction): void {

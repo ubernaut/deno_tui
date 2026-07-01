@@ -1,0 +1,139 @@
+// Copyright 2023 Im-Beast. MIT license.
+import type { Rectangle } from "../types.ts";
+import { stripStyles, textWidth } from "../utils/strings.ts";
+
+/** Cell matrix used by immediate-mode workbench renderers before row assembly. */
+export type WorkbenchFrame = string[][];
+
+/** Style function used by frame fill helpers. */
+export type WorkbenchFrameStyle = (text: string) => string;
+
+/** Converts an ANSI-styled string into independently styled terminal cells. */
+export function toStyledCells(value: string): string[] {
+  const cells: string[] = [];
+  let style = "";
+  for (let index = 0; index < value.length;) {
+    if (value.charCodeAt(index) === 0x1b) {
+      // deno-lint-ignore no-control-regex -- ANSI escape parsing intentionally matches ESC.
+      const match = /^\x1b\[[0-9;]*m/.exec(value.slice(index));
+      if (match) {
+        const sequence = match[0];
+        style = sequence.includes("[0m") ? "" : style + sequence;
+        index += sequence.length;
+        continue;
+      }
+    }
+    const char = value[index]!;
+    cells.push(style ? `${style}${char}\x1b[0m` : char);
+    index += char.length;
+  }
+  return cells;
+}
+
+/** Writes styled text into a clipped frame row. */
+export function writeFrame(frame: WorkbenchFrame, width: number, row: number, column: number, value: string): void {
+  if (row < 0 || row >= frame.length || column >= width) return;
+  const cells = frame[row] ??= [];
+  const styledCells = toStyledCells(value);
+  for (let index = 0; index < styledCells.length && column + index < width; index += 1) {
+    cells[column + index] = styledCells[index]!;
+  }
+}
+
+/** Fills a full frame row with a style. */
+export function fillFrameRow(
+  frame: WorkbenchFrame,
+  width: number,
+  row: number,
+  style: WorkbenchFrameStyle,
+): void {
+  writeFrame(frame, width, row, 0, style(" ".repeat(Math.max(0, width))));
+}
+
+/** Fills a rectangle in the frame with a style. */
+export function fillFrameRect(
+  frame: WorkbenchFrame,
+  width: number,
+  rect: Rectangle,
+  style: WorkbenchFrameStyle,
+): void {
+  for (let row = rect.row; row < rect.row + rect.height; row += 1) {
+    writeFrame(frame, width, row, rect.column, style(" ".repeat(Math.max(0, rect.width))));
+  }
+}
+
+/** Assembles one frame row from sparse styled cells. */
+export function renderFrameRow(cells: string[], width: number): string {
+  const row: string[] = [];
+  for (let column = 0; column < width; column += 1) {
+    row.push(cells[column] ?? " ");
+  }
+  return row.join("");
+}
+
+/** Assembles a clipped frame row slice from sparse styled cells. */
+export function renderFrameSlice(cells: string[], start: number, width: number): string {
+  const row: string[] = [];
+  for (let column = 0; column < width; column += 1) {
+    row.push(cells[start + column] ?? " ");
+  }
+  return row.join("");
+}
+
+/** Pads or truncates text to a terminal-cell width. */
+export function fitCellText(value: string, width: number): string {
+  const visible = textWidth(value);
+  if (visible === width) return value;
+  if (visible < width) return value + " ".repeat(Math.max(0, width - visible));
+  const plain = stripStyles(value);
+  return `${plain.slice(0, Math.max(0, width - 1))}…`;
+}
+
+/** Centers text inside a terminal-cell width after clipping. */
+export function centerCellText(value: string, width: number): string {
+  const cropped = fitCellText(value, width);
+  const remaining = Math.max(0, width - textWidth(cropped));
+  return `${" ".repeat(Math.floor(remaining / 2))}${cropped}`;
+}
+
+/** Formats a compact or padded workbench button label. */
+export function buttonText(label: string, options: { compact?: boolean } = {}): string {
+  const safeLabel = label.trim();
+  return options.compact ? `[${safeLabel}]` : `[ ${safeLabel} ]`;
+}
+
+/** Selects the higher contrast foreground for a background color. */
+export function contrastText(background: string, dark: string, light: string): string {
+  const bg = parseHexColor(background);
+  const darkRgb = parseHexColor(dark);
+  const lightRgb = parseHexColor(light);
+  if (!bg || !darkRgb || !lightRgb) return relativeLuminance(bg ?? [0, 0, 0]) > 0.5 ? dark : light;
+  return contrastRatio(bg, lightRgb) >= contrastRatio(bg, darkRgb) ? light : dark;
+}
+
+/** Parses a six-digit hex color into RGB bytes. */
+export function parseHexColor(value: string): [number, number, number] | undefined {
+  const color = value.trim().replace(/^#/, "");
+  if (!/^[\da-f]{6}$/i.test(color)) return undefined;
+  return [0, 2, 4].map((index) => Number.parseInt(color.slice(index, index + 2), 16)) as [
+    number,
+    number,
+    number,
+  ];
+}
+
+function contrastRatio(left: [number, number, number], right: [number, number, number]): number {
+  const leftLum = relativeLuminance(left);
+  const rightLum = relativeLuminance(right);
+  const brightest = Math.max(leftLum, rightLum);
+  const darkest = Math.min(leftLum, rightLum);
+  return (brightest + 0.05) / (darkest + 0.05);
+}
+
+function relativeLuminance([red, green, blue]: [number, number, number]): number {
+  const [r, g, b] = [red, green, blue].map((channel) => {
+    const value = channel / 255;
+    return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!;
+}
