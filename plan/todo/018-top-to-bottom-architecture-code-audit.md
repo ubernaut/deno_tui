@@ -365,7 +365,8 @@ Acceptance checks:
       observer.
 - [x] Add terminal parser fixture tests from real shell output and ANSI sequences.
 - [ ] Add fixture-driven system metrics tests for Linux, missing GPU, and unavailable permissions.
-- [ ] Add property/fuzz tests for layout, selection, viewport, scrollbar pointer mapping, and terminal input decoding.
+- [x] Add property/fuzz tests for layout, selection, viewport, scrollbar pointer mapping, and terminal input decoding.
+  - [x] Added deterministic generated parity coverage for supported simple/Yoga flex layout cases.
   - [x] Added deterministic generated invariant coverage for viewport overflow and scrollbar pointer mapping.
   - [x] Added deterministic generated invariant coverage for selection normalization, movement, range, and toggling.
   - [x] Added deterministic generated mixed-buffer coverage for terminal input decoding and incomplete trailing escapes.

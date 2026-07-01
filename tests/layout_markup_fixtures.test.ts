@@ -178,3 +178,70 @@ for (const fixture of fixtures) {
     });
   }
 }
+
+Deno.test("generated flex fixtures keep simple and yoga solvers in parity", () => {
+  const random = seededRandom(0x1a7007);
+  for (let run = 0; run < 60; run += 1) {
+    const direction = run % 2 === 0 ? "row" : "column";
+    const count = 1 + Math.floor(random() * 5);
+    const gap = Math.floor(random() * 3);
+    const padding = Math.floor(random() * 2);
+    const childWidth = 3 + Math.floor(random() * 8);
+    const childHeight = 1 + Math.floor(random() * 4);
+    const mainUsed = count * (direction === "row" ? childWidth : childHeight) + (count - 1) * gap + padding * 2;
+    const crossUsed = (direction === "row" ? childHeight : childWidth) + padding * 2;
+    const bounds: Rectangle = {
+      column: Math.floor(random() * 4),
+      row: Math.floor(random() * 3),
+      width: direction === "row" ? mainUsed + 5 : crossUsed + 5,
+      height: direction === "row" ? crossUsed + 4 : mainUsed + 4,
+    };
+    const markup = `
+      <window id="main">
+        ${Array.from({ length: count }, (_, index) => `<panel id="item-${index}">Item ${index}</panel>`).join("\n")}
+      </window>
+    `;
+    const css = `
+      window {
+        display: flex;
+        flex-direction: ${direction};
+        width: 100%;
+        height: 100%;
+        padding: ${padding};
+        gap: ${gap};
+      }
+
+      panel {
+        width: ${childWidth};
+        height: ${childHeight};
+        flex-shrink: 0;
+      }
+    `;
+
+    const simple = createMarkupLayout({ markup, css, bounds, solver: simpleLayoutSolver(), widgets: false });
+    const yoga = createMarkupLayout({ markup, css, bounds, solver: yogaLayoutSolver(), widgets: false });
+
+    for (let index = 0; index < count; index += 1) {
+      const id = `item-${index}`;
+      const simpleRect = simple.layout.byId.get(id)?.rect;
+      const yogaRect = yoga.layout.byId.get(id)?.rect;
+      assertEquals(simpleRect, yogaRect, `${id} run ${run}`);
+      assertRectWithin(simpleRect!, bounds, `${id} run ${run}`);
+    }
+  }
+});
+
+function assertRectWithin(rect: Rectangle, bounds: Rectangle, label: string): void {
+  assertEquals(rect.column >= bounds.column, true, `${label} column lower bound`);
+  assertEquals(rect.row >= bounds.row, true, `${label} row lower bound`);
+  assertEquals(rect.column + rect.width <= bounds.column + bounds.width, true, `${label} column upper bound`);
+  assertEquals(rect.row + rect.height <= bounds.row + bounds.height, true, `${label} row upper bound`);
+}
+
+function seededRandom(seed: number): () => number {
+  let state = seed >>> 0;
+  return () => {
+    state = (state * 1664525 + 1013904223) >>> 0;
+    return state / 0x100000000;
+  };
+}
