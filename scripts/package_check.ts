@@ -1,10 +1,19 @@
-import { type PackageEntrypointManifest, packageEntrypoints } from "../src/api_stability.ts";
+import { type ApiStabilityTier, type PackageEntrypointManifest, packageEntrypoints } from "../src/api_stability.ts";
 
 export interface PackageExportValidation {
   ok: boolean;
   missingExports: string[];
   mismatchedExports: Array<{ specifier: string; expected: string; actual: string }>;
   unexpectedExports: string[];
+  missingFiles: string[];
+  byStability: Record<ApiStabilityTier, PackageExportStabilityValidation>;
+}
+
+export interface PackageExportStabilityValidation {
+  stability: ApiStabilityTier;
+  ok: boolean;
+  missingExports: string[];
+  mismatchedExports: Array<{ specifier: string; expected: string; actual: string }>;
   missingFiles: string[];
 }
 
@@ -23,17 +32,29 @@ export function validatePackageExports(
   const missingExports: string[] = [];
   const mismatchedExports: Array<{ specifier: string; expected: string; actual: string }> = [];
   const missingFiles: string[] = [];
+  const byStability = emptyStabilityValidation();
 
   for (const entrypoint of entrypoints) {
+    const tier = byStability[entrypoint.stability];
     const actualPath = actual.get(entrypoint.specifier);
     if (actualPath === undefined) {
       missingExports.push(entrypoint.specifier);
+      tier.missingExports.push(entrypoint.specifier);
     } else if (actualPath !== entrypoint.path) {
-      mismatchedExports.push({ specifier: entrypoint.specifier, expected: entrypoint.path, actual: actualPath });
+      const mismatch = { specifier: entrypoint.specifier, expected: entrypoint.path, actual: actualPath };
+      mismatchedExports.push(mismatch);
+      tier.mismatchedExports.push(mismatch);
     }
     if (!exists(entrypoint.path.replace(/^\.\//, ""))) {
       missingFiles.push(entrypoint.path);
+      tier.missingFiles.push(entrypoint.path);
     }
+  }
+
+  for (const tier of Object.values(byStability)) {
+    tier.ok = tier.missingExports.length === 0 &&
+      tier.mismatchedExports.length === 0 &&
+      tier.missingFiles.length === 0;
   }
 
   const unexpectedExports = [...actual.keys()]
@@ -49,6 +70,7 @@ export function validatePackageExports(
     mismatchedExports,
     unexpectedExports,
     missingFiles,
+    byStability,
   };
 }
 
@@ -68,7 +90,33 @@ export function formatPackageExportValidation(validation: PackageExportValidatio
   for (const path of validation.missingFiles) {
     lines.push(`missing file: ${path}`);
   }
+  for (const tier of stabilityTiers()) {
+    const tierValidation = validation.byStability[tier];
+    lines.push(`${tier}: ${tierValidation.ok ? "ok" : "drift"}`);
+    for (const specifier of tierValidation.missingExports) {
+      lines.push(`  missing export: ${specifier}`);
+    }
+    for (const mismatch of tierValidation.mismatchedExports) {
+      lines.push(`  mismatched export: ${mismatch.specifier} expected ${mismatch.expected} got ${mismatch.actual}`);
+    }
+    for (const path of tierValidation.missingFiles) {
+      lines.push(`  missing file: ${path}`);
+    }
+  }
   return lines.join("\n");
+}
+
+function emptyStabilityValidation(): Record<ApiStabilityTier, PackageExportStabilityValidation> {
+  return {
+    stable: { stability: "stable", ok: true, missingExports: [], mismatchedExports: [], missingFiles: [] },
+    beta: { stability: "beta", ok: true, missingExports: [], mismatchedExports: [], missingFiles: [] },
+    experimental: { stability: "experimental", ok: true, missingExports: [], mismatchedExports: [], missingFiles: [] },
+    internal: { stability: "internal", ok: true, missingExports: [], mismatchedExports: [], missingFiles: [] },
+  };
+}
+
+function stabilityTiers(): ApiStabilityTier[] {
+  return ["stable", "beta", "experimental", "internal"];
 }
 
 function normalizeExports(exportsValue: PackageConfig["exports"]): Map<string, string> {

@@ -10,21 +10,25 @@ import type {
   TerminalFocusEvent,
 } from "../input_reader/types.ts";
 
+/** Object with an explicit cleanup hook for platform resources. */
 export interface Disposable {
   dispose(): void;
 }
 
+/** Starts, stops, and reports lifecycle state for a runtime host. */
 export interface LifecycleController {
   start(): void;
   stop(): void;
   inspect(): LifecycleInspection;
 }
 
+/** Snapshot of lifecycle state for tests and diagnostics. */
 export interface LifecycleInspection {
   running: boolean;
   kind: string;
 }
 
+/** Input event names emitted by a platform input source. */
 export interface PlatformInputEvents {
   keyPress: KeyPressEvent;
   mousePress: MousePressEvent;
@@ -33,6 +37,7 @@ export interface PlatformInputEvents {
   terminalFocus: TerminalFocusEvent;
 }
 
+/** Event emitter contract accepted by platform input sources. */
 export type PlatformInputEmitter = EventEmitter<{
   keyPress: { args: [KeyPressEvent] };
   mousePress: { args: [MousePressEvent] };
@@ -41,17 +46,20 @@ export type PlatformInputEmitter = EventEmitter<{
   terminalFocus: { args: [TerminalFocusEvent] };
 }>;
 
+/** Runtime-specific input adapter that forwards events into the TUI event model. */
 export interface InputSource extends Disposable {
   attach(emitter: PlatformInputEmitter): void;
   detach(): void;
   inspect(): InputSourceInspection;
 }
 
+/** Snapshot of input adapter state for tests and diagnostics. */
 export interface InputSourceInspection {
   attached: boolean;
   kind: string;
 }
 
+/** Shared platform abstraction implemented by terminal and browser hosts. */
 export interface TuiPlatform {
   readonly kind: "terminal" | "browser";
   readonly size: Signal<ConsoleSize>;
@@ -61,6 +69,7 @@ export interface TuiPlatform {
   scheduleFrame(callback: () => void): Disposable;
 }
 
+/** Lifecycle controller for tests or hosts that do not need real start/stop hooks. */
 export class NoopLifecycleController implements LifecycleController {
   #running = false;
 
@@ -79,6 +88,7 @@ export class NoopLifecycleController implements LifecycleController {
   }
 }
 
+/** Input source for tests or hosts that provide input through another channel. */
 export class NoopInputSource implements InputSource {
   #attached = false;
 

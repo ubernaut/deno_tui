@@ -14,6 +14,7 @@ import type {
 } from "../input_reader/types.ts";
 import type { TerminalSessionHandle } from "../runtime/terminal_backend.ts";
 
+/** Input event payload sent from a remote client to a hosted terminal session. */
 export type RemoteTerminalInputEvent =
   | { kind: "keyPress"; event: KeyPressEvent }
   | { kind: "mousePress"; event: MousePressEvent }
@@ -21,11 +22,13 @@ export type RemoteTerminalInputEvent =
   | { kind: "paste"; event: PasteEvent }
   | { kind: "terminalFocus"; event: TerminalFocusEvent };
 
+/** Client-to-server message for remote terminal input, resize, and heartbeat traffic. */
 export type RemoteTerminalClientMessage =
   | { type: "input"; input: RemoteTerminalInputEvent }
   | { type: "resize"; size: ConsoleSize }
   | { type: "ping"; id: string };
 
+/** Server-to-client message for remote terminal output, resize acknowledgements, errors, and lifecycle. */
 export type RemoteTerminalServerMessage =
   | { type: "data"; data: string }
   | { type: "binary"; data: Uint8Array }
@@ -34,6 +37,7 @@ export type RemoteTerminalServerMessage =
   | { type: "error"; message: string }
   | { type: "close"; reason?: string };
 
+/** Bidirectional string/binary transport used by remote terminal clients and bridges. */
 export interface RemoteTerminalTransport {
   send(message: string | Uint8Array): void;
   close(code?: number, reason?: string): void;
@@ -42,6 +46,7 @@ export interface RemoteTerminalTransport {
   onError?(listener: (error: unknown) => void): () => void;
 }
 
+/** Snapshot of remote terminal client connection counters. */
 export interface RemoteTerminalClientInspection {
   open: boolean;
   dataMessages: number;
@@ -49,6 +54,7 @@ export interface RemoteTerminalClientInspection {
   resizeMessages: number;
 }
 
+/** Event map emitted by a remote terminal client. */
 export type RemoteTerminalClientEvents = {
   data: { args: [string | Uint8Array] };
   resize: { args: [ConsoleSize] };
@@ -57,6 +63,7 @@ export type RemoteTerminalClientEvents = {
   pong: { args: [string] };
 };
 
+/** Snapshot of remote terminal bridge connection counters. */
 export interface RemoteTerminalBridgeInspection {
   open: boolean;
   dataMessages: number;
@@ -65,6 +72,7 @@ export interface RemoteTerminalBridgeInspection {
   errorMessages: number;
 }
 
+/** Client for driving a hosted terminal session over a transport. */
 export class RemoteTerminalClient extends EventEmitter<RemoteTerminalClientEvents> {
   readonly #transport: RemoteTerminalTransport;
   readonly #removeListeners: Array<() => void>;
@@ -164,6 +172,7 @@ export class RemoteTerminalClient extends EventEmitter<RemoteTerminalClientEvent
   }
 }
 
+/** WebSocket transport implementation for browser remote terminal clients. */
 export class WebSocketRemoteTerminalTransport implements RemoteTerminalTransport {
   readonly #socket: WebSocket;
 
@@ -207,10 +216,12 @@ export class WebSocketRemoteTerminalTransport implements RemoteTerminalTransport
   }
 }
 
+/** Creates a remote terminal client over the provided transport. */
 export function createRemoteTerminalClient(transport: RemoteTerminalTransport): RemoteTerminalClient {
   return new RemoteTerminalClient(transport);
 }
 
+/** Creates a remote terminal client backed by a browser WebSocket. */
 export function createWebSocketRemoteTerminalClient(
   url: string | URL,
   protocols?: string | string[],
@@ -218,11 +229,13 @@ export function createWebSocketRemoteTerminalClient(
   return new RemoteTerminalClient(new WebSocketRemoteTerminalTransport(url, protocols));
 }
 
+/** Options for bridging a remote transport to a terminal session handle. */
 export interface RemoteTerminalBridgeOptions {
   killOnClose?: boolean;
   sourcePrefix?: boolean;
 }
 
+/** Bridges transport messages to a terminal session and forwards session output back to the client. */
 export class RemoteTerminalBridge {
   readonly #transport: RemoteTerminalTransport;
   readonly #session: TerminalSessionHandle;
@@ -345,6 +358,7 @@ export class RemoteTerminalBridge {
   }
 }
 
+/** Creates a bridge between a remote transport and a terminal session handle. */
 export function createRemoteTerminalBridge(
   transport: RemoteTerminalTransport,
   session: TerminalSessionHandle,
@@ -353,6 +367,7 @@ export function createRemoteTerminalBridge(
   return new RemoteTerminalBridge(transport, session, options);
 }
 
+/** Converts a remote input event to terminal bytes when the event has a byte representation. */
 export function encodeRemoteTerminalInput(input: RemoteTerminalInputEvent): Uint8Array | undefined {
   if (input.kind === "keyPress") return encodeTerminalKeyPress(input.event);
   if (input.kind === "paste") return encodeTerminalPaste(input.event);
@@ -360,6 +375,7 @@ export function encodeRemoteTerminalInput(input: RemoteTerminalInputEvent): Uint
   return undefined;
 }
 
+/** Encodes a remote terminal client message for transport. */
 export function encodeRemoteTerminalMessage(message: RemoteTerminalClientMessage): string {
   return JSON.stringify(message, (_key, value) => {
     if (value instanceof Uint8Array) {
@@ -369,6 +385,7 @@ export function encodeRemoteTerminalMessage(message: RemoteTerminalClientMessage
   });
 }
 
+/** Encodes a remote terminal server message for transport. */
 export function encodeRemoteTerminalServerMessage(message: RemoteTerminalServerMessage): string | Uint8Array {
   if (message.type === "binary") return message.data;
   return JSON.stringify(message, (_key, value) => {
@@ -379,10 +396,12 @@ export function encodeRemoteTerminalServerMessage(message: RemoteTerminalServerM
   });
 }
 
+/** Decodes a remote terminal client message from transport data. */
 export function decodeRemoteTerminalClientMessage(message: string | Uint8Array): RemoteTerminalClientMessage {
   return JSON.parse(decodeMessage(message), reviveRemoteValue) as RemoteTerminalClientMessage;
 }
 
+/** Decodes a remote terminal server message from transport data. */
 export function decodeRemoteTerminalServerMessage(message: string | Uint8Array): RemoteTerminalServerMessage {
   if (message instanceof Uint8Array) {
     return { type: "binary", data: message };

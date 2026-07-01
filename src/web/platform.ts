@@ -14,6 +14,7 @@ import {
 } from "../platform/mod.ts";
 import type { Key, MousePressEvent } from "../input_reader/types.ts";
 
+/** Options for the browser platform adapter. */
 export interface BrowserPlatformOptions {
   root: HTMLElement;
   columns?: number;
@@ -28,8 +29,10 @@ export interface BrowserPlatformOptions {
   scheduler?: BrowserFrameScheduler;
 }
 
+/** Browser keyboard strategy used to receive hardware and mobile software-keyboard input. */
 export type BrowserTextInputMode = "auto" | "target" | "hidden" | false;
 
+/** Options for pointer, wheel, keyboard, paste, and focus input capture. */
 export interface BrowserInputSourceOptions {
   cellWidth?: number;
   cellHeight?: number;
@@ -44,12 +47,14 @@ export interface BrowserInputSourceOptions {
   textInput?: BrowserTextInputMode;
 }
 
+/** Adapter around requestAnimationFrame-style frame scheduling. */
 export interface BrowserFrameScheduler {
   request(callback: FrameRequestCallback): number;
   cancel(handle: number): void;
   now(): number;
 }
 
+/** Browser implementation of the shared platform abstraction. */
 export class BrowserPlatform implements TuiPlatform {
   readonly kind = "browser" as const;
   readonly size: Signal<ConsoleSize>;
@@ -107,6 +112,7 @@ export class BrowserPlatform implements TuiPlatform {
   }
 }
 
+/** DOM input source that converts browser events into normalized TUI input events. */
 export class BrowserInputSource implements InputSource {
   readonly #target: HTMLElement;
   readonly #cellWidth: number;
@@ -318,6 +324,7 @@ export class BrowserInputSource implements InputSource {
   }
 }
 
+/** Creates a browser platform adapter from DOM sizing and input options. */
 export function createBrowserPlatform(options: BrowserPlatformOptions): BrowserPlatform {
   return new BrowserPlatform(options);
 }

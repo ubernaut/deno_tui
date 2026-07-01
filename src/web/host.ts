@@ -15,6 +15,7 @@ import type {
 import { BrowserCellCanvasSink, type BrowserCellCanvasSinkOptions } from "./cell_canvas_sink.ts";
 import { BrowserPlatform, type BrowserPlatformOptions } from "./platform.ts";
 
+/** Options for creating a browser-hosted TUI canvas. */
 export interface WebTuiHostOptions {
   root: HTMLElement;
   columns?: number;
@@ -26,6 +27,7 @@ export interface WebTuiHostOptions {
   platformOptions?: Omit<BrowserPlatformOptions, "root" | "columns" | "rows">;
 }
 
+/** Snapshot of browser host runtime state. */
 export interface WebTuiHostInspection {
   running: boolean;
   size: ConsoleSize;
@@ -33,6 +35,7 @@ export interface WebTuiHostInspection {
   sink: ReturnType<BrowserCellCanvasSink["inspectSink"]>;
 }
 
+/** Event map emitted by a browser-hosted TUI instance. */
 export type WebTuiHostEvents = {
   keyPress: { args: [KeyPressEvent] };
   mousePress: { args: [MousePressEvent] };
@@ -43,6 +46,7 @@ export type WebTuiHostEvents = {
   destroy: { args: [] };
 };
 
+/** Browser TUI host that wires input, platform sizing, canvas rendering, and a render loop. */
 export class WebTuiHost extends EventEmitter<WebTuiHostEvents> {
   readonly root: HTMLElement;
   readonly element: HTMLCanvasElement;
@@ -121,6 +125,7 @@ export class WebTuiHost extends EventEmitter<WebTuiHostEvents> {
   }
 }
 
+/** Creates a browser-hosted TUI instance. */
 export function createWebTui(options: WebTuiHostOptions): WebTuiHost {
   return new WebTuiHost(options);
 }

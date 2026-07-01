@@ -33,6 +33,22 @@ import { yogaLayoutSolver } from "jsr:@scope/package/layout/yoga";
 The package is not pinned to a public JSR scope in this repository yet. Choose the final scope during publication, then
 update the import examples and release notes.
 
+## Import Guidance
+
+Application authors should start with the narrowest runtime entrypoint that matches where their app runs:
+
+- Use `.` for Deno terminal applications, reusable terminal widgets, themes, app commands, testing helpers, and
+  terminal-rendered Three ASCII widgets.
+- Use `./web` for standalone browser packages, GitHub Pages demos, Canvas2D/DOM hosts, browser input, IndexedDB-backed
+  state, and Worker-friendly controllers.
+- Use `./remote` only when building a browser client or bridge for a hosted terminal session.
+- Use `./layout/yoga` only when the optional Yoga dependency is acceptable and Flexbox parity matters more than a
+  dependency-free layout solver.
+
+Framework authors can import the same entrypoints, then layer their own submodules behind project-local shims. Avoid
+importing from `app/*`, `examples/*`, or `scripts/*`; those files demonstrate behavior and are intentionally not
+semver-protected package surfaces.
+
 ## Stability Tiers
 
 - **Stable:** Semver-protected public API. Breaking changes require a major release, or an explicit pre-1.0 breaking
@@ -79,9 +95,12 @@ deno task benchmark
 deno test
 ```
 
-`deno task package-check` compares `deno.jsonc` exports with `packageEntrypoints` and verifies the entrypoint files
-exist. `deno task api-inventory -- --check --quiet --fail-duplicates --min-doc-coverage=1` enforces a duplicate-free
-public re-export graph with 100% JSDoc coverage.
+`deno task package-check` compares `deno.jsonc` exports with `packageEntrypoints`, verifies the entrypoint files exist,
+and reports drift separately for stable, beta, experimental, and internal tiers.
+`deno task api-inventory -- --check
+--quiet --fail-duplicates --min-doc-coverage=1` enforces a duplicate-free stable
+re-export graph with 100% JSDoc coverage. `deno task api-reference > docs/api-reference.md` generates the full
+stable/beta/experimental reference and should continue to show 100% documentation coverage for every public entrypoint.
 
 ## Adding A Public API
 

@@ -4,8 +4,10 @@
 import { type ThemeTokenName, themeTokenNames, type ThemeTokens } from "../theme.ts";
 import { parseAnsiCell } from "./cell_canvas_sink.ts";
 
+/** CSS style object used by lightweight DOM render nodes. */
 export type DomNodeStyle = Record<string, string | number | undefined>;
 
+/** Serializable DOM node description for browser-hosted widgets and tests. */
 export interface DomRenderNode {
   tag?: keyof HTMLElementTagNameMap;
   text?: string;
@@ -18,11 +20,13 @@ export interface DomRenderNode {
   children?: readonly DomRenderNode[];
 }
 
+/** Snapshot of mounted DOM target state. */
 export interface DomRenderTargetInspection {
   mounted: boolean;
   nodeCount: number;
 }
 
+/** Minimal DOM renderer that replaces a mounted node tree from render descriptors. */
 export class DomRenderTarget {
   readonly #document: Document;
   #root?: HTMLElement;
@@ -89,6 +93,7 @@ export class DomRenderTarget {
   }
 }
 
+/** Renders a DOM node descriptor to an escaped HTML string. */
 export function renderDomNodeToHtml(node: DomRenderNode): string {
   const tag = node.tag ?? "div";
   const attributes = domAttributes(node);
@@ -97,6 +102,7 @@ export function renderDomNodeToHtml(node: DomRenderNode): string {
   return `<${tag}${attributes}>${text}${children}</${tag}>`;
 }
 
+/** Converts terminal theme token functions into CSS custom properties. */
 export function themeTokensToCssVariables(
   tokens: ThemeTokens | { tokens: ThemeTokens },
   sample = "M",
@@ -111,6 +117,7 @@ export function themeTokensToCssVariables(
   return variables;
 }
 
+/** Applies CSS custom properties to a DOM element. */
 export function applyCssVariables(element: HTMLElement, variables: Record<string, string>): void {
   for (const [name, value] of Object.entries(variables)) {
     element.style.setProperty(name, value);

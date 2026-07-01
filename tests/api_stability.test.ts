@@ -70,7 +70,16 @@ Deno.test("package export validation compares deno export maps with the stabilit
     { exists: () => true },
   );
   assertEquals(valid.ok, true);
-  assertEquals(formatPackageExportValidation(valid), "ok package exports match the stability manifest");
+  assertEquals(
+    formatPackageExportValidation(valid),
+    [
+      "ok package exports match the stability manifest",
+      "stable: ok",
+      "beta: ok",
+      "experimental: ok",
+      "internal: ok",
+    ].join("\n"),
+  );
 
   const invalid = validatePackageExports(
     {
@@ -88,4 +97,11 @@ Deno.test("package export validation compares deno export maps with the stabilit
   assertEquals(invalid.mismatchedExports, [{ specifier: "./web", expected: "./mod.web.ts", actual: "./wrong.ts" }]);
   assertEquals(invalid.unexpectedExports, ["./extra"]);
   assertEquals(invalid.missingFiles, ["./mod.remote.ts", "./src/layout/solvers/yoga.ts"]);
+  assertEquals(invalid.byStability.stable.ok, true);
+  assertEquals(invalid.byStability.beta.ok, false);
+  assertEquals(invalid.byStability.experimental.ok, false);
+  assertEquals(invalid.byStability.beta.mismatchedExports, [
+    { specifier: "./web", expected: "./mod.web.ts", actual: "./wrong.ts" },
+  ]);
+  assertEquals(invalid.byStability.experimental.missingExports, ["./remote", "./layout/yoga"]);
 });

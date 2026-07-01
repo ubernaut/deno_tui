@@ -5,6 +5,7 @@ import type { CanvasCellSink, CanvasCellUpdate } from "../canvas/sink.ts";
 import type { CanvasRenderStats } from "../canvas/canvas.ts";
 import { stripStyles } from "../utils/strings.ts";
 
+/** Options for drawing terminal cells into a browser Canvas2D surface. */
 export interface BrowserCellCanvasSinkOptions {
   canvas: HTMLCanvasElement | OffscreenCanvas;
   font?: string;
@@ -15,6 +16,7 @@ export interface BrowserCellCanvasSinkOptions {
   devicePixelRatio?: number;
 }
 
+/** Snapshot of browser canvas sink geometry, colors, and last render stats. */
 export interface BrowserCellCanvasSinkInspection {
   columns: number;
   rows: number;
@@ -36,6 +38,7 @@ interface CellCanvasContext {
   setTransform?(a: number, b: number, c: number, d: number, e: number, f: number): void;
 }
 
+/** Parsed display attributes for one ANSI-styled terminal cell. */
 export interface ParsedAnsiCell {
   text: string;
   foreground?: string;
@@ -44,6 +47,7 @@ export interface ParsedAnsiCell {
   dim: boolean;
 }
 
+/** Canvas2D-backed cell sink for browser-hosted TUI rendering. */
 export class BrowserCellCanvasSink implements CanvasCellSink {
   readonly #canvas: HTMLCanvasElement | OffscreenCanvas;
   readonly #context: CellCanvasContext;
@@ -119,6 +123,7 @@ export class BrowserCellCanvasSink implements CanvasCellSink {
   }
 }
 
+/** Parses SGR styling from a single terminal cell string. */
 export function parseAnsiCell(value: string): ParsedAnsiCell {
   const style: ParsedAnsiCell = { text: stripStyles(value), bold: false, dim: false };
   const textIndex = firstPrintableIndex(value);

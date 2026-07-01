@@ -31,6 +31,7 @@ export interface MousePressEvent extends MouseEvent {
   button: 0 | 1 | 2 | undefined;
 }
 
+/** Interface defining mouse wheel scroll events issued to stdin. */
 export interface MouseScrollEvent extends MouseEvent {
   drag: boolean;
   /**
@@ -55,6 +56,7 @@ export interface TerminalFocusEvent {
   buffer: Uint8Array;
 }
 
+/** Union of all decoded terminal input event shapes. */
 export type InputEvent =
   | KeyPressEvent
   | MouseEvent
@@ -63,6 +65,7 @@ export type InputEvent =
   | PasteEvent
   | TerminalFocusEvent;
 
+/** Normalized key name emitted by the input reader. */
 export type Key =
   | Alphabet
   | Chars

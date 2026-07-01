@@ -312,13 +312,13 @@ Work:
 - [ ] Keep `mod.ts`, `mod.web.ts`, and `mod.remote.ts` stable, but consider curated subpath modules for advanced areas:
       `layout`, `runtime`, `theme`, `terminal`, `three-ascii`, `testing`, and `experimental`.
 - [x] Add an API diff report that groups new exports by stability tier before release.
-- [ ] Add package docs that show preferred imports for apps versus framework authors.
+- [x] Add package docs that show preferred imports for apps versus framework authors.
 - [ ] Reduce accidental demo-only exports from stable entrypoints where possible without breaking current users.
 
 Acceptance checks:
 
-- [ ] Package-check reports stable/beta/experimental export drift separately.
-- [ ] API reference groups exports by entrypoint and stability tier.
+- [x] Package-check reports stable/beta/experimental export drift separately.
+- [x] API reference groups exports by entrypoint and stability tier.
 - [ ] Health fails on accidental stable export growth unless explicitly acknowledged.
 
 ### P2: Add Observability And Error Reporting
