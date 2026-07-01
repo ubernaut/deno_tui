@@ -469,6 +469,7 @@ const lineSignals: Signal<string>[] = [];
 const hitTargets = new HitTargetStack<HitAction>();
 const screenFrame: Frame = [];
 const workspaceVirtualFrame: Frame = [];
+const windowContentFrames = new Map<WindowId, Frame>();
 let dropdownOverlay: DropdownOverlay | null = null;
 let threeDragWindow: WindowId | null = null;
 let windowRenderContext: WindowRenderContext | null = null;
@@ -1117,7 +1118,7 @@ function renderWindow(frame: Frame, id: WindowId, rect: Rectangle): void {
   scroll.setViewportSize(viewport.width, viewport.height);
   scroll.setContentSize(contentSize.width, contentSize.height);
   fillRect(frame, inner, t.surface);
-  const contentFrame: Frame = Array.from({ length: contentSize.height }, () => []);
+  const contentFrame = windowContentFrame(id, contentSize.height);
   fillRect(contentFrame, { column: 0, row: 0, width: contentSize.width, height: contentSize.height }, t.surface);
   const contentHitStart = hitTargets.length;
   const previousWindowRenderContext = windowRenderContext;
@@ -1139,6 +1140,15 @@ function titlebarHit(id: WindowId, kind: WorkbenchTitlebarButtonKind): HitAction
   if (kind === "maximize") return { type: "maximize", id };
   if (kind === "close") return { type: "close", id };
   return { type: "restore", id };
+}
+
+function windowContentFrame(id: WindowId, rows: number): Frame {
+  let frame = windowContentFrames.get(id);
+  if (!frame) {
+    frame = [];
+    windowContentFrames.set(id, frame);
+  }
+  return prepareWorkbenchFrame(frame, rows);
 }
 
 function renderWindowContent(frame: Frame, id: WindowId, rect: Rectangle): void {
@@ -3270,6 +3280,7 @@ function closeAllWindowsForWorkspaceLoad(): void {
       }
     }
     windowManager.close(id);
+    windowContentFrames.delete(id);
   }
   if (selectedChanged) selectedCpuHexTiles.value = selected;
   syncWindowSignalsFromManager();
@@ -4067,6 +4078,7 @@ function closeWindow(id: WindowId): void {
     terminalShellInputMode.value = "workbench";
   }
   windowManager.close(id);
+  windowContentFrames.delete(id);
   syncWindowSignalsFromManager();
   pushLog(`close ${windowTitle(id)}`);
 }
