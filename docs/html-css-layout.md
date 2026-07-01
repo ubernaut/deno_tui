@@ -186,6 +186,10 @@ solver for the shared flex subset covered by fixtures:
 - terminal-cell rounding into `ComputedLayoutBox.rect`
 - shared overflow inspection on solved boxes
 
+The same capability list is available at runtime with `inspectTuiCssSupport()`, which returns supported display modes,
+selectors, pseudo states, media features, CSS properties, markup tags, hydrated widget tags, and explicit unsupported
+items.
+
 Yoga is not a general replacement for the default solver. These remain intentionally unsupported or solver-specific:
 
 - CSS Grid: use the default solver for grid tracks, spans, and grid item placement.
@@ -338,6 +342,9 @@ Unsupported for now:
 - named grid lines, `grid-template-areas`, dense packing, subgrid, and full browser Grid behavior
 - complex pseudo classes and pseudo elements
 - browser paint effects such as shadows, filters, and gradients
+
+Use `inspectTuiCssSupport()` when documentation, demos, or authoring tools need the canonical supported subset without
+scraping prose.
 
 ## Layout Output
 

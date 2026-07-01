@@ -8,6 +8,7 @@ import {
   createMarkupLayout,
   hydrateMarkupWidgets,
   InputController,
+  inspectTuiCssSupport,
   LayoutMeasurementCache,
   MarkupWidgetHydrationRegistry,
   matchesCssMedia,
@@ -209,6 +210,19 @@ Deno.test("parseCssStylesheet keeps terminal-cell media query metadata", () => {
   assertEquals(matchesCssMedia(stylesheet.rules[1]!.media, { width: 32, height: 10 }), true);
   assertEquals(matchesCssMedia(stylesheet.rules[1]!.media, { width: 48, height: 10 }), false);
   assertEquals(parseCssMediaQuery("(min-width: 80cells)")?.conditions, [{ feature: "min-width", value: 80 }]);
+});
+
+Deno.test("inspectTuiCssSupport reports the documented HTML/CSS subset", () => {
+  const report = inspectTuiCssSupport();
+
+  assert(report.properties.includes("grid-template-columns"));
+  assert(report.properties.includes("flex-flow"));
+  assert(report.mediaFeatures.includes("max-width"));
+  assert(report.pseudoStates.includes("focus"));
+  assert(report.hydratedWidgetTags.includes("radio-group"));
+  assert(report.hydratedWidgetTags.includes("tree"));
+  assert(report.markupTags.includes("three-ascii"));
+  assert(report.unsupported.includes("grid-template-areas"));
 });
 
 Deno.test("createMarkupLayout applies media rules from layout bounds", () => {

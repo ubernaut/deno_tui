@@ -831,6 +831,9 @@ absolute-positioned children, width/height/min/max sizing, padding, margin, bord
 tag/class/id selectors, child and descendant selectors, focus/active/disabled/hover pseudo states, and controller
 hydration for common controls.
 
+`inspectTuiCssSupport()` returns the same supported properties, selectors, media features, widget tags, and unsupported
+browser-CSS gaps for docs and authoring tools.
+
 For the full supported subset, output shape, solver notes, and limitations, see
 [HTML/CSS-Style Layout](./docs/html-css-layout.md).
 

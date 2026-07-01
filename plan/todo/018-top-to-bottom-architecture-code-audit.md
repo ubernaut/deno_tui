@@ -213,7 +213,7 @@ Acceptance checks:
   - [x] Added a separate deterministic readback-copy benchmark for fill, edge, and color buffer payloads.
   - [x] Added a sparse ANSI grid benchmark that exercises blank-cell skipping separately from dense geometry.
   - [x] Added a solid repeated-color ANSI grid benchmark for block-heavy scenes that benefit from cell string reuse.
-- [ ] Workbench and standalone Three demos share the same config normalization and lifecycle helpers.
+- [x] Workbench and standalone Three demos share the same config normalization and lifecycle helpers.
   - [x] Clamped normalized ASCII numeric config values to the same ranges exposed by shared controls, including
         wireframe thickness `0.5..32`, so saved per-widget configs cannot restore invalid renderer settings.
   - [x] Moved ASCII renderer config defaults, preset application, control ranges, and normalization into
@@ -310,6 +310,8 @@ Work:
         to the shared overflow inspection.
 - [x] Move demo-specific hydrated widget examples into reusable fixture/demo modules.
 - [x] Expand Yoga parity tests and document unsupported CSS explicitly.
+  - [x] Added `inspectTuiCssSupport()` as a canonical programmatic support report covering CSS properties, selectors,
+        media features, widget tags, and unsupported browser-CSS gaps so docs and demos do not need to scrape prose.
 
 Acceptance checks:
 
