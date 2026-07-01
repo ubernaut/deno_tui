@@ -10294,6 +10294,13 @@
     },
     {
       "module": "src/runtime/terminal_workspace.ts",
+      "name": "DuplicateTerminalWorkspaceSessionOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/runtime/terminal_workspace.ts",
       "name": "SplitTerminalWorkspacePaneOptions",
       "kind": "interface",
       "typeOnly": true,

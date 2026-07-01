@@ -186,6 +186,52 @@ Deno.test("terminal workspace controller syncs runtime titles without replacing 
   workspace.dispose();
 });
 
+Deno.test("terminal workspace controller duplicates and detaches sessions", () => {
+  let now = 10;
+  const workspace = createTerminalWorkspaceController({ now: () => now });
+  workspace.add(
+    commandTerminalTemplate({
+      id: "server",
+      title: "Dev Server",
+      command: "deno",
+      args: ["task", "dev"],
+      cwd: "/repo",
+      reconnectable: true,
+      restartPolicy: "on-failure",
+    }),
+    { status: "running", running: true, backendId: "pty" },
+  );
+
+  now = 20;
+  const duplicate = workspace.duplicate("server", { title: "Second Server" });
+  assertEquals(duplicate?.id, "server-copy");
+  assertEquals(duplicate?.title, "Second Server");
+  assertEquals(duplicate?.template.id, "server-copy");
+  assertEquals(duplicate?.template.title, "Second Server");
+  assertEquals(duplicate?.commandLine, "deno task dev");
+  assertEquals(duplicate?.status, "idle");
+  assertEquals(duplicate?.running, false);
+  assertEquals(duplicate?.createdAt, 20);
+  assertEquals(workspace.inspect().activeId, "server-copy");
+
+  now = 30;
+  assertEquals(workspace.detach("server"), true);
+  let source = workspace.inspect().sessions.find((session) => session.id === "server");
+  assertEquals(source?.detached, true);
+  assertEquals(source?.reconnectable, true);
+  assertEquals(source?.running, false);
+  assertEquals(source?.updatedAt, 30);
+
+  now = 40;
+  assertEquals(workspace.attach("server"), true);
+  source = workspace.inspect().sessions.find((session) => session.id === "server");
+  assertEquals(source?.detached, false);
+  assertEquals(source?.updatedAt, 40);
+  assertEquals(workspace.inspect().activeId, "server");
+
+  workspace.dispose();
+});
+
 Deno.test("terminal workspace controller manages split pane layout", () => {
   const workspace = createTerminalWorkspaceController({ now: () => 1 });
   workspace.add(shellTerminalTemplate({ id: "shell-main", shell: "bash" }));
@@ -281,6 +327,9 @@ Deno.test("terminal workspace commands drive pane operations", async () => {
     ["terminalWorkspace.previousPane", true],
     ["terminalWorkspace.growActive", true],
     ["terminalWorkspace.shrinkActive", true],
+    ["terminalWorkspace.duplicateSession", false],
+    ["terminalWorkspace.detachSession", true],
+    ["terminalWorkspace.attachSession", true],
   ]);
 
   assertEquals(await registry.execute("terminal.main.split.row", (action) => void actions.push(action)), true);
@@ -306,6 +355,9 @@ Deno.test("terminal workspace commands drive pane operations", async () => {
   assertEquals(await registry.execute("terminal.main.closePane", (action) => void actions.push(action)), true);
   assertEquals(actions[4]?.type, "terminalWorkspace.paneClosed");
   assertEquals(workspace.inspectLayout().count, 1);
+  assertEquals(await registry.execute("terminal.main.duplicateSession", (action) => void actions.push(action)), true);
+  assertEquals(actions[5]?.type, "terminalWorkspace.sessionDuplicated");
+  assertEquals(workspace.inspect().sessions.map((session) => session.id), ["shell-main", "logs", "logs-copy"]);
 
   dispose();
   assertEquals(registry.list("terminal"), []);

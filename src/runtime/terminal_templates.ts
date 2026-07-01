@@ -91,6 +91,7 @@ export interface TerminalSessionDescriptor {
   commandLine?: string;
   status?: TerminalSessionHandleInspection["status"];
   running?: boolean;
+  detached?: boolean;
   columns?: number;
   rows?: number;
   reconnectable: boolean;

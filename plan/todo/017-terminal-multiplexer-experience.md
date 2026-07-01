@@ -51,6 +51,8 @@ developer workflows.
   console and browser renderers.
 - Added app command adapters for terminal workspace pane operations: split row/column, focus next/previous, zoom,
   resize, and close pane.
+- Added renderer-neutral session-tab lifecycle operations for duplicate, detach, and reattach, plus command adapter
+  entries so command palettes and future workbench bindings can drive those actions without renderer-specific state.
 - Extended `TerminalScreenController` SGR handling to cover 256-color, truecolor, and bright foreground/background
   styles while preserving existing cell inspection shape.
 - Added terminal cursor save/restore support for CSI `s`/`u` and legacy ESC `7`/`8` sequences.

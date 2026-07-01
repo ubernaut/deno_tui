@@ -48,7 +48,10 @@ export type TerminalWorkspaceCommandKind =
   | "nextPane"
   | "previousPane"
   | "growActive"
-  | "shrinkActive";
+  | "shrinkActive"
+  | "duplicateSession"
+  | "detachSession"
+  | "attachSession";
 
 /** Action union emitted by terminal workspace command helpers. */
 export type TerminalWorkspaceCommandAction =
@@ -56,7 +59,10 @@ export type TerminalWorkspaceCommandAction =
   | Action<"terminalWorkspace.zoomChanged", TerminalWorkspaceCommandPayload>
   | Action<"terminalWorkspace.paneClosed", TerminalWorkspaceCommandPayload>
   | Action<"terminalWorkspace.paneActivated", TerminalWorkspaceCommandPayload>
-  | Action<"terminalWorkspace.paneResized", TerminalWorkspaceCommandPayload & { delta: number }>;
+  | Action<"terminalWorkspace.paneResized", TerminalWorkspaceCommandPayload & { delta: number }>
+  | Action<"terminalWorkspace.sessionDuplicated", TerminalWorkspaceCommandPayload>
+  | Action<"terminalWorkspace.sessionDetached", TerminalWorkspaceCommandPayload>
+  | Action<"terminalWorkspace.sessionAttached", TerminalWorkspaceCommandPayload>;
 
 /** Payload carried by terminal workspace command actions. */
 export interface TerminalWorkspaceCommandPayload {
@@ -78,6 +84,7 @@ export interface TerminalWorkspaceCommandOptions {
   includeClosePane?: boolean;
   includeFocusCommands?: boolean;
   includeResizeCommands?: boolean;
+  includeSessionCommands?: boolean;
   labels?: Partial<Record<TerminalWorkspaceCommandKind, string>>;
 }
 
@@ -311,6 +318,61 @@ export function terminalWorkspaceCommands<TAction extends Action = TerminalWorks
     );
   }
 
+  if (options.includeSessionCommands ?? true) {
+    commands.push(
+      {
+        id: `${idPrefix}.duplicateSession`,
+        label: label("duplicateSession", "Duplicate Terminal Session"),
+        group,
+        keywords: ["terminal", "workspace", "session", "tab", "duplicate", "copy"],
+        disabled: () => !workspace.inspect().activeId,
+        action: () => {
+          const duplicate = workspace.duplicate(workspace.inspect().activeId);
+          return {
+            type: "terminalWorkspace.sessionDuplicated",
+            payload: terminalWorkspacePayload(workspace, id, undefined, duplicate?.id),
+          } as TAction;
+        },
+      },
+      {
+        id: `${idPrefix}.detachSession`,
+        label: label("detachSession", "Detach Terminal Session"),
+        group,
+        keywords: ["terminal", "workspace", "session", "tab", "detach"],
+        disabled: () => {
+          const active = workspace.inspect().active;
+          return !active || active.detached === true || !active.reconnectable;
+        },
+        action: () => {
+          const sessionId = workspace.inspect().activeId;
+          if (sessionId) workspace.detach(sessionId);
+          return {
+            type: "terminalWorkspace.sessionDetached",
+            payload: terminalWorkspacePayload(workspace, id, undefined, sessionId),
+          } as TAction;
+        },
+      },
+      {
+        id: `${idPrefix}.attachSession`,
+        label: label("attachSession", "Attach Terminal Session"),
+        group,
+        keywords: ["terminal", "workspace", "session", "tab", "attach", "reconnect"],
+        disabled: () => workspace.inspect().sessions.every((session) => !session.detached),
+        action: () => {
+          const inspection = workspace.inspect();
+          const sessionId = inspection.active?.detached
+            ? inspection.active.id
+            : inspection.sessions.find((session) => session.detached)?.id;
+          if (sessionId) workspace.attach(sessionId);
+          return {
+            type: "terminalWorkspace.sessionAttached",
+            payload: terminalWorkspacePayload(workspace, id, undefined, sessionId),
+          } as TAction;
+        },
+      },
+    );
+  }
+
   return commands;
 }
 
@@ -382,12 +444,14 @@ function terminalWorkspacePayload(
   workspace: TerminalWorkspaceController,
   id: string,
   paneId = workspace.inspectLayout().activePaneId,
+  sessionIdOverride?: string,
 ): TerminalWorkspaceCommandPayload {
   const inspection = workspace.inspect();
   return {
     id,
     paneId,
-    sessionId: paneId ? inspection.layout.panes.find((pane) => pane.id === paneId)?.sessionId : inspection.activeId,
+    sessionId: sessionIdOverride ??
+      (paneId ? inspection.layout.panes.find((pane) => pane.id === paneId)?.sessionId : inspection.activeId),
     workspace: inspection,
   };
 }

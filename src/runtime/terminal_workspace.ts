@@ -33,6 +33,13 @@ export interface UpsertTerminalWorkspaceSessionOptions {
   activate?: boolean;
 }
 
+/** Options for duplicating an existing terminal workspace descriptor. */
+export interface DuplicateTerminalWorkspaceSessionOptions {
+  id?: string;
+  title?: string;
+  activate?: boolean;
+}
+
 /** Split direction for terminal panes. */
 export type TerminalWorkspaceSplitDirection = "row" | "column";
 
@@ -256,6 +263,46 @@ export class TerminalWorkspaceController {
     return true;
   }
 
+  duplicate(
+    id = this.activeId.peek(),
+    options: DuplicateTerminalWorkspaceSessionOptions = {},
+  ): TerminalSessionDescriptor | undefined {
+    if (!id) return undefined;
+    const sessions = this.sessions.peek();
+    const source = sessions.find((session) => session.id === id);
+    if (!source) return undefined;
+
+    const descriptor = duplicateTerminalSessionDescriptor(source, sessions, options, this.#now());
+    return this.upsert(descriptor, { activate: options.activate ?? true });
+  }
+
+  detach(id = this.activeId.peek()): boolean {
+    if (!id) return false;
+    const sessions = this.sessions.peek();
+    const index = sessions.findIndex((session) => session.id === id);
+    if (index < 0) return false;
+    const descriptor = cloneTerminalSessionDescriptor(sessions[index]!);
+    descriptor.detached = true;
+    descriptor.reconnectable = true;
+    descriptor.running = false;
+    descriptor.updatedAt = this.#now();
+    this.sessions.value = sessions.map((session, sessionIndex) => sessionIndex === index ? descriptor : session);
+    return true;
+  }
+
+  attach(id = this.activeId.peek()): boolean {
+    if (!id) return false;
+    const sessions = this.sessions.peek();
+    const index = sessions.findIndex((session) => session.id === id);
+    if (index < 0) return false;
+    const descriptor = cloneTerminalSessionDescriptor(sessions[index]!);
+    if (!descriptor.detached) return false;
+    descriptor.detached = false;
+    descriptor.updatedAt = this.#now();
+    this.sessions.value = sessions.map((session, sessionIndex) => sessionIndex === index ? descriptor : session);
+    return this.activate(id);
+  }
+
   clear(): void {
     this.sessions.value = [];
     this.activeId.value = undefined;
@@ -420,6 +467,7 @@ function descriptorFromTemplate(
       rows: normalizeDimension(options.rows),
       status: options.status,
       running: options.running,
+      detached: false,
     };
   }
   const commandLine = formatProcessCommandLine(template);
@@ -445,6 +493,35 @@ function cloneTerminalSessionDescriptor(descriptor: TerminalSessionDescriptor): 
     ...descriptor,
     template: cloneTerminalTemplate(descriptor.template),
   };
+}
+
+function duplicateTerminalSessionDescriptor(
+  source: TerminalSessionDescriptor,
+  sessions: readonly TerminalSessionDescriptor[],
+  options: DuplicateTerminalWorkspaceSessionOptions,
+  now: number,
+): TerminalSessionDescriptor {
+  const ids = new Set(sessions.map((session) => session.id));
+  const id = uniqueSessionId(options.id ?? `${source.id}-copy`, ids);
+  const title = options.title ?? `${source.title} Copy`;
+  const template = cloneTerminalTemplate(source.template);
+  template.id = id;
+  template.title = title;
+
+  const descriptor: TerminalSessionDescriptor = {
+    ...cloneTerminalSessionDescriptor(source),
+    id,
+    title,
+    runtimeTitle: undefined,
+    template,
+    status: isSpawnTerminalTemplate(template) ? "idle" : source.status,
+    running: isSpawnTerminalTemplate(template) ? false : source.running,
+    detached: false,
+    createdAt: now,
+    updatedAt: now,
+  };
+  if (isSpawnTerminalTemplate(template)) descriptor.commandLine = formatProcessCommandLine(template);
+  return descriptor;
 }
 
 function shouldAdoptRuntimeTitle(
@@ -857,6 +934,17 @@ function collectLayoutIds(node: TerminalWorkspaceLayoutNode | undefined, ids: Se
 
 function sanitizeLayoutId(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "terminal";
+}
+
+function uniqueSessionId(prefix: string, ids: ReadonlySet<string>): string {
+  const base = sanitizeLayoutId(prefix);
+  let candidate = base;
+  let suffix = 2;
+  while (ids.has(candidate)) {
+    candidate = `${base}-${suffix}`;
+    suffix += 1;
+  }
+  return candidate;
 }
 
 function clampRatio(value: number): number {
