@@ -49,6 +49,7 @@ import {
   ThemeInheritanceError as ThemeInheritanceErrorImplementation,
 } from "./theme_engine.ts";
 import { ThemeLayerStackImplementation } from "./theme_layer_stack.ts";
+import { ThemePackNotFoundErrorImplementation, ThemeRegistryImplementation } from "./theme_registry.ts";
 
 /** Function that's supposed to return styled text given string as parameter */
 export type Style = StyleInternal;
@@ -807,73 +808,22 @@ export interface ThemeCatalog {
 export class ThemeLayerStack extends ThemeLayerStackImplementation {}
 
 /** Registry for storing and querying theme definitions. */
-export class ThemeRegistry {
-  readonly #packs = new Map<string, ThemePack>();
-
+export class ThemeRegistry extends ThemeRegistryImplementation {
   constructor(packs: Iterable<ThemePack> = []) {
-    for (const pack of packs) {
-      this.register(pack);
-    }
-  }
-
-  register(pack: ThemePack): this {
-    this.#packs.set(pack.id, {
-      ...pack,
-      options: pack.options ? composeThemeOptions(pack.options) : undefined,
+    super(packs, {
+      createEngine: (pack, overrides) => createThemeEngine(pack.palette ?? "plain", overrides),
+      paletteId: (palette) => themePaletteIdInternal(palette ?? "plain"),
+      createNotFoundError: (id) => new ThemePackNotFoundError(id),
     });
-    return this;
   }
 
-  has(id: string): boolean {
-    return this.#packs.has(id);
-  }
-
-  get(id: string): ThemePack | undefined {
-    const pack = this.#packs.get(id);
-    return pack
-      ? {
-        ...pack,
-        options: pack.options ? composeThemeOptions(pack.options) : undefined,
-      }
-      : undefined;
-  }
-
-  ids(): string[] {
-    return [...this.#packs.keys()].sort();
-  }
-
-  engine(id: string, overrides: ThemeEngineOptions = {}): ThemeEngine {
-    const pack = this.#packs.get(id);
-    if (!pack) {
-      throw new ThemePackNotFoundError(id);
-    }
-
-    return createThemeEngine(
-      pack.palette ?? "plain",
-      composeThemeOptions(pack.options ?? {}, overrides),
-    );
-  }
-
-  inspect(): ThemePackInspection[] {
-    return this.ids().map((id) => {
-      const pack = this.#packs.get(id)!;
-      return {
-        id,
-        label: pack.label ?? id,
-        palette: themePaletteIdInternal(pack.palette ?? "plain"),
-        components: this.engine(id).inspect().components,
-      };
-    });
+  override engine(id: string, overrides: ThemeEngineOptions = {}): ThemeEngine {
+    return super.engine(id, overrides) as ThemeEngine;
   }
 }
 
 /** Error thrown for invalid theme Pack Not Found operations. */
-export class ThemePackNotFoundError extends Error {
-  constructor(id: string) {
-    super(`Theme pack "${id}" is not registered`);
-    this.name = "ThemePackNotFoundError";
-  }
-}
+export class ThemePackNotFoundError extends ThemePackNotFoundErrorImplementation {}
 
 /** Options for configuring theme Provider. */
 export interface ThemeProviderOptions {

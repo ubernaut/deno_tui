@@ -432,6 +432,8 @@ Work:
         `src/theme.ts` as the compatibility facade while covering the module boundary with direct tests.
   - [x] Extracted ordered theme layer composition into `src/theme_layer_stack.ts`, preserving the stable facade class
         while making layer enablement, composition, and inspection directly testable.
+  - [x] Extracted theme pack registry storage and lookup into `src/theme_registry.ts`, preserving facade class and error
+        identity while making pack inspection, overrides, and missing-pack behavior directly testable.
 - [x] Add caches for resolved style chains and preview generation with explicit invalidation tests.
   - [x] Extended `ThemeProviderCache` with preview caching, active theme/layer invalidation, and uncached
         function-variant previews.
