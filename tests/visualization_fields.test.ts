@@ -2,8 +2,10 @@ import { assertEquals, assertStringIncludes } from "./deps.ts";
 import { emptySnapshot } from "../app/system_metrics_snapshot.ts";
 import { buildVisualizationDrive } from "../app/visualization_drive.ts";
 import {
+  biosignalStrip,
   channelMatrix,
   circularField,
+  componentIndex,
   harmonicField,
   heatmap,
   liveFeed,
@@ -11,6 +13,7 @@ import {
   psychograph,
   routeBoard,
   tacticalMap,
+  telemetryRack,
 } from "../app/visualization_fields.ts";
 
 const drive = buildVisualizationDrive(
@@ -50,6 +53,9 @@ Deno.test("visualization fields render bounded multiline text", () => {
     networkTopology(24, 6, drive),
     liveFeed(24, 6, drive),
     channelMatrix(24, 6, drive),
+    telemetryRack(24, 6, drive, [" ", "░", "▒", "▓", "█"]),
+    biosignalStrip(24, 6, drive),
+    componentIndex(24, 6, drive, ["alpha", "beta", "gamma"]),
   ];
 
   for (const field of fields) {
@@ -66,4 +72,7 @@ Deno.test("visualization fields render bounded multiline text", () => {
   assertStringIncludes(fields[6], "●");
   assertStringIncludes(fields[7], "│");
   assertStringIncludes(fields[8], "│");
+  assertStringIncludes(fields[9], "CPU");
+  assertStringIncludes(fields[10], "PULSE");
+  assertStringIncludes(fields[11], "ALPHA");
 });

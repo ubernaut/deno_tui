@@ -1,7 +1,28 @@
 import { clamp } from "./styles.ts";
 import { moduloUnit, sampleSeries } from "./visualization_drive.ts";
 import type { VisualizationDrive } from "./visualization_drive.ts";
-import { clampInt, createMatrix, drawEllipse, drawLine, renderMatrix, setCell } from "./visualization_primitives.ts";
+import {
+  barChart,
+  clampInt,
+  createMatrix,
+  crop,
+  drawEllipse,
+  drawLine,
+  gridify,
+  miniMeter,
+  monitorGlyph,
+  renderMatrix,
+  setCell,
+  signalChart,
+} from "./visualization_primitives.ts";
+
+function normalizeFieldRows(lines: readonly string[], width: number, height: number) {
+  const rows = lines.slice(0, Math.max(1, height)).map((line) => crop(line, width).padEnd(width, " "));
+  while (rows.length < height) {
+    rows.push(" ".repeat(width));
+  }
+  return rows.join("\n");
+}
 
 export function harmonicField(width: number, height: number, drive: VisualizationDrive, glyph: string) {
   const matrix = createMatrix(width, height, " ");
@@ -294,4 +315,59 @@ export function channelMatrix(width: number, height: number, drive: Visualizatio
     }
   });
   return renderMatrix(matrix);
+}
+
+export function telemetryRack(
+  width: number,
+  height: number,
+  drive: VisualizationDrive,
+  blocks: readonly string[],
+) {
+  const lines: string[] = [];
+  const meterWidth = Math.max(4, Math.min(12, width - 18));
+  const sourceLines = Math.min(drive.sources.length, Math.max(1, Math.min(3, height - 2)));
+  for (let index = 0; index < sourceLines; index += 1) {
+    const source = drive.sources[index]!;
+    lines.push(
+      `${crop(source.source.name.toUpperCase(), 8).padEnd(8, " ")} ${
+        miniMeter(source.normalizedValue, meterWidth, drive.hazard)
+      } ${Math.round(source.normalizedValue * 100).toString().padStart(3, " ")}`,
+    );
+  }
+  const chartHeight = Math.max(1, height - lines.length);
+  const chart = barChart(drive.pulseSeries, width, chartHeight, blocks);
+  return normalizeFieldRows([...lines, ...chart.split("\n")], width, height);
+}
+
+export function biosignalStrip(width: number, height: number, drive: VisualizationDrive) {
+  const header = height >= 6
+    ? [
+      `PULSE ${(drive.current * 100).toFixed(0)}%  NOISE ${(drive.volatility * 100).toFixed(0)}%  Δ${
+        (drive.divergence * 100).toFixed(0)
+      }%`,
+    ]
+    : [];
+  const chartHeight = Math.max(2, height - header.length);
+  return normalizeFieldRows(
+    [...header, ...signalChart(drive.pulseSeries, width, chartHeight, monitorGlyph(drive, "phosphor")).split("\n")],
+    width,
+    height,
+  );
+}
+
+export function componentIndex(
+  width: number,
+  height: number,
+  drive: VisualizationDrive,
+  labels: readonly string[],
+) {
+  const header = `INDEX ${(drive.current * 100).toFixed(0)}%  Δ${
+    (drive.divergence * 100).toFixed(0)
+  }  SRC ${drive.activeCount}/${drive.sources.length}`;
+  const entries = labels.map((label, index) => {
+    const pulse = drive.pulseSeries[index % drive.pulseSeries.length] ?? drive.current;
+    const marker = pulse >= 0.82 ? "█" : pulse >= 0.6 ? "▓" : pulse >= 0.36 ? "▒" : "░";
+    return `${marker} ${label.toUpperCase()}`;
+  });
+  return normalizeFieldRows([header, ...gridify(entries, width).split("\n")], width, height);
 }

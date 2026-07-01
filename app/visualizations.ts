@@ -10,8 +10,10 @@ import { buildVisualizationDrive, fallbackSource, type VisualizationDrive } from
 import { driveThreeSignal } from "./visualization_three_signal.ts";
 import { cpuActivityRgb, cpuHexGridColumnCount, cpuHexTileLayout, renderCpuHexGrid } from "./visualization_cpu_hex.ts";
 import {
+  biosignalStrip,
   channelMatrix,
   circularField,
+  componentIndex,
   harmonicField,
   heatmap,
   liveFeed,
@@ -19,18 +21,11 @@ import {
   psychograph,
   routeBoard,
   tacticalMap,
+  telemetryRack,
 } from "./visualization_fields.ts";
 import { renderGpuChipMonitor, renderGpuCombinedMonitor, renderGpuMemoryMonitor } from "./visualization_gpu.ts";
 import { renderNetworkMonitor } from "./visualization_network.ts";
-import {
-  barChart,
-  crop,
-  gridify,
-  miniMeter,
-  monitorGlyph,
-  plotHistory,
-  signalChart,
-} from "./visualization_primitives.ts";
+import { barChart, crop, miniMeter, monitorGlyph, plotHistory, signalChart } from "./visualization_primitives.ts";
 import {
   renderCpuLegend,
   renderCpuMonitor,
@@ -382,7 +377,7 @@ function renderChannelMatrix(context: RenderContext): PanelRender {
 function renderTelemetryRack(context: RenderContext): PanelRender {
   const drive = buildVisualizationDrive(context, Math.max(24, context.width));
   return {
-    body: telemetryRack(Math.max(12, context.width), Math.max(4, context.height), drive),
+    body: telemetryRack(Math.max(12, context.width), Math.max(4, context.height), drive, THREE_FALLBACK_BLOCKS),
     footer: sourceFooter(context.sources),
     alert: alertText(context) || driveAlert(drive),
     accent: drive.hazard >= 0.88 ? "alarm" : hottestAccent(context.sources),
@@ -515,7 +510,12 @@ function renderNetworkTopology(context: RenderContext): PanelRender {
 function renderComponentIndex(context: RenderContext): PanelRender {
   const drive = buildVisualizationDrive(context, Math.max(24, context.width));
   return {
-    body: componentIndex(Math.max(18, context.width), Math.max(4, context.height), drive),
+    body: componentIndex(
+      Math.max(18, context.width),
+      Math.max(4, context.height),
+      drive,
+      neonDemos.map((demo) => demo.title),
+    ),
     footer: sourceFooter(context.sources),
     alert: drive.hazard >= 0.92 ? "SUITE SATURATION" : "",
     accent: "amber",
@@ -597,45 +597,4 @@ function sourceWarnings(sources: SourceFrame[], drive: VisualizationDrive) {
 
 function sourceNameMatrix(sources: SourceFrame[]) {
   return sources.map((source) => crop(source.name.toUpperCase(), 8)).join(" / ");
-}
-
-function telemetryRack(width: number, height: number, drive: VisualizationDrive) {
-  const lines: string[] = [];
-  const meterWidth = Math.max(4, Math.min(12, width - 18));
-  const sourceLines = Math.min(drive.sources.length, Math.max(1, Math.min(3, height - 2)));
-  for (let index = 0; index < sourceLines; index += 1) {
-    const source = drive.sources[index]!;
-    lines.push(
-      `${crop(source.source.name.toUpperCase(), 8).padEnd(8, " ")} ${
-        miniMeter(source.normalizedValue, meterWidth, drive.hazard)
-      } ${Math.round(source.normalizedValue * 100).toString().padStart(3, " ")}`,
-    );
-  }
-  const chartHeight = Math.max(1, height - lines.length);
-  const chart = barChart(drive.pulseSeries, width, chartHeight, THREE_FALLBACK_BLOCKS);
-  return [...lines, chart].join("\n");
-}
-
-function biosignalStrip(width: number, height: number, drive: VisualizationDrive) {
-  const header = height >= 6
-    ? [
-      `PULSE ${(drive.current * 100).toFixed(0)}%  NOISE ${(drive.volatility * 100).toFixed(0)}%  Δ${
-        (drive.divergence * 100).toFixed(0)
-      }%`,
-    ]
-    : [];
-  const chartHeight = Math.max(2, height - header.length);
-  return [...header, signalChart(drive.pulseSeries, width, chartHeight, monitorGlyph(drive, "phosphor"))].join("\n");
-}
-
-function componentIndex(width: number, height: number, drive: VisualizationDrive) {
-  const header = `INDEX ${(drive.current * 100).toFixed(0)}%  Δ${
-    (drive.divergence * 100).toFixed(0)
-  }  SRC ${drive.activeCount}/${drive.sources.length}`;
-  const entries = neonDemos.map((demo, index) => {
-    const pulse = drive.pulseSeries[index % drive.pulseSeries.length] ?? drive.current;
-    const marker = pulse >= 0.82 ? "█" : pulse >= 0.6 ? "▓" : pulse >= 0.36 ? "▒" : "░";
-    return `${marker} ${demo.title.toUpperCase()}`;
-  });
-  return [header, ...gridify(entries, width).split("\n")].slice(0, Math.max(1, height)).join("\n");
 }
