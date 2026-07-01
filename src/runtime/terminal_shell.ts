@@ -8,6 +8,7 @@ import {
   type ProcessSessionExit,
   type ProcessSessionStatus,
 } from "./process_session.ts";
+import { TerminalScrollbackController, type TerminalScrollbackInspection } from "./terminal_scrollback.ts";
 import { TerminalScreenController, type TerminalScreenInspection } from "./terminal_screen.ts";
 import { shellTerminalTemplate, terminalTemplateToSpawnOptions } from "./terminal_templates.ts";
 
@@ -22,6 +23,7 @@ export interface TerminalShellControllerOptions {
   columns?: number;
   rows?: number;
   scrollbackLimit?: number;
+  scrollbackViewportRows?: number;
   output?: TerminalOutputController;
   screen?: TerminalScreenController;
   now?: () => number;
@@ -42,6 +44,7 @@ export interface TerminalShellInspection {
   rows: number;
   resizeSupported: boolean;
   screen: TerminalScreenInspection;
+  scrollback: TerminalScrollbackInspection;
   exit?: ProcessSessionExit;
   error?: string;
 }
@@ -51,6 +54,7 @@ export class TerminalShellController {
   readonly status = new Signal<ProcessSessionStatus | "starting">("idle");
   readonly output: TerminalOutputController;
   readonly screen: TerminalScreenController;
+  readonly scrollback: TerminalScrollbackController;
   readonly #backend?: TerminalBackend;
   readonly #backendFactory?: () => TerminalBackend | Promise<TerminalBackend>;
   readonly #shell?: string;
@@ -85,6 +89,10 @@ export class TerminalShellController {
         rows: this.#rows,
         scrollbackLimit: options.scrollbackLimit,
       });
+    this.scrollback = new TerminalScrollbackController({
+      screen: this.screen,
+      viewportRows: options.scrollbackViewportRows ?? this.#rows,
+    });
     this.#command = shellTerminalTemplate({
       shell: this.#shell,
       args: this.#args,
@@ -182,6 +190,7 @@ export class TerminalShellController {
     this.#columns = nextColumns;
     this.#rows = nextRows;
     this.screen.resize(nextColumns, nextRows);
+    this.scrollback.setViewportRows(nextRows);
     void this.#session?.resize(nextColumns, nextRows).then(() => this.#onUpdate?.());
   }
 
@@ -209,6 +218,7 @@ export class TerminalShellController {
       rows: this.#rows,
       resizeSupported: session?.resizeSupported ?? false,
       screen,
+      scrollback: this.scrollback.inspect(),
     };
     if (session?.exit) result.exit = { ...session.exit };
     if (this.#error) result.error = this.#error;

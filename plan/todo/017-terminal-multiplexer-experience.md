@@ -57,6 +57,8 @@ developer workflows.
   including clamped paging, search navigation, and line-range copy selection for future console and browser shell panes.
 - Added terminal scrollback command adapters for copy-mode toggle/exit, line/page navigation, top/bottom jumps, search
   match movement, selection clearing, and selection copy actions.
+- Wired `TerminalShellController` to expose a built-in scrollback/copy-mode controller and inspection snapshot, with
+  viewport sizing kept in sync with shell resize events.
 - Extended `TerminalScreenController` SGR handling to cover 256-color, truecolor, and bright foreground/background
   styles while preserving existing cell inspection shape.
 - Added terminal cursor save/restore support for CSI `s`/`u` and legacy ESC `7`/`8` sequences.

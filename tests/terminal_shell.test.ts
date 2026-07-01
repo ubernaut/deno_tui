@@ -26,10 +26,35 @@ Deno.test("TerminalShellController streams raw backend data into a screen", asyn
   backend.emit("demo$ ");
 
   assertEquals(shell.screen.textRows()[0], "demo$");
+  assertEquals(shell.inspect().scrollback.visibleRows, ["demo$", "", "", ""]);
   assertEquals(shell.inspect().pty, true);
   assertEquals(shell.inspect().backendId, "fake-pty");
   assertEquals(backend.spawned[0]?.command, "bash");
   assertEquals(backend.spawned[0]?.args, ["-l"]);
+
+  await shell.dispose();
+});
+
+Deno.test("TerminalShellController exposes copy-mode scrollback inspection", async () => {
+  const backend = new FakeShellBackend();
+  const shell = new TerminalShellController({
+    backend,
+    columns: 12,
+    rows: 3,
+    scrollbackLimit: 5,
+  });
+
+  await shell.start();
+  backend.emit("one\ntwo\nthree\nfour\nfive");
+
+  assertEquals(shell.inspect().scrollback.visibleRows, ["three", "four", "five"]);
+  shell.scrollback.scrollLines(-1);
+  assertEquals(shell.inspect().scrollback.mode, "copy");
+  assertEquals(shell.inspect().scrollback.visibleRows, ["two", "three", "four"]);
+
+  shell.resize(12, 2);
+  assertEquals(shell.inspect().scrollback.viewportRows, 2);
+  assertEquals(shell.inspect().scrollback.visibleRows, ["two", "three"]);
 
   await shell.dispose();
 });
