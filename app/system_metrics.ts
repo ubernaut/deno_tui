@@ -1,6 +1,7 @@
 import { Signal } from "../src/signals/mod.ts";
 import type { DiagnosticsCollector } from "../src/runtime/diagnostics.ts";
 import { clamp } from "./styles.ts";
+import { type CpuTimes, sampleCpuStatRows } from "./system_metrics_cpu.ts";
 import { compactDiagnostics, processDiagnostics } from "./system_metrics_diagnostics.ts";
 import { parseDfDiskRows } from "./system_metrics_disk.ts";
 import { NvidiaSmiGpuMetricsProvider, type SystemGpuMetricsProvider } from "./system_metrics_gpu.ts";
@@ -12,7 +13,6 @@ import {
 import { parseProcessStat, processComparator, type SystemProcessSortKey } from "./system_metrics_process.ts";
 import { collectAlerts, emptySnapshot, pushHistory } from "./system_metrics_snapshot.ts";
 import type {
-  CpuCoreSnapshot,
   DiskSnapshot,
   NetworkSnapshot,
   ProcessSnapshot,
@@ -38,11 +38,6 @@ export {
 export type { SystemProcessSortKey } from "./system_metrics_process.ts";
 
 const COMMAND_OUTPUT_DECODER = new TextDecoder();
-
-type CpuTimes = {
-  total: number;
-  idle: number;
-};
 
 type NetCounters = {
   rxBytes: number;
@@ -285,40 +280,9 @@ export class SystemMonitor {
   }
 
   #sampleCpu(text: string, current: SystemSnapshot) {
-    const rows = text.split("\n").filter((line) => line.startsWith("cpu"));
-    const nextTimes: CpuTimes[] = [];
-    const cores: CpuCoreSnapshot[] = [];
-    let overall = 0;
-    let totalDelta = 1;
-
-    for (const [index, row] of rows.entries()) {
-      const parts = row.trim().split(/\s+/).slice(1).map(Number);
-      const idle = (parts[3] ?? 0) + (parts[4] ?? 0);
-      const total = parts.reduce((sum, value) => sum + value, 0);
-      const previous = this.#cpuTimes[index] ?? { total, idle };
-      const nextTotalDelta = total - previous.total;
-      const idleDelta = idle - previous.idle;
-      const usage = nextTotalDelta > 0 ? clamp(1 - idleDelta / nextTotalDelta, 0, 1) * 100 : 0;
-
-      nextTimes[index] = { total, idle };
-      if (index === 0) {
-        overall = usage;
-        totalDelta = Math.max(1, nextTotalDelta);
-      } else {
-        cores.push({
-          label: String(index - 1),
-          usage,
-        });
-      }
-    }
-
-    this.#cpuTimes = nextTimes;
-
-    return {
-      overall,
-      cores: cores.length > 0 ? cores : current.cpuCores,
-      totalDelta,
-    };
+    const sample = sampleCpuStatRows(text, this.#cpuTimes, current.cpuCores);
+    this.#cpuTimes = sample.times;
+    return sample;
   }
 
   #sampleNetwork(text: string) {
