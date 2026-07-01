@@ -17,6 +17,7 @@ import {
   runTaskBatch,
   standardThemeComponentNames,
   TableController,
+  TextObject,
   textWidth,
   tileRects,
   visibleListRows,
@@ -139,6 +140,127 @@ function runCanvasOverlapWorkload(): void {
   if ((sink.lastStats?.flushedCells ?? 0) === 0) {
     throw new Error("canvas overlap workload did not flush any cells");
   }
+}
+
+function runApiWorkbenchFrameWorkload(): void {
+  const sink = new MemoryCanvasSink();
+  const canvas = new Canvas({
+    sink,
+    size: { columns: 168, rows: 52 },
+  });
+
+  drawWorkbenchText(canvas, "API WORKBENCH  [File] View Layout Theme Help", 0, 0, 168);
+  drawWorkbenchText(canvas, "F10 menu  N new  Shift+T themes  G config  Q quit", 0, 50, 168);
+
+  const panes = [
+    { title: "INSPECTOR", column: 1, row: 2, width: 70, height: 21 },
+    { title: "DATA TABLE", column: 73, row: 2, width: 94, height: 21 },
+    { title: "CONTROLS", column: 1, row: 24, width: 70, height: 22 },
+    { title: "LOGS", column: 73, row: 24, width: 94, height: 22 },
+  ];
+
+  for (const [paneIndex, pane] of panes.entries()) {
+    new BoxObject({
+      canvas,
+      style: emptyStyle,
+      zIndex: paneIndex,
+      rectangle: pane,
+      filler: " ",
+    }).draw();
+    drawWorkbenchText(canvas, `[${pane.title}]`, pane.column + 2, pane.row, Math.min(18, pane.width - 4), 20);
+    drawWorkbenchText(canvas, "[-] [□] [↻] [x]", pane.column + pane.width - 18, pane.row, 17, 20);
+  }
+
+  for (let row = 0; row < 15; row += 1) {
+    drawWorkbenchText(
+      canvas,
+      `${row === 0 ? ">" : " "} Surface ${row.toString().padStart(2, "0")}  ${
+        ["runtime", "layout", "data", "theme"][row % 4]
+      }  ${["ready", "active", "queued", "tracked"][row % 4]}  ${row * 7}ms`,
+      75,
+      5 + row,
+      88,
+      30,
+    );
+  }
+
+  const controlRows = [
+    "[ Run Action ] presses=0",
+    "Slider     ████████░░░░░░  6/10",
+    "Checkbox   ✓ live   x compact",
+    "Radio      > Fast",
+    "Combo      Unit-01 Signal",
+    "Dropdown   [ Diagnostics v]",
+    "Input      deno task health",
+    "Textbox    Editable notes / click controls or type here",
+    "Progress   ███████░░░░ 42%",
+  ];
+  for (const [index, text] of controlRows.entries()) {
+    drawWorkbenchText(canvas, text, 4, 27 + index, 64, 30);
+  }
+
+  for (let row = 0; row < 18; row += 1) {
+    drawWorkbenchText(
+      canvas,
+      `log ${row.toString().padStart(2, "0")} workbench controller rendered synthetic row with wrapped diagnostics`,
+      75,
+      27 + row,
+      88,
+      30,
+    );
+  }
+
+  canvas.render();
+  sink.clear();
+
+  drawWorkbenchText(canvas, "recent action: render tick updated table selection", 4, 18, 64, 40);
+  drawWorkbenchText(canvas, "> Surface 07  data     selected  49ms", 75, 12, 88, 40);
+  canvas.render();
+
+  const modal = new BoxObject({
+    canvas,
+    style: emptyStyle,
+    zIndex: 1_000,
+    rectangle: { column: 45, row: 14, width: 78, height: 16 },
+    filler: " ",
+  });
+  modal.draw();
+  drawWorkbenchText(canvas, "HELP", 48, 15, 12, 1_001);
+  drawWorkbenchText(
+    canvas,
+    "Keyboard: arrows move focus, Tab cycles windows, Enter activates controls.",
+    48,
+    18,
+    72,
+    1_001,
+  );
+  drawWorkbenchText(canvas, "Mouse: click rows, drag sliders, wheel scrolls active windows.", 48, 20, 72, 1_001);
+  drawWorkbenchText(canvas, "[ Cancel ]  [ Apply ]  [ OK ]", 68, 27, 34, 1_001);
+  canvas.render();
+  modal.erase();
+  canvas.render();
+
+  if ((sink.lastStats?.flushedCells ?? 0) === 0) {
+    throw new Error("API Workbench frame workload did not flush any cells");
+  }
+}
+
+function drawWorkbenchText(
+  canvas: Canvas,
+  value: string,
+  column: number,
+  row: number,
+  width: number,
+  zIndex = 10,
+): void {
+  new TextObject({
+    canvas,
+    style: emptyStyle,
+    zIndex,
+    value: cropToWidth(value.padEnd(width), width),
+    overwriteRectangle: true,
+    rectangle: { column, row, width },
+  }).draw();
 }
 
 class BenchmarkMetricsProvider implements SystemMetricsProvider {
@@ -339,6 +461,16 @@ export const benchmarkCases: BenchmarkCase[] = [
     iterations: 30,
     maxAverageMs: 75,
     run: runCanvasOverlapWorkload,
+  },
+  {
+    name: "render/api-workbench-frame",
+    category: "render",
+    description:
+      "Render a deterministic API Workbench-style frame with panes, tables, controls, logs, and modal churn.",
+    tags: ["render", "canvas", "workbench", "windows"],
+    iterations: 35,
+    maxAverageMs: 35,
+    run: runApiWorkbenchFrameWorkload,
   },
   {
     name: "render/ansi-text-measure-crop-250",

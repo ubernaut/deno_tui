@@ -71,7 +71,7 @@ Work:
 
 - [x] Add benchmarks for `Canvas` with many overlapping windows, moving overlays, full-screen modal open/close, and
       resize churn.
-- [ ] Add a deterministic API Workbench render benchmark using fixed signals and synthetic windows.
+- [x] Add a deterministic API Workbench render benchmark using fixed signals and synthetic windows.
 - [x] Add text measurement/cropping benchmarks for ANSI-heavy table/list rows and button-heavy titlebars.
 - [x] Add system monitor fixture benchmarks for CPU/process/network parsing without touching live `/proc`.
 - [x] Add Three ASCII CPU-side grid assembly/readback benchmarks with an injectable renderer or captured buffers.
