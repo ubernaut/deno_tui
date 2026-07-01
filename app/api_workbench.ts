@@ -476,7 +476,7 @@ let threeDragWindow: WindowId | null = null;
 let windowRenderContext: WindowRenderContext | null = null;
 let workspacePlacementContext: WorkspacePlacementContext | null = null;
 const drawScheduler = new MicrotaskScheduler();
-let renderedVisualizationThreePanels = new Set<VisualizationWindowId>();
+const renderedVisualizationThreePanels = new Set<VisualizationWindowId>();
 type Frame = WorkbenchFrame;
 interface DropdownOverlay {
   kind: "control" | "theme" | "newWindow" | "workspace";
@@ -1028,7 +1028,7 @@ function menuItemRect(menuStart: number, itemId: string, preferredWidth: number,
 function renderWorkspace(frame: Frame): void {
   const bounds = { column: 0, row: 3, width: currentWidth(), height: Math.max(0, currentHeight() - 5) };
   fillRect(frame, bounds, theme().backgroundSoft);
-  renderedVisualizationThreePanels = new Set();
+  renderedVisualizationThreePanels.clear();
   if (bounds.width < 2 || bounds.height < 1) {
     setThreeBodyRect({ column: 0, row: 0, width: 0, height: 0 });
     setThreeGraphicsRect({ column: 0, row: 0, width: 0, height: 0 });
@@ -1059,7 +1059,7 @@ function renderWorkspace(frame: Frame): void {
   if (visible.length === 0) {
     setThreeBodyRect({ column: 0, row: 0, width: 0, height: 0 });
     setThreeGraphicsRect({ column: 0, row: 0, width: 0, height: 0 });
-    hideVisualizationThreePanelsExcept(new Set());
+    hideVisualizationThreePanelsExcept(renderedVisualizationThreePanels);
     write(frame, bounds.row + 1, 2, paint(emptyWorkspaceMessage(), { fg: theme().warn }));
     renderShelf(frame);
     return;
@@ -2692,7 +2692,7 @@ function hideVisualizationThreePanel(id: VisualizationWindowId): void {
   setSignalRect(entry.graphicsRectangle, { column: 0, row: 0, width: 0, height: 0 });
 }
 
-function hideVisualizationThreePanelsExcept(visibleIds: Set<VisualizationWindowId>): void {
+function hideVisualizationThreePanelsExcept(visibleIds: ReadonlySet<VisualizationWindowId>): void {
   for (const id of visualizationThreePanels.keys()) {
     if (!visibleIds.has(id)) hideVisualizationThreePanel(id);
   }
