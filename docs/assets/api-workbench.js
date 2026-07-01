@@ -4275,6 +4275,236 @@ var LayoutMeasurementCache = class {
   }
 };
 
+// src/layout/solvers/simple_grid.ts
+function placeGridChildren(children, bounds) {
+  const placed = /* @__PURE__ */ new Map();
+  const occupied = /* @__PURE__ */ new Set();
+  const autoColumns = bounds.columns > 0 ? bounds.columns : Math.max(1, Math.ceil(Math.sqrt(children.length)));
+  const autoRows = bounds.rows > 0 ? bounds.rows : Math.max(1, Math.ceil(Math.sqrt(children.length)));
+  const candidates = children.map((child) => ({
+    node: child,
+    columnSpan: gridPlacementSpan(child.style.gridColumn),
+    rowSpan: gridPlacementSpan(child.style.gridRow),
+    explicitColumn: gridPlacementStart(child.style.gridColumn),
+    explicitRow: gridPlacementStart(child.style.gridRow)
+  }));
+  const placementOrder = [
+    ...candidates.filter((candidate) => candidate.explicitColumn !== void 0 && candidate.explicitRow !== void 0),
+    ...candidates.filter(
+      (candidate) => candidate.explicitColumn !== void 0 !== (candidate.explicitRow !== void 0)
+    ),
+    ...candidates.filter((candidate) => candidate.explicitColumn === void 0 && candidate.explicitRow === void 0)
+  ];
+  for (const candidate of placementOrder) {
+    const position = candidate.explicitColumn !== void 0 && candidate.explicitRow !== void 0 ? { column: candidate.explicitColumn, row: candidate.explicitRow } : candidate.explicitColumn !== void 0 ? findGridSlot(occupied, {
+      preferredColumn: candidate.explicitColumn,
+      columnSpan: candidate.columnSpan,
+      rowSpan: candidate.rowSpan,
+      maxColumns: void 0,
+      maxRows: void 0,
+      scanColumns: Math.max(autoColumns, candidate.explicitColumn + candidate.columnSpan),
+      scanRows: autoRows,
+      autoFlow: bounds.autoFlow
+    }) : candidate.explicitRow !== void 0 ? findGridSlot(occupied, {
+      preferredRow: candidate.explicitRow,
+      columnSpan: candidate.columnSpan,
+      rowSpan: candidate.rowSpan,
+      maxColumns: bounds.columns > 0 ? bounds.columns : void 0,
+      maxRows: void 0,
+      scanColumns: autoColumns,
+      scanRows: Math.max(autoRows, candidate.explicitRow + candidate.rowSpan),
+      autoFlow: bounds.autoFlow
+    }) : findGridSlot(occupied, {
+      columnSpan: candidate.columnSpan,
+      rowSpan: candidate.rowSpan,
+      maxColumns: bounds.autoFlow === "row" && bounds.columns > 0 ? bounds.columns : void 0,
+      maxRows: bounds.autoFlow === "column" && bounds.rows > 0 ? bounds.rows : void 0,
+      scanColumns: autoColumns,
+      scanRows: autoRows,
+      autoFlow: bounds.autoFlow
+    });
+    occupyGridCells(occupied, position.row, position.column, candidate.rowSpan, candidate.columnSpan);
+    placed.set(candidate.node, {
+      node: candidate.node,
+      column: position.column,
+      row: position.row,
+      columnSpan: candidate.columnSpan,
+      rowSpan: candidate.rowSpan
+    });
+  }
+  return children.map((child) => placed.get(child)).filter(Boolean);
+}
+function alignGridItemBounds(node, cell) {
+  const width = node.style.justifySelf === "stretch" || node.style.width.unit === "auto" ? cell.width : Math.min(cell.width, resolveLayoutLength(node.style.width, cell.width, cell.width));
+  const height = node.style.alignSelf === "stretch" || node.style.height.unit === "auto" ? cell.height : Math.min(cell.height, resolveLayoutLength(node.style.height, cell.height, cell.height));
+  return {
+    column: cell.column + alignmentOffset(cell.width, width, node.style.justifySelf),
+    row: cell.row + alignmentOffset(cell.height, height, node.style.alignSelf),
+    width,
+    height
+  };
+}
+function resolveGridTracks(template, count, available, gap, autoTrack) {
+  const trackCount = Math.max(1, count);
+  const tracks = Array.from({ length: trackCount }, (_, index) => template[index] ?? autoTrack);
+  const totalGap = Math.max(0, trackCount - 1) * Math.max(0, gap);
+  const availableWithoutGaps = Math.max(0, Math.floor(available) - totalGap);
+  const sizes = new Array(trackCount).fill(0);
+  const autoIndexes = [];
+  const frIndexes = [];
+  let fixed2 = 0;
+  let frTotal = 0;
+  for (let index = 0; index < tracks.length; index += 1) {
+    const track = tracks[index] ?? autoTrack;
+    if (track.unit === "cell") {
+      sizes[index] = Math.max(0, Math.floor(track.value));
+      fixed2 += sizes[index];
+    } else if (track.unit === "percent") {
+      sizes[index] = Math.max(0, Math.floor(availableWithoutGaps * track.value / 100));
+      fixed2 += sizes[index];
+    } else if (track.unit === "fr") {
+      frIndexes.push(index);
+      frTotal += Math.max(0, track.value);
+    } else {
+      autoIndexes.push(index);
+    }
+  }
+  let remaining = Math.max(0, availableWithoutGaps - fixed2);
+  if (frIndexes.length > 0 && frTotal > 0) {
+    let assigned = 0;
+    for (const [frIndex, trackIndex] of frIndexes.entries()) {
+      const track = tracks[trackIndex] ?? autoTrack;
+      const size = frIndex === frIndexes.length - 1 ? remaining - assigned : Math.floor(remaining * Math.max(0, track.value) / frTotal);
+      sizes[trackIndex] = Math.max(0, size);
+      assigned += sizes[trackIndex];
+    }
+    remaining = Math.max(0, availableWithoutGaps - fixed2 - assigned);
+  }
+  if (autoIndexes.length > 0) {
+    const base = Math.floor(remaining / autoIndexes.length);
+    let extra = remaining % autoIndexes.length;
+    for (const trackIndex of autoIndexes) {
+      sizes[trackIndex] = base + (extra > 0 ? 1 : 0);
+      if (extra > 0) extra -= 1;
+    }
+  }
+  shrinkGridTracksToFit(sizes, availableWithoutGaps);
+  return sizes.map((size) => Math.max(0, Math.floor(size)));
+}
+function gridTrackOffsets(start, tracks, gap) {
+  const offsets = [];
+  let cursor = start;
+  for (const track of tracks) {
+    offsets.push(cursor);
+    cursor += Math.max(0, track) + Math.max(0, gap);
+  }
+  return offsets;
+}
+function gridSpanSize(tracks, start, span, gap) {
+  const safeSpan = Math.max(1, span);
+  let size = 0;
+  for (let offset = 0; offset < safeSpan; offset += 1) {
+    size += tracks[start + offset] ?? 0;
+  }
+  return Math.max(0, size + Math.max(0, safeSpan - 1) * Math.max(0, gap));
+}
+function hitRegionForNode(node, bounds, zIndex) {
+  return {
+    id: node.id,
+    bounds,
+    zIndex,
+    payload: { nodeId: node.id, tag: node.tag }
+  };
+}
+function findGridSlot(occupied, options) {
+  const scanColumns = Math.max(
+    1,
+    options.scanColumns,
+    options.preferredColumn !== void 0 ? options.preferredColumn + 1 : 1
+  );
+  const scanRows = Math.max(1, options.scanRows, options.preferredRow !== void 0 ? options.preferredRow + 1 : 1);
+  const limit = Math.max(scanColumns * scanRows + occupied.size + 16, 32);
+  if (options.preferredColumn !== void 0) {
+    for (let row = options.preferredRow ?? 0; row < limit; row += 1) {
+      if (gridCellsAvailable(occupied, row, options.preferredColumn, options.rowSpan, options.columnSpan, options)) {
+        return { column: options.preferredColumn, row };
+      }
+    }
+  }
+  if (options.preferredRow !== void 0) {
+    for (let column = options.preferredColumn ?? 0; column < limit; column += 1) {
+      if (gridCellsAvailable(occupied, options.preferredRow, column, options.rowSpan, options.columnSpan, options)) {
+        return { column, row: options.preferredRow };
+      }
+    }
+  }
+  if (options.autoFlow === "column") {
+    for (let column = 0; column < limit; column += 1) {
+      for (let row = 0; row < scanRows || row < limit && options.maxRows === void 0; row += 1) {
+        if (gridCellsAvailable(occupied, row, column, options.rowSpan, options.columnSpan, options)) {
+          return { column, row };
+        }
+      }
+    }
+  } else {
+    for (let row = 0; row < limit; row += 1) {
+      for (let column = 0; column < scanColumns || column < limit && options.maxColumns === void 0; column += 1) {
+        if (gridCellsAvailable(occupied, row, column, options.rowSpan, options.columnSpan, options)) {
+          return { column, row };
+        }
+      }
+    }
+  }
+  return { column: 0, row: 0 };
+}
+function gridCellsAvailable(occupied, row, column, rowSpan, columnSpan, options) {
+  if (row < 0 || column < 0) return false;
+  if (options.maxColumns !== void 0 && column + columnSpan > options.maxColumns) return false;
+  if (options.maxRows !== void 0 && row + rowSpan > options.maxRows) return false;
+  for (let rowOffset = 0; rowOffset < rowSpan; rowOffset += 1) {
+    for (let columnOffset = 0; columnOffset < columnSpan; columnOffset += 1) {
+      if (occupied.has(gridCellKey(row + rowOffset, column + columnOffset))) return false;
+    }
+  }
+  return true;
+}
+function occupyGridCells(occupied, row, column, rowSpan, columnSpan) {
+  for (let rowOffset = 0; rowOffset < rowSpan; rowOffset += 1) {
+    for (let columnOffset = 0; columnOffset < columnSpan; columnOffset += 1) {
+      occupied.add(gridCellKey(row + rowOffset, column + columnOffset));
+    }
+  }
+}
+function gridCellKey(row, column) {
+  return `${row}:${column}`;
+}
+function gridPlacementSpan(placement) {
+  if (placement.span !== void 0) return Math.max(1, placement.span);
+  if (placement.start !== void 0 && placement.end !== void 0) return Math.max(1, placement.end - placement.start);
+  return 1;
+}
+function gridPlacementStart(placement) {
+  if (placement.start !== void 0) return Math.max(0, placement.start - 1);
+  if (placement.end !== void 0 && placement.span !== void 0) {
+    return Math.max(0, placement.end - placement.span - 1);
+  }
+  return void 0;
+}
+function alignmentOffset(available, size, alignment) {
+  const free = Math.max(0, available - size);
+  if (alignment === "end") return free;
+  if (alignment === "center") return Math.floor(free / 2);
+  return 0;
+}
+function shrinkGridTracksToFit(sizes, available) {
+  let overflow = sizes.reduce((sum2, size) => sum2 + size, 0) - Math.max(0, available);
+  for (let index = sizes.length - 1; index >= 0 && overflow > 0; index -= 1) {
+    const removable = Math.min(sizes[index] ?? 0, overflow);
+    sizes[index] = Math.max(0, (sizes[index] ?? 0) - removable);
+    overflow -= removable;
+  }
+}
+
 // src/layout/solvers/simple.ts
 var SimpleLayoutSolver = class {
   id = "simple";
@@ -4493,226 +4723,6 @@ function layoutChildren(node) {
 }
 function layoutAbsoluteChildren(node) {
   return node.children.filter((child) => child.style.display !== "none" && child.style.position === "absolute");
-}
-function placeGridChildren(children, bounds) {
-  const placed = /* @__PURE__ */ new Map();
-  const occupied = /* @__PURE__ */ new Set();
-  const autoColumns = bounds.columns > 0 ? bounds.columns : Math.max(1, Math.ceil(Math.sqrt(children.length)));
-  const autoRows = bounds.rows > 0 ? bounds.rows : Math.max(1, Math.ceil(Math.sqrt(children.length)));
-  const candidates = children.map((child) => ({
-    node: child,
-    columnSpan: gridPlacementSpan(child.style.gridColumn),
-    rowSpan: gridPlacementSpan(child.style.gridRow),
-    explicitColumn: gridPlacementStart(child.style.gridColumn),
-    explicitRow: gridPlacementStart(child.style.gridRow)
-  }));
-  const placementOrder = [
-    ...candidates.filter((candidate) => candidate.explicitColumn !== void 0 && candidate.explicitRow !== void 0),
-    ...candidates.filter(
-      (candidate) => candidate.explicitColumn !== void 0 !== (candidate.explicitRow !== void 0)
-    ),
-    ...candidates.filter((candidate) => candidate.explicitColumn === void 0 && candidate.explicitRow === void 0)
-  ];
-  for (const candidate of placementOrder) {
-    const position = candidate.explicitColumn !== void 0 && candidate.explicitRow !== void 0 ? { column: candidate.explicitColumn, row: candidate.explicitRow } : candidate.explicitColumn !== void 0 ? findGridSlot(occupied, {
-      preferredColumn: candidate.explicitColumn,
-      columnSpan: candidate.columnSpan,
-      rowSpan: candidate.rowSpan,
-      maxColumns: void 0,
-      maxRows: void 0,
-      scanColumns: Math.max(autoColumns, candidate.explicitColumn + candidate.columnSpan),
-      scanRows: autoRows,
-      autoFlow: bounds.autoFlow
-    }) : candidate.explicitRow !== void 0 ? findGridSlot(occupied, {
-      preferredRow: candidate.explicitRow,
-      columnSpan: candidate.columnSpan,
-      rowSpan: candidate.rowSpan,
-      maxColumns: bounds.columns > 0 ? bounds.columns : void 0,
-      maxRows: void 0,
-      scanColumns: autoColumns,
-      scanRows: Math.max(autoRows, candidate.explicitRow + candidate.rowSpan),
-      autoFlow: bounds.autoFlow
-    }) : findGridSlot(occupied, {
-      columnSpan: candidate.columnSpan,
-      rowSpan: candidate.rowSpan,
-      maxColumns: bounds.autoFlow === "row" && bounds.columns > 0 ? bounds.columns : void 0,
-      maxRows: bounds.autoFlow === "column" && bounds.rows > 0 ? bounds.rows : void 0,
-      scanColumns: autoColumns,
-      scanRows: autoRows,
-      autoFlow: bounds.autoFlow
-    });
-    occupyGridCells(occupied, position.row, position.column, candidate.rowSpan, candidate.columnSpan);
-    placed.set(candidate.node, {
-      node: candidate.node,
-      column: position.column,
-      row: position.row,
-      columnSpan: candidate.columnSpan,
-      rowSpan: candidate.rowSpan
-    });
-  }
-  return children.map((child) => placed.get(child)).filter(Boolean);
-}
-function findGridSlot(occupied, options) {
-  const scanColumns = Math.max(
-    1,
-    options.scanColumns,
-    options.preferredColumn !== void 0 ? options.preferredColumn + 1 : 1
-  );
-  const scanRows = Math.max(1, options.scanRows, options.preferredRow !== void 0 ? options.preferredRow + 1 : 1);
-  const limit = Math.max(scanColumns * scanRows + occupied.size + 16, 32);
-  if (options.preferredColumn !== void 0) {
-    for (let row = options.preferredRow ?? 0; row < limit; row += 1) {
-      if (gridCellsAvailable(occupied, row, options.preferredColumn, options.rowSpan, options.columnSpan, options)) {
-        return { column: options.preferredColumn, row };
-      }
-    }
-  }
-  if (options.preferredRow !== void 0) {
-    for (let column = options.preferredColumn ?? 0; column < limit; column += 1) {
-      if (gridCellsAvailable(occupied, options.preferredRow, column, options.rowSpan, options.columnSpan, options)) {
-        return { column, row: options.preferredRow };
-      }
-    }
-  }
-  if (options.autoFlow === "column") {
-    for (let column = 0; column < limit; column += 1) {
-      for (let row = 0; row < scanRows || row < limit && options.maxRows === void 0; row += 1) {
-        if (gridCellsAvailable(occupied, row, column, options.rowSpan, options.columnSpan, options)) {
-          return { column, row };
-        }
-      }
-    }
-  } else {
-    for (let row = 0; row < limit; row += 1) {
-      for (let column = 0; column < scanColumns || column < limit && options.maxColumns === void 0; column += 1) {
-        if (gridCellsAvailable(occupied, row, column, options.rowSpan, options.columnSpan, options)) {
-          return { column, row };
-        }
-      }
-    }
-  }
-  return { column: 0, row: 0 };
-}
-function gridCellsAvailable(occupied, row, column, rowSpan, columnSpan, options) {
-  if (row < 0 || column < 0) return false;
-  if (options.maxColumns !== void 0 && column + columnSpan > options.maxColumns) return false;
-  if (options.maxRows !== void 0 && row + rowSpan > options.maxRows) return false;
-  for (let rowOffset = 0; rowOffset < rowSpan; rowOffset += 1) {
-    for (let columnOffset = 0; columnOffset < columnSpan; columnOffset += 1) {
-      if (occupied.has(gridCellKey(row + rowOffset, column + columnOffset))) return false;
-    }
-  }
-  return true;
-}
-function occupyGridCells(occupied, row, column, rowSpan, columnSpan) {
-  for (let rowOffset = 0; rowOffset < rowSpan; rowOffset += 1) {
-    for (let columnOffset = 0; columnOffset < columnSpan; columnOffset += 1) {
-      occupied.add(gridCellKey(row + rowOffset, column + columnOffset));
-    }
-  }
-}
-function gridCellKey(row, column) {
-  return `${row}:${column}`;
-}
-function gridPlacementSpan(placement) {
-  if (placement.span !== void 0) return Math.max(1, placement.span);
-  if (placement.start !== void 0 && placement.end !== void 0) return Math.max(1, placement.end - placement.start);
-  return 1;
-}
-function gridPlacementStart(placement) {
-  if (placement.start !== void 0) return Math.max(0, placement.start - 1);
-  if (placement.end !== void 0 && placement.span !== void 0) {
-    return Math.max(0, placement.end - placement.span - 1);
-  }
-  return void 0;
-}
-function alignGridItemBounds(node, cell) {
-  const width = node.style.justifySelf === "stretch" || node.style.width.unit === "auto" ? cell.width : Math.min(cell.width, resolveLayoutLength(node.style.width, cell.width, cell.width));
-  const height = node.style.alignSelf === "stretch" || node.style.height.unit === "auto" ? cell.height : Math.min(cell.height, resolveLayoutLength(node.style.height, cell.height, cell.height));
-  return {
-    column: cell.column + alignmentOffset(cell.width, width, node.style.justifySelf),
-    row: cell.row + alignmentOffset(cell.height, height, node.style.alignSelf),
-    width,
-    height
-  };
-}
-function alignmentOffset(available, size, alignment) {
-  const free = Math.max(0, available - size);
-  if (alignment === "end") return free;
-  if (alignment === "center") return Math.floor(free / 2);
-  return 0;
-}
-function resolveGridTracks(template, count, available, gap, autoTrack) {
-  const trackCount = Math.max(1, count);
-  const tracks = Array.from({ length: trackCount }, (_, index) => template[index] ?? autoTrack);
-  const totalGap = Math.max(0, trackCount - 1) * Math.max(0, gap);
-  const availableWithoutGaps = Math.max(0, Math.floor(available) - totalGap);
-  const sizes = new Array(trackCount).fill(0);
-  const autoIndexes = [];
-  const frIndexes = [];
-  let fixed2 = 0;
-  let frTotal = 0;
-  for (let index = 0; index < tracks.length; index += 1) {
-    const track = tracks[index] ?? autoTrack;
-    if (track.unit === "cell") {
-      sizes[index] = Math.max(0, Math.floor(track.value));
-      fixed2 += sizes[index];
-    } else if (track.unit === "percent") {
-      sizes[index] = Math.max(0, Math.floor(availableWithoutGaps * track.value / 100));
-      fixed2 += sizes[index];
-    } else if (track.unit === "fr") {
-      frIndexes.push(index);
-      frTotal += Math.max(0, track.value);
-    } else {
-      autoIndexes.push(index);
-    }
-  }
-  let remaining = Math.max(0, availableWithoutGaps - fixed2);
-  if (frIndexes.length > 0 && frTotal > 0) {
-    let assigned = 0;
-    for (const [frIndex, trackIndex] of frIndexes.entries()) {
-      const track = tracks[trackIndex] ?? autoTrack;
-      const size = frIndex === frIndexes.length - 1 ? remaining - assigned : Math.floor(remaining * Math.max(0, track.value) / frTotal);
-      sizes[trackIndex] = Math.max(0, size);
-      assigned += sizes[trackIndex];
-    }
-    remaining = Math.max(0, availableWithoutGaps - fixed2 - assigned);
-  }
-  if (autoIndexes.length > 0) {
-    const base = Math.floor(remaining / autoIndexes.length);
-    let extra = remaining % autoIndexes.length;
-    for (const trackIndex of autoIndexes) {
-      sizes[trackIndex] = base + (extra > 0 ? 1 : 0);
-      if (extra > 0) extra -= 1;
-    }
-  }
-  shrinkGridTracksToFit(sizes, availableWithoutGaps);
-  return sizes.map((size) => Math.max(0, Math.floor(size)));
-}
-function shrinkGridTracksToFit(sizes, available) {
-  let overflow = sizes.reduce((sum2, size) => sum2 + size, 0) - Math.max(0, available);
-  for (let index = sizes.length - 1; index >= 0 && overflow > 0; index -= 1) {
-    const removable = Math.min(sizes[index] ?? 0, overflow);
-    sizes[index] = Math.max(0, (sizes[index] ?? 0) - removable);
-    overflow -= removable;
-  }
-}
-function gridTrackOffsets(start, tracks, gap) {
-  const offsets = [];
-  let cursor = start;
-  for (const track of tracks) {
-    offsets.push(cursor);
-    cursor += Math.max(0, track) + Math.max(0, gap);
-  }
-  return offsets;
-}
-function gridSpanSize(tracks, start, span, gap) {
-  const safeSpan = Math.max(1, span);
-  let size = 0;
-  for (let offset = 0; offset < safeSpan; offset += 1) {
-    size += tracks[start + offset] ?? 0;
-  }
-  return Math.max(0, size + Math.max(0, safeSpan - 1) * Math.max(0, gap));
 }
 function normalizeRect(rect) {
   return {
@@ -4996,14 +5006,6 @@ function scrollSize(node, contentRect, children) {
   return {
     width: Math.max(contentRect.width, right - contentRect.column),
     height: Math.max(contentRect.height, bottom - contentRect.row)
-  };
-}
-function hitRegionForNode(node, bounds, zIndex) {
-  return {
-    id: node.id,
-    bounds,
-    zIndex,
-    payload: { nodeId: node.id, tag: node.tag }
   };
 }
 
@@ -9830,6 +9832,226 @@ function severityWeight(severity) {
 // src/runtime/terminal_session.ts
 var ENCODER = new TextEncoder();
 
+// src/runtime/terminal_workspace_layout.ts
+function createTerminalWorkspacePaneNode(sessionId, root2, options = {}) {
+  return {
+    kind: "pane",
+    id: uniqueTerminalWorkspaceLayoutId(`pane-${sanitizeTerminalWorkspaceLayoutId(sessionId)}`, root2),
+    sessionId,
+    title: options.title,
+    minColumns: normalizePaneDimension(options.minColumns),
+    minRows: normalizePaneDimension(options.minRows)
+  };
+}
+function terminalWorkspaceLayoutWithActive(layout, sessionId) {
+  const pane = findTerminalWorkspacePaneBySession(layout.root, sessionId) ?? collectTerminalWorkspacePanes(layout.root)[0];
+  return {
+    root: layout.root ? cloneTerminalWorkspaceLayoutNode(layout.root) : void 0,
+    activePaneId: pane?.id,
+    zoomedPaneId: layout.zoomedPaneId
+  };
+}
+function cloneTerminalWorkspaceLayoutState(layout) {
+  return {
+    root: layout.root ? cloneTerminalWorkspaceLayoutNode(layout.root) : void 0,
+    activePaneId: layout.activePaneId,
+    zoomedPaneId: layout.zoomedPaneId
+  };
+}
+function cloneTerminalWorkspaceLayoutNode(node) {
+  return node.kind === "pane" ? cloneTerminalWorkspacePaneNode(node) : {
+    kind: "split",
+    id: node.id,
+    direction: node.direction,
+    ratio: node.ratio,
+    first: cloneTerminalWorkspaceLayoutNode(node.first),
+    second: cloneTerminalWorkspaceLayoutNode(node.second)
+  };
+}
+function cloneTerminalWorkspacePaneNode(node) {
+  return {
+    kind: "pane",
+    id: node.id,
+    sessionId: node.sessionId,
+    title: node.title,
+    minColumns: node.minColumns,
+    minRows: node.minRows
+  };
+}
+function updateTerminalWorkspacePaneRuntimeTitles(layout, sessionId, runtimeTitle, previousVisibleTitle, previousRuntimeTitle, templateTitle) {
+  return {
+    ...layout,
+    root: layout.root ? updatePaneRuntimeTitleNode(
+      layout.root,
+      sessionId,
+      runtimeTitle,
+      previousVisibleTitle,
+      previousRuntimeTitle,
+      templateTitle
+    ) : void 0
+  };
+}
+function pruneTerminalWorkspaceLayoutSessions(layout, sessionIds) {
+  const root2 = pruneLayoutNode(layout.root, sessionIds);
+  return {
+    root: root2,
+    activePaneId: layout.activePaneId && findTerminalWorkspacePane(root2, layout.activePaneId) ? layout.activePaneId : void 0,
+    zoomedPaneId: layout.zoomedPaneId && findTerminalWorkspacePane(root2, layout.zoomedPaneId) ? layout.zoomedPaneId : void 0
+  };
+}
+function collectTerminalWorkspacePanes(node) {
+  if (!node) return [];
+  if (node.kind === "pane") return [cloneTerminalWorkspacePaneNode(node)];
+  return [...collectTerminalWorkspacePanes(node.first), ...collectTerminalWorkspacePanes(node.second)];
+}
+function findTerminalWorkspacePane(node, paneId) {
+  if (!node) return void 0;
+  if (node.kind === "pane") return node.id === paneId ? cloneTerminalWorkspacePaneNode(node) : void 0;
+  return findTerminalWorkspacePane(node.first, paneId) ?? findTerminalWorkspacePane(node.second, paneId);
+}
+function findTerminalWorkspacePaneBySession(node, sessionId) {
+  if (!node) return void 0;
+  if (node.kind === "pane") return node.sessionId === sessionId ? cloneTerminalWorkspacePaneNode(node) : void 0;
+  return findTerminalWorkspacePaneBySession(node.first, sessionId) ?? findTerminalWorkspacePaneBySession(node.second, sessionId);
+}
+function findActiveTerminalWorkspacePane(layout) {
+  return layout.activePaneId ? findTerminalWorkspacePane(layout.root, layout.activePaneId) : collectTerminalWorkspacePanes(layout.root)[0];
+}
+function replaceTerminalWorkspacePane(node, paneId, replacement) {
+  if (node.kind === "pane") {
+    return node.id === paneId ? cloneTerminalWorkspaceLayoutNode(replacement) : cloneTerminalWorkspacePaneNode(node);
+  }
+  return {
+    ...node,
+    first: replaceTerminalWorkspacePane(node.first, paneId, replacement),
+    second: replaceTerminalWorkspacePane(node.second, paneId, replacement)
+  };
+}
+function removeTerminalWorkspacePane(node, paneId) {
+  if (!node) return void 0;
+  if (node.kind === "pane") return node.id === paneId ? void 0 : cloneTerminalWorkspacePaneNode(node);
+  const first = removeTerminalWorkspacePane(node.first, paneId);
+  const second = removeTerminalWorkspacePane(node.second, paneId);
+  if (first && second) return { ...node, first, second };
+  return first ?? second;
+}
+function updateTerminalWorkspaceSplitRatio(node, splitId, ratio) {
+  if (!node) return { changed: false };
+  if (node.kind === "pane") return { node: cloneTerminalWorkspacePaneNode(node), changed: false };
+  if (node.id === splitId) {
+    return {
+      node: {
+        ...node,
+        ratio,
+        first: cloneTerminalWorkspaceLayoutNode(node.first),
+        second: cloneTerminalWorkspaceLayoutNode(node.second)
+      },
+      changed: true
+    };
+  }
+  const first = updateTerminalWorkspaceSplitRatio(node.first, splitId, ratio);
+  const second = updateTerminalWorkspaceSplitRatio(node.second, splitId, ratio);
+  return {
+    node: {
+      ...node,
+      first: first.node ?? cloneTerminalWorkspaceLayoutNode(node.first),
+      second: second.node ?? cloneTerminalWorkspaceLayoutNode(node.second)
+    },
+    changed: first.changed || second.changed
+  };
+}
+function findNearestTerminalWorkspaceSplit(node, paneId) {
+  if (!node || node.kind === "pane") return void 0;
+  if (findTerminalWorkspacePane(node.first, paneId)) {
+    return findNearestTerminalWorkspaceSplit(node.first, paneId) ?? {
+      split: cloneTerminalWorkspaceSplitNode(node),
+      activeSide: "first"
+    };
+  }
+  if (findTerminalWorkspacePane(node.second, paneId)) {
+    return findNearestTerminalWorkspaceSplit(node.second, paneId) ?? {
+      split: cloneTerminalWorkspaceSplitNode(node),
+      activeSide: "second"
+    };
+  }
+  return void 0;
+}
+function uniqueTerminalWorkspaceLayoutId(prefix, root2) {
+  const ids = /* @__PURE__ */ new Set();
+  collectLayoutIds(root2, ids);
+  let candidate = prefix;
+  let suffix = 2;
+  while (ids.has(candidate)) {
+    candidate = `${prefix}-${suffix}`;
+    suffix += 1;
+  }
+  return candidate;
+}
+function sanitizeTerminalWorkspaceLayoutId(value) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "terminal";
+}
+function clampTerminalWorkspaceSplitRatio(value) {
+  return Math.max(0.1, Math.min(0.9, Number.isFinite(value) ? value : 0.5));
+}
+function updatePaneRuntimeTitleNode(node, sessionId, runtimeTitle, previousVisibleTitle, previousRuntimeTitle, templateTitle) {
+  if (node.kind === "pane") {
+    const pane = cloneTerminalWorkspacePaneNode(node);
+    if (pane.sessionId === sessionId && (pane.title === void 0 || pane.title === previousVisibleTitle || pane.title === previousRuntimeTitle || pane.title === templateTitle)) {
+      pane.title = runtimeTitle;
+    }
+    return pane;
+  }
+  return {
+    ...node,
+    first: updatePaneRuntimeTitleNode(
+      node.first,
+      sessionId,
+      runtimeTitle,
+      previousVisibleTitle,
+      previousRuntimeTitle,
+      templateTitle
+    ),
+    second: updatePaneRuntimeTitleNode(
+      node.second,
+      sessionId,
+      runtimeTitle,
+      previousVisibleTitle,
+      previousRuntimeTitle,
+      templateTitle
+    )
+  };
+}
+function pruneLayoutNode(node, sessionIds) {
+  if (!node) return void 0;
+  if (node.kind === "pane") return sessionIds.has(node.sessionId) ? cloneTerminalWorkspacePaneNode(node) : void 0;
+  const first = pruneLayoutNode(node.first, sessionIds);
+  const second = pruneLayoutNode(node.second, sessionIds);
+  if (first && second) return { ...node, ratio: clampTerminalWorkspaceSplitRatio(node.ratio), first, second };
+  return first ?? second;
+}
+function cloneTerminalWorkspaceSplitNode(node) {
+  return {
+    kind: "split",
+    id: node.id,
+    direction: node.direction,
+    ratio: node.ratio,
+    first: cloneTerminalWorkspaceLayoutNode(node.first),
+    second: cloneTerminalWorkspaceLayoutNode(node.second)
+  };
+}
+function collectLayoutIds(node, ids) {
+  if (!node) return;
+  ids.add(node.id);
+  if (node.kind === "split") {
+    collectLayoutIds(node.first, ids);
+    collectLayoutIds(node.second, ids);
+  }
+}
+function normalizePaneDimension(value) {
+  if (!Number.isFinite(value)) return void 0;
+  return Math.max(1, Math.floor(value));
+}
+
 // src/runtime/terminal_workspace.ts
 var TerminalWorkspaceController = class {
   sessions;
@@ -9861,8 +10083,8 @@ var TerminalWorkspaceController = class {
     this.sessions.value = index >= 0 ? sessions.map((session, sessionIndex) => sessionIndex === index ? nextDescriptor : session) : [...sessions, nextDescriptor];
     if (options.activate || !this.activeId.peek()) this.activeId.value = nextDescriptor.id;
     if (!this.layout.peek().root) {
-      this.layout.value = layoutWithActive({
-        root: createPaneNode(nextDescriptor.id, void 0, { title: nextDescriptor.title })
+      this.layout.value = terminalWorkspaceLayoutWithActive({
+        root: createTerminalWorkspacePaneNode(nextDescriptor.id, void 0, { title: nextDescriptor.title })
       }, nextDescriptor.id);
     }
     return cloneTerminalSessionDescriptor(nextDescriptor);
@@ -9871,9 +10093,11 @@ var TerminalWorkspaceController = class {
     if (!this.sessions.peek().some((session) => session.id === id2)) return false;
     this.activeId.value = id2;
     const layout = this.layout.peek();
-    const pane = findPaneBySession(layout.root, id2);
-    if (pane) this.layout.value = { ...cloneLayoutState(layout), activePaneId: pane.id };
-    else if (!layout.root) this.layout.value = layoutWithActive({ root: createPaneNode(id2) }, id2);
+    const pane = findTerminalWorkspacePaneBySession(layout.root, id2);
+    if (pane) this.layout.value = { ...cloneTerminalWorkspaceLayoutState(layout), activePaneId: pane.id };
+    else if (!layout.root) {
+      this.layout.value = terminalWorkspaceLayoutWithActive({ root: createTerminalWorkspacePaneNode(id2) }, id2);
+    }
     return true;
   }
   remove(id2) {
@@ -9883,7 +10107,7 @@ var TerminalWorkspaceController = class {
     const next = sessions.filter((session) => session.id !== id2);
     this.sessions.value = next;
     this.layout.value = normalizeTerminalWorkspaceLayout(
-      pruneLayoutSessions(
+      pruneTerminalWorkspaceLayoutSessions(
         this.layout.peek(),
         new Set(next.map(
           (session) => session.id
@@ -9894,8 +10118,8 @@ var TerminalWorkspaceController = class {
     );
     if (this.activeId.peek() === id2) {
       this.activeId.value = next[index]?.id ?? next[index - 1]?.id;
-      const pane = this.activeId.peek() ? findPaneBySession(this.layout.peek().root, this.activeId.peek()) : void 0;
-      if (pane) this.layout.value = { ...cloneLayoutState(this.layout.peek()), activePaneId: pane.id };
+      const pane = this.activeId.peek() ? findTerminalWorkspacePaneBySession(this.layout.peek().root, this.activeId.peek()) : void 0;
+      if (pane) this.layout.value = { ...cloneTerminalWorkspaceLayoutState(this.layout.peek()), activePaneId: pane.id };
     }
     return true;
   }
@@ -9928,7 +10152,7 @@ var TerminalWorkspaceController = class {
     descriptor.updatedAt = this.#now();
     this.sessions.value = sessions.map((session, sessionIndex) => sessionIndex === index ? descriptor : session);
     if (descriptor.title !== previousVisibleTitle) {
-      this.layout.value = updatePaneRuntimeTitles(
+      this.layout.value = updateTerminalWorkspacePaneRuntimeTitles(
         this.layout.peek(),
         id2,
         trimmed,
@@ -9992,45 +10216,45 @@ var TerminalWorkspaceController = class {
     if (!this.sessions.peek().some((session) => session.id === sessionId)) return void 0;
     const current = normalizeTerminalWorkspaceLayout(this.layout.peek(), this.sessions.peek(), this.activeId.peek());
     if (!current.root) {
-      const pane = createPaneNode(sessionId, void 0, options);
+      const pane = createTerminalWorkspacePaneNode(sessionId, void 0, options);
       this.layout.value = { root: pane, activePaneId: pane.id };
       this.activeId.value = sessionId;
-      return clonePaneNode(pane);
+      return cloneTerminalWorkspacePaneNode(pane);
     }
-    const activePane = options.paneId ? findPane(current.root, options.paneId) : findActivePane(current);
+    const activePane = options.paneId ? findTerminalWorkspacePane(current.root, options.paneId) : findActiveTerminalWorkspacePane(current);
     if (!activePane) return void 0;
-    const nextPane = createPaneNode(sessionId, current.root, options);
-    const ratio = clampRatio(options.ratio ?? 0.5);
+    const nextPane = createTerminalWorkspacePaneNode(sessionId, current.root, options);
+    const ratio = clampTerminalWorkspaceSplitRatio(options.ratio ?? 0.5);
     const placement = options.placement ?? "after";
     const split = {
       kind: "split",
-      id: uniqueLayoutId("split", current.root),
+      id: uniqueTerminalWorkspaceLayoutId("split", current.root),
       direction,
       ratio,
-      first: placement === "before" ? nextPane : clonePaneNode(activePane),
-      second: placement === "before" ? clonePaneNode(activePane) : nextPane
+      first: placement === "before" ? nextPane : cloneTerminalWorkspacePaneNode(activePane),
+      second: placement === "before" ? cloneTerminalWorkspacePaneNode(activePane) : nextPane
     };
-    const root2 = replacePane(current.root, activePane.id, split);
+    const root2 = replaceTerminalWorkspacePane(current.root, activePane.id, split);
     this.layout.value = {
       root: root2,
       activePaneId: nextPane.id,
       zoomedPaneId: current.zoomedPaneId === activePane.id ? nextPane.id : current.zoomedPaneId
     };
     this.activeId.value = sessionId;
-    return clonePaneNode(nextPane);
+    return cloneTerminalWorkspacePaneNode(nextPane);
   }
   activatePane(paneId) {
-    const pane = findPane(this.layout.peek().root, paneId);
+    const pane = findTerminalWorkspacePane(this.layout.peek().root, paneId);
     if (!pane || !this.sessions.peek().some((session) => session.id === pane.sessionId)) return false;
-    this.layout.value = { ...cloneLayoutState(this.layout.peek()), activePaneId: pane.id };
+    this.layout.value = { ...cloneTerminalWorkspaceLayoutState(this.layout.peek()), activePaneId: pane.id };
     this.activeId.value = pane.sessionId;
     return true;
   }
   closePane(paneId) {
-    const current = cloneLayoutState(this.layout.peek());
-    if (!findPane(current.root, paneId)) return false;
-    const root2 = removePane(current.root, paneId);
-    const panes = collectPanes(root2);
+    const current = cloneTerminalWorkspaceLayoutState(this.layout.peek());
+    if (!findTerminalWorkspacePane(current.root, paneId)) return false;
+    const root2 = removeTerminalWorkspacePane(current.root, paneId);
+    const panes = collectTerminalWorkspacePanes(root2);
     const activePane = panes.find((pane) => pane.id === current.activePaneId) ?? panes[0];
     this.layout.value = {
       root: root2,
@@ -10041,24 +10265,24 @@ var TerminalWorkspaceController = class {
     return true;
   }
   resizeSplit(splitId, ratio) {
-    const current = cloneLayoutState(this.layout.peek());
-    const root2 = updateSplitRatio(current.root, splitId, clampRatio(ratio));
+    const current = cloneTerminalWorkspaceLayoutState(this.layout.peek());
+    const root2 = updateTerminalWorkspaceSplitRatio(current.root, splitId, clampTerminalWorkspaceSplitRatio(ratio));
     if (!root2.changed) return false;
     this.layout.value = { ...current, root: root2.node };
     return true;
   }
   resizeActiveSplit(delta) {
-    const current = cloneLayoutState(this.layout.peek());
-    const activePane = findActivePane(current);
+    const current = cloneTerminalWorkspaceLayoutState(this.layout.peek());
+    const activePane = findActiveTerminalWorkspacePane(current);
     if (!activePane) return false;
-    const nearest = findNearestSplit(current.root, activePane.id);
+    const nearest = findNearestTerminalWorkspaceSplit(current.root, activePane.id);
     if (!nearest) return false;
     const nextRatio = nearest.activeSide === "first" ? nearest.split.ratio + delta : nearest.split.ratio - delta;
     return this.resizeSplit(nearest.split.id, nextRatio);
   }
   toggleZoomPane(paneId = this.layout.peek().activePaneId) {
-    if (!paneId || !findPane(this.layout.peek().root, paneId)) return false;
-    const current = cloneLayoutState(this.layout.peek());
+    if (!paneId || !findTerminalWorkspacePane(this.layout.peek().root, paneId)) return false;
+    const current = cloneTerminalWorkspaceLayoutState(this.layout.peek());
     this.layout.value = {
       ...current,
       activePaneId: paneId,
@@ -10171,241 +10395,43 @@ function normalizeDimension2(value) {
 }
 function normalizeTerminalWorkspaceLayout(layout, sessions, activeId) {
   const sessionIds = new Set(sessions.map((session) => session.id));
-  const pruned = pruneLayoutSessions(layout ?? {}, sessionIds);
+  const pruned = pruneTerminalWorkspaceLayoutSessions(layout ?? {}, sessionIds);
   if (!pruned.root && activeId && sessionIds.has(activeId)) {
     const activeSession = sessions.find((session) => session.id === activeId);
-    return layoutWithActive({
-      root: createPaneNode(activeId, void 0, { title: activeSession?.title }),
+    return terminalWorkspaceLayoutWithActive({
+      root: createTerminalWorkspacePaneNode(activeId, void 0, { title: activeSession?.title }),
       zoomedPaneId: void 0
     }, activeId);
   }
-  const activePane = pruned.activePaneId ? findPane(pruned.root, pruned.activePaneId) : void 0;
-  const fallbackPane = activeId ? findPaneBySession(pruned.root, activeId) : void 0;
-  const firstPane = collectPanes(pruned.root)[0];
+  const activePane = pruned.activePaneId ? findTerminalWorkspacePane(pruned.root, pruned.activePaneId) : void 0;
+  const fallbackPane = activeId ? findTerminalWorkspacePaneBySession(pruned.root, activeId) : void 0;
+  const firstPane = collectTerminalWorkspacePanes(pruned.root)[0];
   const nextActive = activePane ?? fallbackPane ?? firstPane;
   return {
     root: pruned.root,
     activePaneId: nextActive?.id,
-    zoomedPaneId: pruned.zoomedPaneId && findPane(pruned.root, pruned.zoomedPaneId) ? pruned.zoomedPaneId : void 0
+    zoomedPaneId: pruned.zoomedPaneId && findTerminalWorkspacePane(pruned.root, pruned.zoomedPaneId) ? pruned.zoomedPaneId : void 0
   };
 }
 function inspectTerminalWorkspaceLayout(layout, sessions) {
   const normalized = normalizeTerminalWorkspaceLayout(layout, sessions, sessions[0]?.id);
   const sessionById = new Map(sessions.map((session) => [session.id, session]));
-  const panes = collectPanes(normalized.root).map((pane) => ({
-    ...clonePaneNode(pane),
+  const panes = collectTerminalWorkspacePanes(normalized.root).map((pane) => ({
+    ...cloneTerminalWorkspacePaneNode(pane),
     active: pane.id === normalized.activePaneId,
     zoomed: pane.id === normalized.zoomedPaneId,
     session: sessionById.has(pane.sessionId) ? cloneTerminalSessionDescriptor(sessionById.get(pane.sessionId)) : void 0
   }));
   return {
-    root: normalized.root ? cloneLayoutNode2(normalized.root) : void 0,
+    root: normalized.root ? cloneTerminalWorkspaceLayoutNode(normalized.root) : void 0,
     activePaneId: normalized.activePaneId,
     zoomedPaneId: normalized.zoomedPaneId,
     panes,
     count: panes.length
   };
 }
-function layoutWithActive(layout, sessionId) {
-  const pane = findPaneBySession(layout.root, sessionId) ?? collectPanes(layout.root)[0];
-  return {
-    root: layout.root ? cloneLayoutNode2(layout.root) : void 0,
-    activePaneId: pane?.id,
-    zoomedPaneId: layout.zoomedPaneId
-  };
-}
-function createPaneNode(sessionId, root2, options = {}) {
-  return {
-    kind: "pane",
-    id: uniqueLayoutId(`pane-${sanitizeLayoutId(sessionId)}`, root2),
-    sessionId,
-    title: options.title,
-    minColumns: normalizeDimension2(options.minColumns),
-    minRows: normalizeDimension2(options.minRows)
-  };
-}
-function cloneLayoutState(layout) {
-  return {
-    root: layout.root ? cloneLayoutNode2(layout.root) : void 0,
-    activePaneId: layout.activePaneId,
-    zoomedPaneId: layout.zoomedPaneId
-  };
-}
-function cloneLayoutNode2(node) {
-  return node.kind === "pane" ? clonePaneNode(node) : {
-    kind: "split",
-    id: node.id,
-    direction: node.direction,
-    ratio: node.ratio,
-    first: cloneLayoutNode2(node.first),
-    second: cloneLayoutNode2(node.second)
-  };
-}
-function clonePaneNode(node) {
-  return {
-    kind: "pane",
-    id: node.id,
-    sessionId: node.sessionId,
-    title: node.title,
-    minColumns: node.minColumns,
-    minRows: node.minRows
-  };
-}
-function updatePaneRuntimeTitles(layout, sessionId, runtimeTitle, previousVisibleTitle, previousRuntimeTitle, templateTitle) {
-  return {
-    ...layout,
-    root: layout.root ? updatePaneRuntimeTitleNode(
-      layout.root,
-      sessionId,
-      runtimeTitle,
-      previousVisibleTitle,
-      previousRuntimeTitle,
-      templateTitle
-    ) : void 0
-  };
-}
-function updatePaneRuntimeTitleNode(node, sessionId, runtimeTitle, previousVisibleTitle, previousRuntimeTitle, templateTitle) {
-  if (node.kind === "pane") {
-    const pane = clonePaneNode(node);
-    if (pane.sessionId === sessionId && (pane.title === void 0 || pane.title === previousVisibleTitle || pane.title === previousRuntimeTitle || pane.title === templateTitle)) {
-      pane.title = runtimeTitle;
-    }
-    return pane;
-  }
-  return {
-    ...node,
-    first: updatePaneRuntimeTitleNode(
-      node.first,
-      sessionId,
-      runtimeTitle,
-      previousVisibleTitle,
-      previousRuntimeTitle,
-      templateTitle
-    ),
-    second: updatePaneRuntimeTitleNode(
-      node.second,
-      sessionId,
-      runtimeTitle,
-      previousVisibleTitle,
-      previousRuntimeTitle,
-      templateTitle
-    )
-  };
-}
-function pruneLayoutSessions(layout, sessionIds) {
-  const root2 = pruneLayoutNode(layout.root, sessionIds);
-  return {
-    root: root2,
-    activePaneId: layout.activePaneId && findPane(root2, layout.activePaneId) ? layout.activePaneId : void 0,
-    zoomedPaneId: layout.zoomedPaneId && findPane(root2, layout.zoomedPaneId) ? layout.zoomedPaneId : void 0
-  };
-}
-function pruneLayoutNode(node, sessionIds) {
-  if (!node) return void 0;
-  if (node.kind === "pane") return sessionIds.has(node.sessionId) ? clonePaneNode(node) : void 0;
-  const first = pruneLayoutNode(node.first, sessionIds);
-  const second = pruneLayoutNode(node.second, sessionIds);
-  if (first && second) return { ...node, ratio: clampRatio(node.ratio), first, second };
-  return first ?? second;
-}
-function collectPanes(node) {
-  if (!node) return [];
-  if (node.kind === "pane") return [clonePaneNode(node)];
-  return [...collectPanes(node.first), ...collectPanes(node.second)];
-}
-function findPane(node, paneId) {
-  if (!node) return void 0;
-  if (node.kind === "pane") return node.id === paneId ? clonePaneNode(node) : void 0;
-  return findPane(node.first, paneId) ?? findPane(node.second, paneId);
-}
-function findPaneBySession(node, sessionId) {
-  if (!node) return void 0;
-  if (node.kind === "pane") return node.sessionId === sessionId ? clonePaneNode(node) : void 0;
-  return findPaneBySession(node.first, sessionId) ?? findPaneBySession(node.second, sessionId);
-}
-function findActivePane(layout) {
-  return layout.activePaneId ? findPane(layout.root, layout.activePaneId) : collectPanes(layout.root)[0];
-}
-function replacePane(node, paneId, replacement) {
-  if (node.kind === "pane") return node.id === paneId ? cloneLayoutNode2(replacement) : clonePaneNode(node);
-  return {
-    ...node,
-    first: replacePane(node.first, paneId, replacement),
-    second: replacePane(node.second, paneId, replacement)
-  };
-}
-function removePane(node, paneId) {
-  if (!node) return void 0;
-  if (node.kind === "pane") return node.id === paneId ? void 0 : clonePaneNode(node);
-  const first = removePane(node.first, paneId);
-  const second = removePane(node.second, paneId);
-  if (first && second) return { ...node, first, second };
-  return first ?? second;
-}
-function updateSplitRatio(node, splitId, ratio) {
-  if (!node) return { changed: false };
-  if (node.kind === "pane") return { node: clonePaneNode(node), changed: false };
-  if (node.id === splitId) {
-    return {
-      node: { ...node, ratio, first: cloneLayoutNode2(node.first), second: cloneLayoutNode2(node.second) },
-      changed: true
-    };
-  }
-  const first = updateSplitRatio(node.first, splitId, ratio);
-  const second = updateSplitRatio(node.second, splitId, ratio);
-  return {
-    node: {
-      ...node,
-      first: first.node ?? cloneLayoutNode2(node.first),
-      second: second.node ?? cloneLayoutNode2(node.second)
-    },
-    changed: first.changed || second.changed
-  };
-}
-function findNearestSplit(node, paneId) {
-  if (!node || node.kind === "pane") return void 0;
-  if (findPane(node.first, paneId)) {
-    return findNearestSplit(node.first, paneId) ?? { split: cloneSplitNode(node), activeSide: "first" };
-  }
-  if (findPane(node.second, paneId)) {
-    return findNearestSplit(node.second, paneId) ?? { split: cloneSplitNode(node), activeSide: "second" };
-  }
-  return void 0;
-}
-function cloneSplitNode(node) {
-  return {
-    kind: "split",
-    id: node.id,
-    direction: node.direction,
-    ratio: node.ratio,
-    first: cloneLayoutNode2(node.first),
-    second: cloneLayoutNode2(node.second)
-  };
-}
-function uniqueLayoutId(prefix, root2) {
-  const ids = /* @__PURE__ */ new Set();
-  collectLayoutIds(root2, ids);
-  let candidate = prefix;
-  let suffix = 2;
-  while (ids.has(candidate)) {
-    candidate = `${prefix}-${suffix}`;
-    suffix += 1;
-  }
-  return candidate;
-}
-function collectLayoutIds(node, ids) {
-  if (!node) return;
-  ids.add(node.id);
-  if (node.kind === "split") {
-    collectLayoutIds(node.first, ids);
-    collectLayoutIds(node.second, ids);
-  }
-}
-function sanitizeLayoutId(value) {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "terminal";
-}
 function uniqueSessionId(prefix, ids) {
-  const base = sanitizeLayoutId(prefix);
+  const base = sanitizeTerminalWorkspaceLayoutId(prefix);
   let candidate = base;
   let suffix = 2;
   while (ids.has(candidate)) {
@@ -10413,9 +10439,6 @@ function uniqueSessionId(prefix, ids) {
     suffix += 1;
   }
   return candidate;
-}
-function clampRatio(value) {
-  return Math.max(0.1, Math.min(0.9, Number.isFinite(value) ? value : 0.5));
 }
 
 // src/platform/types.ts
