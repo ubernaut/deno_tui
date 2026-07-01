@@ -3896,6 +3896,27 @@
     },
     {
       "module": "src/app/workbench_text.ts",
+      "name": "VisibleMenuSlice",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_text.ts",
+      "name": "visibleMenuSliceInto",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_text.ts",
+      "name": "visibleProjectedMenuSliceInto",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_text.ts",
       "name": "wrapPlainText",
       "kind": "function",
       "typeOnly": false,

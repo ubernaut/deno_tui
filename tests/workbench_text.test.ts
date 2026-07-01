@@ -6,6 +6,8 @@ import {
   maxTextWidthBy,
   maxTrimmedTextWidth,
   visibleMenuSlice,
+  visibleMenuSliceInto,
+  visibleProjectedMenuSliceInto,
   wrapPlainText,
 } from "../src/app/workbench_text.ts";
 
@@ -37,4 +39,21 @@ Deno.test("workbench text helpers project visible menu slices around selection",
   const full = visibleMenuSlice(items, 2, 10);
   full.items[0] = "mutated";
   assertEquals(items[0], "a");
+
+  const target = { items: ["stale"], indexes: [99] };
+  assertEquals(visibleMenuSliceInto(target, items, 4, 3), { items: ["c", "d", "e"], indexes: [2, 3, 4] });
+  assertEquals(visibleMenuSliceInto(target, ["x"], 0, 3), { items: ["x"], indexes: [0] });
+  assertEquals(target.items.length, 1);
+  assertEquals(target.indexes.length, 1);
+
+  assertEquals(
+    visibleProjectedMenuSliceInto(
+      target,
+      [{ label: "alpha" }, { label: "beta" }],
+      0,
+      4,
+      (entry, index) => `${index}:${entry.label}`,
+    ),
+    { items: ["0:alpha", "1:beta"], indexes: [0, 1] },
+  );
 });

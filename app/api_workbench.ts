@@ -121,7 +121,14 @@ import {
   layoutWrappedControlOptions,
   wrappedControlOptionRowCount,
 } from "../src/app/workbench_control_layout.ts";
-import { compactSpaces, maxTextWidth, visibleMenuSlice, wrapPlainText } from "../src/app/workbench_text.ts";
+import {
+  compactSpaces,
+  maxTextWidth,
+  type VisibleMenuSlice,
+  visibleMenuSliceInto,
+  visibleProjectedMenuSliceInto,
+  wrapPlainText,
+} from "../src/app/workbench_text.ts";
 import { resolveWorkbenchShellBackend } from "../src/app/workbench_terminal.ts";
 import { AudioRegistry } from "./audio.ts";
 import {
@@ -471,6 +478,8 @@ const hitTargets = new HitTargetStack<HitAction>();
 const screenFrame: Frame = [];
 const workspaceVirtualFrame: Frame = [];
 const windowContentFrames = new Map<WindowId, Frame>();
+const newWindowMenuSlice: VisibleMenuSlice = { items: [], indexes: [] };
+const workspaceMenuSlice: VisibleMenuSlice = { items: [], indexes: [] };
 let dropdownOverlay: DropdownOverlay | null = null;
 let threeDragWindow: WindowId | null = null;
 let windowRenderContext: WindowRenderContext | null = null;
@@ -939,12 +948,17 @@ function renderHeader(frame: Frame): void {
     };
   }
   if (newWindowMenuOpen.peek()) {
-    const labels = newWindowOptions.map((entry) => newWindowMenuLabel(entry));
-    const visible = visibleMenuSlice(labels, newWindowMenuIndex.peek(), Math.max(6, currentHeight() - 5));
+    const visible = visibleProjectedMenuSliceInto(
+      newWindowMenuSlice,
+      newWindowOptions,
+      newWindowMenuIndex.peek(),
+      Math.max(6, currentHeight() - 5),
+      (entry) => newWindowMenuLabel(entry),
+    );
     const menuRect = menuItemRect(
       menuStart,
       "new",
-      Math.max(28, maxTextWidth(labels) + 6),
+      Math.max(28, maxTextWidthBy(newWindowOptions, (entry) => newWindowMenuLabel(entry)) + 6),
       visible.items.length + 2,
     );
     dropdownOverlay = {
@@ -958,7 +972,12 @@ function renderHeader(frame: Frame): void {
   }
   if (workspaceMenuOpen.peek()) {
     const labels = workspaceMenuLabels();
-    const visible = visibleMenuSlice(labels, workspaceMenuIndex.peek(), Math.max(6, currentHeight() - 5));
+    const visible = visibleMenuSliceInto(
+      workspaceMenuSlice,
+      labels,
+      workspaceMenuIndex.peek(),
+      Math.max(6, currentHeight() - 5),
+    );
     const menuRect = menuItemRect(
       menuStart,
       "workspace",

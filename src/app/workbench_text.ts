@@ -1,6 +1,12 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { stripStyles, textWidth } from "../utils/strings.ts";
 
+/** Mutable visible menu projection used by render adapters that redraw often. */
+export interface VisibleMenuSlice {
+  items: string[];
+  indexes: number[];
+}
+
 /** Collapses repeated whitespace to a single display-space. */
 export function compactSpaces(value: string): string {
   return value.replace(/\s+/g, " ").trim();
@@ -50,14 +56,40 @@ export function visibleMenuSlice(
   items: readonly string[],
   selectedIndex: number,
   maxItems: number,
-): { items: string[]; indexes: number[] } {
+): VisibleMenuSlice {
+  return visibleMenuSliceInto({ items: [], indexes: [] }, items, selectedIndex, maxItems);
+}
+
+/** Projects a selected item into a caller-owned visible menu slice buffer. */
+export function visibleMenuSliceInto(
+  target: VisibleMenuSlice,
+  items: readonly string[],
+  selectedIndex: number,
+  maxItems: number,
+): VisibleMenuSlice {
+  return visibleProjectedMenuSliceInto(target, items, selectedIndex, maxItems, (item) => item);
+}
+
+/** Projects source values into a caller-owned visible menu slice buffer. */
+export function visibleProjectedMenuSliceInto<T>(
+  target: VisibleMenuSlice,
+  items: readonly T[],
+  selectedIndex: number,
+  maxItems: number,
+  project: (item: T, index: number) => string,
+): VisibleMenuSlice {
   const count = Math.max(1, maxItems);
-  if (items.length <= count) {
-    return { items: [...items], indexes: items.map((_, index) => index) };
+  const visibleCount = Math.min(items.length, count);
+  const start = items.length <= count
+    ? 0
+    : Math.max(0, Math.min(selectedIndex - Math.floor(count / 2), items.length - count));
+
+  target.items.length = visibleCount;
+  target.indexes.length = visibleCount;
+  for (let offset = 0; offset < visibleCount; offset += 1) {
+    const index = start + offset;
+    target.items[offset] = project(items[index]!, index);
+    target.indexes[offset] = index;
   }
-  const start = Math.max(0, Math.min(selectedIndex - Math.floor(count / 2), items.length - count));
-  return {
-    items: items.slice(start, start + count),
-    indexes: Array.from({ length: count }, (_, index) => start + index),
-  };
+  return target;
 }
