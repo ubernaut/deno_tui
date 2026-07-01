@@ -460,6 +460,8 @@ Work:
         consume a fixture-testable data transform instead of owning source sampling and hazard math directly.
   - [x] Extracted visualization dispatch into typed renderer maps so catalog ids, Three scene modes, and direct panel
         renderers are data-driven instead of encoded in one large switch.
+  - [x] Extracted the CPU hex-grid visualization into `app/visualization_cpu_hex.ts`, keeping color interpolation,
+        layout, selection, and process-detail behavior under the existing visualization dynamic tests.
 - [ ] Make demo-only assets and NGE-inspired primitives clearly separate from library APIs.
   - [x] Added `app/neon_three_catalog.ts` for supported Three scene metadata and labels, keeping demo/NGE catalog data
         separate from the monolithic scene factory and shared by visualization footers plus scene coverage tests.
