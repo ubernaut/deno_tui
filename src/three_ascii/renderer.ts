@@ -12,6 +12,11 @@ import {
 import type { TerminalGlyphStyle } from "./glyphs.ts";
 import { HeadlessCanvas } from "./headless_canvas.ts";
 import { loadAsciiLutTextures } from "./loadAsciiLuts.ts";
+import {
+  createThreeAsciiReadbackLayout,
+  createThreeAsciiReadbackViews,
+  type ThreeAsciiReadbackLayout,
+} from "./readback.ts";
 import { getCompatibleWebGPUDevice } from "./webgpu_compat.ts";
 
 const TILE_SIZE = 8;
@@ -525,26 +530,27 @@ export class ThreeAsciiRenderer {
       workgroupsY,
     );
 
-    const fillOffset = 0;
-    const edgeOffset = effectState.edges ? fillOffset + this.fillOutput!.byteLength : undefined;
-    const colorOffset = fillOffset + this.fillOutput!.byteLength +
-      (effectState.edges ? this.edgeOutput!.byteLength : 0);
-    const readbackByteLength = colorOffset + this.colorOutput!.byteLength;
-    this.outputReadback = this.ensureReadbackBuffer(this.outputReadback, readbackByteLength);
+    const readbackLayout = createThreeAsciiReadbackLayout({
+      fillByteLength: this.fillOutput!.byteLength,
+      edgeByteLength: this.edgeOutput!.byteLength,
+      colorByteLength: this.colorOutput!.byteLength,
+      includeEdges: effectState.edges,
+    });
+    this.outputReadback = this.ensureReadbackBuffer(this.outputReadback, readbackLayout.byteLength);
 
     commandEncoder.copyBufferToBuffer(
       this.fillOutput!.gpu,
       0,
       this.outputReadback.gpu,
-      fillOffset,
+      readbackLayout.fillOffset,
       this.fillOutput!.byteLength,
     );
-    if (effectState.edges && edgeOffset !== undefined) {
+    if (effectState.edges && readbackLayout.edgeOffset !== undefined) {
       commandEncoder.copyBufferToBuffer(
         this.edgeOutput!.gpu,
         0,
         this.outputReadback.gpu,
-        edgeOffset,
+        readbackLayout.edgeOffset,
         this.edgeOutput!.byteLength,
       );
     }
@@ -552,13 +558,13 @@ export class ThreeAsciiRenderer {
       this.colorOutput!.gpu,
       0,
       this.outputReadback.gpu,
-      colorOffset,
+      readbackLayout.colorOffset,
       this.colorOutput!.byteLength,
     );
 
     this.device!.queue.submit([commandEncoder.finish()]);
 
-    return await this.buildAnsiGridFromReadback(fillOffset, edgeOffset, colorOffset, effectState.backgroundColor);
+    return await this.buildAnsiGridFromReadback(readbackLayout, effectState.backgroundColor);
   }
 
   destroy(): void {
@@ -878,16 +884,11 @@ export class ThreeAsciiRenderer {
   }
 
   private async buildAnsiGridFromReadback(
-    fillOffset: number,
-    edgeOffset: number | undefined,
-    colorOffset: number,
+    layout: ThreeAsciiReadbackLayout,
     backgroundColor: Color,
   ): Promise<string[][]> {
     const readback = this.outputReadback;
-    const fillOutput = this.fillOutput;
-    const edgeOutput = this.edgeOutput;
-    const colorOutput = this.colorOutput;
-    if (!readback || !fillOutput || !edgeOutput || !colorOutput) {
+    if (!readback || !this.fillOutput || !this.edgeOutput || !this.colorOutput) {
       throw new Error("ThreeAsciiRenderer readback buffers have not been initialized.");
     }
 
@@ -895,14 +896,13 @@ export class ThreeAsciiRenderer {
 
     try {
       const source = readback.gpu.getMappedRange();
+      const views = createThreeAsciiReadbackViews(source, layout);
       return this.ansiGridAssembler.build({
         columns: this.columns,
         rows: this.rows,
-        fillGlyphs: new Float32Array(source, fillOffset, fillOutput.byteLength / Float32Array.BYTES_PER_ELEMENT),
-        edgeGlyphs: edgeOffset === undefined
-          ? undefined
-          : new Float32Array(source, edgeOffset, edgeOutput.byteLength / Float32Array.BYTES_PER_ELEMENT),
-        colors: new Float32Array(source, colorOffset, colorOutput.byteLength / Float32Array.BYTES_PER_ELEMENT),
+        fillGlyphs: views.fillGlyphs,
+        edgeGlyphs: views.edgeGlyphs,
+        colors: views.colors,
         terminalGlyphStyle: this.terminalGlyphStyle,
         terminalEdgeBias: this.terminalEdgeBias,
         backgroundColor,

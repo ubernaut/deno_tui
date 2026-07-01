@@ -239,6 +239,9 @@ Work:
       fill/edge/color CPU array copy before terminal grid assembly.
   - [x] Skipped edge compute/copy/readback work entirely for block-style renderer configs with edges disabled, reducing
         mapped readback bytes and CPU grid inputs for the default solid/block visualization path.
+  - [x] Extracted Three ASCII readback byte packing and mapped-range view construction into
+        `src/three_ascii/readback.ts`, with focused tests for edge-disabled packing and Float32 alignment so future GPU
+        copy policy changes have a narrow correctness boundary.
 
 Acceptance checks:
 

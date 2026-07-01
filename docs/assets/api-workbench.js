@@ -2933,6 +2933,9 @@ function createMixedFillGlyphTable() {
 // src/three_ascii/loadAsciiLuts.ts
 import { ClampToEdgeWrapping, LinearFilter as LinearFilter2, NoColorSpace, Texture as Texture2 } from "https://esm.sh/three@0.183.2";
 
+// src/three_ascii/readback.ts
+var FLOAT_BYTE_LENGTH = Float32Array.BYTES_PER_ELEMENT;
+
 // src/three_ascii/webgpu_compat.ts
 var WRITE_BUFFER_PATCHED = Symbol.for("deno_tui.three_ascii.write_buffer_patched");
 var SHADER_MODULE_PATCHED = Symbol.for("deno_tui.three_ascii.shader_module_patched");
