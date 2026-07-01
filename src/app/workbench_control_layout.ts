@@ -1,4 +1,5 @@
 // Copyright 2023 Im-Beast. MIT license.
+import { fitCellText } from "./workbench_frame.ts";
 import { textWidth } from "../utils/strings.ts";
 
 /** One selectable option token inside a wrapped control option row. */
@@ -13,6 +14,42 @@ export interface WorkbenchControlOptionToken {
 export interface WorkbenchControlOptionRow {
   text: string;
   tokens: WorkbenchControlOptionToken[];
+}
+
+export type WorkbenchControlButtonLineSegmentKind = "prefix" | "button" | "detail";
+
+/** One styled segment in a control row containing a clickable button token and trailing detail text. */
+export interface WorkbenchControlButtonLineSegment {
+  kind: WorkbenchControlButtonLineSegmentKind;
+  text: string;
+  columnOffset: number;
+  width: number;
+}
+
+/** Computes clipped button/detail segments without letting the button background paint trailing whitespace. */
+export function layoutWorkbenchControlButtonLine(
+  prefix: string,
+  value: string,
+  width: number,
+): WorkbenchControlButtonLineSegment[] {
+  const safeWidth = Math.max(0, Math.floor(width));
+  const segments: WorkbenchControlButtonLineSegment[] = [];
+  let columnOffset = 0;
+  const addSegment = (kind: WorkbenchControlButtonLineSegmentKind, text: string, maxWidth: number) => {
+    const segmentWidth = Math.max(0, Math.min(textWidth(text), maxWidth, safeWidth - columnOffset));
+    if (segmentWidth <= 0) return;
+    const fitted = fitCellText(text, segmentWidth);
+    segments.push({ kind, text: fitted, columnOffset, width: segmentWidth });
+    columnOffset += segmentWidth;
+  };
+
+  addSegment("prefix", prefix, safeWidth);
+  const match = /^(\[[^\]]+\])(.*)$/.exec(value);
+  const buttonText = match?.[1] ?? value;
+  const detailText = match?.[2] ?? "";
+  addSegment("button", buttonText, safeWidth - columnOffset);
+  addSegment("detail", detailText, safeWidth - columnOffset);
+  return segments;
 }
 
 /** Computes wrapped rows for inline selectable options such as combo box previews. */

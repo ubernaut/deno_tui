@@ -75,6 +75,8 @@ Work:
   - [x] Extracted renderer-neutral workbench text helpers into `src/app/workbench_text.ts`, covering whitespace
         compaction, row measurement, plain text wrapping, and visible menu slices while trimming duplicate helpers from
         the terminal workbench.
+  - [x] Extracted workbench control button-line segmentation into `src/app/workbench_control_layout.ts`, keeping
+        clickable button backgrounds scoped to the button token and covering clipped narrow rows with focused tests.
 - [ ] Make the terminal workbench and web workbench thin render adapters over the same controller/model.
   - [x] Exposed the shared frame and hit-target helpers through `src/app/mod.ts` and migrated the web API Workbench page
         to reuse exported text-fit, ANSI-cell, contrast, and geometry helpers.

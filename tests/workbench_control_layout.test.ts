@@ -1,6 +1,25 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { assertEquals } from "./deps.ts";
-import { layoutWrappedControlOptions, wrappedControlOptionRowCount } from "../src/app/workbench_control_layout.ts";
+import {
+  layoutWorkbenchControlButtonLine,
+  layoutWrappedControlOptions,
+  wrappedControlOptionRowCount,
+} from "../src/app/workbench_control_layout.ts";
+
+Deno.test("layoutWorkbenchControlButtonLine keeps button background scoped to the button token", () => {
+  assertEquals(layoutWorkbenchControlButtonLine("> ", "[ Run ] presses=2", 24), [
+    { kind: "prefix", text: "> ", columnOffset: 0, width: 2 },
+    { kind: "button", text: "[ Run ]", columnOffset: 2, width: 7 },
+    { kind: "detail", text: " presses=2", columnOffset: 9, width: 10 },
+  ]);
+});
+
+Deno.test("layoutWorkbenchControlButtonLine clips by segment without padding the button across the row", () => {
+  assertEquals(layoutWorkbenchControlButtonLine("> ", "[ Long Button ] trailing detail", 12), [
+    { kind: "prefix", text: "> ", columnOffset: 0, width: 2 },
+    { kind: "button", text: "[ Long Bu…", columnOffset: 2, width: 10 },
+  ]);
+});
 
 Deno.test("layoutWrappedControlOptions keeps option tokens and hit offsets stable", () => {
   const rows = layoutWrappedControlOptions(["Unit-01", "Signal", "Arcane"], 1, 80);

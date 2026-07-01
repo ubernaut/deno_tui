@@ -103,7 +103,11 @@ import { Tui } from "../src/tui.ts";
 import type { Rectangle } from "../src/types.ts";
 import { stripStyles, textWidth } from "../src/utils/strings.ts";
 import { workbenchButtonPaintOptions } from "../src/app/workbench_button_style.ts";
-import { layoutWrappedControlOptions, wrappedControlOptionRowCount } from "../src/app/workbench_control_layout.ts";
+import {
+  layoutWorkbenchControlButtonLine,
+  layoutWrappedControlOptions,
+  wrappedControlOptionRowCount,
+} from "../src/app/workbench_control_layout.ts";
 import { compactSpaces, maxTextWidth, visibleMenuSlice, wrapPlainText } from "../src/app/workbench_text.ts";
 import { resolveWorkbenchShellBackend } from "../src/app/workbench_terminal.ts";
 import { AudioRegistry } from "./audio.ts";
@@ -1514,31 +1518,22 @@ function renderControls(frame: Frame, rect: Rectangle): void {
       bold: active,
     };
     if (options.button) {
-      const match = /^(\[[^\]]+\])(.*)$/.exec(value);
-      const buttonText = match?.[1] ?? value;
-      const detailText = match?.[2] ?? "";
       write(frame, row, rect.column, paint(" ".repeat(rect.width), { fg: t.text, bg: t.surface }));
-      write(frame, row, rect.column, paint(fit(prefix, rect.width), baseStyle));
-      let column = rect.column + textWidth(prefix);
-      const remainingForButton = Math.max(0, rect.width - textWidth(prefix));
-      write(
-        frame,
-        row,
-        column,
-        paint(fit(buttonText, remainingForButton), buttonPaintOptions(t, active ? "active" : "base")),
-      );
-      column += Math.min(textWidth(buttonText), remainingForButton);
-      const remainingForDetail = Math.max(0, rect.width - (column - rect.column));
-      if (remainingForDetail > 0) {
-        write(
-          frame,
-          row,
-          column,
-          paint(fit(detailText, remainingForDetail), {
+      for (const segment of layoutWorkbenchControlButtonLine(prefix, value, rect.width)) {
+        const style = segment.kind === "button"
+          ? buttonPaintOptions(t, active ? "active" : "base")
+          : segment.kind === "detail"
+          ? {
             fg: active ? t.warn : t.text,
             bg: t.surface,
             bold: active,
-          }),
+          }
+          : baseStyle;
+        write(
+          frame,
+          row,
+          rect.column + segment.columnOffset,
+          paint(segment.text, style),
         );
       }
     } else {
