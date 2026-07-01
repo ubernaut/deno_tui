@@ -308,6 +308,9 @@ var SignalRecursiveUpdateError = class extends Error {
 var MAX_PROPAGATION_REENTRY = 32;
 var activePropagationCounts = /* @__PURE__ */ new Map();
 var propagationStack = [];
+var signalBatchDepth = 0;
+var flushingSignalBatch = false;
+var batchedSignals = /* @__PURE__ */ new Set();
 var Signal = class {
   $value;
   // Dependant: something that depends on THIS
@@ -381,6 +384,10 @@ var Signal = class {
    * - Update each dependant in `dependants`
    */
   propagate(cause) {
+    if (signalBatchDepth > 0 && !flushingSignalBatch) {
+      batchedSignals.add(this);
+      return;
+    }
     const exitPropagation = enterPropagation(this);
     const { subscriptions, whenSubscriptions, dependants } = this;
     try {

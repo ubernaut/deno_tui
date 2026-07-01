@@ -1,11 +1,13 @@
 // Copyright 2023 Im-Beast. MIT license.
 import {
+  batchSignalUpdates,
   Computed,
   Effect,
   EffectPausedUpdateError,
   Flusher,
   getConnectedSignal,
   getOriginalRef,
+  isSignalBatching,
   LazyComputed,
   LazyEffect,
   ReactiveOriginalRefAccessError,
@@ -168,6 +170,43 @@ Deno.test("signals/mod.ts", async (t) => {
     await t.step("reactive access helpers report typed errors", () => {
       assertThrows(() => getConnectedSignal({}), ReactiveSignalAccessError);
       assertThrows(() => getOriginalRef({}), ReactiveOriginalRefAccessError);
+    });
+
+    await t.step("batched updates defer propagation until the outermost batch exits", () => {
+      const signal = new Signal(0);
+      const seen: number[] = [];
+      signal.subscribe((value) => seen.push(value));
+
+      const result = batchSignalUpdates(() => {
+        assertEquals(isSignalBatching(), true);
+        signal.value = 1;
+        signal.value = 2;
+        batchSignalUpdates(() => {
+          signal.value = 3;
+        });
+        assertEquals(seen, []);
+        return "done";
+      });
+
+      assertEquals(result, "done");
+      assertEquals(isSignalBatching(), false);
+      assertEquals(signal.value, 3);
+      assertEquals(seen, [3]);
+    });
+
+    await t.step("batched deep-observed mutations propagate once with final object state", () => {
+      const signal = new Signal({ count: 0, label: "start" }, { deepObserve: true, watchObjectIndex: true });
+      const seen: Array<{ count: number; label: string }> = [];
+      signal.subscribe((value) => seen.push({ count: value.count, label: value.label }));
+
+      batchSignalUpdates(() => {
+        signal.value.count = 1;
+        signal.value.label = "middle";
+        signal.value.count = 2;
+        signal.value.label = "done";
+      });
+
+      assertEquals(seen, [{ count: 2, label: "done" }]);
     });
 
     await t.step("Deep observe", async (t) => {

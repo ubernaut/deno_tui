@@ -95,7 +95,7 @@ Current evidence:
 
 Work:
 
-- [ ] Add a batched update/transaction API for groups of related signal mutations.
+- [x] Add a batched update/transaction API for groups of related signal mutations.
 - [x] Add recursion/cycle detection with actionable diagnostics that include the signal/effect inspection path where
       available.
 - [ ] Provide a scheduler-backed propagation mode for UI frame updates so noisy state changes coalesce into one draw.

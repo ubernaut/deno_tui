@@ -68,6 +68,46 @@ export interface SignalInspection {
 const MAX_PROPAGATION_REENTRY = 32;
 const activePropagationCounts = new Map<object, number>();
 const propagationStack: object[] = [];
+let signalBatchDepth = 0;
+let flushingSignalBatch = false;
+interface SignalBatchTarget {
+  propagate(): void;
+}
+const batchedSignals = new Set<SignalBatchTarget>();
+
+/** Runs signal mutations as one propagation batch flushed after the outermost callback exits. */
+export function batchSignalUpdates<T>(callback: () => T): T {
+  signalBatchDepth += 1;
+  try {
+    return callback();
+  } finally {
+    signalBatchDepth -= 1;
+    if (signalBatchDepth === 0) {
+      flushSignalBatch();
+    }
+  }
+}
+
+/** Returns whether signal propagation is currently deferred inside a batch. */
+export function isSignalBatching(): boolean {
+  return signalBatchDepth > 0;
+}
+
+function flushSignalBatch(): void {
+  if (flushingSignalBatch || batchedSignals.size === 0) return;
+  flushingSignalBatch = true;
+  try {
+    while (batchedSignals.size > 0) {
+      const signals = [...batchedSignals];
+      batchedSignals.clear();
+      for (const signal of signals) {
+        signal.propagate();
+      }
+    }
+  } finally {
+    flushingSignalBatch = false;
+  }
+}
 
 /**
  * Signal wraps value in a container.
@@ -169,6 +209,11 @@ export class Signal<T> implements Dependency {
    * - Update each dependant in `dependants`
    */
   propagate(cause?: Dependency | Dependant): void {
+    if (signalBatchDepth > 0 && !flushingSignalBatch) {
+      batchedSignals.add(this);
+      return;
+    }
+
     const exitPropagation = enterPropagation(this);
     const { subscriptions, whenSubscriptions, dependants } = this;
 
