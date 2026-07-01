@@ -167,10 +167,12 @@ Current evidence:
 
 Work:
 
-- [ ] Split Three panel lifecycle into a small state machine with explicit states: idle, initializing, rendering,
-      stopping, failed, disposed.
+- [x] Split Three panel lifecycle into a small state machine with explicit states: idle, initializing, rendering,
+      resizing, reconfiguring, stopping, failed, disposed.
   - [x] Added an inspectable lifecycle state surface covering idle, initializing, rendering, stopping, failed, and
         disposed states before deeper state-machine extraction.
+  - [x] Extracted `resolveThreePanelLifecycleState()` and added focused tests for resize/reconfigure priorities while
+        keeping frame-view race tests on the same lifecycle vocabulary.
 - [x] Add cancel tokens/generation ids so stale frames cannot update disposed or rebuilt panels.
 - [x] Pool GPU readback buffers and avoid recreating CPU arrays when size is unchanged.
 - [x] Explore packing fill/edge/color output into fewer readbacks or a single mapped buffer.

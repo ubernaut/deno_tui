@@ -7,6 +7,7 @@ import {
   type ThreePanelGridRenderer,
   type ThreeSceneState,
 } from "../app/three_panel.ts";
+import { resolveThreePanelLifecycleState } from "../app/three_panel_lifecycle.ts";
 import { Canvas, MemoryCanvasSink, type ThreeAsciiGridRenderer, ThreeAsciiObject } from "../src/canvas/mod.ts";
 import type {
   GraphicsDeleteMode,
@@ -77,6 +78,29 @@ Deno.test("resolveThreePanelRenderPolicy selects ASCII and Kitty frame modes", (
     }).kittyActive,
     false,
   );
+});
+
+Deno.test("resolveThreePanelLifecycleState reports explicit transition phases", () => {
+  const base = {
+    disposed: false,
+    failed: false,
+    destroyPending: false,
+    rebuildPending: false,
+    syncPending: false,
+    rendering: false,
+    hasRenderer: false,
+    visible: false,
+    gridRows: 0,
+  };
+
+  assertEquals(resolveThreePanelLifecycleState(base), "idle");
+  assertEquals(resolveThreePanelLifecycleState({ ...base, hasRenderer: true, visible: true }), "initializing");
+  assertEquals(resolveThreePanelLifecycleState({ ...base, rendering: true }), "rendering");
+  assertEquals(resolveThreePanelLifecycleState({ ...base, syncPending: true, rendering: true }), "resizing");
+  assertEquals(resolveThreePanelLifecycleState({ ...base, rebuildPending: true, syncPending: true }), "reconfiguring");
+  assertEquals(resolveThreePanelLifecycleState({ ...base, destroyPending: true }), "stopping");
+  assertEquals(resolveThreePanelLifecycleState({ ...base, failed: true }), "failed");
+  assertEquals(resolveThreePanelLifecycleState({ ...base, disposed: true, failed: true }), "disposed");
 });
 
 Deno.test("ThreePanelFrameView stays inert while disabled", async () => {
@@ -232,7 +256,7 @@ Deno.test("ThreePanelFrameView defers resize while a frame is rendering", async 
     rectangle.value = { column: 0, row: 0, width: 20, height: 8 };
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    assertEquals(panel.inspectLifecycle().state, "stopping");
+    assertEquals(panel.inspectLifecycle().state, "resizing");
     assertEquals(panel.inspectLifecycle().syncPending, true);
     assertEquals(renderer?.setSizeDuringRender, 0);
     renderer?.completeFrame();
@@ -394,7 +418,7 @@ Deno.test("ThreePanelFrameView drops stale frames after ascii config rebuilds", 
     ascii.value = { ...ascii.peek(), wireframeThickness: ascii.peek().wireframeThickness + 1 };
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    assertEquals(panel.inspectLifecycle().state, "stopping");
+    assertEquals(panel.inspectLifecycle().state, "reconfiguring");
     renderers[0]?.completeFrame();
 
     await waitFor(() => (renderers[1]?.startCount ?? 0) >= 1);
@@ -450,7 +474,7 @@ Deno.test("ThreePanelFrameView tolerates repeated hide restore reconfigure resiz
     assertEquals(renderers[1]?.destroyed, true);
     rectangle.value = { column: 0, row: 0, width: 20, height: 8 };
     await new Promise((resolve) => setTimeout(resolve, 0));
-    assertEquals(panel.inspectLifecycle().state, "stopping");
+    assertEquals(panel.inspectLifecycle().state, "resizing");
     renderers[2]?.completeFrame();
 
     await waitFor(() => (renderers[2]?.startCount ?? 0) >= 2);

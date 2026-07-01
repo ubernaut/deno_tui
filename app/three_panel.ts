@@ -13,6 +13,7 @@ import {
 import * as THREE from "npm:three@0.183.2";
 import { asciiEffectOptions } from "./ascii_options.ts";
 import { createNeonThreeScene, type NeonThreeSceneBundle } from "./neon_three.ts";
+import { resolveThreePanelLifecycleState, type ThreePanelLifecycleState } from "./three_panel_lifecycle.ts";
 import type { AsciiOptions, Rect, ThreeSceneMode, ThreeSceneSignal } from "./types.ts";
 
 export interface ThreeSceneState {
@@ -39,8 +40,6 @@ export interface ThreePanelRenderPolicy {
   renderImage: boolean;
   frameOptions: ThreeAsciiRenderFrameOptions;
 }
-
-export type ThreePanelLifecycleState = "idle" | "initializing" | "rendering" | "stopping" | "failed" | "disposed";
 
 export interface ThreePanelLifecycleInspection {
   state: ThreePanelLifecycleState;
@@ -411,12 +410,17 @@ export class ThreePanelFrameView {
   }
 
   private lifecycleState(): ThreePanelLifecycleState {
-    if (this.disposed) return "disposed";
-    if (this.failed) return "failed";
-    if (this.destroyPending || this.rebuildPending || this.syncPending) return "stopping";
-    if (this.rendering) return "rendering";
-    if (this.renderer && this.isVisible() && this.grid.peek().length === 0) return "initializing";
-    return "idle";
+    return resolveThreePanelLifecycleState({
+      disposed: this.disposed,
+      failed: this.failed,
+      destroyPending: this.destroyPending,
+      rebuildPending: this.rebuildPending,
+      syncPending: this.syncPending,
+      rendering: this.rendering,
+      hasRenderer: this.renderer !== undefined,
+      visible: this.isVisible(),
+      gridRows: this.grid.peek().length,
+    });
   }
 
   private async renderLoop(): Promise<void> {
