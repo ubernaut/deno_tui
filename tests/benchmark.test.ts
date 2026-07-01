@@ -139,6 +139,14 @@ Deno.test("benchmark CLI catalog covers high-volume TUI workloads", () => {
   assertEquals(names.includes("render/canvas-dirty-region-400-rects"), true);
   assertEquals(names.includes("render/three-ascii-ansi-grid-96x40"), true);
   assertEquals(names.includes("render/three-ascii-readback-copy-96x40"), true);
+  assertEquals(
+    queryBenchmarkCases(benchmarkCases, { tag: "assembly" }).map((entry) => entry.name),
+    ["render/three-ascii-ansi-grid-96x40"],
+  );
+  assertEquals(
+    queryBenchmarkCases(benchmarkCases, { tag: "readback" }).map((entry) => entry.name),
+    ["render/three-ascii-readback-copy-96x40"],
+  );
   assertEquals(names.includes("runtime/scheduler-batch-100"), true);
   assertEquals(names.includes("widgets/theme-standard-39-components"), true);
 });

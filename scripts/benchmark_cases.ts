@@ -558,8 +558,8 @@ export const benchmarkCases: BenchmarkCase[] = [
   {
     name: "render/three-ascii-ansi-grid-96x40",
     category: "render",
-    description: "Assemble a 96x40 truecolor ANSI grid from three Ascii readback buffers.",
-    tags: ["render", "three", "ascii", "ansi"],
+    description: "CPU-assemble a 96x40 truecolor ANSI grid from Three ASCII readback buffers.",
+    tags: ["render", "three", "ascii", "ansi", "cpu", "assembly"],
     iterations: 150,
     maxAverageMs: 12,
     run: () => {
@@ -582,7 +582,7 @@ export const benchmarkCases: BenchmarkCase[] = [
     name: "render/three-ascii-readback-copy-96x40",
     category: "render",
     description: "Copy a 96x40 Three Ascii fill, edge, and color readback payload into CPU-visible buffers.",
-    tags: ["render", "three", "ascii", "readback"],
+    tags: ["render", "three", "ascii", "readback", "copy"],
     iterations: 1_000,
     maxAverageMs: 2,
     run: runThreeAsciiReadbackCopyWorkload,
