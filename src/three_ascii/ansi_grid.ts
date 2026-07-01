@@ -374,33 +374,48 @@ function fillCoverageForAscii(fillBucket: number): number {
 }
 
 function createMixedFillGlyphTable(): string[] {
-  const candidates = [
-    ...FILL_GLYPHS.map((glyph, index) => ({
-      glyph,
-      coverage: (GOHU_11_FILL_GLYPH_COVERAGE[index] ?? 0) / TILE_PIXEL_COUNT,
-      index,
-      familyBias: 0,
-    })),
-    ...ASCII_FILL_GLYPHS.map((glyph, index) => ({
-      glyph,
-      coverage: fillCoverageForAscii(index),
-      index,
-      familyBias: 0.002,
-    })),
-  ];
-
-  return Array.from({ length: FILL_GLYPHS.length + 5 }, (_, fillGlyphIndex) => {
+  const table = new Array<string>(FILL_GLYPHS.length + 5);
+  for (let fillGlyphIndex = 0; fillGlyphIndex < table.length; fillGlyphIndex++) {
     const bucket = fillBucketFromGlyphIndex(fillGlyphIndex);
     const targetCoverage = fillCoverageForGohu11(fillGlyphIndex);
-    return candidates.reduce((best, candidate) => {
-      const bestScore = Math.abs(best.coverage - targetCoverage) + Math.abs(best.index - bucket) * 0.001 +
-        best.familyBias;
-      const candidateScore = Math.abs(candidate.coverage - targetCoverage) +
-        Math.abs(candidate.index - bucket) * 0.001 +
-        candidate.familyBias;
-      return candidateScore < bestScore ? candidate : best;
-    }).glyph;
-  });
+    let bestGlyph = " ";
+    let bestScore = Number.POSITIVE_INFINITY;
+
+    for (let index = 0; index < FILL_GLYPHS.length; index++) {
+      const score = mixedFillGlyphScore(
+        (GOHU_11_FILL_GLYPH_COVERAGE[index] ?? 0) / TILE_PIXEL_COUNT,
+        index,
+        bucket,
+        targetCoverage,
+        0,
+      );
+      if (score < bestScore) {
+        bestScore = score;
+        bestGlyph = FILL_GLYPHS[index] ?? " ";
+      }
+    }
+
+    for (let index = 0; index < ASCII_FILL_GLYPHS.length; index++) {
+      const score = mixedFillGlyphScore(fillCoverageForAscii(index), index, bucket, targetCoverage, 0.002);
+      if (score < bestScore) {
+        bestScore = score;
+        bestGlyph = ASCII_FILL_GLYPHS[index] ?? " ";
+      }
+    }
+
+    table[fillGlyphIndex] = bestGlyph;
+  }
+  return table;
+}
+
+function mixedFillGlyphScore(
+  coverage: number,
+  index: number,
+  bucket: number,
+  targetCoverage: number,
+  familyBias: number,
+): number {
+  return Math.abs(coverage - targetCoverage) + Math.abs(index - bucket) * 0.001 + familyBias;
 }
 
 function createGlyphKeyTable(): string[] {
