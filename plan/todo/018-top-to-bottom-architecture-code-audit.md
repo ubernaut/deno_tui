@@ -256,14 +256,16 @@ Work:
       while preserving fresh output arrays for standalone assembler callers.
 - [x] Build ANSI grids directly from mapped GPU readback views in `ThreeAsciiRenderer`, eliminating the per-frame
       fill/edge/color CPU array copy before terminal grid assembly.
-  - [x] Skipped edge compute/copy/readback work entirely for block-style renderer configs with edges disabled, reducing
-        mapped readback bytes and CPU grid inputs for the default solid/block visualization path.
-  - [x] Extracted Three ASCII readback byte packing and mapped-range view construction into
-        `src/three_ascii/readback.ts`, with focused tests for edge-disabled packing and Float32 alignment so future GPU
-        copy policy changes have a narrow correctness boundary.
-  - [x] Flattened repeated ANSI cell caching to numeric foreground/glyph keys and split fill-only grid assembly into a
-        branch-free hot loop, improving the focused Three ASCII assembly benchmark subset while preserving style-switch
-        cache correctness.
+- [x] Skipped edge compute/copy/readback work entirely for block-style renderer configs with edges disabled, reducing
+      mapped readback bytes and CPU grid inputs for the default solid/block visualization path.
+- [x] Extracted Three ASCII readback byte packing and mapped-range view construction into `src/three_ascii/readback.ts`,
+      with focused tests for edge-disabled packing and Float32 alignment so future GPU copy policy changes have a narrow
+      correctness boundary.
+- [x] Flattened repeated ANSI cell caching to numeric foreground/glyph keys and split fill-only grid assembly into a
+      branch-free hot loop, improving the focused Three ASCII assembly benchmark subset while preserving style-switch
+      cache correctness.
+- [x] Added adjacent raw-color/glyph reuse inside edged and fill-only ANSI grid hot loops so solid geometry skips
+      repeated linear-to-sRGB conversion, block blending, ANSI lookup, and cell string assembly.
 
 Acceptance checks:
 

@@ -65,6 +65,9 @@ export class ThreeAsciiAnsiGridAssembler {
     let lastForegroundKey = -1;
     let lastGlyphKey = -1;
     let lastCell = "";
+    let lastRawRed = Number.NaN;
+    let lastRawGreen = Number.NaN;
+    let lastRawBlue = Number.NaN;
     const grid = this.reuseGrid ? this.prepareReusableGrid(rows, columns) : createStringGrid(rows, columns);
 
     if (!hasEdges) {
@@ -78,6 +81,9 @@ export class ThreeAsciiAnsiGridAssembler {
         lastForegroundKey,
         lastGlyphKey,
         lastCell,
+        lastRawRed,
+        lastRawGreen,
+        lastRawBlue,
       );
     }
 
@@ -115,9 +121,19 @@ export class ThreeAsciiAnsiGridAssembler {
         );
 
         const colorOffset = index * 4;
-        let foregroundRed = this.toByte(colors[colorOffset] ?? 0);
-        let foregroundGreen = this.toByte(colors[colorOffset + 1] ?? 0);
-        let foregroundBlue = this.toByte(colors[colorOffset + 2] ?? 0);
+        const rawRed = colors[colorOffset] ?? 0;
+        const rawGreen = colors[colorOffset + 1] ?? 0;
+        const rawBlue = colors[colorOffset + 2] ?? 0;
+        if (
+          rawRed === lastRawRed && rawGreen === lastRawGreen && rawBlue === lastRawBlue && glyphKey === lastGlyphKey
+        ) {
+          outputRow[column] = lastCell;
+          continue;
+        }
+
+        let foregroundRed = this.toByte(rawRed);
+        let foregroundGreen = this.toByte(rawGreen);
+        let foregroundBlue = this.toByte(rawBlue);
         if (
           terminalGlyphStyle === "blocks" && glyphKey > 0 && glyphKey < GLYPH_KEY_GLYPHS_OFFSET && fillGlyphIndex < 14
         ) {
@@ -138,6 +154,9 @@ export class ThreeAsciiAnsiGridAssembler {
         lastForegroundKey = foregroundKey;
         lastGlyphKey = glyphKey;
         lastCell = cell;
+        lastRawRed = rawRed;
+        lastRawGreen = rawGreen;
+        lastRawBlue = rawBlue;
 
         outputRow[column] = cell;
       }
@@ -165,6 +184,9 @@ export class ThreeAsciiAnsiGridAssembler {
     lastForegroundKey: number,
     lastGlyphKey: number,
     lastCell: string,
+    lastRawRed: number,
+    lastRawGreen: number,
+    lastRawBlue: number,
   ): string[][] {
     for (let row = 0; row < rows; row += 1) {
       const outputRow = grid[row];
@@ -179,9 +201,19 @@ export class ThreeAsciiAnsiGridAssembler {
 
         const glyphKey = terminalFillGlyphForCell(terminalGlyphStyle, fillGlyphIndex);
         const colorOffset = index * 4;
-        let foregroundRed = this.toByte(colors[colorOffset] ?? 0);
-        let foregroundGreen = this.toByte(colors[colorOffset + 1] ?? 0);
-        let foregroundBlue = this.toByte(colors[colorOffset + 2] ?? 0);
+        const rawRed = colors[colorOffset] ?? 0;
+        const rawGreen = colors[colorOffset + 1] ?? 0;
+        const rawBlue = colors[colorOffset + 2] ?? 0;
+        if (
+          rawRed === lastRawRed && rawGreen === lastRawGreen && rawBlue === lastRawBlue && glyphKey === lastGlyphKey
+        ) {
+          outputRow[column] = lastCell;
+          continue;
+        }
+
+        let foregroundRed = this.toByte(rawRed);
+        let foregroundGreen = this.toByte(rawGreen);
+        let foregroundBlue = this.toByte(rawBlue);
         if (
           terminalGlyphStyle === "blocks" && glyphKey > 0 && glyphKey < GLYPH_KEY_GLYPHS_OFFSET && fillGlyphIndex < 14
         ) {
@@ -201,6 +233,9 @@ export class ThreeAsciiAnsiGridAssembler {
         lastForegroundKey = foregroundKey;
         lastGlyphKey = glyphKey;
         lastCell = cell;
+        lastRawRed = rawRed;
+        lastRawGreen = rawGreen;
+        lastRawBlue = rawBlue;
 
         outputRow[column] = cell;
       }
