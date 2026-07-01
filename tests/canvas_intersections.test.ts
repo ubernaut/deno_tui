@@ -1,8 +1,9 @@
 import { assertEquals } from "./deps.ts";
+import { Canvas, MemoryCanvasSink } from "../src/canvas/mod.ts";
 import { BoxObject } from "../src/canvas/box.ts";
 import { TextObject, type TextRectangle } from "../src/canvas/text.ts";
 import { Signal } from "../src/signals/mod.ts";
-import { canvasRowText, createTestCanvas } from "../src/testing/mod.ts";
+import { assertTerminalSnapshot, canvasRowText, canvasSnapshot, createTestCanvas } from "../src/testing/mod.ts";
 import { View } from "../src/view.ts";
 
 Deno.test("canvas keeps higher z overlays visible after lower z redraws", () => {
@@ -201,6 +202,19 @@ Deno.test("canvas rerenders overlapping cells when z-index order changes", () =>
   assertEquals(canvas.drawnOrderVersion, 4);
 });
 
+Deno.test("canvas clears stale cells after move resize and erase with ANSI stdout sink", () => {
+  runInvalidationScenario(createTestCanvas({ size: { columns: 10, rows: 4 } }));
+});
+
+Deno.test("canvas clears stale cells after move resize and erase with memory sink", () => {
+  runInvalidationScenario(
+    new Canvas({
+      sink: new MemoryCanvasSink(),
+      size: { columns: 10, rows: 4 },
+    }),
+  );
+});
+
 Deno.test("draw objects track views attached after construction", () => {
   const canvas = createTestCanvas({ size: { columns: 12, rows: 3 } });
   const view = new Signal<View | undefined>(undefined);
@@ -236,3 +250,70 @@ Deno.test("draw objects track views attached after construction", () => {
   assertEquals(canvasRowText(canvas, 0, 12), "............");
   assertEquals(canvasRowText(canvas, 1, 12), "..HELP......");
 });
+
+function runInvalidationScenario(canvas: Canvas): void {
+  const overlayRect = new Signal({ column: 2, row: 1, width: 4, height: 2 });
+  const background = new BoxObject({
+    canvas,
+    rectangle: { column: 0, row: 0, width: 10, height: 4 },
+    filler: ".",
+    style: (text: string) => text,
+    zIndex: 1,
+  });
+  const overlay = new BoxObject({
+    canvas,
+    rectangle: overlayRect,
+    filler: "@",
+    style: (text: string) => text,
+    zIndex: 2,
+  });
+
+  background.draw();
+  overlay.draw();
+  canvas.render();
+  assertTerminalSnapshot(
+    canvasSnapshot(canvas),
+    [
+      "..........",
+      "..@@@@....",
+      "..@@@@....",
+      "..........",
+    ].join("\n"),
+  );
+
+  overlayRect.value = { column: 4, row: 0, width: 3, height: 2 };
+  canvas.render();
+  assertTerminalSnapshot(
+    canvasSnapshot(canvas),
+    [
+      "....@@@...",
+      "....@@@...",
+      "..........",
+      "..........",
+    ].join("\n"),
+  );
+
+  overlayRect.value = { column: 1, row: 2, width: 6, height: 1 };
+  canvas.render();
+  assertTerminalSnapshot(
+    canvasSnapshot(canvas),
+    [
+      "..........",
+      "..........",
+      ".@@@@@@...",
+      "..........",
+    ].join("\n"),
+  );
+
+  overlay.erase();
+  canvas.render();
+  assertTerminalSnapshot(
+    canvasSnapshot(canvas),
+    [
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+    ].join("\n"),
+  );
+}
