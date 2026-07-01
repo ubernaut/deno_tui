@@ -37,6 +37,82 @@ export interface RenderLoopOptions {
   tick: (frame: RenderLoopFrame) => void;
 }
 
+/** Serializable inspection snapshot for a microtask scheduler. */
+export interface MicrotaskSchedulerInspection {
+  scheduled: boolean;
+  flushed: number;
+  cancelled: number;
+}
+
+/** Options for coalescing multiple UI invalidations into one microtask. */
+export interface MicrotaskSchedulerOptions {
+  queueMicrotask?: (callback: () => void) => void;
+  onError?: (error: unknown) => void;
+}
+
+/** Coalesces repeated scheduling requests into one pending microtask. */
+export class MicrotaskScheduler {
+  readonly #queueMicrotask: (callback: () => void) => void;
+  readonly #onError?: (error: unknown) => void;
+  #scheduled = false;
+  #callback: (() => void) | undefined;
+  #flushed = 0;
+  #cancelled = 0;
+
+  constructor(options: MicrotaskSchedulerOptions = {}) {
+    this.#queueMicrotask = options.queueMicrotask ?? queueMicrotask;
+    this.#onError = options.onError;
+  }
+
+  get scheduled(): boolean {
+    return this.#scheduled;
+  }
+
+  schedule(callback: () => void): boolean {
+    this.#callback = callback;
+    if (this.#scheduled) return false;
+    this.#scheduled = true;
+    this.#queueMicrotask(() => this.#flush());
+    return true;
+  }
+
+  flush(): boolean {
+    if (!this.#scheduled) return false;
+    this.#flush();
+    return true;
+  }
+
+  cancel(): boolean {
+    if (!this.#scheduled) return false;
+    this.#scheduled = false;
+    this.#callback = undefined;
+    this.#cancelled += 1;
+    return true;
+  }
+
+  inspect(): MicrotaskSchedulerInspection {
+    return {
+      scheduled: this.#scheduled,
+      flushed: this.#flushed,
+      cancelled: this.#cancelled,
+    };
+  }
+
+  #flush(): void {
+    if (!this.#scheduled) return;
+    const callback = this.#callback;
+    this.#scheduled = false;
+    this.#callback = undefined;
+    this.#flushed += 1;
+    try {
+      callback?.();
+    } catch (error) {
+      this.#onError?.(error);
+      if (!this.#onError) throw error;
+    }
+  }
+}
+
 /** Small start/stop render loop with injectable timers for terminal apps and tests. */
 export class RenderLoop {
   readonly #tick: (frame: RenderLoopFrame) => void;

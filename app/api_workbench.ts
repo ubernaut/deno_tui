@@ -33,6 +33,7 @@ import { WindowManagerController } from "../src/layout/mod.ts";
 import { createKittyGraphicsSurface, type GraphicsSurface } from "../src/runtime/graphics_surface.ts";
 import { formatProcessCommandLine, ProcessSessionController } from "../src/runtime/process_session.ts";
 import { createSigmaPtyTerminalBackend } from "../src/runtime/pty_backend.ts";
+import { MicrotaskScheduler } from "../src/runtime/render_loop.ts";
 import { type AsyncStore, createRuntimeStore } from "../src/runtime/storage.ts";
 import { createProcessTerminalBackend, type TerminalBackend } from "../src/runtime/terminal_backend.ts";
 import { TerminalShellController } from "../src/runtime/terminal_shell.ts";
@@ -532,7 +533,7 @@ let dropdownOverlay: DropdownOverlay | null = null;
 let threeDragWindow: WindowId | null = null;
 let windowRenderContext: WindowRenderContext | null = null;
 let workspacePlacementContext: WorkspacePlacementContext | null = null;
-let drawScheduled = false;
+const drawScheduler = new MicrotaskScheduler();
 let renderedVisualizationThreePanels = new Set<VisualizationWindowId>();
 type Frame = string[][];
 interface DropdownOverlay {
@@ -928,6 +929,7 @@ tui.on("destroy", () => {
   windowAscii.clear();
   ascii.dispose();
   threeAsciiAvailable.dispose();
+  drawScheduler.cancel();
 });
 
 tui.run();
@@ -935,7 +937,6 @@ syncTerminalSize();
 draw();
 
 function draw(): void {
-  drawScheduled = false;
   syncTerminalSize();
   ensureLineObjects();
   const width = currentWidth();
@@ -957,9 +958,7 @@ function draw(): void {
 }
 
 function scheduleDraw(): void {
-  if (drawScheduled) return;
-  drawScheduled = true;
-  queueMicrotask(draw);
+  drawScheduler.schedule(draw);
 }
 
 function renderHeader(frame: Frame): void {

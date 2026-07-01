@@ -101,6 +101,8 @@ Work:
 - [ ] Provide a scheduler-backed propagation mode for UI frame updates so noisy state changes coalesce into one draw.
 - [ ] Audit app/workbench/Three panel code and replace ad hoc `queueMicrotask()` draw coalescing where the signal layer
       can own the behavior.
+  - [x] Added a reusable `MicrotaskScheduler` runtime primitive and migrated the API Workbench draw scheduler off its
+        local `queueMicrotask()` flag.
 - [x] Replace string throws in signal/reactivity internals with typed `Error` subclasses.
 
 Acceptance checks:

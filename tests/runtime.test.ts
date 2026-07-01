@@ -51,7 +51,7 @@ import {
   formatRuntimeWorkloadMarkdown,
   inspectRuntimeWorkload,
 } from "../src/runtime/telemetry.ts";
-import { createRenderLoop, RenderLoop } from "../src/runtime/render_loop.ts";
+import { createRenderLoop, MicrotaskScheduler, RenderLoop } from "../src/runtime/render_loop.ts";
 import {
   DiagnosticsCollector,
   formatDiagnostics,
@@ -885,6 +885,67 @@ Deno.test("RenderLoop reports errors and stops after failed ticks", () => {
   assertEquals(errors, [failure]);
   assertEquals(loop.inspect().lastError, failure);
   assertEquals(timer.pendingCount(), 0);
+});
+
+Deno.test("MicrotaskScheduler coalesces pending work and runs the latest callback", () => {
+  const queue: Array<() => void> = [];
+  const scheduler = new MicrotaskScheduler({
+    queueMicrotask: (callback) => queue.push(callback),
+  });
+  const runs: string[] = [];
+
+  assertEquals(scheduler.schedule(() => runs.push("first")), true);
+  assertEquals(scheduler.schedule(() => runs.push("latest")), false);
+  assertEquals(queue.length, 1);
+  assertEquals(scheduler.inspect(), { scheduled: true, flushed: 0, cancelled: 0 });
+
+  queue.shift()!();
+
+  assertEquals(runs, ["latest"]);
+  assertEquals(scheduler.inspect(), { scheduled: false, flushed: 1, cancelled: 0 });
+});
+
+Deno.test("MicrotaskScheduler can cancel or synchronously flush pending work", () => {
+  const queue: Array<() => void> = [];
+  const scheduler = new MicrotaskScheduler({
+    queueMicrotask: (callback) => queue.push(callback),
+  });
+  const runs: string[] = [];
+
+  assertEquals(scheduler.schedule(() => runs.push("cancelled")), true);
+  assertEquals(scheduler.cancel(), true);
+  assertEquals(scheduler.cancel(), false);
+  queue.shift()!();
+  assertEquals(runs, []);
+  assertEquals(scheduler.inspect(), { scheduled: false, flushed: 0, cancelled: 1 });
+
+  assertEquals(scheduler.schedule(() => runs.push("flushed")), true);
+  assertEquals(scheduler.flush(), true);
+  assertEquals(scheduler.flush(), false);
+  queue.shift()!();
+  assertEquals(runs, ["flushed"]);
+  assertEquals(scheduler.inspect(), { scheduled: false, flushed: 1, cancelled: 1 });
+});
+
+Deno.test("MicrotaskScheduler reports callback errors without leaving stale scheduled state", () => {
+  const queue: Array<() => void> = [];
+  const failure = new Error("draw failed");
+  const errors: unknown[] = [];
+  const scheduler = new MicrotaskScheduler({
+    queueMicrotask: (callback) => queue.push(callback),
+    onError: (error) => errors.push(error),
+  });
+
+  assertEquals(
+    scheduler.schedule(() => {
+      throw failure;
+    }),
+    true,
+  );
+  queue.shift()!();
+
+  assertEquals(errors, [failure]);
+  assertEquals(scheduler.inspect(), { scheduled: false, flushed: 1, cancelled: 0 });
 });
 
 Deno.test("AsyncScheduler can clear queued work without stopping active work", async () => {
