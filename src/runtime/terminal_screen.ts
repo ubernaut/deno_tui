@@ -48,6 +48,7 @@ export class TerminalScreenController {
   #mainState?: TerminalScreenState;
   #scrollback: TerminalScreenCell[][] = [];
   #style: Omit<TerminalScreenCell, "char"> = {};
+  #savedCursor?: TerminalScreenCursor;
 
   constructor(options: TerminalScreenControllerOptions = {}) {
     this.#columns = normalizeDimension(options.columns, DEFAULT_COLUMNS);
@@ -205,6 +206,19 @@ export class TerminalScreenController {
       case "K":
         this.#eraseLine(params[0] ?? 0);
         break;
+      case "s":
+      case "7":
+        this.#savedCursor = { ...this.#state.cursor };
+        break;
+      case "u":
+      case "8":
+        if (this.#savedCursor) {
+          this.#state.cursor = {
+            column: clamp(this.#savedCursor.column, 0, this.#columns - 1),
+            row: clamp(this.#savedCursor.row, 0, this.#rows - 1),
+          };
+        }
+        break;
     }
   }
 
@@ -271,6 +285,14 @@ interface ParsedControlSequence {
 }
 
 function parseControlSequence(value: string): ParsedControlSequence | undefined {
+  if (value.startsWith("\x1b7") || value.startsWith("\x1b8")) {
+    return {
+      private: false,
+      params: "",
+      command: value[1]!,
+      length: 2,
+    };
+  }
   // deno-lint-ignore no-control-regex -- terminal parser intentionally matches ESC.
   const match = /^\x1b\[([?]?)([0-9;]*)([A-Za-z])/.exec(value);
   if (!match) return undefined;

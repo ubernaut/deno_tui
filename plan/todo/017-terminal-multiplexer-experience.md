@@ -53,3 +53,4 @@ developer workflows.
   resize, and close pane.
 - Extended `TerminalScreenController` SGR handling to cover 256-color, truecolor, and bright foreground/background
   styles while preserving existing cell inspection shape.
+- Added terminal cursor save/restore support for CSI `s`/`u` and legacy ESC `7`/`8` sequences.

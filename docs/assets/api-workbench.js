@@ -7948,6 +7948,7 @@ var TerminalScreenController = class {
   #mainState;
   #scrollback = [];
   #style = {};
+  #savedCursor;
   constructor(options = {}) {
     this.#columns = normalizeDimension(options.columns, DEFAULT_COLUMNS);
     this.#rows = normalizeDimension(options.rows, DEFAULT_ROWS);
@@ -8089,6 +8090,19 @@ var TerminalScreenController = class {
       case "K":
         this.#eraseLine(params[0] ?? 0);
         break;
+      case "s":
+      case "7":
+        this.#savedCursor = { ...this.#state.cursor };
+        break;
+      case "u":
+      case "8":
+        if (this.#savedCursor) {
+          this.#state.cursor = {
+            column: clamp3(this.#savedCursor.column, 0, this.#columns - 1),
+            row: clamp3(this.#savedCursor.row, 0, this.#rows - 1)
+          };
+        }
+        break;
     }
   }
   #applySgr(params) {
@@ -8142,6 +8156,14 @@ var TerminalScreenController = class {
   }
 };
 function parseControlSequence(value) {
+  if (value.startsWith("\x1B7") || value.startsWith("\x1B8")) {
+    return {
+      private: false,
+      params: "",
+      command: value[1],
+      length: 2
+    };
+  }
   const match = /^\x1b\[([?]?)([0-9;]*)([A-Za-z])/.exec(value);
   if (!match) return void 0;
   return {
