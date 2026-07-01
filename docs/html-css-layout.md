@@ -172,6 +172,32 @@ const result = createMarkupLayout({
 Use Yoga when you want closer Flexbox behavior. Use the default solver when you want no optional solver dependency and
 stable, inspectable cell math.
 
+### Yoga Parity And Limits
+
+The Yoga solver is a Flexbox backend behind the same `LayoutSolver` interface. It is expected to match the default
+solver for the shared flex subset covered by fixtures:
+
+- column and row flex containers
+- wrapped flex rows
+- fixed and percentage sizes
+- `flex-grow`, `flex-shrink`, and `flex-basis`
+- `gap`, padding, and borders
+- basic absolute positioning
+- terminal-cell rounding into `ComputedLayoutBox.rect`
+- shared overflow inspection on solved boxes
+
+Yoga is not a general replacement for the default solver. These remain intentionally unsupported or solver-specific:
+
+- CSS Grid: use the default solver for grid tracks, spans, and grid item placement.
+- browser CSS parsing: this project still owns the CSS-like parser and cascade.
+- browser layout units such as `em`, `rem`, `vh`, `vw`, `calc()`, and container queries.
+- full browser intrinsic sizing, text layout, min-content/max-content, and baseline alignment.
+- named grid lines, grid template areas, subgrid, and dense browser Grid packing.
+- paint/compositing features such as transforms, shadows, filters, gradients, transitions, and animations.
+- exact browser flex edge cases involving margins, intrinsic basis calculation, and sub-cell rounding.
+
+The contract to depend on is the normalized layout output, not browser pixel parity.
+
 ## Supported Markup
 
 Markup is normalized into `LayoutNode` records:
@@ -328,6 +354,8 @@ Each `ComputedLayoutBox` includes:
 - `contentRect`
 - `padding`, `margin`, `border`
 - `overflowX`, `overflowY`
+- `overflow`: shared viewport overflow inspection with per-axis content length, viewport length, scrollability,
+  scrollbar visibility, thumb geometry, and visible range
 - `scrollWidth`, `scrollHeight`
 - `zIndex`
 - `visible`

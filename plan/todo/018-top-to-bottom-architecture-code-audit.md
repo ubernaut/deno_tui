@@ -259,7 +259,7 @@ Work:
   - [x] Wired layout result boxes, markup scroll-area hydration, and terminal/web workbench scrollbar rendering directly
         to the shared overflow inspection.
 - [ ] Move demo-specific hydrated widget examples into reusable fixture/demo modules.
-- [ ] Expand Yoga parity tests and document unsupported CSS explicitly.
+- [x] Expand Yoga parity tests and document unsupported CSS explicitly.
 
 Acceptance checks:
 

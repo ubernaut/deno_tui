@@ -94,6 +94,39 @@ const fixtures: LayoutFixture[] = [
     solvers: sharedFlexSolvers,
   },
   {
+    name: "row flex honors padding border and gap",
+    markup: `
+      <window id="main">
+        <panel id="a">A</panel>
+        <panel id="b">B</panel>
+      </window>
+    `,
+    css: `
+      window {
+        display: flex;
+        flex-direction: row;
+        width: 30;
+        height: 8;
+        padding: 1 2;
+        border: 1;
+        gap: 2;
+      }
+
+      panel {
+        width: 5;
+        height: 2;
+        flex-shrink: 0;
+      }
+    `,
+    bounds: { column: 4, row: 2, width: 80, height: 20 },
+    expected: [
+      { id: "main", rect: { column: 4, row: 2, width: 30, height: 8 } },
+      { id: "a", rect: { column: 7, row: 4, width: 5, height: 2 } },
+      { id: "b", rect: { column: 14, row: 4, width: 5, height: 2 } },
+    ],
+    solvers: sharedFlexSolvers,
+  },
+  {
     name: "grid placement with spanning cell",
     markup: `
       <window id="main">
