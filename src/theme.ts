@@ -36,6 +36,10 @@ import {
   resolveThemeStateDefinitionCore,
   resolveThemeStyleReferenceCore,
 } from "./theme_core.ts";
+import {
+  compileThemeManifestStateDefinitionCore,
+  compileThemeManifestStyleReferenceCore,
+} from "./theme_manifest_core.ts";
 
 /** Function that's supposed to return styled text given string as parameter */
 export type Style = StyleInternal;
@@ -536,22 +540,14 @@ export function inspectThemeStandardization(
 export function compileThemeManifestStyleReference(
   reference: ThemeManifestStyleReference,
 ): ThemeStyleReference {
-  if (isThemeManifestStyleReferencePipeline(reference)) {
-    return reference.map((part) => compileThemeManifestStyleReference(part));
-  }
-  return typeof reference === "string" ? reference as ThemeTokenName : createAnsiStyle(reference);
+  return compileThemeManifestStyleReferenceCore(reference) as ThemeStyleReference;
 }
 
 /** Public helper for compile Theme Manifest State Definition. */
 export function compileThemeManifestStateDefinition(
   definition: ThemeManifestStateDefinition = {},
 ): ThemeStateDefinition {
-  const output: ThemeStateDefinition = {};
-  for (const [state, reference] of Object.entries(definition) as [ThemeState, ThemeManifestStyleReference][]) {
-    if (reference === undefined) continue;
-    output[state] = compileThemeManifestStyleReference(reference);
-  }
-  return output;
+  return compileThemeManifestStateDefinitionCore<ThemeState>(definition) as ThemeStateDefinition;
 }
 
 /** Public helper for compile Theme Manifest Options. */
@@ -1532,12 +1528,6 @@ export class ThemeValidationError extends Error {
     this.name = "ThemeValidationError";
     this.issues = issues;
   }
-}
-
-function isThemeManifestStyleReferencePipeline(
-  reference: ThemeManifestStyleReference,
-): reference is readonly ThemeManifestStyleReference[] {
-  return Array.isArray(reference);
 }
 
 function validateThemeStateDefinitionReferences(
