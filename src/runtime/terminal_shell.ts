@@ -8,6 +8,7 @@ import {
   type ProcessSessionExit,
   type ProcessSessionStatus,
 } from "./process_session.ts";
+import type { DiagnosticsCollector } from "./diagnostics.ts";
 import { TerminalScrollbackController, type TerminalScrollbackInspection } from "./terminal_scrollback.ts";
 import { TerminalScreenController, type TerminalScreenInspection } from "./terminal_screen.ts";
 import { shellTerminalTemplate, terminalTemplateToSpawnOptions } from "./terminal_templates.ts";
@@ -26,6 +27,7 @@ export interface TerminalShellControllerOptions {
   scrollbackViewportRows?: number;
   output?: TerminalOutputController;
   screen?: TerminalScreenController;
+  diagnostics?: DiagnosticsCollector;
   now?: () => number;
   onUpdate?: () => void;
 }
@@ -61,6 +63,7 @@ export class TerminalShellController {
   readonly #args?: readonly string[];
   readonly #cwd?: string;
   readonly #env?: Record<string, string>;
+  readonly #diagnostics?: DiagnosticsCollector;
   readonly #now: () => number;
   readonly #onUpdate?: () => void;
   #session?: TerminalSessionHandle;
@@ -78,6 +81,7 @@ export class TerminalShellController {
     this.#args = options.args ? [...options.args] : undefined;
     this.#cwd = options.cwd;
     this.#env = options.env ? { ...options.env } : undefined;
+    this.#diagnostics = options.diagnostics;
     this.#columns = normalizeTerminalShellDimension(options.columns, 80);
     this.#rows = normalizeTerminalShellDimension(options.rows, 24);
     this.#now = options.now ?? (() => Date.now());
@@ -151,6 +155,7 @@ export class TerminalShellController {
         this.#error = error instanceof Error ? error.message : String(error);
         this.status.value = "failed";
         this.output.appendText("system", `shell failed: ${this.#error}`, this.#now());
+        this.#reportDiagnostic("shell-closed-failed", "Shell backend close watcher failed", error);
         this.#onUpdate?.();
       });
       return true;
@@ -158,6 +163,7 @@ export class TerminalShellController {
       this.#error = error instanceof Error ? error.message : String(error);
       this.status.value = "failed";
       this.output.appendText("system", `shell failed: ${this.#error}`, this.#now());
+      this.#reportDiagnostic("shell-start-failed", "Shell session failed to start", error);
       this.#onUpdate?.();
       return false;
     }
@@ -235,6 +241,20 @@ export class TerminalShellController {
     if (this.#backend) return this.#backend;
     if (this.#backendFactory) return await this.#backendFactory();
     return createProcessTerminalBackend();
+  }
+
+  #reportDiagnostic(code: string, message: string, error: unknown): void {
+    this.#diagnostics?.report({
+      source: "terminal-shell",
+      code,
+      severity: "error",
+      message,
+      detail: error instanceof Error ? error.message : String(error),
+      context: {
+        command: this.#command.command,
+        backend: this.#session?.inspect().backendId ?? this.#backend?.id,
+      },
+    });
   }
 }
 

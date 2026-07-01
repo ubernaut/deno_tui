@@ -523,6 +523,8 @@ Work:
         input-write failure reporting.
   - [x] Converted API workbench workspace storage load/persist fallbacks to shared storage diagnostic formatting before
         surfacing them in the demo log panel.
+  - [x] Added optional `TerminalShellController` diagnostics for shell startup and backend close-watcher failures, so
+        workbench shell degradation can be surfaced outside the terminal text stream.
 - [x] Add status-bar and report helpers for degraded backends.
 - [x] Add tests that assert expected diagnostics for missing `nvidia-smi`, blocked IndexedDB, unsupported Kitty
       graphics, and failed process spawns.

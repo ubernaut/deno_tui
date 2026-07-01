@@ -1,5 +1,6 @@
 import { assertEquals } from "./deps.ts";
 import {
+  DiagnosticsCollector,
   type ProcessSessionCommand,
   type ProcessSessionInspection,
   type ProcessSessionStatus,
@@ -88,6 +89,26 @@ Deno.test("TerminalShellController routes writes and resize to the active backen
   backend.finish(0);
   await backend.handle?.closed;
   assertEquals(shell.inspect().status, "exited");
+  await shell.dispose();
+});
+
+Deno.test("TerminalShellController reports startup diagnostics", async () => {
+  const diagnostics = new DiagnosticsCollector();
+  const shell = new TerminalShellController({
+    diagnostics,
+    backendFactory: () => {
+      throw new Error("pty unavailable");
+    },
+    shell: "bash",
+  });
+
+  assertEquals(await shell.start(), false);
+  assertEquals(shell.inspect().status, "failed");
+  assertEquals(shell.inspect().error, "pty unavailable");
+  assertEquals(diagnostics.entries().map((entry) => [entry.source, entry.code, entry.severity, entry.detail]), [
+    ["terminal-shell", "shell-start-failed", "error", "pty unavailable"],
+  ]);
+
   await shell.dispose();
 });
 
