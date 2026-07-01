@@ -258,13 +258,13 @@ Work:
         output.
   - [x] Wired layout result boxes, markup scroll-area hydration, and terminal/web workbench scrollbar rendering directly
         to the shared overflow inspection.
-- [ ] Move demo-specific hydrated widget examples into reusable fixture/demo modules.
+- [x] Move demo-specific hydrated widget examples into reusable fixture/demo modules.
 - [x] Expand Yoga parity tests and document unsupported CSS explicitly.
 
 Acceptance checks:
 
 - [x] Layout fixtures run against the simple solver and Yoga solver where supported.
-- [ ] Workbench can host a markup-created panel using the same scroll and hit routing semantics as hand-built panels.
+- [x] Workbench can host a markup-created panel using the same scroll and hit routing semantics as hand-built panels.
 
 ### P2: Split Theme Architecture Into Smaller Modules
 

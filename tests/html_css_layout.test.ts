@@ -4,6 +4,7 @@ import {
   ButtonController,
   CheckBoxController,
   ComboBoxController,
+  createHtmlCssLayoutDemo,
   createMarkupLayout,
   hydrateMarkupWidgets,
   InputController,
@@ -22,7 +23,6 @@ import {
   TextBoxController,
   TreeController,
 } from "../mod.ts";
-import { createHtmlCssLayoutDemo } from "../app/html_css_layout_demo.ts";
 import { yogaLayoutSolver } from "../src/layout/solvers/yoga.ts";
 import type { LayoutNode } from "../mod.ts";
 

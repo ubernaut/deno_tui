@@ -52,9 +52,9 @@ import {
   wrapTextBoxLines,
 } from "../../mod.web.ts";
 import { grWizardThemePalettes } from "../../src/grwizard_themes.ts";
+import { createHtmlCssLayoutDemo, htmlCssLayoutDemoBoxLabel } from "../../src/markup/demo_fixtures.ts";
 import type { Rectangle } from "../../src/types.ts";
 import { makeStyle } from "../../app/styles.ts";
-import { createHtmlCssLayoutDemo, htmlCssLayoutDemoBoxLabel } from "../../app/html_css_layout_demo.ts";
 
 type PanelId = "explorer" | "inspector" | "data" | "controls" | "logs" | "three" | "htmlLayout" | "terminal";
 type ControlId =
@@ -387,7 +387,7 @@ const explorer = new FileExplorerController({
     "/examples/web/api_workbench_page.ts",
     "/examples/web/neon_exodus_page.ts",
     "/examples/web/three_ascii_page.ts",
-    "/app/html_css_layout_demo.ts",
+    "/src/markup/demo_fixtures.ts",
     "/src/web/host.ts",
     "/src/web/platform.ts",
     "/src/web/remote_terminal.ts",

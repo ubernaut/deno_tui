@@ -70,7 +70,7 @@ import {
   HTML_CSS_LAYOUT_OPTION_ID,
   HTML_CSS_LAYOUT_WINDOW_ID,
   htmlCssLayoutDemoBoxLabel,
-} from "./html_css_layout_demo.ts";
+} from "../src/markup/demo_fixtures.ts";
 import {
   applyAsciiPreset,
   ASCII_DEMO_PRESETS,
