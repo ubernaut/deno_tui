@@ -3465,7 +3465,8 @@ function tileRects(bounds, options) {
   }
   const stretchSparseColumns = best.contentHeight <= height;
   const layoutBottom = bounds.row + (stretchSparseColumns ? height : best.contentHeight);
-  const rects = Array.from({ length: itemCount }, (_, index) => {
+  const rects = new Array(itemCount);
+  for (let index = 0; index < itemCount; index++) {
     const columnIndex = index % best.columns;
     const rowIndex = Math.floor(index / best.columns);
     const column = bounds.column + columnIndex * (best.tileWidth + gap);
@@ -3473,7 +3474,7 @@ function tileRects(bounds, options) {
     const lastColumn = columnIndex === best.columns - 1;
     const lastRow = rowIndex === best.rows - 1;
     const lastInColumn = index + best.columns >= itemCount;
-    return {
+    rects[index] = {
       column,
       row,
       width: Math.max(0, lastColumn ? bounds.column + width - column : best.tileWidth),
@@ -3482,7 +3483,7 @@ function tileRects(bounds, options) {
         stretchSparseColumns && lastInColumn ? layoutBottom - row : lastRow ? bounds.row + best.contentHeight - row : best.tileHeight
       )
     };
-  });
+  }
   return {
     columns: best.columns,
     rows: best.rows,
@@ -3704,7 +3705,11 @@ function normalizeWindows(windows) {
   }));
 }
 function nextWindowOrder(windows) {
-  return windows.length === 0 ? 0 : Math.max(...windows.map((entry) => entry.order ?? 0)) + 1;
+  let order = -1;
+  for (const entry of windows) {
+    order = Math.max(order, entry.order ?? 0);
+  }
+  return order + 1;
 }
 function normalizeWindowId(windows, id2) {
   return id2 && windows.some((entry) => entry.id === id2 && windowState(entry) !== "closed") ? id2 : void 0;
@@ -4445,7 +4450,10 @@ function alignGridItemBounds(node, cell) {
 }
 function resolveGridTracks(template, count, available, gap, autoTrack) {
   const trackCount = Math.max(1, count);
-  const tracks = Array.from({ length: trackCount }, (_, index) => template[index] ?? autoTrack);
+  const tracks = new Array(trackCount);
+  for (let index = 0; index < trackCount; index++) {
+    tracks[index] = template[index] ?? autoTrack;
+  }
   const totalGap = Math.max(0, trackCount - 1) * Math.max(0, gap);
   const availableWithoutGaps = Math.max(0, Math.floor(available) - totalGap);
   const sizes = new Array(trackCount).fill(0);
@@ -7741,10 +7749,20 @@ var DataTableController = class {
 function filterDataRows(rows2, columns, query) {
   const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
   if (terms.length === 0) return [...rows2];
-  return rows2.filter((row) => {
-    const haystack = columns.map((column) => stringifyCell(row[column.id])).join(" ").toLowerCase();
-    return terms.every((term) => haystack.includes(term));
-  });
+  return rows2.filter((row) => dataRowMatchesTerms(row, columns, terms));
+}
+function dataRowMatchesTerms(row, columns, terms) {
+  for (const term of terms) {
+    let matched = false;
+    for (const column of columns) {
+      if (stringifyCell(row[column.id]).toLowerCase().includes(term)) {
+        matched = true;
+        break;
+      }
+    }
+    if (!matched) return false;
+  }
+  return true;
 }
 function sortDataRows(rows2, sort) {
   if (!sort) return [...rows2];
