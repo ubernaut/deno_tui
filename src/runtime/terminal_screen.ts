@@ -54,6 +54,7 @@ interface TerminalScreenState {
 const DEFAULT_COLUMNS = 80;
 const DEFAULT_ROWS = 24;
 const DEFAULT_SCROLLBACK_LIMIT = 1000;
+const BLANK_CELL: TerminalScreenCell = Object.freeze({ char: " " });
 
 /** Lightweight ANSI terminal screen model for process and PTY output renderers. */
 export class TerminalScreenController {
@@ -640,7 +641,7 @@ function createRows(columns: number, rows: number): TerminalScreenCell[][] {
 }
 
 function blankRow(columns: number): TerminalScreenCell[] {
-  return Array.from({ length: columns }, () => ({ char: " " }));
+  return Array.from({ length: columns }, () => BLANK_CELL);
 }
 
 function fullScrollRegion(rows: number): TerminalScreenScrollRegion {

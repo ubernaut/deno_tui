@@ -9048,6 +9048,7 @@ function isSingleCharacterEscSequence(value, start) {
 var DEFAULT_COLUMNS = 80;
 var DEFAULT_ROWS = 24;
 var DEFAULT_SCROLLBACK_LIMIT = 1e3;
+var BLANK_CELL = Object.freeze({ char: " " });
 var TerminalScreenController = class {
   #columns;
   #rows;
@@ -9580,7 +9581,7 @@ function createRows(columns, rows2) {
   return Array.from({ length: rows2 }, () => blankRow(columns));
 }
 function blankRow(columns) {
-  return Array.from({ length: columns }, () => ({ char: " " }));
+  return Array.from({ length: columns }, () => BLANK_CELL);
 }
 function fullScrollRegion(rows2) {
   return { top: 0, bottom: rows2 - 1 };
