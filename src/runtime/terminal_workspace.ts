@@ -3,6 +3,27 @@ import { Signal } from "../signals/mod.ts";
 import type { Rectangle } from "../types.ts";
 import { formatProcessCommandLine } from "./process_session.ts";
 import {
+  clampTerminalWorkspaceSplitRatio,
+  cloneTerminalWorkspaceLayoutNode,
+  cloneTerminalWorkspaceLayoutState,
+  cloneTerminalWorkspacePaneNode,
+  collectTerminalWorkspacePanes,
+  createTerminalWorkspacePaneNode,
+  findActiveTerminalWorkspacePane,
+  findNearestTerminalWorkspaceSplit,
+  findTerminalWorkspacePane,
+  findTerminalWorkspacePaneBySession,
+  pruneTerminalWorkspaceLayoutSessions,
+  removeTerminalWorkspacePane,
+  replaceTerminalWorkspacePane,
+  sanitizeTerminalWorkspaceLayoutId,
+  terminalWorkspaceLayoutWithActive,
+  terminalWorkspacePaneRects as projectTerminalWorkspacePaneRects,
+  uniqueTerminalWorkspaceLayoutId,
+  updateTerminalWorkspacePaneRuntimeTitles,
+  updateTerminalWorkspaceSplitRatio,
+} from "./terminal_workspace_layout.ts";
+import {
   describeAttachTerminalTemplate,
   isSpawnTerminalTemplate,
   type TerminalSessionDescriptor,
@@ -167,8 +188,8 @@ export class TerminalWorkspaceController {
       : [...sessions, nextDescriptor];
     if (options.activate || !this.activeId.peek()) this.activeId.value = nextDescriptor.id;
     if (!this.layout.peek().root) {
-      this.layout.value = layoutWithActive({
-        root: createPaneNode(nextDescriptor.id, undefined, { title: nextDescriptor.title }),
+      this.layout.value = terminalWorkspaceLayoutWithActive({
+        root: createTerminalWorkspacePaneNode(nextDescriptor.id, undefined, { title: nextDescriptor.title }),
       }, nextDescriptor.id);
     }
     return cloneTerminalSessionDescriptor(nextDescriptor);
@@ -178,9 +199,11 @@ export class TerminalWorkspaceController {
     if (!this.sessions.peek().some((session) => session.id === id)) return false;
     this.activeId.value = id;
     const layout = this.layout.peek();
-    const pane = findPaneBySession(layout.root, id);
-    if (pane) this.layout.value = { ...cloneLayoutState(layout), activePaneId: pane.id };
-    else if (!layout.root) this.layout.value = layoutWithActive({ root: createPaneNode(id) }, id);
+    const pane = findTerminalWorkspacePaneBySession(layout.root, id);
+    if (pane) this.layout.value = { ...cloneTerminalWorkspaceLayoutState(layout), activePaneId: pane.id };
+    else if (!layout.root) {
+      this.layout.value = terminalWorkspaceLayoutWithActive({ root: createTerminalWorkspacePaneNode(id) }, id);
+    }
     return true;
   }
 
@@ -191,7 +214,7 @@ export class TerminalWorkspaceController {
     const next = sessions.filter((session) => session.id !== id);
     this.sessions.value = next;
     this.layout.value = normalizeTerminalWorkspaceLayout(
-      pruneLayoutSessions(
+      pruneTerminalWorkspaceLayoutSessions(
         this.layout.peek(),
         new Set(next.map(
           (session) => session.id,
@@ -202,8 +225,10 @@ export class TerminalWorkspaceController {
     );
     if (this.activeId.peek() === id) {
       this.activeId.value = next[index]?.id ?? next[index - 1]?.id;
-      const pane = this.activeId.peek() ? findPaneBySession(this.layout.peek().root, this.activeId.peek()!) : undefined;
-      if (pane) this.layout.value = { ...cloneLayoutState(this.layout.peek()), activePaneId: pane.id };
+      const pane = this.activeId.peek()
+        ? findTerminalWorkspacePaneBySession(this.layout.peek().root, this.activeId.peek()!)
+        : undefined;
+      if (pane) this.layout.value = { ...cloneTerminalWorkspaceLayoutState(this.layout.peek()), activePaneId: pane.id };
     }
     return true;
   }
@@ -239,7 +264,7 @@ export class TerminalWorkspaceController {
     descriptor.updatedAt = this.#now();
     this.sessions.value = sessions.map((session, sessionIndex) => sessionIndex === index ? descriptor : session);
     if (descriptor.title !== previousVisibleTitle) {
-      this.layout.value = updatePaneRuntimeTitles(
+      this.layout.value = updateTerminalWorkspacePaneRuntimeTitles(
         this.layout.peek(),
         id,
         trimmed,
@@ -317,48 +342,50 @@ export class TerminalWorkspaceController {
     if (!this.sessions.peek().some((session) => session.id === sessionId)) return undefined;
     const current = normalizeTerminalWorkspaceLayout(this.layout.peek(), this.sessions.peek(), this.activeId.peek());
     if (!current.root) {
-      const pane = createPaneNode(sessionId, undefined, options);
+      const pane = createTerminalWorkspacePaneNode(sessionId, undefined, options);
       this.layout.value = { root: pane, activePaneId: pane.id };
       this.activeId.value = sessionId;
-      return clonePaneNode(pane);
+      return cloneTerminalWorkspacePaneNode(pane);
     }
 
-    const activePane = options.paneId ? findPane(current.root, options.paneId) : findActivePane(current);
+    const activePane = options.paneId
+      ? findTerminalWorkspacePane(current.root, options.paneId)
+      : findActiveTerminalWorkspacePane(current);
     if (!activePane) return undefined;
-    const nextPane = createPaneNode(sessionId, current.root, options);
-    const ratio = clampRatio(options.ratio ?? 0.5);
+    const nextPane = createTerminalWorkspacePaneNode(sessionId, current.root, options);
+    const ratio = clampTerminalWorkspaceSplitRatio(options.ratio ?? 0.5);
     const placement = options.placement ?? "after";
     const split: TerminalWorkspaceSplitNode = {
       kind: "split",
-      id: uniqueLayoutId("split", current.root),
+      id: uniqueTerminalWorkspaceLayoutId("split", current.root),
       direction,
       ratio,
-      first: placement === "before" ? nextPane : clonePaneNode(activePane),
-      second: placement === "before" ? clonePaneNode(activePane) : nextPane,
+      first: placement === "before" ? nextPane : cloneTerminalWorkspacePaneNode(activePane),
+      second: placement === "before" ? cloneTerminalWorkspacePaneNode(activePane) : nextPane,
     };
-    const root = replacePane(current.root, activePane.id, split);
+    const root = replaceTerminalWorkspacePane(current.root, activePane.id, split);
     this.layout.value = {
       root,
       activePaneId: nextPane.id,
       zoomedPaneId: current.zoomedPaneId === activePane.id ? nextPane.id : current.zoomedPaneId,
     };
     this.activeId.value = sessionId;
-    return clonePaneNode(nextPane);
+    return cloneTerminalWorkspacePaneNode(nextPane);
   }
 
   activatePane(paneId: string): boolean {
-    const pane = findPane(this.layout.peek().root, paneId);
+    const pane = findTerminalWorkspacePane(this.layout.peek().root, paneId);
     if (!pane || !this.sessions.peek().some((session) => session.id === pane.sessionId)) return false;
-    this.layout.value = { ...cloneLayoutState(this.layout.peek()), activePaneId: pane.id };
+    this.layout.value = { ...cloneTerminalWorkspaceLayoutState(this.layout.peek()), activePaneId: pane.id };
     this.activeId.value = pane.sessionId;
     return true;
   }
 
   closePane(paneId: string): boolean {
-    const current = cloneLayoutState(this.layout.peek());
-    if (!findPane(current.root, paneId)) return false;
-    const root = removePane(current.root, paneId);
-    const panes = collectPanes(root);
+    const current = cloneTerminalWorkspaceLayoutState(this.layout.peek());
+    if (!findTerminalWorkspacePane(current.root, paneId)) return false;
+    const root = removeTerminalWorkspacePane(current.root, paneId);
+    const panes = collectTerminalWorkspacePanes(root);
     const activePane = panes.find((pane) => pane.id === current.activePaneId) ?? panes[0];
     this.layout.value = {
       root,
@@ -370,26 +397,26 @@ export class TerminalWorkspaceController {
   }
 
   resizeSplit(splitId: string, ratio: number): boolean {
-    const current = cloneLayoutState(this.layout.peek());
-    const root = updateSplitRatio(current.root, splitId, clampRatio(ratio));
+    const current = cloneTerminalWorkspaceLayoutState(this.layout.peek());
+    const root = updateTerminalWorkspaceSplitRatio(current.root, splitId, clampTerminalWorkspaceSplitRatio(ratio));
     if (!root.changed) return false;
     this.layout.value = { ...current, root: root.node };
     return true;
   }
 
   resizeActiveSplit(delta: number): boolean {
-    const current = cloneLayoutState(this.layout.peek());
-    const activePane = findActivePane(current);
+    const current = cloneTerminalWorkspaceLayoutState(this.layout.peek());
+    const activePane = findActiveTerminalWorkspacePane(current);
     if (!activePane) return false;
-    const nearest = findNearestSplit(current.root, activePane.id);
+    const nearest = findNearestTerminalWorkspaceSplit(current.root, activePane.id);
     if (!nearest) return false;
     const nextRatio = nearest.activeSide === "first" ? nearest.split.ratio + delta : nearest.split.ratio - delta;
     return this.resizeSplit(nearest.split.id, nextRatio);
   }
 
   toggleZoomPane(paneId = this.layout.peek().activePaneId): boolean {
-    if (!paneId || !findPane(this.layout.peek().root, paneId)) return false;
-    const current = cloneLayoutState(this.layout.peek());
+    if (!paneId || !findTerminalWorkspacePane(this.layout.peek().root, paneId)) return false;
+    const current = cloneTerminalWorkspaceLayoutState(this.layout.peek());
     this.layout.value = {
       ...current,
       activePaneId: paneId,
@@ -435,22 +462,7 @@ export function terminalWorkspacePaneRects(
   bounds: Rectangle,
   options: TerminalWorkspacePaneRectOptions = {},
 ): TerminalWorkspacePaneRect[] {
-  const normalizedBounds = normalizeRect(bounds);
-  if (!layout.root || normalizedBounds.width <= 0 || normalizedBounds.height <= 0) return [];
-  if (options.respectZoom !== false && layout.zoomedPaneId) {
-    const pane = findPane(layout.root, layout.zoomedPaneId);
-    if (pane) {
-      return [{
-        pane,
-        rect: normalizedBounds,
-        active: pane.id === layout.activePaneId,
-        zoomed: true,
-      }];
-    }
-  }
-  const rows: TerminalWorkspacePaneRect[] = [];
-  collectPaneRects(layout.root, normalizedBounds, Math.max(0, Math.floor(options.gap ?? 1)), layout, rows);
-  return rows;
+  return projectTerminalWorkspacePaneRects(layout, bounds, options);
 }
 
 function descriptorFromTemplate(
@@ -553,90 +565,30 @@ function normalizeDimension(value: number | undefined): number | undefined {
   return Math.max(1, Math.floor(value!));
 }
 
-function collectPaneRects(
-  node: TerminalWorkspaceLayoutNode,
-  rect: Rectangle,
-  gap: number,
-  layout: TerminalWorkspaceLayoutState,
-  rows: TerminalWorkspacePaneRect[],
-): void {
-  if (node.kind === "pane") {
-    rows.push({
-      pane: clonePaneNode(node),
-      rect,
-      active: node.id === layout.activePaneId,
-      zoomed: node.id === layout.zoomedPaneId,
-    });
-    return;
-  }
-  const [first, second] = splitPaneRect(rect, node, gap);
-  collectPaneRects(node.first, first, gap, layout, rows);
-  collectPaneRects(node.second, second, gap, layout, rows);
-}
-
-function splitPaneRect(
-  rect: Rectangle,
-  split: TerminalWorkspaceSplitNode,
-  gap: number,
-): [Rectangle, Rectangle] {
-  const safeGap = split.direction === "row" ? Math.min(gap, Math.max(0, rect.width - 1)) : Math.min(
-    gap,
-    Math.max(0, rect.height - 1),
-  );
-  if (split.direction === "row") {
-    const available = Math.max(0, rect.width - safeGap);
-    const firstWidth = clampSplitSize(Math.floor(available * clampRatio(split.ratio)), available);
-    const secondWidth = Math.max(0, available - firstWidth);
-    return [
-      { ...rect, width: firstWidth },
-      { column: rect.column + firstWidth + safeGap, row: rect.row, width: secondWidth, height: rect.height },
-    ];
-  }
-  const available = Math.max(0, rect.height - safeGap);
-  const firstHeight = clampSplitSize(Math.floor(available * clampRatio(split.ratio)), available);
-  const secondHeight = Math.max(0, available - firstHeight);
-  return [
-    { ...rect, height: firstHeight },
-    { column: rect.column, row: rect.row + firstHeight + safeGap, width: rect.width, height: secondHeight },
-  ];
-}
-
-function clampSplitSize(value: number, available: number): number {
-  if (available <= 1) return available;
-  return Math.max(1, Math.min(available - 1, value));
-}
-
-function normalizeRect(rect: Rectangle): Rectangle {
-  return {
-    column: Math.floor(rect.column),
-    row: Math.floor(rect.row),
-    width: Math.max(0, Math.floor(rect.width)),
-    height: Math.max(0, Math.floor(rect.height)),
-  };
-}
-
 function normalizeTerminalWorkspaceLayout(
   layout: TerminalWorkspaceLayoutState | undefined,
   sessions: readonly TerminalSessionDescriptor[],
   activeId: string | undefined,
 ): TerminalWorkspaceLayoutState {
   const sessionIds = new Set(sessions.map((session) => session.id));
-  const pruned = pruneLayoutSessions(layout ?? {}, sessionIds);
+  const pruned = pruneTerminalWorkspaceLayoutSessions(layout ?? {}, sessionIds);
   if (!pruned.root && activeId && sessionIds.has(activeId)) {
     const activeSession = sessions.find((session) => session.id === activeId);
-    return layoutWithActive({
-      root: createPaneNode(activeId, undefined, { title: activeSession?.title }),
+    return terminalWorkspaceLayoutWithActive({
+      root: createTerminalWorkspacePaneNode(activeId, undefined, { title: activeSession?.title }),
       zoomedPaneId: undefined,
     }, activeId);
   }
-  const activePane = pruned.activePaneId ? findPane(pruned.root, pruned.activePaneId) : undefined;
-  const fallbackPane = activeId ? findPaneBySession(pruned.root, activeId) : undefined;
-  const firstPane = collectPanes(pruned.root)[0];
+  const activePane = pruned.activePaneId ? findTerminalWorkspacePane(pruned.root, pruned.activePaneId) : undefined;
+  const fallbackPane = activeId ? findTerminalWorkspacePaneBySession(pruned.root, activeId) : undefined;
+  const firstPane = collectTerminalWorkspacePanes(pruned.root)[0];
   const nextActive = activePane ?? fallbackPane ?? firstPane;
   return {
     root: pruned.root,
     activePaneId: nextActive?.id,
-    zoomedPaneId: pruned.zoomedPaneId && findPane(pruned.root, pruned.zoomedPaneId) ? pruned.zoomedPaneId : undefined,
+    zoomedPaneId: pruned.zoomedPaneId && findTerminalWorkspacePane(pruned.root, pruned.zoomedPaneId)
+      ? pruned.zoomedPaneId
+      : undefined,
   };
 }
 
@@ -646,8 +598,8 @@ function inspectTerminalWorkspaceLayout(
 ): TerminalWorkspaceLayoutInspection {
   const normalized = normalizeTerminalWorkspaceLayout(layout, sessions, sessions[0]?.id);
   const sessionById = new Map(sessions.map((session) => [session.id, session]));
-  const panes = collectPanes(normalized.root).map((pane) => ({
-    ...clonePaneNode(pane),
+  const panes = collectTerminalWorkspacePanes(normalized.root).map((pane) => ({
+    ...cloneTerminalWorkspacePaneNode(pane),
     active: pane.id === normalized.activePaneId,
     zoomed: pane.id === normalized.zoomedPaneId,
     session: sessionById.has(pane.sessionId)
@@ -655,7 +607,7 @@ function inspectTerminalWorkspaceLayout(
       : undefined,
   }));
   return {
-    root: normalized.root ? cloneLayoutNode(normalized.root) : undefined,
+    root: normalized.root ? cloneTerminalWorkspaceLayoutNode(normalized.root) : undefined,
     activePaneId: normalized.activePaneId,
     zoomedPaneId: normalized.zoomedPaneId,
     panes,
@@ -663,281 +615,8 @@ function inspectTerminalWorkspaceLayout(
   };
 }
 
-function layoutWithActive(layout: TerminalWorkspaceLayoutState, sessionId: string): TerminalWorkspaceLayoutState {
-  const pane = findPaneBySession(layout.root, sessionId) ?? collectPanes(layout.root)[0];
-  return {
-    root: layout.root ? cloneLayoutNode(layout.root) : undefined,
-    activePaneId: pane?.id,
-    zoomedPaneId: layout.zoomedPaneId,
-  };
-}
-
-function createPaneNode(
-  sessionId: string,
-  root?: TerminalWorkspaceLayoutNode,
-  options: { title?: string; minColumns?: number; minRows?: number } = {},
-): TerminalWorkspacePaneNode {
-  return {
-    kind: "pane",
-    id: uniqueLayoutId(`pane-${sanitizeLayoutId(sessionId)}`, root),
-    sessionId,
-    title: options.title,
-    minColumns: normalizeDimension(options.minColumns),
-    minRows: normalizeDimension(options.minRows),
-  };
-}
-
-function cloneLayoutState(layout: TerminalWorkspaceLayoutState): TerminalWorkspaceLayoutState {
-  return {
-    root: layout.root ? cloneLayoutNode(layout.root) : undefined,
-    activePaneId: layout.activePaneId,
-    zoomedPaneId: layout.zoomedPaneId,
-  };
-}
-
-function cloneLayoutNode(node: TerminalWorkspaceLayoutNode): TerminalWorkspaceLayoutNode {
-  return node.kind === "pane" ? clonePaneNode(node) : {
-    kind: "split",
-    id: node.id,
-    direction: node.direction,
-    ratio: node.ratio,
-    first: cloneLayoutNode(node.first),
-    second: cloneLayoutNode(node.second),
-  };
-}
-
-function clonePaneNode(node: TerminalWorkspacePaneNode): TerminalWorkspacePaneNode {
-  return {
-    kind: "pane",
-    id: node.id,
-    sessionId: node.sessionId,
-    title: node.title,
-    minColumns: node.minColumns,
-    minRows: node.minRows,
-  };
-}
-
-function updatePaneRuntimeTitles(
-  layout: TerminalWorkspaceLayoutState,
-  sessionId: string,
-  runtimeTitle: string,
-  previousVisibleTitle: string,
-  previousRuntimeTitle: string | undefined,
-  templateTitle: string,
-): TerminalWorkspaceLayoutState {
-  return {
-    ...layout,
-    root: layout.root
-      ? updatePaneRuntimeTitleNode(
-        layout.root,
-        sessionId,
-        runtimeTitle,
-        previousVisibleTitle,
-        previousRuntimeTitle,
-        templateTitle,
-      )
-      : undefined,
-  };
-}
-
-function updatePaneRuntimeTitleNode(
-  node: TerminalWorkspaceLayoutNode,
-  sessionId: string,
-  runtimeTitle: string,
-  previousVisibleTitle: string,
-  previousRuntimeTitle: string | undefined,
-  templateTitle: string,
-): TerminalWorkspaceLayoutNode {
-  if (node.kind === "pane") {
-    const pane = clonePaneNode(node);
-    if (
-      pane.sessionId === sessionId &&
-      (
-        pane.title === undefined ||
-        pane.title === previousVisibleTitle ||
-        pane.title === previousRuntimeTitle ||
-        pane.title === templateTitle
-      )
-    ) {
-      pane.title = runtimeTitle;
-    }
-    return pane;
-  }
-  return {
-    ...node,
-    first: updatePaneRuntimeTitleNode(
-      node.first,
-      sessionId,
-      runtimeTitle,
-      previousVisibleTitle,
-      previousRuntimeTitle,
-      templateTitle,
-    ),
-    second: updatePaneRuntimeTitleNode(
-      node.second,
-      sessionId,
-      runtimeTitle,
-      previousVisibleTitle,
-      previousRuntimeTitle,
-      templateTitle,
-    ),
-  };
-}
-
-function pruneLayoutSessions(
-  layout: TerminalWorkspaceLayoutState,
-  sessionIds: ReadonlySet<string>,
-): TerminalWorkspaceLayoutState {
-  const root = pruneLayoutNode(layout.root, sessionIds);
-  return {
-    root,
-    activePaneId: layout.activePaneId && findPane(root, layout.activePaneId) ? layout.activePaneId : undefined,
-    zoomedPaneId: layout.zoomedPaneId && findPane(root, layout.zoomedPaneId) ? layout.zoomedPaneId : undefined,
-  };
-}
-
-function pruneLayoutNode(
-  node: TerminalWorkspaceLayoutNode | undefined,
-  sessionIds: ReadonlySet<string>,
-): TerminalWorkspaceLayoutNode | undefined {
-  if (!node) return undefined;
-  if (node.kind === "pane") return sessionIds.has(node.sessionId) ? clonePaneNode(node) : undefined;
-  const first = pruneLayoutNode(node.first, sessionIds);
-  const second = pruneLayoutNode(node.second, sessionIds);
-  if (first && second) return { ...node, ratio: clampRatio(node.ratio), first, second };
-  return first ?? second;
-}
-
-function collectPanes(node: TerminalWorkspaceLayoutNode | undefined): TerminalWorkspacePaneNode[] {
-  if (!node) return [];
-  if (node.kind === "pane") return [clonePaneNode(node)];
-  return [...collectPanes(node.first), ...collectPanes(node.second)];
-}
-
-function findPane(
-  node: TerminalWorkspaceLayoutNode | undefined,
-  paneId: string,
-): TerminalWorkspacePaneNode | undefined {
-  if (!node) return undefined;
-  if (node.kind === "pane") return node.id === paneId ? clonePaneNode(node) : undefined;
-  return findPane(node.first, paneId) ?? findPane(node.second, paneId);
-}
-
-function findPaneBySession(
-  node: TerminalWorkspaceLayoutNode | undefined,
-  sessionId: string,
-): TerminalWorkspacePaneNode | undefined {
-  if (!node) return undefined;
-  if (node.kind === "pane") return node.sessionId === sessionId ? clonePaneNode(node) : undefined;
-  return findPaneBySession(node.first, sessionId) ?? findPaneBySession(node.second, sessionId);
-}
-
-function findActivePane(layout: TerminalWorkspaceLayoutState): TerminalWorkspacePaneNode | undefined {
-  return layout.activePaneId ? findPane(layout.root, layout.activePaneId) : collectPanes(layout.root)[0];
-}
-
-function replacePane(
-  node: TerminalWorkspaceLayoutNode,
-  paneId: string,
-  replacement: TerminalWorkspaceLayoutNode,
-): TerminalWorkspaceLayoutNode {
-  if (node.kind === "pane") return node.id === paneId ? cloneLayoutNode(replacement) : clonePaneNode(node);
-  return {
-    ...node,
-    first: replacePane(node.first, paneId, replacement),
-    second: replacePane(node.second, paneId, replacement),
-  };
-}
-
-function removePane(
-  node: TerminalWorkspaceLayoutNode | undefined,
-  paneId: string,
-): TerminalWorkspaceLayoutNode | undefined {
-  if (!node) return undefined;
-  if (node.kind === "pane") return node.id === paneId ? undefined : clonePaneNode(node);
-  const first = removePane(node.first, paneId);
-  const second = removePane(node.second, paneId);
-  if (first && second) return { ...node, first, second };
-  return first ?? second;
-}
-
-function updateSplitRatio(
-  node: TerminalWorkspaceLayoutNode | undefined,
-  splitId: string,
-  ratio: number,
-): { node?: TerminalWorkspaceLayoutNode; changed: boolean } {
-  if (!node) return { changed: false };
-  if (node.kind === "pane") return { node: clonePaneNode(node), changed: false };
-  if (node.id === splitId) {
-    return {
-      node: { ...node, ratio, first: cloneLayoutNode(node.first), second: cloneLayoutNode(node.second) },
-      changed: true,
-    };
-  }
-  const first = updateSplitRatio(node.first, splitId, ratio);
-  const second = updateSplitRatio(node.second, splitId, ratio);
-  return {
-    node: {
-      ...node,
-      first: first.node ?? cloneLayoutNode(node.first),
-      second: second.node ?? cloneLayoutNode(node.second),
-    },
-    changed: first.changed || second.changed,
-  };
-}
-
-function findNearestSplit(
-  node: TerminalWorkspaceLayoutNode | undefined,
-  paneId: string,
-): { split: TerminalWorkspaceSplitNode; activeSide: "first" | "second" } | undefined {
-  if (!node || node.kind === "pane") return undefined;
-  if (findPane(node.first, paneId)) {
-    return findNearestSplit(node.first, paneId) ?? { split: cloneSplitNode(node), activeSide: "first" };
-  }
-  if (findPane(node.second, paneId)) {
-    return findNearestSplit(node.second, paneId) ?? { split: cloneSplitNode(node), activeSide: "second" };
-  }
-  return undefined;
-}
-
-function cloneSplitNode(node: TerminalWorkspaceSplitNode): TerminalWorkspaceSplitNode {
-  return {
-    kind: "split",
-    id: node.id,
-    direction: node.direction,
-    ratio: node.ratio,
-    first: cloneLayoutNode(node.first),
-    second: cloneLayoutNode(node.second),
-  };
-}
-
-function uniqueLayoutId(prefix: string, root?: TerminalWorkspaceLayoutNode): string {
-  const ids = new Set<string>();
-  collectLayoutIds(root, ids);
-  let candidate = prefix;
-  let suffix = 2;
-  while (ids.has(candidate)) {
-    candidate = `${prefix}-${suffix}`;
-    suffix += 1;
-  }
-  return candidate;
-}
-
-function collectLayoutIds(node: TerminalWorkspaceLayoutNode | undefined, ids: Set<string>): void {
-  if (!node) return;
-  ids.add(node.id);
-  if (node.kind === "split") {
-    collectLayoutIds(node.first, ids);
-    collectLayoutIds(node.second, ids);
-  }
-}
-
-function sanitizeLayoutId(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "terminal";
-}
-
 function uniqueSessionId(prefix: string, ids: ReadonlySet<string>): string {
-  const base = sanitizeLayoutId(prefix);
+  const base = sanitizeTerminalWorkspaceLayoutId(prefix);
   let candidate = base;
   let suffix = 2;
   while (ids.has(candidate)) {
@@ -945,8 +624,4 @@ function uniqueSessionId(prefix: string, ids: ReadonlySet<string>): string {
     suffix += 1;
   }
   return candidate;
-}
-
-function clampRatio(value: number): number {
-  return Math.max(0.1, Math.min(0.9, Number.isFinite(value) ? value : 0.5));
 }
