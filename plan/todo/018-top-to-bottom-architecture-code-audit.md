@@ -103,6 +103,8 @@ Work:
 - [x] Add recursion/cycle detection with actionable diagnostics that include the signal/effect inspection path where
       available.
 - [ ] Provide a scheduler-backed propagation mode for UI frame updates so noisy state changes coalesce into one draw.
+  - [x] Added `SignalBatchScheduler`, an opt-in microtask-backed signal mutation scheduler that flushes coalesced
+        callbacks through `batchSignalUpdates()` without changing default synchronous signal semantics.
 - [ ] Audit app/workbench/Three panel code and replace ad hoc `queueMicrotask()` draw coalescing where the signal layer
       can own the behavior.
   - [x] Added a reusable `MicrotaskScheduler` runtime primitive and migrated the API Workbench draw scheduler off its

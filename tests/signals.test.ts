@@ -13,6 +13,7 @@ import {
   ReactiveOriginalRefAccessError,
   ReactiveSignalAccessError,
   Signal,
+  SignalBatchScheduler,
   SignalRecursiveUpdateError,
 } from "../src/signals/mod.ts";
 import { IS_REACTIVE } from "../src/signals/reactivity.ts";
@@ -207,6 +208,75 @@ Deno.test("signals/mod.ts", async (t) => {
       });
 
       assertEquals(seen, [{ count: 2, label: "done" }]);
+    });
+
+    await t.step("scheduled signal batches coalesce callbacks into one propagation flush", () => {
+      const queue: Array<() => void> = [];
+      const scheduler = new SignalBatchScheduler({
+        queueMicrotask: (callback) => queue.push(callback),
+      });
+      const signal = new Signal(0);
+      const seen: number[] = [];
+      signal.subscribe((value) => seen.push(value));
+
+      assertEquals(
+        scheduler.schedule(() => {
+          signal.value = 1;
+        }),
+        true,
+      );
+      assertEquals(
+        scheduler.schedule(() => {
+          signal.value = 2;
+        }),
+        false,
+      );
+      assertEquals(scheduler.inspect(), { scheduled: true, pending: 2, flushed: 0, cancelled: 0 });
+      assertEquals(seen, []);
+
+      queue.shift()!();
+
+      assertEquals(signal.value, 2);
+      assertEquals(seen, [2]);
+      assertEquals(scheduler.inspect(), { scheduled: false, pending: 0, flushed: 1, cancelled: 0 });
+    });
+
+    await t.step("scheduled signal batches support cancel flush and error reporting", () => {
+      const queue: Array<() => void> = [];
+      const errors: unknown[] = [];
+      const failure = new Error("scheduled batch failed");
+      const scheduler = new SignalBatchScheduler({
+        queueMicrotask: (callback) => queue.push(callback),
+        onError: (error) => errors.push(error),
+      });
+      const signal = new Signal(0);
+      const seen: number[] = [];
+      signal.subscribe((value) => seen.push(value));
+
+      scheduler.schedule(() => {
+        signal.value = 1;
+      });
+      assertEquals(scheduler.cancel(), true);
+      assertEquals(scheduler.cancel(), false);
+      queue.shift()!();
+      assertEquals(signal.value, 0);
+      assertEquals(seen, []);
+      assertEquals(scheduler.inspect(), { scheduled: false, pending: 0, flushed: 0, cancelled: 1 });
+
+      scheduler.schedule(() => {
+        signal.value = 2;
+      });
+      assertEquals(scheduler.flush(), true);
+      assertEquals(scheduler.flush(), false);
+      queue.shift()!();
+      assertEquals(seen, [2]);
+
+      scheduler.schedule(() => {
+        throw failure;
+      });
+      queue.shift()!();
+      assertEquals(errors, [failure]);
+      assertEquals(scheduler.inspect(), { scheduled: false, pending: 0, flushed: 2, cancelled: 1 });
     });
 
     await t.step("Deep observe", async (t) => {

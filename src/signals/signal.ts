@@ -65,6 +65,20 @@ export interface SignalInspection {
   reactive: boolean;
 }
 
+/** Serializable inspection snapshot for a scheduled signal batch. */
+export interface SignalBatchSchedulerInspection {
+  scheduled: boolean;
+  pending: number;
+  flushed: number;
+  cancelled: number;
+}
+
+/** Options for coalescing signal mutations into one scheduled batch. */
+export interface SignalBatchSchedulerOptions {
+  queueMicrotask?: (callback: () => void) => void;
+  onError?: (error: unknown) => void;
+}
+
 const MAX_PROPAGATION_REENTRY = 32;
 const activePropagationCounts = new Map<object, number>();
 const propagationStack: object[] = [];
@@ -91,6 +105,74 @@ export function batchSignalUpdates<T>(callback: () => T): T {
 /** Returns whether signal propagation is currently deferred inside a batch. */
 export function isSignalBatching(): boolean {
   return signalBatchDepth > 0;
+}
+
+/** Coalesces arbitrary signal mutations into one future `batchSignalUpdates()` flush. */
+export class SignalBatchScheduler {
+  readonly #queueMicrotask: (callback: () => void) => void;
+  readonly #onError?: (error: unknown) => void;
+  #scheduled = false;
+  #callbacks = new Set<() => void>();
+  #flushed = 0;
+  #cancelled = 0;
+
+  constructor(options: SignalBatchSchedulerOptions = {}) {
+    this.#queueMicrotask = options.queueMicrotask ?? queueMicrotask;
+    this.#onError = options.onError;
+  }
+
+  get scheduled(): boolean {
+    return this.#scheduled;
+  }
+
+  schedule(callback: () => void): boolean {
+    this.#callbacks.add(callback);
+    if (this.#scheduled) return false;
+    this.#scheduled = true;
+    this.#queueMicrotask(() => this.#flush());
+    return true;
+  }
+
+  flush(): boolean {
+    if (!this.#scheduled) return false;
+    this.#flush();
+    return true;
+  }
+
+  cancel(): boolean {
+    if (!this.#scheduled) return false;
+    this.#scheduled = false;
+    this.#callbacks.clear();
+    this.#cancelled += 1;
+    return true;
+  }
+
+  inspect(): SignalBatchSchedulerInspection {
+    return {
+      scheduled: this.#scheduled,
+      pending: this.#callbacks.size,
+      flushed: this.#flushed,
+      cancelled: this.#cancelled,
+    };
+  }
+
+  #flush(): void {
+    if (!this.#scheduled) return;
+    const callbacks = [...this.#callbacks];
+    this.#scheduled = false;
+    this.#callbacks.clear();
+    this.#flushed += 1;
+    try {
+      batchSignalUpdates(() => {
+        for (const callback of callbacks) {
+          callback();
+        }
+      });
+    } catch (error) {
+      this.#onError?.(error);
+      if (!this.#onError) throw error;
+    }
+  }
 }
 
 function flushSignalBatch(): void {
