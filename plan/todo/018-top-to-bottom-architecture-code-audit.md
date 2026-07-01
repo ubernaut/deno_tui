@@ -72,11 +72,16 @@ Work:
   - [x] Extracted per-window Three ASCII config signal ownership and option stepping helpers into
         `src/app/workbench_ascii.ts`, reducing workbench-local renderer config state and making modal control behavior
         directly testable.
+  - [x] Extracted renderer-neutral workbench text helpers into `src/app/workbench_text.ts`, covering whitespace
+        compaction, row measurement, plain text wrapping, and visible menu slices while trimming duplicate helpers from
+        the terminal workbench.
 - [ ] Make the terminal workbench and web workbench thin render adapters over the same controller/model.
   - [x] Exposed the shared frame and hit-target helpers through `src/app/mod.ts` and migrated the web API Workbench page
         to reuse exported text-fit, ANSI-cell, contrast, and geometry helpers.
   - [x] Migrated web API Workbench tiling through `WindowManagerController` so terminal and web layouts share the same
         fullscreen/minimized/adaptive tile engine.
+  - [x] Extracted shared Three panel mouse interaction and transform state into `app/three_panel_interaction.ts`, so
+        terminal canvas rendering and frame-rendered workbench windows use the same rotate/zoom/reset behavior.
 - [x] Replace duplicated theme/window/menu persistence code with a shared versioned serializer.
   - [x] Extracted shared workbench workspace normalization, panel-state normalization, upsert, rename, delete, lookup,
         and legacy window-entry expansion helpers into `src/app/workbench_workspace.ts`.
@@ -115,6 +120,7 @@ Work:
 - [x] Add text measurement/cropping benchmarks for ANSI-heavy table/list rows and button-heavy titlebars.
 - [x] Add system monitor fixture benchmarks for CPU/process/network parsing without touching live `/proc`.
 - [x] Add Three ASCII CPU-side grid assembly/readback benchmarks with an injectable renderer or captured buffers.
+- [x] Add terminal-screen replay benchmarks for PTY-style byte transcripts and common OSC/CSI/SGR screen mutations.
 - [x] Record thresholds in the benchmark catalog and wire the most useful non-flaky cases into health or e2e.
 
 Acceptance checks:
@@ -233,6 +239,8 @@ Acceptance checks:
   - [x] Added a separate deterministic readback-copy benchmark for fill, edge, and color buffer payloads.
   - [x] Added a sparse ANSI grid benchmark that exercises blank-cell skipping separately from dense geometry.
   - [x] Added a solid repeated-color ANSI grid benchmark for block-heavy scenes that benefit from cell string reuse.
+  - [x] Added a fill-only ANSI grid benchmark and fast path so block-style scenes that do not need edge buffers avoid
+        edge-glyph lookup and promotion work.
 - [x] Workbench and standalone Three demos share the same config normalization and lifecycle helpers.
   - [x] Clamped normalized ASCII numeric config values to the same ranges exposed by shared controls, including
         wireframe thickness `0.5..32`, so saved per-widget configs cannot restore invalid renderer settings.
@@ -321,6 +329,8 @@ Acceptance checks:
         every escape/control sequence.
   - [x] Removed repeated substring allocation from ANSI and Unicode scanning in shared string measurement/cropping and
         workbench frame cell splitting utilities.
+  - [x] Reused a `TextDecoder` inside `TerminalScreenController` for byte-buffer writes and added a terminal-screen
+        replay benchmark to keep PTY transcript handling bounded.
 
 ### P2: Consolidate Layout, Markup, And Widget Hydration
 
