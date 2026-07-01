@@ -2882,14 +2882,24 @@ import {
 import { Color as Color2 } from "https://esm.sh/three@0.183.2";
 
 // src/three_ascii/glyphs.ts
+var EDGE_GLYPHS = [" ", "|", "-", "\\", "/"];
 var FILL_GLYPHS = [" ", "\u2581", "\u2582", "\u2583", "\u2584", "\u2585", "\u2586", "\u2587", "\u2588", "\u2588"];
+var BLOCK_FILL_GLYPHS = [" ", "\u2588", "\u2588", "\u2588", "\u2588", "\u2588", "\u2588", "\u2588", "\u2588", "\u2588"];
 var ASCII_FILL_GLYPHS = [" ", ".", ":", "-", "=", "+", "*", "#", "%", "@"];
+function blockFillGlyphForBucket(luminanceBucket) {
+  return BLOCK_FILL_GLYPHS[Math.max(0, Math.min(BLOCK_FILL_GLYPHS.length - 1, luminanceBucket))];
+}
 
 // src/three_ascii/ansi_grid.ts
 var TILE_PIXEL_COUNT = 64;
 var GOHU_11_FILL_GLYPH_COVERAGE = [0, 2, 4, 6, 9, 11, 13, 15, 18, 18];
 var ASCII_FILL_GLYPH_COVERAGE = [0, 1, 2, 4, 6, 8, 10, 13, 16, 18];
 var MIXED_FILL_GLYPHS_BY_INDEX = createMixedFillGlyphTable();
+var CELL_GLYPH_KEY_STRIDE = 64;
+var GLYPH_KEY_GLYPHS_OFFSET = 16;
+var GLYPH_KEY_MIXED_OFFSET = 32;
+var EDGE_GLYPH_KEY_OFFSET = 48;
+var GLYPHS_BY_KEY = createGlyphKeyTable();
 function fillBucketFromGlyphIndex(index) {
   return Math.max(0, Math.min(FILL_GLYPHS.length - 1, index - 5));
 }
@@ -2928,6 +2938,19 @@ function createMixedFillGlyphTable() {
       return candidateScore < bestScore ? candidate : best;
     }).glyph;
   });
+}
+function createGlyphKeyTable() {
+  const table2 = Array(CELL_GLYPH_KEY_STRIDE).fill(" ");
+  for (let index = 0; index < FILL_GLYPHS.length + 5; index += 1) {
+    const bucket = fillBucketFromGlyphIndex(index);
+    table2[index] = blockFillGlyphForBucket(bucket);
+    table2[GLYPH_KEY_GLYPHS_OFFSET + index] = ASCII_FILL_GLYPHS[bucket] ?? " ";
+    table2[GLYPH_KEY_MIXED_OFFSET + index] = MIXED_FILL_GLYPHS_BY_INDEX[index] ?? " ";
+  }
+  for (let index = 0; index < EDGE_GLYPHS.length; index += 1) {
+    table2[EDGE_GLYPH_KEY_OFFSET + index] = EDGE_GLYPHS[index] ?? " ";
+  }
+  return table2;
 }
 
 // src/three_ascii/loadAsciiLuts.ts

@@ -186,6 +186,28 @@ Deno.test("three ascii ANSI grid assembler invalidates cached cells when backgro
   assertEquals(tinted !== dark, true);
 });
 
+Deno.test("three ascii ANSI grid assembler keeps glyph style cache keys distinct", () => {
+  const assembler = new ThreeAsciiAnsiGridAssembler();
+  const base = {
+    columns: 1,
+    rows: 1,
+    fillGlyphs: new Float32Array([14]),
+    colors: new Float32Array([1, 1, 1, 1]),
+    backgroundColor: 0x000000,
+  };
+
+  const blocks = assembler.build({ ...base, terminalGlyphStyle: "blocks" })[0][0];
+  const glyphs = assembler.build({ ...base, terminalGlyphStyle: "glyphs" })[0][0];
+  const mixed = assembler.build({ ...base, terminalGlyphStyle: "mixed" })[0][0];
+
+  assertEquals(blocks, buildThreeAsciiAnsiGrid({ ...base, terminalGlyphStyle: "blocks" })[0][0]);
+  assertEquals(glyphs, buildThreeAsciiAnsiGrid({ ...base, terminalGlyphStyle: "glyphs" })[0][0]);
+  assertEquals(mixed, buildThreeAsciiAnsiGrid({ ...base, terminalGlyphStyle: "mixed" })[0][0]);
+  assertEquals(blocks.includes("█"), true);
+  assertEquals(glyphs.includes("="), true);
+  assertEquals(blocks !== glyphs, true);
+});
+
 Deno.test("three ascii fallback detail hides raw GPU validation text", () => {
   assertEquals(
     formatThreeAsciiFallbackDetail(new Error("Buffer with '' label is invalid.")),

@@ -250,6 +250,9 @@ Work:
   - [x] Extracted Three ASCII readback byte packing and mapped-range view construction into
         `src/three_ascii/readback.ts`, with focused tests for edge-disabled packing and Float32 alignment so future GPU
         copy policy changes have a narrow correctness boundary.
+  - [x] Flattened repeated ANSI cell caching to numeric foreground/glyph keys and split fill-only grid assembly into a
+        branch-free hot loop, improving the focused Three ASCII assembly benchmark subset while preserving style-switch
+        cache correctness.
 
 Acceptance checks:
 
