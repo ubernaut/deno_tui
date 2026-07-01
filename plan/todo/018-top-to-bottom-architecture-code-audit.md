@@ -162,7 +162,7 @@ Work:
       stopping, failed, disposed.
 - [x] Add cancel tokens/generation ids so stale frames cannot update disposed or rebuilt panels.
 - [x] Pool GPU readback buffers and avoid recreating CPU arrays when size is unchanged.
-- [ ] Explore packing fill/edge/color output into fewer readbacks or a single mapped buffer.
+- [x] Explore packing fill/edge/color output into fewer readbacks or a single mapped buffer.
 - [x] Cache repeated ANSI foreground/background sequences within a frame.
 - [x] Move Kitty image/ASCII dual-render policy into a reusable renderer option object rather than workbench-local
       conditionals.

@@ -249,8 +249,12 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
 
 interface BufferPair {
   gpu: GPUBuffer;
-  readback: GPUBuffer;
   cpu: Float32Array;
+  byteLength: number;
+}
+
+interface ReadbackBuffer {
+  gpu: GPUBuffer;
   byteLength: number;
 }
 
@@ -577,6 +581,7 @@ export class ThreeAsciiRenderer {
   private fillOutput?: BufferPair;
   private edgeOutput?: BufferPair;
   private colorOutput?: BufferPair;
+  private outputReadback?: ReadbackBuffer;
   private uniformValues = new Float32Array(24);
   private outputCellCount = 0;
   private sizeDirty = true;
@@ -752,35 +757,37 @@ export class ThreeAsciiRenderer {
       workgroupsY,
     );
 
+    const fillOffset = 0;
+    const edgeOffset = fillOffset + this.fillOutput!.byteLength;
+    const colorOffset = edgeOffset + this.edgeOutput!.byteLength;
+    const readbackByteLength = colorOffset + this.colorOutput!.byteLength;
+    this.outputReadback = this.ensureReadbackBuffer(this.outputReadback, readbackByteLength);
+
     commandEncoder.copyBufferToBuffer(
       this.fillOutput!.gpu,
       0,
-      this.fillOutput!.readback,
-      0,
+      this.outputReadback.gpu,
+      fillOffset,
       this.fillOutput!.byteLength,
     );
     commandEncoder.copyBufferToBuffer(
       this.edgeOutput!.gpu,
       0,
-      this.edgeOutput!.readback,
-      0,
+      this.outputReadback.gpu,
+      edgeOffset,
       this.edgeOutput!.byteLength,
     );
     commandEncoder.copyBufferToBuffer(
       this.colorOutput!.gpu,
       0,
-      this.colorOutput!.readback,
-      0,
+      this.outputReadback.gpu,
+      colorOffset,
       this.colorOutput!.byteLength,
     );
 
     this.device!.queue.submit([commandEncoder.finish()]);
 
-    const [fillGlyphs, edgeGlyphs, colors] = await Promise.all([
-      this.readFloatBuffer(this.fillOutput!),
-      this.readFloat4Buffer(this.edgeOutput!),
-      this.readFloat4Buffer(this.colorOutput!),
-    ]);
+    const { fillGlyphs, edgeGlyphs, colors } = await this.readOutputBuffers(fillOffset, edgeOffset, colorOffset);
 
     return buildThreeAsciiAnsiGrid({
       columns: this.columns,
@@ -798,6 +805,7 @@ export class ThreeAsciiRenderer {
     this.fillOutput = this.destroyBufferPair(this.fillOutput);
     this.edgeOutput = this.destroyBufferPair(this.edgeOutput);
     this.colorOutput = this.destroyBufferPair(this.colorOutput);
+    this.outputReadback = this.destroyReadbackBuffer(this.outputReadback);
     this.paramsBuffer?.destroy();
     this.paramsBuffer = undefined;
 
@@ -1062,11 +1070,6 @@ export class ThreeAsciiRenderer {
         size: byteLength,
         usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC,
       }),
-      readback: this.device!.createBuffer({
-        label: `deno_tui.three_ascii.${label}.readback`,
-        size: byteLength,
-        usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
-      }),
       cpu: new Float32Array(byteLength / Float32Array.BYTES_PER_ELEMENT),
       byteLength,
     };
@@ -1074,7 +1077,28 @@ export class ThreeAsciiRenderer {
 
   private destroyBufferPair(current: BufferPair | undefined): undefined {
     current?.gpu.destroy();
-    current?.readback.destroy();
+    return undefined;
+  }
+
+  private ensureReadbackBuffer(current: ReadbackBuffer | undefined, byteLength: number): ReadbackBuffer {
+    if (current?.byteLength === byteLength) {
+      return current;
+    }
+
+    this.destroyReadbackBuffer(current);
+
+    return {
+      gpu: this.device!.createBuffer({
+        label: "deno_tui.three_ascii.output.readback",
+        size: byteLength,
+        usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+      }),
+      byteLength,
+    };
+  }
+
+  private destroyReadbackBuffer(current: ReadbackBuffer | undefined): undefined {
+    current?.gpu.destroy();
     return undefined;
   }
 
@@ -1093,22 +1117,38 @@ export class ThreeAsciiRenderer {
     passEncoder.end();
   }
 
-  private async readFloatBuffer(bufferPair: BufferPair): Promise<Float32Array> {
-    await bufferPair.readback.mapAsync(GPUMapMode.READ);
+  private async readOutputBuffers(
+    fillOffset: number,
+    edgeOffset: number,
+    colorOffset: number,
+  ): Promise<{ fillGlyphs: Float32Array; edgeGlyphs: Float32Array; colors: Float32Array }> {
+    const readback = this.outputReadback;
+    const fillOutput = this.fillOutput;
+    const edgeOutput = this.edgeOutput;
+    const colorOutput = this.colorOutput;
+    if (!readback || !fillOutput || !edgeOutput || !colorOutput) {
+      throw new Error("ThreeAsciiRenderer readback buffers have not been initialized.");
+    }
+
+    await readback.gpu.mapAsync(GPUMapMode.READ);
 
     try {
-      const source = new Float32Array(bufferPair.readback.getMappedRange());
-      if (bufferPair.cpu.length !== source.length) {
-        bufferPair.cpu = new Float32Array(source.length);
-      }
-      bufferPair.cpu.set(source);
-      return bufferPair.cpu;
+      const source = readback.gpu.getMappedRange();
+      this.copyMappedFloatRange(source, fillOffset, fillOutput);
+      this.copyMappedFloatRange(source, edgeOffset, edgeOutput);
+      this.copyMappedFloatRange(source, colorOffset, colorOutput);
+      return {
+        fillGlyphs: fillOutput.cpu,
+        edgeGlyphs: edgeOutput.cpu,
+        colors: colorOutput.cpu,
+      };
     } finally {
-      bufferPair.readback.unmap();
+      readback.gpu.unmap();
     }
   }
 
-  private async readFloat4Buffer(bufferPair: BufferPair): Promise<Float32Array> {
-    return await this.readFloatBuffer(bufferPair);
+  private copyMappedFloatRange(source: ArrayBuffer, byteOffset: number, target: BufferPair): void {
+    const values = new Float32Array(source, byteOffset, target.cpu.length);
+    target.cpu.set(values);
   }
 }
