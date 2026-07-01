@@ -91,6 +91,7 @@ function pageHtml(): string {
         width: 100%;
         height: 100%;
         margin: 0;
+        overscroll-behavior: none;
       }
 
       body {
@@ -138,6 +139,8 @@ function pageHtml(): string {
         width: 100%;
         height: 100%;
         outline: none;
+        touch-action: none;
+        user-select: none;
         box-shadow: inset 0 0 0 1px rgba(177, 124, 255, 0.24), 0 0 48px rgba(177, 124, 255, 0.12);
         background: #05070d;
       }
@@ -154,6 +157,8 @@ function pageHtml(): string {
         display: block;
         width: 100%;
         height: 100%;
+        touch-action: none;
+        user-select: none;
       }
     </style>
   </head>

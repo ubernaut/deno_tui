@@ -20,9 +20,20 @@ export interface BrowserPlatformOptions {
   rows?: number;
   cellWidth?: number;
   cellHeight?: number;
+  touchAction?: string;
+  userSelect?: string;
   input?: InputSource;
   lifecycle?: LifecycleController;
   scheduler?: BrowserFrameScheduler;
+}
+
+export interface BrowserInputSourceOptions {
+  cellWidth?: number;
+  cellHeight?: number;
+  /** CSS touch-action applied while the input source is attached. Defaults to "none" for terminal-like gestures. */
+  touchAction?: string;
+  /** CSS user-select applied while the input source is attached. Defaults to "none". */
+  userSelect?: string;
 }
 
 export interface BrowserFrameScheduler {
@@ -48,7 +59,13 @@ export class BrowserPlatform implements TuiPlatform {
         : sizeFromElement(options.root, cellWidth, cellHeight),
       { deepObserve: true },
     );
-    this.input = options.input ?? new BrowserInputSource(options.root, { cellWidth, cellHeight });
+    this.input = options.input ??
+      new BrowserInputSource(options.root, {
+        cellWidth,
+        cellHeight,
+        touchAction: options.touchAction,
+        userSelect: options.userSelect,
+      });
     this.lifecycle = options.lifecycle ?? new NoopLifecycleController("browser");
     this.#scheduler = options.scheduler ?? defaultBrowserFrameScheduler();
 
@@ -85,28 +102,45 @@ export class BrowserInputSource implements InputSource {
   readonly #target: HTMLElement;
   readonly #cellWidth: number;
   readonly #cellHeight: number;
+  readonly #touchAction: string;
+  readonly #userSelect: string;
   #emitter?: PlatformInputEmitter;
   #attached = false;
   #removeListeners: Array<() => void> = [];
+  #restoreStyles?: () => void;
 
-  constructor(target: HTMLElement, options: { cellWidth?: number; cellHeight?: number } = {}) {
+  constructor(target: HTMLElement, options: BrowserInputSourceOptions = {}) {
     this.#target = target;
     this.#cellWidth = Math.max(1, options.cellWidth ?? 10);
     this.#cellHeight = Math.max(1, options.cellHeight ?? 20);
+    this.#touchAction = options.touchAction ?? "none";
+    this.#userSelect = options.userSelect ?? "none";
   }
 
   attach(emitter: PlatformInputEmitter): void {
     this.detach();
     this.#emitter = emitter;
     this.#target.tabIndex = this.#target.tabIndex < 0 ? 0 : this.#target.tabIndex;
+    this.#restoreStyles = applyInputStyles(this.#target, this.#touchAction, this.#userSelect);
     this.#removeListeners = [
       addListener(this.#target, "keydown", (event) => this.#handleKey(event as KeyboardEvent)),
-      addListener(this.#target, "pointerdown", (event) => this.#handlePointer(event as PointerEvent, false)),
-      addListener(this.#target, "pointermove", (event) => this.#handlePointerMove(event as PointerEvent)),
-      addListener(this.#target, "pointerup", (event) => this.#handlePointer(event as PointerEvent, true)),
-      addListener(this.#target, "pointercancel", (event) => this.#handlePointer(event as PointerEvent, true)),
-      addListener(this.#target, "wheel", (event) => this.#handleWheel(event as WheelEvent)),
-      addListener(this.#target, "paste", (event) => this.#handlePaste(event as ClipboardEvent)),
+      addListener(
+        this.#target,
+        "pointerdown",
+        (event) => this.#handlePointer(event as PointerEvent, false),
+        { passive: false },
+      ),
+      addListener(this.#target, "pointermove", (event) => this.#handlePointerMove(event as PointerEvent), {
+        passive: false,
+      }),
+      addListener(this.#target, "pointerup", (event) => this.#handlePointer(event as PointerEvent, true), {
+        passive: false,
+      }),
+      addListener(this.#target, "pointercancel", (event) => this.#handlePointer(event as PointerEvent, true), {
+        passive: false,
+      }),
+      addListener(this.#target, "wheel", (event) => this.#handleWheel(event as WheelEvent), { passive: false }),
+      addListener(this.#target, "paste", (event) => this.#handlePaste(event as ClipboardEvent), { passive: false }),
       addListener(this.#target, "focus", () => this.#handleFocus(true)),
       addListener(this.#target, "blur", () => this.#handleFocus(false)),
     ];
@@ -116,6 +150,8 @@ export class BrowserInputSource implements InputSource {
   detach(): void {
     for (const remove of this.#removeListeners) remove();
     this.#removeListeners = [];
+    this.#restoreStyles?.();
+    this.#restoreStyles = undefined;
     this.#emitter = undefined;
     this.#attached = false;
   }
@@ -243,9 +279,32 @@ function sizeFromElement(root: HTMLElement, cellWidth: number, cellHeight: numbe
   };
 }
 
-function addListener(target: HTMLElement, type: string, listener: EventListener): () => void {
-  target.addEventListener(type, listener);
-  return () => target.removeEventListener(type, listener);
+function addListener(
+  target: HTMLElement,
+  type: string,
+  listener: EventListener,
+  options?: AddEventListenerOptions,
+): () => void {
+  target.addEventListener(type, listener, options);
+  return () => target.removeEventListener(type, listener, options);
+}
+
+function applyInputStyles(target: HTMLElement, touchAction: string, userSelect: string): () => void {
+  const style = (target as HTMLElement & {
+    style?: CSSStyleDeclaration & { webkitUserSelect?: string };
+  }).style;
+  if (!style) return () => undefined;
+  const previousTouchAction = style.touchAction;
+  const previousUserSelect = style.userSelect;
+  const previousWebkitUserSelect = style.webkitUserSelect;
+  style.touchAction = touchAction;
+  style.userSelect = userSelect;
+  style.webkitUserSelect = userSelect;
+  return () => {
+    style.touchAction = previousTouchAction;
+    style.userSelect = previousUserSelect;
+    style.webkitUserSelect = previousWebkitUserSelect;
+  };
 }
 
 function browserButton(button: number): MousePressEvent["button"] {

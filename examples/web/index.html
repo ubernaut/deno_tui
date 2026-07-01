@@ -16,18 +16,23 @@
       body {
         display: grid;
         place-items: center;
+        overscroll-behavior: none;
       }
 
       #app {
         width: min(960px, 100vw);
         height: min(560px, 100vh);
         outline: none;
+        touch-action: none;
+        user-select: none;
       }
 
       canvas {
         width: 100%;
         height: 100%;
         display: block;
+        touch-action: none;
+        user-select: none;
       }
     </style>
   </head>

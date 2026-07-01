@@ -101,8 +101,10 @@ Deno.test("BrowserCellCanvasSink paints dirty cells to a 2D context", () => {
 Deno.test("BrowserInputSource reports pointer positions in terminal cells", () => {
   const listeners = new Map<string, EventListener>();
   const operations: unknown[][] = [];
+  const style = { touchAction: "auto", userSelect: "text", webkitUserSelect: "text" };
   const target = {
     tabIndex: -1,
+    style,
     addEventListener: (type: string, listener: EventListener) => void listeners.set(type, listener),
     removeEventListener: (type: string) => void listeners.delete(type),
     focus: (options?: FocusOptions) => operations.push(["focus", options?.preventScroll]),
@@ -127,6 +129,7 @@ Deno.test("BrowserInputSource reports pointer positions in terminal cells", () =
   input.attach({
     emit: (type: string, event: unknown) => void events.push([type, event]),
   } as never);
+  assertEquals(style, { touchAction: "none", userSelect: "none", webkitUserSelect: "none" });
 
   listeners.get("pointerdown")?.({
     pointerId: 7,
@@ -230,6 +233,7 @@ Deno.test("BrowserInputSource reports pointer positions in terminal cells", () =
     },
   ]);
   input.dispose();
+  assertEquals(style, { touchAction: "auto", userSelect: "text", webkitUserSelect: "text" });
 });
 
 Deno.test("BrowserInputSource emits paste and focus events", () => {

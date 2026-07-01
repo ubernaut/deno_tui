@@ -63,6 +63,7 @@ type ControlId =
   | "textbox";
 type Hit =
   | { type: "menu"; index: number }
+  | { type: "mobileAction"; action: MobileAction }
   | { type: "quit" }
   | { type: "focus"; id: PanelId }
   | { type: "min"; id: PanelId }
@@ -79,6 +80,8 @@ type Hit =
   | { type: "workspaceScrollbar" };
 type ControlHitAction = "previous" | "next" | "activate" | "set" | "focus" | "toggle";
 type ButtonTone = "default" | "danger" | "warning" | "success" | "muted";
+type MobileAction = "next" | "controls" | "theme" | "help" | "restore" | "wide" | "dense";
+type HitTarget = { rect: Rectangle; hit: Hit };
 
 interface DropdownOverlay {
   kind: "theme" | "control";
@@ -175,6 +178,7 @@ const docs = [
   "Open the Theme menu for the same dropdown-style theme selector as the terminal workbench.",
   "Use Tab, 1-8, M, F, R, T, H, Q, [ and ] from the keyboard.",
   "The browser host maps pointer cells to the same mouse events as the terminal.",
+  "Touch: compact command buttons, larger hit targets, and drag scrolling are enabled on small/coarse-pointer screens.",
   "Resize the browser: the terminal grid recalculates from CSS dimensions.",
   "The web workbench includes Explorer, Data, Controls, Logs, and a browser-safe Three ASCII preview pane.",
   "HTML/CSS Layout previews parseTuiMarkup, CSS cascade, flex wrap, and absolute positioning in a browser-hosted window.",
@@ -265,11 +269,19 @@ const webTerminalWorkspace = createTerminalWorkspaceController({
   ],
 });
 let webTerminalScreenKey = "";
-let hitTargets: Array<{ rect: Rectangle; hit: Hit }> = [];
+let hitTargets: HitTarget[] = [];
 let lastVisiblePanel: PanelId | null = null;
 let lastWorkspaceWidth = 0;
 let lastWorkspaceHeight = 0;
 let dropdownOverlay: DropdownOverlay | null = null;
+let pointerDrag: {
+  x: number;
+  y: number;
+  workspaceRows: number;
+  logRows: number;
+  target?: HitTarget;
+  moved: boolean;
+} | null = null;
 
 themeIndex.subscribe((index) => persistThemeIndex(index));
 active.subscribe(persistWebWorkspaceState);
@@ -456,8 +468,25 @@ host.on("keyPress", (event) => {
 });
 
 host.on("mousePress", (event) => {
-  if (event.release) return;
+  if (event.release) {
+    pointerDrag = null;
+    return;
+  }
   const target = findHit(event.x, event.y);
+  if (handlePointerDrag(event, target)) {
+    draw();
+    return;
+  }
+  if (!pointerDrag) {
+    pointerDrag = {
+      x: event.x,
+      y: event.y,
+      workspaceRows: workspaceScroll.offset.peek().rows,
+      logRows: logScroll.offset.peek().rows,
+      target,
+      moved: false,
+    };
+  }
   if (target) applyHit(target, event.x, event.y);
   draw();
 });
@@ -537,6 +566,7 @@ function draw(): void {
       selectedIndex: themeIndex.peek(),
     };
   }
+  renderMobileCommandStrip(frame);
   const body = { column: 1, row: 3, width: Math.max(10, width - 2), height: Math.max(6, height - 5) };
   const layout = workspaceLayout({
     column: 0,
@@ -613,6 +643,36 @@ function renderMenuHits(column: number, row: number, width: number): void {
     if (cursor + tokenWidth > column + width) break;
     hitTargets.push({ rect: { column: cursor, row, width: tokenWidth, height: 1 }, hit: { type: "menu", index } });
     cursor += tokenWidth + 1;
+  }
+}
+
+function renderMobileCommandStrip(frame: string[]): void {
+  if (!isTouchOptimizedLayout() || rowsCount() < 8) return;
+  const actions: Array<{ action: MobileAction; label: string; tone?: ButtonTone; active?: boolean }> = [
+    { action: "next", label: `Next ${shortPanelTitle(active.peek())}` },
+    { action: "controls", label: "Controls", active: active.peek() === "controls" },
+    { action: "theme", label: "Theme", active: themeMenuOpen.peek() },
+    { action: "help", label: "Help" },
+    { action: "restore", label: "Restore", tone: "muted" },
+    { action: "wide", label: "Wide", tone: "muted" },
+    { action: "dense", label: "Dense", tone: "muted" },
+  ];
+  const row = 1;
+  let column = 1;
+  for (const entry of actions) {
+    if (column >= cols() - 1) break;
+    const maxWidth = Math.max(0, cols() - column - 1);
+    const width = writeButton(frame, row, column, entry.label, {
+      state: entry.active ? "active" : "base",
+      tone: entry.tone ?? "default",
+      maxWidth,
+    });
+    if (width <= 0) break;
+    hitTargets.push({
+      rect: { column, row, width, height: 1 },
+      hit: { type: "mobileAction", action: entry.action },
+    });
+    column += width + 1;
   }
 }
 
@@ -746,6 +806,10 @@ function panelTitle(id: PanelId): string {
     : id === "terminal"
     ? "Terminal"
     : id[0]!.toUpperCase() + id.slice(1);
+}
+
+function shortPanelTitle(id: PanelId): string {
+  return id === "htmlLayout" ? "Layout" : id === "inspector" ? "Inspect" : panelTitle(id);
 }
 
 function renderLogs(frame: string[], rect: Rectangle): void {
@@ -1095,11 +1159,13 @@ function ensureLines(): void {
   }
 }
 
-function applyHit(target: { rect: Rectangle; hit: Hit }, x: number, y: number): void {
+function applyHit(target: HitTarget, x: number, y: number): void {
   const hit = target.hit;
   if (hit.type === "menu") {
     menu.setActive(hit.index);
     menu.selectActive();
+  } else if (hit.type === "mobileAction") {
+    applyMobileAction(hit.action);
   } else if (hit.type === "quit") openQuitModal();
   else if (hit.type === "focus") focus(hit.id);
   else if (hit.type === "min") minimize(hit.id);
@@ -1125,6 +1191,57 @@ function applyHit(target: { rect: Rectangle; hit: Hit }, x: number, y: number): 
       scrollbarOffsetForPointer(workspaceScroll.contentHeight.peek(), target.rect.height, y - target.rect.row),
     );
   } else setTheme(hit.index);
+}
+
+function applyMobileAction(action: MobileAction): void {
+  if (action === "next") {
+    themeMenuOpen.value = false;
+    focusNext();
+  } else if (action === "controls") {
+    themeMenuOpen.value = false;
+    focus("controls");
+  } else if (action === "theme") {
+    themeMenuOpen.value = !themeMenuOpen.peek();
+    push(`${themeMenuOpen.peek() ? "open" : "close"} theme menu`);
+  } else if (action === "help") {
+    openHelpModal();
+  } else if (action === "restore") {
+    restore();
+  } else if (action === "wide") {
+    adjustTileDensity(-1);
+  } else if (action === "dense") {
+    adjustTileDensity(1);
+  }
+}
+
+function handlePointerDrag(
+  event: { x: number; y: number; drag?: boolean; movementX?: number; movementY?: number },
+  target: HitTarget | undefined,
+): boolean {
+  if (!event.drag || !pointerDrag) return false;
+  const deltaColumns = pointerDrag.x - event.x;
+  const deltaRows = pointerDrag.y - event.y;
+  const moved = Math.abs(deltaRows) >= 1 || Math.abs(deltaColumns) >= 2 ||
+    Math.abs(event.movementY ?? 0) >= 8 || Math.abs(event.movementX ?? 0) >= 12;
+  if (!moved) return false;
+
+  if (target?.hit.type === "control" && target.hit.id === "slider") {
+    applyHit(target, event.x, event.y);
+    pointerDrag.moved = true;
+    return true;
+  }
+
+  const origin = pointerDrag.target?.hit;
+  const logOrigin = origin?.type === "logScrollbar" || origin?.type === "focus" && origin.id === "logs" ||
+    active.peek() === "logs" && origin?.type !== "workspaceScrollbar";
+  if (logOrigin) {
+    logScroll.scrollTo(0, pointerDrag.logRows + deltaRows);
+    active.value = "logs";
+  } else {
+    workspaceScroll.scrollTo(0, pointerDrag.workspaceRows + deltaRows);
+  }
+  pointerDrag.moved = true;
+  return true;
 }
 
 function focus(id: PanelId): void {
@@ -1447,6 +1564,7 @@ function openHelpModal(): void {
       "Use M to minimize, F or Enter to maximize/restore, R to restore all panels, T for themes, H for help, and Q to quit.",
       "Controls: arrow keys adjust sliders, radio groups, combo boxes, steppers, and dropdowns. Enter or Space activates.",
       "Mouse: click panels to focus, click rows to select, click controls to change values, and click scrollbars to jump.",
+      "Touch: use the compact command strip, tap larger hit zones around controls, and drag inside panels to scroll.",
       "Resize the browser. The same tiled layout helper used by the terminal workbench recomputes panel geometry.",
     ],
     actions: [
@@ -2073,11 +2191,38 @@ function clipRect(rect: Rectangle, clip: Rectangle): Rectangle {
   const bottom = Math.min(rect.row + rect.height, clip.row + clip.height);
   return { column, row, width: Math.max(0, right - column), height: Math.max(0, bottom - row) };
 }
-function findHit(x: number, y: number): { rect: Rectangle; hit: Hit } | undefined {
+function findHit(x: number, y: number): HitTarget | undefined {
   for (let index = hitTargets.length - 1; index >= 0; index -= 1) {
     const target = hitTargets[index]!;
     if (contains(target.rect, x, y)) return target;
   }
+  if (!isTouchOptimizedLayout()) return undefined;
+  for (let index = hitTargets.length - 1; index >= 0; index -= 1) {
+    const target = hitTargets[index]!;
+    const expanded = expandedTouchHitRect(target.rect);
+    if (contains(expanded, x, y)) return { ...target, rect: expanded };
+  }
+}
+
+function isTouchOptimizedLayout(): boolean {
+  const coarsePointer = globalThis.matchMedia?.("(pointer: coarse)")?.matches ?? false;
+  return coarsePointer || cols() < 92 || rowsCount() < 30;
+}
+
+function expandedTouchHitRect(rect: Rectangle): Rectangle {
+  const minimumWidth = rect.width <= 3 ? 6 : rect.width <= 10 ? Math.max(10, rect.width) : rect.width;
+  const minimumHeight = rect.height <= 1 ? 3 : rect.height;
+  const growColumns = Math.max(0, minimumWidth - rect.width);
+  const growRows = Math.max(0, minimumHeight - rect.height);
+  return clipRect(
+    {
+      column: rect.column - Math.floor(growColumns / 2),
+      row: rect.row - Math.floor(growRows / 2),
+      width: rect.width + growColumns,
+      height: rect.height + growRows,
+    },
+    { column: 0, row: 0, width: cols(), height: rowsCount() },
+  );
 }
 function contrastText(background: string, dark: string, light: string): string {
   const bg = parseHexColor(background);

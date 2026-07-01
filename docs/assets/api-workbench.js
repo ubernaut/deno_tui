@@ -8122,7 +8122,12 @@ var BrowserPlatform = class {
       options.columns && options.rows ? { columns: options.columns, rows: options.rows } : sizeFromElement(options.root, cellWidth, cellHeight),
       { deepObserve: true }
     );
-    this.input = options.input ?? new BrowserInputSource(options.root, { cellWidth, cellHeight });
+    this.input = options.input ?? new BrowserInputSource(options.root, {
+      cellWidth,
+      cellHeight,
+      touchAction: options.touchAction,
+      userSelect: options.userSelect
+    });
     this.lifecycle = options.lifecycle ?? new NoopLifecycleController("browser");
     this.#scheduler = options.scheduler ?? defaultBrowserFrameScheduler();
     if ("ResizeObserver" in globalThis) {
@@ -8154,26 +8159,43 @@ var BrowserInputSource = class {
   #target;
   #cellWidth;
   #cellHeight;
+  #touchAction;
+  #userSelect;
   #emitter;
   #attached = false;
   #removeListeners = [];
+  #restoreStyles;
   constructor(target, options = {}) {
     this.#target = target;
     this.#cellWidth = Math.max(1, options.cellWidth ?? 10);
     this.#cellHeight = Math.max(1, options.cellHeight ?? 20);
+    this.#touchAction = options.touchAction ?? "none";
+    this.#userSelect = options.userSelect ?? "none";
   }
   attach(emitter) {
     this.detach();
     this.#emitter = emitter;
     this.#target.tabIndex = this.#target.tabIndex < 0 ? 0 : this.#target.tabIndex;
+    this.#restoreStyles = applyInputStyles(this.#target, this.#touchAction, this.#userSelect);
     this.#removeListeners = [
       addListener(this.#target, "keydown", (event) => this.#handleKey(event)),
-      addListener(this.#target, "pointerdown", (event) => this.#handlePointer(event, false)),
-      addListener(this.#target, "pointermove", (event) => this.#handlePointerMove(event)),
-      addListener(this.#target, "pointerup", (event) => this.#handlePointer(event, true)),
-      addListener(this.#target, "pointercancel", (event) => this.#handlePointer(event, true)),
-      addListener(this.#target, "wheel", (event) => this.#handleWheel(event)),
-      addListener(this.#target, "paste", (event) => this.#handlePaste(event)),
+      addListener(
+        this.#target,
+        "pointerdown",
+        (event) => this.#handlePointer(event, false),
+        { passive: false }
+      ),
+      addListener(this.#target, "pointermove", (event) => this.#handlePointerMove(event), {
+        passive: false
+      }),
+      addListener(this.#target, "pointerup", (event) => this.#handlePointer(event, true), {
+        passive: false
+      }),
+      addListener(this.#target, "pointercancel", (event) => this.#handlePointer(event, true), {
+        passive: false
+      }),
+      addListener(this.#target, "wheel", (event) => this.#handleWheel(event), { passive: false }),
+      addListener(this.#target, "paste", (event) => this.#handlePaste(event), { passive: false }),
       addListener(this.#target, "focus", () => this.#handleFocus(true)),
       addListener(this.#target, "blur", () => this.#handleFocus(false))
     ];
@@ -8182,6 +8204,8 @@ var BrowserInputSource = class {
   detach() {
     for (const remove of this.#removeListeners) remove();
     this.#removeListeners = [];
+    this.#restoreStyles?.();
+    this.#restoreStyles = void 0;
     this.#emitter = void 0;
     this.#attached = false;
   }
@@ -8294,9 +8318,24 @@ function sizeFromElement(root2, cellWidth, cellHeight) {
     rows: Math.max(1, Math.floor(rect.height / cellHeight))
   };
 }
-function addListener(target, type, listener) {
-  target.addEventListener(type, listener);
-  return () => target.removeEventListener(type, listener);
+function addListener(target, type, listener, options) {
+  target.addEventListener(type, listener, options);
+  return () => target.removeEventListener(type, listener, options);
+}
+function applyInputStyles(target, touchAction, userSelect) {
+  const style2 = target.style;
+  if (!style2) return () => void 0;
+  const previousTouchAction = style2.touchAction;
+  const previousUserSelect = style2.userSelect;
+  const previousWebkitUserSelect = style2.webkitUserSelect;
+  style2.touchAction = touchAction;
+  style2.userSelect = userSelect;
+  style2.webkitUserSelect = userSelect;
+  return () => {
+    style2.touchAction = previousTouchAction;
+    style2.userSelect = previousUserSelect;
+    style2.webkitUserSelect = previousWebkitUserSelect;
+  };
 }
 function browserButton(button) {
   return button === 0 || button === 1 || button === 2 ? button : 0;
@@ -8693,6 +8732,7 @@ var docs = [
   "Open the Theme menu for the same dropdown-style theme selector as the terminal workbench.",
   "Use Tab, 1-8, M, F, R, T, H, Q, [ and ] from the keyboard.",
   "The browser host maps pointer cells to the same mouse events as the terminal.",
+  "Touch: compact command buttons, larger hit targets, and drag scrolling are enabled on small/coarse-pointer screens.",
   "Resize the browser: the terminal grid recalculates from CSS dimensions.",
   "The web workbench includes Explorer, Data, Controls, Logs, and a browser-safe Three ASCII preview pane.",
   "HTML/CSS Layout previews parseTuiMarkup, CSS cascade, flex wrap, and absolute positioning in a browser-hosted window.",
@@ -8787,6 +8827,7 @@ var lastVisiblePanel = null;
 var lastWorkspaceWidth = 0;
 var lastWorkspaceHeight = 0;
 var dropdownOverlay = null;
+var pointerDrag = null;
 themeIndex.subscribe((index) => persistThemeIndex(index));
 active.subscribe(persistWebWorkspaceState);
 maximized.subscribe(persistWebWorkspaceState);
@@ -8967,8 +9008,25 @@ host.on("keyPress", (event) => {
   draw();
 });
 host.on("mousePress", (event) => {
-  if (event.release) return;
+  if (event.release) {
+    pointerDrag = null;
+    return;
+  }
   const target = findHit(event.x, event.y);
+  if (handlePointerDrag(event, target)) {
+    draw();
+    return;
+  }
+  if (!pointerDrag) {
+    pointerDrag = {
+      x: event.x,
+      y: event.y,
+      workspaceRows: workspaceScroll.offset.peek().rows,
+      logRows: logScroll.offset.peek().rows,
+      target,
+      moved: false
+    };
+  }
   if (target) applyHit(target, event.x, event.y);
   draw();
 });
@@ -9045,6 +9103,7 @@ function draw() {
       selectedIndex: themeIndex.peek()
     };
   }
+  renderMobileCommandStrip(frame);
   const body = { column: 1, row: 3, width: Math.max(10, width - 2), height: Math.max(6, height - 5) };
   const layout = workspaceLayout({
     column: 0,
@@ -9119,6 +9178,35 @@ function renderMenuHits(column, row, width) {
     if (cursor + tokenWidth > column + width) break;
     hitTargets.push({ rect: { column: cursor, row, width: tokenWidth, height: 1 }, hit: { type: "menu", index } });
     cursor += tokenWidth + 1;
+  }
+}
+function renderMobileCommandStrip(frame) {
+  if (!isTouchOptimizedLayout() || rowsCount() < 8) return;
+  const actions = [
+    { action: "next", label: `Next ${shortPanelTitle(active.peek())}` },
+    { action: "controls", label: "Controls", active: active.peek() === "controls" },
+    { action: "theme", label: "Theme", active: themeMenuOpen.peek() },
+    { action: "help", label: "Help" },
+    { action: "restore", label: "Restore", tone: "muted" },
+    { action: "wide", label: "Wide", tone: "muted" },
+    { action: "dense", label: "Dense", tone: "muted" }
+  ];
+  const row = 1;
+  let column = 1;
+  for (const entry of actions) {
+    if (column >= cols() - 1) break;
+    const maxWidth = Math.max(0, cols() - column - 1);
+    const width = writeButton(frame, row, column, entry.label, {
+      state: entry.active ? "active" : "base",
+      tone: entry.tone ?? "default",
+      maxWidth
+    });
+    if (width <= 0) break;
+    hitTargets.push({
+      rect: { column, row, width, height: 1 },
+      hit: { type: "mobileAction", action: entry.action }
+    });
+    column += width + 1;
   }
 }
 function menuItemRect(menuStart, itemId, preferredWidth, preferredHeight) {
@@ -9238,6 +9326,9 @@ function renderPanel(frame, id2, rect) {
 }
 function panelTitle(id2) {
   return id2 === "explorer" ? "Explorer" : id2 === "data" ? "Data Table" : id2 === "three" ? "Three ASCII" : id2 === "htmlLayout" ? "HTML/CSS Layout" : id2 === "terminal" ? "Terminal" : id2[0].toUpperCase() + id2.slice(1);
+}
+function shortPanelTitle(id2) {
+  return id2 === "htmlLayout" ? "Layout" : id2 === "inspector" ? "Inspect" : panelTitle(id2);
 }
 function renderLogs(frame, rect) {
   const lines = [...docs, ...log.peek()];
@@ -9549,6 +9640,8 @@ function applyHit(target, x, y) {
   if (hit.type === "menu") {
     menu.setActive(hit.index);
     menu.selectActive();
+  } else if (hit.type === "mobileAction") {
+    applyMobileAction(hit.action);
   } else if (hit.type === "quit") openQuitModal();
   else if (hit.type === "focus") focus(hit.id);
   else if (hit.type === "min") minimize(hit.id);
@@ -9574,6 +9667,48 @@ function applyHit(target, x, y) {
       scrollbarOffsetForPointer(workspaceScroll.contentHeight.peek(), target.rect.height, y - target.rect.row)
     );
   } else setTheme(hit.index);
+}
+function applyMobileAction(action) {
+  if (action === "next") {
+    themeMenuOpen.value = false;
+    focusNext();
+  } else if (action === "controls") {
+    themeMenuOpen.value = false;
+    focus("controls");
+  } else if (action === "theme") {
+    themeMenuOpen.value = !themeMenuOpen.peek();
+    push(`${themeMenuOpen.peek() ? "open" : "close"} theme menu`);
+  } else if (action === "help") {
+    openHelpModal();
+  } else if (action === "restore") {
+    restore();
+  } else if (action === "wide") {
+    adjustTileDensity(-1);
+  } else if (action === "dense") {
+    adjustTileDensity(1);
+  }
+}
+function handlePointerDrag(event, target) {
+  if (!event.drag || !pointerDrag) return false;
+  const deltaColumns = pointerDrag.x - event.x;
+  const deltaRows = pointerDrag.y - event.y;
+  const moved = Math.abs(deltaRows) >= 1 || Math.abs(deltaColumns) >= 2 || Math.abs(event.movementY ?? 0) >= 8 || Math.abs(event.movementX ?? 0) >= 12;
+  if (!moved) return false;
+  if (target?.hit.type === "control" && target.hit.id === "slider") {
+    applyHit(target, event.x, event.y);
+    pointerDrag.moved = true;
+    return true;
+  }
+  const origin = pointerDrag.target?.hit;
+  const logOrigin = origin?.type === "logScrollbar" || origin?.type === "focus" && origin.id === "logs" || active.peek() === "logs" && origin?.type !== "workspaceScrollbar";
+  if (logOrigin) {
+    logScroll.scrollTo(0, pointerDrag.logRows + deltaRows);
+    active.value = "logs";
+  } else {
+    workspaceScroll.scrollTo(0, pointerDrag.workspaceRows + deltaRows);
+  }
+  pointerDrag.moved = true;
+  return true;
 }
 function focus(id2) {
   if (minimized.peek()[id2]) minimized.value[id2] = false;
@@ -9871,6 +10006,7 @@ function openHelpModal() {
       "Use M to minimize, F or Enter to maximize/restore, R to restore all panels, T for themes, H for help, and Q to quit.",
       "Controls: arrow keys adjust sliders, radio groups, combo boxes, steppers, and dropdowns. Enter or Space activates.",
       "Mouse: click panels to focus, click rows to select, click controls to change values, and click scrollbars to jump.",
+      "Touch: use the compact command strip, tap larger hit zones around controls, and drag inside panels to scroll.",
       "Resize the browser. The same tiled layout helper used by the terminal workbench recomputes panel geometry."
     ],
     actions: [
@@ -10425,6 +10561,31 @@ function findHit(x, y) {
     const target = hitTargets[index];
     if (contains(target.rect, x, y)) return target;
   }
+  if (!isTouchOptimizedLayout()) return void 0;
+  for (let index = hitTargets.length - 1; index >= 0; index -= 1) {
+    const target = hitTargets[index];
+    const expanded = expandedTouchHitRect(target.rect);
+    if (contains(expanded, x, y)) return { ...target, rect: expanded };
+  }
+}
+function isTouchOptimizedLayout() {
+  const coarsePointer = globalThis.matchMedia?.("(pointer: coarse)")?.matches ?? false;
+  return coarsePointer || cols() < 92 || rowsCount() < 30;
+}
+function expandedTouchHitRect(rect) {
+  const minimumWidth = rect.width <= 3 ? 6 : rect.width <= 10 ? Math.max(10, rect.width) : rect.width;
+  const minimumHeight = rect.height <= 1 ? 3 : rect.height;
+  const growColumns = Math.max(0, minimumWidth - rect.width);
+  const growRows = Math.max(0, minimumHeight - rect.height);
+  return clipRect(
+    {
+      column: rect.column - Math.floor(growColumns / 2),
+      row: rect.row - Math.floor(growRows / 2),
+      width: rect.width + growColumns,
+      height: rect.height + growRows
+    },
+    { column: 0, row: 0, width: cols(), height: rowsCount() }
+  );
 }
 function contrastText(background, dark, light) {
   const bg = parseHexColor(background);
