@@ -3078,7 +3078,10 @@ function parseGridPlacement(value, fallback = {}) {
   if (endSpan !== void 0) {
     placement.span = endSpan;
   } else if (placement.start !== void 0 && endLine !== void 0) {
+    placement.end = endLine;
     placement.span = Math.max(1, endLine - placement.start);
+  } else if (endLine !== void 0) {
+    placement.end = endLine;
   }
   if (placement.start === void 0 && placement.span === void 0) return { ...fallback };
   return placement;
@@ -3157,6 +3160,18 @@ function applyLayoutDeclaration(style2, property, value) {
       break;
     case "grid-row":
       next.gridRow = parseGridPlacement(resolved, next.gridRow);
+      break;
+    case "grid-column-start":
+      next.gridColumn = applyGridPlacementLonghand(next.gridColumn, "start", resolved);
+      break;
+    case "grid-column-end":
+      next.gridColumn = applyGridPlacementLonghand(next.gridColumn, "end", resolved);
+      break;
+    case "grid-row-start":
+      next.gridRow = applyGridPlacementLonghand(next.gridRow, "start", resolved);
+      break;
+    case "grid-row-end":
+      next.gridRow = applyGridPlacementLonghand(next.gridRow, "end", resolved);
       break;
     case "width":
       next.width = parseLayoutLength(resolved, next.width);
@@ -3317,6 +3332,25 @@ function parsePositiveInteger(value) {
   if (!/^\d+$/.test(value)) return void 0;
   const parsed = Math.floor(Number.parseFloat(value));
   return parsed > 0 ? parsed : void 0;
+}
+function applyGridPlacementLonghand(placement, edge, value) {
+  const trimmed = value.trim().toLowerCase();
+  const next = { ...placement };
+  if (!trimmed || trimmed === "auto") {
+    delete next[edge];
+    if (next.start === void 0 || next.end === void 0) delete next.span;
+    return next;
+  }
+  const span = parseGridSpan(trimmed);
+  if (span !== void 0) {
+    next.span = span;
+    return next;
+  }
+  const line = parsePositiveInteger(trimmed);
+  if (line === void 0) return next;
+  next[edge] = line;
+  if (next.start !== void 0 && next.end !== void 0) next.span = Math.max(1, next.end - next.start);
+  return next;
 }
 function applyBoxEdge(edges, edge, value) {
   const next = { ...edges };
@@ -3623,10 +3657,10 @@ function placeGridChildren(children, bounds) {
   const autoRows = bounds.rows > 0 ? bounds.rows : Math.max(1, Math.ceil(Math.sqrt(children.length)));
   const candidates = children.map((child) => ({
     node: child,
-    columnSpan: Math.max(1, child.style.gridColumn.span ?? 1),
-    rowSpan: Math.max(1, child.style.gridRow.span ?? 1),
-    explicitColumn: child.style.gridColumn.start !== void 0 ? Math.max(0, child.style.gridColumn.start - 1) : void 0,
-    explicitRow: child.style.gridRow.start !== void 0 ? Math.max(0, child.style.gridRow.start - 1) : void 0
+    columnSpan: gridPlacementSpan(child.style.gridColumn),
+    rowSpan: gridPlacementSpan(child.style.gridRow),
+    explicitColumn: gridPlacementStart(child.style.gridColumn),
+    explicitRow: gridPlacementStart(child.style.gridRow)
   }));
   const placementOrder = [
     ...candidates.filter((candidate) => candidate.explicitColumn !== void 0 && candidate.explicitRow !== void 0),
@@ -3735,6 +3769,18 @@ function occupyGridCells(occupied, row, column, rowSpan, columnSpan) {
 }
 function gridCellKey(row, column) {
   return `${row}:${column}`;
+}
+function gridPlacementSpan(placement) {
+  if (placement.span !== void 0) return Math.max(1, placement.span);
+  if (placement.start !== void 0 && placement.end !== void 0) return Math.max(1, placement.end - placement.start);
+  return 1;
+}
+function gridPlacementStart(placement) {
+  if (placement.start !== void 0) return Math.max(0, placement.start - 1);
+  if (placement.end !== void 0 && placement.span !== void 0) {
+    return Math.max(0, placement.end - placement.span - 1);
+  }
+  return void 0;
 }
 function resolveGridTracks(template, count, available, gap, autoTrack) {
   const trackCount = Math.max(1, count);
