@@ -75,12 +75,12 @@ Work:
 - [x] Add text measurement/cropping benchmarks for ANSI-heavy table/list rows and button-heavy titlebars.
 - [x] Add system monitor fixture benchmarks for CPU/process/network parsing without touching live `/proc`.
 - [x] Add Three ASCII CPU-side grid assembly/readback benchmarks with an injectable renderer or captured buffers.
-- [ ] Record thresholds in the benchmark catalog and wire the most useful non-flaky cases into health or e2e.
+- [x] Record thresholds in the benchmark catalog and wire the most useful non-flaky cases into health or e2e.
 
 Acceptance checks:
 
-- [ ] `deno task benchmark -- --list` documents the new integration cases.
-- [ ] `deno task benchmark` passes locally with realistic thresholds.
+- [x] `deno task benchmark -- --list` documents the new integration cases.
+- [x] `deno task benchmark` passes locally with realistic thresholds.
 - [ ] At least one benchmark would fail before a naive full redraw or unbounded process scan regression.
 
 ### P1: Harden Signals Against Recursive Update Failures
