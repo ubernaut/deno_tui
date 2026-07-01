@@ -1,5 +1,5 @@
 // Copyright 2023 Im-Beast. MIT license.
-import { fitsInRectangle, rectangleEquals, rectangleIntersection } from "../utils/numbers.ts";
+import { rectangleEquals, rectangleIntersection } from "../utils/numbers.ts";
 
 // FIXME: rename to painters, drawobjects sounds cringe
 
@@ -156,28 +156,43 @@ export class DrawObject<Type extends string = string> {
     const rowRange = row + height;
     const columnRange = column + width;
     for (let r = row; r < rowRange; ++r) {
-      for (let c = column; c < columnRange; ++c) {
-        for (const objectUnder of objectsUnder) {
-          objectUnder.queueRerender(r, c);
-        }
+      for (const objectUnder of objectsUnder) {
+        objectUnder.queueRerenderRange(r, column, columnRange);
       }
     }
   }
 
   queueRerender(row: number, column: number): void {
+    this.queueRerenderRange(row, column, column + 1);
+  }
+
+  queueRerenderRange(row: number, startColumn: number, endColumn: number): void {
     const viewRectangle = this.view.peek()?.rectangle?.peek();
-    if (row < 0 || column < 0) return;
+    if (row < 0) return;
     const { columns, rows } = this.canvas.size.peek();
-    if (row >= rows || column >= columns) return;
+    if (row >= rows) return;
 
-    if (
-      viewRectangle && (
-        row < viewRectangle.row || column < viewRectangle.column ||
-        row >= viewRectangle.row + viewRectangle.height || column >= viewRectangle.column + viewRectangle.width
-      )
-    ) return;
+    let start = Math.max(0, Math.floor(startColumn));
+    let end = Math.min(columns, Math.ceil(endColumn));
+    if (viewRectangle) {
+      if (row < viewRectangle.row || row >= viewRectangle.row + viewRectangle.height) return;
+      start = Math.max(start, viewRectangle.column);
+      end = Math.min(end, viewRectangle.column + viewRectangle.width);
+    }
+    if (end <= start) return;
 
-    (this.rerenderCells[row] ??= new Set()).add(column);
+    const rerenderColumns = this.rerenderCells[row] ??= new Set();
+    for (let column = start; column < end; column += 1) {
+      rerenderColumns.add(column);
+    }
+  }
+
+  queueRerenderRectangle(rectangle: Rectangle): void {
+    const rowRange = rectangle.row + rectangle.height;
+    const columnRange = rectangle.column + rectangle.width;
+    for (let row = rectangle.row; row < rowRange; row += 1) {
+      this.queueRerenderRange(row, rectangle.column, columnRange);
+    }
   }
 
   updatePreviousRectangle(): void {
@@ -206,27 +221,27 @@ export class DrawObject<Type extends string = string> {
     const previousRowRange = previousRectangle.row + previousRectangle.height;
     const previousColumnRange = previousRectangle.column + previousRectangle.width;
     for (let r = previousRectangle.row; r < previousRowRange; ++r) {
-      for (let c = previousRectangle.column; c < previousColumnRange; ++c) {
-        if (intersection && fitsInRectangle(c, r, intersection)) {
-          continue;
-        }
-
+      if (intersection && r >= intersection.row && r < intersection.row + intersection.height) {
         for (const objectUnder of objectsUnder) {
-          objectUnder.queueRerender(r, c);
+          objectUnder.queueRerenderRange(r, previousRectangle.column, intersection.column);
+          objectUnder.queueRerenderRange(r, intersection.column + intersection.width, previousColumnRange);
         }
+        continue;
+      }
+      for (const objectUnder of objectsUnder) {
+        objectUnder.queueRerenderRange(r, previousRectangle.column, previousColumnRange);
       }
     }
 
     const rowRange = rectangle.row + rectangle.height;
     const columnRange = rectangle.column + rectangle.width;
     for (let r = rectangle.row; r < rowRange; ++r) {
-      for (let c = rectangle.column; c < columnRange; ++c) {
-        if (intersection && fitsInRectangle(c, r, intersection)) {
-          continue;
-        }
-
-        this.queueRerender(r, c);
+      if (intersection && r >= intersection.row && r < intersection.row + intersection.height) {
+        this.queueRerenderRange(r, rectangle.column, intersection.column);
+        this.queueRerenderRange(r, intersection.column + intersection.width, columnRange);
+        continue;
       }
+      this.queueRerenderRange(r, rectangle.column, columnRange);
     }
   }
 
@@ -258,13 +273,7 @@ export class DrawObject<Type extends string = string> {
   render(): void {
     const { column, row, width, height } = this.rectangle.peek();
 
-    const rowRange = row + height;
-    const columnRange = column + width;
-    for (let r = row; r < rowRange; ++r) {
-      for (let c = column; c < columnRange; ++c) {
-        this.queueRerender(r, c);
-      }
-    }
+    this.queueRerenderRectangle({ column, row, width, height });
     this.rerender();
   }
 

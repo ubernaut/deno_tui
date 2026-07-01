@@ -371,9 +371,7 @@ function queueDirtyRectangles(object: DrawObject, dirtyRectangles: readonly Rect
     const rowRange = intersection.row + intersection.height;
     const columnRange = intersection.column + intersection.width;
     for (let row = intersection.row; row < rowRange; row += 1) {
-      for (let column = intersection.column; column < columnRange; column += 1) {
-        object.queueRerender(row, column);
-      }
+      object.queueRerenderRange(row, intersection.column, columnRange);
     }
   }
 }
