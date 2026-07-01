@@ -270,6 +270,8 @@ Work:
       focused tests for empty sources, alert states, CPU legend coverage, and top-100 process output limits.
 - [x] Extract shared visualization drawing primitives for meters, charts, text cropping, and matrix drawing into a
       dedicated helper module with direct tests.
+- [x] Extract Three visualization signal mapping and per-mode motion biases into a dedicated helper module with direct
+      tests for normalized signals, alarm press state, and mode bias stability.
 
 Acceptance checks:
 
