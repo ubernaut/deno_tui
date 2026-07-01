@@ -24,6 +24,7 @@ export const defaultHealthSteps: readonly HealthStep[] = [
       "--quiet",
       "--fail-duplicates",
       "--min-doc-coverage=1",
+      "--baseline=docs/api-stable-baseline.json",
     ],
   },
   { name: "package-check", command: ["deno", "task", "package-check", "--", "--quiet"] },

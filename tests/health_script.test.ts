@@ -56,6 +56,7 @@ Deno.test("health script exposes the expected contributor gates", () => {
     "--quiet",
     "--fail-duplicates",
     "--min-doc-coverage=1",
+    "--baseline=docs/api-stable-baseline.json",
   ]);
   assertEquals(defaultHealthSteps[3].command, ["deno", "task", "package-check", "--", "--quiet"]);
 });

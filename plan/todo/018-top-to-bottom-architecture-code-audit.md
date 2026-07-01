@@ -319,7 +319,7 @@ Acceptance checks:
 
 - [x] Package-check reports stable/beta/experimental export drift separately.
 - [x] API reference groups exports by entrypoint and stability tier.
-- [ ] Health fails on accidental stable export growth unless explicitly acknowledged.
+- [x] Health fails on accidental stable export growth unless explicitly acknowledged.
 
 ### P2: Add Observability And Error Reporting
 

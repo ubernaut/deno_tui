@@ -1,7 +1,9 @@
 import { assertEquals } from "./deps.ts";
 import {
   createApiInventory,
+  createApiInventoryBaseline,
   diffApiInventories,
+  diffApiInventoryBaseline,
   formatApiInventory,
   formatApiInventoryDiff,
   inventorySucceeded,
@@ -208,4 +210,34 @@ Deno.test("api inventory diffs group symbol changes by stability tier", async ()
   assertEquals(report.includes("### stable"), true);
   assertEquals(report.includes("`newHelper`"), true);
   assertEquals(report.includes("`oldHelper`"), true);
+});
+
+Deno.test("api inventory baseline detects accidental stable export drift", async () => {
+  const baselineInventory = await createApiInventory("mod.ts", {
+    root: "/repo",
+    readTextFile: (path) =>
+      ({
+        "/repo/mod.ts": `export * from "./src/widgets.ts";`,
+        "/repo/src/widgets.ts": `export class Button {}`,
+      })[path] ?? "",
+    exists: () => true,
+  });
+  const current = await createApiInventory("mod.ts", {
+    root: "/repo",
+    readTextFile: (path) =>
+      ({
+        "/repo/mod.ts": `export * from "./src/widgets.ts";`,
+        "/repo/src/widgets.ts": [`export class Button {}`, `export function surpriseExport() {}`].join("\n"),
+      })[path] ?? "",
+    exists: () => true,
+  });
+
+  const baseline = createApiInventoryBaseline(baselineInventory, { stability: "stable" });
+  const diff = diffApiInventoryBaseline(baseline, current);
+
+  assertEquals(baseline.symbols.map((symbol) => symbol.name), ["Button"]);
+  assertEquals(diff.stability, "stable");
+  assertEquals(diff.added.map((symbol) => symbol.name), ["surpriseExport"]);
+  assertEquals(diff.addedByStability.stable.map((symbol) => symbol.name), ["surpriseExport"]);
+  assertEquals(diff.removed, []);
 });

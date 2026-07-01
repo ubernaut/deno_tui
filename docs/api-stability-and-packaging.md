@@ -90,16 +90,17 @@ Before a release, run:
 deno fmt --check
 deno check mod.ts mod.web.ts mod.remote.ts
 deno task package-check -- --quiet
-deno task api-inventory -- --check --quiet --fail-duplicates --min-doc-coverage=1
+deno task api-inventory -- --check --quiet --fail-duplicates --min-doc-coverage=1 --baseline=docs/api-stable-baseline.json
 deno task benchmark
 deno test
 ```
 
 `deno task package-check` compares `deno.jsonc` exports with `packageEntrypoints`, verifies the entrypoint files exist,
 and reports drift separately for stable, beta, experimental, and internal tiers.
-`deno task api-inventory -- --check
---quiet --fail-duplicates --min-doc-coverage=1` enforces a duplicate-free stable
-re-export graph with 100% JSDoc coverage. `deno task api-reference > docs/api-reference.md` generates the full
+`deno task api-inventory -- --check --quiet --fail-duplicates --min-doc-coverage=1
+--baseline=docs/api-stable-baseline.json`
+enforces a duplicate-free stable re-export graph with 100% JSDoc coverage and fails if the stable root API changes
+without an intentional baseline update. `deno task api-reference > docs/api-reference.md` generates the full
 stable/beta/experimental reference and should continue to show 100% documentation coverage for every public entrypoint.
 
 ## Adding A Public API
@@ -110,4 +111,6 @@ stable/beta/experimental reference and should continue to show 100% documentatio
 4. Re-export through the appropriate module entrypoint.
 5. If the API creates a new package surface or changes stability expectations, update `src/api_stability.ts`,
    `deno.jsonc`, this document, and `CHANGELOG.md`.
-6. Regenerate `docs/api-reference.md` with `deno task api-reference > docs/api-reference.md`.
+6. If the change intentionally adds or removes a stable root export, regenerate `docs/api-stable-baseline.json` with
+   `deno run -A ./scripts/api_inventory.ts mod.ts --update-baseline=docs/api-stable-baseline.json --quiet`.
+7. Regenerate `docs/api-reference.md` with `deno task api-reference > docs/api-reference.md`.

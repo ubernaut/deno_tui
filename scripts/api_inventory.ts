@@ -72,6 +72,12 @@ export interface ApiInventoryDiff {
   removedByStability: Record<ApiStabilityTier, ApiInventorySymbolChange[]>;
 }
 
+export interface ApiInventoryBaseline {
+  entrypoint: string;
+  stability: ApiStabilityTier;
+  symbols: ApiInventorySymbolChange[];
+}
+
 export function parseApiExports(source: string, module: string): ApiExportDeclaration[] {
   const exports: ApiExportDeclaration[] = [];
   const declarationPattern = /export\s+(?:(type)\s+)?(?:(\*)|\{([\s\S]*?)\})\s+from\s+["']([^"']+)["'];?/g;
@@ -253,6 +259,42 @@ export function diffApiInventories(
     removed,
     addedByStability: groupChangesByStability(added, stability),
     removedByStability: groupChangesByStability(removed, stability),
+  };
+}
+
+export function createApiInventoryBaseline(
+  inventory: ApiInventory,
+  options: { stability?: ApiStabilityTier } = {},
+): ApiInventoryBaseline {
+  return {
+    entrypoint: inventory.entrypoint,
+    stability: options.stability ?? inventoryEntrypointStability(inventory.entrypoint),
+    symbols: [...symbolMap(inventory).values()].sort(compareSymbolChanges),
+  };
+}
+
+export function diffApiInventoryBaseline(
+  baseline: ApiInventoryBaseline,
+  current: ApiInventory,
+): ApiInventoryDiff {
+  const baselineSymbols = new Map(baseline.symbols.map((symbol) => [symbolKey(symbol), symbol]));
+  const currentSymbols = symbolMap(current);
+  const added = [...currentSymbols.entries()]
+    .filter(([key]) => !baselineSymbols.has(key))
+    .map(([, symbol]) => symbol)
+    .sort(compareSymbolChanges);
+  const removed = [...baselineSymbols.entries()]
+    .filter(([key]) => !currentSymbols.has(key))
+    .map(([, symbol]) => symbol)
+    .sort(compareSymbolChanges);
+
+  return {
+    entrypoint: current.entrypoint,
+    stability: baseline.stability,
+    added,
+    removed,
+    addedByStability: groupChangesByStability(added, baseline.stability),
+    removedByStability: groupChangesByStability(removed, baseline.stability),
   };
 }
 
@@ -460,6 +502,20 @@ if (import.meta.main) {
   const minDocumentationCoverage = parseMinimumDocumentationCoverage(Deno.args);
   const entrypoint = Deno.args.find((arg) => !arg.startsWith("--")) ?? "mod.ts";
   const inventory = await createApiInventory(entrypoint);
+  const baselinePath = parseStringOption(Deno.args, "--baseline=");
+  const updateBaselinePath = parseStringOption(Deno.args, "--update-baseline=");
+  let baselineDiff: ApiInventoryDiff | undefined;
+
+  if (updateBaselinePath) {
+    await Deno.writeTextFile(
+      updateBaselinePath,
+      `${JSON.stringify(createApiInventoryBaseline(inventory), null, 2)}\n`,
+    );
+  }
+  if (baselinePath) {
+    const baseline = JSON.parse(await Deno.readTextFile(baselinePath)) as ApiInventoryBaseline;
+    baselineDiff = diffApiInventoryBaseline(baseline, inventory);
+  }
 
   if (quiet) {
     // Check-only mode for contributor health gates.
@@ -467,9 +523,14 @@ if (import.meta.main) {
     console.log(JSON.stringify(inventory, null, 2));
   } else {
     console.log(formatApiInventory(inventory));
+    if (baselineDiff && (baselineDiff.added.length > 0 || baselineDiff.removed.length > 0)) {
+      console.log("");
+      console.log(formatApiInventoryDiff(baselineDiff));
+    }
   }
 
-  if (check && !inventorySucceeded(inventory, { failDuplicates, minDocumentationCoverage })) {
+  const baselinePassed = !baselineDiff || (baselineDiff.added.length === 0 && baselineDiff.removed.length === 0);
+  if (check && (!inventorySucceeded(inventory, { failDuplicates, minDocumentationCoverage }) || !baselinePassed)) {
     Deno.exit(1);
   }
 }
@@ -481,4 +542,8 @@ function parseMinimumDocumentationCoverage(args: readonly string[]): number | un
   const raw = Number(match.slice(prefix.length));
   if (!Number.isFinite(raw)) return undefined;
   return raw > 1 ? raw / 100 : Math.max(0, raw);
+}
+
+function parseStringOption(args: readonly string[], prefix: string): string | undefined {
+  return args.find((arg) => arg.startsWith(prefix))?.slice(prefix.length);
 }

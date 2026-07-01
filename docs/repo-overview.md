@@ -139,7 +139,7 @@ duplicate-free public exports and 100% JSDoc coverage:
 
 ```sh
 deno task package-check -- --quiet
-deno task api-inventory -- --check --quiet --fail-duplicates --min-doc-coverage=1
+deno task api-inventory -- --check --quiet --fail-duplicates --min-doc-coverage=1 --baseline=docs/api-stable-baseline.json
 ```
 
 Regenerate the full public API reference with:

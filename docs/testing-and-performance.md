@@ -145,22 +145,22 @@ Inspect the public re-export graph before release:
 deno task api-inventory
 deno task api-inventory -- --json
 deno task package-check -- --quiet
-deno task api-inventory -- --check --quiet --fail-duplicates --min-doc-coverage=1
+deno task api-inventory -- --check --quiet --fail-duplicates --min-doc-coverage=1 --baseline=docs/api-stable-baseline.json
 deno task api-reference > docs/api-reference.md
 deno task screenshots
 deno task visual-smoke
 ```
 
 The inventory reports crawled modules, re-export declarations, exported symbol counts, missing local targets, and
-duplicate public symbol names. The contributor health gate runs the quiet check with duplicate failure enabled and a
-100% documentation coverage baseline. `deno task package-check` verifies that `deno.jsonc` exports match the package
-stability manifest. `deno task e2e` runs finite public console reports, web type checks/tests, the GitHub Pages build,
-and generated browser asset checks in one gate. The generated `docs/api-reference.md` file expands that inventory into a
-complete public module and symbol reference. The screenshot task regenerates the README's deterministic JPEG terminal
-captures for the full demo portfolio under `docs/screenshots/`. The visual smoke task runs representative noninteractive
-demos, strips ANSI, and verifies stable anchor text for the gallery, window manager, component catalog, terminal command
-workflow, and capability report. Use it as a fast pre-screenshot check after changing layouts, themes, command output,
-or generated reports.
+duplicate public symbol names. The contributor health gate runs the quiet check with duplicate failure enabled, 100%
+documentation coverage, and `docs/api-stable-baseline.json` stable export drift detection. `deno task package-check`
+verifies that `deno.jsonc` exports match the package stability manifest. `deno task e2e` runs finite public console
+reports, web type checks/tests, the GitHub Pages build, and generated browser asset checks in one gate. The generated
+`docs/api-reference.md` file expands that inventory into a complete public module and symbol reference. The screenshot
+task regenerates the README's deterministic JPEG terminal captures for the full demo portfolio under
+`docs/screenshots/`. The visual smoke task runs representative noninteractive demos, strips ANSI, and verifies stable
+anchor text for the gallery, window manager, component catalog, terminal command workflow, and capability report. Use it
+as a fast pre-screenshot check after changing layouts, themes, command output, or generated reports.
 
 Run the worker integration path with permissions:
 
