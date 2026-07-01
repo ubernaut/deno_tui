@@ -556,6 +556,23 @@ Deno.test("signals/mod.ts", async (t) => {
     assertEquals(computed.value, 20); // value doesn't change after being disposed
     assertEquals(computed2.value, 40); // value doesn't change after being disposed
     assertEquals(subCount, 2); // doesn't run subscribers after being disposed
+
+    const cycleSource = new Signal(1);
+    const left = new Computed(() => cycleSource.value + 1);
+    const right = new Computed(() => cycleSource.value + 1);
+    await Promise.resolve();
+
+    left.dependencies.add(right);
+    right.depend(left);
+    right.dependencies.add(left);
+    left.depend(right);
+
+    const error = assertThrows(() => {
+      cycleSource.value = 2;
+    }, SignalRecursiveUpdateError);
+    assertEquals(error.path.includes("Signal"), true);
+    assertEquals(error.path.filter((entry) => entry === "Computed").length > 2, true);
+    assertEquals(error.path.length > 2, true);
   });
 
   await t.step("Effect", async () => {

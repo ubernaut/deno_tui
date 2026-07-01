@@ -108,10 +108,10 @@ Work:
 - [x] Add a batched update/transaction API for groups of related signal mutations.
 - [x] Add recursion/cycle detection with actionable diagnostics that include the signal/effect inspection path where
       available.
-- [ ] Provide a scheduler-backed propagation mode for UI frame updates so noisy state changes coalesce into one draw.
+- [x] Provide a scheduler-backed propagation mode for UI frame updates so noisy state changes coalesce into one draw.
   - [x] Added `SignalBatchScheduler`, an opt-in microtask-backed signal mutation scheduler that flushes coalesced
         callbacks through `batchSignalUpdates()` without changing default synchronous signal semantics.
-- [ ] Audit app/workbench/Three panel code and replace ad hoc `queueMicrotask()` draw coalescing where the signal layer
+- [x] Audit app/workbench/Three panel code and replace ad hoc `queueMicrotask()` draw coalescing where the signal layer
       can own the behavior.
   - [x] Added a reusable `MicrotaskScheduler` runtime primitive and migrated the API Workbench draw scheduler off its
         local `queueMicrotask()` flag.
@@ -121,11 +121,11 @@ Work:
 
 Acceptance checks:
 
-- [ ] Tests cover self-updating effects, mutually recursive computed values, dispose during propagation, pause/resume,
+- [x] Tests cover self-updating effects, mutually recursive computed values, dispose during propagation, pause/resume,
       and batched mutation ordering.
-  - [x] Added coverage for convergent self-updating effects, computed/effect disposal during propagation, and batched
-        mutation flush ordering.
-- [ ] Existing `tests/signals.test.ts` stays green.
+  - [x] Added coverage for convergent self-updating effects, computed/effect disposal during propagation, mutually
+        recursive computed graph cycles, effect pause/resume, and batched mutation flush ordering.
+- [x] Existing `tests/signals.test.ts` stays green.
 - [ ] Workbench close/rearrange/resize tests include a regression for previous recursive render crashes.
 
 ### P1: Improve Canvas Dirty-Region Rendering
