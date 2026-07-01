@@ -305,7 +305,11 @@ function normalizeWindows(windows: readonly WindowManagerWindow[]): WindowManage
 }
 
 function nextWindowOrder(windows: readonly WindowManagerWindow[]): number {
-  return windows.length === 0 ? 0 : Math.max(...windows.map((entry) => entry.order ?? 0)) + 1;
+  let order = -1;
+  for (const entry of windows) {
+    order = Math.max(order, entry.order ?? 0);
+  }
+  return order + 1;
 }
 
 function normalizeWindowId(windows: readonly WindowManagerWindow[], id?: string | null): string | undefined {

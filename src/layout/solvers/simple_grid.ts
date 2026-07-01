@@ -142,7 +142,10 @@ export function resolveGridTracks(
   autoTrack: LayoutLengthValue,
 ): number[] {
   const trackCount = Math.max(1, count);
-  const tracks = Array.from({ length: trackCount }, (_, index) => template[index] ?? autoTrack);
+  const tracks = new Array<LayoutLengthValue>(trackCount);
+  for (let index = 0; index < trackCount; index++) {
+    tracks[index] = template[index] ?? autoTrack;
+  }
   const totalGap = Math.max(0, trackCount - 1) * Math.max(0, gap);
   const availableWithoutGaps = Math.max(0, Math.floor(available) - totalGap);
   const sizes = new Array<number>(trackCount).fill(0);

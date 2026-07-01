@@ -198,7 +198,8 @@ export function tileRects(bounds: Rectangle, options: TileLayoutOptions): TileLa
 
   const stretchSparseColumns = best.contentHeight <= height;
   const layoutBottom = bounds.row + (stretchSparseColumns ? height : best.contentHeight);
-  const rects = Array.from({ length: itemCount }, (_, index): Rectangle => {
+  const rects = new Array<Rectangle>(itemCount);
+  for (let index = 0; index < itemCount; index++) {
     const columnIndex = index % best.columns;
     const rowIndex = Math.floor(index / best.columns);
     const column = bounds.column + columnIndex * (best.tileWidth + gap);
@@ -206,7 +207,7 @@ export function tileRects(bounds: Rectangle, options: TileLayoutOptions): TileLa
     const lastColumn = columnIndex === best.columns - 1;
     const lastRow = rowIndex === best.rows - 1;
     const lastInColumn = index + best.columns >= itemCount;
-    return {
+    rects[index] = {
       column,
       row,
       width: Math.max(0, lastColumn ? bounds.column + width - column : best.tileWidth),
@@ -219,7 +220,7 @@ export function tileRects(bounds: Rectangle, options: TileLayoutOptions): TileLa
           : best.tileHeight,
       ),
     };
-  });
+  }
 
   return {
     columns: best.columns,
