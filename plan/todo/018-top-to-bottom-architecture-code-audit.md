@@ -99,6 +99,8 @@ Work:
         indices, focus cycling, fullscreen, minimize, restore, and close state transitions.
   - [x] Replaced terminal new-window/workspace menu index clamps with shared controller helpers and verified browser
         demo checks plus web runtime tests after the matching web top-menu hookup.
+  - [x] Added adapter-parity controller coverage that drives terminal-style multi-menu flows and web-style theme-menu
+        flows through the same renderer-neutral workbench controller contract.
 - [x] Replace duplicated theme/window/menu persistence code with a shared versioned serializer.
   - [x] Extracted shared workbench workspace normalization, panel-state normalization, upsert, rename, delete, lookup,
         and legacy window-entry expansion helpers into `src/app/workbench_workspace.ts`.
@@ -608,6 +610,8 @@ Acceptance checks:
 - [ ] Add real workbench controller tests after extraction, covering both terminal and web adapters.
   - [x] Added initial internal controller tests around shared menu/window state; adapter-level parity tests still need
         to exercise both the terminal and browser render adapters through the same controller contract.
+  - [x] Added adapter-flow parity coverage for terminal and web workbench controller usage, covering menu disclosure,
+        menu index movement, focus transfer, and fullscreen selection through one shared inspection contract.
 - [x] Add browser interaction tests for pointer, touch/coarse pointer, software keyboard text input, and resize
       observer.
 - [x] Add terminal parser fixture tests from real shell output and ANSI sequences.
