@@ -335,6 +335,8 @@ Work:
         existing `src/theme.ts` facade.
   - [x] Extracted built-in palette token construction and palette normalization helpers into `src/theme_palettes.ts`,
         keeping the public `src/theme.ts` palette facade and registry API stable.
+  - [x] Extracted the custom palette registry and unknown-palette error into `src/theme_palette_registry.ts`, leaving
+        `src/theme.ts` as the compatibility facade for palette APIs.
 - [x] Add caches for resolved style chains and preview generation with explicit invalidation tests.
   - [x] Extended `ThemeProviderCache` with preview caching, active theme/layer invalidation, and uncached
         function-variant previews.
