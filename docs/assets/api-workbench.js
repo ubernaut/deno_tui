@@ -2547,6 +2547,10 @@ import {
   viewZToOrthographicDepth
 } from "https://esm.sh/three@0.183.2/tsl";
 
+// src/three_ascii/glyphs.ts
+var FILL_GLYPHS = [" ", "\u2581", "\u2582", "\u2583", "\u2584", "\u2585", "\u2586", "\u2587", "\u2588", "\u2588"];
+var ASCII_FILL_GLYPHS = [" ", ".", ":", "-", "=", "+", "*", "#", "%", "@"];
+
 // src/three_ascii/loadAsciiLuts.ts
 import { ClampToEdgeWrapping, LinearFilter as LinearFilter2, NoColorSpace, Texture as Texture2 } from "https://esm.sh/three@0.183.2";
 
@@ -2560,6 +2564,9 @@ var WORKGROUP_SIZE = 8;
 var TILE_PIXEL_COUNT = TILE_SIZE * TILE_SIZE;
 var FOG_SCALE = 5e-3 / Math.sqrt(Math.log(2));
 var MIN_VISIBLE_LUMINANCE = 0.015;
+var GOHU_11_FILL_GLYPH_COVERAGE = [0, 2, 4, 6, 9, 11, 13, 15, 18, 18];
+var ASCII_FILL_GLYPH_COVERAGE = [0, 1, 2, 4, 6, 8, 10, 13, 16, 18];
+var MIXED_FILL_GLYPHS_BY_INDEX = createMixedFillGlyphTable();
 var FILL_SHADER = (
   /* wgsl */
   `
@@ -2785,6 +2792,45 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
 }
 `
 );
+function fillBucketFromGlyphIndex(index) {
+  return Math.max(0, Math.min(FILL_GLYPHS.length - 1, index - 5));
+}
+function fillCoverageForGohu11(fillGlyphIndex) {
+  if (fillGlyphIndex < 5) {
+    return 0;
+  }
+  const bucket = Math.max(0, Math.min(GOHU_11_FILL_GLYPH_COVERAGE.length - 1, fillGlyphIndex - 5));
+  return GOHU_11_FILL_GLYPH_COVERAGE[bucket] / TILE_PIXEL_COUNT;
+}
+function fillCoverageForAscii(fillBucket) {
+  const bucket = Math.max(0, Math.min(ASCII_FILL_GLYPH_COVERAGE.length - 1, fillBucket));
+  return ASCII_FILL_GLYPH_COVERAGE[bucket] / TILE_PIXEL_COUNT;
+}
+function createMixedFillGlyphTable() {
+  const candidates = [
+    ...FILL_GLYPHS.map((glyph, index) => ({
+      glyph,
+      coverage: (GOHU_11_FILL_GLYPH_COVERAGE[index] ?? 0) / TILE_PIXEL_COUNT,
+      index,
+      familyBias: 0
+    })),
+    ...ASCII_FILL_GLYPHS.map((glyph, index) => ({
+      glyph,
+      coverage: fillCoverageForAscii(index),
+      index,
+      familyBias: 2e-3
+    }))
+  ];
+  return Array.from({ length: FILL_GLYPHS.length + 5 }, (_, fillGlyphIndex) => {
+    const bucket = fillBucketFromGlyphIndex(fillGlyphIndex);
+    const targetCoverage = fillCoverageForGohu11(fillGlyphIndex);
+    return candidates.reduce((best, candidate) => {
+      const bestScore = Math.abs(best.coverage - targetCoverage) + Math.abs(best.index - bucket) * 1e-3 + best.familyBias;
+      const candidateScore = Math.abs(candidate.coverage - targetCoverage) + Math.abs(candidate.index - bucket) * 1e-3 + candidate.familyBias;
+      return candidateScore < bestScore ? candidate : best;
+    }).glyph;
+  });
+}
 
 // src/runtime/render_loop.ts
 var RenderLoop = class {

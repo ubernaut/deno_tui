@@ -26,6 +26,7 @@ const RESET = "\x1b[0m";
 const GOHU_11_EDGE_SHAPE_MISMATCH = [0, 3, 10, 9] as const;
 const GOHU_11_FILL_GLYPH_COVERAGE = [0, 2, 4, 6, 9, 11, 13, 15, 18, 18] as const;
 const ASCII_FILL_GLYPH_COVERAGE = [0, 1, 2, 4, 6, 8, 10, 13, 16, 18] as const;
+const MIXED_FILL_GLYPHS_BY_INDEX = createMixedFillGlyphTable();
 
 const FILL_SHADER = /* wgsl */ `
 struct Params {
@@ -249,6 +250,7 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
 interface BufferPair {
   gpu: GPUBuffer;
   readback: GPUBuffer;
+  cpu: Float32Array;
   byteLength: number;
 }
 
@@ -373,9 +375,7 @@ function fillCoverageForAscii(fillBucket: number): number {
   return ASCII_FILL_GLYPH_COVERAGE[bucket] / TILE_PIXEL_COUNT;
 }
 
-function pickMixedFillGlyph(fillGlyphIndex: number): string {
-  const bucket = fillBucketFromGlyphIndex(fillGlyphIndex);
-  const targetCoverage = fillCoverageForGohu11(fillGlyphIndex);
+function createMixedFillGlyphTable(): string[] {
   const candidates = [
     ...FILL_GLYPHS.map((glyph, index) => ({
       glyph,
@@ -391,14 +391,23 @@ function pickMixedFillGlyph(fillGlyphIndex: number): string {
     })),
   ];
 
-  return candidates.reduce((best, candidate) => {
-    const bestScore = Math.abs(best.coverage - targetCoverage) + Math.abs(best.index - bucket) * 0.001 +
-      best.familyBias;
-    const candidateScore = Math.abs(candidate.coverage - targetCoverage) +
-      Math.abs(candidate.index - bucket) * 0.001 +
-      candidate.familyBias;
-    return candidateScore < bestScore ? candidate : best;
-  }).glyph;
+  return Array.from({ length: FILL_GLYPHS.length + 5 }, (_, fillGlyphIndex) => {
+    const bucket = fillBucketFromGlyphIndex(fillGlyphIndex);
+    const targetCoverage = fillCoverageForGohu11(fillGlyphIndex);
+    return candidates.reduce((best, candidate) => {
+      const bestScore = Math.abs(best.coverage - targetCoverage) + Math.abs(best.index - bucket) * 0.001 +
+        best.familyBias;
+      const candidateScore = Math.abs(candidate.coverage - targetCoverage) +
+        Math.abs(candidate.index - bucket) * 0.001 +
+        candidate.familyBias;
+      return candidateScore < bestScore ? candidate : best;
+    }).glyph;
+  });
+}
+
+function pickMixedFillGlyph(fillGlyphIndex: number): string {
+  return MIXED_FILL_GLYPHS_BY_INDEX[Math.max(0, Math.min(MIXED_FILL_GLYPHS_BY_INDEX.length - 1, fillGlyphIndex))] ??
+    " ";
 }
 
 function terminalGlyphForCell(
@@ -1046,6 +1055,7 @@ export class ThreeAsciiRenderer {
         size: byteLength,
         usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
       }),
+      cpu: new Float32Array(byteLength / Float32Array.BYTES_PER_ELEMENT),
       byteLength,
     };
   }
@@ -1076,9 +1086,11 @@ export class ThreeAsciiRenderer {
 
     try {
       const source = new Float32Array(bufferPair.readback.getMappedRange());
-      const result = new Float32Array(source.length);
-      result.set(source);
-      return result;
+      if (bufferPair.cpu.length !== source.length) {
+        bufferPair.cpu = new Float32Array(source.length);
+      }
+      bufferPair.cpu.set(source);
+      return bufferPair.cpu;
     } finally {
       bufferPair.readback.unmap();
     }

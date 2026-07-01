@@ -149,7 +149,7 @@ Work:
 - [ ] Split Three panel lifecycle into a small state machine with explicit states: idle, initializing, rendering,
       stopping, failed, disposed.
 - [x] Add cancel tokens/generation ids so stale frames cannot update disposed or rebuilt panels.
-- [ ] Pool GPU readback buffers and avoid recreating CPU arrays when size is unchanged.
+- [x] Pool GPU readback buffers and avoid recreating CPU arrays when size is unchanged.
 - [ ] Explore packing fill/edge/color output into fewer readbacks or a single mapped buffer.
 - [x] Cache repeated ANSI foreground/background sequences within a frame.
 - [ ] Move Kitty image/ASCII dual-render policy into a reusable renderer option object rather than workbench-local
