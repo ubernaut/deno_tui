@@ -437,7 +437,7 @@ Current evidence:
 
 Work:
 
-- [ ] Split theme code by responsibility: ANSI/style primitives, component definitions, manifest parsing/validation,
+- [x] Split theme code by responsibility: ANSI/style primitives, component definitions, manifest parsing/validation,
       provider/registry, previews/reports, and standard packs.
   - [x] Extracted standalone ANSI style primitives into `src/theme_ansi.ts` while preserving `src/theme.ts` re-exports.
   - [x] Moved ANSI token-map construction into `src/theme_ansi.ts` as a generic `createAnsiStyleMap()` helper, removing
@@ -507,9 +507,11 @@ Work:
   - [x] Hardened the API inventory CLI argument parser so unknown flags and extra positionals fail clearly instead of
         being mistaken for public entrypoint paths.
 - [x] Add package docs that show preferred imports for apps versus framework authors.
-- [ ] Reduce accidental demo-only exports from stable entrypoints where possible without breaking current users.
+- [x] Reduce accidental demo-only exports from stable entrypoints where possible without breaking current users.
   - [x] Added a `package-check` guard that scans the stable root inventory, allowlists the two legacy demo-named modules
         already in the baseline, and fails if new demo/fixture/sample modules leak into stable exports.
+  - [x] Rechecked the stable inventory after the guard: remaining demo-like symbols are confined to the two legacy
+        allowlisted modules, so the nonbreaking curation boundary is now enforced by `deno task package-check`.
 
 Acceptance checks:
 
