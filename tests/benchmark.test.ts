@@ -9,6 +9,7 @@ import {
   queryBenchmarkCases,
   summarizeBenchmarkResults,
 } from "../src/perf/mod.ts";
+import { parseBenchmarkCliOptions, selectBenchmarkCases } from "../scripts/benchmark_cli.ts";
 import { benchmarkCases } from "../scripts/benchmark_cases.ts";
 
 Deno.test("BenchmarkRunner reports average timings with warmup", async () => {
@@ -164,4 +165,14 @@ Deno.test("benchmark CLI catalog covers high-volume TUI workloads", () => {
   assertEquals(names.includes("runtime/terminal-screen-replay"), true);
   assertEquals(names.includes("runtime/scheduler-batch-100"), true);
   assertEquals(names.includes("widgets/theme-standard-39-components"), true);
+});
+
+Deno.test("benchmark CLI selectors filter executable cases", () => {
+  const options = parseBenchmarkCliOptions(["--filter", "terminal replay", "--tag=terminal", "--json"]);
+  const selected = selectBenchmarkCases(benchmarkCases, options.query);
+
+  assertEquals(options.json, true);
+  assertEquals(options.list, false);
+  assertEquals(options.query, { search: "terminal replay", tag: "terminal" });
+  assertEquals(selected.map((entry) => entry.name), ["runtime/terminal-screen-replay"]);
 });
