@@ -39,6 +39,17 @@ import {
   type WorkbenchFrame,
   writeFrame,
 } from "../src/app/workbench_frame.ts";
+import {
+  deleteWorkbenchWorkspace,
+  findWorkbenchWorkspace,
+  normalizeWorkbenchWorkspaceName,
+  normalizeWorkbenchWorkspaces,
+  renameWorkbenchWorkspace,
+  upsertWorkbenchWorkspace,
+  type WorkbenchWorkspace,
+  type WorkbenchWorkspaceWindow,
+  workbenchWorkspaceWindowEntries,
+} from "../src/app/workbench_workspace.ts";
 import { handleInput } from "../src/input.ts";
 import type { KeyPressEvent, MousePressEvent, MouseScrollEvent, PasteEvent } from "../src/input_reader/types.ts";
 import { routeTerminalKeyPress, routeTerminalPaste, type TerminalInputMode } from "../src/app/terminal_input.ts";
@@ -223,17 +234,8 @@ interface NewWindowOption {
   description: string;
 }
 
-interface SavedWorkspace {
-  name: string;
-  visualizationIds: string[];
-  windows?: SavedWorkspaceWindow[];
-  savedAt: number;
-}
-
-interface SavedWorkspaceWindow {
-  visualizationId: string;
-  ascii?: AsciiOptions;
-}
+type SavedWorkspace = WorkbenchWorkspace<AsciiOptions>;
+type SavedWorkspaceWindow = WorkbenchWorkspaceWindow<AsciiOptions>;
 
 type WorkspaceNameMode = "save" | "rename";
 type WorkspaceMenuAction = "save" | "open" | "rename" | "delete" | "empty";
@@ -3674,11 +3676,7 @@ async function saveCurrentWorkspace(): Promise<void> {
   const windows = currentWorkspaceWindows();
   const visualizationIds = windows.map((window) => window.visualizationId);
   const next: SavedWorkspace = { name, visualizationIds, windows, savedAt: Date.now() };
-  const workspaces = [
-    next,
-    ...savedWorkspaces.peek().filter((workspace) => workspace.name.toLowerCase() !== name.toLowerCase()),
-  ].slice(0, 24);
-  savedWorkspaces.value = workspaces;
+  savedWorkspaces.value = upsertWorkbenchWorkspace(savedWorkspaces.peek(), next);
   await persistSavedWorkspaces();
   activeWorkspaceName.value = name;
   clearWorkspaceModalState();
@@ -3706,15 +3704,8 @@ async function renameWorkspace(): Promise<void> {
   }
 
   const name = normalizeWorkspaceName(workspaceNameDraft.peek());
-  const renamed: SavedWorkspace = { ...workspace, name, savedAt: Date.now() };
-  const workspaces = [
-    renamed,
-    ...savedWorkspaces.peek().filter((entry) =>
-      entry.name.toLowerCase() !== workspace.name.toLowerCase() &&
-      entry.name.toLowerCase() !== name.toLowerCase()
-    ),
-  ].slice(0, 24);
-  savedWorkspaces.value = workspaces;
+  savedWorkspaces.value = renameWorkbenchWorkspace(savedWorkspaces.peek(), workspace.name, name);
+  const renamed = workspaceByName(name) ?? workspace;
   await persistSavedWorkspaces();
   if (activeWorkspaceName.peek()?.toLowerCase() === workspace.name.toLowerCase()) {
     activeWorkspaceName.value = name;
@@ -3737,9 +3728,7 @@ async function deleteWorkspace(): Promise<void> {
     modal.close();
     return;
   }
-  savedWorkspaces.value = savedWorkspaces.peek().filter((entry) =>
-    entry.name.toLowerCase() !== workspace.name.toLowerCase()
-  );
+  savedWorkspaces.value = deleteWorkbenchWorkspace(savedWorkspaces.peek(), workspace.name);
   await persistSavedWorkspaces();
   if (activeWorkspaceName.peek()?.toLowerCase() === workspace.name.toLowerCase()) {
     activeWorkspaceName.value = null;
@@ -3850,23 +3839,19 @@ function defaultWorkspaceName(): string {
 }
 
 function normalizeWorkspaceName(name: string): string {
-  const trimmed = name.replace(/\s+/g, " ").trim();
-  return trimmed.length > 0 ? trimmed : defaultWorkspaceName();
+  return normalizeWorkbenchWorkspaceName(name, defaultWorkspaceName());
 }
 
 function workspaceByName(name: string | null | undefined): SavedWorkspace | undefined {
-  if (!name) return undefined;
-  return savedWorkspaces.peek().find((workspace) => workspace.name.toLowerCase() === name.toLowerCase());
+  return findWorkbenchWorkspace(savedWorkspaces.peek(), name);
 }
 
 function workspaceWindowEntries(workspace: SavedWorkspace): SavedWorkspaceWindow[] {
-  if (workspace.windows?.length) {
-    return workspace.windows.map((entry) => ({
-      visualizationId: entry.visualizationId,
-      ascii: entry.ascii ? normalizeAsciiOptions(entry.ascii, defaultWorkbenchAsciiOptions()) : undefined,
-    }));
-  }
-  return workspace.visualizationIds.map((visualizationId) => ({ visualizationId }));
+  return workbenchWorkspaceWindowEntries(workspace, {
+    validVisualizationIds: visualizationWindowOptions.map((option) => option.id),
+    normalizeAscii: (value) =>
+      value ? normalizeAsciiOptions(value as AsciiOptions, defaultWorkbenchAsciiOptions()) : undefined,
+  });
 }
 
 async function persistActiveWorkspaceState(): Promise<void> {
@@ -3880,10 +3865,7 @@ async function persistActiveWorkspaceState(): Promise<void> {
     windows,
     savedAt: Date.now(),
   };
-  savedWorkspaces.value = [
-    next,
-    ...savedWorkspaces.peek().filter((entry) => entry.name.toLowerCase() !== workspace.name.toLowerCase()),
-  ].slice(0, 24);
+  savedWorkspaces.value = upsertWorkbenchWorkspace(savedWorkspaces.peek(), next);
   await persistSavedWorkspaces();
 }
 
@@ -3899,40 +3881,12 @@ async function persistSavedWorkspaces(): Promise<void> {
 }
 
 function normalizeSavedWorkspaces(value: unknown): SavedWorkspace[] {
-  if (!Array.isArray(value)) return [];
-  const validIds = new Set(visualizationWindowOptions.map((option) => option.id));
-  return value.flatMap((entry): SavedWorkspace[] => {
-    if (!entry || typeof entry !== "object") return [];
-    const candidate = entry as Partial<SavedWorkspace>;
-    const name = typeof candidate.name === "string" ? normalizeWorkspaceName(candidate.name) : "";
-    const windows = Array.isArray(candidate.windows)
-      ? candidate.windows.flatMap((windowEntry): SavedWorkspaceWindow[] => {
-        if (!windowEntry || typeof windowEntry !== "object") return [];
-        const candidateWindow = windowEntry as Partial<SavedWorkspaceWindow>;
-        if (typeof candidateWindow.visualizationId !== "string" || !validIds.has(candidateWindow.visualizationId)) {
-          return [];
-        }
-        return [{
-          visualizationId: candidateWindow.visualizationId,
-          ascii: candidateWindow.ascii
-            ? normalizeAsciiOptions(candidateWindow.ascii, defaultWorkbenchAsciiOptions())
-            : undefined,
-        }];
-      })
-      : [];
-    const visualizationIds = windows.length > 0
-      ? windows.map((window) => window.visualizationId)
-      : Array.isArray(candidate.visualizationIds)
-      ? candidate.visualizationIds.filter((id): id is string => typeof id === "string" && validIds.has(id))
-      : [];
-    if (!name) return [];
-    return [{
-      name,
-      visualizationIds,
-      windows: windows.length > 0 ? windows : undefined,
-      savedAt: typeof candidate.savedAt === "number" ? candidate.savedAt : 0,
-    }];
-  }).slice(0, 24);
+  return normalizeWorkbenchWorkspaces(value, {
+    validVisualizationIds: visualizationWindowOptions.map((option) => option.id),
+    normalizeName: (name, index) => normalizeWorkbenchWorkspaceName(name, `Workspace ${index + 1}`),
+    normalizeAscii: (candidate) =>
+      candidate ? normalizeAsciiOptions(candidate as AsciiOptions, defaultWorkbenchAsciiOptions()) : undefined,
+  });
 }
 
 function createWorkspaceStore(): AsyncStore<unknown> {

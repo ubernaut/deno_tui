@@ -53,6 +53,8 @@ Work:
   - [x] Exposed the shared frame and hit-target helpers through `src/app/mod.ts` and migrated the web API Workbench page
         to reuse exported text-fit, ANSI-cell, contrast, and geometry helpers.
 - [ ] Replace duplicated theme/window/menu persistence code with a shared versioned serializer.
+  - [x] Extracted shared workbench workspace normalization, panel-state normalization, upsert, rename, delete, lookup,
+        and legacy window-entry expansion helpers into `src/app/workbench_workspace.ts`.
 - [ ] Add a migration path for existing saved workspace state.
 
 Acceptance checks:

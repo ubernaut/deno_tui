@@ -7996,6 +7996,28 @@ function relativeLuminance([red, green, blue]) {
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
 
+// src/app/workbench_workspace.ts
+function defaultWorkbenchMinimizedState(panelIds2, minimized2 = {}) {
+  const state = {};
+  for (const id2 of panelIds2) {
+    state[id2] = Boolean(minimized2[id2]);
+  }
+  return state;
+}
+function normalizeWorkbenchPanelWorkspaceState(value, options) {
+  const panelSet = new Set(options.panelIds);
+  const isPanelId = (candidate) => typeof candidate === "string" && panelSet.has(candidate);
+  const active2 = isPanelId(value?.active) ? value.active : options.defaultActive;
+  const maximized2 = value?.maximized === null || isPanelId(value?.maximized) ? value.maximized ?? null : void 0;
+  const minimized2 = defaultWorkbenchMinimizedState(options.panelIds, value?.minimized ?? {});
+  if (active2) minimized2[active2] = false;
+  if (maximized2) minimized2[maximized2] = false;
+  const minDensity = options.minTileDensity ?? -3;
+  const maxDensity = options.maxTileDensity ?? 3;
+  const tileDensity2 = Number.isFinite(value?.tileDensity) ? Math.max(minDensity, Math.min(maxDensity, Math.floor(value.tileDensity))) : void 0;
+  return { active: active2, maximized: maximized2, minimized: minimized2, tileDensity: tileDensity2 };
+}
+
 // src/runtime/process_session.ts
 function formatProcessCommandLine(command) {
   return [command.command, ...command.args ?? []].map(quoteCommandToken).join(" ");
@@ -11737,16 +11759,7 @@ function initialThemeIndex() {
   }
 }
 function defaultMinimizedState() {
-  return {
-    explorer: false,
-    inspector: false,
-    data: false,
-    controls: false,
-    logs: false,
-    three: false,
-    htmlLayout: false,
-    terminal: false
-  };
+  return defaultWorkbenchMinimizedState(panelIds);
 }
 function loadCachedWebWorkspaceState() {
   try {
@@ -11771,19 +11784,12 @@ function applyWebWorkspaceState(state) {
   if (state.tileDensity !== void 0) tileDensity.value = Math.max(-3, Math.min(3, Math.floor(state.tileDensity)));
 }
 function normalizeWebWorkspaceState(value) {
-  if (!value || typeof value !== "object") return {};
-  const minimizedState = defaultMinimizedState();
-  for (const id2 of panelIds) minimizedState[id2] = Boolean(value.minimized?.[id2]);
-  const active2 = isPanelId(value.active) ? value.active : void 0;
-  const maximized2 = value.maximized === null || isPanelId(value.maximized) ? value.maximized ?? null : void 0;
-  if (active2) minimizedState[active2] = false;
-  if (maximized2) minimizedState[maximized2] = false;
-  return {
-    active: active2,
-    maximized: maximized2,
-    minimized: minimizedState,
-    tileDensity: Number.isFinite(value.tileDensity) ? value.tileDensity : void 0
-  };
+  return normalizeWorkbenchPanelWorkspaceState(value, {
+    panelIds,
+    defaultActive: "inspector",
+    minTileDensity: -3,
+    maxTileDensity: 3
+  });
 }
 function persistWebWorkspaceState() {
   try {
@@ -11797,9 +11803,6 @@ function persistWebWorkspaceState() {
     void webWorkspaceStore.set("default", snapshot).catch(() => void 0);
   } catch {
   }
-}
-function isPanelId(value) {
-  return typeof value === "string" && panelIds.includes(value);
 }
 function persistThemeIndex(index) {
   try {

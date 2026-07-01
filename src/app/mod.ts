@@ -61,3 +61,4 @@ export * from "./toast_commands.ts";
 export * from "./tree_commands.ts";
 export * from "./window_manager_commands.ts";
 export * from "./workbench_frame.ts";
+export * from "./workbench_workspace.ts";

@@ -17,6 +17,7 @@ import {
   createTerminalWorkspaceController,
   createWebTui,
   DataTableController,
+  defaultWorkbenchMinimizedState,
   FileExplorerController,
   fitCellText,
   InputController,
@@ -24,6 +25,7 @@ import {
   MenuBarController,
   modalContentHeight,
   ModalController,
+  normalizeWorkbenchPanelWorkspaceState,
   ProgressBarController,
   RadioGroupController,
   renderCheckBoxMark,
@@ -47,6 +49,7 @@ import {
   textWidth,
   tileRects,
   toStyledCells,
+  type WorkbenchPanelWorkspaceState,
   wrapTextBoxLines,
 } from "../../mod.web.ts";
 import { grWizardThemePalettes } from "../../src/grwizard_themes.ts";
@@ -2210,24 +2213,10 @@ function initialThemeIndex(): number {
   }
 }
 
-interface WebWorkspaceState {
-  active?: PanelId;
-  maximized?: PanelId | null;
-  minimized?: Partial<Record<PanelId, boolean>>;
-  tileDensity?: number;
-}
+type WebWorkspaceState = WorkbenchPanelWorkspaceState<PanelId>;
 
 function defaultMinimizedState(): Record<PanelId, boolean> {
-  return {
-    explorer: false,
-    inspector: false,
-    data: false,
-    controls: false,
-    logs: false,
-    three: false,
-    htmlLayout: false,
-    terminal: false,
-  };
+  return defaultWorkbenchMinimizedState(panelIds);
 }
 
 function loadCachedWebWorkspaceState(): WebWorkspaceState {
@@ -2257,19 +2246,12 @@ function applyWebWorkspaceState(state: WebWorkspaceState): void {
 }
 
 function normalizeWebWorkspaceState(value: WebWorkspaceState | null | undefined): WebWorkspaceState {
-  if (!value || typeof value !== "object") return {};
-  const minimizedState = defaultMinimizedState();
-  for (const id of panelIds) minimizedState[id] = Boolean(value.minimized?.[id]);
-  const active = isPanelId(value.active) ? value.active : undefined;
-  const maximized = value.maximized === null || isPanelId(value.maximized) ? value.maximized ?? null : undefined;
-  if (active) minimizedState[active] = false;
-  if (maximized) minimizedState[maximized] = false;
-  return {
-    active,
-    maximized,
-    minimized: minimizedState,
-    tileDensity: Number.isFinite(value.tileDensity) ? value.tileDensity : undefined,
-  };
+  return normalizeWorkbenchPanelWorkspaceState(value, {
+    panelIds,
+    defaultActive: "inspector",
+    minTileDensity: -3,
+    maxTileDensity: 3,
+  });
 }
 
 function persistWebWorkspaceState(): void {
@@ -2285,10 +2267,6 @@ function persistWebWorkspaceState(): void {
   } catch {
     // Storage may be unavailable in restrictive browser contexts; the workspace still works in memory.
   }
-}
-
-function isPanelId(value: unknown): value is PanelId {
-  return typeof value === "string" && (panelIds as readonly string[]).includes(value);
 }
 
 function persistThemeIndex(index: number): void {
