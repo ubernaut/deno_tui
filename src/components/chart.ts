@@ -13,12 +13,25 @@ export interface ChartOptions extends ComponentOptions {
 export function renderBarChart(values: readonly number[], width: number, height: number): string[] {
   const safeWidth = Math.max(0, width);
   const safeHeight = Math.max(0, height);
-  const sampled = values.slice(-safeWidth);
-  const max = Math.max(1, ...sampled);
-  return Array.from({ length: safeHeight }, (_, row) => {
+  const rows = new Array<string>(safeHeight);
+  const sampleStart = Math.max(0, values.length - safeWidth);
+  const sampleCount = Math.min(safeWidth, values.length);
+  let max = 1;
+  for (let index = 0; index < sampleCount; index++) {
+    max = Math.max(max, values[sampleStart + index] ?? 0);
+  }
+  const leftPadding = safeWidth - sampleCount;
+
+  for (let row = 0; row < safeHeight; row++) {
     const threshold = ((safeHeight - row) / Math.max(1, safeHeight)) * max;
-    return sampled.map((value) => value >= threshold ? "█" : " ").join("").padStart(safeWidth, " ");
-  });
+    let line = leftPadding > 0 ? " ".repeat(leftPadding) : "";
+    for (let index = 0; index < sampleCount; index++) {
+      line += (values[sampleStart + index] ?? 0) >= threshold ? "█" : " ";
+    }
+    rows[row] = line;
+  }
+
+  return rows;
 }
 
 /** Public class implementing a chart. */
@@ -29,15 +42,18 @@ export class Chart extends Component {
 
   override draw(): void {
     super.draw();
-    Array.from({ length: this.rectangle.peek().height }, (_, index) => {
+    const rows = new Computed(() => {
+      const values = Array.isArray(this.options.values) ? this.options.values : this.options.values.value;
+      return renderBarChart(values, this.rectangle.value.width, this.rectangle.value.height);
+    });
+
+    const height = this.rectangle.peek().height;
+    for (let index = 0; index < height; index++) {
       const line = new Text({
         parent: this,
         theme: this.theme,
         zIndex: this.zIndex,
-        text: new Computed(() => {
-          const values = Array.isArray(this.options.values) ? this.options.values : this.options.values.value;
-          return renderBarChart(values, this.rectangle.value.width, this.rectangle.value.height)[index] ?? "";
-        }),
+        text: new Computed(() => rows.value[index] ?? ""),
         overwriteWidth: true,
         rectangle: new Computed<TextRectangle>(() => ({
           column: this.rectangle.value.column,
@@ -48,6 +64,6 @@ export class Chart extends Component {
       });
       line.subComponentOf = this;
       this.subComponents[`line-${index}`] = line;
-    });
+    }
   }
 }
