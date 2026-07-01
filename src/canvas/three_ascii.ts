@@ -366,7 +366,10 @@ export function formatThreeAsciiFallbackDetail(error: unknown): string {
 export function buildFallbackGrid(width: number, height: number, detail: string): string[][] {
   const columns = Math.max(1, width);
   const rows = Math.max(1, height);
-  const grid = Array.from({ length: rows }, () => Array.from({ length: columns }, () => " "));
+  const grid = new Array<string[]>(rows);
+  for (let row = 0; row < rows; row += 1) {
+    grid[row] = new Array<string>(columns).fill(" ");
+  }
   const lines = [
     "ASCII RENDERER OFFLINE",
     cropMessage(detail, columns),
