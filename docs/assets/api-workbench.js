@@ -2303,6 +2303,60 @@ var DirtyRegion = class _DirtyRegion {
   }
 };
 
+// src/canvas/spatial_index.ts
+var DrawObjectSpatialIndex = class _DrawObjectSpatialIndex {
+  #rows = /* @__PURE__ */ new Map();
+  #objects = /* @__PURE__ */ new Set();
+  #rowEntries = 0;
+  static fromObjects(objects) {
+    const index = new _DrawObjectSpatialIndex();
+    for (const object of objects) {
+      index.add(object);
+    }
+    return index;
+  }
+  add(object) {
+    if (object.outOfBounds) return;
+    const rectangle = object.rectangle.peek();
+    const startRow = Math.floor(rectangle.row);
+    const endRow = startRow + Math.max(0, Math.floor(rectangle.height));
+    const startColumn = Math.floor(rectangle.column);
+    const endColumn = startColumn + Math.max(0, Math.floor(rectangle.width));
+    if (endRow <= startRow || endColumn <= startColumn) return;
+    this.#objects.add(object);
+    for (let row = startRow; row < endRow; row += 1) {
+      const rowObjects = this.#rows.get(row);
+      if (rowObjects) {
+        rowObjects.push(object);
+      } else {
+        this.#rows.set(row, [object]);
+      }
+      this.#rowEntries += 1;
+    }
+  }
+  query(rectangle) {
+    const startRow = Math.floor(rectangle.row);
+    const endRow = startRow + Math.max(0, Math.floor(rectangle.height));
+    const startColumn = Math.floor(rectangle.column);
+    const endColumn = startColumn + Math.max(0, Math.floor(rectangle.width));
+    if (endRow <= startRow || endColumn <= startColumn) return [];
+    const candidates = /* @__PURE__ */ new Set();
+    for (let row = startRow; row < endRow; row += 1) {
+      for (const object of this.#rows.get(row) ?? []) {
+        candidates.add(object);
+      }
+    }
+    return [...candidates];
+  }
+  inspect() {
+    return {
+      objects: this.#objects.size,
+      rows: this.#rows.size,
+      rowEntries: this.#rowEntries
+    };
+  }
+};
+
 // src/canvas/sink.ts
 var textEncoder2 = new TextEncoder();
 var AnsiCanvasSink = class {
@@ -2431,7 +2485,7 @@ var Canvas = class extends EventEmitter {
       this.updateObjects.push(drawObject);
     }
   }
-  updateIntersections(object) {
+  updateIntersections(object, candidates) {
     const { omitCells, objectsUnder } = object;
     let candidateChecks = 0;
     const zIndex = object.zIndex.peek();
@@ -2440,7 +2494,7 @@ var Canvas = class extends EventEmitter {
       omitRows?.clear();
     }
     objectsUnder.clear();
-    for (const object2 of this.drawnObjects) {
+    for (const object2 of candidates ?? this.drawnObjects) {
       if (object === object2 || object2.outOfBounds) continue;
       candidateChecks += 1;
       const zIndex2 = object2.zIndex.peek();
@@ -2524,9 +2578,13 @@ var Canvas = class extends EventEmitter {
     const objectsToRender = intersectionsDirty ? affectedDrawObjects(this.drawnObjects, dirtyRegion, nonMovingUpdatedObjects) : objectsToUpdate;
     let intersectionCandidateChecks = 0;
     if (intersectionsDirty) {
+      const spatialIndex = DrawObjectSpatialIndex.fromObjects(this.drawnObjects);
       objectsToRender.sort((a, b) => b.zIndex.peek() - a.zIndex.peek() || b.id - a.id);
       for (const object of objectsToRender) {
-        intersectionCandidateChecks += this.updateIntersections(object);
+        intersectionCandidateChecks += this.updateIntersections(
+          object,
+          spatialIndex.query(object.rectangle.peek())
+        );
         object.moved = false;
         if (!object.outOfBounds) {
           if (movedOwnObjects.has(object) || !object.rendered) {

@@ -128,6 +128,41 @@ Deno.test("canvas render inspection reports repaint and idle passes", () => {
   });
 });
 
+Deno.test("canvas intersection updates use row-indexed candidates for sparse panes", () => {
+  const canvas = createTestCanvas({ size: { columns: 80, rows: 48 } });
+  const boxes: BoxObject[] = [];
+
+  for (let index = 0; index < 20; index += 1) {
+    const box = new BoxObject({
+      canvas,
+      rectangle: { column: 0, row: index * 2, width: 12, height: 1 },
+      filler: ".",
+      style: (text: string) => text,
+      zIndex: 1,
+    });
+    box.draw();
+    boxes.push(box);
+  }
+
+  const moverRectangle = new Signal({ column: 2, row: 1, width: 6, height: 1 });
+  const mover = new BoxObject({
+    canvas,
+    rectangle: moverRectangle,
+    filler: "#",
+    style: (text: string) => text,
+    zIndex: 2,
+  });
+  mover.draw();
+  canvas.render();
+
+  moverRectangle.value = { column: 2, row: 2, width: 6, height: 1 };
+  canvas.render();
+
+  assertEquals(canvas.inspectRender().intersectionsDirty, true);
+  assertEquals(canvas.inspectRender().intersectionUpdates, 2);
+  assertEquals(canvas.inspectRender().intersectionCandidateChecks <= boxes.length, true);
+});
+
 Deno.test("draw objects track views attached after construction", () => {
   const canvas = createTestCanvas({ size: { columns: 12, rows: 3 } });
   const view = new Signal<View | undefined>(undefined);

@@ -8,6 +8,7 @@ import { rectangleEquals, rectangleIntersection } from "../utils/numbers.ts";
 import type { ConsoleSize, Rectangle, Stdout } from "../types.ts";
 import { DrawObject } from "./draw_object.ts";
 import { DirtyRegion } from "./dirty_region.ts";
+import { DrawObjectSpatialIndex } from "./spatial_index.ts";
 import { Signal, SignalOfObject } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
 import {
@@ -107,7 +108,7 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
     }
   }
 
-  updateIntersections(object: DrawObject): number {
+  updateIntersections(object: DrawObject, candidates?: Iterable<DrawObject>): number {
     const { omitCells, objectsUnder } = object;
     let candidateChecks = 0;
 
@@ -120,7 +121,7 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
 
     objectsUnder.clear();
 
-    for (const object2 of this.drawnObjects) {
+    for (const object2 of candidates ?? this.drawnObjects) {
       if (object === object2 || object2.outOfBounds) continue;
       candidateChecks += 1;
 
@@ -227,9 +228,13 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
       : objectsToUpdate;
     let intersectionCandidateChecks = 0;
     if (intersectionsDirty) {
+      const spatialIndex = DrawObjectSpatialIndex.fromObjects(this.drawnObjects);
       objectsToRender.sort((a, b) => b.zIndex.peek() - a.zIndex.peek() || b.id - a.id);
       for (const object of objectsToRender) {
-        intersectionCandidateChecks += this.updateIntersections(object);
+        intersectionCandidateChecks += this.updateIntersections(
+          object,
+          spatialIndex.query(object.rectangle.peek()),
+        );
         object.moved = false;
         if (!object.outOfBounds) {
           if (movedOwnObjects.has(object) || !object.rendered) {

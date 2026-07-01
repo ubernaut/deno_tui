@@ -5,4 +5,5 @@ export * from "./canvas.ts";
 export * from "./dirty_region.ts";
 export * from "./draw_object.ts";
 export * from "./sink.ts";
+export * from "./spatial_index.ts";
 export * from "./three_ascii.ts";
