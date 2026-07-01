@@ -9587,10 +9587,14 @@ function parseExtendedSgrColor(values, index) {
   return void 0;
 }
 function createRows(columns, rows2) {
-  return Array.from({ length: rows2 }, () => blankRow(columns));
+  const output = [];
+  for (let row = 0; row < rows2; row += 1) {
+    output.push(blankRow(columns));
+  }
+  return output;
 }
 function blankRow(columns) {
-  return Array.from({ length: columns }, () => BLANK_CELL);
+  return new Array(columns).fill(BLANK_CELL);
 }
 function fullScrollRegion(rows2) {
   return { top: 0, bottom: rows2 - 1 };

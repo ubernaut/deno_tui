@@ -637,11 +637,15 @@ function parseExtendedSgrColor(
 }
 
 function createRows(columns: number, rows: number): TerminalScreenCell[][] {
-  return Array.from({ length: rows }, () => blankRow(columns));
+  const output: TerminalScreenCell[][] = [];
+  for (let row = 0; row < rows; row += 1) {
+    output.push(blankRow(columns));
+  }
+  return output;
 }
 
 function blankRow(columns: number): TerminalScreenCell[] {
-  return Array.from({ length: columns }, () => BLANK_CELL);
+  return new Array<TerminalScreenCell>(columns).fill(BLANK_CELL);
 }
 
 function fullScrollRegion(rows: number): TerminalScreenScrollRegion {
