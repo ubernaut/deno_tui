@@ -177,6 +177,8 @@ Work:
         arrays in frame-critical monitor widgets.
   - [x] Reworked the chart renderer to scan sampled values in-place and compute component rows once per draw update
         instead of once per rendered line.
+  - [x] Reworked CPU hex-grid label measurement, tile layout, row buffers, and selected CPU range projection to avoid
+        map/spread/filter allocation in the visual monitor path.
 
 Acceptance checks:
 
