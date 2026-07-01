@@ -228,6 +228,7 @@ export class ThreePanelFrameView {
   private syncPending = false;
   private failed = false;
   private disposed = false;
+  private frameGeneration = 0;
   private frameTimer?: ReturnType<typeof setTimeout>;
   private readonly interaction = defaultInteractionState();
   private baseCameraPosition?: THREE.Vector3;
@@ -271,6 +272,7 @@ export class ThreePanelFrameView {
     const visible = enabled && !!current && rect.width > 0 && rect.height > 0;
 
     if (!visible || !current) {
+      this.invalidateFrame();
       this.syncPending = false;
       this.rebuildPending = false;
       this.destroyRenderer();
@@ -286,6 +288,7 @@ export class ThreePanelFrameView {
 
     if (needsRenderer) {
       if (this.rendering) {
+        this.invalidateFrame();
         this.running = false;
         this.destroyPending = true;
         this.rebuildPending = true;
@@ -314,6 +317,7 @@ export class ThreePanelFrameView {
     }
 
     if (this.rendering) {
+      this.invalidateFrame();
       this.running = false;
       this.syncPending = true;
       return;
@@ -345,6 +349,7 @@ export class ThreePanelFrameView {
     const bundle = this.bundle;
     if (!renderer || !bundle) return;
 
+    const frameGeneration = this.frameGeneration;
     this.rendering = true;
 
     try {
@@ -378,19 +383,26 @@ export class ThreePanelFrameView {
         ? await renderer.renderFrame(deltaTime, onFrame, { ansi: renderAscii, image: true })
         : { grid: await renderer.renderToAnsiGrid(deltaTime, onFrame) };
 
-      if (!this.running) {
+      if (!this.isCurrentFrame(frameGeneration, renderer, bundle)) {
         return;
       }
 
       if (kittyActive && frame.image && graphicsSurface) {
-        await this.putGraphicsImage(graphicsSurface, frame.image, graphicsRectangle);
+        await this.putGraphicsImage(graphicsSurface, frame.image, graphicsRectangle, frameGeneration);
       } else {
         await this.clearGraphicsImage();
+      }
+
+      if (!this.isCurrentFrame(frameGeneration, renderer, bundle)) {
+        return;
       }
 
       this.failed = false;
       this.setGrid(renderAscii ? frame.grid ?? [] : blankGrid(rect.width, rect.height));
     } catch (error) {
+      if (!this.ownsFrame(frameGeneration, renderer, bundle)) {
+        return;
+      }
       this.failed = true;
       this.running = false;
       await this.clearGraphicsImage();
@@ -419,6 +431,27 @@ export class ThreePanelFrameView {
     if (this.disposed) return;
     this.grid.jink(grid);
     this.onUpdate?.();
+  }
+
+  private invalidateFrame(): void {
+    this.frameGeneration += 1;
+  }
+
+  private ownsFrame(
+    generation: number,
+    renderer: ThreePanelGridRenderer,
+    bundle: NeonThreeSceneBundle,
+  ): boolean {
+    return !this.disposed && this.frameGeneration === generation && this.renderer === renderer &&
+      this.bundle === bundle;
+  }
+
+  private isCurrentFrame(
+    generation: number,
+    renderer: ThreePanelGridRenderer,
+    bundle: NeonThreeSceneBundle,
+  ): boolean {
+    return this.running && this.ownsFrame(generation, renderer, bundle);
   }
 
   rotateBy(deltaColumns: number, deltaRows: number): ThreePanelInteractionState {
@@ -477,6 +510,7 @@ export class ThreePanelFrameView {
   }
 
   private destroyRenderer(): void {
+    this.invalidateFrame();
     this.running = false;
     if (this.frameTimer !== undefined) {
       clearTimeout(this.frameTimer);
@@ -519,13 +553,14 @@ export class ThreePanelFrameView {
     surface: GraphicsSurface,
     image: ThreeAsciiImageFrame,
     rect: Rect,
+    frameGeneration: number,
   ): Promise<void> {
     if (this.disposed || rect.width <= 0 || rect.height <= 0) return;
     if (this.graphicsHandle) {
       await surface.deleteImage(this.graphicsHandle, "image").catch(() => {});
       this.graphicsHandle = undefined;
     }
-    this.graphicsHandle = await surface.putImage({
+    const handle = await surface.putImage({
       data: image.data,
       encoding: image.encoding,
       format: image.format,
@@ -538,6 +573,11 @@ export class ThreePanelFrameView {
       height: rect.height,
       zIndex: 1,
     });
+    if (this.disposed || this.frameGeneration !== frameGeneration) {
+      await surface.deleteImage(handle, "image").catch(() => {});
+      return;
+    }
+    this.graphicsHandle = handle;
   }
 
   private async clearGraphicsImage(): Promise<void> {

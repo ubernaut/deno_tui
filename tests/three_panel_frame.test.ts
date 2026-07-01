@@ -217,6 +217,48 @@ Deno.test("ThreePanelFrameView disposes safely while a frame is rendering", asyn
   enabled.dispose();
 });
 
+Deno.test("ThreePanelFrameView drops stale frames after a rebuild request", async () => {
+  const rectangle = new Signal({ column: 0, row: 0, width: 12, height: 6 }, { deepObserve: true });
+  const scene = new Signal<ThreeSceneState | null>(sceneState());
+  const ascii = new Signal(createDefaultAsciiOptions("sharp"));
+  const enabled = new Signal(true);
+  const renderers: SlowGridRenderer[] = [];
+  const panel = new ThreePanelFrameView({
+    rectangle,
+    scene,
+    ascii,
+    enabled,
+    frameInterval: 1000 / 30,
+    rendererFactory: (options) => {
+      const renderer = new SlowGridRenderer(options.columns, options.rows, renderers.length === 0 ? "A" : "B");
+      renderers.push(renderer);
+      return renderer;
+    },
+  });
+
+  try {
+    await waitFor(() => (renderers[0]?.startCount ?? 0) >= 1);
+    scene.value = { ...sceneState(), mode: "lattice" };
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    renderers[0]?.completeFrame();
+
+    await waitFor(() => (renderers[1]?.startCount ?? 0) >= 1);
+    assertEquals(panel.grid.peek(), []);
+    assertEquals(renderers[0]?.destroyed, true);
+
+    renderers[1]?.completeFrame();
+    await waitFor(() => panel.grid.peek()[0]?.[0] === "B");
+    assertEquals(panel.grid.peek()[0]?.[0], "B");
+  } finally {
+    panel.dispose();
+    rectangle.dispose();
+    scene.dispose();
+    ascii.dispose();
+    enabled.dispose();
+  }
+});
+
 Deno.test("ThreePanelFrameView can use Kitty image frames without drawing ASCII cells", async () => {
   const rectangle = new Signal({ column: 0, row: 0, width: 8, height: 4 }, { deepObserve: true });
   const graphicsRectangle = new Signal({ column: 5, row: 6, width: 8, height: 4 }, { deepObserve: true });
@@ -313,6 +355,7 @@ Deno.test("ThreeAsciiObject erases safely while a frame is rendering", async () 
   renderer?.completeFrame();
 
   await waitFor(() => renderer?.destroyed === true);
+  assertEquals(object.grid, []);
   rectangle.dispose();
 });
 
@@ -346,7 +389,7 @@ class FakeGridRenderer implements ThreePanelGridRenderer, ThreeAsciiGridRenderer
   private terminalEdgeBias = 1;
   private terminalGlyphStyle: TerminalGlyphStyle = "blocks";
 
-  constructor(private columns: number, private rows: number) {}
+  constructor(private columns: number, private rows: number, private readonly glyph = "█") {}
 
   setSize(columns: number, rows: number): void {
     this.columns = columns;
@@ -378,7 +421,7 @@ class FakeGridRenderer implements ThreePanelGridRenderer, ThreeAsciiGridRenderer
     await onFrame?.(0.016);
     return Array.from(
       { length: this.rows },
-      (_, row) => Array.from({ length: this.columns }, (_, column) => (row + column) % 2 === 0 ? "█" : " "),
+      (_, row) => Array.from({ length: this.columns }, (_, column) => (row + column) % 2 === 0 ? this.glyph : " "),
     );
   }
 
@@ -455,6 +498,10 @@ class SlowGridRenderer extends FakeGridRenderer {
   destroyed = false;
   private rendering = false;
   private releaseFrame?: () => void;
+
+  constructor(columns: number, rows: number, glyph = "█") {
+    super(columns, rows, glyph);
+  }
 
   override setSize(columns: number, rows: number): void {
     if (this.rendering) {

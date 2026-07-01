@@ -73,7 +73,7 @@ Work:
       resize churn.
 - [ ] Add a deterministic API Workbench render benchmark using fixed signals and synthetic windows.
 - [x] Add text measurement/cropping benchmarks for ANSI-heavy table/list rows and button-heavy titlebars.
-- [ ] Add system monitor fixture benchmarks for CPU/process/network parsing without touching live `/proc`.
+- [x] Add system monitor fixture benchmarks for CPU/process/network parsing without touching live `/proc`.
 - [x] Add Three ASCII CPU-side grid assembly/readback benchmarks with an injectable renderer or captured buffers.
 - [ ] Record thresholds in the benchmark catalog and wire the most useful non-flaky cases into health or e2e.
 
@@ -148,7 +148,7 @@ Work:
 
 - [ ] Split Three panel lifecycle into a small state machine with explicit states: idle, initializing, rendering,
       stopping, failed, disposed.
-- [ ] Add cancel tokens/generation ids so stale frames cannot update disposed or rebuilt panels.
+- [x] Add cancel tokens/generation ids so stale frames cannot update disposed or rebuilt panels.
 - [ ] Pool GPU readback buffers and avoid recreating CPU arrays when size is unchanged.
 - [ ] Explore packing fill/edge/color output into fewer readbacks or a single mapped buffer.
 - [x] Cache repeated ANSI foreground/background sequences within a frame.

@@ -68,6 +68,7 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
   private destroyPending = false;
   private syncPending = false;
   private failed = false;
+  private frameGeneration = 0;
   private frameTimer?: ReturnType<typeof setTimeout>;
   private pendingEffectOptions?: Partial<AcerolaAsciiNodeOptions>;
   private pendingTerminalEdgeBias?: number;
@@ -93,6 +94,7 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
   }
 
   override draw(): void {
+    this.invalidateFrame();
     this.rectangle.subscribe(this.handleResize);
     this.running = true;
     this.failed = false;
@@ -103,6 +105,7 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
   }
 
   override erase(): void {
+    this.invalidateFrame();
     this.running = false;
     this.syncPending = false;
     if (this.frameTimer !== undefined) {
@@ -153,6 +156,7 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
 
   private readonly handleResize = (rectangle: Rectangle) => {
     if (this.rendering) {
+      this.invalidateFrame();
       this.running = false;
       this.syncPending = true;
       this.moved = true;
@@ -168,6 +172,7 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
 
   setEffectOptions(options: Partial<AcerolaAsciiNodeOptions>): void {
     if (this.rendering) {
+      this.invalidateFrame();
       this.pendingEffectOptions = { ...this.pendingEffectOptions, ...options };
       this.running = false;
       this.syncPending = true;
@@ -182,6 +187,7 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
 
   setTerminalEdgeBias(value: number): void {
     if (this.rendering) {
+      this.invalidateFrame();
       this.pendingTerminalEdgeBias = value;
       this.running = false;
       this.syncPending = true;
@@ -196,6 +202,7 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
 
   setTerminalGlyphStyle(value: TerminalGlyphStyle): void {
     if (this.rendering) {
+      this.invalidateFrame();
       this.pendingTerminalGlyphStyle = value;
       this.running = false;
       this.syncPending = true;
@@ -211,6 +218,8 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
   private async renderLoop(): Promise<void> {
     if (!this.running || this.rendering) return;
 
+    const renderer = this.renderer;
+    const frameGeneration = this.frameGeneration;
     this.rendering = true;
 
     try {
@@ -221,13 +230,14 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
         this.lastFrameTime = now;
 
         this.flushPendingRendererOptions();
-        this.renderer.setSize(rectangle.width, rectangle.height);
-        this.grid = await this.renderer.renderToAnsiGrid(deltaTime, this.onFrame);
+        renderer.setSize(rectangle.width, rectangle.height);
+        const grid = await renderer.renderToAnsiGrid(deltaTime, this.onFrame);
 
-        if (!this.running) {
+        if (!this.isCurrentFrame(frameGeneration, renderer)) {
           return;
         }
 
+        this.grid = grid;
         for (let row = rectangle.row; row < rectangle.row + rectangle.height; row += 1) {
           for (let column = rectangle.column; column < rectangle.column + rectangle.width; column += 1) {
             this.queueRerender(row, column);
@@ -238,6 +248,9 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
         this.canvas.updateObjects.push(this);
       }
     } catch (error) {
+      if (!this.isCurrentFrame(frameGeneration, renderer)) {
+        return;
+      }
       this.failed = true;
       this.running = false;
       this.syncPending = false;
@@ -258,7 +271,7 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
       this.rendering = false;
 
       if (this.destroyPending) {
-        this.renderer.destroy();
+        renderer.destroy();
         this.destroyPending = false;
         this.syncPending = false;
       }
@@ -271,6 +284,14 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
         this.frameTimer = setTimeout(() => void this.renderLoop(), this.frameInterval);
       }
     }
+  }
+
+  private invalidateFrame(): void {
+    this.frameGeneration += 1;
+  }
+
+  private isCurrentFrame(generation: number, renderer: ThreeAsciiGridRenderer): boolean {
+    return this.running && this.frameGeneration === generation && this.renderer === renderer;
   }
 
   private flushPendingRendererOptions(): void {
