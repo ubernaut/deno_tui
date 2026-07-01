@@ -16,10 +16,22 @@ export interface CanvasCellUpdate {
   value: string | Uint8Array;
 }
 
+/** Public interface describing a contiguous row range of canvas cell updates. */
+export interface CanvasRowRangeUpdate {
+  row: number;
+  startColumn: number;
+  values: readonly (string | Uint8Array)[];
+}
+
 /** Public interface describing a canvas Cell Sink. */
 export interface CanvasCellSink {
   resize?(columns: number, rows: number): void;
   flush(updates: readonly CanvasCellUpdate[], stats: CanvasRenderStats): void;
+  flushRanges?(
+    ranges: readonly CanvasRowRangeUpdate[],
+    stats: CanvasRenderStats,
+    updates: readonly CanvasCellUpdate[],
+  ): void;
 }
 
 /** Options for configuring ansi Canvas Sink. */
@@ -67,11 +79,33 @@ export class AnsiCanvasSink implements CanvasCellSink {
       this.#stdout.writeSync(textEncoder.encode(drawSequence));
     }
   }
+
+  flushRanges(ranges: readonly CanvasRowRangeUpdate[], _stats: CanvasRenderStats): void {
+    let drawSequence = "";
+    for (const range of ranges) {
+      let column = range.startColumn;
+      drawSequence += moveCursor(range.row, column);
+      for (const value of range.values) {
+        const text = typeof value === "string" ? value : new TextDecoder().decode(value);
+        if (drawSequence.length + text.length > this.#flushLimit) {
+          this.#stdout.writeSync(textEncoder.encode(drawSequence));
+          drawSequence = moveCursor(range.row, column);
+        }
+        drawSequence += text;
+        column += 1;
+      }
+    }
+
+    if (drawSequence.length > 0) {
+      this.#stdout.writeSync(textEncoder.encode(drawSequence));
+    }
+  }
 }
 
 /** Public class implementing a memory Canvas Sink. */
 export class MemoryCanvasSink implements CanvasCellSink {
   readonly updates: CanvasCellUpdate[] = [];
+  readonly rowRanges: CanvasRowRangeUpdate[] = [];
   lastStats?: CanvasRenderStats;
   columns = 0;
   rows = 0;
@@ -86,10 +120,47 @@ export class MemoryCanvasSink implements CanvasCellSink {
     this.lastStats = { ...stats };
   }
 
+  flushRanges(
+    ranges: readonly CanvasRowRangeUpdate[],
+    stats: CanvasRenderStats,
+    updates: readonly CanvasCellUpdate[],
+  ): void {
+    this.rowRanges.push(...ranges.map((range) => ({ ...range, values: [...range.values] })));
+    this.flush(updates, stats);
+  }
+
   clear(): void {
     this.updates.length = 0;
+    this.rowRanges.length = 0;
     this.lastStats = undefined;
   }
+}
+
+/** Coalesces sorted canvas cell updates into contiguous row ranges. */
+export function coalesceCanvasRowRanges(updates: readonly CanvasCellUpdate[]): CanvasRowRangeUpdate[] {
+  const ranges: CanvasRowRangeUpdate[] = [];
+  let active: { row: number; startColumn: number; nextColumn: number; values: (string | Uint8Array)[] } | undefined;
+
+  for (const update of updates) {
+    if (!active || update.row !== active.row || update.column !== active.nextColumn) {
+      if (active) {
+        ranges.push({ row: active.row, startColumn: active.startColumn, values: active.values });
+      }
+      active = {
+        row: update.row,
+        startColumn: update.column,
+        nextColumn: update.column,
+        values: [],
+      };
+    }
+    active.values.push(update.value);
+    active.nextColumn = update.column + 1;
+  }
+
+  if (active) {
+    ranges.push({ row: active.row, startColumn: active.startColumn, values: active.values });
+  }
+  return ranges;
 }
 
 function defaultAnsiFlushLimit(): number {

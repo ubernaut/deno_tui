@@ -9,7 +9,13 @@ import type { ConsoleSize, Rectangle, Stdout } from "../types.ts";
 import { DrawObject } from "./draw_object.ts";
 import { Signal, SignalOfObject } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
-import { AnsiCanvasSink, type CanvasCellSink, type CanvasCellUpdate, type CanvasStdout } from "./sink.ts";
+import {
+  AnsiCanvasSink,
+  type CanvasCellSink,
+  type CanvasCellUpdate,
+  type CanvasStdout,
+  coalesceCanvasRowRanges,
+} from "./sink.ts";
 
 /** Interface defining object that {Canvas}'s constructor can interpret */
 export interface CanvasOptions {
@@ -34,6 +40,7 @@ export interface CanvasRenderStats {
   intersectionCandidateChecks: number;
   intersectionsDirty: boolean;
   dirtyRectangles: number;
+  dirtyRowRanges: number;
   dirtyRows: number;
   dirtyCells: number;
   fullRedraws: number;
@@ -281,6 +288,7 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
       columns.clear();
     }
 
+    const rowRanges = coalesceCanvasRowRanges(cellUpdates);
     this.lastRenderStats = {
       updatedObjects: i,
       renderedObjects,
@@ -289,6 +297,7 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
       intersectionCandidateChecks,
       intersectionsDirty,
       dirtyRectangles: dirtyRectangles.length,
+      dirtyRowRanges: rowRanges.length,
       dirtyRows,
       dirtyCells,
       fullRedraws: renderedObjects,
@@ -296,7 +305,11 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
     };
 
     if (cellUpdates.length > 0) {
-      this.sink.flush(cellUpdates, this.lastRenderStats);
+      if (this.sink.flushRanges) {
+        this.sink.flushRanges(rowRanges, this.lastRenderStats, cellUpdates);
+      } else {
+        this.sink.flush(cellUpdates, this.lastRenderStats);
+      }
     }
 
     this.emit("render");
@@ -312,6 +325,7 @@ function emptyRenderStats(): CanvasRenderStats {
     intersectionCandidateChecks: 0,
     intersectionsDirty: false,
     dirtyRectangles: 0,
+    dirtyRowRanges: 0,
     dirtyRows: 0,
     dirtyCells: 0,
     fullRedraws: 0,

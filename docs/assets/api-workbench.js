@@ -2237,7 +2237,49 @@ var AnsiCanvasSink = class {
       this.#stdout.writeSync(textEncoder2.encode(drawSequence));
     }
   }
+  flushRanges(ranges, _stats) {
+    let drawSequence = "";
+    for (const range of ranges) {
+      let column = range.startColumn;
+      drawSequence += moveCursor(range.row, column);
+      for (const value of range.values) {
+        const text = typeof value === "string" ? value : new TextDecoder().decode(value);
+        if (drawSequence.length + text.length > this.#flushLimit) {
+          this.#stdout.writeSync(textEncoder2.encode(drawSequence));
+          drawSequence = moveCursor(range.row, column);
+        }
+        drawSequence += text;
+        column += 1;
+      }
+    }
+    if (drawSequence.length > 0) {
+      this.#stdout.writeSync(textEncoder2.encode(drawSequence));
+    }
+  }
 };
+function coalesceCanvasRowRanges(updates) {
+  const ranges = [];
+  let active2;
+  for (const update of updates) {
+    if (!active2 || update.row !== active2.row || update.column !== active2.nextColumn) {
+      if (active2) {
+        ranges.push({ row: active2.row, startColumn: active2.startColumn, values: active2.values });
+      }
+      active2 = {
+        row: update.row,
+        startColumn: update.column,
+        nextColumn: update.column,
+        values: []
+      };
+    }
+    active2.values.push(update.value);
+    active2.nextColumn = update.column + 1;
+  }
+  if (active2) {
+    ranges.push({ row: active2.row, startColumn: active2.startColumn, values: active2.values });
+  }
+  return ranges;
+}
 function defaultAnsiFlushLimit() {
   const deno = globalThis;
   return deno.Deno?.build?.os === "windows" ? 1024 : 16384;
@@ -2435,6 +2477,7 @@ var Canvas = class extends EventEmitter {
       }
       columns.clear();
     }
+    const rowRanges = coalesceCanvasRowRanges(cellUpdates);
     this.lastRenderStats = {
       updatedObjects: i,
       renderedObjects,
@@ -2443,13 +2486,18 @@ var Canvas = class extends EventEmitter {
       intersectionCandidateChecks,
       intersectionsDirty,
       dirtyRectangles: dirtyRectangles.length,
+      dirtyRowRanges: rowRanges.length,
       dirtyRows,
       dirtyCells,
       fullRedraws: renderedObjects,
       flushedCells
     };
     if (cellUpdates.length > 0) {
-      this.sink.flush(cellUpdates, this.lastRenderStats);
+      if (this.sink.flushRanges) {
+        this.sink.flushRanges(rowRanges, this.lastRenderStats, cellUpdates);
+      } else {
+        this.sink.flush(cellUpdates, this.lastRenderStats);
+      }
     }
     this.emit("render");
   }
@@ -2463,6 +2511,7 @@ function emptyRenderStats() {
     intersectionCandidateChecks: 0,
     intersectionsDirty: false,
     dirtyRectangles: 0,
+    dirtyRowRanges: 0,
     dirtyRows: 0,
     dirtyCells: 0,
     fullRedraws: 0,

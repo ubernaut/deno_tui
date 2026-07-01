@@ -90,6 +90,7 @@ Deno.test("BrowserCellCanvasSink paints dirty cells to a 2D context", () => {
     intersectionCandidateChecks: 0,
     intersectionsDirty: false,
     dirtyRectangles: 0,
+    dirtyRowRanges: 1,
     dirtyRows: 0,
     dirtyCells: 1,
     fullRedraws: 0,

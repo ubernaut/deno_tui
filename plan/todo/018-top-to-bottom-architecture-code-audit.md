@@ -126,7 +126,7 @@ Work:
 - [ ] Cache z-order/version metadata and invalidate only when object order or geometry changes.
 - [x] Add optional render stats for dirty rectangle count, dirty cell count, full redraw count, and intersection query
       cost.
-- [ ] Keep the current cell sink contract stable while allowing future sinks to consume row ranges.
+- [x] Keep the current cell sink contract stable while allowing future sinks to consume row ranges.
 
 Acceptance checks:
 
