@@ -6,7 +6,12 @@ import {
   asciiDemoPresetSummaries,
   findAsciiDemoPreset,
 } from "../src/three_ascii/demo_presets.ts";
-import { asciiControlValues, createDefaultAsciiOptions, normalizeAsciiOptions } from "../app/ascii_options.ts";
+import {
+  asciiControlValues,
+  clampAsciiControlValue,
+  createDefaultAsciiOptions,
+  normalizeAsciiOptions,
+} from "../app/ascii_options.ts";
 
 Deno.test("ascii demo preset helpers expose stable ids and style filters", () => {
   assertEquals(asciiDemoPresetIds().slice(0, 3), ["opentui-blocks", "glyph-atlas", "mixed-best"]);
@@ -62,4 +67,20 @@ Deno.test("ascii option normalization defaults to blocks but preserves saved gly
   assertEquals(normalizeAsciiOptions({ terminalGlyphStyle: "mixed" }).terminalGlyphStyle, "mixed");
   assertEquals(normalizeAsciiOptions({ terminalGlyphStyle: "glyphs" }).terminalGlyphStyle, "glyphs");
   assertEquals(normalizeAsciiOptions({ terminalGlyphStyle: "unknown" }).terminalGlyphStyle, "blocks");
+});
+
+Deno.test("ascii option normalization clamps numeric config to control ranges", () => {
+  assertEquals(clampAsciiControlValue("wireframeThickness", 99), 32);
+  assertEquals(clampAsciiControlValue("wireframeThickness", -1), 0.5);
+  assertEquals(clampAsciiControlValue("exposure", 1.33), 1.33);
+
+  const normalized = normalizeAsciiOptions({
+    wireframeThickness: 99,
+    exposure: -4,
+    terminalEdgeBias: 99,
+  });
+
+  assertEquals(normalized.wireframeThickness, 32);
+  assertEquals(normalized.exposure, 0.8);
+  assertEquals(normalized.terminalEdgeBias, 1.8);
 });

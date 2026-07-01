@@ -53,9 +53,9 @@ export function normalizeAsciiOptions(
   const base = cloneAsciiOptions(fallback);
   if (!value || typeof value !== "object") return base;
   const candidate = value as Partial<AsciiOptions>;
-  const numeric = <K extends keyof AsciiOptions>(key: K): number => {
+  const numeric = <K extends AsciiNumericControlKey>(key: K): number => {
     const next = Number(candidate[key]);
-    return Number.isFinite(next) ? next : Number(base[key]);
+    return clampAsciiControlValue(key, Number.isFinite(next) ? next : Number(base[key]));
   };
   return {
     preset: typeof candidate.preset === "string" ? candidate.preset : base.preset,
@@ -126,19 +126,7 @@ export function asciiEffectOptions(options: AsciiOptions): AcerolaAsciiNodeOptio
 }
 
 export function asciiControlValues(
-  key: keyof Pick<
-    AsciiOptions,
-    | "edgeThreshold"
-    | "normalThreshold"
-    | "depthThreshold"
-    | "exposure"
-    | "attenuation"
-    | "blendWithBase"
-    | "depthFalloff"
-    | "depthOffset"
-    | "wireframeThickness"
-    | "terminalEdgeBias"
-  >,
+  key: AsciiNumericControlKey,
 ) {
   switch (key) {
     case "edgeThreshold":
@@ -164,20 +152,30 @@ export function asciiControlValues(
   }
 }
 
+export type AsciiNumericControlKey = keyof Pick<
+  AsciiOptions,
+  | "edgeThreshold"
+  | "normalThreshold"
+  | "depthThreshold"
+  | "exposure"
+  | "attenuation"
+  | "blendWithBase"
+  | "depthFalloff"
+  | "depthOffset"
+  | "wireframeThickness"
+  | "terminalEdgeBias"
+>;
+
+export function clampAsciiControlValue(key: AsciiNumericControlKey, value: number): number {
+  const values = asciiControlValues(key);
+  const min = values[0] ?? 0;
+  const max = values.at(-1) ?? min;
+  if (!Number.isFinite(value)) return min;
+  return Math.max(min, Math.min(max, value));
+}
+
 export function formatAsciiControlValue(
-  key: keyof Pick<
-    AsciiOptions,
-    | "edgeThreshold"
-    | "normalThreshold"
-    | "depthThreshold"
-    | "exposure"
-    | "attenuation"
-    | "blendWithBase"
-    | "depthFalloff"
-    | "depthOffset"
-    | "wireframeThickness"
-    | "terminalEdgeBias"
-  >,
+  key: AsciiNumericControlKey,
   value: number,
 ) {
   switch (key) {

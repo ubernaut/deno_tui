@@ -184,6 +184,8 @@ Acceptance checks:
 - [x] Three ASCII benchmarks track CPU grid assembly and GPU readback cost separately.
   - [x] Added a separate deterministic readback-copy benchmark for fill, edge, and color buffer payloads.
 - [ ] Workbench and standalone Three demos share the same config normalization and lifecycle helpers.
+  - [x] Clamped normalized ASCII numeric config values to the same ranges exposed by shared controls, including
+        wireframe thickness `0.5..32`, so saved per-widget configs cannot restore invalid renderer settings.
 
 ### P2: Make System Metrics Provider-Based And Testable
 
