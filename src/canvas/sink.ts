@@ -3,6 +3,7 @@ import { CLEAR_SCREEN, moveCursor } from "../utils/ansi_codes.ts";
 import type { CanvasRenderStats } from "./canvas.ts";
 
 const textEncoder = new TextEncoder();
+const textDecoder = new TextDecoder();
 
 /** Public interface describing a canvas Stdout. */
 export interface CanvasStdout {
@@ -60,7 +61,7 @@ export class AnsiCanvasSink implements CanvasCellSink {
     let lastColumn = -1;
 
     for (const update of updates) {
-      const value = typeof update.value === "string" ? update.value : new TextDecoder().decode(update.value);
+      const value = typeof update.value === "string" ? update.value : textDecoder.decode(update.value);
       if (update.row !== lastRow || update.column !== lastColumn + 1) {
         drawSequence += moveCursor(update.row, update.column);
       }
@@ -86,7 +87,7 @@ export class AnsiCanvasSink implements CanvasCellSink {
       let column = range.startColumn;
       drawSequence += moveCursor(range.row, column);
       for (const value of range.values) {
-        const text = typeof value === "string" ? value : new TextDecoder().decode(value);
+        const text = typeof value === "string" ? value : textDecoder.decode(value);
         if (drawSequence.length + text.length > this.#flushLimit) {
           this.#stdout.writeSync(textEncoder.encode(drawSequence));
           drawSequence = moveCursor(range.row, column);

@@ -2472,6 +2472,7 @@ var DrawObjectSpatialIndex = class _DrawObjectSpatialIndex {
 
 // src/canvas/sink.ts
 var textEncoder2 = new TextEncoder();
+var textDecoder2 = new TextDecoder();
 var AnsiCanvasSink = class {
   #stdout;
   #flushLimit;
@@ -2487,7 +2488,7 @@ var AnsiCanvasSink = class {
     let lastRow = -1;
     let lastColumn = -1;
     for (const update of updates) {
-      const value = typeof update.value === "string" ? update.value : new TextDecoder().decode(update.value);
+      const value = typeof update.value === "string" ? update.value : textDecoder2.decode(update.value);
       if (update.row !== lastRow || update.column !== lastColumn + 1) {
         drawSequence += moveCursor(update.row, update.column);
       }
@@ -2509,7 +2510,7 @@ var AnsiCanvasSink = class {
       let column = range.startColumn;
       drawSequence += moveCursor(range.row, column);
       for (const value of range.values) {
-        const text = typeof value === "string" ? value : new TextDecoder().decode(value);
+        const text = typeof value === "string" ? value : textDecoder2.decode(value);
         if (drawSequence.length + text.length > this.#flushLimit) {
           this.#stdout.writeSync(textEncoder2.encode(drawSequence));
           drawSequence = moveCursor(range.row, column);
@@ -10472,6 +10473,7 @@ var NoopLifecycleController = class {
 };
 
 // src/web/cell_canvas_sink.ts
+var textDecoder3 = new TextDecoder();
 var BrowserCellCanvasSink = class {
   #canvas;
   #context;
@@ -10514,7 +10516,7 @@ var BrowserCellCanvasSink = class {
   }
   flush(updates, stats) {
     for (const update of updates) {
-      const value = typeof update.value === "string" ? update.value : new TextDecoder().decode(update.value);
+      const value = typeof update.value === "string" ? update.value : textDecoder3.decode(update.value);
       const parsed = parseAnsiCell(value);
       const x = update.column * this.#cellWidth;
       const y = update.row * this.#cellHeight;
@@ -11051,6 +11053,9 @@ var WebTuiHost = class extends EventEmitter {
 function createWebTui(options) {
   return new WebTuiHost(options);
 }
+
+// src/web/remote_terminal.ts
+var textDecoder4 = new TextDecoder();
 
 // src/runtime/storage_diagnostics.ts
 var StorageFallbackDiagnostics = class {

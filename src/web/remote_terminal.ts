@@ -14,6 +14,8 @@ import type {
 } from "../input_reader/types.ts";
 import type { TerminalSessionHandle } from "../runtime/terminal_backend.ts";
 
+const textDecoder = new TextDecoder();
+
 /** Input event payload sent from a remote client to a hosted terminal session. */
 export type RemoteTerminalInputEvent =
   | { kind: "keyPress"; event: KeyPressEvent }
@@ -410,7 +412,7 @@ export function decodeRemoteTerminalServerMessage(message: string | Uint8Array):
 }
 
 function decodeMessage(message: string | Uint8Array): string {
-  return typeof message === "string" ? message : new TextDecoder().decode(message);
+  return typeof message === "string" ? message : textDecoder.decode(message);
 }
 
 function reviveRemoteValue(_key: string, value: unknown): unknown {

@@ -5,6 +5,8 @@ import type { CanvasCellSink, CanvasCellUpdate } from "../canvas/sink.ts";
 import type { CanvasRenderStats } from "../canvas/canvas.ts";
 import { stripStyles } from "../utils/strings.ts";
 
+const textDecoder = new TextDecoder();
+
 /** Options for drawing terminal cells into a browser Canvas2D surface. */
 export interface BrowserCellCanvasSinkOptions {
   canvas: HTMLCanvasElement | OffscreenCanvas;
@@ -93,7 +95,7 @@ export class BrowserCellCanvasSink implements CanvasCellSink {
 
   flush(updates: readonly CanvasCellUpdate[], stats: CanvasRenderStats): void {
     for (const update of updates) {
-      const value = typeof update.value === "string" ? update.value : new TextDecoder().decode(update.value);
+      const value = typeof update.value === "string" ? update.value : textDecoder.decode(update.value);
       const parsed = parseAnsiCell(value);
       const x = update.column * this.#cellWidth;
       const y = update.row * this.#cellHeight;
