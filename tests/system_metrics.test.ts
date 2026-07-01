@@ -116,6 +116,53 @@ Deno.test("SystemMonitor bounds process scans and reports degraded sources", asy
   );
 });
 
+Deno.test("SystemMonitor supports process sort keys and refresh cadence", async () => {
+  const provider = new FixtureMetricsProvider();
+  provider.files.set("/proc/stat", procStatFirst());
+  provider.files.set("/proc/uptime", "123.45 100.00\n");
+  provider.files.set("/proc/net/dev", procNetDev(1_000, 2_000));
+  provider.files.set("/proc/40/stat", processStatForPid(40, 100, 128, 0));
+  provider.files.set("/proc/41/stat", processStatForPid(41, 100, 512, 1));
+  provider.files.set("/proc/42/stat", processStatForPid(42, 100, 256, 0));
+  provider.dirs.set("/proc", [
+    { name: "40", isDirectory: true },
+    { name: "41", isDirectory: true },
+    { name: "42", isDirectory: true },
+  ]);
+
+  const monitor = new SystemMonitor({
+    historyLength: 4,
+    provider,
+    processSortKey: "memory",
+    processRefreshMs: 1_000,
+  });
+  await monitor.sample();
+
+  provider.nowValue = 1_500;
+  provider.files.set("/proc/stat", procStatSecond());
+  provider.files.set("/proc/net/dev", procNetDev(126_000, 252_000));
+  provider.files.set("/proc/40/stat", processStatForPid(40, 999, 4096, 0));
+  provider.files.set("/proc/41/stat", processStatForPid(41, 100, 64, 1));
+  await monitor.sample();
+
+  const cached = monitor.snapshot.peek();
+  assertEquals(cached.processes[0]?.pid, 41);
+  assertEquals(
+    cached.diagnostics.some((diagnostic) => diagnostic.source === "process" && diagnostic.status === "stale"),
+    true,
+  );
+
+  provider.nowValue = 2_500;
+  await monitor.sample();
+
+  const refreshed = monitor.snapshot.peek();
+  assertEquals(refreshed.processes[0]?.pid, 40);
+  assertEquals(
+    refreshed.diagnostics.some((diagnostic) => diagnostic.source === "process" && diagnostic.status === "ok"),
+    true,
+  );
+});
+
 class FixtureMetricsProvider implements SystemMetricsProvider {
   nowValue = 1_000;
   files = new Map<string, string>();

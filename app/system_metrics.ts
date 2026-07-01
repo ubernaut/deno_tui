@@ -50,6 +50,13 @@ type GpuSample = {
   diagnostic?: SystemMetricDiagnostic;
 };
 
+export type SystemProcessSortKey = "cpu" | "memory" | "pid" | "name";
+
+type ProcessCache = {
+  sampledAt: number;
+  processes: ProcessSnapshot[];
+};
+
 export interface SystemMetricsDirEntry {
   name: string;
   isDirectory: boolean;
@@ -134,6 +141,8 @@ export interface SystemMonitorOptions {
   provider?: SystemMetricsProvider;
   processLimit?: number;
   processScanLimit?: number;
+  processSortKey?: SystemProcessSortKey;
+  processRefreshMs?: number;
   diskCacheMs?: number;
 }
 
@@ -151,6 +160,9 @@ export class SystemMonitor {
   #historyLength: number;
   #processLimit: number;
   #processScanLimit: number;
+  #processSortKey: SystemProcessSortKey;
+  #processRefreshMs: number;
+  #processCache?: ProcessCache;
   #diskCacheMs: number;
   #hostname: string;
   #osRelease: string;
@@ -166,6 +178,8 @@ export class SystemMonitor {
     this.#historyLength = normalizePositiveInteger(options.historyLength, 60);
     this.#processLimit = normalizePositiveInteger(options.processLimit, 100);
     this.#processScanLimit = normalizePositiveInteger(options.processScanLimit, 4096);
+    this.#processSortKey = options.processSortKey ?? "cpu";
+    this.#processRefreshMs = normalizeNonNegativeInteger(options.processRefreshMs, 0);
     this.#diskCacheMs = normalizePositiveInteger(options.diskCacheMs, 10_000);
     this.#hostname = safeHostname(this.#provider);
     this.#osRelease = safeOsRelease(this.#provider);
@@ -192,6 +206,9 @@ export class SystemMonitor {
     try {
       const sampleStarted = performance.now();
       const current = this.snapshot.peek();
+      const sampledAt = this.#provider.now();
+      const useCachedProcesses = this.#processRefreshMs > 0 && this.#processCache !== undefined &&
+        sampledAt - this.#processCache.sampledAt < this.#processRefreshMs;
       const [
         cpuText,
         uptimeText,
@@ -199,7 +216,7 @@ export class SystemMonitor {
         temperatureSample,
         diskSample,
         gpuSample,
-        rawProcesses,
+        rawProcessSample,
       ] = await Promise.all([
         this.#provider.readTextFile("/proc/stat"),
         this.#provider.readTextFile("/proc/uptime"),
@@ -207,7 +224,7 @@ export class SystemMonitor {
         sampleTemperatures(this.#provider),
         this.#sampleDisks(),
         sampleGpu(this.#provider, current.gpu),
-        this.#collectProcessStats(),
+        useCachedProcesses ? Promise.resolve(undefined) : this.#collectProcessStats(),
       ]);
 
       const cpuSample = this.#sampleCpu(cpuText, current);
@@ -217,25 +234,25 @@ export class SystemMonitor {
       const memoryPercent = memoryInfo.total > 0 ? (memoryUsed / memoryInfo.total) * 100 : 0;
       const swapPercent = memoryInfo.swapTotal > 0 ? (swapUsed / memoryInfo.swapTotal) * 100 : 0;
       const networkSample = this.#sampleNetwork(netText);
-      const processes = this.#finalizeProcesses(rawProcesses, cpuSample.totalDelta, memoryInfo.total);
+      const processSample = this.#sampleProcesses(rawProcessSample, cpuSample.totalDelta, memoryInfo.total, sampledAt);
       const uptimeSeconds = Number.parseFloat(uptimeText.split(" ")[0] ?? "0");
       const loadavg = this.#provider.loadavg();
       const diagnostics = compactDiagnostics([
         temperatureSample.diagnostic,
         diskSample.diagnostic,
         gpuSample.diagnostic,
-        processDiagnostics(rawProcesses, this.#provider.now()),
+        processSample.diagnostic,
         {
           source: "sample",
           status: "ok",
-          detail: `sampled ${processes.length} processes`,
+          detail: `sampled ${processSample.processes.length} processes`,
           durationMs: performance.now() - sampleStarted,
-          sampledAt: this.#provider.now(),
+          sampledAt,
         },
       ]);
 
       const nextSnapshot: SystemSnapshot = {
-        timestamp: this.#provider.now(),
+        timestamp: sampledAt,
         hostname: this.#hostname,
         osRelease: this.#osRelease,
         uptimeSeconds,
@@ -279,7 +296,7 @@ export class SystemMonitor {
           clamp(networkSample.totalTxRate / 125_000_000, 0, 1),
           this.#historyLength,
         ),
-        processes,
+        processes: processSample.processes,
         alerts: collectAlerts({
           cpuOverall: cpuSample.overall,
           memoryPercent,
@@ -527,10 +544,55 @@ export class SystemMonitor {
 
     this.#processCpu = nextProcessCpu;
 
-    return processes.sort((a, b) => b.cpuPercent - a.cpuPercent || b.memoryBytes - a.memoryBytes).slice(
-      0,
-      this.#processLimit,
-    );
+    return processes.sort(processComparator(this.#processSortKey)).slice(0, this.#processLimit);
+  }
+
+  #sampleProcesses(
+    sample: ProcessStatsSample | undefined,
+    totalDelta: number,
+    totalMemory: number,
+    sampledAt: number,
+  ): { processes: ProcessSnapshot[]; diagnostic: SystemMetricDiagnostic } {
+    if (!sample) {
+      const cached = this.#processCache;
+      return {
+        processes: cached?.processes ?? [],
+        diagnostic: {
+          source: "process",
+          status: "stale",
+          detail: cached
+            ? `using cached process rows from ${Math.max(0, sampledAt - cached.sampledAt)}ms ago`
+            : "process cache unavailable",
+          sampledAt,
+        },
+      };
+    }
+
+    const processes = this.#finalizeProcesses(sample, totalDelta, totalMemory);
+    this.#processCache = { sampledAt, processes };
+    return {
+      processes,
+      diagnostic: processDiagnostics(sample, sampledAt),
+    };
+  }
+}
+
+function processComparator(sortKey: SystemProcessSortKey): (left: ProcessSnapshot, right: ProcessSnapshot) => number {
+  switch (sortKey) {
+    case "memory":
+      return (left, right) =>
+        right.memoryBytes - left.memoryBytes || right.cpuPercent - left.cpuPercent ||
+        left.pid - right.pid;
+    case "pid":
+      return (left, right) => left.pid - right.pid;
+    case "name":
+      return (left, right) =>
+        left.name.localeCompare(right.name) || right.cpuPercent - left.cpuPercent ||
+        left.pid - right.pid;
+    case "cpu":
+      return (left, right) =>
+        right.cpuPercent - left.cpuPercent || right.memoryBytes - left.memoryBytes ||
+        left.pid - right.pid;
   }
 }
 
@@ -706,6 +768,11 @@ function normalizePositiveInteger(value: number | undefined, fallback: number): 
   return Math.max(1, Math.floor(value!));
 }
 
+function normalizeNonNegativeInteger(value: number | undefined, fallback: number): number {
+  if (!Number.isFinite(value)) return fallback;
+  return Math.max(0, Math.floor(value!));
+}
+
 function compactDiagnostics(
   diagnostics: Array<SystemMetricDiagnostic | undefined>,
 ): SystemMetricDiagnostic[] {
@@ -725,6 +792,8 @@ function diagnosticWeight(status: SystemMetricDiagnostic["status"]): number {
     case "degraded":
       return 3;
     case "limited":
+      return 2;
+    case "stale":
       return 2;
     case "ok":
       return 1;

@@ -176,7 +176,7 @@ Work:
 - [x] Add Linux provider implementations plus fixture providers for tests and demos.
 - [ ] Add structured sampler diagnostics: unavailable source, permission denied, command missing, timeout, stale data,
       and sample duration.
-- [ ] Bound expensive process scans and support configurable process limits, sort keys, and refresh cadence.
+- [x] Bound expensive process scans and support configurable process limits, sort keys, and refresh cadence.
 - [ ] Add GPU provider abstraction for NVIDIA now and future AMD/Intel support later.
 
 Acceptance checks:

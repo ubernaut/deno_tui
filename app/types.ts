@@ -166,7 +166,7 @@ export interface GpuSnapshot {
   memoryClockMhz: number | null;
 }
 
-export type SystemMetricStatus = "ok" | "degraded" | "unavailable" | "limited";
+export type SystemMetricStatus = "ok" | "degraded" | "unavailable" | "limited" | "stale";
 
 export interface SystemMetricDiagnostic {
   source: string;
