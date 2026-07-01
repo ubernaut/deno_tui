@@ -11,6 +11,15 @@ export function maxTextWidth(values: readonly string[]): number {
   return values.reduce((max, value) => Math.max(max, textWidth(value)), 0);
 }
 
+/** Returns the maximum printable width among values projected to display text. */
+export function maxTextWidthBy<T>(values: Iterable<T>, project: (value: T) => string): number {
+  let max = 0;
+  for (const value of values) {
+    max = Math.max(max, textWidth(project(value)));
+  }
+  return max;
+}
+
 /** Returns the maximum printable width among non-empty trimmed rows. */
 export function maxTrimmedTextWidth(values: readonly string[]): number {
   return values.reduce((max, value) => Math.max(max, textWidth(value.trimEnd())), 0);

@@ -3860,6 +3860,48 @@
       "documented": true
     },
     {
+      "module": "src/app/workbench_text.ts",
+      "name": "compactSpaces",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_text.ts",
+      "name": "maxTextWidth",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_text.ts",
+      "name": "maxTextWidthBy",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_text.ts",
+      "name": "maxTrimmedTextWidth",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_text.ts",
+      "name": "visibleMenuSlice",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_text.ts",
+      "name": "wrapPlainText",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
       "module": "src/app/workbench_titlebar.ts",
       "name": "layoutWorkbenchTitlebar",
       "kind": "function",

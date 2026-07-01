@@ -10149,6 +10149,18 @@ function layoutWorkbenchTitlebar(options) {
   };
 }
 
+// src/app/workbench_text.ts
+function maxTextWidth(values) {
+  return values.reduce((max2, value) => Math.max(max2, textWidth(value)), 0);
+}
+function maxTextWidthBy(values, project) {
+  let max2 = 0;
+  for (const value of values) {
+    max2 = Math.max(max2, textWidth(project(value)));
+  }
+  return max2;
+}
+
 // src/app/workbench_workspace.ts
 function defaultWorkbenchMinimizedState(panelIds2, minimized2 = {}) {
   const state = {};
@@ -11985,7 +11997,7 @@ function draw() {
       rect: menuItemRect(
         17,
         "theme",
-        Math.max(22, ...themes.map((entry) => textWidth(entry.label) + 6)),
+        Math.max(22, maxTextWidthBy(themes, (entry) => entry.label) + 6),
         themes.length + 2
       ),
       items: themes.map((entry) => entry.label),
@@ -13040,7 +13052,7 @@ function renderControls(frame, rect) {
       column: rect.column + 2,
       row,
       width: Math.min(
-        Math.max(16, Math.max(...dropdown.items.peek().map((item) => textWidth(item))) + 6),
+        Math.max(16, maxTextWidth(dropdown.items.peek()) + 6),
         Math.max(16, rect.width - 4)
       ),
       height: dropdown.items.peek().length + 2

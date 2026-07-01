@@ -35,6 +35,8 @@ import {
   layoutWorkbenchTabs,
   layoutWorkbenchTitlebar,
   layoutWorkbenchTopMenuItemRect,
+  maxTextWidth,
+  maxTextWidthBy,
   MenuBarController,
   modalContentHeight,
   ModalController,
@@ -610,7 +612,7 @@ function draw(): void {
       rect: menuItemRect(
         17,
         "theme",
-        Math.max(22, ...themes.map((entry) => textWidth(entry.label) + 6)),
+        Math.max(22, maxTextWidthBy(themes, (entry) => entry.label) + 6),
         themes.length + 2,
       ),
       items: themes.map((entry) => entry.label),
@@ -1774,7 +1776,7 @@ function renderControls(frame: string[], rect: Rectangle): void {
       column: rect.column + 2,
       row,
       width: Math.min(
-        Math.max(16, Math.max(...dropdown.items.peek().map((item) => textWidth(item))) + 6),
+        Math.max(16, maxTextWidth(dropdown.items.peek()) + 6),
         Math.max(16, rect.width - 4),
       ),
       height: dropdown.items.peek().length + 2,

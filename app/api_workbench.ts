@@ -43,6 +43,7 @@ import {
   layoutWorkbenchTabs,
   layoutWorkbenchTitlebar,
   layoutWorkbenchTopMenuItemRect,
+  maxTextWidthBy,
   normalizeWorkbenchWorkspaceName,
   normalizeWorkbenchWorkspaceStorage,
   prepareWorkbenchFrame,
@@ -926,7 +927,7 @@ function renderHeader(frame: Frame): void {
     const themeRect = menuItemRect(
       menuStart,
       "theme",
-      Math.max(20, ...themes.map((entry) => textWidth(entry.label) + 6)),
+      Math.max(20, maxTextWidthBy(themes, (entry) => entry.label) + 6),
       themes.length + 2,
     );
     dropdownOverlay = {
@@ -943,7 +944,7 @@ function renderHeader(frame: Frame): void {
     const menuRect = menuItemRect(
       menuStart,
       "new",
-      Math.max(28, ...labels.map((label) => textWidth(label) + 6)),
+      Math.max(28, maxTextWidth(labels) + 6),
       visible.items.length + 2,
     );
     dropdownOverlay = {
@@ -961,7 +962,7 @@ function renderHeader(frame: Frame): void {
     const menuRect = menuItemRect(
       menuStart,
       "workspace",
-      Math.max(30, ...labels.map((label) => textWidth(label) + 6)),
+      Math.max(30, maxTextWidth(labels) + 6),
       visible.items.length + 2,
     );
     dropdownOverlay = {
@@ -1579,8 +1580,8 @@ function renderControls(frame: Frame, rect: Rectangle): void {
     action: "toggle",
   });
   if (dropdown.expanded.peek()) {
-    const items = [...dropdown.items.peek()];
-    const contentWidth = Math.max(...items.map((item) => textWidth(item)), textWidth(dropdown.label()), 12);
+    const items = dropdown.items.peek();
+    const contentWidth = Math.max(maxTextWidth(items), textWidth(dropdown.label()), 12);
     dropdownOverlay = {
       kind: "control",
       coordinate: "workspace",

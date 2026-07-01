@@ -3,6 +3,7 @@ import { assertEquals } from "./deps.ts";
 import {
   compactSpaces,
   maxTextWidth,
+  maxTextWidthBy,
   maxTrimmedTextWidth,
   visibleMenuSlice,
   wrapPlainText,
@@ -13,6 +14,7 @@ const fit = (value: string, width: number) => value.slice(0, Math.max(0, width))
 Deno.test("workbench text helpers normalize whitespace and measure rows", () => {
   assertEquals(compactSpaces("  a   b\n c  "), "a b c");
   assertEquals(maxTextWidth(["abc", "abcdef", "x"]), 6);
+  assertEquals(maxTextWidthBy([{ label: "abc" }, { label: "abcdef" }], (entry) => entry.label), 6);
   assertEquals(maxTrimmedTextWidth(["abc   ", "abcdef", "x"]), 6);
 });
 
