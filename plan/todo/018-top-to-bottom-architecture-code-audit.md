@@ -171,6 +171,8 @@ Work:
         tight width-bounded loop.
   - [x] Reworked shared visualization grid/matrix primitives to avoid nested `Array.from()` and map/filter chains in
         monitor and Neon panel render paths.
+  - [x] Reworked `buildVisualizationDrive()` to avoid temporary source/value arrays, spread min/max calls, and sampled
+        `Array.from()` helpers in the dynamic visualization hot path.
 
 Acceptance checks:
 
