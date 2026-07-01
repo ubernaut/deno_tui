@@ -470,6 +470,8 @@ Work:
   - [x] Added focused `./theme`, `./runtime`, `./terminal`, and `./testing` beta export targets so framework authors can
         avoid the broad root entrypoint.
 - [x] Add an API diff report that groups new exports by stability tier before release.
+  - [x] Hardened the API inventory CLI argument parser so unknown flags and extra positionals fail clearly instead of
+        being mistaken for public entrypoint paths.
 - [x] Add package docs that show preferred imports for apps versus framework authors.
 - [ ] Reduce accidental demo-only exports from stable entrypoints where possible without breaking current users.
 

@@ -55,6 +55,17 @@ export interface ApiInventorySuccessOptions {
   minDocumentationCoverage?: number;
 }
 
+export interface ApiInventoryCliOptions {
+  entrypoint: string;
+  json: boolean;
+  check: boolean;
+  quiet: boolean;
+  failDuplicates: boolean;
+  minDocumentationCoverage?: number;
+  baselinePath?: string;
+  updateBaselinePath?: string;
+}
+
 export interface ApiInventorySymbolChange {
   module: string;
   name: string;
@@ -495,15 +506,24 @@ function normalizePath(path: string): string {
 }
 
 if (import.meta.main) {
-  const json = Deno.args.includes("--json");
-  const check = Deno.args.includes("--check");
-  const quiet = Deno.args.includes("--quiet");
-  const failDuplicates = Deno.args.includes("--fail-duplicates");
-  const minDocumentationCoverage = parseMinimumDocumentationCoverage(Deno.args);
-  const entrypoint = Deno.args.find((arg) => !arg.startsWith("--")) ?? "mod.ts";
+  let cli: ApiInventoryCliOptions;
+  try {
+    cli = parseApiInventoryCliArgs(Deno.args);
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    Deno.exit(2);
+  }
+  const {
+    baselinePath,
+    check,
+    entrypoint,
+    failDuplicates,
+    json,
+    minDocumentationCoverage,
+    quiet,
+    updateBaselinePath,
+  } = cli;
   const inventory = await createApiInventory(entrypoint);
-  const baselinePath = parseStringOption(Deno.args, "--baseline=");
-  const updateBaselinePath = parseStringOption(Deno.args, "--update-baseline=");
   let baselineDiff: ApiInventoryDiff | undefined;
 
   if (updateBaselinePath) {
@@ -535,15 +555,61 @@ if (import.meta.main) {
   }
 }
 
-function parseMinimumDocumentationCoverage(args: readonly string[]): number | undefined {
-  const prefix = "--min-doc-coverage=";
-  const match = args.find((arg) => arg.startsWith(prefix));
-  if (!match) return undefined;
-  const raw = Number(match.slice(prefix.length));
-  if (!Number.isFinite(raw)) return undefined;
+export function parseApiInventoryCliArgs(args: readonly string[]): ApiInventoryCliOptions {
+  let entrypoint: string | undefined;
+  let minDocumentationCoverage: number | undefined;
+  let baselinePath: string | undefined;
+  let updateBaselinePath: string | undefined;
+  const flags = {
+    json: false,
+    check: false,
+    quiet: false,
+    failDuplicates: false,
+  };
+
+  for (const arg of args) {
+    if (arg === "--") continue;
+    else if (arg === "--json") flags.json = true;
+    else if (arg === "--check") flags.check = true;
+    else if (arg === "--quiet") flags.quiet = true;
+    else if (arg === "--fail-duplicates") flags.failDuplicates = true;
+    else if (arg.startsWith("--min-doc-coverage=")) {
+      minDocumentationCoverage = parseMinimumDocumentationCoverageValue(
+        requiredOptionValue(arg, "--min-doc-coverage="),
+      );
+    } else if (arg.startsWith("--baseline=")) {
+      baselinePath = requiredOptionValue(arg, "--baseline=");
+    } else if (arg.startsWith("--update-baseline=")) {
+      updateBaselinePath = requiredOptionValue(arg, "--update-baseline=");
+    } else if (arg.startsWith("--")) {
+      throw new Error(`Unknown api-inventory option: ${arg}`);
+    } else if (!entrypoint) {
+      entrypoint = arg;
+    } else {
+      throw new Error(`Unexpected api-inventory argument: ${arg}`);
+    }
+  }
+
+  return {
+    entrypoint: entrypoint ?? "mod.ts",
+    json: flags.json,
+    check: flags.check,
+    quiet: flags.quiet,
+    failDuplicates: flags.failDuplicates,
+    minDocumentationCoverage,
+    baselinePath,
+    updateBaselinePath,
+  };
+}
+
+function parseMinimumDocumentationCoverageValue(value: string): number {
+  const raw = Number(value);
+  if (!Number.isFinite(raw)) throw new Error(`Invalid --min-doc-coverage value: ${value}`);
   return raw > 1 ? raw / 100 : Math.max(0, raw);
 }
 
-function parseStringOption(args: readonly string[], prefix: string): string | undefined {
-  return args.find((arg) => arg.startsWith(prefix))?.slice(prefix.length);
+function requiredOptionValue(arg: string, prefix: string): string {
+  const value = arg.slice(prefix.length);
+  if (value.length === 0) throw new Error(`Missing value for ${prefix.slice(0, -1)}`);
+  return value;
 }

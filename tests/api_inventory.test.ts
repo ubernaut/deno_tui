@@ -8,6 +8,7 @@ import {
   formatApiInventoryDiff,
   inventorySucceeded,
   parseApiExports,
+  parseApiInventoryCliArgs,
   parseApiSymbols,
 } from "../scripts/api_inventory.ts";
 
@@ -241,3 +242,42 @@ Deno.test("api inventory baseline detects accidental stable export drift", async
   assertEquals(diff.addedByStability.stable.map((symbol) => symbol.name), ["surpriseExport"]);
   assertEquals(diff.removed, []);
 });
+
+Deno.test("api inventory cli parser validates flags before choosing an entrypoint", () => {
+  assertEquals(
+    parseApiInventoryCliArgs([
+      "--",
+      "mod.web.ts",
+      "--json",
+      "--check",
+      "--quiet",
+      "--fail-duplicates",
+      "--min-doc-coverage=100",
+      "--baseline=docs/api-stable-baseline.json",
+    ]),
+    {
+      entrypoint: "mod.web.ts",
+      json: true,
+      check: true,
+      quiet: true,
+      failDuplicates: true,
+      minDocumentationCoverage: 1,
+      baselinePath: "docs/api-stable-baseline.json",
+      updateBaselinePath: undefined,
+    },
+  );
+});
+
+Deno.test("api inventory cli parser rejects unknown flags and extra positionals", () => {
+  assertEquals(captureCliParseError(["--format", "markdown"]), "Unknown api-inventory option: --format");
+  assertEquals(captureCliParseError(["mod.ts", "markdown"]), "Unexpected api-inventory argument: markdown");
+});
+
+function captureCliParseError(args: readonly string[]): string {
+  try {
+    parseApiInventoryCliArgs(args);
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error);
+  }
+  return "";
+}
