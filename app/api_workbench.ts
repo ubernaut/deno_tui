@@ -21,7 +21,7 @@ import { renderStatusBar } from "../src/components/statusbar.ts";
 import { renderStepper, StepperController } from "../src/components/stepper.ts";
 import { formatTerminalOutputLine } from "../src/components/terminal_output.ts";
 import { TextBoxController, wrapTextBoxLines } from "../src/components/textbox.ts";
-import { clipRect, HitTargetStack, inset, intersects } from "../src/app/hit_targets.ts";
+import { clipRect, HitTargetStack, inset, intersects, translateHitTargets } from "../src/app/hit_targets.ts";
 import {
   buttonText,
   centerCellText as centerText,
@@ -3022,19 +3022,12 @@ function translateContentHits(
   viewport: Rectangle,
   offset: { columns: number; rows: number },
 ): void {
-  for (let index = hitTargets.length - 1; index >= startIndex; index -= 1) {
-    const target = hitTargets.at(index)!;
-    const translated = {
-      ...target.rect,
-      column: viewport.column + target.rect.column - offset.columns,
-      row: viewport.row + target.rect.row - offset.rows,
-    };
-    if (!intersects(translated, viewport)) {
-      hitTargets.remove(index);
-      continue;
-    }
-    hitTargets.updateRect(index, clipRect(translated, viewport));
-  }
+  translateHitTargets(hitTargets, {
+    startIndex,
+    columnDelta: viewport.column - offset.columns,
+    rowDelta: viewport.row - offset.rows,
+    clip: viewport,
+  });
 }
 
 function translateDropdownOverlayForWindow(
@@ -3261,15 +3254,7 @@ function visualizationIdSupportsThree(visualizationId: string): boolean {
 }
 
 function translateWorkspaceHits(startIndex: number, rowDelta: number, clip: Rectangle): void {
-  for (let index = hitTargets.length - 1; index >= startIndex; index -= 1) {
-    const target = hitTargets.at(index)!;
-    const translated = { ...target.rect, row: target.rect.row + rowDelta };
-    if (!intersects(translated, clip)) {
-      hitTargets.remove(index);
-      continue;
-    }
-    hitTargets.updateRect(index, clipRect(translated, clip));
-  }
+  translateHitTargets(hitTargets, { startIndex, rowDelta, clip });
 }
 
 function withWorkspacePlacement(bounds: Rectangle, offset: number, render: () => void): void {

@@ -1305,6 +1305,20 @@
       "documented": true
     },
     {
+      "module": "src/app/hit_targets.ts",
+      "name": "translateHitTargets",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/hit_targets.ts",
+      "name": "TranslateHitTargetsOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
       "module": "src/app/input_commands.ts",
       "name": "bindInputCommands",
       "kind": "function",

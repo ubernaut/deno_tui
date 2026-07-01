@@ -1,5 +1,5 @@
 import { assertEquals } from "./deps.ts";
-import { clipRect, contains, HitTargetStack, inset, intersects } from "../src/app/hit_targets.ts";
+import { clipRect, contains, HitTargetStack, inset, intersects, translateHitTargets } from "../src/app/hit_targets.ts";
 
 Deno.test("HitTargetStack finds the topmost matching target", () => {
   const stack = new HitTargetStack<string>();
@@ -27,6 +27,28 @@ Deno.test("HitTargetStack supports indexed update remove clear and cloned inspec
   stack.add({ column: 0, row: 0, width: 1, height: 1 }, { id: "b" });
   stack.clear();
   assertEquals(stack.length, 0);
+});
+
+Deno.test("translateHitTargets translates clips and removes a stack suffix", () => {
+  const stack = new HitTargetStack<string>();
+  stack.add({ column: 0, row: 0, width: 2, height: 2 }, "before");
+  const startIndex = stack.length;
+  stack.add({ column: 0, row: 0, width: 4, height: 2 }, "visible");
+  stack.add({ column: 7, row: 4, width: 4, height: 2 }, "clipped");
+  stack.add({ column: 20, row: 20, width: 2, height: 2 }, "removed");
+
+  translateHitTargets(stack, {
+    startIndex,
+    columnDelta: 2,
+    rowDelta: 1,
+    clip: { column: 0, row: 0, width: 10, height: 6 },
+  });
+
+  assertEquals(stack.entries(), [
+    { rect: { column: 0, row: 0, width: 2, height: 2 }, action: "before" },
+    { rect: { column: 2, row: 1, width: 4, height: 2 }, action: "visible" },
+    { rect: { column: 9, row: 5, width: 1, height: 1 }, action: "clipped" },
+  ]);
 });
 
 Deno.test("hit target rectangle helpers handle containment intersection clipping and inset", () => {

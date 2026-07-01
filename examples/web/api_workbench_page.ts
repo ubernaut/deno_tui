@@ -23,7 +23,6 @@ import {
   type HitTarget,
   HitTargetStack,
   InputController,
-  intersects,
   isWorkbenchMenuActivationKey,
   isWorkbenchMenuCloseKey,
   layoutWorkbenchShelf,
@@ -55,6 +54,7 @@ import {
   type TextRectangle,
   textWidth,
   toStyledCells,
+  translateHitTargets,
   WindowManagerController,
   type WorkbenchPanelWorkspaceState,
   workbenchRevealActiveRowOffset,
@@ -1378,15 +1378,7 @@ function workspaceLayout(bounds: Rectangle): {
 }
 
 function translateWorkspaceHits(startIndex: number, columnDelta: number, rowDelta: number, clip: Rectangle): void {
-  for (let index = hitTargets.length - 1; index >= startIndex; index -= 1) {
-    const target = hitTargets.at(index)!;
-    const translated = { ...target.rect, column: target.rect.column + columnDelta, row: target.rect.row + rowDelta };
-    if (!intersects(translated, clip)) {
-      hitTargets.remove(index);
-      continue;
-    }
-    hitTargets.updateRect(index, clipRect(translated, clip));
-  }
+  translateHitTargets(hitTargets, { startIndex, columnDelta, rowDelta, clip });
 }
 
 function blitWorkspace(frame: string[], virtual: string[], bounds: Rectangle, offset: number, width: number): void {

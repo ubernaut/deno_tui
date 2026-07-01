@@ -49,6 +49,8 @@ Work:
         `src/app/workbench_frame.ts` with direct tests.
   - [x] Extracted generic hit-target stack and rectangle geometry helpers into `src/app/hit_targets.ts` with direct
         tests, then migrated API Workbench hit lookup and scroll translation to the stack API.
+  - [x] Extracted shared hit-target translation and clipping for virtual workspace/content render passes, replacing
+        local terminal and web adapter loops.
   - [x] Extracted reusable New Window option registry helpers into `src/app/workbench_window_registry.ts`, covering
         built-ins, visualization grouping, loaded-state labels, managed visualization ids, and minimum window sizes.
   - [x] Extracted shared dropdown/menu key helpers into `src/app/workbench_menu.ts` and migrated terminal/web workbench

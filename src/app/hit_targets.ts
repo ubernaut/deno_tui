@@ -49,6 +49,38 @@ export class HitTargetStack<Action> {
   }
 }
 
+/** Options for translating and clipping a suffix of a hit target stack. */
+export interface TranslateHitTargetsOptions {
+  startIndex: number;
+  columnDelta?: number;
+  rowDelta?: number;
+  clip: Rectangle;
+}
+
+/**
+ * Translates all hit targets added after a known stack index, clipping or removing targets that leave the viewport.
+ */
+export function translateHitTargets<Action>(
+  targets: HitTargetStack<Action>,
+  options: TranslateHitTargetsOptions,
+): void {
+  const columnDelta = options.columnDelta ?? 0;
+  const rowDelta = options.rowDelta ?? 0;
+  for (let index = targets.length - 1; index >= options.startIndex; index -= 1) {
+    const target = targets.at(index)!;
+    const translated = {
+      ...target.rect,
+      column: target.rect.column + columnDelta,
+      row: target.rect.row + rowDelta,
+    };
+    if (!intersects(translated, options.clip)) {
+      targets.remove(index);
+      continue;
+    }
+    targets.updateRect(index, clipRect(translated, options.clip));
+  }
+}
+
 /** Returns true when a terminal-cell coordinate is inside a rectangle. */
 export function contains(rect: Rectangle, x: number, y: number): boolean {
   return x >= rect.column && x < rect.column + rect.width && y >= rect.row && y < rect.row + rect.height;

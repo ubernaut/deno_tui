@@ -8520,6 +8520,23 @@ var HitTargetStack = class {
     return this.#targets.map((target) => ({ rect: { ...target.rect }, action: target.action }));
   }
 };
+function translateHitTargets(targets, options) {
+  const columnDelta = options.columnDelta ?? 0;
+  const rowDelta = options.rowDelta ?? 0;
+  for (let index = targets.length - 1; index >= options.startIndex; index -= 1) {
+    const target = targets.at(index);
+    const translated = {
+      ...target.rect,
+      column: target.rect.column + columnDelta,
+      row: target.rect.row + rowDelta
+    };
+    if (!intersects(translated, options.clip)) {
+      targets.remove(index);
+      continue;
+    }
+    targets.updateRect(index, clipRect(translated, options.clip));
+  }
+}
 function contains(rect, x, y) {
   return x >= rect.column && x < rect.column + rect.width && y >= rect.row && y < rect.row + rect.height;
 }
@@ -11671,15 +11688,7 @@ function workspaceLayout(bounds) {
   return { bounds, contentHeight: Math.max(bounds.height, layout.contentHeight), rects };
 }
 function translateWorkspaceHits(startIndex, columnDelta, rowDelta, clip) {
-  for (let index = hitTargets.length - 1; index >= startIndex; index -= 1) {
-    const target = hitTargets.at(index);
-    const translated = { ...target.rect, column: target.rect.column + columnDelta, row: target.rect.row + rowDelta };
-    if (!intersects(translated, clip)) {
-      hitTargets.remove(index);
-      continue;
-    }
-    hitTargets.updateRect(index, clipRect(translated, clip));
-  }
+  translateHitTargets(hitTargets, { startIndex, columnDelta, rowDelta, clip });
 }
 function blitWorkspace(frame, virtual, bounds, offset, width) {
   for (let row = 0; row < bounds.height; row += 1) {
