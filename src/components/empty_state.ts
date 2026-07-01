@@ -40,10 +40,14 @@ export function renderEmptyState(
   if (!center || visible.length >= safeHeight) return visible;
 
   const topPadding = Math.floor((safeHeight - visible.length) / 2);
-  return [
-    ...Array.from({ length: topPadding }, () => ""),
-    ...visible,
-  ].slice(0, safeHeight);
+  const centered = new Array<string>(Math.min(safeHeight, topPadding + visible.length));
+  for (let index = 0; index < topPadding; index++) {
+    centered[index] = "";
+  }
+  for (let index = 0; index < visible.length && topPadding + index < safeHeight; index++) {
+    centered[topPadding + index] = visible[index]!;
+  }
+  return centered;
 }
 
 function fitEmptyStateLine(line: string, width: number): string {
@@ -87,7 +91,8 @@ export class EmptyState extends Component {
       )
     );
 
-    Array.from({ length: this.rectangle.peek().height }, (_, index) => {
+    const height = this.rectangle.peek().height;
+    for (let index = 0; index < height; index++) {
       const row = new Text({
         parent: this,
         theme: this.theme,
@@ -103,7 +108,6 @@ export class EmptyState extends Component {
       });
       row.subComponentOf = this;
       this.subComponents[`row-${index}`] = row;
-      return row;
-    });
+    }
   }
 }

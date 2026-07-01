@@ -121,7 +121,8 @@ export class ToastStack extends Component {
   override draw(): void {
     super.draw();
 
-    Array.from({ length: this.rectangle.peek().height }, (_, index) => {
+    const height = this.rectangle.peek().height;
+    for (let index = 0; index < height; index++) {
       const text = new Text({
         parent: this,
         theme: this.theme,
@@ -140,7 +141,7 @@ export class ToastStack extends Component {
       });
       text.subComponentOf = this;
       this.subComponents[`toast-${index}`] = text;
-    });
+    }
   }
 }
 

@@ -192,12 +192,13 @@ export function labelLineLayout(
   const visibleCount = Math.min(lines.length, height);
   const sourceOffset = labelSourceOffset(lines.length, visibleCount, align.vertical);
   const rowOffset = labelRowOffset(height, visibleCount, align.vertical);
+  const layout = new Array<LabelLineLayout>(visibleCount);
 
-  return Array.from({ length: visibleCount }, (_, index) => {
+  for (let index = 0; index < visibleCount; index++) {
     const sourceIndex = sourceOffset + index;
     const value = cropToWidth(lines[sourceIndex] ?? "", width);
     const valueWidth = textWidth(value);
-    return {
+    layout[index] = {
       sourceIndex,
       value,
       rectangle: {
@@ -206,7 +207,9 @@ export function labelLineLayout(
         width: valueWidth,
       },
     };
-  });
+  }
+
+  return layout;
 }
 
 function labelColumnOffset(width: number, valueWidth: number, horizontal: LabelAlign["horizontal"]): number {
