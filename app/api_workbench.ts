@@ -77,7 +77,13 @@ import {
 } from "../src/app/workbench_ascii.ts";
 import { handleInput } from "../src/input.ts";
 import type { KeyPressEvent, MousePressEvent, MouseScrollEvent, PasteEvent } from "../src/input_reader/types.ts";
-import { routeTerminalKeyPress, routeTerminalPaste, type TerminalInputMode } from "../src/app/terminal_input.ts";
+import {
+  routeTerminalKeyPress,
+  routeTerminalMouse,
+  routeTerminalPaste,
+  type TerminalInputMode,
+  terminalMouseRoutingFromPrivateModes,
+} from "../src/app/terminal_input.ts";
 import { createKittyGraphicsSurface, type GraphicsSurface } from "../src/runtime/graphics_surface.ts";
 import { formatProcessCommandLine, ProcessSessionController } from "../src/runtime/process_session.ts";
 import { MicrotaskScheduler } from "../src/runtime/render_loop.ts";
@@ -214,6 +220,7 @@ type HitAction =
   | { type: "control"; id: ControlId; action?: ControlHitAction; index?: number }
   | { type: "terminalOutput"; action: TerminalOutputAction }
   | { type: "terminalShell"; action: TerminalShellAction }
+  | { type: "terminalShellContent" }
   | { type: "dataRow"; index: number }
   | { type: "explorerRow"; index: number }
   | { type: "cpuHexTile"; id: VisualizationWindowId; label: string }
@@ -711,6 +718,11 @@ tui.on("paste", (event) => {
 });
 
 tui.on("mousePress", (event) => {
+  const shellHit = findHit(event.x, event.y);
+  if (shellHit?.action.type === "terminalShellContent" && handleTerminalShellMouse(event, shellHit.rect)) {
+    draw();
+    return;
+  }
   if (event.release) {
     threeDragWindow = null;
     return;
@@ -736,6 +748,11 @@ tui.on("mousePress", (event) => {
 });
 
 tui.on("mouseScroll", (event) => {
+  const shellHit = findHit(event.x, event.y);
+  if (shellHit?.action.type === "terminalShellContent" && handleTerminalShellMouse(event, shellHit.rect)) {
+    draw();
+    return;
+  }
   if (zoomThreeWindowAt(event)) {
     draw();
     return;
@@ -1874,6 +1891,7 @@ function renderTerminalShell(frame: Frame, rect: Rectangle): void {
   const cursorActive = activeWindow.peek() === TERMINAL_SHELL_WINDOW_ID && terminalShellInputMode.peek() === "raw" &&
     terminalShell.running;
   const rows = terminalShell.screen.cellRows();
+  addHit({ column: rect.column, row, width: rect.width, height: screenHeight }, { type: "terminalShellContent" });
   for (let screenRow = 0; screenRow < screenHeight; screenRow += 1) {
     const cells = rows[screenRow] ?? [];
     for (let column = 0; column < rect.width; column += 1) {
@@ -2971,6 +2989,7 @@ function windowAt(x: number, y: number): WindowId | undefined {
   ) {
     return action.id;
   }
+  if (action.type === "terminalShellContent") return TERMINAL_SHELL_WINDOW_ID;
   if (action.type === "control") return "controls";
   if (action.type === "dataRow") return "data";
   if (action.type === "explorerRow") return "explorer";
@@ -3772,6 +3791,21 @@ function handleTerminalShellPaste(event: PasteEvent): boolean {
     bracketedPaste: terminalShell.inspect().screen.privateModes.includes(2004),
   }).then((decision) => {
     if (!decision.routed) pushLog(`shell paste ${decision.reason}`);
+    scheduleDraw();
+  });
+  return true;
+}
+
+function handleTerminalShellMouse(event: MousePressEvent | MouseScrollEvent, rect: Rectangle): boolean {
+  if (activeWindow.peek() !== TERMINAL_SHELL_WINDOW_ID || terminalShellInputMode.peek() !== "raw") return false;
+  const mouseRouting = terminalMouseRoutingFromPrivateModes(terminalShell.inspect().screen.privateModes);
+  if (mouseRouting.mouseTracking === "none" || !mouseRouting.sgrMouse) return false;
+  void routeTerminalMouse(terminalShell, event, {
+    mode: "raw",
+    ...mouseRouting,
+    mouseOrigin: { column: rect.column, row: rect.row },
+  }).then((decision) => {
+    if (!decision.routed && decision.reason !== "unencodable") pushLog(`shell mouse ${decision.reason}`);
     scheduleDraw();
   });
   return true;

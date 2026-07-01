@@ -1,15 +1,15 @@
 # API Reference
 
-This document is generated from every public package entrypoint in the Deno export map. It is intended as a complete map
-of stable, beta, and experimental modules and exported symbols that make up the package API.
+This document is generated from every public package entrypoint in the Deno export map. It is intended as a
+complete map of stable, beta, and experimental modules and exported symbols that make up the package API.
 
 ## Summary
 
 - Entrypoints: 9
-- Module visits: 509
-- Re-export declarations: 500
-- Exported symbols: 4504
-- Documented symbols: 4504
+- Module visits: 511
+- Re-export declarations: 502
+- Exported symbols: 4527
+- Documented symbols: 4527
 - Documentation coverage: 100.00%
 - Duplicate symbol groups: 0
 - Missing targets: 0
@@ -18,12 +18,12 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 
 | Specifier       | Path                           | Runtime  | Stability    | Modules | Symbols |    Docs |
 | --------------- | ------------------------------ | -------- | ------------ | ------: | ------: | ------: |
-| `.`             | `./mod.ts`                     | terminal | stable       |     229 |    1908 | 100.00% |
-| `./web`         | `./mod.web.ts`                 | browser  | beta         |     208 |    1771 | 100.00% |
+| `.`             | `./mod.ts`                     | terminal | stable       |     230 |    1919 | 100.00% |
+| `./web`         | `./mod.web.ts`                 | browser  | beta         |     209 |    1782 | 100.00% |
 | `./remote`      | `./mod.remote.ts`              | remote   | experimental |       4 |      38 | 100.00% |
 | `./three-ascii` | `./mod.three_ascii.ts`         | shared   | experimental |       8 |      54 | 100.00% |
 | `./theme`       | `./mod.theme.ts`               | shared   | beta         |      10 |     198 | 100.00% |
-| `./runtime`     | `./mod.runtime.ts`             | shared   | beta         |      30 |     368 | 100.00% |
+| `./runtime`     | `./mod.runtime.ts`             | shared   | beta         |      30 |     369 | 100.00% |
 | `./terminal`    | `./mod.terminal.ts`            | terminal | beta         |      15 |     142 | 100.00% |
 | `./testing`     | `./mod.testing.ts`             | shared   | beta         |       4 |      22 | 100.00% |
 | `./layout/yoga` | `./src/layout/solvers/yoga.ts` | shared   | experimental |       1 |       3 | 100.00% |
@@ -39,10 +39,10 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 ### Summary
 
 - Entrypoint: `mod.ts`
-- Modules: 229
-- Re-export declarations: 228
-- Exported symbols: 1908
-- Documented symbols: 1908
+- Modules: 230
+- Re-export declarations: 229
+- Exported symbols: 1919
+- Documented symbols: 1919
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -104,7 +104,7 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 | [`src/app/table_commands.ts`](#src-app-table-commands-ts)                               |          0 |       6 |          6 |
 | [`src/app/tabs_commands.ts`](#src-app-tabs-commands-ts)                                 |          0 |       6 |          6 |
 | [`src/app/terminal_commands.ts`](#src-app-terminal-commands-ts)                         |          0 |      18 |         18 |
-| [`src/app/terminal_input.ts`](#src-app-terminal-input-ts)                               |          0 |       9 |          9 |
+| [`src/app/terminal_input.ts`](#src-app-terminal-input-ts)                               |          0 |      14 |         14 |
 | [`src/app/terminal_window_bindings.ts`](#src-app-terminal-window-bindings-ts)           |          0 |       5 |          5 |
 | [`src/app/textbox_commands.ts`](#src-app-textbox-commands-ts)                           |          0 |       6 |          6 |
 | [`src/app/theme_commands.ts`](#src-app-theme-commands-ts)                               |          0 |      10 |         10 |
@@ -117,13 +117,14 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 | [`src/app/window_manager_commands.ts`](#src-app-window-manager-commands-ts)             |          0 |       8 |          8 |
 | [`src/app/workbench_frame.ts`](#src-app-workbench-frame-ts)                             |          0 |      13 |         13 |
 | [`src/app/workbench_menu.ts`](#src-app-workbench-menu-ts)                               |          0 |       8 |          8 |
+| [`src/app/workbench_overlay.ts`](#src-app-workbench-overlay-ts)                         |          0 |       5 |          5 |
 | [`src/app/workbench_shelf.ts`](#src-app-workbench-shelf-ts)                             |          0 |       8 |          8 |
 | [`src/app/workbench_terminal.ts`](#src-app-workbench-terminal-ts)                       |          0 |       6 |          6 |
 | [`src/app/workbench_titlebar.ts`](#src-app-workbench-titlebar-ts)                       |          0 |       6 |          6 |
 | [`src/app/workbench_viewport.ts`](#src-app-workbench-viewport-ts)                       |          0 |       4 |          4 |
 | [`src/app/workbench_window_registry.ts`](#src-app-workbench-window-registry-ts)         |          0 |      13 |         13 |
 | [`src/app/workbench_workspace.ts`](#src-app-workbench-workspace-ts)                     |          0 |      18 |         18 |
-| [`src/app/workbench/mod.ts`](#src-app-workbench-mod-ts)                                 |          9 |       0 |          0 |
+| [`src/app/workbench/mod.ts`](#src-app-workbench-mod-ts)                                 |         10 |       0 |          0 |
 | [`src/canvas/box.ts`](#src-canvas-box-ts)                                               |          0 |       2 |          2 |
 | [`src/canvas/canvas.ts`](#src-canvas-canvas-ts)                                         |          0 |       4 |          4 |
 | [`src/canvas/dirty_region.ts`](#src-canvas-dirty-region-ts)                             |          0 |       2 |          2 |
@@ -226,7 +227,7 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 | [`src/runtime/resource_bindings.ts`](#src-runtime-resource-bindings-ts)                 |          0 |       4 |          4 |
 | [`src/runtime/resource.ts`](#src-runtime-resource-ts)                                   |          0 |      14 |         14 |
 | [`src/runtime/scheduler.ts`](#src-runtime-scheduler-ts)                                 |          0 |      13 |         13 |
-| [`src/runtime/storage.ts`](#src-runtime-storage-ts)                                     |          0 |       9 |          9 |
+| [`src/runtime/storage.ts`](#src-runtime-storage-ts)                                     |          0 |      10 |         10 |
 | [`src/runtime/telemetry.ts`](#src-runtime-telemetry-ts)                                 |          0 |      15 |         15 |
 | [`src/runtime/terminal_backend_registry.ts`](#src-runtime-terminal-backend-registry-ts) |          0 |       9 |          9 |
 | [`src/runtime/terminal_backend.ts`](#src-runtime-terminal-backend-ts)                   |          0 |       9 |          9 |
@@ -1046,17 +1047,22 @@ _No direct exported symbols._
 
 #### src/app/terminal_input.ts
 
-| Symbol                        | Kind      | Type Only | JSDoc |
-| ----------------------------- | --------- | --------- | ----- |
-| `encodeTerminalKeyPress`      | function  | no        | yes   |
-| `encodeTerminalPaste`         | function  | no        | yes   |
-| `isReservedTerminalKey`       | function  | no        | yes   |
-| `routeTerminalKeyPress`       | function  | no        | yes   |
-| `routeTerminalPaste`          | function  | no        | yes   |
-| `TerminalInputMode`           | type      | yes       | yes   |
-| `TerminalInputRouteDecision`  | interface | yes       | yes   |
-| `TerminalInputRoutingOptions` | interface | yes       | yes   |
-| `TerminalInputTarget`         | interface | yes       | yes   |
+| Symbol                                 | Kind      | Type Only | JSDoc |
+| -------------------------------------- | --------- | --------- | ----- |
+| `encodeTerminalKeyPress`               | function  | no        | yes   |
+| `encodeTerminalMouse`                  | function  | no        | yes   |
+| `encodeTerminalPaste`                  | function  | no        | yes   |
+| `isReservedTerminalKey`                | function  | no        | yes   |
+| `routeTerminalKeyPress`                | function  | no        | yes   |
+| `routeTerminalMouse`                   | function  | no        | yes   |
+| `routeTerminalPaste`                   | function  | no        | yes   |
+| `TerminalInputMode`                    | type      | yes       | yes   |
+| `TerminalInputRouteDecision`           | interface | yes       | yes   |
+| `TerminalInputRoutingOptions`          | interface | yes       | yes   |
+| `TerminalInputTarget`                  | interface | yes       | yes   |
+| `TerminalMouseInputEvent`              | interface | yes       | yes   |
+| `terminalMouseRoutingFromPrivateModes` | function  | no        | yes   |
+| `TerminalMouseTrackingMode`            | type      | yes       | yes   |
 
 #### src/app/terminal_window_bindings.ts
 
@@ -1207,6 +1213,16 @@ _No direct exported symbols._
 | `WorkbenchTopMenuControllerOptions` | interface | yes       | yes   |
 | `WorkbenchTopMenuInspection`        | interface | yes       | yes   |
 
+#### src/app/workbench_overlay.ts
+
+| Symbol                          | Kind      | Type Only | JSDoc |
+| ------------------------------- | --------- | --------- | ----- |
+| `layoutWorkbenchModal`          | function  | no        | yes   |
+| `layoutWorkbenchPopover`        | function  | no        | yes   |
+| `WorkbenchModalLayout`          | interface | yes       | yes   |
+| `WorkbenchModalLayoutOptions`   | interface | yes       | yes   |
+| `WorkbenchPopoverLayoutOptions` | interface | yes       | yes   |
+
 #### src/app/workbench_shelf.ts
 
 | Symbol                        | Kind      | Type Only | JSDoc |
@@ -1299,6 +1315,7 @@ _No direct exported symbols._
 | `src/app/hit_targets.ts`               | star | -     |
 | `src/app/workbench_frame.ts`           | star | -     |
 | `src/app/workbench_menu.ts`            | star | -     |
+| `src/app/workbench_overlay.ts`         | star | -     |
 | `src/app/workbench_shelf.ts`           | star | -     |
 | `src/app/workbench_terminal.ts`        | star | -     |
 | `src/app/workbench_titlebar.ts`        | star | -     |
@@ -2758,6 +2775,7 @@ _No direct exported symbols._
 | `createRuntimeStore`      | function  | no        | yes   |
 | `IndexedDbStore`          | class     | no        | yes   |
 | `IndexedDbStoreOptions`   | interface | yes       | yes   |
+| `JsonFileStore`           | class     | no        | yes   |
 | `MemoryStore`             | class     | no        | yes   |
 | `PersistentSignal`        | class     | no        | yes   |
 | `PersistentSignalOptions` | interface | yes       | yes   |
@@ -3590,6 +3608,7 @@ _No direct exported symbols._
 | `viewportWindow`              | function  | no        | yes   |
 | `ViewportWindow`              | interface | yes       | yes   |
 
+
 ## Entrypoint ./web
 
 Standalone browser-safe package for shared controllers, themes, layout, canvas sinks, and web hosts.
@@ -3601,10 +3620,10 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 ### Summary
 
 - Entrypoint: `mod.web.ts`
-- Modules: 208
-- Re-export declarations: 207
-- Exported symbols: 1771
-- Documented symbols: 1771
+- Modules: 209
+- Re-export declarations: 208
+- Exported symbols: 1782
+- Documented symbols: 1782
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -3666,7 +3685,7 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 | [`src/app/table_commands.ts`](#src-app-table-commands-ts)                         |          0 |       6 |          6 |
 | [`src/app/tabs_commands.ts`](#src-app-tabs-commands-ts)                           |          0 |       6 |          6 |
 | [`src/app/terminal_commands.ts`](#src-app-terminal-commands-ts)                   |          0 |      18 |         18 |
-| [`src/app/terminal_input.ts`](#src-app-terminal-input-ts)                         |          0 |       9 |          9 |
+| [`src/app/terminal_input.ts`](#src-app-terminal-input-ts)                         |          0 |      14 |         14 |
 | [`src/app/terminal_window_bindings.ts`](#src-app-terminal-window-bindings-ts)     |          0 |       5 |          5 |
 | [`src/app/textbox_commands.ts`](#src-app-textbox-commands-ts)                     |          0 |       6 |          6 |
 | [`src/app/theme_commands.ts`](#src-app-theme-commands-ts)                         |          0 |      10 |         10 |
@@ -3679,13 +3698,14 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 | [`src/app/window_manager_commands.ts`](#src-app-window-manager-commands-ts)       |          0 |       8 |          8 |
 | [`src/app/workbench_frame.ts`](#src-app-workbench-frame-ts)                       |          0 |      13 |         13 |
 | [`src/app/workbench_menu.ts`](#src-app-workbench-menu-ts)                         |          0 |       8 |          8 |
+| [`src/app/workbench_overlay.ts`](#src-app-workbench-overlay-ts)                   |          0 |       5 |          5 |
 | [`src/app/workbench_shelf.ts`](#src-app-workbench-shelf-ts)                       |          0 |       8 |          8 |
 | [`src/app/workbench_terminal.ts`](#src-app-workbench-terminal-ts)                 |          0 |       6 |          6 |
 | [`src/app/workbench_titlebar.ts`](#src-app-workbench-titlebar-ts)                 |          0 |       6 |          6 |
 | [`src/app/workbench_viewport.ts`](#src-app-workbench-viewport-ts)                 |          0 |       4 |          4 |
 | [`src/app/workbench_window_registry.ts`](#src-app-workbench-window-registry-ts)   |          0 |      13 |         13 |
 | [`src/app/workbench_workspace.ts`](#src-app-workbench-workspace-ts)               |          0 |      18 |         18 |
-| [`src/app/workbench/mod.ts`](#src-app-workbench-mod-ts)                           |          9 |       0 |          0 |
+| [`src/app/workbench/mod.ts`](#src-app-workbench-mod-ts)                           |         10 |       0 |          0 |
 | [`src/canvas/box.ts`](#src-canvas-box-ts)                                         |          0 |       2 |          2 |
 | [`src/canvas/canvas.ts`](#src-canvas-canvas-ts)                                   |          0 |       4 |          4 |
 | [`src/canvas/draw_object.ts`](#src-canvas-draw-object-ts)                         |          0 |       2 |          2 |
@@ -3778,7 +3798,7 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 | [`src/runtime/resource_bindings.ts`](#src-runtime-resource-bindings-ts)           |          0 |       4 |          4 |
 | [`src/runtime/resource.ts`](#src-runtime-resource-ts)                             |          0 |      14 |         14 |
 | [`src/runtime/scheduler.ts`](#src-runtime-scheduler-ts)                           |          0 |      13 |         13 |
-| [`src/runtime/storage.ts`](#src-runtime-storage-ts)                               |          0 |       9 |          9 |
+| [`src/runtime/storage.ts`](#src-runtime-storage-ts)                               |          0 |      10 |         10 |
 | [`src/runtime/telemetry.ts`](#src-runtime-telemetry-ts)                           |          0 |      15 |         15 |
 | [`src/runtime/terminal_screen.ts`](#src-runtime-terminal-screen-ts)               |          0 |       6 |          6 |
 | [`src/runtime/terminal_workspace.ts`](#src-runtime-terminal-workspace-ts)         |          0 |      19 |         19 |
@@ -4605,17 +4625,22 @@ _No direct exported symbols._
 
 #### src/app/terminal_input.ts
 
-| Symbol                        | Kind      | Type Only | JSDoc |
-| ----------------------------- | --------- | --------- | ----- |
-| `encodeTerminalKeyPress`      | function  | no        | yes   |
-| `encodeTerminalPaste`         | function  | no        | yes   |
-| `isReservedTerminalKey`       | function  | no        | yes   |
-| `routeTerminalKeyPress`       | function  | no        | yes   |
-| `routeTerminalPaste`          | function  | no        | yes   |
-| `TerminalInputMode`           | type      | yes       | yes   |
-| `TerminalInputRouteDecision`  | interface | yes       | yes   |
-| `TerminalInputRoutingOptions` | interface | yes       | yes   |
-| `TerminalInputTarget`         | interface | yes       | yes   |
+| Symbol                                 | Kind      | Type Only | JSDoc |
+| -------------------------------------- | --------- | --------- | ----- |
+| `encodeTerminalKeyPress`               | function  | no        | yes   |
+| `encodeTerminalMouse`                  | function  | no        | yes   |
+| `encodeTerminalPaste`                  | function  | no        | yes   |
+| `isReservedTerminalKey`                | function  | no        | yes   |
+| `routeTerminalKeyPress`                | function  | no        | yes   |
+| `routeTerminalMouse`                   | function  | no        | yes   |
+| `routeTerminalPaste`                   | function  | no        | yes   |
+| `TerminalInputMode`                    | type      | yes       | yes   |
+| `TerminalInputRouteDecision`           | interface | yes       | yes   |
+| `TerminalInputRoutingOptions`          | interface | yes       | yes   |
+| `TerminalInputTarget`                  | interface | yes       | yes   |
+| `TerminalMouseInputEvent`              | interface | yes       | yes   |
+| `terminalMouseRoutingFromPrivateModes` | function  | no        | yes   |
+| `TerminalMouseTrackingMode`            | type      | yes       | yes   |
 
 #### src/app/terminal_window_bindings.ts
 
@@ -4766,6 +4791,16 @@ _No direct exported symbols._
 | `WorkbenchTopMenuControllerOptions` | interface | yes       | yes   |
 | `WorkbenchTopMenuInspection`        | interface | yes       | yes   |
 
+#### src/app/workbench_overlay.ts
+
+| Symbol                          | Kind      | Type Only | JSDoc |
+| ------------------------------- | --------- | --------- | ----- |
+| `layoutWorkbenchModal`          | function  | no        | yes   |
+| `layoutWorkbenchPopover`        | function  | no        | yes   |
+| `WorkbenchModalLayout`          | interface | yes       | yes   |
+| `WorkbenchModalLayoutOptions`   | interface | yes       | yes   |
+| `WorkbenchPopoverLayoutOptions` | interface | yes       | yes   |
+
 #### src/app/workbench_shelf.ts
 
 | Symbol                        | Kind      | Type Only | JSDoc |
@@ -4858,6 +4893,7 @@ _No direct exported symbols._
 | `src/app/hit_targets.ts`               | star | -     |
 | `src/app/workbench_frame.ts`           | star | -     |
 | `src/app/workbench_menu.ts`            | star | -     |
+| `src/app/workbench_overlay.ts`         | star | -     |
 | `src/app/workbench_shelf.ts`           | star | -     |
 | `src/app/workbench_terminal.ts`        | star | -     |
 | `src/app/workbench_titlebar.ts`        | star | -     |
@@ -6188,6 +6224,7 @@ _No direct exported symbols._
 | `createRuntimeStore`      | function  | no        | yes   |
 | `IndexedDbStore`          | class     | no        | yes   |
 | `IndexedDbStoreOptions`   | interface | yes       | yes   |
+| `JsonFileStore`           | class     | no        | yes   |
 | `MemoryStore`             | class     | no        | yes   |
 | `PersistentSignal`        | class     | no        | yes   |
 | `PersistentSignalOptions` | interface | yes       | yes   |
@@ -6864,6 +6901,7 @@ _No direct exported symbols._
 | `RemoteTerminalTransport`             | interface | yes       | yes   |
 | `WebSocketRemoteTerminalTransport`    | class     | no        | yes   |
 
+
 ## Entrypoint ./remote
 
 Hosted terminal/client bridge protocol and browser WebSocket transport.
@@ -6956,6 +6994,7 @@ _No direct exported symbols._
 | `RemoteTerminalServerMessage`         | type      | yes       | yes   |
 | `RemoteTerminalTransport`             | interface | yes       | yes   |
 | `WebSocketRemoteTerminalTransport`    | class     | no        | yes   |
+
 
 ## Entrypoint ./three-ascii
 
@@ -7095,6 +7134,7 @@ _No direct exported symbols._
 | ----------------------------- | -------- | --------- | ----- |
 | `getCompatibleWebGPUDevice`   | function | no        | yes   |
 | `probeCompatibleWebGPUDevice` | function | no        | yes   |
+
 
 ## Entrypoint ./theme
 
@@ -7391,6 +7431,7 @@ _No direct exported symbols._
 | `ThemeVariantCoverageInspection`          | interface | yes       | yes   |
 | `validateThemeOptions`                    | function  | no        | yes   |
 
+
 ## Entrypoint ./runtime
 
 Shared runtime primitives for scheduling, storage, workers, resources, diagnostics, and backends.
@@ -7404,8 +7445,8 @@ Shared runtime primitives for scheduling, storage, workers, resources, diagnosti
 - Entrypoint: `mod.runtime.ts`
 - Modules: 30
 - Re-export declarations: 29
-- Exported symbols: 368
-- Documented symbols: 368
+- Exported symbols: 369
+- Documented symbols: 369
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -7431,7 +7472,7 @@ Shared runtime primitives for scheduling, storage, workers, resources, diagnosti
 | [`src/runtime/resource_bindings.ts`](#src-runtime-resource-bindings-ts)                 |          0 |       4 |          4 |
 | [`src/runtime/resource.ts`](#src-runtime-resource-ts)                                   |          0 |      14 |         14 |
 | [`src/runtime/scheduler.ts`](#src-runtime-scheduler-ts)                                 |          0 |      13 |         13 |
-| [`src/runtime/storage.ts`](#src-runtime-storage-ts)                                     |          0 |       9 |          9 |
+| [`src/runtime/storage.ts`](#src-runtime-storage-ts)                                     |          0 |      10 |         10 |
 | [`src/runtime/telemetry.ts`](#src-runtime-telemetry-ts)                                 |          0 |      15 |         15 |
 | [`src/runtime/terminal_backend_registry.ts`](#src-runtime-terminal-backend-registry-ts) |          0 |       9 |          9 |
 | [`src/runtime/terminal_backend.ts`](#src-runtime-terminal-backend-ts)                   |          0 |       9 |          9 |
@@ -7790,6 +7831,7 @@ _No direct exported symbols._
 | `createRuntimeStore`      | function  | no        | yes   |
 | `IndexedDbStore`          | class     | no        | yes   |
 | `IndexedDbStoreOptions`   | interface | yes       | yes   |
+| `JsonFileStore`           | class     | no        | yes   |
 | `MemoryStore`             | class     | no        | yes   |
 | `PersistentSignal`        | class     | no        | yes   |
 | `PersistentSignalOptions` | interface | yes       | yes   |
@@ -7997,6 +8039,7 @@ _No direct exported symbols._
 | `WorkerPoolOptions`         | interface | yes       | yes   |
 | `WorkerPoolRunOptions`      | interface | yes       | yes   |
 | `WorkerPoolTerminatedError` | class     | no        | yes   |
+
 
 ## Entrypoint ./terminal
 
@@ -8272,6 +8315,7 @@ _No direct exported symbols._
 | `TerminalWorkspaceSplitNode`               | interface | yes       | yes   |
 | `UpsertTerminalWorkspaceSessionOptions`    | interface | yes       | yes   |
 
+
 ## Entrypoint ./testing
 
 Testing helpers for snapshots, fake input events, focus targets, stdout capture, and canvas snapshots.
@@ -8351,6 +8395,7 @@ _No direct exported symbols._
 | `TestCanvasOptions`           | interface | yes       | yes   |
 | `TestStdout`                  | interface | yes       | yes   |
 
+
 ## Entrypoint ./layout/yoga
 
 Optional Yoga-backed Flexbox solver for HTML/CSS-style layout trees.
@@ -8385,3 +8430,4 @@ Optional Yoga-backed Flexbox solver for HTML/CSS-style layout trees.
 | `yogaLayoutSolver`        | function  | no        | yes   |
 | `YogaLayoutSolver`        | class     | no        | yes   |
 | `YogaLayoutSolverOptions` | interface | yes       | yes   |
+

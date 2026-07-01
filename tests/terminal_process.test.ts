@@ -7,9 +7,12 @@ import {
 import { bindTerminalCommands, type TerminalCommandAction, terminalCommands } from "../src/app/terminal_commands.ts";
 import {
   encodeTerminalKeyPress,
+  encodeTerminalMouse,
   encodeTerminalPaste,
   routeTerminalKeyPress,
+  routeTerminalMouse,
   routeTerminalPaste,
+  terminalMouseRoutingFromPrivateModes,
 } from "../src/app/terminal_input.ts";
 import { type Command, CommandRegistry } from "../src/app/commands.ts";
 import {
@@ -19,7 +22,7 @@ import {
 } from "../src/runtime/process_session.ts";
 import { createProcessTerminalBackend } from "../src/runtime/terminal_backend.ts";
 import { DiagnosticsCollector } from "../src/runtime/diagnostics.ts";
-import type { Key, KeyPressEvent, PasteEvent } from "../src/input_reader/types.ts";
+import type { Key, KeyPressEvent, MousePressEvent, MouseScrollEvent, PasteEvent } from "../src/input_reader/types.ts";
 
 Deno.test("TerminalOutputController bounds stream-tagged scrollback and follow mode", () => {
   const output = new TerminalOutputController({ limit: 3 });
@@ -329,6 +332,92 @@ Deno.test("terminal paste routing supports negotiated bracketed paste framing", 
   await session.dispose();
 });
 
+Deno.test("terminal mouse routing encodes negotiated SGR mouse packets", async () => {
+  const encoder = new TextEncoder();
+  assertEquals(terminalMouseRoutingFromPrivateModes([1000, 1006]), { mouseTracking: "press", sgrMouse: true });
+  assertEquals(terminalMouseRoutingFromPrivateModes([1002, 1006]), { mouseTracking: "button", sgrMouse: true });
+  assertEquals(terminalMouseRoutingFromPrivateModes([1003]), { mouseTracking: "any", sgrMouse: false });
+  assertEquals(
+    encodeTerminalMouse(mousePress(12, 6, { button: 0 }), {
+      mouseTracking: "press",
+      sgrMouse: true,
+      mouseOrigin: { column: 10, row: 5 },
+    }),
+    encoder.encode("\x1b[<0;3;2M"),
+  );
+  assertEquals(
+    encodeTerminalMouse(mousePress(12, 6, { button: 0, drag: true }), {
+      mouseTracking: "press",
+      sgrMouse: true,
+      mouseOrigin: { column: 10, row: 5 },
+    }),
+    undefined,
+  );
+  assertEquals(
+    encodeTerminalMouse(mousePress(12, 6, { button: 0, drag: true, shift: true }), {
+      mouseTracking: "button",
+      sgrMouse: true,
+      mouseOrigin: { column: 10, row: 5 },
+    }),
+    encoder.encode("\x1b[<36;3;2M"),
+  );
+  assertEquals(
+    encodeTerminalMouse(mousePress(12, 6, { release: true }), {
+      mouseTracking: "press",
+      sgrMouse: true,
+      mouseOrigin: { column: 10, row: 5 },
+    }),
+    encoder.encode("\x1b[<3;3;2m"),
+  );
+  assertEquals(
+    encodeTerminalMouse(mouseScroll(12, 6, -1), {
+      mouseTracking: "press",
+      sgrMouse: true,
+      mouseOrigin: { column: 10, row: 5 },
+    }),
+    encoder.encode("\x1b[<64;3;2M"),
+  );
+  assertEquals(
+    encodeTerminalMouse({ ...mousePress(12, 6, { button: 0 }), buffer: encoder.encode("raw") }, {
+      mouseTracking: "none",
+      sgrMouse: false,
+    }),
+    encoder.encode("raw"),
+  );
+
+  const writes: string[] = [];
+  let resolveStatus!: (status: { code: number; signal?: string | null; success: boolean }) => void;
+  const status = new Promise<{ code: number; signal?: string | null; success: boolean }>((resolve) => {
+    resolveStatus = resolve;
+  });
+  const session = new ProcessSessionController({
+    command: "demo",
+    spawn: () => ({
+      stdin: writableTextSink(writes),
+      stdout: streamFromText(""),
+      stderr: streamFromText(""),
+      status,
+      kill: () => resolveStatus({ code: 143, signal: "SIGTERM", success: false }),
+    }),
+  });
+  const run = session.start();
+
+  assertEquals(
+    (await routeTerminalMouse(session, mousePress(12, 6, { button: 2 }), {
+      mode: "raw",
+      mouseTracking: "press",
+      sgrMouse: true,
+      mouseOrigin: { column: 10, row: 5 },
+    })).reason,
+    "encoded",
+  );
+  assertEquals(writes, ["\x1b[<2;3;2M"]);
+
+  resolveStatus({ code: 0, success: true });
+  await run;
+  await session.dispose();
+});
+
 Deno.test("ProcessTerminalBackend spawns inspectable non-PTY sessions", async () => {
   const backend = createProcessTerminalBackend({
     spawn: () => completedChild("backend ok\n", "", { code: 0, success: true }),
@@ -412,4 +501,41 @@ function keyPress(
 
 function paste(text: string): PasteEvent {
   return { key: "paste", text, buffer: new Uint8Array() };
+}
+
+function mousePress(
+  x: number,
+  y: number,
+  options: Partial<Omit<MousePressEvent, "key" | "buffer" | "x" | "y" | "movementX" | "movementY">> = {},
+): MousePressEvent {
+  return {
+    key: "mouse",
+    buffer: new Uint8Array(),
+    x,
+    y,
+    movementX: 0,
+    movementY: 0,
+    meta: options.meta ?? false,
+    ctrl: options.ctrl ?? false,
+    shift: options.shift ?? false,
+    drag: options.drag ?? false,
+    release: options.release ?? false,
+    button: options.release ? undefined : options.button ?? 0,
+  };
+}
+
+function mouseScroll(x: number, y: number, scroll: -1 | 0 | 1): MouseScrollEvent {
+  return {
+    key: "mouse",
+    buffer: new Uint8Array(),
+    x,
+    y,
+    movementX: 0,
+    movementY: 0,
+    meta: false,
+    ctrl: false,
+    shift: false,
+    drag: false,
+    scroll,
+  };
 }

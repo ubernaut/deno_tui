@@ -2797,6 +2797,13 @@
     },
     {
       "module": "src/app/terminal_input.ts",
+      "name": "encodeTerminalMouse",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/terminal_input.ts",
       "name": "encodeTerminalPaste",
       "kind": "function",
       "typeOnly": false,
@@ -2812,6 +2819,13 @@
     {
       "module": "src/app/terminal_input.ts",
       "name": "routeTerminalKeyPress",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/terminal_input.ts",
+      "name": "routeTerminalMouse",
       "kind": "function",
       "typeOnly": false,
       "documented": true
@@ -2848,6 +2862,27 @@
       "module": "src/app/terminal_input.ts",
       "name": "TerminalInputTarget",
       "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/terminal_input.ts",
+      "name": "TerminalMouseInputEvent",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/terminal_input.ts",
+      "name": "terminalMouseRoutingFromPrivateModes",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/terminal_input.ts",
+      "name": "TerminalMouseTrackingMode",
+      "kind": "type",
       "typeOnly": true,
       "documented": true
     },
