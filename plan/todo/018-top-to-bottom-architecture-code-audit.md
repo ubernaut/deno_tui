@@ -223,7 +223,7 @@ Current evidence:
 
 Work:
 
-- [ ] Create a compatibility suite of markup/CSS fixtures with expected terminal-cell boxes.
+- [x] Create a compatibility suite of markup/CSS fixtures with expected terminal-cell boxes.
 - [x] Add intrinsic text and widget measurement caches keyed by content, style, and available width.
 - [ ] Define one overflow/scroll contract shared by layout boxes, pads, scroll areas, and workbench windows.
 - [ ] Move demo-specific hydrated widget examples into reusable fixture/demo modules.
@@ -231,7 +231,7 @@ Work:
 
 Acceptance checks:
 
-- [ ] Layout fixtures run against the simple solver and Yoga solver where supported.
+- [x] Layout fixtures run against the simple solver and Yoga solver where supported.
 - [ ] Workbench can host a markup-created panel using the same scroll and hit routing semantics as hand-built panels.
 
 ### P2: Split Theme Architecture Into Smaller Modules
