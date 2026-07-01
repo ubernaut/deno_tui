@@ -281,6 +281,8 @@ Work:
         `nvidia-smi`.
 - [x] Keep monitor snapshots advancing when required `/proc` reads or process scans fail, with structured per-source
       diagnostics for unavailable CPU, uptime, network, and process data.
+  - [x] Extracted monitor history padding, empty snapshot construction, and alert derivation into
+        `app/system_metrics_snapshot.ts` with direct tests for clamping, initialization, and alert priority.
 - [x] Bound expensive process scans and support configurable process limits, sort keys, and refresh cadence.
   - [x] Replaced allocation-heavy `/proc/<pid>/stat` tail splitting with targeted field scanning for process state, CPU
         time, RSS, and processor id in the sampler hot path.
