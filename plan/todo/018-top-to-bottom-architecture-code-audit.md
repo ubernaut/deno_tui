@@ -425,8 +425,8 @@ Acceptance checks:
 
 Current evidence:
 
-- `src/theme.ts` is `2,204` lines and owns ANSI styles, tokens, manifests, validation, previews, registries, providers,
-  standard component definitions, and reports.
+- `src/theme.ts` is now `971` lines after extracting ANSI styles, palettes, core composition, coverage, diff, registry,
+  provider, preview/report, validation, and standard-component helpers into focused `src/theme_*` modules.
 - Theme performance is benchmarked only through standard component coverage generation.
 
 Work:
@@ -448,6 +448,8 @@ Work:
         `inspectThemeCoverage()` behavior while isolating inheritance/variant accounting tests.
   - [x] Extracted generic theme engine diff/preview logic into `src/theme_diff_core.ts`, keeping the public
         `diffThemeEngines()` facade stable while making diff semantics independently testable.
+  - [x] Removed the last dead helper left behind in `src/theme.ts` after palette extraction and updated the audit
+        evidence to reflect the current facade size.
   - [x] Extracted serializable manifest compilation primitives into `src/theme_manifest_core.ts`, keeping public
         `src/theme.ts` wrappers stable while giving manifest parsing a focused testable boundary.
   - [x] Extracted component validation and inheritance cycle checks into `src/theme_validation_core.ts`, keeping the

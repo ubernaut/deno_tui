@@ -965,7 +965,3 @@ function sortedThemeStates(values: Iterable<string>): ThemeState[] {
   const requested = new Set(values);
   return themeStates.filter((state) => requested.has(state));
 }
-
-function titleCase(value: string): string {
-  return value.length === 0 ? value : `${value[0].toUpperCase()}${value.slice(1)}`;
-}
