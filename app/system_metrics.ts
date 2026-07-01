@@ -13,6 +13,8 @@ import type {
   TemperatureSnapshot,
 } from "./types.ts";
 
+const COMMAND_OUTPUT_DECODER = new TextDecoder();
+
 type CpuTimes = {
   total: number;
   idle: number;
@@ -532,7 +534,7 @@ export class SystemMonitor {
       };
     }
 
-    const output = new TextDecoder().decode(result.stdout);
+    const output = COMMAND_OUTPUT_DECODER.decode(result.stdout);
     const lines = output.split("\n").slice(1).filter(Boolean);
 
     const disks = lines
@@ -860,7 +862,7 @@ async function sampleNvidiaSmiGpu(
       };
     }
 
-    const rows = new TextDecoder().decode(result.stdout).trim().split("\n").filter(Boolean);
+    const rows = COMMAND_OUTPUT_DECODER.decode(result.stdout).trim().split("\n").filter(Boolean);
     const gpus = rows.map(parseNvidiaSmiGpuRow).filter((gpu): gpu is GpuSnapshot => gpu !== null);
     const gpu = gpus.sort((left, right) => right.utilizationPercent - left.utilizationPercent)[0] ??
       (current.available ? current : emptyGpuSnapshot());
