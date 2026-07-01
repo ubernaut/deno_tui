@@ -7953,6 +7953,7 @@ var TerminalScreenController = class {
   #hyperlink;
   #scrollRegion;
   #cursorVisible = true;
+  #cursorStyle = { shape: "block", blinking: true };
   #privateModes = /* @__PURE__ */ new Set();
   constructor(options = {}) {
     this.#columns = normalizeDimension(options.columns, DEFAULT_COLUMNS);
@@ -8022,6 +8023,7 @@ var TerminalScreenController = class {
       rows: this.#rows,
       cursor: this.cursor,
       cursorVisible: this.#cursorVisible,
+      cursorStyle: { ...this.#cursorStyle },
       privateModes: Array.from(this.#privateModes).sort((left, right) => left - right),
       scrollbackRows: this.#scrollback.length,
       alternate: this.alternate,
@@ -8120,6 +8122,9 @@ var TerminalScreenController = class {
       case "r":
         this.#setScrollRegion(params);
         break;
+      case "q":
+        if (sequence.intermediates === " ") this.#applyCursorStyle(params[0] ?? 0);
+        break;
       case "s":
       case "7":
         this.#savedCursor = { ...this.#state.cursor };
@@ -8164,6 +8169,30 @@ var TerminalScreenController = class {
         else this.#privateModes.delete(mode);
         if (mode === 1049) enabled ? this.#enterAlternate() : this.#exitAlternate();
       }
+    }
+  }
+  #applyCursorStyle(style2) {
+    switch (style2) {
+      case 3:
+        this.#cursorStyle = { shape: "underline", blinking: true };
+        break;
+      case 4:
+        this.#cursorStyle = { shape: "underline", blinking: false };
+        break;
+      case 5:
+        this.#cursorStyle = { shape: "bar", blinking: true };
+        break;
+      case 6:
+        this.#cursorStyle = { shape: "bar", blinking: false };
+        break;
+      case 2:
+        this.#cursorStyle = { shape: "block", blinking: false };
+        break;
+      case 0:
+      case 1:
+      default:
+        this.#cursorStyle = { shape: "block", blinking: true };
+        break;
     }
   }
   #applySgr(params) {
@@ -8285,17 +8314,19 @@ function parseControlSequence(value) {
       kind: "csi",
       private: false,
       params: "",
+      intermediates: "",
       command: value[1],
       length: 2
     };
   }
-  const match = /^\x1b\[([?]?)([0-9;]*)([@-~])/.exec(value);
+  const match = /^\x1b\[([?]?)([0-9;:]*)([ -/]*)([@-~])/.exec(value);
   if (!match) return void 0;
   return {
     kind: "csi",
     private: match[1] === "?",
     params: match[2] ?? "",
-    command: match[3],
+    intermediates: match[3] ?? "",
+    command: match[4],
     length: match[0].length
   };
 }
@@ -8309,13 +8340,14 @@ function parseOscSequence(value) {
     kind: "osc",
     private: false,
     params: value.slice(2, end),
+    intermediates: "",
     command: "]",
     length: end + (end === stEnd ? 2 : 1)
   };
 }
 function parseParams(params) {
   if (!params) return [];
-  return params.split(";").map((value) => Number.parseInt(value || "0", 10)).filter(Number.isFinite);
+  return params.split(/[;:]/).map((value) => Number.parseInt(value || "0", 10)).filter(Number.isFinite);
 }
 function parseExtendedSgrColor(values, index) {
   const mode = values[index + 1];

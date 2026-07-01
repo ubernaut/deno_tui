@@ -15,6 +15,12 @@ export interface TerminalScreenCursor {
   row: number;
 }
 
+/** Terminal cursor style reported by TerminalScreenController inspection. */
+export interface TerminalScreenCursorStyle {
+  shape: "block" | "underline" | "bar";
+  blinking: boolean;
+}
+
 /** Options for configuring Terminal Screen Controller. */
 export interface TerminalScreenControllerOptions {
   columns?: number;
@@ -28,6 +34,7 @@ export interface TerminalScreenInspection {
   rows: number;
   cursor: TerminalScreenCursor;
   cursorVisible: boolean;
+  cursorStyle: TerminalScreenCursorStyle;
   privateModes: number[];
   scrollbackRows: number;
   alternate: boolean;
@@ -57,6 +64,7 @@ export class TerminalScreenController {
   #hyperlink?: string;
   #scrollRegion: TerminalScreenScrollRegion;
   #cursorVisible = true;
+  #cursorStyle: TerminalScreenCursorStyle = { shape: "block", blinking: true };
   #privateModes = new Set<number>();
 
   constructor(options: TerminalScreenControllerOptions = {}) {
@@ -138,6 +146,7 @@ export class TerminalScreenController {
       rows: this.#rows,
       cursor: this.cursor,
       cursorVisible: this.#cursorVisible,
+      cursorStyle: { ...this.#cursorStyle },
       privateModes: Array.from(this.#privateModes).sort((left, right) => left - right),
       scrollbackRows: this.#scrollback.length,
       alternate: this.alternate,
@@ -240,6 +249,9 @@ export class TerminalScreenController {
       case "r":
         this.#setScrollRegion(params);
         break;
+      case "q":
+        if (sequence.intermediates === " ") this.#applyCursorStyle(params[0] ?? 0);
+        break;
       case "s":
       case "7":
         this.#savedCursor = { ...this.#state.cursor };
@@ -288,6 +300,31 @@ export class TerminalScreenController {
         else this.#privateModes.delete(mode);
         if (mode === 1049) enabled ? this.#enterAlternate() : this.#exitAlternate();
       }
+    }
+  }
+
+  #applyCursorStyle(style: number): void {
+    switch (style) {
+      case 3:
+        this.#cursorStyle = { shape: "underline", blinking: true };
+        break;
+      case 4:
+        this.#cursorStyle = { shape: "underline", blinking: false };
+        break;
+      case 5:
+        this.#cursorStyle = { shape: "bar", blinking: true };
+        break;
+      case 6:
+        this.#cursorStyle = { shape: "bar", blinking: false };
+        break;
+      case 2:
+        this.#cursorStyle = { shape: "block", blinking: false };
+        break;
+      case 0:
+      case 1:
+      default:
+        this.#cursorStyle = { shape: "block", blinking: true };
+        break;
     }
   }
 
@@ -422,6 +459,7 @@ interface ParsedControlSequence {
   kind: "csi" | "osc";
   private: boolean;
   params: string;
+  intermediates: string;
   command: string;
   length: number;
 }
@@ -434,18 +472,20 @@ function parseControlSequence(value: string): ParsedControlSequence | undefined 
       kind: "csi",
       private: false,
       params: "",
+      intermediates: "",
       command: value[1]!,
       length: 2,
     };
   }
   // deno-lint-ignore no-control-regex -- terminal parser intentionally matches ESC.
-  const match = /^\x1b\[([?]?)([0-9;]*)([@-~])/.exec(value);
+  const match = /^\x1b\[([?]?)([0-9;:]*)([ -/]*)([@-~])/.exec(value);
   if (!match) return undefined;
   return {
     kind: "csi",
     private: match[1] === "?",
     params: match[2] ?? "",
-    command: match[3]!,
+    intermediates: match[3] ?? "",
+    command: match[4]!,
     length: match[0].length,
   };
 }
@@ -460,6 +500,7 @@ function parseOscSequence(value: string): ParsedControlSequence | undefined {
     kind: "osc",
     private: false,
     params: value.slice(2, end),
+    intermediates: "",
     command: "]",
     length: end + (end === stEnd ? 2 : 1),
   };
@@ -467,7 +508,7 @@ function parseOscSequence(value: string): ParsedControlSequence | undefined {
 
 function parseParams(params: string): number[] {
   if (!params) return [];
-  return params.split(";").map((value) => Number.parseInt(value || "0", 10)).filter(Number.isFinite);
+  return params.split(/[;:]/).map((value) => Number.parseInt(value || "0", 10)).filter(Number.isFinite);
 }
 
 function parseExtendedSgrColor(

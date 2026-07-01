@@ -61,3 +61,4 @@ developer workflows.
 - Added DEC private-mode inspection, including cursor visibility and mouse-reporting mode state, so render adapters can
   respond to terminal modes instead of discarding them.
 - Added OSC 8 hyperlink parsing with per-cell hyperlink metadata for modern shell, test-runner, and build output.
+- Added cursor style inspection for `CSI Ps SP q` so shell and editor cursor shape changes survive terminal parsing.
