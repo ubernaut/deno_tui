@@ -333,6 +333,17 @@ function linearUnitToByte(value: number): number {
   return Math.round(linearToSrgb(value) * 255);
 }
 
+function createLinearByteCache(): (value: number) => number {
+  const cache = new Map<number, number>();
+  return (value: number): number => {
+    const cached = cache.get(value);
+    if (cached !== undefined) return cached;
+    const byte = linearUnitToByte(value);
+    cache.set(value, byte);
+    return byte;
+  };
+}
+
 function colorToBytes(color: Color): [number, number, number] {
   return [
     linearUnitToByte(color.r),
@@ -489,6 +500,7 @@ export function buildThreeAsciiAnsiGrid(input: ThreeAsciiAnsiGridInput): string[
   const terminalEdgeBias = Math.max(0.5, input.terminalEdgeBias ?? DEFAULT_TERMINAL_EDGE_BIAS);
   const [backgroundRed, backgroundGreen, backgroundBlue] = colorToBytes(colorValue(input.backgroundColor, 0x000000));
   const backgroundAnsi = rgbToAnsiBackground(backgroundRed, backgroundGreen, backgroundBlue);
+  const toByte = createLinearByteCache();
   const foregroundAnsiCache = new Map<number, string>();
   const grid = Array.from({ length: rows }, () => Array<string>(columns));
 
@@ -511,9 +523,9 @@ export function buildThreeAsciiAnsiGrid(input: ThreeAsciiAnsiGridInput): string[
       );
 
       const colorOffset = index * 4;
-      let foregroundRed = linearUnitToByte(colors[colorOffset] ?? 0);
-      let foregroundGreen = linearUnitToByte(colors[colorOffset + 1] ?? 0);
-      let foregroundBlue = linearUnitToByte(colors[colorOffset + 2] ?? 0);
+      let foregroundRed = toByte(colors[colorOffset] ?? 0);
+      let foregroundGreen = toByte(colors[colorOffset + 1] ?? 0);
+      let foregroundBlue = toByte(colors[colorOffset + 2] ?? 0);
       if (terminalGlyphStyle === "blocks" && glyph === "█") {
         const amount = fillBucketFromGlyphIndex(fillGlyphIndex) / 9;
         foregroundRed = mixByteChannel(backgroundRed, foregroundRed, amount);

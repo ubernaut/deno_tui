@@ -158,6 +158,8 @@ Work:
 - [x] Cache repeated ANSI foreground/background sequences within a frame.
 - [x] Move Kitty image/ASCII dual-render policy into a reusable renderer option object rather than workbench-local
       conditionals.
+- [x] Cache repeated linear-to-sRGB byte conversion during ANSI grid assembly to reduce CPU work on repeated material
+      colors without changing terminal output.
 
 Acceptance checks:
 
