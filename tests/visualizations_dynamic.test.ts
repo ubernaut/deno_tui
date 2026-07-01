@@ -106,6 +106,7 @@ const calmSystem: SystemSnapshot = {
     { pid: 303, name: "bottom", state: "S", cpuPercent: 3.2, memoryPercent: 0.9, memoryBytes: 128 * 1024 ** 2 },
   ],
   alerts: [],
+  diagnostics: [],
 };
 
 const hotSystem: SystemSnapshot = {

@@ -7,6 +7,7 @@ import type {
   GpuSnapshot,
   NetworkSnapshot,
   ProcessSnapshot,
+  SystemMetricDiagnostic,
   SystemSnapshot,
   TemperatureSnapshot,
 } from "./types.ts";
@@ -25,6 +26,28 @@ type NetCounters = {
 type DiskCache = {
   sampledAt: number;
   disks: DiskSnapshot[];
+};
+
+type ProcessStatsSample = {
+  stats: PromiseSettledResult<{ pid: number; stat: string }>[];
+  scanned: number;
+  failedReads: number;
+  limited: boolean;
+};
+
+type TemperatureSample = {
+  temperatures: TemperatureSnapshot[];
+  diagnostic?: SystemMetricDiagnostic;
+};
+
+type DiskSample = {
+  disks: DiskSnapshot[];
+  diagnostic?: SystemMetricDiagnostic;
+};
+
+type GpuSample = {
+  gpu: GpuSnapshot;
+  diagnostic?: SystemMetricDiagnostic;
 };
 
 export interface SystemMetricsDirEntry {
@@ -106,6 +129,14 @@ export class DenoSystemMetricsProvider implements SystemMetricsProvider {
   }
 }
 
+export interface SystemMonitorOptions {
+  historyLength?: number;
+  provider?: SystemMetricsProvider;
+  processLimit?: number;
+  processScanLimit?: number;
+  diskCacheMs?: number;
+}
+
 export class SystemMonitor {
   snapshot: Signal<SystemSnapshot>;
 
@@ -118,15 +149,27 @@ export class SystemMonitor {
   #pageSize = 4096;
   #diskCache: DiskCache = { sampledAt: 0, disks: [] };
   #historyLength: number;
+  #processLimit: number;
+  #processScanLimit: number;
+  #diskCacheMs: number;
   #hostname: string;
   #osRelease: string;
 
-  constructor(historyLength = 60, provider: SystemMetricsProvider = new DenoSystemMetricsProvider()) {
-    this.#provider = provider;
-    this.#historyLength = historyLength;
-    this.#hostname = safeHostname(provider);
-    this.#osRelease = safeOsRelease(provider);
-    this.snapshot = new Signal(emptySnapshot(this.#hostname, this.#osRelease, historyLength));
+  constructor(
+    historyLengthOrOptions: number | SystemMonitorOptions = 60,
+    provider: SystemMetricsProvider = new DenoSystemMetricsProvider(),
+  ) {
+    const options = typeof historyLengthOrOptions === "number"
+      ? { historyLength: historyLengthOrOptions, provider }
+      : historyLengthOrOptions;
+    this.#provider = options.provider ?? provider;
+    this.#historyLength = normalizePositiveInteger(options.historyLength, 60);
+    this.#processLimit = normalizePositiveInteger(options.processLimit, 100);
+    this.#processScanLimit = normalizePositiveInteger(options.processScanLimit, 4096);
+    this.#diskCacheMs = normalizePositiveInteger(options.diskCacheMs, 10_000);
+    this.#hostname = safeHostname(this.#provider);
+    this.#osRelease = safeOsRelease(this.#provider);
+    this.snapshot = new Signal(emptySnapshot(this.#hostname, this.#osRelease, this.#historyLength));
   }
 
   async start(intervalMs = 1000) {
@@ -147,14 +190,15 @@ export class SystemMonitor {
     this.#sampleInFlight = true;
 
     try {
+      const sampleStarted = performance.now();
       const current = this.snapshot.peek();
       const [
         cpuText,
         uptimeText,
         netText,
-        temperatures,
-        disks,
-        gpu,
+        temperatureSample,
+        diskSample,
+        gpuSample,
         rawProcesses,
       ] = await Promise.all([
         this.#provider.readTextFile("/proc/stat"),
@@ -176,6 +220,19 @@ export class SystemMonitor {
       const processes = this.#finalizeProcesses(rawProcesses, cpuSample.totalDelta, memoryInfo.total);
       const uptimeSeconds = Number.parseFloat(uptimeText.split(" ")[0] ?? "0");
       const loadavg = this.#provider.loadavg();
+      const diagnostics = compactDiagnostics([
+        temperatureSample.diagnostic,
+        diskSample.diagnostic,
+        gpuSample.diagnostic,
+        processDiagnostics(rawProcesses, this.#provider.now()),
+        {
+          source: "sample",
+          status: "ok",
+          detail: `sampled ${processes.length} processes`,
+          durationMs: performance.now() - sampleStarted,
+          sampledAt: this.#provider.now(),
+        },
+      ]);
 
       const nextSnapshot: SystemSnapshot = {
         timestamp: this.#provider.now(),
@@ -186,15 +243,15 @@ export class SystemMonitor {
         cpuOverall: cpuSample.overall,
         cpuCores: cpuSample.cores,
         cpuHistory: pushHistory(current.cpuHistory, cpuSample.overall / 100, this.#historyLength),
-        gpu,
+        gpu: gpuSample.gpu,
         gpuUtilizationHistory: pushHistory(
           current.gpuUtilizationHistory,
-          gpu.available ? gpu.utilizationPercent / 100 : 0,
+          gpuSample.gpu.available ? gpuSample.gpu.utilizationPercent / 100 : 0,
           this.#historyLength,
         ),
         gpuMemoryHistory: pushHistory(
           current.gpuMemoryHistory,
-          gpu.available ? gpu.memoryPercent / 100 : 0,
+          gpuSample.gpu.available ? gpuSample.gpu.memoryPercent / 100 : 0,
           this.#historyLength,
         ),
         memory: {
@@ -209,8 +266,8 @@ export class SystemMonitor {
         },
         memoryHistory: pushHistory(current.memoryHistory, memoryPercent / 100, this.#historyLength),
         swapHistory: pushHistory(current.swapHistory, swapPercent / 100, this.#historyLength),
-        temperatures,
-        disks,
+        temperatures: temperatureSample.temperatures,
+        disks: diskSample.disks,
         networks: networkSample.networks,
         rxHistory: pushHistory(
           current.rxHistory,
@@ -227,11 +284,12 @@ export class SystemMonitor {
           cpuOverall: cpuSample.overall,
           memoryPercent,
           swapPercent,
-          temperatures,
-          disks,
+          temperatures: temperatureSample.temperatures,
+          disks: diskSample.disks,
           networks: networkSample.networks,
-          gpu,
+          gpu: gpuSample.gpu,
         }),
+        diagnostics,
       };
 
       this.snapshot.value = nextSnapshot;
@@ -340,13 +398,26 @@ export class SystemMonitor {
     };
   }
 
-  async #sampleDisks() {
+  async #sampleDisks(): Promise<DiskSample> {
     const now = this.#provider.now();
-    if (now - this.#diskCache.sampledAt < 10_000 && this.#diskCache.disks.length > 0) {
-      return this.#diskCache.disks;
+    if (now - this.#diskCache.sampledAt < this.#diskCacheMs && this.#diskCache.disks.length > 0) {
+      return { disks: this.#diskCache.disks };
     }
 
+    const started = performance.now();
     const result = await this.#provider.command("df", ["-B1P", "-x", "tmpfs", "-x", "devtmpfs", "-x", "squashfs"]);
+    if (!result.success) {
+      return {
+        disks: this.#diskCache.disks,
+        diagnostic: {
+          source: "disk",
+          status: this.#diskCache.disks.length > 0 ? "degraded" : "unavailable",
+          detail: "df command failed",
+          durationMs: performance.now() - started,
+          sampledAt: now,
+        },
+      };
+    }
 
     const output = new TextDecoder().decode(result.stdout);
     const lines = output.split("\n").slice(1).filter(Boolean);
@@ -379,14 +450,26 @@ export class SystemMonitor {
       disks,
     };
 
-    return disks;
+    return {
+      disks,
+      diagnostic: {
+        source: "disk",
+        status: disks.length > 0 ? "ok" : "unavailable",
+        detail: disks.length > 0 ? `sampled ${disks.length} filesystem(s)` : "no disk rows available",
+        durationMs: performance.now() - started,
+        sampledAt: now,
+      },
+    };
   }
 
-  async #collectProcessStats() {
+  async #collectProcessStats(): Promise<ProcessStatsSample> {
     const entries: number[] = [];
     for await (const entry of this.#provider.readDir("/proc")) {
       if (entry.isDirectory && /^\d+$/.test(entry.name)) {
         entries.push(Number(entry.name));
+        if (entries.length >= this.#processScanLimit) {
+          break;
+        }
       }
     }
 
@@ -397,11 +480,16 @@ export class SystemMonitor {
       }),
     );
 
-    return stats;
+    return {
+      stats,
+      scanned: entries.length,
+      failedReads: stats.filter((result) => result.status === "rejected").length,
+      limited: entries.length >= this.#processScanLimit,
+    };
   }
 
   #finalizeProcesses(
-    stats: PromiseSettledResult<{ pid: number; stat: string }>[],
+    sample: ProcessStatsSample,
     totalDelta: number,
     totalMemory: number,
   ) {
@@ -410,7 +498,7 @@ export class SystemMonitor {
     const nextProcessCpu = new Map<number, number>();
     const processes: ProcessSnapshot[] = [];
 
-    for (const result of stats) {
+    for (const result of sample.stats) {
       if (result.status !== "fulfilled") {
         continue;
       }
@@ -439,7 +527,10 @@ export class SystemMonitor {
 
     this.#processCpu = nextProcessCpu;
 
-    return processes.sort((a, b) => b.cpuPercent - a.cpuPercent || b.memoryBytes - a.memoryBytes).slice(0, 100);
+    return processes.sort((a, b) => b.cpuPercent - a.cpuPercent || b.memoryBytes - a.memoryBytes).slice(
+      0,
+      this.#processLimit,
+    );
   }
 }
 
@@ -465,7 +556,9 @@ function parseProcessStat(stat: string, pageSize: number) {
   };
 }
 
-async function sampleTemperatures(provider: SystemMetricsProvider) {
+async function sampleTemperatures(provider: SystemMetricsProvider): Promise<TemperatureSample> {
+  const started = performance.now();
+  const sampledAt = provider.now();
   const zones: TemperatureSnapshot[] = [];
   try {
     for await (const entry of provider.readDir("/sys/class/thermal")) {
@@ -490,26 +583,77 @@ async function sampleTemperatures(provider: SystemMetricsProvider) {
       });
     }
   } catch {
-    return [];
+    return {
+      temperatures: [],
+      diagnostic: {
+        source: "temperature",
+        status: "unavailable",
+        detail: "thermal zone scan failed",
+        durationMs: performance.now() - started,
+        sampledAt,
+      },
+    };
   }
 
-  return zones.sort((a, b) => b.celsius - a.celsius);
+  const temperatures = zones.sort((a, b) => b.celsius - a.celsius);
+  return {
+    temperatures,
+    diagnostic: {
+      source: "temperature",
+      status: temperatures.length > 0 ? "ok" : "unavailable",
+      detail: temperatures.length > 0 ? `sampled ${temperatures.length} thermal zone(s)` : "no thermal zones available",
+      durationMs: performance.now() - started,
+      sampledAt,
+    },
+  };
 }
 
-async function sampleGpu(provider: SystemMetricsProvider, current: GpuSnapshot): Promise<GpuSnapshot> {
+async function sampleGpu(provider: SystemMetricsProvider, current: GpuSnapshot): Promise<GpuSample> {
+  const started = performance.now();
+  const sampledAt = provider.now();
   try {
     const result = await provider.command("nvidia-smi", [
       "--query-gpu=name,utilization.gpu,memory.used,memory.total,temperature.gpu,power.draw,clocks.gr,clocks.mem",
       "--format=csv,noheader,nounits",
     ]);
-    if (!result.success) return current.available ? current : emptyGpuSnapshot();
+    if (!result.success) {
+      return {
+        gpu: current.available ? current : emptyGpuSnapshot(),
+        diagnostic: {
+          source: "gpu",
+          status: current.available ? "degraded" : "unavailable",
+          detail: "nvidia-smi command failed",
+          durationMs: performance.now() - started,
+          sampledAt,
+        },
+      };
+    }
 
     const rows = new TextDecoder().decode(result.stdout).trim().split("\n").filter(Boolean);
     const gpus = rows.map(parseNvidiaSmiGpuRow).filter((gpu): gpu is GpuSnapshot => gpu !== null);
-    return gpus.sort((left, right) => right.utilizationPercent - left.utilizationPercent)[0] ??
+    const gpu = gpus.sort((left, right) => right.utilizationPercent - left.utilizationPercent)[0] ??
       (current.available ? current : emptyGpuSnapshot());
+    return {
+      gpu,
+      diagnostic: {
+        source: "gpu",
+        status: gpu.available ? "ok" : "unavailable",
+        detail: gpu.available ? `sampled ${gpu.name}` : "no GPU rows available",
+        durationMs: performance.now() - started,
+        sampledAt,
+      },
+    };
   } catch {
-    return current.available ? current : emptyGpuSnapshot();
+    return {
+      gpu: current.available ? current : emptyGpuSnapshot(),
+      diagnostic: {
+        source: "gpu",
+        status: current.available ? "degraded" : "unavailable",
+        detail: "nvidia-smi sampling failed",
+        durationMs: performance.now() - started,
+        sampledAt,
+      },
+    };
   }
 }
 
@@ -555,6 +699,61 @@ function pushHistory(history: number[], value: number, limit: number) {
     next.unshift(0);
   }
   return next;
+}
+
+function normalizePositiveInteger(value: number | undefined, fallback: number): number {
+  if (!Number.isFinite(value)) return fallback;
+  return Math.max(1, Math.floor(value!));
+}
+
+function compactDiagnostics(
+  diagnostics: Array<SystemMetricDiagnostic | undefined>,
+): SystemMetricDiagnostic[] {
+  return diagnostics
+    .filter((diagnostic): diagnostic is SystemMetricDiagnostic => diagnostic !== undefined)
+    .sort((left, right) => {
+      const leftWeight = diagnosticWeight(left.status);
+      const rightWeight = diagnosticWeight(right.status);
+      return rightWeight - leftWeight || left.source.localeCompare(right.source);
+    });
+}
+
+function diagnosticWeight(status: SystemMetricDiagnostic["status"]): number {
+  switch (status) {
+    case "unavailable":
+      return 4;
+    case "degraded":
+      return 3;
+    case "limited":
+      return 2;
+    case "ok":
+      return 1;
+  }
+}
+
+function processDiagnostics(sample: ProcessStatsSample, sampledAt: number): SystemMetricDiagnostic {
+  if (sample.limited) {
+    return {
+      source: "process",
+      status: "limited",
+      detail: `process scan capped at ${sample.scanned} entries`,
+      sampledAt,
+    };
+  }
+  if (sample.failedReads > 0) {
+    return {
+      source: "process",
+      status: "degraded",
+      detail: `${sample.failedReads} process stat read(s) failed`,
+      sampledAt,
+    };
+  }
+  return {
+    source: "process",
+    status: "ok",
+    detail: `sampled ${sample.scanned} process entries`,
+    sampledAt,
+  };
 }
 
 function collectAlerts(input: {
@@ -708,6 +907,7 @@ function emptySnapshot(hostname: string, osRelease: string, historyLength: numbe
     txHistory: Array.from({ length: historyLength }, () => 0),
     processes: [],
     alerts: [],
+    diagnostics: [],
   };
 }
 

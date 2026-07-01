@@ -166,6 +166,16 @@ export interface GpuSnapshot {
   memoryClockMhz: number | null;
 }
 
+export type SystemMetricStatus = "ok" | "degraded" | "unavailable" | "limited";
+
+export interface SystemMetricDiagnostic {
+  source: string;
+  status: SystemMetricStatus;
+  detail: string;
+  durationMs?: number;
+  sampledAt: number;
+}
+
 export interface SystemSnapshot {
   timestamp: number;
   hostname: string;
@@ -188,6 +198,7 @@ export interface SystemSnapshot {
   txHistory: number[];
   processes: ProcessSnapshot[];
   alerts: AlertMessage[];
+  diagnostics: SystemMetricDiagnostic[];
 }
 
 export interface AudioCatalogEntry {

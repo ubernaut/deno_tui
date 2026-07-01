@@ -44,6 +44,7 @@ const baseSystem: SystemSnapshot = {
   txHistory: [],
   processes: [],
   alerts: [],
+  diagnostics: [],
 };
 
 function renderThreeFallback(visualizationId: SlotConfig["visualizationId"]) {

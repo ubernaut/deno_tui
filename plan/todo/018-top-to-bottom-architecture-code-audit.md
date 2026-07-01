@@ -172,8 +172,8 @@ Current evidence:
 
 Work:
 
-- [ ] Extract provider interfaces for CPU, memory, process, disk, network, temperature, and GPU metrics.
-- [ ] Add Linux provider implementations plus fixture providers for tests and demos.
+- [x] Extract provider interfaces for CPU, memory, process, disk, network, temperature, and GPU metrics.
+- [x] Add Linux provider implementations plus fixture providers for tests and demos.
 - [ ] Add structured sampler diagnostics: unavailable source, permission denied, command missing, timeout, stale data,
       and sample duration.
 - [ ] Bound expensive process scans and support configurable process limits, sort keys, and refresh cadence.
@@ -181,8 +181,8 @@ Work:
 
 Acceptance checks:
 
-- [ ] Unit tests use fixture files instead of live `/proc`.
-- [ ] Workbench monitor windows can display source availability and stale data.
+- [x] Unit tests use fixture files instead of live `/proc`.
+- [x] Workbench monitor windows can display source availability and stale data.
 - [ ] Process monitor still exposes top 100 rows when configured, but sampler cost is bounded.
 
 ### P2: Upgrade Terminal Emulation Toward Real Shell Workflows

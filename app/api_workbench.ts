@@ -2977,6 +2977,7 @@ function syntheticWorkbenchSystem(phase: number, group: NewWindowOption["group"]
       processor: index % cpuCoreCount,
     })),
     alerts: hot > 0.92 ? [{ severity: "warning", title: "WORKBENCH", detail: "LOAD SPIKE" }] : [],
+    diagnostics: [],
   };
 }
 

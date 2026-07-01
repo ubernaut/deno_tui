@@ -49,6 +49,71 @@ Deno.test("SystemMonitor samples through an injectable metrics provider", async 
   assertEquals(snapshot.gpu.memoryPercent, 25);
   assertEquals(snapshot.processes[0]?.pid, 42);
   assertEquals(snapshot.processes[0]?.processor, 7);
+  assertEquals(
+    snapshot.diagnostics.some((diagnostic) => diagnostic.source === "gpu" && diagnostic.status === "ok"),
+    true,
+  );
+  assertEquals(
+    snapshot.diagnostics.some((diagnostic) => diagnostic.source === "process" && diagnostic.status === "ok"),
+    true,
+  );
+});
+
+Deno.test("SystemMonitor bounds process scans and reports degraded sources", async () => {
+  const provider = new FixtureMetricsProvider();
+  provider.files.set("/proc/stat", procStatFirst());
+  provider.files.set("/proc/uptime", "123.45 100.00\n");
+  provider.files.set("/proc/net/dev", procNetDev(1_000, 2_000));
+  provider.files.set("/proc/40/stat", processStatForPid(40, 100, 256, 0));
+  provider.files.set("/proc/41/stat", processStatForPid(41, 100, 256, 1));
+  provider.files.set("/proc/42/stat", processStatForPid(42, 100, 256, 0));
+  provider.dirs.set("/proc", [
+    { name: "40", isDirectory: true },
+    { name: "41", isDirectory: true },
+    { name: "42", isDirectory: true },
+  ]);
+
+  const monitor = new SystemMonitor({
+    historyLength: 4,
+    provider,
+    processScanLimit: 2,
+    processLimit: 1,
+  });
+  await monitor.sample();
+
+  provider.nowValue = 2_000;
+  provider.files.set("/proc/stat", procStatSecond());
+  provider.files.set("/proc/net/dev", procNetDev(126_000, 252_000));
+  provider.files.set("/proc/40/stat", processStatForPid(40, 160, 256, 0));
+  provider.files.set("/proc/41/stat", processStatForPid(41, 130, 256, 1));
+  provider.files.set("/proc/42/stat", processStatForPid(42, 999, 256, 0));
+  await monitor.sample();
+
+  const snapshot = monitor.snapshot.peek();
+  assertEquals(snapshot.processes.length, 1);
+  assertEquals(snapshot.processes[0]?.pid, 40);
+  assertEquals(snapshot.processes.some((process) => process.pid === 42), false);
+  assertEquals(
+    snapshot.diagnostics.some((diagnostic) =>
+      diagnostic.source === "process" && diagnostic.status === "limited" &&
+      diagnostic.detail.includes("2")
+    ),
+    true,
+  );
+  assertEquals(
+    snapshot.diagnostics.some((diagnostic) => diagnostic.source === "gpu" && diagnostic.status === "unavailable"),
+    true,
+  );
+  assertEquals(
+    snapshot.diagnostics.some((diagnostic) => diagnostic.source === "disk" && diagnostic.status === "unavailable"),
+    true,
+  );
+  assertEquals(
+    snapshot.diagnostics.some((diagnostic) =>
+      diagnostic.source === "temperature" && diagnostic.status === "unavailable"
+    ),
+    true,
+  );
 });
 
 class FixtureMetricsProvider implements SystemMetricsProvider {
@@ -150,13 +215,17 @@ function procNetDev(rxBytes: number, txBytes: number): string {
 }
 
 function processStat(cpuTime: number, rssPages: number, processor: number): string {
+  return processStatForPid(42, cpuTime, rssPages, processor);
+}
+
+function processStatForPid(pid: number, cpuTime: number, rssPages: number, processor: number): string {
   const tail = Array.from({ length: 37 }, () => "0");
   tail[0] = "R";
   tail[11] = String(cpuTime);
   tail[12] = "0";
   tail[21] = String(rssPages);
   tail[36] = String(processor);
-  return `42 (fixture worker) ${tail.join(" ")}`;
+  return `${pid} (fixture worker ${pid}) ${tail.join(" ")}`;
 }
 
 function dfOutput(): string {

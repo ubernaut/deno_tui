@@ -493,6 +493,7 @@ function syntheticSystemSnapshot(demo: NeonDemo): SystemSnapshot {
     txHistory: Array.from({ length: 64 }, (_, index) => unitWave(phase.value + index, 0.09, 0.4)),
     processes: [],
     alerts: hot > 0.92 ? [{ severity: "warning", title: demo.badge, detail: "DRIVE SATURATION" }] : [],
+    diagnostics: [],
   };
 }
 

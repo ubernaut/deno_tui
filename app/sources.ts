@@ -96,6 +96,13 @@ export function buildSourceCatalog(audioCatalog: AudioCatalogEntry[]) {
       kind: "system",
     },
     {
+      id: "sys:diagnostics",
+      name: "Diagnostics",
+      description: "Sampler availability, degraded sources, and bounded scan status.",
+      group: "System",
+      kind: "system",
+    },
+    {
       id: "synth:pulse",
       name: "Synthetic Pulse",
       description: "A stable reactive control pulse.",
@@ -299,6 +306,24 @@ export function getSourceFrame(
           ? system.alerts.map((alert) => `${alert.title} ${alert.detail}`).slice(0, 4)
           : ["NO ACTIVE SYSTEM ALERTS"],
       };
+    case "sys:diagnostics": {
+      const degraded = system.diagnostics.filter((diagnostic) => diagnostic.status !== "ok");
+      const lines = (degraded.length > 0 ? degraded : system.diagnostics).slice(0, 5).map((diagnostic) =>
+        `${diagnostic.source.toUpperCase()} ${diagnostic.status.toUpperCase()} ${diagnostic.detail}`
+      );
+      return {
+        id: sourceId,
+        name: "Diagnostics",
+        accent: degraded.some((diagnostic) => diagnostic.status === "unavailable")
+          ? "alarm"
+          : degraded.length > 0
+          ? "amber"
+          : "signal",
+        value: degraded.length > 0 ? 1 : 0.12,
+        series: system.diagnostics.map((diagnostic) => diagnostic.status === "ok" ? 0.2 : 1),
+        detailLines: lines.length > 0 ? lines : ["NO SAMPLER DIAGNOSTICS"],
+      };
+    }
     case "synth:clock":
       return syntheticClockSource(phase);
     case "synth:noise":

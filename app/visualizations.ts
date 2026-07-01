@@ -1300,8 +1300,15 @@ function renderThreeFallbackBody(context: RenderContext, drive: VisualizationDri
 
 function renderWarningStack(context: RenderContext): PanelRender {
   const drive = buildVisualizationDrive(context, 24);
+  const diagnostics = context.system.diagnostics
+    .filter((diagnostic) => diagnostic.status !== "ok")
+    .map((diagnostic) =>
+      `${diagnostic.source.toUpperCase()}  ${diagnostic.status.toUpperCase()}  ${diagnostic.detail}`
+    );
   const alerts = context.system.alerts.length > 0
     ? context.system.alerts.map((alert) => `${alert.title}  ${alert.detail}`)
+    : diagnostics.length > 0
+    ? diagnostics
     : sourceWarnings(context.sources, drive);
 
   return {
