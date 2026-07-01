@@ -288,7 +288,7 @@ Current evidence:
 
 Work:
 
-- [ ] Add a small `DiagnosticsCollector` or app-level logger interface that can be injected into demos and reusable
+- [x] Add a small `DiagnosticsCollector` or app-level logger interface that can be injected into demos and reusable
       controllers.
 - [ ] Convert silent fallback paths in system metrics, graphics/Kitty surfaces, storage, audio, and browser storage into
       structured diagnostics where practical.

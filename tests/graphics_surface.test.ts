@@ -1,6 +1,7 @@
 import { assert, assertEquals } from "./deps.ts";
 import {
   createKittyGraphicsSurface,
+  DiagnosticsCollector,
   type KittyGraphicsCapability,
   KittyGraphicsSurface,
   NoopGraphicsSurface,
@@ -87,10 +88,15 @@ Deno.test("KittyGraphicsSurface wraps commands for tmux passthrough", async () =
 });
 
 Deno.test("createKittyGraphicsSurface falls back when capability is unsupported", () => {
+  const diagnostics = new DiagnosticsCollector();
   const surface = createKittyGraphicsSurface({
     capability: blockedKitty,
+    diagnostics,
     writer: { write: () => {} },
   });
 
   assertEquals(surface.kind, "none");
+  assertEquals(diagnostics.entries().map((entry) => [entry.source, entry.code, entry.severity, entry.detail]), [
+    ["graphics", "kitty-unavailable", "warning", "blocked"],
+  ]);
 });

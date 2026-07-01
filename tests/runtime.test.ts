@@ -52,6 +52,7 @@ import {
   inspectRuntimeWorkload,
 } from "../src/runtime/telemetry.ts";
 import { createRenderLoop, RenderLoop } from "../src/runtime/render_loop.ts";
+import { DiagnosticsCollector, formatDiagnostics } from "../src/runtime/diagnostics.ts";
 import { createPersistentSignal, createRuntimeStore, MemoryStore } from "../src/runtime/storage.ts";
 import { runWorkerBatch, type WorkerLike, WorkerPool, WorkerPoolTerminatedError } from "../src/runtime/worker_pool.ts";
 
@@ -100,6 +101,43 @@ Deno.test("runtime capability helpers expose labeled summaries", () => {
       "ok IndexedDB",
     ].join("\n"),
   );
+});
+
+Deno.test("DiagnosticsCollector records bounded structured fallback diagnostics", () => {
+  const diagnostics = new DiagnosticsCollector(1);
+  const events: Array<number | undefined> = [];
+  const unsubscribe = diagnostics.subscribe((entry) => events.push(entry?.id));
+
+  diagnostics.report({
+    source: "storage",
+    code: "indexeddb-unavailable",
+    severity: "warning",
+    message: "IndexedDB unavailable; using memory store.",
+    time: 100,
+  });
+  const second = diagnostics.report({
+    source: "graphics",
+    code: "kitty-unavailable",
+    severity: "warning",
+    message: "Kitty graphics unavailable; using no-op raster surface.",
+    detail: "blocked",
+    context: { mode: "unknown" },
+    time: 101,
+  });
+
+  assertEquals(diagnostics.inspect().count, 1);
+  assertEquals(diagnostics.inspect().bySeverity.warning, 1);
+  assertEquals(diagnostics.entries()[0], second);
+  assertEquals(
+    formatDiagnostics(diagnostics.entries()),
+    "WARNING graphics/kitty-unavailable: Kitty graphics unavailable; using no-op raster surface. (blocked)",
+  );
+
+  diagnostics.clear();
+  unsubscribe();
+
+  assertEquals(events, [1, 2, undefined]);
+  assertEquals(formatDiagnostics(diagnostics.entries()), "Diagnostics: none");
 });
 
 Deno.test("runtime plans choose worker storage and renderer strategies", () => {

@@ -11,6 +11,7 @@ import {
   type KittyGraphicsTransmitOptions,
   wrapKittyGraphicsForTmux,
 } from "./kitty_graphics.ts";
+import type { DiagnosticsCollector } from "./diagnostics.ts";
 
 /** Terminal or browser graphics surface kind. */
 export type GraphicsSurfaceKind = "browser-canvas" | "iterm2" | "kitty" | "none" | "sixel";
@@ -81,6 +82,7 @@ export interface KittyGraphicsSurfaceOptions {
   writer: GraphicsSurfaceWriter;
   capability?: KittyGraphicsCapability;
   detection?: KittyGraphicsDetectionOptions;
+  diagnostics?: DiagnosticsCollector;
   mode?: KittyGraphicsMode;
   quiet?: KittyGraphicsTransmitOptions["quiet"];
   maxChunkBytes?: number;
@@ -249,7 +251,22 @@ export function createNoopGraphicsSurface(): NoopGraphicsSurface {
 /** Creates a Kitty graphics surface when supported, otherwise a no-op surface. */
 export function createKittyGraphicsSurface(options: KittyGraphicsSurfaceOptions): GraphicsSurface {
   const surface = new KittyGraphicsSurface(options);
-  return surface.capability.supported ? surface : new NoopGraphicsSurface();
+  if (surface.capability.supported) return surface;
+  options.diagnostics?.report({
+    source: "graphics",
+    code: "kitty-unavailable",
+    severity: "warning",
+    message: "Kitty graphics unavailable; using no-op raster surface.",
+    detail: surface.capability.reason,
+    context: {
+      mode: surface.capability.mode,
+      term: surface.capability.term,
+      termProgram: surface.capability.termProgram,
+      multiplexer: surface.capability.multiplexer,
+      remote: surface.capability.remote,
+    },
+  });
+  return new NoopGraphicsSurface();
 }
 
 function createGraphicsHandle(
