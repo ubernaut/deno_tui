@@ -8,6 +8,7 @@
 export * from "../hit_targets.ts";
 export * from "../workbench_frame.ts";
 export * from "../workbench_menu.ts";
+export * from "../workbench_overlay.ts";
 export * from "../workbench_shelf.ts";
 export * from "../workbench_terminal.ts";
 export * from "../workbench_titlebar.ts";

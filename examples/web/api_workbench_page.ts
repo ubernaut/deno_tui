@@ -25,6 +25,8 @@ import {
   InputController,
   isWorkbenchMenuActivationKey,
   isWorkbenchMenuCloseKey,
+  layoutWorkbenchModal,
+  layoutWorkbenchPopover,
   layoutWorkbenchShelf,
   layoutWorkbenchTabs,
   layoutWorkbenchTitlebar,
@@ -1425,8 +1427,11 @@ function renderWorkspaceScrollbar(frame: string[], bounds: Rectangle): void {
 function renderDropdownOverlay(frame: string[]): void {
   const overlay = dropdownOverlay;
   if (!overlay || overlay.items.length === 0) return;
-  const rect = clipRect(overlay.rect, { column: 0, row: 0, width: cols(), height: rowsCount() });
-  if (rect.width < 8 || rect.height < 1) return;
+  const rect = layoutWorkbenchPopover({
+    rect: overlay.rect,
+    bounds: { column: 0, row: 0, width: cols(), height: rowsCount() },
+  });
+  if (!rect) return;
   fillRect(frame, rect, theme().panelAlt);
   write(
     frame,
@@ -1467,25 +1472,15 @@ function renderModalOverlay(frame: string[]): void {
   if (!modal.openState.peek()) return;
   hitTargets.add({ column: 0, row: 0, width: cols(), height: rowsCount() }, { type: "modalAction", index: -1 });
   const inspection = modal.inspect();
-  const width = Math.min(Math.max(38, cols() - 8), 74);
-  const contentHeight = modalContentHeight(inspection, width);
-  const height = Math.min(Math.max(9, contentHeight), Math.max(7, rowsCount() - 6));
-  const rect = {
-    column: Math.max(0, Math.floor((cols() - width) / 2)),
-    row: Math.max(1, Math.floor((rowsCount() - height) / 2)),
-    width,
-    height,
-  };
-  const shadow = clipRect({ column: rect.column + 2, row: rect.row + 1, width: rect.width, height: rect.height }, {
-    column: 0,
-    row: 0,
-    width: cols(),
-    height: rowsCount(),
+  const probeWidth = Math.min(Math.max(38, cols() - 8), 74);
+  const { rect, inner, shadow } = layoutWorkbenchModal({
+    bounds: { column: 0, row: 0, width: cols(), height: rowsCount() },
+    contentHeight: modalContentHeight(inspection, probeWidth),
+    maxWidth: 74,
   });
   if (shadow.width > 0 && shadow.height > 0) fillRect(frame, shadow, theme().bg);
   fillRect(frame, rect, theme().panelAlt);
   drawFrame(frame, rect, inspection.title, true);
-  const inner = { column: rect.column + 1, row: rect.row + 1, width: rect.width - 2, height: rect.height - 2 };
   const rows = renderModalRows(inspection, { width: rect.width, height: inner.height });
   for (let index = 0; index < rows.length && index < inner.height; index += 1) {
     const actionRow = inspection.actions.length > 0 && index === rows.length - 1;

@@ -38,6 +38,8 @@ import {
   isWorkbenchMenuActivationKey,
   isWorkbenchVisualizationWindowId,
   isWorkbenchWindowOptionLoaded,
+  layoutWorkbenchModal,
+  layoutWorkbenchPopover,
   layoutWorkbenchShelf,
   layoutWorkbenchTabs,
   layoutWorkbenchTitlebar,
@@ -2411,25 +2413,17 @@ function renderModalOverlay(frame: Frame): void {
   addHit(screen, { type: "modalAction", index: -1 });
 
   const inspection = modal.inspect();
-  const width = Math.min(Math.max(38, currentWidth() - 8), 72);
-  const contentHeight = modalContentHeight(inspection, width);
-  const height = Math.min(Math.max(9, contentHeight), Math.max(7, currentHeight() - 6));
-  const rect = {
-    column: Math.max(0, Math.floor((currentWidth() - width) / 2)),
-    row: Math.max(1, Math.floor((currentHeight() - height) / 2)),
-    width,
-    height,
-  };
-  const shadow = clipRect(
-    { column: rect.column + 2, row: rect.row + 1, width: rect.width, height: rect.height },
-    screen,
-  );
+  const probeWidth = Math.min(Math.max(38, currentWidth() - 8), 72);
+  const { rect, inner, shadow } = layoutWorkbenchModal({
+    bounds: screen,
+    contentHeight: modalContentHeight(inspection, probeWidth),
+    maxWidth: 72,
+  });
   if (shadow.width > 0 && shadow.height > 0) fillRect(frame, shadow, t.background);
 
   fillRect(frame, rect, t.panelSoft);
   drawFrame(frame, rect, inspection.title, true);
 
-  const inner = inset(rect, 1);
   const rows = renderModalRows(inspection, { width: rect.width, height: inner.height });
   for (let index = 0; index < rows.length && index < inner.height; index += 1) {
     const actionRow = inspection.actions.length > 0 && index === rows.length - 1;
@@ -3365,8 +3359,8 @@ function renderDropdownOverlay(frame: Frame, bounds: Rectangle, offset: number):
     : overlay.rect;
   if (!intersects(rect, clip)) return;
 
-  const clipped = clipRect(rect, clip);
-  if (clipped.width < 8 || clipped.height < 1) return;
+  const clipped = layoutWorkbenchPopover({ rect, bounds: clip });
+  if (!clipped) return;
 
   fillRect(frame, clipped, t.panelSoft);
   const top = `┌${"─".repeat(Math.max(0, rect.width - 2))}┐`;

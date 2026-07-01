@@ -8848,6 +8848,61 @@ function moveWorkbenchMenuIndex(current, count, event, options = {}) {
   }
 }
 
+// src/app/workbench_overlay.ts
+function layoutWorkbenchModal(options) {
+  const bounds = normalizeRect2(options.bounds);
+  const horizontalMargin = Math.max(0, Math.floor(options.horizontalMargin ?? 8));
+  const verticalMargin = Math.max(0, Math.floor(options.verticalMargin ?? 6));
+  const topMargin = Math.max(0, Math.floor(options.topMargin ?? 1));
+  const minWidth = Math.max(1, Math.floor(options.minWidth ?? 38));
+  const maxWidth = Math.max(minWidth, Math.floor(options.maxWidth ?? 72));
+  const minHeight = Math.max(1, Math.floor(options.minHeight ?? 9));
+  const availableWidth = Math.max(1, bounds.width - horizontalMargin);
+  const availableHeight = Math.max(1, bounds.height - verticalMargin);
+  const width = Math.min(Math.max(minWidth, availableWidth), maxWidth, bounds.width);
+  const height = Math.min(Math.max(minHeight, Math.floor(options.contentHeight)), Math.max(minHeight, availableHeight));
+  const rect = {
+    column: bounds.column + Math.max(0, Math.floor((bounds.width - width) / 2)),
+    row: bounds.row + Math.max(topMargin, Math.floor((bounds.height - height) / 2)),
+    width,
+    height: Math.min(height, bounds.height)
+  };
+  const clippedRect = clipRect(rect, bounds);
+  return {
+    rect: clippedRect,
+    inner: insetRect2(clippedRect, 1),
+    shadow: clipRect({
+      column: clippedRect.column + 2,
+      row: clippedRect.row + 1,
+      width: clippedRect.width,
+      height: clippedRect.height
+    }, bounds)
+  };
+}
+function layoutWorkbenchPopover(options) {
+  const minWidth = Math.max(0, Math.floor(options.minWidth ?? 8));
+  const minHeight = Math.max(0, Math.floor(options.minHeight ?? 1));
+  const clipped = clipRect(normalizeRect2(options.rect), normalizeRect2(options.bounds));
+  return clipped.width < minWidth || clipped.height < minHeight ? void 0 : clipped;
+}
+function insetRect2(rect, amount) {
+  const inset = Math.max(0, Math.floor(amount));
+  return {
+    column: rect.column + inset,
+    row: rect.row + inset,
+    width: Math.max(0, rect.width - inset * 2),
+    height: Math.max(0, rect.height - inset * 2)
+  };
+}
+function normalizeRect2(rect) {
+  return {
+    column: Math.floor(rect.column),
+    row: Math.floor(rect.row),
+    width: Math.max(0, Math.floor(rect.width)),
+    height: Math.max(0, Math.floor(rect.height))
+  };
+}
+
 // src/app/workbench_shelf.ts
 function layoutWorkbenchShelf(options) {
   return layoutButtonRow({
@@ -12217,8 +12272,11 @@ function renderWorkspaceScrollbar(frame, bounds) {
 function renderDropdownOverlay(frame) {
   const overlay = dropdownOverlay;
   if (!overlay || overlay.items.length === 0) return;
-  const rect = clipRect(overlay.rect, { column: 0, row: 0, width: cols(), height: rowsCount() });
-  if (rect.width < 8 || rect.height < 1) return;
+  const rect = layoutWorkbenchPopover({
+    rect: overlay.rect,
+    bounds: { column: 0, row: 0, width: cols(), height: rowsCount() }
+  });
+  if (!rect) return;
   fillRect(frame, rect, theme().panelAlt);
   write(
     frame,
@@ -12258,25 +12316,15 @@ function renderModalOverlay(frame) {
   if (!modal.openState.peek()) return;
   hitTargets.add({ column: 0, row: 0, width: cols(), height: rowsCount() }, { type: "modalAction", index: -1 });
   const inspection = modal.inspect();
-  const width = Math.min(Math.max(38, cols() - 8), 74);
-  const contentHeight = modalContentHeight(inspection, width);
-  const height = Math.min(Math.max(9, contentHeight), Math.max(7, rowsCount() - 6));
-  const rect = {
-    column: Math.max(0, Math.floor((cols() - width) / 2)),
-    row: Math.max(1, Math.floor((rowsCount() - height) / 2)),
-    width,
-    height
-  };
-  const shadow = clipRect({ column: rect.column + 2, row: rect.row + 1, width: rect.width, height: rect.height }, {
-    column: 0,
-    row: 0,
-    width: cols(),
-    height: rowsCount()
+  const probeWidth = Math.min(Math.max(38, cols() - 8), 74);
+  const { rect, inner, shadow } = layoutWorkbenchModal({
+    bounds: { column: 0, row: 0, width: cols(), height: rowsCount() },
+    contentHeight: modalContentHeight(inspection, probeWidth),
+    maxWidth: 74
   });
   if (shadow.width > 0 && shadow.height > 0) fillRect(frame, shadow, theme().bg);
   fillRect(frame, rect, theme().panelAlt);
   drawFrame(frame, rect, inspection.title, true);
-  const inner = { column: rect.column + 1, row: rect.row + 1, width: rect.width - 2, height: rect.height - 2 };
   const rows2 = renderModalRows(inspection, { width: rect.width, height: inner.height });
   for (let index = 0; index < rows2.length && index < inner.height; index += 1) {
     const actionRow2 = inspection.actions.length > 0 && index === rows2.length - 1;
@@ -12297,14 +12345,14 @@ function renderModalOverlay(frame) {
   const actionRow = inner.row + Math.min(rows2.length, inner.height) - 1;
   let column = inner.column;
   for (const [index, action] of inspection.actions.entries()) {
-    const width2 = textWidth(buttonText2(action.label));
-    if (column + width2 > inner.column + inner.width) break;
+    const width = textWidth(buttonText2(action.label));
+    if (column + width > inner.column + inner.width) break;
     writeButton(frame, actionRow, column, action.label, {
       state: action.disabled ? "disabled" : index === inspection.selectedActionIndex ? "active" : "base",
       tone: action.destructive ? "danger" : "default"
     });
-    hitTargets.add({ column, row: actionRow, width: width2, height: 1 }, { type: "modalAction", index });
-    column += width2 + 1;
+    hitTargets.add({ column, row: actionRow, width, height: 1 }, { type: "modalAction", index });
+    column += width + 1;
   }
 }
 function ensureActivePanelVisible(layout, viewportHeight) {
