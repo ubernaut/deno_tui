@@ -8,8 +8,8 @@ modules and exported symbols that make up the package API.
 - Entrypoint: `mod.ts`
 - Modules: 211
 - Re-export declarations: 210
-- Exported symbols: 1731
-- Documented symbols: 1731
+- Exported symbols: 1737
+- Documented symbols: 1737
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -69,7 +69,7 @@ modules and exported symbols that make up the package API.
 | [`src/app/surface_bindings.ts`](#src-app-surface-bindings-ts)                           |          0 |       2 |          2 |
 | [`src/app/table_commands.ts`](#src-app-table-commands-ts)                               |          0 |       6 |          6 |
 | [`src/app/tabs_commands.ts`](#src-app-tabs-commands-ts)                                 |          0 |       6 |          6 |
-| [`src/app/terminal_commands.ts`](#src-app-terminal-commands-ts)                         |          0 |       6 |          6 |
+| [`src/app/terminal_commands.ts`](#src-app-terminal-commands-ts)                         |          0 |      12 |         12 |
 | [`src/app/terminal_input.ts`](#src-app-terminal-input-ts)                               |          0 |       9 |          9 |
 | [`src/app/terminal_window_bindings.ts`](#src-app-terminal-window-bindings-ts)           |          0 |       5 |          5 |
 | [`src/app/textbox_commands.ts`](#src-app-textbox-commands-ts)                           |          0 |       6 |          6 |
@@ -958,14 +958,20 @@ _No direct exported symbols._
 
 ### src/app/terminal_commands.ts
 
-| Symbol                   | Kind      | Type Only | JSDoc |
-| ------------------------ | --------- | --------- | ----- |
-| `bindTerminalCommands`   | function  | no        | yes   |
-| `TerminalCommandAction`  | type      | yes       | yes   |
-| `TerminalCommandKind`    | type      | yes       | yes   |
-| `TerminalCommandOptions` | interface | yes       | yes   |
-| `TerminalCommandPayload` | interface | yes       | yes   |
-| `terminalCommands`       | function  | no        | yes   |
+| Symbol                            | Kind      | Type Only | JSDoc |
+| --------------------------------- | --------- | --------- | ----- |
+| `bindTerminalCommands`            | function  | no        | yes   |
+| `bindTerminalWorkspaceCommands`   | function  | no        | yes   |
+| `TerminalCommandAction`           | type      | yes       | yes   |
+| `TerminalCommandKind`             | type      | yes       | yes   |
+| `TerminalCommandOptions`          | interface | yes       | yes   |
+| `TerminalCommandPayload`          | interface | yes       | yes   |
+| `terminalCommands`                | function  | no        | yes   |
+| `TerminalWorkspaceCommandAction`  | type      | yes       | yes   |
+| `TerminalWorkspaceCommandKind`    | type      | yes       | yes   |
+| `TerminalWorkspaceCommandOptions` | interface | yes       | yes   |
+| `TerminalWorkspaceCommandPayload` | interface | yes       | yes   |
+| `terminalWorkspaceCommands`       | function  | no        | yes   |
 
 ### src/app/terminal_input.ts
 

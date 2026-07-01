@@ -49,3 +49,5 @@ developer workflows.
   inspection.
 - Added `terminalWorkspacePaneRects()` to project split/zoomed pane trees into concrete terminal-cell rectangles for
   console and browser renderers.
+- Added app command adapters for terminal workspace pane operations: split row/column, focus next/previous, zoom,
+  resize, and close pane.

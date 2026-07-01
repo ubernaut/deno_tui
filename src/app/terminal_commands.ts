@@ -1,6 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { TerminalOutputController, TerminalOutputInspection } from "../components/terminal_output.ts";
 import type { ProcessSessionController, ProcessSessionInspection } from "../runtime/process_session.ts";
+import type { TerminalWorkspaceController, TerminalWorkspaceInspection } from "../runtime/terminal_workspace.ts";
 import type { Action } from "./actions.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
@@ -36,6 +37,48 @@ export interface TerminalCommandOptions {
   includeToggleFollow?: boolean;
   includeCopyCommand?: boolean;
   labels?: Partial<Record<TerminalCommandKind, string>>;
+}
+
+/** Identifier union for terminal workspace command variants. */
+export type TerminalWorkspaceCommandKind =
+  | "splitRow"
+  | "splitColumn"
+  | "zoom"
+  | "closePane"
+  | "nextPane"
+  | "previousPane"
+  | "growActive"
+  | "shrinkActive";
+
+/** Action union emitted by terminal workspace command helpers. */
+export type TerminalWorkspaceCommandAction =
+  | Action<"terminalWorkspace.split", TerminalWorkspaceCommandPayload & { direction: "row" | "column" }>
+  | Action<"terminalWorkspace.zoomChanged", TerminalWorkspaceCommandPayload>
+  | Action<"terminalWorkspace.paneClosed", TerminalWorkspaceCommandPayload>
+  | Action<"terminalWorkspace.paneActivated", TerminalWorkspaceCommandPayload>
+  | Action<"terminalWorkspace.paneResized", TerminalWorkspaceCommandPayload & { delta: number }>;
+
+/** Payload carried by terminal workspace command actions. */
+export interface TerminalWorkspaceCommandPayload {
+  id: string;
+  paneId?: string;
+  sessionId?: string;
+  workspace: TerminalWorkspaceInspection;
+}
+
+/** Options for configuring terminal workspace commands. */
+export interface TerminalWorkspaceCommandOptions {
+  id?: string;
+  idPrefix?: string;
+  group?: string;
+  sessionId?: string | (() => string | undefined);
+  resizeStep?: number;
+  includeSplitCommands?: boolean;
+  includeZoom?: boolean;
+  includeClosePane?: boolean;
+  includeFocusCommands?: boolean;
+  includeResizeCommands?: boolean;
+  labels?: Partial<Record<TerminalWorkspaceCommandKind, string>>;
 }
 
 /** Builds command definitions for process-backed terminal output windows. */
@@ -148,4 +191,203 @@ export function bindTerminalCommands<TAction extends Action = TerminalCommandAct
   options: TerminalCommandOptions = {},
 ): () => void {
   return registry.registerAll(terminalCommands<TAction>(session, options));
+}
+
+/** Builds command definitions for tmux-like terminal workspace panes. */
+export function terminalWorkspaceCommands<TAction extends Action = TerminalWorkspaceCommandAction>(
+  workspace: TerminalWorkspaceController,
+  options: TerminalWorkspaceCommandOptions = {},
+): Command<TAction>[] {
+  const id = options.id ?? "terminal-workspace";
+  const idPrefix = options.idPrefix ?? "terminalWorkspace";
+  const group = options.group ?? "terminal";
+  const resizeStep = Math.max(0.01, Math.min(0.25, options.resizeStep ?? 0.05));
+  const label = (kind: TerminalWorkspaceCommandKind, fallback: string) => options.labels?.[kind] ?? fallback;
+  const sessionId = () => typeof options.sessionId === "function" ? options.sessionId() : options.sessionId;
+  const targetSessionId = () => sessionId() ?? workspace.inspect().activeId;
+  const activePaneId = () => workspace.inspectLayout().activePaneId;
+  const payload = (paneId = activePaneId()): TerminalWorkspaceCommandPayload => {
+    const inspection = workspace.inspect();
+    return {
+      id,
+      paneId,
+      sessionId: paneId ? inspection.layout.panes.find((pane) => pane.id === paneId)?.sessionId : inspection.activeId,
+      workspace: inspection,
+    };
+  };
+  const commands: Command<TAction>[] = [];
+
+  if (options.includeSplitCommands ?? true) {
+    commands.push(
+      {
+        id: `${idPrefix}.split.row`,
+        label: label("splitRow", "Split Terminal Horizontally"),
+        group,
+        keywords: ["terminal", "workspace", "pane", "split", "horizontal"],
+        disabled: () => !targetSessionId(),
+        action: () => {
+          const pane = workspace.splitActive("row", targetSessionId()!);
+          return {
+            type: "terminalWorkspace.split",
+            payload: { ...payload(pane?.id), direction: "row" },
+          } as TAction;
+        },
+      },
+      {
+        id: `${idPrefix}.split.column`,
+        label: label("splitColumn", "Split Terminal Vertically"),
+        group,
+        keywords: ["terminal", "workspace", "pane", "split", "vertical"],
+        disabled: () => !targetSessionId(),
+        action: () => {
+          const pane = workspace.splitActive("column", targetSessionId()!);
+          return {
+            type: "terminalWorkspace.split",
+            payload: { ...payload(pane?.id), direction: "column" },
+          } as TAction;
+        },
+      },
+    );
+  }
+
+  if (options.includeZoom ?? true) {
+    commands.push({
+      id: `${idPrefix}.zoom`,
+      label: label("zoom", "Toggle Terminal Pane Zoom"),
+      group,
+      keywords: ["terminal", "workspace", "pane", "zoom", "fullscreen"],
+      disabled: () => !activePaneId(),
+      action: () => {
+        workspace.toggleZoomPane();
+        return { type: "terminalWorkspace.zoomChanged", payload: payload() } as TAction;
+      },
+    });
+  }
+
+  if (options.includeClosePane ?? true) {
+    commands.push({
+      id: `${idPrefix}.closePane`,
+      label: label("closePane", "Close Terminal Pane"),
+      group,
+      keywords: ["terminal", "workspace", "pane", "close"],
+      disabled: () => !activePaneId(),
+      action: () => {
+        const paneId = activePaneId();
+        if (paneId) workspace.closePane(paneId);
+        return { type: "terminalWorkspace.paneClosed", payload: payload(paneId) } as TAction;
+      },
+    });
+  }
+
+  if (options.includeFocusCommands ?? true) {
+    commands.push(
+      terminalPaneFocusCommand(workspace, id, idPrefix, group, "nextPane", "Next Terminal Pane", 1, label),
+      terminalPaneFocusCommand(workspace, id, idPrefix, group, "previousPane", "Previous Terminal Pane", -1, label),
+    );
+  }
+
+  if (options.includeResizeCommands ?? true) {
+    commands.push(
+      terminalPaneResizeCommand(
+        workspace,
+        id,
+        idPrefix,
+        group,
+        "growActive",
+        "Grow Active Terminal Pane",
+        resizeStep,
+        label,
+      ),
+      terminalPaneResizeCommand(
+        workspace,
+        id,
+        idPrefix,
+        group,
+        "shrinkActive",
+        "Shrink Active Terminal Pane",
+        -resizeStep,
+        label,
+      ),
+    );
+  }
+
+  return commands;
+}
+
+/** Binds terminal workspace Commands behavior and returns a disposer when applicable. */
+export function bindTerminalWorkspaceCommands<TAction extends Action = TerminalWorkspaceCommandAction>(
+  registry: CommandRegistry<TAction>,
+  workspace: TerminalWorkspaceController,
+  options: TerminalWorkspaceCommandOptions = {},
+): () => void {
+  return registry.registerAll(terminalWorkspaceCommands<TAction>(workspace, options));
+}
+
+function terminalPaneFocusCommand<TAction extends Action>(
+  workspace: TerminalWorkspaceController,
+  id: string,
+  idPrefix: string,
+  group: string,
+  kind: "nextPane" | "previousPane",
+  fallback: string,
+  delta: number,
+  label: (kind: TerminalWorkspaceCommandKind, fallback: string) => string,
+): Command<TAction> {
+  return {
+    id: `${idPrefix}.${kind}`,
+    label: label(kind, fallback),
+    group,
+    keywords: ["terminal", "workspace", "pane", "focus", delta > 0 ? "next" : "previous"],
+    disabled: () => workspace.inspectLayout().count < 2,
+    action: () => {
+      const layout = workspace.inspectLayout();
+      const index = Math.max(0, layout.panes.findIndex((pane) => pane.id === layout.activePaneId));
+      const next = layout.panes[(index + delta + layout.panes.length) % layout.panes.length];
+      if (next) workspace.activatePane(next.id);
+      return {
+        type: "terminalWorkspace.paneActivated",
+        payload: terminalWorkspacePayload(workspace, id, next?.id),
+      } as TAction;
+    },
+  };
+}
+
+function terminalPaneResizeCommand<TAction extends Action>(
+  workspace: TerminalWorkspaceController,
+  id: string,
+  idPrefix: string,
+  group: string,
+  kind: "growActive" | "shrinkActive",
+  fallback: string,
+  delta: number,
+  label: (kind: TerminalWorkspaceCommandKind, fallback: string) => string,
+): Command<TAction> {
+  return {
+    id: `${idPrefix}.${kind}`,
+    label: label(kind, fallback),
+    group,
+    keywords: ["terminal", "workspace", "pane", "resize", delta > 0 ? "grow" : "shrink"],
+    disabled: () => workspace.inspectLayout().count < 2,
+    action: () => {
+      workspace.resizeActiveSplit(delta);
+      return {
+        type: "terminalWorkspace.paneResized",
+        payload: { ...terminalWorkspacePayload(workspace, id), delta },
+      } as TAction;
+    },
+  };
+}
+
+function terminalWorkspacePayload(
+  workspace: TerminalWorkspaceController,
+  id: string,
+  paneId = workspace.inspectLayout().activePaneId,
+): TerminalWorkspaceCommandPayload {
+  const inspection = workspace.inspect();
+  return {
+    id,
+    paneId,
+    sessionId: paneId ? inspection.layout.panes.find((pane) => pane.id === paneId)?.sessionId : inspection.activeId,
+    workspace: inspection,
+  };
 }

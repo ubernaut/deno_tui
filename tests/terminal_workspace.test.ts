@@ -1,4 +1,10 @@
 import { assertEquals } from "./deps.ts";
+import { CommandRegistry } from "../src/app/commands.ts";
+import {
+  bindTerminalWorkspaceCommands,
+  type TerminalWorkspaceCommandAction,
+  terminalWorkspaceCommands,
+} from "../src/app/terminal_commands.ts";
 import { TerminalOutputController } from "../src/components/terminal_output.ts";
 import { WindowManagerController } from "../src/layout/window_manager.ts";
 import { syncTerminalWindowLayout, terminalWindowContentSize } from "../src/app/terminal_window_bindings.ts";
@@ -227,6 +233,59 @@ Deno.test("terminal workspace pane rects project split layouts", () => {
   workspace.dispose();
 });
 
+Deno.test("terminal workspace commands drive pane operations", async () => {
+  const workspace = createTerminalWorkspaceController({ now: () => 1 });
+  workspace.add(shellTerminalTemplate({ id: "shell-main", shell: "bash" }));
+  workspace.add(commandTerminalTemplate({ id: "logs", title: "Logs", command: "tail", args: ["-f"] }));
+  const registry = new CommandRegistry<TerminalWorkspaceCommandAction>();
+  const actions: TerminalWorkspaceCommandAction[] = [];
+  const dispose = bindTerminalWorkspaceCommands(registry, workspace, {
+    id: "term",
+    idPrefix: "terminal.main",
+    sessionId: "logs",
+    resizeStep: 0.1,
+  });
+
+  assertEquals(terminalWorkspaceCommands(workspace).map((command) => [command.id, commandDisabled(command)]), [
+    ["terminalWorkspace.split.row", false],
+    ["terminalWorkspace.split.column", false],
+    ["terminalWorkspace.zoom", false],
+    ["terminalWorkspace.closePane", false],
+    ["terminalWorkspace.nextPane", true],
+    ["terminalWorkspace.previousPane", true],
+    ["terminalWorkspace.growActive", true],
+    ["terminalWorkspace.shrinkActive", true],
+  ]);
+
+  assertEquals(await registry.execute("terminal.main.split.row", (action) => void actions.push(action)), true);
+  const splitAction = actions[0];
+  assertEquals(splitAction?.type, "terminalWorkspace.split");
+  assertEquals(
+    splitAction?.type === "terminalWorkspace.split"
+      ? (splitAction.payload as { direction?: string } | undefined)?.direction
+      : undefined,
+    "row",
+  );
+  assertEquals(workspace.inspectLayout().count, 2);
+  assertEquals(workspace.inspect().activeId, "logs");
+
+  assertEquals(await registry.execute("terminal.main.nextPane", (action) => void actions.push(action)), true);
+  assertEquals(actions[1]?.type, "terminalWorkspace.paneActivated");
+  assertEquals(workspace.inspect().activeId, "shell-main");
+  assertEquals(await registry.execute("terminal.main.zoom", (action) => void actions.push(action)), true);
+  assertEquals(actions[2]?.type, "terminalWorkspace.zoomChanged");
+  assertEquals(workspace.inspectLayout().zoomedPaneId, workspace.inspectLayout().activePaneId);
+  assertEquals(await registry.execute("terminal.main.growActive", (action) => void actions.push(action)), true);
+  assertEquals(actions[3]?.type, "terminalWorkspace.paneResized");
+  assertEquals(await registry.execute("terminal.main.closePane", (action) => void actions.push(action)), true);
+  assertEquals(actions[4]?.type, "terminalWorkspace.paneClosed");
+  assertEquals(workspace.inspectLayout().count, 1);
+
+  dispose();
+  assertEquals(registry.list("terminal"), []);
+  workspace.dispose();
+});
+
 Deno.test("terminal workspace inspection returns cloned descriptors", () => {
   const workspace = createTerminalWorkspaceController({ now: () => 1 });
   workspace.add(commandTerminalTemplate({ id: "build", title: "Build", command: "deno", args: ["task", "health"] }));
@@ -298,6 +357,10 @@ Deno.test("syncTerminalWindowLayout resizes visible terminal handles only when g
     },
   ]);
 });
+
+function commandDisabled(command: { disabled?: boolean | (() => boolean) }): boolean {
+  return typeof command.disabled === "function" ? command.disabled() : !!command.disabled;
+}
 
 class FakeTerminalBackend implements TerminalBackend {
   readonly id = "fake";
