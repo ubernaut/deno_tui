@@ -1154,6 +1154,13 @@ function createAnsiStyle(spec) {
   const open = `\x1B[${codes.join(";")}m`;
   return (value) => `${open}${value}\x1B[0m`;
 }
+function createAnsiStyleMap(specs) {
+  const styles = {};
+  for (const [name, spec] of Object.entries(specs)) {
+    styles[name] = createAnsiStyle(spec);
+  }
+  return styles;
+}
 function ansiStyleCodes(spec) {
   const codes = [];
   if (spec.bold) codes.push(1);
@@ -1197,7 +1204,7 @@ var themePalettesInternal = {
     surface: emptyStyle
   },
   neon: {
-    ...createAnsiThemeTokensInternal({
+    ...createAnsiStyleMap({
       foreground: { foreground: [230, 255, 246] },
       muted: { foreground: [104, 124, 132] },
       accent: { foreground: [31, 231, 210] },
@@ -1208,7 +1215,7 @@ var themePalettesInternal = {
     })
   },
   terminal: {
-    ...createAnsiThemeTokensInternal({
+    ...createAnsiStyleMap({
       foreground: { foreground: "white" },
       muted: { foreground: "brightBlack" },
       accent: { foreground: "cyan" },
@@ -1219,13 +1226,6 @@ var themePalettesInternal = {
     surface: emptyStyle
   }
 };
-function createAnsiThemeTokensInternal(specs) {
-  const tokens = {};
-  for (const [name, spec] of Object.entries(specs)) {
-    tokens[name] = createAnsiStyle(spec);
-  }
-  return tokens;
-}
 
 // src/theme_core.ts
 function mergeComponentThemeDefinitionCore(base = {}, extension = {}) {

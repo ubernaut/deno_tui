@@ -508,6 +508,8 @@ Work:
         monitor identity is inspectable without breaking snapshot creation.
   - [x] Converted process-session stdin close failures to structured diagnostics, matching existing spawn, stop, and
         input-write failure reporting.
+  - [x] Converted API workbench workspace storage load/persist fallbacks to shared storage diagnostic formatting before
+        surfacing them in the demo log panel.
 - [x] Add status-bar and report helpers for degraded backends.
 - [x] Add tests that assert expected diagnostics for missing `nvidia-smi`, blocked IndexedDB, unsupported Kitty
       graphics, and failed process spawns.

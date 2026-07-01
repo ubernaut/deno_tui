@@ -89,6 +89,7 @@ import { createKittyGraphicsSurface, type GraphicsSurface } from "../src/runtime
 import { formatProcessCommandLine, ProcessSessionController } from "../src/runtime/process_session.ts";
 import { MicrotaskScheduler } from "../src/runtime/render_loop.ts";
 import { type AsyncStore, createRuntimeStore, JsonFileStore } from "../src/runtime/storage.ts";
+import { createStorageFallbackDiagnostic } from "../src/runtime/storage_diagnostics.ts";
 import { type TerminalBackend } from "../src/runtime/terminal_backend.ts";
 import { TerminalShellController } from "../src/runtime/terminal_shell.ts";
 import {
@@ -3435,14 +3436,27 @@ async function persistActiveWorkspaceState(): Promise<void> {
 }
 
 async function loadSavedWorkspaces(): Promise<SavedWorkspace[]> {
-  const stored = await workspaceStore.get(WORKSPACE_STORE_KEY).catch(() => undefined);
+  const stored = await workspaceStore.get(WORKSPACE_STORE_KEY).catch((error) => {
+    reportWorkspaceStorageFallback("workspace load", error);
+    return undefined;
+  });
   return normalizeSavedWorkspaces(stored);
 }
 
 async function persistSavedWorkspaces(): Promise<void> {
   await workspaceStore.set(WORKSPACE_STORE_KEY, serializeWorkbenchWorkspaces(savedWorkspaces.peek())).catch((error) => {
-    pushLog(`workspace save failed ${error instanceof Error ? error.message : "unknown"}`);
+    reportWorkspaceStorageFallback("workspace persist", error);
   });
+}
+
+function reportWorkspaceStorageFallback(operation: string, error: unknown): void {
+  const diagnostic = createStorageFallbackDiagnostic({
+    source: "api-workbench",
+    storage: "indexedDB" in globalThis ? "IndexedDB" : "Deno JSON",
+    operation,
+    error,
+  });
+  pushLog(`${diagnostic.message}${diagnostic.detail ? ` ${diagnostic.detail}` : ""}`);
 }
 
 function normalizeSavedWorkspaces(value: unknown): SavedWorkspace[] {
