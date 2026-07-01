@@ -151,7 +151,7 @@ Acceptance checks:
 
 - [x] Snapshot tests prove no stale cells after erase, move, resize, and overlapping z-index changes.
 - [x] New benchmarks show improved behavior for many overlapping panes and modal open/close.
-- [ ] Browser canvas sink and ANSI stdout sink both pass the same render invalidation tests.
+- [x] Browser canvas sink and ANSI stdout sink both pass the same render invalidation tests.
 
 ### P1: Stabilize Three ASCII Lifecycle And Readback Performance
 

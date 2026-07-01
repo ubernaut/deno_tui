@@ -5,6 +5,7 @@ import { TextObject, type TextRectangle } from "../src/canvas/text.ts";
 import { Signal } from "../src/signals/mod.ts";
 import { assertTerminalSnapshot, canvasRowText, canvasSnapshot, createTestCanvas } from "../src/testing/mod.ts";
 import { View } from "../src/view.ts";
+import { BrowserCellCanvasSink } from "../src/web/mod.ts";
 
 Deno.test("canvas keeps higher z overlays visible after lower z redraws", () => {
   const canvas = createTestCanvas({ size: { columns: 12, rows: 3 } });
@@ -215,6 +216,29 @@ Deno.test("canvas clears stale cells after move resize and erase with memory sin
   );
 });
 
+Deno.test("canvas clears stale cells after move resize and erase with browser canvas sink", () => {
+  const browserCanvas = new FakeBrowserCanvas();
+  const sink = new BrowserCellCanvasSink({
+    canvas: browserCanvas as unknown as HTMLCanvasElement,
+    cellWidth: 1,
+    cellHeight: 1,
+    devicePixelRatio: 1,
+    foreground: "#fff",
+    background: ".",
+  });
+  const canvas = new Canvas({
+    sink,
+    size: { columns: 10, rows: 4 },
+  });
+
+  runInvalidationScenario(canvas);
+
+  assertEquals(browserCanvas.textAt(2, 1), ".");
+  assertEquals(browserCanvas.textAt(4, 0), ".");
+  assertEquals(browserCanvas.textAt(1, 2), ".");
+  assertEquals(sink.inspectSink().lastStats?.flushedCells, 6);
+});
+
 Deno.test("draw objects track views attached after construction", () => {
   const canvas = createTestCanvas({ size: { columns: 12, rows: 3 } });
   const view = new Signal<View | undefined>(undefined);
@@ -316,4 +340,46 @@ function runInvalidationScenario(canvas: Canvas): void {
       "..........",
     ].join("\n"),
   );
+}
+
+class FakeBrowserCanvas {
+  width = 0;
+  height = 0;
+  readonly context = new FakeBrowserContext();
+
+  getContext(kind: string): FakeBrowserContext | null {
+    return kind === "2d" ? this.context : null;
+  }
+
+  textAt(column: number, row: number): string | undefined {
+    return this.context.textCells.get(`${column},${row}`);
+  }
+}
+
+class FakeBrowserContext {
+  canvas = { width: 0, height: 0 };
+  fillStyle: string | CanvasGradient | CanvasPattern = "";
+  font = "";
+  textBaseline: CanvasTextBaseline = "top";
+  readonly textCells = new Map<string, string>();
+
+  fillRect(x: number, y: number, width: number, height: number): void {
+    for (let row = y; row < y + height; row += 1) {
+      for (let column = x; column < x + width; column += 1) {
+        this.textCells.set(`${column},${row}`, String(this.fillStyle));
+      }
+    }
+  }
+
+  fillText(text: string, x: number, y: number): void {
+    this.textCells.set(`${x},${y}`, text);
+  }
+
+  scale(): void {
+    // Fake canvas context used only for deterministic cell-level sink tests.
+  }
+
+  setTransform(): void {
+    // Fake canvas context used only for deterministic cell-level sink tests.
+  }
 }
