@@ -20,6 +20,8 @@ import {
   defaultWorkbenchMinimizedState,
   FileExplorerController,
   fitCellText,
+  type HitTarget,
+  HitTargetStack,
   InputController,
   intersects,
   isWorkbenchMenuActivationKey,
@@ -97,7 +99,6 @@ type Hit =
 type ControlHitAction = "previous" | "next" | "activate" | "set" | "focus" | "toggle";
 type ButtonTone = "default" | "danger" | "warning" | "success" | "muted";
 type MobileAction = "next" | "controls" | "theme" | "help" | "restore" | "wide" | "dense";
-type HitTarget = { rect: Rectangle; hit: Hit };
 
 interface DropdownOverlay {
   kind: "theme" | "control";
@@ -285,7 +286,7 @@ const webTerminalWorkspace = createTerminalWorkspaceController({
   ],
 });
 let webTerminalScreenKey = "";
-let hitTargets: HitTarget[] = [];
+const hitTargets = new HitTargetStack<Hit>();
 let lastVisiblePanel: PanelId | null = null;
 let lastWorkspaceWidth = 0;
 let lastWorkspaceHeight = 0;
@@ -295,7 +296,7 @@ let pointerDrag: {
   y: number;
   workspaceRows: number;
   logRows: number;
-  target?: HitTarget;
+  target?: HitTarget<Hit>;
   moved: boolean;
 } | null = null;
 
@@ -544,7 +545,7 @@ globalThis.addEventListener("beforeunload", () => {
 });
 
 function draw(): void {
-  hitTargets = [];
+  hitTargets.clear();
   dropdownOverlay = null;
   const width = cols();
   const height = rowsCount();
@@ -564,10 +565,7 @@ function draw(): void {
   );
   if (width >= 22) {
     writeButton(frame, 0, width - closeWidth, "x", { compact: true, tone: "danger" });
-    hitTargets.push({
-      rect: { column: width - closeWidth, row: 0, width: closeWidth, height: 1 },
-      hit: { type: "quit" },
-    });
+    hitTargets.add({ column: width - closeWidth, row: 0, width: closeWidth, height: 1 }, { type: "quit" });
   }
   if (themeMenuOpen.peek()) {
     dropdownOverlay = {
@@ -606,7 +604,7 @@ function draw(): void {
     const visible = panelIds.filter((id) => !minimized.peek()[id]);
     if (visible.length === 0) {
       write(virtual, 1, 2, paint("All panels minimized. Press R or click restore."));
-      hitTargets.push({ rect: { ...layout.bounds, row: 0 }, hit: { type: "restore" } });
+      hitTargets.add({ ...layout.bounds, row: 0 }, { type: "restore" });
     } else {
       for (const id of visible) {
         const rect = layout.rects.get(id);
@@ -647,7 +645,7 @@ function renderShelf(frame: string[]): void {
   write(frame, row, layout.prefixRect.column, paint(layout.prefix, theme().muted, theme().bgAlt));
   for (const button of layout.buttons) {
     writeButton(frame, row, button.rect.column, button.label, { tone: "muted", maxWidth: button.rect.width });
-    hitTargets.push({ rect: button.rect, hit: { type: "restore", id: button.id } });
+    hitTargets.add(button.rect, { type: "restore", id: button.id });
   }
 }
 
@@ -657,7 +655,7 @@ function renderMenuHits(column: number, row: number, width: number): void {
     const token = index === menu.activeIndex.peek() ? `[${item.label}]` : item.label;
     const tokenWidth = textWidth(token);
     if (cursor + tokenWidth > column + width) break;
-    hitTargets.push({ rect: { column: cursor, row, width: tokenWidth, height: 1 }, hit: { type: "menu", index } });
+    hitTargets.add({ column: cursor, row, width: tokenWidth, height: 1 }, { type: "menu", index });
     cursor += tokenWidth + 1;
   }
 }
@@ -690,10 +688,7 @@ function renderMobileCommandStrip(frame: string[]): void {
       maxWidth,
     });
     if (width <= 0) break;
-    hitTargets.push({
-      rect: { column, row, width, height: 1 },
-      hit: { type: "mobileAction", action: entry.action },
-    });
+    hitTargets.add({ column, row, width, height: 1 }, { type: "mobileAction", action: entry.action });
     column += width + 1;
   }
 }
@@ -735,13 +730,13 @@ function renderWindowTabs(frame: string[]): void {
       tone: button.hidden ? "muted" : "default",
       maxWidth: button.rect.width,
     });
-    hitTargets.push({ rect: button.rect, hit: { type: "restore", id: button.id } });
+    hitTargets.add(button.rect, { type: "restore", id: button.id });
   }
 }
 
 function renderPanel(frame: string[], id: PanelId, rect: Rectangle): void {
   if (rect.width < 10 || rect.height < 4) return;
-  hitTargets.push({ rect, hit: { type: "focus", id } });
+  hitTargets.add(rect, { type: "focus", id });
   const selected = active.peek() === id;
   fillRect(frame, rect, selected ? theme().panelAlt : theme().panel);
   const border = selected ? theme().accent : theme().borderStrong;
@@ -759,7 +754,7 @@ function renderPanel(frame: string[], id: PanelId, rect: Rectangle): void {
       compact: button.compact,
       tone: button.tone,
     });
-    hitTargets.push({ rect: button.rect, hit: panelTitlebarHit(id, button.kind) });
+    hitTargets.add(button.rect, panelTitlebarHit(id, button.kind));
   }
   for (let r = 1; r < rect.height - 1; r++) {
     write(
@@ -796,9 +791,9 @@ function renderPanel(frame: string[], id: PanelId, rect: Rectangle): void {
     });
     if (id === "data") {
       for (let index = 0; index < Math.min(table.view.peek().rows.length, Math.max(0, inner.height - 1)); index += 1) {
-        hitTargets.push({
-          rect: { column: inner.column, row: inner.row + 1 + index, width: inner.width, height: 1 },
-          hit: { type: "dataRow", index },
+        hitTargets.add({ column: inner.column, row: inner.row + 1 + index, width: inner.width, height: 1 }, {
+          type: "dataRow",
+          index,
         });
       }
     }
@@ -843,7 +838,7 @@ function renderLogs(frame: string[], rect: Rectangle): void {
   if (!overflow.rows.scrollbarVisible || rect.width < 1) return;
   const column = rect.column + rect.width - 1;
   const thumb = overflow.rows.thumb;
-  hitTargets.push({ rect: { column, row: rect.row, width: 1, height: rect.height }, hit: { type: "logScrollbar" } });
+  hitTargets.add({ column, row: rect.row, width: 1, height: rect.height }, { type: "logScrollbar" });
   for (let row = 0; row < rect.height; row += 1) {
     write(frame, rect.row + row, column, paint(scrollbarGlyph(row, thumb), theme().accent, theme().surface, true));
   }
@@ -872,9 +867,9 @@ function renderExplorer(frame: string[], rect: Rectangle): void {
         selected || node.kind === "directory",
       ),
     );
-    hitTargets.push({
-      rect: { column: rect.column, row: rect.row + offset, width: rect.width, height: 1 },
-      hit: { type: "explorerRow", index: row.index },
+    hitTargets.add({ column: rect.column, row: rect.row + offset, width: rect.width, height: 1 }, {
+      type: "explorerRow",
+      index: row.index,
     });
   });
 }
@@ -1093,10 +1088,7 @@ function renderTerminalSessionTabs(frame: string[], rect: Rectangle): void {
         activeSession,
       ),
     );
-    hitTargets.push({
-      rect: { column, row: rect.row, width, height: 1 },
-      hit: { type: "terminalSession", id: session.id },
-    });
+    hitTargets.add({ column, row: rect.row, width, height: 1 }, { type: "terminalSession", id: session.id });
     column += width;
     if (column >= rect.column + rect.width) break;
   }
@@ -1178,8 +1170,8 @@ function ensureLines(): void {
   }
 }
 
-function applyHit(target: HitTarget, x: number, y: number): void {
-  const hit = target.hit;
+function applyHit(target: HitTarget<Hit>, x: number, y: number): void {
+  const hit = target.action;
   if (hit.type === "menu") {
     menu.setActive(hit.index);
     menu.selectActive();
@@ -1235,7 +1227,7 @@ function applyMobileAction(action: MobileAction): void {
 
 function handlePointerDrag(
   event: { x: number; y: number; drag?: boolean; movementX?: number; movementY?: number },
-  target: HitTarget | undefined,
+  target: HitTarget<Hit> | undefined,
 ): boolean {
   if (!event.drag || !pointerDrag) return false;
   const deltaColumns = pointerDrag.x - event.x;
@@ -1244,13 +1236,13 @@ function handlePointerDrag(
     Math.abs(event.movementY ?? 0) >= 8 || Math.abs(event.movementX ?? 0) >= 12;
   if (!moved) return false;
 
-  if (target?.hit.type === "control" && target.hit.id === "slider") {
+  if (target?.action.type === "control" && target.action.id === "slider") {
     applyHit(target, event.x, event.y);
     pointerDrag.moved = true;
     return true;
   }
 
-  const origin = pointerDrag.target?.hit;
+  const origin = pointerDrag.target?.action;
   const logOrigin = origin?.type === "logScrollbar" || origin?.type === "focus" && origin.id === "logs" ||
     active.peek() === "logs" && origin?.type !== "workspaceScrollbar";
   if (logOrigin) {
@@ -1387,13 +1379,13 @@ function workspaceLayout(bounds: Rectangle): {
 
 function translateWorkspaceHits(startIndex: number, columnDelta: number, rowDelta: number, clip: Rectangle): void {
   for (let index = hitTargets.length - 1; index >= startIndex; index -= 1) {
-    const target = hitTargets[index]!;
+    const target = hitTargets.at(index)!;
     const translated = { ...target.rect, column: target.rect.column + columnDelta, row: target.rect.row + rowDelta };
     if (!intersects(translated, clip)) {
-      hitTargets.splice(index, 1);
+      hitTargets.remove(index);
       continue;
     }
-    target.rect = clipRect(translated, clip);
+    hitTargets.updateRect(index, clipRect(translated, clip));
   }
 }
 
@@ -1408,10 +1400,7 @@ function renderWorkspaceScrollbar(frame: string[], bounds: Rectangle): void {
   if (!overflow.rows.scrollbarVisible || bounds.width < 2) return;
   const column = bounds.column + bounds.width - 1;
   const thumb = overflow.rows.thumb;
-  hitTargets.push({
-    rect: { column, row: bounds.row, width: 1, height: bounds.height },
-    hit: { type: "workspaceScrollbar" },
-  });
+  hitTargets.add({ column, row: bounds.row, width: 1, height: bounds.height }, { type: "workspaceScrollbar" });
   for (let row = 0; row < bounds.height; row += 1) {
     write(frame, bounds.row + row, column, paint(scrollbarGlyph(row, thumb), theme().accent, theme().bgAlt, true));
   }
@@ -1445,9 +1434,9 @@ function renderDropdownOverlay(frame: string[]): void {
         selected,
       ),
     );
-    hitTargets.push({
-      rect: { column: rect.column + 1, row, width: Math.max(0, rect.width - 2), height: 1 },
-      hit: { type: "theme", index },
+    hitTargets.add({ column: rect.column + 1, row, width: Math.max(0, rect.width - 2), height: 1 }, {
+      type: "theme",
+      index,
     });
   }
   write(
@@ -1460,10 +1449,7 @@ function renderDropdownOverlay(frame: string[]): void {
 
 function renderModalOverlay(frame: string[]): void {
   if (!modal.openState.peek()) return;
-  hitTargets.push({
-    rect: { column: 0, row: 0, width: cols(), height: rowsCount() },
-    hit: { type: "modalAction", index: -1 },
-  });
+  hitTargets.add({ column: 0, row: 0, width: cols(), height: rowsCount() }, { type: "modalAction", index: -1 });
   const inspection = modal.inspect();
   const width = Math.min(Math.max(38, cols() - 8), 74);
   const contentHeight = modalContentHeight(inspection, width);
@@ -1510,7 +1496,7 @@ function renderModalOverlay(frame: string[]): void {
       state: action.disabled ? "disabled" : index === inspection.selectedActionIndex ? "active" : "base",
       tone: action.destructive ? "danger" : "default",
     });
-    hitTargets.push({ rect: { column, row: actionRow, width, height: 1 }, hit: { type: "modalAction", index } });
+    hitTargets.add({ column, row: actionRow, width, height: 1 }, { type: "modalAction", index });
     column += width + 1;
   }
 }
@@ -1716,26 +1702,29 @@ function renderControls(frame: string[], rect: Rectangle): void {
         ),
       );
     }
-    hitTargets.push({
-      rect: { column: rect.column, row, width: rect.width, height: 1 },
-      hit: { type: "control", id, action: options.action ?? "activate", index: options.index },
+    hitTargets.add({ column: rect.column, row, width: rect.width, height: 1 }, {
+      type: "control",
+      id,
+      action: options.action ?? "activate",
+      index: options.index,
     });
     if (options.previous) {
-      hitTargets.push({
-        rect: { column: rect.column, row, width: Math.max(1, Math.floor(rect.width / 2)), height: 1 },
-        hit: { type: "control", id, action: "previous" },
+      hitTargets.add({ column: rect.column, row, width: Math.max(1, Math.floor(rect.width / 2)), height: 1 }, {
+        type: "control",
+        id,
+        action: "previous",
       });
     }
     if (options.next) {
-      hitTargets.push({
-        rect: {
+      hitTargets.add(
+        {
           column: rect.column + Math.floor(rect.width / 2),
           row,
           width: Math.ceil(rect.width / 2),
           height: 1,
         },
-        hit: { type: "control", id, action: "next" },
-      });
+        { type: "control", id, action: "next" },
+      );
     }
     row += 1;
   };
@@ -1754,9 +1743,10 @@ function renderControls(frame: string[], rect: Rectangle): void {
     previous: true,
     next: true,
   });
-  hitTargets.push({
-    rect: { column: rect.column + 12, row: row - 1, width: 10, height: 1 },
-    hit: { type: "control", id: "slider", action: "set" },
+  hitTargets.add({ column: rect.column + 12, row: row - 1, width: 10, height: 1 }, {
+    type: "control",
+    id: "slider",
+    action: "set",
   });
   writeControl("checkbox", "Checkboxes");
   writeControl("checkbox", `${renderCheckBoxMark(live.checked.peek())} live preview`, { indent: true, index: 0 });
@@ -1865,9 +1855,10 @@ function renderTextboxControl(frame: string[], rect: Rectangle, row: number, t: 
       ),
     );
   }
-  hitTargets.push({
-    rect: { column: rect.column, row, width: rect.width, height },
-    hit: { type: "control", id: "textbox", action: "focus" },
+  hitTargets.add({ column: rect.column, row, width: rect.width, height }, {
+    type: "control",
+    id: "textbox",
+    action: "focus",
   });
   return row + height;
 }
@@ -1899,9 +1890,11 @@ function writeWrappedOptions(
   for (const [index, item] of items.entries()) {
     const token = `${index === selectedIndex ? "[" : " "}${item}${index === selectedIndex ? "]" : " "} `;
     if (textWidth(line) + textWidth(token) > width) flush();
-    hitTargets.push({
-      rect: { column: rect.column + 2 + textWidth(line), row, width: textWidth(token), height: 1 },
-      hit: { type: "control", id, action: "activate", index },
+    hitTargets.add({ column: rect.column + 2 + textWidth(line), row, width: textWidth(token), height: 1 }, {
+      type: "control",
+      id,
+      action: "activate",
+      index,
     });
     line += token;
   }
@@ -1931,9 +1924,11 @@ function addInlineStepperHits(rect: Rectangle, row: number): void {
     const token = index === stepper.activeIndex.peek() ? `[${label}]` : label;
     const width = textWidth(token);
     if (column + width > rect.column + rect.width) break;
-    hitTargets.push({
-      rect: { column, row, width, height: 1 },
-      hit: { type: "control", id: "stepper", action: "activate", index },
+    hitTargets.add({ column, row, width, height: 1 }, {
+      type: "control",
+      id: "stepper",
+      action: "activate",
+      index,
     });
     column += width + 3;
   }
@@ -1963,9 +1958,11 @@ function renderControlDropdownPopover(frame: string[], rect: Rectangle): void {
         selected,
       ),
     );
-    hitTargets.push({
-      rect: { column: rect.column + 1, row, width: Math.max(0, rect.width - 2), height: 1 },
-      hit: { type: "control", id: "dropdown", action: "activate", index },
+    hitTargets.add({ column: rect.column + 1, row, width: Math.max(0, rect.width - 2), height: 1 }, {
+      type: "control",
+      id: "dropdown",
+      action: "activate",
+      index,
     });
   }
   write(
@@ -2171,16 +2168,15 @@ function buttonPaintOptions(
 function paint(value: string, fg = theme().text, bg = theme().bg, bold = false): string {
   return makeStyle({ fg, bg, bold })(value);
 }
-function findHit(x: number, y: number): HitTarget | undefined {
-  for (let index = hitTargets.length - 1; index >= 0; index -= 1) {
-    const target = hitTargets[index]!;
-    if (contains(target.rect, x, y)) return target;
-  }
+function findHit(x: number, y: number): HitTarget<Hit> | undefined {
+  const target = hitTargets.find(x, y);
+  if (target) return target;
   if (!isTouchOptimizedLayout()) return undefined;
-  for (let index = hitTargets.length - 1; index >= 0; index -= 1) {
-    const target = hitTargets[index]!;
-    const expanded = expandedTouchHitRect(target.rect);
-    if (contains(expanded, x, y)) return { ...target, rect: expanded };
+  const entries = hitTargets.entries();
+  for (let index = entries.length - 1; index >= 0; index -= 1) {
+    const expandedTarget = entries[index]!;
+    const expanded = expandedTouchHitRect(expandedTarget.rect);
+    if (contains(expanded, x, y)) return { ...expandedTarget, rect: expanded };
   }
 }
 
