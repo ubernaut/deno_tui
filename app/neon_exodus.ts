@@ -56,8 +56,8 @@ const volume = new Signal(70);
 const threeAsciiAvailable = new Signal(await probeCompatibleWebGPUDevice());
 const ascii = new Signal<AsciiOptions>({
   ...createDefaultAsciiOptions(),
-  preset: "mixed-best",
-  terminalGlyphStyle: "mixed",
+  preset: "opentui-blocks",
+  terminalGlyphStyle: "blocks",
   border: "sharp",
   terminalEdgeBias: 1.35,
   blendWithBase: 0.8,

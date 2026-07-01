@@ -6,7 +6,7 @@ import {
   asciiDemoPresetSummaries,
   findAsciiDemoPreset,
 } from "../src/three_ascii/demo_presets.ts";
-import { asciiControlValues, createDefaultAsciiOptions } from "../app/ascii_options.ts";
+import { asciiControlValues, createDefaultAsciiOptions, normalizeAsciiOptions } from "../app/ascii_options.ts";
 
 Deno.test("ascii demo preset helpers expose stable ids and style filters", () => {
   assertEquals(asciiDemoPresetIds().slice(0, 3), ["opentui-blocks", "glyph-atlas", "mixed-best"]);
@@ -46,6 +46,8 @@ Deno.test("asciiDemoPresets returns clones instead of the shared preset table", 
 
 Deno.test("workbench ascii defaults favor terminal-visible wire thickness", () => {
   const options = createDefaultAsciiOptions("sharp");
+  assertEquals(options.preset, "opentui-blocks");
+  assertEquals(options.terminalGlyphStyle, "blocks");
   assertEquals(options.wireframeThickness, 8);
   assertEquals(options.kittyGraphics, false);
   assertEquals(options.kittyDisableAscii, false);
@@ -53,4 +55,11 @@ Deno.test("workbench ascii defaults favor terminal-visible wire thickness", () =
   const values = asciiControlValues("wireframeThickness");
   assertEquals(values.includes(8), true);
   assertEquals(values.at(-1), 32);
+});
+
+Deno.test("ascii option normalization defaults to blocks but preserves saved glyph overrides", () => {
+  assertEquals(normalizeAsciiOptions({}).terminalGlyphStyle, "blocks");
+  assertEquals(normalizeAsciiOptions({ terminalGlyphStyle: "mixed" }).terminalGlyphStyle, "mixed");
+  assertEquals(normalizeAsciiOptions({ terminalGlyphStyle: "glyphs" }).terminalGlyphStyle, "glyphs");
+  assertEquals(normalizeAsciiOptions({ terminalGlyphStyle: "unknown" }).terminalGlyphStyle, "blocks");
 });

@@ -54,8 +54,10 @@ import {
   applyAsciiPreset,
   ASCII_DEMO_PRESETS,
   asciiControlValues,
+  cloneAsciiOptions,
   createDefaultAsciiOptions,
   formatAsciiControlValue,
+  normalizeAsciiOptions,
   TERMINAL_GLYPH_STYLES,
   terminalGlyphStyleLabel,
 } from "./ascii_options.ts";
@@ -3161,49 +3163,7 @@ function screenDropdownOpen(): boolean {
 function defaultWorkbenchAsciiOptions(): AsciiOptions {
   return {
     ...createDefaultAsciiOptions("sharp"),
-    terminalGlyphStyle: "mixed",
     preset: "custom",
-  };
-}
-
-function cloneAsciiOptions(options: AsciiOptions): AsciiOptions {
-  return { ...options };
-}
-
-function normalizeAsciiOptions(value: unknown): AsciiOptions {
-  const base = defaultWorkbenchAsciiOptions();
-  if (!value || typeof value !== "object") return base;
-  const candidate = value as Partial<AsciiOptions>;
-  const numeric = <K extends keyof AsciiOptions>(key: K): number => {
-    const next = Number(candidate[key]);
-    return Number.isFinite(next) ? next : Number(base[key]);
-  };
-  return {
-    preset: typeof candidate.preset === "string" ? candidate.preset : base.preset,
-    border: candidate.border === "rounded" || candidate.border === "sharp" || candidate.border === "ascii"
-      ? candidate.border
-      : base.border,
-    terminalGlyphStyle: candidate.terminalGlyphStyle &&
-        TERMINAL_GLYPH_STYLES.includes(candidate.terminalGlyphStyle)
-      ? candidate.terminalGlyphStyle
-      : base.terminalGlyphStyle,
-    terminalEdgeBias: numeric("terminalEdgeBias"),
-    edgeThreshold: numeric("edgeThreshold"),
-    normalThreshold: numeric("normalThreshold"),
-    depthThreshold: numeric("depthThreshold"),
-    exposure: numeric("exposure"),
-    attenuation: numeric("attenuation"),
-    blendWithBase: numeric("blendWithBase"),
-    depthFalloff: numeric("depthFalloff"),
-    depthOffset: numeric("depthOffset"),
-    wireframeThickness: numeric("wireframeThickness"),
-    edges: typeof candidate.edges === "boolean" ? candidate.edges : base.edges,
-    fill: typeof candidate.fill === "boolean" ? candidate.fill : base.fill,
-    invertLuminance: typeof candidate.invertLuminance === "boolean" ? candidate.invertLuminance : base.invertLuminance,
-    kittyGraphics: typeof candidate.kittyGraphics === "boolean" ? candidate.kittyGraphics : base.kittyGraphics,
-    kittyDisableAscii: typeof candidate.kittyDisableAscii === "boolean"
-      ? candidate.kittyDisableAscii
-      : base.kittyDisableAscii,
   };
 }
 
@@ -3216,7 +3176,7 @@ function asciiForWindow(id: WindowId): Signal<AsciiOptions> {
 }
 
 function setAsciiForWindow(id: WindowId, options: AsciiOptions): void {
-  asciiForWindow(id).value = normalizeAsciiOptions(options);
+  asciiForWindow(id).value = normalizeAsciiOptions(options, defaultWorkbenchAsciiOptions());
 }
 
 function disposeAsciiForWindow(id: WindowId): void {
@@ -3890,7 +3850,7 @@ function workspaceWindowEntries(workspace: SavedWorkspace): SavedWorkspaceWindow
   if (workspace.windows?.length) {
     return workspace.windows.map((entry) => ({
       visualizationId: entry.visualizationId,
-      ascii: entry.ascii ? normalizeAsciiOptions(entry.ascii) : undefined,
+      ascii: entry.ascii ? normalizeAsciiOptions(entry.ascii, defaultWorkbenchAsciiOptions()) : undefined,
     }));
   }
   return workspace.visualizationIds.map((visualizationId) => ({ visualizationId }));
@@ -3941,7 +3901,9 @@ function normalizeSavedWorkspaces(value: unknown): SavedWorkspace[] {
         }
         return [{
           visualizationId: candidateWindow.visualizationId,
-          ascii: candidateWindow.ascii ? normalizeAsciiOptions(candidateWindow.ascii) : undefined,
+          ascii: candidateWindow.ascii
+            ? normalizeAsciiOptions(candidateWindow.ascii, defaultWorkbenchAsciiOptions())
+            : undefined,
         }];
       })
       : [];

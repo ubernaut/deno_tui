@@ -132,6 +132,8 @@ const selectedRow = new Signal(0);
 const menuWidth = 34;
 const panelOuterWidth = menuWidth + 2;
 const panelGap = 2;
+const initialPreset = ASCII_DEMO_PRESETS.find((preset) => preset.id === "opentui-blocks") ?? ASCII_DEMO_PRESETS[0]!;
+const initialEffect = { ...DEFAULT_ASCII_DEMO_EFFECT, ...initialPreset.effect };
 
 const ascii = new ThreeAscii({
   parent: tui,
@@ -153,9 +155,9 @@ const ascii = new ThreeAscii({
   zIndex: 1,
   scene,
   camera,
-  effect: { ...DEFAULT_ASCII_DEMO_EFFECT },
-  terminalGlyphStyle: "mixed",
-  terminalEdgeBias: 1,
+  effect: { ...initialEffect },
+  terminalGlyphStyle: initialPreset.terminalGlyphStyle ?? "blocks",
+  terminalEdgeBias: initialPreset.terminalEdgeBias ?? 1,
   onFrame: (deltaTime) => {
     stage.rotation.y += deltaTime * 0.22;
     torus.rotation.x += deltaTime * 0.28;
@@ -225,23 +227,23 @@ const panelRows: readonly MenuRow[] = [
 ] as const;
 const menuLines = panelRows.map(() => new Signal(""));
 const menuSubtitle = new Signal(`Arrows tune | 1-${ASCII_DEMO_PRESETS.length} presets`);
-const activePresetId = new Signal("mixed-best");
+const activePresetId = new Signal(initialPreset.id);
 
 const effectState = {
-  edges: DEFAULT_ASCII_DEMO_EFFECT.edges ?? true,
-  fill: DEFAULT_ASCII_DEMO_EFFECT.fill ?? true,
-  invertLuminance: DEFAULT_ASCII_DEMO_EFFECT.invertLuminance ?? false,
-  edgeThreshold: DEFAULT_ASCII_DEMO_EFFECT.edgeThreshold ?? 10,
-  normalThreshold: DEFAULT_ASCII_DEMO_EFFECT.normalThreshold ?? 0.18,
-  depthThreshold: DEFAULT_ASCII_DEMO_EFFECT.depthThreshold ?? 0.11,
-  exposure: DEFAULT_ASCII_DEMO_EFFECT.exposure ?? 1.25,
-  attenuation: DEFAULT_ASCII_DEMO_EFFECT.attenuation ?? 1.2,
-  blendWithBase: DEFAULT_ASCII_DEMO_EFFECT.blendWithBase ?? 0.24,
-  depthFalloff: DEFAULT_ASCII_DEMO_EFFECT.depthFalloff ?? 0.18,
-  depthOffset: DEFAULT_ASCII_DEMO_EFFECT.depthOffset ?? 110,
+  edges: initialEffect.edges ?? true,
+  fill: initialEffect.fill ?? true,
+  invertLuminance: initialEffect.invertLuminance ?? false,
+  edgeThreshold: initialEffect.edgeThreshold ?? 10,
+  normalThreshold: initialEffect.normalThreshold ?? 0.18,
+  depthThreshold: initialEffect.depthThreshold ?? 0.11,
+  exposure: initialEffect.exposure ?? 1.25,
+  attenuation: initialEffect.attenuation ?? 1.2,
+  blendWithBase: initialEffect.blendWithBase ?? 0.24,
+  depthFalloff: initialEffect.depthFalloff ?? 0.18,
+  depthOffset: initialEffect.depthOffset ?? 110,
 };
-let terminalEdgeBias = 1;
-let terminalGlyphStyle: TerminalGlyphStyle = "mixed";
+let terminalEdgeBias = initialPreset.terminalEdgeBias ?? 1;
+let terminalGlyphStyle: TerminalGlyphStyle = initialPreset.terminalGlyphStyle ?? "blocks";
 
 const clamp = (value: number, min: number, max: number): number => Math.max(min, Math.min(max, value));
 

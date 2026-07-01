@@ -2495,6 +2495,9 @@ The terminal renderer exposes the same scene through multiple glyph strategies:
 | `glyphs` | Uses a traditional ASCII ramp for lighter character-based scene rendering   |
 | `mixed`  | Compares block and glyph coverage and chooses whichever best matches a cell |
 
+Fresh ASCII renderers and demos default to `blocks` for dense, terminal-visible output. Saved per-widget/workspace
+settings preserve their chosen glyph mode, so an existing `glyphs` or `mixed` override continues to load as configured.
+
 The interactive demos expose presets for edges, fill, exposure, attenuation, blend, depth fog, and terminal edge bias.
 The `mixed` mode keeps strong edge glyphs when they are useful, then chooses between block and ASCII fill glyphs for the
 underlying scene coverage.

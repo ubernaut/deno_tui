@@ -13,6 +13,10 @@ export function createDefaultAsciiOptions(border: BorderMode = "sharp"): AsciiOp
   return buildAsciiOptionsFromPreset("opentui-blocks", border);
 }
 
+export function cloneAsciiOptions(options: AsciiOptions): AsciiOptions {
+  return { ...options };
+}
+
 export function buildAsciiOptionsFromPreset(presetId: string, border: BorderMode): AsciiOptions {
   const preset = presetMap.get(presetId) ?? ASCII_DEMO_PRESETS[0]!;
   const effect = {
@@ -39,6 +43,46 @@ export function buildAsciiOptionsFromPreset(presetId: string, border: BorderMode
     invertLuminance: effect.invertLuminance ?? false,
     kittyGraphics: false,
     kittyDisableAscii: false,
+  };
+}
+
+export function normalizeAsciiOptions(
+  value: unknown,
+  fallback: AsciiOptions = createDefaultAsciiOptions("sharp"),
+): AsciiOptions {
+  const base = cloneAsciiOptions(fallback);
+  if (!value || typeof value !== "object") return base;
+  const candidate = value as Partial<AsciiOptions>;
+  const numeric = <K extends keyof AsciiOptions>(key: K): number => {
+    const next = Number(candidate[key]);
+    return Number.isFinite(next) ? next : Number(base[key]);
+  };
+  return {
+    preset: typeof candidate.preset === "string" ? candidate.preset : base.preset,
+    border: candidate.border === "rounded" || candidate.border === "sharp" || candidate.border === "ascii"
+      ? candidate.border
+      : base.border,
+    terminalGlyphStyle: candidate.terminalGlyphStyle &&
+        TERMINAL_GLYPH_STYLES.includes(candidate.terminalGlyphStyle)
+      ? candidate.terminalGlyphStyle
+      : base.terminalGlyphStyle,
+    terminalEdgeBias: numeric("terminalEdgeBias"),
+    edgeThreshold: numeric("edgeThreshold"),
+    normalThreshold: numeric("normalThreshold"),
+    depthThreshold: numeric("depthThreshold"),
+    exposure: numeric("exposure"),
+    attenuation: numeric("attenuation"),
+    blendWithBase: numeric("blendWithBase"),
+    depthFalloff: numeric("depthFalloff"),
+    depthOffset: numeric("depthOffset"),
+    wireframeThickness: numeric("wireframeThickness"),
+    edges: typeof candidate.edges === "boolean" ? candidate.edges : base.edges,
+    fill: typeof candidate.fill === "boolean" ? candidate.fill : base.fill,
+    invertLuminance: typeof candidate.invertLuminance === "boolean" ? candidate.invertLuminance : base.invertLuminance,
+    kittyGraphics: typeof candidate.kittyGraphics === "boolean" ? candidate.kittyGraphics : base.kittyGraphics,
+    kittyDisableAscii: typeof candidate.kittyDisableAscii === "boolean"
+      ? candidate.kittyDisableAscii
+      : base.kittyDisableAscii,
   };
 }
 

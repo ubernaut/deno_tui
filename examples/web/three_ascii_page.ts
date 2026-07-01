@@ -36,8 +36,8 @@ const host = createWebTui({
 
 const sceneModes: ThreeSceneMode[] = [...threeSceneModes];
 const sceneIndex = new Signal(0);
-const presetIndex = new Signal(Math.max(0, ASCII_DEMO_PRESETS.findIndex((preset) => preset.id === "mixed-best")));
-const glyphIndex = new Signal(Math.max(0, TERMINAL_GLYPH_STYLES.indexOf("mixed")));
+const presetIndex = new Signal(Math.max(0, ASCII_DEMO_PRESETS.findIndex((preset) => preset.id === "opentui-blocks")));
+const glyphIndex = new Signal(Math.max(0, TERMINAL_GLYPH_STYLES.indexOf("blocks")));
 const paused = new Signal(false);
 const webgpuReady = new Signal("probing webgpu");
 const status = new Signal("initializing acerola ascii renderer");
@@ -163,7 +163,7 @@ function activePreset(): AsciiDemoPreset {
 }
 
 function activeGlyph(): TerminalGlyphStyle {
-  return TERMINAL_GLYPH_STYLES[glyphIndex.value] ?? "mixed";
+  return TERMINAL_GLYPH_STYLES[glyphIndex.value] ?? "blocks";
 }
 
 function columns(): number {
