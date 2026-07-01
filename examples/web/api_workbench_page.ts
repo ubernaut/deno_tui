@@ -32,6 +32,7 @@ import {
   Signal,
   SliderController,
   StepperController,
+  TerminalScreenController,
   TextBoxController,
   TextObject,
   type TextRectangle,
@@ -205,6 +206,8 @@ const themeMenuOpen = new Signal(false);
 const tileDensity = new Signal(0);
 const lineSignals: Signal<string>[] = [];
 const log = new Signal<string[]>(["ready: web api workbench mounted"], { deepObserve: true });
+const webTerminalScreen = new TerminalScreenController({ columns: 80, rows: 12, scrollbackLimit: 64 });
+let webTerminalScreenKey = "";
 let hitTargets: Array<{ rect: Rectangle; hit: Hit }> = [];
 let lastVisiblePanel: PanelId | null = null;
 let lastWorkspaceWidth = 0;
@@ -791,7 +794,7 @@ function renderHtmlCssLayout(frame: string[], rect: Rectangle): void {
 
   const rows = [
     "parseTuiMarkup -> parseCssStylesheet -> applyCssCascade -> LayoutEngine",
-    "Flex rows wrap; absolute badge stays anchored; boxes are real hit-test rects.",
+    "Flex rows wrap; nested CSS Grid uses fr tracks, spans, and media rules.",
     "Resize the browser to recalculate terminal-cell layout through the web host.",
   ];
   const start = Math.max(rect.row, rect.row + rect.height - rows.length);
@@ -821,7 +824,7 @@ function renderHtmlCssLayoutBox(frame: string[], box: ComputedLayoutBox, bounds:
   if (content.height > 1 && box.text) {
     write(frame, content.row + 1, content.column, paint(fit(box.text, content.width), t.text, style.bg));
   }
-  if (content.height > 2 && box.id.startsWith("metric-")) {
+  if (content.height > 2 && (box.id.startsWith("metric-") || box.id.startsWith("grid-"))) {
     const detail = `${box.rect.width}x${box.rect.height} content ${box.contentRect.width}x${box.contentRect.height}`;
     write(frame, content.row + 2, content.column, paint(fit(detail, content.width), t.muted, style.bg));
   }
@@ -835,6 +838,14 @@ function htmlCssLayoutBoxStyle(
     return { fg: contrastText(t.accentDeep, t.bg, t.text), bg: t.accentDeep, border: t.accent, bold: true };
   }
   if (box.id === "layout-stage") return { fg: t.text, bg: t.panelAlt, border: t.borderStrong, bold: true };
+  if (box.id === "layout-grid") return { fg: t.text, bg: t.surface, border: t.accent, bold: true };
+  if (box.id === "grid-shell") {
+    return { fg: contrastText(t.buttonActiveBg, t.bg, t.text), bg: t.buttonActiveBg, border: t.accent, bold: true };
+  }
+  if (box.id === "grid-worker") {
+    return { fg: contrastText(t.warn, t.bg, t.text), bg: t.warn, border: t.danger, bold: true };
+  }
+  if (box.id.startsWith("grid-")) return { fg: t.text, bg: t.panel, border: t.accent };
   if (box.id === "layout-badge") {
     return { fg: contrastText(t.warn, t.bg, t.text), bg: t.warn, border: t.danger, bold: true };
   }
@@ -849,8 +860,10 @@ function htmlCssLayoutBoxStyle(
 function boxPaintOrder(box: ComputedLayoutBox): number {
   if (box.id === "layout-demo") return 0;
   if (box.id === "layout-stage") return 1;
+  if (box.id === "layout-grid") return 2;
+  if (box.id.startsWith("grid-")) return 3;
   if (box.id.startsWith("metric-")) return 2;
-  if (box.id === "layout-badge") return 3;
+  if (box.id === "layout-badge") return 4;
   return 2;
 }
 
@@ -871,25 +884,69 @@ function drawHtmlCssLayoutOutline(frame: string[], rect: Rectangle, fg: string, 
 
 function renderTerminalProtocol(frame: string[], rect: Rectangle): void {
   const t = theme();
-  const rows = [
-    "REMOTE TERMINAL / BROWSER BOUNDARY",
-    "",
-    "Console: ProcessSessionController + optional PTY backend",
-    "Browser: createRemoteTerminalClient() transport protocol",
-    "Screen: TerminalScreenController ANSI cell model",
-    "Input: routeTerminalKeyPress / routeTerminalPaste compatible",
-    "",
-    "Local OS shells stay server-side by design; the standalone web package can attach to an explicit remote endpoint.",
-    "This keeps GitHub Pages safe while preserving the same terminal API shape for hosted shells.",
-    "",
-    "Next todo: expose a PTY-backed shell window in the console workbench and mirror it here through the remote protocol.",
+  if (rect.height <= 0 || rect.width <= 0) return;
+  const screenHeight = Math.max(3, rect.height - 5);
+  const screenRect = {
+    column: rect.column,
+    row: rect.row + 3,
+    width: rect.width,
+    height: Math.min(screenHeight, Math.max(0, rect.height - 4)),
+  };
+  syncWebTerminalScreen(screenRect.width, screenRect.height);
+
+  const inspection = webTerminalScreen.inspect();
+  const headerRows = [
+    "REMOTE TERMINAL / BROWSER SHELL MODEL",
+    `screen ${inspection.columns}x${inspection.rows}  cursor ${inspection.cursor.column},${inspection.cursor.row}  scrollback ${inspection.scrollbackRows}`,
+    "client createRemoteTerminalClient() -> explicit WebSocket endpoint -> server TerminalSessionHandle",
   ];
-  rows.slice(0, rect.height).forEach((line, index) => {
-    const header = index === 0;
-    const bg = header ? t.accentDeep : index === 7 ? t.panelAlt : t.surface;
-    const fg = header ? contrastText(t.accentDeep, t.bg, t.text) : index === 7 ? t.warn : t.text;
-    write(frame, rect.row + index, rect.column, paint(fit(line, rect.width), fg, bg, header || index === 7));
+  headerRows.slice(0, Math.min(3, rect.height)).forEach((line, index) => {
+    const bg = index === 0 ? t.accentDeep : t.panelAlt;
+    const fg = index === 0 ? contrastText(t.accentDeep, t.bg, t.text) : index === 1 ? t.warn : t.soft;
+    write(frame, rect.row + index, rect.column, paint(fit(line, rect.width), fg, bg, index === 0));
   });
+
+  fillRect(frame, screenRect, t.bg);
+  const rows = webTerminalScreen.textRows();
+  rows.slice(0, screenRect.height).forEach((line, index) => {
+    write(frame, screenRect.row + index, screenRect.column, paint(fit(line, screenRect.width), t.text, t.bg));
+  });
+  const cursor = webTerminalScreen.cursor;
+  if (cursor.row < screenRect.height && cursor.column < screenRect.width) {
+    write(frame, screenRect.row + cursor.row, screenRect.column + cursor.column, paint(" ", t.bg, t.accent, true));
+  }
+
+  const footerRow = rect.row + rect.height - 1;
+  if (footerRow >= screenRect.row) {
+    const footer =
+      "GitHub Pages uses this safe mock; hosted apps attach a PTY/process backend over the remote protocol.";
+    write(frame, footerRow, rect.column, paint(fit(footer, rect.width), t.muted, t.surface));
+  }
+}
+
+function syncWebTerminalScreen(width: number, height: number): void {
+  const columns = Math.max(20, Math.floor(width));
+  const rows = Math.max(3, Math.floor(height));
+  const key = `${columns}x${rows}:${theme().id}`;
+  if (key === webTerminalScreenKey) return;
+  webTerminalScreenKey = key;
+  webTerminalScreen.resize(columns, rows);
+  webTerminalScreen.clear();
+  webTerminalScreen.write(
+    [
+      "\x1b[1mweb-shell\x1b[0m:\x1b[34m~/deno_tui\x1b[0m$ deno task web:demo:check",
+      "\x1b[32mok\x1b[0m mod.web.ts import graph is browser-safe",
+      "\x1b[32mok\x1b[0m pointer, wheel, paste, focus, resize adapters active",
+      "\x1b[32mok\x1b[0m HTML/CSS layout boxes shared with terminal renderer",
+      "",
+      "\x1b[1mweb-shell\x1b[0m:\x1b[34m~/deno_tui\x1b[0m$ connect ws://localhost:8787/terminal",
+      "\x1b[33mremote endpoint required\x1b[0m: local OS shells stay server-side by design",
+      "transport would stream output bytes into TerminalScreenController",
+      "keyboard and paste events encode through the same terminal input helpers",
+      "",
+      "\x1b[1mweb-shell\x1b[0m:\x1b[34m~/deno_tui\x1b[0m$ _",
+    ].join("\r\n"),
+  );
 }
 
 function panelLines(id: PanelId, height: number): string[] {

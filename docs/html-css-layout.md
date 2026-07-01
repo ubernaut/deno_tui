@@ -21,15 +21,15 @@ Implemented pieces:
 - `hydrateMarkupWidgets()` and the `widgets` result from `createMarkupLayout()` create shared controllers for common
   markup controls and expose a renderer-neutral event dispatcher.
 - `LayoutEngine` delegates layout to pluggable `LayoutSolver` backends.
-- The default `simpleLayoutSolver()` is dependency-free and supports practical block/flex layout, including wrapped flex
-  rows/columns and absolute-positioned children for terminal-cell containers.
+- The default `simpleLayoutSolver()` is dependency-free and supports practical block/flex/grid layout, including wrapped
+  flex rows/columns, a CSS Grid subset, and absolute-positioned children for terminal-cell containers.
 - `./layout/yoga` exposes an experimental Yoga-backed Flexbox solver.
 - `examples/html_css_layout.ts` reports the computed tree through the simple solver or Yoga.
 
 Not implemented yet:
 
 - Full browser CSS compatibility.
-- CSS Grid parity.
+- Full CSS Grid parity.
 - Rich inline text layout.
 - Component-specific rendering from every hydrated tag.
 - DOM-style mutation semantics.
@@ -116,6 +116,24 @@ Responsive rules use terminal-cell dimensions:
 
 `createMarkupLayout()` evaluates these rules against `bounds.width` and `bounds.height` unless you pass an explicit
 `cascade.viewport`.
+
+CSS Grid support is intentionally a terminal-cell subset. The default solver supports explicit tracks, `repeat(n, ...)`,
+`fr` track distribution, `gap`, `grid-auto-flow: row | column`, implicit auto tracks, and `grid-column`/`grid-row`
+placements with numeric lines or `span`.
+
+```css
+#main {
+  display: grid;
+  grid-template-columns: 24 1fr 1fr;
+  grid-template-rows: 3 1fr;
+  gap: 1;
+}
+
+#terminal {
+  grid-column: 2 / span 2;
+  grid-row: 1 / span 2;
+}
+```
 
 Run the report demo:
 
@@ -259,6 +277,13 @@ Properties:
 - `flex`
 - `align-items`
 - `justify-content`
+- `grid-template-columns`
+- `grid-template-rows`
+- `grid-auto-columns`
+- `grid-auto-rows`
+- `grid-auto-flow`
+- `grid-column`
+- `grid-row`
 - `width`, `height`
 - `min-width`, `min-height`
 - `max-width`, `max-height`
@@ -277,7 +302,7 @@ Unsupported for now:
 - transforms
 - animations/transitions
 - browser layout units such as `em`, `rem`, `vh`, and `vw`
-- full CSS Grid behavior
+- named grid lines, `grid-template-areas`, dense packing, subgrid, and full browser Grid behavior
 - complex pseudo classes and pseudo elements
 - browser paint effects such as shadows, filters, and gradients
 

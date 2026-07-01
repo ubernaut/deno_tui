@@ -15,6 +15,12 @@ export const htmlCssLayoutDemoMarkup = `
       <panel id="metric-gpu" class="metric">GPU flex item</panel>
       <panel id="metric-net" class="metric">NET flex item</panel>
       <panel id="metric-disk" class="metric">DISK flex item</panel>
+      <div id="layout-grid" class="grid-board">
+        <panel id="grid-shell" class="grid-cell">Shell grid span</panel>
+        <panel id="grid-browser" class="grid-cell">Browser parity</panel>
+        <panel id="grid-css" class="grid-cell">CSS cascade</panel>
+        <panel id="grid-worker" class="grid-cell">Worker lane</panel>
+      </div>
       <panel id="layout-badge" class="badge">absolute inset</panel>
     </div>
     <statusbar id="layout-footer">resize the window: cards wrap, badge stays top-right</statusbar>
@@ -70,6 +76,30 @@ export const htmlCssLayoutDemoCss = `
     border: 1 single var(--warning);
   }
 
+  .grid-board {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: 3 3;
+    width: 100%;
+    height: 7;
+    gap: 1;
+    padding: 0;
+  }
+
+  .grid-cell {
+    padding: 0;
+    border: 1 single var(--accent);
+  }
+
+  #grid-shell {
+    grid-column: 1 / span 2;
+  }
+
+  #grid-worker {
+    grid-column: 3;
+    grid-row: 1 / span 2;
+  }
+
   @media (max-width: 58) {
     window {
       gap: 0;
@@ -93,6 +123,21 @@ export const htmlCssLayoutDemoCss = `
     .badge {
       right: 1;
       width: 16;
+    }
+
+    .grid-board {
+      grid-template-columns: repeat(2, 1fr);
+      grid-template-rows: 3 3;
+      height: 7;
+    }
+
+    #grid-shell {
+      grid-column: 1;
+    }
+
+    #grid-worker {
+      grid-column: 2;
+      grid-row: 2;
     }
   }
 `;
@@ -127,6 +172,16 @@ export function htmlCssLayoutDemoBoxLabel(box: ComputedLayoutBox): string {
       return "menu-bar height:1";
     case "layout-stage":
       return "display:flex; flex-flow:row wrap";
+    case "layout-grid":
+      return box.rect.width <= 40 ? "display:grid repeat(2, 1fr)" : "display:grid repeat(3, 1fr)";
+    case "grid-shell":
+      return box.rect.width <= 12 ? "grid-column:1" : "grid-column:1 / span 2";
+    case "grid-browser":
+      return "auto-placed grid cell";
+    case "grid-css":
+      return "auto-placed grid cell";
+    case "grid-worker":
+      return box.rect.width <= 12 ? "grid-row:2" : "grid-row:1 / span 2";
     case "metric-cpu":
       return box.rect.width <= 16 ? "primary @media width:16" : "primary width:22";
     case "metric-gpu":

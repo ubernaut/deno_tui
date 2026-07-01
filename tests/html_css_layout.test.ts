@@ -101,6 +101,46 @@ Deno.test("applyCssCascade parses flex flow shorthand into direction and wrappin
   assertEquals(styled.style.flexWrap, "wrap-reverse");
 });
 
+Deno.test("applyCssCascade parses grid templates placement and auto flow", () => {
+  const document = parseTuiMarkup(`
+    <window id="main">
+      <panel id="wide"></panel>
+    </window>
+  `);
+  const stylesheet = parseCssStylesheet(`
+    window {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr) 12;
+      grid-template-rows: 3 1fr;
+      grid-auto-flow: column dense;
+      grid-auto-rows: 2;
+    }
+
+    #wide {
+      grid-column: 2 / span 2;
+      grid-row: 1 / span 2;
+    }
+  `);
+
+  const styled = applyCssCascade(document.root, stylesheet);
+  const wide = findLayoutNode(styled, "wide")!;
+
+  assertEquals(styled.style.display, "grid");
+  assertEquals(styled.style.gridTemplateColumns, [
+    { unit: "fr", value: 1 },
+    { unit: "fr", value: 1 },
+    { unit: "cell", value: 12 },
+  ]);
+  assertEquals(styled.style.gridTemplateRows, [
+    { unit: "cell", value: 3 },
+    { unit: "fr", value: 1 },
+  ]);
+  assertEquals(styled.style.gridAutoFlow, "column");
+  assertEquals(styled.style.gridAutoRows, { unit: "cell", value: 2 });
+  assertEquals(wide.style.gridColumn, { start: 2, span: 2 });
+  assertEquals(wide.style.gridRow, { start: 1, span: 2 });
+});
+
 Deno.test("parseCssStylesheet keeps terminal-cell media query metadata", () => {
   const stylesheet = parseCssStylesheet(`
     panel {
@@ -149,6 +189,43 @@ Deno.test("createMarkupLayout applies media rules from layout bounds", () => {
 
   assertEquals(wide.layout.byId.get("card")!.rect.width, 20);
   assertEquals(narrow.layout.byId.get("card")!.rect.width, 12);
+});
+
+Deno.test("createMarkupLayout computes CSS grid tracks and item placement", () => {
+  const result = createMarkupLayout({
+    markup: `
+      <window id="main">
+        <panel id="a">A</panel>
+        <panel id="b">B</panel>
+        <panel id="c">C</panel>
+      </window>
+    `,
+    css: `
+      window {
+        display: grid;
+        grid-template-columns: 10 1fr 5;
+        grid-template-rows: 2 1fr;
+        gap: 1;
+        width: 100%;
+        height: 100%;
+      }
+
+      #a {
+        grid-column: 2;
+        grid-row: 1 / span 2;
+      }
+
+      #b {
+        grid-column: 1;
+        grid-row: 2;
+      }
+    `,
+    bounds: { column: 0, row: 0, width: 30, height: 8 },
+  });
+
+  assertEquals(result.layout.byId.get("a")!.rect, { column: 11, row: 0, width: 13, height: 8 });
+  assertEquals(result.layout.byId.get("b")!.rect, { column: 0, row: 3, width: 10, height: 5 });
+  assertEquals(result.layout.byId.get("c")!.rect, { column: 0, row: 0, width: 10, height: 2 });
 });
 
 Deno.test("applyCssCascade parses absolute positioning inset declarations", () => {
@@ -314,12 +391,18 @@ Deno.test("createHtmlCssLayoutDemo drives wrapped flex and absolute portfolio bo
   const gpu = result.layout.byId.get("metric-gpu")!;
   const net = result.layout.byId.get("metric-net")!;
   const badge = result.layout.byId.get("layout-badge")!;
+  const grid = result.layout.byId.get("layout-grid")!;
+  const gridShell = result.layout.byId.get("grid-shell")!;
+  const gridWorker = result.layout.byId.get("grid-worker")!;
 
   assertEquals(stage.rect.width > 0, true);
   assertEquals(cpu.rect.row, gpu.rect.row);
   assertEquals(cpu.rect.width, 16);
   assertEquals(gpu.rect.width, 14);
   assertEquals(net.rect.row > cpu.rect.row, true);
+  assertEquals(grid.rect.width, stage.contentRect.width);
+  assertEquals(gridShell.rect.row, grid.rect.row);
+  assertEquals(gridWorker.rect.row > gridShell.rect.row, true);
   assertEquals(badge.rect.column + badge.rect.width, stage.contentRect.column + stage.contentRect.width - 1);
   assertEquals(badge.rect.row, stage.contentRect.row + 1);
 });

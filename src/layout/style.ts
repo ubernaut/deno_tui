@@ -21,6 +21,9 @@ export type LayoutAlignItems = "start" | "end" | "center" | "stretch";
 /** Public type alias for main-axis distribution. */
 export type LayoutJustifyContent = "start" | "end" | "center" | "space-between" | "space-around";
 
+/** Public type alias for CSS-grid auto-placement direction. */
+export type LayoutGridAutoFlow = "row" | "column";
+
 /** Public type alias for visibility state. */
 export type LayoutVisibility = "visible" | "hidden";
 
@@ -28,6 +31,12 @@ export type LayoutVisibility = "visible" | "hidden";
 export interface LayoutLengthValue {
   unit: "auto" | "cell" | "percent" | "fr";
   value: number;
+}
+
+/** Public interface describing a one-dimensional CSS-grid placement. */
+export interface LayoutGridPlacement {
+  start?: number;
+  span?: number;
 }
 
 /** Public interface describing box model edges. */
@@ -49,6 +58,13 @@ export interface ComputedLayoutStyle {
   flexBasis: LayoutLengthValue;
   alignItems: LayoutAlignItems;
   justifyContent: LayoutJustifyContent;
+  gridTemplateColumns: LayoutLengthValue[];
+  gridTemplateRows: LayoutLengthValue[];
+  gridAutoColumns: LayoutLengthValue;
+  gridAutoRows: LayoutLengthValue;
+  gridAutoFlow: LayoutGridAutoFlow;
+  gridColumn: LayoutGridPlacement;
+  gridRow: LayoutGridPlacement;
   width: LayoutLengthValue;
   height: LayoutLengthValue;
   minWidth: LayoutLengthValue;
@@ -111,6 +127,13 @@ export function defaultComputedLayoutStyle(): ComputedLayoutStyle {
     flexBasis: autoLength(),
     alignItems: "stretch",
     justifyContent: "start",
+    gridTemplateColumns: [],
+    gridTemplateRows: [],
+    gridAutoColumns: autoLength(),
+    gridAutoRows: autoLength(),
+    gridAutoFlow: "row",
+    gridColumn: {},
+    gridRow: {},
     width: autoLength(),
     height: autoLength(),
     minWidth: cellLength(0),
@@ -142,6 +165,12 @@ export function cloneComputedLayoutStyle(style: ComputedLayoutStyle): ComputedLa
   return {
     ...style,
     flexBasis: { ...style.flexBasis },
+    gridTemplateColumns: style.gridTemplateColumns.map((track) => ({ ...track })),
+    gridTemplateRows: style.gridTemplateRows.map((track) => ({ ...track })),
+    gridAutoColumns: { ...style.gridAutoColumns },
+    gridAutoRows: { ...style.gridAutoRows },
+    gridColumn: { ...style.gridColumn },
+    gridRow: { ...style.gridRow },
     width: { ...style.width },
     height: { ...style.height },
     minWidth: { ...style.minWidth },
@@ -203,6 +232,50 @@ export function parseLayoutLength(
   }
   if (/^-?\d+(\.\d+)?$/.test(trimmed)) return cellLength(Number.parseFloat(trimmed));
   return { ...fallback };
+}
+
+/** Parses a CSS-grid track list into terminal-cell layout lengths. */
+export function parseGridTrackList(
+  value: string | undefined,
+  fallback: readonly LayoutLengthValue[] = [],
+): LayoutLengthValue[] {
+  if (value === undefined) return fallback.map((track) => ({ ...track }));
+  const trimmed = value.trim().toLowerCase();
+  if (!trimmed || trimmed === "none") return [];
+  return tokenizeGridTrackList(expandGridRepeat(trimmed))
+    .map((part) => parseLayoutLength(part, autoLength()));
+}
+
+/** Parses a CSS-grid line placement shorthand. */
+export function parseGridPlacement(
+  value: string | undefined,
+  fallback: LayoutGridPlacement = {},
+): LayoutGridPlacement {
+  if (value === undefined) return { ...fallback };
+  const trimmed = value.trim().toLowerCase();
+  if (!trimmed || trimmed === "auto") return {};
+
+  const [startPart = "", endPart = ""] = trimmed.split("/").map((part) => part.trim());
+  const placement: LayoutGridPlacement = {};
+  const startSpan = parseGridSpan(startPart);
+  const startLine = parsePositiveInteger(startPart);
+
+  if (startSpan !== undefined) {
+    placement.span = startSpan;
+  } else if (startLine !== undefined) {
+    placement.start = startLine;
+  }
+
+  const endSpan = parseGridSpan(endPart);
+  const endLine = parsePositiveInteger(endPart);
+  if (endSpan !== undefined) {
+    placement.span = endSpan;
+  } else if (placement.start !== undefined && endLine !== undefined) {
+    placement.span = Math.max(1, endLine - placement.start);
+  }
+
+  if (placement.start === undefined && placement.span === undefined) return { ...fallback };
+  return placement;
 }
 
 /** Parses a non-negative terminal-cell integer. */
@@ -272,6 +345,27 @@ export function applyLayoutDeclaration(
       break;
     case "justify-content":
       next.justifyContent = normalizeJustifyContent(resolved, next.justifyContent);
+      break;
+    case "grid-template-columns":
+      next.gridTemplateColumns = parseGridTrackList(resolved, next.gridTemplateColumns);
+      break;
+    case "grid-template-rows":
+      next.gridTemplateRows = parseGridTrackList(resolved, next.gridTemplateRows);
+      break;
+    case "grid-auto-columns":
+      next.gridAutoColumns = parseLayoutLength(resolved, next.gridAutoColumns);
+      break;
+    case "grid-auto-rows":
+      next.gridAutoRows = parseLayoutLength(resolved, next.gridAutoRows);
+      break;
+    case "grid-auto-flow":
+      next.gridAutoFlow = parseOneOf(resolved.split(/\s+/)[0] ?? resolved, ["row", "column"], next.gridAutoFlow);
+      break;
+    case "grid-column":
+      next.gridColumn = parseGridPlacement(resolved, next.gridColumn);
+      break;
+    case "grid-row":
+      next.gridRow = parseGridPlacement(resolved, next.gridRow);
       break;
     case "width":
       next.width = parseLayoutLength(resolved, next.width);
@@ -429,6 +523,29 @@ function applyBorderShorthand(style: ComputedLayoutStyle, value: string): void {
   else if (value.trim() && value.trim() !== "none") style.border = parseBoxEdges("1", style.border);
   if (color) style.borderColor = color;
   if (stylePart) style.borderStyle = stylePart;
+}
+
+function expandGridRepeat(value: string): string {
+  return value.replace(/repeat\(\s*(\d+)\s*,\s*([^)]+)\)/g, (_match, countText: string, trackText: string) => {
+    const count = Math.max(0, Math.floor(Number.parseFloat(countText)));
+    return Array.from({ length: Math.min(count, 256) }, () => trackText.trim()).join(" ");
+  });
+}
+
+function tokenizeGridTrackList(value: string): string[] {
+  return value.split(/\s+/).map((part) => part.trim()).filter(Boolean);
+}
+
+function parseGridSpan(value: string): number | undefined {
+  const match = value.match(/^span\s+(\d+)$/);
+  if (!match) return undefined;
+  return Math.max(1, Math.floor(Number.parseFloat(match[1]!)));
+}
+
+function parsePositiveInteger(value: string): number | undefined {
+  if (!/^\d+$/.test(value)) return undefined;
+  const parsed = Math.floor(Number.parseFloat(value));
+  return parsed > 0 ? parsed : undefined;
 }
 
 function applyBoxEdge(edges: BoxEdges<number>, edge: string, value: number): BoxEdges<number> {

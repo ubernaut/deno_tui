@@ -2968,6 +2968,13 @@ function defaultComputedLayoutStyle() {
     flexBasis: autoLength(),
     alignItems: "stretch",
     justifyContent: "start",
+    gridTemplateColumns: [],
+    gridTemplateRows: [],
+    gridAutoColumns: autoLength(),
+    gridAutoRows: autoLength(),
+    gridAutoFlow: "row",
+    gridColumn: {},
+    gridRow: {},
     width: autoLength(),
     height: autoLength(),
     minWidth: cellLength(0),
@@ -2997,6 +3004,12 @@ function cloneComputedLayoutStyle(style2) {
   return {
     ...style2,
     flexBasis: { ...style2.flexBasis },
+    gridTemplateColumns: style2.gridTemplateColumns.map((track) => ({ ...track })),
+    gridTemplateRows: style2.gridTemplateRows.map((track) => ({ ...track })),
+    gridAutoColumns: { ...style2.gridAutoColumns },
+    gridAutoRows: { ...style2.gridAutoRows },
+    gridColumn: { ...style2.gridColumn },
+    gridRow: { ...style2.gridRow },
     width: { ...style2.width },
     height: { ...style2.height },
     minWidth: { ...style2.minWidth },
@@ -3040,6 +3053,35 @@ function parseLayoutLength(value, fallback = autoLength()) {
   }
   if (/^-?\d+(\.\d+)?$/.test(trimmed)) return cellLength(Number.parseFloat(trimmed));
   return { ...fallback };
+}
+function parseGridTrackList(value, fallback = []) {
+  if (value === void 0) return fallback.map((track) => ({ ...track }));
+  const trimmed = value.trim().toLowerCase();
+  if (!trimmed || trimmed === "none") return [];
+  return tokenizeGridTrackList(expandGridRepeat(trimmed)).map((part) => parseLayoutLength(part, autoLength()));
+}
+function parseGridPlacement(value, fallback = {}) {
+  if (value === void 0) return { ...fallback };
+  const trimmed = value.trim().toLowerCase();
+  if (!trimmed || trimmed === "auto") return {};
+  const [startPart = "", endPart = ""] = trimmed.split("/").map((part) => part.trim());
+  const placement = {};
+  const startSpan = parseGridSpan(startPart);
+  const startLine = parsePositiveInteger(startPart);
+  if (startSpan !== void 0) {
+    placement.span = startSpan;
+  } else if (startLine !== void 0) {
+    placement.start = startLine;
+  }
+  const endSpan = parseGridSpan(endPart);
+  const endLine = parsePositiveInteger(endPart);
+  if (endSpan !== void 0) {
+    placement.span = endSpan;
+  } else if (placement.start !== void 0 && endLine !== void 0) {
+    placement.span = Math.max(1, endLine - placement.start);
+  }
+  if (placement.start === void 0 && placement.span === void 0) return { ...fallback };
+  return placement;
 }
 function parseLayoutInteger(value, fallback = 0) {
   if (value === void 0) return fallback;
@@ -3094,6 +3136,27 @@ function applyLayoutDeclaration(style2, property, value) {
       break;
     case "justify-content":
       next.justifyContent = normalizeJustifyContent(resolved, next.justifyContent);
+      break;
+    case "grid-template-columns":
+      next.gridTemplateColumns = parseGridTrackList(resolved, next.gridTemplateColumns);
+      break;
+    case "grid-template-rows":
+      next.gridTemplateRows = parseGridTrackList(resolved, next.gridTemplateRows);
+      break;
+    case "grid-auto-columns":
+      next.gridAutoColumns = parseLayoutLength(resolved, next.gridAutoColumns);
+      break;
+    case "grid-auto-rows":
+      next.gridAutoRows = parseLayoutLength(resolved, next.gridAutoRows);
+      break;
+    case "grid-auto-flow":
+      next.gridAutoFlow = parseOneOf(resolved.split(/\s+/)[0] ?? resolved, ["row", "column"], next.gridAutoFlow);
+      break;
+    case "grid-column":
+      next.gridColumn = parseGridPlacement(resolved, next.gridColumn);
+      break;
+    case "grid-row":
+      next.gridRow = parseGridPlacement(resolved, next.gridRow);
       break;
     case "width":
       next.width = parseLayoutLength(resolved, next.width);
@@ -3236,6 +3299,25 @@ function applyBorderShorthand(style2, value) {
   if (color) style2.borderColor = color;
   if (stylePart) style2.borderStyle = stylePart;
 }
+function expandGridRepeat(value) {
+  return value.replace(/repeat\(\s*(\d+)\s*,\s*([^)]+)\)/g, (_match, countText, trackText) => {
+    const count = Math.max(0, Math.floor(Number.parseFloat(countText)));
+    return Array.from({ length: Math.min(count, 256) }, () => trackText.trim()).join(" ");
+  });
+}
+function tokenizeGridTrackList(value) {
+  return value.split(/\s+/).map((part) => part.trim()).filter(Boolean);
+}
+function parseGridSpan(value) {
+  const match = value.match(/^span\s+(\d+)$/);
+  if (!match) return void 0;
+  return Math.max(1, Math.floor(Number.parseFloat(match[1])));
+}
+function parsePositiveInteger(value) {
+  if (!/^\d+$/.test(value)) return void 0;
+  const parsed = Math.floor(Number.parseFloat(value));
+  return parsed > 0 ? parsed : void 0;
+}
 function applyBoxEdge(edges, edge, value) {
   const next = { ...edges };
   if (edge === "top" || edge === "right" || edge === "bottom" || edge === "left") {
@@ -3376,7 +3458,7 @@ var SimpleLayoutSolver = class {
     const rect = resolveNodeRect(node, outer, isRoot, fillAllocated, this.#defaultTextHeight);
     const contentRect = contentRectangle(rect, style2);
     const visible = style2.visibility === "visible" && style2.display !== "none";
-    const flowChildren = style2.display === "flex" ? this.#layoutFlexChildren(node, contentRect) : this.#layoutBlockChildren(node, contentRect);
+    const flowChildren = style2.display === "flex" ? this.#layoutFlexChildren(node, contentRect) : style2.display === "grid" ? this.#layoutGridChildren(node, contentRect) : this.#layoutBlockChildren(node, contentRect);
     const children = [...flowChildren, ...this.#layoutAbsoluteChildren(node, contentRect)];
     const scroll = scrollSize(node, contentRect, children);
     return {
@@ -3475,6 +3557,50 @@ var SimpleLayoutSolver = class {
     }
     return boxes;
   }
+  #layoutGridChildren(node, bounds) {
+    const children = layoutChildren(node);
+    if (children.length === 0) return [];
+    const columnGap = Math.max(0, node.style.columnGap || node.style.gap);
+    const rowGap = Math.max(0, node.style.rowGap || node.style.gap);
+    const placed = placeGridChildren(children, {
+      columns: node.style.gridTemplateColumns.length,
+      rows: node.style.gridTemplateRows.length,
+      autoFlow: node.style.gridAutoFlow
+    });
+    const columnCount = Math.max(
+      1,
+      node.style.gridTemplateColumns.length,
+      ...placed.map((item) => item.column + item.columnSpan)
+    );
+    const rowCount = Math.max(
+      1,
+      node.style.gridTemplateRows.length,
+      ...placed.map((item) => item.row + item.rowSpan)
+    );
+    const columns = resolveGridTracks(
+      node.style.gridTemplateColumns,
+      columnCount,
+      bounds.width,
+      columnGap,
+      node.style.gridAutoColumns
+    );
+    const rows2 = resolveGridTracks(
+      node.style.gridTemplateRows,
+      rowCount,
+      bounds.height,
+      rowGap,
+      node.style.gridAutoRows
+    );
+    const columnOffsets = gridTrackOffsets(bounds.column, columns, columnGap);
+    const rowOffsets = gridTrackOffsets(bounds.row, rows2, rowGap);
+    return placed.map((item) => {
+      const column = columnOffsets[item.column] ?? bounds.column;
+      const row = rowOffsets[item.row] ?? bounds.row;
+      const width = gridSpanSize(columns, item.column, item.columnSpan, columnGap);
+      const height = gridSpanSize(rows2, item.row, item.rowSpan, rowGap);
+      return this.#layoutNode(item.node, { column, row, width, height }, false, true);
+    });
+  }
   #layoutAbsoluteChildren(node, bounds) {
     return layoutAbsoluteChildren(node).map((child) => {
       return this.#layoutNode(child, absoluteChildBounds(child, bounds, this.#defaultTextHeight));
@@ -3489,6 +3615,198 @@ function layoutChildren(node) {
 }
 function layoutAbsoluteChildren(node) {
   return node.children.filter((child) => child.style.display !== "none" && child.style.position === "absolute");
+}
+function placeGridChildren(children, bounds) {
+  const placed = /* @__PURE__ */ new Map();
+  const occupied = /* @__PURE__ */ new Set();
+  const autoColumns = bounds.columns > 0 ? bounds.columns : Math.max(1, Math.ceil(Math.sqrt(children.length)));
+  const autoRows = bounds.rows > 0 ? bounds.rows : Math.max(1, Math.ceil(Math.sqrt(children.length)));
+  const candidates = children.map((child) => ({
+    node: child,
+    columnSpan: Math.max(1, child.style.gridColumn.span ?? 1),
+    rowSpan: Math.max(1, child.style.gridRow.span ?? 1),
+    explicitColumn: child.style.gridColumn.start !== void 0 ? Math.max(0, child.style.gridColumn.start - 1) : void 0,
+    explicitRow: child.style.gridRow.start !== void 0 ? Math.max(0, child.style.gridRow.start - 1) : void 0
+  }));
+  const placementOrder = [
+    ...candidates.filter((candidate) => candidate.explicitColumn !== void 0 && candidate.explicitRow !== void 0),
+    ...candidates.filter(
+      (candidate) => candidate.explicitColumn !== void 0 !== (candidate.explicitRow !== void 0)
+    ),
+    ...candidates.filter((candidate) => candidate.explicitColumn === void 0 && candidate.explicitRow === void 0)
+  ];
+  for (const candidate of placementOrder) {
+    const position = candidate.explicitColumn !== void 0 && candidate.explicitRow !== void 0 ? { column: candidate.explicitColumn, row: candidate.explicitRow } : candidate.explicitColumn !== void 0 ? findGridSlot(occupied, {
+      preferredColumn: candidate.explicitColumn,
+      columnSpan: candidate.columnSpan,
+      rowSpan: candidate.rowSpan,
+      maxColumns: void 0,
+      maxRows: void 0,
+      scanColumns: Math.max(autoColumns, candidate.explicitColumn + candidate.columnSpan),
+      scanRows: autoRows,
+      autoFlow: bounds.autoFlow
+    }) : candidate.explicitRow !== void 0 ? findGridSlot(occupied, {
+      preferredRow: candidate.explicitRow,
+      columnSpan: candidate.columnSpan,
+      rowSpan: candidate.rowSpan,
+      maxColumns: bounds.columns > 0 ? bounds.columns : void 0,
+      maxRows: void 0,
+      scanColumns: autoColumns,
+      scanRows: Math.max(autoRows, candidate.explicitRow + candidate.rowSpan),
+      autoFlow: bounds.autoFlow
+    }) : findGridSlot(occupied, {
+      columnSpan: candidate.columnSpan,
+      rowSpan: candidate.rowSpan,
+      maxColumns: bounds.autoFlow === "row" && bounds.columns > 0 ? bounds.columns : void 0,
+      maxRows: bounds.autoFlow === "column" && bounds.rows > 0 ? bounds.rows : void 0,
+      scanColumns: autoColumns,
+      scanRows: autoRows,
+      autoFlow: bounds.autoFlow
+    });
+    occupyGridCells(occupied, position.row, position.column, candidate.rowSpan, candidate.columnSpan);
+    placed.set(candidate.node, {
+      node: candidate.node,
+      column: position.column,
+      row: position.row,
+      columnSpan: candidate.columnSpan,
+      rowSpan: candidate.rowSpan
+    });
+  }
+  return children.map((child) => placed.get(child)).filter(Boolean);
+}
+function findGridSlot(occupied, options) {
+  const scanColumns = Math.max(
+    1,
+    options.scanColumns,
+    options.preferredColumn !== void 0 ? options.preferredColumn + 1 : 1
+  );
+  const scanRows = Math.max(1, options.scanRows, options.preferredRow !== void 0 ? options.preferredRow + 1 : 1);
+  const limit = Math.max(scanColumns * scanRows + occupied.size + 16, 32);
+  if (options.preferredColumn !== void 0) {
+    for (let row = options.preferredRow ?? 0; row < limit; row += 1) {
+      if (gridCellsAvailable(occupied, row, options.preferredColumn, options.rowSpan, options.columnSpan, options)) {
+        return { column: options.preferredColumn, row };
+      }
+    }
+  }
+  if (options.preferredRow !== void 0) {
+    for (let column = options.preferredColumn ?? 0; column < limit; column += 1) {
+      if (gridCellsAvailable(occupied, options.preferredRow, column, options.rowSpan, options.columnSpan, options)) {
+        return { column, row: options.preferredRow };
+      }
+    }
+  }
+  if (options.autoFlow === "column") {
+    for (let column = 0; column < limit; column += 1) {
+      for (let row = 0; row < scanRows || row < limit && options.maxRows === void 0; row += 1) {
+        if (gridCellsAvailable(occupied, row, column, options.rowSpan, options.columnSpan, options)) {
+          return { column, row };
+        }
+      }
+    }
+  } else {
+    for (let row = 0; row < limit; row += 1) {
+      for (let column = 0; column < scanColumns || column < limit && options.maxColumns === void 0; column += 1) {
+        if (gridCellsAvailable(occupied, row, column, options.rowSpan, options.columnSpan, options)) {
+          return { column, row };
+        }
+      }
+    }
+  }
+  return { column: 0, row: 0 };
+}
+function gridCellsAvailable(occupied, row, column, rowSpan, columnSpan, options) {
+  if (row < 0 || column < 0) return false;
+  if (options.maxColumns !== void 0 && column + columnSpan > options.maxColumns) return false;
+  if (options.maxRows !== void 0 && row + rowSpan > options.maxRows) return false;
+  for (let rowOffset = 0; rowOffset < rowSpan; rowOffset += 1) {
+    for (let columnOffset = 0; columnOffset < columnSpan; columnOffset += 1) {
+      if (occupied.has(gridCellKey(row + rowOffset, column + columnOffset))) return false;
+    }
+  }
+  return true;
+}
+function occupyGridCells(occupied, row, column, rowSpan, columnSpan) {
+  for (let rowOffset = 0; rowOffset < rowSpan; rowOffset += 1) {
+    for (let columnOffset = 0; columnOffset < columnSpan; columnOffset += 1) {
+      occupied.add(gridCellKey(row + rowOffset, column + columnOffset));
+    }
+  }
+}
+function gridCellKey(row, column) {
+  return `${row}:${column}`;
+}
+function resolveGridTracks(template, count, available, gap, autoTrack) {
+  const trackCount = Math.max(1, count);
+  const tracks = Array.from({ length: trackCount }, (_, index) => template[index] ?? autoTrack);
+  const totalGap = Math.max(0, trackCount - 1) * Math.max(0, gap);
+  const availableWithoutGaps = Math.max(0, Math.floor(available) - totalGap);
+  const sizes = new Array(trackCount).fill(0);
+  const autoIndexes = [];
+  const frIndexes = [];
+  let fixed2 = 0;
+  let frTotal = 0;
+  for (let index = 0; index < tracks.length; index += 1) {
+    const track = tracks[index] ?? autoTrack;
+    if (track.unit === "cell") {
+      sizes[index] = Math.max(0, Math.floor(track.value));
+      fixed2 += sizes[index];
+    } else if (track.unit === "percent") {
+      sizes[index] = Math.max(0, Math.floor(availableWithoutGaps * track.value / 100));
+      fixed2 += sizes[index];
+    } else if (track.unit === "fr") {
+      frIndexes.push(index);
+      frTotal += Math.max(0, track.value);
+    } else {
+      autoIndexes.push(index);
+    }
+  }
+  let remaining = Math.max(0, availableWithoutGaps - fixed2);
+  if (frIndexes.length > 0 && frTotal > 0) {
+    let assigned = 0;
+    for (const [frIndex, trackIndex] of frIndexes.entries()) {
+      const track = tracks[trackIndex] ?? autoTrack;
+      const size = frIndex === frIndexes.length - 1 ? remaining - assigned : Math.floor(remaining * Math.max(0, track.value) / frTotal);
+      sizes[trackIndex] = Math.max(0, size);
+      assigned += sizes[trackIndex];
+    }
+    remaining = Math.max(0, availableWithoutGaps - fixed2 - assigned);
+  }
+  if (autoIndexes.length > 0) {
+    const base = Math.floor(remaining / autoIndexes.length);
+    let extra = remaining % autoIndexes.length;
+    for (const trackIndex of autoIndexes) {
+      sizes[trackIndex] = base + (extra > 0 ? 1 : 0);
+      if (extra > 0) extra -= 1;
+    }
+  }
+  shrinkGridTracksToFit(sizes, availableWithoutGaps);
+  return sizes.map((size) => Math.max(0, Math.floor(size)));
+}
+function shrinkGridTracksToFit(sizes, available) {
+  let overflow = sizes.reduce((sum2, size) => sum2 + size, 0) - Math.max(0, available);
+  for (let index = sizes.length - 1; index >= 0 && overflow > 0; index -= 1) {
+    const removable = Math.min(sizes[index] ?? 0, overflow);
+    sizes[index] = Math.max(0, (sizes[index] ?? 0) - removable);
+    overflow -= removable;
+  }
+}
+function gridTrackOffsets(start, tracks, gap) {
+  const offsets = [];
+  let cursor = start;
+  for (const track of tracks) {
+    offsets.push(cursor);
+    cursor += Math.max(0, track) + Math.max(0, gap);
+  }
+  return offsets;
+}
+function gridSpanSize(tracks, start, span, gap) {
+  const safeSpan = Math.max(1, span);
+  let size = 0;
+  for (let offset = 0; offset < safeSpan; offset += 1) {
+    size += tracks[start + offset] ?? 0;
+  }
+  return Math.max(0, size + Math.max(0, safeSpan - 1) * Math.max(0, gap));
 }
 function normalizeRect(rect) {
   return {
@@ -7040,6 +7358,249 @@ var ASCII_DEMO_PRESETS = [
 // src/app/terminal_input.ts
 var textEncoder4 = new TextEncoder();
 
+// src/runtime/terminal_screen.ts
+var DEFAULT_COLUMNS = 80;
+var DEFAULT_ROWS = 24;
+var DEFAULT_SCROLLBACK_LIMIT = 1e3;
+var TerminalScreenController = class {
+  #columns;
+  #rows;
+  #scrollbackLimit;
+  #state;
+  #mainState;
+  #scrollback = [];
+  #style = {};
+  constructor(options = {}) {
+    this.#columns = normalizeDimension(options.columns, DEFAULT_COLUMNS);
+    this.#rows = normalizeDimension(options.rows, DEFAULT_ROWS);
+    this.#scrollbackLimit = Math.max(0, Math.floor(options.scrollbackLimit ?? DEFAULT_SCROLLBACK_LIMIT));
+    this.#state = {
+      cells: createRows(this.#columns, this.#rows),
+      cursor: { column: 0, row: 0 }
+    };
+  }
+  get columns() {
+    return this.#columns;
+  }
+  get rows() {
+    return this.#rows;
+  }
+  get cursor() {
+    return { ...this.#state.cursor };
+  }
+  get alternate() {
+    return this.#mainState !== void 0;
+  }
+  write(data) {
+    const text = typeof data === "string" ? data : new TextDecoder().decode(data);
+    for (let index = 0; index < text.length; ) {
+      const char = text[index];
+      if (char === "\x1B") {
+        const parsed = parseControlSequence(text.slice(index));
+        if (parsed) {
+          this.#applyControl(parsed);
+          index += parsed.length;
+          continue;
+        }
+      }
+      this.#writeChar(char);
+      index += char.length;
+    }
+  }
+  resize(columns, rows2) {
+    const nextColumns = normalizeDimension(columns, this.#columns);
+    const nextRows = normalizeDimension(rows2, this.#rows);
+    if (nextColumns === this.#columns && nextRows === this.#rows) return;
+    this.#columns = nextColumns;
+    this.#rows = nextRows;
+    this.#state = resizeState(this.#state, nextColumns, nextRows);
+    if (this.#mainState) this.#mainState = resizeState(this.#mainState, nextColumns, nextRows);
+  }
+  clear() {
+    this.#state.cells = createRows(this.#columns, this.#rows);
+    this.#state.cursor = { column: 0, row: 0 };
+  }
+  textRows() {
+    return this.#state.cells.map((row) => row.map((cell) => cell.char).join("").trimEnd());
+  }
+  cellRows() {
+    return this.#state.cells.map((row) => row.map((cell) => ({ ...cell })));
+  }
+  scrollbackTextRows() {
+    return this.#scrollback.map((row) => row.map((cell) => cell.char).join("").trimEnd());
+  }
+  inspect() {
+    return {
+      columns: this.#columns,
+      rows: this.#rows,
+      cursor: this.cursor,
+      scrollbackRows: this.#scrollback.length,
+      alternate: this.alternate
+    };
+  }
+  #writeChar(char) {
+    if (char === "\n") {
+      this.#newline();
+      return;
+    }
+    if (char === "\r") {
+      this.#state.cursor.column = 0;
+      return;
+    }
+    if (char === "\b") {
+      this.#state.cursor.column = Math.max(0, this.#state.cursor.column - 1);
+      return;
+    }
+    if (char === "	") {
+      const next = Math.min(this.#columns - 1, this.#state.cursor.column + (8 - this.#state.cursor.column % 8));
+      this.#state.cursor.column = next;
+      return;
+    }
+    if (char < " ") return;
+    const row = this.#state.cells[this.#state.cursor.row];
+    row[this.#state.cursor.column] = { char, ...this.#style };
+    if (this.#state.cursor.column >= this.#columns - 1) {
+      this.#state.cursor.column = 0;
+      this.#newline();
+    } else {
+      this.#state.cursor.column += 1;
+    }
+  }
+  #newline() {
+    this.#state.cursor.column = 0;
+    this.#state.cursor.row += 1;
+    if (this.#state.cursor.row < this.#rows) return;
+    const shifted = this.#state.cells.shift() ?? blankRow(this.#columns);
+    if (!this.alternate) {
+      this.#scrollback.push(shifted);
+      if (this.#scrollback.length > this.#scrollbackLimit) this.#scrollback.shift();
+    }
+    this.#state.cells.push(blankRow(this.#columns));
+    this.#state.cursor.row = this.#rows - 1;
+  }
+  #applyControl(sequence) {
+    const params = parseParams(sequence.params);
+    if (sequence.private && (sequence.command === "h" || sequence.command === "l")) {
+      if (params.includes(1049)) sequence.command === "h" ? this.#enterAlternate() : this.#exitAlternate();
+      return;
+    }
+    switch (sequence.command) {
+      case "m":
+        this.#applySgr(params);
+        break;
+      case "H":
+      case "f":
+        this.#state.cursor.row = clamp3((params[0] ?? 1) - 1, 0, this.#rows - 1);
+        this.#state.cursor.column = clamp3((params[1] ?? 1) - 1, 0, this.#columns - 1);
+        break;
+      case "A":
+        this.#state.cursor.row = clamp3(this.#state.cursor.row - (params[0] || 1), 0, this.#rows - 1);
+        break;
+      case "B":
+        this.#state.cursor.row = clamp3(this.#state.cursor.row + (params[0] || 1), 0, this.#rows - 1);
+        break;
+      case "C":
+        this.#state.cursor.column = clamp3(this.#state.cursor.column + (params[0] || 1), 0, this.#columns - 1);
+        break;
+      case "D":
+        this.#state.cursor.column = clamp3(this.#state.cursor.column - (params[0] || 1), 0, this.#columns - 1);
+        break;
+      case "J":
+        this.#eraseDisplay(params[0] ?? 0);
+        break;
+      case "K":
+        this.#eraseLine(params[0] ?? 0);
+        break;
+    }
+  }
+  #applySgr(params) {
+    const values = params.length === 0 ? [0] : params;
+    for (const value of values) {
+      if (value === 0) this.#style = {};
+      else if (value === 1) this.#style.bold = true;
+      else if (value === 22) this.#style.bold = false;
+      else if (value >= 30 && value <= 37) this.#style.foreground = value;
+      else if (value === 39) delete this.#style.foreground;
+      else if (value >= 40 && value <= 47) this.#style.background = value;
+      else if (value === 49) delete this.#style.background;
+    }
+  }
+  #eraseDisplay(mode) {
+    if (mode === 2 || mode === 3) {
+      this.clear();
+      return;
+    }
+    for (let row = this.#state.cursor.row; row < this.#rows; row += 1) {
+      const start = row === this.#state.cursor.row ? this.#state.cursor.column : 0;
+      this.#state.cells[row].splice(start, this.#columns - start, ...blankRow(this.#columns - start));
+    }
+  }
+  #eraseLine(mode) {
+    const row = this.#state.cells[this.#state.cursor.row];
+    const start = mode === 1 ? 0 : this.#state.cursor.column;
+    const end = mode === 1 ? this.#state.cursor.column + 1 : this.#columns;
+    row.splice(start, end - start, ...blankRow(end - start));
+  }
+  #enterAlternate() {
+    if (this.#mainState) return;
+    this.#mainState = cloneState(this.#state);
+    this.#state = { cells: createRows(this.#columns, this.#rows), cursor: { column: 0, row: 0 } };
+  }
+  #exitAlternate() {
+    if (!this.#mainState) return;
+    this.#state = this.#mainState;
+    this.#mainState = void 0;
+  }
+};
+function parseControlSequence(value) {
+  const match = /^\x1b\[([?]?)([0-9;]*)([A-Za-z])/.exec(value);
+  if (!match) return void 0;
+  return {
+    private: match[1] === "?",
+    params: match[2] ?? "",
+    command: match[3],
+    length: match[0].length
+  };
+}
+function parseParams(params) {
+  if (!params) return [];
+  return params.split(";").map((value) => Number.parseInt(value || "0", 10)).filter(Number.isFinite);
+}
+function createRows(columns, rows2) {
+  return Array.from({ length: rows2 }, () => blankRow(columns));
+}
+function blankRow(columns) {
+  return Array.from({ length: columns }, () => ({ char: " " }));
+}
+function resizeState(state, columns, rows2) {
+  const cells = createRows(columns, rows2);
+  for (let row = 0; row < Math.min(rows2, state.cells.length); row += 1) {
+    for (let column = 0; column < Math.min(columns, state.cells[row].length); column += 1) {
+      cells[row][column] = { ...state.cells[row][column] };
+    }
+  }
+  return {
+    cells,
+    cursor: {
+      column: clamp3(state.cursor.column, 0, columns - 1),
+      row: clamp3(state.cursor.row, 0, rows2 - 1)
+    }
+  };
+}
+function cloneState(state) {
+  return {
+    cells: state.cells.map((row) => row.map((cell) => ({ ...cell }))),
+    cursor: { ...state.cursor }
+  };
+}
+function normalizeDimension(value, fallback) {
+  if (!Number.isFinite(value)) return fallback;
+  return Math.max(1, Math.floor(value));
+}
+function clamp3(value, min2, max2) {
+  return Math.max(min2, Math.min(max2, value));
+}
+
 // src/runtime/terminal_session.ts
 var ENCODER = new TextEncoder();
 
@@ -7581,6 +8142,12 @@ var htmlCssLayoutDemoMarkup = `
       <panel id="metric-gpu" class="metric">GPU flex item</panel>
       <panel id="metric-net" class="metric">NET flex item</panel>
       <panel id="metric-disk" class="metric">DISK flex item</panel>
+      <div id="layout-grid" class="grid-board">
+        <panel id="grid-shell" class="grid-cell">Shell grid span</panel>
+        <panel id="grid-browser" class="grid-cell">Browser parity</panel>
+        <panel id="grid-css" class="grid-cell">CSS cascade</panel>
+        <panel id="grid-worker" class="grid-cell">Worker lane</panel>
+      </div>
       <panel id="layout-badge" class="badge">absolute inset</panel>
     </div>
     <statusbar id="layout-footer">resize the window: cards wrap, badge stays top-right</statusbar>
@@ -7635,6 +8202,30 @@ var htmlCssLayoutDemoCss = `
     border: 1 single var(--warning);
   }
 
+  .grid-board {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: 3 3;
+    width: 100%;
+    height: 7;
+    gap: 1;
+    padding: 0;
+  }
+
+  .grid-cell {
+    padding: 0;
+    border: 1 single var(--accent);
+  }
+
+  #grid-shell {
+    grid-column: 1 / span 2;
+  }
+
+  #grid-worker {
+    grid-column: 3;
+    grid-row: 1 / span 2;
+  }
+
   @media (max-width: 58) {
     window {
       gap: 0;
@@ -7658,6 +8249,21 @@ var htmlCssLayoutDemoCss = `
     .badge {
       right: 1;
       width: 16;
+    }
+
+    .grid-board {
+      grid-template-columns: repeat(2, 1fr);
+      grid-template-rows: 3 3;
+      height: 7;
+    }
+
+    #grid-shell {
+      grid-column: 1;
+    }
+
+    #grid-worker {
+      grid-column: 2;
+      grid-row: 2;
     }
   }
 `;
@@ -7686,6 +8292,16 @@ function htmlCssLayoutDemoBoxLabel(box) {
       return "menu-bar height:1";
     case "layout-stage":
       return "display:flex; flex-flow:row wrap";
+    case "layout-grid":
+      return box.rect.width <= 40 ? "display:grid repeat(2, 1fr)" : "display:grid repeat(3, 1fr)";
+    case "grid-shell":
+      return box.rect.width <= 12 ? "grid-column:1" : "grid-column:1 / span 2";
+    case "grid-browser":
+      return "auto-placed grid cell";
+    case "grid-css":
+      return "auto-placed grid cell";
+    case "grid-worker":
+      return box.rect.width <= 12 ? "grid-row:2" : "grid-row:1 / span 2";
     case "metric-cpu":
       return box.rect.width <= 16 ? "primary @media width:16" : "primary width:22";
     case "metric-gpu":
@@ -7792,6 +8408,8 @@ var themeMenuOpen = new Signal(false);
 var tileDensity = new Signal(0);
 var lineSignals = [];
 var log = new Signal(["ready: web api workbench mounted"], { deepObserve: true });
+var webTerminalScreen = new TerminalScreenController({ columns: 80, rows: 12, scrollbackLimit: 64 });
+var webTerminalScreenKey = "";
 var hitTargets = [];
 var lastVisiblePanel = null;
 var lastWorkspaceWidth = 0;
@@ -8340,7 +8958,7 @@ function renderHtmlCssLayout(frame, rect) {
   }
   const rows2 = [
     "parseTuiMarkup -> parseCssStylesheet -> applyCssCascade -> LayoutEngine",
-    "Flex rows wrap; absolute badge stays anchored; boxes are real hit-test rects.",
+    "Flex rows wrap; nested CSS Grid uses fr tracks, spans, and media rules.",
     "Resize the browser to recalculate terminal-cell layout through the web host."
   ];
   const start = Math.max(rect.row, rect.row + rect.height - rows2.length);
@@ -8368,7 +8986,7 @@ function renderHtmlCssLayoutBox(frame, box, bounds, t) {
   if (content.height > 1 && box.text) {
     write(frame, content.row + 1, content.column, paint(fit(box.text, content.width), t.text, style2.bg));
   }
-  if (content.height > 2 && box.id.startsWith("metric-")) {
+  if (content.height > 2 && (box.id.startsWith("metric-") || box.id.startsWith("grid-"))) {
     const detail = `${box.rect.width}x${box.rect.height} content ${box.contentRect.width}x${box.contentRect.height}`;
     write(frame, content.row + 2, content.column, paint(fit(detail, content.width), t.muted, style2.bg));
   }
@@ -8378,6 +8996,14 @@ function htmlCssLayoutBoxStyle(box, t) {
     return { fg: contrastText(t.accentDeep, t.bg, t.text), bg: t.accentDeep, border: t.accent, bold: true };
   }
   if (box.id === "layout-stage") return { fg: t.text, bg: t.panelAlt, border: t.borderStrong, bold: true };
+  if (box.id === "layout-grid") return { fg: t.text, bg: t.surface, border: t.accent, bold: true };
+  if (box.id === "grid-shell") {
+    return { fg: contrastText(t.buttonActiveBg, t.bg, t.text), bg: t.buttonActiveBg, border: t.accent, bold: true };
+  }
+  if (box.id === "grid-worker") {
+    return { fg: contrastText(t.warn, t.bg, t.text), bg: t.warn, border: t.danger, bold: true };
+  }
+  if (box.id.startsWith("grid-")) return { fg: t.text, bg: t.panel, border: t.accent };
   if (box.id === "layout-badge") {
     return { fg: contrastText(t.warn, t.bg, t.text), bg: t.warn, border: t.danger, bold: true };
   }
@@ -8391,8 +9017,10 @@ function htmlCssLayoutBoxStyle(box, t) {
 function boxPaintOrder(box) {
   if (box.id === "layout-demo") return 0;
   if (box.id === "layout-stage") return 1;
+  if (box.id === "layout-grid") return 2;
+  if (box.id.startsWith("grid-")) return 3;
   if (box.id.startsWith("metric-")) return 2;
-  if (box.id === "layout-badge") return 3;
+  if (box.id === "layout-badge") return 4;
   return 2;
 }
 function drawHtmlCssLayoutOutline(frame, rect, fg, bg, bold = false) {
@@ -8411,25 +9039,64 @@ function drawHtmlCssLayoutOutline(frame, rect, fg, bg, bold = false) {
 }
 function renderTerminalProtocol(frame, rect) {
   const t = theme();
-  const rows2 = [
-    "REMOTE TERMINAL / BROWSER BOUNDARY",
-    "",
-    "Console: ProcessSessionController + optional PTY backend",
-    "Browser: createRemoteTerminalClient() transport protocol",
-    "Screen: TerminalScreenController ANSI cell model",
-    "Input: routeTerminalKeyPress / routeTerminalPaste compatible",
-    "",
-    "Local OS shells stay server-side by design; the standalone web package can attach to an explicit remote endpoint.",
-    "This keeps GitHub Pages safe while preserving the same terminal API shape for hosted shells.",
-    "",
-    "Next todo: expose a PTY-backed shell window in the console workbench and mirror it here through the remote protocol."
+  if (rect.height <= 0 || rect.width <= 0) return;
+  const screenHeight = Math.max(3, rect.height - 5);
+  const screenRect = {
+    column: rect.column,
+    row: rect.row + 3,
+    width: rect.width,
+    height: Math.min(screenHeight, Math.max(0, rect.height - 4))
+  };
+  syncWebTerminalScreen(screenRect.width, screenRect.height);
+  const inspection = webTerminalScreen.inspect();
+  const headerRows = [
+    "REMOTE TERMINAL / BROWSER SHELL MODEL",
+    `screen ${inspection.columns}x${inspection.rows}  cursor ${inspection.cursor.column},${inspection.cursor.row}  scrollback ${inspection.scrollbackRows}`,
+    "client createRemoteTerminalClient() -> explicit WebSocket endpoint -> server TerminalSessionHandle"
   ];
-  rows2.slice(0, rect.height).forEach((line, index) => {
-    const header = index === 0;
-    const bg = header ? t.accentDeep : index === 7 ? t.panelAlt : t.surface;
-    const fg = header ? contrastText(t.accentDeep, t.bg, t.text) : index === 7 ? t.warn : t.text;
-    write(frame, rect.row + index, rect.column, paint(fit(line, rect.width), fg, bg, header || index === 7));
+  headerRows.slice(0, Math.min(3, rect.height)).forEach((line, index) => {
+    const bg = index === 0 ? t.accentDeep : t.panelAlt;
+    const fg = index === 0 ? contrastText(t.accentDeep, t.bg, t.text) : index === 1 ? t.warn : t.soft;
+    write(frame, rect.row + index, rect.column, paint(fit(line, rect.width), fg, bg, index === 0));
   });
+  fillRect(frame, screenRect, t.bg);
+  const rows2 = webTerminalScreen.textRows();
+  rows2.slice(0, screenRect.height).forEach((line, index) => {
+    write(frame, screenRect.row + index, screenRect.column, paint(fit(line, screenRect.width), t.text, t.bg));
+  });
+  const cursor = webTerminalScreen.cursor;
+  if (cursor.row < screenRect.height && cursor.column < screenRect.width) {
+    write(frame, screenRect.row + cursor.row, screenRect.column + cursor.column, paint(" ", t.bg, t.accent, true));
+  }
+  const footerRow = rect.row + rect.height - 1;
+  if (footerRow >= screenRect.row) {
+    const footer = "GitHub Pages uses this safe mock; hosted apps attach a PTY/process backend over the remote protocol.";
+    write(frame, footerRow, rect.column, paint(fit(footer, rect.width), t.muted, t.surface));
+  }
+}
+function syncWebTerminalScreen(width, height) {
+  const columns = Math.max(20, Math.floor(width));
+  const rows2 = Math.max(3, Math.floor(height));
+  const key = `${columns}x${rows2}:${theme().id}`;
+  if (key === webTerminalScreenKey) return;
+  webTerminalScreenKey = key;
+  webTerminalScreen.resize(columns, rows2);
+  webTerminalScreen.clear();
+  webTerminalScreen.write(
+    [
+      "\x1B[1mweb-shell\x1B[0m:\x1B[34m~/deno_tui\x1B[0m$ deno task web:demo:check",
+      "\x1B[32mok\x1B[0m mod.web.ts import graph is browser-safe",
+      "\x1B[32mok\x1B[0m pointer, wheel, paste, focus, resize adapters active",
+      "\x1B[32mok\x1B[0m HTML/CSS layout boxes shared with terminal renderer",
+      "",
+      "\x1B[1mweb-shell\x1B[0m:\x1B[34m~/deno_tui\x1B[0m$ connect ws://localhost:8787/terminal",
+      "\x1B[33mremote endpoint required\x1B[0m: local OS shells stay server-side by design",
+      "transport would stream output bytes into TerminalScreenController",
+      "keyboard and paste events encode through the same terminal input helpers",
+      "",
+      "\x1B[1mweb-shell\x1B[0m:\x1B[34m~/deno_tui\x1B[0m$ _"
+    ].join("\r\n")
+  );
 }
 function panelLines(id2, height) {
   const source = id2 === "data" ? [

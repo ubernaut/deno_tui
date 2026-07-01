@@ -463,11 +463,12 @@ Recommended routing:
   documented terminal-cell layout declarations.
 - Markup hydration maps common controls onto existing controller classes.
 - The default TypeScript solver supports block layout, flex row/column layout, wrapped flex rows/columns,
-  `justify-content`, `align-items`, absolute-positioned children, gaps, box edges, overflow metadata, and hit regions.
+  `justify-content`, `align-items`, a CSS Grid subset with explicit tracks, `fr`, gaps, line spans, auto-placement,
+  absolute-positioned children, box edges, overflow metadata, and hit regions.
 - The optional Yoga solver consumes the same normalized style model and now maps `flex-wrap`/`flex-flow` into Yoga's
   Flexbox implementation plus `inset`/side offsets into Yoga absolute positioning.
-- The next high-value solver work is grid/block parity and either a Taffy WASM adapter or a Taffy-compatible internal
-  style mapping layer.
+- The next high-value solver work is richer block/intrinsic text behavior, full Grid/Taffy parity, and either a Taffy
+  WASM adapter or a Taffy-compatible internal style mapping layer.
 
 ### Phase 0: Spike And Lock Decisions
 

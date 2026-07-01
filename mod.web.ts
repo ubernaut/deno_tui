@@ -46,6 +46,7 @@ export * from "./src/runtime/render_loop.ts";
 export * from "./src/runtime/scheduler.ts";
 export * from "./src/runtime/storage.ts";
 export * from "./src/runtime/telemetry.ts";
+export * from "./src/runtime/terminal_screen.ts";
 export * from "./src/runtime/worker_pool.ts";
 
 export * from "./src/three_ascii/mod.ts";

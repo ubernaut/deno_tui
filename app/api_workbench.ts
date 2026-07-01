@@ -2072,8 +2072,8 @@ function renderHtmlCssLayout(frame: Frame, rect: Rectangle): void {
 
   const summaryRows = [
     "parseTuiMarkup -> parseCssStylesheet -> applyCssCascade -> LayoutEngine",
-    "Default solver now supports flex-wrap/flex-flow plus absolute inset placement.",
-    "Resize this window: metric cards wrap; amber badge stays anchored top-right.",
+    "Default solver supports flex-wrap, CSS Grid tracks, fr units, and absolute inset.",
+    "Resize this window: metric cards wrap; nested grid retessellates with media rules.",
   ];
   const summaryStart = Math.max(rect.row, rect.row + rect.height - summaryRows.length);
   for (let index = 0; index < summaryRows.length && summaryStart + index < rect.row + rect.height; index += 1) {
@@ -2125,7 +2125,7 @@ function renderHtmlCssLayoutBox(
       paint(fit(box.text, content.width), { fg: t.text, bg: style.bg }),
     );
   }
-  if (content.height > 2 && box.id.startsWith("metric-")) {
+  if (content.height > 2 && (box.id.startsWith("metric-") || box.id.startsWith("grid-"))) {
     const detail = `${box.rect.width}x${box.rect.height}  content ${box.contentRect.width}x${box.contentRect.height}`;
     write(frame, content.row + 2, content.column, paint(fit(detail, content.width), { fg: t.muted, bg: style.bg }));
   }
@@ -2140,6 +2140,18 @@ function htmlCssLayoutBoxStyle(
   }
   if (box.id === "layout-stage") {
     return { fg: t.text, bg: t.panelSoft, border: t.borderStrong, bold: true };
+  }
+  if (box.id === "layout-grid") {
+    return { fg: t.text, bg: t.surface, border: t.accent, bold: true };
+  }
+  if (box.id === "grid-shell") {
+    return { fg: t.buttonActiveText, bg: t.buttonActiveBg, border: t.accent, bold: true };
+  }
+  if (box.id === "grid-worker") {
+    return { fg: contrastText(t.warn, t.background, t.text), bg: t.warn, border: t.danger, bold: true };
+  }
+  if (box.id.startsWith("grid-")) {
+    return { fg: t.text, bg: t.panel, border: t.accent };
   }
   if (box.id === "layout-badge") {
     return { fg: contrastText(t.warn, t.background, t.text), bg: t.warn, border: t.danger, bold: true };
@@ -2159,8 +2171,10 @@ function htmlCssLayoutBoxStyle(
 function boxPaintOrder(box: ComputedLayoutBox): number {
   if (box.id === "layout-demo") return 0;
   if (box.id === "layout-stage") return 1;
+  if (box.id === "layout-grid") return 2;
+  if (box.id.startsWith("grid-")) return 3;
   if (box.id.startsWith("metric-")) return 2;
-  if (box.id === "layout-badge") return 3;
+  if (box.id === "layout-badge") return 4;
   return 2;
 }
 

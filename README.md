@@ -822,9 +822,9 @@ const rects = flexRects(bounds, "row", [
 
 `parseTuiMarkup()`, `parseCssStylesheet()`, `applyCssCascade()`, and `createMarkupLayout()` provide a first
 renderer-neutral HTML/CSS-style authoring path. The supported subset intentionally targets terminal cells: block/flex
-layout with wrapped flex rows/columns and absolute-positioned children, width/height/min/max sizing, padding, margin,
-borders, overflow, CSS variables, tag/class/id selectors, child and descendant selectors, focus/active/disabled/hover
-pseudo states, and controller hydration for common controls.
+layout with wrapped flex rows/columns, a practical CSS Grid subset with `fr` tracks and line spans, absolute-positioned
+children, width/height/min/max sizing, padding, margin, borders, overflow, CSS variables, tag/class/id selectors, child
+and descendant selectors, focus/active/disabled/hover pseudo states, and controller hydration for common controls.
 
 For the full supported subset, output shape, solver notes, and limitations, see
 [HTML/CSS-Style Layout](./docs/html-css-layout.md).
@@ -842,7 +842,13 @@ const result = createMarkupLayout({
   css: `
     window { display: flex; flex-direction: column; width: 100%; height: 100%; }
     #toolbar { height: 3; }
-    #body { display: flex; flex: 1; flex-wrap: wrap; overflow: auto; }
+    #body {
+      display: grid;
+      grid-template-columns: 24 1fr 1fr;
+      gap: 1;
+      flex: 1;
+      overflow: auto;
+    }
   `,
   bounds: { column: 0, row: 0, width: 100, height: 30 },
 });

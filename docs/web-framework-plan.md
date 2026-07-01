@@ -28,9 +28,10 @@ The repo already has useful browser-ready pieces:
   runtime path.
 - `mod.remote.ts` exposes the browser/client bridge protocol for hosted terminal apps, including a transport-neutral
   client and WebSocket transport.
-- The HTML/CSS-style layout path now parses markup and CSS-like rules into renderer-neutral terminal-cell layout boxes.
-  It should be treated as a shared authoring layer for both terminal and browser render targets, not as a browser-DOM
-  layout dependency. See `docs/html-css-layout.md` and `plan/html-css-layout-engine.md`.
+- The HTML/CSS-style layout path now parses markup and CSS-like rules into renderer-neutral terminal-cell layout boxes,
+  including wrapped flex, media rules, absolute placement, and a practical CSS Grid subset. It should be treated as a
+  shared authoring layer for both terminal and browser render targets, not as a browser-DOM layout dependency. See
+  `docs/html-css-layout.md` and `plan/html-css-layout-engine.md`.
 - `examples/web/standalone.ts` demonstrates a browser-only app using the shared `Canvas`, `BoxObject`, `TextObject`,
   ANSI theme styles, and Canvas2D sink.
 - `examples/web/api_workbench_page.ts` is the default GitHub Pages source. `deno task web:pages:build` bundles it into
