@@ -15,6 +15,7 @@ import type {
   TerminalSessionHandleInspection,
 } from "./terminal_backend.ts";
 import type { TerminalBackendAvailability, TerminalBackendProvider } from "./terminal_backend_registry.ts";
+import type { DiagnosticsCollector } from "./diagnostics.ts";
 
 const INPUT_DECODER = new TextDecoder();
 
@@ -67,6 +68,7 @@ export interface SigmaPtyTerminalBackendOptions extends LoadSigmaPtyModuleOption
   label?: string;
   pollingIntervalMs?: number;
   now?: () => number;
+  diagnostics?: DiagnosticsCollector;
 }
 
 /** Lazily imports and initializes the optional Sigma PTY FFI module. */
@@ -175,6 +177,7 @@ class SigmaPtyTerminalBackend implements TerminalBackend {
   readonly #Pty: SigmaPtyConstructor;
   readonly #pollingIntervalMs?: number;
   readonly #now: () => number;
+  readonly #diagnostics?: DiagnosticsCollector;
 
   constructor(Pty: SigmaPtyConstructor, options: Omit<SigmaPtyTerminalBackendOptions, "loader" | "libPath"> = {}) {
     this.id = options.id ?? "sigma-pty";
@@ -182,6 +185,7 @@ class SigmaPtyTerminalBackend implements TerminalBackend {
     this.#Pty = Pty;
     this.#pollingIntervalMs = options.pollingIntervalMs;
     this.#now = options.now ?? (() => Date.now());
+    this.#diagnostics = options.diagnostics;
   }
 
   spawn(options: TerminalBackendSpawnOptions): TerminalSessionHandle {
@@ -200,6 +204,7 @@ class SigmaPtyTerminalBackend implements TerminalBackend {
       columns: options.columns,
       rows: options.rows,
       now: this.#now,
+      diagnostics: this.#diagnostics,
     });
   }
 }
@@ -213,6 +218,7 @@ class SigmaPtySessionHandle implements TerminalSessionHandle {
   readonly #pty: SigmaPtyLike;
   readonly #now: () => number;
   readonly #onData?: (data: string | Uint8Array, source: TerminalOutputSource) => void;
+  readonly #diagnostics?: DiagnosticsCollector;
   #columns: number;
   #rows: number;
   #status: ProcessSessionStatus = "running";
@@ -230,12 +236,14 @@ class SigmaPtySessionHandle implements TerminalSessionHandle {
     columns?: number;
     rows?: number;
     now: () => number;
+    diagnostics?: DiagnosticsCollector;
   }) {
     this.backendId = options.backendId;
     this.command = cloneProcessSessionCommand(options.command);
     this.#pty = options.pty;
     this.output = options.output ?? new TerminalOutputController();
     this.#onData = options.onData;
+    this.#diagnostics = options.diagnostics;
     this.#columns = normalizeTerminalDimension(options.columns, 80);
     this.#rows = normalizeTerminalDimension(options.rows, 24);
     this.#now = options.now;
@@ -251,7 +259,9 @@ class SigmaPtySessionHandle implements TerminalSessionHandle {
       this.#pty.write(typeof data === "string" ? data : INPUT_DECODER.decode(data));
       return Promise.resolve(true);
     } catch (error) {
-      this.#appendSystemLine(`input failed: ${error instanceof Error ? error.message : String(error)}`);
+      const detail = errorMessage(error);
+      this.#appendSystemLine(`input failed: ${detail}`);
+      this.#reportDiagnostic("input-failed", "PTY input write failed.", error, { command: this.command.command });
       return Promise.resolve(false);
     }
   }
@@ -264,7 +274,13 @@ class SigmaPtySessionHandle implements TerminalSessionHandle {
       this.#pty.resize({ cols: this.#columns, rows: this.#rows });
       return Promise.resolve(true);
     } catch (error) {
-      this.#appendSystemLine(`resize failed: ${error instanceof Error ? error.message : String(error)}`);
+      const detail = errorMessage(error);
+      this.#appendSystemLine(`resize failed: ${detail}`);
+      this.#reportDiagnostic("resize-failed", "PTY resize failed.", error, {
+        command: this.command.command,
+        columns: this.#columns,
+        rows: this.#rows,
+      });
       return Promise.resolve(false);
     }
   }
@@ -314,7 +330,9 @@ class SigmaPtySessionHandle implements TerminalSessionHandle {
       if (this.#status === "running") this.#setExit(this.#pty.exitCode ?? 0);
     } catch (error) {
       if (this.#status === "running") this.#status = "failed";
-      this.#appendSystemLine(`pty failed: ${error instanceof Error ? error.message : String(error)}`);
+      const detail = errorMessage(error);
+      this.#appendSystemLine(`pty failed: ${detail}`);
+      this.#reportDiagnostic("read-failed", "PTY read stream failed.", error, { command: this.command.command });
     } finally {
       reader.releaseLock();
       this.#closed = true;
@@ -350,6 +368,20 @@ class SigmaPtySessionHandle implements TerminalSessionHandle {
     this.output.append({ source: "system", text, timestamp: this.#now() });
   }
 
+  #reportDiagnostic(code: string, message: string, error: unknown, context: Record<string, unknown>): void {
+    this.#diagnostics?.report({
+      source: "terminal-pty",
+      code,
+      severity: code === "read-failed" ? "error" : "warning",
+      message,
+      detail: errorMessage(error),
+      context: {
+        backendId: this.backendId,
+        ...context,
+      },
+    });
+  }
+
   #processInspection(): ProcessSessionInspection {
     return {
       command: cloneProcessSessionCommand(this.command),
@@ -374,4 +406,8 @@ function cloneProcessSessionCommand(command: ProcessSessionCommand): ProcessSess
 function normalizeTerminalDimension(value: number | undefined, fallback: number): number {
   if (!Number.isFinite(value)) return fallback;
   return Math.max(1, Math.floor(value!));
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }

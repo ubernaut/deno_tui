@@ -548,6 +548,8 @@ Work:
         availability inspection while making broken PTY providers visible to app-level status/report surfaces.
   - [x] Added deduplicated Three panel Kitty fallback diagnostics so "Kitty-only" renderer requests still show ASCII
         output and report unavailable raster graphics surfaces instead of failing silently.
+  - [x] Added optional Sigma PTY backend diagnostics for input, resize, and read-stream failures while preserving the
+        existing terminal-visible system lines.
 - [x] Add status-bar and report helpers for degraded backends.
 - [x] Add tests that assert expected diagnostics for missing `nvidia-smi`, blocked IndexedDB, unsupported Kitty
       graphics, and failed process spawns.

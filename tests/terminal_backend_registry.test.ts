@@ -189,6 +189,40 @@ Deno.test("sigma pty terminal backend wraps output write resize and close lifecy
   assertEquals(pty.closed, true);
 });
 
+Deno.test("sigma pty terminal backend reports structured diagnostics for failures", async () => {
+  FakePty.instances = [];
+  const diagnostics = new DiagnosticsCollector();
+  const backend = createSigmaPtyTerminalBackendFromConstructor(FakePty, {
+    id: "pty",
+    label: "PTY",
+    diagnostics,
+    now: fakeClock([30, 31, 32, 33, 34]),
+  });
+  const handle = backend.spawn({ command: "bash", columns: 80, rows: 24 });
+  const pty = FakePty.instances[0]!;
+
+  pty.failWrites = true;
+  assertEquals(await handle.write("pwd\n"), false);
+  pty.failResizes = true;
+  assertEquals(await handle.resize(100, 40), false);
+  pty.fail(new Error("read loop crashed"));
+
+  const closed = await handle.closed;
+  assertEquals(closed.status, "failed");
+  assertEquals(handle.output.inspect().lines.map((line) => [line.source, line.text]), [
+    ["system", "$ bash"],
+    ["system", "input failed: write unavailable"],
+    ["system", "resize failed: resize unavailable"],
+    ["system", "pty failed: read loop crashed"],
+  ]);
+  assertEquals(diagnostics.entries().map((entry) => [entry.source, entry.code, entry.severity, entry.detail]), [
+    ["terminal-pty", "input-failed", "warning", "write unavailable"],
+    ["terminal-pty", "resize-failed", "warning", "resize unavailable"],
+    ["terminal-pty", "read-failed", "error", "read loop crashed"],
+  ]);
+  assertEquals(diagnostics.entries().map((entry) => entry.context?.backendId), ["pty", "pty", "pty"]);
+});
+
 class FakeTerminalBackend implements TerminalBackend {
   readonly label: string;
   readonly detachable = false;
@@ -253,6 +287,8 @@ class FakePty implements SigmaPtyLike {
   exitCode?: number;
   pollingIntervalMs?: number;
   closed = false;
+  failWrites = false;
+  failResizes = false;
   #controller!: ReadableStreamDefaultController<string>;
 
   constructor(readonly command: string, readonly options: SigmaPtyCommandOptions = {}) {
@@ -265,10 +301,12 @@ class FakePty implements SigmaPtyLike {
   }
 
   write(data: string): void {
+    if (this.failWrites) throw new Error("write unavailable");
     this.writes.push(data);
   }
 
   resize(size: SigmaPtySize): void {
+    if (this.failResizes) throw new Error("resize unavailable");
     this.resizes.push({ ...size });
   }
 
@@ -287,6 +325,10 @@ class FakePty implements SigmaPtyLike {
   finish(code: number): void {
     this.exitCode = code;
     this.#controller.close();
+  }
+
+  fail(error: Error): void {
+    this.#controller.error(error);
   }
 }
 
