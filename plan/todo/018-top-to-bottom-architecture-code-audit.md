@@ -193,6 +193,8 @@ Work:
         `map()` chains in terminal inspection helpers.
   - [x] Reworked API Workbench synthetic source/system generation to reuse loop-based waveform helpers instead of
         repeated `Array.from()` closures in frame-driven demo data.
+  - [x] Extracted shared synthetic waveform helpers and migrated API Workbench, Neon suite, and showcase demo data onto
+        the same loop-based source/history generation primitive.
 
 Acceptance checks:
 
