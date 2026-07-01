@@ -1,7 +1,9 @@
 import { assertEquals } from "./deps.ts";
 import {
   createApiInventory,
+  diffApiInventories,
   formatApiInventory,
+  formatApiInventoryDiff,
   inventorySucceeded,
   parseApiExports,
   parseApiSymbols,
@@ -167,4 +169,43 @@ Deno.test("createApiInventory reports duplicate exported symbol names", async ()
   assertEquals(inventorySucceeded(inventory), true);
   assertEquals(inventorySucceeded(inventory, { failDuplicates: true }), false);
   assertEquals(formatApiInventory(inventory).includes("## Duplicate Symbols"), true);
+});
+
+Deno.test("api inventory diffs group symbol changes by stability tier", async () => {
+  const baseline = await createApiInventory("mod.ts", {
+    root: "/repo",
+    readTextFile: (path) =>
+      ({
+        "/repo/mod.ts": `export * from "./src/widgets.ts";`,
+        "/repo/src/widgets.ts": [
+          `export class Button {}`,
+          `export function oldHelper() {}`,
+        ].join("\n"),
+      })[path] ?? "",
+    exists: () => true,
+  });
+  const current = await createApiInventory("mod.ts", {
+    root: "/repo",
+    readTextFile: (path) =>
+      ({
+        "/repo/mod.ts": `export * from "./src/widgets.ts";`,
+        "/repo/src/widgets.ts": [
+          `export class Button {}`,
+          `export function newHelper() {}`,
+        ].join("\n"),
+      })[path] ?? "",
+    exists: () => true,
+  });
+
+  const diff = diffApiInventories(baseline, current);
+  const report = formatApiInventoryDiff(diff);
+
+  assertEquals(diff.stability, "stable");
+  assertEquals(diff.added.map((symbol) => symbol.name), ["newHelper"]);
+  assertEquals(diff.removed.map((symbol) => symbol.name), ["oldHelper"]);
+  assertEquals(diff.addedByStability.stable.map((symbol) => symbol.name), ["newHelper"]);
+  assertEquals(diff.addedByStability.beta, []);
+  assertEquals(report.includes("### stable"), true);
+  assertEquals(report.includes("`newHelper`"), true);
+  assertEquals(report.includes("`oldHelper`"), true);
 });

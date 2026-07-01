@@ -1,3 +1,5 @@
+import { type ApiStabilityTier, packageEntrypointFor } from "../src/api_stability.ts";
+
 export type ApiExportKind = "star" | "named";
 export type ApiSymbolKind =
   | "class"
@@ -51,6 +53,23 @@ export interface ApiInventoryOptions {
 export interface ApiInventorySuccessOptions {
   failDuplicates?: boolean;
   minDocumentationCoverage?: number;
+}
+
+export interface ApiInventorySymbolChange {
+  module: string;
+  name: string;
+  kind: ApiSymbolKind;
+  typeOnly: boolean;
+  documented: boolean;
+}
+
+export interface ApiInventoryDiff {
+  entrypoint: string;
+  stability: ApiStabilityTier;
+  added: ApiInventorySymbolChange[];
+  removed: ApiInventorySymbolChange[];
+  addedByStability: Record<ApiStabilityTier, ApiInventorySymbolChange[]>;
+  removedByStability: Record<ApiStabilityTier, ApiInventorySymbolChange[]>;
 }
 
 export function parseApiExports(source: string, module: string): ApiExportDeclaration[] {
@@ -210,6 +229,67 @@ export function inventorySucceeded(
     inventory.documentationCoverage >= (options.minDocumentationCoverage ?? 0);
 }
 
+export function diffApiInventories(
+  baseline: ApiInventory,
+  current: ApiInventory,
+  options: { stability?: ApiStabilityTier } = {},
+): ApiInventoryDiff {
+  const stability = options.stability ?? inventoryEntrypointStability(current.entrypoint);
+  const baselineSymbols = symbolMap(baseline);
+  const currentSymbols = symbolMap(current);
+  const added = [...currentSymbols.entries()]
+    .filter(([key]) => !baselineSymbols.has(key))
+    .map(([, symbol]) => symbol)
+    .sort(compareSymbolChanges);
+  const removed = [...baselineSymbols.entries()]
+    .filter(([key]) => !currentSymbols.has(key))
+    .map(([, symbol]) => symbol)
+    .sort(compareSymbolChanges);
+
+  return {
+    entrypoint: current.entrypoint,
+    stability,
+    added,
+    removed,
+    addedByStability: groupChangesByStability(added, stability),
+    removedByStability: groupChangesByStability(removed, stability),
+  };
+}
+
+export function formatApiInventoryDiff(diff: ApiInventoryDiff): string {
+  const lines = [
+    "# API Inventory Diff",
+    "",
+    `Entrypoint: \`${diff.entrypoint}\``,
+    `Stability: ${diff.stability}`,
+    `Added symbols: ${diff.added.length}`,
+    `Removed symbols: ${diff.removed.length}`,
+  ];
+
+  for (
+    const section of [
+      { title: "Added", grouped: diff.addedByStability },
+      { title: "Removed", grouped: diff.removedByStability },
+    ]
+  ) {
+    lines.push("", `## ${section.title}`, "");
+    let wroteAny = false;
+    for (const tier of stabilityTiers()) {
+      const symbols = section.grouped[tier];
+      if (symbols.length === 0) continue;
+      wroteAny = true;
+      lines.push(`### ${tier}`, "");
+      for (const symbol of symbols) {
+        lines.push(`- \`${symbol.name}\` (${symbol.kind}) from \`${symbol.module}\``);
+      }
+      lines.push("");
+    }
+    if (!wroteAny) lines.push("none");
+  }
+
+  return lines.join("\n").trimEnd();
+}
+
 function parseExportNames(source: string, typeOnly: boolean): string[] {
   return source
     .split(",")
@@ -263,6 +343,52 @@ function duplicateApiSymbols(modules: readonly ApiModuleInventory[]): Record<str
     }
   }
   return duplicates;
+}
+
+function symbolMap(inventory: ApiInventory): Map<string, ApiInventorySymbolChange> {
+  const symbols = new Map<string, ApiInventorySymbolChange>();
+  for (const module of inventory.modules) {
+    for (const symbol of module.symbols) {
+      symbols.set(symbolKey(symbol), { ...symbol });
+    }
+  }
+  return symbols;
+}
+
+function symbolKey(symbol: ApiSymbolDeclaration): string {
+  return `${symbol.module}\0${symbol.name}\0${symbol.kind}\0${symbol.typeOnly}`;
+}
+
+function groupChangesByStability(
+  changes: readonly ApiInventorySymbolChange[],
+  stability: ApiStabilityTier,
+): Record<ApiStabilityTier, ApiInventorySymbolChange[]> {
+  const grouped = emptyStabilityGroups();
+  grouped[stability] = [...changes];
+  return grouped;
+}
+
+function emptyStabilityGroups(): Record<ApiStabilityTier, ApiInventorySymbolChange[]> {
+  return {
+    stable: [],
+    beta: [],
+    experimental: [],
+    internal: [],
+  };
+}
+
+function stabilityTiers(): ApiStabilityTier[] {
+  return ["stable", "beta", "experimental", "internal"];
+}
+
+function compareSymbolChanges(left: ApiInventorySymbolChange, right: ApiInventorySymbolChange): number {
+  return left.module.localeCompare(right.module) || left.name.localeCompare(right.name) ||
+    left.kind.localeCompare(right.kind);
+}
+
+function inventoryEntrypointStability(entrypoint: string): ApiStabilityTier {
+  return packageEntrypointFor(entrypoint)?.stability ?? packageEntrypointFor(`./${entrypoint}`)?.stability ??
+    "internal";
 }
 
 function hasLeadingJSDoc(source: string, index: number): boolean {
