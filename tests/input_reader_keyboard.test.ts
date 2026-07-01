@@ -21,7 +21,11 @@ function snapshot(code: string) {
 }
 
 function fullSnapshot(code: string) {
-  return [...decodeBuffer(encoder.encode(code))].map((event) => ({ ...event }));
+  const events = [];
+  for (const event of decodeBuffer(encoder.encode(code))) {
+    events.push({ ...event });
+  }
+  return events;
 }
 
 Deno.test("decodeKey maps xterm function keys", () => {
@@ -100,3 +104,67 @@ Deno.test("decodeBuffer emits terminal focus events", () => {
     { key: "focus", focused: false, buffer: encoder.encode("\x1b[O") },
   ]);
 });
+
+Deno.test("decodeBuffer preserves generated mixed input event boundaries", () => {
+  const tokens = [
+    { code: "a", key: "a" },
+    { code: "Z", key: "Z" },
+    { code: "\r", key: "return" },
+    { code: "\t", key: "tab" },
+    { code: "\x1b[A", key: "up" },
+    { code: "\x1b[B", key: "down" },
+    { code: "\x1b[<0;7;5M", key: "mouse" },
+    { code: "\x1b[<0;7;5m", key: "mouse" },
+    { code: "\x1b[I", key: "focus" },
+    { code: "\x1b[O", key: "focus" },
+    { code: "\x1b[200~a\x1b[B\npaste\x1b[201~", key: "paste" },
+  ];
+  const random = seededRandom(0x1a90d);
+
+  for (let run = 0; run < 100; run += 1) {
+    const selected: typeof tokens = [];
+    const count = 1 + Math.floor(random() * 24);
+    for (let index = 0; index < count; index += 1) {
+      selected.push(tokens[Math.floor(random() * tokens.length)]);
+    }
+
+    const code = selected.map((token) => token.code).join("");
+    assertEquals(
+      fullSnapshot(code).map((event) => event.key),
+      selected.map((token) => token.key),
+    );
+  }
+});
+
+Deno.test("decodeBuffer ignores generated incomplete trailing escape sequences", () => {
+  const complete = [
+    { code: "x", key: "x" },
+    { code: "\x1b[C", key: "right" },
+    { code: "\x1b[<64;2;3M", key: "mouse" },
+    { code: "\x1b[200~payload\x1b[201~", key: "paste" },
+  ];
+  const incomplete = ["\x1b", "\x1b[", "\x1b[<0;7;5", "\x1b[200~partial"];
+  const random = seededRandom(0xdec0de);
+
+  for (let run = 0; run < 100; run += 1) {
+    const selected: typeof complete = [];
+    const count = 1 + Math.floor(random() * 16);
+    for (let index = 0; index < count; index += 1) {
+      selected.push(complete[Math.floor(random() * complete.length)]);
+    }
+    const tail = incomplete[Math.floor(random() * incomplete.length)];
+
+    assertEquals(
+      fullSnapshot(selected.map((token) => token.code).join("") + tail).map((event) => event.key),
+      selected.map((token) => token.key),
+    );
+  }
+});
+
+function seededRandom(seed: number): () => number {
+  let state = seed >>> 0;
+  return () => {
+    state = (state * 1664525 + 1013904223) >>> 0;
+    return state / 0x100000000;
+  };
+}
