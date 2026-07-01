@@ -47,6 +47,7 @@ import {
 } from "../src/app/workbench_window_registry.ts";
 import { isWorkbenchMenuActivationKey, moveWorkbenchMenuIndex } from "../src/app/workbench_menu.ts";
 import { layoutWorkbenchShelf, layoutWorkbenchTabs } from "../src/app/workbench_shelf.ts";
+import { workbenchContentViewport } from "../src/app/workbench_viewport.ts";
 import {
   deleteWorkbenchWorkspace,
   findWorkbenchWorkspace,
@@ -1203,7 +1204,11 @@ function renderWindow(frame: Frame, id: WindowId, rect: Rectangle): void {
   const inner = inset(rect, 1);
   const scroll = windowScroll(id);
   const contentSize = windowContentSize(id, inner);
-  const viewport = windowContentViewport(inner, contentSize.width, contentSize.height);
+  const viewport = workbenchContentViewport({
+    inner,
+    contentWidth: contentSize.width,
+    contentHeight: contentSize.height,
+  });
   scroll.setViewportSize(viewport.width, viewport.height);
   scroll.setContentSize(contentSize.width, contentSize.height);
   fillRect(frame, inner, t.surface);
@@ -3010,20 +3015,6 @@ function unitWave(value: number, frequency: number, offset: number): number {
         Math.cos(value * (frequency * 0.37) + offset * 2.1) * 0.16,
     ),
   );
-}
-
-function windowContentViewport(inner: Rectangle, contentWidth: number, contentHeight: number): Rectangle {
-  let width = inner.width;
-  let height = inner.height;
-  let needsVertical = contentHeight > height;
-  let needsHorizontal = contentWidth > width;
-  if (needsVertical) width = Math.max(0, width - 1);
-  if (needsHorizontal) height = Math.max(0, height - 1);
-  needsVertical = contentHeight > height;
-  needsHorizontal = contentWidth > width;
-  if (needsVertical && width === inner.width) width = Math.max(0, width - 1);
-  if (needsHorizontal && height === inner.height) height = Math.max(0, height - 1);
-  return { column: inner.column, row: inner.row, width, height };
 }
 
 function translateContentHits(

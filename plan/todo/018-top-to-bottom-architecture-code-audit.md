@@ -57,6 +57,8 @@ Work:
         web workbench titlebar button hit geometry to it.
   - [x] Extracted renderer-neutral minimized shelf and fullscreen tab layout into `src/app/workbench_shelf.ts` and
         migrated terminal/web shelf hit geometry to it.
+  - [x] Extracted scrollbar-aware content viewport sizing into `src/app/workbench_viewport.ts` with direct coverage for
+        coupled horizontal/vertical overflow.
 - [ ] Make the terminal workbench and web workbench thin render adapters over the same controller/model.
   - [x] Exposed the shared frame and hit-target helpers through `src/app/mod.ts` and migrated the web API Workbench page
         to reuse exported text-fit, ANSI-cell, contrast, and geometry helpers.

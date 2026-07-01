@@ -3496,6 +3496,20 @@
       "documented": true
     },
     {
+      "module": "src/app/workbench_viewport.ts",
+      "name": "workbenchContentViewport",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_viewport.ts",
+      "name": "WorkbenchContentViewportOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
       "module": "src/app/workbench_window_registry.ts",
       "name": "createWorkbenchVisualizationWindowOptions",
       "kind": "function",
