@@ -1043,7 +1043,7 @@ function renderWorkspace(frame: Frame): void {
       setThreeGraphicsRect({ column: 0, row: 0, width: 0, height: 0 });
     }
     hideVisualizationThreePanelsExcept(renderedVisualizationThreePanels);
-    translateWorkspaceHits(hitStart, bounds.row - offset, bounds);
+    translateHitTargets(hitTargets, { startIndex: hitStart, rowDelta: bounds.row - offset, clip: bounds });
     blitWorkspace(frame, virtual, bounds, offset, layout.bounds.width);
     renderWorkspaceScrollbar(frame, bounds);
     renderWindowTabs(frame);
@@ -1077,7 +1077,7 @@ function renderWorkspace(frame: Frame): void {
     setThreeGraphicsRect({ column: 0, row: 0, width: 0, height: 0 });
   }
   hideVisualizationThreePanelsExcept(renderedVisualizationThreePanels);
-  translateWorkspaceHits(hitStart, bounds.row - offset, bounds);
+  translateHitTargets(hitTargets, { startIndex: hitStart, rowDelta: bounds.row - offset, clip: bounds });
   blitWorkspace(frame, virtual, bounds, offset, layout.bounds.width);
   renderWorkspaceScrollbar(frame, bounds);
   renderShelf(frame);
@@ -2788,10 +2788,6 @@ function visualizationIdSupportsThree(visualizationId: string): boolean {
   );
   visualizationThreeSupport.set(visualizationId, supportsThree);
   return supportsThree;
-}
-
-function translateWorkspaceHits(startIndex: number, rowDelta: number, clip: Rectangle): void {
-  translateHitTargets(hitTargets, { startIndex, rowDelta, clip });
 }
 
 function withWorkspacePlacement(bounds: Rectangle, offset: number, render: () => void): void {

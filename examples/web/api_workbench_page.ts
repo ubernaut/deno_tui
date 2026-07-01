@@ -638,7 +638,12 @@ function draw(): void {
       }
     }
   }
-  translateWorkspaceHits(hitStart, body.column, body.row - offset, body);
+  translateHitTargets(hitTargets, {
+    startIndex: hitStart,
+    columnDelta: body.column,
+    rowDelta: body.row - offset,
+    clip: body,
+  });
   blitWorkspace(frame, virtual, body, offset, layout.bounds.width);
   renderWorkspaceScrollbar(frame, body);
   maximized.peek() ? renderWindowTabs(frame) : renderShelf(frame);
@@ -1401,10 +1406,6 @@ function workspaceLayout(bounds: Rectangle): {
   });
   manager.dispose();
   return workbenchWindowLayout<PanelId>(bounds, layout);
-}
-
-function translateWorkspaceHits(startIndex: number, columnDelta: number, rowDelta: number, clip: Rectangle): void {
-  translateHitTargets(hitTargets, { startIndex, columnDelta, rowDelta, clip });
 }
 
 function blitWorkspace(frame: string[], virtual: string[], bounds: Rectangle, offset: number, width: number): void {

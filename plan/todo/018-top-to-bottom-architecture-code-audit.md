@@ -113,6 +113,8 @@ Work:
         by the same measured token sequence.
   - [x] Extracted shared adaptive workbench tile defaults and layout rectangle projection into `workbench_layout.ts`,
         trimming duplicated terminal/web workspace layout math.
+  - [x] Extracted shared active-window reveal tracking plus workspace viewport scroll sizing into `workbench_layout.ts`,
+        leaving terminal and web adapters to call one scroll/update controller.
 - [x] Replace duplicated theme/window/menu persistence code with a shared versioned serializer.
   - [x] Extracted shared workbench workspace normalization, panel-state normalization, upsert, rename, delete, lookup,
         and legacy window-entry expansion helpers into `src/app/workbench_workspace.ts`.

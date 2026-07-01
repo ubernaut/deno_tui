@@ -12005,7 +12005,12 @@ function draw() {
       }
     }
   }
-  translateWorkspaceHits(hitStart, body.column, body.row - offset, body);
+  translateHitTargets(hitTargets, {
+    startIndex: hitStart,
+    columnDelta: body.column,
+    rowDelta: body.row - offset,
+    clip: body
+  });
   blitWorkspace(frame, virtual, body, offset, layout.bounds.width);
   renderWorkspaceScrollbar(frame, body);
   maximized.peek() ? renderWindowTabs(frame) : renderShelf(frame);
@@ -12680,9 +12685,6 @@ function workspaceLayout(bounds) {
   });
   manager.dispose();
   return workbenchWindowLayout(bounds, layout);
-}
-function translateWorkspaceHits(startIndex, columnDelta, rowDelta, clip) {
-  translateHitTargets(hitTargets, { startIndex, columnDelta, rowDelta, clip });
 }
 function blitWorkspace(frame, virtual, bounds, offset, width) {
   for (let row = 0; row < bounds.height; row += 1) {
