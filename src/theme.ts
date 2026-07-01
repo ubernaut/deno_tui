@@ -43,6 +43,7 @@ import { inspectThemeCoverageCore } from "./theme_coverage_core.ts";
 import { diffThemeEnginesCore } from "./theme_diff_core.ts";
 import { validateThemeComponentsCore } from "./theme_validation_core.ts";
 import { formatThemeProviderReportMarkdownFromReport } from "./theme_provider_report.ts";
+import { mergeThemeCatalogComponents } from "./theme_catalog.ts";
 
 /** Function that's supposed to return styled text given string as parameter */
 export type Style = StyleInternal;
@@ -1461,32 +1462,6 @@ function themeRegistryOptions(provider: ThemeProvider): ThemeEngineOptions[] {
   return provider.registry.ids()
     .map((id) => provider.registry.get(id)?.options)
     .filter((options): options is ThemeEngineOptions => options !== undefined);
-}
-
-function mergeThemeCatalogComponents(
-  ...groups: readonly ThemeComponentInspection[][]
-): ThemeCatalogComponent[] {
-  const components = new Map<string, Set<string>>();
-
-  for (const group of groups) {
-    for (const component of group) {
-      const variants = components.get(component.name) ?? new Set<string>(["default"]);
-      variants.add("default");
-      for (const variant of component.variants) variants.add(variant);
-      components.set(component.name, variants);
-    }
-  }
-
-  return [...components.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([name, variants]) => ({
-      name,
-      variants: [...variants].sort((a, b) => {
-        if (a === "default") return -1;
-        if (b === "default") return 1;
-        return a.localeCompare(b);
-      }),
-    }));
 }
 
 function positiveModulo(value: number, divisor: number): number {
