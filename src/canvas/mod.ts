@@ -2,6 +2,7 @@
 export * from "./box.ts";
 export * from "./text.ts";
 export * from "./canvas.ts";
+export * from "./dirty_region.ts";
 export * from "./draw_object.ts";
 export * from "./sink.ts";
 export * from "./three_ascii.ts";

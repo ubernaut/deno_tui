@@ -2225,6 +2225,84 @@ var BoxObject = class extends DrawObject {
   }
 };
 
+// src/canvas/dirty_region.ts
+var DirtyRegion = class _DirtyRegion {
+  #rows = /* @__PURE__ */ new Map();
+  /** Creates a dirty region from rectangle bounds. */
+  static fromRectangles(rectangles) {
+    const region = new _DirtyRegion();
+    for (const rectangle of rectangles) {
+      region.addRectangle(rectangle);
+    }
+    return region;
+  }
+  /** Adds a rectangular dirty area, ignoring empty or invalid dimensions. */
+  addRectangle(rectangle) {
+    const startRow = Math.floor(rectangle.row);
+    const endRow = startRow + Math.max(0, Math.floor(rectangle.height));
+    const startColumn = Math.floor(rectangle.column);
+    const endColumn = startColumn + Math.max(0, Math.floor(rectangle.width));
+    for (let row = startRow; row < endRow; row += 1) {
+      this.addSegment(row, startColumn, endColumn);
+    }
+  }
+  /** Adds a half-open dirty segment to one row and merges overlap or adjacency. */
+  addSegment(row, startColumn, endColumn) {
+    const normalizedRow = Math.floor(row);
+    const start = Math.floor(Math.min(startColumn, endColumn));
+    const end = Math.floor(Math.max(startColumn, endColumn));
+    if (end <= start) return;
+    const segments = this.#rows.get(normalizedRow) ?? [];
+    segments.push({ row: normalizedRow, startColumn: start, endColumn: end });
+    segments.sort((left, right) => left.startColumn - right.startColumn || left.endColumn - right.endColumn);
+    const merged = [];
+    for (const segment of segments) {
+      const previous = merged.at(-1);
+      if (!previous || segment.startColumn > previous.endColumn) {
+        merged.push({ ...segment });
+        continue;
+      }
+      previous.endColumn = Math.max(previous.endColumn, segment.endColumn);
+    }
+    this.#rows.set(normalizedRow, merged);
+  }
+  /** Removes all row segments from the dirty region. */
+  clear() {
+    this.#rows.clear();
+  }
+  /** Returns true when the dirty region has no row segments. */
+  isEmpty() {
+    return this.#rows.size === 0;
+  }
+  /** Returns cloned row segments sorted by row then start column. */
+  inspect() {
+    return [...this.#rows.entries()].sort(([left], [right]) => left - right).flatMap(([, segments]) => segments.map((segment) => ({ ...segment })));
+  }
+  /** Returns true when any dirty segment intersects the rectangle. */
+  intersects(rectangle) {
+    return this.intersections(rectangle).length > 0;
+  }
+  /** Returns row segments clipped to the supplied rectangle. */
+  intersections(rectangle) {
+    const rowStart = Math.floor(rectangle.row);
+    const rowEnd = rowStart + Math.max(0, Math.floor(rectangle.height));
+    const columnStart = Math.floor(rectangle.column);
+    const columnEnd = columnStart + Math.max(0, Math.floor(rectangle.width));
+    if (rowEnd <= rowStart || columnEnd <= columnStart) return [];
+    const intersections = [];
+    for (let row = rowStart; row < rowEnd; row += 1) {
+      for (const segment of this.#rows.get(row) ?? []) {
+        const startColumn = Math.max(columnStart, segment.startColumn);
+        const endColumn = Math.min(columnEnd, segment.endColumn);
+        if (endColumn > startColumn) {
+          intersections.push({ row, startColumn, endColumn });
+        }
+      }
+    }
+    return intersections;
+  }
+};
+
 // src/canvas/sink.ts
 var textEncoder2 = new TextEncoder();
 var AnsiCanvasSink = class {
@@ -2442,7 +2520,8 @@ var Canvas = class extends EventEmitter {
         object.rendered = false;
       }
     }
-    const objectsToRender = intersectionsDirty ? affectedDrawObjects(this.drawnObjects, dirtyRectangles, nonMovingUpdatedObjects) : objectsToUpdate;
+    const dirtyRegion = DirtyRegion.fromRectangles(dirtyRectangles);
+    const objectsToRender = intersectionsDirty ? affectedDrawObjects(this.drawnObjects, dirtyRegion, nonMovingUpdatedObjects) : objectsToUpdate;
     let intersectionCandidateChecks = 0;
     if (intersectionsDirty) {
       objectsToRender.sort((a, b) => b.zIndex.peek() - a.zIndex.peek() || b.id - a.id);
@@ -2453,7 +2532,7 @@ var Canvas = class extends EventEmitter {
           if (movedOwnObjects.has(object) || !object.rendered) {
             object.rendered = false;
           } else {
-            queueDirtyRectangles(object, dirtyRectangles);
+            queueDirtyRegion(object, dirtyRegion);
           }
         }
       }
@@ -2547,39 +2626,23 @@ function cloneRectangle(rectangle) {
     height: rectangle.height
   };
 }
-function affectedDrawObjects(objects, dirtyRectangles, requiredObjects) {
-  if (dirtyRectangles.length === 0) {
+function affectedDrawObjects(objects, dirtyRegion, requiredObjects) {
+  if (dirtyRegion.isEmpty()) {
     return [...objects];
   }
   const required = new Set(requiredObjects);
   const affected = [];
   for (const object of objects) {
-    if (required.has(object) || object.moved || rectangleIntersectsAny(object.rectangle.peek(), dirtyRectangles)) {
+    if (required.has(object) || object.moved || dirtyRegion.intersects(object.rectangle.peek())) {
       affected.push(object);
     }
   }
   return affected;
 }
-function queueDirtyRectangles(object, dirtyRectangles) {
-  for (const dirtyRectangle of dirtyRectangles) {
-    const intersection = rectangleIntersection(object.rectangle.peek(), dirtyRectangle, true);
-    if (!intersection) {
-      continue;
-    }
-    const rowRange = intersection.row + intersection.height;
-    const columnRange = intersection.column + intersection.width;
-    for (let row = intersection.row; row < rowRange; row += 1) {
-      object.queueRerenderRange(row, intersection.column, columnRange);
-    }
+function queueDirtyRegion(object, dirtyRegion) {
+  for (const segment of dirtyRegion.intersections(object.rectangle.peek())) {
+    object.queueRerenderRange(segment.row, segment.startColumn, segment.endColumn);
   }
-}
-function rectangleIntersectsAny(rectangle, candidates) {
-  for (const candidate of candidates) {
-    if (rectangleIntersection(rectangle, candidate, false)) {
-      return true;
-    }
-  }
-  return false;
 }
 
 // src/three_ascii/renderer.ts
