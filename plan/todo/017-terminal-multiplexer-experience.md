@@ -66,3 +66,5 @@ developer workflows.
   renames.
 - Added explicit PTY versus process-fallback metadata to terminal session inspection, workspace descriptors, status
   summaries, and the Workbench shell status line.
+- Documented the terminal emulation strategy and scope split: architecture audit owns parser/runtime compatibility,
+  while this todo owns tmux-like session and pane workflows.

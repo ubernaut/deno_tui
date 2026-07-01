@@ -230,7 +230,7 @@ Current evidence:
 
 Work:
 
-- [ ] Decide whether to embed a maintained VT parser or continue expanding the local parser.
+- [x] Decide whether to embed a maintained VT parser or continue expanding the local parser.
 - [x] Add 256-color and truecolor SGR, cursor visibility/style, save/restore cursor, scroll regions, insert/delete
       line/character, OSC title, hyperlinks, and common DEC private modes.
 - [x] Add parser fuzz/regression fixtures from real shell output, not just hand-authored strings.
@@ -244,7 +244,7 @@ Acceptance checks:
 - [x] Terminal screen fixture tests cover common shell prompts, curses apps, alternate screen enter/exit, resize, and
       truecolor output.
 - [ ] Workbench shell smoke can run common commands and a simple full-screen app through PTY when available.
-- [ ] This todo and `017-terminal-multiplexer-experience.md` have non-overlapping scopes or are merged cleanly.
+- [x] This todo and `017-terminal-multiplexer-experience.md` have non-overlapping scopes or are merged cleanly.
 
 ### P2: Consolidate Layout, Markup, And Widget Hydration
 

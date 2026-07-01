@@ -24,7 +24,8 @@ helpers, and visualization demos on top.
 | `examples/`                                                                                                 | Focused runnable examples and report-style demos for individual subsystems.                                                                                                                                                     |
 | `scripts/`                                                                                                  | Contributor tooling: health gate, API inventory, benchmark runner, capability report, component catalog, and visualization launcher metadata.                                                                                   |
 
-For a complete generated list of public modules, re-exports, and symbols, see [API Reference](./api-reference.md).
+For a complete generated list of public modules, re-exports, and symbols, see [API Reference](./api-reference.md). For
+terminal parser and PTY/process backend scope, see [Terminal Emulation Strategy](./terminal-emulation-strategy.md).
 
 ## Core Capabilities
 
