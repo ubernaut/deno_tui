@@ -185,6 +185,8 @@ Work:
         padding/layout arrays.
   - [x] Added a shared internal text-row drawing helper and migrated row-oriented widgets to it, removing duplicated
         `Text` subcomponent wiring while preserving each widget's row projection logic.
+  - [x] Reworked responsive tiling, grid track resolution, and window order assignment to avoid temporary map/spread/
+        `Array.from()` allocation in layout paths used by the workbench and HTML/CSS solver.
 
 Acceptance checks:
 
