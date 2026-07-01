@@ -83,8 +83,10 @@ Acceptance checks:
   - [x] `app/api_workbench.ts`, `src/app/mod.ts`, and `examples/web/api_workbench_page.ts` now reach shared workbench
         frame, hit, menu, shelf, titlebar, viewport, window-registry, and workspace helpers through exported facade
         paths.
-- [ ] Shared unit tests cover focus, minimize/maximize/restore/close, scrollbars, dropdowns, modals, workspace
+- [x] Shared unit tests cover focus, minimize/maximize/restore/close, scrollbars, dropdowns, modals, workspace
       open/save, and keyboard-only operation.
+  - [x] Coverage now spans `window_manager_usability`, `workbench_menu`, `workbench_titlebar`, `workbench_shelf`,
+        `workbench_viewport`, `workbench_workspace`, `workbench_terminal`, and widget command/controller tests.
 - [x] `deno task api-workbench:check`
 - [x] `deno task web:demo:check`
 - [x] `deno task health`
