@@ -43,7 +43,6 @@ import { inspectThemeCoverageCore } from "./theme_coverage_core.ts";
 import { diffThemeEnginesCore } from "./theme_diff_core.ts";
 import { validateThemeComponentsCore } from "./theme_validation_core.ts";
 import { formatThemeProviderReportMarkdownFromReport } from "./theme_provider_report.ts";
-import { mergeThemeCatalogComponents } from "./theme_catalog.ts";
 import {
   ThemeEngine as ThemeEngineImplementation,
   ThemeInheritanceError as ThemeInheritanceErrorImplementation,
@@ -54,6 +53,7 @@ import {
   inspectThemeProviderIssues as inspectThemeProviderIssuesCore,
   themeProviderActiveOptions as themeProviderActiveOptionsCore,
 } from "./theme_provider_inspection.ts";
+import { createThemeCatalogFromInspection, previewThemeProviderCore } from "./theme_provider_preview.ts";
 
 /** Function that's supposed to return styled text given string as parameter */
 export type Style = StyleInternal;
@@ -1025,25 +1025,7 @@ export function createThemeProvider(options: ThemeProviderOptions = {}): ThemePr
 
 /** Creates an theme Catalog. */
 export function createThemeCatalog(provider: ThemeProvider): ThemeCatalog {
-  const inspection = provider.inspect();
-  return {
-    activeId: inspection.activeId,
-    tokens: [...themeTokenNames],
-    states: [...themeStates],
-    themes: inspection.themes.map((theme) => ({
-      ...theme,
-      active: theme.id === inspection.activeId,
-    })),
-    layers: inspection.layers.map((layer) => ({
-      ...layer,
-      active: layer.enabled,
-    })),
-    components: mergeThemeCatalogComponents(
-      inspection.engine.components,
-      ...inspection.themes.map((theme) => theme.components),
-      ...inspection.layers.map((layer) => layer.components),
-    ),
-  };
+  return createThemeCatalogFromInspection(provider.inspect(), themeTokenNames, themeStates);
 }
 
 /** Public helper for preview Theme Provider. */
@@ -1051,39 +1033,7 @@ export function previewThemeProvider(
   provider: ThemeProvider,
   options: ThemeProviderPreviewOptions = {},
 ): ThemeProviderPreview {
-  const sample = options.sample ?? "Aa";
-  const engine = provider.engine.peek();
-  const catalog = provider.catalog();
-  const tokenNames = options.tokens ? sortedThemeTokenNames([...options.tokens]) : [...themeTokenNames];
-  const componentNames = options.components
-    ? [...options.components]
-    : catalog.components.map((component) => component.name);
-  const stateNames = options.states ? sortedThemeStates([...options.states]) : [...themeStates];
-
-  return {
-    sample,
-    activeId: provider.activeId.peek(),
-    activeLayers: provider.layers.activeIds(),
-    catalog,
-    tokens: tokenNames.map((token) => ({
-      token,
-      preview: previewStyle(engine.theme.tokens[token], sample),
-    })),
-    components: componentNames.flatMap((component) => {
-      const variants = options.variants
-        ? [...options.variants(component, engine)]
-        : ["default", ...engine.variants(component)];
-      return variants.flatMap((variant) => {
-        const theme = engine.component(component, variant);
-        return stateNames.map((state) => ({
-          component,
-          variant,
-          state,
-          preview: previewStyle(theme[state], sample),
-        }));
-      });
-    }),
-  };
+  return previewThemeProviderCore(provider, options, themeTokenNames, themeStates);
 }
 
 /** Creates an audit-ready report for a provider's theme catalog, active composition, preview, and diagnostics. */

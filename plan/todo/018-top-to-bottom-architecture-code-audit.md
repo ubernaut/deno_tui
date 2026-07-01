@@ -436,6 +436,8 @@ Work:
         identity while making pack inspection, overrides, and missing-pack behavior directly testable.
   - [x] Extracted provider active-option and validation issue inspection into `src/theme_provider_inspection.ts`,
         keeping theme/layer source attribution directly covered outside the facade.
+  - [x] Extracted provider catalog and active-engine preview assembly into `src/theme_provider_preview.ts`, keeping
+        catalog merging and preview filtering directly testable outside the facade.
 - [x] Add caches for resolved style chains and preview generation with explicit invalidation tests.
   - [x] Extended `ThemeProviderCache` with preview caching, active theme/layer invalidation, and uncached
         function-variant previews.
