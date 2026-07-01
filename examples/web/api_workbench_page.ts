@@ -322,6 +322,7 @@ let webTerminalScreenKey = "";
 const hitTargets = new HitTargetStack<Hit>();
 const screenRows: string[] = [];
 const workspaceVirtualRows: string[] = [];
+const threePreviewOrbRows: string[] = [];
 let dropdownOverlay: DropdownOverlay | null = null;
 let pointerDrag: {
   x: number;
@@ -924,37 +925,57 @@ function renderExplorer(frame: string[], rect: Rectangle): void {
 function renderThreePreview(frame: string[], rect: Rectangle): void {
   const phase = Math.floor(performance.now() / 90);
   const mode = ["BLOCKS", "GLYPHS", "MIXED"][Math.abs(tileDensity.peek()) % 3] ?? "MIXED";
-  const rows = [
-    ` ACEROLA THREE ASCII · ${mode} · WEB SAFE PREVIEW `,
+  let row = 0;
+  row = writeThreePreviewLine(frame, rect, row, ` ACEROLA THREE ASCII · ${mode} · WEB SAFE PREVIEW `);
+  row = writeThreePreviewLine(
+    frame,
+    rect,
+    row,
     "Full WebGPU renderer is mounted below this workbench on the Pages build.",
+  );
+  row = writeThreePreviewLine(
+    frame,
+    rect,
+    row,
     "Use the standalone Three demo for live WebGPU; this pane mirrors controls and state.",
-    "",
-    ...asciiOrb(rect.width, Math.max(3, rect.height - 6), phase),
-    "",
+  );
+  row = writeThreePreviewLine(frame, rect, row, "");
+  for (const line of asciiOrb(threePreviewOrbRows, rect.width, Math.max(3, rect.height - 6), phase)) {
+    row = writeThreePreviewLine(frame, rect, row, line);
+    if (row >= rect.height) return;
+  }
+  row = writeThreePreviewLine(frame, rect, row, "");
+  writeThreePreviewLine(
+    frame,
+    rect,
+    row,
     `preset mixed-best  glyph ${mode.toLowerCase()}  density ${tileDensity.peek()}  theme ${theme().label}`,
-  ].slice(0, rect.height);
-  rows.forEach((line, index) => {
-    const header = index === 0;
-    const accent = index % 3 === 0 ? theme().accent : index % 3 === 1 ? theme().good : theme().warn;
-    write(
-      frame,
-      rect.row + index,
-      rect.column,
-      paint(
-        fit(line, rect.width),
-        header ? contrastText(theme().accent, theme().bg, theme().text) : accent,
-        header ? theme().accent : theme().surface,
-        header || index > 3,
-      ),
-    );
-  });
+  );
 }
 
-function asciiOrb(width: number, height: number, phase: number): string[] {
+function writeThreePreviewLine(frame: string[], rect: Rectangle, index: number, line: string): number {
+  if (index >= rect.height) return index;
+  const header = index === 0;
+  const accent = index % 3 === 0 ? theme().accent : index % 3 === 1 ? theme().good : theme().warn;
+  write(
+    frame,
+    rect.row + index,
+    rect.column,
+    paint(
+      fit(line, rect.width),
+      header ? contrastText(theme().accent, theme().bg, theme().text) : accent,
+      header ? theme().accent : theme().surface,
+      header || index > 3,
+    ),
+  );
+  return index + 1;
+}
+
+function asciiOrb(target: string[], width: number, height: number, phase: number): string[] {
   const columns = Math.max(8, width);
   const rows = Math.max(3, height);
   const glyphs = " .:-=+*#%@";
-  return Array.from({ length: rows }, (_, row) => {
+  return prepareWorkbenchRows(target, rows, () => "", (_line, row) => {
     let line = "";
     for (let column = 0; column < columns; column += 1) {
       const x = (column / Math.max(1, columns - 1)) * 2 - 1;
