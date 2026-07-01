@@ -43,6 +43,8 @@ Work:
 
 - [ ] Create `src/app/workbench/` for renderer-neutral workbench state, menus, window registry, hit routing, workspace
       persistence, modal lifecycle, dropdown/popover lifecycle, and command dispatch.
+  - [x] Added `src/app/workbench/mod.ts` as a renderer-neutral facade over the extracted helper modules, with a smoke
+        test covering representative frame, viewport, titlebar, and hit-target exports.
 - [ ] Move generic frame helpers, hit-target translation, scrollable-window sizing, titlebar button logic, shelf/tab
       logic, and workspace save/load normalization out of `app/api_workbench.ts`.
   - [x] Extracted sparse frame writing, row slicing, text fitting, button labels, and contrast helpers into

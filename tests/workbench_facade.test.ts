@@ -1,0 +1,36 @@
+import { assertEquals } from "./deps.ts";
+import {
+  buttonText,
+  HitTargetStack,
+  layoutWorkbenchTitlebar,
+  translateHitTargets,
+  workbenchContentViewport,
+} from "../src/app/workbench/mod.ts";
+
+Deno.test("workbench facade exposes renderer-neutral helpers", () => {
+  assertEquals(buttonText("OK"), "[ OK ]");
+  assertEquals(
+    workbenchContentViewport({
+      inner: { column: 0, row: 0, width: 12, height: 6 },
+      contentWidth: 12,
+      contentHeight: 8,
+    }),
+    { column: 0, row: 0, width: 11, height: 5 },
+  );
+  assertEquals(
+    layoutWorkbenchTitlebar({ rect: { column: 0, row: 0, width: 30, height: 4 }, title: "Demo" }).buttons.map((
+      button,
+    ) => button.kind),
+    ["minimize", "maximize", "restore", "close"],
+  );
+
+  const stack = new HitTargetStack<string>();
+  stack.add({ column: 1, row: 1, width: 4, height: 2 }, "demo");
+  translateHitTargets(stack, {
+    startIndex: 0,
+    columnDelta: 2,
+    rowDelta: 1,
+    clip: { column: 0, row: 0, width: 10, height: 10 },
+  });
+  assertEquals(stack.find(3, 2)?.action, "demo");
+});
