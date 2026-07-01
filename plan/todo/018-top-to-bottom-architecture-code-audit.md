@@ -248,6 +248,8 @@ Acceptance checks:
 - [x] Terminal screen fixture tests cover common shell prompts, curses apps, alternate screen enter/exit, resize, and
       truecolor output.
 - [ ] Workbench shell smoke can run common commands and a simple full-screen app through PTY when available.
+  - [x] Added `TerminalShellController` smoke coverage for PTY-style command writes, shell output, and a full-screen
+        alternate-screen transcript before wiring the same path into a workbench-level smoke.
 - [x] This todo and `017-terminal-multiplexer-experience.md` have non-overlapping scopes or are merged cleanly.
 
 ### P2: Consolidate Layout, Markup, And Widget Hydration

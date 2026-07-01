@@ -82,6 +82,53 @@ Deno.test("terminal input routing can target shell-style write handles and pass 
   await shell.dispose();
 });
 
+Deno.test("TerminalShellController smoke runs commands and a full-screen PTY transcript", async () => {
+  const backend = new FakeShellBackend();
+  const shell = new TerminalShellController({
+    backend,
+    shell: "bash",
+    args: ["--noprofile", "--norc"],
+    columns: 24,
+    rows: 5,
+    scrollbackLimit: 4,
+  });
+
+  try {
+    assertEquals(await shell.start(), true);
+    assertEquals(shell.inspect().pty, true);
+
+    assertEquals(await shell.write("printf ready\\n\r"), true);
+    backend.emit("$ printf ready\\n\r\nready\r\n$ ");
+    assertEquals(backend.handle?.writes, ["printf ready\\n\r"]);
+    assertEquals(shell.screen.textRows()[1], "ready");
+
+    assertEquals(await shell.write("top\r"), true);
+    backend.emit("\x1b[?1049h\x1b[?25l\x1b]2;process viewer\x07");
+    backend.emit("\x1b[1;1H\x1b[1;37;44m PID  CPU  COMMAND      \x1b[0m");
+    backend.emit("\x1b[2;5r");
+    backend.emit("\x1b[2;1H 100  12%  deno");
+    backend.emit("\x1b[3;1H 101   8%  bash");
+    backend.emit("\x1b[4;1H 102   4%  vim");
+    backend.emit("\x1b[5;1Hstatus: ok");
+
+    assertEquals(shell.inspect().screen.alternate, true);
+    assertEquals(shell.inspect().title, "process viewer");
+    assertEquals(shell.screen.textRows(), [
+      " PID  CPU  COMMAND",
+      " 100  12%  deno",
+      " 101   8%  bash",
+      " 102   4%  vim",
+      "status: ok",
+    ]);
+
+    backend.emit("\x1b[?25h\x1b[?1049l$ ");
+    assertEquals(shell.inspect().screen.alternate, false);
+    assertEquals(shell.screen.textRows()[1], "ready");
+  } finally {
+    await shell.dispose();
+  }
+});
+
 class FakeShellBackend implements TerminalBackend {
   readonly id = "fake-pty";
   readonly label = "Fake PTY";
