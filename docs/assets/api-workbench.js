@@ -8862,6 +8862,15 @@ function layoutButtonRow(options) {
   };
 }
 
+// src/runtime/process_session.ts
+function formatProcessCommandLine(command) {
+  return [command.command, ...command.args ?? []].map(quoteCommandToken).join(" ");
+}
+function quoteCommandToken(token) {
+  if (/^[\w./:=@+-]+$/.test(token)) return token;
+  return `"${token.replaceAll("\\", "\\\\").replaceAll('"', '\\"')}"`;
+}
+
 // src/app/workbench_titlebar.ts
 function layoutWorkbenchTitlebar(options) {
   const controlsMinWidth = options.controlsMinWidth ?? 22;
@@ -8940,15 +8949,6 @@ function normalizeWorkbenchPanelWorkspaceState(value, options) {
   const maxDensity = options.maxTileDensity ?? 3;
   const tileDensity2 = Number.isFinite(value?.tileDensity) ? Math.max(minDensity, Math.min(maxDensity, Math.floor(value.tileDensity))) : void 0;
   return { active: active2, maximized: maximized2, minimized: minimized2, tileDensity: tileDensity2 };
-}
-
-// src/runtime/process_session.ts
-function formatProcessCommandLine(command) {
-  return [command.command, ...command.args ?? []].map(quoteCommandToken).join(" ");
-}
-function quoteCommandToken(token) {
-  if (/^[\w./:=@+-]+$/.test(token)) return token;
-  return `"${token.replaceAll("\\", "\\\\").replaceAll('"', '\\"')}"`;
 }
 
 // src/runtime/terminal_templates.ts

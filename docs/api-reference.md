@@ -6,10 +6,10 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 ## Summary
 
 - Entrypoints: 5
-- Module visits: 448
-- Re-export declarations: 443
-- Exported symbols: 3756
-- Documented symbols: 3756
+- Module visits: 450
+- Re-export declarations: 445
+- Exported symbols: 3762
+- Documented symbols: 3762
 - Documentation coverage: 100.00%
 - Duplicate symbol groups: 0
 - Missing targets: 0
@@ -18,8 +18,8 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 
 | Specifier       | Path                           | Runtime  | Stability    | Modules | Symbols |    Docs |
 | --------------- | ------------------------------ | -------- | ------------ | ------: | ------: | ------: |
-| `.`             | `./mod.ts`                     | terminal | stable       |     228 |    1899 | 100.00% |
-| `./web`         | `./mod.web.ts`                 | browser  | beta         |     207 |    1762 | 100.00% |
+| `.`             | `./mod.ts`                     | terminal | stable       |     229 |    1902 | 100.00% |
+| `./web`         | `./mod.web.ts`                 | browser  | beta         |     208 |    1765 | 100.00% |
 | `./remote`      | `./mod.remote.ts`              | remote   | experimental |       4 |      38 | 100.00% |
 | `./three-ascii` | `./mod.three_ascii.ts`         | shared   | experimental |       8 |      54 | 100.00% |
 | `./layout/yoga` | `./src/layout/solvers/yoga.ts` | shared   | experimental |       1 |       3 | 100.00% |
@@ -35,10 +35,10 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 ### Summary
 
 - Entrypoint: `mod.ts`
-- Modules: 228
-- Re-export declarations: 227
-- Exported symbols: 1899
-- Documented symbols: 1899
+- Modules: 229
+- Re-export declarations: 228
+- Exported symbols: 1902
+- Documented symbols: 1902
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -114,11 +114,12 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 | [`src/app/workbench_frame.ts`](#src-app-workbench-frame-ts)                             |          0 |      13 |         13 |
 | [`src/app/workbench_menu.ts`](#src-app-workbench-menu-ts)                               |          0 |       5 |          5 |
 | [`src/app/workbench_shelf.ts`](#src-app-workbench-shelf-ts)                             |          0 |       8 |          8 |
+| [`src/app/workbench_terminal.ts`](#src-app-workbench-terminal-ts)                       |          0 |       3 |          3 |
 | [`src/app/workbench_titlebar.ts`](#src-app-workbench-titlebar-ts)                       |          0 |       6 |          6 |
 | [`src/app/workbench_viewport.ts`](#src-app-workbench-viewport-ts)                       |          0 |       4 |          4 |
 | [`src/app/workbench_window_registry.ts`](#src-app-workbench-window-registry-ts)         |          0 |      13 |         13 |
 | [`src/app/workbench_workspace.ts`](#src-app-workbench-workspace-ts)                     |          0 |      18 |         18 |
-| [`src/app/workbench/mod.ts`](#src-app-workbench-mod-ts)                                 |          8 |       0 |          0 |
+| [`src/app/workbench/mod.ts`](#src-app-workbench-mod-ts)                                 |          9 |       0 |          0 |
 | [`src/canvas/box.ts`](#src-canvas-box-ts)                                               |          0 |       2 |          2 |
 | [`src/canvas/canvas.ts`](#src-canvas-canvas-ts)                                         |          0 |       4 |          4 |
 | [`src/canvas/dirty_region.ts`](#src-canvas-dirty-region-ts)                             |          0 |       2 |          2 |
@@ -1212,6 +1213,14 @@ _No direct exported symbols._
 | `WorkbenchTabLayoutOptions`   | interface | yes       | yes   |
 | `WorkbenchTabSource`          | interface | yes       | yes   |
 
+#### src/app/workbench_terminal.ts
+
+| Symbol                                 | Kind      | Type Only | JSDoc |
+| -------------------------------------- | --------- | --------- | ----- |
+| `resolveWorkbenchShellBackend`         | function  | no        | yes   |
+| `WorkbenchShellBackendResolution`      | interface | yes       | yes   |
+| `WorkbenchShellBackendResolverOptions` | interface | yes       | yes   |
+
 #### src/app/workbench_titlebar.ts
 
 | Symbol                           | Kind      | Type Only | JSDoc |
@@ -1281,6 +1290,7 @@ _No direct exported symbols._
 | `src/app/workbench_frame.ts`           | star | -     |
 | `src/app/workbench_menu.ts`            | star | -     |
 | `src/app/workbench_shelf.ts`           | star | -     |
+| `src/app/workbench_terminal.ts`        | star | -     |
 | `src/app/workbench_titlebar.ts`        | star | -     |
 | `src/app/workbench_viewport.ts`        | star | -     |
 | `src/app/workbench_window_registry.ts` | star | -     |
@@ -3581,10 +3591,10 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 ### Summary
 
 - Entrypoint: `mod.web.ts`
-- Modules: 207
-- Re-export declarations: 206
-- Exported symbols: 1762
-- Documented symbols: 1762
+- Modules: 208
+- Re-export declarations: 207
+- Exported symbols: 1765
+- Documented symbols: 1765
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -3660,11 +3670,12 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 | [`src/app/workbench_frame.ts`](#src-app-workbench-frame-ts)                       |          0 |      13 |         13 |
 | [`src/app/workbench_menu.ts`](#src-app-workbench-menu-ts)                         |          0 |       5 |          5 |
 | [`src/app/workbench_shelf.ts`](#src-app-workbench-shelf-ts)                       |          0 |       8 |          8 |
+| [`src/app/workbench_terminal.ts`](#src-app-workbench-terminal-ts)                 |          0 |       3 |          3 |
 | [`src/app/workbench_titlebar.ts`](#src-app-workbench-titlebar-ts)                 |          0 |       6 |          6 |
 | [`src/app/workbench_viewport.ts`](#src-app-workbench-viewport-ts)                 |          0 |       4 |          4 |
 | [`src/app/workbench_window_registry.ts`](#src-app-workbench-window-registry-ts)   |          0 |      13 |         13 |
 | [`src/app/workbench_workspace.ts`](#src-app-workbench-workspace-ts)               |          0 |      18 |         18 |
-| [`src/app/workbench/mod.ts`](#src-app-workbench-mod-ts)                           |          8 |       0 |          0 |
+| [`src/app/workbench/mod.ts`](#src-app-workbench-mod-ts)                           |          9 |       0 |          0 |
 | [`src/canvas/box.ts`](#src-canvas-box-ts)                                         |          0 |       2 |          2 |
 | [`src/canvas/canvas.ts`](#src-canvas-canvas-ts)                                   |          0 |       4 |          4 |
 | [`src/canvas/draw_object.ts`](#src-canvas-draw-object-ts)                         |          0 |       2 |          2 |
@@ -4755,6 +4766,14 @@ _No direct exported symbols._
 | `WorkbenchTabLayoutOptions`   | interface | yes       | yes   |
 | `WorkbenchTabSource`          | interface | yes       | yes   |
 
+#### src/app/workbench_terminal.ts
+
+| Symbol                                 | Kind      | Type Only | JSDoc |
+| -------------------------------------- | --------- | --------- | ----- |
+| `resolveWorkbenchShellBackend`         | function  | no        | yes   |
+| `WorkbenchShellBackendResolution`      | interface | yes       | yes   |
+| `WorkbenchShellBackendResolverOptions` | interface | yes       | yes   |
+
 #### src/app/workbench_titlebar.ts
 
 | Symbol                           | Kind      | Type Only | JSDoc |
@@ -4824,6 +4843,7 @@ _No direct exported symbols._
 | `src/app/workbench_frame.ts`           | star | -     |
 | `src/app/workbench_menu.ts`            | star | -     |
 | `src/app/workbench_shelf.ts`           | star | -     |
+| `src/app/workbench_terminal.ts`        | star | -     |
 | `src/app/workbench_titlebar.ts`        | star | -     |
 | `src/app/workbench_viewport.ts`        | star | -     |
 | `src/app/workbench_window_registry.ts` | star | -     |

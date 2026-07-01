@@ -3,6 +3,7 @@ import {
   buttonText,
   HitTargetStack,
   layoutWorkbenchTitlebar,
+  resolveWorkbenchShellBackend,
   translateHitTargets,
   workbenchContentViewport,
 } from "../src/app/workbench/mod.ts";
@@ -33,4 +34,5 @@ Deno.test("workbench facade exposes renderer-neutral helpers", () => {
     clip: { column: 0, row: 0, width: 10, height: 10 },
   });
   assertEquals(stack.find(3, 2)?.action, "demo");
+  assertEquals(typeof resolveWorkbenchShellBackend, "function");
 });

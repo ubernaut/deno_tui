@@ -3510,6 +3510,27 @@
       "documented": true
     },
     {
+      "module": "src/app/workbench_terminal.ts",
+      "name": "resolveWorkbenchShellBackend",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_terminal.ts",
+      "name": "WorkbenchShellBackendResolution",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_terminal.ts",
+      "name": "WorkbenchShellBackendResolverOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
       "module": "src/app/workbench_titlebar.ts",
       "name": "layoutWorkbenchTitlebar",
       "kind": "function",

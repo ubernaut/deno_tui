@@ -4,7 +4,7 @@ import type {
   TerminalBackendSpawnOptions,
   TerminalSessionHandle,
 } from "../src/runtime/terminal_backend.ts";
-import { resolveWorkbenchShellBackend } from "../src/app/workbench_terminal.ts";
+import { resolveWorkbenchShellBackend } from "../src/app/workbench/mod.ts";
 
 Deno.test("resolveWorkbenchShellBackend prefers an available PTY backend", async () => {
   const ptyBackend = fakeBackend("fake-pty", true);
