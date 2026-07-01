@@ -61,9 +61,9 @@ import {
   type WorkbenchPanelWorkspaceState,
   workbenchRevealActiveRowOffset,
   type WorkbenchTitlebarButtonKind,
-  WorkbenchTopMenuController,
   wrapTextBoxLines,
 } from "../../mod.web.ts";
+import { WorkbenchController } from "../../src/app/workbench/controller.ts";
 import { grWizardThemePalettes } from "../../src/grwizard_themes.ts";
 import { createHtmlCssLayoutDemo, htmlCssLayoutDemoBoxLabel } from "../../src/markup/demo_fixtures.ts";
 import { type DiagnosticEntry, DiagnosticsCollector, formatDiagnosticStatus } from "../../src/runtime/diagnostics.ts";
@@ -235,11 +235,15 @@ const minimized = new Signal<Record<PanelId, boolean>>(
   { deepObserve: true },
 );
 const themeMenuOpen = new Signal(false);
-const topMenus = new WorkbenchTopMenuController<"theme">({
-  onChange: (state) => {
-    themeMenuOpen.value = state.openId === "theme";
+const workbenchController = new WorkbenchController<"theme">({
+  menu: {
+    onChange: (state) => {
+      themeMenuOpen.value = state.openId === "theme";
+    },
   },
+  windows: panelIds.map((id, order) => ({ id, title: id, order })),
 });
+const topMenus = workbenchController.menus;
 const tileDensity = new Signal(Math.max(-3, Math.min(3, Math.floor(initialWorkspace.tileDensity ?? 0))));
 const lineSignals: Signal<string>[] = [];
 const log = new Signal<string[]>(
@@ -557,6 +561,7 @@ globalThis.addEventListener("beforeunload", () => {
   textBox.dispose();
   compact.dispose();
   explorer.dispose();
+  workbenchController.dispose();
   themeMenuOpen.dispose();
   tileDensity.dispose();
   host.destroy();

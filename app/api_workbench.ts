@@ -38,7 +38,6 @@ import {
   layoutWorkbenchShelf,
   layoutWorkbenchTabs,
   layoutWorkbenchTitlebar,
-  moveWorkbenchMenuIndex,
   normalizeWorkbenchWorkspaceName,
   normalizeWorkbenchWorkspaceStorage,
   renameWorkbenchWorkspace,
@@ -485,8 +484,8 @@ const menu = new MenuBarController({
   ],
   onSelect: (item) => {
     if (item.id === "new") {
-      topMenus.toggle("newWindow");
-      newWindowMenuIndex.value = Math.max(0, Math.min(newWindowMenuIndex.peek(), newWindowOptions.length - 1));
+      workbenchController.toggleMenu("newWindow", newWindowOptions.length);
+      newWindowMenuIndex.value = workbenchController.menuIndex("newWindow");
       pushLog(`${newWindowMenuOpen.peek() ? "open" : "close"} new window menu`);
       return;
     }
@@ -496,8 +495,8 @@ const menu = new MenuBarController({
       return;
     }
     if (item.id === "workspace") {
-      topMenus.toggle("workspace");
-      workspaceMenuIndex.value = Math.max(0, Math.min(workspaceMenuIndex.peek(), workspaceMenuItemCount() - 1));
+      workbenchController.toggleMenu("workspace", workspaceMenuItemCount());
+      workspaceMenuIndex.value = workbenchController.menuIndex("workspace");
       pushLog(`${workspaceMenuOpen.peek() ? "open" : "close"} workspace menu`);
       return;
     }
@@ -3914,7 +3913,7 @@ function handleScreenDropdownKey(event: { key: string; ctrl?: boolean; meta?: bo
   if (newWindowMenuOpen.peek()) {
     const count = newWindowOptions.length;
     if (count === 0) return;
-    newWindowMenuIndex.value = moveWorkbenchMenuIndex(newWindowMenuIndex.peek(), count, event);
+    newWindowMenuIndex.value = workbenchController.moveMenuIndex("newWindow", count, event.key);
     if (isWorkbenchMenuActivationKey(event.key)) {
       toggleNewWindowOption(newWindowOptions[newWindowMenuIndex.peek()], { keepMenuOpen: true });
     }
@@ -3923,7 +3922,7 @@ function handleScreenDropdownKey(event: { key: string; ctrl?: boolean; meta?: bo
   if (workspaceMenuOpen.peek()) {
     const count = workspaceMenuItemCount();
     if (count === 0) return;
-    workspaceMenuIndex.value = moveWorkbenchMenuIndex(workspaceMenuIndex.peek(), count, event);
+    workspaceMenuIndex.value = workbenchController.moveMenuIndex("workspace", count, event.key);
     if (isWorkbenchMenuActivationKey(event.key)) {
       applyWorkspaceMenuItem(workspaceMenuIndex.peek());
     }
@@ -3956,16 +3955,16 @@ function openThemeMenu(): void {
 function openNewWindowMenu(): void {
   const index = menu.items.peek().findIndex((item) => item.id === "new");
   if (index >= 0) menu.setActive(index);
-  topMenus.open("newWindow");
-  newWindowMenuIndex.value = Math.max(0, Math.min(newWindowMenuIndex.peek(), newWindowOptions.length - 1));
+  workbenchController.openMenu("newWindow", newWindowOptions.length);
+  newWindowMenuIndex.value = workbenchController.menuIndex("newWindow");
   pushLog("open new window menu");
 }
 
 function openWorkspaceMenu(): void {
   const index = menu.items.peek().findIndex((item) => item.id === "workspace");
   if (index >= 0) menu.setActive(index);
-  topMenus.open("workspace");
-  workspaceMenuIndex.value = Math.max(0, Math.min(workspaceMenuIndex.peek(), workspaceMenuItemCount() - 1));
+  workbenchController.openMenu("workspace", workspaceMenuItemCount());
+  workspaceMenuIndex.value = workbenchController.menuIndex("workspace");
   pushLog("open workspace menu");
 }
 

@@ -52,6 +52,8 @@ Work:
   - [x] Added an internal `src/app/workbench/controller.ts` coordinator for top-menu state, dropdown indices, and
         `WindowManagerController` ownership; terminal API Workbench now instantiates this shared controller instead of
         constructing menu and window controllers separately.
+  - [x] Migrated the web API Workbench top-menu state through the same internal controller while preserving its
+        persisted signal-driven layout state.
 - [x] Move generic frame helpers, hit-target translation, scrollable-window sizing, titlebar button logic, shelf/tab
       logic, and workspace save/load normalization out of `app/api_workbench.ts`.
   - [x] Extracted sparse frame writing, row slicing, text fitting, button labels, and contrast helpers into
@@ -95,6 +97,8 @@ Work:
         terminal canvas rendering and frame-rendered workbench windows use the same rotate/zoom/reset behavior.
   - [x] Added focused tests for the internal `WorkbenchController` covering top-menu focus/disclosure, bounded menu
         indices, focus cycling, fullscreen, minimize, restore, and close state transitions.
+  - [x] Replaced terminal new-window/workspace menu index clamps with shared controller helpers and verified browser
+        demo checks plus web runtime tests after the matching web top-menu hookup.
 - [x] Replace duplicated theme/window/menu persistence code with a shared versioned serializer.
   - [x] Extracted shared workbench workspace normalization, panel-state normalization, upsert, rename, delete, lookup,
         and legacy window-entry expansion helpers into `src/app/workbench_workspace.ts`.
