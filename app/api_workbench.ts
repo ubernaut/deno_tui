@@ -100,6 +100,7 @@ import { probeCompatibleWebGPUDevice } from "../src/three_ascii/webgpu_compat.ts
 import { Tui } from "../src/tui.ts";
 import type { Rectangle } from "../src/types.ts";
 import { stripStyles, textWidth } from "../src/utils/strings.ts";
+import { workbenchButtonPaintOptions } from "../src/app/workbench_button_style.ts";
 import { resolveWorkbenchShellBackend } from "../src/app/workbench_terminal.ts";
 import { AudioRegistry } from "./audio.ts";
 import { grWizardThemePalettes } from "../src/grwizard_themes.ts";
@@ -4768,29 +4769,7 @@ function buttonPaintOptions(
   state: "base" | "active" | "disabled" = "base",
   tone: ButtonTone = "default",
 ): { fg: string; bg: string; bold: boolean } {
-  if (state === "disabled") {
-    return { fg: t.buttonMutedText, bg: t.buttonMutedBg, bold: false };
-  }
-  const toneBg = tone === "danger"
-    ? t.danger
-    : tone === "warning"
-    ? t.warn
-    : tone === "success"
-    ? t.good
-    : tone === "muted"
-    ? t.border
-    : undefined;
-  if (toneBg) {
-    return { fg: contrastText(toneBg, t.background, t.text), bg: toneBg, bold: true };
-  }
-  if (state === "active") {
-    return {
-      fg: contrastText(t.buttonActiveBg, t.background, t.text),
-      bg: t.buttonActiveBg,
-      bold: true,
-    };
-  }
-  return { fg: contrastText(t.buttonBg, t.background, t.text), bg: t.buttonBg, bold: true };
+  return workbenchButtonPaintOptions(t, contrastText, state, tone);
 }
 
 function addHit(rect: Rectangle, action: HitAction): void {
