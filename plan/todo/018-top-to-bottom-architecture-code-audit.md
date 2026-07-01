@@ -426,6 +426,8 @@ Work:
   - [x] Added `app/visualization_catalog.ts` with Monitor, Neon text, and Neon 3D family metadata; the workbench New
         Window menu now classifies visualization options from this metadata before falling back to legacy id heuristics.
 - [ ] Keep rendering functions pure and fixture-testable.
+  - [x] Extracted pure visualization drive/source normalization into `app/visualization_drive.ts`; render modules now
+        consume a fixture-testable data transform instead of owning source sampling and hazard math directly.
 - [ ] Make demo-only assets and NGE-inspired primitives clearly separate from library APIs.
 
 Acceptance checks:
