@@ -356,7 +356,7 @@ Acceptance checks:
 - [ ] Add real workbench controller tests after extraction, covering both terminal and web adapters.
 - [ ] Add browser interaction tests for pointer, touch/coarse pointer, software keyboard text input, and resize
       observer.
-- [ ] Add terminal parser fixture tests from real shell output and ANSI sequences.
+- [x] Add terminal parser fixture tests from real shell output and ANSI sequences.
 - [ ] Add fixture-driven system metrics tests for Linux, missing GPU, and unavailable permissions.
 - [ ] Add property/fuzz tests for layout, selection, viewport, scrollbar pointer mapping, and terminal input decoding.
 - [x] Add stress tests for repeated window open/close/reconfigure while Three ASCII frames are rendering.

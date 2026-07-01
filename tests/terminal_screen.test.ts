@@ -113,6 +113,35 @@ Deno.test("TerminalScreenController tracks OSC 8 hyperlinks per cell", () => {
   assertEquals(row![3], { char: "d" });
 });
 
+Deno.test("TerminalScreenController replays a realistic colored shell transcript", () => {
+  const screen = new TerminalScreenController({ columns: 72, rows: 6, scrollbackLimit: 4 });
+
+  screen.write("\x1b]0;cos@old-donkey:~/projects/deno_tui\x07");
+  screen.write("\x1b[?25l");
+  screen.write("cos@old-donkey:~/projects/deno_tui$ deno task test\r\n");
+  screen.write("\x1b[38;5;34mTask\x1b[0m test deno test ./tests/terminal_screen.test.ts\r\n");
+  screen.write("running 2 tests\r\n");
+  screen.write("terminal parser fixture ... \x1b[32mok\x1b[0m (12ms)\r\n");
+  screen.write("\x1b[38;2;120;200;255mok\x1b[0m | 2 passed | 0 failed\r\n");
+  screen.write("\x1b[?25h");
+
+  assertEquals(screen.inspect().title, "cos@old-donkey:~/projects/deno_tui");
+  assertEquals(screen.inspect().cursorVisible, true);
+  assertEquals(screen.textRows(), [
+    "cos@old-donkey:~/projects/deno_tui$ deno task test",
+    "Task test deno test ./tests/terminal_screen.test.ts",
+    "running 2 tests",
+    "terminal parser fixture ... ok (12ms)",
+    "ok | 2 passed | 0 failed",
+    "",
+  ]);
+
+  const rows = screen.cellRows();
+  assertEquals(rows[1]![0], { char: "T", foreground: 34 });
+  assertEquals(rows[3]![28], { char: "o", foreground: 32 });
+  assertEquals(rows[4]![0], { char: "o", foreground: 0x78c8ff });
+});
+
 Deno.test("TerminalScreenController inserts and deletes characters", () => {
   const screen = new TerminalScreenController({ columns: 8, rows: 2 });
 
