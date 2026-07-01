@@ -367,6 +367,7 @@ Acceptance checks:
 - [ ] Add fixture-driven system metrics tests for Linux, missing GPU, and unavailable permissions.
 - [ ] Add property/fuzz tests for layout, selection, viewport, scrollbar pointer mapping, and terminal input decoding.
   - [x] Added deterministic generated invariant coverage for viewport overflow and scrollbar pointer mapping.
+  - [x] Added deterministic generated invariant coverage for selection normalization, movement, range, and toggling.
 - [x] Add stress tests for repeated window open/close/reconfigure while Three ASCII frames are rendering.
 
 ## Suggested Execution Order

@@ -3,6 +3,7 @@ import {
   clampSelectionIndex,
   createSelection,
   moveSelection,
+  normalizeSelection,
   selectedValues,
   selectIndex,
   SelectionController,
@@ -219,3 +220,52 @@ Deno.test("selectionCommands can omit multi-select commands and disable empty se
   assertEquals(commands.find((command) => command.id === "selection.next")?.label, "Move Down");
   assertEquals(commands.every((command) => typeof command.disabled === "function" && command.disabled()), true);
 });
+
+Deno.test("selection normalization invariants hold across generated states", () => {
+  const random = seededRandom(0x51ec7);
+  for (let index = 0; index < 500; index += 1) {
+    const length = Math.floor(random() * 80);
+    const mode = index % 3 === 0 ? "single" : "multiple";
+    const state = normalizeSelection(
+      {
+        activeIndex: Math.floor(random() * 140) - 30,
+        anchorIndex: Math.floor(random() * 140) - 30,
+        selected: Array.from({ length: Math.floor(random() * 12) }, () => Math.floor(random() * 140) - 30),
+      },
+      length,
+      mode,
+    );
+
+    assertSelectionInvariants(state, length, mode);
+    assertSelectionInvariants(moveSelection(state, length, Math.floor(random() * 12) - 6, { mode }), length, mode);
+    assertSelectionInvariants(selectIndex(state, length, Math.floor(random() * 140) - 30, mode), length, mode);
+    assertSelectionInvariants(selectRange(state, length, Math.floor(random() * 140) - 30), length, "multiple");
+    assertSelectionInvariants(toggleSelection(state, length, Math.floor(random() * 140) - 30), length, "multiple");
+  }
+});
+
+function assertSelectionInvariants(
+  state: { activeIndex: number; anchorIndex: number; selected: number[] },
+  length: number,
+  mode: "single" | "multiple",
+): void {
+  assertEquals(state.activeIndex >= 0, true);
+  assertEquals(state.anchorIndex >= 0, true);
+  assertEquals(state.activeIndex <= Math.max(0, length - 1), true);
+  assertEquals(state.anchorIndex <= Math.max(0, length - 1), true);
+  assertEquals(state.selected.every((item) => item >= 0 && item < length), true);
+  assertEquals([...state.selected].sort((left, right) => left - right), state.selected);
+  assertEquals(new Set(state.selected).size, state.selected.length);
+  if (mode === "single") {
+    assertEquals(state.selected.length, length > 0 ? 1 : 0);
+    if (length > 0) assertEquals(state.selected[0], state.activeIndex);
+  }
+}
+
+function seededRandom(seed: number): () => number {
+  let state = seed >>> 0;
+  return () => {
+    state = (state * 1664525 + 1013904223) >>> 0;
+    return state / 0x100000000;
+  };
+}
