@@ -276,8 +276,41 @@ function matchesDataQuery<TRow extends Record<string, unknown>, TFilters extends
   if (options.filter && !options.filter(row, filters)) return false;
   if (!matchesExactFilters(row, filters)) return false;
   if (terms.length === 0) return true;
-  const haystack = searchableValues(row, options.searchable).map(stringifyDataQueryValue).join(" ").toLowerCase();
-  return terms.every((term) => haystack.includes(term));
+  return matchesSearchableTerms(row, terms, options.searchable);
+}
+
+function matchesSearchableTerms<TRow extends Record<string, unknown>>(
+  row: TRow,
+  terms: readonly string[],
+  searchable?: LocalDataQueryOptions<TRow>["searchable"],
+): boolean {
+  for (const term of terms) {
+    if (!searchableValueIncludes(row, searchable, term)) return false;
+  }
+  return true;
+}
+
+function searchableValueIncludes<TRow extends Record<string, unknown>>(
+  row: TRow,
+  searchable: LocalDataQueryOptions<TRow>["searchable"] | undefined,
+  term: string,
+): boolean {
+  if (typeof searchable === "function") {
+    for (const value of searchable(row)) {
+      if (stringifyDataQueryValue(value).toLowerCase().includes(term)) return true;
+    }
+    return false;
+  }
+  if (searchable) {
+    for (const field of searchable) {
+      if (stringifyDataQueryValue(row[field]).toLowerCase().includes(term)) return true;
+    }
+    return false;
+  }
+  for (const value of Object.values(row)) {
+    if (stringifyDataQueryValue(value).toLowerCase().includes(term)) return true;
+  }
+  return false;
 }
 
 function matchesExactFilters(row: Record<string, unknown>, filters: DataQueryFilters): boolean {
@@ -291,15 +324,6 @@ function matchesExactFilters(row: Record<string, unknown>, filters: DataQueryFil
     if (actual !== expected) return false;
   }
   return true;
-}
-
-function searchableValues<TRow extends Record<string, unknown>>(
-  row: TRow,
-  searchable?: LocalDataQueryOptions<TRow>["searchable"],
-): readonly unknown[] {
-  if (typeof searchable === "function") return searchable(row);
-  if (searchable) return searchable.map((field) => row[field]);
-  return Object.values(row);
 }
 
 function sortLocalData<TRow extends Record<string, unknown>>(

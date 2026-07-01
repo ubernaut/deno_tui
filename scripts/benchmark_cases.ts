@@ -13,6 +13,7 @@ import {
   DirtyRegion,
   emptyStyle,
   flexRects,
+  filterDataRows,
   MemoryCanvasSink,
   renderSparkline,
   runTaskBatch,
@@ -84,6 +85,20 @@ const terminalScreenTranscript = [
 const terminalScreenChunks = terminalScreenTranscript.map((chunk) => new TextEncoder().encode(chunk));
 const largeListItems = Array.from({ length: 50_000 }, (_, index) => `process-${index.toString().padStart(5, "0")}`);
 const largeTable = new TableController({ rowCount: 100_000, viewportHeight: 44 });
+const largeDataRows = Array.from({ length: 25_000 }, (_, index) => ({
+  id: index,
+  name: `process-${index.toString().padStart(5, "0")}`,
+  state: index % 7 === 0 ? "running" : index % 5 === 0 ? "sleeping" : "idle",
+  owner: index % 3 === 0 ? "system" : "user",
+  cpu: (index * 17) % 100,
+}));
+const largeDataColumns = [
+  { id: "id", width: 8 },
+  { id: "name", width: 18 },
+  { id: "state", width: 10 },
+  { id: "owner", width: 10 },
+  { id: "cpu", width: 6 },
+] as const;
 const resizeBounds = Array.from({ length: 96 }, (_, index) => ({
   column: 0,
   row: 0,
@@ -861,6 +876,18 @@ export const benchmarkCases: BenchmarkCase[] = [
         if (index % 11 === 0) largeTable.scroll(3);
       }
       largeTable.inspect();
+    },
+  },
+  {
+    name: "data/table-filter-25k",
+    category: "data",
+    description: "Filter a 25k-row data table across multiple searchable columns.",
+    tags: ["data", "table", "filter", "search"],
+    iterations: 80,
+    maxAverageMs: 12,
+    run: () => {
+      const rows = filterDataRows(largeDataRows, largeDataColumns, "process-12 user");
+      if (rows.length === 0) throw new Error("table filter returned no rows");
     },
   },
   {

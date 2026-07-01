@@ -244,10 +244,25 @@ export function filterDataRows<TRow extends Record<string, unknown>>(
 ): TRow[] {
   const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
   if (terms.length === 0) return [...rows];
-  return rows.filter((row) => {
-    const haystack = columns.map((column) => stringifyCell(row[column.id])).join(" ").toLowerCase();
-    return terms.every((term) => haystack.includes(term));
-  });
+  return rows.filter((row) => dataRowMatchesTerms(row, columns, terms));
+}
+
+function dataRowMatchesTerms<TRow extends Record<string, unknown>>(
+  row: TRow,
+  columns: readonly DataColumn<TRow>[],
+  terms: readonly string[],
+): boolean {
+  for (const term of terms) {
+    let matched = false;
+    for (const column of columns) {
+      if (stringifyCell(row[column.id]).toLowerCase().includes(term)) {
+        matched = true;
+        break;
+      }
+    }
+    if (!matched) return false;
+  }
+  return true;
 }
 
 /** Public helper for sort Data Rows. */
