@@ -285,6 +285,8 @@ Acceptance checks:
         screen state mutation.
   - [x] Made terminal sequence parsing offset-aware so the screen write loop no longer allocates `text.slice(index)` for
         every escape/control sequence.
+  - [x] Removed repeated substring allocation from ANSI and Unicode scanning in shared string measurement/cropping and
+        workbench frame cell splitting utilities.
 
 ### P2: Consolidate Layout, Markup, And Widget Hydration
 

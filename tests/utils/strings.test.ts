@@ -52,12 +52,14 @@ Deno.test("utils/strings.ts", async (t) => {
     assertEquals(textWidth(fullWidths.join("")), fullWidths.length * 2);
     assertEquals(textWidth("Hello"), 5);
     assertEquals(textWidth("a\u0301👀👨‍👩‍👧‍👦"), 5);
+    assertEquals(textWidth("xx\x1b[38;2;0;255;79mHello\x1b[0m", 2), 5);
   });
 
   await t.step("cropToWidth() preserves graphemes and ANSI cells", () => {
     assertEquals(cropToWidth("a\u0301👀b", 3), "a\u0301👀");
     assertEquals(cropToWidth("a\u0301👀b", 2), "a\u0301 ");
     assertEquals(cropToWidth("\x1b[32m👀\x1b[0mB", 2), "\x1b[32m👀\x1b[0m");
+    assertEquals(cropToWidth("\x1b]0;title\x07\x1b[32mHi\x1b[0m!", 2), "\x1b]0;title\x07\x1b[32mHi\x1b[0m");
   });
 
   await t.step("getMultiCodePointCharacters() preserves 24-bit SGR cells", () => {

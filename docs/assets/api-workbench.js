@@ -1564,10 +1564,6 @@ var UNICODE_CHAR_REGEXP = /\ud83c[\udffb-\udfff](?=\ud83c[\udffb-\udfff])|(?:(?:
 var empty = [];
 var ESC_PATTERN = "\\x1b";
 var BEL_PATTERN = "\\x07";
-var CSI_SEQUENCE_REGEXP = new RegExp(`^${ESC_PATTERN}\\[[0-?]*[ -/]*[@-~]`);
-var ANSI_SEQUENCE_REGEXP = new RegExp(
-  `^${ESC_PATTERN}(?:\\[[0-?]*[ -/]*[@-~]|\\][^${BEL_PATTERN}]*(?:${BEL_PATTERN}|${ESC_PATTERN}\\\\))`
-);
 var STRIP_CSI_SEQUENCE_REGEXP = new RegExp(`${ESC_PATTERN}\\[[0-?]*[ -/]*[@-~]`, "g");
 var STRIP_OSC_SEQUENCE_REGEXP = new RegExp(
   `${ESC_PATTERN}\\][^${BEL_PATTERN}]*(?:${BEL_PATTERN}|${ESC_PATTERN}\\\\)`,
@@ -1586,9 +1582,8 @@ function getStyledCharacters(text) {
   let style2 = "";
   for (let index = 0; index < text.length; ) {
     if (text.charCodeAt(index) === 27) {
-      const match2 = CSI_SEQUENCE_REGEXP.exec(text.slice(index));
-      if (match2) {
-        const sequence = match2[0];
+      const sequence = readCsiSequenceAt(text, index);
+      if (sequence) {
         if (sequence.endsWith("m")) {
           style2 = isSgrReset(sequence) ? "" : style2 + sequence;
         }
@@ -1596,9 +1591,9 @@ function getStyledCharacters(text) {
         continue;
       }
     }
-    UNICODE_CHAR_REGEXP.lastIndex = 0;
-    const match = UNICODE_CHAR_REGEXP.exec(text.slice(index));
-    const char = match?.index === 0 ? match[0] : String.fromCodePoint(text.codePointAt(index) ?? text.charCodeAt(index));
+    UNICODE_CHAR_REGEXP.lastIndex = index;
+    const match = UNICODE_CHAR_REGEXP.exec(text);
+    const char = match?.index === index ? match[0] : String.fromCodePoint(text.codePointAt(index) ?? text.charCodeAt(index));
     cells.push(style2 ? `${style2}${char}\x1B[0m` : char);
     index += char.length;
   }
@@ -1617,7 +1612,7 @@ function insertAt(string, index, value) {
 function textWidth(text, start = 0) {
   if (!text) return 0;
   let width = 0;
-  for (const cell of iterateTextCells(start > 0 ? text.slice(start) : text)) {
+  for (const cell of iterateTextCells(text, start)) {
     if (cell.plain === "\n") break;
     width += characterWidth(cell.plain);
   }
@@ -1650,12 +1645,12 @@ function cropToWidth(text, width) {
   }
   return cropped;
 }
-function* iterateTextCells(text) {
-  let index = 0;
+function* iterateTextCells(text, start = 0) {
+  let index = start;
   let prefix = "";
   while (index < text.length) {
     if (text.charCodeAt(index) === 27) {
-      const sequence = ANSI_SEQUENCE_REGEXP.exec(text.slice(index))?.[0];
+      const sequence = readAnsiSequenceAt(text, index);
       if (sequence) {
         prefix += sequence;
         index += sequence.length;
@@ -1674,20 +1669,55 @@ function* iterateTextCells(text) {
 function nextTextCharacter(text, index) {
   const codeUnit = text.charCodeAt(index);
   if (codeUnit < 128) return text[index] ?? "";
-  UNICODE_CHAR_REGEXP.lastIndex = 0;
-  const match = UNICODE_CHAR_REGEXP.exec(text.slice(index));
-  if (match?.index === 0) return match[0];
+  UNICODE_CHAR_REGEXP.lastIndex = index;
+  const match = UNICODE_CHAR_REGEXP.exec(text);
+  if (match?.index === index) return match[0];
   return String.fromCodePoint(text.codePointAt(index) ?? codeUnit);
 }
 function isAnsiResetOnly(value) {
   if (!value) return false;
   let index = 0;
   while (index < value.length) {
-    const sequence = ANSI_SEQUENCE_REGEXP.exec(value.slice(index))?.[0];
+    const sequence = readAnsiSequenceAt(value, index);
     if (!sequence || !sequence.endsWith("m") || !isSgrReset(sequence)) return false;
     index += sequence.length;
   }
   return true;
+}
+function readAnsiSequenceAt(value, start) {
+  return readCsiSequenceAt(value, start) ?? readOscSequenceAt(value, start);
+}
+function readCsiSequenceAt(value, start) {
+  if (value.charCodeAt(start) !== 27 || value[start + 1] !== "[") return void 0;
+  let index = start + 2;
+  while (index < value.length) {
+    const code = value.charCodeAt(index);
+    if (code >= 48 && code <= 63) {
+      index++;
+      continue;
+    }
+    break;
+  }
+  while (index < value.length) {
+    const code = value.charCodeAt(index);
+    if (code >= 32 && code <= 47) {
+      index++;
+      continue;
+    }
+    break;
+  }
+  const finalCode = value.charCodeAt(index);
+  if (!(finalCode >= 64 && finalCode <= 126)) return void 0;
+  return value.slice(start, index + 1);
+}
+function readOscSequenceAt(value, start) {
+  if (!value.startsWith("\x1B]", start)) return void 0;
+  const contentStart = start + 2;
+  const belEnd = value.indexOf("\x07", contentStart);
+  const stEnd = value.indexOf("\x1B\\", contentStart);
+  const end = belEnd >= 0 && stEnd >= 0 ? Math.min(belEnd, stEnd) : belEnd >= 0 ? belEnd : stEnd;
+  if (end < 0) return void 0;
+  return value.slice(start, end + (end === stEnd ? 2 : 1));
 }
 function characterWidth(character) {
   const plain = stripStyles(character);
@@ -8683,9 +8713,8 @@ function toStyledCells(value) {
   let style2 = "";
   for (let index = 0; index < value.length; ) {
     if (value.charCodeAt(index) === 27) {
-      const match = /^\x1b\[[0-9;]*m/.exec(value.slice(index));
-      if (match) {
-        const sequence = match[0];
+      const sequence = readSgrSequenceAt(value, index);
+      if (sequence) {
         style2 = sequence.includes("[0m") ? "" : style2 + sequence;
         index += sequence.length;
         continue;
@@ -8696,6 +8725,20 @@ function toStyledCells(value) {
     index += char.length;
   }
   return cells;
+}
+function readSgrSequenceAt(value, start) {
+  if (value.charCodeAt(start) !== 27 || value[start + 1] !== "[") return void 0;
+  let index = start + 2;
+  while (index < value.length) {
+    const code = value.charCodeAt(index);
+    if (code >= 48 && code <= 57 || code === 59) {
+      index++;
+      continue;
+    }
+    break;
+  }
+  if (value[index] !== "m") return void 0;
+  return value.slice(start, index + 1);
 }
 function fitCellText(value, width) {
   const visible = textWidth(value);

@@ -14,10 +14,8 @@ export function toStyledCells(value: string): string[] {
   let style = "";
   for (let index = 0; index < value.length;) {
     if (value.charCodeAt(index) === 0x1b) {
-      // deno-lint-ignore no-control-regex -- ANSI escape parsing intentionally matches ESC.
-      const match = /^\x1b\[[0-9;]*m/.exec(value.slice(index));
-      if (match) {
-        const sequence = match[0];
+      const sequence = readSgrSequenceAt(value, index);
+      if (sequence) {
         style = sequence.includes("[0m") ? "" : style + sequence;
         index += sequence.length;
         continue;
@@ -28,6 +26,21 @@ export function toStyledCells(value: string): string[] {
     index += char.length;
   }
   return cells;
+}
+
+function readSgrSequenceAt(value: string, start: number): string | undefined {
+  if (value.charCodeAt(start) !== 0x1b || value[start + 1] !== "[") return undefined;
+  let index = start + 2;
+  while (index < value.length) {
+    const code = value.charCodeAt(index);
+    if ((code >= 0x30 && code <= 0x39) || code === 0x3b) {
+      index++;
+      continue;
+    }
+    break;
+  }
+  if (value[index] !== "m") return undefined;
+  return value.slice(start, index + 1);
 }
 
 /** Writes styled text into a clipped frame row. */

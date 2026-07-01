@@ -11,10 +11,6 @@ export const UNICODE_CHAR_REGEXP =
 const empty: string[] = [];
 const ESC_PATTERN = "\\x1b";
 const BEL_PATTERN = "\\x07";
-const CSI_SEQUENCE_REGEXP = new RegExp(`^${ESC_PATTERN}\\[[0-?]*[ -/]*[@-~]`);
-const ANSI_SEQUENCE_REGEXP = new RegExp(
-  `^${ESC_PATTERN}(?:\\[[0-?]*[ -/]*[@-~]|\\][^${BEL_PATTERN}]*(?:${BEL_PATTERN}|${ESC_PATTERN}\\\\))`,
-);
 const STRIP_CSI_SEQUENCE_REGEXP = new RegExp(`${ESC_PATTERN}\\[[0-?]*[ -/]*[@-~]`, "g");
 const STRIP_OSC_SEQUENCE_REGEXP = new RegExp(
   `${ESC_PATTERN}\\][^${BEL_PATTERN}]*(?:${BEL_PATTERN}|${ESC_PATTERN}\\\\)`,
@@ -40,9 +36,8 @@ function getStyledCharacters(text: string): string[] {
 
   for (let index = 0; index < text.length;) {
     if (text.charCodeAt(index) === 0x1b) {
-      const match = CSI_SEQUENCE_REGEXP.exec(text.slice(index));
-      if (match) {
-        const sequence = match[0];
+      const sequence = readCsiSequenceAt(text, index);
+      if (sequence) {
         if (sequence.endsWith("m")) {
           style = isSgrReset(sequence) ? "" : style + sequence;
         }
@@ -51,9 +46,9 @@ function getStyledCharacters(text: string): string[] {
       }
     }
 
-    UNICODE_CHAR_REGEXP.lastIndex = 0;
-    const match = UNICODE_CHAR_REGEXP.exec(text.slice(index));
-    const char = match?.index === 0
+    UNICODE_CHAR_REGEXP.lastIndex = index;
+    const match = UNICODE_CHAR_REGEXP.exec(text);
+    const char = match?.index === index
       ? match[0]
       : String.fromCodePoint(text.codePointAt(index) ?? text.charCodeAt(index));
     cells.push(style ? `${style}${char}\x1b[0m` : char);
@@ -85,7 +80,7 @@ export function textWidth(text: string, start = 0): number {
   if (!text) return 0;
 
   let width = 0;
-  for (const cell of iterateTextCells(start > 0 ? text.slice(start) : text)) {
+  for (const cell of iterateTextCells(text, start)) {
     if (cell.plain === "\n") break;
     width += characterWidth(cell.plain);
   }
@@ -126,12 +121,12 @@ export function cropToWidth(text: string, width: number): string {
   return cropped;
 }
 
-function* iterateTextCells(text: string): Generator<{ raw: string; plain: string }, void, void> {
-  let index = 0;
+function* iterateTextCells(text: string, start = 0): Generator<{ raw: string; plain: string }, void, void> {
+  let index = start;
   let prefix = "";
   while (index < text.length) {
     if (text.charCodeAt(index) === 0x1b) {
-      const sequence = ANSI_SEQUENCE_REGEXP.exec(text.slice(index))?.[0];
+      const sequence = readAnsiSequenceAt(text, index);
       if (sequence) {
         prefix += sequence;
         index += sequence.length;
@@ -154,9 +149,9 @@ function nextTextCharacter(text: string, index: number): string {
   const codeUnit = text.charCodeAt(index);
   if (codeUnit < 0x80) return text[index] ?? "";
 
-  UNICODE_CHAR_REGEXP.lastIndex = 0;
-  const match = UNICODE_CHAR_REGEXP.exec(text.slice(index));
-  if (match?.index === 0) return match[0];
+  UNICODE_CHAR_REGEXP.lastIndex = index;
+  const match = UNICODE_CHAR_REGEXP.exec(text);
+  if (match?.index === index) return match[0];
   return String.fromCodePoint(text.codePointAt(index) ?? codeUnit);
 }
 
@@ -164,11 +159,49 @@ function isAnsiResetOnly(value: string): boolean {
   if (!value) return false;
   let index = 0;
   while (index < value.length) {
-    const sequence = ANSI_SEQUENCE_REGEXP.exec(value.slice(index))?.[0];
+    const sequence = readAnsiSequenceAt(value, index);
     if (!sequence || !sequence.endsWith("m") || !isSgrReset(sequence)) return false;
     index += sequence.length;
   }
   return true;
+}
+
+function readAnsiSequenceAt(value: string, start: number): string | undefined {
+  return readCsiSequenceAt(value, start) ?? readOscSequenceAt(value, start);
+}
+
+function readCsiSequenceAt(value: string, start: number): string | undefined {
+  if (value.charCodeAt(start) !== 0x1b || value[start + 1] !== "[") return undefined;
+  let index = start + 2;
+  while (index < value.length) {
+    const code = value.charCodeAt(index);
+    if (code >= 0x30 && code <= 0x3f) {
+      index++;
+      continue;
+    }
+    break;
+  }
+  while (index < value.length) {
+    const code = value.charCodeAt(index);
+    if (code >= 0x20 && code <= 0x2f) {
+      index++;
+      continue;
+    }
+    break;
+  }
+  const finalCode = value.charCodeAt(index);
+  if (!(finalCode >= 0x40 && finalCode <= 0x7e)) return undefined;
+  return value.slice(start, index + 1);
+}
+
+function readOscSequenceAt(value: string, start: number): string | undefined {
+  if (!value.startsWith("\x1b]", start)) return undefined;
+  const contentStart = start + 2;
+  const belEnd = value.indexOf("\x07", contentStart);
+  const stEnd = value.indexOf("\x1b\\", contentStart);
+  const end = belEnd >= 0 && stEnd >= 0 ? Math.min(belEnd, stEnd) : belEnd >= 0 ? belEnd : stEnd;
+  if (end < 0) return undefined;
+  return value.slice(start, end + (end === stEnd ? 2 : 1));
 }
 
 /** Public helper for is Final Ansi Byte. */
