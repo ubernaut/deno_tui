@@ -413,6 +413,67 @@ Deno.test("ThreePanelFrameView drops stale frames after ascii config rebuilds", 
   }
 });
 
+Deno.test("ThreePanelFrameView tolerates repeated hide restore reconfigure resize and dispose cycles", async () => {
+  const rectangle = new Signal({ column: 0, row: 0, width: 12, height: 6 }, { deepObserve: true });
+  const scene = new Signal<ThreeSceneState | null>(sceneState());
+  const ascii = new Signal(createDefaultAsciiOptions("sharp"));
+  const enabled = new Signal(true);
+  const renderers: SlowGridRenderer[] = [];
+  const panel = new ThreePanelFrameView({
+    rectangle,
+    scene,
+    ascii,
+    enabled,
+    frameInterval: 1000 / 30,
+    rendererFactory: (options) => {
+      const renderer = new SlowGridRenderer(options.columns, options.rows, String(renderers.length));
+      renderers.push(renderer);
+      return renderer;
+    },
+  });
+
+  try {
+    await waitFor(() => (renderers[0]?.startCount ?? 0) >= 1);
+    enabled.value = false;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    renderers[0]?.completeFrame();
+    await waitFor(() => renderers[0]?.destroyed === true);
+    assertEquals(panel.grid.peek(), []);
+
+    enabled.value = true;
+    await waitFor(() => (renderers[1]?.startCount ?? 0) >= 1);
+    renderers[1]?.completeFrame();
+    await waitFor(() => panel.grid.peek()[0]?.[0] === "1");
+
+    ascii.value = { ...ascii.peek(), wireframeThickness: ascii.peek().wireframeThickness + 1 };
+    await waitFor(() => (renderers[2]?.startCount ?? 0) >= 1);
+    assertEquals(renderers[1]?.destroyed, true);
+    rectangle.value = { column: 0, row: 0, width: 20, height: 8 };
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assertEquals(panel.inspectLifecycle().state, "stopping");
+    renderers[2]?.completeFrame();
+
+    await waitFor(() => (renderers[2]?.startCount ?? 0) >= 2);
+    assertEquals(renderers[2]?.setSizeDuringRender, 0);
+    renderers[2]?.completeFrame();
+    await waitFor(() => panel.grid.peek().length === 8);
+
+    const updatesBeforeDispose = panel.grid.peek();
+    await waitFor(() => (renderers[2]?.startCount ?? 0) >= 3);
+    panel.dispose();
+    assertEquals(panel.inspectLifecycle().state, "disposed");
+    renderers[2]?.completeFrame();
+    await waitFor(() => renderers[2]?.destroyed === true);
+    assertEquals(panel.grid.peek(), updatesBeforeDispose);
+  } finally {
+    panel.dispose();
+    rectangle.dispose();
+    scene.dispose();
+    ascii.dispose();
+    enabled.dispose();
+  }
+});
+
 Deno.test("ThreePanelFrameView can use Kitty image frames without drawing ASCII cells", async () => {
   const rectangle = new Signal({ column: 0, row: 0, width: 8, height: 4 }, { deepObserve: true });
   const graphicsRectangle = new Signal({ column: 5, row: 6, width: 8, height: 4 }, { deepObserve: true });
