@@ -191,7 +191,7 @@ type ControlHitAction = "previous" | "next" | "activate" | "set" | "focus" | "to
 type ConfigHitAction = "previous" | "next" | "activate";
 type AsciiConfigModalAction = "cancel" | "apply" | "ok";
 type TerminalOutputAction = "run" | "stop" | "restart" | "clear" | "follow" | "copy" | "raw";
-type TerminalShellAction = "start" | "stop" | "restart" | "clear" | "raw";
+type TerminalShellAction = "start" | "stop" | "restart" | "clear" | "raw" | "copy" | "top" | "bottom";
 type ButtonTone = "default" | "danger" | "warning" | "success" | "muted";
 type AsciiNumericKey =
   | "edgeThreshold"
@@ -1918,11 +1918,14 @@ function toggleTerminalInputMode(): void {
 function renderTerminalShell(frame: Frame, rect: Rectangle): void {
   const t = theme();
   fillRect(frame, rect, t.surface);
-  const inspection = terminalShell.inspect();
   let row = rect.row;
   row = renderTerminalShellToolbar(frame, rect, row);
   if (row >= rect.row + rect.height) return;
 
+  const screenHeight = Math.max(1, rect.row + rect.height - row - 2);
+  terminalShell.resize(rect.width, screenHeight);
+  const inspection = terminalShell.inspect();
+  const copyMode = inspection.scrollback.mode === "copy";
   const statusTone = inspection.status === "running"
     ? t.good
     : inspection.status === "failed"
@@ -1933,11 +1936,13 @@ function renderTerminalShell(frame: Frame, rect: Rectangle): void {
     ? t.accent
     : t.borderStrong;
   const backend = inspection.backendLabel ?? "pending";
-  const mode = terminalShellInputModeLabel();
+  const mode = copyMode ? "COPY MODE" : terminalShellInputModeLabel();
   const status = compactSpaces(
     `${mode} ${inspection.status.toUpperCase()} ${
       terminalBackendKindLabel(inspection.pty)
-    } ${backend} · ${inspection.commandLine}`,
+    } ${backend} · ${inspection.commandLine} · rows ${inspection.scrollback.offset + 1}-${
+      Math.min(inspection.scrollback.offset + inspection.scrollback.viewportRows, inspection.scrollback.totalRows)
+    }/${inspection.scrollback.totalRows}`,
   );
   write(
     frame,
@@ -1951,14 +1956,14 @@ function renderTerminalShell(frame: Frame, rect: Rectangle): void {
   );
   row += 1;
 
-  const hint = terminalShellInputMode.peek() === "raw"
+  const hint = copyMode
+    ? "copy mode: PageUp/PageDown scroll  Home/End jump  C copy selection  Esc live input"
+    : terminalShellInputMode.peek() === "raw"
     ? "raw shell input: keys go to shell  Ctrl+C interrupts shell  Esc returns to Workbench"
-    : "keys: P start  S stop  U restart  K clear  I raw input";
+    : "keys: P start  S stop  U restart  K clear  I raw input  PageUp copy scroll";
   write(frame, row, rect.column, paint(fit(hint, rect.width), { fg: t.soft, bg: t.panelSoft }));
   row += 1;
 
-  const screenHeight = Math.max(1, rect.row + rect.height - row);
-  terminalShell.resize(rect.width, screenHeight);
   if (inspection.error) {
     write(
       frame,
@@ -1985,6 +1990,36 @@ function renderTerminalShell(frame: Frame, rect: Rectangle): void {
     return;
   }
 
+  if (copyMode) {
+    const rows = inspection.scrollback.visibleRows;
+    for (let screenRow = 0; screenRow < screenHeight; screenRow += 1) {
+      const text = rows[screenRow] ?? "";
+      const lineNumber = inspection.scrollback.offset + screenRow + 1;
+      const prefix = `${lineNumber.toString().padStart(4, " ")} `;
+      write(
+        frame,
+        row + screenRow,
+        rect.column,
+        paint(fit(prefix, Math.min(5, rect.width)), {
+          fg: t.soft,
+          bg: t.panelSoft,
+        }),
+      );
+      if (rect.width > 5) {
+        write(
+          frame,
+          row + screenRow,
+          rect.column + 5,
+          paint(fit(text, rect.width - 5), {
+            fg: t.text,
+            bg: t.surface,
+          }),
+        );
+      }
+    }
+    return;
+  }
+
   const cursor = terminalShell.screen.cursor;
   const cursorActive = activeWindow.peek() === TERMINAL_SHELL_WINDOW_ID && terminalShellInputMode.peek() === "raw" &&
     terminalShell.running;
@@ -2005,6 +2040,7 @@ function renderTerminalShellToolbar(frame: Frame, rect: Rectangle, startRow: num
   const bottom = rect.row + rect.height;
   let row = startRow;
   let column = rect.column;
+  const shellInspection = terminalShell.inspect();
   const addButton = (
     label: string,
     action: TerminalShellAction,
@@ -2029,6 +2065,13 @@ function renderTerminalShellToolbar(frame: Frame, rect: Rectangle, startRow: num
   addButton("Restart", "restart", { tone: "warning" });
   addButton("Clear", "clear", { tone: "muted" });
   addButton("Raw", "raw", { active: terminalShellInputMode.peek() === "raw", disabled: !terminalShell.running });
+  addButton("Copy", "copy", { active: terminalShell.scrollback.mode === "copy" });
+  addButton("Top", "top", {
+    disabled: shellInspection.scrollback.totalRows <= shellInspection.scrollback.viewportRows,
+  });
+  addButton("Bottom", "bottom", {
+    disabled: shellInspection.scrollback.totalRows <= shellInspection.scrollback.viewportRows,
+  });
   return Math.min(bottom, row + 1);
 }
 
@@ -4094,6 +4137,7 @@ async function applyTerminalShellAction(action: TerminalShellAction): Promise<vo
   focus(TERMINAL_SHELL_WINDOW_ID);
   if (action === "start") {
     await terminalShell.start();
+    terminalShell.scrollback.exitCopyMode();
     terminalShellInputMode.value = "raw";
     pushLog("shell start");
   } else if (action === "stop") {
@@ -4102,13 +4146,32 @@ async function applyTerminalShellAction(action: TerminalShellAction): Promise<vo
     pushLog("shell stop");
   } else if (action === "restart") {
     await terminalShell.restart();
+    terminalShell.scrollback.exitCopyMode();
     terminalShellInputMode.value = "raw";
     pushLog("shell restart");
   } else if (action === "clear") {
     terminalShell.clear();
+    terminalShell.scrollback.exitCopyMode();
     pushLog("shell clear");
   } else if (action === "raw") {
     toggleTerminalShellInputMode();
+  } else if (action === "copy") {
+    if (terminalShell.scrollback.mode === "copy") {
+      terminalShell.scrollback.exitCopyMode();
+      pushLog("shell copy mode off");
+    } else {
+      terminalShell.scrollback.enterCopyMode();
+      terminalShellInputMode.value = "workbench";
+      pushLog("shell copy mode on");
+    }
+  } else if (action === "top") {
+    terminalShell.scrollback.toTop();
+    terminalShellInputMode.value = "workbench";
+    pushLog("shell scroll top");
+  } else if (action === "bottom") {
+    terminalShell.scrollback.toBottom();
+    terminalShellInputMode.value = "workbench";
+    pushLog("shell scroll bottom");
   }
   scheduleDraw();
 }
@@ -4177,6 +4240,28 @@ function handleWorkbenchKey(event: KeyPressEvent): void {
 }
 
 function handleTerminalShellKey(event: KeyPressEvent): boolean {
+  if (terminalShell.scrollback.mode === "copy") {
+    if (event.key === "escape" || event.key.toLowerCase() === "i") {
+      terminalShell.scrollback.exitCopyMode();
+      terminalShellInputMode.value = terminalShell.running ? "raw" : "workbench";
+      pushLog("shell copy mode off");
+      return true;
+    }
+    if (event.ctrl || event.meta) return false;
+    if (event.key === "pageup") terminalShell.scrollback.page(-1);
+    else if (event.key === "pagedown") terminalShell.scrollback.page(1);
+    else if (event.key === "home") terminalShell.scrollback.toTop();
+    else if (event.key === "end") terminalShell.scrollback.toBottom();
+    else if (event.key === "up") terminalShell.scrollback.scrollLines(-1);
+    else if (event.key === "down") terminalShell.scrollback.scrollLines(1);
+    else if (event.key.toLowerCase() === "c") {
+      const text = terminalShell.scrollback.copySelection();
+      pushLog(text ? `shell copied ${text.length} chars` : "shell selection empty");
+    } else return false;
+    scheduleDraw();
+    return true;
+  }
+
   if (terminalShellInputMode.peek() === "raw") {
     if (event.key === "escape") {
       terminalShellInputMode.value = "workbench";
@@ -4199,6 +4284,13 @@ function handleTerminalShellKey(event: KeyPressEvent): boolean {
 
   if (event.ctrl || event.meta) return false;
   const key = event.key.toLowerCase();
+  if (event.key === "pageup" || event.key === "pagedown") {
+    terminalShell.scrollback.enterCopyMode();
+    terminalShell.scrollback.page(event.key === "pageup" ? -1 : 1);
+    terminalShellInputMode.value = "workbench";
+    scheduleDraw();
+    return true;
+  }
   const action = key === "p"
     ? "start"
     : key === "s"
@@ -4209,6 +4301,10 @@ function handleTerminalShellKey(event: KeyPressEvent): boolean {
     ? "clear"
     : key === "i"
     ? "raw"
+    : event.key === "home"
+    ? "top"
+    : event.key === "end"
+    ? "bottom"
     : undefined;
   if (!action) return false;
   void applyTerminalShellAction(action);

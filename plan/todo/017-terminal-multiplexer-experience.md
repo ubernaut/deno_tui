@@ -59,6 +59,8 @@ developer workflows.
   match movement, selection clearing, and selection copy actions.
 - Wired `TerminalShellController` to expose a built-in scrollback/copy-mode controller and inspection snapshot, with
   viewport sizing kept in sync with shell resize events.
+- Wired the API Workbench Shell window to render copy-mode scrollback rows, expose copy/top/bottom toolbar controls, and
+  handle PageUp/PageDown/Home/End shell scrollback navigation without sending those keys to the PTY.
 - Extended `TerminalScreenController` SGR handling to cover 256-color, truecolor, and bright foreground/background
   styles while preserving existing cell inspection shape.
 - Added terminal cursor save/restore support for CSI `s`/`u` and legacy ESC `7`/`8` sequences.
