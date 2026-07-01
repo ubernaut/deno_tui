@@ -167,6 +167,8 @@ Work:
 - [x] Record thresholds in the benchmark catalog and wire the most useful non-flaky cases into health or e2e.
   - [x] Added benchmark CLI selectors for filtering by name/search, category, tag, and thresholded status so long
         optimization passes can rerun only the relevant integration workload before the full health gate.
+  - [x] Removed intermediate sampled-array allocation from `renderSparkline()`, keeping dashboard trend rendering on a
+        tight width-bounded loop.
 
 Acceptance checks:
 
