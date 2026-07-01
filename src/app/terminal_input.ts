@@ -15,6 +15,7 @@ export interface TerminalInputTarget {
 /** Options for encoding and routing terminal input. */
 export interface TerminalInputRoutingOptions {
   mode?: TerminalInputMode;
+  bracketedPaste?: boolean;
   reservedKeys?: readonly string[];
   reservedCtrlKeys?: readonly string[];
 }
@@ -47,9 +48,14 @@ export function encodeTerminalKeyPress(event: Pick<KeyPressEvent, "key" | "buffe
   return undefined;
 }
 
-/** Encodes bracketed paste payload text for a child process. */
-export function encodeTerminalPaste(event: Pick<PasteEvent, "text" | "buffer">): Uint8Array {
-  return event.buffer.byteLength > 0 ? new Uint8Array(event.buffer) : textEncoder.encode(event.text);
+/** Encodes paste payload text for a child process, optionally using xterm bracketed paste framing. */
+export function encodeTerminalPaste(
+  event: Pick<PasteEvent, "text" | "buffer">,
+  options: Pick<TerminalInputRoutingOptions, "bracketedPaste"> = {},
+): Uint8Array {
+  if (event.buffer.byteLength > 0) return new Uint8Array(event.buffer);
+  const text = options.bracketedPaste ? `\x1b[200~${event.text}\x1b[201~` : event.text;
+  return textEncoder.encode(text);
 }
 
 /** Returns true when a key should stay with the host workbench instead of the child process. */
@@ -85,7 +91,7 @@ export async function routeTerminalPaste(
 ): Promise<TerminalInputRouteDecision> {
   if ((options.mode ?? "workbench") !== "raw") return { routed: false, reason: "workbench-mode" };
   if (!terminalInputTargetRunning(session)) return { routed: false, reason: "not-running" };
-  const bytes = encodeTerminalPaste(event);
+  const bytes = encodeTerminalPaste(event, options);
   const routed = await writeTerminalInput(session, bytes);
   return routed ? { routed, reason: "encoded", bytes } : { routed, reason: "write-failed", bytes };
 }

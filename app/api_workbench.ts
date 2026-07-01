@@ -3767,7 +3767,10 @@ function handleTerminalShellKey(event: KeyPressEvent): boolean {
 
 function handleTerminalShellPaste(event: PasteEvent): boolean {
   if (activeWindow.peek() !== TERMINAL_SHELL_WINDOW_ID || terminalShellInputMode.peek() !== "raw") return false;
-  void routeTerminalPaste(terminalShell, event, { mode: "raw" }).then((decision) => {
+  void routeTerminalPaste(terminalShell, event, {
+    mode: "raw",
+    bracketedPaste: terminalShell.inspect().screen.privateModes.includes(2004),
+  }).then((decision) => {
     if (!decision.routed) pushLog(`shell paste ${decision.reason}`);
     scheduleDraw();
   });

@@ -5,7 +5,12 @@ import {
   visibleTerminalOutputLines,
 } from "../src/components/terminal_output.ts";
 import { bindTerminalCommands, type TerminalCommandAction, terminalCommands } from "../src/app/terminal_commands.ts";
-import { encodeTerminalKeyPress, routeTerminalKeyPress, routeTerminalPaste } from "../src/app/terminal_input.ts";
+import {
+  encodeTerminalKeyPress,
+  encodeTerminalPaste,
+  routeTerminalKeyPress,
+  routeTerminalPaste,
+} from "../src/app/terminal_input.ts";
 import { type Command, CommandRegistry } from "../src/app/commands.ts";
 import {
   formatProcessCommandLine,
@@ -278,6 +283,46 @@ Deno.test("terminal input routing preserves reserved keys and writes raw mode by
   assertEquals((await routeTerminalKeyPress(session, keyPress("return"), { mode: "raw" })).reason, "encoded");
   assertEquals((await routeTerminalPaste(session, paste("paste text"), { mode: "raw" })).reason, "encoded");
   assertEquals(writes, ["a", "\r", "paste text"]);
+
+  resolveStatus({ code: 0, success: true });
+  await run;
+  await session.dispose();
+});
+
+Deno.test("terminal paste routing supports negotiated bracketed paste framing", async () => {
+  const encoder = new TextEncoder();
+  assertEquals([...encodeTerminalPaste(paste("alpha\nbeta"))], [...encoder.encode("alpha\nbeta")]);
+  assertEquals(
+    [...encodeTerminalPaste(paste("alpha\nbeta"), { bracketedPaste: true })],
+    [...encoder.encode("\x1b[200~alpha\nbeta\x1b[201~")],
+  );
+  assertEquals(
+    [...encodeTerminalPaste({ ...paste("ignored"), buffer: encoder.encode("raw paste") }, { bracketedPaste: true })],
+    [...encoder.encode("raw paste")],
+  );
+
+  const writes: string[] = [];
+  let resolveStatus!: (status: { code: number; signal?: string | null; success: boolean }) => void;
+  const status = new Promise<{ code: number; signal?: string | null; success: boolean }>((resolve) => {
+    resolveStatus = resolve;
+  });
+  const session = new ProcessSessionController({
+    command: "demo",
+    spawn: () => ({
+      stdin: writableTextSink(writes),
+      stdout: streamFromText(""),
+      stderr: streamFromText(""),
+      status,
+      kill: () => resolveStatus({ code: 143, signal: "SIGTERM", success: false }),
+    }),
+  });
+  const run = session.start();
+
+  assertEquals(
+    (await routeTerminalPaste(session, paste("safe\npaste"), { mode: "raw", bracketedPaste: true })).reason,
+    "encoded",
+  );
+  assertEquals(writes, ["\x1b[200~safe\npaste\x1b[201~"]);
 
   resolveStatus({ code: 0, success: true });
   await run;

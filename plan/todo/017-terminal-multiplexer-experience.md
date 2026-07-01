@@ -92,3 +92,5 @@ developer workflows.
   terminal transcripts.
 - Added legacy alternate-screen and cursor-save private modes (`CSI ? 47 h/l`, `CSI ? 1047 h/l`, `CSI ? 1048 h/l`, and
   save/restore cursor semantics for `CSI ? 1049 h/l`) so more curses/full-screen apps restore shell state correctly.
+- Added bracketed-paste-aware raw input routing so embedded shells that negotiate DEC private mode 2004 receive pasted
+  text framed as `CSI 200~`/`CSI 201~` while explicit raw paste buffers remain byte-preserving.
