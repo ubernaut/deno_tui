@@ -131,7 +131,7 @@ Deno.test("SystemMonitor bounds process scans and reports degraded sources", asy
   assertEquals(
     snapshot.diagnostics.some((diagnostic) =>
       diagnostic.source === "process" && diagnostic.status === "limited" &&
-      diagnostic.detail.includes("2")
+      diagnostic.detail.includes("2") && typeof diagnostic.durationMs === "number"
     ),
     true,
   );
@@ -227,7 +227,31 @@ Deno.test("SystemMonitor keeps sampling when required sources are partially unav
   assertEquals(
     snapshot.diagnostics.some((diagnostic) =>
       diagnostic.source === "process" && diagnostic.status === "unavailable" &&
-      diagnostic.detail.includes("permission denied")
+      diagnostic.detail.includes("permission denied") && typeof diagnostic.durationMs === "number"
+    ),
+    true,
+  );
+});
+
+Deno.test("SystemMonitor degrades disk metrics when df command throws", async () => {
+  const provider = new FixtureMetricsProvider();
+  provider.files.set("/proc/stat", procStatFirst());
+  provider.files.set("/proc/uptime", "123.45 100.00\n");
+  provider.files.set("/proc/net/dev", procNetDev(1_000, 2_000));
+  provider.commandErrors.set("df", new Error("command missing"));
+
+  const monitor = new SystemMonitor({
+    historyLength: 4,
+    provider,
+  });
+  await monitor.sample();
+
+  const snapshot = monitor.snapshot.peek();
+  assertEquals(snapshot.timestamp, 1_000);
+  assertEquals(
+    snapshot.diagnostics.some((diagnostic) =>
+      diagnostic.source === "disk" && diagnostic.status === "unavailable" &&
+      diagnostic.detail.includes("command missing") && typeof diagnostic.durationMs === "number"
     ),
     true,
   );
@@ -268,6 +292,7 @@ class FixtureMetricsProvider implements SystemMetricsProvider {
   dirs = new Map<string, SystemMetricsDirEntry[]>();
   dirErrors = new Map<string, Error>();
   commands = new Map<string, SystemMetricsCommandOutput>();
+  commandErrors = new Map<string, Error>();
   commandCalls = new Map<string, number>();
 
   now(): number {
@@ -329,6 +354,8 @@ class FixtureMetricsProvider implements SystemMetricsProvider {
 
   async command(command: string, _args: string[]): Promise<SystemMetricsCommandOutput> {
     this.commandCalls.set(command, (this.commandCalls.get(command) ?? 0) + 1);
+    const error = this.commandErrors.get(command);
+    if (error) throw error;
     return this.commands.get(command) ?? { success: false, stdout: new Uint8Array() };
   }
 }

@@ -198,6 +198,7 @@ Work:
 - [x] Add Linux provider implementations plus fixture providers for tests and demos.
 - [ ] Add structured sampler diagnostics: unavailable source, permission denied, command missing, timeout, stale data,
       and sample duration.
+  - [x] Added command-throw degradation for disk sampling and process scan durations in source diagnostics.
 - [x] Keep monitor snapshots advancing when required `/proc` reads or process scans fail, with structured per-source
       diagnostics for unavailable CPU, uptime, network, and process data.
 - [x] Bound expensive process scans and support configurable process limits, sort keys, and refresh cadence.

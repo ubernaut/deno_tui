@@ -34,6 +34,7 @@ type ProcessStatsSample = {
   scanned: number;
   failedReads: number;
   limited: boolean;
+  durationMs: number;
   scanError?: string;
 };
 
@@ -464,7 +465,21 @@ export class SystemMonitor {
     }
 
     const started = performance.now();
-    const result = await this.#provider.command("df", ["-B1P", "-x", "tmpfs", "-x", "devtmpfs", "-x", "squashfs"]);
+    let result: SystemMetricsCommandOutput;
+    try {
+      result = await this.#provider.command("df", ["-B1P", "-x", "tmpfs", "-x", "devtmpfs", "-x", "squashfs"]);
+    } catch (error) {
+      return {
+        disks: this.#diskCache.disks,
+        diagnostic: {
+          source: "disk",
+          status: this.#diskCache.disks.length > 0 ? "degraded" : "unavailable",
+          detail: `df command failed: ${errorMessage(error)}`,
+          durationMs: performance.now() - started,
+          sampledAt: now,
+        },
+      };
+    }
     if (!result.success) {
       return {
         disks: this.#diskCache.disks,
@@ -522,6 +537,7 @@ export class SystemMonitor {
   }
 
   async #collectProcessStats(): Promise<ProcessStatsSample> {
+    const started = performance.now();
     const entries: number[] = [];
     try {
       for await (const entry of this.#provider.readDir("/proc")) {
@@ -538,6 +554,7 @@ export class SystemMonitor {
         scanned: 0,
         failedReads: 0,
         limited: false,
+        durationMs: performance.now() - started,
         scanError: errorMessage(error),
       };
     }
@@ -554,6 +571,7 @@ export class SystemMonitor {
       scanned: entries.length,
       failedReads: stats.filter((result) => result.status === "rejected").length,
       limited: entries.length >= this.#processScanLimit,
+      durationMs: performance.now() - started,
     };
   }
 
@@ -901,6 +919,7 @@ function processDiagnostics(sample: ProcessStatsSample, sampledAt: number): Syst
       source: "process",
       status: "unavailable",
       detail: `/proc scan failed: ${sample.scanError}`,
+      durationMs: sample.durationMs,
       sampledAt,
     };
   }
@@ -909,6 +928,7 @@ function processDiagnostics(sample: ProcessStatsSample, sampledAt: number): Syst
       source: "process",
       status: "limited",
       detail: `process scan capped at ${sample.scanned} entries`,
+      durationMs: sample.durationMs,
       sampledAt,
     };
   }
@@ -917,6 +937,7 @@ function processDiagnostics(sample: ProcessStatsSample, sampledAt: number): Syst
       source: "process",
       status: "degraded",
       detail: `${sample.failedReads} process stat read(s) failed`,
+      durationMs: sample.durationMs,
       sampledAt,
     };
   }
@@ -924,6 +945,7 @@ function processDiagnostics(sample: ProcessStatsSample, sampledAt: number): Syst
     source: "process",
     status: "ok",
     detail: `sampled ${sample.scanned} process entries`,
+    durationMs: sample.durationMs,
     sampledAt,
   };
 }
