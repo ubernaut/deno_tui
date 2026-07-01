@@ -9054,6 +9054,9 @@ var TerminalScreenController = class {
   }
   #newline() {
     this.#state.cursor.column = 0;
+    this.#index();
+  }
+  #index() {
     if (this.#state.cursor.row === this.#scrollRegion.bottom) {
       this.#scrollRegionUp(this.#scrollRegion.top, this.#scrollRegion.bottom, 1);
       return;
@@ -9102,9 +9105,18 @@ var TerminalScreenController = class {
         this.#state.cursor.column = clamp3(this.#state.cursor.column + (params[0] || 1), 0, this.#columns - 1);
         break;
       case "D":
+        if (sequence.kind === "esc") {
+          this.#index();
+          break;
+        }
         this.#state.cursor.column = clamp3(this.#state.cursor.column - (params[0] || 1), 0, this.#columns - 1);
         break;
       case "E":
+        if (sequence.kind === "esc") {
+          this.#state.cursor.column = 0;
+          this.#index();
+          break;
+        }
         this.#state.cursor.row = clamp3(this.#state.cursor.row + (params[0] || 1), 0, this.#rows - 1);
         this.#state.cursor.column = 0;
         break;
@@ -9117,6 +9129,9 @@ var TerminalScreenController = class {
         break;
       case "d":
         this.#setCursorPosition(params[0] || 1, this.#state.cursor.column + 1);
+        break;
+      case "c":
+        if (sequence.kind === "esc") this.#reset();
         break;
       case "g":
         this.#clearTabStops(params[0] ?? 0);
@@ -9387,6 +9402,21 @@ var TerminalScreenController = class {
     }
     this.#state.cursor.row = Math.max(0, this.#state.cursor.row - 1);
   }
+  #reset() {
+    this.#mainState = void 0;
+    this.#scrollback = [];
+    this.#style = {};
+    this.#savedCursor = void 0;
+    this.#title = void 0;
+    this.#hyperlink = void 0;
+    this.#cursorVisible = true;
+    this.#cursorStyle = { shape: "block", blinking: true };
+    this.#privateModes.clear();
+    this.#originMode = false;
+    this.#autoWrap = true;
+    this.#insertMode = false;
+    this.clear();
+  }
   #enterAlternate() {
     if (this.#mainState) return;
     this.#mainState = cloneState(this.#state);
@@ -9404,7 +9434,7 @@ var TerminalScreenController = class {
 function parseControlSequence(value) {
   const osc = parseOscSequence(value);
   if (osc) return osc;
-  if (value.startsWith("\x1B7") || value.startsWith("\x1B8") || value.startsWith("\x1BM") || value.startsWith("\x1BH")) {
+  if (value.startsWith("\x1B7") || value.startsWith("\x1B8") || value.startsWith("\x1BM") || value.startsWith("\x1BH") || value.startsWith("\x1BD") || value.startsWith("\x1BE") || value.startsWith("\x1Bc")) {
     return {
       kind: "esc",
       private: false,

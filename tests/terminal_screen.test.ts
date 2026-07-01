@@ -167,6 +167,39 @@ Deno.test("TerminalScreenController supports insert and replace character modes"
   assertEquals(screen.textRows()[0], "abZZcdef");
 });
 
+Deno.test("TerminalScreenController supports ESC index and next-line controls", () => {
+  const screen = new TerminalScreenController({ columns: 8, rows: 3, scrollbackLimit: 2 });
+
+  screen.write("ab\x1bDcd\x1bEef");
+  assertEquals(screen.textRows(), ["ab", "  cd", "ef"]);
+  assertEquals(screen.inspect().cursor, { column: 2, row: 2 });
+
+  screen.write("\x1b[3;1Hbottom\x1bD\rnext");
+  assertEquals(screen.scrollbackTextRows(), ["ab"]);
+  assertEquals(screen.textRows(), ["  cd", "bottom", "next"]);
+});
+
+Deno.test("TerminalScreenController supports ESC c reset", () => {
+  const screen = new TerminalScreenController({ columns: 8, rows: 2, scrollbackLimit: 2 });
+
+  screen.write("\x1b]0;session\x07\x1b[?25l\x1b[?1049h\x1b[1;31mred\nline");
+  screen.write("\x1bcplain");
+
+  assertEquals(screen.inspect(), {
+    columns: 8,
+    rows: 2,
+    cursor: { column: 5, row: 0 },
+    cursorVisible: true,
+    cursorStyle: { shape: "block", blinking: true },
+    privateModes: [],
+    scrollbackRows: 0,
+    alternate: false,
+    title: undefined,
+  });
+  assertEquals(screen.cellRows()[0]![0], { char: "p" });
+  assertEquals(screen.textRows(), ["plain", ""]);
+});
+
 Deno.test("TerminalScreenController clips insert mode at the row edge", () => {
   const screen = new TerminalScreenController({ columns: 6, rows: 2 });
 

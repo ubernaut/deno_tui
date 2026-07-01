@@ -197,6 +197,10 @@ export class TerminalScreenController {
 
   #newline(): void {
     this.#state.cursor.column = 0;
+    this.#index();
+  }
+
+  #index(): void {
     if (this.#state.cursor.row === this.#scrollRegion.bottom) {
       this.#scrollRegionUp(this.#scrollRegion.top, this.#scrollRegion.bottom, 1);
       return;
@@ -246,9 +250,18 @@ export class TerminalScreenController {
         this.#state.cursor.column = clamp(this.#state.cursor.column + (params[0] || 1), 0, this.#columns - 1);
         break;
       case "D":
+        if (sequence.kind === "esc") {
+          this.#index();
+          break;
+        }
         this.#state.cursor.column = clamp(this.#state.cursor.column - (params[0] || 1), 0, this.#columns - 1);
         break;
       case "E":
+        if (sequence.kind === "esc") {
+          this.#state.cursor.column = 0;
+          this.#index();
+          break;
+        }
         this.#state.cursor.row = clamp(this.#state.cursor.row + (params[0] || 1), 0, this.#rows - 1);
         this.#state.cursor.column = 0;
         break;
@@ -261,6 +274,9 @@ export class TerminalScreenController {
         break;
       case "d":
         this.#setCursorPosition(params[0] || 1, this.#state.cursor.column + 1);
+        break;
+      case "c":
+        if (sequence.kind === "esc") this.#reset();
         break;
       case "g":
         this.#clearTabStops(params[0] ?? 0);
@@ -553,6 +569,22 @@ export class TerminalScreenController {
     this.#state.cursor.row = Math.max(0, this.#state.cursor.row - 1);
   }
 
+  #reset(): void {
+    this.#mainState = undefined;
+    this.#scrollback = [];
+    this.#style = {};
+    this.#savedCursor = undefined;
+    this.#title = undefined;
+    this.#hyperlink = undefined;
+    this.#cursorVisible = true;
+    this.#cursorStyle = { shape: "block", blinking: true };
+    this.#privateModes.clear();
+    this.#originMode = false;
+    this.#autoWrap = true;
+    this.#insertMode = false;
+    this.clear();
+  }
+
   #enterAlternate(): void {
     if (this.#mainState) return;
     this.#mainState = cloneState(this.#state);
@@ -587,7 +619,8 @@ function parseControlSequence(value: string): ParsedControlSequence | undefined 
   const osc = parseOscSequence(value);
   if (osc) return osc;
   if (
-    value.startsWith("\x1b7") || value.startsWith("\x1b8") || value.startsWith("\x1bM") || value.startsWith("\x1bH")
+    value.startsWith("\x1b7") || value.startsWith("\x1b8") || value.startsWith("\x1bM") ||
+    value.startsWith("\x1bH") || value.startsWith("\x1bD") || value.startsWith("\x1bE") || value.startsWith("\x1bc")
   ) {
     return {
       kind: "esc",

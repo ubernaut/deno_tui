@@ -88,3 +88,5 @@ developer workflows.
   wrapping when they disable wrap mode.
 - Added non-private insert/replace mode handling (`CSI 4 h/l`) so terminal output can insert characters into existing
   rows without emulating insert mode manually.
+- Added single-character ESC index, next-line, and reset controls (`ESC D`, `ESC E`, `ESC c`) for older and curses-style
+  terminal transcripts.
