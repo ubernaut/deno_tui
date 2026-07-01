@@ -10024,9 +10024,9 @@ function parseExtendedSgrColor(values, index) {
   return void 0;
 }
 function createRows(columns, rows2) {
-  const output = [];
+  const output = new Array(rows2);
   for (let row = 0; row < rows2; row += 1) {
-    output.push(blankRow(columns));
+    output[row] = blankRow(columns);
   }
   return output;
 }
