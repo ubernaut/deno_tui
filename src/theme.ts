@@ -39,6 +39,7 @@ import {
   compileThemeManifestStateDefinitionCore,
   compileThemeManifestStyleReferenceCore,
 } from "./theme_manifest_core.ts";
+import { inspectThemeCoverageCore } from "./theme_coverage_core.ts";
 import { diffThemeEnginesCore } from "./theme_diff_core.ts";
 import { validateThemeComponentsCore } from "./theme_validation_core.ts";
 
@@ -703,25 +704,15 @@ export function inspectThemeCoverage(
   coverageOptions: ThemeCoverageOptions = {},
 ): ThemeCoverageInspection {
   const components = composeThemeOptions(options).components ?? {};
-  const componentNames = coverageOptions.components
-    ? [...new Set(coverageOptions.components)].sort()
-    : Object.keys(components).sort();
-  const componentCoverage = componentNames.map((name) =>
-    inspectThemeComponentCoverage(name, components, coverageOptions)
-  );
-  const variantCount = componentCoverage.reduce((total, component) => total + component.variants.length, 0);
-  const coveredStateCount = componentCoverage.reduce((total, component) => total + component.coveredStateCount, 0);
-  const missingStateCount = componentCoverage.reduce((total, component) => total + component.missingStateCount, 0);
-
-  return {
-    componentCount: componentCoverage.length,
-    variantCount,
-    stateCount: variantCount * themeStates.length,
-    coveredStateCount,
-    missingStateCount,
-    complete: componentCoverage.every((component) => component.complete),
-    components: componentCoverage,
-  };
+  return inspectThemeCoverageCore<ThemeState>(components, {
+    states: themeStates,
+    components: coverageOptions.components,
+    variants: coverageOptions.variants
+      ? (component, definition) => coverageOptions.variants?.(component, definition as ComponentThemeDefinition) ?? []
+      : undefined,
+    normalizeExtends: normalizeThemeExtends,
+    createInheritanceError: (cycle) => new ThemeInheritanceError([...cycle]),
+  }) as ThemeCoverageInspection;
 }
 
 /** Creates an theme Engine. */
@@ -1532,87 +1523,6 @@ function themeRegistryOptions(provider: ThemeProvider): ThemeEngineOptions[] {
 
 function escapeMarkdownCell(value: string): string {
   return value.replaceAll("|", "\\|").replaceAll("\n", " ");
-}
-
-function inspectThemeComponentCoverage(
-  name: string,
-  components: Record<string, ComponentThemeDefinition>,
-  options: ThemeCoverageOptions,
-): ThemeComponentCoverageInspection {
-  const resolved = resolveThemeCoverageDefinition(name, components);
-  const variants = coverageVariantNames(name, resolved, options).map((variant) => {
-    const states = coveredThemeStates(resolved, variant);
-    const missingStates = themeStates.filter((state) => !states.includes(state));
-    return {
-      name: variant,
-      states,
-      missingStates,
-      complete: missingStates.length === 0,
-    };
-  });
-  const coveredStateCount = variants.reduce((total, variant) => total + variant.states.length, 0);
-  const missingStateCount = variants.reduce((total, variant) => total + variant.missingStates.length, 0);
-
-  return {
-    name,
-    extends: normalizeThemeExtends(components[name]?.extends),
-    variants,
-    stateCount: variants.length * themeStates.length,
-    coveredStateCount,
-    missingStateCount,
-    complete: variants.every((variant) => variant.complete),
-  };
-}
-
-function resolveThemeCoverageDefinition(
-  componentName: string,
-  components: Record<string, ComponentThemeDefinition>,
-  seen = new Set<string>(),
-): ComponentThemeDefinition {
-  const definition = components[componentName];
-  if (!definition) return {};
-  if (seen.has(componentName)) {
-    throw new ThemeInheritanceError([...seen, componentName]);
-  }
-  seen.add(componentName);
-
-  let resolved: ComponentThemeDefinition = {};
-  for (const parent of normalizeThemeExtends(definition.extends)) {
-    resolved = mergeComponentThemeDefinition(
-      resolved,
-      resolveThemeCoverageDefinition(parent, components, new Set(seen)),
-    );
-  }
-
-  return mergeComponentThemeDefinition(resolved, {
-    base: definition.base,
-    variants: definition.variants,
-  });
-}
-
-function coverageVariantNames(
-  component: string,
-  definition: ComponentThemeDefinition,
-  options: ThemeCoverageOptions,
-): string[] {
-  const variants = options.variants
-    ? [...options.variants(component, definition)]
-    : Object.keys(definition.variants ?? {});
-  return [...new Set(["default", ...variants])].sort((a, b) => {
-    if (a === "default") return -1;
-    if (b === "default") return 1;
-    return a.localeCompare(b);
-  });
-}
-
-function coveredThemeStates(definition: ComponentThemeDefinition, variant: string): ThemeState[] {
-  const states = new Set<string>(Object.keys(definition.base ?? {}));
-  if (variant !== "default") {
-    for (const state of Object.keys(definition.variants?.[variant] ?? {})) {
-      states.add(state);
-    }
-  }
-  return sortedThemeStates(states);
 }
 
 function mergeThemeCatalogComponents(
