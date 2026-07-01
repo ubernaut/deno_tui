@@ -418,6 +418,8 @@ Acceptance checks:
         replay benchmark to keep PTY transcript handling bounded.
   - [x] Replaced per-cell blank-row callbacks with filled frozen blank-cell rows, cutting terminal transcript replay
         allocation overhead while keeping cell mutation tests green.
+  - [x] Preallocated terminal screen outer row arrays during resize/reset paths so replay-heavy workloads avoid
+        incremental row-array growth.
 
 ### P2: Consolidate Layout, Markup, And Widget Hydration
 
