@@ -87,7 +87,7 @@ Acceptance checks:
       open/save, and keyboard-only operation.
 - [x] `deno task api-workbench:check`
 - [x] `deno task web:demo:check`
-- [ ] `deno task health`
+- [x] `deno task health`
 
 ### P1: Add Real Integration Performance Benchmarks
 
@@ -210,6 +210,8 @@ Work:
       sparse grid assembly.
 - [x] Add a frame-local ANSI cell string cache for recurring non-adjacent glyph/color pairs, with a patterned Three
       ASCII benchmark covering repeated material palettes beyond adjacent runs.
+- [x] Promote ANSI grid assembly into a reusable cache-owning renderer primitive so long-lived Three renderers keep
+      linear RGB, foreground ANSI, and repeated cell strings warm across stable frames.
 
 Acceptance checks:
 
@@ -428,6 +430,8 @@ Work:
 - [ ] Keep rendering functions pure and fixture-testable.
   - [x] Extracted pure visualization drive/source normalization into `app/visualization_drive.ts`; render modules now
         consume a fixture-testable data transform instead of owning source sampling and hazard math directly.
+  - [x] Extracted visualization dispatch into typed renderer maps so catalog ids, Three scene modes, and direct panel
+        renderers are data-driven instead of encoded in one large switch.
 - [ ] Make demo-only assets and NGE-inspired primitives clearly separate from library APIs.
 
 Acceptance checks:

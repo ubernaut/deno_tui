@@ -50,87 +50,71 @@ const ngePrimitiveSceneModes: Record<string, ThreeSceneMode> = {
   "network-topology": "topology",
 };
 
+type VisualizationRenderFn = (context: RenderContext, descriptor: VisualizationDescriptor) => PanelRender;
+
+const threeSceneVisualizationModes: Record<string, ThreeSceneMode> = {
+  "three-lattice": "lattice",
+  "three-atfield": "atfield",
+  "three-hexshell": "hexshell",
+  "three-capture": "capture",
+  "three-mapslab": "mapslab",
+  "three-solenoid": "solenoid",
+  "three-ascii-studio": "studio",
+};
+
+const directVisualizationRenderers: Record<string, (context: RenderContext) => PanelRender> = {
+  "cpu-monitor": renderCpuMonitor,
+  "cpu-legend": renderCpuLegend,
+  "cpu-hex-grid": renderCpuHexGrid,
+  "gpu-combined-monitor": renderGpuCombinedMonitor,
+  "gpu-chip-monitor": renderGpuChipMonitor,
+  "gpu-memory-monitor": renderGpuMemoryMonitor,
+  "memory-monitor": renderMemoryMonitor,
+  "temperature-monitor": renderTemperatureMonitor,
+  "disk-monitor": renderDiskMonitor,
+  "network-monitor": renderNetworkMonitor,
+  "process-monitor": renderProcessMonitor,
+  "warning-stack": renderWarningStack,
+  "counter-board": renderCounterBoard,
+  "profile-card": renderProfileCard,
+  "live-feed": renderLiveFeed,
+  "event-log": renderEventLog,
+  "channel-matrix": renderChannelMatrix,
+  "telemetry-rack": renderTelemetryRack,
+  "biosignal-strip": renderBiosignalStrip,
+  "harmonic-graph": renderHarmonicGraph,
+  "psychograph": renderPsychograph,
+  "field-ring": renderFieldRing,
+  "hex-heatmap": renderHeatmap,
+  "magi-board": renderMagiBoard,
+  "route-board": renderRouteBoard,
+  "gate-status": renderGateStatus,
+  "tactical-map": renderTacticalMap,
+  "network-topology": renderNetworkTopology,
+  "component-index": renderComponentIndex,
+};
+
+const visualizationRenderers: Record<string, VisualizationRenderFn> = Object.fromEntries([
+  ...Object.entries(threeSceneVisualizationModes).map(([id, mode]) =>
+    [
+      id,
+      (context: RenderContext, descriptor: VisualizationDescriptor) =>
+        renderThreeScene(context, mode, descriptor.accent),
+    ] satisfies [string, VisualizationRenderFn]
+  ),
+  ...Object.entries(directVisualizationRenderers).map(([id, renderer]) =>
+    [
+      id,
+      (context: RenderContext) => renderer(context),
+    ] satisfies [string, VisualizationRenderFn]
+  ),
+]);
+
 export function renderVisualization(context: RenderContext): PanelRender {
   const descriptor = visualizationMap.get(context.slot.visualizationId) ?? visualizations[0]!;
-
-  const panel = (() => {
-    switch (context.slot.visualizationId) {
-      case "three-lattice":
-        return renderThreeScene(context, "lattice", descriptor.accent);
-      case "three-atfield":
-        return renderThreeScene(context, "atfield", descriptor.accent);
-      case "three-hexshell":
-        return renderThreeScene(context, "hexshell", descriptor.accent);
-      case "three-capture":
-        return renderThreeScene(context, "capture", descriptor.accent);
-      case "three-mapslab":
-        return renderThreeScene(context, "mapslab", descriptor.accent);
-      case "three-solenoid":
-        return renderThreeScene(context, "solenoid", descriptor.accent);
-      case "three-ascii-studio":
-        return renderThreeScene(context, "studio", descriptor.accent);
-      case "cpu-monitor":
-        return renderCpuMonitor(context);
-      case "cpu-legend":
-        return renderCpuLegend(context);
-      case "cpu-hex-grid":
-        return renderCpuHexGrid(context);
-      case "gpu-combined-monitor":
-        return renderGpuCombinedMonitor(context);
-      case "gpu-chip-monitor":
-        return renderGpuChipMonitor(context);
-      case "gpu-memory-monitor":
-        return renderGpuMemoryMonitor(context);
-      case "memory-monitor":
-        return renderMemoryMonitor(context);
-      case "temperature-monitor":
-        return renderTemperatureMonitor(context);
-      case "disk-monitor":
-        return renderDiskMonitor(context);
-      case "network-monitor":
-        return renderNetworkMonitor(context);
-      case "process-monitor":
-        return renderProcessMonitor(context);
-      case "warning-stack":
-        return renderWarningStack(context);
-      case "counter-board":
-        return renderCounterBoard(context);
-      case "profile-card":
-        return renderProfileCard(context);
-      case "live-feed":
-        return renderLiveFeed(context);
-      case "event-log":
-        return renderEventLog(context);
-      case "channel-matrix":
-        return renderChannelMatrix(context);
-      case "telemetry-rack":
-        return renderTelemetryRack(context);
-      case "biosignal-strip":
-        return renderBiosignalStrip(context);
-      case "harmonic-graph":
-        return renderHarmonicGraph(context);
-      case "psychograph":
-        return renderPsychograph(context);
-      case "field-ring":
-        return renderFieldRing(context);
-      case "hex-heatmap":
-        return renderHeatmap(context);
-      case "magi-board":
-        return renderMagiBoard(context);
-      case "route-board":
-        return renderRouteBoard(context);
-      case "gate-status":
-        return renderGateStatus(context);
-      case "tactical-map":
-        return renderTacticalMap(context);
-      case "network-topology":
-        return renderNetworkTopology(context);
-      case "component-index":
-        return renderComponentIndex(context);
-      default:
-        return renderTelemetryRack(context);
-    }
-  })();
+  const renderPanel = visualizationRenderers[context.slot.visualizationId] ??
+    ((fallbackContext: RenderContext) => renderTelemetryRack(fallbackContext));
+  const panel = renderPanel(context, descriptor);
 
   const enhancedPanel = applyNgePrimitiveScene(context, panel);
   const footerBase = enhancedPanel.footer || sourceFooter(context.sources);
