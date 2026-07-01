@@ -1,7 +1,12 @@
 import { assert, assertEquals } from "./deps.ts";
 import { Signal } from "../src/signals/mod.ts";
 import { createDefaultAsciiOptions } from "../app/ascii_options.ts";
-import { ThreePanelFrameView, type ThreePanelGridRenderer, type ThreeSceneState } from "../app/three_panel.ts";
+import {
+  resolveThreePanelRenderPolicy,
+  ThreePanelFrameView,
+  type ThreePanelGridRenderer,
+  type ThreeSceneState,
+} from "../app/three_panel.ts";
 import { Canvas, MemoryCanvasSink, type ThreeAsciiGridRenderer, ThreeAsciiObject } from "../src/canvas/mod.ts";
 import type {
   GraphicsDeleteMode,
@@ -15,6 +20,64 @@ import { emptyStyle } from "../src/theme.ts";
 import type { Camera, Scene } from "npm:three@0.183.2";
 import type { TerminalGlyphStyle } from "../src/three_ascii/glyphs.ts";
 import type { ThreeAsciiRenderFrameOptions } from "../src/three_ascii/renderer.ts";
+
+Deno.test("resolveThreePanelRenderPolicy selects ASCII and Kitty frame modes", () => {
+  const ascii = createDefaultAsciiOptions("sharp");
+  assertEquals(
+    resolveThreePanelRenderPolicy({
+      ascii,
+      graphicsAvailable: true,
+      graphicsRectangle: { width: 8, height: 4 },
+      rendererSupportsImage: true,
+    }),
+    {
+      kittyActive: false,
+      renderAscii: true,
+      renderImage: false,
+      frameOptions: { ansi: true, image: false },
+    },
+  );
+
+  assertEquals(
+    resolveThreePanelRenderPolicy({
+      ascii: { ...ascii, kittyGraphics: true, kittyDisableAscii: false },
+      graphicsAvailable: true,
+      graphicsRectangle: { width: 8, height: 4 },
+      rendererSupportsImage: true,
+    }),
+    {
+      kittyActive: true,
+      renderAscii: true,
+      renderImage: true,
+      frameOptions: { ansi: true, image: true },
+    },
+  );
+
+  assertEquals(
+    resolveThreePanelRenderPolicy({
+      ascii: { ...ascii, kittyGraphics: true, kittyDisableAscii: true },
+      graphicsAvailable: true,
+      graphicsRectangle: { width: 8, height: 4 },
+      rendererSupportsImage: true,
+    }),
+    {
+      kittyActive: true,
+      renderAscii: false,
+      renderImage: true,
+      frameOptions: { ansi: false, image: true },
+    },
+  );
+
+  assertEquals(
+    resolveThreePanelRenderPolicy({
+      ascii: { ...ascii, kittyGraphics: true, kittyDisableAscii: true },
+      graphicsAvailable: true,
+      graphicsRectangle: { width: 0, height: 4 },
+      rendererSupportsImage: true,
+    }).kittyActive,
+    false,
+  );
+});
 
 Deno.test("ThreePanelFrameView stays inert while disabled", async () => {
   const rectangle = new Signal({ column: 0, row: 0, width: 12, height: 6 }, { deepObserve: true });

@@ -26,6 +26,20 @@ export interface ThreePanelInteractionState {
   zoom: number;
 }
 
+export interface ThreePanelRenderPolicyInput {
+  ascii: Pick<AsciiOptions, "kittyGraphics" | "kittyDisableAscii">;
+  graphicsAvailable: boolean;
+  graphicsRectangle: Pick<Rect, "width" | "height">;
+  rendererSupportsImage: boolean;
+}
+
+export interface ThreePanelRenderPolicy {
+  kittyActive: boolean;
+  renderAscii: boolean;
+  renderImage: boolean;
+  frameOptions: ThreeAsciiRenderFrameOptions;
+}
+
 export interface ThreePanelGridRenderer {
   setSize(columns: number, rows: number): void;
   setEffectOptions(options: ReturnType<typeof asciiEffectOptions>): void;
@@ -58,6 +72,24 @@ function clamp(value: number, min: number, max: number): number {
 function normalizeRadians(value: number): number {
   const full = Math.PI * 2;
   return ((value + Math.PI) % full + full) % full - Math.PI;
+}
+
+export function resolveThreePanelRenderPolicy(input: ThreePanelRenderPolicyInput): ThreePanelRenderPolicy {
+  const kittyRequested = input.ascii.kittyGraphics;
+  const kittyActive = Boolean(
+    kittyRequested && input.graphicsAvailable && input.rendererSupportsImage &&
+      input.graphicsRectangle.width > 0 && input.graphicsRectangle.height > 0,
+  );
+  const renderAscii = !kittyActive || !input.ascii.kittyDisableAscii;
+  return {
+    kittyActive,
+    renderAscii,
+    renderImage: kittyActive,
+    frameOptions: {
+      ansi: renderAscii,
+      image: kittyActive,
+    },
+  };
 }
 
 export class ThreePanelView {
@@ -368,26 +400,27 @@ export class ThreePanelFrameView {
       const ascii = this.options.ascii.peek();
       const graphicsSurface = this.resolveGraphicsSurface();
       const graphicsRectangle = this.options.graphicsRectangle?.peek() ?? rect;
-      const kittyActive = Boolean(
-        ascii.kittyGraphics && graphicsSurface?.inspect().available && graphicsRectangle.width > 0 &&
-          graphicsRectangle.height > 0,
-      );
-      const renderAscii = !kittyActive || !ascii.kittyDisableAscii;
+      const policy = resolveThreePanelRenderPolicy({
+        ascii,
+        graphicsAvailable: graphicsSurface?.inspect().available ?? false,
+        graphicsRectangle,
+        rendererSupportsImage: typeof renderer.renderFrame === "function",
+      });
       const onFrame = () => {
         const latest = this.options.scene.peek();
         if (!latest) return;
         bundle.tick(performance.now(), latest.signal);
         this.applyInteraction();
       };
-      const frame = kittyActive && renderer.renderFrame
-        ? await renderer.renderFrame(deltaTime, onFrame, { ansi: renderAscii, image: true })
+      const frame = policy.kittyActive && renderer.renderFrame
+        ? await renderer.renderFrame(deltaTime, onFrame, policy.frameOptions)
         : { grid: await renderer.renderToAnsiGrid(deltaTime, onFrame) };
 
       if (!this.isCurrentFrame(frameGeneration, renderer, bundle)) {
         return;
       }
 
-      if (kittyActive && frame.image && graphicsSurface) {
+      if (policy.renderImage && frame.image && graphicsSurface) {
         await this.putGraphicsImage(graphicsSurface, frame.image, graphicsRectangle, frameGeneration);
       } else {
         await this.clearGraphicsImage();
@@ -398,7 +431,7 @@ export class ThreePanelFrameView {
       }
 
       this.failed = false;
-      this.setGrid(renderAscii ? frame.grid ?? [] : blankGrid(rect.width, rect.height));
+      this.setGrid(policy.renderAscii ? frame.grid ?? [] : blankGrid(rect.width, rect.height));
     } catch (error) {
       if (!this.ownsFrame(frameGeneration, renderer, bundle)) {
         return;
