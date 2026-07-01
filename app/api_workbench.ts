@@ -467,6 +467,7 @@ const dynamicVisualizationWindows = new Signal<Record<VisualizationWindowId, str
 const selectedCpuHexTiles = new Signal<Record<VisualizationWindowId, string>>({}, { deepObserve: true });
 const lineSignals: Signal<string>[] = [];
 const hitTargets = new HitTargetStack<HitAction>();
+const screenFrame: Frame = [];
 const workspaceVirtualFrame: Frame = [];
 let dropdownOverlay: DropdownOverlay | null = null;
 let threeDragWindow: WindowId | null = null;
@@ -877,7 +878,7 @@ function draw(): void {
   const height = currentHeight();
   hitTargets.clear();
   dropdownOverlay = null;
-  const frame: Frame = Array.from({ length: height }, () => []);
+  const frame = prepareWorkbenchFrame(screenFrame, height);
   renderHeader(frame);
   renderWorkspace(frame);
   renderStatus(frame);

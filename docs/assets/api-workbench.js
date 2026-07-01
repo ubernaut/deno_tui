@@ -11709,6 +11709,7 @@ var webTerminalWorkspace = createTerminalWorkspaceController({
 });
 var webTerminalScreenKey = "";
 var hitTargets = new HitTargetStack();
+var screenRows = [];
 var workspaceVirtualRows = [];
 var dropdownOverlay = null;
 var pointerDrag = null;
@@ -11955,7 +11956,12 @@ function draw() {
   dropdownOverlay = null;
   const width = cols();
   const height = rowsCount();
-  const frame = Array.from({ length: height }, () => paint(" ".repeat(width), theme().text, theme().bg));
+  const frame = prepareWorkbenchRows(
+    screenRows,
+    height,
+    () => "",
+    () => paint(" ".repeat(width), theme().text, theme().bg)
+  );
   write(frame, 0, 0, paint(" ".repeat(width), theme().text, theme().bgAlt));
   write(frame, 1, 0, paint(" ".repeat(width), theme().text, theme().panel));
   write(frame, 0, 1, paint(` API WORKBENCH `, theme().bg, theme().accent, true));

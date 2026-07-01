@@ -318,6 +318,7 @@ const webTerminalWorkspace = createTerminalWorkspaceController({
 });
 let webTerminalScreenKey = "";
 const hitTargets = new HitTargetStack<Hit>();
+const screenRows: string[] = [];
 const workspaceVirtualRows: string[] = [];
 let dropdownOverlay: DropdownOverlay | null = null;
 let pointerDrag: {
@@ -580,7 +581,12 @@ function draw(): void {
   dropdownOverlay = null;
   const width = cols();
   const height = rowsCount();
-  const frame = Array.from({ length: height }, () => paint(" ".repeat(width), theme().text, theme().bg));
+  const frame = prepareWorkbenchRows(
+    screenRows,
+    height,
+    () => "",
+    () => paint(" ".repeat(width), theme().text, theme().bg),
+  );
   write(frame, 0, 0, paint(" ".repeat(width), theme().text, theme().bgAlt));
   write(frame, 1, 0, paint(" ".repeat(width), theme().text, theme().panel));
   write(frame, 0, 1, paint(` API WORKBENCH `, theme().bg, theme().accent, true));
