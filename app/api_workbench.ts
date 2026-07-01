@@ -19,6 +19,7 @@ import { TextBoxController, wrapTextBoxLines } from "../src/components/textbox.t
 import {
   buttonText,
   centerCellText as centerText,
+  clampWorkbenchTileDensity,
   clipRect,
   contrastText,
   createWorkbenchVisualizationWindowOptions,
@@ -57,6 +58,7 @@ import {
   workbenchRevealActiveRowOffset,
   workbenchStatusLeft,
   type WorkbenchTitlebarButtonKind,
+  workbenchVerticalScrollbarRect,
   workbenchVisualizationIdFromWindowId,
   workbenchVisualizationWindowId,
   workbenchWindowLayout,
@@ -2847,11 +2849,12 @@ function blitWorkspace(frame: Frame, virtual: Frame, bounds: Rectangle, offset: 
 
 function renderWorkspaceScrollbar(frame: Frame, bounds: Rectangle): void {
   const overflow = workspaceScroll.inspectOverflow();
-  if (!overflow.rows.scrollbarVisible || bounds.width < 2) return;
+  const rect = workbenchVerticalScrollbarRect({ bounds, visible: overflow.rows.scrollbarVisible });
+  if (!rect) return;
   const t = theme();
-  const column = bounds.column + bounds.width - 1;
+  const column = rect.column;
   const thumb = overflow.rows.thumb;
-  addHit({ column, row: bounds.row, width: 1, height: bounds.height }, { type: "workspaceScrollbar" });
+  addHit(rect, { type: "workspaceScrollbar" });
   for (let row = 0; row < bounds.height; row += 1) {
     write(
       frame,
@@ -3063,7 +3066,7 @@ function syncWindowSignalsFromManager(): void {
 }
 
 function adjustTileDensity(delta: number): void {
-  tileDensity.value = Math.max(-3, Math.min(3, tileDensity.peek() + delta));
+  tileDensity.value = clampWorkbenchTileDensity(tileDensity.peek() + delta);
   pushLog(`tile density ${tileDensity.peek()}`);
 }
 

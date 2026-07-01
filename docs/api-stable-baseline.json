@@ -3490,6 +3490,13 @@
     },
     {
       "module": "src/app/workbench_layout.ts",
+      "name": "clampWorkbenchTileDensity",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_layout.ts",
       "name": "workbenchAdaptiveTileOptions",
       "kind": "function",
       "typeOnly": false,
@@ -3512,6 +3519,20 @@
     {
       "module": "src/app/workbench_layout.ts",
       "name": "WorkbenchLayoutShape",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_layout.ts",
+      "name": "workbenchVerticalScrollbarRect",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_layout.ts",
+      "name": "WorkbenchVerticalScrollbarRectOptions",
       "kind": "interface",
       "typeOnly": true,
       "documented": true

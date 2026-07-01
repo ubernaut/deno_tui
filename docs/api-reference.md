@@ -8,8 +8,8 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 - Entrypoints: 9
 - Module visits: 517
 - Re-export declarations: 508
-- Exported symbols: 4569
-- Documented symbols: 4569
+- Exported symbols: 4575
+- Documented symbols: 4575
 - Documentation coverage: 100.00%
 - Duplicate symbol groups: 0
 - Missing targets: 0
@@ -18,8 +18,8 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 
 | Specifier       | Path                           | Runtime  | Stability    | Modules | Symbols |    Docs |
 | --------------- | ------------------------------ | -------- | ------------ | ------: | ------: | ------: |
-| `.`             | `./mod.ts`                     | terminal | stable       |     233 |    1940 | 100.00% |
-| `./web`         | `./mod.web.ts`                 | browser  | beta         |     212 |    1803 | 100.00% |
+| `.`             | `./mod.ts`                     | terminal | stable       |     233 |    1943 | 100.00% |
+| `./web`         | `./mod.web.ts`                 | browser  | beta         |     212 |    1806 | 100.00% |
 | `./remote`      | `./mod.remote.ts`              | remote   | experimental |       4 |      38 | 100.00% |
 | `./three-ascii` | `./mod.three_ascii.ts`         | shared   | experimental |       8 |      54 | 100.00% |
 | `./theme`       | `./mod.theme.ts`               | shared   | beta         |      10 |     198 | 100.00% |
@@ -41,8 +41,8 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 - Entrypoint: `mod.ts`
 - Modules: 233
 - Re-export declarations: 232
-- Exported symbols: 1940
-- Documented symbols: 1940
+- Exported symbols: 1943
+- Documented symbols: 1943
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -117,7 +117,7 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 | [`src/app/window_manager_commands.ts`](#src-app-window-manager-commands-ts)             |          0 |       8 |          8 |
 | [`src/app/workbench_diagnostics.ts`](#src-app-workbench-diagnostics-ts)                 |          0 |       5 |          5 |
 | [`src/app/workbench_frame.ts`](#src-app-workbench-frame-ts)                             |          0 |      13 |         13 |
-| [`src/app/workbench_layout.ts`](#src-app-workbench-layout-ts)                           |          0 |       6 |          6 |
+| [`src/app/workbench_layout.ts`](#src-app-workbench-layout-ts)                           |          0 |       9 |          9 |
 | [`src/app/workbench_menu.ts`](#src-app-workbench-menu-ts)                               |          0 |      14 |         14 |
 | [`src/app/workbench_overlay.ts`](#src-app-workbench-overlay-ts)                         |          0 |       5 |          5 |
 | [`src/app/workbench_shelf.ts`](#src-app-workbench-shelf-ts)                             |          0 |       8 |          8 |
@@ -1215,14 +1215,17 @@ _No direct exported symbols._
 
 #### src/app/workbench_layout.ts
 
-| Symbol                         | Kind      | Type Only | JSDoc |
-| ------------------------------ | --------- | --------- | ----- |
-| `workbenchAdaptiveTileOptions` | function  | no        | yes   |
-| `WorkbenchAdaptiveTileOptions` | interface | yes       | yes   |
-| `WorkbenchLayoutEntryShape`    | interface | yes       | yes   |
-| `WorkbenchLayoutShape`         | interface | yes       | yes   |
-| `workbenchWindowLayout`        | function  | no        | yes   |
-| `WorkbenchWindowLayout`        | interface | yes       | yes   |
+| Symbol                                  | Kind      | Type Only | JSDoc |
+| --------------------------------------- | --------- | --------- | ----- |
+| `clampWorkbenchTileDensity`             | function  | no        | yes   |
+| `workbenchAdaptiveTileOptions`          | function  | no        | yes   |
+| `WorkbenchAdaptiveTileOptions`          | interface | yes       | yes   |
+| `WorkbenchLayoutEntryShape`             | interface | yes       | yes   |
+| `WorkbenchLayoutShape`                  | interface | yes       | yes   |
+| `workbenchVerticalScrollbarRect`        | function  | no        | yes   |
+| `WorkbenchVerticalScrollbarRectOptions` | interface | yes       | yes   |
+| `workbenchWindowLayout`                 | function  | no        | yes   |
+| `WorkbenchWindowLayout`                 | interface | yes       | yes   |
 
 #### src/app/workbench_menu.ts
 
@@ -3663,8 +3666,8 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 - Entrypoint: `mod.web.ts`
 - Modules: 212
 - Re-export declarations: 211
-- Exported symbols: 1803
-- Documented symbols: 1803
+- Exported symbols: 1806
+- Documented symbols: 1806
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -3739,7 +3742,7 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 | [`src/app/window_manager_commands.ts`](#src-app-window-manager-commands-ts)       |          0 |       8 |          8 |
 | [`src/app/workbench_diagnostics.ts`](#src-app-workbench-diagnostics-ts)           |          0 |       5 |          5 |
 | [`src/app/workbench_frame.ts`](#src-app-workbench-frame-ts)                       |          0 |      13 |         13 |
-| [`src/app/workbench_layout.ts`](#src-app-workbench-layout-ts)                     |          0 |       6 |          6 |
+| [`src/app/workbench_layout.ts`](#src-app-workbench-layout-ts)                     |          0 |       9 |          9 |
 | [`src/app/workbench_menu.ts`](#src-app-workbench-menu-ts)                         |          0 |      14 |         14 |
 | [`src/app/workbench_overlay.ts`](#src-app-workbench-overlay-ts)                   |          0 |       5 |          5 |
 | [`src/app/workbench_shelf.ts`](#src-app-workbench-shelf-ts)                       |          0 |       8 |          8 |
@@ -4834,14 +4837,17 @@ _No direct exported symbols._
 
 #### src/app/workbench_layout.ts
 
-| Symbol                         | Kind      | Type Only | JSDoc |
-| ------------------------------ | --------- | --------- | ----- |
-| `workbenchAdaptiveTileOptions` | function  | no        | yes   |
-| `WorkbenchAdaptiveTileOptions` | interface | yes       | yes   |
-| `WorkbenchLayoutEntryShape`    | interface | yes       | yes   |
-| `WorkbenchLayoutShape`         | interface | yes       | yes   |
-| `workbenchWindowLayout`        | function  | no        | yes   |
-| `WorkbenchWindowLayout`        | interface | yes       | yes   |
+| Symbol                                  | Kind      | Type Only | JSDoc |
+| --------------------------------------- | --------- | --------- | ----- |
+| `clampWorkbenchTileDensity`             | function  | no        | yes   |
+| `workbenchAdaptiveTileOptions`          | function  | no        | yes   |
+| `WorkbenchAdaptiveTileOptions`          | interface | yes       | yes   |
+| `WorkbenchLayoutEntryShape`             | interface | yes       | yes   |
+| `WorkbenchLayoutShape`                  | interface | yes       | yes   |
+| `workbenchVerticalScrollbarRect`        | function  | no        | yes   |
+| `WorkbenchVerticalScrollbarRectOptions` | interface | yes       | yes   |
+| `workbenchWindowLayout`                 | function  | no        | yes   |
+| `WorkbenchWindowLayout`                 | interface | yes       | yes   |
 
 #### src/app/workbench_menu.ts
 

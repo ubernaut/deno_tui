@@ -9041,8 +9041,14 @@ function subscribeWorkbenchDiagnosticLog(diagnostics, onLog, options = {}) {
 }
 
 // src/app/workbench_layout.ts
+function clampWorkbenchTileDensity(value, min2 = -3, max2 = 3) {
+  if (!Number.isFinite(value)) return 0;
+  const lower = Math.min(min2, max2);
+  const upper = Math.max(min2, max2);
+  return Math.max(lower, Math.min(upper, Math.trunc(value)));
+}
 function workbenchAdaptiveTileOptions(options) {
-  const density = Number.isFinite(options.tileDensity) ? Math.trunc(options.tileDensity ?? 0) : 0;
+  const density = clampWorkbenchTileDensity(options.tileDensity ?? 0);
   const densityOffset = density * 4;
   const minTileWidth = Math.max(1, Math.floor((options.minTileWidth ?? 38) - densityOffset));
   return {
@@ -9060,6 +9066,17 @@ function workbenchWindowLayout(bounds, layout) {
     if (entry.rect) rects.set(entry.id, entry.rect);
   }
   return { bounds, contentHeight: Math.max(bounds.height, layout.contentHeight), rects };
+}
+function workbenchVerticalScrollbarRect(options) {
+  const minWidth = Math.max(1, Math.floor(options.minWidth ?? 2));
+  const bounds = options.bounds;
+  if (!options.visible || bounds.width < minWidth || bounds.height <= 0) return void 0;
+  return {
+    column: bounds.column + bounds.width - 1,
+    row: bounds.row,
+    width: 1,
+    height: bounds.height
+  };
 }
 
 // src/app/workbench_menu.ts
@@ -12596,7 +12613,7 @@ function selectExplorerRow(index) {
   push(`explorer ${entry?.path ?? index}`);
 }
 function adjustTileDensity(delta) {
-  tileDensity.value = Math.max(-3, Math.min(3, tileDensity.peek() + delta));
+  tileDensity.value = clampWorkbenchTileDensity(tileDensity.peek() + delta);
   push(`tile density ${tileDensity.peek()}`);
 }
 function workspaceLayout(bounds) {
@@ -12630,10 +12647,11 @@ function blitWorkspace(frame, virtual, bounds, offset, width) {
 }
 function renderWorkspaceScrollbar(frame, bounds) {
   const overflow = workspaceScroll.inspectOverflow();
-  if (!overflow.rows.scrollbarVisible || bounds.width < 2) return;
-  const column = bounds.column + bounds.width - 1;
+  const rect = workbenchVerticalScrollbarRect({ bounds, visible: overflow.rows.scrollbarVisible });
+  if (!rect) return;
+  const column = rect.column;
   const thumb = overflow.rows.thumb;
-  hitTargets.add({ column, row: bounds.row, width: 1, height: bounds.height }, { type: "workspaceScrollbar" });
+  hitTargets.add(rect, { type: "workspaceScrollbar" });
   for (let row = 0; row < bounds.height; row += 1) {
     write(frame, bounds.row + row, column, paint(scrollbarGlyph(row, thumb), theme().accent, theme().bgAlt, true));
   }

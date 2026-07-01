@@ -5,6 +5,7 @@ import {
   ButtonController,
   buttonText as formatButtonText,
   CheckBoxController,
+  clampWorkbenchTileDensity,
   clipRect,
   ComboBoxController,
   Computed,
@@ -68,6 +69,7 @@ import {
   workbenchRevealActiveRowOffset,
   workbenchStatusLeft,
   type WorkbenchTitlebarButtonKind,
+  workbenchVerticalScrollbarRect,
   workbenchWindowLayout,
   wrapTextBoxLines,
 } from "../../mod.web.ts";
@@ -1375,7 +1377,7 @@ function selectExplorerRow(index: number): void {
   push(`explorer ${entry?.path ?? index}`);
 }
 function adjustTileDensity(delta: number): void {
-  tileDensity.value = Math.max(-3, Math.min(3, tileDensity.peek() + delta));
+  tileDensity.value = clampWorkbenchTileDensity(tileDensity.peek() + delta);
   push(`tile density ${tileDensity.peek()}`);
 }
 
@@ -1418,10 +1420,11 @@ function blitWorkspace(frame: string[], virtual: string[], bounds: Rectangle, of
 
 function renderWorkspaceScrollbar(frame: string[], bounds: Rectangle): void {
   const overflow = workspaceScroll.inspectOverflow();
-  if (!overflow.rows.scrollbarVisible || bounds.width < 2) return;
-  const column = bounds.column + bounds.width - 1;
+  const rect = workbenchVerticalScrollbarRect({ bounds, visible: overflow.rows.scrollbarVisible });
+  if (!rect) return;
+  const column = rect.column;
   const thumb = overflow.rows.thumb;
-  hitTargets.add({ column, row: bounds.row, width: 1, height: bounds.height }, { type: "workspaceScrollbar" });
+  hitTargets.add(rect, { type: "workspaceScrollbar" });
   for (let row = 0; row < bounds.height; row += 1) {
     write(frame, bounds.row + row, column, paint(scrollbarGlyph(row, thumb), theme().accent, theme().bgAlt, true));
   }

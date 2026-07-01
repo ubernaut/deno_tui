@@ -1,5 +1,17 @@
 import { assertEquals } from "./deps.ts";
-import { workbenchAdaptiveTileOptions, workbenchWindowLayout } from "../src/app/workbench_layout.ts";
+import {
+  clampWorkbenchTileDensity,
+  workbenchAdaptiveTileOptions,
+  workbenchVerticalScrollbarRect,
+  workbenchWindowLayout,
+} from "../src/app/workbench_layout.ts";
+
+Deno.test("clampWorkbenchTileDensity keeps density in the shared supported range", () => {
+  assertEquals(clampWorkbenchTileDensity(4.8), 3);
+  assertEquals(clampWorkbenchTileDensity(-9), -3);
+  assertEquals(clampWorkbenchTileDensity(Number.NaN), 0);
+  assertEquals(clampWorkbenchTileDensity(2.9), 2);
+});
 
 Deno.test("workbenchAdaptiveTileOptions shares density-aware tile defaults", () => {
   assertEquals(workbenchAdaptiveTileOptions({ bounds: { column: 0, row: 0, width: 120, height: 40 } }), {
@@ -40,4 +52,28 @@ Deno.test("workbenchWindowLayout projects visible rects and clamps content heigh
   assertEquals(layout.contentHeight, 20);
   assertEquals(layout.rects.get("a"), { column: 1, row: 2, width: 20, height: 10 });
   assertEquals(layout.rects.has("b"), false);
+});
+
+Deno.test("workbenchVerticalScrollbarRect locates the right-edge workspace hit region", () => {
+  assertEquals(
+    workbenchVerticalScrollbarRect({
+      bounds: { column: 2, row: 3, width: 20, height: 9 },
+      visible: true,
+    }),
+    { column: 21, row: 3, width: 1, height: 9 },
+  );
+  assertEquals(
+    workbenchVerticalScrollbarRect({
+      bounds: { column: 2, row: 3, width: 1, height: 9 },
+      visible: true,
+    }),
+    undefined,
+  );
+  assertEquals(
+    workbenchVerticalScrollbarRect({
+      bounds: { column: 2, row: 3, width: 20, height: 9 },
+      visible: false,
+    }),
+    undefined,
+  );
 });
