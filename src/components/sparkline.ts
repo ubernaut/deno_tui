@@ -16,24 +16,29 @@ export function renderSparkline(values: readonly number[], width: number): strin
   const safeWidth = Math.max(0, width);
   if (safeWidth === 0) return "";
   if (values.length === 0) return " ".repeat(safeWidth);
-  const sampled = sampleSeries(values, safeWidth);
-  const min = Math.min(...sampled);
-  const max = Math.max(...sampled);
+  let min = Number.POSITIVE_INFINITY;
+  let max = Number.NEGATIVE_INFINITY;
+  for (let index = 0; index < safeWidth; index += 1) {
+    const value = sampleSeriesValue(values, safeWidth, index);
+    min = Math.min(min, value);
+    max = Math.max(max, value);
+  }
   const span = Math.max(0.000001, max - min);
-  return sampled.map((value) => {
-    const index = Math.max(0, Math.min(SPARKLINE_GLYPHS.length - 1, Math.round(((value - min) / span) * 7)));
-    return SPARKLINE_GLYPHS[index];
-  }).join("");
+  let line = "";
+  for (let column = 0; column < safeWidth; column += 1) {
+    const value = sampleSeriesValue(values, safeWidth, column);
+    const glyphIndex = Math.max(0, Math.min(SPARKLINE_GLYPHS.length - 1, Math.round(((value - min) / span) * 7)));
+    line += SPARKLINE_GLYPHS[glyphIndex];
+  }
+  return line;
 }
 
-function sampleSeries(values: readonly number[], width: number): number[] {
+function sampleSeriesValue(values: readonly number[], width: number, index: number): number {
   if (values.length <= width) {
-    return [...values, ...Array.from({ length: width - values.length }, () => values.at(-1) ?? 0)];
+    return values[index] ?? values[values.length - 1] ?? 0;
   }
-  return Array.from({ length: width }, (_, index) => {
-    const sourceIndex = Math.floor((index / Math.max(1, width - 1)) * (values.length - 1));
-    return values[sourceIndex] ?? 0;
-  });
+  const sourceIndex = Math.floor((index / Math.max(1, width - 1)) * (values.length - 1));
+  return values[sourceIndex] ?? 0;
 }
 
 /** Public class implementing a sparkline. */
