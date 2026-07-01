@@ -84,6 +84,18 @@ Deno.test("TerminalScreenController tracks DEC private modes", () => {
   assertEquals(screen.inspect().privateModes, [1006]);
 });
 
+Deno.test("TerminalScreenController tracks OSC 8 hyperlinks per cell", () => {
+  const screen = new TerminalScreenController({ columns: 12, rows: 2 });
+
+  screen.write("a\x1b]8;id=docs;https://example.test/docs\x1b\\bc\x1b]8;;\x1b\\d");
+
+  const [row] = screen.cellRows();
+  assertEquals(row![0], { char: "a" });
+  assertEquals(row![1], { char: "b", hyperlink: "https://example.test/docs" });
+  assertEquals(row![2], { char: "c", hyperlink: "https://example.test/docs" });
+  assertEquals(row![3], { char: "d" });
+});
+
 Deno.test("TerminalScreenController inserts and deletes characters", () => {
   const screen = new TerminalScreenController({ columns: 8, rows: 2 });
 

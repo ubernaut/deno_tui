@@ -60,3 +60,4 @@ developer workflows.
   footers, or surrounding terminal content.
 - Added DEC private-mode inspection, including cursor visibility and mouse-reporting mode state, so render adapters can
   respond to terminal modes instead of discarding them.
+- Added OSC 8 hyperlink parsing with per-cell hyperlink metadata for modern shell, test-runner, and build output.

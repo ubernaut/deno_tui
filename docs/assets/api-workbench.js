@@ -7950,6 +7950,7 @@ var TerminalScreenController = class {
   #style = {};
   #savedCursor;
   #title;
+  #hyperlink;
   #scrollRegion;
   #cursorVisible = true;
   #privateModes = /* @__PURE__ */ new Set();
@@ -8047,7 +8048,7 @@ var TerminalScreenController = class {
     }
     if (char < " ") return;
     const row = this.#state.cells[this.#state.cursor.row];
-    row[this.#state.cursor.column] = { char, ...this.#style };
+    row[this.#state.cursor.column] = this.#styledCell(char);
     if (this.#state.cursor.column >= this.#columns - 1) {
       this.#state.cursor.column = 0;
       this.#newline();
@@ -8138,8 +8139,22 @@ var TerminalScreenController = class {
     const separator = payload.indexOf(";");
     if (separator < 0) return;
     const code = payload.slice(0, separator);
-    if (code !== "0" && code !== "2") return;
-    this.#title = payload.slice(separator + 1);
+    if (code === "0" || code === "2") {
+      this.#title = payload.slice(separator + 1);
+      return;
+    }
+    if (code === "8") this.#applyHyperlink(payload.slice(separator + 1));
+  }
+  #applyHyperlink(payload) {
+    const separator = payload.indexOf(";");
+    if (separator < 0) return;
+    const uri = payload.slice(separator + 1);
+    this.#hyperlink = uri || void 0;
+  }
+  #styledCell(char) {
+    const cell = { char, ...this.#style };
+    if (this.#hyperlink) cell.hyperlink = this.#hyperlink;
+    return cell;
   }
   #applyPrivateModes(params, enabled) {
     for (const mode of params) {
