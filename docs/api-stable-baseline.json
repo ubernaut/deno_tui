@@ -3497,6 +3497,20 @@
     },
     {
       "module": "src/app/workbench_layout.ts",
+      "name": "WorkbenchActiveRevealOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_layout.ts",
+      "name": "WorkbenchActiveRevealTracker",
+      "kind": "class",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_layout.ts",
       "name": "workbenchAdaptiveTileOptions",
       "kind": "function",
       "typeOnly": false,

@@ -52,10 +52,10 @@ import {
   subscribeWorkbenchDiagnosticLog,
   translateHitTargets,
   upsertWorkbenchWorkspace,
+  WorkbenchActiveRevealTracker,
   workbenchAdaptiveTileOptions,
   workbenchContentViewport,
   type WorkbenchFrame,
-  workbenchRevealActiveRowOffset,
   workbenchStatusLeft,
   type WorkbenchTitlebarButtonKind,
   workbenchVerticalScrollbarRect,
@@ -466,9 +466,7 @@ const dynamicVisualizationWindows = new Signal<Record<VisualizationWindowId, str
 const selectedCpuHexTiles = new Signal<Record<VisualizationWindowId, string>>({}, { deepObserve: true });
 const lineSignals: Signal<string>[] = [];
 const hitTargets = new HitTargetStack<HitAction>();
-let lastVisibleWindow: WindowId | null = null;
-let lastWorkspaceWidth = 0;
-let lastWorkspaceHeight = 0;
+const activeRevealTracker = new WorkbenchActiveRevealTracker<WindowId>();
 let dropdownOverlay: DropdownOverlay | null = null;
 let threeDragWindow: WindowId | null = null;
 let windowRenderContext: WindowRenderContext | null = null;
@@ -2941,18 +2939,11 @@ function ensureActiveWindowVisible(
   viewportHeight: number,
 ): void {
   const active = activeWindow.peek();
-  const activeRect = layout.rects.get(active);
-  const workspaceChanged = lastWorkspaceWidth !== layout.bounds.width || lastWorkspaceHeight !== viewportHeight;
-  const activeChanged = lastVisibleWindow !== active;
-  if (!activeRect || (!activeChanged && !workspaceChanged)) return;
-
-  lastVisibleWindow = active;
-  lastWorkspaceWidth = layout.bounds.width;
-  lastWorkspaceHeight = viewportHeight;
-
-  const offset = workbenchRevealActiveRowOffset({
-    activeRect,
+  const offset = activeRevealTracker.revealOffset({
+    activeId: active,
+    activeRect: layout.rects.get(active),
     contentHeight: layout.contentHeight,
+    viewportWidth: layout.bounds.width,
     viewportHeight,
     offsetRows: workspaceScroll.offset.peek().rows,
   });

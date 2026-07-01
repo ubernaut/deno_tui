@@ -1,6 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { TileLayoutOptions } from "../layout/responsive.ts";
 import type { Rectangle } from "../types.ts";
+import { workbenchRevealActiveRowOffset } from "./workbench_viewport.ts";
 
 /** Options for deriving adaptive workbench tile layout defaults. */
 export interface WorkbenchAdaptiveTileOptions {
@@ -36,11 +37,52 @@ export interface WorkbenchVerticalScrollbarRectOptions {
   minWidth?: number;
 }
 
+/** Options for updating active workbench item reveal tracking. */
+export interface WorkbenchActiveRevealOptions<Id extends string = string> {
+  activeId: Id;
+  activeRect?: Rectangle;
+  contentHeight: number;
+  viewportWidth: number;
+  viewportHeight: number;
+  offsetRows: number;
+}
+
 /** Shared workbench layout result consumed by terminal and browser render adapters. */
 export interface WorkbenchWindowLayout<Id extends string = string> {
   bounds: Rectangle;
   contentHeight: number;
   rects: Map<Id, Rectangle>;
+}
+
+/** Tracks active window visibility across workbench layout changes. */
+export class WorkbenchActiveRevealTracker<Id extends string = string> {
+  #lastActiveId: Id | null = null;
+  #lastViewportWidth = 0;
+  #lastViewportHeight = 0;
+
+  revealOffset(options: WorkbenchActiveRevealOptions<Id>): number | undefined {
+    const activeChanged = this.#lastActiveId !== options.activeId;
+    const viewportChanged = this.#lastViewportWidth !== options.viewportWidth ||
+      this.#lastViewportHeight !== options.viewportHeight;
+    if (!options.activeRect || (!activeChanged && !viewportChanged)) return undefined;
+
+    this.#lastActiveId = options.activeId;
+    this.#lastViewportWidth = options.viewportWidth;
+    this.#lastViewportHeight = options.viewportHeight;
+
+    return workbenchRevealActiveRowOffset({
+      activeRect: options.activeRect,
+      contentHeight: options.contentHeight,
+      viewportHeight: options.viewportHeight,
+      offsetRows: options.offsetRows,
+    });
+  }
+
+  reset(): void {
+    this.#lastActiveId = null;
+    this.#lastViewportWidth = 0;
+    this.#lastViewportHeight = 0;
+  }
 }
 
 /** Clamps tile-density preferences to the supported compact/wide range. */

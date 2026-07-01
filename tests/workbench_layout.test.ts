@@ -1,6 +1,7 @@
 import { assertEquals } from "./deps.ts";
 import {
   clampWorkbenchTileDensity,
+  WorkbenchActiveRevealTracker,
   workbenchAdaptiveTileOptions,
   workbenchVerticalScrollbarRect,
   workbenchWindowLayout,
@@ -76,4 +77,24 @@ Deno.test("workbenchVerticalScrollbarRect locates the right-edge workspace hit r
     }),
     undefined,
   );
+});
+
+Deno.test("WorkbenchActiveRevealTracker only emits offsets when active item or viewport changes", () => {
+  const tracker = new WorkbenchActiveRevealTracker<"a" | "b">();
+  const activeRect = { column: 0, row: 18, width: 20, height: 6 };
+  const base = {
+    activeId: "a" as const,
+    activeRect,
+    contentHeight: 40,
+    viewportWidth: 80,
+    viewportHeight: 12,
+    offsetRows: 0,
+  };
+
+  assertEquals(tracker.revealOffset(base), 12);
+  assertEquals(tracker.revealOffset(base), undefined);
+  assertEquals(tracker.revealOffset({ ...base, viewportHeight: 10, offsetRows: 12 }), 14);
+  assertEquals(tracker.revealOffset({ ...base, activeId: "b", offsetRows: 0 }), 12);
+  tracker.reset();
+  assertEquals(tracker.revealOffset(base), 12);
 });

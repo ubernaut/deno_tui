@@ -9040,7 +9040,46 @@ function subscribeWorkbenchDiagnosticLog(diagnostics, onLog, options = {}) {
   });
 }
 
+// src/app/workbench_viewport.ts
+function workbenchRevealActiveRowOffset(options) {
+  if (!options.activeRect) return void 0;
+  if (options.contentHeight <= options.viewportHeight) return 0;
+  const maxOffset = Math.max(0, options.contentHeight - Math.max(0, options.viewportHeight));
+  const offset = Math.max(0, Math.min(maxOffset, options.offsetRows));
+  const top = options.activeRect.row;
+  const bottom = options.activeRect.row + options.activeRect.height;
+  if (top < offset) return Math.max(0, Math.min(maxOffset, top));
+  if (bottom > offset + options.viewportHeight) {
+    return Math.max(0, Math.min(maxOffset, bottom - options.viewportHeight));
+  }
+  return void 0;
+}
+
 // src/app/workbench_layout.ts
+var WorkbenchActiveRevealTracker = class {
+  #lastActiveId = null;
+  #lastViewportWidth = 0;
+  #lastViewportHeight = 0;
+  revealOffset(options) {
+    const activeChanged = this.#lastActiveId !== options.activeId;
+    const viewportChanged = this.#lastViewportWidth !== options.viewportWidth || this.#lastViewportHeight !== options.viewportHeight;
+    if (!options.activeRect || !activeChanged && !viewportChanged) return void 0;
+    this.#lastActiveId = options.activeId;
+    this.#lastViewportWidth = options.viewportWidth;
+    this.#lastViewportHeight = options.viewportHeight;
+    return workbenchRevealActiveRowOffset({
+      activeRect: options.activeRect,
+      contentHeight: options.contentHeight,
+      viewportHeight: options.viewportHeight,
+      offsetRows: options.offsetRows
+    });
+  }
+  reset() {
+    this.#lastActiveId = null;
+    this.#lastViewportWidth = 0;
+    this.#lastViewportHeight = 0;
+  }
+};
 function clampWorkbenchTileDensity(value, min2 = -3, max2 = 3) {
   if (!Number.isFinite(value)) return 0;
   const lower = Math.min(min2, max2);
@@ -10074,21 +10113,6 @@ function layoutWorkbenchTitlebar(options) {
     buttons: buttons.sort((left, right) => left.rect.column - right.rect.column),
     hasWindowControls
   };
-}
-
-// src/app/workbench_viewport.ts
-function workbenchRevealActiveRowOffset(options) {
-  if (!options.activeRect) return void 0;
-  if (options.contentHeight <= options.viewportHeight) return 0;
-  const maxOffset = Math.max(0, options.contentHeight - Math.max(0, options.viewportHeight));
-  const offset = Math.max(0, Math.min(maxOffset, options.offsetRows));
-  const top = options.activeRect.row;
-  const bottom = options.activeRect.row + options.activeRect.height;
-  if (top < offset) return Math.max(0, Math.min(maxOffset, top));
-  if (bottom > offset + options.viewportHeight) {
-    return Math.max(0, Math.min(maxOffset, bottom - options.viewportHeight));
-  }
-  return void 0;
 }
 
 // src/app/workbench_workspace.ts
@@ -11651,9 +11675,7 @@ var webTerminalWorkspace = createTerminalWorkspaceController({
 });
 var webTerminalScreenKey = "";
 var hitTargets = new HitTargetStack();
-var lastVisiblePanel = null;
-var lastWorkspaceWidth = 0;
-var lastWorkspaceHeight = 0;
+var activeRevealTracker = new WorkbenchActiveRevealTracker();
 var dropdownOverlay = null;
 var pointerDrag = null;
 themeIndex.subscribe((index) => persistThemeIndex(index));
@@ -12744,16 +12766,11 @@ function renderModalOverlay(frame) {
 }
 function ensureActivePanelVisible(layout, viewportHeight) {
   const activePanel = active.peek();
-  const activeRect = layout.rects.get(activePanel);
-  const workspaceChanged = lastWorkspaceWidth !== layout.bounds.width || lastWorkspaceHeight !== viewportHeight;
-  const activeChanged = lastVisiblePanel !== activePanel;
-  if (!activeRect || !activeChanged && !workspaceChanged) return;
-  lastVisiblePanel = activePanel;
-  lastWorkspaceWidth = layout.bounds.width;
-  lastWorkspaceHeight = viewportHeight;
-  const offset = workbenchRevealActiveRowOffset({
-    activeRect,
+  const offset = activeRevealTracker.revealOffset({
+    activeId: activePanel,
+    activeRect: layout.rects.get(activePanel),
     contentHeight: layout.contentHeight,
+    viewportWidth: layout.bounds.width,
     viewportHeight,
     offsetRows: workspaceScroll.offset.peek().rows
   });

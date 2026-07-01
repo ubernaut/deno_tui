@@ -64,9 +64,9 @@ import {
   toStyledCells,
   translateHitTargets,
   WindowManagerController,
+  WorkbenchActiveRevealTracker,
   workbenchAdaptiveTileOptions,
   type WorkbenchPanelWorkspaceState,
-  workbenchRevealActiveRowOffset,
   workbenchStatusLeft,
   type WorkbenchTitlebarButtonKind,
   workbenchVerticalScrollbarRect,
@@ -317,9 +317,7 @@ const webTerminalWorkspace = createTerminalWorkspaceController({
 });
 let webTerminalScreenKey = "";
 const hitTargets = new HitTargetStack<Hit>();
-let lastVisiblePanel: PanelId | null = null;
-let lastWorkspaceWidth = 0;
-let lastWorkspaceHeight = 0;
+const activeRevealTracker = new WorkbenchActiveRevealTracker<PanelId>();
 let dropdownOverlay: DropdownOverlay | null = null;
 let pointerDrag: {
   x: number;
@@ -1523,18 +1521,11 @@ function ensureActivePanelVisible(
   viewportHeight: number,
 ): void {
   const activePanel = active.peek();
-  const activeRect = layout.rects.get(activePanel);
-  const workspaceChanged = lastWorkspaceWidth !== layout.bounds.width || lastWorkspaceHeight !== viewportHeight;
-  const activeChanged = lastVisiblePanel !== activePanel;
-  if (!activeRect || (!activeChanged && !workspaceChanged)) return;
-
-  lastVisiblePanel = activePanel;
-  lastWorkspaceWidth = layout.bounds.width;
-  lastWorkspaceHeight = viewportHeight;
-
-  const offset = workbenchRevealActiveRowOffset({
-    activeRect,
+  const offset = activeRevealTracker.revealOffset({
+    activeId: activePanel,
+    activeRect: layout.rects.get(activePanel),
     contentHeight: layout.contentHeight,
+    viewportWidth: layout.bounds.width,
     viewportHeight,
     offsetRows: workspaceScroll.offset.peek().rows,
   });
