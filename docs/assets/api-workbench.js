@@ -2345,9 +2345,23 @@ var DirtyRegion = class _DirtyRegion {
   static fromRectangles(rectangles) {
     const region = new _DirtyRegion();
     for (const rectangle of rectangles) {
-      region.addRectangle(rectangle);
+      region.addRectangleUnmerged(rectangle);
     }
+    region.mergeRows();
     return region;
+  }
+  addRectangleUnmerged(rectangle) {
+    const startRow = Math.floor(rectangle.row);
+    const endRow = startRow + Math.max(0, Math.floor(rectangle.height));
+    const startColumn = Math.floor(rectangle.column);
+    const endColumn = startColumn + Math.max(0, Math.floor(rectangle.width));
+    if (endRow <= startRow || endColumn <= startColumn) return;
+    for (let row = startRow; row < endRow; row += 1) {
+      const segments = this.#rows.get(row);
+      const segment = { row, startColumn, endColumn };
+      if (segments) segments.push(segment);
+      else this.#rows.set(row, [segment]);
+    }
   }
   /** Adds a rectangular dirty area, ignoring empty or invalid dimensions. */
   addRectangle(rectangle) {
@@ -2367,17 +2381,7 @@ var DirtyRegion = class _DirtyRegion {
     if (end <= start) return;
     const segments = this.#rows.get(normalizedRow) ?? [];
     segments.push({ row: normalizedRow, startColumn: start, endColumn: end });
-    segments.sort((left, right) => left.startColumn - right.startColumn || left.endColumn - right.endColumn);
-    const merged = [];
-    for (const segment of segments) {
-      const previous = merged.at(-1);
-      if (!previous || segment.startColumn > previous.endColumn) {
-        merged.push({ ...segment });
-        continue;
-      }
-      previous.endColumn = Math.max(previous.endColumn, segment.endColumn);
-    }
-    this.#rows.set(normalizedRow, merged);
+    this.#rows.set(normalizedRow, mergeRowSegments(segments));
   }
   /** Removes all row segments from the dirty region. */
   clear() {
@@ -2414,7 +2418,27 @@ var DirtyRegion = class _DirtyRegion {
     }
     return intersections;
   }
+  mergeRows() {
+    for (const [row, segments] of this.#rows) {
+      this.#rows.set(row, mergeRowSegments(segments));
+    }
+  }
 };
+function mergeRowSegments(segments) {
+  const sorted = [...segments].sort(
+    (left, right) => left.startColumn - right.startColumn || left.endColumn - right.endColumn
+  );
+  const merged = [];
+  for (const segment of sorted) {
+    const previous = merged.at(-1);
+    if (!previous || segment.startColumn > previous.endColumn) {
+      merged.push({ ...segment });
+      continue;
+    }
+    previous.endColumn = Math.max(previous.endColumn, segment.endColumn);
+  }
+  return merged;
+}
 
 // src/canvas/spatial_index.ts
 var DrawObjectSpatialIndex = class _DrawObjectSpatialIndex {
@@ -3747,6 +3771,7 @@ function defaultComputedLayoutStyle() {
     justifySelf: "stretch",
     gridTemplateColumns: [],
     gridTemplateRows: [],
+    gridTemplateAreas: [],
     gridAutoColumns: autoLength(),
     gridAutoRows: autoLength(),
     gridAutoFlow: "row",
@@ -3783,6 +3808,7 @@ function cloneComputedLayoutStyle(style2) {
     flexBasis: { ...style2.flexBasis },
     gridTemplateColumns: style2.gridTemplateColumns.map((track) => ({ ...track })),
     gridTemplateRows: style2.gridTemplateRows.map((track) => ({ ...track })),
+    gridTemplateAreas: style2.gridTemplateAreas.map((row) => [...row]),
     gridAutoColumns: { ...style2.gridAutoColumns },
     gridAutoRows: { ...style2.gridAutoRows },
     gridColumn: { ...style2.gridColumn },
@@ -3837,6 +3863,25 @@ function parseGridTrackList(value, fallback = []) {
   if (!trimmed || trimmed === "none") return [];
   return tokenizeGridTrackList(expandGridRepeat(trimmed)).map((part) => parseLayoutLength(part, autoLength()));
 }
+function parseGridTemplateAreas(value, fallback = []) {
+  if (value === void 0) return fallback.map((row) => [...row]);
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.toLowerCase() === "none") return [];
+  const rows2 = [];
+  for (const match of trimmed.matchAll(/"([^"]*)"|'([^']*)'/g)) {
+    const source = (match[1] ?? match[2] ?? "").trim();
+    if (!source) return fallback.map((row) => [...row]);
+    const cells = source.split(/\s+/).filter(Boolean);
+    if (cells.some((cell) => cell !== "." && !/^[A-Za-z_][\w-]*$/.test(cell))) {
+      return fallback.map((row) => [...row]);
+    }
+    rows2.push(cells);
+  }
+  if (rows2.length === 0) return fallback.map((row) => [...row]);
+  const width = rows2[0]?.length ?? 0;
+  if (width === 0 || rows2.some((row) => row.length !== width)) return fallback.map((row) => [...row]);
+  return rows2;
+}
 function parseGridPlacement(value, fallback = {}) {
   if (value === void 0) return { ...fallback };
   const trimmed = value.trim().toLowerCase();
@@ -3862,6 +3907,13 @@ function parseGridPlacement(value, fallback = {}) {
   }
   if (placement.start === void 0 && placement.span === void 0) return { ...fallback };
   return placement;
+}
+function parseGridAreaName(value, fallback) {
+  if (value === void 0) return fallback;
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.toLowerCase() === "auto") return void 0;
+  if (trimmed.includes("/")) return fallback;
+  return /^[A-Za-z_][\w-]*$/.test(trimmed) ? trimmed : fallback;
 }
 function parseLayoutInteger(value, fallback = 0) {
   if (value === void 0) return fallback;
@@ -3932,6 +3984,9 @@ function applyLayoutDeclaration(style2, property, value) {
     case "grid-template-rows":
       next.gridTemplateRows = parseGridTrackList(resolved, next.gridTemplateRows);
       break;
+    case "grid-template-areas":
+      next.gridTemplateAreas = parseGridTemplateAreas(resolved, next.gridTemplateAreas);
+      break;
     case "grid-auto-columns":
       next.gridAutoColumns = parseLayoutLength(resolved, next.gridAutoColumns);
       break;
@@ -3958,6 +4013,9 @@ function applyLayoutDeclaration(style2, property, value) {
       break;
     case "grid-row-end":
       next.gridRow = applyGridPlacementLonghand(next.gridRow, "end", resolved);
+      break;
+    case "grid-area":
+      next.gridArea = parseGridAreaName(resolved, next.gridArea);
       break;
     case "width":
       next.width = parseLayoutLength(resolved, next.width);
@@ -4317,13 +4375,18 @@ function placeGridChildren(children, bounds) {
   const occupied = /* @__PURE__ */ new Set();
   const autoColumns = bounds.columns > 0 ? bounds.columns : Math.max(1, Math.ceil(Math.sqrt(children.length)));
   const autoRows = bounds.rows > 0 ? bounds.rows : Math.max(1, Math.ceil(Math.sqrt(children.length)));
-  const candidates = children.map((child) => ({
-    node: child,
-    columnSpan: gridPlacementSpan(child.style.gridColumn),
-    rowSpan: gridPlacementSpan(child.style.gridRow),
-    explicitColumn: gridPlacementStart(child.style.gridColumn),
-    explicitRow: gridPlacementStart(child.style.gridRow)
-  }));
+  const candidates = children.map((child) => {
+    const area = child.style.gridArea ? gridTemplateAreaBounds(bounds.areas ?? [], child.style.gridArea) : void 0;
+    const hasExplicitColumn = gridPlacementHasExplicitLine(child.style.gridColumn);
+    const hasExplicitRow = gridPlacementHasExplicitLine(child.style.gridRow);
+    return {
+      node: child,
+      columnSpan: hasExplicitColumn ? gridPlacementSpan(child.style.gridColumn) : area?.columnSpan ?? gridPlacementSpan(child.style.gridColumn),
+      rowSpan: hasExplicitRow ? gridPlacementSpan(child.style.gridRow) : area?.rowSpan ?? gridPlacementSpan(child.style.gridRow),
+      explicitColumn: gridPlacementStart(child.style.gridColumn) ?? area?.column,
+      explicitRow: gridPlacementStart(child.style.gridRow) ?? area?.row
+    };
+  });
   const placementOrder = [
     ...candidates.filter((candidate) => candidate.explicitColumn !== void 0 && candidate.explicitRow !== void 0),
     ...candidates.filter(
@@ -4519,12 +4582,42 @@ function gridPlacementSpan(placement) {
   if (placement.start !== void 0 && placement.end !== void 0) return Math.max(1, placement.end - placement.start);
   return 1;
 }
+function gridPlacementHasExplicitLine(placement) {
+  return placement.start !== void 0 || placement.end !== void 0 || placement.span !== void 0;
+}
 function gridPlacementStart(placement) {
   if (placement.start !== void 0) return Math.max(0, placement.start - 1);
   if (placement.end !== void 0 && placement.span !== void 0) {
     return Math.max(0, placement.end - placement.span - 1);
   }
   return void 0;
+}
+function gridTemplateAreaBounds(areas, name) {
+  let minRow = Number.POSITIVE_INFINITY;
+  let maxRow = -1;
+  let minColumn = Number.POSITIVE_INFINITY;
+  let maxColumn = -1;
+  for (const [row, cells] of areas.entries()) {
+    for (const [column, cell] of cells.entries()) {
+      if (cell !== name) continue;
+      minRow = Math.min(minRow, row);
+      maxRow = Math.max(maxRow, row);
+      minColumn = Math.min(minColumn, column);
+      maxColumn = Math.max(maxColumn, column);
+    }
+  }
+  if (maxRow < 0 || maxColumn < 0) return void 0;
+  for (let row = minRow; row <= maxRow; row += 1) {
+    for (let column = minColumn; column <= maxColumn; column += 1) {
+      if (areas[row]?.[column] !== name) return void 0;
+    }
+  }
+  return {
+    column: minColumn,
+    row: minRow,
+    columnSpan: maxColumn - minColumn + 1,
+    rowSpan: maxRow - minRow + 1
+  };
 }
 function alignmentOffset(available, size, alignment) {
   const free = Math.max(0, available - size);
@@ -4705,7 +4798,8 @@ var SimpleLayoutSolver = class {
     const placed = placeGridChildren(children, {
       columns: node.style.gridTemplateColumns.length,
       rows: node.style.gridTemplateRows.length,
-      autoFlow: node.style.gridAutoFlow
+      autoFlow: node.style.gridAutoFlow,
+      areas: node.style.gridTemplateAreas
     });
     const columnCount = Math.max(
       1,

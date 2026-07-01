@@ -404,6 +404,8 @@ Work:
 - [x] Expand Yoga parity tests and document unsupported CSS explicitly.
   - [x] Added `inspectTuiCssSupport()` as a canonical programmatic support report covering CSS properties, selectors,
         media features, widget tags, and unsupported browser-CSS gaps so docs and demos do not need to scrape prose.
+  - [x] Added simple-solver support for named CSS Grid template areas (`grid-template-areas` + `grid-area`), keeping
+        Yoga named-area parity documented as an unsupported gap.
 
 Acceptance checks:
 

@@ -66,11 +66,13 @@ export interface ComputedLayoutStyle {
   justifySelf: LayoutSelfAlignment;
   gridTemplateColumns: LayoutLengthValue[];
   gridTemplateRows: LayoutLengthValue[];
+  gridTemplateAreas: string[][];
   gridAutoColumns: LayoutLengthValue;
   gridAutoRows: LayoutLengthValue;
   gridAutoFlow: LayoutGridAutoFlow;
   gridColumn: LayoutGridPlacement;
   gridRow: LayoutGridPlacement;
+  gridArea?: string;
   width: LayoutLengthValue;
   height: LayoutLengthValue;
   minWidth: LayoutLengthValue;
@@ -137,6 +139,7 @@ export function defaultComputedLayoutStyle(): ComputedLayoutStyle {
     justifySelf: "stretch",
     gridTemplateColumns: [],
     gridTemplateRows: [],
+    gridTemplateAreas: [],
     gridAutoColumns: autoLength(),
     gridAutoRows: autoLength(),
     gridAutoFlow: "row",
@@ -175,6 +178,7 @@ export function cloneComputedLayoutStyle(style: ComputedLayoutStyle): ComputedLa
     flexBasis: { ...style.flexBasis },
     gridTemplateColumns: style.gridTemplateColumns.map((track) => ({ ...track })),
     gridTemplateRows: style.gridTemplateRows.map((track) => ({ ...track })),
+    gridTemplateAreas: style.gridTemplateAreas.map((row) => [...row]),
     gridAutoColumns: { ...style.gridAutoColumns },
     gridAutoRows: { ...style.gridAutoRows },
     gridColumn: { ...style.gridColumn },
@@ -254,6 +258,31 @@ export function parseGridTrackList(
     .map((part) => parseLayoutLength(part, autoLength()));
 }
 
+function parseGridTemplateAreas(
+  value: string | undefined,
+  fallback: readonly (readonly string[])[] = [],
+): string[][] {
+  if (value === undefined) return fallback.map((row) => [...row]);
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.toLowerCase() === "none") return [];
+
+  const rows: string[][] = [];
+  for (const match of trimmed.matchAll(/"([^"]*)"|'([^']*)'/g)) {
+    const source = (match[1] ?? match[2] ?? "").trim();
+    if (!source) return fallback.map((row) => [...row]);
+    const cells = source.split(/\s+/).filter(Boolean);
+    if (cells.some((cell) => cell !== "." && !/^[A-Za-z_][\w-]*$/.test(cell))) {
+      return fallback.map((row) => [...row]);
+    }
+    rows.push(cells);
+  }
+
+  if (rows.length === 0) return fallback.map((row) => [...row]);
+  const width = rows[0]?.length ?? 0;
+  if (width === 0 || rows.some((row) => row.length !== width)) return fallback.map((row) => [...row]);
+  return rows;
+}
+
 /** Parses a CSS-grid line placement shorthand. */
 export function parseGridPlacement(
   value: string | undefined,
@@ -287,6 +316,14 @@ export function parseGridPlacement(
 
   if (placement.start === undefined && placement.span === undefined) return { ...fallback };
   return placement;
+}
+
+function parseGridAreaName(value: string | undefined, fallback?: string): string | undefined {
+  if (value === undefined) return fallback;
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.toLowerCase() === "auto") return undefined;
+  if (trimmed.includes("/")) return fallback;
+  return /^[A-Za-z_][\w-]*$/.test(trimmed) ? trimmed : fallback;
 }
 
 /** Parses a non-negative terminal-cell integer. */
@@ -372,6 +409,9 @@ export function applyLayoutDeclaration(
     case "grid-template-rows":
       next.gridTemplateRows = parseGridTrackList(resolved, next.gridTemplateRows);
       break;
+    case "grid-template-areas":
+      next.gridTemplateAreas = parseGridTemplateAreas(resolved, next.gridTemplateAreas);
+      break;
     case "grid-auto-columns":
       next.gridAutoColumns = parseLayoutLength(resolved, next.gridAutoColumns);
       break;
@@ -398,6 +438,9 @@ export function applyLayoutDeclaration(
       break;
     case "grid-row-end":
       next.gridRow = applyGridPlacementLonghand(next.gridRow, "end", resolved);
+      break;
+    case "grid-area":
+      next.gridArea = parseGridAreaName(resolved, next.gridArea);
       break;
     case "width":
       next.width = parseLayoutLength(resolved, next.width);

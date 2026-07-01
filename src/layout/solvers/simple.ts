@@ -220,6 +220,7 @@ export class SimpleLayoutSolver implements LayoutSolver {
       columns: node.style.gridTemplateColumns.length,
       rows: node.style.gridTemplateRows.length,
       autoFlow: node.style.gridAutoFlow,
+      areas: node.style.gridTemplateAreas,
     });
     const columnCount = Math.max(
       1,

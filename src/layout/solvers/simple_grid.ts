@@ -9,6 +9,7 @@ export interface GridPlacementBounds {
   columns: number;
   rows: number;
   autoFlow: ComputedLayoutStyle["gridAutoFlow"];
+  areas?: readonly (readonly string[])[];
 }
 
 /** Grid placement result for one child node. */
@@ -46,13 +47,20 @@ export function placeGridChildren(children: readonly LayoutNode[], bounds: GridP
   const occupied = new Set<string>();
   const autoColumns = bounds.columns > 0 ? bounds.columns : Math.max(1, Math.ceil(Math.sqrt(children.length)));
   const autoRows = bounds.rows > 0 ? bounds.rows : Math.max(1, Math.ceil(Math.sqrt(children.length)));
-  const candidates = children.map((child): GridPlacementCandidate => ({
-    node: child,
-    columnSpan: gridPlacementSpan(child.style.gridColumn),
-    rowSpan: gridPlacementSpan(child.style.gridRow),
-    explicitColumn: gridPlacementStart(child.style.gridColumn),
-    explicitRow: gridPlacementStart(child.style.gridRow),
-  }));
+  const candidates = children.map((child): GridPlacementCandidate => {
+    const area = child.style.gridArea ? gridTemplateAreaBounds(bounds.areas ?? [], child.style.gridArea) : undefined;
+    const hasExplicitColumn = gridPlacementHasExplicitLine(child.style.gridColumn);
+    const hasExplicitRow = gridPlacementHasExplicitLine(child.style.gridRow);
+    return {
+      node: child,
+      columnSpan: hasExplicitColumn ? gridPlacementSpan(child.style.gridColumn) : area?.columnSpan ??
+        gridPlacementSpan(child.style.gridColumn),
+      rowSpan: hasExplicitRow ? gridPlacementSpan(child.style.gridRow) : area?.rowSpan ??
+        gridPlacementSpan(child.style.gridRow),
+      explicitColumn: gridPlacementStart(child.style.gridColumn) ?? area?.column,
+      explicitRow: gridPlacementStart(child.style.gridRow) ?? area?.row,
+    };
+  });
   const placementOrder = [
     ...candidates.filter((candidate) => candidate.explicitColumn !== undefined && candidate.explicitRow !== undefined),
     ...candidates.filter((candidate) =>
@@ -310,12 +318,50 @@ function gridPlacementSpan(placement: ComputedLayoutStyle["gridColumn"]): number
   return 1;
 }
 
+function gridPlacementHasExplicitLine(placement: ComputedLayoutStyle["gridColumn"]): boolean {
+  return placement.start !== undefined || placement.end !== undefined || placement.span !== undefined;
+}
+
 function gridPlacementStart(placement: ComputedLayoutStyle["gridColumn"]): number | undefined {
   if (placement.start !== undefined) return Math.max(0, placement.start - 1);
   if (placement.end !== undefined && placement.span !== undefined) {
     return Math.max(0, placement.end - placement.span - 1);
   }
   return undefined;
+}
+
+function gridTemplateAreaBounds(
+  areas: readonly (readonly string[])[],
+  name: string,
+): { column: number; row: number; columnSpan: number; rowSpan: number } | undefined {
+  let minRow = Number.POSITIVE_INFINITY;
+  let maxRow = -1;
+  let minColumn = Number.POSITIVE_INFINITY;
+  let maxColumn = -1;
+
+  for (const [row, cells] of areas.entries()) {
+    for (const [column, cell] of cells.entries()) {
+      if (cell !== name) continue;
+      minRow = Math.min(minRow, row);
+      maxRow = Math.max(maxRow, row);
+      minColumn = Math.min(minColumn, column);
+      maxColumn = Math.max(maxColumn, column);
+    }
+  }
+
+  if (maxRow < 0 || maxColumn < 0) return undefined;
+  for (let row = minRow; row <= maxRow; row += 1) {
+    for (let column = minColumn; column <= maxColumn; column += 1) {
+      if (areas[row]?.[column] !== name) return undefined;
+    }
+  }
+
+  return {
+    column: minColumn,
+    row: minRow,
+    columnSpan: maxColumn - minColumn + 1,
+    rowSpan: maxRow - minRow + 1,
+  };
 }
 
 function alignmentOffset(available: number, size: number, alignment: ComputedLayoutStyle["justifySelf"]): number {

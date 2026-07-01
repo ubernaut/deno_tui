@@ -216,13 +216,14 @@ Deno.test("inspectTuiCssSupport reports the documented HTML/CSS subset", () => {
   const report = inspectTuiCssSupport();
 
   assert(report.properties.includes("grid-template-columns"));
+  assert(report.properties.includes("grid-template-areas"));
   assert(report.properties.includes("flex-flow"));
   assert(report.mediaFeatures.includes("max-width"));
   assert(report.pseudoStates.includes("focus"));
   assert(report.hydratedWidgetTags.includes("radio-group"));
   assert(report.hydratedWidgetTags.includes("tree"));
   assert(report.markupTags.includes("three-ascii"));
-  assert(report.unsupported.includes("grid-template-areas"));
+  assert(report.unsupported.includes("Yoga solver named grid-area parity"));
 });
 
 Deno.test("createMarkupLayout applies media rules from layout bounds", () => {
@@ -323,6 +324,44 @@ Deno.test("createMarkupLayout supports grid numeric end lines and longhands", ()
 
   assertEquals(result.layout.byId.get("wide")!.rect, { column: 6, row: 0, width: 11, height: 2 });
   assertEquals(result.layout.byId.get("from-end")!.rect, { column: 12, row: 3, width: 11, height: 2 });
+});
+
+Deno.test("createMarkupLayout supports CSS grid template areas in the simple solver", () => {
+  const result = createMarkupLayout({
+    markup: `
+      <window id="main">
+        <panel id="title">Title</panel>
+        <panel id="nav">Nav</panel>
+        <panel id="content">Content</panel>
+        <panel id="footer">Footer</panel>
+      </window>
+    `,
+    css: `
+      window {
+        display: grid;
+        grid-template-columns: 6 1fr;
+        grid-template-rows: 2 1fr 1;
+        grid-template-areas:
+          "title title"
+          "nav content"
+          "footer footer";
+        gap: 1;
+        width: 24;
+        height: 10;
+      }
+
+      #title { grid-area: title; }
+      #nav { grid-area: nav; }
+      #content { grid-area: content; }
+      #footer { grid-area: footer; }
+    `,
+    bounds: { column: 0, row: 0, width: 40, height: 12 },
+  });
+
+  assertEquals(result.layout.byId.get("title")!.rect, { column: 0, row: 0, width: 24, height: 2 });
+  assertEquals(result.layout.byId.get("nav")!.rect, { column: 0, row: 3, width: 6, height: 5 });
+  assertEquals(result.layout.byId.get("content")!.rect, { column: 7, row: 3, width: 17, height: 5 });
+  assertEquals(result.layout.byId.get("footer")!.rect, { column: 0, row: 9, width: 24, height: 1 });
 });
 
 Deno.test("createMarkupLayout aligns explicit grid item sizes with place-self", () => {
