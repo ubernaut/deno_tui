@@ -1,5 +1,13 @@
 // Copyright 2023 Im-Beast. MIT license.
-import { Computed, Effect, Flusher, LazyComputed, LazyEffect, Signal } from "../src/signals/mod.ts";
+import {
+  Computed,
+  Effect,
+  Flusher,
+  LazyComputed,
+  LazyEffect,
+  Signal,
+  SignalRecursiveUpdateError,
+} from "../src/signals/mod.ts";
 import { IS_REACTIVE } from "../src/signals/reactivity.ts";
 import { assertArrayIncludes, assertEquals, assertThrows } from "./deps.ts";
 
@@ -115,6 +123,41 @@ Deno.test("signals/mod.ts", async (t) => {
       signal2.value.foo = "baz";
       assertEquals(object.foo, "baz");
       assertEquals(proxyObject.foo, "baz");
+    });
+
+    await t.step("recursive propagation reports a typed error", () => {
+      const signal = new Signal(0);
+      signal.subscribe((value) => {
+        signal.value = value + 1;
+      });
+
+      const error = assertThrows(() => {
+        signal.value = 1;
+      }, SignalRecursiveUpdateError);
+
+      assertEquals(error.path.every((entry) => entry === "Signal"), true);
+      assertEquals(error.path.length > 2, true);
+      assertEquals(signal.value > 2, true);
+    });
+
+    await t.step("mutually recursive propagation reports the propagation path", () => {
+      const first = new Signal(0);
+      const second = new Signal(0);
+      first.subscribe((value) => {
+        second.value = value + 1;
+      });
+      second.subscribe((value) => {
+        first.value = value + 1;
+      });
+
+      const error = assertThrows(() => {
+        first.value = 1;
+      }, SignalRecursiveUpdateError);
+
+      assertEquals(error.path.every((entry) => entry === "Signal"), true);
+      assertEquals(error.path.length > 2, true);
+      assertEquals(first.value > 1, true);
+      assertEquals(second.value > 1, true);
     });
 
     await t.step("Deep observe", async (t) => {

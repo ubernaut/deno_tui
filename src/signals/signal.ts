@@ -17,6 +17,17 @@ export class SignalDeepObserveTypeofError extends Error {
   }
 }
 
+/** Thrown when a signal graph recursively updates the same signal during one propagation pass. */
+export class SignalRecursiveUpdateError extends Error {
+  readonly path: string[];
+
+  constructor(path: readonly string[]) {
+    super(`Recursive signal propagation detected: ${path.join(" -> ")}`);
+    this.name = "SignalRecursiveUpdateError";
+    this.path = [...path];
+  }
+}
+
 /** Options for configuring signal. */
 export interface SignalOptions<T> {
   /**
@@ -53,6 +64,10 @@ export interface SignalInspection {
   dependants: number;
   reactive: boolean;
 }
+
+const MAX_PROPAGATION_REENTRY = 32;
+const activePropagationCounts = new Map<object, number>();
+const propagationStack: object[] = [];
 
 /**
  * Signal wraps value in a container.
@@ -154,30 +169,35 @@ export class Signal<T> implements Dependency {
    * - Update each dependant in `dependants`
    */
   propagate(cause?: Dependency | Dependant): void {
+    const exitPropagation = enterPropagation(this);
     const { subscriptions, whenSubscriptions, dependants } = this;
 
-    const value = this.$value;
+    try {
+      const value = this.$value;
 
-    if (subscriptions?.size) {
-      for (const subscription of subscriptions) {
-        subscription(value);
+      if (subscriptions?.size) {
+        for (const subscription of subscriptions) {
+          subscription(value);
+        }
       }
-    }
 
-    const valueSubscriptions = whenSubscriptions?.get(value);
-    if (valueSubscriptions) {
-      for (const subscription of valueSubscriptions) {
-        subscription(value);
+      const valueSubscriptions = whenSubscriptions?.get(value);
+      if (valueSubscriptions) {
+        for (const subscription of valueSubscriptions) {
+          subscription(value);
+        }
       }
-    }
 
-    if (!dependants?.size) return;
+      if (!dependants?.size) return;
 
-    for (const dependant of dependants) {
-      if ("forceUpdateValue" in dependant) {
-        dependant.forceUpdateValue = true;
+      for (const dependant of dependants) {
+        if ("forceUpdateValue" in dependant) {
+          dependant.forceUpdateValue = true;
+        }
+        dependant.update(cause ?? this);
       }
-      dependant.update(cause ?? this);
+    } finally {
+      exitPropagation();
     }
   }
 
@@ -276,3 +296,27 @@ export class Signal<T> implements Dependency {
  * ```
  */
 export type SignalOfObject<T> = Signal<T> & { [key in keyof T]?: never };
+
+function enterPropagation(node: object): () => void {
+  const activeCount = activePropagationCounts.get(node) ?? 0;
+  if (activeCount >= MAX_PROPAGATION_REENTRY) {
+    throw new SignalRecursiveUpdateError([...propagationStack, node].map(formatPropagationNode));
+  }
+
+  activePropagationCounts.set(node, activeCount + 1);
+  propagationStack.push(node);
+
+  return () => {
+    propagationStack.pop();
+    const nextCount = (activePropagationCounts.get(node) ?? 1) - 1;
+    if (nextCount <= 0) {
+      activePropagationCounts.delete(node);
+    } else {
+      activePropagationCounts.set(node, nextCount);
+    }
+  };
+}
+
+function formatPropagationNode(node: object): string {
+  return node.constructor?.name || "unknown";
+}

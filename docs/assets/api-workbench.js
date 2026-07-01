@@ -297,6 +297,17 @@ var SignalDeepObserveTypeofError = class extends Error {
     super("You can only deeply observe value with typeof 'object'");
   }
 };
+var SignalRecursiveUpdateError = class extends Error {
+  path;
+  constructor(path) {
+    super(`Recursive signal propagation detected: ${path.join(" -> ")}`);
+    this.name = "SignalRecursiveUpdateError";
+    this.path = [...path];
+  }
+};
+var MAX_PROPAGATION_REENTRY = 32;
+var activePropagationCounts = /* @__PURE__ */ new Map();
+var propagationStack = [];
 var Signal = class {
   $value;
   // Dependant: something that depends on THIS
@@ -370,25 +381,30 @@ var Signal = class {
    * - Update each dependant in `dependants`
    */
   propagate(cause) {
+    const exitPropagation = enterPropagation(this);
     const { subscriptions, whenSubscriptions, dependants } = this;
-    const value = this.$value;
-    if (subscriptions?.size) {
-      for (const subscription of subscriptions) {
-        subscription(value);
+    try {
+      const value = this.$value;
+      if (subscriptions?.size) {
+        for (const subscription of subscriptions) {
+          subscription(value);
+        }
       }
-    }
-    const valueSubscriptions = whenSubscriptions?.get(value);
-    if (valueSubscriptions) {
-      for (const subscription of valueSubscriptions) {
-        subscription(value);
+      const valueSubscriptions = whenSubscriptions?.get(value);
+      if (valueSubscriptions) {
+        for (const subscription of valueSubscriptions) {
+          subscription(value);
+        }
       }
-    }
-    if (!dependants?.size) return;
-    for (const dependant of dependants) {
-      if ("forceUpdateValue" in dependant) {
-        dependant.forceUpdateValue = true;
+      if (!dependants?.size) return;
+      for (const dependant of dependants) {
+        if ("forceUpdateValue" in dependant) {
+          dependant.forceUpdateValue = true;
+        }
+        dependant.update(cause ?? this);
       }
-      dependant.update(cause ?? this);
+    } finally {
+      exitPropagation();
     }
   }
   /**
@@ -445,6 +461,26 @@ var Signal = class {
     return `${this.$value}`;
   }
 };
+function enterPropagation(node) {
+  const activeCount = activePropagationCounts.get(node) ?? 0;
+  if (activeCount >= MAX_PROPAGATION_REENTRY) {
+    throw new SignalRecursiveUpdateError([...propagationStack, node].map(formatPropagationNode));
+  }
+  activePropagationCounts.set(node, activeCount + 1);
+  propagationStack.push(node);
+  return () => {
+    propagationStack.pop();
+    const nextCount = (activePropagationCounts.get(node) ?? 1) - 1;
+    if (nextCount <= 0) {
+      activePropagationCounts.delete(node);
+    } else {
+      activePropagationCounts.set(node, nextCount);
+    }
+  };
+}
+function formatPropagationNode(node) {
+  return node.constructor?.name || "unknown";
+}
 
 // src/signals/computed.ts
 var ComputedReadOnlyError = class extends Error {
