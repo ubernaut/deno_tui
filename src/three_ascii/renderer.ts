@@ -247,9 +247,8 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
 }
 `;
 
-interface BufferPair {
+interface GpuBufferSlot {
   gpu: GPUBuffer;
-  cpu: Float32Array;
   byteLength: number;
 }
 
@@ -472,7 +471,7 @@ function createStringGrid(rows: number, columns: number): string[][] {
 }
 
 function colorValue(input: Color | string | number | undefined, fallback: number): Color {
-  return input instanceof Color ? input.clone() : new Color(input ?? fallback);
+  return input instanceof Color ? input : new Color(input ?? fallback);
 }
 
 function linearToSrgb(value: number): number {
@@ -672,9 +671,9 @@ export class ThreeAsciiRenderer {
   private fillBindGroup?: GPUBindGroup;
   private edgeBindGroup?: GPUBindGroup;
   private colorBindGroup?: GPUBindGroup;
-  private fillOutput?: BufferPair;
-  private edgeOutput?: BufferPair;
-  private colorOutput?: BufferPair;
+  private fillOutput?: GpuBufferSlot;
+  private edgeOutput?: GpuBufferSlot;
+  private colorOutput?: GpuBufferSlot;
   private outputReadback?: ReadbackBuffer;
   private uniformValues = new Float32Array(24);
   private readonly ansiGridAssembler = new ThreeAsciiAnsiGridAssembler({ reuseGrid: true });
@@ -882,24 +881,13 @@ export class ThreeAsciiRenderer {
 
     this.device!.queue.submit([commandEncoder.finish()]);
 
-    const { fillGlyphs, edgeGlyphs, colors } = await this.readOutputBuffers(fillOffset, edgeOffset, colorOffset);
-
-    return this.ansiGridAssembler.build({
-      columns: this.columns,
-      rows: this.rows,
-      fillGlyphs,
-      edgeGlyphs,
-      colors,
-      terminalGlyphStyle: this.terminalGlyphStyle,
-      terminalEdgeBias: this.terminalEdgeBias,
-      backgroundColor: effectState.backgroundColor,
-    });
+    return await this.buildAnsiGridFromReadback(fillOffset, edgeOffset, colorOffset, effectState.backgroundColor);
   }
 
   destroy(): void {
-    this.fillOutput = this.destroyBufferPair(this.fillOutput);
-    this.edgeOutput = this.destroyBufferPair(this.edgeOutput);
-    this.colorOutput = this.destroyBufferPair(this.colorOutput);
+    this.fillOutput = this.destroyBufferSlot(this.fillOutput);
+    this.edgeOutput = this.destroyBufferSlot(this.edgeOutput);
+    this.colorOutput = this.destroyBufferSlot(this.colorOutput);
     this.outputReadback = this.destroyReadbackBuffer(this.outputReadback);
     this.paramsBuffer?.destroy();
     this.paramsBuffer = undefined;
@@ -997,13 +985,13 @@ export class ThreeAsciiRenderer {
 
     const cellCount = this.columns * this.rows;
     if (this.outputCellCount !== cellCount) {
-      this.fillOutput = this.ensureBufferPair(this.fillOutput, cellCount * Float32Array.BYTES_PER_ELEMENT, "fill");
-      this.edgeOutput = this.ensureBufferPair(
+      this.fillOutput = this.ensureBufferSlot(this.fillOutput, cellCount * Float32Array.BYTES_PER_ELEMENT, "fill");
+      this.edgeOutput = this.ensureBufferSlot(
         this.edgeOutput,
         cellCount * 4 * Float32Array.BYTES_PER_ELEMENT,
         "edge",
       );
-      this.colorOutput = this.ensureBufferPair(
+      this.colorOutput = this.ensureBufferSlot(
         this.colorOutput,
         cellCount * 4 * Float32Array.BYTES_PER_ELEMENT,
         "color",
@@ -1153,12 +1141,12 @@ export class ThreeAsciiRenderer {
     });
   }
 
-  private ensureBufferPair(current: BufferPair | undefined, byteLength: number, label: string): BufferPair {
+  private ensureBufferSlot(current: GpuBufferSlot | undefined, byteLength: number, label: string): GpuBufferSlot {
     if (current?.byteLength === byteLength) {
       return current;
     }
 
-    this.destroyBufferPair(current);
+    this.destroyBufferSlot(current);
 
     return {
       gpu: this.device!.createBuffer({
@@ -1166,12 +1154,11 @@ export class ThreeAsciiRenderer {
         size: byteLength,
         usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC,
       }),
-      cpu: new Float32Array(byteLength / Float32Array.BYTES_PER_ELEMENT),
       byteLength,
     };
   }
 
-  private destroyBufferPair(current: BufferPair | undefined): undefined {
+  private destroyBufferSlot(current: GpuBufferSlot | undefined): undefined {
     current?.gpu.destroy();
     return undefined;
   }
@@ -1213,11 +1200,12 @@ export class ThreeAsciiRenderer {
     passEncoder.end();
   }
 
-  private async readOutputBuffers(
+  private async buildAnsiGridFromReadback(
     fillOffset: number,
     edgeOffset: number,
     colorOffset: number,
-  ): Promise<{ fillGlyphs: Float32Array; edgeGlyphs: Float32Array; colors: Float32Array }> {
+    backgroundColor: Color,
+  ): Promise<string[][]> {
     const readback = this.outputReadback;
     const fillOutput = this.fillOutput;
     const edgeOutput = this.edgeOutput;
@@ -1230,21 +1218,18 @@ export class ThreeAsciiRenderer {
 
     try {
       const source = readback.gpu.getMappedRange();
-      this.copyMappedFloatRange(source, fillOffset, fillOutput);
-      this.copyMappedFloatRange(source, edgeOffset, edgeOutput);
-      this.copyMappedFloatRange(source, colorOffset, colorOutput);
-      return {
-        fillGlyphs: fillOutput.cpu,
-        edgeGlyphs: edgeOutput.cpu,
-        colors: colorOutput.cpu,
-      };
+      return this.ansiGridAssembler.build({
+        columns: this.columns,
+        rows: this.rows,
+        fillGlyphs: new Float32Array(source, fillOffset, fillOutput.byteLength / Float32Array.BYTES_PER_ELEMENT),
+        edgeGlyphs: new Float32Array(source, edgeOffset, edgeOutput.byteLength / Float32Array.BYTES_PER_ELEMENT),
+        colors: new Float32Array(source, colorOffset, colorOutput.byteLength / Float32Array.BYTES_PER_ELEMENT),
+        terminalGlyphStyle: this.terminalGlyphStyle,
+        terminalEdgeBias: this.terminalEdgeBias,
+        backgroundColor,
+      });
     } finally {
       readback.gpu.unmap();
     }
-  }
-
-  private copyMappedFloatRange(source: ArrayBuffer, byteOffset: number, target: BufferPair): void {
-    const values = new Float32Array(source, byteOffset, target.cpu.length);
-    target.cpu.set(values);
   }
 }
