@@ -10,6 +10,7 @@ Deno export map in `deno.jsonc`, README guidance, and release notes should stay 
 | `.`             | `mod.ts`                     | terminal | stable       | Full Deno terminal apps, reusable widgets, app primitives, themes, runtime helpers, tests, and benchmarks.                     |
 | `./web`         | `mod.web.ts`                 | browser  | beta         | Standalone browser bundles, GitHub Pages demos, Canvas2D/DOM hosts, browser input, IndexedDB, Workers, and shared controllers. |
 | `./remote`      | `mod.remote.ts`              | remote   | experimental | Browser clients and server bridges that connect transports to hosted terminal session handles.                                 |
+| `./three-ascii` | `mod.three_ascii.ts`         | shared   | experimental | Focused Acerola-style Three.js/WebGPU ASCII renderer APIs, glyph/block/mixed modes, presets, and renderer options.             |
 | `./layout/yoga` | `src/layout/solvers/yoga.ts` | shared   | experimental | Optional Yoga-backed Flexbox solving for HTML/CSS-style layout trees.                                                          |
 
 Local development imports use relative paths:
@@ -18,6 +19,7 @@ Local development imports use relative paths:
 import { createThemeProvider, Tui } from "./mod.ts";
 import { createWebTui } from "./mod.web.ts";
 import { RemoteTerminalClient } from "./mod.remote.ts";
+import { createDefaultAsciiOptions } from "./mod.three_ascii.ts";
 import { yogaLayoutSolver } from "./src/layout/solvers/yoga.ts";
 ```
 
@@ -27,6 +29,7 @@ Published package imports should use the same subpaths:
 import { Tui } from "jsr:@scope/package";
 import { createWebTui } from "jsr:@scope/package/web";
 import { RemoteTerminalClient } from "jsr:@scope/package/remote";
+import { createDefaultAsciiOptions } from "jsr:@scope/package/three-ascii";
 import { yogaLayoutSolver } from "jsr:@scope/package/layout/yoga";
 ```
 
@@ -42,6 +45,8 @@ Application authors should start with the narrowest runtime entrypoint that matc
 - Use `./web` for standalone browser packages, GitHub Pages demos, Canvas2D/DOM hosts, browser input, IndexedDB-backed
   state, and Worker-friendly controllers.
 - Use `./remote` only when building a browser client or bridge for a hosted terminal session.
+- Use `./three-ascii` for renderer-focused integrations that need the Acerola-style node, glyph/block/mixed modes,
+  presets, or shared ASCII options without importing the full terminal package.
 - Use `./layout/yoga` only when the optional Yoga dependency is acceptable and Flexbox parity matters more than a
   dependency-free layout solver.
 
@@ -65,6 +70,7 @@ Current marked surfaces:
 - `mod.ts`: stable terminal package.
 - `mod.web.ts`: beta standalone browser package.
 - `mod.remote.ts`: experimental remote-terminal client and bridge.
+- `mod.three_ascii.ts`: experimental focused Three ASCII renderer package.
 - `src/layout/solvers/yoga.ts`: experimental optional Yoga-backed Flexbox solver.
 - `src/three_ascii/*`: experimental renderer internals and presets, even when re-exported for demos.
 - `src/runtime/graphics_surface.ts`: experimental raster graphics surface abstraction.

@@ -8,8 +8,8 @@ export type PackageRuntime = "shared" | "terminal" | "browser" | "remote" | "dem
 
 /** Manifest record for a Deno package export. */
 export interface PackageEntrypointManifest {
-  specifier: "." | "./web" | "./remote" | "./layout/yoga";
-  path: "./mod.ts" | "./mod.web.ts" | "./mod.remote.ts" | "./src/layout/solvers/yoga.ts";
+  specifier: "." | "./web" | "./remote" | "./three-ascii" | "./layout/yoga";
+  path: "./mod.ts" | "./mod.web.ts" | "./mod.remote.ts" | "./mod.three_ascii.ts" | "./src/layout/solvers/yoga.ts";
   runtime: PackageRuntime;
   stability: ApiStabilityTier;
   description: string;
@@ -93,6 +93,21 @@ export const packageEntrypoints = [
     excludes: ["server-side PTY host", "standalone browser renderer"],
   },
   {
+    specifier: "./three-ascii",
+    path: "./mod.three_ascii.ts",
+    runtime: "shared",
+    stability: "experimental",
+    description: "Focused Three.js/WebGPU ASCII renderer package for glyph, block, mixed, and Kitty-capable scenes.",
+    includes: [
+      "Acerola-style ASCII node",
+      "terminal glyph modes",
+      "renderer frame helpers",
+      "demo presets and shared renderer options",
+      "WebGPU compatibility helpers",
+    ],
+    excludes: ["terminal Tui runtime", "browser Canvas2D host", "workbench demo shell"],
+  },
+  {
     specifier: "./layout/yoga",
     path: "./src/layout/solvers/yoga.ts",
     runtime: "shared",
@@ -125,6 +140,13 @@ export const apiSurfacePolicies = [
     stability: "experimental",
     public: true,
     description: "Remote terminal bridge API. Protocol and transport details may change while PTY hosting matures.",
+  },
+  {
+    pattern: "mod.three_ascii.ts",
+    runtime: "shared",
+    stability: "experimental",
+    public: true,
+    description: "Focused Three ASCII package entrypoint for renderer consumers that do not need the full TUI runtime.",
   },
   {
     pattern: "src/layout/solvers/yoga.ts",

@@ -5,11 +5,11 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 
 ## Summary
 
-- Entrypoints: 4
-- Module visits: 423
-- Re-export declarations: 419
-- Exported symbols: 3570
-- Documented symbols: 3570
+- Entrypoints: 5
+- Module visits: 437
+- Re-export declarations: 432
+- Exported symbols: 3690
+- Documented symbols: 3690
 - Documentation coverage: 100.00%
 - Duplicate symbol groups: 0
 - Missing targets: 0
@@ -18,9 +18,10 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 
 | Specifier       | Path                           | Runtime  | Stability    | Modules | Symbols |    Docs |
 | --------------- | ------------------------------ | -------- | ------------ | ------: | ------: | ------: |
-| `.`             | `./mod.ts`                     | terminal | stable       |     219 |    1830 | 100.00% |
-| `./web`         | `./mod.web.ts`                 | browser  | beta         |     199 |    1699 | 100.00% |
+| `.`             | `./mod.ts`                     | terminal | stable       |     222 |    1864 | 100.00% |
+| `./web`         | `./mod.web.ts`                 | browser  | beta         |     202 |    1732 | 100.00% |
 | `./remote`      | `./mod.remote.ts`              | remote   | experimental |       4 |      38 | 100.00% |
+| `./three-ascii` | `./mod.three_ascii.ts`         | shared   | experimental |       8 |      53 | 100.00% |
 | `./layout/yoga` | `./src/layout/solvers/yoga.ts` | shared   | experimental |       1 |       3 | 100.00% |
 
 ## Entrypoint .
@@ -34,10 +35,10 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 ### Summary
 
 - Entrypoint: `mod.ts`
-- Modules: 219
-- Re-export declarations: 218
-- Exported symbols: 1830
-- Documented symbols: 1830
+- Modules: 222
+- Re-export declarations: 221
+- Exported symbols: 1864
+- Documented symbols: 1864
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -74,7 +75,7 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 | [`src/app/log_viewer_commands.ts`](#src-app-log-viewer-commands-ts)                     |          0 |       6 |          6 |
 | [`src/app/menu_bar_commands.ts`](#src-app-menu-bar-commands-ts)                         |          0 |       6 |          6 |
 | [`src/app/metric_series_commands.ts`](#src-app-metric-series-commands-ts)               |          0 |       6 |          6 |
-| [`src/app/mod.ts`](#src-app-mod-ts)                                                     |         63 |       0 |          0 |
+| [`src/app/mod.ts`](#src-app-mod-ts)                                                     |         65 |       0 |          0 |
 | [`src/app/mouse_bindings.ts`](#src-app-mouse-bindings-ts)                               |          0 |      10 |         10 |
 | [`src/app/pad_commands.ts`](#src-app-pad-commands-ts)                                   |          0 |       6 |          6 |
 | [`src/app/plugins.ts`](#src-app-plugins-ts)                                             |          0 |      17 |         17 |
@@ -111,6 +112,8 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 | [`src/app/tree_commands.ts`](#src-app-tree-commands-ts)                                 |          0 |       6 |          6 |
 | [`src/app/window_manager_commands.ts`](#src-app-window-manager-commands-ts)             |          0 |       8 |          8 |
 | [`src/app/workbench_frame.ts`](#src-app-workbench-frame-ts)                             |          0 |      13 |         13 |
+| [`src/app/workbench_menu.ts`](#src-app-workbench-menu-ts)                               |          0 |       5 |          5 |
+| [`src/app/workbench_window_registry.ts`](#src-app-workbench-window-registry-ts)         |          0 |      13 |         13 |
 | [`src/app/workbench_workspace.ts`](#src-app-workbench-workspace-ts)                     |          0 |      18 |         18 |
 | [`src/canvas/box.ts`](#src-canvas-box-ts)                                               |          0 |       2 |          2 |
 | [`src/canvas/canvas.ts`](#src-canvas-canvas-ts)                                         |          0 |       4 |          4 |
@@ -221,7 +224,7 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 | [`src/runtime/terminal_screen.ts`](#src-runtime-terminal-screen-ts)                     |          0 |       6 |          6 |
 | [`src/runtime/terminal_session.ts`](#src-runtime-terminal-session-ts)                   |          0 |       8 |          8 |
 | [`src/runtime/terminal_shell.ts`](#src-runtime-terminal-shell-ts)                       |          0 |       3 |          3 |
-| [`src/runtime/terminal_status.ts`](#src-runtime-terminal-status-ts)                     |          0 |       7 |          7 |
+| [`src/runtime/terminal_status.ts`](#src-runtime-terminal-status-ts)                     |          0 |       8 |          8 |
 | [`src/runtime/terminal_templates.ts`](#src-runtime-terminal-templates-ts)               |          0 |      22 |         22 |
 | [`src/runtime/terminal_workspace.ts`](#src-runtime-terminal-workspace-ts)               |          0 |      18 |         18 |
 | [`src/runtime/worker_pool.ts`](#src-runtime-worker-pool-ts)                             |          0 |      12 |         12 |
@@ -250,7 +253,8 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 | [`src/three_ascii/AcerolaAsciiNode.ts`](#src-three-ascii-acerolaasciinode-ts)           |          0 |       2 |          2 |
 | [`src/three_ascii/demo_presets.ts`](#src-three-ascii-demo-presets-ts)                   |          0 |      14 |         14 |
 | [`src/three_ascii/glyphs.ts`](#src-three-ascii-glyphs-ts)                               |          0 |      13 |         13 |
-| [`src/three_ascii/mod.ts`](#src-three-ascii-mod-ts)                                     |          5 |       0 |          0 |
+| [`src/three_ascii/mod.ts`](#src-three-ascii-mod-ts)                                     |          6 |       0 |          0 |
+| [`src/three_ascii/options.ts`](#src-three-ascii-options-ts)                             |          0 |      15 |         15 |
 | [`src/three_ascii/renderer.ts`](#src-three-ascii-renderer-ts)                           |          0 |       7 |          7 |
 | [`src/three_ascii/webgpu_compat.ts`](#src-three-ascii-webgpu-compat-ts)                 |          0 |       2 |          2 |
 | [`src/tui.ts`](#src-tui-ts)                                                             |          0 |       2 |          2 |
@@ -725,6 +729,8 @@ _No direct exported symbols._
 | `src/app/tree_commands.ts`             | star | -     |
 | `src/app/window_manager_commands.ts`   | star | -     |
 | `src/app/workbench_frame.ts`           | star | -     |
+| `src/app/workbench_menu.ts`            | star | -     |
+| `src/app/workbench_window_registry.ts` | star | -     |
 | `src/app/workbench_workspace.ts`       | star | -     |
 
 _No direct exported symbols._
@@ -1172,6 +1178,34 @@ _No direct exported symbols._
 | `WorkbenchFrame`      | type     | yes       | yes   |
 | `WorkbenchFrameStyle` | type     | yes       | yes   |
 | `writeFrame`          | function | no        | yes   |
+
+#### src/app/workbench_menu.ts
+
+| Symbol                          | Kind      | Type Only | JSDoc |
+| ------------------------------- | --------- | --------- | ----- |
+| `isWorkbenchMenuActivationKey`  | function  | no        | yes   |
+| `isWorkbenchMenuCloseKey`       | function  | no        | yes   |
+| `moveWorkbenchMenuIndex`        | function  | no        | yes   |
+| `MoveWorkbenchMenuIndexOptions` | interface | yes       | yes   |
+| `WorkbenchMenuKey`              | interface | yes       | yes   |
+
+#### src/app/workbench_window_registry.ts
+
+| Symbol                                      | Kind      | Type Only | JSDoc |
+| ------------------------------------------- | --------- | --------- | ----- |
+| `createWorkbenchVisualizationWindowOptions` | function  | no        | yes   |
+| `createWorkbenchWindowOptions`              | function  | no        | yes   |
+| `isWorkbenchVisualizationWindowId`          | function  | no        | yes   |
+| `isWorkbenchWindowOptionLoaded`             | function  | no        | yes   |
+| `workbenchVisualizationIdFromWindowId`      | function  | no        | yes   |
+| `WorkbenchVisualizationOptionSource`        | interface | yes       | yes   |
+| `workbenchVisualizationWindowId`            | function  | no        | yes   |
+| `WorkbenchWindowOption`                     | interface | yes       | yes   |
+| `WorkbenchWindowOptionCatalogInput`         | interface | yes       | yes   |
+| `WorkbenchWindowOptionGroup`                | type      | yes       | yes   |
+| `workbenchWindowOptionMenuLabel`            | function  | no        | yes   |
+| `workbenchWindowOptionMinimums`             | function  | no        | yes   |
+| `WorkbenchWindowOptionMinimums`             | interface | yes       | yes   |
 
 #### src/app/workbench_workspace.ts
 
@@ -2760,6 +2794,7 @@ _No direct exported symbols._
 | --------------------------------- | --------- | --------- | ----- |
 | `formatTerminalShellWindowTitle`  | function  | no        | yes   |
 | `summarizeTerminalStatus`         | function  | no        | yes   |
+| `terminalBackendKindLabel`        | function  | no        | yes   |
 | `TerminalShellWindowTitleOptions` | interface | yes       | yes   |
 | `terminalStatusFields`            | function  | no        | yes   |
 | `TerminalStatusSource`            | type      | yes       | yes   |
@@ -3280,10 +3315,31 @@ _No direct exported symbols._
 | `src/three_ascii/AcerolaAsciiNode.ts` | star | -     |
 | `src/three_ascii/demo_presets.ts`     | star | -     |
 | `src/three_ascii/glyphs.ts`           | star | -     |
+| `src/three_ascii/options.ts`          | star | -     |
 | `src/three_ascii/renderer.ts`         | star | -     |
 | `src/three_ascii/webgpu_compat.ts`    | star | -     |
 
 _No direct exported symbols._
+
+#### src/three_ascii/options.ts
+
+| Symbol                              | Kind      | Type Only | JSDoc |
+| ----------------------------------- | --------- | --------- | ----- |
+| `applyAsciiPreset`                  | function  | no        | yes   |
+| `asciiControlValues`                | function  | no        | yes   |
+| `asciiEffectOptions`                | function  | no        | yes   |
+| `asciiPresetLabel`                  | function  | no        | yes   |
+| `buildAsciiOptionsFromPreset`       | function  | no        | yes   |
+| `clampAsciiControlValue`            | function  | no        | yes   |
+| `cloneAsciiOptions`                 | function  | no        | yes   |
+| `createDefaultAsciiOptions`         | function  | no        | yes   |
+| `formatAsciiControlValue`           | function  | no        | yes   |
+| `normalizeAsciiOptions`             | function  | no        | yes   |
+| `terminalGlyphStyleLabel`           | function  | no        | yes   |
+| `THREE_ASCII_BORDER_MODES`          | const     | no        | yes   |
+| `ThreeAsciiBorderMode`              | type      | yes       | yes   |
+| `ThreeAsciiConfigOptions`           | interface | yes       | yes   |
+| `ThreeAsciiOptionNumericControlKey` | type      | yes       | yes   |
 
 #### src/three_ascii/renderer.ts
 
@@ -3446,10 +3502,10 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 ### Summary
 
 - Entrypoint: `mod.web.ts`
-- Modules: 199
-- Re-export declarations: 198
-- Exported symbols: 1699
-- Documented symbols: 1699
+- Modules: 202
+- Re-export declarations: 201
+- Exported symbols: 1732
+- Documented symbols: 1732
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -3486,7 +3542,7 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 | [`src/app/log_viewer_commands.ts`](#src-app-log-viewer-commands-ts)               |          0 |       6 |          6 |
 | [`src/app/menu_bar_commands.ts`](#src-app-menu-bar-commands-ts)                   |          0 |       6 |          6 |
 | [`src/app/metric_series_commands.ts`](#src-app-metric-series-commands-ts)         |          0 |       6 |          6 |
-| [`src/app/mod.ts`](#src-app-mod-ts)                                               |         63 |       0 |          0 |
+| [`src/app/mod.ts`](#src-app-mod-ts)                                               |         65 |       0 |          0 |
 | [`src/app/mouse_bindings.ts`](#src-app-mouse-bindings-ts)                         |          0 |      10 |         10 |
 | [`src/app/pad_commands.ts`](#src-app-pad-commands-ts)                             |          0 |       6 |          6 |
 | [`src/app/plugins.ts`](#src-app-plugins-ts)                                       |          0 |      17 |         17 |
@@ -3523,6 +3579,8 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 | [`src/app/tree_commands.ts`](#src-app-tree-commands-ts)                           |          0 |       6 |          6 |
 | [`src/app/window_manager_commands.ts`](#src-app-window-manager-commands-ts)       |          0 |       8 |          8 |
 | [`src/app/workbench_frame.ts`](#src-app-workbench-frame-ts)                       |          0 |      13 |         13 |
+| [`src/app/workbench_menu.ts`](#src-app-workbench-menu-ts)                         |          0 |       5 |          5 |
+| [`src/app/workbench_window_registry.ts`](#src-app-workbench-window-registry-ts)   |          0 |      13 |         13 |
 | [`src/app/workbench_workspace.ts`](#src-app-workbench-workspace-ts)               |          0 |      18 |         18 |
 | [`src/canvas/box.ts`](#src-canvas-box-ts)                                         |          0 |       2 |          2 |
 | [`src/canvas/canvas.ts`](#src-canvas-canvas-ts)                                   |          0 |       4 |          4 |
@@ -3642,7 +3700,8 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 | [`src/three_ascii/AcerolaAsciiNode.ts`](#src-three-ascii-acerolaasciinode-ts)     |          0 |       2 |          2 |
 | [`src/three_ascii/demo_presets.ts`](#src-three-ascii-demo-presets-ts)             |          0 |      14 |         14 |
 | [`src/three_ascii/glyphs.ts`](#src-three-ascii-glyphs-ts)                         |          0 |      13 |         13 |
-| [`src/three_ascii/mod.ts`](#src-three-ascii-mod-ts)                               |          5 |       0 |          0 |
+| [`src/three_ascii/mod.ts`](#src-three-ascii-mod-ts)                               |          6 |       0 |          0 |
+| [`src/three_ascii/options.ts`](#src-three-ascii-options-ts)                       |          0 |      15 |         15 |
 | [`src/three_ascii/renderer.ts`](#src-three-ascii-renderer-ts)                     |          0 |       7 |          7 |
 | [`src/three_ascii/webgpu_compat.ts`](#src-three-ascii-webgpu-compat-ts)           |          0 |       2 |          2 |
 | [`src/utils/async.ts`](#src-utils-async-ts)                                       |          0 |       1 |          1 |
@@ -4135,6 +4194,8 @@ _No direct exported symbols._
 | `src/app/tree_commands.ts`             | star | -     |
 | `src/app/window_manager_commands.ts`   | star | -     |
 | `src/app/workbench_frame.ts`           | star | -     |
+| `src/app/workbench_menu.ts`            | star | -     |
+| `src/app/workbench_window_registry.ts` | star | -     |
 | `src/app/workbench_workspace.ts`       | star | -     |
 
 _No direct exported symbols._
@@ -4582,6 +4643,34 @@ _No direct exported symbols._
 | `WorkbenchFrame`      | type     | yes       | yes   |
 | `WorkbenchFrameStyle` | type     | yes       | yes   |
 | `writeFrame`          | function | no        | yes   |
+
+#### src/app/workbench_menu.ts
+
+| Symbol                          | Kind      | Type Only | JSDoc |
+| ------------------------------- | --------- | --------- | ----- |
+| `isWorkbenchMenuActivationKey`  | function  | no        | yes   |
+| `isWorkbenchMenuCloseKey`       | function  | no        | yes   |
+| `moveWorkbenchMenuIndex`        | function  | no        | yes   |
+| `MoveWorkbenchMenuIndexOptions` | interface | yes       | yes   |
+| `WorkbenchMenuKey`              | interface | yes       | yes   |
+
+#### src/app/workbench_window_registry.ts
+
+| Symbol                                      | Kind      | Type Only | JSDoc |
+| ------------------------------------------- | --------- | --------- | ----- |
+| `createWorkbenchVisualizationWindowOptions` | function  | no        | yes   |
+| `createWorkbenchWindowOptions`              | function  | no        | yes   |
+| `isWorkbenchVisualizationWindowId`          | function  | no        | yes   |
+| `isWorkbenchWindowOptionLoaded`             | function  | no        | yes   |
+| `workbenchVisualizationIdFromWindowId`      | function  | no        | yes   |
+| `WorkbenchVisualizationOptionSource`        | interface | yes       | yes   |
+| `workbenchVisualizationWindowId`            | function  | no        | yes   |
+| `WorkbenchWindowOption`                     | interface | yes       | yes   |
+| `WorkbenchWindowOptionCatalogInput`         | interface | yes       | yes   |
+| `WorkbenchWindowOptionGroup`                | type      | yes       | yes   |
+| `workbenchWindowOptionMenuLabel`            | function  | no        | yes   |
+| `workbenchWindowOptionMinimums`             | function  | no        | yes   |
+| `WorkbenchWindowOptionMinimums`             | interface | yes       | yes   |
 
 #### src/app/workbench_workspace.ts
 
@@ -6401,10 +6490,31 @@ _No direct exported symbols._
 | `src/three_ascii/AcerolaAsciiNode.ts` | star | -     |
 | `src/three_ascii/demo_presets.ts`     | star | -     |
 | `src/three_ascii/glyphs.ts`           | star | -     |
+| `src/three_ascii/options.ts`          | star | -     |
 | `src/three_ascii/renderer.ts`         | star | -     |
 | `src/three_ascii/webgpu_compat.ts`    | star | -     |
 
 _No direct exported symbols._
+
+#### src/three_ascii/options.ts
+
+| Symbol                              | Kind      | Type Only | JSDoc |
+| ----------------------------------- | --------- | --------- | ----- |
+| `applyAsciiPreset`                  | function  | no        | yes   |
+| `asciiControlValues`                | function  | no        | yes   |
+| `asciiEffectOptions`                | function  | no        | yes   |
+| `asciiPresetLabel`                  | function  | no        | yes   |
+| `buildAsciiOptionsFromPreset`       | function  | no        | yes   |
+| `clampAsciiControlValue`            | function  | no        | yes   |
+| `cloneAsciiOptions`                 | function  | no        | yes   |
+| `createDefaultAsciiOptions`         | function  | no        | yes   |
+| `formatAsciiControlValue`           | function  | no        | yes   |
+| `normalizeAsciiOptions`             | function  | no        | yes   |
+| `terminalGlyphStyleLabel`           | function  | no        | yes   |
+| `THREE_ASCII_BORDER_MODES`          | const     | no        | yes   |
+| `ThreeAsciiBorderMode`              | type      | yes       | yes   |
+| `ThreeAsciiConfigOptions`           | interface | yes       | yes   |
+| `ThreeAsciiOptionNumericControlKey` | type      | yes       | yes   |
 
 #### src/three_ascii/renderer.ts
 
@@ -6664,6 +6774,144 @@ _No direct exported symbols._
 | `RemoteTerminalServerMessage`         | type      | yes       | yes   |
 | `RemoteTerminalTransport`             | interface | yes       | yes   |
 | `WebSocketRemoteTerminalTransport`    | class     | no        | yes   |
+
+## Entrypoint ./three-ascii
+
+Focused Three.js/WebGPU ASCII renderer package for glyph, block, mixed, and Kitty-capable scenes.
+
+- Path: `./mod.three_ascii.ts`
+- Runtime: shared
+- Stability: experimental
+
+### Summary
+
+- Entrypoint: `mod.three_ascii.ts`
+- Modules: 8
+- Re-export declarations: 7
+- Exported symbols: 53
+- Documented symbols: 53
+- Documentation coverage: 100.00%
+- Duplicate symbols: 0
+- Missing targets: 0
+
+### Module Index
+
+| Module                                                                        | Re-exports | Symbols | Documented |
+| ----------------------------------------------------------------------------- | ---------: | ------: | ---------: |
+| [`mod.three_ascii.ts`](#mod-three-ascii-ts)                                   |          1 |       0 |          0 |
+| [`src/three_ascii/AcerolaAsciiNode.ts`](#src-three-ascii-acerolaasciinode-ts) |          0 |       2 |          2 |
+| [`src/three_ascii/demo_presets.ts`](#src-three-ascii-demo-presets-ts)         |          0 |      14 |         14 |
+| [`src/three_ascii/glyphs.ts`](#src-three-ascii-glyphs-ts)                     |          0 |      13 |         13 |
+| [`src/three_ascii/mod.ts`](#src-three-ascii-mod-ts)                           |          6 |       0 |          0 |
+| [`src/three_ascii/options.ts`](#src-three-ascii-options-ts)                   |          0 |      15 |         15 |
+| [`src/three_ascii/renderer.ts`](#src-three-ascii-renderer-ts)                 |          0 |       7 |          7 |
+| [`src/three_ascii/webgpu_compat.ts`](#src-three-ascii-webgpu-compat-ts)       |          0 |       2 |          2 |
+
+### Modules
+
+#### mod.three_ascii.ts
+
+| Re-export Target         | Kind | Names |
+| ------------------------ | ---- | ----- |
+| `src/three_ascii/mod.ts` | star | -     |
+
+_No direct exported symbols._
+
+#### src/three_ascii/AcerolaAsciiNode.ts
+
+| Symbol                    | Kind      | Type Only | JSDoc |
+| ------------------------- | --------- | --------- | ----- |
+| `AcerolaAsciiNode`        | class     | no        | yes   |
+| `AcerolaAsciiNodeOptions` | interface | yes       | yes   |
+
+#### src/three_ascii/demo_presets.ts
+
+| Symbol                          | Kind      | Type Only | JSDoc |
+| ------------------------------- | --------- | --------- | ----- |
+| `ASCII_DEMO_PRESETS`            | const     | no        | yes   |
+| `ASCII_NUMERIC_CONTROLS`        | const     | no        | yes   |
+| `ASCII_TOGGLE_CONTROLS`         | const     | no        | yes   |
+| `AsciiDemoPreset`               | interface | yes       | yes   |
+| `asciiDemoPresetIds`            | function  | no        | yes   |
+| `asciiDemoPresets`              | function  | no        | yes   |
+| `asciiDemoPresetSummaries`      | function  | no        | yes   |
+| `AsciiDemoPresetSummary`        | interface | yes       | yes   |
+| `AsciiNumericControlDefinition` | interface | yes       | yes   |
+| `AsciiNumericControlKey`        | type      | yes       | yes   |
+| `AsciiToggleControlDefinition`  | interface | yes       | yes   |
+| `AsciiToggleControlKey`         | type      | yes       | yes   |
+| `DEFAULT_ASCII_DEMO_EFFECT`     | const     | no        | yes   |
+| `findAsciiDemoPreset`           | function  | no        | yes   |
+
+#### src/three_ascii/glyphs.ts
+
+| Symbol                      | Kind     | Type Only | JSDoc |
+| --------------------------- | -------- | --------- | ----- |
+| `ASCII_FILL_GLYPHS`         | const    | no        | yes   |
+| `BLOCK_FILL_GLYPHS`         | const    | no        | yes   |
+| `blockFillGlyphForBucket`   | function | no        | yes   |
+| `bucketAsciiLuminance`      | function | no        | yes   |
+| `classifyEdgeDirection`     | function | no        | yes   |
+| `EDGE_GLYPHS`               | const    | no        | yes   |
+| `EdgeDirection`             | type     | yes       | yes   |
+| `FILL_GLYPHS`               | const    | no        | yes   |
+| `glyphForTile`              | function | no        | yes   |
+| `pickDominantEdgeDirection` | function | no        | yes   |
+| `TERMINAL_GLYPH_STYLES`     | const    | no        | yes   |
+| `TERMINAL_GLYPHS`           | const    | no        | yes   |
+| `TerminalGlyphStyle`        | type     | yes       | yes   |
+
+#### src/three_ascii/mod.ts
+
+| Re-export Target                      | Kind | Names |
+| ------------------------------------- | ---- | ----- |
+| `src/three_ascii/AcerolaAsciiNode.ts` | star | -     |
+| `src/three_ascii/demo_presets.ts`     | star | -     |
+| `src/three_ascii/glyphs.ts`           | star | -     |
+| `src/three_ascii/options.ts`          | star | -     |
+| `src/three_ascii/renderer.ts`         | star | -     |
+| `src/three_ascii/webgpu_compat.ts`    | star | -     |
+
+_No direct exported symbols._
+
+#### src/three_ascii/options.ts
+
+| Symbol                              | Kind      | Type Only | JSDoc |
+| ----------------------------------- | --------- | --------- | ----- |
+| `applyAsciiPreset`                  | function  | no        | yes   |
+| `asciiControlValues`                | function  | no        | yes   |
+| `asciiEffectOptions`                | function  | no        | yes   |
+| `asciiPresetLabel`                  | function  | no        | yes   |
+| `buildAsciiOptionsFromPreset`       | function  | no        | yes   |
+| `clampAsciiControlValue`            | function  | no        | yes   |
+| `cloneAsciiOptions`                 | function  | no        | yes   |
+| `createDefaultAsciiOptions`         | function  | no        | yes   |
+| `formatAsciiControlValue`           | function  | no        | yes   |
+| `normalizeAsciiOptions`             | function  | no        | yes   |
+| `terminalGlyphStyleLabel`           | function  | no        | yes   |
+| `THREE_ASCII_BORDER_MODES`          | const     | no        | yes   |
+| `ThreeAsciiBorderMode`              | type      | yes       | yes   |
+| `ThreeAsciiConfigOptions`           | interface | yes       | yes   |
+| `ThreeAsciiOptionNumericControlKey` | type      | yes       | yes   |
+
+#### src/three_ascii/renderer.ts
+
+| Symbol                         | Kind      | Type Only | JSDoc |
+| ------------------------------ | --------- | --------- | ----- |
+| `buildThreeAsciiAnsiGrid`      | function  | no        | yes   |
+| `ThreeAsciiAnsiGridInput`      | interface | yes       | yes   |
+| `ThreeAsciiImageFrame`         | interface | yes       | yes   |
+| `ThreeAsciiRenderer`           | class     | no        | yes   |
+| `ThreeAsciiRendererOptions`    | interface | yes       | yes   |
+| `ThreeAsciiRenderFrame`        | interface | yes       | yes   |
+| `ThreeAsciiRenderFrameOptions` | interface | yes       | yes   |
+
+#### src/three_ascii/webgpu_compat.ts
+
+| Symbol                        | Kind     | Type Only | JSDoc |
+| ----------------------------- | -------- | --------- | ----- |
+| `getCompatibleWebGPUDevice`   | function | no        | yes   |
+| `probeCompatibleWebGPUDevice` | function | no        | yes   |
 
 ## Entrypoint ./layout/yoga
 

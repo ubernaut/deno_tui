@@ -3,6 +3,7 @@
     ".": "./mod.ts",
     "./web": "./mod.web.ts",
     "./remote": "./mod.remote.ts",
+    "./three-ascii": "./mod.three_ascii.ts",
     "./layout/yoga": "./src/layout/solvers/yoga.ts"
   },
   "imports": {
