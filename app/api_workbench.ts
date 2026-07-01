@@ -133,6 +133,14 @@ import {
   visualizationThreeStatusLine,
   visualizationWindowRows,
 } from "./workbench_visualization_window.ts";
+import {
+  buildWorkspaceMenuEntries,
+  currentWorkspaceVisualizationIds as workspaceVisualizationIdsFromWindows,
+  defaultWorkspaceName as defaultWorkspaceNameFromCount,
+  normalizeWorkspaceName as normalizeWorkspaceNameFromCount,
+  type WorkspaceMenuEntry,
+  workspaceMenuLabels as workspaceMenuEntryLabels,
+} from "./workbench_workspace_menu.ts";
 import type {
   Accent,
   AsciiOptions,
@@ -275,14 +283,6 @@ type SavedWorkspace = WorkbenchWorkspace<AsciiOptions>;
 type SavedWorkspaceWindow = WorkbenchWorkspaceWindow<AsciiOptions>;
 
 type WorkspaceNameMode = "save" | "rename";
-type WorkspaceMenuAction = "save" | "open" | "rename" | "delete" | "empty";
-
-interface WorkspaceMenuEntry {
-  label: string;
-  action: WorkspaceMenuAction;
-  workspaceName?: string;
-}
-
 const themes: ThemeSpec[] = grWizardThemePalettes.map((palette) => ({
   id: palette.name,
   label: palette.label,
@@ -3448,25 +3448,11 @@ function closeAllWindowsForWorkspaceLoad(): void {
 }
 
 function workspaceMenuEntries(): WorkspaceMenuEntry[] {
-  const entries: WorkspaceMenuEntry[] = [{ label: "[+] Save Current...", action: "save" }];
-  const workspaces = savedWorkspaces.peek();
-  for (const workspace of workspaces) {
-    entries.push(
-      {
-        label: `[>] Open ${workspace.name} (${workspace.visualizationIds.length})`,
-        action: "open",
-        workspaceName: workspace.name,
-      },
-      { label: `[~] Rename ${workspace.name}`, action: "rename", workspaceName: workspace.name },
-      { label: `[x] Delete ${workspace.name}`, action: "delete", workspaceName: workspace.name },
-    );
-  }
-  if (workspaces.length === 0) entries.push({ label: "    No saved workspaces", action: "empty" });
-  return entries;
+  return buildWorkspaceMenuEntries(savedWorkspaces.peek());
 }
 
 function workspaceMenuLabels(): string[] {
-  return workspaceMenuEntries().map((entry) => entry.label);
+  return workspaceMenuEntryLabels(workspaceMenuEntries());
 }
 
 function workspaceMenuItemCount(): number {
@@ -3474,7 +3460,7 @@ function workspaceMenuItemCount(): number {
 }
 
 function currentWorkspaceVisualizationIds(): string[] {
-  return currentWorkspaceWindows().map((window) => window.visualizationId);
+  return workspaceVisualizationIdsFromWindows(currentWorkspaceWindows());
 }
 
 function currentWorkspaceWindows(): SavedWorkspaceWindow[] {
@@ -3488,12 +3474,11 @@ function currentWorkspaceWindows(): SavedWorkspaceWindow[] {
 }
 
 function defaultWorkspaceName(): string {
-  const count = savedWorkspaces.peek().length + 1;
-  return `Workspace ${count}`;
+  return defaultWorkspaceNameFromCount(savedWorkspaces.peek().length);
 }
 
 function normalizeWorkspaceName(name: string): string {
-  return normalizeWorkbenchWorkspaceName(name, defaultWorkspaceName());
+  return normalizeWorkspaceNameFromCount(name, savedWorkspaces.peek().length);
 }
 
 function workspaceByName(name: string | null | undefined): SavedWorkspace | undefined {
