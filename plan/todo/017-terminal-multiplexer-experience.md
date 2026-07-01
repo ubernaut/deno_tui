@@ -51,3 +51,5 @@ developer workflows.
   console and browser renderers.
 - Added app command adapters for terminal workspace pane operations: split row/column, focus next/previous, zoom,
   resize, and close pane.
+- Extended `TerminalScreenController` SGR handling to cover 256-color, truecolor, and bright foreground/background
+  styles while preserving existing cell inspection shape.

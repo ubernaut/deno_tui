@@ -8093,14 +8093,25 @@ var TerminalScreenController = class {
   }
   #applySgr(params) {
     const values = params.length === 0 ? [0] : params;
-    for (const value of values) {
+    for (let index = 0; index < values.length; index += 1) {
+      const value = values[index];
       if (value === 0) this.#style = {};
       else if (value === 1) this.#style.bold = true;
       else if (value === 22) this.#style.bold = false;
       else if (value >= 30 && value <= 37) this.#style.foreground = value;
+      else if (value >= 90 && value <= 97) this.#style.foreground = value;
       else if (value === 39) delete this.#style.foreground;
       else if (value >= 40 && value <= 47) this.#style.background = value;
+      else if (value >= 100 && value <= 107) this.#style.background = value;
       else if (value === 49) delete this.#style.background;
+      else if (value === 38 || value === 48) {
+        const parsed = parseExtendedSgrColor(values, index);
+        if (parsed) {
+          if (value === 38) this.#style.foreground = parsed.color;
+          else this.#style.background = parsed.color;
+          index = parsed.nextIndex;
+        }
+      }
     }
   }
   #eraseDisplay(mode) {
@@ -8144,6 +8155,25 @@ function parseParams(params) {
   if (!params) return [];
   return params.split(";").map((value) => Number.parseInt(value || "0", 10)).filter(Number.isFinite);
 }
+function parseExtendedSgrColor(values, index) {
+  const mode = values[index + 1];
+  if (mode === 5) {
+    const color = values[index + 2];
+    if (color === void 0) return void 0;
+    return { color: clampByte(color), nextIndex: index + 2 };
+  }
+  if (mode === 2) {
+    const red = values[index + 2];
+    const green = values[index + 3];
+    const blue = values[index + 4];
+    if (red === void 0 || green === void 0 || blue === void 0) return void 0;
+    return {
+      color: clampByte(red) << 16 | clampByte(green) << 8 | clampByte(blue),
+      nextIndex: index + 4
+    };
+  }
+  return void 0;
+}
 function createRows(columns, rows2) {
   return Array.from({ length: rows2 }, () => blankRow(columns));
 }
@@ -8177,6 +8207,9 @@ function normalizeDimension(value, fallback) {
 }
 function clamp3(value, min2, max2) {
   return Math.max(min2, Math.min(max2, value));
+}
+function clampByte(value) {
+  return clamp3(Math.floor(value), 0, 255);
 }
 
 // src/runtime/terminal_session.ts
@@ -8752,7 +8785,7 @@ function parseAnsiCell(value) {
       } else if (param >= 100 && param <= 107) {
         style2.background = ansiColor(param - 100 + 8);
       } else if ((param === 38 || param === 48) && params[index + 1] === 2) {
-        const color = `rgb(${clampByte(params[index + 2])},${clampByte(params[index + 3])},${clampByte(params[index + 4])})`;
+        const color = `rgb(${clampByte2(params[index + 2])},${clampByte2(params[index + 3])},${clampByte2(params[index + 4])})`;
         if (param === 38) style2.foreground = color;
         else style2.background = color;
         index += 4;
@@ -8776,7 +8809,7 @@ function firstPrintableIndex(value) {
 function dimColor(color) {
   return color.startsWith("#") ? `${color}aa` : color;
 }
-function clampByte(value) {
+function clampByte2(value) {
   return Math.max(0, Math.min(255, Math.floor(Number.isFinite(value) ? value : 0)));
 }
 function ansiColor(index) {

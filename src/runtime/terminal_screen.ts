@@ -210,14 +210,25 @@ export class TerminalScreenController {
 
   #applySgr(params: number[]): void {
     const values = params.length === 0 ? [0] : params;
-    for (const value of values) {
+    for (let index = 0; index < values.length; index += 1) {
+      const value = values[index]!;
       if (value === 0) this.#style = {};
       else if (value === 1) this.#style.bold = true;
       else if (value === 22) this.#style.bold = false;
       else if (value >= 30 && value <= 37) this.#style.foreground = value;
+      else if (value >= 90 && value <= 97) this.#style.foreground = value;
       else if (value === 39) delete this.#style.foreground;
       else if (value >= 40 && value <= 47) this.#style.background = value;
+      else if (value >= 100 && value <= 107) this.#style.background = value;
       else if (value === 49) delete this.#style.background;
+      else if (value === 38 || value === 48) {
+        const parsed = parseExtendedSgrColor(values, index);
+        if (parsed) {
+          if (value === 38) this.#style.foreground = parsed.color;
+          else this.#style.background = parsed.color;
+          index = parsed.nextIndex;
+        }
+      }
     }
   }
 
@@ -276,6 +287,29 @@ function parseParams(params: string): number[] {
   return params.split(";").map((value) => Number.parseInt(value || "0", 10)).filter(Number.isFinite);
 }
 
+function parseExtendedSgrColor(
+  values: readonly number[],
+  index: number,
+): { color: number; nextIndex: number } | undefined {
+  const mode = values[index + 1];
+  if (mode === 5) {
+    const color = values[index + 2];
+    if (color === undefined) return undefined;
+    return { color: clampByte(color), nextIndex: index + 2 };
+  }
+  if (mode === 2) {
+    const red = values[index + 2];
+    const green = values[index + 3];
+    const blue = values[index + 4];
+    if (red === undefined || green === undefined || blue === undefined) return undefined;
+    return {
+      color: (clampByte(red) << 16) | (clampByte(green) << 8) | clampByte(blue),
+      nextIndex: index + 4,
+    };
+  }
+  return undefined;
+}
+
 function createRows(columns: number, rows: number): TerminalScreenCell[][] {
   return Array.from({ length: rows }, () => blankRow(columns));
 }
@@ -314,4 +348,8 @@ function normalizeDimension(value: number | undefined, fallback: number): number
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
+}
+
+function clampByte(value: number): number {
+  return clamp(Math.floor(value), 0, 255);
 }

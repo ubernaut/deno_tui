@@ -21,6 +21,21 @@ Deno.test("TerminalScreenController tracks SGR styles per cell", () => {
   assertEquals(row![1], { char: "N" });
 });
 
+Deno.test("TerminalScreenController tracks 256-color truecolor and bright SGR styles", () => {
+  const screen = new TerminalScreenController({ columns: 8, rows: 2 });
+
+  screen.write("\x1b[38;5;196mA\x1b[48;5;17mB\x1b[38;2;12;34;56mC\x1b[48;2;200;210;220mD");
+  screen.write("\x1b[93;104mE\x1b[39;49mF");
+
+  const [row] = screen.cellRows();
+  assertEquals(row![0], { char: "A", foreground: 196 });
+  assertEquals(row![1], { char: "B", foreground: 196, background: 17 });
+  assertEquals(row![2], { char: "C", foreground: 0x0c2238, background: 17 });
+  assertEquals(row![3], { char: "D", foreground: 0x0c2238, background: 0xc8d2dc });
+  assertEquals(row![4], { char: "E", foreground: 93, background: 104 });
+  assertEquals(row![5], { char: "F" });
+});
+
 Deno.test("TerminalScreenController applies cursor movement and erase sequences", () => {
   const screen = new TerminalScreenController({ columns: 8, rows: 2 });
 
