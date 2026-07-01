@@ -266,6 +266,8 @@ Work:
 - [x] Add GPU provider abstraction for NVIDIA now and future AMD/Intel support later.
 - [x] Extract GPU monitor visualization rendering into a dedicated module with injected chart/meter primitives and
       focused tests for offline, pressure, alert, and narrow-panel behavior.
+- [x] Extract CPU, memory, disk, temperature, and process monitor visualization rendering into a dedicated module with
+      focused tests for empty sources, alert states, CPU legend coverage, and top-100 process output limits.
 
 Acceptance checks:
 

@@ -1,4 +1,4 @@
-import { clamp, formatBytes, formatDuration, formatPercent } from "./styles.ts";
+import { clamp } from "./styles.ts";
 import { demos as neonDemos, formatCountdown as neonFormatCountdown } from "./neon_theme.ts";
 import { neonThreeSceneModeLabel } from "./neon_three_catalog.ts";
 import {
@@ -17,11 +17,18 @@ import {
 import { cpuActivityRgb, cpuHexGridColumnCount, cpuHexTileLayout, renderCpuHexGrid } from "./visualization_cpu_hex.ts";
 import { renderGpuChipMonitor, renderGpuCombinedMonitor, renderGpuMemoryMonitor } from "./visualization_gpu.ts";
 import { renderNetworkMonitor } from "./visualization_network.ts";
+import {
+  renderCpuLegend,
+  renderCpuMonitor,
+  renderDiskMonitor,
+  renderMemoryMonitor,
+  renderProcessMonitor,
+  renderTemperatureMonitor,
+} from "./visualization_system.ts";
 import type {
   Accent,
   PanelRender,
   RenderContext,
-  Severity,
   SourceFrame,
   ThreeSceneMode,
   ThreeSceneSignal,
@@ -68,15 +75,15 @@ const threeSceneVisualizationModes: Record<string, ThreeSceneMode> = {
 };
 
 const directVisualizationRenderers: Record<string, (context: RenderContext) => PanelRender> = {
-  "cpu-monitor": renderCpuMonitor,
-  "cpu-legend": renderCpuLegend,
+  "cpu-monitor": (context) => renderCpuMonitor(context, systemMonitorDependencies),
+  "cpu-legend": (context) => renderCpuLegend(context, systemMonitorDependencies),
   "cpu-hex-grid": renderCpuHexGrid,
   "gpu-combined-monitor": (context) => renderGpuCombinedMonitor(context, gpuMonitorDependencies),
   "gpu-chip-monitor": (context) => renderGpuChipMonitor(context, gpuMonitorDependencies),
   "gpu-memory-monitor": (context) => renderGpuMemoryMonitor(context, gpuMonitorDependencies),
-  "memory-monitor": renderMemoryMonitor,
-  "temperature-monitor": renderTemperatureMonitor,
-  "disk-monitor": renderDiskMonitor,
+  "memory-monitor": (context) => renderMemoryMonitor(context, systemMonitorDependencies),
+  "temperature-monitor": (context) => renderTemperatureMonitor(context, systemMonitorDependencies),
+  "disk-monitor": (context) => renderDiskMonitor(context, systemMonitorDependencies),
   "network-monitor": (context) => renderNetworkMonitor(context, { plotHistory, monitorGlyph }),
   "process-monitor": renderProcessMonitor,
   "warning-stack": renderWarningStack,
@@ -116,6 +123,7 @@ const visualizationRenderers: Record<string, VisualizationRenderFn> = Object.fro
 ]);
 
 const gpuMonitorDependencies = { plotHistory, barChart, miniMeter, monitorGlyph };
+const systemMonitorDependencies = { plotHistory, miniMeter, monitorGlyph };
 
 export function renderVisualization(context: RenderContext): PanelRender {
   const descriptor = visualizationMap.get(context.slot.visualizationId) ?? visualizations[0]!;
@@ -167,182 +175,6 @@ function appendSceneFooter(footer: string, mode: ThreeSceneMode, width: number):
   const suffix = `${modeLabel(mode)} PRIMITIVES`;
   if (!footer) return suffix;
   return `${crop(footer, Math.max(0, width - suffix.length - 3))} / ${suffix}`;
-}
-
-function renderCpuMonitor(context: RenderContext): PanelRender {
-  const { system, width, height } = context;
-  const drive = buildVisualizationDrive(context, Math.max(width, 48));
-  const graphHeight = Math.max(4, height - 3);
-  const graph = plotHistory(system.cpuHistory, Math.max(12, width), graphHeight, monitorGlyph(drive, "signal"));
-  const topCores = system.cpuCores.slice().sort((a, b) => b.usage - a.usage).slice(0, 4)
-    .map((core) => `CPU${core.label.padStart(2, "0")} ${core.usage.toFixed(0).padStart(3, " ")}%`)
-    .join("  ");
-
-  return {
-    body: [
-      `AVG ${system.cpuOverall.toFixed(1)}%   LOAD ${system.loadavg.map((value) => value.toFixed(2)).join(" / ")}`,
-      graph,
-      topCores || "NO CORE DATA",
-    ].join("\n"),
-    footer: `HOST ${system.hostname.toUpperCase()}  UPTIME ${formatDuration(system.uptimeSeconds)}  SURGE ${
-      (drive.volatility * 100).toFixed(0)
-    }%`,
-    alert: alertText(context) || (drive.hazard >= 0.9 ? "CORE CASCADE RISK" : ""),
-    accent: drive.hazard >= 0.9 ? "alarm" : system.cpuOverall >= 72 ? "amber" : "signal",
-    severity: drive.hazard >= 0.9 ? "alarm" : severityForValue(system.cpuOverall, 72, 88),
-  };
-}
-
-function renderCpuLegend(context: RenderContext): PanelRender {
-  const drive = buildVisualizationDrive(context, 24);
-  const lines = [
-    `TOTAL  ${formatPercent(context.system.cpuOverall)}`,
-    ...cpuLegendRows(context.system.cpuCores, context.width, drive.hazard),
-  ];
-
-  return {
-    body: lines.join("\n"),
-    footer: `CORES ${String(context.system.cpuCores.length).padStart(2, "0")}  LOAD ${
-      (drive.current * 100).toFixed(0)
-    }%`,
-    alert: context.system.cpuOverall >= 88 ? "PULSE LIMIT" : drive.divergence >= 0.6 ? "CORE DESYNC" : "",
-    accent: context.system.cpuOverall >= 88 ? "alarm" : drive.divergence >= 0.6 ? "amber" : "signal",
-    severity: context.system.cpuOverall >= 88 ? "alarm" : drive.divergence >= 0.6 ? "warning" : "info",
-  };
-}
-
-function cpuLegendRows(cores: RenderContext["system"]["cpuCores"], width: number, hazard: number): string[] {
-  if (cores.length === 0) return ["NO CORE DATA"];
-
-  const sample = coreLegendCell(cores[0]!, hazard);
-  const cellWidth = Math.max(12, sample.length);
-  const columns = Math.max(1, Math.min(8, Math.floor((Math.max(12, width) + 2) / (cellWidth + 2))));
-  const rows = Math.ceil(cores.length / columns);
-
-  return Array.from({ length: rows }, (_, row) => {
-    const cells = Array.from({ length: columns }, (_, column) => {
-      const core = cores[row + column * rows];
-      return core ? coreLegendCell(core, hazard).padEnd(cellWidth, " ") : "";
-    }).filter(Boolean);
-    return crop(cells.join("  "), Math.max(12, width));
-  });
-}
-
-function coreLegendCell(core: RenderContext["system"]["cpuCores"][number], hazard: number): string {
-  return `${core.label.padStart(3, "0")} ${miniMeter(core.usage / 100, 6, hazard)} ${formatPercent(core.usage)}`;
-}
-
-function renderMemoryMonitor(context: RenderContext): PanelRender {
-  const { system, width, height } = context;
-  const drive = buildVisualizationDrive(context, Math.max(width, 48));
-  const graphWidth = Math.max(12, width);
-  const graphHeight = Math.max(3, Math.floor((height - 4) / 2));
-  const memoryGraph = plotHistory(system.memoryHistory, graphWidth, graphHeight, monitorGlyph(drive, "phosphor"));
-  const swapGraph = plotHistory(
-    system.swapHistory,
-    graphWidth,
-    graphHeight,
-    drive.hazard >= 0.88 ? "█" : monitorGlyph(drive, "amber"),
-  );
-
-  return {
-    body: [
-      `RAM  ${formatPercent(system.memory.percent)}  USED ${formatBytes(system.memory.used)}  AVAIL ${
-        formatBytes(system.memory.available)
-      }`,
-      memoryGraph,
-      `SWAP ${formatPercent(system.memory.swapPercent)}  USED ${formatBytes(system.memory.swapUsed)} / ${
-        formatBytes(system.memory.swapTotal)
-      }`,
-      swapGraph,
-    ].join("\n"),
-    footer: `OS ${system.osRelease}  RANGE ${(drive.span * 100).toFixed(0)}%`,
-    alert: system.memory.percent >= 90
-      ? "MEMORY SATURATION EVENT"
-      : system.memory.swapPercent >= 90
-      ? "SWAP CRITICAL EVENT"
-      : drive.volatility >= 0.52
-      ? "MEMORY SHEAR DETECTED"
-      : "",
-    accent: system.memory.percent >= 90 || system.memory.swapPercent >= 90
-      ? "alarm"
-      : system.memory.percent >= 75
-      ? "amber"
-      : "phosphor",
-    severity: system.memory.percent >= 90 || system.memory.swapPercent >= 90
-      ? "alarm"
-      : system.memory.percent >= 75
-      ? "warning"
-      : "info",
-  };
-}
-
-function renderTemperatureMonitor(context: RenderContext): PanelRender {
-  const drive = buildVisualizationDrive(context, 24);
-  const temperatures = context.system.temperatures;
-  return {
-    body: temperatures.length === 0
-      ? "NO THERMAL ZONES REPORTED"
-      : temperatures.slice(0, Math.max(1, context.height)).map((entry) =>
-        `${entry.label.toUpperCase().padEnd(18, " ")} ${entry.celsius.toFixed(1).padStart(6, " ")}C ${
-          heatMeter(entry.celsius / 100, drive.hazard)
-        }`
-      ).join("\n"),
-    footer: temperatures[0]
-      ? `HOTTEST ${temperatures[0].label.toUpperCase()} ${temperatures[0].celsius.toFixed(1)}C  FLUX ${
-        (drive.volatility * 100).toFixed(0)
-      }%`
-      : "THERMAL BUS OFFLINE",
-    alert: temperatures[0]?.celsius >= 82 ? "THERMAL LIMIT ALERT" : "",
-    accent: temperatures[0]?.celsius >= 82 ? "alarm" : temperatures[0]?.celsius >= 70 ? "amber" : "violet",
-    severity: temperatures[0]?.celsius >= 82 ? "alarm" : temperatures[0]?.celsius >= 70 ? "warning" : "info",
-  };
-}
-
-function renderDiskMonitor(context: RenderContext): PanelRender {
-  const drive = buildVisualizationDrive(context, 32);
-  const disks = context.system.disks;
-  return {
-    body: disks.length === 0
-      ? "NO DISK METRICS AVAILABLE"
-      : disks.slice(0, Math.max(1, context.height)).map((disk) =>
-        `${crop(disk.mount.toUpperCase(), 12).padEnd(12, " ")} ${String(disk.percent).padStart(3, " ")}% ${
-          miniMeter(disk.percent / 100, 7, drive.hazard)
-        } ${formatBytes(disk.available).padStart(8, " ")} FREE`
-      ).join("\n"),
-    footer: disks[0]
-      ? `FULL ${disks[0].mount.toUpperCase()} ${disks[0].percent}%  ${formatBytes(disks[0].used)} / ${
-        formatBytes(disks[0].total)
-      }`
-      : "FILESYSTEM BUS IDLE",
-    alert: disks[0]?.percent >= 95 ? "CAPACITY WALL IMMINENT" : disks[0]?.percent >= 85 ? "DISK PRESSURE WARNING" : "",
-    accent: disks[0]?.percent >= 95 ? "alarm" : disks[0]?.percent >= 85 ? "amber" : "amber",
-    severity: disks[0]?.percent >= 95 ? "alarm" : disks[0]?.percent >= 85 ? "warning" : "info",
-  };
-}
-
-function renderProcessMonitor(context: RenderContext): PanelRender {
-  const drive = buildVisualizationDrive(context, 24);
-  const header = "PID     NAME             CPU%   MEM%";
-  const rows = context.system.processes.slice(0, 100).map((process) =>
-    `${String(process.pid).padEnd(7, " ")}${crop(process.name, 16).padEnd(16, " ")}${
-      process.cpuPercent.toFixed(1).padStart(6, " ")
-    }${process.memoryPercent.toFixed(1).padStart(7, " ")}`
-  );
-
-  return {
-    body: [header, ...rows].join("\n"),
-    footer: context.system.processes[0]
-      ? `HOT ${context.system.processes[0].name.toUpperCase()} ${
-        context.system.processes[0].cpuPercent.toFixed(1)
-      }% CPU  TOP ${Math.min(100, context.system.processes.length)}  RISE ${
-        (Math.max(0, drive.slope) * 100).toFixed(0)
-      }%`
-      : "PROCESS TABLE EMPTY",
-    alert: context.system.processes[0]?.cpuPercent >= 90 ? "PROCESS SPIKE DETECTED" : "",
-    accent: context.system.processes[0]?.cpuPercent >= 90 ? "alarm" : "amber",
-    severity: context.system.processes[0]?.cpuPercent >= 90 ? "alarm" : "info",
-  };
 }
 
 function renderThreeScene(context: RenderContext, mode: ThreeSceneMode, accent: Accent): PanelRender {
@@ -700,11 +532,6 @@ function miniMeter(value: number, width: number, heat: number) {
   return `[${ramp.repeat(fill).padEnd(width, "·")}]`;
 }
 
-function heatMeter(value: number, heat: number) {
-  const width = heat >= 0.9 ? 5 : 4;
-  return miniMeter(value, width, heat);
-}
-
 function alertText(context: RenderContext) {
   const alert = context.system.alerts[0];
   return alert ? `${alert.title} / ${alert.detail}` : "";
@@ -724,16 +551,6 @@ function driveAlert(drive: VisualizationDrive) {
     return "SURGE FRONT";
   }
   return "";
-}
-
-function severityForValue(value: number, warning: number, alarm: number): Severity {
-  if (value >= alarm) {
-    return "alarm";
-  }
-  if (value >= warning) {
-    return "warning";
-  }
-  return "info";
 }
 
 function hottestAccent(sources: SourceFrame[]) {
