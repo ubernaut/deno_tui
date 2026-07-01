@@ -93,6 +93,7 @@ function applyNode(
   const next = cloneLayoutNode(node);
   const style = defaultComputedLayoutStyle();
   style.color = inherited.color;
+  style.visibility = inherited.visibility;
   style.variables = { ...inherited.variables };
 
   const matches = stylesheet.rules

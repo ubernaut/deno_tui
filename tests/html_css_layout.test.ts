@@ -189,6 +189,40 @@ Deno.test("applyCssCascade parses grid item self alignment", () => {
   assertEquals(card.style.justifySelf, "center");
 });
 
+Deno.test("applyCssCascade inherits visibility while allowing explicit visible descendants", () => {
+  const result = createMarkupLayout({
+    markup: `
+      <window id="main">
+        <panel id="hidden">
+          <button id="inherited">Inherited</button>
+          <button id="override">Override</button>
+        </panel>
+      </window>
+    `,
+    css: `
+      #hidden {
+        visibility: hidden;
+      }
+
+      #override {
+        visibility: visible;
+      }
+    `,
+    bounds: { column: 0, row: 0, width: 40, height: 8 },
+  });
+
+  const hidden = result.layout.byId.get("hidden")!;
+  const inherited = result.layout.byId.get("inherited")!;
+  const override = result.layout.byId.get("override")!;
+
+  assertEquals(hidden.visible, false);
+  assertEquals(inherited.visible, false);
+  assertEquals(override.visible, true);
+  assertEquals(hidden.hitRegions, []);
+  assertEquals(inherited.hitRegions, []);
+  assertEquals(override.hitRegions.length, 1);
+});
+
 Deno.test("parseCssStylesheet keeps terminal-cell media query metadata", () => {
   const stylesheet = parseCssStylesheet(`
     panel {

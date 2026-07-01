@@ -419,6 +419,8 @@ Work:
         media features, widget tags, and unsupported browser-CSS gaps so docs and demos do not need to scrape prose.
   - [x] Added simple-solver support for named CSS Grid template areas (`grid-template-areas` + `grid-area`), keeping
         Yoga named-area parity documented as an unsupported gap.
+  - [x] Added CSS `visibility` inheritance in the markup cascade so hidden containers suppress descendant hit regions by
+        default while explicit `visibility: visible` descendants can opt back in.
 
 Acceptance checks:
 
