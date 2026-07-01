@@ -654,9 +654,9 @@ function parseExtendedSgrColor(
 }
 
 function createRows(columns: number, rows: number): TerminalScreenCell[][] {
-  const output: TerminalScreenCell[][] = [];
+  const output = new Array<TerminalScreenCell[]>(rows);
   for (let row = 0; row < rows; row += 1) {
-    output.push(blankRow(columns));
+    output[row] = blankRow(columns);
   }
   return output;
 }
