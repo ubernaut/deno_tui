@@ -11185,6 +11185,86 @@ function createWebTui(options) {
 // src/web/remote_terminal.ts
 var textDecoder4 = new TextDecoder();
 
+// src/app/workbench/controller.ts
+var WorkbenchController = class {
+  menus;
+  windows;
+  #menuIndexes;
+  constructor(options) {
+    this.menus = new WorkbenchTopMenuController(options.menu);
+    this.windows = new WindowManagerController(options);
+    this.#menuIndexes = { ...options.menuIndexes ?? {} };
+  }
+  inspect() {
+    const windows = this.windows.inspect().windows;
+    return {
+      activeWindowId: this.windows.activeId.peek(),
+      fullscreenWindowId: this.windows.fullscreenId.peek(),
+      menu: this.menus.inspect(),
+      menuIndexes: { ...this.#menuIndexes },
+      windowIds: windows.map((entry) => entry.id),
+      visibleWindowIds: windows.filter((entry) => entry.rect !== void 0 || !entry.minimized && !entry.closed).map((entry) => entry.id),
+      minimizedWindowIds: windows.filter((entry) => entry.minimized).map((entry) => entry.id),
+      closedWindowIds: windows.filter((entry) => entry.closed).map((entry) => entry.id)
+    };
+  }
+  menuIndex(id2) {
+    return this.#menuIndexes[id2] ?? 0;
+  }
+  setMenuIndex(id2, index, itemCount = Number.POSITIVE_INFINITY) {
+    const clamped = clampMenuIndex2(index, itemCount);
+    this.#menuIndexes = { ...this.#menuIndexes, [id2]: clamped };
+    return clamped;
+  }
+  moveMenuIndex(id2, itemCount, key, pageSize) {
+    return this.setMenuIndex(
+      id2,
+      moveWorkbenchMenuIndex(this.menuIndex(id2), itemCount, { key }, { pageSize }),
+      itemCount
+    );
+  }
+  openMenu(id2, itemCount) {
+    if (itemCount !== void 0) this.setMenuIndex(id2, this.menuIndex(id2), itemCount);
+    return this.menus.open(id2);
+  }
+  toggleMenu(id2, itemCount) {
+    if (itemCount !== void 0) this.setMenuIndex(id2, this.menuIndex(id2), itemCount);
+    return this.menus.toggle(id2);
+  }
+  closeMenus(clearFocus = true) {
+    return this.menus.close(clearFocus);
+  }
+  focusWindow(id2) {
+    return this.windows.focus(id2)?.id;
+  }
+  focusNextWindow(delta = 1) {
+    return this.windows.focusNext(delta)?.id;
+  }
+  minimizeWindow(id2) {
+    return this.windows.minimize(id2)?.id;
+  }
+  closeWindow(id2) {
+    return this.windows.close(id2)?.id;
+  }
+  restoreWindows(id2) {
+    return this.windows.restore(id2)?.id;
+  }
+  toggleFullscreenWindow(id2) {
+    return this.windows.fullscreen(id2)?.id;
+  }
+  selectFullscreenTab(id2) {
+    return this.windows.selectTab(id2)?.id;
+  }
+  dispose() {
+    this.windows.dispose();
+  }
+};
+function clampMenuIndex2(index, itemCount) {
+  const normalized = Number.isFinite(index) ? Math.trunc(index) : 0;
+  if (itemCount <= 0) return 0;
+  return Math.max(0, Math.min(itemCount - 1, normalized));
+}
+
 // src/runtime/storage_diagnostics.ts
 var StorageFallbackDiagnostics = class {
   constructor(diagnostics, options = {}) {
@@ -11355,11 +11435,15 @@ var minimized = new Signal(
   { deepObserve: true }
 );
 var themeMenuOpen = new Signal(false);
-var topMenus = new WorkbenchTopMenuController({
-  onChange: (state) => {
-    themeMenuOpen.value = state.openId === "theme";
-  }
+var workbenchController = new WorkbenchController({
+  menu: {
+    onChange: (state) => {
+      themeMenuOpen.value = state.openId === "theme";
+    }
+  },
+  windows: panelIds.map((id2, order) => ({ id: id2, title: id2, order }))
 });
+var topMenus = workbenchController.menus;
 var tileDensity = new Signal(Math.max(-3, Math.min(3, Math.floor(initialWorkspace.tileDensity ?? 0))));
 var lineSignals = [];
 var log = new Signal(
@@ -11662,6 +11746,7 @@ globalThis.addEventListener("beforeunload", () => {
   textBox.dispose();
   compact.dispose();
   explorer.dispose();
+  workbenchController.dispose();
   themeMenuOpen.dispose();
   tileDensity.dispose();
   host.destroy();

@@ -641,6 +641,50 @@ Deno.test("ThreeAsciiObject erases safely while a frame is rendering", async () 
   rectangle.dispose();
 });
 
+Deno.test("ThreeAsciiObject queues rerender cells only for changed ASCII grid cells", async () => {
+  const rectangle = new Signal({ column: 0, row: 0, width: 2, height: 2 }, { deepObserve: true });
+  const sink = new MemoryCanvasSink();
+  const canvas = new Canvas({ sink, size: { columns: 8, rows: 8 } });
+  let renderer: ControlledSequenceGridRenderer | undefined;
+  const object = new ThreeAsciiObject({
+    canvas,
+    rectangle,
+    scene: {} as Scene,
+    camera: {} as Camera,
+    style: emptyStyle,
+    zIndex: 1,
+    frameInterval: 5,
+    rendererFactory: () =>
+      renderer = new ControlledSequenceGridRenderer([
+        [["A", "B"], ["C", "D"]],
+        [["A", "B"], ["C", "D"]],
+        [["A", "X"], ["C", "D"]],
+      ]),
+  });
+
+  object.draw();
+
+  try {
+    await waitFor(() => (renderer?.startCount ?? 0) >= 1);
+    renderer?.completeFrame();
+    await waitFor(() => queuedCellCount(object) === 4);
+
+    clearQueuedCells(object);
+    await waitFor(() => (renderer?.startCount ?? 0) >= 2);
+    renderer?.completeFrame();
+    await waitFor(() => (renderer?.completedCount ?? 0) >= 2);
+    assertEquals(queuedCellCount(object), 0);
+
+    await waitFor(() => (renderer?.startCount ?? 0) >= 3);
+    renderer?.completeFrame();
+    await waitFor(() => queuedCellCount(object) === 1);
+    assertEquals(object.rerenderCells[0]?.has(1), true);
+  } finally {
+    object.erase();
+    rectangle.dispose();
+  }
+});
+
 function sceneState(): ThreeSceneState {
   return {
     mode: "studio" as const,
@@ -663,6 +707,16 @@ async function waitFor(condition: () => boolean): Promise<void> {
     await new Promise((resolve) => setTimeout(resolve, 10));
   }
   assert(condition());
+}
+
+function queuedCellCount(object: ThreeAsciiObject): number {
+  return object.rerenderCells.reduce((total, row) => total + (row?.size ?? 0), 0);
+}
+
+function clearQueuedCells(object: ThreeAsciiObject): void {
+  for (const row of object.rerenderCells) {
+    row?.clear();
+  }
 }
 
 class FakeGridRenderer implements ThreePanelGridRenderer, ThreeAsciiGridRenderer {
@@ -734,6 +788,36 @@ class FakeGridRenderer implements ThreePanelGridRenderer, ThreeAsciiGridRenderer
   }
 
   destroy(): void {}
+}
+
+class ControlledSequenceGridRenderer extends FakeGridRenderer {
+  startCount = 0;
+  completedCount = 0;
+  private releaseFrame?: () => void;
+
+  constructor(private readonly frames: string[][][]) {
+    super(frames[0]?.[0]?.length ?? 1, frames[0]?.length ?? 1);
+  }
+
+  override async renderToAnsiGrid(
+    _deltaTime?: number,
+    onFrame?: (deltaTime: number) => void | Promise<void>,
+  ): Promise<string[][]> {
+    await onFrame?.(0.016);
+    this.startCount += 1;
+    await new Promise<void>((resolve) => {
+      this.releaseFrame = resolve;
+    });
+    const frame = this.frames[Math.min(this.completedCount, this.frames.length - 1)] ?? [[" "]];
+    this.completedCount += 1;
+    return frame.map((row) => [...row]);
+  }
+
+  completeFrame(): void {
+    const release = this.releaseFrame;
+    this.releaseFrame = undefined;
+    release?.();
+  }
 }
 
 class FakeGraphicsSurface implements GraphicsSurface {

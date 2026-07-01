@@ -549,8 +549,8 @@ Acceptance checks:
 
 Current evidence:
 
-- `app/visualizations.ts` is `2,375` lines.
-- `app/neon_three.ts` is `1,302` lines.
+- `app/visualizations.ts` is now `466` lines after family/renderer extraction.
+- `app/neon_three.ts` is now `999` lines after catalog and geometry extraction.
 - `app/grwizard_immediate.ts` is `2,490` lines.
 - Demo modules contain reusable catalog, rendering, and widget patterns that could be package examples or fixtures.
 
@@ -578,6 +578,8 @@ Work:
         injected from the visualization renderer instead of duplicating shared drawing utilities.
   - [x] Extracted Three visualization text fallback body/footer rendering into `app/visualization_three_fallback.ts`,
         keeping primitive-mode fallback output directly fixture-testable outside the main visualization dispatcher.
+  - [x] Optimized `ThreeAsciiObject` canvas handoff to queue only changed ASCII cells between frames, with a fake
+        renderer regression proving stable frames do not enqueue redundant repaint cells.
 - [ ] Make demo-only assets and NGE-inspired primitives clearly separate from library APIs.
   - [x] Added `app/neon_three_catalog.ts` for supported Three scene metadata and labels, keeping demo/NGE catalog data
         separate from the monolithic scene factory and shared by visualization footers plus scene coverage tests.

@@ -73,6 +73,9 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
   private pendingEffectOptions?: Partial<AcerolaAsciiNodeOptions>;
   private pendingTerminalEdgeBias?: number;
   private pendingTerminalGlyphStyle?: TerminalGlyphStyle;
+  private previousGridCells: string[] = [];
+  private previousGridColumns = 0;
+  private previousGridRows = 0;
 
   constructor(options: ThreeAsciiObjectOptions) {
     super("three_ascii", { ...options, style: emptyStyle });
@@ -238,14 +241,10 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
         }
 
         this.grid = grid;
-        for (let row = rectangle.row; row < rectangle.row + rectangle.height; row += 1) {
-          for (let column = rectangle.column; column < rectangle.column + rectangle.width; column += 1) {
-            this.queueRerender(row, column);
-          }
+        if (this.queueChangedGridCells(grid, rectangle)) {
+          this.updated = false;
+          this.canvas.updateObjects.push(this);
         }
-
-        this.updated = false;
-        this.canvas.updateObjects.push(this);
       }
     } catch (error) {
       if (!this.isCurrentFrame(frameGeneration, renderer)) {
@@ -260,13 +259,10 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
         rectangle.height,
         formatThreeAsciiFallbackDetail(error),
       );
-      for (let row = rectangle.row; row < rectangle.row + rectangle.height; row += 1) {
-        for (let column = rectangle.column; column < rectangle.column + rectangle.width; column += 1) {
-          this.queueRerender(row, column);
-        }
+      if (this.queueChangedGridCells(this.grid, rectangle)) {
+        this.updated = false;
+        this.canvas.updateObjects.push(this);
       }
-      this.updated = false;
-      this.canvas.updateObjects.push(this);
     } finally {
       this.rendering = false;
 
@@ -288,6 +284,7 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
 
   private invalidateFrame(): void {
     this.frameGeneration += 1;
+    this.clearPreviousGridCells();
   }
 
   private isCurrentFrame(generation: number, renderer: ThreeAsciiGridRenderer): boolean {
@@ -307,6 +304,41 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
       this.renderer.setTerminalGlyphStyle(this.pendingTerminalGlyphStyle);
       this.pendingTerminalGlyphStyle = undefined;
     }
+  }
+
+  private queueChangedGridCells(grid: string[][], rectangle: Rectangle): boolean {
+    const columns = Math.max(0, rectangle.width);
+    const rows = Math.max(0, rectangle.height);
+    const cellCount = columns * rows;
+    const cacheValid = this.previousGridColumns === columns && this.previousGridRows === rows &&
+      this.previousGridCells.length === cellCount;
+
+    if (!cacheValid) {
+      this.previousGridCells.length = cellCount;
+      this.previousGridColumns = columns;
+      this.previousGridRows = rows;
+    }
+
+    let changed = false;
+    for (let row = 0; row < rows; row += 1) {
+      const outputRow = grid[row];
+      for (let column = 0; column < columns; column += 1) {
+        const index = row * columns + column;
+        const cell = outputRow?.[column] ?? " ";
+        if (cacheValid && this.previousGridCells[index] === cell) continue;
+        this.previousGridCells[index] = cell;
+        this.queueRerender(rectangle.row + row, rectangle.column + column);
+        changed = true;
+      }
+    }
+
+    return changed;
+  }
+
+  private clearPreviousGridCells(): void {
+    this.previousGridCells = [];
+    this.previousGridColumns = 0;
+    this.previousGridRows = 0;
   }
 }
 
