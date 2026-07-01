@@ -216,6 +216,8 @@ Work:
       ASCII benchmark covering repeated material palettes beyond adjacent runs.
 - [x] Promote ANSI grid assembly into a reusable cache-owning renderer primitive so long-lived Three renderers keep
       linear RGB, foreground ANSI, and repeated cell strings warm across stable frames.
+- [x] Let long-lived Three renderers opt into reusable ANSI grid row storage, avoiding per-frame grid/row allocation
+      while preserving fresh output arrays for standalone assembler callers.
 
 Acceptance checks:
 

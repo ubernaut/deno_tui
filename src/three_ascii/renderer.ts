@@ -329,12 +329,18 @@ export class ThreeAsciiAnsiGridAssembler {
   private readonly toByte = createLinearByteCache();
   private readonly foregroundAnsiCache = new Map<number, string>();
   private readonly cellCache = new Map<number, Map<string, string>>();
+  private readonly reuseGrid: boolean;
+  private reusableGrid: string[][] = [];
   private backgroundKey = -1;
   private backgroundAnsi = "";
   private blankAnsi = "";
   private backgroundRed = 0;
   private backgroundGreen = 0;
   private backgroundBlue = 0;
+
+  constructor(options: { reuseGrid?: boolean } = {}) {
+    this.reuseGrid = options.reuseGrid ?? false;
+  }
 
   build(input: ThreeAsciiAnsiGridInput): string[][] {
     const columns = Math.max(0, Math.floor(input.columns));
@@ -348,7 +354,7 @@ export class ThreeAsciiAnsiGridAssembler {
     let lastForegroundKey = -1;
     let lastGlyph = "";
     let lastCell = "";
-    const grid = Array.from({ length: rows }, () => Array<string>(columns));
+    const grid = this.reuseGrid ? this.prepareReusableGrid(rows, columns) : createStringGrid(rows, columns);
 
     for (let row = 0; row < rows; row += 1) {
       const outputRow = grid[row];
@@ -427,9 +433,20 @@ export class ThreeAsciiAnsiGridAssembler {
   clear(): void {
     this.foregroundAnsiCache.clear();
     this.cellCache.clear();
+    this.reusableGrid = [];
     this.backgroundKey = -1;
     this.backgroundAnsi = "";
     this.blankAnsi = "";
+  }
+
+  private prepareReusableGrid(rows: number, columns: number): string[][] {
+    const grid = this.reusableGrid;
+    grid.length = rows;
+    for (let row = 0; row < rows; row += 1) {
+      grid[row] ??= [];
+      grid[row].length = columns;
+    }
+    return grid;
   }
 
   private setBackground(backgroundColor: Color): void {
@@ -448,6 +465,10 @@ export class ThreeAsciiAnsiGridAssembler {
     this.blankAnsi = `${this.backgroundAnsi}${backgroundForeground} ${RESET}`;
     this.cellCache.clear();
   }
+}
+
+function createStringGrid(rows: number, columns: number): string[][] {
+  return Array.from({ length: rows }, () => Array<string>(columns));
 }
 
 function colorValue(input: Color | string | number | undefined, fallback: number): Color {
@@ -656,7 +677,7 @@ export class ThreeAsciiRenderer {
   private colorOutput?: BufferPair;
   private outputReadback?: ReadbackBuffer;
   private uniformValues = new Float32Array(24);
-  private readonly ansiGridAssembler = new ThreeAsciiAnsiGridAssembler();
+  private readonly ansiGridAssembler = new ThreeAsciiAnsiGridAssembler({ reuseGrid: true });
   private outputCellCount = 0;
   private sizeDirty = true;
   private computeDirty = true;

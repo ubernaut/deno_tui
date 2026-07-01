@@ -123,6 +123,52 @@ Deno.test("three ascii ANSI grid assembler matches stateless output across frame
   assertEquals(assembler.build(input), buildThreeAsciiAnsiGrid(input));
 });
 
+Deno.test("three ascii ANSI grid assembler returns fresh grids by default", () => {
+  const assembler = new ThreeAsciiAnsiGridAssembler();
+  const base = {
+    columns: 1,
+    rows: 1,
+    fillGlyphs: new Float32Array([14]),
+    colors: new Float32Array([1, 0, 0, 1]),
+    backgroundColor: 0x000000,
+  };
+
+  const first = assembler.build(base);
+  const second = assembler.build({
+    ...base,
+    colors: new Float32Array([0, 1, 0, 1]),
+  });
+
+  assertEquals(first === second, false);
+  assertEquals(first[0] === second[0], false);
+  assertEquals(first[0][0], "\x1b[48;2;0;0;0m\x1b[38;2;255;0;0m█\x1b[0m");
+  assertEquals(second[0][0], "\x1b[48;2;0;0;0m\x1b[38;2;0;255;0m█\x1b[0m");
+});
+
+Deno.test("three ascii ANSI grid assembler can reuse grid storage for renderer-owned frames", () => {
+  const assembler = new ThreeAsciiAnsiGridAssembler({ reuseGrid: true });
+  const base = {
+    columns: 2,
+    rows: 1,
+    fillGlyphs: new Float32Array([14, 14]),
+    colors: new Float32Array([1, 0, 0, 1, 1, 0, 0, 1]),
+    backgroundColor: 0x000000,
+  };
+
+  const first = assembler.build(base);
+  const firstRow = first[0];
+  const second = assembler.build({
+    ...base,
+    columns: 1,
+    colors: new Float32Array([0, 1, 0, 1]),
+  });
+
+  assertEquals(first === second, true);
+  assertEquals(second[0] === firstRow, true);
+  assertEquals(second[0].length, 1);
+  assertEquals(second[0][0], "\x1b[48;2;0;0;0m\x1b[38;2;0;255;0m█\x1b[0m");
+});
+
 Deno.test("three ascii ANSI grid assembler invalidates cached cells when background changes", () => {
   const assembler = new ThreeAsciiAnsiGridAssembler();
   const base = {

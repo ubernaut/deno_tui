@@ -56,7 +56,7 @@ const threeAsciiReadbackColorSource = new Float32Array(threeAsciiCellCount * 4);
 const threeAsciiReadbackFillCpu = new Float32Array(threeAsciiCellCount);
 const threeAsciiReadbackEdgeCpu = new Float32Array(threeAsciiCellCount * 4);
 const threeAsciiReadbackColorCpu = new Float32Array(threeAsciiCellCount * 4);
-const threeAsciiGridAssembler = new ThreeAsciiAnsiGridAssembler();
+const threeAsciiGridAssembler = new ThreeAsciiAnsiGridAssembler({ reuseGrid: true });
 let threeAsciiReadbackCursor = 0;
 let threeAsciiReadbackChecksum = 0;
 const ansiRichRows = Array.from({ length: 250 }, (_, index) => {
@@ -700,7 +700,7 @@ export const benchmarkCases: BenchmarkCase[] = [
   {
     name: "render/three-ascii-ansi-grid-warm-cache-96x40",
     category: "render",
-    description: "CPU-assemble recurring Three ASCII frames while reusing ANSI conversion and cell caches.",
+    description: "CPU-assemble recurring Three ASCII frames while reusing ANSI conversion, cell, and grid-row caches.",
     tags: ["render", "three", "ascii", "ansi", "cpu", "assembly", "cache"],
     iterations: 250,
     maxAverageMs: 5,
