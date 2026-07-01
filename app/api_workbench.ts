@@ -46,6 +46,7 @@ import {
   workbenchWindowOptionMinimums,
 } from "../src/app/workbench_window_registry.ts";
 import { isWorkbenchMenuActivationKey, moveWorkbenchMenuIndex } from "../src/app/workbench_menu.ts";
+import { layoutWorkbenchShelf, layoutWorkbenchTabs } from "../src/app/workbench_shelf.ts";
 import {
   deleteWorkbenchWorkspace,
   findWorkbenchWorkspace,
@@ -2302,18 +2303,15 @@ function addInlineStepperHits(rect: Rectangle, row: number): void {
 
 function renderShelf(frame: Frame): void {
   const row = currentHeight() - 2;
-  let column = 1;
   const entries = windowManager.inspect().windows
     .filter((entry) => entry.minimized && !entry.closed)
-    .map((entry) => entry.id as WindowId);
+    .map((entry) => ({ id: entry.id as WindowId, title: windowTitle(entry.id as WindowId) }));
   if (entries.length === 0) return;
-  write(frame, row, column, paint("minimized ", { fg: theme().muted, bg: theme().backgroundSoft }));
-  column += 10;
-  for (const id of entries) {
-    const label = windowTitle(id);
-    const width = writeButton(frame, row, column, label, { tone: "muted" });
-    addHit({ column, row, width, height: 1 }, { type: "restore", id });
-    column += width + 1;
+  const layout = layoutWorkbenchShelf({ row, column: 1, width: Math.max(0, currentWidth() - 1), entries });
+  write(frame, row, layout.prefixRect.column, paint(layout.prefix, { fg: theme().muted, bg: theme().backgroundSoft }));
+  for (const button of layout.buttons) {
+    writeButton(frame, row, button.rect.column, button.label, { tone: "muted", maxWidth: button.rect.width });
+    addHit(button.rect, { type: "restore", id: button.id });
   }
 }
 
@@ -2321,24 +2319,25 @@ function renderWindowTabs(frame: Frame): void {
   const row = currentHeight() - 2;
   const t = theme();
   fillRow(frame, row, t.backgroundSoft);
-  write(frame, row, 1, paint("windows ", { fg: t.muted, bg: t.backgroundSoft }));
-  let column = 9;
-  for (const tab of windowManager.inspect().tabs) {
-    const id = tab.id as WindowId;
-    if (column >= currentWidth() - 1) break;
-    const selected = tab.fullscreen;
-    const hidden = tab.minimized;
-    const marker = selected ? "●" : hidden ? "○" : " ";
-    const label = `${marker} ${windowTitle(id)}`;
-    const width = Math.min(textWidth(buttonText(label)), Math.max(0, currentWidth() - column));
-    if (width <= 0) break;
-    writeButton(frame, row, column, label, {
-      state: selected ? "active" : "base",
-      tone: hidden ? "muted" : "default",
-      maxWidth: width,
+  const layout = layoutWorkbenchTabs({
+    row,
+    column: 1,
+    width: Math.max(0, currentWidth() - 1),
+    tabs: windowManager.inspect().tabs.map((tab) => ({
+      id: tab.id as WindowId,
+      title: windowTitle(tab.id as WindowId),
+      selected: tab.fullscreen,
+      hidden: tab.minimized,
+    })),
+  });
+  write(frame, row, layout.prefixRect.column, paint(layout.prefix, { fg: t.muted, bg: t.backgroundSoft }));
+  for (const button of layout.buttons) {
+    writeButton(frame, row, button.rect.column, button.label, {
+      state: button.selected ? "active" : "base",
+      tone: button.hidden ? "muted" : "default",
+      maxWidth: button.rect.width,
     });
-    addHit({ column, row, width, height: 1 }, { type: "windowTab", id });
-    column += width + 1;
+    addHit(button.rect, { type: "windowTab", id: button.id });
   }
 }
 

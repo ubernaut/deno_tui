@@ -24,6 +24,8 @@ import {
   intersects,
   isWorkbenchMenuActivationKey,
   isWorkbenchMenuCloseKey,
+  layoutWorkbenchShelf,
+  layoutWorkbenchTabs,
   layoutWorkbenchTitlebar,
   MenuBarController,
   modalContentHeight,
@@ -636,15 +638,15 @@ function draw(): void {
 
 function renderShelf(frame: string[]): void {
   const row = rowsCount() - 2;
-  let column = 2;
-  const hidden = (Object.entries(minimized.peek()) as Array<[PanelId, boolean]>).filter(([, value]) => value);
-  if (hidden.length === 0) return;
-  write(frame, row, column, paint("minimized ", theme().muted, theme().bgAlt));
-  column += 10;
-  for (const [id] of hidden) {
-    const width = writeButton(frame, row, column, panelTitle(id), { tone: "muted" });
-    hitTargets.push({ rect: { column, row, width, height: 1 }, hit: { type: "restore", id } });
-    column += width + 1;
+  const entries = (Object.entries(minimized.peek()) as Array<[PanelId, boolean]>)
+    .filter(([, value]) => value)
+    .map(([id]) => ({ id, title: panelTitle(id) }));
+  if (entries.length === 0) return;
+  const layout = layoutWorkbenchShelf({ row, column: 2, width: Math.max(0, cols() - 2), entries });
+  write(frame, row, layout.prefixRect.column, paint(layout.prefix, theme().muted, theme().bgAlt));
+  for (const button of layout.buttons) {
+    writeButton(frame, row, button.rect.column, button.label, { tone: "muted", maxWidth: button.rect.width });
+    hitTargets.push({ rect: button.rect, hit: { type: "restore", id: button.id } });
   }
 }
 
@@ -714,24 +716,25 @@ function menuItemRect(menuStart: number, itemId: string, preferredWidth: number,
 
 function renderWindowTabs(frame: string[]): void {
   const row = rowsCount() - 2;
-  let column = 2;
-  write(frame, row, column, paint("windows ", theme().muted, theme().bgAlt));
-  column += 8;
-  for (const id of panelIds) {
-    if (column >= cols() - 1) break;
-    const selected = maximized.peek() === id;
-    const hidden = minimized.peek()[id];
-    const marker = selected ? "●" : hidden ? "○" : " ";
-    const label = `${marker} ${panelTitle(id)}`;
-    const width = Math.min(textWidth(buttonText(label)), Math.max(0, cols() - column));
-    if (width <= 0) break;
-    writeButton(frame, row, column, label, {
-      state: selected ? "active" : "base",
-      tone: hidden ? "muted" : "default",
-      maxWidth: width,
+  const layout = layoutWorkbenchTabs({
+    row,
+    column: 2,
+    width: Math.max(0, cols() - 2),
+    tabs: panelIds.map((id) => ({
+      id,
+      title: panelTitle(id),
+      selected: maximized.peek() === id,
+      hidden: minimized.peek()[id],
+    })),
+  });
+  write(frame, row, layout.prefixRect.column, paint(layout.prefix, theme().muted, theme().bgAlt));
+  for (const button of layout.buttons) {
+    writeButton(frame, row, button.rect.column, button.label, {
+      state: button.selected ? "active" : "base",
+      tone: button.hidden ? "muted" : "default",
+      maxWidth: button.rect.width,
     });
-    hitTargets.push({ rect: { column, row, width, height: 1 }, hit: { type: "restore", id } });
-    column += width + 1;
+    hitTargets.push({ rect: button.rect, hit: { type: "restore", id: button.id } });
   }
 }
 

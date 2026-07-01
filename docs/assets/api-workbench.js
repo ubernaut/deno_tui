@@ -8714,6 +8714,56 @@ function moveWorkbenchMenuIndex(current, count, event, options = {}) {
   }
 }
 
+// src/app/workbench_shelf.ts
+function layoutWorkbenchShelf(options) {
+  return layoutButtonRow({
+    row: options.row,
+    column: options.column,
+    width: options.width,
+    prefix: options.prefix ?? "minimized ",
+    entries: options.entries.map((entry) => ({ ...entry, selected: false, hidden: true }))
+  });
+}
+function layoutWorkbenchTabs(options) {
+  return layoutButtonRow({
+    row: options.row,
+    column: options.column,
+    width: options.width,
+    prefix: options.prefix ?? "windows ",
+    entries: options.tabs.map((tab) => ({
+      ...tab,
+      title: `${tab.selected ? "\u25CF" : tab.hidden ? "\u25CB" : " "} ${tab.title}`,
+      selected: tab.selected === true,
+      hidden: tab.hidden === true
+    }))
+  });
+}
+function layoutButtonRow(options) {
+  const right = options.column + Math.max(0, options.width);
+  const prefixWidth = Math.min(textWidth(options.prefix), Math.max(0, right - options.column));
+  let column = options.column + prefixWidth;
+  const buttons = [];
+  for (const entry of options.entries) {
+    if (column >= right) break;
+    const available = Math.max(0, right - column);
+    const width = Math.min(textWidth(buttonText(entry.title)), available);
+    if (width <= 0) break;
+    buttons.push({
+      id: entry.id,
+      label: entry.title,
+      rect: { column, row: options.row, width, height: 1 },
+      selected: entry.selected === true,
+      hidden: entry.hidden === true
+    });
+    column += width + 1;
+  }
+  return {
+    prefix: options.prefix,
+    prefixRect: { column: options.column, row: options.row, width: prefixWidth, height: 1 },
+    buttons
+  };
+}
+
 // src/app/workbench_titlebar.ts
 function layoutWorkbenchTitlebar(options) {
   const controlsMinWidth = options.controlsMinWidth ?? 22;
@@ -10920,15 +10970,13 @@ function draw() {
 }
 function renderShelf(frame) {
   const row = rowsCount() - 2;
-  let column = 2;
-  const hidden = Object.entries(minimized.peek()).filter(([, value]) => value);
-  if (hidden.length === 0) return;
-  write(frame, row, column, paint("minimized ", theme().muted, theme().bgAlt));
-  column += 10;
-  for (const [id2] of hidden) {
-    const width = writeButton(frame, row, column, panelTitle(id2), { tone: "muted" });
-    hitTargets.push({ rect: { column, row, width, height: 1 }, hit: { type: "restore", id: id2 } });
-    column += width + 1;
+  const entries = Object.entries(minimized.peek()).filter(([, value]) => value).map(([id2]) => ({ id: id2, title: panelTitle(id2) }));
+  if (entries.length === 0) return;
+  const layout = layoutWorkbenchShelf({ row, column: 2, width: Math.max(0, cols() - 2), entries });
+  write(frame, row, layout.prefixRect.column, paint(layout.prefix, theme().muted, theme().bgAlt));
+  for (const button of layout.buttons) {
+    writeButton(frame, row, button.rect.column, button.label, { tone: "muted", maxWidth: button.rect.width });
+    hitTargets.push({ rect: button.rect, hit: { type: "restore", id: button.id } });
   }
 }
 function renderMenuHits(column, row, width) {
@@ -10994,24 +11042,25 @@ function menuItemRect(menuStart, itemId, preferredWidth, preferredHeight) {
 }
 function renderWindowTabs(frame) {
   const row = rowsCount() - 2;
-  let column = 2;
-  write(frame, row, column, paint("windows ", theme().muted, theme().bgAlt));
-  column += 8;
-  for (const id2 of panelIds) {
-    if (column >= cols() - 1) break;
-    const selected = maximized.peek() === id2;
-    const hidden = minimized.peek()[id2];
-    const marker = selected ? "\u25CF" : hidden ? "\u25CB" : " ";
-    const label = `${marker} ${panelTitle(id2)}`;
-    const width = Math.min(textWidth(buttonText2(label)), Math.max(0, cols() - column));
-    if (width <= 0) break;
-    writeButton(frame, row, column, label, {
-      state: selected ? "active" : "base",
-      tone: hidden ? "muted" : "default",
-      maxWidth: width
+  const layout = layoutWorkbenchTabs({
+    row,
+    column: 2,
+    width: Math.max(0, cols() - 2),
+    tabs: panelIds.map((id2) => ({
+      id: id2,
+      title: panelTitle(id2),
+      selected: maximized.peek() === id2,
+      hidden: minimized.peek()[id2]
+    }))
+  });
+  write(frame, row, layout.prefixRect.column, paint(layout.prefix, theme().muted, theme().bgAlt));
+  for (const button of layout.buttons) {
+    writeButton(frame, row, button.rect.column, button.label, {
+      state: button.selected ? "active" : "base",
+      tone: button.hidden ? "muted" : "default",
+      maxWidth: button.rect.width
     });
-    hitTargets.push({ rect: { column, row, width, height: 1 }, hit: { type: "restore", id: id2 } });
-    column += width + 1;
+    hitTargets.push({ rect: button.rect, hit: { type: "restore", id: button.id } });
   }
 }
 function renderPanel(frame, id2, rect) {

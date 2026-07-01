@@ -62,6 +62,7 @@ export * from "./tree_commands.ts";
 export * from "./window_manager_commands.ts";
 export * from "./workbench_frame.ts";
 export * from "./workbench_menu.ts";
+export * from "./workbench_shelf.ts";
 export * from "./workbench_titlebar.ts";
 export * from "./workbench_window_registry.ts";
 export * from "./workbench_workspace.ts";
