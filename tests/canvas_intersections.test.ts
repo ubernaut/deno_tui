@@ -82,7 +82,12 @@ Deno.test("canvas render inspection reports repaint and idle passes", () => {
     renderedObjects: 1,
     rerenderedObjects: 0,
     intersectionUpdates: 1,
+    intersectionCandidateChecks: 0,
     intersectionsDirty: true,
+    dirtyRectangles: 1,
+    dirtyRows: 2,
+    dirtyCells: 16,
+    fullRedraws: 1,
     flushedCells: 16,
   });
 
@@ -94,7 +99,12 @@ Deno.test("canvas render inspection reports repaint and idle passes", () => {
     renderedObjects: 1,
     rerenderedObjects: 0,
     intersectionUpdates: 0,
+    intersectionCandidateChecks: 0,
     intersectionsDirty: false,
+    dirtyRectangles: 0,
+    dirtyRows: 2,
+    dirtyCells: 16,
+    fullRedraws: 1,
     flushedCells: 16,
   });
 
@@ -105,7 +115,12 @@ Deno.test("canvas render inspection reports repaint and idle passes", () => {
     renderedObjects: 0,
     rerenderedObjects: 0,
     intersectionUpdates: 0,
+    intersectionCandidateChecks: 0,
     intersectionsDirty: false,
+    dirtyRectangles: 0,
+    dirtyRows: 0,
+    dirtyCells: 0,
+    fullRedraws: 0,
     flushedCells: 0,
   });
 });

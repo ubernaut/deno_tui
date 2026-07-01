@@ -124,7 +124,7 @@ Work:
 - [ ] Introduce a `DirtyRegion` or row-segment model alongside cell-level queues.
 - [ ] Add a spatial or layer-indexed structure for overlap queries so moved overlays do not require full object scans.
 - [ ] Cache z-order/version metadata and invalidate only when object order or geometry changes.
-- [ ] Add optional render stats for dirty rectangle count, dirty cell count, full redraw count, and intersection query
+- [x] Add optional render stats for dirty rectangle count, dirty cell count, full redraw count, and intersection query
       cost.
 - [ ] Keep the current cell sink contract stable while allowing future sinks to consume row ranges.
 

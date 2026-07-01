@@ -64,7 +64,12 @@ Deno.test("ansi canvas sink preserves stdout terminal output path", () => {
     renderedObjects: 0,
     rerenderedObjects: 0,
     intersectionUpdates: 0,
+    intersectionCandidateChecks: 0,
     intersectionsDirty: false,
+    dirtyRectangles: 0,
+    dirtyRows: 0,
+    dirtyCells: 3,
+    fullRedraws: 0,
     flushedCells: 3,
   });
 

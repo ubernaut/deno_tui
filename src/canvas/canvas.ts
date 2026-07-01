@@ -31,7 +31,12 @@ export interface CanvasRenderStats {
   renderedObjects: number;
   rerenderedObjects: number;
   intersectionUpdates: number;
+  intersectionCandidateChecks: number;
   intersectionsDirty: boolean;
+  dirtyRectangles: number;
+  dirtyRows: number;
+  dirtyCells: number;
+  fullRedraws: number;
   flushedCells: number;
 }
 
@@ -94,8 +99,9 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
     }
   }
 
-  updateIntersections(object: DrawObject): void {
+  updateIntersections(object: DrawObject): number {
     const { omitCells, objectsUnder } = object;
+    let candidateChecks = 0;
 
     const zIndex = object.zIndex.peek();
     const rectangle = object.rectangle.peek();
@@ -108,6 +114,7 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
 
     for (const object2 of this.drawnObjects) {
       if (object === object2 || object2.outOfBounds) continue;
+      candidateChecks += 1;
 
       const zIndex2 = object2.zIndex.peek();
 
@@ -132,6 +139,8 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
         }
       }
     }
+
+    return candidateChecks;
   }
 
   /** Returns diagnostics from the most recent render pass. */
@@ -207,10 +216,11 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
     const objectsToRender = intersectionsDirty
       ? affectedDrawObjects(this.drawnObjects, dirtyRectangles, nonMovingUpdatedObjects)
       : objectsToUpdate;
+    let intersectionCandidateChecks = 0;
     if (intersectionsDirty) {
       objectsToRender.sort((a, b) => b.zIndex.peek() - a.zIndex.peek() || b.id - a.id);
       for (const object of objectsToRender) {
-        this.updateIntersections(object);
+        intersectionCandidateChecks += this.updateIntersections(object);
         object.moved = false;
         if (!object.outOfBounds) {
           if (movedOwnObjects.has(object) || !object.rendered) {
@@ -249,11 +259,15 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
     const { rerenderQueue } = this;
     const size = this.size.peek();
     let flushedCells = 0;
+    let dirtyRows = 0;
+    let dirtyCells = 0;
     const cellUpdates: CanvasCellUpdate[] = [];
 
     for (let row = 0; row < size.rows; ++row) {
       const columns = rerenderQueue[row];
       if (!columns?.size) continue;
+      dirtyRows += 1;
+      dirtyCells += columns.size;
 
       const rowBuffer = frameBuffer[row] ??= [];
 
@@ -272,7 +286,12 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
       renderedObjects,
       rerenderedObjects,
       intersectionUpdates: intersectionsDirty ? objectsToRender.length : 0,
+      intersectionCandidateChecks,
       intersectionsDirty,
+      dirtyRectangles: dirtyRectangles.length,
+      dirtyRows,
+      dirtyCells,
+      fullRedraws: renderedObjects,
       flushedCells,
     };
 
@@ -290,7 +309,12 @@ function emptyRenderStats(): CanvasRenderStats {
     renderedObjects: 0,
     rerenderedObjects: 0,
     intersectionUpdates: 0,
+    intersectionCandidateChecks: 0,
     intersectionsDirty: false,
+    dirtyRectangles: 0,
+    dirtyRows: 0,
+    dirtyCells: 0,
+    fullRedraws: 0,
     flushedCells: 0,
   };
 }

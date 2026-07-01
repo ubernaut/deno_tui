@@ -2292,6 +2292,7 @@ var Canvas = class extends EventEmitter {
   }
   updateIntersections(object) {
     const { omitCells, objectsUnder } = object;
+    let candidateChecks = 0;
     const zIndex = object.zIndex.peek();
     const rectangle = object.rectangle.peek();
     for (const omitRows of omitCells) {
@@ -2300,6 +2301,7 @@ var Canvas = class extends EventEmitter {
     objectsUnder.clear();
     for (const object2 of this.drawnObjects) {
       if (object === object2 || object2.outOfBounds) continue;
+      candidateChecks += 1;
       const zIndex2 = object2.zIndex.peek();
       if (zIndex2 < zIndex || zIndex2 === zIndex && object2.id < object.id) {
         if (rectangleIntersection(rectangle, object2.rectangle.peek(), false)) {
@@ -2318,6 +2320,7 @@ var Canvas = class extends EventEmitter {
         }
       }
     }
+    return candidateChecks;
   }
   /** Returns diagnostics from the most recent render pass. */
   inspectRender() {
@@ -2377,10 +2380,11 @@ var Canvas = class extends EventEmitter {
       }
     }
     const objectsToRender = intersectionsDirty ? affectedDrawObjects(this.drawnObjects, dirtyRectangles, nonMovingUpdatedObjects) : objectsToUpdate;
+    let intersectionCandidateChecks = 0;
     if (intersectionsDirty) {
       objectsToRender.sort((a, b) => b.zIndex.peek() - a.zIndex.peek() || b.id - a.id);
       for (const object of objectsToRender) {
-        this.updateIntersections(object);
+        intersectionCandidateChecks += this.updateIntersections(object);
         object.moved = false;
         if (!object.outOfBounds) {
           if (movedOwnObjects.has(object) || !object.rendered) {
@@ -2414,10 +2418,14 @@ var Canvas = class extends EventEmitter {
     const { rerenderQueue } = this;
     const size = this.size.peek();
     let flushedCells = 0;
+    let dirtyRows = 0;
+    let dirtyCells = 0;
     const cellUpdates = [];
     for (let row = 0; row < size.rows; ++row) {
       const columns = rerenderQueue[row];
       if (!columns?.size) continue;
+      dirtyRows += 1;
+      dirtyCells += columns.size;
       const rowBuffer = frameBuffer[row] ??= [];
       for (const column of columns) {
         const cell = rowBuffer[column];
@@ -2432,7 +2440,12 @@ var Canvas = class extends EventEmitter {
       renderedObjects,
       rerenderedObjects,
       intersectionUpdates: intersectionsDirty ? objectsToRender.length : 0,
+      intersectionCandidateChecks,
       intersectionsDirty,
+      dirtyRectangles: dirtyRectangles.length,
+      dirtyRows,
+      dirtyCells,
+      fullRedraws: renderedObjects,
       flushedCells
     };
     if (cellUpdates.length > 0) {
@@ -2447,7 +2460,12 @@ function emptyRenderStats() {
     renderedObjects: 0,
     rerenderedObjects: 0,
     intersectionUpdates: 0,
+    intersectionCandidateChecks: 0,
     intersectionsDirty: false,
+    dirtyRectangles: 0,
+    dirtyRows: 0,
+    dirtyCells: 0,
+    fullRedraws: 0,
     flushedCells: 0
   };
 }
