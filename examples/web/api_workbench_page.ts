@@ -27,6 +27,7 @@ import {
   InputController,
   isWorkbenchMenuActivationKey,
   isWorkbenchMenuCloseKey,
+  layoutWorkbenchMenuBarHits,
   layoutWorkbenchModal,
   layoutWorkbenchPopover,
   layoutWorkbenchShelf,
@@ -680,13 +681,17 @@ function renderShelf(frame: string[]): void {
 }
 
 function renderMenuHits(column: number, row: number, width: number): void {
-  let cursor = column;
-  for (const [index, item] of menu.items.peek().entries()) {
-    const token = index === menu.activeIndex.peek() ? `[${item.label}]` : item.label;
-    const tokenWidth = textWidth(token);
-    if (cursor + tokenWidth > column + width) break;
-    hitTargets.add({ column: cursor, row, width: tokenWidth, height: 1 }, { type: "menu", index });
-    cursor += tokenWidth + 1;
+  for (
+    const hit of layoutWorkbenchMenuBarHits({
+      column,
+      row,
+      width,
+      items: menu.items.peek(),
+      activeIndex: menu.activeIndex.peek(),
+      measureText: textWidth,
+    })
+  ) {
+    hitTargets.add(hit.rect, { type: "menu", index: hit.index });
   }
 }
 

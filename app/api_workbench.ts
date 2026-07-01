@@ -35,6 +35,7 @@ import {
   isWorkbenchMenuActivationKey,
   isWorkbenchVisualizationWindowId,
   isWorkbenchWindowOptionLoaded,
+  layoutWorkbenchMenuBarHits,
   layoutWorkbenchModal,
   layoutWorkbenchPopover,
   layoutWorkbenchShelf,
@@ -990,14 +991,17 @@ function renderHeader(frame: Frame): void {
 }
 
 function renderMenuHits(column: number, row: number, width: number): void {
-  let cursor = column;
-  for (const [index, item] of menu.items.peek().entries()) {
-    const label = item.disabled ? `(${item.label})` : item.label;
-    const token = index === menu.activeIndex.peek() ? `[${label}]` : label;
-    const tokenWidth = textWidth(token);
-    if (cursor + tokenWidth > column + width) break;
-    addHit({ column: cursor, row, width: tokenWidth, height: 1 }, { type: "menu", index });
-    cursor += tokenWidth + 1;
+  for (
+    const hit of layoutWorkbenchMenuBarHits({
+      column,
+      row,
+      width,
+      items: menu.items.peek(),
+      activeIndex: menu.activeIndex.peek(),
+      measureText: textWidth,
+    })
+  ) {
+    addHit(hit.rect, { type: "menu", index: hit.index });
   }
 }
 

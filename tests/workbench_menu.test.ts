@@ -2,6 +2,7 @@ import { assertEquals } from "./deps.ts";
 import {
   isWorkbenchMenuActivationKey,
   isWorkbenchMenuCloseKey,
+  layoutWorkbenchMenuBarHits,
   layoutWorkbenchTopMenuItemRect,
   moveWorkbenchMenuIndex,
   WorkbenchTopMenuController,
@@ -88,5 +89,25 @@ Deno.test("layoutWorkbenchTopMenuItemRect falls back to menu start when item is 
       maxWidth: 24,
     }),
     { column: 4, row: 1, width: 24, height: 8 },
+  );
+});
+
+Deno.test("layoutWorkbenchMenuBarHits returns visible menu item rectangles", () => {
+  assertEquals(
+    layoutWorkbenchMenuBarHits({
+      column: 2,
+      row: 0,
+      width: 17,
+      activeIndex: 1,
+      items: [
+        { id: "file", label: "File" },
+        { id: "view", label: "View" },
+        { id: "layout", label: "Layout" },
+      ],
+    }),
+    [
+      { index: 0, rect: { column: 2, row: 0, width: 4, height: 1 }, token: "File" },
+      { index: 1, rect: { column: 7, row: 0, width: 6, height: 1 }, token: "[View]" },
+    ],
   );
 });

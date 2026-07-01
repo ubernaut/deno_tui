@@ -9132,6 +9132,27 @@ function layoutWorkbenchTopMenuItemRect(options) {
     height: preferredHeight
   };
 }
+function layoutWorkbenchMenuBarHits(options) {
+  const measureText = options.measureText ?? ((value) => value.length);
+  const start = Math.max(0, Math.floor(options.column));
+  const end = start + Math.max(0, Math.floor(options.width));
+  const row = Math.max(0, Math.floor(options.row));
+  const hits = [];
+  let cursor = start;
+  for (const [index, item] of options.items.entries()) {
+    const label = item.disabled ? `(${item.label})` : item.label;
+    const token = index === options.activeIndex ? `[${label}]` : label;
+    const tokenWidth = measureText(token);
+    if (cursor + tokenWidth > end) break;
+    hits.push({
+      index,
+      rect: { column: cursor, row, width: tokenWidth, height: 1 },
+      token
+    });
+    cursor += tokenWidth + 1;
+  }
+  return hits;
+}
 
 // src/app/workbench_overlay.ts
 function layoutWorkbenchModal(options) {
@@ -11939,13 +11960,15 @@ function renderShelf(frame) {
   }
 }
 function renderMenuHits(column, row, width) {
-  let cursor = column;
-  for (const [index, item] of menu.items.peek().entries()) {
-    const token = index === menu.activeIndex.peek() ? `[${item.label}]` : item.label;
-    const tokenWidth = textWidth(token);
-    if (cursor + tokenWidth > column + width) break;
-    hitTargets.add({ column: cursor, row, width: tokenWidth, height: 1 }, { type: "menu", index });
-    cursor += tokenWidth + 1;
+  for (const hit of layoutWorkbenchMenuBarHits({
+    column,
+    row,
+    width,
+    items: menu.items.peek(),
+    activeIndex: menu.activeIndex.peek(),
+    measureText: textWidth
+  })) {
+    hitTargets.add(hit.rect, { type: "menu", index: hit.index });
   }
 }
 function renderMobileCommandStrip(frame) {

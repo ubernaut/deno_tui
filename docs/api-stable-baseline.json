@@ -3504,6 +3504,13 @@
     },
     {
       "module": "src/app/workbench_menu.ts",
+      "name": "layoutWorkbenchMenuBarHits",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_menu.ts",
       "name": "layoutWorkbenchTopMenuItemRect",
       "kind": "function",
       "typeOnly": false,
@@ -3519,6 +3526,20 @@
     {
       "module": "src/app/workbench_menu.ts",
       "name": "MoveWorkbenchMenuIndexOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_menu.ts",
+      "name": "WorkbenchMenuBarHitLayout",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_menu.ts",
+      "name": "WorkbenchMenuBarHitLayoutOptions",
       "kind": "interface",
       "typeOnly": true,
       "documented": true

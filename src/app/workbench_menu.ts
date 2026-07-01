@@ -32,6 +32,23 @@ export interface WorkbenchTopMenuItemRectOptions {
   measureText?: (value: string) => number;
 }
 
+/** Hit rectangle produced for a visible top-menu item. */
+export interface WorkbenchMenuBarHitLayout {
+  index: number;
+  rect: Rectangle;
+  token: string;
+}
+
+/** Options for laying out clickable top-menu item hit regions. */
+export interface WorkbenchMenuBarHitLayoutOptions {
+  column: number;
+  row: number;
+  width: number;
+  items: readonly WorkbenchMenuBarItemShape[];
+  activeIndex?: number;
+  measureText?: (value: string) => number;
+}
+
 /** Serializable inspection snapshot for mutually-exclusive top menu disclosure state. */
 export interface WorkbenchTopMenuInspection<MenuId extends string = string> {
   openId: MenuId | null;
@@ -157,4 +174,29 @@ export function layoutWorkbenchTopMenuItemRect(options: WorkbenchTopMenuItemRect
     width: Math.min(preferredWidth, maxWidth),
     height: preferredHeight,
   };
+}
+
+/** Lays out visible top-menu item hit rectangles within an available row width. */
+export function layoutWorkbenchMenuBarHits(options: WorkbenchMenuBarHitLayoutOptions): WorkbenchMenuBarHitLayout[] {
+  const measureText = options.measureText ?? ((value) => value.length);
+  const start = Math.max(0, Math.floor(options.column));
+  const end = start + Math.max(0, Math.floor(options.width));
+  const row = Math.max(0, Math.floor(options.row));
+  const hits: WorkbenchMenuBarHitLayout[] = [];
+  let cursor = start;
+
+  for (const [index, item] of options.items.entries()) {
+    const label = item.disabled ? `(${item.label})` : item.label;
+    const token = index === options.activeIndex ? `[${label}]` : label;
+    const tokenWidth = measureText(token);
+    if (cursor + tokenWidth > end) break;
+    hits.push({
+      index,
+      rect: { column: cursor, row, width: tokenWidth, height: 1 },
+      token,
+    });
+    cursor += tokenWidth + 1;
+  }
+
+  return hits;
 }
