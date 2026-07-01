@@ -293,6 +293,8 @@ Work:
   - [x] Extracted `/proc/net/dev` network parsing and rate calculation into `app/system_metrics_network.ts`, covering
         loopback exclusion, address-aware filtering, negative-delta clamping, and counter rollover state with focused
         tests.
+  - [x] Extracted thermal zone scanning into `app/system_metrics_temperature.ts`, covering millidegree conversion,
+        fallback labels, hottest-first sorting, invalid readings, and scan failure diagnostics with focused tests.
 - [x] Keep monitor snapshots advancing when required `/proc` reads or process scans fail, with structured per-source
       diagnostics for unavailable CPU, uptime, network, and process data.
   - [x] Extracted monitor history padding, empty snapshot construction, and alert derivation into
