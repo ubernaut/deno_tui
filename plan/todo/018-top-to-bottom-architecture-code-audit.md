@@ -187,6 +187,8 @@ Work:
         `Text` subcomponent wiring while preserving each widget's row projection logic.
   - [x] Reworked responsive tiling, grid track resolution, and window order assignment to avoid temporary map/spread/
         `Array.from()` allocation in layout paths used by the workbench and HTML/CSS solver.
+  - [x] Reworked data-table and runtime data-query search matching to avoid per-row `map().join()` haystack arrays and
+        added a 25k-row table filter benchmark to catch future search regressions.
 
 Acceptance checks:
 
