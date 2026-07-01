@@ -66,14 +66,19 @@ export function gridify(entries: string[], width: number) {
   const itemWidth = width >= 72 ? 28 : width >= 52 ? 24 : width >= 40 ? 20 : 16;
   const columns = Math.max(1, Math.floor((width + 1) / (itemWidth + 1)));
   const rows = Math.ceil(entries.length / columns);
-  return Array.from(
-    { length: rows },
-    (_, row) =>
-      Array.from({ length: columns }, (_, column) => entries[row + column * rows])
-        .filter((value): value is string => Boolean(value))
-        .map((value) => crop(value, itemWidth).padEnd(itemWidth, " "))
-        .join(" "),
-  ).join("\n");
+  let output = "";
+  for (let row = 0; row < rows; row += 1) {
+    if (row > 0) output += "\n";
+    let first = true;
+    for (let column = 0; column < columns; column += 1) {
+      const value = entries[row + column * rows];
+      if (!value) continue;
+      if (!first) output += " ";
+      output += crop(value, itemWidth).padEnd(itemWidth, " ");
+      first = false;
+    }
+  }
+  return output;
 }
 
 export function crop(text: string, width: number) {
@@ -84,11 +89,21 @@ export function crop(text: string, width: number) {
 }
 
 export function createMatrix(width: number, height: number, fill = " ") {
-  return Array.from({ length: height }, () => Array.from({ length: width }, () => fill));
+  const matrix = new Array<string[]>(Math.max(0, height));
+  const columns = Math.max(0, width);
+  for (let row = 0; row < matrix.length; row += 1) {
+    matrix[row] = new Array<string>(columns).fill(fill);
+  }
+  return matrix;
 }
 
 export function renderMatrix(matrix: string[][]) {
-  return matrix.map((row) => row.join("")).join("\n");
+  let output = "";
+  for (let row = 0; row < matrix.length; row += 1) {
+    if (row > 0) output += "\n";
+    output += matrix[row]!.join("");
+  }
+  return output;
 }
 
 export function setCell(matrix: string[][], x: number, y: number, char: string) {
