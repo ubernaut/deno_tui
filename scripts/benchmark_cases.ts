@@ -1,17 +1,23 @@
 import {
   AsyncScheduler,
   BenchmarkCase,
+  BoxObject,
   buildThreeAsciiAnsiGrid,
+  Canvas,
   createMouseInteractionRouter,
   createRenderLoop,
   createStandardComponentThemeDefinitions,
   createThemeProvider,
   createThemeProviderReport,
+  cropToWidth,
+  emptyStyle,
   flexRects,
+  MemoryCanvasSink,
   renderSparkline,
   runTaskBatch,
   standardThemeComponentNames,
   TableController,
+  textWidth,
   tileRects,
   visibleListRows,
 } from "../mod.ts";
@@ -23,6 +29,15 @@ const threeAsciiCellCount = threeAsciiColumns * threeAsciiRows;
 const threeAsciiFillGlyphs = new Float32Array(threeAsciiCellCount);
 const threeAsciiEdgeGlyphs = new Float32Array(threeAsciiCellCount * 4);
 const threeAsciiColors = new Float32Array(threeAsciiCellCount * 4);
+const ansiRichRows = Array.from({ length: 250 }, (_, index) => {
+  const red = (index * 17) % 256;
+  const green = (index * 29) % 256;
+  const blue = (index * 47) % 256;
+  const label = `process-${index.toString().padStart(4, "0")}`;
+  return `\x1b[38;2;${red};${green};${blue}m${label}\x1b[0m ` +
+    `\x1b[48;2;${blue};${red};${green}m ${"█".repeat((index % 18) + 1)} \x1b[0m ` +
+    `cpu=${(index * 7) % 100}% mem=${(index * 13) % 100}%`;
+});
 const largeListItems = Array.from({ length: 50_000 }, (_, index) => `process-${index.toString().padStart(5, "0")}`);
 const largeTable = new TableController({ rowCount: 100_000, viewportHeight: 44 });
 const resizeBounds = Array.from({ length: 96 }, (_, index) => ({
@@ -61,6 +76,60 @@ for (let index = 0; index < 500; index += 1) {
     zIndex: index % 7,
     onPress: () => true,
   });
+}
+
+function runCanvasOverlapWorkload(): void {
+  const sink = new MemoryCanvasSink();
+  const canvas = new Canvas({
+    sink,
+    size: { columns: 160, rows: 48 },
+  });
+
+  for (let index = 0; index < 72; index += 1) {
+    const box = new BoxObject({
+      canvas,
+      style: emptyStyle,
+      zIndex: index,
+      rectangle: {
+        column: (index * 9) % 132,
+        row: (index * 5) % 36,
+        width: 18 + (index % 7),
+        height: 6 + (index % 5),
+      },
+      filler: String.fromCharCode(65 + (index % 26)),
+    });
+    box.draw();
+  }
+
+  canvas.render();
+  sink.clear();
+
+  const modal = new BoxObject({
+    canvas,
+    style: emptyStyle,
+    zIndex: 500,
+    rectangle: { column: 30, row: 8, width: 82, height: 24 },
+    filler: "#",
+  });
+  modal.draw();
+  canvas.render();
+
+  for (let step = 0; step < 6; step += 1) {
+    modal.rectangle.value = {
+      column: 24 + step * 4,
+      row: 6 + (step % 3),
+      width: 82,
+      height: 24,
+    };
+    canvas.render();
+  }
+
+  modal.erase();
+  canvas.render();
+
+  if ((sink.lastStats?.flushedCells ?? 0) === 0) {
+    throw new Error("canvas overlap workload did not flush any cells");
+  }
 }
 
 /** High-volume UI, runtime, and rendering benchmark workloads used by the benchmark CLI. */
@@ -109,6 +178,33 @@ export const benchmarkCases: BenchmarkCase[] = [
     maxAverageMs: 2,
     run: () => {
       renderSparkline(sparklineValues, 80);
+    },
+  },
+  {
+    name: "render/canvas-overlap-modal-churn",
+    category: "render",
+    description: "Render many overlapping canvas boxes while a high-z modal moves and closes.",
+    tags: ["render", "canvas", "dirty-region", "windows"],
+    iterations: 30,
+    maxAverageMs: 85,
+    run: runCanvasOverlapWorkload,
+  },
+  {
+    name: "render/ansi-text-measure-crop-250",
+    category: "render",
+    description: "Measure and crop ANSI truecolor rows with wide block glyphs.",
+    tags: ["render", "ansi", "text", "table"],
+    iterations: 300,
+    maxAverageMs: 8,
+    run: () => {
+      let total = 0;
+      for (const row of ansiRichRows) {
+        total += textWidth(row);
+        total += cropToWidth(row, 64).length;
+      }
+      if (total <= 0) {
+        throw new Error("ANSI text measurement produced no output");
+      }
     },
   },
   {

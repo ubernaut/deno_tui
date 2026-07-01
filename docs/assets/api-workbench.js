@@ -1524,10 +1524,12 @@ function* iterateTextCells(text) {
   }
 }
 function nextTextCharacter(text, index) {
+  const codeUnit = text.charCodeAt(index);
+  if (codeUnit < 128) return text[index] ?? "";
   UNICODE_CHAR_REGEXP.lastIndex = 0;
   const match = UNICODE_CHAR_REGEXP.exec(text.slice(index));
   if (match?.index === 0) return match[0];
-  return String.fromCodePoint(text.codePointAt(index) ?? text.charCodeAt(index));
+  return String.fromCodePoint(text.codePointAt(index) ?? codeUnit);
 }
 function isAnsiResetOnly(value) {
   if (!value) return false;

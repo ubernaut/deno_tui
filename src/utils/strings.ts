@@ -151,10 +151,13 @@ function* iterateTextCells(text: string): Generator<{ raw: string; plain: string
 }
 
 function nextTextCharacter(text: string, index: number): string {
+  const codeUnit = text.charCodeAt(index);
+  if (codeUnit < 0x80) return text[index] ?? "";
+
   UNICODE_CHAR_REGEXP.lastIndex = 0;
   const match = UNICODE_CHAR_REGEXP.exec(text.slice(index));
   if (match?.index === 0) return match[0];
-  return String.fromCodePoint(text.codePointAt(index) ?? text.charCodeAt(index));
+  return String.fromCodePoint(text.codePointAt(index) ?? codeUnit);
 }
 
 function isAnsiResetOnly(value: string): boolean {
