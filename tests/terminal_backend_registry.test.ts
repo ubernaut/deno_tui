@@ -5,6 +5,7 @@ import {
   createProcessTerminalBackendProvider,
   createSigmaPtyTerminalBackendFromConstructor,
   createSigmaPtyTerminalBackendProvider,
+  DiagnosticsCollector,
   type SigmaPtyCommandOptions,
   type SigmaPtyLike,
   type SigmaPtySize,
@@ -73,6 +74,26 @@ Deno.test("terminal backend registry skips unavailable providers and can require
   assertEquals((await registry.inspect()).map((entry) => [entry.id, entry.available]), [
     ["broken-pty", false],
     ["process", true],
+  ]);
+});
+
+Deno.test("terminal backend registry reports probe failures to diagnostics", async () => {
+  const diagnostics = new DiagnosticsCollector();
+  const registry = new TerminalBackendRegistry([
+    {
+      id: "throwing-pty",
+      label: "Throwing PTY",
+      pty: true,
+      probe: () => {
+        throw new Error("native probe crashed");
+      },
+      create: () => new FakeTerminalBackend("throwing-pty", true),
+    },
+  ], { diagnostics });
+
+  assertEquals(await registry.resolve({ requirePty: true }), undefined);
+  assertEquals(diagnostics.entries().map((entry) => [entry.source, entry.code, entry.severity, entry.detail]), [
+    ["terminal-backend", "probe-failed", "warning", "native probe crashed"],
   ]);
 });
 

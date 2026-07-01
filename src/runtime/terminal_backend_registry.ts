@@ -4,6 +4,7 @@ import {
   type ProcessTerminalBackendOptions,
   type TerminalBackend,
 } from "./terminal_backend.ts";
+import type { DiagnosticsCollector } from "./diagnostics.ts";
 
 type MaybePromise<T> = T | Promise<T>;
 
@@ -50,13 +51,19 @@ export interface TerminalBackendResolveOptions {
 /** Options for the default terminal backend registry. */
 export interface DefaultTerminalBackendRegistryOptions {
   process?: ProcessTerminalBackendOptions | false;
+  diagnostics?: DiagnosticsCollector;
 }
 
 /** Registry for optional process, PTY, tmux, and remote terminal backend providers. */
 export class TerminalBackendRegistry {
   readonly #providers = new Map<string, TerminalBackendProvider>();
+  readonly #diagnostics?: DiagnosticsCollector;
 
-  constructor(providers: readonly TerminalBackendProvider[] = []) {
+  constructor(
+    providers: readonly TerminalBackendProvider[] = [],
+    options: { diagnostics?: DiagnosticsCollector } = {},
+  ) {
+    this.#diagnostics = options.diagnostics;
     for (const provider of providers) this.register(provider);
   }
 
@@ -89,7 +96,7 @@ export class TerminalBackendRegistry {
   async inspect(): Promise<TerminalBackendProviderInspection[]> {
     const inspected: TerminalBackendProviderInspection[] = [];
     for (const provider of this.sortedProviders()) {
-      const availability = await probeTerminalBackendProvider(provider);
+      const availability = await probeTerminalBackendProvider(provider, this.#diagnostics);
       inspected.push({
         id: provider.id,
         label: provider.label,
@@ -109,7 +116,7 @@ export class TerminalBackendRegistry {
       : this.sortedProviders(options.preferPty);
     for (const provider of providers) {
       if (options.requirePty && !provider.pty) continue;
-      const availability = await probeTerminalBackendProvider(provider);
+      const availability = await probeTerminalBackendProvider(provider, this.#diagnostics);
       if (!availability.available) continue;
       return await provider.create();
     }
@@ -128,7 +135,7 @@ export class TerminalBackendRegistry {
 export function createDefaultTerminalBackendRegistry(
   options: DefaultTerminalBackendRegistryOptions = {},
 ): TerminalBackendRegistry {
-  const registry = new TerminalBackendRegistry();
+  const registry = new TerminalBackendRegistry([], { diagnostics: options.diagnostics });
   if (options.process !== false) {
     registry.register(createProcessTerminalBackendProvider(options.process ?? {}));
   }
@@ -156,6 +163,7 @@ export function createProcessTerminalBackendProvider(
 /** Probes a backend provider and normalizes missing metadata. */
 export async function probeTerminalBackendProvider(
   provider: TerminalBackendProvider,
+  diagnostics?: DiagnosticsCollector,
 ): Promise<TerminalBackendAvailability> {
   try {
     const availability = provider.probe ? await provider.probe() : { available: true };
@@ -170,6 +178,14 @@ export async function probeTerminalBackendProvider(
     if (availability.reason) result.reason = availability.reason;
     return result;
   } catch (error) {
+    diagnostics?.report({
+      source: "terminal-backend",
+      code: "probe-failed",
+      severity: "warning",
+      message: `Terminal backend probe failed for ${provider.label}`,
+      detail: error instanceof Error ? error.message : String(error),
+      context: { backendId: provider.id, pty: provider.pty },
+    });
     return {
       available: false,
       reason: error instanceof Error ? error.message : String(error),

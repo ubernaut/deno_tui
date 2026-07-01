@@ -525,6 +525,8 @@ Work:
         surfacing them in the demo log panel.
   - [x] Added optional `TerminalShellController` diagnostics for shell startup and backend close-watcher failures, so
         workbench shell degradation can be surfaced outside the terminal text stream.
+  - [x] Added optional terminal backend registry diagnostics for provider probe exceptions, preserving normalized
+        availability inspection while making broken PTY providers visible to app-level status/report surfaces.
 - [x] Add status-bar and report helpers for degraded backends.
 - [x] Add tests that assert expected diagnostics for missing `nvidia-smi`, blocked IndexedDB, unsupported Kitty
       graphics, and failed process spawns.
