@@ -7949,6 +7949,7 @@ var TerminalScreenController = class {
   #scrollback = [];
   #style = {};
   #savedCursor;
+  #title;
   constructor(options = {}) {
     this.#columns = normalizeDimension(options.columns, DEFAULT_COLUMNS);
     this.#rows = normalizeDimension(options.rows, DEFAULT_ROWS);
@@ -8014,7 +8015,8 @@ var TerminalScreenController = class {
       rows: this.#rows,
       cursor: this.cursor,
       scrollbackRows: this.#scrollback.length,
-      alternate: this.alternate
+      alternate: this.alternate,
+      title: this.#title
     };
   }
   #writeChar(char) {
@@ -8058,6 +8060,10 @@ var TerminalScreenController = class {
     this.#state.cursor.row = this.#rows - 1;
   }
   #applyControl(sequence) {
+    if (sequence.kind === "osc") {
+      this.#applyOsc(sequence.params);
+      return;
+    }
     const params = parseParams(sequence.params);
     if (sequence.private && (sequence.command === "h" || sequence.command === "l")) {
       if (params.includes(1049)) sequence.command === "h" ? this.#enterAlternate() : this.#exitAlternate();
@@ -8104,6 +8110,13 @@ var TerminalScreenController = class {
         }
         break;
     }
+  }
+  #applyOsc(payload) {
+    const separator = payload.indexOf(";");
+    if (separator < 0) return;
+    const code = payload.slice(0, separator);
+    if (code !== "0" && code !== "2") return;
+    this.#title = payload.slice(separator + 1);
   }
   #applySgr(params) {
     const values = params.length === 0 ? [0] : params;
@@ -8156,8 +8169,11 @@ var TerminalScreenController = class {
   }
 };
 function parseControlSequence(value) {
+  const osc = parseOscSequence(value);
+  if (osc) return osc;
   if (value.startsWith("\x1B7") || value.startsWith("\x1B8")) {
     return {
+      kind: "csi",
       private: false,
       params: "",
       command: value[1],
@@ -8167,10 +8183,25 @@ function parseControlSequence(value) {
   const match = /^\x1b\[([?]?)([0-9;]*)([A-Za-z])/.exec(value);
   if (!match) return void 0;
   return {
+    kind: "csi",
     private: match[1] === "?",
     params: match[2] ?? "",
     command: match[3],
     length: match[0].length
+  };
+}
+function parseOscSequence(value) {
+  if (!value.startsWith("\x1B]")) return void 0;
+  const belEnd = value.indexOf("\x07", 2);
+  const stEnd = value.indexOf("\x1B\\", 2);
+  const end = belEnd >= 0 && stEnd >= 0 ? Math.min(belEnd, stEnd) : belEnd >= 0 ? belEnd : stEnd;
+  if (end < 0) return void 0;
+  return {
+    kind: "osc",
+    private: false,
+    params: value.slice(2, end),
+    command: "]",
+    length: end + (end === stEnd ? 2 : 1)
   };
 }
 function parseParams(params) {

@@ -28,6 +28,7 @@ export interface TerminalScreenInspection {
   cursor: TerminalScreenCursor;
   scrollbackRows: number;
   alternate: boolean;
+  title?: string;
 }
 
 interface TerminalScreenState {
@@ -49,6 +50,7 @@ export class TerminalScreenController {
   #scrollback: TerminalScreenCell[][] = [];
   #style: Omit<TerminalScreenCell, "char"> = {};
   #savedCursor?: TerminalScreenCursor;
+  #title?: string;
 
   constructor(options: TerminalScreenControllerOptions = {}) {
     this.#columns = normalizeDimension(options.columns, DEFAULT_COLUMNS);
@@ -127,6 +129,7 @@ export class TerminalScreenController {
       cursor: this.cursor,
       scrollbackRows: this.#scrollback.length,
       alternate: this.alternate,
+      title: this.#title,
     };
   }
 
@@ -174,6 +177,10 @@ export class TerminalScreenController {
   }
 
   #applyControl(sequence: ParsedControlSequence): void {
+    if (sequence.kind === "osc") {
+      this.#applyOsc(sequence.params);
+      return;
+    }
     const params = parseParams(sequence.params);
     if (sequence.private && (sequence.command === "h" || sequence.command === "l")) {
       if (params.includes(1049)) sequence.command === "h" ? this.#enterAlternate() : this.#exitAlternate();
@@ -220,6 +227,14 @@ export class TerminalScreenController {
         }
         break;
     }
+  }
+
+  #applyOsc(payload: string): void {
+    const separator = payload.indexOf(";");
+    if (separator < 0) return;
+    const code = payload.slice(0, separator);
+    if (code !== "0" && code !== "2") return;
+    this.#title = payload.slice(separator + 1);
   }
 
   #applySgr(params: number[]): void {
@@ -278,6 +293,7 @@ export class TerminalScreenController {
 }
 
 interface ParsedControlSequence {
+  kind: "csi" | "osc";
   private: boolean;
   params: string;
   command: string;
@@ -285,8 +301,11 @@ interface ParsedControlSequence {
 }
 
 function parseControlSequence(value: string): ParsedControlSequence | undefined {
+  const osc = parseOscSequence(value);
+  if (osc) return osc;
   if (value.startsWith("\x1b7") || value.startsWith("\x1b8")) {
     return {
+      kind: "csi",
       private: false,
       params: "",
       command: value[1]!,
@@ -297,10 +316,26 @@ function parseControlSequence(value: string): ParsedControlSequence | undefined 
   const match = /^\x1b\[([?]?)([0-9;]*)([A-Za-z])/.exec(value);
   if (!match) return undefined;
   return {
+    kind: "csi",
     private: match[1] === "?",
     params: match[2] ?? "",
     command: match[3]!,
     length: match[0].length,
+  };
+}
+
+function parseOscSequence(value: string): ParsedControlSequence | undefined {
+  if (!value.startsWith("\x1b]")) return undefined;
+  const belEnd = value.indexOf("\x07", 2);
+  const stEnd = value.indexOf("\x1b\\", 2);
+  const end = belEnd >= 0 && stEnd >= 0 ? Math.min(belEnd, stEnd) : belEnd >= 0 ? belEnd : stEnd;
+  if (end < 0) return undefined;
+  return {
+    kind: "osc",
+    private: false,
+    params: value.slice(2, end),
+    command: "]",
+    length: end + (end === stEnd ? 2 : 1),
   };
 }
 

@@ -57,6 +57,18 @@ Deno.test("TerminalScreenController supports save and restore cursor sequences",
   assertEquals(screen.inspect().cursor, { column: 7, row: 2 });
 });
 
+Deno.test("TerminalScreenController tracks OSC title sequences", () => {
+  const screen = new TerminalScreenController({ columns: 12, rows: 2 });
+
+  screen.write("prompt\x1b]0;build shell\x07>");
+  assertEquals(screen.textRows()[0], "prompt>");
+  assertEquals(screen.inspect().title, "build shell");
+
+  screen.write("\x1b]2;editor\x1b\\");
+  assertEquals(screen.textRows()[0], "prompt>");
+  assertEquals(screen.inspect().title, "editor");
+});
+
 Deno.test("TerminalScreenController clamps restored cursor after resize", () => {
   const screen = new TerminalScreenController({ columns: 8, rows: 3 });
 

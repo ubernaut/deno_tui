@@ -54,3 +54,4 @@ developer workflows.
 - Extended `TerminalScreenController` SGR handling to cover 256-color, truecolor, and bright foreground/background
   styles while preserving existing cell inspection shape.
 - Added terminal cursor save/restore support for CSI `s`/`u` and legacy ESC `7`/`8` sequences.
+- Added OSC 0/2 title parsing to `TerminalScreenController.inspect()` so shell titles can later drive workbench tabs.
