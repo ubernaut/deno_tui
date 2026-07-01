@@ -18,6 +18,9 @@ export type LayoutFlexWrap = "nowrap" | "wrap" | "wrap-reverse";
 /** Public type alias for cross-axis alignment. */
 export type LayoutAlignItems = "start" | "end" | "center" | "stretch";
 
+/** Public type alias for per-item box alignment. */
+export type LayoutSelfAlignment = "start" | "end" | "center" | "stretch";
+
 /** Public type alias for main-axis distribution. */
 export type LayoutJustifyContent = "start" | "end" | "center" | "space-between" | "space-around";
 
@@ -59,6 +62,8 @@ export interface ComputedLayoutStyle {
   flexBasis: LayoutLengthValue;
   alignItems: LayoutAlignItems;
   justifyContent: LayoutJustifyContent;
+  alignSelf: LayoutSelfAlignment;
+  justifySelf: LayoutSelfAlignment;
   gridTemplateColumns: LayoutLengthValue[];
   gridTemplateRows: LayoutLengthValue[];
   gridAutoColumns: LayoutLengthValue;
@@ -128,6 +133,8 @@ export function defaultComputedLayoutStyle(): ComputedLayoutStyle {
     flexBasis: autoLength(),
     alignItems: "stretch",
     justifyContent: "start",
+    alignSelf: "stretch",
+    justifySelf: "stretch",
     gridTemplateColumns: [],
     gridTemplateRows: [],
     gridAutoColumns: autoLength(),
@@ -349,6 +356,15 @@ export function applyLayoutDeclaration(
       break;
     case "justify-content":
       next.justifyContent = normalizeJustifyContent(resolved, next.justifyContent);
+      break;
+    case "align-self":
+      next.alignSelf = normalizeSelfAlignment(resolved, next.alignSelf);
+      break;
+    case "justify-self":
+      next.justifySelf = normalizeSelfAlignment(resolved, next.justifySelf);
+      break;
+    case "place-self":
+      applyPlaceSelfShorthand(next, resolved);
       break;
     case "grid-template-columns":
       next.gridTemplateColumns = parseGridTrackList(resolved, next.gridTemplateColumns);
@@ -644,6 +660,23 @@ function normalizeAlignItems(value: string, fallback: LayoutAlignItems): LayoutA
 function normalizeJustifyContent(value: string, fallback: LayoutJustifyContent): LayoutJustifyContent {
   const normalized = value === "flex-start" ? "start" : value === "flex-end" ? "end" : value;
   return parseOneOf(normalized, ["start", "end", "center", "space-between", "space-around"], fallback);
+}
+
+function normalizeSelfAlignment(value: string, fallback: LayoutSelfAlignment): LayoutSelfAlignment {
+  const normalized = value === "flex-start"
+    ? "start"
+    : value === "flex-end"
+    ? "end"
+    : value === "auto"
+    ? fallback
+    : value;
+  return parseOneOf(normalized, ["start", "end", "center", "stretch"], fallback);
+}
+
+function applyPlaceSelfShorthand(style: ComputedLayoutStyle, value: string): void {
+  const [align, justify = align] = value.split(/\s+/).filter(Boolean);
+  if (align) style.alignSelf = normalizeSelfAlignment(align, style.alignSelf);
+  if (justify) style.justifySelf = normalizeSelfAlignment(justify, style.justifySelf);
 }
 
 function parseOneOf<T extends string>(value: string, allowed: readonly T[], fallback: T): T {

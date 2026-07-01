@@ -171,6 +171,21 @@ Deno.test("applyCssCascade parses grid line longhands", () => {
   assertEquals(ended.style.gridColumn, { end: 5, span: 2 });
 });
 
+Deno.test("applyCssCascade parses grid item self alignment", () => {
+  const document = parseTuiMarkup(`<window id="main"><panel id="card"></panel></window>`);
+  const stylesheet = parseCssStylesheet(`
+    #card {
+      place-self: end center;
+    }
+  `);
+
+  const styled = applyCssCascade(document.root, stylesheet);
+  const card = findLayoutNode(styled, "card")!;
+
+  assertEquals(card.style.alignSelf, "end");
+  assertEquals(card.style.justifySelf, "center");
+});
+
 Deno.test("parseCssStylesheet keeps terminal-cell media query metadata", () => {
   const stylesheet = parseCssStylesheet(`
     panel {
@@ -292,6 +307,44 @@ Deno.test("createMarkupLayout supports grid numeric end lines and longhands", ()
 
   assertEquals(result.layout.byId.get("wide")!.rect, { column: 6, row: 0, width: 11, height: 2 });
   assertEquals(result.layout.byId.get("from-end")!.rect, { column: 12, row: 3, width: 11, height: 2 });
+});
+
+Deno.test("createMarkupLayout aligns explicit grid item sizes with place-self", () => {
+  const result = createMarkupLayout({
+    markup: `
+      <window id="main">
+        <panel id="centered">Centered</panel>
+        <panel id="ended">Ended</panel>
+      </window>
+    `,
+    css: `
+      window {
+        display: grid;
+        grid-template-columns: 10 10;
+        grid-template-rows: 6;
+        gap: 1;
+        width: 21;
+        height: 6;
+      }
+
+      #centered {
+        width: 4;
+        height: 2;
+        place-self: center center;
+      }
+
+      #ended {
+        width: 3;
+        height: 2;
+        justify-self: end;
+        align-self: end;
+      }
+    `,
+    bounds: { column: 0, row: 0, width: 30, height: 8 },
+  });
+
+  assertEquals(result.layout.byId.get("centered")!.rect, { column: 3, row: 2, width: 4, height: 2 });
+  assertEquals(result.layout.byId.get("ended")!.rect, { column: 18, row: 4, width: 3, height: 2 });
 });
 
 Deno.test("applyCssCascade parses absolute positioning inset declarations", () => {

@@ -120,7 +120,8 @@ Responsive rules use terminal-cell dimensions:
 CSS Grid support is intentionally a terminal-cell subset. The default solver supports explicit tracks, `repeat(n, ...)`,
 `fr` track distribution, `gap`, `grid-auto-flow: row | column`, implicit auto tracks, `grid-column`/`grid-row`
 placements, and `grid-column-start`/`grid-column-end`/`grid-row-start`/`grid-row-end` longhands with numeric lines or
-`span`.
+`span`. Grid items can also use `align-self`, `justify-self`, or `place-self` to align explicit-size boxes inside a
+larger grid track.
 
 ```css
 #main {
@@ -278,6 +279,9 @@ Properties:
 - `flex`
 - `align-items`
 - `justify-content`
+- `align-self`
+- `justify-self`
+- `place-self`
 - `grid-template-columns`
 - `grid-template-rows`
 - `grid-auto-columns`

@@ -217,7 +217,8 @@ export class SimpleLayoutSolver implements LayoutSolver {
       const row = rowOffsets[item.row] ?? bounds.row;
       const width = gridSpanSize(columns, item.column, item.columnSpan, columnGap);
       const height = gridSpanSize(rows, item.row, item.rowSpan, rowGap);
-      return this.#layoutNode(item.node, { column, row, width, height }, false, true);
+      const itemBounds = alignGridItemBounds(item.node, { column, row, width, height });
+      return this.#layoutNode(item.node, itemBounds, false, true);
     });
   }
 
@@ -443,6 +444,28 @@ function gridPlacementStart(placement: ComputedLayoutStyle["gridColumn"]): numbe
     return Math.max(0, placement.end - placement.span - 1);
   }
   return undefined;
+}
+
+function alignGridItemBounds(node: LayoutNode, cell: Rectangle): Rectangle {
+  const width = node.style.justifySelf === "stretch" || node.style.width.unit === "auto"
+    ? cell.width
+    : Math.min(cell.width, resolveLayoutLength(node.style.width, cell.width, cell.width));
+  const height = node.style.alignSelf === "stretch" || node.style.height.unit === "auto"
+    ? cell.height
+    : Math.min(cell.height, resolveLayoutLength(node.style.height, cell.height, cell.height));
+  return {
+    column: cell.column + alignmentOffset(cell.width, width, node.style.justifySelf),
+    row: cell.row + alignmentOffset(cell.height, height, node.style.alignSelf),
+    width,
+    height,
+  };
+}
+
+function alignmentOffset(available: number, size: number, alignment: ComputedLayoutStyle["justifySelf"]): number {
+  const free = Math.max(0, available - size);
+  if (alignment === "end") return free;
+  if (alignment === "center") return Math.floor(free / 2);
+  return 0;
 }
 
 function resolveGridTracks(

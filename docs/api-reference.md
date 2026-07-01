@@ -8,8 +8,8 @@ map of the modules and exported symbols that make up the package API.
 - Entrypoint: `mod.ts`
 - Modules: 211
 - Re-export declarations: 210
-- Exported symbols: 1718
-- Documented symbols: 1718
+- Exported symbols: 1719
+- Documented symbols: 1719
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -150,7 +150,7 @@ map of the modules and exported symbols that make up the package API.
 | [`src/layout/solver.ts`](#src-layout-solver-ts)                                         |          0 |      12 |         12 |
 | [`src/layout/solvers/simple.ts`](#src-layout-solvers-simple-ts)                         |          0 |       3 |          3 |
 | [`src/layout/split_pane.ts`](#src-layout-split-pane-ts)                                 |          0 |      10 |         10 |
-| [`src/layout/style.ts`](#src-layout-style-ts)                                           |          0 |      30 |         30 |
+| [`src/layout/style.ts`](#src-layout-style-ts)                                           |          0 |      31 |         31 |
 | [`src/layout/types.ts`](#src-layout-types-ts)                                           |          0 |       3 |          3 |
 | [`src/layout/vertical_layout.ts`](#src-layout-vertical-layout-ts)                       |          0 |       1 |          1 |
 | [`src/layout/window_manager.ts`](#src-layout-window-manager-ts)                         |          0 |      10 |         10 |
@@ -2015,6 +2015,7 @@ _No direct exported symbols._
 | `LayoutLengthValue`          | interface | yes       | yes   |
 | `LayoutOverflow`             | type      | yes       | yes   |
 | `LayoutPosition`             | type      | yes       | yes   |
+| `LayoutSelfAlignment`        | type      | yes       | yes   |
 | `LayoutVisibility`           | type      | yes       | yes   |
 | `parseBoxEdges`              | function  | no        | yes   |
 | `parseGridPlacement`         | function  | no        | yes   |

@@ -2968,6 +2968,8 @@ function defaultComputedLayoutStyle() {
     flexBasis: autoLength(),
     alignItems: "stretch",
     justifyContent: "start",
+    alignSelf: "stretch",
+    justifySelf: "stretch",
     gridTemplateColumns: [],
     gridTemplateRows: [],
     gridAutoColumns: autoLength(),
@@ -3139,6 +3141,15 @@ function applyLayoutDeclaration(style2, property, value) {
       break;
     case "justify-content":
       next.justifyContent = normalizeJustifyContent(resolved, next.justifyContent);
+      break;
+    case "align-self":
+      next.alignSelf = normalizeSelfAlignment(resolved, next.alignSelf);
+      break;
+    case "justify-self":
+      next.justifySelf = normalizeSelfAlignment(resolved, next.justifySelf);
+      break;
+    case "place-self":
+      applyPlaceSelfShorthand(next, resolved);
       break;
     case "grid-template-columns":
       next.gridTemplateColumns = parseGridTrackList(resolved, next.gridTemplateColumns);
@@ -3395,6 +3406,15 @@ function normalizeJustifyContent(value, fallback) {
   const normalized = value === "flex-start" ? "start" : value === "flex-end" ? "end" : value;
   return parseOneOf(normalized, ["start", "end", "center", "space-between", "space-around"], fallback);
 }
+function normalizeSelfAlignment(value, fallback) {
+  const normalized = value === "flex-start" ? "start" : value === "flex-end" ? "end" : value === "auto" ? fallback : value;
+  return parseOneOf(normalized, ["start", "end", "center", "stretch"], fallback);
+}
+function applyPlaceSelfShorthand(style2, value) {
+  const [align, justify = align] = value.split(/\s+/).filter(Boolean);
+  if (align) style2.alignSelf = normalizeSelfAlignment(align, style2.alignSelf);
+  if (justify) style2.justifySelf = normalizeSelfAlignment(justify, style2.justifySelf);
+}
 function parseOneOf(value, allowed, fallback) {
   const normalized = value.trim().toLowerCase();
   return allowed.includes(normalized) ? normalized : fallback;
@@ -3632,7 +3652,8 @@ var SimpleLayoutSolver = class {
       const row = rowOffsets[item.row] ?? bounds.row;
       const width = gridSpanSize(columns, item.column, item.columnSpan, columnGap);
       const height = gridSpanSize(rows2, item.row, item.rowSpan, rowGap);
-      return this.#layoutNode(item.node, { column, row, width, height }, false, true);
+      const itemBounds = alignGridItemBounds(item.node, { column, row, width, height });
+      return this.#layoutNode(item.node, itemBounds, false, true);
     });
   }
   #layoutAbsoluteChildren(node, bounds) {
@@ -3781,6 +3802,22 @@ function gridPlacementStart(placement) {
     return Math.max(0, placement.end - placement.span - 1);
   }
   return void 0;
+}
+function alignGridItemBounds(node, cell) {
+  const width = node.style.justifySelf === "stretch" || node.style.width.unit === "auto" ? cell.width : Math.min(cell.width, resolveLayoutLength(node.style.width, cell.width, cell.width));
+  const height = node.style.alignSelf === "stretch" || node.style.height.unit === "auto" ? cell.height : Math.min(cell.height, resolveLayoutLength(node.style.height, cell.height, cell.height));
+  return {
+    column: cell.column + alignmentOffset(cell.width, width, node.style.justifySelf),
+    row: cell.row + alignmentOffset(cell.height, height, node.style.alignSelf),
+    width,
+    height
+  };
+}
+function alignmentOffset(available, size, alignment) {
+  const free = Math.max(0, available - size);
+  if (alignment === "end") return free;
+  if (alignment === "center") return Math.floor(free / 2);
+  return 0;
 }
 function resolveGridTracks(template, count, available, gap, autoTrack) {
   const trackCount = Math.max(1, count);
