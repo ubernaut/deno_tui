@@ -115,6 +115,8 @@ Work:
       can own the behavior.
   - [x] Added a reusable `MicrotaskScheduler` runtime primitive and migrated the API Workbench draw scheduler off its
         local `queueMicrotask()` flag.
+  - [x] Moved `ThreePanelFrameView` signal-driven sync requests onto `SignalBatchScheduler` with stable same-tick
+        coalescing.
 - [x] Replace string throws in signal/reactivity internals with typed `Error` subclasses.
 
 Acceptance checks:

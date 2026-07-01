@@ -1,6 +1,6 @@
 import { type Canvas } from "../src/canvas/canvas.ts";
 import { buildFallbackGrid, formatThreeAsciiFallbackDetail, ThreeAsciiObject } from "../src/canvas/three_ascii.ts";
-import { Effect, Signal, type SignalOfObject } from "../src/signals/mod.ts";
+import { Effect, Signal, SignalBatchScheduler, type SignalOfObject } from "../src/signals/mod.ts";
 import { emptyStyle } from "../src/theme.ts";
 import type { GraphicsHandle, GraphicsSurface } from "../src/runtime/graphics_surface.ts";
 import {
@@ -265,7 +265,9 @@ export class ThreePanelFrameView {
   private bundle?: NeonThreeSceneBundle;
   private activeMode?: ThreeSceneMode;
   private activeWireframeThickness?: number;
+  private readonly syncCallback = () => this.sync();
   private readonly effect: Effect;
+  private readonly syncScheduler = new SignalBatchScheduler();
   private readonly frameInterval: number;
   private readonly onUpdate?: () => void;
   private lastFrameTime = performance.now();
@@ -299,11 +301,14 @@ export class ThreePanelFrameView {
   ) {
     this.frameInterval = options.frameInterval ?? 1000 / 10;
     this.onUpdate = options.onUpdate;
-    this.effect = new Effect(() => this.sync());
-    queueMicrotask(() => {
-      if (this.disposed || this.renderer || !this.isVisible()) return;
-      this.sync();
+    this.effect = new Effect(() => {
+      void options.rectangle.value;
+      void options.scene.value;
+      void options.ascii.value;
+      if (options.enabled instanceof Signal) void options.enabled.value;
+      this.scheduleSync();
     });
+    this.scheduleSync();
   }
 
   isOperational(): boolean {
@@ -494,11 +499,16 @@ export class ThreePanelFrameView {
       if (this.rebuildPending || this.syncPending) {
         this.rebuildPending = false;
         this.syncPending = false;
-        queueMicrotask(() => this.sync());
+        this.scheduleSync();
       } else if (this.running) {
         this.frameTimer = setTimeout(() => void this.renderLoop(), this.frameInterval);
       }
     }
+  }
+
+  private scheduleSync(): void {
+    if (this.disposed) return;
+    this.syncScheduler.schedule(this.syncCallback);
   }
 
   private setGrid(grid: string[][]): void {
@@ -612,6 +622,7 @@ export class ThreePanelFrameView {
     this.disposed = true;
     this.syncPending = false;
     this.rebuildPending = false;
+    this.syncScheduler.cancel();
     this.effect.dispose();
     this.destroyRenderer();
     void this.clearGraphicsImage();
