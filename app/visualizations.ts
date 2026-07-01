@@ -6,30 +6,29 @@ import {
   visualizationCatalog,
   visualizationCatalogById,
 } from "./visualization_catalog.ts";
-import {
-  buildVisualizationDrive,
-  fallbackSource,
-  moduloUnit,
-  sampleSeries,
-  type VisualizationDrive,
-} from "./visualization_drive.ts";
+import { buildVisualizationDrive, fallbackSource, type VisualizationDrive } from "./visualization_drive.ts";
 import { driveThreeSignal } from "./visualization_three_signal.ts";
 import { cpuActivityRgb, cpuHexGridColumnCount, cpuHexTileLayout, renderCpuHexGrid } from "./visualization_cpu_hex.ts";
-import { circularField, harmonicField, heatmap, psychograph, routeBoard } from "./visualization_fields.ts";
+import {
+  channelMatrix,
+  circularField,
+  harmonicField,
+  heatmap,
+  liveFeed,
+  networkTopology,
+  psychograph,
+  routeBoard,
+  tacticalMap,
+} from "./visualization_fields.ts";
 import { renderGpuChipMonitor, renderGpuCombinedMonitor, renderGpuMemoryMonitor } from "./visualization_gpu.ts";
 import { renderNetworkMonitor } from "./visualization_network.ts";
 import {
   barChart,
-  clampInt,
-  createMatrix,
   crop,
-  drawLine,
   gridify,
   miniMeter,
   monitorGlyph,
   plotHistory,
-  renderMatrix,
-  setCell,
   signalChart,
 } from "./visualization_primitives.ts";
 import {
@@ -627,135 +626,6 @@ function biosignalStrip(width: number, height: number, drive: VisualizationDrive
     : [];
   const chartHeight = Math.max(2, height - header.length);
   return [...header, signalChart(drive.pulseSeries, width, chartHeight, monitorGlyph(drive, "phosphor"))].join("\n");
-}
-
-function tacticalMap(width: number, height: number, drive: VisualizationDrive) {
-  const matrix = createMatrix(width, height, " ");
-  const bias = 2 + drive.divergence * 5;
-  for (let y = 0; y < height; y += 1) {
-    for (let x = 0; x < width; x += 1) {
-      if ((x + Math.floor(Math.sin(y * (0.42 + drive.cadence * 0.22) + drive.phase * 0.08) * bias)) % 7 === 0) {
-        setCell(matrix, x, y, "~");
-      }
-    }
-  }
-
-  const scanX = Math.floor(moduloUnit(drive.scan + drive.cadence * 0.2) * Math.max(1, width - 1));
-  for (let y = 0; y < height; y += 1) {
-    const x = clampInt(scanX - Math.floor(y / 2), 0, width - 1);
-    setCell(matrix, x, y, "/");
-    setCell(matrix, Math.min(width - 1, x + 1), y, "/");
-  }
-
-  const targets = Math.max(1, Math.min(3, drive.activeCount + 1));
-  for (let target = 0; target < targets; target += 1) {
-    const left = clampInt(Math.floor(width * (0.18 + target * 0.23 + drive.divergence * 0.08)), 1, width - 4);
-    const top = clampInt(Math.floor(height * (0.18 + target * 0.16)), 1, height - 3);
-    const right = clampInt(left + Math.max(3, Math.floor(width * 0.12)), left + 2, width - 2);
-    const bottom = clampInt(top + Math.max(2, Math.floor(height * 0.18)), top + 1, height - 2);
-    drawLine(matrix, left, top, right, top, "┄");
-    drawLine(matrix, left, bottom, right, bottom, "┄");
-    drawLine(matrix, left, top, left, bottom, "┆");
-    drawLine(matrix, right, top, right, bottom, "┆");
-  }
-
-  return renderMatrix(matrix);
-}
-
-function networkTopology(width: number, height: number, drive: VisualizationDrive) {
-  const matrix = createMatrix(width, height, " ");
-  const offset = Math.floor(drive.divergence * 4 + drive.volatility * 3);
-  const nodes = [
-    [2, 2],
-    [Math.floor(width * 0.24), 5],
-    [Math.floor(width * 0.46), 2],
-    [Math.floor(width * 0.7), 6],
-    [width - 4, 3],
-    [6, height - 4],
-    [Math.floor(width * 0.34), height - 5],
-    [Math.floor(width * 0.6), height - 3],
-    [width - 8, height - 4],
-  ] as const;
-
-  const edges = [
-    [0, 1],
-    [1, 2],
-    [2, 3],
-    [3, 4],
-    [0, 5],
-    [1, 6],
-    [2, 6],
-    [2, 7],
-    [3, 7],
-    [4, 8],
-    [5, 6],
-    [6, 7],
-    [7, 8],
-  ] as const;
-
-  edges.forEach(([from, to], edgeIndex) => {
-    const pulse = drive.pulseSeries[(edgeIndex * 3 + offset) % drive.pulseSeries.length] ?? drive.current;
-    const hot = pulse >= 0.68 || (drive.phase + edgeIndex + offset) % 7 === 0;
-    drawLine(matrix, nodes[from][0], nodes[from][1], nodes[to][0], nodes[to][1], hot ? "╳" : "─");
-  });
-
-  nodes.forEach(([x, y], index) => {
-    const pulse = drive.normalizedSeries[(index * 2 + offset) % drive.normalizedSeries.length] ?? drive.current;
-    setCell(matrix, x, y, pulse >= 0.72 ? "█" : (drive.phase + index + offset) % 9 === 0 ? "◆" : "●");
-  });
-
-  return renderMatrix(matrix);
-}
-
-function liveFeed(width: number, height: number, drive: VisualizationDrive) {
-  const matrix = createMatrix(width, height, " ");
-  for (let y = 0; y < height; y += 1) {
-    for (let x = 0; x < width; x += 1) {
-      const wave = drive.pulseSeries[(x + y) % drive.pulseSeries.length] ?? drive.current;
-      const noise = Math.sin((x + drive.phase) * (0.28 + drive.cadence * 0.2) + wave) +
-        Math.cos((y - drive.phase) * (0.6 + drive.volatility * 0.3) - drive.current);
-      setCell(matrix, x, y, noise > 1.05 ? "█" : noise > 0.55 ? "▓" : noise > 0.08 ? "▒" : noise > -0.3 ? "░" : " ");
-    }
-  }
-
-  const left = Math.floor(width * (0.22 + drive.divergence * 0.08));
-  const top = Math.floor(height * (0.16 + drive.volatility * 0.08));
-  const right = Math.min(width - 2, left + Math.max(4, Math.floor(width * (0.28 + drive.current * 0.12))));
-  const bottom = Math.min(height - 2, top + Math.max(3, Math.floor(height * (0.42 + drive.density * 0.1))));
-  drawLine(matrix, left, top, right, top, "─");
-  drawLine(matrix, left, bottom, right, bottom, "─");
-  drawLine(matrix, left, top, left, bottom, "│");
-  drawLine(matrix, right, top, right, bottom, "│");
-  return renderMatrix(matrix);
-}
-
-function channelMatrix(width: number, height: number, drive: VisualizationDrive) {
-  const matrix = createMatrix(width, height, " ");
-  const sourceCount = Math.max(1, drive.sources.length);
-  const laneWidth = Math.max(3, Math.floor(width / sourceCount));
-  drive.sources.forEach((source, index) => {
-    const start = index * laneWidth;
-    const end = Math.min(width - 1, start + laneWidth - 1);
-    const sampled = sampleSeries(source.normalizedSeries, Math.max(1, end - start));
-    for (let x = start; x < end; x += 1) {
-      const local = sampled[x - start] ?? source.normalizedValue;
-      const filled = Math.max(1, Math.round(local * Math.max(1, height - 1)));
-      for (let row = height - 1; row >= 0; row -= 1) {
-        const fromBottom = height - row;
-        if (fromBottom <= filled) {
-          setCell(matrix, x, row, drive.hazard >= 0.9 ? "█" : local >= 0.66 ? "▓" : "▒");
-        } else if ((row + x + drive.phase) % Math.max(3, 8 - Math.round(drive.volatility * 5)) === 0) {
-          setCell(matrix, x, row, "·");
-        }
-      }
-    }
-    if (end < width) {
-      for (let row = 0; row < height; row += 1) {
-        setCell(matrix, end, row, "│");
-      }
-    }
-  });
-  return renderMatrix(matrix);
 }
 
 function componentIndex(width: number, height: number, drive: VisualizationDrive) {

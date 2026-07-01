@@ -1,7 +1,17 @@
 import { assertEquals, assertStringIncludes } from "./deps.ts";
 import { emptySnapshot } from "../app/system_metrics_snapshot.ts";
 import { buildVisualizationDrive } from "../app/visualization_drive.ts";
-import { circularField, harmonicField, heatmap, psychograph, routeBoard } from "../app/visualization_fields.ts";
+import {
+  channelMatrix,
+  circularField,
+  harmonicField,
+  heatmap,
+  liveFeed,
+  networkTopology,
+  psychograph,
+  routeBoard,
+  tacticalMap,
+} from "../app/visualization_fields.ts";
 
 const drive = buildVisualizationDrive(
   {
@@ -36,6 +46,10 @@ Deno.test("visualization fields render bounded multiline text", () => {
     circularField(24, 6, drive),
     heatmap(24, 6, drive, [" ", ".", "#"]),
     routeBoard(24, 6, drive, [" ", ".", "+", "#"]),
+    tacticalMap(24, 6, drive),
+    networkTopology(24, 6, drive),
+    liveFeed(24, 6, drive),
+    channelMatrix(24, 6, drive),
   ];
 
   for (const field of fields) {
@@ -48,4 +62,8 @@ Deno.test("visualization fields render bounded multiline text", () => {
   assertStringIncludes(fields[2], "◆");
   assertStringIncludes(fields[3], ".");
   assertStringIncludes(fields[4], "█");
+  assertStringIncludes(fields[5], "/");
+  assertStringIncludes(fields[6], "●");
+  assertStringIncludes(fields[7], "│");
+  assertStringIncludes(fields[8], "│");
 });
