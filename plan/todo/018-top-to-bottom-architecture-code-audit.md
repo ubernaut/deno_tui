@@ -360,6 +360,8 @@ Work:
         `src/theme.ts` as the compatibility facade for palette APIs.
   - [x] Extracted foundational theme composition helpers into `src/theme_core.ts` while preserving public facade
         functions from `src/theme.ts`.
+  - [x] Extracted generic theme engine diff/preview logic into `src/theme_diff_core.ts`, keeping the public
+        `diffThemeEngines()` facade stable while making diff semantics independently testable.
   - [x] Extracted serializable manifest compilation primitives into `src/theme_manifest_core.ts`, keeping public
         `src/theme.ts` wrappers stable while giving manifest parsing a focused testable boundary.
   - [x] Extracted component validation and inheritance cycle checks into `src/theme_validation_core.ts`, keeping the
