@@ -53,14 +53,20 @@ export function buildVisualizationDrive(
   const sourceFrames = context.sources.length > 0 ? context.sources : [fallbackSource(context.phase)];
   const sources = sourceFrames.map((source) => {
     const rawSeries = sampleSeries(source.series.length > 0 ? source.series : [source.value], sampleWidth);
-    const floor = Math.min(source.value, ...rawSeries);
-    const ceiling = Math.max(source.value, ...rawSeries);
+    let floor = source.value;
+    let ceiling = source.value;
+    for (const value of rawSeries) {
+      floor = Math.min(floor, value);
+      ceiling = Math.max(ceiling, value);
+    }
     const span = Math.max(0, ceiling - floor);
-    const normalizedSeries = rawSeries.map((value, index) => {
+    const normalizedSeries = new Array<number>(rawSeries.length);
+    for (let index = 0; index < rawSeries.length; index += 1) {
+      const value = rawSeries[index]!;
       const local = span < 0.035 ? value : clamp((value - floor) / Math.max(span, 0.001), 0, 1);
       const motion = index === 0 ? Math.abs(source.value - value) : Math.abs(value - (rawSeries[index - 1] ?? value));
-      return clamp(local * 0.72 + value * 0.22 + motion * 0.48, 0, 1);
-    });
+      normalizedSeries[index] = clamp(local * 0.72 + value * 0.22 + motion * 0.48, 0, 1);
+    }
     const normalizedValue = (() => {
       const local = span < 0.035 ? source.value : clamp((source.value - floor) / Math.max(span, 0.001), 0, 1);
       return clamp(local * 0.72 + source.value * 0.28, 0, 1);
@@ -92,37 +98,51 @@ export function buildVisualizationDrive(
 
   const primary = sources[0]!;
   const secondary = sources[1] ?? primary;
-  const rawSeries = averageSeries(sources.map((source) => source.rawSeries), sampleWidth);
-  const normalizedSeries = averageSeries(sources.map((source) => source.normalizedSeries), sampleWidth);
-  const spreadSeries = Array.from({ length: sampleWidth }, (_, index) => {
-    const values = sources.map((source) => source.normalizedSeries[index] ?? source.normalizedValue);
-    return clamp(Math.max(...values) - Math.min(...values), 0, 1);
-  });
-  const motionSeries = normalizedSeries.map((value, index) =>
-    index === 0 ? 0 : Math.abs(value - (normalizedSeries[index - 1] ?? value))
-  );
-  const pulseSeries = normalizedSeries.map((value, index) =>
-    clamp(value * 0.6 + motionSeries[index] * 0.18 + spreadSeries[index] * 0.22, 0, 1)
-  );
+  const rawSeries = averageSourceSeries(sources, sampleWidth, "rawSeries");
+  const normalizedSeries = averageSourceSeries(sources, sampleWidth, "normalizedSeries");
+  const spreadSeries = new Array<number>(sampleWidth);
+  const motionSeries = new Array<number>(sampleWidth);
+  const pulseSeries = new Array<number>(sampleWidth);
+  for (let index = 0; index < sampleWidth; index += 1) {
+    let low = Number.POSITIVE_INFINITY;
+    let high = Number.NEGATIVE_INFINITY;
+    for (const source of sources) {
+      const value = source.normalizedSeries[index] ?? source.normalizedValue;
+      low = Math.min(low, value);
+      high = Math.max(high, value);
+    }
+    const value = normalizedSeries[index] ?? 0;
+    const motion = index === 0 ? 0 : Math.abs(value - (normalizedSeries[index - 1] ?? value));
+    spreadSeries[index] = clamp(high - low, 0, 1);
+    motionSeries[index] = motion;
+    pulseSeries[index] = clamp(value * 0.6 + motion * 0.18 + spreadSeries[index]! * 0.22, 0, 1);
+  }
   const current = last(normalizedSeries);
   const absolute = clamp(sources.reduce((sum, source) => sum + source.value, 0) / sources.length, 0, 1);
-  const peak = clamp(Math.max(...sources.map((source) => source.value), current, absolute), 0, 1);
-  const floor = Math.min(...normalizedSeries);
-  const ceiling = Math.max(...normalizedSeries);
+  let peakValue = Math.max(current, absolute);
+  for (const source of sources) peakValue = Math.max(peakValue, source.value);
+  const peak = clamp(peakValue, 0, 1);
+  let floor = Number.POSITIVE_INFINITY;
+  let ceiling = Number.NEGATIVE_INFINITY;
+  for (const value of normalizedSeries) {
+    floor = Math.min(floor, value);
+    ceiling = Math.max(ceiling, value);
+  }
   const span = clamp(ceiling - floor, 0, 1);
   const slope = seriesSlope(normalizedSeries, Math.min(6, sampleWidth - 1));
-  const previousSlope = seriesSlope(
-    normalizedSeries.slice(0, Math.max(2, normalizedSeries.length - 2)),
+  const previousSlope = seriesSlopeRange(
+    normalizedSeries,
+    Math.max(2, normalizedSeries.length - 2),
     Math.min(6, sampleWidth - 1),
   );
   const jerk = clamp(slope - previousSlope, -1, 1);
   const volatility = clamp(
-    mergeValueFromSeries(sources.map((source) => source.volatility)) * 0.55 + seriesVolatility(normalizedSeries) * 0.45,
+    averageSourceMetric(sources, (source) => source.volatility) * 0.55 + seriesVolatility(normalizedSeries) * 0.45,
     0,
     1,
   );
   const divergence = clamp(
-    mergeValueFromSeries(sources.map((source) => Math.abs(source.normalizedValue - current))) * 1.4 +
+    averageSourceMetric(sources, (source) => Math.abs(source.normalizedValue - current)) * 1.4 +
       Math.abs(primary.normalizedValue - secondary.normalizedValue) * 0.25,
     0,
     1,
@@ -180,12 +200,16 @@ export function buildVisualizationDrive(
 }
 
 export function fallbackSource(phase: number): SourceFrame {
+  const series = new Array<number>(48);
+  for (let index = 0; index < series.length; index += 1) {
+    series[index] = (Math.sin((phase + index) * 0.18) + 1) / 2;
+  }
   return {
     id: "fallback",
     name: "Fallback Pulse",
     accent: "signal",
     value: (Math.sin(phase * 0.18) + 1) / 2,
-    series: Array.from({ length: 48 }, (_, index) => (Math.sin((phase + index) * 0.18) + 1) / 2),
+    series,
     detailLines: ["FALLBACK SOURCE"],
   };
 }
@@ -195,13 +219,15 @@ export function sampleSeries(values: number[], width: number): number[] {
     return [];
   }
   if (values.length === 0) {
-    return Array.from({ length: width }, () => 0);
+    return new Array<number>(width).fill(0);
   }
-  return Array.from({ length: width }, (_, index) => {
+  const output = new Array<number>(width);
+  for (let index = 0; index < width; index += 1) {
     const ratio = width === 1 ? 0 : index / (width - 1);
     const position = Math.round(ratio * (values.length - 1));
-    return clamp(values[position] ?? 0, 0, 1);
-  });
+    output[index] = clamp(values[position] ?? 0, 0, 1);
+  }
+  return output;
 }
 
 export function moduloUnit(value: number): number {
@@ -209,21 +235,43 @@ export function moduloUnit(value: number): number {
   return remainder < 0 ? remainder + 1 : remainder;
 }
 
-function averageSeries(series: number[][], width: number): number[] {
-  if (series.length === 0) {
-    return Array.from({ length: width }, () => 0);
+function averageSourceSeries(
+  sources: readonly VisualizationSourceDrive[],
+  width: number,
+  key: "rawSeries" | "normalizedSeries",
+): number[] {
+  if (sources.length === 0) {
+    return new Array<number>(width).fill(0);
   }
-  return Array.from(
-    { length: width },
-    (_, index) => clamp(series.reduce((sum, values) => sum + (values[index] ?? 0), 0) / series.length, 0, 1),
-  );
+  const output = new Array<number>(width);
+  for (let index = 0; index < width; index += 1) {
+    let sum = 0;
+    for (const source of sources) sum += source[key][index] ?? 0;
+    output[index] = clamp(sum / sources.length, 0, 1);
+  }
+  return output;
+}
+
+function averageSourceMetric(
+  sources: readonly VisualizationSourceDrive[],
+  project: (source: VisualizationSourceDrive) => number,
+): number {
+  if (sources.length === 0) return 0;
+  let sum = 0;
+  for (const source of sources) sum += project(source);
+  return clamp(sum / sources.length, 0, 1);
 }
 
 function seriesSlope(values: number[], steps = 4): number {
+  return seriesSlopeRange(values, values.length, steps);
+}
+
+function seriesSlopeRange(values: number[], count: number, steps = 4): number {
   if (values.length <= 1) {
     return 0;
   }
-  const end = values.length - 1;
+  const end = Math.min(values.length, Math.max(0, count)) - 1;
+  if (end <= 0) return 0;
   const start = Math.max(0, end - Math.max(1, steps));
   return clamp((values[end]! - values[start]!) * 1.4, -1, 1);
 }
