@@ -47,3 +47,5 @@ developer workflows.
 - Added a renderer-neutral terminal pane layout tree to `TerminalWorkspaceController`, including row/column splits,
   active pane selection, pane close/collapse, split resizing, zoom state, session-pruning, and serializable layout
   inspection.
+- Added `terminalWorkspacePaneRects()` to project split/zoomed pane trees into concrete terminal-cell rectangles for
+  console and browser renderers.

@@ -1,5 +1,6 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { Signal } from "../signals/mod.ts";
+import type { Rectangle } from "../types.ts";
 import { formatProcessCommandLine } from "./process_session.ts";
 import {
   describeAttachTerminalTemplate,
@@ -92,6 +93,20 @@ export interface TerminalWorkspaceLayoutInspection {
   zoomedPaneId?: string;
   panes: TerminalWorkspacePaneInspection[];
   count: number;
+}
+
+/** Options for projecting a terminal workspace pane tree into rectangles. */
+export interface TerminalWorkspacePaneRectOptions {
+  gap?: number;
+  respectZoom?: boolean;
+}
+
+/** Terminal pane projected into concrete terminal-cell bounds. */
+export interface TerminalWorkspacePaneRect {
+  pane: TerminalWorkspacePaneNode;
+  rect: Rectangle;
+  active: boolean;
+  zoomed: boolean;
 }
 
 /** Serializable terminal workspace state. */
@@ -337,6 +352,30 @@ export function createTerminalWorkspaceController(
   return new TerminalWorkspaceController(options);
 }
 
+/** Projects a terminal workspace pane tree into terminal-cell rectangles. */
+export function terminalWorkspacePaneRects(
+  layout: TerminalWorkspaceLayoutState,
+  bounds: Rectangle,
+  options: TerminalWorkspacePaneRectOptions = {},
+): TerminalWorkspacePaneRect[] {
+  const normalizedBounds = normalizeRect(bounds);
+  if (!layout.root || normalizedBounds.width <= 0 || normalizedBounds.height <= 0) return [];
+  if (options.respectZoom !== false && layout.zoomedPaneId) {
+    const pane = findPane(layout.root, layout.zoomedPaneId);
+    if (pane) {
+      return [{
+        pane,
+        rect: normalizedBounds,
+        active: pane.id === layout.activePaneId,
+        zoomed: true,
+      }];
+    }
+  }
+  const rows: TerminalWorkspacePaneRect[] = [];
+  collectPaneRects(layout.root, normalizedBounds, Math.max(0, Math.floor(options.gap ?? 1)), layout, rows);
+  return rows;
+}
+
 function descriptorFromTemplate(
   template: TerminalTemplate,
   options: AddTerminalWorkspaceSessionOptions,
@@ -396,6 +435,68 @@ function cloneTerminalTemplate(template: TerminalTemplate): TerminalTemplate {
 function normalizeDimension(value: number | undefined): number | undefined {
   if (!Number.isFinite(value)) return undefined;
   return Math.max(1, Math.floor(value!));
+}
+
+function collectPaneRects(
+  node: TerminalWorkspaceLayoutNode,
+  rect: Rectangle,
+  gap: number,
+  layout: TerminalWorkspaceLayoutState,
+  rows: TerminalWorkspacePaneRect[],
+): void {
+  if (node.kind === "pane") {
+    rows.push({
+      pane: clonePaneNode(node),
+      rect,
+      active: node.id === layout.activePaneId,
+      zoomed: node.id === layout.zoomedPaneId,
+    });
+    return;
+  }
+  const [first, second] = splitPaneRect(rect, node, gap);
+  collectPaneRects(node.first, first, gap, layout, rows);
+  collectPaneRects(node.second, second, gap, layout, rows);
+}
+
+function splitPaneRect(
+  rect: Rectangle,
+  split: TerminalWorkspaceSplitNode,
+  gap: number,
+): [Rectangle, Rectangle] {
+  const safeGap = split.direction === "row" ? Math.min(gap, Math.max(0, rect.width - 1)) : Math.min(
+    gap,
+    Math.max(0, rect.height - 1),
+  );
+  if (split.direction === "row") {
+    const available = Math.max(0, rect.width - safeGap);
+    const firstWidth = clampSplitSize(Math.floor(available * clampRatio(split.ratio)), available);
+    const secondWidth = Math.max(0, available - firstWidth);
+    return [
+      { ...rect, width: firstWidth },
+      { column: rect.column + firstWidth + safeGap, row: rect.row, width: secondWidth, height: rect.height },
+    ];
+  }
+  const available = Math.max(0, rect.height - safeGap);
+  const firstHeight = clampSplitSize(Math.floor(available * clampRatio(split.ratio)), available);
+  const secondHeight = Math.max(0, available - firstHeight);
+  return [
+    { ...rect, height: firstHeight },
+    { column: rect.column, row: rect.row + firstHeight + safeGap, width: rect.width, height: secondHeight },
+  ];
+}
+
+function clampSplitSize(value: number, available: number): number {
+  if (available <= 1) return available;
+  return Math.max(1, Math.min(available - 1, value));
+}
+
+function normalizeRect(rect: Rectangle): Rectangle {
+  return {
+    column: Math.floor(rect.column),
+    row: Math.floor(rect.row),
+    width: Math.max(0, Math.floor(rect.width)),
+    height: Math.max(0, Math.floor(rect.height)),
+  };
 }
 
 function normalizeTerminalWorkspaceLayout(

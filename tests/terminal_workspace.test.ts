@@ -17,7 +17,7 @@ import {
   shellTerminalTemplate,
   terminalTemplateToSpawnOptions,
 } from "../src/runtime/terminal_templates.ts";
-import { createTerminalWorkspaceController } from "../src/runtime/terminal_workspace.ts";
+import { createTerminalWorkspaceController, terminalWorkspacePaneRects } from "../src/runtime/terminal_workspace.ts";
 import type { ProcessSessionCommand, ProcessSessionInspection, ProcessSessionStatus } from "../src/runtime/mod.ts";
 
 Deno.test("terminal templates normalize shell command deno task and project task metadata", () => {
@@ -188,6 +188,41 @@ Deno.test("terminal workspace controller manages split pane layout", () => {
   assertEquals(workspace.remove("tests"), true);
   assertEquals(workspace.inspectLayout().panes.map((pane) => pane.sessionId), ["shell-main"]);
   assertEquals(workspace.inspectLayout().root?.kind, "pane");
+
+  workspace.dispose();
+});
+
+Deno.test("terminal workspace pane rects project split layouts", () => {
+  const workspace = createTerminalWorkspaceController({ now: () => 1 });
+  workspace.add(shellTerminalTemplate({ id: "shell-main", shell: "bash" }));
+  const logsPane = workspace.splitActive("row", "shell-main", { ratio: 0.5, title: "logs mirror" })!;
+  workspace.splitActive("column", "shell-main", { ratio: 0.25, placement: "before" });
+
+  const layout = workspace.inspect().layout;
+  assertEquals(
+    terminalWorkspacePaneRects(layout, { column: 0, row: 0, width: 81, height: 21 }, { gap: 1 }).map((entry) => ({
+      id: entry.pane.id,
+      rect: entry.rect,
+      active: entry.active,
+    })),
+    [
+      { id: "pane-shell-main", rect: { column: 0, row: 0, width: 40, height: 21 }, active: false },
+      { id: "pane-shell-main-3", rect: { column: 41, row: 0, width: 40, height: 5 }, active: true },
+      { id: "pane-shell-main-2", rect: { column: 41, row: 6, width: 40, height: 15 }, active: false },
+    ],
+  );
+
+  workspace.toggleZoomPane(logsPane.id);
+  assertEquals(
+    terminalWorkspacePaneRects(workspace.inspect().layout, { column: 2, row: 3, width: 20, height: 10 }).map((
+      entry,
+    ) => ({
+      id: entry.pane.id,
+      rect: entry.rect,
+      zoomed: entry.zoomed,
+    })),
+    [{ id: logsPane.id, rect: { column: 2, row: 3, width: 20, height: 10 }, zoomed: true }],
+  );
 
   workspace.dispose();
 });

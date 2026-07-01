@@ -8,8 +8,8 @@ modules and exported symbols that make up the package API.
 - Entrypoint: `mod.ts`
 - Modules: 211
 - Re-export declarations: 210
-- Exported symbols: 1728
-- Documented symbols: 1728
+- Exported symbols: 1731
+- Documented symbols: 1731
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -187,7 +187,7 @@ modules and exported symbols that make up the package API.
 | [`src/runtime/terminal_shell.ts`](#src-runtime-terminal-shell-ts)                       |          0 |       3 |          3 |
 | [`src/runtime/terminal_status.ts`](#src-runtime-terminal-status-ts)                     |          0 |       5 |          5 |
 | [`src/runtime/terminal_templates.ts`](#src-runtime-terminal-templates-ts)               |          0 |      22 |         22 |
-| [`src/runtime/terminal_workspace.ts`](#src-runtime-terminal-workspace-ts)               |          0 |      15 |         15 |
+| [`src/runtime/terminal_workspace.ts`](#src-runtime-terminal-workspace-ts)               |          0 |      18 |         18 |
 | [`src/runtime/worker_pool.ts`](#src-runtime-worker-pool-ts)                             |          0 |      12 |         12 |
 | [`src/selection.ts`](#src-selection-ts)                                                 |          0 |      16 |         16 |
 | [`src/signals/computed.ts`](#src-signals-computed-ts)                                   |          0 |       3 |          3 |
@@ -2645,6 +2645,9 @@ _No direct exported symbols._
 | `TerminalWorkspacePaneInspection`       | interface | yes       | yes   |
 | `TerminalWorkspacePaneNode`             | interface | yes       | yes   |
 | `TerminalWorkspacePanePlacement`        | type      | yes       | yes   |
+| `TerminalWorkspacePaneRect`             | interface | yes       | yes   |
+| `TerminalWorkspacePaneRectOptions`      | interface | yes       | yes   |
+| `terminalWorkspacePaneRects`            | function  | no        | yes   |
 | `TerminalWorkspaceSplitDirection`       | type      | yes       | yes   |
 | `TerminalWorkspaceSplitNode`            | interface | yes       | yes   |
 | `UpsertTerminalWorkspaceSessionOptions` | interface | yes       | yes   |
