@@ -1,6 +1,7 @@
 import {
   AsyncScheduler,
   BenchmarkCase,
+  buildThreeAsciiAnsiGrid,
   createMouseInteractionRouter,
   createRenderLoop,
   createStandardComponentThemeDefinitions,
@@ -16,6 +17,12 @@ import {
 } from "../mod.ts";
 
 const sparklineValues = Array.from({ length: 200 }, (_, index) => Math.sin(index / 8));
+const threeAsciiColumns = 96;
+const threeAsciiRows = 40;
+const threeAsciiCellCount = threeAsciiColumns * threeAsciiRows;
+const threeAsciiFillGlyphs = new Float32Array(threeAsciiCellCount);
+const threeAsciiEdgeGlyphs = new Float32Array(threeAsciiCellCount * 4);
+const threeAsciiColors = new Float32Array(threeAsciiCellCount * 4);
 const largeListItems = Array.from({ length: 50_000 }, (_, index) => `process-${index.toString().padStart(5, "0")}`);
 const largeTable = new TableController({ rowCount: 100_000, viewportHeight: 44 });
 const resizeBounds = Array.from({ length: 96 }, (_, index) => ({
@@ -25,6 +32,22 @@ const resizeBounds = Array.from({ length: 96 }, (_, index) => ({
   height: 24 + (index % 8) * 4,
 }));
 const mouseRouter = createMouseInteractionRouter();
+
+for (let index = 0; index < threeAsciiCellCount; index += 1) {
+  const x = index % threeAsciiColumns;
+  const y = Math.floor(index / threeAsciiColumns);
+  threeAsciiFillGlyphs[index] = 5 + ((x + y) % 10);
+  const edgeOffset = index * 4;
+  threeAsciiEdgeGlyphs[edgeOffset] = (x * 3 + y) % 5;
+  threeAsciiEdgeGlyphs[edgeOffset + 1] = (x % 6) + 2;
+  threeAsciiEdgeGlyphs[edgeOffset + 2] = 24;
+  threeAsciiEdgeGlyphs[edgeOffset + 3] = y % 4;
+  const colorOffset = index * 4;
+  threeAsciiColors[colorOffset] = (x % 16) / 15;
+  threeAsciiColors[colorOffset + 1] = (y % 12) / 11;
+  threeAsciiColors[colorOffset + 2] = ((x + y) % 20) / 19;
+  threeAsciiColors[colorOffset + 3] = 1;
+}
 
 for (let index = 0; index < 500; index += 1) {
   mouseRouter.register({
@@ -86,6 +109,29 @@ export const benchmarkCases: BenchmarkCase[] = [
     maxAverageMs: 2,
     run: () => {
       renderSparkline(sparklineValues, 80);
+    },
+  },
+  {
+    name: "render/three-ascii-ansi-grid-96x40",
+    category: "render",
+    description: "Assemble a 96x40 truecolor ANSI grid from three Ascii readback buffers.",
+    tags: ["render", "three", "ascii", "ansi"],
+    iterations: 150,
+    maxAverageMs: 12,
+    run: () => {
+      const grid = buildThreeAsciiAnsiGrid({
+        columns: threeAsciiColumns,
+        rows: threeAsciiRows,
+        fillGlyphs: threeAsciiFillGlyphs,
+        edgeGlyphs: threeAsciiEdgeGlyphs,
+        colors: threeAsciiColors,
+        terminalGlyphStyle: "mixed",
+        terminalEdgeBias: 1.15,
+        backgroundColor: 0x000000,
+      });
+      if (grid.length !== threeAsciiRows || grid[0]?.length !== threeAsciiColumns) {
+        throw new Error("three Ascii grid dimensions changed");
+      }
     },
   },
   {

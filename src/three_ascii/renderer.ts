@@ -306,6 +306,18 @@ export interface ThreeAsciiRenderFrame {
   image?: ThreeAsciiImageFrame;
 }
 
+/** Input buffers for assembling a terminal ANSI grid from three Ascii GPU readback data. */
+export interface ThreeAsciiAnsiGridInput {
+  columns: number;
+  rows: number;
+  fillGlyphs: ArrayLike<number>;
+  edgeGlyphs?: ArrayLike<number>;
+  colors: ArrayLike<number>;
+  terminalGlyphStyle?: TerminalGlyphStyle;
+  terminalEdgeBias?: number;
+  backgroundColor?: Color | string | number;
+}
+
 function colorValue(input: Color | string | number | undefined, fallback: number): Color {
   return input instanceof Color ? input.clone() : new Color(input ?? fallback);
 }
@@ -315,19 +327,15 @@ function linearToSrgb(value: number): number {
   return clamped <= 0.0031308 ? clamped * 12.92 : 1.055 * Math.pow(clamped, 1 / 2.4) - 0.055;
 }
 
-function colorToBytes(color: Color): [number, number, number] {
-  return [
-    Math.round(linearToSrgb(color.r) * 255),
-    Math.round(linearToSrgb(color.g) * 255),
-    Math.round(linearToSrgb(color.b) * 255),
-  ];
+function linearUnitToByte(value: number): number {
+  return Math.round(linearToSrgb(value) * 255);
 }
 
-function linearRgbToBytes(red: number, green: number, blue: number): [number, number, number] {
+function colorToBytes(color: Color): [number, number, number] {
   return [
-    Math.round(linearToSrgb(red) * 255),
-    Math.round(linearToSrgb(green) * 255),
-    Math.round(linearToSrgb(blue) * 255),
+    linearUnitToByte(color.r),
+    linearUnitToByte(color.g),
+    linearUnitToByte(color.b),
   ];
 }
 
@@ -459,6 +467,63 @@ function shouldUseGohu11EdgeGlyph(
     separation >= clampUnit(minSeparation) &&
     dominantCoverage >= clampUnit(minCoverage)
   );
+}
+
+/** Builds the terminal ANSI cell grid for a three Ascii frame. */
+export function buildThreeAsciiAnsiGrid(input: ThreeAsciiAnsiGridInput): string[][] {
+  const columns = Math.max(0, Math.floor(input.columns));
+  const rows = Math.max(0, Math.floor(input.rows));
+  const fillGlyphs = input.fillGlyphs;
+  const edgeGlyphs = input.edgeGlyphs;
+  const colors = input.colors;
+  const terminalGlyphStyle = input.terminalGlyphStyle ?? "blocks";
+  const terminalEdgeBias = Math.max(0.5, input.terminalEdgeBias ?? DEFAULT_TERMINAL_EDGE_BIAS);
+  const [backgroundRed, backgroundGreen, backgroundBlue] = colorToBytes(colorValue(input.backgroundColor, 0x000000));
+  const backgroundAnsi = rgbToAnsiBackground(backgroundRed, backgroundGreen, backgroundBlue);
+  const foregroundAnsiCache = new Map<number, string>();
+  const grid = Array.from({ length: rows }, () => Array<string>(columns));
+
+  for (let row = 0; row < rows; row += 1) {
+    const outputRow = grid[row];
+
+    for (let column = 0; column < columns; column += 1) {
+      const index = row * columns + column;
+      const fillGlyphIndex = Math.round(fillGlyphs[index] ?? 0);
+      const edgeOffset = index * 4;
+      const edgeGlyphIndex = Math.round(edgeGlyphs?.[edgeOffset] ?? 0);
+      const glyph = terminalGlyphForCell(
+        terminalGlyphStyle,
+        edgeGlyphIndex,
+        edgeGlyphs?.[edgeOffset + 1] ?? 0,
+        edgeGlyphs?.[edgeOffset + 2] ?? 0,
+        edgeGlyphs?.[edgeOffset + 3] ?? 0,
+        fillGlyphIndex,
+        terminalEdgeBias,
+      );
+
+      const colorOffset = index * 4;
+      let foregroundRed = linearUnitToByte(colors[colorOffset] ?? 0);
+      let foregroundGreen = linearUnitToByte(colors[colorOffset + 1] ?? 0);
+      let foregroundBlue = linearUnitToByte(colors[colorOffset + 2] ?? 0);
+      if (terminalGlyphStyle === "blocks" && glyph === "█") {
+        const amount = fillBucketFromGlyphIndex(fillGlyphIndex) / 9;
+        foregroundRed = mixByteChannel(backgroundRed, foregroundRed, amount);
+        foregroundGreen = mixByteChannel(backgroundGreen, foregroundGreen, amount);
+        foregroundBlue = mixByteChannel(backgroundBlue, foregroundBlue, amount);
+      }
+
+      const foregroundKey = (foregroundRed << 16) | (foregroundGreen << 8) | foregroundBlue;
+      let foregroundAnsi = foregroundAnsiCache.get(foregroundKey);
+      if (foregroundAnsi === undefined) {
+        foregroundAnsi = rgbToAnsiForeground(foregroundRed, foregroundGreen, foregroundBlue);
+        foregroundAnsiCache.set(foregroundKey, foregroundAnsi);
+      }
+
+      outputRow[column] = `${backgroundAnsi}${foregroundAnsi}${glyph}${RESET}`;
+    }
+  }
+
+  return grid;
 }
 
 /** Public class implementing a three Ascii Renderer. */
@@ -696,48 +761,16 @@ export class ThreeAsciiRenderer {
       this.readFloat4Buffer(this.colorOutput!),
     ]);
 
-    const [backgroundRed, backgroundGreen, backgroundBlue] = colorToBytes(effectState.backgroundColor);
-    const backgroundAnsi = rgbToAnsiBackground(backgroundRed, backgroundGreen, backgroundBlue);
-
-    const grid = Array.from({ length: this.rows }, () => Array<string>(this.columns));
-
-    for (let row = 0; row < this.rows; row += 1) {
-      const outputRow = grid[row];
-
-      for (let column = 0; column < this.columns; column += 1) {
-        const index = row * this.columns + column;
-        const fillGlyphIndex = Math.round(fillGlyphs[index] ?? 0);
-        const edgeOffset = index * 4;
-        const edgeGlyphIndex = Math.round(edgeGlyphs[edgeOffset] ?? 0);
-        const glyph = terminalGlyphForCell(
-          this.terminalGlyphStyle,
-          edgeGlyphIndex,
-          edgeGlyphs[edgeOffset + 1] ?? 0,
-          edgeGlyphs[edgeOffset + 2] ?? 0,
-          edgeGlyphs[edgeOffset + 3] ?? 0,
-          fillGlyphIndex,
-          this.terminalEdgeBias,
-        );
-
-        const colorOffset = index * 4;
-        let [foregroundRed, foregroundGreen, foregroundBlue] = linearRgbToBytes(
-          Math.max(0, Math.min(1, colors[colorOffset] ?? 0)),
-          Math.max(0, Math.min(1, colors[colorOffset + 1] ?? 0)),
-          Math.max(0, Math.min(1, colors[colorOffset + 2] ?? 0)),
-        );
-        if (this.terminalGlyphStyle === "blocks" && glyph === "█") {
-          const amount = fillBucketFromGlyphIndex(fillGlyphIndex) / 9;
-          foregroundRed = mixByteChannel(backgroundRed, foregroundRed, amount);
-          foregroundGreen = mixByteChannel(backgroundGreen, foregroundGreen, amount);
-          foregroundBlue = mixByteChannel(backgroundBlue, foregroundBlue, amount);
-        }
-        const foregroundAnsi = rgbToAnsiForeground(foregroundRed, foregroundGreen, foregroundBlue);
-
-        outputRow[column] = `${backgroundAnsi}${foregroundAnsi}${glyph}${RESET}`;
-      }
-    }
-
-    return grid;
+    return buildThreeAsciiAnsiGrid({
+      columns: this.columns,
+      rows: this.rows,
+      fillGlyphs,
+      edgeGlyphs,
+      colors,
+      terminalGlyphStyle: this.terminalGlyphStyle,
+      terminalEdgeBias: this.terminalEdgeBias,
+      backgroundColor: effectState.backgroundColor,
+    });
   }
 
   destroy(): void {
