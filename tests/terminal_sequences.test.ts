@@ -55,6 +55,34 @@ Deno.test("terminal sequence parser supports single-character ESC controls", () 
   }
 });
 
+Deno.test("terminal sequence parser parses controls at an offset without slicing", () => {
+  assertEquals(parseTerminalControlSequence("xx\x1b[?25l", 2), {
+    kind: "csi",
+    private: true,
+    params: "25",
+    intermediates: "",
+    command: "l",
+    length: 6,
+  });
+  assertEquals(parseTerminalControlSequence("xx\x1b]0;title\x07after", 2), {
+    kind: "osc",
+    private: false,
+    params: "0;title",
+    intermediates: "",
+    command: "]",
+    length: 10,
+  });
+  assertEquals(parseTerminalControlSequence("xx\x1bMrest", 2), {
+    kind: "esc",
+    private: false,
+    params: "",
+    intermediates: "",
+    command: "M",
+    length: 2,
+  });
+  assertEquals(parseTerminalControlSequence("\x1b[31mxx", 5), undefined);
+});
+
 Deno.test("terminal parameter parser handles semicolon colon and empty slots", () => {
   assertEquals(parseTerminalParams("1;2:3;;5"), [1, 2, 3, 0, 5]);
   assertEquals(parseTerminalParams(""), []);

@@ -8920,51 +8920,78 @@ function describeAttachTerminalTemplate(template, now = Date.now()) {
 }
 
 // src/runtime/terminal_sequences.ts
-function parseTerminalControlSequence(value) {
-  const osc = parseOscSequence(value);
+function parseTerminalControlSequence(value, start = 0) {
+  const osc = parseOscSequence(value, start);
   if (osc) return osc;
-  if (isSingleCharacterEscSequence(value)) {
+  if (isSingleCharacterEscSequence(value, start)) {
     return {
       kind: "esc",
       private: false,
       params: "",
       intermediates: "",
-      command: value[1],
+      command: value[start + 1],
       length: 2
     };
   }
-  const match = /^\x1b\[([?]?)([0-9;:]*)([ -/]*)([@-~])/.exec(value);
-  if (!match) return void 0;
+  if (value.charCodeAt(start) !== 27 || value[start + 1] !== "[") return void 0;
+  let index = start + 2;
+  const privateMarker = value[index] === "?";
+  if (privateMarker) index++;
+  const paramsStart = index;
+  while (index < value.length) {
+    const code = value.charCodeAt(index);
+    if (code >= 48 && code <= 57 || code === 59 || code === 58) {
+      index++;
+      continue;
+    }
+    break;
+  }
+  const paramsEnd = index;
+  const intermediatesStart = index;
+  while (index < value.length) {
+    const code = value.charCodeAt(index);
+    if (code >= 32 && code <= 47) {
+      index++;
+      continue;
+    }
+    break;
+  }
+  const intermediatesEnd = index;
+  const commandCode = value.charCodeAt(index);
+  if (!(commandCode >= 64 && commandCode <= 126)) return void 0;
   return {
     kind: "csi",
-    private: match[1] === "?",
-    params: match[2] ?? "",
-    intermediates: match[3] ?? "",
-    command: match[4],
-    length: match[0].length
+    private: privateMarker,
+    params: value.slice(paramsStart, paramsEnd),
+    intermediates: value.slice(intermediatesStart, intermediatesEnd),
+    command: value[index],
+    length: index - start + 1
   };
 }
 function parseTerminalParams(params) {
   if (!params) return [];
   return params.split(/[;:]/).map((value) => Number.parseInt(value || "0", 10)).filter(Number.isFinite);
 }
-function parseOscSequence(value) {
-  if (!value.startsWith("\x1B]")) return void 0;
-  const belEnd = value.indexOf("\x07", 2);
-  const stEnd = value.indexOf("\x1B\\", 2);
+function parseOscSequence(value, start) {
+  if (!value.startsWith("\x1B]", start)) return void 0;
+  const contentStart = start + 2;
+  const belEnd = value.indexOf("\x07", contentStart);
+  const stEnd = value.indexOf("\x1B\\", contentStart);
   const end = belEnd >= 0 && stEnd >= 0 ? Math.min(belEnd, stEnd) : belEnd >= 0 ? belEnd : stEnd;
   if (end < 0) return void 0;
   return {
     kind: "osc",
     private: false,
-    params: value.slice(2, end),
+    params: value.slice(contentStart, end),
     intermediates: "",
     command: "]",
-    length: end + (end === stEnd ? 2 : 1)
+    length: end - start + (end === stEnd ? 2 : 1)
   };
 }
-function isSingleCharacterEscSequence(value) {
-  return value.startsWith("\x1B7") || value.startsWith("\x1B8") || value.startsWith("\x1BM") || value.startsWith("\x1BH") || value.startsWith("\x1BD") || value.startsWith("\x1BE") || value.startsWith("\x1Bc");
+function isSingleCharacterEscSequence(value, start) {
+  if (value.charCodeAt(start) !== 27) return false;
+  const command = value[start + 1];
+  return command === "7" || command === "8" || command === "M" || command === "H" || command === "D" || command === "E" || command === "c";
 }
 
 // src/runtime/terminal_screen.ts
@@ -9018,7 +9045,7 @@ var TerminalScreenController = class {
     for (let index = 0; index < text.length; ) {
       const char = text[index];
       if (char === "\x1B") {
-        const parsed = parseTerminalControlSequence(text.slice(index));
+        const parsed = parseTerminalControlSequence(text, index);
         if (parsed) {
           this.#applyControl(parsed);
           index += parsed.length;

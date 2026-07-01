@@ -283,6 +283,8 @@ Acceptance checks:
   - [x] Extracted OSC/CSI/single-character ESC parsing and numeric parameter parsing into
         `src/runtime/terminal_sequences.ts` with direct parser tests, leaving `TerminalScreenController` focused on
         screen state mutation.
+  - [x] Made terminal sequence parsing offset-aware so the screen write loop no longer allocates `text.slice(index)` for
+        every escape/control sequence.
 
 ### P2: Consolidate Layout, Markup, And Widget Hydration
 

@@ -109,7 +109,7 @@ export class TerminalScreenController {
     for (let index = 0; index < text.length;) {
       const char = text[index]!;
       if (char === "\x1b") {
-        const parsed = parseTerminalControlSequence(text.slice(index));
+        const parsed = parseTerminalControlSequence(text, index);
         if (parsed) {
           this.#applyControl(parsed);
           index += parsed.length;
