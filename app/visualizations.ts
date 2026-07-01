@@ -15,6 +15,7 @@ import {
   type VisualizationDrive,
 } from "./visualization_drive.ts";
 import { cpuActivityRgb, cpuHexGridColumnCount, cpuHexTileLayout, renderCpuHexGrid } from "./visualization_cpu_hex.ts";
+import { renderGpuChipMonitor, renderGpuCombinedMonitor, renderGpuMemoryMonitor } from "./visualization_gpu.ts";
 import { renderNetworkMonitor } from "./visualization_network.ts";
 import type {
   Accent,
@@ -70,9 +71,9 @@ const directVisualizationRenderers: Record<string, (context: RenderContext) => P
   "cpu-monitor": renderCpuMonitor,
   "cpu-legend": renderCpuLegend,
   "cpu-hex-grid": renderCpuHexGrid,
-  "gpu-combined-monitor": renderGpuCombinedMonitor,
-  "gpu-chip-monitor": renderGpuChipMonitor,
-  "gpu-memory-monitor": renderGpuMemoryMonitor,
+  "gpu-combined-monitor": (context) => renderGpuCombinedMonitor(context, gpuMonitorDependencies),
+  "gpu-chip-monitor": (context) => renderGpuChipMonitor(context, gpuMonitorDependencies),
+  "gpu-memory-monitor": (context) => renderGpuMemoryMonitor(context, gpuMonitorDependencies),
   "memory-monitor": renderMemoryMonitor,
   "temperature-monitor": renderTemperatureMonitor,
   "disk-monitor": renderDiskMonitor,
@@ -113,6 +114,8 @@ const visualizationRenderers: Record<string, VisualizationRenderFn> = Object.fro
     ] satisfies [string, VisualizationRenderFn]
   ),
 ]);
+
+const gpuMonitorDependencies = { plotHistory, barChart, miniMeter, monitorGlyph };
 
 export function renderVisualization(context: RenderContext): PanelRender {
   const descriptor = visualizationMap.get(context.slot.visualizationId) ?? visualizations[0]!;
@@ -227,116 +230,6 @@ function cpuLegendRows(cores: RenderContext["system"]["cpuCores"], width: number
 
 function coreLegendCell(core: RenderContext["system"]["cpuCores"][number], hazard: number): string {
   return `${core.label.padStart(3, "0")} ${miniMeter(core.usage / 100, 6, hazard)} ${formatPercent(core.usage)}`;
-}
-
-function renderGpuCombinedMonitor(context: RenderContext): PanelRender {
-  const { system, width, height } = context;
-  const drive = buildVisualizationDrive(context, Math.max(width, 48));
-  if (!system.gpu.available) return renderGpuOfflinePanel("GPU FUSION OFFLINE", "violet");
-
-  const graphHeight = Math.max(2, Math.floor((height - 5) / 2));
-  const chipGraph = plotHistory(
-    system.gpuUtilizationHistory,
-    Math.max(12, width),
-    graphHeight,
-    monitorGlyph(drive, "violet"),
-  );
-  const memoryGraph = plotHistory(
-    system.gpuMemoryHistory,
-    Math.max(12, width),
-    graphHeight,
-    monitorGlyph(drive, "phosphor"),
-  );
-  return {
-    body: [
-      crop(system.gpu.name.toUpperCase(), width),
-      `CHIP ${formatPercent(system.gpu.utilizationPercent)} ${
-        miniMeter(system.gpu.utilizationPercent / 100, 12, drive.hazard)
-      }`,
-      chipGraph,
-      `VRAM ${formatPercent(system.gpu.memoryPercent)} ${formatBytes(system.gpu.memoryUsed)} / ${
-        formatBytes(system.gpu.memoryTotal)
-      }`,
-      memoryGraph,
-      `TEMP ${formatNullable(system.gpu.temperatureCelsius, "C")}  POWER ${formatNullable(system.gpu.powerWatts, "W")}`,
-    ].join("\n"),
-    footer: `GPU FUSION  GFX ${formatNullable(system.gpu.graphicsClockMhz, "MHz")}  MEMCLK ${
-      formatNullable(system.gpu.memoryClockMhz, "MHz")
-    }`,
-    alert: gpuAlert(context),
-    accent: gpuAccent(system.gpu.utilizationPercent, system.gpu.memoryPercent, true),
-    severity: gpuSeverity(system.gpu.utilizationPercent, system.gpu.memoryPercent),
-  };
-}
-
-function renderGpuChipMonitor(context: RenderContext): PanelRender {
-  const { system, width, height } = context;
-  const drive = buildVisualizationDrive(context, Math.max(width, 40));
-  if (!system.gpu.available) return renderGpuOfflinePanel("GPU CHIP OFFLINE", "violet");
-
-  const graphHeight = Math.max(3, height - 5);
-  const graph = plotHistory(
-    system.gpuUtilizationHistory,
-    Math.max(12, width),
-    graphHeight,
-    monitorGlyph(drive, "violet"),
-  );
-  const pulse = gpuPulseGlyphs(
-    system.gpu.utilizationPercent / 100,
-    Math.min(18, Math.max(8, width - 14)),
-    drive.hazard,
-  );
-  return {
-    body: [
-      `${crop(system.gpu.name.toUpperCase(), Math.max(8, width - 8))} CORE`,
-      `UTIL ${formatPercent(system.gpu.utilizationPercent)} ${pulse}`,
-      graph,
-      `TEMP ${formatNullable(system.gpu.temperatureCelsius, "C")}  POWER ${formatNullable(system.gpu.powerWatts, "W")}`,
-      `GFX ${formatNullable(system.gpu.graphicsClockMhz, "MHz")}  MEMORY ${
-        formatNullable(system.gpu.memoryClockMhz, "MHz")
-      }`,
-    ].join("\n"),
-    footer: `CHIP BUS  VOLATILITY ${(drive.volatility * 100).toFixed(0)}%  SURGE ${
-      (Math.max(0, drive.slope) * 100).toFixed(0)
-    }%`,
-    alert: system.gpu.utilizationPercent >= 95
-      ? "GPU EXECUTION WALL"
-      : drive.volatility >= 0.58
-      ? "GPU PULSE SHEAR"
-      : "",
-    accent: gpuAccent(system.gpu.utilizationPercent, 0, true),
-    severity: gpuSeverity(system.gpu.utilizationPercent, 0),
-  };
-}
-
-function renderGpuMemoryMonitor(context: RenderContext): PanelRender {
-  const { system, width, height } = context;
-  const drive = buildVisualizationDrive(context, Math.max(width, 40));
-  if (!system.gpu.available) return renderGpuOfflinePanel("GPU MEMORY OFFLINE", "phosphor");
-
-  const bankCount = Math.max(4, Math.min(12, Math.floor(width / 5)));
-  const banks = Array.from({ length: bankCount }, (_, index) => {
-    const phaseShift = Math.sin(context.phase * 0.11 + index * 0.9) * 0.06;
-    return clamp(system.gpu.memoryPercent / 100 + phaseShift, 0, 1);
-  });
-  const bankRows = barChart(banks, bankCount * 3, Math.max(3, Math.min(8, height - 5)), [" ", "░", "▒", "▓", "█"]);
-  return {
-    body: [
-      `VRAM ${formatPercent(system.gpu.memoryPercent)} ${miniMeter(system.gpu.memoryPercent / 100, 14, drive.hazard)}`,
-      `${formatBytes(system.gpu.memoryUsed)} USED`,
-      `${formatBytes(Math.max(0, system.gpu.memoryTotal - system.gpu.memoryUsed))} FREE`,
-      bankRows,
-      `TOTAL ${formatBytes(system.gpu.memoryTotal)}  MEMCLK ${formatNullable(system.gpu.memoryClockMhz, "MHz")}`,
-    ].join("\n"),
-    footer: `VRAM BANKS ${bankCount}  FRAGMENT ${(drive.divergence * 100).toFixed(0)}%`,
-    alert: system.gpu.memoryPercent >= 92
-      ? "VRAM CAPACITY WALL"
-      : system.gpu.memoryPercent >= 78
-      ? "VRAM PRESSURE"
-      : "",
-    accent: gpuAccent(0, system.gpu.memoryPercent, true),
-    severity: gpuSeverity(0, system.gpu.memoryPercent),
-  };
 }
 
 function renderMemoryMonitor(context: RenderContext): PanelRender {
@@ -810,50 +703,6 @@ function miniMeter(value: number, width: number, heat: number) {
 function heatMeter(value: number, heat: number) {
   const width = heat >= 0.9 ? 5 : 4;
   return miniMeter(value, width, heat);
-}
-
-function gpuPulseGlyphs(value: number, width: number, heat: number) {
-  const fill = Math.round(clamp(value, 0, 1) * width);
-  const active = heat >= 0.85 ? "◆" : "◇";
-  return active.repeat(fill).padEnd(width, "·");
-}
-
-function renderGpuOfflinePanel(message: string, accent: Accent): PanelRender {
-  return {
-    body: [
-      message,
-      "NVIDIA-SMI TELEMETRY NOT AVAILABLE",
-      "GPU PANEL WILL AUTO-LINK WHEN DRIVER METRICS APPEAR",
-    ].join("\n"),
-    footer: "GPU BUS OFFLINE",
-    alert: "",
-    accent,
-    severity: "info",
-  };
-}
-
-function gpuAccent(utilization: number, memory: number, available: boolean): Accent {
-  if (!available) return "violet";
-  const pressure = Math.max(utilization, memory);
-  return pressure >= 92 ? "alarm" : pressure >= 75 ? "amber" : memory > utilization ? "phosphor" : "violet";
-}
-
-function gpuSeverity(utilization: number, memory: number): Severity {
-  const pressure = Math.max(utilization, memory);
-  return pressure >= 92 ? "alarm" : pressure >= 75 ? "warning" : "info";
-}
-
-function gpuAlert(context: RenderContext) {
-  const { gpu } = context.system;
-  if (!gpu.available) return "";
-  if (gpu.memoryPercent >= 92) return "VRAM LIMIT";
-  if (gpu.utilizationPercent >= 95) return "GPU EXECUTION WALL";
-  if ((gpu.temperatureCelsius ?? 0) >= 84) return "GPU THERMAL LIMIT";
-  return "";
-}
-
-function formatNullable(value: number | null, suffix: string) {
-  return value === null ? "--" : `${value.toFixed(value >= 100 ? 0 : 1)}${suffix}`;
 }
 
 function alertText(context: RenderContext) {

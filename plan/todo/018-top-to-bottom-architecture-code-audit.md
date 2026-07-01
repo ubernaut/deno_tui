@@ -264,6 +264,8 @@ Work:
       diagnostics for unavailable CPU, uptime, network, and process data.
 - [x] Bound expensive process scans and support configurable process limits, sort keys, and refresh cadence.
 - [x] Add GPU provider abstraction for NVIDIA now and future AMD/Intel support later.
+- [x] Extract GPU monitor visualization rendering into a dedicated module with injected chart/meter primitives and
+      focused tests for offline, pressure, alert, and narrow-panel behavior.
 
 Acceptance checks:
 
