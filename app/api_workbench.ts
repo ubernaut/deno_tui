@@ -40,6 +40,7 @@ import {
   layoutWorkbenchShelf,
   layoutWorkbenchTabs,
   layoutWorkbenchTitlebar,
+  layoutWorkbenchTopMenuItemRect,
   normalizeWorkbenchWorkspaceName,
   normalizeWorkbenchWorkspaceStorage,
   renameWorkbenchWorkspace,
@@ -1001,21 +1002,16 @@ function renderMenuHits(column: number, row: number, width: number): void {
 }
 
 function menuItemRect(menuStart: number, itemId: string, preferredWidth: number, preferredHeight: number): Rectangle {
-  let cursor = menuStart;
-  for (const [index, item] of menu.items.peek().entries()) {
-    const label = item.disabled ? `(${item.label})` : item.label;
-    const token = index === menu.activeIndex.peek() ? `[${label}]` : label;
-    if (item.id === itemId) {
-      return {
-        column: cursor,
-        row: 1,
-        width: Math.min(preferredWidth, Math.max(20, currentWidth() - cursor)),
-        height: preferredHeight,
-      };
-    }
-    cursor += textWidth(token) + 1;
-  }
-  return { column: menuStart, row: 1, width: Math.min(preferredWidth, currentWidth()), height: preferredHeight };
+  return layoutWorkbenchTopMenuItemRect({
+    menuStart,
+    itemId,
+    items: menu.items.peek(),
+    activeIndex: menu.activeIndex.peek(),
+    preferredWidth,
+    preferredHeight,
+    maxWidth: currentWidth(),
+    measureText: textWidth,
+  });
 }
 
 function renderWorkspace(frame: Frame): void {

@@ -32,6 +32,7 @@ import {
   layoutWorkbenchShelf,
   layoutWorkbenchTabs,
   layoutWorkbenchTitlebar,
+  layoutWorkbenchTopMenuItemRect,
   MenuBarController,
   modalContentHeight,
   ModalController,
@@ -723,20 +724,16 @@ function renderMobileCommandStrip(frame: string[]): void {
 }
 
 function menuItemRect(menuStart: number, itemId: string, preferredWidth: number, preferredHeight: number): Rectangle {
-  let cursor = menuStart;
-  for (const [index, item] of menu.items.peek().entries()) {
-    const token = index === menu.activeIndex.peek() ? `[${item.label}]` : item.label;
-    if (item.id === itemId) {
-      return {
-        column: cursor,
-        row: 1,
-        width: Math.min(preferredWidth, Math.max(20, cols() - cursor)),
-        height: preferredHeight,
-      };
-    }
-    cursor += textWidth(token) + 1;
-  }
-  return { column: menuStart, row: 1, width: Math.min(preferredWidth, cols()), height: preferredHeight };
+  return layoutWorkbenchTopMenuItemRect({
+    menuStart,
+    itemId,
+    items: menu.items.peek(),
+    activeIndex: menu.activeIndex.peek(),
+    preferredWidth,
+    preferredHeight,
+    maxWidth: cols(),
+    measureText: textWidth,
+  });
 }
 
 function renderWindowTabs(frame: string[]): void {

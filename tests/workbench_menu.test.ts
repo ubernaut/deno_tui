@@ -2,6 +2,7 @@ import { assertEquals } from "./deps.ts";
 import {
   isWorkbenchMenuActivationKey,
   isWorkbenchMenuCloseKey,
+  layoutWorkbenchTopMenuItemRect,
   moveWorkbenchMenuIndex,
   WorkbenchTopMenuController,
 } from "../src/app/workbench_menu.ts";
@@ -52,4 +53,40 @@ Deno.test("WorkbenchTopMenuController keeps one top menu open and focus synchron
     { openId: null, focused: false },
     { openId: null, focused: true },
   ]);
+});
+
+Deno.test("layoutWorkbenchTopMenuItemRect anchors below menu items", () => {
+  const items = [
+    { id: "file", label: "File" },
+    { id: "view", label: "View", disabled: true },
+    { id: "theme", label: "Theme" },
+  ];
+
+  assertEquals(
+    layoutWorkbenchTopMenuItemRect({
+      menuStart: 10,
+      itemId: "theme",
+      items,
+      activeIndex: 0,
+      preferredWidth: 30,
+      preferredHeight: 6,
+      maxWidth: 80,
+      measureText: (value) => value.length,
+    }),
+    { column: 24, row: 1, width: 30, height: 6 },
+  );
+});
+
+Deno.test("layoutWorkbenchTopMenuItemRect falls back to menu start when item is missing", () => {
+  assertEquals(
+    layoutWorkbenchTopMenuItemRect({
+      menuStart: 4,
+      itemId: "missing",
+      items: [{ id: "file", label: "File" }],
+      preferredWidth: 50,
+      preferredHeight: 8,
+      maxWidth: 24,
+    }),
+    { column: 4, row: 1, width: 24, height: 8 },
+  );
 });

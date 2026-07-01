@@ -3504,6 +3504,13 @@
     },
     {
       "module": "src/app/workbench_menu.ts",
+      "name": "layoutWorkbenchTopMenuItemRect",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_menu.ts",
       "name": "moveWorkbenchMenuIndex",
       "kind": "function",
       "typeOnly": false,
@@ -3512,6 +3519,13 @@
     {
       "module": "src/app/workbench_menu.ts",
       "name": "MoveWorkbenchMenuIndexOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_menu.ts",
+      "name": "WorkbenchMenuBarItemShape",
       "kind": "interface",
       "typeOnly": true,
       "documented": true
@@ -3540,6 +3554,13 @@
     {
       "module": "src/app/workbench_menu.ts",
       "name": "WorkbenchTopMenuInspection",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_menu.ts",
+      "name": "WorkbenchTopMenuItemRectOptions",
       "kind": "interface",
       "typeOnly": true,
       "documented": true

@@ -1,4 +1,5 @@
 // Copyright 2023 Im-Beast. MIT license.
+import type { Rectangle } from "../types.ts";
 
 /** Minimal key event shape for workbench dropdown/menu navigation helpers. */
 export interface WorkbenchMenuKey {
@@ -8,6 +9,27 @@ export interface WorkbenchMenuKey {
 /** Options for moving a selected workbench dropdown index. */
 export interface MoveWorkbenchMenuIndexOptions {
   pageSize?: number;
+}
+
+/** Minimal menu item shape used for top-menu anchor layout. */
+export interface WorkbenchMenuBarItemShape {
+  id: string;
+  label: string;
+  disabled?: boolean;
+}
+
+/** Options for locating a top-menu dropdown relative to its menu-bar item. */
+export interface WorkbenchTopMenuItemRectOptions {
+  menuStart: number;
+  itemId: string;
+  items: readonly WorkbenchMenuBarItemShape[];
+  activeIndex?: number;
+  preferredWidth: number;
+  preferredHeight: number;
+  maxWidth: number;
+  row?: number;
+  minAnchoredWidth?: number;
+  measureText?: (value: string) => number;
 }
 
 /** Serializable inspection snapshot for mutually-exclusive top menu disclosure state. */
@@ -103,4 +125,36 @@ export function moveWorkbenchMenuIndex(
     default:
       return index;
   }
+}
+
+/** Locates a dropdown/popover rectangle below a top-menu item. */
+export function layoutWorkbenchTopMenuItemRect(options: WorkbenchTopMenuItemRectOptions): Rectangle {
+  const measureText = options.measureText ?? ((value) => value.length);
+  const row = options.row ?? 1;
+  const maxWidth = Math.max(0, Math.floor(options.maxWidth));
+  const preferredWidth = Math.max(0, Math.floor(options.preferredWidth));
+  const preferredHeight = Math.max(0, Math.floor(options.preferredHeight));
+  const minAnchoredWidth = Math.max(0, Math.floor(options.minAnchoredWidth ?? 20));
+  let cursor = Math.max(0, Math.floor(options.menuStart));
+
+  for (const [index, item] of options.items.entries()) {
+    const label = item.disabled ? `(${item.label})` : item.label;
+    const token = index === options.activeIndex ? `[${label}]` : label;
+    if (item.id === options.itemId) {
+      return {
+        column: cursor,
+        row,
+        width: Math.min(preferredWidth, Math.max(minAnchoredWidth, maxWidth - cursor)),
+        height: preferredHeight,
+      };
+    }
+    cursor += measureText(token) + 1;
+  }
+
+  return {
+    column: Math.max(0, Math.floor(options.menuStart)),
+    row,
+    width: Math.min(preferredWidth, maxWidth),
+    height: preferredHeight,
+  };
 }

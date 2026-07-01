@@ -107,6 +107,8 @@ Work:
         contract.
   - [x] Extracted shared status-left composition and tile-density labels so terminal and web status bars no longer
         duplicate focus/theme/layout/diagnostic summary logic.
+  - [x] Extracted top-menu dropdown anchor layout into `workbench_menu.ts`, keeping terminal and web dropdown placement
+        on the same measured menu-item algorithm.
 - [x] Replace duplicated theme/window/menu persistence code with a shared versioned serializer.
   - [x] Extracted shared workbench workspace normalization, panel-state normalization, upsert, rename, delete, lookup,
         and legacy window-entry expansion helpers into `src/app/workbench_workspace.ts`.

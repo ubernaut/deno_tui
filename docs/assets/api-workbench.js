@@ -9104,6 +9104,34 @@ function moveWorkbenchMenuIndex(current, count, event, options = {}) {
       return index;
   }
 }
+function layoutWorkbenchTopMenuItemRect(options) {
+  const measureText = options.measureText ?? ((value) => value.length);
+  const row = options.row ?? 1;
+  const maxWidth = Math.max(0, Math.floor(options.maxWidth));
+  const preferredWidth = Math.max(0, Math.floor(options.preferredWidth));
+  const preferredHeight = Math.max(0, Math.floor(options.preferredHeight));
+  const minAnchoredWidth = Math.max(0, Math.floor(options.minAnchoredWidth ?? 20));
+  let cursor = Math.max(0, Math.floor(options.menuStart));
+  for (const [index, item] of options.items.entries()) {
+    const label = item.disabled ? `(${item.label})` : item.label;
+    const token = index === options.activeIndex ? `[${label}]` : label;
+    if (item.id === options.itemId) {
+      return {
+        column: cursor,
+        row,
+        width: Math.min(preferredWidth, Math.max(minAnchoredWidth, maxWidth - cursor)),
+        height: preferredHeight
+      };
+    }
+    cursor += measureText(token) + 1;
+  }
+  return {
+    column: Math.max(0, Math.floor(options.menuStart)),
+    row,
+    width: Math.min(preferredWidth, maxWidth),
+    height: preferredHeight
+  };
+}
 
 // src/app/workbench_overlay.ts
 function layoutWorkbenchModal(options) {
@@ -11953,20 +11981,16 @@ function renderMobileCommandStrip(frame) {
   }
 }
 function menuItemRect(menuStart, itemId, preferredWidth, preferredHeight) {
-  let cursor = menuStart;
-  for (const [index, item] of menu.items.peek().entries()) {
-    const token = index === menu.activeIndex.peek() ? `[${item.label}]` : item.label;
-    if (item.id === itemId) {
-      return {
-        column: cursor,
-        row: 1,
-        width: Math.min(preferredWidth, Math.max(20, cols() - cursor)),
-        height: preferredHeight
-      };
-    }
-    cursor += textWidth(token) + 1;
-  }
-  return { column: menuStart, row: 1, width: Math.min(preferredWidth, cols()), height: preferredHeight };
+  return layoutWorkbenchTopMenuItemRect({
+    menuStart,
+    itemId,
+    items: menu.items.peek(),
+    activeIndex: menu.activeIndex.peek(),
+    preferredWidth,
+    preferredHeight,
+    maxWidth: cols(),
+    measureText: textWidth
+  });
 }
 function renderWindowTabs(frame) {
   const row = rowsCount() - 2;
