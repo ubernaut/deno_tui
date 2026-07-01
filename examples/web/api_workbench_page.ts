@@ -10,6 +10,7 @@ import {
   createAnsiStyle,
   createFileExplorerTree,
   createRuntimeStore,
+  createTerminalWorkspaceController,
   createWebTui,
   DataTableController,
   FileExplorerController,
@@ -74,6 +75,7 @@ type Hit =
   | { type: "dataRow"; index: number }
   | { type: "explorerRow"; index: number }
   | { type: "logScrollbar" }
+  | { type: "terminalSession"; id: string }
   | { type: "workspaceScrollbar" };
 type ControlHitAction = "previous" | "next" | "activate" | "set" | "focus" | "toggle";
 type ButtonTone = "default" | "danger" | "warning" | "success" | "muted";
@@ -176,7 +178,7 @@ const docs = [
   "Resize the browser: the terminal grid recalculates from CSS dimensions.",
   "The web workbench includes Explorer, Data, Controls, Logs, and a browser-safe Three ASCII preview pane.",
   "HTML/CSS Layout previews parseTuiMarkup, CSS cascade, flex wrap, and absolute positioning in a browser-hosted window.",
-  "Terminal shows the remote-terminal protocol boundary used by browser shells instead of exposing local stdio directly.",
+  "Terminal shows browser-safe session tabs backed by TerminalWorkspaceController and TerminalScreenController.",
   "The demo uses public controllers and canvas primitives from mod.web.ts.",
 ];
 const panelIds: readonly PanelId[] = [
@@ -209,6 +211,59 @@ const tileDensity = new Signal(Math.max(-3, Math.min(3, Math.floor(initialWorksp
 const lineSignals: Signal<string>[] = [];
 const log = new Signal<string[]>(["ready: web api workbench mounted"], { deepObserve: true });
 const webTerminalScreen = new TerminalScreenController({ columns: 80, rows: 12, scrollbackLimit: 64 });
+const webTerminalWorkspace = createTerminalWorkspaceController({
+  activeId: "pages-shell",
+  sessions: [
+    {
+      id: "pages-shell",
+      title: "Pages Shell",
+      template: { id: "pages-shell", title: "Pages Shell", kind: "command", command: "web-shell" },
+      backendId: "browser-mock",
+      commandLine: "web-shell",
+      status: "running",
+      running: true,
+      columns: 80,
+      rows: 12,
+      reconnectable: false,
+      restartPolicy: "never",
+      createdAt: 0,
+      updatedAt: 0,
+    },
+    {
+      id: "remote-attach",
+      title: "Remote Attach",
+      template: {
+        id: "remote-attach",
+        title: "Remote Attach",
+        kind: "attach",
+        sessionId: "ws://localhost:8787/terminal",
+        reconnectable: true,
+      },
+      backendId: "remote",
+      status: "idle",
+      running: false,
+      reconnectable: true,
+      restartPolicy: "never",
+      createdAt: 0,
+      updatedAt: 0,
+    },
+    {
+      id: "ci-task",
+      title: "CI Task",
+      template: { id: "ci-task", title: "CI Task", kind: "deno-task", command: "deno", args: ["task", "health"] },
+      backendId: "process-template",
+      commandLine: "deno task health",
+      status: "idle",
+      running: false,
+      columns: 100,
+      rows: 30,
+      reconnectable: false,
+      restartPolicy: "on-failure",
+      createdAt: 0,
+      updatedAt: 0,
+    },
+  ],
+});
 let webTerminalScreenKey = "";
 let hitTargets: Array<{ rect: Rectangle; hit: Hit }> = [];
 let lastVisiblePanel: PanelId | null = null;
@@ -892,26 +947,29 @@ function drawHtmlCssLayoutOutline(frame: string[], rect: Rectangle, fg: string, 
 function renderTerminalProtocol(frame: string[], rect: Rectangle): void {
   const t = theme();
   if (rect.height <= 0 || rect.width <= 0) return;
-  const screenHeight = Math.max(3, rect.height - 5);
+  const screenHeight = Math.max(3, rect.height - 6);
   const screenRect = {
     column: rect.column,
-    row: rect.row + 3,
+    row: rect.row + 4,
     width: rect.width,
-    height: Math.min(screenHeight, Math.max(0, rect.height - 4)),
+    height: Math.min(screenHeight, Math.max(0, rect.height - 5)),
   };
   syncWebTerminalScreen(screenRect.width, screenRect.height);
 
   const inspection = webTerminalScreen.inspect();
+  const workspace = webTerminalWorkspace.inspect();
   const headerRows = [
     "REMOTE TERMINAL / BROWSER SHELL MODEL",
-    `screen ${inspection.columns}x${inspection.rows}  cursor ${inspection.cursor.column},${inspection.cursor.row}  scrollback ${inspection.scrollbackRows}`,
-    "client createRemoteTerminalClient() -> explicit WebSocket endpoint -> server TerminalSessionHandle",
+    `active ${
+      workspace.active?.title ?? "none"
+    }  screen ${inspection.columns}x${inspection.rows}  cursor ${inspection.cursor.column},${inspection.cursor.row}  sessions ${workspace.count}`,
   ];
-  headerRows.slice(0, Math.min(3, rect.height)).forEach((line, index) => {
+  headerRows.slice(0, Math.min(2, rect.height)).forEach((line, index) => {
     const bg = index === 0 ? t.accentDeep : t.panelAlt;
     const fg = index === 0 ? contrastText(t.accentDeep, t.bg, t.text) : index === 1 ? t.warn : t.soft;
     write(frame, rect.row + index, rect.column, paint(fit(line, rect.width), fg, bg, index === 0));
   });
+  renderTerminalSessionTabs(frame, { column: rect.column, row: rect.row + 2, width: rect.width, height: 1 });
 
   fillRect(frame, screenRect, t.bg);
   const rows = webTerminalScreen.textRows();
@@ -931,16 +989,66 @@ function renderTerminalProtocol(frame: string[], rect: Rectangle): void {
   }
 }
 
+function renderTerminalSessionTabs(frame: string[], rect: Rectangle): void {
+  if (rect.height <= 0 || rect.width <= 0) return;
+  const workspace = webTerminalWorkspace.inspect();
+  let column = rect.column;
+  fillRect(frame, rect, theme().panelAlt);
+  for (const session of workspace.sessions) {
+    const activeSession = workspace.activeId === session.id;
+    const label = `${activeSession ? "●" : "○"} ${session.title}`;
+    const width = Math.min(rect.column + rect.width - column, Math.max(8, textWidth(label) + 2));
+    if (width <= 0) break;
+    write(
+      frame,
+      rect.row,
+      column,
+      paint(
+        fit(` ${label}`, width),
+        activeSession ? contrastText(theme().accent, theme().bg, theme().text) : theme().text,
+        activeSession ? theme().accent : theme().panelAlt,
+        activeSession,
+      ),
+    );
+    hitTargets.push({
+      rect: { column, row: rect.row, width, height: 1 },
+      hit: { type: "terminalSession", id: session.id },
+    });
+    column += width;
+    if (column >= rect.column + rect.width) break;
+  }
+}
+
 function syncWebTerminalScreen(width: number, height: number): void {
   const columns = Math.max(20, Math.floor(width));
   const rows = Math.max(3, Math.floor(height));
-  const key = `${columns}x${rows}:${theme().id}`;
+  const activeSession = webTerminalWorkspace.active;
+  const key = `${columns}x${rows}:${theme().id}:${activeSession?.id ?? "none"}`;
   if (key === webTerminalScreenKey) return;
   webTerminalScreenKey = key;
   webTerminalScreen.resize(columns, rows);
   webTerminalScreen.clear();
-  webTerminalScreen.write(
-    [
+  const transcript = activeSession?.id === "remote-attach"
+    ? [
+      "\x1b[1mremote-attach\x1b[0m:\x1b[34m~/deno_tui\x1b[0m$ connect ws://localhost:8787/terminal",
+      "\x1b[33mwaiting for explicit endpoint\x1b[0m",
+      "RemoteTerminalClient would stream browser input to a server TerminalSessionHandle.",
+      "The server side can attach a PTY, process backend, tmux session, or remote bridge.",
+      "",
+      "No local OS shell is exposed from this static Pages build.",
+      "",
+      "\x1b[1mremote-attach\x1b[0m$ _",
+    ]
+    : activeSession?.id === "ci-task"
+    ? [
+      "\x1b[1mci-task\x1b[0m:\x1b[34m~/deno_tui\x1b[0m$ deno task health",
+      "Check scripts/health.ts",
+      "\x1b[32mok\x1b[0m api inventory  \x1b[32mok\x1b[0m web pages build  \x1b[32mok\x1b[0m e2e",
+      "\x1b[33mtemplate only\x1b[0m: start this through a hosted backend to run real commands.",
+      "",
+      "\x1b[1mci-task\x1b[0m$ _",
+    ]
+    : [
       "\x1b[1mweb-shell\x1b[0m:\x1b[34m~/deno_tui\x1b[0m$ deno task web:demo:check",
       "\x1b[32mok\x1b[0m mod.web.ts import graph is browser-safe",
       "\x1b[32mok\x1b[0m pointer, wheel, paste, focus, resize adapters active",
@@ -952,8 +1060,8 @@ function syncWebTerminalScreen(width: number, height: number): void {
       "keyboard and paste events encode through the same terminal input helpers",
       "",
       "\x1b[1mweb-shell\x1b[0m:\x1b[34m~/deno_tui\x1b[0m$ _",
-    ].join("\r\n"),
-  );
+    ];
+  webTerminalScreen.write(transcript.join("\r\n"));
 }
 
 function panelLines(id: PanelId, height: number): string[] {
@@ -1006,6 +1114,11 @@ function applyHit(target: { rect: Rectangle; hit: Hit }, x: number, y: number): 
     const lines = docs.length + log.peek().length;
     logScroll.scrollTo(0, scrollbarOffsetForPointer(lines, target.rect.height, y - target.rect.row));
     active.value = "logs";
+  } else if (hit.type === "terminalSession") {
+    webTerminalWorkspace.activate(hit.id);
+    webTerminalScreenKey = "";
+    active.value = "terminal";
+    push(`terminal session ${hit.id}`);
   } else if (hit.type === "workspaceScrollbar") {
     workspaceScroll.scrollTo(
       0,
