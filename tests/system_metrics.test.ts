@@ -170,10 +170,42 @@ Deno.test("SystemMonitor supports process sort keys and refresh cadence", async 
   );
 });
 
+Deno.test("SystemMonitor keeps sampling when required sources are partially unavailable", async () => {
+  const provider = new FixtureMetricsProvider();
+  provider.files.set("/proc/stat", procStatFirst());
+  provider.files.set("/proc/uptime", "123.45 100.00\n");
+  provider.dirErrors.set("/proc", new Error("permission denied"));
+
+  const monitor = new SystemMonitor({
+    historyLength: 4,
+    provider,
+  });
+  await monitor.sample();
+
+  const snapshot = monitor.snapshot.peek();
+  assertEquals(snapshot.timestamp, 1_000);
+  assertEquals(snapshot.uptimeSeconds, 123.45);
+  assertEquals(
+    snapshot.diagnostics.some((diagnostic) =>
+      diagnostic.source === "network" && diagnostic.status === "unavailable" &&
+      diagnostic.detail.includes("/proc/net/dev")
+    ),
+    true,
+  );
+  assertEquals(
+    snapshot.diagnostics.some((diagnostic) =>
+      diagnostic.source === "process" && diagnostic.status === "unavailable" &&
+      diagnostic.detail.includes("permission denied")
+    ),
+    true,
+  );
+});
+
 class FixtureMetricsProvider implements SystemMetricsProvider {
   nowValue = 1_000;
   files = new Map<string, string>();
   dirs = new Map<string, SystemMetricsDirEntry[]>();
+  dirErrors = new Map<string, Error>();
   commands = new Map<string, SystemMetricsCommandOutput>();
 
   now(): number {
@@ -226,6 +258,8 @@ class FixtureMetricsProvider implements SystemMetricsProvider {
   }
 
   async *readDir(path: string): AsyncIterable<SystemMetricsDirEntry> {
+    const error = this.dirErrors.get(path);
+    if (error) throw error;
     for (const entry of this.dirs.get(path) ?? []) {
       yield entry;
     }

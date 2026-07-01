@@ -34,6 +34,7 @@ type ProcessStatsSample = {
   scanned: number;
   failedReads: number;
   limited: boolean;
+  scanError?: string;
 };
 
 type TemperatureSample = {
@@ -214,34 +215,37 @@ export class SystemMonitor {
       const useCachedProcesses = this.#processRefreshMs > 0 && this.#processCache !== undefined &&
         sampledAt - this.#processCache.sampledAt < this.#processRefreshMs;
       const [
-        cpuText,
-        uptimeText,
-        netText,
+        cpuRead,
+        uptimeRead,
+        networkRead,
         temperatureSample,
         diskSample,
         gpuSample,
         rawProcessSample,
       ] = await Promise.all([
-        this.#provider.readTextFile("/proc/stat"),
-        this.#provider.readTextFile("/proc/uptime"),
-        this.#provider.readTextFile("/proc/net/dev"),
+        readMetricText(this.#provider, "/proc/stat", "cpu", ""),
+        readMetricText(this.#provider, "/proc/uptime", "uptime", `${current.uptimeSeconds} 0`),
+        readMetricText(this.#provider, "/proc/net/dev", "network", ""),
         sampleTemperatures(this.#provider),
         this.#sampleDisks(),
         sampleGpu(this.#provider, current.gpu, this.#diagnostics),
         useCachedProcesses ? Promise.resolve(undefined) : this.#collectProcessStats(),
       ]);
 
-      const cpuSample = this.#sampleCpu(cpuText, current);
+      const cpuSample = this.#sampleCpu(cpuRead.text, current);
       const memoryInfo = this.#provider.systemMemoryInfo();
       const memoryUsed = memoryInfo.total - memoryInfo.available;
       const swapUsed = memoryInfo.swapTotal - memoryInfo.swapFree;
       const memoryPercent = memoryInfo.total > 0 ? (memoryUsed / memoryInfo.total) * 100 : 0;
       const swapPercent = memoryInfo.swapTotal > 0 ? (swapUsed / memoryInfo.swapTotal) * 100 : 0;
-      const networkSample = this.#sampleNetwork(netText);
+      const networkSample = this.#sampleNetwork(networkRead.text);
       const processSample = this.#sampleProcesses(rawProcessSample, cpuSample.totalDelta, memoryInfo.total, sampledAt);
-      const uptimeSeconds = Number.parseFloat(uptimeText.split(" ")[0] ?? "0");
+      const uptimeSeconds = Number.parseFloat(uptimeRead.text.split(" ")[0] ?? "0");
       const loadavg = this.#provider.loadavg();
       const diagnostics = compactDiagnostics([
+        cpuRead.diagnostic,
+        uptimeRead.diagnostic,
+        networkRead.diagnostic,
         temperatureSample.diagnostic,
         diskSample.diagnostic,
         gpuSample.diagnostic,
@@ -492,13 +496,23 @@ export class SystemMonitor {
 
   async #collectProcessStats(): Promise<ProcessStatsSample> {
     const entries: number[] = [];
-    for await (const entry of this.#provider.readDir("/proc")) {
-      if (entry.isDirectory && /^\d+$/.test(entry.name)) {
-        entries.push(Number(entry.name));
-        if (entries.length >= this.#processScanLimit) {
-          break;
+    try {
+      for await (const entry of this.#provider.readDir("/proc")) {
+        if (entry.isDirectory && /^\d+$/.test(entry.name)) {
+          entries.push(Number(entry.name));
+          if (entries.length >= this.#processScanLimit) {
+            break;
+          }
         }
       }
+    } catch (error) {
+      return {
+        stats: [],
+        scanned: 0,
+        failedReads: 0,
+        limited: false,
+        scanError: errorMessage(error),
+      };
     }
 
     const stats = await Promise.allSettled(
@@ -604,6 +618,30 @@ function processComparator(sortKey: SystemProcessSortKey): (left: ProcessSnapsho
       return (left, right) =>
         right.cpuPercent - left.cpuPercent || right.memoryBytes - left.memoryBytes ||
         left.pid - right.pid;
+  }
+}
+
+async function readMetricText(
+  provider: SystemMetricsProvider,
+  path: string,
+  source: string,
+  fallback: string,
+): Promise<{ text: string; diagnostic?: SystemMetricDiagnostic }> {
+  const started = performance.now();
+  const sampledAt = provider.now();
+  try {
+    return { text: await provider.readTextFile(path) };
+  } catch (error) {
+    return {
+      text: fallback,
+      diagnostic: {
+        source,
+        status: "unavailable",
+        detail: `${path} unavailable: ${errorMessage(error)}`,
+        durationMs: performance.now() - started,
+        sampledAt,
+      },
+    };
   }
 }
 
@@ -831,6 +869,14 @@ function diagnosticWeight(status: SystemMetricDiagnostic["status"]): number {
 }
 
 function processDiagnostics(sample: ProcessStatsSample, sampledAt: number): SystemMetricDiagnostic {
+  if (sample.scanError) {
+    return {
+      source: "process",
+      status: "unavailable",
+      detail: `/proc scan failed: ${sample.scanError}`,
+      sampledAt,
+    };
+  }
   if (sample.limited) {
     return {
       source: "process",
