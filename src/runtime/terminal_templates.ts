@@ -84,6 +84,7 @@ export interface CreateTerminalTemplateSessionOptions {
 export interface TerminalSessionDescriptor {
   id: string;
   title: string;
+  runtimeTitle?: string;
   template: TerminalTemplate;
   backendId?: string;
   commandLine?: string;
@@ -224,7 +225,7 @@ export function describeTerminalTemplateSession(
   now = Date.now(),
 ): TerminalSessionDescriptor {
   const inspected = session.handle.inspect();
-  return {
+  const descriptor: TerminalSessionDescriptor = {
     id: session.id,
     title: session.title,
     template: cloneSpawnTerminalTemplate(session.template),
@@ -239,6 +240,8 @@ export function describeTerminalTemplateSession(
     createdAt: session.createdAt,
     updatedAt: now,
   };
+  if (inspected.title) descriptor.runtimeTitle = inspected.title;
+  return descriptor;
 }
 
 /** Creates a serializable descriptor for an attachable session reference. */

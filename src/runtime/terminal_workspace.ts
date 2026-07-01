@@ -214,6 +214,36 @@ export class TerminalWorkspaceController {
     return true;
   }
 
+  updateRuntimeTitle(id: string, title: string | undefined): boolean {
+    const trimmed = title?.trim();
+    if (!trimmed) return false;
+    const sessions = this.sessions.peek();
+    const index = sessions.findIndex((session) => session.id === id);
+    if (index < 0) return false;
+
+    const previous = sessions[index]!;
+    const descriptor = cloneTerminalSessionDescriptor(previous);
+    const previousRuntimeTitle = descriptor.runtimeTitle;
+    const previousVisibleTitle = descriptor.title;
+    descriptor.runtimeTitle = trimmed;
+    if (shouldAdoptRuntimeTitle(descriptor, previousRuntimeTitle)) {
+      descriptor.title = trimmed;
+    }
+    descriptor.updatedAt = this.#now();
+    this.sessions.value = sessions.map((session, sessionIndex) => sessionIndex === index ? descriptor : session);
+    if (descriptor.title !== previousVisibleTitle) {
+      this.layout.value = updatePaneRuntimeTitles(
+        this.layout.peek(),
+        id,
+        trimmed,
+        previousVisibleTitle,
+        previousRuntimeTitle,
+        descriptor.template.title,
+      );
+    }
+    return true;
+  }
+
   move(id: string, delta: number): boolean {
     const sessions = [...this.sessions.peek()];
     const index = sessions.findIndex((session) => session.id === id);
@@ -417,6 +447,15 @@ function cloneTerminalSessionDescriptor(descriptor: TerminalSessionDescriptor): 
   };
 }
 
+function shouldAdoptRuntimeTitle(
+  descriptor: TerminalSessionDescriptor,
+  previousRuntimeTitle: string | undefined,
+): boolean {
+  return descriptor.title === descriptor.template.title ||
+    descriptor.title === previousRuntimeTitle ||
+    descriptor.title === descriptor.runtimeTitle;
+}
+
 function cloneTerminalTemplate(template: TerminalTemplate): TerminalTemplate {
   if (!isSpawnTerminalTemplate(template)) {
     return {
@@ -598,6 +637,73 @@ function clonePaneNode(node: TerminalWorkspacePaneNode): TerminalWorkspacePaneNo
     title: node.title,
     minColumns: node.minColumns,
     minRows: node.minRows,
+  };
+}
+
+function updatePaneRuntimeTitles(
+  layout: TerminalWorkspaceLayoutState,
+  sessionId: string,
+  runtimeTitle: string,
+  previousVisibleTitle: string,
+  previousRuntimeTitle: string | undefined,
+  templateTitle: string,
+): TerminalWorkspaceLayoutState {
+  return {
+    ...layout,
+    root: layout.root
+      ? updatePaneRuntimeTitleNode(
+        layout.root,
+        sessionId,
+        runtimeTitle,
+        previousVisibleTitle,
+        previousRuntimeTitle,
+        templateTitle,
+      )
+      : undefined,
+  };
+}
+
+function updatePaneRuntimeTitleNode(
+  node: TerminalWorkspaceLayoutNode,
+  sessionId: string,
+  runtimeTitle: string,
+  previousVisibleTitle: string,
+  previousRuntimeTitle: string | undefined,
+  templateTitle: string,
+): TerminalWorkspaceLayoutNode {
+  if (node.kind === "pane") {
+    const pane = clonePaneNode(node);
+    if (
+      pane.sessionId === sessionId &&
+      (
+        pane.title === undefined ||
+        pane.title === previousVisibleTitle ||
+        pane.title === previousRuntimeTitle ||
+        pane.title === templateTitle
+      )
+    ) {
+      pane.title = runtimeTitle;
+    }
+    return pane;
+  }
+  return {
+    ...node,
+    first: updatePaneRuntimeTitleNode(
+      node.first,
+      sessionId,
+      runtimeTitle,
+      previousVisibleTitle,
+      previousRuntimeTitle,
+      templateTitle,
+    ),
+    second: updatePaneRuntimeTitleNode(
+      node.second,
+      sessionId,
+      runtimeTitle,
+      previousVisibleTitle,
+      previousRuntimeTitle,
+      templateTitle,
+    ),
   };
 }
 

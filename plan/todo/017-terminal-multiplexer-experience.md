@@ -62,3 +62,5 @@ developer workflows.
   respond to terminal modes instead of discarding them.
 - Added OSC 8 hyperlink parsing with per-cell hyperlink metadata for modern shell, test-runner, and build output.
 - Added cursor style inspection for `CSI Ps SP q` so shell and editor cursor shape changes survive terminal parsing.
+- Connected OSC terminal titles to shell inspection and workspace session descriptors while preserving explicit user
+  renames.

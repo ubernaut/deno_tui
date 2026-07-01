@@ -30,6 +30,7 @@ export interface TerminalShellControllerOptions {
 
 /** Serializable inspection snapshot for TerminalShellController. */
 export interface TerminalShellInspection {
+  title?: string;
   status: ProcessSessionStatus | "starting";
   running: boolean;
   backendId?: string;
@@ -194,7 +195,9 @@ export class TerminalShellController {
     const session = this.#session?.inspect();
     const status = this.status.peek();
     const command = cloneShellCommand(this.#command);
+    const screen = this.screen.inspect();
     const result: TerminalShellInspection = {
+      title: screen.title,
       status,
       running: status === "running",
       backendId: session?.backendId,
@@ -205,7 +208,7 @@ export class TerminalShellController {
       columns: this.#columns,
       rows: this.#rows,
       resizeSupported: session?.resizeSupported ?? false,
-      screen: this.screen.inspect(),
+      screen,
     };
     if (session?.exit) result.exit = { ...session.exit };
     if (this.#error) result.error = this.#error;

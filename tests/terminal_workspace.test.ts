@@ -160,6 +160,31 @@ Deno.test("terminal workspace controller manages session tabs", () => {
   workspace.dispose();
 });
 
+Deno.test("terminal workspace controller syncs runtime titles without replacing manual titles", () => {
+  let now = 10;
+  const workspace = createTerminalWorkspaceController({ now: () => now });
+  workspace.add(shellTerminalTemplate({ id: "shell-main", shell: "bash" }));
+
+  now = 20;
+  assertEquals(workspace.updateRuntimeTitle("shell-main", "repo shell"), true);
+  let inspection = workspace.inspect();
+  assertEquals(inspection.sessions[0]?.title, "repo shell");
+  assertEquals(inspection.sessions[0]?.runtimeTitle, "repo shell");
+  assertEquals(inspection.sessions[0]?.updatedAt, 20);
+  assertEquals(inspection.layout.panes[0]?.title, "repo shell");
+
+  now = 30;
+  assertEquals(workspace.rename("shell-main", "Manual Shell"), true);
+  assertEquals(workspace.updateRuntimeTitle("shell-main", "vim main.ts"), true);
+  inspection = workspace.inspect();
+  assertEquals(inspection.sessions[0]?.title, "Manual Shell");
+  assertEquals(inspection.sessions[0]?.runtimeTitle, "vim main.ts");
+  assertEquals(inspection.sessions[0]?.updatedAt, 30);
+  assertEquals(inspection.layout.panes[0]?.title, "repo shell");
+
+  workspace.dispose();
+});
+
 Deno.test("terminal workspace controller manages split pane layout", () => {
   const workspace = createTerminalWorkspaceController({ now: () => 1 });
   workspace.add(shellTerminalTemplate({ id: "shell-main", shell: "bash" }));

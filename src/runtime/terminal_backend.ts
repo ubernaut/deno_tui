@@ -43,6 +43,7 @@ export interface TerminalDetachedSession {
 export interface TerminalSessionHandleInspection {
   id: string;
   backendId: string;
+  title?: string;
   commandLine: string;
   status: ProcessSessionStatus;
   running: boolean;

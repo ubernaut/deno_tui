@@ -8505,6 +8505,34 @@ var TerminalWorkspaceController = class {
     this.sessions.value = sessions.map((session, sessionIndex) => sessionIndex === index ? descriptor : session);
     return true;
   }
+  updateRuntimeTitle(id2, title) {
+    const trimmed = title?.trim();
+    if (!trimmed) return false;
+    const sessions = this.sessions.peek();
+    const index = sessions.findIndex((session) => session.id === id2);
+    if (index < 0) return false;
+    const previous = sessions[index];
+    const descriptor = cloneTerminalSessionDescriptor(previous);
+    const previousRuntimeTitle = descriptor.runtimeTitle;
+    const previousVisibleTitle = descriptor.title;
+    descriptor.runtimeTitle = trimmed;
+    if (shouldAdoptRuntimeTitle(descriptor, previousRuntimeTitle)) {
+      descriptor.title = trimmed;
+    }
+    descriptor.updatedAt = this.#now();
+    this.sessions.value = sessions.map((session, sessionIndex) => sessionIndex === index ? descriptor : session);
+    if (descriptor.title !== previousVisibleTitle) {
+      this.layout.value = updatePaneRuntimeTitles(
+        this.layout.peek(),
+        id2,
+        trimmed,
+        previousVisibleTitle,
+        previousRuntimeTitle,
+        descriptor.template.title
+      );
+    }
+    return true;
+  }
   move(id2, delta) {
     const sessions = [...this.sessions.peek()];
     const index = sessions.findIndex((session2) => session2.id === id2);
@@ -8658,6 +8686,9 @@ function cloneTerminalSessionDescriptor(descriptor) {
     template: cloneTerminalTemplate(descriptor.template)
   };
 }
+function shouldAdoptRuntimeTitle(descriptor, previousRuntimeTitle) {
+  return descriptor.title === descriptor.template.title || descriptor.title === previousRuntimeTitle || descriptor.title === descriptor.runtimeTitle;
+}
 function cloneTerminalTemplate(template) {
   if (!isSpawnTerminalTemplate(template)) {
     return {
@@ -8756,6 +8787,47 @@ function clonePaneNode(node) {
     title: node.title,
     minColumns: node.minColumns,
     minRows: node.minRows
+  };
+}
+function updatePaneRuntimeTitles(layout, sessionId, runtimeTitle, previousVisibleTitle, previousRuntimeTitle, templateTitle) {
+  return {
+    ...layout,
+    root: layout.root ? updatePaneRuntimeTitleNode(
+      layout.root,
+      sessionId,
+      runtimeTitle,
+      previousVisibleTitle,
+      previousRuntimeTitle,
+      templateTitle
+    ) : void 0
+  };
+}
+function updatePaneRuntimeTitleNode(node, sessionId, runtimeTitle, previousVisibleTitle, previousRuntimeTitle, templateTitle) {
+  if (node.kind === "pane") {
+    const pane = clonePaneNode(node);
+    if (pane.sessionId === sessionId && (pane.title === void 0 || pane.title === previousVisibleTitle || pane.title === previousRuntimeTitle || pane.title === templateTitle)) {
+      pane.title = runtimeTitle;
+    }
+    return pane;
+  }
+  return {
+    ...node,
+    first: updatePaneRuntimeTitleNode(
+      node.first,
+      sessionId,
+      runtimeTitle,
+      previousVisibleTitle,
+      previousRuntimeTitle,
+      templateTitle
+    ),
+    second: updatePaneRuntimeTitleNode(
+      node.second,
+      sessionId,
+      runtimeTitle,
+      previousVisibleTitle,
+      previousRuntimeTitle,
+      templateTitle
+    )
   };
 }
 function pruneLayoutSessions(layout, sessionIds) {

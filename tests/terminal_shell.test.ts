@@ -34,6 +34,19 @@ Deno.test("TerminalShellController streams raw backend data into a screen", asyn
   await shell.dispose();
 });
 
+Deno.test("TerminalShellController exposes OSC terminal titles", async () => {
+  const backend = new FakeShellBackend();
+  const shell = new TerminalShellController({ backend, columns: 20, rows: 4 });
+
+  await shell.start();
+  backend.emit("\x1b]0;project shell\x07$ ");
+
+  assertEquals(shell.inspect().title, "project shell");
+  assertEquals(shell.inspect().screen.title, "project shell");
+
+  await shell.dispose();
+});
+
 Deno.test("TerminalShellController routes writes and resize to the active backend handle", async () => {
   const backend = new FakeShellBackend();
   const shell = new TerminalShellController({ backend, columns: 10, rows: 3 });
