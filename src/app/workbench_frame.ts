@@ -8,6 +8,30 @@ export type WorkbenchFrame = string[][];
 /** Style function used by frame fill helpers. */
 export type WorkbenchFrameStyle = (text: string) => string;
 
+/** Prepares a reusable row array to a fixed length. */
+export function prepareWorkbenchRows<T>(
+  rows: T[],
+  count: number,
+  create: (index: number) => T,
+  reset?: (row: T, index: number) => T,
+): T[] {
+  const rowCount = Math.max(0, Math.floor(count));
+  rows.length = rowCount;
+  for (let index = 0; index < rowCount; index += 1) {
+    const current = rows[index] ?? create(index);
+    rows[index] = reset ? reset(current, index) : current;
+  }
+  return rows;
+}
+
+/** Prepares a reusable sparse workbench frame by clearing each retained row. */
+export function prepareWorkbenchFrame(frame: WorkbenchFrame, rows: number): WorkbenchFrame {
+  return prepareWorkbenchRows(frame, rows, () => [], (row) => {
+    row.length = 0;
+    return row;
+  });
+}
+
 /** Converts an ANSI-styled string into independently styled terminal cells. */
 export function toStyledCells(value: string): string[] {
   const cells: string[] = [];

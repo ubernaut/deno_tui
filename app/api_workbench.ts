@@ -45,6 +45,7 @@ import {
   layoutWorkbenchTopMenuItemRect,
   normalizeWorkbenchWorkspaceName,
   normalizeWorkbenchWorkspaceStorage,
+  prepareWorkbenchFrame,
   renameWorkbenchWorkspace,
   renderFrameRow,
   renderFrameSlice,
@@ -466,6 +467,7 @@ const dynamicVisualizationWindows = new Signal<Record<VisualizationWindowId, str
 const selectedCpuHexTiles = new Signal<Record<VisualizationWindowId, string>>({}, { deepObserve: true });
 const lineSignals: Signal<string>[] = [];
 const hitTargets = new HitTargetStack<HitAction>();
+const workspaceVirtualFrame: Frame = [];
 let dropdownOverlay: DropdownOverlay | null = null;
 let threeDragWindow: WindowId | null = null;
 let windowRenderContext: WindowRenderContext | null = null;
@@ -1032,7 +1034,7 @@ function renderWorkspace(frame: Frame): void {
   }
   const layout = workspaceLayout({ column: 0, row: 0, width: Math.max(1, bounds.width - 1), height: bounds.height });
   const offset = workspaceViewport.update({ layout, viewportHeight: bounds.height, activeId: activeWindow.peek() });
-  const virtual: Frame = Array.from({ length: Math.max(bounds.height, layout.contentHeight) }, () => []);
+  const virtual = prepareWorkbenchFrame(workspaceVirtualFrame, Math.max(bounds.height, layout.contentHeight));
   fillRect(virtual, layout.bounds, theme().backgroundSoft);
   const hitStart = hitTargets.length;
   const max = maximized.peek();

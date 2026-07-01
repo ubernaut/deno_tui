@@ -8846,6 +8846,15 @@ function clipRect(rect, clip) {
 }
 
 // src/app/workbench_frame.ts
+function prepareWorkbenchRows(rows2, count, create, reset) {
+  const rowCount = Math.max(0, Math.floor(count));
+  rows2.length = rowCount;
+  for (let index = 0; index < rowCount; index += 1) {
+    const current = rows2[index] ?? create(index);
+    rows2[index] = reset ? reset(current, index) : current;
+  }
+  return rows2;
+}
 function toStyledCells(value) {
   const cells = [];
   let style2 = "";
@@ -11700,6 +11709,7 @@ var webTerminalWorkspace = createTerminalWorkspaceController({
 });
 var webTerminalScreenKey = "";
 var hitTargets = new HitTargetStack();
+var workspaceVirtualRows = [];
 var dropdownOverlay = null;
 var pointerDrag = null;
 themeIndex.subscribe((index) => persistThemeIndex(index));
@@ -11985,8 +11995,10 @@ function draw() {
     height: body.height
   });
   const offset = workspaceViewport.update({ layout, viewportHeight: body.height, activeId: active.peek() });
-  const virtual = Array.from(
-    { length: Math.max(body.height, layout.contentHeight) },
+  const virtual = prepareWorkbenchRows(
+    workspaceVirtualRows,
+    Math.max(body.height, layout.contentHeight),
+    () => "",
     () => paint(" ".repeat(layout.bounds.width), theme().text, theme().bgAlt)
   );
   fillRect(virtual, layout.bounds, theme().bgAlt);

@@ -8,8 +8,8 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 - Entrypoints: 9
 - Module visits: 517
 - Re-export declarations: 508
-- Exported symbols: 4585
-- Documented symbols: 4585
+- Exported symbols: 4589
+- Documented symbols: 4589
 - Documentation coverage: 100.00%
 - Duplicate symbol groups: 0
 - Missing targets: 0
@@ -18,8 +18,8 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 
 | Specifier       | Path                           | Runtime  | Stability    | Modules | Symbols |    Docs |
 | --------------- | ------------------------------ | -------- | ------------ | ------: | ------: | ------: |
-| `.`             | `./mod.ts`                     | terminal | stable       |     233 |    1948 | 100.00% |
-| `./web`         | `./mod.web.ts`                 | browser  | beta         |     212 |    1811 | 100.00% |
+| `.`             | `./mod.ts`                     | terminal | stable       |     233 |    1950 | 100.00% |
+| `./web`         | `./mod.web.ts`                 | browser  | beta         |     212 |    1813 | 100.00% |
 | `./remote`      | `./mod.remote.ts`              | remote   | experimental |       4 |      38 | 100.00% |
 | `./three-ascii` | `./mod.three_ascii.ts`         | shared   | experimental |       8 |      54 | 100.00% |
 | `./theme`       | `./mod.theme.ts`               | shared   | beta         |      10 |     198 | 100.00% |
@@ -41,8 +41,8 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 - Entrypoint: `mod.ts`
 - Modules: 233
 - Re-export declarations: 232
-- Exported symbols: 1948
-- Documented symbols: 1948
+- Exported symbols: 1950
+- Documented symbols: 1950
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -116,7 +116,7 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 | [`src/app/tree_commands.ts`](#src-app-tree-commands-ts)                                 |          0 |       6 |          6 |
 | [`src/app/window_manager_commands.ts`](#src-app-window-manager-commands-ts)             |          0 |       8 |          8 |
 | [`src/app/workbench_diagnostics.ts`](#src-app-workbench-diagnostics-ts)                 |          0 |       5 |          5 |
-| [`src/app/workbench_frame.ts`](#src-app-workbench-frame-ts)                             |          0 |      13 |         13 |
+| [`src/app/workbench_frame.ts`](#src-app-workbench-frame-ts)                             |          0 |      15 |         15 |
 | [`src/app/workbench_layout.ts`](#src-app-workbench-layout-ts)                           |          0 |      14 |         14 |
 | [`src/app/workbench_menu.ts`](#src-app-workbench-menu-ts)                               |          0 |      14 |         14 |
 | [`src/app/workbench_overlay.ts`](#src-app-workbench-overlay-ts)                         |          0 |       5 |          5 |
@@ -1197,21 +1197,23 @@ _No direct exported symbols._
 
 #### src/app/workbench_frame.ts
 
-| Symbol                | Kind     | Type Only | JSDoc |
-| --------------------- | -------- | --------- | ----- |
-| `buttonText`          | function | no        | yes   |
-| `centerCellText`      | function | no        | yes   |
-| `contrastText`        | function | no        | yes   |
-| `fillFrameRect`       | function | no        | yes   |
-| `fillFrameRow`        | function | no        | yes   |
-| `fitCellText`         | function | no        | yes   |
-| `parseHexColor`       | function | no        | yes   |
-| `renderFrameRow`      | function | no        | yes   |
-| `renderFrameSlice`    | function | no        | yes   |
-| `toStyledCells`       | function | no        | yes   |
-| `WorkbenchFrame`      | type     | yes       | yes   |
-| `WorkbenchFrameStyle` | type     | yes       | yes   |
-| `writeFrame`          | function | no        | yes   |
+| Symbol                  | Kind     | Type Only | JSDoc |
+| ----------------------- | -------- | --------- | ----- |
+| `buttonText`            | function | no        | yes   |
+| `centerCellText`        | function | no        | yes   |
+| `contrastText`          | function | no        | yes   |
+| `fillFrameRect`         | function | no        | yes   |
+| `fillFrameRow`          | function | no        | yes   |
+| `fitCellText`           | function | no        | yes   |
+| `parseHexColor`         | function | no        | yes   |
+| `prepareWorkbenchFrame` | function | no        | yes   |
+| `prepareWorkbenchRows`  | function | no        | yes   |
+| `renderFrameRow`        | function | no        | yes   |
+| `renderFrameSlice`      | function | no        | yes   |
+| `toStyledCells`         | function | no        | yes   |
+| `WorkbenchFrame`        | type     | yes       | yes   |
+| `WorkbenchFrameStyle`   | type     | yes       | yes   |
+| `writeFrame`            | function | no        | yes   |
 
 #### src/app/workbench_layout.ts
 
@@ -3671,8 +3673,8 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 - Entrypoint: `mod.web.ts`
 - Modules: 212
 - Re-export declarations: 211
-- Exported symbols: 1811
-- Documented symbols: 1811
+- Exported symbols: 1813
+- Documented symbols: 1813
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -3746,7 +3748,7 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 | [`src/app/tree_commands.ts`](#src-app-tree-commands-ts)                           |          0 |       6 |          6 |
 | [`src/app/window_manager_commands.ts`](#src-app-window-manager-commands-ts)       |          0 |       8 |          8 |
 | [`src/app/workbench_diagnostics.ts`](#src-app-workbench-diagnostics-ts)           |          0 |       5 |          5 |
-| [`src/app/workbench_frame.ts`](#src-app-workbench-frame-ts)                       |          0 |      13 |         13 |
+| [`src/app/workbench_frame.ts`](#src-app-workbench-frame-ts)                       |          0 |      15 |         15 |
 | [`src/app/workbench_layout.ts`](#src-app-workbench-layout-ts)                     |          0 |      14 |         14 |
 | [`src/app/workbench_menu.ts`](#src-app-workbench-menu-ts)                         |          0 |      14 |         14 |
 | [`src/app/workbench_overlay.ts`](#src-app-workbench-overlay-ts)                   |          0 |       5 |          5 |
@@ -4824,21 +4826,23 @@ _No direct exported symbols._
 
 #### src/app/workbench_frame.ts
 
-| Symbol                | Kind     | Type Only | JSDoc |
-| --------------------- | -------- | --------- | ----- |
-| `buttonText`          | function | no        | yes   |
-| `centerCellText`      | function | no        | yes   |
-| `contrastText`        | function | no        | yes   |
-| `fillFrameRect`       | function | no        | yes   |
-| `fillFrameRow`        | function | no        | yes   |
-| `fitCellText`         | function | no        | yes   |
-| `parseHexColor`       | function | no        | yes   |
-| `renderFrameRow`      | function | no        | yes   |
-| `renderFrameSlice`    | function | no        | yes   |
-| `toStyledCells`       | function | no        | yes   |
-| `WorkbenchFrame`      | type     | yes       | yes   |
-| `WorkbenchFrameStyle` | type     | yes       | yes   |
-| `writeFrame`          | function | no        | yes   |
+| Symbol                  | Kind     | Type Only | JSDoc |
+| ----------------------- | -------- | --------- | ----- |
+| `buttonText`            | function | no        | yes   |
+| `centerCellText`        | function | no        | yes   |
+| `contrastText`          | function | no        | yes   |
+| `fillFrameRect`         | function | no        | yes   |
+| `fillFrameRow`          | function | no        | yes   |
+| `fitCellText`           | function | no        | yes   |
+| `parseHexColor`         | function | no        | yes   |
+| `prepareWorkbenchFrame` | function | no        | yes   |
+| `prepareWorkbenchRows`  | function | no        | yes   |
+| `renderFrameRow`        | function | no        | yes   |
+| `renderFrameSlice`      | function | no        | yes   |
+| `toStyledCells`         | function | no        | yes   |
+| `WorkbenchFrame`        | type     | yes       | yes   |
+| `WorkbenchFrameStyle`   | type     | yes       | yes   |
+| `writeFrame`            | function | no        | yes   |
 
 #### src/app/workbench_layout.ts
 

@@ -7,6 +7,8 @@ import {
   fillFrameRow,
   fitCellText,
   parseHexColor,
+  prepareWorkbenchFrame,
+  prepareWorkbenchRows,
   renderFrameRow,
   renderFrameSlice,
   toStyledCells,
@@ -26,6 +28,26 @@ Deno.test("workbench frame helpers preserve ANSI styling per terminal cell", () 
   writeFrame(frame, 5, 0, 1, "\x1b[31mAB\x1b[0m");
   assertEquals(renderFrameRow(frame[0]!, 5), " \x1b[31mA\x1b[0m\x1b[31mB\x1b[0m  ");
   assertEquals(renderFrameSlice(frame[0]!, 1, 2), "\x1b[31mA\x1b[0m\x1b[31mB\x1b[0m");
+});
+
+Deno.test("workbench frame row preparation reuses arrays and clears retained sparse rows", () => {
+  const rows: WorkbenchFrame = [["x"], ["y"], ["z"]];
+  const originalFirstRow = rows[0];
+  const prepared = prepareWorkbenchFrame(rows, 2);
+
+  assertEquals(prepared, [[], []]);
+  assertEquals(prepared === rows, true);
+  assertEquals(prepared[0] === originalFirstRow, true);
+
+  const textRows = ["old"];
+  const expanded = prepareWorkbenchRows(
+    textRows,
+    3,
+    (index) => `new-${index}`,
+    (row, index) => index === 0 ? row.toUpperCase() : row,
+  );
+  assertEquals(expanded === textRows, true);
+  assertEquals(expanded, ["OLD", "new-1", "new-2"]);
 });
 
 Deno.test("workbench frame fill helpers clip to the configured width", () => {

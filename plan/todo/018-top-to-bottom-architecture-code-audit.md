@@ -115,6 +115,8 @@ Work:
         trimming duplicated terminal/web workspace layout math.
   - [x] Extracted shared active-window reveal tracking plus workspace viewport scroll sizing into `workbench_layout.ts`,
         leaving terminal and web adapters to call one scroll/update controller.
+  - [x] Added reusable workbench row-buffer preparation helpers and migrated terminal/web workspace virtual frames off
+        per-redraw outer row array allocation.
 - [x] Replace duplicated theme/window/menu persistence code with a shared versioned serializer.
   - [x] Extracted shared workbench workspace normalization, panel-state normalization, upsert, rename, delete, lookup,
         and legacy window-entry expansion helpers into `src/app/workbench_workspace.ts`.

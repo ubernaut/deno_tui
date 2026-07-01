@@ -40,6 +40,7 @@ import {
   ModalController,
   moveWorkbenchMenuIndex,
   normalizeWorkbenchPanelWorkspaceState,
+  prepareWorkbenchRows,
   ProgressBarController,
   RadioGroupController,
   renderCheckBoxMark,
@@ -317,6 +318,7 @@ const webTerminalWorkspace = createTerminalWorkspaceController({
 });
 let webTerminalScreenKey = "";
 const hitTargets = new HitTargetStack<Hit>();
+const workspaceVirtualRows: string[] = [];
 let dropdownOverlay: DropdownOverlay | null = null;
 let pointerDrag: {
   x: number;
@@ -618,8 +620,10 @@ function draw(): void {
     height: body.height,
   });
   const offset = workspaceViewport.update({ layout, viewportHeight: body.height, activeId: active.peek() });
-  const virtual = Array.from(
-    { length: Math.max(body.height, layout.contentHeight) },
+  const virtual = prepareWorkbenchRows(
+    workspaceVirtualRows,
+    Math.max(body.height, layout.contentHeight),
+    () => "",
     () => paint(" ".repeat(layout.bounds.width), theme().text, theme().bgAlt),
   );
   fillRect(virtual, layout.bounds, theme().bgAlt);
