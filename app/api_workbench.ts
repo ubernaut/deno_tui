@@ -21,45 +21,49 @@ import { renderStatusBar } from "../src/components/statusbar.ts";
 import { renderStepper, StepperController } from "../src/components/stepper.ts";
 import { formatTerminalOutputLine } from "../src/components/terminal_output.ts";
 import { TextBoxController, wrapTextBoxLines } from "../src/components/textbox.ts";
-import { clipRect, HitTargetStack, inset, intersects, translateHitTargets } from "../src/app/hit_targets.ts";
 import {
   buttonText,
   centerCellText as centerText,
+  clipRect,
   contrastText,
+  createWorkbenchVisualizationWindowOptions,
+  deleteWorkbenchWorkspace,
   fillFrameRect,
   fillFrameRow,
+  findWorkbenchWorkspace,
   fitCellText as fit,
-  renderFrameRow,
-  renderFrameSlice,
-  type WorkbenchFrame,
-  writeFrame,
-} from "../src/app/workbench_frame.ts";
-import { layoutWorkbenchTitlebar, type WorkbenchTitlebarButtonKind } from "../src/app/workbench_titlebar.ts";
-import {
-  createWorkbenchVisualizationWindowOptions,
+  HitTargetStack,
+  inset,
+  intersects,
+  isWorkbenchMenuActivationKey,
   isWorkbenchVisualizationWindowId,
   isWorkbenchWindowOptionLoaded,
+  layoutWorkbenchShelf,
+  layoutWorkbenchTabs,
+  layoutWorkbenchTitlebar,
+  moveWorkbenchMenuIndex,
+  normalizeWorkbenchWorkspaceName,
+  normalizeWorkbenchWorkspaceStorage,
+  renameWorkbenchWorkspace,
+  renderFrameRow,
+  renderFrameSlice,
+  serializeWorkbenchWorkspaces,
+  translateHitTargets,
+  upsertWorkbenchWorkspace,
+  workbenchContentViewport,
+  type WorkbenchFrame,
+  workbenchRevealActiveRowOffset,
+  type WorkbenchTitlebarButtonKind,
   workbenchVisualizationIdFromWindowId,
   workbenchVisualizationWindowId,
   type WorkbenchWindowOption,
   workbenchWindowOptionMenuLabel,
   workbenchWindowOptionMinimums,
-} from "../src/app/workbench_window_registry.ts";
-import { isWorkbenchMenuActivationKey, moveWorkbenchMenuIndex } from "../src/app/workbench_menu.ts";
-import { layoutWorkbenchShelf, layoutWorkbenchTabs } from "../src/app/workbench_shelf.ts";
-import { workbenchContentViewport, workbenchRevealActiveRowOffset } from "../src/app/workbench_viewport.ts";
-import {
-  deleteWorkbenchWorkspace,
-  findWorkbenchWorkspace,
-  normalizeWorkbenchWorkspaceName,
-  normalizeWorkbenchWorkspaceStorage,
-  renameWorkbenchWorkspace,
-  serializeWorkbenchWorkspaces,
-  upsertWorkbenchWorkspace,
   type WorkbenchWorkspace,
   type WorkbenchWorkspaceWindow,
   workbenchWorkspaceWindowEntries,
-} from "../src/app/workbench_workspace.ts";
+  writeFrame,
+} from "../src/app/workbench/mod.ts";
 import { handleInput } from "../src/input.ts";
 import type { KeyPressEvent, MousePressEvent, MouseScrollEvent, PasteEvent } from "../src/input_reader/types.ts";
 import { routeTerminalKeyPress, routeTerminalPaste, type TerminalInputMode } from "../src/app/terminal_input.ts";
