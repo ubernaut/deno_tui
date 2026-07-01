@@ -154,6 +154,44 @@ Deno.test("terminal workspace controller manages session tabs", () => {
   workspace.dispose();
 });
 
+Deno.test("terminal workspace controller manages split pane layout", () => {
+  const workspace = createTerminalWorkspaceController({ now: () => 1 });
+  workspace.add(shellTerminalTemplate({ id: "shell-main", shell: "bash" }));
+  workspace.add(commandTerminalTemplate({ id: "logs", title: "Logs", command: "tail", args: ["-f"] }));
+  workspace.add(commandTerminalTemplate({ id: "tests", title: "Tests", command: "deno", args: ["test"] }));
+
+  assertEquals(workspace.inspectLayout().panes.map((pane) => pane.sessionId), ["shell-main"]);
+  const logsPane = workspace.splitActive("row", "logs", { ratio: 0.6 })!;
+  assertEquals(logsPane.sessionId, "logs");
+  assertEquals(workspace.inspect().activeId, "logs");
+  assertEquals(workspace.inspectLayout().root?.kind, "split");
+  assertEquals(workspace.inspectLayout().panes.map((pane) => [pane.sessionId, pane.active]), [
+    ["shell-main", false],
+    ["logs", true],
+  ]);
+
+  const testsPane = workspace.splitActive("column", "tests", { placement: "before", minRows: 8 })!;
+  assertEquals(workspace.inspectLayout().panes.map((pane) => pane.sessionId), ["shell-main", "tests", "logs"]);
+  assertEquals(workspace.activatePane(logsPane.id), true);
+  assertEquals(workspace.inspect().activeId, "logs");
+  assertEquals(workspace.toggleZoomPane(logsPane.id), true);
+  assertEquals(workspace.inspectLayout().zoomedPaneId, logsPane.id);
+  assertEquals(workspace.resizeActiveSplit(0.1), true);
+  const root = workspace.inspectLayout().root;
+  if (root?.kind !== "split") throw new Error("expected split root");
+  assertEquals(root.ratio, 0.6);
+
+  assertEquals(workspace.closePane(logsPane.id), true);
+  assertEquals(workspace.inspectLayout().panes.map((pane) => pane.sessionId), ["shell-main", "tests"]);
+  assertEquals(workspace.inspectLayout().zoomedPaneId, undefined);
+
+  assertEquals(workspace.remove("tests"), true);
+  assertEquals(workspace.inspectLayout().panes.map((pane) => pane.sessionId), ["shell-main"]);
+  assertEquals(workspace.inspectLayout().root?.kind, "pane");
+
+  workspace.dispose();
+});
+
 Deno.test("terminal workspace inspection returns cloned descriptors", () => {
   const workspace = createTerminalWorkspaceController({ now: () => 1 });
   workspace.add(commandTerminalTemplate({ id: "build", title: "Build", command: "deno", args: ["task", "health"] }));

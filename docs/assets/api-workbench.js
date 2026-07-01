@@ -7780,6 +7780,7 @@ var ENCODER = new TextEncoder();
 var TerminalWorkspaceController = class {
   sessions;
   activeId;
+  layout;
   #now;
   constructor(options = {}) {
     this.#now = options.now ?? (() => Date.now());
@@ -7787,6 +7788,7 @@ var TerminalWorkspaceController = class {
     const activeId = options.activeId && sessions.some((session) => session.id === options.activeId) ? options.activeId : sessions[0]?.id;
     this.sessions = new Signal(sessions);
     this.activeId = new Signal(activeId);
+    this.layout = new Signal(normalizeTerminalWorkspaceLayout(options.layout, sessions, activeId));
   }
   get active() {
     const id2 = this.activeId.peek();
@@ -7804,11 +7806,20 @@ var TerminalWorkspaceController = class {
     const index = sessions.findIndex((session) => session.id === nextDescriptor.id);
     this.sessions.value = index >= 0 ? sessions.map((session, sessionIndex) => sessionIndex === index ? nextDescriptor : session) : [...sessions, nextDescriptor];
     if (options.activate || !this.activeId.peek()) this.activeId.value = nextDescriptor.id;
+    if (!this.layout.peek().root) {
+      this.layout.value = layoutWithActive({
+        root: createPaneNode(nextDescriptor.id, void 0, { title: nextDescriptor.title })
+      }, nextDescriptor.id);
+    }
     return cloneTerminalSessionDescriptor(nextDescriptor);
   }
   activate(id2) {
     if (!this.sessions.peek().some((session) => session.id === id2)) return false;
     this.activeId.value = id2;
+    const layout = this.layout.peek();
+    const pane = findPaneBySession(layout.root, id2);
+    if (pane) this.layout.value = { ...cloneLayoutState(layout), activePaneId: pane.id };
+    else if (!layout.root) this.layout.value = layoutWithActive({ root: createPaneNode(id2) }, id2);
     return true;
   }
   remove(id2) {
@@ -7817,8 +7828,20 @@ var TerminalWorkspaceController = class {
     if (index < 0) return false;
     const next = sessions.filter((session) => session.id !== id2);
     this.sessions.value = next;
+    this.layout.value = normalizeTerminalWorkspaceLayout(
+      pruneLayoutSessions(
+        this.layout.peek(),
+        new Set(next.map(
+          (session) => session.id
+        ))
+      ),
+      next,
+      this.activeId.peek()
+    );
     if (this.activeId.peek() === id2) {
       this.activeId.value = next[index]?.id ?? next[index - 1]?.id;
+      const pane = this.activeId.peek() ? findPaneBySession(this.layout.peek().root, this.activeId.peek()) : void 0;
+      if (pane) this.layout.value = { ...cloneLayoutState(this.layout.peek()), activePaneId: pane.id };
     }
     return true;
   }
@@ -7848,6 +7871,88 @@ var TerminalWorkspaceController = class {
   clear() {
     this.sessions.value = [];
     this.activeId.value = void 0;
+    this.layout.value = {};
+  }
+  splitActive(direction, sessionId, options = {}) {
+    if (!this.sessions.peek().some((session) => session.id === sessionId)) return void 0;
+    const current = normalizeTerminalWorkspaceLayout(this.layout.peek(), this.sessions.peek(), this.activeId.peek());
+    if (!current.root) {
+      const pane = createPaneNode(sessionId, void 0, options);
+      this.layout.value = { root: pane, activePaneId: pane.id };
+      this.activeId.value = sessionId;
+      return clonePaneNode(pane);
+    }
+    const activePane = options.paneId ? findPane(current.root, options.paneId) : findActivePane(current);
+    if (!activePane) return void 0;
+    const nextPane = createPaneNode(sessionId, current.root, options);
+    const ratio = clampRatio(options.ratio ?? 0.5);
+    const placement = options.placement ?? "after";
+    const split = {
+      kind: "split",
+      id: uniqueLayoutId("split", current.root),
+      direction,
+      ratio,
+      first: placement === "before" ? nextPane : clonePaneNode(activePane),
+      second: placement === "before" ? clonePaneNode(activePane) : nextPane
+    };
+    const root2 = replacePane(current.root, activePane.id, split);
+    this.layout.value = {
+      root: root2,
+      activePaneId: nextPane.id,
+      zoomedPaneId: current.zoomedPaneId === activePane.id ? nextPane.id : current.zoomedPaneId
+    };
+    this.activeId.value = sessionId;
+    return clonePaneNode(nextPane);
+  }
+  activatePane(paneId) {
+    const pane = findPane(this.layout.peek().root, paneId);
+    if (!pane || !this.sessions.peek().some((session) => session.id === pane.sessionId)) return false;
+    this.layout.value = { ...cloneLayoutState(this.layout.peek()), activePaneId: pane.id };
+    this.activeId.value = pane.sessionId;
+    return true;
+  }
+  closePane(paneId) {
+    const current = cloneLayoutState(this.layout.peek());
+    if (!findPane(current.root, paneId)) return false;
+    const root2 = removePane(current.root, paneId);
+    const panes = collectPanes(root2);
+    const activePane = panes.find((pane) => pane.id === current.activePaneId) ?? panes[0];
+    this.layout.value = {
+      root: root2,
+      activePaneId: activePane?.id,
+      zoomedPaneId: current.zoomedPaneId === paneId ? void 0 : current.zoomedPaneId
+    };
+    if (activePane) this.activeId.value = activePane.sessionId;
+    return true;
+  }
+  resizeSplit(splitId, ratio) {
+    const current = cloneLayoutState(this.layout.peek());
+    const root2 = updateSplitRatio(current.root, splitId, clampRatio(ratio));
+    if (!root2.changed) return false;
+    this.layout.value = { ...current, root: root2.node };
+    return true;
+  }
+  resizeActiveSplit(delta) {
+    const current = cloneLayoutState(this.layout.peek());
+    const activePane = findActivePane(current);
+    if (!activePane) return false;
+    const nearest = findNearestSplit(current.root, activePane.id);
+    if (!nearest) return false;
+    const nextRatio = nearest.activeSide === "first" ? nearest.split.ratio + delta : nearest.split.ratio - delta;
+    return this.resizeSplit(nearest.split.id, nextRatio);
+  }
+  toggleZoomPane(paneId = this.layout.peek().activePaneId) {
+    if (!paneId || !findPane(this.layout.peek().root, paneId)) return false;
+    const current = cloneLayoutState(this.layout.peek());
+    this.layout.value = {
+      ...current,
+      activePaneId: paneId,
+      zoomedPaneId: current.zoomedPaneId === paneId ? void 0 : paneId
+    };
+    return true;
+  }
+  inspectLayout() {
+    return inspectTerminalWorkspaceLayout(this.layout.peek(), this.sessions.peek());
   }
   inspect() {
     const sessions = this.sessions.peek().map((session) => cloneTerminalSessionDescriptor(session));
@@ -7857,12 +7962,14 @@ var TerminalWorkspaceController = class {
       activeId,
       active: active2,
       sessions,
-      count: sessions.length
+      count: sessions.length,
+      layout: inspectTerminalWorkspaceLayout(this.layout.peek(), sessions)
     };
   }
   dispose() {
     this.sessions.dispose();
     this.activeId.dispose();
+    this.layout.dispose();
   }
 };
 function createTerminalWorkspaceController(options = {}) {
@@ -7920,6 +8027,203 @@ function cloneTerminalTemplate(template) {
 function normalizeDimension2(value) {
   if (!Number.isFinite(value)) return void 0;
   return Math.max(1, Math.floor(value));
+}
+function normalizeTerminalWorkspaceLayout(layout, sessions, activeId) {
+  const sessionIds = new Set(sessions.map((session) => session.id));
+  const pruned = pruneLayoutSessions(layout ?? {}, sessionIds);
+  if (!pruned.root && activeId && sessionIds.has(activeId)) {
+    const activeSession = sessions.find((session) => session.id === activeId);
+    return layoutWithActive({
+      root: createPaneNode(activeId, void 0, { title: activeSession?.title }),
+      zoomedPaneId: void 0
+    }, activeId);
+  }
+  const activePane = pruned.activePaneId ? findPane(pruned.root, pruned.activePaneId) : void 0;
+  const fallbackPane = activeId ? findPaneBySession(pruned.root, activeId) : void 0;
+  const firstPane = collectPanes(pruned.root)[0];
+  const nextActive = activePane ?? fallbackPane ?? firstPane;
+  return {
+    root: pruned.root,
+    activePaneId: nextActive?.id,
+    zoomedPaneId: pruned.zoomedPaneId && findPane(pruned.root, pruned.zoomedPaneId) ? pruned.zoomedPaneId : void 0
+  };
+}
+function inspectTerminalWorkspaceLayout(layout, sessions) {
+  const normalized = normalizeTerminalWorkspaceLayout(layout, sessions, sessions[0]?.id);
+  const sessionById = new Map(sessions.map((session) => [session.id, session]));
+  const panes = collectPanes(normalized.root).map((pane) => ({
+    ...clonePaneNode(pane),
+    active: pane.id === normalized.activePaneId,
+    zoomed: pane.id === normalized.zoomedPaneId,
+    session: sessionById.has(pane.sessionId) ? cloneTerminalSessionDescriptor(sessionById.get(pane.sessionId)) : void 0
+  }));
+  return {
+    root: normalized.root ? cloneLayoutNode2(normalized.root) : void 0,
+    activePaneId: normalized.activePaneId,
+    zoomedPaneId: normalized.zoomedPaneId,
+    panes,
+    count: panes.length
+  };
+}
+function layoutWithActive(layout, sessionId) {
+  const pane = findPaneBySession(layout.root, sessionId) ?? collectPanes(layout.root)[0];
+  return {
+    root: layout.root ? cloneLayoutNode2(layout.root) : void 0,
+    activePaneId: pane?.id,
+    zoomedPaneId: layout.zoomedPaneId
+  };
+}
+function createPaneNode(sessionId, root2, options = {}) {
+  return {
+    kind: "pane",
+    id: uniqueLayoutId(`pane-${sanitizeLayoutId(sessionId)}`, root2),
+    sessionId,
+    title: options.title,
+    minColumns: normalizeDimension2(options.minColumns),
+    minRows: normalizeDimension2(options.minRows)
+  };
+}
+function cloneLayoutState(layout) {
+  return {
+    root: layout.root ? cloneLayoutNode2(layout.root) : void 0,
+    activePaneId: layout.activePaneId,
+    zoomedPaneId: layout.zoomedPaneId
+  };
+}
+function cloneLayoutNode2(node) {
+  return node.kind === "pane" ? clonePaneNode(node) : {
+    kind: "split",
+    id: node.id,
+    direction: node.direction,
+    ratio: node.ratio,
+    first: cloneLayoutNode2(node.first),
+    second: cloneLayoutNode2(node.second)
+  };
+}
+function clonePaneNode(node) {
+  return {
+    kind: "pane",
+    id: node.id,
+    sessionId: node.sessionId,
+    title: node.title,
+    minColumns: node.minColumns,
+    minRows: node.minRows
+  };
+}
+function pruneLayoutSessions(layout, sessionIds) {
+  const root2 = pruneLayoutNode(layout.root, sessionIds);
+  return {
+    root: root2,
+    activePaneId: layout.activePaneId && findPane(root2, layout.activePaneId) ? layout.activePaneId : void 0,
+    zoomedPaneId: layout.zoomedPaneId && findPane(root2, layout.zoomedPaneId) ? layout.zoomedPaneId : void 0
+  };
+}
+function pruneLayoutNode(node, sessionIds) {
+  if (!node) return void 0;
+  if (node.kind === "pane") return sessionIds.has(node.sessionId) ? clonePaneNode(node) : void 0;
+  const first = pruneLayoutNode(node.first, sessionIds);
+  const second = pruneLayoutNode(node.second, sessionIds);
+  if (first && second) return { ...node, ratio: clampRatio(node.ratio), first, second };
+  return first ?? second;
+}
+function collectPanes(node) {
+  if (!node) return [];
+  if (node.kind === "pane") return [clonePaneNode(node)];
+  return [...collectPanes(node.first), ...collectPanes(node.second)];
+}
+function findPane(node, paneId) {
+  if (!node) return void 0;
+  if (node.kind === "pane") return node.id === paneId ? clonePaneNode(node) : void 0;
+  return findPane(node.first, paneId) ?? findPane(node.second, paneId);
+}
+function findPaneBySession(node, sessionId) {
+  if (!node) return void 0;
+  if (node.kind === "pane") return node.sessionId === sessionId ? clonePaneNode(node) : void 0;
+  return findPaneBySession(node.first, sessionId) ?? findPaneBySession(node.second, sessionId);
+}
+function findActivePane(layout) {
+  return layout.activePaneId ? findPane(layout.root, layout.activePaneId) : collectPanes(layout.root)[0];
+}
+function replacePane(node, paneId, replacement) {
+  if (node.kind === "pane") return node.id === paneId ? cloneLayoutNode2(replacement) : clonePaneNode(node);
+  return {
+    ...node,
+    first: replacePane(node.first, paneId, replacement),
+    second: replacePane(node.second, paneId, replacement)
+  };
+}
+function removePane(node, paneId) {
+  if (!node) return void 0;
+  if (node.kind === "pane") return node.id === paneId ? void 0 : clonePaneNode(node);
+  const first = removePane(node.first, paneId);
+  const second = removePane(node.second, paneId);
+  if (first && second) return { ...node, first, second };
+  return first ?? second;
+}
+function updateSplitRatio(node, splitId, ratio) {
+  if (!node) return { changed: false };
+  if (node.kind === "pane") return { node: clonePaneNode(node), changed: false };
+  if (node.id === splitId) {
+    return {
+      node: { ...node, ratio, first: cloneLayoutNode2(node.first), second: cloneLayoutNode2(node.second) },
+      changed: true
+    };
+  }
+  const first = updateSplitRatio(node.first, splitId, ratio);
+  const second = updateSplitRatio(node.second, splitId, ratio);
+  return {
+    node: {
+      ...node,
+      first: first.node ?? cloneLayoutNode2(node.first),
+      second: second.node ?? cloneLayoutNode2(node.second)
+    },
+    changed: first.changed || second.changed
+  };
+}
+function findNearestSplit(node, paneId) {
+  if (!node || node.kind === "pane") return void 0;
+  if (findPane(node.first, paneId)) {
+    return findNearestSplit(node.first, paneId) ?? { split: cloneSplitNode(node), activeSide: "first" };
+  }
+  if (findPane(node.second, paneId)) {
+    return findNearestSplit(node.second, paneId) ?? { split: cloneSplitNode(node), activeSide: "second" };
+  }
+  return void 0;
+}
+function cloneSplitNode(node) {
+  return {
+    kind: "split",
+    id: node.id,
+    direction: node.direction,
+    ratio: node.ratio,
+    first: cloneLayoutNode2(node.first),
+    second: cloneLayoutNode2(node.second)
+  };
+}
+function uniqueLayoutId(prefix, root2) {
+  const ids = /* @__PURE__ */ new Set();
+  collectLayoutIds(root2, ids);
+  let candidate = prefix;
+  let suffix = 2;
+  while (ids.has(candidate)) {
+    candidate = `${prefix}-${suffix}`;
+    suffix += 1;
+  }
+  return candidate;
+}
+function collectLayoutIds(node, ids) {
+  if (!node) return;
+  ids.add(node.id);
+  if (node.kind === "split") {
+    collectLayoutIds(node.first, ids);
+    collectLayoutIds(node.second, ids);
+  }
+}
+function sanitizeLayoutId(value) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "terminal";
+}
+function clampRatio(value) {
+  return Math.max(0.1, Math.min(0.9, Number.isFinite(value) ? value : 0.5));
 }
 
 // src/platform/types.ts

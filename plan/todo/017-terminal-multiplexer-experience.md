@@ -44,3 +44,6 @@ developer workflows.
 
 - Added `TerminalWorkspaceController` as the renderer-neutral session/tab model for multiple terminal descriptors,
   active session selection, rename, close, reorder, and serializable inspection.
+- Added a renderer-neutral terminal pane layout tree to `TerminalWorkspaceController`, including row/column splits,
+  active pane selection, pane close/collapse, split resizing, zoom state, session-pruning, and serializable layout
+  inspection.
