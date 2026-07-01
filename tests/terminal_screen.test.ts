@@ -69,6 +69,39 @@ Deno.test("TerminalScreenController tracks OSC title sequences", () => {
   assertEquals(screen.inspect().title, "editor");
 });
 
+Deno.test("TerminalScreenController inserts and deletes characters", () => {
+  const screen = new TerminalScreenController({ columns: 8, rows: 2 });
+
+  screen.write("abcdef\x1b[1;3H\x1b[2@XY\x1b[1;5H\x1b[2P");
+
+  assertEquals(screen.textRows()[0], "abXYef");
+  assertEquals(screen.inspect().cursor, { column: 4, row: 0 });
+});
+
+Deno.test("TerminalScreenController inserts and deletes lines", () => {
+  const screen = new TerminalScreenController({ columns: 8, rows: 4 });
+
+  screen.write("row1\nrow2\nrow3\nrow4");
+  screen.write("\x1b[2;1H\x1b[1Lnew");
+  assertEquals(screen.textRows(), ["row1", "new", "row2", "row3"]);
+
+  screen.write("\x1b[3;1H\x1b[1M");
+  assertEquals(screen.textRows(), ["row1", "new", "row3", ""]);
+});
+
+Deno.test("TerminalScreenController clamps insert and delete edits to screen bounds", () => {
+  const screen = new TerminalScreenController({ columns: 6, rows: 3 });
+
+  screen.write("abcdef\x1b[1;5H\x1b[9@Z");
+  assertEquals(screen.textRows()[0], "abcdZ");
+
+  screen.write("\x1b[1;5H\x1b[9P");
+  assertEquals(screen.textRows()[0], "abcd");
+
+  screen.write("\x1b[3;1H\x1b[5Lbot");
+  assertEquals(screen.textRows(), ["abcd", "", "bot"]);
+});
+
 Deno.test("TerminalScreenController clamps restored cursor after resize", () => {
   const screen = new TerminalScreenController({ columns: 8, rows: 3 });
 

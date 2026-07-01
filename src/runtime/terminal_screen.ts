@@ -213,6 +213,18 @@ export class TerminalScreenController {
       case "K":
         this.#eraseLine(params[0] ?? 0);
         break;
+      case "@":
+        this.#insertCharacters(params[0] || 1);
+        break;
+      case "P":
+        this.#deleteCharacters(params[0] || 1);
+        break;
+      case "L":
+        this.#insertLines(params[0] || 1);
+        break;
+      case "M":
+        this.#deleteLines(params[0] || 1);
+        break;
       case "s":
       case "7":
         this.#savedCursor = { ...this.#state.cursor };
@@ -279,6 +291,36 @@ export class TerminalScreenController {
     row.splice(start, end - start, ...blankRow(end - start));
   }
 
+  #insertCharacters(count: number): void {
+    const row = this.#state.cells[this.#state.cursor.row]!;
+    const column = this.#state.cursor.column;
+    const amount = clamp(Math.floor(count), 1, this.#columns - column);
+    row.splice(column, 0, ...blankRow(amount));
+    row.length = this.#columns;
+  }
+
+  #deleteCharacters(count: number): void {
+    const row = this.#state.cells[this.#state.cursor.row]!;
+    const column = this.#state.cursor.column;
+    const amount = clamp(Math.floor(count), 1, this.#columns - column);
+    row.splice(column, amount);
+    row.push(...blankRow(amount));
+  }
+
+  #insertLines(count: number): void {
+    const row = this.#state.cursor.row;
+    const amount = clamp(Math.floor(count), 1, this.#rows - row);
+    this.#state.cells.splice(row, 0, ...createRows(this.#columns, amount));
+    this.#state.cells.length = this.#rows;
+  }
+
+  #deleteLines(count: number): void {
+    const row = this.#state.cursor.row;
+    const amount = clamp(Math.floor(count), 1, this.#rows - row);
+    this.#state.cells.splice(row, amount);
+    this.#state.cells.push(...createRows(this.#columns, amount));
+  }
+
   #enterAlternate(): void {
     if (this.#mainState) return;
     this.#mainState = cloneState(this.#state);
@@ -313,7 +355,7 @@ function parseControlSequence(value: string): ParsedControlSequence | undefined 
     };
   }
   // deno-lint-ignore no-control-regex -- terminal parser intentionally matches ESC.
-  const match = /^\x1b\[([?]?)([0-9;]*)([A-Za-z])/.exec(value);
+  const match = /^\x1b\[([?]?)([0-9;]*)([@-~])/.exec(value);
   if (!match) return undefined;
   return {
     kind: "csi",
