@@ -51,7 +51,6 @@ import {
   type WorkbenchFrame,
   workbenchRevealActiveRowOffset,
   type WorkbenchTitlebarButtonKind,
-  WorkbenchTopMenuController,
   workbenchVisualizationIdFromWindowId,
   workbenchVisualizationWindowId,
   type WorkbenchWindowOption,
@@ -62,6 +61,7 @@ import {
   workbenchWorkspaceWindowEntries,
   writeFrame,
 } from "../src/app/workbench/mod.ts";
+import { WorkbenchController } from "../src/app/workbench/controller.ts";
 import {
   createDefaultWorkbenchAsciiOptions,
   defaultWorkbenchAsciiConfigRows,
@@ -79,7 +79,6 @@ import {
 import { handleInput } from "../src/input.ts";
 import type { KeyPressEvent, MousePressEvent, MouseScrollEvent, PasteEvent } from "../src/input_reader/types.ts";
 import { routeTerminalKeyPress, routeTerminalPaste, type TerminalInputMode } from "../src/app/terminal_input.ts";
-import { WindowManagerController } from "../src/layout/mod.ts";
 import { createKittyGraphicsSurface, type GraphicsSurface } from "../src/runtime/graphics_surface.ts";
 import { formatProcessCommandLine, ProcessSessionController } from "../src/runtime/process_session.ts";
 import { MicrotaskScheduler } from "../src/runtime/render_loop.ts";
@@ -402,9 +401,23 @@ const workspaceNameMode = new Signal<WorkspaceNameMode | null>(null);
 const workspaceTargetName = new Signal<string | null>(null);
 const activeWorkspaceName = new Signal<string | null>(null);
 const menuFocused = new Signal(false);
-const topMenus = new WorkbenchTopMenuController<"theme" | "newWindow" | "workspace">({
-  onChange: syncTopMenuState,
+const workbenchController = new WorkbenchController<"theme" | "newWindow" | "workspace">({
+  activeId: "inspector",
+  menu: { onChange: syncTopMenuState },
+  windows: [
+    { id: "explorer", title: "Explorer", minWidth: 26, minHeight: 12 },
+    { id: "inspector", title: "Inspector", minWidth: 32, minHeight: 11 },
+    { id: "data", title: "Data Table", minWidth: 42, minHeight: 12 },
+    { id: "controls", title: "Controls", minWidth: 40, minHeight: 18 },
+    { id: "logs", title: "Logs", minWidth: 36, minHeight: 12 },
+    { id: "three", title: "Three ASCII", minWidth: 42, minHeight: 16 },
+    { id: HTML_CSS_LAYOUT_WINDOW_ID, title: "HTML/CSS Layout", minWidth: 46, minHeight: 16, state: "closed" },
+    { id: TERMINAL_OUTPUT_WINDOW_ID, title: "Terminal Output", minWidth: 48, minHeight: 14, state: "closed" },
+    { id: TERMINAL_SHELL_WINDOW_ID, title: "Shell", minWidth: 54, minHeight: 16, state: "closed" },
+  ],
 });
+const topMenus = workbenchController.menus;
+const windowManager = workbenchController.windows;
 const threeConfigOpen = new Signal(false);
 const threeConfigSelected = new Signal(0);
 const threeConfigWindow = new Signal<WindowId>("three");
@@ -420,20 +433,6 @@ const minimized = new Signal<Record<string, boolean>>({
   logs: false,
   three: false,
 }, { deepObserve: true });
-const windowManager = new WindowManagerController({
-  activeId: "inspector",
-  windows: [
-    { id: "explorer", title: "Explorer", minWidth: 26, minHeight: 12 },
-    { id: "inspector", title: "Inspector", minWidth: 32, minHeight: 11 },
-    { id: "data", title: "Data Table", minWidth: 42, minHeight: 12 },
-    { id: "controls", title: "Controls", minWidth: 40, minHeight: 18 },
-    { id: "logs", title: "Logs", minWidth: 36, minHeight: 12 },
-    { id: "three", title: "Three ASCII", minWidth: 42, minHeight: 16 },
-    { id: HTML_CSS_LAYOUT_WINDOW_ID, title: "HTML/CSS Layout", minWidth: 46, minHeight: 16, state: "closed" },
-    { id: TERMINAL_OUTPUT_WINDOW_ID, title: "Terminal Output", minWidth: 48, minHeight: 14, state: "closed" },
-    { id: TERMINAL_SHELL_WINDOW_ID, title: "Shell", minWidth: 54, minHeight: 16, state: "closed" },
-  ],
-});
 const commandLog = new Signal<string[]>(["ready: API workbench mounted"], { deepObserve: true });
 const dynamicVisualizationWindows = new Signal<Record<VisualizationWindowId, string>>({}, { deepObserve: true });
 const selectedCpuHexTiles = new Signal<Record<VisualizationWindowId, string>>({}, { deepObserve: true });

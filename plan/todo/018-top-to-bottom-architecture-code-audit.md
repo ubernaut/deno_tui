@@ -49,6 +49,9 @@ Work:
         share one workbench helper boundary without changing the stable API inventory.
   - [x] Extracted renderer-neutral top-menu disclosure/focus state into `WorkbenchTopMenuController` and wired terminal
         plus web workbench adapters through it.
+  - [x] Added an internal `src/app/workbench/controller.ts` coordinator for top-menu state, dropdown indices, and
+        `WindowManagerController` ownership; terminal API Workbench now instantiates this shared controller instead of
+        constructing menu and window controllers separately.
 - [x] Move generic frame helpers, hit-target translation, scrollable-window sizing, titlebar button logic, shelf/tab
       logic, and workspace save/load normalization out of `app/api_workbench.ts`.
   - [x] Extracted sparse frame writing, row slicing, text fitting, button labels, and contrast helpers into
@@ -90,6 +93,8 @@ Work:
         fullscreen/minimized/adaptive tile engine.
   - [x] Extracted shared Three panel mouse interaction and transform state into `app/three_panel_interaction.ts`, so
         terminal canvas rendering and frame-rendered workbench windows use the same rotate/zoom/reset behavior.
+  - [x] Added focused tests for the internal `WorkbenchController` covering top-menu focus/disclosure, bounded menu
+        indices, focus cycling, fullscreen, minimize, restore, and close state transitions.
 - [x] Replace duplicated theme/window/menu persistence code with a shared versioned serializer.
   - [x] Extracted shared workbench workspace normalization, panel-state normalization, upsert, rename, delete, lookup,
         and legacy window-entry expansion helpers into `src/app/workbench_workspace.ts`.
@@ -587,6 +592,8 @@ Acceptance checks:
 - [x] Add full-frame render invalidation tests for overlapping draw objects, scrollable workspaces, and modals.
   - [x] Added a canvas regression covering a modal overlay opening/closing over scrolled viewport content.
 - [ ] Add real workbench controller tests after extraction, covering both terminal and web adapters.
+  - [x] Added initial internal controller tests around shared menu/window state; adapter-level parity tests still need
+        to exercise both the terminal and browser render adapters through the same controller contract.
 - [x] Add browser interaction tests for pointer, touch/coarse pointer, software keyboard text input, and resize
       observer.
 - [x] Add terminal parser fixture tests from real shell output and ANSI sequences.
