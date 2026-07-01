@@ -44,6 +44,7 @@ import {
   workbenchWindowOptionMenuLabel,
   workbenchWindowOptionMinimums,
 } from "../src/app/workbench_window_registry.ts";
+import { isWorkbenchMenuActivationKey, moveWorkbenchMenuIndex } from "../src/app/workbench_menu.ts";
 import {
   deleteWorkbenchWorkspace,
   findWorkbenchWorkspace,
@@ -4387,19 +4388,14 @@ function handleScreenDropdownKey(event: { key: string; ctrl?: boolean; meta?: bo
     else if (event.key === "down") themeIndex.value = (themeIndex.peek() + 1) % themes.length;
     else if (event.key === "home") themeIndex.value = 0;
     else if (event.key === "end") themeIndex.value = themes.length - 1;
-    else if (event.key === "return" || event.key === "space") setTheme(themeIndex.peek());
+    else if (isWorkbenchMenuActivationKey(event.key)) setTheme(themeIndex.peek());
     return;
   }
   if (newWindowMenuOpen.peek()) {
     const count = newWindowOptions.length;
     if (count === 0) return;
-    if (event.key === "up") newWindowMenuIndex.value = (newWindowMenuIndex.peek() - 1 + count) % count;
-    else if (event.key === "down") newWindowMenuIndex.value = (newWindowMenuIndex.peek() + 1) % count;
-    else if (event.key === "home") newWindowMenuIndex.value = 0;
-    else if (event.key === "end") newWindowMenuIndex.value = count - 1;
-    else if (event.key === "pageup") newWindowMenuIndex.value = Math.max(0, newWindowMenuIndex.peek() - 6);
-    else if (event.key === "pagedown") newWindowMenuIndex.value = Math.min(count - 1, newWindowMenuIndex.peek() + 6);
-    else if (event.key === "return" || event.key === "space") {
+    newWindowMenuIndex.value = moveWorkbenchMenuIndex(newWindowMenuIndex.peek(), count, event);
+    if (isWorkbenchMenuActivationKey(event.key)) {
       toggleNewWindowOption(newWindowOptions[newWindowMenuIndex.peek()], { keepMenuOpen: true });
     }
     return;
@@ -4407,13 +4403,8 @@ function handleScreenDropdownKey(event: { key: string; ctrl?: boolean; meta?: bo
   if (workspaceMenuOpen.peek()) {
     const count = workspaceMenuItemCount();
     if (count === 0) return;
-    if (event.key === "up") workspaceMenuIndex.value = (workspaceMenuIndex.peek() - 1 + count) % count;
-    else if (event.key === "down") workspaceMenuIndex.value = (workspaceMenuIndex.peek() + 1) % count;
-    else if (event.key === "home") workspaceMenuIndex.value = 0;
-    else if (event.key === "end") workspaceMenuIndex.value = count - 1;
-    else if (event.key === "pageup") workspaceMenuIndex.value = Math.max(0, workspaceMenuIndex.peek() - 6);
-    else if (event.key === "pagedown") workspaceMenuIndex.value = Math.min(count - 1, workspaceMenuIndex.peek() + 6);
-    else if (event.key === "return" || event.key === "space") {
+    workspaceMenuIndex.value = moveWorkbenchMenuIndex(workspaceMenuIndex.peek(), count, event);
+    if (isWorkbenchMenuActivationKey(event.key)) {
       applyWorkspaceMenuItem(workspaceMenuIndex.peek());
     }
   }

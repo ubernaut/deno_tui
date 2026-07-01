@@ -22,9 +22,12 @@ import {
   fitCellText,
   InputController,
   intersects,
+  isWorkbenchMenuActivationKey,
+  isWorkbenchMenuCloseKey,
   MenuBarController,
   modalContentHeight,
   ModalController,
+  moveWorkbenchMenuIndex,
   normalizeWorkbenchPanelWorkspaceState,
   ProgressBarController,
   RadioGroupController,
@@ -1302,15 +1305,12 @@ function setTheme(index: number): void {
 }
 
 function handleThemeMenuKey(event: { key: string; shift?: boolean }): void {
-  if (event.key === "escape" || event.key === "tab") {
+  if (isWorkbenchMenuCloseKey(event.key)) {
     themeMenuOpen.value = false;
     return;
   }
-  if (event.key === "up") themeIndex.value = (themeIndex.peek() - 1 + themes.length) % themes.length;
-  else if (event.key === "down") themeIndex.value = (themeIndex.peek() + 1) % themes.length;
-  else if (event.key === "home") themeIndex.value = 0;
-  else if (event.key === "end") themeIndex.value = themes.length - 1;
-  else if (event.key === "return" || event.key === "space") setTheme(themeIndex.peek());
+  themeIndex.value = moveWorkbenchMenuIndex(themeIndex.peek(), themes.length, event);
+  if (isWorkbenchMenuActivationKey(event.key)) setTheme(themeIndex.peek());
 }
 
 function focusPanelByNumber(key: string): boolean {

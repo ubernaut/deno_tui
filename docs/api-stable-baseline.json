@@ -3363,6 +3363,41 @@
       "documented": true
     },
     {
+      "module": "src/app/workbench_menu.ts",
+      "name": "isWorkbenchMenuActivationKey",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_menu.ts",
+      "name": "isWorkbenchMenuCloseKey",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_menu.ts",
+      "name": "moveWorkbenchMenuIndex",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_menu.ts",
+      "name": "MoveWorkbenchMenuIndexOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_menu.ts",
+      "name": "WorkbenchMenuKey",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
       "module": "src/app/workbench_window_registry.ts",
       "name": "createWorkbenchVisualizationWindowOptions",
       "kind": "function",

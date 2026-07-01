@@ -8685,6 +8685,35 @@ function relativeLuminance([red, green, blue]) {
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
 
+// src/app/workbench_menu.ts
+function isWorkbenchMenuActivationKey(key) {
+  return key === "return" || key === "space";
+}
+function isWorkbenchMenuCloseKey(key) {
+  return key === "escape" || key === "tab";
+}
+function moveWorkbenchMenuIndex(current, count, event, options = {}) {
+  if (count <= 0) return 0;
+  const pageSize = Math.max(1, options.pageSize ?? 6);
+  const index = (current % count + count) % count;
+  switch (event.key) {
+    case "up":
+      return (index - 1 + count) % count;
+    case "down":
+      return (index + 1) % count;
+    case "home":
+      return 0;
+    case "end":
+      return count - 1;
+    case "pageup":
+      return Math.max(0, index - pageSize);
+    case "pagedown":
+      return Math.min(count - 1, index + pageSize);
+    default:
+      return index;
+  }
+}
+
 // src/app/workbench_workspace.ts
 function defaultWorkbenchMinimizedState(panelIds2, minimized2 = {}) {
   const state = {};
@@ -11448,15 +11477,12 @@ function setTheme(index) {
   push(`theme ${theme().label}`);
 }
 function handleThemeMenuKey(event) {
-  if (event.key === "escape" || event.key === "tab") {
+  if (isWorkbenchMenuCloseKey(event.key)) {
     themeMenuOpen.value = false;
     return;
   }
-  if (event.key === "up") themeIndex.value = (themeIndex.peek() - 1 + themes.length) % themes.length;
-  else if (event.key === "down") themeIndex.value = (themeIndex.peek() + 1) % themes.length;
-  else if (event.key === "home") themeIndex.value = 0;
-  else if (event.key === "end") themeIndex.value = themes.length - 1;
-  else if (event.key === "return" || event.key === "space") setTheme(themeIndex.peek());
+  themeIndex.value = moveWorkbenchMenuIndex(themeIndex.peek(), themes.length, event);
+  if (isWorkbenchMenuActivationKey(event.key)) setTheme(themeIndex.peek());
 }
 function focusPanelByNumber(key) {
   const index = Number.parseInt(key, 10);
