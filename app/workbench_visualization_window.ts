@@ -1,6 +1,6 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { workbenchAsciiRendererModeLabel } from "../src/app/workbench_ascii.ts";
-import { textWidth } from "../src/utils/strings.ts";
+import { compactSpaces, maxTrimmedTextWidth } from "../src/app/workbench_text.ts";
 import { terminalGlyphStyleLabel } from "./ascii_options.ts";
 import type { AsciiOptions, PanelRender } from "./types.ts";
 
@@ -63,12 +63,4 @@ export function threeRendererModeLabel(options: AsciiOptions): string {
   return workbenchAsciiRendererModeLabel(options, terminalGlyphStyleLabel);
 }
 
-/** Returns the maximum printable width among non-empty trimmed rows. */
-export function maxTrimmedTextWidth(values: readonly string[]): number {
-  return values.reduce((max, value) => Math.max(max, textWidth(value.trimEnd())), 0);
-}
-
-/** Collapses repeated whitespace to a single display-space. */
-export function compactSpaces(value: string): string {
-  return value.replace(/\s+/g, " ").trim();
-}
+export { compactSpaces, maxTrimmedTextWidth };

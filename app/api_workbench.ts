@@ -104,6 +104,7 @@ import type { Rectangle } from "../src/types.ts";
 import { stripStyles, textWidth } from "../src/utils/strings.ts";
 import { workbenchButtonPaintOptions } from "../src/app/workbench_button_style.ts";
 import { layoutWrappedControlOptions, wrappedControlOptionRowCount } from "../src/app/workbench_control_layout.ts";
+import { compactSpaces, maxTextWidth, visibleMenuSlice, wrapPlainText } from "../src/app/workbench_text.ts";
 import { resolveWorkbenchShellBackend } from "../src/app/workbench_terminal.ts";
 import { AudioRegistry } from "./audio.ts";
 import { grWizardThemePalettes } from "../src/grwizard_themes.ts";
@@ -128,7 +129,6 @@ import { SystemMonitor } from "./system_metrics.ts";
 import { requireInteractiveTerminal } from "./terminal_guard.ts";
 import { ThreePanelFrameView } from "./three_panel.ts";
 import {
-  compactSpaces,
   threeRendererModeLabel,
   visualizationTextContentSize,
   visualizationThreeStatusLine,
@@ -1442,7 +1442,7 @@ function renderInspector(frame: Frame, rect: Rectangle): void {
   const availableActionRows = Math.max(0, rect.height - headerLines.length);
   const actionLines = commandLog.peek()
     .slice(-Math.max(4, availableActionRows))
-    .flatMap((line) => wrapPlain(`• ${line}`, rect.width))
+    .flatMap((line) => wrapPlainText(`• ${line}`, rect.width, fit))
     .slice(-availableActionRows)
     .map((line) => ({
       text: line,
@@ -4534,26 +4534,6 @@ function fillRect(frame: Frame, rect: Rectangle, bg: string): void {
   fillFrameRect(frame, currentWidth(), rect, makeStyle({ bg }));
 }
 
-function maxTextWidth(values: readonly string[]): number {
-  return values.reduce((max, value) => Math.max(max, textWidth(value)), 0);
-}
-
-function visibleMenuSlice(
-  items: string[],
-  selectedIndex: number,
-  maxItems: number,
-): { items: string[]; indexes: number[] } {
-  const count = Math.max(1, maxItems);
-  if (items.length <= count) {
-    return { items, indexes: items.map((_, index) => index) };
-  }
-  const start = Math.max(0, Math.min(selectedIndex - Math.floor(count / 2), items.length - count));
-  return {
-    items: items.slice(start, start + count),
-    indexes: Array.from({ length: count }, (_, index) => start + index),
-  };
-}
-
 function threeHeaderRows(mode: string, width: number, t: ThemeSpec): RowStyle[] {
   const title = compactSpaces(`ACEROLA THREE.JS ASCII · ${mode} · STUDIO GEOMETRY`);
   const compactTitle = compactSpaces(`THREE ASCII · ${mode}`);
@@ -4584,27 +4564,8 @@ function dataFooterRows(
   const full = compactSpaces(`page ${page}/${pageCount}  selected ${selected}  arrows/page keys  S sort`);
   const rows = textWidth(full) <= width
     ? [full]
-    : wrapPlain(`page ${page}/${pageCount} selected ${selected} arrows/page keys S sort`, width);
+    : wrapPlainText(`page ${page}/${pageCount} selected ${selected} arrows/page keys S sort`, width, fit);
   return rows.map((text) => ({ text, fg: t.muted, bg: t.panelSoft }));
-}
-
-function wrapPlain(value: string, width: number): string[] {
-  const safeWidth = Math.max(1, width);
-  const words = stripStyles(value).replace(/\s+/g, " ").trim().split(" ").filter(Boolean);
-  if (words.length === 0) return [""];
-  const rows: string[] = [];
-  let line = "";
-  for (const word of words) {
-    const next = line.length > 0 ? `${line} ${word}` : word;
-    if (textWidth(next) <= safeWidth) {
-      line = next;
-      continue;
-    }
-    if (line.length > 0) rows.push(line);
-    line = textWidth(word) <= safeWidth ? word : fit(word, safeWidth).trimEnd();
-  }
-  if (line.length > 0) rows.push(line);
-  return rows;
 }
 
 function paint(text: string, options: { fg?: string; bg?: string; bold?: boolean } = {}): string {
