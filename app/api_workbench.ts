@@ -115,6 +115,7 @@ import {
   type ApiWorkbenchThemeSpec,
   createApiWorkbenchThemes,
 } from "./api_workbench_catalog.ts";
+import { type ApiWorkbenchControlId, nextApiWorkbenchControlId } from "./api_workbench_controls.ts";
 import {
   createHtmlCssLayoutDemo,
   HTML_CSS_LAYOUT_OPTION_ID,
@@ -193,18 +194,7 @@ const builtInWindowOrder: readonly BuiltInWindowId[] = [
   TERMINAL_OUTPUT_WINDOW_ID,
   TERMINAL_SHELL_WINDOW_ID,
 ];
-type ControlId =
-  | "button"
-  | "genericButton"
-  | "modal"
-  | "slider"
-  | "checkbox"
-  | "radio"
-  | "combo"
-  | "dropdown"
-  | "input"
-  | "stepper"
-  | "textbox";
+type ControlId = ApiWorkbenchControlId;
 type HitAction =
   | { type: "menu"; index: number }
   | { type: "quit" }
@@ -4354,40 +4344,11 @@ function isTextControlActive(): boolean {
 }
 
 function controlAt(delta: number): ControlId {
-  const ids: ControlId[] = [
-    "button",
-    "genericButton",
-    "modal",
-    "slider",
-    "checkbox",
-    "radio",
-    "combo",
-    "dropdown",
-    "input",
-    "stepper",
-    "textbox",
-  ];
-  const index = ids.indexOf(activeControl.peek());
-  return ids[(index + delta + ids.length) % ids.length]!;
+  return nextApiWorkbenchControlId(activeControl.peek(), delta, { wrap: true }) ?? "button";
 }
 
 function controlAtEdge(delta: number): ControlId | undefined {
-  const ids: ControlId[] = [
-    "button",
-    "genericButton",
-    "modal",
-    "slider",
-    "checkbox",
-    "radio",
-    "combo",
-    "dropdown",
-    "input",
-    "stepper",
-    "textbox",
-  ];
-  const index = ids.indexOf(activeControl.peek());
-  const next = index + delta;
-  return next < 0 || next >= ids.length ? undefined : ids[next];
+  return nextApiWorkbenchControlId(activeControl.peek(), delta);
 }
 
 function pushLog(message: string): void {
