@@ -3,6 +3,7 @@ import {
   isWorkbenchMenuActivationKey,
   isWorkbenchMenuCloseKey,
   moveWorkbenchMenuIndex,
+  WorkbenchTopMenuController,
 } from "../src/app/workbench_menu.ts";
 
 Deno.test("workbench menu helpers identify activation and close keys", () => {
@@ -28,4 +29,27 @@ Deno.test("workbench menu page movement uses configurable page size", () => {
   assertEquals(moveWorkbenchMenuIndex(3, 10, { key: "pagedown" }), 9);
   assertEquals(moveWorkbenchMenuIndex(3, 10, { key: "pagedown" }, { pageSize: 2 }), 5);
   assertEquals(moveWorkbenchMenuIndex(3, 0, { key: "down" }), 0);
+});
+
+Deno.test("WorkbenchTopMenuController keeps one top menu open and focus synchronized", () => {
+  const events: unknown[] = [];
+  const controller = new WorkbenchTopMenuController<"theme" | "new">({
+    onChange: (inspection) => events.push(inspection),
+  });
+
+  assertEquals(controller.inspect(), { openId: null, focused: false });
+  assertEquals(controller.open("theme"), { openId: "theme", focused: true });
+  assertEquals(controller.isOpen("theme"), true);
+  assertEquals(controller.toggle("theme"), { openId: null, focused: true });
+  assertEquals(controller.toggle("new"), { openId: "new", focused: true });
+  assertEquals(controller.close(), { openId: null, focused: false });
+  assertEquals(controller.focus(), { openId: null, focused: true });
+
+  assertEquals(events, [
+    { openId: "theme", focused: true },
+    { openId: null, focused: true },
+    { openId: "new", focused: true },
+    { openId: null, focused: false },
+    { openId: null, focused: true },
+  ]);
 });

@@ -47,6 +47,8 @@ Work:
         test covering representative frame, viewport, titlebar, and hit-target exports.
   - [x] Routed the public app barrel through `src/app/workbench/mod.ts` so root exports, terminal demos, and web demos
         share one workbench helper boundary without changing the stable API inventory.
+  - [x] Extracted renderer-neutral top-menu disclosure/focus state into `WorkbenchTopMenuController` and wired terminal
+        plus web workbench adapters through it.
 - [x] Move generic frame helpers, hit-target translation, scrollable-window sizing, titlebar button logic, shelf/tab
       logic, and workspace save/load normalization out of `app/api_workbench.ts`.
   - [x] Extracted sparse frame writing, row slicing, text fitting, button labels, and contrast helpers into

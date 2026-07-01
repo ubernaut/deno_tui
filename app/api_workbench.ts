@@ -54,6 +54,7 @@ import {
   type WorkbenchFrame,
   workbenchRevealActiveRowOffset,
   type WorkbenchTitlebarButtonKind,
+  WorkbenchTopMenuController,
   workbenchVisualizationIdFromWindowId,
   workbenchVisualizationWindowId,
   type WorkbenchWindowOption,
@@ -514,6 +515,9 @@ const workspaceNameMode = new Signal<WorkspaceNameMode | null>(null);
 const workspaceTargetName = new Signal<string | null>(null);
 const activeWorkspaceName = new Signal<string | null>(null);
 const menuFocused = new Signal(false);
+const topMenus = new WorkbenchTopMenuController<"theme" | "newWindow" | "workspace">({
+  onChange: syncTopMenuState,
+});
 const threeConfigOpen = new Signal(false);
 const threeConfigSelected = new Signal(0);
 const threeConfigWindow = new Signal<WindowId>("three");
@@ -595,43 +599,29 @@ const menu = new MenuBarController({
   ],
   onSelect: (item) => {
     if (item.id === "new") {
-      themeMenuOpen.value = false;
-      workspaceMenuOpen.value = false;
-      newWindowMenuOpen.value = !newWindowMenuOpen.peek();
-      menuFocused.value = true;
+      topMenus.toggle("newWindow");
       newWindowMenuIndex.value = Math.max(0, Math.min(newWindowMenuIndex.peek(), newWindowOptions.length - 1));
       pushLog(`${newWindowMenuOpen.peek() ? "open" : "close"} new window menu`);
       return;
     }
     if (item.id === "theme") {
-      newWindowMenuOpen.value = false;
-      workspaceMenuOpen.value = false;
-      themeMenuOpen.value = !themeMenuOpen.peek();
-      menuFocused.value = true;
+      topMenus.toggle("theme");
       pushLog(`${themeMenuOpen.peek() ? "open" : "close"} theme menu`);
       return;
     }
     if (item.id === "workspace") {
-      themeMenuOpen.value = false;
-      newWindowMenuOpen.value = false;
-      workspaceMenuOpen.value = !workspaceMenuOpen.peek();
-      menuFocused.value = true;
+      topMenus.toggle("workspace");
       workspaceMenuIndex.value = Math.max(0, Math.min(workspaceMenuIndex.peek(), workspaceMenuItemCount() - 1));
       pushLog(`${workspaceMenuOpen.peek() ? "open" : "close"} workspace menu`);
       return;
     }
     if (item.id === "help") {
-      themeMenuOpen.value = false;
-      newWindowMenuOpen.value = false;
-      workspaceMenuOpen.value = false;
-      menuFocused.value = false;
+      topMenus.close();
       openHelpModal();
       return;
     }
-    themeMenuOpen.value = false;
-    newWindowMenuOpen.value = false;
-    workspaceMenuOpen.value = false;
-    menuFocused.value = true;
+    topMenus.close(false);
+    topMenus.focus();
     pushLog(`menu selected: ${item.label}`);
   },
 });
@@ -3202,7 +3192,7 @@ function setSignalRect(target: Signal<Rectangle>, rect: Rectangle): void {
 }
 
 function screenDropdownOpen(): boolean {
-  return themeMenuOpen.peek() || newWindowMenuOpen.peek() || workspaceMenuOpen.peek();
+  return topMenus.inspect().openId !== null;
 }
 
 function defaultWorkbenchAsciiOptions(): AsciiOptions {
@@ -4473,8 +4463,8 @@ function handleScreenDropdownKey(event: { key: string; ctrl?: boolean; meta?: bo
 }
 
 function focusMenu(): void {
-  menuFocused.value = true;
-  closeTopMenus(false);
+  topMenus.focus();
+  topMenus.close(false);
   pushLog("menu focus");
 }
 
@@ -4484,29 +4474,21 @@ function openActiveTopMenu(): void {
   else if (item?.id === "new") openNewWindowMenu();
   else if (item?.id === "workspace") openWorkspaceMenu();
   else {
-    themeMenuOpen.value = false;
-    newWindowMenuOpen.value = false;
-    workspaceMenuOpen.value = false;
+    topMenus.close(false);
   }
 }
 
 function openThemeMenu(): void {
   const index = menu.items.peek().findIndex((item) => item.id === "theme");
   if (index >= 0) menu.setActive(index);
-  menuFocused.value = true;
-  newWindowMenuOpen.value = false;
-  workspaceMenuOpen.value = false;
-  themeMenuOpen.value = true;
+  topMenus.open("theme");
   pushLog("open theme menu");
 }
 
 function openNewWindowMenu(): void {
   const index = menu.items.peek().findIndex((item) => item.id === "new");
   if (index >= 0) menu.setActive(index);
-  menuFocused.value = true;
-  themeMenuOpen.value = false;
-  workspaceMenuOpen.value = false;
-  newWindowMenuOpen.value = true;
+  topMenus.open("newWindow");
   newWindowMenuIndex.value = Math.max(0, Math.min(newWindowMenuIndex.peek(), newWindowOptions.length - 1));
   pushLog("open new window menu");
 }
@@ -4514,19 +4496,20 @@ function openNewWindowMenu(): void {
 function openWorkspaceMenu(): void {
   const index = menu.items.peek().findIndex((item) => item.id === "workspace");
   if (index >= 0) menu.setActive(index);
-  menuFocused.value = true;
-  themeMenuOpen.value = false;
-  newWindowMenuOpen.value = false;
-  workspaceMenuOpen.value = true;
+  topMenus.open("workspace");
   workspaceMenuIndex.value = Math.max(0, Math.min(workspaceMenuIndex.peek(), workspaceMenuItemCount() - 1));
   pushLog("open workspace menu");
 }
 
 function closeTopMenus(clearFocus = true): void {
-  themeMenuOpen.value = false;
-  newWindowMenuOpen.value = false;
-  workspaceMenuOpen.value = false;
-  if (clearFocus) menuFocused.value = false;
+  topMenus.close(clearFocus);
+}
+
+function syncTopMenuState(state: { openId: "theme" | "newWindow" | "workspace" | null; focused: boolean }): void {
+  themeMenuOpen.value = state.openId === "theme";
+  newWindowMenuOpen.value = state.openId === "newWindow";
+  workspaceMenuOpen.value = state.openId === "workspace";
+  menuFocused.value = state.focused;
 }
 
 function focusWindowByNumber(key: string): boolean {
@@ -4624,7 +4607,7 @@ function toggleBuiltInWindow(
   if (windowManager.ids().includes(id)) {
     closeWindow(id);
     if (!keepMenuOpen) closeTopMenus();
-    else menuFocused.value = true;
+    else topMenus.focus();
     return;
   }
   if (!keepMenuOpen) closeTopMenus();
@@ -4637,7 +4620,7 @@ function toggleBuiltInWindow(
       scheduleDraw();
     });
   }
-  if (keepMenuOpen) menuFocused.value = true;
+  if (keepMenuOpen) topMenus.focus();
   pushLog(`add window ${windowTitle(id)}`);
 }
 
@@ -4649,7 +4632,7 @@ function toggleVisualizationWindow(
   if (isVisualizationLoaded(option.id)) {
     closeWindow(visualizationWindowId(option.id));
     if (!options.keepMenuOpen) closeTopMenus();
-    else menuFocused.value = true;
+    else topMenus.focus();
     return;
   }
   addVisualizationWindow(option, options);
@@ -4681,7 +4664,7 @@ function addVisualizationWindow(
     windowManager.restore(id);
   }
   focus(id);
-  if (options.keepMenuOpen) menuFocused.value = true;
+  if (options.keepMenuOpen) topMenus.focus();
   pushLog(`add window ${option.label}`);
 }
 

@@ -3454,6 +3454,27 @@
       "documented": true
     },
     {
+      "module": "src/app/workbench_menu.ts",
+      "name": "WorkbenchTopMenuController",
+      "kind": "class",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_menu.ts",
+      "name": "WorkbenchTopMenuControllerOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_menu.ts",
+      "name": "WorkbenchTopMenuInspection",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
       "module": "src/app/workbench_shelf.ts",
       "name": "layoutWorkbenchShelf",
       "kind": "function",

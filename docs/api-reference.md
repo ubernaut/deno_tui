@@ -8,8 +8,8 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 - Entrypoints: 9
 - Module visits: 509
 - Re-export declarations: 500
-- Exported symbols: 4498
-- Documented symbols: 4498
+- Exported symbols: 4504
+- Documented symbols: 4504
 - Documentation coverage: 100.00%
 - Duplicate symbol groups: 0
 - Missing targets: 0
@@ -18,8 +18,8 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 
 | Specifier       | Path                           | Runtime  | Stability    | Modules | Symbols |    Docs |
 | --------------- | ------------------------------ | -------- | ------------ | ------: | ------: | ------: |
-| `.`             | `./mod.ts`                     | terminal | stable       |     229 |    1905 | 100.00% |
-| `./web`         | `./mod.web.ts`                 | browser  | beta         |     208 |    1768 | 100.00% |
+| `.`             | `./mod.ts`                     | terminal | stable       |     229 |    1908 | 100.00% |
+| `./web`         | `./mod.web.ts`                 | browser  | beta         |     208 |    1771 | 100.00% |
 | `./remote`      | `./mod.remote.ts`              | remote   | experimental |       4 |      38 | 100.00% |
 | `./three-ascii` | `./mod.three_ascii.ts`         | shared   | experimental |       8 |      54 | 100.00% |
 | `./theme`       | `./mod.theme.ts`               | shared   | beta         |      10 |     198 | 100.00% |
@@ -41,8 +41,8 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 - Entrypoint: `mod.ts`
 - Modules: 229
 - Re-export declarations: 228
-- Exported symbols: 1905
-- Documented symbols: 1905
+- Exported symbols: 1908
+- Documented symbols: 1908
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -116,7 +116,7 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 | [`src/app/tree_commands.ts`](#src-app-tree-commands-ts)                                 |          0 |       6 |          6 |
 | [`src/app/window_manager_commands.ts`](#src-app-window-manager-commands-ts)             |          0 |       8 |          8 |
 | [`src/app/workbench_frame.ts`](#src-app-workbench-frame-ts)                             |          0 |      13 |         13 |
-| [`src/app/workbench_menu.ts`](#src-app-workbench-menu-ts)                               |          0 |       5 |          5 |
+| [`src/app/workbench_menu.ts`](#src-app-workbench-menu-ts)                               |          0 |       8 |          8 |
 | [`src/app/workbench_shelf.ts`](#src-app-workbench-shelf-ts)                             |          0 |       8 |          8 |
 | [`src/app/workbench_terminal.ts`](#src-app-workbench-terminal-ts)                       |          0 |       6 |          6 |
 | [`src/app/workbench_titlebar.ts`](#src-app-workbench-titlebar-ts)                       |          0 |       6 |          6 |
@@ -1196,13 +1196,16 @@ _No direct exported symbols._
 
 #### src/app/workbench_menu.ts
 
-| Symbol                          | Kind      | Type Only | JSDoc |
-| ------------------------------- | --------- | --------- | ----- |
-| `isWorkbenchMenuActivationKey`  | function  | no        | yes   |
-| `isWorkbenchMenuCloseKey`       | function  | no        | yes   |
-| `moveWorkbenchMenuIndex`        | function  | no        | yes   |
-| `MoveWorkbenchMenuIndexOptions` | interface | yes       | yes   |
-| `WorkbenchMenuKey`              | interface | yes       | yes   |
+| Symbol                              | Kind      | Type Only | JSDoc |
+| ----------------------------------- | --------- | --------- | ----- |
+| `isWorkbenchMenuActivationKey`      | function  | no        | yes   |
+| `isWorkbenchMenuCloseKey`           | function  | no        | yes   |
+| `moveWorkbenchMenuIndex`            | function  | no        | yes   |
+| `MoveWorkbenchMenuIndexOptions`     | interface | yes       | yes   |
+| `WorkbenchMenuKey`                  | interface | yes       | yes   |
+| `WorkbenchTopMenuController`        | class     | no        | yes   |
+| `WorkbenchTopMenuControllerOptions` | interface | yes       | yes   |
+| `WorkbenchTopMenuInspection`        | interface | yes       | yes   |
 
 #### src/app/workbench_shelf.ts
 
@@ -3600,8 +3603,8 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 - Entrypoint: `mod.web.ts`
 - Modules: 208
 - Re-export declarations: 207
-- Exported symbols: 1768
-- Documented symbols: 1768
+- Exported symbols: 1771
+- Documented symbols: 1771
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -3675,7 +3678,7 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 | [`src/app/tree_commands.ts`](#src-app-tree-commands-ts)                           |          0 |       6 |          6 |
 | [`src/app/window_manager_commands.ts`](#src-app-window-manager-commands-ts)       |          0 |       8 |          8 |
 | [`src/app/workbench_frame.ts`](#src-app-workbench-frame-ts)                       |          0 |      13 |         13 |
-| [`src/app/workbench_menu.ts`](#src-app-workbench-menu-ts)                         |          0 |       5 |          5 |
+| [`src/app/workbench_menu.ts`](#src-app-workbench-menu-ts)                         |          0 |       8 |          8 |
 | [`src/app/workbench_shelf.ts`](#src-app-workbench-shelf-ts)                       |          0 |       8 |          8 |
 | [`src/app/workbench_terminal.ts`](#src-app-workbench-terminal-ts)                 |          0 |       6 |          6 |
 | [`src/app/workbench_titlebar.ts`](#src-app-workbench-titlebar-ts)                 |          0 |       6 |          6 |
@@ -4752,13 +4755,16 @@ _No direct exported symbols._
 
 #### src/app/workbench_menu.ts
 
-| Symbol                          | Kind      | Type Only | JSDoc |
-| ------------------------------- | --------- | --------- | ----- |
-| `isWorkbenchMenuActivationKey`  | function  | no        | yes   |
-| `isWorkbenchMenuCloseKey`       | function  | no        | yes   |
-| `moveWorkbenchMenuIndex`        | function  | no        | yes   |
-| `MoveWorkbenchMenuIndexOptions` | interface | yes       | yes   |
-| `WorkbenchMenuKey`              | interface | yes       | yes   |
+| Symbol                              | Kind      | Type Only | JSDoc |
+| ----------------------------------- | --------- | --------- | ----- |
+| `isWorkbenchMenuActivationKey`      | function  | no        | yes   |
+| `isWorkbenchMenuCloseKey`           | function  | no        | yes   |
+| `moveWorkbenchMenuIndex`            | function  | no        | yes   |
+| `MoveWorkbenchMenuIndexOptions`     | interface | yes       | yes   |
+| `WorkbenchMenuKey`                  | interface | yes       | yes   |
+| `WorkbenchTopMenuController`        | class     | no        | yes   |
+| `WorkbenchTopMenuControllerOptions` | interface | yes       | yes   |
+| `WorkbenchTopMenuInspection`        | interface | yes       | yes   |
 
 #### src/app/workbench_shelf.ts
 

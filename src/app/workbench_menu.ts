@@ -10,6 +10,63 @@ export interface MoveWorkbenchMenuIndexOptions {
   pageSize?: number;
 }
 
+/** Serializable inspection snapshot for mutually-exclusive top menu disclosure state. */
+export interface WorkbenchTopMenuInspection<MenuId extends string = string> {
+  openId: MenuId | null;
+  focused: boolean;
+}
+
+/** Options for configuring a renderer-neutral top menu disclosure controller. */
+export interface WorkbenchTopMenuControllerOptions<MenuId extends string> {
+  onChange?: (inspection: WorkbenchTopMenuInspection<MenuId>) => void;
+}
+
+/** Controls mutually-exclusive top menu/dropdown disclosure state for workbench render adapters. */
+export class WorkbenchTopMenuController<MenuId extends string = string> {
+  #openId: MenuId | null = null;
+  #focused = false;
+  #onChange?: (inspection: WorkbenchTopMenuInspection<MenuId>) => void;
+
+  constructor(options: WorkbenchTopMenuControllerOptions<MenuId> = {}) {
+    this.#onChange = options.onChange;
+  }
+
+  open(id: MenuId): WorkbenchTopMenuInspection<MenuId> {
+    this.#openId = id;
+    this.#focused = true;
+    return this.#emit();
+  }
+
+  toggle(id: MenuId): WorkbenchTopMenuInspection<MenuId> {
+    return this.#openId === id ? this.close(false) : this.open(id);
+  }
+
+  close(clearFocus = true): WorkbenchTopMenuInspection<MenuId> {
+    this.#openId = null;
+    if (clearFocus) this.#focused = false;
+    return this.#emit();
+  }
+
+  focus(): WorkbenchTopMenuInspection<MenuId> {
+    this.#focused = true;
+    return this.#emit();
+  }
+
+  isOpen(id: MenuId): boolean {
+    return this.#openId === id;
+  }
+
+  inspect(): WorkbenchTopMenuInspection<MenuId> {
+    return { openId: this.#openId, focused: this.#focused };
+  }
+
+  #emit(): WorkbenchTopMenuInspection<MenuId> {
+    const inspection = this.inspect();
+    this.#onChange?.(inspection);
+    return inspection;
+  }
+}
+
 /** Return whether a key should activate the selected dropdown/menu item. */
 export function isWorkbenchMenuActivationKey(key: string): boolean {
   return key === "return" || key === "space";

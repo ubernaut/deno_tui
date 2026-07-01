@@ -59,6 +59,7 @@ import {
   type WorkbenchPanelWorkspaceState,
   workbenchRevealActiveRowOffset,
   type WorkbenchTitlebarButtonKind,
+  WorkbenchTopMenuController,
   wrapTextBoxLines,
 } from "../../mod.web.ts";
 import { grWizardThemePalettes } from "../../src/grwizard_themes.ts";
@@ -232,6 +233,11 @@ const minimized = new Signal<Record<PanelId, boolean>>(
   { deepObserve: true },
 );
 const themeMenuOpen = new Signal(false);
+const topMenus = new WorkbenchTopMenuController<"theme">({
+  onChange: (state) => {
+    themeMenuOpen.value = state.openId === "theme";
+  },
+});
 const tileDensity = new Signal(Math.max(-3, Math.min(3, Math.floor(initialWorkspace.tileDensity ?? 0))));
 const lineSignals: Signal<string>[] = [];
 const log = new Signal<string[]>(
@@ -321,11 +327,11 @@ const menu = new MenuBarController({
   items: ["File", "View", "Layout", "Theme", "Help"].map((label) => ({ id: label.toLowerCase(), label })),
   onSelect: (item) => {
     if (item.id === "theme") {
-      themeMenuOpen.value = !themeMenuOpen.peek();
+      topMenus.toggle("theme");
       push(`${themeMenuOpen.peek() ? "open" : "close"} theme menu`);
       return;
     }
-    themeMenuOpen.value = false;
+    topMenus.close(false);
     if (item.id === "help") {
       openHelpModal();
       return;
@@ -476,7 +482,7 @@ host.on("keyPress", (event) => {
   else if (key === "m") minimize(active.peek());
   else if (key === "f" || key === "return") toggleMax(active.peek());
   else if (key === "r" || key === "escape") restore();
-  else if (key === "t") themeMenuOpen.value = !themeMenuOpen.peek();
+  else if (key === "t") toggleThemeMenu();
   else if (key === "[") adjustTileDensity(-1);
   else if (key === "]") adjustTileDensity(1);
   else if (active.peek() === "controls") handleControlsKey(event);
@@ -1216,14 +1222,13 @@ function applyHit(target: HitTarget<Hit>, x: number, y: number): void {
 
 function applyMobileAction(action: MobileAction): void {
   if (action === "next") {
-    themeMenuOpen.value = false;
+    closeThemeMenu();
     focusNext();
   } else if (action === "controls") {
-    themeMenuOpen.value = false;
+    closeThemeMenu();
     focus("controls");
   } else if (action === "theme") {
-    themeMenuOpen.value = !themeMenuOpen.peek();
-    push(`${themeMenuOpen.peek() ? "open" : "close"} theme menu`);
+    toggleThemeMenu();
   } else if (action === "help") {
     openHelpModal();
   } else if (action === "restore") {
@@ -1303,17 +1308,26 @@ function restore(): void {
 }
 function setTheme(index: number): void {
   themeIndex.value = ((index % themes.length) + themes.length) % themes.length;
-  themeMenuOpen.value = false;
+  closeThemeMenu();
   push(`theme ${theme().label}`);
 }
 
 function handleThemeMenuKey(event: { key: string; shift?: boolean }): void {
   if (isWorkbenchMenuCloseKey(event.key)) {
-    themeMenuOpen.value = false;
+    closeThemeMenu();
     return;
   }
   themeIndex.value = moveWorkbenchMenuIndex(themeIndex.peek(), themes.length, event);
   if (isWorkbenchMenuActivationKey(event.key)) setTheme(themeIndex.peek());
+}
+
+function toggleThemeMenu(): void {
+  topMenus.toggle("theme");
+  push(`${themeMenuOpen.peek() ? "open" : "close"} theme menu`);
+}
+
+function closeThemeMenu(): void {
+  topMenus.close(false);
 }
 
 function focusPanelByNumber(key: string): boolean {
@@ -1545,7 +1559,7 @@ function push(message: string): void {
 }
 
 function openWorkbenchModal(): void {
-  themeMenuOpen.value = false;
+  closeThemeMenu();
   modal.open({
     title: "Confirm Action",
     tone: "confirm",
@@ -1563,7 +1577,7 @@ function openWorkbenchModal(): void {
 }
 
 function openHelpModal(): void {
-  themeMenuOpen.value = false;
+  closeThemeMenu();
   modal.open({
     title: "Web Workbench Help",
     tone: "info",
@@ -1584,7 +1598,7 @@ function openHelpModal(): void {
 }
 
 function openQuitModal(): void {
-  themeMenuOpen.value = false;
+  closeThemeMenu();
   modal.open({
     title: "Close Web Workbench?",
     tone: "warning",
