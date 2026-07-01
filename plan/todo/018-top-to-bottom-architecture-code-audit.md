@@ -322,6 +322,8 @@ Work:
   - [x] Extracted standalone ANSI style primitives into `src/theme_ansi.ts` while preserving `src/theme.ts` re-exports.
   - [x] Extracted catalog-driven standard component definitions into `src/theme_standard_components.ts` behind the
         existing `src/theme.ts` facade.
+  - [x] Extracted built-in palette token construction and palette normalization helpers into `src/theme_palettes.ts`,
+        keeping the public `src/theme.ts` palette facade and registry API stable.
 - [x] Add caches for resolved style chains and preview generation with explicit invalidation tests.
   - [x] Extended `ThemeProviderCache` with preview caching, active theme/layer invalidation, and uncached
         function-variant previews.

@@ -1185,30 +1185,19 @@ function clampAnsiByte(value) {
   return Math.max(0, Math.min(255, Math.round(value)));
 }
 
-// src/theme.ts
-var emptyStyle2 = emptyStyle;
-function createAnsiStyle2(spec) {
-  return createAnsiStyle(spec);
-}
-function createAnsiThemeTokens(specs) {
-  const tokens = {};
-  for (const [name, spec] of Object.entries(specs)) {
-    tokens[name] = createAnsiStyle2(spec);
-  }
-  return tokens;
-}
-var themePalettes = {
+// src/theme_palettes.ts
+var themePalettesInternal = {
   plain: {
-    foreground: emptyStyle2,
-    muted: emptyStyle2,
-    accent: emptyStyle2,
-    success: emptyStyle2,
-    warning: emptyStyle2,
-    danger: emptyStyle2,
-    surface: emptyStyle2
+    foreground: emptyStyle,
+    muted: emptyStyle,
+    accent: emptyStyle,
+    success: emptyStyle,
+    warning: emptyStyle,
+    danger: emptyStyle,
+    surface: emptyStyle
   },
   neon: {
-    ...createAnsiThemeTokens({
+    ...createAnsiThemeTokensInternal({
       foreground: { foreground: [230, 255, 246] },
       muted: { foreground: [104, 124, 132] },
       accent: { foreground: [31, 231, 210] },
@@ -1219,7 +1208,7 @@ var themePalettes = {
     })
   },
   terminal: {
-    ...createAnsiThemeTokens({
+    ...createAnsiThemeTokensInternal({
       foreground: { foreground: "white" },
       muted: { foreground: "brightBlack" },
       accent: { foreground: "cyan" },
@@ -1227,9 +1216,21 @@ var themePalettes = {
       warning: { foreground: "yellow" },
       danger: { foreground: "red" }
     }),
-    surface: emptyStyle2
+    surface: emptyStyle
   }
 };
+function createAnsiThemeTokensInternal(specs) {
+  const tokens = {};
+  for (const [name, spec] of Object.entries(specs)) {
+    tokens[name] = createAnsiStyle(spec);
+  }
+  return tokens;
+}
+
+// src/theme.ts
+function createAnsiStyle2(spec) {
+  return createAnsiStyle(spec);
+}
 function mergeComponentThemeDefinition(base = {}, extension = {}) {
   const variants = { ...base.variants ?? {} };
   for (const [name, variant] of Object.entries(extension.variants ?? {})) {

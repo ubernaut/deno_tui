@@ -15,6 +15,13 @@ import {
   replaceEmptyStyle as replaceEmptyStyleInternal,
   type Style as StyleInternal,
 } from "./theme_ansi.ts";
+import {
+  defaultThemePaletteDefinitionsInternal,
+  normalizeThemePaletteInternal,
+  resolveThemePaletteTokensInternal,
+  themePaletteIdInternal,
+  themePalettesInternal,
+} from "./theme_palettes.ts";
 
 /** Function that's supposed to return styled text given string as parameter */
 export type Style = StyleInternal;
@@ -454,39 +461,7 @@ export interface ThemePaletteInspection {
 }
 
 /** Public constant for a theme Palettes. */
-export const themePalettes: Record<ThemePaletteName, Partial<ThemeTokens>> = {
-  plain: {
-    foreground: emptyStyle,
-    muted: emptyStyle,
-    accent: emptyStyle,
-    success: emptyStyle,
-    warning: emptyStyle,
-    danger: emptyStyle,
-    surface: emptyStyle,
-  },
-  neon: {
-    ...createAnsiThemeTokens({
-      foreground: { foreground: [230, 255, 246] },
-      muted: { foreground: [104, 124, 132] },
-      accent: { foreground: [31, 231, 210] },
-      success: { foreground: [156, 255, 58] },
-      warning: { foreground: [255, 196, 87] },
-      danger: { foreground: [255, 79, 216] },
-      surface: { background: [7, 16, 23] },
-    }),
-  },
-  terminal: {
-    ...createAnsiThemeTokens({
-      foreground: { foreground: "white" },
-      muted: { foreground: "brightBlack" },
-      accent: { foreground: "cyan" },
-      success: { foreground: "green" },
-      warning: { foreground: "yellow" },
-      danger: { foreground: "red" },
-    }),
-    surface: emptyStyle,
-  },
-};
+export const themePalettes: Record<ThemePaletteName, Partial<ThemeTokens>> = themePalettesInternal;
 
 /** Registry for built-in and custom semantic token palettes. */
 export class ThemePaletteRegistry {
@@ -501,7 +476,7 @@ export class ThemePaletteRegistry {
 
   /** Registers or replaces a palette by id. */
   register(palette: ThemePalette | ThemePaletteName): this {
-    const normalized = normalizeThemePalette(palette);
+    const normalized = normalizeThemePaletteInternal(palette);
     this.#palettes.set(normalized.id, normalized);
     return this;
   }
@@ -935,7 +910,7 @@ export function createThemeEngine(
   palette: ThemePaletteReference = "plain",
   options: Omit<ThemeEngineOptions, "tokens"> & { tokens?: Partial<ThemeTokens> } = {},
 ): ThemeEngine {
-  return createThemeEngineFromPalette(resolveThemePaletteTokens(palette), options);
+  return createThemeEngineFromPalette(resolveThemePaletteTokensInternal(palette), options);
 }
 
 /** Builds a theme engine from concrete palette tokens plus optional overrides. */
@@ -1203,7 +1178,7 @@ export class ThemeRegistry {
       return {
         id,
         label: pack.label ?? id,
-        palette: themePaletteId(pack.palette ?? "plain"),
+        palette: themePaletteIdInternal(pack.palette ?? "plain"),
         components: this.engine(id).inspect().components,
       };
     });
@@ -1387,11 +1362,7 @@ export const defaultThemePacks: ThemePack[] = [
 
 /** Returns the built-in palette definitions as registerable palette objects. */
 export function defaultThemePaletteDefinitions(): ThemePalette[] {
-  return (Object.entries(themePalettes) as [ThemePaletteName, Partial<ThemeTokens>][]).map(([id, tokens]) => ({
-    id,
-    label: titleCase(id),
-    tokens,
-  }));
+  return defaultThemePaletteDefinitionsInternal();
 }
 
 /** Creates a palette registry with built-in palettes by default. */
@@ -1692,28 +1663,6 @@ function mergeThemeExtends(
 function normalizeThemeExtends(value: string | readonly string[] | undefined): string[] {
   if (value === undefined) return [];
   return typeof value === "string" ? [value] : [...value];
-}
-
-function normalizeThemePalette(palette: ThemePalette | ThemePaletteName): ThemePalette {
-  if (typeof palette === "string") {
-    return {
-      id: palette,
-      label: titleCase(palette),
-      tokens: { ...themePalettes[palette] },
-    };
-  }
-  return {
-    ...palette,
-    tokens: { ...palette.tokens },
-  };
-}
-
-function resolveThemePaletteTokens(palette: ThemePaletteReference): Partial<ThemeTokens> {
-  return typeof palette === "string" ? themePalettes[palette] : palette.tokens;
-}
-
-function themePaletteId(palette: ThemePaletteReference): string {
-  return typeof palette === "string" ? palette : palette.id;
 }
 
 function isThemeStyleReferencePipeline(
