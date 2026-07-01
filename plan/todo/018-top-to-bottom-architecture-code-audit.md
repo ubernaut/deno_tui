@@ -288,6 +288,8 @@ Work:
       assembler calls avoid callback allocation while preserving fresh output rows.
 - [x] Replaced Three panel fallback-grid nested `Array.from()` construction with explicit row allocation for
       Kitty/fallback transitions.
+- [x] Replaced canvas Three ASCII fallback-grid nested `Array.from()` construction with explicit row allocation for
+      renderer-unavailable paths.
 - [x] Build ANSI grids directly from mapped GPU readback views in `ThreeAsciiRenderer`, eliminating the per-frame
       fill/edge/color CPU array copy before terminal grid assembly.
 - [x] Skipped edge compute/copy/readback work entirely for block-style renderer configs with edges disabled, reducing
