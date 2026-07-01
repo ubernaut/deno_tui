@@ -7,6 +7,7 @@ import {
   workbenchVisualizationIdFromWindowId,
   workbenchVisualizationWindowId,
   workbenchWindowOptionMenuLabel,
+  workbenchWindowOptionMenuLabelsInto,
   workbenchWindowOptionMinimums,
 } from "../src/app/workbench_window_registry.ts";
 
@@ -68,4 +69,25 @@ Deno.test("workbench window registry formats labels and option minimums", () => 
     workbenchWindowOptionMinimums({ id: "three-lattice", label: "Lattice", group: "Neon 3D", description: "3d" }),
     { minWidth: 42, minHeight: 16 },
   );
+});
+
+Deno.test("workbench window registry projects menu labels into a caller buffer", () => {
+  const options = [
+    { id: "shell", label: "Shell", group: "Terminal" as const, description: "pty", windowId: "terminalShell" },
+    { id: "cpu-hex-grid", label: "CPU Hex Grid", group: "Monitor" as const, description: "cores" },
+  ];
+  const target = ["stale", "rows", "trimmed"];
+
+  assertEquals(workbenchWindowOptionMenuLabelsInto(target, options, ["terminalShell"]), [
+    "[x] Terminal: Shell",
+    "[ ] Monitor: CPU Hex Grid",
+  ]);
+  assertEquals(target.length, 2);
+  assertEquals(
+    workbenchWindowOptionMenuLabelsInto(target, options.slice(1), [workbenchVisualizationWindowId("cpu-hex-grid")]),
+    [
+      "[x] Monitor: CPU Hex Grid",
+    ],
+  );
+  assertEquals(target.length, 1);
 });

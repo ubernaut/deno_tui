@@ -4071,6 +4071,13 @@
     },
     {
       "module": "src/app/workbench_window_registry.ts",
+      "name": "workbenchWindowOptionMenuLabelsInto",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_window_registry.ts",
       "name": "workbenchWindowOptionMinimums",
       "kind": "function",
       "typeOnly": false,

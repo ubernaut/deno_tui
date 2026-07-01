@@ -35,7 +35,6 @@ import {
   intersects,
   isWorkbenchMenuActivationKey,
   isWorkbenchVisualizationWindowId,
-  isWorkbenchWindowOptionLoaded,
   layoutWorkbenchMenuBarHits,
   layoutWorkbenchModal,
   layoutWorkbenchPopover,
@@ -64,7 +63,7 @@ import {
   workbenchVisualizationWindowId,
   workbenchWindowLayout,
   type WorkbenchWindowOption,
-  workbenchWindowOptionMenuLabel,
+  workbenchWindowOptionMenuLabelsInto,
   workbenchWindowOptionMinimums,
   type WorkbenchWorkspace,
   WorkbenchWorkspaceViewportController,
@@ -126,7 +125,6 @@ import {
   maxTextWidth,
   type VisibleMenuSlice,
   visibleMenuSliceInto,
-  visibleProjectedMenuSliceInto,
   wrapPlainText,
 } from "../src/app/workbench_text.ts";
 import { resolveWorkbenchShellBackend } from "../src/app/workbench_terminal.ts";
@@ -481,6 +479,7 @@ const screenFrame: Frame = [];
 const workspaceVirtualFrame: Frame = [];
 const windowContentFrames = new Map<WindowId, Frame>();
 const newWindowMenuSlice: VisibleMenuSlice = { items: [], indexes: [] };
+const newWindowMenuLabels: string[] = [];
 const workspaceMenuSlice: VisibleMenuSlice = { items: [], indexes: [] };
 let dropdownOverlay: DropdownOverlay | null = null;
 let threeDragWindow: WindowId | null = null;
@@ -950,17 +949,17 @@ function renderHeader(frame: Frame): void {
     };
   }
   if (newWindowMenuOpen.peek()) {
-    const visible = visibleProjectedMenuSliceInto(
+    const labels = workbenchWindowOptionMenuLabelsInto(newWindowMenuLabels, newWindowOptions, windowManager.ids());
+    const visible = visibleMenuSliceInto(
       newWindowMenuSlice,
-      newWindowOptions,
+      labels,
       newWindowMenuIndex.peek(),
       Math.max(6, currentHeight() - 5),
-      (entry) => newWindowMenuLabel(entry),
     );
     const menuRect = menuItemRect(
       menuStart,
       "new",
-      Math.max(28, maxTextWidthBy(newWindowOptions, (entry) => newWindowMenuLabel(entry)) + 6),
+      Math.max(28, maxTextWidth(labels) + 6),
       visible.items.length + 2,
     );
     dropdownOverlay = {
@@ -4198,14 +4197,6 @@ function addVisualizationWindow(
 function isVisualizationLoaded(visualizationId: string): boolean {
   const id = visualizationWindowId(visualizationId);
   return windowManager.ids().includes(id);
-}
-
-function isNewWindowOptionLoaded(option: NewWindowOption): boolean {
-  return isWorkbenchWindowOptionLoaded(option, windowManager.ids());
-}
-
-function newWindowMenuLabel(option: NewWindowOption): string {
-  return workbenchWindowOptionMenuLabel(option, isNewWindowOptionLoaded(option));
 }
 
 function visualizationWindowMinimums(option: NewWindowOption): { minWidth: number; minHeight: number } {

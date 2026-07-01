@@ -93,6 +93,24 @@ export function workbenchWindowOptionMenuLabel(option: WorkbenchWindowOption, lo
   return `${loaded ? "[x]" : "[ ]"} ${option.group}: ${option.label}`;
 }
 
+/** Project New Window menu labels into a caller-owned buffer with one loaded-window lookup set. */
+export function workbenchWindowOptionMenuLabelsInto(
+  target: string[],
+  options: readonly WorkbenchWindowOption[],
+  loadedWindowIds: Iterable<string>,
+): string[] {
+  const ids = loadedWindowIds instanceof Set ? loadedWindowIds : new Set(loadedWindowIds);
+  target.length = options.length;
+  for (let index = 0; index < options.length; index += 1) {
+    const option = options[index]!;
+    target[index] = workbenchWindowOptionMenuLabel(
+      option,
+      ids.has(option.windowId ?? workbenchVisualizationWindowId(option.id)),
+    );
+  }
+  return target;
+}
+
 /** Resolve minimum dimensions for a workbench window option. */
 export function workbenchWindowOptionMinimums(option: WorkbenchWindowOption): WorkbenchWindowOptionMinimums {
   if (option.windowId) return { minWidth: 34, minHeight: 10 };
