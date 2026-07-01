@@ -121,6 +121,8 @@ Work:
         allocation.
   - [x] Hoisted static theme menu labels in terminal and browser workbench adapters so repeated redraws reuse measured
         dropdown labels.
+  - [x] Moved New Window menu label projection into the shared window registry so render adapters compute loaded-state
+        labels with one window-id lookup set.
 - [x] Replace duplicated theme/window/menu persistence code with a shared versioned serializer.
   - [x] Extracted shared workbench workspace normalization, panel-state normalization, upsert, rename, delete, lookup,
         and legacy window-entry expansion helpers into `src/app/workbench_workspace.ts`.
