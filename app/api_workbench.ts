@@ -67,6 +67,18 @@ import {
   workbenchWorkspaceWindowEntries,
   writeFrame,
 } from "../src/app/workbench/mod.ts";
+import {
+  asciiNumericOptionRatio,
+  createDefaultWorkbenchAsciiOptions,
+  stepWorkbenchAsciiGlyphStyle,
+  stepWorkbenchAsciiNumericOption,
+  stepWorkbenchAsciiPreset,
+  toggleWorkbenchAsciiOption,
+  WorkbenchAsciiConfigController,
+  type WorkbenchAsciiKittyKey,
+  workbenchAsciiRendererModeLabel,
+  type WorkbenchAsciiToggleKey,
+} from "../src/app/workbench_ascii.ts";
 import { handleInput } from "../src/input.ts";
 import type { KeyPressEvent, MousePressEvent, MouseScrollEvent, PasteEvent } from "../src/input_reader/types.ts";
 import { routeTerminalKeyPress, routeTerminalPaste, type TerminalInputMode } from "../src/app/terminal_input.ts";
@@ -97,11 +109,10 @@ import {
   htmlCssLayoutDemoBoxLabel,
 } from "../src/markup/demo_fixtures.ts";
 import {
-  applyAsciiPreset,
   ASCII_DEMO_PRESETS,
   asciiControlValues,
+  asciiPresetLabel,
   cloneAsciiOptions,
-  createDefaultAsciiOptions,
   formatAsciiControlValue,
   normalizeAsciiOptions,
   TERMINAL_GLYPH_STYLES,
@@ -210,8 +221,8 @@ type AsciiNumericKey =
   | "depthOffset"
   | "wireframeThickness"
   | "terminalEdgeBias";
-type AsciiToggleKey = "edges" | "fill" | "invertLuminance";
-type AsciiKittyKey = "kittyGraphics" | "kittyDisableAscii";
+type AsciiToggleKey = WorkbenchAsciiToggleKey;
+type AsciiKittyKey = WorkbenchAsciiKittyKey;
 
 interface ThemeSpec {
   id: string;
@@ -368,8 +379,8 @@ const workbenchAudioRegistry = new AudioRegistry([]);
 const workspaceStore = createWorkspaceStore();
 const savedWorkspaces = new Signal<SavedWorkspace[]>(await loadSavedWorkspaces(), { deepObserve: true });
 const threeAsciiAvailable = new Signal(await probeCompatibleWebGPUDevice());
-const ascii = new Signal<AsciiOptions>(defaultWorkbenchAsciiOptions());
-const windowAscii = new Map<WindowId, Signal<AsciiOptions>>([["three", ascii]]);
+const asciiConfigs = new WorkbenchAsciiConfigController<WindowId>("three");
+const ascii = asciiConfigs.root;
 const tmuxPassthroughAllowed = await detectWorkbenchTmuxPassthrough();
 
 const tui = new Tui({
@@ -906,11 +917,7 @@ tui.on("destroy", () => {
   terminalShellInputMode.dispose();
   systemMonitor.stop();
   workbenchAudioRegistry.dispose();
-  for (const [id, signal] of windowAscii) {
-    if (id !== "three") signal.dispose();
-  }
-  windowAscii.clear();
-  ascii.dispose();
+  asciiConfigs.dispose();
   threeAsciiAvailable.dispose();
   drawScheduler.cancel();
 });
@@ -2475,7 +2482,7 @@ function renderThreeConfigModal(frame: Frame): void {
   const current = configuredAscii().peek();
   const title = `ASCII ${windowTitle(configuredAsciiWindow())} · ${
     terminalGlyphStyleLabel(current.terminalGlyphStyle)
-  } · ${asciiPresetLabelLocal(current.preset)}`;
+  } · ${asciiPresetLabel(current.preset)}`;
   write(frame, inner.row, inner.column, paint(fit(title, inner.width), { fg: t.accent, bg: t.panelSoft, bold: true }));
   const rowsTop = inner.row + 2;
   const actionRow = inner.row + inner.height - 2;
@@ -2534,7 +2541,7 @@ function renderThreeConfigModal(frame: Frame): void {
 function threeConfigRowText(row: ThreeConfigRow): string {
   const current = configuredAscii().peek();
   if (row.kind === "preset") {
-    return `${row.label.padEnd(18)} [<] ${asciiPresetLabelLocal(current.preset)} [>]`;
+    return `${row.label.padEnd(18)} [<] ${asciiPresetLabel(current.preset)} [>]`;
   }
   if (row.kind === "glyphStyle") {
     const labels = TERMINAL_GLYPH_STYLES.map((style) =>
@@ -2582,41 +2589,37 @@ function applyThreeConfigRow(index: number, action: ConfigHitAction = "activate"
 }
 
 function stepAsciiPreset(delta: number): void {
-  const ids = ASCII_DEMO_PRESETS.map((preset) => preset.id);
   const current = configuredAscii().peek();
-  const currentIndex = Math.max(0, ids.indexOf(current.preset));
-  const nextId = ids[(currentIndex + delta + ids.length) % ids.length]!;
-  const next = { ...current };
-  applyAsciiPreset(next, nextId);
-  setConfiguredAscii(next, `three config preset ${asciiPresetLabelLocal(nextId)}`, { persist: false });
+  const next = stepWorkbenchAsciiPreset(current, ASCII_DEMO_PRESETS.map((preset) => preset.id), delta);
+  setConfiguredAscii(next.options, `three config preset ${next.label}`, { persist: false });
 }
 
 function stepAsciiGlyphStyle(delta: number): void {
   const current = configuredAscii().peek();
-  const index = TERMINAL_GLYPH_STYLES.indexOf(current.terminalGlyphStyle);
-  const next = TERMINAL_GLYPH_STYLES[(index + delta + TERMINAL_GLYPH_STYLES.length) % TERMINAL_GLYPH_STYLES.length]!;
+  const next = stepWorkbenchAsciiGlyphStyle(current, delta);
   setConfiguredAscii(
-    { ...current, terminalGlyphStyle: next, preset: "custom" },
-    `three config glyph style ${terminalGlyphStyleLabel(next)}`,
+    next,
+    `three config glyph style ${terminalGlyphStyleLabel(next.terminalGlyphStyle)}`,
     { persist: false },
   );
 }
 
 function toggleAsciiOption(key: AsciiToggleKey): void {
   const current = configuredAscii().peek();
+  const next = toggleWorkbenchAsciiOption(current, key);
   setConfiguredAscii(
-    { ...current, [key]: !current[key], preset: "custom" },
-    `three config ${key} ${!current[key] ? "on" : "off"}`,
+    next,
+    `three config ${key} ${next[key] ? "on" : "off"}`,
     { persist: false },
   );
 }
 
 function toggleAsciiKittyOption(key: AsciiKittyKey): void {
   const current = configuredAscii().peek();
-  const next = !current[key];
+  const next = toggleWorkbenchAsciiOption(current, key);
   setConfiguredAscii(
-    { ...current, [key]: next, preset: "custom" },
-    `three config ${key} ${next ? "on" : "off"}`,
+    next,
+    `three config ${key} ${next[key] ? "on" : "off"}`,
     { persist: false },
   );
 }
@@ -2632,38 +2635,16 @@ function kittyGraphicsStatus(): string {
 
 function stepAsciiNumeric(key: AsciiNumericKey, delta: number): void {
   const current = configuredAscii().peek();
-  const values = asciiControlValues(key);
-  const currentValue = Number(current[key]);
-  const closest = closestValueIndex(values, currentValue);
-  const nextValue = values[Math.max(0, Math.min(values.length - 1, closest + delta))]!;
+  const next = stepWorkbenchAsciiNumericOption(current, key, delta);
   setConfiguredAscii(
-    { ...current, [key]: nextValue, preset: "custom" },
-    `three config ${key} ${formatAsciiControlValue(key, nextValue)}`,
+    next,
+    `three config ${key} ${formatAsciiControlValue(key, Number(next[key]))}`,
     { persist: false },
   );
 }
 
 function numericOptionRatio(values: readonly number[], value: number): number {
-  const min = values[0] ?? 0;
-  const max = values.at(-1) ?? min;
-  return max === min ? 1 : Math.max(0, Math.min(1, (value - min) / (max - min)));
-}
-
-function closestValueIndex(values: readonly number[], value: number): number {
-  let best = 0;
-  let distance = Number.POSITIVE_INFINITY;
-  for (const [index, candidate] of values.entries()) {
-    const nextDistance = Math.abs(candidate - value);
-    if (nextDistance < distance) {
-      best = index;
-      distance = nextDistance;
-    }
-  }
-  return best;
-}
-
-function asciiPresetLabelLocal(presetId: string): string {
-  return ASCII_DEMO_PRESETS.find((preset) => preset.id === presetId)?.label ?? "Custom";
+  return asciiNumericOptionRatio(values, value);
 }
 
 function drawFrame(frame: Frame, rect: Rectangle, title: string, active: boolean): void {
@@ -2814,10 +2795,7 @@ function visualizationThreeStatusLine(
 }
 
 function threeRendererModeLabel(options: AsciiOptions): string {
-  const glyphs = terminalGlyphStyleLabel(options.terminalGlyphStyle);
-  if (!options.kittyGraphics) return glyphs;
-  const suffix = options.kittyDisableAscii ? "Kitty only" : "Kitty + ASCII";
-  return `${glyphs} · ${suffix}`;
+  return workbenchAsciiRendererModeLabel(options, terminalGlyphStyleLabel);
 }
 
 function buildVisualizationContext(
@@ -3158,39 +3136,24 @@ function screenDropdownOpen(): boolean {
   return topMenus.inspect().openId !== null;
 }
 
-function defaultWorkbenchAsciiOptions(): AsciiOptions {
-  return {
-    ...createDefaultAsciiOptions("sharp"),
-    preset: "custom",
-  };
-}
-
 function asciiForWindow(id: WindowId): Signal<AsciiOptions> {
-  const existing = windowAscii.get(id);
-  if (existing) return existing;
-  const created = new Signal<AsciiOptions>(cloneAsciiOptions(ascii.peek()));
-  windowAscii.set(id, created);
-  return created;
+  return asciiConfigs.signalForWindow(id);
 }
 
 function setAsciiForWindow(id: WindowId, options: AsciiOptions): void {
-  asciiForWindow(id).value = normalizeAsciiOptions(options, defaultWorkbenchAsciiOptions());
+  asciiConfigs.setForWindow(id, normalizeAsciiOptions(options, createDefaultWorkbenchAsciiOptions()));
 }
 
 function disposeAsciiForWindow(id: WindowId): void {
-  if (id === "three") return;
-  const signal = windowAscii.get(id);
-  signal?.dispose();
-  windowAscii.delete(id);
+  asciiConfigs.disposeWindow(id);
 }
 
 function configuredAsciiWindow(): WindowId {
-  const id = threeConfigWindow.peek();
-  return isThreeRenderedWindow(id) ? id : "three";
+  return asciiConfigs.configuredWindow(threeConfigWindow.peek(), isThreeRenderedWindow);
 }
 
 function configuredAscii(): Signal<AsciiOptions> {
-  return asciiForWindow(configuredAsciiWindow());
+  return asciiConfigs.configuredSignal(threeConfigWindow.peek(), isThreeRenderedWindow);
 }
 
 function setConfiguredAscii(
@@ -3820,7 +3783,7 @@ function workspaceWindowEntries(workspace: SavedWorkspace): SavedWorkspaceWindow
   return workbenchWorkspaceWindowEntries(workspace, {
     validVisualizationIds: visualizationWindowOptions.map((option) => option.id),
     normalizeAscii: (value) =>
-      value ? normalizeAsciiOptions(value as AsciiOptions, defaultWorkbenchAsciiOptions()) : undefined,
+      value ? normalizeAsciiOptions(value as AsciiOptions, createDefaultWorkbenchAsciiOptions()) : undefined,
   });
 }
 
@@ -3855,7 +3818,7 @@ function normalizeSavedWorkspaces(value: unknown): SavedWorkspace[] {
     validVisualizationIds: visualizationWindowOptions.map((option) => option.id),
     normalizeName: (name, index) => normalizeWorkbenchWorkspaceName(name, `Workspace ${index + 1}`),
     normalizeAscii: (candidate) =>
-      candidate ? normalizeAsciiOptions(candidate as AsciiOptions, defaultWorkbenchAsciiOptions()) : undefined,
+      candidate ? normalizeAsciiOptions(candidate as AsciiOptions, createDefaultWorkbenchAsciiOptions()) : undefined,
   });
 }
 
