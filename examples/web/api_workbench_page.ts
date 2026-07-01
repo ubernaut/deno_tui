@@ -3,10 +3,14 @@
 import {
   BoxObject,
   ButtonController,
+  buttonText as formatButtonText,
   CheckBoxController,
+  clipRect,
   ComboBoxController,
   Computed,
   type ComputedLayoutBox,
+  contains,
+  contrastText,
   createAnsiStyle,
   createFileExplorerTree,
   createRuntimeStore,
@@ -14,7 +18,9 @@ import {
   createWebTui,
   DataTableController,
   FileExplorerController,
+  fitCellText,
   InputController,
+  intersects,
   MenuBarController,
   modalContentHeight,
   ModalController,
@@ -40,11 +46,11 @@ import {
   type TextRectangle,
   textWidth,
   tileRects,
+  toStyledCells,
   wrapTextBoxLines,
 } from "../../mod.web.ts";
 import { grWizardThemePalettes } from "../../src/grwizard_themes.ts";
 import type { Rectangle } from "../../src/types.ts";
-import { stripStyles } from "../../src/utils/strings.ts";
 import { makeStyle } from "../../app/styles.ts";
 import { createHtmlCssLayoutDemo, htmlCssLayoutDemoBoxLabel } from "../../app/html_css_layout_demo.ts";
 
@@ -2080,31 +2086,8 @@ function write(frame: string[], row: number, column: number, value: string): voi
   frame[row] = cells.slice(0, cols()).join("");
 }
 
-function toStyledCells(value: string): string[] {
-  const cells: string[] = [];
-  let style = "";
-  for (let index = 0; index < value.length;) {
-    if (value.charCodeAt(index) === 0x1b) {
-      // deno-lint-ignore no-control-regex -- ANSI SGR parsing intentionally matches ESC.
-      const match = /^\x1b\[[0-9;]*m/.exec(value.slice(index));
-      if (match) {
-        const sequence = match[0];
-        style = sequence.includes("[0m") ? "" : style + sequence;
-        index += sequence.length;
-        continue;
-      }
-    }
-    const char = value[index]!;
-    cells.push(style ? `${style}${char}\x1b[0m` : char);
-    index += char.length;
-  }
-  return cells;
-}
 function fit(value: string, width: number): string {
-  const plain = stripStyles(value);
-  return textWidth(plain) > width
-    ? plain.slice(0, Math.max(0, width - 1)) + "…"
-    : value + " ".repeat(Math.max(0, width - textWidth(plain)));
+  return fitCellText(value, width);
 }
 function fillRect(frame: string[], rect: Rectangle, bg: string): void {
   for (let row = rect.row; row < rect.row + rect.height; row += 1) {
@@ -2135,8 +2118,7 @@ function drawFrame(frame: string[], rect: Rectangle, title: string, selected: bo
 }
 
 function buttonText(label: string, compact = false): string {
-  const safeLabel = label.trim();
-  return compact ? `[${safeLabel}]` : `[ ${safeLabel} ]`;
+  return formatButtonText(label, { compact });
 }
 
 function writeButton(
@@ -2181,22 +2163,6 @@ function buttonPaintOptions(
 function paint(value: string, fg = theme().text, bg = theme().bg, bold = false): string {
   return makeStyle({ fg, bg, bold })(value);
 }
-function contains(rect: Rectangle, x: number, y: number): boolean {
-  return x >= rect.column && y >= rect.row && x < rect.column + rect.width && y < rect.row + rect.height;
-}
-
-function intersects(left: Rectangle, right: Rectangle): boolean {
-  return left.column < right.column + right.width && left.column + left.width > right.column &&
-    left.row < right.row + right.height && left.row + left.height > right.row;
-}
-
-function clipRect(rect: Rectangle, clip: Rectangle): Rectangle {
-  const column = Math.max(rect.column, clip.column);
-  const row = Math.max(rect.row, clip.row);
-  const right = Math.min(rect.column + rect.width, clip.column + clip.width);
-  const bottom = Math.min(rect.row + rect.height, clip.row + clip.height);
-  return { column, row, width: Math.max(0, right - column), height: Math.max(0, bottom - row) };
-}
 function findHit(x: number, y: number): HitTarget | undefined {
   for (let index = hitTargets.length - 1; index >= 0; index -= 1) {
     const target = hitTargets[index]!;
@@ -2229,36 +2195,6 @@ function expandedTouchHitRect(rect: Rectangle): Rectangle {
     },
     { column: 0, row: 0, width: cols(), height: rowsCount() },
   );
-}
-function contrastText(background: string, dark: string, light: string): string {
-  const bg = parseHexColor(background);
-  const darkRgb = parseHexColor(dark);
-  const lightRgb = parseHexColor(light);
-  if (!bg || !darkRgb || !lightRgb) return relativeLuminance(bg ?? [0, 0, 0]) > 0.5 ? dark : light;
-  return contrastRatio(bg, lightRgb) >= contrastRatio(bg, darkRgb) ? light : dark;
-}
-function contrastRatio(left: [number, number, number], right: [number, number, number]): number {
-  const leftLum = relativeLuminance(left);
-  const rightLum = relativeLuminance(right);
-  const brightest = Math.max(leftLum, rightLum);
-  const darkest = Math.min(leftLum, rightLum);
-  return (brightest + 0.05) / (darkest + 0.05);
-}
-function relativeLuminance([red, green, blue]: [number, number, number]): number {
-  const [r, g, b] = [red, green, blue].map((channel) => {
-    const value = channel / 255;
-    return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
-  });
-  return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!;
-}
-function parseHexColor(value: string): [number, number, number] | undefined {
-  const color = value.trim().replace(/^#/, "");
-  if (!/^[\da-f]{6}$/i.test(color)) return undefined;
-  return [0, 2, 4].map((index) => Number.parseInt(color.slice(index, index + 2), 16)) as [
-    number,
-    number,
-    number,
-  ];
 }
 function hex(value: string): [number, number, number] {
   const color = value.replace("#", "");

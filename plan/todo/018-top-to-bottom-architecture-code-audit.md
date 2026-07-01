@@ -50,6 +50,8 @@ Work:
   - [x] Extracted generic hit-target stack and rectangle geometry helpers into `src/app/hit_targets.ts` with direct
         tests, then migrated API Workbench hit lookup and scroll translation to the stack API.
 - [ ] Make the terminal workbench and web workbench thin render adapters over the same controller/model.
+  - [x] Exposed the shared frame and hit-target helpers through `src/app/mod.ts` and migrated the web API Workbench page
+        to reuse exported text-fit, ANSI-cell, contrast, and geometry helpers.
 - [ ] Replace duplicated theme/window/menu persistence code with a shared versioned serializer.
 - [ ] Add a migration path for existing saved workspace state.
 

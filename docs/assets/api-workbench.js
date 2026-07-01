@@ -7798,6 +7798,21 @@ var ASCII_DEMO_PRESETS = [
   }
 ];
 
+// src/app/hit_targets.ts
+function contains(rect, x, y) {
+  return x >= rect.column && x < rect.column + rect.width && y >= rect.row && y < rect.row + rect.height;
+}
+function intersects(left, right) {
+  return left.column < right.column + right.width && left.column + left.width > right.column && left.row < right.row + right.height && left.row + left.height > right.row;
+}
+function clipRect(rect, clip) {
+  const column = Math.max(rect.column, clip.column);
+  const row = Math.max(rect.row, clip.row);
+  const right = Math.min(rect.column + rect.width, clip.column + clip.width);
+  const bottom = Math.min(rect.row + rect.height, clip.row + clip.height);
+  return { column, row, width: Math.max(0, right - column), height: Math.max(0, bottom - row) };
+}
+
 // src/runtime/storage.ts
 var MemoryStore = class {
   values = /* @__PURE__ */ new Map();
@@ -7922,6 +7937,64 @@ function errorMessage(error) {
 
 // src/app/terminal_input.ts
 var textEncoder4 = new TextEncoder();
+
+// src/app/workbench_frame.ts
+function toStyledCells(value) {
+  const cells = [];
+  let style2 = "";
+  for (let index = 0; index < value.length; ) {
+    if (value.charCodeAt(index) === 27) {
+      const match = /^\x1b\[[0-9;]*m/.exec(value.slice(index));
+      if (match) {
+        const sequence = match[0];
+        style2 = sequence.includes("[0m") ? "" : style2 + sequence;
+        index += sequence.length;
+        continue;
+      }
+    }
+    const char = value[index];
+    cells.push(style2 ? `${style2}${char}\x1B[0m` : char);
+    index += char.length;
+  }
+  return cells;
+}
+function fitCellText(value, width) {
+  const visible = textWidth(value);
+  if (visible === width) return value;
+  if (visible < width) return value + " ".repeat(Math.max(0, width - visible));
+  const plain = stripStyles(value);
+  return `${plain.slice(0, Math.max(0, width - 1))}\u2026`;
+}
+function buttonText(label, options = {}) {
+  const safeLabel = label.trim();
+  return options.compact ? `[${safeLabel}]` : `[ ${safeLabel} ]`;
+}
+function contrastText(background, dark, light) {
+  const bg = parseHexColor(background);
+  const darkRgb = parseHexColor(dark);
+  const lightRgb = parseHexColor(light);
+  if (!bg || !darkRgb || !lightRgb) return relativeLuminance(bg ?? [0, 0, 0]) > 0.5 ? dark : light;
+  return contrastRatio(bg, lightRgb) >= contrastRatio(bg, darkRgb) ? light : dark;
+}
+function parseHexColor(value) {
+  const color = value.trim().replace(/^#/, "");
+  if (!/^[\da-f]{6}$/i.test(color)) return void 0;
+  return [0, 2, 4].map((index) => Number.parseInt(color.slice(index, index + 2), 16));
+}
+function contrastRatio(left, right) {
+  const leftLum = relativeLuminance(left);
+  const rightLum = relativeLuminance(right);
+  const brightest = Math.max(leftLum, rightLum);
+  const darkest = Math.min(leftLum, rightLum);
+  return (brightest + 0.05) / (darkest + 0.05);
+}
+function relativeLuminance([red, green, blue]) {
+  const [r, g, b] = [red, green, blue].map((channel) => {
+    const value = channel / 255;
+    return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
 
 // src/runtime/process_session.ts
 function formatProcessCommandLine(command) {
@@ -10164,7 +10237,7 @@ function draw() {
   write(frame, 0, 0, paint(" ".repeat(width), theme().text, theme().bgAlt));
   write(frame, 1, 0, paint(" ".repeat(width), theme().text, theme().panel));
   write(frame, 0, 1, paint(` API WORKBENCH `, theme().bg, theme().accent, true));
-  const closeLabel = buttonText("x", true);
+  const closeLabel = buttonText2("x", true);
   const closeWidth = textWidth(closeLabel);
   const menuWidth = Math.max(0, width - 18 - closeWidth);
   renderMenuHits(17, 0, menuWidth);
@@ -10287,7 +10360,7 @@ function renderMobileCommandStrip(frame) {
   for (const entry of actions) {
     if (column >= cols() - 1) break;
     let maxWidth = Math.max(0, cols() - column - 1);
-    const desiredWidth = textWidth(buttonText(entry.label));
+    const desiredWidth = textWidth(buttonText2(entry.label));
     if (desiredWidth > maxWidth && row < 2) {
       row += 1;
       column = 1;
@@ -10333,7 +10406,7 @@ function renderWindowTabs(frame) {
     const hidden = minimized.peek()[id2];
     const marker = selected ? "\u25CF" : hidden ? "\u25CB" : " ";
     const label = `${marker} ${panelTitle(id2)}`;
-    const width = Math.min(textWidth(buttonText(label)), Math.max(0, cols() - column));
+    const width = Math.min(textWidth(buttonText2(label)), Math.max(0, cols() - column));
     if (width <= 0) break;
     writeButton(frame, row, column, label, {
       state: selected ? "active" : "base",
@@ -11027,7 +11100,7 @@ function renderModalOverlay(frame) {
   const actionRow = inner.row + Math.min(rows2.length, inner.height) - 1;
   let column = inner.column;
   for (const [index, action] of inspection.actions.entries()) {
-    const width2 = textWidth(buttonText(action.label));
+    const width2 = textWidth(buttonText2(action.label));
     if (column + width2 > inner.column + inner.width) break;
     writeButton(frame, actionRow, column, action.label, {
       state: action.disabled ? "disabled" : index === inspection.selectedActionIndex ? "active" : "base",
@@ -11248,11 +11321,11 @@ function renderControls(frame, rect) {
   const progressWidth = Math.max(8, Math.min(18, rect.width - 18));
   const progressFilled = Math.round(progress.ratio() * progressWidth);
   const progressTrack = `${"\u2588".repeat(progressFilled)}${"\u2591".repeat(progressWidth - progressFilled)}`;
-  writeControl("button", `${buttonText("Run Action")} presses=${actionButton.pressCount.peek()}`, { button: true });
-  writeControl("genericButton", `${buttonText("Generic Button")} presses=${genericButton.pressCount.peek()}`, {
+  writeControl("button", `${buttonText2("Run Action")} presses=${actionButton.pressCount.peek()}`, { button: true });
+  writeControl("genericButton", `${buttonText2("Generic Button")} presses=${genericButton.pressCount.peek()}`, {
     button: true
   });
-  writeControl("modal", `${buttonText("Open Modal")} state=${modal.openState.peek() ? "open" : "closed"}`, {
+  writeControl("modal", `${buttonText2("Open Modal")} state=${modal.openState.peek() ? "open" : "closed"}`, {
     button: true
   });
   writeControl("slider", `Slider    ${sliderTrack} ${slider.value.peek()}/10`, {
@@ -11569,28 +11642,8 @@ function write(frame, row, column, value) {
   }
   frame[row] = cells.slice(0, cols()).join("");
 }
-function toStyledCells(value) {
-  const cells = [];
-  let style2 = "";
-  for (let index = 0; index < value.length; ) {
-    if (value.charCodeAt(index) === 27) {
-      const match = /^\x1b\[[0-9;]*m/.exec(value.slice(index));
-      if (match) {
-        const sequence = match[0];
-        style2 = sequence.includes("[0m") ? "" : style2 + sequence;
-        index += sequence.length;
-        continue;
-      }
-    }
-    const char = value[index];
-    cells.push(style2 ? `${style2}${char}\x1B[0m` : char);
-    index += char.length;
-  }
-  return cells;
-}
 function fit(value, width) {
-  const plain = stripStyles(value);
-  return textWidth(plain) > width ? plain.slice(0, Math.max(0, width - 1)) + "\u2026" : value + " ".repeat(Math.max(0, width - textWidth(plain)));
+  return fitCellText(value, width);
 }
 function fillRect(frame, rect, bg) {
   for (let row = rect.row; row < rect.row + rect.height; row += 1) {
@@ -11618,12 +11671,11 @@ function drawFrame(frame, rect, title, selected) {
     paint(` ${title.toUpperCase()} `, theme().bg, selected ? theme().accent : theme().border, true)
   );
 }
-function buttonText(label, compact2 = false) {
-  const safeLabel = label.trim();
-  return compact2 ? `[${safeLabel}]` : `[ ${safeLabel} ]`;
+function buttonText2(label, compact2 = false) {
+  return buttonText(label, { compact: compact2 });
 }
 function writeButton(frame, row, column, label, options = {}) {
-  const text = buttonText(label, options.compact);
+  const text = buttonText2(label, options.compact);
   const width = Math.max(0, Math.min(textWidth(text), options.maxWidth ?? textWidth(text)));
   if (width <= 0) return 0;
   const style2 = buttonPaintOptions(options.state ?? "base", options.tone ?? "default");
@@ -11639,19 +11691,6 @@ function buttonPaintOptions(state = "base", tone = "default") {
 }
 function paint(value, fg = theme().text, bg = theme().bg, bold = false) {
   return makeStyle({ fg, bg, bold })(value);
-}
-function contains(rect, x, y) {
-  return x >= rect.column && y >= rect.row && x < rect.column + rect.width && y < rect.row + rect.height;
-}
-function intersects(left, right) {
-  return left.column < right.column + right.width && left.column + left.width > right.column && left.row < right.row + right.height && left.row + left.height > right.row;
-}
-function clipRect(rect, clip) {
-  const column = Math.max(rect.column, clip.column);
-  const row = Math.max(rect.row, clip.row);
-  const right = Math.min(rect.column + rect.width, clip.column + clip.width);
-  const bottom = Math.min(rect.row + rect.height, clip.row + clip.height);
-  return { column, row, width: Math.max(0, right - column), height: Math.max(0, bottom - row) };
 }
 function findHit(x, y) {
   for (let index = hitTargets.length - 1; index >= 0; index -= 1) {
@@ -11683,32 +11722,6 @@ function expandedTouchHitRect(rect) {
     },
     { column: 0, row: 0, width: cols(), height: rowsCount() }
   );
-}
-function contrastText(background, dark, light) {
-  const bg = parseHexColor(background);
-  const darkRgb = parseHexColor(dark);
-  const lightRgb = parseHexColor(light);
-  if (!bg || !darkRgb || !lightRgb) return relativeLuminance(bg ?? [0, 0, 0]) > 0.5 ? dark : light;
-  return contrastRatio(bg, lightRgb) >= contrastRatio(bg, darkRgb) ? light : dark;
-}
-function contrastRatio(left, right) {
-  const leftLum = relativeLuminance(left);
-  const rightLum = relativeLuminance(right);
-  const brightest = Math.max(leftLum, rightLum);
-  const darkest = Math.min(leftLum, rightLum);
-  return (brightest + 0.05) / (darkest + 0.05);
-}
-function relativeLuminance([red, green, blue]) {
-  const [r, g, b] = [red, green, blue].map((channel) => {
-    const value = channel / 255;
-    return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
-  });
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-}
-function parseHexColor(value) {
-  const color = value.trim().replace(/^#/, "");
-  if (!/^[\da-f]{6}$/i.test(color)) return void 0;
-  return [0, 2, 4].map((index) => Number.parseInt(color.slice(index, index + 2), 16));
 }
 function hex(value) {
   const color = value.replace("#", "");
