@@ -1,16 +1,36 @@
 import type { AudioCatalogEntry, AudioMeterSnapshot } from "./types.ts";
+import type { DiagnosticsCollector } from "../src/runtime/diagnostics.ts";
+
+interface AudioCommandOutput {
+  stderr: Uint8Array;
+}
+
+interface AudioMeterProcess {
+  stdout: ReadableStream<Uint8Array>;
+  kill(signal?: Deno.Signal): void;
+}
+
+interface AudioCommand {
+  output(): Promise<AudioCommandOutput>;
+  spawn(): AudioMeterProcess;
+}
+
+export interface AudioRuntimeOptions {
+  diagnostics?: DiagnosticsCollector;
+  commandFactory?: (command: string, options: Deno.CommandOptions) => AudioCommand;
+}
 
 type MeterState = {
-  process: Deno.ChildProcess | null;
+  process: AudioMeterProcess | null;
   reader: ReadableStreamDefaultReader<Uint8Array> | null;
   snapshot: AudioMeterSnapshot;
   active: boolean;
   carry: Uint8Array;
 };
 
-export async function discoverAudioSources() {
+export async function discoverAudioSources(options: AudioRuntimeOptions = {}) {
   try {
-    const result = await new Deno.Command("ffmpeg", {
+    const result = await audioCommand(options, "ffmpeg", {
       args: ["-hide_banner", "-f", "pulse", "-sources", "pulse", "-i", "dummy"],
       stdout: "null",
       stderr: "piped",
@@ -47,7 +67,14 @@ export async function discoverAudioSources() {
       }
       return a.label.localeCompare(b.label);
     });
-  } catch {
+  } catch (error) {
+    options.diagnostics?.report({
+      source: "audio",
+      code: "discover-failed",
+      severity: "warning",
+      message: "Audio source discovery failed",
+      detail: errorDetail(error),
+    });
     return [] as AudioCatalogEntry[];
   }
 }
@@ -55,9 +82,13 @@ export async function discoverAudioSources() {
 export class AudioRegistry {
   readonly catalog: AudioCatalogEntry[];
   #meters = new Map<string, MeterState>();
+  #diagnostics?: DiagnosticsCollector;
+  #commandFactory?: AudioRuntimeOptions["commandFactory"];
 
-  constructor(catalog: AudioCatalogEntry[]) {
+  constructor(catalog: AudioCatalogEntry[], options: AudioRuntimeOptions = {}) {
     this.catalog = catalog;
+    this.#diagnostics = options.diagnostics;
+    this.#commandFactory = options.commandFactory;
     for (const entry of catalog) {
       this.#meters.set(entry.id, {
         process: null,
@@ -113,28 +144,43 @@ export class AudioRegistry {
       return;
     }
 
-    const process = new Deno.Command("ffmpeg", {
-      args: [
-        "-nostdin",
-        "-hide_banner",
-        "-loglevel",
-        "error",
-        "-f",
-        "pulse",
-        "-i",
-        entry.sourceName,
-        "-ac",
-        "1",
-        "-ar",
-        "8000",
-        "-f",
-        "s16le",
-        "pipe:1",
-      ],
-      stdin: "null",
-      stdout: "piped",
-      stderr: "null",
-    }).spawn();
+    let process: AudioMeterProcess;
+    try {
+      process = audioCommand({ commandFactory: this.#commandFactory }, "ffmpeg", {
+        args: [
+          "-nostdin",
+          "-hide_banner",
+          "-loglevel",
+          "error",
+          "-f",
+          "pulse",
+          "-i",
+          entry.sourceName,
+          "-ac",
+          "1",
+          "-ar",
+          "8000",
+          "-f",
+          "s16le",
+          "pipe:1",
+        ],
+        stdin: "null",
+        stdout: "piped",
+        stderr: "null",
+      }).spawn();
+    } catch (error) {
+      this.#diagnostics?.report({
+        source: "audio",
+        code: "meter-start-failed",
+        severity: "warning",
+        message: "Audio meter failed to start",
+        detail: errorDetail(error),
+        context: { sourceName: entry.sourceName },
+      });
+      meter.active = false;
+      meter.snapshot.active = false;
+      return;
+    }
 
     meter.process = process;
     meter.reader = process.stdout.getReader();
@@ -148,14 +194,28 @@ export class AudioRegistry {
         }
         this.#updateMeter(meter, value);
       }
-    } catch {
-      // Ignore stream-level failures and fall back to the last good sample.
+    } catch (error) {
+      this.#diagnostics?.report({
+        source: "audio",
+        code: "meter-stream-failed",
+        severity: "warning",
+        message: "Audio meter stream failed",
+        detail: errorDetail(error),
+        context: { sourceName: entry.sourceName },
+      });
     } finally {
       if (meter.reader) {
         try {
           meter.reader.releaseLock();
-        } catch {
-          // ignore
+        } catch (error) {
+          this.#diagnostics?.report({
+            source: "audio",
+            code: "meter-release-failed",
+            severity: "debug",
+            message: "Audio meter reader release failed",
+            detail: errorDetail(error),
+            context: { sourceName: entry.sourceName },
+          });
         }
       }
       meter.reader = null;
@@ -174,7 +234,17 @@ export class AudioRegistry {
     meter.snapshot.peak = 0;
     meter.snapshot.history = meter.snapshot.history.slice(-63);
     meter.snapshot.history.push(0);
-    meter.process?.kill("SIGTERM");
+    try {
+      meter.process?.kill("SIGTERM");
+    } catch (error) {
+      this.#diagnostics?.report({
+        source: "audio",
+        code: "meter-stop-failed",
+        severity: "debug",
+        message: "Audio meter stop failed",
+        detail: errorDetail(error),
+      });
+    }
     meter.process = null;
     meter.reader = null;
     meter.carry = new Uint8Array(0);
@@ -220,4 +290,16 @@ function concatUint8Arrays(a: Uint8Array, b: Uint8Array) {
   output.set(a);
   output.set(b, a.length);
   return output;
+}
+
+function audioCommand(
+  options: AudioRuntimeOptions,
+  command: string,
+  commandOptions: Deno.CommandOptions,
+): AudioCommand {
+  return options.commandFactory?.(command, commandOptions) ?? new Deno.Command(command, commandOptions);
+}
+
+function errorDetail(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }

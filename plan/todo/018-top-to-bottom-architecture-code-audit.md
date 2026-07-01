@@ -345,6 +345,8 @@ Work:
       controllers.
 - [ ] Convert silent fallback paths in system metrics, graphics/Kitty surfaces, storage, audio, and browser storage into
       structured diagnostics where practical.
+  - [x] Converted audio source discovery and meter startup/stream/stop failures to optional `DiagnosticsCollector`
+        reports with injectable command fixtures for deterministic tests.
 - [x] Add status-bar and report helpers for degraded backends.
 - [x] Add tests that assert expected diagnostics for missing `nvidia-smi`, blocked IndexedDB, unsupported Kitty
       graphics, and failed process spawns.
