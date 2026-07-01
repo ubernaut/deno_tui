@@ -64,3 +64,5 @@ developer workflows.
 - Added cursor style inspection for `CSI Ps SP q` so shell and editor cursor shape changes survive terminal parsing.
 - Connected OSC terminal titles to shell inspection and workspace session descriptors while preserving explicit user
   renames.
+- Added explicit PTY versus process-fallback metadata to terminal session inspection, workspace descriptors, status
+  summaries, and the Workbench shell status line.

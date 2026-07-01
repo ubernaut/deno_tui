@@ -87,6 +87,7 @@ export interface TerminalSessionDescriptor {
   runtimeTitle?: string;
   template: TerminalTemplate;
   backendId?: string;
+  pty?: boolean;
   commandLine?: string;
   status?: TerminalSessionHandleInspection["status"];
   running?: boolean;
@@ -230,6 +231,7 @@ export function describeTerminalTemplateSession(
     title: session.title,
     template: cloneSpawnTerminalTemplate(session.template),
     backendId: inspected.backendId,
+    pty: inspected.pty,
     commandLine: inspected.commandLine,
     status: inspected.status,
     running: inspected.running,

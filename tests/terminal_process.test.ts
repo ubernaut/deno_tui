@@ -270,6 +270,7 @@ Deno.test("ProcessTerminalBackend spawns inspectable non-PTY sessions", async ()
   assertEquals((await handle.closed).status, "exited");
   assertEquals(handle.output.lines.peek().some((line) => line.text === "backend ok"), true);
   assertEquals(handle.inspect().commandLine, "demo --backend");
+  assertEquals(handle.inspect().pty, false);
   assertEquals(handle.inspect().resizeSupported, false);
   assertEquals(handle.inspect().columns, 100);
   assertEquals(handle.inspect().rows, 30);

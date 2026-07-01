@@ -100,6 +100,7 @@ Deno.test("terminal template sessions describe backend handle state", () => {
   });
   assertEquals(descriptor.title, "Health");
   assertEquals(descriptor.backendId, "fake");
+  assertEquals(descriptor.pty, true);
   assertEquals(descriptor.commandLine, "deno task health");
   assertEquals(descriptor.status, "running");
   assertEquals(descriptor.running, true);
@@ -457,6 +458,7 @@ class FakeTerminalHandle implements TerminalSessionHandle {
     return {
       id: this.id,
       backendId: this.backendId,
+      pty: true,
       commandLine: [this.command.command, ...(this.command.args ?? [])].join(" "),
       status,
       running: true,

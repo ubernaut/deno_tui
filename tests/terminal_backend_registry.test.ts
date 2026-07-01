@@ -133,6 +133,7 @@ Deno.test("sigma pty terminal backend wraps output write resize and close lifecy
   assertEquals(handle.inspect(), {
     id: handle.id,
     backendId: "pty",
+    pty: true,
     commandLine: 'bash -lc "echo hi"',
     status: "running",
     running: true,

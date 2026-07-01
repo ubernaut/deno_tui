@@ -170,6 +170,7 @@ class FakeShellHandle implements TerminalSessionHandle {
     return {
       id: this.id,
       backendId: this.backendId,
+      pty: true,
       commandLine: this.command.command,
       status: this.#status,
       running: this.#status === "running",

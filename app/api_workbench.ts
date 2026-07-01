@@ -57,7 +57,11 @@ import { MicrotaskScheduler } from "../src/runtime/render_loop.ts";
 import { type AsyncStore, createRuntimeStore } from "../src/runtime/storage.ts";
 import { createProcessTerminalBackend, type TerminalBackend } from "../src/runtime/terminal_backend.ts";
 import { TerminalShellController } from "../src/runtime/terminal_shell.ts";
-import { formatTerminalShellWindowTitle, summarizeTerminalStatus } from "../src/runtime/terminal_status.ts";
+import {
+  formatTerminalShellWindowTitle,
+  summarizeTerminalStatus,
+  terminalBackendKindLabel,
+} from "../src/runtime/terminal_status.ts";
 import { Computed, Signal } from "../src/signals/mod.ts";
 import { probeCompatibleWebGPUDevice } from "../src/three_ascii/webgpu_compat.ts";
 import { Tui } from "../src/tui.ts";
@@ -1919,7 +1923,7 @@ function renderTerminalShell(frame: Frame, rect: Rectangle): void {
   const mode = terminalShellInputModeLabel();
   const status = compactSpaces(
     `${mode} ${inspection.status.toUpperCase()} ${
-      inspection.pty ? "PTY" : "PIPE"
+      terminalBackendKindLabel(inspection.pty)
     } ${backend} · ${inspection.commandLine}`,
   );
   write(

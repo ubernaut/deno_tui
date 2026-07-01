@@ -279,6 +279,7 @@ class SigmaPtySessionHandle implements TerminalSessionHandle {
     const result: TerminalSessionHandleInspection = {
       id: this.id,
       backendId: this.backendId,
+      pty: true,
       commandLine: formatProcessCommandLine(this.command),
       status: this.#status,
       running: this.#status === "running",

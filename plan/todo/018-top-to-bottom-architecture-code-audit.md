@@ -237,7 +237,7 @@ Work:
   - [x] Added shell transcript and full-screen curses-style alternate-screen fixtures covering OSC title, DEC private
         modes, SGR, scroll regions, and alternate-screen restore.
 - [x] Connect terminal title/OSC state to workbench tabs.
-- [ ] Keep process fallback clearly labeled separately from PTY-backed sessions.
+- [x] Keep process fallback clearly labeled separately from PTY-backed sessions.
 
 Acceptance checks:
 

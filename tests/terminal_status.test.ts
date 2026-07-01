@@ -25,6 +25,8 @@ Deno.test("summarizeTerminalStatus formats process session state", () => {
     status: "failed",
     running: false,
     backendId: "process",
+    pty: false,
+    backendKind: "process",
     commandLine: "deno task health",
     cwd: "/repo",
     columns: undefined,
@@ -33,8 +35,8 @@ Deno.test("summarizeTerminalStatus formats process session state", () => {
     exitSignal: undefined,
     detached: false,
     reconnectable: false,
-    fields: ["FAILED", "backend:process", "exit:1", "cwd:/repo", "cmd:deno task health"],
-    text: "FAILED  backend:process  exit:1  cwd:/repo  cmd:deno task health",
+    fields: ["FAILED", "PROCESS FALLBACK", "backend:process", "exit:1", "cwd:/repo", "cmd:deno task health"],
+    text: "FAILED  PROCESS FALLBACK  backend:process  exit:1  cwd:/repo  cmd:deno task health",
   });
   output.dispose();
 });
@@ -43,6 +45,7 @@ Deno.test("summarizeTerminalStatus formats backend dimensions and exit signals",
   const source: TerminalSessionHandleInspection = {
     id: "session-1",
     backendId: "pty",
+    pty: true,
     commandLine: "bash -l",
     status: "cancelled",
     running: false,
@@ -61,6 +64,7 @@ Deno.test("summarizeTerminalStatus formats backend dimensions and exit signals",
   assertEquals(summary.fields, [
     "Shell",
     "CANCELLED",
+    "PTY",
     "backend:pty",
     "120x32",
     "exit:143/SIGTERM",
@@ -68,7 +72,7 @@ Deno.test("summarizeTerminalStatus formats backend dimensions and exit signals",
     "reconnectable",
     "cmd:bash -l",
   ]);
-  assertEquals(summary.text, "Shell  CANCELLED  backend:pty  120x...");
+  assertEquals(summary.text, "Shell  CANCELLED  PTY  backend:pty ...");
 });
 
 Deno.test("summarizeTerminalStatus reads workspace descriptor metadata", () => {
@@ -77,6 +81,7 @@ Deno.test("summarizeTerminalStatus reads workspace descriptor metadata", () => {
     title: "Health Task",
     template: denoTaskTerminalTemplate({ task: "health", cwd: "/repo", reconnectable: true }),
     backendId: "process",
+    pty: false,
     commandLine: "deno task health",
     status: "running",
     running: true,
@@ -91,6 +96,7 @@ Deno.test("summarizeTerminalStatus reads workspace descriptor metadata", () => {
   assertEquals(summarizeTerminalStatus(descriptor, { includeCommand: false }).fields, [
     "Health Task",
     "RUNNING",
+    "PROCESS FALLBACK",
     "backend:process",
     "100x24",
     "cwd:/repo",

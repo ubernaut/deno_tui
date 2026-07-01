@@ -43,6 +43,7 @@ export interface TerminalDetachedSession {
 export interface TerminalSessionHandleInspection {
   id: string;
   backendId: string;
+  pty?: boolean;
   title?: string;
   commandLine: string;
   status: ProcessSessionStatus;
@@ -177,6 +178,7 @@ class ProcessTerminalSessionHandle implements TerminalSessionHandle {
     const result: TerminalSessionHandleInspection = {
       id: this.id,
       backendId: this.backendId,
+      pty: false,
       commandLine: formatProcessCommandLine(this.command),
       status: inspection.status,
       running: inspection.running,

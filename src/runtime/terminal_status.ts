@@ -14,6 +14,7 @@ export interface TerminalStatusSummaryOptions {
   title?: string;
   cwd?: string;
   backendId?: string;
+  pty?: boolean;
   detached?: boolean;
   reconnectable?: boolean;
   width?: number;
@@ -26,6 +27,8 @@ export interface TerminalStatusSummary {
   status: ProcessSessionStatus;
   running: boolean;
   backendId?: string;
+  pty?: boolean;
+  backendKind?: "pty" | "process";
   commandLine?: string;
   cwd?: string;
   columns?: number;
@@ -55,6 +58,8 @@ export function summarizeTerminalStatus(
   const commandLine = "commandLine" in source ? source.commandLine : undefined;
   const cwd = options.cwd ?? sourceCwd(source);
   const backendId = options.backendId ?? ("backendId" in source ? source.backendId : undefined);
+  const pty = options.pty ?? ("pty" in source ? source.pty : undefined) ?? inferPtyFromBackendId(backendId);
+  const backendKind = pty === undefined ? undefined : pty ? "pty" : "process";
   const columns = "columns" in source ? source.columns : undefined;
   const rows = "rows" in source ? source.rows : undefined;
   const exit = "exit" in source ? source.exit : undefined;
@@ -65,6 +70,7 @@ export function summarizeTerminalStatus(
     status,
     running,
     backendId,
+    pty,
     commandLine,
     cwd,
     columns,
@@ -81,6 +87,8 @@ export function summarizeTerminalStatus(
     status,
     running,
     backendId,
+    pty,
+    backendKind,
     commandLine,
     cwd,
     columns,
@@ -100,6 +108,7 @@ export function terminalStatusFields(options: {
   status: ProcessSessionStatus;
   running: boolean;
   backendId?: string;
+  pty?: boolean;
   commandLine?: string;
   cwd?: string;
   columns?: number;
@@ -113,6 +122,7 @@ export function terminalStatusFields(options: {
   const fields: string[] = [];
   if (options.title) fields.push(options.title);
   fields.push(options.status.toUpperCase());
+  if (options.pty !== undefined) fields.push(terminalBackendKindLabel(options.pty));
   if (options.backendId) fields.push(`backend:${options.backendId}`);
   if (Number.isFinite(options.columns) && Number.isFinite(options.rows)) {
     fields.push(`${options.columns}x${options.rows}`);
@@ -127,6 +137,11 @@ export function terminalStatusFields(options: {
     if (options.commandLine) fields.push(`cmd:${options.commandLine}`);
   }
   return fields;
+}
+
+/** Returns the user-facing backend kind label for terminal shell/session status. */
+export function terminalBackendKindLabel(pty: boolean): string {
+  return pty ? "PTY" : "PROCESS FALLBACK";
 }
 
 /** Formats a shell window title with mode, status, and optional OSC/runtime title. */
@@ -144,6 +159,13 @@ export function formatTerminalShellWindowTitle(
 function sourceCwd(source: TerminalStatusSource): string | undefined {
   if ("command" in source) return source.command.cwd;
   if ("template" in source && "cwd" in source.template) return source.template.cwd;
+  return undefined;
+}
+
+function inferPtyFromBackendId(backendId: string | undefined): boolean | undefined {
+  if (!backendId) return undefined;
+  if (backendId === "process" || backendId.includes("process")) return false;
+  if (backendId.includes("pty") || backendId.includes("tmux")) return true;
   return undefined;
 }
 
