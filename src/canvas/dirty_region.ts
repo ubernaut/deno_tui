@@ -16,9 +16,25 @@ export class DirtyRegion {
   static fromRectangles(rectangles: readonly Rectangle[]): DirtyRegion {
     const region = new DirtyRegion();
     for (const rectangle of rectangles) {
-      region.addRectangle(rectangle);
+      region.addRectangleUnmerged(rectangle);
     }
+    region.mergeRows();
     return region;
+  }
+
+  private addRectangleUnmerged(rectangle: Rectangle): void {
+    const startRow = Math.floor(rectangle.row);
+    const endRow = startRow + Math.max(0, Math.floor(rectangle.height));
+    const startColumn = Math.floor(rectangle.column);
+    const endColumn = startColumn + Math.max(0, Math.floor(rectangle.width));
+    if (endRow <= startRow || endColumn <= startColumn) return;
+
+    for (let row = startRow; row < endRow; row += 1) {
+      const segments = this.#rows.get(row);
+      const segment = { row, startColumn, endColumn };
+      if (segments) segments.push(segment);
+      else this.#rows.set(row, [segment]);
+    }
   }
 
   /** Adds a rectangular dirty area, ignoring empty or invalid dimensions. */
@@ -41,18 +57,7 @@ export class DirtyRegion {
 
     const segments = this.#rows.get(normalizedRow) ?? [];
     segments.push({ row: normalizedRow, startColumn: start, endColumn: end });
-    segments.sort((left, right) => left.startColumn - right.startColumn || left.endColumn - right.endColumn);
-
-    const merged: DirtyRowSegment[] = [];
-    for (const segment of segments) {
-      const previous = merged.at(-1);
-      if (!previous || segment.startColumn > previous.endColumn) {
-        merged.push({ ...segment });
-        continue;
-      }
-      previous.endColumn = Math.max(previous.endColumn, segment.endColumn);
-    }
-    this.#rows.set(normalizedRow, merged);
+    this.#rows.set(normalizedRow, mergeRowSegments(segments));
   }
 
   /** Removes all row segments from the dirty region. */
@@ -97,4 +102,26 @@ export class DirtyRegion {
     }
     return intersections;
   }
+
+  private mergeRows(): void {
+    for (const [row, segments] of this.#rows) {
+      this.#rows.set(row, mergeRowSegments(segments));
+    }
+  }
+}
+
+function mergeRowSegments(segments: readonly DirtyRowSegment[]): DirtyRowSegment[] {
+  const sorted = [...segments].sort((left, right) =>
+    left.startColumn - right.startColumn || left.endColumn - right.endColumn
+  );
+  const merged: DirtyRowSegment[] = [];
+  for (const segment of sorted) {
+    const previous = merged.at(-1);
+    if (!previous || segment.startColumn > previous.endColumn) {
+      merged.push({ ...segment });
+      continue;
+    }
+    previous.endColumn = Math.max(previous.endColumn, segment.endColumn);
+  }
+  return merged;
 }
