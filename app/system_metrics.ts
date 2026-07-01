@@ -5,6 +5,7 @@ import { type CpuTimes, sampleCpuStatRows } from "./system_metrics_cpu.ts";
 import { compactDiagnostics, processDiagnostics } from "./system_metrics_diagnostics.ts";
 import { parseDfDiskRows } from "./system_metrics_disk.ts";
 import { NvidiaSmiGpuMetricsProvider, type SystemGpuMetricsProvider } from "./system_metrics_gpu.ts";
+import { type NetCounters, sampleNetworkStats } from "./system_metrics_network.ts";
 import {
   DenoSystemMetricsProvider,
   type SystemMetricsCommandOutput,
@@ -14,7 +15,6 @@ import { parseProcessStat, processComparator, type SystemProcessSortKey } from "
 import { collectAlerts, emptySnapshot, pushHistory } from "./system_metrics_snapshot.ts";
 import type {
   DiskSnapshot,
-  NetworkSnapshot,
   ProcessSnapshot,
   SystemMetricDiagnostic,
   SystemSnapshot,
@@ -38,12 +38,6 @@ export {
 export type { SystemProcessSortKey } from "./system_metrics_process.ts";
 
 const COMMAND_OUTPUT_DECODER = new TextDecoder();
-
-type NetCounters = {
-  rxBytes: number;
-  txBytes: number;
-  sampledAt: number;
-};
 
 type DiskCache = {
   sampledAt: number;
@@ -287,63 +281,9 @@ export class SystemMonitor {
 
   #sampleNetwork(text: string) {
     const sampledAt = this.#provider.now();
-    const interfaces = this.#provider.networkInterfaces();
-    const addressMap = new Map<string, string[]>();
-    for (const entry of interfaces) {
-      if (entry.name === "lo") {
-        continue;
-      }
-      const addresses = addressMap.get(entry.name) ?? [];
-      addresses.push(entry.address);
-      addressMap.set(entry.name, addresses);
-    }
-
-    let totalRxRate = 0;
-    let totalTxRate = 0;
-
-    const networks = text
-      .split("\n")
-      .slice(2)
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .map((line) => {
-        const [namePart, countersPart] = line.split(":");
-        const name = namePart?.trim() ?? "";
-        const counters = countersPart?.trim().split(/\s+/).map(Number) ?? [];
-        const rxBytes = counters[0] ?? 0;
-        const txBytes = counters[8] ?? 0;
-        const previous = this.#netCounters.get(name) ?? { rxBytes, txBytes, sampledAt };
-        const elapsedSeconds = Math.max(0.001, (sampledAt - previous.sampledAt) / 1000);
-        const rxRate = Math.max(0, (rxBytes - previous.rxBytes) / elapsedSeconds);
-        const txRate = Math.max(0, (txBytes - previous.txBytes) / elapsedSeconds);
-        this.#netCounters.set(name, { rxBytes, txBytes, sampledAt });
-        if (name !== "lo") {
-          totalRxRate += rxRate;
-          totalTxRate += txRate;
-        }
-        return {
-          name,
-          addresses: addressMap.get(name) ?? [],
-          rxBytes,
-          txBytes,
-          rxRate,
-          txRate,
-        } satisfies NetworkSnapshot;
-      })
-      .filter((entry) => entry.name !== "lo")
-      .filter((entry) => entry.addresses.length > 0 || entry.rxRate > 0 || entry.txRate > 0)
-      .sort((a, b) => {
-        const aWeight = a.rxRate + a.txRate + (a.addresses.length > 0 ? 10_000_000_000 : 0);
-        const bWeight = b.rxRate + b.txRate + (b.addresses.length > 0 ? 10_000_000_000 : 0);
-        return bWeight - aWeight;
-      })
-      .slice(0, 8);
-
-    return {
-      networks,
-      totalRxRate,
-      totalTxRate,
-    };
+    const sample = sampleNetworkStats(text, this.#provider.networkInterfaces(), this.#netCounters, sampledAt);
+    this.#netCounters = sample.counters;
+    return sample;
   }
 
   async #sampleDisks(): Promise<DiskSample> {
