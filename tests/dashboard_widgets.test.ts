@@ -1325,11 +1325,27 @@ Deno.test("ThemeProviderCache invalidates when active provider engine changes", 
   assertEquals(cache.component("Button"), plain);
   assertEquals(cache.inspect(), {
     activeId: "plain",
+    previewEntries: 0,
     themeEntries: 1,
     styleEntries: 0,
     hits: 1,
     misses: 1,
   });
+
+  const preview = cache.preview({ sample: "x", components: ["Button"], tokens: ["foreground"] });
+  assertEquals(cache.preview({ sample: "x", components: ["Button"], tokens: ["foreground"] }), preview);
+  assertEquals(preview.components[0]?.preview.styled, "plain:x");
+  assertEquals(cache.inspect().previewEntries, 1);
+  const uncachedVariantPreview = cache.preview({
+    sample: "x",
+    components: ["Button"],
+    variants: () => ["default"],
+  });
+  assertEquals(
+    cache.preview({ sample: "x", components: ["Button"], variants: () => ["default"] }) === uncachedVariantPreview,
+    false,
+  );
+  assertEquals(cache.inspect().previewEntries, 1);
 
   provider.setTheme("bright");
   await Promise.resolve();
@@ -1339,6 +1355,7 @@ Deno.test("ThemeProviderCache invalidates when active provider engine changes", 
   assertEquals(bright === plain, false);
   assertEquals(cache.inspect(), {
     activeId: "bright",
+    previewEntries: 0,
     themeEntries: 1,
     styleEntries: 0,
     hits: 0,
@@ -1452,6 +1469,7 @@ Deno.test("ThemeProviderResolver follows active theme changes", async () => {
   assertEquals(resolver.snapshot({ tokens: ["foreground"], sample: "x" }).tokens[0].preview, "bright:x");
   assertEquals(resolver.inspect(), {
     activeId: "bright",
+    previewEntries: 0,
     themeEntries: 1,
     styleEntries: 1,
     hits: 0,

@@ -285,7 +285,9 @@ Work:
 - [ ] Split theme code by responsibility: ANSI/style primitives, component definitions, manifest parsing/validation,
       provider/registry, previews/reports, and standard packs.
   - [x] Extracted standalone ANSI style primitives into `src/theme_ansi.ts` while preserving `src/theme.ts` re-exports.
-- [ ] Add caches for resolved style chains and preview generation with explicit invalidation tests.
+- [x] Add caches for resolved style chains and preview generation with explicit invalidation tests.
+  - [x] Extended `ThemeProviderCache` with preview caching, active theme/layer invalidation, and uncached
+        function-variant previews.
 - [ ] Add tests that verify theme layer changes invalidate only affected component/token lookups.
 - [ ] Keep public exports stable through re-export shims and package-check coverage.
 

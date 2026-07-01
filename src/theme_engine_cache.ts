@@ -1,5 +1,14 @@
 // Copyright 2023 Im-Beast. MIT license.
-import type { Style, Theme, ThemeEngine, ThemeProvider, ThemeState } from "./theme.ts";
+import {
+  previewThemeProvider,
+  type Style,
+  type Theme,
+  type ThemeEngine,
+  type ThemeProvider,
+  type ThemeProviderPreview,
+  type ThemeProviderPreviewOptions,
+  type ThemeState,
+} from "./theme.ts";
 
 /** Serializable inspection snapshot for theme Engine Cache. */
 export interface ThemeEngineCacheInspection {
@@ -12,6 +21,7 @@ export interface ThemeEngineCacheInspection {
 /** Serializable inspection snapshot for theme Provider Cache. */
 export interface ThemeProviderCacheInspection extends ThemeEngineCacheInspection {
   activeId: string;
+  previewEntries: number;
 }
 
 /** Public class implementing a theme Engine Cache. */
@@ -73,10 +83,12 @@ export class ThemeEngineCache {
 export class ThemeProviderCache {
   readonly provider: ThemeProvider;
   #cache: ThemeEngineCache;
+  #previews = new Map<string, ThemeProviderPreview>();
   #signature: string;
   readonly #syncCache = () => {
     this.#signature = providerSignature(this.provider);
     this.#cache = new ThemeEngineCache(this.provider.engineFor(this.provider.activeId.peek()));
+    this.#previews.clear();
   };
 
   constructor(provider: ThemeProvider) {
@@ -96,13 +108,31 @@ export class ThemeProviderCache {
     return this.#cache.resolve(componentName, state, variant);
   }
 
+  preview(options: ThemeProviderPreviewOptions = {}): ThemeProviderPreview {
+    this.#syncIfChanged();
+    const normalized = normalizePreviewOptions(options);
+    if (normalized.variants) {
+      return previewThemeProvider(this.provider, normalized);
+    }
+
+    const key = previewKey(normalized);
+    const cached = this.#previews.get(key);
+    if (cached) return cached;
+
+    const preview = previewThemeProvider(this.provider, normalized);
+    this.#previews.set(key, preview);
+    return preview;
+  }
+
   clear(): void {
     this.#cache.clear();
+    this.#previews.clear();
   }
 
   inspect(): ThemeProviderCacheInspection {
     return {
       activeId: this.provider.activeId.peek(),
+      previewEntries: this.#previews.size,
       ...this.#cache.inspect(),
     };
   }
@@ -139,4 +169,22 @@ function styleKey(componentName: string, variant: string, state: ThemeState): st
 
 function providerSignature(provider: ThemeProvider): string {
   return `${provider.activeId.peek()}\0${provider.layers.activeIds().join("\0")}`;
+}
+
+function normalizePreviewOptions(options: ThemeProviderPreviewOptions): ThemeProviderPreviewOptions {
+  return {
+    ...options,
+    components: options.components ? [...options.components] : undefined,
+    states: options.states ? [...options.states] : undefined,
+    tokens: options.tokens ? [...options.tokens] : undefined,
+  };
+}
+
+function previewKey(options: ThemeProviderPreviewOptions): string {
+  return JSON.stringify({
+    sample: options.sample ?? null,
+    components: options.components ? [...options.components] : null,
+    states: options.states ? [...options.states] : null,
+    tokens: options.tokens ? [...options.tokens] : null,
+  });
 }
