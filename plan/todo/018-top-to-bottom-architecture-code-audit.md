@@ -354,7 +354,7 @@ Acceptance checks:
 
 - [ ] Add full-frame render invalidation tests for overlapping draw objects, scrollable workspaces, and modals.
 - [ ] Add real workbench controller tests after extraction, covering both terminal and web adapters.
-- [ ] Add browser interaction tests for pointer, touch/coarse pointer, software keyboard text input, and resize
+- [x] Add browser interaction tests for pointer, touch/coarse pointer, software keyboard text input, and resize
       observer.
 - [x] Add terminal parser fixture tests from real shell output and ANSI sequences.
 - [ ] Add fixture-driven system metrics tests for Linux, missing GPU, and unavailable permissions.

@@ -4,6 +4,7 @@ import { createAnsiThemeTokens, createTheme } from "../src/theme.ts";
 import {
   BrowserCellCanvasSink,
   BrowserInputSource,
+  BrowserPlatform,
   parseAnsiCell,
   renderDomNodeToHtml,
   themeTokensToCssVariables,
@@ -242,6 +243,121 @@ Deno.test("BrowserInputSource reports pointer positions in terminal cells", () =
   assertEquals(style, { touchAction: "auto", userSelect: "text", webkitUserSelect: "text" });
 });
 
+Deno.test("BrowserInputSource maps touch cancellation and wheel scrolling", () => {
+  const listeners = new Map<string, EventListener>();
+  const operations: unknown[][] = [];
+  const style = { touchAction: "auto", userSelect: "text", webkitUserSelect: "text" };
+  const target = {
+    tabIndex: -1,
+    style,
+    addEventListener: (type: string, listener: EventListener) => void listeners.set(type, listener),
+    removeEventListener: (type: string) => void listeners.delete(type),
+    focus: (options?: FocusOptions) => operations.push(["focus", options?.preventScroll]),
+    setPointerCapture: (pointerId: number) => operations.push(["capture", pointerId]),
+    hasPointerCapture: (pointerId: number) => pointerId === 3,
+    releasePointerCapture: (pointerId: number) => operations.push(["release", pointerId]),
+    getBoundingClientRect: () => ({
+      x: 0,
+      y: 0,
+      left: 0,
+      top: 0,
+      right: 120,
+      bottom: 120,
+      width: 120,
+      height: 120,
+      toJSON: () => ({}),
+    }),
+  };
+  const events: unknown[] = [];
+  const input = new BrowserInputSource(target as unknown as HTMLElement, { cellWidth: 10, cellHeight: 20 });
+
+  input.attach({
+    emit: (type: string, event: unknown) => void events.push([type, event]),
+  } as never);
+
+  listeners.get("pointerdown")?.({
+    pointerId: 3,
+    pointerType: "touch",
+    clientX: 25,
+    clientY: 45,
+    movementX: 0,
+    movementY: 0,
+    metaKey: false,
+    altKey: false,
+    ctrlKey: false,
+    shiftKey: false,
+    buttons: 1,
+    button: 0,
+    preventDefault: () => undefined,
+  } as unknown as Event);
+  listeners.get("pointercancel")?.({
+    pointerId: 3,
+    pointerType: "touch",
+    clientX: 25,
+    clientY: 45,
+    movementX: 0,
+    movementY: 0,
+    metaKey: false,
+    altKey: false,
+    ctrlKey: false,
+    shiftKey: false,
+    buttons: 0,
+    button: 0,
+    preventDefault: () => undefined,
+  } as unknown as Event);
+  listeners.get("wheel")?.({
+    clientX: 75,
+    clientY: 85,
+    deltaY: -120,
+    metaKey: false,
+    altKey: false,
+    ctrlKey: true,
+    shiftKey: false,
+    preventDefault: () => undefined,
+  } as unknown as Event);
+
+  assertEquals(operations, [
+    ["focus", true],
+    ["capture", 3],
+    ["release", 3],
+  ]);
+  assertEquals(events[1], [
+    "mousePress",
+    {
+      key: "mouse",
+      x: 2,
+      y: 2,
+      movementX: 0,
+      movementY: 0,
+      meta: false,
+      ctrl: false,
+      shift: false,
+      buffer: new Uint8Array(),
+      drag: false,
+      release: true,
+      button: undefined,
+    },
+  ]);
+  assertEquals(events[2], [
+    "mouseScroll",
+    {
+      key: "mouse",
+      x: 7,
+      y: 4,
+      movementX: 0,
+      movementY: -120,
+      meta: false,
+      ctrl: true,
+      shift: false,
+      buffer: new Uint8Array(),
+      drag: false,
+      scroll: -1,
+    },
+  ]);
+
+  input.dispose();
+});
+
 Deno.test("BrowserInputSource emits paste and focus events", () => {
   const listeners = new Map<string, EventListener>();
   const target = {
@@ -325,6 +441,66 @@ Deno.test("BrowserInputSource bridges text input events to key presses", () => {
   ]);
 
   input.dispose();
+});
+
+Deno.test("BrowserPlatform updates terminal size from ResizeObserver", () => {
+  const original = globalThis.ResizeObserver;
+  let resizeCallback: ResizeObserverCallback | undefined;
+  let disconnected = false;
+  class FakeResizeObserver {
+    constructor(callback: ResizeObserverCallback) {
+      resizeCallback = callback;
+    }
+    observe(): void {}
+    disconnect(): void {
+      disconnected = true;
+    }
+  }
+  Object.defineProperty(globalThis, "ResizeObserver", {
+    configurable: true,
+    writable: true,
+    value: FakeResizeObserver,
+  });
+
+  let width = 100;
+  let height = 60;
+  const root = {
+    getBoundingClientRect: () => ({
+      x: 0,
+      y: 0,
+      left: 0,
+      top: 0,
+      right: width,
+      bottom: height,
+      width,
+      height,
+      toJSON: () => ({}),
+    }),
+  };
+
+  try {
+    const platform = new BrowserPlatform({
+      root: root as unknown as HTMLElement,
+      cellWidth: 10,
+      cellHeight: 20,
+      textInput: false,
+    });
+    assertEquals(platform.size.peek(), { columns: 10, rows: 3 });
+
+    width = 75;
+    height = 85;
+    resizeCallback?.([], {} as ResizeObserver);
+    assertEquals(platform.size.peek(), { columns: 7, rows: 4 });
+
+    platform.dispose();
+    assertEquals(disconnected, true);
+  } finally {
+    Object.defineProperty(globalThis, "ResizeObserver", {
+      configurable: true,
+      writable: true,
+      value: original,
+    });
+  }
 });
 
 Deno.test("renderDomNodeToHtml serializes semantic DOM nodes safely", () => {
