@@ -105,6 +105,8 @@ Work:
         flows through the same renderer-neutral workbench controller contract.
   - [x] Shared diagnostics log/status helpers now keep terminal and web degradation display behavior on one adapter
         contract.
+  - [x] Extracted shared status-left composition and tile-density labels so terminal and web status bars no longer
+        duplicate focus/theme/layout/diagnostic summary logic.
 - [x] Replace duplicated theme/window/menu persistence code with a shared versioned serializer.
   - [x] Extracted shared workbench workspace normalization, panel-state normalization, upsert, rename, delete, lookup,
         and legacy window-entry expansion helpers into `src/app/workbench_workspace.ts`.

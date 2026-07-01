@@ -9210,6 +9210,22 @@ function layoutButtonRow(options) {
   };
 }
 
+// src/app/workbench_status.ts
+function workbenchTileDensityLabel(value) {
+  if (value === 0 || !Number.isFinite(value)) return "balanced";
+  return value > 0 ? "dense" : "wide";
+}
+function workbenchStatusLeft(options) {
+  const parts = [
+    `focus ${options.focus}`,
+    options.theme,
+    `tiles ${workbenchTileDensityLabel(options.tileDensity)}`
+  ];
+  const diagnostics = options.diagnostics?.trim();
+  if (diagnostics) parts.push(diagnostics);
+  return parts.join(" | ");
+}
+
 // src/runtime/process_session.ts
 var INPUT_ENCODER = new TextEncoder();
 function formatProcessCommandLine(command) {
@@ -11863,11 +11879,15 @@ function draw() {
   maximized.peek() ? renderWindowTabs(frame) : renderShelf(frame);
   renderDropdownOverlay(frame);
   renderModalOverlay(frame);
-  const densityLabel = tileDensity.peek() === 0 ? "balanced" : tileDensity.peek() > 0 ? "dense" : "wide";
   frame[height - 1] = fit(
     paint(
       renderStatusBar(
-        `focus ${active.peek()} | ${theme().label} | tiles ${densityLabel} | ${formatWorkbenchDiagnosticStatus(webDiagnostics)}`,
+        workbenchStatusLeft({
+          focus: active.peek(),
+          theme: theme().label,
+          tileDensity: tileDensity.peek(),
+          diagnostics: formatWorkbenchDiagnosticStatus(webDiagnostics)
+        }),
         "1-8 focus  T theme  H help  Q quit  click controls",
         width
       ),

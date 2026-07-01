@@ -3636,6 +3636,34 @@
       "documented": true
     },
     {
+      "module": "src/app/workbench_status.ts",
+      "name": "workbenchStatusLeft",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_status.ts",
+      "name": "WorkbenchStatusLeftOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_status.ts",
+      "name": "workbenchTileDensityLabel",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_status.ts",
+      "name": "WorkbenchTileDensityLabel",
+      "kind": "type",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
       "module": "src/app/workbench_terminal.ts",
       "name": "createWorkbenchShellSession",
       "kind": "function",

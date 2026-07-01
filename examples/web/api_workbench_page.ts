@@ -63,6 +63,7 @@ import {
   WindowManagerController,
   type WorkbenchPanelWorkspaceState,
   workbenchRevealActiveRowOffset,
+  workbenchStatusLeft,
   type WorkbenchTitlebarButtonKind,
   wrapTextBoxLines,
 } from "../../mod.web.ts";
@@ -642,13 +643,15 @@ function draw(): void {
   maximized.peek() ? renderWindowTabs(frame) : renderShelf(frame);
   renderDropdownOverlay(frame);
   renderModalOverlay(frame);
-  const densityLabel = tileDensity.peek() === 0 ? "balanced" : tileDensity.peek() > 0 ? "dense" : "wide";
   frame[height - 1] = fit(
     paint(
       renderStatusBar(
-        `focus ${active.peek()} | ${theme().label} | tiles ${densityLabel} | ${
-          formatWorkbenchDiagnosticStatus(webDiagnostics)
-        }`,
+        workbenchStatusLeft({
+          focus: active.peek(),
+          theme: theme().label,
+          tileDensity: tileDensity.peek(),
+          diagnostics: formatWorkbenchDiagnosticStatus(webDiagnostics),
+        }),
         "1-8 focus  T theme  H help  Q quit  click controls",
         width,
       ),

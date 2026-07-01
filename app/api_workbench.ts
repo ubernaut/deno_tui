@@ -52,6 +52,7 @@ import {
   workbenchContentViewport,
   type WorkbenchFrame,
   workbenchRevealActiveRowOffset,
+  workbenchStatusLeft,
   type WorkbenchTitlebarButtonKind,
   workbenchVisualizationIdFromWindowId,
   workbenchVisualizationWindowId,
@@ -2175,10 +2176,12 @@ function renderWindowTabs(frame: Frame): void {
 function renderStatus(frame: Frame): void {
   const t = theme();
   const width = currentWidth();
-  const densityLabel = tileDensity.peek() === 0 ? "balanced" : tileDensity.peek() > 0 ? "dense" : "wide";
-  const left = `focus ${windowTitle(activeWindow.peek())} | ${theme().label} | tiles ${densityLabel} | ${
-    formatWorkbenchDiagnosticStatus(workbenchDiagnostics)
-  }`;
+  const left = workbenchStatusLeft({
+    focus: windowTitle(activeWindow.peek()),
+    theme: theme().label,
+    tileDensity: tileDensity.peek(),
+    diagnostics: formatWorkbenchDiagnosticStatus(workbenchDiagnostics),
+  });
   const right = "F10 menu  N new  Shift+T themes  G config  0 restore minimized";
   write(frame, currentHeight() - 1, 0, paint(renderStatusBar(left, right, width), { fg: t.text, bg: t.panelSoft }));
 }
