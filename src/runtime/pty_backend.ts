@@ -16,6 +16,8 @@ import type {
 } from "./terminal_backend.ts";
 import type { TerminalBackendAvailability, TerminalBackendProvider } from "./terminal_backend_registry.ts";
 
+const INPUT_DECODER = new TextDecoder();
+
 /** Command options accepted by the optional Sigma PTY adapter. */
 export interface SigmaPtyCommandOptions {
   args?: string[];
@@ -246,7 +248,7 @@ class SigmaPtySessionHandle implements TerminalSessionHandle {
   write(data: string | Uint8Array): Promise<boolean> {
     if (this.#closed) return Promise.resolve(false);
     try {
-      this.#pty.write(typeof data === "string" ? data : new TextDecoder().decode(data));
+      this.#pty.write(typeof data === "string" ? data : INPUT_DECODER.decode(data));
       return Promise.resolve(true);
     } catch (error) {
       this.#appendSystemLine(`input failed: ${error instanceof Error ? error.message : String(error)}`);

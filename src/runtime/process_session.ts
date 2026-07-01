@@ -8,6 +8,8 @@ import { Signal } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
 import type { DiagnosticsCollector } from "./diagnostics.ts";
 
+const INPUT_ENCODER = new TextEncoder();
+
 /** Lifecycle status for a process-backed terminal output session. */
 export type ProcessSessionStatus = "idle" | "running" | "exited" | "failed" | "cancelled";
 
@@ -178,7 +180,7 @@ export class ProcessSessionController {
 
   async writeInput(data: string | Uint8Array): Promise<boolean> {
     if (!this.#child || !this.running || !this.#child.stdin) return false;
-    const bytes = typeof data === "string" ? new TextEncoder().encode(data) : data;
+    const bytes = typeof data === "string" ? INPUT_ENCODER.encode(data) : data;
     const writer = this.#child.stdin.getWriter();
     try {
       await writer.write(bytes);

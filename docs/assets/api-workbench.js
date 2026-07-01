@@ -8961,6 +8961,7 @@ function layoutButtonRow(options) {
 }
 
 // src/runtime/process_session.ts
+var INPUT_ENCODER = new TextEncoder();
 function formatProcessCommandLine(command) {
   return [command.command, ...command.args ?? []].map(quoteCommandToken).join(" ");
 }
@@ -8968,6 +8969,9 @@ function quoteCommandToken(token) {
   if (/^[\w./:=@+-]+$/.test(token)) return token;
   return `"${token.replaceAll("\\", "\\\\").replaceAll('"', '\\"')}"`;
 }
+
+// src/runtime/pty_backend.ts
+var INPUT_DECODER = new TextDecoder();
 
 // src/runtime/terminal_sequences.ts
 function parseTerminalControlSequence(value, start = 0) {
