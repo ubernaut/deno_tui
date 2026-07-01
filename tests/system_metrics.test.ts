@@ -3,6 +3,7 @@ import {
   type GpuSample,
   type SystemGpuMetricsProvider,
   type SystemGpuMetricsProviderContext,
+  type SystemMetricsCommandOptions,
   type SystemMetricsCommandOutput,
   type SystemMetricsDirEntry,
   type SystemMetricsNetworkInterface,
@@ -293,6 +294,48 @@ Deno.test("SystemMonitor degrades disk metrics when df command throws", async ()
   );
 });
 
+Deno.test("SystemMonitor times out hung command-backed samplers", async () => {
+  const provider = new FixtureMetricsProvider();
+  const diagnostics = new DiagnosticsCollector();
+  provider.files.set("/proc/stat", procStatFirst());
+  provider.files.set("/proc/uptime", "123.45 100.00\n");
+  provider.files.set("/proc/net/dev", procNetDev(1_000, 2_000));
+  provider.commandHangs.add("df");
+  provider.commandHangs.add("nvidia-smi");
+
+  const monitor = new SystemMonitor({
+    historyLength: 4,
+    provider,
+    diagnostics,
+    commandTimeoutMs: 5,
+  });
+  await monitor.sample();
+
+  const snapshot = monitor.snapshot.peek();
+  assertEquals(snapshot.timestamp, 1_000);
+  assertEquals(
+    snapshot.diagnostics.some((diagnostic) =>
+      diagnostic.source === "disk" && diagnostic.status === "unavailable" &&
+      diagnostic.detail.includes("timed out") && typeof diagnostic.durationMs === "number"
+    ),
+    true,
+  );
+  assertEquals(
+    snapshot.diagnostics.some((diagnostic) =>
+      diagnostic.source === "gpu" && diagnostic.status === "unavailable" &&
+      diagnostic.detail === "nvidia-smi sampling failed" && typeof diagnostic.durationMs === "number"
+    ),
+    true,
+  );
+  assertEquals(
+    diagnostics.entries().some((entry) =>
+      entry.source === "system-metrics" && entry.code === "nvidia-smi-failed" &&
+      entry.detail?.includes("timed out")
+    ),
+    true,
+  );
+});
+
 class FixtureGpuProvider implements SystemGpuMetricsProvider {
   samples = 0;
 
@@ -329,6 +372,7 @@ class FixtureMetricsProvider implements SystemMetricsProvider {
   dirErrors = new Map<string, Error>();
   commands = new Map<string, SystemMetricsCommandOutput>();
   commandErrors = new Map<string, Error>();
+  commandHangs = new Set<string>();
   commandCalls = new Map<string, number>();
 
   now(): number {
@@ -388,8 +432,15 @@ class FixtureMetricsProvider implements SystemMetricsProvider {
     }
   }
 
-  async command(command: string, _args: string[]): Promise<SystemMetricsCommandOutput> {
+  async command(
+    command: string,
+    _args: string[],
+    _options?: SystemMetricsCommandOptions,
+  ): Promise<SystemMetricsCommandOutput> {
     this.commandCalls.set(command, (this.commandCalls.get(command) ?? 0) + 1);
+    if (this.commandHangs.has(command)) {
+      return await new Promise<SystemMetricsCommandOutput>(() => {});
+    }
     const error = this.commandErrors.get(command);
     if (error) throw error;
     return this.commands.get(command) ?? { success: false, stdout: new Uint8Array() };

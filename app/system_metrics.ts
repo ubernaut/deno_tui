@@ -59,6 +59,7 @@ export interface SystemGpuMetricsProviderContext {
   provider: SystemMetricsProvider;
   current: GpuSnapshot;
   diagnostics?: DiagnosticsCollector;
+  commandTimeoutMs?: number;
 }
 
 /** Pluggable GPU metrics sampler used by SystemMonitor. */
@@ -83,6 +84,10 @@ export interface SystemMetricsCommandOutput {
   stdout: Uint8Array;
 }
 
+export interface SystemMetricsCommandOptions {
+  timeoutMs?: number;
+}
+
 export interface SystemMetricsNetworkInterface {
   name: string;
   address: string;
@@ -98,7 +103,7 @@ export interface SystemMetricsProvider {
   networkInterfaces(): SystemMetricsNetworkInterface[];
   readTextFile(path: string): Promise<string>;
   readDir(path: string): AsyncIterable<SystemMetricsDirEntry>;
-  command(command: string, args: string[]): Promise<SystemMetricsCommandOutput>;
+  command(command: string, args: string[], options?: SystemMetricsCommandOptions): Promise<SystemMetricsCommandOutput>;
 }
 
 export class DenoSystemMetricsProvider implements SystemMetricsProvider {
@@ -139,23 +144,48 @@ export class DenoSystemMetricsProvider implements SystemMetricsProvider {
     return Deno.readDir(path);
   }
 
-  async command(command: string, args: string[]): Promise<SystemMetricsCommandOutput> {
-    const result = await new Deno.Command(command, {
+  async command(
+    command: string,
+    args: string[],
+    options: SystemMetricsCommandOptions = {},
+  ): Promise<SystemMetricsCommandOutput> {
+    const child = new Deno.Command(command, {
       args,
       stdout: "piped",
       stderr: "null",
-    }).output();
-    return {
-      success: result.success,
-      stdout: result.stdout,
-    };
+    }).spawn();
+    let timeout: number | undefined;
+    try {
+      const output = child.output();
+      const result = options.timeoutMs && options.timeoutMs > 0
+        ? await Promise.race([
+          output,
+          new Promise<never>((_, reject) => {
+            timeout = setTimeout(() => {
+              try {
+                child.kill("SIGKILL");
+              } catch {
+                // The process may have exited between the timer firing and kill.
+              }
+              reject(new Error(`${command} timed out after ${options.timeoutMs}ms`));
+            }, options.timeoutMs);
+          }),
+        ])
+        : await output;
+      return {
+        success: result.success,
+        stdout: result.stdout,
+      };
+    } finally {
+      if (timeout !== undefined) clearTimeout(timeout);
+    }
   }
 }
 
 /** NVIDIA GPU metrics provider backed by nvidia-smi CSV output. */
 export class NvidiaSmiGpuMetricsProvider implements SystemGpuMetricsProvider {
   async sampleGpu(context: SystemGpuMetricsProviderContext): Promise<GpuSample> {
-    return await sampleNvidiaSmiGpu(context.provider, context.current, context.diagnostics);
+    return await sampleNvidiaSmiGpu(context.provider, context.current, context.diagnostics, context.commandTimeoutMs);
   }
 }
 
@@ -169,6 +199,7 @@ export interface SystemMonitorOptions {
   processSortKey?: SystemProcessSortKey;
   processRefreshMs?: number;
   diskCacheMs?: number;
+  commandTimeoutMs?: number;
 }
 
 export class SystemMonitor {
@@ -190,6 +221,7 @@ export class SystemMonitor {
   #processRefreshMs: number;
   #processCache?: ProcessCache;
   #diskCacheMs: number;
+  #commandTimeoutMs: number;
   #hostname: string;
   #osRelease: string;
   #diagnostics?: DiagnosticsCollector;
@@ -209,6 +241,7 @@ export class SystemMonitor {
     this.#processSortKey = options.processSortKey ?? "cpu";
     this.#processRefreshMs = normalizeNonNegativeInteger(options.processRefreshMs, 0);
     this.#diskCacheMs = normalizePositiveInteger(options.diskCacheMs, 10_000);
+    this.#commandTimeoutMs = normalizePositiveInteger(options.commandTimeoutMs, 1_500);
     this.#diagnostics = options.diagnostics;
     this.#hostname = safeHostname(this.#provider);
     this.#osRelease = safeOsRelease(this.#provider);
@@ -256,6 +289,7 @@ export class SystemMonitor {
           provider: this.#provider,
           current: current.gpu,
           diagnostics: this.#diagnostics,
+          commandTimeoutMs: this.#commandTimeoutMs,
         }),
         useCachedProcesses ? Promise.resolve(undefined) : this.#collectProcessStats(),
       ]);
@@ -467,7 +501,12 @@ export class SystemMonitor {
     const started = performance.now();
     let result: SystemMetricsCommandOutput;
     try {
-      result = await this.#provider.command("df", ["-B1P", "-x", "tmpfs", "-x", "devtmpfs", "-x", "squashfs"]);
+      result = await runMetricCommand(
+        this.#provider,
+        "df",
+        ["-B1P", "-x", "tmpfs", "-x", "devtmpfs", "-x", "squashfs"],
+        this.#commandTimeoutMs,
+      );
     } catch (error) {
       return {
         disks: this.#diskCache.disks,
@@ -666,6 +705,25 @@ function processComparator(sortKey: SystemProcessSortKey): (left: ProcessSnapsho
   }
 }
 
+async function runMetricCommand(
+  provider: SystemMetricsProvider,
+  command: string,
+  args: string[],
+  timeoutMs: number,
+): Promise<SystemMetricsCommandOutput> {
+  let timeout: number | undefined;
+  try {
+    return await Promise.race([
+      provider.command(command, args, { timeoutMs }),
+      new Promise<never>((_, reject) => {
+        timeout = setTimeout(() => reject(new Error(`${command} timed out after ${timeoutMs}ms`)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timeout !== undefined) clearTimeout(timeout);
+  }
+}
+
 async function readMetricText(
   provider: SystemMetricsProvider,
   path: string,
@@ -768,14 +826,20 @@ async function sampleNvidiaSmiGpu(
   provider: SystemMetricsProvider,
   current: GpuSnapshot,
   diagnostics?: DiagnosticsCollector,
+  commandTimeoutMs = 1_500,
 ): Promise<GpuSample> {
   const started = performance.now();
   const sampledAt = provider.now();
   try {
-    const result = await provider.command("nvidia-smi", [
-      "--query-gpu=name,utilization.gpu,memory.used,memory.total,temperature.gpu,power.draw,clocks.gr,clocks.mem",
-      "--format=csv,noheader,nounits",
-    ]);
+    const result = await runMetricCommand(
+      provider,
+      "nvidia-smi",
+      [
+        "--query-gpu=name,utilization.gpu,memory.used,memory.total,temperature.gpu,power.draw,clocks.gr,clocks.mem",
+        "--format=csv,noheader,nounits",
+      ],
+      commandTimeoutMs,
+    );
     if (!result.success) {
       diagnostics?.report({
         source: "system-metrics",

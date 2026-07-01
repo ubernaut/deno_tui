@@ -202,9 +202,11 @@ Work:
 
 - [x] Extract provider interfaces for CPU, memory, process, disk, network, temperature, and GPU metrics.
 - [x] Add Linux provider implementations plus fixture providers for tests and demos.
-- [ ] Add structured sampler diagnostics: unavailable source, permission denied, command missing, timeout, stale data,
+- [x] Add structured sampler diagnostics: unavailable source, permission denied, command missing, timeout, stale data,
       and sample duration.
   - [x] Added command-throw degradation for disk sampling and process scan durations in source diagnostics.
+  - [x] Added command timeout support for command-backed disk/GPU samplers and fixture coverage for hung `df` and
+        `nvidia-smi`.
 - [x] Keep monitor snapshots advancing when required `/proc` reads or process scans fail, with structured per-source
       diagnostics for unavailable CPU, uptime, network, and process data.
 - [x] Bound expensive process scans and support configurable process limits, sort keys, and refresh cadence.
@@ -366,7 +368,7 @@ Acceptance checks:
 - [x] Add browser interaction tests for pointer, touch/coarse pointer, software keyboard text input, and resize
       observer.
 - [x] Add terminal parser fixture tests from real shell output and ANSI sequences.
-- [ ] Add fixture-driven system metrics tests for Linux, missing GPU, and unavailable permissions.
+- [x] Add fixture-driven system metrics tests for Linux, missing GPU, and unavailable permissions.
 - [x] Add property/fuzz tests for layout, selection, viewport, scrollbar pointer mapping, and terminal input decoding.
   - [x] Added deterministic generated parity coverage for supported simple/Yoga flex layout cases.
   - [x] Added deterministic generated invariant coverage for viewport overflow and scrollbar pointer mapping.
