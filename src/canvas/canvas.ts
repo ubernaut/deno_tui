@@ -3,9 +3,9 @@
 import { EmitterEvent, EventEmitter } from "../event_emitter.ts";
 
 import { SortedArray } from "../utils/sorted_array.ts";
-import { rectangleIntersection } from "../utils/numbers.ts";
+import { rectangleEquals, rectangleIntersection } from "../utils/numbers.ts";
 
-import type { ConsoleSize, Stdout } from "../types.ts";
+import type { ConsoleSize, Rectangle, Stdout } from "../types.ts";
 import { DrawObject } from "./draw_object.ts";
 import { Signal, SignalOfObject } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
@@ -168,31 +168,56 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
 
     let i = 0;
     let intersectionsDirty = false;
+    const dirtyRectangles: Rectangle[] = [];
+    const movedOwnObjects = new Set<DrawObject>();
+    const nonMovingUpdatedObjects: DrawObject[] = [];
 
     for (const object of objectsToUpdate) {
       object.updated = true;
       ++i;
       object.update();
 
+      const previousRectangle = object.previousRectangle ? cloneRectangle(object.previousRectangle) : undefined;
       object.updateMovement();
+
+      if (object.moved) {
+        intersectionsDirty = true;
+        const rectangle = object.rectangle.peek();
+        const ownRectangleChanged = !previousRectangle || !rectangleEquals(rectangle, previousRectangle);
+        const drawn = this.drawnObjects.includes(object);
+        if (ownRectangleChanged || !drawn) {
+          dirtyRectangles.push(cloneRectangle(rectangle));
+          if (previousRectangle) {
+            dirtyRectangles.push(previousRectangle);
+          }
+          movedOwnObjects.add(object);
+        }
+      } else {
+        nonMovingUpdatedObjects.push(object);
+      }
+
       object.updatePreviousRectangle();
       object.updateOutOfBounds();
 
       if (object.outOfBounds) {
         object.rendered = false;
       }
-
-      intersectionsDirty ||= object.moved;
     }
 
-    const objectsToRender = intersectionsDirty ? [...this.drawnObjects] : objectsToUpdate;
+    const objectsToRender = intersectionsDirty
+      ? affectedDrawObjects(this.drawnObjects, dirtyRectangles, nonMovingUpdatedObjects)
+      : objectsToUpdate;
     if (intersectionsDirty) {
       objectsToRender.sort((a, b) => b.zIndex.peek() - a.zIndex.peek() || b.id - a.id);
       for (const object of objectsToRender) {
         this.updateIntersections(object);
         object.moved = false;
         if (!object.outOfBounds) {
-          object.rendered = false;
+          if (movedOwnObjects.has(object) || !object.rendered) {
+            object.rendered = false;
+          } else {
+            queueDirtyRectangles(object, dirtyRectangles);
+          }
         }
       }
     } else {
@@ -268,4 +293,58 @@ function emptyRenderStats(): CanvasRenderStats {
     intersectionsDirty: false,
     flushedCells: 0,
   };
+}
+
+function cloneRectangle(rectangle: Rectangle): Rectangle {
+  return {
+    column: rectangle.column,
+    row: rectangle.row,
+    width: rectangle.width,
+    height: rectangle.height,
+  };
+}
+
+function affectedDrawObjects(
+  objects: Iterable<DrawObject>,
+  dirtyRectangles: readonly Rectangle[],
+  requiredObjects: readonly DrawObject[],
+): DrawObject[] {
+  if (dirtyRectangles.length === 0) {
+    return [...objects];
+  }
+
+  const required = new Set(requiredObjects);
+  const affected: DrawObject[] = [];
+  for (const object of objects) {
+    if (required.has(object) || object.moved || rectangleIntersectsAny(object.rectangle.peek(), dirtyRectangles)) {
+      affected.push(object);
+    }
+  }
+  return affected;
+}
+
+function queueDirtyRectangles(object: DrawObject, dirtyRectangles: readonly Rectangle[]): void {
+  for (const dirtyRectangle of dirtyRectangles) {
+    const intersection = rectangleIntersection(object.rectangle.peek(), dirtyRectangle, true);
+    if (!intersection) {
+      continue;
+    }
+
+    const rowRange = intersection.row + intersection.height;
+    const columnRange = intersection.column + intersection.width;
+    for (let row = intersection.row; row < rowRange; row += 1) {
+      for (let column = intersection.column; column < columnRange; column += 1) {
+        object.queueRerender(row, column);
+      }
+    }
+  }
+}
+
+function rectangleIntersectsAny(rectangle: Rectangle, candidates: readonly Rectangle[]): boolean {
+  for (const candidate of candidates) {
+    if (rectangleIntersection(rectangle, candidate, false)) {
+      return true;
+    }
+  }
+  return false;
 }

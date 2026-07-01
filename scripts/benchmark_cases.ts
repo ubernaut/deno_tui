@@ -186,7 +186,7 @@ export const benchmarkCases: BenchmarkCase[] = [
     description: "Render many overlapping canvas boxes while a high-z modal moves and closes.",
     tags: ["render", "canvas", "dirty-region", "windows"],
     iterations: 30,
-    maxAverageMs: 85,
+    maxAverageMs: 75,
     run: runCanvasOverlapWorkload,
   },
   {

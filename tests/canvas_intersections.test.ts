@@ -41,11 +41,22 @@ Deno.test("canvas keeps higher z overlays visible after lower z redraws", () => 
   assertEquals(canvasRowText(canvas, 1, 12), "..HELP......");
   assertEquals(canvas.inspectRender().intersectionsDirty, true);
   assertEquals(canvas.inspectRender().intersectionUpdates, 2);
+  assertEquals(canvas.inspectRender().renderedObjects, 1);
+  assertEquals(canvas.inspectRender().rerenderedObjects, 1);
+
+  overlayRect.value = { column: 4, row: 1, width: 4 };
+  canvas.render();
+
+  assertEquals(canvasRowText(canvas, 1, 12), "....HELP....");
+  assertEquals(canvas.inspectRender().intersectionsDirty, true);
+  assertEquals(canvas.inspectRender().intersectionUpdates, 2);
+  assertEquals(canvas.inspectRender().renderedObjects, 1);
+  assertEquals(canvas.inspectRender().rerenderedObjects, 1);
 
   backgroundStyle.value = () => "#";
   canvas.render();
 
-  assertEquals(canvasRowText(canvas, 1, 12), "##HELP######");
+  assertEquals(canvasRowText(canvas, 1, 12), "####HELP####");
   assertEquals(canvas.inspectRender().intersectionsDirty, false);
   assertEquals(canvas.inspectRender().intersectionUpdates, 0);
   assertEquals(canvas.inspectRender().renderedObjects, 1);
