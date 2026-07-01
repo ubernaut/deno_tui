@@ -1,6 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { createProcessTerminalBackend, type TerminalBackend } from "../runtime/terminal_backend.ts";
 import { createSigmaPtyTerminalBackend } from "../runtime/pty_backend.ts";
+import { TerminalShellController, type TerminalShellControllerOptions } from "../runtime/terminal_shell.ts";
 
 type MaybePromise<T> = T | Promise<T>;
 
@@ -16,6 +17,18 @@ export interface WorkbenchShellBackendResolution {
   backend: TerminalBackend;
   fallback: boolean;
   reason?: string;
+}
+
+/** Options for creating an API Workbench shell controller through the workbench backend resolver. */
+export interface WorkbenchShellSessionOptions
+  extends Omit<TerminalShellControllerOptions, "backend" | "backendFactory"> {
+  resolver?: WorkbenchShellBackendResolverOptions;
+}
+
+/** Shell controller plus backend resolution metadata for workbench terminal windows. */
+export interface WorkbenchShellSession {
+  shell: TerminalShellController;
+  resolution: WorkbenchShellBackendResolution;
 }
 
 /** Resolves the preferred PTY shell backend and falls back to the process backend when PTY is unavailable. */
@@ -40,4 +53,19 @@ export async function resolveWorkbenchShellBackend(
       reason,
     };
   }
+}
+
+/** Creates a workbench shell controller using the same PTY-first backend resolution policy as the demo workbench. */
+export async function createWorkbenchShellSession(
+  options: WorkbenchShellSessionOptions = {},
+): Promise<WorkbenchShellSession> {
+  const { resolver, ...shellOptions } = options;
+  const resolution = await resolveWorkbenchShellBackend(resolver);
+  return {
+    shell: new TerminalShellController({
+      ...shellOptions,
+      backend: resolution.backend,
+    }),
+    resolution,
+  };
 }

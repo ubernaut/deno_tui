@@ -1,6 +1,7 @@
 import { assertEquals } from "./deps.ts";
 import {
   buttonText,
+  createWorkbenchShellSession,
   HitTargetStack,
   layoutWorkbenchTitlebar,
   resolveWorkbenchShellBackend,
@@ -35,4 +36,5 @@ Deno.test("workbench facade exposes renderer-neutral helpers", () => {
   });
   assertEquals(stack.find(3, 2)?.action, "demo");
   assertEquals(typeof resolveWorkbenchShellBackend, "function");
+  assertEquals(typeof createWorkbenchShellSession, "function");
 });

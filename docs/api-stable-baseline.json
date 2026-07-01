@@ -3511,6 +3511,13 @@
     },
     {
       "module": "src/app/workbench_terminal.ts",
+      "name": "createWorkbenchShellSession",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_terminal.ts",
       "name": "resolveWorkbenchShellBackend",
       "kind": "function",
       "typeOnly": false,
@@ -3526,6 +3533,20 @@
     {
       "module": "src/app/workbench_terminal.ts",
       "name": "WorkbenchShellBackendResolverOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_terminal.ts",
+      "name": "WorkbenchShellSession",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_terminal.ts",
+      "name": "WorkbenchShellSessionOptions",
       "kind": "interface",
       "typeOnly": true,
       "documented": true

@@ -285,13 +285,15 @@ Acceptance checks:
 
 - [x] Terminal screen fixture tests cover common shell prompts, curses apps, alternate screen enter/exit, resize, and
       truecolor output.
-- [ ] Workbench shell smoke can run common commands and a simple full-screen app through PTY when available.
+- [x] Workbench shell smoke can run common commands and a simple full-screen app through PTY when available.
   - [x] Added `TerminalShellController` smoke coverage for PTY-style command writes, shell output, and a full-screen
         alternate-screen transcript before wiring the same path into a workbench-level smoke.
   - [x] Routed the console workbench through the shared `src/app/workbench/mod.ts` facade so the PTY shell window,
         window chrome, shelf, menu, workspace, and viewport helpers are exercised through one renderer-neutral boundary.
   - [x] Extracted the workbench shell backend resolver and covered the PTY-first/process-fallback path with focused
         tests so the interactive workbench shell window no longer owns that availability policy directly.
+  - [x] Added `createWorkbenchShellSession` and a workbench-boundary PTY smoke covering shell writes plus an
+        alternate-screen fullscreen transcript.
 - [x] This todo and `017-terminal-multiplexer-experience.md` have non-overlapping scopes or are merged cleanly.
   - [x] Extracted OSC/CSI/single-character ESC parsing and numeric parameter parsing into
         `src/runtime/terminal_sequences.ts` with direct parser tests, leaving `TerminalScreenController` focused on
@@ -405,6 +407,8 @@ Work:
       structured diagnostics where practical.
   - [x] Converted audio source discovery and meter startup/stream/stop failures to optional `DiagnosticsCollector`
         reports with injectable command fixtures for deterministic tests.
+  - [x] Converted web workbench `localStorage` and IndexedDB fallback paths to deduplicated structured diagnostics
+        surfaced through the in-demo log panel.
 - [x] Add status-bar and report helpers for degraded backends.
 - [x] Add tests that assert expected diagnostics for missing `nvidia-smi`, blocked IndexedDB, unsupported Kitty
       graphics, and failed process spawns.
@@ -412,7 +416,7 @@ Work:
 Acceptance checks:
 
 - [ ] Demos stay usable when optional capabilities are unavailable, but the user can inspect why a feature degraded.
-- [ ] Diagnostic output avoids noisy logs in normal operation.
+- [x] Diagnostic output avoids noisy logs in normal operation.
 
 ### P3: Modularize Demo-Owned Visualization And Workbench Content
 

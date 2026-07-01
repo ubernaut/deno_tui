@@ -8871,202 +8871,6 @@ function quoteCommandToken(token) {
   return `"${token.replaceAll("\\", "\\\\").replaceAll('"', '\\"')}"`;
 }
 
-// src/app/workbench_titlebar.ts
-function layoutWorkbenchTitlebar(options) {
-  const controlsMinWidth = options.controlsMinWidth ?? 22;
-  const configLabel = options.configLabel ?? "config";
-  const buttons = [];
-  const row = options.rect.row;
-  const rightBorderColumn = options.rect.column + options.rect.width - 1;
-  const hasWindowControls = options.rect.width >= controlsMinWidth;
-  let leftmostControlColumn = rightBorderColumn;
-  if (hasWindowControls) {
-    const specs = [
-      { kind: "close", label: "x", tone: "danger", compact: true },
-      { kind: "restore", label: "\u21BA", tone: "muted", compact: true },
-      { kind: "maximize", label: "\u25A1", tone: "success", compact: true },
-      { kind: "minimize", label: "-", tone: "warning", compact: true }
-    ];
-    let cursor = rightBorderColumn;
-    for (const spec of specs) {
-      const width = textWidth(buttonText(spec.label, { compact: spec.compact }));
-      const column = cursor - width;
-      buttons.push({ ...spec, rect: { column, row, width, height: 1 } });
-      leftmostControlColumn = column;
-      cursor = column - 1;
-    }
-  }
-  const configWidth = textWidth(buttonText(configLabel));
-  const configColumn = leftmostControlColumn - configWidth - 1;
-  const titleEnd = options.rect.column + textWidth(options.title) + 3;
-  if (options.showConfig && configColumn > titleEnd) {
-    buttons.push({
-      kind: "config",
-      label: configLabel,
-      tone: "default",
-      compact: false,
-      rect: { column: configColumn, row, width: configWidth, height: 1 }
-    });
-  }
-  return {
-    buttons: buttons.sort((left, right) => left.rect.column - right.rect.column),
-    hasWindowControls
-  };
-}
-
-// src/app/workbench_viewport.ts
-function workbenchRevealActiveRowOffset(options) {
-  if (!options.activeRect) return void 0;
-  if (options.contentHeight <= options.viewportHeight) return 0;
-  const maxOffset = Math.max(0, options.contentHeight - Math.max(0, options.viewportHeight));
-  const offset = Math.max(0, Math.min(maxOffset, options.offsetRows));
-  const top = options.activeRect.row;
-  const bottom = options.activeRect.row + options.activeRect.height;
-  if (top < offset) return Math.max(0, Math.min(maxOffset, top));
-  if (bottom > offset + options.viewportHeight) {
-    return Math.max(0, Math.min(maxOffset, bottom - options.viewportHeight));
-  }
-  return void 0;
-}
-
-// src/app/workbench_workspace.ts
-function defaultWorkbenchMinimizedState(panelIds2, minimized2 = {}) {
-  const state = {};
-  for (const id2 of panelIds2) {
-    state[id2] = Boolean(minimized2[id2]);
-  }
-  return state;
-}
-function normalizeWorkbenchPanelWorkspaceState(value, options) {
-  const panelSet = new Set(options.panelIds);
-  const isPanelId = (candidate) => typeof candidate === "string" && panelSet.has(candidate);
-  const active2 = isPanelId(value?.active) ? value.active : options.defaultActive;
-  const maximized2 = value?.maximized === null || isPanelId(value?.maximized) ? value.maximized ?? null : void 0;
-  const minimized2 = defaultWorkbenchMinimizedState(options.panelIds, value?.minimized ?? {});
-  if (active2) minimized2[active2] = false;
-  if (maximized2) minimized2[maximized2] = false;
-  const minDensity = options.minTileDensity ?? -3;
-  const maxDensity = options.maxTileDensity ?? 3;
-  const tileDensity2 = Number.isFinite(value?.tileDensity) ? Math.max(minDensity, Math.min(maxDensity, Math.floor(value.tileDensity))) : void 0;
-  return { active: active2, maximized: maximized2, minimized: minimized2, tileDensity: tileDensity2 };
-}
-
-// src/runtime/diagnostics.ts
-var DiagnosticsCollector = class {
-  constructor(maxEntries = 200) {
-    this.maxEntries = maxEntries;
-  }
-  #entries = [];
-  #listeners = /* @__PURE__ */ new Set();
-  #nextId = 1;
-  report(input2) {
-    const entry = {
-      id: this.#nextId++,
-      time: Math.max(0, Math.floor(input2.time ?? Date.now())),
-      source: input2.source,
-      code: input2.code,
-      severity: input2.severity,
-      message: input2.message,
-      detail: input2.detail,
-      context: input2.context ? { ...input2.context } : void 0
-    };
-    this.#entries.push(entry);
-    while (this.#entries.length > Math.max(1, this.maxEntries)) this.#entries.shift();
-    this.#emit(entry);
-    return { ...entry, context: entry.context ? { ...entry.context } : void 0 };
-  }
-  clear() {
-    if (this.#entries.length === 0) return;
-    this.#entries = [];
-    this.#emit(void 0);
-  }
-  entries() {
-    return this.#entries.map((entry) => ({ ...entry, context: entry.context ? { ...entry.context } : void 0 }));
-  }
-  inspect() {
-    const bySeverity = {
-      debug: 0,
-      info: 0,
-      warning: 0,
-      error: 0
-    };
-    for (const entry of this.#entries) bySeverity[entry.severity] += 1;
-    return {
-      count: this.#entries.length,
-      bySeverity,
-      entries: this.entries()
-    };
-  }
-  subscribe(listener) {
-    this.#listeners.add(listener);
-    return () => this.#listeners.delete(listener);
-  }
-  #emit(entry) {
-    for (const listener of this.#listeners) listener(entry);
-  }
-};
-function summarizeDiagnostics(entries) {
-  const bySeverity = {
-    debug: 0,
-    info: 0,
-    warning: 0,
-    error: 0
-  };
-  let highestSeverity;
-  for (const entry of entries) {
-    bySeverity[entry.severity] += 1;
-    if (!highestSeverity || severityWeight(entry.severity) > severityWeight(highestSeverity)) {
-      highestSeverity = entry.severity;
-    }
-  }
-  return {
-    count: entries.length,
-    ok: entries.length === 0,
-    highestSeverity,
-    bySeverity,
-    latest: cloneDiagnosticEntry(entries.at(-1))
-  };
-}
-function formatDiagnosticStatus(entries, options = {}) {
-  const label = options.label ?? "diagnostics";
-  const summary = summarizeDiagnostics(entries);
-  if (summary.ok) return `${label} ok`;
-  const counts = ["error", "warning", "info", "debug"].filter((severity) => summary.bySeverity[severity] > 0).map((severity) => `${summary.bySeverity[severity]} ${severity}`).join(", ");
-  const latest = options.includeLatest !== false && summary.latest ? ` latest ${summary.latest.source}/${summary.latest.code}` : "";
-  return `${label} ${summary.count} ${summary.highestSeverity}${counts ? ` (${counts})` : ""}${latest}`;
-}
-function cloneDiagnosticEntry(entry) {
-  return entry ? { ...entry, context: entry.context ? { ...entry.context } : void 0 } : void 0;
-}
-function severityWeight(severity) {
-  switch (severity) {
-    case "error":
-      return 4;
-    case "warning":
-      return 3;
-    case "info":
-      return 2;
-    case "debug":
-      return 1;
-  }
-}
-
-// src/runtime/terminal_templates.ts
-function isSpawnTerminalTemplate(template) {
-  return template.kind !== "attach";
-}
-function describeAttachTerminalTemplate(template, now = Date.now()) {
-  return {
-    id: template.id,
-    title: template.title,
-    template: { ...template, metadata: template.metadata ? { ...template.metadata } : void 0 },
-    reconnectable: true,
-    restartPolicy: "never",
-    createdAt: now,
-    updatedAt: now
-  };
-}
-
 // src/runtime/terminal_sequences.ts
 function parseTerminalControlSequence(value, start = 0) {
   const osc = parseOscSequence(value, start);
@@ -9734,6 +9538,202 @@ function clamp3(value, min2, max2) {
 }
 function clampByte(value) {
   return clamp3(Math.floor(value), 0, 255);
+}
+
+// src/runtime/terminal_templates.ts
+function isSpawnTerminalTemplate(template) {
+  return template.kind !== "attach";
+}
+function describeAttachTerminalTemplate(template, now = Date.now()) {
+  return {
+    id: template.id,
+    title: template.title,
+    template: { ...template, metadata: template.metadata ? { ...template.metadata } : void 0 },
+    reconnectable: true,
+    restartPolicy: "never",
+    createdAt: now,
+    updatedAt: now
+  };
+}
+
+// src/app/workbench_titlebar.ts
+function layoutWorkbenchTitlebar(options) {
+  const controlsMinWidth = options.controlsMinWidth ?? 22;
+  const configLabel = options.configLabel ?? "config";
+  const buttons = [];
+  const row = options.rect.row;
+  const rightBorderColumn = options.rect.column + options.rect.width - 1;
+  const hasWindowControls = options.rect.width >= controlsMinWidth;
+  let leftmostControlColumn = rightBorderColumn;
+  if (hasWindowControls) {
+    const specs = [
+      { kind: "close", label: "x", tone: "danger", compact: true },
+      { kind: "restore", label: "\u21BA", tone: "muted", compact: true },
+      { kind: "maximize", label: "\u25A1", tone: "success", compact: true },
+      { kind: "minimize", label: "-", tone: "warning", compact: true }
+    ];
+    let cursor = rightBorderColumn;
+    for (const spec of specs) {
+      const width = textWidth(buttonText(spec.label, { compact: spec.compact }));
+      const column = cursor - width;
+      buttons.push({ ...spec, rect: { column, row, width, height: 1 } });
+      leftmostControlColumn = column;
+      cursor = column - 1;
+    }
+  }
+  const configWidth = textWidth(buttonText(configLabel));
+  const configColumn = leftmostControlColumn - configWidth - 1;
+  const titleEnd = options.rect.column + textWidth(options.title) + 3;
+  if (options.showConfig && configColumn > titleEnd) {
+    buttons.push({
+      kind: "config",
+      label: configLabel,
+      tone: "default",
+      compact: false,
+      rect: { column: configColumn, row, width: configWidth, height: 1 }
+    });
+  }
+  return {
+    buttons: buttons.sort((left, right) => left.rect.column - right.rect.column),
+    hasWindowControls
+  };
+}
+
+// src/app/workbench_viewport.ts
+function workbenchRevealActiveRowOffset(options) {
+  if (!options.activeRect) return void 0;
+  if (options.contentHeight <= options.viewportHeight) return 0;
+  const maxOffset = Math.max(0, options.contentHeight - Math.max(0, options.viewportHeight));
+  const offset = Math.max(0, Math.min(maxOffset, options.offsetRows));
+  const top = options.activeRect.row;
+  const bottom = options.activeRect.row + options.activeRect.height;
+  if (top < offset) return Math.max(0, Math.min(maxOffset, top));
+  if (bottom > offset + options.viewportHeight) {
+    return Math.max(0, Math.min(maxOffset, bottom - options.viewportHeight));
+  }
+  return void 0;
+}
+
+// src/app/workbench_workspace.ts
+function defaultWorkbenchMinimizedState(panelIds2, minimized2 = {}) {
+  const state = {};
+  for (const id2 of panelIds2) {
+    state[id2] = Boolean(minimized2[id2]);
+  }
+  return state;
+}
+function normalizeWorkbenchPanelWorkspaceState(value, options) {
+  const panelSet = new Set(options.panelIds);
+  const isPanelId = (candidate) => typeof candidate === "string" && panelSet.has(candidate);
+  const active2 = isPanelId(value?.active) ? value.active : options.defaultActive;
+  const maximized2 = value?.maximized === null || isPanelId(value?.maximized) ? value.maximized ?? null : void 0;
+  const minimized2 = defaultWorkbenchMinimizedState(options.panelIds, value?.minimized ?? {});
+  if (active2) minimized2[active2] = false;
+  if (maximized2) minimized2[maximized2] = false;
+  const minDensity = options.minTileDensity ?? -3;
+  const maxDensity = options.maxTileDensity ?? 3;
+  const tileDensity2 = Number.isFinite(value?.tileDensity) ? Math.max(minDensity, Math.min(maxDensity, Math.floor(value.tileDensity))) : void 0;
+  return { active: active2, maximized: maximized2, minimized: minimized2, tileDensity: tileDensity2 };
+}
+
+// src/runtime/diagnostics.ts
+var DiagnosticsCollector = class {
+  constructor(maxEntries = 200) {
+    this.maxEntries = maxEntries;
+  }
+  #entries = [];
+  #listeners = /* @__PURE__ */ new Set();
+  #nextId = 1;
+  report(input2) {
+    const entry = {
+      id: this.#nextId++,
+      time: Math.max(0, Math.floor(input2.time ?? Date.now())),
+      source: input2.source,
+      code: input2.code,
+      severity: input2.severity,
+      message: input2.message,
+      detail: input2.detail,
+      context: input2.context ? { ...input2.context } : void 0
+    };
+    this.#entries.push(entry);
+    while (this.#entries.length > Math.max(1, this.maxEntries)) this.#entries.shift();
+    this.#emit(entry);
+    return { ...entry, context: entry.context ? { ...entry.context } : void 0 };
+  }
+  clear() {
+    if (this.#entries.length === 0) return;
+    this.#entries = [];
+    this.#emit(void 0);
+  }
+  entries() {
+    return this.#entries.map((entry) => ({ ...entry, context: entry.context ? { ...entry.context } : void 0 }));
+  }
+  inspect() {
+    const bySeverity = {
+      debug: 0,
+      info: 0,
+      warning: 0,
+      error: 0
+    };
+    for (const entry of this.#entries) bySeverity[entry.severity] += 1;
+    return {
+      count: this.#entries.length,
+      bySeverity,
+      entries: this.entries()
+    };
+  }
+  subscribe(listener) {
+    this.#listeners.add(listener);
+    return () => this.#listeners.delete(listener);
+  }
+  #emit(entry) {
+    for (const listener of this.#listeners) listener(entry);
+  }
+};
+function summarizeDiagnostics(entries) {
+  const bySeverity = {
+    debug: 0,
+    info: 0,
+    warning: 0,
+    error: 0
+  };
+  let highestSeverity;
+  for (const entry of entries) {
+    bySeverity[entry.severity] += 1;
+    if (!highestSeverity || severityWeight(entry.severity) > severityWeight(highestSeverity)) {
+      highestSeverity = entry.severity;
+    }
+  }
+  return {
+    count: entries.length,
+    ok: entries.length === 0,
+    highestSeverity,
+    bySeverity,
+    latest: cloneDiagnosticEntry(entries.at(-1))
+  };
+}
+function formatDiagnosticStatus(entries, options = {}) {
+  const label = options.label ?? "diagnostics";
+  const summary = summarizeDiagnostics(entries);
+  if (summary.ok) return `${label} ok`;
+  const counts = ["error", "warning", "info", "debug"].filter((severity) => summary.bySeverity[severity] > 0).map((severity) => `${summary.bySeverity[severity]} ${severity}`).join(", ");
+  const latest = options.includeLatest !== false && summary.latest ? ` latest ${summary.latest.source}/${summary.latest.code}` : "";
+  return `${label} ${summary.count} ${summary.highestSeverity}${counts ? ` (${counts})` : ""}${latest}`;
+}
+function cloneDiagnosticEntry(entry) {
+  return entry ? { ...entry, context: entry.context ? { ...entry.context } : void 0 } : void 0;
+}
+function severityWeight(severity) {
+  switch (severity) {
+    case "error":
+      return 4;
+    case "warning":
+      return 3;
+    case "info":
+      return 2;
+    case "debug":
+      return 1;
+  }
 }
 
 // src/runtime/terminal_session.ts

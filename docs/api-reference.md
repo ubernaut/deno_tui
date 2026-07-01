@@ -8,8 +8,8 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 - Entrypoints: 5
 - Module visits: 450
 - Re-export declarations: 445
-- Exported symbols: 3762
-- Documented symbols: 3762
+- Exported symbols: 3768
+- Documented symbols: 3768
 - Documentation coverage: 100.00%
 - Duplicate symbol groups: 0
 - Missing targets: 0
@@ -18,8 +18,8 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 
 | Specifier       | Path                           | Runtime  | Stability    | Modules | Symbols |    Docs |
 | --------------- | ------------------------------ | -------- | ------------ | ------: | ------: | ------: |
-| `.`             | `./mod.ts`                     | terminal | stable       |     229 |    1902 | 100.00% |
-| `./web`         | `./mod.web.ts`                 | browser  | beta         |     208 |    1765 | 100.00% |
+| `.`             | `./mod.ts`                     | terminal | stable       |     229 |    1905 | 100.00% |
+| `./web`         | `./mod.web.ts`                 | browser  | beta         |     208 |    1768 | 100.00% |
 | `./remote`      | `./mod.remote.ts`              | remote   | experimental |       4 |      38 | 100.00% |
 | `./three-ascii` | `./mod.three_ascii.ts`         | shared   | experimental |       8 |      54 | 100.00% |
 | `./layout/yoga` | `./src/layout/solvers/yoga.ts` | shared   | experimental |       1 |       3 | 100.00% |
@@ -37,8 +37,8 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 - Entrypoint: `mod.ts`
 - Modules: 229
 - Re-export declarations: 228
-- Exported symbols: 1902
-- Documented symbols: 1902
+- Exported symbols: 1905
+- Documented symbols: 1905
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -114,7 +114,7 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 | [`src/app/workbench_frame.ts`](#src-app-workbench-frame-ts)                             |          0 |      13 |         13 |
 | [`src/app/workbench_menu.ts`](#src-app-workbench-menu-ts)                               |          0 |       5 |          5 |
 | [`src/app/workbench_shelf.ts`](#src-app-workbench-shelf-ts)                             |          0 |       8 |          8 |
-| [`src/app/workbench_terminal.ts`](#src-app-workbench-terminal-ts)                       |          0 |       3 |          3 |
+| [`src/app/workbench_terminal.ts`](#src-app-workbench-terminal-ts)                       |          0 |       6 |          6 |
 | [`src/app/workbench_titlebar.ts`](#src-app-workbench-titlebar-ts)                       |          0 |       6 |          6 |
 | [`src/app/workbench_viewport.ts`](#src-app-workbench-viewport-ts)                       |          0 |       4 |          4 |
 | [`src/app/workbench_window_registry.ts`](#src-app-workbench-window-registry-ts)         |          0 |      13 |         13 |
@@ -1217,9 +1217,12 @@ _No direct exported symbols._
 
 | Symbol                                 | Kind      | Type Only | JSDoc |
 | -------------------------------------- | --------- | --------- | ----- |
+| `createWorkbenchShellSession`          | function  | no        | yes   |
 | `resolveWorkbenchShellBackend`         | function  | no        | yes   |
 | `WorkbenchShellBackendResolution`      | interface | yes       | yes   |
 | `WorkbenchShellBackendResolverOptions` | interface | yes       | yes   |
+| `WorkbenchShellSession`                | interface | yes       | yes   |
+| `WorkbenchShellSessionOptions`         | interface | yes       | yes   |
 
 #### src/app/workbench_titlebar.ts
 
@@ -3593,8 +3596,8 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 - Entrypoint: `mod.web.ts`
 - Modules: 208
 - Re-export declarations: 207
-- Exported symbols: 1765
-- Documented symbols: 1765
+- Exported symbols: 1768
+- Documented symbols: 1768
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -3670,7 +3673,7 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 | [`src/app/workbench_frame.ts`](#src-app-workbench-frame-ts)                       |          0 |      13 |         13 |
 | [`src/app/workbench_menu.ts`](#src-app-workbench-menu-ts)                         |          0 |       5 |          5 |
 | [`src/app/workbench_shelf.ts`](#src-app-workbench-shelf-ts)                       |          0 |       8 |          8 |
-| [`src/app/workbench_terminal.ts`](#src-app-workbench-terminal-ts)                 |          0 |       3 |          3 |
+| [`src/app/workbench_terminal.ts`](#src-app-workbench-terminal-ts)                 |          0 |       6 |          6 |
 | [`src/app/workbench_titlebar.ts`](#src-app-workbench-titlebar-ts)                 |          0 |       6 |          6 |
 | [`src/app/workbench_viewport.ts`](#src-app-workbench-viewport-ts)                 |          0 |       4 |          4 |
 | [`src/app/workbench_window_registry.ts`](#src-app-workbench-window-registry-ts)   |          0 |      13 |         13 |
@@ -4770,9 +4773,12 @@ _No direct exported symbols._
 
 | Symbol                                 | Kind      | Type Only | JSDoc |
 | -------------------------------------- | --------- | --------- | ----- |
+| `createWorkbenchShellSession`          | function  | no        | yes   |
 | `resolveWorkbenchShellBackend`         | function  | no        | yes   |
 | `WorkbenchShellBackendResolution`      | interface | yes       | yes   |
 | `WorkbenchShellBackendResolverOptions` | interface | yes       | yes   |
+| `WorkbenchShellSession`                | interface | yes       | yes   |
+| `WorkbenchShellSessionOptions`         | interface | yes       | yes   |
 
 #### src/app/workbench_titlebar.ts
 
