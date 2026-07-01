@@ -462,6 +462,8 @@ Work:
         renderers are data-driven instead of encoded in one large switch.
   - [x] Extracted the CPU hex-grid visualization into `app/visualization_cpu_hex.ts`, keeping color interpolation,
         layout, selection, and process-detail behavior under the existing visualization dynamic tests.
+  - [x] Extracted the responsive network monitor into `app/visualization_network.ts`, with chart/glyph dependencies
+        injected from the visualization renderer instead of duplicating shared drawing utilities.
 - [ ] Make demo-only assets and NGE-inspired primitives clearly separate from library APIs.
   - [x] Added `app/neon_three_catalog.ts` for supported Three scene metadata and labels, keeping demo/NGE catalog data
         separate from the monolithic scene factory and shared by visualization footers plus scene coverage tests.
