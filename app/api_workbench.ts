@@ -101,6 +101,7 @@ import { Tui } from "../src/tui.ts";
 import type { Rectangle } from "../src/types.ts";
 import { stripStyles, textWidth } from "../src/utils/strings.ts";
 import { workbenchButtonPaintOptions } from "../src/app/workbench_button_style.ts";
+import { layoutWrappedControlOptions, wrappedControlOptionRowCount } from "../src/app/workbench_control_layout.ts";
 import { resolveWorkbenchShellBackend } from "../src/app/workbench_terminal.ts";
 import { AudioRegistry } from "./audio.ts";
 import { grWizardThemePalettes } from "../src/grwizard_themes.ts";
@@ -2159,53 +2160,34 @@ function writeWrappedOptions(
   t: ThemeSpec,
 ): void {
   const width = Math.max(8, rect.width - 4);
-  let row = startRow;
-  let line = "";
-  let lineStartColumn = rect.column + 2;
-  const flush = () => {
-    if (row >= rect.row + rect.height || line.length === 0) return;
+  const rows = layoutWrappedControlOptions(items, selectedIndex, width);
+  for (const [offset, line] of rows.entries()) {
+    const row = startRow + offset;
+    if (row >= rect.row + rect.height || line.text.length === 0) return;
     const active = activeControl.peek() === id;
     write(
       frame,
       row,
-      lineStartColumn,
-      paint(fit(line, width), {
+      rect.column + 2,
+      paint(fit(line.text, width), {
         fg: active ? t.background : t.text,
         bg: active ? t.warn : t.surface,
         bold: active,
       }),
     );
-    line = "";
-    row += 1;
-    lineStartColumn = rect.column + 2;
-  };
-  for (const [index, item] of items.entries()) {
-    const token = `${index === selectedIndex ? "[" : " "}${item}${index === selectedIndex ? "]" : " "} `;
-    if (textWidth(line) + textWidth(token) > width) flush();
-    addHit({ column: lineStartColumn + textWidth(line), row, width: textWidth(token), height: 1 }, {
-      type: "control",
-      id,
-      action: "activate",
-      index,
-    });
-    line += token;
+    for (const token of line.tokens) {
+      addHit({ column: rect.column + 2 + token.columnOffset, row, width: token.width, height: 1 }, {
+        type: "control",
+        id,
+        action: "activate",
+        index: token.index,
+      });
+    }
   }
-  flush();
 }
 
 function wrappedOptionRowCount(items: readonly string[], width: number): number {
-  const safeWidth = Math.max(8, width);
-  let rows = 1;
-  let lineWidth = 0;
-  for (const item of items) {
-    const tokenWidth = textWidth(` ${item}  `);
-    if (lineWidth > 0 && lineWidth + tokenWidth > safeWidth) {
-      rows += 1;
-      lineWidth = 0;
-    }
-    lineWidth += tokenWidth;
-  }
-  return rows;
+  return wrappedControlOptionRowCount(items, undefined, width);
 }
 
 function addInlineStepperHits(rect: Rectangle, row: number): void {
