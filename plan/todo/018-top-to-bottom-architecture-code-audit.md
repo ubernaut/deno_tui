@@ -287,19 +287,21 @@ Work:
 - [ ] Split theme code by responsibility: ANSI/style primitives, component definitions, manifest parsing/validation,
       provider/registry, previews/reports, and standard packs.
   - [x] Extracted standalone ANSI style primitives into `src/theme_ansi.ts` while preserving `src/theme.ts` re-exports.
+  - [x] Extracted catalog-driven standard component definitions into `src/theme_standard_components.ts` behind the
+        existing `src/theme.ts` facade.
 - [x] Add caches for resolved style chains and preview generation with explicit invalidation tests.
   - [x] Extended `ThemeProviderCache` with preview caching, active theme/layer invalidation, and uncached
         function-variant previews.
 - [x] Add tests that verify theme layer changes invalidate only affected component/token lookups.
   - [x] `ThemeProviderCache` now swaps provider engines without flushing unrelated component-only layer entries and
         falls back to a full rebuild for token layer changes where style dependencies cannot be inferred safely.
-- [ ] Keep public exports stable through re-export shims and package-check coverage.
+- [x] Keep public exports stable through re-export shims and package-check coverage.
 
 Acceptance checks:
 
-- [ ] `deno task api-inventory -- --check --quiet --fail-duplicates --min-doc-coverage=1`
-- [ ] Theme tests cover module split compatibility and cache invalidation.
-- [ ] No app/demo imports need to reach into internal theme modules.
+- [x] `deno task api-inventory -- --check --quiet --fail-duplicates --min-doc-coverage=1`
+- [x] Theme tests cover module split compatibility and cache invalidation.
+- [x] No app/demo imports need to reach into internal theme modules.
 
 ### P2: Improve Public API Curation
 
