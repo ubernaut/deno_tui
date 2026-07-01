@@ -21,10 +21,18 @@ Deno.test("mod.web imports without constructing terminal runtime", async () => {
   assertEquals(typeof exports.textWidth, "function");
   assertEquals(typeof exports.DomRenderTarget, "function");
   assertEquals(typeof exports.createRemoteTerminalClient, "function");
+  assertEquals(typeof exports.TerminalScreenController, "function");
   assertEquals(typeof exports.ThreeAsciiRenderer, "function");
   assertEquals(typeof exports.ThreeAsciiObject, "function");
   assertEquals(typeof exports.probeCompatibleWebGPUDevice, "function");
   assertEquals(typeof exports.Tui, "undefined");
+
+  const Screen = exports.TerminalScreenController as new (
+    options?: { columns?: number; rows?: number },
+  ) => { write(value: string): void; textRows(): string[] };
+  const screen = new Screen({ columns: 6, rows: 2 });
+  screen.write("web");
+  assertEquals(screen.textRows()[0], "web");
 });
 
 Deno.test("parseAnsiCell extracts text and ANSI colors for browser rendering", () => {
