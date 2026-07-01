@@ -329,6 +329,90 @@ Deno.test("ThreePanelFrameView drops stale frames after a rebuild request", asyn
   }
 });
 
+Deno.test("ThreePanelFrameView hides safely while a frame is rendering", async () => {
+  const rectangle = new Signal({ column: 0, row: 0, width: 12, height: 6 }, { deepObserve: true });
+  const scene = new Signal<ThreeSceneState | null>(sceneState());
+  const ascii = new Signal(createDefaultAsciiOptions("sharp"));
+  const enabled = new Signal(true);
+  let renderer: SlowGridRenderer | undefined;
+  const panel = new ThreePanelFrameView({
+    rectangle,
+    scene,
+    ascii,
+    enabled,
+    frameInterval: 1000 / 30,
+    rendererFactory: (options) => renderer = new SlowGridRenderer(options.columns, options.rows),
+  });
+
+  try {
+    await waitFor(() => (renderer?.startCount ?? 0) >= 1);
+    assertEquals(panel.inspectLifecycle().state, "rendering");
+
+    enabled.value = false;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    assertEquals(panel.inspectLifecycle().state, "stopping");
+    assertEquals(panel.grid.peek(), []);
+
+    renderer?.completeFrame();
+    await waitFor(() => renderer?.destroyed === true);
+
+    assertEquals(panel.grid.peek(), []);
+    assertEquals(panel.inspectLifecycle().hasRenderer, false);
+    assertEquals(panel.inspectLifecycle().state, "idle");
+  } finally {
+    panel.dispose();
+    rectangle.dispose();
+    scene.dispose();
+    ascii.dispose();
+    enabled.dispose();
+  }
+});
+
+Deno.test("ThreePanelFrameView drops stale frames after ascii config rebuilds", async () => {
+  const rectangle = new Signal({ column: 0, row: 0, width: 12, height: 6 }, { deepObserve: true });
+  const scene = new Signal<ThreeSceneState | null>(sceneState());
+  const ascii = new Signal(createDefaultAsciiOptions("sharp"));
+  const enabled = new Signal(true);
+  const renderers: SlowGridRenderer[] = [];
+  const panel = new ThreePanelFrameView({
+    rectangle,
+    scene,
+    ascii,
+    enabled,
+    frameInterval: 1000 / 30,
+    rendererFactory: (options) => {
+      const renderer = new SlowGridRenderer(options.columns, options.rows, renderers.length === 0 ? "A" : "B");
+      renderers.push(renderer);
+      return renderer;
+    },
+  });
+
+  try {
+    await waitFor(() => (renderers[0]?.startCount ?? 0) >= 1);
+
+    ascii.value = { ...ascii.peek(), wireframeThickness: ascii.peek().wireframeThickness + 1 };
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    assertEquals(panel.inspectLifecycle().state, "stopping");
+    renderers[0]?.completeFrame();
+
+    await waitFor(() => (renderers[1]?.startCount ?? 0) >= 1);
+    assertEquals(panel.grid.peek(), []);
+    assertEquals(renderers[0]?.destroyed, true);
+
+    renderers[1]?.completeFrame();
+    await waitFor(() => panel.grid.peek()[0]?.[0] === "B");
+    assertEquals(panel.grid.peek()[0]?.[0], "B");
+  } finally {
+    panel.dispose();
+    rectangle.dispose();
+    scene.dispose();
+    ascii.dispose();
+    enabled.dispose();
+  }
+});
+
 Deno.test("ThreePanelFrameView can use Kitty image frames without drawing ASCII cells", async () => {
   const rectangle = new Signal({ column: 0, row: 0, width: 8, height: 4 }, { deepObserve: true });
   const graphicsRectangle = new Signal({ column: 5, row: 6, width: 8, height: 4 }, { deepObserve: true });
