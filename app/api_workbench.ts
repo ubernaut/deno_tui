@@ -109,6 +109,7 @@ import {
   HTML_CSS_LAYOUT_WINDOW_ID,
   htmlCssLayoutDemoBoxLabel,
 } from "../src/markup/demo_fixtures.ts";
+import { htmlCssLayoutBoxPaintOrder, htmlCssLayoutBoxStyle } from "./html_css_layout_view.ts";
 import {
   ASCII_DEMO_PRESETS,
   asciiControlValues,
@@ -2056,7 +2057,9 @@ function renderHtmlCssLayout(frame: Frame, rect: Rectangle): void {
   const result = createHtmlCssLayoutDemo(rect);
   const boxes = result.layout.boxes
     .filter((box) => box.visible)
-    .sort((left, right) => left.zIndex - right.zIndex || boxPaintOrder(left) - boxPaintOrder(right));
+    .sort((left, right) =>
+      left.zIndex - right.zIndex || htmlCssLayoutBoxPaintOrder(left) - htmlCssLayoutBoxPaintOrder(right)
+    );
 
   for (const box of boxes) {
     renderHtmlCssLayoutBox(frame, box, rect, t);
@@ -2090,7 +2093,7 @@ function renderHtmlCssLayoutBox(
 ): void {
   const rect = clipRect(box.rect, bounds);
   if (rect.width <= 0 || rect.height <= 0) return;
-  const style = htmlCssLayoutBoxStyle(box, t);
+  const style = htmlCssLayoutBoxStyle(box, t, contrastText);
   fillRect(frame, rect, style.bg);
   if (box.id !== "layout-demo") {
     drawHtmlCssLayoutOutline(frame, rect, style.border, style.bg, style.bold);
@@ -2121,53 +2124,6 @@ function renderHtmlCssLayoutBox(
     const detail = `${box.rect.width}x${box.rect.height}  content ${box.contentRect.width}x${box.contentRect.height}`;
     write(frame, content.row + 2, content.column, paint(fit(detail, content.width), { fg: t.muted, bg: style.bg }));
   }
-}
-
-function htmlCssLayoutBoxStyle(
-  box: ComputedLayoutBox,
-  t: ThemeSpec,
-): { fg: string; bg: string; border: string; bold?: boolean } {
-  if (box.id === "layout-toolbar") {
-    return { fg: contrastText(t.accentDeep, t.background, t.text), bg: t.accentDeep, border: t.accent, bold: true };
-  }
-  if (box.id === "layout-stage") {
-    return { fg: t.text, bg: t.panelSoft, border: t.borderStrong, bold: true };
-  }
-  if (box.id === "layout-grid") {
-    return { fg: t.text, bg: t.surface, border: t.accent, bold: true };
-  }
-  if (box.id === "grid-shell") {
-    return { fg: t.buttonActiveText, bg: t.buttonActiveBg, border: t.accent, bold: true };
-  }
-  if (box.id === "grid-worker") {
-    return { fg: contrastText(t.warn, t.background, t.text), bg: t.warn, border: t.danger, bold: true };
-  }
-  if (box.id.startsWith("grid-")) {
-    return { fg: t.text, bg: t.panel, border: t.accent };
-  }
-  if (box.id === "layout-badge") {
-    return { fg: contrastText(t.warn, t.background, t.text), bg: t.warn, border: t.danger, bold: true };
-  }
-  if (box.id === "layout-footer") {
-    return { fg: t.muted, bg: t.panel, border: t.border };
-  }
-  if (box.id === "metric-cpu") {
-    return { fg: t.buttonActiveText, bg: t.buttonActiveBg, border: t.accent, bold: true };
-  }
-  if (box.id.startsWith("metric-")) {
-    return { fg: t.text, bg: t.panel, border: t.accent };
-  }
-  return { fg: t.text, bg: t.surface, border: t.border };
-}
-
-function boxPaintOrder(box: ComputedLayoutBox): number {
-  if (box.id === "layout-demo") return 0;
-  if (box.id === "layout-stage") return 1;
-  if (box.id === "layout-grid") return 2;
-  if (box.id.startsWith("grid-")) return 3;
-  if (box.id.startsWith("metric-")) return 2;
-  if (box.id === "layout-badge") return 4;
-  return 2;
 }
 
 function drawHtmlCssLayoutOutline(
