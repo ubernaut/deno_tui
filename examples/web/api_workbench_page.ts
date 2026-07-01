@@ -9,6 +9,7 @@ import {
   type ComputedLayoutBox,
   createAnsiStyle,
   createFileExplorerTree,
+  createRuntimeStore,
   createWebTui,
   DataTableController,
   FileExplorerController,
@@ -190,7 +191,12 @@ const panelIds: readonly PanelId[] = [
 ];
 const explorerKeys = new Set(["up", "down", "left", "right", "pageup", "pagedown", "home", "end", "space", "return"]);
 
-const initialWorkspace = loadWebWorkspaceState();
+const webWorkspaceStore = createRuntimeStore<WebWorkspaceState>({
+  databaseName: "deno-tui-web-workbench",
+  storeName: "workspace",
+  scope: globalThis,
+});
+const initialWorkspace = loadCachedWebWorkspaceState();
 const themeIndex = new Signal(initialThemeIndex());
 const active = new Signal<PanelId>(initialWorkspace.active ?? "inspector");
 const maximized = new Signal<PanelId | null>(initialWorkspace.maximized ?? null);
@@ -215,6 +221,7 @@ active.subscribe(persistWebWorkspaceState);
 maximized.subscribe(persistWebWorkspaceState);
 minimized.subscribe(persistWebWorkspaceState);
 tileDensity.subscribe(persistWebWorkspaceState);
+void hydrateWebWorkspaceState();
 
 const menu = new MenuBarController({
   items: ["File", "View", "Layout", "Theme", "Help"].map((label) => ({ id: label.toLowerCase(), label })),
@@ -2023,26 +2030,46 @@ function defaultMinimizedState(): Record<PanelId, boolean> {
   };
 }
 
-function loadWebWorkspaceState(): WebWorkspaceState {
+function loadCachedWebWorkspaceState(): WebWorkspaceState {
   try {
     const saved = globalThis.localStorage?.getItem(WORKSPACE_STORAGE_KEY);
     if (!saved) return {};
-    const parsed = JSON.parse(saved) as WebWorkspaceState;
-    const minimizedState = defaultMinimizedState();
-    for (const id of panelIds) minimizedState[id] = Boolean(parsed.minimized?.[id]);
-    const active = isPanelId(parsed.active) ? parsed.active : undefined;
-    const maximized = parsed.maximized === null || isPanelId(parsed.maximized) ? parsed.maximized ?? null : undefined;
-    if (active) minimizedState[active] = false;
-    if (maximized) minimizedState[maximized] = false;
-    return {
-      active,
-      maximized,
-      minimized: minimizedState,
-      tileDensity: Number.isFinite(parsed.tileDensity) ? parsed.tileDensity : undefined,
-    };
+    return normalizeWebWorkspaceState(JSON.parse(saved) as WebWorkspaceState);
   } catch {
     return {};
   }
+}
+
+async function hydrateWebWorkspaceState(): Promise<void> {
+  try {
+    const stored = await webWorkspaceStore.get("default");
+    if (stored) applyWebWorkspaceState(normalizeWebWorkspaceState(stored));
+  } catch {
+    // IndexedDB may be unavailable or blocked. The local boot cache and in-memory signals remain usable.
+  }
+}
+
+function applyWebWorkspaceState(state: WebWorkspaceState): void {
+  if (state.active) active.value = state.active;
+  if (state.maximized !== undefined) maximized.value = state.maximized;
+  if (state.minimized) minimized.value = { ...defaultMinimizedState(), ...state.minimized };
+  if (state.tileDensity !== undefined) tileDensity.value = Math.max(-3, Math.min(3, Math.floor(state.tileDensity)));
+}
+
+function normalizeWebWorkspaceState(value: WebWorkspaceState | null | undefined): WebWorkspaceState {
+  if (!value || typeof value !== "object") return {};
+  const minimizedState = defaultMinimizedState();
+  for (const id of panelIds) minimizedState[id] = Boolean(value.minimized?.[id]);
+  const active = isPanelId(value.active) ? value.active : undefined;
+  const maximized = value.maximized === null || isPanelId(value.maximized) ? value.maximized ?? null : undefined;
+  if (active) minimizedState[active] = false;
+  if (maximized) minimizedState[maximized] = false;
+  return {
+    active,
+    maximized,
+    minimized: minimizedState,
+    tileDensity: Number.isFinite(value.tileDensity) ? value.tileDensity : undefined,
+  };
 }
 
 function persistWebWorkspaceState(): void {
@@ -2054,6 +2081,7 @@ function persistWebWorkspaceState(): void {
       tileDensity: tileDensity.peek(),
     };
     globalThis.localStorage?.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify(snapshot));
+    void webWorkspaceStore.set("default", snapshot).catch(() => undefined);
   } catch {
     // Storage may be unavailable in restrictive browser contexts; the workspace still works in memory.
   }

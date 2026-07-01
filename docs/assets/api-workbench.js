@@ -7401,6 +7401,70 @@ var ASCII_DEMO_PRESETS = [
   }
 ];
 
+// src/runtime/storage.ts
+var MemoryStore = class {
+  values = /* @__PURE__ */ new Map();
+  async get(key) {
+    return this.values.get(key);
+  }
+  async set(key, value) {
+    this.values.set(key, value);
+  }
+  async delete(key) {
+    this.values.delete(key);
+  }
+};
+var IndexedDbStore = class {
+  storeName;
+  databasePromise;
+  constructor(options) {
+    this.storeName = options.storeName ?? "values";
+    this.databasePromise = openDatabase(options.databaseName, this.storeName, options.version ?? 1);
+  }
+  async get(key) {
+    const database = await this.databasePromise;
+    return await requestValue(
+      database.transaction(this.storeName, "readonly").objectStore(this.storeName).get(key)
+    );
+  }
+  async set(key, value) {
+    const database = await this.databasePromise;
+    await requestValue(database.transaction(this.storeName, "readwrite").objectStore(this.storeName).put(value, key));
+  }
+  async delete(key) {
+    const database = await this.databasePromise;
+    await requestValue(database.transaction(this.storeName, "readwrite").objectStore(this.storeName).delete(key));
+  }
+};
+function createRuntimeStore(options) {
+  if (options.preferIndexedDb !== false && "indexedDB" in (options.scope ?? globalThis)) {
+    return new IndexedDbStore(options);
+  }
+  return new MemoryStore();
+}
+function openDatabase(databaseName, storeName, version) {
+  if (!("indexedDB" in globalThis)) {
+    return Promise.reject(new Error("IndexedDB is not available in this runtime."));
+  }
+  return new Promise((resolve, reject) => {
+    const indexedDb = globalThis.indexedDB;
+    const request = indexedDb.open(databaseName, version);
+    request.onerror = () => reject(request.error ?? new Error("Failed to open IndexedDB database."));
+    request.onsuccess = () => resolve(request.result);
+    request.onupgradeneeded = () => {
+      if (!request.result.objectStoreNames.contains(storeName)) {
+        request.result.createObjectStore(storeName);
+      }
+    };
+  });
+}
+function requestValue(request) {
+  return new Promise((resolve, reject) => {
+    request.onerror = () => reject(request.error ?? new Error("IndexedDB request failed."));
+    request.onsuccess = () => resolve(request.result);
+  });
+}
+
 // src/app/terminal_input.ts
 var textEncoder4 = new TextEncoder();
 
@@ -8438,7 +8502,12 @@ var panelIds = [
   "terminal"
 ];
 var explorerKeys = /* @__PURE__ */ new Set(["up", "down", "left", "right", "pageup", "pagedown", "home", "end", "space", "return"]);
-var initialWorkspace = loadWebWorkspaceState();
+var webWorkspaceStore = createRuntimeStore({
+  databaseName: "deno-tui-web-workbench",
+  storeName: "workspace",
+  scope: globalThis
+});
+var initialWorkspace = loadCachedWebWorkspaceState();
 var themeIndex = new Signal(initialThemeIndex());
 var active = new Signal(initialWorkspace.active ?? "inspector");
 var maximized = new Signal(initialWorkspace.maximized ?? null);
@@ -8462,6 +8531,7 @@ active.subscribe(persistWebWorkspaceState);
 maximized.subscribe(persistWebWorkspaceState);
 minimized.subscribe(persistWebWorkspaceState);
 tileDensity.subscribe(persistWebWorkspaceState);
+void hydrateWebWorkspaceState();
 var menu = new MenuBarController({
   items: ["File", "View", "Layout", "Theme", "Help"].map((label) => ({ id: label.toLowerCase(), label })),
   onSelect: (item) => {
@@ -10095,26 +10165,42 @@ function defaultMinimizedState() {
     terminal: false
   };
 }
-function loadWebWorkspaceState() {
+function loadCachedWebWorkspaceState() {
   try {
     const saved = globalThis.localStorage?.getItem(WORKSPACE_STORAGE_KEY);
     if (!saved) return {};
-    const parsed = JSON.parse(saved);
-    const minimizedState = defaultMinimizedState();
-    for (const id2 of panelIds) minimizedState[id2] = Boolean(parsed.minimized?.[id2]);
-    const active2 = isPanelId(parsed.active) ? parsed.active : void 0;
-    const maximized2 = parsed.maximized === null || isPanelId(parsed.maximized) ? parsed.maximized ?? null : void 0;
-    if (active2) minimizedState[active2] = false;
-    if (maximized2) minimizedState[maximized2] = false;
-    return {
-      active: active2,
-      maximized: maximized2,
-      minimized: minimizedState,
-      tileDensity: Number.isFinite(parsed.tileDensity) ? parsed.tileDensity : void 0
-    };
+    return normalizeWebWorkspaceState(JSON.parse(saved));
   } catch {
     return {};
   }
+}
+async function hydrateWebWorkspaceState() {
+  try {
+    const stored = await webWorkspaceStore.get("default");
+    if (stored) applyWebWorkspaceState(normalizeWebWorkspaceState(stored));
+  } catch {
+  }
+}
+function applyWebWorkspaceState(state) {
+  if (state.active) active.value = state.active;
+  if (state.maximized !== void 0) maximized.value = state.maximized;
+  if (state.minimized) minimized.value = { ...defaultMinimizedState(), ...state.minimized };
+  if (state.tileDensity !== void 0) tileDensity.value = Math.max(-3, Math.min(3, Math.floor(state.tileDensity)));
+}
+function normalizeWebWorkspaceState(value) {
+  if (!value || typeof value !== "object") return {};
+  const minimizedState = defaultMinimizedState();
+  for (const id2 of panelIds) minimizedState[id2] = Boolean(value.minimized?.[id2]);
+  const active2 = isPanelId(value.active) ? value.active : void 0;
+  const maximized2 = value.maximized === null || isPanelId(value.maximized) ? value.maximized ?? null : void 0;
+  if (active2) minimizedState[active2] = false;
+  if (maximized2) minimizedState[maximized2] = false;
+  return {
+    active: active2,
+    maximized: maximized2,
+    minimized: minimizedState,
+    tileDensity: Number.isFinite(value.tileDensity) ? value.tileDensity : void 0
+  };
 }
 function persistWebWorkspaceState() {
   try {
@@ -10125,6 +10211,7 @@ function persistWebWorkspaceState() {
       tileDensity: tileDensity.peek()
     };
     globalThis.localStorage?.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify(snapshot));
+    void webWorkspaceStore.set("default", snapshot).catch(() => void 0);
   } catch {
   }
 }

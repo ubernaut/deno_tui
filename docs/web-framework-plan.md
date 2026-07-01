@@ -36,7 +36,8 @@ The repo already has useful browser-ready pieces:
   ANSI theme styles, and Canvas2D sink.
 - `examples/web/api_workbench_page.ts` is the default GitHub Pages source. `deno task web:pages:build` bundles it into
   `docs/index.html` and `docs/assets/api-workbench.js`. The web workbench persists theme, active panel, minimized and
-  maximized panels, and tile density in browser storage when available.
+  maximized panels, and tile density through the runtime store path, using IndexedDB when available plus a localStorage
+  boot cache for immediate startup.
 - Signals, controllers, commands, plugins, layouts, theme engines, data resources, worker pools, settings, and runtime
   capability planning are mostly platform-neutral.
 - `Canvas` now flushes changed cells through `CanvasCellSink`; terminal output is handled by `AnsiCanvasSink`, and
