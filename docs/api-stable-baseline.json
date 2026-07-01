@@ -3363,6 +3363,97 @@
       "documented": true
     },
     {
+      "module": "src/app/workbench_window_registry.ts",
+      "name": "createWorkbenchVisualizationWindowOptions",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_window_registry.ts",
+      "name": "createWorkbenchWindowOptions",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_window_registry.ts",
+      "name": "isWorkbenchVisualizationWindowId",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_window_registry.ts",
+      "name": "isWorkbenchWindowOptionLoaded",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_window_registry.ts",
+      "name": "workbenchVisualizationIdFromWindowId",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_window_registry.ts",
+      "name": "WorkbenchVisualizationOptionSource",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_window_registry.ts",
+      "name": "workbenchVisualizationWindowId",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_window_registry.ts",
+      "name": "WorkbenchWindowOption",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_window_registry.ts",
+      "name": "WorkbenchWindowOptionCatalogInput",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_window_registry.ts",
+      "name": "WorkbenchWindowOptionGroup",
+      "kind": "type",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_window_registry.ts",
+      "name": "workbenchWindowOptionMenuLabel",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_window_registry.ts",
+      "name": "workbenchWindowOptionMinimums",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_window_registry.ts",
+      "name": "WorkbenchWindowOptionMinimums",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
       "module": "src/app/workbench_workspace.ts",
       "name": "defaultWorkbenchMinimizedState",
       "kind": "function",

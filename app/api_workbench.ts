@@ -35,6 +35,16 @@ import {
   writeFrame,
 } from "../src/app/workbench_frame.ts";
 import {
+  createWorkbenchVisualizationWindowOptions,
+  isWorkbenchVisualizationWindowId,
+  isWorkbenchWindowOptionLoaded,
+  workbenchVisualizationIdFromWindowId,
+  workbenchVisualizationWindowId,
+  type WorkbenchWindowOption,
+  workbenchWindowOptionMenuLabel,
+  workbenchWindowOptionMinimums,
+} from "../src/app/workbench_window_registry.ts";
+import {
   deleteWorkbenchWorkspace,
   findWorkbenchWorkspace,
   normalizeWorkbenchWorkspaceName,
@@ -227,12 +237,7 @@ interface ProcessRow extends Record<string, unknown> {
   latency: number;
 }
 
-interface NewWindowOption {
-  id: string;
-  label: string;
-  group: "Layout" | "Monitor" | "Neon" | "Neon 3D" | "Terminal";
-  description: string;
-}
+type NewWindowOption = WorkbenchWindowOption;
 
 type SavedWorkspace = WorkbenchWorkspace<AsciiOptions>;
 type SavedWorkspaceWindow = WorkbenchWorkspaceWindow<AsciiOptions>;
@@ -352,25 +357,26 @@ const htmlCssLayoutWindowOption: NewWindowOption = {
   label: "HTML/CSS Layout",
   group: "Layout",
   description: "Renderer-neutral markup, CSS cascade, wrapped flex boxes, and absolute positioning.",
+  windowId: HTML_CSS_LAYOUT_WINDOW_ID,
 };
 const terminalOutputWindowOption: NewWindowOption = {
   id: TERMINAL_OUTPUT_OPTION_ID,
   label: "Terminal Output",
   group: "Terminal",
   description: "Run a subprocess inside a managed workbench window with stdout/stderr scrollback.",
+  windowId: TERMINAL_OUTPUT_WINDOW_ID,
 };
 const terminalShellWindowOption: NewWindowOption = {
   id: TERMINAL_SHELL_OPTION_ID,
   label: "Shell",
   group: "Terminal",
   description: "Open an interactive PTY-backed shell using the host OS shell.",
+  windowId: TERMINAL_SHELL_WINDOW_ID,
 };
-const visualizationWindowOptions: NewWindowOption[] = visualizations.map((entry) => ({
-  id: entry.id,
-  label: entry.name,
-  group: entry.id.startsWith("three-") ? "Neon 3D" : neonDemoIds.has(entry.id) ? "Neon" : "Monitor",
-  description: entry.description,
-}));
+const visualizationWindowOptions: NewWindowOption[] = createWorkbenchVisualizationWindowOptions(
+  visualizations,
+  neonDemoIds,
+);
 const newWindowOptions: NewWindowOption[] = [
   terminalShellWindowOption,
   terminalOutputWindowOption,
@@ -4632,28 +4638,15 @@ function isVisualizationLoaded(visualizationId: string): boolean {
 }
 
 function isNewWindowOptionLoaded(option: NewWindowOption): boolean {
-  return option.id === HTML_CSS_LAYOUT_OPTION_ID
-    ? windowManager.ids().includes(HTML_CSS_LAYOUT_WINDOW_ID)
-    : option.id === TERMINAL_OUTPUT_OPTION_ID
-    ? windowManager.ids().includes(TERMINAL_OUTPUT_WINDOW_ID)
-    : option.id === TERMINAL_SHELL_OPTION_ID
-    ? windowManager.ids().includes(TERMINAL_SHELL_WINDOW_ID)
-    : isVisualizationLoaded(option.id);
+  return isWorkbenchWindowOptionLoaded(option, windowManager.ids());
 }
 
 function newWindowMenuLabel(option: NewWindowOption): string {
-  return `${isNewWindowOptionLoaded(option) ? "[x]" : "[ ]"} ${option.group}: ${option.label}`;
+  return workbenchWindowOptionMenuLabel(option, isNewWindowOptionLoaded(option));
 }
 
 function visualizationWindowMinimums(option: NewWindowOption): { minWidth: number; minHeight: number } {
-  if (option.group === "Monitor") {
-    if (option.id === "cpu-legend" || option.id === "process-monitor") return { minWidth: 34, minHeight: 14 };
-    if (option.id.includes("gpu")) return { minWidth: 40, minHeight: 13 };
-    return { minWidth: 36, minHeight: 12 };
-  }
-  if (option.group === "Neon 3D") return { minWidth: 42, minHeight: 16 };
-  if (option.id === "component-index" || option.id === "magi-board") return { minWidth: 42, minHeight: 15 };
-  return { minWidth: 38, minHeight: 13 };
+  return workbenchWindowOptionMinimums(option);
 }
 
 function applyControlHit(
@@ -5119,11 +5112,11 @@ function windowIds(): WindowId[] {
 }
 
 function isVisualizationWindow(id: WindowId): id is VisualizationWindowId {
-  return id.startsWith("viz:");
+  return isWorkbenchVisualizationWindowId(id);
 }
 
 function visualizationWindowId(visualizationId: string): VisualizationWindowId {
-  return `viz:${visualizationId.replace(/[^a-z0-9-]/gi, "-").toLowerCase()}` as VisualizationWindowId;
+  return workbenchVisualizationWindowId(visualizationId) as VisualizationWindowId;
 }
 
 function visualizationOption(visualizationId: string | undefined): NewWindowOption | undefined {
