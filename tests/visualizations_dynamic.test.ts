@@ -8,7 +8,7 @@ import {
   renderVisualization,
   visualizations,
 } from "../app/visualizations.ts";
-import { visualizationCatalog, visualizationFamily } from "../app/visualization_catalog.ts";
+import { visualizationCatalog, visualizationFamily, visualizationsByFamily } from "../app/visualization_catalog.ts";
 import type { RenderContext, SlotConfig, SourceFrame, SystemSnapshot } from "../app/types.ts";
 import { createWorkbenchVisualizationWindowOptions } from "../src/app/workbench_window_registry.ts";
 import { stripStyles, textWidth } from "../src/utils/strings.ts";
@@ -302,6 +302,9 @@ Deno.test("every visualization renders and reacts to changed inputs", () => {
 Deno.test("visualization catalog classifies every workbench visualization by family", () => {
   assertEquals(visualizationCatalog.length, visualizations.length);
   assertEquals(new Set(visualizationCatalog.map((entry) => entry.id)).size, visualizations.length);
+  assertEquals(visualizationsByFamily("monitor").some((entry) => entry.id === "cpu-hex-grid"), true);
+  assertEquals(visualizationsByFamily("neon").some((entry) => entry.id === "magi-board"), true);
+  assertEquals(visualizationsByFamily("neon3d").some((entry) => entry.id === "three-lattice"), true);
 
   const options = createWorkbenchVisualizationWindowOptions(visualizationCatalog);
   const groupsById = new Map(options.map((option) => [option.id, option.group]));

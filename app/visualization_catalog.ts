@@ -155,3 +155,7 @@ export const visualizationCatalogById = new Map(visualizationCatalog.map((entry)
 export function visualizationFamily(id: string): VisualizationFamily | undefined {
   return visualizationCatalogById.get(id)?.family;
 }
+
+export function visualizationsByFamily(family: VisualizationFamily): VisualizationCatalogEntry[] {
+  return visualizationCatalog.filter((entry) => entry.family === family).map((entry) => ({ ...entry }));
+}

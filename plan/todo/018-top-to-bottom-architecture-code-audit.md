@@ -412,7 +412,9 @@ Current evidence:
 
 Work:
 
-- [ ] Split visualization definitions by family: monitor, Neon text, Neon 3D, terminal/workspace, and layout.
+- [x] Split visualization definitions by family: monitor, Neon text, Neon 3D, terminal/workspace, and layout.
+  - [x] Added family query helpers for Monitor, Neon text, and Neon 3D visualization catalogs so demos/tests can target
+        families without duplicating id filters. Terminal/workspace and layout remain built-in workbench window groups.
 - [x] Move shared visualization metadata and source wiring into a registry module with typed capabilities.
   - [x] Added `app/visualization_catalog.ts` with Monitor, Neon text, and Neon 3D family metadata; the workbench New
         Window menu now classifies visualization options from this metadata before falling back to legacy id heuristics.
@@ -421,7 +423,7 @@ Work:
 
 Acceptance checks:
 
-- [ ] Visualization dynamic tests can target individual families.
+- [x] Visualization dynamic tests can target individual families.
 - [x] Workbench New Window menu derives from registry metadata without demo-local branching.
 
 ## Cross-Cutting Test Plan
