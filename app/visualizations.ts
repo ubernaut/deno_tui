@@ -1,5 +1,4 @@
 import { demos as neonDemos, formatCountdown as neonFormatCountdown } from "./neon_theme.ts";
-import { neonThreeSceneModeLabel } from "./neon_three_catalog.ts";
 import {
   neonThreeVisualizationIds,
   neonVisualizationIds,
@@ -35,7 +34,12 @@ import {
   sourceNameMatrix,
   sourceWarnings,
 } from "./visualization_panel_helpers.ts";
-import { barChart, crop, miniMeter, monitorGlyph, plotHistory, signalChart } from "./visualization_primitives.ts";
+import { barChart, miniMeter, monitorGlyph, plotHistory } from "./visualization_primitives.ts";
+import {
+  appendThreeSceneFooter,
+  renderThreeFallbackBody,
+  THREE_FALLBACK_BLOCKS,
+} from "./visualization_three_fallback.ts";
 import {
   renderCpuLegend,
   renderCpuMonitor,
@@ -164,7 +168,7 @@ function applyNgePrimitiveScene(context: RenderContext, panel: PanelRender): Pan
   if (panel.three) {
     return {
       ...panel,
-      footer: appendSceneFooter(panel.footer, panel.three.mode, context.width),
+      footer: appendThreeSceneFooter(panel.footer, panel.three.mode, context.width),
     };
   }
 
@@ -174,18 +178,12 @@ function applyNgePrimitiveScene(context: RenderContext, panel: PanelRender): Pan
 
   return {
     ...panel,
-    footer: appendSceneFooter(panel.footer, mode, context.width),
+    footer: appendThreeSceneFooter(panel.footer, mode, context.width),
     three: {
       mode,
       signal: driveThreeSignal(context, drive, mode),
     },
   };
-}
-
-function appendSceneFooter(footer: string, mode: ThreeSceneMode, width: number): string {
-  const suffix = `${modeLabel(mode)} PRIMITIVES`;
-  if (!footer) return suffix;
-  return `${crop(footer, Math.max(0, width - suffix.length - 3))} / ${suffix}`;
 }
 
 function renderThreeScene(context: RenderContext, mode: ThreeSceneMode, accent: Accent): PanelRender {
@@ -204,65 +202,6 @@ function renderThreeScene(context: RenderContext, mode: ThreeSceneMode, accent: 
       signal: driveThreeSignal(context, drive, mode),
     },
   };
-}
-
-function renderThreeFallbackBody(context: RenderContext, drive: VisualizationDrive, mode: ThreeSceneMode) {
-  const width = Math.max(12, context.width);
-  const infoLines = [
-    crop(`${modeLabel(mode)} DRIVE ${Math.round(drive.hazard * 100)}%  Δ${Math.round(drive.divergence * 100)}`, width),
-  ];
-
-  if (context.height >= 6) {
-    infoLines.push(crop(sourceNameMatrix(context.sources), width));
-  }
-
-  const chartHeight = Math.max(2, context.height - infoLines.length);
-  const chart = (() => {
-    switch (mode) {
-      case "lattice":
-      case "solenoid":
-        return signalChart(drive.pulseSeries, width, chartHeight, drive.hazard >= 0.78 ? "█" : "▇");
-      case "atfield":
-      case "capture":
-        return harmonicField(width, chartHeight, drive, monitorGlyph(drive, "violet"));
-      case "hexshell":
-        return heatmap(width, chartHeight, drive, THREE_FALLBACK_BLOCKS);
-      case "mapslab":
-        return routeBoard(width, chartHeight, drive, THREE_FALLBACK_BLOCKS);
-      case "studio":
-        return harmonicField(width, chartHeight, drive, "◆");
-      case "emergency":
-      case "counter":
-      case "relay":
-        return routeBoard(width, chartHeight, drive, [" ", "░", "▒", "▓", "█"]);
-      case "launch":
-      case "gate":
-      case "route":
-        return signalChart(drive.spreadSeries, width, chartHeight, drive.hazard >= 0.78 ? "▓" : "▒");
-      case "harmonic":
-        return harmonicField(width, chartHeight, drive, monitorGlyph(drive, "violet"));
-      case "field":
-        return circularField(width, chartHeight, drive);
-      case "magi":
-      case "angel":
-      case "plug":
-      case "rack":
-      case "heat":
-      case "command":
-        return heatmap(width, chartHeight, drive, THREE_FALLBACK_BLOCKS);
-      case "target":
-        return circularField(width, chartHeight, drive);
-      case "waveform":
-      case "scope":
-      case "biosignal":
-      case "psychograph":
-      case "surveillance":
-      case "topology":
-        return psychograph(width, chartHeight, drive, monitorGlyph(drive, "signal"));
-    }
-  })();
-
-  return [...infoLines, chart].join("\n");
 }
 
 function renderWarningStack(context: RenderContext): PanelRender {
@@ -524,10 +463,4 @@ function renderComponentIndex(context: RenderContext): PanelRender {
     accent: "amber",
     severity: drive.hazard >= 0.92 ? "warning" : "info",
   };
-}
-
-const THREE_FALLBACK_BLOCKS = [" ", "▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"] as const;
-
-function modeLabel(mode: ThreeSceneMode) {
-  return neonThreeSceneModeLabel(mode);
 }

@@ -550,6 +550,8 @@ Work:
         keeping source footers, scene alerts, drive alerts, and fallback warnings under direct fixture tests.
   - [x] Extracted the responsive network monitor into `app/visualization_network.ts`, with chart/glyph dependencies
         injected from the visualization renderer instead of duplicating shared drawing utilities.
+  - [x] Extracted Three visualization text fallback body/footer rendering into `app/visualization_three_fallback.ts`,
+        keeping primitive-mode fallback output directly fixture-testable outside the main visualization dispatcher.
 - [ ] Make demo-only assets and NGE-inspired primitives clearly separate from library APIs.
   - [x] Added `app/neon_three_catalog.ts` for supported Three scene metadata and labels, keeping demo/NGE catalog data
         separate from the monolithic scene factory and shared by visualization footers plus scene coverage tests.
