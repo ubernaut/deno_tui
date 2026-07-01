@@ -79,6 +79,8 @@ Work:
         clickable button backgrounds scoped to the button token and covering clipped narrow rows with focused tests.
   - [x] Extracted workspace save/rename modal body projection into `app/workbench_workspace_menu.ts`, keeping terminal
         modal state local while making the renderer-neutral prompt copy directly testable and reusable by web adapters.
+  - [x] Extracted API Workbench static theme/table/docs catalog data into `app/api_workbench_catalog.ts`, reducing
+        renderer-local fixture ownership and adding direct catalog coverage.
 - [ ] Make the terminal workbench and web workbench thin render adapters over the same controller/model.
   - [x] Exposed the shared frame and hit-target helpers through `src/app/mod.ts` and migrated the web API Workbench page
         to reuse exported text-fit, ANSI-cell, contrast, and geometry helpers.
