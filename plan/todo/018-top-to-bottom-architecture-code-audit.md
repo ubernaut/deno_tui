@@ -500,6 +500,8 @@ Work:
   - [x] Converted web workbench `localStorage` and IndexedDB fallback paths to deduplicated structured diagnostics
         surfaced through the in-demo log panel.
   - [x] Converted Three/Kitty graphics image cleanup failures to optional debug diagnostics instead of silent catches.
+  - [x] Converted system monitor hostname and OS-release fallback paths to optional structured diagnostics so degraded
+        monitor identity is inspectable without breaking snapshot creation.
 - [x] Add status-bar and report helpers for degraded backends.
 - [x] Add tests that assert expected diagnostics for missing `nvidia-smi`, blocked IndexedDB, unsupported Kitty
       graphics, and failed process spawns.

@@ -93,6 +93,25 @@ Deno.test("SystemMonitor accepts a pluggable GPU metrics provider", async () => 
   );
 });
 
+Deno.test("SystemMonitor reports metadata fallback diagnostics", () => {
+  const diagnostics = new DiagnosticsCollector();
+  const monitor = new SystemMonitor({
+    provider: new ThrowingMetadataMetricsProvider(),
+    diagnostics,
+  });
+  const snapshot = monitor.snapshot.peek();
+
+  assertEquals(snapshot.hostname, "unknown-host");
+  assertEquals(snapshot.osRelease, "unknown-os");
+  assertEquals(
+    diagnostics.entries().map((entry) => [entry.source, entry.code, entry.severity]),
+    [
+      ["system-metrics", "hostname-unavailable", "warning"],
+      ["system-metrics", "os-release-unavailable", "warning"],
+    ],
+  );
+});
+
 Deno.test("SystemMonitor bounds process scans and reports degraded sources", async () => {
   const provider = new FixtureMetricsProvider();
   const diagnostics = new DiagnosticsCollector();
@@ -444,6 +463,16 @@ class FixtureMetricsProvider implements SystemMetricsProvider {
     const error = this.commandErrors.get(command);
     if (error) throw error;
     return this.commands.get(command) ?? { success: false, stdout: new Uint8Array() };
+  }
+}
+
+class ThrowingMetadataMetricsProvider extends FixtureMetricsProvider {
+  override hostname(): string {
+    throw new Error("hostname denied");
+  }
+
+  override osRelease(): string {
+    throw new Error("os release denied");
   }
 }
 

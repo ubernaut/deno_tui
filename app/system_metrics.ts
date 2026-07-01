@@ -112,8 +112,8 @@ export class SystemMonitor {
     this.#diskCacheMs = normalizePositiveInteger(options.diskCacheMs, 10_000);
     this.#commandTimeoutMs = normalizePositiveInteger(options.commandTimeoutMs, 1_500);
     this.#diagnostics = options.diagnostics;
-    this.#hostname = safeHostname(this.#provider);
-    this.#osRelease = safeOsRelease(this.#provider);
+    this.#hostname = safeHostname(this.#provider, this.#diagnostics);
+    this.#osRelease = safeOsRelease(this.#provider, this.#diagnostics);
     this.snapshot = new Signal(emptySnapshot(this.#hostname, this.#osRelease, this.#historyLength));
   }
 
@@ -503,18 +503,32 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-function safeHostname(provider: SystemMetricsProvider) {
+function safeHostname(provider: SystemMetricsProvider, diagnostics?: DiagnosticsCollector) {
   try {
     return provider.hostname();
-  } catch {
+  } catch (error) {
+    diagnostics?.report({
+      source: "system-metrics",
+      code: "hostname-unavailable",
+      severity: "warning",
+      message: "System hostname lookup failed; using fallback monitor label.",
+      detail: errorMessage(error),
+    });
     return "unknown-host";
   }
 }
 
-function safeOsRelease(provider: SystemMetricsProvider) {
+function safeOsRelease(provider: SystemMetricsProvider, diagnostics?: DiagnosticsCollector) {
   try {
     return provider.osRelease();
-  } catch {
+  } catch (error) {
+    diagnostics?.report({
+      source: "system-metrics",
+      code: "os-release-unavailable",
+      severity: "warning",
+      message: "System OS release lookup failed; using fallback monitor label.",
+      detail: errorMessage(error),
+    });
     return "unknown-os";
   }
 }
