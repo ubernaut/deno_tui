@@ -47,6 +47,8 @@ Work:
       logic, and workspace save/load normalization out of `app/api_workbench.ts`.
   - [x] Extracted sparse frame writing, row slicing, text fitting, button labels, and contrast helpers into
         `src/app/workbench_frame.ts` with direct tests.
+  - [x] Extracted generic hit-target stack and rectangle geometry helpers into `src/app/hit_targets.ts` with direct
+        tests, then migrated API Workbench hit lookup and scroll translation to the stack API.
 - [ ] Make the terminal workbench and web workbench thin render adapters over the same controller/model.
 - [ ] Replace duplicated theme/window/menu persistence code with a shared versioned serializer.
 - [ ] Add a migration path for existing saved workspace state.

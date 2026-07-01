@@ -26,6 +26,7 @@ import { renderStatusBar } from "../src/components/statusbar.ts";
 import { renderStepper, StepperController } from "../src/components/stepper.ts";
 import { formatTerminalOutputLine } from "../src/components/terminal_output.ts";
 import { TextBoxController, wrapTextBoxLines } from "../src/components/textbox.ts";
+import { clipRect, HitTargetStack, inset, intersects } from "../src/app/hit_targets.ts";
 import {
   buttonText,
   centerCellText as centerText,
@@ -537,7 +538,7 @@ const commandLog = new Signal<string[]>(["ready: API workbench mounted"], { deep
 const dynamicVisualizationWindows = new Signal<Record<VisualizationWindowId, string>>({}, { deepObserve: true });
 const selectedCpuHexTiles = new Signal<Record<VisualizationWindowId, string>>({}, { deepObserve: true });
 const lineSignals: Signal<string>[] = [];
-let hitTargets: Array<{ rect: Rectangle; action: HitAction }> = [];
+const hitTargets = new HitTargetStack<HitAction>();
 let lastVisibleWindow: WindowId | null = null;
 let lastWorkspaceWidth = 0;
 let lastWorkspaceHeight = 0;
@@ -953,7 +954,7 @@ function draw(): void {
   ensureLineObjects();
   const width = currentWidth();
   const height = currentHeight();
-  hitTargets = [];
+  hitTargets.clear();
   dropdownOverlay = null;
   const frame: Frame = Array.from({ length: height }, () => []);
   renderHeader(frame);
@@ -3023,17 +3024,17 @@ function translateContentHits(
   offset: { columns: number; rows: number },
 ): void {
   for (let index = hitTargets.length - 1; index >= startIndex; index -= 1) {
-    const target = hitTargets[index]!;
+    const target = hitTargets.at(index)!;
     const translated = {
       ...target.rect,
       column: viewport.column + target.rect.column - offset.columns,
       row: viewport.row + target.rect.row - offset.rows,
     };
     if (!intersects(translated, viewport)) {
-      hitTargets.splice(index, 1);
+      hitTargets.remove(index);
       continue;
     }
-    target.rect = clipRect(translated, viewport);
+    hitTargets.updateRect(index, clipRect(translated, viewport));
   }
 }
 
@@ -3262,13 +3263,13 @@ function visualizationIdSupportsThree(visualizationId: string): boolean {
 
 function translateWorkspaceHits(startIndex: number, rowDelta: number, clip: Rectangle): void {
   for (let index = hitTargets.length - 1; index >= startIndex; index -= 1) {
-    const target = hitTargets[index]!;
+    const target = hitTargets.at(index)!;
     const translated = { ...target.rect, row: target.rect.row + rowDelta };
     if (!intersects(translated, clip)) {
-      hitTargets.splice(index, 1);
+      hitTargets.remove(index);
       continue;
     }
-    target.rect = clipRect(translated, clip);
+    hitTargets.updateRect(index, clipRect(translated, clip));
   }
 }
 
@@ -5118,40 +5119,11 @@ function buttonPaintOptions(
 }
 
 function addHit(rect: Rectangle, action: HitAction): void {
-  hitTargets.push({ rect, action });
+  hitTargets.add(rect, action);
 }
 
 function findHit(x: number, y: number): { rect: Rectangle; action: HitAction } | undefined {
-  for (let index = hitTargets.length - 1; index >= 0; index -= 1) {
-    const target = hitTargets[index]!;
-    if (contains(target.rect, x, y)) return target;
-  }
-}
-
-function contains(rect: Rectangle, x: number, y: number): boolean {
-  return x >= rect.column && x < rect.column + rect.width && y >= rect.row && y < rect.row + rect.height;
-}
-
-function intersects(left: Rectangle, right: Rectangle): boolean {
-  return left.column < right.column + right.width && left.column + left.width > right.column &&
-    left.row < right.row + right.height && left.row + left.height > right.row;
-}
-
-function clipRect(rect: Rectangle, clip: Rectangle): Rectangle {
-  const column = Math.max(rect.column, clip.column);
-  const row = Math.max(rect.row, clip.row);
-  const right = Math.min(rect.column + rect.width, clip.column + clip.width);
-  const bottom = Math.min(rect.row + rect.height, clip.row + clip.height);
-  return { column, row, width: Math.max(0, right - column), height: Math.max(0, bottom - row) };
-}
-
-function inset(rect: Rectangle, amount: number): Rectangle {
-  return {
-    column: rect.column + amount,
-    row: rect.row + amount,
-    width: Math.max(0, rect.width - amount * 2),
-    height: Math.max(0, rect.height - amount * 2),
-  };
+  return hitTargets.find(x, y);
 }
 
 function windowTitle(id: WindowId): string {
