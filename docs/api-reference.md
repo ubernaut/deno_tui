@@ -1,7 +1,7 @@
 # API Reference
 
-This document is generated from every public package entrypoint in the Deno export map. It is intended as a
-complete map of stable, beta, and experimental modules and exported symbols that make up the package API.
+This document is generated from every public package entrypoint in the Deno export map. It is intended as a complete map
+of stable, beta, and experimental modules and exported symbols that make up the package API.
 
 ## Summary
 
@@ -3608,7 +3608,6 @@ _No direct exported symbols._
 | `viewportWindow`              | function  | no        | yes   |
 | `ViewportWindow`              | interface | yes       | yes   |
 
-
 ## Entrypoint ./web
 
 Standalone browser-safe package for shared controllers, themes, layout, canvas sinks, and web hosts.
@@ -6901,7 +6900,6 @@ _No direct exported symbols._
 | `RemoteTerminalTransport`             | interface | yes       | yes   |
 | `WebSocketRemoteTerminalTransport`    | class     | no        | yes   |
 
-
 ## Entrypoint ./remote
 
 Hosted terminal/client bridge protocol and browser WebSocket transport.
@@ -6994,7 +6992,6 @@ _No direct exported symbols._
 | `RemoteTerminalServerMessage`         | type      | yes       | yes   |
 | `RemoteTerminalTransport`             | interface | yes       | yes   |
 | `WebSocketRemoteTerminalTransport`    | class     | no        | yes   |
-
 
 ## Entrypoint ./three-ascii
 
@@ -7134,7 +7131,6 @@ _No direct exported symbols._
 | ----------------------------- | -------- | --------- | ----- |
 | `getCompatibleWebGPUDevice`   | function | no        | yes   |
 | `probeCompatibleWebGPUDevice` | function | no        | yes   |
-
 
 ## Entrypoint ./theme
 
@@ -7430,7 +7426,6 @@ _No direct exported symbols._
 | `ThemeValidationIssueKind`                | type      | yes       | yes   |
 | `ThemeVariantCoverageInspection`          | interface | yes       | yes   |
 | `validateThemeOptions`                    | function  | no        | yes   |
-
 
 ## Entrypoint ./runtime
 
@@ -8040,7 +8035,6 @@ _No direct exported symbols._
 | `WorkerPoolRunOptions`      | interface | yes       | yes   |
 | `WorkerPoolTerminatedError` | class     | no        | yes   |
 
-
 ## Entrypoint ./terminal
 
 Terminal parser, screen, shell, backend, PTY, workspace, and input-reader primitives.
@@ -8315,7 +8309,6 @@ _No direct exported symbols._
 | `TerminalWorkspaceSplitNode`               | interface | yes       | yes   |
 | `UpsertTerminalWorkspaceSessionOptions`    | interface | yes       | yes   |
 
-
 ## Entrypoint ./testing
 
 Testing helpers for snapshots, fake input events, focus targets, stdout capture, and canvas snapshots.
@@ -8395,7 +8388,6 @@ _No direct exported symbols._
 | `TestCanvasOptions`           | interface | yes       | yes   |
 | `TestStdout`                  | interface | yes       | yes   |
 
-
 ## Entrypoint ./layout/yoga
 
 Optional Yoga-backed Flexbox solver for HTML/CSS-style layout trees.
@@ -8430,4 +8422,3 @@ Optional Yoga-backed Flexbox solver for HTML/CSS-style layout trees.
 | `yogaLayoutSolver`        | function  | no        | yes   |
 | `YogaLayoutSolver`        | class     | no        | yes   |
 | `YogaLayoutSolverOptions` | interface | yes       | yes   |
-
