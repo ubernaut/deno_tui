@@ -22,6 +22,7 @@ export * from "./terminal_templates.ts";
 export * from "./terminal_status.ts";
 export * from "./process_session.ts";
 export * from "./terminal_screen.ts";
+export * from "./terminal_scrollback.ts";
 export * from "./terminal_shell.ts";
 export * from "./terminal_session.ts";
 export * from "./terminal_workspace.ts";
