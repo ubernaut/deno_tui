@@ -542,6 +542,8 @@ Work:
         workbench shell degradation can be surfaced outside the terminal text stream.
   - [x] Added optional terminal backend registry diagnostics for provider probe exceptions, preserving normalized
         availability inspection while making broken PTY providers visible to app-level status/report surfaces.
+  - [x] Added deduplicated Three panel Kitty fallback diagnostics so "Kitty-only" renderer requests still show ASCII
+        output and report unavailable raster graphics surfaces instead of failing silently.
 - [x] Add status-bar and report helpers for degraded backends.
 - [x] Add tests that assert expected diagnostics for missing `nvidia-smi`, blocked IndexedDB, unsupported Kitty
       graphics, and failed process spawns.

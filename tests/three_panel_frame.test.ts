@@ -536,6 +536,52 @@ Deno.test("ThreePanelFrameView can use Kitty image frames without drawing ASCII 
   }
 });
 
+Deno.test("ThreePanelFrameView reports Kitty fallback diagnostics and keeps ASCII visible", async () => {
+  const rectangle = new Signal({ column: 0, row: 0, width: 8, height: 4 }, { deepObserve: true });
+  const graphicsRectangle = new Signal({ column: 5, row: 6, width: 8, height: 4 }, { deepObserve: true });
+  const scene = new Signal<ThreeSceneState | null>(sceneState());
+  const ascii = new Signal({
+    ...createDefaultAsciiOptions("sharp"),
+    kittyGraphics: true,
+    kittyDisableAscii: true,
+  });
+  const enabled = new Signal(true);
+  const surface = new UnavailableGraphicsSurface("raster graphics surface is unavailable");
+  const diagnostics = new DiagnosticsCollector();
+  const panel = new ThreePanelFrameView({
+    rectangle,
+    graphicsRectangle,
+    scene,
+    ascii,
+    enabled,
+    graphicsSurface: surface,
+    diagnostics,
+    frameInterval: 1000 / 30,
+    rendererFactory: (options) => new FakeGridRenderer(options.columns, options.rows),
+  });
+
+  try {
+    await waitFor(() => panel.grid.peek().length === 4);
+    assertEquals(panel.grid.peek()[0]?.[0], "█");
+    assertEquals(surface.puts.length, 0);
+    assertEquals(diagnostics.entries().map((entry) => [entry.source, entry.code, entry.severity, entry.detail]), [
+      [
+        "three-panel",
+        "kitty-graphics-fallback",
+        "warning",
+        "raster graphics surface is unavailable",
+      ],
+    ]);
+  } finally {
+    panel.dispose();
+    rectangle.dispose();
+    graphicsRectangle.dispose();
+    scene.dispose();
+    ascii.dispose();
+    enabled.dispose();
+  }
+});
+
 Deno.test("ThreePanelFrameView reports graphics cleanup diagnostics", async () => {
   const rectangle = new Signal({ column: 0, row: 0, width: 8, height: 4 }, { deepObserve: true });
   const graphicsRectangle = new Signal({ column: 5, row: 6, width: 8, height: 4 }, { deepObserve: true });
@@ -855,6 +901,20 @@ class FakeGraphicsSurface implements GraphicsSurface {
       commandCount: this.puts.length + this.deleted.length,
       mode: "direct",
       reason: "test",
+    };
+  }
+}
+
+class UnavailableGraphicsSurface extends FakeGraphicsSurface {
+  constructor(private readonly unavailableReason: string) {
+    super();
+  }
+
+  override inspect(): GraphicsSurfaceInspection {
+    return {
+      ...super.inspect(),
+      available: false,
+      reason: this.unavailableReason,
     };
   }
 }

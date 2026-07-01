@@ -2,7 +2,7 @@ import { type Canvas } from "../src/canvas/canvas.ts";
 import { buildFallbackGrid, formatThreeAsciiFallbackDetail, ThreeAsciiObject } from "../src/canvas/three_ascii.ts";
 import { Effect, Signal, SignalBatchScheduler, type SignalOfObject } from "../src/signals/mod.ts";
 import { emptyStyle } from "../src/theme.ts";
-import type { GraphicsHandle, GraphicsSurface } from "../src/runtime/graphics_surface.ts";
+import type { GraphicsHandle, GraphicsSurface, GraphicsSurfaceInspection } from "../src/runtime/graphics_surface.ts";
 import type { DiagnosticsCollector } from "../src/runtime/diagnostics.ts";
 import {
   type ThreeAsciiImageFrame,
@@ -227,6 +227,7 @@ export class ThreePanelFrameView {
   private frameTimer?: ReturnType<typeof setTimeout>;
   private readonly interaction = new ThreePanelInteractionController();
   private graphicsHandle?: GraphicsHandle;
+  private lastGraphicsUnavailableKey?: string;
 
   constructor(
     private readonly options: {
@@ -394,12 +395,14 @@ export class ThreePanelFrameView {
       const ascii = this.options.ascii.peek();
       const graphicsSurface = this.resolveGraphicsSurface();
       const graphicsRectangle = this.options.graphicsRectangle?.peek() ?? rect;
+      const graphicsInspection = graphicsSurface?.inspect();
       const policy = resolveThreePanelRenderPolicy({
         ascii,
-        graphicsAvailable: graphicsSurface?.inspect().available ?? false,
+        graphicsAvailable: graphicsInspection?.available ?? false,
         graphicsRectangle,
         rendererSupportsImage: typeof renderer.renderFrame === "function",
       });
+      this.reportGraphicsFallback(ascii, graphicsInspection, graphicsRectangle, renderer, policy);
       const onFrame = () => {
         const latest = this.options.scene.peek();
         if (!latest) return;
@@ -552,6 +555,39 @@ export class ThreePanelFrameView {
     return typeof configured === "function" ? configured() ?? undefined : configured;
   }
 
+  private reportGraphicsFallback(
+    ascii: Pick<AsciiOptions, "kittyGraphics" | "kittyDisableAscii">,
+    inspection: GraphicsSurfaceInspection | undefined,
+    rect: Pick<Rect, "width" | "height">,
+    renderer: ThreePanelGridRenderer,
+    policy: ThreePanelRenderPolicy,
+  ): void {
+    if (!ascii.kittyGraphics || policy.kittyActive) {
+      this.lastGraphicsUnavailableKey = undefined;
+      return;
+    }
+
+    const reason = graphicsFallbackReason(inspection, rect, renderer);
+    const key = `${reason}|${inspection?.reason ?? ""}|${ascii.kittyDisableAscii ? "kitty-only" : "dual"}`;
+    if (key === this.lastGraphicsUnavailableKey) return;
+    this.lastGraphicsUnavailableKey = key;
+
+    this.options.diagnostics?.report({
+      source: "three-panel",
+      code: "kitty-graphics-fallback",
+      severity: "warning",
+      message: "Kitty graphics requested but unavailable; rendering ASCII fallback.",
+      detail: inspection?.reason ?? reason,
+      context: {
+        reason,
+        surface: inspection?.kind ?? "none",
+        available: inspection?.available ?? false,
+        asciiFallback: true,
+        kittyDisableAscii: ascii.kittyDisableAscii,
+      },
+    });
+  }
+
   private async putGraphicsImage(
     surface: GraphicsSurface,
     image: ThreeAsciiImageFrame,
@@ -618,4 +654,16 @@ export class ThreePanelFrameView {
 
 function blankGrid(width: number, height: number): string[][] {
   return Array.from({ length: Math.max(0, height) }, () => Array.from({ length: Math.max(0, width) }, () => " "));
+}
+
+function graphicsFallbackReason(
+  inspection: GraphicsSurfaceInspection | undefined,
+  rect: Pick<Rect, "width" | "height">,
+  renderer: ThreePanelGridRenderer,
+): string {
+  if (!inspection) return "missing-surface";
+  if (!inspection.available) return inspection.reason ?? "surface-unavailable";
+  if (rect.width <= 0 || rect.height <= 0) return "empty-graphics-rectangle";
+  if (typeof renderer.renderFrame !== "function") return "renderer-image-frame-unsupported";
+  return "inactive";
 }
