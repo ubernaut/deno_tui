@@ -537,6 +537,8 @@ Work:
         renderers are data-driven instead of encoded in one large switch.
   - [x] Extracted the CPU hex-grid visualization into `app/visualization_cpu_hex.ts`, keeping color interpolation,
         layout, selection, and process-detail behavior under the existing visualization dynamic tests.
+  - [x] Extracted reusable NGE/Three ASCII field renderers into `app/visualization_fields.ts`, covering harmonic,
+        psychograph, circular, heatmap, and route-board text fields with focused bounded-output tests.
   - [x] Extracted the responsive network monitor into `app/visualization_network.ts`, with chart/glyph dependencies
         injected from the visualization renderer instead of duplicating shared drawing utilities.
 - [ ] Make demo-only assets and NGE-inspired primitives clearly separate from library APIs.
