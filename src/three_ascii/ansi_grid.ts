@@ -52,6 +52,7 @@ export class ThreeAsciiAnsiGridAssembler {
     const rows = Math.max(0, Math.floor(input.rows));
     const fillGlyphs = input.fillGlyphs;
     const edgeGlyphs = input.edgeGlyphs;
+    const hasEdges = edgeGlyphs !== undefined;
     const colors = input.colors;
     const terminalGlyphStyle = input.terminalGlyphStyle ?? "blocks";
     const terminalEdgeBias = Math.max(0.5, input.terminalEdgeBias ?? DEFAULT_TERMINAL_EDGE_BIAS);
@@ -67,26 +68,34 @@ export class ThreeAsciiAnsiGridAssembler {
       for (let column = 0; column < columns; column += 1) {
         const index = row * columns + column;
         const fillGlyphIndex = Math.round(fillGlyphs[index] ?? 0);
-        const edgeOffset = index * 4;
-        const edgeGlyphIndex = Math.round(edgeGlyphs?.[edgeOffset] ?? 0);
-        if (
-          fillGlyphIndex < 5 &&
-          (edgeGlyphIndex <= 0 || (edgeGlyphs?.[edgeOffset + 1] ?? 0) <= 0 ||
-            (edgeGlyphs?.[edgeOffset + 2] ?? 0) <= 0)
-        ) {
+        let edgeGlyphIndex = 0;
+        let dominantCount = 0;
+        let totalCount = 0;
+        let secondCount = 0;
+        if (hasEdges) {
+          const edgeOffset = index * 4;
+          edgeGlyphIndex = Math.round(edgeGlyphs[edgeOffset] ?? 0);
+          dominantCount = edgeGlyphs[edgeOffset + 1] ?? 0;
+          totalCount = edgeGlyphs[edgeOffset + 2] ?? 0;
+          secondCount = edgeGlyphs[edgeOffset + 3] ?? 0;
+        }
+
+        if (fillGlyphIndex < 5 && (!hasEdges || edgeGlyphIndex <= 0 || dominantCount <= 0 || totalCount <= 0)) {
           outputRow[column] = this.blankAnsi;
           continue;
         }
 
-        const glyph = terminalGlyphForCell(
-          terminalGlyphStyle,
-          edgeGlyphIndex,
-          edgeGlyphs?.[edgeOffset + 1] ?? 0,
-          edgeGlyphs?.[edgeOffset + 2] ?? 0,
-          edgeGlyphs?.[edgeOffset + 3] ?? 0,
-          fillGlyphIndex,
-          terminalEdgeBias,
-        );
+        const glyph = hasEdges
+          ? terminalGlyphForCell(
+            terminalGlyphStyle,
+            edgeGlyphIndex,
+            dominantCount,
+            totalCount,
+            secondCount,
+            fillGlyphIndex,
+            terminalEdgeBias,
+          )
+          : terminalFillGlyphForCell(terminalGlyphStyle, fillGlyphIndex);
 
         const colorOffset = index * 4;
         let foregroundRed = this.toByte(colors[colorOffset] ?? 0);
@@ -280,6 +289,18 @@ function pickMixedFillGlyph(fillGlyphIndex: number): string {
     " ";
 }
 
+function terminalFillGlyphForCell(style: TerminalGlyphStyle, fillGlyphIndex: number): string {
+  const bucket = fillBucketFromGlyphIndex(fillGlyphIndex);
+  switch (style) {
+    case "glyphs":
+      return ASCII_FILL_GLYPHS[bucket] ?? " ";
+    case "mixed":
+      return pickMixedFillGlyph(fillGlyphIndex);
+    default:
+      return blockFillGlyphForBucket(bucket);
+  }
+}
+
 function terminalGlyphForCell(
   style: TerminalGlyphStyle,
   edgeGlyphIndex: number,
@@ -302,15 +323,7 @@ function terminalGlyphForCell(
     return EDGE_GLYPHS[Math.max(0, Math.min(EDGE_GLYPHS.length - 1, edgeGlyphIndex))] ?? " ";
   }
 
-  const bucket = fillBucketFromGlyphIndex(fillGlyphIndex);
-  switch (style) {
-    case "glyphs":
-      return ASCII_FILL_GLYPHS[bucket] ?? " ";
-    case "mixed":
-      return pickMixedFillGlyph(fillGlyphIndex);
-    default:
-      return blockFillGlyphForBucket(bucket);
-  }
+  return terminalFillGlyphForCell(style, fillGlyphIndex);
 }
 
 function shouldUseGohu11EdgeGlyph(

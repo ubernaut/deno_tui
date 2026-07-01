@@ -698,6 +698,28 @@ export const benchmarkCases: BenchmarkCase[] = [
     },
   },
   {
+    name: "render/three-ascii-ansi-grid-fill-only-96x40",
+    category: "render",
+    description: "CPU-assemble a fill-only Three ASCII ANSI grid without edge readback buffers.",
+    tags: ["render", "three", "ascii", "ansi", "cpu", "assembly", "fill"],
+    iterations: 250,
+    maxAverageMs: 5,
+    run: () => {
+      const grid = buildThreeAsciiAnsiGrid({
+        columns: threeAsciiColumns,
+        rows: threeAsciiRows,
+        fillGlyphs: threeAsciiPatternFillGlyphs,
+        colors: threeAsciiPatternColors,
+        terminalGlyphStyle: "blocks",
+        terminalEdgeBias: 1.15,
+        backgroundColor: 0x000000,
+      });
+      if (grid.length !== threeAsciiRows || grid[0]?.length !== threeAsciiColumns) {
+        throw new Error("fill-only three Ascii grid dimensions changed");
+      }
+    },
+  },
+  {
     name: "render/three-ascii-ansi-grid-glyph-cache-96x40",
     category: "render",
     description: "CPU-assemble a glyph-mode Three ASCII grid while reusing adjacent ANSI cell strings.",
