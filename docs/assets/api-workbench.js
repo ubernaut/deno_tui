@@ -8951,6 +8951,106 @@ function normalizeWorkbenchPanelWorkspaceState(value, options) {
   return { active: active2, maximized: maximized2, minimized: minimized2, tileDensity: tileDensity2 };
 }
 
+// src/runtime/diagnostics.ts
+var DiagnosticsCollector = class {
+  constructor(maxEntries = 200) {
+    this.maxEntries = maxEntries;
+  }
+  #entries = [];
+  #listeners = /* @__PURE__ */ new Set();
+  #nextId = 1;
+  report(input2) {
+    const entry = {
+      id: this.#nextId++,
+      time: Math.max(0, Math.floor(input2.time ?? Date.now())),
+      source: input2.source,
+      code: input2.code,
+      severity: input2.severity,
+      message: input2.message,
+      detail: input2.detail,
+      context: input2.context ? { ...input2.context } : void 0
+    };
+    this.#entries.push(entry);
+    while (this.#entries.length > Math.max(1, this.maxEntries)) this.#entries.shift();
+    this.#emit(entry);
+    return { ...entry, context: entry.context ? { ...entry.context } : void 0 };
+  }
+  clear() {
+    if (this.#entries.length === 0) return;
+    this.#entries = [];
+    this.#emit(void 0);
+  }
+  entries() {
+    return this.#entries.map((entry) => ({ ...entry, context: entry.context ? { ...entry.context } : void 0 }));
+  }
+  inspect() {
+    const bySeverity = {
+      debug: 0,
+      info: 0,
+      warning: 0,
+      error: 0
+    };
+    for (const entry of this.#entries) bySeverity[entry.severity] += 1;
+    return {
+      count: this.#entries.length,
+      bySeverity,
+      entries: this.entries()
+    };
+  }
+  subscribe(listener) {
+    this.#listeners.add(listener);
+    return () => this.#listeners.delete(listener);
+  }
+  #emit(entry) {
+    for (const listener of this.#listeners) listener(entry);
+  }
+};
+function summarizeDiagnostics(entries) {
+  const bySeverity = {
+    debug: 0,
+    info: 0,
+    warning: 0,
+    error: 0
+  };
+  let highestSeverity;
+  for (const entry of entries) {
+    bySeverity[entry.severity] += 1;
+    if (!highestSeverity || severityWeight(entry.severity) > severityWeight(highestSeverity)) {
+      highestSeverity = entry.severity;
+    }
+  }
+  return {
+    count: entries.length,
+    ok: entries.length === 0,
+    highestSeverity,
+    bySeverity,
+    latest: cloneDiagnosticEntry(entries.at(-1))
+  };
+}
+function formatDiagnosticStatus(entries, options = {}) {
+  const label = options.label ?? "diagnostics";
+  const summary = summarizeDiagnostics(entries);
+  if (summary.ok) return `${label} ok`;
+  const counts = ["error", "warning", "info", "debug"].filter((severity) => summary.bySeverity[severity] > 0).map((severity) => `${summary.bySeverity[severity]} ${severity}`).join(", ");
+  const latest = options.includeLatest !== false && summary.latest ? ` latest ${summary.latest.source}/${summary.latest.code}` : "";
+  return `${label} ${summary.count} ${summary.highestSeverity}${counts ? ` (${counts})` : ""}${latest}`;
+}
+function cloneDiagnosticEntry(entry) {
+  return entry ? { ...entry, context: entry.context ? { ...entry.context } : void 0 } : void 0;
+}
+function severityWeight(severity) {
+  switch (severity) {
+    case "error":
+      return 4;
+    case "warning":
+      return 3;
+    case "info":
+      return 2;
+    case "debug":
+      return 1;
+  }
+}
+
 // src/runtime/terminal_templates.ts
 function isSpawnTerminalTemplate(template) {
   return template.kind !== "attach";
@@ -10825,6 +10925,49 @@ function createWebTui(options) {
   return new WebTuiHost(options);
 }
 
+// src/runtime/storage_diagnostics.ts
+var StorageFallbackDiagnostics = class {
+  constructor(diagnostics, options = {}) {
+    this.diagnostics = diagnostics;
+    this.#dedupe = options.dedupe ?? true;
+  }
+  #seen = /* @__PURE__ */ new Set();
+  #dedupe;
+  report(input2) {
+    const diagnostic = createStorageFallbackDiagnostic(input2);
+    const key = `${diagnostic.source}/${diagnostic.code}/${diagnostic.detail ?? ""}`;
+    if (this.#dedupe && this.#seen.has(key)) return void 0;
+    this.#seen.add(key);
+    return this.diagnostics.report(diagnostic);
+  }
+  clearDedupe() {
+    this.#seen.clear();
+  }
+};
+function createStorageFallbackDiagnostic(input2) {
+  return {
+    source: input2.source,
+    code: `${sanitizeDiagnosticCode(input2.storage)}-${sanitizeDiagnosticCode(input2.operation)}-failed`,
+    severity: input2.severity ?? "warning",
+    message: input2.message ?? `${input2.storage} ${input2.operation} failed; continuing with in-memory state.`,
+    detail: formatStorageErrorDetail(input2.error),
+    context: { storage: input2.storage, operation: input2.operation, ...input2.context }
+  };
+}
+function formatStorageErrorDetail(error) {
+  if (error === void 0 || error === null) return void 0;
+  if (error instanceof Error) return error.message || error.name;
+  if (typeof error === "string") return error;
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return String(error);
+  }
+}
+function sanitizeDiagnosticCode(value) {
+  return value.toLowerCase().replaceAll(/[^a-z0-9]+/g, "-").replaceAll(/^-|-$/g, "") || "unknown";
+}
+
 // app/styles.ts
 function hexToRgb(hex2) {
   const normalized = hex2.replace(/^#/, "");
@@ -10941,6 +11084,8 @@ var webWorkspaceStore = createRuntimeStore({
   storeName: "workspace",
   scope: globalThis
 });
+var webDiagnostics = new DiagnosticsCollector(80);
+var storageDiagnostics = new StorageFallbackDiagnostics(webDiagnostics);
 var initialWorkspace = loadCachedWebWorkspaceState();
 var themeIndex = new Signal(initialThemeIndex());
 var active = new Signal(initialWorkspace.active ?? "inspector");
@@ -10952,7 +11097,13 @@ var minimized = new Signal(
 var themeMenuOpen = new Signal(false);
 var tileDensity = new Signal(Math.max(-3, Math.min(3, Math.floor(initialWorkspace.tileDensity ?? 0))));
 var lineSignals = [];
-var log = new Signal(["ready: web api workbench mounted"], { deepObserve: true });
+var log = new Signal(
+  ["ready: web api workbench mounted", ...webDiagnostics.entries().map(formatWebDiagnosticLogEntry)].slice(-40),
+  { deepObserve: true }
+);
+webDiagnostics.subscribe((entry) => {
+  if (entry) push(formatWebDiagnosticLogEntry(entry));
+});
 var webTerminalScreen = new TerminalScreenController({ columns: 80, rows: 12, scrollbackLimit: 64 });
 var webTerminalWorkspace = createTerminalWorkspaceController({
   activeId: "pages-shell",
@@ -12736,7 +12887,8 @@ function initialThemeIndex() {
     const saved = globalThis.localStorage?.getItem(THEME_STORAGE_KEY);
     const index = themes.findIndex((entry) => entry.id === saved || entry.label === saved);
     return index >= 0 ? index : 0;
-  } catch {
+  } catch (error) {
+    reportWebStorageDiagnostic("theme-read", "localStorage", error);
     return 0;
   }
 }
@@ -12748,7 +12900,8 @@ function loadCachedWebWorkspaceState() {
     const saved = globalThis.localStorage?.getItem(WORKSPACE_STORAGE_KEY);
     if (!saved) return {};
     return normalizeWebWorkspaceState(JSON.parse(saved));
-  } catch {
+  } catch (error) {
+    reportWebStorageDiagnostic("workspace-read", "localStorage", error);
     return {};
   }
 }
@@ -12756,7 +12909,8 @@ async function hydrateWebWorkspaceState() {
   try {
     const stored = await webWorkspaceStore.get("default");
     if (stored) applyWebWorkspaceState(normalizeWebWorkspaceState(stored));
-  } catch {
+  } catch (error) {
+    reportWebStorageDiagnostic("workspace-hydrate", "IndexedDB", error);
   }
 }
 function applyWebWorkspaceState(state) {
@@ -12782,15 +12936,30 @@ function persistWebWorkspaceState() {
       tileDensity: tileDensity.peek()
     };
     globalThis.localStorage?.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify(snapshot));
-    void webWorkspaceStore.set("default", snapshot).catch(() => void 0);
-  } catch {
+    void webWorkspaceStore.set("default", snapshot).catch(
+      (error) => reportWebStorageDiagnostic("workspace-persist", "IndexedDB", error)
+    );
+  } catch (error) {
+    reportWebStorageDiagnostic("workspace-persist", "localStorage", error);
   }
 }
 function persistThemeIndex(index) {
   try {
     globalThis.localStorage?.setItem(THEME_STORAGE_KEY, themes[index]?.id ?? themes[0].id);
-  } catch {
+  } catch (error) {
+    reportWebStorageDiagnostic("theme-persist", "localStorage", error);
   }
+}
+function reportWebStorageDiagnostic(operation, storage, error) {
+  storageDiagnostics.report({
+    source: "web-workbench",
+    storage,
+    operation,
+    error
+  });
+}
+function formatWebDiagnosticLogEntry(entry) {
+  return formatDiagnosticStatus([entry], { label: "diagnostic", includeLatest: true });
 }
 function theme() {
   return themes[themeIndex.value];

@@ -63,6 +63,8 @@ import {
 } from "../../mod.web.ts";
 import { grWizardThemePalettes } from "../../src/grwizard_themes.ts";
 import { createHtmlCssLayoutDemo, htmlCssLayoutDemoBoxLabel } from "../../src/markup/demo_fixtures.ts";
+import { type DiagnosticEntry, DiagnosticsCollector, formatDiagnosticStatus } from "../../src/runtime/diagnostics.ts";
+import { StorageFallbackDiagnostics } from "../../src/runtime/storage_diagnostics.ts";
 import type { Rectangle } from "../../src/types.ts";
 import { makeStyle } from "../../app/styles.ts";
 
@@ -219,6 +221,8 @@ const webWorkspaceStore = createRuntimeStore<WebWorkspaceState>({
   storeName: "workspace",
   scope: globalThis,
 });
+const webDiagnostics = new DiagnosticsCollector(80);
+const storageDiagnostics = new StorageFallbackDiagnostics(webDiagnostics);
 const initialWorkspace = loadCachedWebWorkspaceState();
 const themeIndex = new Signal(initialThemeIndex());
 const active = new Signal<PanelId>(initialWorkspace.active ?? "inspector");
@@ -230,7 +234,13 @@ const minimized = new Signal<Record<PanelId, boolean>>(
 const themeMenuOpen = new Signal(false);
 const tileDensity = new Signal(Math.max(-3, Math.min(3, Math.floor(initialWorkspace.tileDensity ?? 0))));
 const lineSignals: Signal<string>[] = [];
-const log = new Signal<string[]>(["ready: web api workbench mounted"], { deepObserve: true });
+const log = new Signal<string[]>(
+  ["ready: web api workbench mounted", ...webDiagnostics.entries().map(formatWebDiagnosticLogEntry)].slice(-40),
+  { deepObserve: true },
+);
+webDiagnostics.subscribe((entry) => {
+  if (entry) push(formatWebDiagnosticLogEntry(entry));
+});
 const webTerminalScreen = new TerminalScreenController({ columns: 80, rows: 12, scrollbackLimit: 64 });
 const webTerminalWorkspace = createTerminalWorkspaceController({
   activeId: "pages-shell",
@@ -2201,7 +2211,8 @@ function initialThemeIndex(): number {
     const saved = globalThis.localStorage?.getItem(THEME_STORAGE_KEY);
     const index = themes.findIndex((entry) => entry.id === saved || entry.label === saved);
     return index >= 0 ? index : 0;
-  } catch {
+  } catch (error) {
+    reportWebStorageDiagnostic("theme-read", "localStorage", error);
     return 0;
   }
 }
@@ -2217,7 +2228,8 @@ function loadCachedWebWorkspaceState(): WebWorkspaceState {
     const saved = globalThis.localStorage?.getItem(WORKSPACE_STORAGE_KEY);
     if (!saved) return {};
     return normalizeWebWorkspaceState(JSON.parse(saved) as WebWorkspaceState);
-  } catch {
+  } catch (error) {
+    reportWebStorageDiagnostic("workspace-read", "localStorage", error);
     return {};
   }
 }
@@ -2226,8 +2238,8 @@ async function hydrateWebWorkspaceState(): Promise<void> {
   try {
     const stored = await webWorkspaceStore.get("default");
     if (stored) applyWebWorkspaceState(normalizeWebWorkspaceState(stored));
-  } catch {
-    // IndexedDB may be unavailable or blocked. The local boot cache and in-memory signals remain usable.
+  } catch (error) {
+    reportWebStorageDiagnostic("workspace-hydrate", "IndexedDB", error);
   }
 }
 
@@ -2256,18 +2268,33 @@ function persistWebWorkspaceState(): void {
       tileDensity: tileDensity.peek(),
     };
     globalThis.localStorage?.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify(snapshot));
-    void webWorkspaceStore.set("default", snapshot).catch(() => undefined);
-  } catch {
-    // Storage may be unavailable in restrictive browser contexts; the workspace still works in memory.
+    void webWorkspaceStore.set("default", snapshot).catch((error) =>
+      reportWebStorageDiagnostic("workspace-persist", "IndexedDB", error)
+    );
+  } catch (error) {
+    reportWebStorageDiagnostic("workspace-persist", "localStorage", error);
   }
 }
 
 function persistThemeIndex(index: number): void {
   try {
     globalThis.localStorage?.setItem(THEME_STORAGE_KEY, themes[index]?.id ?? themes[0]!.id);
-  } catch {
-    // Storage may be unavailable in restrictive browser contexts; theme switching still works in memory.
+  } catch (error) {
+    reportWebStorageDiagnostic("theme-persist", "localStorage", error);
   }
+}
+
+function reportWebStorageDiagnostic(operation: string, storage: string, error: unknown): void {
+  storageDiagnostics.report({
+    source: "web-workbench",
+    storage,
+    operation,
+    error,
+  });
+}
+
+function formatWebDiagnosticLogEntry(entry: DiagnosticEntry): string {
+  return formatDiagnosticStatus([entry], { label: "diagnostic", includeLatest: true });
 }
 
 function theme(): ThemeSpec {
