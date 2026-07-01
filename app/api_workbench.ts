@@ -267,6 +267,8 @@ type SavedWorkspaceWindow = WorkbenchWorkspaceWindow<AsciiOptions>;
 
 type WorkspaceNameMode = "save" | "rename";
 const themes: ThemeSpec[] = createApiWorkbenchThemes();
+const themeLabels = themes.map((entry) => entry.label);
+const themeMenuWidth = Math.max(20, maxTextWidth(themeLabels) + 6);
 const rows: ProcessRow[] = apiWorkbenchRows;
 const columns = apiWorkbenchColumns;
 const docs = apiWorkbenchDocs;
@@ -594,7 +596,7 @@ const modeRadio = new RadioGroupController({
   selectedValue: "balanced",
 });
 const themeCombo = new ComboBoxController({
-  items: themes.map((entry) => entry.label),
+  items: themeLabels,
   selectedIndex: 0,
   placeholder: "theme",
   onSelect: (_item, index) => setTheme(index),
@@ -936,14 +938,14 @@ function renderHeader(frame: Frame): void {
     const themeRect = menuItemRect(
       menuStart,
       "theme",
-      Math.max(20, maxTextWidthBy(themes, (entry) => entry.label) + 6),
+      themeMenuWidth,
       themes.length + 2,
     );
     dropdownOverlay = {
       kind: "theme",
       coordinate: "screen",
       rect: themeRect,
-      items: themes.map((entry) => entry.label),
+      items: themeLabels,
       selectedIndex: themeIndex.peek(),
     };
   }

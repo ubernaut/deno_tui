@@ -10153,13 +10153,6 @@ function layoutWorkbenchTitlebar(options) {
 function maxTextWidth(values) {
   return values.reduce((max2, value) => Math.max(max2, textWidth(value)), 0);
 }
-function maxTextWidthBy(values, project) {
-  let max2 = 0;
-  for (const value of values) {
-    max2 = Math.max(max2, textWidth(project(value)));
-  }
-  return max2;
-}
 
 // src/app/workbench_workspace.ts
 function defaultWorkbenchMinimizedState(panelIds2, minimized2 = {}) {
@@ -11598,6 +11591,8 @@ var themes = grWizardThemePalettes.map((palette) => ({
   buttonActiveBg: palette.accent,
   buttonMutedBg: palette.panelAlt
 }));
+var themeLabels = themes.map((entry) => entry.label);
+var themeMenuWidth = Math.max(22, maxTextWidth(themeLabels) + 6);
 var rows = [
   { id: "explorer", surface: "FileExplorer", state: "browsing", ms: 3 },
   { id: "menu", surface: "MenuBar", state: "active", ms: 2 },
@@ -11780,7 +11775,7 @@ var radio = new RadioGroupController({
   selectedValue: "balanced"
 });
 var combo = new ComboBoxController({
-  items: themes.map((entry) => entry.label),
+  items: themeLabels,
   selectedIndex: 0,
   placeholder: "theme",
   onSelect: (_item, index) => setTheme(index)
@@ -11998,10 +11993,10 @@ function draw() {
       rect: menuItemRect(
         17,
         "theme",
-        Math.max(22, maxTextWidthBy(themes, (entry) => entry.label) + 6),
+        themeMenuWidth,
         themes.length + 2
       ),
-      items: themes.map((entry) => entry.label),
+      items: themeLabels,
       selectedIndex: themeIndex.peek()
     };
   }

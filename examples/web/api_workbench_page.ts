@@ -36,7 +36,6 @@ import {
   layoutWorkbenchTitlebar,
   layoutWorkbenchTopMenuItemRect,
   maxTextWidth,
-  maxTextWidthBy,
   MenuBarController,
   modalContentHeight,
   ModalController,
@@ -196,6 +195,8 @@ const themes: ThemeSpec[] = grWizardThemePalettes.map((palette) => ({
   buttonActiveBg: palette.accent,
   buttonMutedBg: palette.panelAlt,
 }));
+const themeLabels = themes.map((entry) => entry.label);
+const themeMenuWidth = Math.max(22, maxTextWidth(themeLabels) + 6);
 const rows: Row[] = [
   { id: "explorer", surface: "FileExplorer", state: "browsing", ms: 3 },
   { id: "menu", surface: "MenuBar", state: "active", ms: 2 },
@@ -388,7 +389,7 @@ const radio = new RadioGroupController({
   selectedValue: "balanced",
 });
 const combo = new ComboBoxController({
-  items: themes.map((entry) => entry.label),
+  items: themeLabels,
   selectedIndex: 0,
   placeholder: "theme",
   onSelect: (_item, index) => setTheme(index),
@@ -613,10 +614,10 @@ function draw(): void {
       rect: menuItemRect(
         17,
         "theme",
-        Math.max(22, maxTextWidthBy(themes, (entry) => entry.label) + 6),
+        themeMenuWidth,
         themes.length + 2,
       ),
-      items: themes.map((entry) => entry.label),
+      items: themeLabels,
       selectedIndex: themeIndex.peek(),
     };
   }
