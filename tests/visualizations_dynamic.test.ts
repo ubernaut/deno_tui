@@ -8,7 +8,9 @@ import {
   renderVisualization,
   visualizations,
 } from "../app/visualizations.ts";
+import { visualizationCatalog, visualizationFamily } from "../app/visualization_catalog.ts";
 import type { RenderContext, SlotConfig, SourceFrame, SystemSnapshot } from "../app/types.ts";
+import { createWorkbenchVisualizationWindowOptions } from "../src/app/workbench_window_registry.ts";
 import { stripStyles, textWidth } from "../src/utils/strings.ts";
 
 const ascii = {
@@ -294,6 +296,21 @@ Deno.test("every visualization renders and reacts to changed inputs", () => {
     assert(calm.body.trim().length > 0, `${visualization.id} should render a non-empty calm body`);
     assert(hot.body.trim().length > 0, `${visualization.id} should render a non-empty hot body`);
     assertNotEquals(calm.body, hot.body, `${visualization.id} body should change with different inputs`);
+  }
+});
+
+Deno.test("visualization catalog classifies every workbench visualization by family", () => {
+  assertEquals(visualizationCatalog.length, visualizations.length);
+  assertEquals(new Set(visualizationCatalog.map((entry) => entry.id)).size, visualizations.length);
+
+  const options = createWorkbenchVisualizationWindowOptions(visualizationCatalog);
+  const groupsById = new Map(options.map((option) => [option.id, option.group]));
+  for (const visualization of visualizations) {
+    const family = visualizationFamily(visualization.id);
+    assert(family, `${visualization.id} should have family metadata`);
+    const group = groupsById.get(visualization.id);
+    assert(group, `${visualization.id} should map to a workbench group`);
+    assert(["Monitor", "Neon", "Neon 3D"].includes(group), `${visualization.id} should map to a known group`);
   }
 });
 

@@ -104,7 +104,6 @@ import {
   TERMINAL_GLYPH_STYLES,
   terminalGlyphStyleLabel,
 } from "./ascii_options.ts";
-import { demos as neonDemos } from "./neon_theme.ts";
 import { getSourceFrame } from "./sources.ts";
 import { makeStyle } from "./styles.ts";
 import { SystemMonitor } from "./system_metrics.ts";
@@ -359,7 +358,6 @@ const docs = [
   "Use Tab or 1-8 to focus built-in windows; use M, F, R for window controls.",
 ];
 const explorerKeys = new Set(["up", "down", "left", "right", "pageup", "pagedown", "home", "end", "space", "return"]);
-const neonDemoIds = new Set(neonDemos.map((demo) => demo.id));
 const htmlCssLayoutWindowOption: NewWindowOption = {
   id: HTML_CSS_LAYOUT_OPTION_ID,
   label: "HTML/CSS Layout",
@@ -381,10 +379,7 @@ const terminalShellWindowOption: NewWindowOption = {
   description: "Open an interactive PTY-backed shell using the host OS shell.",
   windowId: TERMINAL_SHELL_WINDOW_ID,
 };
-const visualizationWindowOptions: NewWindowOption[] = createWorkbenchVisualizationWindowOptions(
-  visualizations,
-  neonDemoIds,
-);
+const visualizationWindowOptions: NewWindowOption[] = createWorkbenchVisualizationWindowOptions(visualizations);
 const newWindowOptions: NewWindowOption[] = [
   terminalShellWindowOption,
   terminalOutputWindowOption,

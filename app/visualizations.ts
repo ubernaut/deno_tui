@@ -1,5 +1,11 @@
 import { clamp, formatBytes, formatDuration, formatPercent, formatRate } from "./styles.ts";
 import { demos as neonDemos, formatCountdown as neonFormatCountdown } from "./neon_theme.ts";
+import {
+  neonThreeVisualizationIds,
+  neonVisualizationIds,
+  visualizationCatalog,
+  visualizationCatalogById,
+} from "./visualization_catalog.ts";
 import type {
   Accent,
   PanelRender,
@@ -11,113 +17,9 @@ import type {
   VisualizationDescriptor,
 } from "./types.ts";
 
-const monitorVisualizations: VisualizationDescriptor[] = [
-  {
-    id: "cpu-monitor",
-    name: "CPU Monitor",
-    accent: "signal",
-    description: "Bottom-style CPU overview and history plot.",
-  },
-  { id: "cpu-legend", name: "CPU Legend", accent: "signal", description: "Per-core legend wall." },
-  {
-    id: "cpu-hex-grid",
-    name: "CPU Hex Grid",
-    accent: "signal",
-    description: "Per-core hex tile activity map with truecolor load shading.",
-  },
-  {
-    id: "gpu-combined-monitor",
-    name: "GPU Fusion",
-    accent: "violet",
-    description: "Combined GPU chip and VRAM pressure view.",
-  },
-  {
-    id: "gpu-chip-monitor",
-    name: "GPU Chip",
-    accent: "violet",
-    description: "GPU utilization, thermals, power, and clocks.",
-  },
-  {
-    id: "gpu-memory-monitor",
-    name: "GPU Memory",
-    accent: "phosphor",
-    description: "Dedicated GPU memory bank pressure.",
-  },
-  { id: "memory-monitor", name: "Memory Monitor", accent: "phosphor", description: "Memory, swap, and load pressure." },
-  { id: "temperature-monitor", name: "Temperature Monitor", accent: "violet", description: "Thermal zone readout." },
-  { id: "disk-monitor", name: "Disk Monitor", accent: "amber", description: "Filesystem capacity board." },
-  {
-    id: "network-monitor",
-    name: "Network Monitor",
-    accent: "signal",
-    description: "Ingress, egress, and interface status.",
-  },
-  { id: "process-monitor", name: "Process Monitor", accent: "amber", description: "Top process activity table." },
-];
+export const visualizations: VisualizationDescriptor[] = visualizationCatalog.map((entry) => ({ ...entry }));
 
-const neonThreeVisualizationIds = [
-  "three-lattice",
-  "three-atfield",
-  "three-hexshell",
-  "three-capture",
-  "three-mapslab",
-  "three-solenoid",
-  "three-ascii-studio",
-] as const;
-
-const neonVisualizationIds = [
-  "warning-stack",
-  "counter-board",
-  "profile-card",
-  "live-feed",
-  "event-log",
-  "channel-matrix",
-  "telemetry-rack",
-  "biosignal-strip",
-  "harmonic-graph",
-  "psychograph",
-  "field-ring",
-  "hex-heatmap",
-  "magi-board",
-  "route-board",
-  "gate-status",
-  "tactical-map",
-  "network-topology",
-  "component-index",
-] as const;
-
-const neonVisualizationMap = new Map(
-  neonDemos
-    .filter((demo) =>
-      neonVisualizationIds.includes(demo.id as typeof neonVisualizationIds[number]) ||
-      neonThreeVisualizationIds.includes(demo.id as typeof neonThreeVisualizationIds[number])
-    )
-    .map((demo) => [demo.id, demo] as const),
-);
-
-export const visualizations: VisualizationDescriptor[] = [
-  ...monitorVisualizations,
-  ...neonThreeVisualizationIds.map((id) => {
-    const demo = neonVisualizationMap.get(id);
-    return {
-      id,
-      name: demo?.title ?? id,
-      accent: (demo?.accent ?? "signal") as Accent,
-      description: demo?.subtitle ?? "Neon Exodus 3D visualization.",
-    };
-  }),
-  ...neonVisualizationIds.map((id) => {
-    const demo = neonVisualizationMap.get(id);
-    return {
-      id,
-      name: demo?.title ?? id,
-      accent: (demo?.accent ?? "signal") as Accent,
-      description: demo?.subtitle ?? "Neon Exodus visualization.",
-    };
-  }),
-];
-
-const visualizationMap = new Map(visualizations.map((entry) => [entry.id, entry]));
+const visualizationMap = new Map(visualizationCatalogById);
 const neonDemoIds = new Set(neonDemos.map((demo) => demo.id));
 const textOnlyNeonDemoIds = new Set(["warning-stack", "event-log", "component-index"]);
 const ngePrimitiveSceneModes: Record<string, ThreeSceneMode> = {

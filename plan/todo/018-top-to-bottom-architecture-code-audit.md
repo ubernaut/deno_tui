@@ -413,14 +413,16 @@ Current evidence:
 Work:
 
 - [ ] Split visualization definitions by family: monitor, Neon text, Neon 3D, terminal/workspace, and layout.
-- [ ] Move shared visualization metadata and source wiring into a registry module with typed capabilities.
+- [x] Move shared visualization metadata and source wiring into a registry module with typed capabilities.
+  - [x] Added `app/visualization_catalog.ts` with Monitor, Neon text, and Neon 3D family metadata; the workbench New
+        Window menu now classifies visualization options from this metadata before falling back to legacy id heuristics.
 - [ ] Keep rendering functions pure and fixture-testable.
 - [ ] Make demo-only assets and NGE-inspired primitives clearly separate from library APIs.
 
 Acceptance checks:
 
 - [ ] Visualization dynamic tests can target individual families.
-- [ ] Workbench New Window menu derives from registry metadata without demo-local branching.
+- [x] Workbench New Window menu derives from registry metadata without demo-local branching.
 
 ## Cross-Cutting Test Plan
 

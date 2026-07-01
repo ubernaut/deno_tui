@@ -17,6 +17,7 @@ export interface WorkbenchVisualizationOptionSource {
   id: string;
   name: string;
   description: string;
+  family?: "monitor" | "neon" | "neon3d";
 }
 
 /** Options for creating the shared workbench New Window catalog. */
@@ -48,9 +49,19 @@ export function createWorkbenchVisualizationWindowOptions(
   return visualizations.map((entry) => ({
     id: entry.id,
     label: entry.name,
-    group: entry.id.startsWith("three-") ? "Neon 3D" : neonIds.has(entry.id) ? "Neon" : "Monitor",
+    group: workbenchWindowOptionGroupForVisualization(entry, neonIds),
     description: entry.description,
   }));
+}
+
+function workbenchWindowOptionGroupForVisualization(
+  entry: WorkbenchVisualizationOptionSource,
+  neonIds: ReadonlySet<string> = new Set(),
+): WorkbenchWindowOptionGroup {
+  if (entry.family === "neon3d") return "Neon 3D";
+  if (entry.family === "neon") return "Neon";
+  if (entry.family === "monitor") return "Monitor";
+  return entry.id.startsWith("three-") ? "Neon 3D" : neonIds.has(entry.id) ? "Neon" : "Monitor";
 }
 
 /** Convert a visualization id into the managed workbench window id. */

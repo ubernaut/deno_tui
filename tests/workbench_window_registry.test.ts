@@ -12,13 +12,23 @@ import {
 
 Deno.test("workbench window registry projects visualization metadata into launcher options", () => {
   const options = createWorkbenchVisualizationWindowOptions([
-    { id: "cpu-hex-grid", name: "CPU Hex Grid", description: "cores" },
-    { id: "magi-board", name: "MAGI Board", description: "neon" },
-    { id: "three-lattice", name: "Lattice", description: "3d" },
-  ], new Set(["magi-board"]));
+    { id: "cpu-hex-grid", name: "CPU Hex Grid", description: "cores", family: "monitor" },
+    { id: "magi-board", name: "MAGI Board", description: "neon", family: "neon" },
+    { id: "eva-lattice", name: "Lattice", description: "3d", family: "neon3d" },
+  ]);
 
   assertEquals(options.map((option) => option.group), ["Monitor", "Neon", "Neon 3D"]);
   assertEquals(options[0]?.label, "CPU Hex Grid");
+});
+
+Deno.test("workbench window registry keeps legacy visualization grouping fallback", () => {
+  assertEquals(
+    createWorkbenchVisualizationWindowOptions([
+      { id: "three-lattice", name: "Lattice", description: "3d" },
+      { id: "magi-board", name: "MAGI Board", description: "neon" },
+    ], new Set(["magi-board"])).map((option) => option.group),
+    ["Neon 3D", "Neon"],
+  );
 });
 
 Deno.test("workbench window registry keeps built-ins ahead of visualization options", () => {
