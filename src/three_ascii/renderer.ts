@@ -507,6 +507,7 @@ export function buildThreeAsciiAnsiGrid(input: ThreeAsciiAnsiGridInput): string[
   const blankAnsi = `${backgroundAnsi}${rgbToAnsiForeground(backgroundRed, backgroundGreen, backgroundBlue)} ${RESET}`;
   const toByte = createLinearByteCache();
   const foregroundAnsiCache = new Map<number, string>();
+  const cellCache = new Map<number, Map<string, string>>();
   let lastForegroundKey = -1;
   let lastGlyph = "";
   let lastCell = "";
@@ -560,7 +561,18 @@ export function buildThreeAsciiAnsiGrid(input: ThreeAsciiAnsiGridInput): string[
         foregroundAnsi = rgbToAnsiForeground(foregroundRed, foregroundGreen, foregroundBlue);
         foregroundAnsiCache.set(foregroundKey, foregroundAnsi);
       }
-      const cell = `${backgroundAnsi}${foregroundAnsi}${glyph}${RESET}`;
+
+      let glyphCells = cellCache.get(foregroundKey);
+      if (glyphCells === undefined) {
+        glyphCells = new Map<string, string>();
+        cellCache.set(foregroundKey, glyphCells);
+      }
+      let cell = glyphCells.get(glyph);
+      if (cell === undefined) {
+        cell = `${backgroundAnsi}${foregroundAnsi}${glyph}${RESET}`;
+        glyphCells.set(glyph, cell);
+      }
+
       if (glyph === "█" || terminalGlyphStyle === "blocks") {
         lastForegroundKey = foregroundKey;
         lastGlyph = glyph;

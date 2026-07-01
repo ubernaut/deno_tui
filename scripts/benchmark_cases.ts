@@ -43,6 +43,9 @@ const threeAsciiColors = new Float32Array(threeAsciiCellCount * 4);
 const threeAsciiSolidFillGlyphs = new Float32Array(threeAsciiCellCount);
 const threeAsciiSolidEdgeGlyphs = new Float32Array(threeAsciiCellCount * 4);
 const threeAsciiSolidColors = new Float32Array(threeAsciiCellCount * 4);
+const threeAsciiPatternFillGlyphs = new Float32Array(threeAsciiCellCount);
+const threeAsciiPatternEdgeGlyphs = new Float32Array(threeAsciiCellCount * 4);
+const threeAsciiPatternColors = new Float32Array(threeAsciiCellCount * 4);
 const threeAsciiSparseFillGlyphs = new Float32Array(threeAsciiCellCount);
 const threeAsciiSparseEdgeGlyphs = new Float32Array(threeAsciiCellCount * 4);
 const threeAsciiSparseColors = new Float32Array(threeAsciiCellCount * 4);
@@ -84,6 +87,12 @@ const dirtyRegionProbeRectangles = Array.from({ length: 300 }, (_, index) => ({
   width: 4 + (index % 23),
   height: 1 + (index % 11),
 }));
+const threeAsciiPatternPalette = [
+  [0.95, 0.12, 0.18],
+  [0.12, 0.9, 0.35],
+  [0.12, 0.42, 0.96],
+  [0.95, 0.78, 0.18],
+] as const;
 
 for (let index = 0; index < threeAsciiCellCount; index += 1) {
   const x = index % threeAsciiColumns;
@@ -110,6 +119,19 @@ for (let index = 0; index < threeAsciiCellCount; index += 1) {
     threeAsciiSolidEdgeGlyphs[edgeOffset + 1] = 18;
     threeAsciiSolidEdgeGlyphs[edgeOffset + 2] = 24;
     threeAsciiSolidEdgeGlyphs[edgeOffset + 3] = 2;
+  }
+
+  threeAsciiPatternFillGlyphs[index] = 14;
+  const patternColor = threeAsciiPatternPalette[(x * 3 + y * 5) % threeAsciiPatternPalette.length];
+  threeAsciiPatternColors[colorOffset] = patternColor[0];
+  threeAsciiPatternColors[colorOffset + 1] = patternColor[1];
+  threeAsciiPatternColors[colorOffset + 2] = patternColor[2];
+  threeAsciiPatternColors[colorOffset + 3] = 1;
+  if ((x + y) % 19 === 0) {
+    threeAsciiPatternEdgeGlyphs[edgeOffset] = 1 + (x % 4);
+    threeAsciiPatternEdgeGlyphs[edgeOffset + 1] = 20;
+    threeAsciiPatternEdgeGlyphs[edgeOffset + 2] = 24;
+    threeAsciiPatternEdgeGlyphs[edgeOffset + 3] = 1;
   }
 
   const sparseColorOffset = index * 4;
@@ -647,6 +669,29 @@ export const benchmarkCases: BenchmarkCase[] = [
       });
       if (grid.length !== threeAsciiRows || grid[0]?.length !== threeAsciiColumns) {
         throw new Error("solid three Ascii grid dimensions changed");
+      }
+    },
+  },
+  {
+    name: "render/three-ascii-ansi-grid-pattern-96x40",
+    category: "render",
+    description: "CPU-assemble a patterned block-mode Three ASCII grid with recurring non-adjacent cell strings.",
+    tags: ["render", "three", "ascii", "ansi", "cpu", "assembly", "cache"],
+    iterations: 200,
+    maxAverageMs: 6,
+    run: () => {
+      const grid = buildThreeAsciiAnsiGrid({
+        columns: threeAsciiColumns,
+        rows: threeAsciiRows,
+        fillGlyphs: threeAsciiPatternFillGlyphs,
+        edgeGlyphs: threeAsciiPatternEdgeGlyphs,
+        colors: threeAsciiPatternColors,
+        terminalGlyphStyle: "blocks",
+        terminalEdgeBias: 1.15,
+        backgroundColor: 0x000000,
+      });
+      if (grid.length !== threeAsciiRows || grid[0]?.length !== threeAsciiColumns) {
+        throw new Error("pattern three Ascii grid dimensions changed");
       }
     },
   },

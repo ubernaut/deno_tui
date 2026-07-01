@@ -203,6 +203,8 @@ Work:
       for background cells.
 - [x] Add a cheap adjacent-cell ANSI string cache for repeated block/material runs without regressing varied dense or
       sparse grid assembly.
+- [x] Add a frame-local ANSI cell string cache for recurring non-adjacent glyph/color pairs, with a patterned Three
+      ASCII benchmark covering repeated material palettes beyond adjacent runs.
 
 Acceptance checks:
 
