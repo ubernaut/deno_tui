@@ -506,14 +506,16 @@ export class ThreeAsciiRenderer {
       workgroupsX,
       workgroupsY,
     );
-    this.dispatchComputePass(
-      commandEncoder,
-      "deno_tui.three_ascii.edge",
-      this.edgePipeline!,
-      this.edgeBindGroup!,
-      workgroupsX,
-      workgroupsY,
-    );
+    if (effectState.edges) {
+      this.dispatchComputePass(
+        commandEncoder,
+        "deno_tui.three_ascii.edge",
+        this.edgePipeline!,
+        this.edgeBindGroup!,
+        workgroupsX,
+        workgroupsY,
+      );
+    }
     this.dispatchComputePass(
       commandEncoder,
       "deno_tui.three_ascii.color",
@@ -524,8 +526,9 @@ export class ThreeAsciiRenderer {
     );
 
     const fillOffset = 0;
-    const edgeOffset = fillOffset + this.fillOutput!.byteLength;
-    const colorOffset = edgeOffset + this.edgeOutput!.byteLength;
+    const edgeOffset = effectState.edges ? fillOffset + this.fillOutput!.byteLength : undefined;
+    const colorOffset = fillOffset + this.fillOutput!.byteLength +
+      (effectState.edges ? this.edgeOutput!.byteLength : 0);
     const readbackByteLength = colorOffset + this.colorOutput!.byteLength;
     this.outputReadback = this.ensureReadbackBuffer(this.outputReadback, readbackByteLength);
 
@@ -536,13 +539,15 @@ export class ThreeAsciiRenderer {
       fillOffset,
       this.fillOutput!.byteLength,
     );
-    commandEncoder.copyBufferToBuffer(
-      this.edgeOutput!.gpu,
-      0,
-      this.outputReadback.gpu,
-      edgeOffset,
-      this.edgeOutput!.byteLength,
-    );
+    if (effectState.edges && edgeOffset !== undefined) {
+      commandEncoder.copyBufferToBuffer(
+        this.edgeOutput!.gpu,
+        0,
+        this.outputReadback.gpu,
+        edgeOffset,
+        this.edgeOutput!.byteLength,
+      );
+    }
     commandEncoder.copyBufferToBuffer(
       this.colorOutput!.gpu,
       0,
@@ -874,7 +879,7 @@ export class ThreeAsciiRenderer {
 
   private async buildAnsiGridFromReadback(
     fillOffset: number,
-    edgeOffset: number,
+    edgeOffset: number | undefined,
     colorOffset: number,
     backgroundColor: Color,
   ): Promise<string[][]> {
@@ -894,7 +899,9 @@ export class ThreeAsciiRenderer {
         columns: this.columns,
         rows: this.rows,
         fillGlyphs: new Float32Array(source, fillOffset, fillOutput.byteLength / Float32Array.BYTES_PER_ELEMENT),
-        edgeGlyphs: new Float32Array(source, edgeOffset, edgeOutput.byteLength / Float32Array.BYTES_PER_ELEMENT),
+        edgeGlyphs: edgeOffset === undefined
+          ? undefined
+          : new Float32Array(source, edgeOffset, edgeOutput.byteLength / Float32Array.BYTES_PER_ELEMENT),
         colors: new Float32Array(source, colorOffset, colorOutput.byteLength / Float32Array.BYTES_PER_ELEMENT),
         terminalGlyphStyle: this.terminalGlyphStyle,
         terminalEdgeBias: this.terminalEdgeBias,
