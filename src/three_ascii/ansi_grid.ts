@@ -304,7 +304,11 @@ export function colorValue(input: Color | string | number | undefined, fallback:
 }
 
 function createStringGrid(rows: number, columns: number): string[][] {
-  return Array.from({ length: rows }, () => Array<string>(columns));
+  const grid = new Array<string[]>(rows);
+  for (let row = 0; row < rows; row += 1) {
+    grid[row] = new Array<string>(columns);
+  }
+  return grid;
 }
 
 function linearToSrgb(value: number): number {
