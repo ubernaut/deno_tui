@@ -1,5 +1,6 @@
 import { createDefaultAsciiOptions } from "./ascii_options.ts";
 import { demos, type NeonDemo, type NeonSection } from "./neon_theme.ts";
+import { unitWave, waveSeries } from "./synthetic_wave.ts";
 import type {
   Accent,
   AsciiOptions,
@@ -190,13 +191,12 @@ function syntheticSources(demo: NeonDemo, phase: number, selected: boolean): Sou
     { name: "Noise", accent: selected ? "amber" : "violet", offset: base % 43 },
   ];
 
-  return specs.map((spec, index) => {
-    const series = Array.from(
-      { length: 64 },
-      (_, sample) => unitWave(phase + sample + spec.offset, 0.12 + index * 0.035, 0.08 + index * 0.025),
-    );
+  const sources = new Array<SourceFrame>(specs.length);
+  for (let index = 0; index < specs.length; index++) {
+    const spec = specs[index]!;
+    const series = waveSeries(64, phase + spec.offset, 0.12 + index * 0.035, 0.08 + index * 0.025);
     const value = series[series.length - 1] ?? 0.5;
-    return {
+    sources[index] = {
       id: `demo:${demo.id}:${index}`,
       name: spec.name,
       accent: spec.accent,
@@ -204,7 +204,8 @@ function syntheticSources(demo: NeonDemo, phase: number, selected: boolean): Sou
       series,
       detailLines: [`${Math.round(value * 100)}% ${demo.code}`],
     };
-  });
+  }
+  return sources;
 }
 
 function syntheticSystemSnapshot(demo: NeonDemo, phase: number): SystemSnapshot {
@@ -217,7 +218,7 @@ function syntheticSystemSnapshot(demo: NeonDemo, phase: number): SystemSnapshot 
     loadavg: [hot * 2, hot * 1.4, hot],
     cpuOverall: hot * 100,
     cpuCores: [],
-    cpuHistory: Array.from({ length: 64 }, (_, index) => unitWave(phase + index, 0.08, 0.03) * 100),
+    cpuHistory: waveSeries(64, phase, 0.08, 0.03, 100),
     gpu: {
       available: true,
       name: "NEON RENDER CORE",
@@ -230,8 +231,8 @@ function syntheticSystemSnapshot(demo: NeonDemo, phase: number): SystemSnapshot 
       graphicsClockMhz: 1500 + hot * 950,
       memoryClockMhz: 9000 + hot * 1200,
     },
-    gpuUtilizationHistory: Array.from({ length: 64 }, (_, index) => unitWave(phase + index, 0.075, 0.29)),
-    gpuMemoryHistory: Array.from({ length: 64 }, (_, index) => unitWave(phase + index, 0.045, 0.51)),
+    gpuUtilizationHistory: waveSeries(64, phase, 0.075, 0.29),
+    gpuMemoryHistory: waveSeries(64, phase, 0.045, 0.51),
     memory: {
       total: 32 * 1024 ** 3,
       used: hot * 24 * 1024 ** 3,
@@ -242,8 +243,8 @@ function syntheticSystemSnapshot(demo: NeonDemo, phase: number): SystemSnapshot 
       percent: hot * 100,
       swapPercent: hot * 25,
     },
-    memoryHistory: Array.from({ length: 64 }, (_, index) => unitWave(phase + index, 0.05, 0.1)),
-    swapHistory: Array.from({ length: 64 }, (_, index) => unitWave(phase + index, 0.04, 0.2) * 0.35),
+    memoryHistory: waveSeries(64, phase, 0.05, 0.1),
+    swapHistory: waveSeries(64, phase, 0.04, 0.2, 0.35),
     temperatures: [{ label: "CORE", celsius: 40 + hot * 48 }],
     disks: [{
       filesystem: "/dev/neon",
@@ -261,22 +262,10 @@ function syntheticSystemSnapshot(demo: NeonDemo, phase: number): SystemSnapshot 
       rxRate: hot * 95_000_000,
       txRate: hot * 72_000_000,
     }],
-    rxHistory: Array.from({ length: 64 }, (_, index) => unitWave(phase + index, 0.11, 0.2)),
-    txHistory: Array.from({ length: 64 }, (_, index) => unitWave(phase + index, 0.09, 0.4)),
+    rxHistory: waveSeries(64, phase, 0.11, 0.2),
+    txHistory: waveSeries(64, phase, 0.09, 0.4),
     processes: [],
     alerts: hot > 0.92 ? [{ severity: "warning", title: demo.badge, detail: "DRIVE SATURATION" }] : [],
     diagnostics: [],
   };
-}
-
-function unitWave(value: number, frequency: number, offset: number) {
-  return Math.max(
-    0,
-    Math.min(
-      1,
-      0.5 +
-        Math.sin(value * frequency + offset) * 0.34 +
-        Math.cos(value * (frequency * 0.37) + offset * 2.1) * 0.16,
-    ),
-  );
 }

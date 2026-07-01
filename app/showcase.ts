@@ -8,6 +8,7 @@ import { adaptiveGridItemRect, adaptiveGridPage } from "../src/layout/mod.ts";
 import { createDefaultAsciiOptions, terminalGlyphStyleLabel } from "./ascii_options.ts";
 import { demos, formatCountdown, type NeonDemo, type NeonSection } from "./neon_theme.ts";
 import { accentColor, makeStyle, palette, severityAccent } from "./styles.ts";
+import { unitWave, waveSeries } from "./synthetic_wave.ts";
 import { requireInteractiveTerminal } from "./terminal_guard.ts";
 import { ThreePanelView } from "./three_panel.ts";
 import type {
@@ -418,13 +419,12 @@ function syntheticSources(demo: NeonDemo, selected: boolean): SourceFrame[] {
     { name: "Noise", accent: selected ? "amber" : "violet", offset: base % 43 },
   ];
 
-  return specs.map((spec, index) => {
-    const series = Array.from(
-      { length: 64 },
-      (_, sample) => unitWave(phase.value + sample + spec.offset, 0.12 + index * 0.035, 0.08 + index * 0.025),
-    );
+  const sources = new Array<SourceFrame>(specs.length);
+  for (let index = 0; index < specs.length; index++) {
+    const spec = specs[index]!;
+    const series = waveSeries(64, phase.value + spec.offset, 0.12 + index * 0.035, 0.08 + index * 0.025);
     const value = series[series.length - 1] ?? 0.5;
-    return {
+    sources[index] = {
       id: `demo:${demo.id}:${index}`,
       name: spec.name,
       accent: value > 0.88 ? "alarm" : value > 0.72 ? spec.accent : spec.accent,
@@ -432,7 +432,8 @@ function syntheticSources(demo: NeonDemo, selected: boolean): SourceFrame[] {
       series,
       detailLines: [`${Math.round(value * 100)}% ${demo.code}`],
     };
-  });
+  }
+  return sources;
 }
 
 function syntheticSystemSnapshot(demo: NeonDemo): SystemSnapshot {
@@ -445,7 +446,7 @@ function syntheticSystemSnapshot(demo: NeonDemo): SystemSnapshot {
     loadavg: [hot * 2, hot * 1.4, hot],
     cpuOverall: hot * 100,
     cpuCores: [],
-    cpuHistory: Array.from({ length: 64 }, (_, index) => unitWave(phase.value + index, 0.08, 0.03) * 100),
+    cpuHistory: waveSeries(64, phase.value, 0.08, 0.03, 100),
     gpu: {
       available: true,
       name: "SHOWCASE RENDER CORE",
@@ -458,8 +459,8 @@ function syntheticSystemSnapshot(demo: NeonDemo): SystemSnapshot {
       graphicsClockMhz: 1500 + hot * 950,
       memoryClockMhz: 9000 + hot * 1200,
     },
-    gpuUtilizationHistory: Array.from({ length: 64 }, (_, index) => unitWave(phase.value + index, 0.075, 0.29)),
-    gpuMemoryHistory: Array.from({ length: 64 }, (_, index) => unitWave(phase.value + index, 0.045, 0.51)),
+    gpuUtilizationHistory: waveSeries(64, phase.value, 0.075, 0.29),
+    gpuMemoryHistory: waveSeries(64, phase.value, 0.045, 0.51),
     memory: {
       total: 32 * 1024 ** 3,
       used: hot * 24 * 1024 ** 3,
@@ -470,8 +471,8 @@ function syntheticSystemSnapshot(demo: NeonDemo): SystemSnapshot {
       percent: hot * 100,
       swapPercent: hot * 25,
     },
-    memoryHistory: Array.from({ length: 64 }, (_, index) => unitWave(phase.value + index, 0.05, 0.1)),
-    swapHistory: Array.from({ length: 64 }, (_, index) => unitWave(phase.value + index, 0.04, 0.2) * 0.35),
+    memoryHistory: waveSeries(64, phase.value, 0.05, 0.1),
+    swapHistory: waveSeries(64, phase.value, 0.04, 0.2, 0.35),
     temperatures: [{ label: "CORE", celsius: 40 + hot * 48 }],
     disks: [{
       filesystem: "/dev/showcase",
@@ -489,24 +490,12 @@ function syntheticSystemSnapshot(demo: NeonDemo): SystemSnapshot {
       rxRate: hot * 95_000_000,
       txRate: hot * 72_000_000,
     }],
-    rxHistory: Array.from({ length: 64 }, (_, index) => unitWave(phase.value + index, 0.11, 0.2)),
-    txHistory: Array.from({ length: 64 }, (_, index) => unitWave(phase.value + index, 0.09, 0.4)),
+    rxHistory: waveSeries(64, phase.value, 0.11, 0.2),
+    txHistory: waveSeries(64, phase.value, 0.09, 0.4),
     processes: [],
     alerts: hot > 0.92 ? [{ severity: "warning", title: demo.badge, detail: "DRIVE SATURATION" }] : [],
     diagnostics: [],
   };
-}
-
-function unitWave(value: number, frequency: number, offset: number) {
-  return Math.max(
-    0,
-    Math.min(
-      1,
-      0.5 +
-        Math.sin(value * frequency + offset) * 0.34 +
-        Math.cos(value * (frequency * 0.37) + offset * 2.1) * 0.16,
-    ),
-  );
 }
 
 function emptyRender(): PanelRender {
