@@ -444,6 +444,8 @@ Work:
         catalog merging and preview filtering directly testable outside the facade.
   - [x] Extracted provider report aggregation into `src/theme_provider_report_builder.ts`, injecting coverage, preview,
         and validation collectors so report semantics can be tested without the public facade doing all the work.
+  - [x] Extracted provider active-theme state, persistence, cycling, and inspection mechanics into
+        `src/theme_provider.ts`, leaving `src/theme.ts` as the public facade and factory boundary.
 - [x] Add caches for resolved style chains and preview generation with explicit invalidation tests.
   - [x] Extended `ThemeProviderCache` with preview caching, active theme/layer invalidation, and uncached
         function-variant previews.
