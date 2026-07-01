@@ -155,6 +155,42 @@ Deno.test("SystemMonitor bounds process scans and reports degraded sources", asy
   );
 });
 
+Deno.test("SystemMonitor exposes top 100 process rows with bounded scan cost", async () => {
+  const provider = new FixtureMetricsProvider();
+  provider.files.set("/proc/stat", procStatFirst());
+  provider.files.set("/proc/uptime", "123.45 100.00\n");
+  provider.files.set("/proc/net/dev", procNetDev(1_000, 2_000));
+  provider.dirs.set(
+    "/proc",
+    Array.from({ length: 120 }, (_, index) => ({ name: String(index + 1), isDirectory: true })),
+  );
+  for (let pid = 1; pid <= 120; pid += 1) {
+    provider.files.set(`/proc/${pid}/stat`, processStatForPid(pid, 100 + pid, pid, pid % 2));
+  }
+
+  const monitor = new SystemMonitor({
+    historyLength: 4,
+    provider,
+    processLimit: 100,
+    processScanLimit: 100,
+    processSortKey: "pid",
+  });
+  await monitor.sample();
+
+  const snapshot = monitor.snapshot.peek();
+  assertEquals(snapshot.processes.length, 100);
+  assertEquals(snapshot.processes[0]?.pid, 1);
+  assertEquals(snapshot.processes.at(-1)?.pid, 100);
+  assertEquals(snapshot.processes.some((process) => process.pid === 101), false);
+  assertEquals(
+    snapshot.diagnostics.some((diagnostic) =>
+      diagnostic.source === "process" && diagnostic.status === "limited" &&
+      diagnostic.detail === "process scan capped at 100 entries" && typeof diagnostic.durationMs === "number"
+    ),
+    true,
+  );
+});
+
 Deno.test("SystemMonitor supports process sort keys and refresh cadence", async () => {
   const provider = new FixtureMetricsProvider();
   provider.files.set("/proc/stat", procStatFirst());

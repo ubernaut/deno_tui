@@ -210,7 +210,7 @@ Acceptance checks:
 
 - [x] Unit tests use fixture files instead of live `/proc`.
 - [x] Workbench monitor windows can display source availability and stale data.
-- [ ] Process monitor still exposes top 100 rows when configured, but sampler cost is bounded.
+- [x] Process monitor still exposes top 100 rows when configured, but sampler cost is bounded.
 
 ### P2: Upgrade Terminal Emulation Toward Real Shell Workflows
 
