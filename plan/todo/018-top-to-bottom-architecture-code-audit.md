@@ -280,6 +280,8 @@ Work:
       while preserving fresh output arrays for standalone assembler callers.
 - [x] Replaced the standalone ANSI grid factory's `Array.from()` construction with explicit row allocation so one-shot
       assembler calls avoid callback allocation while preserving fresh output rows.
+- [x] Replaced Three panel fallback-grid nested `Array.from()` construction with explicit row allocation for
+      Kitty/fallback transitions.
 - [x] Build ANSI grids directly from mapped GPU readback views in `ThreeAsciiRenderer`, eliminating the per-frame
       fill/edge/color CPU array copy before terminal grid assembly.
 - [x] Skipped edge compute/copy/readback work entirely for block-style renderer configs with edges disabled, reducing
