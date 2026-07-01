@@ -21,12 +21,13 @@ import { Frame } from "../src/components/frame.ts";
 import { Text } from "../src/components/text.ts";
 import { ThreeAscii } from "../src/components/three_ascii.ts";
 import { emptyStyle } from "../src/theme.ts";
+import { ASCII_DEMO_PRESETS, ASCII_NUMERIC_CONTROLS, ASCII_TOGGLE_CONTROLS } from "../src/three_ascii/demo_presets.ts";
 import {
-  ASCII_DEMO_PRESETS,
-  ASCII_NUMERIC_CONTROLS,
-  ASCII_TOGGLE_CONTROLS,
-  DEFAULT_ASCII_DEMO_EFFECT,
-} from "../src/three_ascii/demo_presets.ts";
+  applyAsciiPreset,
+  asciiEffectOptions,
+  createDefaultAsciiOptions,
+  type ThreeAsciiConfigOptions,
+} from "../src/three_ascii/options.ts";
 import { TERMINAL_GLYPH_STYLES, type TerminalGlyphStyle } from "../src/three_ascii/glyphs.ts";
 import { requireInteractiveTerminal } from "../app/terminal_guard.ts";
 import { Computed, Signal, Tui } from "../mod.ts";
@@ -132,8 +133,7 @@ const selectedRow = new Signal(0);
 const menuWidth = 34;
 const panelOuterWidth = menuWidth + 2;
 const panelGap = 2;
-const initialPreset = ASCII_DEMO_PRESETS.find((preset) => preset.id === "opentui-blocks") ?? ASCII_DEMO_PRESETS[0]!;
-const initialEffect = { ...DEFAULT_ASCII_DEMO_EFFECT, ...initialPreset.effect };
+const asciiOptions = createDefaultAsciiOptions();
 
 const ascii = new ThreeAscii({
   parent: tui,
@@ -155,9 +155,9 @@ const ascii = new ThreeAscii({
   zIndex: 1,
   scene,
   camera,
-  effect: { ...initialEffect },
-  terminalGlyphStyle: initialPreset.terminalGlyphStyle ?? "blocks",
-  terminalEdgeBias: initialPreset.terminalEdgeBias ?? 1,
+  effect: asciiEffectOptions(asciiOptions),
+  terminalGlyphStyle: asciiOptions.terminalGlyphStyle,
+  terminalEdgeBias: asciiOptions.terminalEdgeBias,
   onFrame: (deltaTime) => {
     stage.rotation.y += deltaTime * 0.22;
     torus.rotation.x += deltaTime * 0.28;
@@ -227,62 +227,44 @@ const panelRows: readonly MenuRow[] = [
 ] as const;
 const menuLines = panelRows.map(() => new Signal(""));
 const menuSubtitle = new Signal(`Arrows tune | 1-${ASCII_DEMO_PRESETS.length} presets`);
-const activePresetId = new Signal(initialPreset.id);
-
-const effectState = {
-  edges: initialEffect.edges ?? true,
-  fill: initialEffect.fill ?? true,
-  invertLuminance: initialEffect.invertLuminance ?? false,
-  edgeThreshold: initialEffect.edgeThreshold ?? 10,
-  normalThreshold: initialEffect.normalThreshold ?? 0.18,
-  depthThreshold: initialEffect.depthThreshold ?? 0.11,
-  exposure: initialEffect.exposure ?? 1.25,
-  attenuation: initialEffect.attenuation ?? 1.2,
-  blendWithBase: initialEffect.blendWithBase ?? 0.24,
-  depthFalloff: initialEffect.depthFalloff ?? 0.18,
-  depthOffset: initialEffect.depthOffset ?? 110,
-};
-let terminalEdgeBias = initialPreset.terminalEdgeBias ?? 1;
-let terminalGlyphStyle: TerminalGlyphStyle = initialPreset.terminalGlyphStyle ?? "blocks";
+const activePresetId = new Signal(asciiOptions.preset);
 
 const clamp = (value: number, min: number, max: number): number => Math.max(min, Math.min(max, value));
 
 const getAsciiObject = () => ascii.drawnObjects.three_ascii;
 
-function applyEffectPatch(patch: Partial<typeof effectState>): void {
-  Object.assign(effectState, patch);
-  getAsciiObject()?.setEffectOptions(patch);
+function applyRendererOptions(): void {
+  const object = getAsciiObject();
+  object?.setEffectOptions(asciiEffectOptions(asciiOptions));
+  object?.setTerminalEdgeBias(asciiOptions.terminalEdgeBias);
+  object?.setTerminalGlyphStyle(asciiOptions.terminalGlyphStyle);
+}
+
+function markCustomConfig(): void {
+  asciiOptions.preset = "custom";
+  activePresetId.value = "";
+}
+
+function applyEffectPatch(patch: Partial<ThreeAsciiConfigOptions>): void {
+  Object.assign(asciiOptions, patch);
+  getAsciiObject()?.setEffectOptions(asciiEffectOptions(asciiOptions));
 }
 
 function applyTerminalEdgeBias(value: number): void {
-  terminalEdgeBias = clamp(value, 0.6, 1.8);
-  getAsciiObject()?.setTerminalEdgeBias(terminalEdgeBias);
+  asciiOptions.terminalEdgeBias = clamp(value, 0.6, 1.8);
+  getAsciiObject()?.setTerminalEdgeBias(asciiOptions.terminalEdgeBias);
 }
 
 function applyTerminalGlyphStyle(style: TerminalGlyphStyle): void {
-  terminalGlyphStyle = style;
+  asciiOptions.terminalGlyphStyle = style;
   getAsciiObject()?.setTerminalGlyphStyle(style);
 }
 
 function applyPresetByIndex(index: number): void {
   const preset = ASCII_DEMO_PRESETS[(index + ASCII_DEMO_PRESETS.length) % ASCII_DEMO_PRESETS.length];
-  const nextEffect = { ...DEFAULT_ASCII_DEMO_EFFECT, ...preset.effect };
-  applyEffectPatch({
-    edges: nextEffect.edges ?? effectState.edges,
-    fill: nextEffect.fill ?? effectState.fill,
-    invertLuminance: nextEffect.invertLuminance ?? effectState.invertLuminance,
-    edgeThreshold: nextEffect.edgeThreshold ?? effectState.edgeThreshold,
-    normalThreshold: nextEffect.normalThreshold ?? effectState.normalThreshold,
-    depthThreshold: nextEffect.depthThreshold ?? effectState.depthThreshold,
-    exposure: nextEffect.exposure ?? effectState.exposure,
-    attenuation: nextEffect.attenuation ?? effectState.attenuation,
-    blendWithBase: nextEffect.blendWithBase ?? effectState.blendWithBase,
-    depthFalloff: nextEffect.depthFalloff ?? effectState.depthFalloff,
-    depthOffset: nextEffect.depthOffset ?? effectState.depthOffset,
-  });
-  applyTerminalEdgeBias(preset.terminalEdgeBias ?? 1);
-  applyTerminalGlyphStyle(preset.terminalGlyphStyle ?? "blocks");
-  activePresetId.value = preset.id;
+  applyAsciiPreset(asciiOptions, preset.id);
+  applyRendererOptions();
+  activePresetId.value = asciiOptions.preset;
   refreshMenu();
 }
 
@@ -304,14 +286,14 @@ function refreshMenu(): void {
     if (row.type === "preset") {
       value = activePreset?.label ?? "Custom";
     } else if (row.type === "glyphStyle") {
-      value = terminalGlyphStyle;
+      value = asciiOptions.terminalGlyphStyle;
     } else if (row.type === "toggle") {
-      value = effectState[row.key] ? "on" : "off";
+      value = asciiOptions[row.key] ? "on" : "off";
     } else if (row.type === "numeric") {
-      const numericValue = effectState[row.key];
+      const numericValue = asciiOptions[row.key];
       value = row.format ? row.format(numericValue) : numericValue.toString();
     } else {
-      value = terminalEdgeBias.toFixed(2);
+      value = asciiOptions.terminalEdgeBias.toFixed(2);
     }
 
     menuLines[index].value = `${marker} ${row.label.padEnd(18)} ${value}`;
@@ -330,31 +312,31 @@ function adjustSelected(delta: number): void {
   }
 
   if (row.type === "toggle") {
-    applyEffectPatch({ [row.key]: !effectState[row.key] } as Partial<typeof effectState>);
-    activePresetId.value = "";
+    applyEffectPatch({ [row.key]: !asciiOptions[row.key] });
+    markCustomConfig();
     refreshMenu();
     return;
   }
 
   if (row.type === "glyphStyle") {
-    const currentIndex = TERMINAL_GLYPH_STYLES.indexOf(terminalGlyphStyle);
+    const currentIndex = TERMINAL_GLYPH_STYLES.indexOf(asciiOptions.terminalGlyphStyle);
     const nextIndex = (currentIndex + delta + TERMINAL_GLYPH_STYLES.length) % TERMINAL_GLYPH_STYLES.length;
     applyTerminalGlyphStyle(TERMINAL_GLYPH_STYLES[nextIndex]);
-    activePresetId.value = "";
+    markCustomConfig();
     refreshMenu();
     return;
   }
 
   if (row.type === "numeric") {
-    const nextValue = clamp(effectState[row.key] + delta * row.step, row.min, row.max);
-    applyEffectPatch({ [row.key]: nextValue } as Partial<typeof effectState>);
-    activePresetId.value = "";
+    const nextValue = clamp(asciiOptions[row.key] + delta * row.step, row.min, row.max);
+    applyEffectPatch({ [row.key]: nextValue });
+    markCustomConfig();
     refreshMenu();
     return;
   }
 
-  applyTerminalEdgeBias(terminalEdgeBias + delta * row.step);
-  activePresetId.value = "";
+  applyTerminalEdgeBias(asciiOptions.terminalEdgeBias + delta * row.step);
+  markCustomConfig();
   refreshMenu();
 }
 

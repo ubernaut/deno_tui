@@ -213,6 +213,8 @@ Acceptance checks:
   - [x] Moved ASCII renderer config defaults, preset application, control ranges, and normalization into
         `src/three_ascii/options.ts` with an app-level compatibility shim, so console, web, and workbench demos share
         one option contract.
+  - [x] Refactored standalone terminal and web Three ASCII demos to drive presets, glyph style, edge bias, and effect
+        options from the shared option contract instead of duplicating preset merge state locally.
 
 ### P2: Make System Metrics Provider-Based And Testable
 

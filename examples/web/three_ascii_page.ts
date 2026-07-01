@@ -2,22 +2,20 @@
 /// <reference lib="dom.iterable" />
 import {
   ASCII_DEMO_PRESETS,
-  type AsciiDemoPreset,
   BoxObject,
   Computed,
   createAnsiStyle,
   createWebTui,
-  DEFAULT_ASCII_DEMO_EFFECT,
   probeCompatibleWebGPUDevice,
   Signal,
   TERMINAL_GLYPH_STYLES,
-  type TerminalGlyphStyle,
   TextObject,
   type TextRectangle,
   ThreeAsciiObject,
 } from "../../mod.web.ts";
 import { createNeonThreeScene } from "../../app/neon_three.ts";
 import { type ThreeSceneMode, threeSceneModes } from "../../app/types.ts";
+import { applyAsciiPreset, asciiEffectOptions, createDefaultAsciiOptions } from "../../src/three_ascii/options.ts";
 
 const root = document.querySelector<HTMLElement>("#three-ascii");
 if (!root) throw new Error("Missing #three-ascii mount element.");
@@ -36,8 +34,11 @@ const host = createWebTui({
 
 const sceneModes: ThreeSceneMode[] = [...threeSceneModes];
 const sceneIndex = new Signal(0);
-const presetIndex = new Signal(Math.max(0, ASCII_DEMO_PRESETS.findIndex((preset) => preset.id === "opentui-blocks")));
-const glyphIndex = new Signal(Math.max(0, TERMINAL_GLYPH_STYLES.indexOf("blocks")));
+const asciiOptions = createDefaultAsciiOptions();
+const presetIndex = new Signal(
+  Math.max(0, ASCII_DEMO_PRESETS.findIndex((preset) => preset.id === asciiOptions.preset)),
+);
+const asciiConfigVersion = new Signal(0);
 const paused = new Signal(false);
 const webgpuReady = new Signal("probing webgpu");
 const status = new Signal("initializing acerola ascii renderer");
@@ -55,11 +56,12 @@ new BoxObject({
 new TextObject({
   canvas: host.canvas,
   rectangle: new Computed<TextRectangle>(() => ({ column: 2, row: 0, width: Math.max(0, columns() - 4) })),
-  value: new Computed(() =>
-    `THREE ASCII WEBGPU / ${
+  value: new Computed(() => {
+    void asciiConfigVersion.value;
+    return `THREE ASCII WEBGPU / ${
       sceneModes[sceneIndex.value]!.toUpperCase()
-    } / ${activePreset().label.toUpperCase()} / ${activeGlyph().toUpperCase()}`
-  ),
+    } / ${activePresetLabel().toUpperCase()} / ${asciiOptions.terminalGlyphStyle.toUpperCase()}`;
+  }),
   overwriteRectangle: true,
   style: createAnsiStyle({ foreground: [255, 66, 49], bold: true }),
   zIndex: 3,
@@ -88,9 +90,9 @@ const ascii = new ThreeAsciiObject({
   zIndex: 1,
   scene: bundle.scene,
   camera: bundle.camera,
-  effect: { ...DEFAULT_ASCII_DEMO_EFFECT, ...activePreset().effect },
-  terminalGlyphStyle: activeGlyph(),
-  terminalEdgeBias: activePreset().terminalEdgeBias,
+  effect: asciiEffectOptions(asciiOptions),
+  terminalGlyphStyle: asciiOptions.terminalGlyphStyle,
+  terminalEdgeBias: asciiOptions.terminalEdgeBias,
   frameInterval: 1000 / 24,
   onFrame: (deltaTime) => {
     if (paused.peek()) return;
@@ -112,7 +114,7 @@ ascii.draw();
 
 host.on("keyPress", ({ key }) => {
   if (key === "p") applyPreset(presetIndex.peek() + 1);
-  else if (key === "g") applyGlyph(glyphIndex.peek() + 1);
+  else if (key === "g") applyGlyph(TERMINAL_GLYPH_STYLES.indexOf(asciiOptions.terminalGlyphStyle) + 1);
   else if (key === "s") applyScene(sceneIndex.peek() + 1);
   else if (key === "space") paused.value = !paused.peek();
   else if (key === "left") bundle.camera.position.x -= 0.18;
@@ -134,15 +136,16 @@ globalThis.addEventListener("beforeunload", () => {
 
 function applyPreset(index: number): void {
   presetIndex.value = wrap(index, ASCII_DEMO_PRESETS.length);
-  const preset = activePreset();
-  ascii.setEffectOptions(preset.effect);
-  ascii.setTerminalEdgeBias(preset.terminalEdgeBias ?? 1);
-  if (preset.terminalGlyphStyle) applyGlyph(TERMINAL_GLYPH_STYLES.indexOf(preset.terminalGlyphStyle));
+  const preset = ASCII_DEMO_PRESETS[presetIndex.peek()] ?? ASCII_DEMO_PRESETS[0]!;
+  applyAsciiPreset(asciiOptions, preset.id);
+  applyRendererOptions();
 }
 
 function applyGlyph(index: number): void {
-  glyphIndex.value = wrap(index, TERMINAL_GLYPH_STYLES.length);
-  ascii.setTerminalGlyphStyle(activeGlyph());
+  asciiOptions.terminalGlyphStyle = TERMINAL_GLYPH_STYLES[wrap(index, TERMINAL_GLYPH_STYLES.length)] ?? "blocks";
+  asciiOptions.preset = "custom";
+  ascii.setTerminalGlyphStyle(asciiOptions.terminalGlyphStyle);
+  asciiConfigVersion.value += 1;
 }
 
 function applyScene(index: number): void {
@@ -158,12 +161,15 @@ function applyScene(index: number): void {
   status.value = `scene ${sceneModes[sceneIndex.peek()]}`;
 }
 
-function activePreset(): AsciiDemoPreset {
-  return ASCII_DEMO_PRESETS[presetIndex.value] ?? ASCII_DEMO_PRESETS[0]!;
+function activePresetLabel(): string {
+  return ASCII_DEMO_PRESETS.find((preset) => preset.id === asciiOptions.preset)?.label ?? "Custom";
 }
 
-function activeGlyph(): TerminalGlyphStyle {
-  return TERMINAL_GLYPH_STYLES[glyphIndex.value] ?? "blocks";
+function applyRendererOptions(): void {
+  ascii.setEffectOptions(asciiEffectOptions(asciiOptions));
+  ascii.setTerminalEdgeBias(asciiOptions.terminalEdgeBias);
+  ascii.setTerminalGlyphStyle(asciiOptions.terminalGlyphStyle);
+  asciiConfigVersion.value += 1;
 }
 
 function columns(): number {
