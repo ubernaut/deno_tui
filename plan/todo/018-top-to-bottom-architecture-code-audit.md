@@ -175,6 +175,8 @@ Work:
         `Array.from()` helpers in the dynamic visualization hot path.
   - [x] Reworked CPU legend, network compact trace/history, and GPU memory bank render paths to avoid nested temporary
         arrays in frame-critical monitor widgets.
+  - [x] Reworked the chart renderer to scan sampled values in-place and compute component rows once per draw update
+        instead of once per rendered line.
 
 Acceptance checks:
 
