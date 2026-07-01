@@ -288,6 +288,8 @@ Acceptance checks:
         alternate-screen transcript before wiring the same path into a workbench-level smoke.
   - [x] Routed the console workbench through the shared `src/app/workbench/mod.ts` facade so the PTY shell window,
         window chrome, shelf, menu, workspace, and viewport helpers are exercised through one renderer-neutral boundary.
+  - [x] Extracted the workbench shell backend resolver and covered the PTY-first/process-fallback path with focused
+        tests so the interactive workbench shell window no longer owns that availability policy directly.
 - [x] This todo and `017-terminal-multiplexer-experience.md` have non-overlapping scopes or are merged cleanly.
   - [x] Extracted OSC/CSI/single-character ESC parsing and numeric parameter parsing into
         `src/runtime/terminal_sequences.ts` with direct parser tests, leaving `TerminalScreenController` focused on

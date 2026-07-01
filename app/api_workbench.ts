@@ -70,10 +70,9 @@ import { routeTerminalKeyPress, routeTerminalPaste, type TerminalInputMode } fro
 import { WindowManagerController } from "../src/layout/mod.ts";
 import { createKittyGraphicsSurface, type GraphicsSurface } from "../src/runtime/graphics_surface.ts";
 import { formatProcessCommandLine, ProcessSessionController } from "../src/runtime/process_session.ts";
-import { createSigmaPtyTerminalBackend } from "../src/runtime/pty_backend.ts";
 import { MicrotaskScheduler } from "../src/runtime/render_loop.ts";
 import { type AsyncStore, createRuntimeStore } from "../src/runtime/storage.ts";
-import { createProcessTerminalBackend, type TerminalBackend } from "../src/runtime/terminal_backend.ts";
+import { type TerminalBackend } from "../src/runtime/terminal_backend.ts";
 import { TerminalShellController } from "../src/runtime/terminal_shell.ts";
 import {
   formatTerminalShellWindowTitle,
@@ -85,6 +84,7 @@ import { probeCompatibleWebGPUDevice } from "../src/three_ascii/webgpu_compat.ts
 import { Tui } from "../src/tui.ts";
 import type { Rectangle } from "../src/types.ts";
 import { stripStyles, textWidth } from "../src/utils/strings.ts";
+import { resolveWorkbenchShellBackend } from "../src/app/workbench_terminal.ts";
 import { AudioRegistry } from "./audio.ts";
 import { grWizardThemePalettes } from "../src/grwizard_themes.ts";
 import {
@@ -454,12 +454,10 @@ terminalShell.output.lines.subscribe(scheduleDraw);
 terminalShellInputMode.subscribe(scheduleDraw);
 
 async function createWorkbenchShellBackend(): Promise<TerminalBackend> {
-  try {
-    return await createSigmaPtyTerminalBackend({ pollingIntervalMs: 8 });
-  } catch (error) {
-    pushLog(`shell PTY unavailable; using process fallback: ${error instanceof Error ? error.message : String(error)}`);
-    return createProcessTerminalBackend();
-  }
+  const resolution = await resolveWorkbenchShellBackend({
+    onFallback: (reason) => pushLog(`shell PTY unavailable; using process fallback: ${reason}`),
+  });
+  return resolution.backend;
 }
 
 function createWorkbenchKittySurface(force: boolean): GraphicsSurface {
