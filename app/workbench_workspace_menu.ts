@@ -15,6 +15,20 @@ export interface WorkspaceMenuEntry {
   workspaceName?: string;
 }
 
+/** Mode for a workspace name-editing modal. */
+export type WorkspaceNameModalMode = "save" | "rename";
+
+/** Inputs for the workspace name modal body projection. */
+export interface WorkspaceNameModalBodyOptions {
+  mode: WorkspaceNameModalMode;
+  draftName: string;
+  cursor?: string;
+  storageLabel: string;
+  loadedVisualizationIds?: readonly string[];
+  targetWorkspace?: Pick<WorkbenchWorkspace, "name" | "visualizationIds"> | null;
+  targetName?: string | null;
+}
+
 /** Builds the API workbench workspace menu entries from persisted workspace state. */
 export function buildWorkspaceMenuEntries(workspaces: readonly WorkbenchWorkspace[]): WorkspaceMenuEntry[] {
   const entries: WorkspaceMenuEntry[] = [{ label: "[+] Save Current...", action: "save" }];
@@ -51,4 +65,26 @@ export function normalizeWorkspaceName(name: string, savedWorkspaceCount: number
 /** Returns visualization ids in the same order as saved workspace window entries. */
 export function currentWorkspaceVisualizationIds(windows: readonly WorkbenchWorkspaceWindow[]): string[] {
   return windows.map((window) => window.visualizationId);
+}
+
+/** Builds the modal body for save/rename workspace prompts. */
+export function workspaceNameModalBody(options: WorkspaceNameModalBodyOptions): string[] {
+  const cursor = options.cursor ?? "";
+  if (options.mode === "rename") {
+    return [
+      "Rename the saved workspace.",
+      `Name: ${options.draftName}${cursor}`,
+      `Current: ${options.targetWorkspace?.name ?? options.targetName ?? "unknown"}`,
+      `Windows: ${options.targetWorkspace?.visualizationIds.length ?? 0}`,
+      `Storage: ${options.storageLabel}`,
+    ];
+  }
+
+  const loaded = options.loadedVisualizationIds ?? [];
+  return [
+    "Name the current set of loaded widget windows.",
+    `Name: ${options.draftName}${cursor}`,
+    `Windows: ${loaded.length === 0 ? "none" : loaded.join(", ")}`,
+    `Storage: ${options.storageLabel}`,
+  ];
 }

@@ -145,6 +145,7 @@ import {
   normalizeWorkspaceName as normalizeWorkspaceNameFromCount,
   type WorkspaceMenuEntry,
   workspaceMenuLabels as workspaceMenuEntryLabels,
+  workspaceNameModalBody as buildWorkspaceNameModalBody,
 } from "./workbench_workspace_menu.ts";
 import type {
   Accent,
@@ -3209,24 +3210,15 @@ function openDeleteWorkspaceModal(workspace: SavedWorkspace): void {
 
 function workspaceNameModalBody(): string[] {
   const mode = workspaceNameMode.peek();
-  const loaded = currentWorkspaceVisualizationIds();
-  const cursor = mode ? "▌" : "";
-  if (mode === "rename") {
-    const workspace = workspaceByName(workspaceTargetName.peek());
-    return [
-      "Rename the saved workspace.",
-      `Name: ${workspaceNameDraft.peek()}${cursor}`,
-      `Current: ${workspace?.name ?? workspaceTargetName.peek() ?? "unknown"}`,
-      `Windows: ${workspace?.visualizationIds.length ?? 0}`,
-      "indexedDB" in globalThis ? "Storage: IndexedDB" : "Storage: Deno JSON fallback",
-    ];
-  }
-  return [
-    "Name the current set of loaded widget windows.",
-    `Name: ${workspaceNameDraft.peek()}${cursor}`,
-    `Windows: ${loaded.length === 0 ? "none" : loaded.join(", ")}`,
-    "indexedDB" in globalThis ? "Storage: IndexedDB" : "Storage: Deno JSON fallback",
-  ];
+  return buildWorkspaceNameModalBody({
+    mode: mode === "rename" ? "rename" : "save",
+    draftName: workspaceNameDraft.peek(),
+    cursor: mode ? "▌" : "",
+    loadedVisualizationIds: currentWorkspaceVisualizationIds(),
+    storageLabel: "indexedDB" in globalThis ? "IndexedDB" : "Deno JSON fallback",
+    targetName: workspaceTargetName.peek(),
+    targetWorkspace: workspaceByName(workspaceTargetName.peek()) ?? null,
+  });
 }
 
 function refreshWorkspaceNameModal(): void {

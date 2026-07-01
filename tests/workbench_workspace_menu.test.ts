@@ -6,6 +6,7 @@ import {
   defaultWorkspaceName,
   normalizeWorkspaceName,
   workspaceMenuLabels,
+  workspaceNameModalBody,
 } from "../app/workbench_workspace_menu.ts";
 import type { WorkbenchWorkspace, WorkbenchWorkspaceWindow } from "../src/app/mod.ts";
 
@@ -49,4 +50,39 @@ Deno.test("currentWorkspaceVisualizationIds preserves window order", () => {
     { visualizationId: "cpu", ascii: { style: "blocks" } },
   ];
   assertEquals(currentWorkspaceVisualizationIds(windows), ["gpu", "cpu"]);
+});
+
+Deno.test("workspaceNameModalBody describes save and rename prompts", () => {
+  assertEquals(
+    workspaceNameModalBody({
+      mode: "save",
+      draftName: "Ops",
+      cursor: "|",
+      storageLabel: "IndexedDB",
+      loadedVisualizationIds: ["cpu", "gpu"],
+    }),
+    [
+      "Name the current set of loaded widget windows.",
+      "Name: Ops|",
+      "Windows: cpu, gpu",
+      "Storage: IndexedDB",
+    ],
+  );
+
+  assertEquals(
+    workspaceNameModalBody({
+      mode: "rename",
+      draftName: "Night Ops",
+      storageLabel: "Deno JSON fallback",
+      targetName: "old",
+      targetWorkspace: { name: "Old", visualizationIds: ["cpu", "terminal"] },
+    }),
+    [
+      "Rename the saved workspace.",
+      "Name: Night Ops",
+      "Current: Old",
+      "Windows: 2",
+      "Storage: Deno JSON fallback",
+    ],
+  );
 });
