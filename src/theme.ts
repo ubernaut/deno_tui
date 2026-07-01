@@ -30,7 +30,6 @@ import {
   composeThemeOptionsCore,
   createThemeCore,
   hierarchizeThemeCore,
-  isThemeStyleReferencePipeline,
   mergeComponentThemeDefinitionCore,
   normalizeThemeExtends,
   resolveThemeStateDefinitionCore,
@@ -40,6 +39,7 @@ import {
   compileThemeManifestStateDefinitionCore,
   compileThemeManifestStyleReferenceCore,
 } from "./theme_manifest_core.ts";
+import { validateThemeComponentsCore } from "./theme_validation_core.ts";
 
 /** Function that's supposed to return styled text given string as parameter */
 export type Style = StyleInternal;
@@ -664,45 +664,10 @@ export function previewThemeManifest(
 export function validateThemeOptions(options: ThemeEngineOptions): ThemeValidationIssue[] {
   const normalized = composeThemeOptions(options);
   const components = normalized.components ?? {};
-  const issues: ThemeValidationIssue[] = [];
-
-  for (const [component, definition] of Object.entries(components)) {
-    for (const parent of normalizeThemeExtends(definition.extends)) {
-      if (!components[parent]) {
-        issues.push({
-          kind: "unknown-component",
-          path: `components.${component}.extends`,
-          component,
-          reference: parent,
-          message: `Theme component "${component}" extends unknown component "${parent}"`,
-        });
-      }
-    }
-
-    validateThemeStateDefinitionReferences(issues, definition.base, {
-      component,
-      path: `components.${component}.base`,
-    });
-
-    for (const [variant, states] of Object.entries(definition.variants ?? {})) {
-      validateThemeStateDefinitionReferences(issues, states, {
-        component,
-        variant,
-        path: `components.${component}.variants.${variant}`,
-      });
-    }
-  }
-
-  for (const cycle of findThemeInheritanceCycles(components)) {
-    issues.push({
-      kind: "inheritance-cycle",
-      path: `components.${cycle[0]}.extends`,
-      component: cycle[0],
-      message: `Theme component inheritance cycle detected: ${cycle.join(" -> ")}`,
-    });
-  }
-
-  return issues;
+  return validateThemeComponentsCore<ThemeState, ThemeTokenName>(components, {
+    tokenNames: themeTokenNames,
+    normalizeExtends: normalizeThemeExtends,
+  }) as ThemeValidationIssue[];
 }
 
 /** Public helper for assert Theme Options. */
@@ -1528,79 +1493,6 @@ export class ThemeValidationError extends Error {
     this.name = "ThemeValidationError";
     this.issues = issues;
   }
-}
-
-function validateThemeStateDefinitionReferences(
-  issues: ThemeValidationIssue[],
-  definition: ThemeStateDefinition | undefined,
-  context: { component: string; variant?: string; path: string },
-): void {
-  for (const [state, reference] of Object.entries(definition ?? {}) as [ThemeState, ThemeStyleReference][]) {
-    validateThemeStyleReference(issues, reference, {
-      ...context,
-      state,
-      path: `${context.path}.${state}`,
-    });
-  }
-}
-
-function validateThemeStyleReference(
-  issues: ThemeValidationIssue[],
-  reference: ThemeStyleReference,
-  context: { component: string; variant?: string; state: ThemeState; path: string },
-): void {
-  if (isThemeStyleReferencePipeline(reference)) {
-    reference.forEach((part, index) =>
-      validateThemeStyleReference(issues, part, {
-        ...context,
-        path: `${context.path}[${index}]`,
-      })
-    );
-    return;
-  }
-
-  if (typeof reference !== "string" || themeTokenNames.includes(reference as ThemeTokenName)) return;
-
-  issues.push({
-    kind: "unknown-token",
-    path: context.path,
-    component: context.component,
-    variant: context.variant,
-    state: context.state,
-    reference,
-    message: `Theme state "${context.component}.${
-      context.variant ? `${context.variant}.` : ""
-    }${context.state}" references unknown token "${reference}"`,
-  });
-}
-
-function findThemeInheritanceCycles(
-  components: Record<string, ComponentThemeDefinition>,
-): string[][] {
-  const cycles: string[][] = [];
-  const visited = new Set<string>();
-  const visiting = new Set<string>();
-
-  const visit = (component: string, path: string[]): void => {
-    if (visiting.has(component)) {
-      cycles.push([...path.slice(path.indexOf(component)), component]);
-      return;
-    }
-    if (visited.has(component)) return;
-
-    visiting.add(component);
-    for (const parent of normalizeThemeExtends(components[component]?.extends)) {
-      if (components[parent]) visit(parent, [...path, parent]);
-    }
-    visiting.delete(component);
-    visited.add(component);
-  };
-
-  for (const component of Object.keys(components).sort()) {
-    visit(component, [component]);
-  }
-
-  return cycles;
 }
 
 function previewStyle(style: Style, sample: string): ThemeStylePreview {
