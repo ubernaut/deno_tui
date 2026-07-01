@@ -48,13 +48,12 @@ export function syntheticWorkbenchSources(
     { id: "secondary", name: "Harmonic", accent: "violet", offset: seed % 41 },
     { id: "noise", name: "Noise", accent: seed % 2 === 0 ? "amber" : "alarm", offset: seed % 17 },
   ];
-  return specs.map((spec, index) => {
-    const series = Array.from(
-      { length: 72 },
-      (_, sample) => unitWave(phase + sample + spec.offset, 0.08 + index * 0.025, 0.11 + index * 0.07),
-    );
+  const sources = new Array<SourceFrame>(specs.length);
+  for (let index = 0; index < specs.length; index++) {
+    const spec = specs[index]!;
+    const series = waveSeries(72, phase + spec.offset, 0.08 + index * 0.025, 0.11 + index * 0.07);
     const value = series.at(-1) ?? 0.5;
-    return {
+    sources[index] = {
       id: `workbench:${id}:${spec.id}`,
       name: spec.name,
       accent: spec.accent,
@@ -62,7 +61,8 @@ export function syntheticWorkbenchSources(
       series,
       detailLines: [`${Math.round(value * 100)}%`, group],
     };
-  });
+  }
+  return sources;
 }
 
 export function syntheticWorkbenchSystem(
@@ -73,6 +73,27 @@ export function syntheticWorkbenchSystem(
   const hot = unitWave(phase, 0.07, group === "Monitor" ? 0.1 : 0.33);
   const warm = unitWave(phase, 0.045, 0.55);
   const cpuCoreCount = Math.max(1, options.cpuCoreCount ?? globalThis.navigator?.hardwareConcurrency ?? 1);
+  const cpuCores = new Array<SystemSnapshot["cpuCores"][number]>(cpuCoreCount);
+  for (let index = 0; index < cpuCoreCount; index++) {
+    cpuCores[index] = {
+      label: String(index),
+      usage: unitWave(phase + index * 7, 0.06, index * 0.13) * 100,
+    };
+  }
+  const processes = new Array<SystemSnapshot["processes"][number]>(8);
+  const processNames = ["deno", "webgpu", "worker", "renderer", "scheduler", "cache", "input", "theme"];
+  for (let index = 0; index < processes.length; index++) {
+    processes[index] = {
+      pid: 4200 + index,
+      name: processNames[index] ?? "task",
+      state: index % 3 === 0 ? "run" : "sleep",
+      cpuPercent: unitWave(phase + index, 0.09, index * 0.2) * 80,
+      memoryPercent: unitWave(phase + index, 0.05, index * 0.15) * 18,
+      memoryBytes: (128 + index * 64) * 1024 ** 2,
+      processor: index % cpuCoreCount,
+    };
+  }
+
   return {
     timestamp: options.timestamp ?? Date.now(),
     hostname: "workbench",
@@ -80,11 +101,8 @@ export function syntheticWorkbenchSystem(
     uptimeSeconds: phase,
     loadavg: [hot * 2.4, warm * 1.8, Math.max(hot, warm)],
     cpuOverall: hot * 100,
-    cpuCores: Array.from({ length: cpuCoreCount }, (_, index) => ({
-      label: String(index),
-      usage: unitWave(phase + index * 7, 0.06, index * 0.13) * 100,
-    })),
-    cpuHistory: Array.from({ length: 72 }, (_, index) => unitWave(phase + index, 0.07, 0.03) * 100),
+    cpuCores,
+    cpuHistory: waveSeries(72, phase, 0.07, 0.03, 100),
     gpu: {
       available: true,
       name: "Workbench RTX",
@@ -97,8 +115,8 @@ export function syntheticWorkbenchSystem(
       graphicsClockMhz: 1500 + hot * 1050,
       memoryClockMhz: 9000 + warm * 1500,
     },
-    gpuUtilizationHistory: Array.from({ length: 72 }, (_, index) => unitWave(phase + index, 0.075, 0.31)),
-    gpuMemoryHistory: Array.from({ length: 72 }, (_, index) => unitWave(phase + index, 0.042, 0.62)),
+    gpuUtilizationHistory: waveSeries(72, phase, 0.075, 0.31),
+    gpuMemoryHistory: waveSeries(72, phase, 0.042, 0.62),
     memory: {
       total: 32 * 1024 ** 3,
       used: warm * 26 * 1024 ** 3,
@@ -109,8 +127,8 @@ export function syntheticWorkbenchSystem(
       percent: warm * 100,
       swapPercent: hot * 25,
     },
-    memoryHistory: Array.from({ length: 72 }, (_, index) => unitWave(phase + index, 0.045, 0.21)),
-    swapHistory: Array.from({ length: 72 }, (_, index) => unitWave(phase + index, 0.038, 0.49) * 0.35),
+    memoryHistory: waveSeries(72, phase, 0.045, 0.21),
+    swapHistory: waveSeries(72, phase, 0.038, 0.49, 0.35),
     temperatures: [
       { label: "CPU", celsius: 38 + hot * 50 },
       { label: "GPU", celsius: 35 + warm * 46 },
@@ -135,20 +153,20 @@ export function syntheticWorkbenchSystem(
         txRate: warm * 72_000_000,
       },
     ],
-    rxHistory: Array.from({ length: 72 }, (_, index) => unitWave(phase + index, 0.1, 0.2)),
-    txHistory: Array.from({ length: 72 }, (_, index) => unitWave(phase + index, 0.085, 0.4)),
-    processes: Array.from({ length: 8 }, (_, index) => ({
-      pid: 4200 + index,
-      name: ["deno", "webgpu", "worker", "renderer", "scheduler", "cache", "input", "theme"][index] ?? "task",
-      state: index % 3 === 0 ? "run" : "sleep",
-      cpuPercent: unitWave(phase + index, 0.09, index * 0.2) * 80,
-      memoryPercent: unitWave(phase + index, 0.05, index * 0.15) * 18,
-      memoryBytes: (128 + index * 64) * 1024 ** 2,
-      processor: index % cpuCoreCount,
-    })),
+    rxHistory: waveSeries(72, phase, 0.1, 0.2),
+    txHistory: waveSeries(72, phase, 0.085, 0.4),
+    processes,
     alerts: hot > 0.92 ? [{ severity: "warning", title: "WORKBENCH", detail: "LOAD SPIKE" }] : [],
     diagnostics: [],
   };
+}
+
+function waveSeries(length: number, phase: number, frequency: number, offset: number, scale = 1): number[] {
+  const series = new Array<number>(length);
+  for (let index = 0; index < length; index++) {
+    series[index] = unitWave(phase + index, frequency, offset) * scale;
+  }
+  return series;
 }
 
 export function unitWave(value: number, frequency: number, offset: number): number {
