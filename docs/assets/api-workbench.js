@@ -1227,11 +1227,8 @@ function createAnsiThemeTokensInternal(specs) {
   return tokens;
 }
 
-// src/theme.ts
-function createAnsiStyle2(spec) {
-  return createAnsiStyle(spec);
-}
-function mergeComponentThemeDefinition(base = {}, extension = {}) {
+// src/theme_core.ts
+function mergeComponentThemeDefinitionCore(base = {}, extension = {}) {
   const variants = { ...base.variants ?? {} };
   for (const [name, variant] of Object.entries(extension.variants ?? {})) {
     variants[name] = {
@@ -1248,16 +1245,32 @@ function mergeComponentThemeDefinition(base = {}, extension = {}) {
     variants
   };
 }
-function composeThemeOptions(...options) {
+function composeThemeOptionsCore(...options) {
   const tokens = {};
   const components = {};
   for (const option of options) {
     Object.assign(tokens, option.tokens ?? {});
     for (const [name, definition] of Object.entries(option.components ?? {})) {
-      components[name] = mergeComponentThemeDefinition(components[name], definition);
+      components[name] = mergeComponentThemeDefinitionCore(components[name], definition);
     }
   }
   return { tokens, components };
+}
+function mergeThemeExtends(base, extension) {
+  const names = [...normalizeThemeExtends(base), ...normalizeThemeExtends(extension)];
+  return names.length === 0 ? void 0 : [...new Set(names)];
+}
+function normalizeThemeExtends(value) {
+  if (value === void 0) return [];
+  return typeof value === "string" ? [value] : [...value];
+}
+
+// src/theme.ts
+function createAnsiStyle2(spec) {
+  return createAnsiStyle(spec);
+}
+function composeThemeOptions(...options) {
+  return composeThemeOptionsCore(...options);
 }
 function createStandardComponentThemeDefinitions2(options = {}) {
   return createStandardComponentThemeDefinitions(options);
@@ -1270,14 +1283,6 @@ var defaultThemePacks = [
   { id: "neon", label: "Neon", palette: "neon", options: composeStandardThemeOptions() },
   { id: "terminal", label: "Terminal", palette: "terminal", options: composeStandardThemeOptions() }
 ];
-function mergeThemeExtends(base, extension) {
-  const names = [...normalizeThemeExtends(base), ...normalizeThemeExtends(extension)];
-  return names.length === 0 ? void 0 : [...new Set(names)];
-}
-function normalizeThemeExtends(value) {
-  if (value === void 0) return [];
-  return typeof value === "string" ? [value] : [...value];
-}
 
 // src/utils/sorted_array.ts
 var SortedArray = class extends Array {
