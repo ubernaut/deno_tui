@@ -76,7 +76,6 @@ import {
   toggleWorkbenchAsciiOption,
   WorkbenchAsciiConfigController,
   type WorkbenchAsciiKittyKey,
-  workbenchAsciiRendererModeLabel,
   type WorkbenchAsciiToggleKey,
 } from "../src/app/workbench_ascii.ts";
 import { handleInput } from "../src/input.ts";
@@ -127,6 +126,13 @@ import { makeStyle } from "./styles.ts";
 import { SystemMonitor } from "./system_metrics.ts";
 import { requireInteractiveTerminal } from "./terminal_guard.ts";
 import { ThreePanelFrameView } from "./three_panel.ts";
+import {
+  compactSpaces,
+  threeRendererModeLabel,
+  visualizationTextContentSize,
+  visualizationThreeStatusLine,
+  visualizationWindowRows,
+} from "./workbench_visualization_window.ts";
 import type {
   Accent,
   AsciiOptions,
@@ -2656,40 +2662,7 @@ function visualizationWindowContentSize(
       height: baseHeight,
     };
   }
-  const rows = visualizationWindowRows(option, rendered);
-  const scrollableRows = [
-    ...rendered.body.split("\n"),
-    rendered.footer,
-  ];
-  return {
-    width: Math.max(baseWidth, maxTrimmedTextWidth(scrollableRows)),
-    height: Math.max(baseHeight, rows.length),
-  };
-}
-
-function visualizationWindowRows(
-  option: NonNullable<ReturnType<typeof visualizationOption>>,
-  rendered: PanelRender,
-): string[] {
-  return [
-    ` ${option.group.toUpperCase()} · ${rendered.title ?? option.label.toUpperCase()} `,
-    rendered.alert ? `! ${rendered.alert}` : option.description,
-    ...rendered.body.split("\n"),
-    rendered.footer,
-  ];
-}
-
-function visualizationThreeStatusLine(
-  rendered: PanelRender,
-  option: NonNullable<ReturnType<typeof visualizationOption>>,
-  options: AsciiOptions,
-): string {
-  const mode = rendered.three?.mode.toUpperCase() ?? "TEXT";
-  return compactSpaces(`ACEROLA ${mode} · ${threeRendererModeLabel(options).toUpperCase()} · ${option.label}`);
-}
-
-function threeRendererModeLabel(options: AsciiOptions): string {
-  return workbenchAsciiRendererModeLabel(options, terminalGlyphStyleLabel);
+  return visualizationTextContentSize(option, rendered, baseWidth, baseHeight);
 }
 
 function buildVisualizationContext(
@@ -4641,10 +4614,6 @@ function maxTextWidth(values: readonly string[]): number {
   return values.reduce((max, value) => Math.max(max, textWidth(value)), 0);
 }
 
-function maxTrimmedTextWidth(values: readonly string[]): number {
-  return values.reduce((max, value) => Math.max(max, textWidth(value.trimEnd())), 0);
-}
-
 function visibleMenuSlice(
   items: string[],
   selectedIndex: number,
@@ -4712,10 +4681,6 @@ function wrapPlain(value: string, width: number): string[] {
   }
   if (line.length > 0) rows.push(line);
   return rows;
-}
-
-function compactSpaces(value: string): string {
-  return value.replace(/\s+/g, " ").trim();
 }
 
 function paint(text: string, options: { fg?: string; bg?: string; bold?: boolean } = {}): string {
