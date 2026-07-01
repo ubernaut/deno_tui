@@ -434,6 +434,8 @@ Work:
         while making layer enablement, composition, and inspection directly testable.
   - [x] Extracted theme pack registry storage and lookup into `src/theme_registry.ts`, preserving facade class and error
         identity while making pack inspection, overrides, and missing-pack behavior directly testable.
+  - [x] Extracted provider active-option and validation issue inspection into `src/theme_provider_inspection.ts`,
+        keeping theme/layer source attribution directly covered outside the facade.
 - [x] Add caches for resolved style chains and preview generation with explicit invalidation tests.
   - [x] Extended `ThemeProviderCache` with preview caching, active theme/layer invalidation, and uncached
         function-variant previews.

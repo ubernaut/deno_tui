@@ -50,6 +50,10 @@ import {
 } from "./theme_engine.ts";
 import { ThemeLayerStackImplementation } from "./theme_layer_stack.ts";
 import { ThemePackNotFoundErrorImplementation, ThemeRegistryImplementation } from "./theme_registry.ts";
+import {
+  inspectThemeProviderIssues as inspectThemeProviderIssuesCore,
+  themeProviderActiveOptions as themeProviderActiveOptionsCore,
+} from "./theme_provider_inspection.ts";
 
 /** Function that's supposed to return styled text given string as parameter */
 export type Style = StyleInternal;
@@ -1091,13 +1095,13 @@ export function createThemeProviderReport(
   const activeLayers = provider.layers.activeIds();
   const coverageOptions = options.coverage === false ? undefined : options.coverage ?? {};
   const coverage = coverageOptions
-    ? inspectThemeCoverage(themeProviderActiveOptions(provider), {
+    ? inspectThemeCoverage(themeProviderActiveOptionsCore(provider), {
       components: catalog.components.map((component) => component.name),
       ...coverageOptions,
     })
     : undefined;
   const preview = options.preview === false ? undefined : previewThemeProvider(provider, options.preview ?? {});
-  const issues = inspectThemeProviderIssues(provider);
+  const issues = inspectThemeProviderIssuesCore(provider, validateThemeOptions);
   const variantCount = catalog.components.reduce((total, component) => total + component.variants.length, 0);
 
   return {
@@ -1169,51 +1173,6 @@ function sortedThemeTokenNames(values: Iterable<string>): ThemeTokenName[] {
 function sortedThemeStates(values: Iterable<string>): ThemeState[] {
   const requested = new Set(values);
   return themeStates.filter((state) => requested.has(state));
-}
-
-function themeProviderActiveOptions(provider: ThemeProvider): ThemeEngineOptions {
-  const activePack = provider.registry.get(provider.activeId.peek());
-  return composeThemeOptions(
-    activePack?.options ?? {},
-    ...provider.layers.activeLayers().map((layer) => layer.options),
-  );
-}
-
-function inspectThemeProviderIssues(provider: ThemeProvider): ThemeProviderReportIssue[] {
-  const issues: ThemeProviderReportIssue[] = [];
-  for (const id of provider.registry.ids()) {
-    const pack = provider.registry.get(id);
-    if (!pack?.options) continue;
-    issues.push(
-      ...validateThemeOptions(pack.options).map((issue) => ({
-        ...issue,
-        source: "theme" as const,
-        sourceId: id,
-      })),
-    );
-  }
-
-  for (const id of provider.layers.ids()) {
-    const layer = provider.layers.get(id);
-    if (!layer) continue;
-    const layerComponents = new Set(Object.keys(layer.options.components ?? {}));
-    issues.push(
-      ...validateThemeOptions(composeThemeOptions(...themeRegistryOptions(provider), layer.options))
-        .filter((issue) => !issue.component || layerComponents.has(issue.component))
-        .map((issue) => ({
-          ...issue,
-          source: "layer" as const,
-          sourceId: id,
-        })),
-    );
-  }
-  return issues;
-}
-
-function themeRegistryOptions(provider: ThemeProvider): ThemeEngineOptions[] {
-  return provider.registry.ids()
-    .map((id) => provider.registry.get(id)?.options)
-    .filter((options): options is ThemeEngineOptions => options !== undefined);
 }
 
 function positiveModulo(value: number, divisor: number): number {
