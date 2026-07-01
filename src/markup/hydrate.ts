@@ -31,7 +31,13 @@ export interface MarkupLayoutResult {
 export function createMarkupLayout(options: MarkupLayoutOptions): MarkupLayoutResult {
   const document = parseTuiMarkup(options.markup, options.parse);
   const stylesheet = options.stylesheet ?? parseCssStylesheet(options.css ?? "");
-  const styledRoot = applyCssCascade(document.root, stylesheet, options.cascade);
+  const styledRoot = applyCssCascade(document.root, stylesheet, {
+    ...(options.cascade ?? {}),
+    viewport: options.cascade?.viewport ?? {
+      width: options.bounds.width,
+      height: options.bounds.height,
+    },
+  });
   const layout = createLayoutEngine({ solver: options.solver }).layout({
     root: styledRoot,
     bounds: options.bounds,

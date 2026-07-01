@@ -27,12 +27,15 @@ import { renderStepper, StepperController } from "../src/components/stepper.ts";
 import { formatTerminalOutputLine } from "../src/components/terminal_output.ts";
 import { TextBoxController, wrapTextBoxLines } from "../src/components/textbox.ts";
 import { handleInput } from "../src/input.ts";
-import type { KeyPressEvent, MousePressEvent, MouseScrollEvent } from "../src/input_reader/types.ts";
-import { routeTerminalKeyPress, type TerminalInputMode } from "../src/app/terminal_input.ts";
+import type { KeyPressEvent, MousePressEvent, MouseScrollEvent, PasteEvent } from "../src/input_reader/types.ts";
+import { routeTerminalKeyPress, routeTerminalPaste, type TerminalInputMode } from "../src/app/terminal_input.ts";
 import { WindowManagerController } from "../src/layout/mod.ts";
 import { createKittyGraphicsSurface, type GraphicsSurface } from "../src/runtime/graphics_surface.ts";
 import { formatProcessCommandLine, ProcessSessionController } from "../src/runtime/process_session.ts";
+import { createSigmaPtyTerminalBackend } from "../src/runtime/pty_backend.ts";
 import { type AsyncStore, createRuntimeStore } from "../src/runtime/storage.ts";
+import { createProcessTerminalBackend, type TerminalBackend } from "../src/runtime/terminal_backend.ts";
+import { TerminalShellController } from "../src/runtime/terminal_shell.ts";
 import { summarizeTerminalStatus } from "../src/runtime/terminal_status.ts";
 import { Computed, Signal } from "../src/signals/mod.ts";
 import { probeCompatibleWebGPUDevice } from "../src/three_ascii/webgpu_compat.ts";
@@ -78,6 +81,8 @@ import type { ComputedLayoutBox } from "../src/layout/mod.ts";
 
 const TERMINAL_OUTPUT_WINDOW_ID = "terminalOutput";
 const TERMINAL_OUTPUT_OPTION_ID = "terminal-output";
+const TERMINAL_SHELL_WINDOW_ID = "terminalShell";
+const TERMINAL_SHELL_OPTION_ID = "terminal-shell";
 
 type BuiltInWindowId =
   | "explorer"
@@ -87,7 +92,8 @@ type BuiltInWindowId =
   | "logs"
   | "three"
   | "htmlLayout"
-  | typeof TERMINAL_OUTPUT_WINDOW_ID;
+  | typeof TERMINAL_OUTPUT_WINDOW_ID
+  | typeof TERMINAL_SHELL_WINDOW_ID;
 type VisualizationWindowId = `viz:${string}`;
 type WindowId = BuiltInWindowId | VisualizationWindowId;
 const builtInWindowOrder: readonly BuiltInWindowId[] = [
@@ -99,6 +105,7 @@ const builtInWindowOrder: readonly BuiltInWindowId[] = [
   "three",
   "htmlLayout",
   TERMINAL_OUTPUT_WINDOW_ID,
+  TERMINAL_SHELL_WINDOW_ID,
 ];
 type ControlId =
   | "button"
@@ -132,6 +139,7 @@ type HitAction =
   | { type: "modalAction"; index: number }
   | { type: "control"; id: ControlId; action?: ControlHitAction; index?: number }
   | { type: "terminalOutput"; action: TerminalOutputAction }
+  | { type: "terminalShell"; action: TerminalShellAction }
   | { type: "dataRow"; index: number }
   | { type: "explorerRow"; index: number }
   | { type: "cpuHexTile"; id: VisualizationWindowId; label: string }
@@ -142,6 +150,7 @@ type ControlHitAction = "previous" | "next" | "activate" | "set" | "focus" | "to
 type ConfigHitAction = "previous" | "next" | "activate";
 type AsciiConfigModalAction = "cancel" | "apply" | "ok";
 type TerminalOutputAction = "run" | "stop" | "restart" | "clear" | "follow" | "copy" | "raw";
+type TerminalShellAction = "start" | "stop" | "restart" | "clear" | "raw";
 type ButtonTone = "default" | "danger" | "warning" | "success" | "muted";
 type AsciiNumericKey =
   | "edgeThreshold"
@@ -316,7 +325,7 @@ const docs = [
   "This demo intentionally uses public controllers plus canvas primitives so the composition remains transparent.",
   "Resize the terminal: panels collapse from side-by-side to stacked narrow layouts.",
   "Use [ and ] to tune tile density; use T to cycle themes.",
-  "Use Tab or 1-6 to focus windows; use M, F, R for window controls.",
+  "Use Tab or 1-8 to focus built-in windows; use M, F, R for window controls.",
 ];
 const explorerKeys = new Set(["up", "down", "left", "right", "pageup", "pagedown", "home", "end", "space", "return"]);
 const neonDemoIds = new Set(neonDemos.map((demo) => demo.id));
@@ -332,6 +341,12 @@ const terminalOutputWindowOption: NewWindowOption = {
   group: "Terminal",
   description: "Run a subprocess inside a managed workbench window with stdout/stderr scrollback.",
 };
+const terminalShellWindowOption: NewWindowOption = {
+  id: TERMINAL_SHELL_OPTION_ID,
+  label: "Shell",
+  group: "Terminal",
+  description: "Open an interactive PTY-backed shell using the host OS shell.",
+};
 const visualizationWindowOptions: NewWindowOption[] = visualizations.map((entry) => ({
   id: entry.id,
   label: entry.name,
@@ -339,6 +354,7 @@ const visualizationWindowOptions: NewWindowOption[] = visualizations.map((entry)
   description: entry.description,
 }));
 const newWindowOptions: NewWindowOption[] = [
+  terminalShellWindowOption,
   terminalOutputWindowOption,
   htmlCssLayoutWindowOption,
   ...visualizationWindowOptions,
@@ -388,6 +404,14 @@ const terminalOutputSession = new ProcessSessionController({
   limit: 400,
 });
 const terminalInputMode = new Signal<TerminalInputMode>("workbench");
+const terminalShell = new TerminalShellController({
+  backendFactory: createWorkbenchShellBackend,
+  columns: 80,
+  rows: 24,
+  scrollbackLimit: 2000,
+  onUpdate: scheduleDraw,
+});
+const terminalShellInputMode = new Signal<TerminalInputMode>("raw");
 terminalOutputSession.status.subscribe((status) => {
   if (status !== "running" && terminalInputMode.peek() === "raw") {
     terminalInputMode.value = "workbench";
@@ -398,6 +422,18 @@ terminalOutputSession.exit.subscribe(scheduleDraw);
 terminalOutputSession.output.lines.subscribe(scheduleDraw);
 terminalOutputSession.output.follow.subscribe(scheduleDraw);
 terminalInputMode.subscribe(scheduleDraw);
+terminalShell.status.subscribe(scheduleDraw);
+terminalShell.output.lines.subscribe(scheduleDraw);
+terminalShellInputMode.subscribe(scheduleDraw);
+
+async function createWorkbenchShellBackend(): Promise<TerminalBackend> {
+  try {
+    return await createSigmaPtyTerminalBackend({ pollingIntervalMs: 8 });
+  } catch (error) {
+    pushLog(`shell PTY unavailable; using process fallback: ${error instanceof Error ? error.message : String(error)}`);
+    return createProcessTerminalBackend();
+  }
+}
 
 function createWorkbenchKittySurface(force: boolean): GraphicsSurface {
   const canForce = force && (!Deno.env.get("TMUX") || tmuxPassthroughAllowed);
@@ -479,6 +515,7 @@ const windowManager = new WindowManagerController({
     { id: "three", title: "Three ASCII", minWidth: 42, minHeight: 16 },
     { id: HTML_CSS_LAYOUT_WINDOW_ID, title: "HTML/CSS Layout", minWidth: 46, minHeight: 16, state: "closed" },
     { id: TERMINAL_OUTPUT_WINDOW_ID, title: "Terminal Output", minWidth: 48, minHeight: 14, state: "closed" },
+    { id: TERMINAL_SHELL_WINDOW_ID, title: "Shell", minWidth: 54, minHeight: 16, state: "closed" },
   ],
 });
 const commandLog = new Signal<string[]>(["ready: API workbench mounted"], { deepObserve: true });
@@ -725,7 +762,7 @@ tui.rectangle.subscribe(() => {
 });
 
 tui.on("keyPress", (event) => {
-  if (event.ctrl && event.key === "c") return;
+  if (event.ctrl && event.key === "c" && !shellShouldReceiveCtrlC()) return;
   if (threeConfigOpen.peek()) {
     handleThreeConfigKey(event);
     draw();
@@ -767,6 +804,10 @@ tui.on("keyPress", (event) => {
   }
   handleWorkbenchKey(event);
   draw();
+});
+
+tui.on("paste", (event) => {
+  if (handleTerminalShellPaste(event)) draw();
 });
 
 tui.on("mousePress", (event) => {
@@ -874,7 +915,9 @@ tui.on("destroy", () => {
   threeGraphicsRect.dispose();
   void clearKittyGraphicsSurfaces();
   void terminalOutputSession.dispose();
+  void terminalShell.dispose();
   terminalInputMode.dispose();
+  terminalShellInputMode.dispose();
   systemMonitor.stop();
   workbenchAudioRegistry.dispose();
   for (const [id, signal] of windowAscii) {
@@ -1172,6 +1215,7 @@ function renderWindowContent(frame: Frame, id: WindowId, rect: Rectangle): void 
   else if (id === "logs") renderLogs(frame, rect);
   else if (id === "htmlLayout") renderHtmlCssLayout(frame, rect);
   else if (id === TERMINAL_OUTPUT_WINDOW_ID) renderTerminalOutput(frame, rect);
+  else if (id === TERMINAL_SHELL_WINDOW_ID) renderTerminalShell(frame, rect);
   else if (isVisualizationWindow(id)) renderVisualizationWindow(frame, id, rect);
   else renderThree(frame, rect);
 }
@@ -1842,6 +1886,179 @@ function toggleTerminalInputMode(): void {
   pushLog("terminal input raw mode");
 }
 
+function renderTerminalShell(frame: Frame, rect: Rectangle): void {
+  const t = theme();
+  fillRect(frame, rect, t.surface);
+  const inspection = terminalShell.inspect();
+  let row = rect.row;
+  row = renderTerminalShellToolbar(frame, rect, row);
+  if (row >= rect.row + rect.height) return;
+
+  const statusTone = inspection.status === "running"
+    ? t.good
+    : inspection.status === "failed"
+    ? t.danger
+    : inspection.status === "cancelled"
+    ? t.warn
+    : inspection.status === "starting"
+    ? t.accent
+    : t.borderStrong;
+  const backend = inspection.backendLabel ?? "pending";
+  const mode = terminalShellInputModeLabel();
+  const status = compactSpaces(
+    `${mode} ${inspection.status.toUpperCase()} ${
+      inspection.pty ? "PTY" : "PIPE"
+    } ${backend} · ${inspection.commandLine}`,
+  );
+  write(
+    frame,
+    row,
+    rect.column,
+    paint(fit(status, rect.width), {
+      fg: contrastText(statusTone, t.background, t.text),
+      bg: statusTone,
+      bold: true,
+    }),
+  );
+  row += 1;
+
+  const hint = terminalShellInputMode.peek() === "raw"
+    ? "raw shell input: keys go to shell  Ctrl+C interrupts shell  Esc returns to Workbench"
+    : "keys: P start  S stop  U restart  K clear  I raw input";
+  write(frame, row, rect.column, paint(fit(hint, rect.width), { fg: t.soft, bg: t.panelSoft }));
+  row += 1;
+
+  const screenHeight = Math.max(1, rect.row + rect.height - row);
+  terminalShell.resize(rect.width, screenHeight);
+  if (inspection.error) {
+    write(
+      frame,
+      row,
+      rect.column,
+      paint(fit(`shell error: ${inspection.error}`, rect.width), {
+        fg: t.danger,
+        bg: t.surface,
+        bold: true,
+      }),
+    );
+    return;
+  }
+  if (inspection.status === "idle") {
+    write(
+      frame,
+      row,
+      rect.column,
+      paint(fit("Press [Start] or P to open your login shell in a PTY.", rect.width), {
+        fg: t.muted,
+        bg: t.surface,
+      }),
+    );
+    return;
+  }
+
+  const cursor = terminalShell.screen.cursor;
+  const cursorActive = activeWindow.peek() === TERMINAL_SHELL_WINDOW_ID && terminalShellInputMode.peek() === "raw" &&
+    terminalShell.running;
+  const rows = terminalShell.screen.cellRows();
+  for (let screenRow = 0; screenRow < screenHeight; screenRow += 1) {
+    const cells = rows[screenRow] ?? [];
+    for (let column = 0; column < rect.width; column += 1) {
+      const cell = cells[column] ?? { char: " " };
+      const atCursor = cursorActive && cursor.row === screenRow && cursor.column === column;
+      const style = terminalCellStyle(cell, t, atCursor);
+      const char = atCursor && cell.char === " " ? " " : cell.char;
+      write(frame, row + screenRow, rect.column + column, paint(char, style));
+    }
+  }
+}
+
+function renderTerminalShellToolbar(frame: Frame, rect: Rectangle, startRow: number): number {
+  const bottom = rect.row + rect.height;
+  let row = startRow;
+  let column = rect.column;
+  const addButton = (
+    label: string,
+    action: TerminalShellAction,
+    options: { disabled?: boolean; tone?: ButtonTone; active?: boolean } = {},
+  ) => {
+    const width = textWidth(buttonText(label));
+    if (column > rect.column && column + width > rect.column + rect.width) {
+      row += 1;
+      column = rect.column;
+    }
+    if (row >= bottom) return;
+    const state = options.disabled ? "disabled" : options.active ? "active" : "base";
+    const written = writeButton(frame, row, column, label, { state, tone: options.tone });
+    if (!options.disabled) {
+      addHit({ column, row, width: written, height: 1 }, { type: "terminalShell", action });
+    }
+    column += written + 1;
+  };
+
+  addButton("Start", "start", { disabled: terminalShell.running || terminalShell.status.peek() === "starting" });
+  addButton("Stop", "stop", { disabled: !terminalShell.running, tone: "danger" });
+  addButton("Restart", "restart", { tone: "warning" });
+  addButton("Clear", "clear", { tone: "muted" });
+  addButton("Raw", "raw", { active: terminalShellInputMode.peek() === "raw", disabled: !terminalShell.running });
+  return Math.min(bottom, row + 1);
+}
+
+function terminalCellStyle(
+  cell: { foreground?: number; background?: number; bold?: boolean },
+  t: ThemeSpec,
+  cursor: boolean,
+): { fg: string; bg: string; bold?: boolean } {
+  if (cursor) return { fg: t.background, bg: t.accent, bold: true };
+  return {
+    fg: terminalAnsiColor(cell.foreground, t, false) ?? t.text,
+    bg: terminalAnsiColor(cell.background, t, true) ?? t.surface,
+    bold: cell.bold,
+  };
+}
+
+function terminalAnsiColor(code: number | undefined, t: ThemeSpec, background: boolean): string | undefined {
+  if (code === undefined) return undefined;
+  const normalized = background ? code - 40 : code - 30;
+  switch (normalized) {
+    case 0:
+      return t.background;
+    case 1:
+      return t.danger;
+    case 2:
+      return t.good;
+    case 3:
+      return t.warn;
+    case 4:
+      return t.accent;
+    case 5:
+      return t.borderStrong;
+    case 6:
+      return t.accent;
+    case 7:
+      return t.text;
+    default:
+      return undefined;
+  }
+}
+
+function terminalShellInputModeLabel(): string {
+  return terminalShellInputMode.peek() === "raw" ? "RAW SHELL" : "WORKBENCH";
+}
+
+function toggleTerminalShellInputMode(): void {
+  if (terminalShellInputMode.peek() === "raw") {
+    terminalShellInputMode.value = "workbench";
+    pushLog("shell input workbench mode");
+    return;
+  }
+  if (!terminalShell.running) {
+    pushLog("shell raw input requires a running shell");
+    return;
+  }
+  terminalShellInputMode.value = "raw";
+  pushLog("shell input raw mode");
+}
+
 function renderHtmlCssLayout(frame: Frame, rect: Rectangle): void {
   const t = theme();
   const result = createHtmlCssLayoutDemo(rect);
@@ -2490,6 +2707,9 @@ function windowContentSize(id: WindowId, viewport: Rectangle): { width: number; 
   }
   if (id === "htmlLayout") {
     return { width: baseWidth, height: Math.max(baseHeight, 20) };
+  }
+  if (id === TERMINAL_SHELL_WINDOW_ID) {
+    return { width: Math.max(baseWidth, 72), height: Math.max(baseHeight, 24) };
   }
   if (id === TERMINAL_OUTPUT_WINDOW_ID) {
     const outputWidth = maxTextWidth(
@@ -3780,7 +4000,7 @@ function openHelpModal(): void {
       "Keyboard: Tab moves focus through windows. Inside Controls, Tab moves through controls and leaves the pane after the last control. Shift+Tab moves backward.",
       "Use F10 to focus the top menu, Left/Right to move, Down or Enter to open, arrows to choose menu items, Enter to activate, and Escape to leave.",
       "Use N to open the New menu, Shift+T to open Theme, T to cycle themes, H or ? for help, Q to request quit, and 0 to restore the next minimized window.",
-      "Use 1-6 to focus built-in windows, and higher numbers for added windows. Use M to minimize, F or Enter to maximize, C to close, and R or Escape to restore windows.",
+      "Use 1-8 to focus built-in windows, and higher numbers for added windows. Use M to minimize, F or Enter to maximize, C to close, and R or Escape to restore windows.",
       "When a window is fullscreen, use the bottom tabs, Tab, or number shortcuts to switch between fullscreen windows.",
       "Use G from any Three ASCII, Neon 3D, or NGE primitive window to open renderer config. In config, use Up/Down to select settings and Left/Right or Enter to change them.",
       "Use arrows in the Data Table, Explorer, Logs, and overflow windows. In Data Table, S cycles the sort column. Shift+Left/Right scrolls horizontally when content is wider than the pane.",
@@ -3788,7 +4008,8 @@ function openHelpModal(): void {
       "Three ASCII widgets: mousewheel over the rendered scene zooms; click and drag the scene to rotate the model.",
       "Mouse: click windows to focus them, click rows to select them, click controls to change values, drag or click scrollbars to move through overflow content.",
       "Use the New menu to add Monitor, Neon Exodus, and Neon 3D widget windows to the workspace.",
-      "The New menu also includes Terminal Output and HTML/CSS Layout windows for process output and markup/CSS layout demos.",
+      "The New menu also includes Shell, Terminal Output, and HTML/CSS Layout windows for interactive shells, process output, and markup/CSS layout demos.",
+      "In Shell, P/S/U/K start, stop, restart, and clear. Press I for raw input; while raw, type normal commands, Ctrl+C interrupts the shell, and Escape returns to Workbench mode.",
       "In Terminal Output, P/S/U/K/V/Y run, stop, restart, clear, follow, and copy the command. Press I while the process is running to send printable keys to child stdin; Escape returns to workbench mode.",
       "Use the Workspace menu to save, open, rename, or delete workspace layouts. Opening a saved workspace replaces the currently loaded widget windows.",
       "Use the Theme menu to switch palettes. Click the [x] button in the top-right menu bar or press Q to open quit confirmation.",
@@ -3890,6 +4111,8 @@ function applyHit(target: { rect: Rectangle; action: HitAction }, x: number, y: 
     applyControlHit(action.id, action.action ?? "activate", target.rect, x, action.index);
   } else if (action.type === "terminalOutput") {
     void applyTerminalOutputAction(action.action);
+  } else if (action.type === "terminalShell") {
+    void applyTerminalShellAction(action.action);
   } else if (action.type === "modalAction") {
     if (action.index >= 0) modal.activateAction(action.index);
   } else if (action.type === "dataRow") selectDataRow(action.index);
@@ -3947,6 +4170,29 @@ async function applyTerminalOutputAction(action: TerminalOutputAction): Promise<
   scheduleDraw();
 }
 
+async function applyTerminalShellAction(action: TerminalShellAction): Promise<void> {
+  focus(TERMINAL_SHELL_WINDOW_ID);
+  if (action === "start") {
+    await terminalShell.start();
+    terminalShellInputMode.value = "raw";
+    pushLog("shell start");
+  } else if (action === "stop") {
+    await terminalShell.stop();
+    terminalShellInputMode.value = "workbench";
+    pushLog("shell stop");
+  } else if (action === "restart") {
+    await terminalShell.restart();
+    terminalShellInputMode.value = "raw";
+    pushLog("shell restart");
+  } else if (action === "clear") {
+    terminalShell.clear();
+    pushLog("shell clear");
+  } else if (action === "raw") {
+    toggleTerminalShellInputMode();
+  }
+  scheduleDraw();
+}
+
 function openThreeConfigModal(id: WindowId): void {
   if (!isThreeRenderedWindow(id)) return;
   modal.close();
@@ -3966,6 +4212,7 @@ function closeThreeConfigModal(): void {
 }
 
 function handleWorkbenchKey(event: KeyPressEvent): void {
+  if (activeWindow.peek() === TERMINAL_SHELL_WINDOW_ID && handleTerminalShellKey(event)) return;
   if (activeWindow.peek() === TERMINAL_OUTPUT_WINDOW_ID && handleTerminalOutputKey(event)) return;
   if (event.ctrl || event.meta) return;
   if (event.key === "q") openQuitModal();
@@ -4007,6 +4254,59 @@ function handleWorkbenchKey(event: KeyPressEvent): void {
   else if (event.key === "right") scrollWindow(activeWindow.peek(), 1, 0);
   else if (event.key === "up") scrollWindow(activeWindow.peek(), 0, -1);
   else if (event.key === "down") scrollWindow(activeWindow.peek(), 0, 1);
+}
+
+function handleTerminalShellKey(event: KeyPressEvent): boolean {
+  if (terminalShellInputMode.peek() === "raw") {
+    if (event.key === "escape") {
+      terminalShellInputMode.value = "workbench";
+      pushLog("shell input workbench mode");
+      return true;
+    }
+    if (event.meta || event.key === "f10") return false;
+    void routeTerminalKeyPress(terminalShell, event, {
+      mode: "raw",
+      reservedKeys: ["f10", "escape"],
+      reservedCtrlKeys: [],
+    }).then((decision) => {
+      if (!decision.routed && decision.reason !== "reserved") {
+        pushLog(`shell input ${decision.reason}`);
+      }
+      scheduleDraw();
+    });
+    return true;
+  }
+
+  if (event.ctrl || event.meta) return false;
+  const key = event.key.toLowerCase();
+  const action = key === "p"
+    ? "start"
+    : key === "s"
+    ? "stop"
+    : key === "u"
+    ? "restart"
+    : key === "k"
+    ? "clear"
+    : key === "i"
+    ? "raw"
+    : undefined;
+  if (!action) return false;
+  void applyTerminalShellAction(action);
+  return true;
+}
+
+function handleTerminalShellPaste(event: PasteEvent): boolean {
+  if (activeWindow.peek() !== TERMINAL_SHELL_WINDOW_ID || terminalShellInputMode.peek() !== "raw") return false;
+  void routeTerminalPaste(terminalShell, event, { mode: "raw" }).then((decision) => {
+    if (!decision.routed) pushLog(`shell paste ${decision.reason}`);
+    scheduleDraw();
+  });
+  return true;
+}
+
+function shellShouldReceiveCtrlC(): boolean {
+  return activeWindow.peek() === TERMINAL_SHELL_WINDOW_ID && terminalShellInputMode.peek() === "raw" &&
+    terminalShell.running;
 }
 
 function handleTerminalOutputKey(event: KeyPressEvent): boolean {
@@ -4284,6 +4584,10 @@ function closeWindow(id: WindowId): void {
     const { [id]: _removed, ...remainingSelections } = selectedCpuHexTiles.peek();
     selectedCpuHexTiles.value = remainingSelections;
   }
+  if (id === TERMINAL_SHELL_WINDOW_ID) {
+    void terminalShell.stop();
+    terminalShellInputMode.value = "workbench";
+  }
   windowManager.close(id);
   syncWindowSignalsFromManager();
   pushLog(`close ${windowTitle(id)}`);
@@ -4302,6 +4606,10 @@ function toggleNewWindowOption(
     toggleBuiltInWindow(TERMINAL_OUTPUT_WINDOW_ID, options);
     return;
   }
+  if (option.id === TERMINAL_SHELL_OPTION_ID) {
+    toggleBuiltInWindow(TERMINAL_SHELL_WINDOW_ID, options);
+    return;
+  }
   toggleVisualizationWindow(option, options);
 }
 
@@ -4309,17 +4617,24 @@ function toggleBuiltInWindow(
   id: BuiltInWindowId,
   options: { keepMenuOpen?: boolean } = {},
 ): void {
+  const keepMenuOpen = id === TERMINAL_SHELL_WINDOW_ID ? false : options.keepMenuOpen;
   if (windowManager.ids().includes(id)) {
     closeWindow(id);
-    if (!options.keepMenuOpen) closeTopMenus();
+    if (!keepMenuOpen) closeTopMenus();
     else menuFocused.value = true;
     return;
   }
-  if (!options.keepMenuOpen) closeTopMenus();
+  if (!keepMenuOpen) closeTopMenus();
   windowManager.restore(id);
   syncWindowSignalsFromManager();
   focus(id);
-  if (options.keepMenuOpen) menuFocused.value = true;
+  if (id === TERMINAL_SHELL_WINDOW_ID && !terminalShell.running && terminalShell.status.peek() !== "starting") {
+    void terminalShell.start().then((started) => {
+      if (started) terminalShellInputMode.value = "raw";
+      scheduleDraw();
+    });
+  }
+  if (keepMenuOpen) menuFocused.value = true;
   pushLog(`add window ${windowTitle(id)}`);
 }
 
@@ -4377,6 +4692,8 @@ function isNewWindowOptionLoaded(option: NewWindowOption): boolean {
     ? windowManager.ids().includes(HTML_CSS_LAYOUT_WINDOW_ID)
     : option.id === TERMINAL_OUTPUT_OPTION_ID
     ? windowManager.ids().includes(TERMINAL_OUTPUT_WINDOW_ID)
+    : option.id === TERMINAL_SHELL_OPTION_ID
+    ? windowManager.ids().includes(TERMINAL_SHELL_WINDOW_ID)
     : isVisualizationLoaded(option.id);
 }
 
@@ -4964,12 +5281,19 @@ function windowTitle(id: WindowId): string {
     ? "HTML/CSS Layout"
     : id === TERMINAL_OUTPUT_WINDOW_ID
     ? terminalOutputWindowTitle()
+    : id === TERMINAL_SHELL_WINDOW_ID
+    ? terminalShellWindowTitle()
     : "Three ASCII";
 }
 
 function terminalOutputWindowTitle(): string {
   const mode = terminalInputMode.peek() === "raw" ? "RAW" : "WB";
   return `Terminal Output ${mode} ${terminalOutputSession.status.peek().toUpperCase()}`;
+}
+
+function terminalShellWindowTitle(): string {
+  const mode = terminalShellInputMode.peek() === "raw" ? "RAW" : "WB";
+  return `Shell ${mode} ${terminalShell.status.peek().toUpperCase()}`;
 }
 
 function windowIds(): WindowId[] {

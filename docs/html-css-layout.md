@@ -15,6 +15,8 @@ Implemented pieces:
 - `parseCssStylesheet()` parses a lightweight CSS subset into ordered rules.
 - `applyCssCascade()` applies tag/class/id selectors, child and descendant selectors, pseudo states, CSS variables, and
   inline styles.
+- CSS-like `@media` blocks can target terminal-cell viewport width and height with `min-width`, `max-width`,
+  `min-height`, and `max-height`.
 - `createMarkupLayout()` parses markup, applies CSS, and computes terminal-cell boxes.
 - `hydrateMarkupWidgets()` and the `widgets` result from `createMarkupLayout()` create shared controllers for common
   markup controls and expose a renderer-neutral event dispatcher.
@@ -97,6 +99,23 @@ console.log(result.layout.byId.get("content")?.rect);
 result.widgets.dispatch({ type: "scroll", id: "content", rows: 5 });
 result.widgets.dispose();
 ```
+
+Responsive rules use terminal-cell dimensions:
+
+```css
+@media (max-width: 58) {
+  #main {
+    flex-direction: column;
+  }
+
+  #sidebar {
+    width: 100%;
+  }
+}
+```
+
+`createMarkupLayout()` evaluates these rules against `bounds.width` and `bounds.height` unless you pass an explicit
+`cascade.viewport`.
 
 Run the report demo:
 

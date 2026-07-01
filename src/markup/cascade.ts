@@ -6,7 +6,13 @@ import {
   defaultComputedLayoutStyle,
 } from "../layout/style.ts";
 import { cloneLayoutNode, type LayoutNode } from "../layout/solver.ts";
-import { parseCssDeclarations, selectorParts, type TuiCssDeclaration, type TuiCssStylesheet } from "./css.ts";
+import {
+  parseCssDeclarations,
+  selectorParts,
+  type TuiCssDeclaration,
+  type TuiCssMediaQuery,
+  type TuiCssStylesheet,
+} from "./css.ts";
 
 /** Runtime state names supported by CSS-like pseudo selectors. */
 export type TuiCssNodeState = "focus" | "active" | "disabled" | "hover";
@@ -16,6 +22,13 @@ export interface ApplyCssCascadeOptions {
   variables?: Record<string, string>;
   states?: Record<string, readonly TuiCssNodeState[]>;
   baseStyle?: ComputedLayoutStyle;
+  viewport?: TuiCssViewport;
+}
+
+/** Terminal-cell viewport dimensions used by CSS-like media rules. */
+export interface TuiCssViewport {
+  width: number;
+  height: number;
 }
 
 interface MatchedRule {
@@ -83,7 +96,10 @@ function applyNode(
   style.variables = { ...inherited.variables };
 
   const matches = stylesheet.rules
-    .filter((rule) => matchesCssSelector(rule.selector, node, ancestors, options.states ?? {}))
+    .filter((rule) =>
+      matchesCssMedia(rule.media, options.viewport) &&
+      matchesCssSelector(rule.selector, node, ancestors, options.states ?? {})
+    )
     .map((rule): MatchedRule => ({
       declarations: rule.declarations,
       specificity: rule.specificity,
@@ -100,6 +116,21 @@ function applyNode(
   const childAncestors = [...ancestors, next];
   next.children = node.children.map((child) => applyNode(child, childAncestors, next.style, stylesheet, options));
   return next;
+}
+
+/** Returns true when a CSS-like media query applies to a terminal-cell viewport. */
+export function matchesCssMedia(
+  media: TuiCssMediaQuery | undefined,
+  viewport: TuiCssViewport | undefined,
+): boolean {
+  if (!media) return true;
+  if (!viewport) return false;
+  return media.conditions.every((condition) => {
+    if (condition.feature === "min-width") return viewport.width >= condition.value;
+    if (condition.feature === "max-width") return viewport.width <= condition.value;
+    if (condition.feature === "min-height") return viewport.height >= condition.value;
+    return viewport.height <= condition.value;
+  });
 }
 
 function applyMatchedRules(style: ComputedLayoutStyle, matches: readonly MatchedRule[]): ComputedLayoutStyle {

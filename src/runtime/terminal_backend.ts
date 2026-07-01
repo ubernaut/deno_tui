@@ -1,5 +1,5 @@
 // Copyright 2023 Im-Beast. MIT license.
-import type { TerminalOutputController } from "../components/terminal_output.ts";
+import type { TerminalOutputController, TerminalOutputSource } from "../components/terminal_output.ts";
 import {
   formatProcessCommandLine,
   type ProcessSessionCommand,
@@ -16,6 +16,7 @@ export interface TerminalBackendSpawnOptions extends ProcessSessionCommand {
   columns?: number;
   rows?: number;
   output?: TerminalOutputController;
+  onData?: (data: string | Uint8Array, source: TerminalOutputSource) => void;
 }
 
 /** Options used when reattaching to a backend-owned terminal session. */
@@ -118,6 +119,7 @@ export class ProcessTerminalBackend implements TerminalBackend {
       env: options.env,
       output: options.output,
       spawn: this.#spawn,
+      onOutputData: options.onData ? (source, data) => options.onData?.(data, source) : undefined,
     };
     const session = new ProcessSessionController(controllerOptions);
     return new ProcessTerminalSessionHandle({

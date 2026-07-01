@@ -8,7 +8,9 @@ import {
   hydrateMarkupWidgets,
   InputController,
   MarkupWidgetHydrationRegistry,
+  matchesCssMedia,
   matchesCssSelector,
+  parseCssMediaQuery,
   parseCssStylesheet,
   parseTuiMarkup,
   RadioGroupController,
@@ -97,6 +99,56 @@ Deno.test("applyCssCascade parses flex flow shorthand into direction and wrappin
 
   assertEquals(styled.style.flexDirection, "column");
   assertEquals(styled.style.flexWrap, "wrap-reverse");
+});
+
+Deno.test("parseCssStylesheet keeps terminal-cell media query metadata", () => {
+  const stylesheet = parseCssStylesheet(`
+    panel {
+      width: 20;
+    }
+
+    @media (max-width: 40) and (min-height: 8) {
+      panel.card {
+        width: 12;
+      }
+    }
+  `);
+
+  assertEquals(stylesheet.rules.length, 2);
+  assertEquals(stylesheet.rules[1]!.media?.conditions, [
+    { feature: "max-width", value: 40 },
+    { feature: "min-height", value: 8 },
+  ]);
+  assertEquals(matchesCssMedia(stylesheet.rules[1]!.media, { width: 32, height: 10 }), true);
+  assertEquals(matchesCssMedia(stylesheet.rules[1]!.media, { width: 48, height: 10 }), false);
+  assertEquals(parseCssMediaQuery("(min-width: 80cells)")?.conditions, [{ feature: "min-width", value: 80 }]);
+});
+
+Deno.test("createMarkupLayout applies media rules from layout bounds", () => {
+  const markup = `<window id="main"><panel id="card" class="card">Card</panel></window>`;
+  const css = `
+    window {
+      width: 100%;
+      height: 100%;
+    }
+
+    .card {
+      width: 20;
+      height: 2;
+    }
+
+    @media (max-width: 40) {
+      .card {
+        width: 12;
+      }
+    }
+  `;
+
+  const wide = createMarkupLayout({ markup, css, bounds: { column: 0, row: 0, width: 80, height: 12 } });
+  const narrow = createMarkupLayout({ markup, css, bounds: { column: 0, row: 0, width: 32, height: 12 } });
+
+  assertEquals(wide.layout.byId.get("card")!.rect.width, 20);
+  assertEquals(narrow.layout.byId.get("card")!.rect.width, 12);
 });
 
 Deno.test("applyCssCascade parses absolute positioning inset declarations", () => {
@@ -255,7 +307,7 @@ Deno.test("createMarkupLayout positions absolute children without affecting simp
 });
 
 Deno.test("createHtmlCssLayoutDemo drives wrapped flex and absolute portfolio boxes", () => {
-  const result = createHtmlCssLayoutDemo({ column: 0, row: 0, width: 50, height: 18 });
+  const result = createHtmlCssLayoutDemo({ column: 0, row: 0, width: 44, height: 18 });
 
   const stage = result.layout.byId.get("layout-stage")!;
   const cpu = result.layout.byId.get("metric-cpu")!;
@@ -265,8 +317,10 @@ Deno.test("createHtmlCssLayoutDemo drives wrapped flex and absolute portfolio bo
 
   assertEquals(stage.rect.width > 0, true);
   assertEquals(cpu.rect.row, gpu.rect.row);
+  assertEquals(cpu.rect.width, 16);
+  assertEquals(gpu.rect.width, 14);
   assertEquals(net.rect.row > cpu.rect.row, true);
-  assertEquals(badge.rect.column + badge.rect.width, stage.contentRect.column + stage.contentRect.width - 2);
+  assertEquals(badge.rect.column + badge.rect.width, stage.contentRect.column + stage.contentRect.width - 1);
   assertEquals(badge.rect.row, stage.contentRect.row + 1);
 });
 

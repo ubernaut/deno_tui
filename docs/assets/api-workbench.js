@@ -2777,6 +2777,96 @@ var textEncoder3 = new TextEncoder();
 
 // src/layout/flex_layout.ts
 var MAX_FLEX_SIZE = Number.MAX_SAFE_INTEGER;
+function flexRects(bounds, direction, items, gap = 0) {
+  const rects = {};
+  const mainSize2 = direction === "row" ? bounds.width : bounds.height;
+  const crossSize2 = direction === "row" ? bounds.height : bounds.width;
+  const safeGap = Math.max(0, gap);
+  const available = Math.max(0, mainSize2 - Math.max(0, items.length - 1) * safeGap);
+  const sizes = solveFlexSizes(available, items);
+  let cursor = direction === "row" ? bounds.column : bounds.row;
+  for (let index = 0; index < items.length; index += 1) {
+    const item = items[index];
+    const size = sizes[index] ?? 0;
+    rects[item.id] = direction === "row" ? { column: cursor, row: bounds.row, width: size, height: crossSize2 } : { column: bounds.column, row: cursor, width: crossSize2, height: size };
+    cursor += size + safeGap;
+  }
+  return rects;
+}
+function solveFlexSizes(total, items) {
+  if (items.length === 0 || total <= 0) {
+    return items.map(() => 0);
+  }
+  const minimums = items.map((item) => Math.max(0, Math.floor(item.min ?? 0)));
+  const maximums = items.map((item, index) => {
+    const rawMax = item.max == null ? MAX_FLEX_SIZE : Math.floor(item.max);
+    return Math.max(minimums[index] ?? 0, rawMax);
+  });
+  const sizes = items.map((item, index) => {
+    const min2 = minimums[index] ?? 0;
+    const max2 = maximums[index] ?? MAX_FLEX_SIZE;
+    const basis = item.basis == null ? min2 : Math.floor(item.basis);
+    return Math.min(max2, Math.max(min2, basis));
+  });
+  let delta = total - sum(sizes);
+  if (delta > 0) {
+    distributePositive(sizes, delta, items.map((item) => Math.max(0, item.grow ?? 1)), maximums);
+    return sizes;
+  }
+  if (delta < 0) {
+    const weights = items.map((item) => Math.max(0, item.shrink ?? 1));
+    delta = -delta;
+    distributeNegative(sizes, delta, weights, minimums);
+    const overflow = sum(sizes) - total;
+    if (overflow > 0) {
+      distributeNegative(sizes, overflow, weights, items.map(() => 0));
+    }
+  }
+  return sizes;
+}
+function distributePositive(sizes, extra, weights, maximums) {
+  let remaining = extra;
+  while (remaining > 0) {
+    const active2 = sizes.map((size, index) => ({ index, room: Math.max(0, (maximums[index] ?? MAX_FLEX_SIZE) - size) })).filter((entry) => entry.room > 0);
+    if (active2.length === 0) break;
+    const totalWeight = active2.reduce((sum2, entry) => sum2 + Math.max(1, weights[entry.index] ?? 1), 0);
+    let used = 0;
+    for (const entry of active2) {
+      if (remaining <= 0) break;
+      const weight = Math.max(1, weights[entry.index] ?? 1);
+      let share = Math.floor(remaining * (weight / Math.max(1, totalWeight)));
+      if (share <= 0) share = 1;
+      const delta = Math.min(entry.room, share, remaining);
+      sizes[entry.index] = (sizes[entry.index] ?? 0) + delta;
+      remaining -= delta;
+      used += delta;
+    }
+    if (used === 0) break;
+  }
+}
+function distributeNegative(sizes, deficit, weights, minimums) {
+  let remaining = deficit;
+  while (remaining > 0) {
+    const active2 = sizes.map((size, index) => ({ index, room: Math.max(0, size - (minimums[index] ?? 0)) })).filter((entry) => entry.room > 0);
+    if (active2.length === 0) break;
+    const totalWeight = active2.reduce((sum2, entry) => sum2 + Math.max(1, weights[entry.index] ?? 1), 0);
+    let used = 0;
+    for (const entry of active2) {
+      if (remaining <= 0) break;
+      const weight = Math.max(1, weights[entry.index] ?? 1);
+      let share = Math.floor(remaining * (weight / Math.max(1, totalWeight)));
+      if (share <= 0) share = 1;
+      const delta = Math.min(entry.room, share, remaining);
+      sizes[entry.index] = (sizes[entry.index] ?? 0) - delta;
+      remaining -= delta;
+      used += delta;
+    }
+    if (used === 0) break;
+  }
+}
+function sum(values) {
+  return values.reduce((total, value) => total + value, 0);
+}
 
 // src/layout/responsive.ts
 function tileRects(bounds, options) {
@@ -2850,6 +2940,1195 @@ function tileRects(bounds, options) {
     contentHeight: best.contentHeight,
     rects
   };
+}
+
+// src/layout/style.ts
+var AUTO_LAYOUT_LENGTH = { unit: "auto", value: 0 };
+var ZERO_BOX_EDGES = { top: 0, right: 0, bottom: 0, left: 0 };
+function cellLength(value) {
+  return { unit: "cell", value: Math.max(0, Math.floor(finiteNumber(value, 0))) };
+}
+function percentLength(value) {
+  return { unit: "percent", value: finiteNumber(value, 0) };
+}
+function frLength(value) {
+  return { unit: "fr", value: Math.max(0, finiteNumber(value, 0)) };
+}
+function autoLength() {
+  return { ...AUTO_LAYOUT_LENGTH };
+}
+function defaultComputedLayoutStyle() {
+  return {
+    display: "block",
+    position: "relative",
+    flexDirection: "row",
+    flexWrap: "nowrap",
+    flexGrow: 0,
+    flexShrink: 1,
+    flexBasis: autoLength(),
+    alignItems: "stretch",
+    justifyContent: "start",
+    width: autoLength(),
+    height: autoLength(),
+    minWidth: cellLength(0),
+    minHeight: cellLength(0),
+    maxWidth: autoLength(),
+    maxHeight: autoLength(),
+    inset: {
+      top: autoLength(),
+      right: autoLength(),
+      bottom: autoLength(),
+      left: autoLength()
+    },
+    margin: { ...ZERO_BOX_EDGES },
+    padding: { ...ZERO_BOX_EDGES },
+    border: { ...ZERO_BOX_EDGES },
+    gap: 0,
+    rowGap: 0,
+    columnGap: 0,
+    overflowX: "visible",
+    overflowY: "visible",
+    zIndex: 0,
+    visibility: "visible",
+    variables: {}
+  };
+}
+function cloneComputedLayoutStyle(style2) {
+  return {
+    ...style2,
+    flexBasis: { ...style2.flexBasis },
+    width: { ...style2.width },
+    height: { ...style2.height },
+    minWidth: { ...style2.minWidth },
+    minHeight: { ...style2.minHeight },
+    maxWidth: { ...style2.maxWidth },
+    maxHeight: { ...style2.maxHeight },
+    inset: {
+      top: { ...style2.inset.top },
+      right: { ...style2.inset.right },
+      bottom: { ...style2.inset.bottom },
+      left: { ...style2.inset.left }
+    },
+    margin: { ...style2.margin },
+    padding: { ...style2.padding },
+    border: { ...style2.border },
+    variables: { ...style2.variables }
+  };
+}
+function resolveLayoutLength(value, available, fallback = 0) {
+  const safeAvailable = Math.max(0, Math.floor(finiteNumber(available, 0)));
+  const safeFallback = Math.max(0, Math.floor(finiteNumber(fallback, 0)));
+  if (!value || value.unit === "auto") return safeFallback;
+  if (value.unit === "cell") return Math.max(0, Math.floor(value.value));
+  if (value.unit === "percent") return Math.max(0, Math.floor(safeAvailable * value.value / 100));
+  return Math.max(0, Math.floor(value.value));
+}
+function clampLayoutSize(size, available, min2, max2) {
+  const safe = Math.max(0, Math.floor(finiteNumber(size, 0)));
+  const lower = resolveLayoutLength(min2, available, 0);
+  const upper = max2.unit === "auto" ? Number.MAX_SAFE_INTEGER : resolveLayoutLength(max2, available, available);
+  return Math.max(lower, Math.min(upper, safe));
+}
+function parseLayoutLength(value, fallback = autoLength()) {
+  if (value === void 0) return { ...fallback };
+  const trimmed = value.trim().toLowerCase();
+  if (!trimmed || trimmed === "auto") return autoLength();
+  if (trimmed.endsWith("%")) return percentLength(Number.parseFloat(trimmed.slice(0, -1)));
+  if (trimmed.endsWith("fr")) return frLength(Number.parseFloat(trimmed.slice(0, -2)));
+  if (trimmed.endsWith("ch") || trimmed.endsWith("cell") || trimmed.endsWith("cells")) {
+    return cellLength(Number.parseFloat(trimmed));
+  }
+  if (/^-?\d+(\.\d+)?$/.test(trimmed)) return cellLength(Number.parseFloat(trimmed));
+  return { ...fallback };
+}
+function parseLayoutInteger(value, fallback = 0) {
+  if (value === void 0) return fallback;
+  const parsed = Number.parseFloat(value.trim());
+  return Number.isFinite(parsed) ? Math.max(0, Math.floor(parsed)) : fallback;
+}
+function parseBoxEdges(value, fallback = ZERO_BOX_EDGES) {
+  if (value === void 0) return { ...fallback };
+  const parts = value.trim().split(/\s+/).filter(Boolean).map((part) => parseLayoutInteger(part, 0));
+  if (parts.length === 0) return { ...fallback };
+  const [top, right = top, bottom = top, left = right] = parts;
+  return { top: top ?? 0, right: right ?? 0, bottom: bottom ?? 0, left: left ?? 0 };
+}
+function applyLayoutDeclaration(style2, property, value) {
+  const next = cloneComputedLayoutStyle(style2);
+  const normalized = property.trim().toLowerCase();
+  const resolved = value.trim();
+  if (normalized.startsWith("--")) {
+    next.variables[normalized] = resolved;
+    return next;
+  }
+  switch (normalized) {
+    case "display":
+      next.display = parseOneOf(resolved, ["block", "flex", "grid", "none"], next.display);
+      break;
+    case "position":
+      next.position = parseOneOf(resolved, ["relative", "absolute"], next.position);
+      break;
+    case "flex-direction":
+      next.flexDirection = parseOneOf(resolved, ["row", "column"], next.flexDirection);
+      break;
+    case "flex-wrap":
+      next.flexWrap = parseOneOf(resolved, ["nowrap", "wrap", "wrap-reverse"], next.flexWrap);
+      break;
+    case "flex-flow":
+      applyFlexFlowShorthand(next, resolved);
+      break;
+    case "flex-grow":
+      next.flexGrow = nonNegativeFloat(resolved, next.flexGrow);
+      break;
+    case "flex-shrink":
+      next.flexShrink = nonNegativeFloat(resolved, next.flexShrink);
+      break;
+    case "flex-basis":
+      next.flexBasis = parseLayoutLength(resolved, next.flexBasis);
+      break;
+    case "flex":
+      applyFlexShorthand(next, resolved);
+      break;
+    case "align-items":
+      next.alignItems = normalizeAlignItems(resolved, next.alignItems);
+      break;
+    case "justify-content":
+      next.justifyContent = normalizeJustifyContent(resolved, next.justifyContent);
+      break;
+    case "width":
+      next.width = parseLayoutLength(resolved, next.width);
+      break;
+    case "height":
+      next.height = parseLayoutLength(resolved, next.height);
+      break;
+    case "min-width":
+      next.minWidth = parseLayoutLength(resolved, next.minWidth);
+      break;
+    case "min-height":
+      next.minHeight = parseLayoutLength(resolved, next.minHeight);
+      break;
+    case "max-width":
+      next.maxWidth = parseLayoutLength(resolved, next.maxWidth);
+      break;
+    case "max-height":
+      next.maxHeight = parseLayoutLength(resolved, next.maxHeight);
+      break;
+    case "inset":
+      next.inset = parseBoxEdgeLengths(resolved, next.inset);
+      break;
+    case "top":
+    case "right":
+    case "bottom":
+    case "left":
+      {
+        const edge = normalized;
+        next.inset = applyBoxEdgeLength(next.inset, edge, parseLayoutLength(resolved, next.inset[edge]));
+      }
+      break;
+    case "margin":
+      next.margin = parseBoxEdges(resolved, next.margin);
+      break;
+    case "margin-top":
+    case "margin-right":
+    case "margin-bottom":
+    case "margin-left":
+      next.margin = applyBoxEdge(next.margin, normalized.slice("margin-".length), parseLayoutInteger(resolved, 0));
+      break;
+    case "padding":
+      next.padding = parseBoxEdges(resolved, next.padding);
+      break;
+    case "padding-top":
+    case "padding-right":
+    case "padding-bottom":
+    case "padding-left":
+      next.padding = applyBoxEdge(next.padding, normalized.slice("padding-".length), parseLayoutInteger(resolved, 0));
+      break;
+    case "border":
+      applyBorderShorthand(next, resolved);
+      break;
+    case "border-width":
+      next.border = parseBoxEdges(resolved, next.border);
+      break;
+    case "border-top":
+    case "border-right":
+    case "border-bottom":
+    case "border-left":
+      next.border = applyBoxEdge(next.border, normalized.slice("border-".length), parseLayoutInteger(resolved, 1));
+      break;
+    case "border-style":
+      next.borderStyle = resolved || next.borderStyle;
+      break;
+    case "border-color":
+      next.borderColor = resolved || next.borderColor;
+      break;
+    case "gap":
+      next.gap = parseLayoutInteger(resolved, next.gap);
+      next.rowGap = next.gap;
+      next.columnGap = next.gap;
+      break;
+    case "row-gap":
+      next.rowGap = parseLayoutInteger(resolved, next.rowGap);
+      break;
+    case "column-gap":
+      next.columnGap = parseLayoutInteger(resolved, next.columnGap);
+      break;
+    case "overflow":
+      next.overflowX = parseOneOf(resolved, ["visible", "hidden", "auto", "scroll"], next.overflowX);
+      next.overflowY = next.overflowX;
+      break;
+    case "overflow-x":
+      next.overflowX = parseOneOf(resolved, ["visible", "hidden", "auto", "scroll"], next.overflowX);
+      break;
+    case "overflow-y":
+      next.overflowY = parseOneOf(resolved, ["visible", "hidden", "auto", "scroll"], next.overflowY);
+      break;
+    case "z-index":
+      next.zIndex = Math.floor(Number.parseFloat(resolved)) || 0;
+      break;
+    case "color":
+      next.color = resolved || void 0;
+      break;
+    case "background":
+    case "background-color":
+      next.backgroundColor = resolved || void 0;
+      break;
+    case "visibility":
+      next.visibility = parseOneOf(resolved, ["visible", "hidden"], next.visibility);
+      break;
+  }
+  return next;
+}
+function applyFlexShorthand(style2, value) {
+  const parts = value.split(/\s+/).filter(Boolean);
+  if (parts.length === 1) {
+    if (parts[0] === "none") {
+      style2.flexGrow = 0;
+      style2.flexShrink = 0;
+      style2.flexBasis = autoLength();
+      return;
+    }
+    if (parts[0] === "auto") {
+      style2.flexGrow = 1;
+      style2.flexShrink = 1;
+      style2.flexBasis = autoLength();
+      return;
+    }
+    style2.flexGrow = nonNegativeFloat(parts[0], style2.flexGrow);
+    return;
+  }
+  style2.flexGrow = nonNegativeFloat(parts[0], style2.flexGrow);
+  style2.flexShrink = nonNegativeFloat(parts[1], style2.flexShrink);
+  if (parts[2]) style2.flexBasis = parseLayoutLength(parts[2], style2.flexBasis);
+}
+function applyFlexFlowShorthand(style2, value) {
+  for (const part of value.split(/\s+/).filter(Boolean)) {
+    style2.flexDirection = parseOneOf(part, ["row", "column"], style2.flexDirection);
+    style2.flexWrap = parseOneOf(part, ["nowrap", "wrap", "wrap-reverse"], style2.flexWrap);
+  }
+}
+function applyBorderShorthand(style2, value) {
+  const parts = value.split(/\s+/).filter(Boolean);
+  const width = parts.find((part) => /^-?\d+(\.\d+)?/.test(part));
+  const color = parts.find((part) => part.startsWith("#") || part.startsWith("rgb") || part.startsWith("var("));
+  const stylePart = parts.find((part) => ["none", "single", "double", "solid", "round", "heavy"].includes(part));
+  if (width) style2.border = parseBoxEdges(width, style2.border);
+  else if (value.trim() && value.trim() !== "none") style2.border = parseBoxEdges("1", style2.border);
+  if (color) style2.borderColor = color;
+  if (stylePart) style2.borderStyle = stylePart;
+}
+function applyBoxEdge(edges, edge, value) {
+  const next = { ...edges };
+  if (edge === "top" || edge === "right" || edge === "bottom" || edge === "left") {
+    next[edge] = value;
+  }
+  return next;
+}
+function parseBoxEdgeLengths(value, fallback) {
+  if (value === void 0) return cloneBoxEdgeLengths(fallback);
+  const parts = value.trim().split(/\s+/).filter(Boolean).map((part) => parseLayoutLength(part));
+  if (parts.length === 0) return cloneBoxEdgeLengths(fallback);
+  const [top, right = top, bottom = top, left = right] = parts;
+  return {
+    top: top ? { ...top } : autoLength(),
+    right: right ? { ...right } : autoLength(),
+    bottom: bottom ? { ...bottom } : autoLength(),
+    left: left ? { ...left } : autoLength()
+  };
+}
+function applyBoxEdgeLength(edges, edge, value) {
+  return {
+    top: edge === "top" ? { ...value } : { ...edges.top },
+    right: edge === "right" ? { ...value } : { ...edges.right },
+    bottom: edge === "bottom" ? { ...value } : { ...edges.bottom },
+    left: edge === "left" ? { ...value } : { ...edges.left }
+  };
+}
+function cloneBoxEdgeLengths(edges) {
+  return {
+    top: { ...edges.top },
+    right: { ...edges.right },
+    bottom: { ...edges.bottom },
+    left: { ...edges.left }
+  };
+}
+function normalizeAlignItems(value, fallback) {
+  const normalized = value === "flex-start" ? "start" : value === "flex-end" ? "end" : value;
+  return parseOneOf(normalized, ["start", "end", "center", "stretch"], fallback);
+}
+function normalizeJustifyContent(value, fallback) {
+  const normalized = value === "flex-start" ? "start" : value === "flex-end" ? "end" : value;
+  return parseOneOf(normalized, ["start", "end", "center", "space-between", "space-around"], fallback);
+}
+function parseOneOf(value, allowed, fallback) {
+  const normalized = value.trim().toLowerCase();
+  return allowed.includes(normalized) ? normalized : fallback;
+}
+function nonNegativeFloat(value, fallback) {
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) ? Math.max(0, parsed) : fallback;
+}
+function finiteNumber(value, fallback) {
+  return Number.isFinite(value) ? value : fallback;
+}
+
+// src/layout/solver.ts
+function createLayoutNode(options) {
+  const attributes = { ...options.attributes ?? {} };
+  const id2 = options.id ?? attributes.id ?? options.tag;
+  if (!attributes.id) attributes.id = id2;
+  const classNames = options.classes ?? splitClassList(attributes.class);
+  return {
+    id: id2,
+    tag: options.tag,
+    classes: [...classNames],
+    attributes,
+    text: options.text,
+    style: options.style ? cloneComputedLayoutStyle(options.style) : defaultComputedLayoutStyle(),
+    children: [...options.children ?? []],
+    intrinsic: options.intrinsic ? { ...options.intrinsic } : void 0
+  };
+}
+function cloneLayoutNode(node) {
+  return {
+    id: node.id,
+    tag: node.tag,
+    classes: [...node.classes],
+    attributes: { ...node.attributes },
+    text: node.text,
+    style: cloneComputedLayoutStyle(node.style),
+    children: node.children.map(cloneLayoutNode),
+    intrinsic: node.intrinsic ? { ...node.intrinsic } : void 0
+  };
+}
+function walkLayoutNodes(node, visit) {
+  const ancestors = [];
+  walk(node);
+  function walk(current) {
+    visit(current, ancestors);
+    ancestors.push(current);
+    for (const child of current.children) walk(child);
+    ancestors.pop();
+  }
+}
+function mapLayoutBoxes(boxes) {
+  const byId = /* @__PURE__ */ new Map();
+  for (const box of boxes) byId.set(box.id, box);
+  return byId;
+}
+function flattenComputedLayoutBoxes(root2) {
+  const boxes = [];
+  visit(root2);
+  return boxes;
+  function visit(box) {
+    boxes.push(box);
+    for (const child of box.children) visit(child);
+  }
+}
+function splitClassList(value) {
+  return value?.split(/\s+/).filter(Boolean) ?? [];
+}
+
+// src/layout/solvers/simple.ts
+var SimpleLayoutSolver = class {
+  id = "simple";
+  #defaultTextHeight;
+  constructor(options = {}) {
+    this.#defaultTextHeight = Math.max(1, Math.floor(options.defaultTextHeight ?? 1));
+  }
+  supports() {
+    return true;
+  }
+  solve(input2) {
+    const root2 = this.#layoutNode(input2.root, normalizeRect(input2.bounds), true);
+    const boxes = flattenComputedLayoutBoxes(root2);
+    return {
+      root: root2,
+      boxes,
+      byId: mapLayoutBoxes(boxes),
+      contentWidth: root2.scrollWidth,
+      contentHeight: root2.scrollHeight
+    };
+  }
+  #layoutNode(node, allocated, isRoot = false, fillAllocated = false) {
+    const style2 = node.style;
+    const margin = isRoot ? { top: 0, right: 0, bottom: 0, left: 0 } : style2.margin;
+    const outer = shrinkByMargin(allocated, margin);
+    const rect = resolveNodeRect(node, outer, isRoot, fillAllocated, this.#defaultTextHeight);
+    const contentRect = contentRectangle(rect, style2);
+    const visible = style2.visibility === "visible" && style2.display !== "none";
+    const flowChildren = style2.display === "flex" ? this.#layoutFlexChildren(node, contentRect) : this.#layoutBlockChildren(node, contentRect);
+    const children = [...flowChildren, ...this.#layoutAbsoluteChildren(node, contentRect)];
+    const scroll = scrollSize(node, contentRect, children);
+    return {
+      id: node.id,
+      tag: node.tag,
+      classes: node.classes,
+      attributes: { ...node.attributes },
+      text: node.text,
+      rect,
+      contentRect,
+      padding: { ...style2.padding },
+      margin: { ...style2.margin },
+      border: { ...style2.border },
+      overflowX: style2.overflowX,
+      overflowY: style2.overflowY,
+      scrollWidth: scroll.width,
+      scrollHeight: scroll.height,
+      zIndex: style2.zIndex,
+      visible,
+      hitRegions: visible ? [hitRegionForNode(node, rect, style2.zIndex)] : [],
+      children
+    };
+  }
+  #layoutBlockChildren(node, bounds) {
+    const boxes = [];
+    const children = layoutChildren(node);
+    const gap = Math.max(0, node.style.rowGap || node.style.gap);
+    let cursor = bounds.row;
+    for (const child of children) {
+      const childMargins = child.style.margin;
+      const preferred = preferredBlockChildSize(child, bounds, this.#defaultTextHeight);
+      const availableHeight = Math.max(0, bounds.row + bounds.height - cursor);
+      const allocatedHeight = Math.max(
+        preferred.height + childMargins.top + childMargins.bottom,
+        Math.min(availableHeight, preferred.height + childMargins.top + childMargins.bottom)
+      );
+      const childBounds = {
+        column: bounds.column,
+        row: cursor,
+        width: bounds.width,
+        height: allocatedHeight
+      };
+      const box = this.#layoutNode(child, childBounds);
+      boxes.push(box);
+      cursor = box.rect.row + box.rect.height + box.margin.bottom + gap;
+    }
+    return boxes;
+  }
+  #layoutFlexChildren(node, bounds) {
+    const children = layoutChildren(node);
+    if (children.length === 0) return [];
+    const direction = node.style.flexDirection;
+    const mainGap = Math.max(
+      0,
+      direction === "row" ? node.style.columnGap || node.style.gap : node.style.rowGap || node.style.gap
+    );
+    const crossGap = Math.max(
+      0,
+      direction === "row" ? node.style.rowGap || node.style.gap : node.style.columnGap || node.style.gap
+    );
+    const items = children.map((child) => {
+      const basis = preferredFlexBasis(child, bounds, direction, this.#defaultTextHeight);
+      const minimum = resolveFlexMinimum(child, bounds, direction);
+      const maximum = resolveFlexMaximum(child, bounds, direction);
+      const max2 = child.style.flexGrow === 0 ? Math.max(minimum, Math.min(maximum ?? basis, basis)) : maximum;
+      return {
+        node: child,
+        id: child.id,
+        basis,
+        grow: child.style.flexGrow,
+        shrink: child.style.flexShrink,
+        min: minimum,
+        max: max2,
+        crossSize: preferredFlexCrossSize(child, bounds, direction, this.#defaultTextHeight)
+      };
+    });
+    const lines = node.style.flexWrap === "nowrap" ? [items] : wrapFlexLines(items, mainSize(bounds, direction), mainGap);
+    const orderedLines = node.style.flexWrap === "wrap-reverse" ? [...lines].reverse() : lines;
+    const boxes = [];
+    let crossCursor = direction === "row" ? bounds.row : bounds.column;
+    for (const line of orderedLines) {
+      const lineCrossSize = lineFlexCrossSize(
+        line,
+        bounds,
+        direction,
+        node.style.alignItems,
+        node.style.flexWrap === "nowrap"
+      );
+      const lineBounds = direction === "row" ? { column: bounds.column, row: crossCursor, width: bounds.width, height: lineCrossSize } : { column: crossCursor, row: bounds.row, width: lineCrossSize, height: bounds.height };
+      const rects = flexLineRects(lineBounds, direction, line, mainGap, node.style.justifyContent);
+      for (const item of line) {
+        const itemBounds = alignFlexItemRect(rects[item.id] ?? lineBounds, item, direction, node.style.alignItems);
+        boxes.push(this.#layoutNode(item.node, itemBounds, false, true));
+      }
+      crossCursor += lineCrossSize + crossGap;
+    }
+    return boxes;
+  }
+  #layoutAbsoluteChildren(node, bounds) {
+    return layoutAbsoluteChildren(node).map((child) => {
+      return this.#layoutNode(child, absoluteChildBounds(child, bounds, this.#defaultTextHeight));
+    });
+  }
+};
+function simpleLayoutSolver(options = {}) {
+  return new SimpleLayoutSolver(options);
+}
+function layoutChildren(node) {
+  return node.children.filter((child) => child.style.display !== "none" && child.style.position !== "absolute");
+}
+function layoutAbsoluteChildren(node) {
+  return node.children.filter((child) => child.style.display !== "none" && child.style.position === "absolute");
+}
+function normalizeRect(rect) {
+  return {
+    column: Math.floor(rect.column),
+    row: Math.floor(rect.row),
+    width: Math.max(0, Math.floor(rect.width)),
+    height: Math.max(0, Math.floor(rect.height))
+  };
+}
+function shrinkByMargin(rect, margin) {
+  return {
+    column: rect.column + margin.left,
+    row: rect.row + margin.top,
+    width: Math.max(0, rect.width - margin.left - margin.right),
+    height: Math.max(0, rect.height - margin.top - margin.bottom)
+  };
+}
+function resolveNodeRect(node, allocated, isRoot, fillAllocated, defaultTextHeight) {
+  const style2 = node.style;
+  const intrinsic = measureNodeIntrinsic(node, Math.max(1, allocated.width), defaultTextHeight);
+  const fallbackWidth = allocated.width;
+  const fallbackHeight = isRoot || fillAllocated ? allocated.height : intrinsic.height || allocated.height;
+  const width = clampLayoutSize(
+    resolveLayoutLength(style2.width, allocated.width, Math.min(allocated.width, fallbackWidth)),
+    allocated.width,
+    style2.minWidth,
+    style2.maxWidth
+  );
+  const height = clampLayoutSize(
+    resolveLayoutLength(style2.height, allocated.height, Math.min(allocated.height, fallbackHeight)),
+    allocated.height,
+    style2.minHeight,
+    style2.maxHeight
+  );
+  return {
+    column: allocated.column,
+    row: allocated.row,
+    width: Math.min(width, allocated.width),
+    height: Math.min(height, allocated.height)
+  };
+}
+function contentRectangle(rect, style2) {
+  const left = style2.border.left + style2.padding.left;
+  const right = style2.border.right + style2.padding.right;
+  const top = style2.border.top + style2.padding.top;
+  const bottom = style2.border.bottom + style2.padding.bottom;
+  return {
+    column: rect.column + left,
+    row: rect.row + top,
+    width: Math.max(0, rect.width - left - right),
+    height: Math.max(0, rect.height - top - bottom)
+  };
+}
+function preferredBlockChildSize(node, bounds, defaultTextHeight) {
+  const intrinsic = measureNodeIntrinsic(node, Math.max(1, bounds.width), defaultTextHeight);
+  const width = resolveLayoutLength(node.style.width, bounds.width, bounds.width);
+  const height = resolveLayoutLength(
+    node.style.height,
+    bounds.height,
+    Math.max(intrinsic.height, resolveLayoutLength(node.style.minHeight, bounds.height, 0), defaultTextHeight)
+  );
+  return {
+    width,
+    height: clampLayoutSize(height, bounds.height, node.style.minHeight, node.style.maxHeight)
+  };
+}
+function absoluteChildBounds(node, containingBlock, defaultTextHeight) {
+  const style2 = node.style;
+  const left = resolveInset(style2.inset.left, containingBlock.width);
+  const right = resolveInset(style2.inset.right, containingBlock.width);
+  const top = resolveInset(style2.inset.top, containingBlock.height);
+  const bottom = resolveInset(style2.inset.bottom, containingBlock.height);
+  const intrinsic = preferredBlockChildSize(node, containingBlock, defaultTextHeight);
+  const width = left !== void 0 && right !== void 0 ? Math.max(0, containingBlock.width - left - right) : clampLayoutSize(
+    resolveLayoutLength(style2.width, containingBlock.width, Math.min(containingBlock.width, intrinsic.width)),
+    containingBlock.width,
+    style2.minWidth,
+    style2.maxWidth
+  );
+  const height = top !== void 0 && bottom !== void 0 ? Math.max(0, containingBlock.height - top - bottom) : clampLayoutSize(
+    resolveLayoutLength(style2.height, containingBlock.height, Math.min(containingBlock.height, intrinsic.height)),
+    containingBlock.height,
+    style2.minHeight,
+    style2.maxHeight
+  );
+  const column = left !== void 0 ? containingBlock.column + left : right !== void 0 ? containingBlock.column + Math.max(0, containingBlock.width - right - width) : containingBlock.column;
+  const row = top !== void 0 ? containingBlock.row + top : bottom !== void 0 ? containingBlock.row + Math.max(0, containingBlock.height - bottom - height) : containingBlock.row;
+  return { column, row, width, height };
+}
+function resolveInset(value, available) {
+  return value.unit === "auto" ? void 0 : resolveLayoutLength(value, available, 0);
+}
+function preferredFlexBasis(node, bounds, direction, defaultTextHeight) {
+  const mainAvailable = direction === "row" ? bounds.width : bounds.height;
+  const mainLength = direction === "row" ? node.style.width : node.style.height;
+  if (node.style.flexBasis.unit !== "auto") return resolveLayoutLength(node.style.flexBasis, mainAvailable, 0);
+  if (mainLength.unit !== "auto") return resolveLayoutLength(mainLength, mainAvailable, 0);
+  const intrinsic = measureNodeIntrinsic(node, Math.max(1, bounds.width), defaultTextHeight);
+  const fallback = direction === "row" ? intrinsic.width : intrinsic.height;
+  return Math.max(1, fallback);
+}
+function preferredFlexCrossSize(node, bounds, direction, defaultTextHeight) {
+  const crossAvailable = direction === "row" ? bounds.height : bounds.width;
+  const crossLength = direction === "row" ? node.style.height : node.style.width;
+  if (crossLength.unit !== "auto") return resolveLayoutLength(crossLength, crossAvailable, 0);
+  const intrinsic = measureNodeIntrinsic(node, Math.max(1, bounds.width), defaultTextHeight);
+  const fallback = direction === "row" ? intrinsic.height : intrinsic.width;
+  const min2 = direction === "row" ? node.style.minHeight : node.style.minWidth;
+  const max2 = direction === "row" ? node.style.maxHeight : node.style.maxWidth;
+  return clampLayoutSize(Math.max(1, fallback), crossAvailable, min2, max2);
+}
+function resolveFlexMinimum(node, bounds, direction) {
+  return resolveLayoutLength(
+    direction === "row" ? node.style.minWidth : node.style.minHeight,
+    mainSize(bounds, direction),
+    0
+  );
+}
+function resolveFlexMaximum(node, bounds, direction) {
+  const length = direction === "row" ? node.style.maxWidth : node.style.maxHeight;
+  return length.unit === "auto" ? void 0 : resolveLayoutLength(length, mainSize(bounds, direction), mainSize(bounds, direction));
+}
+function mainSize(rect, direction) {
+  return direction === "row" ? rect.width : rect.height;
+}
+function crossSize(rect, direction) {
+  return direction === "row" ? rect.height : rect.width;
+}
+function wrapFlexLines(items, availableMainSize, gap) {
+  const lines = [];
+  let current = [];
+  let used = 0;
+  const safeAvailable = Math.max(0, Math.floor(availableMainSize));
+  const safeGap = Math.max(0, gap);
+  for (const item of items) {
+    const itemSize = Math.max(item.min ?? 0, item.basis ?? 0);
+    const projected = current.length === 0 ? itemSize : used + safeGap + itemSize;
+    if (current.length > 0 && projected > safeAvailable) {
+      lines.push(current);
+      current = [item];
+      used = itemSize;
+    } else {
+      current.push(item);
+      used = projected;
+    }
+  }
+  if (current.length > 0) lines.push(current);
+  return lines;
+}
+function lineFlexCrossSize(items, bounds, direction, alignItems, singleLine) {
+  if (alignItems === "stretch" && singleLine) return crossSize(bounds, direction);
+  return Math.max(1, ...items.map((item) => item.crossSize));
+}
+function flexLineRects(bounds, direction, items, gap, justifyContent) {
+  const rects = flexRects(bounds, direction, items, gap);
+  const ordered = items.map((item) => rects[item.id] ?? bounds);
+  const sizes = ordered.map((rect) => mainSize(rect, direction));
+  const used = sizes.reduce((sum2, size) => sum2 + size, 0) + Math.max(0, items.length - 1) * gap;
+  const free = Math.max(0, mainSize(bounds, direction) - used);
+  let leading = 0;
+  let resolvedGap = gap;
+  let remainder = 0;
+  if (justifyContent === "end") {
+    leading = free;
+  } else if (justifyContent === "center") {
+    leading = Math.floor(free / 2);
+  } else if (justifyContent === "space-between" && items.length > 1) {
+    resolvedGap += Math.floor(free / (items.length - 1));
+    remainder = free % (items.length - 1);
+  } else if (justifyContent === "space-around" && items.length > 0) {
+    const share = Math.floor(free / items.length);
+    leading = Math.floor(share / 2);
+    resolvedGap += share;
+    remainder = free % items.length;
+  }
+  const adjusted = {};
+  let cursor = (direction === "row" ? bounds.column : bounds.row) + leading;
+  for (let index = 0; index < items.length; index += 1) {
+    const item = items[index];
+    const size = sizes[index] ?? 0;
+    adjusted[item.id] = direction === "row" ? { column: cursor, row: bounds.row, width: size, height: bounds.height } : { column: bounds.column, row: cursor, width: bounds.width, height: size };
+    cursor += size + resolvedGap + (remainder > 0 && index < items.length - 1 ? 1 : 0);
+    if (remainder > 0 && index < items.length - 1) remainder -= 1;
+  }
+  return adjusted;
+}
+function alignFlexItemRect(rect, item, direction, alignItems) {
+  if (alignItems === "stretch") return rect;
+  const availableCross = crossSize(rect, direction);
+  const size = Math.min(availableCross, Math.max(0, item.crossSize));
+  let offset = 0;
+  if (alignItems === "end") offset = availableCross - size;
+  else if (alignItems === "center") offset = Math.floor((availableCross - size) / 2);
+  return direction === "row" ? { ...rect, row: rect.row + offset, height: size } : { ...rect, column: rect.column + offset, width: size };
+}
+function measureNodeIntrinsic(node, availableWidth, defaultTextHeight) {
+  if (node.intrinsic?.width !== void 0 || node.intrinsic?.height !== void 0) {
+    return {
+      width: Math.max(0, Math.floor(node.intrinsic.width ?? 0)),
+      height: Math.max(defaultTextHeight, Math.floor(node.intrinsic.height ?? defaultTextHeight))
+    };
+  }
+  if (node.text) {
+    return measureTextIntrinsic(node.text, availableWidth, defaultTextHeight);
+  }
+  if (node.children.length === 0) {
+    return { width: 1, height: defaultTextHeight };
+  }
+  const childSizes = node.children.map((child) => measureNodeIntrinsic(child, availableWidth, defaultTextHeight));
+  if (node.style.display === "flex" && node.style.flexDirection === "row") {
+    return {
+      width: childSizes.reduce((sum2, size) => sum2 + size.width, 0) + Math.max(0, childSizes.length - 1) * node.style.columnGap,
+      height: Math.max(defaultTextHeight, ...childSizes.map((size) => size.height))
+    };
+  }
+  return {
+    width: Math.max(1, ...childSizes.map((size) => size.width)),
+    height: childSizes.reduce((sum2, size) => sum2 + Math.max(defaultTextHeight, size.height), 0)
+  };
+}
+function measureTextIntrinsic(text, availableWidth, defaultTextHeight) {
+  const lines = text.split(/\r?\n/);
+  const width = Math.max(1, ...lines.map((line) => textWidth(line)));
+  const wrapWidth = Math.max(1, availableWidth);
+  const height = lines.reduce((sum2, line) => sum2 + Math.max(1, Math.ceil(textWidth(line) / wrapWidth)), 0);
+  return { width, height: Math.max(defaultTextHeight, height) };
+}
+function scrollSize(node, contentRect, children) {
+  const textSize = node.text ? measureTextIntrinsic(node.text, Math.max(1, contentRect.width), 1) : { width: 0, height: 0 };
+  let right = contentRect.column + Math.max(contentRect.width, textSize.width);
+  let bottom = contentRect.row + Math.max(contentRect.height, textSize.height);
+  for (const child of children) {
+    right = Math.max(right, child.rect.column + child.rect.width + child.margin.right);
+    bottom = Math.max(bottom, child.rect.row + child.rect.height + child.margin.bottom);
+  }
+  return {
+    width: Math.max(contentRect.width, right - contentRect.column),
+    height: Math.max(contentRect.height, bottom - contentRect.row)
+  };
+}
+function hitRegionForNode(node, bounds, zIndex) {
+  return {
+    id: node.id,
+    bounds,
+    zIndex,
+    payload: { nodeId: node.id, tag: node.tag }
+  };
+}
+
+// src/layout/engine.ts
+var LayoutEngine = class {
+  solver;
+  constructor(options = {}) {
+    this.solver = options.solver ?? simpleLayoutSolver();
+  }
+  layout(options) {
+    if (!this.solver.supports(options.root)) {
+      throw new LayoutSolverUnsupportedError(this.solver.id, options.root.tag);
+    }
+    return this.solver.solve({
+      root: options.root,
+      bounds: options.bounds
+    });
+  }
+};
+var LayoutSolverUnsupportedError = class extends Error {
+  constructor(solverId, rootTag) {
+    super(`Layout solver "${solverId}" does not support root tag "${rootTag}".`);
+    this.name = "LayoutSolverUnsupportedError";
+  }
+};
+function createLayoutEngine(options = {}) {
+  return new LayoutEngine(options);
+}
+
+// src/markup/css.ts
+function parseCssStylesheet(source) {
+  const rules = [];
+  const cleaned = stripCssComments(source);
+  let order = 0;
+  parseRules(cleaned, void 0);
+  return { rules };
+  function parseRules(block, media) {
+    let index = 0;
+    while (index < block.length) {
+      index = skipWhitespace(block, index);
+      if (index >= block.length) break;
+      if (block.startsWith("@media", index)) {
+        const preludeStart = index + "@media".length;
+        const open2 = block.indexOf("{", preludeStart);
+        if (open2 < 0) break;
+        const close2 = findMatchingBrace(block, open2);
+        if (close2 < 0) break;
+        const query = parseCssMediaQuery(block.slice(preludeStart, open2).trim());
+        if (query) parseRules(block.slice(open2 + 1, close2), mergeMediaQueries(media, query));
+        index = close2 + 1;
+        continue;
+      }
+      const open = block.indexOf("{", index);
+      if (open < 0) break;
+      const close = findMatchingBrace(block, open);
+      if (close < 0) break;
+      const selectors = splitSelectorList(block.slice(index, open));
+      const declarations = parseCssDeclarations(block.slice(open + 1, close));
+      addRules(selectors, declarations, media);
+      index = close + 1;
+    }
+  }
+  function addRules(selectors, declarations, media) {
+    for (const selector of selectors) {
+      rules.push({
+        selector,
+        declarations: [...declarations],
+        specificity: cssSelectorSpecificity(selector),
+        order: order++,
+        media
+      });
+    }
+  }
+}
+function parseCssDeclarations(source) {
+  return splitDeclarations(source).map((part) => {
+    const colon = part.indexOf(":");
+    if (colon < 0) return void 0;
+    const property = part.slice(0, colon).trim().toLowerCase();
+    const value = part.slice(colon + 1).trim();
+    return property && value ? { property, value } : void 0;
+  }).filter((entry) => entry !== void 0);
+}
+function cssSelectorSpecificity(selector) {
+  const idCount = (selector.match(/#[A-Za-z_][\w-]*/g) ?? []).length;
+  const classCount = (selector.match(/\.[A-Za-z_][\w-]*/g) ?? []).length;
+  const pseudoCount = (selector.match(/:[A-Za-z_][\w-]*/g) ?? []).length;
+  const tagCount = selectorParts(selector).map((part) => /^(#text|[A-Za-z][\w-]*|\*)/.exec(part.simple)?.[1]).filter((tag) => tag !== void 0 && tag !== "*").length;
+  return idCount * 100 + (classCount + pseudoCount) * 10 + tagCount;
+}
+function selectorParts(selector) {
+  const tokens = selector.replace(/\s*>\s*/g, " > ").trim().split(/\s+/).filter(Boolean);
+  const parts = [];
+  let combinator = "descendant";
+  for (const token of tokens) {
+    if (token === ">") {
+      combinator = "child";
+      continue;
+    }
+    parts.push({ simple: token, combinator: parts.length === 0 ? void 0 : combinator });
+    combinator = "descendant";
+  }
+  return parts;
+}
+function splitSelectorList(source) {
+  return source.split(",").map((selector) => selector.trim()).filter(Boolean);
+}
+function splitDeclarations(source) {
+  const declarations = [];
+  let start = 0;
+  let depth = 0;
+  for (let index = 0; index < source.length; index += 1) {
+    const char = source[index];
+    if (char === "(") depth += 1;
+    else if (char === ")") depth = Math.max(0, depth - 1);
+    else if (char === ";" && depth === 0) {
+      declarations.push(source.slice(start, index).trim());
+      start = index + 1;
+    }
+  }
+  const last = source.slice(start).trim();
+  if (last) declarations.push(last);
+  return declarations.filter(Boolean);
+}
+function stripCssComments(source) {
+  return source.replace(/\/\*[\s\S]*?\*\//g, "");
+}
+function parseCssMediaQuery(source) {
+  const conditions = [];
+  const pattern = /\(\s*((?:min|max)-(?:width|height))\s*:\s*([^)]+)\)/g;
+  for (const match of source.matchAll(pattern)) {
+    const feature = match[1];
+    const value = parseCssMediaLength(match[2] ?? "");
+    if (feature && Number.isFinite(value)) conditions.push({ feature, value });
+  }
+  return conditions.length > 0 ? { source: source.trim(), conditions } : void 0;
+}
+function mergeMediaQueries(outer, inner) {
+  if (!outer) return inner;
+  return {
+    source: `${outer.source} and ${inner.source}`,
+    conditions: [...outer.conditions, ...inner.conditions]
+  };
+}
+function parseCssMediaLength(value) {
+  const trimmed = value.trim().toLowerCase();
+  if (trimmed.endsWith("px")) return Number.parseFloat(trimmed.slice(0, -2));
+  if (trimmed.endsWith("ch")) return Number.parseFloat(trimmed.slice(0, -2));
+  if (trimmed.endsWith("cell")) return Number.parseFloat(trimmed.slice(0, -4));
+  if (trimmed.endsWith("cells")) return Number.parseFloat(trimmed.slice(0, -5));
+  return Number.parseFloat(trimmed);
+}
+function skipWhitespace(source, index) {
+  let next = index;
+  while (next < source.length && /\s/.test(source[next])) next += 1;
+  return next;
+}
+function findMatchingBrace(source, openIndex) {
+  let depth = 0;
+  for (let index = openIndex; index < source.length; index += 1) {
+    const char = source[index];
+    if (char === "{") depth += 1;
+    else if (char === "}") {
+      depth -= 1;
+      if (depth === 0) return index;
+    }
+  }
+  return -1;
+}
+
+// src/markup/cascade.ts
+function applyCssCascade(root2, stylesheet, options = {}) {
+  const normalizedVariables = normalizeVariables(options.variables ?? {});
+  const baseStyle = options.baseStyle ? cloneComputedLayoutStyle(options.baseStyle) : defaultComputedLayoutStyle();
+  baseStyle.variables = { ...baseStyle.variables, ...normalizedVariables };
+  return applyNode(root2, [], baseStyle, stylesheet, options);
+}
+function matchesCssSelector(selector, node, ancestors = [], states = {}) {
+  const parts = selectorParts(selector);
+  if (parts.length === 0) return false;
+  const chain = [...ancestors, node];
+  return matchPart(parts.length - 1, chain.length - 1);
+  function matchPart(partIndex, nodeIndex) {
+    if (nodeIndex < 0) return false;
+    const part = parts[partIndex];
+    if (!matchesSimpleSelector(part.simple, chain[nodeIndex], nodeIndex === 0, states)) return false;
+    if (partIndex === 0) return true;
+    const relation = part.combinator ?? "descendant";
+    if (relation === "child") return matchPart(partIndex - 1, nodeIndex - 1);
+    for (let ancestorIndex = nodeIndex - 1; ancestorIndex >= 0; ancestorIndex -= 1) {
+      if (matchPart(partIndex - 1, ancestorIndex)) return true;
+    }
+    return false;
+  }
+}
+function resolveCssVariables(value, variables) {
+  return value.replace(/var\(\s*(--[\w-]+)\s*(?:,\s*([^)]+))?\)/g, (_match, name, fallback) => {
+    return variables[name] ?? fallback?.trim() ?? "";
+  });
+}
+function applyNode(node, ancestors, inherited, stylesheet, options) {
+  const next = cloneLayoutNode(node);
+  const style2 = defaultComputedLayoutStyle();
+  style2.color = inherited.color;
+  style2.variables = { ...inherited.variables };
+  const matches = stylesheet.rules.filter(
+    (rule) => matchesCssMedia(rule.media, options.viewport) && matchesCssSelector(rule.selector, node, ancestors, options.states ?? {})
+  ).map((rule) => ({
+    declarations: rule.declarations,
+    specificity: rule.specificity,
+    order: rule.order
+  })).sort((left, right) => left.specificity - right.specificity || left.order - right.order);
+  next.style = applyMatchedRules(style2, matches);
+  const inline = node.attributes.style ? parseCssDeclarations(node.attributes.style) : [];
+  if (inline.length > 0) {
+    next.style = applyMatchedRules(next.style, [{ declarations: inline, specificity: 1e3, order: 1e6 }]);
+  }
+  const childAncestors = [...ancestors, next];
+  next.children = node.children.map((child) => applyNode(child, childAncestors, next.style, stylesheet, options));
+  return next;
+}
+function matchesCssMedia(media, viewport) {
+  if (!media) return true;
+  if (!viewport) return false;
+  return media.conditions.every((condition) => {
+    if (condition.feature === "min-width") return viewport.width >= condition.value;
+    if (condition.feature === "max-width") return viewport.width <= condition.value;
+    if (condition.feature === "min-height") return viewport.height >= condition.value;
+    return viewport.height <= condition.value;
+  });
+}
+function applyMatchedRules(style2, matches) {
+  let next = style2;
+  for (const match of matches) {
+    for (const declaration of match.declarations) {
+      const value = resolveCssVariables(declaration.value, next.variables);
+      next = applyLayoutDeclaration(next, declaration.property, value);
+    }
+  }
+  return next;
+}
+function matchesSimpleSelector(selector, node, isRoot, states) {
+  if (selector === "*") return true;
+  const tag = /^(#text|[A-Za-z][\w-]*|\*)/.exec(selector)?.[1];
+  if (tag && tag !== "*" && tag.toLowerCase() !== node.tag) return false;
+  for (const id2 of selector.matchAll(/#([A-Za-z_][\w-]*)/g)) {
+    if (node.id !== id2[1]) return false;
+  }
+  for (const className of selector.matchAll(/\.([A-Za-z_][\w-]*)/g)) {
+    if (!node.classes.includes(className[1])) return false;
+  }
+  for (const pseudo of selector.matchAll(/:([A-Za-z_][\w-]*)/g)) {
+    const state = pseudo[1];
+    if (state === "root") {
+      if (!isRoot) return false;
+    } else if (!states[node.id]?.includes(state)) {
+      return false;
+    }
+  }
+  return true;
+}
+function normalizeVariables(variables) {
+  const normalized = {};
+  for (const [name, value] of Object.entries(variables)) {
+    normalized[name.startsWith("--") ? name : `--${name}`] = value;
+  }
+  return normalized;
+}
+
+// src/markup/html.ts
+var VOID_TAGS = /* @__PURE__ */ new Set([
+  "area",
+  "base",
+  "br",
+  "col",
+  "embed",
+  "hr",
+  "img",
+  "input",
+  "link",
+  "meta",
+  "param",
+  "source",
+  "track",
+  "wbr"
+]);
+function parseTuiMarkup(markup, options = {}) {
+  const root2 = {
+    tag: options.rootTag ?? "document",
+    attributes: { id: options.rootId ?? "document" },
+    children: []
+  };
+  const stack = [root2];
+  let index = 0;
+  while (index < markup.length) {
+    if (markup.startsWith("<!--", index)) {
+      const end = markup.indexOf("-->", index + 4);
+      index = end < 0 ? markup.length : end + 3;
+      continue;
+    }
+    const nextTag = markup.indexOf("<", index);
+    if (nextTag < 0) {
+      appendText(stack[stack.length - 1], markup.slice(index), options);
+      break;
+    }
+    if (nextTag > index) {
+      appendText(stack[stack.length - 1], markup.slice(index, nextTag), options);
+      index = nextTag;
+      continue;
+    }
+    const endTag = markup.indexOf(">", index + 1);
+    if (endTag < 0) {
+      appendText(stack[stack.length - 1], markup.slice(index), options);
+      break;
+    }
+    const raw = markup.slice(index + 1, endTag).trim();
+    index = endTag + 1;
+    if (!raw || raw.startsWith("!")) continue;
+    if (raw.startsWith("/")) {
+      closeTag(stack, normalizeTagName(raw.slice(1)));
+      continue;
+    }
+    const selfClosing = raw.endsWith("/");
+    const node = parseOpeningTag(selfClosing ? raw.slice(0, -1).trim() : raw);
+    stack[stack.length - 1].children.push(node);
+    if (!selfClosing && !VOID_TAGS.has(node.tag)) {
+      stack.push(node);
+    }
+  }
+  const children = root2.children.filter((child) => child.tag !== "#text" || Boolean(child.text?.trim()));
+  const selected = children.length === 1 && !options.rootTag && !options.rootId ? children[0] : { ...root2, children };
+  let generated = 0;
+  const layoutRoot = toLayoutNode(selected, () => `markup-${++generated}`);
+  return {
+    root: layoutRoot,
+    nodeCount: countLayoutNodes(layoutRoot)
+  };
+}
+function parseOpeningTag(raw) {
+  const match = /^([^\s/>]+)([\s\S]*)$/.exec(raw);
+  const tag = normalizeTagName(match?.[1] ?? "div");
+  const attributes = parseAttributes(match?.[2] ?? "");
+  return { tag, attributes, children: [] };
+}
+function parseAttributes(source) {
+  const attributes = {};
+  const pattern = /([^\s=/>]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>/]+)))?/g;
+  for (const match of source.matchAll(pattern)) {
+    const name = match[1]?.toLowerCase();
+    if (!name) continue;
+    attributes[name] = decodeEntities(match[2] ?? match[3] ?? match[4] ?? "true");
+  }
+  return attributes;
+}
+function appendText(parent, text, options) {
+  const decoded = decodeEntities(options.preserveWhitespace ? text : text.replace(/\s+/g, " "));
+  if (!options.preserveWhitespace && decoded.trim().length === 0) return;
+  const previous = parent.children[parent.children.length - 1];
+  if (previous?.tag === "#text") {
+    previous.text = `${previous.text ?? ""}${decoded}`;
+  } else {
+    parent.children.push({ tag: "#text", attributes: {}, children: [], text: decoded });
+  }
+}
+function closeTag(stack, tag) {
+  for (let index = stack.length - 1; index > 0; index -= 1) {
+    if (stack[index].tag === tag) {
+      stack.splice(index);
+      return;
+    }
+  }
+}
+function normalizeTagName(value) {
+  return value.trim().toLowerCase();
+}
+function toLayoutNode(node, nextId) {
+  const elementChildren = node.children.filter((child) => child.tag !== "#text");
+  const textChildren = node.children.filter((child) => child.tag === "#text").map((child) => child.text ?? "");
+  const text = node.text ?? (elementChildren.length === 0 ? textChildren.join("").trim() || void 0 : void 0);
+  const children = elementChildren.length === 0 ? [] : node.children.map((child) => toLayoutNode(child, nextId)).filter((child) => child.tag !== "#text" || child.text);
+  return createLayoutNode({
+    id: node.attributes.id ?? nextId(),
+    tag: node.tag,
+    attributes: { ...node.attributes },
+    classes: node.attributes.class?.split(/\s+/).filter(Boolean) ?? [],
+    text,
+    children
+  });
+}
+function decodeEntities(value) {
+  return value.replaceAll("&lt;", "<").replaceAll("&gt;", ">").replaceAll("&amp;", "&").replaceAll("&quot;", '"').replaceAll("&#39;", "'");
+}
+function countLayoutNodes(node) {
+  return 1 + node.children.reduce((sum2, child) => sum2 + countLayoutNodes(child), 0);
 }
 
 // src/components/button.ts
@@ -3681,6 +4960,95 @@ var SliderController = class {
   }
 };
 
+// src/components/tabs.ts
+function clampTabIndex(tabs, activeIndex) {
+  if (tabs.length === 0) return -1;
+  const clamped = clamp(activeIndex, 0, tabs.length - 1);
+  if (!tabs[clamped]?.disabled) return clamped;
+  const next = shiftTabIndex(tabs, clamped, 1);
+  if (!tabs[next]?.disabled) return next;
+  const previous = shiftTabIndex(tabs, clamped, -1);
+  return tabs[previous]?.disabled ? clamped : previous;
+}
+function shiftTabIndex(tabs, activeIndex, delta) {
+  if (tabs.length === 0) return -1;
+  let next = clamp(activeIndex, 0, tabs.length - 1);
+  for (let count = 0; count < tabs.length; count += 1) {
+    next = (next + delta + tabs.length) % tabs.length;
+    if (!tabs[next]?.disabled) return next;
+  }
+  return activeIndex;
+}
+function tabForIndex(tabs, activeIndex) {
+  const tab = tabs[clampTabIndex(tabs, activeIndex)];
+  return tab?.disabled ? void 0 : tab;
+}
+var TabsController = class {
+  tabs;
+  activeIndex;
+  #ownsTabs;
+  #ownsActiveIndex;
+  #onChange;
+  constructor(options) {
+    this.#ownsTabs = !(options.tabs instanceof Signal);
+    this.#ownsActiveIndex = !(options.activeIndex instanceof Signal);
+    this.tabs = signalify(options.tabs, { deepObserve: true });
+    this.activeIndex = signalify(options.activeIndex ?? 0);
+    this.#onChange = options.onChange;
+    this.activeIndex.value = clampTabIndex(this.tabs.peek(), this.activeIndex.peek());
+  }
+  active() {
+    return tabForIndex(this.tabs.peek(), this.activeIndex.peek());
+  }
+  move(delta) {
+    return this.setActive(shiftTabIndex(this.tabs.peek(), this.activeIndex.peek(), delta));
+  }
+  first() {
+    return this.setActive(0);
+  }
+  last() {
+    return this.setActive(this.tabs.peek().length - 1);
+  }
+  setActive(index) {
+    const next = clampTabIndex(this.tabs.peek(), index);
+    this.activeIndex.value = next;
+    const tab = this.tabs.peek()[next];
+    if (tab && !tab.disabled) {
+      void this.#onChange?.(tab, next);
+      return tab;
+    }
+    return void 0;
+  }
+  handleKeyPress({ key, ctrl, meta, shift }) {
+    if (ctrl || meta || shift) return;
+    if (key === "left") {
+      this.move(-1);
+    } else if (key === "right") {
+      this.move(1);
+    } else if (key === "home") {
+      this.first();
+    } else if (key === "end") {
+      this.last();
+    }
+  }
+  inspect() {
+    const tabs = this.tabs.peek().map((tab) => ({ ...tab }));
+    const activeIndex = clampTabIndex(tabs, this.activeIndex.peek());
+    const active2 = tabForIndex(tabs, activeIndex);
+    return {
+      tabs,
+      tabCount: tabs.length,
+      activeIndex,
+      active: active2 ? { ...active2 } : void 0,
+      empty: tabs.length === 0
+    };
+  }
+  dispose() {
+    if (this.#ownsTabs) this.tabs.dispose();
+    if (this.#ownsActiveIndex) this.activeIndex.dispose();
+  }
+};
+
 // src/components/textbox.ts
 var TextLineCache = class {
   #text = "";
@@ -4138,6 +5506,485 @@ var TreeController = class {
     if (this.#ownsSelectedIndex) this.selectedIndex.dispose();
   }
 };
+
+// src/markup/widgets.ts
+var MarkupWidgetHydrationRegistry = class {
+  #factories = /* @__PURE__ */ new Map();
+  register(tag, factory) {
+    this.#factories.set(normalizeTag(tag), factory);
+    return this;
+  }
+  factoryFor(tag) {
+    return this.#factories.get(normalizeTag(tag));
+  }
+  hydrateNode(node, context) {
+    return this.factoryFor(node.tag)?.(node, context);
+  }
+};
+var MarkupWidgetHydration = class {
+  widgets;
+  byId;
+  focusOrder;
+  constructor(widgets) {
+    this.widgets = [...widgets];
+    this.byId = new Map(this.widgets.map((widget) => [widget.id, widget]));
+    this.focusOrder = this.widgets.filter((widget) => widget.focusable).map((widget) => widget.id);
+  }
+  dispatch(event) {
+    const widget = this.byId.get(event.id);
+    if (!widget) return false;
+    return dispatchMarkupWidgetEvent(widget, event);
+  }
+  inspect() {
+    return {
+      widgetCount: this.widgets.length,
+      focusOrder: [...this.focusOrder],
+      widgets: this.widgets.map((widget) => ({
+        id: widget.id,
+        tag: widget.tag,
+        kind: widget.kind,
+        focusable: widget.focusable,
+        actions: [...widget.actions],
+        controller: widget.controller?.constructor.name
+      }))
+    };
+  }
+  dispose() {
+    for (const widget of this.widgets) {
+      widget.controller?.dispose();
+    }
+  }
+};
+function createDefaultMarkupWidgetRegistry() {
+  const registry = new MarkupWidgetHydrationRegistry();
+  registry.register("button", buttonWidget).register("checkbox", checkboxWidget).register("combo-box", comboboxWidget).register("combobox", comboboxWidget).register("div", containerWidget).register("form", containerWidget).register("input", inputWidget).register("menu-bar", containerWidget).register("panel", containerWidget).register("radio-group", radioGroupWidget).register("scroll-area", scrollAreaWidget).register("select", comboboxWidget).register("slider", sliderWidget).register("statusbar", containerWidget).register("tabs", tabsWidget).register("text-box", textBoxWidget).register("textarea", textBoxWidget).register("textbox", textBoxWidget).register("toolbar", containerWidget).register("tree", treeWidget).register("window", windowWidget);
+  return registry;
+}
+function hydrateMarkupWidgets(root2, options = {}) {
+  const registry = options.registry ?? createDefaultMarkupWidgetRegistry();
+  const widgets = [];
+  const context = { layout: options.layout, registry };
+  walkLayoutNodes(root2, (node) => {
+    const descriptor = registry.hydrateNode(node, context);
+    if (!descriptor) return;
+    widgets.push({
+      id: node.id,
+      tag: node.tag,
+      kind: descriptor.kind,
+      node,
+      box: options.layout?.byId.get(node.id),
+      controller: descriptor.controller,
+      focusable: descriptor.focusable ?? Boolean(descriptor.controller),
+      actions: descriptor.actions ?? defaultActionsForKind(descriptor.kind)
+    });
+  });
+  return new MarkupWidgetHydration(widgets);
+}
+function dispatchMarkupWidgetEvent(widget, event) {
+  const controller = widget.controller;
+  if (!controller) return false;
+  if (event.type === "press") {
+    if (controller instanceof ButtonController) return controller.press(event.method, event.now);
+    if (controller instanceof CheckBoxController) {
+      controller.toggle();
+      return true;
+    }
+    if (controller instanceof ComboBoxController) {
+      controller.toggle();
+      return true;
+    }
+    if (controller instanceof TreeController) {
+      return Boolean(controller.selectActive());
+    }
+    return false;
+  }
+  if (event.type === "input") {
+    if (controller instanceof InputController) {
+      controller.setText(event.value);
+      return true;
+    }
+    if (controller instanceof TextBoxController) {
+      controller.setText(event.value);
+      return true;
+    }
+    return false;
+  }
+  if (event.type === "key") {
+    return dispatchKeyEvent(controller, event);
+  }
+  if (event.type === "pointer") {
+    if (!(controller instanceof SliderController)) return false;
+    const track = event.track ?? boxAsSliderTrack(widget.box, controller.orientation.peek());
+    if (!track) return false;
+    controller.handlePointer(track, event.column, event.row);
+    return true;
+  }
+  if (event.type === "scroll") {
+    const columns = event.columns ?? 0;
+    const rows2 = event.rows ?? 0;
+    if (controller instanceof ScrollAreaController) {
+      controller.scrollBy(columns, rows2);
+      return true;
+    }
+    if (controller instanceof SliderController) {
+      controller.handleScroll(rows2 || columns);
+      return true;
+    }
+    return false;
+  }
+  if (event.type === "select") {
+    return dispatchSelectEvent(controller, event);
+  }
+  if (event.type === "set-value") {
+    if (!(controller instanceof SliderController)) return false;
+    controller.setValue(event.value);
+    return true;
+  }
+  if (event.type === "toggle") {
+    if (controller instanceof CheckBoxController) {
+      controller.toggle();
+      return true;
+    }
+    if (controller instanceof ComboBoxController) {
+      controller.toggle();
+      return true;
+    }
+    if (controller instanceof TreeController) {
+      return Boolean(controller.toggleActive());
+    }
+  }
+  return false;
+}
+function dispatchKeyEvent(controller, event) {
+  const keyEvent = {
+    key: event.key,
+    ctrl: Boolean(event.ctrl),
+    meta: Boolean(event.meta),
+    shift: Boolean(event.shift),
+    buffer: new Uint8Array()
+  };
+  if (controller instanceof ButtonController) {
+    if (event.key !== "return" && event.key !== "space") return false;
+    return controller.press("keyboard");
+  }
+  if (controller instanceof CheckBoxController) {
+    if (event.key !== "return" && event.key !== "space") return false;
+    controller.toggle();
+    return true;
+  }
+  if (controller instanceof InputController) return controller.handleKeyPress(keyEvent) !== "ignored";
+  if (controller instanceof TextBoxController) return controller.handleKeyPress(keyEvent) !== "ignored";
+  if (controller instanceof SliderController) {
+    controller.handleKeyPress(keyEvent);
+    return true;
+  }
+  if (controller instanceof ComboBoxController) {
+    controller.handleKeyPress(keyEvent);
+    return true;
+  }
+  if (controller instanceof RadioGroupController) {
+    controller.handleKeyPress(keyEvent);
+    return true;
+  }
+  if (controller instanceof TabsController) {
+    controller.handleKeyPress(keyEvent);
+    return true;
+  }
+  if (controller instanceof TreeController) {
+    controller.handleKeyPress(keyEvent, event.height);
+    return true;
+  }
+  if (controller instanceof ScrollAreaController) {
+    if (event.key === "up") controller.scrollBy(0, -1);
+    else if (event.key === "down") controller.scrollBy(0, 1);
+    else if (event.key === "left") controller.scrollBy(-1, 0);
+    else if (event.key === "right") controller.scrollBy(1, 0);
+    else if (event.key === "home") controller.scrollTo(0, 0);
+    else if (event.key === "end") controller.scrollTo(0, controller.maxOffset().rows);
+    else if (event.key === "pageup") controller.scrollBy(0, -Math.max(1, controller.viewportHeight.peek() - 1));
+    else if (event.key === "pagedown") controller.scrollBy(0, Math.max(1, controller.viewportHeight.peek() - 1));
+    else return false;
+    return true;
+  }
+  return false;
+}
+function dispatchSelectEvent(controller, event) {
+  if (controller instanceof ComboBoxController) {
+    const index = event.index ?? indexOfString(controller.inspect().items, event.value);
+    if (index === void 0) return false;
+    return controller.selectIndex(index) !== void 0;
+  }
+  if (controller instanceof RadioGroupController) {
+    if (event.index !== void 0) return controller.selectIndex(event.index) !== void 0;
+    return controller.selectValue(event.value) !== void 0;
+  }
+  if (controller instanceof TabsController) {
+    if (event.index !== void 0) return controller.setActive(event.index) !== void 0;
+    const index = controller.inspect().tabs.findIndex((tab) => tab.id === event.value || tab.label === event.value);
+    return index >= 0 && controller.setActive(index) !== void 0;
+  }
+  if (controller instanceof TreeController) {
+    const rows2 = controller.visibleRows();
+    const index = event.index ?? rows2.findIndex((row) => row.id === event.value || row.label === event.value);
+    if (index === void 0 || index < 0) return false;
+    controller.setSelectedIndex(index);
+    return Boolean(controller.selectActive());
+  }
+  return false;
+}
+function buttonWidget(node) {
+  return {
+    kind: "button",
+    controller: new ButtonController({
+      label: labelForNode(node),
+      disabled: booleanAttr(node.attributes, "disabled")
+    })
+  };
+}
+function checkboxWidget(node) {
+  return {
+    kind: "checkbox",
+    controller: new CheckBoxController({ checked: booleanAttr(node.attributes, "checked") })
+  };
+}
+function comboboxWidget(node) {
+  const items = optionNodes(node).map((option) => labelForNode(option));
+  const selectedIndex = selectedOptionIndex(node);
+  return {
+    kind: "combobox",
+    controller: new ComboBoxController({
+      items,
+      selectedIndex,
+      expanded: booleanAttr(node.attributes, "expanded"),
+      placeholder: stringAttr(node.attributes, "placeholder", "")
+    })
+  };
+}
+function containerWidget(node) {
+  if (node.tag === "div" && !node.attributes.role) return void 0;
+  return { kind: "container", focusable: false, actions: [] };
+}
+function inputWidget(node) {
+  const type = stringAttr(node.attributes, "type", "text").toLowerCase();
+  if (type === "checkbox") return checkboxWidget(node);
+  if (type === "range") return sliderWidget(node);
+  return {
+    kind: "input",
+    controller: new InputController({
+      text: stringAttr(node.attributes, "value", node.text ?? ""),
+      cursorPosition: numberAttr(node.attributes, "cursor-position", void 0),
+      password: type === "password" || booleanAttr(node.attributes, "password"),
+      placeholder: stringAttr(node.attributes, "placeholder", void 0),
+      multiCodePointSupport: booleanAttr(node.attributes, "multi-code-point-support")
+    })
+  };
+}
+function radioGroupWidget(node) {
+  const options = optionNodes(node, ["option", "radio"]).map(radioOptionForNode);
+  const selectedValue = node.attributes["selected-value"] ?? node.attributes.value;
+  return {
+    kind: "radio-group",
+    controller: new RadioGroupController({
+      options,
+      selectedValue,
+      activeIndex: numberAttr(node.attributes, "active-index", 0)
+    })
+  };
+}
+function scrollAreaWidget(node, context) {
+  const box = context.layout?.byId.get(node.id);
+  const viewportWidth = numberAttr(node.attributes, "viewport-width", box?.contentRect.width ?? box?.rect.width ?? 0);
+  const viewportHeight = numberAttr(
+    node.attributes,
+    "viewport-height",
+    box?.contentRect.height ?? box?.rect.height ?? 0
+  );
+  return {
+    kind: "scroll-area",
+    controller: new ScrollAreaController({
+      contentWidth: numberAttr(node.attributes, "content-width", Math.max(viewportWidth, box?.scrollWidth ?? 0)),
+      contentHeight: numberAttr(node.attributes, "content-height", Math.max(viewportHeight, box?.scrollHeight ?? 0)),
+      viewportWidth,
+      viewportHeight,
+      offset: {
+        columns: numberAttr(node.attributes, "offset-columns", 0),
+        rows: numberAttr(node.attributes, "offset-rows", 0)
+      },
+      showScrollbar: booleanAttr(node.attributes, "show-scrollbar", true)
+    })
+  };
+}
+function sliderWidget(node) {
+  const min2 = numberAttr(node.attributes, "min", 0);
+  const max2 = numberAttr(node.attributes, "max", 100);
+  return {
+    kind: "slider",
+    controller: new SliderController({
+      min: min2,
+      max: max2,
+      step: numberAttr(node.attributes, "step", 1),
+      value: numberAttr(node.attributes, "value", min2),
+      orientation: orientationAttr(node.attributes, "orientation", "horizontal"),
+      adjustThumbSize: booleanAttr(node.attributes, "adjust-thumb-size")
+    })
+  };
+}
+function tabsWidget(node) {
+  const tabs = node.children.filter((child) => child.tag === "tab").map(tabForNode);
+  return {
+    kind: "tabs",
+    controller: new TabsController({
+      tabs,
+      activeIndex: numberAttr(node.attributes, "active-index", selectedTabIndex(tabs))
+    })
+  };
+}
+function textBoxWidget(node) {
+  return {
+    kind: "textbox",
+    controller: new TextBoxController({
+      text: stringAttr(node.attributes, "value", node.text ?? ""),
+      lineHighlighting: booleanAttr(node.attributes, "line-highlighting"),
+      lineNumbering: booleanAttr(node.attributes, "line-numbering"),
+      multiCodePointSupport: booleanAttr(node.attributes, "multi-code-point-support"),
+      wordWrap: booleanAttr(node.attributes, "word-wrap", true)
+    })
+  };
+}
+function treeWidget(node) {
+  return {
+    kind: "tree",
+    controller: new TreeController({
+      nodes: node.children.filter((child) => child.tag === "tree-node").map(treeNodeForNode),
+      selectedIndex: numberAttr(node.attributes, "selected-index", 0)
+    })
+  };
+}
+function windowWidget() {
+  return { kind: "window", focusable: false, actions: [] };
+}
+function defaultActionsForKind(kind) {
+  if (kind === "button") return ["press", "key"];
+  if (kind === "checkbox") return ["toggle", "press", "key"];
+  if (kind === "combobox") return ["toggle", "select", "key"];
+  if (kind === "input") return ["input", "key"];
+  if (kind === "radio-group") return ["select", "key"];
+  if (kind === "scroll-area") return ["scroll", "key"];
+  if (kind === "slider") return ["set-value", "pointer", "scroll", "key"];
+  if (kind === "tabs") return ["select", "key"];
+  if (kind === "textbox") return ["input", "key"];
+  if (kind === "tree") return ["select", "toggle", "key"];
+  return [];
+}
+function optionNodes(node, tags = ["option"]) {
+  const wanted = new Set(tags);
+  return node.children.filter((child) => wanted.has(child.tag));
+}
+function radioOptionForNode(node) {
+  const label = labelForNode(node);
+  return {
+    value: stringAttr(node.attributes, "value", node.id),
+    label,
+    disabled: booleanAttr(node.attributes, "disabled")
+  };
+}
+function tabForNode(node) {
+  return {
+    id: stringAttr(node.attributes, "value", node.id),
+    label: labelForNode(node),
+    disabled: booleanAttr(node.attributes, "disabled")
+  };
+}
+function treeNodeForNode(node) {
+  const children = node.children.filter((child) => child.tag === "tree-node").map(treeNodeForNode);
+  return {
+    id: stringAttr(node.attributes, "value", node.id),
+    label: labelForNode(node),
+    expanded: booleanAttr(node.attributes, "expanded"),
+    children: children.length > 0 ? children : void 0
+  };
+}
+function selectedOptionIndex(node) {
+  const explicit = numberAttr(node.attributes, "selected-index", void 0);
+  if (explicit !== void 0) return explicit;
+  const value = node.attributes.value ?? node.attributes["selected-value"];
+  if (value !== void 0) {
+    const index = optionNodes(node).findIndex(
+      (option) => option.attributes.value === value || labelForNode(option) === value
+    );
+    if (index >= 0) return index;
+  }
+  const selected = optionNodes(node).findIndex((option) => booleanAttr(option.attributes, "selected"));
+  if (selected >= 0) return selected;
+  return void 0;
+}
+function selectedTabIndex(tabs) {
+  const index = tabs.findIndex((tab) => !tab.disabled);
+  return index < 0 ? 0 : index;
+}
+function labelForNode(node) {
+  const text = textForNode(node);
+  return node.attributes.label ?? (text ? text : node.attributes.value ?? node.id);
+}
+function textForNode(node) {
+  if (node.text !== void 0) return node.text;
+  return node.children.map(textForNode).join(" ").trim();
+}
+function boxAsSliderTrack(box, _orientation) {
+  if (!box) return void 0;
+  const rect = box.contentRect;
+  return {
+    column: rect.column,
+    row: rect.row,
+    width: Math.max(1, rect.width),
+    height: Math.max(1, rect.height)
+  };
+}
+function indexOfString(items, value) {
+  if (value === void 0) return void 0;
+  const index = items.indexOf(value);
+  return index < 0 ? void 0 : index;
+}
+function orientationAttr(attributes, name, fallback) {
+  const value = stringAttr(attributes, name, fallback).toLowerCase();
+  return value === "vertical" ? "vertical" : "horizontal";
+}
+function booleanAttr(attributes, name, fallback = false) {
+  if (!(name in attributes)) return fallback;
+  const value = attributes[name]?.trim().toLowerCase();
+  return value !== "false" && value !== "0" && value !== "no" && value !== "off";
+}
+function numberAttr(attributes, name, fallback) {
+  const value = attributes[name];
+  if (value === void 0) return fallback;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+function stringAttr(attributes, name, fallback) {
+  return attributes[name] ?? fallback;
+}
+function normalizeTag(tag) {
+  return tag.trim().toLowerCase();
+}
+
+// src/markup/hydrate.ts
+function createMarkupLayout(options) {
+  const document2 = parseTuiMarkup(options.markup, options.parse);
+  const stylesheet = options.stylesheet ?? parseCssStylesheet(options.css ?? "");
+  const styledRoot = applyCssCascade(document2.root, stylesheet, {
+    ...options.cascade ?? {},
+    viewport: options.cascade?.viewport ?? {
+      width: options.bounds.width,
+      height: options.bounds.height
+    }
+  });
+  const layout = createLayoutEngine({ solver: options.solver }).layout({
+    root: styledRoot,
+    bounds: options.bounds
+  });
+  const widgets = options.widgets === false ? new MarkupWidgetHydration([]) : hydrateMarkupWidgets(styledRoot, { layout, ...options.widgets ?? {} });
+  return { document: document2, styledRoot, layout, widgets };
+}
 
 // src/components/data_table.ts
 function createDataTableView(rows2, columns, state = {}, rowKey) {
@@ -5725,7 +7572,139 @@ function makeStyle(options = {}) {
   return (text) => `${prefix}${text}\x1B[0m`;
 }
 
+// app/html_css_layout_demo.ts
+var htmlCssLayoutDemoMarkup = `
+  <window id="layout-demo" class="shell">
+    <menu-bar id="layout-toolbar">File View Theme Help</menu-bar>
+    <div id="layout-stage" class="stage">
+      <panel id="metric-cpu" class="metric primary">CPU flex item</panel>
+      <panel id="metric-gpu" class="metric">GPU flex item</panel>
+      <panel id="metric-net" class="metric">NET flex item</panel>
+      <panel id="metric-disk" class="metric">DISK flex item</panel>
+      <panel id="layout-badge" class="badge">absolute inset</panel>
+    </div>
+    <statusbar id="layout-footer">resize the window: cards wrap, badge stays top-right</statusbar>
+  </window>
+`;
+var htmlCssLayoutDemoCss = `
+  window {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    gap: 1;
+    padding: 1;
+    background: var(--surface);
+    color: var(--text);
+  }
+
+  menu-bar,
+  statusbar {
+    height: 1;
+  }
+
+  #layout-stage {
+    display: flex;
+    flex-flow: row wrap;
+    align-items: start;
+    flex: 1;
+    gap: 1;
+    padding: 1;
+    position: relative;
+    overflow: auto;
+  }
+
+  .metric {
+    width: 18;
+    height: 5;
+    padding: 1;
+    border: 1 single var(--accent);
+  }
+
+  .primary {
+    width: 22;
+  }
+
+  .badge {
+    position: absolute;
+    top: 1;
+    right: 2;
+    width: 20;
+    height: 3;
+    padding: 1;
+    border: 1 single var(--warning);
+  }
+
+  @media (max-width: 58) {
+    window {
+      gap: 0;
+      padding: 0;
+    }
+
+    #layout-stage {
+      gap: 1;
+      padding: 1;
+    }
+
+    .metric {
+      width: 14;
+      height: 4;
+    }
+
+    .primary {
+      width: 16;
+    }
+
+    .badge {
+      right: 1;
+      width: 16;
+    }
+  }
+`;
+function createHtmlCssLayoutDemo(bounds, options = {}) {
+  return createMarkupLayout({
+    markup: htmlCssLayoutDemoMarkup,
+    css: htmlCssLayoutDemoCss,
+    bounds,
+    solver: options.solver,
+    cascade: {
+      variables: {
+        "--surface": "#101827",
+        "--text": "#e5f3ff",
+        "--accent": "#7dd3fc",
+        "--warning": "#f59e0b"
+      }
+    },
+    widgets: false
+  });
+}
+function htmlCssLayoutDemoBoxLabel(box) {
+  switch (box.id) {
+    case "layout-demo":
+      return "window display:flex column";
+    case "layout-toolbar":
+      return "menu-bar height:1";
+    case "layout-stage":
+      return "display:flex; flex-flow:row wrap";
+    case "metric-cpu":
+      return box.rect.width <= 16 ? "primary @media width:16" : "primary width:22";
+    case "metric-gpu":
+      return box.rect.width <= 14 ? "card @media width:14" : "card width:18";
+    case "metric-net":
+      return box.rect.width <= 14 ? "card @media width:14" : "card width:18";
+    case "metric-disk":
+      return box.rect.width <= 14 ? "card @media width:14" : "card width:18";
+    case "layout-badge":
+      return "position:absolute; top:1; right:2";
+    case "layout-footer":
+      return "statusbar";
+    default:
+      return `${box.tag}#${box.id}`;
+  }
+}
+
 // examples/web/api_workbench_page.ts
+var THEME_STORAGE_KEY = "deno-tui.web-workbench.theme";
 var root = document.querySelector("#api-workbench");
 if (!root) throw new Error("Missing #api-workbench mount element.");
 var mount = root;
@@ -5741,6 +7720,7 @@ var host = createWebTui({
   }
 });
 var themes = grWizardThemePalettes.map((palette) => ({
+  id: palette.name,
   label: palette.label,
   bg: palette.bg,
   bgAlt: palette.bgAlt,
@@ -5765,24 +7745,37 @@ var rows = [
   { id: "explorer", surface: "FileExplorer", state: "browsing", ms: 3 },
   { id: "menu", surface: "MenuBar", state: "active", ms: 2 },
   { id: "tiles", surface: "Tile Layout", state: "balanced", ms: 5 },
+  { id: "layout", surface: "HTML/CSS Layout", state: "solver", ms: 7 },
   { id: "table", surface: "DataTable", state: "sorted", ms: 8 },
   { id: "scroll", surface: "ScrollArea", state: "tracking", ms: 3 },
   { id: "theme", surface: "Theme", state: "bound", ms: 4 },
+  { id: "terminal", surface: "Remote Terminal", state: "browser-safe", ms: 5 },
   { id: "mouse", surface: "Pointer", state: "captured", ms: 1 },
   { id: "three", surface: "Three ASCII", state: "preview", ms: 6 }
 ];
 var docs = [
   "Click panel buttons to minimize, maximize, or restore.",
   "Open the Theme menu for the same dropdown-style theme selector as the terminal workbench.",
-  "Use Tab, 1-6, M, F, R, T, H, Q, [ and ] from the keyboard.",
+  "Use Tab, 1-8, M, F, R, T, H, Q, [ and ] from the keyboard.",
   "The browser host maps pointer cells to the same mouse events as the terminal.",
   "Resize the browser: the terminal grid recalculates from CSS dimensions.",
   "The web workbench includes Explorer, Data, Controls, Logs, and a browser-safe Three ASCII preview pane.",
+  "HTML/CSS Layout previews parseTuiMarkup, CSS cascade, flex wrap, and absolute positioning in a browser-hosted window.",
+  "Terminal shows the remote-terminal protocol boundary used by browser shells instead of exposing local stdio directly.",
   "The demo uses public controllers and canvas primitives from mod.web.ts."
 ];
-var panelIds = ["explorer", "inspector", "data", "controls", "logs", "three"];
+var panelIds = [
+  "explorer",
+  "inspector",
+  "data",
+  "controls",
+  "logs",
+  "three",
+  "htmlLayout",
+  "terminal"
+];
 var explorerKeys = /* @__PURE__ */ new Set(["up", "down", "left", "right", "pageup", "pagedown", "home", "end", "space", "return"]);
-var themeIndex = new Signal(0);
+var themeIndex = new Signal(initialThemeIndex());
 var active = new Signal("inspector");
 var maximized = new Signal(null);
 var minimized = new Signal({
@@ -5791,7 +7784,9 @@ var minimized = new Signal({
   data: false,
   controls: false,
   logs: false,
-  three: false
+  three: false,
+  htmlLayout: false,
+  terminal: false
 }, { deepObserve: true });
 var themeMenuOpen = new Signal(false);
 var tileDensity = new Signal(0);
@@ -5802,6 +7797,7 @@ var lastVisiblePanel = null;
 var lastWorkspaceWidth = 0;
 var lastWorkspaceHeight = 0;
 var dropdownOverlay = null;
+themeIndex.subscribe((index) => persistThemeIndex(index));
 var menu = new MenuBarController({
   items: ["File", "View", "Layout", "Theme", "Help"].map((label) => ({ id: label.toLowerCase(), label })),
   onSelect: (item) => {
@@ -5891,8 +7887,14 @@ var explorer = new FileExplorerController({
     "/examples/web/api_workbench_page.ts",
     "/examples/web/neon_exodus_page.ts",
     "/examples/web/three_ascii_page.ts",
+    "/app/html_css_layout_demo.ts",
     "/src/web/host.ts",
     "/src/web/platform.ts",
+    "/src/web/remote_terminal.ts",
+    "/src/markup/css.ts",
+    "/src/markup/html.ts",
+    "/src/layout/solvers/simple.ts",
+    "/src/layout/solvers/yoga.ts",
     "/src/components/modal.ts",
     "/src/components/file_explorer.ts",
     "/src/layout/responsive.ts",
@@ -6090,7 +8092,7 @@ function draw() {
     paint(
       renderStatusBar(
         `focus ${active.peek()} | ${theme().label} | tiles ${densityLabel}`,
-        "1-6 focus  T theme  H help  Q quit  click controls",
+        "1-8 focus  T theme  H help  Q quit  click controls",
         width
       ),
       theme().text,
@@ -6221,6 +8223,8 @@ function renderPanel(frame, id2, rect) {
   else if (id2 === "controls") renderControls(frame, inner);
   else if (id2 === "logs") renderLogs(frame, inner);
   else if (id2 === "three") renderThreePreview(frame, inner);
+  else if (id2 === "htmlLayout") renderHtmlCssLayout(frame, inner);
+  else if (id2 === "terminal") renderTerminalProtocol(frame, inner);
   else {
     const lines = panelLines(id2, inner.height);
     lines.forEach((line, index) => {
@@ -6238,7 +8242,7 @@ function renderPanel(frame, id2, rect) {
   }
 }
 function panelTitle(id2) {
-  return id2 === "explorer" ? "Explorer" : id2 === "data" ? "Data Table" : id2 === "three" ? "Three ASCII" : id2[0].toUpperCase() + id2.slice(1);
+  return id2 === "explorer" ? "Explorer" : id2 === "data" ? "Data Table" : id2 === "three" ? "Three ASCII" : id2 === "htmlLayout" ? "HTML/CSS Layout" : id2 === "terminal" ? "Terminal" : id2[0].toUpperCase() + id2.slice(1);
 }
 function renderLogs(frame, rect) {
   const lines = [...docs, ...log.peek()];
@@ -6327,6 +8331,106 @@ function asciiOrb(width, height, phase) {
     return line;
   });
 }
+function renderHtmlCssLayout(frame, rect) {
+  const t = theme();
+  const result = createHtmlCssLayoutDemo(rect);
+  const boxes = result.layout.boxes.filter((box) => box.visible).sort((left, right) => left.zIndex - right.zIndex || boxPaintOrder(left) - boxPaintOrder(right));
+  for (const box of boxes) {
+    renderHtmlCssLayoutBox(frame, box, rect, t);
+  }
+  const rows2 = [
+    "parseTuiMarkup -> parseCssStylesheet -> applyCssCascade -> LayoutEngine",
+    "Flex rows wrap; absolute badge stays anchored; boxes are real hit-test rects.",
+    "Resize the browser to recalculate terminal-cell layout through the web host."
+  ];
+  const start = Math.max(rect.row, rect.row + rect.height - rows2.length);
+  for (let index = 0; index < rows2.length && start + index < rect.row + rect.height; index += 1) {
+    write(
+      frame,
+      start + index,
+      rect.column,
+      paint(fit(rows2[index], rect.width), index === 0 ? t.accent : t.soft, t.panelAlt, index === 0)
+    );
+  }
+}
+function renderHtmlCssLayoutBox(frame, box, bounds, t) {
+  const rect = clipRect(box.rect, bounds);
+  if (rect.width <= 0 || rect.height <= 0) return;
+  const style2 = htmlCssLayoutBoxStyle(box, t);
+  fillRect(frame, rect, style2.bg);
+  if (box.id !== "layout-demo") {
+    drawHtmlCssLayoutOutline(frame, rect, style2.border, style2.bg, style2.bold);
+  }
+  const content = clipRect(box.contentRect, bounds);
+  if (content.width <= 0 || content.height <= 0) return;
+  const label = htmlCssLayoutDemoBoxLabel(box);
+  write(frame, content.row, content.column, paint(fit(label, content.width), style2.fg, style2.bg, style2.bold));
+  if (content.height > 1 && box.text) {
+    write(frame, content.row + 1, content.column, paint(fit(box.text, content.width), t.text, style2.bg));
+  }
+  if (content.height > 2 && box.id.startsWith("metric-")) {
+    const detail = `${box.rect.width}x${box.rect.height} content ${box.contentRect.width}x${box.contentRect.height}`;
+    write(frame, content.row + 2, content.column, paint(fit(detail, content.width), t.muted, style2.bg));
+  }
+}
+function htmlCssLayoutBoxStyle(box, t) {
+  if (box.id === "layout-toolbar") {
+    return { fg: contrastText(t.accentDeep, t.bg, t.text), bg: t.accentDeep, border: t.accent, bold: true };
+  }
+  if (box.id === "layout-stage") return { fg: t.text, bg: t.panelAlt, border: t.borderStrong, bold: true };
+  if (box.id === "layout-badge") {
+    return { fg: contrastText(t.warn, t.bg, t.text), bg: t.warn, border: t.danger, bold: true };
+  }
+  if (box.id === "layout-footer") return { fg: t.muted, bg: t.panel, border: t.border };
+  if (box.id === "metric-cpu") {
+    return { fg: contrastText(t.buttonActiveBg, t.bg, t.text), bg: t.buttonActiveBg, border: t.accent, bold: true };
+  }
+  if (box.id.startsWith("metric-")) return { fg: t.text, bg: t.panel, border: t.accent };
+  return { fg: t.text, bg: t.surface, border: t.border };
+}
+function boxPaintOrder(box) {
+  if (box.id === "layout-demo") return 0;
+  if (box.id === "layout-stage") return 1;
+  if (box.id.startsWith("metric-")) return 2;
+  if (box.id === "layout-badge") return 3;
+  return 2;
+}
+function drawHtmlCssLayoutOutline(frame, rect, fg, bg, bold = false) {
+  if (rect.width < 2 || rect.height < 2) return;
+  write(frame, rect.row, rect.column, paint(`\u250C${"\u2500".repeat(Math.max(0, rect.width - 2))}\u2510`, fg, bg, bold));
+  for (let row = rect.row + 1; row < rect.row + rect.height - 1; row += 1) {
+    write(frame, row, rect.column, paint("\u2502", fg, bg, bold));
+    write(frame, row, rect.column + rect.width - 1, paint("\u2502", fg, bg, bold));
+  }
+  write(
+    frame,
+    rect.row + rect.height - 1,
+    rect.column,
+    paint(`\u2514${"\u2500".repeat(Math.max(0, rect.width - 2))}\u2518`, fg, bg, bold)
+  );
+}
+function renderTerminalProtocol(frame, rect) {
+  const t = theme();
+  const rows2 = [
+    "REMOTE TERMINAL / BROWSER BOUNDARY",
+    "",
+    "Console: ProcessSessionController + optional PTY backend",
+    "Browser: createRemoteTerminalClient() transport protocol",
+    "Screen: TerminalScreenController ANSI cell model",
+    "Input: routeTerminalKeyPress / routeTerminalPaste compatible",
+    "",
+    "Local OS shells stay server-side by design; the standalone web package can attach to an explicit remote endpoint.",
+    "This keeps GitHub Pages safe while preserving the same terminal API shape for hosted shells.",
+    "",
+    "Next todo: expose a PTY-backed shell window in the console workbench and mirror it here through the remote protocol."
+  ];
+  rows2.slice(0, rect.height).forEach((line, index) => {
+    const header = index === 0;
+    const bg = header ? t.accentDeep : index === 7 ? t.panelAlt : t.surface;
+    const fg = header ? contrastText(t.accentDeep, t.bg, t.text) : index === 7 ? t.warn : t.text;
+    write(frame, rect.row + index, rect.column, paint(fit(line, rect.width), fg, bg, header || index === 7));
+  });
+}
 function panelLines(id2, height) {
   const source = id2 === "data" ? [
     renderDataTableHeader(table.columns.peek(), table.state.peek().sort),
@@ -6408,7 +8512,16 @@ function restorePanel(id2) {
 }
 function restore() {
   maximized.value = null;
-  minimized.value = { explorer: false, inspector: false, data: false, controls: false, logs: false, three: false };
+  minimized.value = {
+    explorer: false,
+    inspector: false,
+    data: false,
+    controls: false,
+    logs: false,
+    three: false,
+    htmlLayout: false,
+    terminal: false
+  };
   push("restore all");
 }
 function setTheme(index) {
@@ -6667,7 +8780,7 @@ function openHelpModal() {
     title: "Web Workbench Help",
     tone: "info",
     body: [
-      "Keyboard: Tab cycles panels. Use 1-6 to focus Explorer, Inspector, Data, Controls, Logs, and Three ASCII.",
+      "Keyboard: Tab cycles panels. Use 1-8 to focus Explorer, Inspector, Data, Controls, Logs, Three ASCII, HTML/CSS Layout, and Terminal.",
       "Use M to minimize, F or Enter to maximize/restore, R to restore all panels, T for themes, H for help, and Q to quit.",
       "Controls: arrow keys adjust sliders, radio groups, combo boxes, steppers, and dropdowns. Enter or Space activates.",
       "Mouse: click panels to focus, click rows to select, click controls to change values, and click scrollbars to jump.",
@@ -7128,14 +9241,32 @@ function isTextControlActive() {
 }
 function write(frame, row, column, value) {
   if (row < 0 || row >= frame.length || column >= cols()) return;
-  const line = frame[row] ?? "";
-  const visible = textWidth(line);
-  const valueWidth = textWidth(value);
-  if (visible <= column) {
-    frame[row] = line + " ".repeat(column - visible) + value;
-    return;
+  const cells = toStyledCells(frame[row] ?? "");
+  const valueCells = toStyledCells(value);
+  while (cells.length < column) cells.push(" ");
+  for (let index = 0; index < valueCells.length && column + index < cols(); index += 1) {
+    cells[column + index] = valueCells[index];
   }
-  frame[row] = stripStyles(line).slice(0, column).padEnd(column, " ") + value + stripStyles(line).slice(column + valueWidth);
+  frame[row] = cells.slice(0, cols()).join("");
+}
+function toStyledCells(value) {
+  const cells = [];
+  let style2 = "";
+  for (let index = 0; index < value.length; ) {
+    if (value.charCodeAt(index) === 27) {
+      const match = /^\x1b\[[0-9;]*m/.exec(value.slice(index));
+      if (match) {
+        const sequence = match[0];
+        style2 = sequence.includes("[0m") ? "" : style2 + sequence;
+        index += sequence.length;
+        continue;
+      }
+    }
+    const char = value[index];
+    cells.push(style2 ? `${style2}${char}\x1B[0m` : char);
+    index += char.length;
+  }
+  return cells;
 }
 function fit(value, width) {
   const plain = stripStyles(value);
@@ -7237,6 +9368,21 @@ function parseHexColor(value) {
 function hex(value) {
   const color = value.replace("#", "");
   return [0, 2, 4].map((index) => Number.parseInt(color.slice(index, index + 2), 16));
+}
+function initialThemeIndex() {
+  try {
+    const saved = globalThis.localStorage?.getItem(THEME_STORAGE_KEY);
+    const index = themes.findIndex((entry) => entry.id === saved || entry.label === saved);
+    return index >= 0 ? index : 0;
+  } catch {
+    return 0;
+  }
+}
+function persistThemeIndex(index) {
+  try {
+    globalThis.localStorage?.setItem(THEME_STORAGE_KEY, themes[index]?.id ?? themes[0].id);
+  } catch {
+  }
 }
 function theme() {
   return themes[themeIndex.value];

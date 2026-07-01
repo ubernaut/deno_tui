@@ -51,11 +51,13 @@ Deno.test("TerminalOutputController bounds stream-tagged scrollback and follow m
 });
 
 Deno.test("ProcessSessionController streams stdout stderr and exit metadata", async () => {
+  const raw: string[] = [];
   const session = new ProcessSessionController({
     command: "demo",
     args: ["--stdout", "--stderr"],
     now: () => 10,
     spawn: () => completedChild("alpha\n", "beta\n", { code: 0, success: true }),
+    onOutputData: (source, data) => raw.push(`${source}:${new TextDecoder().decode(data)}`),
   });
 
   assertEquals(await session.start(), true);
@@ -73,6 +75,7 @@ Deno.test("ProcessSessionController streams stdout stderr and exit metadata", as
       ["system", "process exited code=0 duration=0ms"],
     ],
   );
+  assertEquals(raw, ["stdout:alpha\n", "stderr:beta\n"]);
 
   await session.dispose();
 });

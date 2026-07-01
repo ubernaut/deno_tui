@@ -69,6 +69,32 @@ export const htmlCssLayoutDemoCss = `
     padding: 1;
     border: 1 single var(--warning);
   }
+
+  @media (max-width: 58) {
+    window {
+      gap: 0;
+      padding: 0;
+    }
+
+    #layout-stage {
+      gap: 1;
+      padding: 1;
+    }
+
+    .metric {
+      width: 14;
+      height: 4;
+    }
+
+    .primary {
+      width: 16;
+    }
+
+    .badge {
+      right: 1;
+      width: 16;
+    }
+  }
 `;
 
 export interface HtmlCssLayoutDemoOptions {
@@ -102,13 +128,13 @@ export function htmlCssLayoutDemoBoxLabel(box: ComputedLayoutBox): string {
     case "layout-stage":
       return "display:flex; flex-flow:row wrap";
     case "metric-cpu":
-      return "primary width:22";
+      return box.rect.width <= 16 ? "primary @media width:16" : "primary width:22";
     case "metric-gpu":
-      return "card width:18";
+      return box.rect.width <= 14 ? "card @media width:14" : "card width:18";
     case "metric-net":
-      return "card width:18";
+      return box.rect.width <= 14 ? "card @media width:14" : "card width:18";
     case "metric-disk":
-      return "card width:18";
+      return box.rect.width <= 14 ? "card @media width:14" : "card width:18";
     case "layout-badge":
       return "position:absolute; top:1; right:2";
     case "layout-footer":

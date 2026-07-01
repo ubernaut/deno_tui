@@ -5,6 +5,8 @@
 export const EDGE_GLYPHS = [" ", "|", "-", "\\", "/"] as const;
 /** Built-in fILL GLYPHS definitions. */
 export const FILL_GLYPHS = [" ", "▁", "▂", "▃", "▄", "▅", "▆", "▇", "█", "█"] as const;
+/** Built-in full-height block fill glyph definitions for terminal block mode. */
+export const BLOCK_FILL_GLYPHS = [" ", "█", "█", "█", "█", "█", "█", "█", "█", "█"] as const;
 /** Built-in aSCII FILL GLYPHS definitions. */
 export const ASCII_FILL_GLYPHS = [" ", ".", ":", "-", "=", "+", "*", "#", "%", "@"] as const;
 /** Built-in tERMINAL GLYPHS definitions. */
@@ -120,8 +122,13 @@ export function glyphForTile(
   }
 
   if (drawFill) {
-    return FILL_GLYPHS[Math.max(0, Math.min(FILL_GLYPHS.length - 1, luminanceBucket))];
+    return blockFillGlyphForBucket(luminanceBucket);
   }
 
   return " ";
+}
+
+/** Public helper for picking a full-height terminal block fill glyph. */
+export function blockFillGlyphForBucket(luminanceBucket: number): string {
+  return BLOCK_FILL_GLYPHS[Math.max(0, Math.min(BLOCK_FILL_GLYPHS.length - 1, luminanceBucket))];
 }

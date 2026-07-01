@@ -6,6 +6,7 @@ import {
   CheckBoxController,
   ComboBoxController,
   Computed,
+  type ComputedLayoutBox,
   createAnsiStyle,
   createFileExplorerTree,
   createWebTui,
@@ -42,8 +43,9 @@ import { grWizardThemePalettes } from "../../src/grwizard_themes.ts";
 import type { Rectangle } from "../../src/types.ts";
 import { stripStyles } from "../../src/utils/strings.ts";
 import { makeStyle } from "../../app/styles.ts";
+import { createHtmlCssLayoutDemo, htmlCssLayoutDemoBoxLabel } from "../../app/html_css_layout_demo.ts";
 
-type PanelId = "explorer" | "inspector" | "data" | "controls" | "logs" | "three";
+type PanelId = "explorer" | "inspector" | "data" | "controls" | "logs" | "three" | "htmlLayout" | "terminal";
 type ControlId =
   | "button"
   | "genericButton"
@@ -82,6 +84,7 @@ interface DropdownOverlay {
 }
 
 interface ThemeSpec {
+  id: string;
   label: string;
   bg: string;
   bgAlt: string;
@@ -102,6 +105,8 @@ interface ThemeSpec {
   buttonActiveBg: string;
   buttonMutedBg: string;
 }
+
+const THEME_STORAGE_KEY = "deno-tui.web-workbench.theme";
 
 interface Row extends Record<string, unknown> {
   id: string;
@@ -127,6 +132,7 @@ const host = createWebTui({
 });
 
 const themes: ThemeSpec[] = grWizardThemePalettes.map((palette) => ({
+  id: palette.name,
   label: palette.label,
   bg: palette.bg,
   bgAlt: palette.bgAlt,
@@ -151,25 +157,38 @@ const rows: Row[] = [
   { id: "explorer", surface: "FileExplorer", state: "browsing", ms: 3 },
   { id: "menu", surface: "MenuBar", state: "active", ms: 2 },
   { id: "tiles", surface: "Tile Layout", state: "balanced", ms: 5 },
+  { id: "layout", surface: "HTML/CSS Layout", state: "solver", ms: 7 },
   { id: "table", surface: "DataTable", state: "sorted", ms: 8 },
   { id: "scroll", surface: "ScrollArea", state: "tracking", ms: 3 },
   { id: "theme", surface: "Theme", state: "bound", ms: 4 },
+  { id: "terminal", surface: "Remote Terminal", state: "browser-safe", ms: 5 },
   { id: "mouse", surface: "Pointer", state: "captured", ms: 1 },
   { id: "three", surface: "Three ASCII", state: "preview", ms: 6 },
 ];
 const docs = [
   "Click panel buttons to minimize, maximize, or restore.",
   "Open the Theme menu for the same dropdown-style theme selector as the terminal workbench.",
-  "Use Tab, 1-6, M, F, R, T, H, Q, [ and ] from the keyboard.",
+  "Use Tab, 1-8, M, F, R, T, H, Q, [ and ] from the keyboard.",
   "The browser host maps pointer cells to the same mouse events as the terminal.",
   "Resize the browser: the terminal grid recalculates from CSS dimensions.",
   "The web workbench includes Explorer, Data, Controls, Logs, and a browser-safe Three ASCII preview pane.",
+  "HTML/CSS Layout previews parseTuiMarkup, CSS cascade, flex wrap, and absolute positioning in a browser-hosted window.",
+  "Terminal shows the remote-terminal protocol boundary used by browser shells instead of exposing local stdio directly.",
   "The demo uses public controllers and canvas primitives from mod.web.ts.",
 ];
-const panelIds: readonly PanelId[] = ["explorer", "inspector", "data", "controls", "logs", "three"];
+const panelIds: readonly PanelId[] = [
+  "explorer",
+  "inspector",
+  "data",
+  "controls",
+  "logs",
+  "three",
+  "htmlLayout",
+  "terminal",
+];
 const explorerKeys = new Set(["up", "down", "left", "right", "pageup", "pagedown", "home", "end", "space", "return"]);
 
-const themeIndex = new Signal(0);
+const themeIndex = new Signal(initialThemeIndex());
 const active = new Signal<PanelId>("inspector");
 const maximized = new Signal<PanelId | null>(null);
 const minimized = new Signal<Record<PanelId, boolean>>({
@@ -179,6 +198,8 @@ const minimized = new Signal<Record<PanelId, boolean>>({
   controls: false,
   logs: false,
   three: false,
+  htmlLayout: false,
+  terminal: false,
 }, { deepObserve: true });
 const themeMenuOpen = new Signal(false);
 const tileDensity = new Signal(0);
@@ -189,6 +210,8 @@ let lastVisiblePanel: PanelId | null = null;
 let lastWorkspaceWidth = 0;
 let lastWorkspaceHeight = 0;
 let dropdownOverlay: DropdownOverlay | null = null;
+
+themeIndex.subscribe((index) => persistThemeIndex(index));
 
 const menu = new MenuBarController({
   items: ["File", "View", "Layout", "Theme", "Help"].map((label) => ({ id: label.toLowerCase(), label })),
@@ -279,8 +302,14 @@ const explorer = new FileExplorerController({
     "/examples/web/api_workbench_page.ts",
     "/examples/web/neon_exodus_page.ts",
     "/examples/web/three_ascii_page.ts",
+    "/app/html_css_layout_demo.ts",
     "/src/web/host.ts",
     "/src/web/platform.ts",
+    "/src/web/remote_terminal.ts",
+    "/src/markup/css.ts",
+    "/src/markup/html.ts",
+    "/src/layout/solvers/simple.ts",
+    "/src/layout/solvers/yoga.ts",
     "/src/components/modal.ts",
     "/src/components/file_explorer.ts",
     "/src/layout/responsive.ts",
@@ -485,7 +514,7 @@ function draw(): void {
     paint(
       renderStatusBar(
         `focus ${active.peek()} | ${theme().label} | tiles ${densityLabel}`,
-        "1-6 focus  T theme  H help  Q quit  click controls",
+        "1-8 focus  T theme  H help  Q quit  click controls",
         width,
       ),
       theme().text,
@@ -621,6 +650,8 @@ function renderPanel(frame: string[], id: PanelId, rect: Rectangle): void {
   else if (id === "controls") renderControls(frame, inner);
   else if (id === "logs") renderLogs(frame, inner);
   else if (id === "three") renderThreePreview(frame, inner);
+  else if (id === "htmlLayout") renderHtmlCssLayout(frame, inner);
+  else if (id === "terminal") renderTerminalProtocol(frame, inner);
   else {
     const lines = panelLines(id, inner.height);
     lines.forEach((line, index) => {
@@ -645,6 +676,10 @@ function panelTitle(id: PanelId): string {
     ? "Data Table"
     : id === "three"
     ? "Three ASCII"
+    : id === "htmlLayout"
+    ? "HTML/CSS Layout"
+    : id === "terminal"
+    ? "Terminal"
     : id[0]!.toUpperCase() + id.slice(1);
 }
 
@@ -743,6 +778,120 @@ function asciiOrb(width: number, height: number, phase: number): string[] {
   });
 }
 
+function renderHtmlCssLayout(frame: string[], rect: Rectangle): void {
+  const t = theme();
+  const result = createHtmlCssLayoutDemo(rect);
+  const boxes = result.layout.boxes
+    .filter((box) => box.visible)
+    .sort((left, right) => left.zIndex - right.zIndex || boxPaintOrder(left) - boxPaintOrder(right));
+
+  for (const box of boxes) {
+    renderHtmlCssLayoutBox(frame, box, rect, t);
+  }
+
+  const rows = [
+    "parseTuiMarkup -> parseCssStylesheet -> applyCssCascade -> LayoutEngine",
+    "Flex rows wrap; absolute badge stays anchored; boxes are real hit-test rects.",
+    "Resize the browser to recalculate terminal-cell layout through the web host.",
+  ];
+  const start = Math.max(rect.row, rect.row + rect.height - rows.length);
+  for (let index = 0; index < rows.length && start + index < rect.row + rect.height; index += 1) {
+    write(
+      frame,
+      start + index,
+      rect.column,
+      paint(fit(rows[index]!, rect.width), index === 0 ? t.accent : t.soft, t.panelAlt, index === 0),
+    );
+  }
+}
+
+function renderHtmlCssLayoutBox(frame: string[], box: ComputedLayoutBox, bounds: Rectangle, t: ThemeSpec): void {
+  const rect = clipRect(box.rect, bounds);
+  if (rect.width <= 0 || rect.height <= 0) return;
+  const style = htmlCssLayoutBoxStyle(box, t);
+  fillRect(frame, rect, style.bg);
+  if (box.id !== "layout-demo") {
+    drawHtmlCssLayoutOutline(frame, rect, style.border, style.bg, style.bold);
+  }
+
+  const content = clipRect(box.contentRect, bounds);
+  if (content.width <= 0 || content.height <= 0) return;
+  const label = htmlCssLayoutDemoBoxLabel(box);
+  write(frame, content.row, content.column, paint(fit(label, content.width), style.fg, style.bg, style.bold));
+  if (content.height > 1 && box.text) {
+    write(frame, content.row + 1, content.column, paint(fit(box.text, content.width), t.text, style.bg));
+  }
+  if (content.height > 2 && box.id.startsWith("metric-")) {
+    const detail = `${box.rect.width}x${box.rect.height} content ${box.contentRect.width}x${box.contentRect.height}`;
+    write(frame, content.row + 2, content.column, paint(fit(detail, content.width), t.muted, style.bg));
+  }
+}
+
+function htmlCssLayoutBoxStyle(
+  box: ComputedLayoutBox,
+  t: ThemeSpec,
+): { fg: string; bg: string; border: string; bold?: boolean } {
+  if (box.id === "layout-toolbar") {
+    return { fg: contrastText(t.accentDeep, t.bg, t.text), bg: t.accentDeep, border: t.accent, bold: true };
+  }
+  if (box.id === "layout-stage") return { fg: t.text, bg: t.panelAlt, border: t.borderStrong, bold: true };
+  if (box.id === "layout-badge") {
+    return { fg: contrastText(t.warn, t.bg, t.text), bg: t.warn, border: t.danger, bold: true };
+  }
+  if (box.id === "layout-footer") return { fg: t.muted, bg: t.panel, border: t.border };
+  if (box.id === "metric-cpu") {
+    return { fg: contrastText(t.buttonActiveBg, t.bg, t.text), bg: t.buttonActiveBg, border: t.accent, bold: true };
+  }
+  if (box.id.startsWith("metric-")) return { fg: t.text, bg: t.panel, border: t.accent };
+  return { fg: t.text, bg: t.surface, border: t.border };
+}
+
+function boxPaintOrder(box: ComputedLayoutBox): number {
+  if (box.id === "layout-demo") return 0;
+  if (box.id === "layout-stage") return 1;
+  if (box.id.startsWith("metric-")) return 2;
+  if (box.id === "layout-badge") return 3;
+  return 2;
+}
+
+function drawHtmlCssLayoutOutline(frame: string[], rect: Rectangle, fg: string, bg: string, bold = false): void {
+  if (rect.width < 2 || rect.height < 2) return;
+  write(frame, rect.row, rect.column, paint(`┌${"─".repeat(Math.max(0, rect.width - 2))}┐`, fg, bg, bold));
+  for (let row = rect.row + 1; row < rect.row + rect.height - 1; row += 1) {
+    write(frame, row, rect.column, paint("│", fg, bg, bold));
+    write(frame, row, rect.column + rect.width - 1, paint("│", fg, bg, bold));
+  }
+  write(
+    frame,
+    rect.row + rect.height - 1,
+    rect.column,
+    paint(`└${"─".repeat(Math.max(0, rect.width - 2))}┘`, fg, bg, bold),
+  );
+}
+
+function renderTerminalProtocol(frame: string[], rect: Rectangle): void {
+  const t = theme();
+  const rows = [
+    "REMOTE TERMINAL / BROWSER BOUNDARY",
+    "",
+    "Console: ProcessSessionController + optional PTY backend",
+    "Browser: createRemoteTerminalClient() transport protocol",
+    "Screen: TerminalScreenController ANSI cell model",
+    "Input: routeTerminalKeyPress / routeTerminalPaste compatible",
+    "",
+    "Local OS shells stay server-side by design; the standalone web package can attach to an explicit remote endpoint.",
+    "This keeps GitHub Pages safe while preserving the same terminal API shape for hosted shells.",
+    "",
+    "Next todo: expose a PTY-backed shell window in the console workbench and mirror it here through the remote protocol.",
+  ];
+  rows.slice(0, rect.height).forEach((line, index) => {
+    const header = index === 0;
+    const bg = header ? t.accentDeep : index === 7 ? t.panelAlt : t.surface;
+    const fg = header ? contrastText(t.accentDeep, t.bg, t.text) : index === 7 ? t.warn : t.text;
+    write(frame, rect.row + index, rect.column, paint(fit(line, rect.width), fg, bg, header || index === 7));
+  });
+}
+
 function panelLines(id: PanelId, height: number): string[] {
   const source = id === "data"
     ? [
@@ -833,7 +982,16 @@ function restorePanel(id: PanelId): void {
 }
 function restore(): void {
   maximized.value = null;
-  minimized.value = { explorer: false, inspector: false, data: false, controls: false, logs: false, three: false };
+  minimized.value = {
+    explorer: false,
+    inspector: false,
+    data: false,
+    controls: false,
+    logs: false,
+    three: false,
+    htmlLayout: false,
+    terminal: false,
+  };
   push("restore all");
 }
 function setTheme(index: number): void {
@@ -1116,7 +1274,7 @@ function openHelpModal(): void {
     title: "Web Workbench Help",
     tone: "info",
     body: [
-      "Keyboard: Tab cycles panels. Use 1-6 to focus Explorer, Inspector, Data, Controls, Logs, and Three ASCII.",
+      "Keyboard: Tab cycles panels. Use 1-8 to focus Explorer, Inspector, Data, Controls, Logs, Three ASCII, HTML/CSS Layout, and Terminal.",
       "Use M to minimize, F or Enter to maximize/restore, R to restore all panels, T for themes, H for help, and Q to quit.",
       "Controls: arrow keys adjust sliders, radio groups, combo boxes, steppers, and dropdowns. Enter or Space activates.",
       "Mouse: click panels to focus, click rows to select, click controls to change values, and click scrollbars to jump.",
@@ -1620,15 +1778,34 @@ function isTextControlActive(): boolean {
 }
 function write(frame: string[], row: number, column: number, value: string): void {
   if (row < 0 || row >= frame.length || column >= cols()) return;
-  const line = frame[row] ?? "";
-  const visible = textWidth(line);
-  const valueWidth = textWidth(value);
-  if (visible <= column) {
-    frame[row] = line + " ".repeat(column - visible) + value;
-    return;
+  const cells = toStyledCells(frame[row] ?? "");
+  const valueCells = toStyledCells(value);
+  while (cells.length < column) cells.push(" ");
+  for (let index = 0; index < valueCells.length && column + index < cols(); index += 1) {
+    cells[column + index] = valueCells[index]!;
   }
-  frame[row] = stripStyles(line).slice(0, column).padEnd(column, " ") + value +
-    stripStyles(line).slice(column + valueWidth);
+  frame[row] = cells.slice(0, cols()).join("");
+}
+
+function toStyledCells(value: string): string[] {
+  const cells: string[] = [];
+  let style = "";
+  for (let index = 0; index < value.length;) {
+    if (value.charCodeAt(index) === 0x1b) {
+      // deno-lint-ignore no-control-regex -- ANSI SGR parsing intentionally matches ESC.
+      const match = /^\x1b\[[0-9;]*m/.exec(value.slice(index));
+      if (match) {
+        const sequence = match[0];
+        style = sequence.includes("[0m") ? "" : style + sequence;
+        index += sequence.length;
+        continue;
+      }
+    }
+    const char = value[index]!;
+    cells.push(style ? `${style}${char}\x1b[0m` : char);
+    index += char.length;
+  }
+  return cells;
 }
 function fit(value: string, width: number): string {
   const plain = stripStyles(value);
@@ -1767,6 +1944,24 @@ function hex(value: string): [number, number, number] {
   const color = value.replace("#", "");
   return [0, 2, 4].map((index) => Number.parseInt(color.slice(index, index + 2), 16)) as [number, number, number];
 }
+function initialThemeIndex(): number {
+  try {
+    const saved = globalThis.localStorage?.getItem(THEME_STORAGE_KEY);
+    const index = themes.findIndex((entry) => entry.id === saved || entry.label === saved);
+    return index >= 0 ? index : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function persistThemeIndex(index: number): void {
+  try {
+    globalThis.localStorage?.setItem(THEME_STORAGE_KEY, themes[index]?.id ?? themes[0]!.id);
+  } catch {
+    // Storage may be unavailable in restrictive browser contexts; theme switching still works in memory.
+  }
+}
+
 function theme(): ThemeSpec {
   return themes[themeIndex.value]!;
 }

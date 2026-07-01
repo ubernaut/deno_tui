@@ -120,11 +120,13 @@ Deno.test("sigma pty terminal backend wraps output write resize and close lifecy
     pollingIntervalMs: 5,
     now: fakeClock([10, 11, 12, 20]),
   });
+  const rawChunks: string[] = [];
   const handle = backend.spawn({
     command: "bash",
     args: ["-lc", "echo hi"],
     columns: 100.8,
     rows: 30.2,
+    onData: (data) => rawChunks.push(String(data)),
   });
   const pty = FakePty.instances[0]!;
 
@@ -159,6 +161,7 @@ Deno.test("sigma pty terminal backend wraps output write resize and close lifecy
     ["stdout", "world"],
     ["system", "process exited code=0 duration=10ms"],
   ]);
+  assertEquals(rawChunks, ["hello\r\nworld\n"]);
 
   await handle.dispose();
   assertEquals(pty.closed, true);

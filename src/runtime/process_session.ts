@@ -1,5 +1,9 @@
 // Copyright 2023 Im-Beast. MIT license.
-import { TerminalOutputController, type TerminalOutputLine } from "../components/terminal_output.ts";
+import {
+  TerminalOutputController,
+  type TerminalOutputLine,
+  type TerminalOutputSource,
+} from "../components/terminal_output.ts";
 import { Signal } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
 
@@ -41,6 +45,7 @@ export interface ProcessSessionControllerOptions extends ProcessSessionCommand {
   appendCommandLine?: boolean;
   now?: () => number;
   spawn?: ProcessSessionSpawner;
+  onOutputData?: (source: TerminalOutputSource, data: Uint8Array) => void;
 }
 
 /** Serializable inspection snapshot for Process Session Controller. */
@@ -63,6 +68,7 @@ export class ProcessSessionController {
   readonly #appendCommandLine: boolean;
   readonly #now: () => number;
   readonly #spawn: ProcessSessionSpawner;
+  readonly #onOutputData?: (source: TerminalOutputSource, data: Uint8Array) => void;
   #child?: ProcessSessionChild;
   #runId = 0;
   #startedAt = 0;
@@ -73,6 +79,7 @@ export class ProcessSessionController {
     this.#appendCommandLine = options.appendCommandLine ?? true;
     this.#now = options.now ?? (() => Date.now());
     this.#spawn = options.spawn ?? spawnDenoProcessSessionChild;
+    this.#onOutputData = options.onOutputData;
   }
 
   get running(): boolean {
@@ -221,6 +228,7 @@ export class ProcessSessionController {
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
+        this.#onOutputData?.(source, value);
         pending += decoder.decode(value, { stream: true });
         const lines = pending.split(/\r?\n/);
         pending = lines.pop() ?? "";

@@ -1,9 +1,16 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { KeyPressEvent, PasteEvent } from "../input_reader/types.ts";
-import type { ProcessSessionController } from "../runtime/process_session.ts";
 
 /** Terminal input routing mode for focused process windows. */
 export type TerminalInputMode = "workbench" | "raw";
+
+/** Minimal process or PTY target accepted by terminal input routing helpers. */
+export interface TerminalInputTarget {
+  readonly running?: boolean;
+  inspect?: () => { running: boolean };
+  writeInput?: (data: string | Uint8Array) => Promise<boolean>;
+  write?: (data: string | Uint8Array) => Promise<boolean>;
+}
 
 /** Options for encoding and routing terminal input. */
 export interface TerminalInputRoutingOptions {
@@ -57,30 +64,41 @@ export function isReservedTerminalKey(
 
 /** Routes a key press to a process session when raw terminal input mode is active. */
 export async function routeTerminalKeyPress(
-  session: ProcessSessionController,
+  session: TerminalInputTarget,
   event: KeyPressEvent,
   options: TerminalInputRoutingOptions = {},
 ): Promise<TerminalInputRouteDecision> {
   if ((options.mode ?? "workbench") !== "raw") return { routed: false, reason: "workbench-mode" };
   if (isReservedTerminalKey(event, options)) return { routed: false, reason: "reserved" };
-  if (!session.running) return { routed: false, reason: "not-running" };
+  if (!terminalInputTargetRunning(session)) return { routed: false, reason: "not-running" };
   const bytes = encodeTerminalKeyPress(event);
   if (!bytes) return { routed: false, reason: "unencodable" };
-  const routed = await session.writeInput(bytes);
+  const routed = await writeTerminalInput(session, bytes);
   return routed ? { routed, reason: "encoded", bytes } : { routed, reason: "write-failed", bytes };
 }
 
 /** Routes a paste payload to a process session when raw terminal input mode is active. */
 export async function routeTerminalPaste(
-  session: ProcessSessionController,
+  session: TerminalInputTarget,
   event: PasteEvent,
   options: TerminalInputRoutingOptions = {},
 ): Promise<TerminalInputRouteDecision> {
   if ((options.mode ?? "workbench") !== "raw") return { routed: false, reason: "workbench-mode" };
-  if (!session.running) return { routed: false, reason: "not-running" };
+  if (!terminalInputTargetRunning(session)) return { routed: false, reason: "not-running" };
   const bytes = encodeTerminalPaste(event);
-  const routed = await session.writeInput(bytes);
+  const routed = await writeTerminalInput(session, bytes);
   return routed ? { routed, reason: "encoded", bytes } : { routed, reason: "write-failed", bytes };
+}
+
+function terminalInputTargetRunning(session: TerminalInputTarget): boolean {
+  if (typeof session.running === "boolean") return session.running;
+  return session.inspect?.().running ?? false;
+}
+
+function writeTerminalInput(session: TerminalInputTarget, data: Uint8Array): Promise<boolean> {
+  if (session.writeInput) return session.writeInput(data);
+  if (session.write) return session.write(data);
+  return Promise.resolve(false);
 }
 
 function specialKeyBytes(key: string): string | undefined {

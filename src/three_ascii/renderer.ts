@@ -3,7 +3,13 @@ import { RenderPipeline, WebGPURenderer } from "npm:three@0.183.2/webgpu";
 import { pass } from "npm:three@0.183.2/tsl";
 
 import { AcerolaAsciiNode, type AcerolaAsciiNodeOptions } from "./AcerolaAsciiNode.ts";
-import { ASCII_FILL_GLYPHS, EDGE_GLYPHS, FILL_GLYPHS, type TerminalGlyphStyle } from "./glyphs.ts";
+import {
+  ASCII_FILL_GLYPHS,
+  blockFillGlyphForBucket,
+  EDGE_GLYPHS,
+  FILL_GLYPHS,
+  type TerminalGlyphStyle,
+} from "./glyphs.ts";
 import { HeadlessCanvas } from "./headless_canvas.ts";
 import { loadAsciiLutTextures } from "./loadAsciiLuts.ts";
 import { getCompatibleWebGPUDevice } from "./webgpu_compat.ts";
@@ -333,6 +339,10 @@ function rgbToAnsiBackground(red: number, green: number, blue: number): string {
   return `\x1b[48;2;${red};${green};${blue}m`;
 }
 
+function mixByteChannel(left: number, right: number, amount: number): number {
+  return Math.round(left + (right - left) * clampUnit(amount));
+}
+
 function fillBucketFromGlyphIndex(index: number): number {
   return Math.max(0, Math.min(FILL_GLYPHS.length - 1, index - 5));
 }
@@ -412,7 +422,7 @@ function terminalGlyphForCell(
     case "mixed":
       return pickMixedFillGlyph(fillGlyphIndex);
     default:
-      return FILL_GLYPHS[bucket] ?? " ";
+      return blockFillGlyphForBucket(bucket);
   }
 }
 
@@ -710,11 +720,17 @@ export class ThreeAsciiRenderer {
         );
 
         const colorOffset = index * 4;
-        const [foregroundRed, foregroundGreen, foregroundBlue] = linearRgbToBytes(
+        let [foregroundRed, foregroundGreen, foregroundBlue] = linearRgbToBytes(
           Math.max(0, Math.min(1, colors[colorOffset] ?? 0)),
           Math.max(0, Math.min(1, colors[colorOffset + 1] ?? 0)),
           Math.max(0, Math.min(1, colors[colorOffset + 2] ?? 0)),
         );
+        if (this.terminalGlyphStyle === "blocks" && glyph === "█") {
+          const amount = fillBucketFromGlyphIndex(fillGlyphIndex) / 9;
+          foregroundRed = mixByteChannel(backgroundRed, foregroundRed, amount);
+          foregroundGreen = mixByteChannel(backgroundGreen, foregroundGreen, amount);
+          foregroundBlue = mixByteChannel(backgroundBlue, foregroundBlue, amount);
+        }
         const foregroundAnsi = rgbToAnsiForeground(foregroundRed, foregroundGreen, foregroundBlue);
 
         outputRow[column] = `${backgroundAnsi}${foregroundAnsi}${glyph}${RESET}`;

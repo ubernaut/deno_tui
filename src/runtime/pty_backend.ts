@@ -1,5 +1,6 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { TerminalOutputController } from "../components/terminal_output.ts";
+import type { TerminalOutputSource } from "../components/terminal_output.ts";
 import {
   formatProcessCommandLine,
   type ProcessSessionCommand,
@@ -193,6 +194,7 @@ class SigmaPtyTerminalBackend implements TerminalBackend {
       command: options,
       pty,
       output: options.output,
+      onData: options.onData,
       columns: options.columns,
       rows: options.rows,
       now: this.#now,
@@ -208,6 +210,7 @@ class SigmaPtySessionHandle implements TerminalSessionHandle {
   readonly closed: Promise<ProcessSessionInspection>;
   readonly #pty: SigmaPtyLike;
   readonly #now: () => number;
+  readonly #onData?: (data: string | Uint8Array, source: TerminalOutputSource) => void;
   #columns: number;
   #rows: number;
   #status: ProcessSessionStatus = "running";
@@ -221,6 +224,7 @@ class SigmaPtySessionHandle implements TerminalSessionHandle {
     command: ProcessSessionCommand;
     pty: SigmaPtyLike;
     output?: TerminalOutputController;
+    onData?: (data: string | Uint8Array, source: TerminalOutputSource) => void;
     columns?: number;
     rows?: number;
     now: () => number;
@@ -229,6 +233,7 @@ class SigmaPtySessionHandle implements TerminalSessionHandle {
     this.command = cloneProcessSessionCommand(options.command);
     this.#pty = options.pty;
     this.output = options.output ?? new TerminalOutputController();
+    this.#onData = options.onData;
     this.#columns = normalizeTerminalDimension(options.columns, 80);
     this.#rows = normalizeTerminalDimension(options.rows, 24);
     this.#now = options.now;
@@ -298,6 +303,7 @@ class SigmaPtySessionHandle implements TerminalSessionHandle {
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
+        this.#onData?.(value, "stdout");
         pending += value;
         pending = this.#appendCompleteOutputLines(pending);
       }

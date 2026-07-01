@@ -6,12 +6,28 @@ export interface TuiCssDeclaration {
   value: string;
 }
 
+/** Supported viewport features for CSS-like media rules. */
+export type TuiCssMediaFeature = "min-width" | "max-width" | "min-height" | "max-height";
+
+/** One terminal-cell viewport condition from a CSS-like media rule. */
+export interface TuiCssMediaCondition {
+  feature: TuiCssMediaFeature;
+  value: number;
+}
+
+/** Parsed media query metadata attached to rules inside `@media` blocks. */
+export interface TuiCssMediaQuery {
+  source: string;
+  conditions: TuiCssMediaCondition[];
+}
+
 /** CSS-like rule for the TUI layout subset. */
 export interface TuiCssRule {
   selector: string;
   declarations: TuiCssDeclaration[];
   specificity: number;
   order: number;
+  media?: TuiCssMediaQuery;
 }
 
 /** Parsed CSS-like stylesheet for TUI layout. */
@@ -23,21 +39,55 @@ export interface TuiCssStylesheet {
 export function parseCssStylesheet(source: string): TuiCssStylesheet {
   const rules: TuiCssRule[] = [];
   const cleaned = stripCssComments(source);
-  const pattern = /([^{}]+)\{([^{}]*)\}/g;
   let order = 0;
-  for (const match of cleaned.matchAll(pattern)) {
-    const selectors = splitSelectorList(match[1] ?? "");
-    const declarations = parseCssDeclarations(match[2] ?? "");
+
+  parseRules(cleaned, undefined);
+  return { rules };
+
+  function parseRules(block: string, media: TuiCssMediaQuery | undefined): void {
+    let index = 0;
+    while (index < block.length) {
+      index = skipWhitespace(block, index);
+      if (index >= block.length) break;
+
+      if (block.startsWith("@media", index)) {
+        const preludeStart = index + "@media".length;
+        const open = block.indexOf("{", preludeStart);
+        if (open < 0) break;
+        const close = findMatchingBrace(block, open);
+        if (close < 0) break;
+        const query = parseCssMediaQuery(block.slice(preludeStart, open).trim());
+        if (query) parseRules(block.slice(open + 1, close), mergeMediaQueries(media, query));
+        index = close + 1;
+        continue;
+      }
+
+      const open = block.indexOf("{", index);
+      if (open < 0) break;
+      const close = findMatchingBrace(block, open);
+      if (close < 0) break;
+      const selectors = splitSelectorList(block.slice(index, open));
+      const declarations = parseCssDeclarations(block.slice(open + 1, close));
+      addRules(selectors, declarations, media);
+      index = close + 1;
+    }
+  }
+
+  function addRules(
+    selectors: readonly string[],
+    declarations: readonly TuiCssDeclaration[],
+    media: TuiCssMediaQuery | undefined,
+  ): void {
     for (const selector of selectors) {
       rules.push({
         selector,
-        declarations,
+        declarations: [...declarations],
         specificity: cssSelectorSpecificity(selector),
         order: order++,
+        media,
       });
     }
   }
-  return { rules };
 }
 
 /** Parses CSS-like declarations from a rule body or inline style attribute. */
@@ -103,4 +153,55 @@ function splitDeclarations(source: string): string[] {
 
 function stripCssComments(source: string): string {
   return source.replace(/\/\*[\s\S]*?\*\//g, "");
+}
+
+/** Parses a supported CSS-like media query prelude. */
+export function parseCssMediaQuery(source: string): TuiCssMediaQuery | undefined {
+  const conditions: TuiCssMediaCondition[] = [];
+  const pattern = /\(\s*((?:min|max)-(?:width|height))\s*:\s*([^)]+)\)/g;
+  for (const match of source.matchAll(pattern)) {
+    const feature = match[1] as TuiCssMediaFeature | undefined;
+    const value = parseCssMediaLength(match[2] ?? "");
+    if (feature && Number.isFinite(value)) conditions.push({ feature, value });
+  }
+  return conditions.length > 0 ? { source: source.trim(), conditions } : undefined;
+}
+
+function mergeMediaQueries(
+  outer: TuiCssMediaQuery | undefined,
+  inner: TuiCssMediaQuery,
+): TuiCssMediaQuery {
+  if (!outer) return inner;
+  return {
+    source: `${outer.source} and ${inner.source}`,
+    conditions: [...outer.conditions, ...inner.conditions],
+  };
+}
+
+function parseCssMediaLength(value: string): number {
+  const trimmed = value.trim().toLowerCase();
+  if (trimmed.endsWith("px")) return Number.parseFloat(trimmed.slice(0, -2));
+  if (trimmed.endsWith("ch")) return Number.parseFloat(trimmed.slice(0, -2));
+  if (trimmed.endsWith("cell")) return Number.parseFloat(trimmed.slice(0, -4));
+  if (trimmed.endsWith("cells")) return Number.parseFloat(trimmed.slice(0, -5));
+  return Number.parseFloat(trimmed);
+}
+
+function skipWhitespace(source: string, index: number): number {
+  let next = index;
+  while (next < source.length && /\s/.test(source[next]!)) next += 1;
+  return next;
+}
+
+function findMatchingBrace(source: string, openIndex: number): number {
+  let depth = 0;
+  for (let index = openIndex; index < source.length; index += 1) {
+    const char = source[index];
+    if (char === "{") depth += 1;
+    else if (char === "}") {
+      depth -= 1;
+      if (depth === 0) return index;
+    }
+  }
+  return -1;
 }

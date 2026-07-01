@@ -1,6 +1,6 @@
 import { assertEquals, assertMatch } from "./deps.ts";
 import { formatThreeAsciiFallbackDetail } from "../src/canvas/three_ascii.ts";
-import { bucketAsciiLuminance, glyphForTile } from "../src/three_ascii/glyphs.ts";
+import { blockFillGlyphForBucket, bucketAsciiLuminance, glyphForTile } from "../src/three_ascii/glyphs.ts";
 
 Deno.test("ascii luminance keeps empty tiles blank but promotes low non-zero fill to block glyphs", () => {
   assertEquals(bucketAsciiLuminance(0), 0);
@@ -9,10 +9,15 @@ Deno.test("ascii luminance keeps empty tiles blank but promotes low non-zero fil
   assertEquals(bucketAsciiLuminance(1), 9);
 });
 
-Deno.test("fill glyphs use chunky block characters", () => {
+Deno.test("block fill glyphs use full-height cells without lower-block banding", () => {
   assertEquals(glyphForTile(-1, 0, false, true), " ");
-  assertMatch(glyphForTile(-1, 1, false, true), /[▁▂▃▄▅▆▇█]/u);
+  assertEquals(glyphForTile(-1, 1, false, true), "█");
   assertEquals(glyphForTile(-1, 9, false, true), "█");
+
+  for (let bucket = 1; bucket <= 9; bucket += 1) {
+    assertEquals(/[▁▂▃▄▅▆▇]/u.test(blockFillGlyphForBucket(bucket)), false);
+    assertEquals(blockFillGlyphForBucket(bucket), "█");
+  }
 });
 
 Deno.test("three ascii fallback detail hides raw GPU validation text", () => {
