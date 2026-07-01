@@ -1,5 +1,6 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { Signal, type SignalOptions } from "../signals/mod.ts";
+import type { DiagnosticsCollector } from "./diagnostics.ts";
 
 /** Public interface describing an async Store. */
 export interface AsyncStore<T = unknown> {
@@ -30,12 +31,13 @@ export interface IndexedDbStoreOptions {
   databaseName: string;
   storeName?: string;
   version?: number;
+  diagnostics?: DiagnosticsCollector;
+  scope?: typeof globalThis;
 }
 
 /** Options for configuring runtime Store. */
 export interface RuntimeStoreOptions extends IndexedDbStoreOptions {
   preferIndexedDb?: boolean;
-  scope?: typeof globalThis;
 }
 
 /** Options for configuring persistent Signal. */
@@ -83,10 +85,27 @@ interface MinimalIndexedDb {
 export class IndexedDbStore<T = unknown> implements AsyncStore<T> {
   private readonly storeName: string;
   private readonly databasePromise: Promise<MinimalIdbDatabase>;
+  private readonly diagnostics?: DiagnosticsCollector;
 
   constructor(options: IndexedDbStoreOptions) {
     this.storeName = options.storeName ?? "values";
-    this.databasePromise = openDatabase(options.databaseName, this.storeName, options.version ?? 1);
+    this.diagnostics = options.diagnostics;
+    this.databasePromise = openDatabase(options.databaseName, this.storeName, options.version ?? 1, options.scope)
+      .catch((error) => {
+        this.diagnostics?.report({
+          source: "storage",
+          code: "indexeddb-open-failed",
+          severity: "warning",
+          message: "IndexedDB open failed.",
+          detail: errorMessage(error),
+          context: {
+            databaseName: options.databaseName,
+            storeName: this.storeName,
+            version: options.version ?? 1,
+          },
+        });
+        throw error;
+      });
   }
 
   async get(key: string): Promise<T | undefined> {
@@ -95,25 +114,55 @@ export class IndexedDbStore<T = unknown> implements AsyncStore<T> {
       database.transaction(this.storeName, "readonly").objectStore(this.storeName).get(key) as MinimalIdbRequest<
         T | undefined
       >,
+      this.diagnostics,
+      "get",
+      this.storeName,
+      key,
     );
   }
 
   async set(key: string, value: T): Promise<void> {
     const database = await this.databasePromise;
-    await requestValue(database.transaction(this.storeName, "readwrite").objectStore(this.storeName).put(value, key));
+    await requestValue(
+      database.transaction(this.storeName, "readwrite").objectStore(this.storeName).put(value, key),
+      this.diagnostics,
+      "set",
+      this.storeName,
+      key,
+    );
   }
 
   async delete(key: string): Promise<void> {
     const database = await this.databasePromise;
-    await requestValue(database.transaction(this.storeName, "readwrite").objectStore(this.storeName).delete(key));
+    await requestValue(
+      database.transaction(this.storeName, "readwrite").objectStore(this.storeName).delete(key),
+      this.diagnostics,
+      "delete",
+      this.storeName,
+      key,
+    );
   }
 }
 
 /** Creates an runtime Store. */
 export function createRuntimeStore<T = unknown>(options: RuntimeStoreOptions): AsyncStore<T> {
-  if (options.preferIndexedDb !== false && "indexedDB" in (options.scope ?? globalThis)) {
+  const scope = options.scope ?? globalThis;
+  if (options.preferIndexedDb !== false && "indexedDB" in scope) {
     return new IndexedDbStore<T>(options);
   }
+  options.diagnostics?.report({
+    source: "storage",
+    code: options.preferIndexedDb === false ? "indexeddb-disabled" : "indexeddb-unavailable",
+    severity: "info",
+    message: options.preferIndexedDb === false
+      ? "IndexedDB preference disabled; using memory store."
+      : "IndexedDB unavailable; using memory store.",
+    context: {
+      databaseName: options.databaseName,
+      storeName: options.storeName ?? "values",
+      preferIndexedDb: options.preferIndexedDb !== false,
+    },
+  });
   return new MemoryStore<T>();
 }
 
@@ -215,13 +264,18 @@ export function createPersistentSignal<T, Stored = T>(
   return new PersistentSignal(options);
 }
 
-function openDatabase(databaseName: string, storeName: string, version: number): Promise<MinimalIdbDatabase> {
-  if (!("indexedDB" in globalThis)) {
+function openDatabase(
+  databaseName: string,
+  storeName: string,
+  version: number,
+  scope: typeof globalThis = globalThis,
+): Promise<MinimalIdbDatabase> {
+  if (!("indexedDB" in scope)) {
     return Promise.reject(new Error("IndexedDB is not available in this runtime."));
   }
 
   return new Promise((resolve, reject) => {
-    const indexedDb = (globalThis as typeof globalThis & { indexedDB: MinimalIndexedDb }).indexedDB;
+    const indexedDb = (scope as typeof globalThis & { indexedDB: MinimalIndexedDb }).indexedDB;
     const request = indexedDb.open(databaseName, version);
     request.onerror = () => reject(request.error ?? new Error("Failed to open IndexedDB database."));
     request.onsuccess = () => resolve(request.result);
@@ -233,9 +287,30 @@ function openDatabase(databaseName: string, storeName: string, version: number):
   });
 }
 
-function requestValue<T>(request: MinimalIdbRequest<T>): Promise<T> {
+function requestValue<T>(
+  request: MinimalIdbRequest<T>,
+  diagnostics: DiagnosticsCollector | undefined,
+  operation: string,
+  storeName: string,
+  key: string,
+): Promise<T> {
   return new Promise((resolve, reject) => {
-    request.onerror = () => reject(request.error ?? new Error("IndexedDB request failed."));
+    request.onerror = () => {
+      const error = request.error ?? new Error("IndexedDB request failed.");
+      diagnostics?.report({
+        source: "storage",
+        code: "indexeddb-request-failed",
+        severity: "warning",
+        message: "IndexedDB request failed.",
+        detail: errorMessage(error),
+        context: { operation, storeName, key },
+      });
+      reject(error);
+    };
     request.onsuccess = () => resolve(request.result);
   });
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }

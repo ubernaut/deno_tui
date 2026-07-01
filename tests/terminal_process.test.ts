@@ -13,6 +13,7 @@ import {
   ProcessSessionController,
 } from "../src/runtime/process_session.ts";
 import { createProcessTerminalBackend } from "../src/runtime/terminal_backend.ts";
+import { DiagnosticsCollector } from "../src/runtime/diagnostics.ts";
 import type { Key, KeyPressEvent, PasteEvent } from "../src/input_reader/types.ts";
 
 Deno.test("TerminalOutputController bounds stream-tagged scrollback and follow mode", () => {
@@ -104,6 +105,27 @@ Deno.test("ProcessSessionController can stop a running process", async () => {
 
   assertEquals(session.inspect().status, "cancelled");
   assertEquals(session.inspect().output.lines.some((line) => line.text.startsWith("sent ")), true);
+  await session.dispose();
+});
+
+Deno.test("ProcessSessionController reports failed spawn diagnostics", async () => {
+  const diagnostics = new DiagnosticsCollector();
+  const session = new ProcessSessionController({
+    command: "missing-demo",
+    args: ["--bad"],
+    appendCommandLine: false,
+    diagnostics,
+    spawn: () => {
+      throw new Error("command not found");
+    },
+  });
+
+  assertEquals(await session.start(), false);
+  assertEquals(session.inspect().status, "failed");
+  assertEquals(diagnostics.entries().map((entry) => [entry.source, entry.code, entry.severity, entry.detail]), [
+    ["process", "spawn-failed", "error", "command not found"],
+  ]);
+
   await session.dispose();
 });
 

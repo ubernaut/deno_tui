@@ -1,4 +1,4 @@
-import { assertEquals } from "./deps.ts";
+import { assertEquals, assertRejects } from "./deps.ts";
 import {
   createRuntimePlan,
   detectRuntimeCapabilities,
@@ -1038,13 +1038,54 @@ Deno.test("MemoryStore implements the async store contract", async () => {
 });
 
 Deno.test("createRuntimeStore falls back to memory without IndexedDB", async () => {
+  const diagnostics = new DiagnosticsCollector();
   const store = createRuntimeStore<number>({
     databaseName: "deno-tui-test",
     scope: {} as typeof globalThis,
+    diagnostics,
   });
 
   await store.set("answer", 42);
   assertEquals(await store.get("answer"), 42);
+  assertEquals(diagnostics.entries().map((entry) => [entry.source, entry.code, entry.severity]), [
+    ["storage", "indexeddb-unavailable", "info"],
+  ]);
+});
+
+Deno.test("IndexedDbStore reports blocked open diagnostics", async () => {
+  const diagnostics = new DiagnosticsCollector();
+  const error = new Error("blocked by browser policy");
+  const request = {
+    error,
+    result: undefined,
+    onsuccess: null,
+    onerror: null,
+    onupgradeneeded: null,
+  } as {
+    error: Error;
+    result: unknown;
+    onsuccess: (() => void) | null;
+    onerror: (() => void) | null;
+    onupgradeneeded: (() => void) | null;
+  };
+  const scope = {
+    indexedDB: {
+      open: () => {
+        queueMicrotask(() => request.onerror?.());
+        return request;
+      },
+    },
+  } as unknown as typeof globalThis;
+  const store = createRuntimeStore<number>({
+    databaseName: "deno-tui-test",
+    scope,
+    diagnostics,
+  });
+
+  await assertRejects(() => store.get("answer"), Error, "blocked by browser policy");
+  assertEquals(diagnostics.entries().map((entry) => [entry.source, entry.code, entry.severity, entry.detail]), [
+    ["storage", "indexeddb-open-failed", "warning", "blocked by browser policy"],
+  ]);
 });
 
 Deno.test("PersistentSignal loads, persists, and resets values", async () => {

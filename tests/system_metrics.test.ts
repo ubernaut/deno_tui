@@ -6,6 +6,7 @@ import {
   type SystemMetricsProvider,
   SystemMonitor,
 } from "../app/system_metrics.ts";
+import { DiagnosticsCollector } from "../src/runtime/diagnostics.ts";
 
 const encoder = new TextEncoder();
 
@@ -61,6 +62,7 @@ Deno.test("SystemMonitor samples through an injectable metrics provider", async 
 
 Deno.test("SystemMonitor bounds process scans and reports degraded sources", async () => {
   const provider = new FixtureMetricsProvider();
+  const diagnostics = new DiagnosticsCollector();
   provider.files.set("/proc/stat", procStatFirst());
   provider.files.set("/proc/uptime", "123.45 100.00\n");
   provider.files.set("/proc/net/dev", procNetDev(1_000, 2_000));
@@ -76,6 +78,7 @@ Deno.test("SystemMonitor bounds process scans and reports degraded sources", asy
   const monitor = new SystemMonitor({
     historyLength: 4,
     provider,
+    diagnostics,
     processScanLimit: 2,
     processLimit: 1,
   });
@@ -104,6 +107,10 @@ Deno.test("SystemMonitor bounds process scans and reports degraded sources", asy
     snapshot.diagnostics.some((diagnostic) => diagnostic.source === "gpu" && diagnostic.status === "unavailable"),
     true,
   );
+  assertEquals(diagnostics.entries().map((entry) => [entry.source, entry.code, entry.severity]), [
+    ["system-metrics", "nvidia-smi-unavailable", "info"],
+    ["system-metrics", "nvidia-smi-unavailable", "info"],
+  ]);
   assertEquals(
     snapshot.diagnostics.some((diagnostic) => diagnostic.source === "disk" && diagnostic.status === "unavailable"),
     true,

@@ -1,4 +1,5 @@
 import { Signal } from "../src/signals/mod.ts";
+import type { DiagnosticsCollector } from "../src/runtime/diagnostics.ts";
 import { clamp } from "./styles.ts";
 import type {
   AlertMessage,
@@ -139,6 +140,7 @@ export class DenoSystemMetricsProvider implements SystemMetricsProvider {
 export interface SystemMonitorOptions {
   historyLength?: number;
   provider?: SystemMetricsProvider;
+  diagnostics?: DiagnosticsCollector;
   processLimit?: number;
   processScanLimit?: number;
   processSortKey?: SystemProcessSortKey;
@@ -166,6 +168,7 @@ export class SystemMonitor {
   #diskCacheMs: number;
   #hostname: string;
   #osRelease: string;
+  #diagnostics?: DiagnosticsCollector;
 
   constructor(
     historyLengthOrOptions: number | SystemMonitorOptions = 60,
@@ -181,6 +184,7 @@ export class SystemMonitor {
     this.#processSortKey = options.processSortKey ?? "cpu";
     this.#processRefreshMs = normalizeNonNegativeInteger(options.processRefreshMs, 0);
     this.#diskCacheMs = normalizePositiveInteger(options.diskCacheMs, 10_000);
+    this.#diagnostics = options.diagnostics;
     this.#hostname = safeHostname(this.#provider);
     this.#osRelease = safeOsRelease(this.#provider);
     this.snapshot = new Signal(emptySnapshot(this.#hostname, this.#osRelease, this.#historyLength));
@@ -223,7 +227,7 @@ export class SystemMonitor {
         this.#provider.readTextFile("/proc/net/dev"),
         sampleTemperatures(this.#provider),
         this.#sampleDisks(),
-        sampleGpu(this.#provider, current.gpu),
+        sampleGpu(this.#provider, current.gpu, this.#diagnostics),
         useCachedProcesses ? Promise.resolve(undefined) : this.#collectProcessStats(),
       ]);
 
@@ -310,8 +314,15 @@ export class SystemMonitor {
       };
 
       this.snapshot.value = nextSnapshot;
-    } catch {
+    } catch (error) {
       // Keep the last successful snapshot visible if a sample fails.
+      this.#diagnostics?.report({
+        source: "system-metrics",
+        code: "sample-failed",
+        severity: "warning",
+        message: "System metrics sample failed; keeping last snapshot.",
+        detail: errorMessage(error),
+      });
     } finally {
       this.#sampleInFlight = false;
     }
@@ -670,7 +681,11 @@ async function sampleTemperatures(provider: SystemMetricsProvider): Promise<Temp
   };
 }
 
-async function sampleGpu(provider: SystemMetricsProvider, current: GpuSnapshot): Promise<GpuSample> {
+async function sampleGpu(
+  provider: SystemMetricsProvider,
+  current: GpuSnapshot,
+  diagnostics?: DiagnosticsCollector,
+): Promise<GpuSample> {
   const started = performance.now();
   const sampledAt = provider.now();
   try {
@@ -679,6 +694,13 @@ async function sampleGpu(provider: SystemMetricsProvider, current: GpuSnapshot):
       "--format=csv,noheader,nounits",
     ]);
     if (!result.success) {
+      diagnostics?.report({
+        source: "system-metrics",
+        code: "nvidia-smi-unavailable",
+        severity: "info",
+        message: "nvidia-smi command failed; GPU metrics are unavailable.",
+        context: { retainedPreviousGpu: current.available },
+      });
       return {
         gpu: current.available ? current : emptyGpuSnapshot(),
         diagnostic: {
@@ -705,7 +727,15 @@ async function sampleGpu(provider: SystemMetricsProvider, current: GpuSnapshot):
         sampledAt,
       },
     };
-  } catch {
+  } catch (error) {
+    diagnostics?.report({
+      source: "system-metrics",
+      code: "nvidia-smi-failed",
+      severity: "warning",
+      message: "nvidia-smi sampling failed; GPU metrics are unavailable.",
+      detail: errorMessage(error),
+      context: { retainedPreviousGpu: current.available },
+    });
     return {
       gpu: current.available ? current : emptyGpuSnapshot(),
       diagnostic: {
@@ -823,6 +853,10 @@ function processDiagnostics(sample: ProcessStatsSample, sampledAt: number): Syst
     detail: `sampled ${sample.scanned} process entries`,
     sampledAt,
   };
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 function collectAlerts(input: {

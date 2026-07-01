@@ -7753,37 +7753,81 @@ var MemoryStore = class {
 var IndexedDbStore = class {
   storeName;
   databasePromise;
+  diagnostics;
   constructor(options) {
     this.storeName = options.storeName ?? "values";
-    this.databasePromise = openDatabase(options.databaseName, this.storeName, options.version ?? 1);
+    this.diagnostics = options.diagnostics;
+    this.databasePromise = openDatabase(options.databaseName, this.storeName, options.version ?? 1, options.scope).catch((error) => {
+      this.diagnostics?.report({
+        source: "storage",
+        code: "indexeddb-open-failed",
+        severity: "warning",
+        message: "IndexedDB open failed.",
+        detail: errorMessage(error),
+        context: {
+          databaseName: options.databaseName,
+          storeName: this.storeName,
+          version: options.version ?? 1
+        }
+      });
+      throw error;
+    });
   }
   async get(key) {
     const database = await this.databasePromise;
     return await requestValue(
-      database.transaction(this.storeName, "readonly").objectStore(this.storeName).get(key)
+      database.transaction(this.storeName, "readonly").objectStore(this.storeName).get(key),
+      this.diagnostics,
+      "get",
+      this.storeName,
+      key
     );
   }
   async set(key, value) {
     const database = await this.databasePromise;
-    await requestValue(database.transaction(this.storeName, "readwrite").objectStore(this.storeName).put(value, key));
+    await requestValue(
+      database.transaction(this.storeName, "readwrite").objectStore(this.storeName).put(value, key),
+      this.diagnostics,
+      "set",
+      this.storeName,
+      key
+    );
   }
   async delete(key) {
     const database = await this.databasePromise;
-    await requestValue(database.transaction(this.storeName, "readwrite").objectStore(this.storeName).delete(key));
+    await requestValue(
+      database.transaction(this.storeName, "readwrite").objectStore(this.storeName).delete(key),
+      this.diagnostics,
+      "delete",
+      this.storeName,
+      key
+    );
   }
 };
 function createRuntimeStore(options) {
-  if (options.preferIndexedDb !== false && "indexedDB" in (options.scope ?? globalThis)) {
+  const scope = options.scope ?? globalThis;
+  if (options.preferIndexedDb !== false && "indexedDB" in scope) {
     return new IndexedDbStore(options);
   }
+  options.diagnostics?.report({
+    source: "storage",
+    code: options.preferIndexedDb === false ? "indexeddb-disabled" : "indexeddb-unavailable",
+    severity: "info",
+    message: options.preferIndexedDb === false ? "IndexedDB preference disabled; using memory store." : "IndexedDB unavailable; using memory store.",
+    context: {
+      databaseName: options.databaseName,
+      storeName: options.storeName ?? "values",
+      preferIndexedDb: options.preferIndexedDb !== false
+    }
+  });
   return new MemoryStore();
 }
-function openDatabase(databaseName, storeName, version) {
-  if (!("indexedDB" in globalThis)) {
+function openDatabase(databaseName, storeName, version, scope = globalThis) {
+  if (!("indexedDB" in scope)) {
     return Promise.reject(new Error("IndexedDB is not available in this runtime."));
   }
   return new Promise((resolve, reject) => {
-    const indexedDb = globalThis.indexedDB;
+    const indexedDb = scope.indexedDB;
     const request = indexedDb.open(databaseName, version);
     request.onerror = () => reject(request.error ?? new Error("Failed to open IndexedDB database."));
     request.onsuccess = () => resolve(request.result);
@@ -7794,11 +7838,25 @@ function openDatabase(databaseName, storeName, version) {
     };
   });
 }
-function requestValue(request) {
+function requestValue(request, diagnostics, operation, storeName, key) {
   return new Promise((resolve, reject) => {
-    request.onerror = () => reject(request.error ?? new Error("IndexedDB request failed."));
+    request.onerror = () => {
+      const error = request.error ?? new Error("IndexedDB request failed.");
+      diagnostics?.report({
+        source: "storage",
+        code: "indexeddb-request-failed",
+        severity: "warning",
+        message: "IndexedDB request failed.",
+        detail: errorMessage(error),
+        context: { operation, storeName, key }
+      });
+      reject(error);
+    };
     request.onsuccess = () => resolve(request.result);
   });
+}
+function errorMessage(error) {
+  return error instanceof Error ? error.message : String(error);
 }
 
 // src/app/terminal_input.ts

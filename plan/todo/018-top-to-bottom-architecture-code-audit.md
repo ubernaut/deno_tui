@@ -293,7 +293,7 @@ Work:
 - [ ] Convert silent fallback paths in system metrics, graphics/Kitty surfaces, storage, audio, and browser storage into
       structured diagnostics where practical.
 - [ ] Add status-bar and report helpers for degraded backends.
-- [ ] Add tests that assert expected diagnostics for missing `nvidia-smi`, blocked IndexedDB, unsupported Kitty
+- [x] Add tests that assert expected diagnostics for missing `nvidia-smi`, blocked IndexedDB, unsupported Kitty
       graphics, and failed process spawns.
 
 Acceptance checks:

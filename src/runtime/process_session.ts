@@ -6,6 +6,7 @@ import {
 } from "../components/terminal_output.ts";
 import { Signal } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
+import type { DiagnosticsCollector } from "./diagnostics.ts";
 
 /** Lifecycle status for a process-backed terminal output session. */
 export type ProcessSessionStatus = "idle" | "running" | "exited" | "failed" | "cancelled";
@@ -46,6 +47,7 @@ export interface ProcessSessionControllerOptions extends ProcessSessionCommand {
   now?: () => number;
   spawn?: ProcessSessionSpawner;
   onOutputData?: (source: TerminalOutputSource, data: Uint8Array) => void;
+  diagnostics?: DiagnosticsCollector;
 }
 
 /** Serializable inspection snapshot for Process Session Controller. */
@@ -69,6 +71,7 @@ export class ProcessSessionController {
   readonly #now: () => number;
   readonly #spawn: ProcessSessionSpawner;
   readonly #onOutputData?: (source: TerminalOutputSource, data: Uint8Array) => void;
+  readonly #diagnostics?: DiagnosticsCollector;
   #child?: ProcessSessionChild;
   #runId = 0;
   #startedAt = 0;
@@ -80,6 +83,7 @@ export class ProcessSessionController {
     this.#now = options.now ?? (() => Date.now());
     this.#spawn = options.spawn ?? spawnDenoProcessSessionChild;
     this.#onOutputData = options.onOutputData;
+    this.#diagnostics = options.diagnostics;
   }
 
   get running(): boolean {
@@ -132,7 +136,16 @@ export class ProcessSessionController {
       if (runId !== this.#runId) return false;
       this.exit.value = undefined;
       this.status.value = "failed";
-      this.#appendSystemLine(`process failed: ${error instanceof Error ? error.message : String(error)}`);
+      const detail = errorMessage(error);
+      this.#appendSystemLine(`process failed: ${detail}`);
+      this.#diagnostics?.report({
+        source: "process",
+        code: "spawn-failed",
+        severity: "error",
+        message: "Process session failed to start or run.",
+        detail,
+        context: { command: spec.command, args: [...(spec.args ?? [])], cwd: spec.cwd },
+      });
       return false;
     } finally {
       if (runId === this.#runId) this.#child = undefined;
@@ -149,7 +162,16 @@ export class ProcessSessionController {
       await child.status.catch(() => undefined);
       return true;
     } catch (error) {
-      this.#appendSystemLine(`stop failed: ${error instanceof Error ? error.message : String(error)}`);
+      const detail = errorMessage(error);
+      this.#appendSystemLine(`stop failed: ${detail}`);
+      this.#diagnostics?.report({
+        source: "process",
+        code: "stop-failed",
+        severity: "warning",
+        message: "Process session stop failed.",
+        detail,
+        context: { signal, command: this.command.peek().command },
+      });
       return false;
     }
   }
@@ -162,7 +184,16 @@ export class ProcessSessionController {
       await writer.write(bytes);
       return true;
     } catch (error) {
-      this.#appendSystemLine(`input failed: ${error instanceof Error ? error.message : String(error)}`);
+      const detail = errorMessage(error);
+      this.#appendSystemLine(`input failed: ${detail}`);
+      this.#diagnostics?.report({
+        source: "process",
+        code: "input-failed",
+        severity: "warning",
+        message: "Process session input write failed.",
+        detail,
+        context: { command: this.command.peek().command },
+      });
       return false;
     } finally {
       writer.releaseLock();
@@ -277,4 +308,8 @@ function spawnDenoProcessSessionChild(spec: ProcessSessionCommand): ProcessSessi
     stdout: "piped",
     stderr: "piped",
   }).spawn();
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
