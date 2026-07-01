@@ -11,7 +11,8 @@ import {
   clampAsciiControlValue,
   createDefaultAsciiOptions,
   normalizeAsciiOptions,
-} from "../app/ascii_options.ts";
+} from "../src/three_ascii/options.ts";
+import { createDefaultAsciiOptions as createCompatDefaultAsciiOptions } from "../app/ascii_options.ts";
 
 Deno.test("ascii demo preset helpers expose stable ids and style filters", () => {
   assertEquals(asciiDemoPresetIds().slice(0, 3), ["opentui-blocks", "glyph-atlas", "mixed-best"]);
@@ -60,6 +61,10 @@ Deno.test("workbench ascii defaults favor terminal-visible wire thickness", () =
   const values = asciiControlValues("wireframeThickness");
   assertEquals(values.includes(8), true);
   assertEquals(values.at(-1), 32);
+});
+
+Deno.test("app ascii option shim preserves package option behavior", () => {
+  assertEquals(createCompatDefaultAsciiOptions("ascii"), createDefaultAsciiOptions("ascii"));
 });
 
 Deno.test("ascii option normalization defaults to blocks but preserves saved glyph overrides", () => {

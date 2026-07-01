@@ -1,5 +1,5 @@
 import type { Style } from "../src/theme.ts";
-import type { TerminalGlyphStyle } from "../src/three_ascii/glyphs.ts";
+import type { ThreeAsciiConfigOptions } from "../src/three_ascii/options.ts";
 
 export const slotIds = [
   "cpu",
@@ -67,26 +67,7 @@ export type ThreeSceneMode = typeof threeSceneModes[number];
 
 export type Severity = "info" | "warning" | "alarm";
 
-export interface AsciiOptions {
-  preset: string;
-  border: BorderMode;
-  terminalGlyphStyle: TerminalGlyphStyle;
-  terminalEdgeBias: number;
-  edgeThreshold: number;
-  normalThreshold: number;
-  depthThreshold: number;
-  exposure: number;
-  attenuation: number;
-  blendWithBase: number;
-  depthFalloff: number;
-  depthOffset: number;
-  wireframeThickness: number;
-  edges: boolean;
-  fill: boolean;
-  invertLuminance: boolean;
-  kittyGraphics: boolean;
-  kittyDisableAscii: boolean;
-}
+export type AsciiOptions = ThreeAsciiConfigOptions;
 
 export interface SlotConfig {
   id: SlotId;

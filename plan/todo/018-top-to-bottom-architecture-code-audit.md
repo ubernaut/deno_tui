@@ -195,6 +195,9 @@ Acceptance checks:
 - [ ] Workbench and standalone Three demos share the same config normalization and lifecycle helpers.
   - [x] Clamped normalized ASCII numeric config values to the same ranges exposed by shared controls, including
         wireframe thickness `0.5..32`, so saved per-widget configs cannot restore invalid renderer settings.
+  - [x] Moved ASCII renderer config defaults, preset application, control ranges, and normalization into
+        `src/three_ascii/options.ts` with an app-level compatibility shim, so console, web, and workbench demos share
+        one option contract.
 
 ### P2: Make System Metrics Provider-Based And Testable
 
