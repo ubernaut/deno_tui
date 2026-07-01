@@ -688,6 +688,60 @@ function viewportThumbGlyph(row, thumb) {
   if (!thumb.visible) return " ";
   return row >= thumb.start && row < thumb.start + thumb.size ? "\u2588" : "\u2502";
 }
+function viewportOffsetForPointer(contentLength, viewportLength, pointerIndex) {
+  const content = normalizedViewportDimension(contentLength);
+  const viewport = normalizedViewportDimension(viewportLength);
+  const maxOffset = Math.max(0, content - viewport);
+  if (maxOffset === 0) return 0;
+  const trackLength = Math.max(1, viewport);
+  const local = clamp(Math.floor(Number.isFinite(pointerIndex) ? pointerIndex : 0), 0, trackLength - 1);
+  const ratio = trackLength <= 1 ? 0 : local / (trackLength - 1);
+  return clamp(Math.round(maxOffset * ratio), 0, maxOffset);
+}
+function inspectViewportAxisOverflow(options) {
+  const contentLength = normalizedViewportDimension(options.contentLength);
+  const viewportLength = normalizedViewportDimension(options.viewportLength);
+  const overflow = options.overflow ?? "auto";
+  const hasOverflow = contentLength > viewportLength;
+  const rawMaxOffset = Math.max(0, contentLength - viewportLength);
+  const canScroll = (overflow === "auto" || overflow === "scroll") && rawMaxOffset > 0;
+  const maxOffset = canScroll ? rawMaxOffset : 0;
+  const offset = clamp(Math.floor(Number.isFinite(options.offset ?? 0) ? options.offset ?? 0 : 0), 0, maxOffset);
+  const scrollbarVisible = viewportLength > 0 && (overflow === "scroll" || overflow === "auto" && hasOverflow);
+  const visibleRange = overflow === "visible" ? { start: 0, end: contentLength } : { start: offset, end: Math.min(contentLength, offset + viewportLength) };
+  return {
+    contentLength,
+    viewportLength,
+    maxOffset,
+    offset,
+    overflow,
+    hasOverflow,
+    canScroll,
+    scrollbarVisible,
+    thumb: scrollbarVisible ? viewportThumb(contentLength, viewportLength, offset) : { start: 0, size: viewportLength, visible: false },
+    visibleRange
+  };
+}
+function inspectViewportOverflow(options) {
+  const columns = inspectViewportAxisOverflow({
+    contentLength: options.contentWidth,
+    viewportLength: options.viewportWidth,
+    offset: options.offset?.columns,
+    overflow: options.overflowX
+  });
+  const rows2 = inspectViewportAxisOverflow({
+    contentLength: options.contentHeight,
+    viewportLength: options.viewportHeight,
+    offset: options.offset?.rows,
+    overflow: options.overflowY
+  });
+  return {
+    columns,
+    rows: rows2,
+    maxOffset: { columns: columns.maxOffset, rows: rows2.maxOffset },
+    offset: { columns: columns.offset, rows: rows2.offset }
+  };
+}
 function inspectViewport(contentWidth, contentHeight, viewportWidth, viewportHeight, offset = { columns: 0, rows: 0 }) {
   const safeContentWidth = Math.max(0, Math.floor(contentWidth));
   const safeContentHeight = Math.max(0, Math.floor(contentHeight));
@@ -715,6 +769,9 @@ function inspectViewport(contentWidth, contentHeight, viewportWidth, viewportHei
     canScrollColumns: maxOffset.columns > 0,
     canScrollRows: maxOffset.rows > 0
   };
+}
+function normalizedViewportDimension(value) {
+  return Math.max(0, Math.floor(Number.isFinite(value) ? value : 0));
 }
 
 // src/selection.ts
@@ -5867,14 +5924,7 @@ function scrollbarGlyph(row, thumb) {
   return viewportThumbGlyph(row, thumb);
 }
 function scrollbarOffsetForPointer(contentLength, viewportLength, pointerIndex) {
-  const content = normalizedScrollDimension(contentLength);
-  const viewport = normalizedScrollDimension(viewportLength);
-  const maxOffset = Math.max(0, content - viewport);
-  if (maxOffset === 0) return 0;
-  const trackLength = Math.max(1, viewport);
-  const local = Math.max(0, Math.min(trackLength - 1, Math.floor(pointerIndex)));
-  const ratio = trackLength <= 1 ? 0 : local / (trackLength - 1);
-  return Math.max(0, Math.min(maxOffset, Math.round(maxOffset * ratio)));
+  return viewportOffsetForPointer(contentLength, viewportLength, pointerIndex);
 }
 var ScrollAreaController = class {
   contentWidth;
@@ -5943,6 +5993,25 @@ var ScrollAreaController = class {
       showScrollbar: this.showScrollbar.peek()
     };
   }
+  inspectOverflow() {
+    const overflow = inspectViewportOverflow({
+      contentWidth: this.contentWidth.peek(),
+      contentHeight: this.contentHeight.peek(),
+      viewportWidth: this.viewportWidth.peek(),
+      viewportHeight: this.viewportHeight.peek(),
+      offset: this.offset.peek(),
+      overflowX: "auto",
+      overflowY: "auto"
+    });
+    if (!this.showScrollbar.peek()) {
+      overflow.columns = hideAxisScrollbar(overflow.columns);
+      overflow.rows = hideAxisScrollbar(overflow.rows);
+    }
+    return {
+      ...overflow,
+      showScrollbar: this.showScrollbar.peek()
+    };
+  }
   dispose() {
     if (this.#ownsContentWidth) this.contentWidth.dispose();
     if (this.#ownsContentHeight) this.contentHeight.dispose();
@@ -5961,6 +6030,13 @@ var ScrollAreaController = class {
 };
 function normalizedScrollDimension(value) {
   return Math.max(0, Math.floor(Number.isFinite(value) ? value : 0));
+}
+function hideAxisScrollbar(axis) {
+  return {
+    ...axis,
+    scrollbarVisible: false,
+    thumb: { ...axis.thumb, visible: false }
+  };
 }
 
 // src/components/slider.ts

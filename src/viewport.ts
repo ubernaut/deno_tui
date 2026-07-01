@@ -15,6 +15,50 @@ export interface ViewportThumb {
   visible: boolean;
 }
 
+/** Overflow policy for one viewport axis. */
+export type ViewportOverflowMode = "auto" | "scroll" | "hidden" | "visible";
+
+/** Options for resolving overflow on one viewport axis. */
+export interface ViewportAxisOverflowOptions {
+  contentLength: number;
+  viewportLength: number;
+  offset?: number;
+  overflow?: ViewportOverflowMode;
+}
+
+/** Normalized overflow, scroll, and scrollbar state for one viewport axis. */
+export interface ViewportAxisOverflow {
+  contentLength: number;
+  viewportLength: number;
+  maxOffset: number;
+  offset: number;
+  overflow: ViewportOverflowMode;
+  hasOverflow: boolean;
+  canScroll: boolean;
+  scrollbarVisible: boolean;
+  thumb: ViewportThumb;
+  visibleRange: ViewportWindow;
+}
+
+/** Options for resolving overflow on a two-dimensional viewport. */
+export interface ViewportOverflowOptions {
+  contentWidth: number;
+  contentHeight: number;
+  viewportWidth: number;
+  viewportHeight: number;
+  offset?: Offset;
+  overflowX?: ViewportOverflowMode;
+  overflowY?: ViewportOverflowMode;
+}
+
+/** Normalized overflow contract shared by scrollable widgets and layouts. */
+export interface ViewportOverflowInspection {
+  columns: ViewportAxisOverflow;
+  rows: ViewportAxisOverflow;
+  maxOffset: Offset;
+  offset: Offset;
+}
+
 /** Serializable scroll state and derived viewport geometry. */
 export interface ViewportInspection {
   contentWidth: number;
@@ -93,6 +137,76 @@ export function viewportThumbGlyph(row: number, thumb: ViewportThumb): string {
   return row >= thumb.start && row < thumb.start + thumb.size ? "█" : "│";
 }
 
+/** Maps a pointer position on a scrollbar track to a scroll offset. */
+export function viewportOffsetForPointer(
+  contentLength: number,
+  viewportLength: number,
+  pointerIndex: number,
+): number {
+  const content = normalizedViewportDimension(contentLength);
+  const viewport = normalizedViewportDimension(viewportLength);
+  const maxOffset = Math.max(0, content - viewport);
+  if (maxOffset === 0) return 0;
+  const trackLength = Math.max(1, viewport);
+  const local = clamp(Math.floor(Number.isFinite(pointerIndex) ? pointerIndex : 0), 0, trackLength - 1);
+  const ratio = trackLength <= 1 ? 0 : local / (trackLength - 1);
+  return clamp(Math.round(maxOffset * ratio), 0, maxOffset);
+}
+
+/** Resolves overflow, scroll, and scrollbar state for one viewport axis. */
+export function inspectViewportAxisOverflow(options: ViewportAxisOverflowOptions): ViewportAxisOverflow {
+  const contentLength = normalizedViewportDimension(options.contentLength);
+  const viewportLength = normalizedViewportDimension(options.viewportLength);
+  const overflow = options.overflow ?? "auto";
+  const hasOverflow = contentLength > viewportLength;
+  const rawMaxOffset = Math.max(0, contentLength - viewportLength);
+  const canScroll = (overflow === "auto" || overflow === "scroll") && rawMaxOffset > 0;
+  const maxOffset = canScroll ? rawMaxOffset : 0;
+  const offset = clamp(Math.floor(Number.isFinite(options.offset ?? 0) ? options.offset ?? 0 : 0), 0, maxOffset);
+  const scrollbarVisible = viewportLength > 0 && (overflow === "scroll" || (overflow === "auto" && hasOverflow));
+  const visibleRange = overflow === "visible"
+    ? { start: 0, end: contentLength }
+    : { start: offset, end: Math.min(contentLength, offset + viewportLength) };
+
+  return {
+    contentLength,
+    viewportLength,
+    maxOffset,
+    offset,
+    overflow,
+    hasOverflow,
+    canScroll,
+    scrollbarVisible,
+    thumb: scrollbarVisible
+      ? viewportThumb(contentLength, viewportLength, offset)
+      : { start: 0, size: viewportLength, visible: false },
+    visibleRange,
+  };
+}
+
+/** Resolves overflow, scroll, and scrollbar state for a two-dimensional viewport. */
+export function inspectViewportOverflow(options: ViewportOverflowOptions): ViewportOverflowInspection {
+  const columns = inspectViewportAxisOverflow({
+    contentLength: options.contentWidth,
+    viewportLength: options.viewportWidth,
+    offset: options.offset?.columns,
+    overflow: options.overflowX,
+  });
+  const rows = inspectViewportAxisOverflow({
+    contentLength: options.contentHeight,
+    viewportLength: options.viewportHeight,
+    offset: options.offset?.rows,
+    overflow: options.overflowY,
+  });
+
+  return {
+    columns,
+    rows,
+    maxOffset: { columns: columns.maxOffset, rows: rows.maxOffset },
+    offset: { columns: columns.offset, rows: rows.offset },
+  };
+}
+
 /** Normalizes and inspects scroll state for a two-dimensional viewport. */
 export function inspectViewport(
   contentWidth: number,
@@ -128,4 +242,8 @@ export function inspectViewport(
     canScrollColumns: maxOffset.columns > 0,
     canScrollRows: maxOffset.rows > 0,
   };
+}
+
+function normalizedViewportDimension(value: number): number {
+  return Math.max(0, Math.floor(Number.isFinite(value) ? value : 0));
 }

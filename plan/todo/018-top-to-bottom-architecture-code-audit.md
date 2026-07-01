@@ -253,6 +253,10 @@ Work:
 - [x] Create a compatibility suite of markup/CSS fixtures with expected terminal-cell boxes.
 - [x] Add intrinsic text and widget measurement caches keyed by content, style, and available width.
 - [ ] Define one overflow/scroll contract shared by layout boxes, pads, scroll areas, and workbench windows.
+  - [x] Added policy-aware viewport overflow inspection and shared scrollbar pointer mapping in `src/viewport.ts`, then
+        exposed the contract through `ScrollAreaController.inspectOverflow()` while preserving existing inspection
+        output.
+  - [ ] Wire layout result boxes and workbench window scroll state directly to the shared overflow inspection.
 - [ ] Move demo-specific hydrated widget examples into reusable fixture/demo modules.
 - [ ] Expand Yoga parity tests and document unsupported CSS explicitly.
 

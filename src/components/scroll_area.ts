@@ -8,9 +8,12 @@ import { View } from "../view.ts";
 import {
   clampViewportOffset,
   inspectViewport,
+  inspectViewportOverflow,
   maxViewportOffset,
   type ViewportInspection,
   viewportOffsetBy,
+  viewportOffsetForPointer,
+  type ViewportOverflowInspection,
   type ViewportThumb,
   viewportThumb,
   viewportThumbGlyph,
@@ -37,6 +40,11 @@ export interface ScrollAreaControllerOptions {
 
 /** Serializable inspection snapshot for scroll Area. */
 export interface ScrollAreaInspection extends ViewportInspection {
+  showScrollbar: boolean;
+}
+
+/** Serializable policy-aware overflow state for scroll Area. */
+export interface ScrollAreaOverflowInspection extends ViewportOverflowInspection {
   showScrollbar: boolean;
 }
 
@@ -79,14 +87,7 @@ export function scrollbarOffsetForPointer(
   viewportLength: number,
   pointerIndex: number,
 ): number {
-  const content = normalizedScrollDimension(contentLength);
-  const viewport = normalizedScrollDimension(viewportLength);
-  const maxOffset = Math.max(0, content - viewport);
-  if (maxOffset === 0) return 0;
-  const trackLength = Math.max(1, viewport);
-  const local = Math.max(0, Math.min(trackLength - 1, Math.floor(pointerIndex)));
-  const ratio = trackLength <= 1 ? 0 : local / (trackLength - 1);
-  return Math.max(0, Math.min(maxOffset, Math.round(maxOffset * ratio)));
+  return viewportOffsetForPointer(contentLength, viewportLength, pointerIndex);
 }
 
 /** State controller for scroll Area behavior. */
@@ -162,6 +163,26 @@ export class ScrollAreaController {
         this.viewportHeight.peek(),
         this.offset.peek(),
       ),
+      showScrollbar: this.showScrollbar.peek(),
+    };
+  }
+
+  inspectOverflow(): ScrollAreaOverflowInspection {
+    const overflow = inspectViewportOverflow({
+      contentWidth: this.contentWidth.peek(),
+      contentHeight: this.contentHeight.peek(),
+      viewportWidth: this.viewportWidth.peek(),
+      viewportHeight: this.viewportHeight.peek(),
+      offset: this.offset.peek(),
+      overflowX: "auto",
+      overflowY: "auto",
+    });
+    if (!this.showScrollbar.peek()) {
+      overflow.columns = hideAxisScrollbar(overflow.columns);
+      overflow.rows = hideAxisScrollbar(overflow.rows);
+    }
+    return {
+      ...overflow,
       showScrollbar: this.showScrollbar.peek(),
     };
   }
@@ -318,4 +339,12 @@ export class ScrollArea extends Component {
 
 function normalizedScrollDimension(value: number): number {
   return Math.max(0, Math.floor(Number.isFinite(value) ? value : 0));
+}
+
+function hideAxisScrollbar<T extends { scrollbarVisible: boolean; thumb: ViewportThumb }>(axis: T): T {
+  return {
+    ...axis,
+    scrollbarVisible: false,
+    thumb: { ...axis.thumb, visible: false },
+  };
 }

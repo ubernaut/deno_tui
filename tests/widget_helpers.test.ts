@@ -1691,8 +1691,13 @@ Deno.test("ScrollAreaController inspects and clamps viewport offsets", () => {
 
   assertEquals(controller.scrollBy(-10, 100), { columns: 50, rows: 30 });
   assertEquals(controller.setViewportSize(100, 100), { columns: 0, rows: 0 });
+  controller.setViewportSize(20, 10);
+  controller.scrollTo(60, 30);
+  assertEquals(controller.inspectOverflow().rows.scrollbarVisible, true);
   controller.setScrollbarVisible(false);
   assertEquals(controller.inspect().showScrollbar, false);
+  assertEquals(controller.inspectOverflow().rows.canScroll, true);
+  assertEquals(controller.inspectOverflow().rows.scrollbarVisible, false);
   controller.dispose();
 });
 

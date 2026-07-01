@@ -2,8 +2,11 @@ import { assertEquals } from "./deps.ts";
 import {
   clampViewportOffset,
   inspectViewport,
+  inspectViewportAxisOverflow,
+  inspectViewportOverflow,
   maxViewportOffset,
   viewportOffsetBy,
+  viewportOffsetForPointer,
   viewportThumb,
   viewportThumbGlyph,
   viewportWindow,
@@ -66,4 +69,77 @@ Deno.test("inspectViewport handles empty and undersized content", () => {
     canScrollColumns: false,
     canScrollRows: false,
   });
+});
+
+Deno.test("viewport overflow modes resolve scroll and scrollbar state per axis", () => {
+  assertEquals(
+    inspectViewportAxisOverflow({
+      contentLength: 40,
+      viewportLength: 10,
+      offset: 15,
+      overflow: "auto",
+    }),
+    {
+      contentLength: 40,
+      viewportLength: 10,
+      maxOffset: 30,
+      offset: 15,
+      overflow: "auto",
+      hasOverflow: true,
+      canScroll: true,
+      scrollbarVisible: true,
+      thumb: { start: 4, size: 3, visible: true },
+      visibleRange: { start: 15, end: 25 },
+    },
+  );
+
+  assertEquals(
+    inspectViewportAxisOverflow({
+      contentLength: 8,
+      viewportLength: 10,
+      offset: 4,
+      overflow: "scroll",
+    }).scrollbarVisible,
+    true,
+  );
+  assertEquals(
+    inspectViewportAxisOverflow({
+      contentLength: 40,
+      viewportLength: 10,
+      offset: 15,
+      overflow: "hidden",
+    }).offset,
+    0,
+  );
+  assertEquals(
+    inspectViewportAxisOverflow({
+      contentLength: 40,
+      viewportLength: 10,
+      offset: 15,
+      overflow: "visible",
+    }).visibleRange,
+    { start: 0, end: 40 },
+  );
+});
+
+Deno.test("inspectViewportOverflow exposes shared two-axis overflow contract", () => {
+  assertEquals(
+    inspectViewportOverflow({
+      contentWidth: 80,
+      contentHeight: 40,
+      viewportWidth: 20,
+      viewportHeight: 10,
+      offset: { columns: 90, rows: 15 },
+      overflowX: "hidden",
+      overflowY: "auto",
+    }).offset,
+    { columns: 0, rows: 15 },
+  );
+});
+
+Deno.test("viewportOffsetForPointer maps scrollbar track positions to content offsets", () => {
+  assertEquals(viewportOffsetForPointer(40, 10, 0), 0);
+  assertEquals(viewportOffsetForPointer(40, 10, 9), 30);
+  assertEquals(viewportOffsetForPointer(40, 10, 5), 17);
+  assertEquals(viewportOffsetForPointer(8, 10, 8), 0);
 });
