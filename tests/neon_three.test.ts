@@ -1,6 +1,7 @@
 import { assert } from "./deps.ts";
 import type { Object3D } from "npm:three@0.183.2";
 import { createNeonThreeScene } from "../app/neon_three.ts";
+import { neonThreeSceneCatalog, neonThreeSceneModeLabel } from "../app/neon_three_catalog.ts";
 import { threeSceneModes, type ThreeSceneSignal } from "../app/types.ts";
 
 const signal: ThreeSceneSignal = {
@@ -14,7 +15,16 @@ const signal: ThreeSceneSignal = {
   pressed: false,
 };
 
-for (const mode of threeSceneModes) {
+Deno.test("neon three scene catalog covers every mode with labels", () => {
+  const catalogModes = neonThreeSceneCatalog.map((entry) => entry.mode);
+  assert(catalogModes.length === threeSceneModes.length);
+  for (const mode of threeSceneModes) {
+    assert(catalogModes.includes(mode));
+    assert(neonThreeSceneModeLabel(mode).length > 0);
+  }
+});
+
+for (const { mode } of neonThreeSceneCatalog) {
   Deno.test(`createNeonThreeScene supports ${mode}`, () => {
     const bundle = createNeonThreeScene(mode);
     bundle.tick(performance.now(), signal);

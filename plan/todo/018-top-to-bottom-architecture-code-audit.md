@@ -433,6 +433,8 @@ Work:
   - [x] Extracted visualization dispatch into typed renderer maps so catalog ids, Three scene modes, and direct panel
         renderers are data-driven instead of encoded in one large switch.
 - [ ] Make demo-only assets and NGE-inspired primitives clearly separate from library APIs.
+  - [x] Added `app/neon_three_catalog.ts` for supported Three scene metadata and labels, keeping demo/NGE catalog data
+        separate from the monolithic scene factory and shared by visualization footers plus scene coverage tests.
 
 Acceptance checks:
 

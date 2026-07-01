@@ -1,5 +1,6 @@
 import { clamp, formatBytes, formatDuration, formatPercent, formatRate } from "./styles.ts";
 import { demos as neonDemos, formatCountdown as neonFormatCountdown } from "./neon_theme.ts";
+import { neonThreeSceneModeLabel } from "./neon_three_catalog.ts";
 import {
   neonThreeVisualizationIds,
   neonVisualizationIds,
@@ -1275,64 +1276,7 @@ function renderComponentIndex(context: RenderContext): PanelRender {
 const THREE_FALLBACK_BLOCKS = [" ", "▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"] as const;
 
 function modeLabel(mode: ThreeSceneMode) {
-  switch (mode) {
-    case "lattice":
-      return "LATTICE";
-    case "atfield":
-      return "AT-FIELD";
-    case "hexshell":
-      return "HEX SHELL";
-    case "capture":
-      return "CAPTURE";
-    case "mapslab":
-      return "MAP SLAB";
-    case "solenoid":
-      return "SOLENOID";
-    case "studio":
-      return "ACEROLA";
-    case "emergency":
-      return "EMERGENCY";
-    case "counter":
-      return "COUNTER";
-    case "plug":
-      return "TEST PLUG";
-    case "surveillance":
-      return "SURVEIL";
-    case "relay":
-      return "RELAY";
-    case "rack":
-      return "RACK";
-    case "scope":
-      return "SCOPE";
-    case "biosignal":
-      return "BIOSIGNAL";
-    case "harmonic":
-      return "HARMONIC";
-    case "psychograph":
-      return "PSYCHO";
-    case "field":
-      return "FIELD";
-    case "heat":
-      return "HEX FIELD";
-    case "route":
-      return "ROUTE";
-    case "topology":
-      return "TOPOLOGY";
-    case "command":
-      return "COMMAND";
-    case "launch":
-      return "LAUNCH";
-    case "magi":
-      return "MAGI";
-    case "target":
-      return "TARGET";
-    case "waveform":
-      return "WAVEFORM";
-    case "angel":
-      return "ANGEL";
-    case "gate":
-      return "GATE";
-  }
+  return neonThreeSceneModeLabel(mode);
 }
 
 function monitorGlyph(drive: VisualizationDrive, accent: Accent) {
