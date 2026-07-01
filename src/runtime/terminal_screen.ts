@@ -1,4 +1,9 @@
 // Copyright 2023 Im-Beast. MIT license.
+import {
+  type ParsedTerminalControlSequence,
+  parseTerminalControlSequence,
+  parseTerminalParams,
+} from "./terminal_sequences.ts";
 
 /** Styled terminal cell tracked by TerminalScreenController. */
 export interface TerminalScreenCell {
@@ -104,7 +109,7 @@ export class TerminalScreenController {
     for (let index = 0; index < text.length;) {
       const char = text[index]!;
       if (char === "\x1b") {
-        const parsed = parseControlSequence(text.slice(index));
+        const parsed = parseTerminalControlSequence(text.slice(index));
         if (parsed) {
           this.#applyControl(parsed);
           index += parsed.length;
@@ -212,12 +217,12 @@ export class TerminalScreenController {
     this.#scrollRegionUp(0, this.#rows - 1, 1);
   }
 
-  #applyControl(sequence: ParsedControlSequence): void {
+  #applyControl(sequence: ParsedTerminalControlSequence): void {
     if (sequence.kind === "osc") {
       this.#applyOsc(sequence.params);
       return;
     }
-    const params = parseParams(sequence.params);
+    const params = parseTerminalParams(sequence.params);
     if (sequence.private && (sequence.command === "h" || sequence.command === "l")) {
       this.#applyPrivateModes(params, sequence.command === "h");
       return;
@@ -604,65 +609,6 @@ export class TerminalScreenController {
 interface TerminalScreenScrollRegion {
   top: number;
   bottom: number;
-}
-
-interface ParsedControlSequence {
-  kind: "csi" | "osc" | "esc";
-  private: boolean;
-  params: string;
-  intermediates: string;
-  command: string;
-  length: number;
-}
-
-function parseControlSequence(value: string): ParsedControlSequence | undefined {
-  const osc = parseOscSequence(value);
-  if (osc) return osc;
-  if (
-    value.startsWith("\x1b7") || value.startsWith("\x1b8") || value.startsWith("\x1bM") ||
-    value.startsWith("\x1bH") || value.startsWith("\x1bD") || value.startsWith("\x1bE") || value.startsWith("\x1bc")
-  ) {
-    return {
-      kind: "esc",
-      private: false,
-      params: "",
-      intermediates: "",
-      command: value[1]!,
-      length: 2,
-    };
-  }
-  // deno-lint-ignore no-control-regex -- terminal parser intentionally matches ESC.
-  const match = /^\x1b\[([?]?)([0-9;:]*)([ -/]*)([@-~])/.exec(value);
-  if (!match) return undefined;
-  return {
-    kind: "csi",
-    private: match[1] === "?",
-    params: match[2] ?? "",
-    intermediates: match[3] ?? "",
-    command: match[4]!,
-    length: match[0].length,
-  };
-}
-
-function parseOscSequence(value: string): ParsedControlSequence | undefined {
-  if (!value.startsWith("\x1b]")) return undefined;
-  const belEnd = value.indexOf("\x07", 2);
-  const stEnd = value.indexOf("\x1b\\", 2);
-  const end = belEnd >= 0 && stEnd >= 0 ? Math.min(belEnd, stEnd) : belEnd >= 0 ? belEnd : stEnd;
-  if (end < 0) return undefined;
-  return {
-    kind: "osc",
-    private: false,
-    params: value.slice(2, end),
-    intermediates: "",
-    command: "]",
-    length: end + (end === stEnd ? 2 : 1),
-  };
-}
-
-function parseParams(params: string): number[] {
-  if (!params) return [];
-  return params.split(/[;:]/).map((value) => Number.parseInt(value || "0", 10)).filter(Number.isFinite);
 }
 
 function parseExtendedSgrColor(

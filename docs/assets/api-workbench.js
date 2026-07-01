@@ -8919,6 +8919,54 @@ function describeAttachTerminalTemplate(template, now = Date.now()) {
   };
 }
 
+// src/runtime/terminal_sequences.ts
+function parseTerminalControlSequence(value) {
+  const osc = parseOscSequence(value);
+  if (osc) return osc;
+  if (isSingleCharacterEscSequence(value)) {
+    return {
+      kind: "esc",
+      private: false,
+      params: "",
+      intermediates: "",
+      command: value[1],
+      length: 2
+    };
+  }
+  const match = /^\x1b\[([?]?)([0-9;:]*)([ -/]*)([@-~])/.exec(value);
+  if (!match) return void 0;
+  return {
+    kind: "csi",
+    private: match[1] === "?",
+    params: match[2] ?? "",
+    intermediates: match[3] ?? "",
+    command: match[4],
+    length: match[0].length
+  };
+}
+function parseTerminalParams(params) {
+  if (!params) return [];
+  return params.split(/[;:]/).map((value) => Number.parseInt(value || "0", 10)).filter(Number.isFinite);
+}
+function parseOscSequence(value) {
+  if (!value.startsWith("\x1B]")) return void 0;
+  const belEnd = value.indexOf("\x07", 2);
+  const stEnd = value.indexOf("\x1B\\", 2);
+  const end = belEnd >= 0 && stEnd >= 0 ? Math.min(belEnd, stEnd) : belEnd >= 0 ? belEnd : stEnd;
+  if (end < 0) return void 0;
+  return {
+    kind: "osc",
+    private: false,
+    params: value.slice(2, end),
+    intermediates: "",
+    command: "]",
+    length: end + (end === stEnd ? 2 : 1)
+  };
+}
+function isSingleCharacterEscSequence(value) {
+  return value.startsWith("\x1B7") || value.startsWith("\x1B8") || value.startsWith("\x1BM") || value.startsWith("\x1BH") || value.startsWith("\x1BD") || value.startsWith("\x1BE") || value.startsWith("\x1Bc");
+}
+
 // src/runtime/terminal_screen.ts
 var DEFAULT_COLUMNS = 80;
 var DEFAULT_ROWS = 24;
@@ -8970,7 +9018,7 @@ var TerminalScreenController = class {
     for (let index = 0; index < text.length; ) {
       const char = text[index];
       if (char === "\x1B") {
-        const parsed = parseControlSequence(text.slice(index));
+        const parsed = parseTerminalControlSequence(text.slice(index));
         if (parsed) {
           this.#applyControl(parsed);
           index += parsed.length;
@@ -9072,7 +9120,7 @@ var TerminalScreenController = class {
       this.#applyOsc(sequence.params);
       return;
     }
-    const params = parseParams(sequence.params);
+    const params = parseTerminalParams(sequence.params);
     if (sequence.private && (sequence.command === "h" || sequence.command === "l")) {
       this.#applyPrivateModes(params, sequence.command === "h");
       return;
@@ -9431,49 +9479,6 @@ var TerminalScreenController = class {
     this.#originMode = false;
   }
 };
-function parseControlSequence(value) {
-  const osc = parseOscSequence(value);
-  if (osc) return osc;
-  if (value.startsWith("\x1B7") || value.startsWith("\x1B8") || value.startsWith("\x1BM") || value.startsWith("\x1BH") || value.startsWith("\x1BD") || value.startsWith("\x1BE") || value.startsWith("\x1Bc")) {
-    return {
-      kind: "esc",
-      private: false,
-      params: "",
-      intermediates: "",
-      command: value[1],
-      length: 2
-    };
-  }
-  const match = /^\x1b\[([?]?)([0-9;:]*)([ -/]*)([@-~])/.exec(value);
-  if (!match) return void 0;
-  return {
-    kind: "csi",
-    private: match[1] === "?",
-    params: match[2] ?? "",
-    intermediates: match[3] ?? "",
-    command: match[4],
-    length: match[0].length
-  };
-}
-function parseOscSequence(value) {
-  if (!value.startsWith("\x1B]")) return void 0;
-  const belEnd = value.indexOf("\x07", 2);
-  const stEnd = value.indexOf("\x1B\\", 2);
-  const end = belEnd >= 0 && stEnd >= 0 ? Math.min(belEnd, stEnd) : belEnd >= 0 ? belEnd : stEnd;
-  if (end < 0) return void 0;
-  return {
-    kind: "osc",
-    private: false,
-    params: value.slice(2, end),
-    intermediates: "",
-    command: "]",
-    length: end + (end === stEnd ? 2 : 1)
-  };
-}
-function parseParams(params) {
-  if (!params) return [];
-  return params.split(/[;:]/).map((value) => Number.parseInt(value || "0", 10)).filter(Number.isFinite);
-}
 function parseExtendedSgrColor(values, index) {
   const mode = values[index + 1];
   if (mode === 5) {

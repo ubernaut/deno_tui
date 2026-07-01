@@ -280,6 +280,9 @@ Acceptance checks:
   - [x] Added `TerminalShellController` smoke coverage for PTY-style command writes, shell output, and a full-screen
         alternate-screen transcript before wiring the same path into a workbench-level smoke.
 - [x] This todo and `017-terminal-multiplexer-experience.md` have non-overlapping scopes or are merged cleanly.
+  - [x] Extracted OSC/CSI/single-character ESC parsing and numeric parameter parsing into
+        `src/runtime/terminal_sequences.ts` with direct parser tests, leaving `TerminalScreenController` focused on
+        screen state mutation.
 
 ### P2: Consolidate Layout, Markup, And Widget Hydration
 
