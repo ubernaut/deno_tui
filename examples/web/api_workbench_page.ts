@@ -55,6 +55,7 @@ import {
   toStyledCells,
   WindowManagerController,
   type WorkbenchPanelWorkspaceState,
+  workbenchRevealActiveRowOffset,
   type WorkbenchTitlebarButtonKind,
   wrapTextBoxLines,
 } from "../../mod.web.ts";
@@ -1528,19 +1529,13 @@ function ensureActivePanelVisible(
   lastWorkspaceWidth = layout.bounds.width;
   lastWorkspaceHeight = viewportHeight;
 
-  if (layout.contentHeight <= viewportHeight) {
-    workspaceScroll.scrollTo(0, 0);
-    return;
-  }
-
-  const offset = workspaceScroll.offset.peek().rows;
-  const top = activeRect.row;
-  const bottom = activeRect.row + activeRect.height;
-  if (top < offset) {
-    workspaceScroll.scrollTo(0, top);
-  } else if (bottom > offset + viewportHeight) {
-    workspaceScroll.scrollTo(0, bottom - viewportHeight);
-  }
+  const offset = workbenchRevealActiveRowOffset({
+    activeRect,
+    contentHeight: layout.contentHeight,
+    viewportHeight,
+    offsetRows: workspaceScroll.offset.peek().rows,
+  });
+  if (offset !== undefined) workspaceScroll.scrollTo(0, offset);
 }
 
 function panelLineStyle(id: PanelId, index: number): { fg: string; bg: string; bold?: boolean } {

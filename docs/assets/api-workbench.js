@@ -8807,6 +8807,21 @@ function layoutWorkbenchTitlebar(options) {
   };
 }
 
+// src/app/workbench_viewport.ts
+function workbenchRevealActiveRowOffset(options) {
+  if (!options.activeRect) return void 0;
+  if (options.contentHeight <= options.viewportHeight) return 0;
+  const maxOffset = Math.max(0, options.contentHeight - Math.max(0, options.viewportHeight));
+  const offset = Math.max(0, Math.min(maxOffset, options.offsetRows));
+  const top = options.activeRect.row;
+  const bottom = options.activeRect.row + options.activeRect.height;
+  if (top < offset) return Math.max(0, Math.min(maxOffset, top));
+  if (bottom > offset + options.viewportHeight) {
+    return Math.max(0, Math.min(maxOffset, bottom - options.viewportHeight));
+  }
+  return void 0;
+}
+
 // src/app/workbench_workspace.ts
 function defaultWorkbenchMinimizedState(panelIds2, minimized2 = {}) {
   const state = {};
@@ -11766,18 +11781,13 @@ function ensureActivePanelVisible(layout, viewportHeight) {
   lastVisiblePanel = activePanel;
   lastWorkspaceWidth = layout.bounds.width;
   lastWorkspaceHeight = viewportHeight;
-  if (layout.contentHeight <= viewportHeight) {
-    workspaceScroll.scrollTo(0, 0);
-    return;
-  }
-  const offset = workspaceScroll.offset.peek().rows;
-  const top = activeRect.row;
-  const bottom = activeRect.row + activeRect.height;
-  if (top < offset) {
-    workspaceScroll.scrollTo(0, top);
-  } else if (bottom > offset + viewportHeight) {
-    workspaceScroll.scrollTo(0, bottom - viewportHeight);
-  }
+  const offset = workbenchRevealActiveRowOffset({
+    activeRect,
+    contentHeight: layout.contentHeight,
+    viewportHeight,
+    offsetRows: workspaceScroll.offset.peek().rows
+  });
+  if (offset !== void 0) workspaceScroll.scrollTo(0, offset);
 }
 function panelLineStyle(id2, index) {
   const t = theme();

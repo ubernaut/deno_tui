@@ -8,8 +8,8 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 - Entrypoints: 5
 - Module visits: 443
 - Re-export declarations: 438
-- Exported symbols: 3722
-- Documented symbols: 3722
+- Exported symbols: 3726
+- Documented symbols: 3726
 - Documentation coverage: 100.00%
 - Duplicate symbol groups: 0
 - Missing targets: 0
@@ -18,8 +18,8 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 
 | Specifier       | Path                           | Runtime  | Stability    | Modules | Symbols |    Docs |
 | --------------- | ------------------------------ | -------- | ------------ | ------: | ------: | ------: |
-| `.`             | `./mod.ts`                     | terminal | stable       |     225 |    1880 | 100.00% |
-| `./web`         | `./mod.web.ts`                 | browser  | beta         |     205 |    1748 | 100.00% |
+| `.`             | `./mod.ts`                     | terminal | stable       |     225 |    1882 | 100.00% |
+| `./web`         | `./mod.web.ts`                 | browser  | beta         |     205 |    1750 | 100.00% |
 | `./remote`      | `./mod.remote.ts`              | remote   | experimental |       4 |      38 | 100.00% |
 | `./three-ascii` | `./mod.three_ascii.ts`         | shared   | experimental |       8 |      53 | 100.00% |
 | `./layout/yoga` | `./src/layout/solvers/yoga.ts` | shared   | experimental |       1 |       3 | 100.00% |
@@ -37,8 +37,8 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 - Entrypoint: `mod.ts`
 - Modules: 225
 - Re-export declarations: 224
-- Exported symbols: 1880
-- Documented symbols: 1880
+- Exported symbols: 1882
+- Documented symbols: 1882
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -115,7 +115,7 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 | [`src/app/workbench_menu.ts`](#src-app-workbench-menu-ts)                               |          0 |       5 |          5 |
 | [`src/app/workbench_shelf.ts`](#src-app-workbench-shelf-ts)                             |          0 |       8 |          8 |
 | [`src/app/workbench_titlebar.ts`](#src-app-workbench-titlebar-ts)                       |          0 |       6 |          6 |
-| [`src/app/workbench_viewport.ts`](#src-app-workbench-viewport-ts)                       |          0 |       2 |          2 |
+| [`src/app/workbench_viewport.ts`](#src-app-workbench-viewport-ts)                       |          0 |       4 |          4 |
 | [`src/app/workbench_window_registry.ts`](#src-app-workbench-window-registry-ts)         |          0 |      13 |         13 |
 | [`src/app/workbench_workspace.ts`](#src-app-workbench-workspace-ts)                     |          0 |      18 |         18 |
 | [`src/canvas/box.ts`](#src-canvas-box-ts)                                               |          0 |       2 |          2 |
@@ -1225,6 +1225,8 @@ _No direct exported symbols._
 | --------------------------------- | --------- | --------- | ----- |
 | `workbenchContentViewport`        | function  | no        | yes   |
 | `WorkbenchContentViewportOptions` | interface | yes       | yes   |
+| `workbenchRevealActiveRowOffset`  | function  | no        | yes   |
+| `WorkbenchRevealActiveRowOptions` | interface | yes       | yes   |
 
 #### src/app/workbench_window_registry.ts
 
@@ -3541,8 +3543,8 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 - Entrypoint: `mod.web.ts`
 - Modules: 205
 - Re-export declarations: 204
-- Exported symbols: 1748
-- Documented symbols: 1748
+- Exported symbols: 1750
+- Documented symbols: 1750
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -3619,7 +3621,7 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 | [`src/app/workbench_menu.ts`](#src-app-workbench-menu-ts)                         |          0 |       5 |          5 |
 | [`src/app/workbench_shelf.ts`](#src-app-workbench-shelf-ts)                       |          0 |       8 |          8 |
 | [`src/app/workbench_titlebar.ts`](#src-app-workbench-titlebar-ts)                 |          0 |       6 |          6 |
-| [`src/app/workbench_viewport.ts`](#src-app-workbench-viewport-ts)                 |          0 |       2 |          2 |
+| [`src/app/workbench_viewport.ts`](#src-app-workbench-viewport-ts)                 |          0 |       4 |          4 |
 | [`src/app/workbench_window_registry.ts`](#src-app-workbench-window-registry-ts)   |          0 |      13 |         13 |
 | [`src/app/workbench_workspace.ts`](#src-app-workbench-workspace-ts)               |          0 |      18 |         18 |
 | [`src/canvas/box.ts`](#src-canvas-box-ts)                                         |          0 |       2 |          2 |
@@ -4727,6 +4729,8 @@ _No direct exported symbols._
 | --------------------------------- | --------- | --------- | ----- |
 | `workbenchContentViewport`        | function  | no        | yes   |
 | `WorkbenchContentViewportOptions` | interface | yes       | yes   |
+| `workbenchRevealActiveRowOffset`  | function  | no        | yes   |
+| `WorkbenchRevealActiveRowOptions` | interface | yes       | yes   |
 
 #### src/app/workbench_window_registry.ts
 

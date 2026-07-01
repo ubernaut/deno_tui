@@ -59,6 +59,8 @@ Work:
         migrated terminal/web shelf hit geometry to it.
   - [x] Extracted scrollbar-aware content viewport sizing into `src/app/workbench_viewport.ts` with direct coverage for
         coupled horizontal/vertical overflow.
+  - [x] Extracted shared active-window reveal scroll math into `src/app/workbench_viewport.ts` and migrated terminal/web
+        workspace auto-scroll behavior to it.
 - [ ] Make the terminal workbench and web workbench thin render adapters over the same controller/model.
   - [x] Exposed the shared frame and hit-target helpers through `src/app/mod.ts` and migrated the web API Workbench page
         to reuse exported text-fit, ANSI-cell, contrast, and geometry helpers.
