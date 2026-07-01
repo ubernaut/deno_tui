@@ -61,6 +61,10 @@ export class DrawObjectSpatialIndex {
     const candidates = new Set<DrawObject>();
     for (let row = startRow; row < endRow; row += 1) {
       for (const object of this.#rows.get(row) ?? []) {
+        const objectRectangle = object.rectangle.peek();
+        const objectStartColumn = Math.floor(objectRectangle.column);
+        const objectEndColumn = objectStartColumn + Math.max(0, Math.floor(objectRectangle.width));
+        if (objectEndColumn <= startColumn || objectStartColumn >= endColumn) continue;
         candidates.add(object);
       }
     }

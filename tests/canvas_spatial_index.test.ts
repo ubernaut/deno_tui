@@ -26,6 +26,8 @@ Deno.test("DrawObjectSpatialIndex returns unique row-overlap candidates", () => 
   const index = DrawObjectSpatialIndex.fromObjects([top, middle, bottom]);
 
   assertEquals(index.query({ column: 0, row: 2, width: 80, height: 1 }), [top, middle]);
+  assertEquals(index.query({ column: 9, row: 2, width: 1, height: 1 }), []);
+  assertEquals(index.query({ column: 10, row: 2, width: 1, height: 1 }), [middle]);
   assertEquals(index.query({ column: 0, row: 10, width: 80, height: 2 }), []);
   assertEquals(index.query({ column: 0, row: 12, width: 80, height: 6 }), [bottom]);
   assertEquals(index.inspect(), { objects: 3, rows: 9, rowEntries: 10 });
