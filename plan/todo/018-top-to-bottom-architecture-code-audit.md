@@ -169,6 +169,8 @@ Work:
         optimization passes can rerun only the relevant integration workload before the full health gate.
   - [x] Removed intermediate sampled-array allocation from `renderSparkline()`, keeping dashboard trend rendering on a
         tight width-bounded loop.
+  - [x] Reworked shared visualization grid/matrix primitives to avoid nested `Array.from()` and map/filter chains in
+        monitor and Neon panel render paths.
 
 Acceptance checks:
 
