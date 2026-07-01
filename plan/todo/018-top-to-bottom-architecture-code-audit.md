@@ -195,6 +195,8 @@ Work:
         repeated `Array.from()` closures in frame-driven demo data.
   - [x] Extracted shared synthetic waveform helpers and migrated API Workbench, Neon suite, and showcase demo data onto
         the same loop-based source/history generation primitive.
+  - [x] Reworked Three ASCII mixed glyph table initialization to score candidates with direct loops instead of
+        spread/map/reduce allocation while preserving mixed-mode glyph selection behavior.
 
 Acceptance checks:
 
