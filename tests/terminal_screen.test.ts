@@ -402,6 +402,37 @@ Deno.test("TerminalScreenController supports alternate screen switching", () => 
   assertEquals(screen.textRows()[0], "main");
 });
 
+Deno.test("TerminalScreenController supports legacy alternate screen private modes", () => {
+  const screen = new TerminalScreenController({ columns: 8, rows: 2 });
+
+  screen.write("main\x1b[?47halt");
+  assertEquals(screen.inspect().alternate, true);
+  assertEquals(screen.textRows()[0], "alt");
+  assertEquals(screen.inspect().privateModes, [47]);
+
+  screen.write("\x1b[?47l");
+  assertEquals(screen.inspect().alternate, false);
+  assertEquals(screen.textRows()[0], "main");
+  assertEquals(screen.inspect().privateModes, []);
+
+  screen.write("\x1b[?1047hfull\x1b[?1047l");
+  assertEquals(screen.inspect().alternate, false);
+  assertEquals(screen.textRows()[0], "main");
+});
+
+Deno.test("TerminalScreenController supports DEC private cursor save restore mode", () => {
+  const screen = new TerminalScreenController({ columns: 8, rows: 3 });
+
+  screen.write("ab\x1b[?1048h\x1b[3;6Hxy\x1b[?1048lZ");
+  assertEquals(screen.textRows(), ["abZ", "", "     xy"]);
+  assertEquals(screen.inspect().cursor, { column: 3, row: 0 });
+
+  screen.write("\x1b[3;7H\x1b[?1049hALT\x1b[?1049lR");
+  assertEquals(screen.inspect().alternate, false);
+  assertEquals(screen.textRows(), ["abZ", "", "     xR"]);
+  assertEquals(screen.inspect().cursor, { column: 7, row: 2 });
+});
+
 Deno.test("TerminalScreenController replays a full-screen curses-style transcript", () => {
   const screen = new TerminalScreenController({ columns: 24, rows: 5, scrollbackLimit: 4 });
 

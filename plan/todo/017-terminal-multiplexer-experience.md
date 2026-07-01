@@ -90,3 +90,5 @@ developer workflows.
   rows without emulating insert mode manually.
 - Added single-character ESC index, next-line, and reset controls (`ESC D`, `ESC E`, `ESC c`) for older and curses-style
   terminal transcripts.
+- Added legacy alternate-screen and cursor-save private modes (`CSI ? 47 h/l`, `CSI ? 1047 h/l`, `CSI ? 1048 h/l`, and
+  save/restore cursor semantics for `CSI ? 1049 h/l`) so more curses/full-screen apps restore shell state correctly.

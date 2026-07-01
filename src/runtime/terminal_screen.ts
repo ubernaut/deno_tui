@@ -324,16 +324,11 @@ export class TerminalScreenController {
         break;
       case "s":
       case "7":
-        this.#savedCursor = { ...this.#state.cursor };
+        this.#saveCursor();
         break;
       case "u":
       case "8":
-        if (this.#savedCursor) {
-          this.#state.cursor = {
-            column: clamp(this.#savedCursor.column, 0, this.#columns - 1),
-            row: clamp(this.#savedCursor.row, 0, this.#rows - 1),
-          };
-        }
+        this.#restoreCursor();
         break;
     }
   }
@@ -376,7 +371,17 @@ export class TerminalScreenController {
           };
         }
         if (mode === 7) this.#autoWrap = enabled;
-        if (mode === 1049) enabled ? this.#enterAlternate() : this.#exitAlternate();
+        if (mode === 47 || mode === 1047) enabled ? this.#enterAlternate() : this.#exitAlternate();
+        if (mode === 1048) enabled ? this.#saveCursor() : this.#restoreCursor();
+        if (mode === 1049) {
+          if (enabled) {
+            this.#saveCursor();
+            this.#enterAlternate();
+          } else {
+            this.#exitAlternate();
+            this.#restoreCursor();
+          }
+        }
       }
     }
   }
@@ -404,6 +409,18 @@ export class TerminalScreenController {
 
   #setTabStop(): void {
     this.#tabStops.add(this.#state.cursor.column);
+  }
+
+  #saveCursor(): void {
+    this.#savedCursor = { ...this.#state.cursor };
+  }
+
+  #restoreCursor(): void {
+    if (!this.#savedCursor) return;
+    this.#state.cursor = {
+      column: clamp(this.#savedCursor.column, 0, this.#columns - 1),
+      row: clamp(this.#savedCursor.row, 0, this.#rows - 1),
+    };
   }
 
   #clearTabStops(mode: number): void {
