@@ -181,6 +181,8 @@ Work:
         map/spread/filter allocation in the visual monitor path.
   - [x] Reworked reusable list, virtual-list, context-menu, stepper, radio-group, and log-viewer draw loops to avoid
         discarded `Array.from()` allocations; log viewer now shares one visible-row computation across rendered lines.
+  - [x] Reworked toast, empty-state, and label layout rendering to use loop-based row allocation and avoid short-lived
+        padding/layout arrays.
 
 Acceptance checks:
 
