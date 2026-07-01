@@ -1,7 +1,6 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { Signal } from "../signals/mod.ts";
 import type { Rectangle } from "../types.ts";
-import { formatProcessCommandLine } from "./process_session.ts";
 import {
   clampTerminalWorkspaceSplitRatio,
   cloneTerminalWorkspaceLayoutNode,
@@ -16,7 +15,6 @@ import {
   pruneTerminalWorkspaceLayoutSessions,
   removeTerminalWorkspacePane,
   replaceTerminalWorkspacePane,
-  sanitizeTerminalWorkspaceLayoutId,
   terminalWorkspaceLayoutWithActive,
   terminalWorkspacePaneRects as projectTerminalWorkspacePaneRects,
   uniqueTerminalWorkspaceLayoutId,
@@ -24,11 +22,12 @@ import {
   updateTerminalWorkspaceSplitRatio,
 } from "./terminal_workspace_layout.ts";
 import {
-  describeAttachTerminalTemplate,
-  isSpawnTerminalTemplate,
-  type TerminalSessionDescriptor,
-  type TerminalTemplate,
-} from "./terminal_templates.ts";
+  cloneTerminalSessionDescriptor,
+  descriptorFromTerminalTemplate,
+  duplicateTerminalSessionDescriptor,
+  shouldAdoptRuntimeTitle,
+} from "./terminal_workspace_sessions.ts";
+import { type TerminalSessionDescriptor, type TerminalTemplate } from "./terminal_templates.ts";
 
 /** Options for constructing a terminal workspace controller. */
 export interface TerminalWorkspaceControllerOptions {
@@ -170,7 +169,7 @@ export class TerminalWorkspaceController {
   }
 
   add(template: TerminalTemplate, options: AddTerminalWorkspaceSessionOptions = {}): TerminalSessionDescriptor {
-    const descriptor = descriptorFromTemplate(template, options, this.#now());
+    const descriptor = descriptorFromTerminalTemplate(template, options, this.#now());
     return this.upsert(descriptor, {
       activate: options.activate ?? this.sessions.peek().length === 0,
     });
@@ -465,106 +464,6 @@ export function terminalWorkspacePaneRects(
   return projectTerminalWorkspacePaneRects(layout, bounds, options);
 }
 
-function descriptorFromTemplate(
-  template: TerminalTemplate,
-  options: AddTerminalWorkspaceSessionOptions,
-  now: number,
-): TerminalSessionDescriptor {
-  if (!isSpawnTerminalTemplate(template)) {
-    return {
-      ...describeAttachTerminalTemplate(template, now),
-      title: options.title ?? template.title,
-      backendId: options.backendId,
-      columns: normalizeDimension(options.columns),
-      rows: normalizeDimension(options.rows),
-      status: options.status,
-      running: options.running,
-      detached: false,
-    };
-  }
-  const commandLine = formatProcessCommandLine(template);
-  return {
-    id: template.id,
-    title: options.title ?? template.title,
-    template: cloneTerminalTemplate(template),
-    backendId: options.backendId,
-    commandLine,
-    status: options.status ?? "idle",
-    running: options.running ?? false,
-    columns: normalizeDimension(options.columns ?? template.columns),
-    rows: normalizeDimension(options.rows ?? template.rows),
-    reconnectable: template.reconnectable ?? false,
-    restartPolicy: template.restartPolicy ?? "never",
-    createdAt: now,
-    updatedAt: now,
-  };
-}
-
-function cloneTerminalSessionDescriptor(descriptor: TerminalSessionDescriptor): TerminalSessionDescriptor {
-  return {
-    ...descriptor,
-    template: cloneTerminalTemplate(descriptor.template),
-  };
-}
-
-function duplicateTerminalSessionDescriptor(
-  source: TerminalSessionDescriptor,
-  sessions: readonly TerminalSessionDescriptor[],
-  options: DuplicateTerminalWorkspaceSessionOptions,
-  now: number,
-): TerminalSessionDescriptor {
-  const ids = new Set(sessions.map((session) => session.id));
-  const id = uniqueSessionId(options.id ?? `${source.id}-copy`, ids);
-  const title = options.title ?? `${source.title} Copy`;
-  const template = cloneTerminalTemplate(source.template);
-  template.id = id;
-  template.title = title;
-
-  const descriptor: TerminalSessionDescriptor = {
-    ...cloneTerminalSessionDescriptor(source),
-    id,
-    title,
-    runtimeTitle: undefined,
-    template,
-    status: isSpawnTerminalTemplate(template) ? "idle" : source.status,
-    running: isSpawnTerminalTemplate(template) ? false : source.running,
-    detached: false,
-    createdAt: now,
-    updatedAt: now,
-  };
-  if (isSpawnTerminalTemplate(template)) descriptor.commandLine = formatProcessCommandLine(template);
-  return descriptor;
-}
-
-function shouldAdoptRuntimeTitle(
-  descriptor: TerminalSessionDescriptor,
-  previousRuntimeTitle: string | undefined,
-): boolean {
-  return descriptor.title === descriptor.template.title ||
-    descriptor.title === previousRuntimeTitle ||
-    descriptor.title === descriptor.runtimeTitle;
-}
-
-function cloneTerminalTemplate(template: TerminalTemplate): TerminalTemplate {
-  if (!isSpawnTerminalTemplate(template)) {
-    return {
-      ...template,
-      metadata: template.metadata ? { ...template.metadata } : undefined,
-    };
-  }
-  return {
-    ...template,
-    args: template.args ? [...template.args] : undefined,
-    env: template.env ? { ...template.env } : undefined,
-    metadata: template.metadata ? { ...template.metadata } : undefined,
-  };
-}
-
-function normalizeDimension(value: number | undefined): number | undefined {
-  if (!Number.isFinite(value)) return undefined;
-  return Math.max(1, Math.floor(value!));
-}
-
 function normalizeTerminalWorkspaceLayout(
   layout: TerminalWorkspaceLayoutState | undefined,
   sessions: readonly TerminalSessionDescriptor[],
@@ -613,15 +512,4 @@ function inspectTerminalWorkspaceLayout(
     panes,
     count: panes.length,
   };
-}
-
-function uniqueSessionId(prefix: string, ids: ReadonlySet<string>): string {
-  const base = sanitizeTerminalWorkspaceLayoutId(prefix);
-  let candidate = base;
-  let suffix = 2;
-  while (ids.has(candidate)) {
-    candidate = `${base}-${suffix}`;
-    suffix += 1;
-  }
-  return candidate;
 }
