@@ -407,7 +407,43 @@ Deno.test("createMarkupLayout computes flex boxes from HTML and CSS subset", () 
   assertEquals(toolbar.contentRect, { column: 1, row: 0, width: 78, height: 3 });
   assertEquals(body.rect, { column: 0, row: 3, width: 80, height: 21 });
   assertEquals(body.overflowY, "auto");
+  assertEquals(body.overflow.rows.overflow, "auto");
+  assertEquals(body.overflow.rows.canScroll, false);
   assertEquals(body.hitRegions[0]!.payload, { nodeId: "body", tag: "scroll-area" });
+});
+
+Deno.test("layout boxes expose shared overflow inspection for scrollable content", () => {
+  const result = createMarkupLayout({
+    markup: `
+      <panel id="body">
+        <div id="wide"></div>
+      </panel>
+    `,
+    css: `
+      #body {
+        width: 10;
+        height: 4;
+        overflow: auto;
+      }
+
+      #wide {
+        position: absolute;
+        width: 30;
+        height: 8;
+      }
+    `,
+    bounds: { column: 0, row: 0, width: 40, height: 12 },
+  });
+
+  const body = result.layout.byId.get("body")!;
+  assertEquals(body.overflow.columns.contentLength, 30);
+  assertEquals(body.overflow.columns.viewportLength, 10);
+  assertEquals(body.overflow.columns.maxOffset, 20);
+  assertEquals(body.overflow.columns.scrollbarVisible, true);
+  assertEquals(body.overflow.rows.contentLength, 8);
+  assertEquals(body.overflow.rows.viewportLength, 4);
+  assertEquals(body.overflow.rows.maxOffset, 4);
+  assertEquals(body.overflow.rows.scrollbarVisible, true);
 });
 
 Deno.test("createMarkupLayout wraps flex rows in the simple solver", () => {
@@ -673,6 +709,8 @@ Deno.test("createMarkupLayout hydrates common widgets and dispatches controller 
 
   const logs = result.widgets.byId.get("logs")?.controller;
   assert(logs instanceof ScrollAreaController);
+  assertEquals(logs.inspectOverflow().columns.contentLength, 120);
+  assertEquals(logs.inspectOverflow().rows.contentLength, 40);
   result.widgets.dispatch({ type: "scroll", id: "logs", rows: 7 });
   assertEquals(logs.inspect().offset.rows, 7);
 

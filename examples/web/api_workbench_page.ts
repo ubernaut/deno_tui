@@ -38,7 +38,6 @@ import {
   ScrollAreaController,
   scrollbarGlyph,
   scrollbarOffsetForPointer,
-  scrollbarThumb,
   Signal,
   SliderController,
   StepperController,
@@ -609,7 +608,7 @@ function draw(): void {
   }
   translateWorkspaceHits(hitStart, body.column, body.row - offset, body);
   blitWorkspace(frame, virtual, body, offset, layout.bounds.width);
-  renderWorkspaceScrollbar(frame, body, layout.contentHeight, offset);
+  renderWorkspaceScrollbar(frame, body);
   maximized.peek() ? renderWindowTabs(frame) : renderShelf(frame);
   renderDropdownOverlay(frame);
   renderModalOverlay(frame);
@@ -832,13 +831,14 @@ function renderLogs(frame: string[], rect: Rectangle): void {
   logScroll.setViewportSize(rect.width, rect.height);
   logScroll.setContentSize(rect.width, lines.length);
   const offset = logScroll.offset.peek().rows;
+  const overflow = logScroll.inspectOverflow();
   const bodyWidth = Math.max(0, rect.width - 1);
   lines.slice(offset, offset + rect.height).forEach((line, index) => {
     write(frame, rect.row + index, rect.column, paint(fit(line, bodyWidth), theme().text, theme().surface));
   });
-  if (lines.length <= rect.height || rect.width < 1) return;
+  if (!overflow.rows.scrollbarVisible || rect.width < 1) return;
   const column = rect.column + rect.width - 1;
-  const thumb = scrollbarThumb(lines.length, rect.height, offset);
+  const thumb = overflow.rows.thumb;
   hitTargets.push({ rect: { column, row: rect.row, width: 1, height: rect.height }, hit: { type: "logScrollbar" } });
   for (let row = 0; row < rect.height; row += 1) {
     write(frame, rect.row + row, column, paint(scrollbarGlyph(row, thumb), theme().accent, theme().surface, true));
@@ -1402,10 +1402,11 @@ function blitWorkspace(frame: string[], virtual: string[], bounds: Rectangle, of
   }
 }
 
-function renderWorkspaceScrollbar(frame: string[], bounds: Rectangle, contentHeight: number, offset: number): void {
-  if (contentHeight <= bounds.height || bounds.width < 2) return;
+function renderWorkspaceScrollbar(frame: string[], bounds: Rectangle): void {
+  const overflow = workspaceScroll.inspectOverflow();
+  if (!overflow.rows.scrollbarVisible || bounds.width < 2) return;
   const column = bounds.column + bounds.width - 1;
-  const thumb = scrollbarThumb(contentHeight, bounds.height, offset);
+  const thumb = overflow.rows.thumb;
   hitTargets.push({
     rect: { column, row: bounds.row, width: 1, height: bounds.height },
     hit: { type: "workspaceScrollbar" },

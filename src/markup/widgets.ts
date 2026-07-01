@@ -458,17 +458,29 @@ function radioGroupWidget(node: LayoutNode): MarkupWidgetDescriptor {
 
 function scrollAreaWidget(node: LayoutNode, context: MarkupWidgetFactoryContext): MarkupWidgetDescriptor {
   const box = context.layout?.byId.get(node.id);
-  const viewportWidth = numberAttr(node.attributes, "viewport-width", box?.contentRect.width ?? box?.rect.width ?? 0);
+  const viewportWidth = numberAttr(
+    node.attributes,
+    "viewport-width",
+    box?.overflow.columns.viewportLength ?? box?.contentRect.width ?? box?.rect.width ?? 0,
+  );
   const viewportHeight = numberAttr(
     node.attributes,
     "viewport-height",
-    box?.contentRect.height ?? box?.rect.height ?? 0,
+    box?.overflow.rows.viewportLength ?? box?.contentRect.height ?? box?.rect.height ?? 0,
   );
   return {
     kind: "scroll-area",
     controller: new ScrollAreaController({
-      contentWidth: numberAttr(node.attributes, "content-width", Math.max(viewportWidth, box?.scrollWidth ?? 0)),
-      contentHeight: numberAttr(node.attributes, "content-height", Math.max(viewportHeight, box?.scrollHeight ?? 0)),
+      contentWidth: numberAttr(
+        node.attributes,
+        "content-width",
+        Math.max(viewportWidth, box?.overflow.columns.contentLength ?? box?.scrollWidth ?? 0),
+      ),
+      contentHeight: numberAttr(
+        node.attributes,
+        "content-height",
+        Math.max(viewportHeight, box?.overflow.rows.contentLength ?? box?.scrollHeight ?? 0),
+      ),
       viewportWidth,
       viewportHeight,
       offset: {

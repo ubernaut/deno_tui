@@ -1,6 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { WidgetHitRegion } from "../components/interaction.ts";
 import type { Rectangle } from "../types.ts";
+import { inspectViewportOverflow, type ViewportOverflowInspection } from "../viewport.ts";
 import {
   type BoxEdges,
   cloneComputedLayoutStyle,
@@ -54,6 +55,7 @@ export interface ComputedLayoutBox {
   overflowY: ComputedLayoutStyle["overflowY"];
   scrollWidth: number;
   scrollHeight: number;
+  overflow: ViewportOverflowInspection;
   zIndex: number;
   visible: boolean;
   hitRegions: Array<WidgetHitRegion<{ nodeId: string; tag: string }>>;
@@ -80,6 +82,24 @@ export interface LayoutSolver {
   readonly id: string;
   supports(node: LayoutNode): boolean;
   solve(input: LayoutSolverInput): LayoutSolverResult;
+}
+
+/** Computes the shared overflow contract for one solved layout box. */
+export function computedLayoutBoxOverflow(
+  contentRect: Rectangle,
+  scrollWidth: number,
+  scrollHeight: number,
+  overflowX: ComputedLayoutStyle["overflowX"],
+  overflowY: ComputedLayoutStyle["overflowY"],
+): ViewportOverflowInspection {
+  return inspectViewportOverflow({
+    contentWidth: scrollWidth,
+    contentHeight: scrollHeight,
+    viewportWidth: contentRect.width,
+    viewportHeight: contentRect.height,
+    overflowX,
+    overflowY,
+  });
 }
 
 /** Creates a renderer-neutral layout tree node with normalized defaults. */

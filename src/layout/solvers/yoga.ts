@@ -5,6 +5,7 @@ import type { Rectangle } from "../../types.ts";
 import type { ComputedLayoutStyle, LayoutAlignItems, LayoutJustifyContent, LayoutLengthValue } from "../style.ts";
 import {
   type ComputedLayoutBox,
+  computedLayoutBoxOverflow,
   flattenComputedLayoutBoxes,
   type LayoutNode,
   type LayoutSolver,
@@ -103,6 +104,13 @@ export class YogaLayoutSolver implements LayoutSolver {
       overflowY: node.style.overflowY,
       scrollWidth,
       scrollHeight,
+      overflow: computedLayoutBoxOverflow(
+        contentRect,
+        scrollWidth,
+        scrollHeight,
+        node.style.overflowX,
+        node.style.overflowY,
+      ),
       zIndex: node.style.zIndex,
       visible,
       hitRegions: visible

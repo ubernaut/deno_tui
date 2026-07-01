@@ -13,6 +13,7 @@ import {
 } from "../style.ts";
 import {
   type ComputedLayoutBox,
+  computedLayoutBoxOverflow,
   flattenComputedLayoutBoxes,
   type LayoutIntrinsicSize,
   type LayoutNode,
@@ -97,6 +98,7 @@ export class SimpleLayoutSolver implements LayoutSolver {
       overflowY: style.overflowY,
       scrollWidth: scroll.width,
       scrollHeight: scroll.height,
+      overflow: computedLayoutBoxOverflow(contentRect, scroll.width, scroll.height, style.overflowX, style.overflowY),
       zIndex: style.zIndex,
       visible,
       hitRegions: visible ? [hitRegionForNode(node, rect, style.zIndex)] : [],

@@ -4126,6 +4126,16 @@ function finiteNumber(value, fallback) {
 }
 
 // src/layout/solver.ts
+function computedLayoutBoxOverflow(contentRect, scrollWidth, scrollHeight, overflowX, overflowY) {
+  return inspectViewportOverflow({
+    contentWidth: scrollWidth,
+    contentHeight: scrollHeight,
+    viewportWidth: contentRect.width,
+    viewportHeight: contentRect.height,
+    overflowX,
+    overflowY
+  });
+}
 function createLayoutNode(options) {
   const attributes = { ...options.attributes ?? {} };
   const id2 = options.id ?? attributes.id ?? options.tag;
@@ -4281,6 +4291,7 @@ var SimpleLayoutSolver = class {
       overflowY: style2.overflowY,
       scrollWidth: scroll.width,
       scrollHeight: scroll.height,
+      overflow: computedLayoutBoxOverflow(contentRect, scroll.width, scroll.height, style2.overflowX, style2.overflowY),
       zIndex: style2.zIndex,
       visible,
       hitRegions: visible ? [hitRegionForNode(node, rect, style2.zIndex)] : [],
@@ -5917,9 +5928,6 @@ function clampScrollOffset(offset, maxOffset) {
 function scrollOffsetBy(offset, maxOffset, columns, rows2) {
   return viewportOffsetBy(offset, maxOffset, columns, rows2);
 }
-function scrollbarThumb(contentLength, viewportLength, offset) {
-  return viewportThumb(contentLength, viewportLength, offset);
-}
 function scrollbarGlyph(row, thumb) {
   return viewportThumbGlyph(row, thumb);
 }
@@ -7029,17 +7037,29 @@ function radioGroupWidget(node) {
 }
 function scrollAreaWidget(node, context) {
   const box = context.layout?.byId.get(node.id);
-  const viewportWidth = numberAttr(node.attributes, "viewport-width", box?.contentRect.width ?? box?.rect.width ?? 0);
+  const viewportWidth = numberAttr(
+    node.attributes,
+    "viewport-width",
+    box?.overflow.columns.viewportLength ?? box?.contentRect.width ?? box?.rect.width ?? 0
+  );
   const viewportHeight = numberAttr(
     node.attributes,
     "viewport-height",
-    box?.contentRect.height ?? box?.rect.height ?? 0
+    box?.overflow.rows.viewportLength ?? box?.contentRect.height ?? box?.rect.height ?? 0
   );
   return {
     kind: "scroll-area",
     controller: new ScrollAreaController({
-      contentWidth: numberAttr(node.attributes, "content-width", Math.max(viewportWidth, box?.scrollWidth ?? 0)),
-      contentHeight: numberAttr(node.attributes, "content-height", Math.max(viewportHeight, box?.scrollHeight ?? 0)),
+      contentWidth: numberAttr(
+        node.attributes,
+        "content-width",
+        Math.max(viewportWidth, box?.overflow.columns.contentLength ?? box?.scrollWidth ?? 0)
+      ),
+      contentHeight: numberAttr(
+        node.attributes,
+        "content-height",
+        Math.max(viewportHeight, box?.overflow.rows.contentLength ?? box?.scrollHeight ?? 0)
+      ),
       viewportWidth,
       viewportHeight,
       offset: {
@@ -10798,7 +10818,7 @@ function draw() {
   }
   translateWorkspaceHits(hitStart, body.column, body.row - offset, body);
   blitWorkspace(frame, virtual, body, offset, layout.bounds.width);
-  renderWorkspaceScrollbar(frame, body, layout.contentHeight, offset);
+  renderWorkspaceScrollbar(frame, body);
   maximized.peek() ? renderWindowTabs(frame) : renderShelf(frame);
   renderDropdownOverlay(frame);
   renderModalOverlay(frame);
@@ -11002,13 +11022,14 @@ function renderLogs(frame, rect) {
   logScroll.setViewportSize(rect.width, rect.height);
   logScroll.setContentSize(rect.width, lines.length);
   const offset = logScroll.offset.peek().rows;
+  const overflow = logScroll.inspectOverflow();
   const bodyWidth = Math.max(0, rect.width - 1);
   lines.slice(offset, offset + rect.height).forEach((line, index) => {
     write(frame, rect.row + index, rect.column, paint(fit(line, bodyWidth), theme().text, theme().surface));
   });
-  if (lines.length <= rect.height || rect.width < 1) return;
+  if (!overflow.rows.scrollbarVisible || rect.width < 1) return;
   const column = rect.column + rect.width - 1;
-  const thumb = scrollbarThumb(lines.length, rect.height, offset);
+  const thumb = overflow.rows.thumb;
   hitTargets.push({ rect: { column, row: rect.row, width: 1, height: rect.height }, hit: { type: "logScrollbar" } });
   for (let row = 0; row < rect.height; row += 1) {
     write(frame, rect.row + row, column, paint(scrollbarGlyph(row, thumb), theme().accent, theme().surface, true));
@@ -11507,10 +11528,11 @@ function blitWorkspace(frame, virtual, bounds, offset, width) {
     write(frame, bounds.row + row, bounds.column, fit(virtual[offset + row] ?? "", width));
   }
 }
-function renderWorkspaceScrollbar(frame, bounds, contentHeight, offset) {
-  if (contentHeight <= bounds.height || bounds.width < 2) return;
+function renderWorkspaceScrollbar(frame, bounds) {
+  const overflow = workspaceScroll.inspectOverflow();
+  if (!overflow.rows.scrollbarVisible || bounds.width < 2) return;
   const column = bounds.column + bounds.width - 1;
-  const thumb = scrollbarThumb(contentHeight, bounds.height, offset);
+  const thumb = overflow.rows.thumb;
   hitTargets.push({
     rect: { column, row: bounds.row, width: 1, height: bounds.height },
     hit: { type: "workspaceScrollbar" }

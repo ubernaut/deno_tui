@@ -15,12 +15,7 @@ import { MenuBarController, renderMenuBar } from "../src/components/menu_bar.ts"
 import { modalContentHeight, ModalController, renderModalRows } from "../src/components/modal.ts";
 import { ProgressBarController } from "../src/components/progressbar.ts";
 import { RadioGroupController } from "../src/components/radio_group.ts";
-import {
-  ScrollAreaController,
-  scrollbarGlyph,
-  scrollbarOffsetForPointer,
-  scrollbarThumb,
-} from "../src/components/scroll_area.ts";
+import { ScrollAreaController, scrollbarGlyph, scrollbarOffsetForPointer } from "../src/components/scroll_area.ts";
 import { SliderController } from "../src/components/slider.ts";
 import { renderStatusBar } from "../src/components/statusbar.ts";
 import { renderStepper, StepperController } from "../src/components/stepper.ts";
@@ -1134,7 +1129,7 @@ function renderWorkspace(frame: Frame): void {
     hideVisualizationThreePanelsExcept(renderedVisualizationThreePanels);
     translateWorkspaceHits(hitStart, bounds.row - offset, bounds);
     blitWorkspace(frame, virtual, bounds, offset, layout.bounds.width);
-    renderWorkspaceScrollbar(frame, bounds, layout.contentHeight, offset);
+    renderWorkspaceScrollbar(frame, bounds);
     renderWindowTabs(frame);
     return;
   }
@@ -1168,7 +1163,7 @@ function renderWorkspace(frame: Frame): void {
   hideVisualizationThreePanelsExcept(renderedVisualizationThreePanels);
   translateWorkspaceHits(hitStart, bounds.row - offset, bounds);
   blitWorkspace(frame, virtual, bounds, offset, layout.bounds.width);
-  renderWorkspaceScrollbar(frame, bounds, layout.contentHeight, offset);
+  renderWorkspaceScrollbar(frame, bounds);
   renderShelf(frame);
 }
 
@@ -3078,10 +3073,10 @@ function renderWindowScrollbars(
 ): void {
   const scroll = windowScroll(id);
   const t = theme();
-  const maxOffset = scroll.maxOffset();
-  if (maxOffset.rows > 0 && viewport.height > 0) {
+  const overflow = scroll.inspectOverflow();
+  if (overflow.rows.scrollbarVisible && viewport.height > 0) {
     const column = inner.column + inner.width - 1;
-    const thumb = scrollbarThumb(contentSize.height, viewport.height, scroll.offset.peek().rows);
+    const thumb = overflow.rows.thumb;
     addHit({ column, row: viewport.row, width: 1, height: viewport.height }, { type: "windowVScrollbar", id });
     for (let row = 0; row < viewport.height; row += 1) {
       write(
@@ -3092,9 +3087,9 @@ function renderWindowScrollbars(
       );
     }
   }
-  if (maxOffset.columns > 0 && viewport.width > 0) {
+  if (overflow.columns.scrollbarVisible && viewport.width > 0) {
     const row = inner.row + inner.height - 1;
-    const thumb = scrollbarThumb(contentSize.width, viewport.width, scroll.offset.peek().columns);
+    const thumb = overflow.columns.thumb;
     addHit({ column: viewport.column, row, width: viewport.width, height: 1 }, { type: "windowHScrollbar", id });
     for (let column = 0; column < viewport.width; column += 1) {
       write(
@@ -3324,11 +3319,12 @@ function blitWorkspace(frame: Frame, virtual: Frame, bounds: Rectangle, offset: 
   }
 }
 
-function renderWorkspaceScrollbar(frame: Frame, bounds: Rectangle, contentHeight: number, offset: number): void {
-  if (contentHeight <= bounds.height || bounds.width < 2) return;
+function renderWorkspaceScrollbar(frame: Frame, bounds: Rectangle): void {
+  const overflow = workspaceScroll.inspectOverflow();
+  if (!overflow.rows.scrollbarVisible || bounds.width < 2) return;
   const t = theme();
   const column = bounds.column + bounds.width - 1;
-  const thumb = scrollbarThumb(contentHeight, bounds.height, offset);
+  const thumb = overflow.rows.thumb;
   addHit({ column, row: bounds.row, width: 1, height: bounds.height }, { type: "workspaceScrollbar" });
   for (let row = 0; row < bounds.height; row += 1) {
     write(
