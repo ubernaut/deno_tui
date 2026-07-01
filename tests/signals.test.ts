@@ -195,6 +195,22 @@ Deno.test("signals/mod.ts", async (t) => {
       assertEquals(seen, [3]);
     });
 
+    await t.step("batched updates flush changed signals in first-mutation order", () => {
+      const first = new Signal(0);
+      const second = new Signal(0);
+      const seen: string[] = [];
+      first.subscribe((value) => seen.push(`first:${value}`));
+      second.subscribe((value) => seen.push(`second:${value}`));
+
+      batchSignalUpdates(() => {
+        first.value = 1;
+        second.value = 1;
+        first.value = 2;
+      });
+
+      assertEquals(seen, ["first:2", "second:1"]);
+    });
+
     await t.step("batched deep-observed mutations propagate once with final object state", () => {
       const signal = new Signal({ count: 0, label: "start" }, { deepObserve: true, watchObjectIndex: true });
       const seen: Array<{ count: number; label: string }> = [];
@@ -277,6 +293,24 @@ Deno.test("signals/mod.ts", async (t) => {
       queue.shift()!();
       assertEquals(errors, [failure]);
       assertEquals(scheduler.inspect(), { scheduled: false, pending: 0, flushed: 2, cancelled: 1 });
+    });
+
+    await t.step("computed values can dispose during propagation", async () => {
+      const signal = new Signal(1);
+      const computed = new Computed(() => signal.value * 2);
+      const seen: number[] = [];
+      await Promise.resolve();
+
+      computed.subscribe((value) => {
+        seen.push(value);
+        computed.dispose();
+      });
+
+      signal.value = 2;
+      signal.value = 3;
+
+      assertEquals(seen, [4]);
+      assertEquals(computed.value, 4);
     });
 
     await t.step("Deep observe", async (t) => {
@@ -597,6 +631,44 @@ Deno.test("signals/mod.ts", async (t) => {
       effectOutput,
       `s1:${15}, c1:${30} | s2: ${10}, c2:${30} | c3: ${900}`,
     );
+  });
+
+  await t.step("Effect edge cases", async (t) => {
+    await t.step("self-updating effects can converge during propagation", async () => {
+      const signal = new Signal(0);
+      const seen: number[] = [];
+      const effect = new Effect(() => {
+        seen.push(signal.value);
+        if (signal.value === 1) {
+          signal.value = 2;
+        }
+      });
+      await Promise.resolve();
+
+      signal.value = 1;
+
+      assertEquals(signal.value, 2);
+      assertEquals(seen, [0, 1, 2]);
+      effect.dispose();
+    });
+
+    await t.step("effects can dispose during propagation", async () => {
+      const signal = new Signal(0);
+      const seen: number[] = [];
+      let effect!: Effect;
+      effect = new Effect(() => {
+        seen.push(signal.value);
+        if (signal.value === 1) {
+          effect.dispose();
+        }
+      });
+      await Promise.resolve();
+
+      signal.value = 1;
+      signal.value = 2;
+
+      assertEquals(seen, [0, 1]);
+    });
   });
 
   await t.step("LazyComputed", async (t) => {

@@ -119,6 +119,8 @@ Acceptance checks:
 
 - [ ] Tests cover self-updating effects, mutually recursive computed values, dispose during propagation, pause/resume,
       and batched mutation ordering.
+  - [x] Added coverage for convergent self-updating effects, computed/effect disposal during propagation, and batched
+        mutation flush ordering.
 - [ ] Existing `tests/signals.test.ts` stays green.
 - [ ] Workbench close/rearrange/resize tests include a regression for previous recursive render crashes.
 
