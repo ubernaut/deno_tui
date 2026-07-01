@@ -366,6 +366,7 @@ Acceptance checks:
 - [x] Add terminal parser fixture tests from real shell output and ANSI sequences.
 - [ ] Add fixture-driven system metrics tests for Linux, missing GPU, and unavailable permissions.
 - [ ] Add property/fuzz tests for layout, selection, viewport, scrollbar pointer mapping, and terminal input decoding.
+  - [x] Added deterministic generated invariant coverage for viewport overflow and scrollbar pointer mapping.
 - [x] Add stress tests for repeated window open/close/reconfigure while Three ASCII frames are rendering.
 
 ## Suggested Execution Order

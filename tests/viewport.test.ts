@@ -143,3 +143,39 @@ Deno.test("viewportOffsetForPointer maps scrollbar track positions to content of
   assertEquals(viewportOffsetForPointer(40, 10, 5), 17);
   assertEquals(viewportOffsetForPointer(8, 10, 8), 0);
 });
+
+Deno.test("viewport pointer and overflow invariants hold across generated dimensions", () => {
+  const random = seededRandom(0x5eed);
+  for (let index = 0; index < 500; index += 1) {
+    const viewportLength = Math.floor(random() * 40);
+    const contentLength = Math.floor(random() * 160);
+    const pointer = Math.floor(random() * 80) - 20;
+    const offset = viewportOffsetForPointer(contentLength, viewportLength, pointer);
+    const maxOffset = Math.max(0, Math.max(0, contentLength) - Math.max(0, viewportLength));
+    assertEquals(offset >= 0, true);
+    assertEquals(offset <= maxOffset, true);
+
+    const overflow = inspectViewportAxisOverflow({
+      contentLength,
+      viewportLength,
+      offset: maxOffset + 100,
+      overflow: index % 2 === 0 ? "auto" : "hidden",
+    });
+    assertEquals(overflow.offset >= 0, true);
+    assertEquals(overflow.offset <= overflow.maxOffset, true);
+    assertEquals(overflow.visibleRange.start <= overflow.visibleRange.end, true);
+    assertEquals(overflow.visibleRange.end <= overflow.contentLength, true);
+    if (overflow.overflow === "hidden") {
+      assertEquals(overflow.canScroll, false);
+      assertEquals(overflow.maxOffset, 0);
+    }
+  }
+});
+
+function seededRandom(seed: number): () => number {
+  let state = seed >>> 0;
+  return () => {
+    state = (state * 1664525 + 1013904223) >>> 0;
+    return state / 0x100000000;
+  };
+}
