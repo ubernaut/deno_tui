@@ -9084,6 +9084,20 @@ var TerminalScreenController = class {
       case "D":
         this.#state.cursor.column = clamp3(this.#state.cursor.column - (params[0] || 1), 0, this.#columns - 1);
         break;
+      case "E":
+        this.#state.cursor.row = clamp3(this.#state.cursor.row + (params[0] || 1), 0, this.#rows - 1);
+        this.#state.cursor.column = 0;
+        break;
+      case "F":
+        this.#state.cursor.row = clamp3(this.#state.cursor.row - (params[0] || 1), 0, this.#rows - 1);
+        this.#state.cursor.column = 0;
+        break;
+      case "G":
+        this.#state.cursor.column = clamp3((params[0] || 1) - 1, 0, this.#columns - 1);
+        break;
+      case "d":
+        this.#setCursorPosition(params[0] || 1, this.#state.cursor.column + 1);
+        break;
       case "J":
         this.#eraseDisplay(params[0] ?? 0);
         break;
@@ -9095,6 +9109,9 @@ var TerminalScreenController = class {
         break;
       case "P":
         this.#deleteCharacters(params[0] || 1);
+        break;
+      case "X":
+        this.#eraseCharacters(params[0] || 1);
         break;
       case "L":
         this.#insertLines(params[0] || 1);
@@ -9234,6 +9251,13 @@ var TerminalScreenController = class {
       this.clear();
       return;
     }
+    if (mode === 1) {
+      for (let row = 0; row <= this.#state.cursor.row; row += 1) {
+        const end = row === this.#state.cursor.row ? this.#state.cursor.column + 1 : this.#columns;
+        this.#state.cells[row].splice(0, end, ...blankRow(end));
+      }
+      return;
+    }
     for (let row = this.#state.cursor.row; row < this.#rows; row += 1) {
       const start = row === this.#state.cursor.row ? this.#state.cursor.column : 0;
       this.#state.cells[row].splice(start, this.#columns - start, ...blankRow(this.#columns - start));
@@ -9241,7 +9265,7 @@ var TerminalScreenController = class {
   }
   #eraseLine(mode) {
     const row = this.#state.cells[this.#state.cursor.row];
-    const start = mode === 1 ? 0 : this.#state.cursor.column;
+    const start = mode === 1 || mode === 2 ? 0 : this.#state.cursor.column;
     const end = mode === 1 ? this.#state.cursor.column + 1 : this.#columns;
     row.splice(start, end - start, ...blankRow(end - start));
   }
@@ -9258,6 +9282,12 @@ var TerminalScreenController = class {
     const amount = clamp3(Math.floor(count), 1, this.#columns - column);
     row.splice(column, amount);
     row.push(...blankRow(amount));
+  }
+  #eraseCharacters(count) {
+    const row = this.#state.cells[this.#state.cursor.row];
+    const column = this.#state.cursor.column;
+    const amount = clamp3(Math.floor(count), 1, this.#columns - column);
+    row.splice(column, amount, ...blankRow(amount));
   }
   #insertLines(count) {
     const row = this.#state.cursor.row;

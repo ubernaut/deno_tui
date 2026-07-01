@@ -80,3 +80,5 @@ developer workflows.
   while this todo owns tmux-like session and pane workflows.
 - Added reverse-index, explicit scroll-up/scroll-down controls, and DEC origin-mode cursor addressing to
   `TerminalScreenController` so scroll-region-heavy full-screen apps behave more like xterm/curses screens.
+- Added common xterm cursor and erase controls (`CNL`, `CPL`, `CHA`, `VPA`, `ECH`, erase-before display, and full-line
+  erase) to reduce rendering drift in full-screen shell applications.

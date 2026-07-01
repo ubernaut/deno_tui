@@ -45,6 +45,31 @@ Deno.test("TerminalScreenController applies cursor movement and erase sequences"
   assertEquals(screen.inspect().cursor, { column: 4, row: 0 });
 });
 
+Deno.test("TerminalScreenController supports common absolute and line cursor controls", () => {
+  const screen = new TerminalScreenController({ columns: 10, rows: 4 });
+
+  screen.write("aa\x1b[2Ebb\x1b[5GZ\x1b[1Fcc\x1b[3dD");
+
+  assertEquals(screen.textRows(), ["aa", "cc", "bbD Z", ""]);
+  assertEquals(screen.inspect().cursor, { column: 3, row: 2 });
+});
+
+Deno.test("TerminalScreenController applies erase-before and erase-character controls", () => {
+  const screen = new TerminalScreenController({ columns: 8, rows: 3 });
+
+  screen.write("abcdef\x1b[2;1H123456\x1b[2;4H\x1b[1K");
+  assertEquals(screen.textRows(), ["abcdef", "    56", ""]);
+
+  screen.write("\x1b[1;4H\x1b[1J");
+  assertEquals(screen.textRows(), ["    ef", "    56", ""]);
+
+  screen.write("\x1b[1;5HXYZZY\x1b[1;5H\x1b[3X");
+  assertEquals(screen.textRows()[0], "       Z");
+
+  screen.write("\x1b[2;6H\x1b[2K");
+  assertEquals(screen.textRows()[1], "");
+});
+
 Deno.test("TerminalScreenController supports save and restore cursor sequences", () => {
   const screen = new TerminalScreenController({ columns: 8, rows: 3 });
 
