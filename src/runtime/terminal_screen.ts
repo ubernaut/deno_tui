@@ -51,6 +51,7 @@ export class TerminalScreenController {
   #style: Omit<TerminalScreenCell, "char"> = {};
   #savedCursor?: TerminalScreenCursor;
   #title?: string;
+  #scrollRegion: TerminalScreenScrollRegion;
 
   constructor(options: TerminalScreenControllerOptions = {}) {
     this.#columns = normalizeDimension(options.columns, DEFAULT_COLUMNS);
@@ -60,6 +61,7 @@ export class TerminalScreenController {
       cells: createRows(this.#columns, this.#rows),
       cursor: { column: 0, row: 0 },
     };
+    this.#scrollRegion = fullScrollRegion(this.#rows);
   }
 
   get columns(): number {
@@ -103,11 +105,13 @@ export class TerminalScreenController {
     this.#rows = nextRows;
     this.#state = resizeState(this.#state, nextColumns, nextRows);
     if (this.#mainState) this.#mainState = resizeState(this.#mainState, nextColumns, nextRows);
+    this.#scrollRegion = fullScrollRegion(this.#rows);
   }
 
   clear(): void {
     this.#state.cells = createRows(this.#columns, this.#rows);
     this.#state.cursor = { column: 0, row: 0 };
+    this.#scrollRegion = fullScrollRegion(this.#rows);
   }
 
   textRows(): string[] {
@@ -165,15 +169,15 @@ export class TerminalScreenController {
 
   #newline(): void {
     this.#state.cursor.column = 0;
-    this.#state.cursor.row += 1;
-    if (this.#state.cursor.row < this.#rows) return;
-    const shifted = this.#state.cells.shift() ?? blankRow(this.#columns);
-    if (!this.alternate) {
-      this.#scrollback.push(shifted);
-      if (this.#scrollback.length > this.#scrollbackLimit) this.#scrollback.shift();
+    if (this.#state.cursor.row === this.#scrollRegion.bottom) {
+      this.#scrollRegionUp(this.#scrollRegion.top, this.#scrollRegion.bottom, 1);
+      return;
     }
-    this.#state.cells.push(blankRow(this.#columns));
-    this.#state.cursor.row = this.#rows - 1;
+    if (this.#state.cursor.row < this.#rows - 1) {
+      this.#state.cursor.row += 1;
+      return;
+    }
+    this.#scrollRegionUp(0, this.#rows - 1, 1);
   }
 
   #applyControl(sequence: ParsedControlSequence): void {
@@ -224,6 +228,9 @@ export class TerminalScreenController {
         break;
       case "M":
         this.#deleteLines(params[0] || 1);
+        break;
+      case "r":
+        this.#setScrollRegion(params);
         break;
       case "s":
       case "7":
@@ -309,29 +316,71 @@ export class TerminalScreenController {
 
   #insertLines(count: number): void {
     const row = this.#state.cursor.row;
-    const amount = clamp(Math.floor(count), 1, this.#rows - row);
-    this.#state.cells.splice(row, 0, ...createRows(this.#columns, amount));
-    this.#state.cells.length = this.#rows;
+    if (row < this.#scrollRegion.top || row > this.#scrollRegion.bottom) return;
+    const amount = clamp(Math.floor(count), 1, this.#scrollRegion.bottom - row + 1);
+    for (let index = 0; index < amount; index += 1) {
+      this.#state.cells.splice(row, 0, blankRow(this.#columns));
+      this.#state.cells.splice(this.#scrollRegion.bottom + 1, 1);
+    }
   }
 
   #deleteLines(count: number): void {
     const row = this.#state.cursor.row;
-    const amount = clamp(Math.floor(count), 1, this.#rows - row);
-    this.#state.cells.splice(row, amount);
-    this.#state.cells.push(...createRows(this.#columns, amount));
+    if (row < this.#scrollRegion.top || row > this.#scrollRegion.bottom) return;
+    const amount = clamp(Math.floor(count), 1, this.#scrollRegion.bottom - row + 1);
+    for (let index = 0; index < amount; index += 1) {
+      this.#state.cells.splice(row, 1);
+      this.#state.cells.splice(this.#scrollRegion.bottom, 0, blankRow(this.#columns));
+    }
+  }
+
+  #setScrollRegion(params: number[]): void {
+    if (params.length === 0) {
+      this.#scrollRegion = fullScrollRegion(this.#rows);
+      this.#state.cursor = { column: 0, row: 0 };
+      return;
+    }
+    const top = clamp((params[0] || 1) - 1, 0, this.#rows - 1);
+    const bottom = clamp((params[1] || this.#rows) - 1, 0, this.#rows - 1);
+    if (bottom <= top) {
+      this.#scrollRegion = fullScrollRegion(this.#rows);
+      this.#state.cursor = { column: 0, row: 0 };
+      return;
+    }
+    this.#scrollRegion = { top, bottom };
+    this.#state.cursor = { column: 0, row: 0 };
+  }
+
+  #scrollRegionUp(top: number, bottom: number, count: number): void {
+    const amount = clamp(Math.floor(count), 1, bottom - top + 1);
+    for (let index = 0; index < amount; index += 1) {
+      const shifted = this.#state.cells.splice(top, 1)[0] ?? blankRow(this.#columns);
+      if (top === 0 && bottom === this.#rows - 1 && !this.alternate) {
+        this.#scrollback.push(shifted);
+        if (this.#scrollback.length > this.#scrollbackLimit) this.#scrollback.shift();
+      }
+      this.#state.cells.splice(bottom, 0, blankRow(this.#columns));
+    }
   }
 
   #enterAlternate(): void {
     if (this.#mainState) return;
     this.#mainState = cloneState(this.#state);
     this.#state = { cells: createRows(this.#columns, this.#rows), cursor: { column: 0, row: 0 } };
+    this.#scrollRegion = fullScrollRegion(this.#rows);
   }
 
   #exitAlternate(): void {
     if (!this.#mainState) return;
     this.#state = this.#mainState;
     this.#mainState = undefined;
+    this.#scrollRegion = fullScrollRegion(this.#rows);
   }
+}
+
+interface TerminalScreenScrollRegion {
+  top: number;
+  bottom: number;
 }
 
 interface ParsedControlSequence {
@@ -415,6 +464,10 @@ function createRows(columns: number, rows: number): TerminalScreenCell[][] {
 
 function blankRow(columns: number): TerminalScreenCell[] {
   return Array.from({ length: columns }, () => ({ char: " " }));
+}
+
+function fullScrollRegion(rows: number): TerminalScreenScrollRegion {
+  return { top: 0, bottom: rows - 1 };
 }
 
 function resizeState(state: TerminalScreenState, columns: number, rows: number): TerminalScreenState {

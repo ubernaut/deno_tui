@@ -89,6 +89,38 @@ Deno.test("TerminalScreenController inserts and deletes lines", () => {
   assertEquals(screen.textRows(), ["row1", "new", "row3", ""]);
 });
 
+Deno.test("TerminalScreenController scrolls inside configured scroll regions", () => {
+  const screen = new TerminalScreenController({ columns: 8, rows: 4 });
+
+  screen.write("aaaa\x1b[2;1Hbbbb\x1b[3;1Hcccc\x1b[4;1Hdddd");
+  screen.write("\x1b[2;3r\x1b[3;1Hxx\nYY");
+
+  assertEquals(screen.textRows(), ["aaaa", "xxcc", "YY", "dddd"]);
+  assertEquals(screen.scrollbackTextRows(), []);
+  assertEquals(screen.inspect().cursor, { column: 2, row: 2 });
+});
+
+Deno.test("TerminalScreenController resets scroll regions", () => {
+  const screen = new TerminalScreenController({ columns: 8, rows: 3, scrollbackLimit: 4 });
+
+  screen.write("one\x1b[2;1Htwo\x1b[3;1Hthree");
+  screen.write("\x1b[2;3r\x1b[r\x1b[3;1Hbottom\nnext");
+
+  assertEquals(screen.scrollbackTextRows(), ["one"]);
+  assertEquals(screen.textRows(), ["two", "bottom", "next"]);
+});
+
+Deno.test("TerminalScreenController applies line edits inside scroll regions", () => {
+  const screen = new TerminalScreenController({ columns: 8, rows: 4 });
+
+  screen.write("row1\x1b[2;1Hrow2\x1b[3;1Hrow3\x1b[4;1Hrow4");
+  screen.write("\x1b[2;4r\x1b[3;1H\x1b[1Lnew");
+  assertEquals(screen.textRows(), ["row1", "row2", "new", "row3"]);
+
+  screen.write("\x1b[2;1H\x1b[1M");
+  assertEquals(screen.textRows(), ["row1", "new", "row3", ""]);
+});
+
 Deno.test("TerminalScreenController clamps insert and delete edits to screen bounds", () => {
   const screen = new TerminalScreenController({ columns: 6, rows: 3 });
 

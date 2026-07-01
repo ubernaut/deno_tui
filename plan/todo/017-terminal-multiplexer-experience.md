@@ -56,3 +56,5 @@ developer workflows.
 - Added terminal cursor save/restore support for CSI `s`/`u` and legacy ESC `7`/`8` sequences.
 - Added OSC 0/2 title parsing to `TerminalScreenController.inspect()` so shell titles can later drive workbench tabs.
 - Added CSI insert/delete character and line operations for common screen-editing terminal output.
+- Added DEC scroll-region support so full-screen shell apps can scroll bounded panes without disturbing fixed headers,
+  footers, or surrounding terminal content.
