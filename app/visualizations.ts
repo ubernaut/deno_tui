@@ -25,6 +25,16 @@ import {
 } from "./visualization_fields.ts";
 import { renderGpuChipMonitor, renderGpuCombinedMonitor, renderGpuMemoryMonitor } from "./visualization_gpu.ts";
 import { renderNetworkMonitor } from "./visualization_network.ts";
+import {
+  alertText,
+  driveAlert,
+  hottestAccent,
+  sceneAlert,
+  sourceDetailFooter,
+  sourceFooter,
+  sourceNameMatrix,
+  sourceWarnings,
+} from "./visualization_panel_helpers.ts";
 import { barChart, crop, miniMeter, monitorGlyph, plotHistory, signalChart } from "./visualization_primitives.ts";
 import {
   renderCpuLegend,
@@ -34,14 +44,7 @@ import {
   renderProcessMonitor,
   renderTemperatureMonitor,
 } from "./visualization_system.ts";
-import type {
-  Accent,
-  PanelRender,
-  RenderContext,
-  SourceFrame,
-  ThreeSceneMode,
-  VisualizationDescriptor,
-} from "./types.ts";
+import type { Accent, PanelRender, RenderContext, ThreeSceneMode, VisualizationDescriptor } from "./types.ts";
 
 export { buildVisualizationDrive } from "./visualization_drive.ts";
 export type { VisualizationDrive, VisualizationSourceDrive } from "./visualization_drive.ts";
@@ -527,74 +530,4 @@ const THREE_FALLBACK_BLOCKS = [" ", "▁", "▂", "▃", "▄", "▅", "▆", "�
 
 function modeLabel(mode: ThreeSceneMode) {
   return neonThreeSceneModeLabel(mode);
-}
-
-function alertText(context: RenderContext) {
-  const alert = context.system.alerts[0];
-  return alert ? `${alert.title} / ${alert.detail}` : "";
-}
-
-function driveAlert(drive: VisualizationDrive) {
-  if (drive.hazard >= 0.92) {
-    return "LIMIT CASCADE";
-  }
-  if (drive.divergence >= 0.66) {
-    return "CHANNEL FRACTURE";
-  }
-  if (drive.volatility >= 0.58) {
-    return "OSCILLATION SPIKE";
-  }
-  if (drive.slope >= 0.24) {
-    return "SURGE FRONT";
-  }
-  return "";
-}
-
-function hottestAccent(sources: SourceFrame[]) {
-  if (sources.some((source) => source.accent === "alarm")) {
-    return "alarm";
-  }
-  if (sources.some((source) => source.accent === "amber")) {
-    return "amber";
-  }
-  return sources[0]?.accent ?? "signal";
-}
-
-function sourceFooter(sources: SourceFrame[]) {
-  return `SRC ${sources.map((source) => crop(source.name.toUpperCase(), 12)).join(" + ") || "NONE"}`;
-}
-
-function sourceDetailFooter(sources: SourceFrame[]) {
-  const details = sources.slice(0, 2).map((source) => {
-    const detail = source.detailLines[0] ?? `${Math.round(source.value * 100)}%`;
-    return `${crop(source.name.toUpperCase(), 8)} ${crop(detail, 20)}`;
-  });
-  return details.join(" / ") || sourceFooter(sources);
-}
-
-function sceneAlert(sources: SourceFrame[]) {
-  const hottest = sources.find((source) => source.accent === "alarm") ??
-    sources.find((source) => source.accent === "amber");
-  if (!hottest) {
-    return "";
-  }
-
-  return hottest.accent === "alarm"
-    ? `${crop(hottest.name.toUpperCase(), 10)} CRIT`
-    : `${crop(hottest.name.toUpperCase(), 10)} WARN`;
-}
-
-function sourceWarnings(sources: SourceFrame[], drive: VisualizationDrive) {
-  return [
-    ...sources.flatMap((source) => source.detailLines.map((line) => `${source.name.toUpperCase()}  ${line}`)),
-    `VECTOR DRIVE ${(drive.current * 100).toFixed(0)}%`,
-    `OSCILLATION ${(drive.volatility * 100).toFixed(0)}%`,
-    drive.divergence >= 0.6
-      ? `CHANNEL SPLIT ${(drive.divergence * 100).toFixed(0)}%`
-      : `DENSITY ${(drive.density * 100).toFixed(0)}%`,
-  ].slice(0, 4);
-}
-
-function sourceNameMatrix(sources: SourceFrame[]) {
-  return sources.map((source) => crop(source.name.toUpperCase(), 8)).join(" / ");
 }

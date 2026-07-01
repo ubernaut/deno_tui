@@ -546,6 +546,8 @@ Work:
   - [x] Extracted reusable NGE/Three ASCII field renderers into `app/visualization_fields.ts`, covering harmonic,
         psychograph, circular, heatmap, route-board, tactical-map, topology, live-feed, channel-matrix, telemetry-rack,
         biosignal-strip, and component-index text fields with focused bounded-output tests.
+  - [x] Extracted pure visualization panel alert/source formatting helpers into `app/visualization_panel_helpers.ts`,
+        keeping source footers, scene alerts, drive alerts, and fallback warnings under direct fixture tests.
   - [x] Extracted the responsive network monitor into `app/visualization_network.ts`, with chart/glyph dependencies
         injected from the visualization renderer instead of duplicating shared drawing utilities.
 - [ ] Make demo-only assets and NGE-inspired primitives clearly separate from library APIs.
