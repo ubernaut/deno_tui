@@ -278,6 +278,8 @@ Work:
       cache correctness.
 - [x] Added adjacent raw-color/glyph reuse inside edged and fill-only ANSI grid hot loops so solid geometry skips
       repeated linear-to-sRGB conversion, block blending, ANSI lookup, and cell string assembly.
+- [x] Made edge compute output resources lazy so default block-style renderers do not allocate the Sobel edge storage
+      buffer or bind group until an edge-enabled ASCII config actually needs them.
 
 Acceptance checks:
 

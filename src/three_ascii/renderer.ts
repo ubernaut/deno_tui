@@ -493,8 +493,8 @@ export class ThreeAsciiRenderer {
   }
 
   private async computeAnsiGrid(): Promise<string[][]> {
-    await this.ensureComputeResources();
     const effectState = this.getEffectState();
+    await this.ensureComputeResources(effectState);
     this.writeUniforms(effectState);
 
     const commandEncoder = this.device!.createCommandEncoder({
@@ -532,7 +532,7 @@ export class ThreeAsciiRenderer {
 
     const readbackLayout = createThreeAsciiReadbackLayout({
       fillByteLength: this.fillOutput!.byteLength,
-      edgeByteLength: this.edgeOutput!.byteLength,
+      edgeByteLength: this.edgeOutput?.byteLength ?? 0,
       colorByteLength: this.colorOutput!.byteLength,
       includeEdges: effectState.edges,
     });
@@ -647,15 +647,18 @@ export class ThreeAsciiRenderer {
     }
   }
 
-  private async ensureComputeResources(): Promise<void> {
+  private async ensureComputeResources(effectState: EffectState): Promise<void> {
     if (!this.device || !this.renderer || !this.asciiNode) {
       throw new Error("ThreeAsciiRenderer has not been initialized.");
     }
 
     if (!this.fillPipeline) {
       this.fillPipeline = this.createComputePipeline("deno_tui.three_ascii.fill", FILL_SHADER);
-      this.edgePipeline = this.createComputePipeline("deno_tui.three_ascii.edge", EDGE_SHADER);
       this.colorPipeline = this.createComputePipeline("deno_tui.three_ascii.color", COLOR_SHADER);
+    }
+
+    if (effectState.edges && !this.edgePipeline) {
+      this.edgePipeline = this.createComputePipeline("deno_tui.three_ascii.edge", EDGE_SHADER);
     }
 
     if (!this.paramsBuffer) {
@@ -669,11 +672,6 @@ export class ThreeAsciiRenderer {
     const cellCount = this.columns * this.rows;
     if (this.outputCellCount !== cellCount) {
       this.fillOutput = this.ensureBufferSlot(this.fillOutput, cellCount * Float32Array.BYTES_PER_ELEMENT, "fill");
-      this.edgeOutput = this.ensureBufferSlot(
-        this.edgeOutput,
-        cellCount * 4 * Float32Array.BYTES_PER_ELEMENT,
-        "edge",
-      );
       this.colorOutput = this.ensureBufferSlot(
         this.colorOutput,
         cellCount * 4 * Float32Array.BYTES_PER_ELEMENT,
@@ -683,12 +681,26 @@ export class ThreeAsciiRenderer {
       this.computeDirty = true;
     }
 
+    if (effectState.edges) {
+      const hadEdgeOutput = this.edgeOutput !== undefined;
+      this.edgeOutput = this.ensureBufferSlot(
+        this.edgeOutput,
+        cellCount * 4 * Float32Array.BYTES_PER_ELEMENT,
+        "edge",
+      );
+      if (!hadEdgeOutput || !this.edgeBindGroup) {
+        this.computeDirty = true;
+      }
+    } else if (this.edgeOutput) {
+      this.edgeOutput = this.destroyBufferSlot(this.edgeOutput);
+      this.edgeBindGroup = undefined;
+    }
+
     if (!this.computeDirty) {
       return;
     }
 
     const downscaleTexture = this.getGpuTexture(this.asciiNode.downscaleTarget.texture);
-    const sobelTexture = this.getGpuTexture(this.asciiNode.sobelTarget.texture);
     const normalsTexture = this.getGpuTexture(this.asciiNode.normalsTarget.texture);
 
     this.fillBindGroup = this.device.createBindGroup({
@@ -701,15 +713,20 @@ export class ThreeAsciiRenderer {
       ],
     });
 
-    this.edgeBindGroup = this.device.createBindGroup({
-      label: "deno_tui.three_ascii.edge.bindings",
-      layout: this.edgePipeline!.getBindGroupLayout(0),
-      entries: [
-        { binding: 0, resource: { buffer: this.paramsBuffer } },
-        { binding: 1, resource: sobelTexture.createView() },
-        { binding: 2, resource: { buffer: this.edgeOutput!.gpu } },
-      ],
-    });
+    if (effectState.edges) {
+      const sobelTexture = this.getGpuTexture(this.asciiNode.sobelTarget.texture);
+      this.edgeBindGroup = this.device.createBindGroup({
+        label: "deno_tui.three_ascii.edge.bindings",
+        layout: this.edgePipeline!.getBindGroupLayout(0),
+        entries: [
+          { binding: 0, resource: { buffer: this.paramsBuffer } },
+          { binding: 1, resource: sobelTexture.createView() },
+          { binding: 2, resource: { buffer: this.edgeOutput!.gpu } },
+        ],
+      });
+    } else {
+      this.edgeBindGroup = undefined;
+    }
 
     this.colorBindGroup = this.device.createBindGroup({
       label: "deno_tui.three_ascii.color.bindings",
@@ -888,7 +905,7 @@ export class ThreeAsciiRenderer {
     backgroundColor: Color,
   ): Promise<string[][]> {
     const readback = this.outputReadback;
-    if (!readback || !this.fillOutput || !this.edgeOutput || !this.colorOutput) {
+    if (!readback || !this.fillOutput || !this.colorOutput || (layout.edgeOffset !== undefined && !this.edgeOutput)) {
       throw new Error("ThreeAsciiRenderer readback buffers have not been initialized.");
     }
 
