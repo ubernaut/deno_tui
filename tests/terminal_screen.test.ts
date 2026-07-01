@@ -243,3 +243,36 @@ Deno.test("TerminalScreenController supports alternate screen switching", () => 
   assertEquals(screen.inspect().alternate, false);
   assertEquals(screen.textRows()[0], "main");
 });
+
+Deno.test("TerminalScreenController replays a full-screen curses-style transcript", () => {
+  const screen = new TerminalScreenController({ columns: 24, rows: 5, scrollbackLimit: 4 });
+
+  screen.write("shell prompt");
+  screen.write("\x1b[?1049h\x1b[?25l\x1b]2;process viewer\x07");
+  screen.write("\x1b[1;1H\x1b[1;37;44m PID  CPU  COMMAND      \x1b[0m");
+  screen.write("\x1b[2;5r");
+  screen.write("\x1b[2;1H 100  12%  deno");
+  screen.write("\x1b[3;1H 101   8%  bash");
+  screen.write("\x1b[4;1H 102   4%  vim");
+  screen.write("\x1b[5;1Hstatus: running");
+  screen.write("\x1b[5;1H\x1b[32mstatus: ok\x1b[0m");
+
+  assertEquals(screen.inspect().alternate, true);
+  assertEquals(screen.inspect().cursorVisible, false);
+  assertEquals(screen.inspect().title, "process viewer");
+  assertEquals(screen.scrollbackTextRows(), []);
+  assertEquals(screen.textRows(), [
+    " PID  CPU  COMMAND",
+    " 100  12%  deno",
+    " 101   8%  bash",
+    " 102   4%  vim",
+    "status: oknning",
+  ]);
+  assertEquals(screen.cellRows()[0]![1], { char: "P", bold: true, foreground: 37, background: 44 });
+  assertEquals(screen.cellRows()[4]![0], { char: "s", foreground: 32 });
+
+  screen.write("\x1b[?25h\x1b[?1049l");
+  assertEquals(screen.inspect().alternate, false);
+  assertEquals(screen.inspect().cursorVisible, true);
+  assertEquals(screen.textRows()[0], "shell prompt");
+});
