@@ -2,6 +2,7 @@ import { Signal } from "../src/signals/mod.ts";
 import type { DiagnosticsCollector } from "../src/runtime/diagnostics.ts";
 import { clamp } from "./styles.ts";
 import { compactDiagnostics, processDiagnostics } from "./system_metrics_diagnostics.ts";
+import { parseDfDiskRows } from "./system_metrics_disk.ts";
 import { NvidiaSmiGpuMetricsProvider, type SystemGpuMetricsProvider } from "./system_metrics_gpu.ts";
 import {
   DenoSystemMetricsProvider,
@@ -421,31 +422,7 @@ export class SystemMonitor {
       };
     }
 
-    const output = COMMAND_OUTPUT_DECODER.decode(result.stdout);
-    const lines = output.split("\n").slice(1).filter(Boolean);
-
-    const disks = lines
-      .map((line) => line.trim().split(/\s+/))
-      .filter((parts) => parts.length >= 6)
-      .map((parts) => {
-        const filesystem = parts[0] ?? "";
-        const total = Number(parts[1] ?? 0);
-        const used = Number(parts[2] ?? 0);
-        const available = Number(parts[3] ?? 0);
-        const percent = Number((parts[4] ?? "0").replace("%", ""));
-        const mount = parts[5] ?? "/";
-        return {
-          filesystem,
-          mount,
-          total,
-          used,
-          available,
-          percent,
-        } satisfies DiskSnapshot;
-      })
-      .filter((entry) => entry.filesystem.startsWith("/dev/") || entry.mount === "/")
-      .sort((a, b) => b.percent - a.percent)
-      .slice(0, 8);
+    const disks = parseDfDiskRows(COMMAND_OUTPUT_DECODER.decode(result.stdout));
 
     this.#diskCache = {
       sampledAt: now,

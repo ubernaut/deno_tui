@@ -286,6 +286,8 @@ Work:
         `nvidia-smi`.
   - [x] Extracted system metric diagnostic ordering and process scan diagnostic formatting into
         `app/system_metrics_diagnostics.ts` with direct status-priority tests.
+  - [x] Extracted `df -B1P` disk row parsing into `app/system_metrics_disk.ts`, covering virtual filesystem filtering,
+        pressure sorting, and row limits with focused tests.
 - [x] Keep monitor snapshots advancing when required `/proc` reads or process scans fail, with structured per-source
       diagnostics for unavailable CPU, uptime, network, and process data.
   - [x] Extracted monitor history padding, empty snapshot construction, and alert derivation into
