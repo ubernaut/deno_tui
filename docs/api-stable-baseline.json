@@ -12800,6 +12800,13 @@
     },
     {
       "module": "src/three_ascii/renderer.ts",
+      "name": "ThreeAsciiAnsiGridAssembler",
+      "kind": "class",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/three_ascii/renderer.ts",
       "name": "ThreeAsciiAnsiGridInput",
       "kind": "interface",
       "typeOnly": true,

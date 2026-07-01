@@ -324,6 +324,132 @@ export interface ThreeAsciiAnsiGridInput {
   backgroundColor?: Color | string | number;
 }
 
+/** Reusable ANSI grid assembler that keeps color and cell string caches warm across frames. */
+export class ThreeAsciiAnsiGridAssembler {
+  private readonly toByte = createLinearByteCache();
+  private readonly foregroundAnsiCache = new Map<number, string>();
+  private readonly cellCache = new Map<number, Map<string, string>>();
+  private backgroundKey = -1;
+  private backgroundAnsi = "";
+  private blankAnsi = "";
+  private backgroundRed = 0;
+  private backgroundGreen = 0;
+  private backgroundBlue = 0;
+
+  build(input: ThreeAsciiAnsiGridInput): string[][] {
+    const columns = Math.max(0, Math.floor(input.columns));
+    const rows = Math.max(0, Math.floor(input.rows));
+    const fillGlyphs = input.fillGlyphs;
+    const edgeGlyphs = input.edgeGlyphs;
+    const colors = input.colors;
+    const terminalGlyphStyle = input.terminalGlyphStyle ?? "blocks";
+    const terminalEdgeBias = Math.max(0.5, input.terminalEdgeBias ?? DEFAULT_TERMINAL_EDGE_BIAS);
+    this.setBackground(colorValue(input.backgroundColor, 0x000000));
+    let lastForegroundKey = -1;
+    let lastGlyph = "";
+    let lastCell = "";
+    const grid = Array.from({ length: rows }, () => Array<string>(columns));
+
+    for (let row = 0; row < rows; row += 1) {
+      const outputRow = grid[row];
+
+      for (let column = 0; column < columns; column += 1) {
+        const index = row * columns + column;
+        const fillGlyphIndex = Math.round(fillGlyphs[index] ?? 0);
+        const edgeOffset = index * 4;
+        const edgeGlyphIndex = Math.round(edgeGlyphs?.[edgeOffset] ?? 0);
+        if (
+          fillGlyphIndex < 5 &&
+          (edgeGlyphIndex <= 0 || (edgeGlyphs?.[edgeOffset + 1] ?? 0) <= 0 ||
+            (edgeGlyphs?.[edgeOffset + 2] ?? 0) <= 0)
+        ) {
+          outputRow[column] = this.blankAnsi;
+          continue;
+        }
+
+        const glyph = terminalGlyphForCell(
+          terminalGlyphStyle,
+          edgeGlyphIndex,
+          edgeGlyphs?.[edgeOffset + 1] ?? 0,
+          edgeGlyphs?.[edgeOffset + 2] ?? 0,
+          edgeGlyphs?.[edgeOffset + 3] ?? 0,
+          fillGlyphIndex,
+          terminalEdgeBias,
+        );
+
+        const colorOffset = index * 4;
+        let foregroundRed = this.toByte(colors[colorOffset] ?? 0);
+        let foregroundGreen = this.toByte(colors[colorOffset + 1] ?? 0);
+        let foregroundBlue = this.toByte(colors[colorOffset + 2] ?? 0);
+        if (terminalGlyphStyle === "blocks" && glyph === "█") {
+          const amount = fillBucketFromGlyphIndex(fillGlyphIndex) / 9;
+          foregroundRed = mixByteChannel(this.backgroundRed, foregroundRed, amount);
+          foregroundGreen = mixByteChannel(this.backgroundGreen, foregroundGreen, amount);
+          foregroundBlue = mixByteChannel(this.backgroundBlue, foregroundBlue, amount);
+        }
+
+        const foregroundKey = (foregroundRed << 16) | (foregroundGreen << 8) | foregroundBlue;
+        if (foregroundKey === lastForegroundKey && glyph === lastGlyph) {
+          outputRow[column] = lastCell;
+          continue;
+        }
+
+        let foregroundAnsi = this.foregroundAnsiCache.get(foregroundKey);
+        if (foregroundAnsi === undefined) {
+          foregroundAnsi = rgbToAnsiForeground(foregroundRed, foregroundGreen, foregroundBlue);
+          this.foregroundAnsiCache.set(foregroundKey, foregroundAnsi);
+        }
+
+        let glyphCells = this.cellCache.get(foregroundKey);
+        if (glyphCells === undefined) {
+          glyphCells = new Map<string, string>();
+          this.cellCache.set(foregroundKey, glyphCells);
+        }
+        let cell = glyphCells.get(glyph);
+        if (cell === undefined) {
+          cell = `${this.backgroundAnsi}${foregroundAnsi}${glyph}${RESET}`;
+          glyphCells.set(glyph, cell);
+        }
+
+        if (glyph === "█" || terminalGlyphStyle === "blocks") {
+          lastForegroundKey = foregroundKey;
+          lastGlyph = glyph;
+          lastCell = cell;
+        }
+
+        outputRow[column] = cell;
+      }
+    }
+
+    return grid;
+  }
+
+  clear(): void {
+    this.foregroundAnsiCache.clear();
+    this.cellCache.clear();
+    this.backgroundKey = -1;
+    this.backgroundAnsi = "";
+    this.blankAnsi = "";
+  }
+
+  private setBackground(backgroundColor: Color): void {
+    const [backgroundRed, backgroundGreen, backgroundBlue] = colorToBytes(backgroundColor);
+    const backgroundKey = (backgroundRed << 16) | (backgroundGreen << 8) | backgroundBlue;
+    if (backgroundKey === this.backgroundKey) {
+      return;
+    }
+
+    this.backgroundKey = backgroundKey;
+    this.backgroundRed = backgroundRed;
+    this.backgroundGreen = backgroundGreen;
+    this.backgroundBlue = backgroundBlue;
+    this.backgroundAnsi = rgbToAnsiBackground(backgroundRed, backgroundGreen, backgroundBlue);
+    const backgroundForeground = rgbToAnsiForeground(backgroundRed, backgroundGreen, backgroundBlue);
+    this.blankAnsi = `${this.backgroundAnsi}${backgroundForeground} ${RESET}`;
+    this.cellCache.clear();
+  }
+}
+
 function colorValue(input: Color | string | number | undefined, fallback: number): Color {
   return input instanceof Color ? input.clone() : new Color(input ?? fallback);
 }
@@ -495,95 +621,7 @@ function shouldUseGohu11EdgeGlyph(
 
 /** Builds the terminal ANSI cell grid for a three Ascii frame. */
 export function buildThreeAsciiAnsiGrid(input: ThreeAsciiAnsiGridInput): string[][] {
-  const columns = Math.max(0, Math.floor(input.columns));
-  const rows = Math.max(0, Math.floor(input.rows));
-  const fillGlyphs = input.fillGlyphs;
-  const edgeGlyphs = input.edgeGlyphs;
-  const colors = input.colors;
-  const terminalGlyphStyle = input.terminalGlyphStyle ?? "blocks";
-  const terminalEdgeBias = Math.max(0.5, input.terminalEdgeBias ?? DEFAULT_TERMINAL_EDGE_BIAS);
-  const [backgroundRed, backgroundGreen, backgroundBlue] = colorToBytes(colorValue(input.backgroundColor, 0x000000));
-  const backgroundAnsi = rgbToAnsiBackground(backgroundRed, backgroundGreen, backgroundBlue);
-  const blankAnsi = `${backgroundAnsi}${rgbToAnsiForeground(backgroundRed, backgroundGreen, backgroundBlue)} ${RESET}`;
-  const toByte = createLinearByteCache();
-  const foregroundAnsiCache = new Map<number, string>();
-  const cellCache = new Map<number, Map<string, string>>();
-  let lastForegroundKey = -1;
-  let lastGlyph = "";
-  let lastCell = "";
-  const grid = Array.from({ length: rows }, () => Array<string>(columns));
-
-  for (let row = 0; row < rows; row += 1) {
-    const outputRow = grid[row];
-
-    for (let column = 0; column < columns; column += 1) {
-      const index = row * columns + column;
-      const fillGlyphIndex = Math.round(fillGlyphs[index] ?? 0);
-      const edgeOffset = index * 4;
-      const edgeGlyphIndex = Math.round(edgeGlyphs?.[edgeOffset] ?? 0);
-      if (
-        fillGlyphIndex < 5 &&
-        (edgeGlyphIndex <= 0 || (edgeGlyphs?.[edgeOffset + 1] ?? 0) <= 0 || (edgeGlyphs?.[edgeOffset + 2] ?? 0) <= 0)
-      ) {
-        outputRow[column] = blankAnsi;
-        continue;
-      }
-
-      const glyph = terminalGlyphForCell(
-        terminalGlyphStyle,
-        edgeGlyphIndex,
-        edgeGlyphs?.[edgeOffset + 1] ?? 0,
-        edgeGlyphs?.[edgeOffset + 2] ?? 0,
-        edgeGlyphs?.[edgeOffset + 3] ?? 0,
-        fillGlyphIndex,
-        terminalEdgeBias,
-      );
-
-      const colorOffset = index * 4;
-      let foregroundRed = toByte(colors[colorOffset] ?? 0);
-      let foregroundGreen = toByte(colors[colorOffset + 1] ?? 0);
-      let foregroundBlue = toByte(colors[colorOffset + 2] ?? 0);
-      if (terminalGlyphStyle === "blocks" && glyph === "█") {
-        const amount = fillBucketFromGlyphIndex(fillGlyphIndex) / 9;
-        foregroundRed = mixByteChannel(backgroundRed, foregroundRed, amount);
-        foregroundGreen = mixByteChannel(backgroundGreen, foregroundGreen, amount);
-        foregroundBlue = mixByteChannel(backgroundBlue, foregroundBlue, amount);
-      }
-
-      const foregroundKey = (foregroundRed << 16) | (foregroundGreen << 8) | foregroundBlue;
-      if (foregroundKey === lastForegroundKey && glyph === lastGlyph) {
-        outputRow[column] = lastCell;
-        continue;
-      }
-
-      let foregroundAnsi = foregroundAnsiCache.get(foregroundKey);
-      if (foregroundAnsi === undefined) {
-        foregroundAnsi = rgbToAnsiForeground(foregroundRed, foregroundGreen, foregroundBlue);
-        foregroundAnsiCache.set(foregroundKey, foregroundAnsi);
-      }
-
-      let glyphCells = cellCache.get(foregroundKey);
-      if (glyphCells === undefined) {
-        glyphCells = new Map<string, string>();
-        cellCache.set(foregroundKey, glyphCells);
-      }
-      let cell = glyphCells.get(glyph);
-      if (cell === undefined) {
-        cell = `${backgroundAnsi}${foregroundAnsi}${glyph}${RESET}`;
-        glyphCells.set(glyph, cell);
-      }
-
-      if (glyph === "█" || terminalGlyphStyle === "blocks") {
-        lastForegroundKey = foregroundKey;
-        lastGlyph = glyph;
-        lastCell = cell;
-      }
-
-      outputRow[column] = cell;
-    }
-  }
-
-  return grid;
+  return new ThreeAsciiAnsiGridAssembler().build(input);
 }
 
 /** Public class implementing a three Ascii Renderer. */
@@ -618,6 +656,7 @@ export class ThreeAsciiRenderer {
   private colorOutput?: BufferPair;
   private outputReadback?: ReadbackBuffer;
   private uniformValues = new Float32Array(24);
+  private readonly ansiGridAssembler = new ThreeAsciiAnsiGridAssembler();
   private outputCellCount = 0;
   private sizeDirty = true;
   private computeDirty = true;
@@ -824,7 +863,7 @@ export class ThreeAsciiRenderer {
 
     const { fillGlyphs, edgeGlyphs, colors } = await this.readOutputBuffers(fillOffset, edgeOffset, colorOffset);
 
-    return buildThreeAsciiAnsiGrid({
+    return this.ansiGridAssembler.build({
       columns: this.columns,
       rows: this.rows,
       fillGlyphs,
@@ -849,6 +888,7 @@ export class ThreeAsciiRenderer {
 
     this.asciiNode?.dispose();
     this.asciiNode = undefined;
+    this.ansiGridAssembler.clear();
 
     this.renderer?.setAnimationLoop?.(null);
     this.renderer?.dispose();

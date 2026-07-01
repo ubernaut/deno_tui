@@ -20,6 +20,7 @@ import {
   TableController,
   TextObject,
   textWidth,
+  ThreeAsciiAnsiGridAssembler,
   tileRects,
   visibleListRows,
 } from "../mod.ts";
@@ -55,6 +56,7 @@ const threeAsciiReadbackColorSource = new Float32Array(threeAsciiCellCount * 4);
 const threeAsciiReadbackFillCpu = new Float32Array(threeAsciiCellCount);
 const threeAsciiReadbackEdgeCpu = new Float32Array(threeAsciiCellCount * 4);
 const threeAsciiReadbackColorCpu = new Float32Array(threeAsciiCellCount * 4);
+const threeAsciiGridAssembler = new ThreeAsciiAnsiGridAssembler();
 let threeAsciiReadbackCursor = 0;
 let threeAsciiReadbackChecksum = 0;
 const ansiRichRows = Array.from({ length: 250 }, (_, index) => {
@@ -692,6 +694,29 @@ export const benchmarkCases: BenchmarkCase[] = [
       });
       if (grid.length !== threeAsciiRows || grid[0]?.length !== threeAsciiColumns) {
         throw new Error("pattern three Ascii grid dimensions changed");
+      }
+    },
+  },
+  {
+    name: "render/three-ascii-ansi-grid-warm-cache-96x40",
+    category: "render",
+    description: "CPU-assemble recurring Three ASCII frames while reusing ANSI conversion and cell caches.",
+    tags: ["render", "three", "ascii", "ansi", "cpu", "assembly", "cache"],
+    iterations: 250,
+    maxAverageMs: 5,
+    run: () => {
+      const grid = threeAsciiGridAssembler.build({
+        columns: threeAsciiColumns,
+        rows: threeAsciiRows,
+        fillGlyphs: threeAsciiPatternFillGlyphs,
+        edgeGlyphs: threeAsciiPatternEdgeGlyphs,
+        colors: threeAsciiPatternColors,
+        terminalGlyphStyle: "blocks",
+        terminalEdgeBias: 1.15,
+        backgroundColor: 0x000000,
+      });
+      if (grid.length !== threeAsciiRows || grid[0]?.length !== threeAsciiColumns) {
+        throw new Error("warm-cache three Ascii grid dimensions changed");
       }
     },
   },

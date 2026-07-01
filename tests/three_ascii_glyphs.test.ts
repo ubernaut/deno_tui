@@ -1,7 +1,7 @@
 import { assertEquals, assertMatch } from "./deps.ts";
 import { formatThreeAsciiFallbackDetail } from "../src/canvas/three_ascii.ts";
 import { blockFillGlyphForBucket, bucketAsciiLuminance, glyphForTile } from "../src/three_ascii/glyphs.ts";
-import { buildThreeAsciiAnsiGrid } from "../src/three_ascii/renderer.ts";
+import { buildThreeAsciiAnsiGrid, ThreeAsciiAnsiGridAssembler } from "../src/three_ascii/renderer.ts";
 
 Deno.test("ascii luminance keeps empty tiles blank but promotes low non-zero fill to block glyphs", () => {
   assertEquals(bucketAsciiLuminance(0), 0);
@@ -79,6 +79,51 @@ Deno.test("three ascii ANSI grid assembly reuses repeated non-adjacent block cel
   assertEquals(grid[0][1], "\x1b[48;2;0;0;0m\x1b[38;2;0;255;0m█\x1b[0m");
   assertEquals(grid[0][2], grid[0][0]);
   assertEquals(grid[0][3], grid[0][1]);
+});
+
+Deno.test("three ascii ANSI grid assembler matches stateless output across frames", () => {
+  const input = {
+    columns: 3,
+    rows: 1,
+    fillGlyphs: new Float32Array([14, 10, 0]),
+    edgeGlyphs: new Float32Array([0, 0, 0, 0, 1, 16, 24, 0, 0, 0, 0, 0]),
+    colors: new Float32Array([
+      1,
+      0,
+      0,
+      1,
+      0,
+      1,
+      0,
+      1,
+      0,
+      0,
+      1,
+      1,
+    ]),
+    backgroundColor: 0x050607,
+  };
+  const assembler = new ThreeAsciiAnsiGridAssembler();
+
+  assertEquals(assembler.build(input), buildThreeAsciiAnsiGrid(input));
+  assertEquals(assembler.build(input), buildThreeAsciiAnsiGrid(input));
+});
+
+Deno.test("three ascii ANSI grid assembler invalidates cached cells when background changes", () => {
+  const assembler = new ThreeAsciiAnsiGridAssembler();
+  const base = {
+    columns: 1,
+    rows: 1,
+    fillGlyphs: new Float32Array([14]),
+    colors: new Float32Array([1, 0, 0, 1]),
+  };
+
+  const dark = assembler.build({ ...base, backgroundColor: 0x000000 })[0][0];
+  const tinted = assembler.build({ ...base, backgroundColor: 0x010203 })[0][0];
+
+  assertEquals(dark, buildThreeAsciiAnsiGrid({ ...base, backgroundColor: 0x000000 })[0][0]);
+  assertEquals(tinted, buildThreeAsciiAnsiGrid({ ...base, backgroundColor: 0x010203 })[0][0]);
+  assertEquals(tinted !== dark, true);
 });
 
 Deno.test("three ascii fallback detail hides raw GPU validation text", () => {
