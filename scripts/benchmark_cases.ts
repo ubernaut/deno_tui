@@ -161,8 +161,12 @@ function runCanvasOverlapWorkload(): void {
   modal.erase();
   canvas.render();
 
-  if ((sink.lastStats?.flushedCells ?? 0) === 0) {
+  const finalStats = sink.lastStats;
+  if ((finalStats?.flushedCells ?? 0) === 0) {
     throw new Error("canvas overlap workload did not flush any cells");
+  }
+  if ((finalStats?.fullRedraws ?? 0) > 0 || (finalStats?.flushedCells ?? Number.POSITIVE_INFINITY) >= 160 * 48) {
+    throw new Error("canvas overlap workload regressed to full-screen redraw");
   }
 }
 
@@ -321,10 +325,15 @@ function drawWorkbenchText(
 
 class BenchmarkMetricsProvider implements SystemMetricsProvider {
   step = 0;
+  processStatReads = 0;
   readonly pids = Array.from({ length: 150 }, (_, index) => 1_000 + index);
 
   advance(): void {
     this.step += 1;
+  }
+
+  resetCounters(): void {
+    this.processStatReads = 0;
   }
 
   now(): number {
@@ -369,6 +378,7 @@ class BenchmarkMetricsProvider implements SystemMetricsProvider {
     if (path === "/proc/net/dev") return benchmarkProcNetDev(this.step);
     if (path.startsWith("/proc/") && path.endsWith("/stat")) {
       const pid = Number(path.split("/")[2] ?? 0);
+      this.processStatReads += 1;
       return benchmarkProcessStat(pid, this.step);
     }
     if (path === "/sys/class/thermal/thermal_zone0/type") return "bench_pkg\n";
@@ -441,7 +451,12 @@ function benchmarkProcessStat(pid: number, step: number): string {
 }
 
 const metricsProvider = new BenchmarkMetricsProvider();
-const metricsMonitor = new SystemMonitor(16, metricsProvider);
+const metricsMonitor = new SystemMonitor({
+  historyLength: 16,
+  provider: metricsProvider,
+  processLimit: 100,
+  processScanLimit: 120,
+});
 const markupLayoutCache = new LayoutMeasurementCache();
 const markupLayoutSolver = simpleLayoutSolver({ intrinsicMeasurementCache: markupLayoutCache });
 
@@ -639,16 +654,20 @@ export const benchmarkCases: BenchmarkCase[] = [
   {
     name: "data/system-monitor-fixture-sample",
     category: "data",
-    description: "Sample fixture-backed CPU, memory, network, disk, GPU, and 150 process metrics.",
+    description: "Sample fixture-backed CPU, memory, network, disk, GPU, and capped process metrics from 150 PIDs.",
     tags: ["data", "monitor", "processes", "fixtures"],
     iterations: 80,
     maxAverageMs: 5,
     run: async () => {
       metricsProvider.advance();
+      metricsProvider.resetCounters();
       await metricsMonitor.sample();
       const snapshot = metricsMonitor.snapshot.peek();
       if (snapshot.processes.length !== 100 || snapshot.cpuCores.length !== 16) {
         throw new Error("system monitor fixture sample did not produce expected rows");
+      }
+      if (metricsProvider.processStatReads !== 120) {
+        throw new Error("system monitor fixture sample did not respect the process scan cap");
       }
     },
   },

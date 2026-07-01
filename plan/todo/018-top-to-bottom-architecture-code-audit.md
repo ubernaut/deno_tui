@@ -91,7 +91,7 @@ Acceptance checks:
 
 - [x] `deno task benchmark -- --list` documents the new integration cases.
 - [x] `deno task benchmark` passes locally with realistic thresholds.
-- [ ] At least one benchmark would fail before a naive full redraw or unbounded process scan regression.
+- [x] At least one benchmark would fail before a naive full redraw or unbounded process scan regression.
 
 ### P1: Harden Signals Against Recursive Update Failures
 
