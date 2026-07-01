@@ -290,7 +290,9 @@ Work:
 - [x] Add caches for resolved style chains and preview generation with explicit invalidation tests.
   - [x] Extended `ThemeProviderCache` with preview caching, active theme/layer invalidation, and uncached
         function-variant previews.
-- [ ] Add tests that verify theme layer changes invalidate only affected component/token lookups.
+- [x] Add tests that verify theme layer changes invalidate only affected component/token lookups.
+  - [x] `ThemeProviderCache` now swaps provider engines without flushing unrelated component-only layer entries and
+        falls back to a full rebuild for token layer changes where style dependencies cannot be inferred safely.
 - [ ] Keep public exports stable through re-export shims and package-check coverage.
 
 Acceptance checks:

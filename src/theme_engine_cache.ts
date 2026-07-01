@@ -4,6 +4,7 @@ import {
   type Style,
   type Theme,
   type ThemeEngine,
+  type ThemeEngineOptions,
   type ThemeProvider,
   type ThemeProviderPreview,
   type ThemeProviderPreviewOptions,
@@ -26,7 +27,7 @@ export interface ThemeProviderCacheInspection extends ThemeEngineCacheInspection
 
 /** Public class implementing a theme Engine Cache. */
 export class ThemeEngineCache {
-  readonly engine: ThemeEngine;
+  engine: ThemeEngine;
   #themes = new Map<string, Theme>();
   #styles = new Map<string, Style>();
   #hits = 0;
@@ -69,6 +70,27 @@ export class ThemeEngineCache {
     this.#styles.clear();
   }
 
+  replaceEngine(engine: ThemeEngine): void {
+    this.engine = engine;
+  }
+
+  deleteComponent(componentName: string): void {
+    const themePrefix = `${componentName}\0`;
+    const stylePrefix = `${componentName}\0`;
+    for (const key of this.#themes.keys()) {
+      if (key.startsWith(themePrefix)) this.#themes.delete(key);
+    }
+    for (const key of this.#styles.keys()) {
+      if (key.startsWith(stylePrefix)) this.#styles.delete(key);
+    }
+  }
+
+  deleteComponents(componentNames: Iterable<string>): void {
+    for (const componentName of componentNames) {
+      this.deleteComponent(componentName);
+    }
+  }
+
   inspect(): ThemeEngineCacheInspection {
     return {
       themeEntries: this.#themes.size,
@@ -85,16 +107,16 @@ export class ThemeProviderCache {
   #cache: ThemeEngineCache;
   #previews = new Map<string, ThemeProviderPreview>();
   #signature: string;
-  readonly #syncCache = () => {
-    this.#signature = providerSignature(this.provider);
-    this.#cache = new ThemeEngineCache(this.provider.engineFor(this.provider.activeId.peek()));
-    this.#previews.clear();
-  };
+  #activeId: string;
+  #layerOptions: ThemeEngineOptions;
+  readonly #syncCache = () => this.#syncFromProvider();
 
   constructor(provider: ThemeProvider) {
     this.provider = provider;
+    this.#activeId = provider.activeId.peek();
+    this.#layerOptions = provider.layers.options.peek();
     this.#signature = providerSignature(provider);
-    this.#cache = new ThemeEngineCache(provider.engineFor(provider.activeId.peek()));
+    this.#cache = new ThemeEngineCache(provider.engineFor(this.#activeId));
     this.provider.engine.subscribe(this.#syncCache);
   }
 
@@ -144,7 +166,35 @@ export class ThemeProviderCache {
 
   #syncIfChanged(): void {
     if (this.#signature !== providerSignature(this.provider)) {
-      this.#syncCache();
+      this.#syncFromProvider();
+    }
+  }
+
+  #syncFromProvider(): void {
+    const nextActiveId = this.provider.activeId.peek();
+    const nextLayerOptions = this.provider.layers.options.peek();
+    const nextEngine = this.provider.engineFor(nextActiveId);
+
+    if (nextActiveId !== this.#activeId) {
+      this.#activeId = nextActiveId;
+      this.#layerOptions = nextLayerOptions;
+      this.#signature = providerSignature(this.provider);
+      this.#cache = new ThemeEngineCache(nextEngine);
+      this.#previews.clear();
+      return;
+    }
+
+    const changed = diffThemeLayerOptions(this.#layerOptions, nextLayerOptions);
+    this.#activeId = nextActiveId;
+    this.#layerOptions = nextLayerOptions;
+    this.#signature = providerSignature(this.provider);
+    this.#cache.replaceEngine(nextEngine);
+    this.#previews.clear();
+
+    if (changed.tokens) {
+      this.#cache = new ThemeEngineCache(nextEngine);
+    } else if (changed.components.size > 0) {
+      this.#cache.deleteComponents(changed.components);
     }
   }
 }
@@ -169,6 +219,41 @@ function styleKey(componentName: string, variant: string, state: ThemeState): st
 
 function providerSignature(provider: ThemeProvider): string {
   return `${provider.activeId.peek()}\0${provider.layers.activeIds().join("\0")}`;
+}
+
+function diffThemeLayerOptions(
+  previous: ThemeEngineOptions,
+  next: ThemeEngineOptions,
+): { tokens: boolean; components: Set<string> } {
+  return {
+    tokens: !sameRecord(previous.tokens, next.tokens),
+    components: changedRecordKeys(previous.components, next.components),
+  };
+}
+
+function sameRecord<T>(
+  previous: Partial<Record<string, T>> | undefined,
+  next: Partial<Record<string, T>> | undefined,
+): boolean {
+  if (previous === next) return true;
+  const previousKeys = Object.keys(previous ?? {});
+  const nextKeys = Object.keys(next ?? {});
+  if (previousKeys.length !== nextKeys.length) return false;
+  for (const key of previousKeys) {
+    if (!Object.hasOwn(next ?? {}, key) || previous?.[key] !== next?.[key]) return false;
+  }
+  return true;
+}
+
+function changedRecordKeys<T>(
+  previous: Partial<Record<string, T>> | undefined,
+  next: Partial<Record<string, T>> | undefined,
+): Set<string> {
+  const keys = new Set([...Object.keys(previous ?? {}), ...Object.keys(next ?? {})]);
+  for (const key of [...keys]) {
+    if (previous?.[key] === next?.[key]) keys.delete(key);
+  }
+  return keys;
 }
 
 function normalizePreviewOptions(options: ThemeProviderPreviewOptions): ThemeProviderPreviewOptions {

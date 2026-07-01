@@ -1365,6 +1365,135 @@ Deno.test("ThemeProviderCache invalidates when active provider engine changes", 
   cache.dispose();
 });
 
+Deno.test("ThemeProviderCache evicts only affected components for component-only layers", async () => {
+  const registry = createThemeRegistry([
+    {
+      id: "plain",
+      palette: "plain",
+      options: {
+        tokens: { foreground: (value) => `plain:${value}` },
+        components: {
+          Button: { base: { base: "foreground" } },
+          Badge: { base: { base: (value) => `badge:${value}` } },
+        },
+      },
+    },
+  ]);
+  const provider = createThemeProvider({
+    registry,
+    activeId: "plain",
+    layers: createThemeLayerStack([
+      {
+        id: "button-alert",
+        enabled: false,
+        options: {
+          components: {
+            Button: { base: { base: (value) => `alert:${value}` } },
+          },
+        },
+      },
+    ]),
+  });
+  const cache = createThemeProviderCache(provider);
+
+  await Promise.resolve();
+
+  const button = cache.component("Button");
+  const badge = cache.component("Badge");
+  const badgeStyle = cache.resolve("Badge", "base");
+  assertEquals(button.base("x"), "plain:x");
+  assertEquals(badge.base("x"), "badge:x");
+  assertEquals(badgeStyle("x"), "badge:x");
+  assertEquals(cache.inspect(), {
+    activeId: "plain",
+    previewEntries: 0,
+    themeEntries: 2,
+    styleEntries: 1,
+    hits: 1,
+    misses: 3,
+  });
+
+  assertEquals(provider.layers.enable("button-alert"), true);
+  await Promise.resolve();
+
+  const layeredButton = cache.component("Button");
+  const preservedBadge = cache.component("Badge");
+  const preservedBadgeStyle = cache.resolve("Badge", "base");
+  assertEquals(layeredButton === button, false);
+  assertEquals(layeredButton.base("x"), "alert:x");
+  assertEquals(preservedBadge, badge);
+  assertEquals(preservedBadgeStyle, badgeStyle);
+  assertEquals(cache.inspect(), {
+    activeId: "plain",
+    previewEntries: 0,
+    themeEntries: 2,
+    styleEntries: 1,
+    hits: 3,
+    misses: 4,
+  });
+
+  cache.dispose();
+  provider.layers.dispose();
+});
+
+Deno.test("ThemeProviderCache rebuilds when active layers change tokens", async () => {
+  const registry = createThemeRegistry([
+    {
+      id: "plain",
+      palette: "plain",
+      options: {
+        tokens: { foreground: (value) => `plain:${value}` },
+        components: {
+          Button: { base: { base: "foreground" } },
+          Badge: { base: { base: "foreground" } },
+        },
+      },
+    },
+  ]);
+  const provider = createThemeProvider({
+    registry,
+    activeId: "plain",
+    layers: createThemeLayerStack([
+      {
+        id: "token-alert",
+        enabled: false,
+        options: {
+          tokens: { foreground: (value) => `alert:${value}` },
+        },
+      },
+    ]),
+  });
+  const cache = createThemeProviderCache(provider);
+
+  await Promise.resolve();
+
+  const button = cache.component("Button");
+  const badge = cache.component("Badge");
+  assertEquals(button.base("x"), "plain:x");
+  assertEquals(badge.base("x"), "plain:x");
+
+  assertEquals(provider.layers.enable("token-alert"), true);
+  await Promise.resolve();
+
+  const layeredButton = cache.component("Button");
+  const layeredBadge = cache.component("Badge");
+  assertEquals(layeredButton === button, false);
+  assertEquals(layeredBadge === badge, false);
+  assertEquals(layeredButton.base("x"), "alert:x");
+  assertEquals(layeredBadge.base("x"), "alert:x");
+  assertEquals(cache.inspect(), {
+    activeId: "plain",
+    previewEntries: 0,
+    themeEntries: 2,
+    styleEntries: 0,
+    hits: 0,
+    misses: 2,
+  });
+
+  cache.dispose();
+  provider.layers.dispose();
+});
+
 Deno.test("ThemeResolver batches token and component state lookups", () => {
   const engine = new ThemeEngine({
     tokens: {
