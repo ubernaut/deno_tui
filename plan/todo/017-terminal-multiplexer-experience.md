@@ -86,3 +86,5 @@ developer workflows.
   longer forced through fixed 8-column stops.
 - Added DEC autowrap mode handling (`CSI ? 7 h/l`) so full-screen apps can overwrite the right edge without forced line
   wrapping when they disable wrap mode.
+- Added non-private insert/replace mode handling (`CSI 4 h/l`) so terminal output can insert characters into existing
+  rows without emulating insert mode manually.

@@ -157,6 +157,24 @@ Deno.test("TerminalScreenController supports DEC autowrap mode", () => {
   assertEquals(screen.inspect().privateModes, [7]);
 });
 
+Deno.test("TerminalScreenController supports insert and replace character modes", () => {
+  const screen = new TerminalScreenController({ columns: 8, rows: 2 });
+
+  screen.write("abcdef\x1b[1;3H\x1b[4hXY");
+  assertEquals(screen.textRows()[0], "abXYcdef");
+
+  screen.write("\x1b[4l\x1b[1;3HZZ");
+  assertEquals(screen.textRows()[0], "abZZcdef");
+});
+
+Deno.test("TerminalScreenController clips insert mode at the row edge", () => {
+  const screen = new TerminalScreenController({ columns: 6, rows: 2 });
+
+  screen.write("abcdef\x1b[1;5H\x1b[4hXY");
+  assertEquals(screen.textRows(), ["abcdXY", ""]);
+  assertEquals(screen.inspect().cursor, { column: 0, row: 1 });
+});
+
 Deno.test("TerminalScreenController tracks cursor style sequences", () => {
   const screen = new TerminalScreenController({ columns: 8, rows: 2 });
 

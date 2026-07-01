@@ -8940,6 +8940,7 @@ var TerminalScreenController = class {
   #privateModes = /* @__PURE__ */ new Set();
   #originMode = false;
   #autoWrap = true;
+  #insertMode = false;
   #tabStops;
   constructor(options = {}) {
     this.#columns = normalizeDimension(options.columns, DEFAULT_COLUMNS);
@@ -9038,6 +9039,10 @@ var TerminalScreenController = class {
     }
     if (char < " ") return;
     const row = this.#state.cells[this.#state.cursor.row];
+    if (this.#insertMode) {
+      row.splice(this.#state.cursor.column, 0, { char: " " });
+      row.length = this.#columns;
+    }
     row[this.#state.cursor.column] = this.#styledCell(char);
     if (this.#state.cursor.column >= this.#columns - 1) {
       if (!this.#autoWrap) return;
@@ -9067,6 +9072,10 @@ var TerminalScreenController = class {
     const params = parseParams(sequence.params);
     if (sequence.private && (sequence.command === "h" || sequence.command === "l")) {
       this.#applyPrivateModes(params, sequence.command === "h");
+      return;
+    }
+    if (sequence.command === "h" || sequence.command === "l") {
+      this.#applyModes(params, sequence.command === "h");
       return;
     }
     switch (sequence.command) {
@@ -9198,6 +9207,11 @@ var TerminalScreenController = class {
         if (mode === 7) this.#autoWrap = enabled;
         if (mode === 1049) enabled ? this.#enterAlternate() : this.#exitAlternate();
       }
+    }
+  }
+  #applyModes(params, enabled) {
+    for (const mode of params) {
+      if (mode === 4) this.#insertMode = enabled;
     }
   }
   #setCursorPosition(row, column) {
