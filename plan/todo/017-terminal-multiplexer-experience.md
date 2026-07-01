@@ -82,3 +82,5 @@ developer workflows.
   `TerminalScreenController` so scroll-region-heavy full-screen apps behave more like xterm/curses screens.
 - Added common xterm cursor and erase controls (`CNL`, `CPL`, `CHA`, `VPA`, `ECH`, erase-before display, and full-line
   erase) to reduce rendering drift in full-screen shell applications.
+- Added configurable tab-stop handling (`ESC H`, `CSI g`, `CSI 3g`) so shell apps that customize tab columns are no
+  longer forced through fixed 8-column stops.

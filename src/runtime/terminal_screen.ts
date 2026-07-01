@@ -67,6 +67,7 @@ export class TerminalScreenController {
   #cursorStyle: TerminalScreenCursorStyle = { shape: "block", blinking: true };
   #privateModes = new Set<number>();
   #originMode = false;
+  #tabStops: Set<number>;
 
   constructor(options: TerminalScreenControllerOptions = {}) {
     this.#columns = normalizeDimension(options.columns, DEFAULT_COLUMNS);
@@ -77,6 +78,7 @@ export class TerminalScreenController {
       cursor: { column: 0, row: 0 },
     };
     this.#scrollRegion = fullScrollRegion(this.#rows);
+    this.#tabStops = defaultTabStops(this.#columns);
   }
 
   get columns(): number {
@@ -121,12 +123,14 @@ export class TerminalScreenController {
     this.#state = resizeState(this.#state, nextColumns, nextRows);
     if (this.#mainState) this.#mainState = resizeState(this.#mainState, nextColumns, nextRows);
     this.#scrollRegion = fullScrollRegion(this.#rows);
+    this.#tabStops = resizeTabStops(this.#tabStops, this.#columns);
   }
 
   clear(): void {
     this.#state.cells = createRows(this.#columns, this.#rows);
     this.#state.cursor = { column: 0, row: 0 };
     this.#scrollRegion = fullScrollRegion(this.#rows);
+    this.#tabStops = defaultTabStops(this.#columns);
   }
 
   textRows(): string[] {
@@ -169,8 +173,7 @@ export class TerminalScreenController {
       return;
     }
     if (char === "\t") {
-      const next = Math.min(this.#columns - 1, this.#state.cursor.column + (8 - this.#state.cursor.column % 8));
-      this.#state.cursor.column = next;
+      this.#state.cursor.column = nextTabStop(this.#tabStops, this.#state.cursor.column, this.#columns);
       return;
     }
     if (char < " ") return;
@@ -213,6 +216,12 @@ export class TerminalScreenController {
         this.#applySgr(params);
         break;
       case "H":
+        if (sequence.kind === "esc") {
+          this.#setTabStop();
+          break;
+        }
+        this.#setCursorPosition(params[0] ?? 1, params[1] ?? 1);
+        break;
       case "f":
         this.#setCursorPosition(params[0] ?? 1, params[1] ?? 1);
         break;
@@ -241,6 +250,9 @@ export class TerminalScreenController {
         break;
       case "d":
         this.#setCursorPosition(params[0] || 1, this.#state.cursor.column + 1);
+        break;
+      case "g":
+        this.#clearTabStops(params[0] ?? 0);
         break;
       case "J":
         this.#eraseDisplay(params[0] ?? 0);
@@ -347,6 +359,18 @@ export class TerminalScreenController {
       column: nextColumn,
       row: clamp(this.#scrollRegion.top + row - 1, this.#scrollRegion.top, this.#scrollRegion.bottom),
     };
+  }
+
+  #setTabStop(): void {
+    this.#tabStops.add(this.#state.cursor.column);
+  }
+
+  #clearTabStops(mode: number): void {
+    if (mode === 3) {
+      this.#tabStops.clear();
+      return;
+    }
+    if (mode === 0) this.#tabStops.delete(this.#state.cursor.column);
   }
 
   #applyCursorStyle(style: number): void {
@@ -544,7 +568,9 @@ interface ParsedControlSequence {
 function parseControlSequence(value: string): ParsedControlSequence | undefined {
   const osc = parseOscSequence(value);
   if (osc) return osc;
-  if (value.startsWith("\x1b7") || value.startsWith("\x1b8") || value.startsWith("\x1bM")) {
+  if (
+    value.startsWith("\x1b7") || value.startsWith("\x1b8") || value.startsWith("\x1bM") || value.startsWith("\x1bH")
+  ) {
     return {
       kind: "esc",
       private: false,
@@ -621,6 +647,31 @@ function blankRow(columns: number): TerminalScreenCell[] {
 
 function fullScrollRegion(rows: number): TerminalScreenScrollRegion {
   return { top: 0, bottom: rows - 1 };
+}
+
+function defaultTabStops(columns: number): Set<number> {
+  const stops = new Set<number>();
+  for (let column = 8; column < columns; column += 8) stops.add(column);
+  return stops;
+}
+
+function resizeTabStops(stops: Set<number>, columns: number): Set<number> {
+  const resized = new Set<number>();
+  for (const stop of stops) {
+    if (stop > 0 && stop < columns) resized.add(stop);
+  }
+  for (let column = 8; column < columns; column += 8) {
+    if (stops.has(column)) resized.add(column);
+  }
+  return resized;
+}
+
+function nextTabStop(stops: Set<number>, column: number, columns: number): number {
+  let next = columns - 1;
+  for (const stop of stops) {
+    if (stop > column && stop < next) next = stop;
+  }
+  return next;
 }
 
 function resizeState(state: TerminalScreenState, columns: number, rows: number): TerminalScreenState {

@@ -70,6 +70,39 @@ Deno.test("TerminalScreenController applies erase-before and erase-character con
   assertEquals(screen.textRows()[1], "");
 });
 
+Deno.test("TerminalScreenController supports set and clear tab stops", () => {
+  const screen = new TerminalScreenController({ columns: 16, rows: 3 });
+
+  screen.write("a\tb");
+  assertEquals(screen.textRows()[0], "a       b");
+
+  screen.write("\x1b[2;1H\x1b[4G\x1bH\x1b[1Gx\ty");
+  assertEquals(screen.textRows()[1], "x  y");
+
+  screen.write("\x1b[3;1H\x1b[4G\x1b[g\x1b[1Gx\ty");
+  assertEquals(screen.textRows()[2], "x       y");
+});
+
+Deno.test("TerminalScreenController supports clearing all tab stops", () => {
+  const screen = new TerminalScreenController({ columns: 12, rows: 2 });
+
+  screen.write("\x1b[3gA\tB");
+  assertEquals(screen.textRows()[0], "A          B");
+
+  screen.write("\x1b[2;5H\x1bH\x1b[2;1HC\tD");
+  assertEquals(screen.textRows()[1], "C   D");
+});
+
+Deno.test("TerminalScreenController preserves in-range tab stops after resize", () => {
+  const screen = new TerminalScreenController({ columns: 16, rows: 2 });
+
+  screen.write("\x1b[12G\x1bH");
+  screen.resize(10, 2);
+  screen.write("\x1b[1Gx\ty");
+
+  assertEquals(screen.textRows()[0], "x       y");
+});
+
 Deno.test("TerminalScreenController supports save and restore cursor sequences", () => {
   const screen = new TerminalScreenController({ columns: 8, rows: 3 });
 
