@@ -143,15 +143,15 @@ export class TerminalScreenController {
   }
 
   textRows(): string[] {
-    return this.#state.cells.map((row) => row.map((cell) => cell.char).join("").trimEnd());
+    return terminalCellRowsToText(this.#state.cells);
   }
 
   cellRows(): TerminalScreenCell[][] {
-    return this.#state.cells.map((row) => row.map((cell) => ({ ...cell })));
+    return cloneTerminalCellRows(this.#state.cells);
   }
 
   scrollbackTextRows(): string[] {
-    return this.#scrollback.map((row) => row.map((cell) => cell.char).join("").trimEnd());
+    return terminalCellRowsToText(this.#scrollback);
   }
 
   inspect(): TerminalScreenInspection {
@@ -665,6 +665,39 @@ function blankRow(columns: number): TerminalScreenCell[] {
   return new Array<TerminalScreenCell>(columns).fill(BLANK_CELL);
 }
 
+function terminalCellRowsToText(rows: readonly TerminalScreenCell[][]): string[] {
+  const output = new Array<string>(rows.length);
+  for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
+    const row = rows[rowIndex]!;
+    let lastContentColumn = -1;
+    for (let column = row.length - 1; column >= 0; column--) {
+      if ((row[column]?.char ?? " ") !== " ") {
+        lastContentColumn = column;
+        break;
+      }
+    }
+    const chars = new Array<string>(lastContentColumn + 1);
+    for (let column = 0; column <= lastContentColumn; column++) {
+      chars[column] = row[column]?.char ?? " ";
+    }
+    output[rowIndex] = chars.join("");
+  }
+  return output;
+}
+
+function cloneTerminalCellRows(rows: readonly TerminalScreenCell[][]): TerminalScreenCell[][] {
+  const output = new Array<TerminalScreenCell[]>(rows.length);
+  for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
+    const row = rows[rowIndex]!;
+    const cloned = new Array<TerminalScreenCell>(row.length);
+    for (let column = 0; column < row.length; column++) {
+      cloned[column] = { ...row[column]! };
+    }
+    output[rowIndex] = cloned;
+  }
+  return output;
+}
+
 function fullScrollRegion(rows: number): TerminalScreenScrollRegion {
   return { top: 0, bottom: rows - 1 };
 }
@@ -712,7 +745,7 @@ function resizeState(state: TerminalScreenState, columns: number, rows: number):
 
 function cloneState(state: TerminalScreenState): TerminalScreenState {
   return {
-    cells: state.cells.map((row) => row.map((cell) => ({ ...cell }))),
+    cells: cloneTerminalCellRows(state.cells),
     cursor: { ...state.cursor },
   };
 }
