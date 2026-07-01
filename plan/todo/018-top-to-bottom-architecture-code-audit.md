@@ -428,6 +428,8 @@ Work:
         `src/theme.ts` wrappers stable while giving manifest parsing a focused testable boundary.
   - [x] Extracted component validation and inheritance cycle checks into `src/theme_validation_core.ts`, keeping the
         public validation facade stable while making token/reference diagnostics independently testable.
+  - [x] Extracted the concrete `ThemeEngine` implementation and inheritance error into `src/theme_engine.ts`, leaving
+        `src/theme.ts` as the compatibility facade while covering the module boundary with direct tests.
 - [x] Add caches for resolved style chains and preview generation with explicit invalidation tests.
   - [x] Extended `ThemeProviderCache` with preview caching, active theme/layer invalidation, and uncached
         function-variant previews.

@@ -44,6 +44,10 @@ import { diffThemeEnginesCore } from "./theme_diff_core.ts";
 import { validateThemeComponentsCore } from "./theme_validation_core.ts";
 import { formatThemeProviderReportMarkdownFromReport } from "./theme_provider_report.ts";
 import { mergeThemeCatalogComponents } from "./theme_catalog.ts";
+import {
+  ThemeEngine as ThemeEngineImplementation,
+  ThemeInheritanceError as ThemeInheritanceErrorImplementation,
+} from "./theme_engine.ts";
 
 /** Function that's supposed to return styled text given string as parameter */
 export type Style = StyleInternal;
@@ -1310,89 +1314,21 @@ export function formatThemeProviderReportMarkdown(
 }
 
 /** Public class implementing a theme Engine. */
-export class ThemeEngine {
-  readonly theme: Theme & { tokens: ThemeTokens };
-  private readonly components: Record<string, ComponentThemeDefinition>;
-
+export class ThemeEngine extends ThemeEngineImplementation {
   constructor(options: ThemeEngineOptions = {}) {
-    this.theme = createTheme(options.tokens);
-    this.components = composeThemeOptions({ components: options.components }).components ?? {};
+    super(options, (chain) => new ThemeInheritanceError(chain));
   }
 
-  component(componentName: string, variant = "default"): Theme {
-    const definition = this.resolveComponentDefinition(componentName);
-    return hierarchizeTheme({
-      base: this.theme.base,
-      focused: this.theme.focused,
-      active: this.theme.active,
-      disabled: this.theme.disabled,
-      ...resolveThemeStateDefinition(definition?.base, this.theme.tokens),
-      ...(variant === "default" ? {} : resolveThemeStateDefinition(definition?.variants?.[variant], this.theme.tokens)),
-    });
-  }
-
-  resolve(componentName: string, state: ThemeState, variant = "default"): Style {
-    return this.component(componentName, variant)[state];
-  }
-
-  extend(options: ThemeEngineOptions): ThemeEngine {
+  override extend(options: ThemeEngineOptions): ThemeEngine {
     return new ThemeEngine(composeThemeOptions({
       tokens: this.theme.tokens,
       components: this.components,
     }, options));
   }
-
-  componentNames(): string[] {
-    return Object.keys(this.components).sort();
-  }
-
-  variants(componentName: string): string[] {
-    return Object.keys(this.resolveComponentDefinition(componentName).variants ?? {}).sort();
-  }
-
-  inspect(): ThemeInspection {
-    return {
-      tokens: [...themeTokenNames],
-      components: this.componentNames().map((name) => ({
-        name,
-        variants: this.variants(name),
-      })),
-    };
-  }
-
-  private resolveComponentDefinition(
-    componentName: string,
-    seen = new Set<string>(),
-  ): ComponentThemeDefinition {
-    const definition = this.components[componentName];
-    if (!definition) return {};
-    if (seen.has(componentName)) {
-      throw new ThemeInheritanceError([...seen, componentName]);
-    }
-    seen.add(componentName);
-
-    let resolved: ComponentThemeDefinition = {};
-    for (const parent of normalizeThemeExtends(definition.extends)) {
-      resolved = mergeComponentThemeDefinition(
-        resolved,
-        this.resolveComponentDefinition(parent, new Set(seen)),
-      );
-    }
-
-    return mergeComponentThemeDefinition(resolved, {
-      base: definition.base,
-      variants: definition.variants,
-    });
-  }
 }
 
 /** Error thrown for invalid theme Inheritance operations. */
-export class ThemeInheritanceError extends Error {
-  constructor(chain: string[]) {
-    super(`Theme component inheritance cycle detected: ${chain.join(" -> ")}`);
-    this.name = "ThemeInheritanceError";
-  }
-}
+export class ThemeInheritanceError extends ThemeInheritanceErrorImplementation {}
 
 /** Error thrown for invalid theme Validation operations. */
 export class ThemeValidationError extends Error {
