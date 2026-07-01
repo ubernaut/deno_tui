@@ -934,7 +934,7 @@ function component(id2, name, category, description, capabilities) {
   return { id: id2, name, category, description, capabilities };
 }
 
-// src/theme.ts
+// src/theme_ansi.ts
 function emptyStyle(text) {
   return text;
 }
@@ -962,22 +962,58 @@ function createAnsiStyle(spec) {
   const open = `\x1B[${codes.join(";")}m`;
   return (value) => `${open}${value}\x1B[0m`;
 }
+function ansiStyleCodes(spec) {
+  const codes = [];
+  if (spec.bold) codes.push(1);
+  if (spec.dim) codes.push(2);
+  if (spec.italic) codes.push(3);
+  if (spec.underline) codes.push(4);
+  if (spec.inverse) codes.push(7);
+  if (spec.strikethrough) codes.push(9);
+  if (spec.foreground !== void 0) codes.push(...ansiColorCodes(spec.foreground, false));
+  if (spec.background !== void 0) codes.push(...ansiColorCodes(spec.background, true));
+  return codes;
+}
+function ansiColorCodes(color, background) {
+  if (typeof color === "number") {
+    return [background ? 48 : 38, 5, clampAnsiByte(color)];
+  }
+  if (typeof color !== "string") {
+    const [red, green, blue] = color;
+    return [background ? 48 : 38, 2, clampAnsiByte(red), clampAnsiByte(green), clampAnsiByte(blue)];
+  }
+  return [ansiNamedColorCode(color, background)];
+}
+function ansiNamedColorCode(color, background) {
+  const index = ANSI_COLOR_NAMES.indexOf(color);
+  const base = background ? 40 : 30;
+  return index < 8 ? base + index : base + 60 + index - 8;
+}
+function clampAnsiByte(value) {
+  return Math.max(0, Math.min(255, Math.round(value)));
+}
+
+// src/theme.ts
+var emptyStyle2 = emptyStyle;
+function createAnsiStyle2(spec) {
+  return createAnsiStyle(spec);
+}
 function createAnsiThemeTokens(specs) {
   const tokens = {};
   for (const [name, spec] of Object.entries(specs)) {
-    tokens[name] = createAnsiStyle(spec);
+    tokens[name] = createAnsiStyle2(spec);
   }
   return tokens;
 }
 var themePalettes = {
   plain: {
-    foreground: emptyStyle,
-    muted: emptyStyle,
-    accent: emptyStyle,
-    success: emptyStyle,
-    warning: emptyStyle,
-    danger: emptyStyle,
-    surface: emptyStyle
+    foreground: emptyStyle2,
+    muted: emptyStyle2,
+    accent: emptyStyle2,
+    success: emptyStyle2,
+    warning: emptyStyle2,
+    danger: emptyStyle2,
+    surface: emptyStyle2
   },
   neon: {
     ...createAnsiThemeTokens({
@@ -999,7 +1035,7 @@ var themePalettes = {
       warning: { foreground: "yellow" },
       danger: { foreground: "red" }
     }),
-    surface: emptyStyle
+    surface: emptyStyle2
   }
 };
 function mergeComponentThemeDefinition(base = {}, extension = {}) {
@@ -1178,35 +1214,6 @@ function mergeThemeExtends(base, extension) {
 function normalizeThemeExtends(value) {
   if (value === void 0) return [];
   return typeof value === "string" ? [value] : [...value];
-}
-function ansiStyleCodes(spec) {
-  const codes = [];
-  if (spec.bold) codes.push(1);
-  if (spec.dim) codes.push(2);
-  if (spec.italic) codes.push(3);
-  if (spec.underline) codes.push(4);
-  if (spec.inverse) codes.push(7);
-  if (spec.strikethrough) codes.push(9);
-  if (spec.foreground !== void 0) codes.push(...ansiColorCodes(spec.foreground, false));
-  if (spec.background !== void 0) codes.push(...ansiColorCodes(spec.background, true));
-  return codes;
-}
-function ansiColorCodes(color, background) {
-  if (typeof color === "number") {
-    return [background ? 48 : 38, 5, clampAnsiByte(color)];
-  }
-  if (typeof color !== "string") {
-    return [background ? 48 : 38, 2, ...color.map(clampAnsiByte)];
-  }
-  return [ansiNamedColorCode(color, background)];
-}
-function ansiNamedColorCode(color, background) {
-  const index = ANSI_COLOR_NAMES.indexOf(color);
-  const base = background ? 40 : 30;
-  return index < 8 ? base + index : base + 60 + index - 8;
-}
-function clampAnsiByte(value) {
-  return Math.max(0, Math.min(255, Math.round(value)));
 }
 
 // src/utils/sorted_array.ts
@@ -2108,7 +2115,7 @@ function grWizardThemeOptions(palette) {
   });
 }
 function style(spec) {
-  return createAnsiStyle({
+  return createAnsiStyle2({
     foreground: spec.foreground ? hexRgb(spec.foreground) : void 0,
     background: spec.background ? hexRgb(spec.background) : void 0,
     bold: spec.bold,
@@ -10138,7 +10145,7 @@ new BoxObject({
   canvas: host.canvas,
   rectangle: new Computed(() => ({ column: 0, row: 0, width: cols(), height: rowsCount() })),
   filler: " ",
-  style: new Computed(() => createAnsiStyle({ background: hex(theme().bg) })),
+  style: new Computed(() => createAnsiStyle2({ background: hex(theme().bg) })),
   zIndex: -2
 }).draw();
 ensureLines();
