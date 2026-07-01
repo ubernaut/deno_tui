@@ -4,6 +4,10 @@
     "./web": "./mod.web.ts",
     "./remote": "./mod.remote.ts",
     "./three-ascii": "./mod.three_ascii.ts",
+    "./theme": "./mod.theme.ts",
+    "./runtime": "./mod.runtime.ts",
+    "./terminal": "./mod.terminal.ts",
+    "./testing": "./mod.testing.ts",
     "./layout/yoga": "./src/layout/solvers/yoga.ts"
   },
   "imports": {

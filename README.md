@@ -61,14 +61,20 @@ renderer lab, and demo suite:
 | `./web`         | `mod.web.ts`                 | browser  | beta         |
 | `./remote`      | `mod.remote.ts`              | remote   | experimental |
 | `./three-ascii` | `mod.three_ascii.ts`         | shared   | experimental |
+| `./theme`       | `mod.theme.ts`               | shared   | beta         |
+| `./runtime`     | `mod.runtime.ts`             | shared   | beta         |
+| `./terminal`    | `mod.terminal.ts`            | terminal | beta         |
+| `./testing`     | `mod.testing.ts`             | shared   | beta         |
 | `./layout/yoga` | `src/layout/solvers/yoga.ts` | shared   | experimental |
 
 Use `mod.ts` for full terminal apps, `mod.web.ts` for standalone browser bundles and GitHub Pages demos, and
 `mod.remote.ts` for the hosted terminal/client bridge. Use `./three-ascii` when an app wants the focused Acerola-style
-Three.js ASCII renderer without importing the full terminal runtime, and use `./layout/yoga` when an app wants the
-optional Yoga-backed Flexbox solver for HTML/CSS-style layout trees. The stability manifest is exported as
-`packageEntrypoints`, `apiSurfacePolicies`, and `packageReleasePolicy` so docs, release tooling, and adopters can
-inspect the package contract without scraping Markdown.
+Three.js ASCII renderer without importing the full terminal runtime. Framework and tooling authors can import `./theme`,
+`./runtime`, `./terminal`, and `./testing` to avoid depending on the broad root entrypoint while still using documented
+package surfaces. Use `./layout/yoga` when an app wants the optional Yoga-backed Flexbox solver for HTML/CSS-style
+layout trees. The stability manifest is exported as `packageEntrypoints`, `apiSurfacePolicies`, and
+`packageReleasePolicy` so docs, release tooling, and adopters can inspect the package contract without scraping
+Markdown.
 
 The remote package includes `RemoteTerminalClient` for browser-side hosts and `RemoteTerminalBridge` for server-side
 adapters. A bridge connects a transport to the same `TerminalSessionHandle` used by local terminal windows, routing

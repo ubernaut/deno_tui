@@ -16,19 +16,32 @@ Deno.test("package entrypoint manifest separates terminal web and remote surface
     "./web",
     "./remote",
     "./three-ascii",
+    "./theme",
+    "./runtime",
+    "./terminal",
+    "./testing",
     "./layout/yoga",
   ]);
   assertEquals(packageEntrypointFor(".")?.path, "./mod.ts");
   assertEquals(packageEntrypointFor("./mod.web.ts")?.specifier, "./web");
   assertEquals(packageEntrypointFor("./mod.three_ascii.ts")?.specifier, "./three-ascii");
+  assertEquals(packageEntrypointFor("./mod.theme.ts")?.specifier, "./theme");
   assertEquals(filterPackageEntrypoints({ runtime: "browser" }).map((entrypoint) => entrypoint.specifier), ["./web"]);
   assertEquals(filterPackageEntrypoints({ stability: "experimental" }).map((entrypoint) => entrypoint.specifier), [
     "./remote",
     "./three-ascii",
     "./layout/yoga",
   ]);
+  assertEquals(filterPackageEntrypoints({ stability: "beta" }).map((entrypoint) => entrypoint.specifier), [
+    "./web",
+    "./theme",
+    "./runtime",
+    "./terminal",
+    "./testing",
+  ]);
   assertEquals(formatPackageEntrypointMarkdown().includes("`./web`"), true);
   assertEquals(formatPackageEntrypointMarkdown().includes("`./three-ascii`"), true);
+  assertEquals(formatPackageEntrypointMarkdown().includes("`./theme`"), true);
 });
 
 Deno.test("api surface policies mark public experimental and demo-only code", () => {
@@ -37,6 +50,10 @@ Deno.test("api surface policies mark public experimental and demo-only code", ()
     "mod.web.ts",
     "mod.remote.ts",
     "mod.three_ascii.ts",
+    "mod.theme.ts",
+    "mod.runtime.ts",
+    "mod.terminal.ts",
+    "mod.testing.ts",
     "src/layout/solvers/yoga.ts",
     "src/three_ascii/*",
     "src/runtime/kitty_graphics.ts",
@@ -69,6 +86,10 @@ Deno.test("package export validation compares deno export maps with the stabilit
         "./web": "./mod.web.ts",
         "./remote": "./mod.remote.ts",
         "./three-ascii": "./mod.three_ascii.ts",
+        "./theme": "./mod.theme.ts",
+        "./runtime": "./mod.runtime.ts",
+        "./terminal": "./mod.terminal.ts",
+        "./testing": "./mod.testing.ts",
         "./layout/yoga": "./src/layout/solvers/yoga.ts",
       },
     },
@@ -98,14 +119,32 @@ Deno.test("package export validation compares deno export maps with the stabilit
     packageEntrypoints,
     {
       exists: (path) =>
-        path !== "mod.remote.ts" && path !== "mod.three_ascii.ts" && path !== "src/layout/solvers/yoga.ts",
+        path !== "mod.remote.ts" && path !== "mod.three_ascii.ts" && path !== "mod.theme.ts" &&
+        path !== "mod.runtime.ts" && path !== "mod.terminal.ts" && path !== "mod.testing.ts" &&
+        path !== "src/layout/solvers/yoga.ts",
     },
   );
   assertEquals(invalid.ok, false);
-  assertEquals(invalid.missingExports, ["./remote", "./three-ascii", "./layout/yoga"]);
+  assertEquals(invalid.missingExports, [
+    "./remote",
+    "./three-ascii",
+    "./theme",
+    "./runtime",
+    "./terminal",
+    "./testing",
+    "./layout/yoga",
+  ]);
   assertEquals(invalid.mismatchedExports, [{ specifier: "./web", expected: "./mod.web.ts", actual: "./wrong.ts" }]);
   assertEquals(invalid.unexpectedExports, ["./extra"]);
-  assertEquals(invalid.missingFiles, ["./mod.remote.ts", "./mod.three_ascii.ts", "./src/layout/solvers/yoga.ts"]);
+  assertEquals(invalid.missingFiles, [
+    "./mod.remote.ts",
+    "./mod.three_ascii.ts",
+    "./mod.theme.ts",
+    "./mod.runtime.ts",
+    "./mod.terminal.ts",
+    "./mod.testing.ts",
+    "./src/layout/solvers/yoga.ts",
+  ]);
   assertEquals(invalid.byStability.stable.ok, true);
   assertEquals(invalid.byStability.beta.ok, false);
   assertEquals(invalid.byStability.experimental.ok, false);

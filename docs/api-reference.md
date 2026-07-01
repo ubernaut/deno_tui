@@ -5,11 +5,11 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 
 ## Summary
 
-- Entrypoints: 5
-- Module visits: 450
-- Re-export declarations: 445
-- Exported symbols: 3768
-- Documented symbols: 3768
+- Entrypoints: 9
+- Module visits: 509
+- Re-export declarations: 500
+- Exported symbols: 4498
+- Documented symbols: 4498
 - Documentation coverage: 100.00%
 - Duplicate symbol groups: 0
 - Missing targets: 0
@@ -22,6 +22,10 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 | `./web`         | `./mod.web.ts`                 | browser  | beta         |     208 |    1768 | 100.00% |
 | `./remote`      | `./mod.remote.ts`              | remote   | experimental |       4 |      38 | 100.00% |
 | `./three-ascii` | `./mod.three_ascii.ts`         | shared   | experimental |       8 |      54 | 100.00% |
+| `./theme`       | `./mod.theme.ts`               | shared   | beta         |      10 |     198 | 100.00% |
+| `./runtime`     | `./mod.runtime.ts`             | shared   | beta         |      30 |     368 | 100.00% |
+| `./terminal`    | `./mod.terminal.ts`            | terminal | beta         |      15 |     142 | 100.00% |
+| `./testing`     | `./mod.testing.ts`             | shared   | beta         |       4 |      22 | 100.00% |
 | `./layout/yoga` | `./src/layout/solvers/yoga.ts` | shared   | experimental |       1 |       3 | 100.00% |
 
 ## Entrypoint .
@@ -7085,6 +7089,1261 @@ _No direct exported symbols._
 | ----------------------------- | -------- | --------- | ----- |
 | `getCompatibleWebGPUDevice`   | function | no        | yes   |
 | `probeCompatibleWebGPUDevice` | function | no        | yes   |
+
+## Entrypoint ./theme
+
+Focused theme engines, manifests, resolvers, galleries, and GrWizard-style theme packs.
+
+- Path: `./mod.theme.ts`
+- Runtime: shared
+- Stability: beta
+
+### Summary
+
+- Entrypoint: `mod.theme.ts`
+- Modules: 10
+- Re-export declarations: 9
+- Exported symbols: 198
+- Documented symbols: 198
+- Documentation coverage: 100.00%
+- Duplicate symbols: 0
+- Missing targets: 0
+
+### Module Index
+
+| Module                                                          | Re-exports | Symbols | Documented |
+| --------------------------------------------------------------- | ---------: | ------: | ---------: |
+| [`mod.theme.ts`](#mod-theme-ts)                                 |          9 |       0 |          0 |
+| [`src/grwizard_themes.ts`](#src-grwizard-themes-ts)             |          0 |       5 |          5 |
+| [`src/theme_binding.ts`](#src-theme-binding-ts)                 |          0 |       8 |          8 |
+| [`src/theme_engine_cache.ts`](#src-theme-engine-cache-ts)       |          0 |       6 |          6 |
+| [`src/theme_engine_factory.ts`](#src-theme-engine-factory-ts)   |          0 |      19 |         19 |
+| [`src/theme_engine_pipeline.ts`](#src-theme-engine-pipeline-ts) |          0 |      12 |         12 |
+| [`src/theme_gallery.ts`](#src-theme-gallery-ts)                 |          0 |      11 |         11 |
+| [`src/theme_resolver.ts`](#src-theme-resolver-ts)               |          0 |      15 |         15 |
+| [`src/theme_workspace.ts`](#src-theme-workspace-ts)             |          0 |       7 |          7 |
+| [`src/theme.ts`](#src-theme-ts)                                 |          0 |     115 |        115 |
+
+### Modules
+
+#### mod.theme.ts
+
+| Re-export Target               | Kind | Names |
+| ------------------------------ | ---- | ----- |
+| `src/theme.ts`                 | star | -     |
+| `src/theme_binding.ts`         | star | -     |
+| `src/theme_engine_cache.ts`    | star | -     |
+| `src/theme_engine_factory.ts`  | star | -     |
+| `src/theme_engine_pipeline.ts` | star | -     |
+| `src/theme_gallery.ts`         | star | -     |
+| `src/grwizard_themes.ts`       | star | -     |
+| `src/theme_resolver.ts`        | star | -     |
+| `src/theme_workspace.ts`       | star | -     |
+
+_No direct exported symbols._
+
+#### src/grwizard_themes.ts
+
+| Symbol                           | Kind      | Type Only | JSDoc |
+| -------------------------------- | --------- | --------- | ----- |
+| `grWizardThemeOptions`           | function  | no        | yes   |
+| `grWizardThemePacks`             | const     | no        | yes   |
+| `GrWizardThemePalette`           | interface | yes       | yes   |
+| `grWizardThemePaletteDefinition` | function  | no        | yes   |
+| `grWizardThemePalettes`          | const     | no        | yes   |
+
+#### src/theme_binding.ts
+
+| Symbol                                 | Kind      | Type Only | JSDoc |
+| -------------------------------------- | --------- | --------- | ----- |
+| `bindComponentTheme`                   | function  | no        | yes   |
+| `bindComponentThemes`                  | function  | no        | yes   |
+| `ComponentThemeBindingEntry`           | interface | yes       | yes   |
+| `ComponentThemeBindingGroup`           | class     | no        | yes   |
+| `ComponentThemeBindingGroupInspection` | interface | yes       | yes   |
+| `ComponentThemeBindingInspection`      | interface | yes       | yes   |
+| `ComponentThemeBindingOptions`         | interface | yes       | yes   |
+| `ThemeBindable`                        | interface | yes       | yes   |
+
+#### src/theme_engine_cache.ts
+
+| Symbol                         | Kind      | Type Only | JSDoc |
+| ------------------------------ | --------- | --------- | ----- |
+| `createThemeEngineCache`       | function  | no        | yes   |
+| `createThemeProviderCache`     | function  | no        | yes   |
+| `ThemeEngineCache`             | class     | no        | yes   |
+| `ThemeEngineCacheInspection`   | interface | yes       | yes   |
+| `ThemeProviderCache`           | class     | no        | yes   |
+| `ThemeProviderCacheInspection` | interface | yes       | yes   |
+
+#### src/theme_engine_factory.ts
+
+| Symbol                                     | Kind      | Type Only | JSDoc |
+| ------------------------------------------ | --------- | --------- | ----- |
+| `createThemeEngineFactory`                 | function  | no        | yes   |
+| `createThemeEngineFactoryCatalogReport`    | function  | no        | yes   |
+| `createThemeEngineFactoryRegistry`         | function  | no        | yes   |
+| `formatThemeEngineFactoryCatalogMarkdown`  | function  | no        | yes   |
+| `inspectThemeEngineFactoryCatalog`         | function  | no        | yes   |
+| `prewarmThemeEngines`                      | function  | no        | yes   |
+| `queryThemeEngineFactories`                | function  | no        | yes   |
+| `ThemeEngineFactory`                       | class     | no        | yes   |
+| `ThemeEngineFactoryBuildResult`            | interface | yes       | yes   |
+| `ThemeEngineFactoryCatalogInspection`      | interface | yes       | yes   |
+| `ThemeEngineFactoryCatalogMarkdownOptions` | interface | yes       | yes   |
+| `ThemeEngineFactoryCatalogQuery`           | interface | yes       | yes   |
+| `ThemeEngineFactoryCatalogReport`          | interface | yes       | yes   |
+| `ThemeEngineFactoryCatalogReportOptions`   | interface | yes       | yes   |
+| `ThemeEngineFactoryDefinition`             | interface | yes       | yes   |
+| `ThemeEngineFactoryInspection`             | interface | yes       | yes   |
+| `ThemeEngineFactoryNotFoundError`          | class     | no        | yes   |
+| `ThemeEngineFactoryRegistry`               | class     | no        | yes   |
+| `ThemeEnginePrewarmOptions`                | interface | yes       | yes   |
+
+#### src/theme_engine_pipeline.ts
+
+| Symbol                              | Kind      | Type Only | JSDoc |
+| ----------------------------------- | --------- | --------- | ----- |
+| `createThemeEnginePipeline`         | function  | no        | yes   |
+| `prewarmThemeEnginePipelines`       | function  | no        | yes   |
+| `ThemeEnginePipeline`               | class     | no        | yes   |
+| `ThemeEnginePipelineBuildResult`    | interface | yes       | yes   |
+| `ThemeEnginePipelineContext`        | interface | yes       | yes   |
+| `ThemeEnginePipelineDefinition`     | interface | yes       | yes   |
+| `ThemeEnginePipelineInspection`     | interface | yes       | yes   |
+| `ThemeEnginePipelineListener`       | type      | yes       | yes   |
+| `ThemeEnginePipelinePrewarmOptions` | interface | yes       | yes   |
+| `ThemeEnginePipelineStepDefinition` | interface | yes       | yes   |
+| `ThemeEnginePipelineStepInspection` | interface | yes       | yes   |
+| `ThemeEnginePipelineTransform`      | type      | yes       | yes   |
+
+#### src/theme_gallery.ts
+
+| Symbol                              | Kind      | Type Only | JSDoc |
+| ----------------------------------- | --------- | --------- | ----- |
+| `createThemeGallery`                | function  | no        | yes   |
+| `filterThemeGalleryItems`           | function  | no        | yes   |
+| `rankThemeGalleryItems`             | function  | no        | yes   |
+| `selectThemeGalleryItem`            | function  | no        | yes   |
+| `ThemeGallery`                      | interface | yes       | yes   |
+| `ThemeGalleryComponentStatePreview` | interface | yes       | yes   |
+| `ThemeGalleryItem`                  | interface | yes       | yes   |
+| `ThemeGalleryMatch`                 | interface | yes       | yes   |
+| `ThemeGalleryOptions`               | interface | yes       | yes   |
+| `ThemeGallerySelection`             | interface | yes       | yes   |
+| `ThemeGalleryTokenPreview`          | interface | yes       | yes   |
+
+#### src/theme_resolver.ts
+
+| Symbol                           | Kind      | Type Only | JSDoc |
+| -------------------------------- | --------- | --------- | ----- |
+| `componentThemeStyleRequests`    | function  | no        | yes   |
+| `createThemeEngineResolver`      | function  | no        | yes   |
+| `createThemeProviderResolver`    | function  | no        | yes   |
+| `createThemeResolutionSnapshot`  | function  | no        | yes   |
+| `formatThemeResolutionMarkdown`  | function  | no        | yes   |
+| `ThemeEngineResolver`            | class     | no        | yes   |
+| `ThemeProviderResolver`          | class     | no        | yes   |
+| `ThemeResolutionSnapshot`        | interface | yes       | yes   |
+| `ThemeResolutionSnapshotOptions` | interface | yes       | yes   |
+| `ThemeResolver`                  | interface | yes       | yes   |
+| `ThemeResolverMarkdownOptions`   | interface | yes       | yes   |
+| `ThemeStyleRequest`              | interface | yes       | yes   |
+| `ThemeStyleResolution`           | interface | yes       | yes   |
+| `ThemeTokenRequest`              | interface | yes       | yes   |
+| `ThemeTokenResolution`           | interface | yes       | yes   |
+
+#### src/theme_workspace.ts
+
+| Symbol                         | Kind      | Type Only | JSDoc |
+| ------------------------------ | --------- | --------- | ----- |
+| `createThemeWorkspace`         | function  | no        | yes   |
+| `ThemeWorkspace`               | class     | no        | yes   |
+| `ThemeWorkspaceEngineOptions`  | interface | yes       | yes   |
+| `ThemeWorkspaceInspection`     | interface | yes       | yes   |
+| `ThemeWorkspaceOptions`        | interface | yes       | yes   |
+| `ThemeWorkspacePrewarmOptions` | interface | yes       | yes   |
+| `ThemeWorkspacePrewarmResult`  | interface | yes       | yes   |
+
+#### src/theme.ts
+
+| Symbol                                    | Kind      | Type Only | JSDoc |
+| ----------------------------------------- | --------- | --------- | ----- |
+| `AnsiColor`                               | type      | yes       | yes   |
+| `AnsiColorName`                           | type      | yes       | yes   |
+| `AnsiRgbColor`                            | type      | yes       | yes   |
+| `AnsiStyleSpec`                           | type      | yes       | yes   |
+| `AnsiThemeTokenSpecs`                     | type      | yes       | yes   |
+| `assertThemeOptions`                      | function  | no        | yes   |
+| `compileThemeManifestOptions`             | function  | no        | yes   |
+| `compileThemeManifestStateDefinition`     | function  | no        | yes   |
+| `compileThemeManifestStyleReference`      | function  | no        | yes   |
+| `ComponentThemeDefinition`                | interface | yes       | yes   |
+| `composeStandardThemeOptions`             | function  | no        | yes   |
+| `composeStyles`                           | function  | no        | yes   |
+| `composeThemeOptions`                     | function  | no        | yes   |
+| `createAnsiStyle`                         | function  | no        | yes   |
+| `createAnsiThemeTokens`                   | function  | no        | yes   |
+| `createStandardComponentThemeDefinitions` | function  | no        | yes   |
+| `createTheme`                             | function  | no        | yes   |
+| `createThemeCatalog`                      | function  | no        | yes   |
+| `createThemeEngine`                       | function  | no        | yes   |
+| `createThemeEngineFromManifest`           | function  | no        | yes   |
+| `createThemeEngineFromPalette`            | function  | no        | yes   |
+| `createThemeLayerStack`                   | function  | no        | yes   |
+| `createThemePaletteRegistry`              | function  | no        | yes   |
+| `createThemeProvider`                     | function  | no        | yes   |
+| `createThemeProviderReport`               | function  | no        | yes   |
+| `createThemeRegistry`                     | function  | no        | yes   |
+| `createThemeRegistryFromManifests`        | function  | no        | yes   |
+| `defaultThemePacks`                       | const     | no        | yes   |
+| `defaultThemePaletteDefinitions`          | function  | no        | yes   |
+| `diffThemeEngines`                        | function  | no        | yes   |
+| `emptyStyle`                              | const     | no        | yes   |
+| `formatThemeProviderReportMarkdown`       | function  | no        | yes   |
+| `hierarchizeTheme`                        | function  | no        | yes   |
+| `inspectThemeCoverage`                    | function  | no        | yes   |
+| `inspectThemeManifest`                    | function  | no        | yes   |
+| `inspectThemeStandardization`             | function  | no        | yes   |
+| `mergeComponentThemeDefinition`           | function  | no        | yes   |
+| `previewThemeManifest`                    | function  | no        | yes   |
+| `previewThemeProvider`                    | function  | no        | yes   |
+| `replaceEmptyStyle`                       | function  | no        | yes   |
+| `resolveThemeStateDefinition`             | function  | no        | yes   |
+| `resolveThemeStyleReference`              | function  | no        | yes   |
+| `StandardComponentThemeOptions`           | interface | yes       | yes   |
+| `standardThemeComponentNames`             | function  | no        | yes   |
+| `Style`                                   | type      | yes       | yes   |
+| `Theme`                                   | interface | yes       | yes   |
+| `ThemeCatalog`                            | interface | yes       | yes   |
+| `ThemeCatalogComponent`                   | interface | yes       | yes   |
+| `ThemeCatalogLayer`                       | interface | yes       | yes   |
+| `ThemeCatalogTheme`                       | interface | yes       | yes   |
+| `ThemeComponentCoverageInspection`        | interface | yes       | yes   |
+| `ThemeComponentInspection`                | interface | yes       | yes   |
+| `ThemeComponentStateDiff`                 | interface | yes       | yes   |
+| `ThemeCoverageInspection`                 | interface | yes       | yes   |
+| `ThemeCoverageOptions`                    | interface | yes       | yes   |
+| `ThemeEngine`                             | class     | no        | yes   |
+| `ThemeEngineDiff`                         | interface | yes       | yes   |
+| `ThemeEngineDiffOptions`                  | interface | yes       | yes   |
+| `ThemeEngineOptions`                      | interface | yes       | yes   |
+| `ThemeInheritanceError`                   | class     | no        | yes   |
+| `ThemeInspection`                         | interface | yes       | yes   |
+| `ThemeLayer`                              | interface | yes       | yes   |
+| `ThemeLayerInspection`                    | interface | yes       | yes   |
+| `ThemeLayerStack`                         | class     | no        | yes   |
+| `ThemeManifestComponentDefinition`        | interface | yes       | yes   |
+| `ThemeManifestComponentInspection`        | interface | yes       | yes   |
+| `ThemeManifestComponentStatePreview`      | interface | yes       | yes   |
+| `ThemeManifestInspection`                 | interface | yes       | yes   |
+| `ThemeManifestOptions`                    | interface | yes       | yes   |
+| `ThemeManifestPreview`                    | interface | yes       | yes   |
+| `ThemeManifestPreviewOptions`             | interface | yes       | yes   |
+| `ThemeManifestStateDefinition`            | type      | yes       | yes   |
+| `ThemeManifestStyleReference`             | type      | yes       | yes   |
+| `ThemeManifestTokenPreview`               | interface | yes       | yes   |
+| `ThemeManifestVariantInspection`          | interface | yes       | yes   |
+| `ThemePack`                               | interface | yes       | yes   |
+| `themePackFromManifest`                   | function  | no        | yes   |
+| `ThemePackInspection`                     | interface | yes       | yes   |
+| `ThemePackManifest`                       | interface | yes       | yes   |
+| `ThemePackNotFoundError`                  | class     | no        | yes   |
+| `ThemePalette`                            | interface | yes       | yes   |
+| `ThemePaletteInspection`                  | interface | yes       | yes   |
+| `ThemePaletteName`                        | type      | yes       | yes   |
+| `ThemePaletteNotFoundError`               | class     | no        | yes   |
+| `ThemePaletteReference`                   | type      | yes       | yes   |
+| `ThemePaletteRegistry`                    | class     | no        | yes   |
+| `themePalettes`                           | const     | no        | yes   |
+| `ThemeProvider`                           | class     | no        | yes   |
+| `ThemeProviderComponentStatePreview`      | interface | yes       | yes   |
+| `ThemeProviderInspection`                 | interface | yes       | yes   |
+| `ThemeProviderOptions`                    | interface | yes       | yes   |
+| `ThemeProviderPreview`                    | interface | yes       | yes   |
+| `ThemeProviderPreviewOptions`             | interface | yes       | yes   |
+| `ThemeProviderReport`                     | interface | yes       | yes   |
+| `ThemeProviderReportIssue`                | interface | yes       | yes   |
+| `ThemeProviderReportIssueSource`          | type      | yes       | yes   |
+| `ThemeProviderReportOptions`              | interface | yes       | yes   |
+| `ThemeProviderReportSummary`              | interface | yes       | yes   |
+| `ThemeProviderTokenPreview`               | interface | yes       | yes   |
+| `ThemeRegistry`                           | class     | no        | yes   |
+| `ThemeStandardizationInspection`          | interface | yes       | yes   |
+| `ThemeState`                              | type      | yes       | yes   |
+| `ThemeStateDefinition`                    | type      | yes       | yes   |
+| `themeStates`                             | const     | no        | yes   |
+| `ThemeStylePreview`                       | interface | yes       | yes   |
+| `ThemeStyleReference`                     | type      | yes       | yes   |
+| `ThemeTokenDiff`                          | interface | yes       | yes   |
+| `ThemeTokenName`                          | type      | yes       | yes   |
+| `themeTokenNames`                         | const     | no        | yes   |
+| `ThemeTokens`                             | interface | yes       | yes   |
+| `ThemeValidationError`                    | class     | no        | yes   |
+| `ThemeValidationIssue`                    | interface | yes       | yes   |
+| `ThemeValidationIssueKind`                | type      | yes       | yes   |
+| `ThemeVariantCoverageInspection`          | interface | yes       | yes   |
+| `validateThemeOptions`                    | function  | no        | yes   |
+
+## Entrypoint ./runtime
+
+Shared runtime primitives for scheduling, storage, workers, resources, diagnostics, and backends.
+
+- Path: `./mod.runtime.ts`
+- Runtime: shared
+- Stability: beta
+
+### Summary
+
+- Entrypoint: `mod.runtime.ts`
+- Modules: 30
+- Re-export declarations: 29
+- Exported symbols: 368
+- Documented symbols: 368
+- Documentation coverage: 100.00%
+- Duplicate symbols: 0
+- Missing targets: 0
+
+### Module Index
+
+| Module                                                                                  | Re-exports | Symbols | Documented |
+| --------------------------------------------------------------------------------------- | ---------: | ------: | ---------: |
+| [`mod.runtime.ts`](#mod-runtime-ts)                                                     |          1 |       0 |          0 |
+| [`src/runtime/capabilities.ts`](#src-runtime-capabilities-ts)                           |          0 |      16 |         16 |
+| [`src/runtime/data_pipeline_bindings.ts`](#src-runtime-data-pipeline-bindings-ts)       |          0 |       4 |          4 |
+| [`src/runtime/data_pipeline.ts`](#src-runtime-data-pipeline-ts)                         |          0 |      19 |         19 |
+| [`src/runtime/data_query.ts`](#src-runtime-data-query-ts)                               |          0 |      15 |         15 |
+| [`src/runtime/diagnostics.ts`](#src-runtime-diagnostics-ts)                             |          0 |      12 |         12 |
+| [`src/runtime/graphics_surface.ts`](#src-runtime-graphics-surface-ts)                   |          0 |      15 |         15 |
+| [`src/runtime/kitty_graphics.ts`](#src-runtime-kitty-graphics-ts)                       |          0 |      25 |         25 |
+| [`src/runtime/mod.ts`](#src-runtime-mod-ts)                                             |         28 |       0 |          0 |
+| [`src/runtime/process_session.ts`](#src-runtime-process-session-ts)                     |          0 |       9 |          9 |
+| [`src/runtime/profiles.ts`](#src-runtime-profiles-ts)                                   |          0 |      24 |         24 |
+| [`src/runtime/pty_backend.ts`](#src-runtime-pty-backend-ts)                             |          0 |      12 |         12 |
+| [`src/runtime/render_loop.ts`](#src-runtime-render-loop-ts)                             |          0 |      10 |         10 |
+| [`src/runtime/renderer_backends.ts`](#src-runtime-renderer-backends-ts)                 |          0 |      24 |         24 |
+| [`src/runtime/resource_bindings.ts`](#src-runtime-resource-bindings-ts)                 |          0 |       4 |          4 |
+| [`src/runtime/resource.ts`](#src-runtime-resource-ts)                                   |          0 |      14 |         14 |
+| [`src/runtime/scheduler.ts`](#src-runtime-scheduler-ts)                                 |          0 |      13 |         13 |
+| [`src/runtime/storage.ts`](#src-runtime-storage-ts)                                     |          0 |       9 |          9 |
+| [`src/runtime/telemetry.ts`](#src-runtime-telemetry-ts)                                 |          0 |      15 |         15 |
+| [`src/runtime/terminal_backend_registry.ts`](#src-runtime-terminal-backend-registry-ts) |          0 |       9 |          9 |
+| [`src/runtime/terminal_backend.ts`](#src-runtime-terminal-backend-ts)                   |          0 |       9 |          9 |
+| [`src/runtime/terminal_capabilities.ts`](#src-runtime-terminal-capabilities-ts)         |          0 |      27 |         27 |
+| [`src/runtime/terminal_screen.ts`](#src-runtime-terminal-screen-ts)                     |          0 |       6 |          6 |
+| [`src/runtime/terminal_scrollback.ts`](#src-runtime-terminal-scrollback-ts)             |          0 |       5 |          5 |
+| [`src/runtime/terminal_session.ts`](#src-runtime-terminal-session-ts)                   |          0 |       8 |          8 |
+| [`src/runtime/terminal_shell.ts`](#src-runtime-terminal-shell-ts)                       |          0 |       3 |          3 |
+| [`src/runtime/terminal_status.ts`](#src-runtime-terminal-status-ts)                     |          0 |       8 |          8 |
+| [`src/runtime/terminal_templates.ts`](#src-runtime-terminal-templates-ts)               |          0 |      22 |         22 |
+| [`src/runtime/terminal_workspace.ts`](#src-runtime-terminal-workspace-ts)               |          0 |      19 |         19 |
+| [`src/runtime/worker_pool.ts`](#src-runtime-worker-pool-ts)                             |          0 |      12 |         12 |
+
+### Modules
+
+#### mod.runtime.ts
+
+| Re-export Target     | Kind | Names |
+| -------------------- | ---- | ----- |
+| `src/runtime/mod.ts` | star | -     |
+
+_No direct exported symbols._
+
+#### src/runtime/capabilities.ts
+
+| Symbol                         | Kind      | Type Only | JSDoc |
+| ------------------------------ | --------- | --------- | ----- |
+| `createRuntimePlan`            | function  | no        | yes   |
+| `detectRuntimeCapabilities`    | function  | no        | yes   |
+| `formatRuntimeCapabilities`    | function  | no        | yes   |
+| `formatRuntimePlan`            | function  | no        | yes   |
+| `RuntimeCapabilities`          | interface | yes       | yes   |
+| `runtimeCapabilityEntries`     | function  | no        | yes   |
+| `RuntimeCapabilityEntry`       | interface | yes       | yes   |
+| `RuntimeCapabilityId`          | type      | yes       | yes   |
+| `RuntimeCapabilitySummary`     | interface | yes       | yes   |
+| `RuntimePlan`                  | interface | yes       | yes   |
+| `RuntimePlanDecision`          | interface | yes       | yes   |
+| `RuntimePlanOptions`           | interface | yes       | yes   |
+| `RuntimeRendererStrategy`      | type      | yes       | yes   |
+| `RuntimeStorageStrategy`       | type      | yes       | yes   |
+| `RuntimeWorkerStrategy`        | type      | yes       | yes   |
+| `summarizeRuntimeCapabilities` | function  | no        | yes   |
+
+#### src/runtime/data_pipeline_bindings.ts
+
+| Symbol                          | Kind      | Type Only | JSDoc |
+| ------------------------------- | --------- | --------- | ----- |
+| `bindDataPipeline`              | function  | no        | yes   |
+| `DataPipelineBinding`           | interface | yes       | yes   |
+| `DataPipelineBindingInspection` | interface | yes       | yes   |
+| `DataPipelineBindingOptions`    | interface | yes       | yes   |
+
+#### src/runtime/data_pipeline.ts
+
+| Symbol                         | Kind      | Type Only | JSDoc |
+| ------------------------------ | --------- | --------- | ----- |
+| `CachedDataPipeline`           | class     | no        | yes   |
+| `CachedDataPipelineInspection` | interface | yes       | yes   |
+| `CachedDataPipelineOptions`    | interface | yes       | yes   |
+| `createCachedDataPipeline`     | function  | no        | yes   |
+| `DataPipelineAbortError`       | class     | no        | yes   |
+| `DataPipelineCacheKey`         | type      | yes       | yes   |
+| `DataPipelineContext`          | interface | yes       | yes   |
+| `DataPipelineOptions`          | interface | yes       | yes   |
+| `DataTransform`                | type      | yes       | yes   |
+| `filterRows`                   | function  | no        | yes   |
+| `LatestDataPipeline`           | class     | no        | yes   |
+| `LatestPipelineResult`         | interface | yes       | yes   |
+| `mapRows`                      | function  | no        | yes   |
+| `runDataPipeline`              | function  | no        | yes   |
+| `sliceRows`                    | function  | no        | yes   |
+| `sortRows`                     | function  | no        | yes   |
+| `WorkerPayloadMapper`          | type      | yes       | yes   |
+| `WorkerTaskRunner`             | interface | yes       | yes   |
+| `workerTransform`              | function  | no        | yes   |
+
+#### src/runtime/data_query.ts
+
+| Symbol                       | Kind      | Type Only | JSDoc |
+| ---------------------------- | --------- | --------- | ----- |
+| `createDataQueryController`  | function  | no        | yes   |
+| `DataQueryController`        | class     | no        | yes   |
+| `DataQueryControllerOptions` | interface | yes       | yes   |
+| `DataQueryFilters`           | type      | yes       | yes   |
+| `DataQueryInspection`        | interface | yes       | yes   |
+| `DataQueryParams`            | interface | yes       | yes   |
+| `DataQueryResult`            | interface | yes       | yes   |
+| `DataQuerySort`              | interface | yes       | yes   |
+| `DataQuerySortDirection`     | type      | yes       | yes   |
+| `LocalDataQueryOptions`      | interface | yes       | yes   |
+| `nextDataQuerySort`          | function  | no        | yes   |
+| `normalizeDataQueryParams`   | function  | no        | yes   |
+| `NormalizedDataQueryParams`  | interface | yes       | yes   |
+| `pageDataQueryRows`          | function  | no        | yes   |
+| `queryLocalData`             | function  | no        | yes   |
+
+#### src/runtime/diagnostics.ts
+
+| Symbol                          | Kind      | Type Only | JSDoc |
+| ------------------------------- | --------- | --------- | ----- |
+| `DiagnosticEntry`               | interface | yes       | yes   |
+| `DiagnosticInput`               | type      | yes       | yes   |
+| `DiagnosticListener`            | type      | yes       | yes   |
+| `DiagnosticsCollector`          | class     | no        | yes   |
+| `DiagnosticSeverity`            | type      | yes       | yes   |
+| `DiagnosticsInspection`         | interface | yes       | yes   |
+| `DiagnosticStatusFormatOptions` | interface | yes       | yes   |
+| `DiagnosticStatusSummary`       | interface | yes       | yes   |
+| `formatDiagnostics`             | function  | no        | yes   |
+| `formatDiagnosticsMarkdown`     | function  | no        | yes   |
+| `formatDiagnosticStatus`        | function  | no        | yes   |
+| `summarizeDiagnostics`          | function  | no        | yes   |
+
+#### src/runtime/graphics_surface.ts
+
+| Symbol                        | Kind      | Type Only | JSDoc |
+| ----------------------------- | --------- | --------- | ----- |
+| `createKittyGraphicsSurface`  | function  | no        | yes   |
+| `createNoopGraphicsSurface`   | function  | no        | yes   |
+| `GraphicsClearScope`          | type      | yes       | yes   |
+| `GraphicsDeleteMode`          | type      | yes       | yes   |
+| `GraphicsHandle`              | interface | yes       | yes   |
+| `GraphicsImage`               | interface | yes       | yes   |
+| `GraphicsImageEncoding`       | type      | yes       | yes   |
+| `GraphicsPlacement`           | interface | yes       | yes   |
+| `GraphicsSurface`             | interface | yes       | yes   |
+| `GraphicsSurfaceInspection`   | interface | yes       | yes   |
+| `GraphicsSurfaceKind`         | type      | yes       | yes   |
+| `GraphicsSurfaceWriter`       | interface | yes       | yes   |
+| `KittyGraphicsSurface`        | class     | no        | yes   |
+| `KittyGraphicsSurfaceOptions` | interface | yes       | yes   |
+| `NoopGraphicsSurface`         | class     | no        | yes   |
+
+#### src/runtime/kitty_graphics.ts
+
+| Symbol                                | Kind      | Type Only | JSDoc |
+| ------------------------------------- | --------- | --------- | ----- |
+| `chunkKittyGraphicsCommand`           | function  | no        | yes   |
+| `createKittyGraphicsDeleteCommand`    | function  | no        | yes   |
+| `createKittyGraphicsTransmitCommands` | function  | no        | yes   |
+| `detectKittyGraphicsCapability`       | function  | no        | yes   |
+| `encodeKittyGraphicsCommand`          | function  | no        | yes   |
+| `encodeKittyGraphicsControl`          | function  | no        | yes   |
+| `encodeKittyGraphicsPayload`          | function  | no        | yes   |
+| `inspectKittyGraphicsCommand`         | function  | no        | yes   |
+| `KITTY_GRAPHICS_END`                  | const     | no        | yes   |
+| `KITTY_GRAPHICS_START`                | const     | no        | yes   |
+| `KittyGraphicsAction`                 | type      | yes       | yes   |
+| `KittyGraphicsCapability`             | interface | yes       | yes   |
+| `KittyGraphicsChunkOptions`           | interface | yes       | yes   |
+| `KittyGraphicsCommandInspection`      | interface | yes       | yes   |
+| `KittyGraphicsCommandOptions`         | interface | yes       | yes   |
+| `KittyGraphicsControl`                | type      | yes       | yes   |
+| `KittyGraphicsControlValue`           | type      | yes       | yes   |
+| `KittyGraphicsDeleteOptions`          | interface | yes       | yes   |
+| `KittyGraphicsDetectionOptions`       | interface | yes       | yes   |
+| `KittyGraphicsFormat`                 | type      | yes       | yes   |
+| `KittyGraphicsMode`                   | type      | yes       | yes   |
+| `KittyGraphicsQuietMode`              | type      | yes       | yes   |
+| `KittyGraphicsTransmissionMedium`     | type      | yes       | yes   |
+| `KittyGraphicsTransmitOptions`        | interface | yes       | yes   |
+| `wrapKittyGraphicsForTmux`            | function  | no        | yes   |
+
+#### src/runtime/mod.ts
+
+| Re-export Target                           | Kind | Names |
+| ------------------------------------------ | ---- | ----- |
+| `src/runtime/capabilities.ts`              | star | -     |
+| `src/runtime/data_pipeline.ts`             | star | -     |
+| `src/runtime/data_pipeline_bindings.ts`    | star | -     |
+| `src/runtime/data_query.ts`                | star | -     |
+| `src/runtime/diagnostics.ts`               | star | -     |
+| `src/runtime/graphics_surface.ts`          | star | -     |
+| `src/runtime/kitty_graphics.ts`            | star | -     |
+| `src/runtime/profiles.ts`                  | star | -     |
+| `src/runtime/renderer_backends.ts`         | star | -     |
+| `src/runtime/resource.ts`                  | star | -     |
+| `src/runtime/resource_bindings.ts`         | star | -     |
+| `src/runtime/render_loop.ts`               | star | -     |
+| `src/runtime/scheduler.ts`                 | star | -     |
+| `src/runtime/storage.ts`                   | star | -     |
+| `src/runtime/telemetry.ts`                 | star | -     |
+| `src/runtime/terminal_capabilities.ts`     | star | -     |
+| `src/runtime/terminal_backend.ts`          | star | -     |
+| `src/runtime/terminal_backend_registry.ts` | star | -     |
+| `src/runtime/pty_backend.ts`               | star | -     |
+| `src/runtime/terminal_templates.ts`        | star | -     |
+| `src/runtime/terminal_status.ts`           | star | -     |
+| `src/runtime/process_session.ts`           | star | -     |
+| `src/runtime/terminal_screen.ts`           | star | -     |
+| `src/runtime/terminal_scrollback.ts`       | star | -     |
+| `src/runtime/terminal_shell.ts`            | star | -     |
+| `src/runtime/terminal_session.ts`          | star | -     |
+| `src/runtime/terminal_workspace.ts`        | star | -     |
+| `src/runtime/worker_pool.ts`               | star | -     |
+
+_No direct exported symbols._
+
+#### src/runtime/process_session.ts
+
+| Symbol                            | Kind      | Type Only | JSDoc |
+| --------------------------------- | --------- | --------- | ----- |
+| `formatProcessCommandLine`        | function  | no        | yes   |
+| `ProcessSessionChild`             | interface | yes       | yes   |
+| `ProcessSessionCommand`           | interface | yes       | yes   |
+| `ProcessSessionController`        | class     | no        | yes   |
+| `ProcessSessionControllerOptions` | interface | yes       | yes   |
+| `ProcessSessionExit`              | interface | yes       | yes   |
+| `ProcessSessionInspection`        | interface | yes       | yes   |
+| `ProcessSessionSpawner`           | type      | yes       | yes   |
+| `ProcessSessionStatus`            | type      | yes       | yes   |
+
+#### src/runtime/profiles.ts
+
+| Symbol                                 | Kind      | Type Only | JSDoc |
+| -------------------------------------- | --------- | --------- | ----- |
+| `createRuntimeProfile`                 | function  | no        | yes   |
+| `createRuntimeProfileCatalogReport`    | function  | no        | yes   |
+| `createRuntimeProfileController`       | function  | no        | yes   |
+| `createRuntimeProfileRegistry`         | function  | no        | yes   |
+| `findRuntimeProfile`                   | function  | no        | yes   |
+| `formatRuntimeProfileCatalogMarkdown`  | function  | no        | yes   |
+| `inspectRuntimeProfileCatalog`         | function  | no        | yes   |
+| `queryRuntimeProfiles`                 | function  | no        | yes   |
+| `RuntimeProfile`                       | class     | no        | yes   |
+| `RuntimeProfileCatalogInspection`      | interface | yes       | yes   |
+| `RuntimeProfileCatalogMarkdownOptions` | interface | yes       | yes   |
+| `RuntimeProfileCatalogQuery`           | interface | yes       | yes   |
+| `RuntimeProfileCatalogReport`          | interface | yes       | yes   |
+| `RuntimeProfileCatalogReportOptions`   | interface | yes       | yes   |
+| `RuntimeProfileController`             | class     | no        | yes   |
+| `RuntimeProfileControllerInspection`   | interface | yes       | yes   |
+| `RuntimeProfileControllerOptions`      | interface | yes       | yes   |
+| `RuntimeProfileDefinition`             | interface | yes       | yes   |
+| `runtimeProfileDefinitions`            | const     | no        | yes   |
+| `RuntimeProfileInspection`             | interface | yes       | yes   |
+| `RuntimeProfileNotFoundError`          | class     | no        | yes   |
+| `RuntimeProfilePlanInspection`         | interface | yes       | yes   |
+| `RuntimeProfileRegistry`               | class     | no        | yes   |
+| `runtimeProfiles`                      | function  | no        | yes   |
+
+#### src/runtime/pty_backend.ts
+
+| Symbol                                         | Kind      | Type Only | JSDoc |
+| ---------------------------------------------- | --------- | --------- | ----- |
+| `createSigmaPtyTerminalBackend`                | function  | no        | yes   |
+| `createSigmaPtyTerminalBackendFromConstructor` | function  | no        | yes   |
+| `createSigmaPtyTerminalBackendProvider`        | function  | no        | yes   |
+| `loadSigmaPtyModule`                           | function  | no        | yes   |
+| `LoadSigmaPtyModuleOptions`                    | interface | yes       | yes   |
+| `probeSigmaPtyAvailability`                    | function  | no        | yes   |
+| `SigmaPtyCommandOptions`                       | interface | yes       | yes   |
+| `SigmaPtyConstructor`                          | interface | yes       | yes   |
+| `SigmaPtyLike`                                 | interface | yes       | yes   |
+| `SigmaPtyModule`                               | interface | yes       | yes   |
+| `SigmaPtySize`                                 | interface | yes       | yes   |
+| `SigmaPtyTerminalBackendOptions`               | interface | yes       | yes   |
+
+#### src/runtime/render_loop.ts
+
+| Symbol                         | Kind      | Type Only | JSDoc |
+| ------------------------------ | --------- | --------- | ----- |
+| `createRenderLoop`             | function  | no        | yes   |
+| `defaultRenderLoopTimer`       | const     | no        | yes   |
+| `MicrotaskScheduler`           | class     | no        | yes   |
+| `MicrotaskSchedulerInspection` | interface | yes       | yes   |
+| `MicrotaskSchedulerOptions`    | interface | yes       | yes   |
+| `RenderLoop`                   | class     | no        | yes   |
+| `RenderLoopFrame`              | interface | yes       | yes   |
+| `RenderLoopInspection`         | interface | yes       | yes   |
+| `RenderLoopOptions`            | interface | yes       | yes   |
+| `RenderLoopTimer`              | interface | yes       | yes   |
+
+#### src/runtime/renderer_backends.ts
+
+| Symbol                                        | Kind      | Type Only | JSDoc |
+| --------------------------------------------- | --------- | --------- | ----- |
+| `createRuntimeRendererBackend`                | function  | no        | yes   |
+| `createRuntimeRendererBackendCatalogReport`   | function  | no        | yes   |
+| `createRuntimeRendererBackendController`      | function  | no        | yes   |
+| `createRuntimeRendererBackendRegistry`        | function  | no        | yes   |
+| `formatRuntimeRendererBackendCatalogMarkdown` | function  | no        | yes   |
+| `inspectRuntimeRendererBackendCatalog`        | function  | no        | yes   |
+| `inspectRuntimeRendererBackends`              | function  | no        | yes   |
+| `queryRuntimeRendererBackends`                | function  | no        | yes   |
+| `RuntimeRendererBackend`                      | class     | no        | yes   |
+| `RuntimeRendererBackendCatalogInspection`     | interface | yes       | yes   |
+| `RuntimeRendererBackendCatalogOptions`        | interface | yes       | yes   |
+| `RuntimeRendererBackendCatalogReport`         | interface | yes       | yes   |
+| `RuntimeRendererBackendController`            | class     | no        | yes   |
+| `RuntimeRendererBackendControllerInspection`  | interface | yes       | yes   |
+| `RuntimeRendererBackendControllerOptions`     | interface | yes       | yes   |
+| `RuntimeRendererBackendDefinition`            | interface | yes       | yes   |
+| `runtimeRendererBackendDefinitions`           | const     | no        | yes   |
+| `RuntimeRendererBackendInspection`            | interface | yes       | yes   |
+| `RuntimeRendererBackendMarkdownOptions`       | interface | yes       | yes   |
+| `RuntimeRendererBackendQuery`                 | interface | yes       | yes   |
+| `RuntimeRendererBackendRegistry`              | class     | no        | yes   |
+| `runtimeRendererBackends`                     | function  | no        | yes   |
+| `RuntimeRendererBackendSelectionOptions`      | interface | yes       | yes   |
+| `selectRuntimeRendererBackend`                | function  | no        | yes   |
+
+#### src/runtime/resource_bindings.ts
+
+| Symbol                            | Kind      | Type Only | JSDoc |
+| --------------------------------- | --------- | --------- | ----- |
+| `bindResourceParams`              | function  | no        | yes   |
+| `ResourceParamsBindingHandle`     | type      | yes       | yes   |
+| `ResourceParamsBindingInspection` | interface | yes       | yes   |
+| `ResourceParamsBindingOptions`    | interface | yes       | yes   |
+
+#### src/runtime/resource.ts
+
+| Symbol                          | Kind      | Type Only | JSDoc |
+| ------------------------------- | --------- | --------- | ----- |
+| `AsyncResource`                 | class     | no        | yes   |
+| `AsyncResourceCacheKey`         | type      | yes       | yes   |
+| `AsyncResourceContext`          | interface | yes       | yes   |
+| `AsyncResourceInspection`       | interface | yes       | yes   |
+| `AsyncResourceLoader`           | type      | yes       | yes   |
+| `AsyncResourceOptions`          | interface | yes       | yes   |
+| `AsyncResourceParamsError`      | class     | no        | yes   |
+| `AsyncResourceState`            | interface | yes       | yes   |
+| `AsyncResourceStatus`           | type      | yes       | yes   |
+| `CachedAsyncResource`           | class     | no        | yes   |
+| `CachedAsyncResourceInspection` | interface | yes       | yes   |
+| `CachedAsyncResourceOptions`    | interface | yes       | yes   |
+| `createAsyncResource`           | function  | no        | yes   |
+| `createCachedAsyncResource`     | function  | no        | yes   |
+
+#### src/runtime/scheduler.ts
+
+| Symbol                     | Kind      | Type Only | JSDoc |
+| -------------------------- | --------- | --------- | ----- |
+| `AsyncScheduler`           | class     | no        | yes   |
+| `AsyncSchedulerInspection` | interface | yes       | yes   |
+| `nextFrame`                | function  | no        | yes   |
+| `runTaskBatch`             | function  | no        | yes   |
+| `ScheduledTask`            | type      | yes       | yes   |
+| `ScheduledTaskHandle`      | interface | yes       | yes   |
+| `ScheduledTaskInspection`  | interface | yes       | yes   |
+| `ScheduledTaskOptions`     | interface | yes       | yes   |
+| `ScheduledTaskStatus`      | type      | yes       | yes   |
+| `SchedulerOptions`         | interface | yes       | yes   |
+| `TaskBatchItem`            | interface | yes       | yes   |
+| `TaskBatchOptions`         | interface | yes       | yes   |
+| `TaskBatchResult`          | interface | yes       | yes   |
+
+#### src/runtime/storage.ts
+
+| Symbol                    | Kind      | Type Only | JSDoc |
+| ------------------------- | --------- | --------- | ----- |
+| `AsyncStore`              | interface | yes       | yes   |
+| `createPersistentSignal`  | function  | no        | yes   |
+| `createRuntimeStore`      | function  | no        | yes   |
+| `IndexedDbStore`          | class     | no        | yes   |
+| `IndexedDbStoreOptions`   | interface | yes       | yes   |
+| `MemoryStore`             | class     | no        | yes   |
+| `PersistentSignal`        | class     | no        | yes   |
+| `PersistentSignalOptions` | interface | yes       | yes   |
+| `RuntimeStoreOptions`     | interface | yes       | yes   |
+
+#### src/runtime/telemetry.ts
+
+| Symbol                              | Kind      | Type Only | JSDoc |
+| ----------------------------------- | --------- | --------- | ----- |
+| `createRuntimeWorkloadRegistry`     | function  | no        | yes   |
+| `createRuntimeWorkloadReport`       | function  | no        | yes   |
+| `formatRuntimeWorkloadMarkdown`     | function  | no        | yes   |
+| `inspectRuntimeWorkload`            | function  | no        | yes   |
+| `inspectRuntimeWorkloadReport`      | function  | no        | yes   |
+| `RuntimeWorkloadInspection`         | interface | yes       | yes   |
+| `RuntimeWorkloadKind`               | type      | yes       | yes   |
+| `RuntimeWorkloadMarkdownOptions`    | interface | yes       | yes   |
+| `RuntimeWorkloadRegistry`           | class     | no        | yes   |
+| `RuntimeWorkloadRegistryInspection` | interface | yes       | yes   |
+| `RuntimeWorkloadReport`             | interface | yes       | yes   |
+| `RuntimeWorkloadReportInspection`   | interface | yes       | yes   |
+| `RuntimeWorkloadReportOptions`      | interface | yes       | yes   |
+| `RuntimeWorkloadSource`             | interface | yes       | yes   |
+| `RuntimeWorkloadState`              | type      | yes       | yes   |
+
+#### src/runtime/terminal_backend_registry.ts
+
+| Symbol                                  | Kind      | Type Only | JSDoc |
+| --------------------------------------- | --------- | --------- | ----- |
+| `createDefaultTerminalBackendRegistry`  | function  | no        | yes   |
+| `createProcessTerminalBackendProvider`  | function  | no        | yes   |
+| `DefaultTerminalBackendRegistryOptions` | interface | yes       | yes   |
+| `probeTerminalBackendProvider`          | function  | no        | yes   |
+| `TerminalBackendAvailability`           | interface | yes       | yes   |
+| `TerminalBackendProvider`               | interface | yes       | yes   |
+| `TerminalBackendProviderInspection`     | interface | yes       | yes   |
+| `TerminalBackendRegistry`               | class     | no        | yes   |
+| `TerminalBackendResolveOptions`         | interface | yes       | yes   |
+
+#### src/runtime/terminal_backend.ts
+
+| Symbol                            | Kind      | Type Only | JSDoc |
+| --------------------------------- | --------- | --------- | ----- |
+| `createProcessTerminalBackend`    | function  | no        | yes   |
+| `ProcessTerminalBackend`          | class     | no        | yes   |
+| `ProcessTerminalBackendOptions`   | interface | yes       | yes   |
+| `TerminalBackend`                 | interface | yes       | yes   |
+| `TerminalBackendAttachOptions`    | interface | yes       | yes   |
+| `TerminalBackendSpawnOptions`     | interface | yes       | yes   |
+| `TerminalDetachedSession`         | interface | yes       | yes   |
+| `TerminalSessionHandle`           | interface | yes       | yes   |
+| `TerminalSessionHandleInspection` | interface | yes       | yes   |
+
+#### src/runtime/terminal_capabilities.ts
+
+| Symbol                               | Kind      | Type Only | JSDoc |
+| ------------------------------------ | --------- | --------- | ----- |
+| `createTerminalPlan`                 | function  | no        | yes   |
+| `createTerminalPortabilityReport`    | function  | no        | yes   |
+| `detectTerminalCapabilities`         | function  | no        | yes   |
+| `detectTerminalEnvironment`          | function  | no        | yes   |
+| `formatTerminalCapabilities`         | function  | no        | yes   |
+| `formatTerminalEnvironment`          | function  | no        | yes   |
+| `formatTerminalPlan`                 | function  | no        | yes   |
+| `formatTerminalPortabilityReport`    | function  | no        | yes   |
+| `summarizeTerminalCapabilities`      | function  | no        | yes   |
+| `TerminalCapabilities`               | interface | yes       | yes   |
+| `TerminalCapabilityDetectionOptions` | interface | yes       | yes   |
+| `terminalCapabilityEntries`          | function  | no        | yes   |
+| `TerminalCapabilityEntry`            | interface | yes       | yes   |
+| `TerminalCapabilityId`               | type      | yes       | yes   |
+| `TerminalCapabilitySummary`          | interface | yes       | yes   |
+| `TerminalColorDepth`                 | type      | yes       | yes   |
+| `TerminalDiagnostic`                 | interface | yes       | yes   |
+| `TerminalDiagnosticSeverity`         | type      | yes       | yes   |
+| `TerminalEnvironment`                | interface | yes       | yes   |
+| `terminalEnvironmentDiagnostics`     | function  | no        | yes   |
+| `TerminalMouseProtocol`              | type      | yes       | yes   |
+| `TerminalMultiplexer`                | type      | yes       | yes   |
+| `TerminalPlan`                       | interface | yes       | yes   |
+| `TerminalPlanOptions`                | interface | yes       | yes   |
+| `TerminalPortabilityReport`          | interface | yes       | yes   |
+| `TerminalPortabilityReportOptions`   | interface | yes       | yes   |
+| `TerminalTextMode`                   | type      | yes       | yes   |
+
+#### src/runtime/terminal_screen.ts
+
+| Symbol                            | Kind      | Type Only | JSDoc |
+| --------------------------------- | --------- | --------- | ----- |
+| `TerminalScreenCell`              | interface | yes       | yes   |
+| `TerminalScreenController`        | class     | no        | yes   |
+| `TerminalScreenControllerOptions` | interface | yes       | yes   |
+| `TerminalScreenCursor`            | interface | yes       | yes   |
+| `TerminalScreenCursorStyle`       | interface | yes       | yes   |
+| `TerminalScreenInspection`        | interface | yes       | yes   |
+
+#### src/runtime/terminal_scrollback.ts
+
+| Symbol                                | Kind      | Type Only | JSDoc |
+| ------------------------------------- | --------- | --------- | ----- |
+| `TerminalScrollbackController`        | class     | no        | yes   |
+| `TerminalScrollbackControllerOptions` | interface | yes       | yes   |
+| `TerminalScrollbackInspection`        | interface | yes       | yes   |
+| `TerminalScrollbackMode`              | type      | yes       | yes   |
+| `TerminalScrollbackSelection`         | interface | yes       | yes   |
+
+#### src/runtime/terminal_session.ts
+
+| Symbol                            | Kind      | Type Only | JSDoc |
+| --------------------------------- | --------- | --------- | ----- |
+| `createTerminalSessionController` | function  | no        | yes   |
+| `terminalMouseSequences`          | function  | no        | yes   |
+| `TerminalSessionController`       | class     | no        | yes   |
+| `TerminalSessionInspection`       | interface | yes       | yes   |
+| `TerminalSessionOptions`          | interface | yes       | yes   |
+| `terminalSessionSequences`        | function  | no        | yes   |
+| `TerminalSessionSequences`        | interface | yes       | yes   |
+| `TerminalSessionWriter`           | interface | yes       | yes   |
+
+#### src/runtime/terminal_shell.ts
+
+| Symbol                           | Kind      | Type Only | JSDoc |
+| -------------------------------- | --------- | --------- | ----- |
+| `TerminalShellController`        | class     | no        | yes   |
+| `TerminalShellControllerOptions` | interface | yes       | yes   |
+| `TerminalShellInspection`        | interface | yes       | yes   |
+
+#### src/runtime/terminal_status.ts
+
+| Symbol                            | Kind      | Type Only | JSDoc |
+| --------------------------------- | --------- | --------- | ----- |
+| `formatTerminalShellWindowTitle`  | function  | no        | yes   |
+| `summarizeTerminalStatus`         | function  | no        | yes   |
+| `terminalBackendKindLabel`        | function  | no        | yes   |
+| `TerminalShellWindowTitleOptions` | interface | yes       | yes   |
+| `terminalStatusFields`            | function  | no        | yes   |
+| `TerminalStatusSource`            | type      | yes       | yes   |
+| `TerminalStatusSummary`           | interface | yes       | yes   |
+| `TerminalStatusSummaryOptions`    | interface | yes       | yes   |
+
+#### src/runtime/terminal_templates.ts
+
+| Symbol                                 | Kind      | Type Only | JSDoc |
+| -------------------------------------- | --------- | --------- | ----- |
+| `attachTerminalTemplate`               | function  | no        | yes   |
+| `AttachTerminalTemplate`               | interface | yes       | yes   |
+| `commandTerminalTemplate`              | function  | no        | yes   |
+| `CommandTerminalTemplateOptions`       | interface | yes       | yes   |
+| `createTerminalTemplateSession`        | function  | no        | yes   |
+| `CreateTerminalTemplateSessionOptions` | interface | yes       | yes   |
+| `denoTaskTerminalTemplate`             | function  | no        | yes   |
+| `DenoTaskTerminalTemplateOptions`      | interface | yes       | yes   |
+| `describeAttachTerminalTemplate`       | function  | no        | yes   |
+| `describeTerminalTemplateSession`      | function  | no        | yes   |
+| `isSpawnTerminalTemplate`              | function  | no        | yes   |
+| `projectTaskTerminalTemplate`          | function  | no        | yes   |
+| `shellTerminalTemplate`                | function  | no        | yes   |
+| `ShellTerminalTemplateOptions`         | interface | yes       | yes   |
+| `SpawnTerminalTemplate`                | interface | yes       | yes   |
+| `SpawnTerminalTemplateKind`            | type      | yes       | yes   |
+| `TerminalRestartPolicy`                | type      | yes       | yes   |
+| `TerminalSessionDescriptor`            | interface | yes       | yes   |
+| `TerminalTemplate`                     | type      | yes       | yes   |
+| `TerminalTemplateOptions`              | interface | yes       | yes   |
+| `TerminalTemplateSession`              | interface | yes       | yes   |
+| `terminalTemplateToSpawnOptions`       | function  | no        | yes   |
+
+#### src/runtime/terminal_workspace.ts
+
+| Symbol                                     | Kind      | Type Only | JSDoc |
+| ------------------------------------------ | --------- | --------- | ----- |
+| `AddTerminalWorkspaceSessionOptions`       | interface | yes       | yes   |
+| `createTerminalWorkspaceController`        | function  | no        | yes   |
+| `DuplicateTerminalWorkspaceSessionOptions` | interface | yes       | yes   |
+| `SplitTerminalWorkspacePaneOptions`        | interface | yes       | yes   |
+| `TerminalWorkspaceController`              | class     | no        | yes   |
+| `TerminalWorkspaceControllerOptions`       | interface | yes       | yes   |
+| `TerminalWorkspaceInspection`              | interface | yes       | yes   |
+| `TerminalWorkspaceLayoutInspection`        | interface | yes       | yes   |
+| `TerminalWorkspaceLayoutNode`              | type      | yes       | yes   |
+| `TerminalWorkspaceLayoutState`             | interface | yes       | yes   |
+| `TerminalWorkspacePaneInspection`          | interface | yes       | yes   |
+| `TerminalWorkspacePaneNode`                | interface | yes       | yes   |
+| `TerminalWorkspacePanePlacement`           | type      | yes       | yes   |
+| `TerminalWorkspacePaneRect`                | interface | yes       | yes   |
+| `TerminalWorkspacePaneRectOptions`         | interface | yes       | yes   |
+| `terminalWorkspacePaneRects`               | function  | no        | yes   |
+| `TerminalWorkspaceSplitDirection`          | type      | yes       | yes   |
+| `TerminalWorkspaceSplitNode`               | interface | yes       | yes   |
+| `UpsertTerminalWorkspaceSessionOptions`    | interface | yes       | yes   |
+
+#### src/runtime/worker_pool.ts
+
+| Symbol                      | Kind      | Type Only | JSDoc |
+| --------------------------- | --------- | --------- | ----- |
+| `installWorkerHandler`      | function  | no        | yes   |
+| `runWorkerBatch`            | function  | no        | yes   |
+| `WorkerBatchOptions`        | interface | yes       | yes   |
+| `WorkerBatchResult`         | interface | yes       | yes   |
+| `WorkerFactory`             | type      | yes       | yes   |
+| `WorkerHandler`             | type      | yes       | yes   |
+| `WorkerLike`                | interface | yes       | yes   |
+| `WorkerPool`                | class     | no        | yes   |
+| `WorkerPoolInspection`      | interface | yes       | yes   |
+| `WorkerPoolOptions`         | interface | yes       | yes   |
+| `WorkerPoolRunOptions`      | interface | yes       | yes   |
+| `WorkerPoolTerminatedError` | class     | no        | yes   |
+
+## Entrypoint ./terminal
+
+Terminal parser, screen, shell, backend, PTY, workspace, and input-reader primitives.
+
+- Path: `./mod.terminal.ts`
+- Runtime: terminal
+- Stability: beta
+
+### Summary
+
+- Entrypoint: `mod.terminal.ts`
+- Modules: 15
+- Re-export declarations: 14
+- Exported symbols: 142
+- Documented symbols: 142
+- Documentation coverage: 100.00%
+- Duplicate symbols: 0
+- Missing targets: 0
+
+### Module Index
+
+| Module                                                                                  | Re-exports | Symbols | Documented |
+| --------------------------------------------------------------------------------------- | ---------: | ------: | ---------: |
+| [`mod.terminal.ts`](#mod-terminal-ts)                                                   |         14 |       0 |          0 |
+| [`src/input_reader/mod.ts`](#src-input-reader-mod-ts)                                   |          0 |       2 |          2 |
+| [`src/runtime/process_session.ts`](#src-runtime-process-session-ts)                     |          0 |       9 |          9 |
+| [`src/runtime/pty_backend.ts`](#src-runtime-pty-backend-ts)                             |          0 |      12 |         12 |
+| [`src/runtime/terminal_backend_registry.ts`](#src-runtime-terminal-backend-registry-ts) |          0 |       9 |          9 |
+| [`src/runtime/terminal_backend.ts`](#src-runtime-terminal-backend-ts)                   |          0 |       9 |          9 |
+| [`src/runtime/terminal_capabilities.ts`](#src-runtime-terminal-capabilities-ts)         |          0 |      27 |         27 |
+| [`src/runtime/terminal_screen.ts`](#src-runtime-terminal-screen-ts)                     |          0 |       6 |          6 |
+| [`src/runtime/terminal_scrollback.ts`](#src-runtime-terminal-scrollback-ts)             |          0 |       5 |          5 |
+| [`src/runtime/terminal_sequences.ts`](#src-runtime-terminal-sequences-ts)               |          0 |       3 |          3 |
+| [`src/runtime/terminal_session.ts`](#src-runtime-terminal-session-ts)                   |          0 |       8 |          8 |
+| [`src/runtime/terminal_shell.ts`](#src-runtime-terminal-shell-ts)                       |          0 |       3 |          3 |
+| [`src/runtime/terminal_status.ts`](#src-runtime-terminal-status-ts)                     |          0 |       8 |          8 |
+| [`src/runtime/terminal_templates.ts`](#src-runtime-terminal-templates-ts)               |          0 |      22 |         22 |
+| [`src/runtime/terminal_workspace.ts`](#src-runtime-terminal-workspace-ts)               |          0 |      19 |         19 |
+
+### Modules
+
+#### mod.terminal.ts
+
+| Re-export Target                           | Kind | Names |
+| ------------------------------------------ | ---- | ----- |
+| `src/input_reader/mod.ts`                  | star | -     |
+| `src/runtime/process_session.ts`           | star | -     |
+| `src/runtime/pty_backend.ts`               | star | -     |
+| `src/runtime/terminal_backend.ts`          | star | -     |
+| `src/runtime/terminal_backend_registry.ts` | star | -     |
+| `src/runtime/terminal_capabilities.ts`     | star | -     |
+| `src/runtime/terminal_screen.ts`           | star | -     |
+| `src/runtime/terminal_scrollback.ts`       | star | -     |
+| `src/runtime/terminal_sequences.ts`        | star | -     |
+| `src/runtime/terminal_session.ts`          | star | -     |
+| `src/runtime/terminal_shell.ts`            | star | -     |
+| `src/runtime/terminal_status.ts`           | star | -     |
+| `src/runtime/terminal_templates.ts`        | star | -     |
+| `src/runtime/terminal_workspace.ts`        | star | -     |
+
+_No direct exported symbols._
+
+#### src/input_reader/mod.ts
+
+| Symbol             | Kind     | Type Only | JSDoc |
+| ------------------ | -------- | --------- | ----- |
+| `emitInputEvents`  | function | no        | yes   |
+| `InputEventRecord` | type     | yes       | yes   |
+
+#### src/runtime/process_session.ts
+
+| Symbol                            | Kind      | Type Only | JSDoc |
+| --------------------------------- | --------- | --------- | ----- |
+| `formatProcessCommandLine`        | function  | no        | yes   |
+| `ProcessSessionChild`             | interface | yes       | yes   |
+| `ProcessSessionCommand`           | interface | yes       | yes   |
+| `ProcessSessionController`        | class     | no        | yes   |
+| `ProcessSessionControllerOptions` | interface | yes       | yes   |
+| `ProcessSessionExit`              | interface | yes       | yes   |
+| `ProcessSessionInspection`        | interface | yes       | yes   |
+| `ProcessSessionSpawner`           | type      | yes       | yes   |
+| `ProcessSessionStatus`            | type      | yes       | yes   |
+
+#### src/runtime/pty_backend.ts
+
+| Symbol                                         | Kind      | Type Only | JSDoc |
+| ---------------------------------------------- | --------- | --------- | ----- |
+| `createSigmaPtyTerminalBackend`                | function  | no        | yes   |
+| `createSigmaPtyTerminalBackendFromConstructor` | function  | no        | yes   |
+| `createSigmaPtyTerminalBackendProvider`        | function  | no        | yes   |
+| `loadSigmaPtyModule`                           | function  | no        | yes   |
+| `LoadSigmaPtyModuleOptions`                    | interface | yes       | yes   |
+| `probeSigmaPtyAvailability`                    | function  | no        | yes   |
+| `SigmaPtyCommandOptions`                       | interface | yes       | yes   |
+| `SigmaPtyConstructor`                          | interface | yes       | yes   |
+| `SigmaPtyLike`                                 | interface | yes       | yes   |
+| `SigmaPtyModule`                               | interface | yes       | yes   |
+| `SigmaPtySize`                                 | interface | yes       | yes   |
+| `SigmaPtyTerminalBackendOptions`               | interface | yes       | yes   |
+
+#### src/runtime/terminal_backend_registry.ts
+
+| Symbol                                  | Kind      | Type Only | JSDoc |
+| --------------------------------------- | --------- | --------- | ----- |
+| `createDefaultTerminalBackendRegistry`  | function  | no        | yes   |
+| `createProcessTerminalBackendProvider`  | function  | no        | yes   |
+| `DefaultTerminalBackendRegistryOptions` | interface | yes       | yes   |
+| `probeTerminalBackendProvider`          | function  | no        | yes   |
+| `TerminalBackendAvailability`           | interface | yes       | yes   |
+| `TerminalBackendProvider`               | interface | yes       | yes   |
+| `TerminalBackendProviderInspection`     | interface | yes       | yes   |
+| `TerminalBackendRegistry`               | class     | no        | yes   |
+| `TerminalBackendResolveOptions`         | interface | yes       | yes   |
+
+#### src/runtime/terminal_backend.ts
+
+| Symbol                            | Kind      | Type Only | JSDoc |
+| --------------------------------- | --------- | --------- | ----- |
+| `createProcessTerminalBackend`    | function  | no        | yes   |
+| `ProcessTerminalBackend`          | class     | no        | yes   |
+| `ProcessTerminalBackendOptions`   | interface | yes       | yes   |
+| `TerminalBackend`                 | interface | yes       | yes   |
+| `TerminalBackendAttachOptions`    | interface | yes       | yes   |
+| `TerminalBackendSpawnOptions`     | interface | yes       | yes   |
+| `TerminalDetachedSession`         | interface | yes       | yes   |
+| `TerminalSessionHandle`           | interface | yes       | yes   |
+| `TerminalSessionHandleInspection` | interface | yes       | yes   |
+
+#### src/runtime/terminal_capabilities.ts
+
+| Symbol                               | Kind      | Type Only | JSDoc |
+| ------------------------------------ | --------- | --------- | ----- |
+| `createTerminalPlan`                 | function  | no        | yes   |
+| `createTerminalPortabilityReport`    | function  | no        | yes   |
+| `detectTerminalCapabilities`         | function  | no        | yes   |
+| `detectTerminalEnvironment`          | function  | no        | yes   |
+| `formatTerminalCapabilities`         | function  | no        | yes   |
+| `formatTerminalEnvironment`          | function  | no        | yes   |
+| `formatTerminalPlan`                 | function  | no        | yes   |
+| `formatTerminalPortabilityReport`    | function  | no        | yes   |
+| `summarizeTerminalCapabilities`      | function  | no        | yes   |
+| `TerminalCapabilities`               | interface | yes       | yes   |
+| `TerminalCapabilityDetectionOptions` | interface | yes       | yes   |
+| `terminalCapabilityEntries`          | function  | no        | yes   |
+| `TerminalCapabilityEntry`            | interface | yes       | yes   |
+| `TerminalCapabilityId`               | type      | yes       | yes   |
+| `TerminalCapabilitySummary`          | interface | yes       | yes   |
+| `TerminalColorDepth`                 | type      | yes       | yes   |
+| `TerminalDiagnostic`                 | interface | yes       | yes   |
+| `TerminalDiagnosticSeverity`         | type      | yes       | yes   |
+| `TerminalEnvironment`                | interface | yes       | yes   |
+| `terminalEnvironmentDiagnostics`     | function  | no        | yes   |
+| `TerminalMouseProtocol`              | type      | yes       | yes   |
+| `TerminalMultiplexer`                | type      | yes       | yes   |
+| `TerminalPlan`                       | interface | yes       | yes   |
+| `TerminalPlanOptions`                | interface | yes       | yes   |
+| `TerminalPortabilityReport`          | interface | yes       | yes   |
+| `TerminalPortabilityReportOptions`   | interface | yes       | yes   |
+| `TerminalTextMode`                   | type      | yes       | yes   |
+
+#### src/runtime/terminal_screen.ts
+
+| Symbol                            | Kind      | Type Only | JSDoc |
+| --------------------------------- | --------- | --------- | ----- |
+| `TerminalScreenCell`              | interface | yes       | yes   |
+| `TerminalScreenController`        | class     | no        | yes   |
+| `TerminalScreenControllerOptions` | interface | yes       | yes   |
+| `TerminalScreenCursor`            | interface | yes       | yes   |
+| `TerminalScreenCursorStyle`       | interface | yes       | yes   |
+| `TerminalScreenInspection`        | interface | yes       | yes   |
+
+#### src/runtime/terminal_scrollback.ts
+
+| Symbol                                | Kind      | Type Only | JSDoc |
+| ------------------------------------- | --------- | --------- | ----- |
+| `TerminalScrollbackController`        | class     | no        | yes   |
+| `TerminalScrollbackControllerOptions` | interface | yes       | yes   |
+| `TerminalScrollbackInspection`        | interface | yes       | yes   |
+| `TerminalScrollbackMode`              | type      | yes       | yes   |
+| `TerminalScrollbackSelection`         | interface | yes       | yes   |
+
+#### src/runtime/terminal_sequences.ts
+
+| Symbol                          | Kind      | Type Only | JSDoc |
+| ------------------------------- | --------- | --------- | ----- |
+| `ParsedTerminalControlSequence` | interface | yes       | yes   |
+| `parseTerminalControlSequence`  | function  | no        | yes   |
+| `parseTerminalParams`           | function  | no        | yes   |
+
+#### src/runtime/terminal_session.ts
+
+| Symbol                            | Kind      | Type Only | JSDoc |
+| --------------------------------- | --------- | --------- | ----- |
+| `createTerminalSessionController` | function  | no        | yes   |
+| `terminalMouseSequences`          | function  | no        | yes   |
+| `TerminalSessionController`       | class     | no        | yes   |
+| `TerminalSessionInspection`       | interface | yes       | yes   |
+| `TerminalSessionOptions`          | interface | yes       | yes   |
+| `terminalSessionSequences`        | function  | no        | yes   |
+| `TerminalSessionSequences`        | interface | yes       | yes   |
+| `TerminalSessionWriter`           | interface | yes       | yes   |
+
+#### src/runtime/terminal_shell.ts
+
+| Symbol                           | Kind      | Type Only | JSDoc |
+| -------------------------------- | --------- | --------- | ----- |
+| `TerminalShellController`        | class     | no        | yes   |
+| `TerminalShellControllerOptions` | interface | yes       | yes   |
+| `TerminalShellInspection`        | interface | yes       | yes   |
+
+#### src/runtime/terminal_status.ts
+
+| Symbol                            | Kind      | Type Only | JSDoc |
+| --------------------------------- | --------- | --------- | ----- |
+| `formatTerminalShellWindowTitle`  | function  | no        | yes   |
+| `summarizeTerminalStatus`         | function  | no        | yes   |
+| `terminalBackendKindLabel`        | function  | no        | yes   |
+| `TerminalShellWindowTitleOptions` | interface | yes       | yes   |
+| `terminalStatusFields`            | function  | no        | yes   |
+| `TerminalStatusSource`            | type      | yes       | yes   |
+| `TerminalStatusSummary`           | interface | yes       | yes   |
+| `TerminalStatusSummaryOptions`    | interface | yes       | yes   |
+
+#### src/runtime/terminal_templates.ts
+
+| Symbol                                 | Kind      | Type Only | JSDoc |
+| -------------------------------------- | --------- | --------- | ----- |
+| `attachTerminalTemplate`               | function  | no        | yes   |
+| `AttachTerminalTemplate`               | interface | yes       | yes   |
+| `commandTerminalTemplate`              | function  | no        | yes   |
+| `CommandTerminalTemplateOptions`       | interface | yes       | yes   |
+| `createTerminalTemplateSession`        | function  | no        | yes   |
+| `CreateTerminalTemplateSessionOptions` | interface | yes       | yes   |
+| `denoTaskTerminalTemplate`             | function  | no        | yes   |
+| `DenoTaskTerminalTemplateOptions`      | interface | yes       | yes   |
+| `describeAttachTerminalTemplate`       | function  | no        | yes   |
+| `describeTerminalTemplateSession`      | function  | no        | yes   |
+| `isSpawnTerminalTemplate`              | function  | no        | yes   |
+| `projectTaskTerminalTemplate`          | function  | no        | yes   |
+| `shellTerminalTemplate`                | function  | no        | yes   |
+| `ShellTerminalTemplateOptions`         | interface | yes       | yes   |
+| `SpawnTerminalTemplate`                | interface | yes       | yes   |
+| `SpawnTerminalTemplateKind`            | type      | yes       | yes   |
+| `TerminalRestartPolicy`                | type      | yes       | yes   |
+| `TerminalSessionDescriptor`            | interface | yes       | yes   |
+| `TerminalTemplate`                     | type      | yes       | yes   |
+| `TerminalTemplateOptions`              | interface | yes       | yes   |
+| `TerminalTemplateSession`              | interface | yes       | yes   |
+| `terminalTemplateToSpawnOptions`       | function  | no        | yes   |
+
+#### src/runtime/terminal_workspace.ts
+
+| Symbol                                     | Kind      | Type Only | JSDoc |
+| ------------------------------------------ | --------- | --------- | ----- |
+| `AddTerminalWorkspaceSessionOptions`       | interface | yes       | yes   |
+| `createTerminalWorkspaceController`        | function  | no        | yes   |
+| `DuplicateTerminalWorkspaceSessionOptions` | interface | yes       | yes   |
+| `SplitTerminalWorkspacePaneOptions`        | interface | yes       | yes   |
+| `TerminalWorkspaceController`              | class     | no        | yes   |
+| `TerminalWorkspaceControllerOptions`       | interface | yes       | yes   |
+| `TerminalWorkspaceInspection`              | interface | yes       | yes   |
+| `TerminalWorkspaceLayoutInspection`        | interface | yes       | yes   |
+| `TerminalWorkspaceLayoutNode`              | type      | yes       | yes   |
+| `TerminalWorkspaceLayoutState`             | interface | yes       | yes   |
+| `TerminalWorkspacePaneInspection`          | interface | yes       | yes   |
+| `TerminalWorkspacePaneNode`                | interface | yes       | yes   |
+| `TerminalWorkspacePanePlacement`           | type      | yes       | yes   |
+| `TerminalWorkspacePaneRect`                | interface | yes       | yes   |
+| `TerminalWorkspacePaneRectOptions`         | interface | yes       | yes   |
+| `terminalWorkspacePaneRects`               | function  | no        | yes   |
+| `TerminalWorkspaceSplitDirection`          | type      | yes       | yes   |
+| `TerminalWorkspaceSplitNode`               | interface | yes       | yes   |
+| `UpsertTerminalWorkspaceSessionOptions`    | interface | yes       | yes   |
+
+## Entrypoint ./testing
+
+Testing helpers for snapshots, fake input events, focus targets, stdout capture, and canvas snapshots.
+
+- Path: `./mod.testing.ts`
+- Runtime: shared
+- Stability: beta
+
+### Summary
+
+- Entrypoint: `mod.testing.ts`
+- Modules: 4
+- Re-export declarations: 3
+- Exported symbols: 22
+- Documented symbols: 22
+- Documentation coverage: 100.00%
+- Duplicate symbols: 0
+- Missing targets: 0
+
+### Module Index
+
+| Module                                                | Re-exports | Symbols | Documented |
+| ----------------------------------------------------- | ---------: | ------: | ---------: |
+| [`mod.testing.ts`](#mod-testing-ts)                   |          1 |       0 |          0 |
+| [`src/testing/input.ts`](#src-testing-input-ts)       |          0 |       7 |          7 |
+| [`src/testing/mod.ts`](#src-testing-mod-ts)           |          2 |       0 |          0 |
+| [`src/testing/snapshot.ts`](#src-testing-snapshot-ts) |          0 |      15 |         15 |
+
+### Modules
+
+#### mod.testing.ts
+
+| Re-export Target     | Kind | Names |
+| -------------------- | ---- | ----- |
+| `src/testing/mod.ts` | star | -     |
+
+_No direct exported symbols._
+
+#### src/testing/input.ts
+
+| Symbol                  | Kind      | Type Only | JSDoc |
+| ----------------------- | --------- | --------- | ----- |
+| `createTestFocusable`   | function  | no        | yes   |
+| `createTestKeyPress`    | function  | no        | yes   |
+| `createTestMousePress`  | function  | no        | yes   |
+| `createTestMouseScroll` | function  | no        | yes   |
+| `TestKeyPressOptions`   | interface | yes       | yes   |
+| `TestKeyPressTarget`    | class     | no        | yes   |
+| `TestMouseTarget`       | class     | no        | yes   |
+
+#### src/testing/mod.ts
+
+| Re-export Target          | Kind | Names |
+| ------------------------- | ---- | ----- |
+| `src/testing/input.ts`    | star | -     |
+| `src/testing/snapshot.ts` | star | -     |
+
+_No direct exported symbols._
+
+#### src/testing/snapshot.ts
+
+| Symbol                        | Kind      | Type Only | JSDoc |
+| ----------------------------- | --------- | --------- | ----- |
+| `assertTerminalSnapshot`      | function  | no        | yes   |
+| `canvasRowText`               | function  | no        | yes   |
+| `canvasSnapshot`              | function  | no        | yes   |
+| `compareTerminalSnapshot`     | function  | no        | yes   |
+| `createTestCanvas`            | function  | no        | yes   |
+| `createTestStdout`            | function  | no        | yes   |
+| `formatTerminalSnapshotDiff`  | function  | no        | yes   |
+| `frameBufferToSnapshot`       | function  | no        | yes   |
+| `normalizeTerminalSnapshot`   | function  | no        | yes   |
+| `stripAnsi`                   | function  | no        | yes   |
+| `TerminalSnapshotComparison`  | interface | yes       | yes   |
+| `TerminalSnapshotDiffOptions` | interface | yes       | yes   |
+| `TerminalSnapshotMismatch`    | interface | yes       | yes   |
+| `TestCanvasOptions`           | interface | yes       | yes   |
+| `TestStdout`                  | interface | yes       | yes   |
 
 ## Entrypoint ./layout/yoga
 

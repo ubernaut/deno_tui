@@ -8,8 +8,26 @@ export type PackageRuntime = "shared" | "terminal" | "browser" | "remote" | "dem
 
 /** Manifest record for a Deno package export. */
 export interface PackageEntrypointManifest {
-  specifier: "." | "./web" | "./remote" | "./three-ascii" | "./layout/yoga";
-  path: "./mod.ts" | "./mod.web.ts" | "./mod.remote.ts" | "./mod.three_ascii.ts" | "./src/layout/solvers/yoga.ts";
+  specifier:
+    | "."
+    | "./web"
+    | "./remote"
+    | "./three-ascii"
+    | "./theme"
+    | "./runtime"
+    | "./terminal"
+    | "./testing"
+    | "./layout/yoga";
+  path:
+    | "./mod.ts"
+    | "./mod.web.ts"
+    | "./mod.remote.ts"
+    | "./mod.three_ascii.ts"
+    | "./mod.theme.ts"
+    | "./mod.runtime.ts"
+    | "./mod.terminal.ts"
+    | "./mod.testing.ts"
+    | "./src/layout/solvers/yoga.ts";
   runtime: PackageRuntime;
   stability: ApiStabilityTier;
   description: string;
@@ -108,6 +126,61 @@ export const packageEntrypoints = [
     excludes: ["terminal Tui runtime", "browser Canvas2D host", "workbench demo shell"],
   },
   {
+    specifier: "./theme",
+    path: "./mod.theme.ts",
+    runtime: "shared",
+    stability: "beta",
+    description: "Focused theme engines, manifests, resolvers, galleries, and GrWizard-style theme packs.",
+    includes: [
+      "theme engine and provider",
+      "theme manifests and validation",
+      "component theme bindings",
+      "theme galleries and previews",
+      "GrWizard palette packs",
+    ],
+    excludes: ["terminal Tui runtime", "browser host helpers", "demo workbench code"],
+  },
+  {
+    specifier: "./runtime",
+    path: "./mod.runtime.ts",
+    runtime: "shared",
+    stability: "beta",
+    description: "Shared runtime primitives for scheduling, storage, workers, resources, diagnostics, and backends.",
+    includes: [
+      "scheduler and render loop",
+      "worker pool",
+      "runtime storage and diagnostics",
+      "resource/cache primitives",
+      "renderer backend metadata",
+    ],
+    excludes: ["widgets", "terminal Tui runtime", "browser DOM host"],
+  },
+  {
+    specifier: "./terminal",
+    path: "./mod.terminal.ts",
+    runtime: "terminal",
+    stability: "beta",
+    description: "Terminal parser, screen, shell, backend, PTY, workspace, and input-reader primitives.",
+    includes: [
+      "terminal screen and sequences",
+      "shell and process sessions",
+      "PTY/backend registry",
+      "terminal workspace tabs",
+      "input decoder events",
+    ],
+    excludes: ["component widgets", "browser host helpers", "demo workbench code"],
+  },
+  {
+    specifier: "./testing",
+    path: "./mod.testing.ts",
+    runtime: "shared",
+    stability: "beta",
+    description:
+      "Testing helpers for snapshots, fake input events, focus targets, stdout capture, and canvas snapshots.",
+    includes: ["test input factories", "snapshot normalization", "test stdout", "test canvas helpers"],
+    excludes: ["demo screenshots", "Playwright harnesses", "runtime benchmarks"],
+  },
+  {
     specifier: "./layout/yoga",
     path: "./src/layout/solvers/yoga.ts",
     runtime: "shared",
@@ -147,6 +220,34 @@ export const apiSurfacePolicies = [
     stability: "experimental",
     public: true,
     description: "Focused Three ASCII package entrypoint for renderer consumers that do not need the full TUI runtime.",
+  },
+  {
+    pattern: "mod.theme.ts",
+    runtime: "shared",
+    stability: "beta",
+    public: true,
+    description: "Focused theme package entrypoint for app authors and theme tooling.",
+  },
+  {
+    pattern: "mod.runtime.ts",
+    runtime: "shared",
+    stability: "beta",
+    public: true,
+    description: "Focused runtime package entrypoint for framework authors.",
+  },
+  {
+    pattern: "mod.terminal.ts",
+    runtime: "terminal",
+    stability: "beta",
+    public: true,
+    description: "Focused terminal parser/session package entrypoint for shell and multiplexer integrations.",
+  },
+  {
+    pattern: "mod.testing.ts",
+    runtime: "shared",
+    stability: "beta",
+    public: true,
+    description: "Focused test helper package entrypoint for downstream apps.",
   },
   {
     pattern: "src/layout/solvers/yoga.ts",
