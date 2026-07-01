@@ -3566,6 +3566,27 @@
       "documented": true
     },
     {
+      "module": "src/app/workbench_layout.ts",
+      "name": "WorkbenchWorkspaceScrollAdapter",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_layout.ts",
+      "name": "WorkbenchWorkspaceViewportController",
+      "kind": "class",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_layout.ts",
+      "name": "WorkbenchWorkspaceViewportUpdate",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
       "module": "src/app/workbench_menu.ts",
       "name": "isWorkbenchMenuActivationKey",
       "kind": "function",

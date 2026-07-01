@@ -5,6 +5,7 @@ import {
   workbenchAdaptiveTileOptions,
   workbenchVerticalScrollbarRect,
   workbenchWindowLayout,
+  WorkbenchWorkspaceViewportController,
 } from "../src/app/workbench_layout.ts";
 
 Deno.test("clampWorkbenchTileDensity keeps density in the shared supported range", () => {
@@ -98,3 +99,50 @@ Deno.test("WorkbenchActiveRevealTracker only emits offsets when active item or v
   tracker.reset();
   assertEquals(tracker.revealOffset(base), 12);
 });
+
+Deno.test("WorkbenchWorkspaceViewportController sizes scroll area and reveals active windows", () => {
+  const scroll = new FakeWorkspaceScroll();
+  const controller = new WorkbenchWorkspaceViewportController<"a" | "b">({ scroll });
+  const layout = workbenchWindowLayout<"a" | "b">(
+    { column: 0, row: 0, width: 80, height: 12 },
+    {
+      contentHeight: 40,
+      visible: [
+        { id: "a", rect: { column: 0, row: 18, width: 20, height: 6 } },
+        { id: "b", rect: { column: 0, row: 2, width: 20, height: 6 } },
+      ],
+    },
+  );
+
+  assertEquals(controller.update({ layout, viewportHeight: 12, activeId: "a" }), 12);
+  assertEquals(scroll.viewport, { width: 80, height: 12 });
+  assertEquals(scroll.content, { width: 80, height: 40 });
+  assertEquals(scroll.scrollCalls, [{ columns: 0, rows: 12 }]);
+  assertEquals(controller.update({ layout, viewportHeight: 12, activeId: "a" }), 12);
+  assertEquals(scroll.scrollCalls.length, 1);
+  assertEquals(controller.update({ layout, viewportHeight: 12, activeId: "b" }), 2);
+  assertEquals(scroll.scrollCalls.at(-1), { columns: 0, rows: 2 });
+});
+
+class FakeWorkspaceScroll {
+  offset = {
+    peek: () => ({ rows: this.rows }),
+  };
+  rows = 0;
+  viewport = { width: 0, height: 0 };
+  content = { width: 0, height: 0 };
+  scrollCalls: Array<{ columns: number; rows: number }> = [];
+
+  setViewportSize(width: number, height: number): void {
+    this.viewport = { width, height };
+  }
+
+  setContentSize(width: number, height: number): void {
+    this.content = { width, height };
+  }
+
+  scrollTo(columns: number, rows: number): void {
+    this.rows = rows;
+    this.scrollCalls.push({ columns, rows });
+  }
+}

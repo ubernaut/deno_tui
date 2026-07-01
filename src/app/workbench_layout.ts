@@ -47,11 +47,59 @@ export interface WorkbenchActiveRevealOptions<Id extends string = string> {
   offsetRows: number;
 }
 
+/** Minimal scroll-area shape needed by shared workbench viewport tracking. */
+export interface WorkbenchWorkspaceScrollAdapter {
+  offset: { peek(): { rows: number } };
+  setViewportSize(width: number, height: number): unknown;
+  setContentSize(width: number, height: number): unknown;
+  scrollTo(columns: number, rows: number): unknown;
+}
+
+/** Options for a shared workbench workspace viewport update. */
+export interface WorkbenchWorkspaceViewportUpdate<Id extends string = string> {
+  layout: WorkbenchWindowLayout<Id>;
+  viewportHeight: number;
+  activeId: Id;
+}
+
 /** Shared workbench layout result consumed by terminal and browser render adapters. */
 export interface WorkbenchWindowLayout<Id extends string = string> {
   bounds: Rectangle;
   contentHeight: number;
   rects: Map<Id, Rectangle>;
+}
+
+/** Coordinates workspace scroll sizing and active-window reveal behavior. */
+export class WorkbenchWorkspaceViewportController<Id extends string = string> {
+  readonly scroll: WorkbenchWorkspaceScrollAdapter;
+  readonly revealTracker: WorkbenchActiveRevealTracker<Id>;
+
+  constructor(options: {
+    scroll: WorkbenchWorkspaceScrollAdapter;
+    revealTracker?: WorkbenchActiveRevealTracker<Id>;
+  }) {
+    this.scroll = options.scroll;
+    this.revealTracker = options.revealTracker ?? new WorkbenchActiveRevealTracker<Id>();
+  }
+
+  update(options: WorkbenchWorkspaceViewportUpdate<Id>): number {
+    this.scroll.setViewportSize(options.layout.bounds.width, options.viewportHeight);
+    this.scroll.setContentSize(options.layout.bounds.width, options.layout.contentHeight);
+    const offset = this.revealTracker.revealOffset({
+      activeId: options.activeId,
+      activeRect: options.layout.rects.get(options.activeId),
+      contentHeight: options.layout.contentHeight,
+      viewportWidth: options.layout.bounds.width,
+      viewportHeight: options.viewportHeight,
+      offsetRows: this.scroll.offset.peek().rows,
+    });
+    if (offset !== undefined) this.scroll.scrollTo(0, offset);
+    return this.scroll.offset.peek().rows;
+  }
+
+  resetReveal(): void {
+    this.revealTracker.reset();
+  }
 }
 
 /** Tracks active window visibility across workbench layout changes. */

@@ -52,7 +52,6 @@ import {
   subscribeWorkbenchDiagnosticLog,
   translateHitTargets,
   upsertWorkbenchWorkspace,
-  WorkbenchActiveRevealTracker,
   workbenchAdaptiveTileOptions,
   workbenchContentViewport,
   type WorkbenchFrame,
@@ -66,6 +65,7 @@ import {
   workbenchWindowOptionMenuLabel,
   workbenchWindowOptionMinimums,
   type WorkbenchWorkspace,
+  WorkbenchWorkspaceViewportController,
   type WorkbenchWorkspaceWindow,
   workbenchWorkspaceWindowEntries,
   writeFrame,
@@ -466,7 +466,6 @@ const dynamicVisualizationWindows = new Signal<Record<VisualizationWindowId, str
 const selectedCpuHexTiles = new Signal<Record<VisualizationWindowId, string>>({}, { deepObserve: true });
 const lineSignals: Signal<string>[] = [];
 const hitTargets = new HitTargetStack<HitAction>();
-const activeRevealTracker = new WorkbenchActiveRevealTracker<WindowId>();
 let dropdownOverlay: DropdownOverlay | null = null;
 let threeDragWindow: WindowId | null = null;
 let windowRenderContext: WindowRenderContext | null = null;
@@ -539,6 +538,7 @@ const menu = new MenuBarController({
 });
 const tileDensity = new Signal(0);
 const workspaceScroll = new ScrollAreaController({ showScrollbar: true });
+const workspaceViewport = new WorkbenchWorkspaceViewportController<WindowId>({ scroll: workspaceScroll });
 const windowScrolls = new Map<WindowId, ScrollAreaController>(
   builtInWindowOrder.map((id) => [id, new ScrollAreaController({ showScrollbar: true })]),
 );
@@ -1031,10 +1031,7 @@ function renderWorkspace(frame: Frame): void {
     return;
   }
   const layout = workspaceLayout({ column: 0, row: 0, width: Math.max(1, bounds.width - 1), height: bounds.height });
-  workspaceScroll.setViewportSize(layout.bounds.width, bounds.height);
-  workspaceScroll.setContentSize(layout.bounds.width, layout.contentHeight);
-  ensureActiveWindowVisible(layout, bounds.height);
-  const offset = workspaceScroll.offset.peek().rows;
+  const offset = workspaceViewport.update({ layout, viewportHeight: bounds.height, activeId: activeWindow.peek() });
   const virtual: Frame = Array.from({ length: Math.max(bounds.height, layout.contentHeight) }, () => []);
   fillRect(virtual, layout.bounds, theme().backgroundSoft);
   const hitStart = hitTargets.length;
@@ -2932,22 +2929,6 @@ function writeClippedOverlayRow(
   const leftTrim = Math.max(0, start - column);
   const text = stripStyles(value).slice(leftTrim, leftTrim + visibleWidth);
   write(frame, row, start, paint(fit(text, visibleWidth), style));
-}
-
-function ensureActiveWindowVisible(
-  layout: { bounds: Rectangle; contentHeight: number; rects: Map<WindowId, Rectangle> },
-  viewportHeight: number,
-): void {
-  const active = activeWindow.peek();
-  const offset = activeRevealTracker.revealOffset({
-    activeId: active,
-    activeRect: layout.rects.get(active),
-    contentHeight: layout.contentHeight,
-    viewportWidth: layout.bounds.width,
-    viewportHeight,
-    offsetRows: workspaceScroll.offset.peek().rows,
-  });
-  if (offset !== undefined) workspaceScroll.scrollTo(0, offset);
 }
 
 function scrollWindow(id: WindowId, columns: number, rows: number): void {

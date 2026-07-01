@@ -9056,6 +9056,31 @@ function workbenchRevealActiveRowOffset(options) {
 }
 
 // src/app/workbench_layout.ts
+var WorkbenchWorkspaceViewportController = class {
+  scroll;
+  revealTracker;
+  constructor(options) {
+    this.scroll = options.scroll;
+    this.revealTracker = options.revealTracker ?? new WorkbenchActiveRevealTracker();
+  }
+  update(options) {
+    this.scroll.setViewportSize(options.layout.bounds.width, options.viewportHeight);
+    this.scroll.setContentSize(options.layout.bounds.width, options.layout.contentHeight);
+    const offset = this.revealTracker.revealOffset({
+      activeId: options.activeId,
+      activeRect: options.layout.rects.get(options.activeId),
+      contentHeight: options.layout.contentHeight,
+      viewportWidth: options.layout.bounds.width,
+      viewportHeight: options.viewportHeight,
+      offsetRows: this.scroll.offset.peek().rows
+    });
+    if (offset !== void 0) this.scroll.scrollTo(0, offset);
+    return this.scroll.offset.peek().rows;
+  }
+  resetReveal() {
+    this.revealTracker.reset();
+  }
+};
 var WorkbenchActiveRevealTracker = class {
   #lastActiveId = null;
   #lastViewportWidth = 0;
@@ -11675,7 +11700,6 @@ var webTerminalWorkspace = createTerminalWorkspaceController({
 });
 var webTerminalScreenKey = "";
 var hitTargets = new HitTargetStack();
-var activeRevealTracker = new WorkbenchActiveRevealTracker();
 var dropdownOverlay = null;
 var pointerDrag = null;
 themeIndex.subscribe((index) => persistThemeIndex(index));
@@ -11701,6 +11725,7 @@ var menu = new MenuBarController({
   }
 });
 var workspaceScroll = new ScrollAreaController({ showScrollbar: true });
+var workspaceViewport = new WorkbenchWorkspaceViewportController({ scroll: workspaceScroll });
 var logScroll = new ScrollAreaController({ showScrollbar: true });
 var slider = new SliderController({ min: 1, max: 10, value: 6, step: 1, orientation: "horizontal" });
 var live = new CheckBoxController({ checked: true });
@@ -11959,10 +11984,7 @@ function draw() {
     width: Math.max(1, body.width - 1),
     height: body.height
   });
-  workspaceScroll.setViewportSize(layout.bounds.width, body.height);
-  workspaceScroll.setContentSize(layout.bounds.width, layout.contentHeight);
-  ensureActivePanelVisible(layout, body.height);
-  const offset = workspaceScroll.offset.peek().rows;
+  const offset = workspaceViewport.update({ layout, viewportHeight: body.height, activeId: active.peek() });
   const virtual = Array.from(
     { length: Math.max(body.height, layout.contentHeight) },
     () => paint(" ".repeat(layout.bounds.width), theme().text, theme().bgAlt)
@@ -12763,18 +12785,6 @@ function renderModalOverlay(frame) {
     hitTargets.add({ column, row: actionRow, width, height: 1 }, { type: "modalAction", index });
     column += width + 1;
   }
-}
-function ensureActivePanelVisible(layout, viewportHeight) {
-  const activePanel = active.peek();
-  const offset = activeRevealTracker.revealOffset({
-    activeId: activePanel,
-    activeRect: layout.rects.get(activePanel),
-    contentHeight: layout.contentHeight,
-    viewportWidth: layout.bounds.width,
-    viewportHeight,
-    offsetRows: workspaceScroll.offset.peek().rows
-  });
-  if (offset !== void 0) workspaceScroll.scrollTo(0, offset);
 }
 function panelLineStyle(id2, index) {
   const t = theme();

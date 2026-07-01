@@ -64,13 +64,13 @@ import {
   toStyledCells,
   translateHitTargets,
   WindowManagerController,
-  WorkbenchActiveRevealTracker,
   workbenchAdaptiveTileOptions,
   type WorkbenchPanelWorkspaceState,
   workbenchStatusLeft,
   type WorkbenchTitlebarButtonKind,
   workbenchVerticalScrollbarRect,
   workbenchWindowLayout,
+  WorkbenchWorkspaceViewportController,
   wrapTextBoxLines,
 } from "../../mod.web.ts";
 import { WorkbenchController } from "../../src/app/workbench/controller.ts";
@@ -317,7 +317,6 @@ const webTerminalWorkspace = createTerminalWorkspaceController({
 });
 let webTerminalScreenKey = "";
 const hitTargets = new HitTargetStack<Hit>();
-const activeRevealTracker = new WorkbenchActiveRevealTracker<PanelId>();
 let dropdownOverlay: DropdownOverlay | null = null;
 let pointerDrag: {
   x: number;
@@ -352,6 +351,7 @@ const menu = new MenuBarController({
   },
 });
 const workspaceScroll = new ScrollAreaController({ showScrollbar: true });
+const workspaceViewport = new WorkbenchWorkspaceViewportController<PanelId>({ scroll: workspaceScroll });
 const logScroll = new ScrollAreaController({ showScrollbar: true });
 const slider = new SliderController({ min: 1, max: 10, value: 6, step: 1, orientation: "horizontal" });
 const live = new CheckBoxController({ checked: true });
@@ -617,10 +617,7 @@ function draw(): void {
     width: Math.max(1, body.width - 1),
     height: body.height,
   });
-  workspaceScroll.setViewportSize(layout.bounds.width, body.height);
-  workspaceScroll.setContentSize(layout.bounds.width, layout.contentHeight);
-  ensureActivePanelVisible(layout, body.height);
-  const offset = workspaceScroll.offset.peek().rows;
+  const offset = workspaceViewport.update({ layout, viewportHeight: body.height, activeId: active.peek() });
   const virtual = Array.from(
     { length: Math.max(body.height, layout.contentHeight) },
     () => paint(" ".repeat(layout.bounds.width), theme().text, theme().bgAlt),
@@ -1514,22 +1511,6 @@ function renderModalOverlay(frame: string[]): void {
     hitTargets.add({ column, row: actionRow, width, height: 1 }, { type: "modalAction", index });
     column += width + 1;
   }
-}
-
-function ensureActivePanelVisible(
-  layout: { bounds: Rectangle; contentHeight: number; rects: Map<PanelId, Rectangle> },
-  viewportHeight: number,
-): void {
-  const activePanel = active.peek();
-  const offset = activeRevealTracker.revealOffset({
-    activeId: activePanel,
-    activeRect: layout.rects.get(activePanel),
-    contentHeight: layout.contentHeight,
-    viewportWidth: layout.bounds.width,
-    viewportHeight,
-    offsetRows: workspaceScroll.offset.peek().rows,
-  });
-  if (offset !== undefined) workspaceScroll.scrollTo(0, offset);
 }
 
 function panelLineStyle(id: PanelId, index: number): { fg: string; bg: string; bold?: boolean } {
