@@ -1,9 +1,8 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { Component, type ComponentOptions } from "../component.ts";
-import type { TextRectangle } from "../canvas/text.ts";
 import { Computed, Signal } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
-import { Text } from "./text.ts";
+import { drawTextRows } from "./text_rows.ts";
 
 const DEFAULT_LOG_LINE_LIMIT = 500;
 
@@ -122,24 +121,7 @@ export class LogViewer extends Component {
       const lines = Array.isArray(this.options.lines) ? this.options.lines : this.options.lines.value;
       return visibleLogLines(lines, this.rectangle.value.height, this.options.follow ?? true);
     });
-    const height = this.rectangle.peek().height;
-    for (let index = 0; index < height; index++) {
-      const line = new Text({
-        parent: this,
-        theme: this.theme,
-        zIndex: this.zIndex,
-        text: new Computed(() => visibleRows.value[index] ?? ""),
-        overwriteWidth: true,
-        rectangle: new Computed<TextRectangle>(() => ({
-          column: this.rectangle.value.column,
-          row: this.rectangle.value.row + index,
-          width: this.rectangle.value.width,
-        })),
-        visible: this.visible,
-      });
-      line.subComponentOf = this;
-      this.subComponents[`line-${index}`] = line;
-    }
+    drawTextRows(this, visibleRows, { keyPrefix: "line" });
   }
 }
 

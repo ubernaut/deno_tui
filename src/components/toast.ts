@@ -1,9 +1,8 @@
 // Copyright 2023 Im-Beast. MIT license.
-import type { TextRectangle } from "../canvas/text.ts";
 import { Component, type ComponentOptions } from "../component.ts";
 import { Computed, Signal } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
-import { Text } from "./text.ts";
+import { drawTextRows } from "./text_rows.ts";
 
 /** Public type alias for a toast Level. */
 export type ToastLevel = "info" | "success" | "warning" | "error";
@@ -121,27 +120,16 @@ export class ToastStack extends Component {
   override draw(): void {
     super.draw();
 
-    const height = this.rectangle.peek().height;
-    for (let index = 0; index < height; index++) {
-      const text = new Text({
-        parent: this,
-        theme: this.theme,
-        zIndex: this.zIndex,
-        text: new Computed(() => {
-          const message = this.messages.value[index];
-          return message ? renderToast(message) : "";
-        }),
-        overwriteWidth: true,
-        rectangle: new Computed<TextRectangle>(() => ({
-          column: this.rectangle.value.column,
-          row: this.rectangle.value.row + index,
-          width: this.rectangle.value.width,
-        })),
-        visible: this.visible,
-      });
-      text.subComponentOf = this;
-      this.subComponents[`toast-${index}`] = text;
-    }
+    const rows = new Computed(() => {
+      const height = this.rectangle.value.height;
+      const lines = new Array<string>(height);
+      for (let index = 0; index < height; index++) {
+        const message = this.messages.value[index];
+        lines[index] = message ? renderToast(message) : "";
+      }
+      return lines;
+    });
+    drawTextRows(this, rows, { keyPrefix: "toast" });
   }
 }
 

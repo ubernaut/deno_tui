@@ -1,10 +1,9 @@
 // Copyright 2023 Im-Beast. MIT license.
-import type { TextRectangle } from "../canvas/text.ts";
 import { Component, type ComponentOptions } from "../component.ts";
 import { Computed, Signal } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
 import { stackedRowIndexAt } from "./interaction.ts";
-import { Text } from "./text.ts";
+import { drawTextRows } from "./text_rows.ts";
 
 /** Public interface describing a radio Option. */
 export interface RadioOption {
@@ -284,23 +283,6 @@ export class RadioGroup extends Component {
         this.rectangle.value.height,
       )
     );
-    const height = this.rectangle.peek().height;
-    for (let index = 0; index < height; index++) {
-      const row = new Text({
-        parent: this,
-        theme: this.theme,
-        zIndex: this.zIndex,
-        text: new Computed(() => rows.value[index] ?? ""),
-        overwriteWidth: true,
-        rectangle: new Computed<TextRectangle>(() => ({
-          column: this.rectangle.value.column,
-          row: this.rectangle.value.row + index,
-          width: this.rectangle.value.width,
-        })),
-        visible: this.visible,
-      });
-      row.subComponentOf = this;
-      this.subComponents[`row-${index}`] = row;
-    }
+    drawTextRows(this, rows);
   }
 }

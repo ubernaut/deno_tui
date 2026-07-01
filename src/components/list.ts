@@ -1,10 +1,9 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { Component, type ComponentOptions } from "../component.ts";
-import type { TextRectangle } from "../canvas/text.ts";
 import { clampSelectionIndex, selectionWindow } from "../selection.ts";
 import { Computed, Signal } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
-import { Text } from "./text.ts";
+import { drawTextRows } from "./text_rows.ts";
 
 /** Options for configuring list. */
 export interface ListOptions extends ComponentOptions {
@@ -181,23 +180,6 @@ export class List extends Component {
     super.draw();
 
     const lines = new Computed(() => this.controller.rows(this.rectangle.value.height));
-    const height = this.rectangle.peek().height;
-    for (let index = 0; index < height; index++) {
-      const row = new Text({
-        parent: this,
-        theme: this.theme,
-        zIndex: this.zIndex,
-        text: new Computed(() => lines.value[index] ?? ""),
-        overwriteWidth: true,
-        rectangle: new Computed<TextRectangle>(() => ({
-          column: this.rectangle.value.column,
-          row: this.rectangle.value.row + index,
-          width: this.rectangle.value.width,
-        })),
-        visible: this.visible,
-      });
-      row.subComponentOf = this;
-      this.subComponents[`row-${index}`] = row;
-    }
+    drawTextRows(this, lines);
   }
 }

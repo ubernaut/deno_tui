@@ -1,8 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { Component, type ComponentOptions } from "../component.ts";
-import type { TextRectangle } from "../canvas/text.ts";
 import { Computed, type Signal } from "../signals/mod.ts";
-import { Text } from "./text.ts";
+import { drawTextRows } from "./text_rows.ts";
 
 /** Options for configuring chart. */
 export interface ChartOptions extends ComponentOptions {
@@ -46,24 +45,6 @@ export class Chart extends Component {
       const values = Array.isArray(this.options.values) ? this.options.values : this.options.values.value;
       return renderBarChart(values, this.rectangle.value.width, this.rectangle.value.height);
     });
-
-    const height = this.rectangle.peek().height;
-    for (let index = 0; index < height; index++) {
-      const line = new Text({
-        parent: this,
-        theme: this.theme,
-        zIndex: this.zIndex,
-        text: new Computed(() => rows.value[index] ?? ""),
-        overwriteWidth: true,
-        rectangle: new Computed<TextRectangle>(() => ({
-          column: this.rectangle.value.column,
-          row: this.rectangle.value.row + index,
-          width: this.rectangle.value.width,
-        })),
-        visible: this.visible,
-      });
-      line.subComponentOf = this;
-      this.subComponents[`line-${index}`] = line;
-    }
+    drawTextRows(this, rows, { keyPrefix: "line" });
   }
 }
