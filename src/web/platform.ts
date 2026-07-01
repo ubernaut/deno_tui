@@ -22,10 +22,13 @@ export interface BrowserPlatformOptions {
   cellHeight?: number;
   touchAction?: string;
   userSelect?: string;
+  textInput?: BrowserTextInputMode;
   input?: InputSource;
   lifecycle?: LifecycleController;
   scheduler?: BrowserFrameScheduler;
 }
+
+export type BrowserTextInputMode = "auto" | "target" | "hidden" | false;
 
 export interface BrowserInputSourceOptions {
   cellWidth?: number;
@@ -34,6 +37,11 @@ export interface BrowserInputSourceOptions {
   touchAction?: string;
   /** CSS user-select applied while the input source is attached. Defaults to "none". */
   userSelect?: string;
+  /**
+   * Text input target used for keyboard events. "auto" creates a hidden textarea when DOM APIs are available so
+   * mobile browsers can show the software keyboard.
+   */
+  textInput?: BrowserTextInputMode;
 }
 
 export interface BrowserFrameScheduler {
@@ -65,6 +73,7 @@ export class BrowserPlatform implements TuiPlatform {
         cellHeight,
         touchAction: options.touchAction,
         userSelect: options.userSelect,
+        textInput: options.textInput,
       });
     this.lifecycle = options.lifecycle ?? new NoopLifecycleController("browser");
     this.#scheduler = options.scheduler ?? defaultBrowserFrameScheduler();
@@ -104,10 +113,13 @@ export class BrowserInputSource implements InputSource {
   readonly #cellHeight: number;
   readonly #touchAction: string;
   readonly #userSelect: string;
+  readonly #textInputMode: BrowserTextInputMode;
   #emitter?: PlatformInputEmitter;
   #attached = false;
   #removeListeners: Array<() => void> = [];
   #restoreStyles?: () => void;
+  #keyboardTarget?: HTMLElement;
+  #removeKeyboardTarget?: () => void;
 
   constructor(target: HTMLElement, options: BrowserInputSourceOptions = {}) {
     this.#target = target;
@@ -115,6 +127,7 @@ export class BrowserInputSource implements InputSource {
     this.#cellHeight = Math.max(1, options.cellHeight ?? 20);
     this.#touchAction = options.touchAction ?? "none";
     this.#userSelect = options.userSelect ?? "none";
+    this.#textInputMode = options.textInput ?? "auto";
   }
 
   attach(emitter: PlatformInputEmitter): void {
@@ -122,8 +135,9 @@ export class BrowserInputSource implements InputSource {
     this.#emitter = emitter;
     this.#target.tabIndex = this.#target.tabIndex < 0 ? 0 : this.#target.tabIndex;
     this.#restoreStyles = applyInputStyles(this.#target, this.#touchAction, this.#userSelect);
+    const keyboardTarget = this.#createKeyboardTarget();
     this.#removeListeners = [
-      addListener(this.#target, "keydown", (event) => this.#handleKey(event as KeyboardEvent)),
+      addListener(keyboardTarget, "keydown", (event) => this.#handleKey(event as KeyboardEvent)),
       addListener(
         this.#target,
         "pointerdown",
@@ -140,9 +154,10 @@ export class BrowserInputSource implements InputSource {
         passive: false,
       }),
       addListener(this.#target, "wheel", (event) => this.#handleWheel(event as WheelEvent), { passive: false }),
-      addListener(this.#target, "paste", (event) => this.#handlePaste(event as ClipboardEvent), { passive: false }),
-      addListener(this.#target, "focus", () => this.#handleFocus(true)),
-      addListener(this.#target, "blur", () => this.#handleFocus(false)),
+      addListener(keyboardTarget, "input", (event) => this.#handleTextInput(event), { passive: false }),
+      addListener(keyboardTarget, "paste", (event) => this.#handlePaste(event as ClipboardEvent), { passive: false }),
+      addListener(keyboardTarget, "focus", () => this.#handleFocus(true)),
+      addListener(keyboardTarget, "blur", () => this.#handleFocus(false)),
     ];
     this.#attached = true;
   }
@@ -152,6 +167,9 @@ export class BrowserInputSource implements InputSource {
     this.#removeListeners = [];
     this.#restoreStyles?.();
     this.#restoreStyles = undefined;
+    this.#removeKeyboardTarget?.();
+    this.#removeKeyboardTarget = undefined;
+    this.#keyboardTarget = undefined;
     this.#emitter = undefined;
     this.#attached = false;
   }
@@ -179,7 +197,7 @@ export class BrowserInputSource implements InputSource {
 
   #handlePointer(event: PointerEvent, release: boolean): void {
     if (!release) {
-      this.#target.focus({ preventScroll: true });
+      (this.#keyboardTarget ?? this.#target).focus({ preventScroll: true });
       this.#target.setPointerCapture?.(event.pointerId);
     } else if (this.#target.hasPointerCapture?.(event.pointerId)) {
       this.#target.releasePointerCapture?.(event.pointerId);
@@ -250,6 +268,15 @@ export class BrowserInputSource implements InputSource {
     event.preventDefault();
   }
 
+  #handleTextInput(event: Event): void {
+    const target = event.target as EventTarget & { value?: string };
+    const text = typeof target.value === "string" ? target.value : "";
+    if (!text) return;
+    target.value = "";
+    for (const char of text) this.#emitCharacter(char);
+    event.preventDefault();
+  }
+
   #handleFocus(focused: boolean): void {
     this.#emitter?.emit("terminalFocus", {
       key: "focus",
@@ -264,6 +291,30 @@ export class BrowserInputSource implements InputSource {
       x: Math.max(0, Math.floor((event.clientX - rect.left) / this.#cellWidth)),
       y: Math.max(0, Math.floor((event.clientY - rect.top) / this.#cellHeight)),
     };
+  }
+
+  #createKeyboardTarget(): HTMLElement {
+    const hidden = this.#textInputMode !== false && this.#textInputMode !== "target"
+      ? createHiddenTextInput(this.#target)
+      : undefined;
+    if (hidden) {
+      this.#keyboardTarget = hidden.element;
+      this.#removeKeyboardTarget = hidden.dispose;
+      return hidden.element;
+    }
+    this.#keyboardTarget = this.#target;
+    return this.#target;
+  }
+
+  #emitCharacter(char: string): void {
+    const key = char === "\n" || char === "\r" ? "return" : char === " " ? "space" : char.toLowerCase() as Key;
+    this.#emitter?.emit("keyPress", {
+      key,
+      meta: false,
+      ctrl: false,
+      shift: false,
+      buffer: new TextEncoder().encode(char),
+    });
   }
 }
 
@@ -304,6 +355,36 @@ function applyInputStyles(target: HTMLElement, touchAction: string, userSelect: 
     style.touchAction = previousTouchAction;
     style.userSelect = previousUserSelect;
     style.webkitUserSelect = previousWebkitUserSelect;
+  };
+}
+
+function createHiddenTextInput(target: HTMLElement): { element: HTMLElement; dispose: () => void } | undefined {
+  const document = target.ownerDocument ?? globalThis.document;
+  if (!document?.createElement) return undefined;
+  const textarea = document.createElement("textarea");
+  textarea.tabIndex = 0;
+  textarea.setAttribute("aria-hidden", "true");
+  textarea.setAttribute("autocapitalize", "off");
+  textarea.setAttribute("autocomplete", "off");
+  textarea.setAttribute("autocorrect", "off");
+  textarea.setAttribute("spellcheck", "false");
+  textarea.style.position = "fixed";
+  textarea.style.left = "0";
+  textarea.style.top = "0";
+  textarea.style.width = "1px";
+  textarea.style.height = "1px";
+  textarea.style.opacity = "0";
+  textarea.style.pointerEvents = "none";
+  textarea.style.zIndex = "-1";
+  textarea.style.resize = "none";
+  textarea.style.border = "0";
+  textarea.style.padding = "0";
+  textarea.style.margin = "0";
+  const parent = document.body ?? target;
+  parent.appendChild(textarea);
+  return {
+    element: textarea,
+    dispose: () => textarea.remove(),
   };
 }
 

@@ -277,6 +277,50 @@ Deno.test("BrowserInputSource emits paste and focus events", () => {
   input.dispose();
 });
 
+Deno.test("BrowserInputSource bridges text input events to key presses", () => {
+  const listeners = new Map<string, EventListener>();
+  const prevented: string[] = [];
+  const target = {
+    tabIndex: -1,
+    value: "Az \n",
+    addEventListener: (type: string, listener: EventListener) => void listeners.set(type, listener),
+    removeEventListener: (type: string) => void listeners.delete(type),
+    getBoundingClientRect: () => ({
+      x: 0,
+      y: 0,
+      left: 0,
+      top: 0,
+      right: 80,
+      bottom: 80,
+      width: 80,
+      height: 80,
+      toJSON: () => ({}),
+    }),
+  };
+  const events: unknown[] = [];
+  const input = new BrowserInputSource(target as unknown as HTMLElement, { textInput: "target" });
+
+  input.attach({
+    emit: (type: string, event: unknown) => void events.push([type, event]),
+  } as never);
+
+  listeners.get("input")?.({
+    target,
+    preventDefault: () => prevented.push("input"),
+  } as unknown as Event);
+
+  assertEquals(target.value, "");
+  assertEquals(prevented, ["input"]);
+  assertEquals(events, [
+    ["keyPress", { key: "a", meta: false, ctrl: false, shift: false, buffer: new TextEncoder().encode("A") }],
+    ["keyPress", { key: "z", meta: false, ctrl: false, shift: false, buffer: new TextEncoder().encode("z") }],
+    ["keyPress", { key: "space", meta: false, ctrl: false, shift: false, buffer: new TextEncoder().encode(" ") }],
+    ["keyPress", { key: "return", meta: false, ctrl: false, shift: false, buffer: new TextEncoder().encode("\n") }],
+  ]);
+
+  input.dispose();
+});
+
 Deno.test("renderDomNodeToHtml serializes semantic DOM nodes safely", () => {
   assertEquals(
     renderDomNodeToHtml({

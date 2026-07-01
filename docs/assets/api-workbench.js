@@ -8126,7 +8126,8 @@ var BrowserPlatform = class {
       cellWidth,
       cellHeight,
       touchAction: options.touchAction,
-      userSelect: options.userSelect
+      userSelect: options.userSelect,
+      textInput: options.textInput
     });
     this.lifecycle = options.lifecycle ?? new NoopLifecycleController("browser");
     this.#scheduler = options.scheduler ?? defaultBrowserFrameScheduler();
@@ -8161,24 +8162,29 @@ var BrowserInputSource = class {
   #cellHeight;
   #touchAction;
   #userSelect;
+  #textInputMode;
   #emitter;
   #attached = false;
   #removeListeners = [];
   #restoreStyles;
+  #keyboardTarget;
+  #removeKeyboardTarget;
   constructor(target, options = {}) {
     this.#target = target;
     this.#cellWidth = Math.max(1, options.cellWidth ?? 10);
     this.#cellHeight = Math.max(1, options.cellHeight ?? 20);
     this.#touchAction = options.touchAction ?? "none";
     this.#userSelect = options.userSelect ?? "none";
+    this.#textInputMode = options.textInput ?? "auto";
   }
   attach(emitter) {
     this.detach();
     this.#emitter = emitter;
     this.#target.tabIndex = this.#target.tabIndex < 0 ? 0 : this.#target.tabIndex;
     this.#restoreStyles = applyInputStyles(this.#target, this.#touchAction, this.#userSelect);
+    const keyboardTarget = this.#createKeyboardTarget();
     this.#removeListeners = [
-      addListener(this.#target, "keydown", (event) => this.#handleKey(event)),
+      addListener(keyboardTarget, "keydown", (event) => this.#handleKey(event)),
       addListener(
         this.#target,
         "pointerdown",
@@ -8195,9 +8201,10 @@ var BrowserInputSource = class {
         passive: false
       }),
       addListener(this.#target, "wheel", (event) => this.#handleWheel(event), { passive: false }),
-      addListener(this.#target, "paste", (event) => this.#handlePaste(event), { passive: false }),
-      addListener(this.#target, "focus", () => this.#handleFocus(true)),
-      addListener(this.#target, "blur", () => this.#handleFocus(false))
+      addListener(keyboardTarget, "input", (event) => this.#handleTextInput(event), { passive: false }),
+      addListener(keyboardTarget, "paste", (event) => this.#handlePaste(event), { passive: false }),
+      addListener(keyboardTarget, "focus", () => this.#handleFocus(true)),
+      addListener(keyboardTarget, "blur", () => this.#handleFocus(false))
     ];
     this.#attached = true;
   }
@@ -8206,6 +8213,9 @@ var BrowserInputSource = class {
     this.#removeListeners = [];
     this.#restoreStyles?.();
     this.#restoreStyles = void 0;
+    this.#removeKeyboardTarget?.();
+    this.#removeKeyboardTarget = void 0;
+    this.#keyboardTarget = void 0;
     this.#emitter = void 0;
     this.#attached = false;
   }
@@ -8229,7 +8239,7 @@ var BrowserInputSource = class {
   }
   #handlePointer(event, release) {
     if (!release) {
-      this.#target.focus({ preventScroll: true });
+      (this.#keyboardTarget ?? this.#target).focus({ preventScroll: true });
       this.#target.setPointerCapture?.(event.pointerId);
     } else if (this.#target.hasPointerCapture?.(event.pointerId)) {
       this.#target.releasePointerCapture?.(event.pointerId);
@@ -8296,6 +8306,14 @@ var BrowserInputSource = class {
     });
     event.preventDefault();
   }
+  #handleTextInput(event) {
+    const target = event.target;
+    const text = typeof target.value === "string" ? target.value : "";
+    if (!text) return;
+    target.value = "";
+    for (const char of text) this.#emitCharacter(char);
+    event.preventDefault();
+  }
   #handleFocus(focused) {
     this.#emitter?.emit("terminalFocus", {
       key: "focus",
@@ -8309,6 +8327,26 @@ var BrowserInputSource = class {
       x: Math.max(0, Math.floor((event.clientX - rect.left) / this.#cellWidth)),
       y: Math.max(0, Math.floor((event.clientY - rect.top) / this.#cellHeight))
     };
+  }
+  #createKeyboardTarget() {
+    const hidden = this.#textInputMode !== false && this.#textInputMode !== "target" ? createHiddenTextInput(this.#target) : void 0;
+    if (hidden) {
+      this.#keyboardTarget = hidden.element;
+      this.#removeKeyboardTarget = hidden.dispose;
+      return hidden.element;
+    }
+    this.#keyboardTarget = this.#target;
+    return this.#target;
+  }
+  #emitCharacter(char) {
+    const key = char === "\n" || char === "\r" ? "return" : char === " " ? "space" : char.toLowerCase();
+    this.#emitter?.emit("keyPress", {
+      key,
+      meta: false,
+      ctrl: false,
+      shift: false,
+      buffer: new TextEncoder().encode(char)
+    });
   }
 };
 function sizeFromElement(root2, cellWidth, cellHeight) {
@@ -8335,6 +8373,35 @@ function applyInputStyles(target, touchAction, userSelect) {
     style2.touchAction = previousTouchAction;
     style2.userSelect = previousUserSelect;
     style2.webkitUserSelect = previousWebkitUserSelect;
+  };
+}
+function createHiddenTextInput(target) {
+  const document2 = target.ownerDocument ?? globalThis.document;
+  if (!document2?.createElement) return void 0;
+  const textarea = document2.createElement("textarea");
+  textarea.tabIndex = 0;
+  textarea.setAttribute("aria-hidden", "true");
+  textarea.setAttribute("autocapitalize", "off");
+  textarea.setAttribute("autocomplete", "off");
+  textarea.setAttribute("autocorrect", "off");
+  textarea.setAttribute("spellcheck", "false");
+  textarea.style.position = "fixed";
+  textarea.style.left = "0";
+  textarea.style.top = "0";
+  textarea.style.width = "1px";
+  textarea.style.height = "1px";
+  textarea.style.opacity = "0";
+  textarea.style.pointerEvents = "none";
+  textarea.style.zIndex = "-1";
+  textarea.style.resize = "none";
+  textarea.style.border = "0";
+  textarea.style.padding = "0";
+  textarea.style.margin = "0";
+  const parent = document2.body ?? target;
+  parent.appendChild(textarea);
+  return {
+    element: textarea,
+    dispose: () => textarea.remove()
   };
 }
 function browserButton(button) {
