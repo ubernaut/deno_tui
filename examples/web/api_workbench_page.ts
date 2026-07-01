@@ -657,11 +657,17 @@ function renderMobileCommandStrip(frame: string[]): void {
     { action: "wide", label: "Wide", tone: "muted" },
     { action: "dense", label: "Dense", tone: "muted" },
   ];
-  const row = 1;
+  let row = 1;
   let column = 1;
   for (const entry of actions) {
     if (column >= cols() - 1) break;
-    const maxWidth = Math.max(0, cols() - column - 1);
+    let maxWidth = Math.max(0, cols() - column - 1);
+    const desiredWidth = textWidth(buttonText(entry.label));
+    if (desiredWidth > maxWidth && row < 2) {
+      row += 1;
+      column = 1;
+      maxWidth = Math.max(0, cols() - column - 1);
+    }
     const width = writeButton(frame, row, column, entry.label, {
       state: entry.active ? "active" : "base",
       tone: entry.tone ?? "default",
