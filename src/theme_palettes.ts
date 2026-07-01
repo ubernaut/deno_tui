@@ -1,5 +1,5 @@
 // Copyright 2023 Im-Beast. MIT license.
-import { type AnsiStyleSpec, createAnsiStyle, emptyStyle } from "./theme_ansi.ts";
+import { createAnsiStyleMap, emptyStyle } from "./theme_ansi.ts";
 import type { ThemePalette, ThemePaletteName, ThemePaletteReference, ThemeTokenName, ThemeTokens } from "./theme.ts";
 
 /** Built-in semantic theme palette token definitions. */
@@ -14,7 +14,7 @@ export const themePalettesInternal: Record<ThemePaletteName, Partial<ThemeTokens
     surface: emptyStyle,
   },
   neon: {
-    ...createAnsiThemeTokensInternal({
+    ...createAnsiStyleMap<ThemeTokenName>({
       foreground: { foreground: [230, 255, 246] },
       muted: { foreground: [104, 124, 132] },
       accent: { foreground: [31, 231, 210] },
@@ -25,7 +25,7 @@ export const themePalettesInternal: Record<ThemePaletteName, Partial<ThemeTokens
     }),
   },
   terminal: {
-    ...createAnsiThemeTokensInternal({
+    ...createAnsiStyleMap<ThemeTokenName>({
       foreground: { foreground: "white" },
       muted: { foreground: "brightBlack" },
       accent: { foreground: "cyan" },
@@ -69,14 +69,6 @@ export function resolveThemePaletteTokensInternal(palette: ThemePaletteReference
 /** Returns the stable palette id for built-in or custom palette references. */
 export function themePaletteIdInternal(palette: ThemePaletteReference): string {
   return typeof palette === "string" ? palette : palette.id;
-}
-
-function createAnsiThemeTokensInternal(specs: Partial<Record<ThemeTokenName, AnsiStyleSpec>>): Partial<ThemeTokens> {
-  const tokens: Partial<ThemeTokens> = {};
-  for (const [name, spec] of Object.entries(specs) as [ThemeTokenName, AnsiStyleSpec][]) {
-    tokens[name] = createAnsiStyle(spec);
-  }
-  return tokens;
 }
 
 function titleCase(value: string): string {

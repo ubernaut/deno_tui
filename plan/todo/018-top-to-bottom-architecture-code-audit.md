@@ -414,6 +414,8 @@ Work:
 - [ ] Split theme code by responsibility: ANSI/style primitives, component definitions, manifest parsing/validation,
       provider/registry, previews/reports, and standard packs.
   - [x] Extracted standalone ANSI style primitives into `src/theme_ansi.ts` while preserving `src/theme.ts` re-exports.
+  - [x] Moved ANSI token-map construction into `src/theme_ansi.ts` as a generic `createAnsiStyleMap()` helper, removing
+        duplicate token-building loops from the public facade and built-in palette module.
   - [x] Extracted catalog-driven standard component definitions into `src/theme_standard_components.ts` behind the
         existing `src/theme.ts` facade.
   - [x] Extracted built-in palette token construction and palette normalization helpers into `src/theme_palettes.ts`,

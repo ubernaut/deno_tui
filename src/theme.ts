@@ -11,6 +11,7 @@ import {
   type AnsiRgbColor as AnsiRgbColorInternal,
   type AnsiStyleSpec as AnsiStyleSpecInternal,
   createAnsiStyle as createAnsiStyleInternal,
+  createAnsiStyleMap,
   emptyStyle as emptyStyleInternal,
   replaceEmptyStyle as replaceEmptyStyleInternal,
   type Style as StyleInternal,
@@ -89,11 +90,7 @@ export type AnsiThemeTokenSpecs = Partial<Record<ThemeTokenName, AnsiStyleSpec>>
 
 /** Creates an ansi Theme Tokens. */
 export function createAnsiThemeTokens(specs: AnsiThemeTokenSpecs): Partial<ThemeTokens> {
-  const tokens: Partial<ThemeTokens> = {};
-  for (const [name, spec] of Object.entries(specs) as [ThemeTokenName, AnsiStyleSpec][]) {
-    tokens[name] = createAnsiStyle(spec);
-  }
-  return tokens;
+  return createAnsiStyleMap(specs) as Partial<ThemeTokens>;
 }
 
 /** Applies default values to properties (lower one hierarchy or `emptyStyle`) that aren't set */

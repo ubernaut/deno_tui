@@ -77,6 +77,17 @@ export function createAnsiStyle(spec: AnsiStyleSpec): Style {
   return (value) => `${open}${value}\x1b[0m`;
 }
 
+/** Creates a style map from named ANSI style specs. */
+export function createAnsiStyleMap<TokenName extends string>(
+  specs: Partial<Record<TokenName, AnsiStyleSpec>>,
+): Partial<Record<TokenName, Style>> {
+  const styles: Partial<Record<TokenName, Style>> = {};
+  for (const [name, spec] of Object.entries(specs) as [TokenName, AnsiStyleSpec][]) {
+    styles[name] = createAnsiStyle(spec);
+  }
+  return styles;
+}
+
 function ansiStyleCodes(spec: AnsiStyleSpec): number[] {
   const codes: number[] = [];
   if (spec.bold) codes.push(1);

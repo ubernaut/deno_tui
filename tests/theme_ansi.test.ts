@@ -1,5 +1,9 @@
 import { assertEquals } from "./deps.ts";
-import { createAnsiStyle as createAnsiStyleFromModule, emptyStyle as emptyStyleFromModule } from "../src/theme_ansi.ts";
+import {
+  createAnsiStyle as createAnsiStyleFromModule,
+  createAnsiStyleMap,
+  emptyStyle as emptyStyleFromModule,
+} from "../src/theme_ansi.ts";
 import {
   createStandardComponentThemeDefinitions as createStandardComponentThemeDefinitionsFromModule,
   standardThemeComponentNames as standardThemeComponentNamesFromModule,
@@ -15,6 +19,7 @@ Deno.test("theme ANSI module matches theme public re-exports", () => {
   const spec = { foreground: "brightCyan" as const, background: [4, 8, 12] as const, bold: true };
   assertEquals(createAnsiStyle(spec)("x"), createAnsiStyleFromModule(spec)("x"));
   assertEquals(emptyStyle("plain"), emptyStyleFromModule("plain"));
+  assertEquals(createAnsiStyleMap<"accent">({ accent: spec }).accent?.("x"), createAnsiStyle(spec)("x"));
 });
 
 Deno.test("theme standard component module matches theme public re-exports", () => {
