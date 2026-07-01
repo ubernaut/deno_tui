@@ -8938,6 +8938,7 @@ var TerminalScreenController = class {
   #cursorVisible = true;
   #cursorStyle = { shape: "block", blinking: true };
   #privateModes = /* @__PURE__ */ new Set();
+  #originMode = false;
   constructor(options = {}) {
     this.#columns = normalizeDimension(options.columns, DEFAULT_COLUMNS);
     this.#rows = normalizeDimension(options.rows, DEFAULT_ROWS);
@@ -9069,8 +9070,7 @@ var TerminalScreenController = class {
         break;
       case "H":
       case "f":
-        this.#state.cursor.row = clamp3((params[0] ?? 1) - 1, 0, this.#rows - 1);
-        this.#state.cursor.column = clamp3((params[1] ?? 1) - 1, 0, this.#columns - 1);
+        this.#setCursorPosition(params[0] ?? 1, params[1] ?? 1);
         break;
       case "A":
         this.#state.cursor.row = clamp3(this.#state.cursor.row - (params[0] || 1), 0, this.#rows - 1);
@@ -9100,7 +9100,14 @@ var TerminalScreenController = class {
         this.#insertLines(params[0] || 1);
         break;
       case "M":
-        this.#deleteLines(params[0] || 1);
+        if (sequence.kind === "esc") this.#reverseIndex();
+        else this.#deleteLines(params[0] || 1);
+        break;
+      case "S":
+        this.#scrollRegionUp(this.#scrollRegion.top, this.#scrollRegion.bottom, params[0] || 1);
+        break;
+      case "T":
+        this.#scrollRegionDown(this.#scrollRegion.top, this.#scrollRegion.bottom, params[0] || 1);
         break;
       case "r":
         this.#setScrollRegion(params);
@@ -9150,9 +9157,30 @@ var TerminalScreenController = class {
       else {
         if (enabled) this.#privateModes.add(mode);
         else this.#privateModes.delete(mode);
+        if (mode === 6) {
+          this.#originMode = enabled;
+          this.#state.cursor = {
+            column: 0,
+            row: enabled ? this.#scrollRegion.top : 0
+          };
+        }
         if (mode === 1049) enabled ? this.#enterAlternate() : this.#exitAlternate();
       }
     }
+  }
+  #setCursorPosition(row, column) {
+    const nextColumn = clamp3(column - 1, 0, this.#columns - 1);
+    if (!this.#originMode) {
+      this.#state.cursor = {
+        column: nextColumn,
+        row: clamp3(row - 1, 0, this.#rows - 1)
+      };
+      return;
+    }
+    this.#state.cursor = {
+      column: nextColumn,
+      row: clamp3(this.#scrollRegion.top + row - 1, this.#scrollRegion.top, this.#scrollRegion.bottom)
+    };
   }
   #applyCursorStyle(style2) {
     switch (style2) {
@@ -9276,6 +9304,20 @@ var TerminalScreenController = class {
       this.#state.cells.splice(bottom, 0, blankRow(this.#columns));
     }
   }
+  #scrollRegionDown(top, bottom, count) {
+    const amount = clamp3(Math.floor(count), 1, bottom - top + 1);
+    for (let index = 0; index < amount; index += 1) {
+      this.#state.cells.splice(bottom, 1);
+      this.#state.cells.splice(top, 0, blankRow(this.#columns));
+    }
+  }
+  #reverseIndex() {
+    if (this.#state.cursor.row === this.#scrollRegion.top) {
+      this.#scrollRegionDown(this.#scrollRegion.top, this.#scrollRegion.bottom, 1);
+      return;
+    }
+    this.#state.cursor.row = Math.max(0, this.#state.cursor.row - 1);
+  }
   #enterAlternate() {
     if (this.#mainState) return;
     this.#mainState = cloneState(this.#state);
@@ -9287,14 +9329,15 @@ var TerminalScreenController = class {
     this.#state = this.#mainState;
     this.#mainState = void 0;
     this.#scrollRegion = fullScrollRegion(this.#rows);
+    this.#originMode = false;
   }
 };
 function parseControlSequence(value) {
   const osc = parseOscSequence(value);
   if (osc) return osc;
-  if (value.startsWith("\x1B7") || value.startsWith("\x1B8")) {
+  if (value.startsWith("\x1B7") || value.startsWith("\x1B8") || value.startsWith("\x1BM")) {
     return {
-      kind: "csi",
+      kind: "esc",
       private: false,
       params: "",
       intermediates: "",

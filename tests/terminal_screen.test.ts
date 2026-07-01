@@ -194,6 +194,41 @@ Deno.test("TerminalScreenController applies line edits inside scroll regions", (
   assertEquals(screen.textRows(), ["row1", "new", "row3", ""]);
 });
 
+Deno.test("TerminalScreenController supports reverse index inside scroll regions", () => {
+  const screen = new TerminalScreenController({ columns: 8, rows: 4 });
+
+  screen.write("row1\x1b[2;1Hrow2\x1b[3;1Hrow3\x1b[4;1Hrow4");
+  screen.write("\x1b[2;4r\x1b[2;1H\x1bMnew");
+
+  assertEquals(screen.textRows(), ["row1", "new", "row2", "row3"]);
+  assertEquals(screen.inspect().cursor, { column: 3, row: 1 });
+});
+
+Deno.test("TerminalScreenController supports explicit scroll up and down controls", () => {
+  const screen = new TerminalScreenController({ columns: 8, rows: 4 });
+
+  screen.write("row1\x1b[2;1Hrow2\x1b[3;1Hrow3\x1b[4;1Hrow4");
+  screen.write("\x1b[2;4r\x1b[1S");
+  assertEquals(screen.textRows(), ["row1", "row3", "row4", ""]);
+
+  screen.write("\x1b[2T");
+  assertEquals(screen.textRows(), ["row1", "", "", "row3"]);
+});
+
+Deno.test("TerminalScreenController applies DEC origin mode relative to scroll regions", () => {
+  const screen = new TerminalScreenController({ columns: 8, rows: 5 });
+
+  screen.write("\x1b[2;4r\x1b[?6h\x1b[1;1Htop\x1b[3;5Hbot");
+  assertEquals(screen.textRows(), ["", "top", "", "    bot", ""]);
+  assertEquals(screen.inspect().cursor, { column: 7, row: 3 });
+  assertEquals(screen.inspect().privateModes, [6]);
+
+  screen.write("\x1b[?6l\x1b[1;1Hroot");
+  assertEquals(screen.textRows(), ["root", "top", "", "    bot", ""]);
+  assertEquals(screen.inspect().cursor, { column: 4, row: 0 });
+  assertEquals(screen.inspect().privateModes, []);
+});
+
 Deno.test("TerminalScreenController clamps insert and delete edits to screen bounds", () => {
   const screen = new TerminalScreenController({ columns: 6, rows: 3 });
 

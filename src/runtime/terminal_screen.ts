@@ -66,6 +66,7 @@ export class TerminalScreenController {
   #cursorVisible = true;
   #cursorStyle: TerminalScreenCursorStyle = { shape: "block", blinking: true };
   #privateModes = new Set<number>();
+  #originMode = false;
 
   constructor(options: TerminalScreenControllerOptions = {}) {
     this.#columns = normalizeDimension(options.columns, DEFAULT_COLUMNS);
@@ -213,8 +214,7 @@ export class TerminalScreenController {
         break;
       case "H":
       case "f":
-        this.#state.cursor.row = clamp((params[0] ?? 1) - 1, 0, this.#rows - 1);
-        this.#state.cursor.column = clamp((params[1] ?? 1) - 1, 0, this.#columns - 1);
+        this.#setCursorPosition(params[0] ?? 1, params[1] ?? 1);
         break;
       case "A":
         this.#state.cursor.row = clamp(this.#state.cursor.row - (params[0] || 1), 0, this.#rows - 1);
@@ -244,7 +244,14 @@ export class TerminalScreenController {
         this.#insertLines(params[0] || 1);
         break;
       case "M":
-        this.#deleteLines(params[0] || 1);
+        if (sequence.kind === "esc") this.#reverseIndex();
+        else this.#deleteLines(params[0] || 1);
+        break;
+      case "S":
+        this.#scrollRegionUp(this.#scrollRegion.top, this.#scrollRegion.bottom, params[0] || 1);
+        break;
+      case "T":
+        this.#scrollRegionDown(this.#scrollRegion.top, this.#scrollRegion.bottom, params[0] || 1);
         break;
       case "r":
         this.#setScrollRegion(params);
@@ -298,9 +305,31 @@ export class TerminalScreenController {
       else {
         if (enabled) this.#privateModes.add(mode);
         else this.#privateModes.delete(mode);
+        if (mode === 6) {
+          this.#originMode = enabled;
+          this.#state.cursor = {
+            column: 0,
+            row: enabled ? this.#scrollRegion.top : 0,
+          };
+        }
         if (mode === 1049) enabled ? this.#enterAlternate() : this.#exitAlternate();
       }
     }
+  }
+
+  #setCursorPosition(row: number, column: number): void {
+    const nextColumn = clamp(column - 1, 0, this.#columns - 1);
+    if (!this.#originMode) {
+      this.#state.cursor = {
+        column: nextColumn,
+        row: clamp(row - 1, 0, this.#rows - 1),
+      };
+      return;
+    }
+    this.#state.cursor = {
+      column: nextColumn,
+      row: clamp(this.#scrollRegion.top + row - 1, this.#scrollRegion.top, this.#scrollRegion.bottom),
+    };
   }
 
   #applyCursorStyle(style: number): void {
@@ -435,6 +464,22 @@ export class TerminalScreenController {
     }
   }
 
+  #scrollRegionDown(top: number, bottom: number, count: number): void {
+    const amount = clamp(Math.floor(count), 1, bottom - top + 1);
+    for (let index = 0; index < amount; index += 1) {
+      this.#state.cells.splice(bottom, 1);
+      this.#state.cells.splice(top, 0, blankRow(this.#columns));
+    }
+  }
+
+  #reverseIndex(): void {
+    if (this.#state.cursor.row === this.#scrollRegion.top) {
+      this.#scrollRegionDown(this.#scrollRegion.top, this.#scrollRegion.bottom, 1);
+      return;
+    }
+    this.#state.cursor.row = Math.max(0, this.#state.cursor.row - 1);
+  }
+
   #enterAlternate(): void {
     if (this.#mainState) return;
     this.#mainState = cloneState(this.#state);
@@ -447,6 +492,7 @@ export class TerminalScreenController {
     this.#state = this.#mainState;
     this.#mainState = undefined;
     this.#scrollRegion = fullScrollRegion(this.#rows);
+    this.#originMode = false;
   }
 }
 
@@ -456,7 +502,7 @@ interface TerminalScreenScrollRegion {
 }
 
 interface ParsedControlSequence {
-  kind: "csi" | "osc";
+  kind: "csi" | "osc" | "esc";
   private: boolean;
   params: string;
   intermediates: string;
@@ -467,9 +513,9 @@ interface ParsedControlSequence {
 function parseControlSequence(value: string): ParsedControlSequence | undefined {
   const osc = parseOscSequence(value);
   if (osc) return osc;
-  if (value.startsWith("\x1b7") || value.startsWith("\x1b8")) {
+  if (value.startsWith("\x1b7") || value.startsWith("\x1b8") || value.startsWith("\x1bM")) {
     return {
-      kind: "csi",
+      kind: "esc",
       private: false,
       params: "",
       intermediates: "",
