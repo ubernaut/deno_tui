@@ -287,6 +287,8 @@ Work:
   - [x] Extracted process stat parsing and process sort comparators into `app/system_metrics_process.ts` with focused
         tests, keeping the main monitor module closer to sampling orchestration.
 - [x] Add GPU provider abstraction for NVIDIA now and future AMD/Intel support later.
+  - [x] Extracted the NVIDIA GPU provider, row parser, and unavailable GPU snapshot factory into
+        `app/system_metrics_gpu.ts` with direct parser tests for nullable telemetry and clamped utilization.
 - [x] Extract GPU monitor visualization rendering into a dedicated module with injected chart/meter primitives and
       focused tests for offline, pressure, alert, and narrow-panel behavior.
 - [x] Extract CPU, memory, disk, temperature, and process monitor visualization rendering into a dedicated module with
