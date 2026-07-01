@@ -3333,6 +3333,256 @@ function tileRects(bounds, options) {
   };
 }
 
+// src/layout/window_manager.ts
+var WINDOW_MANAGER_LAYER_Z_INDEX = {
+  closed: 0,
+  minimized: 1e3,
+  window: 2e3,
+  fullscreen: 3e3
+};
+var WindowManagerController = class {
+  windows;
+  activeId;
+  fullscreenId;
+  tileOptions;
+  constructor(options) {
+    const windows = normalizeWindows(options.windows);
+    this.windows = new Signal(windows, { deepObserve: true });
+    this.activeId = new Signal(normalizeWindowId(windows, options.activeId) ?? firstOpenWindow(windows)?.id);
+    this.fullscreenId = new Signal(normalizeWindowId(windows, options.fullscreenId ?? void 0));
+    this.tileOptions = new Signal({ ...options.tileOptions ?? {} }, { deepObserve: true });
+    this.#repairState();
+  }
+  ids(options = {}) {
+    return this.orderedWindows(options).map((entry) => entry.id);
+  }
+  orderedWindows(options = {}) {
+    return [...this.windows.peek()].filter((entry) => options.includeClosed || windowState(entry) !== "closed").sort((left, right) => (left.order ?? 0) - (right.order ?? 0));
+  }
+  active() {
+    return this.windows.peek().find((entry) => entry.id === this.activeId.peek());
+  }
+  upsert(window) {
+    const windows = this.windows.peek();
+    const existing = windows.find((entry) => entry.id === window.id);
+    const next = {
+      ...existing,
+      ...window,
+      state: window.state ?? existing?.state ?? "normal",
+      order: window.order ?? existing?.order ?? nextWindowOrder(windows)
+    };
+    this.windows.value = existing ? windows.map((entry) => entry.id === window.id ? next : entry) : [...windows, next];
+    this.#repairState();
+    return this.#window(window.id);
+  }
+  rename(id2, title) {
+    const window = this.#window(id2);
+    if (!window) return void 0;
+    const normalizedTitle = title.trim();
+    if (!normalizedTitle) return window;
+    this.windows.value = this.windows.peek().map(
+      (entry) => entry.id === id2 ? { ...entry, title: normalizedTitle } : entry
+    );
+    this.#repairState();
+    return this.#window(id2);
+  }
+  move(id2, delta) {
+    const windows = this.orderedWindows({ includeClosed: true });
+    const index = windows.findIndex((entry) => entry.id === id2);
+    if (index < 0) return void 0;
+    const target = Math.max(0, Math.min(windows.length - 1, index + Math.trunc(delta)));
+    if (target === index) return this.#window(id2);
+    const reordered = [...windows];
+    const [window] = reordered.splice(index, 1);
+    reordered.splice(target, 0, window);
+    const order = new Map(reordered.map((entry, nextOrder) => [entry.id, nextOrder]));
+    this.windows.value = this.windows.peek().map((entry) => ({ ...entry, order: order.get(entry.id) ?? entry.order }));
+    this.#repairState();
+    return this.#window(id2);
+  }
+  focus(id2) {
+    const window = this.#window(id2);
+    if (!window || windowState(window) === "closed") return void 0;
+    this.#setState(id2, "normal");
+    this.activeId.value = id2;
+    if (this.fullscreenId.peek()) this.fullscreenId.value = id2;
+    this.#repairState();
+    return this.active();
+  }
+  focusNext(delta = 1) {
+    const ids = this.ids();
+    if (ids.length === 0) return void 0;
+    const current = Math.max(0, ids.indexOf(this.activeId.peek() ?? ""));
+    return this.focus(ids[(current + delta + ids.length) % ids.length]);
+  }
+  minimize(id2 = this.activeId.peek()) {
+    if (!id2) return void 0;
+    const window = this.#window(id2);
+    if (!window || windowState(window) === "closed") return void 0;
+    this.#setState(id2, "minimized");
+    if (this.fullscreenId.peek() === id2) this.fullscreenId.value = void 0;
+    const next = this.orderedWindows().find((entry) => windowState(entry) !== "minimized");
+    this.activeId.value = next?.id ?? id2;
+    this.#repairState();
+    return this.#window(id2);
+  }
+  close(id2 = this.activeId.peek()) {
+    if (!id2) return void 0;
+    const window = this.#window(id2);
+    if (!window || window.closable === false) return window;
+    this.#setState(id2, "closed");
+    if (this.fullscreenId.peek() === id2) this.fullscreenId.value = void 0;
+    const next = this.orderedWindows().find((entry) => windowState(entry) !== "minimized");
+    this.activeId.value = next?.id;
+    this.#repairState();
+    return this.#window(id2);
+  }
+  restore(id2) {
+    if (id2) {
+      this.#setState(id2, "normal");
+      this.activeId.value = id2;
+      this.#repairState();
+      return this.#window(id2);
+    }
+    this.fullscreenId.value = void 0;
+    this.windows.value = this.windows.peek().map(
+      (entry) => windowState(entry) === "minimized" ? { ...entry, state: "normal" } : entry
+    );
+    this.#repairState();
+    return this.active();
+  }
+  fullscreen(id2 = this.activeId.peek()) {
+    if (!id2) return void 0;
+    const window = this.#window(id2);
+    if (!window || windowState(window) === "closed") return void 0;
+    this.#setState(id2, "normal");
+    this.fullscreenId.value = this.fullscreenId.peek() === id2 ? void 0 : id2;
+    this.activeId.value = id2;
+    this.#repairState();
+    return this.active();
+  }
+  selectTab(id2) {
+    const window = this.focus(id2);
+    if (window) this.fullscreenId.value = id2;
+    return window;
+  }
+  layout(options) {
+    const bounds = options.bounds;
+    const rects = /* @__PURE__ */ new Map();
+    const fullscreenId = this.fullscreenId.peek();
+    const windows = this.orderedWindows({ includeClosed: true });
+    const visible = windows.filter((entry) => windowState(entry) === "normal");
+    let contentHeight = bounds.height;
+    if (fullscreenId) {
+      const fullscreen = windows.find((entry) => entry.id === fullscreenId && windowState(entry) !== "closed");
+      if (fullscreen) rects.set(fullscreen.id, bounds);
+    } else if (visible.length > 0) {
+      const minWidth = Math.max(20, ...visible.map((entry) => entry.minWidth ?? 0));
+      const minHeight = Math.max(6, ...visible.map((entry) => entry.minHeight ?? 0));
+      const layout = tileRects(bounds, {
+        itemCount: visible.length,
+        minTileWidth: minWidth,
+        minTileHeight: minHeight,
+        maxColumns: bounds.width >= 172 ? 4 : 3,
+        gap: 1,
+        targetAspectRatio: 2.25,
+        allowVerticalOverflow: true,
+        ...this.tileOptions.peek(),
+        ...options.tileOptions
+      });
+      for (const [index, entry] of visible.entries()) {
+        rects.set(entry.id, layout.rects[index]);
+      }
+      contentHeight = Math.max(bounds.height, layout.contentHeight);
+    }
+    const inspected = windows.map(
+      (entry) => inspectWindow(entry, this.activeId.peek(), fullscreenId, rects.get(entry.id))
+    );
+    return {
+      bounds,
+      contentHeight,
+      activeId: this.activeId.peek(),
+      fullscreenId,
+      windows: inspected,
+      visible: inspected.filter((entry) => entry.rect !== void 0),
+      tabs: inspected.filter((entry) => !entry.closed),
+      zOrder: windowManagerZOrder(inspected)
+    };
+  }
+  inspect() {
+    return this.layout({ bounds: { column: 0, row: 0, width: 0, height: 0 } });
+  }
+  dispose() {
+    this.windows.dispose();
+    this.activeId.dispose();
+    this.fullscreenId.dispose();
+    this.tileOptions.dispose();
+  }
+  #window(id2) {
+    return this.windows.peek().find((entry) => entry.id === id2);
+  }
+  #setState(id2, state) {
+    this.windows.value = this.windows.peek().map((entry) => entry.id === id2 ? { ...entry, state } : entry);
+  }
+  #repairState() {
+    const windows = this.orderedWindows();
+    if (!windows.some((entry) => entry.id === this.activeId.peek())) {
+      this.activeId.value = firstOpenWindow(windows)?.id;
+    }
+    const fullscreenId = this.fullscreenId.peek();
+    if (fullscreenId && !windows.some((entry) => entry.id === fullscreenId && windowState(entry) !== "closed")) {
+      this.fullscreenId.value = void 0;
+    }
+  }
+};
+function windowManagerZOrder(windows) {
+  return [...windows].filter((entry) => !entry.closed).sort((left, right) => left.zIndex - right.zIndex || (left.order ?? 0) - (right.order ?? 0));
+}
+function normalizeWindows(windows) {
+  return windows.map((entry, index) => ({
+    ...entry,
+    state: entry.state ?? "normal",
+    order: entry.order ?? index
+  }));
+}
+function nextWindowOrder(windows) {
+  return windows.length === 0 ? 0 : Math.max(...windows.map((entry) => entry.order ?? 0)) + 1;
+}
+function normalizeWindowId(windows, id2) {
+  return id2 && windows.some((entry) => entry.id === id2 && windowState(entry) !== "closed") ? id2 : void 0;
+}
+function firstOpenWindow(windows) {
+  return windows.find((entry) => windowState(entry) !== "closed");
+}
+function windowState(window) {
+  return window.state ?? "normal";
+}
+function inspectWindow(window, activeId, fullscreenId, rect) {
+  const state = windowState(window);
+  const fullscreen = window.id === fullscreenId;
+  const active2 = window.id === activeId;
+  const layer = windowLayer(state, fullscreen);
+  return {
+    ...window,
+    state,
+    layer,
+    zIndex: windowZIndex(window, layer, active2),
+    active: active2,
+    fullscreen,
+    minimized: state === "minimized",
+    closed: state === "closed",
+    rect
+  };
+}
+function windowLayer(state, fullscreen) {
+  if (state === "closed") return "closed";
+  if (state === "minimized") return "minimized";
+  return fullscreen ? "fullscreen" : "window";
+}
+function windowZIndex(window, layer, active2) {
+  return WINDOW_MANAGER_LAYER_Z_INDEX[layer] + (window.order ?? 0) + (active2 ? 500 : 0);
+}
+
 // src/layout/style.ts
 var AUTO_LAYOUT_LENGTH = { unit: "auto", value: 0 };
 var ZERO_BOX_EDGES = { top: 0, right: 0, bottom: 0, left: 0 };
@@ -11134,27 +11384,35 @@ function adjustTileDensity(delta) {
 }
 function workspaceLayout(bounds) {
   const rects = /* @__PURE__ */ new Map();
-  const max2 = maximized.peek();
-  if (max2) {
-    rects.set(max2, bounds);
-    return { bounds, contentHeight: bounds.height, rects };
-  }
-  const visible = panelIds.filter((id2) => !minimized.peek()[id2]);
-  if (visible.length === 0) return { bounds, contentHeight: bounds.height, rects };
   const densityOffset = tileDensity.peek() * 4;
-  const layout = tileRects(bounds, {
-    itemCount: visible.length,
-    minTileWidth: Math.max(26, 38 - densityOffset),
-    minTileHeight: 10,
-    maxColumns: bounds.width >= 172 ? 4 : 3,
-    targetAspectRatio: 2.25 + tileDensity.peek() * 0.12,
-    allowVerticalOverflow: true,
-    gap: 1
+  const fullscreenId = maximized.peek() ?? void 0;
+  const manager = new WindowManagerController({
+    activeId: active.peek(),
+    fullscreenId,
+    windows: panelIds.map((id2, order) => ({
+      id: id2,
+      title: id2,
+      order,
+      state: minimized.peek()[id2] && id2 !== fullscreenId ? "minimized" : "normal",
+      minWidth: 26,
+      minHeight: 10
+    }))
   });
-  for (const [index, id2] of visible.entries()) {
-    const rect = layout.rects[index];
-    if (rect) rects.set(id2, rect);
+  const layout = manager.layout({
+    bounds,
+    tileOptions: {
+      minTileWidth: Math.max(26, 38 - densityOffset),
+      minTileHeight: 10,
+      maxColumns: bounds.width >= 172 ? 4 : 3,
+      targetAspectRatio: 2.25 + tileDensity.peek() * 0.12,
+      allowVerticalOverflow: true,
+      gap: 1
+    }
+  });
+  for (const entry of layout.visible) {
+    if (entry.rect) rects.set(entry.id, entry.rect);
   }
+  manager.dispose();
   return { bounds, contentHeight: Math.max(bounds.height, layout.contentHeight), rects };
 }
 function translateWorkspaceHits(startIndex, columnDelta, rowDelta, clip) {

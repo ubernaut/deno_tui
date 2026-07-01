@@ -47,8 +47,8 @@ import {
   TextObject,
   type TextRectangle,
   textWidth,
-  tileRects,
   toStyledCells,
+  WindowManagerController,
   type WorkbenchPanelWorkspaceState,
   wrapTextBoxLines,
 } from "../../mod.web.ts";
@@ -1351,27 +1351,36 @@ function workspaceLayout(bounds: Rectangle): {
   rects: Map<PanelId, Rectangle>;
 } {
   const rects = new Map<PanelId, Rectangle>();
-  const max = maximized.peek();
-  if (max) {
-    rects.set(max, bounds);
-    return { bounds, contentHeight: bounds.height, rects };
-  }
-  const visible = panelIds.filter((id) => !minimized.peek()[id]);
-  if (visible.length === 0) return { bounds, contentHeight: bounds.height, rects };
   const densityOffset = tileDensity.peek() * 4;
-  const layout = tileRects(bounds, {
-    itemCount: visible.length,
-    minTileWidth: Math.max(26, 38 - densityOffset),
-    minTileHeight: 10,
-    maxColumns: bounds.width >= 172 ? 4 : 3,
-    targetAspectRatio: 2.25 + tileDensity.peek() * 0.12,
-    allowVerticalOverflow: true,
-    gap: 1,
+  const fullscreenId = maximized.peek() ?? undefined;
+  const manager = new WindowManagerController({
+    activeId: active.peek(),
+    fullscreenId,
+    windows: panelIds.map((id, order) => ({
+      id,
+      title: id,
+      order,
+      state: minimized.peek()[id] && id !== fullscreenId ? "minimized" : "normal",
+      minWidth: 26,
+      minHeight: 10,
+    })),
   });
-  for (const [index, id] of visible.entries()) {
-    const rect = layout.rects[index];
-    if (rect) rects.set(id, rect);
+
+  const layout = manager.layout({
+    bounds,
+    tileOptions: {
+      minTileWidth: Math.max(26, 38 - densityOffset),
+      minTileHeight: 10,
+      maxColumns: bounds.width >= 172 ? 4 : 3,
+      targetAspectRatio: 2.25 + tileDensity.peek() * 0.12,
+      allowVerticalOverflow: true,
+      gap: 1,
+    },
+  });
+  for (const entry of layout.visible) {
+    if (entry.rect) rects.set(entry.id as PanelId, entry.rect);
   }
+  manager.dispose();
   return { bounds, contentHeight: Math.max(bounds.height, layout.contentHeight), rects };
 }
 
