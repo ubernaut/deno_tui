@@ -1,4 +1,10 @@
 import { assertEquals } from "./deps.ts";
+import { CommandRegistry } from "../src/app/commands.ts";
+import {
+  bindTerminalScrollbackCommands,
+  type TerminalScrollbackCommandAction,
+  terminalScrollbackCommands,
+} from "../src/app/terminal_commands.ts";
 import { TerminalScreenController } from "../src/runtime/terminal_screen.ts";
 import { TerminalScrollbackController } from "../src/runtime/terminal_scrollback.ts";
 
@@ -64,3 +70,68 @@ Deno.test("TerminalScrollbackController selects and copies line ranges", () => {
   scrollback.clearSelection();
   assertEquals(scrollback.inspect().selection, undefined);
 });
+
+Deno.test("terminal scrollback commands drive copy mode search and selection", async () => {
+  const screen = new TerminalScreenController({ columns: 10, rows: 2, scrollbackLimit: 10 });
+  screen.write("alpha\nbeta\ngamma\nalphabet");
+  const scrollback = new TerminalScrollbackController({ screen, viewportRows: 2 });
+  let query = "alpha";
+  const registry = new CommandRegistry<TerminalScrollbackCommandAction>();
+  const actions: TerminalScrollbackCommandAction[] = [];
+  const dispose = bindTerminalScrollbackCommands(registry, scrollback, {
+    id: "shell",
+    idPrefix: "shell.scrollback",
+    searchQuery: () => query,
+  });
+
+  assertEquals(
+    terminalScrollbackCommands(scrollback, { searchQuery: () => query }).map((command) => [
+      command.id,
+      commandDisabled(command),
+    ]),
+    [
+      ["terminalScrollback.toggleCopyMode", false],
+      ["terminalScrollback.exitCopyMode", true],
+      ["terminalScrollback.lineUp", false],
+      ["terminalScrollback.lineDown", false],
+      ["terminalScrollback.pageUp", false],
+      ["terminalScrollback.pageDown", false],
+      ["terminalScrollback.top", false],
+      ["terminalScrollback.bottom", false],
+      ["terminalScrollback.search", false],
+      ["terminalScrollback.nextMatch", true],
+      ["terminalScrollback.previousMatch", true],
+      ["terminalScrollback.clearSelection", true],
+      ["terminalScrollback.copySelection", true],
+    ],
+  );
+
+  assertEquals(await registry.execute("shell.scrollback.search", (action) => void actions.push(action)), true);
+  assertEquals(actions[0]?.type, "terminalScrollback.searched");
+  assertEquals(actions[0]!.payload!.scrollback.matches, [0, 3]);
+
+  assertEquals(await registry.execute("shell.scrollback.nextMatch", (action) => void actions.push(action)), true);
+  assertEquals(actions[1]?.type, "terminalScrollback.matchChanged");
+  assertEquals(actions[1]!.payload!.scrollback.offset, 2);
+
+  assertEquals(await registry.execute("shell.scrollback.lineUp", (action) => void actions.push(action)), true);
+  assertEquals(actions[2]?.type, "terminalScrollback.scrolled");
+  assertEquals(actions[2]!.payload!.scrollback.offset, 1);
+
+  scrollback.setSelection(1, 2);
+  assertEquals(await registry.execute("shell.scrollback.copySelection", (action) => void actions.push(action)), true);
+  assertEquals(actions[3]?.type, "terminalScrollback.selectionCopied");
+  const copied = actions[3];
+  if (copied?.type !== "terminalScrollback.selectionCopied") throw new Error("expected selection copied action");
+  assertEquals(copied.payload!.text, "beta\ngamma");
+
+  query = "";
+  const searchCommand = registry.get("shell.scrollback.search")!;
+  assertEquals(commandDisabled(searchCommand), true);
+  dispose();
+  assertEquals(registry.list("terminal"), []);
+});
+
+function commandDisabled(command: { disabled?: boolean | (() => boolean) }): boolean {
+  return typeof command.disabled === "function" ? command.disabled() : !!command.disabled;
+}

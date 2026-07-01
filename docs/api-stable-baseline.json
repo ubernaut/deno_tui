@@ -2671,6 +2671,13 @@
     },
     {
       "module": "src/app/terminal_commands.ts",
+      "name": "bindTerminalScrollbackCommands",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/terminal_commands.ts",
       "name": "bindTerminalWorkspaceCommands",
       "kind": "function",
       "typeOnly": false,
@@ -2707,6 +2714,41 @@
     {
       "module": "src/app/terminal_commands.ts",
       "name": "terminalCommands",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/terminal_commands.ts",
+      "name": "TerminalScrollbackCommandAction",
+      "kind": "type",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/terminal_commands.ts",
+      "name": "TerminalScrollbackCommandKind",
+      "kind": "type",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/terminal_commands.ts",
+      "name": "TerminalScrollbackCommandOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/terminal_commands.ts",
+      "name": "TerminalScrollbackCommandPayload",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/terminal_commands.ts",
+      "name": "terminalScrollbackCommands",
       "kind": "function",
       "typeOnly": false,
       "documented": true

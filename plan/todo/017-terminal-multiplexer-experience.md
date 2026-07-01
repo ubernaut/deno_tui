@@ -55,6 +55,8 @@ developer workflows.
   entries so command palettes and future workbench bindings can drive those actions without renderer-specific state.
 - Added `TerminalScrollbackController` as a renderer-neutral copy/live-mode surface over `TerminalScreenController`,
   including clamped paging, search navigation, and line-range copy selection for future console and browser shell panes.
+- Added terminal scrollback command adapters for copy-mode toggle/exit, line/page navigation, top/bottom jumps, search
+  match movement, selection clearing, and selection copy actions.
 - Extended `TerminalScreenController` SGR handling to cover 256-color, truecolor, and bright foreground/background
   styles while preserving existing cell inspection shape.
 - Added terminal cursor save/restore support for CSI `s`/`u` and legacy ESC `7`/`8` sequences.
