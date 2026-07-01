@@ -530,6 +530,12 @@ var Computed = class extends Signal {
 };
 
 // src/signals/effect.ts
+var EffectPausedUpdateError = class extends Error {
+  constructor() {
+    super("Cannot update an effect while it is paused.");
+    this.name = "EffectPausedUpdateError";
+  }
+};
 var Effect = class {
   $effectable;
   dependencies;
@@ -552,7 +558,7 @@ var Effect = class {
   }
   update(cause) {
     if (this.paused) {
-      throw "Something called update() on effect while being paused";
+      throw new EffectPausedUpdateError();
     }
     this.$effectable(cause);
   }

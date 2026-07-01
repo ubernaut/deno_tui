@@ -2,9 +2,14 @@
 import {
   Computed,
   Effect,
+  EffectPausedUpdateError,
   Flusher,
+  getConnectedSignal,
+  getOriginalRef,
   LazyComputed,
   LazyEffect,
+  ReactiveOriginalRefAccessError,
+  ReactiveSignalAccessError,
   Signal,
   SignalRecursiveUpdateError,
 } from "../src/signals/mod.ts";
@@ -158,6 +163,11 @@ Deno.test("signals/mod.ts", async (t) => {
       assertEquals(error.path.length > 2, true);
       assertEquals(first.value > 1, true);
       assertEquals(second.value > 1, true);
+    });
+
+    await t.step("reactive access helpers report typed errors", () => {
+      assertThrows(() => getConnectedSignal({}), ReactiveSignalAccessError);
+      assertThrows(() => getOriginalRef({}), ReactiveOriginalRefAccessError);
     });
 
     await t.step("Deep observe", async (t) => {
@@ -437,6 +447,7 @@ Deno.test("signals/mod.ts", async (t) => {
 
     // When effect is paused it won't get called on signal changes
     effect.pause();
+    assertThrows(() => effect.update(signal), EffectPausedUpdateError);
     signal.value = 6;
     signal2.value = 9;
 

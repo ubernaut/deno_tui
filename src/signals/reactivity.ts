@@ -15,6 +15,22 @@ export const ORIGINAL_REF = Symbol("original_ref");
 /** Built-in cONNECTED SIGNAL definitions. */
 export const CONNECTED_SIGNAL = Symbol("connected_signal");
 
+/** Thrown when a connected signal is requested from a non-reactive value. */
+export class ReactiveSignalAccessError extends Error {
+  constructor() {
+    super("Cannot get connected signal from a non-reactive value.");
+    this.name = "ReactiveSignalAccessError";
+  }
+}
+
+/** Thrown when an original reference is requested from a non-reactive value. */
+export class ReactiveOriginalRefAccessError extends Error {
+  constructor() {
+    super("Cannot get original reference from a non-reactive value.");
+    this.name = "ReactiveOriginalRefAccessError";
+  }
+}
+
 /** Public helper for is Reactive. */
 export function isReactive<T>(input: T): input is Reactive<T> {
   return input instanceof Object && IS_REACTIVE in input;
@@ -28,7 +44,7 @@ export function getConnectedSignal<T extends object>(
     return input[CONNECTED_SIGNAL];
   }
 
-  throw "Failed to get connected signal as input isn't reactive";
+  throw new ReactiveSignalAccessError();
 }
 
 /** Public helper for get Original Ref. */
@@ -37,7 +53,7 @@ export function getOriginalRef<T extends object>(input: T | Reactive<T>): T {
     return input[ORIGINAL_REF];
   }
 
-  throw "Failed to get original referenec as input isn't reactive";
+  throw new ReactiveOriginalRefAccessError();
 }
 
 /**

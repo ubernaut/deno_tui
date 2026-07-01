@@ -7,6 +7,14 @@ export interface Effectable {
   (cause: Dependency | Dependant): void;
 }
 
+/** Thrown when an effect receives an update while paused. */
+export class EffectPausedUpdateError extends Error {
+  constructor() {
+    super("Cannot update an effect while it is paused.");
+    this.name = "EffectPausedUpdateError";
+  }
+}
+
 /**
  * Effect is an container for callback function, which runs every time any of its dependencies get updated.
  *
@@ -57,7 +65,7 @@ export class Effect implements Dependant {
 
   update(cause: Dependency | Dependant): void {
     if (this.paused) {
-      throw "Something called update() on effect while being paused";
+      throw new EffectPausedUpdateError();
     }
 
     this.$effectable(cause);
