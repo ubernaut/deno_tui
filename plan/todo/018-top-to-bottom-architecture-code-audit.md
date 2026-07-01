@@ -430,6 +430,8 @@ Work:
         public validation facade stable while making token/reference diagnostics independently testable.
   - [x] Extracted the concrete `ThemeEngine` implementation and inheritance error into `src/theme_engine.ts`, leaving
         `src/theme.ts` as the compatibility facade while covering the module boundary with direct tests.
+  - [x] Extracted ordered theme layer composition into `src/theme_layer_stack.ts`, preserving the stable facade class
+        while making layer enablement, composition, and inspection directly testable.
 - [x] Add caches for resolved style chains and preview generation with explicit invalidation tests.
   - [x] Extended `ThemeProviderCache` with preview caching, active theme/layer invalidation, and uncached
         function-variant previews.
