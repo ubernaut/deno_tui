@@ -217,6 +217,36 @@ Deno.test("ProcessSessionController writes encoded input to child stdin", async 
   await session.dispose();
 });
 
+Deno.test("ProcessSessionController reports failed input close diagnostics", async () => {
+  const diagnostics = new DiagnosticsCollector();
+  let resolveStatus!: (status: { code: number; signal?: string | null; success: boolean }) => void;
+  const status = new Promise<{ code: number; signal?: string | null; success: boolean }>((resolve) => {
+    resolveStatus = resolve;
+  });
+  const session = new ProcessSessionController({
+    command: "demo",
+    diagnostics,
+    spawn: () => ({
+      stdin: failingCloseSink(),
+      stdout: streamFromText(""),
+      stderr: streamFromText(""),
+      status,
+      kill: () => resolveStatus({ code: 143, signal: "SIGTERM", success: false }),
+    }),
+  });
+
+  const run = session.start();
+  assertEquals(await session.closeInput(), false);
+  assertEquals(diagnostics.entries().map((entry) => [entry.source, entry.code, entry.severity, entry.detail]), [
+    ["process", "input-close-failed", "warning", "close denied"],
+  ]);
+  assertEquals(session.inspect().output.lines.some((line) => line.text === "input close failed: close denied"), true);
+
+  resolveStatus({ code: 0, success: true });
+  await run;
+  await session.dispose();
+});
+
 Deno.test("terminal input routing preserves reserved keys and writes raw mode bytes", async () => {
   const writes: string[] = [];
   let resolveStatus!: (status: { code: number; signal?: string | null; success: boolean }) => void;
@@ -310,6 +340,14 @@ function writableTextSink(writes: string[]): WritableStream<Uint8Array> {
   return new WritableStream({
     write(chunk) {
       writes.push(new TextDecoder().decode(chunk));
+    },
+  });
+}
+
+function failingCloseSink(): WritableStream<Uint8Array> {
+  return new WritableStream({
+    close() {
+      throw new Error("close denied");
     },
   });
 }

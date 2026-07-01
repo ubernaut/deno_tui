@@ -208,7 +208,17 @@ export class ProcessSessionController {
     try {
       await writer.close();
       return true;
-    } catch {
+    } catch (error) {
+      const detail = errorMessage(error);
+      this.#appendSystemLine(`input close failed: ${detail}`);
+      this.#diagnostics?.report({
+        source: "process",
+        code: "input-close-failed",
+        severity: "warning",
+        message: "Process session input close failed.",
+        detail,
+        context: { command: this.command.peek().command },
+      });
       return false;
     } finally {
       writer.releaseLock();

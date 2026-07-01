@@ -502,6 +502,8 @@ Work:
   - [x] Converted Three/Kitty graphics image cleanup failures to optional debug diagnostics instead of silent catches.
   - [x] Converted system monitor hostname and OS-release fallback paths to optional structured diagnostics so degraded
         monitor identity is inspectable without breaking snapshot creation.
+  - [x] Converted process-session stdin close failures to structured diagnostics, matching existing spawn, stop, and
+        input-write failure reporting.
 - [x] Add status-bar and report helpers for degraded backends.
 - [x] Add tests that assert expected diagnostics for missing `nvidia-smi`, blocked IndexedDB, unsupported Kitty
       graphics, and failed process spawns.
