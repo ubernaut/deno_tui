@@ -41,7 +41,7 @@ Current evidence:
 
 Work:
 
-- [ ] Create `src/app/workbench/` for renderer-neutral workbench state, menus, window registry, hit routing, workspace
+- [x] Create `src/app/workbench/` for renderer-neutral workbench state, menus, window registry, hit routing, workspace
       persistence, modal lifecycle, dropdown/popover lifecycle, and command dispatch.
   - [x] Added `src/app/workbench/mod.ts` as a renderer-neutral facade over the extracted helper modules, with a smoke
         test covering representative frame, viewport, titlebar, and hit-target exports.
@@ -54,6 +54,8 @@ Work:
         constructing menu and window controllers separately.
   - [x] Migrated the web API Workbench top-menu state through the same internal controller while preserving its
         persisted signal-driven layout state.
+  - [x] Extracted shared workbench diagnostics log/status formatting into the renderer-neutral workbench facade and
+        migrated terminal plus web workbench adapters to it.
 - [x] Move generic frame helpers, hit-target translation, scrollable-window sizing, titlebar button logic, shelf/tab
       logic, and workspace save/load normalization out of `app/api_workbench.ts`.
   - [x] Extracted sparse frame writing, row slicing, text fitting, button labels, and contrast helpers into
@@ -101,6 +103,8 @@ Work:
         demo checks plus web runtime tests after the matching web top-menu hookup.
   - [x] Added adapter-parity controller coverage that drives terminal-style multi-menu flows and web-style theme-menu
         flows through the same renderer-neutral workbench controller contract.
+  - [x] Shared diagnostics log/status helpers now keep terminal and web degradation display behavior on one adapter
+        contract.
 - [x] Replace duplicated theme/window/menu persistence code with a shared versioned serializer.
   - [x] Extracted shared workbench workspace normalization, panel-state normalization, upsert, rename, delete, lookup,
         and legacy window-entry expansion helpers into `src/app/workbench_workspace.ts`.
@@ -531,7 +535,7 @@ Work:
 
 - [x] Add a small `DiagnosticsCollector` or app-level logger interface that can be injected into demos and reusable
       controllers.
-- [ ] Convert silent fallback paths in system metrics, graphics/Kitty surfaces, storage, audio, and browser storage into
+- [x] Convert silent fallback paths in system metrics, graphics/Kitty surfaces, storage, audio, and browser storage into
       structured diagnostics where practical.
   - [x] Converted audio source discovery and meter startup/stream/stop failures to optional `DiagnosticsCollector`
         reports with injectable command fixtures for deterministic tests.
@@ -581,7 +585,7 @@ Work:
 - [x] Move shared visualization metadata and source wiring into a registry module with typed capabilities.
   - [x] Added `app/visualization_catalog.ts` with Monitor, Neon text, and Neon 3D family metadata; the workbench New
         Window menu now classifies visualization options from this metadata before falling back to legacy id heuristics.
-- [ ] Keep rendering functions pure and fixture-testable.
+- [x] Keep rendering functions pure and fixture-testable.
   - [x] Extracted pure visualization drive/source normalization into `app/visualization_drive.ts`; render modules now
         consume a fixture-testable data transform instead of owning source sampling and hazard math directly.
   - [x] Extracted visualization dispatch into typed renderer maps so catalog ids, Three scene modes, and direct panel
@@ -599,7 +603,7 @@ Work:
         keeping primitive-mode fallback output directly fixture-testable outside the main visualization dispatcher.
   - [x] Optimized `ThreeAsciiObject` canvas handoff to queue only changed ASCII cells between frames, with a fake
         renderer regression proving stable frames do not enqueue redundant repaint cells.
-- [ ] Make demo-only assets and NGE-inspired primitives clearly separate from library APIs.
+- [x] Make demo-only assets and NGE-inspired primitives clearly separate from library APIs.
   - [x] Added `app/neon_three_catalog.ts` for supported Three scene metadata and labels, keeping demo/NGE catalog data
         separate from the monolithic scene factory and shared by visualization footers plus scene coverage tests.
   - [x] Extracted NGE/Neon Three primitive geometry builders into `app/neon_three_geometry.ts`, keeping scene assembly
@@ -616,7 +620,7 @@ Acceptance checks:
 
 - [x] Add full-frame render invalidation tests for overlapping draw objects, scrollable workspaces, and modals.
   - [x] Added a canvas regression covering a modal overlay opening/closing over scrolled viewport content.
-- [ ] Add real workbench controller tests after extraction, covering both terminal and web adapters.
+- [x] Add real workbench controller tests after extraction, covering both terminal and web adapters.
   - [x] Added initial internal controller tests around shared menu/window state; adapter-level parity tests still need
         to exercise both the terminal and browser render adapters through the same controller contract.
   - [x] Added adapter-flow parity coverage for terminal and web workbench controller usage, covering menu disclosure,

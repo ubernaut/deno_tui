@@ -3363,6 +3363,41 @@
       "documented": true
     },
     {
+      "module": "src/app/workbench_diagnostics.ts",
+      "name": "formatWorkbenchDiagnosticLogEntry",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_diagnostics.ts",
+      "name": "formatWorkbenchDiagnosticStatus",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_diagnostics.ts",
+      "name": "initialWorkbenchDiagnosticLogRows",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_diagnostics.ts",
+      "name": "subscribeWorkbenchDiagnosticLog",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_diagnostics.ts",
+      "name": "WorkbenchDiagnosticFormatOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
       "module": "src/app/workbench_frame.ts",
       "name": "buttonText",
       "kind": "function",

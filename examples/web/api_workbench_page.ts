@@ -20,8 +20,10 @@ import {
   defaultWorkbenchMinimizedState,
   FileExplorerController,
   fitCellText,
+  formatWorkbenchDiagnosticStatus,
   type HitTarget,
   HitTargetStack,
+  initialWorkbenchDiagnosticLogRows,
   InputController,
   isWorkbenchMenuActivationKey,
   isWorkbenchMenuCloseKey,
@@ -50,6 +52,7 @@ import {
   Signal,
   SliderController,
   StepperController,
+  subscribeWorkbenchDiagnosticLog,
   TerminalScreenController,
   TextBoxController,
   TextObject,
@@ -66,7 +69,7 @@ import {
 import { WorkbenchController } from "../../src/app/workbench/controller.ts";
 import { grWizardThemePalettes } from "../../src/grwizard_themes.ts";
 import { createHtmlCssLayoutDemo, htmlCssLayoutDemoBoxLabel } from "../../src/markup/demo_fixtures.ts";
-import { type DiagnosticEntry, DiagnosticsCollector, formatDiagnosticStatus } from "../../src/runtime/diagnostics.ts";
+import { DiagnosticsCollector } from "../../src/runtime/diagnostics.ts";
 import { StorageFallbackDiagnostics } from "../../src/runtime/storage_diagnostics.ts";
 import type { Rectangle } from "../../src/types.ts";
 import { makeStyle } from "../../app/styles.ts";
@@ -247,12 +250,10 @@ const topMenus = workbenchController.menus;
 const tileDensity = new Signal(Math.max(-3, Math.min(3, Math.floor(initialWorkspace.tileDensity ?? 0))));
 const lineSignals: Signal<string>[] = [];
 const log = new Signal<string[]>(
-  ["ready: web api workbench mounted", ...webDiagnostics.entries().map(formatWebDiagnosticLogEntry)].slice(-40),
+  initialWorkbenchDiagnosticLogRows(webDiagnostics, ["ready: web api workbench mounted"], { maxLogEntries: 40 }),
   { deepObserve: true },
 );
-webDiagnostics.subscribe((entry) => {
-  if (entry) push(formatWebDiagnosticLogEntry(entry));
-});
+subscribeWorkbenchDiagnosticLog(webDiagnostics, push);
 const webTerminalScreen = new TerminalScreenController({ columns: 80, rows: 12, scrollbackLimit: 64 });
 const webTerminalWorkspace = createTerminalWorkspaceController({
   activeId: "pages-shell",
@@ -645,7 +646,9 @@ function draw(): void {
   frame[height - 1] = fit(
     paint(
       renderStatusBar(
-        `focus ${active.peek()} | ${theme().label} | tiles ${densityLabel}`,
+        `focus ${active.peek()} | ${theme().label} | tiles ${densityLabel} | ${
+          formatWorkbenchDiagnosticStatus(webDiagnostics)
+        }`,
         "1-8 focus  T theme  H help  Q quit  click controls",
         width,
       ),
@@ -2305,10 +2308,6 @@ function reportWebStorageDiagnostic(operation: string, storage: string, error: u
     operation,
     error,
   });
-}
-
-function formatWebDiagnosticLogEntry(entry: DiagnosticEntry): string {
-  return formatDiagnosticStatus([entry], { label: "diagnostic", includeLatest: true });
 }
 
 function theme(): ThemeSpec {

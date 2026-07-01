@@ -5340,6 +5340,7 @@ function applyNode(node, ancestors, inherited, stylesheet, options) {
   const next = cloneLayoutNode(node);
   const style2 = defaultComputedLayoutStyle();
   style2.color = inherited.color;
+  style2.visibility = inherited.visibility;
   style2.variables = { ...inherited.variables };
   const matches = stylesheet.rules.filter(
     (rule) => matchesCssMedia(rule.media, options.viewport) && matchesCssSelector(rule.selector, node, ancestors, options.states ?? {})
@@ -8915,6 +8916,130 @@ function relativeLuminance([red, green, blue]) {
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
 
+// src/runtime/diagnostics.ts
+var DiagnosticsCollector = class {
+  constructor(maxEntries = 200) {
+    this.maxEntries = maxEntries;
+  }
+  #entries = [];
+  #listeners = /* @__PURE__ */ new Set();
+  #nextId = 1;
+  report(input2) {
+    const entry = {
+      id: this.#nextId++,
+      time: Math.max(0, Math.floor(input2.time ?? Date.now())),
+      source: input2.source,
+      code: input2.code,
+      severity: input2.severity,
+      message: input2.message,
+      detail: input2.detail,
+      context: input2.context ? { ...input2.context } : void 0
+    };
+    this.#entries.push(entry);
+    while (this.#entries.length > Math.max(1, this.maxEntries)) this.#entries.shift();
+    this.#emit(entry);
+    return { ...entry, context: entry.context ? { ...entry.context } : void 0 };
+  }
+  clear() {
+    if (this.#entries.length === 0) return;
+    this.#entries = [];
+    this.#emit(void 0);
+  }
+  entries() {
+    return this.#entries.map((entry) => ({ ...entry, context: entry.context ? { ...entry.context } : void 0 }));
+  }
+  inspect() {
+    const bySeverity = {
+      debug: 0,
+      info: 0,
+      warning: 0,
+      error: 0
+    };
+    for (const entry of this.#entries) bySeverity[entry.severity] += 1;
+    return {
+      count: this.#entries.length,
+      bySeverity,
+      entries: this.entries()
+    };
+  }
+  subscribe(listener) {
+    this.#listeners.add(listener);
+    return () => this.#listeners.delete(listener);
+  }
+  #emit(entry) {
+    for (const listener of this.#listeners) listener(entry);
+  }
+};
+function summarizeDiagnostics(entries) {
+  const bySeverity = {
+    debug: 0,
+    info: 0,
+    warning: 0,
+    error: 0
+  };
+  let highestSeverity;
+  for (const entry of entries) {
+    bySeverity[entry.severity] += 1;
+    if (!highestSeverity || severityWeight(entry.severity) > severityWeight(highestSeverity)) {
+      highestSeverity = entry.severity;
+    }
+  }
+  return {
+    count: entries.length,
+    ok: entries.length === 0,
+    highestSeverity,
+    bySeverity,
+    latest: cloneDiagnosticEntry(entries.at(-1))
+  };
+}
+function formatDiagnosticStatus(entries, options = {}) {
+  const label = options.label ?? "diagnostics";
+  const summary = summarizeDiagnostics(entries);
+  if (summary.ok) return `${label} ok`;
+  const counts = ["error", "warning", "info", "debug"].filter((severity) => summary.bySeverity[severity] > 0).map((severity) => `${summary.bySeverity[severity]} ${severity}`).join(", ");
+  const latest = options.includeLatest !== false && summary.latest ? ` latest ${summary.latest.source}/${summary.latest.code}` : "";
+  return `${label} ${summary.count} ${summary.highestSeverity}${counts ? ` (${counts})` : ""}${latest}`;
+}
+function cloneDiagnosticEntry(entry) {
+  return entry ? { ...entry, context: entry.context ? { ...entry.context } : void 0 } : void 0;
+}
+function severityWeight(severity) {
+  switch (severity) {
+    case "error":
+      return 4;
+    case "warning":
+      return 3;
+    case "info":
+      return 2;
+    case "debug":
+      return 1;
+  }
+}
+
+// src/app/workbench_diagnostics.ts
+function formatWorkbenchDiagnosticLogEntry(entry, options = {}) {
+  return formatDiagnosticStatus([entry], { label: options.logLabel ?? "diagnostic", includeLatest: true });
+}
+function formatWorkbenchDiagnosticStatus(diagnostics, options = {}) {
+  return formatDiagnosticStatus(diagnostics.entries(), {
+    label: options.statusLabel ?? "diag",
+    includeLatest: false
+  });
+}
+function initialWorkbenchDiagnosticLogRows(diagnostics, rows2, options = {}) {
+  const maxLogEntries = Math.max(1, Math.floor(options.maxLogEntries ?? 40));
+  return [
+    ...rows2,
+    ...diagnostics.entries().map((entry) => formatWorkbenchDiagnosticLogEntry(entry, options))
+  ].slice(-maxLogEntries);
+}
+function subscribeWorkbenchDiagnosticLog(diagnostics, onLog, options = {}) {
+  return diagnostics.subscribe((entry) => {
+    if (!entry) return;
+    onLog(formatWorkbenchDiagnosticLogEntry(entry, options));
+  });
+}
+
 // src/app/workbench_menu.ts
 var WorkbenchTopMenuController = class {
   #openId = null;
@@ -9882,106 +10007,6 @@ function normalizeWorkbenchPanelWorkspaceState(value, options) {
   const maxDensity = options.maxTileDensity ?? 3;
   const tileDensity2 = Number.isFinite(value?.tileDensity) ? Math.max(minDensity, Math.min(maxDensity, Math.floor(value.tileDensity))) : void 0;
   return { active: active2, maximized: maximized2, minimized: minimized2, tileDensity: tileDensity2 };
-}
-
-// src/runtime/diagnostics.ts
-var DiagnosticsCollector = class {
-  constructor(maxEntries = 200) {
-    this.maxEntries = maxEntries;
-  }
-  #entries = [];
-  #listeners = /* @__PURE__ */ new Set();
-  #nextId = 1;
-  report(input2) {
-    const entry = {
-      id: this.#nextId++,
-      time: Math.max(0, Math.floor(input2.time ?? Date.now())),
-      source: input2.source,
-      code: input2.code,
-      severity: input2.severity,
-      message: input2.message,
-      detail: input2.detail,
-      context: input2.context ? { ...input2.context } : void 0
-    };
-    this.#entries.push(entry);
-    while (this.#entries.length > Math.max(1, this.maxEntries)) this.#entries.shift();
-    this.#emit(entry);
-    return { ...entry, context: entry.context ? { ...entry.context } : void 0 };
-  }
-  clear() {
-    if (this.#entries.length === 0) return;
-    this.#entries = [];
-    this.#emit(void 0);
-  }
-  entries() {
-    return this.#entries.map((entry) => ({ ...entry, context: entry.context ? { ...entry.context } : void 0 }));
-  }
-  inspect() {
-    const bySeverity = {
-      debug: 0,
-      info: 0,
-      warning: 0,
-      error: 0
-    };
-    for (const entry of this.#entries) bySeverity[entry.severity] += 1;
-    return {
-      count: this.#entries.length,
-      bySeverity,
-      entries: this.entries()
-    };
-  }
-  subscribe(listener) {
-    this.#listeners.add(listener);
-    return () => this.#listeners.delete(listener);
-  }
-  #emit(entry) {
-    for (const listener of this.#listeners) listener(entry);
-  }
-};
-function summarizeDiagnostics(entries) {
-  const bySeverity = {
-    debug: 0,
-    info: 0,
-    warning: 0,
-    error: 0
-  };
-  let highestSeverity;
-  for (const entry of entries) {
-    bySeverity[entry.severity] += 1;
-    if (!highestSeverity || severityWeight(entry.severity) > severityWeight(highestSeverity)) {
-      highestSeverity = entry.severity;
-    }
-  }
-  return {
-    count: entries.length,
-    ok: entries.length === 0,
-    highestSeverity,
-    bySeverity,
-    latest: cloneDiagnosticEntry(entries.at(-1))
-  };
-}
-function formatDiagnosticStatus(entries, options = {}) {
-  const label = options.label ?? "diagnostics";
-  const summary = summarizeDiagnostics(entries);
-  if (summary.ok) return `${label} ok`;
-  const counts = ["error", "warning", "info", "debug"].filter((severity) => summary.bySeverity[severity] > 0).map((severity) => `${summary.bySeverity[severity]} ${severity}`).join(", ");
-  const latest = options.includeLatest !== false && summary.latest ? ` latest ${summary.latest.source}/${summary.latest.code}` : "";
-  return `${label} ${summary.count} ${summary.highestSeverity}${counts ? ` (${counts})` : ""}${latest}`;
-}
-function cloneDiagnosticEntry(entry) {
-  return entry ? { ...entry, context: entry.context ? { ...entry.context } : void 0 } : void 0;
-}
-function severityWeight(severity) {
-  switch (severity) {
-    case "error":
-      return 4;
-    case "warning":
-      return 3;
-    case "info":
-      return 2;
-    case "debug":
-      return 1;
-  }
 }
 
 // src/runtime/terminal_session.ts
@@ -11462,12 +11487,10 @@ var topMenus = workbenchController.menus;
 var tileDensity = new Signal(Math.max(-3, Math.min(3, Math.floor(initialWorkspace.tileDensity ?? 0))));
 var lineSignals = [];
 var log = new Signal(
-  ["ready: web api workbench mounted", ...webDiagnostics.entries().map(formatWebDiagnosticLogEntry)].slice(-40),
+  initialWorkbenchDiagnosticLogRows(webDiagnostics, ["ready: web api workbench mounted"], { maxLogEntries: 40 }),
   { deepObserve: true }
 );
-webDiagnostics.subscribe((entry) => {
-  if (entry) push(formatWebDiagnosticLogEntry(entry));
-});
+subscribeWorkbenchDiagnosticLog(webDiagnostics, push);
 var webTerminalScreen = new TerminalScreenController({ columns: 80, rows: 12, scrollbackLimit: 64 });
 var webTerminalWorkspace = createTerminalWorkspaceController({
   activeId: "pages-shell",
@@ -11844,7 +11867,7 @@ function draw() {
   frame[height - 1] = fit(
     paint(
       renderStatusBar(
-        `focus ${active.peek()} | ${theme().label} | tiles ${densityLabel}`,
+        `focus ${active.peek()} | ${theme().label} | tiles ${densityLabel} | ${formatWorkbenchDiagnosticStatus(webDiagnostics)}`,
         "1-8 focus  T theme  H help  Q quit  click controls",
         width
       ),
@@ -13321,9 +13344,6 @@ function reportWebStorageDiagnostic(operation, storage, error) {
     operation,
     error
   });
-}
-function formatWebDiagnosticLogEntry(entry) {
-  return formatDiagnosticStatus([entry], { label: "diagnostic", includeLatest: true });
 }
 function theme() {
   return themes[themeIndex.value];

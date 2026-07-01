@@ -27,7 +27,9 @@ import {
   fillFrameRow,
   findWorkbenchWorkspace,
   fitCellText as fit,
+  formatWorkbenchDiagnosticStatus,
   HitTargetStack,
+  initialWorkbenchDiagnosticLogRows,
   inset,
   intersects,
   isWorkbenchMenuActivationKey,
@@ -44,6 +46,7 @@ import {
   renderFrameRow,
   renderFrameSlice,
   serializeWorkbenchWorkspaces,
+  subscribeWorkbenchDiagnosticLog,
   translateHitTargets,
   upsertWorkbenchWorkspace,
   workbenchContentViewport,
@@ -84,7 +87,7 @@ import {
   type TerminalInputMode,
   terminalMouseRoutingFromPrivateModes,
 } from "../src/app/terminal_input.ts";
-import { type DiagnosticEntry, DiagnosticsCollector, formatDiagnosticStatus } from "../src/runtime/diagnostics.ts";
+import { DiagnosticsCollector } from "../src/runtime/diagnostics.ts";
 import { createKittyGraphicsSurface, type GraphicsSurface } from "../src/runtime/graphics_surface.ts";
 import { formatProcessCommandLine, ProcessSessionController } from "../src/runtime/process_session.ts";
 import { MicrotaskScheduler } from "../src/runtime/render_loop.ts";
@@ -444,13 +447,12 @@ const minimized = new Signal<Record<string, boolean>>({
   logs: false,
   three: false,
 }, { deepObserve: true });
-const commandLog = new Signal<string[]>([
-  "ready: API workbench mounted",
-  ...workbenchDiagnostics.entries().map(formatWorkbenchDiagnosticLogEntry),
-], { deepObserve: true });
-const unsubscribeWorkbenchDiagnostics = workbenchDiagnostics.subscribe((entry) => {
-  if (!entry) return;
-  pushLog(formatWorkbenchDiagnosticLogEntry(entry));
+const commandLog = new Signal<string[]>(
+  initialWorkbenchDiagnosticLogRows(workbenchDiagnostics, ["ready: API workbench mounted"], { maxLogEntries: 8 }),
+  { deepObserve: true },
+);
+const unsubscribeWorkbenchDiagnostics = subscribeWorkbenchDiagnosticLog(workbenchDiagnostics, (message) => {
+  pushLog(message);
   scheduleDraw();
 });
 const dynamicVisualizationWindows = new Signal<Record<VisualizationWindowId, string>>({}, { deepObserve: true });
@@ -2175,7 +2177,7 @@ function renderStatus(frame: Frame): void {
   const width = currentWidth();
   const densityLabel = tileDensity.peek() === 0 ? "balanced" : tileDensity.peek() > 0 ? "dense" : "wide";
   const left = `focus ${windowTitle(activeWindow.peek())} | ${theme().label} | tiles ${densityLabel} | ${
-    formatDiagnosticStatus(workbenchDiagnostics.entries(), { label: "diag", includeLatest: false })
+    formatWorkbenchDiagnosticStatus(workbenchDiagnostics)
   }`;
   const right = "F10 menu  N new  Shift+T themes  G config  0 restore minimized";
   write(frame, currentHeight() - 1, 0, paint(renderStatusBar(left, right, width), { fg: t.text, bg: t.panelSoft }));
@@ -4406,10 +4408,6 @@ function controlAtEdge(delta: number): ControlId | undefined {
 
 function pushLog(message: string): void {
   commandLog.value = [...commandLog.peek(), `${new Date().toLocaleTimeString()} ${message}`].slice(-8);
-}
-
-function formatWorkbenchDiagnosticLogEntry(entry: DiagnosticEntry): string {
-  return formatDiagnosticStatus([entry], { label: "diagnostic", includeLatest: true });
 }
 
 function ensureLineObjects(): void {
