@@ -35,7 +35,8 @@ The repo already has useful browser-ready pieces:
 - `examples/web/standalone.ts` demonstrates a browser-only app using the shared `Canvas`, `BoxObject`, `TextObject`,
   ANSI theme styles, and Canvas2D sink.
 - `examples/web/api_workbench_page.ts` is the default GitHub Pages source. `deno task web:pages:build` bundles it into
-  `docs/index.html` and `docs/assets/api-workbench.js`.
+  `docs/index.html` and `docs/assets/api-workbench.js`. The web workbench persists theme, active panel, minimized and
+  maximized panels, and tile density in browser storage when available.
 - Signals, controllers, commands, plugins, layouts, theme engines, data resources, worker pools, settings, and runtime
   capability planning are mostly platform-neutral.
 - `Canvas` now flushes changed cells through `CanvasCellSink`; terminal output is handled by `AnsiCanvasSink`, and

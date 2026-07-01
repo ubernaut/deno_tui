@@ -108,6 +108,7 @@ interface ThemeSpec {
 }
 
 const THEME_STORAGE_KEY = "deno-tui.web-workbench.theme";
+const WORKSPACE_STORAGE_KEY = "deno-tui.web-workbench.workspace";
 
 interface Row extends Record<string, unknown> {
   id: string;
@@ -189,21 +190,16 @@ const panelIds: readonly PanelId[] = [
 ];
 const explorerKeys = new Set(["up", "down", "left", "right", "pageup", "pagedown", "home", "end", "space", "return"]);
 
+const initialWorkspace = loadWebWorkspaceState();
 const themeIndex = new Signal(initialThemeIndex());
-const active = new Signal<PanelId>("inspector");
-const maximized = new Signal<PanelId | null>(null);
-const minimized = new Signal<Record<PanelId, boolean>>({
-  explorer: false,
-  inspector: false,
-  data: false,
-  controls: false,
-  logs: false,
-  three: false,
-  htmlLayout: false,
-  terminal: false,
-}, { deepObserve: true });
+const active = new Signal<PanelId>(initialWorkspace.active ?? "inspector");
+const maximized = new Signal<PanelId | null>(initialWorkspace.maximized ?? null);
+const minimized = new Signal<Record<PanelId, boolean>>(
+  { ...defaultMinimizedState(), ...initialWorkspace.minimized },
+  { deepObserve: true },
+);
 const themeMenuOpen = new Signal(false);
-const tileDensity = new Signal(0);
+const tileDensity = new Signal(Math.max(-3, Math.min(3, Math.floor(initialWorkspace.tileDensity ?? 0))));
 const lineSignals: Signal<string>[] = [];
 const log = new Signal<string[]>(["ready: web api workbench mounted"], { deepObserve: true });
 const webTerminalScreen = new TerminalScreenController({ columns: 80, rows: 12, scrollbackLimit: 64 });
@@ -215,6 +211,10 @@ let lastWorkspaceHeight = 0;
 let dropdownOverlay: DropdownOverlay | null = null;
 
 themeIndex.subscribe((index) => persistThemeIndex(index));
+active.subscribe(persistWebWorkspaceState);
+maximized.subscribe(persistWebWorkspaceState);
+minimized.subscribe(persistWebWorkspaceState);
+tileDensity.subscribe(persistWebWorkspaceState);
 
 const menu = new MenuBarController({
   items: ["File", "View", "Layout", "Theme", "Help"].map((label) => ({ id: label.toLowerCase(), label })),
@@ -1008,6 +1008,7 @@ function applyHit(target: { rect: Rectangle; hit: Hit }, x: number, y: number): 
 }
 
 function focus(id: PanelId): void {
+  if (minimized.peek()[id]) minimized.value[id] = false;
   active.value = id;
   push(`focus ${id}`);
 }
@@ -1039,16 +1040,7 @@ function restorePanel(id: PanelId): void {
 }
 function restore(): void {
   maximized.value = null;
-  minimized.value = {
-    explorer: false,
-    inspector: false,
-    data: false,
-    controls: false,
-    logs: false,
-    three: false,
-    htmlLayout: false,
-    terminal: false,
-  };
+  minimized.value = defaultMinimizedState();
   push("restore all");
 }
 function setTheme(index: number): void {
@@ -2009,6 +2001,66 @@ function initialThemeIndex(): number {
   } catch {
     return 0;
   }
+}
+
+interface WebWorkspaceState {
+  active?: PanelId;
+  maximized?: PanelId | null;
+  minimized?: Partial<Record<PanelId, boolean>>;
+  tileDensity?: number;
+}
+
+function defaultMinimizedState(): Record<PanelId, boolean> {
+  return {
+    explorer: false,
+    inspector: false,
+    data: false,
+    controls: false,
+    logs: false,
+    three: false,
+    htmlLayout: false,
+    terminal: false,
+  };
+}
+
+function loadWebWorkspaceState(): WebWorkspaceState {
+  try {
+    const saved = globalThis.localStorage?.getItem(WORKSPACE_STORAGE_KEY);
+    if (!saved) return {};
+    const parsed = JSON.parse(saved) as WebWorkspaceState;
+    const minimizedState = defaultMinimizedState();
+    for (const id of panelIds) minimizedState[id] = Boolean(parsed.minimized?.[id]);
+    const active = isPanelId(parsed.active) ? parsed.active : undefined;
+    const maximized = parsed.maximized === null || isPanelId(parsed.maximized) ? parsed.maximized ?? null : undefined;
+    if (active) minimizedState[active] = false;
+    if (maximized) minimizedState[maximized] = false;
+    return {
+      active,
+      maximized,
+      minimized: minimizedState,
+      tileDensity: Number.isFinite(parsed.tileDensity) ? parsed.tileDensity : undefined,
+    };
+  } catch {
+    return {};
+  }
+}
+
+function persistWebWorkspaceState(): void {
+  try {
+    const snapshot: WebWorkspaceState = {
+      active: active.peek(),
+      maximized: maximized.peek(),
+      minimized: minimized.peek(),
+      tileDensity: tileDensity.peek(),
+    };
+    globalThis.localStorage?.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify(snapshot));
+  } catch {
+    // Storage may be unavailable in restrictive browser contexts; the workspace still works in memory.
+  }
+}
+
+function isPanelId(value: unknown): value is PanelId {
+  return typeof value === "string" && (panelIds as readonly string[]).includes(value);
 }
 
 function persistThemeIndex(index: number): void {

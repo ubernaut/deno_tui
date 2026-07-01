@@ -8367,6 +8367,7 @@ function htmlCssLayoutDemoBoxLabel(box) {
 
 // examples/web/api_workbench_page.ts
 var THEME_STORAGE_KEY = "deno-tui.web-workbench.theme";
+var WORKSPACE_STORAGE_KEY = "deno-tui.web-workbench.workspace";
 var root = document.querySelector("#api-workbench");
 if (!root) throw new Error("Missing #api-workbench mount element.");
 var mount = root;
@@ -8437,21 +8438,16 @@ var panelIds = [
   "terminal"
 ];
 var explorerKeys = /* @__PURE__ */ new Set(["up", "down", "left", "right", "pageup", "pagedown", "home", "end", "space", "return"]);
+var initialWorkspace = loadWebWorkspaceState();
 var themeIndex = new Signal(initialThemeIndex());
-var active = new Signal("inspector");
-var maximized = new Signal(null);
-var minimized = new Signal({
-  explorer: false,
-  inspector: false,
-  data: false,
-  controls: false,
-  logs: false,
-  three: false,
-  htmlLayout: false,
-  terminal: false
-}, { deepObserve: true });
+var active = new Signal(initialWorkspace.active ?? "inspector");
+var maximized = new Signal(initialWorkspace.maximized ?? null);
+var minimized = new Signal(
+  { ...defaultMinimizedState(), ...initialWorkspace.minimized },
+  { deepObserve: true }
+);
 var themeMenuOpen = new Signal(false);
-var tileDensity = new Signal(0);
+var tileDensity = new Signal(Math.max(-3, Math.min(3, Math.floor(initialWorkspace.tileDensity ?? 0))));
 var lineSignals = [];
 var log = new Signal(["ready: web api workbench mounted"], { deepObserve: true });
 var webTerminalScreen = new TerminalScreenController({ columns: 80, rows: 12, scrollbackLimit: 64 });
@@ -8462,6 +8458,10 @@ var lastWorkspaceWidth = 0;
 var lastWorkspaceHeight = 0;
 var dropdownOverlay = null;
 themeIndex.subscribe((index) => persistThemeIndex(index));
+active.subscribe(persistWebWorkspaceState);
+maximized.subscribe(persistWebWorkspaceState);
+minimized.subscribe(persistWebWorkspaceState);
+tileDensity.subscribe(persistWebWorkspaceState);
 var menu = new MenuBarController({
   items: ["File", "View", "Layout", "Theme", "Help"].map((label) => ({ id: label.toLowerCase(), label })),
   onSelect: (item) => {
@@ -9194,6 +9194,7 @@ function applyHit(target, x, y) {
   } else setTheme(hit.index);
 }
 function focus(id2) {
+  if (minimized.peek()[id2]) minimized.value[id2] = false;
   active.value = id2;
   push(`focus ${id2}`);
 }
@@ -9225,16 +9226,7 @@ function restorePanel(id2) {
 }
 function restore() {
   maximized.value = null;
-  minimized.value = {
-    explorer: false,
-    inspector: false,
-    data: false,
-    controls: false,
-    logs: false,
-    three: false,
-    htmlLayout: false,
-    terminal: false
-  };
+  minimized.value = defaultMinimizedState();
   push("restore all");
 }
 function setTheme(index) {
@@ -10090,6 +10082,54 @@ function initialThemeIndex() {
   } catch {
     return 0;
   }
+}
+function defaultMinimizedState() {
+  return {
+    explorer: false,
+    inspector: false,
+    data: false,
+    controls: false,
+    logs: false,
+    three: false,
+    htmlLayout: false,
+    terminal: false
+  };
+}
+function loadWebWorkspaceState() {
+  try {
+    const saved = globalThis.localStorage?.getItem(WORKSPACE_STORAGE_KEY);
+    if (!saved) return {};
+    const parsed = JSON.parse(saved);
+    const minimizedState = defaultMinimizedState();
+    for (const id2 of panelIds) minimizedState[id2] = Boolean(parsed.minimized?.[id2]);
+    const active2 = isPanelId(parsed.active) ? parsed.active : void 0;
+    const maximized2 = parsed.maximized === null || isPanelId(parsed.maximized) ? parsed.maximized ?? null : void 0;
+    if (active2) minimizedState[active2] = false;
+    if (maximized2) minimizedState[maximized2] = false;
+    return {
+      active: active2,
+      maximized: maximized2,
+      minimized: minimizedState,
+      tileDensity: Number.isFinite(parsed.tileDensity) ? parsed.tileDensity : void 0
+    };
+  } catch {
+    return {};
+  }
+}
+function persistWebWorkspaceState() {
+  try {
+    const snapshot = {
+      active: active.peek(),
+      maximized: maximized.peek(),
+      minimized: minimized.peek(),
+      tileDensity: tileDensity.peek()
+    };
+    globalThis.localStorage?.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify(snapshot));
+  } catch {
+  }
+}
+function isPanelId(value) {
+  return typeof value === "string" && panelIds.includes(value);
 }
 function persistThemeIndex(index) {
   try {
