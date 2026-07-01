@@ -8,7 +8,12 @@ import {
   packageEntrypoints,
   packageReleasePolicy,
 } from "../mod.ts";
-import { formatPackageExportValidation, validatePackageExports } from "../scripts/package_check.ts";
+import {
+  formatPackageExportValidation,
+  formatStableDemoExportValidation,
+  validatePackageExports,
+  validateStableDemoExports,
+} from "../scripts/package_check.ts";
 
 Deno.test("package entrypoint manifest separates terminal web and remote surfaces", () => {
   assertEquals(packageEntrypoints.map((entrypoint) => entrypoint.specifier), [
@@ -152,4 +157,39 @@ Deno.test("package export validation compares deno export maps with the stabilit
     { specifier: "./web", expected: "./mod.web.ts", actual: "./wrong.ts" },
   ]);
   assertEquals(invalid.byStability.experimental.missingExports, ["./remote", "./three-ascii", "./layout/yoga"]);
+});
+
+Deno.test("package check guards stable entrypoint against new demo-only modules", () => {
+  const current = validateStableDemoExports({
+    modules: [
+      { module: "mod.ts" },
+      { module: "src/components/button.ts" },
+      { module: "src/markup/demo_fixtures.ts" },
+      { module: "src/three_ascii/demo_presets.ts" },
+    ],
+  });
+
+  assertEquals(current.ok, true);
+  assertEquals(
+    formatStableDemoExportValidation(current),
+    [
+      "ok stable exports contain no new demo-only modules",
+      "legacy allowed: src/markup/demo_fixtures.ts, src/three_ascii/demo_presets.ts",
+    ].join("\n"),
+  );
+
+  const drift = validateStableDemoExports({
+    modules: [
+      { module: "mod.ts" },
+      { module: "src/examples/new_widget_demo.ts" },
+      { module: "src/markup/demo_fixtures.ts" },
+    ],
+  });
+
+  assertEquals(drift.ok, false);
+  assertEquals(drift.unexpectedModules, ["src/examples/new_widget_demo.ts"]);
+  assertEquals(
+    formatStableDemoExportValidation(drift).includes("unexpected stable demo export: src/examples/new_widget_demo.ts"),
+    true,
+  );
 });

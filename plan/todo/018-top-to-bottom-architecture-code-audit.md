@@ -500,6 +500,8 @@ Work:
         being mistaken for public entrypoint paths.
 - [x] Add package docs that show preferred imports for apps versus framework authors.
 - [ ] Reduce accidental demo-only exports from stable entrypoints where possible without breaking current users.
+  - [x] Added a `package-check` guard that scans the stable root inventory, allowlists the two legacy demo-named modules
+        already in the baseline, and fails if new demo/fixture/sample modules leak into stable exports.
 
 Acceptance checks:
 
