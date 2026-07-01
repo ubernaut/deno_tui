@@ -84,6 +84,7 @@ import {
   type TerminalInputMode,
   terminalMouseRoutingFromPrivateModes,
 } from "../src/app/terminal_input.ts";
+import { type DiagnosticEntry, DiagnosticsCollector, formatDiagnosticStatus } from "../src/runtime/diagnostics.ts";
 import { createKittyGraphicsSurface, type GraphicsSurface } from "../src/runtime/graphics_surface.ts";
 import { formatProcessCommandLine, ProcessSessionController } from "../src/runtime/process_session.ts";
 import { MicrotaskScheduler } from "../src/runtime/render_loop.ts";
@@ -283,7 +284,8 @@ const WORKSPACE_STORE_KEY = "api-workbench.workspaces";
 
 requireInteractiveTerminal("deno task api-workbench");
 
-const systemMonitor = new SystemMonitor(72);
+const workbenchDiagnostics = new DiagnosticsCollector(120);
+const systemMonitor = new SystemMonitor({ historyLength: 72, diagnostics: workbenchDiagnostics });
 await systemMonitor.start(1000);
 const workbenchAudioRegistry = new AudioRegistry([]);
 const workspaceStore = createWorkspaceStore();
@@ -322,6 +324,7 @@ const terminalOutputSession = new ProcessSessionController({
     ].join("\n"),
   ],
   limit: 400,
+  diagnostics: workbenchDiagnostics,
 });
 const terminalInputMode = new Signal<TerminalInputMode>("workbench");
 const terminalShell = new TerminalShellController({
@@ -329,6 +332,7 @@ const terminalShell = new TerminalShellController({
   columns: 80,
   rows: 24,
   scrollbackLimit: 2000,
+  diagnostics: workbenchDiagnostics,
   onUpdate: scheduleDraw,
 });
 const terminalShellInputMode = new Signal<TerminalInputMode>("raw");
@@ -365,6 +369,7 @@ function createWorkbenchKittySurface(force: boolean): GraphicsSurface {
     force: canForce,
     quiet: 2,
     maxChunkBytes: 16384,
+    diagnostics: workbenchDiagnostics,
   });
 }
 
@@ -439,7 +444,15 @@ const minimized = new Signal<Record<string, boolean>>({
   logs: false,
   three: false,
 }, { deepObserve: true });
-const commandLog = new Signal<string[]>(["ready: API workbench mounted"], { deepObserve: true });
+const commandLog = new Signal<string[]>([
+  "ready: API workbench mounted",
+  ...workbenchDiagnostics.entries().map(formatWorkbenchDiagnosticLogEntry),
+], { deepObserve: true });
+const unsubscribeWorkbenchDiagnostics = workbenchDiagnostics.subscribe((entry) => {
+  if (!entry) return;
+  pushLog(formatWorkbenchDiagnosticLogEntry(entry));
+  scheduleDraw();
+});
 const dynamicVisualizationWindows = new Signal<Record<VisualizationWindowId, string>>({}, { deepObserve: true });
 const selectedCpuHexTiles = new Signal<Record<VisualizationWindowId, string>>({}, { deepObserve: true });
 const lineSignals: Signal<string>[] = [];
@@ -650,6 +663,7 @@ const threePanel = new ThreePanelFrameView({
   enabled: threeAsciiAvailable,
   graphicsSurface: () => kittyGraphicsSurfaceFor(ascii.peek()),
   frameInterval: 1000 / 18,
+  diagnostics: workbenchDiagnostics,
   onUpdate: scheduleDraw,
 });
 const visualizationThreePanels = new Map<VisualizationWindowId, DynamicThreePanel>();
@@ -835,6 +849,7 @@ tui.on("destroy", () => {
   void terminalShell.dispose();
   terminalInputMode.dispose();
   terminalShellInputMode.dispose();
+  unsubscribeWorkbenchDiagnostics();
   systemMonitor.stop();
   workbenchAudioRegistry.dispose();
   asciiConfigs.dispose();
@@ -2159,7 +2174,9 @@ function renderStatus(frame: Frame): void {
   const t = theme();
   const width = currentWidth();
   const densityLabel = tileDensity.peek() === 0 ? "balanced" : tileDensity.peek() > 0 ? "dense" : "wide";
-  const left = `focus ${windowTitle(activeWindow.peek())} | ${theme().label} | tiles ${densityLabel}`;
+  const left = `focus ${windowTitle(activeWindow.peek())} | ${theme().label} | tiles ${densityLabel} | ${
+    formatDiagnosticStatus(workbenchDiagnostics.entries(), { label: "diag", includeLatest: false })
+  }`;
   const right = "F10 menu  N new  Shift+T themes  G config  0 restore minimized";
   write(frame, currentHeight() - 1, 0, paint(renderStatusBar(left, right, width), { fg: t.text, bg: t.panelSoft }));
 }
@@ -2652,6 +2669,7 @@ function ensureVisualizationThreePanel(id: VisualizationWindowId): DynamicThreeP
     enabled: threeAsciiAvailable,
     graphicsSurface: () => kittyGraphicsSurfaceFor(asciiForWindow(id).peek()),
     frameInterval: 1000 / 18,
+    diagnostics: workbenchDiagnostics,
     onUpdate: scheduleDraw,
   });
   const entry = { rectangle, graphicsRectangle, scene, panel };
@@ -3370,7 +3388,7 @@ function reportWorkspaceStorageFallback(operation: string, error: unknown): void
     operation,
     error,
   });
-  pushLog(`${diagnostic.message}${diagnostic.detail ? ` ${diagnostic.detail}` : ""}`);
+  workbenchDiagnostics.report(diagnostic);
 }
 
 function normalizeSavedWorkspaces(value: unknown): SavedWorkspace[] {
@@ -4388,6 +4406,10 @@ function controlAtEdge(delta: number): ControlId | undefined {
 
 function pushLog(message: string): void {
   commandLog.value = [...commandLog.peek(), `${new Date().toLocaleTimeString()} ${message}`].slice(-8);
+}
+
+function formatWorkbenchDiagnosticLogEntry(entry: DiagnosticEntry): string {
+  return formatDiagnosticStatus([entry], { label: "diagnostic", includeLatest: true });
 }
 
 function ensureLineObjects(): void {

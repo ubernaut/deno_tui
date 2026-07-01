@@ -558,7 +558,10 @@ Work:
 
 Acceptance checks:
 
-- [ ] Demos stay usable when optional capabilities are unavailable, but the user can inspect why a feature degraded.
+- [x] Demos stay usable when optional capabilities are unavailable, but the user can inspect why a feature degraded.
+  - [x] Terminal API Workbench now injects one `DiagnosticsCollector` into system metrics, process output, PTY shell,
+        Kitty graphics, and Three ASCII panels; diagnostics appear in Recent actions and the bottom status bar without
+        disabling fallback rendering.
 - [x] Diagnostic output avoids noisy logs in normal operation.
 
 ### P3: Modularize Demo-Owned Visualization And Workbench Content
