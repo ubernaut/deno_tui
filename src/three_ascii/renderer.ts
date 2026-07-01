@@ -504,6 +504,7 @@ export function buildThreeAsciiAnsiGrid(input: ThreeAsciiAnsiGridInput): string[
   const terminalEdgeBias = Math.max(0.5, input.terminalEdgeBias ?? DEFAULT_TERMINAL_EDGE_BIAS);
   const [backgroundRed, backgroundGreen, backgroundBlue] = colorToBytes(colorValue(input.backgroundColor, 0x000000));
   const backgroundAnsi = rgbToAnsiBackground(backgroundRed, backgroundGreen, backgroundBlue);
+  const blankAnsi = `${backgroundAnsi}${rgbToAnsiForeground(backgroundRed, backgroundGreen, backgroundBlue)} ${RESET}`;
   const toByte = createLinearByteCache();
   const foregroundAnsiCache = new Map<number, string>();
   const grid = Array.from({ length: rows }, () => Array<string>(columns));
@@ -516,6 +517,14 @@ export function buildThreeAsciiAnsiGrid(input: ThreeAsciiAnsiGridInput): string[
       const fillGlyphIndex = Math.round(fillGlyphs[index] ?? 0);
       const edgeOffset = index * 4;
       const edgeGlyphIndex = Math.round(edgeGlyphs?.[edgeOffset] ?? 0);
+      if (
+        fillGlyphIndex < 5 &&
+        (edgeGlyphIndex <= 0 || (edgeGlyphs?.[edgeOffset + 1] ?? 0) <= 0 || (edgeGlyphs?.[edgeOffset + 2] ?? 0) <= 0)
+      ) {
+        outputRow[column] = blankAnsi;
+        continue;
+      }
+
       const glyph = terminalGlyphForCell(
         terminalGlyphStyle,
         edgeGlyphIndex,

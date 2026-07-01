@@ -183,12 +183,15 @@ Work:
       conditionals.
 - [x] Cache repeated linear-to-sRGB byte conversion during ANSI grid assembly to reduce CPU work on repeated material
       colors without changing terminal output.
+- [x] Add a proven-blank-cell fast path in ANSI grid assembly so sparse Three scenes skip glyph/color conversion work
+      for background cells.
 
 Acceptance checks:
 
 - [x] Tests close, resize, hide, maximize, and reconfigure Three windows while frames are in flight.
 - [x] Three ASCII benchmarks track CPU grid assembly and GPU readback cost separately.
   - [x] Added a separate deterministic readback-copy benchmark for fill, edge, and color buffer payloads.
+  - [x] Added a sparse ANSI grid benchmark that exercises blank-cell skipping separately from dense geometry.
 - [ ] Workbench and standalone Three demos share the same config normalization and lifecycle helpers.
   - [x] Clamped normalized ASCII numeric config values to the same ranges exposed by shared controls, including
         wireframe thickness `0.5..32`, so saved per-widget configs cannot restore invalid renderer settings.

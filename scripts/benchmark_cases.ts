@@ -40,6 +40,9 @@ const threeAsciiCellCount = threeAsciiColumns * threeAsciiRows;
 const threeAsciiFillGlyphs = new Float32Array(threeAsciiCellCount);
 const threeAsciiEdgeGlyphs = new Float32Array(threeAsciiCellCount * 4);
 const threeAsciiColors = new Float32Array(threeAsciiCellCount * 4);
+const threeAsciiSparseFillGlyphs = new Float32Array(threeAsciiCellCount);
+const threeAsciiSparseEdgeGlyphs = new Float32Array(threeAsciiCellCount * 4);
+const threeAsciiSparseColors = new Float32Array(threeAsciiCellCount * 4);
 const threeAsciiReadbackFillSource = new Float32Array(threeAsciiCellCount);
 const threeAsciiReadbackEdgeSource = new Float32Array(threeAsciiCellCount * 4);
 const threeAsciiReadbackColorSource = new Float32Array(threeAsciiCellCount * 4);
@@ -93,6 +96,22 @@ for (let index = 0; index < threeAsciiCellCount; index += 1) {
   threeAsciiColors[colorOffset + 1] = (y % 12) / 11;
   threeAsciiColors[colorOffset + 2] = ((x + y) % 20) / 19;
   threeAsciiColors[colorOffset + 3] = 1;
+
+  const sparseColorOffset = index * 4;
+  threeAsciiSparseColors[sparseColorOffset] = (x % 16) / 15;
+  threeAsciiSparseColors[sparseColorOffset + 1] = (y % 12) / 11;
+  threeAsciiSparseColors[sparseColorOffset + 2] = ((x + y) % 20) / 19;
+  threeAsciiSparseColors[sparseColorOffset + 3] = 1;
+  if ((x + y) % 7 === 0 || (x > 42 && x < 54 && y > 12 && y < 28)) {
+    threeAsciiSparseFillGlyphs[index] = 5 + ((x + y) % 10);
+  }
+  if ((x * 5 + y * 3) % 23 === 0) {
+    const sparseEdgeOffset = index * 4;
+    threeAsciiSparseEdgeGlyphs[sparseEdgeOffset] = (x + y) % 5;
+    threeAsciiSparseEdgeGlyphs[sparseEdgeOffset + 1] = (x % 6) + 3;
+    threeAsciiSparseEdgeGlyphs[sparseEdgeOffset + 2] = 24;
+    threeAsciiSparseEdgeGlyphs[sparseEdgeOffset + 3] = y % 4;
+  }
 }
 threeAsciiReadbackFillSource.set(threeAsciiFillGlyphs);
 threeAsciiReadbackEdgeSource.set(threeAsciiEdgeGlyphs);
@@ -590,6 +609,29 @@ export const benchmarkCases: BenchmarkCase[] = [
       });
       if (grid.length !== threeAsciiRows || grid[0]?.length !== threeAsciiColumns) {
         throw new Error("three Ascii grid dimensions changed");
+      }
+    },
+  },
+  {
+    name: "render/three-ascii-ansi-grid-sparse-96x40",
+    category: "render",
+    description: "CPU-assemble a sparse 96x40 truecolor ANSI grid while skipping proven blank cells.",
+    tags: ["render", "three", "ascii", "ansi", "cpu", "assembly", "sparse"],
+    iterations: 200,
+    maxAverageMs: 8,
+    run: () => {
+      const grid = buildThreeAsciiAnsiGrid({
+        columns: threeAsciiColumns,
+        rows: threeAsciiRows,
+        fillGlyphs: threeAsciiSparseFillGlyphs,
+        edgeGlyphs: threeAsciiSparseEdgeGlyphs,
+        colors: threeAsciiSparseColors,
+        terminalGlyphStyle: "blocks",
+        terminalEdgeBias: 1.15,
+        backgroundColor: 0x000000,
+      });
+      if (grid.length !== threeAsciiRows || grid[0]?.length !== threeAsciiColumns) {
+        throw new Error("sparse three Ascii grid dimensions changed");
       }
     },
   },
