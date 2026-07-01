@@ -10,6 +10,7 @@ import {
   createThemeProvider,
   createThemeProviderReport,
   cropToWidth,
+  DirtyRegion,
   emptyStyle,
   flexRects,
   MemoryCanvasSink,
@@ -65,6 +66,18 @@ const resizeBounds = Array.from({ length: 96 }, (_, index) => ({
   height: 24 + (index % 8) * 4,
 }));
 const mouseRouter = createMouseInteractionRouter();
+const dirtyRegionRectangles = Array.from({ length: 400 }, (_, index) => ({
+  column: (index * 7) % 180,
+  row: (index * 5) % 70,
+  width: 8 + (index % 17),
+  height: 2 + (index % 9),
+}));
+const dirtyRegionProbeRectangles = Array.from({ length: 300 }, (_, index) => ({
+  column: (index * 11) % 190,
+  row: (index * 3) % 76,
+  width: 4 + (index % 23),
+  height: 1 + (index % 11),
+}));
 
 for (let index = 0; index < threeAsciiCellCount; index += 1) {
   const x = index % threeAsciiColumns;
@@ -150,6 +163,17 @@ function runCanvasOverlapWorkload(): void {
 
   if ((sink.lastStats?.flushedCells ?? 0) === 0) {
     throw new Error("canvas overlap workload did not flush any cells");
+  }
+}
+
+function runDirtyRegionWorkload(): void {
+  const region = DirtyRegion.fromRectangles(dirtyRegionRectangles);
+  let intersections = 0;
+  for (const rectangle of dirtyRegionProbeRectangles) {
+    intersections += region.intersections(rectangle).length;
+  }
+  if (region.isEmpty() || intersections <= 0) {
+    throw new Error("dirty region workload did not produce intersections");
   }
 }
 
@@ -493,6 +517,15 @@ export const benchmarkCases: BenchmarkCase[] = [
     iterations: 30,
     maxAverageMs: 75,
     run: runCanvasOverlapWorkload,
+  },
+  {
+    name: "render/canvas-dirty-region-400-rects",
+    category: "render",
+    description: "Merge 400 dirty rectangles into row segments and probe clipped intersections.",
+    tags: ["render", "canvas", "dirty-region"],
+    iterations: 250,
+    maxAverageMs: 4,
+    run: runDirtyRegionWorkload,
   },
   {
     name: "render/api-workbench-frame",

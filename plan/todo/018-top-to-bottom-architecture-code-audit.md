@@ -141,6 +141,7 @@ Work:
 - [x] Add optional render stats for dirty rectangle count, dirty cell count, full redraw count, and intersection query
       cost.
 - [x] Keep the current cell sink contract stable while allowing future sinks to consume row ranges.
+- [x] Add a dedicated DirtyRegion row-segment merge/probe benchmark.
 
 Acceptance checks:
 
