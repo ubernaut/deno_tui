@@ -196,7 +196,7 @@ Work:
 - [x] Keep monitor snapshots advancing when required `/proc` reads or process scans fail, with structured per-source
       diagnostics for unavailable CPU, uptime, network, and process data.
 - [x] Bound expensive process scans and support configurable process limits, sort keys, and refresh cadence.
-- [ ] Add GPU provider abstraction for NVIDIA now and future AMD/Intel support later.
+- [x] Add GPU provider abstraction for NVIDIA now and future AMD/Intel support later.
 
 Acceptance checks:
 

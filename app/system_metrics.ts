@@ -47,10 +47,23 @@ type DiskSample = {
   diagnostic?: SystemMetricDiagnostic;
 };
 
-type GpuSample = {
+/** Result returned by a system GPU metrics provider. */
+export interface GpuSample {
   gpu: GpuSnapshot;
   diagnostic?: SystemMetricDiagnostic;
-};
+}
+
+/** Context passed to pluggable GPU metrics providers. */
+export interface SystemGpuMetricsProviderContext {
+  provider: SystemMetricsProvider;
+  current: GpuSnapshot;
+  diagnostics?: DiagnosticsCollector;
+}
+
+/** Pluggable GPU metrics sampler used by SystemMonitor. */
+export interface SystemGpuMetricsProvider {
+  sampleGpu(context: SystemGpuMetricsProviderContext): Promise<GpuSample>;
+}
 
 export type SystemProcessSortKey = "cpu" | "memory" | "pid" | "name";
 
@@ -138,9 +151,17 @@ export class DenoSystemMetricsProvider implements SystemMetricsProvider {
   }
 }
 
+/** NVIDIA GPU metrics provider backed by nvidia-smi CSV output. */
+export class NvidiaSmiGpuMetricsProvider implements SystemGpuMetricsProvider {
+  async sampleGpu(context: SystemGpuMetricsProviderContext): Promise<GpuSample> {
+    return await sampleNvidiaSmiGpu(context.provider, context.current, context.diagnostics);
+  }
+}
+
 export interface SystemMonitorOptions {
   historyLength?: number;
   provider?: SystemMetricsProvider;
+  gpuProvider?: SystemGpuMetricsProvider;
   diagnostics?: DiagnosticsCollector;
   processLimit?: number;
   processScanLimit?: number;
@@ -153,6 +174,7 @@ export class SystemMonitor {
   snapshot: Signal<SystemSnapshot>;
 
   #provider: SystemMetricsProvider;
+  #gpuProvider: SystemGpuMetricsProvider;
   #cpuTimes: CpuTimes[] = [];
   #netCounters = new Map<string, NetCounters>();
   #processCpu = new Map<number, number>();
@@ -179,6 +201,7 @@ export class SystemMonitor {
       ? { historyLength: historyLengthOrOptions, provider }
       : historyLengthOrOptions;
     this.#provider = options.provider ?? provider;
+    this.#gpuProvider = options.gpuProvider ?? new NvidiaSmiGpuMetricsProvider();
     this.#historyLength = normalizePositiveInteger(options.historyLength, 60);
     this.#processLimit = normalizePositiveInteger(options.processLimit, 100);
     this.#processScanLimit = normalizePositiveInteger(options.processScanLimit, 4096);
@@ -228,7 +251,11 @@ export class SystemMonitor {
         readMetricText(this.#provider, "/proc/net/dev", "network", ""),
         sampleTemperatures(this.#provider),
         this.#sampleDisks(),
-        sampleGpu(this.#provider, current.gpu, this.#diagnostics),
+        this.#gpuProvider.sampleGpu({
+          provider: this.#provider,
+          current: current.gpu,
+          diagnostics: this.#diagnostics,
+        }),
         useCachedProcesses ? Promise.resolve(undefined) : this.#collectProcessStats(),
       ]);
 
@@ -719,7 +746,7 @@ async function sampleTemperatures(provider: SystemMetricsProvider): Promise<Temp
   };
 }
 
-async function sampleGpu(
+async function sampleNvidiaSmiGpu(
   provider: SystemMetricsProvider,
   current: GpuSnapshot,
   diagnostics?: DiagnosticsCollector,

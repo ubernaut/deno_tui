@@ -1,5 +1,8 @@
 import { assertEquals } from "./deps.ts";
 import {
+  type GpuSample,
+  type SystemGpuMetricsProvider,
+  type SystemGpuMetricsProviderContext,
   type SystemMetricsCommandOutput,
   type SystemMetricsDirEntry,
   type SystemMetricsNetworkInterface,
@@ -56,6 +59,35 @@ Deno.test("SystemMonitor samples through an injectable metrics provider", async 
   );
   assertEquals(
     snapshot.diagnostics.some((diagnostic) => diagnostic.source === "process" && diagnostic.status === "ok"),
+    true,
+  );
+});
+
+Deno.test("SystemMonitor accepts a pluggable GPU metrics provider", async () => {
+  const provider = new FixtureMetricsProvider();
+  const gpuProvider = new FixtureGpuProvider();
+  provider.files.set("/proc/stat", procStatFirst());
+  provider.files.set("/proc/uptime", "123.45 100.00\n");
+  provider.files.set("/proc/net/dev", procNetDev(1_000, 2_000));
+
+  const monitor = new SystemMonitor({
+    historyLength: 4,
+    provider,
+    gpuProvider,
+  });
+  await monitor.sample();
+
+  const snapshot = monitor.snapshot.peek();
+  assertEquals(snapshot.gpu.available, true);
+  assertEquals(snapshot.gpu.name, "Fixture Arc");
+  assertEquals(snapshot.gpu.utilizationPercent, 42);
+  assertEquals(snapshot.gpu.memoryPercent, 50);
+  assertEquals(provider.commandCalls.get("nvidia-smi"), undefined);
+  assertEquals(gpuProvider.samples, 1);
+  assertEquals(
+    snapshot.diagnostics.some((diagnostic) =>
+      diagnostic.source === "gpu" && diagnostic.status === "ok" && diagnostic.detail === "fixture gpu provider"
+    ),
     true,
   );
 });
@@ -201,12 +233,42 @@ Deno.test("SystemMonitor keeps sampling when required sources are partially unav
   );
 });
 
+class FixtureGpuProvider implements SystemGpuMetricsProvider {
+  samples = 0;
+
+  sampleGpu(context: SystemGpuMetricsProviderContext): Promise<GpuSample> {
+    this.samples += 1;
+    return Promise.resolve({
+      gpu: {
+        available: true,
+        name: "Fixture Arc",
+        utilizationPercent: 42,
+        memoryUsed: 2048,
+        memoryTotal: 4096,
+        memoryPercent: 50,
+        temperatureCelsius: 61,
+        powerWatts: 90,
+        graphicsClockMhz: 1800,
+        memoryClockMhz: 8000,
+      },
+      diagnostic: {
+        source: "gpu",
+        status: "ok",
+        detail: "fixture gpu provider",
+        durationMs: 0,
+        sampledAt: context.provider.now(),
+      },
+    });
+  }
+}
+
 class FixtureMetricsProvider implements SystemMetricsProvider {
   nowValue = 1_000;
   files = new Map<string, string>();
   dirs = new Map<string, SystemMetricsDirEntry[]>();
   dirErrors = new Map<string, Error>();
   commands = new Map<string, SystemMetricsCommandOutput>();
+  commandCalls = new Map<string, number>();
 
   now(): number {
     return this.nowValue;
@@ -266,6 +328,7 @@ class FixtureMetricsProvider implements SystemMetricsProvider {
   }
 
   async command(command: string, _args: string[]): Promise<SystemMetricsCommandOutput> {
+    this.commandCalls.set(command, (this.commandCalls.get(command) ?? 0) + 1);
     return this.commands.get(command) ?? { success: false, stdout: new Uint8Array() };
   }
 }
