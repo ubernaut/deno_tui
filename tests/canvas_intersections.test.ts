@@ -275,6 +275,80 @@ Deno.test("draw objects track views attached after construction", () => {
   assertEquals(canvasRowText(canvas, 1, 12), "..HELP......");
 });
 
+Deno.test("canvas restores scrolled viewport content after modal overlay closes", async () => {
+  const canvas = createTestCanvas({ size: { columns: 16, rows: 3 } });
+  const view = new View({
+    rectangle: { column: 0, row: 0, width: 16, height: 3 },
+    offset: { columns: 0, rows: 0 },
+    maxOffset: { columns: 0, rows: 1 },
+  });
+  const background = new BoxObject({
+    canvas,
+    rectangle: { column: 0, row: 0, width: 16, height: 3 },
+    filler: ".",
+    style: (text: string) => text,
+    zIndex: 0,
+  });
+  const rows = ["ALPHA", "BETA", "GAMMA", "DELTA"].map((value, row) =>
+    new TextObject({
+      canvas,
+      rectangle: { column: 0, row, width: 16 },
+      value: value.padEnd(16, " "),
+      overwriteRectangle: true,
+      view,
+      style: (text: string) => text,
+      zIndex: 1,
+    })
+  );
+
+  background.draw();
+  for (const row of rows) row.draw();
+  await Promise.resolve();
+  canvas.render();
+
+  assertEquals(canvasRowText(canvas, 0, 16), "ALPHA           ");
+  assertEquals(canvasRowText(canvas, 1, 16), "BETA            ");
+  assertEquals(canvasRowText(canvas, 2, 16), "GAMMA           ");
+
+  view.offset.value = { columns: 0, rows: 1 };
+  canvas.render();
+  assertEquals(canvasRowText(canvas, 0, 16), "BETA            ");
+  assertEquals(canvasRowText(canvas, 1, 16), "GAMMA           ");
+  assertEquals(canvasRowText(canvas, 2, 16), "DELTA           ");
+
+  const modal = new BoxObject({
+    canvas,
+    rectangle: { column: 2, row: 0, width: 12, height: 3 },
+    filler: "#",
+    style: (text: string) => text,
+    zIndex: 10,
+  });
+  const modalTitle = new TextObject({
+    canvas,
+    rectangle: { column: 5, row: 1, width: 6 },
+    value: "MODAL",
+    overwriteRectangle: true,
+    style: (text: string) => text,
+    zIndex: 11,
+  });
+  modal.draw();
+  modalTitle.draw();
+  canvas.render();
+
+  assertEquals(canvasRowText(canvas, 0, 16), "BE############  ");
+  assertEquals(canvasRowText(canvas, 1, 16), "GA###MODAL ###  ");
+  assertEquals(canvasRowText(canvas, 2, 16), "DE############  ");
+
+  modalTitle.erase();
+  modal.erase();
+  canvas.render();
+
+  assertEquals(canvasRowText(canvas, 0, 16), "BETA            ");
+  assertEquals(canvasRowText(canvas, 1, 16), "GAMMA           ");
+  assertEquals(canvasRowText(canvas, 2, 16), "DELTA           ");
+  assertEquals(canvas.inspectRender().intersectionsDirty, true);
+});
+
 function runInvalidationScenario(canvas: Canvas): void {
   const overlayRect = new Signal({ column: 2, row: 1, width: 4, height: 2 });
   const background = new BoxObject({

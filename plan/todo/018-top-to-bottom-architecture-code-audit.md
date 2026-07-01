@@ -367,7 +367,8 @@ Acceptance checks:
 
 ## Cross-Cutting Test Plan
 
-- [ ] Add full-frame render invalidation tests for overlapping draw objects, scrollable workspaces, and modals.
+- [x] Add full-frame render invalidation tests for overlapping draw objects, scrollable workspaces, and modals.
+  - [x] Added a canvas regression covering a modal overlay opening/closing over scrolled viewport content.
 - [ ] Add real workbench controller tests after extraction, covering both terminal and web adapters.
 - [x] Add browser interaction tests for pointer, touch/coarse pointer, software keyboard text input, and resize
       observer.
