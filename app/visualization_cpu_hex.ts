@@ -46,7 +46,7 @@ export function cpuHexGridColumnCount(
   height: number,
 ): number {
   if (cores.length === 0) return 1;
-  const labelWidth = Math.max(3, ...cores.map((core) => core.label.length));
+  const labelWidth = cpuHexLabelWidth(cores);
   const mode = cpuHexTileMode(width, height, cores.length, labelWidth);
   return cpuHexColumns(width, cpuHexTileWidth(mode, labelWidth));
 }
@@ -57,17 +57,18 @@ export function cpuHexTileLayout(
   height: number,
 ): CpuHexTileLayout[] {
   if (cores.length === 0) return [];
-  const labelWidth = Math.max(3, ...cores.map((core) => core.label.length));
+  const labelWidth = cpuHexLabelWidth(cores);
   const mode = cpuHexTileMode(width, height, cores.length, labelWidth);
   const tileWidth = cpuHexTileWidth(mode, labelWidth);
   const tileHeight = cpuHexTileHeight(mode);
   const columns = cpuHexColumns(width, tileWidth);
-
-  return cores.map((core, index) => {
+  const layout = new Array<CpuHexTileLayout>(cores.length);
+  for (let index = 0; index < cores.length; index++) {
+    const core = cores[index]!;
     const logicalRow = Math.floor(index / columns);
     const columnIndex = index % columns;
     const indent = logicalRow % 2 === 1 ? cpuHexIndent(width, tileWidth) : 0;
-    return {
+    layout[index] = {
       core,
       label: core.label,
       column: indent + columnIndex * (tileWidth + 1),
@@ -75,7 +76,8 @@ export function cpuHexTileLayout(
       width: tileWidth,
       height: tileHeight,
     };
-  });
+  }
+  return layout;
 }
 
 export function renderCpuHexGrid(context: RenderContext): PanelRender {
@@ -142,13 +144,20 @@ function cpuHexGridRows(
   height: number,
   selectedCpuLabel?: string,
 ): string[] {
-  const labelWidth = Math.max(3, ...cores.map((core) => core.label.length));
+  const labelWidth = cpuHexLabelWidth(cores);
   const mode = cpuHexTileMode(width, height, cores.length, labelWidth);
   const tileWidth = cpuHexTileWidth(mode, labelWidth);
   const layout = cpuHexTileLayout(cores, width, height);
-  const rows = Math.max(1, Math.max(...layout.map((tile) => tile.row + tile.height)));
-  const cursors = Array.from({ length: rows }, () => 0);
-  const lines = Array.from({ length: rows }, () => "");
+  let rows = 1;
+  for (const tile of layout) {
+    rows = Math.max(rows, tile.row + tile.height);
+  }
+  const cursors = new Array<number>(rows);
+  const lines = new Array<string>(rows);
+  for (let index = 0; index < rows; index++) {
+    cursors[index] = 0;
+    lines[index] = "";
+  }
 
   for (const tile of layout) {
     const rendered = cpuHexTile(tile.core, mode, labelWidth, tileWidth, tile.label === selectedCpuLabel);
@@ -161,6 +170,14 @@ function cpuHexGridRows(
   }
 
   return lines;
+}
+
+function cpuHexLabelWidth(cores: RenderContext["system"]["cpuCores"]): number {
+  let width = 3;
+  for (const core of cores) {
+    width = Math.max(width, core.label.length);
+  }
+  return width;
 }
 
 function cpuHexTileMode(width: number, height: number, coreCount: number, labelWidth: number): CpuHexTileMode {
@@ -301,9 +318,16 @@ function cpuHexSelectionLines(
 }
 
 function cpuIdRange(cores: RenderContext["system"]["cpuCores"]): string {
-  const ids = cores.map((core) => Number(core.label)).filter(Number.isFinite);
-  if (ids.length !== cores.length || ids.length === 0) return "";
-  return `${Math.min(...ids)}-${Math.max(...ids)}`;
+  if (cores.length === 0) return "";
+  let min = Infinity;
+  let max = -Infinity;
+  for (const core of cores) {
+    const id = Number(core.label);
+    if (!Number.isFinite(id)) return "";
+    min = Math.min(min, id);
+    max = Math.max(max, id);
+  }
+  return `${min}-${max}`;
 }
 
 function cpuHexProcessLine(process: RenderContext["system"]["processes"][number], width: number): string {
