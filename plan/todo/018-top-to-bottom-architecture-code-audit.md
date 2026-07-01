@@ -268,6 +268,8 @@ Work:
       focused tests for offline, pressure, alert, and narrow-panel behavior.
 - [x] Extract CPU, memory, disk, temperature, and process monitor visualization rendering into a dedicated module with
       focused tests for empty sources, alert states, CPU legend coverage, and top-100 process output limits.
+- [x] Extract shared visualization drawing primitives for meters, charts, text cropping, and matrix drawing into a
+      dedicated helper module with direct tests.
 
 Acceptance checks:
 

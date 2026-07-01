@@ -18,6 +18,21 @@ import { cpuActivityRgb, cpuHexGridColumnCount, cpuHexTileLayout, renderCpuHexGr
 import { renderGpuChipMonitor, renderGpuCombinedMonitor, renderGpuMemoryMonitor } from "./visualization_gpu.ts";
 import { renderNetworkMonitor } from "./visualization_network.ts";
 import {
+  barChart,
+  clampInt,
+  createMatrix,
+  crop,
+  drawEllipse,
+  drawLine,
+  gridify,
+  miniMeter,
+  monitorGlyph,
+  plotHistory,
+  renderMatrix,
+  setCell,
+  signalChart,
+} from "./visualization_primitives.ts";
+import {
   renderCpuLegend,
   renderCpuMonitor,
   renderDiskMonitor,
@@ -516,22 +531,6 @@ function modeLabel(mode: ThreeSceneMode) {
   return neonThreeSceneModeLabel(mode);
 }
 
-function monitorGlyph(drive: VisualizationDrive, accent: Accent) {
-  if (drive.hazard >= 0.9) {
-    return "█";
-  }
-  if (drive.volatility >= 0.52) {
-    return accent === "amber" ? "▓" : accent === "violet" ? "◆" : "▒";
-  }
-  return accent === "alarm" ? "╳" : accent === "amber" ? "■" : accent === "violet" ? "◆" : "●";
-}
-
-function miniMeter(value: number, width: number, heat: number) {
-  const ramp = heat >= 0.9 ? "█" : heat >= 0.72 ? "▓" : "▒";
-  const fill = Math.round(clamp(value, 0, 1) * width);
-  return `[${ramp.repeat(fill).padEnd(width, "·")}]`;
-}
-
 function alertText(context: RenderContext) {
   const alert = context.system.alerts[0];
   return alert ? `${alert.title} / ${alert.detail}` : "";
@@ -689,46 +688,6 @@ function sourceWarnings(sources: SourceFrame[], drive: VisualizationDrive) {
 
 function sourceNameMatrix(sources: SourceFrame[]) {
   return sources.map((source) => crop(source.name.toUpperCase(), 8)).join(" / ");
-}
-
-function plotHistory(values: number[], width: number, height: number, glyph: string) {
-  return signalChart(sampleSeries(values, width), width, height, glyph);
-}
-
-function barChart(values: number[], width: number, height: number, glyphs: readonly string[]) {
-  const columns = sampleSeries(values, width);
-  const matrix = createMatrix(width, height, " ");
-  for (let x = 0; x < width; x += 1) {
-    const filled = Math.max(1, Math.round((columns[x] ?? 0) * height));
-    for (let row = 0; row < height; row += 1) {
-      const fromBottom = height - row;
-      if (fromBottom <= filled) {
-        const normalized = clamp(fromBottom / Math.max(1, filled), 0, 1);
-        const glyphIndex = Math.min(glyphs.length - 1, Math.max(1, Math.ceil(normalized * (glyphs.length - 1))));
-        setCell(matrix, x, row, glyphs[glyphIndex] ?? glyphs[glyphs.length - 1] ?? "#");
-      }
-    }
-  }
-  return renderMatrix(matrix);
-}
-
-function signalChart(values: number[], width: number, height: number, glyph: string) {
-  const sampled = sampleSeries(values, width);
-  const matrix = createMatrix(width, height, " ");
-  const threshold = Math.floor(height / 2);
-  for (let x = 0; x < width; x += 1) {
-    setCell(matrix, x, threshold, "─");
-  }
-  let previousY = threshold;
-  for (let x = 0; x < width; x += 1) {
-    const y = Math.round((1 - (sampled[x] ?? 0)) * Math.max(0, height - 1));
-    if (x > 0) {
-      drawLine(matrix, x - 1, previousY, x, y, glyph);
-    }
-    setCell(matrix, x, y, glyph);
-    previousY = y;
-  }
-  return renderMatrix(matrix);
 }
 
 function telemetryRack(width: number, height: number, drive: VisualizationDrive) {
@@ -1063,71 +1022,4 @@ function componentIndex(width: number, height: number, drive: VisualizationDrive
     return `${marker} ${demo.title.toUpperCase()}`;
   });
   return [header, ...gridify(entries, width).split("\n")].slice(0, Math.max(1, height)).join("\n");
-}
-
-function clampInt(value: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, value));
-}
-
-function gridify(entries: string[], width: number) {
-  const itemWidth = width >= 72 ? 28 : width >= 52 ? 24 : width >= 40 ? 20 : 16;
-  const columns = Math.max(1, Math.floor((width + 1) / (itemWidth + 1)));
-  const rows = Math.ceil(entries.length / columns);
-  return Array.from(
-    { length: rows },
-    (_, row) =>
-      Array.from({ length: columns }, (_, column) => entries[row + column * rows])
-        .filter((value): value is string => Boolean(value))
-        .map((value) => crop(value, itemWidth).padEnd(itemWidth, " "))
-        .join(" "),
-  ).join("\n");
-}
-
-function crop(text: string, width: number) {
-  if (text.length <= width) {
-    return text;
-  }
-  return `${text.slice(0, Math.max(0, width - 1))}…`;
-}
-
-function createMatrix(width: number, height: number, fill = " ") {
-  return Array.from({ length: height }, () => Array.from({ length: width }, () => fill));
-}
-
-function renderMatrix(matrix: string[][]) {
-  return matrix.map((row) => row.join("")).join("\n");
-}
-
-function setCell(matrix: string[][], x: number, y: number, char: string) {
-  const row = matrix[y];
-  if (!row || x < 0 || x >= row.length) {
-    return;
-  }
-  row[x] = char;
-}
-
-function drawLine(matrix: string[][], x1: number, y1: number, x2: number, y2: number, char: string) {
-  const steps = Math.max(Math.abs(x2 - x1), Math.abs(y2 - y1), 1);
-  for (let step = 0; step <= steps; step += 1) {
-    const x = Math.round(x1 + ((x2 - x1) * step) / steps);
-    const y = Math.round(y1 + ((y2 - y1) * step) / steps);
-    setCell(matrix, x, y, char);
-  }
-}
-
-function drawEllipse(
-  matrix: string[][],
-  centerX: number,
-  centerY: number,
-  radiusX: number,
-  radiusY: number,
-  glyph: string,
-) {
-  const steps = Math.max(24, Math.round(Math.max(radiusX, radiusY) * 8));
-  for (let step = 0; step < steps; step += 1) {
-    const theta = (step / steps) * Math.PI * 2;
-    const x = Math.round(centerX + Math.cos(theta) * radiusX);
-    const y = Math.round(centerY + Math.sin(theta) * radiusY);
-    setCell(matrix, x, y, glyph);
-  }
 }
