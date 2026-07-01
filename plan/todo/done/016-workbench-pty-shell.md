@@ -30,5 +30,4 @@ PTY backend is available.
 - Generalized terminal input routing so it can write to process sessions or shell/session handles.
 - Added the API Workbench `Shell` window to the New menu. It auto-starts with the optional Sigma PTY backend when
   available and falls back to a process backend with clear status labeling.
-- Verified with focused tests plus tmux smoke runs that opened the Shell pane and executed
-  `echo WORKBENCH_SHELL_OK`.
+- Verified with focused tests plus tmux smoke runs that opened the Shell pane and executed `echo WORKBENCH_SHELL_OK`.

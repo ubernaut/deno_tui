@@ -1,7 +1,7 @@
 # API Reference
 
-This document is generated from the public re-export graph rooted at `mod.ts`. It is intended as a complete
-map of the modules and exported symbols that make up the package API.
+This document is generated from the public re-export graph rooted at `mod.ts`. It is intended as a complete map of the
+modules and exported symbols that make up the package API.
 
 ## Summary
 
