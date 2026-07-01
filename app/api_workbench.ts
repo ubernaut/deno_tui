@@ -2473,7 +2473,7 @@ function windowContentSize(id: WindowId, viewport: Rectangle): { width: number; 
   if (id === "explorer") {
     const entries = explorer.entries();
     return {
-      width: Math.max(baseWidth, maxTextWidth(entries.map((entry) => entry.text)) + 2),
+      width: Math.max(baseWidth, maxTextWidthBy(entries, (entry) => entry.text) + 2),
       height: Math.max(baseHeight, entries.length),
     };
   }
@@ -2500,8 +2500,9 @@ function windowContentSize(id: WindowId, viewport: Rectangle): { width: number; 
     return { width: Math.max(baseWidth, 72), height: Math.max(baseHeight, 24) };
   }
   if (id === TERMINAL_OUTPUT_WINDOW_ID) {
-    const outputWidth = maxTextWidth(
-      terminalOutputSession.output.lines.peek().map((line) => formatTerminalOutputLine(line, { sourcePrefix: true })),
+    const outputWidth = maxTextWidthBy(
+      terminalOutputSession.output.lines.peek(),
+      (line) => formatTerminalOutputLine(line, { sourcePrefix: true }),
     );
     return {
       width: Math.max(baseWidth, Math.min(120, Math.max(64, outputWidth + 2))),
