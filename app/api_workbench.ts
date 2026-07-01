@@ -51,6 +51,7 @@ import {
   subscribeWorkbenchDiagnosticLog,
   translateHitTargets,
   upsertWorkbenchWorkspace,
+  workbenchAdaptiveTileOptions,
   workbenchContentViewport,
   type WorkbenchFrame,
   workbenchRevealActiveRowOffset,
@@ -58,6 +59,7 @@ import {
   type WorkbenchTitlebarButtonKind,
   workbenchVisualizationIdFromWindowId,
   workbenchVisualizationWindowId,
+  workbenchWindowLayout,
   type WorkbenchWindowOption,
   workbenchWindowOptionMenuLabel,
   workbenchWindowOptionMinimums,
@@ -2438,22 +2440,11 @@ function workspaceLayout(bounds: Rectangle): {
   contentHeight: number;
   rects: Map<WindowId, Rectangle>;
 } {
-  const rects = new Map<WindowId, Rectangle>();
-  const densityOffset = tileDensity.peek() * 4;
   const layout = windowManager.layout({
     bounds,
-    tileOptions: {
-      minTileWidth: Math.max(26, 38 - densityOffset),
-      minTileHeight: 10,
-      maxColumns: bounds.width >= 172 ? 4 : 3,
-      targetAspectRatio: 2.25 + tileDensity.peek() * 0.12,
-      allowVerticalOverflow: true,
-    },
+    tileOptions: workbenchAdaptiveTileOptions({ bounds, tileDensity: tileDensity.peek() }),
   });
-  for (const entry of layout.visible) {
-    if (entry.rect) rects.set(entry.id as WindowId, entry.rect);
-  }
-  return { bounds, contentHeight: Math.max(bounds.height, layout.contentHeight), rects };
+  return workbenchWindowLayout<WindowId>(bounds, layout);
 }
 
 function windowScroll(id: WindowId): ScrollAreaController {

@@ -9040,6 +9040,28 @@ function subscribeWorkbenchDiagnosticLog(diagnostics, onLog, options = {}) {
   });
 }
 
+// src/app/workbench_layout.ts
+function workbenchAdaptiveTileOptions(options) {
+  const density = Number.isFinite(options.tileDensity) ? Math.trunc(options.tileDensity ?? 0) : 0;
+  const densityOffset = density * 4;
+  const minTileWidth = Math.max(1, Math.floor((options.minTileWidth ?? 38) - densityOffset));
+  return {
+    minTileWidth: Math.max(26, minTileWidth),
+    minTileHeight: Math.max(1, Math.floor(options.minTileHeight ?? 10)),
+    maxColumns: options.bounds.width >= (options.wideBreakpoint ?? 172) ? Math.max(1, Math.floor(options.wideMaxColumns ?? 4)) : Math.max(1, Math.floor(options.narrowMaxColumns ?? 3)),
+    targetAspectRatio: (options.targetAspectRatio ?? 2.25) + density * (options.aspectDensityStep ?? 0.12),
+    allowVerticalOverflow: options.allowVerticalOverflow ?? true,
+    gap: Math.max(0, Math.floor(options.gap ?? 1))
+  };
+}
+function workbenchWindowLayout(bounds, layout) {
+  const rects = /* @__PURE__ */ new Map();
+  for (const entry of layout.visible) {
+    if (entry.rect) rects.set(entry.id, entry.rect);
+  }
+  return { bounds, contentHeight: Math.max(bounds.height, layout.contentHeight), rects };
+}
+
 // src/app/workbench_menu.ts
 var WorkbenchTopMenuController = class {
   #openId = null;
@@ -12578,8 +12600,6 @@ function adjustTileDensity(delta) {
   push(`tile density ${tileDensity.peek()}`);
 }
 function workspaceLayout(bounds) {
-  const rects = /* @__PURE__ */ new Map();
-  const densityOffset = tileDensity.peek() * 4;
   const fullscreenId = maximized.peek() ?? void 0;
   const manager = new WindowManagerController({
     activeId: active.peek(),
@@ -12595,20 +12615,10 @@ function workspaceLayout(bounds) {
   });
   const layout = manager.layout({
     bounds,
-    tileOptions: {
-      minTileWidth: Math.max(26, 38 - densityOffset),
-      minTileHeight: 10,
-      maxColumns: bounds.width >= 172 ? 4 : 3,
-      targetAspectRatio: 2.25 + tileDensity.peek() * 0.12,
-      allowVerticalOverflow: true,
-      gap: 1
-    }
+    tileOptions: workbenchAdaptiveTileOptions({ bounds, tileDensity: tileDensity.peek() })
   });
-  for (const entry of layout.visible) {
-    if (entry.rect) rects.set(entry.id, entry.rect);
-  }
   manager.dispose();
-  return { bounds, contentHeight: Math.max(bounds.height, layout.contentHeight), rects };
+  return workbenchWindowLayout(bounds, layout);
 }
 function translateWorkspaceHits(startIndex, columnDelta, rowDelta, clip) {
   translateHitTargets(hitTargets, { startIndex, columnDelta, rowDelta, clip });

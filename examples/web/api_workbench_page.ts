@@ -63,10 +63,12 @@ import {
   toStyledCells,
   translateHitTargets,
   WindowManagerController,
+  workbenchAdaptiveTileOptions,
   type WorkbenchPanelWorkspaceState,
   workbenchRevealActiveRowOffset,
   workbenchStatusLeft,
   type WorkbenchTitlebarButtonKind,
+  workbenchWindowLayout,
   wrapTextBoxLines,
 } from "../../mod.web.ts";
 import { WorkbenchController } from "../../src/app/workbench/controller.ts";
@@ -1382,8 +1384,6 @@ function workspaceLayout(bounds: Rectangle): {
   contentHeight: number;
   rects: Map<PanelId, Rectangle>;
 } {
-  const rects = new Map<PanelId, Rectangle>();
-  const densityOffset = tileDensity.peek() * 4;
   const fullscreenId = maximized.peek() ?? undefined;
   const manager = new WindowManagerController({
     activeId: active.peek(),
@@ -1400,20 +1400,10 @@ function workspaceLayout(bounds: Rectangle): {
 
   const layout = manager.layout({
     bounds,
-    tileOptions: {
-      minTileWidth: Math.max(26, 38 - densityOffset),
-      minTileHeight: 10,
-      maxColumns: bounds.width >= 172 ? 4 : 3,
-      targetAspectRatio: 2.25 + tileDensity.peek() * 0.12,
-      allowVerticalOverflow: true,
-      gap: 1,
-    },
+    tileOptions: workbenchAdaptiveTileOptions({ bounds, tileDensity: tileDensity.peek() }),
   });
-  for (const entry of layout.visible) {
-    if (entry.rect) rects.set(entry.id as PanelId, entry.rect);
-  }
   manager.dispose();
-  return { bounds, contentHeight: Math.max(bounds.height, layout.contentHeight), rects };
+  return workbenchWindowLayout<PanelId>(bounds, layout);
 }
 
 function translateWorkspaceHits(startIndex: number, columnDelta: number, rowDelta: number, clip: Rectangle): void {

@@ -6,10 +6,10 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 ## Summary
 
 - Entrypoints: 9
-- Module visits: 511
-- Re-export declarations: 502
-- Exported symbols: 4527
-- Documented symbols: 4527
+- Module visits: 517
+- Re-export declarations: 508
+- Exported symbols: 4569
+- Documented symbols: 4569
 - Documentation coverage: 100.00%
 - Duplicate symbol groups: 0
 - Missing targets: 0
@@ -18,8 +18,8 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 
 | Specifier       | Path                           | Runtime  | Stability    | Modules | Symbols |    Docs |
 | --------------- | ------------------------------ | -------- | ------------ | ------: | ------: | ------: |
-| `.`             | `./mod.ts`                     | terminal | stable       |     230 |    1919 | 100.00% |
-| `./web`         | `./mod.web.ts`                 | browser  | beta         |     209 |    1782 | 100.00% |
+| `.`             | `./mod.ts`                     | terminal | stable       |     233 |    1940 | 100.00% |
+| `./web`         | `./mod.web.ts`                 | browser  | beta         |     212 |    1803 | 100.00% |
 | `./remote`      | `./mod.remote.ts`              | remote   | experimental |       4 |      38 | 100.00% |
 | `./three-ascii` | `./mod.three_ascii.ts`         | shared   | experimental |       8 |      54 | 100.00% |
 | `./theme`       | `./mod.theme.ts`               | shared   | beta         |      10 |     198 | 100.00% |
@@ -39,10 +39,10 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 ### Summary
 
 - Entrypoint: `mod.ts`
-- Modules: 230
-- Re-export declarations: 229
-- Exported symbols: 1919
-- Documented symbols: 1919
+- Modules: 233
+- Re-export declarations: 232
+- Exported symbols: 1940
+- Documented symbols: 1940
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -115,16 +115,19 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 | [`src/app/toast_commands.ts`](#src-app-toast-commands-ts)                               |          0 |       6 |          6 |
 | [`src/app/tree_commands.ts`](#src-app-tree-commands-ts)                                 |          0 |       6 |          6 |
 | [`src/app/window_manager_commands.ts`](#src-app-window-manager-commands-ts)             |          0 |       8 |          8 |
+| [`src/app/workbench_diagnostics.ts`](#src-app-workbench-diagnostics-ts)                 |          0 |       5 |          5 |
 | [`src/app/workbench_frame.ts`](#src-app-workbench-frame-ts)                             |          0 |      13 |         13 |
-| [`src/app/workbench_menu.ts`](#src-app-workbench-menu-ts)                               |          0 |       8 |          8 |
+| [`src/app/workbench_layout.ts`](#src-app-workbench-layout-ts)                           |          0 |       6 |          6 |
+| [`src/app/workbench_menu.ts`](#src-app-workbench-menu-ts)                               |          0 |      14 |         14 |
 | [`src/app/workbench_overlay.ts`](#src-app-workbench-overlay-ts)                         |          0 |       5 |          5 |
 | [`src/app/workbench_shelf.ts`](#src-app-workbench-shelf-ts)                             |          0 |       8 |          8 |
+| [`src/app/workbench_status.ts`](#src-app-workbench-status-ts)                           |          0 |       4 |          4 |
 | [`src/app/workbench_terminal.ts`](#src-app-workbench-terminal-ts)                       |          0 |       6 |          6 |
 | [`src/app/workbench_titlebar.ts`](#src-app-workbench-titlebar-ts)                       |          0 |       6 |          6 |
 | [`src/app/workbench_viewport.ts`](#src-app-workbench-viewport-ts)                       |          0 |       4 |          4 |
 | [`src/app/workbench_window_registry.ts`](#src-app-workbench-window-registry-ts)         |          0 |      13 |         13 |
 | [`src/app/workbench_workspace.ts`](#src-app-workbench-workspace-ts)                     |          0 |      18 |         18 |
-| [`src/app/workbench/mod.ts`](#src-app-workbench-mod-ts)                                 |         10 |       0 |          0 |
+| [`src/app/workbench/mod.ts`](#src-app-workbench-mod-ts)                                 |         13 |       0 |          0 |
 | [`src/canvas/box.ts`](#src-canvas-box-ts)                                               |          0 |       2 |          2 |
 | [`src/canvas/canvas.ts`](#src-canvas-canvas-ts)                                         |          0 |       4 |          4 |
 | [`src/canvas/dirty_region.ts`](#src-canvas-dirty-region-ts)                             |          0 |       2 |          2 |
@@ -1182,6 +1185,16 @@ _No direct exported symbols._
 | `WindowManagerRenameFactory`  | type      | yes       | yes   |
 | `WindowManagerWindowFactory`  | type      | yes       | yes   |
 
+#### src/app/workbench_diagnostics.ts
+
+| Symbol                              | Kind      | Type Only | JSDoc |
+| ----------------------------------- | --------- | --------- | ----- |
+| `formatWorkbenchDiagnosticLogEntry` | function  | no        | yes   |
+| `formatWorkbenchDiagnosticStatus`   | function  | no        | yes   |
+| `initialWorkbenchDiagnosticLogRows` | function  | no        | yes   |
+| `subscribeWorkbenchDiagnosticLog`   | function  | no        | yes   |
+| `WorkbenchDiagnosticFormatOptions`  | interface | yes       | yes   |
+
 #### src/app/workbench_frame.ts
 
 | Symbol                | Kind     | Type Only | JSDoc |
@@ -1200,18 +1213,35 @@ _No direct exported symbols._
 | `WorkbenchFrameStyle` | type     | yes       | yes   |
 | `writeFrame`          | function | no        | yes   |
 
+#### src/app/workbench_layout.ts
+
+| Symbol                         | Kind      | Type Only | JSDoc |
+| ------------------------------ | --------- | --------- | ----- |
+| `workbenchAdaptiveTileOptions` | function  | no        | yes   |
+| `WorkbenchAdaptiveTileOptions` | interface | yes       | yes   |
+| `WorkbenchLayoutEntryShape`    | interface | yes       | yes   |
+| `WorkbenchLayoutShape`         | interface | yes       | yes   |
+| `workbenchWindowLayout`        | function  | no        | yes   |
+| `WorkbenchWindowLayout`        | interface | yes       | yes   |
+
 #### src/app/workbench_menu.ts
 
 | Symbol                              | Kind      | Type Only | JSDoc |
 | ----------------------------------- | --------- | --------- | ----- |
 | `isWorkbenchMenuActivationKey`      | function  | no        | yes   |
 | `isWorkbenchMenuCloseKey`           | function  | no        | yes   |
+| `layoutWorkbenchMenuBarHits`        | function  | no        | yes   |
+| `layoutWorkbenchTopMenuItemRect`    | function  | no        | yes   |
 | `moveWorkbenchMenuIndex`            | function  | no        | yes   |
 | `MoveWorkbenchMenuIndexOptions`     | interface | yes       | yes   |
+| `WorkbenchMenuBarHitLayout`         | interface | yes       | yes   |
+| `WorkbenchMenuBarHitLayoutOptions`  | interface | yes       | yes   |
+| `WorkbenchMenuBarItemShape`         | interface | yes       | yes   |
 | `WorkbenchMenuKey`                  | interface | yes       | yes   |
 | `WorkbenchTopMenuController`        | class     | no        | yes   |
 | `WorkbenchTopMenuControllerOptions` | interface | yes       | yes   |
 | `WorkbenchTopMenuInspection`        | interface | yes       | yes   |
+| `WorkbenchTopMenuItemRectOptions`   | interface | yes       | yes   |
 
 #### src/app/workbench_overlay.ts
 
@@ -1235,6 +1265,15 @@ _No direct exported symbols._
 | `WorkbenchShelfSource`        | interface | yes       | yes   |
 | `WorkbenchTabLayoutOptions`   | interface | yes       | yes   |
 | `WorkbenchTabSource`          | interface | yes       | yes   |
+
+#### src/app/workbench_status.ts
+
+| Symbol                       | Kind      | Type Only | JSDoc |
+| ---------------------------- | --------- | --------- | ----- |
+| `workbenchStatusLeft`        | function  | no        | yes   |
+| `WorkbenchStatusLeftOptions` | interface | yes       | yes   |
+| `workbenchTileDensityLabel`  | function  | no        | yes   |
+| `WorkbenchTileDensityLabel`  | type      | yes       | yes   |
 
 #### src/app/workbench_terminal.ts
 
@@ -1314,9 +1353,12 @@ _No direct exported symbols._
 | -------------------------------------- | ---- | ----- |
 | `src/app/hit_targets.ts`               | star | -     |
 | `src/app/workbench_frame.ts`           | star | -     |
+| `src/app/workbench_diagnostics.ts`     | star | -     |
+| `src/app/workbench_layout.ts`          | star | -     |
 | `src/app/workbench_menu.ts`            | star | -     |
 | `src/app/workbench_overlay.ts`         | star | -     |
 | `src/app/workbench_shelf.ts`           | star | -     |
+| `src/app/workbench_status.ts`          | star | -     |
 | `src/app/workbench_terminal.ts`        | star | -     |
 | `src/app/workbench_titlebar.ts`        | star | -     |
 | `src/app/workbench_viewport.ts`        | star | -     |
@@ -3619,10 +3661,10 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 ### Summary
 
 - Entrypoint: `mod.web.ts`
-- Modules: 209
-- Re-export declarations: 208
-- Exported symbols: 1782
-- Documented symbols: 1782
+- Modules: 212
+- Re-export declarations: 211
+- Exported symbols: 1803
+- Documented symbols: 1803
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -3695,16 +3737,19 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 | [`src/app/toast_commands.ts`](#src-app-toast-commands-ts)                         |          0 |       6 |          6 |
 | [`src/app/tree_commands.ts`](#src-app-tree-commands-ts)                           |          0 |       6 |          6 |
 | [`src/app/window_manager_commands.ts`](#src-app-window-manager-commands-ts)       |          0 |       8 |          8 |
+| [`src/app/workbench_diagnostics.ts`](#src-app-workbench-diagnostics-ts)           |          0 |       5 |          5 |
 | [`src/app/workbench_frame.ts`](#src-app-workbench-frame-ts)                       |          0 |      13 |         13 |
-| [`src/app/workbench_menu.ts`](#src-app-workbench-menu-ts)                         |          0 |       8 |          8 |
+| [`src/app/workbench_layout.ts`](#src-app-workbench-layout-ts)                     |          0 |       6 |          6 |
+| [`src/app/workbench_menu.ts`](#src-app-workbench-menu-ts)                         |          0 |      14 |         14 |
 | [`src/app/workbench_overlay.ts`](#src-app-workbench-overlay-ts)                   |          0 |       5 |          5 |
 | [`src/app/workbench_shelf.ts`](#src-app-workbench-shelf-ts)                       |          0 |       8 |          8 |
+| [`src/app/workbench_status.ts`](#src-app-workbench-status-ts)                     |          0 |       4 |          4 |
 | [`src/app/workbench_terminal.ts`](#src-app-workbench-terminal-ts)                 |          0 |       6 |          6 |
 | [`src/app/workbench_titlebar.ts`](#src-app-workbench-titlebar-ts)                 |          0 |       6 |          6 |
 | [`src/app/workbench_viewport.ts`](#src-app-workbench-viewport-ts)                 |          0 |       4 |          4 |
 | [`src/app/workbench_window_registry.ts`](#src-app-workbench-window-registry-ts)   |          0 |      13 |         13 |
 | [`src/app/workbench_workspace.ts`](#src-app-workbench-workspace-ts)               |          0 |      18 |         18 |
-| [`src/app/workbench/mod.ts`](#src-app-workbench-mod-ts)                           |         10 |       0 |          0 |
+| [`src/app/workbench/mod.ts`](#src-app-workbench-mod-ts)                           |         13 |       0 |          0 |
 | [`src/canvas/box.ts`](#src-canvas-box-ts)                                         |          0 |       2 |          2 |
 | [`src/canvas/canvas.ts`](#src-canvas-canvas-ts)                                   |          0 |       4 |          4 |
 | [`src/canvas/draw_object.ts`](#src-canvas-draw-object-ts)                         |          0 |       2 |          2 |
@@ -4759,6 +4804,16 @@ _No direct exported symbols._
 | `WindowManagerRenameFactory`  | type      | yes       | yes   |
 | `WindowManagerWindowFactory`  | type      | yes       | yes   |
 
+#### src/app/workbench_diagnostics.ts
+
+| Symbol                              | Kind      | Type Only | JSDoc |
+| ----------------------------------- | --------- | --------- | ----- |
+| `formatWorkbenchDiagnosticLogEntry` | function  | no        | yes   |
+| `formatWorkbenchDiagnosticStatus`   | function  | no        | yes   |
+| `initialWorkbenchDiagnosticLogRows` | function  | no        | yes   |
+| `subscribeWorkbenchDiagnosticLog`   | function  | no        | yes   |
+| `WorkbenchDiagnosticFormatOptions`  | interface | yes       | yes   |
+
 #### src/app/workbench_frame.ts
 
 | Symbol                | Kind     | Type Only | JSDoc |
@@ -4777,18 +4832,35 @@ _No direct exported symbols._
 | `WorkbenchFrameStyle` | type     | yes       | yes   |
 | `writeFrame`          | function | no        | yes   |
 
+#### src/app/workbench_layout.ts
+
+| Symbol                         | Kind      | Type Only | JSDoc |
+| ------------------------------ | --------- | --------- | ----- |
+| `workbenchAdaptiveTileOptions` | function  | no        | yes   |
+| `WorkbenchAdaptiveTileOptions` | interface | yes       | yes   |
+| `WorkbenchLayoutEntryShape`    | interface | yes       | yes   |
+| `WorkbenchLayoutShape`         | interface | yes       | yes   |
+| `workbenchWindowLayout`        | function  | no        | yes   |
+| `WorkbenchWindowLayout`        | interface | yes       | yes   |
+
 #### src/app/workbench_menu.ts
 
 | Symbol                              | Kind      | Type Only | JSDoc |
 | ----------------------------------- | --------- | --------- | ----- |
 | `isWorkbenchMenuActivationKey`      | function  | no        | yes   |
 | `isWorkbenchMenuCloseKey`           | function  | no        | yes   |
+| `layoutWorkbenchMenuBarHits`        | function  | no        | yes   |
+| `layoutWorkbenchTopMenuItemRect`    | function  | no        | yes   |
 | `moveWorkbenchMenuIndex`            | function  | no        | yes   |
 | `MoveWorkbenchMenuIndexOptions`     | interface | yes       | yes   |
+| `WorkbenchMenuBarHitLayout`         | interface | yes       | yes   |
+| `WorkbenchMenuBarHitLayoutOptions`  | interface | yes       | yes   |
+| `WorkbenchMenuBarItemShape`         | interface | yes       | yes   |
 | `WorkbenchMenuKey`                  | interface | yes       | yes   |
 | `WorkbenchTopMenuController`        | class     | no        | yes   |
 | `WorkbenchTopMenuControllerOptions` | interface | yes       | yes   |
 | `WorkbenchTopMenuInspection`        | interface | yes       | yes   |
+| `WorkbenchTopMenuItemRectOptions`   | interface | yes       | yes   |
 
 #### src/app/workbench_overlay.ts
 
@@ -4812,6 +4884,15 @@ _No direct exported symbols._
 | `WorkbenchShelfSource`        | interface | yes       | yes   |
 | `WorkbenchTabLayoutOptions`   | interface | yes       | yes   |
 | `WorkbenchTabSource`          | interface | yes       | yes   |
+
+#### src/app/workbench_status.ts
+
+| Symbol                       | Kind      | Type Only | JSDoc |
+| ---------------------------- | --------- | --------- | ----- |
+| `workbenchStatusLeft`        | function  | no        | yes   |
+| `WorkbenchStatusLeftOptions` | interface | yes       | yes   |
+| `workbenchTileDensityLabel`  | function  | no        | yes   |
+| `WorkbenchTileDensityLabel`  | type      | yes       | yes   |
 
 #### src/app/workbench_terminal.ts
 
@@ -4891,9 +4972,12 @@ _No direct exported symbols._
 | -------------------------------------- | ---- | ----- |
 | `src/app/hit_targets.ts`               | star | -     |
 | `src/app/workbench_frame.ts`           | star | -     |
+| `src/app/workbench_diagnostics.ts`     | star | -     |
+| `src/app/workbench_layout.ts`          | star | -     |
 | `src/app/workbench_menu.ts`            | star | -     |
 | `src/app/workbench_overlay.ts`         | star | -     |
 | `src/app/workbench_shelf.ts`           | star | -     |
+| `src/app/workbench_status.ts`          | star | -     |
 | `src/app/workbench_terminal.ts`        | star | -     |
 | `src/app/workbench_titlebar.ts`        | star | -     |
 | `src/app/workbench_viewport.ts`        | star | -     |

@@ -111,6 +111,8 @@ Work:
         on the same measured menu-item algorithm.
   - [x] Extracted top-menu hit-target layout into `workbench_menu.ts`, keeping terminal and web pointer regions clipped
         by the same measured token sequence.
+  - [x] Extracted shared adaptive workbench tile defaults and layout rectangle projection into `workbench_layout.ts`,
+        trimming duplicated terminal/web workspace layout math.
 - [x] Replace duplicated theme/window/menu persistence code with a shared versioned serializer.
   - [x] Extracted shared workbench workspace normalization, panel-state normalization, upsert, rename, delete, lookup,
         and legacy window-entry expansion helpers into `src/app/workbench_workspace.ts`.
