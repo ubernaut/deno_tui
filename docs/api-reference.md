@@ -1,15 +1,15 @@
 # API Reference
 
-This document is generated from the public re-export graph rooted at `mod.ts`. It is intended as a complete map of the
-modules and exported symbols that make up the package API.
+This document is generated from the public re-export graph rooted at `mod.ts`. It is intended as a complete
+map of the modules and exported symbols that make up the package API.
 
 ## Summary
 
 - Entrypoint: `mod.ts`
-- Modules: 209
-- Re-export declarations: 208
-- Exported symbols: 1696
-- Documented symbols: 1696
+- Modules: 210
+- Re-export declarations: 209
+- Exported symbols: 1712
+- Documented symbols: 1712
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -70,7 +70,7 @@ modules and exported symbols that make up the package API.
 | [`src/app/table_commands.ts`](#src-app-table-commands-ts)                               |          0 |       6 |          6 |
 | [`src/app/tabs_commands.ts`](#src-app-tabs-commands-ts)                                 |          0 |       6 |          6 |
 | [`src/app/terminal_commands.ts`](#src-app-terminal-commands-ts)                         |          0 |       6 |          6 |
-| [`src/app/terminal_input.ts`](#src-app-terminal-input-ts)                               |          0 |       8 |          8 |
+| [`src/app/terminal_input.ts`](#src-app-terminal-input-ts)                               |          0 |       9 |          9 |
 | [`src/app/terminal_window_bindings.ts`](#src-app-terminal-window-bindings-ts)           |          0 |       5 |          5 |
 | [`src/app/textbox_commands.ts`](#src-app-textbox-commands-ts)                           |          0 |       6 |          6 |
 | [`src/app/theme_commands.ts`](#src-app-theme-commands-ts)                               |          0 |      10 |         10 |
@@ -150,12 +150,12 @@ modules and exported symbols that make up the package API.
 | [`src/layout/solver.ts`](#src-layout-solver-ts)                                         |          0 |      12 |         12 |
 | [`src/layout/solvers/simple.ts`](#src-layout-solvers-simple-ts)                         |          0 |       3 |          3 |
 | [`src/layout/split_pane.ts`](#src-layout-split-pane-ts)                                 |          0 |      10 |         10 |
-| [`src/layout/style.ts`](#src-layout-style-ts)                                           |          0 |      26 |         26 |
+| [`src/layout/style.ts`](#src-layout-style-ts)                                           |          0 |      30 |         30 |
 | [`src/layout/types.ts`](#src-layout-types-ts)                                           |          0 |       3 |          3 |
 | [`src/layout/vertical_layout.ts`](#src-layout-vertical-layout-ts)                       |          0 |       1 |          1 |
 | [`src/layout/window_manager.ts`](#src-layout-window-manager-ts)                         |          0 |      10 |         10 |
-| [`src/markup/cascade.ts`](#src-markup-cascade-ts)                                       |          0 |       5 |          5 |
-| [`src/markup/css.ts`](#src-markup-css-ts)                                               |          0 |       7 |          7 |
+| [`src/markup/cascade.ts`](#src-markup-cascade-ts)                                       |          0 |       7 |          7 |
+| [`src/markup/css.ts`](#src-markup-css-ts)                                               |          0 |      11 |         11 |
 | [`src/markup/html.ts`](#src-markup-html-ts)                                             |          0 |       3 |          3 |
 | [`src/markup/hydrate.ts`](#src-markup-hydrate-ts)                                       |          0 |       3 |          3 |
 | [`src/markup/mod.ts`](#src-markup-mod-ts)                                               |          5 |       0 |          0 |
@@ -168,7 +168,7 @@ modules and exported symbols that make up the package API.
 | [`src/runtime/data_query.ts`](#src-runtime-data-query-ts)                               |          0 |      15 |         15 |
 | [`src/runtime/graphics_surface.ts`](#src-runtime-graphics-surface-ts)                   |          0 |      15 |         15 |
 | [`src/runtime/kitty_graphics.ts`](#src-runtime-kitty-graphics-ts)                       |          0 |      25 |         25 |
-| [`src/runtime/mod.ts`](#src-runtime-mod-ts)                                             |         24 |       0 |          0 |
+| [`src/runtime/mod.ts`](#src-runtime-mod-ts)                                             |         25 |       0 |          0 |
 | [`src/runtime/process_session.ts`](#src-runtime-process-session-ts)                     |          0 |       9 |          9 |
 | [`src/runtime/profiles.ts`](#src-runtime-profiles-ts)                                   |          0 |      24 |         24 |
 | [`src/runtime/pty_backend.ts`](#src-runtime-pty-backend-ts)                             |          0 |      12 |         12 |
@@ -184,6 +184,7 @@ modules and exported symbols that make up the package API.
 | [`src/runtime/terminal_capabilities.ts`](#src-runtime-terminal-capabilities-ts)         |          0 |      27 |         27 |
 | [`src/runtime/terminal_screen.ts`](#src-runtime-terminal-screen-ts)                     |          0 |       5 |          5 |
 | [`src/runtime/terminal_session.ts`](#src-runtime-terminal-session-ts)                   |          0 |       8 |          8 |
+| [`src/runtime/terminal_shell.ts`](#src-runtime-terminal-shell-ts)                       |          0 |       3 |          3 |
 | [`src/runtime/terminal_status.ts`](#src-runtime-terminal-status-ts)                     |          0 |       5 |          5 |
 | [`src/runtime/terminal_templates.ts`](#src-runtime-terminal-templates-ts)               |          0 |      22 |         22 |
 | [`src/runtime/worker_pool.ts`](#src-runtime-worker-pool-ts)                             |          0 |      12 |         12 |
@@ -211,7 +212,7 @@ modules and exported symbols that make up the package API.
 | [`src/theme.ts`](#src-theme-ts)                                                         |          0 |     115 |        115 |
 | [`src/three_ascii/AcerolaAsciiNode.ts`](#src-three-ascii-acerolaasciinode-ts)           |          0 |       2 |          2 |
 | [`src/three_ascii/demo_presets.ts`](#src-three-ascii-demo-presets-ts)                   |          0 |      14 |         14 |
-| [`src/three_ascii/glyphs.ts`](#src-three-ascii-glyphs-ts)                               |          0 |      11 |         11 |
+| [`src/three_ascii/glyphs.ts`](#src-three-ascii-glyphs-ts)                               |          0 |      13 |         13 |
 | [`src/three_ascii/mod.ts`](#src-three-ascii-mod-ts)                                     |          5 |       0 |          0 |
 | [`src/three_ascii/renderer.ts`](#src-three-ascii-renderer-ts)                           |          0 |       5 |          5 |
 | [`src/three_ascii/webgpu_compat.ts`](#src-three-ascii-webgpu-compat-ts)                 |          0 |       2 |          2 |
@@ -977,6 +978,7 @@ _No direct exported symbols._
 | `TerminalInputMode`           | type      | yes       | yes   |
 | `TerminalInputRouteDecision`  | interface | yes       | yes   |
 | `TerminalInputRoutingOptions` | interface | yes       | yes   |
+| `TerminalInputTarget`         | interface | yes       | yes   |
 
 ### src/app/terminal_window_bindings.ts
 
@@ -2006,12 +2008,16 @@ _No direct exported symbols._
 | `LayoutDisplay`              | type      | yes       | yes   |
 | `LayoutFlexDirection`        | type      | yes       | yes   |
 | `LayoutFlexWrap`             | type      | yes       | yes   |
+| `LayoutGridAutoFlow`         | type      | yes       | yes   |
+| `LayoutGridPlacement`        | interface | yes       | yes   |
 | `LayoutJustifyContent`       | type      | yes       | yes   |
 | `LayoutLengthValue`          | interface | yes       | yes   |
 | `LayoutOverflow`             | type      | yes       | yes   |
 | `LayoutPosition`             | type      | yes       | yes   |
 | `LayoutVisibility`           | type      | yes       | yes   |
 | `parseBoxEdges`              | function  | no        | yes   |
+| `parseGridPlacement`         | function  | no        | yes   |
+| `parseGridTrackList`         | function  | no        | yes   |
 | `parseLayoutInteger`         | function  | no        | yes   |
 | `parseLayoutLength`          | function  | no        | yes   |
 | `percentLength`              | function  | no        | yes   |
@@ -2053,9 +2059,11 @@ _No direct exported symbols._
 | ------------------------ | --------- | --------- | ----- |
 | `applyCssCascade`        | function  | no        | yes   |
 | `ApplyCssCascadeOptions` | interface | yes       | yes   |
+| `matchesCssMedia`        | function  | no        | yes   |
 | `matchesCssSelector`     | function  | no        | yes   |
 | `resolveCssVariables`    | function  | no        | yes   |
 | `TuiCssNodeState`        | type      | yes       | yes   |
+| `TuiCssViewport`         | interface | yes       | yes   |
 
 ### src/markup/css.ts
 
@@ -2063,9 +2071,13 @@ _No direct exported symbols._
 | ------------------------ | --------- | --------- | ----- |
 | `cssSelectorSpecificity` | function  | no        | yes   |
 | `parseCssDeclarations`   | function  | no        | yes   |
+| `parseCssMediaQuery`     | function  | no        | yes   |
 | `parseCssStylesheet`     | function  | no        | yes   |
 | `selectorParts`          | function  | no        | yes   |
 | `TuiCssDeclaration`      | interface | yes       | yes   |
+| `TuiCssMediaCondition`   | interface | yes       | yes   |
+| `TuiCssMediaFeature`     | type      | yes       | yes   |
+| `TuiCssMediaQuery`       | interface | yes       | yes   |
 | `TuiCssRule`             | interface | yes       | yes   |
 | `TuiCssStylesheet`       | interface | yes       | yes   |
 
@@ -2299,6 +2311,7 @@ _No direct exported symbols._
 | `src/runtime/terminal_status.ts`           | star | -     |
 | `src/runtime/process_session.ts`           | star | -     |
 | `src/runtime/terminal_screen.ts`           | star | -     |
+| `src/runtime/terminal_shell.ts`            | star | -     |
 | `src/runtime/terminal_session.ts`          | star | -     |
 | `src/runtime/worker_pool.ts`               | star | -     |
 
@@ -2567,6 +2580,14 @@ _No direct exported symbols._
 | `terminalSessionSequences`        | function  | no        | yes   |
 | `TerminalSessionSequences`        | interface | yes       | yes   |
 | `TerminalSessionWriter`           | interface | yes       | yes   |
+
+### src/runtime/terminal_shell.ts
+
+| Symbol                           | Kind      | Type Only | JSDoc |
+| -------------------------------- | --------- | --------- | ----- |
+| `TerminalShellController`        | class     | no        | yes   |
+| `TerminalShellControllerOptions` | interface | yes       | yes   |
+| `TerminalShellInspection`        | interface | yes       | yes   |
 
 ### src/runtime/terminal_status.ts
 
@@ -3040,6 +3061,8 @@ _No direct exported symbols._
 | Symbol                      | Kind     | Type Only | JSDoc |
 | --------------------------- | -------- | --------- | ----- |
 | `ASCII_FILL_GLYPHS`         | const    | no        | yes   |
+| `BLOCK_FILL_GLYPHS`         | const    | no        | yes   |
+| `blockFillGlyphForBucket`   | function | no        | yes   |
 | `bucketAsciiLuminance`      | function | no        | yes   |
 | `classifyEdgeDirection`     | function | no        | yes   |
 | `EDGE_GLYPHS`               | const    | no        | yes   |
