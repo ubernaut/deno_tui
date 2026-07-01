@@ -6,10 +6,10 @@ map of the modules and exported symbols that make up the package API.
 ## Summary
 
 - Entrypoint: `mod.ts`
-- Modules: 210
-- Re-export declarations: 209
-- Exported symbols: 1712
-- Documented symbols: 1712
+- Modules: 211
+- Re-export declarations: 210
+- Exported symbols: 1718
+- Documented symbols: 1718
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -168,7 +168,7 @@ map of the modules and exported symbols that make up the package API.
 | [`src/runtime/data_query.ts`](#src-runtime-data-query-ts)                               |          0 |      15 |         15 |
 | [`src/runtime/graphics_surface.ts`](#src-runtime-graphics-surface-ts)                   |          0 |      15 |         15 |
 | [`src/runtime/kitty_graphics.ts`](#src-runtime-kitty-graphics-ts)                       |          0 |      25 |         25 |
-| [`src/runtime/mod.ts`](#src-runtime-mod-ts)                                             |         25 |       0 |          0 |
+| [`src/runtime/mod.ts`](#src-runtime-mod-ts)                                             |         26 |       0 |          0 |
 | [`src/runtime/process_session.ts`](#src-runtime-process-session-ts)                     |          0 |       9 |          9 |
 | [`src/runtime/profiles.ts`](#src-runtime-profiles-ts)                                   |          0 |      24 |         24 |
 | [`src/runtime/pty_backend.ts`](#src-runtime-pty-backend-ts)                             |          0 |      12 |         12 |
@@ -187,6 +187,7 @@ map of the modules and exported symbols that make up the package API.
 | [`src/runtime/terminal_shell.ts`](#src-runtime-terminal-shell-ts)                       |          0 |       3 |          3 |
 | [`src/runtime/terminal_status.ts`](#src-runtime-terminal-status-ts)                     |          0 |       5 |          5 |
 | [`src/runtime/terminal_templates.ts`](#src-runtime-terminal-templates-ts)               |          0 |      22 |         22 |
+| [`src/runtime/terminal_workspace.ts`](#src-runtime-terminal-workspace-ts)               |          0 |       6 |          6 |
 | [`src/runtime/worker_pool.ts`](#src-runtime-worker-pool-ts)                             |          0 |      12 |         12 |
 | [`src/selection.ts`](#src-selection-ts)                                                 |          0 |      16 |         16 |
 | [`src/signals/computed.ts`](#src-signals-computed-ts)                                   |          0 |       3 |          3 |
@@ -2313,6 +2314,7 @@ _No direct exported symbols._
 | `src/runtime/terminal_screen.ts`           | star | -     |
 | `src/runtime/terminal_shell.ts`            | star | -     |
 | `src/runtime/terminal_session.ts`          | star | -     |
+| `src/runtime/terminal_workspace.ts`        | star | -     |
 | `src/runtime/worker_pool.ts`               | star | -     |
 
 _No direct exported symbols._
@@ -2625,6 +2627,17 @@ _No direct exported symbols._
 | `TerminalTemplateOptions`              | interface | yes       | yes   |
 | `TerminalTemplateSession`              | interface | yes       | yes   |
 | `terminalTemplateToSpawnOptions`       | function  | no        | yes   |
+
+### src/runtime/terminal_workspace.ts
+
+| Symbol                                  | Kind      | Type Only | JSDoc |
+| --------------------------------------- | --------- | --------- | ----- |
+| `AddTerminalWorkspaceSessionOptions`    | interface | yes       | yes   |
+| `createTerminalWorkspaceController`     | function  | no        | yes   |
+| `TerminalWorkspaceController`           | class     | no        | yes   |
+| `TerminalWorkspaceControllerOptions`    | interface | yes       | yes   |
+| `TerminalWorkspaceInspection`           | interface | yes       | yes   |
+| `UpsertTerminalWorkspaceSessionOptions` | interface | yes       | yes   |
 
 ### src/runtime/worker_pool.ts
 

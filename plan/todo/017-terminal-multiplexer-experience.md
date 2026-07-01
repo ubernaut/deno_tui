@@ -39,3 +39,8 @@ developer workflows.
 - Browser mode exposes the same terminal-session model through the remote terminal protocol, even if GitHub Pages uses a
   safe mock endpoint by default.
 - Docs explain the difference between Terminal Output, Shell, remote shell, and future multiplexer work.
+
+## Progress
+
+- Added `TerminalWorkspaceController` as the renderer-neutral session/tab model for multiple terminal descriptors,
+  active session selection, rename, close, reorder, and serializable inspection.

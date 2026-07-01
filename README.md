@@ -757,11 +757,13 @@ optional and lazy: apps opt into the FFI-backed provider, can probe availability
 backend without making core imports load native code. Use `syncTerminalWindowLayout()` when terminal handles live inside
 a `WindowManagerController`; it translates visible window rectangles into terminal columns/rows and only calls backend
 resize when geometry changes. The `summarizeTerminalStatus()` helper formats active process state, backend id,
-dimensions, exit metadata, cwd, detached/reconnectable flags, and command lines for status bars or tab strips. The API
-Workbench portfolio includes a `Terminal: Terminal Output` window under the New menu that demonstrates the flow inside
-the same window manager used by the rest of the demo. That window also includes a Raw input toggle: while a process is
-running, printable keys route to child stdin, Escape returns to workbench mode, and title/status rows show the current
-terminal input mode and process state.
+dimensions, exit metadata, cwd, detached/reconnectable flags, and command lines for status bars or tab strips.
+`TerminalWorkspaceController` adds the first tmux-like shared session model: multiple descriptors, active session,
+rename, close, reorder, and serializable inspection for terminal and browser hosts. The API Workbench portfolio includes
+a `Terminal: Terminal Output` window under the New menu that demonstrates the flow inside the same window manager used
+by the rest of the demo. That window also includes a Raw input toggle: while a process is running, printable keys route
+to child stdin, Escape returns to workbench mode, and title/status rows show the current terminal input mode and process
+state.
 
 ## Layouts
 
@@ -2022,6 +2024,7 @@ Optional high-performance APIs are surfaced through `src/runtime/mod.ts`:
 - `attachTerminalTemplate()` / `createTerminalTemplateSession()` / `describeTerminalTemplateSession()`
 - `summarizeTerminalStatus()` / `terminalStatusFields()`
 - `TerminalScreenController`
+- `TerminalWorkspaceController` / `createTerminalWorkspaceController()`
 - `RuntimeRendererBackendRegistry` / `RuntimeRendererBackendController` / `selectRuntimeRendererBackend()` /
   `formatRuntimeRendererBackendCatalogMarkdown()`
 - `RuntimeProfile` / `RuntimeProfileRegistry` / `createRuntimeProfileCatalogReport()` /

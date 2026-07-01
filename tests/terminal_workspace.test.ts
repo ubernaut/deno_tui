@@ -17,6 +17,7 @@ import {
   shellTerminalTemplate,
   terminalTemplateToSpawnOptions,
 } from "../src/runtime/terminal_templates.ts";
+import { createTerminalWorkspaceController } from "../src/runtime/terminal_workspace.ts";
 import type { ProcessSessionCommand, ProcessSessionInspection, ProcessSessionStatus } from "../src/runtime/mod.ts";
 
 Deno.test("terminal templates normalize shell command deno task and project task metadata", () => {
@@ -122,6 +123,54 @@ Deno.test("attach terminal templates produce reconnectable descriptors", () => {
     createdAt: 50,
     updatedAt: 50,
   });
+});
+
+Deno.test("terminal workspace controller manages session tabs", () => {
+  let now = 100;
+  const workspace = createTerminalWorkspaceController({ now: () => now });
+  const shell = workspace.add(shellTerminalTemplate({ id: "shell-main", shell: "bash", columns: 100, rows: 30 }));
+  const logs = workspace.add(commandTerminalTemplate({ id: "logs", title: "Logs", command: "tail", args: ["-f"] }), {
+    backendId: "process",
+  });
+  const attach = workspace.add(attachTerminalTemplate("pty-7", { title: "Detached" }), { activate: true });
+
+  assertEquals(shell.commandLine, "bash");
+  assertEquals(logs.backendId, "process");
+  assertEquals(attach.reconnectable, true);
+  assertEquals(workspace.inspect().activeId, "attach-pty-7");
+  assertEquals(workspace.inspect().sessions.map((session) => session.id), ["shell-main", "logs", "attach-pty-7"]);
+
+  now = 150;
+  assertEquals(workspace.rename("logs", "Process Logs"), true);
+  assertEquals(workspace.inspect().sessions[1]!.title, "Process Logs");
+  assertEquals(workspace.inspect().sessions[1]!.updatedAt, 150);
+  assertEquals(workspace.move("logs", -1), true);
+  assertEquals(workspace.inspect().sessions.map((session) => session.id), ["logs", "shell-main", "attach-pty-7"]);
+  assertEquals(workspace.activate("shell-main"), true);
+  assertEquals(workspace.remove("shell-main"), true);
+  assertEquals(workspace.inspect().activeId, "attach-pty-7");
+  assertEquals(workspace.inspect().count, 2);
+
+  workspace.dispose();
+});
+
+Deno.test("terminal workspace inspection returns cloned descriptors", () => {
+  const workspace = createTerminalWorkspaceController({ now: () => 1 });
+  workspace.add(commandTerminalTemplate({ id: "build", title: "Build", command: "deno", args: ["task", "health"] }));
+  const first = workspace.inspect();
+  first.sessions[0]!.title = "mutated";
+  if ("args" in first.sessions[0]!.template) {
+    (first.sessions[0]!.template.args as string[] | undefined)?.push("mutated");
+  }
+
+  const second = workspace.inspect();
+  assertEquals(second.sessions[0]!.title, "Build");
+  assertEquals("args" in second.sessions[0]!.template ? second.sessions[0]!.template.args : undefined, [
+    "task",
+    "health",
+  ]);
+
+  workspace.dispose();
 });
 
 Deno.test("syncTerminalWindowLayout resizes visible terminal handles only when geometry changes", async () => {

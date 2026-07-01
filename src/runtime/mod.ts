@@ -23,4 +23,5 @@ export * from "./process_session.ts";
 export * from "./terminal_screen.ts";
 export * from "./terminal_shell.ts";
 export * from "./terminal_session.ts";
+export * from "./terminal_workspace.ts";
 export * from "./worker_pool.ts";
