@@ -17,6 +17,7 @@ import type {
   GraphicsSurface,
   GraphicsSurfaceInspection,
 } from "../src/runtime/graphics_surface.ts";
+import { DiagnosticsCollector } from "../src/runtime/diagnostics.ts";
 import { emptyStyle } from "../src/theme.ts";
 import type { Camera, Scene } from "npm:three@0.183.2";
 import type { TerminalGlyphStyle } from "../src/three_ascii/glyphs.ts";
@@ -535,6 +536,48 @@ Deno.test("ThreePanelFrameView can use Kitty image frames without drawing ASCII 
   }
 });
 
+Deno.test("ThreePanelFrameView reports graphics cleanup diagnostics", async () => {
+  const rectangle = new Signal({ column: 0, row: 0, width: 8, height: 4 }, { deepObserve: true });
+  const graphicsRectangle = new Signal({ column: 5, row: 6, width: 8, height: 4 }, { deepObserve: true });
+  const scene = new Signal<ThreeSceneState | null>(sceneState());
+  const ascii = new Signal({
+    ...createDefaultAsciiOptions("sharp"),
+    kittyGraphics: true,
+    kittyDisableAscii: true,
+  });
+  const enabled = new Signal(true);
+  const surface = new FakeGraphicsSurface();
+  const diagnostics = new DiagnosticsCollector();
+  const panel = new ThreePanelFrameView({
+    rectangle,
+    graphicsRectangle,
+    scene,
+    ascii,
+    enabled,
+    graphicsSurface: surface,
+    diagnostics,
+    frameInterval: 1000 / 30,
+    rendererFactory: (options) => new FakeGridRenderer(options.columns, options.rows),
+  });
+
+  try {
+    await waitFor(() => surface.puts.length >= 1);
+    surface.failDeletes = true;
+    panel.dispose();
+    await waitFor(() => diagnostics.entries().some((entry) => entry.code === "graphics-delete-failed"));
+    assertEquals(diagnostics.entries().map((entry) => [entry.source, entry.code, entry.severity, entry.detail]), [
+      ["three-panel", "graphics-delete-failed", "debug", "delete unavailable"],
+    ]);
+  } finally {
+    panel.dispose();
+    rectangle.dispose();
+    graphicsRectangle.dispose();
+    scene.dispose();
+    ascii.dispose();
+    enabled.dispose();
+  }
+});
+
 Deno.test("ThreeAsciiObject defers resize while a frame is rendering", async () => {
   const rectangle = new Signal({ column: 0, row: 0, width: 12, height: 6 }, { deepObserve: true });
   const sink = new MemoryCanvasSink();
@@ -697,6 +740,7 @@ class FakeGraphicsSurface implements GraphicsSurface {
   readonly kind = "kitty" as const;
   readonly puts: Array<{ image: GraphicsImage; placement: GraphicsPlacement }> = [];
   readonly deleted: Array<{ handle: GraphicsHandle; mode?: GraphicsDeleteMode }> = [];
+  failDeletes = false;
   private nextId = 1;
 
   async putImage(image: GraphicsImage, placement: GraphicsPlacement): Promise<GraphicsHandle> {
@@ -714,6 +758,7 @@ class FakeGraphicsSurface implements GraphicsSurface {
 
   async deleteImage(handle: GraphicsHandle, mode?: GraphicsDeleteMode): Promise<void> {
     this.deleted.push({ handle, mode });
+    if (this.failDeletes) throw new Error("delete unavailable");
   }
 
   async clear(): Promise<void> {}

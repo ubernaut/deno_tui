@@ -3,6 +3,7 @@ import { buildFallbackGrid, formatThreeAsciiFallbackDetail, ThreeAsciiObject } f
 import { Effect, Signal, SignalBatchScheduler, type SignalOfObject } from "../src/signals/mod.ts";
 import { emptyStyle } from "../src/theme.ts";
 import type { GraphicsHandle, GraphicsSurface } from "../src/runtime/graphics_surface.ts";
+import type { DiagnosticsCollector } from "../src/runtime/diagnostics.ts";
 import {
   type ThreeAsciiImageFrame,
   ThreeAsciiRenderer,
@@ -293,6 +294,7 @@ export class ThreePanelFrameView {
       enabled?: boolean | Signal<boolean>;
       graphicsSurface?: GraphicsSurface | (() => GraphicsSurface | null | undefined);
       graphicsRectangle?: SignalOfObject<Rect>;
+      diagnostics?: DiagnosticsCollector;
       frameInterval?: number;
       onUpdate?: () => void;
       rendererFactory?: ThreePanelRendererFactory;
@@ -646,7 +648,7 @@ export class ThreePanelFrameView {
   ): Promise<void> {
     if (this.disposed || rect.width <= 0 || rect.height <= 0) return;
     if (this.graphicsHandle) {
-      await surface.deleteImage(this.graphicsHandle, "image").catch(() => {});
+      await this.deleteGraphicsImage(surface, this.graphicsHandle, "replace");
       this.graphicsHandle = undefined;
     }
     const handle = await surface.putImage({
@@ -663,7 +665,7 @@ export class ThreePanelFrameView {
       zIndex: 1,
     });
     if (this.disposed || this.frameGeneration !== frameGeneration) {
-      await surface.deleteImage(handle, "image").catch(() => {});
+      await this.deleteGraphicsImage(surface, handle, "stale-frame");
       return;
     }
     this.graphicsHandle = handle;
@@ -675,7 +677,30 @@ export class ThreePanelFrameView {
     this.graphicsHandle = undefined;
     const surface = this.resolveGraphicsSurface();
     if (!surface) return;
-    await surface.deleteImage(handle, "image").catch(() => {});
+    await this.deleteGraphicsImage(surface, handle, "clear");
+  }
+
+  private async deleteGraphicsImage(
+    surface: GraphicsSurface,
+    handle: GraphicsHandle,
+    reason: "replace" | "stale-frame" | "clear",
+  ): Promise<void> {
+    try {
+      await surface.deleteImage(handle, "image");
+    } catch (error) {
+      this.options.diagnostics?.report({
+        source: "three-panel",
+        code: "graphics-delete-failed",
+        severity: "debug",
+        message: "Three panel graphics image cleanup failed",
+        detail: error instanceof Error ? error.message : String(error),
+        context: {
+          reason,
+          handleId: handle.id,
+          surface: surface.kind,
+        },
+      });
+    }
   }
 }
 

@@ -47,7 +47,7 @@ Work:
         test covering representative frame, viewport, titlebar, and hit-target exports.
   - [x] Routed the public app barrel through `src/app/workbench/mod.ts` so root exports, terminal demos, and web demos
         share one workbench helper boundary without changing the stable API inventory.
-- [ ] Move generic frame helpers, hit-target translation, scrollable-window sizing, titlebar button logic, shelf/tab
+- [x] Move generic frame helpers, hit-target translation, scrollable-window sizing, titlebar button logic, shelf/tab
       logic, and workspace save/load normalization out of `app/api_workbench.ts`.
   - [x] Extracted sparse frame writing, row slicing, text fitting, button labels, and contrast helpers into
         `src/app/workbench_frame.ts` with direct tests.
@@ -411,6 +411,7 @@ Work:
         reports with injectable command fixtures for deterministic tests.
   - [x] Converted web workbench `localStorage` and IndexedDB fallback paths to deduplicated structured diagnostics
         surfaced through the in-demo log panel.
+  - [x] Converted Three/Kitty graphics image cleanup failures to optional debug diagnostics instead of silent catches.
 - [x] Add status-bar and report helpers for degraded backends.
 - [x] Add tests that assert expected diagnostics for missing `nvidia-smi`, blocked IndexedDB, unsupported Kitty
       graphics, and failed process spawns.
