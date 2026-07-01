@@ -105,16 +105,18 @@ function networkSummaryLine(system: RenderContext["system"], width: number): str
 function compactNetworkTrace(system: RenderContext["system"], width: number): string {
   const rx = sampleSeries(system.rxHistory, width);
   const tx = sampleSeries(system.txHistory, width);
-  return Array.from({ length: width }, (_, index) => {
+  let trace = "";
+  for (let index = 0; index < width; index++) {
     const rxValue = rx[index] ?? 0;
     const txValue = tx[index] ?? 0;
     const combined = Math.max(rxValue, txValue);
-    if (combined >= 0.82) return "█";
-    if (rxValue >= 0.5 && txValue >= 0.5) return "▓";
-    if (rxValue >= txValue && rxValue >= 0.22) return "▄";
-    if (txValue > rxValue && txValue >= 0.22) return "▀";
-    return "·";
-  }).join("");
+    if (combined >= 0.82) trace += "█";
+    else if (rxValue >= 0.5 && txValue >= 0.5) trace += "▓";
+    else if (rxValue >= txValue && rxValue >= 0.22) trace += "▄";
+    else if (txValue > rxValue && txValue >= 0.22) trace += "▀";
+    else trace += "·";
+  }
+  return trace;
 }
 
 function networkInterfaceRows(system: RenderContext["system"], width: number, count: number): string[] {
@@ -162,10 +164,11 @@ function networkFooter(system: RenderContext["system"], drive: VisualizationDriv
 
 function combinedNetworkHistory(system: RenderContext["system"]): number[] {
   const length = Math.max(system.rxHistory.length, system.txHistory.length, 1);
-  return Array.from(
-    { length },
-    (_, index) => Math.max(system.rxHistory[index] ?? 0, system.txHistory[index] ?? 0),
-  );
+  const combined = new Array<number>(length);
+  for (let index = 0; index < length; index++) {
+    combined[index] = Math.max(system.rxHistory[index] ?? 0, system.txHistory[index] ?? 0);
+  }
+  return combined;
 }
 
 function compactRate(value: number): string {

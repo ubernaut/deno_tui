@@ -101,10 +101,11 @@ export function renderGpuMemoryMonitor(
   if (!system.gpu.available) return renderGpuOfflinePanel("GPU MEMORY OFFLINE", "phosphor");
 
   const bankCount = Math.max(4, Math.min(12, Math.floor(width / 5)));
-  const banks = Array.from({ length: bankCount }, (_, index) => {
+  const banks = new Array<number>(bankCount);
+  for (let index = 0; index < bankCount; index++) {
     const phaseShift = Math.sin(context.phase * 0.11 + index * 0.9) * 0.06;
-    return clamp(system.gpu.memoryPercent / 100 + phaseShift, 0, 1);
-  });
+    banks[index] = clamp(system.gpu.memoryPercent / 100 + phaseShift, 0, 1);
+  }
   const bankRows = dependencies.barChart(banks, bankCount * 3, Math.max(3, Math.min(8, height - 5)), [
     " ",
     "░",

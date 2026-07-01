@@ -200,14 +200,20 @@ function cpuLegendRows(
   const cellWidth = Math.max(12, sample.length);
   const columns = Math.max(1, Math.min(8, Math.floor((Math.max(12, width) + 2) / (cellWidth + 2))));
   const rows = Math.ceil(cores.length / columns);
+  const result: string[] = new Array(rows);
 
-  return Array.from({ length: rows }, (_, row) => {
-    const cells = Array.from({ length: columns }, (_, column) => {
+  for (let row = 0; row < rows; row++) {
+    let line = "";
+    for (let column = 0; column < columns; column++) {
       const core = cores[row + column * rows];
-      return core ? coreLegendCell(core, hazard, dependencies).padEnd(cellWidth, " ") : "";
-    }).filter(Boolean);
-    return crop(cells.join("  "), Math.max(12, width));
-  });
+      if (!core) continue;
+      if (line.length > 0) line += "  ";
+      line += coreLegendCell(core, hazard, dependencies).padEnd(cellWidth, " ");
+    }
+    result[row] = crop(line, Math.max(12, width));
+  }
+
+  return result;
 }
 
 function coreLegendCell(
