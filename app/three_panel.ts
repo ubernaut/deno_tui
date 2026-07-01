@@ -653,7 +653,13 @@ export class ThreePanelFrameView {
 }
 
 function blankGrid(width: number, height: number): string[][] {
-  return Array.from({ length: Math.max(0, height) }, () => Array.from({ length: Math.max(0, width) }, () => " "));
+  const columns = Math.max(0, width);
+  const rows = Math.max(0, height);
+  const grid = new Array<string[]>(rows);
+  for (let row = 0; row < rows; row += 1) {
+    grid[row] = new Array<string>(columns).fill(" ");
+  }
+  return grid;
 }
 
 function graphicsFallbackReason(
