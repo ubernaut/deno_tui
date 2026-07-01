@@ -2,7 +2,11 @@ import { assertEquals } from "./deps.ts";
 import { TerminalOutputController } from "../src/components/terminal_output.ts";
 import type { ProcessSessionInspection } from "../src/runtime/process_session.ts";
 import type { TerminalSessionHandleInspection } from "../src/runtime/terminal_backend.ts";
-import { summarizeTerminalStatus, terminalStatusFields } from "../src/runtime/terminal_status.ts";
+import {
+  formatTerminalShellWindowTitle,
+  summarizeTerminalStatus,
+  terminalStatusFields,
+} from "../src/runtime/terminal_status.ts";
 import { denoTaskTerminalTemplate, type TerminalSessionDescriptor } from "../src/runtime/terminal_templates.ts";
 
 Deno.test("summarizeTerminalStatus formats process session state", () => {
@@ -93,4 +97,15 @@ Deno.test("summarizeTerminalStatus reads workspace descriptor metadata", () => {
     "reconnectable",
   ]);
   assertEquals(terminalStatusFields({ status: "idle", running: false, includeCommand: false }), ["IDLE"]);
+});
+
+Deno.test("formatTerminalShellWindowTitle includes OSC runtime titles", () => {
+  assertEquals(
+    formatTerminalShellWindowTitle({ status: "running", title: "vim main.ts" }, { mode: "raw" }),
+    "Shell RAW RUNNING · vim main.ts",
+  );
+  assertEquals(
+    formatTerminalShellWindowTitle({ status: "idle", title: "   " }, { mode: "wb" }),
+    "Shell WB IDLE",
+  );
 });

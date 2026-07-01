@@ -61,7 +61,7 @@ import { MicrotaskScheduler } from "../src/runtime/render_loop.ts";
 import { type AsyncStore, createRuntimeStore } from "../src/runtime/storage.ts";
 import { createProcessTerminalBackend, type TerminalBackend } from "../src/runtime/terminal_backend.ts";
 import { TerminalShellController } from "../src/runtime/terminal_shell.ts";
-import { summarizeTerminalStatus } from "../src/runtime/terminal_status.ts";
+import { formatTerminalShellWindowTitle, summarizeTerminalStatus } from "../src/runtime/terminal_status.ts";
 import { Computed, Signal } from "../src/signals/mod.ts";
 import { probeCompatibleWebGPUDevice } from "../src/three_ascii/webgpu_compat.ts";
 import { Tui } from "../src/tui.ts";
@@ -5110,7 +5110,7 @@ function terminalOutputWindowTitle(): string {
 
 function terminalShellWindowTitle(): string {
   const mode = terminalShellInputMode.peek() === "raw" ? "RAW" : "WB";
-  return `Shell ${mode} ${terminalShell.status.peek().toUpperCase()}`;
+  return formatTerminalShellWindowTitle(terminalShell.inspect(), { mode });
 }
 
 function windowIds(): WindowId[] {

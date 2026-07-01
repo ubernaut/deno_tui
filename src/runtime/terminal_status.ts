@@ -38,6 +38,12 @@ export interface TerminalStatusSummary {
   text: string;
 }
 
+/** Options for formatting a managed shell window title. */
+export interface TerminalShellWindowTitleOptions {
+  mode?: string;
+  prefix?: string;
+}
+
 /** Creates a compact, serializable terminal status summary from process, backend, or workspace metadata. */
 export function summarizeTerminalStatus(
   source: TerminalStatusSource,
@@ -121,6 +127,18 @@ export function terminalStatusFields(options: {
     if (options.commandLine) fields.push(`cmd:${options.commandLine}`);
   }
   return fields;
+}
+
+/** Formats a shell window title with mode, status, and optional OSC/runtime title. */
+export function formatTerminalShellWindowTitle(
+  source: { title?: string; status: ProcessSessionStatus | "starting" },
+  options: TerminalShellWindowTitleOptions = {},
+): string {
+  const prefix = options.prefix ?? "Shell";
+  const mode = options.mode ? ` ${options.mode.toUpperCase()}` : "";
+  const status = source.status.toUpperCase();
+  const title = source.title?.replace(/\s+/g, " ").trim();
+  return title ? `${prefix}${mode} ${status} · ${title}` : `${prefix}${mode} ${status}`;
 }
 
 function sourceCwd(source: TerminalStatusSource): string | undefined {

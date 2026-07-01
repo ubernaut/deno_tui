@@ -228,7 +228,7 @@ Work:
 - [ ] Add 256-color and truecolor SGR, cursor visibility/style, save/restore cursor, scroll regions, insert/delete
       line/character, OSC title, hyperlinks, and common DEC private modes.
 - [ ] Add parser fuzz/regression fixtures from real shell output, not just hand-authored strings.
-- [ ] Connect terminal title/OSC state to workbench tabs.
+- [x] Connect terminal title/OSC state to workbench tabs.
 - [ ] Keep process fallback clearly labeled separately from PTY-backed sessions.
 
 Acceptance checks:
