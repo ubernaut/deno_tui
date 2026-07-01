@@ -7,6 +7,8 @@ import {
   asciiPresetLabel,
   cloneAsciiOptions,
   createDefaultAsciiOptions,
+  formatAsciiControlValue,
+  terminalGlyphStyleLabel,
   type ThreeAsciiConfigOptions,
   type ThreeAsciiOptionNumericControlKey,
 } from "../three_ascii/options.ts";
@@ -16,6 +18,46 @@ export type WorkbenchAsciiToggleKey = "edges" | "fill" | "invertLuminance";
 
 /** Kitty transport option exposed by workbench config controls. */
 export type WorkbenchAsciiKittyKey = "kittyGraphics" | "kittyDisableAscii";
+
+/** Numeric Three ASCII renderer option exposed by workbench config controls. */
+export type WorkbenchAsciiNumericKey = ThreeAsciiOptionNumericControlKey;
+
+/** Row descriptor for a workbench Three ASCII configuration control. */
+export type WorkbenchAsciiConfigRow =
+  | { kind: "preset"; label: string }
+  | { kind: "glyphStyle"; label: string }
+  | { kind: "kitty"; key: WorkbenchAsciiKittyKey; label: string }
+  | { kind: "toggle"; key: WorkbenchAsciiToggleKey; label: string }
+  | { kind: "numeric"; key: WorkbenchAsciiNumericKey; label: string };
+
+/** Options for formatting a workbench Three ASCII configuration row. */
+export interface WorkbenchAsciiConfigRowTextOptions {
+  kittyStatus?: string;
+  labelWidth?: number;
+  kittyLabelWidth?: number;
+  trackWidth?: number;
+}
+
+/** Default row set for workbench Three ASCII configuration modals. */
+export const defaultWorkbenchAsciiConfigRows: readonly WorkbenchAsciiConfigRow[] = [
+  { kind: "preset", label: "Preset" },
+  { kind: "glyphStyle", label: "Glyph style" },
+  { kind: "kitty", key: "kittyGraphics", label: "Kitty graphics" },
+  { kind: "kitty", key: "kittyDisableAscii", label: "Disable ASCII under Kitty" },
+  { kind: "numeric", key: "terminalEdgeBias", label: "Edge glyph bias" },
+  { kind: "numeric", key: "wireframeThickness", label: "Wire thickness" },
+  { kind: "toggle", key: "edges", label: "Edge pass" },
+  { kind: "toggle", key: "fill", label: "Fill pass" },
+  { kind: "toggle", key: "invertLuminance", label: "Invert luminance" },
+  { kind: "numeric", key: "edgeThreshold", label: "Edge threshold" },
+  { kind: "numeric", key: "normalThreshold", label: "Normal edge" },
+  { kind: "numeric", key: "depthThreshold", label: "Depth edge" },
+  { kind: "numeric", key: "exposure", label: "Exposure" },
+  { kind: "numeric", key: "attenuation", label: "Attenuation" },
+  { kind: "numeric", key: "blendWithBase", label: "Base blend" },
+  { kind: "numeric", key: "depthFalloff", label: "Fog falloff" },
+  { kind: "numeric", key: "depthOffset", label: "Fog offset" },
+];
 
 /** Create the default workbench Three ASCII configuration. */
 export function createDefaultWorkbenchAsciiOptions(): ThreeAsciiConfigOptions {
@@ -55,6 +97,40 @@ export function closestAsciiControlValueIndex(values: readonly number[], value: 
     }
   }
   return best;
+}
+
+/** Formats one workbench Three ASCII config row for terminal display. */
+export function formatWorkbenchAsciiConfigRowText(
+  row: WorkbenchAsciiConfigRow,
+  options: ThreeAsciiConfigOptions,
+  formatOptions: WorkbenchAsciiConfigRowTextOptions = {},
+): string {
+  const labelWidth = formatOptions.labelWidth ?? 18;
+  if (row.kind === "preset") {
+    return `${row.label.padEnd(labelWidth)} [<] ${asciiPresetLabel(options.preset)} [>]`;
+  }
+  if (row.kind === "glyphStyle") {
+    const labels = TERMINAL_GLYPH_STYLES.map((style) =>
+      style === options.terminalGlyphStyle
+        ? `[${terminalGlyphStyleLabel(style)}]`
+        : ` ${terminalGlyphStyleLabel(style)} `
+    ).join(" ");
+    return `${row.label.padEnd(labelWidth)} ${labels}`;
+  }
+  if (row.kind === "toggle") {
+    return `${row.label.padEnd(labelWidth)} ${options[row.key] ? "[x]" : "[ ]"}`;
+  }
+  if (row.kind === "kitty") {
+    const status = row.key === "kittyGraphics" ? formatOptions.kittyStatus ?? "" : "applies only when Kitty is active";
+    return `${row.label.padEnd(formatOptions.kittyLabelWidth ?? 26)} ${options[row.key] ? "[x]" : "[ ]"} ${status}`;
+  }
+  const value = Number(options[row.key]);
+  const values = asciiControlValues(row.key);
+  const ratio = asciiNumericOptionRatio(values, value);
+  const trackWidth = formatOptions.trackWidth ?? 14;
+  const filled = Math.round(ratio * trackWidth);
+  const track = `${"█".repeat(filled)}${"░".repeat(Math.max(0, trackWidth - filled))}`;
+  return `${row.label.padEnd(labelWidth)} [<] ${track} ${formatAsciiControlValue(row.key, value).padStart(5)} [>]`;
 }
 
 /** Return the next ASCII preset configuration, preserving transport preferences through `applyAsciiPreset()`. */

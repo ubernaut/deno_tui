@@ -68,14 +68,17 @@ import {
   writeFrame,
 } from "../src/app/workbench/mod.ts";
 import {
-  asciiNumericOptionRatio,
   createDefaultWorkbenchAsciiOptions,
+  defaultWorkbenchAsciiConfigRows,
+  formatWorkbenchAsciiConfigRowText,
   stepWorkbenchAsciiGlyphStyle,
   stepWorkbenchAsciiNumericOption,
   stepWorkbenchAsciiPreset,
   toggleWorkbenchAsciiOption,
   WorkbenchAsciiConfigController,
+  type WorkbenchAsciiConfigRow,
   type WorkbenchAsciiKittyKey,
+  type WorkbenchAsciiNumericKey,
   type WorkbenchAsciiToggleKey,
 } from "../src/app/workbench_ascii.ts";
 import { handleInput } from "../src/input.ts";
@@ -113,12 +116,10 @@ import {
 import { htmlCssLayoutBoxPaintOrder, htmlCssLayoutBoxStyle } from "./html_css_layout_view.ts";
 import {
   ASCII_DEMO_PRESETS,
-  asciiControlValues,
   asciiPresetLabel,
   cloneAsciiOptions,
   formatAsciiControlValue,
   normalizeAsciiOptions,
-  TERMINAL_GLYPH_STYLES,
   terminalGlyphStyleLabel,
 } from "./ascii_options.ts";
 import { getSourceFrame } from "./sources.ts";
@@ -229,17 +230,7 @@ type AsciiConfigModalAction = "cancel" | "apply" | "ok";
 type TerminalOutputAction = "run" | "stop" | "restart" | "clear" | "follow" | "copy" | "raw";
 type TerminalShellAction = "start" | "stop" | "restart" | "clear" | "raw" | "copy" | "top" | "bottom";
 type ButtonTone = "default" | "danger" | "warning" | "success" | "muted";
-type AsciiNumericKey =
-  | "edgeThreshold"
-  | "normalThreshold"
-  | "depthThreshold"
-  | "exposure"
-  | "attenuation"
-  | "blendWithBase"
-  | "depthFalloff"
-  | "depthOffset"
-  | "wireframeThickness"
-  | "terminalEdgeBias";
+type AsciiNumericKey = WorkbenchAsciiNumericKey;
 type AsciiToggleKey = WorkbenchAsciiToggleKey;
 type AsciiKittyKey = WorkbenchAsciiKittyKey;
 
@@ -2331,32 +2322,9 @@ function renderModalOverlay(frame: Frame): void {
   }
 }
 
-type ThreeConfigRow =
-  | { kind: "preset"; label: string }
-  | { kind: "glyphStyle"; label: string }
-  | { kind: "kitty"; key: AsciiKittyKey; label: string }
-  | { kind: "toggle"; key: AsciiToggleKey; label: string }
-  | { kind: "numeric"; key: AsciiNumericKey; label: string };
+type ThreeConfigRow = WorkbenchAsciiConfigRow;
 
-const threeConfigRows: readonly ThreeConfigRow[] = [
-  { kind: "preset", label: "Preset" },
-  { kind: "glyphStyle", label: "Glyph style" },
-  { kind: "kitty", key: "kittyGraphics", label: "Kitty graphics" },
-  { kind: "kitty", key: "kittyDisableAscii", label: "Disable ASCII under Kitty" },
-  { kind: "numeric", key: "terminalEdgeBias", label: "Edge glyph bias" },
-  { kind: "numeric", key: "wireframeThickness", label: "Wire thickness" },
-  { kind: "toggle", key: "edges", label: "Edge pass" },
-  { kind: "toggle", key: "fill", label: "Fill pass" },
-  { kind: "toggle", key: "invertLuminance", label: "Invert luminance" },
-  { kind: "numeric", key: "edgeThreshold", label: "Edge threshold" },
-  { kind: "numeric", key: "normalThreshold", label: "Normal edge" },
-  { kind: "numeric", key: "depthThreshold", label: "Depth edge" },
-  { kind: "numeric", key: "exposure", label: "Exposure" },
-  { kind: "numeric", key: "attenuation", label: "Attenuation" },
-  { kind: "numeric", key: "blendWithBase", label: "Base blend" },
-  { kind: "numeric", key: "depthFalloff", label: "Fog falloff" },
-  { kind: "numeric", key: "depthOffset", label: "Fog offset" },
-];
+const threeConfigRows: readonly ThreeConfigRow[] = defaultWorkbenchAsciiConfigRows;
 
 function renderThreeConfigModal(frame: Frame): void {
   const t = theme();
@@ -2439,32 +2407,7 @@ function renderThreeConfigModal(frame: Frame): void {
 }
 
 function threeConfigRowText(row: ThreeConfigRow): string {
-  const current = configuredAscii().peek();
-  if (row.kind === "preset") {
-    return `${row.label.padEnd(18)} [<] ${asciiPresetLabel(current.preset)} [>]`;
-  }
-  if (row.kind === "glyphStyle") {
-    const labels = TERMINAL_GLYPH_STYLES.map((style) =>
-      style === current.terminalGlyphStyle
-        ? `[${terminalGlyphStyleLabel(style)}]`
-        : ` ${terminalGlyphStyleLabel(style)} `
-    ).join(" ");
-    return `${row.label.padEnd(18)} ${labels}`;
-  }
-  if (row.kind === "toggle") {
-    return `${row.label.padEnd(18)} ${current[row.key] ? "[x]" : "[ ]"}`;
-  }
-  if (row.kind === "kitty") {
-    const status = row.key === "kittyGraphics" ? kittyGraphicsStatus() : "applies only when Kitty is active";
-    return `${row.label.padEnd(26)} ${current[row.key] ? "[x]" : "[ ]"} ${status}`;
-  }
-  const value = Number(current[row.key]);
-  const values = asciiControlValues(row.key);
-  const ratio = numericOptionRatio(values, value);
-  const trackWidth = 14;
-  const filled = Math.round(ratio * trackWidth);
-  const track = `${"█".repeat(filled)}${"░".repeat(Math.max(0, trackWidth - filled))}`;
-  return `${row.label.padEnd(18)} [<] ${track} ${formatAsciiControlValue(row.key, value).padStart(5)} [>]`;
+  return formatWorkbenchAsciiConfigRowText(row, configuredAscii().peek(), { kittyStatus: kittyGraphicsStatus() });
 }
 
 function applyThreeConfigRow(index: number, action: ConfigHitAction = "activate"): void {
@@ -2541,10 +2484,6 @@ function stepAsciiNumeric(key: AsciiNumericKey, delta: number): void {
     `three config ${key} ${formatAsciiControlValue(key, Number(next[key]))}`,
     { persist: false },
   );
-}
-
-function numericOptionRatio(values: readonly number[], value: number): number {
-  return asciiNumericOptionRatio(values, value);
 }
 
 function drawFrame(frame: Frame, rect: Rectangle, title: string, active: boolean): void {
