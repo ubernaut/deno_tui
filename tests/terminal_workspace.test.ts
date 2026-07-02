@@ -336,7 +336,10 @@ Deno.test("terminal workspace commands drive pane operations", async () => {
     ["terminalWorkspace.previousPane", true],
     ["terminalWorkspace.growActive", true],
     ["terminalWorkspace.shrinkActive", true],
+    ["terminalWorkspace.closeSession", false],
     ["terminalWorkspace.duplicateSession", false],
+    ["terminalWorkspace.moveSessionPrevious", false],
+    ["terminalWorkspace.moveSessionNext", false],
     ["terminalWorkspace.restartSession", false],
     ["terminalWorkspace.detachSession", true],
     ["terminalWorkspace.attachSession", true],
@@ -368,9 +371,21 @@ Deno.test("terminal workspace commands drive pane operations", async () => {
   assertEquals(await registry.execute("terminal.main.duplicateSession", (action) => void actions.push(action)), true);
   assertEquals(actions[5]?.type, "terminalWorkspace.sessionDuplicated");
   assertEquals(workspace.inspect().sessions.map((session) => session.id), ["shell-main", "logs", "logs-copy"]);
+  assertEquals(
+    await registry.execute("terminal.main.moveSessionPrevious", (action) => void actions.push(action)),
+    true,
+  );
+  assertEquals(actions[6]?.type, "terminalWorkspace.sessionMoved");
+  assertEquals(workspace.inspect().sessions.map((session) => session.id), ["shell-main", "logs-copy", "logs"]);
+  assertEquals(await registry.execute("terminal.main.moveSessionNext", (action) => void actions.push(action)), true);
+  assertEquals(actions[7]?.type, "terminalWorkspace.sessionMoved");
+  assertEquals(workspace.inspect().sessions.map((session) => session.id), ["shell-main", "logs", "logs-copy"]);
   assertEquals(await registry.execute("terminal.main.restartSession", (action) => void actions.push(action)), true);
-  assertEquals(actions[6]?.type, "terminalWorkspace.sessionRestarted");
+  assertEquals(actions[8]?.type, "terminalWorkspace.sessionRestarted");
   assertEquals(workspace.inspect().active?.status, "idle");
+  assertEquals(await registry.execute("terminal.main.closeSession", (action) => void actions.push(action)), true);
+  assertEquals(actions[9]?.type, "terminalWorkspace.sessionClosed");
+  assertEquals(workspace.inspect().sessions.map((session) => session.id), ["shell-main", "logs"]);
 
   dispose();
   assertEquals(registry.list("terminal"), []);

@@ -98,3 +98,5 @@ developer workflows.
   shell-body coordinate translation and byte-preserving raw mouse buffers.
 - Added renderer-neutral terminal workspace session restart metadata and command-surface action support so spawnable
   session tabs can be reset for backend respawn while attach-only sessions remain protected.
+- Added terminal workspace command-surface actions for close-session and move-session previous/next so session tabs now
+  expose close, duplicate, restart, detach, attach, and reorder operations through renderer-neutral commands.

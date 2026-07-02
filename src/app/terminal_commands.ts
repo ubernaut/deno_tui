@@ -95,7 +95,10 @@ export type TerminalWorkspaceCommandKind =
   | "previousPane"
   | "growActive"
   | "shrinkActive"
+  | "closeSession"
   | "duplicateSession"
+  | "moveSessionPrevious"
+  | "moveSessionNext"
   | "restartSession"
   | "detachSession"
   | "attachSession";
@@ -107,7 +110,9 @@ export type TerminalWorkspaceCommandAction =
   | Action<"terminalWorkspace.paneClosed", TerminalWorkspaceCommandPayload>
   | Action<"terminalWorkspace.paneActivated", TerminalWorkspaceCommandPayload>
   | Action<"terminalWorkspace.paneResized", TerminalWorkspaceCommandPayload & { delta: number }>
+  | Action<"terminalWorkspace.sessionClosed", TerminalWorkspaceCommandPayload>
   | Action<"terminalWorkspace.sessionDuplicated", TerminalWorkspaceCommandPayload>
+  | Action<"terminalWorkspace.sessionMoved", TerminalWorkspaceCommandPayload & { delta: number }>
   | Action<"terminalWorkspace.sessionRestarted", TerminalWorkspaceCommandPayload>
   | Action<"terminalWorkspace.sessionDetached", TerminalWorkspaceCommandPayload>
   | Action<"terminalWorkspace.sessionAttached", TerminalWorkspaceCommandPayload>;
@@ -531,6 +536,21 @@ export function terminalWorkspaceCommands<TAction extends Action = TerminalWorks
   if (options.includeSessionCommands ?? true) {
     commands.push(
       {
+        id: `${idPrefix}.closeSession`,
+        label: label("closeSession", "Close Terminal Session"),
+        group,
+        keywords: ["terminal", "workspace", "session", "tab", "close", "remove"],
+        disabled: () => !workspace.inspect().activeId,
+        action: () => {
+          const sessionId = workspace.inspect().activeId;
+          if (sessionId) workspace.remove(sessionId);
+          return {
+            type: "terminalWorkspace.sessionClosed",
+            payload: terminalWorkspacePayload(workspace, id, undefined, sessionId),
+          } as TAction;
+        },
+      },
+      {
         id: `${idPrefix}.duplicateSession`,
         label: label("duplicateSession", "Duplicate Terminal Session"),
         group,
@@ -544,6 +564,26 @@ export function terminalWorkspaceCommands<TAction extends Action = TerminalWorks
           } as TAction;
         },
       },
+      terminalSessionMoveCommand(
+        workspace,
+        id,
+        idPrefix,
+        group,
+        "moveSessionPrevious",
+        "Move Terminal Session Left",
+        -1,
+        label,
+      ),
+      terminalSessionMoveCommand(
+        workspace,
+        id,
+        idPrefix,
+        group,
+        "moveSessionNext",
+        "Move Terminal Session Right",
+        1,
+        label,
+      ),
       {
         id: `${idPrefix}.restartSession`,
         label: label("restartSession", "Restart Terminal Session"),
@@ -609,6 +649,33 @@ export function bindTerminalWorkspaceCommands<TAction extends Action = TerminalW
   options: TerminalWorkspaceCommandOptions = {},
 ): () => void {
   return registry.registerAll(terminalWorkspaceCommands<TAction>(workspace, options));
+}
+
+function terminalSessionMoveCommand<TAction extends Action>(
+  workspace: TerminalWorkspaceController,
+  id: string,
+  idPrefix: string,
+  group: string,
+  kind: "moveSessionPrevious" | "moveSessionNext",
+  fallback: string,
+  delta: number,
+  label: (kind: TerminalWorkspaceCommandKind, fallback: string) => string,
+): Command<TAction> {
+  return {
+    id: `${idPrefix}.${kind}`,
+    label: label(kind, fallback),
+    group,
+    keywords: ["terminal", "workspace", "session", "tab", "move", delta < 0 ? "previous" : "next"],
+    disabled: () => workspace.inspect().sessions.length < 2 || !workspace.inspect().activeId,
+    action: () => {
+      const sessionId = workspace.inspect().activeId;
+      if (sessionId) workspace.move(sessionId, delta);
+      return {
+        type: "terminalWorkspace.sessionMoved",
+        payload: { ...terminalWorkspacePayload(workspace, id, undefined, sessionId), delta },
+      } as TAction;
+    },
+  };
 }
 
 function terminalPaneFocusCommand<TAction extends Action>(
