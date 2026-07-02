@@ -1111,6 +1111,8 @@ Work:
         stable diagnostics with less transient allocation.
   - [x] Extracted the direct sorted string insertion helper into `src/utils/sorted_array.ts` and reused it across app
         inspection, command registry groups, and command binding conflict reports.
+  - [x] Changed system process finalization to use a bounded comparator-ordered top-N list for large `/proc` scans while
+        retaining full sort for small samples where the visible limit is close to the scanned row count.
   - [x] Reworked `TreeController.setExpanded()` to preserve unchanged subtree identity and allocate only along the
         changed branch, with regression coverage for no-op and nested expansion updates.
   - [x] Reduced terminal workspace layout lookup clone churn by using internal read-only pane references for active,

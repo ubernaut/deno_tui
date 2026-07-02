@@ -11,7 +11,12 @@ import {
   type SystemMetricsCommandOutput,
   type SystemMetricsProvider,
 } from "./system_metrics_provider.ts";
-import { parseProcessStat, processComparator, type SystemProcessSortKey } from "./system_metrics_process.ts";
+import {
+  insertTopProcessSnapshot,
+  parseProcessStat,
+  processComparator,
+  type SystemProcessSortKey,
+} from "./system_metrics_process.ts";
 import { collectAlerts, emptySnapshot, pushHistory } from "./system_metrics_snapshot.ts";
 import { sampleTemperatures, type TemperatureSample } from "./system_metrics_temperature.ts";
 import type { DiskSnapshot, ProcessSnapshot, SystemMetricDiagnostic, SystemSnapshot } from "./types.ts";
@@ -387,6 +392,8 @@ export class SystemMonitor {
 
     const nextProcessCpu = new Map<number, number>();
     const processes: ProcessSnapshot[] = [];
+    const compareProcesses = processComparator(this.#processSortKey);
+    const useBoundedProcessRows = sample.scanned > this.#processLimit * 3;
 
     for (const result of sample.stats) {
       if (result.status !== "fulfilled") {
@@ -404,7 +411,7 @@ export class SystemMonitor {
 
       const cpuPercent = clamp((cpuDelta / Math.max(1, totalDelta)) * 100 * cpuCount, 0, 999);
 
-      processes.push({
+      const process = {
         pid: result.value.pid,
         name: parsed.name,
         state: parsed.state,
@@ -412,12 +419,17 @@ export class SystemMonitor {
         memoryPercent: clamp((parsed.memoryBytes / totalMemory) * 100, 0, 100),
         memoryBytes: parsed.memoryBytes,
         processor: parsed.processor,
-      });
+      };
+      if (useBoundedProcessRows) {
+        insertTopProcessSnapshot(processes, process, this.#processLimit, compareProcesses);
+      } else {
+        processes.push(process);
+      }
     }
 
     this.#processCpu = nextProcessCpu;
 
-    return processes.sort(processComparator(this.#processSortKey)).slice(0, this.#processLimit);
+    return useBoundedProcessRows ? processes : processes.sort(compareProcesses).slice(0, this.#processLimit);
   }
 
   #sampleProcesses(

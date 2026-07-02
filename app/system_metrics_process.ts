@@ -31,6 +31,25 @@ export function processComparator(
   }
 }
 
+export function insertTopProcessSnapshot(
+  processes: ProcessSnapshot[],
+  process: ProcessSnapshot,
+  limit: number,
+  compare: (left: ProcessSnapshot, right: ProcessSnapshot) => number,
+): void {
+  if (limit <= 0) return;
+  let low = 0;
+  let high = processes.length;
+  while (low < high) {
+    const middle = (low + high) >> 1;
+    if (compare(process, processes[middle]!) < 0) high = middle;
+    else low = middle + 1;
+  }
+  if (low >= limit) return;
+  processes.splice(low, 0, process);
+  if (processes.length > limit) processes.length = limit;
+}
+
 export function parseProcessStat(stat: string, pageSize: number): ParsedProcessStat | null {
   const open = stat.indexOf("(");
   const close = stat.lastIndexOf(")");
