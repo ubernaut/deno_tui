@@ -2457,11 +2457,16 @@ var DirtyRegion = class _DirtyRegion {
   /** Creates a dirty region from rectangle bounds. */
   static fromRectangles(rectangles) {
     const region = new _DirtyRegion();
-    for (const rectangle of rectangles) {
-      region.addRectangleUnmerged(rectangle);
-    }
-    region.mergeRows();
+    region.resetFromRectangles(rectangles);
     return region;
+  }
+  /** Replaces the region contents with merged rectangle bounds. */
+  resetFromRectangles(rectangles) {
+    this.clear();
+    for (const rectangle of rectangles) {
+      this.addRectangleUnmerged(rectangle);
+    }
+    this.mergeRows();
   }
   addRectangleUnmerged(rectangle) {
     const startRow = Math.floor(rectangle.row);
@@ -2553,6 +2558,12 @@ var DirtyRegion = class _DirtyRegion {
   }
   /** Visits row segments clipped to the supplied rectangle without allocating an output array. */
   forEachIntersection(rectangle, visitor) {
+    this.forEachIntersectionValue(rectangle, (row, startColumn, endColumn) => {
+      visitor({ row, startColumn, endColumn });
+    });
+  }
+  /** Visits clipped row segments as primitive values for allocation-sensitive render paths. */
+  forEachIntersectionValue(rectangle, visitor) {
     const rowStart = Math.floor(rectangle.row);
     const rowEnd = rowStart + Math.max(0, Math.floor(rectangle.height));
     const columnStart = Math.floor(rectangle.column);
@@ -2563,7 +2574,7 @@ var DirtyRegion = class _DirtyRegion {
         const startColumn = Math.max(columnStart, segment.startColumn);
         const endColumn = Math.min(columnEnd, segment.endColumn);
         if (endColumn > startColumn) {
-          visitor({ row, startColumn, endColumn });
+          visitor(row, startColumn, endColumn);
         }
       }
     }
@@ -2789,6 +2800,7 @@ var Canvas = class extends EventEmitter {
   requiredObjectsBuffer;
   dirtyCandidatesBuffer;
   intersectionCandidatesBuffer;
+  dirtyRegionBuffer;
   constructor(options) {
     super();
     this.frameBuffer = [];
@@ -2817,6 +2829,7 @@ var Canvas = class extends EventEmitter {
     this.requiredObjectsBuffer = /* @__PURE__ */ new Set();
     this.dirtyCandidatesBuffer = [];
     this.intersectionCandidatesBuffer = [];
+    this.dirtyRegionBuffer = new DirtyRegion();
     this.size = signalify(options.size, { deepObserve: true });
     this.size.subscribe(() => {
       this.resizeNeeded = true;
@@ -2934,7 +2947,8 @@ var Canvas = class extends EventEmitter {
         object.rendered = false;
       }
     }
-    const dirtyRegion = DirtyRegion.fromRectangles(dirtyRectangles);
+    const dirtyRegion = this.dirtyRegionBuffer;
+    dirtyRegion.resetFromRectangles(dirtyRectangles);
     const spatialIndex = intersectionsDirty ? DrawObjectSpatialIndex.fromObjects(this.drawnObjects) : void 0;
     const objectsToRender = intersectionsDirty ? affectedDrawObjects(
       this.drawnObjects,
@@ -3081,8 +3095,8 @@ function affectedDrawObjects(objects, dirtyRegion, requiredObjects, movedObjects
   return target;
 }
 function queueDirtyRegion(object, dirtyRegion) {
-  dirtyRegion.forEachIntersection(object.rectangle.peek(), (segment) => {
-    object.queueRerenderRange(segment.row, segment.startColumn, segment.endColumn);
+  dirtyRegion.forEachIntersectionValue(object.rectangle.peek(), (row, startColumn, endColumn) => {
+    object.queueRerenderRange(row, startColumn, endColumn);
   });
 }
 
