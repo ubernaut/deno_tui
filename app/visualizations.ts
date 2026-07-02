@@ -58,6 +58,10 @@ export const visualizations: VisualizationDescriptor[] = visualizationCatalog.ma
 
 const visualizationMap = new Map(visualizationCatalogById);
 const neonDemoIds = new Set(neonDemos.map((demo) => demo.id));
+const neonDemoTitles = new Array<string>(neonDemos.length);
+for (let index = 0; index < neonDemos.length; index += 1) {
+  neonDemoTitles[index] = neonDemos[index]!.title;
+}
 const textOnlyNeonDemoIds = new Set(["warning-stack", "event-log", "component-index"]);
 const ngePrimitiveSceneModes: Record<string, ThreeSceneMode> = {
   "counter-board": "counter",
@@ -206,24 +210,37 @@ function renderThreeScene(context: RenderContext, mode: ThreeSceneMode, accent: 
 
 function renderWarningStack(context: RenderContext): PanelRender {
   const drive = buildVisualizationDrive(context, 24);
-  const diagnostics = context.system.diagnostics
-    .filter((diagnostic) => diagnostic.status !== "ok")
-    .map((diagnostic) =>
-      `${diagnostic.source.toUpperCase()}  ${diagnostic.status.toUpperCase()}  ${diagnostic.detail}`
-    );
-  const alerts = context.system.alerts.length > 0
-    ? context.system.alerts.map((alert) => `${alert.title}  ${alert.detail}`)
-    : diagnostics.length > 0
-    ? diagnostics
-    : sourceWarnings(context.sources, drive);
+  const lines = warningStackLines(context, drive, Math.max(1, context.height));
 
   return {
-    body: alerts.slice(0, Math.max(1, context.height)).join("\n"),
+    body: lines.join("\n"),
     footer: sourceFooter(context.sources),
     alert: alertText(context) || driveAlert(drive),
     accent: drive.hazard >= 0.88 ? "alarm" : "amber",
     severity: drive.hazard >= 0.88 ? "alarm" : "warning",
   };
+}
+
+function warningStackLines(context: RenderContext, drive: VisualizationDrive, limit: number): string[] {
+  const lines: string[] = [];
+  for (let index = 0; index < context.system.alerts.length && lines.length < limit; index += 1) {
+    const alert = context.system.alerts[index]!;
+    lines.push(`${alert.title}  ${alert.detail}`);
+  }
+  if (lines.length > 0) return lines;
+
+  for (let index = 0; index < context.system.diagnostics.length && lines.length < limit; index += 1) {
+    const diagnostic = context.system.diagnostics[index]!;
+    if (diagnostic.status === "ok") continue;
+    lines.push(`${diagnostic.source.toUpperCase()}  ${diagnostic.status.toUpperCase()}  ${diagnostic.detail}`);
+  }
+  if (lines.length > 0) return lines;
+
+  const warnings = sourceWarnings(context.sources, drive);
+  for (let index = 0; index < warnings.length && lines.length < limit; index += 1) {
+    lines.push(warnings[index]!);
+  }
+  return lines;
 }
 
 function renderCounterBoard(context: RenderContext): PanelRender {
@@ -285,24 +302,40 @@ function renderLiveFeed(context: RenderContext): PanelRender {
 
 function renderEventLog(context: RenderContext): PanelRender {
   const drive = buildVisualizationDrive(context, 24);
-  const lines = [
-    ...context.system.alerts.map((alert, index) => `${String(223229 + index * 17)}  ${alert.title} ${alert.detail}`),
-    ...context.sources.flatMap((source, index) =>
-      source.detailLines.slice(0, 2).map((line, detailIndex) =>
-        `${String(223500 + index * 31 + detailIndex * 7)}  ${source.name.toUpperCase()} ${line}`
-      )
-    ),
-    `${String(224100 + Math.round(drive.phase % 800))}  VECTOR DRIVE ${(drive.current * 100).toFixed(0)}%`,
-    `${String(224280 + Math.round(drive.divergence * 100))}  PHASE SLEW ${(drive.volatility * 100).toFixed(0)}%`,
-  ];
+  const lines = eventLogLines(context, drive, Math.max(1, context.height));
 
   return {
-    body: lines.slice(0, Math.max(1, context.height)).join("\n"),
+    body: lines.join("\n"),
     footer: sourceFooter(context.sources),
     alert: alertText(context) || driveAlert(drive),
     accent: drive.hazard >= 0.88 ? "alarm" : context.system.alerts.length > 0 ? "amber" : "signal",
     severity: drive.hazard >= 0.88 ? "alarm" : context.system.alerts.length > 0 ? "warning" : "info",
   };
+}
+
+function eventLogLines(context: RenderContext, drive: VisualizationDrive, limit: number): string[] {
+  const lines: string[] = [];
+  for (let index = 0; index < context.system.alerts.length && lines.length < limit; index += 1) {
+    const alert = context.system.alerts[index]!;
+    lines.push(`${String(223229 + index * 17)}  ${alert.title} ${alert.detail}`);
+  }
+  for (let index = 0; index < context.sources.length && lines.length < limit; index += 1) {
+    const source = context.sources[index]!;
+    const detailLimit = Math.min(2, source.detailLines.length);
+    for (let detailIndex = 0; detailIndex < detailLimit && lines.length < limit; detailIndex += 1) {
+      const line = source.detailLines[detailIndex]!;
+      lines.push(`${String(223500 + index * 31 + detailIndex * 7)}  ${source.name.toUpperCase()} ${line}`);
+    }
+  }
+  if (lines.length < limit) {
+    lines.push(`${String(224100 + Math.round(drive.phase % 800))}  VECTOR DRIVE ${(drive.current * 100).toFixed(0)}%`);
+  }
+  if (lines.length < limit) {
+    lines.push(
+      `${String(224280 + Math.round(drive.divergence * 100))}  PHASE SLEW ${(drive.volatility * 100).toFixed(0)}%`,
+    );
+  }
+  return lines;
 }
 
 function renderChannelMatrix(context: RenderContext): PanelRender {
@@ -456,7 +489,7 @@ function renderComponentIndex(context: RenderContext): PanelRender {
       Math.max(18, context.width),
       Math.max(4, context.height),
       drive,
-      neonDemos.map((demo) => demo.title),
+      neonDemoTitles,
     ),
     footer: sourceFooter(context.sources),
     alert: drive.hazard >= 0.92 ? "SUITE SATURATION" : "",

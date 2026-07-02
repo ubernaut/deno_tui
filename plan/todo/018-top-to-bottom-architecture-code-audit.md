@@ -183,6 +183,8 @@ Work:
         away from per-render source-id array plus `map` allocation.
   - [x] Extracted shared API Workbench live-row projection and moved terminal/browser live table timers off `map` plus
         object-spread row cloning.
+  - [x] Reworked warning-stack and event-log visualization renderers to assemble only visible lines with direct loops,
+        and cached Neon demo titles for the component-index widget.
 - [x] Replace duplicated theme/window/menu persistence code with a shared versioned serializer.
   - [x] Extracted shared workbench workspace normalization, panel-state normalization, upsert, rename, delete, lookup,
         and legacy window-entry expansion helpers into `src/app/workbench_workspace.ts`.
