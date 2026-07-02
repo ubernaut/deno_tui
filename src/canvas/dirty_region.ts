@@ -116,23 +116,30 @@ export class DirtyRegion {
 
   /** Returns row segments clipped to the supplied rectangle. */
   intersections(rectangle: Rectangle): DirtyRowSegment[] {
+    const intersections: DirtyRowSegment[] = [];
+    this.forEachIntersection(rectangle, (segment) => {
+      intersections.push({ ...segment });
+    });
+    return intersections;
+  }
+
+  /** Visits row segments clipped to the supplied rectangle without allocating an output array. */
+  forEachIntersection(rectangle: Rectangle, visitor: (segment: DirtyRowSegment) => void): void {
     const rowStart = Math.floor(rectangle.row);
     const rowEnd = rowStart + Math.max(0, Math.floor(rectangle.height));
     const columnStart = Math.floor(rectangle.column);
     const columnEnd = columnStart + Math.max(0, Math.floor(rectangle.width));
-    if (rowEnd <= rowStart || columnEnd <= columnStart) return [];
+    if (rowEnd <= rowStart || columnEnd <= columnStart) return;
 
-    const intersections: DirtyRowSegment[] = [];
     for (let row = rowStart; row < rowEnd; row += 1) {
       for (const segment of this.#rows.get(row) ?? []) {
         const startColumn = Math.max(columnStart, segment.startColumn);
         const endColumn = Math.min(columnEnd, segment.endColumn);
         if (endColumn > startColumn) {
-          intersections.push({ row, startColumn, endColumn });
+          visitor({ row, startColumn, endColumn });
         }
       }
     }
-    return intersections;
   }
 
   private mergeRows(): void {

@@ -26,6 +26,14 @@ Deno.test("DirtyRegion expands rectangles into clipped row intersections", () =>
     { row: 2, startColumn: 5, endColumn: 8 },
     { row: 3, startColumn: 5, endColumn: 9 },
   ]);
+  const visited: unknown[] = [];
+  region.forEachIntersection({ row: 2, column: 5, width: 4, height: 3 }, (segment) => {
+    visited.push({ ...segment });
+  });
+  assertEquals(visited, [
+    { row: 2, startColumn: 5, endColumn: 8 },
+    { row: 3, startColumn: 5, endColumn: 9 },
+  ]);
 });
 
 Deno.test("DirtyRegion ignores empty dimensions and supports clearing", () => {

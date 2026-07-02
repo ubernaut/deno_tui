@@ -392,7 +392,7 @@ function affectedDrawObjects(
 }
 
 function queueDirtyRegion(object: DrawObject, dirtyRegion: DirtyRegion): void {
-  for (const segment of dirtyRegion.intersections(object.rectangle.peek())) {
+  dirtyRegion.forEachIntersection(object.rectangle.peek(), (segment) => {
     object.queueRerenderRange(segment.row, segment.startColumn, segment.endColumn);
-  }
+  });
 }
