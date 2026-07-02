@@ -165,6 +165,8 @@ Work:
         during every config-modal preset step.
   - [x] Reworked browser API Workbench logs, explorer, and terminal render loops to avoid spread/slice/forEach
         projections while preserving the same hit targets and scroll behavior.
+  - [x] Reworked data-table filter/sort cloning to use an explicit copy helper instead of spread arrays while preserving
+        immutable result semantics.
 - [x] Replace duplicated theme/window/menu persistence code with a shared versioned serializer.
   - [x] Extracted shared workbench workspace normalization, panel-state normalization, upsert, rename, delete, lookup,
         and legacy window-entry expansion helpers into `src/app/workbench_workspace.ts`.

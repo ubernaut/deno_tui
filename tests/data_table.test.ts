@@ -74,6 +74,9 @@ Deno.test("data table sorting handles numbers and numeric strings", () => {
     sortDataRows([{ value: "10" }, { value: "2" }, { value: "1" }], { columnId: "value", direction: "asc" }),
     [{ value: "1" }, { value: "2" }, { value: "10" }],
   );
+  const unsorted = sortDataRows(rows);
+  assertEquals(unsorted, rows);
+  assertEquals(unsorted === rows, false);
 });
 
 Deno.test("data table render helpers expose sorted headers and selected rows", () => {

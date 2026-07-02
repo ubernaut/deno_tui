@@ -255,7 +255,7 @@ export function filterDataRows<TRow extends Record<string, unknown>>(
   query: string,
 ): TRow[] {
   const terms = parseSearchTerms(query);
-  if (terms.length === 0) return [...rows];
+  if (terms.length === 0) return copyDataRows(rows);
   const filtered: TRow[] = [];
   for (const row of rows) {
     if (dataRowMatchesTerms(row, columns, terms)) filtered.push(row);
@@ -286,9 +286,17 @@ export function sortDataRows<TRow extends Record<string, unknown>>(
   rows: readonly TRow[],
   sort?: DataSort,
 ): TRow[] {
-  if (!sort) return [...rows];
+  const sorted = copyDataRows(rows);
+  if (!sort) return sorted;
   const direction = sort.direction === "desc" ? -1 : 1;
-  return [...rows].sort((left, right) => compareCells(left[sort.columnId], right[sort.columnId]) * direction);
+  sorted.sort((left, right) => compareCells(left[sort.columnId], right[sort.columnId]) * direction);
+  return sorted;
+}
+
+function copyDataRows<TRow>(rows: readonly TRow[]): TRow[] {
+  const output = new Array<TRow>(rows.length);
+  for (let index = 0; index < rows.length; index += 1) output[index] = rows[index]!;
+  return output;
 }
 
 /** Renders data Table Header into deterministic text rows. */
