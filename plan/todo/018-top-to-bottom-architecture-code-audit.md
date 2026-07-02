@@ -925,6 +925,8 @@ Work:
   - [x] Removed duplicate option-child scans from markup combobox/select hydration.
   - [x] Cached sorted runtime renderer backend ids and definitions inside the backend registry, avoiding repeated sort
         and projection work during renderer selection, inspection, controller cycling, and catalog rendering.
+  - [x] Added static lookup/search/category/capability indexes for the component catalog so docs, command surfaces, and
+        demo browsers do not recompute normalized metadata on every query/report.
 - [x] Make demo-only assets and NGE-inspired primitives clearly separate from library APIs.
   - [x] Added `app/neon_three_catalog.ts` for supported Three scene metadata and labels, keeping demo/NGE catalog data
         separate from the monolithic scene factory and shared by visualization footers plus scene coverage tests.

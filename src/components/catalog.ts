@@ -274,6 +274,11 @@ export const componentCatalog = [
   component("text", "Text", "primitive", "Raw text draw object.", ["component", "themeable"]),
 ] as const satisfies readonly ComponentCatalogEntry[];
 
+const COMPONENT_LOOKUP_INDEX = createComponentLookupIndex(componentCatalog);
+const COMPONENT_SEARCH_INDEX = createComponentSearchIndex(componentCatalog);
+const COMPONENT_CATEGORIES = collectComponentCategories(componentCatalog);
+const COMPONENT_CAPABILITIES = collectComponentCapabilities(componentCatalog);
+
 /** Returns a copy of the built-in component catalog. */
 export function listComponents(): ComponentCatalogEntry[] {
   return cloneComponentEntries(componentCatalog);
@@ -281,14 +286,7 @@ export function listComponents(): ComponentCatalogEntry[] {
 
 /** Finds a component by id or display name, ignoring separators and case. */
 export function findComponent(idOrName: string): ComponentCatalogEntry | undefined {
-  const normalized = normalizeComponentLookup(idOrName);
-  for (let index = 0; index < componentCatalog.length; index += 1) {
-    const entry = componentCatalog[index]!;
-    if (normalizeComponentLookup(entry.id) === normalized || normalizeComponentLookup(entry.name) === normalized) {
-      return entry;
-    }
-  }
-  return undefined;
+  return COMPONENT_LOOKUP_INDEX.get(normalizeComponentLookup(idOrName));
 }
 
 /** Returns all catalog entries in one category. */
@@ -330,21 +328,12 @@ export function queryComponents(query: ComponentCatalogQuery = {}): ComponentCat
 
 /** Returns the known component categories in sorted order. */
 export function componentCategories(): ComponentCategory[] {
-  const categories = new Set<ComponentCategory>();
-  for (let index = 0; index < componentCatalog.length; index += 1) categories.add(componentCatalog[index]!.category);
-  return sortedSetValues(categories);
+  return cloneStringArray(COMPONENT_CATEGORIES);
 }
 
 /** Returns the known component capability tags in sorted order. */
 export function componentCapabilities(): ComponentCapability[] {
-  const capabilities = new Set<ComponentCapability>();
-  for (let index = 0; index < componentCatalog.length; index += 1) {
-    const entryCapabilities = componentCatalog[index]!.capabilities;
-    for (let capabilityIndex = 0; capabilityIndex < entryCapabilities.length; capabilityIndex += 1) {
-      capabilities.add(entryCapabilities[capabilityIndex]!);
-    }
-  }
-  return sortedSetValues(capabilities);
+  return cloneStringArray(COMPONENT_CAPABILITIES);
 }
 
 function createComponentCategoryCounts(): Record<ComponentCategory, number> {
@@ -450,6 +439,8 @@ function componentHasAllCapabilities(
 }
 
 function componentMatchesSearch(entry: ComponentCatalogEntry, search: string): boolean {
+  const indexed = COMPONENT_SEARCH_INDEX.get(entry);
+  if (indexed) return indexed.includes(search);
   if (normalizeComponentLookup(entry.id).includes(search)) return true;
   if (normalizeComponentLookup(entry.name).includes(search)) return true;
   if (normalizeComponentLookup(entry.description).includes(search)) return true;
@@ -460,11 +451,63 @@ function componentMatchesSearch(entry: ComponentCatalogEntry, search: string): b
   return false;
 }
 
+function createComponentLookupIndex(
+  entries: readonly ComponentCatalogEntry[],
+): Map<string, ComponentCatalogEntry> {
+  const lookup = new Map<string, ComponentCatalogEntry>();
+  for (let index = 0; index < entries.length; index += 1) {
+    const entry = entries[index]!;
+    lookup.set(normalizeComponentLookup(entry.id), entry);
+    lookup.set(normalizeComponentLookup(entry.name), entry);
+  }
+  return lookup;
+}
+
+function createComponentSearchIndex(
+  entries: readonly ComponentCatalogEntry[],
+): Map<ComponentCatalogEntry, string> {
+  const lookup = new Map<ComponentCatalogEntry, string>();
+  for (let index = 0; index < entries.length; index += 1) {
+    const entry = entries[index]!;
+    let text = `${normalizeComponentLookup(entry.id)} ${normalizeComponentLookup(entry.name)} ${
+      normalizeComponentLookup(entry.description)
+    } ${normalizeComponentLookup(entry.category)}`;
+    for (let capabilityIndex = 0; capabilityIndex < entry.capabilities.length; capabilityIndex += 1) {
+      text += ` ${normalizeComponentLookup(entry.capabilities[capabilityIndex]!)}`;
+    }
+    lookup.set(entry, text);
+  }
+  return lookup;
+}
+
+function collectComponentCategories(entries: readonly ComponentCatalogEntry[]): ComponentCategory[] {
+  const categories = new Set<ComponentCategory>();
+  for (let index = 0; index < entries.length; index += 1) categories.add(entries[index]!.category);
+  return sortedSetValues(categories);
+}
+
+function collectComponentCapabilities(entries: readonly ComponentCatalogEntry[]): ComponentCapability[] {
+  const capabilities = new Set<ComponentCapability>();
+  for (let index = 0; index < entries.length; index += 1) {
+    const entryCapabilities = entries[index]!.capabilities;
+    for (let capabilityIndex = 0; capabilityIndex < entryCapabilities.length; capabilityIndex += 1) {
+      capabilities.add(entryCapabilities[capabilityIndex]!);
+    }
+  }
+  return sortedSetValues(capabilities);
+}
+
 function sortedSetValues<T extends string>(values: Set<T>): T[] {
   const sorted: T[] = [];
   for (const value of values) sorted.push(value);
   sorted.sort();
   return sorted;
+}
+
+function cloneStringArray<T extends string>(values: readonly T[]): T[] {
+  const cloned = new Array<T>(values.length);
+  for (let index = 0; index < values.length; index += 1) cloned[index] = values[index]!;
+  return cloned;
 }
 
 function formatNonZeroEntries<T extends string>(record: Record<T, number>): string {
