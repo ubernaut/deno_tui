@@ -125,6 +125,8 @@ Work:
         labels with one window-id lookup set.
   - [x] Migrated the web API Workbench onto the shared API workbench theme/table/docs catalog so the terminal and
         browser adapters no longer maintain duplicate demo model fixtures.
+  - [x] Reused the web API Workbench's long-lived `WorkbenchController.windows` for workspace layout instead of
+        constructing and disposing a `WindowManagerController` during every draw.
 - [x] Replace duplicated theme/window/menu persistence code with a shared versioned serializer.
   - [x] Extracted shared workbench workspace normalization, panel-state normalization, upsert, rename, delete, lookup,
         and legacy window-entry expansion helpers into `src/app/workbench_workspace.ts`.

@@ -65,7 +65,6 @@ import {
   textWidth,
   toStyledCells,
   translateHitTargets,
-  WindowManagerController,
   workbenchAdaptiveTileOptions,
   type WorkbenchPanelWorkspaceState,
   workbenchStatusLeft,
@@ -194,9 +193,11 @@ const workbenchController = new WorkbenchController<"theme">({
       themeMenuOpen.value = state.openId === "theme";
     },
   },
-  windows: panelIds.map((id, order) => ({ id, title: id, order })),
+  windows: panelIds.map((id, order) => ({ id, title: id, order, minWidth: 26, minHeight: 10 })),
 });
 const topMenus = workbenchController.menus;
+const webWindows = workbenchController.windows;
+let webWindowManagerStateKey = "";
 const tileDensity = new Signal(Math.max(-3, Math.min(3, Math.floor(initialWorkspace.tileDensity ?? 0))));
 const lineSignals: Signal<string>[] = [];
 const log = new Signal<string[]>(
@@ -1358,26 +1359,30 @@ function workspaceLayout(bounds: Rectangle): {
   contentHeight: number;
   rects: Map<PanelId, Rectangle>;
 } {
-  const fullscreenId = maximized.peek() ?? undefined;
-  const manager = new WindowManagerController({
-    activeId: active.peek(),
-    fullscreenId,
-    windows: panelIds.map((id, order) => ({
-      id,
-      title: id,
-      order,
-      state: minimized.peek()[id] && id !== fullscreenId ? "minimized" : "normal",
-      minWidth: 26,
-      minHeight: 10,
-    })),
-  });
-
-  const layout = manager.layout({
+  syncWebWindowManagerState();
+  const layout = webWindows.layout({
     bounds,
     tileOptions: workbenchAdaptiveTileOptions({ bounds, tileDensity: tileDensity.peek() }),
   });
-  manager.dispose();
   return workbenchWindowLayout<PanelId>(bounds, layout);
+}
+
+function syncWebWindowManagerState(): void {
+  const fullscreenId = maximized.peek() ?? undefined;
+  const minimizedState = minimized.peek();
+  const key = `${active.peek()}|${fullscreenId ?? ""}|${panelIds.map((id) => minimizedState[id] ? "1" : "0").join("")}`;
+  if (key === webWindowManagerStateKey) return;
+  webWindowManagerStateKey = key;
+  webWindows.activeId.value = active.peek();
+  webWindows.fullscreenId.value = fullscreenId;
+  webWindows.windows.value = panelIds.map((id, order) => ({
+    id,
+    title: id,
+    order,
+    state: minimizedState[id] && id !== fullscreenId ? "minimized" : "normal",
+    minWidth: 26,
+    minHeight: 10,
+  }));
 }
 
 function blitWorkspace(frame: string[], virtual: string[], bounds: Rectangle, offset: number, width: number): void {
