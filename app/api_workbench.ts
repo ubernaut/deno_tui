@@ -297,6 +297,9 @@ type TerminalShellAction =
   | "clear"
   | "raw"
   | "copy"
+  | "search"
+  | "previousMatch"
+  | "nextMatch"
   | "top"
   | "bottom";
 type ButtonTone = "default" | "danger" | "warning" | "success" | "muted";
@@ -338,6 +341,9 @@ const terminalShellButtonItems: WorkbenchButtonRowItem<TerminalShellAction>[] = 
   { label: "Clear", action: "clear", tone: "muted" },
   { label: "Raw", action: "raw" },
   { label: "Copy", action: "copy" },
+  { label: "Search", action: "search" },
+  { label: "Prev Hit", action: "previousMatch" },
+  { label: "Next Hit", action: "nextMatch" },
   { label: "Top", action: "top" },
   { label: "Bottom", action: "bottom" },
 ];
@@ -509,6 +515,8 @@ const workspaceNameDraft = new Signal("");
 const workspaceNameMode = new Signal<WorkspaceNameMode | null>(null);
 const workspaceTargetName = new Signal<string | null>(null);
 const activeWorkspaceName = new Signal<string | null>(null);
+const terminalShellSearchDraft = new Signal("");
+const terminalShellSearchPromptOpen = new Signal(false);
 const menuFocused = new Signal(false);
 const workbenchController = new WorkbenchController<"theme" | "newWindow" | "workspace">({
   activeId: "inspector",
@@ -803,6 +811,10 @@ tui.on("keyPress", (event) => {
     return;
   }
   if (modal.openState.peek()) {
+    if (terminalShellSearchPromptOpen.peek() && handleTerminalShellSearchKey(event)) {
+      draw();
+      return;
+    }
     if (workspaceNameMode.peek() && handleWorkspaceNameKey(event)) {
       draw();
       return;
@@ -928,6 +940,8 @@ tui.on("destroy", () => {
   workspaceNameMode.dispose();
   workspaceTargetName.dispose();
   activeWorkspaceName.dispose();
+  terminalShellSearchDraft.dispose();
+  terminalShellSearchPromptOpen.dispose();
   savedWorkspaces.dispose();
   menuFocused.dispose();
   threeConfigOpen.dispose();
@@ -2145,18 +2159,36 @@ function renderTerminalShellToolbar(frame: Frame, rect: Rectangle, startRow: num
   const shellInspection = shell?.inspect();
   const scrollDisabled = !shellInspection ||
     shellInspection.scrollback.totalRows <= shellInspection.scrollback.viewportRows;
-  terminalShellButtonItems[1]!.disabled = workspaceInspection.sessions.length < 2;
-  terminalShellButtonItems[2]!.disabled = workspaceInspection.sessions.length < 2;
-  terminalShellButtonItems[3]!.disabled = !workspaceInspection.activeId || workspaceInspection.sessions.length <= 1;
-  terminalShellButtonItems[6]!.active = workspaceInspection.workspace.layout.zoomedPaneId !== undefined;
-  terminalShellButtonItems[7]!.disabled = workspaceInspection.workspace.layout.count < 2;
-  terminalShellButtonItems[8]!.disabled = !shell || shell.running || shell.status.peek() === "starting";
-  terminalShellButtonItems[9]!.disabled = !shell?.running;
-  terminalShellButtonItems[12]!.active = terminalShellInputMode.peek() === "raw";
-  terminalShellButtonItems[12]!.disabled = !shell?.running;
-  terminalShellButtonItems[13]!.active = shell?.scrollback.mode === "copy";
-  terminalShellButtonItems[14]!.disabled = scrollDisabled;
-  terminalShellButtonItems[15]!.disabled = scrollDisabled;
+  const hasMatches = (shellInspection?.scrollback.matches.length ?? 0) > 0;
+  for (const item of terminalShellButtonItems) {
+    item.disabled = false;
+    item.active = false;
+    if (item.action === "previous" || item.action === "next") {
+      item.disabled = workspaceInspection.sessions.length < 2;
+    } else if (item.action === "close") {
+      item.disabled = !workspaceInspection.activeId || workspaceInspection.sessions.length <= 1;
+    } else if (item.action === "zoomPane") {
+      item.active = workspaceInspection.workspace.layout.zoomedPaneId !== undefined;
+    } else if (item.action === "closePane") {
+      item.disabled = workspaceInspection.workspace.layout.count < 2;
+    } else if (item.action === "start") {
+      item.disabled = !shell || shell.running || shell.status.peek() === "starting";
+    } else if (item.action === "stop") {
+      item.disabled = !shell?.running;
+    } else if (item.action === "raw") {
+      item.active = terminalShellInputMode.peek() === "raw";
+      item.disabled = !shell?.running;
+    } else if (item.action === "copy") {
+      item.active = shell?.scrollback.mode === "copy";
+    } else if (item.action === "search") {
+      item.active = !!shellInspection?.scrollback.query;
+      item.disabled = !shellInspection || shellInspection.scrollback.totalRows === 0;
+    } else if (item.action === "previousMatch" || item.action === "nextMatch") {
+      item.disabled = !hasMatches;
+    } else if (item.action === "top" || item.action === "bottom") {
+      item.disabled = scrollDisabled;
+    }
+  }
   const nextRow = layoutWorkbenchButtonRowInto(
     terminalShellButtonPlacements,
     terminalShellButtonItems,
@@ -2193,6 +2225,99 @@ function toggleTerminalShellInputMode(): void {
   }
   terminalShellInputMode.value = "raw";
   pushLog("shell input raw mode");
+}
+
+function openTerminalShellSearchModal(): void {
+  const shell = activeTerminalShell();
+  if (!shell) {
+    pushLog("shell search unavailable");
+    return;
+  }
+  focus(TERMINAL_SHELL_WINDOW_ID);
+  terminalShellInputMode.value = "workbench";
+  terminalShellSearchDraft.value = shell.scrollback.inspect().query ?? terminalShellSearchDraft.peek();
+  terminalShellSearchPromptOpen.value = true;
+  modal.open({
+    title: "Search Shell Scrollback",
+    tone: "info",
+    body: terminalShellSearchModalBody(),
+    actions: [
+      { id: "terminal-search-cancel", label: "Cancel" },
+      { id: "terminal-search-run", label: "Search", default: true },
+    ],
+  });
+  pushLog("shell search prompt");
+}
+
+function terminalShellSearchModalBody(): string[] {
+  const shell = activeTerminalShell();
+  const inspection = shell?.scrollback.inspect();
+  const matches = inspection?.matches.length ?? 0;
+  const active = inspection?.activeMatch === undefined ? "" : ` hit ${inspection.activeMatch + 1}/${matches}`;
+  return [
+    `Query  ${terminalShellSearchDraft.peek()}▌`,
+    matches > 0 ? `Matches ${matches}${active}` : "Matches none yet",
+    "Enter searches, Escape cancels, N/Shift+N move between matches in copy mode.",
+  ];
+}
+
+function refreshTerminalShellSearchModal(): void {
+  if (!terminalShellSearchPromptOpen.peek() || !modal.openState.peek()) return;
+  modal.update({ body: terminalShellSearchModalBody() });
+}
+
+function closeTerminalShellSearchModal(): void {
+  terminalShellSearchPromptOpen.value = false;
+  modal.close();
+}
+
+function handleTerminalShellSearchKey(event: { key: string; ctrl?: boolean; meta?: boolean }): boolean {
+  if (event.ctrl || event.meta) return false;
+  if (event.key === "escape") {
+    closeTerminalShellSearchModal();
+    pushLog("shell search cancelled");
+    return true;
+  }
+  if (event.key === "backspace") {
+    terminalShellSearchDraft.value = terminalShellSearchDraft.peek().slice(0, -1);
+    refreshTerminalShellSearchModal();
+    return true;
+  }
+  if (event.key === "return") {
+    runTerminalShellSearch();
+    return true;
+  }
+  if (event.key.length === 1 && textWidth(event.key) === 1) {
+    terminalShellSearchDraft.value = `${terminalShellSearchDraft.peek()}${event.key}`.slice(0, 80);
+    refreshTerminalShellSearchModal();
+    return true;
+  }
+  return false;
+}
+
+function runTerminalShellSearch(): void {
+  const shell = activeTerminalShell();
+  const query = terminalShellSearchDraft.peek();
+  if (!shell) {
+    closeTerminalShellSearchModal();
+    pushLog("shell search unavailable");
+    return;
+  }
+  const matches = shell.scrollback.search(query);
+  terminalShellInputMode.value = "workbench";
+  terminalShellSearchPromptOpen.value = false;
+  modal.close();
+  pushLog(matches.length > 0 ? `shell search ${matches.length} hits` : "shell search no matches");
+  scheduleDraw();
+}
+
+function moveTerminalShellSearchMatch(delta: number): void {
+  const shell = activeTerminalShell();
+  if (!shell) return;
+  const row = shell.scrollback.nextMatch(delta);
+  terminalShellInputMode.value = "workbench";
+  pushLog(row === undefined ? "shell search no matches" : `shell search row ${row + 1}`);
+  scheduleDraw();
 }
 
 function activeTerminalShell(): TerminalShellController | undefined {
@@ -3736,7 +3861,7 @@ function openHelpModal(): void {
       "Mouse: click windows to focus them, click rows to select them, click controls to change values, drag or click scrollbars to move through overflow content.",
       "Use the New menu to add Monitor, Neon Exodus, and Neon 3D widget windows to the workspace.",
       "The New menu also includes Shell, Terminal Output, and HTML/CSS Layout windows for interactive shells, process output, and markup/CSS layout demos.",
-      "In Shell, P/S/U/K start, stop, restart, and clear. N opens a new shell, - splits horizontally, \\ splits vertically, Z toggles pane zoom, and I enters raw input.",
+      "In Shell, P/S/U/K start, stop, restart, and clear. N opens a new shell, - splits horizontally, \\ splits vertically, Z toggles pane zoom, / searches scrollback, and I enters raw input.",
       "While Shell raw input is active, type normal commands, Ctrl+C interrupts the shell, and Escape returns to Workbench mode.",
       "In Terminal Output, P/S/U/K/V/Y run, stop, restart, clear, follow, and copy the command. Press I while the process is running to send printable keys to child stdin; Escape returns to workbench mode.",
       "Use the Workspace menu to save, open, rename, or delete workspace layouts. Opening a saved workspace replaces the currently loaded widget windows.",
@@ -3767,6 +3892,15 @@ function applyModalAction(actionId: string): void {
     clearWorkspaceModalState();
     modal.close();
     pushLog("workspace action cancelled");
+    return;
+  }
+  if (actionId === "terminal-search-run") {
+    runTerminalShellSearch();
+    return;
+  }
+  if (actionId === "terminal-search-cancel") {
+    closeTerminalShellSearchModal();
+    pushLog("shell search cancelled");
     return;
   }
   if (actionId === "details") {
@@ -3983,6 +4117,12 @@ async function applyTerminalShellAction(action: TerminalShellAction): Promise<vo
       terminalShellInputMode.value = "workbench";
       pushLog("shell copy mode on");
     }
+  } else if (action === "search") {
+    openTerminalShellSearchModal();
+  } else if (action === "previousMatch") {
+    moveTerminalShellSearchMatch(-1);
+  } else if (action === "nextMatch") {
+    moveTerminalShellSearchMatch(1);
   } else if (action === "top") {
     shell?.scrollback.toTop();
     terminalShellInputMode.value = "workbench";
@@ -4075,6 +4215,9 @@ function handleTerminalShellKey(event: KeyPressEvent): boolean {
     else if (event.key === "end") shell.scrollback.toBottom();
     else if (event.key === "up") shell.scrollback.scrollLines(-1);
     else if (event.key === "down") shell.scrollback.scrollLines(1);
+    else if (event.key === "/") openTerminalShellSearchModal();
+    else if (event.key === "n" && event.shift) moveTerminalShellSearchMatch(-1);
+    else if (event.key.toLowerCase() === "n") moveTerminalShellSearchMatch(1);
     else if (event.key.toLowerCase() === "c") {
       const text = shell.scrollback.copySelection();
       pushLog(text ? `shell copied ${text.length} chars` : "shell selection empty");
@@ -4134,6 +4277,12 @@ function handleTerminalShellKey(event: KeyPressEvent): boolean {
     ? "next"
     : key === "i"
     ? "raw"
+    : event.key === "/"
+    ? "search"
+    : key === "n" && event.shift
+    ? "previousMatch"
+    : key === "n"
+    ? "nextMatch"
     : event.key === "home"
     ? "top"
     : event.key === "end"

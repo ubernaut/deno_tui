@@ -134,3 +134,6 @@ developer workflows.
 - Added matching browser workbench split-pane rendering for the remote terminal demo. The static GitHub Pages workbench
   now projects the shared terminal workspace pane tree, renders independent browser-safe mock screens per session,
   supports split/zoom/close-pane toolbar actions, and lets pointer selection activate panes.
+- Added console Workbench Shell search controls backed by `TerminalScrollbackController`, including a modal search
+  prompt, toolbar buttons for search/previous/next match, and keyboard shortcuts for `/`, `N`, and `Shift+N` while copy
+  mode is active.
