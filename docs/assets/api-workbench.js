@@ -3621,11 +3621,11 @@ var WindowManagerController = class {
     return windows;
   }
   active() {
-    return this.windows.peek().find((entry) => entry.id === this.activeId.peek());
+    return findWindowById(this.windows.peek(), this.activeId.peek());
   }
   upsert(window) {
     const windows = this.windows.peek();
-    const existing = windows.find((entry) => entry.id === window.id);
+    const existing = findWindowById(windows, window.id);
     const next = {
       ...existing,
       ...window,
@@ -3696,7 +3696,7 @@ var WindowManagerController = class {
     if (!window || windowState(window) === "closed") return void 0;
     this.#setState(id2, "minimized");
     if (this.fullscreenId.peek() === id2) this.fullscreenId.value = void 0;
-    const next = this.orderedWindows().find((entry) => windowState(entry) !== "minimized");
+    const next = firstNonMinimizedWindow(this.orderedWindows());
     this.activeId.value = next?.id ?? id2;
     this.#repairState();
     return this.#window(id2);
@@ -3707,7 +3707,7 @@ var WindowManagerController = class {
     if (!window || window.closable === false) return window;
     this.#setState(id2, "closed");
     if (this.fullscreenId.peek() === id2) this.fullscreenId.value = void 0;
-    const next = this.orderedWindows().find((entry) => windowState(entry) !== "minimized");
+    const next = firstNonMinimizedWindow(this.orderedWindows());
     this.activeId.value = next?.id;
     this.#repairState();
     return this.#window(id2);
@@ -3756,7 +3756,7 @@ var WindowManagerController = class {
     }
     let contentHeight = bounds.height;
     if (fullscreenId) {
-      const fullscreen = windows.find((entry) => entry.id === fullscreenId && windowState(entry) !== "closed");
+      const fullscreen = findOpenWindowById(windows, fullscreenId);
       if (fullscreen) rects.set(fullscreen.id, bounds);
     } else if (visible.length > 0) {
       let minWidth = 20;
@@ -3812,7 +3812,7 @@ var WindowManagerController = class {
     this.tileOptions.dispose();
   }
   #window(id2) {
-    return this.windows.peek().find((entry) => entry.id === id2);
+    return findWindowById(this.windows.peek(), id2);
   }
   #setState(id2, state) {
     const window = this.#window(id2);
@@ -3820,11 +3820,11 @@ var WindowManagerController = class {
   }
   #repairState() {
     const windows = this.orderedWindows();
-    if (!windows.some((entry) => entry.id === this.activeId.peek())) {
+    if (!hasOpenWindowId(windows, this.activeId.peek())) {
       this.activeId.value = firstOpenWindow(windows)?.id;
     }
     const fullscreenId = this.fullscreenId.peek();
-    if (fullscreenId && !windows.some((entry) => entry.id === fullscreenId && windowState(entry) !== "closed")) {
+    if (fullscreenId && !hasOpenWindowId(windows, fullscreenId)) {
       this.fullscreenId.value = void 0;
     }
   }
@@ -3865,10 +3865,36 @@ function nextWindowOrder(windows) {
   return order + 1;
 }
 function normalizeWindowId(windows, id2) {
-  return id2 && windows.some((entry) => entry.id === id2 && windowState(entry) !== "closed") ? id2 : void 0;
+  return id2 && hasOpenWindowId(windows, id2) ? id2 : void 0;
 }
 function firstOpenWindow(windows) {
-  return windows.find((entry) => windowState(entry) !== "closed");
+  for (let index = 0; index < windows.length; index += 1) {
+    const window = windows[index];
+    if (windowState(window) !== "closed") return window;
+  }
+  return void 0;
+}
+function firstNonMinimizedWindow(windows) {
+  for (let index = 0; index < windows.length; index += 1) {
+    const window = windows[index];
+    if (windowState(window) !== "minimized") return window;
+  }
+  return void 0;
+}
+function findWindowById(windows, id2) {
+  if (!id2) return void 0;
+  for (let index = 0; index < windows.length; index += 1) {
+    const window = windows[index];
+    if (window.id === id2) return window;
+  }
+  return void 0;
+}
+function findOpenWindowById(windows, id2) {
+  const window = findWindowById(windows, id2);
+  return window && windowState(window) !== "closed" ? window : void 0;
+}
+function hasOpenWindowId(windows, id2) {
+  return id2 ? findOpenWindowById(windows, id2) !== void 0 : false;
 }
 function windowState(window) {
   return window.state ?? "normal";
@@ -9139,7 +9165,12 @@ var HitTargetStack = class {
     }
   }
   entries() {
-    return this.#targets.map((target) => ({ rect: { ...target.rect }, action: target.action }));
+    const entries = new Array(this.#targets.length);
+    for (let index = 0; index < this.#targets.length; index += 1) {
+      const target = this.#targets[index];
+      entries[index] = { rect: { ...target.rect }, action: target.action };
+    }
+    return entries;
   }
 };
 function translateHitTargets(targets, options) {
@@ -10528,7 +10559,11 @@ function layoutWorkbenchTitlebar(options) {
 
 // src/app/workbench_text.ts
 function maxTextWidth(values) {
-  return values.reduce((max2, value) => Math.max(max2, textWidth(value)), 0);
+  let max2 = 0;
+  for (let index = 0; index < values.length; index += 1) {
+    max2 = Math.max(max2, textWidth(values[index]));
+  }
+  return max2;
 }
 
 // src/app/workbench_workspace.ts
@@ -10877,7 +10912,8 @@ function cloneTerminalSessionDescriptor(descriptor) {
   };
 }
 function duplicateTerminalSessionDescriptor(source, sessions, options, now) {
-  const ids = new Set(sessions.map((session) => session.id));
+  const ids = /* @__PURE__ */ new Set();
+  for (let index = 0; index < sessions.length; index += 1) ids.add(sessions[index].id);
   const id2 = uniqueTerminalWorkspaceSessionId(options.id ?? `${source.id}-copy`, ids);
   const title = options.title ?? `${source.title} Copy`;
   const template = cloneTerminalTemplate(source.template);
@@ -10943,14 +10979,14 @@ var TerminalWorkspaceController = class {
     for (let index = 0; index < sourceSessions.length; index += 1) {
       sessions[index] = cloneTerminalSessionDescriptor(sourceSessions[index]);
     }
-    const activeId = options.activeId && sessions.some((session) => session.id === options.activeId) ? options.activeId : sessions[0]?.id;
+    const activeId = options.activeId && hasTerminalSession(sessions, options.activeId) ? options.activeId : sessions[0]?.id;
     this.sessions = new Signal(sessions);
     this.activeId = new Signal(activeId);
     this.layout = new Signal(normalizeTerminalWorkspaceLayout(options.layout, sessions, activeId));
   }
   get active() {
     const id2 = this.activeId.peek();
-    return id2 ? this.sessions.peek().find((session) => session.id === id2) : void 0;
+    return findTerminalSession(this.sessions.peek(), id2);
   }
   add(template, options = {}) {
     const descriptor = descriptorFromTerminalTemplate(template, options, this.#now());
@@ -10961,7 +10997,7 @@ var TerminalWorkspaceController = class {
   upsert(descriptor, options = {}) {
     const nextDescriptor = cloneTerminalSessionDescriptor(descriptor);
     const sessions = this.sessions.peek();
-    const index = sessions.findIndex((session) => session.id === nextDescriptor.id);
+    const index = terminalSessionIndex(sessions, nextDescriptor.id);
     this.sessions.value = index >= 0 ? replaceTerminalSession(sessions, index, nextDescriptor) : appendTerminalSession(
       sessions,
       nextDescriptor
@@ -10975,7 +11011,7 @@ var TerminalWorkspaceController = class {
     return cloneTerminalSessionDescriptor(nextDescriptor);
   }
   activate(id2) {
-    if (!this.sessions.peek().some((session) => session.id === id2)) return false;
+    if (!hasTerminalSession(this.sessions.peek(), id2)) return false;
     this.activeId.value = id2;
     const layout = this.layout.peek();
     const pane = findTerminalWorkspacePaneBySession(layout.root, id2);
@@ -10987,7 +11023,7 @@ var TerminalWorkspaceController = class {
   }
   remove(id2) {
     const sessions = this.sessions.peek();
-    const index = sessions.findIndex((session) => session.id === id2);
+    const index = terminalSessionIndex(sessions, id2);
     if (index < 0) return false;
     const next = removeTerminalSessionAt(sessions, index);
     this.sessions.value = next;
@@ -11009,7 +11045,7 @@ var TerminalWorkspaceController = class {
     const trimmed = title.trim();
     if (!trimmed) return false;
     const sessions = this.sessions.peek();
-    const index = sessions.findIndex((session) => session.id === id2);
+    const index = terminalSessionIndex(sessions, id2);
     if (index < 0) return false;
     const descriptor = cloneTerminalSessionDescriptor(sessions[index]);
     descriptor.title = trimmed;
@@ -11021,7 +11057,7 @@ var TerminalWorkspaceController = class {
     const trimmed = title?.trim();
     if (!trimmed) return false;
     const sessions = this.sessions.peek();
-    const index = sessions.findIndex((session) => session.id === id2);
+    const index = terminalSessionIndex(sessions, id2);
     if (index < 0) return false;
     const previous = sessions[index];
     const descriptor = cloneTerminalSessionDescriptor(previous);
@@ -11046,20 +11082,18 @@ var TerminalWorkspaceController = class {
     return true;
   }
   move(id2, delta) {
-    const sessions = [...this.sessions.peek()];
-    const index = sessions.findIndex((session2) => session2.id === id2);
+    const sessions = this.sessions.peek();
+    const index = terminalSessionIndex(sessions, id2);
     if (index < 0 || sessions.length < 2) return false;
     const nextIndex = Math.max(0, Math.min(sessions.length - 1, index + Math.trunc(delta)));
     if (nextIndex === index) return false;
-    const [session] = sessions.splice(index, 1);
-    sessions.splice(nextIndex, 0, session);
-    this.sessions.value = sessions;
+    this.sessions.value = moveTerminalSession(sessions, index, nextIndex);
     return true;
   }
   duplicate(id2 = this.activeId.peek(), options = {}) {
     if (!id2) return void 0;
     const sessions = this.sessions.peek();
-    const source = sessions.find((session) => session.id === id2);
+    const source = findTerminalSession(sessions, id2);
     if (!source) return void 0;
     const descriptor = duplicateTerminalSessionDescriptor(source, sessions, options, this.#now());
     return this.upsert(descriptor, { activate: options.activate ?? true });
@@ -11067,7 +11101,7 @@ var TerminalWorkspaceController = class {
   detach(id2 = this.activeId.peek()) {
     if (!id2) return false;
     const sessions = this.sessions.peek();
-    const index = sessions.findIndex((session) => session.id === id2);
+    const index = terminalSessionIndex(sessions, id2);
     if (index < 0) return false;
     const descriptor = cloneTerminalSessionDescriptor(sessions[index]);
     descriptor.detached = true;
@@ -11080,7 +11114,7 @@ var TerminalWorkspaceController = class {
   attach(id2 = this.activeId.peek()) {
     if (!id2) return false;
     const sessions = this.sessions.peek();
-    const index = sessions.findIndex((session) => session.id === id2);
+    const index = terminalSessionIndex(sessions, id2);
     if (index < 0) return false;
     const descriptor = cloneTerminalSessionDescriptor(sessions[index]);
     if (!descriptor.detached) return false;
@@ -11095,7 +11129,7 @@ var TerminalWorkspaceController = class {
     this.layout.value = {};
   }
   splitActive(direction, sessionId, options = {}) {
-    if (!this.sessions.peek().some((session) => session.id === sessionId)) return void 0;
+    if (!hasTerminalSession(this.sessions.peek(), sessionId)) return void 0;
     const current = normalizeTerminalWorkspaceLayout(this.layout.peek(), this.sessions.peek(), this.activeId.peek());
     if (!current.root) {
       const pane = createTerminalWorkspacePaneNode(sessionId, void 0, options);
@@ -11127,7 +11161,7 @@ var TerminalWorkspaceController = class {
   }
   activatePane(paneId) {
     const pane = findTerminalWorkspacePane(this.layout.peek().root, paneId);
-    if (!pane || !this.sessions.peek().some((session) => session.id === pane.sessionId)) return false;
+    if (!pane || !hasTerminalSession(this.sessions.peek(), pane.sessionId)) return false;
     this.layout.value = { ...cloneTerminalWorkspaceLayoutState(this.layout.peek()), activePaneId: pane.id };
     this.activeId.value = pane.sessionId;
     return true;
@@ -11137,7 +11171,7 @@ var TerminalWorkspaceController = class {
     if (!findTerminalWorkspacePane(current.root, paneId)) return false;
     const root2 = removeTerminalWorkspacePane(current.root, paneId);
     const panes = collectTerminalWorkspacePanes(root2);
-    const activePane = panes.find((pane) => pane.id === current.activePaneId) ?? panes[0];
+    const activePane = findTerminalWorkspacePaneInList(panes, current.activePaneId) ?? panes[0];
     this.layout.value = {
       root: root2,
       activePaneId: activePane?.id,
@@ -11182,7 +11216,7 @@ var TerminalWorkspaceController = class {
       sessions[index] = cloneTerminalSessionDescriptor(source[index]);
     }
     const activeId = this.activeId.peek();
-    const active2 = activeId ? sessions.find((session) => session.id === activeId) : void 0;
+    const active2 = findTerminalSession(sessions, activeId);
     return {
       activeId,
       active: active2,
@@ -11205,7 +11239,7 @@ function normalizeTerminalWorkspaceLayout(layout, sessions, activeId) {
   for (const session of sessions) sessionIds.add(session.id);
   const pruned = pruneTerminalWorkspaceLayoutSessions(layout ?? {}, sessionIds);
   if (!pruned.root && activeId && sessionIds.has(activeId)) {
-    const activeSession = sessions.find((session) => session.id === activeId);
+    const activeSession = findTerminalSession(sessions, activeId);
     return terminalWorkspaceLayoutWithActive({
       root: createTerminalWorkspacePaneNode(activeId, void 0, { title: activeSession?.title }),
       zoomedPaneId: void 0
@@ -11220,6 +11254,43 @@ function normalizeTerminalWorkspaceLayout(layout, sessions, activeId) {
     activePaneId: nextActive?.id,
     zoomedPaneId: pruned.zoomedPaneId && findTerminalWorkspacePane(pruned.root, pruned.zoomedPaneId) ? pruned.zoomedPaneId : void 0
   };
+}
+function findTerminalSession(sessions, id2) {
+  if (!id2) return void 0;
+  for (let index = 0; index < sessions.length; index += 1) {
+    const session = sessions[index];
+    if (session.id === id2) return session;
+  }
+  return void 0;
+}
+function hasTerminalSession(sessions, id2) {
+  return findTerminalSession(sessions, id2) !== void 0;
+}
+function terminalSessionIndex(sessions, id2) {
+  for (let index = 0; index < sessions.length; index += 1) {
+    if (sessions[index].id === id2) return index;
+  }
+  return -1;
+}
+function moveTerminalSession(sessions, fromIndex, toIndex) {
+  const moved = sessions[fromIndex];
+  const next = new Array(sessions.length);
+  let write2 = 0;
+  for (let index = 0; index < sessions.length; index += 1) {
+    if (write2 === toIndex) next[write2++] = moved;
+    if (index === fromIndex) continue;
+    next[write2++] = sessions[index];
+  }
+  if (write2 < next.length) next[write2] = moved;
+  return next;
+}
+function findTerminalWorkspacePaneInList(panes, id2) {
+  if (!id2) return void 0;
+  for (let index = 0; index < panes.length; index += 1) {
+    const pane = panes[index];
+    if (pane.id === id2) return pane;
+  }
+  return void 0;
 }
 function inspectTerminalWorkspaceLayout(layout, sessions) {
   const normalized = normalizeTerminalWorkspaceLayout(layout, sessions, sessions[0]?.id);
