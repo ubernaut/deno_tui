@@ -1,11 +1,13 @@
 import { assertEquals } from "./deps.ts";
 import {
+  apiWorkbenchCheckboxRowsInto,
   type ApiWorkbenchControlHitPlacement,
   apiWorkbenchControlIds,
   apiWorkbenchControlLineInto,
   type ApiWorkbenchControlLineSegment,
   apiWorkbenchControlTrack,
   apiWorkbenchDropdownPopoverRect,
+  apiWorkbenchRadioRowsInto,
   apiWorkbenchSliderSetHit,
   apiWorkbenchStepperHitPlacementsInto,
   apiWorkbenchTextboxProjection,
@@ -239,6 +241,32 @@ Deno.test("api workbench textbox projection wraps reveals cursor and emits share
       },
     ],
   );
+});
+
+Deno.test("api workbench option rows project checkbox and radio controls with reusable storage", () => {
+  const rows = apiWorkbenchCheckboxRowsInto([], [
+    { label: "live preview", checked: true },
+    { label: "compact rows", checked: false },
+  ]);
+  const first = rows[0];
+
+  assertEquals(rows, [
+    { id: "checkbox", value: "Checkboxes", options: undefined },
+    { id: "checkbox", value: "✓ live preview", options: { indent: true, index: 0 } },
+    { id: "checkbox", value: "✗ compact rows", options: { indent: true, index: 1 } },
+  ]);
+
+  apiWorkbenchRadioRowsInto(rows, [
+    { label: "Fast", selected: false },
+    { label: "Unit-01 Signal", selected: true },
+  ], 1);
+
+  assertEquals(rows[0] === first, true);
+  assertEquals(rows, [
+    { id: "radio", value: "Radio", options: { previous: true, next: true } },
+    { id: "radio", value: "  ○ Fast", options: { indent: true, index: 0 } },
+    { id: "radio", value: "> ● Unit-01 Signal", options: { indent: true, index: 1 } },
+  ]);
 });
 
 Deno.test("api workbench stepper hit placements clip and reuse caller storage", () => {

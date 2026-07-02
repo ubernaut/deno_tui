@@ -49,7 +49,6 @@ import {
   prepareWorkbenchRows,
   ProgressBarController,
   RadioGroupController,
-  renderCheckBoxMark,
   renderDataTableHeader,
   renderDataTableRowsInto,
   renderMenuBar,
@@ -107,12 +106,17 @@ import {
   createApiWorkbenchThemes,
 } from "../../app/api_workbench_catalog.ts";
 import {
+  type ApiWorkbenchCheckboxOption,
+  apiWorkbenchCheckboxRowsInto,
   type ApiWorkbenchControlHitPlacement,
   type ApiWorkbenchControlId,
   apiWorkbenchControlLineInto,
   type ApiWorkbenchControlLineSegment,
   apiWorkbenchControlTrack,
   apiWorkbenchDropdownPopoverRect,
+  type ApiWorkbenchOptionControlRow,
+  type ApiWorkbenchRadioOption,
+  apiWorkbenchRadioRowsInto,
   apiWorkbenchSliderSetHitInto,
   apiWorkbenchStepperHitPlacementsInto,
   apiWorkbenchTextboxProjection,
@@ -281,6 +285,10 @@ const webTerminalSessionTabSources: WorkbenchTerminalSessionTab[] = [];
 const webTerminalSessionTabPlacements: WorkbenchTerminalSessionTabPlacement[] = [];
 const controlLineSegments: ApiWorkbenchControlLineSegment[] = [];
 const controlLineHitPlacements: ApiWorkbenchControlHitPlacement[] = [];
+const controlCheckboxRows: ApiWorkbenchOptionControlRow[] = [];
+const controlRadioRows: ApiWorkbenchOptionControlRow[] = [];
+const controlCheckboxOptions: ApiWorkbenchCheckboxOption[] = [];
+const controlRadioOptions: ApiWorkbenchRadioOption[] = [];
 const controlSliderSetHit: ApiWorkbenchControlHitPlacement = {
   column: 0,
   row: 0,
@@ -2073,17 +2081,24 @@ function renderControls(frame: string[], rect: Rectangle): void {
     id: sliderSetHit.id,
     action: sliderSetHit.action,
   });
-  writeControl("checkbox", "Checkboxes");
-  writeControl("checkbox", `${renderCheckBoxMark(live.checked.peek())} live preview`, { indent: true, index: 0 });
-  writeControl("checkbox", `${renderCheckBoxMark(compact.checked.peek())} compact rows`, { indent: true, index: 1 });
-  writeControl("radio", "Radio", {
-    previous: true,
-    next: true,
-  });
-  for (const [index, option] of radio.options.peek().entries()) {
-    const mark = option.value === radio.selectedValue.peek() ? "●" : "○";
-    const cursor = index === radio.activeIndex.peek() ? ">" : " ";
-    writeControl("radio", `${cursor} ${mark} ${option.label}`, { indent: true, index });
+  controlCheckboxOptions[0] = { label: "live preview", checked: live.checked.peek() };
+  controlCheckboxOptions[1] = { label: "compact rows", checked: compact.checked.peek() };
+  controlCheckboxOptions.length = 2;
+  for (const controlRow of apiWorkbenchCheckboxRowsInto(controlCheckboxRows, controlCheckboxOptions)) {
+    writeControl(controlRow.id, controlRow.value, controlRow.options);
+  }
+  const selectedRadioValue = radio.selectedValue.peek();
+  const radioOptions = radio.options.peek();
+  for (let index = 0; index < radioOptions.length; index += 1) {
+    const option = radioOptions[index]!;
+    controlRadioOptions[index] = {
+      label: option.label,
+      selected: option.value === selectedRadioValue,
+    };
+  }
+  controlRadioOptions.length = radioOptions.length;
+  for (const controlRow of apiWorkbenchRadioRowsInto(controlRadioRows, controlRadioOptions, radio.activeIndex.peek())) {
+    writeControl(controlRow.id, controlRow.value, controlRow.options);
   }
   writeControl("combo", `Theme combo  ${combo.expanded.peek() ? "v" : ">"} ${combo.label()}`, {
     previous: true,

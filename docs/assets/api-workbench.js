@@ -14802,6 +14802,45 @@ function apiWorkbenchTextboxProjection(options) {
     startVisualRow
   };
 }
+function apiWorkbenchCheckboxRowsInto(target, items, options = {}) {
+  let written = 0;
+  target[written] = writeOptionControlRow(target[written], "checkbox", options.header ?? "Checkboxes");
+  written += 1;
+  for (let index = 0; index < items.length; index += 1) {
+    const item = items[index];
+    target[written] = writeOptionControlRow(
+      target[written],
+      "checkbox",
+      `${renderCheckBoxMark(item.checked)} ${item.label}`,
+      { indent: true, index }
+    );
+    written += 1;
+  }
+  target.length = written;
+  return target;
+}
+function apiWorkbenchRadioRowsInto(target, items, activeIndex, options = {}) {
+  let written = 0;
+  target[written] = writeOptionControlRow(target[written], "radio", options.header ?? "Radio", {
+    previous: true,
+    next: true
+  });
+  written += 1;
+  for (let index = 0; index < items.length; index += 1) {
+    const item = items[index];
+    const mark = item.selected ? "\u25CF" : "\u25CB";
+    const cursor = index === activeIndex ? ">" : " ";
+    target[written] = writeOptionControlRow(
+      target[written],
+      "radio",
+      `${cursor} ${mark} ${item.label}`,
+      { indent: true, index }
+    );
+    written += 1;
+  }
+  target.length = written;
+  return target;
+}
 function nextSortableDataColumn(columns2, currentColumnId, delta) {
   let sortableCount = 0;
   let currentSortableIndex = -1;
@@ -14891,6 +14930,13 @@ function writeControlHit(target, index, source) {
   hit.action = source.action;
   hit.index = source.index;
   target[index] = hit;
+}
+function writeOptionControlRow(target, id2, value, options) {
+  const row = target ?? { id: id2, value };
+  row.id = id2;
+  row.value = value;
+  row.options = options;
+  return row;
 }
 function maxItemTextWidth(items) {
   let width = 0;
@@ -15283,6 +15329,10 @@ var webTerminalSessionTabSources = [];
 var webTerminalSessionTabPlacements = [];
 var controlLineSegments = [];
 var controlLineHitPlacements = [];
+var controlCheckboxRows = [];
+var controlRadioRows = [];
+var controlCheckboxOptions = [];
+var controlRadioOptions = [];
 var controlSliderSetHit = {
   column: 0,
   row: 0,
@@ -16940,17 +16990,24 @@ function renderControls(frame, rect) {
     id: sliderSetHit.id,
     action: sliderSetHit.action
   });
-  writeControl("checkbox", "Checkboxes");
-  writeControl("checkbox", `${renderCheckBoxMark(live.checked.peek())} live preview`, { indent: true, index: 0 });
-  writeControl("checkbox", `${renderCheckBoxMark(compact.checked.peek())} compact rows`, { indent: true, index: 1 });
-  writeControl("radio", "Radio", {
-    previous: true,
-    next: true
-  });
-  for (const [index, option] of radio.options.peek().entries()) {
-    const mark = option.value === radio.selectedValue.peek() ? "\u25CF" : "\u25CB";
-    const cursor = index === radio.activeIndex.peek() ? ">" : " ";
-    writeControl("radio", `${cursor} ${mark} ${option.label}`, { indent: true, index });
+  controlCheckboxOptions[0] = { label: "live preview", checked: live.checked.peek() };
+  controlCheckboxOptions[1] = { label: "compact rows", checked: compact.checked.peek() };
+  controlCheckboxOptions.length = 2;
+  for (const controlRow of apiWorkbenchCheckboxRowsInto(controlCheckboxRows, controlCheckboxOptions)) {
+    writeControl(controlRow.id, controlRow.value, controlRow.options);
+  }
+  const selectedRadioValue = radio.selectedValue.peek();
+  const radioOptions = radio.options.peek();
+  for (let index = 0; index < radioOptions.length; index += 1) {
+    const option = radioOptions[index];
+    controlRadioOptions[index] = {
+      label: option.label,
+      selected: option.value === selectedRadioValue
+    };
+  }
+  controlRadioOptions.length = radioOptions.length;
+  for (const controlRow of apiWorkbenchRadioRowsInto(controlRadioRows, controlRadioOptions, radio.activeIndex.peek())) {
+    writeControl(controlRow.id, controlRow.value, controlRow.options);
   }
   writeControl("combo", `Theme combo  ${combo.expanded.peek() ? "v" : ">"} ${combo.label()}`, {
     previous: true,

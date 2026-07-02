@@ -1,4 +1,5 @@
 import type { DataColumn } from "../src/components/data_table.ts";
+import { renderCheckBoxMark } from "../src/components/checkbox.ts";
 import { type CursorPosition, type TextBoxVisualLine, wrapTextBoxLines } from "../src/components/textbox.ts";
 import {
   layoutWorkbenchControlButtonLine,
@@ -122,6 +123,22 @@ export interface ApiWorkbenchTextboxProjection {
   nextRow: number;
   height: number;
   startVisualRow: number;
+}
+
+export interface ApiWorkbenchOptionControlRow {
+  id: Extract<ApiWorkbenchControlId, "checkbox" | "radio">;
+  value: string;
+  options?: ApiWorkbenchControlLineOptions;
+}
+
+export interface ApiWorkbenchCheckboxOption {
+  label: string;
+  checked: boolean;
+}
+
+export interface ApiWorkbenchRadioOption {
+  label: string;
+  selected: boolean;
 }
 
 export function nextApiWorkbenchControlId(
@@ -360,6 +377,56 @@ export function apiWorkbenchTextboxProjection(
   };
 }
 
+export function apiWorkbenchCheckboxRowsInto(
+  target: ApiWorkbenchOptionControlRow[],
+  items: readonly ApiWorkbenchCheckboxOption[],
+  options: { header?: string } = {},
+): ApiWorkbenchOptionControlRow[] {
+  let written = 0;
+  target[written] = writeOptionControlRow(target[written], "checkbox", options.header ?? "Checkboxes");
+  written += 1;
+  for (let index = 0; index < items.length; index += 1) {
+    const item = items[index]!;
+    target[written] = writeOptionControlRow(
+      target[written],
+      "checkbox",
+      `${renderCheckBoxMark(item.checked)} ${item.label}`,
+      { indent: true, index },
+    );
+    written += 1;
+  }
+  target.length = written;
+  return target;
+}
+
+export function apiWorkbenchRadioRowsInto(
+  target: ApiWorkbenchOptionControlRow[],
+  items: readonly ApiWorkbenchRadioOption[],
+  activeIndex: number,
+  options: { header?: string } = {},
+): ApiWorkbenchOptionControlRow[] {
+  let written = 0;
+  target[written] = writeOptionControlRow(target[written], "radio", options.header ?? "Radio", {
+    previous: true,
+    next: true,
+  });
+  written += 1;
+  for (let index = 0; index < items.length; index += 1) {
+    const item = items[index]!;
+    const mark = item.selected ? "●" : "○";
+    const cursor = index === activeIndex ? ">" : " ";
+    target[written] = writeOptionControlRow(
+      target[written],
+      "radio",
+      `${cursor} ${mark} ${item.label}`,
+      { indent: true, index },
+    );
+    written += 1;
+  }
+  target.length = written;
+  return target;
+}
+
 export function nextSortableDataColumn<TRow extends Record<string, unknown>>(
   columns: readonly DataColumn<TRow>[],
   currentColumnId: string | undefined,
@@ -478,6 +545,19 @@ function writeControlHit(
   hit.action = source.action;
   hit.index = source.index;
   target[index] = hit;
+}
+
+function writeOptionControlRow(
+  target: ApiWorkbenchOptionControlRow | undefined,
+  id: Extract<ApiWorkbenchControlId, "checkbox" | "radio">,
+  value: string,
+  options?: ApiWorkbenchControlLineOptions,
+): ApiWorkbenchOptionControlRow {
+  const row = target ?? { id, value };
+  row.id = id;
+  row.value = value;
+  row.options = options;
+  return row;
 }
 
 function maxItemTextWidth(items: readonly string[]): number {
