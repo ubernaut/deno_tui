@@ -90,7 +90,7 @@ Work:
         renderer-local fixture ownership and adding direct catalog coverage.
   - [x] Extracted API Workbench control traversal order into `app/api_workbench_controls.ts`, keeping keyboard wrap and
         edge-aware tab behavior under direct tests.
-- [ ] Make the terminal workbench and web workbench thin render adapters over the same controller/model.
+- [x] Make the terminal workbench and web workbench thin render adapters over the same controller/model.
   - [x] Exposed the shared frame and hit-target helpers through `src/app/mod.ts` and migrated the web API Workbench page
         to reuse exported text-fit, ANSI-cell, contrast, and geometry helpers.
   - [x] Migrated web API Workbench tiling through `WindowManagerController` so terminal and web layouts share the same
