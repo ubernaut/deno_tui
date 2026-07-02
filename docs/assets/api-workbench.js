@@ -10926,10 +10926,21 @@ function renderFrameRow(cells, width) {
   }
   return row;
 }
+function renderFrameSlice(cells, start, width) {
+  let row = "";
+  for (let column = 0; column < width; column += 1) {
+    row += cells[start + column] ?? " ";
+  }
+  return row;
+}
 function writeStringFrameRow(frame, width, row, column, value) {
   if (row < 0 || row >= frame.length || column >= width) return;
-  const cells = toStyledCells(frame[row] ?? "");
   const valueCells = toStyledCells(value);
+  if (column <= 0 && column + valueCells.length >= width) {
+    frame[row] = renderFrameSlice(valueCells, -column, width);
+    return;
+  }
+  const cells = toStyledCells(frame[row] ?? "");
   let targetColumn = column;
   for (let index = 0; index < valueCells.length && targetColumn < width; index += 1) {
     if (targetColumn >= 0) cells[targetColumn] = valueCells[index];

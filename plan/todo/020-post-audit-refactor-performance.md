@@ -64,3 +64,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   buffers so hit rectangles remain stable for each draw.
 - Added expanded hit-target lookup to support touch-friendly web hit expansion without cloning the full hit stack on
   every pointer lookup.
+- Added a string-backed full-row write fast path for browser workbench frames plus a benchmark guard for styled row
+  replacement.
