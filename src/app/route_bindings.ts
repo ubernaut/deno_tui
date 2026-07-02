@@ -45,7 +45,7 @@ export function bindRouteSignal<TRoute extends Route = Route>(
 ): () => void {
   let syncing = false;
 
-  const valid = (id: string) => routes.routes.peek().some((route) => route.id === id);
+  const valid = (id: string) => hasRouteId(routes, id);
   const activeOrFallback = () => {
     const active = routes.activeRouteId.peek();
     if (valid(active)) return active;
@@ -104,8 +104,7 @@ export function bindRouteIndex<TRoute extends Route = Route>(
     const ids: readonly string[] | undefined = routeIdsSignal
       ? routeIdsSignal.peek()
       : options.routeIds as readonly string[] | undefined;
-    if (ids) return ids.filter((id: string) => routes.routes.peek().some((route) => route.id === id));
-    return routes.routes.peek().map((route) => route.id);
+    return routeIdsForSource(routes, ids);
   };
   const routeIdAt = (index: number) => {
     const ids = routeIds();
@@ -227,7 +226,7 @@ export function routeCommands<TAction extends Action = Action, TRoute extends Ro
         id: `${idPrefix}.select.${route.id}`,
         label: `${label("select", "Route")}: ${options.label?.(route) ?? route.title ?? route.id}`,
         group,
-        keywords: [route.id, route.title].filter((keyword): keyword is string => !!keyword),
+        keywords: routeCommandKeywords(route),
         disabled: options.disableActiveRoute ?? true ? () => routes.activeRouteId.peek() === route.id : false,
         action: () => {
           routes.navigate(route.id);
@@ -259,7 +258,12 @@ function routesForSource<TRoute extends Route>(
 ): TRoute[] {
   const ids = routeIds instanceof Signal ? routeIds.peek() : routeIds;
   if (!ids) return routes.routes.peek();
-  return ids.map((id) => routes.get(id)).filter((route): route is TRoute => !!route);
+  const output: TRoute[] = [];
+  for (const id of ids) {
+    const route = routes.get(id);
+    if (route) output.push(route);
+  }
+  return output;
 }
 
 function shiftVisibleRoute<TRoute extends Route>(
@@ -268,7 +272,42 @@ function shiftVisibleRoute<TRoute extends Route>(
   visibleRoutes: readonly TRoute[],
 ): boolean {
   if (visibleRoutes.length === 0) return false;
-  const currentIndex = Math.max(0, visibleRoutes.findIndex((route) => route.id === routes.activeRouteId.peek()));
+  const currentIndex = Math.max(0, routeIndexInList(visibleRoutes, routes.activeRouteId.peek()));
   const nextRoute = visibleRoutes[(currentIndex + delta + visibleRoutes.length) % visibleRoutes.length]!;
   return routes.navigate(nextRoute.id);
+}
+
+function hasRouteId<TRoute extends Route>(routes: RouteManager<TRoute>, routeId: string): boolean {
+  return routes.get(routeId) !== undefined;
+}
+
+function routeIdsForSource<TRoute extends Route>(
+  routes: RouteManager<TRoute>,
+  ids: readonly string[] | undefined,
+): string[] {
+  if (ids) {
+    const output: string[] = [];
+    for (const id of ids) {
+      if (hasRouteId(routes, id)) output.push(id);
+    }
+    return output;
+  }
+  const source = routes.routes.peek();
+  const output = new Array<string>(source.length);
+  for (let index = 0; index < source.length; index += 1) {
+    output[index] = source[index]!.id;
+  }
+  return output;
+}
+
+function routeCommandKeywords(route: Route): string[] {
+  if (!route.title) return [route.id];
+  return [route.id, route.title];
+}
+
+function routeIndexInList<TRoute extends Route>(routes: readonly TRoute[], routeId: string): number {
+  for (let index = 0; index < routes.length; index += 1) {
+    if (routes[index]!.id === routeId) return index;
+  }
+  return -1;
 }

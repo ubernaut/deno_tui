@@ -351,6 +351,8 @@ Work:
         track shrinking to use direct accumulation instead of map/reduce/spread pipelines in layout solve paths.
   - [x] Added a worker-compatible markup layout adapter so browser and console callers can run parse/cascade/layout jobs
         through `WorkerPool` while keeping widget-controller hydration on the UI thread.
+  - [x] Reworked route binding source projection, route command keywords, and visible-route shifting to use shared
+        direct lookup/projection helpers instead of repeated nested `some/filter/map/findIndex` scans.
 
 Acceptance checks:
 
