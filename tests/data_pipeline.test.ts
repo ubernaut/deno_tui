@@ -26,6 +26,16 @@ Deno.test("runDataPipeline applies row transforms in order", async () => {
   assertEquals(rows, ["#2", "#3"]);
 });
 
+Deno.test("row pipeline helpers copy without mutating source rows", async () => {
+  const source = [3, 1, 2, 4];
+  const sorted = await runDataPipeline(source, [sortRows<number>((left, right) => left - right)]);
+  const tail = await runDataPipeline(source, [sliceRows<number>(-3, -1)]);
+
+  assertEquals(sorted, [1, 2, 3, 4]);
+  assertEquals(tail, [1, 2]);
+  assertEquals(source, [3, 1, 2, 4]);
+});
+
 Deno.test("runDataPipeline uses the provided scheduler", async () => {
   const scheduler = new AsyncScheduler({ concurrency: 1 });
   const order: string[] = [];

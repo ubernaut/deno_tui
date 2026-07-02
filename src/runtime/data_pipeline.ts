@@ -229,26 +229,49 @@ export function createCachedDataPipeline<TInput, TOutput, Stored = TOutput>(
 export function mapRows<TInput, TOutput>(
   mapper: (row: TInput, index: number) => TOutput,
 ): DataTransform<readonly TInput[], TOutput[]> {
-  return (rows) => rows.map(mapper);
+  return (rows) => {
+    const output = new Array<TOutput>(rows.length);
+    for (let index = 0; index < rows.length; index += 1) output[index] = mapper(rows[index]!, index);
+    return output;
+  };
 }
 
 /** Creates a transform that filters rows with a predicate. */
 export function filterRows<T>(
   predicate: (row: T, index: number) => boolean,
 ): DataTransform<readonly T[], T[]> {
-  return (rows) => rows.filter(predicate);
+  return (rows) => {
+    const output: T[] = [];
+    for (let index = 0; index < rows.length; index += 1) {
+      const row = rows[index]!;
+      if (predicate(row, index)) output.push(row);
+    }
+    return output;
+  };
 }
 
 /** Creates a transform that returns a sorted copy of row data. */
 export function sortRows<T>(
   compare: (left: T, right: T) => number,
 ): DataTransform<readonly T[], T[]> {
-  return (rows) => [...rows].sort(compare);
+  return (rows) => {
+    const output = new Array<T>(rows.length);
+    for (let index = 0; index < rows.length; index += 1) output[index] = rows[index]!;
+    output.sort(compare);
+    return output;
+  };
 }
 
 /** Creates a transform that slices row data without mutating the input. */
 export function sliceRows<T>(start: number, end?: number): DataTransform<readonly T[], T[]> {
-  return (rows) => rows.slice(start, end);
+  return (rows) => {
+    const from = normalizeSliceIndex(start, rows.length);
+    const to = end === undefined ? rows.length : normalizeSliceIndex(end, rows.length);
+    const count = Math.max(0, to - from);
+    const output = new Array<T>(count);
+    for (let index = 0; index < count; index += 1) output[index] = rows[from + index]!;
+    return output;
+  };
 }
 
 /** Creates a transform that offloads one stage through a worker-like runner. */
@@ -268,6 +291,12 @@ function throwIfAborted(signal: AbortSignal | undefined): void {
   if (signal?.aborted) {
     throw new DataPipelineAbortError();
   }
+}
+
+function normalizeSliceIndex(index: number, length: number): number {
+  const integer = Number.isNaN(index) ? 0 : Math.trunc(index);
+  if (integer < 0) return Math.max(length + integer, 0);
+  return Math.min(integer, length);
 }
 
 function isAbortError(error: unknown): boolean {

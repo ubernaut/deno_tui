@@ -351,6 +351,8 @@ Work:
         synthetic source generation off `split().reduce()` allocation.
   - [x] Reworked system metric diagnostic compaction to insert defined diagnostics into severity/source order directly
         instead of filter-then-sort projection on each monitor sample.
+  - [x] Reworked public data-pipeline row transforms to use explicit copy/filter/slice loops instead of map/filter/
+        spread/slice helpers while preserving non-mutating transform behavior.
   - [x] Added a direct sampled-series value helper and migrated compact network monitor traces off temporary RX/TX
         sampled arrays in narrow live-render paths.
   - [x] Added source-array keyed overlay z-order caches and reverse-loop modal hit testing so repeated menu/modal
