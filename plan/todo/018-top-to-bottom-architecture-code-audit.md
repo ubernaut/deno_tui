@@ -1032,6 +1032,8 @@ Work:
         renderer regression proving stable frames do not enqueue redundant repaint cells.
   - [x] Reworked `ThreeAsciiObject` changed-cell queueing to clip once per frame and write visible cells directly into
         row queues for integer-aligned terminal rectangles, while preserving the generic fallback path.
+  - [x] Split the `ThreeAsciiObject` changed-cell diff into an integer-aligned fast path so the common terminal-cell
+        case avoids per-cell alignment branches while preserving the fractional rectangle fallback.
   - [x] Removed per-draw `Computed` allocation from `VirtualList` by making formatted display rows part of the component
         lifecycle.
   - [x] Applied the same lifecycle-owned row computation pattern to `Stepper`, `ContextMenu`, and `RadioGroup`.

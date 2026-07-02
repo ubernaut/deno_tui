@@ -330,13 +330,38 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
       : canvasColumnEnd;
     const integerAligned = Number.isInteger(rectangle.column) && Number.isInteger(rectangle.row);
 
+    if (integerAligned) {
+      const rectangleColumn = rectangle.column;
+      const rectangleRow = rectangle.row;
+      const visibleGridColumnStart = Math.max(0, visibleColumnStart - rectangleColumn);
+      const visibleGridColumnEnd = Math.min(columns, visibleColumnEnd - rectangleColumn);
+      for (let row = 0; row < rows; row += 1) {
+        const outputRow = grid[row];
+        const rowOffset = row * columns;
+        const canvasRow = rectangleRow + row;
+        const rowVisible = canvasRow >= 0 && canvasRow < canvasSize.rows &&
+          (!viewRectangle || (canvasRow >= viewRectangle.row && canvasRow < viewRectangle.row + viewRectangle.height));
+        const queueRow = rowVisible ? (this.rerenderCells[canvasRow] ??= new Set<number>()) : undefined;
+
+        for (let column = 0; column < columns; column += 1) {
+          const index = rowOffset + column;
+          const cell = outputRow?.[column] ?? " ";
+          if (cacheValid && this.previousGridCells[index] === cell) continue;
+          this.previousGridCells[index] = cell;
+          if (queueRow && column >= visibleGridColumnStart && column < visibleGridColumnEnd) {
+            queueRow.add(rectangleColumn + column);
+          }
+          changed = true;
+        }
+      }
+
+      return changed;
+    }
+
     for (let row = 0; row < rows; row += 1) {
       const outputRow = grid[row];
       const rowOffset = row * columns;
       const canvasRow = rectangle.row + row;
-      const rowVisible = canvasRow >= 0 && canvasRow < canvasSize.rows &&
-        (!viewRectangle || (canvasRow >= viewRectangle.row && canvasRow < viewRectangle.row + viewRectangle.height));
-      const queueRow = rowVisible ? (this.rerenderCells[canvasRow] ??= new Set<number>()) : undefined;
 
       for (let column = 0; column < columns; column += 1) {
         const index = rowOffset + column;
@@ -344,11 +369,7 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
         if (cacheValid && this.previousGridCells[index] === cell) continue;
         this.previousGridCells[index] = cell;
         const canvasColumn = rectangle.column + column;
-        if (integerAligned && queueRow && canvasColumn >= visibleColumnStart && canvasColumn < visibleColumnEnd) {
-          queueRow.add(canvasColumn);
-        } else if (!integerAligned) {
-          this.queueRerender(canvasRow, canvasColumn);
-        }
+        this.queueRerender(canvasRow, canvasColumn);
         changed = true;
       }
     }
