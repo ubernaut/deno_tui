@@ -883,6 +883,8 @@ Work:
         keeping source footers, scene alerts, drive alerts, and fallback warnings under direct fixture tests.
   - [x] Extracted the responsive network monitor into `app/visualization_network.ts`, with chart/glyph dependencies
         injected from the visualization renderer instead of duplicating shared drawing utilities.
+  - [x] Reworked network visualization row assembly to use bounded direct buffers instead of visible-row `slice`/`map`
+        pipelines during redraw.
   - [x] Extracted Three visualization text fallback body/footer rendering into `app/visualization_three_fallback.ts`,
         keeping primitive-mode fallback output directly fixture-testable outside the main visualization dispatcher.
   - [x] Optimized `ThreeAsciiObject` canvas handoff to queue only changed ASCII cells between frames, with a fake

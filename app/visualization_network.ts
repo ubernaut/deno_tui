@@ -39,34 +39,29 @@ function networkMonitorLines(
   const chartWidth = Math.max(1, width);
 
   if (lineBudget <= 3 || width < 20) {
-    return fitNetworkLines(
-      [
-        networkSummaryLine(system, width),
-        compactNetworkTrace(system, chartWidth),
-        ...networkInterfaceRows(system, width, lineBudget - 2),
-      ],
-      width,
-      lineBudget,
-    );
+    const lines: string[] = [
+      networkSummaryLine(system, width),
+      compactNetworkTrace(system, chartWidth),
+    ];
+    appendNetworkInterfaceRows(lines, system, width, lineBudget - 2);
+    return fitNetworkLines(lines, width, lineBudget);
   }
 
   if (lineBudget <= 6) {
     const interfaceRows = Math.min(system.networks.length, Math.max(0, lineBudget - 3));
     const chartHeight = Math.max(1, lineBudget - 1 - interfaceRows);
-    return fitNetworkLines(
-      [
-        width >= 32 ? "RX/TX BUS" : "RX/TX",
-        ...dependencies.plotHistory(
-          combinedNetworkHistory(system),
-          chartWidth,
-          chartHeight,
-          dependencies.monitorGlyph(drive, "signal"),
-        ).split("\n"),
-        ...networkInterfaceRows(system, width, interfaceRows),
-      ],
-      width,
-      lineBudget,
+    const lines: string[] = [width >= 32 ? "RX/TX BUS" : "RX/TX"];
+    appendSplitLines(
+      lines,
+      dependencies.plotHistory(
+        combinedNetworkHistory(system),
+        chartWidth,
+        chartHeight,
+        dependencies.monitorGlyph(drive, "signal"),
+      ),
     );
+    appendNetworkInterfaceRows(lines, system, width, interfaceRows);
+    return fitNetworkLines(lines, width, lineBudget);
   }
 
   const interfaceRows = Math.min(system.networks.length, width >= 36 ? 2 : 1, Math.max(0, lineBudget - 6));
@@ -74,19 +69,18 @@ function networkMonitorLines(
   const rxHeight = Math.max(1, Math.floor(graphRows / 2));
   const txHeight = Math.max(1, graphRows - rxHeight);
 
-  return fitNetworkLines(
-    [
-      width >= 28 ? "RX BUS" : "RX",
-      ...dependencies.plotHistory(system.rxHistory, chartWidth, rxHeight, dependencies.monitorGlyph(drive, "signal"))
-        .split("\n"),
-      width >= 28 ? "TX BUS" : "TX",
-      ...dependencies.plotHistory(system.txHistory, chartWidth, txHeight, dependencies.monitorGlyph(drive, "amber"))
-        .split("\n"),
-      ...networkInterfaceRows(system, width, interfaceRows),
-    ],
-    width,
-    lineBudget,
+  const lines: string[] = [width >= 28 ? "RX BUS" : "RX"];
+  appendSplitLines(
+    lines,
+    dependencies.plotHistory(system.rxHistory, chartWidth, rxHeight, dependencies.monitorGlyph(drive, "signal")),
   );
+  lines.push(width >= 28 ? "TX BUS" : "TX");
+  appendSplitLines(
+    lines,
+    dependencies.plotHistory(system.txHistory, chartWidth, txHeight, dependencies.monitorGlyph(drive, "amber")),
+  );
+  appendNetworkInterfaceRows(lines, system, width, interfaceRows);
+  return fitNetworkLines(lines, width, lineBudget);
 }
 
 function networkSummaryLine(system: RenderContext["system"], width: number): string {
@@ -117,14 +111,23 @@ function compactNetworkTrace(system: RenderContext["system"], width: number): st
   return trace;
 }
 
-function networkInterfaceRows(system: RenderContext["system"], width: number, count: number): string[] {
+function appendNetworkInterfaceRows(
+  lines: string[],
+  system: RenderContext["system"],
+  width: number,
+  count: number,
+): void {
   if (count <= 0) {
-    return [];
+    return;
   }
   if (system.networks.length === 0) {
-    return ["NO ACTIVE INTERFACES"];
+    lines.push("NO ACTIVE INTERFACES");
+    return;
   }
-  return system.networks.slice(0, count).map((network) => networkInterfaceLine(network, width));
+  const limit = Math.min(count, system.networks.length);
+  for (let index = 0; index < limit; index++) {
+    lines.push(networkInterfaceLine(system.networks[index], width));
+  }
 }
 
 function networkInterfaceLine(
@@ -179,7 +182,25 @@ function compactRate(value: number): string {
 }
 
 function fitNetworkLines(lines: string[], width: number, height: number): string[] {
-  return lines.slice(0, Math.max(1, height)).map((line) => crop(line.trimEnd(), width));
+  const limit = Math.min(lines.length, Math.max(1, height));
+  const fitted = new Array<string>(limit);
+  for (let index = 0; index < limit; index++) {
+    fitted[index] = crop(lines[index].trimEnd(), width);
+  }
+  return fitted;
+}
+
+function appendSplitLines(lines: string[], text: string): void {
+  let start = 0;
+  while (start <= text.length) {
+    const next = text.indexOf("\n", start);
+    if (next === -1) {
+      lines.push(text.slice(start));
+      return;
+    }
+    lines.push(text.slice(start, next));
+    start = next + 1;
+  }
 }
 
 function networkAlert(context: RenderContext) {
