@@ -132,6 +132,7 @@ import { AudioRegistry } from "./audio.ts";
 import {
   apiWorkbenchColumns,
   apiWorkbenchDocs,
+  apiWorkbenchPanelTitle,
   type ApiWorkbenchProcessRow,
   apiWorkbenchRows,
   type ApiWorkbenchThemeSpec,
@@ -401,13 +402,19 @@ const workbenchController = new WorkbenchController<"theme" | "newWindow" | "wor
   activeId: "inspector",
   menu: { onChange: syncTopMenuState },
   windows: [
-    { id: "explorer", title: "Explorer", minWidth: 26, minHeight: 12 },
-    { id: "inspector", title: "Inspector", minWidth: 32, minHeight: 11 },
-    { id: "data", title: "Data Table", minWidth: 42, minHeight: 12 },
-    { id: "controls", title: "Controls", minWidth: 40, minHeight: 18 },
-    { id: "logs", title: "Logs", minWidth: 36, minHeight: 12 },
-    { id: "three", title: "Three ASCII", minWidth: 42, minHeight: 16 },
-    { id: HTML_CSS_LAYOUT_WINDOW_ID, title: "HTML/CSS Layout", minWidth: 46, minHeight: 16, state: "closed" },
+    { id: "explorer", title: apiWorkbenchPanelTitle("explorer"), minWidth: 26, minHeight: 12 },
+    { id: "inspector", title: apiWorkbenchPanelTitle("inspector"), minWidth: 32, minHeight: 11 },
+    { id: "data", title: apiWorkbenchPanelTitle("data"), minWidth: 42, minHeight: 12 },
+    { id: "controls", title: apiWorkbenchPanelTitle("controls"), minWidth: 40, minHeight: 18 },
+    { id: "logs", title: apiWorkbenchPanelTitle("logs"), minWidth: 36, minHeight: 12 },
+    { id: "three", title: apiWorkbenchPanelTitle("three"), minWidth: 42, minHeight: 16 },
+    {
+      id: HTML_CSS_LAYOUT_WINDOW_ID,
+      title: apiWorkbenchPanelTitle(HTML_CSS_LAYOUT_WINDOW_ID),
+      minWidth: 46,
+      minHeight: 16,
+      state: "closed",
+    },
     { id: TERMINAL_OUTPUT_WINDOW_ID, title: "Terminal Output", minWidth: 48, minHeight: 14, state: "closed" },
     { id: TERMINAL_SHELL_WINDOW_ID, title: "Shell", minWidth: 54, minHeight: 16, state: "closed" },
   ],
@@ -4477,23 +4484,11 @@ function windowTitle(id: WindowId): string {
   if (isVisualizationWindow(id)) {
     return visualizationOption(dynamicVisualizationWindows.peek()[id])?.label ?? "Visualization";
   }
-  return id === "explorer"
-    ? "Explorer"
-    : id === "inspector"
-    ? "Inspector"
-    : id === "data"
-    ? "Data Table"
-    : id === "controls"
-    ? "Controls"
-    : id === "logs"
-    ? "Logs"
-    : id === "htmlLayout"
-    ? "HTML/CSS Layout"
-    : id === TERMINAL_OUTPUT_WINDOW_ID
+  return id === TERMINAL_OUTPUT_WINDOW_ID
     ? terminalOutputWindowTitle()
     : id === TERMINAL_SHELL_WINDOW_ID
     ? terminalShellWindowTitle()
-    : "Three ASCII";
+    : apiWorkbenchPanelTitle(id, "Three ASCII");
 }
 
 function terminalOutputWindowTitle(): string {

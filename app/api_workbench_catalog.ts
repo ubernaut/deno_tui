@@ -36,6 +36,30 @@ export interface ApiWorkbenchProcessRow extends Record<string, unknown> {
   latency: number;
 }
 
+export const apiWorkbenchPanelTitles: Record<string, string> = {
+  explorer: "Explorer",
+  inspector: "Inspector",
+  data: "Data Table",
+  controls: "Controls",
+  logs: "Logs",
+  three: "Three ASCII",
+  htmlLayout: "HTML/CSS Layout",
+  terminal: "Terminal",
+};
+
+export const apiWorkbenchShortPanelTitles: Record<string, string> = {
+  htmlLayout: "Layout",
+  inspector: "Inspect",
+};
+
+export function apiWorkbenchPanelTitle(id: string, fallback = "Three ASCII"): string {
+  return apiWorkbenchPanelTitles[id] ?? fallback;
+}
+
+export function apiWorkbenchShortPanelTitle(id: string, fallback?: string): string {
+  return apiWorkbenchShortPanelTitles[id] ?? apiWorkbenchPanelTitle(id, fallback);
+}
+
 export function createApiWorkbenchThemes(): ApiWorkbenchThemeSpec[] {
   return grWizardThemePalettes.map((palette) => ({
     id: palette.name,

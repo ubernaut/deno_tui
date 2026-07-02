@@ -2,7 +2,9 @@ import { assert, assertEquals } from "./deps.ts";
 import {
   apiWorkbenchColumns,
   apiWorkbenchDocs,
+  apiWorkbenchPanelTitle,
   apiWorkbenchRows,
+  apiWorkbenchShortPanelTitle,
   createApiWorkbenchThemes,
 } from "../app/api_workbench_catalog.ts";
 
@@ -25,4 +27,12 @@ Deno.test("api workbench catalog exposes table and docs fixtures", () => {
   assert(apiWorkbenchRows.every((row) => typeof row.latency === "number"));
   assert(apiWorkbenchDocs.some((line) => line.includes("WindowManagerController")));
   assert(apiWorkbenchDocs.some((line) => line.includes("ThreePanelFrameView")));
+});
+
+Deno.test("api workbench catalog exposes shared panel display titles", () => {
+  assertEquals(apiWorkbenchPanelTitle("data"), "Data Table");
+  assertEquals(apiWorkbenchPanelTitle("terminal"), "Terminal");
+  assertEquals(apiWorkbenchPanelTitle("unknown", "Fallback"), "Fallback");
+  assertEquals(apiWorkbenchShortPanelTitle("htmlLayout"), "Layout");
+  assertEquals(apiWorkbenchShortPanelTitle("data"), "Data Table");
 });

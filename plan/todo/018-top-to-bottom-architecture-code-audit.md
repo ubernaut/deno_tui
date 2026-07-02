@@ -135,6 +135,8 @@ Work:
         share the same control order and edge-aware Tab behavior.
   - [x] Routed web API Workbench focus/minimize/fullscreen/restore actions through the shared `WindowManagerController`
         and projected the inspection back into persisted adapter signals.
+  - [x] Moved static API Workbench panel titles into the shared catalog so terminal and web controller models no longer
+        carry separate display-name tables.
 - [x] Replace duplicated theme/window/menu persistence code with a shared versioned serializer.
   - [x] Extracted shared workbench workspace normalization, panel-state normalization, upsert, rename, delete, lookup,
         and legacy window-entry expansion helpers into `src/app/workbench_workspace.ts`.

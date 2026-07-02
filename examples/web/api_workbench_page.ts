@@ -78,8 +78,10 @@ import {
 import {
   apiWorkbenchColumns,
   apiWorkbenchDocs,
+  apiWorkbenchPanelTitle,
   type ApiWorkbenchProcessRow,
   apiWorkbenchRows,
+  apiWorkbenchShortPanelTitle,
   type ApiWorkbenchThemeSpec,
   createApiWorkbenchThemes,
 } from "../../app/api_workbench_catalog.ts";
@@ -184,7 +186,7 @@ const workbenchController = new WorkbenchController<"theme">({
       themeMenuOpen.value = state.openId === "theme";
     },
   },
-  windows: panelIds.map((id, order) => ({ id, title: id, order, minWidth: 26, minHeight: 10 })),
+  windows: panelIds.map((id, order) => ({ id, title: apiWorkbenchPanelTitle(id), order, minWidth: 26, minHeight: 10 })),
 });
 const topMenus = workbenchController.menus;
 const webWindows = workbenchController.windows;
@@ -791,21 +793,11 @@ function panelTitlebarHit(id: PanelId, kind: WorkbenchTitlebarButtonKind): Hit {
 }
 
 function panelTitle(id: PanelId): string {
-  return id === "explorer"
-    ? "Explorer"
-    : id === "data"
-    ? "Data Table"
-    : id === "three"
-    ? "Three ASCII"
-    : id === "htmlLayout"
-    ? "HTML/CSS Layout"
-    : id === "terminal"
-    ? "Terminal"
-    : id[0]!.toUpperCase() + id.slice(1);
+  return apiWorkbenchPanelTitle(id, id[0]!.toUpperCase() + id.slice(1));
 }
 
 function shortPanelTitle(id: PanelId): string {
-  return id === "htmlLayout" ? "Layout" : id === "inspector" ? "Inspect" : panelTitle(id);
+  return apiWorkbenchShortPanelTitle(id, panelTitle(id));
 }
 
 function renderLogs(frame: string[], rect: Rectangle): void {
@@ -1399,7 +1391,7 @@ function syncWebWindowManagerState(): void {
   webWindows.fullscreenId.value = fullscreenId;
   webWindows.windows.value = panelIds.map((id, order) => ({
     id,
-    title: id,
+    title: apiWorkbenchPanelTitle(id),
     order,
     state: minimizedState[id] && id !== fullscreenId ? "minimized" : "normal",
     minWidth: 26,
