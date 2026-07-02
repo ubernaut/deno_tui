@@ -108,3 +108,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   quantizing through fill-bucket background tinting, improving partial-block assembly benchmark throughput.
 - Added API workbench control-line render commands so terminal and browser controls share fill/base/button/detail
   segment classification while keeping their paint adapters independent.
+- Added API workbench textbox render commands so terminal and browser controls share label/body row assembly with
+  configurable cursor and continuation glyphs.

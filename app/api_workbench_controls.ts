@@ -139,6 +139,23 @@ export interface ApiWorkbenchTextboxProjection {
   startVisualRow: number;
 }
 
+export type ApiWorkbenchTextboxRenderRole = "label" | "body";
+
+export interface ApiWorkbenchTextboxRenderCommand {
+  role: ApiWorkbenchTextboxRenderRole;
+  text: string;
+  column: number;
+  row: number;
+  width: number;
+  active: boolean;
+  header: boolean;
+}
+
+export interface ApiWorkbenchTextboxRenderOptions {
+  cursorGlyph?: string;
+  continuationGlyph?: string;
+}
+
 export interface ApiWorkbenchOptionControlRow {
   id: Extract<ApiWorkbenchControlId, "checkbox" | "radio">;
   value: string;
@@ -539,6 +556,42 @@ export function apiWorkbenchTextboxProjectionInto(
   };
 }
 
+export function apiWorkbenchTextboxRenderCommandsInto(
+  target: ApiWorkbenchTextboxRenderCommand[],
+  rows: readonly ApiWorkbenchTextboxProjectionRow[],
+  options: ApiWorkbenchTextboxRenderOptions = {},
+): ApiWorkbenchTextboxRenderCommand[] {
+  const cursorGlyph = options.cursorGlyph ?? "▌";
+  const continuationGlyph = options.continuationGlyph ?? "↳";
+  let written = 0;
+  for (let index = 0; index < rows.length; index += 1) {
+    const row = rows[index]!;
+    writeTextboxRenderCommand(target, written++, {
+      role: "label",
+      text: fitCellText(row.labelText, row.labelWidth),
+      column: row.labelColumn,
+      row: row.row,
+      width: row.labelWidth,
+      active: row.active,
+      header: row.header,
+    });
+    writeTextboxRenderCommand(target, written++, {
+      role: "body",
+      text: fitCellText(
+        `${row.continuation ? continuationGlyph : " "}${row.bodyText}${row.cursor ? cursorGlyph : " "}`,
+        row.bodyWidth,
+      ),
+      column: row.bodyColumn,
+      row: row.row,
+      width: row.bodyWidth,
+      active: row.active,
+      header: row.header,
+    });
+  }
+  target.length = written;
+  return target;
+}
+
 export function apiWorkbenchCheckboxRowsInto(
   target: ApiWorkbenchOptionControlRow[],
   items: readonly ApiWorkbenchCheckboxOption[],
@@ -893,6 +946,30 @@ function writeControlLineRenderCommand(
   command.row = options.row;
   command.width = options.width;
   command.active = options.active;
+  target[index] = command;
+}
+
+function writeTextboxRenderCommand(
+  target: ApiWorkbenchTextboxRenderCommand[],
+  index: number,
+  options: ApiWorkbenchTextboxRenderCommand,
+): void {
+  const command = target[index] ?? {
+    role: "body",
+    text: "",
+    column: 0,
+    row: 0,
+    width: 0,
+    active: false,
+    header: false,
+  };
+  command.role = options.role;
+  command.text = options.text;
+  command.column = options.column;
+  command.row = options.row;
+  command.width = options.width;
+  command.active = options.active;
+  command.header = options.header;
   target[index] = command;
 }
 

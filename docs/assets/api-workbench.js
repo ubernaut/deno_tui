@@ -15461,6 +15461,37 @@ function apiWorkbenchTextboxProjectionInto(rows2, options) {
     startVisualRow
   };
 }
+function apiWorkbenchTextboxRenderCommandsInto(target, rows2, options = {}) {
+  const cursorGlyph = options.cursorGlyph ?? "\u258C";
+  const continuationGlyph = options.continuationGlyph ?? "\u21B3";
+  let written = 0;
+  for (let index = 0; index < rows2.length; index += 1) {
+    const row = rows2[index];
+    writeTextboxRenderCommand(target, written++, {
+      role: "label",
+      text: fitCellText(row.labelText, row.labelWidth),
+      column: row.labelColumn,
+      row: row.row,
+      width: row.labelWidth,
+      active: row.active,
+      header: row.header
+    });
+    writeTextboxRenderCommand(target, written++, {
+      role: "body",
+      text: fitCellText(
+        `${row.continuation ? continuationGlyph : " "}${row.bodyText}${row.cursor ? cursorGlyph : " "}`,
+        row.bodyWidth
+      ),
+      column: row.bodyColumn,
+      row: row.row,
+      width: row.bodyWidth,
+      active: row.active,
+      header: row.header
+    });
+  }
+  target.length = written;
+  return target;
+}
 function apiWorkbenchButtonRowInto(target, options) {
   const detail = options.detail ? ` ${options.detail}` : "";
   return writeProjectedControlRow(
@@ -15680,6 +15711,25 @@ function writeControlLineRenderCommand(target, index, options) {
   command.row = options.row;
   command.width = options.width;
   command.active = options.active;
+  target[index] = command;
+}
+function writeTextboxRenderCommand(target, index, options) {
+  const command = target[index] ?? {
+    role: "body",
+    text: "",
+    column: 0,
+    row: 0,
+    width: 0,
+    active: false,
+    header: false
+  };
+  command.role = options.role;
+  command.text = options.text;
+  command.column = options.column;
+  command.row = options.row;
+  command.width = options.width;
+  command.active = options.active;
+  command.header = options.header;
   target[index] = command;
 }
 function writeControlHit(target, index, source) {
@@ -16087,6 +16137,7 @@ var controlProjectedRows = [];
 var controlCheckboxOptions = [];
 var controlRadioOptions = [];
 var controlTextboxProjectionRows = [];
+var controlTextboxRenderCommands = [];
 var controlTextboxVisualLines = [];
 var controlSliderSetHit = {
   column: 0,
@@ -17858,28 +17909,22 @@ function renderTextboxControl(frame, rect, row, t) {
     active: selected
   });
   if (projection.height <= 0) return projection.nextRow;
-  for (const line of projection.rows) {
-    const marker = line.cursor ? "|" : " ";
+  const commands = apiWorkbenchTextboxRenderCommandsInto(controlTextboxRenderCommands, projection.rows, {
+    cursorGlyph: "|",
+    continuationGlyph: ">"
+  });
+  for (const command of commands) {
+    const activeBody = command.role === "body" && selected;
+    const activeHeader = command.header && selected;
     write(
       frame,
-      line.row,
-      line.labelColumn,
+      command.row,
+      command.column,
       paint(
-        fit(line.labelText, line.labelWidth),
-        selected && line.header ? t.background : t.text,
-        selected && line.header ? t.warn : t.surface,
-        selected && line.header
-      )
-    );
-    write(
-      frame,
-      line.row,
-      line.bodyColumn,
-      paint(
-        fit(`${line.continuation ? ">" : " "}${line.bodyText}${marker}`, line.bodyWidth),
-        selected ? t.background : t.text,
-        selected ? t.warn : t.surface,
-        selected
+        command.text,
+        activeBody || activeHeader ? t.background : t.text,
+        activeBody || activeHeader ? t.warn : t.surface,
+        activeBody || activeHeader
       )
     );
   }

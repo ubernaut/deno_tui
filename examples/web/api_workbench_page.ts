@@ -151,6 +151,8 @@ import {
   apiWorkbenchStepperRowInto,
   apiWorkbenchTextboxProjectionInto,
   type ApiWorkbenchTextboxProjectionRow,
+  type ApiWorkbenchTextboxRenderCommand,
+  apiWorkbenchTextboxRenderCommandsInto,
   nextApiWorkbenchControlId,
   nextSortableDataColumn,
 } from "../../app/api_workbench_controls.ts";
@@ -339,6 +341,7 @@ const controlProjectedRows: ApiWorkbenchProjectedControlRow[] = [];
 const controlCheckboxOptions: ApiWorkbenchCheckboxOption[] = [];
 const controlRadioOptions: ApiWorkbenchRadioOption[] = [];
 const controlTextboxProjectionRows: ApiWorkbenchTextboxProjectionRow[] = [];
+const controlTextboxRenderCommands: ApiWorkbenchTextboxRenderCommand[] = [];
 const controlTextboxVisualLines: TextBoxVisualLine[] = [];
 const controlSliderSetHit: ApiWorkbenchControlHitPlacement = {
   column: 0,
@@ -2254,28 +2257,22 @@ function renderTextboxControl(frame: string[], rect: Rectangle, row: number, t: 
     active: selected,
   });
   if (projection.height <= 0) return projection.nextRow;
-  for (const line of projection.rows) {
-    const marker = line.cursor ? "|" : " ";
+  const commands = apiWorkbenchTextboxRenderCommandsInto(controlTextboxRenderCommands, projection.rows, {
+    cursorGlyph: "|",
+    continuationGlyph: ">",
+  });
+  for (const command of commands) {
+    const activeBody = command.role === "body" && selected;
+    const activeHeader = command.header && selected;
     write(
       frame,
-      line.row,
-      line.labelColumn,
+      command.row,
+      command.column,
       paint(
-        fit(line.labelText, line.labelWidth),
-        selected && line.header ? t.background : t.text,
-        selected && line.header ? t.warn : t.surface,
-        selected && line.header,
-      ),
-    );
-    write(
-      frame,
-      line.row,
-      line.bodyColumn,
-      paint(
-        fit(`${line.continuation ? ">" : " "}${line.bodyText}${marker}`, line.bodyWidth),
-        selected ? t.background : t.text,
-        selected ? t.warn : t.surface,
-        selected,
+        command.text,
+        activeBody || activeHeader ? t.background : t.text,
+        activeBody || activeHeader ? t.warn : t.surface,
+        activeBody || activeHeader,
       ),
     );
   }

@@ -210,6 +210,8 @@ import {
   apiWorkbenchStepperRowInto,
   apiWorkbenchTextboxProjectionInto,
   type ApiWorkbenchTextboxProjectionRow,
+  type ApiWorkbenchTextboxRenderCommand,
+  apiWorkbenchTextboxRenderCommandsInto,
   nextApiWorkbenchControlId,
   nextSortableDataColumn,
 } from "./api_workbench_controls.ts";
@@ -382,6 +384,7 @@ const controlProjectedRows: ApiWorkbenchProjectedControlRow[] = [];
 const controlCheckboxOptions: ApiWorkbenchCheckboxOption[] = [];
 const controlRadioOptions: ApiWorkbenchRadioOption[] = [];
 const controlTextboxProjectionRows: ApiWorkbenchTextboxProjectionRow[] = [];
+const controlTextboxRenderCommands: ApiWorkbenchTextboxRenderCommand[] = [];
 const controlTextboxVisualLines: TextBoxVisualLine[] = [];
 const controlSliderSetHit: ApiWorkbenchControlHitPlacement = {
   column: 0,
@@ -1846,26 +1849,18 @@ function renderTextboxControl(frame: Frame, rect: Rectangle, row: number, t: The
     active,
   });
   if (projection.height <= 0) return projection.nextRow;
-  for (const line of projection.rows) {
-    const marker = line.cursor ? "▌" : " ";
+  const commands = apiWorkbenchTextboxRenderCommandsInto(controlTextboxRenderCommands, projection.rows);
+  for (const command of commands) {
+    const activeBody = command.role === "body" && active;
+    const activeHeader = command.header && active;
     write(
       frame,
-      line.row,
-      line.labelColumn,
-      paint(fit(line.labelText, line.labelWidth), {
-        fg: active && line.header ? t.background : t.text,
-        bg: active && line.header ? t.warn : t.surface,
-        bold: active && line.header,
-      }),
-    );
-    write(
-      frame,
-      line.row,
-      line.bodyColumn,
-      paint(fit(`${line.continuation ? "↳" : " "}${line.bodyText}${marker}`, line.bodyWidth), {
-        fg: active ? t.background : t.text,
-        bg: active ? t.warn : t.surface,
-        bold: active,
+      command.row,
+      command.column,
+      paint(command.text, {
+        fg: activeBody || activeHeader ? t.background : t.text,
+        bg: activeBody || activeHeader ? t.warn : t.surface,
+        bold: activeBody || activeHeader,
       }),
     );
   }

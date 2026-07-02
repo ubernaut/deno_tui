@@ -22,6 +22,8 @@ import {
   apiWorkbenchStepperRowInto,
   apiWorkbenchTextboxProjection,
   apiWorkbenchTextboxProjectionInto,
+  type ApiWorkbenchTextboxRenderCommand,
+  apiWorkbenchTextboxRenderCommandsInto,
   nextApiWorkbenchControlId,
   nextSortableDataColumn,
 } from "../app/api_workbench_controls.ts";
@@ -346,6 +348,67 @@ Deno.test("api workbench textbox projection can reuse caller-owned rows", () => 
   });
   assertEquals(clipped.rows === rows, true);
   assertEquals(clipped.rows.length, 0);
+});
+
+Deno.test("api workbench textbox render commands project label and body rows", () => {
+  const projection = apiWorkbenchTextboxProjection({
+    rect: { column: 5, row: 10, width: 24, height: 8 },
+    row: 12,
+    lines: ["alpha beta gamma delta"],
+    cursor: { x: 18, y: 0 },
+    active: true,
+  });
+  const commands = apiWorkbenchTextboxRenderCommandsInto([], projection.rows);
+
+  assertEquals(commands.slice(0, 4), [
+    { role: "label", text: "> TextBox ", column: 5, row: 12, width: 10, active: true, header: true },
+    { role: "body", text: " alpha beta   ", column: 15, row: 12, width: 14, active: true, header: true },
+    { role: "label", text: "          ", column: 5, row: 13, width: 10, active: true, header: false },
+    { role: "body", text: "↳gamma delta▌ ", column: 15, row: 13, width: 14, active: true, header: false },
+  ]);
+});
+
+Deno.test("api workbench textbox render commands support glyph overrides and reuse", () => {
+  const target: ApiWorkbenchTextboxRenderCommand[] = [];
+  const first = apiWorkbenchTextboxRenderCommandsInto(target, [{
+    row: 2,
+    labelColumn: 1,
+    labelWidth: 6,
+    labelText: "> Box",
+    bodyColumn: 7,
+    bodyWidth: 8,
+    bodyText: "value",
+    visualLine: { text: "value", lineIndex: 0, startColumn: 0, endColumn: 5, continuation: true },
+    cursor: true,
+    continuation: true,
+    active: false,
+    header: true,
+  }], {
+    cursorGlyph: "|",
+    continuationGlyph: ">",
+  })[0];
+
+  assertEquals(target, [
+    { role: "label", text: "> Box ", column: 1, row: 2, width: 6, active: false, header: true },
+    { role: "body", text: ">value| ", column: 7, row: 2, width: 8, active: false, header: true },
+  ]);
+
+  apiWorkbenchTextboxRenderCommandsInto(target, [{
+    row: 3,
+    labelColumn: 2,
+    labelWidth: 4,
+    labelText: "L",
+    bodyColumn: 6,
+    bodyWidth: 4,
+    bodyText: "B",
+    visualLine: { text: "B", lineIndex: 0, startColumn: 0, endColumn: 1, continuation: false },
+    cursor: false,
+    continuation: false,
+    active: true,
+    header: false,
+  }]);
+  assertEquals(target[0] === first, true);
+  assertEquals(apiWorkbenchTextboxRenderCommandsInto(target, [], { cursorGlyph: "|" }), []);
 });
 
 Deno.test("api workbench textbox projection reuses caller-owned visual lines", () => {
