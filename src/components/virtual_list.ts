@@ -60,7 +60,7 @@ export function virtualListRows<T>(
   format: (item: T, index: number) => string = String,
 ): VirtualListRow<T>[] {
   const window = selectionWindow(items.length, state.activeIndex, height);
-  const selected = new Set(state.selected);
+  const selected = state.selected.length > 8 ? new Set(state.selected) : undefined;
   const rows = new Array<VirtualListRow<T>>(Math.max(0, window.end - window.start));
   for (let offset = 0; offset < rows.length; offset += 1) {
     const index = window.start + offset;
@@ -69,7 +69,7 @@ export function virtualListRows<T>(
       item,
       index,
       active: index === state.activeIndex,
-      selected: selected.has(index),
+      selected: selected ? selected.has(index) : virtualListIndexSelected(state.selected, index),
       text: format(item, index),
     };
   }
