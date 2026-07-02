@@ -127,7 +127,13 @@ const CONTROL_KEY_ORDER = [
 /** Encodes Kitty graphics control fields into a deterministic comma-separated string. */
 export function encodeKittyGraphicsControl(control: KittyGraphicsControl): string {
   const entries = orderedControlEntries(control);
-  return entries.map(([key, value]) => `${key}=${encodeKittyGraphicsControlValue(value)}`).join(",");
+  let encoded = "";
+  for (let index = 0; index < entries.length; index += 1) {
+    const [key, value] = entries[index]!;
+    if (index > 0) encoded += ",";
+    encoded += `${key}=${encodeKittyGraphicsControlValue(value)}`;
+  }
+  return encoded;
 }
 
 /** Encodes one complete Kitty graphics command sequence. */
@@ -293,16 +299,37 @@ export function detectKittyGraphicsCapability(options: KittyGraphicsDetectionOpt
 }
 
 function cleanControl(control: KittyGraphicsControl): KittyGraphicsControl {
-  return Object.fromEntries(Object.entries(control).filter(([, value]) => value !== undefined));
+  const cleaned: KittyGraphicsControl = {};
+  for (const key in control) {
+    const value = control[key];
+    if (value !== undefined) cleaned[key] = value;
+  }
+  return cleaned;
 }
 
 function orderedControlEntries(
   control: KittyGraphicsControl,
 ): Array<[string, Exclude<KittyGraphicsControlValue, undefined>]> {
-  const keys = new Set(Object.keys(control).filter((key) => control[key] !== undefined));
-  const ordered = CONTROL_KEY_ORDER.filter((key) => keys.delete(key));
-  ordered.push(...[...keys].sort());
-  return ordered.map((key) => [key, control[key] as Exclude<KittyGraphicsControlValue, undefined>]);
+  const entries: Array<[string, Exclude<KittyGraphicsControlValue, undefined>]> = [];
+  const emitted = new Set<string>();
+  for (let index = 0; index < CONTROL_KEY_ORDER.length; index += 1) {
+    const key = CONTROL_KEY_ORDER[index]!;
+    const value = control[key];
+    if (value === undefined) continue;
+    entries.push([key, value]);
+    emitted.add(key);
+  }
+  const extraKeys: string[] = [];
+  for (const key in control) {
+    if (emitted.has(key) || control[key] === undefined) continue;
+    extraKeys.push(key);
+  }
+  extraKeys.sort();
+  for (let index = 0; index < extraKeys.length; index += 1) {
+    const key = extraKeys[index]!;
+    entries.push([key, control[key] as Exclude<KittyGraphicsControlValue, undefined>]);
+  }
+  return entries;
 }
 
 function encodeKittyGraphicsControlValue(value: Exclude<KittyGraphicsControlValue, undefined>): string {

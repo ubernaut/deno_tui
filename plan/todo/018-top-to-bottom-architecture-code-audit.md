@@ -319,6 +319,8 @@ Work:
   - [x] Reworked workbench text width and wrapping helpers to avoid reduce callbacks and redundant filter passes in
         frequent menu/panel text measurement.
   - [x] Reworked terminal parameter parsing to scan CSI parameter strings directly instead of split/map/filter chains.
+  - [x] Reworked Kitty graphics control cleaning, deterministic key ordering, and command control serialization to use
+        explicit buffers instead of Object.entries/fromEntries/map/filter pipelines.
 
 Acceptance checks:
 
