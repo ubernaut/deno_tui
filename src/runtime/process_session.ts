@@ -294,7 +294,12 @@ export class ProcessSessionController {
 
 /** Formats a command specification into a shell-like display string. */
 export function formatProcessCommandLine(command: ProcessSessionCommand): string {
-  return [command.command, ...(command.args ?? [])].map(quoteCommandToken).join(" ");
+  let line = quoteCommandToken(command.command);
+  const args = command.args ?? [];
+  for (let index = 0; index < args.length; index += 1) {
+    line += ` ${quoteCommandToken(args[index]!)}`;
+  }
+  return line;
 }
 
 function normalizeProcessSessionCommand(command: ProcessSessionCommand): ProcessSessionCommand {
