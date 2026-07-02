@@ -1059,8 +1059,7 @@ function renderWorkspace(frame: Frame): void {
     return;
   }
 
-  const visible = windowIds().filter((id) => !minimized.peek()[id]);
-  if (visible.length === 0) {
+  if (layout.rects.size === 0) {
     setThreeBodyRect({ column: 0, row: 0, width: 0, height: 0 });
     setThreeGraphicsRect({ column: 0, row: 0, width: 0, height: 0 });
     hideVisualizationThreePanelsExcept(renderedVisualizationThreePanels);
@@ -1071,13 +1070,10 @@ function renderWorkspace(frame: Frame): void {
 
   let renderedThree = false;
   withWorkspacePlacement(bounds, offset, () => {
-    for (const id of visible) {
-      const rect = layout.rects.get(id);
-      if (rect) {
-        renderWindow(virtual, id, rect);
-        if (id === "three") {
-          renderedThree = true;
-        }
+    for (const [id, rect] of layout.rects) {
+      renderWindow(virtual, id, rect);
+      if (id === "three") {
+        renderedThree = true;
       }
     }
   });

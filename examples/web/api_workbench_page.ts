@@ -585,14 +585,12 @@ function draw(): void {
   if (maximized.peek()) {
     renderPanel(virtual, maximized.peek()!, layout.bounds);
   } else {
-    const visible = panelIds.filter((id) => !minimized.peek()[id]);
-    if (visible.length === 0) {
+    if (layout.rects.size === 0) {
       write(virtual, 1, 2, paint("All panels minimized. Press R or click restore."));
       hitTargets.add({ ...layout.bounds, row: 0 }, { type: "restore" });
     } else {
-      for (const id of visible) {
-        const rect = layout.rects.get(id);
-        if (rect) renderPanel(virtual, id, rect);
+      for (const [id, rect] of layout.rects) {
+        renderPanel(virtual, id, rect);
       }
     }
   }
