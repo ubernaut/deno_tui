@@ -315,6 +315,7 @@ Work:
   - [x] Reworked terminal workspace descriptor duplication to populate id sets directly instead of mapping session ids.
   - [x] Reworked MouseInteractionRouter inspection, hit testing, target snapshots, and ordered target cache population
         to avoid map/find/spread allocation in input dispatch paths.
+  - [x] Reworked HitTargetStack inspection snapshots to clone target rectangles with a preallocated buffer.
 
 Acceptance checks:
 

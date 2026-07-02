@@ -45,7 +45,12 @@ export class HitTargetStack<Action> {
   }
 
   entries(): Array<HitTarget<Action>> {
-    return this.#targets.map((target) => ({ rect: { ...target.rect }, action: target.action }));
+    const entries = new Array<HitTarget<Action>>(this.#targets.length);
+    for (let index = 0; index < this.#targets.length; index += 1) {
+      const target = this.#targets[index]!;
+      entries[index] = { rect: { ...target.rect }, action: target.action };
+    }
+    return entries;
   }
 }
 
