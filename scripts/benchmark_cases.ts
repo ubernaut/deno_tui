@@ -5,6 +5,8 @@ import {
   buildThreeAsciiAnsiGrid,
   Canvas,
   CommandRegistry,
+  commandSurfaceItems,
+  createCommandSearchIndex,
   createMouseInteractionRouter,
   createRenderLoop,
   createStandardComponentThemeDefinitions,
@@ -22,6 +24,7 @@ import {
   renderFrameSlice,
   renderSparkline,
   runTaskBatch,
+  searchCommandSearchIndex,
   searchCommandSurfaceItems,
   standardThemeComponentNames,
   TableController,
@@ -129,6 +132,7 @@ for (let index = 0; index < 1_000; index += 1) {
     disabled: index % 37 === 0,
   });
 }
+const commandSearchIndex = createCommandSearchIndex(commandSurfaceItems(commandSearchRegistry));
 const resizeBounds = Array.from({ length: 96 }, (_, index) => ({
   column: 0,
   row: 0,
@@ -1066,6 +1070,20 @@ export const benchmarkCases: BenchmarkCase[] = [
       });
       if (results.length === 0 || !results[0]?.label.toLowerCase().includes("restart")) {
         throw new Error("command search benchmark did not produce expected ranked results");
+      }
+    },
+  },
+  {
+    name: "data/command-search-index-1k",
+    category: "data",
+    description: "Rank 1k pre-indexed command-surface entries across labels, ids, keywords, and acronyms.",
+    tags: ["data", "commands", "search", "ranking", "indexed"],
+    iterations: 500,
+    maxAverageMs: 4,
+    run: () => {
+      const results = searchCommandSearchIndex(commandSearchIndex, "restart gpu service", { limit: 20 });
+      if (results.length === 0 || !results[0]?.item.label.toLowerCase().includes("restart")) {
+        throw new Error("indexed command search benchmark did not produce expected ranked results");
       }
     },
   },
