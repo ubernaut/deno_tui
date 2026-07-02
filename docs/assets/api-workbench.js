@@ -6373,13 +6373,14 @@ function parseCssDeclarations(source) {
 function cssSelectorSpecificity(selector) {
   const idCount = (selector.match(/#[A-Za-z_][\w-]*/g) ?? []).length;
   const classCount = (selector.match(/\.[A-Za-z_][\w-]*/g) ?? []).length;
+  const attributeCount = (selector.match(/\[[^\]]+\]/g) ?? []).length;
   const pseudoCount = (selector.match(/:[A-Za-z_][\w-]*/g) ?? []).length;
   let tagCount = 0;
   for (const part of selectorParts(selector)) {
     const tag = /^(#text|[A-Za-z][\w-]*|\*)/.exec(part.simple)?.[1];
     if (tag !== void 0 && tag !== "*") tagCount += 1;
   }
-  return idCount * 100 + (classCount + pseudoCount) * 10 + tagCount;
+  return idCount * 100 + (classCount + attributeCount + pseudoCount) * 10 + tagCount;
 }
 function selectorParts(selector) {
   const parts = [];
@@ -6580,6 +6581,12 @@ function matchesSimpleSelector(selector, node, isRoot, states) {
   for (const className of selector.matchAll(/\.([A-Za-z_][\w-]*)/g)) {
     if (!node.classes.includes(className[1])) return false;
   }
+  for (const attribute of selector.matchAll(/\[\s*([A-Za-z_][\w-]*)(?:\s*=\s*("[^"]*"|'[^']*'|[^\]\s]+))?\s*\]/g)) {
+    const name = attribute[1];
+    const expected = normalizeAttributeSelectorValue(attribute[2]);
+    if (!(name in node.attributes)) return false;
+    if (expected !== void 0 && node.attributes[name] !== expected) return false;
+  }
   for (const pseudo of selector.matchAll(/:([A-Za-z_][\w-]*)/g)) {
     const state = pseudo[1];
     if (state === "root") {
@@ -6589,6 +6596,14 @@ function matchesSimpleSelector(selector, node, isRoot, states) {
     }
   }
   return true;
+}
+function normalizeAttributeSelectorValue(value) {
+  if (value === void 0) return void 0;
+  const trimmed = value.trim();
+  if (trimmed.startsWith('"') && trimmed.endsWith('"') || trimmed.startsWith("'") && trimmed.endsWith("'")) {
+    return trimmed.slice(1, -1);
+  }
+  return trimmed;
 }
 function normalizeVariables(variables) {
   const normalized = {};
@@ -12175,6 +12190,37 @@ function clampByte(value) {
   return clamp3(Math.floor(value), 0, 255);
 }
 
+// src/app/workbench_terminal.ts
+function workbenchTerminalSessionTabsInto(target, sessions, activeId, rect, options = {}) {
+  target.length = 0;
+  if (rect.width <= 0 || rect.height <= 0) return target;
+  const minWidth = Math.max(1, Math.floor(options.minWidth ?? 4));
+  const maxWidth = Math.max(minWidth, Math.floor(options.maxWidth ?? 22));
+  let column = rect.column;
+  const endColumn = rect.column + rect.width;
+  for (let index = 0; index < sessions.length && column < endColumn; index += 1) {
+    const session = sessions[index];
+    const active2 = session.id === activeId;
+    const status = session.running ? "*" : session.status?.[0]?.toUpperCase() ?? "?";
+    const available = endColumn - column;
+    const width = Math.max(
+      1,
+      Math.min(available, Math.max(minWidth, Math.min(maxWidth, textWidth(session.title) + 6)))
+    );
+    const label = fitCellText(buttonText(`${status} ${session.title}`), width);
+    target.push({
+      id: session.id,
+      label,
+      column,
+      row: rect.row,
+      width: textWidth(label),
+      active: active2
+    });
+    column += width + 1;
+  }
+  return target;
+}
+
 // src/app/workbench_titlebar.ts
 var WINDOW_CONTROL_SPECS = [
   { kind: "close", label: "x", tone: "danger", compact: true },
@@ -14221,6 +14267,16 @@ var htmlCssLayoutBoxes = [];
 var minimizedShelfEntries = [];
 var fullscreenTabEntries = [];
 var verticalScrollbarCells = [];
+var webTerminalButtonItems = [
+  { label: "New", action: "new", tone: "success" },
+  { label: "Prev", action: "previous", tone: "muted" },
+  { label: "Next", action: "next", tone: "muted" },
+  { label: "Close", action: "close", tone: "danger" },
+  { label: "Restart", action: "restart", tone: "warning" }
+];
+var webTerminalButtonPlacements = [];
+var webTerminalSessionTabSources = [];
+var webTerminalSessionTabPlacements = [];
 var modalActionButtonItems = [];
 var modalActionButtonPlacements = [];
 var dropdownOverlay = null;
@@ -14927,6 +14983,7 @@ function renderTerminalProtocol(frame, rect) {
     write(frame, rect.row + index, rect.column, paint(fit(line, rect.width), fg, bg, index === 0));
   }
   renderTerminalSessionTabs(frame, { column: rect.column, row: rect.row + 2, width: rect.width, height: 1 });
+  renderTerminalToolbar(frame, { column: rect.column, row: rect.row + 3, width: rect.width, height: 1 }, workspace);
   fillRect(frame, screenRect, t.background);
   const rows2 = webTerminalScreen.textRows();
   const screenRowCount = Math.min(rows2.length, screenRect.height);
@@ -14949,30 +15006,60 @@ function renderTerminalProtocol(frame, rect) {
     write(frame, footerRow, rect.column, paint(fit(footer, rect.width), t.muted, t.surface));
   }
 }
+function renderTerminalToolbar(frame, rect, workspace = webTerminalWorkspace.inspect()) {
+  if (rect.height <= 0 || rect.width <= 0) return;
+  webTerminalButtonItems[1].disabled = workspace.sessions.length < 2;
+  webTerminalButtonItems[2].disabled = workspace.sessions.length < 2;
+  webTerminalButtonItems[3].disabled = workspace.sessions.length <= 1;
+  webTerminalButtonItems[4].disabled = !workspace.activeId;
+  layoutWorkbenchButtonRowInto(webTerminalButtonPlacements, webTerminalButtonItems, rect, rect.row);
+  for (const placement of webTerminalButtonPlacements) {
+    const written = writeButton(frame, placement.rect.row, placement.rect.column, placement.item.label, {
+      state: placement.state,
+      tone: placement.tone,
+      maxWidth: placement.rect.width
+    });
+    if (!placement.item.disabled && written > 0) {
+      hitTargets.add({ ...placement.rect, width: written }, { type: "terminalAction", action: placement.item.action });
+    }
+  }
+}
 function renderTerminalSessionTabs(frame, rect) {
   if (rect.height <= 0 || rect.width <= 0) return;
   const workspace = webTerminalWorkspace.inspect();
-  let column = rect.column;
-  fillRect(frame, rect, theme().panelSoft);
+  const t = theme();
+  webTerminalSessionTabSources.length = 0;
   for (const session of workspace.sessions) {
-    const activeSession = workspace.activeId === session.id;
-    const label = `${activeSession ? "\u25CF" : "\u25CB"} ${session.title}`;
-    const width = Math.min(rect.column + rect.width - column, Math.max(8, textWidth(label) + 2));
-    if (width <= 0) break;
+    webTerminalSessionTabSources.push({
+      id: session.id,
+      title: session.title,
+      running: session.running,
+      status: session.status
+    });
+  }
+  fillRect(frame, rect, theme().panelSoft);
+  const tabs = workbenchTerminalSessionTabsInto(
+    webTerminalSessionTabPlacements,
+    webTerminalSessionTabSources,
+    workspace.activeId,
+    rect
+  );
+  for (const tab of tabs) {
     write(
       frame,
       rect.row,
-      column,
+      tab.column,
       paint(
-        fit(` ${label}`, width),
-        activeSession ? contrastText(theme().accent, theme().background, theme().text) : theme().text,
-        activeSession ? theme().accent : theme().panelSoft,
-        activeSession
+        tab.label,
+        tab.active ? contrastText(t.accent, t.background, t.text) : t.text,
+        tab.active ? t.accent : t.panelSoft,
+        tab.active
       )
     );
-    hitTargets.add({ column, row: rect.row, width, height: 1 }, { type: "terminalSession", id: session.id });
-    column += width;
-    if (column >= rect.column + rect.width) break;
+    hitTargets.add({ column: tab.column, row: tab.row, width: tab.width, height: 1 }, {
+      type: "terminalSession",
+      id: tab.id
+    });
   }
 }
 function syncWebTerminalScreen(width, height) {
@@ -15014,6 +15101,56 @@ function syncWebTerminalScreen(width, height) {
     "\x1B[1mweb-shell\x1B[0m:\x1B[34m~/deno_tui\x1B[0m$ _"
   ];
   webTerminalScreen.write(transcript.join("\r\n"));
+}
+function applyWebTerminalAction(action) {
+  const inspection = webTerminalWorkspace.inspect();
+  if (action === "new") {
+    const id2 = nextWebTerminalSessionId();
+    const title = webTerminalSessionTitle(id2);
+    webTerminalWorkspace.add({
+      id: id2,
+      title,
+      kind: "command",
+      command: "web-shell",
+      metadata: { source: "browser-demo" }
+    }, {
+      activate: true,
+      backendId: "browser-mock",
+      status: "running",
+      running: true
+    });
+    push(`terminal new ${title}`);
+  } else if (action === "previous") {
+    const descriptor = webTerminalWorkspace.activateRelative(-1);
+    push(descriptor ? `terminal session ${descriptor.title}` : "terminal previous unavailable");
+  } else if (action === "next") {
+    const descriptor = webTerminalWorkspace.activateRelative(1);
+    push(descriptor ? `terminal session ${descriptor.title}` : "terminal next unavailable");
+  } else if (action === "close") {
+    if (inspection.activeId && inspection.sessions.length > 1) {
+      webTerminalWorkspace.remove(inspection.activeId);
+      push("terminal session closed");
+    }
+  } else if (action === "restart") {
+    if (inspection.activeId) {
+      webTerminalWorkspace.restart(inspection.activeId);
+      push(`terminal restart ${webTerminalWorkspace.active?.title ?? inspection.activeId}`);
+    }
+  }
+  webTerminalScreenKey = "";
+  active.value = "terminal";
+}
+function nextWebTerminalSessionId() {
+  const existing = new Set(webTerminalWorkspace.inspect().sessions.map((session) => session.id));
+  for (let index = 1; index < 1e4; index += 1) {
+    const id2 = `pages-shell-${index}`;
+    if (!existing.has(id2)) return id2;
+  }
+  return `pages-shell-${Date.now()}`;
+}
+function webTerminalSessionTitle(id2) {
+  const match = /^pages-shell-(\d+)$/.exec(id2);
+  return match ? `Pages Shell ${match[1]}` : "Pages Shell";
 }
 function panelLines(id2, height) {
   panelLineBuffer.length = 0;
@@ -15088,6 +15225,8 @@ function applyHit(target, x, y) {
     webTerminalScreenKey = "";
     active.value = "terminal";
     push(`terminal session ${hit.id}`);
+  } else if (hit.type === "terminalAction") {
+    applyWebTerminalAction(hit.action);
   } else if (hit.type === "workspaceScrollbar") {
     workspaceScroll.scrollTo(
       0,
