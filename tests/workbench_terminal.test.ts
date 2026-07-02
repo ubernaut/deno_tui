@@ -15,6 +15,8 @@ import {
   createWorkbenchShellSession,
   resolveWorkbenchShellBackend,
   workbenchTerminalSessionTabsInto,
+  type WorkbenchTerminalToolbarAction,
+  workbenchTerminalToolbarItemsInto,
 } from "../src/app/workbench/mod.ts";
 
 Deno.test("resolveWorkbenchShellBackend prefers an available PTY backend", async () => {
@@ -107,6 +109,65 @@ Deno.test("workbenchTerminalSessionTabsInto projects clipped selectable tabs", (
   assertEquals(tabs[0]?.label, "[ * Shell One ]");
   assertEquals(tabs[1]?.label.startsWith("[ I Very"), true);
   assertEquals(tabs.every((tab) => tab.column + tab.width <= 32), true);
+});
+
+Deno.test("workbenchTerminalToolbarItemsInto projects console shell button state", () => {
+  const items = workbenchTerminalToolbarItemsInto([], {
+    activeId: "shell-1",
+    sessionCount: 2,
+    paneCount: 2,
+    zoomedPaneId: "pane-1",
+    shellRunning: true,
+    inputMode: "raw",
+    copyMode: true,
+    scrollbackTotalRows: 100,
+    scrollbackViewportRows: 20,
+    searchQuery: "deno",
+    searchMatchCount: 3,
+  });
+
+  assertEquals(items.find((item) => item.action === "previous")?.disabled, false);
+  assertEquals(items.find((item) => item.action === "close")?.disabled, false);
+  assertEquals(items.find((item) => item.action === "zoomPane")?.active, true);
+  assertEquals(items.find((item) => item.action === "closePane")?.disabled, false);
+  assertEquals(items.find((item) => item.action === "start")?.disabled, true);
+  assertEquals(items.find((item) => item.action === "stop")?.disabled, false);
+  assertEquals(items.find((item) => item.action === "raw")?.active, true);
+  assertEquals(items.find((item) => item.action === "copy")?.active, true);
+  assertEquals(items.find((item) => item.action === "search")?.active, true);
+  assertEquals(items.find((item) => item.action === "previousMatch")?.disabled, false);
+  assertEquals(items.find((item) => item.action === "top")?.disabled, false);
+});
+
+Deno.test("workbenchTerminalToolbarItemsInto supports browser-safe action subsets", () => {
+  const webActions: WorkbenchTerminalToolbarAction[] = [
+    "new",
+    "previous",
+    "next",
+    "close",
+    "splitRow",
+    "splitColumn",
+    "zoomPane",
+    "closePane",
+    "restart",
+    "search",
+    "previousMatch",
+    "nextMatch",
+  ];
+  const items = workbenchTerminalToolbarItemsInto([], {
+    sessionCount: 1,
+    paneCount: 1,
+    scrollbackTotalRows: 0,
+    searchMatchCount: 0,
+  }, { actions: webActions });
+
+  assertEquals(items.map((item) => item.action), webActions);
+  assertEquals(items.find((item) => item.action === "previous")?.disabled, true);
+  assertEquals(items.find((item) => item.action === "close")?.disabled, true);
+  assertEquals(items.find((item) => item.action === "restart")?.disabled, true);
+  assertEquals(items.find((item) => item.action === "search")?.disabled, true);
+  assertEquals(items.find((item) => item.action === "nextMatch")?.disabled, true);
+  assertEquals(items.some((item) => item.action === "start"), false);
 });
 
 function fakeBackend(id: string, pty: boolean): TerminalBackend {

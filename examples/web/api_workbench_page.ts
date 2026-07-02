@@ -84,6 +84,8 @@ import {
   type WorkbenchTerminalSessionTab,
   type WorkbenchTerminalSessionTabPlacement,
   workbenchTerminalSessionTabsInto,
+  type WorkbenchTerminalToolbarAction,
+  workbenchTerminalToolbarItemsInto,
   type WorkbenchTitlebarButtonKind,
   workbenchVerticalScrollbarCellsInto,
   workbenchVerticalScrollbarRect,
@@ -145,19 +147,7 @@ type Hit =
 type ControlHitAction = "previous" | "next" | "activate" | "set" | "focus" | "toggle";
 type ButtonTone = "default" | "danger" | "warning" | "success" | "muted";
 type MobileAction = "next" | "controls" | "theme" | "help" | "restore" | "wide" | "dense";
-type WebTerminalAction =
-  | "new"
-  | "previous"
-  | "next"
-  | "close"
-  | "splitRow"
-  | "splitColumn"
-  | "zoomPane"
-  | "closePane"
-  | "restart"
-  | "search"
-  | "previousMatch"
-  | "nextMatch";
+type WebTerminalAction = WorkbenchTerminalToolbarAction;
 
 interface DropdownOverlay {
   kind: "theme" | "control";
@@ -262,20 +252,21 @@ const htmlCssLayoutBoxes: ComputedLayoutBox[] = [];
 const minimizedShelfEntries: Array<{ id: PanelId; title: string }> = [];
 const fullscreenTabEntries: Array<{ id: PanelId; title: string; selected?: boolean; hidden?: boolean }> = [];
 const verticalScrollbarCells: Array<{ column: number; row: number; glyph: string }> = [];
-const webTerminalButtonItems: WorkbenchButtonRowItem<WebTerminalAction>[] = [
-  { label: "New", action: "new", tone: "success" },
-  { label: "Prev", action: "previous", tone: "muted" },
-  { label: "Next", action: "next", tone: "muted" },
-  { label: "Close", action: "close", tone: "danger" },
-  { label: "Split H", action: "splitRow" },
-  { label: "Split V", action: "splitColumn" },
-  { label: "Zoom", action: "zoomPane" },
-  { label: "Close Pane", action: "closePane", tone: "danger" },
-  { label: "Restart", action: "restart", tone: "warning" },
-  { label: "Search", action: "search" },
-  { label: "Prev Hit", action: "previousMatch" },
-  { label: "Next Hit", action: "nextMatch" },
+const webTerminalActions: readonly WebTerminalAction[] = [
+  "new",
+  "previous",
+  "next",
+  "close",
+  "splitRow",
+  "splitColumn",
+  "zoomPane",
+  "closePane",
+  "restart",
+  "search",
+  "previousMatch",
+  "nextMatch",
 ];
+const webTerminalButtonItems: WorkbenchButtonRowItem<WebTerminalAction>[] = [];
 const webTerminalButtonPlacements: WorkbenchButtonRowPlacement<WebTerminalAction>[] = [];
 const webTerminalSessionTabSources: WorkbenchTerminalSessionTab[] = [];
 const webTerminalSessionTabPlacements: WorkbenchTerminalSessionTabPlacement[] = [];
@@ -1056,27 +1047,16 @@ function renderTerminalToolbar(
   if (rect.height <= 0 || rect.width <= 0) return;
   const scrollback = activeWebTerminalScrollback();
   const scrollbackInspection = scrollback?.inspect();
-  const hasMatches = (scrollbackInspection?.matches.length ?? 0) > 0;
-  for (const item of webTerminalButtonItems) {
-    item.disabled = false;
-    item.active = false;
-    if (item.action === "previous" || item.action === "next") {
-      item.disabled = workspace.sessions.length < 2;
-    } else if (item.action === "close") {
-      item.disabled = workspace.sessions.length <= 1;
-    } else if (item.action === "zoomPane") {
-      item.active = workspace.layout.zoomedPaneId !== undefined;
-    } else if (item.action === "closePane") {
-      item.disabled = workspace.layout.count < 2;
-    } else if (item.action === "restart") {
-      item.disabled = !workspace.activeId;
-    } else if (item.action === "search") {
-      item.active = !!scrollbackInspection?.query;
-      item.disabled = !scrollbackInspection || scrollbackInspection.totalRows === 0;
-    } else if (item.action === "previousMatch" || item.action === "nextMatch") {
-      item.disabled = !hasMatches;
-    }
-  }
+  workbenchTerminalToolbarItemsInto(webTerminalButtonItems, {
+    activeId: workspace.activeId,
+    sessionCount: workspace.sessions.length,
+    paneCount: workspace.layout.count,
+    zoomedPaneId: workspace.layout.zoomedPaneId,
+    scrollbackTotalRows: scrollbackInspection?.totalRows,
+    scrollbackViewportRows: scrollbackInspection?.viewportRows,
+    searchQuery: scrollbackInspection?.query,
+    searchMatchCount: scrollbackInspection?.matches.length,
+  }, { actions: webTerminalActions });
   layoutWorkbenchButtonRowInto(webTerminalButtonPlacements, webTerminalButtonItems, rect, rect.row);
   for (const placement of webTerminalButtonPlacements) {
     const written = writeButton(frame, placement.rect.row, placement.rect.column, placement.item.label, {

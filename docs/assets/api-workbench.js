@@ -12632,6 +12632,27 @@ function clampByte(value) {
 }
 
 // src/app/workbench_terminal.ts
+var WORKBENCH_TERMINAL_TOOLBAR_ACTIONS = [
+  "new",
+  "previous",
+  "next",
+  "close",
+  "splitRow",
+  "splitColumn",
+  "zoomPane",
+  "closePane",
+  "start",
+  "stop",
+  "restart",
+  "clear",
+  "raw",
+  "copy",
+  "search",
+  "previousMatch",
+  "nextMatch",
+  "top",
+  "bottom"
+];
 function workbenchTerminalSessionTabsInto(target, sessions, activeId, rect, options = {}) {
   target.length = 0;
   if (rect.width <= 0 || rect.height <= 0) return target;
@@ -12660,6 +12681,66 @@ function workbenchTerminalSessionTabsInto(target, sessions, activeId, rect, opti
     column += width + 1;
   }
   return target;
+}
+function workbenchTerminalToolbarItemsInto(target, state, options = {}) {
+  target.length = 0;
+  const actions = options.actions ?? WORKBENCH_TERMINAL_TOOLBAR_ACTIONS;
+  const hasMatches = (state.searchMatchCount ?? 0) > 0;
+  const scrollDisabled = (state.scrollbackTotalRows ?? 0) <= (state.scrollbackViewportRows ?? 0);
+  for (const action of actions) {
+    const item = workbenchTerminalToolbarItemForAction(action);
+    if (item === void 0) continue;
+    if (action === "previous" || action === "next") {
+      item.disabled = state.sessionCount < 2;
+    } else if (action === "close") {
+      item.disabled = state.activeId === void 0 || state.sessionCount <= 1;
+    } else if (action === "zoomPane") {
+      item.active = state.zoomedPaneId !== void 0;
+    } else if (action === "closePane") {
+      item.disabled = (state.paneCount ?? 1) < 2;
+    } else if (action === "start") {
+      item.disabled = state.activeId === void 0 || state.shellRunning === true || state.shellStarting === true;
+    } else if (action === "stop") {
+      item.disabled = state.shellRunning !== true;
+    } else if (action === "restart") {
+      item.disabled = state.activeId === void 0;
+    } else if (action === "raw") {
+      item.active = state.inputMode === "raw";
+      item.disabled = state.shellRunning !== true;
+    } else if (action === "copy") {
+      item.active = state.copyMode === true;
+    } else if (action === "search") {
+      item.active = !!state.searchQuery;
+      item.disabled = (state.scrollbackTotalRows ?? 0) <= 0;
+    } else if (action === "previousMatch" || action === "nextMatch") {
+      item.disabled = !hasMatches;
+    } else if (action === "top" || action === "bottom") {
+      item.disabled = scrollDisabled;
+    }
+    target.push(item);
+  }
+  return target;
+}
+function workbenchTerminalToolbarItemForAction(action) {
+  if (action === "new") return { label: "New", action, tone: "success" };
+  if (action === "previous") return { label: "Prev", action, tone: "muted" };
+  if (action === "next") return { label: "Next", action, tone: "muted" };
+  if (action === "close") return { label: "Close", action, tone: "danger" };
+  if (action === "splitRow") return { label: "Split H", action };
+  if (action === "splitColumn") return { label: "Split V", action };
+  if (action === "zoomPane") return { label: "Zoom", action };
+  if (action === "closePane") return { label: "Close Pane", action, tone: "danger" };
+  if (action === "start") return { label: "Start", action };
+  if (action === "stop") return { label: "Stop", action, tone: "danger" };
+  if (action === "restart") return { label: "Restart", action, tone: "warning" };
+  if (action === "clear") return { label: "Clear", action, tone: "muted" };
+  if (action === "raw") return { label: "Raw", action };
+  if (action === "copy") return { label: "Copy", action };
+  if (action === "search") return { label: "Search", action };
+  if (action === "previousMatch") return { label: "Prev Hit", action };
+  if (action === "nextMatch") return { label: "Next Hit", action };
+  if (action === "top") return { label: "Top", action };
+  if (action === "bottom") return { label: "Bottom", action };
 }
 
 // src/app/workbench_titlebar.ts
@@ -14779,20 +14860,21 @@ var htmlCssLayoutBoxes = [];
 var minimizedShelfEntries = [];
 var fullscreenTabEntries = [];
 var verticalScrollbarCells = [];
-var webTerminalButtonItems = [
-  { label: "New", action: "new", tone: "success" },
-  { label: "Prev", action: "previous", tone: "muted" },
-  { label: "Next", action: "next", tone: "muted" },
-  { label: "Close", action: "close", tone: "danger" },
-  { label: "Split H", action: "splitRow" },
-  { label: "Split V", action: "splitColumn" },
-  { label: "Zoom", action: "zoomPane" },
-  { label: "Close Pane", action: "closePane", tone: "danger" },
-  { label: "Restart", action: "restart", tone: "warning" },
-  { label: "Search", action: "search" },
-  { label: "Prev Hit", action: "previousMatch" },
-  { label: "Next Hit", action: "nextMatch" }
+var webTerminalActions = [
+  "new",
+  "previous",
+  "next",
+  "close",
+  "splitRow",
+  "splitColumn",
+  "zoomPane",
+  "closePane",
+  "restart",
+  "search",
+  "previousMatch",
+  "nextMatch"
 ];
+var webTerminalButtonItems = [];
 var webTerminalButtonPlacements = [];
 var webTerminalSessionTabSources = [];
 var webTerminalSessionTabPlacements = [];
@@ -15520,27 +15602,16 @@ function renderTerminalToolbar(frame, rect, workspace = webTerminalWorkspace.ins
   if (rect.height <= 0 || rect.width <= 0) return;
   const scrollback = activeWebTerminalScrollback();
   const scrollbackInspection = scrollback?.inspect();
-  const hasMatches = (scrollbackInspection?.matches.length ?? 0) > 0;
-  for (const item of webTerminalButtonItems) {
-    item.disabled = false;
-    item.active = false;
-    if (item.action === "previous" || item.action === "next") {
-      item.disabled = workspace.sessions.length < 2;
-    } else if (item.action === "close") {
-      item.disabled = workspace.sessions.length <= 1;
-    } else if (item.action === "zoomPane") {
-      item.active = workspace.layout.zoomedPaneId !== void 0;
-    } else if (item.action === "closePane") {
-      item.disabled = workspace.layout.count < 2;
-    } else if (item.action === "restart") {
-      item.disabled = !workspace.activeId;
-    } else if (item.action === "search") {
-      item.active = !!scrollbackInspection?.query;
-      item.disabled = !scrollbackInspection || scrollbackInspection.totalRows === 0;
-    } else if (item.action === "previousMatch" || item.action === "nextMatch") {
-      item.disabled = !hasMatches;
-    }
-  }
+  workbenchTerminalToolbarItemsInto(webTerminalButtonItems, {
+    activeId: workspace.activeId,
+    sessionCount: workspace.sessions.length,
+    paneCount: workspace.layout.count,
+    zoomedPaneId: workspace.layout.zoomedPaneId,
+    scrollbackTotalRows: scrollbackInspection?.totalRows,
+    scrollbackViewportRows: scrollbackInspection?.viewportRows,
+    searchQuery: scrollbackInspection?.query,
+    searchMatchCount: scrollbackInspection?.matches.length
+  }, { actions: webTerminalActions });
   layoutWorkbenchButtonRowInto(webTerminalButtonPlacements, webTerminalButtonItems, rect, rect.row);
   for (const placement of webTerminalButtonPlacements) {
     const written = writeButton(frame, placement.rect.row, placement.rect.column, placement.item.label, {

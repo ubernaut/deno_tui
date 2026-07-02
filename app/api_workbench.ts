@@ -143,6 +143,8 @@ import {
   type WorkbenchTerminalSessionTab,
   type WorkbenchTerminalSessionTabPlacement,
   workbenchTerminalSessionTabsInto,
+  type WorkbenchTerminalToolbarAction,
+  workbenchTerminalToolbarItemsInto,
 } from "../src/app/workbench_terminal.ts";
 import { AudioRegistry } from "./audio.ts";
 import {
@@ -283,26 +285,7 @@ type ControlHitAction = "previous" | "next" | "activate" | "set" | "focus" | "to
 type ConfigHitAction = "previous" | "next" | "activate";
 type AsciiConfigModalAction = "cancel" | "apply" | "ok";
 type TerminalOutputAction = "run" | "stop" | "restart" | "clear" | "follow" | "copy" | "raw";
-type TerminalShellAction =
-  | "new"
-  | "previous"
-  | "next"
-  | "close"
-  | "splitRow"
-  | "splitColumn"
-  | "zoomPane"
-  | "closePane"
-  | "start"
-  | "stop"
-  | "restart"
-  | "clear"
-  | "raw"
-  | "copy"
-  | "search"
-  | "previousMatch"
-  | "nextMatch"
-  | "top"
-  | "bottom";
+type TerminalShellAction = WorkbenchTerminalToolbarAction;
 type ButtonTone = "default" | "danger" | "warning" | "success" | "muted";
 type AsciiNumericKey = WorkbenchAsciiNumericKey;
 type AsciiToggleKey = WorkbenchAsciiToggleKey;
@@ -327,27 +310,7 @@ const terminalOutputButtonItems: WorkbenchButtonRowItem<TerminalOutputAction>[] 
   { label: "Copy Cmd", action: "copy", tone: "muted" },
 ];
 const terminalOutputButtonPlacements: WorkbenchButtonRowPlacement<TerminalOutputAction>[] = [];
-const terminalShellButtonItems: WorkbenchButtonRowItem<TerminalShellAction>[] = [
-  { label: "New", action: "new", tone: "success" },
-  { label: "Prev", action: "previous", tone: "muted" },
-  { label: "Next", action: "next", tone: "muted" },
-  { label: "Close", action: "close", tone: "danger" },
-  { label: "Split H", action: "splitRow" },
-  { label: "Split V", action: "splitColumn" },
-  { label: "Zoom", action: "zoomPane" },
-  { label: "Close Pane", action: "closePane", tone: "danger" },
-  { label: "Start", action: "start" },
-  { label: "Stop", action: "stop", tone: "danger" },
-  { label: "Restart", action: "restart", tone: "warning" },
-  { label: "Clear", action: "clear", tone: "muted" },
-  { label: "Raw", action: "raw" },
-  { label: "Copy", action: "copy" },
-  { label: "Search", action: "search" },
-  { label: "Prev Hit", action: "previousMatch" },
-  { label: "Next Hit", action: "nextMatch" },
-  { label: "Top", action: "top" },
-  { label: "Bottom", action: "bottom" },
-];
+const terminalShellButtonItems: WorkbenchButtonRowItem<TerminalShellAction>[] = [];
 const terminalShellButtonPlacements: WorkbenchButtonRowPlacement<TerminalShellAction>[] = [];
 const terminalShellSessionTabSources: WorkbenchTerminalSessionTab[] = [];
 const terminalShellSessionTabPlacements: WorkbenchTerminalSessionTabPlacement[] = [];
@@ -2173,38 +2136,20 @@ function renderTerminalShellToolbar(frame: Frame, rect: Rectangle, startRow: num
   const workspaceInspection = terminalShell.inspect();
   const shell = activeTerminalShell();
   const shellInspection = shell?.inspect();
-  const scrollDisabled = !shellInspection ||
-    shellInspection.scrollback.totalRows <= shellInspection.scrollback.viewportRows;
-  const hasMatches = (shellInspection?.scrollback.matches.length ?? 0) > 0;
-  for (const item of terminalShellButtonItems) {
-    item.disabled = false;
-    item.active = false;
-    if (item.action === "previous" || item.action === "next") {
-      item.disabled = workspaceInspection.sessions.length < 2;
-    } else if (item.action === "close") {
-      item.disabled = !workspaceInspection.activeId || workspaceInspection.sessions.length <= 1;
-    } else if (item.action === "zoomPane") {
-      item.active = workspaceInspection.workspace.layout.zoomedPaneId !== undefined;
-    } else if (item.action === "closePane") {
-      item.disabled = workspaceInspection.workspace.layout.count < 2;
-    } else if (item.action === "start") {
-      item.disabled = !shell || shell.running || shell.status.peek() === "starting";
-    } else if (item.action === "stop") {
-      item.disabled = !shell?.running;
-    } else if (item.action === "raw") {
-      item.active = terminalShellInputMode.peek() === "raw";
-      item.disabled = !shell?.running;
-    } else if (item.action === "copy") {
-      item.active = shell?.scrollback.mode === "copy";
-    } else if (item.action === "search") {
-      item.active = !!shellInspection?.scrollback.query;
-      item.disabled = !shellInspection || shellInspection.scrollback.totalRows === 0;
-    } else if (item.action === "previousMatch" || item.action === "nextMatch") {
-      item.disabled = !hasMatches;
-    } else if (item.action === "top" || item.action === "bottom") {
-      item.disabled = scrollDisabled;
-    }
-  }
+  workbenchTerminalToolbarItemsInto(terminalShellButtonItems, {
+    activeId: workspaceInspection.activeId,
+    sessionCount: workspaceInspection.sessions.length,
+    paneCount: workspaceInspection.workspace.layout.count,
+    zoomedPaneId: workspaceInspection.workspace.layout.zoomedPaneId,
+    shellRunning: shell?.running,
+    shellStarting: shell?.status.peek() === "starting",
+    inputMode: terminalShellInputMode.peek(),
+    copyMode: shell?.scrollback.mode === "copy",
+    scrollbackTotalRows: shellInspection?.scrollback.totalRows,
+    scrollbackViewportRows: shellInspection?.scrollback.viewportRows,
+    searchQuery: shellInspection?.scrollback.query,
+    searchMatchCount: shellInspection?.scrollback.matches.length,
+  });
   const nextRow = layoutWorkbenchButtonRowInto(
     terminalShellButtonPlacements,
     terminalShellButtonItems,
