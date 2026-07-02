@@ -250,12 +250,13 @@ export function createNeonThreeScene(mode: ThreeSceneMode, options: NeonThreeSce
       }
       case "emergency": {
         camera.position.set(0, 0.2, 6.2);
-        const stripes = Array.from({ length: 10 }, (_, index) => {
+        const stripes: THREE.Mesh[] = new Array(10);
+        for (let index = 0; index < stripes.length; index++) {
           const color = index % 2 === 0 ? colors.alarm : colors.void;
           const stripe = addPanel(group, 0.32, 3.4, color, [(index - 4.5) * 0.48, 0, 0], index % 2 === 0 ? 0.94 : 0.35);
           stripe.rotation.z = Math.PI / 4;
-          return stripe;
-        });
+          stripes[index] = stripe;
+        }
         const topRail = addWirePanel(group, 4.8, 0.42, colors.amber, [0, 1.48, 0.12]);
         const bottomRail = addWirePanel(group, 4.8, 0.42, colors.amber, [0, -1.48, 0.12]);
         const warning = addWirePanel(group, 1.9, 0.82, colors.alarm, [0, 0, 0.22]);
@@ -380,7 +381,8 @@ export function createNeonThreeScene(mode: ThreeSceneMode, options: NeonThreeSce
       }
       case "relay": {
         camera.position.set(0, 0.05, 6.4);
-        const busLines = Array.from({ length: 12 }, (_, index) => {
+        const busLines: THREE.Line[] = new Array(12);
+        for (let index = 0; index < busLines.length; index++) {
           const y = (index % 6 - 2.5) * 0.42;
           const x = index < 6 ? -1.3 : 1.3;
           const line = createPolyline(
@@ -393,19 +395,22 @@ export function createNeonThreeScene(mode: ThreeSceneMode, options: NeonThreeSce
             colors.alarm,
           );
           group.add(line);
-          return line;
-        });
-        const bars = Array.from({ length: 30 }, (_, index) => {
+          busLines[index] = line;
+        }
+        const bars: { bar: THREE.Mesh; baseY: number }[] = new Array(30);
+        for (let index = 0; index < bars.length; index++) {
           const column = index % 5;
           const row = Math.floor(index / 5);
           const x = (column - 2) * 0.8 + (row % 2) * 0.18;
           const y = 1.1 - row * 0.45;
           const bar = addSolidBox(group, 0.66, 0.15, 0.08, colors.phosphor, [x, y, 0.1], 0.96);
           bar.rotation.z = -0.55;
-          return { bar, baseY: y };
-        });
-        const nodes = bars.map(({ bar }, index) =>
-          addSolidBox(
+          bars[index] = { bar, baseY: y };
+        }
+        const nodes: THREE.Mesh[] = new Array(bars.length);
+        for (let index = 0; index < bars.length; index++) {
+          const { bar } = bars[index];
+          nodes[index] = addSolidBox(
             group,
             0.1,
             0.1,
@@ -413,8 +418,8 @@ export function createNeonThreeScene(mode: ThreeSceneMode, options: NeonThreeSce
             index % 4 === 0 ? colors.amber : colors.alarm,
             [bar.position.x - 0.32, bar.position.y - 0.18, 0.18],
             0.92,
-          )
-        );
+          );
+        }
         return {
           tick: (time: number, signal: ThreeSceneSignal) => {
             const seconds = time * 0.001;
@@ -437,12 +442,21 @@ export function createNeonThreeScene(mode: ThreeSceneMode, options: NeonThreeSce
       case "rack": {
         camera.position.set(0, 0.15, 6.3);
         addWirePanel(group, 4.4, 2.8, colors.alarm, [0, 0, -0.14]);
-        const cells = Array.from({ length: 48 }, (_, index) => {
+        const cells: THREE.Mesh[] = new Array(48);
+        for (let index = 0; index < cells.length; index++) {
           const column = index % 8;
           const row = Math.floor(index / 8);
           const color = index % 5 === 0 ? colors.alarm : index % 3 === 0 ? colors.amber : colors.phosphor;
-          return addSolidBox(group, 0.34, 0.12, 0.08, color, [(column - 3.5) * 0.5, 1.08 - row * 0.42, 0.06], 0.9);
-        });
+          cells[index] = addSolidBox(
+            group,
+            0.34,
+            0.12,
+            0.08,
+            color,
+            [(column - 3.5) * 0.5, 1.08 - row * 0.42, 0.06],
+            0.9,
+          );
+        }
         const rails = [-2.25, 2.25].map((x) => addWirePanel(group, 0.18, 2.95, colors.signal, [x, 0, 0.02]));
         return {
           tick: (time: number, signal: ThreeSceneSignal) => {
@@ -502,8 +516,9 @@ export function createNeonThreeScene(mode: ThreeSceneMode, options: NeonThreeSce
           return trace;
         });
         const scan = addPanel(group, 0.12, 2.7, colors.signal, [-2.1, 0, 0.16], 0.42);
-        const markers = Array.from({ length: 12 }, (_, index) =>
-          addSolidBox(
+        const markers: THREE.Mesh[] = new Array(12);
+        for (let index = 0; index < markers.length; index++) {
+          markers[index] = addSolidBox(
             group,
             0.08,
             0.18,
@@ -511,7 +526,8 @@ export function createNeonThreeScene(mode: ThreeSceneMode, options: NeonThreeSce
             index % 4 === 0 ? colors.alarm : colors.phosphor,
             [-2.1 + index * 0.38, -1.16, 0.22],
             0.88,
-          ));
+          );
+        }
         return {
           tick: (time: number, signal: ThreeSceneSignal) => {
             const seconds = time * 0.001;
@@ -576,7 +592,8 @@ export function createNeonThreeScene(mode: ThreeSceneMode, options: NeonThreeSce
       case "psychograph": {
         camera.position.set(0, 0.06, 6.3);
         const backing = addWirePanel(group, 4.6, 2.65, colors.amber, [0, 0, -0.18]);
-        const scribbles = Array.from({ length: 7 }, (_, index) => {
+        const scribbles: THREE.Line[] = new Array(7);
+        for (let index = 0; index < scribbles.length; index++) {
           const trace = createLissajousTrace(
             index % 2 === 0 ? colors.amber : index % 3 === 0 ? colors.alarm : colors.violet,
             1.0 + index * 0.16,
@@ -585,14 +602,15 @@ export function createNeonThreeScene(mode: ThreeSceneMode, options: NeonThreeSce
           );
           trace.position.z = index * 0.025;
           group.add(trace);
-          return trace;
-        });
-        const nodes = Array.from({ length: 10 }, (_, index) => {
+          scribbles[index] = trace;
+        }
+        const nodes: THREE.Group[] = new Array(10);
+        for (let index = 0; index < nodes.length; index++) {
           const node = createTopologyNode(index % 3 === 0 ? colors.alarm : colors.amber, 0.055);
           node.position.set(Math.sin(index * 1.7) * 1.8, Math.cos(index * 1.1) * 0.96, 0.2);
           group.add(node);
-          return node;
-        });
+          nodes[index] = node;
+        }
         return {
           tick: (time: number, signal: ThreeSceneSignal) => {
             const seconds = time * 0.001;
@@ -645,15 +663,16 @@ export function createNeonThreeScene(mode: ThreeSceneMode, options: NeonThreeSce
       }
       case "heat": {
         camera.position.set(0, 0.15, 6.0);
-        const tiles = Array.from({ length: 55 }, (_, index) => {
+        const tiles: THREE.Group[] = new Array(55);
+        for (let index = 0; index < tiles.length; index++) {
           const row = Math.floor(index / 11);
           const column = index % 11;
           const color = index % 7 === 0 ? colors.alarm : index % 3 === 0 ? colors.amber : colors.phosphor;
           const tile = createHexTile(color);
           tile.position.set((column - 5) * 0.36 + (row % 2) * 0.18, 1.0 - row * 0.36, 0);
           group.add(tile);
-          return tile;
-        });
+          tiles[index] = tile;
+        }
         return {
           tick: (time: number, signal: ThreeSceneSignal) => {
             const seconds = time * 0.001;
@@ -770,13 +789,14 @@ export function createNeonThreeScene(mode: ThreeSceneMode, options: NeonThreeSce
           panel.rotation.y = (x / 1.55) * -0.24;
           return panel;
         });
-        const redBlocks = Array.from({ length: 9 }, (_, index) => {
+        const redBlocks: THREE.Mesh[] = new Array(9);
+        for (let index = 0; index < redBlocks.length; index++) {
           const x = -1.75 + (index % 3) * 1.12 + (index > 5 ? 0.22 : 0);
           const y = 0.92 - Math.floor(index / 3) * 0.62;
           const block = addSolidBox(group, 0.28 + (index % 2) * 0.14, 0.22, 0.08, colors.alarm, [x, y, 0.22], 0.88);
           block.rotation.z = index % 2 === 0 ? 0.08 : -0.18;
-          return block;
-        });
+          redBlocks[index] = block;
+        }
         const floor = new THREE.Mesh(
           new THREE.PlaneGeometry(5.2, 2.4, 4, 2),
           new THREE.MeshBasicMaterial({ color: colors.violet, wireframe: true, transparent: true, opacity: 0.35 }),
@@ -837,15 +857,16 @@ export function createNeonThreeScene(mode: ThreeSceneMode, options: NeonThreeSce
           addWirePanel(group, 1.52, 2.1, colors.signal, [0, 0.08, 0.1]),
           addWirePanel(group, 1.52, 2.1, colors.phosphor, [1.42, 0.08, 0]),
         ];
-        const nodes = Array.from({ length: 18 }, (_, index) => {
+        const nodes: THREE.Mesh[] = new Array(18);
+        for (let index = 0; index < nodes.length; index++) {
           const node = new THREE.Mesh(
             new THREE.BoxGeometry(0.16, 0.1, 0.04),
             new THREE.MeshBasicMaterial({ color: index % 3 === 0 ? colors.amber : colors.phosphor }),
           );
           node.position.set((index % 6 - 2.5) * 0.42, 1.1 - Math.floor(index / 6) * 0.45, 0.2);
           group.add(node);
-          return node;
-        });
+          nodes[index] = node;
+        }
         return {
           tick: (time: number, signal: ThreeSceneSignal) => {
             group.rotation.y = signal.twist * 0.32;
@@ -952,7 +973,8 @@ export function createNeonThreeScene(mode: ThreeSceneMode, options: NeonThreeSce
       }
       case "gate": {
         camera.position.set(0, 0.15, 6.0);
-        const gates = Array.from({ length: 8 }, (_, index) => {
+        const gates: THREE.Mesh[] = new Array(8);
+        for (let index = 0; index < gates.length; index++) {
           const gate = addPanel(
             group,
             0.34,
@@ -961,8 +983,8 @@ export function createNeonThreeScene(mode: ThreeSceneMode, options: NeonThreeSce
             [(index - 3.5) * 0.42, 0, 0],
             0.86,
           );
-          return gate;
-        });
+          gates[index] = gate;
+        }
         const clamps = [-1.72, 1.72].map((x) => addWirePanel(group, 0.44, 3.25, colors.amber, [x, 0, 0.18]));
         return {
           tick: (time: number, signal: ThreeSceneSignal) => {
