@@ -7284,7 +7284,8 @@ function wrapTextBoxLines(lines, width, options = {}) {
   const visual = [];
   const safeWidth = Math.max(1, Math.floor(width));
   const wordWrap = options.wordWrap ?? true;
-  for (const [lineIndex, line] of lines.entries()) {
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
+    const line = lines[lineIndex];
     if (!wordWrap || line.length <= safeWidth) {
       visual.push({
         lineIndex,
@@ -10963,40 +10964,38 @@ var TerminalScreenController = class {
     if (mode === 1) {
       for (let row = 0; row <= this.#state.cursor.row; row += 1) {
         const end = row === this.#state.cursor.row ? this.#state.cursor.column + 1 : this.#columns;
-        this.#state.cells[row].splice(0, end, ...blankRow(end));
+        fillBlankCells(this.#state.cells[row], 0, end);
       }
       return;
     }
     for (let row = this.#state.cursor.row; row < this.#rows; row += 1) {
       const start = row === this.#state.cursor.row ? this.#state.cursor.column : 0;
-      this.#state.cells[row].splice(start, this.#columns - start, ...blankRow(this.#columns - start));
+      fillBlankCells(this.#state.cells[row], start, this.#columns - start);
     }
   }
   #eraseLine(mode) {
     const row = this.#state.cells[this.#state.cursor.row];
     const start = mode === 1 || mode === 2 ? 0 : this.#state.cursor.column;
     const end = mode === 1 ? this.#state.cursor.column + 1 : this.#columns;
-    row.splice(start, end - start, ...blankRow(end - start));
+    fillBlankCells(row, start, end - start);
   }
   #insertCharacters(count) {
     const row = this.#state.cells[this.#state.cursor.row];
     const column = this.#state.cursor.column;
     const amount = clamp3(Math.floor(count), 1, this.#columns - column);
-    row.splice(column, 0, ...blankRow(amount));
-    row.length = this.#columns;
+    shiftCellsRight(row, column, amount, this.#columns);
   }
   #deleteCharacters(count) {
     const row = this.#state.cells[this.#state.cursor.row];
     const column = this.#state.cursor.column;
     const amount = clamp3(Math.floor(count), 1, this.#columns - column);
-    row.splice(column, amount);
-    row.push(...blankRow(amount));
+    shiftCellsLeft(row, column, amount, this.#columns);
   }
   #eraseCharacters(count) {
     const row = this.#state.cells[this.#state.cursor.row];
     const column = this.#state.cursor.column;
     const amount = clamp3(Math.floor(count), 1, this.#columns - column);
-    row.splice(column, amount, ...blankRow(amount));
+    fillBlankCells(row, column, amount);
   }
   #insertLines(count) {
     const row = this.#state.cursor.row;
@@ -11123,6 +11122,29 @@ function createRows(columns, rows2) {
 }
 function blankRow(columns) {
   return new Array(columns).fill(BLANK_CELL);
+}
+function fillBlankCells(row, start, count) {
+  const end = Math.min(row.length, start + Math.max(0, count));
+  for (let column = Math.max(0, start); column < end; column += 1) {
+    row[column] = BLANK_CELL;
+  }
+}
+function shiftCellsRight(row, start, amount, columns) {
+  const shift = Math.max(0, amount);
+  if (shift === 0) return;
+  for (let column = columns - 1; column >= start + shift; column -= 1) {
+    row[column] = row[column - shift] ?? BLANK_CELL;
+  }
+  fillBlankCells(row, start, Math.min(shift, columns - start));
+}
+function shiftCellsLeft(row, start, amount, columns) {
+  const shift = Math.max(0, amount);
+  if (shift === 0) return;
+  const fillStart = Math.max(start, columns - shift);
+  for (let column = start; column < columns - shift; column += 1) {
+    row[column] = row[column + shift] ?? BLANK_CELL;
+  }
+  fillBlankCells(row, fillStart, columns - fillStart);
 }
 function terminalCellRowsToText(rows2) {
   const output = new Array(rows2.length);
