@@ -125,6 +125,16 @@ export class DirtyRegion {
 
   /** Visits row segments clipped to the supplied rectangle without allocating an output array. */
   forEachIntersection(rectangle: Rectangle, visitor: (segment: DirtyRowSegment) => void): void {
+    this.forEachIntersectionValue(rectangle, (row, startColumn, endColumn) => {
+      visitor({ row, startColumn, endColumn });
+    });
+  }
+
+  /** Visits clipped row segments as primitive values for allocation-sensitive render paths. */
+  forEachIntersectionValue(
+    rectangle: Rectangle,
+    visitor: (row: number, startColumn: number, endColumn: number) => void,
+  ): void {
     const rowStart = Math.floor(rectangle.row);
     const rowEnd = rowStart + Math.max(0, Math.floor(rectangle.height));
     const columnStart = Math.floor(rectangle.column);
@@ -136,7 +146,7 @@ export class DirtyRegion {
         const startColumn = Math.max(columnStart, segment.startColumn);
         const endColumn = Math.min(columnEnd, segment.endColumn);
         if (endColumn > startColumn) {
-          visitor({ row, startColumn, endColumn });
+          visitor(row, startColumn, endColumn);
         }
       }
     }

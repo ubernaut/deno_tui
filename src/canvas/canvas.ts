@@ -431,7 +431,7 @@ function affectedDrawObjects(
 }
 
 function queueDirtyRegion(object: DrawObject, dirtyRegion: DirtyRegion): void {
-  dirtyRegion.forEachIntersection(object.rectangle.peek(), (segment) => {
-    object.queueRerenderRange(segment.row, segment.startColumn, segment.endColumn);
+  dirtyRegion.forEachIntersectionValue(object.rectangle.peek(), (row, startColumn, endColumn) => {
+    object.queueRerenderRange(row, startColumn, endColumn);
   });
 }
