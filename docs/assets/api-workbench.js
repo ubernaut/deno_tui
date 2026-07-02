@@ -4414,67 +4414,70 @@ var LayoutMeasurementCache = class {
 
 // src/layout/solvers/simple_grid.ts
 function placeGridChildren(children, bounds) {
-  const placed = /* @__PURE__ */ new Map();
+  const placed = new Array(children.length);
   const occupied = /* @__PURE__ */ new Set();
   const autoColumns = bounds.columns > 0 ? bounds.columns : Math.max(1, Math.ceil(Math.sqrt(children.length)));
   const autoRows = bounds.rows > 0 ? bounds.rows : Math.max(1, Math.ceil(Math.sqrt(children.length)));
-  const candidates = children.map((child) => {
+  const candidates = new Array(children.length);
+  for (let index = 0; index < children.length; index += 1) {
+    const child = children[index];
     const area = child.style.gridArea ? gridTemplateAreaBounds(bounds.areas ?? [], child.style.gridArea) : void 0;
     const hasExplicitColumn = gridPlacementHasExplicitLine(child.style.gridColumn);
     const hasExplicitRow = gridPlacementHasExplicitLine(child.style.gridRow);
-    return {
+    candidates[index] = {
+      index,
       node: child,
       columnSpan: hasExplicitColumn ? gridPlacementSpan(child.style.gridColumn) : area?.columnSpan ?? gridPlacementSpan(child.style.gridColumn),
       rowSpan: hasExplicitRow ? gridPlacementSpan(child.style.gridRow) : area?.rowSpan ?? gridPlacementSpan(child.style.gridRow),
       explicitColumn: gridPlacementStart(child.style.gridColumn) ?? area?.column,
       explicitRow: gridPlacementStart(child.style.gridRow) ?? area?.row
     };
-  });
-  const placementOrder = [
-    ...candidates.filter((candidate) => candidate.explicitColumn !== void 0 && candidate.explicitRow !== void 0),
-    ...candidates.filter(
-      (candidate) => candidate.explicitColumn !== void 0 !== (candidate.explicitRow !== void 0)
-    ),
-    ...candidates.filter((candidate) => candidate.explicitColumn === void 0 && candidate.explicitRow === void 0)
-  ];
-  for (const candidate of placementOrder) {
-    const position = candidate.explicitColumn !== void 0 && candidate.explicitRow !== void 0 ? { column: candidate.explicitColumn, row: candidate.explicitRow } : candidate.explicitColumn !== void 0 ? findGridSlot(occupied, {
-      preferredColumn: candidate.explicitColumn,
-      columnSpan: candidate.columnSpan,
-      rowSpan: candidate.rowSpan,
-      maxColumns: void 0,
-      maxRows: void 0,
-      scanColumns: Math.max(autoColumns, candidate.explicitColumn + candidate.columnSpan),
-      scanRows: autoRows,
-      autoFlow: bounds.autoFlow
-    }) : candidate.explicitRow !== void 0 ? findGridSlot(occupied, {
-      preferredRow: candidate.explicitRow,
-      columnSpan: candidate.columnSpan,
-      rowSpan: candidate.rowSpan,
-      maxColumns: bounds.columns > 0 ? bounds.columns : void 0,
-      maxRows: void 0,
-      scanColumns: autoColumns,
-      scanRows: Math.max(autoRows, candidate.explicitRow + candidate.rowSpan),
-      autoFlow: bounds.autoFlow
-    }) : findGridSlot(occupied, {
-      columnSpan: candidate.columnSpan,
-      rowSpan: candidate.rowSpan,
-      maxColumns: bounds.autoFlow === "row" && bounds.columns > 0 ? bounds.columns : void 0,
-      maxRows: bounds.autoFlow === "column" && bounds.rows > 0 ? bounds.rows : void 0,
-      scanColumns: autoColumns,
-      scanRows: autoRows,
-      autoFlow: bounds.autoFlow
-    });
-    occupyGridCells(occupied, position.row, position.column, candidate.rowSpan, candidate.columnSpan);
-    placed.set(candidate.node, {
-      node: candidate.node,
-      column: position.column,
-      row: position.row,
-      columnSpan: candidate.columnSpan,
-      rowSpan: candidate.rowSpan
-    });
   }
-  return children.map((child) => placed.get(child)).filter(Boolean);
+  for (let phase = 0; phase < 3; phase += 1) {
+    for (const candidate of candidates) {
+      const explicitColumn = candidate.explicitColumn !== void 0;
+      const explicitRow = candidate.explicitRow !== void 0;
+      if (phase === 0 && (!explicitColumn || !explicitRow)) continue;
+      if (phase === 1 && explicitColumn === explicitRow) continue;
+      if (phase === 2 && (explicitColumn || explicitRow)) continue;
+      const position = candidate.explicitColumn !== void 0 && candidate.explicitRow !== void 0 ? { column: candidate.explicitColumn, row: candidate.explicitRow } : candidate.explicitColumn !== void 0 ? findGridSlot(occupied, {
+        preferredColumn: candidate.explicitColumn,
+        columnSpan: candidate.columnSpan,
+        rowSpan: candidate.rowSpan,
+        maxColumns: void 0,
+        maxRows: void 0,
+        scanColumns: Math.max(autoColumns, candidate.explicitColumn + candidate.columnSpan),
+        scanRows: autoRows,
+        autoFlow: bounds.autoFlow
+      }) : candidate.explicitRow !== void 0 ? findGridSlot(occupied, {
+        preferredRow: candidate.explicitRow,
+        columnSpan: candidate.columnSpan,
+        rowSpan: candidate.rowSpan,
+        maxColumns: bounds.columns > 0 ? bounds.columns : void 0,
+        maxRows: void 0,
+        scanColumns: autoColumns,
+        scanRows: Math.max(autoRows, candidate.explicitRow + candidate.rowSpan),
+        autoFlow: bounds.autoFlow
+      }) : findGridSlot(occupied, {
+        columnSpan: candidate.columnSpan,
+        rowSpan: candidate.rowSpan,
+        maxColumns: bounds.autoFlow === "row" && bounds.columns > 0 ? bounds.columns : void 0,
+        maxRows: bounds.autoFlow === "column" && bounds.rows > 0 ? bounds.rows : void 0,
+        scanColumns: autoColumns,
+        scanRows: autoRows,
+        autoFlow: bounds.autoFlow
+      });
+      occupyGridCells(occupied, position.row, position.column, candidate.rowSpan, candidate.columnSpan);
+      placed[candidate.index] = {
+        node: candidate.node,
+        column: position.column,
+        row: position.row,
+        columnSpan: candidate.columnSpan,
+        rowSpan: candidate.rowSpan
+      };
+    }
+  }
+  return placed;
 }
 function alignGridItemBounds(node, cell) {
   const width = node.style.justifySelf === "stretch" || node.style.width.unit === "auto" ? cell.width : Math.min(cell.width, resolveLayoutLength(node.style.width, cell.width, cell.width));
@@ -4719,8 +4722,8 @@ var SimpleLayoutSolver = class {
     );
     const contentRect = contentRectangle(rect, style2);
     const visible = style2.visibility === "visible" && style2.display !== "none";
-    const flowChildren = style2.display === "flex" ? this.#layoutFlexChildren(node, contentRect) : style2.display === "grid" ? this.#layoutGridChildren(node, contentRect) : this.#layoutBlockChildren(node, contentRect);
-    const children = [...flowChildren, ...this.#layoutAbsoluteChildren(node, contentRect)];
+    const children = style2.display === "flex" ? this.#layoutFlexChildren(node, contentRect) : style2.display === "grid" ? this.#layoutGridChildren(node, contentRect) : this.#layoutBlockChildren(node, contentRect);
+    this.#layoutAbsoluteChildrenInto(children, node, contentRect);
     const scroll = scrollSize(node, contentRect, children);
     return {
       id: node.id,
@@ -4786,7 +4789,9 @@ var SimpleLayoutSolver = class {
       0,
       direction === "row" ? node.style.rowGap || node.style.gap : node.style.columnGap || node.style.gap
     );
-    const items = children.map((child) => {
+    const items = new Array(children.length);
+    for (let index = 0; index < children.length; index += 1) {
+      const child = children[index];
       const basis = preferredFlexBasis(
         child,
         bounds,
@@ -4797,7 +4802,7 @@ var SimpleLayoutSolver = class {
       const minimum = resolveFlexMinimum(child, bounds, direction);
       const maximum = resolveFlexMaximum(child, bounds, direction);
       const max2 = child.style.flexGrow === 0 ? Math.max(minimum, Math.min(maximum ?? basis, basis)) : maximum;
-      return {
+      items[index] = {
         node: child,
         id: child.id,
         basis,
@@ -4813,12 +4818,13 @@ var SimpleLayoutSolver = class {
           this.#intrinsicMeasurementCache
         )
       };
-    });
+    }
     const lines = node.style.flexWrap === "nowrap" ? [items] : wrapFlexLines(items, mainSize(bounds, direction), mainGap);
-    const orderedLines = node.style.flexWrap === "wrap-reverse" ? [...lines].reverse() : lines;
     const boxes = [];
     let crossCursor = direction === "row" ? bounds.row : bounds.column;
-    for (const line of orderedLines) {
+    const reverseLines = node.style.flexWrap === "wrap-reverse";
+    for (let lineIndex = reverseLines ? lines.length - 1 : 0; reverseLines ? lineIndex >= 0 : lineIndex < lines.length; lineIndex += reverseLines ? -1 : 1) {
+      const line = lines[lineIndex];
       const lineCrossSize = lineFlexCrossSize(
         line,
         bounds,
@@ -4847,16 +4853,12 @@ var SimpleLayoutSolver = class {
       autoFlow: node.style.gridAutoFlow,
       areas: node.style.gridTemplateAreas
     });
-    const columnCount = Math.max(
-      1,
-      node.style.gridTemplateColumns.length,
-      ...placed.map((item) => item.column + item.columnSpan)
-    );
-    const rowCount = Math.max(
-      1,
-      node.style.gridTemplateRows.length,
-      ...placed.map((item) => item.row + item.rowSpan)
-    );
+    let columnCount = Math.max(1, node.style.gridTemplateColumns.length);
+    let rowCount = Math.max(1, node.style.gridTemplateRows.length);
+    for (const item of placed) {
+      columnCount = Math.max(columnCount, item.column + item.columnSpan);
+      rowCount = Math.max(rowCount, item.row + item.rowSpan);
+    }
     const columns = resolveGridTracks(
       node.style.gridTemplateColumns,
       columnCount,
@@ -4873,32 +4875,37 @@ var SimpleLayoutSolver = class {
     );
     const columnOffsets = gridTrackOffsets(bounds.column, columns, columnGap);
     const rowOffsets = gridTrackOffsets(bounds.row, rows2, rowGap);
-    return placed.map((item) => {
+    const boxes = new Array(placed.length);
+    for (let index = 0; index < placed.length; index += 1) {
+      const item = placed[index];
       const column = columnOffsets[item.column] ?? bounds.column;
       const row = rowOffsets[item.row] ?? bounds.row;
       const width = gridSpanSize(columns, item.column, item.columnSpan, columnGap);
       const height = gridSpanSize(rows2, item.row, item.rowSpan, rowGap);
       const itemBounds = alignGridItemBounds(item.node, { column, row, width, height });
-      return this.#layoutNode(item.node, itemBounds, false, true);
-    });
+      boxes[index] = this.#layoutNode(item.node, itemBounds, false, true);
+    }
+    return boxes;
   }
-  #layoutAbsoluteChildren(node, bounds) {
-    return layoutAbsoluteChildren(node).map((child) => {
-      return this.#layoutNode(
+  #layoutAbsoluteChildrenInto(target, node, bounds) {
+    for (const child of node.children) {
+      if (child.style.display === "none" || child.style.position !== "absolute") continue;
+      target.push(this.#layoutNode(
         child,
         absoluteChildBounds(child, bounds, this.#defaultTextHeight, this.#intrinsicMeasurementCache)
-      );
-    });
+      ));
+    }
   }
 };
 function simpleLayoutSolver(options = {}) {
   return new SimpleLayoutSolver(options);
 }
 function layoutChildren(node) {
-  return node.children.filter((child) => child.style.display !== "none" && child.style.position !== "absolute");
-}
-function layoutAbsoluteChildren(node) {
-  return node.children.filter((child) => child.style.display !== "none" && child.style.position === "absolute");
+  const children = [];
+  for (const child of node.children) {
+    if (child.style.display !== "none" && child.style.position !== "absolute") children.push(child);
+  }
+  return children;
 }
 function normalizeRect(rect) {
   return {
@@ -5050,13 +5057,21 @@ function wrapFlexLines(items, availableMainSize, gap) {
 }
 function lineFlexCrossSize(items, bounds, direction, alignItems, singleLine) {
   if (alignItems === "stretch" && singleLine) return crossSize(bounds, direction);
-  return Math.max(1, ...items.map((item) => item.crossSize));
+  let size = 1;
+  for (const item of items) size = Math.max(size, item.crossSize);
+  return size;
 }
 function flexLineRects(bounds, direction, items, gap, justifyContent) {
   const rects = flexRects(bounds, direction, items, gap);
-  const ordered = items.map((item) => rects[item.id] ?? bounds);
-  const sizes = ordered.map((rect) => mainSize(rect, direction));
-  const used = sizes.reduce((sum2, size) => sum2 + size, 0) + Math.max(0, items.length - 1) * gap;
+  const sizes = new Array(items.length);
+  let usedSize = 0;
+  for (let index = 0; index < items.length; index += 1) {
+    const item = items[index];
+    const size = mainSize(rects[item.id] ?? bounds, direction);
+    sizes[index] = size;
+    usedSize += size;
+  }
+  const used = usedSize + Math.max(0, items.length - 1) * gap;
   const free = Math.max(0, mainSize(bounds, direction) - used);
   let leading = 0;
   let resolvedGap = gap;
@@ -5119,29 +5134,49 @@ function measureNodeIntrinsic(node, availableWidth, defaultTextHeight, measureme
     if (cacheKey) measurementCache?.set(cacheKey, measured);
     return measured;
   }
-  const childSizes = node.children.map(
-    (child) => measureNodeIntrinsic(child, availableWidth, defaultTextHeight, measurementCache)
-  );
   if (node.style.display === "flex" && node.style.flexDirection === "row") {
+    let width2 = 0;
+    let height2 = defaultTextHeight;
+    for (const child of node.children) {
+      const childSize = measureNodeIntrinsic(child, availableWidth, defaultTextHeight, measurementCache);
+      width2 += childSize.width;
+      height2 = Math.max(height2, childSize.height);
+    }
     measured = {
-      width: childSizes.reduce((sum2, size) => sum2 + size.width, 0) + Math.max(0, childSizes.length - 1) * node.style.columnGap,
-      height: Math.max(defaultTextHeight, ...childSizes.map((size) => size.height))
+      width: width2 + Math.max(0, node.children.length - 1) * node.style.columnGap,
+      height: height2
     };
     if (cacheKey) measurementCache?.set(cacheKey, measured);
     return measured;
   }
+  let width = 1;
+  let height = 0;
+  for (const child of node.children) {
+    const childSize = measureNodeIntrinsic(child, availableWidth, defaultTextHeight, measurementCache);
+    width = Math.max(width, childSize.width);
+    height += Math.max(defaultTextHeight, childSize.height);
+  }
   measured = {
-    width: Math.max(1, ...childSizes.map((size) => size.width)),
-    height: childSizes.reduce((sum2, size) => sum2 + Math.max(defaultTextHeight, size.height), 0)
+    width,
+    height
   };
   if (cacheKey) measurementCache?.set(cacheKey, measured);
   return measured;
 }
 function measureTextIntrinsic(text, availableWidth, defaultTextHeight) {
-  const lines = text.split(/\r?\n/);
-  const width = Math.max(1, ...lines.map((line) => textWidth(line)));
   const wrapWidth = Math.max(1, availableWidth);
-  const height = lines.reduce((sum2, line) => sum2 + Math.max(1, Math.ceil(textWidth(line) / wrapWidth)), 0);
+  let width = 1;
+  let height = 0;
+  let lineStart = 0;
+  for (let index = 0; index <= text.length; index += 1) {
+    const char = text[index];
+    if (index < text.length && char !== "\n" && char !== "\r") continue;
+    const lineWidth = textWidth(text.slice(lineStart, index));
+    width = Math.max(width, lineWidth);
+    height += Math.max(1, Math.ceil(lineWidth / wrapWidth));
+    if (char === "\r" && text[index + 1] === "\n") index += 1;
+    lineStart = index + 1;
+  }
   return { width, height: Math.max(defaultTextHeight, height) };
 }
 function intrinsicMeasurementCacheKey(node, availableWidth, defaultTextHeight) {
