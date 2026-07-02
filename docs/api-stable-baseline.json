@@ -3903,6 +3903,13 @@
     },
     {
       "module": "src/app/workbench_menu.ts",
+      "name": "layoutWorkbenchHeaderInto",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_menu.ts",
       "name": "layoutWorkbenchMenuBarHits",
       "kind": "function",
       "typeOnly": false,

@@ -33,7 +33,7 @@ import {
   isWorkbenchMenuActivationKey,
   isWorkbenchMenuCloseKey,
   layoutWorkbenchButtonRowInto,
-  layoutWorkbenchHeader,
+  layoutWorkbenchHeaderInto,
   layoutWorkbenchMenuBarHitsInto,
   layoutWorkbenchModal,
   layoutWorkbenchPopover,
@@ -83,6 +83,7 @@ import {
   workbenchEmptyWorkspaceMessage,
   type WorkbenchFrameBoxLine,
   workbenchFrameBoxLinesInto,
+  type WorkbenchHeaderLayout,
   type WorkbenchMenuBarHitLayout,
   type WorkbenchPanelWorkspaceState,
   workbenchShelfEntriesInto,
@@ -284,6 +285,7 @@ const fullscreenTabEntries: Array<{ id: PanelId; title: string; selected?: boole
 const minimizedShelfLayoutBuffers = createWorkbenchShelfLayoutBuffers<PanelId>();
 const fullscreenTabLayoutBuffers = createWorkbenchShelfLayoutBuffers<PanelId>();
 const menuBarHitLayouts: WorkbenchMenuBarHitLayout[] = [];
+const headerLayout: WorkbenchHeaderLayout = { menu: { column: 0, row: 0, width: 0, height: 1 } };
 const windowFrameBoxLines: WorkbenchFrameBoxLine[] = [];
 const verticalScrollbarCells: Array<{ column: number; row: number; glyph: string }> = [];
 const webTerminalActions: readonly WebTerminalAction[] = [
@@ -595,7 +597,7 @@ function draw(): void {
   write(frame, 0, 1, paint(` API WORKBENCH `, theme().background, theme().accent, true));
   const closeLabel = buttonText("x", true);
   const closeWidth = textWidth(closeLabel);
-  const header = layoutWorkbenchHeader({
+  const header = layoutWorkbenchHeaderInto(headerLayout, {
     width,
     menuStart: 17,
     closeWidth,

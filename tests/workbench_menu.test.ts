@@ -3,6 +3,7 @@ import {
   isWorkbenchMenuActivationKey,
   isWorkbenchMenuCloseKey,
   layoutWorkbenchHeader,
+  layoutWorkbenchHeaderInto,
   layoutWorkbenchMenuBarHits,
   layoutWorkbenchMenuBarHitsInto,
   layoutWorkbenchTopMenuItemRect,
@@ -172,4 +173,39 @@ Deno.test("layoutWorkbenchHeader projects menu and close button geometry", () =>
       close: undefined,
     },
   );
+});
+
+Deno.test("layoutWorkbenchHeaderInto reuses caller-owned geometry", () => {
+  const target = layoutWorkbenchHeader({
+    width: 80,
+    menuStart: 17,
+    closeWidth: 3,
+    closeMinWidth: 20,
+  });
+  const close = target.close;
+  const sameTarget = layoutWorkbenchHeaderInto(target, {
+    width: 48,
+    row: 2,
+    menuStart: 10,
+    closeWidth: 4,
+    closeMinWidth: 20,
+  });
+
+  assertEquals(sameTarget === target, true);
+  assertEquals(target.close === close, true);
+  assertEquals(target, {
+    menu: { column: 10, row: 2, width: 34, height: 1 },
+    close: { column: 44, row: 2, width: 4, height: 1 },
+  });
+
+  layoutWorkbenchHeaderInto(target, {
+    width: 12,
+    menuStart: 10,
+    closeWidth: 4,
+    closeMinWidth: 20,
+  });
+  assertEquals(target, {
+    menu: { column: 10, row: 0, width: 2, height: 1 },
+    close: undefined,
+  });
 });

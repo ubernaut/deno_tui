@@ -38,7 +38,7 @@ import {
   intersects,
   isWorkbenchMenuActivationKey,
   isWorkbenchVisualizationWindowId,
-  layoutWorkbenchHeader,
+  layoutWorkbenchHeaderInto,
   layoutWorkbenchMenuBarHitsInto,
   layoutWorkbenchModal,
   layoutWorkbenchPopover,
@@ -64,6 +64,7 @@ import {
   type WorkbenchFrameBoxLine,
   workbenchFrameBoxLinesInto,
   workbenchHeaderHelp,
+  type WorkbenchHeaderLayout,
   workbenchHorizontalScrollbarCellsInto,
   type WorkbenchMenuBarHitLayout,
   workbenchShelfEntriesInto,
@@ -599,6 +600,7 @@ const workspaceMenuSlice: VisibleMenuSlice = { items: [], indexes: [] };
 const workspaceMenuLabelBuffer: string[] = [];
 const realSourceIdBuffer: string[] = [];
 const menuBarHitLayouts: WorkbenchMenuBarHitLayout[] = [];
+const headerLayout: WorkbenchHeaderLayout = { menu: { column: 0, row: 0, width: 0, height: 1 } };
 const minimizedShelfEntries: Array<{ id: WindowId; title: string }> = [];
 const fullscreenTabEntries: Array<{ id: WindowId; title: string; selected?: boolean; hidden?: boolean }> = [];
 const minimizedShelfLayoutBuffers = createWorkbenchShelfLayoutBuffers<WindowId>();
@@ -1047,7 +1049,7 @@ function renderHeader(frame: Frame): void {
   write(frame, 0, 0, paint(" API WORKBENCH ", { fg: t.background, bg: t.accent, bold: true }));
   const closeLabel = width >= 20 ? buttonText("x", { compact: true }) : "";
   const closeWidth = textWidth(closeLabel);
-  const header = layoutWorkbenchHeader({ width, menuStart: 17, closeWidth, closeMinWidth: 20 });
+  const header = layoutWorkbenchHeaderInto(headerLayout, { width, menuStart: 17, closeWidth, closeMinWidth: 20 });
   renderMenuHits(header.menu.column, header.menu.row, header.menu.width);
   write(
     frame,

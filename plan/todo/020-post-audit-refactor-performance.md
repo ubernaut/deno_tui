@@ -59,3 +59,4 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Added a reusable Three ASCII readback view cache and routed renderer readback assembly through it.
 - Added reusable shelf/tab layout buffers and routed terminal and web workbench shelf rendering through them.
 - Added reusable top-menu hit layout projection and routed terminal and web workbench menu hit rendering through it.
+- Added reusable header layout projection and routed terminal and web workbench header rendering through it.

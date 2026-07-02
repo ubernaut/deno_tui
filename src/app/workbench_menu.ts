@@ -227,6 +227,14 @@ export function layoutWorkbenchMenuBarHitsInto(
 
 /** Lays out the header menu strip and optional close button for workbench render adapters. */
 export function layoutWorkbenchHeader(options: WorkbenchHeaderLayoutOptions): WorkbenchHeaderLayout {
+  return layoutWorkbenchHeaderInto({ menu: { column: 0, row: 0, width: 0, height: 1 } }, options);
+}
+
+/** Lays out the header menu strip into caller-owned storage. */
+export function layoutWorkbenchHeaderInto(
+  target: WorkbenchHeaderLayout,
+  options: WorkbenchHeaderLayoutOptions,
+): WorkbenchHeaderLayout {
   const width = Math.max(0, Math.floor(options.width));
   const row = Math.max(0, Math.floor(options.row ?? 0));
   const menuStart = Math.max(0, Math.floor(options.menuStart ?? 17));
@@ -234,8 +242,19 @@ export function layoutWorkbenchHeader(options: WorkbenchHeaderLayoutOptions): Wo
   const closeVisible = closeWidth > 0 && width >= Math.max(0, Math.floor(options.closeMinWidth ?? 0));
   const reservedCloseWidth = closeVisible || options.reserveCloseWhenHidden ? closeWidth : 0;
   const menuWidth = Math.max(0, width - menuStart - reservedCloseWidth);
-  return {
-    menu: { column: menuStart, row, width: menuWidth, height: 1 },
-    close: closeVisible ? { column: Math.max(0, width - closeWidth), row, width: closeWidth, height: 1 } : undefined,
-  };
+  target.menu.column = menuStart;
+  target.menu.row = row;
+  target.menu.width = menuWidth;
+  target.menu.height = 1;
+  if (closeVisible) {
+    const close = target.close ?? { column: 0, row, width: 0, height: 1 };
+    close.column = Math.max(0, width - closeWidth);
+    close.row = row;
+    close.width = closeWidth;
+    close.height = 1;
+    target.close = close;
+  } else {
+    target.close = undefined;
+  }
+  return target;
 }
