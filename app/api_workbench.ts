@@ -184,7 +184,8 @@ import {
   apiWorkbenchSliderSetHitInto,
   apiWorkbenchStepperHitPlacementsInto,
   apiWorkbenchStepperRowInto,
-  apiWorkbenchTextboxProjection,
+  apiWorkbenchTextboxProjectionInto,
+  type ApiWorkbenchTextboxProjectionRow,
   nextApiWorkbenchControlId,
   nextSortableDataColumn,
 } from "./api_workbench_controls.ts";
@@ -353,6 +354,7 @@ const controlLineHitPlacements: ApiWorkbenchControlHitPlacement[] = [];
 const controlProjectedRows: ApiWorkbenchProjectedControlRow[] = [];
 const controlCheckboxOptions: ApiWorkbenchCheckboxOption[] = [];
 const controlRadioOptions: ApiWorkbenchRadioOption[] = [];
+const controlTextboxProjectionRows: ApiWorkbenchTextboxProjectionRow[] = [];
 const controlSliderSetHit: ApiWorkbenchControlHitPlacement = {
   column: 0,
   row: 0,
@@ -1791,7 +1793,7 @@ function renderControls(frame: Frame, rect: Rectangle): void {
 
 function renderTextboxControl(frame: Frame, rect: Rectangle, row: number, t: ThemeSpec): number {
   const active = activeControl.peek() === "textbox";
-  const projection = apiWorkbenchTextboxProjection({
+  const projection = apiWorkbenchTextboxProjectionInto(controlTextboxProjectionRows, {
     rect,
     row,
     lines: notes.lines.peek(),

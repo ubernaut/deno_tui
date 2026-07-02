@@ -14909,13 +14909,14 @@ function apiWorkbenchDropdownPopoverRect(options) {
     height: Math.max(2, options.items.length + 2)
   };
 }
-function apiWorkbenchTextboxProjection(options) {
+function apiWorkbenchTextboxProjectionInto(rows2, options) {
   const rect = options.rect;
   const bottom = rect.row + Math.max(0, rect.height);
   const row = Math.floor(options.row);
   if (row >= bottom || rect.width <= 0) {
+    rows2.length = 0;
     return {
-      rows: [],
+      rows: rows2,
       hit: { column: rect.column, row, width: Math.max(0, rect.width), height: 0, id: "textbox", action: "focus" },
       nextRow: row,
       height: 0,
@@ -14933,14 +14934,18 @@ function apiWorkbenchTextboxProjection(options) {
   const bodyColumn = rect.column + labelWidth;
   const bodyWidth = Math.max(1, rect.width - labelWidth);
   const visualLines = wrapTextBoxLines(options.lines, bodyWidth - 2, { wordWrap: options.wordWrap ?? true });
-  const cursorRow = visualLines.findIndex(
-    (line) => line.lineIndex === options.cursor.y && options.cursor.x >= line.startColumn && options.cursor.x <= line.endColumn
-  );
+  let cursorRow = -1;
+  for (let index = 0; index < visualLines.length; index += 1) {
+    const line = visualLines[index];
+    if (line.lineIndex === options.cursor.y && options.cursor.x >= line.startColumn && options.cursor.x <= line.endColumn) {
+      cursorRow = index;
+      break;
+    }
+  }
   const startVisualRow = Math.max(
     0,
     Math.min(Math.max(0, cursorRow - height + 1), Math.max(0, visualLines.length - height))
   );
-  const rows2 = [];
   for (let offset = 0; offset < height; offset += 1) {
     const visualLine = visualLines[startVisualRow + offset] ?? {
       text: "",
@@ -14950,21 +14955,34 @@ function apiWorkbenchTextboxProjection(options) {
       continuation: false
     };
     const cursor = options.active && visualLine.lineIndex === options.cursor.y && options.cursor.x >= visualLine.startColumn && options.cursor.x <= visualLine.endColumn;
-    rows2.push({
-      row: row + offset,
-      labelColumn: rect.column,
-      labelWidth,
-      labelText: offset === 0 ? `${options.active ? ">" : " "} TextBox` : " ".repeat(Math.max(0, labelWidth)),
-      bodyColumn,
-      bodyWidth,
-      bodyText: visualLine.text,
+    const target = rows2[offset] ??= {
+      row: 0,
+      labelColumn: 0,
+      labelWidth: 0,
+      labelText: "",
+      bodyColumn: 0,
+      bodyWidth: 0,
+      bodyText: "",
       visualLine,
-      cursor,
-      continuation: visualLine.continuation,
-      active: options.active,
-      header: offset === 0
-    });
+      cursor: false,
+      continuation: false,
+      active: false,
+      header: false
+    };
+    target.row = row + offset;
+    target.labelColumn = rect.column;
+    target.labelWidth = labelWidth;
+    target.labelText = offset === 0 ? `${options.active ? ">" : " "} TextBox` : " ".repeat(Math.max(0, labelWidth));
+    target.bodyColumn = bodyColumn;
+    target.bodyWidth = bodyWidth;
+    target.bodyText = visualLine.text;
+    target.visualLine = visualLine;
+    target.cursor = cursor;
+    target.continuation = visualLine.continuation;
+    target.active = options.active;
+    target.header = offset === 0;
   }
+  rows2.length = height;
   return {
     rows: rows2,
     hit: { column: rect.column, row, width: rect.width, height, id: "textbox", action: "focus" },
@@ -15552,6 +15570,7 @@ var controlLineHitPlacements = [];
 var controlProjectedRows = [];
 var controlCheckboxOptions = [];
 var controlRadioOptions = [];
+var controlTextboxProjectionRows = [];
 var controlSliderSetHit = {
   column: 0,
   row: 0,
@@ -17308,7 +17327,7 @@ function renderControls(frame, rect) {
 }
 function renderTextboxControl(frame, rect, row, t) {
   const selected = activeControl.peek() === "textbox";
-  const projection = apiWorkbenchTextboxProjection({
+  const projection = apiWorkbenchTextboxProjectionInto(controlTextboxProjectionRows, {
     rect,
     row,
     lines: textBox.lines.peek(),

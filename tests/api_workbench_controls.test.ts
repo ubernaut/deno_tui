@@ -19,6 +19,7 @@ import {
   apiWorkbenchStepperHitPlacementsInto,
   apiWorkbenchStepperRowInto,
   apiWorkbenchTextboxProjection,
+  apiWorkbenchTextboxProjectionInto,
   nextApiWorkbenchControlId,
   nextSortableDataColumn,
 } from "../app/api_workbench_controls.ts";
@@ -249,6 +250,42 @@ Deno.test("api workbench textbox projection wraps reveals cursor and emits share
       },
     ],
   );
+});
+
+Deno.test("api workbench textbox projection can reuse caller-owned rows", () => {
+  const rows = apiWorkbenchTextboxProjection({
+    rect: { column: 2, row: 4, width: 22, height: 6 },
+    row: 5,
+    lines: ["alpha beta gamma", "tail"],
+    cursor: { x: 2, y: 0 },
+    active: false,
+  }).rows;
+  const first = rows[0];
+
+  const projection = apiWorkbenchTextboxProjectionInto(rows, {
+    rect: { column: 3, row: 8, width: 20, height: 5 },
+    row: 9,
+    lines: ["short"],
+    cursor: { x: 5, y: 0 },
+    active: true,
+  });
+
+  assertEquals(projection.rows === rows, true);
+  assertEquals(projection.rows[0] === first, true);
+  assertEquals(projection.rows.length, 4);
+  assertEquals(projection.rows[0]?.row, 9);
+  assertEquals(projection.rows[0]?.labelColumn, 3);
+  assertEquals(projection.rows[0]?.bodyText, "short");
+
+  const clipped = apiWorkbenchTextboxProjectionInto(rows, {
+    rect: { column: 3, row: 8, width: 0, height: 5 },
+    row: 9,
+    lines: ["short"],
+    cursor: { x: 0, y: 0 },
+    active: true,
+  });
+  assertEquals(clipped.rows === rows, true);
+  assertEquals(clipped.rows.length, 0);
 });
 
 Deno.test("api workbench option rows project checkbox and radio controls with reusable storage", () => {

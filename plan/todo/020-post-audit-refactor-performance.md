@@ -49,3 +49,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   renderer-neutral window-frame geometry.
 - Reduced wrapped control option layout overhead by tracking row width incrementally and counting required rows without
   allocating full option projections.
+- Added a reusable textbox projection path for API workbench controls so terminal and web renderers keep caller-owned
+  row buffers across draws.
