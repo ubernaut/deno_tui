@@ -31,7 +31,6 @@ export function themePipelineCommands(
   const group = options.group ?? "theme";
   const prefix = options.prefix ?? `theme.pipeline.${pipeline.id}`;
   const commands: Command<ThemePipelineCommandAction>[] = [];
-  const active = () => new Set(pipeline.activeIds());
 
   for (const step of pipeline.inspect().steps) {
     if (options.includeToggleCommands ?? true) {
@@ -45,7 +44,7 @@ export function themePipelineCommands(
           pipeline.toggle(step.id);
           return {
             type: "theme.pipeline.step.changed",
-            payload: { pipelineId: pipeline.id, id: step.id, enabled: pipeline.activeIds().includes(step.id) },
+            payload: { pipelineId: pipeline.id, id: step.id, enabled: pipelineStepActive(pipeline, step.id) },
           };
         },
       });
@@ -58,7 +57,7 @@ export function themePipelineCommands(
         description: `Enable the ${step.label} theme pipeline step.`,
         group,
         keywords: ["theme", "pipeline", "step", "enable", pipeline.id, step.id, step.label],
-        disabled: options.disableInactiveStepStates ?? true ? () => active().has(step.id) : false,
+        disabled: options.disableInactiveStepStates ?? true ? () => pipelineStepActive(pipeline, step.id) : false,
         action: () => {
           pipeline.enable(step.id);
           return {
@@ -76,7 +75,7 @@ export function themePipelineCommands(
         description: `Disable the ${step.label} theme pipeline step.`,
         group,
         keywords: ["theme", "pipeline", "step", "disable", pipeline.id, step.id, step.label],
-        disabled: options.disableInactiveStepStates ?? true ? () => !active().has(step.id) : false,
+        disabled: options.disableInactiveStepStates ?? true ? () => !pipelineStepActive(pipeline, step.id) : false,
         action: () => {
           pipeline.disable(step.id);
           return {
@@ -98,4 +97,12 @@ export function bindThemePipelineCommands<TAction extends Action = ThemePipeline
   options: ThemePipelineCommandOptions = {},
 ): () => void {
   return registry.registerAll(themePipelineCommands(pipeline, options) as unknown as Command<TAction>[]);
+}
+
+function pipelineStepActive(pipeline: ThemeEnginePipeline, id: string): boolean {
+  const activeIds = pipeline.activeIds();
+  for (let index = 0; index < activeIds.length; index += 1) {
+    if (activeIds[index] === id) return true;
+  }
+  return false;
 }
