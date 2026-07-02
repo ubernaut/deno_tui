@@ -12,7 +12,13 @@ const cpuHexColorStops = [
 
 export function cpuActivityRgb(percent: number): [number, number, number] {
   const value = Number.isFinite(percent) ? clamp(percent, 0, 100) : 0;
-  const upperIndex = cpuHexColorStops.findIndex((stop) => value <= stop.percent);
+  let upperIndex = cpuHexColorStops.length - 1;
+  for (let index = 0; index < cpuHexColorStops.length; index += 1) {
+    if (value <= cpuHexColorStops[index]!.percent) {
+      upperIndex = index;
+      break;
+    }
+  }
   const upper = cpuHexColorStops[Math.max(0, upperIndex)] ?? cpuHexColorStops[cpuHexColorStops.length - 1]!;
   const lower = cpuHexColorStops[Math.max(0, upperIndex - 1)] ?? upper;
   const span = Math.max(1, upper.percent - lower.percent);
@@ -88,16 +94,18 @@ export function renderCpuHexGrid(context: RenderContext): PanelRender {
   if (cores.length === 0) {
     return {
       body: "NO CORE DATA",
-      footer: `HOST ${system.hostname.toUpperCase()}  LOAD ${
-        system.loadavg.map((value) => value.toFixed(2)).join("/")
-      }`,
+      footer: `HOST ${system.hostname.toUpperCase()}  LOAD ${formatLoadAverage(system.loadavg)}`,
       alert: "",
       accent: "signal",
       severity: "info",
     };
   }
 
-  const hotCore = cores.reduce((hot, core) => core.usage > hot.usage ? core : hot, cores[0]!);
+  let hotCore = cores[0]!;
+  for (let index = 1; index < cores.length; index += 1) {
+    const core = cores[index]!;
+    if (core.usage > hotCore.usage) hotCore = core;
+  }
   const selectedCore = selectedCpuCore(cores, context.selectedCpuLabel);
   const lines = [
     crop(
@@ -129,13 +137,29 @@ function cpuHexGradientLegend(width: number): string {
     ["75", 75],
     ["100", 100],
   ] as const;
-  const full = `LOAD ${stops.map(([label, percent]) => `${cpuHexColorize(percent, "⬢")}${label}`).join(" ")}`;
-  if (width >= 26) return full;
-  if (width >= 10) return stops.map(([, percent]) => cpuHexColorize(percent, "⬢")).join(" ");
-  return stops
-    .slice(0, Math.max(1, Math.min(width, stops.length)))
-    .map(([, percent]) => cpuHexColorize(percent, "⬢"))
-    .join("");
+  if (width >= 26) {
+    let full = "LOAD ";
+    for (let index = 0; index < stops.length; index += 1) {
+      const [label, percent] = stops[index]!;
+      if (index > 0) full += " ";
+      full += cpuHexColorize(percent, "⬢") + label;
+    }
+    return full;
+  }
+  if (width >= 10) {
+    let compact = "";
+    for (let index = 0; index < stops.length; index += 1) {
+      if (index > 0) compact += " ";
+      compact += cpuHexColorize(stops[index]![1], "⬢");
+    }
+    return compact;
+  }
+  const count = Math.max(1, Math.min(width, stops.length));
+  let narrow = "";
+  for (let index = 0; index < count; index += 1) {
+    narrow += cpuHexColorize(stops[index]![1], "⬢");
+  }
+  return narrow;
 }
 
 function cpuHexGridRows(
@@ -275,10 +299,15 @@ function selectedCpuCore(
 ) {
   if (!selectedCpuLabel) return undefined;
   const selectedNumber = Number(selectedCpuLabel);
-  return cores.find((core) =>
-    core.label === selectedCpuLabel ||
-    (Number.isFinite(selectedNumber) && Number(core.label) === selectedNumber)
-  );
+  for (const core of cores) {
+    if (
+      core.label === selectedCpuLabel ||
+      (Number.isFinite(selectedNumber) && Number(core.label) === selectedNumber)
+    ) {
+      return core;
+    }
+  }
+  return undefined;
 }
 
 function cpuHexSelectionLines(
@@ -295,25 +324,40 @@ function cpuHexSelectionLines(
     `SELECTED CPU ID ${core.label}${range ? ` (${range})` : ""}  LOAD ${formatPercent(core.usage)}`,
     width,
   );
-  const hasProcessorSamples = system.processes.some((process) => Number.isFinite(process.processor));
+  let hasProcessorSamples = false;
+  for (const process of system.processes) {
+    if (Number.isFinite(process.processor)) {
+      hasProcessorSamples = true;
+      break;
+    }
+  }
   if (!hasProcessorSamples) {
     return [header, crop("PROCESSOR FIELD UNAVAILABLE IN THIS SAMPLE", width)];
   }
 
   const cpuId = Number(core.label);
-  const matches = Number.isFinite(cpuId)
-    ? system.processes.filter((process) => process.processor === cpuId)
-    : system.processes.filter((process) => String(process.processor) === core.label);
-  if (matches.length === 0) {
+  const maxProcesses = width >= 48 ? 6 : 4;
+  let matchCount = 0;
+  for (const process of system.processes) {
+    const matches = Number.isFinite(cpuId) ? process.processor === cpuId : String(process.processor) === core.label;
+    if (matches) matchCount += 1;
+  }
+  if (matchCount === 0) {
     return [header, crop("NO TOP PROCESS LAST SEEN ON THIS CPU", width)];
   }
 
-  const rows = [
-    header,
-    crop("TOP PROCESSES LAST SEEN ON CPU", width),
-    crop(width >= 48 ? "PID      CPU%   MEM%  S  NAME" : "PID     CPU%  MEM% NAME", width),
-    ...matches.slice(0, width >= 48 ? 6 : 4).map((process) => cpuHexProcessLine(process, width)),
-  ];
+  const rows = new Array<string>(Math.min(maxProcesses, matchCount) + 3);
+  rows[0] = header;
+  rows[1] = crop("TOP PROCESSES LAST SEEN ON CPU", width);
+  rows[2] = crop(width >= 48 ? "PID      CPU%   MEM%  S  NAME" : "PID     CPU%  MEM% NAME", width);
+  let rowIndex = 3;
+  for (const process of system.processes) {
+    const matches = Number.isFinite(cpuId) ? process.processor === cpuId : String(process.processor) === core.label;
+    if (!matches) continue;
+    rows[rowIndex] = cpuHexProcessLine(process, width);
+    rowIndex += 1;
+    if (rowIndex >= rows.length) break;
+  }
   return rows;
 }
 
@@ -352,6 +396,16 @@ function cpuHexProcessLine(process: RenderContext["system"]["processes"][number]
 function crop(text: string, width: number) {
   if (width <= 0) return "";
   return text.length > width ? text.slice(0, Math.max(0, width - 1)) + "…" : text;
+}
+
+function formatLoadAverage(loadavg: readonly number[]): string {
+  if (loadavg.length === 0) return "";
+  let text = "";
+  for (let index = 0; index < loadavg.length; index += 1) {
+    if (index > 0) text += "/";
+    text += loadavg[index]!.toFixed(2);
+  }
+  return text;
 }
 
 function severityForValue(value: number, warning: number, alarm: number): Severity {

@@ -247,6 +247,8 @@ Work:
         explicit buffers instead of repeated `map/filter` chains in tmux-like workspace state paths.
   - [x] Reworked runtime workload telemetry source snapshots, registry inspection, report construction, and aggregate
         counts to use one-pass loops instead of repeated map/reduce/filter projections.
+  - [x] Reworked CPU hex monitor color-stop lookup, hot-core selection, selected-process projection, load-average
+        formatting, and compact legends to avoid map/filter/reduce/find/slice chains in the per-frame monitor path.
 
 Acceptance checks:
 
