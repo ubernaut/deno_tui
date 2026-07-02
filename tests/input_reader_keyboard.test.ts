@@ -51,6 +51,10 @@ Deno.test("decodeKey keeps modifier flags on function keys", () => {
   const controlled = decode("\x1b[1;5P");
   assertEquals(controlled.key, "f1");
   assertEquals(controlled.ctrl, true);
+
+  const alternateControlled = decode("\x1bO1;5P");
+  assertEquals(alternateControlled.key, "f1");
+  assertEquals(alternateControlled.ctrl, true);
 });
 
 Deno.test("decodeKey maps application cursor sequences", () => {

@@ -232,6 +232,8 @@ Work:
         paths so repeated input and dirty-cell flushes do not allocate codecs per message or frame.
   - [x] Added a batched terminal input decoder benchmark covering plain keys, cursor movement, focus events, SGR mouse,
         and bracketed paste so parser regressions are measured alongside routing benchmarks.
+  - [x] Reworked terminal input decoding to scan batched input boundaries once instead of pre-scanning for completeness
+        and then walking chunks again, and replaced key modifier regex parsing with direct numeric scanning.
 - [x] Record thresholds in the benchmark catalog and wire the most useful non-flaky cases into health or e2e.
   - [x] Added benchmark CLI selectors for filtering by name/search, category, tag, and thresholded status so long
         optimization passes can rerun only the relevant integration workload before the full health gate.

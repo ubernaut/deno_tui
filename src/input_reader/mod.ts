@@ -89,11 +89,15 @@ const textDecoder = new TextDecoder();
 export function* decodeBuffer(
   buffer: Uint8Array,
 ): Generator<InputEvent, void, void> {
-  const { complete } = splitInputBuffer(buffer);
-  for (const chunk of iterateInputChunks(complete)) {
+  let index = 0;
+  while (index < buffer.length) {
+    const boundary = nextInputBoundary(buffer, index);
+    if (boundary == null) return;
+    const chunk = buffer.subarray(index, boundary);
     const code = textDecoder.decode(chunk);
     yield decodeBracketedPaste(chunk, code) ?? decodeTerminalFocus(chunk, code) ??
       decodeMouseVT_UTF8(chunk, code) ?? decodeMouseSGR(chunk, code) ?? decodeKey(chunk, code);
+    index = boundary;
   }
 }
 
@@ -113,18 +117,6 @@ function splitInputBuffer(buffer: Uint8Array) {
     complete: buffer.subarray(0, end),
     remainder: buffer.subarray(end),
   };
-}
-
-function* iterateInputChunks(buffer: Uint8Array): Generator<Uint8Array, void, void> {
-  let index = 0;
-  while (index < buffer.length) {
-    const boundary = nextInputBoundary(buffer, index);
-    if (boundary == null) {
-      return;
-    }
-    yield buffer.subarray(index, boundary);
-    index = boundary;
-  }
 }
 
 function nextInputBoundary(buffer: Uint8Array, start: number): number | null {

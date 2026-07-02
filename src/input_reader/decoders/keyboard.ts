@@ -55,6 +55,8 @@ const keyPress: KeyPressEvent = {
   ctrl: false,
   shift: false,
 };
+let modifierStart = -1;
+let modifierEnd = -1;
 
 /**
  * Decode {buffer} and/or {code} to {KeyPressEvent} object
@@ -109,20 +111,22 @@ export function decodeKey(buffer: Uint8Array, code: string): KeyPressEvent {
           break;
         }
 
-        const modifier = code.match(/\d+.+(\d+)/)?.[1] ?? "";
+        const modifier = terminalKeyModifier(code);
         switch (modifier) {
-          case "5":
+          case 5:
             keyPress.ctrl = true;
             break;
-          case "3":
+          case 3:
             keyPress.meta = true;
             break;
-          case "2":
+          case 2:
             keyPress.shift = true;
             break;
         }
 
-        code = code.replace(`1;${modifier}`, "").replace(`;${modifier}`, "").replace("1;", "");
+        if (modifier > 0) {
+          code = normalizeModifiedKeySequence(code, modifierStart, modifierEnd);
+        }
         const normalizedKey = sequenceMap[code];
         if (normalizedKey) {
           keyPress.key = normalizedKey;
@@ -132,4 +136,30 @@ export function decodeKey(buffer: Uint8Array, code: string): KeyPressEvent {
   }
 
   return keyPress;
+}
+
+function terminalKeyModifier(code: string): number {
+  const semicolon = code.lastIndexOf(";");
+  modifierStart = -1;
+  modifierEnd = -1;
+  if (semicolon < 0 || semicolon + 1 >= code.length) return 0;
+
+  let value = 0;
+  let end = semicolon + 1;
+  for (; end < code.length; end += 1) {
+    const char = code.charCodeAt(end);
+    if (char < 48 || char > 57) break;
+    value = value * 10 + char - 48;
+  }
+  if (end === semicolon + 1) return 0;
+  modifierStart = semicolon + 1;
+  modifierEnd = end;
+  return value;
+}
+
+function normalizeModifiedKeySequence(code: string, modifierStart: number, modifierEnd: number): string {
+  if (modifierStart >= 2 && code.charCodeAt(modifierStart - 2) === 49) {
+    return `${code.slice(0, modifierStart - 2)}${code.slice(modifierEnd)}`;
+  }
+  return `${code.slice(0, modifierStart - 1)}${code.slice(modifierEnd)}`;
 }
