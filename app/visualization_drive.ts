@@ -51,7 +51,9 @@ export function buildVisualizationDrive(
 ): VisualizationDrive {
   const sampleWidth = Math.max(8, width);
   const sourceFrames = context.sources.length > 0 ? context.sources : [fallbackSource(context.phase)];
-  const sources = sourceFrames.map((source) => {
+  const sources = new Array<VisualizationSourceDrive>(sourceFrames.length);
+  for (let sourceIndex = 0; sourceIndex < sourceFrames.length; sourceIndex += 1) {
+    const source = sourceFrames[sourceIndex]!;
     const rawSeries = sampleSeries(source.series.length > 0 ? source.series : [source.value], sampleWidth);
     let floor = source.value;
     let ceiling = source.value;
@@ -80,7 +82,7 @@ export function buildVisualizationDrive(
       1,
     );
 
-    return {
+    sources[sourceIndex] = {
       source,
       rawSeries,
       normalizedSeries,
@@ -94,7 +96,7 @@ export function buildVisualizationDrive(
       volatility,
       energy,
     };
-  });
+  }
 
   const primary = sources[0]!;
   const secondary = sources[1] ?? primary;
@@ -118,10 +120,20 @@ export function buildVisualizationDrive(
     pulseSeries[index] = clamp(value * 0.6 + motion * 0.18 + spreadSeries[index]! * 0.22, 0, 1);
   }
   const current = last(normalizedSeries);
-  const absolute = clamp(sources.reduce((sum, source) => sum + source.value, 0) / sources.length, 0, 1);
-  let peakValue = Math.max(current, absolute);
-  for (const source of sources) peakValue = Math.max(peakValue, source.value);
-  const peak = clamp(peakValue, 0, 1);
+  let valueSum = 0;
+  let peakValue = current;
+  let sourceVolatilitySum = 0;
+  let divergenceSum = 0;
+  let activeCount = 0;
+  for (const source of sources) {
+    valueSum += source.value;
+    peakValue = Math.max(peakValue, source.value);
+    sourceVolatilitySum += source.volatility;
+    divergenceSum += Math.abs(source.normalizedValue - current);
+    if (source.energy >= 0.55 || source.value >= 0.62) activeCount += 1;
+  }
+  const absolute = clamp(valueSum / sources.length, 0, 1);
+  const peak = clamp(Math.max(peakValue, absolute), 0, 1);
   let floor = Number.POSITIVE_INFINITY;
   let ceiling = Number.NEGATIVE_INFINITY;
   for (const value of normalizedSeries) {
@@ -137,23 +149,24 @@ export function buildVisualizationDrive(
   );
   const jerk = clamp(slope - previousSlope, -1, 1);
   const volatility = clamp(
-    averageSourceMetric(sources, (source) => source.volatility) * 0.55 + seriesVolatility(normalizedSeries) * 0.45,
+    clamp(sourceVolatilitySum / sources.length, 0, 1) * 0.55 + seriesVolatility(normalizedSeries) * 0.45,
     0,
     1,
   );
   const divergence = clamp(
-    averageSourceMetric(sources, (source) => Math.abs(source.normalizedValue - current)) * 1.4 +
+    clamp(divergenceSum / sources.length, 0, 1) * 1.4 +
       Math.abs(primary.normalizedValue - secondary.normalizedValue) * 0.25,
     0,
     1,
   );
   const imbalance = clamp(primary.normalizedValue - secondary.normalizedValue, -1, 1);
-  const alertPressure = context.system.alerts.some((alert) => alert.severity === "alarm")
-    ? 1
-    : context.system.alerts.length > 0
-    ? 0.76
-    : 0;
-  const activeCount = sources.filter((source) => source.energy >= 0.55 || source.value >= 0.62).length;
+  let alertPressure = context.system.alerts.length > 0 ? 0.76 : 0;
+  for (const alert of context.system.alerts) {
+    if (alert.severity === "alarm") {
+      alertPressure = 1;
+      break;
+    }
+  }
   const cadence = clamp(0.16 + volatility * 0.34 + Math.abs(slope) * 0.26 + divergence * 0.24, 0, 1);
   const density = clamp(
     0.18 + current * 0.34 + volatility * 0.24 + divergence * 0.12 + (activeCount / sources.length) * 0.12,
@@ -253,16 +266,6 @@ function averageSourceSeries(
     output[index] = clamp(sum / sources.length, 0, 1);
   }
   return output;
-}
-
-function averageSourceMetric(
-  sources: readonly VisualizationSourceDrive[],
-  project: (source: VisualizationSourceDrive) => number,
-): number {
-  if (sources.length === 0) return 0;
-  let sum = 0;
-  for (const source of sources) sum += project(source);
-  return clamp(sum / sources.length, 0, 1);
 }
 
 function seriesSlope(values: number[], steps = 4): number {

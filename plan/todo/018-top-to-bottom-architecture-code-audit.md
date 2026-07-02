@@ -241,6 +241,8 @@ Work:
         for monitor-backed sources instead of per-frame `slice().map()` projections.
   - [x] Reworked shared visualization panel footer, alert, source-name, and warning helpers to use bounded loops instead
         of `some/find/map/flatMap/slice` chains in common render paths.
+  - [x] Reworked `buildVisualizationDrive()` source construction and aggregate metrics to use explicit loops instead of
+        `map/reduce/filter/some` and closure-based average helpers in every dynamic visualization frame.
 
 Acceptance checks:
 
