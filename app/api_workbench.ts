@@ -288,6 +288,7 @@ const inspectorActionTextRows: string[] = [];
 const visualizationTextRows: string[] = [];
 const visualizationRenderRows: RowStyle[] = [];
 const threeFallbackRowsBuffer: RowStyle[] = [];
+const logRenderRows: RowStyle[] = [];
 const THREE_FALLBACK_BODY: readonly string[] = [
   "         .-=========-.         ",
   "      .-#%%%@@@@@@%%%#-.       ",
@@ -1736,15 +1737,15 @@ function renderTextboxControl(frame: Frame, rect: Rectangle, row: number, t: The
 
 function renderLogs(frame: Frame, rect: Rectangle): void {
   const t = theme();
-  writeRows(
-    frame,
-    rect,
-    docs.map((line) => ({
-      text: line,
+  logRenderRows.length = docs.length;
+  for (let index = 0; index < docs.length; index += 1) {
+    logRenderRows[index] = {
+      text: docs[index]!,
       fg: t.text,
       bg: t.surface,
-    })),
-  );
+    };
+  }
+  writeRows(frame, rect, logRenderRows);
 }
 
 function renderTerminalOutput(frame: Frame, rect: Rectangle): void {
