@@ -4518,6 +4518,48 @@
       "documented": true
     },
     {
+      "module": "src/app/workbench_workspace_store.ts",
+      "name": "createWorkbenchWorkspaceStore",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_workspace_store.ts",
+      "name": "loadWorkbenchWorkspaceStorage",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_workspace_store.ts",
+      "name": "persistWorkbenchWorkspaceStorage",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_workspace_store.ts",
+      "name": "WorkbenchWorkspaceStorageDiagnosticSink",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_workspace_store.ts",
+      "name": "WorkbenchWorkspaceStorageOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_workspace_store.ts",
+      "name": "WorkbenchWorkspaceStoreOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
       "module": "src/app/workbench_workspace.ts",
       "name": "defaultWorkbenchMinimizedState",
       "kind": "function",

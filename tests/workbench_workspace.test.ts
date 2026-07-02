@@ -1,13 +1,16 @@
 import { assertEquals } from "./deps.ts";
 import {
   appendBoundedWorkbenchLogRow,
+  createWorkbenchWorkspaceStore,
   defaultWorkbenchMinimizedState,
   deleteWorkbenchWorkspace,
   findWorkbenchWorkspace,
+  loadWorkbenchWorkspaceStorage,
   normalizeWorkbenchPanelWorkspaceState,
   normalizeWorkbenchWorkspaceName,
   normalizeWorkbenchWorkspaces,
   normalizeWorkbenchWorkspaceStorage,
+  persistWorkbenchWorkspaceStorage,
   renameWorkbenchWorkspace,
   serializeWorkbenchWorkspaces,
   upsertWorkbenchWorkspace,
@@ -15,6 +18,7 @@ import {
   type WorkbenchWorkspace,
   workbenchWorkspaceWindowEntries,
 } from "../src/app/mod.ts";
+import { MemoryStore } from "../src/runtime/storage.ts";
 
 Deno.test("workbench log helpers append bounded immutable rows", () => {
   const rows = ["one", "two", "three"];
@@ -140,4 +144,68 @@ Deno.test("workbench workspace helpers upsert rename find and delete by case-ins
   const renamed = renameWorkbenchWorkspace(upserted, "alpha", "Beta", 4);
   assertEquals(renamed, [{ name: "Beta", visualizationIds: ["net"], savedAt: 4 }]);
   assertEquals(deleteWorkbenchWorkspace(renamed, "beta"), []);
+});
+
+Deno.test("workbench workspace storage helpers load normalize and persist envelopes", async () => {
+  const store = new MemoryStore<unknown>();
+  await store.set("workspaces", [{
+    name: "Demo",
+    visualizationIds: ["cpu", "missing"],
+    savedAt: 10,
+  }]);
+
+  const options = {
+    key: "workspaces",
+    store,
+    validVisualizationIds: ["cpu"],
+  };
+  const loaded = await loadWorkbenchWorkspaceStorage(options);
+  await persistWorkbenchWorkspaceStorage(loaded, options, 20);
+
+  assertEquals(loaded, [{ name: "Demo", visualizationIds: ["cpu"], windows: undefined, savedAt: 10 }]);
+  assertEquals(await store.get("workspaces"), {
+    version: WORKBENCH_WORKSPACE_STORAGE_VERSION,
+    savedAt: 20,
+    workspaces: loaded,
+  });
+});
+
+Deno.test("workbench workspace storage helpers report recoverable load and persist failures", async () => {
+  const diagnostics: unknown[] = [];
+  const failingStore = {
+    get: async () => {
+      throw new Error("read failed");
+    },
+    set: async () => {
+      throw new Error("write failed");
+    },
+    delete: async () => {},
+  };
+  const options = {
+    key: "workspaces",
+    store: failingStore,
+    validVisualizationIds: ["cpu"],
+    diagnostics: { report: (entry: unknown) => diagnostics.push(entry) },
+    diagnosticSource: "test-workbench",
+    storageLabel: "Memory",
+  };
+
+  assertEquals(await loadWorkbenchWorkspaceStorage(options), []);
+  await persistWorkbenchWorkspaceStorage([], options, 30);
+
+  assertEquals(diagnostics.length, 2);
+  assertEquals((diagnostics[0] as { source: string }).source, "test-workbench");
+  assertEquals((diagnostics[0] as { code: string }).code, "memory-workspace-load-failed");
+  assertEquals((diagnostics[1] as { code: string }).code, "memory-workspace-persist-failed");
+});
+
+Deno.test("workbench workspace store factory falls back to json when indexeddb is unavailable", () => {
+  const store = createWorkbenchWorkspaceStore({
+    databaseName: "workbench-test",
+    storeName: "workspaces",
+    fallbackPath: ".workbench-test.json",
+    hasIndexedDb: false,
+  });
+
+  assertEquals(store.constructor.name, "JsonFileStore");
 });

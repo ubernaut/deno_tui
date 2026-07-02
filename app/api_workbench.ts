@@ -24,6 +24,7 @@ import {
   clipRect,
   contrastText,
   createWorkbenchVisualizationWindowOptions,
+  createWorkbenchWorkspaceStore,
   deleteWorkbenchWorkspace,
   fillFrameRect,
   fillFrameRow,
@@ -44,14 +45,14 @@ import {
   layoutWorkbenchTabs,
   layoutWorkbenchTitlebar,
   layoutWorkbenchTopMenuItemRect,
+  loadWorkbenchWorkspaceStorage,
   maxTextWidthBy,
   normalizeWorkbenchWorkspaceName,
-  normalizeWorkbenchWorkspaceStorage,
+  persistWorkbenchWorkspaceStorage,
   prepareWorkbenchFrame,
   renameWorkbenchWorkspace,
   renderFrameRow,
   renderFrameSlice,
-  serializeWorkbenchWorkspaces,
   subscribeWorkbenchDiagnosticLog,
   translateHitTargets,
   upsertWorkbenchWorkspace,
@@ -74,6 +75,7 @@ import {
   workbenchWindowOptionMinimums,
   workbenchWindowScrollbarRects,
   type WorkbenchWorkspace,
+  type WorkbenchWorkspaceStorageOptions,
   WorkbenchWorkspaceViewportController,
   type WorkbenchWorkspaceWindow,
   workbenchWorkspaceWindowEntries,
@@ -106,8 +108,6 @@ import {
 import { DiagnosticsCollector } from "../src/runtime/diagnostics.ts";
 import { formatProcessCommandLine, ProcessSessionController } from "../src/runtime/process_session.ts";
 import { MicrotaskScheduler } from "../src/runtime/render_loop.ts";
-import { type AsyncStore, createRuntimeStore, JsonFileStore } from "../src/runtime/storage.ts";
-import { createStorageFallbackDiagnostic } from "../src/runtime/storage_diagnostics.ts";
 import { type TerminalBackend } from "../src/runtime/terminal_backend.ts";
 import type { TerminalShellController } from "../src/runtime/terminal_shell.ts";
 import { TerminalShellWorkspaceController } from "../src/runtime/terminal_shell_workspace.ts";
@@ -3730,47 +3730,34 @@ async function persistActiveWorkspaceState(): Promise<void> {
 }
 
 async function loadSavedWorkspaces(): Promise<SavedWorkspace[]> {
-  const stored = await workspaceStore.get(WORKSPACE_STORE_KEY).catch((error) => {
-    reportWorkspaceStorageFallback("workspace load", error);
-    return undefined;
-  });
-  return normalizeSavedWorkspaces(stored);
+  return await loadWorkbenchWorkspaceStorage(workspaceStorageOptions());
 }
 
 async function persistSavedWorkspaces(): Promise<void> {
-  await workspaceStore.set(WORKSPACE_STORE_KEY, serializeWorkbenchWorkspaces(savedWorkspaces.peek())).catch((error) => {
-    reportWorkspaceStorageFallback("workspace persist", error);
-  });
+  await persistWorkbenchWorkspaceStorage(savedWorkspaces.peek(), workspaceStorageOptions());
 }
 
-function reportWorkspaceStorageFallback(operation: string, error: unknown): void {
-  const diagnostic = createStorageFallbackDiagnostic({
-    source: "api-workbench",
-    storage: "indexedDB" in globalThis ? "IndexedDB" : "Deno JSON",
-    operation,
-    error,
-  });
-  workbenchDiagnostics.report(diagnostic);
-}
-
-function normalizeSavedWorkspaces(value: unknown): SavedWorkspace[] {
-  return normalizeWorkbenchWorkspaceStorage(value, {
+function workspaceStorageOptions(): WorkbenchWorkspaceStorageOptions<AsciiOptions> {
+  return {
+    key: WORKSPACE_STORE_KEY,
+    store: workspaceStore,
     validVisualizationIds: visualizationWindowOptionIds,
     normalizeName: (name, index) => normalizeWorkbenchWorkspaceName(name, `Workspace ${index + 1}`),
     normalizeAscii: (candidate) =>
       candidate ? normalizeAsciiOptions(candidate as AsciiOptions, createDefaultWorkbenchAsciiOptions()) : undefined,
-  });
+    diagnostics: workbenchDiagnostics,
+    diagnosticSource: "api-workbench",
+    storageLabel: "indexedDB" in globalThis ? "IndexedDB" : "Deno JSON",
+  };
 }
 
-function createWorkspaceStore(): AsyncStore<unknown> {
-  if ("indexedDB" in globalThis) {
-    return createRuntimeStore<unknown>({
-      databaseName: "deno-tui-api-workbench",
-      storeName: "workspaces",
-      version: 1,
-    });
-  }
-  return new JsonFileStore<unknown>(".api-workbench-workspaces.json");
+function createWorkspaceStore() {
+  return createWorkbenchWorkspaceStore({
+    databaseName: "deno-tui-api-workbench",
+    storeName: "workspaces",
+    fallbackPath: ".api-workbench-workspaces.json",
+    version: 1,
+  });
 }
 
 function openWorkbenchModal(): void {

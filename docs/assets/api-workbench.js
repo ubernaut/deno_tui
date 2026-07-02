@@ -13879,6 +13879,49 @@ function normalizeWorkbenchPanelWorkspaceState(value, options) {
   return { active: active2, maximized: maximized2, minimized: minimized2, tileDensity: tileDensity2 };
 }
 
+// src/runtime/storage_diagnostics.ts
+var StorageFallbackDiagnostics = class {
+  constructor(diagnostics, options = {}) {
+    this.diagnostics = diagnostics;
+    this.#dedupe = options.dedupe ?? true;
+  }
+  #seen = /* @__PURE__ */ new Set();
+  #dedupe;
+  report(input2) {
+    const diagnostic = createStorageFallbackDiagnostic(input2);
+    const key = `${diagnostic.source}/${diagnostic.code}/${diagnostic.detail ?? ""}`;
+    if (this.#dedupe && this.#seen.has(key)) return void 0;
+    this.#seen.add(key);
+    return this.diagnostics.report(diagnostic);
+  }
+  clearDedupe() {
+    this.#seen.clear();
+  }
+};
+function createStorageFallbackDiagnostic(input2) {
+  return {
+    source: input2.source,
+    code: `${sanitizeDiagnosticCode(input2.storage)}-${sanitizeDiagnosticCode(input2.operation)}-failed`,
+    severity: input2.severity ?? "warning",
+    message: input2.message ?? `${input2.storage} ${input2.operation} failed; continuing with in-memory state.`,
+    detail: formatStorageErrorDetail(input2.error),
+    context: { storage: input2.storage, operation: input2.operation, ...input2.context }
+  };
+}
+function formatStorageErrorDetail(error) {
+  if (error === void 0 || error === null) return void 0;
+  if (error instanceof Error) return error.message || error.name;
+  if (typeof error === "string") return error;
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return String(error);
+  }
+}
+function sanitizeDiagnosticCode(value) {
+  return value.toLowerCase().replaceAll(/[^a-z0-9]+/g, "-").replaceAll(/^-|-$/g, "") || "unknown";
+}
+
 // src/runtime/terminal_capabilities.ts
 var TERMINAL_CAPABILITY_METADATA = {
   interactive: {
@@ -15260,49 +15303,6 @@ function clampMenuIndex2(index, itemCount) {
   const normalized = Number.isFinite(index) ? Math.trunc(index) : 0;
   if (itemCount <= 0) return 0;
   return Math.max(0, Math.min(itemCount - 1, normalized));
-}
-
-// src/runtime/storage_diagnostics.ts
-var StorageFallbackDiagnostics = class {
-  constructor(diagnostics, options = {}) {
-    this.diagnostics = diagnostics;
-    this.#dedupe = options.dedupe ?? true;
-  }
-  #seen = /* @__PURE__ */ new Set();
-  #dedupe;
-  report(input2) {
-    const diagnostic = createStorageFallbackDiagnostic(input2);
-    const key = `${diagnostic.source}/${diagnostic.code}/${diagnostic.detail ?? ""}`;
-    if (this.#dedupe && this.#seen.has(key)) return void 0;
-    this.#seen.add(key);
-    return this.diagnostics.report(diagnostic);
-  }
-  clearDedupe() {
-    this.#seen.clear();
-  }
-};
-function createStorageFallbackDiagnostic(input2) {
-  return {
-    source: input2.source,
-    code: `${sanitizeDiagnosticCode(input2.storage)}-${sanitizeDiagnosticCode(input2.operation)}-failed`,
-    severity: input2.severity ?? "warning",
-    message: input2.message ?? `${input2.storage} ${input2.operation} failed; continuing with in-memory state.`,
-    detail: formatStorageErrorDetail(input2.error),
-    context: { storage: input2.storage, operation: input2.operation, ...input2.context }
-  };
-}
-function formatStorageErrorDetail(error) {
-  if (error === void 0 || error === null) return void 0;
-  if (error instanceof Error) return error.message || error.name;
-  if (typeof error === "string") return error;
-  try {
-    return JSON.stringify(error);
-  } catch {
-    return String(error);
-  }
-}
-function sanitizeDiagnosticCode(value) {
-  return value.toLowerCase().replaceAll(/[^a-z0-9]+/g, "-").replaceAll(/^-|-$/g, "") || "unknown";
 }
 
 // app/styles.ts

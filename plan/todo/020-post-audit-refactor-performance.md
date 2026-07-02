@@ -37,3 +37,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   cached blank grid.
 - Added a cached Three ASCII readback layout helper so renderer ANSI frames can reuse stable GPU readback metadata until
   the output shape or edge payload changes.
+- Extracted workbench workspace persistence into a reusable storage adapter with normalized load/persist helpers and
+  recoverable storage diagnostics.
