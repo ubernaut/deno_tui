@@ -90,7 +90,11 @@ export function createThemeGallery(
   options: ThemeGalleryOptions = {},
 ): ThemeGallery {
   const query = options.query ?? "";
-  const items = provider.themeIds().map((id) => createThemeGalleryItem(provider, id, options));
+  const themeIds = provider.themeIds();
+  const items = new Array<ThemeGalleryItem>(themeIds.length);
+  for (let index = 0; index < themeIds.length; index += 1) {
+    items[index] = createThemeGalleryItem(provider, themeIds[index]!, options);
+  }
   const matches = rankThemeGalleryItems(items, query);
   return {
     activeId: provider.activeId.peek(),
@@ -106,12 +110,24 @@ export function rankThemeGalleryItems(
   items: readonly ThemeGalleryItem[],
   query: string,
 ): ThemeGalleryMatch[] {
-  const byId = new Map(items.map((item) => [item.id, item]));
-  return rankCommandPaletteItems(items.map(themeGalleryCommandItem), query).map((match) => ({
-    item: byId.get(match.item.id)!,
-    score: match.score,
-    matched: match.matched,
-  }));
+  const byId = new Map<string, ThemeGalleryItem>();
+  const commandItems = new Array<CommandPaletteItem>(items.length);
+  for (let index = 0; index < items.length; index += 1) {
+    const item = items[index]!;
+    byId.set(item.id, item);
+    commandItems[index] = themeGalleryCommandItem(item);
+  }
+  const ranked = rankCommandPaletteItems(commandItems, query);
+  const matches = new Array<ThemeGalleryMatch>(ranked.length);
+  for (let index = 0; index < ranked.length; index += 1) {
+    const match = ranked[index]!;
+    matches[index] = {
+      item: byId.get(match.item.id)!,
+      score: match.score,
+      matched: match.matched,
+    };
+  }
+  return matches;
 }
 
 /** Filters and ranks prebuilt theme gallery items for picker views. */
@@ -119,7 +135,12 @@ export function filterThemeGalleryItems(
   items: readonly ThemeGalleryItem[],
   query: string,
 ): ThemeGalleryItem[] {
-  return rankThemeGalleryItems(items, query).map((match) => match.item);
+  const matches = rankThemeGalleryItems(items, query);
+  const filtered = new Array<ThemeGalleryItem>(matches.length);
+  for (let index = 0; index < matches.length; index += 1) {
+    filtered[index] = matches[index]!.item;
+  }
+  return filtered;
 }
 
 /** Selects a gallery item on the provider after checking registration and theme validation. */
@@ -158,11 +179,11 @@ function createThemeGalleryItem(
   const inspection = engine.inspect();
   const palette = typeof pack?.palette === "string" ? pack.palette : pack?.palette?.id ?? "plain";
   const sample = options.sample ?? "Aa";
-  const tokenNames = options.tokens ? sortedThemeTokenNames(options.tokens) : [...themeTokenNames];
+  const tokenNames = options.tokens ? sortedThemeTokenNames(options.tokens) : cloneStringArray(themeTokenNames);
   const componentNames = options.components
-    ? [...options.components]
-    : inspection.components.map((component) => component.name);
-  const stateNames = options.states ? sortedThemeStates(options.states) : [...themeStates];
+    ? cloneStringArray(options.components)
+    : inspectedComponentNames(inspection.components);
+  const stateNames = options.states ? sortedThemeStates(options.states) : cloneStringArray(themeStates);
   const variants: Record<string, string[]> = {};
 
   for (const component of inspection.components) {
@@ -195,24 +216,8 @@ function createThemeGalleryItem(
     ),
     preview: {
       sample,
-      tokens: tokenNames.map((token) => ({
-        token,
-        preview: previewStyle(engine.theme.tokens[token], sample),
-      })),
-      components: componentNames.flatMap((component) => {
-        const variantNames = options.variants
-          ? [...options.variants(component, engine)]
-          : ["default", ...engine.variants(component)];
-        return variantNames.flatMap((variant) => {
-          const theme = engine.component(component, variant);
-          return stateNames.map((state) => ({
-            component,
-            variant,
-            state,
-            preview: previewStyle(theme[state], sample),
-          }));
-        });
-      }),
+      tokens: previewThemeGalleryTokens(engine, tokenNames, sample),
+      components: previewThemeGalleryComponents(engine, componentNames, stateNames, sample, options.variants),
     },
   };
 }
@@ -236,20 +241,27 @@ function themeGalleryKeywords(
   variants: Record<string, string[]>,
   issues: readonly ThemeValidationIssue[],
 ): string[] {
-  return [
-    ...new Set([
-      "theme",
-      "engine",
-      id,
-      label ?? id,
-      description,
-      palette ?? "plain",
-      ...activeLayers,
-      ...components,
-      ...Object.values(variants).flat(),
-      ...(issues.length === 0 ? ["valid"] : ["invalid", ...issues.map((issue) => issue.kind)]),
-    ]),
-  ].filter((keyword): keyword is string => typeof keyword === "string" && keyword.length > 0).sort();
+  const keywords = new Set<string>();
+  addThemeGalleryKeyword(keywords, "theme");
+  addThemeGalleryKeyword(keywords, "engine");
+  addThemeGalleryKeyword(keywords, id);
+  addThemeGalleryKeyword(keywords, label ?? id);
+  addThemeGalleryKeyword(keywords, description);
+  addThemeGalleryKeyword(keywords, palette ?? "plain");
+  for (const layer of activeLayers) addThemeGalleryKeyword(keywords, layer);
+  for (const component of components) addThemeGalleryKeyword(keywords, component);
+  for (const variant in variants) {
+    for (const state of variants[variant]!) {
+      addThemeGalleryKeyword(keywords, state);
+    }
+  }
+  if (issues.length === 0) {
+    addThemeGalleryKeyword(keywords, "valid");
+  } else {
+    addThemeGalleryKeyword(keywords, "invalid");
+    for (const issue of issues) addThemeGalleryKeyword(keywords, issue.kind);
+  }
+  return [...keywords].sort();
 }
 
 function previewStyle(style: (text: string) => string, sample: string): ThemeStylePreview {
@@ -258,10 +270,91 @@ function previewStyle(style: (text: string) => string, sample: string): ThemeSty
 
 function sortedThemeTokenNames(values: Iterable<string>): ThemeTokenName[] {
   const requested = new Set(values);
-  return themeTokenNames.filter((token) => requested.has(token));
+  const tokens: ThemeTokenName[] = [];
+  for (const token of themeTokenNames) {
+    if (requested.has(token)) tokens.push(token);
+  }
+  return tokens;
 }
 
 function sortedThemeStates(values: Iterable<string>): ThemeState[] {
   const requested = new Set(values);
-  return themeStates.filter((state) => requested.has(state));
+  const states: ThemeState[] = [];
+  for (const state of themeStates) {
+    if (requested.has(state)) states.push(state);
+  }
+  return states;
+}
+
+function cloneStringArray<T extends string>(values: Iterable<T>): T[] {
+  const cloned: T[] = [];
+  for (const value of values) {
+    cloned.push(value);
+  }
+  return cloned;
+}
+
+function inspectedComponentNames(components: ReturnType<ThemeEngine["inspect"]>["components"]): string[] {
+  const names = new Array<string>(components.length);
+  for (let index = 0; index < components.length; index += 1) {
+    names[index] = components[index]!.name;
+  }
+  return names;
+}
+
+function previewThemeGalleryTokens(
+  engine: ThemeEngine,
+  tokenNames: readonly ThemeTokenName[],
+  sample: string,
+): ThemeGalleryTokenPreview[] {
+  const previews = new Array<ThemeGalleryTokenPreview>(tokenNames.length);
+  for (let index = 0; index < tokenNames.length; index += 1) {
+    const token = tokenNames[index]!;
+    previews[index] = {
+      token,
+      preview: previewStyle(engine.theme.tokens[token], sample),
+    };
+  }
+  return previews;
+}
+
+function previewThemeGalleryComponents(
+  engine: ThemeEngine,
+  componentNames: readonly string[],
+  stateNames: readonly ThemeState[],
+  sample: string,
+  variantsOption: ThemeGalleryOptions["variants"],
+): ThemeGalleryComponentStatePreview[] {
+  const previews: ThemeGalleryComponentStatePreview[] = [];
+  for (const component of componentNames) {
+    const variantNames = variantsOption
+      ? cloneStringArray(variantsOption(component, engine))
+      : defaultVariantNames(engine, component);
+    for (const variant of variantNames) {
+      const theme = engine.component(component, variant);
+      for (const state of stateNames) {
+        previews.push({
+          component,
+          variant,
+          state,
+          preview: previewStyle(theme[state], sample),
+        });
+      }
+    }
+  }
+  return previews;
+}
+
+function defaultVariantNames(engine: ThemeEngine, component: string): string[] {
+  const variants = engine.variants(component);
+  const names = new Array<string>(variants.length + 1);
+  names[0] = "default";
+  for (let index = 0; index < variants.length; index += 1) {
+    names[index + 1] = variants[index]!;
+  }
+  return names;
+}
+
+function addThemeGalleryKeyword(keywords: Set<string>, value: string | undefined): void {
+  if (typeof value === "string" && value.length > 0) keywords.add(value);
 }

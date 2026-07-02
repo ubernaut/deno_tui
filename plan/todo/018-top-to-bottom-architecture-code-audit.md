@@ -309,6 +309,9 @@ Work:
   - [x] Reworked theme provider catalog/preview/report assembly to build themes, layers, component sources, token
         previews, component-state previews, coverage component names, and variant counts with direct buffers instead of
         `map/flatMap/reduce` pipelines.
+  - [x] Reworked theme gallery construction, ranked matching, filtered item projection, inactive-theme preview rows,
+        component-name extraction, keyword collection, and token/state filtering to use direct buffers and sets instead
+        of `map/flatMap/filter/Object.values().flat()` pipelines.
   - [x] Reworked EventEmitter aggregate counting, event-name projection, and inspection to avoid Object.values/entries
         pipelines in core canvas/component/web host event paths.
   - [x] Reworked runtime diagnostics bounded trimming, cloning, status counting, and text formatting to avoid map/filter
