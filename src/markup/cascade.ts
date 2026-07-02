@@ -173,6 +173,12 @@ function matchesSimpleSelector(
   for (const className of selector.matchAll(/\.([A-Za-z_][\w-]*)/g)) {
     if (!node.classes.includes(className[1]!)) return false;
   }
+  for (const attribute of selector.matchAll(/\[\s*([A-Za-z_][\w-]*)(?:\s*=\s*("[^"]*"|'[^']*'|[^\]\s]+))?\s*\]/g)) {
+    const name = attribute[1]!;
+    const expected = normalizeAttributeSelectorValue(attribute[2]);
+    if (!(name in node.attributes)) return false;
+    if (expected !== undefined && node.attributes[name] !== expected) return false;
+  }
   for (const pseudo of selector.matchAll(/:([A-Za-z_][\w-]*)/g)) {
     const state = pseudo[1];
     if (state === "root") {
@@ -182,6 +188,18 @@ function matchesSimpleSelector(
     }
   }
   return true;
+}
+
+function normalizeAttributeSelectorValue(value: string | undefined): string | undefined {
+  if (value === undefined) return undefined;
+  const trimmed = value.trim();
+  if (
+    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'"))
+  ) {
+    return trimmed.slice(1, -1);
+  }
+  return trimmed;
 }
 
 function normalizeVariables(variables: Record<string, string>): Record<string, string> {

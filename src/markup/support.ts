@@ -113,7 +113,7 @@ const supportedHydratedWidgetTags = [
 export function inspectTuiCssSupport(): TuiCssSupportReport {
   return {
     layoutDisplays: ["block", "flex", "grid", "none"],
-    selectors: ["tag", ".class", "#id", "*", "child >", "descendant", "selector lists"],
+    selectors: ["tag", ".class", "#id", "[attr]", "[attr=value]", "*", "child >", "descendant", "selector lists"],
     pseudoStates: ["active", "disabled", "focus", "hover"],
     mediaFeatures: ["min-width", "max-width", "min-height", "max-height"],
     properties: [...supportedProperties],

@@ -108,13 +108,14 @@ export function parseCssDeclarations(source: string): TuiCssDeclaration[] {
 export function cssSelectorSpecificity(selector: string): number {
   const idCount = (selector.match(/#[A-Za-z_][\w-]*/g) ?? []).length;
   const classCount = (selector.match(/\.[A-Za-z_][\w-]*/g) ?? []).length;
+  const attributeCount = (selector.match(/\[[^\]]+\]/g) ?? []).length;
   const pseudoCount = (selector.match(/:[A-Za-z_][\w-]*/g) ?? []).length;
   let tagCount = 0;
   for (const part of selectorParts(selector)) {
     const tag = /^(#text|[A-Za-z][\w-]*|\*)/.exec(part.simple)?.[1];
     if (tag !== undefined && tag !== "*") tagCount += 1;
   }
-  return idCount * 100 + (classCount + pseudoCount) * 10 + tagCount;
+  return idCount * 100 + (classCount + attributeCount + pseudoCount) * 10 + tagCount;
 }
 
 /** Public helper for parsing selector parts from left to right. */

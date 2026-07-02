@@ -106,6 +106,43 @@ Deno.test("selectorParts parses child and descendant combinators without spacing
   ]);
 });
 
+Deno.test("applyCssCascade supports attribute selectors", () => {
+  const document = parseTuiMarkup(`
+    <window id="main">
+      <button id="save" data-tone="primary">Save</button>
+      <button id="disabled" disabled>Disabled</button>
+      <button id="plain">Plain</button>
+    </window>
+  `);
+  const stylesheet = parseCssStylesheet(`
+    button {
+      width: 8;
+    }
+
+    button[data-tone="primary"] {
+      width: 14;
+      background: #123456;
+    }
+
+    [disabled] {
+      color: #777777;
+    }
+  `);
+
+  const styled = applyCssCascade(document.root, stylesheet);
+  const save = findLayoutNode(styled, "save")!;
+  const disabled = findLayoutNode(styled, "disabled")!;
+  const plain = findLayoutNode(styled, "plain")!;
+
+  assertEquals(matchesCssSelector('button[data-tone="primary"]', save, [styled]), true);
+  assertEquals(matchesCssSelector("[disabled]", disabled, [styled]), true);
+  assertEquals(matchesCssSelector("[disabled]", plain, [styled]), false);
+  assertEquals(save.style.width, { unit: "cell", value: 14 });
+  assertEquals(save.style.backgroundColor, "#123456");
+  assertEquals(disabled.style.color, "#777777");
+  assertEquals(plain.style.width, { unit: "cell", value: 8 });
+});
+
 Deno.test("applyCssCascade parses flex flow shorthand into direction and wrapping", () => {
   const document = parseTuiMarkup(`
     <window id="main">

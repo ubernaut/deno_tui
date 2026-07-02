@@ -13,8 +13,8 @@ Implemented pieces:
 
 - `parseTuiMarkup()` builds a renderer-neutral `LayoutNode` tree from HTML-like markup.
 - `parseCssStylesheet()` parses a lightweight CSS subset into ordered rules.
-- `applyCssCascade()` applies tag/class/id selectors, child and descendant selectors, pseudo states, CSS variables, and
-  inline styles.
+- `applyCssCascade()` applies tag/class/id/attribute selectors, child and descendant selectors, pseudo states, CSS
+  variables, and inline styles.
 - CSS-like `@media` blocks can target terminal-cell viewport width and height with `min-width`, `max-width`,
   `min-height`, and `max-height`.
 - `createMarkupLayout()` parses markup, applies CSS, and computes terminal-cell boxes.
@@ -287,6 +287,7 @@ Selectors:
 - tag selectors: `button`
 - class selectors: `.toolbar`
 - id selectors: `#refresh`
+- attribute selectors: `[disabled]`, `button[data-tone="primary"]`
 - descendant selectors: `window button`
 - direct child selectors: `.toolbar > button`
 - pseudo states: `:focus`, `:active`, `:disabled`, `:hover`
