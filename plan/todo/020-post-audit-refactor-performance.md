@@ -165,3 +165,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   adapters through the standard reusable button-row render commands.
 - Added standalone browser Three ASCII render-window chrome using the shared demo window geometry, and pinned browser
   block-mode truecolor cells so Canvas2D preserves full-background color instead of glyph/text quantization.
+- Added a fully visible integer-rectangle fast path to Three ASCII frame diffing, reducing the focused
+  `three-ascii-frame-diff-96x40` benchmark from roughly 2.32ms to 2.15ms without changing clipped or fractional paths.

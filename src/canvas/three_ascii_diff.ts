@@ -52,6 +52,23 @@ export function queueChangedThreeAsciiGridCells(
   if (columns <= 0 || rows <= 0) return false;
 
   if (Number.isInteger(rectangle.column) && Number.isInteger(rectangle.row)) {
+    if (
+      viewRectangle === undefined &&
+      rectangle.column >= 0 &&
+      rectangle.row >= 0 &&
+      rectangle.column + columns <= canvasSize.columns &&
+      rectangle.row + rows <= canvasSize.rows
+    ) {
+      return queueChangedFullyVisibleIntegerCells({
+        grid,
+        rectangle,
+        rerenderCells,
+        previous,
+        cacheValid,
+        columns,
+        rows,
+      });
+    }
     return queueChangedIntegerAlignedCells({
       grid,
       rectangle,
@@ -91,6 +108,36 @@ interface QueueIntegerAlignedCellsOptions extends QueueChangedCellsInternalOptio
   canvasSize: ThreeAsciiDiffCanvasSize;
   rerenderCells: ThreeAsciiDiffQueue;
   viewRectangle?: Rectangle;
+}
+
+interface QueueFullyVisibleIntegerCellsOptions extends QueueChangedCellsInternalOptions {
+  rerenderCells: ThreeAsciiDiffQueue;
+}
+
+function queueChangedFullyVisibleIntegerCells(options: QueueFullyVisibleIntegerCellsOptions): boolean {
+  const { grid, rectangle, rerenderCells, previous, cacheValid, columns, rows } = options;
+  let changed = false;
+  const rectangleColumn = rectangle.column;
+  const rectangleRow = rectangle.row;
+
+  for (let row = 0; row < rows; row += 1) {
+    const outputRow = grid[row];
+    const rowOffset = row * columns;
+    const canvasRow = rectangleRow + row;
+    let queueRow: Set<number> | undefined;
+
+    for (let column = 0; column < columns; column += 1) {
+      const index = rowOffset + column;
+      const cell = outputRow?.[column] ?? " ";
+      if (cacheValid && previous.cells[index] === cell) continue;
+      previous.cells[index] = cell;
+      queueRow ??= rerenderCells[canvasRow] ??= new Set<number>();
+      queueRow.add(rectangleColumn + column);
+      changed = true;
+    }
+  }
+
+  return changed;
 }
 
 function queueChangedIntegerAlignedCells(options: QueueIntegerAlignedCellsOptions): boolean {
