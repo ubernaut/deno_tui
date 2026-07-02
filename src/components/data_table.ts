@@ -77,15 +77,16 @@ export function createDataTableView<TRow extends Record<string, unknown>>(
   state: DataTableState = {},
   rowKey?: (row: TRow, index: number) => string,
 ): DataTableView<TRow> {
-  const filtered = filterDataRows(rows, columns, state.query ?? "");
-  const sorted = sortDataRows(filtered, state.sort);
+  const query = state.query ?? "";
+  const filtered: readonly TRow[] = query.trim() ? filterDataRows(rows, columns, query) : rows;
+  const sorted: readonly TRow[] = state.sort ? sortDataRows(filtered, state.sort) : filtered;
   const pageSize = Math.max(1, Math.floor(state.pageSize ?? (sorted.length || 1)));
   const selectedAbsoluteIndex = selectedRowIndex(sorted, state, rowKey);
   const pageForSelection = selectedAbsoluteIndex >= 0 ? Math.floor(selectedAbsoluteIndex / pageSize) : undefined;
   const pageCount = Math.max(1, Math.ceil(sorted.length / pageSize));
   const page = clamp(Math.floor(pageForSelection ?? state.page ?? 0), 0, pageCount - 1);
   const start = page * pageSize;
-  const pageRows = sorted.slice(start, start + pageSize);
+  const pageRows = copyDataTablePageRows(sorted, start, pageSize);
   const selectedIndex = selectedAbsoluteIndex >= start && selectedAbsoluteIndex < start + pageRows.length
     ? selectedAbsoluteIndex - start
     : clampSelectionIndex(pageRows.length, state.selectedIndex ?? 0);
@@ -100,6 +101,15 @@ export function createDataTableView<TRow extends Record<string, unknown>>(
     selectedKey: selectedRow && rowKey ? rowKey(selectedRow, start + selectedIndex) : undefined,
     selectedRow,
   };
+}
+
+function copyDataTablePageRows<TRow>(rows: readonly TRow[], start: number, pageSize: number): TRow[] {
+  const count = Math.max(0, Math.min(pageSize, rows.length - start));
+  const pageRows = new Array<TRow>(count);
+  for (let index = 0; index < count; index += 1) {
+    pageRows[index] = rows[start + index]!;
+  }
+  return pageRows;
 }
 
 /** State controller for data Table behavior. */
