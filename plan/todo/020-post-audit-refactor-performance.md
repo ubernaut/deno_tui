@@ -124,3 +124,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   main API workbench renderer keeps less static presentation logic.
 - Extracted the browser API workbench Three preview row projection and ASCII orb generation into the shared
   visualization-window helper with direct tests, leaving the web page to handle paint only.
+- Routed terminal and web API workbench slider pointer updates through `SliderController.handlePointer`, removing
+  duplicated renderer-local pointer math.

@@ -2371,7 +2371,7 @@ function applyControlHit(
   else if (id === "genericButton") genericButton.press("mouse");
   else if (id === "modal") modalButton.press("mouse");
   else if (id === "slider") {
-    if (action === "set" && rect && x !== undefined) setSliderFromPointer(slider, rect, x);
+    if (action === "set" && rect && x !== undefined) slider.handlePointer(rect, x, rect.row);
     else action === "previous" ? slider.decrement() : slider.increment();
   } else if (id === "checkbox") index === 1 || action === "next" ? compact.toggle() : live.toggle();
   else if (id === "radio") {
@@ -2408,15 +2408,6 @@ function selectDataRow(index: number): void {
   active.value = "data";
   table.select(index);
   push(`data row ${table.selectedKey() ?? index}`);
-}
-
-function setSliderFromPointer(controller: SliderController, rect: Rectangle, x: number): void {
-  const inspection = controller.inspect();
-  const local = Math.max(0, Math.min(rect.width - 1, x - rect.column));
-  const ratio = rect.width <= 1 ? 0 : local / (rect.width - 1);
-  const raw = inspection.min + ratio * (inspection.max - inspection.min);
-  const stepped = inspection.min + Math.round((raw - inspection.min) / inspection.step) * inspection.step;
-  controller.setValue(stepped);
 }
 
 function handleControlsKey(event: { key: string; ctrl?: boolean; meta?: boolean; shift?: boolean }): void {

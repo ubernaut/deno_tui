@@ -18107,7 +18107,7 @@ function applyControlHit(id2, action, rect, x, index) {
   else if (id2 === "genericButton") genericButton.press("mouse");
   else if (id2 === "modal") modalButton.press("mouse");
   else if (id2 === "slider") {
-    if (action === "set" && rect && x !== void 0) setSliderFromPointer(slider, rect, x);
+    if (action === "set" && rect && x !== void 0) slider.handlePointer(rect, x, rect.row);
     else action === "previous" ? slider.decrement() : slider.increment();
   } else if (id2 === "checkbox") index === 1 || action === "next" ? compact.toggle() : live.toggle();
   else if (id2 === "radio") {
@@ -18144,14 +18144,6 @@ function selectDataRow(index) {
   active.value = "data";
   table.select(index);
   push(`data row ${table.selectedKey() ?? index}`);
-}
-function setSliderFromPointer(controller, rect, x) {
-  const inspection = controller.inspect();
-  const local = Math.max(0, Math.min(rect.width - 1, x - rect.column));
-  const ratio = rect.width <= 1 ? 0 : local / (rect.width - 1);
-  const raw = inspection.min + ratio * (inspection.max - inspection.min);
-  const stepped = inspection.min + Math.round((raw - inspection.min) / inspection.step) * inspection.step;
-  controller.setValue(stepped);
 }
 function handleControlsKey(event) {
   if (activeControl.peek() === "input") input.handleKeyPress(event);
