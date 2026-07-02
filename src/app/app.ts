@@ -197,12 +197,16 @@ export class TuiApp<TAction extends Action = Action, TRoute extends Route = Rout
 
   /** Returns installed plugin ids in registration order. */
   pluginIds(): string[] {
-    return [...this.#plugins.keys()];
+    const ids: string[] = [];
+    for (const id of this.#plugins.keys()) ids.push(id);
+    return ids;
   }
 
   /** Returns installed plugin metadata without exposing internal disposers. */
   plugins(): AppPluginInspection[] {
-    return [...this.#plugins.values()].map(({ id, label }) => ({ id, label }));
+    const plugins: AppPluginInspection[] = [];
+    for (const plugin of this.#plugins.values()) plugins.push({ id: plugin.id, label: plugin.label });
+    return plugins;
   }
 
   /** Returns an aggregate app state snapshot. */
@@ -210,6 +214,20 @@ export class TuiApp<TAction extends Action = Action, TRoute extends Route = Rout
     const routes = this.routes.routes.peek();
     const commands = this.commands.list();
     const keyBindings = this.keymap.list();
+    const routeIds: string[] = [];
+    for (let index = 0; index < routes.length; index += 1) routeIds.push(routes[index]!.id);
+    const commandGroups = new Set<string>();
+    let enabledCommands = 0;
+    for (let index = 0; index < commands.length; index += 1) {
+      const command = commands[index]!;
+      if (this.commands.enabled(command)) enabledCommands += 1;
+      if (command.group) commandGroups.add(command.group);
+    }
+    const keymapGroups = new Set<string>();
+    for (let index = 0; index < keyBindings.length; index += 1) {
+      const group = keyBindings[index]!.group;
+      if (group) keymapGroups.add(group);
+    }
     return {
       destroyed: this.#destroyed,
       disposers: this.#disposers.size,
@@ -218,17 +236,17 @@ export class TuiApp<TAction extends Action = Action, TRoute extends Route = Rout
         count: routes.length,
         activeRouteId: this.routes.activeRouteId.peek(),
         active: this.routes.active(),
-        ids: routes.map((route) => route.id),
+        ids: routeIds,
       },
       commands: {
         count: commands.length,
-        enabled: commands.filter((command) => this.commands.enabled(command)).length,
-        disabled: commands.filter((command) => !this.commands.enabled(command)).length,
-        groups: uniqueSorted(commands.map((command) => command.group)),
+        enabled: enabledCommands,
+        disabled: commands.length - enabledCommands,
+        groups: sortedSetValues(commandGroups),
       },
       keymap: {
         count: keyBindings.length,
-        groups: uniqueSorted(keyBindings.map((binding) => binding.group)),
+        groups: sortedSetValues(keymapGroups),
       },
       focus: this.focus.inspect(),
       mouse: this.mouse.inspect(),
@@ -293,8 +311,11 @@ export class TuiApp<TAction extends Action = Action, TRoute extends Route = Rout
   }
 }
 
-function uniqueSorted(values: Array<string | undefined>): string[] {
-  return [...new Set(values.filter((value): value is string => !!value))].sort();
+function sortedSetValues(values: Set<string>): string[] {
+  const sorted: string[] = [];
+  for (const value of values) sorted.push(value);
+  sorted.sort();
+  return sorted;
 }
 
 function pluginMetadata<TAction extends Action, TRoute extends Route>(

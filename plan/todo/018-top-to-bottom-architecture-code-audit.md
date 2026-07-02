@@ -302,6 +302,8 @@ Work:
         and modal close-tree handling around explicit buffers to reduce popover/modal state churn.
   - [x] Reworked WorkbenchController inspection to bucket all window ids in one pass for terminal and web adapter
         diagnostics.
+  - [x] Reworked TuiApp plugin metadata, route ids, command enabled counts, and command/keymap groups to avoid repeated
+        map/filter scans during app inspection.
 
 Acceptance checks:
 
