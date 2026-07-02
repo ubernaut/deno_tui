@@ -1686,9 +1686,18 @@ function textWidth(text, start = 0) {
   const asciiWidth = plainAsciiWidth(text, start);
   if (asciiWidth !== void 0) return asciiWidth;
   let width = 0;
-  for (const cell of iterateTextCells(text, start)) {
-    if (cell.plain === "\n") break;
-    width += characterWidth(cell.plain);
+  for (let index = Math.max(0, Math.floor(start)); index < text.length; ) {
+    if (text.charCodeAt(index) === 27) {
+      const sequence = readAnsiSequenceAt(text, index);
+      if (sequence) {
+        index += sequence.length;
+        continue;
+      }
+    }
+    const char = nextTextCharacter(text, index);
+    if (char === "\n") break;
+    width += characterWidth(char);
+    index += char.length;
   }
   return width;
 }
@@ -1697,27 +1706,37 @@ function cropToWidth(text, width) {
   if (asciiCropped !== void 0) return asciiCropped;
   let cropped = "";
   let croppedWidth = 0;
-  for (const cell of iterateTextCells(text)) {
-    const plain = cell.plain;
-    if (!plain) {
-      cropped += cell.raw;
-      continue;
+  let prefix = "";
+  for (let index = 0; index < text.length; ) {
+    if (text.charCodeAt(index) === 27) {
+      const sequence = readAnsiSequenceAt(text, index);
+      if (sequence) {
+        prefix += sequence;
+        index += sequence.length;
+        continue;
+      }
     }
-    if (plain === "\n") break;
-    const charWidth = characterWidth(plain);
+    const char = nextTextCharacter(text, index);
+    if (char === "\n") break;
+    const charWidth = characterWidth(char);
     if (croppedWidth + charWidth > width) {
-      const leading = cell.raw.slice(0, cell.raw.length - plain.length);
-      if (leading && isAnsiResetOnly(leading)) {
-        cropped += leading;
+      if (prefix && isAnsiResetOnly(prefix)) {
+        cropped += prefix;
       }
       if (croppedWidth + 1 === width) {
         cropped += " ";
       }
+      prefix = "";
       break;
     } else {
       croppedWidth += charWidth;
     }
-    cropped += cell.raw;
+    cropped += prefix + char;
+    prefix = "";
+    index += char.length;
+  }
+  if (prefix) {
+    cropped += prefix;
   }
   return cropped;
 }
@@ -1739,27 +1758,6 @@ function cropPlainAsciiToWidth(text, width) {
     if (code === 27 || code >= 128) return void 0;
   }
   return text.length <= safeWidth ? text : text.slice(0, limit);
-}
-function* iterateTextCells(text, start = 0) {
-  let index = start;
-  let prefix = "";
-  while (index < text.length) {
-    if (text.charCodeAt(index) === 27) {
-      const sequence = readAnsiSequenceAt(text, index);
-      if (sequence) {
-        prefix += sequence;
-        index += sequence.length;
-        continue;
-      }
-    }
-    const char = nextTextCharacter(text, index);
-    yield { raw: prefix + char, plain: char };
-    prefix = "";
-    index += char.length;
-  }
-  if (prefix) {
-    yield { raw: prefix, plain: "" };
-  }
 }
 function nextTextCharacter(text, index) {
   const codeUnit = text.charCodeAt(index);
@@ -2422,6 +2420,7 @@ var BoxObject = class extends DrawObject {
     const rectangle = this.rectangle.peek();
     const style2 = this.style.peek();
     const filler = this.filler.peek();
+    const styledFiller = style2(filler);
     let rowRange = Math.min(rectangle.row + rectangle.height, rows2);
     let columnRange = Math.min(rectangle.column + rectangle.width, columns2);
     const viewRectangle = this.view.peek()?.rectangle?.peek();
@@ -2444,7 +2443,7 @@ var BoxObject = class extends DrawObject {
         if (omitColumns?.has(column) || column < rectangle.column || column >= columnRange) {
           continue;
         }
-        rowBuffer[column] = style2(filler);
+        rowBuffer[column] = styledFiller;
         rerenderQueueRow.add(column);
       }
       rerenderColumns.clear();
@@ -2781,6 +2780,15 @@ var Canvas = class extends EventEmitter {
   drawnOrderVersion;
   cellUpdatesBuffer;
   rowRangesBuffer;
+  objectsToUpdateBuffer;
+  seenObjectsBuffer;
+  dirtyRectanglesBuffer;
+  movedOwnObjectsBuffer;
+  nonMovingUpdatedObjectsBuffer;
+  affectedObjectsBuffer;
+  requiredObjectsBuffer;
+  dirtyCandidatesBuffer;
+  intersectionCandidatesBuffer;
   constructor(options) {
     super();
     this.frameBuffer = [];
@@ -2800,6 +2808,15 @@ var Canvas = class extends EventEmitter {
     this.drawnOrderVersion = 0;
     this.cellUpdatesBuffer = [];
     this.rowRangesBuffer = [];
+    this.objectsToUpdateBuffer = [];
+    this.seenObjectsBuffer = /* @__PURE__ */ new Set();
+    this.dirtyRectanglesBuffer = [];
+    this.movedOwnObjectsBuffer = /* @__PURE__ */ new Set();
+    this.nonMovingUpdatedObjectsBuffer = [];
+    this.affectedObjectsBuffer = [];
+    this.requiredObjectsBuffer = /* @__PURE__ */ new Set();
+    this.dirtyCandidatesBuffer = [];
+    this.intersectionCandidatesBuffer = [];
     this.size = signalify(options.size, { deepObserve: true });
     this.size.subscribe(() => {
       this.resizeNeeded = true;
@@ -2869,8 +2886,10 @@ var Canvas = class extends EventEmitter {
       this.lastRenderStats = emptyRenderStats();
       return;
     }
-    const objectsToUpdate = [];
-    const seenObjects = /* @__PURE__ */ new Set();
+    const objectsToUpdate = this.objectsToUpdateBuffer;
+    const seenObjects = this.seenObjectsBuffer;
+    objectsToUpdate.length = 0;
+    seenObjects.clear();
     while (updateObjects.length) {
       const object = updateObjects.pop();
       if (seenObjects.has(object)) {
@@ -2882,9 +2901,12 @@ var Canvas = class extends EventEmitter {
     objectsToUpdate.sort((a, b) => b.zIndex.peek() - a.zIndex.peek() || b.id - a.id);
     let i = 0;
     let intersectionsDirty = false;
-    const dirtyRectangles = [];
-    const movedOwnObjects = /* @__PURE__ */ new Set();
-    const nonMovingUpdatedObjects = [];
+    const dirtyRectangles = this.dirtyRectanglesBuffer;
+    const movedOwnObjects = this.movedOwnObjectsBuffer;
+    const nonMovingUpdatedObjects = this.nonMovingUpdatedObjectsBuffer;
+    dirtyRectangles.length = 0;
+    movedOwnObjects.clear();
+    nonMovingUpdatedObjects.length = 0;
     for (const object of objectsToUpdate) {
       object.updated = true;
       ++i;
@@ -2919,12 +2941,15 @@ var Canvas = class extends EventEmitter {
       dirtyRegion,
       nonMovingUpdatedObjects,
       movedOwnObjects,
-      spatialIndex
+      spatialIndex,
+      this.affectedObjectsBuffer,
+      this.requiredObjectsBuffer,
+      this.dirtyCandidatesBuffer
     ) : objectsToUpdate;
     let intersectionCandidateChecks = 0;
     if (intersectionsDirty) {
       objectsToRender.sort((a, b) => b.zIndex.peek() - a.zIndex.peek() || b.id - a.id);
-      const intersectionCandidates = [];
+      const intersectionCandidates = this.intersectionCandidatesBuffer;
       for (const object of objectsToRender) {
         intersectionCandidateChecks += this.updateIntersections(
           object,
@@ -3030,25 +3055,30 @@ function cloneRectangle(rectangle) {
     height: rectangle.height
   };
 }
-function affectedDrawObjects(objects, dirtyRegion, requiredObjects, movedObjects, spatialIndex) {
+function affectedDrawObjects(objects, dirtyRegion, requiredObjects, movedObjects, spatialIndex, target, required, dirtyCandidates) {
+  target.length = 0;
+  required.clear();
   if (dirtyRegion.isEmpty()) {
-    return [...objects];
+    for (const object of objects) {
+      target.push(object);
+    }
+    return target;
   }
-  const required = new Set(requiredObjects);
   for (const object of movedObjects) {
     required.add(object);
   }
-  const dirtyCandidates = spatialIndex.queryDirtyRegionInto([], dirtyRegion);
-  for (const object of dirtyCandidates) {
+  for (const object of requiredObjects) {
     required.add(object);
   }
-  const affected = [];
+  for (const object of spatialIndex.queryDirtyRegionInto(dirtyCandidates, dirtyRegion)) {
+    required.add(object);
+  }
   for (const object of objects) {
     if (required.has(object)) {
-      affected.push(object);
+      target.push(object);
     }
   }
-  return affected;
+  return target;
 }
 function queueDirtyRegion(object, dirtyRegion) {
   dirtyRegion.forEachIntersection(object.rectangle.peek(), (segment) => {
@@ -10533,11 +10563,11 @@ function readSgrSequenceAt(value, start) {
   return value.slice(start, index + 1);
 }
 function renderFrameRow(cells, width) {
-  const row = new Array(Math.max(0, width));
+  let row = "";
   for (let column = 0; column < width; column += 1) {
-    row[column] = cells[column] ?? " ";
+    row += cells[column] ?? " ";
   }
-  return row.join("");
+  return row;
 }
 function writeStringFrameRow(frame, width, row, column, value) {
   if (row < 0 || row >= frame.length || column >= width) return;
