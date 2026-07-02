@@ -9523,8 +9523,11 @@ function renderModalRows(inspection, options) {
   if (actions) rows2.push("", actions);
   const height = options.height === void 0 ? rows2.length : Math.max(0, Math.floor(options.height));
   if (options.height === void 0 || height <= 0 || rows2.length <= height) return rows2;
-  if (!actions || height === 1) return rows2.slice(0, height);
-  const clipped = rows2.slice(0, height);
+  const clipped = new Array(height);
+  for (let index = 0; index < height; index += 1) {
+    clipped[index] = rows2[index] ?? "";
+  }
+  if (!actions || height === 1) return clipped;
   clipped[height - 1] = actions;
   return clipped;
 }
