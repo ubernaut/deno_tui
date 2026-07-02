@@ -79,7 +79,13 @@ import {
   stepForIndex,
   StepperController,
 } from "../src/components/stepper.ts";
-import { clampTableRow, TableController, tableMaxOffset, tableVisibleCapacity } from "../src/components/table.ts";
+import {
+  clampTableRow,
+  tableAutoColumnWidths,
+  TableController,
+  tableMaxOffset,
+  tableVisibleCapacity,
+} from "../src/components/table.ts";
 import { clampTabIndex, renderTabs, shiftTabIndex, tabForIndex, TabsController } from "../src/components/tabs.ts";
 import { TextBoxController, textBoxVisualCursor, TextLineCache, wrapTextBoxLines } from "../src/components/textbox.ts";
 import { flattenTree, flattenTreeRows, TreeController } from "../src/components/tree.ts";
@@ -896,6 +902,20 @@ Deno.test("TableController moves pages scrolls and clamps row state", () => {
   });
   assertEquals(selected, [6, 9, 7]);
   controller.dispose();
+});
+
+Deno.test("tableAutoColumnWidths scans sparse data without row buffers", () => {
+  assertEquals(
+    tableAutoColumnWidths(
+      [{ title: "ID" }, { title: "Name" }, { title: "State" }],
+      [
+        ["1", "Alpha"],
+        ["200", "Beta Service", "ready"],
+        ["3", "C", "degraded"],
+      ],
+    ),
+    [3, 12, 8],
+  );
 });
 
 Deno.test("tableCommands move and select table rows", async () => {

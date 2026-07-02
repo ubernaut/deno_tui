@@ -96,6 +96,23 @@ export function tableMaxOffset(rowCount: number, viewportHeight: number): number
   return Math.max(0, Math.floor(rowCount) - tableVisibleCapacity(viewportHeight));
 }
 
+/** Public helper for table auto Column Widths. */
+export function tableAutoColumnWidths(
+  headers: readonly TableHeader<false>[],
+  data: readonly (readonly string[])[],
+): number[] {
+  const widths = new Array<number>(headers.length);
+  for (let column = 0; column < headers.length; column += 1) {
+    let width = textWidth(headers[column]!.title);
+    for (let row = 0; row < data.length; row += 1) {
+      const cellWidth = textWidth(data[row]![column]);
+      if (cellWidth > width) width = cellWidth;
+    }
+    widths[column] = width;
+  }
+  return widths;
+}
+
 /** Clamps table Row to its valid range. */
 export function clampTableRow(row: number, rowCount: number): number {
   return clamp(Math.floor(row), 0, Math.max(0, Math.floor(rowCount) - 1));
@@ -352,13 +369,11 @@ export class Table extends Component {
 
     new Effect(() => {
       const headers = this.headers.value;
+      const widths = tableAutoColumnWidths(headers, this.data.value);
       let width = 1;
-      for (let i = 0; i < headers.length; ++i) {
+      for (let i = 0; i < headers.length; i += 1) {
         const header = headers[i];
-        header.width = Math.max(
-          textWidth(header.title),
-          this.data.value.reduce((a, b) => Math.max(a, textWidth(b[i])), 0),
-        );
+        header.width = widths[i]!;
         width += header.width + 1;
       }
       this.rectangle.value.width = width;
