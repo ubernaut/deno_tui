@@ -8,7 +8,7 @@ import { adaptiveGridItemRect, adaptiveGridPage } from "../src/layout/mod.ts";
 import { createDefaultAsciiOptions, terminalGlyphStyleLabel } from "./ascii_options.ts";
 import { demos, formatCountdown, type NeonDemo, type NeonSection } from "./neon_theme.ts";
 import { accentColor, makeStyle, palette, severityAccent } from "./styles.ts";
-import { unitWave, waveSeries } from "./synthetic_wave.ts";
+import { stringSeed, unitWave, waveSeries } from "./synthetic_wave.ts";
 import { requireInteractiveTerminal } from "./terminal_guard.ts";
 import { ThreePanelView } from "./three_panel.ts";
 import type {
@@ -412,7 +412,7 @@ function buildRenderContext(demo: NeonDemo, rect: Rect, selected: boolean): Rend
 }
 
 function syntheticSources(demo: NeonDemo, selected: boolean): SourceFrame[] {
-  const base = demo.id.split("").reduce((sum, char) => sum + char.charCodeAt(0), 0);
+  const base = stringSeed(demo.id);
   const specs: Array<{ name: string; accent: Accent; offset: number }> = [
     { name: demo.badge, accent: demo.accent, offset: base % 31 },
     { name: "Harmonic", accent: "signal", offset: base % 17 },

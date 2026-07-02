@@ -17,3 +17,11 @@ export function unitWave(value: number, frequency: number, offset: number): numb
     ),
   );
 }
+
+export function stringSeed(value: string): number {
+  let seed = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    seed += value.charCodeAt(index);
+  }
+  return seed;
+}

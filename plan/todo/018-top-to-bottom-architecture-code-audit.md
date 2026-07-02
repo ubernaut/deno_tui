@@ -347,6 +347,8 @@ Work:
         instead of reducer and copy-map passes during redraw-driven projection.
   - [x] Reworked Neon suite demo id, section, lookup, and summary projections around a precomputed id map and direct
         loops instead of chained filter/map/find passes.
+  - [x] Added a shared loop-based synthetic string seed helper and migrated Neon suite, showcase, and workbench
+        synthetic source generation off `split().reduce()` allocation.
   - [x] Added a direct sampled-series value helper and migrated compact network monitor traces off temporary RX/TX
         sampled arrays in narrow live-render paths.
   - [x] Added source-array keyed overlay z-order caches and reverse-loop modal hit testing so repeated menu/modal

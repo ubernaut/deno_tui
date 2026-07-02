@@ -1,6 +1,6 @@
 import { createDefaultAsciiOptions } from "./ascii_options.ts";
 import { demos, type NeonDemo, type NeonSection } from "./neon_theme.ts";
-import { unitWave, waveSeries } from "./synthetic_wave.ts";
+import { stringSeed, unitWave, waveSeries } from "./synthetic_wave.ts";
 import type {
   Accent,
   AsciiOptions,
@@ -228,7 +228,7 @@ export function hiddenRect(): Rect {
 }
 
 function syntheticSources(demo: NeonDemo, phase: number, selected: boolean): SourceFrame[] {
-  const base = demo.id.split("").reduce((sum, char) => sum + char.charCodeAt(0), 0);
+  const base = stringSeed(demo.id);
   const specs: Array<{ name: string; accent: Accent; offset: number }> = [
     { name: demo.badge, accent: demo.accent, offset: base % 31 },
     { name: "Harmonic", accent: "signal", offset: base % 17 },

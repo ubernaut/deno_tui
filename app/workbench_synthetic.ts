@@ -1,6 +1,6 @@
 import type { WorkbenchWindowOptionGroup } from "../src/app/workbench_window_registry.ts";
 import type { Accent, SourceFrame, SystemSnapshot } from "./types.ts";
-import { unitWave, waveSeries } from "./synthetic_wave.ts";
+import { stringSeed, unitWave, waveSeries } from "./synthetic_wave.ts";
 
 export { unitWave } from "./synthetic_wave.ts";
 
@@ -63,7 +63,7 @@ export function syntheticWorkbenchSources(
   group: WorkbenchSyntheticGroup,
   phase: number,
 ): SourceFrame[] {
-  const seed = id.split("").reduce((sum, char) => sum + char.charCodeAt(0), 0);
+  const seed = stringSeed(id);
   const specs: Array<{ id: string; name: string; accent: Accent; offset: number }> = [
     { id: "primary", name: group, accent: group === "Monitor" ? "signal" : "phosphor", offset: seed % 29 },
     { id: "secondary", name: "Harmonic", accent: "violet", offset: seed % 41 },
