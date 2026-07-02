@@ -304,6 +304,8 @@ Work:
         diagnostics.
   - [x] Reworked TuiApp plugin metadata, route ids, command enabled counts, and command/keymap groups to avoid repeated
         map/filter scans during app inspection.
+  - [x] Reworked component catalog lookup, query, category/capability projection, inspection, and markdown summary
+        helpers to avoid filter/map/flatMap pipelines in docs and demo discovery paths.
 
 Acceptance checks:
 

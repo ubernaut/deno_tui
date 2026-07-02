@@ -276,66 +276,97 @@ export const componentCatalog = [
 
 /** Returns a copy of the built-in component catalog. */
 export function listComponents(): ComponentCatalogEntry[] {
-  return [...componentCatalog];
+  return cloneComponentEntries(componentCatalog);
 }
 
 /** Finds a component by id or display name, ignoring separators and case. */
 export function findComponent(idOrName: string): ComponentCatalogEntry | undefined {
   const normalized = normalizeComponentLookup(idOrName);
-  return componentCatalog.find((entry) =>
-    normalizeComponentLookup(entry.id) === normalized || normalizeComponentLookup(entry.name) === normalized
-  );
+  for (let index = 0; index < componentCatalog.length; index += 1) {
+    const entry = componentCatalog[index]!;
+    if (normalizeComponentLookup(entry.id) === normalized || normalizeComponentLookup(entry.name) === normalized) {
+      return entry;
+    }
+  }
+  return undefined;
 }
 
 /** Returns all catalog entries in one category. */
 export function componentsByCategory(category: ComponentCategory): ComponentCatalogEntry[] {
-  return componentCatalog.filter((entry) => entry.category === category);
+  const entries: ComponentCatalogEntry[] = [];
+  for (let index = 0; index < componentCatalog.length; index += 1) {
+    const entry = componentCatalog[index]!;
+    if (entry.category === category) entries.push(entry);
+  }
+  return entries;
 }
 
 /** Returns all catalog entries that expose a capability tag. */
 export function componentsWithCapability(capability: ComponentCapability): ComponentCatalogEntry[] {
-  return componentCatalog.filter((entry) => entry.capabilities.includes(capability));
+  const entries: ComponentCatalogEntry[] = [];
+  for (let index = 0; index < componentCatalog.length; index += 1) {
+    const entry = componentCatalog[index]!;
+    if (entry.capabilities.includes(capability)) entries.push(entry);
+  }
+  return entries;
 }
 
 /** Filters components by category, capabilities, and full-text search. */
 export function queryComponents(query: ComponentCatalogQuery = {}): ComponentCatalogEntry[] {
-  const capabilities = [
-    ...(query.capability ? [query.capability] : []),
-    ...(query.capabilities ?? []),
-  ];
+  const capabilities: ComponentCapability[] = [];
+  if (query.capability) capabilities.push(query.capability);
+  const extraCapabilities = query.capabilities ?? [];
+  for (let index = 0; index < extraCapabilities.length; index += 1) capabilities.push(extraCapabilities[index]!);
   const search = query.search ? normalizeComponentLookup(query.search) : "";
-  return componentCatalog.filter((entry) => {
-    if (query.category && entry.category !== query.category) return false;
-    if (capabilities.some((capability) => !entry.capabilities.includes(capability))) return false;
-    if (!search) return true;
-
-    return [entry.id, entry.name, entry.description, entry.category, ...entry.capabilities]
-      .some((value) => normalizeComponentLookup(value).includes(search));
-  });
+  const entries: ComponentCatalogEntry[] = [];
+  for (let index = 0; index < componentCatalog.length; index += 1) {
+    const entry = componentCatalog[index]!;
+    if (query.category && entry.category !== query.category) continue;
+    if (!componentHasAllCapabilities(entry, capabilities)) continue;
+    if (!search || componentMatchesSearch(entry, search)) entries.push(entry);
+  }
+  return entries;
 }
 
 /** Returns the known component categories in sorted order. */
 export function componentCategories(): ComponentCategory[] {
-  return [...new Set(componentCatalog.map((entry) => entry.category))].sort();
+  const categories = new Set<ComponentCategory>();
+  for (let index = 0; index < componentCatalog.length; index += 1) categories.add(componentCatalog[index]!.category);
+  return sortedSetValues(categories);
 }
 
 /** Returns the known component capability tags in sorted order. */
 export function componentCapabilities(): ComponentCapability[] {
-  return [...new Set(componentCatalog.flatMap((entry) => entry.capabilities))].sort();
+  const capabilities = new Set<ComponentCapability>();
+  for (let index = 0; index < componentCatalog.length; index += 1) {
+    const entryCapabilities = componentCatalog[index]!.capabilities;
+    for (let capabilityIndex = 0; capabilityIndex < entryCapabilities.length; capabilityIndex += 1) {
+      capabilities.add(entryCapabilities[capabilityIndex]!);
+    }
+  }
+  return sortedSetValues(capabilities);
+}
+
+function createComponentCategoryCounts(): Record<ComponentCategory, number> {
+  const categories = componentCategories();
+  const counts = {} as Record<ComponentCategory, number>;
+  for (let index = 0; index < categories.length; index += 1) counts[categories[index]!] = 0;
+  return counts;
+}
+
+function createComponentCapabilityCounts(): Record<ComponentCapability, number> {
+  const capabilities = componentCapabilities();
+  const counts = {} as Record<ComponentCapability, number>;
+  for (let index = 0; index < capabilities.length; index += 1) counts[capabilities[index]!] = 0;
+  return counts;
 }
 
 /** Counts catalog entries by category and capability. */
 export function inspectComponentCatalog(
   entries: readonly ComponentCatalogEntry[] = componentCatalog,
 ): ComponentCatalogInspection {
-  const categories = Object.fromEntries(componentCategories().map((category) => [category, 0])) as Record<
-    ComponentCategory,
-    number
-  >;
-  const capabilities = Object.fromEntries(componentCapabilities().map((capability) => [capability, 0])) as Record<
-    ComponentCapability,
-    number
-  >;
+  const categories = createComponentCategoryCounts();
+  const capabilities = createComponentCapabilityCounts();
 
   for (const entry of entries) {
     categories[entry.category] += 1;
@@ -353,7 +384,7 @@ export function inspectComponentCatalog(
 
 /** Creates a deterministic serializable component catalog report. */
 export function createComponentCatalogReport(options: ComponentCatalogReportOptions = {}): ComponentCatalogReport {
-  const entries = [...(options.entries ?? queryComponents(options.query))];
+  const entries = cloneComponentEntries(options.entries ?? queryComponents(options.query));
   return {
     entries,
     inspection: inspectComponentCatalog(entries),
@@ -371,11 +402,7 @@ export function formatComponentCatalogMarkdown(options: ComponentCatalogMarkdown
 
   if (options.includeSummary ?? true) {
     lines.push(`Components: ${report.inspection.count}`);
-    lines.push(
-      `Categories: ${
-        nonZeroEntries(report.inspection.categories).map(([name, count]) => `${name} (${count})`).join(", ")
-      }`,
-    );
+    lines.push(`Categories: ${formatNonZeroEntries(report.inspection.categories)}`);
     lines.push("");
   }
 
@@ -406,8 +433,47 @@ function normalizeComponentLookup(value: string): string {
   return value.toLowerCase().replace(/[\s_-]+/g, "");
 }
 
-function nonZeroEntries<T extends string>(record: Record<T, number>): [T, number][] {
-  return (Object.entries(record) as [T, number][]).filter(([, count]) => count > 0);
+function cloneComponentEntries(entries: readonly ComponentCatalogEntry[]): ComponentCatalogEntry[] {
+  const cloned: ComponentCatalogEntry[] = [];
+  for (let index = 0; index < entries.length; index += 1) cloned.push(entries[index]!);
+  return cloned;
+}
+
+function componentHasAllCapabilities(
+  entry: ComponentCatalogEntry,
+  capabilities: readonly ComponentCapability[],
+): boolean {
+  for (let index = 0; index < capabilities.length; index += 1) {
+    if (!entry.capabilities.includes(capabilities[index]!)) return false;
+  }
+  return true;
+}
+
+function componentMatchesSearch(entry: ComponentCatalogEntry, search: string): boolean {
+  if (normalizeComponentLookup(entry.id).includes(search)) return true;
+  if (normalizeComponentLookup(entry.name).includes(search)) return true;
+  if (normalizeComponentLookup(entry.description).includes(search)) return true;
+  if (normalizeComponentLookup(entry.category).includes(search)) return true;
+  for (let index = 0; index < entry.capabilities.length; index += 1) {
+    if (normalizeComponentLookup(entry.capabilities[index]!).includes(search)) return true;
+  }
+  return false;
+}
+
+function sortedSetValues<T extends string>(values: Set<T>): T[] {
+  const sorted: T[] = [];
+  for (const value of values) sorted.push(value);
+  sorted.sort();
+  return sorted;
+}
+
+function formatNonZeroEntries<T extends string>(record: Record<T, number>): string {
+  const parts: string[] = [];
+  for (const key in record) {
+    const count = record[key];
+    if (count > 0) parts.push(`${key} (${count})`);
+  }
+  return parts.join(", ");
 }
 
 function escapeMarkdownCell(value: string): string {
