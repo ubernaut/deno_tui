@@ -8,8 +8,8 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 - Entrypoints: 9
 - Module visits: 534
 - Re-export declarations: 525
-- Exported symbols: 4924
-- Documented symbols: 4924
+- Exported symbols: 4932
+- Documented symbols: 4932
 - Documentation coverage: 100.00%
 - Duplicate symbol groups: 0
 - Missing targets: 0
@@ -18,8 +18,8 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 
 | Specifier       | Path                           | Runtime  | Stability    | Modules | Symbols |    Docs |
 | --------------- | ------------------------------ | -------- | ------------ | ------: | ------: | ------: |
-| `.`             | `./mod.ts`                     | terminal | stable       |     241 |    2106 | 100.00% |
-| `./web`         | `./mod.web.ts`                 | browser  | beta         |     220 |    1961 | 100.00% |
+| `.`             | `./mod.ts`                     | terminal | stable       |     241 |    2110 | 100.00% |
+| `./web`         | `./mod.web.ts`                 | browser  | beta         |     220 |    1965 | 100.00% |
 | `./remote`      | `./mod.remote.ts`              | remote   | experimental |       4 |      38 | 100.00% |
 | `./three-ascii` | `./mod.three_ascii.ts`         | shared   | experimental |       8 |      54 | 100.00% |
 | `./theme`       | `./mod.theme.ts`               | shared   | beta         |      10 |     198 | 100.00% |
@@ -41,8 +41,8 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 - Entrypoint: `mod.ts`
 - Modules: 241
 - Re-export declarations: 240
-- Exported symbols: 2106
-- Documented symbols: 2106
+- Exported symbols: 2110
+- Documented symbols: 2110
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -120,7 +120,7 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 | [`src/app/workbench_diagnostics.ts`](#src-app-workbench-diagnostics-ts)                     |          0 |       6 |          6 |
 | [`src/app/workbench_frame.ts`](#src-app-workbench-frame-ts)                                 |          0 |      19 |         19 |
 | [`src/app/workbench_help.ts`](#src-app-workbench-help-ts)                                   |          0 |       3 |          3 |
-| [`src/app/workbench_layout.ts`](#src-app-workbench-layout-ts)                               |          0 |      23 |         23 |
+| [`src/app/workbench_layout.ts`](#src-app-workbench-layout-ts)                               |          0 |      27 |         27 |
 | [`src/app/workbench_menu.ts`](#src-app-workbench-menu-ts)                                   |          0 |      19 |         19 |
 | [`src/app/workbench_overlay.ts`](#src-app-workbench-overlay-ts)                             |          0 |       7 |          7 |
 | [`src/app/workbench_panel_workspace_store.ts`](#src-app-workbench-panel-workspace-store-ts) |          0 |       8 |          8 |
@@ -1276,31 +1276,35 @@ _No direct exported symbols._
 
 #### src/app/workbench_layout.ts
 
-| Symbol                                  | Kind      | Type Only | JSDoc |
-| --------------------------------------- | --------- | --------- | ----- |
-| `clampWorkbenchTileDensity`             | function  | no        | yes   |
-| `WorkbenchActiveRevealOptions`          | interface | yes       | yes   |
-| `WorkbenchActiveRevealTracker`          | class     | no        | yes   |
-| `workbenchAdaptiveTileOptions`          | function  | no        | yes   |
-| `WorkbenchAdaptiveTileOptions`          | interface | yes       | yes   |
-| `workbenchAdaptiveWindowLayout`         | function  | no        | yes   |
-| `WorkbenchAdaptiveWindowLayoutManager`  | interface | yes       | yes   |
-| `WorkbenchAdaptiveWindowLayoutOptions`  | interface | yes       | yes   |
-| `workbenchHorizontalScrollbarCellsInto` | function  | no        | yes   |
-| `WorkbenchLayoutEntryShape`             | interface | yes       | yes   |
-| `WorkbenchLayoutShape`                  | interface | yes       | yes   |
-| `WorkbenchScrollbarCell`                | interface | yes       | yes   |
-| `workbenchVerticalScrollbarCellsInto`   | function  | no        | yes   |
-| `workbenchVerticalScrollbarRect`        | function  | no        | yes   |
-| `WorkbenchVerticalScrollbarRectOptions` | interface | yes       | yes   |
-| `workbenchWindowLayout`                 | function  | no        | yes   |
-| `WorkbenchWindowLayout`                 | interface | yes       | yes   |
-| `WorkbenchWindowScrollbarRectOptions`   | interface | yes       | yes   |
-| `workbenchWindowScrollbarRects`         | function  | no        | yes   |
-| `WorkbenchWindowScrollbarRects`         | interface | yes       | yes   |
-| `WorkbenchWorkspaceScrollAdapter`       | interface | yes       | yes   |
-| `WorkbenchWorkspaceViewportController`  | class     | no        | yes   |
-| `WorkbenchWorkspaceViewportUpdate`      | interface | yes       | yes   |
+| Symbol                                          | Kind      | Type Only | JSDoc |
+| ----------------------------------------------- | --------- | --------- | ----- |
+| `clampWorkbenchTileDensity`                     | function  | no        | yes   |
+| `WorkbenchActiveRevealOptions`                  | interface | yes       | yes   |
+| `WorkbenchActiveRevealTracker`                  | class     | no        | yes   |
+| `workbenchAdaptiveTileOptions`                  | function  | no        | yes   |
+| `WorkbenchAdaptiveTileOptions`                  | interface | yes       | yes   |
+| `workbenchAdaptiveWindowLayout`                 | function  | no        | yes   |
+| `WorkbenchAdaptiveWindowLayoutManager`          | interface | yes       | yes   |
+| `WorkbenchAdaptiveWindowLayoutOptions`          | interface | yes       | yes   |
+| `workbenchHorizontalScrollbarCellsInto`         | function  | no        | yes   |
+| `WorkbenchLayoutEntryShape`                     | interface | yes       | yes   |
+| `WorkbenchLayoutShape`                          | interface | yes       | yes   |
+| `WorkbenchScrollbarAxis`                        | type      | yes       | yes   |
+| `WorkbenchScrollbarCell`                        | interface | yes       | yes   |
+| `WorkbenchScrollbarRenderCommand`               | interface | yes       | yes   |
+| `workbenchVerticalScrollbarCellsInto`           | function  | no        | yes   |
+| `workbenchVerticalScrollbarRect`                | function  | no        | yes   |
+| `WorkbenchVerticalScrollbarRectOptions`         | interface | yes       | yes   |
+| `workbenchWindowLayout`                         | function  | no        | yes   |
+| `WorkbenchWindowLayout`                         | interface | yes       | yes   |
+| `WorkbenchWindowScrollbarRectOptions`           | interface | yes       | yes   |
+| `workbenchWindowScrollbarRects`                 | function  | no        | yes   |
+| `WorkbenchWindowScrollbarRects`                 | interface | yes       | yes   |
+| `workbenchWindowScrollbarRenderCommandsInto`    | function  | no        | yes   |
+| `WorkbenchWorkspaceScrollAdapter`               | interface | yes       | yes   |
+| `workbenchWorkspaceScrollbarRenderCommandsInto` | function  | no        | yes   |
+| `WorkbenchWorkspaceViewportController`          | class     | no        | yes   |
+| `WorkbenchWorkspaceViewportUpdate`              | interface | yes       | yes   |
 
 #### src/app/workbench_menu.ts
 
@@ -3885,8 +3889,8 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 - Entrypoint: `mod.web.ts`
 - Modules: 220
 - Re-export declarations: 219
-- Exported symbols: 1961
-- Documented symbols: 1961
+- Exported symbols: 1965
+- Documented symbols: 1965
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -3964,7 +3968,7 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 | [`src/app/workbench_diagnostics.ts`](#src-app-workbench-diagnostics-ts)                     |          0 |       6 |          6 |
 | [`src/app/workbench_frame.ts`](#src-app-workbench-frame-ts)                                 |          0 |      19 |         19 |
 | [`src/app/workbench_help.ts`](#src-app-workbench-help-ts)                                   |          0 |       3 |          3 |
-| [`src/app/workbench_layout.ts`](#src-app-workbench-layout-ts)                               |          0 |      23 |         23 |
+| [`src/app/workbench_layout.ts`](#src-app-workbench-layout-ts)                               |          0 |      27 |         27 |
 | [`src/app/workbench_menu.ts`](#src-app-workbench-menu-ts)                                   |          0 |      19 |         19 |
 | [`src/app/workbench_overlay.ts`](#src-app-workbench-overlay-ts)                             |          0 |       7 |          7 |
 | [`src/app/workbench_panel_workspace_store.ts`](#src-app-workbench-panel-workspace-store-ts) |          0 |       8 |          8 |
@@ -5118,31 +5122,35 @@ _No direct exported symbols._
 
 #### src/app/workbench_layout.ts
 
-| Symbol                                  | Kind      | Type Only | JSDoc |
-| --------------------------------------- | --------- | --------- | ----- |
-| `clampWorkbenchTileDensity`             | function  | no        | yes   |
-| `WorkbenchActiveRevealOptions`          | interface | yes       | yes   |
-| `WorkbenchActiveRevealTracker`          | class     | no        | yes   |
-| `workbenchAdaptiveTileOptions`          | function  | no        | yes   |
-| `WorkbenchAdaptiveTileOptions`          | interface | yes       | yes   |
-| `workbenchAdaptiveWindowLayout`         | function  | no        | yes   |
-| `WorkbenchAdaptiveWindowLayoutManager`  | interface | yes       | yes   |
-| `WorkbenchAdaptiveWindowLayoutOptions`  | interface | yes       | yes   |
-| `workbenchHorizontalScrollbarCellsInto` | function  | no        | yes   |
-| `WorkbenchLayoutEntryShape`             | interface | yes       | yes   |
-| `WorkbenchLayoutShape`                  | interface | yes       | yes   |
-| `WorkbenchScrollbarCell`                | interface | yes       | yes   |
-| `workbenchVerticalScrollbarCellsInto`   | function  | no        | yes   |
-| `workbenchVerticalScrollbarRect`        | function  | no        | yes   |
-| `WorkbenchVerticalScrollbarRectOptions` | interface | yes       | yes   |
-| `workbenchWindowLayout`                 | function  | no        | yes   |
-| `WorkbenchWindowLayout`                 | interface | yes       | yes   |
-| `WorkbenchWindowScrollbarRectOptions`   | interface | yes       | yes   |
-| `workbenchWindowScrollbarRects`         | function  | no        | yes   |
-| `WorkbenchWindowScrollbarRects`         | interface | yes       | yes   |
-| `WorkbenchWorkspaceScrollAdapter`       | interface | yes       | yes   |
-| `WorkbenchWorkspaceViewportController`  | class     | no        | yes   |
-| `WorkbenchWorkspaceViewportUpdate`      | interface | yes       | yes   |
+| Symbol                                          | Kind      | Type Only | JSDoc |
+| ----------------------------------------------- | --------- | --------- | ----- |
+| `clampWorkbenchTileDensity`                     | function  | no        | yes   |
+| `WorkbenchActiveRevealOptions`                  | interface | yes       | yes   |
+| `WorkbenchActiveRevealTracker`                  | class     | no        | yes   |
+| `workbenchAdaptiveTileOptions`                  | function  | no        | yes   |
+| `WorkbenchAdaptiveTileOptions`                  | interface | yes       | yes   |
+| `workbenchAdaptiveWindowLayout`                 | function  | no        | yes   |
+| `WorkbenchAdaptiveWindowLayoutManager`          | interface | yes       | yes   |
+| `WorkbenchAdaptiveWindowLayoutOptions`          | interface | yes       | yes   |
+| `workbenchHorizontalScrollbarCellsInto`         | function  | no        | yes   |
+| `WorkbenchLayoutEntryShape`                     | interface | yes       | yes   |
+| `WorkbenchLayoutShape`                          | interface | yes       | yes   |
+| `WorkbenchScrollbarAxis`                        | type      | yes       | yes   |
+| `WorkbenchScrollbarCell`                        | interface | yes       | yes   |
+| `WorkbenchScrollbarRenderCommand`               | interface | yes       | yes   |
+| `workbenchVerticalScrollbarCellsInto`           | function  | no        | yes   |
+| `workbenchVerticalScrollbarRect`                | function  | no        | yes   |
+| `WorkbenchVerticalScrollbarRectOptions`         | interface | yes       | yes   |
+| `workbenchWindowLayout`                         | function  | no        | yes   |
+| `WorkbenchWindowLayout`                         | interface | yes       | yes   |
+| `WorkbenchWindowScrollbarRectOptions`           | interface | yes       | yes   |
+| `workbenchWindowScrollbarRects`                 | function  | no        | yes   |
+| `WorkbenchWindowScrollbarRects`                 | interface | yes       | yes   |
+| `workbenchWindowScrollbarRenderCommandsInto`    | function  | no        | yes   |
+| `WorkbenchWorkspaceScrollAdapter`               | interface | yes       | yes   |
+| `workbenchWorkspaceScrollbarRenderCommandsInto` | function  | no        | yes   |
+| `WorkbenchWorkspaceViewportController`          | class     | no        | yes   |
+| `WorkbenchWorkspaceViewportUpdate`              | interface | yes       | yes   |
 
 #### src/app/workbench_menu.ts
 

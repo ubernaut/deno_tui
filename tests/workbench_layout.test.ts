@@ -9,6 +9,8 @@ import {
   workbenchVerticalScrollbarRect,
   workbenchWindowLayout,
   workbenchWindowScrollbarRects,
+  workbenchWindowScrollbarRenderCommandsInto,
+  workbenchWorkspaceScrollbarRenderCommandsInto,
   WorkbenchWorkspaceViewportController,
 } from "../src/app/workbench_layout.ts";
 import type { ViewportAxisOverflow, ViewportOverflowInspection } from "../src/viewport.ts";
@@ -216,6 +218,82 @@ Deno.test("workbench scrollbar cell projectors use caller-owned buffers", () => 
   );
   assertStrictEquals(horizontal[0], firstHorizontalCell);
   assertEquals(horizontal.length, 2);
+});
+
+Deno.test("workbench workspace scrollbar render commands project cells and reuse storage", () => {
+  const commands = workbenchWorkspaceScrollbarRenderCommandsInto([], {
+    bounds: { column: 2, row: 3, width: 10, height: 4 },
+    visible: true,
+    thumb: { start: 1, size: 2, visible: true },
+  });
+  const firstCommand = commands[0];
+  const firstCell = firstCommand?.cells[0];
+
+  assertEquals(commands, [
+    {
+      axis: "vertical",
+      rect: { column: 11, row: 3, width: 1, height: 4 },
+      cells: [
+        { column: 11, row: 3, glyph: "│" },
+        { column: 11, row: 4, glyph: "█" },
+        { column: 11, row: 5, glyph: "█" },
+        { column: 11, row: 6, glyph: "│" },
+      ],
+    },
+  ]);
+
+  const reused = workbenchWorkspaceScrollbarRenderCommandsInto(commands, {
+    bounds: { column: 0, row: 0, width: 6, height: 2 },
+    visible: true,
+    thumb: { start: 0, size: 1, visible: true },
+  });
+  assertStrictEquals(reused[0], firstCommand);
+  assertStrictEquals(reused[0]?.cells[0], firstCell);
+  assertEquals(reused[0]?.rect, { column: 5, row: 0, width: 1, height: 2 });
+  assertEquals(reused[0]?.cells.length, 2);
+
+  const hidden = workbenchWorkspaceScrollbarRenderCommandsInto(commands, {
+    bounds: { column: 2, row: 3, width: 10, height: 4 },
+    visible: false,
+    thumb: { start: 0, size: 1, visible: true },
+  });
+  assertEquals(hidden, []);
+});
+
+Deno.test("workbench window scrollbar render commands project vertical and horizontal commands", () => {
+  const inner = { column: 10, row: 4, width: 30, height: 12 };
+  const viewport = { column: 11, row: 5, width: 27, height: 9 };
+  const overflow: ViewportOverflowInspection = {
+    rows: axisOverflow({ scrollbarVisible: true, thumb: { start: 2, size: 4, visible: true } }),
+    columns: axisOverflow({ scrollbarVisible: true, thumb: { start: 3, size: 8, visible: true } }),
+    maxOffset: { columns: 10, rows: 20 },
+    offset: { columns: 1, rows: 2 },
+  };
+
+  const commands = workbenchWindowScrollbarRenderCommandsInto([], { inner, viewport, overflow });
+
+  assertEquals(commands.map((command) => [command.axis, command.rect, command.cells.length]), [
+    ["vertical", { column: 39, row: 5, width: 1, height: 9 }, 9],
+    ["horizontal", { column: 11, row: 15, width: 27, height: 1 }, 27],
+  ]);
+  assertEquals(commands[0]?.cells[2], { column: 39, row: 7, glyph: "█" });
+  assertEquals(commands[1]?.cells[3], { column: 14, row: 15, glyph: "█" });
+
+  const firstVertical = commands[0];
+  const firstHorizontal = commands[1];
+  const verticalOnly = workbenchWindowScrollbarRenderCommandsInto(commands, {
+    inner,
+    viewport,
+    overflow: {
+      ...overflow,
+      columns: axisOverflow({ scrollbarVisible: false, thumb: overflow.columns.thumb }),
+    },
+  });
+
+  assertEquals(verticalOnly.length, 1);
+  assertStrictEquals(verticalOnly[0], firstVertical);
+  assertEquals(verticalOnly[0]?.axis, "vertical");
+  assertEquals(verticalOnly.includes(firstHorizontal!), false);
 });
 
 Deno.test("WorkbenchActiveRevealTracker only emits offsets when active item or viewport changes", () => {

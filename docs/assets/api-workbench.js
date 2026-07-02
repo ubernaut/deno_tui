@@ -11487,6 +11487,31 @@ function workbenchVerticalScrollbarCellsInto(cells, rect, thumb) {
   cells.length = rect.height;
   return cells;
 }
+function workbenchWorkspaceScrollbarRenderCommandsInto(target, options) {
+  const rect = workbenchVerticalScrollbarRect(options);
+  if (!rect) {
+    target.length = 0;
+    return target;
+  }
+  const command = scrollbarRenderCommand(target, 0, "vertical", rect);
+  workbenchVerticalScrollbarCellsInto(command.cells, rect, options.thumb);
+  target[0] = command;
+  target.length = 1;
+  return target;
+}
+function scrollbarRenderCommand(target, index, axis, rect) {
+  const command = target[index] ?? {
+    axis,
+    rect: { column: 0, row: 0, width: 0, height: 0 },
+    cells: []
+  };
+  command.axis = axis;
+  command.rect.column = rect.column;
+  command.rect.row = rect.row;
+  command.rect.width = rect.width;
+  command.rect.height = rect.height;
+  return command;
+}
 
 // src/app/workbench_menu.ts
 var WorkbenchTopMenuController = class {
@@ -15895,7 +15920,7 @@ var fullscreenTabRenderCommands = [];
 var menuBarHitLayouts = [];
 var headerLayout = { menu: { column: 0, row: 0, width: 0, height: 1 } };
 var windowFrameBoxLines = [];
-var verticalScrollbarCells = [];
+var workspaceScrollbarRenderCommands = [];
 var webTerminalActions = [
   "new",
   "previous",
@@ -17298,16 +17323,16 @@ function blitWorkspace(frame, virtual, bounds, offset, width) {
 }
 function renderWorkspaceScrollbar(frame, bounds) {
   const overflow = workspaceScroll.inspectOverflow();
-  const rect = workbenchVerticalScrollbarRect({ bounds, visible: overflow.rows.scrollbarVisible });
-  if (!rect) return;
-  hitTargets.add(rect, { type: "workspaceScrollbar" });
-  for (const cell of workbenchVerticalScrollbarCellsInto(verticalScrollbarCells, rect, overflow.rows.thumb)) {
-    write(
-      frame,
-      cell.row,
-      cell.column,
-      paint(cell.glyph, theme().accent, theme().backgroundSoft, true)
-    );
+  const commands = workbenchWorkspaceScrollbarRenderCommandsInto(workspaceScrollbarRenderCommands, {
+    bounds,
+    visible: overflow.rows.scrollbarVisible,
+    thumb: overflow.rows.thumb
+  });
+  for (const command of commands) {
+    hitTargets.add(command.rect, { type: "workspaceScrollbar" });
+    for (const cell of command.cells) {
+      write(frame, cell.row, cell.column, paint(cell.glyph, theme().accent, theme().backgroundSoft, true));
+    }
   }
 }
 function renderDropdownOverlay(frame) {

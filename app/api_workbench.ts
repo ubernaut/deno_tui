@@ -66,9 +66,9 @@ import {
   workbenchHeaderHelp,
   type WorkbenchHeaderLayout,
   workbenchHelpRows,
-  workbenchHorizontalScrollbarCellsInto,
   type WorkbenchMenuBarHitLayout,
   workbenchModalActionButtonsInto,
+  type WorkbenchScrollbarRenderCommand,
   workbenchShelfEntriesInto,
   workbenchShelfRenderCommandsInto,
   workbenchStatusLine,
@@ -79,15 +79,14 @@ import {
   type WorkbenchTitlebarButtonRenderCommand,
   workbenchTitlebarButtonRenderCommandsInto,
   type WorkbenchTitlebarLayout,
-  workbenchVerticalScrollbarCellsInto,
-  workbenchVerticalScrollbarRect,
   workbenchVisualizationIdFromWindowId,
   workbenchVisualizationWindowId,
   type WorkbenchWindowOption,
   workbenchWindowOptionMenuLabelsInto,
   workbenchWindowOptionMinimums,
-  workbenchWindowScrollbarRects,
+  workbenchWindowScrollbarRenderCommandsInto,
   type WorkbenchWorkspace,
+  workbenchWorkspaceScrollbarRenderCommandsInto,
   type WorkbenchWorkspaceStorageOptions,
   WorkbenchWorkspaceViewportController,
   type WorkbenchWorkspaceWindow,
@@ -625,8 +624,8 @@ const fullscreenTabLayoutBuffers = createWorkbenchShelfLayoutBuffers<WindowId>()
 const minimizedShelfRenderCommands: ReturnType<typeof workbenchShelfRenderCommandsInto<WindowId>> = [];
 const fullscreenTabRenderCommands: ReturnType<typeof workbenchShelfRenderCommandsInto<WindowId>> = [];
 const windowFrameBoxLines: WorkbenchFrameBoxLine[] = [];
-const verticalScrollbarCells: Array<{ column: number; row: number; glyph: string }> = [];
-const horizontalScrollbarCells: Array<{ column: number; row: number; glyph: string }> = [];
+const windowScrollbarRenderCommands: WorkbenchScrollbarRenderCommand[] = [];
+const workspaceScrollbarRenderCommands: WorkbenchScrollbarRenderCommand[] = [];
 let dropdownOverlay: DropdownOverlay | null = null;
 let threeDragWindow: WindowId | null = null;
 let windowRenderContext: WindowRenderContext | null = null;
@@ -3073,29 +3072,15 @@ function renderWindowScrollbars(
   const scroll = windowScroll(id);
   const t = theme();
   const overflow = scroll.inspectOverflow();
-  const scrollbars = workbenchWindowScrollbarRects({ inner, viewport, overflow });
-  if (scrollbars.vertical) {
-    const rect = scrollbars.vertical;
-    addHit(rect, { type: "windowVScrollbar", id });
-    for (const cell of workbenchVerticalScrollbarCellsInto(verticalScrollbarCells, rect, overflow.rows.thumb)) {
-      write(
-        frame,
-        cell.row,
-        cell.column,
-        paint(cell.glyph, { fg: t.accent, bg: t.panelSoft, bold: true }),
-      );
-    }
-  }
-  if (scrollbars.horizontal) {
-    const rect = scrollbars.horizontal;
-    addHit(rect, { type: "windowHScrollbar", id });
-    for (const cell of workbenchHorizontalScrollbarCellsInto(horizontalScrollbarCells, rect, overflow.columns.thumb)) {
-      write(
-        frame,
-        cell.row,
-        cell.column,
-        paint(cell.glyph, { fg: t.accent, bg: t.panelSoft, bold: true }),
-      );
+  const commands = workbenchWindowScrollbarRenderCommandsInto(windowScrollbarRenderCommands, {
+    inner,
+    viewport,
+    overflow,
+  });
+  for (const command of commands) {
+    addHit(command.rect, { type: command.axis === "vertical" ? "windowVScrollbar" : "windowHScrollbar", id });
+    for (const cell of command.cells) {
+      write(frame, cell.row, cell.column, paint(cell.glyph, { fg: t.accent, bg: t.panelSoft, bold: true }));
     }
   }
 }
@@ -3293,17 +3278,17 @@ function blitWorkspace(frame: Frame, virtual: Frame, bounds: Rectangle, offset: 
 
 function renderWorkspaceScrollbar(frame: Frame, bounds: Rectangle): void {
   const overflow = workspaceScroll.inspectOverflow();
-  const rect = workbenchVerticalScrollbarRect({ bounds, visible: overflow.rows.scrollbarVisible });
-  if (!rect) return;
   const t = theme();
-  addHit(rect, { type: "workspaceScrollbar" });
-  for (const cell of workbenchVerticalScrollbarCellsInto(verticalScrollbarCells, rect, overflow.rows.thumb)) {
-    write(
-      frame,
-      cell.row,
-      cell.column,
-      paint(cell.glyph, { fg: t.accent, bg: t.backgroundSoft, bold: true }),
-    );
+  const commands = workbenchWorkspaceScrollbarRenderCommandsInto(workspaceScrollbarRenderCommands, {
+    bounds,
+    visible: overflow.rows.scrollbarVisible,
+    thumb: overflow.rows.thumb,
+  });
+  for (const command of commands) {
+    addHit(command.rect, { type: "workspaceScrollbar" });
+    for (const cell of command.cells) {
+      write(frame, cell.row, cell.column, paint(cell.glyph, { fg: t.accent, bg: t.backgroundSoft, bold: true }));
+    }
   }
 }
 

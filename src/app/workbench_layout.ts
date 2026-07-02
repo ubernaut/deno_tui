@@ -72,6 +72,16 @@ export interface WorkbenchScrollbarCell {
   glyph: string;
 }
 
+/** Axis for a renderer-neutral workbench scrollbar render command. */
+export type WorkbenchScrollbarAxis = "vertical" | "horizontal";
+
+/** Renderer-neutral command for painting and hit-testing a scrollbar. */
+export interface WorkbenchScrollbarRenderCommand<TCell extends WorkbenchScrollbarCell = WorkbenchScrollbarCell> {
+  axis: WorkbenchScrollbarAxis;
+  rect: Rectangle;
+  cells: TCell[];
+}
+
 /** Options for updating active workbench item reveal tracking. */
 export interface WorkbenchActiveRevealOptions<Id extends string = string> {
   activeId: Id;
@@ -304,4 +314,63 @@ export function workbenchHorizontalScrollbarCellsInto<TCell extends WorkbenchScr
   }
   cells.length = rect.width;
   return cells;
+}
+
+/** Projects a workspace vertical scrollbar into caller-owned render command storage. */
+export function workbenchWorkspaceScrollbarRenderCommandsInto<TCell extends WorkbenchScrollbarCell>(
+  target: WorkbenchScrollbarRenderCommand<TCell>[],
+  options: WorkbenchVerticalScrollbarRectOptions & { thumb: ScrollbarThumb },
+): WorkbenchScrollbarRenderCommand<TCell>[] {
+  const rect = workbenchVerticalScrollbarRect(options);
+  if (!rect) {
+    target.length = 0;
+    return target;
+  }
+  const command = scrollbarRenderCommand(target, 0, "vertical", rect);
+  workbenchVerticalScrollbarCellsInto(command.cells, rect, options.thumb);
+  target[0] = command;
+  target.length = 1;
+  return target;
+}
+
+/** Projects per-window content scrollbars into caller-owned render command storage. */
+export function workbenchWindowScrollbarRenderCommandsInto<TCell extends WorkbenchScrollbarCell>(
+  target: WorkbenchScrollbarRenderCommand<TCell>[],
+  options: WorkbenchWindowScrollbarRectOptions,
+): WorkbenchScrollbarRenderCommand<TCell>[] {
+  const rects = workbenchWindowScrollbarRects(options);
+  let written = 0;
+  if (rects.vertical) {
+    const command = scrollbarRenderCommand(target, written, "vertical", rects.vertical);
+    workbenchVerticalScrollbarCellsInto(command.cells, rects.vertical, options.overflow.rows.thumb);
+    target[written] = command;
+    written += 1;
+  }
+  if (rects.horizontal) {
+    const command = scrollbarRenderCommand(target, written, "horizontal", rects.horizontal);
+    workbenchHorizontalScrollbarCellsInto(command.cells, rects.horizontal, options.overflow.columns.thumb);
+    target[written] = command;
+    written += 1;
+  }
+  target.length = written;
+  return target;
+}
+
+function scrollbarRenderCommand<TCell extends WorkbenchScrollbarCell>(
+  target: WorkbenchScrollbarRenderCommand<TCell>[],
+  index: number,
+  axis: WorkbenchScrollbarAxis,
+  rect: Rectangle,
+): WorkbenchScrollbarRenderCommand<TCell> {
+  const command = target[index] ?? {
+    axis,
+    rect: { column: 0, row: 0, width: 0, height: 0 },
+    cells: [],
+  };
+  command.axis = axis;
+  command.rect.column = rect.column;
+  command.rect.row = rect.row;
+  command.rect.width = rect.width;
+  command.rect.height = rect.height;
+  return command;
 }

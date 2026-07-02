@@ -89,6 +89,7 @@ import {
   type WorkbenchMenuBarHitLayout,
   workbenchModalActionButtonsInto,
   type WorkbenchPanelWorkspaceState,
+  type WorkbenchScrollbarRenderCommand,
   workbenchShelfEntriesInto,
   workbenchShelfRenderCommandsInto,
   workbenchStatusLine,
@@ -106,8 +107,7 @@ import {
   type WorkbenchTitlebarButtonRenderCommand,
   workbenchTitlebarButtonRenderCommandsInto,
   type WorkbenchTitlebarLayout,
-  workbenchVerticalScrollbarCellsInto,
-  workbenchVerticalScrollbarRect,
+  workbenchWorkspaceScrollbarRenderCommandsInto,
   WorkbenchWorkspaceViewportController,
   wrappedControlOptionRowCount,
   writeStringFrameRow,
@@ -304,7 +304,7 @@ const fullscreenTabRenderCommands: ReturnType<typeof workbenchShelfRenderCommand
 const menuBarHitLayouts: WorkbenchMenuBarHitLayout[] = [];
 const headerLayout: WorkbenchHeaderLayout = { menu: { column: 0, row: 0, width: 0, height: 1 } };
 const windowFrameBoxLines: WorkbenchFrameBoxLine[] = [];
-const verticalScrollbarCells: Array<{ column: number; row: number; glyph: string }> = [];
+const workspaceScrollbarRenderCommands: WorkbenchScrollbarRenderCommand[] = [];
 const webTerminalActions: readonly WebTerminalAction[] = [
   "new",
   "previous",
@@ -1823,16 +1823,16 @@ function blitWorkspace(frame: string[], virtual: string[], bounds: Rectangle, of
 
 function renderWorkspaceScrollbar(frame: string[], bounds: Rectangle): void {
   const overflow = workspaceScroll.inspectOverflow();
-  const rect = workbenchVerticalScrollbarRect({ bounds, visible: overflow.rows.scrollbarVisible });
-  if (!rect) return;
-  hitTargets.add(rect, { type: "workspaceScrollbar" });
-  for (const cell of workbenchVerticalScrollbarCellsInto(verticalScrollbarCells, rect, overflow.rows.thumb)) {
-    write(
-      frame,
-      cell.row,
-      cell.column,
-      paint(cell.glyph, theme().accent, theme().backgroundSoft, true),
-    );
+  const commands = workbenchWorkspaceScrollbarRenderCommandsInto(workspaceScrollbarRenderCommands, {
+    bounds,
+    visible: overflow.rows.scrollbarVisible,
+    thumb: overflow.rows.thumb,
+  });
+  for (const command of commands) {
+    hitTargets.add(command.rect, { type: "workspaceScrollbar" });
+    for (const cell of command.cells) {
+      write(frame, cell.row, cell.column, paint(cell.glyph, theme().accent, theme().backgroundSoft, true));
+    }
   }
 }
 

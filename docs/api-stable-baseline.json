@@ -3833,7 +3833,21 @@
     },
     {
       "module": "src/app/workbench_layout.ts",
+      "name": "WorkbenchScrollbarAxis",
+      "kind": "type",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_layout.ts",
       "name": "WorkbenchScrollbarCell",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_layout.ts",
+      "name": "WorkbenchScrollbarRenderCommand",
       "kind": "interface",
       "typeOnly": true,
       "documented": true
@@ -3896,9 +3910,23 @@
     },
     {
       "module": "src/app/workbench_layout.ts",
+      "name": "workbenchWindowScrollbarRenderCommandsInto",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_layout.ts",
       "name": "WorkbenchWorkspaceScrollAdapter",
       "kind": "interface",
       "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_layout.ts",
+      "name": "workbenchWorkspaceScrollbarRenderCommandsInto",
+      "kind": "function",
+      "typeOnly": false,
       "documented": true
     },
     {
