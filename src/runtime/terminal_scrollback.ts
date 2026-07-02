@@ -120,7 +120,7 @@ export class TerminalScrollbackController {
       this.#activeMatch = 0;
       this.#offset = clamp(this.#matches[0]!, 0, this.#maxOffset());
     }
-    return [...this.#matches];
+    return cloneNumberArray(this.#matches);
   }
 
   nextMatch(delta = 1): number | undefined {
@@ -165,8 +165,8 @@ export class TerminalScrollbackController {
       totalRows: rows.length,
       scrollbackRows: this.screen.inspect().scrollbackRows,
       liveRows: this.screen.rows,
-      visibleRows: rows.slice(offset, offset + this.#viewportRows),
-      matches: [...this.#matches],
+      visibleRows: visibleRows(rows, offset, this.#viewportRows),
+      matches: cloneNumberArray(this.#matches),
     };
     if (this.#query) inspection.query = this.#query;
     if (this.#activeMatch >= 0) inspection.activeMatch = this.#activeMatch;
@@ -178,7 +178,13 @@ export class TerminalScrollbackController {
   }
 
   #rows(): string[] {
-    return [...this.screen.scrollbackTextRows(), ...this.screen.textRows()];
+    const scrollbackRows = this.screen.scrollbackTextRows();
+    const liveRows = this.screen.textRows();
+    const rows = new Array<string>(scrollbackRows.length + liveRows.length);
+    let write = 0;
+    for (let index = 0; index < scrollbackRows.length; index += 1) rows[write++] = scrollbackRows[index]!;
+    for (let index = 0; index < liveRows.length; index += 1) rows[write++] = liveRows[index]!;
+    return rows;
   }
 
   #maxOffset(rowCount = this.#rows().length): number {
@@ -191,11 +197,16 @@ export class TerminalScrollbackController {
 
   #refreshSearch(): void {
     const query = this.#query;
-    this.#matches = query
-      ? this.#rows()
-        .map((row, index) => row.toLowerCase().includes(query) ? index : -1)
-        .filter((index) => index >= 0)
-      : [];
+    if (!query) {
+      this.#matches = [];
+    } else {
+      const rows = this.#rows();
+      const matches: number[] = [];
+      for (let index = 0; index < rows.length; index += 1) {
+        if (rows[index]!.toLowerCase().includes(query)) matches.push(index);
+      }
+      this.#matches = matches;
+    }
     if (this.#matches.length === 0) this.#activeMatch = -1;
     else this.#activeMatch = clamp(this.#activeMatch, 0, this.#matches.length - 1);
   }
@@ -226,7 +237,25 @@ function selectedRowsText(rows: readonly string[], selection: TerminalScrollback
   if (!selection) return "";
   const start = Math.min(selection.anchor, selection.focus);
   const end = Math.max(selection.anchor, selection.focus);
-  return rows.slice(start, end + 1).join("\n");
+  let text = "";
+  for (let index = start; index <= end; index += 1) {
+    if (index > start) text += "\n";
+    text += rows[index] ?? "";
+  }
+  return text;
+}
+
+function visibleRows(rows: readonly string[], offset: number, viewportRows: number): string[] {
+  const end = Math.min(rows.length, offset + viewportRows);
+  const visible: string[] = [];
+  for (let index = offset; index < end; index += 1) visible.push(rows[index]!);
+  return visible;
+}
+
+function cloneNumberArray(values: readonly number[]): number[] {
+  const cloned = new Array<number>(values.length);
+  for (let index = 0; index < values.length; index += 1) cloned[index] = values[index]!;
+  return cloned;
 }
 
 function clamp(value: number, min: number, max: number): number {
