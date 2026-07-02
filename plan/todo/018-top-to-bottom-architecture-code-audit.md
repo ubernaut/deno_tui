@@ -159,6 +159,8 @@ Work:
         instead of slice/map/spread composition.
   - [x] Reworked API Workbench logs/docs panel rendering to reuse a row buffer instead of mapping static docs into
         styled rows on every frame.
+  - [x] Reworked API Workbench empty-workspace diagnostics to count open/minimized windows in one pass instead of
+        filtering the inspected window list twice.
 - [x] Replace duplicated theme/window/menu persistence code with a shared versioned serializer.
   - [x] Extracted shared workbench workspace normalization, panel-state normalization, upsert, rename, delete, lookup,
         and legacy window-entry expansion helpers into `src/app/workbench_workspace.ts`.
