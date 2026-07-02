@@ -14,6 +14,7 @@ import {
   createThemeProvider,
   createThemeProviderReport,
   cropToWidth,
+  decodeBuffer,
   DirtyRegion,
   emptyStyle,
   filterDataRows,
@@ -86,6 +87,20 @@ const ansiRichRows = Array.from({ length: 250 }, (_, index) => {
     `\x1b[48;2;${blue};${red};${green}m ${"█".repeat((index % 18) + 1)} \x1b[0m ` +
     `cpu=${(index * 7) % 100}% mem=${(index * 13) % 100}%`;
 });
+const terminalInputEncoder = new TextEncoder();
+const terminalInputDecodeBatch = terminalInputEncoder.encode(
+  [
+    "api-workbench",
+    "\x1b[A",
+    "\x1b[B",
+    "\x1b[<0;7;5M",
+    "\x1b[<0;7;5m",
+    "\x1b[I",
+    "\x1b[O",
+    "\x1b[200~deno task test\nprintf '\\x1b[32mok\\x1b[0m'\x1b[201~",
+    "x",
+  ].join(""),
+);
 const terminalScreenTranscript = [
   "\x1b]0;cos@old-donkey:~/projects/deno_tui\x07",
   "\x1b[?25l",
@@ -1289,6 +1304,29 @@ export const benchmarkCases: BenchmarkCase[] = [
     run: () => {
       for (let index = 0; index < 300; index += 1) {
         mouseRouter.hitTest((index * 7) % 150, (index * 5) % 40, "press");
+      }
+    },
+  },
+  {
+    name: "input/terminal-decode-batched",
+    category: "input",
+    description: "Decode a batched terminal read containing keys, cursor movement, focus, mouse, and bracketed paste.",
+    tags: ["input", "terminal", "parser", "paste", "mouse"],
+    iterations: 500,
+    maxAverageMs: 4,
+    run: () => {
+      let events = 0;
+      let sawPaste = false;
+      let sawMouse = false;
+      let sawFocus = false;
+      for (const event of decodeBuffer(terminalInputDecodeBatch)) {
+        events += 1;
+        if (event.key === "paste") sawPaste = event.text.includes("deno task test");
+        else if (event.key === "mouse") sawMouse = true;
+        else if (event.key === "focus") sawFocus = true;
+      }
+      if (events < 20 || !sawPaste || !sawMouse || !sawFocus) {
+        throw new Error("terminal input decode benchmark lost events");
       }
     },
   },
