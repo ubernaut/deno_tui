@@ -169,3 +169,11 @@ performance, shared terminal/web workbench projections, and oversized module red
   `three-ascii-frame-diff-96x40` benchmark from roughly 2.32ms to 2.15ms without changing clipped or fractional paths.
 - Extracted Three ASCII config modal action-button render-command projection into the shared modal helper so terminal
   and browser workbench adapters no longer duplicate the standard Cancel/Apply/OK layout sequence.
+- Lowered the shared workbench titlebar compact-control threshold from 22 to 16 columns so tight/default Three ASCII
+  render panes keep minimize, maximize, restore, and close controls visible when the controls physically fit.
+- Rechecked the block-mode color path after a regression report: focused tests still confirm source truecolor background
+  fills in terminal ANSI and browser Canvas2D sinks; remaining color-depth concerns should be verified visually in the
+  exact terminal/browser surface before changing the assembler again.
+- Re-ran Three ASCII focused benchmarks after the report; ANSI grid cases returned near prior ranges on a second run,
+  while frame diff measured slower than the last committed baseline and needs another isolated sample before further
+  hot-loop edits.

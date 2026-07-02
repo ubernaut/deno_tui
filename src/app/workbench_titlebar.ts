@@ -67,7 +67,7 @@ export function layoutWorkbenchTitlebarInto(
   target: WorkbenchTitlebarLayout,
   options: WorkbenchTitlebarLayoutOptions,
 ): WorkbenchTitlebarLayout {
-  const controlsMinWidth = options.controlsMinWidth ?? 22;
+  const controlsMinWidth = options.controlsMinWidth ?? 16;
   const configLabel = options.configLabel ?? "config";
   const buttons = target.buttons;
   let buttonCount = 0;

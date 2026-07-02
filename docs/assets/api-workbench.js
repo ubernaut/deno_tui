@@ -14411,7 +14411,7 @@ function createWorkbenchTitlebarLayout() {
   return { buttons: [], hasWindowControls: false };
 }
 function layoutWorkbenchTitlebarInto(target, options) {
-  const controlsMinWidth = options.controlsMinWidth ?? 22;
+  const controlsMinWidth = options.controlsMinWidth ?? 16;
   const configLabel = options.configLabel ?? "config";
   const buttons = target.buttons;
   let buttonCount = 0;

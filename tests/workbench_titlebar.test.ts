@@ -23,12 +23,27 @@ Deno.test("workbench titlebar layout anchors window controls inside the right bo
 
 Deno.test("workbench titlebar layout hides controls when the window is too narrow", () => {
   const layout = layoutWorkbenchTitlebar({
-    rect: { column: 0, row: 0, width: 18, height: 5 },
+    rect: { column: 0, row: 0, width: 15, height: 5 },
     title: "Tiny",
   });
 
   assertEquals(layout.hasWindowControls, false);
   assertEquals(layout.buttons, []);
+});
+
+Deno.test("workbench titlebar layout keeps compact controls in tight panes", () => {
+  const layout = layoutWorkbenchTitlebar({
+    rect: { column: 0, row: 0, width: 18, height: 5 },
+    title: "Three",
+  });
+
+  assertEquals(layout.hasWindowControls, true);
+  assertEquals(layout.buttons.map((button) => [button.kind, button.rect]), [
+    ["minimize", { column: 2, row: 0, width: 3, height: 1 }],
+    ["maximize", { column: 6, row: 0, width: 3, height: 1 }],
+    ["restore", { column: 10, row: 0, width: 3, height: 1 }],
+    ["close", { column: 14, row: 0, width: 3, height: 1 }],
+  ]);
 });
 
 Deno.test("workbench titlebar layout only adds config when it fits between title and controls", () => {
