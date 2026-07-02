@@ -910,6 +910,8 @@ Work:
   - [x] Added shared bounded top-N ranking for limited command surface and command search index queries, avoiding full
         match sorting when callers request a small result set.
   - [x] Reduced direct command surface search allocation by building weighted search fields in one pass per item.
+  - [x] Cached flattened tree rows and row labels in `TreeController`, avoiding repeated full-tree projection during
+        selection, inspection, and file-explorer navigation.
 - [x] Make demo-only assets and NGE-inspired primitives clearly separate from library APIs.
   - [x] Added `app/neon_three_catalog.ts` for supported Three scene metadata and labels, keeping demo/NGE catalog data
         separate from the monolithic scene factory and shared by visualization footers plus scene coverage tests.

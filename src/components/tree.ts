@@ -116,10 +116,21 @@ export function inspectTreeRow(row: TreeRow): TreeRowInspection {
 export class TreeController {
   readonly nodes: Signal<TreeNode[]>;
   readonly selectedIndex: Signal<number>;
+  #rows: TreeRow[] = [];
+  #rowTexts: string[] = [];
   readonly #ownsNodes: boolean;
   readonly #ownsSelectedIndex: boolean;
   readonly #onSelect?: (row: TreeRow, index: number) => void | Promise<void>;
   readonly #onToggle?: (row: TreeRow, expanded: boolean) => void | Promise<void>;
+  readonly #syncRows = () => {
+    const rows = flattenTreeRows(this.nodes.peek());
+    const texts = new Array<string>(rows.length);
+    for (let index = 0; index < rows.length; index += 1) {
+      texts[index] = rows[index]!.text;
+    }
+    this.#rows = rows;
+    this.#rowTexts = texts;
+  };
   readonly #syncSelection = () => {
     this.selectedIndex.value = clampSelectionIndex(this.visibleRows().length, this.selectedIndex.peek());
   };
@@ -131,21 +142,18 @@ export class TreeController {
     this.selectedIndex = signalify(options.selectedIndex ?? 0);
     this.#onSelect = options.onSelect;
     this.#onToggle = options.onToggle;
+    this.#syncRows();
+    this.nodes.subscribe(this.#syncRows);
     this.nodes.subscribe(this.#syncSelection);
     this.#syncSelection();
   }
 
   visibleRows(): TreeRow[] {
-    return flattenTreeRows(this.nodes.peek());
+    return this.#rows;
   }
 
   rowTexts(): string[] {
-    const rows = this.visibleRows();
-    const texts = new Array<string>(rows.length);
-    for (let index = 0; index < rows.length; index += 1) {
-      texts[index] = rows[index]!.text;
-    }
-    return texts;
+    return this.#rowTexts;
   }
 
   visible(height?: number): TreeRow[] {
@@ -282,6 +290,7 @@ export class TreeController {
   }
 
   dispose(): void {
+    this.nodes.unsubscribe(this.#syncRows);
     this.nodes.unsubscribe(this.#syncSelection);
     if (this.#ownsNodes) this.nodes.dispose();
     if (this.#ownsSelectedIndex) this.selectedIndex.dispose();
