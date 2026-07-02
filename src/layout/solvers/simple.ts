@@ -713,7 +713,17 @@ function intrinsicMeasurementCacheKey(node: LayoutNode, availableWidth: number, 
     "\u001f" + (node.intrinsic?.width ?? "") +
     "\u001f" + (node.intrinsic?.height ?? "") +
     "\u001f" + node.style.display +
+    "\u001f" + node.style.position +
     "\u001f" + node.style.flexDirection +
+    "\u001f" + layoutLengthSignature(node.style.flexBasis) +
+    "\u001f" + layoutLengthSignature(node.style.width) +
+    "\u001f" + layoutLengthSignature(node.style.height) +
+    "\u001f" + layoutLengthSignature(node.style.minWidth) +
+    "\u001f" + layoutLengthSignature(node.style.minHeight) +
+    "\u001f" + layoutLengthSignature(node.style.maxWidth) +
+    "\u001f" + layoutLengthSignature(node.style.maxHeight) +
+    "\u001f" + node.style.gap +
+    "\u001f" + node.style.rowGap +
     "\u001f" + node.style.columnGap;
   for (const child of node.children) {
     key += "\u001f" + intrinsicNodeSignature(child);
@@ -727,7 +737,17 @@ function intrinsicNodeSignature(node: LayoutNode): string {
     "\u001f" + (node.intrinsic?.width ?? "") +
     "\u001f" + (node.intrinsic?.height ?? "") +
     "\u001f" + node.style.display +
+    "\u001f" + node.style.position +
     "\u001f" + node.style.flexDirection +
+    "\u001f" + layoutLengthSignature(node.style.flexBasis) +
+    "\u001f" + layoutLengthSignature(node.style.width) +
+    "\u001f" + layoutLengthSignature(node.style.height) +
+    "\u001f" + layoutLengthSignature(node.style.minWidth) +
+    "\u001f" + layoutLengthSignature(node.style.minHeight) +
+    "\u001f" + layoutLengthSignature(node.style.maxWidth) +
+    "\u001f" + layoutLengthSignature(node.style.maxHeight) +
+    "\u001f" + node.style.gap +
+    "\u001f" + node.style.rowGap +
     "\u001f" + node.style.columnGap;
   if (node.children.length === 0) return signature + "\u001f";
   signature += "\u001f";
@@ -736,6 +756,10 @@ function intrinsicNodeSignature(node: LayoutNode): string {
     signature += intrinsicNodeSignature(node.children[index]!);
   }
   return signature;
+}
+
+function layoutLengthSignature(value: ComputedLayoutStyle["width"]): string {
+  return `${value.unit}:${value.value}`;
 }
 
 function scrollSize(

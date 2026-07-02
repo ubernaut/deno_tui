@@ -783,6 +783,42 @@ Deno.test("simple layout solver intrinsic flex row basis uses gap fallback and i
   assertEquals(result.layout.byId.get("cluster")!.rect.width, 12);
 });
 
+Deno.test("simple layout solver intrinsic cache keys include flow-affecting style", () => {
+  const cache = new LayoutMeasurementCache();
+  const solver = simpleLayoutSolver({ intrinsicMeasurementCache: cache });
+  const rootStyle = defaultComputedLayoutStyle();
+  const cardStyle = defaultComputedLayoutStyle();
+  const childStyle = defaultComputedLayoutStyle();
+  childStyle.height = { unit: "cell", value: 1 };
+
+  const hiddenStyle = defaultComputedLayoutStyle();
+  hiddenStyle.height = { unit: "cell", value: 9 };
+  hiddenStyle.display = "none";
+
+  const card = createLayoutNode({
+    id: "card",
+    tag: "panel",
+    style: cardStyle,
+    children: [
+      createLayoutNode({ id: "a", tag: "panel", text: "A", style: childStyle }),
+      createLayoutNode({ id: "hidden", tag: "panel", text: "Hidden", style: hiddenStyle }),
+      createLayoutNode({ id: "b", tag: "panel", text: "B", style: childStyle }),
+    ],
+  });
+  const root = createLayoutNode({ id: "root", tag: "window", style: rootStyle, children: [card] });
+
+  const first = solver.solve({ root, bounds: { column: 0, row: 0, width: 30, height: 20 } });
+  const afterFirst = cache.stats();
+  card.style.gap = 3;
+  card.children[1]!.style.display = "block";
+  const second = solver.solve({ root, bounds: { column: 0, row: 0, width: 30, height: 20 } });
+  const afterSecond = cache.stats();
+
+  assert(afterSecond.misses > afterFirst.misses);
+  assertEquals(first.byId.get("card")!.rect.height, 2);
+  assertEquals(second.byId.get("card")!.rect.height, 17);
+});
+
 Deno.test("createMarkupLayout applies simple solver justify-content to flex rows", () => {
   const result = createMarkupLayout({
     markup: `

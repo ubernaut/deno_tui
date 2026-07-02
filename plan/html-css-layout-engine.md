@@ -473,6 +473,8 @@ Recommended routing:
 - Simple-solver intrinsic measurement now follows flow layout participation for parent auto sizing: `display:none` and
   absolute-positioned children are excluded, explicit child dimensions are respected, and `gap` fallback contributes to
   block and flex-row intrinsic sizes.
+- Intrinsic measurement cache keys now include the flow-affecting style fields used by that sizing path, including
+  position, explicit/min/max dimensions, flex basis, and gap values.
 - The next high-value solver work is richer block/intrinsic text behavior, full Grid/Taffy parity, and either a Taffy
   WASM adapter or a Taffy-compatible internal style mapping layer.
 
