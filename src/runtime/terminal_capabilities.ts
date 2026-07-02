@@ -213,7 +213,7 @@ export function detectTerminalEnvironment(
   const term = env("TERM") ?? "";
   const termProgram = env("TERM_PROGRAM") ?? "";
   const colorTerm = env("COLORTERM") ?? "";
-  const locale = [env("LC_ALL"), env("LC_CTYPE"), env("LANG")].filter(Boolean).join(" ");
+  const locale = terminalLocale(env);
   const isTty = options.isTty ?? safeIsTerminal();
   const noColor = options.noColor ?? Boolean(env("NO_COLOR"));
   const forceColor = options.forceColor ?? env("FORCE_COLOR");
@@ -365,7 +365,7 @@ export function formatTerminalEnvironment(
   environment: TerminalEnvironment = detectTerminalEnvironment(),
 ): string {
   const diagnostics = terminalEnvironmentDiagnostics(environment);
-  return [
+  const lines = [
     "Terminal environment:",
     `term     ${environment.term || "(unset)"}`,
     `program  ${environment.termProgram || "(unset)"}`,
@@ -375,14 +375,19 @@ export function formatTerminalEnvironment(
     `remote   ${environment.remote ? "yes" : "no"}`,
     `locale   ${environment.locale || "(unset)"}`,
     "Diagnostics:",
-    ...(diagnostics.length
-      ? diagnostics.map((diagnostic) =>
+  ];
+  if (diagnostics.length === 0) {
+    lines.push("none");
+  } else {
+    for (const diagnostic of diagnostics) {
+      lines.push(
         `${diagnostic.severity} ${diagnostic.id}: ${diagnostic.message}${
           diagnostic.suggestion ? ` ${diagnostic.suggestion}` : ""
-        }`
-      )
-      : ["none"]),
-  ].join("\n");
+        }`,
+      );
+    }
+  }
+  return lines.join("\n");
 }
 
 /** Builds a deterministic terminal behavior plan from capabilities and app preferences. */
@@ -519,8 +524,18 @@ function supportsUnicode(env: (name: string) => string | undefined, platform: st
   if (platform === "windows") {
     return Boolean(env("WT_SESSION") || env("TERMINAL_EMULATOR") || env("TERM_PROGRAM"));
   }
-  const locale = [env("LC_ALL"), env("LC_CTYPE"), env("LANG")].filter(Boolean).join(" ");
-  return /utf-?8/i.test(locale);
+  return /utf-?8/i.test(terminalLocale(env));
+}
+
+function terminalLocale(env: (name: string) => string | undefined): string {
+  let locale = "";
+  const lcAll = env("LC_ALL");
+  if (lcAll) locale = lcAll;
+  const lcCtype = env("LC_CTYPE");
+  if (lcCtype) locale = locale ? `${locale} ${lcCtype}` : lcCtype;
+  const lang = env("LANG");
+  if (lang) locale = locale ? `${locale} ${lang}` : lang;
+  return locale;
 }
 
 function supportsHyperlinks(

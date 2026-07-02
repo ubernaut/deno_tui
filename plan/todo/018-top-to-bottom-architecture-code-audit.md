@@ -283,6 +283,8 @@ Work:
         and one-pass strategy/tag accumulation while preserving priority and definition ordering.
   - [x] Reworked runtime and terminal capability entry/summary/format helpers to use stable ID lists and one-pass
         availability counts instead of object-key map/filter chains.
+  - [x] Reworked terminal locale and environment diagnostic formatting to avoid array filter/map projections in startup
+        capability reports.
   - [x] Reworked EventEmitter aggregate counting, event-name projection, and inspection to avoid Object.values/entries
         pipelines in core canvas/component/web host event paths.
   - [x] Reworked runtime diagnostics bounded trimming, cloning, status counting, and text formatting to avoid map/filter
