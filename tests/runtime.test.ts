@@ -1498,6 +1498,10 @@ Deno.test("RuntimeWorkloadRegistry tracks dynamic workload sources with disposab
     kinds: ["scheduler"],
   });
   assertEquals(registry.report().workloads.map((workload) => workload.state), ["queued"]);
+  const sources = registry.sources();
+  sources[0]!.label = "Mutated";
+  sources.push({ id: "mutated", inspect: () => scheduler.inspect() });
+  assertEquals(registry.sources().map((source) => source.label ?? source.id), ["Replacement UI"]);
   assertEquals(
     registry.markdown({ title: "Workloads" }),
     [

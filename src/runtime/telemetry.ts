@@ -70,6 +70,7 @@ export interface RuntimeWorkloadRegistryInspection extends RuntimeWorkloadReport
 /** Registry for dynamic scheduler and worker-pool telemetry sources. */
 export class RuntimeWorkloadRegistry {
   readonly #sources = new Map<string, RuntimeWorkloadSource>();
+  #sourceSnapshot: RuntimeWorkloadSource[] | undefined;
 
   constructor(sources: Iterable<RuntimeWorkloadSource> = []) {
     for (const source of sources) {
@@ -80,6 +81,7 @@ export class RuntimeWorkloadRegistry {
   register(source: RuntimeWorkloadSource): () => void {
     const registered = { ...source };
     this.#sources.set(source.id, registered);
+    this.#sourceSnapshot = undefined;
     return () => {
       if (this.#sources.get(source.id) === registered) {
         this.unregister(source.id);
@@ -88,7 +90,9 @@ export class RuntimeWorkloadRegistry {
   }
 
   unregister(id: string): boolean {
-    return this.#sources.delete(id);
+    const deleted = this.#sources.delete(id);
+    if (deleted) this.#sourceSnapshot = undefined;
+    return deleted;
   }
 
   has(id: string): boolean {
@@ -101,21 +105,16 @@ export class RuntimeWorkloadRegistry {
   }
 
   sources(): RuntimeWorkloadSource[] {
-    const sources = new Array<RuntimeWorkloadSource>(this.#sources.size);
-    let index = 0;
-    for (const source of this.#sources.values()) {
-      sources[index] = { ...source };
-      index += 1;
-    }
-    return sources;
+    return cloneRuntimeWorkloadSources(this.#sourcesSnapshot());
   }
 
   clear(): void {
     this.#sources.clear();
+    this.#sourceSnapshot = undefined;
   }
 
   report(): RuntimeWorkloadReport {
-    return createRuntimeWorkloadReport({ sources: this.sources() });
+    return createRuntimeWorkloadReport({ sources: this.#sourcesSnapshot() });
   }
 
   inspect(): RuntimeWorkloadRegistryInspection {
@@ -138,7 +137,19 @@ export class RuntimeWorkloadRegistry {
   }
 
   markdown(options: Omit<RuntimeWorkloadMarkdownOptions, "sources"> = {}): string {
-    return formatRuntimeWorkloadMarkdown({ ...options, sources: this.sources() });
+    return formatRuntimeWorkloadMarkdown({ ...options, sources: this.#sourcesSnapshot() });
+  }
+
+  #sourcesSnapshot(): readonly RuntimeWorkloadSource[] {
+    if (!this.#sourceSnapshot) {
+      this.#sourceSnapshot = new Array<RuntimeWorkloadSource>(this.#sources.size);
+      let index = 0;
+      for (const source of this.#sources.values()) {
+        this.#sourceSnapshot[index] = { ...source };
+        index += 1;
+      }
+    }
+    return this.#sourceSnapshot;
   }
 }
 
@@ -280,4 +291,12 @@ function escapeMarkdownCell(value: string): string {
 
 function uniqueSorted<T extends string>(values: Iterable<T>): T[] {
   return [...new Set(values)].sort();
+}
+
+function cloneRuntimeWorkloadSources(values: readonly RuntimeWorkloadSource[]): RuntimeWorkloadSource[] {
+  const output = new Array<RuntimeWorkloadSource>(values.length);
+  for (let index = 0; index < values.length; index += 1) {
+    output[index] = { ...values[index]! };
+  }
+  return output;
 }
