@@ -1,6 +1,6 @@
 import { assertEquals, assertMatch } from "./deps.ts";
 import { Color } from "npm:three@0.183.2";
-import { formatThreeAsciiFallbackDetail } from "../src/canvas/three_ascii.ts";
+import { buildFallbackGrid, formatThreeAsciiFallbackDetail } from "../src/canvas/three_ascii.ts";
 import { blockFillGlyphForBucket, bucketAsciiLuminance, glyphForTile } from "../src/three_ascii/glyphs.ts";
 import { buildThreeAsciiAnsiGrid, ThreeAsciiAnsiGridAssembler } from "../src/three_ascii/renderer.ts";
 
@@ -256,4 +256,18 @@ Deno.test("three ascii fallback detail hides raw GPU validation text", () => {
     "GPU BACKEND UNAVAILABLE",
   );
   assertEquals(formatThreeAsciiFallbackDetail(new Error("custom renderer failure")), "custom renderer failure");
+});
+
+Deno.test("three ascii fallback grid omits duplicate or empty detail lines", () => {
+  const blank = buildFallbackGrid(24, 3, "");
+  assertEquals(blank.map((row) => row.join("").trim()).filter(Boolean), ["ASCII RENDERER OFFLINE"]);
+
+  const duplicate = buildFallbackGrid(24, 3, "ASCII RENDERER OFFLINE");
+  assertEquals(duplicate.map((row) => row.join("").trim()).filter(Boolean), ["ASCII RENDERER OFFLINE"]);
+
+  const detailed = buildFallbackGrid(24, 4, "custom renderer failure");
+  assertEquals(detailed.map((row) => row.join("").trim()).filter(Boolean), [
+    "ASCII RENDERER OFFLINE",
+    "CUSTOM RENDERER FAILURE",
+  ]);
 });

@@ -657,7 +657,11 @@ function blankGrid(width: number, height: number): string[][] {
   const rows = Math.max(0, height);
   const grid = new Array<string[]>(rows);
   for (let row = 0; row < rows; row += 1) {
-    grid[row] = new Array<string>(columns).fill(" ");
+    const gridRow = new Array<string>(columns);
+    for (let column = 0; column < columns; column += 1) {
+      gridRow[column] = " ";
+    }
+    grid[row] = gridRow;
   }
   return grid;
 }

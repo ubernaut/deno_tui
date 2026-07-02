@@ -607,6 +607,8 @@ Work:
       Kitty/fallback transitions.
 - [x] Replaced canvas Three ASCII fallback-grid nested `Array.from()` construction with explicit row allocation for
       renderer-unavailable paths.
+- [x] Reworked Three ASCII fallback grid creation in canvas and panel adapters to avoid `fill()`/`filter()` allocation
+      while preserving duplicate-detail suppression.
 - [x] Build ANSI grids directly from mapped GPU readback views in `ThreeAsciiRenderer`, eliminating the per-frame
       fill/edge/color CPU array copy before terminal grid assembly.
 - [x] Skipped edge compute/copy/readback work entirely for block-style renderer configs with edges disabled, reducing

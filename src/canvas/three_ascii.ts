@@ -368,12 +368,18 @@ export function buildFallbackGrid(width: number, height: number, detail: string)
   const rows = Math.max(1, height);
   const grid = new Array<string[]>(rows);
   for (let row = 0; row < rows; row += 1) {
-    grid[row] = new Array<string>(columns).fill(" ");
+    const gridRow = new Array<string>(columns);
+    for (let column = 0; column < columns; column += 1) {
+      gridRow[column] = " ";
+    }
+    grid[row] = gridRow;
   }
-  const lines = [
-    "ASCII RENDERER OFFLINE",
-    cropMessage(detail, columns),
-  ].filter((line, index, all) => line.length > 0 && (index === 0 || line !== all[0]));
+  const heading = "ASCII RENDERER OFFLINE";
+  const message = cropMessage(detail, columns);
+  const lineCount = message.length > 0 && message !== heading ? 2 : 1;
+  const lines = new Array<string>(lineCount);
+  lines[0] = heading;
+  if (lineCount > 1) lines[1] = message;
   const startRow = Math.max(0, Math.floor((rows - lines.length) / 2));
 
   for (let index = 0; index < lines.length; index += 1) {
