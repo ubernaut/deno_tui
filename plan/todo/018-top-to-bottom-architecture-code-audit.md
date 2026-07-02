@@ -706,6 +706,8 @@ Acceptance checks:
   - [x] Added a solid repeated-color ANSI grid benchmark for block-heavy scenes that benefit from cell string reuse.
   - [x] Added a fill-only ANSI grid benchmark and fast path so block-style scenes that do not need edge buffers avoid
         edge-glyph lookup and promotion work.
+  - [x] Added a dense fill-only ANSI assembly path for correctly sized renderer readback views, preserving sparse
+        `ArrayLike` fallback behavior with a focused regression test.
 - [x] Workbench and standalone Three demos share the same config normalization and lifecycle helpers.
   - [x] Clamped normalized ASCII numeric config values to the same ranges exposed by shared controls, including
         wireframe thickness `0.5..32`, so saved per-widget configs cannot restore invalid renderer settings.

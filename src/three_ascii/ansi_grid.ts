@@ -92,6 +92,8 @@ export class ThreeAsciiAnsiGridAssembler {
     const terminalFillGlyphKeys = terminalFillGlyphKeysForMode(terminalGlyphMode);
     const terminalEdgeBias = Math.max(0.5, input.terminalEdgeBias ?? DEFAULT_TERMINAL_EDGE_BIAS);
     const cellCount = columns * rows;
+    const denseFill = fillGlyphs.length >= cellCount;
+    const denseColors = colors.length >= cellCount * 4;
     this.setBackground(input.backgroundColor);
     this.prepareFrameCaches(cellCount, terminalGlyphMode);
     this.pruneCaches();
@@ -104,6 +106,23 @@ export class ThreeAsciiAnsiGridAssembler {
     const grid = this.reuseGrid ? this.prepareReusableGrid(rows, columns) : createStringGrid(rows, columns);
 
     if (!hasEdges) {
+      if (denseFill && denseColors) {
+        return this.buildDenseFillOnlyGrid(
+          grid,
+          columns,
+          rows,
+          fillGlyphs,
+          colors,
+          terminalGlyphMode,
+          terminalFillGlyphKeys,
+          lastForegroundKey,
+          lastGlyphKey,
+          lastCell,
+          lastRawRed,
+          lastRawGreen,
+          lastRawBlue,
+        );
+      }
       return this.buildFillOnlyGrid(
         grid,
         columns,
@@ -263,6 +282,90 @@ export class ThreeAsciiAnsiGridAssembler {
         const rawRed = colors[colorOffset] ?? 0;
         const rawGreen = colors[colorOffset + 1] ?? 0;
         const rawBlue = colors[colorOffset + 2] ?? 0;
+        if (
+          rawRed === lastRawRed && rawGreen === lastRawGreen && rawBlue === lastRawBlue && glyphKey === lastGlyphKey
+        ) {
+          outputRow[column] = lastCell;
+          continue;
+        }
+
+        const foregroundKey = this.foregroundKeyForCell(
+          index,
+          rawRed,
+          rawGreen,
+          rawBlue,
+          fillGlyphIndex,
+          glyphKey,
+          terminalGlyphMode,
+        );
+        if (foregroundKey === lastForegroundKey && glyphKey === lastGlyphKey) {
+          outputRow[column] = lastCell;
+          continue;
+        }
+
+        const cachedCell = this.cachedCellForIndex(index, foregroundKey, glyphKey);
+        if (cachedCell !== undefined) {
+          outputRow[column] = cachedCell;
+          lastForegroundKey = foregroundKey;
+          lastGlyphKey = glyphKey;
+          lastCell = cachedCell;
+          lastRawRed = rawRed;
+          lastRawGreen = rawGreen;
+          lastRawBlue = rawBlue;
+          continue;
+        }
+
+        const foregroundRed = (foregroundKey >> 16) & 0xff;
+        const foregroundGreen = (foregroundKey >> 8) & 0xff;
+        const foregroundBlue = foregroundKey & 0xff;
+        const cell = this.cellFor(foregroundKey, foregroundRed, foregroundGreen, foregroundBlue, glyphKey);
+        this.setCachedCellForIndex(index, foregroundKey, glyphKey, cell);
+        lastForegroundKey = foregroundKey;
+        lastGlyphKey = glyphKey;
+        lastCell = cell;
+        lastRawRed = rawRed;
+        lastRawGreen = rawGreen;
+        lastRawBlue = rawBlue;
+
+        outputRow[column] = cell;
+      }
+    }
+
+    return grid;
+  }
+
+  private buildDenseFillOnlyGrid(
+    grid: string[][],
+    columns: number,
+    rows: number,
+    fillGlyphs: ArrayLike<number>,
+    colors: ArrayLike<number>,
+    terminalGlyphMode: TerminalGlyphMode,
+    terminalFillGlyphKeys: readonly number[],
+    lastForegroundKey: number,
+    lastGlyphKey: number,
+    lastCell: string,
+    lastRawRed: number,
+    lastRawGreen: number,
+    lastRawBlue: number,
+  ): string[][] {
+    for (let row = 0; row < rows; row += 1) {
+      const outputRow = grid[row];
+      const rowOffset = row * columns;
+
+      for (let column = 0; column < columns; column += 1) {
+        const index = rowOffset + column;
+        const fillGlyphIndex = Math.round(fillGlyphs[index] as number);
+        if (fillGlyphIndex < 5) {
+          outputRow[column] = this.blankAnsi;
+          continue;
+        }
+
+        const glyphKey = fillGlyphKeyForIndex(terminalFillGlyphKeys, fillGlyphIndex);
+        const colorOffset = index * 4;
+        const rawRed = colors[colorOffset] as number;
+        const rawGreen = colors[colorOffset + 1] as number;
+        const rawBlue = colors[colorOffset + 2] as number;
         if (
           rawRed === lastRawRed && rawGreen === lastRawGreen && rawBlue === lastRawBlue && glyphKey === lastGlyphKey
         ) {

@@ -37,6 +37,19 @@ Deno.test("three ascii ANSI grid assembly defaults to block glyphs", () => {
   assertEquals(grid[0][1], "\x1b[48;2;0;0;0m\x1b[38;2;0;0;0m \x1b[0m");
 });
 
+Deno.test("three ascii ANSI grid assembly keeps sparse fill-only fallback", () => {
+  const grid = buildThreeAsciiAnsiGrid({
+    columns: 2,
+    rows: 1,
+    fillGlyphs: { length: 1, 0: 14 } as ArrayLike<number>,
+    colors: { length: 4, 0: 1, 1: 0, 2: 0, 3: 1 } as ArrayLike<number>,
+    backgroundColor: 0x000000,
+  });
+
+  assertEquals(grid[0][0], "\x1b[48;2;0;0;0m\x1b[38;2;255;0;0m█\x1b[0m");
+  assertEquals(grid[0][1], "\x1b[48;2;0;0;0m\x1b[38;2;0;0;0m \x1b[0m");
+});
+
 Deno.test("three ascii ANSI grid assembly skips color work for proven blank cells", () => {
   const grid = buildThreeAsciiAnsiGrid({
     columns: 1,
