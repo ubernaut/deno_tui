@@ -2334,41 +2334,37 @@ function addInlineStepperHits(rect: Rectangle, row: number): void {
 
 function renderControlDropdownPopover(frame: string[], rect: Rectangle): void {
   const t = theme();
-  fillRect(frame, rect, t.panelSoft);
-  write(
-    frame,
-    rect.row,
-    rect.column,
-    paint(`┌${"─".repeat(Math.max(0, rect.width - 2))}┐`, t.accent, t.panelSoft, true),
-  );
-  for (const [index, item] of dropdown.items.peek().entries()) {
-    const selected = dropdown.selectedIndex.peek() === index;
-    const marker = selected ? "●" : "○";
-    const row = rect.row + 1 + index;
+  const commands = workbenchDropdownOverlayRenderCommandsInto(dropdownOverlayRenderCommands, {
+    rect,
+    bounds: { column: 0, row: 0, width: cols(), height: rowsCount() },
+    items: dropdown.items.peek(),
+    selectedIndex: dropdown.selectedIndex.peek(),
+  });
+  for (const command of commands) {
+    if (command.kind === "fill") {
+      fillRect(frame, command.rect, t.panelSoft);
+      continue;
+    }
     write(
       frame,
-      row,
-      rect.column,
+      command.rect.row,
+      command.rect.column,
       paint(
-        `│ ${fit(`${marker} ${item}`, rect.width - 4)} │`,
-        selected ? contrastText(t.warn, t.background, t.text) : t.text,
-        selected ? t.warn : t.panelSoft,
-        selected,
+        command.text ?? "",
+        command.selected ? contrastText(t.warn, t.background, t.text) : command.kind === "item" ? t.text : t.accent,
+        command.selected ? t.warn : t.panelSoft,
+        command.selected || command.kind !== "item",
       ),
     );
-    hitTargets.add({ column: rect.column + 1, row, width: Math.max(0, rect.width - 2), height: 1 }, {
-      type: "control",
-      id: "dropdown",
-      action: "activate",
-      index,
-    });
+    if (command.kind === "item" && command.hitRect) {
+      hitTargets.add(command.hitRect, {
+        type: "control",
+        id: "dropdown",
+        action: "activate",
+        index: command.itemIndex ?? command.sourceIndex,
+      });
+    }
   }
-  write(
-    frame,
-    rect.row + rect.height - 1,
-    rect.column,
-    paint(`└${"─".repeat(Math.max(0, rect.width - 2))}┘`, t.accent, t.panelSoft, true),
-  );
 }
 
 function applyControlHit(

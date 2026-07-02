@@ -100,3 +100,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   partial blocks against the active background without regressing the Three ASCII assembly benchmarks.
 - Extracted workbench dropdown overlay render commands so console and browser adapters share clipped popover rows,
   selected-item text, item-index mapping, and hit rectangles.
+- Routed the web workbench control dropdown popover through the same shared overlay projection so both top-level and
+  control dropdowns share clipping, row text, selected-state, and hit-rectangle math.
