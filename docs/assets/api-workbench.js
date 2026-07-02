@@ -7794,6 +7794,7 @@ function htmlCssLayoutDemoBoxLabel(box) {
 }
 
 // src/components/data_table.ts
+var SEARCH_WHITESPACE = /\s/;
 function createDataTableView(rows2, columns, state = {}, rowKey) {
   const filtered = filterDataRows(rows2, columns, state.query ?? "");
   const sorted = sortDataRows(filtered, state.sort);
@@ -7930,9 +7931,13 @@ var DataTableController = class {
   }
 };
 function filterDataRows(rows2, columns, query) {
-  const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const terms = parseSearchTerms(query);
   if (terms.length === 0) return [...rows2];
-  return rows2.filter((row) => dataRowMatchesTerms(row, columns, terms));
+  const filtered = [];
+  for (const row of rows2) {
+    if (dataRowMatchesTerms(row, columns, terms)) filtered.push(row);
+  }
+  return filtered;
 }
 function dataRowMatchesTerms(row, columns, terms) {
   for (const term of terms) {
@@ -7953,20 +7958,30 @@ function sortDataRows(rows2, sort) {
   return [...rows2].sort((left, right) => compareCells(left[sort.columnId], right[sort.columnId]) * direction);
 }
 function renderDataTableHeader(columns, sort) {
-  return columns.map((column) => {
+  let header = "";
+  for (let index = 0; index < columns.length; index += 1) {
+    const column = columns[index];
     const suffix = sort?.columnId === column.id ? sort.direction === "asc" ? "\u2191" : "\u2193" : "";
-    return padCell(`${column.label ?? column.id}${suffix}`, column.width);
-  }).join(" ");
+    if (index > 0) header += " ";
+    header += padCell(`${column.label ?? column.id}${suffix}`, column.width);
+  }
+  return header;
 }
 function renderDataTableRows(rows2, columns, selectedIndex = 0) {
-  return rows2.map((row, index) => {
+  const output = new Array(rows2.length);
+  for (let index = 0; index < rows2.length; index += 1) {
+    const row = rows2[index];
     const marker = index === selectedIndex ? ">" : " ";
-    const cells = columns.map((column) => {
+    let line = `${marker} `;
+    for (let columnIndex = 0; columnIndex < columns.length; columnIndex += 1) {
+      const column = columns[columnIndex];
       const value = column.format ? column.format(row[column.id], row) : stringifyCell(row[column.id]);
-      return padCell(value, column.width);
-    });
-    return `${marker} ${cells.join(" ")}`;
-  });
+      if (columnIndex > 0) line += " ";
+      line += padCell(value, column.width);
+    }
+    output[index] = line;
+  }
+  return output;
 }
 function nextSort(current, columnId) {
   if (current?.columnId === columnId && current.direction === "asc") {
@@ -7975,11 +7990,35 @@ function nextSort(current, columnId) {
   return { columnId, direction: "asc" };
 }
 function canSortColumn(columns, columnId) {
-  return columns.some((column) => column.id === columnId && column.sortable !== false);
+  for (const column of columns) {
+    if (column.id === columnId && column.sortable !== false) return true;
+  }
+  return false;
 }
 function selectedRowIndex(rows2, state, rowKey) {
   if (!rowKey || state.selectedKey === void 0) return -1;
-  return rows2.findIndex((row, index) => rowKey(row, index) === state.selectedKey);
+  for (let index = 0; index < rows2.length; index += 1) {
+    if (rowKey(rows2[index], index) === state.selectedKey) return index;
+  }
+  return -1;
+}
+function parseSearchTerms(query) {
+  const normalized = query.trim().toLowerCase();
+  if (!normalized) return [];
+  const terms = [];
+  let start = -1;
+  for (let index = 0; index <= normalized.length; index += 1) {
+    const whitespace = index >= normalized.length || SEARCH_WHITESPACE.test(normalized[index]);
+    if (whitespace) {
+      if (start >= 0) {
+        terms.push(normalized.slice(start, index));
+        start = -1;
+      }
+    } else if (start < 0) {
+      start = index;
+    }
+  }
+  return terms;
 }
 function stringifyCell(value) {
   if (value === void 0 || value === null) return "";
@@ -8888,6 +8927,31 @@ function createPresetMap() {
   }
   return map;
 }
+
+// src/runtime/capabilities.ts
+var CAPABILITY_METADATA = {
+  workers: {
+    label: "Workers",
+    description: "Background module or classic workers for off-main-thread work."
+  },
+  webgpu: {
+    label: "WebGPU",
+    description: "GPU compute and rendering APIs for accelerated terminal visualizations."
+  },
+  webgl: {
+    label: "WebGL",
+    description: "Canvas WebGL context support for graphics fallbacks."
+  },
+  offscreenCanvas: {
+    label: "OffscreenCanvas",
+    description: "Canvas rendering outside the main UI context."
+  },
+  indexedDb: {
+    label: "IndexedDB",
+    description: "Persistent browser-style structured storage."
+  }
+};
+var RUNTIME_CAPABILITY_IDS = Object.keys(CAPABILITY_METADATA);
 
 // src/runtime/storage.ts
 var MemoryStore = class {
@@ -10440,6 +10504,47 @@ function normalizeWorkbenchPanelWorkspaceState(value, options) {
   return { active: active2, maximized: maximized2, minimized: minimized2, tileDensity: tileDensity2 };
 }
 
+// src/runtime/terminal_capabilities.ts
+var TERMINAL_CAPABILITY_METADATA = {
+  interactive: {
+    label: "Interactive TTY",
+    description: "Stdout is attached to an interactive terminal."
+  },
+  unicode: {
+    label: "Unicode",
+    description: "Terminal environment is suitable for box drawing, glyphs, and wide text."
+  },
+  hyperlinks: {
+    label: "OSC 8 Hyperlinks",
+    description: "Terminal is likely to support clickable OSC 8 hyperlinks."
+  },
+  mouse: {
+    label: "Mouse Input",
+    description: "Terminal can report mouse presses or scroll events."
+  },
+  sgrMouse: {
+    label: "SGR Mouse",
+    description: "Terminal can report extended SGR mouse coordinates."
+  },
+  bracketedPaste: {
+    label: "Bracketed Paste",
+    description: "Terminal can distinguish pasted text from typed keys."
+  },
+  focusEvents: {
+    label: "Focus Events",
+    description: "Terminal can report focus-in and focus-out transitions."
+  },
+  alternateScreen: {
+    label: "Alternate Screen",
+    description: "Terminal can enter a full-screen app buffer."
+  },
+  cursorShape: {
+    label: "Cursor Shape",
+    description: "Terminal can change cursor style for modes such as insert or normal."
+  }
+};
+var TERMINAL_CAPABILITY_IDS = Object.keys(TERMINAL_CAPABILITY_METADATA);
+
 // src/runtime/terminal_session.ts
 var ENCODER = new TextEncoder();
 
@@ -10455,7 +10560,7 @@ function createTerminalWorkspacePaneNode(sessionId, root2, options = {}) {
   };
 }
 function terminalWorkspaceLayoutWithActive(layout, sessionId) {
-  const pane = findTerminalWorkspacePaneBySession(layout.root, sessionId) ?? collectTerminalWorkspacePanes(layout.root)[0];
+  const pane = findTerminalWorkspacePaneBySession(layout.root, sessionId) ?? firstTerminalWorkspacePane(layout.root);
   return {
     root: layout.root ? cloneTerminalWorkspaceLayoutNode(layout.root) : void 0,
     activePaneId: pane?.id,
@@ -10511,9 +10616,9 @@ function pruneTerminalWorkspaceLayoutSessions(layout, sessionIds) {
   };
 }
 function collectTerminalWorkspacePanes(node) {
-  if (!node) return [];
-  if (node.kind === "pane") return [cloneTerminalWorkspacePaneNode(node)];
-  return [...collectTerminalWorkspacePanes(node.first), ...collectTerminalWorkspacePanes(node.second)];
+  const panes = [];
+  collectTerminalWorkspacePanesInto(node, panes);
+  return panes;
 }
 function findTerminalWorkspacePane(node, paneId) {
   if (!node) return void 0;
@@ -10526,7 +10631,7 @@ function findTerminalWorkspacePaneBySession(node, sessionId) {
   return findTerminalWorkspacePaneBySession(node.first, sessionId) ?? findTerminalWorkspacePaneBySession(node.second, sessionId);
 }
 function findActiveTerminalWorkspacePane(layout) {
-  return layout.activePaneId ? findTerminalWorkspacePane(layout.root, layout.activePaneId) : collectTerminalWorkspacePanes(layout.root)[0];
+  return layout.activePaneId ? findTerminalWorkspacePane(layout.root, layout.activePaneId) : firstTerminalWorkspacePane(layout.root);
 }
 function replaceTerminalWorkspacePane(node, paneId, replacement) {
   if (node.kind === "pane") {
@@ -10572,20 +10677,7 @@ function updateTerminalWorkspaceSplitRatio(node, splitId, ratio) {
   };
 }
 function findNearestTerminalWorkspaceSplit(node, paneId) {
-  if (!node || node.kind === "pane") return void 0;
-  if (findTerminalWorkspacePane(node.first, paneId)) {
-    return findNearestTerminalWorkspaceSplit(node.first, paneId) ?? {
-      split: cloneTerminalWorkspaceSplitNode(node),
-      activeSide: "first"
-    };
-  }
-  if (findTerminalWorkspacePane(node.second, paneId)) {
-    return findNearestTerminalWorkspaceSplit(node.second, paneId) ?? {
-      split: cloneTerminalWorkspaceSplitNode(node),
-      activeSide: "second"
-    };
-  }
-  return void 0;
+  return findNearestTerminalWorkspaceSplitSearch(node, paneId).nearest;
 }
 function uniqueTerminalWorkspaceLayoutId(prefix, root2) {
   const ids = /* @__PURE__ */ new Set();
@@ -10649,6 +10741,41 @@ function cloneTerminalWorkspaceSplitNode(node) {
     first: cloneTerminalWorkspaceLayoutNode(node.first),
     second: cloneTerminalWorkspaceLayoutNode(node.second)
   };
+}
+function collectTerminalWorkspacePanesInto(node, panes) {
+  if (!node) return;
+  if (node.kind === "pane") {
+    panes.push(cloneTerminalWorkspacePaneNode(node));
+    return;
+  }
+  collectTerminalWorkspacePanesInto(node.first, panes);
+  collectTerminalWorkspacePanesInto(node.second, panes);
+}
+function firstTerminalWorkspacePane(node) {
+  if (!node) return void 0;
+  if (node.kind === "pane") return cloneTerminalWorkspacePaneNode(node);
+  return firstTerminalWorkspacePane(node.first) ?? firstTerminalWorkspacePane(node.second);
+}
+function findNearestTerminalWorkspaceSplitSearch(node, paneId) {
+  if (!node) return { found: false };
+  if (node.kind === "pane") return { found: node.id === paneId };
+  const first = findNearestTerminalWorkspaceSplitSearch(node.first, paneId);
+  if (first.nearest) return first;
+  if (first.found) {
+    return {
+      found: true,
+      nearest: { split: cloneTerminalWorkspaceSplitNode(node), activeSide: "first" }
+    };
+  }
+  const second = findNearestTerminalWorkspaceSplitSearch(node.second, paneId);
+  if (second.nearest) return second;
+  if (second.found) {
+    return {
+      found: true,
+      nearest: { split: cloneTerminalWorkspaceSplitNode(node), activeSide: "second" }
+    };
+  }
+  return { found: false };
 }
 function collectLayoutIds(node, ids) {
   if (!node) return;
