@@ -378,7 +378,7 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
   }
 
   private clearPreviousGridCells(): void {
-    this.previousGridCells = [];
+    this.previousGridCells.length = 0;
     this.previousGridColumns = 0;
     this.previousGridRows = 0;
   }
