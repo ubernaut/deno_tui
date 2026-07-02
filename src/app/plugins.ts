@@ -160,14 +160,14 @@ export function inspectAppPluginDefinition<TAction extends Action = Action, TRou
     id: definition.id,
     label: definition.label,
     description: definition.description,
-    tags: [...new Set(definition.tags ?? [])].sort(),
-    routes: (definition.routes ?? []).map((entry) => normalizePluginRoute(entry).route.id),
+    tags: uniqueSorted(definition.tags ?? []),
+    routes: pluginRouteIds(definition.routes ?? []),
     actionMiddleware: definition.actionMiddleware?.length ?? 0,
-    commands: (definition.commands ?? []).map((command) => command.id),
-    keyBindings: (definition.keyBindings ?? []).map(bindingId),
+    commands: commandIds(definition.commands ?? []),
+    keyBindings: keyBindingIds(definition.keyBindings ?? []),
     focusItems: definition.focusItems?.length ?? 0,
-    mouseTargets: (definition.mouseTargets ?? []).map((target) => target.id),
-    workloadSources: (definition.workloadSources ?? []).map((source) => source.id),
+    mouseTargets: mouseTargetIds(definition.mouseTargets ?? []),
+    workloadSources: workloadSourceIds(definition.workloadSources ?? []),
     hasInstaller: definition.install !== undefined,
   };
 }
@@ -177,27 +177,49 @@ export function queryAppPluginDefinitions<TAction extends Action = Action, TRout
   definitions: readonly AppPluginDefinition<TAction, TRoute>[],
   query: AppPluginCatalogQuery = {},
 ): AppPluginDefinitionInspection[] {
-  return definitions
-    .map(inspectAppPluginDefinition)
-    .filter((plugin) => matchesPluginQuery(plugin, query))
-    .sort((left, right) => (left.label ?? left.id ?? "").localeCompare(right.label ?? right.id ?? ""));
+  const matches: AppPluginDefinitionInspection[] = [];
+  for (const definition of definitions) {
+    const inspection = inspectAppPluginDefinition(definition);
+    if (matchesPluginQuery(inspection, query)) matches.push(inspection);
+  }
+  return matches.sort(comparePluginInspections);
 }
 
 /** Creates a serializable inspection snapshot for app Plugin Catalog. */
 export function inspectAppPluginCatalog(
   plugins: readonly AppPluginDefinitionInspection[],
 ): AppPluginCatalogInspection {
+  let routeCount = 0;
+  let commandCount = 0;
+  let keyBindingCount = 0;
+  let focusItemCount = 0;
+  let mouseTargetCount = 0;
+  let workloadSourceCount = 0;
+  let actionMiddlewareCount = 0;
+  let installerCount = 0;
+  const tags = new Set<string>();
+  for (const plugin of plugins) {
+    routeCount += plugin.routes.length;
+    commandCount += plugin.commands.length;
+    keyBindingCount += plugin.keyBindings.length;
+    focusItemCount += plugin.focusItems;
+    mouseTargetCount += plugin.mouseTargets.length;
+    workloadSourceCount += plugin.workloadSources.length;
+    actionMiddlewareCount += plugin.actionMiddleware;
+    if (plugin.hasInstaller) installerCount += 1;
+    for (const tag of plugin.tags) tags.add(tag);
+  }
   return {
     count: plugins.length,
-    routeCount: plugins.reduce((total, plugin) => total + plugin.routes.length, 0),
-    commandCount: plugins.reduce((total, plugin) => total + plugin.commands.length, 0),
-    keyBindingCount: plugins.reduce((total, plugin) => total + plugin.keyBindings.length, 0),
-    focusItemCount: plugins.reduce((total, plugin) => total + plugin.focusItems, 0),
-    mouseTargetCount: plugins.reduce((total, plugin) => total + plugin.mouseTargets.length, 0),
-    workloadSourceCount: plugins.reduce((total, plugin) => total + plugin.workloadSources.length, 0),
-    actionMiddlewareCount: plugins.reduce((total, plugin) => total + plugin.actionMiddleware, 0),
-    installerCount: plugins.filter((plugin) => plugin.hasInstaller).length,
-    tags: [...new Set(plugins.flatMap((plugin) => plugin.tags))].sort(),
+    routeCount,
+    commandCount,
+    keyBindingCount,
+    focusItemCount,
+    mouseTargetCount,
+    workloadSourceCount,
+    actionMiddlewareCount,
+    installerCount,
+    tags: uniqueSorted(tags),
   };
 }
 
@@ -289,7 +311,11 @@ export class AppPluginDefinitionRegistry<TAction extends Action = Action, TRoute
   }
 
   definitions(): AppPluginDefinition<TAction, TRoute>[] {
-    return [...this.#definitions];
+    const definitions = new Array<AppPluginDefinition<TAction, TRoute>>(this.#definitions.length);
+    for (let index = 0; index < this.#definitions.length; index += 1) {
+      definitions[index] = this.#definitions[index]!;
+    }
+    return definitions;
   }
 
   query(query: AppPluginCatalogQuery = {}): AppPluginDefinitionInspection[] {
@@ -308,8 +334,8 @@ export class AppPluginDefinitionRegistry<TAction extends Action = Action, TRoute
     const report = this.report();
     return {
       ...report.inspection,
-      ids: this.#definitions.map(pluginDefinitionKey).filter((id): id is string => !!id).sort(),
-      anonymous: this.#definitions.filter((definition) => !pluginDefinitionKey(definition)).length,
+      ids: pluginDefinitionIds(this.#definitions),
+      anonymous: anonymousPluginDefinitionCount(this.#definitions),
     };
   }
 
@@ -354,17 +380,102 @@ function matchesPluginQuery(plugin: AppPluginDefinitionInspection, query: AppPlu
   ) return false;
   if (query.hasInstaller !== undefined && plugin.hasInstaller !== query.hasInstaller) return false;
   if (!query.search) return true;
-  const needle = query.search.trim().toLowerCase();
-  const haystack = [
-    plugin.id,
-    plugin.label,
-    plugin.description,
-    ...plugin.tags,
-    ...plugin.routes,
-    ...plugin.commands,
-    ...plugin.keyBindings,
-    ...plugin.mouseTargets,
-    ...plugin.workloadSources,
-  ].join(" ").toLowerCase();
-  return needle.split(/\s+/).every((part) => haystack.includes(part));
+  const terms = query.search.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (terms.length === 0) return true;
+  for (const term of terms) {
+    if (!pluginSearchIncludes(plugin, term)) return false;
+  }
+  return true;
+}
+
+function pluginRouteIds<TRoute extends Route>(routes: readonly (TRoute | AppPluginRoute<TRoute>)[]): string[] {
+  const ids = new Array<string>(routes.length);
+  for (let index = 0; index < routes.length; index += 1) {
+    ids[index] = normalizePluginRoute(routes[index]!).route.id;
+  }
+  return ids;
+}
+
+function commandIds<TAction extends Action>(commands: readonly Command<TAction>[]): string[] {
+  const ids = new Array<string>(commands.length);
+  for (let index = 0; index < commands.length; index += 1) {
+    ids[index] = commands[index]!.id;
+  }
+  return ids;
+}
+
+function keyBindingIds(bindings: readonly KeyBinding[]): string[] {
+  const ids = new Array<string>(bindings.length);
+  for (let index = 0; index < bindings.length; index += 1) {
+    ids[index] = bindingId(bindings[index]!);
+  }
+  return ids;
+}
+
+function mouseTargetIds(targets: readonly MouseInteractionTarget[]): string[] {
+  const ids = new Array<string>(targets.length);
+  for (let index = 0; index < targets.length; index += 1) {
+    ids[index] = targets[index]!.id;
+  }
+  return ids;
+}
+
+function workloadSourceIds(sources: readonly RuntimeWorkloadSource[]): string[] {
+  const ids = new Array<string>(sources.length);
+  for (let index = 0; index < sources.length; index += 1) {
+    ids[index] = sources[index]!.id;
+  }
+  return ids;
+}
+
+function uniqueSorted<T extends string>(values: Iterable<T>): T[] {
+  const set = new Set<T>();
+  for (const value of values) set.add(value);
+  const output: T[] = [];
+  for (const value of set) output.push(value);
+  return output.sort();
+}
+
+function comparePluginInspections(left: AppPluginDefinitionInspection, right: AppPluginDefinitionInspection): number {
+  return (left.label ?? left.id ?? "").localeCompare(right.label ?? right.id ?? "");
+}
+
+function pluginDefinitionIds<TAction extends Action, TRoute extends Route>(
+  definitions: readonly AppPluginDefinition<TAction, TRoute>[],
+): string[] {
+  const ids: string[] = [];
+  for (const definition of definitions) {
+    const id = pluginDefinitionKey(definition);
+    if (id) ids.push(id);
+  }
+  return ids.sort();
+}
+
+function anonymousPluginDefinitionCount<TAction extends Action, TRoute extends Route>(
+  definitions: readonly AppPluginDefinition<TAction, TRoute>[],
+): number {
+  let count = 0;
+  for (const definition of definitions) {
+    if (!pluginDefinitionKey(definition)) count += 1;
+  }
+  return count;
+}
+
+function pluginSearchIncludes(plugin: AppPluginDefinitionInspection, term: string): boolean {
+  if (plugin.id?.toLowerCase().includes(term)) return true;
+  if (plugin.label?.toLowerCase().includes(term)) return true;
+  if (plugin.description?.toLowerCase().includes(term)) return true;
+  if (stringArrayIncludes(plugin.tags, term)) return true;
+  if (stringArrayIncludes(plugin.routes, term)) return true;
+  if (stringArrayIncludes(plugin.commands, term)) return true;
+  if (stringArrayIncludes(plugin.keyBindings, term)) return true;
+  if (stringArrayIncludes(plugin.mouseTargets, term)) return true;
+  return stringArrayIncludes(plugin.workloadSources, term);
+}
+
+function stringArrayIncludes(values: readonly string[], term: string): boolean {
+  for (const value of values) {
+    if (value.toLowerCase().includes(term)) return true;
+  }
+  return false;
 }
