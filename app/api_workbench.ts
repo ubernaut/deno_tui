@@ -282,6 +282,7 @@ const htmlCssLayoutBoxes: ComputedLayoutBox[] = [];
 const dataTableTextRows: string[] = [];
 const dataTableBodyRows: RowStyle[] = [];
 const dataTableRenderRows: RowStyle[] = [];
+const explorerRenderRows: RowStyle[] = [];
 const explorerKeys = new Set(["up", "down", "left", "right", "pageup", "pagedown", "home", "end", "space", "return"]);
 const htmlCssLayoutWindowOption: NewWindowOption = {
   id: HTML_CSS_LAYOUT_OPTION_ID,
@@ -1352,22 +1353,21 @@ function renderExplorer(frame: Frame, rect: Rectangle): void {
   const t = theme();
   const visible = explorer.tree.visibleRows();
   const selectedIndex = explorer.tree.selectedIndex.peek();
-  writeRows(
-    frame,
-    rect,
-    visible.map((row) => {
-      const selected = row.index === selectedIndex;
-      const node = row.node as { kind?: string; path?: string };
-      const icon = row.hasChildren ? row.expanded ? "▾" : "▸" : node.kind === "file" ? "·" : " ";
-      const label = `${"  ".repeat(row.depth)}${icon} ${row.label}`;
-      return {
-        text: label,
-        fg: selected ? contrastText(t.warn, t.background, t.text) : node.kind === "directory" ? t.good : t.text,
-        bg: selected ? t.warn : t.surface,
-        bold: selected || node.kind === "directory",
-      };
-    }),
-  );
+  explorerRenderRows.length = visible.length;
+  for (let index = 0; index < visible.length; index += 1) {
+    const row = visible[index]!;
+    const selected = row.index === selectedIndex;
+    const node = row.node as { kind?: string; path?: string };
+    const icon = row.hasChildren ? row.expanded ? "▾" : "▸" : node.kind === "file" ? "·" : " ";
+    const label = `${"  ".repeat(row.depth)}${icon} ${row.label}`;
+    explorerRenderRows[index] = {
+      text: label,
+      fg: selected ? contrastText(t.warn, t.background, t.text) : node.kind === "directory" ? t.good : t.text,
+      bg: selected ? t.warn : t.surface,
+      bold: selected || node.kind === "directory",
+    };
+  }
+  writeRows(frame, rect, explorerRenderRows);
   for (let index = 0; index < visible.length; index += 1) {
     addHit({ column: rect.column, row: rect.row + index, width: rect.width, height: 1 }, {
       type: "explorerRow",

@@ -149,6 +149,8 @@ Work:
         rebuilding visible-id lists from adapter-local minimized state on each redraw.
   - [x] Added a caller-owned data-table row rendering helper and migrated the API Workbench data panel off
         `renderDataTableRows(...).map(...)` plus spread composition in the redraw path.
+  - [x] Reworked API Workbench explorer row styling to reuse a render-row buffer instead of allocating a mapped style
+        array on every frame.
 - [x] Replace duplicated theme/window/menu persistence code with a shared versioned serializer.
   - [x] Extracted shared workbench workspace normalization, panel-state normalization, upsert, rename, delete, lookup,
         and legacy window-entry expansion helpers into `src/app/workbench_workspace.ts`.
