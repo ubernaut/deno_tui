@@ -3,6 +3,7 @@ import { TerminalOutputController } from "../src/components/terminal_output.ts";
 import type { ProcessSessionInspection } from "../src/runtime/process_session.ts";
 import type { TerminalSessionHandleInspection } from "../src/runtime/terminal_backend.ts";
 import {
+  formatTerminalShellStatusLine,
   formatTerminalShellWindowTitle,
   summarizeTerminalStatus,
   terminalInputModeDisplayLabel,
@@ -127,4 +128,32 @@ Deno.test("terminal status presenters expose stable tone and mode labels", () =>
   assertEquals(terminalInputModeDisplayLabel("raw"), "RAW INPUT");
   assertEquals(terminalInputModeDisplayLabel("raw", { rawLabel: "RAW SHELL" }), "RAW SHELL");
   assertEquals(terminalInputModeDisplayLabel("workbench"), "WORKBENCH");
+});
+
+Deno.test("formatTerminalShellStatusLine composes backend command and scrollback state", () => {
+  assertEquals(
+    formatTerminalShellStatusLine({
+      mode: "RAW SHELL",
+      status: "running",
+      pty: true,
+      backendLabel: "sigma-pty",
+      commandLine: "bash -l",
+      scrollbackOffset: 24,
+      scrollbackViewportRows: 10,
+      scrollbackTotalRows: 100,
+    }),
+    "RAW SHELL RUNNING PTY sigma-pty · bash -l · rows 25-34/100",
+  );
+  assertEquals(
+    formatTerminalShellStatusLine({
+      mode: "COPY MODE",
+      status: "starting",
+      pty: false,
+      commandLine: "bash",
+      scrollbackOffset: 0,
+      scrollbackViewportRows: 20,
+      scrollbackTotalRows: 0,
+    }),
+    "COPY MODE STARTING PROCESS FALLBACK pending · bash · rows 0-0/0",
+  );
 });

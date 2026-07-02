@@ -47,6 +47,18 @@ export interface TerminalShellWindowTitleOptions {
   prefix?: string;
 }
 
+/** Options for formatting a live shell status line. */
+export interface TerminalShellStatusLineOptions {
+  mode: string;
+  status: ProcessSessionStatus | "starting";
+  pty: boolean;
+  backendLabel?: string;
+  commandLine: string;
+  scrollbackOffset: number;
+  scrollbackViewportRows: number;
+  scrollbackTotalRows: number;
+}
+
 /** Semantic tone categories for terminal status presentation. */
 export type TerminalStatusTone = "good" | "accent" | "warning" | "danger" | "muted";
 
@@ -166,6 +178,20 @@ export function terminalInputModeDisplayLabel(
   return mode === "raw" ? options.rawLabel ?? "RAW INPUT" : options.workbenchLabel ?? "WORKBENCH";
 }
 
+/** Formats the compact status line for a live shell pane/workspace. */
+export function formatTerminalShellStatusLine(options: TerminalShellStatusLineOptions): string {
+  const totalRows = Math.max(0, Math.floor(options.scrollbackTotalRows));
+  const offset = Math.max(0, Math.floor(options.scrollbackOffset));
+  const viewportRows = Math.max(0, Math.floor(options.scrollbackViewportRows));
+  const firstRow = totalRows === 0 ? 0 : Math.min(offset + 1, totalRows);
+  const lastRow = totalRows === 0 ? 0 : Math.min(offset + viewportRows, totalRows);
+  return compactTerminalStatusSpaces(
+    `${options.mode} ${options.status.toUpperCase()} ${terminalBackendKindLabel(options.pty)} ${
+      options.backendLabel ?? "pending"
+    } · ${options.commandLine} · rows ${firstRow}-${lastRow}/${totalRows}`,
+  );
+}
+
 /** Formats a shell window title with mode, status, and optional OSC/runtime title. */
 export function formatTerminalShellWindowTitle(
   source: { title?: string; status: ProcessSessionStatus | "starting" },
@@ -195,4 +221,8 @@ function fitTerminalStatusText(text: string, width: number | undefined): string 
   if (!Number.isFinite(width) || width! < 1 || text.length <= width!) return text;
   if (width! <= 3) return ".".repeat(width!);
   return `${text.slice(0, width! - 3)}...`;
+}
+
+function compactTerminalStatusSpaces(value: string): string {
+  return value.replace(/\s+/g, " ").trim();
 }

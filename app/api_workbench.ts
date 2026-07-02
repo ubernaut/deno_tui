@@ -111,9 +111,9 @@ import { type TerminalBackend } from "../src/runtime/terminal_backend.ts";
 import type { TerminalShellController } from "../src/runtime/terminal_shell.ts";
 import { TerminalShellWorkspaceController } from "../src/runtime/terminal_shell_workspace.ts";
 import {
+  formatTerminalShellStatusLine,
   formatTerminalShellWindowTitle,
   summarizeTerminalStatus,
-  terminalBackendKindLabel,
   terminalInputModeDisplayLabel,
   terminalStatusTone,
 } from "../src/runtime/terminal_status.ts";
@@ -132,13 +132,7 @@ import {
   type WorkbenchButtonRowPlacement,
   wrappedControlOptionRowCount,
 } from "../src/app/workbench_control_layout.ts";
-import {
-  compactSpaces,
-  maxTextWidth,
-  type VisibleMenuSlice,
-  visibleMenuSliceInto,
-  wrapPlainText,
-} from "../src/app/workbench_text.ts";
+import { maxTextWidth, type VisibleMenuSlice, visibleMenuSliceInto, wrapPlainText } from "../src/app/workbench_text.ts";
 import {
   resolveWorkbenchShellBackend,
   type WorkbenchTerminalPaneProjection,
@@ -1966,15 +1960,17 @@ function renderTerminalShell(frame: Frame, rect: Rectangle): void {
   }
   const copyMode = inspection.scrollback.mode === "copy";
   const statusTone = terminalStatusToneColor(inspection.status);
-  const backend = inspection.backendLabel ?? "pending";
   const mode = copyMode ? "COPY MODE" : terminalShellInputModeLabel();
-  const status = compactSpaces(
-    `${mode} ${inspection.status.toUpperCase()} ${
-      terminalBackendKindLabel(inspection.pty)
-    } ${backend} · ${inspection.commandLine} · rows ${inspection.scrollback.offset + 1}-${
-      Math.min(inspection.scrollback.offset + inspection.scrollback.viewportRows, inspection.scrollback.totalRows)
-    }/${inspection.scrollback.totalRows}`,
-  );
+  const status = formatTerminalShellStatusLine({
+    mode,
+    status: inspection.status,
+    pty: inspection.pty,
+    backendLabel: inspection.backendLabel,
+    commandLine: inspection.commandLine,
+    scrollbackOffset: inspection.scrollback.offset,
+    scrollbackViewportRows: inspection.scrollback.viewportRows,
+    scrollbackTotalRows: inspection.scrollback.totalRows,
+  });
   write(
     frame,
     row,

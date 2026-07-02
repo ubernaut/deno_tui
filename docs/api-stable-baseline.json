@@ -11148,6 +11148,13 @@
     },
     {
       "module": "src/runtime/terminal_status.ts",
+      "name": "formatTerminalShellStatusLine",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/runtime/terminal_status.ts",
       "name": "formatTerminalShellWindowTitle",
       "kind": "function",
       "typeOnly": false,
@@ -11172,6 +11179,13 @@
       "name": "terminalInputModeDisplayLabel",
       "kind": "function",
       "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/runtime/terminal_status.ts",
+      "name": "TerminalShellStatusLineOptions",
+      "kind": "interface",
+      "typeOnly": true,
       "documented": true
     },
     {

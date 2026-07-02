@@ -27,3 +27,4 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Extracted shared header menu/close-button geometry through `layoutWorkbenchHeader`.
 - Extracted shared empty-workspace message classification through `workbenchEmptyWorkspaceMessage`.
 - Extracted terminal status tone and input-mode label presentation helpers out of the terminal workbench renderer.
+- Extracted live shell status-line composition out of the terminal workbench renderer.
