@@ -947,8 +947,8 @@ Work:
         repeated provider cycle/inspection sorting.
   - [x] Cached `ThemeEngine` component-name and variant metadata per engine, preserving cloned public returns while
         reducing repeated theme inspection and gallery projection work.
-  - [x] Cached theme layer stack ids, active ids, and active option projections behind the existing layer revision touch,
-        reducing provider signature and layer composition churn.
+  - [x] Cached theme layer stack ids, active ids, and active option projections behind the existing layer revision
+        touch, reducing provider signature and layer composition churn.
   - [x] Cached terminal backend registry ids, provider snapshots, and sorted provider lists while keeping availability
         probes live, reducing repeated backend ordering work during inspect and resolve.
   - [x] Cached theme pipeline ids, active ids, and active step entries behind pipeline mutation notifications, reducing
