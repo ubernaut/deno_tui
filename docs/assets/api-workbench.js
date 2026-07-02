@@ -14131,58 +14131,11 @@ var log = new Signal(
 subscribeWorkbenchDiagnosticLog(webDiagnostics, push);
 var webTerminalScreen = new TerminalScreenController({ columns: 80, rows: 12, scrollbackLimit: 64 });
 var webTerminalWorkspace = createTerminalWorkspaceController({
-  activeId: "pages-shell",
-  sessions: [
-    {
-      id: "pages-shell",
-      title: "Pages Shell",
-      template: { id: "pages-shell", title: "Pages Shell", kind: "command", command: "web-shell" },
-      backendId: "browser-mock",
-      commandLine: "web-shell",
-      status: "running",
-      running: true,
-      columns: 80,
-      rows: 12,
-      reconnectable: false,
-      restartPolicy: "never",
-      createdAt: 0,
-      updatedAt: 0
-    },
-    {
-      id: "remote-attach",
-      title: "Remote Attach",
-      template: {
-        id: "remote-attach",
-        title: "Remote Attach",
-        kind: "attach",
-        sessionId: "ws://localhost:8787/terminal",
-        reconnectable: true
-      },
-      backendId: "remote",
-      status: "idle",
-      running: false,
-      reconnectable: true,
-      restartPolicy: "never",
-      createdAt: 0,
-      updatedAt: 0
-    },
-    {
-      id: "ci-task",
-      title: "CI Task",
-      template: { id: "ci-task", title: "CI Task", kind: "deno-task", command: "deno", args: ["task", "health"] },
-      backendId: "process-template",
-      commandLine: "deno task health",
-      status: "idle",
-      running: false,
-      columns: 100,
-      rows: 30,
-      reconnectable: false,
-      restartPolicy: "on-failure",
-      createdAt: 0,
-      updatedAt: 0
-    }
-  ]
+  ...initialWorkspace.terminal ?? defaultWebTerminalWorkspaceSnapshot()
 });
+webTerminalWorkspace.activeId.subscribe(persistWebWorkspaceState);
+webTerminalWorkspace.sessions.subscribe(persistWebWorkspaceState);
+webTerminalWorkspace.layout.subscribe(persistWebWorkspaceState);
 var webTerminalScreenKey = "";
 var hitTargets = new HitTargetStack();
 var screenRows = [];
@@ -15977,14 +15930,17 @@ function applyWebWorkspaceState(state) {
   if (state.maximized !== void 0) maximized.value = state.maximized;
   if (state.minimized) minimized.value = { ...defaultMinimizedState(), ...state.minimized };
   if (state.tileDensity !== void 0) tileDensity.value = Math.max(-3, Math.min(3, Math.floor(state.tileDensity)));
+  if (state.terminal) applyWebTerminalWorkspaceSnapshot(state.terminal);
 }
 function normalizeWebWorkspaceState(value) {
-  return normalizeWorkbenchPanelWorkspaceState(value, {
+  const state = normalizeWorkbenchPanelWorkspaceState(value, {
     panelIds,
     defaultActive: "inspector",
     minTileDensity: -3,
     maxTileDensity: 3
   });
+  const terminal = normalizeWebTerminalWorkspaceSnapshot(value?.terminal);
+  return terminal ? { ...state, terminal } : state;
 }
 function persistWebWorkspaceState() {
   try {
@@ -15992,7 +15948,8 @@ function persistWebWorkspaceState() {
       active: active.peek(),
       maximized: maximized.peek(),
       minimized: minimized.peek(),
-      tileDensity: tileDensity.peek()
+      tileDensity: tileDensity.peek(),
+      terminal: snapshotTerminalWorkspace(webTerminalWorkspace)
     };
     globalThis.localStorage?.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify(snapshot));
     void webWorkspaceStore.set("default", snapshot).catch(
@@ -16001,6 +15958,80 @@ function persistWebWorkspaceState() {
   } catch (error) {
     reportWebStorageDiagnostic("workspace-persist", "localStorage", error);
   }
+}
+function normalizeWebTerminalWorkspaceSnapshot(value) {
+  if (!value || typeof value !== "object") return void 0;
+  const candidate = value;
+  if (!Array.isArray(candidate.sessions) || candidate.sessions.length === 0) return void 0;
+  try {
+    return normalizeTerminalWorkspaceSnapshot(candidate);
+  } catch (error) {
+    reportWebStorageDiagnostic("terminal-workspace-normalize", "workspace-state", error);
+    return void 0;
+  }
+}
+function applyWebTerminalWorkspaceSnapshot(snapshot) {
+  const restored = normalizeTerminalWorkspaceSnapshot(snapshot);
+  webTerminalWorkspace.sessions.value = restored.sessions;
+  webTerminalWorkspace.activeId.value = restored.activeId;
+  webTerminalWorkspace.layout.value = restored.layout;
+  webTerminalScreenKey = "";
+}
+function defaultWebTerminalWorkspaceSnapshot() {
+  return {
+    activeId: "pages-shell",
+    sessions: [
+      {
+        id: "pages-shell",
+        title: "Pages Shell",
+        template: { id: "pages-shell", title: "Pages Shell", kind: "command", command: "web-shell" },
+        backendId: "browser-mock",
+        commandLine: "web-shell",
+        status: "running",
+        running: true,
+        columns: 80,
+        rows: 12,
+        reconnectable: false,
+        restartPolicy: "never",
+        createdAt: 0,
+        updatedAt: 0
+      },
+      {
+        id: "remote-attach",
+        title: "Remote Attach",
+        template: {
+          id: "remote-attach",
+          title: "Remote Attach",
+          kind: "attach",
+          sessionId: "ws://localhost:8787/terminal",
+          reconnectable: true
+        },
+        backendId: "remote",
+        status: "idle",
+        running: false,
+        reconnectable: true,
+        restartPolicy: "never",
+        createdAt: 0,
+        updatedAt: 0
+      },
+      {
+        id: "ci-task",
+        title: "CI Task",
+        template: { id: "ci-task", title: "CI Task", kind: "deno-task", command: "deno", args: ["task", "health"] },
+        backendId: "process-template",
+        commandLine: "deno task health",
+        status: "idle",
+        running: false,
+        columns: 100,
+        rows: 30,
+        reconnectable: false,
+        restartPolicy: "on-failure",
+        createdAt: 0,
+        updatedAt: 0
+      }
+    ],
+    layout: {}
+  };
 }
 function persistThemeIndex(index) {
   try {
