@@ -6276,6 +6276,13 @@
     },
     {
       "module": "src/components/table.ts",
+      "name": "tableAutoColumnWidths",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/components/table.ts",
       "name": "TableController",
       "kind": "class",
       "typeOnly": false,

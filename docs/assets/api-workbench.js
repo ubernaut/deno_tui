@@ -2924,6 +2924,12 @@ var GLYPH_KEY_GLYPHS_OFFSET = 16;
 var GLYPH_KEY_MIXED_OFFSET = 32;
 var EDGE_GLYPH_KEY_OFFSET = 48;
 var GLYPHS_BY_KEY = createGlyphKeyTable();
+var GLYPH_MODE_BLOCKS = 0;
+var GLYPH_MODE_GLYPHS = 1;
+var GLYPH_MODE_MIXED = 2;
+var BLOCK_FILL_GLYPH_KEYS_BY_INDEX = createFillGlyphKeyTable(GLYPH_MODE_BLOCKS);
+var ASCII_FILL_GLYPH_KEYS_BY_INDEX = createFillGlyphKeyTable(GLYPH_MODE_GLYPHS);
+var MIXED_FILL_GLYPH_KEYS_BY_INDEX = createFillGlyphKeyTable(GLYPH_MODE_MIXED);
 function fillBucketFromGlyphIndex(index) {
   return Math.max(0, Math.min(FILL_GLYPHS.length - 1, index - 5));
 }
@@ -2982,6 +2988,24 @@ function createGlyphKeyTable() {
   }
   for (let index = 0; index < EDGE_GLYPHS.length; index += 1) {
     table2[EDGE_GLYPH_KEY_OFFSET + index] = EDGE_GLYPHS[index] ?? " ";
+  }
+  return table2;
+}
+function pickMixedFillGlyph(fillGlyphIndex) {
+  const index = Math.max(0, Math.min(MIXED_FILL_GLYPHS_BY_INDEX.length - 1, fillGlyphIndex));
+  return GLYPH_KEY_MIXED_OFFSET + index;
+}
+function createFillGlyphKeyTable(mode) {
+  const table2 = new Array(FILL_GLYPHS.length + 5);
+  for (let index = 0; index < table2.length; index += 1) {
+    const bucket = fillBucketFromGlyphIndex(index);
+    if (mode === GLYPH_MODE_GLYPHS) {
+      table2[index] = GLYPH_KEY_GLYPHS_OFFSET + bucket;
+    } else if (mode === GLYPH_MODE_MIXED) {
+      table2[index] = pickMixedFillGlyph(index);
+    } else {
+      table2[index] = bucket;
+    }
   }
   return table2;
 }
@@ -6957,13 +6981,23 @@ var TreeController = class {
     return flattenTreeRows(this.nodes.peek());
   }
   rowTexts() {
-    return this.visibleRows().map((row) => row.text);
+    const rows2 = this.visibleRows();
+    const texts = new Array(rows2.length);
+    for (let index = 0; index < rows2.length; index += 1) {
+      texts[index] = rows2[index].text;
+    }
+    return texts;
   }
-  visible(height = this.visibleRows().length) {
+  visible(height) {
     const rows2 = this.visibleRows();
     const selected = clampSelectionIndex(rows2.length, this.selectedIndex.peek());
-    const window = selectionWindow(rows2.length, selected, Math.max(0, Math.floor(height)));
-    return rows2.slice(window.start, window.end);
+    const viewportHeight = height === void 0 ? rows2.length : Math.max(0, Math.floor(height));
+    const window = selectionWindow(rows2.length, selected, viewportHeight);
+    const visible = new Array(Math.max(0, window.end - window.start));
+    for (let index = window.start; index < window.end; index += 1) {
+      visible[index - window.start] = rows2[index];
+    }
+    return visible;
   }
   selected() {
     const rows2 = this.visibleRows();
@@ -6996,7 +7030,7 @@ var TreeController = class {
     const row = this.selected();
     if (!row?.hasChildren) return row;
     this.setExpanded(row.id, !row.expanded);
-    const next = this.visibleRows().find((entry) => entry.id === row.id) ?? row;
+    const next = this.visibleRowById(row.id) ?? row;
     void this.#onToggle?.(next, next.expanded);
     return next;
   }
@@ -7004,7 +7038,7 @@ var TreeController = class {
     const row = this.selected();
     if (!row?.hasChildren || row.expanded) return row;
     this.setExpanded(row.id, true);
-    const next = this.visibleRows().find((entry) => entry.id === row.id) ?? row;
+    const next = this.visibleRowById(row.id) ?? row;
     void this.#onToggle?.(next, true);
     return next;
   }
@@ -7012,7 +7046,7 @@ var TreeController = class {
     const row = this.selected();
     if (!row?.hasChildren || !row.expanded) return row;
     this.setExpanded(row.id, false);
-    const next = this.visibleRows().find((entry) => entry.id === row.id) ?? row;
+    const next = this.visibleRowById(row.id) ?? row;
     void this.#onToggle?.(next, false);
     return next;
   }
@@ -7050,16 +7084,21 @@ var TreeController = class {
     if (key === "return") return this.selectActive();
     return void 0;
   }
-  inspect(height = this.visibleRows().length) {
+  inspect(height) {
     const rows2 = this.visibleRows();
     const selectedIndex = clampSelectionIndex(rows2.length, this.selectedIndex.peek());
+    const viewportHeight = height === void 0 ? rows2.length : Math.max(0, Math.floor(height));
+    const inspectedRows = new Array(rows2.length);
+    for (let index = 0; index < rows2.length; index += 1) {
+      inspectedRows[index] = inspectTreeRow(rows2[index]);
+    }
     return {
       nodes: structuredClone(this.nodes.peek()),
-      rows: rows2.map(inspectTreeRow),
+      rows: inspectedRows,
       rowCount: rows2.length,
       selectedIndex,
       selected: rows2[selectedIndex] ? inspectTreeRow(rows2[selectedIndex]) : void 0,
-      window: selectionWindow(rows2.length, selectedIndex, Math.max(0, Math.floor(height))),
+      window: selectionWindow(rows2.length, selectedIndex, viewportHeight),
       empty: rows2.length === 0
     };
   }
@@ -7067,6 +7106,13 @@ var TreeController = class {
     this.nodes.unsubscribe(this.#syncSelection);
     if (this.#ownsNodes) this.nodes.dispose();
     if (this.#ownsSelectedIndex) this.selectedIndex.dispose();
+  }
+  visibleRowById(id2) {
+    const rows2 = this.visibleRows();
+    for (const row of rows2) {
+      if (row.id === id2) return row;
+    }
+    return void 0;
   }
 };
 
@@ -8010,13 +8056,14 @@ var FileExplorerController = class {
 function createFileExplorerTree(paths) {
   const root2 = [];
   for (const path of paths) {
-    const parts = path.split("/").filter(Boolean);
+    const parts = splitPathParts(path);
     let current = root2;
     let accumulated = "";
-    for (const [index, part] of parts.entries()) {
+    for (let index = 0; index < parts.length; index += 1) {
+      const part = parts[index];
       accumulated = `${accumulated}/${part}`;
       const isFile = index === parts.length - 1 && /\.[^/.]+$/.test(part);
-      let node = current.find((entry) => entry.label === part);
+      let node = findExplorerNode(current, part);
       if (!node) {
         node = {
           id: accumulated,
@@ -8033,6 +8080,22 @@ function createFileExplorerTree(paths) {
   }
   return sortExplorerNodes(root2);
 }
+function splitPathParts(path) {
+  const parts = [];
+  let start = 0;
+  for (let index = 0; index <= path.length; index += 1) {
+    if (index !== path.length && path[index] !== "/") continue;
+    if (index > start) parts.push(path.slice(start, index));
+    start = index + 1;
+  }
+  return parts;
+}
+function findExplorerNode(nodes, label) {
+  for (const node of nodes) {
+    if (node.label === label) return node;
+  }
+  return void 0;
+}
 function fileExplorerEntry(row) {
   const node = row.node;
   return {
@@ -8046,13 +8109,21 @@ function fileExplorerEntry(row) {
   };
 }
 function sortExplorerNodes(nodes) {
-  return [...nodes].sort((left, right) => {
-    if (left.kind !== right.kind) return left.kind === "directory" ? -1 : 1;
-    return left.label.localeCompare(right.label);
-  }).map((node) => ({
-    ...node,
-    children: node.children.length > 0 ? sortExplorerNodes(node.children) : void 0
-  }));
+  const sorted = nodes.slice();
+  sorted.sort(compareExplorerNodes);
+  const output = new Array(sorted.length);
+  for (let index = 0; index < sorted.length; index += 1) {
+    const node = sorted[index];
+    output[index] = {
+      ...node,
+      children: node.children.length > 0 ? sortExplorerNodes(node.children) : void 0
+    };
+  }
+  return output;
+}
+function compareExplorerNodes(left, right) {
+  if (left.kind !== right.kind) return left.kind === "directory" ? -1 : 1;
+  return left.label.localeCompare(right.label);
 }
 
 // src/components/menu_bar.ts
@@ -8809,7 +8880,14 @@ var ASCII_DEMO_PRESETS = [
 ];
 
 // src/three_ascii/options.ts
-var presetMap = new Map(ASCII_DEMO_PRESETS.map((preset) => [preset.id, preset]));
+var presetMap = createPresetMap();
+function createPresetMap() {
+  const map = /* @__PURE__ */ new Map();
+  for (const preset of ASCII_DEMO_PRESETS) {
+    map.set(preset.id, preset);
+  }
+  return map;
+}
 
 // src/runtime/storage.ts
 var MemoryStore = class {
@@ -10684,7 +10762,11 @@ var TerminalWorkspaceController = class {
   #now;
   constructor(options = {}) {
     this.#now = options.now ?? (() => Date.now());
-    const sessions = (options.sessions ?? []).map((session) => cloneTerminalSessionDescriptor(session));
+    const sourceSessions = options.sessions ?? [];
+    const sessions = new Array(sourceSessions.length);
+    for (let index = 0; index < sourceSessions.length; index += 1) {
+      sessions[index] = cloneTerminalSessionDescriptor(sourceSessions[index]);
+    }
     const activeId = options.activeId && sessions.some((session) => session.id === options.activeId) ? options.activeId : sessions[0]?.id;
     this.sessions = new Signal(sessions);
     this.activeId = new Signal(activeId);
@@ -10704,7 +10786,10 @@ var TerminalWorkspaceController = class {
     const nextDescriptor = cloneTerminalSessionDescriptor(descriptor);
     const sessions = this.sessions.peek();
     const index = sessions.findIndex((session) => session.id === nextDescriptor.id);
-    this.sessions.value = index >= 0 ? sessions.map((session, sessionIndex) => sessionIndex === index ? nextDescriptor : session) : [...sessions, nextDescriptor];
+    this.sessions.value = index >= 0 ? replaceTerminalSession(sessions, index, nextDescriptor) : appendTerminalSession(
+      sessions,
+      nextDescriptor
+    );
     if (options.activate || !this.activeId.peek()) this.activeId.value = nextDescriptor.id;
     if (!this.layout.peek().root) {
       this.layout.value = terminalWorkspaceLayoutWithActive({
@@ -10728,15 +10813,12 @@ var TerminalWorkspaceController = class {
     const sessions = this.sessions.peek();
     const index = sessions.findIndex((session) => session.id === id2);
     if (index < 0) return false;
-    const next = sessions.filter((session) => session.id !== id2);
+    const next = removeTerminalSessionAt(sessions, index);
     this.sessions.value = next;
+    const sessionIds = /* @__PURE__ */ new Set();
+    for (const session of next) sessionIds.add(session.id);
     this.layout.value = normalizeTerminalWorkspaceLayout(
-      pruneTerminalWorkspaceLayoutSessions(
-        this.layout.peek(),
-        new Set(next.map(
-          (session) => session.id
-        ))
-      ),
+      pruneTerminalWorkspaceLayoutSessions(this.layout.peek(), sessionIds),
       next,
       this.activeId.peek()
     );
@@ -10756,7 +10838,7 @@ var TerminalWorkspaceController = class {
     const descriptor = cloneTerminalSessionDescriptor(sessions[index]);
     descriptor.title = trimmed;
     descriptor.updatedAt = this.#now();
-    this.sessions.value = sessions.map((session, sessionIndex) => sessionIndex === index ? descriptor : session);
+    this.sessions.value = replaceTerminalSession(sessions, index, descriptor);
     return true;
   }
   updateRuntimeTitle(id2, title) {
@@ -10774,7 +10856,7 @@ var TerminalWorkspaceController = class {
       descriptor.title = trimmed;
     }
     descriptor.updatedAt = this.#now();
-    this.sessions.value = sessions.map((session, sessionIndex) => sessionIndex === index ? descriptor : session);
+    this.sessions.value = replaceTerminalSession(sessions, index, descriptor);
     if (descriptor.title !== previousVisibleTitle) {
       this.layout.value = updateTerminalWorkspacePaneRuntimeTitles(
         this.layout.peek(),
@@ -10816,7 +10898,7 @@ var TerminalWorkspaceController = class {
     descriptor.reconnectable = true;
     descriptor.running = false;
     descriptor.updatedAt = this.#now();
-    this.sessions.value = sessions.map((session, sessionIndex) => sessionIndex === index ? descriptor : session);
+    this.sessions.value = replaceTerminalSession(sessions, index, descriptor);
     return true;
   }
   attach(id2 = this.activeId.peek()) {
@@ -10828,7 +10910,7 @@ var TerminalWorkspaceController = class {
     if (!descriptor.detached) return false;
     descriptor.detached = false;
     descriptor.updatedAt = this.#now();
-    this.sessions.value = sessions.map((session, sessionIndex) => sessionIndex === index ? descriptor : session);
+    this.sessions.value = replaceTerminalSession(sessions, index, descriptor);
     return this.activate(id2);
   }
   clear() {
@@ -10918,7 +11000,11 @@ var TerminalWorkspaceController = class {
     return inspectTerminalWorkspaceLayout(this.layout.peek(), this.sessions.peek());
   }
   inspect() {
-    const sessions = this.sessions.peek().map((session) => cloneTerminalSessionDescriptor(session));
+    const source = this.sessions.peek();
+    const sessions = new Array(source.length);
+    for (let index = 0; index < source.length; index += 1) {
+      sessions[index] = cloneTerminalSessionDescriptor(source[index]);
+    }
     const activeId = this.activeId.peek();
     const active2 = activeId ? sessions.find((session) => session.id === activeId) : void 0;
     return {
@@ -10939,7 +11025,8 @@ function createTerminalWorkspaceController(options = {}) {
   return new TerminalWorkspaceController(options);
 }
 function normalizeTerminalWorkspaceLayout(layout, sessions, activeId) {
-  const sessionIds = new Set(sessions.map((session) => session.id));
+  const sessionIds = /* @__PURE__ */ new Set();
+  for (const session of sessions) sessionIds.add(session.id);
   const pruned = pruneTerminalWorkspaceLayoutSessions(layout ?? {}, sessionIds);
   if (!pruned.root && activeId && sessionIds.has(activeId)) {
     const activeSession = sessions.find((session) => session.id === activeId);
@@ -10960,13 +11047,20 @@ function normalizeTerminalWorkspaceLayout(layout, sessions, activeId) {
 }
 function inspectTerminalWorkspaceLayout(layout, sessions) {
   const normalized = normalizeTerminalWorkspaceLayout(layout, sessions, sessions[0]?.id);
-  const sessionById = new Map(sessions.map((session) => [session.id, session]));
-  const panes = collectTerminalWorkspacePanes(normalized.root).map((pane) => ({
-    ...cloneTerminalWorkspacePaneNode(pane),
-    active: pane.id === normalized.activePaneId,
-    zoomed: pane.id === normalized.zoomedPaneId,
-    session: sessionById.has(pane.sessionId) ? cloneTerminalSessionDescriptor(sessionById.get(pane.sessionId)) : void 0
-  }));
+  const sessionById = /* @__PURE__ */ new Map();
+  for (const session of sessions) sessionById.set(session.id, session);
+  const sourcePanes = collectTerminalWorkspacePanes(normalized.root);
+  const panes = new Array(sourcePanes.length);
+  for (let index = 0; index < sourcePanes.length; index += 1) {
+    const pane = sourcePanes[index];
+    const session = sessionById.get(pane.sessionId);
+    panes[index] = {
+      ...cloneTerminalWorkspacePaneNode(pane),
+      active: pane.id === normalized.activePaneId,
+      zoomed: pane.id === normalized.zoomedPaneId,
+      session: session ? cloneTerminalSessionDescriptor(session) : void 0
+    };
+  }
   return {
     root: normalized.root ? cloneTerminalWorkspaceLayoutNode(normalized.root) : void 0,
     activePaneId: normalized.activePaneId,
@@ -10974,6 +11068,29 @@ function inspectTerminalWorkspaceLayout(layout, sessions) {
     panes,
     count: panes.length
   };
+}
+function appendTerminalSession(sessions, descriptor) {
+  const next = new Array(sessions.length + 1);
+  for (let index = 0; index < sessions.length; index += 1) next[index] = sessions[index];
+  next[sessions.length] = descriptor;
+  return next;
+}
+function replaceTerminalSession(sessions, index, descriptor) {
+  const next = new Array(sessions.length);
+  for (let sessionIndex = 0; sessionIndex < sessions.length; sessionIndex += 1) {
+    next[sessionIndex] = sessionIndex === index ? descriptor : sessions[sessionIndex];
+  }
+  return next;
+}
+function removeTerminalSessionAt(sessions, index) {
+  const next = new Array(Math.max(0, sessions.length - 1));
+  let target = 0;
+  for (let sessionIndex = 0; sessionIndex < sessions.length; sessionIndex += 1) {
+    if (sessionIndex === index) continue;
+    next[target] = sessions[sessionIndex];
+    target += 1;
+  }
+  return next;
 }
 
 // src/platform/types.ts
