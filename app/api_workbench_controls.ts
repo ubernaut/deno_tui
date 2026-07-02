@@ -1,7 +1,6 @@
 import type { DataColumn } from "../src/components/data_table.ts";
 import {
   layoutWorkbenchControlButtonLine,
-  layoutWrappedControlOptions,
   type WorkbenchControlButtonLineSegmentKind,
 } from "../src/app/workbench_control_layout.ts";
 import { fitCellText } from "../src/app/workbench_frame.ts";
@@ -17,6 +16,7 @@ import {
 export * from "./api_workbench_control_rows.ts";
 export * from "./api_workbench_control_types.ts";
 export * from "./api_workbench_textbox.ts";
+export * from "./api_workbench_wrapped_options.ts";
 
 export type ApiWorkbenchControlLineSegmentKind = "line" | WorkbenchControlButtonLineSegmentKind;
 
@@ -80,25 +80,6 @@ export interface ApiWorkbenchDropdownPopoverOptions {
   minContentWidth?: number;
   horizontalInset?: number;
   padding?: number;
-}
-
-export interface ApiWorkbenchWrappedOptionsRenderCommand {
-  text: string;
-  column: number;
-  row: number;
-  width: number;
-  active: boolean;
-}
-
-export interface ApiWorkbenchWrappedOptionsRenderOptions {
-  rect: Rectangle;
-  startRow: number;
-  id: ApiWorkbenchControlId;
-  items: readonly string[];
-  selectedIndex: number | undefined;
-  activeId: ApiWorkbenchControlId;
-  minWidth?: number;
-  horizontalInset?: number;
 }
 
 export function nextApiWorkbenchControlId(
@@ -305,48 +286,6 @@ export function apiWorkbenchDropdownPopoverRect(
   };
 }
 
-export function apiWorkbenchWrappedOptionsRenderCommandsInto(
-  target: ApiWorkbenchWrappedOptionsRenderCommand[],
-  hits: ApiWorkbenchControlHitPlacement[],
-  options: ApiWorkbenchWrappedOptionsRenderOptions,
-): ApiWorkbenchWrappedOptionsRenderCommand[] {
-  const inset = Math.max(0, Math.floor(options.horizontalInset ?? 2));
-  const width = Math.max(Math.max(1, Math.floor(options.minWidth ?? 8)), Math.floor(options.rect.width) - inset * 2);
-  const rows = layoutWrappedControlOptions(options.items, options.selectedIndex, width);
-  const bottom = options.rect.row + Math.max(0, Math.floor(options.rect.height));
-  const column = options.rect.column + inset;
-  const active = options.activeId === options.id;
-  let written = 0;
-  let hitCount = 0;
-  for (let offset = 0; offset < rows.length; offset += 1) {
-    const line = rows[offset]!;
-    const row = Math.floor(options.startRow) + offset;
-    if (row >= bottom || line.text.length === 0) break;
-    writeWrappedOptionRenderCommand(target, written++, {
-      text: fitCellText(line.text, width),
-      column,
-      row,
-      width,
-      active,
-    });
-    for (let index = 0; index < line.tokens.length; index += 1) {
-      const token = line.tokens[index]!;
-      writeControlHit(hits, hitCount++, {
-        column: column + token.columnOffset,
-        row,
-        width: token.width,
-        height: 1,
-        id: options.id,
-        action: "activate",
-        index: token.index,
-      });
-    }
-  }
-  target.length = written;
-  hits.length = hitCount;
-  return target;
-}
-
 export function nextSortableDataColumn<TRow extends Record<string, unknown>>(
   columns: readonly DataColumn<TRow>[],
   currentColumnId: string | undefined,
@@ -460,26 +399,6 @@ function writeControlLineRenderCommand(
   };
   command.kind = options.kind;
   command.role = options.role;
-  command.text = options.text;
-  command.column = options.column;
-  command.row = options.row;
-  command.width = options.width;
-  command.active = options.active;
-  target[index] = command;
-}
-
-function writeWrappedOptionRenderCommand(
-  target: ApiWorkbenchWrappedOptionsRenderCommand[],
-  index: number,
-  options: ApiWorkbenchWrappedOptionsRenderCommand,
-): void {
-  const command = target[index] ?? {
-    text: "",
-    column: 0,
-    row: 0,
-    width: 0,
-    active: false,
-  };
   command.text = options.text;
   command.column = options.column;
   command.row = options.row;

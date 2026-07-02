@@ -15508,6 +15508,78 @@ function writeTextboxRenderCommand(target, index, options) {
   target[index] = command;
 }
 
+// app/api_workbench_wrapped_options.ts
+function apiWorkbenchWrappedOptionsRenderCommandsInto(target, hits, options) {
+  const inset = Math.max(0, Math.floor(options.horizontalInset ?? 2));
+  const width = Math.max(Math.max(1, Math.floor(options.minWidth ?? 8)), Math.floor(options.rect.width) - inset * 2);
+  const rows2 = layoutWrappedControlOptions(options.items, options.selectedIndex, width);
+  const bottom = options.rect.row + Math.max(0, Math.floor(options.rect.height));
+  const column = options.rect.column + inset;
+  const active2 = options.activeId === options.id;
+  let written = 0;
+  let hitCount = 0;
+  for (let offset = 0; offset < rows2.length; offset += 1) {
+    const line = rows2[offset];
+    const row = Math.floor(options.startRow) + offset;
+    if (row >= bottom || line.text.length === 0) break;
+    writeWrappedOptionRenderCommand(target, written++, {
+      text: fitCellText(line.text, width),
+      column,
+      row,
+      width,
+      active: active2
+    });
+    for (let index = 0; index < line.tokens.length; index += 1) {
+      const token = line.tokens[index];
+      writeControlHit(hits, hitCount++, {
+        column: column + token.columnOffset,
+        row,
+        width: token.width,
+        height: 1,
+        id: options.id,
+        action: "activate",
+        index: token.index
+      });
+    }
+  }
+  target.length = written;
+  hits.length = hitCount;
+  return target;
+}
+function writeWrappedOptionRenderCommand(target, index, options) {
+  const command = target[index] ?? {
+    text: "",
+    column: 0,
+    row: 0,
+    width: 0,
+    active: false
+  };
+  command.text = options.text;
+  command.column = options.column;
+  command.row = options.row;
+  command.width = options.width;
+  command.active = options.active;
+  target[index] = command;
+}
+function writeControlHit(target, index, source) {
+  const hit = target[index] ?? {
+    column: 0,
+    row: 0,
+    width: 0,
+    height: 1,
+    id: source.id,
+    action: source.action
+  };
+  hit.column = source.column;
+  hit.row = source.row;
+  hit.width = source.width;
+  hit.height = source.height;
+  hit.id = source.id;
+  hit.action = source.action;
+  hit.index = source.index;
+  target[index] = hit;
+}
+
 // app/api_workbench_controls.ts
 function nextApiWorkbenchControlId(current, delta, options = {}) {
   const index = apiWorkbenchControlIds.indexOf(current);
@@ -15548,7 +15620,7 @@ function apiWorkbenchControlLineInto(segments, hits, id2, value, rect, row, acti
     writeControlLineSegment(segments, 0, "line", line, rect.column, row, textWidth(line), active2);
     segmentCount = 1;
   }
-  writeControlHit(hits, hitCount, {
+  writeControlHit2(hits, hitCount, {
     column: rect.column,
     row,
     width: rect.width,
@@ -15559,7 +15631,7 @@ function apiWorkbenchControlLineInto(segments, hits, id2, value, rect, row, acti
   });
   hitCount += 1;
   if (options.previous) {
-    writeControlHit(hits, hitCount, {
+    writeControlHit2(hits, hitCount, {
       column: rect.column,
       row,
       width: Math.max(1, Math.floor(rect.width / 2)),
@@ -15570,7 +15642,7 @@ function apiWorkbenchControlLineInto(segments, hits, id2, value, rect, row, acti
     hitCount += 1;
   }
   if (options.next) {
-    writeControlHit(hits, hitCount, {
+    writeControlHit2(hits, hitCount, {
       column: rect.column + Math.floor(rect.width / 2),
       row,
       width: Math.ceil(rect.width / 2),
@@ -15657,43 +15729,6 @@ function apiWorkbenchDropdownPopoverRect(options) {
     width,
     height: Math.max(2, options.items.length + 2)
   };
-}
-function apiWorkbenchWrappedOptionsRenderCommandsInto(target, hits, options) {
-  const inset = Math.max(0, Math.floor(options.horizontalInset ?? 2));
-  const width = Math.max(Math.max(1, Math.floor(options.minWidth ?? 8)), Math.floor(options.rect.width) - inset * 2);
-  const rows2 = layoutWrappedControlOptions(options.items, options.selectedIndex, width);
-  const bottom = options.rect.row + Math.max(0, Math.floor(options.rect.height));
-  const column = options.rect.column + inset;
-  const active2 = options.activeId === options.id;
-  let written = 0;
-  let hitCount = 0;
-  for (let offset = 0; offset < rows2.length; offset += 1) {
-    const line = rows2[offset];
-    const row = Math.floor(options.startRow) + offset;
-    if (row >= bottom || line.text.length === 0) break;
-    writeWrappedOptionRenderCommand(target, written++, {
-      text: fitCellText(line.text, width),
-      column,
-      row,
-      width,
-      active: active2
-    });
-    for (let index = 0; index < line.tokens.length; index += 1) {
-      const token = line.tokens[index];
-      writeControlHit(hits, hitCount++, {
-        column: column + token.columnOffset,
-        row,
-        width: token.width,
-        height: 1,
-        id: options.id,
-        action: "activate",
-        index: token.index
-      });
-    }
-  }
-  target.length = written;
-  hits.length = hitCount;
-  return target;
 }
 function nextSortableDataColumn(columns2, currentColumnId, delta) {
   let sortableCount = 0;
@@ -15786,22 +15821,7 @@ function writeControlLineRenderCommand(target, index, options) {
   command.active = options.active;
   target[index] = command;
 }
-function writeWrappedOptionRenderCommand(target, index, options) {
-  const command = target[index] ?? {
-    text: "",
-    column: 0,
-    row: 0,
-    width: 0,
-    active: false
-  };
-  command.text = options.text;
-  command.column = options.column;
-  command.row = options.row;
-  command.width = options.width;
-  command.active = options.active;
-  target[index] = command;
-}
-function writeControlHit(target, index, source) {
+function writeControlHit2(target, index, source) {
   const hit = target[index] ?? {
     column: 0,
     row: 0,

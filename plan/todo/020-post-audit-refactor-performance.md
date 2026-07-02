@@ -128,3 +128,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   duplicated renderer-local pointer math.
 - Split API workbench TextBox projection and render commands into a focused module behind the existing controls facade,
   with shared control IDs/hit types in an acyclic base module.
+- Split API workbench wrapped combo/radio option render commands into a focused module while preserving the existing
+  controls facade export surface.
