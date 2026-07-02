@@ -10755,10 +10755,15 @@ function workbenchButtonPaintOptions(theme2, contrast, state = "base", tone = "d
 
 // src/app/workbench_control_layout.ts
 function layoutWorkbenchButtonRow(items, bounds, startRow, options = {}) {
+  const placements = [];
+  const nextRow = layoutWorkbenchButtonRowInto(placements, items, bounds, startRow, options);
+  return { placements, nextRow };
+}
+function layoutWorkbenchButtonRowInto(target, items, bounds, startRow, options = {}) {
+  target.length = 0;
   const gap = Math.max(0, Math.floor(options.gap ?? 1));
   const right = bounds.column + Math.max(0, Math.floor(bounds.width));
   const bottom = bounds.row + Math.max(0, Math.floor(bounds.height));
-  const placements = [];
   let row = Math.max(bounds.row, Math.floor(startRow));
   let column = bounds.column;
   for (const item of items) {
@@ -10771,7 +10776,7 @@ function layoutWorkbenchButtonRow(items, bounds, startRow, options = {}) {
     }
     if (row >= bottom) break;
     const state = item.disabled ? "disabled" : item.active ? "active" : "base";
-    placements.push({
+    target.push({
       item,
       rect: { column, row, width, height: 1 },
       state,
@@ -10779,7 +10784,7 @@ function layoutWorkbenchButtonRow(items, bounds, startRow, options = {}) {
     });
     column += width + gap;
   }
-  return { placements, nextRow: Math.min(bottom, row + 1) };
+  return Math.min(bottom, row + 1);
 }
 
 // src/runtime/diagnostics.ts

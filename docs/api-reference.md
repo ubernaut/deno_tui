@@ -8,8 +8,8 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 - Entrypoints: 9
 - Module visits: 525
 - Re-export declarations: 516
-- Exported symbols: 4723
-- Documented symbols: 4723
+- Exported symbols: 4725
+- Documented symbols: 4725
 - Documentation coverage: 100.00%
 - Duplicate symbol groups: 0
 - Missing targets: 0
@@ -18,8 +18,8 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 
 | Specifier       | Path                           | Runtime  | Stability    | Modules | Symbols |    Docs |
 | --------------- | ------------------------------ | -------- | ------------ | ------: | ------: | ------: |
-| `.`             | `./mod.ts`                     | terminal | stable       |     237 |    2012 | 100.00% |
-| `./web`         | `./mod.web.ts`                 | browser  | beta         |     216 |    1875 | 100.00% |
+| `.`             | `./mod.ts`                     | terminal | stable       |     237 |    2013 | 100.00% |
+| `./web`         | `./mod.web.ts`                 | browser  | beta         |     216 |    1876 | 100.00% |
 | `./remote`      | `./mod.remote.ts`              | remote   | experimental |       4 |      38 | 100.00% |
 | `./three-ascii` | `./mod.three_ascii.ts`         | shared   | experimental |       8 |      54 | 100.00% |
 | `./theme`       | `./mod.theme.ts`               | shared   | beta         |      10 |     198 | 100.00% |
@@ -41,8 +41,8 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 - Entrypoint: `mod.ts`
 - Modules: 237
 - Re-export declarations: 236
-- Exported symbols: 2012
-- Documented symbols: 2012
+- Exported symbols: 2013
+- Documented symbols: 2013
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -116,7 +116,7 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 | [`src/app/tree_commands.ts`](#src-app-tree-commands-ts)                                 |          0 |       6 |          6 |
 | [`src/app/window_manager_commands.ts`](#src-app-window-manager-commands-ts)             |          0 |       8 |          8 |
 | [`src/app/workbench_button_style.ts`](#src-app-workbench-button-style-ts)               |          0 |       5 |          5 |
-| [`src/app/workbench_control_layout.ts`](#src-app-workbench-control-layout-ts)           |          0 |      11 |         11 |
+| [`src/app/workbench_control_layout.ts`](#src-app-workbench-control-layout-ts)           |          0 |      12 |         12 |
 | [`src/app/workbench_diagnostics.ts`](#src-app-workbench-diagnostics-ts)                 |          0 |       6 |          6 |
 | [`src/app/workbench_frame.ts`](#src-app-workbench-frame-ts)                             |          0 |      17 |         17 |
 | [`src/app/workbench_layout.ts`](#src-app-workbench-layout-ts)                           |          0 |      20 |         20 |
@@ -1207,6 +1207,7 @@ _No direct exported symbols._
 | Symbol                                  | Kind      | Type Only | JSDoc |
 | --------------------------------------- | --------- | --------- | ----- |
 | `layoutWorkbenchButtonRow`              | function  | no        | yes   |
+| `layoutWorkbenchButtonRowInto`          | function  | no        | yes   |
 | `layoutWorkbenchControlButtonLine`      | function  | no        | yes   |
 | `layoutWrappedControlOptions`           | function  | no        | yes   |
 | `WorkbenchButtonRowItem`                | interface | yes       | yes   |
@@ -3763,8 +3764,8 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 - Entrypoint: `mod.web.ts`
 - Modules: 216
 - Re-export declarations: 215
-- Exported symbols: 1875
-- Documented symbols: 1875
+- Exported symbols: 1876
+- Documented symbols: 1876
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -3838,7 +3839,7 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 | [`src/app/tree_commands.ts`](#src-app-tree-commands-ts)                           |          0 |       6 |          6 |
 | [`src/app/window_manager_commands.ts`](#src-app-window-manager-commands-ts)       |          0 |       8 |          8 |
 | [`src/app/workbench_button_style.ts`](#src-app-workbench-button-style-ts)         |          0 |       5 |          5 |
-| [`src/app/workbench_control_layout.ts`](#src-app-workbench-control-layout-ts)     |          0 |      11 |         11 |
+| [`src/app/workbench_control_layout.ts`](#src-app-workbench-control-layout-ts)     |          0 |      12 |         12 |
 | [`src/app/workbench_diagnostics.ts`](#src-app-workbench-diagnostics-ts)           |          0 |       6 |          6 |
 | [`src/app/workbench_frame.ts`](#src-app-workbench-frame-ts)                       |          0 |      17 |         17 |
 | [`src/app/workbench_layout.ts`](#src-app-workbench-layout-ts)                     |          0 |      20 |         20 |
@@ -4926,6 +4927,7 @@ _No direct exported symbols._
 | Symbol                                  | Kind      | Type Only | JSDoc |
 | --------------------------------------- | --------- | --------- | ----- |
 | `layoutWorkbenchButtonRow`              | function  | no        | yes   |
+| `layoutWorkbenchButtonRowInto`          | function  | no        | yes   |
 | `layoutWorkbenchControlButtonLine`      | function  | no        | yes   |
 | `layoutWrappedControlOptions`           | function  | no        | yes   |
 | `WorkbenchButtonRowItem`                | interface | yes       | yes   |

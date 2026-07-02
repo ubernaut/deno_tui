@@ -121,9 +121,11 @@ import type { Rectangle } from "../src/types.ts";
 import { stripStyles, textWidth } from "../src/utils/strings.ts";
 import { workbenchButtonPaintOptions } from "../src/app/workbench_button_style.ts";
 import {
-  layoutWorkbenchButtonRow,
+  layoutWorkbenchButtonRowInto,
   layoutWorkbenchControlButtonLine,
   layoutWrappedControlOptions,
+  type WorkbenchButtonRowItem,
+  type WorkbenchButtonRowPlacement,
   wrappedControlOptionRowCount,
 } from "../src/app/workbench_control_layout.ts";
 import {
@@ -285,6 +287,27 @@ type SavedWorkspace = WorkbenchWorkspace<AsciiOptions>;
 type SavedWorkspaceWindow = WorkbenchWorkspaceWindow<AsciiOptions>;
 
 type WorkspaceNameMode = "save" | "rename";
+const terminalOutputButtonItems: WorkbenchButtonRowItem<TerminalOutputAction>[] = [
+  { label: "Run", action: "run", tone: "success" },
+  { label: "Stop", action: "stop", tone: "danger" },
+  { label: "Restart", action: "restart", tone: "warning" },
+  { label: "Clear", action: "clear", tone: "muted" },
+  { label: "Follow", action: "follow" },
+  { label: "Raw", action: "raw" },
+  { label: "Copy Cmd", action: "copy", tone: "muted" },
+];
+const terminalOutputButtonPlacements: WorkbenchButtonRowPlacement<TerminalOutputAction>[] = [];
+const terminalShellButtonItems: WorkbenchButtonRowItem<TerminalShellAction>[] = [
+  { label: "Start", action: "start" },
+  { label: "Stop", action: "stop", tone: "danger" },
+  { label: "Restart", action: "restart", tone: "warning" },
+  { label: "Clear", action: "clear", tone: "muted" },
+  { label: "Raw", action: "raw" },
+  { label: "Copy", action: "copy" },
+  { label: "Top", action: "top" },
+  { label: "Bottom", action: "bottom" },
+];
+const terminalShellButtonPlacements: WorkbenchButtonRowPlacement<TerminalShellAction>[] = [];
 const themes: ThemeSpec[] = createApiWorkbenchThemes();
 const themeLabels = themes.map((entry) => entry.label);
 const themeMenuWidth = Math.max(20, maxTextWidth(themeLabels) + 6);
@@ -1833,31 +1856,20 @@ function renderTerminalOutput(frame: Frame, rect: Rectangle): void {
 }
 
 function renderTerminalOutputToolbar(frame: Frame, rect: Rectangle, startRow: number): number {
-  const layout = layoutWorkbenchButtonRow<TerminalOutputAction>(
-    [
-      { label: "Run", action: "run", disabled: terminalOutputSession.running, tone: "success" },
-      { label: "Stop", action: "stop", disabled: !terminalOutputSession.running, tone: "danger" },
-      { label: "Restart", action: "restart", tone: "warning" },
-      {
-        label: "Clear",
-        action: "clear",
-        disabled: terminalOutputSession.output.lines.peek().length === 0,
-        tone: "muted",
-      },
-      { label: "Follow", action: "follow", active: terminalOutputSession.output.follow.peek() },
-      {
-        label: "Raw",
-        action: "raw",
-        active: terminalInputMode.peek() === "raw",
-        disabled: !terminalOutputSession.running,
-      },
-      { label: "Copy Cmd", action: "copy", tone: "muted" },
-    ],
+  terminalOutputButtonItems[0]!.disabled = terminalOutputSession.running;
+  terminalOutputButtonItems[1]!.disabled = !terminalOutputSession.running;
+  terminalOutputButtonItems[3]!.disabled = terminalOutputSession.output.lines.peek().length === 0;
+  terminalOutputButtonItems[4]!.active = terminalOutputSession.output.follow.peek();
+  terminalOutputButtonItems[5]!.active = terminalInputMode.peek() === "raw";
+  terminalOutputButtonItems[5]!.disabled = !terminalOutputSession.running;
+  const nextRow = layoutWorkbenchButtonRowInto(
+    terminalOutputButtonPlacements,
+    terminalOutputButtonItems,
     rect,
     startRow,
   );
 
-  for (const button of layout.placements) {
+  for (const button of terminalOutputButtonPlacements) {
     const written = writeButton(frame, button.rect.row, button.rect.column, button.item.label, {
       state: button.state,
       tone: button.tone,
@@ -1867,7 +1879,7 @@ function renderTerminalOutputToolbar(frame: Frame, rect: Rectangle, startRow: nu
       addHit({ ...button.rect, width: written }, { type: "terminalOutput", action: button.item.action });
     }
   }
-  return layout.nextRow;
+  return nextRow;
 }
 
 function terminalInputModeLabel(): string {
@@ -2013,31 +2025,21 @@ function renderTerminalShell(frame: Frame, rect: Rectangle): void {
 function renderTerminalShellToolbar(frame: Frame, rect: Rectangle, startRow: number): number {
   const shellInspection = terminalShell.inspect();
   const scrollDisabled = shellInspection.scrollback.totalRows <= shellInspection.scrollback.viewportRows;
-  const layout = layoutWorkbenchButtonRow<TerminalShellAction>(
-    [
-      {
-        label: "Start",
-        action: "start",
-        disabled: terminalShell.running || terminalShell.status.peek() === "starting",
-      },
-      { label: "Stop", action: "stop", disabled: !terminalShell.running, tone: "danger" },
-      { label: "Restart", action: "restart", tone: "warning" },
-      { label: "Clear", action: "clear", tone: "muted" },
-      {
-        label: "Raw",
-        action: "raw",
-        active: terminalShellInputMode.peek() === "raw",
-        disabled: !terminalShell.running,
-      },
-      { label: "Copy", action: "copy", active: terminalShell.scrollback.mode === "copy" },
-      { label: "Top", action: "top", disabled: scrollDisabled },
-      { label: "Bottom", action: "bottom", disabled: scrollDisabled },
-    ],
+  terminalShellButtonItems[0]!.disabled = terminalShell.running || terminalShell.status.peek() === "starting";
+  terminalShellButtonItems[1]!.disabled = !terminalShell.running;
+  terminalShellButtonItems[4]!.active = terminalShellInputMode.peek() === "raw";
+  terminalShellButtonItems[4]!.disabled = !terminalShell.running;
+  terminalShellButtonItems[5]!.active = terminalShell.scrollback.mode === "copy";
+  terminalShellButtonItems[6]!.disabled = scrollDisabled;
+  terminalShellButtonItems[7]!.disabled = scrollDisabled;
+  const nextRow = layoutWorkbenchButtonRowInto(
+    terminalShellButtonPlacements,
+    terminalShellButtonItems,
     rect,
     startRow,
   );
 
-  for (const button of layout.placements) {
+  for (const button of terminalShellButtonPlacements) {
     const written = writeButton(frame, button.rect.row, button.rect.column, button.item.label, {
       state: button.state,
       tone: button.tone,
@@ -2047,7 +2049,7 @@ function renderTerminalShellToolbar(frame: Frame, rect: Rectangle, startRow: num
       addHit({ ...button.rect, width: written }, { type: "terminalShell", action: button.item.action });
     }
   }
-  return layout.nextRow;
+  return nextRow;
 }
 
 function terminalShellInputModeLabel(): string {

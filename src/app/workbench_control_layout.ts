@@ -59,10 +59,23 @@ export function layoutWorkbenchButtonRow<TAction>(
   startRow: number,
   options: { gap?: number } = {},
 ): WorkbenchButtonRowLayout<TAction> {
+  const placements: WorkbenchButtonRowPlacement<TAction>[] = [];
+  const nextRow = layoutWorkbenchButtonRowInto(placements, items, bounds, startRow, options);
+  return { placements, nextRow };
+}
+
+/** Computes wrapped toolbar button positions into caller-owned placement storage. */
+export function layoutWorkbenchButtonRowInto<TAction>(
+  target: WorkbenchButtonRowPlacement<TAction>[],
+  items: readonly WorkbenchButtonRowItem<TAction>[],
+  bounds: Rectangle,
+  startRow: number,
+  options: { gap?: number } = {},
+): number {
+  target.length = 0;
   const gap = Math.max(0, Math.floor(options.gap ?? 1));
   const right = bounds.column + Math.max(0, Math.floor(bounds.width));
   const bottom = bounds.row + Math.max(0, Math.floor(bounds.height));
-  const placements: WorkbenchButtonRowPlacement<TAction>[] = [];
   let row = Math.max(bounds.row, Math.floor(startRow));
   let column = bounds.column;
 
@@ -76,7 +89,7 @@ export function layoutWorkbenchButtonRow<TAction>(
     }
     if (row >= bottom) break;
     const state: WorkbenchButtonState = item.disabled ? "disabled" : item.active ? "active" : "base";
-    placements.push({
+    target.push({
       item,
       rect: { column, row, width, height: 1 },
       state,
@@ -85,7 +98,7 @@ export function layoutWorkbenchButtonRow<TAction>(
     column += width + gap;
   }
 
-  return { placements, nextRow: Math.min(bottom, row + 1) };
+  return Math.min(bottom, row + 1);
 }
 
 /** Computes clipped button/detail segments without letting the button background paint trailing whitespace. */

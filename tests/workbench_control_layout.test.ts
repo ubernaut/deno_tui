@@ -2,8 +2,10 @@
 import { assertEquals } from "./deps.ts";
 import {
   layoutWorkbenchButtonRow,
+  layoutWorkbenchButtonRowInto,
   layoutWorkbenchControlButtonLine,
   layoutWrappedControlOptions,
+  type WorkbenchButtonRowPlacement,
   wrappedControlOptionRowCount,
 } from "../src/app/workbench_control_layout.ts";
 
@@ -104,4 +106,27 @@ Deno.test("layoutWorkbenchButtonRow clips overwide buttons and stops at bottom",
     ],
     nextRow: 1,
   });
+});
+
+Deno.test("layoutWorkbenchButtonRowInto reuses caller-owned placement storage", () => {
+  const placements: WorkbenchButtonRowPlacement<string>[] = [{
+    item: { label: "stale", action: "stale" },
+    rect: { column: 99, row: 99, width: 1, height: 1 },
+    state: "base",
+    tone: undefined,
+  }];
+  const nextRow = layoutWorkbenchButtonRowInto(
+    placements,
+    [{ label: "OK", action: "ok", active: true }],
+    { column: 3, row: 2, width: 12, height: 2 },
+    2,
+  );
+
+  assertEquals(nextRow, 3);
+  assertEquals(placements, [{
+    item: { label: "OK", action: "ok", active: true },
+    rect: { column: 3, row: 2, width: 6, height: 1 },
+    state: "active",
+    tone: undefined,
+  }]);
 });

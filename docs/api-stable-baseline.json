@@ -3427,6 +3427,13 @@
     },
     {
       "module": "src/app/workbench_control_layout.ts",
+      "name": "layoutWorkbenchButtonRowInto",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_control_layout.ts",
       "name": "layoutWorkbenchControlButtonLine",
       "kind": "function",
       "typeOnly": false,
