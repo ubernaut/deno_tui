@@ -52,16 +52,32 @@ var EventEmitter = class {
   }
   listenerCount(type) {
     if (type !== void 0) return this.listeners[type]?.length ?? 0;
-    return Object.values(this.listeners).reduce((total, listeners) => total + (listeners?.length ?? 0), 0);
+    let total = 0;
+    for (const key in this.listeners) {
+      total += this.listeners[key]?.length ?? 0;
+    }
+    return total;
   }
   eventNames() {
-    return Object.entries(this.listeners).filter(([, listeners]) => listeners.length > 0).map(([type]) => type);
+    const names = [];
+    for (const type in this.listeners) {
+      if ((this.listeners[type]?.length ?? 0) > 0) names.push(type);
+    }
+    return names;
   }
   inspect() {
-    const events = Object.entries(this.listeners).map(([type, listeners]) => ({ type, listenerCount: listeners.length })).filter((entry) => entry.listenerCount > 0).sort((left, right) => left.type.localeCompare(right.type));
+    const events = [];
+    let listenerCount = 0;
+    for (const type in this.listeners) {
+      const count = this.listeners[type]?.length ?? 0;
+      if (count <= 0) continue;
+      listenerCount += count;
+      events.push({ type, listenerCount: count });
+    }
+    events.sort((left, right) => left.type.localeCompare(right.type));
     return {
       eventCount: events.length,
-      listenerCount: events.reduce((total, event) => total + event.listenerCount, 0),
+      listenerCount,
       events
     };
   }
@@ -2393,7 +2409,20 @@ var DirtyRegion = class _DirtyRegion {
   }
   /** Returns cloned row segments sorted by row then start column. */
   inspect() {
-    return [...this.#rows.entries()].sort(([left], [right]) => left - right).flatMap(([, segments]) => segments.map((segment) => ({ ...segment })));
+    const rows2 = [];
+    for (const row of this.#rows.keys()) {
+      rows2.push(row);
+    }
+    rows2.sort((left, right) => left - right);
+    const output = [];
+    for (const row of rows2) {
+      const segments = this.#rows.get(row);
+      if (!segments) continue;
+      for (const segment of segments) {
+        output.push({ ...segment });
+      }
+    }
+    return output;
   }
   /** Returns true when any dirty segment intersects the rectangle. */
   intersects(rectangle) {
@@ -2425,14 +2454,16 @@ var DirtyRegion = class _DirtyRegion {
   }
 };
 function mergeRowSegments(segments) {
-  const sorted = [...segments].sort(
-    (left, right) => left.startColumn - right.startColumn || left.endColumn - right.endColumn
-  );
+  const sorted = new Array(segments.length);
+  for (let index = 0; index < segments.length; index += 1) {
+    sorted[index] = { ...segments[index] };
+  }
+  sorted.sort((left, right) => left.startColumn - right.startColumn || left.endColumn - right.endColumn);
   const merged = [];
   for (const segment of sorted) {
     const previous = merged.at(-1);
     if (!previous || segment.startColumn > previous.endColumn) {
-      merged.push({ ...segment });
+      merged.push(segment);
       continue;
     }
     previous.endColumn = Math.max(previous.endColumn, segment.endColumn);
@@ -9242,9 +9273,10 @@ var DiagnosticsCollector = class {
       context: input2.context ? { ...input2.context } : void 0
     };
     this.#entries.push(entry);
-    while (this.#entries.length > Math.max(1, this.maxEntries)) this.#entries.shift();
+    const overflow = this.#entries.length - Math.max(1, this.maxEntries);
+    if (overflow > 0) this.#entries.splice(0, overflow);
     this.#emit(entry);
-    return { ...entry, context: entry.context ? { ...entry.context } : void 0 };
+    return cloneDiagnosticEntry(entry);
   }
   clear() {
     if (this.#entries.length === 0) return;
@@ -9252,7 +9284,7 @@ var DiagnosticsCollector = class {
     this.#emit(void 0);
   }
   entries() {
-    return this.#entries.map((entry) => ({ ...entry, context: entry.context ? { ...entry.context } : void 0 }));
+    return cloneDiagnosticEntries(this.#entries);
   }
   inspect() {
     const bySeverity = {
@@ -9302,12 +9334,29 @@ function formatDiagnosticStatus(entries, options = {}) {
   const label = options.label ?? "diagnostics";
   const summary = summarizeDiagnostics(entries);
   if (summary.ok) return `${label} ok`;
-  const counts = ["error", "warning", "info", "debug"].filter((severity) => summary.bySeverity[severity] > 0).map((severity) => `${summary.bySeverity[severity]} ${severity}`).join(", ");
+  const counts = formatSeverityCounts(summary.bySeverity);
   const latest = options.includeLatest !== false && summary.latest ? ` latest ${summary.latest.source}/${summary.latest.code}` : "";
   return `${label} ${summary.count} ${summary.highestSeverity}${counts ? ` (${counts})` : ""}${latest}`;
 }
 function cloneDiagnosticEntry(entry) {
   return entry ? { ...entry, context: entry.context ? { ...entry.context } : void 0 } : void 0;
+}
+function cloneDiagnosticEntries(entries) {
+  const output = new Array(entries.length);
+  for (let index = 0; index < entries.length; index += 1) {
+    output[index] = cloneDiagnosticEntry(entries[index]);
+  }
+  return output;
+}
+function formatSeverityCounts(bySeverity) {
+  const severities = ["error", "warning", "info", "debug"];
+  let output = "";
+  for (const severity of severities) {
+    const count = bySeverity[severity];
+    if (count <= 0) continue;
+    output += `${output ? ", " : ""}${count} ${severity}`;
+  }
+  return output;
 }
 function severityWeight(severity) {
   switch (severity) {
