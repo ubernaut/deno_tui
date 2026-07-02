@@ -38,6 +38,7 @@ import {
   layoutWorkbenchTabs,
   layoutWorkbenchTitlebar,
   layoutWorkbenchTopMenuItemRect,
+  layoutWrappedControlOptions,
   maxTextWidth,
   MenuBarController,
   modalContentHeight,
@@ -91,6 +92,7 @@ import {
   workbenchVerticalScrollbarRect,
   workbenchWindowLayout,
   WorkbenchWorkspaceViewportController,
+  wrappedControlOptionRowCount,
   wrapTextBoxLines,
   writeStringFrameRow,
 } from "../../mod.web.ts";
@@ -106,7 +108,9 @@ import {
   createApiWorkbenchThemes,
 } from "../../app/api_workbench_catalog.ts";
 import {
+  type ApiWorkbenchControlHitPlacement,
   type ApiWorkbenchControlId,
+  apiWorkbenchStepperHitPlacementsInto,
   nextApiWorkbenchControlId,
   nextSortableDataColumn,
 } from "../../app/api_workbench_controls.ts";
@@ -270,6 +274,7 @@ const webTerminalButtonItems: WorkbenchButtonRowItem<WebTerminalAction>[] = [];
 const webTerminalButtonPlacements: WorkbenchButtonRowPlacement<WebTerminalAction>[] = [];
 const webTerminalSessionTabSources: WorkbenchTerminalSessionTab[] = [];
 const webTerminalSessionTabPlacements: WorkbenchTerminalSessionTabPlacement[] = [];
+const controlStepperHitPlacements: ApiWorkbenchControlHitPlacement[] = [];
 const modalActionButtonItems: WorkbenchButtonRowItem<number>[] = [];
 const modalActionButtonPlacements: WorkbenchButtonRowPlacement<number>[] = [];
 let dropdownOverlay: DropdownOverlay | null = null;
@@ -2069,7 +2074,7 @@ function renderControls(frame: string[], rect: Rectangle): void {
     next: true,
   });
   writeWrappedOptions(frame, rect, row, "combo", combo.items.peek(), combo.selectedIndex.peek(), t);
-  row += wrappedOptionRowCount(combo.items.peek(), rect.width - 4);
+  row += wrappedControlOptionRowCount(combo.items.peek(), undefined, rect.width - 4);
   writeControl("dropdown", `Dropdown  ${dropdown.expanded.peek() ? "v" : ">"} ${dropdown.label()}`, {
     action: "toggle",
   });
@@ -2177,64 +2182,51 @@ function writeWrappedOptions(
   t: ThemeSpec,
 ): void {
   const width = Math.max(8, rect.width - 4);
-  let row = startRow;
-  let line = "";
-  const flush = () => {
-    if (row >= rect.row + rect.height || line.length === 0) return;
+  const rows = layoutWrappedControlOptions(items, selectedIndex, width);
+  for (let offset = 0; offset < rows.length; offset += 1) {
+    const line = rows[offset]!;
+    const row = startRow + offset;
+    if (row >= rect.row + rect.height || line.text.length === 0) return;
     const selected = activeControl.peek() === id;
     write(
       frame,
       row,
       rect.column + 2,
-      paint(fit(line, width), selected ? t.background : t.text, selected ? t.warn : t.surface, selected),
+      paint(fit(line.text, width), selected ? t.background : t.text, selected ? t.warn : t.surface, selected),
     );
-    line = "";
-    row += 1;
-  };
-  for (const [index, item] of items.entries()) {
-    const token = `${index === selectedIndex ? "[" : " "}${item}${index === selectedIndex ? "]" : " "} `;
-    if (textWidth(line) + textWidth(token) > width) flush();
-    hitTargets.add({ column: rect.column + 2 + textWidth(line), row, width: textWidth(token), height: 1 }, {
-      type: "control",
-      id,
-      action: "activate",
-      index,
-    });
-    line += token;
-  }
-  flush();
-}
-
-function wrappedOptionRowCount(items: readonly string[], width: number): number {
-  const safeWidth = Math.max(8, width);
-  let rows = 1;
-  let lineWidth = 0;
-  for (const item of items) {
-    const tokenWidth = textWidth(` ${item}  `);
-    if (lineWidth > 0 && lineWidth + tokenWidth > safeWidth) {
-      rows += 1;
-      lineWidth = 0;
+    for (let index = 0; index < line.tokens.length; index += 1) {
+      const token = line.tokens[index]!;
+      hitTargets.add({ column: rect.column + 2 + token.columnOffset, row, width: token.width, height: 1 }, {
+        type: "control",
+        id,
+        action: "activate",
+        index: token.index,
+      });
     }
-    lineWidth += tokenWidth;
   }
-  return rows;
 }
 
 function addInlineStepperHits(rect: Rectangle, row: number): void {
-  const steps = stepper.steps.peek();
-  let column = rect.column + 12;
-  for (const [index, step] of steps.entries()) {
-    const label = step.disabled ? `(${step.label})` : step.completed ? `✓ ${step.label}` : step.label;
-    const token = index === stepper.activeIndex.peek() ? `[${label}]` : label;
-    const width = textWidth(token);
-    if (column + width > rect.column + rect.width) break;
-    hitTargets.add({ column, row, width, height: 1 }, {
+  const placements = apiWorkbenchStepperHitPlacementsInto(
+    controlStepperHitPlacements,
+    stepper.steps.peek(),
+    stepper.activeIndex.peek(),
+    rect,
+    row,
+  );
+  for (let index = 0; index < placements.length; index += 1) {
+    const placement = placements[index]!;
+    hitTargets.add({
+      column: placement.column,
+      row: placement.row,
+      width: placement.width,
+      height: placement.height,
+    }, {
       type: "control",
-      id: "stepper",
-      action: "activate",
-      index,
+      id: placement.id,
+      action: placement.action,
+      index: placement.index,
     });
-    column += width + 3;
   }
 }
 

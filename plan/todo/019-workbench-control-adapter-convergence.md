@@ -1,0 +1,21 @@
+# Workbench Control Adapter Convergence
+
+## Goal
+
+Continue reducing duplicated API Workbench controls-panel behavior between the terminal and browser adapters while
+keeping renderer-specific paint and hit-stack plumbing local.
+
+## Work
+
+- [x] Move inline stepper hit placement into a shared app-level helper with caller-owned output storage.
+- [x] Migrate the browser controls panel to the shared wrapped option-token layout used by the terminal controls panel.
+- [ ] Extract a renderer-neutral controls row projection for button, slider, checkbox, radio, combo, dropdown, input,
+      textbox, stepper, and progress rows.
+- [ ] Add adapter-parity tests that compare terminal/web controls row geometry and hit regions from the shared
+      projection.
+- [ ] Use the shared projection in both workbench adapters, leaving only ANSI/string-frame painting local.
+
+## Acceptance
+
+- [ ] Console and browser controls panels derive row/hit geometry from the same projection helper.
+- [ ] `deno task health` passes.

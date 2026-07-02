@@ -159,7 +159,9 @@ import {
   createApiWorkbenchThemes,
 } from "./api_workbench_catalog.ts";
 import {
+  type ApiWorkbenchControlHitPlacement,
   type ApiWorkbenchControlId,
+  apiWorkbenchStepperHitPlacementsInto,
   nextApiWorkbenchControlId,
   nextSortableDataColumn,
 } from "./api_workbench_controls.ts";
@@ -316,6 +318,7 @@ const terminalShellButtonPlacements: WorkbenchButtonRowPlacement<TerminalShellAc
 const terminalShellSessionTabSources: WorkbenchTerminalSessionTab[] = [];
 const terminalShellSessionTabPlacements: WorkbenchTerminalSessionTabPlacement[] = [];
 const terminalShellPaneProjections: WorkbenchTerminalPaneProjection[] = [];
+const controlStepperHitPlacements: ApiWorkbenchControlHitPlacement[] = [];
 const modalActionButtonItems: WorkbenchButtonRowItem<number>[] = [];
 const modalActionButtonPlacements: WorkbenchButtonRowPlacement<number>[] = [];
 const themes: ThemeSpec[] = createApiWorkbenchThemes();
@@ -1692,7 +1695,7 @@ function renderControls(frame: Frame, rect: Rectangle): void {
     writeSection("combo", themeHeader);
   }
   writeWrappedOptions(frame, rect, row, "combo", themeCombo.items.peek(), themeCombo.selectedIndex.peek(), t);
-  row += wrappedOptionRowCount(themeCombo.items.peek(), rect.width - 4);
+  row += wrappedControlOptionRowCount(themeCombo.items.peek(), undefined, rect.width - 4);
   writeControl("dropdown", `Dropdown  ${dropdown.expanded.peek() ? "▾" : "▸"} ${dropdown.label()}`, {
     action: "toggle",
   });
@@ -2485,25 +2488,27 @@ function writeWrappedOptions(
   }
 }
 
-function wrappedOptionRowCount(items: readonly string[], width: number): number {
-  return wrappedControlOptionRowCount(items, undefined, width);
-}
-
 function addInlineStepperHits(rect: Rectangle, row: number): void {
-  const steps = workflowStepper.steps.peek();
-  let column = rect.column + 12;
-  for (const [index, step] of steps.entries()) {
-    const label = step.disabled ? `(${step.label})` : step.completed ? `✓ ${step.label}` : step.label;
-    const token = index === workflowStepper.activeIndex.peek() ? `[${label}]` : label;
-    const width = textWidth(token);
-    if (column + width > rect.column + rect.width) break;
-    addHit({ column, row, width, height: 1 }, {
+  const placements = apiWorkbenchStepperHitPlacementsInto(
+    controlStepperHitPlacements,
+    workflowStepper.steps.peek(),
+    workflowStepper.activeIndex.peek(),
+    rect,
+    row,
+  );
+  for (let index = 0; index < placements.length; index += 1) {
+    const placement = placements[index]!;
+    addHit({
+      column: placement.column,
+      row: placement.row,
+      width: placement.width,
+      height: placement.height,
+    }, {
       type: "control",
-      id: "stepper",
-      action: "activate",
-      index,
+      id: placement.id,
+      action: placement.action,
+      index: placement.index,
     });
-    column += width + 3;
   }
 }
 
