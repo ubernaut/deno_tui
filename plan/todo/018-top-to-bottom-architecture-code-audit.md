@@ -978,6 +978,8 @@ Work:
         hot sparse-frame assembly time in the focused benchmark.
   - [x] Removed intermediate styled-cell array allocation from workbench frame writes and added clipping coverage for
         negative-column writes.
+  - [x] Added plain-cell fast paths to `characterWidth`, avoiding regex stripping and codepoint-array allocation for
+        common ANSI-parsed cells and cutting the ANSI measure/crop benchmark roughly in half.
 - [x] Make demo-only assets and NGE-inspired primitives clearly separate from library APIs.
   - [x] Added `app/neon_three_catalog.ts` for supported Three scene metadata and labels, keeping demo/NGE catalog data
         separate from the monolithic scene factory and shared by visualization footers plus scene coverage tests.

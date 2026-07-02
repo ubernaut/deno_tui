@@ -243,8 +243,16 @@ export function isFinalAnsiByte(character: string): boolean {
  * Originally created by sindresorhus: https://github.com/sindresorhus/is-fullwidth-code-point/blob/main/index.js
  */
 export function characterWidth(character: string): number {
-  const plain = stripStyles(character);
+  const plain = character.includes("\x1b") ? stripStyles(character) : character;
   if (!plain) return 0;
+
+  if (plain.length === 1) {
+    return codePointWidth(plain.charCodeAt(0));
+  }
+  const firstCodePoint = plain.codePointAt(0) ?? 0;
+  if (plain.length === 2 && firstCodePoint > 0xffff) {
+    return codePointWidth(firstCodePoint);
+  }
 
   const codePoints = [...plain].map((char) => char.codePointAt(0) ?? 0);
   if (codePoints.some((codePoint) => codePoint === 0x200d)) return 2;
@@ -252,7 +260,10 @@ export function characterWidth(character: string): number {
   if (codePoints.some((codePoint) => codePoint === 0xfe0f) && codePoints.some(isEmojiSymbol)) return 2;
 
   const codePoint = codePoints[0] ?? 0;
+  return codePointWidth(codePoint);
+}
 
+function codePointWidth(codePoint: number): number {
   if (
     codePoint === 0x200b ||
     codePoint === 0x200d ||

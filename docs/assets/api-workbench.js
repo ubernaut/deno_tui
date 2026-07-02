@@ -3067,6 +3067,9 @@ function blockFillGlyphForBucket(luminanceBucket) {
 
 // src/three_ascii/ansi_grid.ts
 var TILE_PIXEL_COUNT = 64;
+var DEFAULT_TERMINAL_EDGE_BIAS = 1;
+var RESET = "\x1B[0m";
+var GOHU_11_EDGE_SHAPE_MISMATCH = [0, 3, 10, 9];
 var GOHU_11_FILL_GLYPH_COVERAGE = [0, 2, 4, 6, 9, 11, 13, 15, 18, 18];
 var ASCII_FILL_GLYPH_COVERAGE = [0, 1, 2, 4, 6, 8, 10, 13, 16, 18];
 var MIXED_FILL_GLYPHS_BY_INDEX = createMixedFillGlyphTable();
@@ -3075,14 +3078,308 @@ var GLYPH_KEY_GLYPHS_OFFSET = 16;
 var GLYPH_KEY_MIXED_OFFSET = 32;
 var EDGE_GLYPH_KEY_OFFSET = 48;
 var GLYPHS_BY_KEY = createGlyphKeyTable();
+var MAX_LINEAR_BYTE_CACHE_SIZE = 65536;
+var MAX_FOREGROUND_ANSI_CACHE_SIZE = 4096;
+var MAX_CELL_CACHE_SIZE = 16384;
 var GLYPH_MODE_BLOCKS = 0;
 var GLYPH_MODE_GLYPHS = 1;
 var GLYPH_MODE_MIXED = 2;
 var BLOCK_FILL_GLYPH_KEYS_BY_INDEX = createFillGlyphKeyTable(GLYPH_MODE_BLOCKS);
 var ASCII_FILL_GLYPH_KEYS_BY_INDEX = createFillGlyphKeyTable(GLYPH_MODE_GLYPHS);
 var MIXED_FILL_GLYPH_KEYS_BY_INDEX = createFillGlyphKeyTable(GLYPH_MODE_MIXED);
+var ThreeAsciiAnsiGridAssembler = class {
+  toByte = createLinearByteCache();
+  foregroundAnsiCache = /* @__PURE__ */ new Map();
+  cellCache = /* @__PURE__ */ new Map();
+  reuseGrid;
+  reusableGrid = [];
+  backgroundKey = -1;
+  backgroundAnsi = "";
+  blankAnsi = "";
+  backgroundRed = 0;
+  backgroundGreen = 0;
+  backgroundBlue = 0;
+  stableBackgroundInput;
+  hasStableBackgroundInput = false;
+  constructor(options = {}) {
+    this.reuseGrid = options.reuseGrid ?? false;
+  }
+  build(input2) {
+    const columns = Math.max(0, Math.floor(input2.columns));
+    const rows2 = Math.max(0, Math.floor(input2.rows));
+    const fillGlyphs = input2.fillGlyphs;
+    const edgeGlyphs = input2.edgeGlyphs;
+    const hasEdges = edgeGlyphs !== void 0;
+    const colors = input2.colors;
+    const terminalGlyphStyle = input2.terminalGlyphStyle ?? "blocks";
+    const terminalGlyphMode = terminalGlyphModeForStyle(terminalGlyphStyle);
+    const terminalFillGlyphKeys = terminalFillGlyphKeysForMode(terminalGlyphMode);
+    const terminalEdgeBias = Math.max(0.5, input2.terminalEdgeBias ?? DEFAULT_TERMINAL_EDGE_BIAS);
+    this.setBackground(input2.backgroundColor);
+    this.pruneCaches();
+    let lastForegroundKey = -1;
+    let lastGlyphKey = -1;
+    let lastCell = "";
+    let lastRawRed = Number.NaN;
+    let lastRawGreen = Number.NaN;
+    let lastRawBlue = Number.NaN;
+    const grid = this.reuseGrid ? this.prepareReusableGrid(rows2, columns) : createStringGrid(rows2, columns);
+    if (!hasEdges) {
+      return this.buildFillOnlyGrid(
+        grid,
+        columns,
+        rows2,
+        fillGlyphs,
+        colors,
+        terminalGlyphMode,
+        terminalFillGlyphKeys,
+        lastForegroundKey,
+        lastGlyphKey,
+        lastCell,
+        lastRawRed,
+        lastRawGreen,
+        lastRawBlue
+      );
+    }
+    for (let row = 0; row < rows2; row += 1) {
+      const outputRow = grid[row];
+      for (let column = 0; column < columns; column += 1) {
+        const index = row * columns + column;
+        const fillGlyphIndex = Math.round(fillGlyphs[index] ?? 0);
+        let edgeGlyphIndex = 0;
+        let dominantCount = 0;
+        let totalCount = 0;
+        let secondCount = 0;
+        if (hasEdges) {
+          const edgeOffset = index * 4;
+          edgeGlyphIndex = Math.round(edgeGlyphs[edgeOffset] ?? 0);
+          dominantCount = edgeGlyphs[edgeOffset + 1] ?? 0;
+          totalCount = edgeGlyphs[edgeOffset + 2] ?? 0;
+          secondCount = edgeGlyphs[edgeOffset + 3] ?? 0;
+        }
+        if (fillGlyphIndex < 5 && (!hasEdges || edgeGlyphIndex <= 0 || dominantCount <= 0 || totalCount <= 0)) {
+          outputRow[column] = this.blankAnsi;
+          continue;
+        }
+        const glyphKey = terminalGlyphForCell(
+          terminalFillGlyphKeys,
+          edgeGlyphIndex,
+          dominantCount,
+          totalCount,
+          secondCount,
+          fillGlyphIndex,
+          terminalEdgeBias
+        );
+        const colorOffset = index * 4;
+        const rawRed = colors[colorOffset] ?? 0;
+        const rawGreen = colors[colorOffset + 1] ?? 0;
+        const rawBlue = colors[colorOffset + 2] ?? 0;
+        if (rawRed === lastRawRed && rawGreen === lastRawGreen && rawBlue === lastRawBlue && glyphKey === lastGlyphKey) {
+          outputRow[column] = lastCell;
+          continue;
+        }
+        let foregroundRed = this.toByte(rawRed);
+        let foregroundGreen = this.toByte(rawGreen);
+        let foregroundBlue = this.toByte(rawBlue);
+        if (terminalGlyphMode === GLYPH_MODE_BLOCKS && glyphKey > 0 && glyphKey < GLYPH_KEY_GLYPHS_OFFSET && fillGlyphIndex < 14) {
+          const amount = fillBucketFromGlyphIndex(fillGlyphIndex) / 9;
+          foregroundRed = mixByteChannel(this.backgroundRed, foregroundRed, amount);
+          foregroundGreen = mixByteChannel(this.backgroundGreen, foregroundGreen, amount);
+          foregroundBlue = mixByteChannel(this.backgroundBlue, foregroundBlue, amount);
+        }
+        const foregroundKey = foregroundRed << 16 | foregroundGreen << 8 | foregroundBlue;
+        if (foregroundKey === lastForegroundKey && glyphKey === lastGlyphKey) {
+          outputRow[column] = lastCell;
+          continue;
+        }
+        const cell = this.cellFor(foregroundKey, foregroundRed, foregroundGreen, foregroundBlue, glyphKey);
+        lastForegroundKey = foregroundKey;
+        lastGlyphKey = glyphKey;
+        lastCell = cell;
+        lastRawRed = rawRed;
+        lastRawGreen = rawGreen;
+        lastRawBlue = rawBlue;
+        outputRow[column] = cell;
+      }
+    }
+    return grid;
+  }
+  clear() {
+    this.foregroundAnsiCache.clear();
+    this.cellCache.clear();
+    this.reusableGrid = [];
+    this.backgroundKey = -1;
+    this.backgroundAnsi = "";
+    this.blankAnsi = "";
+    this.hasStableBackgroundInput = false;
+    this.stableBackgroundInput = void 0;
+    this.toByte.clear();
+  }
+  buildFillOnlyGrid(grid, columns, rows2, fillGlyphs, colors, terminalGlyphMode, terminalFillGlyphKeys, lastForegroundKey, lastGlyphKey, lastCell, lastRawRed, lastRawGreen, lastRawBlue) {
+    for (let row = 0; row < rows2; row += 1) {
+      const outputRow = grid[row];
+      for (let column = 0; column < columns; column += 1) {
+        const index = row * columns + column;
+        const fillGlyphIndex = Math.round(fillGlyphs[index] ?? 0);
+        if (fillGlyphIndex < 5) {
+          outputRow[column] = this.blankAnsi;
+          continue;
+        }
+        const glyphKey = fillGlyphKeyForIndex(terminalFillGlyphKeys, fillGlyphIndex);
+        const colorOffset = index * 4;
+        const rawRed = colors[colorOffset] ?? 0;
+        const rawGreen = colors[colorOffset + 1] ?? 0;
+        const rawBlue = colors[colorOffset + 2] ?? 0;
+        if (rawRed === lastRawRed && rawGreen === lastRawGreen && rawBlue === lastRawBlue && glyphKey === lastGlyphKey) {
+          outputRow[column] = lastCell;
+          continue;
+        }
+        let foregroundRed = this.toByte(rawRed);
+        let foregroundGreen = this.toByte(rawGreen);
+        let foregroundBlue = this.toByte(rawBlue);
+        if (terminalGlyphMode === GLYPH_MODE_BLOCKS && glyphKey > 0 && fillGlyphIndex < 14) {
+          const amount = fillBucketFromGlyphIndex(fillGlyphIndex) / 9;
+          foregroundRed = mixByteChannel(this.backgroundRed, foregroundRed, amount);
+          foregroundGreen = mixByteChannel(this.backgroundGreen, foregroundGreen, amount);
+          foregroundBlue = mixByteChannel(this.backgroundBlue, foregroundBlue, amount);
+        }
+        const foregroundKey = foregroundRed << 16 | foregroundGreen << 8 | foregroundBlue;
+        if (foregroundKey === lastForegroundKey && glyphKey === lastGlyphKey) {
+          outputRow[column] = lastCell;
+          continue;
+        }
+        const cell = this.cellFor(foregroundKey, foregroundRed, foregroundGreen, foregroundBlue, glyphKey);
+        lastForegroundKey = foregroundKey;
+        lastGlyphKey = glyphKey;
+        lastCell = cell;
+        lastRawRed = rawRed;
+        lastRawGreen = rawGreen;
+        lastRawBlue = rawBlue;
+        outputRow[column] = cell;
+      }
+    }
+    return grid;
+  }
+  cellFor(foregroundKey, foregroundRed, foregroundGreen, foregroundBlue, glyphKey) {
+    const cellKey = foregroundKey * CELL_GLYPH_KEY_STRIDE + glyphKey;
+    let cell = this.cellCache.get(cellKey);
+    if (cell !== void 0) return cell;
+    let foregroundAnsi = this.foregroundAnsiCache.get(foregroundKey);
+    if (foregroundAnsi === void 0) {
+      foregroundAnsi = rgbToAnsiForeground(foregroundRed, foregroundGreen, foregroundBlue);
+      this.foregroundAnsiCache.set(foregroundKey, foregroundAnsi);
+    }
+    cell = `${this.backgroundAnsi}${foregroundAnsi}${glyphForKey(glyphKey)}${RESET}`;
+    this.cellCache.set(cellKey, cell);
+    return cell;
+  }
+  pruneCaches() {
+    this.toByte.prune();
+    if (this.foregroundAnsiCache.size > MAX_FOREGROUND_ANSI_CACHE_SIZE) {
+      this.foregroundAnsiCache.clear();
+      this.cellCache.clear();
+      return;
+    }
+    if (this.cellCache.size > MAX_CELL_CACHE_SIZE) {
+      this.cellCache.clear();
+    }
+  }
+  prepareReusableGrid(rows2, columns) {
+    const grid = this.reusableGrid;
+    grid.length = rows2;
+    for (let row = 0; row < rows2; row += 1) {
+      grid[row] ??= [];
+      grid[row].length = columns;
+    }
+    return grid;
+  }
+  setBackground(backgroundColor) {
+    if (!(backgroundColor instanceof Color2)) {
+      const stableInput = backgroundColor ?? 0;
+      if (this.hasStableBackgroundInput && this.stableBackgroundInput === stableInput) {
+        return;
+      }
+      this.hasStableBackgroundInput = true;
+      this.stableBackgroundInput = stableInput;
+      this.setBackgroundColor(colorValue(backgroundColor, 0));
+      return;
+    }
+    this.hasStableBackgroundInput = false;
+    this.stableBackgroundInput = void 0;
+    this.setBackgroundColor(backgroundColor);
+  }
+  setBackgroundColor(backgroundColor) {
+    const [backgroundRed, backgroundGreen, backgroundBlue] = colorToBytes(backgroundColor);
+    const backgroundKey = backgroundRed << 16 | backgroundGreen << 8 | backgroundBlue;
+    if (backgroundKey === this.backgroundKey) {
+      return;
+    }
+    this.backgroundKey = backgroundKey;
+    this.backgroundRed = backgroundRed;
+    this.backgroundGreen = backgroundGreen;
+    this.backgroundBlue = backgroundBlue;
+    this.backgroundAnsi = rgbToAnsiBackground(backgroundRed, backgroundGreen, backgroundBlue);
+    const backgroundForeground = rgbToAnsiForeground(backgroundRed, backgroundGreen, backgroundBlue);
+    this.blankAnsi = `${this.backgroundAnsi}${backgroundForeground} ${RESET}`;
+    this.cellCache.clear();
+  }
+};
+var sharedThreeAsciiAnsiGridAssembler = new ThreeAsciiAnsiGridAssembler();
+function colorValue(input2, fallback) {
+  return input2 instanceof Color2 ? input2 : new Color2(input2 ?? fallback);
+}
+function createStringGrid(rows2, columns) {
+  const grid = new Array(rows2);
+  for (let row = 0; row < rows2; row += 1) {
+    grid[row] = new Array(columns);
+  }
+  return grid;
+}
+function linearToSrgb(value) {
+  const clamped = Math.max(0, Math.min(1, value));
+  return clamped <= 31308e-7 ? clamped * 12.92 : 1.055 * Math.pow(clamped, 1 / 2.4) - 0.055;
+}
+function linearUnitToByte(value) {
+  return Math.round(linearToSrgb(value) * 255);
+}
+function createLinearByteCache() {
+  const cache = /* @__PURE__ */ new Map();
+  const read = (value) => {
+    const cached = cache.get(value);
+    if (cached !== void 0) return cached;
+    const byte = linearUnitToByte(value);
+    cache.set(value, byte);
+    return byte;
+  };
+  read.clear = () => cache.clear();
+  read.prune = () => {
+    if (cache.size > MAX_LINEAR_BYTE_CACHE_SIZE) {
+      cache.clear();
+    }
+  };
+  return read;
+}
+function colorToBytes(color) {
+  return [
+    linearUnitToByte(color.r),
+    linearUnitToByte(color.g),
+    linearUnitToByte(color.b)
+  ];
+}
+function rgbToAnsiForeground(red, green, blue) {
+  return `\x1B[38;2;${red};${green};${blue}m`;
+}
+function rgbToAnsiBackground(red, green, blue) {
+  return `\x1B[48;2;${red};${green};${blue}m`;
+}
+function mixByteChannel(left, right, amount) {
+  return Math.round(left + (right - left) * clampUnit(amount));
+}
 function fillBucketFromGlyphIndex(index) {
   return Math.max(0, Math.min(FILL_GLYPHS.length - 1, index - 5));
+}
+function clampUnit(value) {
+  return Math.max(0, Math.min(1, value));
 }
 function fillCoverageForGohu11(fillGlyphIndex) {
   if (fillGlyphIndex < 5) {
@@ -3142,6 +3439,9 @@ function createGlyphKeyTable() {
   }
   return table2;
 }
+function glyphForKey(key) {
+  return GLYPHS_BY_KEY[Math.max(0, Math.min(GLYPHS_BY_KEY.length - 1, key))] ?? " ";
+}
 function pickMixedFillGlyph(fillGlyphIndex) {
   const index = Math.max(0, Math.min(MIXED_FILL_GLYPHS_BY_INDEX.length - 1, fillGlyphIndex));
   return GLYPH_KEY_MIXED_OFFSET + index;
@@ -3159,6 +3459,56 @@ function createFillGlyphKeyTable(mode) {
     }
   }
   return table2;
+}
+function terminalGlyphModeForStyle(style2) {
+  switch (style2) {
+    case "glyphs":
+      return GLYPH_MODE_GLYPHS;
+    case "mixed":
+      return GLYPH_MODE_MIXED;
+    default:
+      return GLYPH_MODE_BLOCKS;
+  }
+}
+function terminalFillGlyphKeysForMode(mode) {
+  if (mode === GLYPH_MODE_GLYPHS) return ASCII_FILL_GLYPH_KEYS_BY_INDEX;
+  if (mode === GLYPH_MODE_MIXED) return MIXED_FILL_GLYPH_KEYS_BY_INDEX;
+  return BLOCK_FILL_GLYPH_KEYS_BY_INDEX;
+}
+function fillGlyphKeyForIndex(keys, fillGlyphIndex) {
+  return keys[Math.max(0, Math.min(keys.length - 1, fillGlyphIndex))] ?? 0;
+}
+function terminalGlyphForCell(fillGlyphKeys, edgeGlyphIndex, dominantCount, totalCount, secondCount, fillGlyphIndex, edgeBias) {
+  const edgeCandidate = shouldUseGohu11EdgeGlyph(
+    edgeGlyphIndex,
+    dominantCount,
+    totalCount,
+    secondCount,
+    fillGlyphIndex,
+    edgeBias
+  );
+  if (edgeCandidate) {
+    const edgeIndex = Math.max(0, Math.min(EDGE_GLYPHS.length - 1, edgeGlyphIndex));
+    return EDGE_GLYPH_KEY_OFFSET + edgeIndex;
+  }
+  return fillGlyphKeyForIndex(fillGlyphKeys, fillGlyphIndex);
+}
+function shouldUseGohu11EdgeGlyph(edgeGlyphIndex, dominantCount, totalCount, secondCount, fillGlyphIndex, edgeBias = DEFAULT_TERMINAL_EDGE_BIAS) {
+  const direction = edgeGlyphIndex - 1;
+  if (direction < 0 || direction >= GOHU_11_EDGE_SHAPE_MISMATCH.length || dominantCount <= 0 || totalCount <= 0) {
+    return false;
+  }
+  const mismatchWeight = GOHU_11_EDGE_SHAPE_MISMATCH[direction] / 48;
+  const directionShare = dominantCount / totalCount;
+  const separation = secondCount > 0 ? (dominantCount - secondCount) / dominantCount : 1;
+  const dominantCoverage = dominantCount / TILE_PIXEL_COUNT;
+  const fillCoverage = fillCoverageForGohu11(fillGlyphIndex);
+  const clampedBias = Math.max(0.5, edgeBias);
+  const biasOffset = clampedBias - 1;
+  const minShare = 0.54 + mismatchWeight * 0.6 + biasOffset * 0.12;
+  const minSeparation = 0.12 + mismatchWeight * 0.55 + biasOffset * 0.18;
+  const minCoverage = 0.09 + fillCoverage * 0.14 + mismatchWeight * 0.08 + biasOffset * 0.06;
+  return directionShare >= clampUnit(minShare) && separation >= clampUnit(minSeparation) && dominantCoverage >= clampUnit(minCoverage);
 }
 
 // src/three_ascii/loadAsciiLuts.ts
