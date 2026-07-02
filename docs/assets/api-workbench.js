@@ -5534,18 +5534,35 @@ function cssSelectorSpecificity(selector) {
   return idCount * 100 + (classCount + pseudoCount) * 10 + tagCount;
 }
 function selectorParts(selector) {
-  const tokens = selector.replace(/\s*>\s*/g, " > ").trim().split(/\s+/).filter(Boolean);
   const parts = [];
   let combinator = "descendant";
-  for (const token of tokens) {
-    if (token === ">") {
+  let tokenStart = -1;
+  const flushToken = (end) => {
+    if (tokenStart < 0) return;
+    const token = selector.slice(tokenStart, end);
+    if (token.length > 0) {
+      parts.push({ simple: token, combinator: parts.length === 0 ? void 0 : combinator });
+      combinator = "descendant";
+    }
+    tokenStart = -1;
+  };
+  for (let index = 0; index <= selector.length; index += 1) {
+    const char = index < selector.length ? selector[index] : " ";
+    if (char === ">") {
+      flushToken(index);
       combinator = "child";
       continue;
     }
-    parts.push({ simple: token, combinator: parts.length === 0 ? void 0 : combinator });
-    combinator = "descendant";
+    if (char === void 0 || isCssSelectorWhitespace(char)) {
+      flushToken(index);
+      continue;
+    }
+    if (tokenStart < 0) tokenStart = index;
   }
   return parts;
+}
+function isCssSelectorWhitespace(char) {
+  return char === " " || char === "\n" || char === "	" || char === "\r" || char === "\f";
 }
 function splitSelectorList(source) {
   const selectors = [];
@@ -10389,7 +10406,7 @@ var TerminalScreenController = class {
       cursor: this.cursor,
       cursorVisible: this.#cursorVisible,
       cursorStyle: { ...this.#cursorStyle },
-      privateModes: Array.from(this.#privateModes).sort((left, right) => left - right),
+      privateModes: sortedPrivateModes(this.#privateModes),
       scrollbackRows: this.#scrollback.length,
       alternate: this.alternate,
       title: this.#title
@@ -10839,6 +10856,15 @@ function parseExtendedSgrColor(values, index) {
     };
   }
   return void 0;
+}
+function sortedPrivateModes(modes) {
+  const sorted = [];
+  for (const mode of modes) {
+    let insertAt2 = sorted.length;
+    while (insertAt2 > 0 && sorted[insertAt2 - 1] > mode) insertAt2 -= 1;
+    sorted.splice(insertAt2, 0, mode);
+  }
+  return sorted;
 }
 function createRows(columns, rows2) {
   const output = new Array(rows2);
