@@ -81,6 +81,7 @@ import {
 import {
   apiWorkbenchColumns,
   apiWorkbenchDocs,
+  apiWorkbenchLiveRowsInto,
   apiWorkbenchPanelTitle,
   type ApiWorkbenchProcessRow,
   apiWorkbenchRows,
@@ -158,6 +159,7 @@ const themes: ThemeSpec[] = createApiWorkbenchThemes();
 const themeLabels = themes.map((entry) => entry.label);
 const themeMenuWidth = Math.max(22, maxTextWidth(themeLabels) + 6);
 const rows: Row[] = apiWorkbenchRows;
+const liveRowsBuffer: Row[] = [];
 const columns = apiWorkbenchColumns;
 const docs = apiWorkbenchDocs;
 const panelLineBuffer: string[] = [];
@@ -496,10 +498,7 @@ host.start();
 draw();
 const timer = setInterval(() => {
   if (live.checked.peek()) {
-    table.rows.value = rows.map((row, index) => ({
-      ...row,
-      latency: ((row.latency + index + slider.value.peek()) % 18) + 1,
-    }));
+    table.rows.value = apiWorkbenchLiveRowsInto(liveRowsBuffer, rows, slider.value.peek(), 18);
     draw();
   }
 }, 650);

@@ -13462,6 +13462,21 @@ var apiWorkbenchRows = [
   { id: "worker", surface: "Worker Pool", api: "runtime", state: "queued", latency: 11 },
   { id: "cache", surface: "Cached Resource", api: "runtime", state: "warm", latency: 1 }
 ];
+function apiWorkbenchLiveRowsInto(target, rows2, offset, modulus) {
+  const safeModulus = Math.max(1, Math.floor(modulus));
+  target.length = rows2.length;
+  for (let index = 0; index < rows2.length; index += 1) {
+    const row = rows2[index];
+    target[index] = {
+      id: row.id,
+      surface: row.surface,
+      api: row.api,
+      state: row.state,
+      latency: Math.max(1, (row.latency + index + offset) % safeModulus + 1)
+    };
+  }
+  return target;
+}
 var apiWorkbenchColumns = [
   { id: "surface", label: "Surface", width: 18, sortable: true },
   { id: "api", label: "API", width: 10, sortable: true },
@@ -13797,6 +13812,7 @@ var themes = createApiWorkbenchThemes();
 var themeLabels = themes.map((entry) => entry.label);
 var themeMenuWidth = Math.max(22, maxTextWidth(themeLabels) + 6);
 var rows = apiWorkbenchRows;
+var liveRowsBuffer = [];
 var columns = apiWorkbenchColumns;
 var docs = apiWorkbenchDocs;
 var panelLineBuffer = [];
@@ -14119,10 +14135,7 @@ host.start();
 draw();
 var timer = setInterval(() => {
   if (live.checked.peek()) {
-    table.rows.value = rows.map((row, index) => ({
-      ...row,
-      latency: (row.latency + index + slider.value.peek()) % 18 + 1
-    }));
+    table.rows.value = apiWorkbenchLiveRowsInto(liveRowsBuffer, rows, slider.value.peek(), 18);
     draw();
   }
 }, 650);

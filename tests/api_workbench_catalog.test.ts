@@ -2,6 +2,7 @@ import { assert, assertEquals } from "./deps.ts";
 import {
   apiWorkbenchColumns,
   apiWorkbenchDocs,
+  apiWorkbenchLiveRowsInto,
   apiWorkbenchPanelTitle,
   apiWorkbenchRows,
   apiWorkbenchShortPanelTitle,
@@ -27,6 +28,17 @@ Deno.test("api workbench catalog exposes table and docs fixtures", () => {
   assert(apiWorkbenchRows.every((row) => typeof row.latency === "number"));
   assert(apiWorkbenchDocs.some((line) => line.includes("WindowManagerController")));
   assert(apiWorkbenchDocs.some((line) => line.includes("ThreePanelFrameView")));
+});
+
+Deno.test("api workbench live rows reuse caller buffers", () => {
+  const target = [{ id: "stale", surface: "Stale", api: "stale", state: "old", latency: 99 }];
+  const rows = apiWorkbenchLiveRowsInto(target, apiWorkbenchRows.slice(0, 2), 3, 17);
+
+  assertEquals(rows, target);
+  assertEquals(rows.length, 2);
+  assertEquals(rows[0]?.id, apiWorkbenchRows[0]?.id);
+  assertEquals(rows[0]?.latency, ((apiWorkbenchRows[0]!.latency + 3) % 17) + 1);
+  assertEquals(rows[1]?.latency, ((apiWorkbenchRows[1]!.latency + 1 + 3) % 17) + 1);
 });
 
 Deno.test("api workbench catalog exposes shared panel display titles", () => {

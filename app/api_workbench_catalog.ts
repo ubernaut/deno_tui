@@ -101,6 +101,27 @@ export const apiWorkbenchRows: ApiWorkbenchProcessRow[] = [
   { id: "cache", surface: "Cached Resource", api: "runtime", state: "warm", latency: 1 },
 ];
 
+export function apiWorkbenchLiveRowsInto(
+  target: ApiWorkbenchProcessRow[],
+  rows: readonly ApiWorkbenchProcessRow[],
+  offset: number,
+  modulus: number,
+): ApiWorkbenchProcessRow[] {
+  const safeModulus = Math.max(1, Math.floor(modulus));
+  target.length = rows.length;
+  for (let index = 0; index < rows.length; index += 1) {
+    const row = rows[index]!;
+    target[index] = {
+      id: row.id,
+      surface: row.surface,
+      api: row.api,
+      state: row.state,
+      latency: Math.max(1, ((row.latency + index + offset) % safeModulus) + 1),
+    };
+  }
+  return target;
+}
+
 export const apiWorkbenchColumns: DataColumn<ApiWorkbenchProcessRow>[] = [
   { id: "surface", label: "Surface", width: 18, sortable: true },
   { id: "api", label: "API", width: 10, sortable: true },

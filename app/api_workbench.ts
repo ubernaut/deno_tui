@@ -137,6 +137,7 @@ import { AudioRegistry } from "./audio.ts";
 import {
   apiWorkbenchColumns,
   apiWorkbenchDocs,
+  apiWorkbenchLiveRowsInto,
   apiWorkbenchPanelTitle,
   type ApiWorkbenchProcessRow,
   apiWorkbenchRows,
@@ -287,6 +288,7 @@ const themes: ThemeSpec[] = createApiWorkbenchThemes();
 const themeLabels = themes.map((entry) => entry.label);
 const themeMenuWidth = Math.max(20, maxTextWidth(themeLabels) + 6);
 const rows: ProcessRow[] = apiWorkbenchRows;
+const liveRowsBuffer: ProcessRow[] = [];
 const columns = apiWorkbenchColumns;
 const docs = apiWorkbenchDocs;
 const htmlCssLayoutBoxes: ComputedLayoutBox[] = [];
@@ -829,11 +831,7 @@ tui.on("mouseScroll", (event) => {
 
 const liveTimer = setInterval(() => {
   if (livePreview.checked.peek()) {
-    const nextRows = rows.map((row, index) => ({
-      ...row,
-      latency: Math.max(1, ((row.latency + index + density.value.peek()) % 17) + 1),
-    }));
-    table.rows.value = nextRows;
+    table.rows.value = apiWorkbenchLiveRowsInto(liveRowsBuffer, rows, density.value.peek(), 17);
     draw();
   }
 }, 500);

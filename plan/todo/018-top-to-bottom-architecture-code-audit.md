@@ -181,6 +181,8 @@ Work:
         and locate tile rows with direct scans instead of spread/filter/slice/map/find allocation on each click.
   - [x] Added caller-owned monitor source-id projection and migrated API Workbench real monitor source-frame assembly
         away from per-render source-id array plus `map` allocation.
+  - [x] Extracted shared API Workbench live-row projection and moved terminal/browser live table timers off `map` plus
+        object-spread row cloning.
 - [x] Replace duplicated theme/window/menu persistence code with a shared versioned serializer.
   - [x] Extracted shared workbench workspace normalization, panel-state normalization, upsert, rename, delete, lookup,
         and legacy window-entry expansion helpers into `src/app/workbench_workspace.ts`.
