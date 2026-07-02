@@ -22,13 +22,20 @@ export function accentColor(accent: Accent): string {
 
 function hexToRgb(hex: string) {
   const normalized = hex.replace(/^#/, "");
-  const value = normalized.length === 3 ? normalized.split("").map((char) => char + char).join("") : normalized;
+  const value = normalized.length === 3 ? expandShortHex(normalized) : normalized;
   const intValue = Number.parseInt(value, 16);
   return {
     r: (intValue >> 16) & 0xff,
     g: (intValue >> 8) & 0xff,
     b: intValue & 0xff,
   };
+}
+
+function expandShortHex(value: string): string {
+  const r = value[0] ?? "0";
+  const g = value[1] ?? "0";
+  const b = value[2] ?? "0";
+  return `${r}${r}${g}${g}${b}${b}`;
 }
 
 export function makeStyle(options: {

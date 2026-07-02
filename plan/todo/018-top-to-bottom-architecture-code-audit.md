@@ -337,6 +337,8 @@ Work:
         candidate filesystem and slicing the result.
   - [x] Reworked multi-codepoint `characterWidth()` measurement to scan Unicode clusters in one pass instead of
         allocating a codepoint array for emoji/flag/combining sequences.
+  - [x] Reworked app style short-hex expansion to avoid split/map/join allocation while preserving generated ANSI
+        truecolor output for theme-driven visualizations.
   - [x] Added a direct sampled-series value helper and migrated compact network monitor traces off temporary RX/TX
         sampled arrays in narrow live-render paths.
   - [x] Added source-array keyed overlay z-order caches and reverse-loop modal hit testing so repeated menu/modal
