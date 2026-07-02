@@ -147,6 +147,8 @@ Work:
         web adapter filtering/sorting with reusable caller-owned buffers.
   - [x] Migrated terminal and web workbench render loops to consume shared visible window rect maps directly instead of
         rebuilding visible-id lists from adapter-local minimized state on each redraw.
+  - [x] Added a caller-owned data-table row rendering helper and migrated the API Workbench data panel off
+        `renderDataTableRows(...).map(...)` plus spread composition in the redraw path.
 - [x] Replace duplicated theme/window/menu persistence code with a shared versioned serializer.
   - [x] Extracted shared workbench workspace normalization, panel-state normalization, upsert, rename, delete, lookup,
         and legacy window-entry expansion helpers into `src/app/workbench_workspace.ts`.

@@ -5093,6 +5093,13 @@
     },
     {
       "module": "src/components/data_table.ts",
+      "name": "renderDataTableRowsInto",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/components/data_table.ts",
       "name": "sortDataRows",
       "kind": "function",
       "typeOnly": false,

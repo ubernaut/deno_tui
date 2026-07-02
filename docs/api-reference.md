@@ -8,8 +8,8 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 - Entrypoints: 9
 - Module visits: 521
 - Re-export declarations: 512
-- Exported symbols: 4657
-- Documented symbols: 4657
+- Exported symbols: 4659
+- Documented symbols: 4659
 - Documentation coverage: 100.00%
 - Duplicate symbol groups: 0
 - Missing targets: 0
@@ -18,8 +18,8 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 
 | Specifier       | Path                           | Runtime  | Stability    | Modules | Symbols |    Docs |
 | --------------- | ------------------------------ | -------- | ------------ | ------: | ------: | ------: |
-| `.`             | `./mod.ts`                     | terminal | stable       |     235 |    1984 | 100.00% |
-| `./web`         | `./mod.web.ts`                 | browser  | beta         |     214 |    1847 | 100.00% |
+| `.`             | `./mod.ts`                     | terminal | stable       |     235 |    1985 | 100.00% |
+| `./web`         | `./mod.web.ts`                 | browser  | beta         |     214 |    1848 | 100.00% |
 | `./remote`      | `./mod.remote.ts`              | remote   | experimental |       4 |      38 | 100.00% |
 | `./three-ascii` | `./mod.three_ascii.ts`         | shared   | experimental |       8 |      54 | 100.00% |
 | `./theme`       | `./mod.theme.ts`               | shared   | beta         |      10 |     198 | 100.00% |
@@ -41,8 +41,8 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 - Entrypoint: `mod.ts`
 - Modules: 235
 - Re-export declarations: 234
-- Exported symbols: 1984
-- Documented symbols: 1984
+- Exported symbols: 1985
+- Documented symbols: 1985
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -148,7 +148,7 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 | [`src/components/combobox.ts`](#src-components-combobox-ts)                             |          0 |       7 |          7 |
 | [`src/components/command_palette.ts`](#src-components-command-palette-ts)               |          0 |      12 |         12 |
 | [`src/components/context_menu.ts`](#src-components-context-menu-ts)                     |          0 |      10 |         10 |
-| [`src/components/data_table.ts`](#src-components-data-table-ts)                         |          0 |      15 |         15 |
+| [`src/components/data_table.ts`](#src-components-data-table-ts)                         |          0 |      16 |         16 |
 | [`src/components/empty_state.ts`](#src-components-empty-state-ts)                       |          0 |       4 |          4 |
 | [`src/components/file_explorer.ts`](#src-components-file-explorer-ts)                   |          0 |       7 |          7 |
 | [`src/components/frame.ts`](#src-components-frame-ts)                                   |          0 |       4 |          4 |
@@ -1629,6 +1629,7 @@ _No direct exported symbols._
 | `nextSort`                   | function  | no        | yes   |
 | `renderDataTableHeader`      | function  | no        | yes   |
 | `renderDataTableRows`        | function  | no        | yes   |
+| `renderDataTableRowsInto`    | function  | no        | yes   |
 | `sortDataRows`               | function  | no        | yes   |
 | `SortDirection`              | type      | yes       | yes   |
 
@@ -3721,8 +3722,8 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 - Entrypoint: `mod.web.ts`
 - Modules: 214
 - Re-export declarations: 213
-- Exported symbols: 1847
-- Documented symbols: 1847
+- Exported symbols: 1848
+- Documented symbols: 1848
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -3824,7 +3825,7 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 | [`src/components/combobox.ts`](#src-components-combobox-ts)                       |          0 |       7 |          7 |
 | [`src/components/command_palette.ts`](#src-components-command-palette-ts)         |          0 |      12 |         12 |
 | [`src/components/context_menu.ts`](#src-components-context-menu-ts)               |          0 |      10 |         10 |
-| [`src/components/data_table.ts`](#src-components-data-table-ts)                   |          0 |      15 |         15 |
+| [`src/components/data_table.ts`](#src-components-data-table-ts)                   |          0 |      16 |         16 |
 | [`src/components/empty_state.ts`](#src-components-empty-state-ts)                 |          0 |       4 |          4 |
 | [`src/components/file_explorer.ts`](#src-components-file-explorer-ts)             |          0 |       7 |          7 |
 | [`src/components/frame.ts`](#src-components-frame-ts)                             |          0 |       4 |          4 |
@@ -5268,6 +5269,7 @@ _No direct exported symbols._
 | `nextSort`                   | function  | no        | yes   |
 | `renderDataTableHeader`      | function  | no        | yes   |
 | `renderDataTableRows`        | function  | no        | yes   |
+| `renderDataTableRowsInto`    | function  | no        | yes   |
 | `sortDataRows`               | function  | no        | yes   |
 | `SortDirection`              | type      | yes       | yes   |
 

@@ -312,7 +312,17 @@ export function renderDataTableRows<TRow extends Record<string, unknown>>(
   columns: readonly DataColumn<TRow>[],
   selectedIndex = 0,
 ): string[] {
-  const output = new Array<string>(rows.length);
+  return renderDataTableRowsInto(new Array<string>(rows.length), rows, columns, selectedIndex);
+}
+
+/** Renders data Table Rows into caller-owned deterministic text rows. */
+export function renderDataTableRowsInto<TRow extends Record<string, unknown>>(
+  target: string[],
+  rows: readonly TRow[],
+  columns: readonly DataColumn<TRow>[],
+  selectedIndex = 0,
+): string[] {
+  target.length = rows.length;
   for (let index = 0; index < rows.length; index += 1) {
     const row = rows[index]!;
     const marker = index === selectedIndex ? ">" : " ";
@@ -323,9 +333,9 @@ export function renderDataTableRows<TRow extends Record<string, unknown>>(
       if (columnIndex > 0) line += " ";
       line += padCell(value, column.width);
     }
-    output[index] = line;
+    target[index] = line;
   }
-  return output;
+  return target;
 }
 
 /** Public helper for next Sort. */

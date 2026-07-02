@@ -9,6 +9,7 @@ import {
   nextSort,
   renderDataTableHeader,
   renderDataTableRows,
+  renderDataTableRowsInto,
   sortDataRows,
 } from "../src/components/data_table.ts";
 import type { Key, KeyPressEvent } from "../src/input_reader/types.ts";
@@ -83,6 +84,17 @@ Deno.test("data table render helpers expose sorted headers and selected rows", (
   ]);
   assertEquals(nextSort(undefined, "pid"), { columnId: "pid", direction: "asc" });
   assertEquals(nextSort({ columnId: "pid", direction: "asc" }, "pid"), { columnId: "pid", direction: "desc" });
+});
+
+Deno.test("data table render helpers can reuse caller-owned row storage", () => {
+  const target = ["stale", "rows", "trim"];
+  const rendered = renderDataTableRowsInto(target, rows.slice(0, 2), columns, 1);
+
+  assertEquals(rendered, target);
+  assertEquals(target, [
+    "  10   deno     12%  ",
+    "> 2    shell    3%   ",
+  ]);
 });
 
 Deno.test("data table render helpers align styled and wide cells by display width", () => {
