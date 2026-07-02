@@ -3300,6 +3300,7 @@ var ThreeAsciiAnsiGridAssembler = class {
     let lastRawRed = Number.NaN;
     let lastRawGreen = Number.NaN;
     let lastRawBlue = Number.NaN;
+    let lastFillGlyphIndex = -1;
     const grid = this.reuseGrid ? this.prepareReusableGrid(rows2, columns2) : createStringGrid(rows2, columns2);
     if (!hasEdges) {
       if (denseFill && denseColors) {
@@ -3316,7 +3317,8 @@ var ThreeAsciiAnsiGridAssembler = class {
           lastCell,
           lastRawRed,
           lastRawGreen,
-          lastRawBlue
+          lastRawBlue,
+          lastFillGlyphIndex
         );
       }
       return this.buildFillOnlyGrid(
@@ -3332,7 +3334,8 @@ var ThreeAsciiAnsiGridAssembler = class {
         lastCell,
         lastRawRed,
         lastRawGreen,
-        lastRawBlue
+        lastRawBlue,
+        lastFillGlyphIndex
       );
     }
     for (let row = 0; row < rows2; row += 1) {
@@ -3363,7 +3366,7 @@ var ThreeAsciiAnsiGridAssembler = class {
         const rawRed = colors[colorOffset] ?? 0;
         const rawGreen = colors[colorOffset + 1] ?? 0;
         const rawBlue = colors[colorOffset + 2] ?? 0;
-        if (rawRed === lastRawRed && rawGreen === lastRawGreen && rawBlue === lastRawBlue && glyphKey === lastGlyphKey) {
+        if (rawRed === lastRawRed && rawGreen === lastRawGreen && rawBlue === lastRawBlue && glyphKey === lastGlyphKey && fillGlyphIndex === lastFillGlyphIndex) {
           outputRow[column] = lastCell;
           continue;
         }
@@ -3389,6 +3392,7 @@ var ThreeAsciiAnsiGridAssembler = class {
           lastRawRed = rawRed;
           lastRawGreen = rawGreen;
           lastRawBlue = rawBlue;
+          lastFillGlyphIndex = fillGlyphIndex;
           continue;
         }
         const foregroundRed = foregroundKey >> 16 & 255;
@@ -3402,6 +3406,7 @@ var ThreeAsciiAnsiGridAssembler = class {
         lastRawRed = rawRed;
         lastRawGreen = rawGreen;
         lastRawBlue = rawBlue;
+        lastFillGlyphIndex = fillGlyphIndex;
         outputRow[column] = cell;
       }
     }
@@ -3431,7 +3436,7 @@ var ThreeAsciiAnsiGridAssembler = class {
     this.cachedCellGlyphMode = -1;
     this.toByte.clear();
   }
-  buildFillOnlyGrid(grid, columns2, rows2, fillGlyphs, colors, terminalGlyphMode, terminalFillGlyphKeys, lastForegroundKey, lastGlyphKey, lastCell, lastRawRed, lastRawGreen, lastRawBlue) {
+  buildFillOnlyGrid(grid, columns2, rows2, fillGlyphs, colors, terminalGlyphMode, terminalFillGlyphKeys, lastForegroundKey, lastGlyphKey, lastCell, lastRawRed, lastRawGreen, lastRawBlue, lastFillGlyphIndex) {
     for (let row = 0; row < rows2; row += 1) {
       const outputRow = grid[row];
       const rowOffset = row * columns2;
@@ -3451,7 +3456,7 @@ var ThreeAsciiAnsiGridAssembler = class {
         const rawRed = colors[colorOffset] ?? 0;
         const rawGreen = colors[colorOffset + 1] ?? 0;
         const rawBlue = colors[colorOffset + 2] ?? 0;
-        if (rawRed === lastRawRed && rawGreen === lastRawGreen && rawBlue === lastRawBlue && glyphKey === lastGlyphKey) {
+        if (rawRed === lastRawRed && rawGreen === lastRawGreen && rawBlue === lastRawBlue && glyphKey === lastGlyphKey && fillGlyphIndex === lastFillGlyphIndex) {
           outputRow[column] = lastCell;
           continue;
         }
@@ -3477,6 +3482,7 @@ var ThreeAsciiAnsiGridAssembler = class {
           lastRawRed = rawRed;
           lastRawGreen = rawGreen;
           lastRawBlue = rawBlue;
+          lastFillGlyphIndex = fillGlyphIndex;
           continue;
         }
         const foregroundRed = foregroundKey >> 16 & 255;
@@ -3490,12 +3496,13 @@ var ThreeAsciiAnsiGridAssembler = class {
         lastRawRed = rawRed;
         lastRawGreen = rawGreen;
         lastRawBlue = rawBlue;
+        lastFillGlyphIndex = fillGlyphIndex;
         outputRow[column] = cell;
       }
     }
     return grid;
   }
-  buildDenseFillOnlyGrid(grid, columns2, rows2, fillGlyphs, colors, terminalGlyphMode, terminalFillGlyphKeys, lastForegroundKey, lastGlyphKey, lastCell, lastRawRed, lastRawGreen, lastRawBlue) {
+  buildDenseFillOnlyGrid(grid, columns2, rows2, fillGlyphs, colors, terminalGlyphMode, terminalFillGlyphKeys, lastForegroundKey, lastGlyphKey, lastCell, lastRawRed, lastRawGreen, lastRawBlue, lastFillGlyphIndex) {
     for (let row = 0; row < rows2; row += 1) {
       const outputRow = grid[row];
       const rowOffset = row * columns2;
@@ -3515,7 +3522,7 @@ var ThreeAsciiAnsiGridAssembler = class {
         const rawRed = colors[colorOffset];
         const rawGreen = colors[colorOffset + 1];
         const rawBlue = colors[colorOffset + 2];
-        if (rawRed === lastRawRed && rawGreen === lastRawGreen && rawBlue === lastRawBlue && glyphKey === lastGlyphKey) {
+        if (rawRed === lastRawRed && rawGreen === lastRawGreen && rawBlue === lastRawBlue && glyphKey === lastGlyphKey && fillGlyphIndex === lastFillGlyphIndex) {
           outputRow[column] = lastCell;
           continue;
         }
@@ -3541,6 +3548,7 @@ var ThreeAsciiAnsiGridAssembler = class {
           lastRawRed = rawRed;
           lastRawGreen = rawGreen;
           lastRawBlue = rawBlue;
+          lastFillGlyphIndex = fillGlyphIndex;
           continue;
         }
         const foregroundRed = foregroundKey >> 16 & 255;
@@ -3554,6 +3562,7 @@ var ThreeAsciiAnsiGridAssembler = class {
         lastRawRed = rawRed;
         lastRawGreen = rawGreen;
         lastRawBlue = rawBlue;
+        lastFillGlyphIndex = fillGlyphIndex;
         outputRow[column] = cell;
       }
     }
@@ -3561,6 +3570,9 @@ var ThreeAsciiAnsiGridAssembler = class {
   }
   foregroundKeyForCell(index, rawRed, rawGreen, rawBlue, fillGlyphIndex, glyphKey, terminalGlyphMode) {
     const baseForegroundKey = this.byteColorKeyForIndex(index, rawRed, rawGreen, rawBlue);
+    if (terminalGlyphMode === GLYPH_MODE_BLOCKS && glyphKey > 0 && glyphKey < GLYPH_KEY_GLYPHS_OFFSET && fillGlyphIndex < 14) {
+      return this.mixedForegroundKeyFor(baseForegroundKey, fillGlyphIndex);
+    }
     if (terminalGlyphMode !== GLYPH_MODE_MIXED || glyphKey <= 0 || glyphKey >= GLYPH_KEY_GLYPHS_OFFSET || fillGlyphIndex >= 14) {
       return baseForegroundKey;
     }
