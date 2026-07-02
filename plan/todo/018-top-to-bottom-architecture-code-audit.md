@@ -272,6 +272,8 @@ Work:
         append, trim, snapshot, and inspection paths while preserving dashboard and terminal behavior.
   - [x] Reworked terminal workspace pane collection and nearest-split lookup to use accumulator/search traversal instead
         of recursive spread collection and clone-heavy subtree membership probes.
+  - [x] Reworked layout recipe inspection and Markdown formatting helpers to preserve public ordering with loop-based
+        breakpoint, slot, and missing-layout projection instead of flatMap/map/filter intermediates.
 
 Acceptance checks:
 

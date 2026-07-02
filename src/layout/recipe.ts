@@ -155,7 +155,11 @@ export function layoutRecipeSlots<T extends string>(region: LayoutRegion<T>): T[
   visitRegion(region, (leaf) => {
     if (!leaf.hidden) slots.add(leaf.id);
   });
-  return [...slots];
+  const output: T[] = [];
+  for (const slot of slots) {
+    output.push(slot);
+  }
+  return output;
 }
 
 /** Inspects breakpoint coverage and visible slot ids for a responsive layout recipe. */
@@ -163,25 +167,33 @@ export function inspectLayoutRecipe<T extends string>(
   recipe: ResponsiveLayoutRecipe<T>,
 ): LayoutRecipeInspection<T> {
   const layoutIds = Object.keys(recipe.layouts).sort();
-  const breakpoints = recipe.breakpoints.map((breakpoint) => {
+  const breakpoints = new Array<LayoutRecipeBreakpointInspection<T>>(recipe.breakpoints.length);
+  const missingLayouts: string[] = [];
+  for (let index = 0; index < recipe.breakpoints.length; index += 1) {
+    const breakpoint = recipe.breakpoints[index]!;
     const layout = recipe.layouts[breakpoint.id];
-    return {
+    if (layout === undefined) missingLayouts.push(breakpoint.id);
+    breakpoints[index] = {
       id: breakpoint.id,
       minWidth: breakpoint.minWidth,
       minHeight: breakpoint.minHeight,
       hasLayout: layout !== undefined,
       slots: layout ? layoutRecipeSlots(layout) : [],
     };
-  });
-  const slotIds = uniqueSlots(layoutIds.flatMap((id) => layoutRecipeSlots(recipe.layouts[id]!)));
+  }
+
+  const slotSet = new Set<T>();
+  for (const id of layoutIds) {
+    const layout = recipe.layouts[id];
+    if (layout) collectLayoutRecipeSlots(layout, slotSet);
+  }
+  const slotIds = sortedSetValues(slotSet);
   return {
     breakpoints,
     fallback: recipe.fallback,
     layoutIds,
     slotIds,
-    missingLayouts: recipe.breakpoints
-      .map((breakpoint) => breakpoint.id)
-      .filter((id) => recipe.layouts[id] === undefined),
+    missingLayouts,
   };
 }
 
@@ -208,10 +220,11 @@ export function formatLayoutRecipeMarkdown<T extends string>(
   lines.push("| Breakpoint | Min size | Layout | Slots |");
   lines.push("| --- | --- | --- | --- |");
   for (const breakpoint of inspection.breakpoints) {
-    const minSize = [
-      breakpoint.minWidth === undefined ? undefined : `w>=${breakpoint.minWidth}`,
-      breakpoint.minHeight === undefined ? undefined : `h>=${breakpoint.minHeight}`,
-    ].filter((value): value is string => value !== undefined).join(" ");
+    let minSize = "";
+    if (breakpoint.minWidth !== undefined) minSize = `w>=${breakpoint.minWidth}`;
+    if (breakpoint.minHeight !== undefined) {
+      minSize += `${minSize ? " " : ""}h>=${breakpoint.minHeight}`;
+    }
     lines.push(
       `| ${breakpoint.id} | ${minSize || "default"} | ${breakpoint.hasLayout ? "yes" : "no"} | ${
         breakpoint.slots.join(", ") || "none"
@@ -274,11 +287,24 @@ function visitRegion<T extends string>(
 }
 
 function firstLayout<T extends string>(layouts: Record<string, LayoutRegion<T>>): LayoutRegion<T> | undefined {
-  return Object.values(layouts)[0];
+  for (const key in layouts) {
+    return layouts[key];
+  }
+  return undefined;
 }
 
-function uniqueSlots<T extends string>(slots: readonly T[]): T[] {
-  return [...new Set(slots)].sort();
+function collectLayoutRecipeSlots<T extends string>(region: LayoutRegion<T>, slots: Set<T>): void {
+  visitRegion(region, (leaf) => {
+    if (!leaf.hidden) slots.add(leaf.id);
+  });
+}
+
+function sortedSetValues<T extends string>(values: Set<T>): T[] {
+  const output: T[] = [];
+  for (const value of values) {
+    output.push(value);
+  }
+  return output.sort();
 }
 
 function mainSize(bounds: Rectangle, direction: LayoutRegionDirection): number {
