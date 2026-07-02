@@ -197,9 +197,12 @@ export class FormController<TValues extends FormValues = FormValues> {
       return true;
     }
     const value = this.values.peek()[name];
-    const errors = (field.validators ?? [])
-      .map((validator) => validator(value, this.values.peek()))
-      .filter((message): message is string => !!message);
+    const validators = field.validators ?? [];
+    const errors: string[] = [];
+    for (let index = 0; index < validators.length; index += 1) {
+      const message = validators[index]!(value, this.values.peek());
+      if (message) errors.push(message);
+    }
     this.errors.value[name] = errors;
     return errors.length === 0;
   }
@@ -209,34 +212,48 @@ export class FormController<TValues extends FormValues = FormValues> {
     for (const name of this.fields.keys()) {
       valid = this.validateField(name) && valid;
     }
-    const schemaErrors = this.schema?.validate?.(this.values.peek()) ?? {};
-    for (
-      const [name, messages] of Object.entries(schemaErrors) as Array<
-        [string, readonly string[] | string | undefined]
-      >
-    ) {
+    const schemaErrors = (this.schema?.validate?.(this.values.peek()) ?? {}) as Record<
+      string,
+      readonly string[] | string | undefined
+    >;
+    for (const name in schemaErrors) {
+      const messages = schemaErrors[name];
       if (!this.fields.has(name as FieldName<TValues>) || this.isFieldDisabled(name as FieldName<TValues>)) continue;
       const normalized = normalizeSchemaMessages(messages);
-      this.errors.value[name] = [...(this.errors.peek()[name] ?? []), ...normalized];
+      this.errors.value[name] = appendMessages(this.errors.peek()[name] ?? [], normalized);
       valid = normalized.length === 0 && valid;
     }
     return valid;
   }
 
   isValid(): boolean {
-    return Object.values(this.errors.peek()).every((messages) => messages.length === 0);
+    const errors = this.errors.peek();
+    for (const name in errors) {
+      if (errors[name]!.length > 0) return false;
+    }
+    return true;
   }
 
   isDirty(): boolean {
-    return Object.values(this.dirty.peek()).some(Boolean);
+    const dirty = this.dirty.peek();
+    for (const name in dirty) {
+      if (dirty[name]) return true;
+    }
+    return false;
   }
 
   isTouched(): boolean {
-    return Object.values(this.touched.peek()).some(Boolean);
+    const touched = this.touched.peek();
+    for (const name in touched) {
+      if (touched[name]) return true;
+    }
+    return false;
   }
 
   fieldNames(): Array<FieldName<TValues>> {
-    return [...this.fields.keys()];
+    const names: Array<FieldName<TValues>> = [];
+    for (const name of this.fields.keys()) names.push(name);
+    return names;
   }
 
   field(name: FieldName<TValues>): FormField<unknown, TValues> | undefined {
@@ -265,13 +282,17 @@ export class FormController<TValues extends FormValues = FormValues> {
   }
 
   canSubmit(): boolean {
-    return this.fieldNames().some((name) => !this.isFieldDisabled(name));
+    for (const name of this.fields.keys()) {
+      if (!this.isFieldDisabled(name)) return true;
+    }
+    return false;
   }
 
   setValues(values: Partial<TValues>): void {
-    for (const [name, value] of Object.entries(values)) {
+    const record = values as Record<string, TValues[FieldName<TValues>]>;
+    for (const name in record) {
       if (this.fields.has(name as FieldName<TValues>)) {
-        this.setValue(name as FieldName<TValues>, value as TValues[FieldName<TValues>]);
+        this.setValue(name as FieldName<TValues>, record[name]!);
       }
     }
   }
@@ -309,44 +330,69 @@ export class FormController<TValues extends FormValues = FormValues> {
 
   inspect(): FormInspection<TValues> {
     const snapshot = this.snapshot();
-    const fields = this.fieldNames().map((name) => {
+    const fields: Array<FormFieldInspection<TValues>> = [];
+    const errorSummary: Array<FormErrorSummaryItem<TValues>> = [];
+    const touchedFields: string[] = [];
+    const dirtyFields: string[] = [];
+    const errorFields: string[] = [];
+    const disabledFields: string[] = [];
+    const readOnlyFields: string[] = [];
+    let dirtyForm = false;
+    let touchedForm = false;
+    let submittable = false;
+    for (const name of this.fields.keys()) {
       const errors = snapshot.errors[name] ?? [];
       const field = this.fields.get(name);
+      const touched = snapshot.touched[name] ?? false;
+      const dirty = snapshot.dirty[name] ?? false;
+      const disabled = this.isFieldDisabled(name);
+      const readOnly = this.isFieldReadOnly(name);
+      const valid = errors.length === 0;
       const inspection: FormFieldInspection<TValues> = {
         name,
-        touched: snapshot.touched[name] ?? false,
-        dirty: snapshot.dirty[name] ?? false,
-        disabled: this.isFieldDisabled(name),
-        readOnly: this.isFieldReadOnly(name),
+        touched,
+        dirty,
+        disabled,
+        readOnly,
         errors,
-        valid: errors.length === 0,
+        valid,
       };
       if (field?.label !== undefined) inspection.label = field.label;
       if (field?.group !== undefined) inspection.group = field.group;
-      return inspection;
-    });
-    const errorSummary = fields
-      .filter((field) => field.errors.length > 0)
-      .map((field) => {
-        const item: FormErrorSummaryItem<TValues> = { name: field.name, errors: [...field.errors] };
-        if (field.label !== undefined) item.label = field.label;
-        if (field.group !== undefined) item.group = field.group;
-        return item;
-      });
+      fields.push(inspection);
+      if (touched) {
+        touchedFields.push(name);
+        touchedForm = true;
+      }
+      if (dirty) {
+        dirtyFields.push(name);
+        dirtyForm = true;
+      }
+      if (!valid) errorFields.push(name);
+      if (disabled) disabledFields.push(name);
+      else submittable = true;
+      if (readOnly) readOnlyFields.push(name);
+      if (errors.length > 0) {
+        const item: FormErrorSummaryItem<TValues> = { name: inspection.name, errors: cloneStringArray(errors) };
+        if (field?.label !== undefined) item.label = field.label;
+        if (field?.group !== undefined) item.group = field.group;
+        errorSummary.push(item);
+      }
+    }
     return {
       ...snapshot,
       fields,
       groups: inspectFormGroups(fields),
       errorSummary,
       fieldCount: fields.length,
-      touchedFields: fields.filter((field) => field.touched).map((field) => field.name),
-      dirtyFields: fields.filter((field) => field.dirty).map((field) => field.name),
-      errorFields: fields.filter((field) => !field.valid).map((field) => field.name),
-      disabledFields: fields.filter((field) => field.disabled).map((field) => field.name),
-      readOnlyFields: fields.filter((field) => field.readOnly).map((field) => field.name),
-      dirtyForm: this.isDirty(),
-      touchedForm: this.isTouched(),
-      submittable: this.canSubmit(),
+      touchedFields,
+      dirtyFields,
+      errorFields,
+      disabledFields,
+      readOnlyFields,
+      dirtyForm,
+      touchedForm,
+      submittable,
     };
   }
 
@@ -401,7 +447,9 @@ export function minLength(length: number, message = `Must be at least ${length} 
 }
 
 function cloneRecord(record: Record<string, string[]>): Record<string, string[]> {
-  return Object.fromEntries(Object.entries(record).map(([key, value]) => [key, [...value]]));
+  const cloned: Record<string, string[]> = {};
+  for (const key in record) cloned[key] = cloneStringArray(record[key] ?? []);
+  return cloned;
 }
 
 function isFormFieldArray<TValues extends FormValues>(
@@ -419,7 +467,7 @@ function schemaFields<TValues extends FormValues>(
 
 function normalizeSchemaMessages(messages: readonly string[] | string | undefined): string[] {
   if (messages === undefined) return [];
-  return typeof messages === "string" ? [messages] : [...messages];
+  return typeof messages === "string" ? [messages] : cloneStringArray(messages);
 }
 
 function resolveFieldState(state: FormFieldState | undefined): boolean {
@@ -432,15 +480,51 @@ function inspectFormGroups<TValues extends FormValues>(
   const groups = new Map<string, Array<FormFieldInspection<TValues>>>();
   for (const field of fields) {
     const id = field.group ?? "default";
-    groups.set(id, [...(groups.get(id) ?? []), field]);
+    let group = groups.get(id);
+    if (!group) {
+      group = [];
+      groups.set(id, group);
+    }
+    group.push(field);
   }
-  return [...groups.entries()].map(([id, groupFields]) => ({
-    id,
-    label: id === "default" ? "Default" : id,
-    fields: groupFields.map((field) => field.name),
-    valid: groupFields.every((field) => field.valid),
-    dirty: groupFields.some((field) => field.dirty),
-    touched: groupFields.some((field) => field.touched),
-    errorCount: groupFields.reduce((total, field) => total + field.errors.length, 0),
-  }));
+  const inspected: Array<FormGroupInspection<TValues>> = [];
+  for (const [id, groupFields] of groups) {
+    const names: Array<FieldName<TValues>> = [];
+    let valid = true;
+    let dirty = false;
+    let touched = false;
+    let errorCount = 0;
+    for (let index = 0; index < groupFields.length; index += 1) {
+      const field = groupFields[index]!;
+      names.push(field.name);
+      valid = valid && field.valid;
+      dirty = dirty || field.dirty;
+      touched = touched || field.touched;
+      errorCount += field.errors.length;
+    }
+    inspected.push({
+      id,
+      label: id === "default" ? "Default" : id,
+      fields: names,
+      valid,
+      dirty,
+      touched,
+      errorCount,
+    });
+  }
+  return inspected;
+}
+
+function cloneStringArray(values: readonly string[]): string[] {
+  const cloned = new Array<string>(values.length);
+  for (let index = 0; index < values.length; index += 1) cloned[index] = values[index]!;
+  return cloned;
+}
+
+function appendMessages(existing: readonly string[], extra: readonly string[]): string[] {
+  const messages = new Array<string>(existing.length + extra.length);
+  let write = 0;
+  for (let index = 0; index < existing.length; index += 1) messages[write++] = existing[index]!;
+  for (let index = 0; index < extra.length; index += 1) messages[write++] = extra[index]!;
+  return messages;
 }

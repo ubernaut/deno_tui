@@ -323,6 +323,8 @@ Work:
         explicit buffers instead of Object.entries/fromEntries/map/filter pipelines.
   - [x] Reworked initial workbench diagnostic log rows to use bounded append buffers instead of spread/map/slice
         projection.
+  - [x] Reworked FormController validation, value updates, snapshots, inspection buckets, error summaries, record
+        cloning, and group inspection around one-pass loops instead of repeated map/filter/some/reduce chains.
 
 Acceptance checks:
 
