@@ -36,6 +36,7 @@ import {
   ThreeAsciiAnsiGridAssembler,
   type ThreeAsciiGridRenderer,
   ThreeAsciiObject,
+  ThreeAsciiRenderer,
   tileRects,
   visibleListRows,
   WindowManagerController,
@@ -44,6 +45,7 @@ import {
   writeFrame,
   writeStringFrameRow,
 } from "../mod.ts";
+import { PerspectiveCamera, Scene } from "npm:three@0.183.2";
 import { createHtmlCssLayoutDemo } from "../app/html_css_layout_demo.ts";
 import { LayoutMeasurementCache, simpleLayoutSolver } from "../src/layout/mod.ts";
 import { TerminalScreenController } from "../src/runtime/terminal_screen.ts";
@@ -97,6 +99,33 @@ const threeAsciiImageHeight = threeAsciiRows * 8;
 const threeAsciiImageBytesPerRow = threeAsciiImageWidth * 4;
 const threeAsciiImageSource = new Uint8Array(threeAsciiImageBytesPerRow * threeAsciiImageHeight);
 const threeAsciiImageTarget = new Uint8Array(threeAsciiImageBytesPerRow * threeAsciiImageHeight);
+const threeAsciiUniformRenderer = new ThreeAsciiRenderer({
+  scene: new Scene(),
+  camera: new PerspectiveCamera(),
+  columns: threeAsciiColumns,
+  rows: threeAsciiRows,
+});
+let threeAsciiUniformWrites = 0;
+const threeAsciiUniformInternals = threeAsciiUniformRenderer as unknown as {
+  device: { queue: { writeBuffer: () => void } };
+  paramsBuffer: object;
+  writeUniforms(effectState: unknown): void;
+};
+threeAsciiUniformInternals.device = { queue: { writeBuffer: () => threeAsciiUniformWrites += 1 } };
+threeAsciiUniformInternals.paramsBuffer = {};
+const threeAsciiUniformEffectState = {
+  edges: true,
+  fill: true,
+  invertLuminance: false,
+  exposure: 1,
+  attenuation: 1,
+  blendWithBase: 0,
+  depthFalloff: 0,
+  depthOffset: 0,
+  edgeThreshold: 8,
+  asciiColor: { r: 1, g: 1, b: 1 },
+  backgroundColor: { r: 0, g: 0, b: 0 },
+};
 let threeAsciiReadbackCursor = 0;
 let threeAsciiReadbackChecksum = 0;
 const ansiRichRows = Array.from({ length: 250 }, (_, index) => {
@@ -608,6 +637,19 @@ function runThreeAsciiImageCompactionWorkload(): void {
   threeAsciiReadbackChecksum = (threeAsciiReadbackChecksum + result[index]!) % 1_000_000;
   if (result !== threeAsciiImageTarget || !Number.isFinite(threeAsciiReadbackChecksum)) {
     throw new Error("three Ascii image compaction produced invalid data");
+  }
+}
+
+function runThreeAsciiUniformCleanWorkload(): void {
+  if (threeAsciiUniformWrites === 0) {
+    threeAsciiUniformInternals.writeUniforms(threeAsciiUniformEffectState);
+  }
+  const before = threeAsciiUniformWrites;
+  for (let index = 0; index < 1_000; index += 1) {
+    threeAsciiUniformInternals.writeUniforms(threeAsciiUniformEffectState);
+  }
+  if (threeAsciiUniformWrites !== before) {
+    throw new Error("clean Three ASCII uniforms were uploaded again");
   }
 }
 
@@ -1255,6 +1297,15 @@ export const benchmarkCases: BenchmarkCase[] = [
     iterations: 500,
     maxAverageMs: 2,
     run: runThreeAsciiImageCompactionWorkload,
+  },
+  {
+    name: "render/three-ascii-uniform-clean-1k",
+    category: "render",
+    description: "Skip clean Three ASCII compute uniform uploads across 1000 unchanged frames.",
+    tags: ["render", "three", "ascii", "uniform", "gpu", "cache"],
+    iterations: 500,
+    maxAverageMs: 2,
+    run: runThreeAsciiUniformCleanWorkload,
   },
   {
     name: "render/three-ascii-frame-diff-96x40",

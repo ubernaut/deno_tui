@@ -359,6 +359,7 @@ export class ThreeAsciiRenderer {
   private outputCellCount = 0;
   private sizeDirty = true;
   private computeDirty = true;
+  private uniformDirty = true;
 
   constructor(options: ThreeAsciiRendererOptions) {
     this.scene = options.scene;
@@ -389,6 +390,7 @@ export class ThreeAsciiRenderer {
     this.rows = nextRows;
     this.sizeDirty = true;
     this.computeDirty = true;
+    this.uniformDirty = true;
   }
 
   setEffectOptions(options: Partial<AcerolaAsciiNodeOptions>): void {
@@ -404,6 +406,7 @@ export class ThreeAsciiRenderer {
 
     this.asciiNode?.applyOptions(options);
     this.computeDirty = true;
+    this.uniformDirty = true;
   }
 
   private applyEffectOptionPatch(options: Partial<AcerolaAsciiNodeOptions>): void {
@@ -439,7 +442,10 @@ export class ThreeAsciiRenderer {
   }
 
   setTerminalEdgeBias(value: number): void {
-    this.terminalEdgeBias = Math.max(0.5, value);
+    const next = Math.max(0.5, value);
+    if (this.terminalEdgeBias === next) return;
+    this.terminalEdgeBias = next;
+    this.uniformDirty = true;
   }
 
   getTerminalGlyphStyle(): TerminalGlyphStyle {
@@ -447,6 +453,7 @@ export class ThreeAsciiRenderer {
   }
 
   setTerminalGlyphStyle(value: TerminalGlyphStyle): void {
+    if (this.terminalGlyphStyle === value) return;
     this.terminalGlyphStyle = value;
   }
 
@@ -691,6 +698,7 @@ export class ThreeAsciiRenderer {
         size: this.uniformValues.byteLength,
         usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
       });
+      this.uniformDirty = true;
     }
 
     const cellCount = this.columns * this.rows;
@@ -801,6 +809,10 @@ export class ThreeAsciiRenderer {
   }
 
   private writeUniforms(effectState: EffectState): void {
+    if (!this.uniformDirty) {
+      return;
+    }
+
     const uniforms = this.uniformValues;
 
     uniforms[0] = this.columns;
@@ -837,6 +849,7 @@ export class ThreeAsciiRenderer {
     uniforms[23] = 1;
 
     this.device!.queue.writeBuffer(this.paramsBuffer!, 0, uniforms);
+    this.uniformDirty = false;
   }
 
   private getGpuTexture(texture: unknown): GPUTexture {

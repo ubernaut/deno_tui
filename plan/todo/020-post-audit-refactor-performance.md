@@ -114,3 +114,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   per-cell ANSI output on block-heavy frames.
 - Added shared API workbench wrapped-option render commands so terminal and browser combo/radio option rows reuse the
   same text and hit geometry projection.
+- Added a Three ASCII renderer uniform dirty flag and benchmark guard so unchanged frames skip redundant compute uniform
+  buffer uploads.
