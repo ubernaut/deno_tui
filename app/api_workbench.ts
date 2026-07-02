@@ -66,7 +66,6 @@ import {
   workbenchFrameBoxLinesInto,
   workbenchHeaderHelp,
   type WorkbenchHeaderLayout,
-  workbenchHelpRows,
   type WorkbenchMenuBarHitLayout,
   workbenchModalActionButtonsInto,
   type WorkbenchModalRowRenderCommand,
@@ -260,6 +259,13 @@ import {
   workspaceRenamedModalContent,
   workspaceSavedModalContent,
 } from "./workbench_workspace_menu.ts";
+import {
+  workbenchDemoModalContent,
+  workbenchHelpModalContent,
+  workbenchModalConfirmedContent,
+  workbenchModalDetailsContent,
+  workbenchQuitModalContent,
+} from "./workbench_modal_content.ts";
 import { WorkbenchKittyGraphicsController } from "./workbench_kitty_graphics.ts";
 import { dataFooterRows, type RowStyle, threeHeaderRows } from "./workbench_rows.ts";
 import type {
@@ -3725,50 +3731,19 @@ function createWorkspaceStore() {
 }
 
 function openWorkbenchModal(): void {
-  modal.open({
-    title: "Confirm Action",
-    tone: "confirm",
-    body: [
-      "Modal windows sit above the workspace and can contain text, menus, warnings, errors, and buttons.",
-      "Keyboard focus is trapped while the modal is open. Use Tab, arrows, Enter, Escape, or click an action.",
-    ],
-    actions: [
-      { id: "cancel", label: "Cancel" },
-      { id: "details", label: "Details" },
-      { id: "confirm", label: "Confirm", default: true },
-    ],
-  });
+  modal.open(workbenchDemoModalContent({ profile: "terminal" }));
   pushLog("modal opened");
 }
 
 function openQuitModal(): void {
   closeTopMenus();
   threeConfigOpen.value = false;
-  modal.open({
-    title: "Quit Workbench?",
-    tone: "warning",
-    body: [
-      "Close the API workbench and return to the terminal?",
-      "Use Enter to confirm, Escape to cancel, or Tab to choose an action.",
-    ],
-    actions: [
-      { id: "cancel", label: "Cancel" },
-      { id: "quit", label: "Quit", destructive: true, default: true },
-    ],
-  });
+  modal.open(workbenchQuitModalContent({ profile: "terminal" }));
   pushLog("quit confirmation");
 }
 
 function openHelpModal(): void {
-  modal.open({
-    title: "Workbench Help",
-    tone: "info",
-    body: workbenchHelpRows({ profile: "terminal" }),
-    actions: [
-      { id: "dismiss", label: "Dismiss", default: true },
-      { id: "controls", label: "Focus Controls" },
-    ],
-  });
+  modal.open(workbenchHelpModalContent({ profile: "terminal" }));
   pushLog("help opened");
 }
 
@@ -3801,19 +3776,7 @@ function applyModalAction(actionId: string): void {
     return;
   }
   if (actionId === "details") {
-    modal.open({
-      title: "Modal Details",
-      tone: "info",
-      body: [
-        "The ModalController is renderer-neutral and exposes open state, tone, content, action focus, and callbacks.",
-        "Workbench rendering adds a theme-aware pop-over, blocks background clicks, and routes action hit targets back to the controller.",
-      ],
-      actions: [
-        { id: "back", label: "Back" },
-        { id: "confirm", label: "Confirm", default: true },
-        { id: "dismiss", label: "Dismiss" },
-      ],
-    });
+    modal.open(workbenchModalDetailsContent({ profile: "terminal" }));
     pushLog("modal details");
     return;
   }
@@ -3822,13 +3785,7 @@ function applyModalAction(actionId: string): void {
     return;
   }
   if (actionId === "confirm") {
-    modal.open({
-      title: "Action Confirmed",
-      tone: "success",
-      body:
-        "The modal action completed. This same surface can be used for confirmations, alerts, menus, and error dialogs.",
-      actions: [{ id: "dismiss", label: "Dismiss", default: true }],
-    });
+    modal.open(workbenchModalConfirmedContent({ profile: "terminal" }));
     pushLog("modal confirmed");
     return;
   }

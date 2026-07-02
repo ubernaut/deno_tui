@@ -84,7 +84,6 @@ import {
   type WorkbenchFrameBoxLine,
   workbenchFrameBoxLinesInto,
   type WorkbenchHeaderLayout,
-  workbenchHelpRows,
   type WorkbenchMenuBarHitLayout,
   workbenchModalActionButtonsInto,
   type WorkbenchModalRowRenderCommand,
@@ -158,6 +157,13 @@ import {
   nextSortableDataColumn,
 } from "../../app/api_workbench_controls.ts";
 import { htmlCssLayoutBoxStyle, htmlCssVisibleLayoutBoxesInto } from "../../app/html_css_layout_view.ts";
+import {
+  workbenchDemoModalContent,
+  workbenchHelpModalContent,
+  workbenchModalConfirmedContent,
+  workbenchModalDetailsContent,
+  workbenchQuitModalContent,
+} from "../../app/workbench_modal_content.ts";
 import { workbenchThreePreviewRowsInto } from "../../app/workbench_visualization_window.ts";
 import {
   type WorkbenchMobileCommandAction,
@@ -1932,50 +1938,19 @@ function push(message: string): void {
 
 function openWorkbenchModal(): void {
   closeThemeMenu();
-  modal.open({
-    title: "Confirm Action",
-    tone: "confirm",
-    body: [
-      "Modal windows sit above the browser workbench and use the same renderer-neutral controller as terminal modals.",
-      "Keyboard focus is trapped while the modal is open. Use Tab, arrows, Enter, Escape, or click an action.",
-    ],
-    actions: [
-      { id: "cancel", label: "Cancel" },
-      { id: "details", label: "Details" },
-      { id: "confirm", label: "Confirm", default: true },
-    ],
-  });
+  modal.open(workbenchDemoModalContent({ profile: "web" }));
   push("modal opened");
 }
 
 function openHelpModal(): void {
   closeThemeMenu();
-  modal.open({
-    title: "Web Workbench Help",
-    tone: "info",
-    body: workbenchHelpRows({ profile: "web" }),
-    actions: [
-      { id: "dismiss", label: "Dismiss", default: true },
-      { id: "controls", label: "Focus Controls" },
-    ],
-  });
+  modal.open(workbenchHelpModalContent({ profile: "web" }));
   push("help opened");
 }
 
 function openQuitModal(): void {
   closeThemeMenu();
-  modal.open({
-    title: "Close Web Workbench?",
-    tone: "warning",
-    body: [
-      "Hide the API workbench browser demo?",
-      "This only removes the demo host from the page; reload the page to mount it again.",
-    ],
-    actions: [
-      { id: "cancel", label: "Cancel" },
-      { id: "quit", label: "Close", destructive: true, default: true },
-    ],
-  });
+  modal.open(workbenchQuitModalContent({ profile: "web" }));
   push("quit confirmation");
 }
 
@@ -2000,19 +1975,7 @@ function openThreeConfigModal(id: PanelId): void {
 
 function applyModalAction(actionId: string): void {
   if (actionId === "details") {
-    modal.open({
-      title: "Modal Details",
-      tone: "info",
-      body: [
-        "ModalController owns open state, body rows, action focus, and keyboard behavior.",
-        "The browser renderer adds a centered overlay, backdrop click blocking, and theme-aware action buttons.",
-      ],
-      actions: [
-        { id: "back", label: "Back" },
-        { id: "confirm", label: "Confirm", default: true },
-        { id: "dismiss", label: "Dismiss" },
-      ],
-    });
+    modal.open(workbenchModalDetailsContent({ profile: "web" }));
     push("modal details");
     return;
   }
@@ -2021,12 +1984,7 @@ function applyModalAction(actionId: string): void {
     return;
   }
   if (actionId === "confirm") {
-    modal.open({
-      title: "Action Confirmed",
-      tone: "success",
-      body: "The web modal action completed.",
-      actions: [{ id: "dismiss", label: "Dismiss", default: true }],
-    });
+    modal.open(workbenchModalConfirmedContent({ profile: "web" }));
     push("modal confirmed");
     return;
   }

@@ -136,3 +136,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   `api_workbench_controls.ts` is now a compatibility barrel plus keyboard traversal.
 - Extracted Three ASCII GPU buffer slot allocation/reuse/destruction into a small tested helper so renderer resource
   lifecycle logic is isolated from scene orchestration.
+- Extracted shared workbench modal content helpers for generic modal demos, help, quit confirmation, details, and
+  confirmation states so terminal and browser workbench adapters no longer duplicate those modal definitions.
