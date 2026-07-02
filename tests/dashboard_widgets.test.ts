@@ -332,6 +332,9 @@ Deno.test("theme palette registries build custom palette-backed engines", () => 
 
   assertEquals(defaultThemePaletteDefinitions().map((palette) => palette.id), ["plain", "neon", "terminal"]);
   assertEquals(registry.ids(), ["matrix", "plain"]);
+  const ids = registry.ids();
+  ids.push("mutated");
+  assertEquals(registry.ids(), ["matrix", "plain"]);
   assertEquals(registry.inspect(), [
     { id: "matrix", label: "Matrix Reloaded", tokens: ["foreground", "danger"] },
     {

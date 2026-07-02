@@ -953,6 +953,8 @@ Work:
         probes live, reducing repeated backend ordering work during inspect and resolve.
   - [x] Cached theme pipeline ids, active ids, and active step entries behind pipeline mutation notifications, reducing
         repeated active-step scans during pipeline apply, prewarm, and settings binding.
+  - [x] Cached theme palette registry ids behind palette register/unregister, preserving defensive public array copies
+        while reducing repeated sorting in palette inspections and provider setup.
 - [x] Make demo-only assets and NGE-inspired primitives clearly separate from library APIs.
   - [x] Added `app/neon_three_catalog.ts` for supported Three scene metadata and labels, keeping demo/NGE catalog data
         separate from the monolithic scene factory and shared by visualization footers plus scene coverage tests.

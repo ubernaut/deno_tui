@@ -20,6 +20,7 @@ export interface ThemePaletteRegistryImplementationOptions {
 export class ThemePaletteRegistryImplementation {
   readonly #palettes = new Map<string, ThemePalette>();
   readonly #createNotFoundError: (id: string) => Error;
+  #ids: string[] | undefined;
 
   /** Creates a registry and optionally registers initial palettes. */
   constructor(
@@ -37,12 +38,15 @@ export class ThemePaletteRegistryImplementation {
   register(palette: ThemePalette | ThemePaletteName): this {
     const normalized = normalizeThemePaletteInternal(palette);
     this.#palettes.set(normalized.id, normalized);
+    this.#ids = undefined;
     return this;
   }
 
   /** Removes a palette by id. */
   unregister(id: string): boolean {
-    return this.#palettes.delete(id);
+    const deleted = this.#palettes.delete(id);
+    if (deleted) this.#ids = undefined;
+    return deleted;
   }
 
   /** Returns whether a palette id is registered. */
@@ -63,7 +67,7 @@ export class ThemePaletteRegistryImplementation {
 
   /** Returns registered palette ids in stable order. */
   ids(): string[] {
-    return [...this.#palettes.keys()].sort();
+    return [...this.#sortedIds()];
   }
 
   /** Returns palette tokens or throws when the id is unknown. */
@@ -82,7 +86,7 @@ export class ThemePaletteRegistryImplementation {
 
   /** Returns serializable palette metadata. */
   inspect(): ThemePaletteInspection[] {
-    const ids = this.ids();
+    const ids = this.#sortedIds();
     const inspections = new Array<ThemePaletteInspection>(ids.length);
     for (let index = 0; index < ids.length; index += 1) {
       const id = ids[index]!;
@@ -94,6 +98,13 @@ export class ThemePaletteRegistryImplementation {
       };
     }
     return inspections;
+  }
+
+  #sortedIds(): readonly string[] {
+    if (!this.#ids) {
+      this.#ids = [...this.#palettes.keys()].sort();
+    }
+    return this.#ids;
   }
 }
 
