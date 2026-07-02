@@ -563,7 +563,11 @@ function runWorkbenchSparseFrameWorkload(): void {
 class BenchmarkMetricsProvider implements SystemMetricsProvider {
   step = 0;
   processStatReads = 0;
-  readonly pids = Array.from({ length: 150 }, (_, index) => 1_000 + index);
+  readonly pids: number[];
+
+  constructor(pidCount = 150) {
+    this.pids = Array.from({ length: pidCount }, (_, index) => 1_000 + index);
+  }
 
   advance(): void {
     this.step += 1;
@@ -693,6 +697,13 @@ const metricsMonitor = new SystemMonitor({
   provider: metricsProvider,
   processLimit: 100,
   processScanLimit: 120,
+});
+const largeMetricsProvider = new BenchmarkMetricsProvider(1_200);
+const largeMetricsMonitor = new SystemMonitor({
+  historyLength: 16,
+  provider: largeMetricsProvider,
+  processLimit: 100,
+  processScanLimit: 1_000,
 });
 const markupLayoutCache = new LayoutMeasurementCache();
 const markupLayoutSolver = simpleLayoutSolver({ intrinsicMeasurementCache: markupLayoutCache });
@@ -1163,6 +1174,26 @@ export const benchmarkCases: BenchmarkCase[] = [
       }
       if (metricsProvider.processStatReads !== 120) {
         throw new Error("system monitor fixture sample did not respect the process scan cap");
+      }
+    },
+  },
+  {
+    name: "data/system-monitor-large-process-sample",
+    category: "data",
+    description: "Sample fixture-backed monitor data while selecting the top 100 processes from 1k scanned PIDs.",
+    tags: ["data", "monitor", "processes", "fixtures", "bounded"],
+    iterations: 20,
+    maxAverageMs: 20,
+    run: async () => {
+      largeMetricsProvider.advance();
+      largeMetricsProvider.resetCounters();
+      await largeMetricsMonitor.sample();
+      const snapshot = largeMetricsMonitor.snapshot.peek();
+      if (snapshot.processes.length !== 100 || snapshot.cpuCores.length !== 16) {
+        throw new Error("large process monitor sample did not produce expected rows");
+      }
+      if (largeMetricsProvider.processStatReads !== 1_000) {
+        throw new Error("large process monitor sample did not respect the process scan cap");
       }
     },
   },
