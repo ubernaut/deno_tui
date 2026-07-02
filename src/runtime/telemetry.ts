@@ -290,7 +290,14 @@ function escapeMarkdownCell(value: string): string {
 }
 
 function uniqueSorted<T extends string>(values: Iterable<T>): T[] {
-  return [...new Set(values)].sort();
+  const output: T[] = [];
+  for (const value of values) {
+    let index = 0;
+    while (index < output.length && output[index]! < value) index += 1;
+    if (output[index] === value) continue;
+    output.splice(index, 0, value);
+  }
+  return output;
 }
 
 function cloneRuntimeWorkloadSources(values: readonly RuntimeWorkloadSource[]): RuntimeWorkloadSource[] {
