@@ -12294,9 +12294,6 @@ var TERMINAL_CAPABILITY_METADATA = {
 };
 var TERMINAL_CAPABILITY_IDS = Object.keys(TERMINAL_CAPABILITY_METADATA);
 
-// src/runtime/terminal_session.ts
-var ENCODER = new TextEncoder();
-
 // src/runtime/terminal_workspace_layout.ts
 function createTerminalWorkspacePaneNode(sessionId, root2, options = {}) {
   return {
@@ -13096,6 +13093,9 @@ function firstTerminalWorkspacePaneRef2(node) {
   if (node.kind === "pane") return node;
   return firstTerminalWorkspacePaneRef2(node.first) ?? firstTerminalWorkspacePaneRef2(node.second);
 }
+
+// src/runtime/terminal_session.ts
+var ENCODER = new TextEncoder();
 
 // src/platform/types.ts
 var NoopLifecycleController = class {

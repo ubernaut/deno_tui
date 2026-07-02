@@ -10902,6 +10902,41 @@
       "documented": true
     },
     {
+      "module": "src/runtime/terminal_shell_workspace.ts",
+      "name": "AddTerminalShellWorkspaceSessionOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/runtime/terminal_shell_workspace.ts",
+      "name": "TerminalShellWorkspaceController",
+      "kind": "class",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/runtime/terminal_shell_workspace.ts",
+      "name": "TerminalShellWorkspaceControllerOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/runtime/terminal_shell_workspace.ts",
+      "name": "TerminalShellWorkspaceInspection",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/runtime/terminal_shell_workspace.ts",
+      "name": "TerminalShellWorkspaceSessionInspection",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
       "module": "src/runtime/terminal_shell.ts",
       "name": "TerminalShellController",
       "kind": "class",

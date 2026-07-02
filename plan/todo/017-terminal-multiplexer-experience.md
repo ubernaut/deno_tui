@@ -117,3 +117,6 @@ developer workflows.
   contract.
 - Added renderer-neutral previous/next session activation to terminal workspaces and command adapters so shell tabs can
   be cycled from keyboard bindings, command palettes, and browser/console renderers through the same command surface.
+- Added `TerminalShellWorkspaceController`, a runtime bridge between terminal workspace descriptors and live
+  `TerminalShellController` instances, so future console/web workbench adapters can manage multiple real shell sessions
+  through one tested controller instead of hand-rolling shell maps.

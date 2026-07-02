@@ -6,10 +6,10 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 ## Summary
 
 - Entrypoints: 9
-- Module visits: 525
-- Re-export declarations: 516
-- Exported symbols: 4725
-- Documented symbols: 4725
+- Module visits: 527
+- Re-export declarations: 518
+- Exported symbols: 4735
+- Documented symbols: 4735
 - Documentation coverage: 100.00%
 - Duplicate symbol groups: 0
 - Missing targets: 0
@@ -18,12 +18,12 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 
 | Specifier       | Path                           | Runtime  | Stability    | Modules | Symbols |    Docs |
 | --------------- | ------------------------------ | -------- | ------------ | ------: | ------: | ------: |
-| `.`             | `./mod.ts`                     | terminal | stable       |     237 |    2013 | 100.00% |
+| `.`             | `./mod.ts`                     | terminal | stable       |     238 |    2018 | 100.00% |
 | `./web`         | `./mod.web.ts`                 | browser  | beta         |     216 |    1876 | 100.00% |
 | `./remote`      | `./mod.remote.ts`              | remote   | experimental |       4 |      38 | 100.00% |
 | `./three-ascii` | `./mod.three_ascii.ts`         | shared   | experimental |       8 |      54 | 100.00% |
 | `./theme`       | `./mod.theme.ts`               | shared   | beta         |      10 |     198 | 100.00% |
-| `./runtime`     | `./mod.runtime.ts`             | shared   | beta         |      30 |     374 | 100.00% |
+| `./runtime`     | `./mod.runtime.ts`             | shared   | beta         |      31 |     379 | 100.00% |
 | `./terminal`    | `./mod.terminal.ts`            | terminal | beta         |      15 |     147 | 100.00% |
 | `./testing`     | `./mod.testing.ts`             | shared   | beta         |       4 |      22 | 100.00% |
 | `./layout/yoga` | `./src/layout/solvers/yoga.ts` | shared   | experimental |       1 |       3 | 100.00% |
@@ -39,10 +39,10 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 ### Summary
 
 - Entrypoint: `mod.ts`
-- Modules: 237
-- Re-export declarations: 236
-- Exported symbols: 2013
-- Documented symbols: 2013
+- Modules: 238
+- Re-export declarations: 237
+- Exported symbols: 2018
+- Documented symbols: 2018
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -225,7 +225,7 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 | [`src/runtime/diagnostics.ts`](#src-runtime-diagnostics-ts)                             |          0 |      12 |         12 |
 | [`src/runtime/graphics_surface.ts`](#src-runtime-graphics-surface-ts)                   |          0 |      15 |         15 |
 | [`src/runtime/kitty_graphics.ts`](#src-runtime-kitty-graphics-ts)                       |          0 |      25 |         25 |
-| [`src/runtime/mod.ts`](#src-runtime-mod-ts)                                             |         28 |       0 |          0 |
+| [`src/runtime/mod.ts`](#src-runtime-mod-ts)                                             |         29 |       0 |          0 |
 | [`src/runtime/process_session.ts`](#src-runtime-process-session-ts)                     |          0 |       9 |          9 |
 | [`src/runtime/profiles.ts`](#src-runtime-profiles-ts)                                   |          0 |      24 |         24 |
 | [`src/runtime/pty_backend.ts`](#src-runtime-pty-backend-ts)                             |          0 |      12 |         12 |
@@ -242,6 +242,7 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 | [`src/runtime/terminal_screen.ts`](#src-runtime-terminal-screen-ts)                     |          0 |       6 |          6 |
 | [`src/runtime/terminal_scrollback.ts`](#src-runtime-terminal-scrollback-ts)             |          0 |       5 |          5 |
 | [`src/runtime/terminal_session.ts`](#src-runtime-terminal-session-ts)                   |          0 |       8 |          8 |
+| [`src/runtime/terminal_shell_workspace.ts`](#src-runtime-terminal-shell-workspace-ts)   |          0 |       5 |          5 |
 | [`src/runtime/terminal_shell.ts`](#src-runtime-terminal-shell-ts)                       |          0 |       3 |          3 |
 | [`src/runtime/terminal_status.ts`](#src-runtime-terminal-status-ts)                     |          0 |       8 |          8 |
 | [`src/runtime/terminal_templates.ts`](#src-runtime-terminal-templates-ts)               |          0 |      22 |         22 |
@@ -2748,6 +2749,7 @@ _No direct exported symbols._
 | `src/runtime/terminal_screen.ts`           | star | -     |
 | `src/runtime/terminal_scrollback.ts`       | star | -     |
 | `src/runtime/terminal_shell.ts`            | star | -     |
+| `src/runtime/terminal_shell_workspace.ts`  | star | -     |
 | `src/runtime/terminal_session.ts`          | star | -     |
 | `src/runtime/terminal_workspace.ts`        | star | -     |
 | `src/runtime/worker_pool.ts`               | star | -     |
@@ -3032,6 +3034,16 @@ _No direct exported symbols._
 | `terminalSessionSequences`        | function  | no        | yes   |
 | `TerminalSessionSequences`        | interface | yes       | yes   |
 | `TerminalSessionWriter`           | interface | yes       | yes   |
+
+#### src/runtime/terminal_shell_workspace.ts
+
+| Symbol                                    | Kind      | Type Only | JSDoc |
+| ----------------------------------------- | --------- | --------- | ----- |
+| `AddTerminalShellWorkspaceSessionOptions` | interface | yes       | yes   |
+| `TerminalShellWorkspaceController`        | class     | no        | yes   |
+| `TerminalShellWorkspaceControllerOptions` | interface | yes       | yes   |
+| `TerminalShellWorkspaceInspection`        | interface | yes       | yes   |
+| `TerminalShellWorkspaceSessionInspection` | interface | yes       | yes   |
 
 #### src/runtime/terminal_shell.ts
 
@@ -7724,10 +7736,10 @@ Shared runtime primitives for scheduling, storage, workers, resources, diagnosti
 ### Summary
 
 - Entrypoint: `mod.runtime.ts`
-- Modules: 30
-- Re-export declarations: 29
-- Exported symbols: 374
-- Documented symbols: 374
+- Modules: 31
+- Re-export declarations: 30
+- Exported symbols: 379
+- Documented symbols: 379
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -7744,7 +7756,7 @@ Shared runtime primitives for scheduling, storage, workers, resources, diagnosti
 | [`src/runtime/diagnostics.ts`](#src-runtime-diagnostics-ts)                             |          0 |      12 |         12 |
 | [`src/runtime/graphics_surface.ts`](#src-runtime-graphics-surface-ts)                   |          0 |      15 |         15 |
 | [`src/runtime/kitty_graphics.ts`](#src-runtime-kitty-graphics-ts)                       |          0 |      25 |         25 |
-| [`src/runtime/mod.ts`](#src-runtime-mod-ts)                                             |         28 |       0 |          0 |
+| [`src/runtime/mod.ts`](#src-runtime-mod-ts)                                             |         29 |       0 |          0 |
 | [`src/runtime/process_session.ts`](#src-runtime-process-session-ts)                     |          0 |       9 |          9 |
 | [`src/runtime/profiles.ts`](#src-runtime-profiles-ts)                                   |          0 |      24 |         24 |
 | [`src/runtime/pty_backend.ts`](#src-runtime-pty-backend-ts)                             |          0 |      12 |         12 |
@@ -7761,6 +7773,7 @@ Shared runtime primitives for scheduling, storage, workers, resources, diagnosti
 | [`src/runtime/terminal_screen.ts`](#src-runtime-terminal-screen-ts)                     |          0 |       6 |          6 |
 | [`src/runtime/terminal_scrollback.ts`](#src-runtime-terminal-scrollback-ts)             |          0 |       5 |          5 |
 | [`src/runtime/terminal_session.ts`](#src-runtime-terminal-session-ts)                   |          0 |       8 |          8 |
+| [`src/runtime/terminal_shell_workspace.ts`](#src-runtime-terminal-shell-workspace-ts)   |          0 |       5 |          5 |
 | [`src/runtime/terminal_shell.ts`](#src-runtime-terminal-shell-ts)                       |          0 |       3 |          3 |
 | [`src/runtime/terminal_status.ts`](#src-runtime-terminal-status-ts)                     |          0 |       8 |          8 |
 | [`src/runtime/terminal_templates.ts`](#src-runtime-terminal-templates-ts)               |          0 |      22 |         22 |
@@ -7947,6 +7960,7 @@ _No direct exported symbols._
 | `src/runtime/terminal_screen.ts`           | star | -     |
 | `src/runtime/terminal_scrollback.ts`       | star | -     |
 | `src/runtime/terminal_shell.ts`            | star | -     |
+| `src/runtime/terminal_shell_workspace.ts`  | star | -     |
 | `src/runtime/terminal_session.ts`          | star | -     |
 | `src/runtime/terminal_workspace.ts`        | star | -     |
 | `src/runtime/worker_pool.ts`               | star | -     |
@@ -8231,6 +8245,16 @@ _No direct exported symbols._
 | `terminalSessionSequences`        | function  | no        | yes   |
 | `TerminalSessionSequences`        | interface | yes       | yes   |
 | `TerminalSessionWriter`           | interface | yes       | yes   |
+
+#### src/runtime/terminal_shell_workspace.ts
+
+| Symbol                                    | Kind      | Type Only | JSDoc |
+| ----------------------------------------- | --------- | --------- | ----- |
+| `AddTerminalShellWorkspaceSessionOptions` | interface | yes       | yes   |
+| `TerminalShellWorkspaceController`        | class     | no        | yes   |
+| `TerminalShellWorkspaceControllerOptions` | interface | yes       | yes   |
+| `TerminalShellWorkspaceInspection`        | interface | yes       | yes   |
+| `TerminalShellWorkspaceSessionInspection` | interface | yes       | yes   |
 
 #### src/runtime/terminal_shell.ts
 
