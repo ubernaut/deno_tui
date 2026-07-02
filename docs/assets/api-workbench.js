@@ -13116,6 +13116,26 @@ function createWebTui(options) {
 var textDecoder4 = new TextDecoder();
 
 // app/api_workbench_catalog.ts
+var apiWorkbenchPanelTitles = {
+  explorer: "Explorer",
+  inspector: "Inspector",
+  data: "Data Table",
+  controls: "Controls",
+  logs: "Logs",
+  three: "Three ASCII",
+  htmlLayout: "HTML/CSS Layout",
+  terminal: "Terminal"
+};
+var apiWorkbenchShortPanelTitles = {
+  htmlLayout: "Layout",
+  inspector: "Inspect"
+};
+function apiWorkbenchPanelTitle(id2, fallback = "Three ASCII") {
+  return apiWorkbenchPanelTitles[id2] ?? fallback;
+}
+function apiWorkbenchShortPanelTitle(id2, fallback) {
+  return apiWorkbenchShortPanelTitles[id2] ?? apiWorkbenchPanelTitle(id2, fallback);
+}
 function createApiWorkbenchThemes() {
   return grWizardThemePalettes.map((palette) => ({
     id: palette.name,
@@ -13433,7 +13453,7 @@ var workbenchController = new WorkbenchController({
       themeMenuOpen.value = state.openId === "theme";
     }
   },
-  windows: panelIds.map((id2, order) => ({ id: id2, title: id2, order, minWidth: 26, minHeight: 10 }))
+  windows: panelIds.map((id2, order) => ({ id: id2, title: apiWorkbenchPanelTitle(id2), order, minWidth: 26, minHeight: 10 }))
 });
 var topMenus = workbenchController.menus;
 var webWindows = workbenchController.windows;
@@ -14012,10 +14032,10 @@ function panelTitlebarHit(id2, kind) {
   return { type: "restore", id: id2 };
 }
 function panelTitle(id2) {
-  return id2 === "explorer" ? "Explorer" : id2 === "data" ? "Data Table" : id2 === "three" ? "Three ASCII" : id2 === "htmlLayout" ? "HTML/CSS Layout" : id2 === "terminal" ? "Terminal" : id2[0].toUpperCase() + id2.slice(1);
+  return apiWorkbenchPanelTitle(id2, id2[0].toUpperCase() + id2.slice(1));
 }
 function shortPanelTitle(id2) {
-  return id2 === "htmlLayout" ? "Layout" : id2 === "inspector" ? "Inspect" : panelTitle(id2);
+  return apiWorkbenchShortPanelTitle(id2, panelTitle(id2));
 }
 function renderLogs(frame, rect) {
   const lines = [...docs, ...log.peek()];
@@ -14543,7 +14563,7 @@ function syncWebWindowManagerState() {
   webWindows.fullscreenId.value = fullscreenId;
   webWindows.windows.value = panelIds.map((id2, order) => ({
     id: id2,
-    title: id2,
+    title: apiWorkbenchPanelTitle(id2),
     order,
     state: minimizedState[id2] && id2 !== fullscreenId ? "minimized" : "normal",
     minWidth: 26,
