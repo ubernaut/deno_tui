@@ -63,7 +63,7 @@ Deno.test("three ascii ANSI grid assembly skips color work for proven blank cell
   assertEquals(grid[0][0], "\x1b[48;2;0;0;0m\x1b[38;2;0;0;0m \x1b[0m");
 });
 
-Deno.test("three ascii block grid assembly paints full blocks with bucket-adjusted truecolor", () => {
+Deno.test("three ascii block grid assembly paints full blocks with source truecolor", () => {
   const grid = buildThreeAsciiAnsiGrid({
     columns: 2,
     rows: 1,
@@ -73,7 +73,7 @@ Deno.test("three ascii block grid assembly paints full blocks with bucket-adjust
     backgroundColor: 0x0000ff,
   });
 
-  assertEquals(grid[0][0], "\x1b[48;2;227;0;28m\x1b[38;2;227;0;28m█\x1b[0m");
+  assertEquals(grid[0][0], "\x1b[48;2;255;0;0m\x1b[38;2;255;0;0m█\x1b[0m");
   assertEquals(grid[0][1], "\x1b[48;2;255;0;0m\x1b[38;2;255;0;0m█\x1b[0m");
 });
 
@@ -109,7 +109,7 @@ Deno.test("three ascii ANSI grid assembly reuses repeated non-adjacent block cel
   assertEquals(grid[0][3], grid[0][1]);
 });
 
-Deno.test("three ascii block mode keeps full-cell glyphs while preserving fill intensity in color", () => {
+Deno.test("three ascii block mode keeps full-cell glyphs without quantizing truecolor", () => {
   const grid = buildThreeAsciiAnsiGrid({
     columns: 4,
     rows: 1,
@@ -136,9 +136,9 @@ Deno.test("three ascii block mode keeps full-cell glyphs while preserving fill i
     backgroundColor: 0x000000,
   });
 
-  assertEquals(grid[0][0], "\x1b[48;2;0;28;0m\x1b[38;2;0;28;0m█\x1b[0m");
-  assertEquals(grid[0][1], "\x1b[48;2;0;57;0m\x1b[38;2;0;57;0m█\x1b[0m");
-  assertEquals(grid[0][2], "\x1b[48;2;0;170;0m\x1b[38;2;0;170;0m█\x1b[0m");
+  assertEquals(grid[0][0], "\x1b[48;2;0;255;0m\x1b[38;2;0;255;0m█\x1b[0m");
+  assertEquals(grid[0][1], "\x1b[48;2;0;255;0m\x1b[38;2;0;255;0m█\x1b[0m");
+  assertEquals(grid[0][2], "\x1b[48;2;0;255;0m\x1b[38;2;0;255;0m█\x1b[0m");
   assertEquals(grid[0][3], "\x1b[48;2;0;255;0m\x1b[38;2;0;255;0m█\x1b[0m");
 });
 
@@ -259,7 +259,7 @@ Deno.test("three ascii ANSI grid assembler keeps solid block cells stable across
   assertEquals(blankTinted !== blankDark, true);
 });
 
-Deno.test("three ascii ANSI grid assembler tints partial blocks against the active background", () => {
+Deno.test("three ascii ANSI grid assembler keeps partial block truecolor independent of background", () => {
   const assembler = new ThreeAsciiAnsiGridAssembler();
   const base = {
     columns: 1,
@@ -273,8 +273,8 @@ Deno.test("three ascii ANSI grid assembler tints partial blocks against the acti
   const blue = assembler.build({ ...base, backgroundColor: 0x0000ff })[0][0];
   const blueAgain = assembler.build({ ...base, backgroundColor: 0x0000ff })[0][0];
 
-  assertEquals(dark, "\x1b[48;2;227;0;0m\x1b[38;2;227;0;0m█\x1b[0m");
-  assertEquals(blue, "\x1b[48;2;227;0;28m\x1b[38;2;227;0;28m█\x1b[0m");
+  assertEquals(dark, "\x1b[48;2;255;0;0m\x1b[38;2;255;0;0m█\x1b[0m");
+  assertEquals(blue, "\x1b[48;2;255;0;0m\x1b[38;2;255;0;0m█\x1b[0m");
   assertEquals(blueAgain, blue);
 });
 

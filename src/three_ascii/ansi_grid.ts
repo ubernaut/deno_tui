@@ -24,7 +24,6 @@ const GLYPHS_BY_KEY = createGlyphKeyTable();
 const MAX_LINEAR_BYTE_CACHE_SIZE = 65536;
 const MAX_FOREGROUND_ANSI_CACHE_SIZE = 4096;
 const MAX_CELL_CACHE_SIZE = 16384;
-const MAX_MIXED_FOREGROUND_CACHE_SIZE = 8192;
 const GLYPH_MODE_BLOCKS = 0;
 const GLYPH_MODE_GLYPHS = 1;
 const GLYPH_MODE_MIXED = 2;
@@ -51,7 +50,6 @@ export class ThreeAsciiAnsiGridAssembler {
   private readonly toByte = createLinearByteCache();
   private readonly foregroundAnsiCache = new Map<number, string>();
   private readonly cellCache = new Map<number, string>();
-  private readonly mixedForegroundKeyCache = new Map<number, number>();
   private readonly reuseGrid: boolean;
   private reusableGrid: string[][] = [];
   private backgroundKey = -1;
@@ -183,15 +181,7 @@ export class ThreeAsciiAnsiGridAssembler {
           continue;
         }
 
-        const foregroundKey = this.foregroundKeyForCell(
-          index,
-          rawRed,
-          rawGreen,
-          rawBlue,
-          fillGlyphIndex,
-          glyphKey,
-          terminalGlyphMode,
-        );
+        const foregroundKey = this.byteColorKeyForIndex(index, rawRed, rawGreen, rawBlue);
         if (foregroundKey === lastForegroundKey && glyphKey === lastGlyphKey) {
           outputRow[column] = lastCell;
           continue;
@@ -301,15 +291,7 @@ export class ThreeAsciiAnsiGridAssembler {
           continue;
         }
 
-        const foregroundKey = this.foregroundKeyForCell(
-          index,
-          rawRed,
-          rawGreen,
-          rawBlue,
-          fillGlyphIndex,
-          glyphKey,
-          terminalGlyphMode,
-        );
+        const foregroundKey = this.byteColorKeyForIndex(index, rawRed, rawGreen, rawBlue);
         if (foregroundKey === lastForegroundKey && glyphKey === lastGlyphKey) {
           outputRow[column] = lastCell;
           continue;
@@ -393,15 +375,7 @@ export class ThreeAsciiAnsiGridAssembler {
           continue;
         }
 
-        const foregroundKey = this.foregroundKeyForCell(
-          index,
-          rawRed,
-          rawGreen,
-          rawBlue,
-          fillGlyphIndex,
-          glyphKey,
-          terminalGlyphMode,
-        );
+        const foregroundKey = this.byteColorKeyForIndex(index, rawRed, rawGreen, rawBlue);
         if (foregroundKey === lastForegroundKey && glyphKey === lastGlyphKey) {
           outputRow[column] = lastCell;
           continue;
@@ -440,48 +414,6 @@ export class ThreeAsciiAnsiGridAssembler {
     return grid;
   }
 
-  private foregroundKeyForCell(
-    index: number,
-    rawRed: number,
-    rawGreen: number,
-    rawBlue: number,
-    fillGlyphIndex: number,
-    glyphKey: number,
-    terminalGlyphMode: TerminalGlyphMode,
-  ): number {
-    const baseForegroundKey = this.byteColorKeyForIndex(index, rawRed, rawGreen, rawBlue);
-    if (
-      terminalGlyphMode === GLYPH_MODE_BLOCKS && glyphKey > 0 && glyphKey < GLYPH_KEY_GLYPHS_OFFSET &&
-      fillGlyphIndex < 14
-    ) {
-      return this.mixedForegroundKeyFor(baseForegroundKey, fillGlyphIndex);
-    }
-
-    if (
-      terminalGlyphMode !== GLYPH_MODE_MIXED || glyphKey <= 0 || glyphKey >= GLYPH_KEY_GLYPHS_OFFSET ||
-      fillGlyphIndex >= 14
-    ) {
-      return baseForegroundKey;
-    }
-
-    return this.mixedForegroundKeyFor(baseForegroundKey, fillGlyphIndex);
-  }
-
-  private mixedForegroundKeyFor(baseForegroundKey: number, fillGlyphIndex: number): number {
-    const fillBucket = fillBucketFromGlyphIndex(fillGlyphIndex);
-    const cacheKey = ((this.backgroundKey & 0xffffff) * 10 + fillBucket) * 0x1000000 + baseForegroundKey;
-    const cached = this.mixedForegroundKeyCache.get(cacheKey);
-    if (cached !== undefined) return cached;
-
-    const amount = fillBucket / 9;
-    const foregroundRed = mixByteChannel(this.backgroundRed, (baseForegroundKey >> 16) & 0xff, amount);
-    const foregroundGreen = mixByteChannel(this.backgroundGreen, (baseForegroundKey >> 8) & 0xff, amount);
-    const foregroundBlue = mixByteChannel(this.backgroundBlue, baseForegroundKey & 0xff, amount);
-    const foregroundKey = (foregroundRed << 16) | (foregroundGreen << 8) | foregroundBlue;
-    this.mixedForegroundKeyCache.set(cacheKey, foregroundKey);
-    return foregroundKey;
-  }
-
   private cellFor(
     foregroundKey: number,
     foregroundRed: number,
@@ -517,9 +449,6 @@ export class ThreeAsciiAnsiGridAssembler {
     }
     if (this.cellCache.size > MAX_CELL_CACHE_SIZE) {
       this.cellCache.clear();
-    }
-    if (this.mixedForegroundKeyCache.size > MAX_MIXED_FOREGROUND_CACHE_SIZE) {
-      this.mixedForegroundKeyCache.clear();
     }
   }
 
@@ -639,7 +568,6 @@ export class ThreeAsciiAnsiGridAssembler {
     const backgroundForeground = rgbToAnsiForeground(backgroundRed, backgroundGreen, backgroundBlue);
     this.blankAnsi = `${this.backgroundAnsi}${backgroundForeground} ${RESET}`;
     this.cellCache.clear();
-    this.mixedForegroundKeyCache.clear();
   }
 }
 
@@ -717,10 +645,6 @@ function rgbToAnsiForeground(red: number, green: number, blue: number): string {
 
 function rgbToAnsiBackground(red: number, green: number, blue: number): string {
   return `\x1b[48;2;${red};${green};${blue}m`;
-}
-
-function mixByteChannel(left: number, right: number, amount: number): number {
-  return Math.round(left + (right - left) * clampUnit(amount));
 }
 
 function fillBucketFromGlyphIndex(index: number): number {

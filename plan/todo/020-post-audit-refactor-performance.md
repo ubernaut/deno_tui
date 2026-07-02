@@ -104,3 +104,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   control dropdowns share clipping, row text, selected-state, and hit-rectangle math.
 - Extracted workbench modal row render commands so console and browser adapters share title/body/action row projection
   while keeping renderer-specific modal paint styles local.
+- Simplified Three ASCII block-mode color assembly so full-height block cells preserve source truecolor instead of
+  quantizing through fill-bucket background tinting, improving partial-block assembly benchmark throughput.
