@@ -672,9 +672,9 @@ function clampViewportOffset(offset, maxOffset) {
     rows: clamp(offset.rows, 0, Math.max(0, maxOffset.rows))
   };
 }
-function viewportOffsetBy(offset, maxOffset, columns, rows2) {
+function viewportOffsetBy(offset, maxOffset, columns2, rows2) {
   return clampViewportOffset({
-    columns: offset.columns + columns,
+    columns: offset.columns + columns2,
     rows: offset.rows + rows2
   }, maxOffset);
 }
@@ -739,7 +739,7 @@ function inspectViewportAxisOverflow(options) {
   };
 }
 function inspectViewportOverflow(options) {
-  const columns = inspectViewportAxisOverflow({
+  const columns2 = inspectViewportAxisOverflow({
     contentLength: options.contentWidth,
     viewportLength: options.viewportWidth,
     offset: options.offset?.columns,
@@ -752,10 +752,10 @@ function inspectViewportOverflow(options) {
     overflow: options.overflowY
   });
   return {
-    columns,
+    columns: columns2,
     rows: rows2,
-    maxOffset: { columns: columns.maxOffset, rows: rows2.maxOffset },
-    offset: { columns: columns.offset, rows: rows2.offset }
+    maxOffset: { columns: columns2.maxOffset, rows: rows2.maxOffset },
+    offset: { columns: columns2.offset, rows: rows2.offset }
   };
 }
 function inspectViewport(contentWidth, contentHeight, viewportWidth, viewportHeight, offset = { columns: 0, rows: 0 }) {
@@ -1491,10 +1491,10 @@ var DrawObject = class {
   queueRerenderRange(row, startColumn, endColumn) {
     const viewRectangle = this.view.peek()?.rectangle?.peek();
     if (row < 0) return;
-    const { columns, rows: rows2 } = this.canvas.size.peek();
+    const { columns: columns2, rows: rows2 } = this.canvas.size.peek();
     if (row >= rows2) return;
     let start = Math.max(0, Math.floor(startColumn));
-    let end = Math.min(columns, Math.ceil(endColumn));
+    let end = Math.min(columns2, Math.ceil(endColumn));
     if (viewRectangle) {
       if (row < viewRectangle.row || row >= viewRectangle.row + viewRectangle.height) return;
       start = Math.max(start, viewRectangle.column);
@@ -1556,9 +1556,9 @@ var DrawObject = class {
     }
   }
   updateOutOfBounds() {
-    const { columns, rows: rows2 } = this.canvas.size.peek();
+    const { columns: columns2, rows: rows2 } = this.canvas.size.peek();
     const { column, row, width, height } = this.rectangle.peek();
-    this.outOfBounds = width === 0 || height === 0 || column >= columns || row >= rows2 || column + width < 0 || row + height < 0;
+    this.outOfBounds = width === 0 || height === 0 || column >= columns2 || row >= rows2 || column + width < 0 || row + height < 0;
     if (!this.outOfBounds) {
       const viewRectangle = this.view.peek()?.rectangle?.peek();
       if (!viewRectangle) return;
@@ -1976,12 +1976,12 @@ var TextObject = class extends DrawObject {
   rerender() {
     const { canvas, valueChars, omitCells, rerenderCells } = this;
     const { frameBuffer, rerenderQueue } = canvas;
-    const { columns, rows: rows2 } = canvas.size.peek();
+    const { columns: columns2, rows: rows2 } = canvas.size.peek();
     const rectangle = this.rectangle.peek();
     const style2 = this.style.peek();
     const { row } = rectangle;
     let rowRange = Math.min(row, rows2);
-    let columnRange = Math.min(rectangle.column + valueChars.length, columns);
+    let columnRange = Math.min(rectangle.column + valueChars.length, columns2);
     const viewRectangle = this.view.peek()?.rectangle?.peek();
     if (viewRectangle) {
       rowRange = Math.min(row, viewRectangle.row + viewRectangle.height);
@@ -2404,12 +2404,12 @@ var BoxObject = class extends DrawObject {
   rerender() {
     const { canvas, rerenderCells, omitCells } = this;
     const { frameBuffer, rerenderQueue } = canvas;
-    const { rows: rows2, columns } = canvas.size.peek();
+    const { rows: rows2, columns: columns2 } = canvas.size.peek();
     const rectangle = this.rectangle.peek();
     const style2 = this.style.peek();
     const filler = this.filler.peek();
     let rowRange = Math.min(rectangle.row + rectangle.height, rows2);
-    let columnRange = Math.min(rectangle.column + rectangle.width, columns);
+    let columnRange = Math.min(rectangle.column + rectangle.width, columns2);
     const viewRectangle = this.view.peek()?.rectangle?.peek();
     if (viewRectangle) {
       rowRange = Math.min(rowRange, viewRectangle.row + viewRectangle.height);
@@ -2762,21 +2762,21 @@ var Canvas = class extends EventEmitter {
     this.size = signalify(options.size, { deepObserve: true });
     this.size.subscribe(() => {
       this.resizeNeeded = true;
-      const { columns: columns2, rows: rows3 } = this.size.peek();
-      this.sink.resize?.(columns2, rows3);
+      const { columns: columns3, rows: rows3 } = this.size.peek();
+      this.sink.resize?.(columns3, rows3);
     });
-    const { columns, rows: rows2 } = this.size.peek();
-    this.sink.resize?.(columns, rows2);
+    const { columns: columns2, rows: rows2 } = this.size.peek();
+    this.sink.resize?.(columns2, rows2);
   }
   resortDrawnObjects() {
     this.drawnObjects.sort(this.drawnObjects.compareFn);
     this.drawnOrderVersion += 1;
   }
   resize() {
-    const { columns, rows: rows2 } = this.size.peek();
+    const { columns: columns2, rows: rows2 } = this.size.peek();
     for (const drawObject of this.drawnObjects) {
       const { column, row } = drawObject.rectangle.peek();
-      if (column >= columns || row >= rows2) continue;
+      if (column >= columns2 || row >= rows2) continue;
       drawObject.rendered = false;
       drawObject.updated = false;
       this.updateObjects.push(drawObject);
@@ -2925,18 +2925,18 @@ var Canvas = class extends EventEmitter {
     let dirtyCells = 0;
     const cellUpdates = [];
     for (let row = 0; row < size.rows; ++row) {
-      const columns = rerenderQueue[row];
-      if (!columns?.size) continue;
+      const columns2 = rerenderQueue[row];
+      if (!columns2?.size) continue;
       dirtyRows += 1;
-      dirtyCells += columns.size;
+      dirtyCells += columns2.size;
       const rowBuffer = frameBuffer[row] ??= [];
-      for (const column of columns) {
+      for (const column of columns2) {
         const cell = rowBuffer[column];
         if (cell === void 0) continue;
         cellUpdates.push({ row, column, value: cell });
         flushedCells += 1;
       }
-      columns.clear();
+      columns2.clear();
     }
     const rowRanges = coalesceCanvasRowRanges(cellUpdates);
     this.lastRenderStats = {
@@ -3115,7 +3115,7 @@ var ThreeAsciiAnsiGridAssembler = class {
     this.reuseGrid = options.reuseGrid ?? false;
   }
   build(input2) {
-    const columns = Math.max(0, Math.floor(input2.columns));
+    const columns2 = Math.max(0, Math.floor(input2.columns));
     const rows2 = Math.max(0, Math.floor(input2.rows));
     const fillGlyphs = input2.fillGlyphs;
     const edgeGlyphs = input2.edgeGlyphs;
@@ -3133,11 +3133,11 @@ var ThreeAsciiAnsiGridAssembler = class {
     let lastRawRed = Number.NaN;
     let lastRawGreen = Number.NaN;
     let lastRawBlue = Number.NaN;
-    const grid = this.reuseGrid ? this.prepareReusableGrid(rows2, columns) : createStringGrid(rows2, columns);
+    const grid = this.reuseGrid ? this.prepareReusableGrid(rows2, columns2) : createStringGrid(rows2, columns2);
     if (!hasEdges) {
       return this.buildFillOnlyGrid(
         grid,
-        columns,
+        columns2,
         rows2,
         fillGlyphs,
         colors,
@@ -3153,8 +3153,8 @@ var ThreeAsciiAnsiGridAssembler = class {
     }
     for (let row = 0; row < rows2; row += 1) {
       const outputRow = grid[row];
-      for (let column = 0; column < columns; column += 1) {
-        const index = row * columns + column;
+      for (let column = 0; column < columns2; column += 1) {
+        const index = row * columns2 + column;
         const fillGlyphIndex = Math.round(fillGlyphs[index] ?? 0);
         let edgeGlyphIndex = 0;
         let dominantCount = 0;
@@ -3225,11 +3225,11 @@ var ThreeAsciiAnsiGridAssembler = class {
     this.stableBackgroundInput = void 0;
     this.toByte.clear();
   }
-  buildFillOnlyGrid(grid, columns, rows2, fillGlyphs, colors, terminalGlyphMode, terminalFillGlyphKeys, lastForegroundKey, lastGlyphKey, lastCell, lastRawRed, lastRawGreen, lastRawBlue) {
+  buildFillOnlyGrid(grid, columns2, rows2, fillGlyphs, colors, terminalGlyphMode, terminalFillGlyphKeys, lastForegroundKey, lastGlyphKey, lastCell, lastRawRed, lastRawGreen, lastRawBlue) {
     for (let row = 0; row < rows2; row += 1) {
       const outputRow = grid[row];
-      for (let column = 0; column < columns; column += 1) {
-        const index = row * columns + column;
+      for (let column = 0; column < columns2; column += 1) {
+        const index = row * columns2 + column;
         const fillGlyphIndex = Math.round(fillGlyphs[index] ?? 0);
         if (fillGlyphIndex < 5) {
           outputRow[column] = this.blankAnsi;
@@ -3294,12 +3294,12 @@ var ThreeAsciiAnsiGridAssembler = class {
       this.cellCache.clear();
     }
   }
-  prepareReusableGrid(rows2, columns) {
+  prepareReusableGrid(rows2, columns2) {
     const grid = this.reusableGrid;
     grid.length = rows2;
     for (let row = 0; row < rows2; row += 1) {
       grid[row] ??= [];
-      grid[row].length = columns;
+      grid[row].length = columns2;
     }
     return grid;
   }
@@ -3338,10 +3338,10 @@ var sharedThreeAsciiAnsiGridAssembler = new ThreeAsciiAnsiGridAssembler();
 function colorValue(input2, fallback) {
   return input2 instanceof Color2 ? input2 : new Color2(input2 ?? fallback);
 }
-function createStringGrid(rows2, columns) {
+function createStringGrid(rows2, columns2) {
   const grid = new Array(rows2);
   for (let row = 0; row < rows2; row += 1) {
-    grid[row] = new Array(columns);
+    grid[row] = new Array(columns2);
   }
   return grid;
 }
@@ -4006,10 +4006,10 @@ function tileRects(bounds, options) {
   const upperColumns = Math.max(1, Math.min(maxColumns, columnsByWidth, itemCount));
   const allowVerticalOverflow = options.allowVerticalOverflow ?? false;
   let best;
-  for (let columns = 1; columns <= upperColumns; columns += 1) {
-    const rows2 = Math.ceil(itemCount / columns);
+  for (let columns2 = 1; columns2 <= upperColumns; columns2 += 1) {
+    const rows2 = Math.ceil(itemCount / columns2);
     if (rows2 > maxRows && !allowVerticalOverflow) continue;
-    const tileWidth = Math.max(0, Math.floor((width - gap * Math.max(0, columns - 1)) / columns));
+    const tileWidth = Math.max(0, Math.floor((width - gap * Math.max(0, columns2 - 1)) / columns2));
     const fitHeight = Math.floor((height - gap * Math.max(0, rows2 - 1)) / rows2);
     const tileHeight = allowVerticalOverflow ? Math.max(minTileHeight, fitHeight) : fitHeight;
     if (tileWidth < minTileWidth || tileHeight < minTileHeight) continue;
@@ -4017,11 +4017,11 @@ function tileRects(bounds, options) {
     const overflow = Math.max(0, contentHeight - height);
     const aspect = tileWidth / Math.max(1, tileHeight);
     const aspectPenalty = Math.abs(Math.log(aspect / targetAspectRatio));
-    const emptySlots = columns * rows2 - itemCount;
+    const emptySlots = columns2 * rows2 - itemCount;
     const rowPenalty = rows2 > maxRows ? (rows2 - maxRows) * 6 : 0;
-    const score = overflow * 20 + aspectPenalty * 12 + emptySlots * 2 + rowPenalty - columns * 0.5;
+    const score = overflow * 20 + aspectPenalty * 12 + emptySlots * 2 + rowPenalty - columns2 * 0.5;
     if (!best || score < best.score) {
-      best = { columns, rows: rows2, tileWidth, tileHeight, contentHeight, score };
+      best = { columns: columns2, rows: rows2, tileWidth, tileHeight, contentHeight, score };
     }
   }
   if (!best) {
@@ -5606,7 +5606,7 @@ var SimpleLayoutSolver = class {
       columnCount = Math.max(columnCount, item.column + item.columnSpan);
       rowCount = Math.max(rowCount, item.row + item.rowSpan);
     }
-    const columns = resolveGridTracks(
+    const columns2 = resolveGridTracks(
       node.style.gridTemplateColumns,
       columnCount,
       bounds.width,
@@ -5620,14 +5620,14 @@ var SimpleLayoutSolver = class {
       rowGap,
       node.style.gridAutoRows
     );
-    const columnOffsets = gridTrackOffsets(bounds.column, columns, columnGap);
+    const columnOffsets = gridTrackOffsets(bounds.column, columns2, columnGap);
     const rowOffsets = gridTrackOffsets(bounds.row, rows2, rowGap);
     const boxes = new Array(placed.length);
     for (let index = 0; index < placed.length; index += 1) {
       const item = placed[index];
       const column = columnOffsets[item.column] ?? bounds.column;
       const row = rowOffsets[item.row] ?? bounds.row;
-      const width = gridSpanSize(columns, item.column, item.columnSpan, columnGap);
+      const width = gridSpanSize(columns2, item.column, item.columnSpan, columnGap);
       const height = gridSpanSize(rows2, item.row, item.rowSpan, rowGap);
       const itemBounds = alignGridItemBounds(item.node, { column, row, width, height });
       boxes[index] = this.#layoutNode(item.node, itemBounds, false, true);
@@ -7030,8 +7030,8 @@ function maxScrollOffset(contentWidth, contentHeight, viewportWidth, viewportHei
 function clampScrollOffset(offset, maxOffset) {
   return clampViewportOffset(offset, maxOffset);
 }
-function scrollOffsetBy(offset, maxOffset, columns, rows2) {
-  return viewportOffsetBy(offset, maxOffset, columns, rows2);
+function scrollOffsetBy(offset, maxOffset, columns2, rows2) {
+  return viewportOffsetBy(offset, maxOffset, columns2, rows2);
 }
 function scrollbarGlyph(row, thumb) {
   return viewportThumbGlyph(row, thumb);
@@ -7075,11 +7075,11 @@ var ScrollAreaController = class {
       this.viewportHeight.peek()
     );
   }
-  scrollBy(columns, rows2) {
-    return this.setOffset(scrollOffsetBy(this.offset.peek(), this.maxOffset(), columns, rows2));
+  scrollBy(columns2, rows2) {
+    return this.setOffset(scrollOffsetBy(this.offset.peek(), this.maxOffset(), columns2, rows2));
   }
-  scrollTo(columns, rows2) {
-    return this.setOffset(clampScrollOffset({ columns, rows: rows2 }, this.maxOffset()));
+  scrollTo(columns2, rows2) {
+    return this.setOffset(clampScrollOffset({ columns: columns2, rows: rows2 }, this.maxOffset()));
   }
   setContentSize(width, height) {
     this.contentWidth.value = normalizedScrollDimension(width);
@@ -8039,14 +8039,14 @@ function dispatchMarkupWidgetEvent(widget, event) {
     return true;
   }
   if (event.type === "scroll") {
-    const columns = event.columns ?? 0;
+    const columns2 = event.columns ?? 0;
     const rows2 = event.rows ?? 0;
     if (controller instanceof ScrollAreaController) {
-      controller.scrollBy(columns, rows2);
+      controller.scrollBy(columns2, rows2);
       return true;
     }
     if (controller instanceof SliderController) {
-      controller.handleScroll(rows2 || columns);
+      controller.handleScroll(rows2 || columns2);
       return true;
     }
     return false;
@@ -8732,9 +8732,9 @@ function htmlCssLayoutDemoBoxLabel(box) {
 
 // src/components/data_table.ts
 var SEARCH_WHITESPACE = /\s/;
-function createDataTableView(rows2, columns, state = {}, rowKey) {
+function createDataTableView(rows2, columns2, state = {}, rowKey) {
   const query = state.query ?? "";
-  const filtered = query.trim() ? filterDataRows(rows2, columns, query) : rows2;
+  const filtered = query.trim() ? filterDataRows(rows2, columns2, query) : rows2;
   const sorted = state.sort ? sortDataRows(filtered, state.sort) : filtered;
   const pageSize = Math.max(1, Math.floor(state.pageSize ?? (sorted.length || 1)));
   const selectedAbsoluteIndex = selectedRowIndex(sorted, state, rowKey);
@@ -8876,19 +8876,19 @@ var DataTableController = class {
     return this.#rowKey(row, view.page * view.pageSize + index);
   }
 };
-function filterDataRows(rows2, columns, query) {
+function filterDataRows(rows2, columns2, query) {
   const terms = parseSearchTerms(query);
   if (terms.length === 0) return [...rows2];
   const filtered = [];
   for (const row of rows2) {
-    if (dataRowMatchesTerms(row, columns, terms)) filtered.push(row);
+    if (dataRowMatchesTerms(row, columns2, terms)) filtered.push(row);
   }
   return filtered;
 }
-function dataRowMatchesTerms(row, columns, terms) {
+function dataRowMatchesTerms(row, columns2, terms) {
   for (const term of terms) {
     let matched = false;
-    for (const column of columns) {
+    for (const column of columns2) {
       if (stringifyCell(row[column.id]).toLowerCase().includes(term)) {
         matched = true;
         break;
@@ -8903,24 +8903,24 @@ function sortDataRows(rows2, sort) {
   const direction = sort.direction === "desc" ? -1 : 1;
   return [...rows2].sort((left, right) => compareCells(left[sort.columnId], right[sort.columnId]) * direction);
 }
-function renderDataTableHeader(columns, sort) {
+function renderDataTableHeader(columns2, sort) {
   let header = "";
-  for (let index = 0; index < columns.length; index += 1) {
-    const column = columns[index];
+  for (let index = 0; index < columns2.length; index += 1) {
+    const column = columns2[index];
     const suffix = sort?.columnId === column.id ? sort.direction === "asc" ? "\u2191" : "\u2193" : "";
     if (index > 0) header += " ";
     header += padCell(`${column.label ?? column.id}${suffix}`, column.width);
   }
   return header;
 }
-function renderDataTableRows(rows2, columns, selectedIndex = 0) {
+function renderDataTableRows(rows2, columns2, selectedIndex = 0) {
   const output = new Array(rows2.length);
   for (let index = 0; index < rows2.length; index += 1) {
     const row = rows2[index];
     const marker = index === selectedIndex ? ">" : " ";
     let line = `${marker} `;
-    for (let columnIndex = 0; columnIndex < columns.length; columnIndex += 1) {
-      const column = columns[columnIndex];
+    for (let columnIndex = 0; columnIndex < columns2.length; columnIndex += 1) {
+      const column = columns2[columnIndex];
       const value = column.format ? column.format(row[column.id], row) : stringifyCell(row[column.id]);
       if (columnIndex > 0) line += " ";
       line += padCell(value, column.width);
@@ -8935,8 +8935,8 @@ function nextSort(current, columnId) {
   }
   return { columnId, direction: "asc" };
 }
-function canSortColumn(columns, columnId) {
-  for (const column of columns) {
+function canSortColumn(columns2, columnId) {
+  for (const column of columns2) {
     if (column.id === columnId && column.sortable !== false) return true;
   }
   return false;
@@ -10304,6 +10304,24 @@ function readSgrSequenceAt(value, start) {
   if (value[index] !== "m") return void 0;
   return value.slice(start, index + 1);
 }
+function renderFrameRow(cells, width) {
+  const row = new Array(Math.max(0, width));
+  for (let column = 0; column < width; column += 1) {
+    row[column] = cells[column] ?? " ";
+  }
+  return row.join("");
+}
+function writeStringFrameRow(frame, width, row, column, value) {
+  if (row < 0 || row >= frame.length || column >= width) return;
+  const cells = toStyledCells(frame[row] ?? "");
+  const valueCells = toStyledCells(value);
+  let targetColumn = column;
+  for (let index = 0; index < valueCells.length && targetColumn < width; index += 1) {
+    if (targetColumn >= 0) cells[targetColumn] = valueCells[index];
+    targetColumn += 1;
+  }
+  frame[row] = renderFrameRow(cells, width);
+}
 function fitCellText(value, width) {
   const visible = textWidth(value);
   if (visible === width) return value;
@@ -10492,6 +10510,17 @@ function subscribeWorkbenchDiagnosticLog(diagnostics, onLog, options = {}) {
     if (!entry) return;
     onLog(formatWorkbenchDiagnosticLogEntry(entry, options));
   });
+}
+function appendBoundedWorkbenchLogRow(rows2, row, limit = 40) {
+  const maxLogEntries = Math.max(1, Math.floor(limit));
+  const retained = Math.min(rows2.length, maxLogEntries - 1);
+  const output = new Array(retained + 1);
+  const start = Math.max(0, rows2.length - retained);
+  for (let index = 0; index < retained; index += 1) {
+    output[index] = rows2[start + index];
+  }
+  output[retained] = row;
+  return output;
 }
 function appendBoundedRows(target, rows2, limit) {
   const start = Math.max(0, rows2.length - limit);
@@ -10993,8 +11022,8 @@ var TerminalScreenController = class {
       index += char.length;
     }
   }
-  resize(columns, rows2) {
-    const nextColumns = normalizeDimension(columns, this.#columns);
+  resize(columns2, rows2) {
+    const nextColumns = normalizeDimension(columns2, this.#columns);
     const nextRows = normalizeDimension(rows2, this.#rows);
     if (nextColumns === this.#columns && nextRows === this.#rows) return;
     this.#columns = nextColumns;
@@ -11484,15 +11513,15 @@ function sortedPrivateModes(modes) {
   }
   return sorted;
 }
-function createRows(columns, rows2) {
+function createRows(columns2, rows2) {
   const output = new Array(rows2);
   for (let row = 0; row < rows2; row += 1) {
-    output[row] = blankRow(columns);
+    output[row] = blankRow(columns2);
   }
   return output;
 }
-function blankRow(columns) {
-  return new Array(columns).fill(BLANK_CELL);
+function blankRow(columns2) {
+  return new Array(columns2).fill(BLANK_CELL);
 }
 function fillBlankCells(row, start, count) {
   const end = Math.min(row.length, start + Math.max(0, count));
@@ -11500,22 +11529,22 @@ function fillBlankCells(row, start, count) {
     row[column] = BLANK_CELL;
   }
 }
-function shiftCellsRight(row, start, amount, columns) {
+function shiftCellsRight(row, start, amount, columns2) {
   const shift = Math.max(0, amount);
   if (shift === 0) return;
-  for (let column = columns - 1; column >= start + shift; column -= 1) {
+  for (let column = columns2 - 1; column >= start + shift; column -= 1) {
     row[column] = row[column - shift] ?? BLANK_CELL;
   }
-  fillBlankCells(row, start, Math.min(shift, columns - start));
+  fillBlankCells(row, start, Math.min(shift, columns2 - start));
 }
-function shiftCellsLeft(row, start, amount, columns) {
+function shiftCellsLeft(row, start, amount, columns2) {
   const shift = Math.max(0, amount);
   if (shift === 0) return;
-  const fillStart = Math.max(start, columns - shift);
-  for (let column = start; column < columns - shift; column += 1) {
+  const fillStart = Math.max(start, columns2 - shift);
+  for (let column = start; column < columns2 - shift; column += 1) {
     row[column] = row[column + shift] ?? BLANK_CELL;
   }
-  fillBlankCells(row, fillStart, columns - fillStart);
+  fillBlankCells(row, fillStart, columns2 - fillStart);
 }
 function terminalCellRowsToText(rows2) {
   const output = new Array(rows2.length);
@@ -11551,39 +11580,39 @@ function cloneTerminalCellRows(rows2) {
 function fullScrollRegion(rows2) {
   return { top: 0, bottom: rows2 - 1 };
 }
-function defaultTabStops(columns) {
+function defaultTabStops(columns2) {
   const stops = /* @__PURE__ */ new Set();
-  for (let column = 8; column < columns; column += 8) stops.add(column);
+  for (let column = 8; column < columns2; column += 8) stops.add(column);
   return stops;
 }
-function resizeTabStops(stops, columns) {
+function resizeTabStops(stops, columns2) {
   const resized = /* @__PURE__ */ new Set();
   for (const stop of stops) {
-    if (stop > 0 && stop < columns) resized.add(stop);
+    if (stop > 0 && stop < columns2) resized.add(stop);
   }
-  for (let column = 8; column < columns; column += 8) {
+  for (let column = 8; column < columns2; column += 8) {
     if (stops.has(column)) resized.add(column);
   }
   return resized;
 }
-function nextTabStop(stops, column, columns) {
-  let next = columns - 1;
+function nextTabStop(stops, column, columns2) {
+  let next = columns2 - 1;
   for (const stop of stops) {
     if (stop > column && stop < next) next = stop;
   }
   return next;
 }
-function resizeState(state, columns, rows2) {
-  const cells = createRows(columns, rows2);
+function resizeState(state, columns2, rows2) {
+  const cells = createRows(columns2, rows2);
   for (let row = 0; row < Math.min(rows2, state.cells.length); row += 1) {
-    for (let column = 0; column < Math.min(columns, state.cells[row].length); column += 1) {
+    for (let column = 0; column < Math.min(columns2, state.cells[row].length); column += 1) {
       cells[row][column] = { ...state.cells[row][column] };
     }
   }
   return {
     cells,
     cursor: {
-      column: clamp3(state.cursor.column, 0, columns - 1),
+      column: clamp3(state.cursor.column, 0, columns2 - 1),
       row: clamp3(state.cursor.row, 0, rows2 - 1)
     }
   };
@@ -12519,8 +12548,8 @@ var BrowserCellCanvasSink = class {
     this.#context.font = this.#font;
     this.#context.textBaseline = "top";
   }
-  resize(columns, rows2) {
-    this.#columns = Math.max(1, Math.floor(columns));
+  resize(columns2, rows2) {
+    this.#columns = Math.max(1, Math.floor(columns2));
     this.#rows = Math.max(1, Math.floor(rows2));
     this.#canvas.width = Math.ceil(this.#columns * this.#cellWidth * this.#pixelRatio);
     this.#canvas.height = Math.ceil(this.#rows * this.#cellHeight * this.#pixelRatio);
@@ -13086,6 +13115,75 @@ function createWebTui(options) {
 // src/web/remote_terminal.ts
 var textDecoder4 = new TextDecoder();
 
+// app/api_workbench_catalog.ts
+function createApiWorkbenchThemes() {
+  return grWizardThemePalettes.map((palette) => ({
+    id: palette.name,
+    label: palette.label,
+    background: palette.bg,
+    backgroundSoft: palette.bgAlt,
+    panel: palette.panel,
+    panelSoft: palette.panelAlt,
+    surface: palette.surface,
+    border: palette.border,
+    borderStrong: palette.borderStrong,
+    accent: palette.accent,
+    accentDeep: palette.accentDeep,
+    text: palette.text,
+    muted: palette.textMuted,
+    soft: palette.textSoft,
+    good: palette.success,
+    warn: palette.warning,
+    danger: palette.danger,
+    buttonBg: palette.accentDeep,
+    buttonText: contrastText(palette.accentDeep, palette.bg, palette.text),
+    buttonActiveBg: palette.accent,
+    buttonActiveText: contrastText(palette.accent, palette.bg, palette.text),
+    buttonMutedBg: palette.panelAlt,
+    buttonMutedText: palette.textMuted
+  }));
+}
+var apiWorkbenchRows = [
+  { id: "explorer", surface: "File Explorer", api: "tree", state: "browsing", latency: 3 },
+  { id: "layout", surface: "Adaptive Grid", api: "layout", state: "ready", latency: 4 },
+  { id: "tiles", surface: "Tile Layout", api: "layout", state: "balancing", latency: 6 },
+  { id: "menu", surface: "Menu Bar", api: "component", state: "active", latency: 2 },
+  { id: "scroll", surface: "Scroll Area", api: "viewport", state: "tracking", latency: 3 },
+  { id: "data", surface: "Data Table", api: "data", state: "sorted", latency: 8 },
+  { id: "modal", surface: "Modal Window", api: "overlay", state: "armed", latency: 4 },
+  { id: "theme", surface: "Theme Selector", api: "theme", state: "bound", latency: 5 },
+  { id: "worker", surface: "Worker Pool", api: "runtime", state: "queued", latency: 11 },
+  { id: "cache", surface: "Cached Resource", api: "runtime", state: "warm", latency: 1 }
+];
+var apiWorkbenchColumns = [
+  { id: "surface", label: "Surface", width: 18, sortable: true },
+  { id: "api", label: "API", width: 10, sortable: true },
+  { id: "state", label: "State", width: 10, sortable: true },
+  { id: "latency", label: "ms", width: 4, sortable: true, format: (value) => `${value}` }
+];
+var apiWorkbenchDocs = [
+  "API Workbench demonstrates controller-first composition.",
+  "WindowManagerController owns focus, fullscreen, minimized state, and shared top/bottom chrome.",
+  "FileExplorerController builds a tree-backed browser for project files and command surfaces.",
+  "MenuBarController owns active menu state and selection.",
+  "tileRects balances panes across one, two, three, or four columns.",
+  "ScrollAreaController clamps offsets and reports scrollbar thumbs.",
+  "DataTableController handles keyed selection, sorting, paging, and filtering.",
+  "HTML/CSS Layout window runs markup, cascade, wrapped flex, and absolute positioning through LayoutEngine.",
+  "Terminal Output window runs a real subprocess, streams stdout/stderr, and keeps bounded scrollback.",
+  "ModalController provides centered pop-over content with trapped keyboard focus and action buttons.",
+  "ThreePanelFrameView feeds Acerola three.js ASCII cells into the shared workbench frame buffer.",
+  "Three ASCII viewports support mousewheel zoom plus click-drag model rotation.",
+  "SliderController and CheckBoxController expose input state without renderer coupling.",
+  "Theme selection updates all surfaces through shared semantic tokens.",
+  "Window controls demonstrate minimize, maximize, restore, focus, and layout recomposition.",
+  "Mouse clicks work on window buttons and theme swatches; keyboard shortcuts mirror command surfaces.",
+  "This demo intentionally uses public controllers plus canvas primitives so the composition remains transparent.",
+  "Resize the terminal: panels collapse from side-by-side to stacked narrow layouts.",
+  "Use [ and ] to tune tile density; use T to cycle themes.",
+  "Use Tab or 1-8 to focus built-in windows; use M, F, R for window controls."
+];
+
 // src/app/workbench/controller.ts
 var WorkbenchController = class {
   menus;
@@ -13274,54 +13372,12 @@ var host = createWebTui({
     font: "14px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
   }
 });
-var themes = grWizardThemePalettes.map((palette) => ({
-  id: palette.name,
-  label: palette.label,
-  bg: palette.bg,
-  bgAlt: palette.bgAlt,
-  panel: palette.panel,
-  panelAlt: palette.panelAlt,
-  surface: palette.surface,
-  border: palette.border,
-  borderStrong: palette.borderStrong,
-  accent: palette.accent,
-  accentDeep: palette.accentDeep,
-  text: palette.text,
-  muted: palette.textMuted,
-  soft: palette.textSoft,
-  good: palette.success,
-  warn: palette.warning,
-  danger: palette.danger,
-  buttonBg: palette.accentDeep,
-  buttonActiveBg: palette.accent,
-  buttonMutedBg: palette.panelAlt
-}));
+var themes = createApiWorkbenchThemes();
 var themeLabels = themes.map((entry) => entry.label);
 var themeMenuWidth = Math.max(22, maxTextWidth(themeLabels) + 6);
-var rows = [
-  { id: "explorer", surface: "FileExplorer", state: "browsing", ms: 3 },
-  { id: "menu", surface: "MenuBar", state: "active", ms: 2 },
-  { id: "tiles", surface: "Tile Layout", state: "balanced", ms: 5 },
-  { id: "layout", surface: "HTML/CSS Layout", state: "solver", ms: 7 },
-  { id: "table", surface: "DataTable", state: "sorted", ms: 8 },
-  { id: "scroll", surface: "ScrollArea", state: "tracking", ms: 3 },
-  { id: "theme", surface: "Theme", state: "bound", ms: 4 },
-  { id: "terminal", surface: "Remote Terminal", state: "browser-safe", ms: 5 },
-  { id: "mouse", surface: "Pointer", state: "captured", ms: 1 },
-  { id: "three", surface: "Three ASCII", state: "preview", ms: 6 }
-];
-var docs = [
-  "Click panel buttons to minimize, maximize, or restore.",
-  "Open the Theme menu for the same dropdown-style theme selector as the terminal workbench.",
-  "Use Tab, 1-8, M, F, R, T, H, Q, [ and ] from the keyboard.",
-  "The browser host maps pointer cells to the same mouse events as the terminal.",
-  "Touch: compact command buttons, larger hit targets, and drag scrolling are enabled on small/coarse-pointer screens.",
-  "Resize the browser: the terminal grid recalculates from CSS dimensions.",
-  "The web workbench includes Explorer, Data, Controls, Logs, and a browser-safe Three ASCII preview pane.",
-  "HTML/CSS Layout previews parseTuiMarkup, CSS cascade, flex wrap, and absolute positioning in a browser-hosted window.",
-  "Terminal shows browser-safe session tabs backed by TerminalWorkspaceController and TerminalScreenController.",
-  "The demo uses public controllers and canvas primitives from mod.web.ts."
-];
+var rows = apiWorkbenchRows;
+var columns = apiWorkbenchColumns;
+var docs = apiWorkbenchDocs;
 var panelIds = [
   "explorer",
   "inspector",
@@ -13355,9 +13411,11 @@ var workbenchController = new WorkbenchController({
       themeMenuOpen.value = state.openId === "theme";
     }
   },
-  windows: panelIds.map((id2, order) => ({ id: id2, title: id2, order }))
+  windows: panelIds.map((id2, order) => ({ id: id2, title: id2, order, minWidth: 26, minHeight: 10 }))
 });
 var topMenus = workbenchController.menus;
+var webWindows = workbenchController.windows;
+var webWindowManagerStateKey = "";
 var tileDensity = new Signal(Math.max(-3, Math.min(3, Math.floor(initialWorkspace.tileDensity ?? 0))));
 var lineSignals = [];
 var log = new Signal(
@@ -13539,19 +13597,15 @@ var explorer = new FileExplorerController({
 });
 var table = new DataTableController({
   rows,
-  columns: [
-    { id: "surface", label: "Surface", width: 14, sortable: true },
-    { id: "state", label: "State", width: 10, sortable: true },
-    { id: "ms", label: "ms", width: 4, sortable: true, format: (value) => `${value}` }
-  ],
+  columns,
   rowKey: (row) => row.id,
-  initialState: { pageSize: 4, sort: { columnId: "ms", direction: "asc" } }
+  initialState: { pageSize: 4, sort: { columnId: "latency", direction: "asc" } }
 });
 new BoxObject({
   canvas: host.canvas,
   rectangle: new Computed(() => ({ column: 0, row: 0, width: cols(), height: rowsCount() })),
   filler: " ",
-  style: new Computed(() => createAnsiStyle2({ background: hex(theme().bg) })),
+  style: new Computed(() => createAnsiStyle2({ background: hex(theme().background) })),
   zIndex: -2
 }).draw();
 ensureLines();
@@ -13638,7 +13692,10 @@ host.start();
 draw();
 var timer = setInterval(() => {
   if (live.checked.peek()) {
-    table.rows.value = rows.map((row, index) => ({ ...row, ms: (row.ms + index + slider.value.peek()) % 18 + 1 }));
+    table.rows.value = rows.map((row, index) => ({
+      ...row,
+      latency: (row.latency + index + slider.value.peek()) % 18 + 1
+    }));
     draw();
   }
 }, 650);
@@ -13673,11 +13730,11 @@ function draw() {
     screenRows,
     height,
     () => "",
-    () => paint(" ".repeat(width), theme().text, theme().bg)
+    () => paint(" ".repeat(width), theme().text, theme().background)
   );
-  write(frame, 0, 0, paint(" ".repeat(width), theme().text, theme().bgAlt));
+  write(frame, 0, 0, paint(" ".repeat(width), theme().text, theme().backgroundSoft));
   write(frame, 1, 0, paint(" ".repeat(width), theme().text, theme().panel));
-  write(frame, 0, 1, paint(` API WORKBENCH `, theme().bg, theme().accent, true));
+  write(frame, 0, 1, paint(` API WORKBENCH `, theme().background, theme().accent, true));
   const closeLabel = buttonText2("x", true);
   const closeWidth = textWidth(closeLabel);
   const menuWidth = Math.max(0, width - 18 - closeWidth);
@@ -13686,7 +13743,11 @@ function draw() {
     frame,
     0,
     17,
-    paint(fit(renderMenuBar(menu.items.peek(), menu.activeIndex.peek()), menuWidth), theme().text, theme().bgAlt)
+    paint(
+      fit(renderMenuBar(menu.items.peek(), menu.activeIndex.peek()), menuWidth),
+      theme().text,
+      theme().backgroundSoft
+    )
   );
   if (width >= 22) {
     writeButton(frame, 0, width - closeWidth, "x", { compact: true, tone: "danger" });
@@ -13718,9 +13779,9 @@ function draw() {
     workspaceVirtualRows,
     Math.max(body.height, layout.contentHeight),
     () => "",
-    () => paint(" ".repeat(layout.bounds.width), theme().text, theme().bgAlt)
+    () => paint(" ".repeat(layout.bounds.width), theme().text, theme().backgroundSoft)
   );
-  fillRect(virtual, layout.bounds, theme().bgAlt);
+  fillRect(virtual, layout.bounds, theme().backgroundSoft);
   const hitStart = hitTargets.length;
   if (maximized.peek()) {
     renderPanel(virtual, maximized.peek(), layout.bounds);
@@ -13760,7 +13821,7 @@ function draw() {
         width
       ),
       theme().text,
-      theme().panelAlt
+      theme().panelSoft
     ),
     width
   );
@@ -13772,7 +13833,7 @@ function renderShelf(frame) {
   const entries = Object.entries(minimized.peek()).filter(([, value]) => value).map(([id2]) => ({ id: id2, title: panelTitle(id2) }));
   if (entries.length === 0) return;
   const layout = layoutWorkbenchShelf({ row, column: 2, width: Math.max(0, cols() - 2), entries });
-  write(frame, row, layout.prefixRect.column, paint(layout.prefix, theme().muted, theme().bgAlt));
+  write(frame, row, layout.prefixRect.column, paint(layout.prefix, theme().muted, theme().backgroundSoft));
   for (const button of layout.buttons) {
     writeButton(frame, row, button.rect.column, button.label, { tone: "muted", maxWidth: button.rect.width });
     hitTargets.add(button.rect, { type: "restore", id: button.id });
@@ -13847,7 +13908,7 @@ function renderWindowTabs(frame) {
       hidden: minimized.peek()[id2]
     }))
   });
-  write(frame, row, layout.prefixRect.column, paint(layout.prefix, theme().muted, theme().bgAlt));
+  write(frame, row, layout.prefixRect.column, paint(layout.prefix, theme().muted, theme().backgroundSoft));
   for (const button of layout.buttons) {
     writeButton(frame, row, button.rect.column, button.label, {
       state: button.selected ? "active" : "base",
@@ -13861,7 +13922,7 @@ function renderPanel(frame, id2, rect) {
   if (rect.width < 10 || rect.height < 4) return;
   hitTargets.add(rect, { type: "focus", id: id2 });
   const selected = active.peek() === id2;
-  fillRect(frame, rect, selected ? theme().panelAlt : theme().panel);
+  fillRect(frame, rect, selected ? theme().panelSoft : theme().panel);
   const border = selected ? theme().accent : theme().borderStrong;
   const title = panelTitle(id2).toUpperCase();
   const top = `\u250C ${title} ${"\u2500".repeat(Math.max(0, rect.width - title.length - 24))}             \u2510`;
@@ -13869,7 +13930,7 @@ function renderPanel(frame, id2, rect) {
     frame,
     rect.row,
     rect.column,
-    paint(fit(top, rect.width), border, selected ? theme().panelAlt : theme().panel, selected)
+    paint(fit(top, rect.width), border, selected ? theme().panelSoft : theme().panel, selected)
   );
   for (const button of layoutWorkbenchTitlebar({ rect, title: panelTitle(id2) }).buttons) {
     if (button.kind === "config") continue;
@@ -13884,14 +13945,14 @@ function renderPanel(frame, id2, rect) {
       frame,
       rect.row + r,
       rect.column,
-      paint(`\u2502${" ".repeat(rect.width - 2)}\u2502`, border, selected ? theme().panelAlt : theme().panel)
+      paint(`\u2502${" ".repeat(rect.width - 2)}\u2502`, border, selected ? theme().panelSoft : theme().panel)
     );
   }
   write(
     frame,
     rect.row + rect.height - 1,
     rect.column,
-    paint(`\u2514${"\u2500".repeat(rect.width - 2)}\u2518`, border, selected ? theme().panelAlt : theme().panel)
+    paint(`\u2514${"\u2500".repeat(rect.width - 2)}\u2518`, border, selected ? theme().panelSoft : theme().panel)
   );
   const inner = {
     column: rect.column + 2,
@@ -13966,7 +14027,7 @@ function renderExplorer(frame, rect) {
       rect.column,
       paint(
         fit(label, rect.width),
-        selected ? contrastText(theme().warn, theme().bg, theme().text) : node.kind === "directory" ? theme().good : theme().text,
+        selected ? contrastText(theme().warn, theme().background, theme().text) : node.kind === "directory" ? theme().good : theme().text,
         selected ? theme().warn : theme().surface,
         selected || node.kind === "directory"
       )
@@ -14017,7 +14078,7 @@ function writeThreePreviewLine(frame, rect, index, line) {
     rect.column,
     paint(
       fit(line, rect.width),
-      header ? contrastText(theme().accent, theme().bg, theme().text) : accent,
+      header ? contrastText(theme().accent, theme().background, theme().text) : accent,
       header ? theme().accent : theme().surface,
       header || index > 3
     )
@@ -14025,13 +14086,13 @@ function writeThreePreviewLine(frame, rect, index, line) {
   return index + 1;
 }
 function asciiOrb(target, width, height, phase) {
-  const columns = Math.max(8, width);
+  const columns2 = Math.max(8, width);
   const rows2 = Math.max(3, height);
   const glyphs = " .:-=+*#%@";
   return prepareWorkbenchRows(target, rows2, () => "", (_line, row) => {
     let line = "";
-    for (let column = 0; column < columns; column += 1) {
-      const x = column / Math.max(1, columns - 1) * 2 - 1;
+    for (let column = 0; column < columns2; column += 1) {
+      const x = column / Math.max(1, columns2 - 1) * 2 - 1;
       const y = row / Math.max(1, rows2 - 1) * 2 - 1;
       const ring = Math.abs(Math.sqrt(x * x * 2.8 + y * y * 1.8) - 0.62);
       const wave = Math.sin(column * 0.32 + phase * 0.18) + Math.cos(row * 0.7 - phase * 0.14);
@@ -14059,7 +14120,7 @@ function renderHtmlCssLayout(frame, rect) {
       frame,
       start + index,
       rect.column,
-      paint(fit(rows2[index], rect.width), index === 0 ? t.accent : t.soft, t.panelAlt, index === 0)
+      paint(fit(rows2[index], rect.width), index === 0 ? t.accent : t.soft, t.panelSoft, index === 0)
     );
   }
 }
@@ -14085,23 +14146,33 @@ function renderHtmlCssLayoutBox(frame, box, bounds, t) {
 }
 function htmlCssLayoutBoxStyle(box, t) {
   if (box.id === "layout-toolbar") {
-    return { fg: contrastText(t.accentDeep, t.bg, t.text), bg: t.accentDeep, border: t.accent, bold: true };
+    return { fg: contrastText(t.accentDeep, t.background, t.text), bg: t.accentDeep, border: t.accent, bold: true };
   }
-  if (box.id === "layout-stage") return { fg: t.text, bg: t.panelAlt, border: t.borderStrong, bold: true };
+  if (box.id === "layout-stage") return { fg: t.text, bg: t.panelSoft, border: t.borderStrong, bold: true };
   if (box.id === "layout-grid") return { fg: t.text, bg: t.surface, border: t.accent, bold: true };
   if (box.id === "grid-shell") {
-    return { fg: contrastText(t.buttonActiveBg, t.bg, t.text), bg: t.buttonActiveBg, border: t.accent, bold: true };
+    return {
+      fg: contrastText(t.buttonActiveBg, t.background, t.text),
+      bg: t.buttonActiveBg,
+      border: t.accent,
+      bold: true
+    };
   }
   if (box.id === "grid-worker") {
-    return { fg: contrastText(t.warn, t.bg, t.text), bg: t.warn, border: t.danger, bold: true };
+    return { fg: contrastText(t.warn, t.background, t.text), bg: t.warn, border: t.danger, bold: true };
   }
   if (box.id.startsWith("grid-")) return { fg: t.text, bg: t.panel, border: t.accent };
   if (box.id === "layout-badge") {
-    return { fg: contrastText(t.warn, t.bg, t.text), bg: t.warn, border: t.danger, bold: true };
+    return { fg: contrastText(t.warn, t.background, t.text), bg: t.warn, border: t.danger, bold: true };
   }
   if (box.id === "layout-footer") return { fg: t.muted, bg: t.panel, border: t.border };
   if (box.id === "metric-cpu") {
-    return { fg: contrastText(t.buttonActiveBg, t.bg, t.text), bg: t.buttonActiveBg, border: t.accent, bold: true };
+    return {
+      fg: contrastText(t.buttonActiveBg, t.background, t.text),
+      bg: t.buttonActiveBg,
+      border: t.accent,
+      bold: true
+    };
   }
   if (box.id.startsWith("metric-")) return { fg: t.text, bg: t.panel, border: t.accent };
   return { fg: t.text, bg: t.surface, border: t.border };
@@ -14147,19 +14218,24 @@ function renderTerminalProtocol(frame, rect) {
     `active ${workspace.active?.title ?? "none"}  screen ${inspection.columns}x${inspection.rows}  cursor ${inspection.cursor.column},${inspection.cursor.row}  sessions ${workspace.count}`
   ];
   headerRows.slice(0, Math.min(2, rect.height)).forEach((line, index) => {
-    const bg = index === 0 ? t.accentDeep : t.panelAlt;
-    const fg = index === 0 ? contrastText(t.accentDeep, t.bg, t.text) : index === 1 ? t.warn : t.soft;
+    const bg = index === 0 ? t.accentDeep : t.panelSoft;
+    const fg = index === 0 ? contrastText(t.accentDeep, t.background, t.text) : index === 1 ? t.warn : t.soft;
     write(frame, rect.row + index, rect.column, paint(fit(line, rect.width), fg, bg, index === 0));
   });
   renderTerminalSessionTabs(frame, { column: rect.column, row: rect.row + 2, width: rect.width, height: 1 });
-  fillRect(frame, screenRect, t.bg);
+  fillRect(frame, screenRect, t.background);
   const rows2 = webTerminalScreen.textRows();
   rows2.slice(0, screenRect.height).forEach((line, index) => {
-    write(frame, screenRect.row + index, screenRect.column, paint(fit(line, screenRect.width), t.text, t.bg));
+    write(frame, screenRect.row + index, screenRect.column, paint(fit(line, screenRect.width), t.text, t.background));
   });
   const cursor = webTerminalScreen.cursor;
   if (cursor.row < screenRect.height && cursor.column < screenRect.width) {
-    write(frame, screenRect.row + cursor.row, screenRect.column + cursor.column, paint(" ", t.bg, t.accent, true));
+    write(
+      frame,
+      screenRect.row + cursor.row,
+      screenRect.column + cursor.column,
+      paint(" ", t.background, t.accent, true)
+    );
   }
   const footerRow = rect.row + rect.height - 1;
   if (footerRow >= screenRect.row) {
@@ -14171,7 +14247,7 @@ function renderTerminalSessionTabs(frame, rect) {
   if (rect.height <= 0 || rect.width <= 0) return;
   const workspace = webTerminalWorkspace.inspect();
   let column = rect.column;
-  fillRect(frame, rect, theme().panelAlt);
+  fillRect(frame, rect, theme().panelSoft);
   for (const session of workspace.sessions) {
     const activeSession = workspace.activeId === session.id;
     const label = `${activeSession ? "\u25CF" : "\u25CB"} ${session.title}`;
@@ -14183,8 +14259,8 @@ function renderTerminalSessionTabs(frame, rect) {
       column,
       paint(
         fit(` ${label}`, width),
-        activeSession ? contrastText(theme().accent, theme().bg, theme().text) : theme().text,
-        activeSession ? theme().accent : theme().panelAlt,
+        activeSession ? contrastText(theme().accent, theme().background, theme().text) : theme().text,
+        activeSession ? theme().accent : theme().panelSoft,
         activeSession
       )
     );
@@ -14194,13 +14270,13 @@ function renderTerminalSessionTabs(frame, rect) {
   }
 }
 function syncWebTerminalScreen(width, height) {
-  const columns = Math.max(20, Math.floor(width));
+  const columns2 = Math.max(20, Math.floor(width));
   const rows2 = Math.max(3, Math.floor(height));
   const activeSession = webTerminalWorkspace.active;
-  const key = `${columns}x${rows2}:${theme().id}:${activeSession?.id ?? "none"}`;
+  const key = `${columns2}x${rows2}:${theme().id}:${activeSession?.id ?? "none"}`;
   if (key === webTerminalScreenKey) return;
   webTerminalScreenKey = key;
-  webTerminalScreen.resize(columns, rows2);
+  webTerminalScreen.resize(columns2, rows2);
   webTerminalScreen.clear();
   const transcript = activeSession?.id === "remote-attach" ? [
     "\x1B[1mremote-attach\x1B[0m:\x1B[34m~/deno_tui\x1B[0m$ connect ws://localhost:8787/terminal",
@@ -14416,25 +14492,29 @@ function adjustTileDensity(delta) {
   push(`tile density ${tileDensity.peek()}`);
 }
 function workspaceLayout(bounds) {
-  const fullscreenId = maximized.peek() ?? void 0;
-  const manager = new WindowManagerController({
-    activeId: active.peek(),
-    fullscreenId,
-    windows: panelIds.map((id2, order) => ({
-      id: id2,
-      title: id2,
-      order,
-      state: minimized.peek()[id2] && id2 !== fullscreenId ? "minimized" : "normal",
-      minWidth: 26,
-      minHeight: 10
-    }))
-  });
-  const layout = manager.layout({
+  syncWebWindowManagerState();
+  const layout = webWindows.layout({
     bounds,
     tileOptions: workbenchAdaptiveTileOptions({ bounds, tileDensity: tileDensity.peek() })
   });
-  manager.dispose();
   return workbenchWindowLayout(bounds, layout);
+}
+function syncWebWindowManagerState() {
+  const fullscreenId = maximized.peek() ?? void 0;
+  const minimizedState = minimized.peek();
+  const key = `${active.peek()}|${fullscreenId ?? ""}|${panelIds.map((id2) => minimizedState[id2] ? "1" : "0").join("")}`;
+  if (key === webWindowManagerStateKey) return;
+  webWindowManagerStateKey = key;
+  webWindows.activeId.value = active.peek();
+  webWindows.fullscreenId.value = fullscreenId;
+  webWindows.windows.value = panelIds.map((id2, order) => ({
+    id: id2,
+    title: id2,
+    order,
+    state: minimizedState[id2] && id2 !== fullscreenId ? "minimized" : "normal",
+    minWidth: 26,
+    minHeight: 10
+  }));
 }
 function blitWorkspace(frame, virtual, bounds, offset, width) {
   for (let row = 0; row < bounds.height; row += 1) {
@@ -14449,7 +14529,12 @@ function renderWorkspaceScrollbar(frame, bounds) {
   const thumb = overflow.rows.thumb;
   hitTargets.add(rect, { type: "workspaceScrollbar" });
   for (let row = 0; row < bounds.height; row += 1) {
-    write(frame, bounds.row + row, column, paint(scrollbarGlyph(row, thumb), theme().accent, theme().bgAlt, true));
+    write(
+      frame,
+      bounds.row + row,
+      column,
+      paint(scrollbarGlyph(row, thumb), theme().accent, theme().backgroundSoft, true)
+    );
   }
 }
 function renderDropdownOverlay(frame) {
@@ -14460,12 +14545,12 @@ function renderDropdownOverlay(frame) {
     bounds: { column: 0, row: 0, width: cols(), height: rowsCount() }
   });
   if (!rect) return;
-  fillRect(frame, rect, theme().panelAlt);
+  fillRect(frame, rect, theme().panelSoft);
   write(
     frame,
     rect.row,
     rect.column,
-    paint(`\u250C${"\u2500".repeat(Math.max(0, rect.width - 2))}\u2510`, theme().accent, theme().panelAlt, true)
+    paint(`\u250C${"\u2500".repeat(Math.max(0, rect.width - 2))}\u2510`, theme().accent, theme().panelSoft, true)
   );
   for (const [index, item] of overlay.items.entries()) {
     const row = rect.row + 1 + index;
@@ -14478,8 +14563,8 @@ function renderDropdownOverlay(frame) {
       rect.column,
       paint(
         `\u2502 ${fit(`${marker} ${item}`, rect.width - 4)} \u2502`,
-        selected ? contrastText(theme().warn, theme().bg, theme().text) : theme().text,
-        selected ? theme().warn : theme().panelAlt,
+        selected ? contrastText(theme().warn, theme().background, theme().text) : theme().text,
+        selected ? theme().warn : theme().panelSoft,
         selected
       )
     );
@@ -14492,7 +14577,7 @@ function renderDropdownOverlay(frame) {
     frame,
     rect.row + rect.height - 1,
     rect.column,
-    paint(`\u2514${"\u2500".repeat(Math.max(0, rect.width - 2))}\u2518`, theme().accent, theme().panelAlt, true)
+    paint(`\u2514${"\u2500".repeat(Math.max(0, rect.width - 2))}\u2518`, theme().accent, theme().panelSoft, true)
   );
 }
 function renderModalOverlay(frame) {
@@ -14505,8 +14590,8 @@ function renderModalOverlay(frame) {
     contentHeight: modalContentHeight(inspection, probeWidth),
     maxWidth: 74
   });
-  if (shadow.width > 0 && shadow.height > 0) fillRect(frame, shadow, theme().bg);
-  fillRect(frame, rect, theme().panelAlt);
+  if (shadow.width > 0 && shadow.height > 0) fillRect(frame, shadow, theme().background);
+  fillRect(frame, rect, theme().panelSoft);
   drawFrame(frame, rect, inspection.title, true);
   const rows2 = renderModalRows(inspection, { width: rect.width, height: inner.height });
   for (let index = 0; index < rows2.length && index < inner.height; index += 1) {
@@ -14519,7 +14604,7 @@ function renderModalOverlay(frame) {
       paint(
         fit(actionRow2 ? "" : rows2[index], inner.width),
         titleRow ? theme().accent : theme().text,
-        actionRow2 ? theme().panel : theme().panelAlt,
+        actionRow2 ? theme().panel : theme().panelSoft,
         actionRow2 || titleRow
       )
     );
@@ -14541,19 +14626,19 @@ function renderModalOverlay(frame) {
 function panelLineStyle(id2, index) {
   const t = theme();
   if (id2 === "data" && index === 0) {
-    return { fg: contrastText(t.accentDeep, t.bg, t.text), bg: t.accentDeep, bold: true };
+    return { fg: contrastText(t.accentDeep, t.background, t.text), bg: t.accentDeep, bold: true };
   }
   if (id2 === "data" && index > 0 && index - 1 === table.view.peek().selectedIndex) {
-    return { fg: contrastText(t.warn, t.bg, t.text), bg: t.warn, bold: true };
+    return { fg: contrastText(t.warn, t.background, t.text), bg: t.warn, bold: true };
   }
   if (id2 === "inspector" && (index === 0 || index === 7)) {
-    return { fg: t.bg, bg: index === 0 ? t.accent : t.border, bold: true };
+    return { fg: t.background, bg: index === 0 ? t.accent : t.border, bold: true };
   }
   if (id2 === "logs") return { fg: t.text, bg: t.surface };
   return { fg: t.text, bg: t.surface };
 }
 function push(message) {
-  log.value = [...log.peek(), `${(/* @__PURE__ */ new Date()).toLocaleTimeString()} ${message}`].slice(-40);
+  log.value = appendBoundedWorkbenchLogRow(log.peek(), `${(/* @__PURE__ */ new Date()).toLocaleTimeString()} ${message}`, 40);
 }
 function openWorkbenchModal() {
   closeThemeMenu();
@@ -14670,7 +14755,7 @@ function renderControls(frame, rect) {
         frame,
         row,
         rect.column,
-        paint(fit(prefix, rect.width), selected ? t.bg : t.text, selected ? t.warn : t.surface, selected)
+        paint(fit(prefix, rect.width), selected ? t.background : t.text, selected ? t.warn : t.surface, selected)
       );
       let column = rect.column + textWidth(prefix);
       const buttonWidth = Math.max(0, rect.width - textWidth(prefix));
@@ -14694,7 +14779,7 @@ function renderControls(frame, rect) {
         rect.column,
         paint(
           fit(`${prefix}${value}`, rect.width),
-          selected ? t.bg : t.text,
+          selected ? t.background : t.text,
           selected ? t.warn : t.surface,
           selected
         )
@@ -14831,7 +14916,7 @@ function renderTextboxControl(frame, rect, row, t) {
       rect.column,
       paint(
         fit(offset === 0 ? header : " ".repeat(Math.max(0, labelWidth)), labelWidth),
-        selected && offset === 0 ? t.bg : t.text,
+        selected && offset === 0 ? t.background : t.text,
         selected && offset === 0 ? t.warn : t.surface,
         selected && offset === 0
       )
@@ -14842,7 +14927,7 @@ function renderTextboxControl(frame, rect, row, t) {
       textColumn,
       paint(
         fit(`${line.continuation ? ">" : " "}${line.text}${marker}`, textAreaWidth),
-        selected ? t.bg : t.text,
+        selected ? t.background : t.text,
         selected ? t.warn : t.surface,
         selected
       )
@@ -14866,7 +14951,7 @@ function writeWrappedOptions(frame, rect, startRow, id2, items, selectedIndex, t
       frame,
       row,
       rect.column + 2,
-      paint(fit(line, width), selected ? t.bg : t.text, selected ? t.warn : t.surface, selected)
+      paint(fit(line, width), selected ? t.background : t.text, selected ? t.warn : t.surface, selected)
     );
     line = "";
     row += 1;
@@ -14917,12 +15002,12 @@ function addInlineStepperHits(rect, row) {
 }
 function renderControlDropdownPopover(frame, rect) {
   const t = theme();
-  fillRect(frame, rect, t.panelAlt);
+  fillRect(frame, rect, t.panelSoft);
   write(
     frame,
     rect.row,
     rect.column,
-    paint(`\u250C${"\u2500".repeat(Math.max(0, rect.width - 2))}\u2510`, t.accent, t.panelAlt, true)
+    paint(`\u250C${"\u2500".repeat(Math.max(0, rect.width - 2))}\u2510`, t.accent, t.panelSoft, true)
   );
   for (const [index, item] of dropdown.items.peek().entries()) {
     const selected = dropdown.selectedIndex.peek() === index;
@@ -14934,8 +15019,8 @@ function renderControlDropdownPopover(frame, rect) {
       rect.column,
       paint(
         `\u2502 ${fit(`${marker} ${item}`, rect.width - 4)} \u2502`,
-        selected ? contrastText(t.warn, t.bg, t.text) : t.text,
-        selected ? t.warn : t.panelAlt,
+        selected ? contrastText(t.warn, t.background, t.text) : t.text,
+        selected ? t.warn : t.panelSoft,
         selected
       )
     );
@@ -14950,7 +15035,7 @@ function renderControlDropdownPopover(frame, rect) {
     frame,
     rect.row + rect.height - 1,
     rect.column,
-    paint(`\u2514${"\u2500".repeat(Math.max(0, rect.width - 2))}\u2518`, t.accent, t.panelAlt, true)
+    paint(`\u2514${"\u2500".repeat(Math.max(0, rect.width - 2))}\u2518`, t.accent, t.panelSoft, true)
   );
 }
 function applyControlHit(id2, action, rect, x, index) {
@@ -15050,14 +15135,7 @@ function isTextControlActive() {
   return active.peek() === "controls" && (activeControl.peek() === "input" || activeControl.peek() === "textbox");
 }
 function write(frame, row, column, value) {
-  if (row < 0 || row >= frame.length || column >= cols()) return;
-  const cells = toStyledCells(frame[row] ?? "");
-  const valueCells = toStyledCells(value);
-  while (cells.length < column) cells.push(" ");
-  for (let index = 0; index < valueCells.length && column + index < cols(); index += 1) {
-    cells[column + index] = valueCells[index];
-  }
-  frame[row] = cells.slice(0, cols()).join("");
+  writeStringFrameRow(frame, cols(), row, column, value);
 }
 function fit(value, width) {
   return fitCellText(value, width);
@@ -15069,7 +15147,7 @@ function fillRect(frame, rect, bg) {
 }
 function drawFrame(frame, rect, title, selected) {
   const border = selected ? theme().accent : theme().borderStrong;
-  const bg = selected ? theme().panelAlt : theme().panel;
+  const bg = selected ? theme().panelSoft : theme().panel;
   write(frame, rect.row, rect.column, paint(`\u250C${"\u2500".repeat(Math.max(0, rect.width - 2))}\u2510`, border, bg, selected));
   for (let row = rect.row + 1; row < rect.row + rect.height - 1; row += 1) {
     write(frame, row, rect.column, paint("\u2502", border, bg, selected));
@@ -15085,7 +15163,7 @@ function drawFrame(frame, rect, title, selected) {
     frame,
     rect.row,
     rect.column + 2,
-    paint(` ${title.toUpperCase()} `, theme().bg, selected ? theme().accent : theme().border, true)
+    paint(` ${title.toUpperCase()} `, theme().background, selected ? theme().accent : theme().border, true)
   );
 }
 function buttonText2(label, compact2 = false) {
@@ -15102,11 +15180,11 @@ function writeButton(frame, row, column, label, options = {}) {
 function buttonPaintOptions(state = "base", tone = "default") {
   if (state === "disabled") return { fg: theme().muted, bg: theme().buttonMutedBg, bold: false };
   const toneBg = tone === "danger" ? theme().danger : tone === "warning" ? theme().warn : tone === "success" ? theme().good : tone === "muted" ? theme().border : void 0;
-  if (toneBg) return { fg: contrastText(toneBg, theme().bg, theme().text), bg: toneBg, bold: true };
+  if (toneBg) return { fg: contrastText(toneBg, theme().background, theme().text), bg: toneBg, bold: true };
   const bg = state === "active" ? theme().buttonActiveBg : theme().buttonBg;
-  return { fg: contrastText(bg, theme().bg, theme().text), bg, bold: true };
+  return { fg: contrastText(bg, theme().background, theme().text), bg, bold: true };
 }
-function paint(value, fg = theme().text, bg = theme().bg, bold = false) {
+function paint(value, fg = theme().text, bg = theme().background, bold = false) {
   return makeStyle({ fg, bg, bold })(value);
 }
 function findHit(x, y) {

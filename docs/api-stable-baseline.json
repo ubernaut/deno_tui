@@ -3364,6 +3364,13 @@
     },
     {
       "module": "src/app/workbench_diagnostics.ts",
+      "name": "appendBoundedWorkbenchLogRow",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_diagnostics.ts",
       "name": "formatWorkbenchDiagnosticLogEntry",
       "kind": "function",
       "typeOnly": false,
@@ -3498,6 +3505,13 @@
     {
       "module": "src/app/workbench_frame.ts",
       "name": "writeFrame",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_frame.ts",
+      "name": "writeStringFrameRow",
       "kind": "function",
       "typeOnly": false,
       "documented": true
