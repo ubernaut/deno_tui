@@ -51,11 +51,20 @@ export function inspectThemeCoverageCore<State extends string = string>(
   components: Record<string, ThemeCoverageComponentDefinitionCore<State>>,
   options: InspectThemeCoverageCoreOptions<State>,
 ): ThemeCoverageInspectionCore<State> {
-  const componentNames = options.components ? [...new Set(options.components)].sort() : Object.keys(components).sort();
-  const componentCoverage = componentNames.map((name) => inspectThemeComponentCoverageCore(name, components, options));
-  const variantCount = componentCoverage.reduce((total, component) => total + component.variants.length, 0);
-  const coveredStateCount = componentCoverage.reduce((total, component) => total + component.coveredStateCount, 0);
-  const missingStateCount = componentCoverage.reduce((total, component) => total + component.missingStateCount, 0);
+  const componentNames = options.components ? sortedUniqueStrings(options.components) : sortedObjectKeys(components);
+  const componentCoverage = new Array<ThemeComponentCoverageInspectionCore<State>>(componentNames.length);
+  let variantCount = 0;
+  let coveredStateCount = 0;
+  let missingStateCount = 0;
+  let complete = true;
+  for (let index = 0; index < componentNames.length; index += 1) {
+    const coverage = inspectThemeComponentCoverageCore(componentNames[index]!, components, options);
+    componentCoverage[index] = coverage;
+    variantCount += coverage.variants.length;
+    coveredStateCount += coverage.coveredStateCount;
+    missingStateCount += coverage.missingStateCount;
+    complete &&= coverage.complete;
+  }
 
   return {
     componentCount: componentCoverage.length,
@@ -63,7 +72,7 @@ export function inspectThemeCoverageCore<State extends string = string>(
     stateCount: variantCount * options.states.length,
     coveredStateCount,
     missingStateCount,
-    complete: componentCoverage.every((component) => component.complete),
+    complete,
     components: componentCoverage,
   };
 }
@@ -75,18 +84,26 @@ function inspectThemeComponentCoverageCore<State extends string>(
 ): ThemeComponentCoverageInspectionCore<State> {
   const normalizeExtends = options.normalizeExtends ?? defaultNormalizeExtends;
   const resolved = resolveThemeCoverageDefinitionCore(name, components, options);
-  const variants = coverageVariantNamesCore(name, resolved, options).map((variant) => {
+  const variantNames = coverageVariantNamesCore(name, resolved, options);
+  const variants = new Array<ThemeVariantCoverageInspectionCore<State>>(variantNames.length);
+  let coveredStateCount = 0;
+  let missingStateCount = 0;
+  let complete = true;
+  for (let index = 0; index < variantNames.length; index += 1) {
+    const variant = variantNames[index]!;
     const states = coveredThemeStatesCore(resolved, variant, options.states);
-    const missingStates = options.states.filter((state) => !states.includes(state));
-    return {
+    const missingStates = missingThemeStatesCore(options.states, states);
+    const variantCoverage = {
       name: variant,
       states,
       missingStates,
       complete: missingStates.length === 0,
     };
-  });
-  const coveredStateCount = variants.reduce((total, variant) => total + variant.states.length, 0);
-  const missingStateCount = variants.reduce((total, variant) => total + variant.missingStates.length, 0);
+    variants[index] = variantCoverage;
+    coveredStateCount += states.length;
+    missingStateCount += missingStates.length;
+    complete &&= variantCoverage.complete;
+  }
 
   return {
     name,
@@ -95,7 +112,7 @@ function inspectThemeComponentCoverageCore<State extends string>(
     stateCount: variants.length * options.states.length,
     coveredStateCount,
     missingStateCount,
-    complete: variants.every((variant) => variant.complete),
+    complete,
   };
 }
 
@@ -174,10 +191,35 @@ function coveredThemeStatesCore<State extends string>(
       covered.add(state);
     }
   }
-  return states.filter((state) => covered.has(state));
+  const selected: State[] = [];
+  for (const state of states) {
+    if (covered.has(state)) selected.push(state);
+  }
+  return selected;
 }
 
 function defaultNormalizeExtends(value: string | readonly string[] | undefined): string[] {
   if (value === undefined) return [];
   return typeof value === "string" ? [value] : [...value];
+}
+
+function missingThemeStatesCore<State extends string>(states: readonly State[], covered: readonly State[]): State[] {
+  const coveredSet = new Set(covered);
+  const missing: State[] = [];
+  for (const state of states) {
+    if (!coveredSet.has(state)) missing.push(state);
+  }
+  return missing;
+}
+
+function sortedUniqueStrings(values: Iterable<string>): string[] {
+  const set = new Set<string>();
+  for (const value of values) set.add(value);
+  return [...set].sort();
+}
+
+function sortedObjectKeys(value: object): string[] {
+  const keys: string[] = [];
+  for (const key in value) keys.push(key);
+  return keys.sort();
 }

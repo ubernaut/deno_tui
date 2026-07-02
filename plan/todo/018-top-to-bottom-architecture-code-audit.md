@@ -312,6 +312,8 @@ Work:
   - [x] Reworked theme gallery construction, ranked matching, filtered item projection, inactive-theme preview rows,
         component-name extraction, keyword collection, and token/state filtering to use direct buffers and sets instead
         of `map/flatMap/filter/Object.values().flat()` pipelines.
+  - [x] Reworked theme coverage aggregation to compute component coverage, variant counts, covered/missing state counts,
+        completeness, and covered/missing state arrays in direct passes instead of repeated `map/reduce/filter` scans.
   - [x] Reworked EventEmitter aggregate counting, event-name projection, and inspection to avoid Object.values/entries
         pipelines in core canvas/component/web host event paths.
   - [x] Reworked runtime diagnostics bounded trimming, cloning, status counting, and text formatting to avoid map/filter
