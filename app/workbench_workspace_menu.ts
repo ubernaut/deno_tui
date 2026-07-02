@@ -4,6 +4,7 @@ import {
   type WorkbenchWorkspace,
   type WorkbenchWorkspaceWindow,
 } from "../src/app/mod.ts";
+import type { ModalContent } from "../src/components/modal.ts";
 
 /** Workspace menu action supported by the API workbench demo. */
 export type WorkspaceMenuAction = "save" | "open" | "rename" | "delete" | "empty";
@@ -27,6 +28,95 @@ export interface WorkspaceNameModalBodyOptions {
   loadedVisualizationIds?: readonly string[];
   targetWorkspace?: Pick<WorkbenchWorkspace, "name" | "visualizationIds"> | null;
   targetName?: string | null;
+}
+
+/** Builds the save-workspace prompt content for the workbench modal controller. */
+export function saveWorkspaceModalContent(body: string[]): ModalContent {
+  return {
+    title: "Save Workspace",
+    tone: "confirm",
+    body,
+    actions: [
+      { id: "workspace-cancel", label: "Cancel" },
+      { id: "workspace-save", label: "Save", default: true },
+    ],
+  };
+}
+
+/** Builds the rename-workspace prompt content for the workbench modal controller. */
+export function renameWorkspaceModalContent(body: string[]): ModalContent {
+  return {
+    title: "Rename Workspace",
+    tone: "confirm",
+    body,
+    actions: [
+      { id: "workspace-cancel", label: "Cancel" },
+      { id: "workspace-rename", label: "Rename", default: true },
+    ],
+  };
+}
+
+/** Builds the delete-workspace confirmation content for the workbench modal controller. */
+export function deleteWorkspaceModalContent(
+  workspace: Pick<WorkbenchWorkspace, "name" | "visualizationIds">,
+): ModalContent {
+  return {
+    title: "Delete Workspace?",
+    tone: "warning",
+    body: [
+      `Delete saved workspace "${workspace.name}"?`,
+      `${workspace.visualizationIds.length} widget window(s) saved in this workspace.`,
+      "This removes the saved workspace only; it does not close any currently open windows.",
+    ],
+    actions: [
+      { id: "workspace-cancel", label: "Cancel" },
+      { id: "workspace-delete", label: "Delete", destructive: true, default: true },
+    ],
+  };
+}
+
+/** Builds success content after a workspace is saved. */
+export function workspaceSavedModalContent(name: string, visualizationCount: number): ModalContent {
+  return {
+    title: "Workspace Saved",
+    tone: "success",
+    body: [name, `${Math.max(0, Math.floor(visualizationCount))} widget window(s) saved.`],
+    actions: [{ id: "dismiss", label: "OK", default: true }],
+  };
+}
+
+/** Builds warning content for a missing workspace. */
+export function workspaceMissingModalContent(name?: string | null): ModalContent {
+  return {
+    title: "Workspace Missing",
+    tone: "warning",
+    body: [`Workspace "${name ?? "unknown"}" no longer exists.`],
+    actions: [{ id: "dismiss", label: "OK", default: true }],
+  };
+}
+
+/** Builds success content after a workspace is renamed. */
+export function workspaceRenamedModalContent(
+  previousName: string,
+  nextName: string,
+  visualizationCount: number,
+): ModalContent {
+  return {
+    title: "Workspace Renamed",
+    tone: "success",
+    body: [`${previousName} -> ${nextName}`, `${Math.max(0, Math.floor(visualizationCount))} widget window(s).`],
+    actions: [{ id: "dismiss", label: "OK", default: true }],
+  };
+}
+
+/** Builds success content after a workspace is deleted. */
+export function workspaceDeletedModalContent(name: string): ModalContent {
+  return {
+    title: "Workspace Deleted",
+    tone: "success",
+    body: [name, "Saved workspace removed."],
+    actions: [{ id: "dismiss", label: "OK", default: true }],
+  };
 }
 
 /** Builds the API workbench workspace menu entries from persisted workspace state. */

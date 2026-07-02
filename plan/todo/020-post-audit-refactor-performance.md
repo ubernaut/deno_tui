@@ -74,3 +74,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   guidance source.
 - Extracted shared modal action button projection so terminal and browser workbench modals use one tested mapping from
   `ModalInspection` actions to renderer-neutral button rows.
+- Extracted workspace modal content projection into tested pure helpers so the terminal workbench keeps only state,
+  persistence, and side-effect orchestration for workspace save/rename/delete flows.

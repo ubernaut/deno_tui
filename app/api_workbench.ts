@@ -231,10 +231,17 @@ import {
   buildWorkspaceMenuEntries,
   currentWorkspaceVisualizationIds as workspaceVisualizationIdsFromWindows,
   defaultWorkspaceName as defaultWorkspaceNameFromCount,
+  deleteWorkspaceModalContent,
   normalizeWorkspaceName as normalizeWorkspaceNameFromCount,
+  renameWorkspaceModalContent,
+  saveWorkspaceModalContent,
+  workspaceDeletedModalContent,
   type WorkspaceMenuEntry,
   workspaceMenuLabelsInto,
+  workspaceMissingModalContent,
   workspaceNameModalBody as buildWorkspaceNameModalBody,
+  workspaceRenamedModalContent,
+  workspaceSavedModalContent,
 } from "./workbench_workspace_menu.ts";
 import { WorkbenchKittyGraphicsController } from "./workbench_kitty_graphics.ts";
 import { dataFooterRows, type RowStyle, threeHeaderRows } from "./workbench_rows.ts";
@@ -3470,15 +3477,7 @@ function openSaveWorkspaceModal(): void {
   workspaceNameMode.value = "save";
   workspaceTargetName.value = null;
   workspaceNameDraft.value = defaultWorkspaceName();
-  modal.open({
-    title: "Save Workspace",
-    tone: "confirm",
-    body: workspaceNameModalBody(),
-    actions: [
-      { id: "workspace-cancel", label: "Cancel" },
-      { id: "workspace-save", label: "Save", default: true },
-    ],
-  });
+  modal.open(saveWorkspaceModalContent(workspaceNameModalBody()));
   pushLog("save workspace prompt");
 }
 
@@ -3487,15 +3486,7 @@ function openRenameWorkspaceModal(workspace: SavedWorkspace): void {
   workspaceNameMode.value = "rename";
   workspaceTargetName.value = workspace.name;
   workspaceNameDraft.value = workspace.name;
-  modal.open({
-    title: "Rename Workspace",
-    tone: "confirm",
-    body: workspaceNameModalBody(),
-    actions: [
-      { id: "workspace-cancel", label: "Cancel" },
-      { id: "workspace-rename", label: "Rename", default: true },
-    ],
-  });
+  modal.open(renameWorkspaceModalContent(workspaceNameModalBody()));
   pushLog(`rename workspace prompt ${workspace.name}`);
 }
 
@@ -3503,19 +3494,7 @@ function openDeleteWorkspaceModal(workspace: SavedWorkspace): void {
   closeTopMenus();
   workspaceNameMode.value = null;
   workspaceTargetName.value = workspace.name;
-  modal.open({
-    title: "Delete Workspace?",
-    tone: "warning",
-    body: [
-      `Delete saved workspace "${workspace.name}"?`,
-      `${workspace.visualizationIds.length} widget window(s) saved in this workspace.`,
-      "This removes the saved workspace only; it does not close any currently open windows.",
-    ],
-    actions: [
-      { id: "workspace-cancel", label: "Cancel" },
-      { id: "workspace-delete", label: "Delete", destructive: true, default: true },
-    ],
-  });
+  modal.open(deleteWorkspaceModalContent(workspace));
   pushLog(`delete workspace prompt ${workspace.name}`);
 }
 
@@ -3571,12 +3550,7 @@ async function saveCurrentWorkspace(): Promise<void> {
   await persistSavedWorkspaces();
   activeWorkspaceName.value = name;
   clearWorkspaceModalState();
-  modal.open({
-    title: "Workspace Saved",
-    tone: "success",
-    body: [`${name}`, `${visualizationIds.length} widget window(s) saved.`],
-    actions: [{ id: "dismiss", label: "OK", default: true }],
-  });
+  modal.open(workspaceSavedModalContent(name, visualizationIds.length));
   pushLog(`workspace saved ${name}`);
 }
 
@@ -3585,12 +3559,7 @@ async function renameWorkspace(): Promise<void> {
   const workspace = workspaceByName(originalName);
   if (!workspace) {
     clearWorkspaceModalState();
-    modal.open({
-      title: "Workspace Missing",
-      tone: "warning",
-      body: [`Workspace "${originalName ?? "unknown"}" no longer exists.`],
-      actions: [{ id: "dismiss", label: "OK", default: true }],
-    });
+    modal.open(workspaceMissingModalContent(originalName));
     return;
   }
 
@@ -3602,12 +3571,7 @@ async function renameWorkspace(): Promise<void> {
     activeWorkspaceName.value = name;
   }
   clearWorkspaceModalState();
-  modal.open({
-    title: "Workspace Renamed",
-    tone: "success",
-    body: [`${workspace.name} -> ${name}`, `${renamed.visualizationIds.length} widget window(s).`],
-    actions: [{ id: "dismiss", label: "OK", default: true }],
-  });
+  modal.open(workspaceRenamedModalContent(workspace.name, name, renamed.visualizationIds.length));
   pushLog(`workspace renamed ${workspace.name} -> ${name}`);
 }
 
@@ -3625,12 +3589,7 @@ async function deleteWorkspace(): Promise<void> {
     activeWorkspaceName.value = null;
   }
   clearWorkspaceModalState();
-  modal.open({
-    title: "Workspace Deleted",
-    tone: "success",
-    body: [`${workspace.name}`, "Saved workspace removed."],
-    actions: [{ id: "dismiss", label: "OK", default: true }],
-  });
+  modal.open(workspaceDeletedModalContent(workspace.name));
   pushLog(`workspace deleted ${workspace.name}`);
 }
 

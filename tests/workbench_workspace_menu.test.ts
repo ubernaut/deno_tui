@@ -4,10 +4,17 @@ import {
   buildWorkspaceMenuEntries,
   currentWorkspaceVisualizationIds,
   defaultWorkspaceName,
+  deleteWorkspaceModalContent,
   normalizeWorkspaceName,
+  renameWorkspaceModalContent,
+  saveWorkspaceModalContent,
+  workspaceDeletedModalContent,
   workspaceMenuLabels,
   workspaceMenuLabelsInto,
+  workspaceMissingModalContent,
   workspaceNameModalBody,
+  workspaceRenamedModalContent,
+  workspaceSavedModalContent,
 } from "../app/workbench_workspace_menu.ts";
 import type { WorkbenchWorkspace, WorkbenchWorkspaceWindow } from "../src/app/mod.ts";
 
@@ -89,4 +96,65 @@ Deno.test("workspaceNameModalBody describes save and rename prompts", () => {
       "Storage: Deno JSON fallback",
     ],
   );
+});
+
+Deno.test("workspace modal content helpers project prompts and outcomes", () => {
+  assertEquals(saveWorkspaceModalContent(["Name: Ops"]), {
+    title: "Save Workspace",
+    tone: "confirm",
+    body: ["Name: Ops"],
+    actions: [
+      { id: "workspace-cancel", label: "Cancel" },
+      { id: "workspace-save", label: "Save", default: true },
+    ],
+  });
+
+  assertEquals(renameWorkspaceModalContent(["Name: Night Ops"]), {
+    title: "Rename Workspace",
+    tone: "confirm",
+    body: ["Name: Night Ops"],
+    actions: [
+      { id: "workspace-cancel", label: "Cancel" },
+      { id: "workspace-rename", label: "Rename", default: true },
+    ],
+  });
+
+  assertEquals(deleteWorkspaceModalContent({ name: "Ops", visualizationIds: ["cpu", "gpu"] }), {
+    title: "Delete Workspace?",
+    tone: "warning",
+    body: [
+      'Delete saved workspace "Ops"?',
+      "2 widget window(s) saved in this workspace.",
+      "This removes the saved workspace only; it does not close any currently open windows.",
+    ],
+    actions: [
+      { id: "workspace-cancel", label: "Cancel" },
+      { id: "workspace-delete", label: "Delete", destructive: true, default: true },
+    ],
+  });
+
+  assertEquals(workspaceSavedModalContent("Ops", 2), {
+    title: "Workspace Saved",
+    tone: "success",
+    body: ["Ops", "2 widget window(s) saved."],
+    actions: [{ id: "dismiss", label: "OK", default: true }],
+  });
+  assertEquals(workspaceMissingModalContent(null), {
+    title: "Workspace Missing",
+    tone: "warning",
+    body: ['Workspace "unknown" no longer exists.'],
+    actions: [{ id: "dismiss", label: "OK", default: true }],
+  });
+  assertEquals(workspaceRenamedModalContent("Ops", "Night Ops", 3), {
+    title: "Workspace Renamed",
+    tone: "success",
+    body: ["Ops -> Night Ops", "3 widget window(s)."],
+    actions: [{ id: "dismiss", label: "OK", default: true }],
+  });
+  assertEquals(workspaceDeletedModalContent("Ops"), {
+    title: "Workspace Deleted",
+    tone: "success",
+    body: ["Ops", "Saved workspace removed."],
+    actions: [{ id: "dismiss", label: "OK", default: true }],
+  });
 });
