@@ -176,9 +176,9 @@ export function cloneComputedLayoutStyle(style: ComputedLayoutStyle): ComputedLa
   return {
     ...style,
     flexBasis: { ...style.flexBasis },
-    gridTemplateColumns: style.gridTemplateColumns.map((track) => ({ ...track })),
-    gridTemplateRows: style.gridTemplateRows.map((track) => ({ ...track })),
-    gridTemplateAreas: style.gridTemplateAreas.map((row) => [...row]),
+    gridTemplateColumns: cloneLayoutLengths(style.gridTemplateColumns),
+    gridTemplateRows: cloneLayoutLengths(style.gridTemplateRows),
+    gridTemplateAreas: cloneGridAreas(style.gridTemplateAreas),
     gridAutoColumns: { ...style.gridAutoColumns },
     gridAutoRows: { ...style.gridAutoRows },
     gridColumn: { ...style.gridColumn },
@@ -251,35 +251,42 @@ export function parseGridTrackList(
   value: string | undefined,
   fallback: readonly LayoutLengthValue[] = [],
 ): LayoutLengthValue[] {
-  if (value === undefined) return fallback.map((track) => ({ ...track }));
+  if (value === undefined) return cloneLayoutLengths(fallback);
   const trimmed = value.trim().toLowerCase();
   if (!trimmed || trimmed === "none") return [];
-  return tokenizeGridTrackList(expandGridRepeat(trimmed))
-    .map((part) => parseLayoutLength(part, autoLength()));
+  const tokens = tokenizeGridTrackList(expandGridRepeat(trimmed));
+  const tracks = new Array<LayoutLengthValue>(tokens.length);
+  for (let index = 0; index < tokens.length; index += 1) {
+    tracks[index] = parseLayoutLength(tokens[index], autoLength());
+  }
+  return tracks;
 }
 
 function parseGridTemplateAreas(
   value: string | undefined,
   fallback: readonly (readonly string[])[] = [],
 ): string[][] {
-  if (value === undefined) return fallback.map((row) => [...row]);
+  if (value === undefined) return cloneGridAreas(fallback);
   const trimmed = value.trim();
   if (!trimmed || trimmed.toLowerCase() === "none") return [];
 
   const rows: string[][] = [];
   for (const match of trimmed.matchAll(/"([^"]*)"|'([^']*)'/g)) {
     const source = (match[1] ?? match[2] ?? "").trim();
-    if (!source) return fallback.map((row) => [...row]);
-    const cells = source.split(/\s+/).filter(Boolean);
-    if (cells.some((cell) => cell !== "." && !/^[A-Za-z_][\w-]*$/.test(cell))) {
-      return fallback.map((row) => [...row]);
+    if (!source) return cloneGridAreas(fallback);
+    const cells = splitCssWords(source);
+    for (const cell of cells) {
+      if (cell !== "." && !/^[A-Za-z_][\w-]*$/.test(cell)) return cloneGridAreas(fallback);
     }
     rows.push(cells);
   }
 
-  if (rows.length === 0) return fallback.map((row) => [...row]);
+  if (rows.length === 0) return cloneGridAreas(fallback);
   const width = rows[0]?.length ?? 0;
-  if (width === 0 || rows.some((row) => row.length !== width)) return fallback.map((row) => [...row]);
+  if (width === 0) return cloneGridAreas(fallback);
+  for (const row of rows) {
+    if (row.length !== width) return cloneGridAreas(fallback);
+  }
   return rows;
 }
 
@@ -292,7 +299,9 @@ export function parseGridPlacement(
   const trimmed = value.trim().toLowerCase();
   if (!trimmed || trimmed === "auto") return {};
 
-  const [startPart = "", endPart = ""] = trimmed.split("/").map((part) => part.trim());
+  const slash = trimmed.indexOf("/");
+  const startPart = slash < 0 ? trimmed : trimmed.slice(0, slash).trim();
+  const endPart = slash < 0 ? "" : trimmed.slice(slash + 1).trim();
   const placement: LayoutGridPlacement = {};
   const startSpan = parseGridSpan(startPart);
   const startLine = parsePositiveInteger(startPart);
@@ -339,7 +348,11 @@ export function parseBoxEdges(
   fallback: BoxEdges<number> = ZERO_BOX_EDGES,
 ): BoxEdges<number> {
   if (value === undefined) return { ...fallback };
-  const parts = value.trim().split(/\s+/).filter(Boolean).map((part) => parseLayoutInteger(part, 0));
+  const words = splitCssWords(value.trim());
+  const parts = new Array<number>(words.length);
+  for (let index = 0; index < words.length; index += 1) {
+    parts[index] = parseLayoutInteger(words[index], 0);
+  }
   if (parts.length === 0) return { ...fallback };
   const [top, right = top, bottom = top, left = right] = parts;
   return { top: top ?? 0, right: right ?? 0, bottom: bottom ?? 0, left: left ?? 0 };
@@ -419,7 +432,7 @@ export function applyLayoutDeclaration(
       next.gridAutoRows = parseLayoutLength(resolved, next.gridAutoRows);
       break;
     case "grid-auto-flow":
-      next.gridAutoFlow = parseOneOf(resolved.split(/\s+/)[0] ?? resolved, ["row", "column"], next.gridAutoFlow);
+      next.gridAutoFlow = parseOneOf(firstCssWord(resolved) ?? resolved, ["row", "column"], next.gridAutoFlow);
       break;
     case "grid-column":
       next.gridColumn = parseGridPlacement(resolved, next.gridColumn);
@@ -560,7 +573,7 @@ export function applyLayoutDeclarations(
 }
 
 function applyFlexShorthand(style: ComputedLayoutStyle, value: string): void {
-  const parts = value.split(/\s+/).filter(Boolean);
+  const parts = splitCssWords(value);
   if (parts.length === 1) {
     if (parts[0] === "none") {
       style.flexGrow = 0;
@@ -583,17 +596,26 @@ function applyFlexShorthand(style: ComputedLayoutStyle, value: string): void {
 }
 
 function applyFlexFlowShorthand(style: ComputedLayoutStyle, value: string): void {
-  for (const part of value.split(/\s+/).filter(Boolean)) {
+  for (const part of splitCssWords(value)) {
     style.flexDirection = parseOneOf(part, ["row", "column"], style.flexDirection);
     style.flexWrap = parseOneOf(part, ["nowrap", "wrap", "wrap-reverse"], style.flexWrap);
   }
 }
 
 function applyBorderShorthand(style: ComputedLayoutStyle, value: string): void {
-  const parts = value.split(/\s+/).filter(Boolean);
-  const width = parts.find((part) => /^-?\d+(\.\d+)?/.test(part));
-  const color = parts.find((part) => part.startsWith("#") || part.startsWith("rgb") || part.startsWith("var("));
-  const stylePart = parts.find((part) => ["none", "single", "double", "solid", "round", "heavy"].includes(part));
+  const parts = splitCssWords(value);
+  let width: string | undefined;
+  let color: string | undefined;
+  let stylePart: string | undefined;
+  for (const part of parts) {
+    if (width === undefined && /^-?\d+(\.\d+)?/.test(part)) width = part;
+    if (color === undefined && (part.startsWith("#") || part.startsWith("rgb") || part.startsWith("var("))) {
+      color = part;
+    }
+    if (stylePart === undefined && ["none", "single", "double", "solid", "round", "heavy"].includes(part)) {
+      stylePart = part;
+    }
+  }
   if (width) style.border = parseBoxEdges(width, style.border);
   else if (value.trim() && value.trim() !== "none") style.border = parseBoxEdges("1", style.border);
   if (color) style.borderColor = color;
@@ -603,12 +625,19 @@ function applyBorderShorthand(style: ComputedLayoutStyle, value: string): void {
 function expandGridRepeat(value: string): string {
   return value.replace(/repeat\(\s*(\d+)\s*,\s*([^)]+)\)/g, (_match, countText: string, trackText: string) => {
     const count = Math.max(0, Math.floor(Number.parseFloat(countText)));
-    return Array.from({ length: Math.min(count, 256) }, () => trackText.trim()).join(" ");
+    const bounded = Math.min(count, 256);
+    let output = "";
+    const track = trackText.trim();
+    for (let index = 0; index < bounded; index += 1) {
+      if (output) output += " ";
+      output += track;
+    }
+    return output;
   });
 }
 
 function tokenizeGridTrackList(value: string): string[] {
-  return value.split(/\s+/).map((part) => part.trim()).filter(Boolean);
+  return splitCssWords(value);
 }
 
 function parseGridSpan(value: string): number | undefined {
@@ -662,7 +691,11 @@ function parseBoxEdgeLengths(
   fallback: BoxEdges<LayoutLengthValue>,
 ): BoxEdges<LayoutLengthValue> {
   if (value === undefined) return cloneBoxEdgeLengths(fallback);
-  const parts = value.trim().split(/\s+/).filter(Boolean).map((part) => parseLayoutLength(part));
+  const words = splitCssWords(value.trim());
+  const parts = new Array<LayoutLengthValue>(words.length);
+  for (let index = 0; index < words.length; index += 1) {
+    parts[index] = parseLayoutLength(words[index]);
+  }
   if (parts.length === 0) return cloneBoxEdgeLengths(fallback);
   const [top, right = top, bottom = top, left = right] = parts;
   return {
@@ -717,7 +750,9 @@ function normalizeSelfAlignment(value: string, fallback: LayoutSelfAlignment): L
 }
 
 function applyPlaceSelfShorthand(style: ComputedLayoutStyle, value: string): void {
-  const [align, justify = align] = value.split(/\s+/).filter(Boolean);
+  const parts = splitCssWords(value);
+  const align = parts[0];
+  const justify = parts[1] ?? align;
   if (align) style.alignSelf = normalizeSelfAlignment(align, style.alignSelf);
   if (justify) style.justifySelf = normalizeSelfAlignment(justify, style.justifySelf);
 }
@@ -734,4 +769,45 @@ function nonNegativeFloat(value: string, fallback: number): number {
 
 function finiteNumber(value: number, fallback: number): number {
   return Number.isFinite(value) ? value : fallback;
+}
+
+function cloneLayoutLengths(values: readonly LayoutLengthValue[]): LayoutLengthValue[] {
+  const clone = new Array<LayoutLengthValue>(values.length);
+  for (let index = 0; index < values.length; index += 1) {
+    clone[index] = { ...values[index]! };
+  }
+  return clone;
+}
+
+function cloneGridAreas(values: readonly (readonly string[])[]): string[][] {
+  const clone = new Array<string[]>(values.length);
+  for (let row = 0; row < values.length; row += 1) {
+    const source = values[row]!;
+    const target = new Array<string>(source.length);
+    for (let column = 0; column < source.length; column += 1) {
+      target[column] = source[column]!;
+    }
+    clone[row] = target;
+  }
+  return clone;
+}
+
+function firstCssWord(value: string): string | undefined {
+  const words = splitCssWords(value);
+  return words[0];
+}
+
+function splitCssWords(value: string): string[] {
+  const words: string[] = [];
+  let start = -1;
+  for (let index = 0; index <= value.length; index += 1) {
+    const atEnd = index === value.length;
+    const whitespace = !atEnd && /\s/.test(value[index]!);
+    if (!atEnd && !whitespace && start < 0) start = index;
+    if ((atEnd || whitespace) && start >= 0) {
+      words.push(value.slice(start, index));
+      start = -1;
+    }
+  }
+  return words;
 }

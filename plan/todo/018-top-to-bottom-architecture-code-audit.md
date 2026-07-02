@@ -341,6 +341,8 @@ Work:
         parsing, and specificity tag counting to avoid repeated filter/map pipelines during markup layout.
   - [x] Added `MarkupLayoutCache`, a bounded cloned-result cache for parsed markup and CSS stylesheets, and wired
         `createMarkupLayout()` through a default cache with opt-out support for callers that need uncached parsing.
+  - [x] Reworked layout style cloning, grid track/area parsing, placement parsing, box edge parsing, and CSS shorthand
+        tokenization to share loop-based helpers instead of repeated split/map/filter fallback paths.
 
 Acceptance checks:
 
