@@ -2939,29 +2939,38 @@ function fillCoverageForAscii(fillBucket) {
   return ASCII_FILL_GLYPH_COVERAGE[bucket] / TILE_PIXEL_COUNT;
 }
 function createMixedFillGlyphTable() {
-  const candidates = [
-    ...FILL_GLYPHS.map((glyph, index) => ({
-      glyph,
-      coverage: (GOHU_11_FILL_GLYPH_COVERAGE[index] ?? 0) / TILE_PIXEL_COUNT,
-      index,
-      familyBias: 0
-    })),
-    ...ASCII_FILL_GLYPHS.map((glyph, index) => ({
-      glyph,
-      coverage: fillCoverageForAscii(index),
-      index,
-      familyBias: 2e-3
-    }))
-  ];
-  return Array.from({ length: FILL_GLYPHS.length + 5 }, (_, fillGlyphIndex) => {
+  const table2 = new Array(FILL_GLYPHS.length + 5);
+  for (let fillGlyphIndex = 0; fillGlyphIndex < table2.length; fillGlyphIndex++) {
     const bucket = fillBucketFromGlyphIndex(fillGlyphIndex);
     const targetCoverage = fillCoverageForGohu11(fillGlyphIndex);
-    return candidates.reduce((best, candidate) => {
-      const bestScore = Math.abs(best.coverage - targetCoverage) + Math.abs(best.index - bucket) * 1e-3 + best.familyBias;
-      const candidateScore = Math.abs(candidate.coverage - targetCoverage) + Math.abs(candidate.index - bucket) * 1e-3 + candidate.familyBias;
-      return candidateScore < bestScore ? candidate : best;
-    }).glyph;
-  });
+    let bestGlyph = " ";
+    let bestScore = Number.POSITIVE_INFINITY;
+    for (let index = 0; index < FILL_GLYPHS.length; index++) {
+      const score = mixedFillGlyphScore(
+        (GOHU_11_FILL_GLYPH_COVERAGE[index] ?? 0) / TILE_PIXEL_COUNT,
+        index,
+        bucket,
+        targetCoverage,
+        0
+      );
+      if (score < bestScore) {
+        bestScore = score;
+        bestGlyph = FILL_GLYPHS[index] ?? " ";
+      }
+    }
+    for (let index = 0; index < ASCII_FILL_GLYPHS.length; index++) {
+      const score = mixedFillGlyphScore(fillCoverageForAscii(index), index, bucket, targetCoverage, 2e-3);
+      if (score < bestScore) {
+        bestScore = score;
+        bestGlyph = ASCII_FILL_GLYPHS[index] ?? " ";
+      }
+    }
+    table2[fillGlyphIndex] = bestGlyph;
+  }
+  return table2;
+}
+function mixedFillGlyphScore(coverage, index, bucket, targetCoverage, familyBias) {
+  return Math.abs(coverage - targetCoverage) + Math.abs(index - bucket) * 1e-3 + familyBias;
 }
 function createGlyphKeyTable() {
   const table2 = Array(CELL_GLYPH_KEY_STRIDE).fill(" ");
@@ -9575,13 +9584,13 @@ var TerminalScreenController = class {
     this.#tabStops = defaultTabStops(this.#columns);
   }
   textRows() {
-    return this.#state.cells.map((row) => row.map((cell) => cell.char).join("").trimEnd());
+    return terminalCellRowsToText(this.#state.cells);
   }
   cellRows() {
-    return this.#state.cells.map((row) => row.map((cell) => ({ ...cell })));
+    return cloneTerminalCellRows(this.#state.cells);
   }
   scrollbackTextRows() {
-    return this.#scrollback.map((row) => row.map((cell) => cell.char).join("").trimEnd());
+    return terminalCellRowsToText(this.#scrollback);
   }
   inspect() {
     return {
@@ -10051,6 +10060,37 @@ function createRows(columns, rows2) {
 function blankRow(columns) {
   return new Array(columns).fill(BLANK_CELL);
 }
+function terminalCellRowsToText(rows2) {
+  const output = new Array(rows2.length);
+  for (let rowIndex = 0; rowIndex < rows2.length; rowIndex++) {
+    const row = rows2[rowIndex];
+    let lastContentColumn = -1;
+    for (let column = row.length - 1; column >= 0; column--) {
+      if ((row[column]?.char ?? " ") !== " ") {
+        lastContentColumn = column;
+        break;
+      }
+    }
+    const chars = new Array(lastContentColumn + 1);
+    for (let column = 0; column <= lastContentColumn; column++) {
+      chars[column] = row[column]?.char ?? " ";
+    }
+    output[rowIndex] = chars.join("");
+  }
+  return output;
+}
+function cloneTerminalCellRows(rows2) {
+  const output = new Array(rows2.length);
+  for (let rowIndex = 0; rowIndex < rows2.length; rowIndex++) {
+    const row = rows2[rowIndex];
+    const cloned = new Array(row.length);
+    for (let column = 0; column < row.length; column++) {
+      cloned[column] = { ...row[column] };
+    }
+    output[rowIndex] = cloned;
+  }
+  return output;
+}
 function fullScrollRegion(rows2) {
   return { top: 0, bottom: rows2 - 1 };
 }
@@ -10093,7 +10133,7 @@ function resizeState(state, columns, rows2) {
 }
 function cloneState(state) {
   return {
-    cells: state.cells.map((row) => row.map((cell) => ({ ...cell }))),
+    cells: cloneTerminalCellRows(state.cells),
     cursor: { ...state.cursor }
   };
 }
