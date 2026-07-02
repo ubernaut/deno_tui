@@ -263,6 +263,8 @@ Work:
         and query term parsing to avoid callback pipelines in reusable table view paths.
   - [x] Reworked local data-query filtering, default search scans, exact-filter scans, and page projection to avoid
         filter/slice/Object.entries/Object.values allocation in resource-backed table query paths.
+  - [x] Reworked command palette/controller projections and command registry list/projection/key-binding/inspection
+        helpers to reuse cached filtered state and avoid map/filter chains in command-surface paths.
 
 Acceptance checks:
 

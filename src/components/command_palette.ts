@@ -6,7 +6,7 @@ import { signalify } from "../utils/signals.ts";
 import { List, visibleListRows } from "./list.ts";
 import { Text } from "./text.ts";
 import type { KeyPressEvent } from "../input_reader/types.ts";
-import { scoreWeightedSearchFields, searchTerms, weightedSearchFields } from "../utils/search.ts";
+import { normalizeSearchText, scoreSearchField, searchTerms } from "../utils/search.ts";
 
 /** Public interface describing a command Palette Item. */
 export interface CommandPaletteItem {
@@ -214,7 +214,7 @@ export class CommandPaletteController {
   }
 
   private filteredItems(): CommandPaletteItem[] {
-    return filterCommandPaletteItems(this.items.peek(), this.query.peek());
+    return this.filtered.peek();
   }
 }
 
@@ -266,7 +266,7 @@ export class CommandPalette extends Component {
       parent: this,
       theme: this.theme,
       zIndex: this.zIndex,
-      items: new Computed(() => filtered.value.map((item) => item.label)),
+      items: new Computed(() => commandPaletteLabels(filtered.value)),
       selectedIndex: this.selectedIndex,
       rectangle: new Computed(() => ({
         column: this.rectangle.value.column,
@@ -293,23 +293,73 @@ export function renderCommandPaletteRows(
   selectedIndex: number,
   height: number,
 ): string[] {
+  const filtered = filterCommandPaletteItems(items, query);
   return visibleListRows(
-    filterCommandPaletteItems(items, query).map((item) => item.disabled ? `(${item.label})` : item.label),
+    commandPaletteRenderLabels(filtered),
     selectedIndex,
     height,
   );
+}
+
+function commandPaletteLabels(items: readonly CommandPaletteItem[]): string[] {
+  const labels = new Array<string>(items.length);
+  for (let index = 0; index < items.length; index += 1) {
+    labels[index] = items[index]!.label;
+  }
+  return labels;
+}
+
+function commandPaletteRenderLabels(items: readonly CommandPaletteItem[]): string[] {
+  const labels = new Array<string>(items.length);
+  for (let index = 0; index < items.length; index += 1) {
+    const item = items[index]!;
+    labels[index] = item.disabled ? `(${item.label})` : item.label;
+  }
+  return labels;
 }
 
 function scoreCommandPaletteItem(
   item: CommandPaletteItem,
   terms: readonly string[],
 ): { score: number; matched: string[] } | undefined {
-  const fields = weightedSearchFields([
-    { value: item.label, weight: 100 },
-    { value: item.id, weight: 80 },
-    ...(item.keywords ?? []).map((value) => ({ value, weight: 40 })),
-  ]);
-  return scoreWeightedSearchFields(fields, terms, item.disabled);
+  let score = item.disabled ? -10 : 0;
+  const matched: string[] = [];
+  const normalizedLabel = normalizeSearchText(item.label);
+  const normalizedId = normalizeSearchText(item.id);
+  for (const term of terms) {
+    let best = 0;
+    let bestValue: string | undefined;
+    const labelScore = scoreSearchField(normalizedLabel, term, 100);
+    if (labelScore > best) {
+      best = labelScore;
+      bestValue = item.label;
+    }
+    const idScore = scoreSearchField(normalizedId, term, 80);
+    if (idScore > best) {
+      best = idScore;
+      bestValue = item.id;
+    }
+    if (item.keywords) {
+      for (const keyword of item.keywords) {
+        const keywordScore = scoreSearchField(normalizeSearchText(keyword), term, 40);
+        if (keywordScore > best) {
+          best = keywordScore;
+          bestValue = keyword;
+        }
+      }
+    }
+    if (best <= 0) return undefined;
+    score += best;
+    if (bestValue) pushUniqueMatch(matched, bestValue);
+  }
+  return { score, matched };
+}
+
+function pushUniqueMatch(matches: string[], value: string): void {
+  for (const match of matches) {
+    if (match === value) return;
+  }
+  matches.push(value);
 }
 
 function compareCommandPaletteMatches(

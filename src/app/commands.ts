@@ -98,9 +98,12 @@ export class CommandRegistry<TAction extends Action = Action> {
   }
 
   list(group?: string): Command<TAction>[] {
-    return [...this.commands.values()]
-      .filter((command) => group === undefined || command.group === group)
-      .sort((a, b) => (a.group ?? "").localeCompare(b.group ?? "") || a.label.localeCompare(b.label));
+    const commands: Command<TAction>[] = [];
+    for (const command of this.commands.values()) {
+      if (group === undefined || command.group === group) commands.push(command);
+    }
+    commands.sort(compareCommands);
+    return commands;
   }
 
   enabled(command: Command<TAction>): boolean {
@@ -108,28 +111,41 @@ export class CommandRegistry<TAction extends Action = Action> {
   }
 
   projections(group?: string, includeDisabled = true): CommandProjection[] {
-    return this.list(group)
-      .filter((command) => includeDisabled || this.enabled(command))
-      .map((command) => ({
+    const commands = this.list(group);
+    const projections: CommandProjection[] = [];
+    for (const command of commands) {
+      const enabled = this.enabled(command);
+      if (!includeDisabled && !enabled) continue;
+      projections.push({
         id: command.id,
         label: command.label,
         keywords: command.keywords,
-        disabled: !this.enabled(command),
-      }));
+        disabled: !enabled,
+      });
+    }
+    return projections;
   }
 
   keyBindings(group?: string, includeDisabled = false): KeyBinding[] {
-    return this.list(group)
-      .filter((command) => command.binding && (includeDisabled || this.enabled(command)))
-      .map((command) => ({
-        ...command.binding!,
+    const commands = this.list(group);
+    const bindings: KeyBinding[] = [];
+    for (const command of commands) {
+      if (!command.binding || (!includeDisabled && !this.enabled(command))) continue;
+      bindings.push({
+        ...command.binding,
         description: command.description ?? command.label,
         group: command.group,
-      }));
+      });
+    }
+    return bindings;
   }
 
   groups(): string[] {
-    return uniqueSorted(this.list().map((command) => command.group));
+    const groups: Array<string | undefined> = [];
+    for (const command of this.commands.values()) {
+      groups.push(command.group);
+    }
+    return uniqueSorted(groups);
   }
 
   clear(group?: string): void {
@@ -151,21 +167,33 @@ export class CommandRegistry<TAction extends Action = Action> {
   }
 
   inspect(group?: string): CommandRegistryInspection {
-    const commands = this.list(group).map((command) => ({
-      id: command.id,
-      label: command.label,
-      description: command.description,
-      group: command.group,
-      keywords: command.keywords,
-      disabled: !this.enabled(command),
-      bindingId: command.binding ? bindingId(command.binding) : undefined,
-      hasAction: command.action !== undefined,
-    }));
+    const source = this.list(group);
+    const commands = new Array<CommandInspection>(source.length);
+    let enabled = 0;
+    let disabled = 0;
+    const groups: Array<string | undefined> = [];
+    for (let index = 0; index < source.length; index += 1) {
+      const command = source[index]!;
+      const commandDisabled = !this.enabled(command);
+      if (commandDisabled) disabled += 1;
+      else enabled += 1;
+      groups.push(command.group);
+      commands[index] = {
+        id: command.id,
+        label: command.label,
+        description: command.description,
+        group: command.group,
+        keywords: command.keywords,
+        disabled: commandDisabled,
+        bindingId: command.binding ? bindingId(command.binding) : undefined,
+        hasAction: command.action !== undefined,
+      };
+    }
     return {
       count: commands.length,
-      enabled: commands.filter((command) => !command.disabled).length,
-      disabled: commands.filter((command) => command.disabled).length,
-      groups: uniqueSorted(commands.map((command) => command.group)),
+      enabled,
+      disabled,
+      groups: uniqueSorted(groups),
       commands,
     };
   }
@@ -193,6 +221,16 @@ export class CommandRegistry<TAction extends Action = Action> {
   }
 }
 
+function compareCommands<TAction extends Action>(a: Command<TAction>, b: Command<TAction>): number {
+  return (a.group ?? "").localeCompare(b.group ?? "") || a.label.localeCompare(b.label);
+}
+
 function uniqueSorted(values: Array<string | undefined>): string[] {
-  return [...new Set(values.filter((value): value is string => !!value))].sort();
+  const unique: string[] = [];
+  for (const value of values) {
+    if (!value || unique.includes(value)) continue;
+    unique.push(value);
+  }
+  unique.sort();
+  return unique;
 }
