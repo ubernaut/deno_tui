@@ -894,6 +894,7 @@ Work:
   - [x] Removed per-draw `Computed` allocation from `VirtualList` by making formatted display rows part of the component
         lifecycle.
   - [x] Applied the same lifecycle-owned row computation pattern to `Stepper`, `ContextMenu`, and `RadioGroup`.
+  - [x] Moved `EmptyState`, `Chart`, `LogViewer`, and `ToastStack` row projections into owned computed fields.
 - [x] Make demo-only assets and NGE-inspired primitives clearly separate from library APIs.
   - [x] Added `app/neon_three_catalog.ts` for supported Three scene metadata and labels, keeping demo/NGE catalog data
         separate from the monolithic scene factory and shared by visualization footers plus scene coverage tests.

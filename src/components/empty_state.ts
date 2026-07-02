@@ -68,6 +68,7 @@ export class EmptyState extends Component {
   readonly action: Signal<string>;
   readonly icon: Signal<string>;
   readonly center: Signal<boolean>;
+  readonly #rows: Computed<string[]>;
 
   constructor(options: EmptyStateOptions) {
     super(options);
@@ -76,11 +77,7 @@ export class EmptyState extends Component {
     this.action = signalify(options.action ?? "");
     this.icon = signalify(options.icon ?? "");
     this.center = signalify(options.center ?? true);
-  }
-
-  override draw(): void {
-    super.draw();
-    const rows = new Computed(() =>
+    this.#rows = new Computed(() =>
       renderEmptyState(
         {
           title: this.title.value,
@@ -93,6 +90,11 @@ export class EmptyState extends Component {
         this.center.value,
       )
     );
-    drawTextRows(this, rows);
+    this.on("destroy", () => this.#rows.dispose());
+  }
+
+  override draw(): void {
+    super.draw();
+    drawTextRows(this, this.#rows);
   }
 }

@@ -120,17 +120,20 @@ export class LogViewerController {
 
 /** Public class implementing a log Viewer. */
 export class LogViewer extends Component {
+  readonly #visibleRows: Computed<string[]>;
+
   constructor(private readonly options: LogViewerOptions) {
     super(options);
+    this.#visibleRows = new Computed(() => {
+      const lines = Array.isArray(this.options.lines) ? this.options.lines : this.options.lines.value;
+      return visibleLogLines(lines, this.rectangle.value.height, this.options.follow ?? true);
+    });
+    this.on("destroy", () => this.#visibleRows.dispose());
   }
 
   override draw(): void {
     super.draw();
-    const visibleRows = new Computed(() => {
-      const lines = Array.isArray(this.options.lines) ? this.options.lines : this.options.lines.value;
-      return visibleLogLines(lines, this.rectangle.value.height, this.options.follow ?? true);
-    });
-    drawTextRows(this, visibleRows, { keyPrefix: "line" });
+    drawTextRows(this, this.#visibleRows, { keyPrefix: "line" });
   }
 }
 

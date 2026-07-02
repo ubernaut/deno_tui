@@ -35,16 +35,19 @@ export function renderBarChart(values: readonly number[], width: number, height:
 
 /** Public class implementing a chart. */
 export class Chart extends Component {
+  readonly #rows: Computed<string[]>;
+
   constructor(private readonly options: ChartOptions) {
     super(options);
+    this.#rows = new Computed(() => {
+      const values = Array.isArray(this.options.values) ? this.options.values : this.options.values.value;
+      return renderBarChart(values, this.rectangle.value.width, this.rectangle.value.height);
+    });
+    this.on("destroy", () => this.#rows.dispose());
   }
 
   override draw(): void {
     super.draw();
-    const rows = new Computed(() => {
-      const values = Array.isArray(this.options.values) ? this.options.values : this.options.values.value;
-      return renderBarChart(values, this.rectangle.value.width, this.rectangle.value.height);
-    });
-    drawTextRows(this, rows, { keyPrefix: "line" });
+    drawTextRows(this, this.#rows, { keyPrefix: "line" });
   }
 }

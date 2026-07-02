@@ -115,16 +115,12 @@ export class ToastStackController {
 /** Public class implementing a toast Stack. */
 export class ToastStack extends Component {
   messages: Signal<ToastMessage[]>;
+  readonly #rows: Computed<string[]>;
 
   constructor(options: ToastStackOptions) {
     super(options);
     this.messages = signalify(options.messages, { deepObserve: true });
-  }
-
-  override draw(): void {
-    super.draw();
-
-    const rows = new Computed(() => {
+    this.#rows = new Computed(() => {
       const height = this.rectangle.value.height;
       const lines = new Array<string>(height);
       for (let index = 0; index < height; index++) {
@@ -133,7 +129,12 @@ export class ToastStack extends Component {
       }
       return lines;
     });
-    drawTextRows(this, rows, { keyPrefix: "toast" });
+    this.on("destroy", () => this.#rows.dispose());
+  }
+
+  override draw(): void {
+    super.draw();
+    drawTextRows(this, this.#rows, { keyPrefix: "toast" });
   }
 }
 
