@@ -132,9 +132,16 @@ export class MarkupWidgetHydration {
   readonly focusOrder: string[];
 
   constructor(widgets: readonly HydratedMarkupWidget[]) {
-    this.widgets = [...widgets];
-    this.byId = new Map(this.widgets.map((widget) => [widget.id, widget]));
-    this.focusOrder = this.widgets.filter((widget) => widget.focusable).map((widget) => widget.id);
+    this.widgets = new Array<HydratedMarkupWidget>(widgets.length);
+    this.byId = new Map<string, HydratedMarkupWidget>();
+    const focusOrder: string[] = [];
+    for (let index = 0; index < widgets.length; index += 1) {
+      const widget = widgets[index]!;
+      this.widgets[index] = widget;
+      this.byId.set(widget.id, widget);
+      if (widget.focusable) focusOrder.push(widget.id);
+    }
+    this.focusOrder = focusOrder;
   }
 
   dispatch(event: MarkupWidgetEvent): boolean {
@@ -144,17 +151,30 @@ export class MarkupWidgetHydration {
   }
 
   inspect(): MarkupWidgetHydrationInspection {
-    return {
-      widgetCount: this.widgets.length,
-      focusOrder: [...this.focusOrder],
-      widgets: this.widgets.map((widget) => ({
+    const focusOrder = new Array<string>(this.focusOrder.length);
+    for (let index = 0; index < this.focusOrder.length; index += 1) {
+      focusOrder[index] = this.focusOrder[index]!;
+    }
+    const widgets = new Array<MarkupWidgetHydrationInspection["widgets"][number]>(this.widgets.length);
+    for (let index = 0; index < this.widgets.length; index += 1) {
+      const widget = this.widgets[index]!;
+      const actions = new Array<MarkupWidgetEvent["type"]>(widget.actions.length);
+      for (let actionIndex = 0; actionIndex < widget.actions.length; actionIndex += 1) {
+        actions[actionIndex] = widget.actions[actionIndex]!;
+      }
+      widgets[index] = {
         id: widget.id,
         tag: widget.tag,
         kind: widget.kind,
         focusable: widget.focusable,
-        actions: [...widget.actions],
+        actions,
         controller: widget.controller?.constructor.name,
-      })),
+      };
+    }
+    return {
+      widgetCount: this.widgets.length,
+      focusOrder,
+      widgets,
     };
   }
 
@@ -409,7 +429,11 @@ function checkboxWidget(node: LayoutNode): MarkupWidgetDescriptor {
 }
 
 function comboboxWidget(node: LayoutNode): MarkupWidgetDescriptor {
-  const items = optionNodes(node).map((option) => labelForNode(option));
+  const options = optionNodes(node);
+  const items = new Array<string>(options.length);
+  for (let index = 0; index < options.length; index += 1) {
+    items[index] = labelForNode(options[index]!);
+  }
   const selectedIndex = selectedOptionIndex(node);
   return {
     kind: "combobox",
@@ -444,7 +468,11 @@ function inputWidget(node: LayoutNode): MarkupWidgetDescriptor {
 }
 
 function radioGroupWidget(node: LayoutNode): MarkupWidgetDescriptor {
-  const options = optionNodes(node, ["option", "radio"]).map(radioOptionForNode);
+  const optionNodeList = optionNodes(node, ["option", "radio"]);
+  const options = new Array<RadioOption>(optionNodeList.length);
+  for (let index = 0; index < optionNodeList.length; index += 1) {
+    options[index] = radioOptionForNode(optionNodeList[index]!);
+  }
   const selectedValue = node.attributes["selected-value"] ?? node.attributes.value;
   return {
     kind: "radio-group",
@@ -509,7 +537,11 @@ function sliderWidget(node: LayoutNode): MarkupWidgetDescriptor {
 }
 
 function tabsWidget(node: LayoutNode): MarkupWidgetDescriptor {
-  const tabs = node.children.filter((child) => child.tag === "tab").map(tabForNode);
+  const tabNodes = childNodesForTags(node, ["tab"]);
+  const tabs = new Array<TabItem>(tabNodes.length);
+  for (let index = 0; index < tabNodes.length; index += 1) {
+    tabs[index] = tabForNode(tabNodes[index]!);
+  }
   return {
     kind: "tabs",
     controller: new TabsController({
@@ -536,7 +568,7 @@ function treeWidget(node: LayoutNode): MarkupWidgetDescriptor {
   return {
     kind: "tree",
     controller: new TreeController({
-      nodes: node.children.filter((child) => child.tag === "tree-node").map(treeNodeForNode),
+      nodes: treeNodesForChildren(node.children),
       selectedIndex: numberAttr(node.attributes, "selected-index", 0),
     }),
   };
@@ -561,8 +593,7 @@ function defaultActionsForKind(kind: MarkupWidgetKind): readonly MarkupWidgetEve
 }
 
 function optionNodes(node: LayoutNode, tags = ["option"]): LayoutNode[] {
-  const wanted = new Set(tags);
-  return node.children.filter((child) => wanted.has(child.tag));
+  return childNodesForTags(node, tags);
 }
 
 function radioOptionForNode(node: LayoutNode): RadioOption {
@@ -583,13 +614,33 @@ function tabForNode(node: LayoutNode): TabItem {
 }
 
 function treeNodeForNode(node: LayoutNode): TreeNode {
-  const children = node.children.filter((child) => child.tag === "tree-node").map(treeNodeForNode);
+  const children = treeNodesForChildren(node.children);
   return {
     id: stringAttr(node.attributes, "value", node.id),
     label: labelForNode(node),
     expanded: booleanAttr(node.attributes, "expanded"),
     children: children.length > 0 ? children : undefined,
   };
+}
+
+function childNodesForTags(node: LayoutNode, tags: readonly string[]): LayoutNode[] {
+  const nodes: LayoutNode[] = [];
+  for (const child of node.children) {
+    for (const tag of tags) {
+      if (child.tag !== tag) continue;
+      nodes.push(child);
+      break;
+    }
+  }
+  return nodes;
+}
+
+function treeNodesForChildren(children: readonly LayoutNode[]): TreeNode[] {
+  const nodes: TreeNode[] = [];
+  for (const child of children) {
+    if (child.tag === "tree-node") nodes.push(treeNodeForNode(child));
+  }
+  return nodes;
 }
 
 function selectedOptionIndex(node: LayoutNode): number | undefined {
@@ -619,7 +670,14 @@ function labelForNode(node: LayoutNode): string {
 
 function textForNode(node: LayoutNode): string {
   if (node.text !== undefined) return node.text;
-  return node.children.map(textForNode).join(" ").trim();
+  let text = "";
+  for (const child of node.children) {
+    const childText = textForNode(child);
+    if (!childText) continue;
+    if (text) text += " ";
+    text += childText;
+  }
+  return text.trim();
 }
 
 function boxAsSliderTrack(

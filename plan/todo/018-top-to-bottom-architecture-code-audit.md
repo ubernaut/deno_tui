@@ -343,6 +343,8 @@ Work:
         `createMarkupLayout()` through a default cache with opt-out support for callers that need uncached parsing.
   - [x] Reworked layout style cloning, grid track/area parsing, placement parsing, box edge parsing, and CSS shorthand
         tokenization to share loop-based helpers instead of repeated split/map/filter fallback paths.
+  - [x] Reworked markup widget hydration lookup, focus order, inspection snapshots, option extraction, tabs, trees, and
+        recursive text projection to use direct buffers instead of map/filter chains.
 
 Acceptance checks:
 
