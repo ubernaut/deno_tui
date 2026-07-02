@@ -229,6 +229,8 @@ Work:
         sorting match lists on each layout solve.
   - [x] Reworked the simple HTML/CSS layout solver's child splitting, grid placement, flex line sizing, and text
         intrinsic measurement loops to avoid callback pipelines and duplicate line-width scans in layout solve paths.
+  - [x] Added a direct sampled-series value helper and migrated compact network monitor traces off temporary RX/TX
+        sampled arrays in narrow live-render paths.
 
 Acceptance checks:
 

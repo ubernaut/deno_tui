@@ -218,16 +218,19 @@ export function sampleSeries(values: number[], width: number): number[] {
   if (width <= 0) {
     return [];
   }
-  if (values.length === 0) {
-    return new Array<number>(width).fill(0);
-  }
   const output = new Array<number>(width);
   for (let index = 0; index < width; index += 1) {
-    const ratio = width === 1 ? 0 : index / (width - 1);
-    const position = Math.round(ratio * (values.length - 1));
-    output[index] = clamp(values[position] ?? 0, 0, 1);
+    output[index] = sampleSeriesValue(values, index, width);
   }
   return output;
+}
+
+export function sampleSeriesValue(values: readonly number[], index: number, width: number): number {
+  if (width <= 0 || values.length === 0) return 0;
+  const safeIndex = Math.max(0, Math.min(Math.floor(index), Math.max(0, width - 1)));
+  const ratio = width === 1 ? 0 : safeIndex / (width - 1);
+  const position = Math.round(ratio * (values.length - 1));
+  return clamp(values[position] ?? 0, 0, 1);
 }
 
 export function moduloUnit(value: number): number {

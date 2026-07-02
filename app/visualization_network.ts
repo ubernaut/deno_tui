@@ -1,5 +1,5 @@
 import { formatRate } from "./styles.ts";
-import { buildVisualizationDrive, sampleSeries, type VisualizationDrive } from "./visualization_drive.ts";
+import { buildVisualizationDrive, sampleSeriesValue, type VisualizationDrive } from "./visualization_drive.ts";
 import type { Accent, PanelRender, RenderContext } from "./types.ts";
 
 export interface NetworkMonitorRenderDependencies {
@@ -103,12 +103,10 @@ function networkSummaryLine(system: RenderContext["system"], width: number): str
 }
 
 function compactNetworkTrace(system: RenderContext["system"], width: number): string {
-  const rx = sampleSeries(system.rxHistory, width);
-  const tx = sampleSeries(system.txHistory, width);
   let trace = "";
   for (let index = 0; index < width; index++) {
-    const rxValue = rx[index] ?? 0;
-    const txValue = tx[index] ?? 0;
+    const rxValue = sampleSeriesValue(system.rxHistory, index, width);
+    const txValue = sampleSeriesValue(system.txHistory, index, width);
     const combined = Math.max(rxValue, txValue);
     if (combined >= 0.82) trace += "█";
     else if (rxValue >= 0.5 && txValue >= 0.5) trace += "▓";
