@@ -273,7 +273,11 @@ export class ThreeAsciiAnsiGridAssembler {
         const index = rowOffset + column;
         const fillGlyphIndex = Math.round(fillGlyphs[index] ?? 0);
         if (fillGlyphIndex < 5) {
-          outputRow[column] = this.blankAnsi;
+          const blankStart = column;
+          column += 1;
+          while (column < columns && Math.round(fillGlyphs[rowOffset + column] ?? 0) < 5) column += 1;
+          outputRow.fill(this.blankAnsi, blankStart, column);
+          column -= 1;
           continue;
         }
 
@@ -357,7 +361,11 @@ export class ThreeAsciiAnsiGridAssembler {
         const index = rowOffset + column;
         const fillGlyphIndex = Math.round(fillGlyphs[index] as number);
         if (fillGlyphIndex < 5) {
-          outputRow[column] = this.blankAnsi;
+          const blankStart = column;
+          column += 1;
+          while (column < columns && Math.round(fillGlyphs[rowOffset + column] as number) < 5) column += 1;
+          outputRow.fill(this.blankAnsi, blankStart, column);
+          column -= 1;
           continue;
         }
 
