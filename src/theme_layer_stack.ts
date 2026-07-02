@@ -10,6 +10,9 @@ export class ThemeLayerStackImplementation {
   readonly #layers = new Map<string, ThemeLayer>();
   readonly #enabled = new Set<string>();
   readonly #revision = new Signal(0);
+  #ids?: string[];
+  #activeIds?: string[];
+  #activeOptions?: ThemeEngineOptions[];
 
   constructor(layers: Iterable<ThemeLayer> = []) {
     for (const layer of layers) {
@@ -54,15 +57,23 @@ export class ThemeLayerStackImplementation {
   }
 
   ids(): string[] {
-    return [...this.#layers.keys()];
+    if (!this.#ids) {
+      const ids: string[] = [];
+      for (const id of this.#layers.keys()) ids.push(id);
+      this.#ids = ids;
+    }
+    return cloneStringArray(this.#ids);
   }
 
   activeIds(): string[] {
-    const ids: string[] = [];
-    for (const id of this.#layers.keys()) {
-      if (this.#enabled.has(id)) ids.push(id);
+    if (!this.#activeIds) {
+      const ids: string[] = [];
+      for (const id of this.#layers.keys()) {
+        if (this.#enabled.has(id)) ids.push(id);
+      }
+      this.#activeIds = ids;
     }
-    return ids;
+    return cloneStringArray(this.#activeIds);
   }
 
   activeLayers(): ThemeLayer[] {
@@ -142,15 +153,21 @@ export class ThemeLayerStackImplementation {
   }
 
   #touch(): void {
+    this.#ids = undefined;
+    this.#activeIds = undefined;
+    this.#activeOptions = undefined;
     this.#revision.value++;
   }
 
   #activeLayerOptions(): ThemeEngineOptions[] {
-    const options: ThemeEngineOptions[] = [];
-    for (const [id, layer] of this.#layers) {
-      if (this.#enabled.has(id)) options.push(layer.options);
+    if (!this.#activeOptions) {
+      const options: ThemeEngineOptions[] = [];
+      for (const [id, layer] of this.#layers) {
+        if (this.#enabled.has(id)) options.push(layer.options);
+      }
+      this.#activeOptions = options;
     }
-    return options;
+    return cloneThemeEngineOptionsArray(this.#activeOptions);
   }
 
   #cloneLayer(layer: ThemeLayer, enabled: boolean): ThemeLayer {
@@ -160,4 +177,16 @@ export class ThemeLayerStackImplementation {
       options: composeThemeOptionsCore(layer.options),
     };
   }
+}
+
+function cloneStringArray(values: readonly string[]): string[] {
+  const output = new Array<string>(values.length);
+  for (let index = 0; index < values.length; index += 1) output[index] = values[index]!;
+  return output;
+}
+
+function cloneThemeEngineOptionsArray(values: readonly ThemeEngineOptions[]): ThemeEngineOptions[] {
+  const output = new Array<ThemeEngineOptions>(values.length);
+  for (let index = 0; index < values.length; index += 1) output[index] = values[index]!;
+  return output;
 }

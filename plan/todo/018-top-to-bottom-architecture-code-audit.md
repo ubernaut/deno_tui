@@ -947,6 +947,8 @@ Work:
         repeated provider cycle/inspection sorting.
   - [x] Cached `ThemeEngine` component-name and variant metadata per engine, preserving cloned public returns while
         reducing repeated theme inspection and gallery projection work.
+  - [x] Cached theme layer stack ids, active ids, and active option projections behind the existing layer revision touch,
+        reducing provider signature and layer composition churn.
 - [x] Make demo-only assets and NGE-inspired primitives clearly separate from library APIs.
   - [x] Added `app/neon_three_catalog.ts` for supported Three scene metadata and labels, keeping demo/NGE catalog data
         separate from the monolithic scene factory and shared by visualization footers plus scene coverage tests.
