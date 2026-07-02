@@ -2551,7 +2551,10 @@ function windowContentSize(id: WindowId, viewport: Rectangle): { width: number; 
     return { width: Math.max(baseWidth, maxTextWidth(docs) + 2), height: Math.max(baseHeight, docs.length) };
   }
   if (id === "data") {
-    const width = columns.reduce((sum, column) => sum + (column.width ?? 12) + 2, 8);
+    let width = 8;
+    for (let index = 0; index < columns.length; index += 1) {
+      width += (columns[index]?.width ?? 12) + 2;
+    }
     return { width: Math.max(baseWidth, width), height: Math.max(baseHeight, rows.length + 4) };
   }
   if (id === "three") {

@@ -343,6 +343,8 @@ Work:
         `Set`/spread/sort conversion in inspection paths.
   - [x] Reworked runtime profile, renderer backend, and app plugin catalog unique sorted projections with the same
         direct insertion helper to reduce catalog inspection churn.
+  - [x] Reworked API Workbench data-window content width sizing to use a direct loop instead of a reducer during
+        redraw-driven content-size projection.
   - [x] Added a direct sampled-series value helper and migrated compact network monitor traces off temporary RX/TX
         sampled arrays in narrow live-render paths.
   - [x] Added source-array keyed overlay z-order caches and reverse-loop modal hit testing so repeated menu/modal
