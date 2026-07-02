@@ -189,3 +189,24 @@ Deno.test("benchmark CLI selectors filter executable cases", () => {
   assertEquals(options.query, { search: "terminal replay", tag: "terminal" });
   assertEquals(selected.map((entry) => entry.name), ["runtime/terminal-screen-replay"]);
 });
+
+Deno.test("benchmark CLI accepts query as a search alias", () => {
+  const separated = parseBenchmarkCliOptions(["--query", "three-ascii-ansi-grid", "--category", "render"]);
+  const assigned = parseBenchmarkCliOptions(["--query=workbench frame"]);
+
+  assertEquals(separated.query, { search: "three-ascii-ansi-grid", category: "render" });
+  assertEquals(
+    selectBenchmarkCases(benchmarkCases, separated.query).map((entry) => entry.name),
+    [
+      "render/three-ascii-ansi-grid-96x40",
+      "render/three-ascii-ansi-grid-solid-96x40",
+      "render/three-ascii-ansi-grid-partial-block-96x40",
+      "render/three-ascii-ansi-grid-pattern-96x40",
+      "render/three-ascii-ansi-grid-fill-only-96x40",
+      "render/three-ascii-ansi-grid-glyph-cache-96x40",
+      "render/three-ascii-ansi-grid-warm-cache-96x40",
+      "render/three-ascii-ansi-grid-sparse-96x40",
+    ],
+  );
+  assertEquals(assigned.query, { search: "workbench frame" });
+});

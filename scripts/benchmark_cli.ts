@@ -19,7 +19,7 @@ export function parseBenchmarkCliOptions(args: readonly string[]): BenchmarkCliO
       list = true;
     } else if (arg === "--json") {
       json = true;
-    } else if (arg === "--filter" || arg === "--search") {
+    } else if (arg === "--filter" || arg === "--search" || arg === "--query") {
       const value = args[index + 1];
       if (value !== undefined) {
         query.search = value;
@@ -29,6 +29,8 @@ export function parseBenchmarkCliOptions(args: readonly string[]): BenchmarkCliO
       query.search = arg.slice("--filter=".length);
     } else if (arg.startsWith("--search=")) {
       query.search = arg.slice("--search=".length);
+    } else if (arg.startsWith("--query=")) {
+      query.search = arg.slice("--query=".length);
     } else if (arg === "--category") {
       const value = args[index + 1];
       if (value !== undefined) {
