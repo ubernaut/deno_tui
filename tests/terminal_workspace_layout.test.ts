@@ -117,6 +117,10 @@ Deno.test("terminal workspace layout helpers replace remove resize and find near
     node: { ...root, ratio: 0.9 },
     changed: true,
   });
+  assertEquals(updateTerminalWorkspaceSplitRatio(root, "missing", 0.9), {
+    node: root,
+    changed: false,
+  });
   assertEquals(findNearestTerminalWorkspaceSplit(root, logs.id)?.activeSide, "second");
 });
 

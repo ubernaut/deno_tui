@@ -240,27 +240,39 @@ export function updateTerminalWorkspaceSplitRatio(
   ratio: number,
 ): { node?: TerminalWorkspaceLayoutNode; changed: boolean } {
   if (!node) return { changed: false };
-  if (node.kind === "pane") return { node: cloneTerminalWorkspacePaneNode(node), changed: false };
+  if (node.kind === "pane") return { node, changed: false };
   if (node.id === splitId) {
     return {
       node: {
         ...node,
         ratio,
-        first: cloneTerminalWorkspaceLayoutNode(node.first),
-        second: cloneTerminalWorkspaceLayoutNode(node.second),
       },
       changed: true,
     };
   }
   const first = updateTerminalWorkspaceSplitRatio(node.first, splitId, ratio);
+  if (first.changed) {
+    return {
+      node: {
+        ...node,
+        first: first.node ?? node.first,
+      },
+      changed: true,
+    };
+  }
   const second = updateTerminalWorkspaceSplitRatio(node.second, splitId, ratio);
+  if (second.changed) {
+    return {
+      node: {
+        ...node,
+        second: second.node ?? node.second,
+      },
+      changed: true,
+    };
+  }
   return {
-    node: {
-      ...node,
-      first: first.node ?? cloneTerminalWorkspaceLayoutNode(node.first),
-      second: second.node ?? cloneTerminalWorkspaceLayoutNode(node.second),
-    },
-    changed: first.changed || second.changed,
+    node,
+    changed: false,
   };
 }
 

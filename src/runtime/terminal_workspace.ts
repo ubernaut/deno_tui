@@ -416,15 +416,19 @@ export class TerminalWorkspaceController {
   }
 
   resizeSplit(splitId: string, ratio: number): boolean {
-    const current = cloneTerminalWorkspaceLayoutState(this.layout.peek());
+    const current = this.layout.peek();
     const root = updateTerminalWorkspaceSplitRatio(current.root, splitId, clampTerminalWorkspaceSplitRatio(ratio));
     if (!root.changed) return false;
-    this.layout.value = { ...current, root: root.node };
+    this.layout.value = {
+      root: root.node,
+      activePaneId: current.activePaneId,
+      zoomedPaneId: current.zoomedPaneId,
+    };
     return true;
   }
 
   resizeActiveSplit(delta: number): boolean {
-    const current = cloneTerminalWorkspaceLayoutState(this.layout.peek());
+    const current = this.layout.peek();
     const activePane = findActiveTerminalWorkspacePane(current);
     if (!activePane) return false;
     const nearest = findNearestTerminalWorkspaceSplit(current.root, activePane.id);
