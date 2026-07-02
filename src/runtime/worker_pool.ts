@@ -206,11 +206,11 @@ export async function runWorkerBatch<TPayload, TResult>(
   inputs: readonly TPayload[],
   options: WorkerBatchOptions = {},
 ): Promise<Array<WorkerBatchResult<TPayload, TResult>>> {
-  const jobs = inputs.map(async (input, index) => ({
-    input,
-    index,
-    value: await pool.run(input, { signal: options.signal }),
-  }));
+  const jobs = new Array<Promise<WorkerBatchResult<TPayload, TResult>>>(inputs.length);
+  for (let index = 0; index < inputs.length; index += 1) {
+    const input = inputs[index]!;
+    jobs[index] = pool.run(input, { signal: options.signal }).then((value) => ({ input, index, value }));
+  }
   return await Promise.all(jobs);
 }
 

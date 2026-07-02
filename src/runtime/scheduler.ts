@@ -305,21 +305,24 @@ export async function runTaskBatch<TInput, TOutput>(
 ): Promise<TaskBatchResult<TInput, TOutput>[]> {
   const scheduler = options.scheduler ?? new AsyncScheduler();
   const sharedTask = options.task;
-  const jobs = items.map((item, index) => {
+  const jobs = new Array<Promise<TaskBatchResult<TInput, TOutput>>>(items.length);
+  for (let index = 0; index < items.length; index += 1) {
+    const item = items[index]!;
     const batchItem = normalizeBatchItem(item);
     const task = batchItem.task ?? sharedTask;
     if (!task) {
-      return Promise.reject(new TypeError("runTaskBatch requires a task option or per-item task."));
+      jobs[index] = Promise.reject(new TypeError("runTaskBatch requires a task option or per-item task."));
+      continue;
     }
 
     const priority = batchItem.priority ?? options.priority;
     const signal = batchItem.signal ?? options.signal;
-    return scheduler.run(async () => ({
+    jobs[index] = scheduler.run(async () => ({
       input: batchItem.input,
       index,
       value: await task(batchItem.input, index),
     }), { priority, signal });
-  });
+  }
 
   return await Promise.all(jobs);
 }

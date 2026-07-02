@@ -355,6 +355,8 @@ Work:
         direct lookup/projection helpers instead of repeated nested `some/filter/map/findIndex` scans.
   - [x] Reworked command key lookup, keymap synchronization, key-binding inspection, conflict grouping, conflict
         markdown, and command-surface search field construction to use explicit buffers instead of callback pipelines.
+  - [x] Reworked scheduler and worker batch helpers to build promise buffers explicitly instead of per-item `map(async)`
+        closures while preserving ordered results and abort behavior.
 
 Acceptance checks:
 
