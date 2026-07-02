@@ -7,8 +7,10 @@ import {
   workbenchVerticalScrollbarCellsInto,
   workbenchVerticalScrollbarRect,
   workbenchWindowLayout,
+  workbenchWindowScrollbarRects,
   WorkbenchWorkspaceViewportController,
 } from "../src/app/workbench_layout.ts";
+import type { ViewportAxisOverflow, ViewportOverflowInspection } from "../src/viewport.ts";
 
 Deno.test("clampWorkbenchTileDensity keeps density in the shared supported range", () => {
   assertEquals(clampWorkbenchTileDensity(4.8), 3);
@@ -81,6 +83,68 @@ Deno.test("workbenchVerticalScrollbarRect locates the right-edge workspace hit r
     undefined,
   );
 });
+
+Deno.test("workbenchWindowScrollbarRects locates per-window content scrollbar regions", () => {
+  const inner = { column: 10, row: 4, width: 30, height: 12 };
+  const viewport = { column: 11, row: 5, width: 27, height: 9 };
+  const overflow: ViewportOverflowInspection = {
+    rows: axisOverflow({ scrollbarVisible: true, thumb: { start: 2, size: 4, visible: true } }),
+    columns: axisOverflow({ scrollbarVisible: true, thumb: { start: 3, size: 8, visible: true } }),
+    maxOffset: { columns: 10, rows: 20 },
+    offset: { columns: 1, rows: 2 },
+  };
+
+  assertEquals(workbenchWindowScrollbarRects({ inner, viewport, overflow }), {
+    vertical: { column: 39, row: 5, width: 1, height: 9 },
+    horizontal: { column: 11, row: 15, width: 27, height: 1 },
+  });
+  assertEquals(
+    workbenchWindowScrollbarRects({
+      inner,
+      viewport: { ...viewport, height: 0 },
+      overflow,
+    }).vertical,
+    undefined,
+  );
+  assertEquals(
+    workbenchWindowScrollbarRects({
+      inner,
+      viewport: { ...viewport, width: 0 },
+      overflow,
+    }).horizontal,
+    undefined,
+  );
+  assertEquals(
+    workbenchWindowScrollbarRects({
+      inner,
+      viewport,
+      overflow: {
+        ...overflow,
+        rows: axisOverflow({ scrollbarVisible: false, thumb: overflow.rows.thumb }),
+        columns: axisOverflow({ scrollbarVisible: false, thumb: overflow.columns.thumb }),
+      },
+    }),
+    { vertical: undefined, horizontal: undefined },
+  );
+});
+
+function axisOverflow(
+  options: Partial<ViewportAxisOverflow> = {},
+): ViewportAxisOverflow {
+  return {
+    contentLength: 20,
+    viewportLength: 8,
+    maxOffset: 12,
+    offset: 2,
+    overflow: "auto",
+    hasOverflow: true,
+    canScroll: true,
+    scrollbarVisible: true,
+    thumb: { start: 1, size: 3, visible: true },
+    visibleRange: { start: 2, end: 10 },
+    ...options,
+  };
+}
 
 Deno.test("workbench scrollbar cell projectors use caller-owned buffers", () => {
   const vertical: Array<{ column: number; row: number; glyph: string }> = [{ column: -1, row: -1, glyph: "x" }];

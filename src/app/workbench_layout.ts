@@ -1,6 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { TileLayoutOptions } from "../layout/responsive.ts";
 import type { Rectangle } from "../types.ts";
+import type { ViewportOverflowInspection } from "../viewport.ts";
 import { scrollbarGlyph, type ScrollbarThumb } from "../components/scroll_area.ts";
 import { workbenchRevealActiveRowOffset } from "./workbench_viewport.ts";
 
@@ -36,6 +37,19 @@ export interface WorkbenchVerticalScrollbarRectOptions {
   bounds: Rectangle;
   visible: boolean;
   minWidth?: number;
+}
+
+/** Options for locating per-window content scrollbar hit/render regions. */
+export interface WorkbenchWindowScrollbarRectOptions {
+  inner: Rectangle;
+  viewport: Rectangle;
+  overflow: ViewportOverflowInspection;
+}
+
+/** Per-window scrollbar rectangles shared by terminal and browser render adapters. */
+export interface WorkbenchWindowScrollbarRects {
+  vertical?: Rectangle;
+  horizontal?: Rectangle;
 }
 
 /** Renderer-neutral scrollbar cell placement. */
@@ -197,6 +211,31 @@ export function workbenchVerticalScrollbarRect(
     width: 1,
     height: bounds.height,
   };
+}
+
+/** Locates scrollbars for scrollable content inside a workbench window. */
+export function workbenchWindowScrollbarRects(
+  options: WorkbenchWindowScrollbarRectOptions,
+): WorkbenchWindowScrollbarRects {
+  const inner = options.inner;
+  const viewport = options.viewport;
+  const vertical = options.overflow.rows.scrollbarVisible && viewport.height > 0
+    ? {
+      column: inner.column + inner.width - 1,
+      row: viewport.row,
+      width: 1,
+      height: viewport.height,
+    }
+    : undefined;
+  const horizontal = options.overflow.columns.scrollbarVisible && viewport.width > 0
+    ? {
+      column: viewport.column,
+      row: inner.row + inner.height - 1,
+      width: viewport.width,
+      height: 1,
+    }
+    : undefined;
+  return { vertical, horizontal };
 }
 
 /** Projects vertical scrollbar glyph cells into a caller-owned buffer. */

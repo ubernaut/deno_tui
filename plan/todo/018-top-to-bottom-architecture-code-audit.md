@@ -129,6 +129,8 @@ Work:
         constructing and disposing a `WindowManagerController` during every draw.
   - [x] Promoted immutable bounded log-row append into `workbench_diagnostics.ts` and moved terminal/web workbench
         command logs off local spread/slice trimming.
+  - [x] Extracted per-window content scrollbar rectangle projection into the shared workbench layout module so terminal
+        and future browser window adapters use one geometry contract for vertical and horizontal overflow chrome.
   - [x] Added shared string-backed frame row writing in `workbench_frame.ts` and moved the web API Workbench off its
         local ANSI-cell slice/join writer.
   - [x] Migrated web API Workbench control traversal onto `api_workbench_controls.ts` so browser and terminal adapters

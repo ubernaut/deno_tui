@@ -70,6 +70,7 @@ import {
   type WorkbenchWindowOption,
   workbenchWindowOptionMenuLabelsInto,
   workbenchWindowOptionMinimums,
+  workbenchWindowScrollbarRects,
   type WorkbenchWorkspace,
   WorkbenchWorkspaceViewportController,
   type WorkbenchWorkspaceWindow,
@@ -2637,8 +2638,9 @@ function renderWindowScrollbars(
   const scroll = windowScroll(id);
   const t = theme();
   const overflow = scroll.inspectOverflow();
-  if (overflow.rows.scrollbarVisible && viewport.height > 0) {
-    const rect = { column: inner.column + inner.width - 1, row: viewport.row, width: 1, height: viewport.height };
+  const scrollbars = workbenchWindowScrollbarRects({ inner, viewport, overflow });
+  if (scrollbars.vertical) {
+    const rect = scrollbars.vertical;
     addHit(rect, { type: "windowVScrollbar", id });
     for (const cell of workbenchVerticalScrollbarCellsInto(verticalScrollbarCells, rect, overflow.rows.thumb)) {
       write(
@@ -2649,8 +2651,8 @@ function renderWindowScrollbars(
       );
     }
   }
-  if (overflow.columns.scrollbarVisible && viewport.width > 0) {
-    const rect = { column: viewport.column, row: inner.row + inner.height - 1, width: viewport.width, height: 1 };
+  if (scrollbars.horizontal) {
+    const rect = scrollbars.horizontal;
     addHit(rect, { type: "windowHScrollbar", id });
     for (const cell of workbenchHorizontalScrollbarCellsInto(horizontalScrollbarCells, rect, overflow.columns.thumb)) {
       write(

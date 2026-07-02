@@ -3616,6 +3616,27 @@
     },
     {
       "module": "src/app/workbench_layout.ts",
+      "name": "WorkbenchWindowScrollbarRectOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_layout.ts",
+      "name": "workbenchWindowScrollbarRects",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_layout.ts",
+      "name": "WorkbenchWindowScrollbarRects",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_layout.ts",
       "name": "WorkbenchWorkspaceScrollAdapter",
       "kind": "interface",
       "typeOnly": true,

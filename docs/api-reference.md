@@ -6,10 +6,10 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 ## Summary
 
 - Entrypoints: 9
-- Module visits: 519
-- Re-export declarations: 510
-- Exported symbols: 4601
-- Documented symbols: 4601
+- Module visits: 521
+- Re-export declarations: 512
+- Exported symbols: 4649
+- Documented symbols: 4649
 - Documentation coverage: 100.00%
 - Duplicate symbol groups: 0
 - Missing targets: 0
@@ -18,8 +18,8 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 
 | Specifier       | Path                           | Runtime  | Stability    | Modules | Symbols |    Docs |
 | --------------- | ------------------------------ | -------- | ------------ | ------: | ------: | ------: |
-| `.`             | `./mod.ts`                     | terminal | stable       |     234 |    1956 | 100.00% |
-| `./web`         | `./mod.web.ts`                 | browser  | beta         |     213 |    1819 | 100.00% |
+| `.`             | `./mod.ts`                     | terminal | stable       |     235 |    1980 | 100.00% |
+| `./web`         | `./mod.web.ts`                 | browser  | beta         |     214 |    1843 | 100.00% |
 | `./remote`      | `./mod.remote.ts`              | remote   | experimental |       4 |      38 | 100.00% |
 | `./three-ascii` | `./mod.three_ascii.ts`         | shared   | experimental |       8 |      54 | 100.00% |
 | `./theme`       | `./mod.theme.ts`               | shared   | beta         |      10 |     198 | 100.00% |
@@ -39,10 +39,10 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 ### Summary
 
 - Entrypoint: `mod.ts`
-- Modules: 234
-- Re-export declarations: 233
-- Exported symbols: 1956
-- Documented symbols: 1956
+- Modules: 235
+- Re-export declarations: 234
+- Exported symbols: 1980
+- Documented symbols: 1980
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -115,18 +115,18 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 | [`src/app/toast_commands.ts`](#src-app-toast-commands-ts)                               |          0 |       6 |          6 |
 | [`src/app/tree_commands.ts`](#src-app-tree-commands-ts)                                 |          0 |       6 |          6 |
 | [`src/app/window_manager_commands.ts`](#src-app-window-manager-commands-ts)             |          0 |       8 |          8 |
-| [`src/app/workbench_diagnostics.ts`](#src-app-workbench-diagnostics-ts)                 |          0 |       5 |          5 |
-| [`src/app/workbench_frame.ts`](#src-app-workbench-frame-ts)                             |          0 |      15 |         15 |
-| [`src/app/workbench_layout.ts`](#src-app-workbench-layout-ts)                           |          0 |      14 |         14 |
+| [`src/app/workbench_diagnostics.ts`](#src-app-workbench-diagnostics-ts)                 |          0 |       6 |          6 |
+| [`src/app/workbench_frame.ts`](#src-app-workbench-frame-ts)                             |          0 |      16 |         16 |
+| [`src/app/workbench_layout.ts`](#src-app-workbench-layout-ts)                           |          0 |      20 |         20 |
 | [`src/app/workbench_menu.ts`](#src-app-workbench-menu-ts)                               |          0 |      14 |         14 |
 | [`src/app/workbench_overlay.ts`](#src-app-workbench-overlay-ts)                         |          0 |       5 |          5 |
-| [`src/app/workbench_shelf.ts`](#src-app-workbench-shelf-ts)                             |          0 |       8 |          8 |
+| [`src/app/workbench_shelf.ts`](#src-app-workbench-shelf-ts)                             |          0 |      11 |         11 |
 | [`src/app/workbench_status.ts`](#src-app-workbench-status-ts)                           |          0 |       4 |          4 |
 | [`src/app/workbench_terminal.ts`](#src-app-workbench-terminal-ts)                       |          0 |       6 |          6 |
-| [`src/app/workbench_text.ts`](#src-app-workbench-text-ts)                               |          0 |       6 |          6 |
+| [`src/app/workbench_text.ts`](#src-app-workbench-text-ts)                               |          0 |       9 |          9 |
 | [`src/app/workbench_titlebar.ts`](#src-app-workbench-titlebar-ts)                       |          0 |       6 |          6 |
 | [`src/app/workbench_viewport.ts`](#src-app-workbench-viewport-ts)                       |          0 |       4 |          4 |
-| [`src/app/workbench_window_registry.ts`](#src-app-workbench-window-registry-ts)         |          0 |      13 |         13 |
+| [`src/app/workbench_window_registry.ts`](#src-app-workbench-window-registry-ts)         |          0 |      14 |         14 |
 | [`src/app/workbench_workspace.ts`](#src-app-workbench-workspace-ts)                     |          0 |      18 |         18 |
 | [`src/app/workbench/mod.ts`](#src-app-workbench-mod-ts)                                 |         14 |       0 |          0 |
 | [`src/canvas/box.ts`](#src-canvas-box-ts)                                               |          0 |       2 |          2 |
@@ -172,7 +172,7 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 | [`src/components/spinner.ts`](#src-components-spinner-ts)                               |          0 |       6 |          6 |
 | [`src/components/statusbar.ts`](#src-components-statusbar-ts)                           |          0 |       3 |          3 |
 | [`src/components/stepper.ts`](#src-components-stepper-ts)                               |          0 |      11 |         11 |
-| [`src/components/table.ts`](#src-components-table-ts)                                   |          0 |      12 |         12 |
+| [`src/components/table.ts`](#src-components-table-ts)                                   |          0 |      13 |         13 |
 | [`src/components/tabs.ts`](#src-components-tabs-ts)                                     |          0 |      10 |         10 |
 | [`src/components/terminal_output.ts`](#src-components-terminal-output-ts)               |          0 |       7 |          7 |
 | [`src/components/text.ts`](#src-components-text-ts)                                     |          0 |       2 |          2 |
@@ -209,8 +209,9 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 | [`src/markup/css.ts`](#src-markup-css-ts)                                               |          0 |      11 |         11 |
 | [`src/markup/demo_fixtures.ts`](#src-markup-demo-fixtures-ts)                           |          0 |       7 |          7 |
 | [`src/markup/html.ts`](#src-markup-html-ts)                                             |          0 |       3 |          3 |
-| [`src/markup/hydrate.ts`](#src-markup-hydrate-ts)                                       |          0 |       3 |          3 |
-| [`src/markup/mod.ts`](#src-markup-mod-ts)                                               |          7 |       0 |          0 |
+| [`src/markup/hydrate.ts`](#src-markup-hydrate-ts)                                       |          0 |       5 |          5 |
+| [`src/markup/layout_worker.ts`](#src-markup-layout-worker-ts)                           |          0 |       6 |          6 |
+| [`src/markup/mod.ts`](#src-markup-mod-ts)                                               |          8 |       0 |          0 |
 | [`src/markup/support.ts`](#src-markup-support-ts)                                       |          0 |       2 |          2 |
 | [`src/markup/widgets.ts`](#src-markup-widgets-ts)                                       |          0 |      15 |         15 |
 | [`src/perf/benchmark.ts`](#src-perf-benchmark-ts)                                       |          0 |      19 |         19 |
@@ -1190,6 +1191,7 @@ _No direct exported symbols._
 
 | Symbol                              | Kind      | Type Only | JSDoc |
 | ----------------------------------- | --------- | --------- | ----- |
+| `appendBoundedWorkbenchLogRow`      | function  | no        | yes   |
 | `formatWorkbenchDiagnosticLogEntry` | function  | no        | yes   |
 | `formatWorkbenchDiagnosticStatus`   | function  | no        | yes   |
 | `initialWorkbenchDiagnosticLogRows` | function  | no        | yes   |
@@ -1215,6 +1217,7 @@ _No direct exported symbols._
 | `WorkbenchFrame`        | type     | yes       | yes   |
 | `WorkbenchFrameStyle`   | type     | yes       | yes   |
 | `writeFrame`            | function | no        | yes   |
+| `writeStringFrameRow`   | function | no        | yes   |
 
 #### src/app/workbench_layout.ts
 
@@ -1225,12 +1228,18 @@ _No direct exported symbols._
 | `WorkbenchActiveRevealTracker`          | class     | no        | yes   |
 | `workbenchAdaptiveTileOptions`          | function  | no        | yes   |
 | `WorkbenchAdaptiveTileOptions`          | interface | yes       | yes   |
+| `workbenchHorizontalScrollbarCellsInto` | function  | no        | yes   |
 | `WorkbenchLayoutEntryShape`             | interface | yes       | yes   |
 | `WorkbenchLayoutShape`                  | interface | yes       | yes   |
+| `WorkbenchScrollbarCell`                | interface | yes       | yes   |
+| `workbenchVerticalScrollbarCellsInto`   | function  | no        | yes   |
 | `workbenchVerticalScrollbarRect`        | function  | no        | yes   |
 | `WorkbenchVerticalScrollbarRectOptions` | interface | yes       | yes   |
 | `workbenchWindowLayout`                 | function  | no        | yes   |
 | `WorkbenchWindowLayout`                 | interface | yes       | yes   |
+| `WorkbenchWindowScrollbarRectOptions`   | interface | yes       | yes   |
+| `workbenchWindowScrollbarRects`         | function  | no        | yes   |
+| `WorkbenchWindowScrollbarRects`         | interface | yes       | yes   |
 | `WorkbenchWorkspaceScrollAdapter`       | interface | yes       | yes   |
 | `WorkbenchWorkspaceViewportController`  | class     | no        | yes   |
 | `WorkbenchWorkspaceViewportUpdate`      | interface | yes       | yes   |
@@ -1266,16 +1275,19 @@ _No direct exported symbols._
 
 #### src/app/workbench_shelf.ts
 
-| Symbol                        | Kind      | Type Only | JSDoc |
-| ----------------------------- | --------- | --------- | ----- |
-| `layoutWorkbenchShelf`        | function  | no        | yes   |
-| `layoutWorkbenchTabs`         | function  | no        | yes   |
-| `WorkbenchShelfButton`        | interface | yes       | yes   |
-| `WorkbenchShelfLayout`        | interface | yes       | yes   |
-| `WorkbenchShelfLayoutOptions` | interface | yes       | yes   |
-| `WorkbenchShelfSource`        | interface | yes       | yes   |
-| `WorkbenchTabLayoutOptions`   | interface | yes       | yes   |
-| `WorkbenchTabSource`          | interface | yes       | yes   |
+| Symbol                                | Kind      | Type Only | JSDoc |
+| ------------------------------------- | --------- | --------- | ----- |
+| `layoutWorkbenchShelf`                | function  | no        | yes   |
+| `layoutWorkbenchTabs`                 | function  | no        | yes   |
+| `WorkbenchShelfButton`                | interface | yes       | yes   |
+| `workbenchShelfEntriesInto`           | function  | no        | yes   |
+| `WorkbenchShelfLayout`                | interface | yes       | yes   |
+| `WorkbenchShelfLayoutOptions`         | interface | yes       | yes   |
+| `WorkbenchShelfSource`                | interface | yes       | yes   |
+| `WorkbenchShelfWindowInspectionShape` | interface | yes       | yes   |
+| `workbenchTabEntriesInto`             | function  | no        | yes   |
+| `WorkbenchTabLayoutOptions`           | interface | yes       | yes   |
+| `WorkbenchTabSource`                  | interface | yes       | yes   |
 
 #### src/app/workbench_status.ts
 
@@ -1299,14 +1311,17 @@ _No direct exported symbols._
 
 #### src/app/workbench_text.ts
 
-| Symbol                | Kind     | Type Only | JSDoc |
-| --------------------- | -------- | --------- | ----- |
-| `compactSpaces`       | function | no        | yes   |
-| `maxTextWidth`        | function | no        | yes   |
-| `maxTextWidthBy`      | function | no        | yes   |
-| `maxTrimmedTextWidth` | function | no        | yes   |
-| `visibleMenuSlice`    | function | no        | yes   |
-| `wrapPlainText`       | function | no        | yes   |
+| Symbol                          | Kind      | Type Only | JSDoc |
+| ------------------------------- | --------- | --------- | ----- |
+| `compactSpaces`                 | function  | no        | yes   |
+| `maxTextWidth`                  | function  | no        | yes   |
+| `maxTextWidthBy`                | function  | no        | yes   |
+| `maxTrimmedTextWidth`           | function  | no        | yes   |
+| `visibleMenuSlice`              | function  | no        | yes   |
+| `VisibleMenuSlice`              | interface | yes       | yes   |
+| `visibleMenuSliceInto`          | function  | no        | yes   |
+| `visibleProjectedMenuSliceInto` | function  | no        | yes   |
+| `wrapPlainText`                 | function  | no        | yes   |
 
 #### src/app/workbench_titlebar.ts
 
@@ -1343,6 +1358,7 @@ _No direct exported symbols._
 | `WorkbenchWindowOptionCatalogInput`         | interface | yes       | yes   |
 | `WorkbenchWindowOptionGroup`                | type      | yes       | yes   |
 | `workbenchWindowOptionMenuLabel`            | function  | no        | yes   |
+| `workbenchWindowOptionMenuLabelsInto`       | function  | no        | yes   |
 | `workbenchWindowOptionMinimums`             | function  | no        | yes   |
 | `WorkbenchWindowOptionMinimums`             | interface | yes       | yes   |
 
@@ -1956,6 +1972,7 @@ _No direct exported symbols._
 | ---------------------------- | --------- | --------- | ----- |
 | `clampTableRow`              | function  | no        | yes   |
 | `Table`                      | class     | no        | yes   |
+| `tableAutoColumnWidths`      | function  | no        | yes   |
 | `TableController`            | class     | no        | yes   |
 | `TableControllerOptions`     | interface | yes       | yes   |
 | `TableHeader`                | type      | yes       | yes   |
@@ -2426,11 +2443,24 @@ _No direct exported symbols._
 
 #### src/markup/hydrate.ts
 
-| Symbol                | Kind      | Type Only | JSDoc |
-| --------------------- | --------- | --------- | ----- |
-| `createMarkupLayout`  | function  | no        | yes   |
-| `MarkupLayoutOptions` | interface | yes       | yes   |
-| `MarkupLayoutResult`  | interface | yes       | yes   |
+| Symbol                     | Kind      | Type Only | JSDoc |
+| -------------------------- | --------- | --------- | ----- |
+| `createMarkupLayout`       | function  | no        | yes   |
+| `MarkupLayoutCache`        | class     | no        | yes   |
+| `MarkupLayoutCacheOptions` | interface | yes       | yes   |
+| `MarkupLayoutOptions`      | interface | yes       | yes   |
+| `MarkupLayoutResult`       | interface | yes       | yes   |
+
+#### src/markup/layout_worker.ts
+
+| Symbol                             | Kind      | Type Only | JSDoc |
+| ---------------------------------- | --------- | --------- | ----- |
+| `createMarkupLayoutWorkerHandler`  | function  | no        | yes   |
+| `MarkupLayoutWorkerHandler`        | type      | yes       | yes   |
+| `MarkupLayoutWorkerHandlerOptions` | interface | yes       | yes   |
+| `MarkupLayoutWorkerPayload`        | interface | yes       | yes   |
+| `MarkupLayoutWorkerResult`         | interface | yes       | yes   |
+| `runMarkupLayoutInWorker`          | function  | no        | yes   |
 
 #### src/markup/mod.ts
 
@@ -2441,6 +2471,7 @@ _No direct exported symbols._
 | `src/markup/demo_fixtures.ts` | star | -     |
 | `src/markup/html.ts`          | star | -     |
 | `src/markup/hydrate.ts`       | star | -     |
+| `src/markup/layout_worker.ts` | star | -     |
 | `src/markup/support.ts`       | star | -     |
 | `src/markup/widgets.ts`       | star | -     |
 
@@ -3684,10 +3715,10 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 ### Summary
 
 - Entrypoint: `mod.web.ts`
-- Modules: 213
-- Re-export declarations: 212
-- Exported symbols: 1819
-- Documented symbols: 1819
+- Modules: 214
+- Re-export declarations: 213
+- Exported symbols: 1843
+- Documented symbols: 1843
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -3760,18 +3791,18 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 | [`src/app/toast_commands.ts`](#src-app-toast-commands-ts)                         |          0 |       6 |          6 |
 | [`src/app/tree_commands.ts`](#src-app-tree-commands-ts)                           |          0 |       6 |          6 |
 | [`src/app/window_manager_commands.ts`](#src-app-window-manager-commands-ts)       |          0 |       8 |          8 |
-| [`src/app/workbench_diagnostics.ts`](#src-app-workbench-diagnostics-ts)           |          0 |       5 |          5 |
-| [`src/app/workbench_frame.ts`](#src-app-workbench-frame-ts)                       |          0 |      15 |         15 |
-| [`src/app/workbench_layout.ts`](#src-app-workbench-layout-ts)                     |          0 |      14 |         14 |
+| [`src/app/workbench_diagnostics.ts`](#src-app-workbench-diagnostics-ts)           |          0 |       6 |          6 |
+| [`src/app/workbench_frame.ts`](#src-app-workbench-frame-ts)                       |          0 |      16 |         16 |
+| [`src/app/workbench_layout.ts`](#src-app-workbench-layout-ts)                     |          0 |      20 |         20 |
 | [`src/app/workbench_menu.ts`](#src-app-workbench-menu-ts)                         |          0 |      14 |         14 |
 | [`src/app/workbench_overlay.ts`](#src-app-workbench-overlay-ts)                   |          0 |       5 |          5 |
-| [`src/app/workbench_shelf.ts`](#src-app-workbench-shelf-ts)                       |          0 |       8 |          8 |
+| [`src/app/workbench_shelf.ts`](#src-app-workbench-shelf-ts)                       |          0 |      11 |         11 |
 | [`src/app/workbench_status.ts`](#src-app-workbench-status-ts)                     |          0 |       4 |          4 |
 | [`src/app/workbench_terminal.ts`](#src-app-workbench-terminal-ts)                 |          0 |       6 |          6 |
-| [`src/app/workbench_text.ts`](#src-app-workbench-text-ts)                         |          0 |       6 |          6 |
+| [`src/app/workbench_text.ts`](#src-app-workbench-text-ts)                         |          0 |       9 |          9 |
 | [`src/app/workbench_titlebar.ts`](#src-app-workbench-titlebar-ts)                 |          0 |       6 |          6 |
 | [`src/app/workbench_viewport.ts`](#src-app-workbench-viewport-ts)                 |          0 |       4 |          4 |
-| [`src/app/workbench_window_registry.ts`](#src-app-workbench-window-registry-ts)   |          0 |      13 |         13 |
+| [`src/app/workbench_window_registry.ts`](#src-app-workbench-window-registry-ts)   |          0 |      14 |         14 |
 | [`src/app/workbench_workspace.ts`](#src-app-workbench-workspace-ts)               |          0 |      18 |         18 |
 | [`src/app/workbench/mod.ts`](#src-app-workbench-mod-ts)                           |         14 |       0 |          0 |
 | [`src/canvas/box.ts`](#src-canvas-box-ts)                                         |          0 |       2 |          2 |
@@ -3813,7 +3844,7 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 | [`src/components/spinner.ts`](#src-components-spinner-ts)                         |          0 |       6 |          6 |
 | [`src/components/statusbar.ts`](#src-components-statusbar-ts)                     |          0 |       3 |          3 |
 | [`src/components/stepper.ts`](#src-components-stepper-ts)                         |          0 |      11 |         11 |
-| [`src/components/table.ts`](#src-components-table-ts)                             |          0 |      12 |         12 |
+| [`src/components/table.ts`](#src-components-table-ts)                             |          0 |      13 |         13 |
 | [`src/components/tabs.ts`](#src-components-tabs-ts)                               |          0 |      10 |         10 |
 | [`src/components/terminal_output.ts`](#src-components-terminal-output-ts)         |          0 |       7 |          7 |
 | [`src/components/text.ts`](#src-components-text-ts)                               |          0 |       2 |          2 |
@@ -3846,8 +3877,9 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 | [`src/markup/css.ts`](#src-markup-css-ts)                                         |          0 |      11 |         11 |
 | [`src/markup/demo_fixtures.ts`](#src-markup-demo-fixtures-ts)                     |          0 |       7 |          7 |
 | [`src/markup/html.ts`](#src-markup-html-ts)                                       |          0 |       3 |          3 |
-| [`src/markup/hydrate.ts`](#src-markup-hydrate-ts)                                 |          0 |       3 |          3 |
-| [`src/markup/mod.ts`](#src-markup-mod-ts)                                         |          7 |       0 |          0 |
+| [`src/markup/hydrate.ts`](#src-markup-hydrate-ts)                                 |          0 |       5 |          5 |
+| [`src/markup/layout_worker.ts`](#src-markup-layout-worker-ts)                     |          0 |       6 |          6 |
+| [`src/markup/mod.ts`](#src-markup-mod-ts)                                         |          8 |       0 |          0 |
 | [`src/markup/support.ts`](#src-markup-support-ts)                                 |          0 |       2 |          2 |
 | [`src/markup/widgets.ts`](#src-markup-widgets-ts)                                 |          0 |      15 |         15 |
 | [`src/perf/benchmark.ts`](#src-perf-benchmark-ts)                                 |          0 |      19 |         19 |
@@ -4832,6 +4864,7 @@ _No direct exported symbols._
 
 | Symbol                              | Kind      | Type Only | JSDoc |
 | ----------------------------------- | --------- | --------- | ----- |
+| `appendBoundedWorkbenchLogRow`      | function  | no        | yes   |
 | `formatWorkbenchDiagnosticLogEntry` | function  | no        | yes   |
 | `formatWorkbenchDiagnosticStatus`   | function  | no        | yes   |
 | `initialWorkbenchDiagnosticLogRows` | function  | no        | yes   |
@@ -4857,6 +4890,7 @@ _No direct exported symbols._
 | `WorkbenchFrame`        | type     | yes       | yes   |
 | `WorkbenchFrameStyle`   | type     | yes       | yes   |
 | `writeFrame`            | function | no        | yes   |
+| `writeStringFrameRow`   | function | no        | yes   |
 
 #### src/app/workbench_layout.ts
 
@@ -4867,12 +4901,18 @@ _No direct exported symbols._
 | `WorkbenchActiveRevealTracker`          | class     | no        | yes   |
 | `workbenchAdaptiveTileOptions`          | function  | no        | yes   |
 | `WorkbenchAdaptiveTileOptions`          | interface | yes       | yes   |
+| `workbenchHorizontalScrollbarCellsInto` | function  | no        | yes   |
 | `WorkbenchLayoutEntryShape`             | interface | yes       | yes   |
 | `WorkbenchLayoutShape`                  | interface | yes       | yes   |
+| `WorkbenchScrollbarCell`                | interface | yes       | yes   |
+| `workbenchVerticalScrollbarCellsInto`   | function  | no        | yes   |
 | `workbenchVerticalScrollbarRect`        | function  | no        | yes   |
 | `WorkbenchVerticalScrollbarRectOptions` | interface | yes       | yes   |
 | `workbenchWindowLayout`                 | function  | no        | yes   |
 | `WorkbenchWindowLayout`                 | interface | yes       | yes   |
+| `WorkbenchWindowScrollbarRectOptions`   | interface | yes       | yes   |
+| `workbenchWindowScrollbarRects`         | function  | no        | yes   |
+| `WorkbenchWindowScrollbarRects`         | interface | yes       | yes   |
 | `WorkbenchWorkspaceScrollAdapter`       | interface | yes       | yes   |
 | `WorkbenchWorkspaceViewportController`  | class     | no        | yes   |
 | `WorkbenchWorkspaceViewportUpdate`      | interface | yes       | yes   |
@@ -4908,16 +4948,19 @@ _No direct exported symbols._
 
 #### src/app/workbench_shelf.ts
 
-| Symbol                        | Kind      | Type Only | JSDoc |
-| ----------------------------- | --------- | --------- | ----- |
-| `layoutWorkbenchShelf`        | function  | no        | yes   |
-| `layoutWorkbenchTabs`         | function  | no        | yes   |
-| `WorkbenchShelfButton`        | interface | yes       | yes   |
-| `WorkbenchShelfLayout`        | interface | yes       | yes   |
-| `WorkbenchShelfLayoutOptions` | interface | yes       | yes   |
-| `WorkbenchShelfSource`        | interface | yes       | yes   |
-| `WorkbenchTabLayoutOptions`   | interface | yes       | yes   |
-| `WorkbenchTabSource`          | interface | yes       | yes   |
+| Symbol                                | Kind      | Type Only | JSDoc |
+| ------------------------------------- | --------- | --------- | ----- |
+| `layoutWorkbenchShelf`                | function  | no        | yes   |
+| `layoutWorkbenchTabs`                 | function  | no        | yes   |
+| `WorkbenchShelfButton`                | interface | yes       | yes   |
+| `workbenchShelfEntriesInto`           | function  | no        | yes   |
+| `WorkbenchShelfLayout`                | interface | yes       | yes   |
+| `WorkbenchShelfLayoutOptions`         | interface | yes       | yes   |
+| `WorkbenchShelfSource`                | interface | yes       | yes   |
+| `WorkbenchShelfWindowInspectionShape` | interface | yes       | yes   |
+| `workbenchTabEntriesInto`             | function  | no        | yes   |
+| `WorkbenchTabLayoutOptions`           | interface | yes       | yes   |
+| `WorkbenchTabSource`                  | interface | yes       | yes   |
 
 #### src/app/workbench_status.ts
 
@@ -4941,14 +4984,17 @@ _No direct exported symbols._
 
 #### src/app/workbench_text.ts
 
-| Symbol                | Kind     | Type Only | JSDoc |
-| --------------------- | -------- | --------- | ----- |
-| `compactSpaces`       | function | no        | yes   |
-| `maxTextWidth`        | function | no        | yes   |
-| `maxTextWidthBy`      | function | no        | yes   |
-| `maxTrimmedTextWidth` | function | no        | yes   |
-| `visibleMenuSlice`    | function | no        | yes   |
-| `wrapPlainText`       | function | no        | yes   |
+| Symbol                          | Kind      | Type Only | JSDoc |
+| ------------------------------- | --------- | --------- | ----- |
+| `compactSpaces`                 | function  | no        | yes   |
+| `maxTextWidth`                  | function  | no        | yes   |
+| `maxTextWidthBy`                | function  | no        | yes   |
+| `maxTrimmedTextWidth`           | function  | no        | yes   |
+| `visibleMenuSlice`              | function  | no        | yes   |
+| `VisibleMenuSlice`              | interface | yes       | yes   |
+| `visibleMenuSliceInto`          | function  | no        | yes   |
+| `visibleProjectedMenuSliceInto` | function  | no        | yes   |
+| `wrapPlainText`                 | function  | no        | yes   |
 
 #### src/app/workbench_titlebar.ts
 
@@ -4985,6 +5031,7 @@ _No direct exported symbols._
 | `WorkbenchWindowOptionCatalogInput`         | interface | yes       | yes   |
 | `WorkbenchWindowOptionGroup`                | type      | yes       | yes   |
 | `workbenchWindowOptionMenuLabel`            | function  | no        | yes   |
+| `workbenchWindowOptionMenuLabelsInto`       | function  | no        | yes   |
 | `workbenchWindowOptionMinimums`             | function  | no        | yes   |
 | `WorkbenchWindowOptionMinimums`             | interface | yes       | yes   |
 
@@ -5560,6 +5607,7 @@ _No direct exported symbols._
 | ---------------------------- | --------- | --------- | ----- |
 | `clampTableRow`              | function  | no        | yes   |
 | `Table`                      | class     | no        | yes   |
+| `tableAutoColumnWidths`      | function  | no        | yes   |
 | `TableController`            | class     | no        | yes   |
 | `TableControllerOptions`     | interface | yes       | yes   |
 | `TableHeader`                | type      | yes       | yes   |
@@ -5999,11 +6047,24 @@ _No direct exported symbols._
 
 #### src/markup/hydrate.ts
 
-| Symbol                | Kind      | Type Only | JSDoc |
-| --------------------- | --------- | --------- | ----- |
-| `createMarkupLayout`  | function  | no        | yes   |
-| `MarkupLayoutOptions` | interface | yes       | yes   |
-| `MarkupLayoutResult`  | interface | yes       | yes   |
+| Symbol                     | Kind      | Type Only | JSDoc |
+| -------------------------- | --------- | --------- | ----- |
+| `createMarkupLayout`       | function  | no        | yes   |
+| `MarkupLayoutCache`        | class     | no        | yes   |
+| `MarkupLayoutCacheOptions` | interface | yes       | yes   |
+| `MarkupLayoutOptions`      | interface | yes       | yes   |
+| `MarkupLayoutResult`       | interface | yes       | yes   |
+
+#### src/markup/layout_worker.ts
+
+| Symbol                             | Kind      | Type Only | JSDoc |
+| ---------------------------------- | --------- | --------- | ----- |
+| `createMarkupLayoutWorkerHandler`  | function  | no        | yes   |
+| `MarkupLayoutWorkerHandler`        | type      | yes       | yes   |
+| `MarkupLayoutWorkerHandlerOptions` | interface | yes       | yes   |
+| `MarkupLayoutWorkerPayload`        | interface | yes       | yes   |
+| `MarkupLayoutWorkerResult`         | interface | yes       | yes   |
+| `runMarkupLayoutInWorker`          | function  | no        | yes   |
 
 #### src/markup/mod.ts
 
@@ -6014,6 +6075,7 @@ _No direct exported symbols._
 | `src/markup/demo_fixtures.ts` | star | -     |
 | `src/markup/html.ts`          | star | -     |
 | `src/markup/hydrate.ts`       | star | -     |
+| `src/markup/layout_worker.ts` | star | -     |
 | `src/markup/support.ts`       | star | -     |
 | `src/markup/widgets.ts`       | star | -     |
 
