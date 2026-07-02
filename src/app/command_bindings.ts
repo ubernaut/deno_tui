@@ -211,6 +211,7 @@ export function rankCommandSurfaceItems(
   const terms = searchTerms(query);
   const limit = options.limit === undefined ? undefined : Math.max(0, Math.floor(options.limit));
   if (limit === 0) return [];
+  if (terms.length === 0) return rankEmptyCommandSurfaceItems(items, limit);
   const ranked: Array<CommandSearchMatch & { index: number }> = [];
   for (let index = 0; index < items.length; index += 1) {
     const item = items[index]!;
@@ -222,6 +223,32 @@ export function rankCommandSurfaceItems(
       } else {
         insertBoundedRanked(ranked, candidate, limit, compareCommandSearchMatches);
       }
+    }
+  }
+  if (limit === undefined) {
+    ranked.sort(compareCommandSearchMatches);
+  }
+  const count = limit === undefined ? ranked.length : Math.min(limit, ranked.length);
+  const matches = new Array<CommandSearchMatch>(count);
+  for (let index = 0; index < count; index += 1) {
+    const match = ranked[index]!;
+    matches[index] = { item: match.item, score: match.score, matched: match.matched };
+  }
+  return matches;
+}
+
+function rankEmptyCommandSurfaceItems(
+  items: readonly CommandSurfaceItem[],
+  limit: number | undefined,
+): CommandSearchMatch[] {
+  const ranked: Array<CommandSearchMatch & { index: number }> = [];
+  for (let index = 0; index < items.length; index += 1) {
+    const item = items[index]!;
+    const candidate = { item, score: item.disabled ? -1 : 0, matched: [], index };
+    if (limit === undefined) {
+      ranked.push(candidate);
+    } else {
+      insertBoundedRanked(ranked, candidate, limit, compareCommandSearchMatches);
     }
   }
   if (limit === undefined) {

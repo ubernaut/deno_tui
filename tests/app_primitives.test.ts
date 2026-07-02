@@ -898,6 +898,10 @@ Deno.test("command search indexes rank precomputed command surface fields", () =
     ["route.system-monitor", ["runtime"]],
   ]);
   assertEquals(searchCommandSearchIndex(index, "theme").map((match) => match.item.id), ["theme.next"]);
+  assertEquals(searchCommandSearchIndex(index, "", { limit: 2 }).map((match) => match.item.id), [
+    "route.home",
+    "route.system-monitor",
+  ]);
 });
 
 Deno.test("indexed command surfaces refresh through schedulers and execute registry actions", async () => {
