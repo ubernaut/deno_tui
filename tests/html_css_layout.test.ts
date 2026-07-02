@@ -245,6 +245,30 @@ Deno.test("applyCssCascade inherits visibility while allowing explicit visible d
   assertEquals(override.hitRegions.length, 1);
 });
 
+Deno.test("applyCssCascade parses terminal text flow properties", () => {
+  const document = parseTuiMarkup(`
+    <window id="main">
+      <panel id="nowrap">alpha beta</panel>
+      <panel id="break">abcdefghij</panel>
+    </window>
+  `);
+  const styled = applyCssCascade(
+    document.root,
+    parseCssStylesheet(`
+    #nowrap {
+      white-space: nowrap;
+    }
+
+    #break {
+      overflow-wrap: anywhere;
+    }
+  `),
+  );
+
+  assertEquals(findLayoutNode(styled, "nowrap")!.style.whiteSpace, "nowrap");
+  assertEquals(findLayoutNode(styled, "break")!.style.overflowWrap, "anywhere");
+});
+
 Deno.test("parseCssStylesheet keeps terminal-cell media query metadata", () => {
   const stylesheet = parseCssStylesheet(`
     panel {
@@ -274,6 +298,8 @@ Deno.test("inspectTuiCssSupport reports the documented HTML/CSS subset", () => {
   assert(report.properties.includes("grid-template-columns"));
   assert(report.properties.includes("grid-template-areas"));
   assert(report.properties.includes("flex-flow"));
+  assert(report.properties.includes("white-space"));
+  assert(report.properties.includes("overflow-wrap"));
   assert(report.mediaFeatures.includes("max-width"));
   assert(report.pseudoStates.includes("focus"));
   assert(report.hydratedWidgetTags.includes("radio-group"));
@@ -705,6 +731,8 @@ Deno.test("measureTerminalTextIntrinsic wraps text on terminal word boundaries",
   assertEquals(measureTerminalTextIntrinsic("wide\ntext", 6), { width: 4, height: 2 });
   assertEquals(measureTerminalTextIntrinsic("abcdefghij", 5), { width: 10, height: 2 });
   assertEquals(measureTerminalTextIntrinsic("abc ", 3), { width: 4, height: 1 });
+  assertEquals(measureTerminalTextIntrinsic("alpha beta", 5, 1, { wrap: false }), { width: 10, height: 1 });
+  assertEquals(measureTerminalTextIntrinsic("abcdefghij", 5, 1, { breakWords: false }), { width: 10, height: 1 });
 });
 
 Deno.test("simple layout solver measures auto height after resolving explicit text width", () => {
@@ -724,6 +752,37 @@ Deno.test("simple layout solver measures auto height after resolving explicit te
   });
 
   assertEquals(result.layout.byId.get("card")!.rect, { column: 0, row: 0, width: 6, height: 3 });
+});
+
+Deno.test("createMarkupLayout applies CSS text wrapping properties to intrinsic height", () => {
+  const result = createMarkupLayout({
+    markup: `
+      <window id="root">
+        <panel id="normal">abcdefghij</panel>
+        <panel id="break">abcdefghij</panel>
+        <panel id="nowrap">aa bbbb cc</panel>
+      </window>
+    `,
+    css: `
+      panel {
+        width: 5;
+        height: auto;
+      }
+
+      #break {
+        overflow-wrap: anywhere;
+      }
+
+      #nowrap {
+        white-space: nowrap;
+      }
+    `,
+    bounds: { column: 0, row: 0, width: 20, height: 12 },
+  });
+
+  assertEquals(result.layout.byId.get("normal")!.rect.height, 1);
+  assertEquals(result.layout.byId.get("break")!.rect.height, 2);
+  assertEquals(result.layout.byId.get("nowrap")!.rect.height, 1);
 });
 
 Deno.test("simple layout solver merges partial intrinsic dimensions with measured fallback", () => {

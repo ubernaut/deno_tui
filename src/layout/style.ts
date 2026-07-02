@@ -30,6 +30,12 @@ export type LayoutGridAutoFlow = "row" | "column";
 /** Public type alias for visibility state. */
 export type LayoutVisibility = "visible" | "hidden";
 
+/** Public type alias for CSS-inspired text whitespace handling. */
+export type LayoutWhiteSpace = "normal" | "nowrap" | "pre" | "pre-wrap";
+
+/** Public type alias for CSS-inspired long-word wrapping. */
+export type LayoutOverflowWrap = "normal" | "anywhere" | "break-word";
+
 /** Public interface describing a terminal-cell layout length. */
 export interface LayoutLengthValue {
   unit: "auto" | "cell" | "percent" | "fr";
@@ -94,6 +100,8 @@ export interface ComputedLayoutStyle {
   borderColor?: string;
   borderStyle?: string;
   visibility: LayoutVisibility;
+  whiteSpace: LayoutWhiteSpace;
+  overflowWrap: LayoutOverflowWrap;
   variables: Record<string, string>;
 }
 
@@ -167,6 +175,8 @@ export function defaultComputedLayoutStyle(): ComputedLayoutStyle {
     overflowY: "visible",
     zIndex: 0,
     visibility: "visible",
+    whiteSpace: "normal",
+    overflowWrap: "normal",
     variables: {},
   };
 }
@@ -554,6 +564,13 @@ export function applyLayoutDeclaration(
       break;
     case "visibility":
       next.visibility = parseOneOf(resolved, ["visible", "hidden"], next.visibility);
+      break;
+    case "white-space":
+      next.whiteSpace = parseOneOf(resolved, ["normal", "nowrap", "pre", "pre-wrap"], next.whiteSpace);
+      break;
+    case "overflow-wrap":
+    case "word-wrap":
+      next.overflowWrap = parseOneOf(resolved, ["normal", "anywhere", "break-word"], next.overflowWrap);
       break;
   }
 

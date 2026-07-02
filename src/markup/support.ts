@@ -81,6 +81,9 @@ const supportedProperties = [
   "background",
   "background-color",
   "visibility",
+  "white-space",
+  "overflow-wrap",
+  "word-wrap",
 ] as const;
 
 const supportedHydratedWidgetTags = [

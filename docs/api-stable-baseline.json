@@ -7199,6 +7199,13 @@
       "documented": true
     },
     {
+      "module": "src/layout/measurement.ts",
+      "name": "TerminalTextIntrinsicMeasurementOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
       "module": "src/layout/overlay.ts",
       "name": "clampRectToBounds",
       "kind": "function",
@@ -7879,6 +7886,13 @@
     },
     {
       "module": "src/layout/style.ts",
+      "name": "LayoutOverflowWrap",
+      "kind": "type",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/layout/style.ts",
       "name": "LayoutPosition",
       "kind": "type",
       "typeOnly": true,
@@ -7894,6 +7908,13 @@
     {
       "module": "src/layout/style.ts",
       "name": "LayoutVisibility",
+      "kind": "type",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/layout/style.ts",
+      "name": "LayoutWhiteSpace",
       "kind": "type",
       "typeOnly": true,
       "documented": true

@@ -622,7 +622,7 @@ function measureNodeIntrinsicBase(
   measurementCache?: LayoutMeasurementCache,
 ): LayoutIntrinsicSize {
   if (node.text) {
-    return measureTextIntrinsic(node.text, availableWidth, defaultTextHeight);
+    return measureTextIntrinsic(node.text, availableWidth, defaultTextHeight, node.style);
   }
   if (node.children.length === 0) {
     return { width: 1, height: defaultTextHeight };
@@ -686,8 +686,17 @@ function childLayoutIntrinsicSize(
   };
 }
 
-function measureTextIntrinsic(text: string, availableWidth: number, defaultTextHeight: number): LayoutIntrinsicSize {
-  return measureTerminalTextIntrinsic(text, availableWidth, defaultTextHeight);
+function measureTextIntrinsic(
+  text: string,
+  availableWidth: number,
+  defaultTextHeight: number,
+  style: ComputedLayoutStyle,
+): LayoutIntrinsicSize {
+  return measureTerminalTextIntrinsic(text, availableWidth, defaultTextHeight, {
+    wrap: style.whiteSpace !== "nowrap" && style.whiteSpace !== "pre",
+    breakWords: style.overflowWrap === "anywhere" || style.overflowWrap === "break-word",
+    preserveNewlines: true,
+  });
 }
 
 function intrinsicMeasurementCacheKey(node: LayoutNode, availableWidth: number, defaultTextHeight: number): string {
@@ -710,7 +719,9 @@ function intrinsicMeasurementCacheKey(node: LayoutNode, availableWidth: number, 
     "\u001f" + layoutLengthSignature(node.style.maxHeight) +
     "\u001f" + node.style.gap +
     "\u001f" + node.style.rowGap +
-    "\u001f" + node.style.columnGap;
+    "\u001f" + node.style.columnGap +
+    "\u001f" + node.style.whiteSpace +
+    "\u001f" + node.style.overflowWrap;
   for (const child of node.children) {
     key += "\u001f" + intrinsicNodeSignature(child);
   }
@@ -734,7 +745,9 @@ function intrinsicNodeSignature(node: LayoutNode): string {
     "\u001f" + layoutLengthSignature(node.style.maxHeight) +
     "\u001f" + node.style.gap +
     "\u001f" + node.style.rowGap +
-    "\u001f" + node.style.columnGap;
+    "\u001f" + node.style.columnGap +
+    "\u001f" + node.style.whiteSpace +
+    "\u001f" + node.style.overflowWrap;
   if (node.children.length === 0) return signature + "\u001f";
   signature += "\u001f";
   for (let index = 0; index < node.children.length; index += 1) {
@@ -754,7 +767,7 @@ function scrollSize(
   children: readonly ComputedLayoutBox[],
 ): LayoutIntrinsicSize {
   const textSize = node.text
-    ? measureTextIntrinsic(node.text, Math.max(1, contentRect.width), 1)
+    ? measureTextIntrinsic(node.text, Math.max(1, contentRect.width), 1, node.style)
     : { width: 0, height: 0 };
   let right = contentRect.column + Math.max(contentRect.width, textSize.width);
   let bottom = contentRect.row + Math.max(contentRect.height, textSize.height);

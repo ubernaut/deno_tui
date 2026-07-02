@@ -4541,6 +4541,8 @@ function defaultComputedLayoutStyle() {
     overflowY: "visible",
     zIndex: 0,
     visibility: "visible",
+    whiteSpace: "normal",
+    overflowWrap: "normal",
     variables: {}
   };
 }
@@ -4872,6 +4874,13 @@ function applyLayoutDeclaration(style2, property, value) {
       break;
     case "visibility":
       next.visibility = parseOneOf(resolved, ["visible", "hidden"], next.visibility);
+      break;
+    case "white-space":
+      next.whiteSpace = parseOneOf(resolved, ["normal", "nowrap", "pre", "pre-wrap"], next.whiteSpace);
+      break;
+    case "overflow-wrap":
+    case "word-wrap":
+      next.overflowWrap = parseOneOf(resolved, ["normal", "anywhere", "break-word"], next.overflowWrap);
       break;
   }
   return next;
@@ -5209,25 +5218,29 @@ var LayoutMeasurementCache = class {
     };
   }
 };
-function measureTerminalTextIntrinsic(text, availableWidth, defaultTextHeight = 1) {
+function measureTerminalTextIntrinsic(text, availableWidth, defaultTextHeight = 1, options = {}) {
   const wrapWidth = Math.max(1, Math.floor(availableWidth));
   const fallbackHeight = Math.max(1, Math.floor(defaultTextHeight));
+  const wrap = options.wrap ?? true;
+  const breakWords = options.breakWords ?? true;
+  const preserveNewlines = options.preserveNewlines ?? true;
   let width = 1;
   let height = 0;
   let lineStart = 0;
   for (let index = 0; index <= text.length; index += 1) {
     const char = text[index];
-    if (index < text.length && char !== "\n" && char !== "\r") continue;
+    const isLineBreak = preserveNewlines && (char === "\n" || char === "\r");
+    if (index < text.length && !isLineBreak) continue;
     const line = text.slice(lineStart, index);
     const lineWidth = textWidth(line);
     width = Math.max(width, lineWidth);
-    height += measureWrappedTerminalLineHeight(line, wrapWidth);
+    height += wrap ? measureWrappedTerminalLineHeight(line, wrapWidth, breakWords) : 1;
     if (char === "\r" && text[index + 1] === "\n") index += 1;
     lineStart = index + 1;
   }
   return { width, height: Math.max(fallbackHeight, height) };
 }
-function measureWrappedTerminalLineHeight(line, wrapWidth) {
+function measureWrappedTerminalLineHeight(line, wrapWidth, breakWords) {
   const wrappedLine = line.trimEnd();
   if (!wrappedLine) return 1;
   const tokens = wrappedLine.match(/\S+|\s+/g) ?? [wrappedLine];
@@ -5246,7 +5259,7 @@ function measureWrappedTerminalLineHeight(line, wrapWidth) {
       }
       continue;
     }
-    if (tokenWidth <= wrapWidth) {
+    if (tokenWidth <= wrapWidth || !breakWords) {
       if (currentWidth > 0 && currentWidth + tokenWidth > wrapWidth) {
         rows2 += 1;
         currentWidth = tokenWidth;
@@ -5991,7 +6004,7 @@ function measureNodeIntrinsic(node, availableWidth, defaultTextHeight, measureme
 }
 function measureNodeIntrinsicBase(node, availableWidth, defaultTextHeight, measurementCache) {
   if (node.text) {
-    return measureTextIntrinsic(node.text, availableWidth, defaultTextHeight);
+    return measureTextIntrinsic(node.text, availableWidth, defaultTextHeight, node.style);
   }
   if (node.children.length === 0) {
     return { width: 1, height: defaultTextHeight };
@@ -6042,18 +6055,22 @@ function childLayoutIntrinsicSize(node, availableWidth, defaultTextHeight, measu
     height: Math.max(defaultTextHeight, height)
   };
 }
-function measureTextIntrinsic(text, availableWidth, defaultTextHeight) {
-  return measureTerminalTextIntrinsic(text, availableWidth, defaultTextHeight);
+function measureTextIntrinsic(text, availableWidth, defaultTextHeight, style2) {
+  return measureTerminalTextIntrinsic(text, availableWidth, defaultTextHeight, {
+    wrap: style2.whiteSpace !== "nowrap" && style2.whiteSpace !== "pre",
+    breakWords: style2.overflowWrap === "anywhere" || style2.overflowWrap === "break-word",
+    preserveNewlines: true
+  });
 }
 function intrinsicMeasurementCacheKey(node, availableWidth, defaultTextHeight) {
-  let key = "v1" + Math.max(1, Math.floor(availableWidth)) + "" + Math.max(1, Math.floor(defaultTextHeight)) + "" + node.tag + "" + (node.text ?? "") + "" + (node.intrinsic?.width ?? "") + "" + (node.intrinsic?.height ?? "") + "" + node.style.display + "" + node.style.position + "" + node.style.flexDirection + "" + layoutLengthSignature(node.style.flexBasis) + "" + layoutLengthSignature(node.style.width) + "" + layoutLengthSignature(node.style.height) + "" + layoutLengthSignature(node.style.minWidth) + "" + layoutLengthSignature(node.style.minHeight) + "" + layoutLengthSignature(node.style.maxWidth) + "" + layoutLengthSignature(node.style.maxHeight) + "" + node.style.gap + "" + node.style.rowGap + "" + node.style.columnGap;
+  let key = "v1" + Math.max(1, Math.floor(availableWidth)) + "" + Math.max(1, Math.floor(defaultTextHeight)) + "" + node.tag + "" + (node.text ?? "") + "" + (node.intrinsic?.width ?? "") + "" + (node.intrinsic?.height ?? "") + "" + node.style.display + "" + node.style.position + "" + node.style.flexDirection + "" + layoutLengthSignature(node.style.flexBasis) + "" + layoutLengthSignature(node.style.width) + "" + layoutLengthSignature(node.style.height) + "" + layoutLengthSignature(node.style.minWidth) + "" + layoutLengthSignature(node.style.minHeight) + "" + layoutLengthSignature(node.style.maxWidth) + "" + layoutLengthSignature(node.style.maxHeight) + "" + node.style.gap + "" + node.style.rowGap + "" + node.style.columnGap + "" + node.style.whiteSpace + "" + node.style.overflowWrap;
   for (const child of node.children) {
     key += "" + intrinsicNodeSignature(child);
   }
   return key;
 }
 function intrinsicNodeSignature(node) {
-  let signature = node.tag + "" + (node.text ?? "") + "" + (node.intrinsic?.width ?? "") + "" + (node.intrinsic?.height ?? "") + "" + node.style.display + "" + node.style.position + "" + node.style.flexDirection + "" + layoutLengthSignature(node.style.flexBasis) + "" + layoutLengthSignature(node.style.width) + "" + layoutLengthSignature(node.style.height) + "" + layoutLengthSignature(node.style.minWidth) + "" + layoutLengthSignature(node.style.minHeight) + "" + layoutLengthSignature(node.style.maxWidth) + "" + layoutLengthSignature(node.style.maxHeight) + "" + node.style.gap + "" + node.style.rowGap + "" + node.style.columnGap;
+  let signature = node.tag + "" + (node.text ?? "") + "" + (node.intrinsic?.width ?? "") + "" + (node.intrinsic?.height ?? "") + "" + node.style.display + "" + node.style.position + "" + node.style.flexDirection + "" + layoutLengthSignature(node.style.flexBasis) + "" + layoutLengthSignature(node.style.width) + "" + layoutLengthSignature(node.style.height) + "" + layoutLengthSignature(node.style.minWidth) + "" + layoutLengthSignature(node.style.minHeight) + "" + layoutLengthSignature(node.style.maxWidth) + "" + layoutLengthSignature(node.style.maxHeight) + "" + node.style.gap + "" + node.style.rowGap + "" + node.style.columnGap + "" + node.style.whiteSpace + "" + node.style.overflowWrap;
   if (node.children.length === 0) return signature + "";
   signature += "";
   for (let index = 0; index < node.children.length; index += 1) {
@@ -6066,7 +6083,7 @@ function layoutLengthSignature(value) {
   return `${value.unit}:${value.value}`;
 }
 function scrollSize(node, contentRect, children) {
-  const textSize = node.text ? measureTextIntrinsic(node.text, Math.max(1, contentRect.width), 1) : { width: 0, height: 0 };
+  const textSize = node.text ? measureTextIntrinsic(node.text, Math.max(1, contentRect.width), 1, node.style) : { width: 0, height: 0 };
   let right = contentRect.column + Math.max(contentRect.width, textSize.width);
   let bottom = contentRect.row + Math.max(contentRect.height, textSize.height);
   for (const child of children) {

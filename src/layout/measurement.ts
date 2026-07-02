@@ -20,6 +20,13 @@ export interface LayoutMeasurementCacheOptions {
   maxEntries?: number;
 }
 
+/** Options for terminal-cell text intrinsic measurement. */
+export interface TerminalTextIntrinsicMeasurementOptions {
+  wrap?: boolean;
+  breakWords?: boolean;
+  preserveNewlines?: boolean;
+}
+
 /** Small FIFO cache for renderer-neutral intrinsic text and widget measurements. */
 export class LayoutMeasurementCache {
   readonly maxEntries: number;
@@ -72,20 +79,25 @@ export function measureTerminalTextIntrinsic(
   text: string,
   availableWidth: number,
   defaultTextHeight = 1,
+  options: TerminalTextIntrinsicMeasurementOptions = {},
 ): LayoutIntrinsicSize {
   const wrapWidth = Math.max(1, Math.floor(availableWidth));
   const fallbackHeight = Math.max(1, Math.floor(defaultTextHeight));
+  const wrap = options.wrap ?? true;
+  const breakWords = options.breakWords ?? true;
+  const preserveNewlines = options.preserveNewlines ?? true;
   let width = 1;
   let height = 0;
   let lineStart = 0;
 
   for (let index = 0; index <= text.length; index += 1) {
     const char = text[index];
-    if (index < text.length && char !== "\n" && char !== "\r") continue;
+    const isLineBreak = preserveNewlines && (char === "\n" || char === "\r");
+    if (index < text.length && !isLineBreak) continue;
     const line = text.slice(lineStart, index);
     const lineWidth = textWidth(line);
     width = Math.max(width, lineWidth);
-    height += measureWrappedTerminalLineHeight(line, wrapWidth);
+    height += wrap ? measureWrappedTerminalLineHeight(line, wrapWidth, breakWords) : 1;
     if (char === "\r" && text[index + 1] === "\n") index += 1;
     lineStart = index + 1;
   }
@@ -93,7 +105,7 @@ export function measureTerminalTextIntrinsic(
   return { width, height: Math.max(fallbackHeight, height) };
 }
 
-function measureWrappedTerminalLineHeight(line: string, wrapWidth: number): number {
+function measureWrappedTerminalLineHeight(line: string, wrapWidth: number, breakWords: boolean): number {
   const wrappedLine = line.trimEnd();
   if (!wrappedLine) return 1;
 
@@ -116,7 +128,7 @@ function measureWrappedTerminalLineHeight(line: string, wrapWidth: number): numb
       continue;
     }
 
-    if (tokenWidth <= wrapWidth) {
+    if (tokenWidth <= wrapWidth || !breakWords) {
       if (currentWidth > 0 && currentWidth + tokenWidth > wrapWidth) {
         rows += 1;
         currentWidth = tokenWidth;

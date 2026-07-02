@@ -475,6 +475,8 @@ Recommended routing:
   block and flex-row intrinsic sizes.
 - Simple and Yoga solvers share terminal-aware text intrinsic measurement. Simple-solver auto-height text boxes are
   measured after explicit width resolution, so wrapped text, scroll extents, and panel bounds agree.
+- The CSS subset now includes `white-space`, `overflow-wrap`, and `word-wrap`, with solver-aware intrinsic text
+  measurement for no-wrap and long-token wrapping behavior.
 - Intrinsic measurement cache keys now include the flow-affecting style fields used by that sizing path, including
   position, explicit/min/max dimensions, flex basis, and gap values.
 - The next high-value solver work is richer block/intrinsic text behavior, full Grid/Taffy parity, and either a Taffy

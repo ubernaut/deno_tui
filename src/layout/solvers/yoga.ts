@@ -22,10 +22,10 @@ export interface YogaLayoutSolverOptions {
 /** Optional Yoga-backed Flexbox solver for CSS-compatible TUI layout. */
 export class YogaLayoutSolver implements LayoutSolver {
   readonly id = "yoga";
-  readonly #measureText: (text: string, width: number) => { width: number; height: number };
+  readonly #measureText: (text: string, width: number, style: ComputedLayoutStyle) => { width: number; height: number };
 
   constructor(options: YogaLayoutSolverOptions = {}) {
-    this.#measureText = options.measureText ?? defaultMeasureText;
+    this.#measureText = options.measureText ? (text, width) => options.measureText!(text, width) : defaultMeasureText;
   }
 
   supports(): boolean {
@@ -52,7 +52,11 @@ export class YogaLayoutSolver implements LayoutSolver {
     applyYogaStyle(yogaNode, node.style);
     if (node.text && node.children.length === 0) {
       yogaNode.setMeasureFunc((width: number) => {
-        const measured = this.#measureText(node.text ?? "", Math.max(1, Math.floor(width || Number.MAX_SAFE_INTEGER)));
+        const measured = this.#measureText(
+          node.text ?? "",
+          Math.max(1, Math.floor(width || Number.MAX_SAFE_INTEGER)),
+          node.style,
+        );
         return measured;
       });
     }
@@ -271,6 +275,14 @@ function yogaContentRect(rect: Rectangle, style: ComputedLayoutStyle): Rectangle
   };
 }
 
-function defaultMeasureText(text: string, width: number): { width: number; height: number } {
-  return measureTerminalTextIntrinsic(text, width);
+function defaultMeasureText(
+  text: string,
+  width: number,
+  style: ComputedLayoutStyle,
+): { width: number; height: number } {
+  return measureTerminalTextIntrinsic(text, width, 1, {
+    wrap: style.whiteSpace !== "nowrap" && style.whiteSpace !== "pre",
+    breakWords: style.overflowWrap === "anywhere" || style.overflowWrap === "break-word",
+    preserveNewlines: true,
+  });
 }
