@@ -258,6 +258,9 @@ Work:
   - [x] Reworked status bar composition to avoid forced gap plus final slice, preserving exact-fit right content.
   - [x] Reworked `WindowManagerController.focusNext()` to traverse cached ordered windows directly instead of allocating
         an id list per focus movement.
+  - [x] Reworked `Canvas.render()` to reuse scratch arrays/sets for update dedupe, dirty rectangles, affected objects,
+        required-object lookup, and intersection candidates; solid box rendering now styles its filler once per render
+        pass instead of once per dirty cell.
   - [x] Added `visibleListRowsInto()` and rewired the `List` component to reuse its row buffer instead of allocating
         virtual row objects plus output rows on every render.
   - [x] Added `renderVirtualListRowsInto()` and rewired `VirtualList` display rows to reuse caller-owned output storage.

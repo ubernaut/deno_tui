@@ -59,6 +59,7 @@ export class BoxObject extends DrawObject<"box"> {
     const rectangle = this.rectangle.peek();
     const style = this.style.peek();
     const filler = this.filler.peek();
+    const styledFiller = style(filler);
 
     let rowRange = Math.min(rectangle.row + rectangle.height, rows);
     let columnRange = Math.min(rectangle.column + rectangle.width, columns);
@@ -90,7 +91,7 @@ export class BoxObject extends DrawObject<"box"> {
           continue;
         }
 
-        rowBuffer[column] = style(filler);
+        rowBuffer[column] = styledFiller;
         rerenderQueueRow.add(column);
       }
 

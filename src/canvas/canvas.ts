@@ -68,6 +68,15 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
   drawnOrderVersion: number;
   cellUpdatesBuffer: CanvasCellUpdate[];
   rowRangesBuffer: ReturnType<typeof coalesceCanvasRowRanges>;
+  objectsToUpdateBuffer: DrawObject[];
+  seenObjectsBuffer: Set<DrawObject>;
+  dirtyRectanglesBuffer: Rectangle[];
+  movedOwnObjectsBuffer: Set<DrawObject>;
+  nonMovingUpdatedObjectsBuffer: DrawObject[];
+  affectedObjectsBuffer: DrawObject[];
+  requiredObjectsBuffer: Set<DrawObject>;
+  dirtyCandidatesBuffer: DrawObject[];
+  intersectionCandidatesBuffer: DrawObject[];
 
   constructor(options: CanvasOptions) {
     super();
@@ -89,6 +98,15 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
     this.drawnOrderVersion = 0;
     this.cellUpdatesBuffer = [];
     this.rowRangesBuffer = [];
+    this.objectsToUpdateBuffer = [];
+    this.seenObjectsBuffer = new Set();
+    this.dirtyRectanglesBuffer = [];
+    this.movedOwnObjectsBuffer = new Set();
+    this.nonMovingUpdatedObjectsBuffer = [];
+    this.affectedObjectsBuffer = [];
+    this.requiredObjectsBuffer = new Set();
+    this.dirtyCandidatesBuffer = [];
+    this.intersectionCandidatesBuffer = [];
 
     this.size = signalify(options.size, { deepObserve: true });
 
@@ -181,8 +199,10 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
       return;
     }
 
-    const objectsToUpdate: DrawObject[] = [];
-    const seenObjects = new Set<DrawObject>();
+    const objectsToUpdate = this.objectsToUpdateBuffer;
+    const seenObjects = this.seenObjectsBuffer;
+    objectsToUpdate.length = 0;
+    seenObjects.clear();
 
     while (updateObjects.length) {
       const object = updateObjects.pop()!;
@@ -197,9 +217,12 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
 
     let i = 0;
     let intersectionsDirty = false;
-    const dirtyRectangles: Rectangle[] = [];
-    const movedOwnObjects = new Set<DrawObject>();
-    const nonMovingUpdatedObjects: DrawObject[] = [];
+    const dirtyRectangles = this.dirtyRectanglesBuffer;
+    const movedOwnObjects = this.movedOwnObjectsBuffer;
+    const nonMovingUpdatedObjects = this.nonMovingUpdatedObjectsBuffer;
+    dirtyRectangles.length = 0;
+    movedOwnObjects.clear();
+    nonMovingUpdatedObjects.length = 0;
 
     for (const object of objectsToUpdate) {
       object.updated = true;
@@ -242,12 +265,15 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
         nonMovingUpdatedObjects,
         movedOwnObjects,
         spatialIndex!,
+        this.affectedObjectsBuffer,
+        this.requiredObjectsBuffer,
+        this.dirtyCandidatesBuffer,
       )
       : objectsToUpdate;
     let intersectionCandidateChecks = 0;
     if (intersectionsDirty) {
       objectsToRender.sort((a, b) => b.zIndex.peek() - a.zIndex.peek() || b.id - a.id);
-      const intersectionCandidates: DrawObject[] = [];
+      const intersectionCandidates = this.intersectionCandidatesBuffer;
       for (const object of objectsToRender) {
         intersectionCandidateChecks += this.updateIntersections(
           object,
@@ -374,26 +400,34 @@ function affectedDrawObjects(
   requiredObjects: readonly DrawObject[],
   movedObjects: ReadonlySet<DrawObject>,
   spatialIndex: DrawObjectSpatialIndex,
+  target: DrawObject[],
+  required: Set<DrawObject>,
+  dirtyCandidates: DrawObject[],
 ): DrawObject[] {
+  target.length = 0;
+  required.clear();
   if (dirtyRegion.isEmpty()) {
-    return [...objects];
+    for (const object of objects) {
+      target.push(object);
+    }
+    return target;
   }
 
-  const required = new Set(requiredObjects);
   for (const object of movedObjects) {
     required.add(object);
   }
-  const dirtyCandidates = spatialIndex.queryDirtyRegionInto([], dirtyRegion);
-  for (const object of dirtyCandidates) {
+  for (const object of requiredObjects) {
     required.add(object);
   }
-  const affected: DrawObject[] = [];
+  for (const object of spatialIndex.queryDirtyRegionInto(dirtyCandidates, dirtyRegion)) {
+    required.add(object);
+  }
   for (const object of objects) {
     if (required.has(object)) {
-      affected.push(object);
+      target.push(object);
     }
   }
-  return affected;
+  return target;
 }
 
 function queueDirtyRegion(object: DrawObject, dirtyRegion: DirtyRegion): void {

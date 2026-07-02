@@ -63,6 +63,32 @@ Deno.test("canvas can flush contiguous row ranges through optional sinks", () =>
   assertEquals(sink.stats?.dirtyRowRanges, 1);
 });
 
+Deno.test("box renderer styles solid filler once per render pass", () => {
+  const sink = new MemoryCanvasSink();
+  const canvas = new Canvas({
+    sink,
+    size: { columns: 6, rows: 3 },
+  });
+  let styleCalls = 0;
+  const box = new BoxObject({
+    canvas,
+    rectangle: { column: 1, row: 1, width: 4, height: 2 },
+    filler: "x",
+    style: (text) => {
+      styleCalls += 1;
+      return text.toUpperCase();
+    },
+    zIndex: 1,
+  });
+
+  box.draw();
+  canvas.render();
+
+  assertEquals(styleCalls, 1);
+  assertEquals(sink.updates.length, 8);
+  assertEquals(sink.updates.every((update) => update.value === "X"), true);
+});
+
 Deno.test("canvas notifies sinks when size changes", () => {
   const sink = new MemoryCanvasSink();
   const canvas = new Canvas({
