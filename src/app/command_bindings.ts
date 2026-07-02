@@ -165,14 +165,19 @@ export function commandSurfaceItems<TAction extends Action = Action>(
 ): CommandSurfaceItem[] {
   const includeDisabled = options.includeDisabled ?? true;
   const includeBindingsInKeywords = options.includeBindingsInKeywords ?? true;
-  return registry.list(options.group)
-    .filter((command) => includeDisabled || registry.enabled(command))
-    .map((command) => ({
+  const commands = registry.list(options.group);
+  const items: CommandSurfaceItem[] = [];
+  for (const command of commands) {
+    const enabled = registry.enabled(command);
+    if (!includeDisabled && !enabled) continue;
+    items.push({
       id: command.id,
       label: command.label,
       keywords: commandKeywords(command, includeBindingsInKeywords),
-      disabled: !registry.enabled(command),
-    }));
+      disabled: !enabled,
+    });
+  }
+  return items;
 }
 
 /** Public helper for search Command Surface Items. */
@@ -356,13 +361,16 @@ function commandKeywords<TAction extends Action = Action>(
   command: Command<TAction>,
   includeBinding: boolean,
 ): string[] {
-  return [
-    command.id,
-    command.group,
-    command.description,
-    ...(command.keywords ?? []),
-    includeBinding && command.binding ? bindingId(command.binding) : undefined,
-  ].filter((keyword): keyword is string => !!keyword);
+  const keywords: string[] = [command.id];
+  if (command.group) keywords.push(command.group);
+  if (command.description) keywords.push(command.description);
+  if (command.keywords) {
+    for (const keyword of command.keywords) {
+      if (keyword) keywords.push(keyword);
+    }
+  }
+  if (includeBinding && command.binding) keywords.push(bindingId(command.binding));
+  return keywords;
 }
 
 function scoreCommandSurfaceItem(
