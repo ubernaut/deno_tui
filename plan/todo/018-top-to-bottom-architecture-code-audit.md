@@ -998,6 +998,8 @@ Work:
         timing for pre/post mutation command actions.
   - [x] Reused the stateless Three ASCII ANSI grid assembler behind `buildThreeAsciiAnsiGrid`, preserving fresh grid
         returns while keeping ANSI/color/cell caches warm across repeated renderer frames.
+  - [x] Cached stable `Color` object background inputs inside the Three ASCII ANSI grid assembler while still detecting
+        in-place color mutation, avoiding repeated sRGB background conversion during live renderer frames.
   - [x] Added a sparse workbench frame benchmark and changed frame row/slice assembly to fixed-size row arrays, reducing
         hot sparse-frame assembly time in the focused benchmark.
   - [x] Removed intermediate styled-cell array allocation from workbench frame writes and added clipping coverage for

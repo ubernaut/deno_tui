@@ -60,6 +60,10 @@ export class ThreeAsciiAnsiGridAssembler {
   private backgroundBlue = 0;
   private stableBackgroundInput: string | number | undefined;
   private hasStableBackgroundInput = false;
+  private stableBackgroundColorRef?: Color;
+  private stableBackgroundColorRed = Number.NaN;
+  private stableBackgroundColorGreen = Number.NaN;
+  private stableBackgroundColorBlue = Number.NaN;
 
   constructor(options: { reuseGrid?: boolean } = {}) {
     this.reuseGrid = options.reuseGrid ?? false;
@@ -192,6 +196,10 @@ export class ThreeAsciiAnsiGridAssembler {
     this.blankAnsi = "";
     this.hasStableBackgroundInput = false;
     this.stableBackgroundInput = undefined;
+    this.stableBackgroundColorRef = undefined;
+    this.stableBackgroundColorRed = Number.NaN;
+    this.stableBackgroundColorGreen = Number.NaN;
+    this.stableBackgroundColorBlue = Number.NaN;
     this.toByte.clear();
   }
 
@@ -316,12 +324,25 @@ export class ThreeAsciiAnsiGridAssembler {
       }
       this.hasStableBackgroundInput = true;
       this.stableBackgroundInput = stableInput;
+      this.stableBackgroundColorRef = undefined;
       this.setBackgroundColor(colorValue(backgroundColor, 0x000000));
       return;
     }
 
     this.hasStableBackgroundInput = false;
     this.stableBackgroundInput = undefined;
+    if (
+      this.stableBackgroundColorRef === backgroundColor &&
+      this.stableBackgroundColorRed === backgroundColor.r &&
+      this.stableBackgroundColorGreen === backgroundColor.g &&
+      this.stableBackgroundColorBlue === backgroundColor.b
+    ) {
+      return;
+    }
+    this.stableBackgroundColorRef = backgroundColor;
+    this.stableBackgroundColorRed = backgroundColor.r;
+    this.stableBackgroundColorGreen = backgroundColor.g;
+    this.stableBackgroundColorBlue = backgroundColor.b;
     this.setBackgroundColor(backgroundColor);
   }
 

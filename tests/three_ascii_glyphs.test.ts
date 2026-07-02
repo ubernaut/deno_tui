@@ -1,4 +1,5 @@
 import { assertEquals, assertMatch } from "./deps.ts";
+import { Color } from "npm:three@0.183.2";
 import { formatThreeAsciiFallbackDetail } from "../src/canvas/three_ascii.ts";
 import { blockFillGlyphForBucket, bucketAsciiLuminance, glyphForTile } from "../src/three_ascii/glyphs.ts";
 import { buildThreeAsciiAnsiGrid, ThreeAsciiAnsiGridAssembler } from "../src/three_ascii/renderer.ts";
@@ -184,6 +185,26 @@ Deno.test("three ascii ANSI grid assembler invalidates cached cells when backgro
   assertEquals(dark, buildThreeAsciiAnsiGrid({ ...base, backgroundColor: 0x000000 })[0][0]);
   assertEquals(tinted, buildThreeAsciiAnsiGrid({ ...base, backgroundColor: 0x010203 })[0][0]);
   assertEquals(tinted !== dark, true);
+});
+
+Deno.test("three ascii ANSI grid assembler observes reused Color background mutations", () => {
+  const assembler = new ThreeAsciiAnsiGridAssembler();
+  const background = new Color(0x000000);
+  const base = {
+    columns: 1,
+    rows: 1,
+    fillGlyphs: new Float32Array([14]),
+    colors: new Float32Array([1, 0, 0, 1]),
+    backgroundColor: background,
+  };
+
+  const dark = assembler.build(base)[0][0];
+  const darkAgain = assembler.build(base)[0][0];
+  background.set(0x0000ff);
+  const blue = assembler.build(base)[0][0];
+
+  assertEquals(darkAgain, dark);
+  assertEquals(blue, "\x1b[48;2;0;0;255m\x1b[38;2;255;0;0m█\x1b[0m");
 });
 
 Deno.test("three ascii ANSI grid assembler keeps glyph style cache keys distinct", () => {
