@@ -12770,6 +12770,16 @@ var TerminalWorkspaceController = class {
     this.sessions.value = moveTerminalSession(sessions, index, nextIndex);
     return true;
   }
+  activateRelative(delta) {
+    const sessions = this.sessions.peek();
+    if (sessions.length === 0) return void 0;
+    const activeId = this.activeId.peek();
+    let index = terminalSessionIndex(sessions, activeId ?? "");
+    if (index < 0) index = 0;
+    const nextIndex = (index + Math.trunc(delta) + sessions.length) % sessions.length;
+    const next = sessions[nextIndex];
+    return this.activate(next.id) ? cloneTerminalSessionDescriptor(next) : void 0;
+  }
   duplicate(id2 = this.activeId.peek(), options = {}) {
     if (!id2) return void 0;
     const sessions = this.sessions.peek();

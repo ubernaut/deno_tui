@@ -310,6 +310,17 @@ export class TerminalWorkspaceController {
     return true;
   }
 
+  activateRelative(delta: number): TerminalSessionDescriptor | undefined {
+    const sessions = this.sessions.peek();
+    if (sessions.length === 0) return undefined;
+    const activeId = this.activeId.peek();
+    let index = terminalSessionIndex(sessions, activeId ?? "");
+    if (index < 0) index = 0;
+    const nextIndex = (index + Math.trunc(delta) + sessions.length) % sessions.length;
+    const next = sessions[nextIndex]!;
+    return this.activate(next.id) ? cloneTerminalSessionDescriptor(next) : undefined;
+  }
+
   duplicate(
     id = this.activeId.peek(),
     options: DuplicateTerminalWorkspaceSessionOptions = {},

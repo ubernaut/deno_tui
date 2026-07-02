@@ -115,3 +115,5 @@ developer workflows.
 - Added a versioned renderer-neutral terminal workspace snapshot API so shell sessions, active session, pane layout,
   zoom/focus state, and descriptors can be persisted and restored by console or browser adapters through one normalized
   contract.
+- Added renderer-neutral previous/next session activation to terminal workspaces and command adapters so shell tabs can
+  be cycled from keyboard bindings, command palettes, and browser/console renderers through the same command surface.

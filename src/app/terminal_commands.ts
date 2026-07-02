@@ -106,6 +106,8 @@ export type TerminalWorkspaceCommandKind =
   | "closeSession"
   | "renameSession"
   | "duplicateSession"
+  | "previousSession"
+  | "nextSession"
   | "moveSessionPrevious"
   | "moveSessionNext"
   | "restartSession"
@@ -122,6 +124,7 @@ export type TerminalWorkspaceCommandAction =
   | Action<"terminalWorkspace.sessionClosed", TerminalWorkspaceCommandPayload>
   | Action<"terminalWorkspace.sessionRenamed", TerminalWorkspaceCommandPayload & { title: string }>
   | Action<"terminalWorkspace.sessionDuplicated", TerminalWorkspaceCommandPayload>
+  | Action<"terminalWorkspace.sessionActivated", TerminalWorkspaceCommandPayload>
   | Action<"terminalWorkspace.sessionMoved", TerminalWorkspaceCommandPayload & { delta: number }>
   | Action<"terminalWorkspace.sessionRestarted", TerminalWorkspaceCommandPayload>
   | Action<"terminalWorkspace.sessionDetached", TerminalWorkspaceCommandPayload>
@@ -637,6 +640,26 @@ export function terminalWorkspaceCommands<TAction extends Action = TerminalWorks
           } as TAction;
         },
       },
+      terminalSessionActivateRelativeCommand(
+        workspace,
+        id,
+        idPrefix,
+        group,
+        "previousSession",
+        "Previous Terminal Session",
+        -1,
+        label,
+      ),
+      terminalSessionActivateRelativeCommand(
+        workspace,
+        id,
+        idPrefix,
+        group,
+        "nextSession",
+        "Next Terminal Session",
+        1,
+        label,
+      ),
       terminalSessionMoveCommand(
         workspace,
         id,
@@ -722,6 +745,35 @@ export function bindTerminalWorkspaceCommands<TAction extends Action = TerminalW
   options: TerminalWorkspaceCommandOptions = {},
 ): () => void {
   return registry.registerAll(terminalWorkspaceCommands<TAction>(workspace, options));
+}
+
+function terminalSessionActivateRelativeCommand<TAction extends Action>(
+  workspace: TerminalWorkspaceController,
+  id: string,
+  idPrefix: string,
+  group: string,
+  kind: "previousSession" | "nextSession",
+  fallback: string,
+  delta: number,
+  label: (kind: TerminalWorkspaceCommandKind, fallback: string) => string,
+): Command<TAction> {
+  return {
+    id: `${idPrefix}.${kind}`,
+    label: label(kind, fallback),
+    group,
+    keywords: ["terminal", "workspace", "session", "tab", "activate", delta < 0 ? "previous" : "next"],
+    disabled: () => {
+      const inspection = workspace.inspect();
+      return inspection.sessions.length < 2 || !inspection.activeId;
+    },
+    action: () => {
+      const session = workspace.activateRelative(delta);
+      return {
+        type: "terminalWorkspace.sessionActivated",
+        payload: terminalWorkspacePayload(workspace, id, undefined, session?.id),
+      } as TAction;
+    },
+  };
 }
 
 function terminalSessionMoveCommand<TAction extends Action>(
