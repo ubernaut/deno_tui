@@ -3,10 +3,10 @@ import { Signal } from "../signals/mod.ts";
 import type { AsyncScheduler, ScheduledTaskOptions } from "../runtime/scheduler.ts";
 import type { AsyncStore } from "../runtime/storage.ts";
 import {
+  normalizeSearchText,
   scoreWeightedSearchFields,
   searchTerms,
   type WeightedSearchField,
-  weightedSearchFields,
 } from "../utils/search.ts";
 import type { Action } from "./actions.ts";
 import type { CommandDispatch, CommandRegistry } from "./commands.ts";
@@ -269,13 +269,22 @@ function createCommandSearchIndexEntry(
   index: number,
   options: CommandSearchIndexOptions,
 ): CommandSearchIndexEntry {
-  const fields = weightedSearchFields([
-    { value: item.label, weight: options.labelWeight ?? 100 },
-    { value: item.id, weight: options.idWeight ?? 80 },
-    ...(item.keywords ?? []).map((value) => ({ value, weight: options.keywordWeight ?? 40 })),
-  ]);
+  const keywordCount = item.keywords?.length ?? 0;
+  const fields = new Array<WeightedSearchField>(2 + keywordCount);
+  fields[0] = commandSearchIndexField(item.label, options.labelWeight ?? 100);
+  fields[1] = commandSearchIndexField(item.id, options.idWeight ?? 80);
+  if (item.keywords) {
+    const keywordWeight = options.keywordWeight ?? 40;
+    for (let keywordIndex = 0; keywordIndex < item.keywords.length; keywordIndex += 1) {
+      fields[keywordIndex + 2] = commandSearchIndexField(item.keywords[keywordIndex]!, keywordWeight);
+    }
+  }
 
   return { item, fields, index };
+}
+
+function commandSearchIndexField(value: string, weight: number): WeightedSearchField {
+  return { value, weight, normalized: normalizeSearchText(value) };
 }
 
 function scoreCommandSearchIndexEntry(

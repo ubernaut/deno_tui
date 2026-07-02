@@ -213,6 +213,8 @@ Work:
         setup-time `Array.from()` closures during Three ASCII scene construction.
   - [x] Reworked command palette, command surface, and indexed command search rankers to build explicit match buffers
         instead of `map().filter().sort().map()` pipelines, keeping the 1k-command ranking benchmark under threshold.
+  - [x] Removed remaining spread/map field construction from command palette and indexed command-search field
+        precomputation so ranking no longer allocates intermediate raw field objects for command keywords.
   - [x] Reworked remaining Neon Three scene setup arrays to use pre-sized object buffers instead of `Array.from()`
         closures when constructing Three ASCII demo windows.
   - [x] Reworked shared workbench workspace normalization, serialization, lookup, and menu label projection to use
