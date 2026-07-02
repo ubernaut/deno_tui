@@ -4,6 +4,7 @@ import {
   parseTerminalControlSequence,
   parseTerminalParams,
 } from "./terminal_sequences.ts";
+import { textWidth, UNICODE_CHAR_REGEXP } from "../utils/strings.ts";
 
 /** Styled terminal cell tracked by TerminalScreenController. */
 export interface TerminalScreenCell {
@@ -76,6 +77,7 @@ export class TerminalScreenController {
   #autoWrap = true;
   #insertMode = false;
   #lastPrintableCell?: TerminalScreenCell;
+  #lastPrintableWidth = 1;
   #tabStops: Set<number>;
   readonly #decoder = new TextDecoder();
 
@@ -110,7 +112,7 @@ export class TerminalScreenController {
   write(data: string | Uint8Array): void {
     const text = typeof data === "string" ? data : this.#decoder.decode(data);
     for (let index = 0; index < text.length;) {
-      const char = text[index]!;
+      const char = readTerminalGraphic(text, index);
       if (char === "\x1b") {
         const parsed = parseTerminalControlSequence(text, index);
         if (parsed) {
@@ -188,9 +190,14 @@ export class TerminalScreenController {
     }
     if (char < " ") return;
 
+    const width = terminalGraphicWidth(char);
     const cell = this.#styledCell(char);
     this.#writeCell(cell);
+    for (let index = 1; index < width; index += 1) {
+      this.#writeCell(BLANK_CELL);
+    }
     this.#lastPrintableCell = { ...cell };
+    this.#lastPrintableWidth = width;
   }
 
   #writeCell(cell: TerminalScreenCell): void {
@@ -475,6 +482,9 @@ export class TerminalScreenController {
     const amount = Math.max(1, Math.floor(count));
     for (let index = 0; index < amount; index += 1) {
       this.#writeCell({ ...this.#lastPrintableCell });
+      for (let width = 1; width < this.#lastPrintableWidth; width += 1) {
+        this.#writeCell(BLANK_CELL);
+      }
     }
   }
 
@@ -652,6 +662,7 @@ export class TerminalScreenController {
     this.#autoWrap = true;
     this.#insertMode = false;
     this.#lastPrintableCell = undefined;
+    this.#lastPrintableWidth = 1;
     this.clear();
   }
 
@@ -719,6 +730,22 @@ function createRows(columns: number, rows: number): TerminalScreenCell[][] {
 
 function blankRow(columns: number): TerminalScreenCell[] {
   return new Array<TerminalScreenCell>(columns).fill(BLANK_CELL);
+}
+
+function readTerminalGraphic(text: string, index: number): string {
+  const code = text.charCodeAt(index);
+  if (code < 0x80) return text[index] ?? "";
+
+  UNICODE_CHAR_REGEXP.lastIndex = index;
+  const match = UNICODE_CHAR_REGEXP.exec(text);
+  if (match?.index === index) return match[0];
+
+  const codePoint = text.codePointAt(index);
+  return codePoint === undefined ? text[index] ?? "" : String.fromCodePoint(codePoint);
+}
+
+function terminalGraphicWidth(char: string): number {
+  return Math.max(1, Math.min(2, textWidth(char)));
 }
 
 function fillBlankCells(row: TerminalScreenCell[], start: number, count: number): void {

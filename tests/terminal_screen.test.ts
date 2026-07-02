@@ -21,6 +21,19 @@ Deno.test("TerminalScreenController tracks SGR styles per cell", () => {
   assertEquals(row![1], { char: "N" });
 });
 
+Deno.test("TerminalScreenController writes unicode graphics without splitting surrogate pairs", () => {
+  const screen = new TerminalScreenController({ columns: 8, rows: 2 });
+
+  screen.write("界🙂x");
+
+  assertEquals(screen.textRows()[0], "界 🙂 x");
+  const [row] = screen.cellRows();
+  assertEquals(row![0], { char: "界" });
+  assertEquals(row![2], { char: "🙂" });
+  assertEquals(row![4], { char: "x" });
+  assertEquals(screen.inspect().cursor, { column: 5, row: 0 });
+});
+
 Deno.test("TerminalScreenController tracks 256-color truecolor and bright SGR styles", () => {
   const screen = new TerminalScreenController({ columns: 8, rows: 2 });
 
