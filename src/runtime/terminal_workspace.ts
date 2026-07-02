@@ -4,7 +4,6 @@ import type { Rectangle } from "../types.ts";
 import {
   clampTerminalWorkspaceSplitRatio,
   cloneTerminalWorkspaceLayoutNode,
-  cloneTerminalWorkspaceLayoutState,
   cloneTerminalWorkspacePaneNode,
   collectTerminalWorkspacePanes,
   createTerminalWorkspacePaneNode,
@@ -208,8 +207,13 @@ export class TerminalWorkspaceController {
     this.activeId.value = id;
     const layout = this.layout.peek();
     const pane = findTerminalWorkspacePaneBySession(layout.root, id);
-    if (pane) this.layout.value = { ...cloneTerminalWorkspaceLayoutState(layout), activePaneId: pane.id };
-    else if (!layout.root) {
+    if (pane) {
+      this.layout.value = {
+        root: layout.root,
+        activePaneId: pane.id,
+        zoomedPaneId: layout.zoomedPaneId,
+      };
+    } else if (!layout.root) {
       this.layout.value = terminalWorkspaceLayoutWithActive({ root: createTerminalWorkspacePaneNode(id) }, id);
     }
     return true;
@@ -233,7 +237,14 @@ export class TerminalWorkspaceController {
       const pane = this.activeId.peek()
         ? findTerminalWorkspacePaneBySession(this.layout.peek().root, this.activeId.peek()!)
         : undefined;
-      if (pane) this.layout.value = { ...cloneTerminalWorkspaceLayoutState(this.layout.peek()), activePaneId: pane.id };
+      if (pane) {
+        const layout = this.layout.peek();
+        this.layout.value = {
+          root: layout.root,
+          activePaneId: pane.id,
+          zoomedPaneId: layout.zoomedPaneId,
+        };
+      }
     }
     return true;
   }
@@ -395,13 +406,18 @@ export class TerminalWorkspaceController {
   activatePane(paneId: string): boolean {
     const pane = findTerminalWorkspacePane(this.layout.peek().root, paneId);
     if (!pane || !hasTerminalSession(this.sessions.peek(), pane.sessionId)) return false;
-    this.layout.value = { ...cloneTerminalWorkspaceLayoutState(this.layout.peek()), activePaneId: pane.id };
+    const layout = this.layout.peek();
+    this.layout.value = {
+      root: layout.root,
+      activePaneId: pane.id,
+      zoomedPaneId: layout.zoomedPaneId,
+    };
     this.activeId.value = pane.sessionId;
     return true;
   }
 
   closePane(paneId: string): boolean {
-    const current = cloneTerminalWorkspaceLayoutState(this.layout.peek());
+    const current = this.layout.peek();
     if (!findTerminalWorkspacePane(current.root, paneId)) return false;
     const root = removeTerminalWorkspacePane(current.root, paneId);
     const panes = collectTerminalWorkspacePanes(root);
@@ -439,9 +455,9 @@ export class TerminalWorkspaceController {
 
   toggleZoomPane(paneId = this.layout.peek().activePaneId): boolean {
     if (!paneId || !findTerminalWorkspacePane(this.layout.peek().root, paneId)) return false;
-    const current = cloneTerminalWorkspaceLayoutState(this.layout.peek());
+    const current = this.layout.peek();
     this.layout.value = {
-      ...current,
+      root: current.root,
       activePaneId: paneId,
       zoomedPaneId: current.zoomedPaneId === paneId ? undefined : paneId,
     };
