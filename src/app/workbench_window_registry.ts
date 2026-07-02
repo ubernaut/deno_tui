@@ -35,10 +35,16 @@ export interface WorkbenchWindowOptionMinimums {
 
 /** Create a stable workbench window option list from built-ins and visualization metadata. */
 export function createWorkbenchWindowOptions(input: WorkbenchWindowOptionCatalogInput): WorkbenchWindowOption[] {
-  return [
-    ...(input.builtIns ?? []),
-    ...createWorkbenchVisualizationWindowOptions(input.visualizations ?? [], input.neonIds ?? new Set()),
-  ];
+  const builtIns = input.builtIns ?? [];
+  const visualizations = input.visualizations ?? [];
+  const options = new Array<WorkbenchWindowOption>(builtIns.length + visualizations.length);
+  let index = 0;
+  for (const builtIn of builtIns) {
+    options[index] = builtIn;
+    index += 1;
+  }
+  appendWorkbenchVisualizationWindowOptions(options, index, visualizations, input.neonIds ?? new Set());
+  return options;
 }
 
 /** Project visualization metadata into workbench launcher options. */
@@ -46,12 +52,26 @@ export function createWorkbenchVisualizationWindowOptions(
   visualizations: readonly WorkbenchVisualizationOptionSource[],
   neonIds: ReadonlySet<string> = new Set(),
 ): WorkbenchWindowOption[] {
-  return visualizations.map((entry) => ({
-    id: entry.id,
-    label: entry.name,
-    group: workbenchWindowOptionGroupForVisualization(entry, neonIds),
-    description: entry.description,
-  }));
+  const options = new Array<WorkbenchWindowOption>(visualizations.length);
+  appendWorkbenchVisualizationWindowOptions(options, 0, visualizations, neonIds);
+  return options;
+}
+
+function appendWorkbenchVisualizationWindowOptions(
+  target: WorkbenchWindowOption[],
+  startIndex: number,
+  visualizations: readonly WorkbenchVisualizationOptionSource[],
+  neonIds: ReadonlySet<string>,
+): void {
+  for (let index = 0; index < visualizations.length; index += 1) {
+    const entry = visualizations[index]!;
+    target[startIndex + index] = {
+      id: entry.id,
+      label: entry.name,
+      group: workbenchWindowOptionGroupForVisualization(entry, neonIds),
+      description: entry.description,
+    };
+  }
 }
 
 function workbenchWindowOptionGroupForVisualization(
