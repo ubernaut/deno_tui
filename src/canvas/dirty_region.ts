@@ -89,6 +89,15 @@ export class DirtyRegion {
     return output;
   }
 
+  /** Visits row segments without cloning them for hot render paths. */
+  forEachSegment(visitor: (segment: DirtyRowSegment) => void): void {
+    for (const segments of this.#rows.values()) {
+      for (const segment of segments) {
+        visitor(segment);
+      }
+    }
+  }
+
   /** Returns true when any dirty segment intersects the rectangle. */
   intersects(rectangle: Rectangle): boolean {
     const rowStart = Math.floor(rectangle.row);

@@ -75,7 +75,7 @@ export class DrawObjectSpatialIndex {
   queryDirtyRegion(region: DirtyRegion): DrawObject[] {
     if (region.isEmpty()) return [];
     const candidates = new Set<DrawObject>();
-    for (const segment of region.inspect()) {
+    region.forEachSegment((segment) => {
       const startColumn = segment.startColumn;
       const endColumn = segment.endColumn;
       for (const object of this.#rows.get(segment.row) ?? []) {
@@ -85,7 +85,7 @@ export class DrawObjectSpatialIndex {
         if (objectEndColumn <= startColumn || objectStartColumn >= endColumn) continue;
         candidates.add(object);
       }
-    }
+    });
     return [...candidates];
   }
 

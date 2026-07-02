@@ -905,6 +905,8 @@ Work:
         behavior.
   - [x] Reused the canvas spatial index for dirty-region affected object selection, replacing per-object dirty
         intersection checks with indexed candidate membership.
+  - [x] Added non-cloning `DirtyRegion` segment traversal for render-path spatial queries while preserving cloned
+        inspection output for diagnostics.
 - [x] Make demo-only assets and NGE-inspired primitives clearly separate from library APIs.
   - [x] Added `app/neon_three_catalog.ts` for supported Three scene metadata and labels, keeping demo/NGE catalog data
         separate from the monolithic scene factory and shared by visualization footers plus scene coverage tests.
