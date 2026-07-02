@@ -110,3 +110,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   segment classification while keeping their paint adapters independent.
 - Added API workbench textbox render commands so terminal and browser controls share label/body row assembly with
   configurable cursor and continuation glyphs.
+- Switched Three ASCII block-mode cells to source truecolor background fills, removing font-glyph banding and reducing
+  per-cell ANSI output on block-heavy frames.

@@ -71,7 +71,7 @@ export function threeAsciiDemoTitleRect(rect: ThreeAsciiDemoRect): ThreeAsciiDem
 
 /** Calculates the titlebar control rectangle, returning width 0 when controls cannot fit. */
 export function threeAsciiDemoControlRect(rect: ThreeAsciiDemoRect): ThreeAsciiDemoRect {
-  const visible = rect.width >= THREE_ASCII_DEMO_WINDOW_CONTROL_WIDTH + 4;
+  const visible = rect.width >= THREE_ASCII_DEMO_WINDOW_CONTROL_WIDTH + 2;
   return {
     column: rect.column + Math.max(1, rect.width - THREE_ASCII_DEMO_WINDOW_CONTROL_WIDTH - 1),
     row: rect.row,

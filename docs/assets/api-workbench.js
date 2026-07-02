@@ -3546,14 +3546,18 @@ var ThreeAsciiAnsiGridAssembler = class {
     const cellKey = foregroundKey * CELL_GLYPH_KEY_STRIDE + glyphKey;
     let cell = this.cellCache.get(cellKey);
     if (cell !== void 0) return cell;
+    if (isSolidBlockFillGlyphKey(glyphKey)) {
+      cell = `${rgbToAnsiBackground(foregroundRed, foregroundGreen, foregroundBlue)} ${RESET}`;
+      this.cellCache.set(cellKey, cell);
+      return cell;
+    }
     let foregroundAnsi = this.foregroundAnsiCache.get(foregroundKey);
     if (foregroundAnsi === void 0) {
       foregroundAnsi = rgbToAnsiForeground(foregroundRed, foregroundGreen, foregroundBlue);
       this.foregroundAnsiCache.set(foregroundKey, foregroundAnsi);
     }
     const glyph = glyphForKey(glyphKey);
-    const backgroundAnsi = isSolidBlockFillGlyphKey(glyphKey) ? rgbToAnsiBackground(foregroundRed, foregroundGreen, foregroundBlue) : this.backgroundAnsi;
-    cell = `${backgroundAnsi}${foregroundAnsi}${glyph}${RESET}`;
+    cell = `${this.backgroundAnsi}${foregroundAnsi}${glyph}${RESET}`;
     this.cellCache.set(cellKey, cell);
     return cell;
   }

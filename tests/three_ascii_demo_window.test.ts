@@ -65,7 +65,13 @@ Deno.test("three ascii demo window derives body title and control rectangles", (
     }).height,
     3,
   );
-  assertEquals(threeAsciiDemoControlRect({ column: 2, row: 2, width: 18, height: 10 }).width, 0);
+  assertEquals(threeAsciiDemoControlRect({ column: 2, row: 2, width: 18, height: 10 }), {
+    column: 4,
+    row: 2,
+    width: 15,
+    height: 1,
+  });
+  assertEquals(threeAsciiDemoControlRect({ column: 2, row: 2, width: 16, height: 10 }).width, 0);
 });
 
 Deno.test("three ascii demo titlebar hit testing maps compact controls", () => {
