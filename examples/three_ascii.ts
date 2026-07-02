@@ -310,17 +310,17 @@ new Text({
     );
   }),
   rectangle: new Computed<TextRectangle>(() => threeAsciiDemoTitleRect(renderWindowRectangle.value)),
-  zIndex: 8,
+  zIndex: 12,
 });
 
 new Text({
   parent: tui,
-  theme: { base: crayon.bgBlack.white },
+  theme: { base: crayon.bgBlack.white.bold },
   text: new Computed<string>(() =>
     threeAsciiDemoControlRect(renderWindowRectangle.value).width > 0 ? THREE_ASCII_DEMO_WINDOW_CONTROL_TEXT : ""
   ),
   rectangle: new Computed<TextRectangle>(() => threeAsciiDemoControlRect(renderWindowRectangle.value)),
-  zIndex: 8,
+  zIndex: 13,
 });
 
 function applyPresetByIndex(index: number): void {
