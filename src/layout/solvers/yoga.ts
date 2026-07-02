@@ -56,7 +56,8 @@ export class YogaLayoutSolver implements LayoutSolver {
         return measured;
       });
     }
-    for (const [index, child] of node.children.entries()) {
+    for (let index = 0; index < node.children.length; index += 1) {
+      const child = node.children[index]!;
       yogaNode.insertChild(this.#createYogaNode(child), index);
     }
     return yogaNode;
@@ -76,18 +77,17 @@ export class YogaLayoutSolver implements LayoutSolver {
       height: Math.max(0, Math.round(layout.height)),
     };
     const contentRect = yogaContentRect(rect, node.style);
-    const children = node.children.map((child, index) => {
+    const children: ComputedLayoutBox[] = [];
+    let scrollWidth = contentRect.width;
+    let scrollHeight = contentRect.height;
+    for (let index = 0; index < node.children.length; index += 1) {
+      const child = node.children[index]!;
       const childYogaNode = yogaNode.getChild(index) as YogaNode;
-      return this.#toComputedBox(child, childYogaNode, rootBounds, { column: rect.column, row: rect.row });
-    });
-    const scrollWidth = Math.max(
-      contentRect.width,
-      ...children.map((child) => child.rect.column + child.rect.width - contentRect.column),
-    );
-    const scrollHeight = Math.max(
-      contentRect.height,
-      ...children.map((child) => child.rect.row + child.rect.height - contentRect.row),
-    );
+      const childBox = this.#toComputedBox(child, childYogaNode, rootBounds, { column: rect.column, row: rect.row });
+      children.push(childBox);
+      scrollWidth = Math.max(scrollWidth, childBox.rect.column + childBox.rect.width - contentRect.column);
+      scrollHeight = Math.max(scrollHeight, childBox.rect.row + childBox.rect.height - contentRect.row);
+    }
     const visible = node.style.visibility === "visible" && node.style.display !== "none";
     return {
       id: node.id,
@@ -272,11 +272,28 @@ function yogaContentRect(rect: Rectangle, style: ComputedLayoutStyle): Rectangle
 }
 
 function defaultMeasureText(text: string, width: number): { width: number; height: number } {
-  const lines = text.split(/\r?\n/);
-  const measuredWidth = Math.max(1, ...lines.map((line) => textWidth(line)));
+  let measuredWidth = 1;
+  let lineStart = 0;
+  for (let index = 0; index <= text.length; index += 1) {
+    const char = text[index];
+    if (index < text.length && char !== "\n" && char !== "\r") continue;
+    measuredWidth = Math.max(measuredWidth, textWidth(text.slice(lineStart, index)));
+    if (char === "\r" && text[index + 1] === "\n") index += 1;
+    lineStart = index + 1;
+  }
   const wrapWidth = Math.max(1, Math.min(width, measuredWidth));
+  let height = 0;
+  lineStart = 0;
+  for (let index = 0; index <= text.length; index += 1) {
+    const char = text[index];
+    if (index < text.length && char !== "\n" && char !== "\r") continue;
+    const lineWidth = textWidth(text.slice(lineStart, index));
+    height += Math.max(1, Math.ceil(lineWidth / wrapWidth));
+    if (char === "\r" && text[index + 1] === "\n") index += 1;
+    lineStart = index + 1;
+  }
   return {
     width: measuredWidth,
-    height: lines.reduce((sum, line) => sum + Math.max(1, Math.ceil(textWidth(line) / wrapWidth)), 0),
+    height,
   };
 }

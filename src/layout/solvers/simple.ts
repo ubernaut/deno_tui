@@ -669,32 +669,37 @@ function measureTextIntrinsic(text: string, availableWidth: number, defaultTextH
 }
 
 function intrinsicMeasurementCacheKey(node: LayoutNode, availableWidth: number, defaultTextHeight: number): string {
-  return [
-    "v1",
-    Math.max(1, Math.floor(availableWidth)),
-    Math.max(1, Math.floor(defaultTextHeight)),
-    node.tag,
-    node.text ?? "",
-    node.intrinsic?.width ?? "",
-    node.intrinsic?.height ?? "",
-    node.style.display,
-    node.style.flexDirection,
-    node.style.columnGap,
-    ...node.children.map((child) => intrinsicNodeSignature(child)),
-  ].join("\u001f");
+  let key = "v1" +
+    "\u001f" + Math.max(1, Math.floor(availableWidth)) +
+    "\u001f" + Math.max(1, Math.floor(defaultTextHeight)) +
+    "\u001f" + node.tag +
+    "\u001f" + (node.text ?? "") +
+    "\u001f" + (node.intrinsic?.width ?? "") +
+    "\u001f" + (node.intrinsic?.height ?? "") +
+    "\u001f" + node.style.display +
+    "\u001f" + node.style.flexDirection +
+    "\u001f" + node.style.columnGap;
+  for (const child of node.children) {
+    key += "\u001f" + intrinsicNodeSignature(child);
+  }
+  return key;
 }
 
 function intrinsicNodeSignature(node: LayoutNode): string {
-  return [
-    node.tag,
-    node.text ?? "",
-    node.intrinsic?.width ?? "",
-    node.intrinsic?.height ?? "",
-    node.style.display,
-    node.style.flexDirection,
-    node.style.columnGap,
-    node.children.map((child) => intrinsicNodeSignature(child)).join("\u001e"),
-  ].join("\u001f");
+  let signature = node.tag +
+    "\u001f" + (node.text ?? "") +
+    "\u001f" + (node.intrinsic?.width ?? "") +
+    "\u001f" + (node.intrinsic?.height ?? "") +
+    "\u001f" + node.style.display +
+    "\u001f" + node.style.flexDirection +
+    "\u001f" + node.style.columnGap;
+  if (node.children.length === 0) return signature + "\u001f";
+  signature += "\u001f";
+  for (let index = 0; index < node.children.length; index += 1) {
+    if (index > 0) signature += "\u001e";
+    signature += intrinsicNodeSignature(node.children[index]!);
+  }
+  return signature;
 }
 
 function scrollSize(

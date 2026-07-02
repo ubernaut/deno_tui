@@ -199,7 +199,10 @@ export function resolveGridTracks(
   }
 
   shrinkGridTracksToFit(sizes, availableWithoutGaps);
-  return sizes.map((size) => Math.max(0, Math.floor(size)));
+  for (let index = 0; index < sizes.length; index += 1) {
+    sizes[index] = Math.max(0, Math.floor(sizes[index] ?? 0));
+  }
+  return sizes;
 }
 
 /** Computes terminal-cell offsets for resolved grid tracks. */
@@ -380,7 +383,9 @@ function alignmentOffset(available: number, size: number, alignment: ComputedLay
 }
 
 function shrinkGridTracksToFit(sizes: number[], available: number): void {
-  let overflow = sizes.reduce((sum, size) => sum + size, 0) - Math.max(0, available);
+  let total = 0;
+  for (const size of sizes) total += size;
+  let overflow = total - Math.max(0, available);
   for (let index = sizes.length - 1; index >= 0 && overflow > 0; index -= 1) {
     const removable = Math.min(sizes[index] ?? 0, overflow);
     sizes[index] = Math.max(0, (sizes[index] ?? 0) - removable);

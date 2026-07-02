@@ -345,6 +345,10 @@ Work:
         tokenization to share loop-based helpers instead of repeated split/map/filter fallback paths.
   - [x] Reworked markup widget hydration lookup, focus order, inspection snapshots, option extraction, tabs, trees, and
         recursive text projection to use direct buffers instead of map/filter chains.
+  - [x] Reworked terminal workspace command payload and detached-session lookup helpers to avoid repeated inline
+        `find/every` scans while keeping tmux-like command actions renderer-neutral.
+  - [x] Reworked Yoga layout child projection, Yoga text measurement, simple-solver intrinsic cache signatures, and
+        grid track shrinking to use direct accumulation instead of map/reduce/spread pipelines in layout solve paths.
 
 Acceptance checks:
 

@@ -428,7 +428,7 @@ export function terminalWorkspaceCommands<TAction extends Action = TerminalWorks
     return {
       id,
       paneId,
-      sessionId: paneId ? inspection.layout.panes.find((pane) => pane.id === paneId)?.sessionId : inspection.activeId,
+      sessionId: paneId ? terminalWorkspacePaneSessionId(inspection, paneId) : inspection.activeId,
       workspace: inspection,
     };
   };
@@ -585,12 +585,10 @@ export function terminalWorkspaceCommands<TAction extends Action = TerminalWorks
         label: label("attachSession", "Attach Terminal Session"),
         group,
         keywords: ["terminal", "workspace", "session", "tab", "attach", "reconnect"],
-        disabled: () => workspace.inspect().sessions.every((session) => !session.detached),
+        disabled: () => !terminalWorkspaceDetachedSessionId(workspace.inspect()),
         action: () => {
           const inspection = workspace.inspect();
-          const sessionId = inspection.active?.detached
-            ? inspection.active.id
-            : inspection.sessions.find((session) => session.detached)?.id;
+          const sessionId = terminalWorkspaceDetachedSessionId(inspection);
           if (sessionId) workspace.attach(sessionId);
           return {
             type: "terminalWorkspace.sessionAttached",
@@ -732,7 +730,25 @@ function terminalWorkspacePayload(
     id,
     paneId,
     sessionId: sessionIdOverride ??
-      (paneId ? inspection.layout.panes.find((pane) => pane.id === paneId)?.sessionId : inspection.activeId),
+      (paneId ? terminalWorkspacePaneSessionId(inspection, paneId) : inspection.activeId),
     workspace: inspection,
   };
+}
+
+function terminalWorkspacePaneSessionId(
+  inspection: TerminalWorkspaceInspection,
+  paneId: string,
+): string | undefined {
+  for (const pane of inspection.layout.panes) {
+    if (pane.id === paneId) return pane.sessionId;
+  }
+  return undefined;
+}
+
+function terminalWorkspaceDetachedSessionId(inspection: TerminalWorkspaceInspection): string | undefined {
+  if (inspection.active?.detached) return inspection.active.id;
+  for (const session of inspection.sessions) {
+    if (session.detached) return session.id;
+  }
+  return undefined;
 }
