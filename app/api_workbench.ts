@@ -107,12 +107,14 @@ import { MicrotaskScheduler } from "../src/runtime/render_loop.ts";
 import { type AsyncStore, createRuntimeStore, JsonFileStore } from "../src/runtime/storage.ts";
 import { createStorageFallbackDiagnostic } from "../src/runtime/storage_diagnostics.ts";
 import { type TerminalBackend } from "../src/runtime/terminal_backend.ts";
-import { TerminalShellController } from "../src/runtime/terminal_shell.ts";
+import type { TerminalShellController } from "../src/runtime/terminal_shell.ts";
+import { TerminalShellWorkspaceController } from "../src/runtime/terminal_shell_workspace.ts";
 import {
   formatTerminalShellWindowTitle,
   summarizeTerminalStatus,
   terminalBackendKindLabel,
 } from "../src/runtime/terminal_status.ts";
+import { shellTerminalTemplate } from "../src/runtime/terminal_templates.ts";
 import { terminalCellStyle, terminalOutputLineStyle } from "../src/app/workbench_terminal_style.ts";
 import { Computed, Signal } from "../src/signals/mod.ts";
 import { probeCompatibleWebGPUDevice } from "../src/three_ascii/webgpu_compat.ts";
@@ -272,7 +274,19 @@ type ControlHitAction = "previous" | "next" | "activate" | "set" | "focus" | "to
 type ConfigHitAction = "previous" | "next" | "activate";
 type AsciiConfigModalAction = "cancel" | "apply" | "ok";
 type TerminalOutputAction = "run" | "stop" | "restart" | "clear" | "follow" | "copy" | "raw";
-type TerminalShellAction = "start" | "stop" | "restart" | "clear" | "raw" | "copy" | "top" | "bottom";
+type TerminalShellAction =
+  | "new"
+  | "previous"
+  | "next"
+  | "close"
+  | "start"
+  | "stop"
+  | "restart"
+  | "clear"
+  | "raw"
+  | "copy"
+  | "top"
+  | "bottom";
 type ButtonTone = "default" | "danger" | "warning" | "success" | "muted";
 type AsciiNumericKey = WorkbenchAsciiNumericKey;
 type AsciiToggleKey = WorkbenchAsciiToggleKey;
@@ -298,6 +312,10 @@ const terminalOutputButtonItems: WorkbenchButtonRowItem<TerminalOutputAction>[] 
 ];
 const terminalOutputButtonPlacements: WorkbenchButtonRowPlacement<TerminalOutputAction>[] = [];
 const terminalShellButtonItems: WorkbenchButtonRowItem<TerminalShellAction>[] = [
+  { label: "New", action: "new", tone: "success" },
+  { label: "Prev", action: "previous", tone: "muted" },
+  { label: "Next", action: "next", tone: "muted" },
+  { label: "Close", action: "close", tone: "danger" },
   { label: "Start", action: "start" },
   { label: "Stop", action: "stop", tone: "danger" },
   { label: "Restart", action: "restart", tone: "warning" },
@@ -428,7 +446,7 @@ const terminalOutputSession = new ProcessSessionController({
   diagnostics: workbenchDiagnostics,
 });
 const terminalInputMode = new Signal<TerminalInputMode>("workbench");
-const terminalShell = new TerminalShellController({
+const terminalShell = new TerminalShellWorkspaceController({
   backendFactory: createWorkbenchShellBackend,
   columns: 80,
   rows: 24,
@@ -436,6 +454,7 @@ const terminalShell = new TerminalShellController({
   diagnostics: workbenchDiagnostics,
   onUpdate: scheduleDraw,
 });
+terminalShell.add(shellTerminalTemplate({ id: "shell-1", title: "Shell 1" }), { activate: true });
 const terminalShellInputMode = new Signal<TerminalInputMode>("raw");
 terminalOutputSession.status.subscribe((status) => {
   if (status !== "running" && terminalInputMode.peek() === "raw") {
@@ -447,8 +466,8 @@ terminalOutputSession.exit.subscribe(scheduleDraw);
 terminalOutputSession.output.lines.subscribe(scheduleDraw);
 terminalOutputSession.output.follow.subscribe(scheduleDraw);
 terminalInputMode.subscribe(scheduleDraw);
-terminalShell.status.subscribe(scheduleDraw);
-terminalShell.output.lines.subscribe(scheduleDraw);
+terminalShell.workspace.activeId.subscribe(scheduleDraw);
+terminalShell.workspace.sessions.subscribe(scheduleDraw);
 terminalShellInputMode.subscribe(scheduleDraw);
 
 async function createWorkbenchShellBackend(): Promise<TerminalBackend> {
@@ -1911,7 +1930,20 @@ function renderTerminalShell(frame: Frame, rect: Rectangle): void {
 
   const screenHeight = Math.max(1, rect.row + rect.height - row - 2);
   terminalShell.resize(rect.width, screenHeight);
-  const inspection = terminalShell.inspect();
+  const shell = activeTerminalShell();
+  const inspection = shell?.inspect();
+  if (!inspection || !shell) {
+    write(
+      frame,
+      row,
+      rect.column,
+      paint(fit("No active shell session. Press [New] to create one.", rect.width), {
+        fg: t.muted,
+        bg: t.surface,
+      }),
+    );
+    return;
+  }
   const copyMode = inspection.scrollback.mode === "copy";
   const statusTone = inspection.status === "running"
     ? t.good
@@ -2007,10 +2039,10 @@ function renderTerminalShell(frame: Frame, rect: Rectangle): void {
     return;
   }
 
-  const cursor = terminalShell.screen.cursor;
+  const cursor = shell.screen.cursor;
   const cursorActive = activeWindow.peek() === TERMINAL_SHELL_WINDOW_ID && terminalShellInputMode.peek() === "raw" &&
-    terminalShell.running;
-  const rows = terminalShell.screen.cellRows();
+    shell.running;
+  const rows = shell.screen.cellRows();
   addHit({ column: rect.column, row, width: rect.width, height: screenHeight }, { type: "terminalShellContent" });
   for (let screenRow = 0; screenRow < screenHeight; screenRow += 1) {
     const cells = rows[screenRow] ?? [];
@@ -2025,15 +2057,21 @@ function renderTerminalShell(frame: Frame, rect: Rectangle): void {
 }
 
 function renderTerminalShellToolbar(frame: Frame, rect: Rectangle, startRow: number): number {
-  const shellInspection = terminalShell.inspect();
-  const scrollDisabled = shellInspection.scrollback.totalRows <= shellInspection.scrollback.viewportRows;
-  terminalShellButtonItems[0]!.disabled = terminalShell.running || terminalShell.status.peek() === "starting";
-  terminalShellButtonItems[1]!.disabled = !terminalShell.running;
-  terminalShellButtonItems[4]!.active = terminalShellInputMode.peek() === "raw";
-  terminalShellButtonItems[4]!.disabled = !terminalShell.running;
-  terminalShellButtonItems[5]!.active = terminalShell.scrollback.mode === "copy";
-  terminalShellButtonItems[6]!.disabled = scrollDisabled;
-  terminalShellButtonItems[7]!.disabled = scrollDisabled;
+  const workspaceInspection = terminalShell.inspect();
+  const shell = activeTerminalShell();
+  const shellInspection = shell?.inspect();
+  const scrollDisabled = !shellInspection ||
+    shellInspection.scrollback.totalRows <= shellInspection.scrollback.viewportRows;
+  terminalShellButtonItems[1]!.disabled = workspaceInspection.sessions.length < 2;
+  terminalShellButtonItems[2]!.disabled = workspaceInspection.sessions.length < 2;
+  terminalShellButtonItems[3]!.disabled = !workspaceInspection.activeId || workspaceInspection.sessions.length <= 1;
+  terminalShellButtonItems[4]!.disabled = !shell || shell.running || shell.status.peek() === "starting";
+  terminalShellButtonItems[5]!.disabled = !shell?.running;
+  terminalShellButtonItems[8]!.active = terminalShellInputMode.peek() === "raw";
+  terminalShellButtonItems[8]!.disabled = !shell?.running;
+  terminalShellButtonItems[9]!.active = shell?.scrollback.mode === "copy";
+  terminalShellButtonItems[10]!.disabled = scrollDisabled;
+  terminalShellButtonItems[11]!.disabled = scrollDisabled;
   const nextRow = layoutWorkbenchButtonRowInto(
     terminalShellButtonPlacements,
     terminalShellButtonItems,
@@ -2051,7 +2089,7 @@ function renderTerminalShellToolbar(frame: Frame, rect: Rectangle, startRow: num
       addHit({ ...button.rect, width: written }, { type: "terminalShell", action: button.item.action });
     }
   }
-  return nextRow;
+  return renderTerminalShellSessionTabs(frame, rect, nextRow, workspaceInspection);
 }
 
 function terminalShellInputModeLabel(): string {
@@ -2064,12 +2102,43 @@ function toggleTerminalShellInputMode(): void {
     pushLog("shell input workbench mode");
     return;
   }
-  if (!terminalShell.running) {
+  if (!activeTerminalShell()?.running) {
     pushLog("shell raw input requires a running shell");
     return;
   }
   terminalShellInputMode.value = "raw";
   pushLog("shell input raw mode");
+}
+
+function activeTerminalShell(): TerminalShellController | undefined {
+  return terminalShell.activeShell;
+}
+
+function renderTerminalShellSessionTabs(
+  frame: Frame,
+  rect: Rectangle,
+  startRow: number,
+  inspection = terminalShell.inspect(),
+): number {
+  const t = theme();
+  if (startRow >= rect.row + rect.height) return startRow;
+  let column = rect.column;
+  const maxColumn = rect.column + rect.width;
+  for (const session of inspection.sessions) {
+    if (column >= maxColumn) break;
+    const active = session.id === inspection.activeId;
+    const status = session.shell.running ? "*" : session.shell.status[0]?.toUpperCase() ?? "?";
+    const label = fit(buttonText(`${status} ${session.title}`), Math.max(4, Math.min(22, maxColumn - column)));
+    const style = active
+      ? { fg: contrastText(t.accent, t.background, t.text), bg: t.accent, bold: true }
+      : { fg: t.text, bg: t.panelSoft, bold: false };
+    write(frame, startRow, column, paint(label, style));
+    column += textWidth(label) + 1;
+  }
+  if (column < maxColumn) {
+    write(frame, startRow, column, paint(" ".repeat(maxColumn - column), { fg: t.soft, bg: t.panelSoft }));
+  }
+  return startRow + 1;
 }
 
 function renderHtmlCssLayout(frame: Frame, rect: Rectangle): void {
@@ -3702,9 +3771,31 @@ async function applyTerminalOutputAction(action: TerminalOutputAction): Promise<
 
 async function applyTerminalShellAction(action: TerminalShellAction): Promise<void> {
   focus(TERMINAL_SHELL_WINDOW_ID);
-  if (action === "start") {
+  const shell = activeTerminalShell();
+  if (action === "new") {
+    const count = terminalShell.inspect().sessions.length + 1;
+    const descriptor = terminalShell.add(shellTerminalTemplate({ id: `shell-${count}`, title: `Shell ${count}` }), {
+      activate: true,
+      start: true,
+    });
+    terminalShellInputMode.value = "raw";
+    pushLog(`shell add ${descriptor.title}`);
+  } else if (action === "previous") {
+    const descriptor = terminalShell.activateRelative(-1);
+    pushLog(descriptor ? `shell active ${descriptor.title}` : "shell previous unavailable");
+  } else if (action === "next") {
+    const descriptor = terminalShell.activateRelative(1);
+    pushLog(descriptor ? `shell active ${descriptor.title}` : "shell next unavailable");
+  } else if (action === "close") {
+    const activeId = terminalShell.inspect().activeId;
+    if (activeId) {
+      await terminalShell.remove(activeId);
+      terminalShellInputMode.value = activeTerminalShell()?.running ? "raw" : "workbench";
+      pushLog("shell session closed");
+    }
+  } else if (action === "start") {
     await terminalShell.start();
-    terminalShell.scrollback.exitCopyMode();
+    activeTerminalShell()?.scrollback.exitCopyMode();
     terminalShellInputMode.value = "raw";
     pushLog("shell start");
   } else if (action === "stop") {
@@ -3713,30 +3804,30 @@ async function applyTerminalShellAction(action: TerminalShellAction): Promise<vo
     pushLog("shell stop");
   } else if (action === "restart") {
     await terminalShell.restart();
-    terminalShell.scrollback.exitCopyMode();
+    activeTerminalShell()?.scrollback.exitCopyMode();
     terminalShellInputMode.value = "raw";
     pushLog("shell restart");
   } else if (action === "clear") {
-    terminalShell.clear();
-    terminalShell.scrollback.exitCopyMode();
+    shell?.clear();
+    shell?.scrollback.exitCopyMode();
     pushLog("shell clear");
   } else if (action === "raw") {
     toggleTerminalShellInputMode();
   } else if (action === "copy") {
-    if (terminalShell.scrollback.mode === "copy") {
-      terminalShell.scrollback.exitCopyMode();
+    if (shell?.scrollback.mode === "copy") {
+      shell.scrollback.exitCopyMode();
       pushLog("shell copy mode off");
-    } else {
-      terminalShell.scrollback.enterCopyMode();
+    } else if (shell) {
+      shell.scrollback.enterCopyMode();
       terminalShellInputMode.value = "workbench";
       pushLog("shell copy mode on");
     }
   } else if (action === "top") {
-    terminalShell.scrollback.toTop();
+    shell?.scrollback.toTop();
     terminalShellInputMode.value = "workbench";
     pushLog("shell scroll top");
   } else if (action === "bottom") {
-    terminalShell.scrollback.toBottom();
+    shell?.scrollback.toBottom();
     terminalShellInputMode.value = "workbench";
     pushLog("shell scroll bottom");
   }
@@ -3807,22 +3898,24 @@ function handleWorkbenchKey(event: KeyPressEvent): void {
 }
 
 function handleTerminalShellKey(event: KeyPressEvent): boolean {
-  if (terminalShell.scrollback.mode === "copy") {
+  const shell = activeTerminalShell();
+  if (!shell) return false;
+  if (shell.scrollback.mode === "copy") {
     if (event.key === "escape" || event.key.toLowerCase() === "i") {
-      terminalShell.scrollback.exitCopyMode();
-      terminalShellInputMode.value = terminalShell.running ? "raw" : "workbench";
+      shell.scrollback.exitCopyMode();
+      terminalShellInputMode.value = shell.running ? "raw" : "workbench";
       pushLog("shell copy mode off");
       return true;
     }
     if (event.ctrl || event.meta) return false;
-    if (event.key === "pageup") terminalShell.scrollback.page(-1);
-    else if (event.key === "pagedown") terminalShell.scrollback.page(1);
-    else if (event.key === "home") terminalShell.scrollback.toTop();
-    else if (event.key === "end") terminalShell.scrollback.toBottom();
-    else if (event.key === "up") terminalShell.scrollback.scrollLines(-1);
-    else if (event.key === "down") terminalShell.scrollback.scrollLines(1);
+    if (event.key === "pageup") shell.scrollback.page(-1);
+    else if (event.key === "pagedown") shell.scrollback.page(1);
+    else if (event.key === "home") shell.scrollback.toTop();
+    else if (event.key === "end") shell.scrollback.toBottom();
+    else if (event.key === "up") shell.scrollback.scrollLines(-1);
+    else if (event.key === "down") shell.scrollback.scrollLines(1);
     else if (event.key.toLowerCase() === "c") {
-      const text = terminalShell.scrollback.copySelection();
+      const text = shell.scrollback.copySelection();
       pushLog(text ? `shell copied ${text.length} chars` : "shell selection empty");
     } else return false;
     scheduleDraw();
@@ -3836,7 +3929,7 @@ function handleTerminalShellKey(event: KeyPressEvent): boolean {
       return true;
     }
     if (event.meta || event.key === "f10") return false;
-    void routeTerminalKeyPress(terminalShell, event, {
+    void routeTerminalKeyPress(shell, event, {
       mode: "raw",
       reservedKeys: ["f10", "escape"],
       reservedCtrlKeys: [],
@@ -3852,8 +3945,8 @@ function handleTerminalShellKey(event: KeyPressEvent): boolean {
   if (event.ctrl || event.meta) return false;
   const key = event.key.toLowerCase();
   if (event.key === "pageup" || event.key === "pagedown") {
-    terminalShell.scrollback.enterCopyMode();
-    terminalShell.scrollback.page(event.key === "pageup" ? -1 : 1);
+    shell.scrollback.enterCopyMode();
+    shell.scrollback.page(event.key === "pageup" ? -1 : 1);
     terminalShellInputMode.value = "workbench";
     scheduleDraw();
     return true;
@@ -3866,6 +3959,8 @@ function handleTerminalShellKey(event: KeyPressEvent): boolean {
     ? "restart"
     : key === "k"
     ? "clear"
+    : key === "n"
+    ? "new"
     : key === "i"
     ? "raw"
     : event.key === "home"
@@ -3880,9 +3975,11 @@ function handleTerminalShellKey(event: KeyPressEvent): boolean {
 
 function handleTerminalShellPaste(event: PasteEvent): boolean {
   if (activeWindow.peek() !== TERMINAL_SHELL_WINDOW_ID || terminalShellInputMode.peek() !== "raw") return false;
-  void routeTerminalPaste(terminalShell, event, {
+  const shell = activeTerminalShell();
+  if (!shell) return false;
+  void routeTerminalPaste(shell, event, {
     mode: "raw",
-    bracketedPaste: terminalShell.inspect().screen.privateModes.includes(2004),
+    bracketedPaste: shell.inspect().screen.privateModes.includes(2004),
   }).then((decision) => {
     if (!decision.routed) pushLog(`shell paste ${decision.reason}`);
     scheduleDraw();
@@ -3892,9 +3989,11 @@ function handleTerminalShellPaste(event: PasteEvent): boolean {
 
 function handleTerminalShellMouse(event: MousePressEvent | MouseScrollEvent, rect: Rectangle): boolean {
   if (activeWindow.peek() !== TERMINAL_SHELL_WINDOW_ID || terminalShellInputMode.peek() !== "raw") return false;
-  const mouseRouting = terminalMouseRoutingFromPrivateModes(terminalShell.inspect().screen.privateModes);
+  const shell = activeTerminalShell();
+  if (!shell) return false;
+  const mouseRouting = terminalMouseRoutingFromPrivateModes(shell.inspect().screen.privateModes);
   if (mouseRouting.mouseTracking === "none" || !mouseRouting.sgrMouse) return false;
-  void routeTerminalMouse(terminalShell, event, {
+  void routeTerminalMouse(shell, event, {
     mode: "raw",
     ...mouseRouting,
     mouseOrigin: { column: rect.column, row: rect.row },
@@ -3907,7 +4006,7 @@ function handleTerminalShellMouse(event: MousePressEvent | MouseScrollEvent, rec
 
 function shellShouldReceiveCtrlC(): boolean {
   return activeWindow.peek() === TERMINAL_SHELL_WINDOW_ID && terminalShellInputMode.peek() === "raw" &&
-    terminalShell.running;
+    activeTerminalShell()?.running === true;
 }
 
 function handleTerminalOutputKey(event: KeyPressEvent): boolean {
@@ -4169,7 +4268,7 @@ function closeWindow(id: WindowId): void {
     selectedCpuHexTiles.value = remainingSelections;
   }
   if (id === TERMINAL_SHELL_WINDOW_ID) {
-    void terminalShell.stop();
+    void activeTerminalShell()?.stop();
     terminalShellInputMode.value = "workbench";
   }
   windowManager.close(id);
@@ -4213,7 +4312,8 @@ function toggleBuiltInWindow(
   windowManager.restore(id);
   syncWindowSignalsFromManager();
   focus(id);
-  if (id === TERMINAL_SHELL_WINDOW_ID && !terminalShell.running && terminalShell.status.peek() !== "starting") {
+  const shell = activeTerminalShell();
+  if (id === TERMINAL_SHELL_WINDOW_ID && shell && !shell.running && shell.status.peek() !== "starting") {
     void terminalShell.start().then((started) => {
       if (started) terminalShellInputMode.value = "raw";
       scheduleDraw();
@@ -4618,7 +4718,8 @@ function terminalOutputWindowTitle(): string {
 
 function terminalShellWindowTitle(): string {
   const mode = terminalShellInputMode.peek() === "raw" ? "RAW" : "WB";
-  return formatTerminalShellWindowTitle(terminalShell.inspect(), { mode });
+  const shell = activeTerminalShell();
+  return shell ? formatTerminalShellWindowTitle(shell.inspect(), { mode }) : `Shell ${mode} EMPTY`;
 }
 
 function windowIds(): WindowId[] {
