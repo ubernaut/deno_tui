@@ -4,6 +4,7 @@ import {
   htmlCssLayoutBoxPaintOrder,
   htmlCssLayoutBoxStyle,
   type HtmlCssLayoutTheme,
+  htmlCssVisibleLayoutBoxesInto,
 } from "../app/html_css_layout_view.ts";
 
 const theme: HtmlCssLayoutTheme = {
@@ -85,4 +86,21 @@ Deno.test("htmlCssLayoutBoxPaintOrder keeps overlays above base panels", () => {
   assertEquals(htmlCssLayoutBoxPaintOrder({ id: "grid-worker" }), 3);
   assertEquals(htmlCssLayoutBoxPaintOrder({ id: "layout-badge" }), 4);
   assertEquals(htmlCssLayoutBoxPaintOrder({ id: "unknown" }), 2);
+});
+
+Deno.test("htmlCssVisibleLayoutBoxesInto filters hidden boxes and reuses caller storage", () => {
+  const target = [{ id: "stale", visible: true, zIndex: 99 }];
+  const result = htmlCssVisibleLayoutBoxesInto(target, [
+    { id: "layout-badge", visible: true, zIndex: 1 },
+    { id: "hidden", visible: false, zIndex: -1 },
+    { id: "layout-demo", visible: true, zIndex: 0 },
+    { id: "grid-worker", visible: true, zIndex: 1 },
+    { id: "metric-cpu", visible: true, zIndex: 1 },
+  ]);
+
+  assertEquals(result, target);
+  assertEquals(
+    result.map((box) => box.id),
+    ["layout-demo", "metric-cpu", "grid-worker", "layout-badge"],
+  );
 });

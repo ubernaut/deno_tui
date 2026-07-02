@@ -1,4 +1,4 @@
-import { htmlCssLayoutBoxPaintOrder, htmlCssLayoutBoxStyle } from "../app/html_css_layout_view.ts";
+import { htmlCssLayoutBoxStyle, htmlCssVisibleLayoutBoxesInto } from "../app/html_css_layout_view.ts";
 import { makeStyle, palette } from "../app/styles.ts";
 import { clipRect } from "../src/app/hit_targets.ts";
 import { type ComputedLayoutBox, createHtmlCssLayoutDemo, htmlCssLayoutDemoBoxLabel } from "../mod.ts";
@@ -12,7 +12,8 @@ const bounds = {
 };
 const result = createHtmlCssLayoutDemo(bounds);
 const frame = createFrame(bounds.width, bounds.height, palette.void);
-const boxes = visibleBoxes(result.layout.boxes);
+const boxes: ComputedLayoutBox[] = [];
+htmlCssVisibleLayoutBoxesInto(boxes, result.layout.boxes);
 
 for (const box of boxes) renderBox(frame, box, bounds);
 
@@ -44,17 +45,6 @@ writeText(
 );
 
 console.log(renderFrame(frame));
-
-function visibleBoxes(boxes: readonly ComputedLayoutBox[]): ComputedLayoutBox[] {
-  const visible: ComputedLayoutBox[] = [];
-  for (const box of boxes) {
-    if (box.visible) visible.push(box);
-  }
-  visible.sort((left, right) =>
-    left.zIndex - right.zIndex || htmlCssLayoutBoxPaintOrder(left) - htmlCssLayoutBoxPaintOrder(right)
-  );
-  return visible;
-}
 
 function renderBox(frame: Cell[][], box: ComputedLayoutBox, bounds: Rectangle): void {
   const rect = clipRect(box.rect, bounds);

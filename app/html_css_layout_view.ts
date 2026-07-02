@@ -94,3 +94,25 @@ export function htmlCssLayoutBoxPaintOrder(box: Pick<ComputedLayoutBox, "id">): 
   if (box.id === "layout-badge") return 4;
   return 2;
 }
+
+/** Copies visible layout boxes into caller-owned storage in back-to-front paint order. */
+export function htmlCssVisibleLayoutBoxesInto<T extends Pick<ComputedLayoutBox, "id" | "visible" | "zIndex">>(
+  target: T[],
+  boxes: readonly T[],
+): T[] {
+  target.length = 0;
+  for (let index = 0; index < boxes.length; index += 1) {
+    const box = boxes[index]!;
+    if (box.visible) target.push(box);
+  }
+  target.sort(compareHtmlCssLayoutPaintOrder);
+  return target;
+}
+
+/** Compares computed layout boxes by z-index and stable demo paint layer. */
+export function compareHtmlCssLayoutPaintOrder(
+  left: Pick<ComputedLayoutBox, "id" | "zIndex">,
+  right: Pick<ComputedLayoutBox, "id" | "zIndex">,
+): number {
+  return left.zIndex - right.zIndex || htmlCssLayoutBoxPaintOrder(left) - htmlCssLayoutBoxPaintOrder(right);
+}

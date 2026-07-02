@@ -150,7 +150,7 @@ import {
   HTML_CSS_LAYOUT_WINDOW_ID,
   htmlCssLayoutDemoBoxLabel,
 } from "../src/markup/demo_fixtures.ts";
-import { htmlCssLayoutBoxPaintOrder, htmlCssLayoutBoxStyle } from "./html_css_layout_view.ts";
+import { htmlCssLayoutBoxStyle, htmlCssVisibleLayoutBoxesInto } from "./html_css_layout_view.ts";
 import {
   ASCII_DEMO_PRESETS,
   asciiPresetLabel,
@@ -278,6 +278,7 @@ const themeMenuWidth = Math.max(20, maxTextWidth(themeLabels) + 6);
 const rows: ProcessRow[] = apiWorkbenchRows;
 const columns = apiWorkbenchColumns;
 const docs = apiWorkbenchDocs;
+const htmlCssLayoutBoxes: ComputedLayoutBox[] = [];
 const explorerKeys = new Set(["up", "down", "left", "right", "pageup", "pagedown", "home", "end", "space", "return"]);
 const htmlCssLayoutWindowOption: NewWindowOption = {
   id: HTML_CSS_LAYOUT_OPTION_ID,
@@ -2006,11 +2007,7 @@ function toggleTerminalShellInputMode(): void {
 function renderHtmlCssLayout(frame: Frame, rect: Rectangle): void {
   const t = theme();
   const result = createHtmlCssLayoutDemo(rect);
-  const boxes = result.layout.boxes
-    .filter((box) => box.visible)
-    .sort((left, right) =>
-      left.zIndex - right.zIndex || htmlCssLayoutBoxPaintOrder(left) - htmlCssLayoutBoxPaintOrder(right)
-    );
+  const boxes = htmlCssVisibleLayoutBoxesInto(htmlCssLayoutBoxes, result.layout.boxes);
 
   for (const box of boxes) {
     renderHtmlCssLayoutBox(frame, box, rect, t);

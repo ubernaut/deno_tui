@@ -89,6 +89,7 @@ import {
   createApiWorkbenchThemes,
 } from "../../app/api_workbench_catalog.ts";
 import { type ApiWorkbenchControlId, nextApiWorkbenchControlId } from "../../app/api_workbench_controls.ts";
+import { htmlCssLayoutBoxStyle, htmlCssVisibleLayoutBoxesInto } from "../../app/html_css_layout_view.ts";
 import { WorkbenchController } from "../../src/app/workbench/controller.ts";
 import { createHtmlCssLayoutDemo, htmlCssLayoutDemoBoxLabel } from "../../src/markup/demo_fixtures.ts";
 import { DiagnosticsCollector } from "../../src/runtime/diagnostics.ts";
@@ -260,6 +261,7 @@ const hitTargets = new HitTargetStack<Hit>();
 const screenRows: string[] = [];
 const workspaceVirtualRows: string[] = [];
 const threePreviewOrbRows: string[] = [];
+const htmlCssLayoutBoxes: ComputedLayoutBox[] = [];
 const minimizedShelfEntries: Array<{ id: PanelId; title: string }> = [];
 const fullscreenTabEntries: Array<{ id: PanelId; title: string; selected?: boolean; hidden?: boolean }> = [];
 const verticalScrollbarCells: Array<{ column: number; row: number; glyph: string }> = [];
@@ -920,9 +922,7 @@ function asciiOrb(target: string[], width: number, height: number, phase: number
 function renderHtmlCssLayout(frame: string[], rect: Rectangle): void {
   const t = theme();
   const result = createHtmlCssLayoutDemo(rect);
-  const boxes = result.layout.boxes
-    .filter((box) => box.visible)
-    .sort((left, right) => left.zIndex - right.zIndex || boxPaintOrder(left) - boxPaintOrder(right));
+  const boxes = htmlCssVisibleLayoutBoxesInto(htmlCssLayoutBoxes, result.layout.boxes);
 
   for (const box of boxes) {
     renderHtmlCssLayoutBox(frame, box, rect, t);
@@ -947,7 +947,7 @@ function renderHtmlCssLayout(frame: string[], rect: Rectangle): void {
 function renderHtmlCssLayoutBox(frame: string[], box: ComputedLayoutBox, bounds: Rectangle, t: ThemeSpec): void {
   const rect = clipRect(box.rect, bounds);
   if (rect.width <= 0 || rect.height <= 0) return;
-  const style = htmlCssLayoutBoxStyle(box, t);
+  const style = htmlCssLayoutBoxStyle(box, t, contrastText);
   fillRect(frame, rect, style.bg);
   if (box.id !== "layout-demo") {
     drawHtmlCssLayoutOutline(frame, rect, style.border, style.bg, style.bold);
@@ -964,53 +964,6 @@ function renderHtmlCssLayoutBox(frame: string[], box: ComputedLayoutBox, bounds:
     const detail = `${box.rect.width}x${box.rect.height} content ${box.contentRect.width}x${box.contentRect.height}`;
     write(frame, content.row + 2, content.column, paint(fit(detail, content.width), t.muted, style.bg));
   }
-}
-
-function htmlCssLayoutBoxStyle(
-  box: ComputedLayoutBox,
-  t: ThemeSpec,
-): { fg: string; bg: string; border: string; bold?: boolean } {
-  if (box.id === "layout-toolbar") {
-    return { fg: contrastText(t.accentDeep, t.background, t.text), bg: t.accentDeep, border: t.accent, bold: true };
-  }
-  if (box.id === "layout-stage") return { fg: t.text, bg: t.panelSoft, border: t.borderStrong, bold: true };
-  if (box.id === "layout-grid") return { fg: t.text, bg: t.surface, border: t.accent, bold: true };
-  if (box.id === "grid-shell") {
-    return {
-      fg: contrastText(t.buttonActiveBg, t.background, t.text),
-      bg: t.buttonActiveBg,
-      border: t.accent,
-      bold: true,
-    };
-  }
-  if (box.id === "grid-worker") {
-    return { fg: contrastText(t.warn, t.background, t.text), bg: t.warn, border: t.danger, bold: true };
-  }
-  if (box.id.startsWith("grid-")) return { fg: t.text, bg: t.panel, border: t.accent };
-  if (box.id === "layout-badge") {
-    return { fg: contrastText(t.warn, t.background, t.text), bg: t.warn, border: t.danger, bold: true };
-  }
-  if (box.id === "layout-footer") return { fg: t.muted, bg: t.panel, border: t.border };
-  if (box.id === "metric-cpu") {
-    return {
-      fg: contrastText(t.buttonActiveBg, t.background, t.text),
-      bg: t.buttonActiveBg,
-      border: t.accent,
-      bold: true,
-    };
-  }
-  if (box.id.startsWith("metric-")) return { fg: t.text, bg: t.panel, border: t.accent };
-  return { fg: t.text, bg: t.surface, border: t.border };
-}
-
-function boxPaintOrder(box: ComputedLayoutBox): number {
-  if (box.id === "layout-demo") return 0;
-  if (box.id === "layout-stage") return 1;
-  if (box.id === "layout-grid") return 2;
-  if (box.id.startsWith("grid-")) return 3;
-  if (box.id.startsWith("metric-")) return 2;
-  if (box.id === "layout-badge") return 4;
-  return 2;
 }
 
 function drawHtmlCssLayoutOutline(frame: string[], rect: Rectangle, fg: string, bg: string, bold = false): void {
