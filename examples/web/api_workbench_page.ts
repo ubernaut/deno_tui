@@ -802,15 +802,23 @@ function shortPanelTitle(id: PanelId): string {
 }
 
 function renderLogs(frame: string[], rect: Rectangle): void {
-  const lines = [...docs, ...log.peek()];
+  const logRows = log.peek();
+  const lineCount = docs.length + logRows.length;
   logScroll.setViewportSize(rect.width, rect.height);
-  logScroll.setContentSize(rect.width, lines.length);
+  logScroll.setContentSize(rect.width, lineCount);
   const offset = logScroll.offset.peek().rows;
   const overflow = logScroll.inspectOverflow();
   const bodyWidth = Math.max(0, rect.width - 1);
-  lines.slice(offset, offset + rect.height).forEach((line, index) => {
-    write(frame, rect.row + index, rect.column, paint(fit(line, bodyWidth), theme().text, theme().surface));
-  });
+  const end = Math.min(lineCount, offset + rect.height);
+  for (let sourceIndex = offset; sourceIndex < end; sourceIndex += 1) {
+    const line = sourceIndex < docs.length ? docs[sourceIndex]! : logRows[sourceIndex - docs.length]!;
+    write(
+      frame,
+      rect.row + sourceIndex - offset,
+      rect.column,
+      paint(fit(line, bodyWidth), theme().text, theme().surface),
+    );
+  }
   if (!overflow.rows.scrollbarVisible || rect.width < 1) return;
   const column = rect.column + rect.width - 1;
   const thumb = overflow.rows.thumb;
@@ -823,7 +831,9 @@ function renderLogs(frame: string[], rect: Rectangle): void {
 function renderExplorer(frame: string[], rect: Rectangle): void {
   const visible = explorer.tree.visibleRows();
   const selectedIndex = explorer.tree.selectedIndex.peek();
-  visible.slice(0, rect.height).forEach((row, offset) => {
+  const rowCount = Math.min(visible.length, rect.height);
+  for (let offset = 0; offset < rowCount; offset += 1) {
+    const row = visible[offset]!;
     const selected = row.index === selectedIndex;
     const node = row.node as { kind?: string; path?: string };
     const icon = row.hasChildren ? row.expanded ? "▾" : "▸" : node.kind === "file" ? "·" : " ";
@@ -847,7 +857,7 @@ function renderExplorer(frame: string[], rect: Rectangle): void {
       type: "explorerRow",
       index: row.index,
     });
-  });
+  }
 }
 
 function renderThreePreview(frame: string[], rect: Rectangle): void {
@@ -999,18 +1009,22 @@ function renderTerminalProtocol(frame: string[], rect: Rectangle): void {
       workspace.active?.title ?? "none"
     }  screen ${inspection.columns}x${inspection.rows}  cursor ${inspection.cursor.column},${inspection.cursor.row}  sessions ${workspace.count}`,
   ];
-  headerRows.slice(0, Math.min(2, rect.height)).forEach((line, index) => {
+  const headerRowCount = Math.min(2, rect.height);
+  for (let index = 0; index < headerRowCount; index += 1) {
+    const line = headerRows[index]!;
     const bg = index === 0 ? t.accentDeep : t.panelSoft;
     const fg = index === 0 ? contrastText(t.accentDeep, t.background, t.text) : index === 1 ? t.warn : t.soft;
     write(frame, rect.row + index, rect.column, paint(fit(line, rect.width), fg, bg, index === 0));
-  });
+  }
   renderTerminalSessionTabs(frame, { column: rect.column, row: rect.row + 2, width: rect.width, height: 1 });
 
   fillRect(frame, screenRect, t.background);
   const rows = webTerminalScreen.textRows();
-  rows.slice(0, screenRect.height).forEach((line, index) => {
+  const screenRowCount = Math.min(rows.length, screenRect.height);
+  for (let index = 0; index < screenRowCount; index += 1) {
+    const line = rows[index]!;
     write(frame, screenRect.row + index, screenRect.column, paint(fit(line, screenRect.width), t.text, t.background));
-  });
+  }
   const cursor = webTerminalScreen.cursor;
   if (cursor.row < screenRect.height && cursor.column < screenRect.width) {
     write(

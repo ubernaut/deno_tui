@@ -163,6 +163,8 @@ Work:
         filtering the inspected window list twice.
   - [x] Cached API Workbench Three ASCII preset ids once through the shared preset helper instead of mapping presets
         during every config-modal preset step.
+  - [x] Reworked browser API Workbench logs, explorer, and terminal render loops to avoid spread/slice/forEach
+        projections while preserving the same hit targets and scroll behavior.
 - [x] Replace duplicated theme/window/menu persistence code with a shared versioned serializer.
   - [x] Extracted shared workbench workspace normalization, panel-state normalization, upsert, rename, delete, lookup,
         and legacy window-entry expansion helpers into `src/app/workbench_workspace.ts`.
