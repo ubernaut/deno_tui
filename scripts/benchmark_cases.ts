@@ -52,6 +52,7 @@ import {
   type SystemMetricsProvider,
   SystemMonitor,
 } from "../app/system_metrics.ts";
+import { compactMappedRgbaRows } from "../src/three_ascii/headless_canvas.ts";
 
 const sparklineValues = Array.from({ length: 200 }, (_, index) => Math.sin(index / 8));
 const threeAsciiColumns = 96;
@@ -79,6 +80,11 @@ const threeAsciiReadbackFillCpu = new Float32Array(threeAsciiCellCount);
 const threeAsciiReadbackEdgeCpu = new Float32Array(threeAsciiCellCount * 4);
 const threeAsciiReadbackColorCpu = new Float32Array(threeAsciiCellCount * 4);
 const threeAsciiGridAssembler = new ThreeAsciiAnsiGridAssembler({ reuseGrid: true });
+const threeAsciiImageWidth = threeAsciiColumns * 8;
+const threeAsciiImageHeight = threeAsciiRows * 8;
+const threeAsciiImageBytesPerRow = threeAsciiImageWidth * 4;
+const threeAsciiImageSource = new Uint8Array(threeAsciiImageBytesPerRow * threeAsciiImageHeight);
+const threeAsciiImageTarget = new Uint8Array(threeAsciiImageBytesPerRow * threeAsciiImageHeight);
 let threeAsciiReadbackCursor = 0;
 let threeAsciiReadbackChecksum = 0;
 const ansiRichRows = Array.from({ length: 250 }, (_, index) => {
@@ -279,6 +285,9 @@ for (let index = 0; index < threeAsciiCellCount; index += 1) {
 threeAsciiReadbackFillSource.set(threeAsciiFillGlyphs);
 threeAsciiReadbackEdgeSource.set(threeAsciiEdgeGlyphs);
 threeAsciiReadbackColorSource.set(threeAsciiColors);
+for (let index = 0; index < threeAsciiImageSource.length; index += 1) {
+  threeAsciiImageSource[index] = (index * 17 + (index >>> 7)) & 0xff;
+}
 
 for (let index = 0; index < 500; index += 1) {
   mouseRouter.register({
@@ -537,6 +546,21 @@ function runThreeAsciiReadbackCopyWorkload(): void {
 
   if (!Number.isFinite(threeAsciiReadbackChecksum)) {
     throw new Error("three Ascii readback copy produced invalid data");
+  }
+}
+
+function runThreeAsciiImageCompactionWorkload(): void {
+  const result = compactMappedRgbaRows(
+    threeAsciiImageSource,
+    threeAsciiImageWidth,
+    threeAsciiImageHeight,
+    threeAsciiImageBytesPerRow,
+    threeAsciiImageTarget,
+  );
+  const index = (threeAsciiReadbackCursor * 13) % result.length;
+  threeAsciiReadbackChecksum = (threeAsciiReadbackChecksum + result[index]!) % 1_000_000;
+  if (result !== threeAsciiImageTarget || !Number.isFinite(threeAsciiReadbackChecksum)) {
+    throw new Error("three Ascii image compaction produced invalid data");
   }
 }
 
@@ -1131,6 +1155,15 @@ export const benchmarkCases: BenchmarkCase[] = [
     iterations: 1_000,
     maxAverageMs: 2,
     run: runThreeAsciiReadbackCopyWorkload,
+  },
+  {
+    name: "render/three-ascii-image-compact-768x320",
+    category: "render",
+    description: "Compact a tightly packed Three ASCII RGBA image readback for Kitty graphics output.",
+    tags: ["render", "three", "ascii", "readback", "image", "kitty", "copy"],
+    iterations: 500,
+    maxAverageMs: 2,
+    run: runThreeAsciiImageCompactionWorkload,
   },
   {
     name: "render/three-ascii-frame-diff-96x40",

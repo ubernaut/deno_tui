@@ -125,8 +125,8 @@ Deno.test("benchmark CLI catalog covers high-volume TUI workloads", () => {
   const report = createBenchmarkCatalogReport({ cases: benchmarkCases });
   const names = report.cases.map((entry) => entry.name);
 
-  assertEquals(report.inspection.count, 36);
-  assertEquals(report.inspection.thresholded, 36);
+  assertEquals(report.inspection.count, 37);
+  assertEquals(report.inspection.thresholded, 37);
   assertEquals(report.inspection.categories, ["data", "input", "layout", "render", "runtime", "widgets"]);
   assertEquals(names.includes("data/table-select-100k"), true);
   assertEquals(names.includes("data/table-filter-25k"), true);
@@ -156,6 +156,7 @@ Deno.test("benchmark CLI catalog covers high-volume TUI workloads", () => {
   assertEquals(names.includes("render/three-ascii-ansi-grid-warm-cache-96x40"), true);
   assertEquals(names.includes("render/three-ascii-frame-diff-96x40"), true);
   assertEquals(names.includes("render/three-ascii-readback-copy-96x40"), true);
+  assertEquals(names.includes("render/three-ascii-image-compact-768x320"), true);
   assertEquals(
     queryBenchmarkCases(benchmarkCases, { tag: "assembly" }).map((entry) => entry.name),
     [
@@ -171,7 +172,7 @@ Deno.test("benchmark CLI catalog covers high-volume TUI workloads", () => {
   );
   assertEquals(
     queryBenchmarkCases(benchmarkCases, { tag: "readback" }).map((entry) => entry.name),
-    ["render/three-ascii-readback-copy-96x40"],
+    ["render/three-ascii-image-compact-768x320", "render/three-ascii-readback-copy-96x40"],
   );
   assertEquals(names.includes("runtime/terminal-screen-replay"), true);
   assertEquals(names.includes("runtime/terminal-screen-edit-churn"), true);

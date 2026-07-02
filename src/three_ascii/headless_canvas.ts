@@ -67,13 +67,7 @@ export class HeadlessGPUCanvasContext {
 
     await this.readbackBuffer.mapAsync(GPUMapMode.READ);
     const source = new Uint8Array(this.readbackBuffer.getMappedRange());
-    const result = new Uint8Array(this.canvas.width * this.canvas.height * 4);
-
-    for (let row = 0; row < this.canvas.height; row += 1) {
-      const srcOffset = row * alignedBytesPerRow;
-      const dstOffset = row * bytesPerRow;
-      result.set(source.subarray(srcOffset, srcOffset + bytesPerRow), dstOffset);
-    }
+    const result = compactMappedRgbaRows(source, this.canvas.width, this.canvas.height, alignedBytesPerRow);
 
     this.readbackBuffer.unmap();
     return result;
@@ -131,4 +125,32 @@ export class HeadlessCanvas {
   dispatchEvent(): boolean {
     return false;
   }
+}
+
+/** Copies mapped WebGPU RGBA rows into a tightly packed image buffer. */
+export function compactMappedRgbaRows(
+  source: Uint8Array,
+  width: number,
+  height: number,
+  alignedBytesPerRow: number,
+  target = new Uint8Array(Math.max(0, Math.floor(width)) * Math.max(0, Math.floor(height)) * 4),
+): Uint8Array {
+  const normalizedWidth = Math.max(0, Math.floor(width));
+  const normalizedHeight = Math.max(0, Math.floor(height));
+  const bytesPerRow = normalizedWidth * 4;
+  const byteLength = bytesPerRow * normalizedHeight;
+
+  if (byteLength === 0) return target;
+  if (alignedBytesPerRow === bytesPerRow) {
+    target.set(source.subarray(0, byteLength));
+    return target;
+  }
+
+  for (let row = 0; row < normalizedHeight; row += 1) {
+    const srcOffset = row * alignedBytesPerRow;
+    const dstOffset = row * bytesPerRow;
+    target.set(source.subarray(srcOffset, srcOffset + bytesPerRow), dstOffset);
+  }
+
+  return target;
 }

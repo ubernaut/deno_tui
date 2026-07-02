@@ -41,3 +41,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   recoverable storage diagnostics.
 - Extracted browser panel workspace cache, hydrate, and persist helpers so the web workbench can share tested storage
   diagnostics for localStorage and async stores.
+- Added a tight-row fast path for Three ASCII image readback compaction and covered Kitty/image RGBA compaction in the
+  benchmark catalog.
