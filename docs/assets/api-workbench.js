@@ -11014,6 +11014,25 @@ function layoutWorkbenchButtonRowInto(target, items, bounds, startRow, options =
   }
   return Math.min(bottom, row + 1);
 }
+function layoutWorkbenchControlButtonLine(prefix, value, width) {
+  const safeWidth = Math.max(0, Math.floor(width));
+  const segments = [];
+  let columnOffset = 0;
+  const addSegment = (kind, text, maxWidth) => {
+    const segmentWidth = Math.max(0, Math.min(textWidth(text), maxWidth, safeWidth - columnOffset));
+    if (segmentWidth <= 0) return;
+    const fitted = fitCellText(text, segmentWidth);
+    segments.push({ kind, text: fitted, columnOffset, width: segmentWidth });
+    columnOffset += segmentWidth;
+  };
+  addSegment("prefix", prefix, safeWidth);
+  const match = /^(\[[^\]]+\])(.*)$/.exec(value);
+  const buttonText3 = match?.[1] ?? value;
+  const detailText = match?.[2] ?? "";
+  addSegment("button", buttonText3, safeWidth - columnOffset);
+  addSegment("detail", detailText, safeWidth - columnOffset);
+  return segments;
+}
 function layoutWrappedControlOptions(items, selectedIndex, width) {
   const safeWidth = Math.max(8, width);
   const rows2 = [];
@@ -14598,6 +14617,74 @@ function nextApiWorkbenchControlId(current, delta, options = {}) {
   if (!options.wrap && (next < 0 || next >= apiWorkbenchControlIds.length)) return void 0;
   return apiWorkbenchControlIds[(next % apiWorkbenchControlIds.length + apiWorkbenchControlIds.length) % apiWorkbenchControlIds.length];
 }
+function apiWorkbenchControlLineInto(segments, hits, id2, value, rect, row, activeId, options = {}) {
+  let segmentCount = 0;
+  let hitCount = 0;
+  const bottom = rect.row + Math.max(0, rect.height);
+  if (row >= bottom || rect.width <= 0) {
+    segments.length = 0;
+    hits.length = 0;
+    return row;
+  }
+  const active2 = activeId === id2;
+  const prefix = `${active2 && !options.indent ? ">" : " "} ${options.indent ? "  " : ""}`;
+  if (options.button) {
+    const buttonSegments = layoutWorkbenchControlButtonLine(prefix, value, rect.width);
+    for (let index = 0; index < buttonSegments.length; index += 1) {
+      const segment = buttonSegments[index];
+      writeControlLineSegment(
+        segments,
+        segmentCount,
+        segment.kind,
+        segment.text,
+        rect.column + segment.columnOffset,
+        row,
+        segment.width,
+        active2
+      );
+      segmentCount += 1;
+    }
+  } else {
+    const line = fitCellText(`${prefix}${value}`, rect.width);
+    writeControlLineSegment(segments, 0, "line", line, rect.column, row, textWidth(line), active2);
+    segmentCount = 1;
+  }
+  writeControlHit(hits, hitCount, {
+    column: rect.column,
+    row,
+    width: rect.width,
+    height: 1,
+    id: id2,
+    action: options.action ?? "activate",
+    index: options.index
+  });
+  hitCount += 1;
+  if (options.previous) {
+    writeControlHit(hits, hitCount, {
+      column: rect.column,
+      row,
+      width: Math.max(1, Math.floor(rect.width / 2)),
+      height: 1,
+      id: id2,
+      action: "previous"
+    });
+    hitCount += 1;
+  }
+  if (options.next) {
+    writeControlHit(hits, hitCount, {
+      column: rect.column + Math.floor(rect.width / 2),
+      row,
+      width: Math.ceil(rect.width / 2),
+      height: 1,
+      id: id2,
+      action: "next"
+    });
+    hitCount += 1;
+  }
+  segments.length = segmentCount;
+  hits.length = hitCount;
+  return row + 1;
+}
 function nextSortableDataColumn(columns2, currentColumnId, delta) {
   let sortableCount = 0;
   let currentSortableIndex = -1;
@@ -14652,6 +14739,41 @@ function apiWorkbenchStepperHitPlacementsInto(target, steps, activeIndex, rect, 
   }
   target.length = written;
   return target;
+}
+function writeControlLineSegment(target, index, kind, text, column, row, width, active2) {
+  const segment = target[index] ?? {
+    kind: "line",
+    text: "",
+    column: 0,
+    row: 0,
+    width: 0,
+    active: false
+  };
+  segment.kind = kind;
+  segment.text = text;
+  segment.column = column;
+  segment.row = row;
+  segment.width = width;
+  segment.active = active2;
+  target[index] = segment;
+}
+function writeControlHit(target, index, source) {
+  const hit = target[index] ?? {
+    column: 0,
+    row: 0,
+    width: 0,
+    height: 1,
+    id: source.id,
+    action: source.action
+  };
+  hit.column = source.column;
+  hit.row = source.row;
+  hit.width = source.width;
+  hit.height = source.height;
+  hit.id = source.id;
+  hit.action = source.action;
+  hit.index = source.index;
+  target[index] = hit;
 }
 
 // app/html_css_layout_view.ts
@@ -15037,6 +15159,8 @@ var webTerminalButtonItems = [];
 var webTerminalButtonPlacements = [];
 var webTerminalSessionTabSources = [];
 var webTerminalSessionTabPlacements = [];
+var controlLineSegments = [];
+var controlLineHitPlacements = [];
 var controlStepperHitPlacements = [];
 var modalActionButtonItems = [];
 var modalActionButtonPlacements = [];
@@ -16597,73 +16721,60 @@ function renderControls(frame, rect) {
   let row = rect.row;
   const t = theme();
   const writeControl = (id2, value, options = {}) => {
-    if (row >= rect.row + rect.height) return;
+    const startRow = row;
+    const nextRow = apiWorkbenchControlLineInto(
+      controlLineSegments,
+      controlLineHitPlacements,
+      id2,
+      value,
+      rect,
+      row,
+      activeControl.peek(),
+      options
+    );
+    if (nextRow === row) return;
     const selected = activeControl.peek() === id2;
-    const prefix = `${selected && !options.indent ? ">" : " "} ${options.indent ? "  " : ""}`;
     if (options.button) {
-      const match = /^(\[[^\]]+\])(.*)$/.exec(value);
-      const button = match?.[1] ?? value;
-      const detail = match?.[2] ?? "";
-      write(frame, row, rect.column, paint(" ".repeat(rect.width), t.text, t.surface));
-      write(
-        frame,
-        row,
-        rect.column,
-        paint(fit(prefix, rect.width), selected ? t.background : t.text, selected ? t.warn : t.surface, selected)
-      );
-      let column = rect.column + textWidth(prefix);
-      const buttonWidth = Math.max(0, rect.width - textWidth(prefix));
-      writeButton(frame, row, column, button.replace(/^\[\s*|\s*\]$/g, ""), {
-        state: selected ? "active" : "base",
-        maxWidth: buttonWidth
-      });
-      column += Math.min(textWidth(button), buttonWidth);
-      if (column < rect.column + rect.width) {
+      write(frame, startRow, rect.column, paint(" ".repeat(rect.width), t.text, t.surface));
+    }
+    for (let index = 0; index < controlLineSegments.length; index += 1) {
+      const segment = controlLineSegments[index];
+      if (options.button && segment.kind === "button") {
+        writeButton(frame, segment.row, segment.column, segment.text.replace(/^\[\s*|\s*\]$/g, ""), {
+          state: selected ? "active" : "base",
+          maxWidth: segment.width
+        });
+      } else if (options.button && segment.kind === "detail") {
         write(
           frame,
-          row,
-          column,
-          paint(fit(detail, rect.column + rect.width - column), selected ? t.warn : t.text, t.surface, selected)
+          segment.row,
+          segment.column,
+          paint(segment.text, selected ? t.warn : t.text, t.surface, selected)
+        );
+      } else {
+        write(
+          frame,
+          segment.row,
+          segment.column,
+          paint(
+            segment.text,
+            selected ? t.background : t.text,
+            selected ? t.warn : t.surface,
+            selected
+          )
         );
       }
-    } else {
-      write(
-        frame,
-        row,
-        rect.column,
-        paint(
-          fit(`${prefix}${value}`, rect.width),
-          selected ? t.background : t.text,
-          selected ? t.warn : t.surface,
-          selected
-        )
-      );
     }
-    hitTargets.add({ column: rect.column, row, width: rect.width, height: 1 }, {
-      type: "control",
-      id: id2,
-      action: options.action ?? "activate",
-      index: options.index
-    });
-    if (options.previous) {
-      hitTargets.add({ column: rect.column, row, width: Math.max(1, Math.floor(rect.width / 2)), height: 1 }, {
-        type: "control",
-        id: id2,
-        action: "previous"
-      });
+    for (let index = 0; index < controlLineHitPlacements.length; index += 1) {
+      const hit = controlLineHitPlacements[index];
+      hitTargets.add({
+        column: hit.column,
+        row: hit.row,
+        width: hit.width,
+        height: hit.height
+      }, { type: "control", id: hit.id, action: hit.action, index: hit.index });
     }
-    if (options.next) {
-      hitTargets.add(
-        {
-          column: rect.column + Math.floor(rect.width / 2),
-          row,
-          width: Math.ceil(rect.width / 2),
-          height: 1
-        },
-        { type: "control", id: id2, action: "next" }
-      );
-    }
-    row += 1;
+    row = nextRow;
   };
   const sliderTrack = `${"\u2588".repeat(slider.value.peek())}${"\u2591".repeat(10 - slider.value.peek())}`;
   const progressWidth = Math.max(8, Math.min(18, rect.width - 18));

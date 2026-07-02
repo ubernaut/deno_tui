@@ -1,6 +1,9 @@
 import { assertEquals } from "./deps.ts";
 import {
+  type ApiWorkbenchControlHitPlacement,
   apiWorkbenchControlIds,
+  apiWorkbenchControlLineInto,
+  type ApiWorkbenchControlLineSegment,
   apiWorkbenchStepperHitPlacementsInto,
   nextApiWorkbenchControlId,
   nextSortableDataColumn,
@@ -47,6 +50,75 @@ Deno.test("api workbench sortable column traversal handles empty sortable sets",
     ),
     undefined,
   );
+});
+
+Deno.test("api workbench control line projection emits segments and hit regions", () => {
+  const segments: ApiWorkbenchControlLineSegment[] = [];
+  const hits: ApiWorkbenchControlHitPlacement[] = [];
+  const nextRow = apiWorkbenchControlLineInto(
+    segments,
+    hits,
+    "slider",
+    "Slider  ███░ 3/10",
+    { column: 2, row: 5, width: 20, height: 4 },
+    6,
+    "slider",
+    { previous: true, next: true },
+  );
+
+  assertEquals(nextRow, 7);
+  assertEquals(segments, [{
+    kind: "line",
+    text: "> Slider  ███░ 3/10 ",
+    column: 2,
+    row: 6,
+    width: 20,
+    active: true,
+  }]);
+  assertEquals(hits, [
+    { column: 2, row: 6, width: 20, height: 1, id: "slider", action: "activate", index: undefined },
+    { column: 2, row: 6, width: 10, height: 1, id: "slider", action: "previous", index: undefined },
+    { column: 12, row: 6, width: 10, height: 1, id: "slider", action: "next", index: undefined },
+  ]);
+});
+
+Deno.test("api workbench control line projection keeps button token segments scoped", () => {
+  const segments: ApiWorkbenchControlLineSegment[] = [];
+  const hits: ApiWorkbenchControlHitPlacement[] = [];
+  apiWorkbenchControlLineInto(
+    segments,
+    hits,
+    "button",
+    "[ Run ] presses=2",
+    { column: 4, row: 1, width: 24, height: 3 },
+    1,
+    "textbox",
+    { button: true, action: "focus", index: 3 },
+  );
+
+  assertEquals(segments, [
+    { kind: "prefix", text: "  ", column: 4, row: 1, width: 2, active: false },
+    { kind: "button", text: "[ Run ]", column: 6, row: 1, width: 7, active: false },
+    { kind: "detail", text: " presses=2", column: 13, row: 1, width: 10, active: false },
+  ]);
+  assertEquals(hits, [
+    { column: 4, row: 1, width: 24, height: 1, id: "button", action: "focus", index: 3 },
+  ]);
+
+  const firstSegment = segments[0];
+  const firstHit = hits[0];
+  apiWorkbenchControlLineInto(
+    segments,
+    hits,
+    "checkbox",
+    "Checkboxes",
+    { column: 0, row: 0, width: 8, height: 1 },
+    0,
+    "checkbox",
+  );
+  assertEquals(segments[0] === firstSegment, true);
+  assertEquals(hits[0] === firstHit, true);
+  assertEquals(hits.length, 1);
 });
 
 Deno.test("api workbench stepper hit placements clip and reuse caller storage", () => {

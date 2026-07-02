@@ -1,4 +1,9 @@
 import type { DataColumn } from "../src/components/data_table.ts";
+import {
+  layoutWorkbenchControlButtonLine,
+  type WorkbenchControlButtonLineSegmentKind,
+} from "../src/app/workbench_control_layout.ts";
+import { fitCellText } from "../src/app/workbench_frame.ts";
 import type { Rectangle } from "../src/types.ts";
 import { textWidth } from "../src/utils/strings.ts";
 
@@ -30,6 +35,26 @@ export interface ApiWorkbenchControlHitPlacement {
   index?: number;
 }
 
+export type ApiWorkbenchControlLineSegmentKind = "line" | WorkbenchControlButtonLineSegmentKind;
+
+export interface ApiWorkbenchControlLineSegment {
+  kind: ApiWorkbenchControlLineSegmentKind;
+  text: string;
+  column: number;
+  row: number;
+  width: number;
+  active: boolean;
+}
+
+export interface ApiWorkbenchControlLineOptions {
+  previous?: boolean;
+  next?: boolean;
+  action?: ApiWorkbenchControlHitAction;
+  indent?: boolean;
+  index?: number;
+  button?: boolean;
+}
+
 export interface ApiWorkbenchStepperHitStep {
   label: string;
   disabled?: boolean;
@@ -49,6 +74,86 @@ export function nextApiWorkbenchControlId(
     ((next % apiWorkbenchControlIds.length) + apiWorkbenchControlIds.length) %
     apiWorkbenchControlIds.length
   ];
+}
+
+export function apiWorkbenchControlLineInto(
+  segments: ApiWorkbenchControlLineSegment[],
+  hits: ApiWorkbenchControlHitPlacement[],
+  id: ApiWorkbenchControlId,
+  value: string,
+  rect: Rectangle,
+  row: number,
+  activeId: ApiWorkbenchControlId,
+  options: ApiWorkbenchControlLineOptions = {},
+): number {
+  let segmentCount = 0;
+  let hitCount = 0;
+  const bottom = rect.row + Math.max(0, rect.height);
+  if (row >= bottom || rect.width <= 0) {
+    segments.length = 0;
+    hits.length = 0;
+    return row;
+  }
+  const active = activeId === id;
+  const prefix = `${active && !options.indent ? ">" : " "} ${options.indent ? "  " : ""}`;
+
+  if (options.button) {
+    const buttonSegments = layoutWorkbenchControlButtonLine(prefix, value, rect.width);
+    for (let index = 0; index < buttonSegments.length; index += 1) {
+      const segment = buttonSegments[index]!;
+      writeControlLineSegment(
+        segments,
+        segmentCount,
+        segment.kind,
+        segment.text,
+        rect.column + segment.columnOffset,
+        row,
+        segment.width,
+        active,
+      );
+      segmentCount += 1;
+    }
+  } else {
+    const line = fitCellText(`${prefix}${value}`, rect.width);
+    writeControlLineSegment(segments, 0, "line", line, rect.column, row, textWidth(line), active);
+    segmentCount = 1;
+  }
+
+  writeControlHit(hits, hitCount, {
+    column: rect.column,
+    row,
+    width: rect.width,
+    height: 1,
+    id,
+    action: options.action ?? "activate",
+    index: options.index,
+  });
+  hitCount += 1;
+  if (options.previous) {
+    writeControlHit(hits, hitCount, {
+      column: rect.column,
+      row,
+      width: Math.max(1, Math.floor(rect.width / 2)),
+      height: 1,
+      id,
+      action: "previous",
+    });
+    hitCount += 1;
+  }
+  if (options.next) {
+    writeControlHit(hits, hitCount, {
+      column: rect.column + Math.floor(rect.width / 2),
+      row,
+      width: Math.ceil(rect.width / 2),
+      height: 1,
+      id,
+      action: "next",
+    });
+    hitCount += 1;
+  }
+  segments.length = segmentCount;
+  hits.length = hitCount;
+  return row + 1;
 }
 
 export function nextSortableDataColumn<TRow extends Record<string, unknown>>(
@@ -119,4 +224,54 @@ export function apiWorkbenchStepperHitPlacementsInto(
   }
   target.length = written;
   return target;
+}
+
+function writeControlLineSegment(
+  target: ApiWorkbenchControlLineSegment[],
+  index: number,
+  kind: ApiWorkbenchControlLineSegmentKind,
+  text: string,
+  column: number,
+  row: number,
+  width: number,
+  active: boolean,
+): void {
+  const segment = target[index] ?? {
+    kind: "line",
+    text: "",
+    column: 0,
+    row: 0,
+    width: 0,
+    active: false,
+  };
+  segment.kind = kind;
+  segment.text = text;
+  segment.column = column;
+  segment.row = row;
+  segment.width = width;
+  segment.active = active;
+  target[index] = segment;
+}
+
+function writeControlHit(
+  target: ApiWorkbenchControlHitPlacement[],
+  index: number,
+  source: ApiWorkbenchControlHitPlacement,
+): void {
+  const hit = target[index] ?? {
+    column: 0,
+    row: 0,
+    width: 0,
+    height: 1,
+    id: source.id,
+    action: source.action,
+  };
+  hit.column = source.column;
+  hit.row = source.row;
+  hit.width = source.width;
+  hit.height = source.height;
+  hit.id = source.id;
+  hit.action = source.action;
+  hit.index = source.index;
+  target[index] = hit;
 }

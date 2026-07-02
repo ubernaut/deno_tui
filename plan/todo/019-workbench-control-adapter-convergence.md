@@ -9,6 +9,8 @@ keeping renderer-specific paint and hit-stack plumbing local.
 
 - [x] Move inline stepper hit placement into a shared app-level helper with caller-owned output storage.
 - [x] Migrate the browser controls panel to the shared wrapped option-token layout used by the terminal controls panel.
+- [x] Extract shared single-line control segment and hit projection, then route terminal/browser `writeControl` helpers
+      through it.
 - [ ] Extract a renderer-neutral controls row projection for button, slider, checkbox, radio, combo, dropdown, input,
       textbox, stepper, and progress rows.
 - [ ] Add adapter-parity tests that compare terminal/web controls row geometry and hit regions from the shared

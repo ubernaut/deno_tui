@@ -110,6 +110,8 @@ import {
 import {
   type ApiWorkbenchControlHitPlacement,
   type ApiWorkbenchControlId,
+  apiWorkbenchControlLineInto,
+  type ApiWorkbenchControlLineSegment,
   apiWorkbenchStepperHitPlacementsInto,
   nextApiWorkbenchControlId,
   nextSortableDataColumn,
@@ -274,6 +276,8 @@ const webTerminalButtonItems: WorkbenchButtonRowItem<WebTerminalAction>[] = [];
 const webTerminalButtonPlacements: WorkbenchButtonRowPlacement<WebTerminalAction>[] = [];
 const webTerminalSessionTabSources: WorkbenchTerminalSessionTab[] = [];
 const webTerminalSessionTabPlacements: WorkbenchTerminalSessionTabPlacement[] = [];
+const controlLineSegments: ApiWorkbenchControlLineSegment[] = [];
+const controlLineHitPlacements: ApiWorkbenchControlHitPlacement[] = [];
 const controlStepperHitPlacements: ApiWorkbenchControlHitPlacement[] = [];
 const modalActionButtonItems: WorkbenchButtonRowItem<number>[] = [];
 const modalActionButtonPlacements: WorkbenchButtonRowPlacement<number>[] = [];
@@ -1969,73 +1973,60 @@ function renderControls(frame: string[], rect: Rectangle): void {
       button?: boolean;
     } = {},
   ) => {
-    if (row >= rect.row + rect.height) return;
+    const startRow = row;
+    const nextRow = apiWorkbenchControlLineInto(
+      controlLineSegments,
+      controlLineHitPlacements,
+      id,
+      value,
+      rect,
+      row,
+      activeControl.peek(),
+      options,
+    );
+    if (nextRow === row) return;
     const selected = activeControl.peek() === id;
-    const prefix = `${selected && !options.indent ? ">" : " "} ${options.indent ? "  " : ""}`;
     if (options.button) {
-      const match = /^(\[[^\]]+\])(.*)$/.exec(value);
-      const button = match?.[1] ?? value;
-      const detail = match?.[2] ?? "";
-      write(frame, row, rect.column, paint(" ".repeat(rect.width), t.text, t.surface));
-      write(
-        frame,
-        row,
-        rect.column,
-        paint(fit(prefix, rect.width), selected ? t.background : t.text, selected ? t.warn : t.surface, selected),
-      );
-      let column = rect.column + textWidth(prefix);
-      const buttonWidth = Math.max(0, rect.width - textWidth(prefix));
-      writeButton(frame, row, column, button.replace(/^\[\s*|\s*\]$/g, ""), {
-        state: selected ? "active" : "base",
-        maxWidth: buttonWidth,
-      });
-      column += Math.min(textWidth(button), buttonWidth);
-      if (column < rect.column + rect.width) {
+      write(frame, startRow, rect.column, paint(" ".repeat(rect.width), t.text, t.surface));
+    }
+    for (let index = 0; index < controlLineSegments.length; index += 1) {
+      const segment = controlLineSegments[index]!;
+      if (options.button && segment.kind === "button") {
+        writeButton(frame, segment.row, segment.column, segment.text.replace(/^\[\s*|\s*\]$/g, ""), {
+          state: selected ? "active" : "base",
+          maxWidth: segment.width,
+        });
+      } else if (options.button && segment.kind === "detail") {
         write(
           frame,
-          row,
-          column,
-          paint(fit(detail, rect.column + rect.width - column), selected ? t.warn : t.text, t.surface, selected),
+          segment.row,
+          segment.column,
+          paint(segment.text, selected ? t.warn : t.text, t.surface, selected),
+        );
+      } else {
+        write(
+          frame,
+          segment.row,
+          segment.column,
+          paint(
+            segment.text,
+            selected ? t.background : t.text,
+            selected ? t.warn : t.surface,
+            selected,
+          ),
         );
       }
-    } else {
-      write(
-        frame,
-        row,
-        rect.column,
-        paint(
-          fit(`${prefix}${value}`, rect.width),
-          selected ? t.background : t.text,
-          selected ? t.warn : t.surface,
-          selected,
-        ),
-      );
     }
-    hitTargets.add({ column: rect.column, row, width: rect.width, height: 1 }, {
-      type: "control",
-      id,
-      action: options.action ?? "activate",
-      index: options.index,
-    });
-    if (options.previous) {
-      hitTargets.add({ column: rect.column, row, width: Math.max(1, Math.floor(rect.width / 2)), height: 1 }, {
-        type: "control",
-        id,
-        action: "previous",
-      });
+    for (let index = 0; index < controlLineHitPlacements.length; index += 1) {
+      const hit = controlLineHitPlacements[index]!;
+      hitTargets.add({
+        column: hit.column,
+        row: hit.row,
+        width: hit.width,
+        height: hit.height,
+      }, { type: "control", id: hit.id, action: hit.action, index: hit.index });
     }
-    if (options.next) {
-      hitTargets.add(
-        {
-          column: rect.column + Math.floor(rect.width / 2),
-          row,
-          width: Math.ceil(rect.width / 2),
-          height: 1,
-        },
-        { type: "control", id, action: "next" },
-      );
-    }
-    row += 1;
+    row = nextRow;
   };
   const sliderTrack = `${"█".repeat(slider.value.peek())}${"░".repeat(10 - slider.value.peek())}`;
   const progressWidth = Math.max(8, Math.min(18, rect.width - 18));

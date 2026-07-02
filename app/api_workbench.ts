@@ -124,7 +124,6 @@ import { stripStyles, textWidth } from "../src/utils/strings.ts";
 import { workbenchButtonPaintOptions } from "../src/app/workbench_button_style.ts";
 import {
   layoutWorkbenchButtonRowInto,
-  layoutWorkbenchControlButtonLine,
   layoutWrappedControlOptions,
   type WorkbenchButtonRowItem,
   type WorkbenchButtonRowPlacement,
@@ -161,6 +160,8 @@ import {
 import {
   type ApiWorkbenchControlHitPlacement,
   type ApiWorkbenchControlId,
+  apiWorkbenchControlLineInto,
+  type ApiWorkbenchControlLineSegment,
   apiWorkbenchStepperHitPlacementsInto,
   nextApiWorkbenchControlId,
   nextSortableDataColumn,
@@ -318,6 +319,8 @@ const terminalShellButtonPlacements: WorkbenchButtonRowPlacement<TerminalShellAc
 const terminalShellSessionTabSources: WorkbenchTerminalSessionTab[] = [];
 const terminalShellSessionTabPlacements: WorkbenchTerminalSessionTabPlacement[] = [];
 const terminalShellPaneProjections: WorkbenchTerminalPaneProjection[] = [];
+const controlLineSegments: ApiWorkbenchControlLineSegment[] = [];
+const controlLineHitPlacements: ApiWorkbenchControlHitPlacement[] = [];
 const controlStepperHitPlacements: ApiWorkbenchControlHitPlacement[] = [];
 const modalActionButtonItems: WorkbenchButtonRowItem<number>[] = [];
 const modalActionButtonPlacements: WorkbenchButtonRowPlacement<number>[] = [];
@@ -1573,18 +1576,30 @@ function renderControls(frame: Frame, rect: Rectangle): void {
       button?: boolean;
     } = {},
   ) => {
-    if (row >= rect.row + rect.height) return;
+    const startRow = row;
+    const nextRow = apiWorkbenchControlLineInto(
+      controlLineSegments,
+      controlLineHitPlacements,
+      id,
+      value,
+      rect,
+      row,
+      activeControl.peek(),
+      options,
+    );
+    if (nextRow === row) return;
     const active = activeControl.peek() === id;
-    const prefix = `${active && !options.indent ? ">" : " "} ${options.indent ? "  " : ""}`;
-    const line = `${prefix}${value}`;
     const baseStyle = {
       fg: active ? t.background : t.text,
       bg: active ? t.warn : t.surface,
       bold: active,
     };
     if (options.button) {
-      write(frame, row, rect.column, paint(" ".repeat(rect.width), { fg: t.text, bg: t.surface }));
-      for (const segment of layoutWorkbenchControlButtonLine(prefix, value, rect.width)) {
+      write(frame, startRow, rect.column, paint(" ".repeat(rect.width), { fg: t.text, bg: t.surface }));
+    }
+    for (let index = 0; index < controlLineSegments.length; index += 1) {
+      const segment = controlLineSegments[index]!;
+      if (options.button) {
         const style = segment.kind === "button"
           ? buttonPaintOptions(t, active ? "active" : "base")
           : segment.kind === "detail"
@@ -1596,41 +1611,24 @@ function renderControls(frame: Frame, rect: Rectangle): void {
           : baseStyle;
         write(
           frame,
-          row,
-          rect.column + segment.columnOffset,
+          segment.row,
+          segment.column,
           paint(segment.text, style),
         );
+      } else {
+        write(frame, segment.row, segment.column, paint(segment.text, baseStyle));
       }
-    } else {
-      write(
-        frame,
-        row,
-        rect.column,
-        paint(fit(line, rect.width), baseStyle),
-      );
     }
-    addHit({ column: rect.column, row, width: rect.width, height: 1 }, {
-      type: "control",
-      id,
-      action: options.action ?? "activate",
-      index: options.index,
-    });
-    if (options.previous) {
-      addHit({ column: rect.column, row, width: Math.max(1, Math.floor(rect.width / 2)), height: 1 }, {
-        type: "control",
-        id,
-        action: "previous",
-      });
-    }
-    if (options.next) {
+    for (let index = 0; index < controlLineHitPlacements.length; index += 1) {
+      const hit = controlLineHitPlacements[index]!;
       addHit({
-        column: rect.column + Math.floor(rect.width / 2),
-        row,
-        width: Math.ceil(rect.width / 2),
-        height: 1,
-      }, { type: "control", id, action: "next" });
+        column: hit.column,
+        row: hit.row,
+        width: hit.width,
+        height: hit.height,
+      }, { type: "control", id: hit.id, action: hit.action, index: hit.index });
     }
-    row += 1;
+    row = nextRow;
   };
   const writeSection = (id: ControlId, label: string) => {
     writeControl(id, label, { action: "activate" });
