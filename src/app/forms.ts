@@ -398,7 +398,7 @@ export class FormController<TValues extends FormValues = FormValues> {
 
   dispose(): void {
     this.fields.clear();
-    for (const key of Object.keys(this.initialValues)) {
+    for (const key in this.initialValues) {
       delete this.mutableInitialValues()[key];
     }
     this.values.dispose();

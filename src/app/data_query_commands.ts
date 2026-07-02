@@ -142,7 +142,7 @@ export function dataQueryCommands<
       description: "Clear every active data query filter.",
       group,
       keywords: ["data", "query", "filter", "clear"],
-      disabled: () => loading() || Object.keys(query.params.peek().filters).length === 0,
+      disabled: () => loading() || !hasDataQueryFilters(query.params.peek().filters),
       action: async () => {
         await query.clearFilters();
         return { type: "dataQuery.filtersCleared", payload: payload() } as TAction;
@@ -247,4 +247,9 @@ function normalizeSortCommand(field: string | DataQuerySortCommand): Required<Da
     label: field.label ?? field.field,
     keywords: field.keywords ?? [],
   };
+}
+
+function hasDataQueryFilters(filters: Record<string, unknown>): boolean {
+  for (const _field in filters) return true;
+  return false;
 }
