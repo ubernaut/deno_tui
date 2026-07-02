@@ -2,7 +2,11 @@
 import type { TerminalOutputController, TerminalOutputInspection } from "../components/terminal_output.ts";
 import type { ProcessSessionController, ProcessSessionInspection } from "../runtime/process_session.ts";
 import type { TerminalScrollbackController, TerminalScrollbackInspection } from "../runtime/terminal_scrollback.ts";
-import { isSpawnTerminalTemplate } from "../runtime/terminal_templates.ts";
+import type {
+  TerminalShellWorkspaceController,
+  TerminalShellWorkspaceInspection,
+} from "../runtime/terminal_shell_workspace.ts";
+import { isSpawnTerminalTemplate, shellTerminalTemplate } from "../runtime/terminal_templates.ts";
 import type {
   TerminalWorkspaceController,
   TerminalWorkspaceInspection,
@@ -154,6 +158,45 @@ export interface TerminalWorkspaceCommandOptions {
   includeResizeCommands?: boolean;
   includeSessionCommands?: boolean;
   labels?: Partial<Record<TerminalWorkspaceCommandKind, string>>;
+}
+
+/** Identifier union for live shell workspace command variants. */
+export type TerminalShellWorkspaceCommandKind =
+  | "newShell"
+  | "start"
+  | "stop"
+  | "restart"
+  | "previousSession"
+  | "nextSession"
+  | "closeSession"
+  | "sync";
+
+/** Action union emitted by live shell workspace command helpers. */
+export type TerminalShellWorkspaceCommandAction =
+  | Action<"terminalShellWorkspace.sessionAdded", TerminalShellWorkspaceCommandPayload>
+  | Action<"terminalShellWorkspace.sessionStarted", TerminalShellWorkspaceCommandPayload>
+  | Action<"terminalShellWorkspace.sessionStopped", TerminalShellWorkspaceCommandPayload>
+  | Action<"terminalShellWorkspace.sessionRestarted", TerminalShellWorkspaceCommandPayload>
+  | Action<"terminalShellWorkspace.sessionActivated", TerminalShellWorkspaceCommandPayload>
+  | Action<"terminalShellWorkspace.sessionClosed", TerminalShellWorkspaceCommandPayload>
+  | Action<"terminalShellWorkspace.synced", TerminalShellWorkspaceCommandPayload>;
+
+/** Payload carried by live shell workspace command actions. */
+export interface TerminalShellWorkspaceCommandPayload {
+  id: string;
+  sessionId?: string;
+  shellWorkspace: TerminalShellWorkspaceInspection;
+}
+
+/** Options for configuring live shell workspace commands. */
+export interface TerminalShellWorkspaceCommandOptions {
+  id?: string;
+  idPrefix?: string;
+  group?: string;
+  shellTitle?: string | (() => string | undefined);
+  includeSessionCommands?: boolean;
+  includeLifecycleCommands?: boolean;
+  labels?: Partial<Record<TerminalShellWorkspaceCommandKind, string>>;
 }
 
 /** Builds command definitions for process-backed terminal output windows. */
@@ -745,6 +788,225 @@ export function bindTerminalWorkspaceCommands<TAction extends Action = TerminalW
   options: TerminalWorkspaceCommandOptions = {},
 ): () => void {
   return registry.registerAll(terminalWorkspaceCommands<TAction>(workspace, options));
+}
+
+/** Builds command definitions for live multi-session shell workspaces. */
+export function terminalShellWorkspaceCommands<TAction extends Action = TerminalShellWorkspaceCommandAction>(
+  shellWorkspace: TerminalShellWorkspaceController,
+  options: TerminalShellWorkspaceCommandOptions = {},
+): Command<TAction>[] {
+  const id = options.id ?? "terminal-shell-workspace";
+  const idPrefix = options.idPrefix ?? "terminalShellWorkspace";
+  const group = options.group ?? "terminal";
+  const label = (kind: TerminalShellWorkspaceCommandKind, fallback: string) => options.labels?.[kind] ?? fallback;
+  const shellTitle = () => typeof options.shellTitle === "function" ? options.shellTitle() : options.shellTitle;
+  const payload = (sessionId = shellWorkspace.workspace.activeId.peek()): TerminalShellWorkspaceCommandPayload => ({
+    id,
+    sessionId,
+    shellWorkspace: shellWorkspace.inspect(),
+  });
+  const commands: Command<TAction>[] = [];
+
+  if (options.includeSessionCommands ?? true) {
+    commands.push(
+      {
+        id: `${idPrefix}.newShell`,
+        label: label("newShell", "New Shell Session"),
+        group,
+        keywords: ["terminal", "shell", "workspace", "session", "tab", "new"],
+        action: () => {
+          const descriptor = shellWorkspace.add(
+            shellTerminalTemplate({
+              id: nextTerminalShellWorkspaceSessionId(shellWorkspace.inspect()),
+              title: shellTitle()?.trim() || undefined,
+            }),
+            { activate: true },
+          );
+          return {
+            type: "terminalShellWorkspace.sessionAdded",
+            payload: payload(descriptor.id),
+          } as TAction;
+        },
+      },
+      terminalShellWorkspaceActivateCommand(
+        shellWorkspace,
+        id,
+        idPrefix,
+        group,
+        "previousSession",
+        "Previous Shell Session",
+        -1,
+        label,
+      ),
+      terminalShellWorkspaceActivateCommand(
+        shellWorkspace,
+        id,
+        idPrefix,
+        group,
+        "nextSession",
+        "Next Shell Session",
+        1,
+        label,
+      ),
+      {
+        id: `${idPrefix}.closeSession`,
+        label: label("closeSession", "Close Shell Session"),
+        group,
+        keywords: ["terminal", "shell", "workspace", "session", "tab", "close"],
+        disabled: () => !shellWorkspace.workspace.activeId.peek(),
+        action: async () => {
+          const sessionId = shellWorkspace.workspace.activeId.peek();
+          if (sessionId) await shellWorkspace.remove(sessionId);
+          return {
+            type: "terminalShellWorkspace.sessionClosed",
+            payload: payload(sessionId),
+          } as TAction;
+        },
+      },
+      {
+        id: `${idPrefix}.sync`,
+        label: label("sync", "Sync Shell Workspace"),
+        group,
+        keywords: ["terminal", "shell", "workspace", "session", "sync", "status"],
+        action: () => {
+          shellWorkspace.sync();
+          return {
+            type: "terminalShellWorkspace.synced",
+            payload: payload(),
+          } as TAction;
+        },
+      },
+    );
+  }
+
+  if (options.includeLifecycleCommands ?? true) {
+    commands.push(
+      terminalShellWorkspaceLifecycleCommand(
+        shellWorkspace,
+        id,
+        idPrefix,
+        group,
+        "start",
+        "Start Shell Session",
+        label,
+      ),
+      terminalShellWorkspaceLifecycleCommand(
+        shellWorkspace,
+        id,
+        idPrefix,
+        group,
+        "stop",
+        "Stop Shell Session",
+        label,
+      ),
+      terminalShellWorkspaceLifecycleCommand(
+        shellWorkspace,
+        id,
+        idPrefix,
+        group,
+        "restart",
+        "Restart Shell Session",
+        label,
+      ),
+    );
+  }
+
+  return commands;
+}
+
+/** Binds live shell workspace Commands behavior and returns a disposer when applicable. */
+export function bindTerminalShellWorkspaceCommands<TAction extends Action = TerminalShellWorkspaceCommandAction>(
+  registry: CommandRegistry<TAction>,
+  shellWorkspace: TerminalShellWorkspaceController,
+  options: TerminalShellWorkspaceCommandOptions = {},
+): () => void {
+  return registry.registerAll(terminalShellWorkspaceCommands<TAction>(shellWorkspace, options));
+}
+
+function terminalShellWorkspaceActivateCommand<TAction extends Action>(
+  shellWorkspace: TerminalShellWorkspaceController,
+  id: string,
+  idPrefix: string,
+  group: string,
+  kind: "previousSession" | "nextSession",
+  fallback: string,
+  delta: number,
+  label: (kind: TerminalShellWorkspaceCommandKind, fallback: string) => string,
+): Command<TAction> {
+  return {
+    id: `${idPrefix}.${kind}`,
+    label: label(kind, fallback),
+    group,
+    keywords: ["terminal", "shell", "workspace", "session", "tab", delta < 0 ? "previous" : "next"],
+    disabled: () => shellWorkspace.workspace.inspect().sessions.length < 2,
+    action: () => {
+      const descriptor = shellWorkspace.activateRelative(delta);
+      return {
+        type: "terminalShellWorkspace.sessionActivated",
+        payload: {
+          id,
+          sessionId: descriptor?.id,
+          shellWorkspace: shellWorkspace.inspect(),
+        },
+      } as TAction;
+    },
+  };
+}
+
+function terminalShellWorkspaceLifecycleCommand<TAction extends Action>(
+  shellWorkspace: TerminalShellWorkspaceController,
+  id: string,
+  idPrefix: string,
+  group: string,
+  kind: "start" | "stop" | "restart",
+  fallback: string,
+  label: (kind: TerminalShellWorkspaceCommandKind, fallback: string) => string,
+): Command<TAction> {
+  return {
+    id: `${idPrefix}.${kind}`,
+    label: label(kind, fallback),
+    group,
+    keywords: ["terminal", "shell", "workspace", "session", kind],
+    disabled: () => {
+      const shell = shellWorkspace.activeShell;
+      if (!shell) return true;
+      if (kind === "start") return shell.running || shell.status.peek() === "starting";
+      if (kind === "stop") return !shell.running;
+      return shell.status.peek() === "starting";
+    },
+    action: async () => {
+      const sessionId = shellWorkspace.workspace.activeId.peek();
+      if (kind === "start") await shellWorkspace.start(sessionId);
+      else if (kind === "stop") await shellWorkspace.stop(sessionId);
+      else await shellWorkspace.restart(sessionId);
+      const type = kind === "start"
+        ? "terminalShellWorkspace.sessionStarted"
+        : kind === "stop"
+        ? "terminalShellWorkspace.sessionStopped"
+        : "terminalShellWorkspace.sessionRestarted";
+      return {
+        type,
+        payload: {
+          id,
+          sessionId,
+          shellWorkspace: shellWorkspace.inspect(),
+        },
+      } as TAction;
+    },
+  };
+}
+
+function nextTerminalShellWorkspaceSessionId(inspection: TerminalShellWorkspaceInspection): string {
+  let counter = inspection.workspace.sessions.length + 1;
+  while (terminalShellWorkspaceHasSessionId(inspection, `shell-${counter}`)) counter += 1;
+  return `shell-${counter}`;
+}
+
+function terminalShellWorkspaceHasSessionId(inspection: TerminalShellWorkspaceInspection, id: string): boolean {
+  for (let index = 0; index < inspection.workspace.sessions.length; index += 1) {
+    if (inspection.workspace.sessions[index]?.id === id) return true;
+  }
+  return false;
 }
 
 function terminalSessionActivateRelativeCommand<TAction extends Action>(

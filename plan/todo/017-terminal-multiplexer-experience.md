@@ -120,3 +120,6 @@ developer workflows.
 - Added `TerminalShellWorkspaceController`, a runtime bridge between terminal workspace descriptors and live
   `TerminalShellController` instances, so future console/web workbench adapters can manage multiple real shell sessions
   through one tested controller instead of hand-rolling shell maps.
+- Added live shell workspace command adapters for new shell, start, stop, restart, previous/next session, close, and
+  sync actions so command palettes and workbench menus can drive multi-session shell workspaces without renderer-local
+  lifecycle code.

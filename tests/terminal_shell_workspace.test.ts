@@ -1,5 +1,8 @@
 import { assertEquals } from "./deps.ts";
 import {
+  bindTerminalShellWorkspaceCommands,
+  type Command,
+  CommandRegistry,
   commandTerminalTemplate,
   type ProcessSessionCommand,
   type ProcessSessionInspection,
@@ -10,6 +13,8 @@ import {
   TerminalOutputController,
   type TerminalSessionHandle,
   type TerminalSessionHandleInspection,
+  type TerminalShellWorkspaceCommandAction,
+  terminalShellWorkspaceCommands,
   TerminalShellWorkspaceController,
 } from "../mod.ts";
 
@@ -68,6 +73,60 @@ Deno.test("TerminalShellWorkspaceController synchronizes stop and OSC titles", a
   await workspace.dispose();
 });
 
+Deno.test("terminal shell workspace commands drive live shell sessions", async () => {
+  const backend = new FakeWorkspaceShellBackend();
+  const workspace = new TerminalShellWorkspaceController({ backend });
+  workspace.add(shellTerminalTemplate({ id: "main", shell: "bash" }));
+  const registry = new CommandRegistry<TerminalShellWorkspaceCommandAction>();
+  const actions: TerminalShellWorkspaceCommandAction[] = [];
+  const dispose = bindTerminalShellWorkspaceCommands(registry, workspace, {
+    id: "shells",
+    idPrefix: "shells",
+    shellTitle: "Aux Shell",
+  });
+
+  assertEquals(terminalShellWorkspaceCommands(workspace).map((command) => [command.id, commandDisabled(command)]), [
+    ["terminalShellWorkspace.newShell", false],
+    ["terminalShellWorkspace.previousSession", true],
+    ["terminalShellWorkspace.nextSession", true],
+    ["terminalShellWorkspace.closeSession", false],
+    ["terminalShellWorkspace.sync", false],
+    ["terminalShellWorkspace.start", false],
+    ["terminalShellWorkspace.stop", true],
+    ["terminalShellWorkspace.restart", false],
+  ]);
+
+  assertEquals(await registry.execute("shells.start", (action) => void actions.push(action)), true);
+  assertEquals(actions[0]?.type, "terminalShellWorkspace.sessionStarted");
+  assertEquals(backend.spawned[0]?.command, "bash");
+  assertEquals(commandDisabled(registry.list("terminal").find((command) => command.id === "shells.start")!), true);
+
+  assertEquals(await registry.execute("shells.newShell", (action) => void actions.push(action)), true);
+  assertEquals(actions[1]?.type, "terminalShellWorkspace.sessionAdded");
+  assertEquals(workspace.inspect().activeId, "shell-2");
+  assertEquals(workspace.inspect().workspace.active?.title, "Aux Shell");
+
+  assertEquals(await registry.execute("shells.previousSession", (action) => void actions.push(action)), true);
+  assertEquals(actions[2]?.type, "terminalShellWorkspace.sessionActivated");
+  assertEquals(workspace.inspect().activeId, "main");
+
+  assertEquals(await registry.execute("shells.stop", (action) => void actions.push(action)), true);
+  assertEquals(actions[3]?.type, "terminalShellWorkspace.sessionStopped");
+  assertEquals(workspace.inspect().activeShell?.running, false);
+
+  assertEquals(await registry.execute("shells.restart", (action) => void actions.push(action)), true);
+  assertEquals(actions[4]?.type, "terminalShellWorkspace.sessionRestarted");
+  assertEquals(backend.spawned.length, 2);
+
+  assertEquals(await registry.execute("shells.closeSession", (action) => void actions.push(action)), true);
+  assertEquals(actions[5]?.type, "terminalShellWorkspace.sessionClosed");
+  assertEquals(workspace.inspect().sessions.map((session) => session.id), ["shell-2"]);
+
+  dispose();
+  assertEquals(registry.list("terminal"), []);
+  await workspace.dispose();
+});
+
 class FakeWorkspaceShellBackend implements TerminalBackend {
   readonly id = "fake-workspace-pty";
   readonly label = "Fake Workspace PTY";
@@ -94,6 +153,10 @@ class FakeWorkspaceShellBackend implements TerminalBackend {
   emit(index: number, data: string): void {
     this.spawned[index]?.onData?.(data, "stdout");
   }
+}
+
+function commandDisabled(command: Command<TerminalShellWorkspaceCommandAction>): boolean {
+  return typeof command.disabled === "function" ? command.disabled() : command.disabled === true;
 }
 
 class FakeWorkspaceShellHandle implements TerminalSessionHandle {

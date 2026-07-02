@@ -8,8 +8,8 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 - Entrypoints: 9
 - Module visits: 527
 - Re-export declarations: 518
-- Exported symbols: 4735
-- Documented symbols: 4735
+- Exported symbols: 4747
+- Documented symbols: 4747
 - Documentation coverage: 100.00%
 - Duplicate symbol groups: 0
 - Missing targets: 0
@@ -18,8 +18,8 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 
 | Specifier       | Path                           | Runtime  | Stability    | Modules | Symbols |    Docs |
 | --------------- | ------------------------------ | -------- | ------------ | ------: | ------: | ------: |
-| `.`             | `./mod.ts`                     | terminal | stable       |     238 |    2018 | 100.00% |
-| `./web`         | `./mod.web.ts`                 | browser  | beta         |     216 |    1876 | 100.00% |
+| `.`             | `./mod.ts`                     | terminal | stable       |     238 |    2024 | 100.00% |
+| `./web`         | `./mod.web.ts`                 | browser  | beta         |     216 |    1882 | 100.00% |
 | `./remote`      | `./mod.remote.ts`              | remote   | experimental |       4 |      38 | 100.00% |
 | `./three-ascii` | `./mod.three_ascii.ts`         | shared   | experimental |       8 |      54 | 100.00% |
 | `./theme`       | `./mod.theme.ts`               | shared   | beta         |      10 |     198 | 100.00% |
@@ -41,8 +41,8 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 - Entrypoint: `mod.ts`
 - Modules: 238
 - Re-export declarations: 237
-- Exported symbols: 2018
-- Documented symbols: 2018
+- Exported symbols: 2024
+- Documented symbols: 2024
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -103,7 +103,7 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 | [`src/app/surface_bindings.ts`](#src-app-surface-bindings-ts)                           |          0 |       2 |          2 |
 | [`src/app/table_commands.ts`](#src-app-table-commands-ts)                               |          0 |       6 |          6 |
 | [`src/app/tabs_commands.ts`](#src-app-tabs-commands-ts)                                 |          0 |       6 |          6 |
-| [`src/app/terminal_commands.ts`](#src-app-terminal-commands-ts)                         |          0 |      18 |         18 |
+| [`src/app/terminal_commands.ts`](#src-app-terminal-commands-ts)                         |          0 |      24 |         24 |
 | [`src/app/terminal_input.ts`](#src-app-terminal-input-ts)                               |          0 |      17 |         17 |
 | [`src/app/terminal_window_bindings.ts`](#src-app-terminal-window-bindings-ts)           |          0 |       5 |          5 |
 | [`src/app/textbox_commands.ts`](#src-app-textbox-commands-ts)                           |          0 |       6 |          6 |
@@ -1032,26 +1032,32 @@ _No direct exported symbols._
 
 #### src/app/terminal_commands.ts
 
-| Symbol                             | Kind      | Type Only | JSDoc |
-| ---------------------------------- | --------- | --------- | ----- |
-| `bindTerminalCommands`             | function  | no        | yes   |
-| `bindTerminalScrollbackCommands`   | function  | no        | yes   |
-| `bindTerminalWorkspaceCommands`    | function  | no        | yes   |
-| `TerminalCommandAction`            | type      | yes       | yes   |
-| `TerminalCommandKind`              | type      | yes       | yes   |
-| `TerminalCommandOptions`           | interface | yes       | yes   |
-| `TerminalCommandPayload`           | interface | yes       | yes   |
-| `terminalCommands`                 | function  | no        | yes   |
-| `TerminalScrollbackCommandAction`  | type      | yes       | yes   |
-| `TerminalScrollbackCommandKind`    | type      | yes       | yes   |
-| `TerminalScrollbackCommandOptions` | interface | yes       | yes   |
-| `TerminalScrollbackCommandPayload` | interface | yes       | yes   |
-| `terminalScrollbackCommands`       | function  | no        | yes   |
-| `TerminalWorkspaceCommandAction`   | type      | yes       | yes   |
-| `TerminalWorkspaceCommandKind`     | type      | yes       | yes   |
-| `TerminalWorkspaceCommandOptions`  | interface | yes       | yes   |
-| `TerminalWorkspaceCommandPayload`  | interface | yes       | yes   |
-| `terminalWorkspaceCommands`        | function  | no        | yes   |
+| Symbol                                 | Kind      | Type Only | JSDoc |
+| -------------------------------------- | --------- | --------- | ----- |
+| `bindTerminalCommands`                 | function  | no        | yes   |
+| `bindTerminalScrollbackCommands`       | function  | no        | yes   |
+| `bindTerminalShellWorkspaceCommands`   | function  | no        | yes   |
+| `bindTerminalWorkspaceCommands`        | function  | no        | yes   |
+| `TerminalCommandAction`                | type      | yes       | yes   |
+| `TerminalCommandKind`                  | type      | yes       | yes   |
+| `TerminalCommandOptions`               | interface | yes       | yes   |
+| `TerminalCommandPayload`               | interface | yes       | yes   |
+| `terminalCommands`                     | function  | no        | yes   |
+| `TerminalScrollbackCommandAction`      | type      | yes       | yes   |
+| `TerminalScrollbackCommandKind`        | type      | yes       | yes   |
+| `TerminalScrollbackCommandOptions`     | interface | yes       | yes   |
+| `TerminalScrollbackCommandPayload`     | interface | yes       | yes   |
+| `terminalScrollbackCommands`           | function  | no        | yes   |
+| `TerminalShellWorkspaceCommandAction`  | type      | yes       | yes   |
+| `TerminalShellWorkspaceCommandKind`    | type      | yes       | yes   |
+| `TerminalShellWorkspaceCommandOptions` | interface | yes       | yes   |
+| `TerminalShellWorkspaceCommandPayload` | interface | yes       | yes   |
+| `terminalShellWorkspaceCommands`       | function  | no        | yes   |
+| `TerminalWorkspaceCommandAction`       | type      | yes       | yes   |
+| `TerminalWorkspaceCommandKind`         | type      | yes       | yes   |
+| `TerminalWorkspaceCommandOptions`      | interface | yes       | yes   |
+| `TerminalWorkspaceCommandPayload`      | interface | yes       | yes   |
+| `terminalWorkspaceCommands`            | function  | no        | yes   |
 
 #### src/app/terminal_input.ts
 
@@ -3776,8 +3782,8 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 - Entrypoint: `mod.web.ts`
 - Modules: 216
 - Re-export declarations: 215
-- Exported symbols: 1876
-- Documented symbols: 1876
+- Exported symbols: 1882
+- Documented symbols: 1882
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -3838,7 +3844,7 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 | [`src/app/surface_bindings.ts`](#src-app-surface-bindings-ts)                     |          0 |       2 |          2 |
 | [`src/app/table_commands.ts`](#src-app-table-commands-ts)                         |          0 |       6 |          6 |
 | [`src/app/tabs_commands.ts`](#src-app-tabs-commands-ts)                           |          0 |       6 |          6 |
-| [`src/app/terminal_commands.ts`](#src-app-terminal-commands-ts)                   |          0 |      18 |         18 |
+| [`src/app/terminal_commands.ts`](#src-app-terminal-commands-ts)                   |          0 |      24 |         24 |
 | [`src/app/terminal_input.ts`](#src-app-terminal-input-ts)                         |          0 |      17 |         17 |
 | [`src/app/terminal_window_bindings.ts`](#src-app-terminal-window-bindings-ts)     |          0 |       5 |          5 |
 | [`src/app/textbox_commands.ts`](#src-app-textbox-commands-ts)                     |          0 |       6 |          6 |
@@ -4763,26 +4769,32 @@ _No direct exported symbols._
 
 #### src/app/terminal_commands.ts
 
-| Symbol                             | Kind      | Type Only | JSDoc |
-| ---------------------------------- | --------- | --------- | ----- |
-| `bindTerminalCommands`             | function  | no        | yes   |
-| `bindTerminalScrollbackCommands`   | function  | no        | yes   |
-| `bindTerminalWorkspaceCommands`    | function  | no        | yes   |
-| `TerminalCommandAction`            | type      | yes       | yes   |
-| `TerminalCommandKind`              | type      | yes       | yes   |
-| `TerminalCommandOptions`           | interface | yes       | yes   |
-| `TerminalCommandPayload`           | interface | yes       | yes   |
-| `terminalCommands`                 | function  | no        | yes   |
-| `TerminalScrollbackCommandAction`  | type      | yes       | yes   |
-| `TerminalScrollbackCommandKind`    | type      | yes       | yes   |
-| `TerminalScrollbackCommandOptions` | interface | yes       | yes   |
-| `TerminalScrollbackCommandPayload` | interface | yes       | yes   |
-| `terminalScrollbackCommands`       | function  | no        | yes   |
-| `TerminalWorkspaceCommandAction`   | type      | yes       | yes   |
-| `TerminalWorkspaceCommandKind`     | type      | yes       | yes   |
-| `TerminalWorkspaceCommandOptions`  | interface | yes       | yes   |
-| `TerminalWorkspaceCommandPayload`  | interface | yes       | yes   |
-| `terminalWorkspaceCommands`        | function  | no        | yes   |
+| Symbol                                 | Kind      | Type Only | JSDoc |
+| -------------------------------------- | --------- | --------- | ----- |
+| `bindTerminalCommands`                 | function  | no        | yes   |
+| `bindTerminalScrollbackCommands`       | function  | no        | yes   |
+| `bindTerminalShellWorkspaceCommands`   | function  | no        | yes   |
+| `bindTerminalWorkspaceCommands`        | function  | no        | yes   |
+| `TerminalCommandAction`                | type      | yes       | yes   |
+| `TerminalCommandKind`                  | type      | yes       | yes   |
+| `TerminalCommandOptions`               | interface | yes       | yes   |
+| `TerminalCommandPayload`               | interface | yes       | yes   |
+| `terminalCommands`                     | function  | no        | yes   |
+| `TerminalScrollbackCommandAction`      | type      | yes       | yes   |
+| `TerminalScrollbackCommandKind`        | type      | yes       | yes   |
+| `TerminalScrollbackCommandOptions`     | interface | yes       | yes   |
+| `TerminalScrollbackCommandPayload`     | interface | yes       | yes   |
+| `terminalScrollbackCommands`           | function  | no        | yes   |
+| `TerminalShellWorkspaceCommandAction`  | type      | yes       | yes   |
+| `TerminalShellWorkspaceCommandKind`    | type      | yes       | yes   |
+| `TerminalShellWorkspaceCommandOptions` | interface | yes       | yes   |
+| `TerminalShellWorkspaceCommandPayload` | interface | yes       | yes   |
+| `terminalShellWorkspaceCommands`       | function  | no        | yes   |
+| `TerminalWorkspaceCommandAction`       | type      | yes       | yes   |
+| `TerminalWorkspaceCommandKind`         | type      | yes       | yes   |
+| `TerminalWorkspaceCommandOptions`      | interface | yes       | yes   |
+| `TerminalWorkspaceCommandPayload`      | interface | yes       | yes   |
+| `terminalWorkspaceCommands`            | function  | no        | yes   |
 
 #### src/app/terminal_input.ts
 
