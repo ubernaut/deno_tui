@@ -15,7 +15,7 @@ import { SliderController } from "../src/components/slider.ts";
 import { renderStatusBar } from "../src/components/statusbar.ts";
 import { renderStepper, StepperController } from "../src/components/stepper.ts";
 import { formatTerminalOutputLine } from "../src/components/terminal_output.ts";
-import { TextBoxController, wrapTextBoxLines } from "../src/components/textbox.ts";
+import { TextBoxController } from "../src/components/textbox.ts";
 import {
   appendBoundedWorkbenchLogRow,
   buttonText,
@@ -166,6 +166,7 @@ import {
   apiWorkbenchDropdownPopoverRect,
   apiWorkbenchSliderSetHitInto,
   apiWorkbenchStepperHitPlacementsInto,
+  apiWorkbenchTextboxProjection,
   nextApiWorkbenchControlId,
   nextSortableDataColumn,
 } from "./api_workbench_controls.ts";
@@ -1765,57 +1766,44 @@ function renderControls(frame: Frame, rect: Rectangle): void {
 }
 
 function renderTextboxControl(frame: Frame, rect: Rectangle, row: number, t: ThemeSpec): number {
-  if (row >= rect.row + rect.height) return row;
   const active = activeControl.peek() === "textbox";
-  const height = Math.min(5, Math.max(2, rect.row + rect.height - row));
-  const labelWidth = Math.min(10, Math.max(0, rect.width - 12));
-  const textColumn = rect.column + labelWidth;
-  const textWidth = Math.max(1, rect.width - labelWidth);
-  const visualLines = wrapTextBoxLines(notes.lines.peek(), textWidth - 2, { wordWrap: true });
-  const cursor = notes.cursorPosition.peek();
-  const cursorRow = visualLines.findIndex((line) =>
-    line.lineIndex === cursor.y && cursor.x >= line.startColumn && cursor.x <= line.endColumn
-  );
-  const start = Math.max(0, Math.min(Math.max(0, cursorRow - height + 1), Math.max(0, visualLines.length - height)));
-  const header = `${active ? ">" : " "} TextBox`;
-  for (let offset = 0; offset < height; offset += 1) {
-    const line = visualLines[start + offset] ?? {
-      text: "",
-      lineIndex: 0,
-      startColumn: 0,
-      endColumn: 0,
-      continuation: false,
-    };
-    const cursorOnLine = active && line.lineIndex === cursor.y && cursor.x >= line.startColumn &&
-      cursor.x <= line.endColumn;
-    const marker = cursorOnLine ? "▌" : " ";
+  const projection = apiWorkbenchTextboxProjection({
+    rect,
+    row,
+    lines: notes.lines.peek(),
+    cursor: notes.cursorPosition.peek(),
+    active,
+  });
+  if (projection.height <= 0) return projection.nextRow;
+  for (const line of projection.rows) {
+    const marker = line.cursor ? "▌" : " ";
     write(
       frame,
-      row + offset,
-      rect.column,
-      paint(fit(offset === 0 ? header : " ".repeat(Math.max(0, labelWidth)), labelWidth), {
-        fg: active && offset === 0 ? t.background : t.text,
-        bg: active && offset === 0 ? t.warn : t.surface,
-        bold: active && offset === 0,
+      line.row,
+      line.labelColumn,
+      paint(fit(line.labelText, line.labelWidth), {
+        fg: active && line.header ? t.background : t.text,
+        bg: active && line.header ? t.warn : t.surface,
+        bold: active && line.header,
       }),
     );
     write(
       frame,
-      row + offset,
-      textColumn,
-      paint(fit(`${line.continuation ? "↳" : " "}${line.text}${marker}`, textWidth), {
+      line.row,
+      line.bodyColumn,
+      paint(fit(`${line.continuation ? "↳" : " "}${line.bodyText}${marker}`, line.bodyWidth), {
         fg: active ? t.background : t.text,
         bg: active ? t.warn : t.surface,
         bold: active,
       }),
     );
   }
-  addHit({ column: rect.column, row, width: rect.width, height }, {
+  addHit(projection.hit, {
     type: "control",
     id: "textbox",
     action: "focus",
   });
-  return row + height;
+  return projection.nextRow;
 }
 
 function renderLogs(frame: Frame, rect: Rectangle): void {

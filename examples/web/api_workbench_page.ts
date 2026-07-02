@@ -93,7 +93,6 @@ import {
   workbenchWindowLayout,
   WorkbenchWorkspaceViewportController,
   wrappedControlOptionRowCount,
-  wrapTextBoxLines,
   writeStringFrameRow,
 } from "../../mod.web.ts";
 import {
@@ -116,6 +115,7 @@ import {
   apiWorkbenchDropdownPopoverRect,
   apiWorkbenchSliderSetHitInto,
   apiWorkbenchStepperHitPlacementsInto,
+  apiWorkbenchTextboxProjection,
   nextApiWorkbenchControlId,
   nextSortableDataColumn,
 } from "../../app/api_workbench_controls.ts";
@@ -2129,59 +2129,46 @@ function renderControls(frame: string[], rect: Rectangle): void {
 }
 
 function renderTextboxControl(frame: string[], rect: Rectangle, row: number, t: ThemeSpec): number {
-  if (row >= rect.row + rect.height) return row;
   const selected = activeControl.peek() === "textbox";
-  const height = Math.min(5, Math.max(2, rect.row + rect.height - row));
-  const labelWidth = Math.min(10, Math.max(0, rect.width - 12));
-  const textColumn = rect.column + labelWidth;
-  const textAreaWidth = Math.max(1, rect.width - labelWidth);
-  const visualLines = wrapTextBoxLines(textBox.lines.peek(), textAreaWidth - 2, { wordWrap: true });
-  const cursor = textBox.cursorPosition.peek();
-  const cursorRow = visualLines.findIndex((line) =>
-    line.lineIndex === cursor.y && cursor.x >= line.startColumn && cursor.x <= line.endColumn
-  );
-  const start = Math.max(0, Math.min(Math.max(0, cursorRow - height + 1), Math.max(0, visualLines.length - height)));
-  const header = `${selected ? ">" : " "} TextBox`;
-  for (let offset = 0; offset < height; offset += 1) {
-    const line = visualLines[start + offset] ?? {
-      text: "",
-      lineIndex: 0,
-      startColumn: 0,
-      endColumn: 0,
-      continuation: false,
-    };
-    const cursorOnLine = selected && line.lineIndex === cursor.y && cursor.x >= line.startColumn &&
-      cursor.x <= line.endColumn;
-    const marker = cursorOnLine ? "|" : " ";
+  const projection = apiWorkbenchTextboxProjection({
+    rect,
+    row,
+    lines: textBox.lines.peek(),
+    cursor: textBox.cursorPosition.peek(),
+    active: selected,
+  });
+  if (projection.height <= 0) return projection.nextRow;
+  for (const line of projection.rows) {
+    const marker = line.cursor ? "|" : " ";
     write(
       frame,
-      row + offset,
-      rect.column,
+      line.row,
+      line.labelColumn,
       paint(
-        fit(offset === 0 ? header : " ".repeat(Math.max(0, labelWidth)), labelWidth),
-        selected && offset === 0 ? t.background : t.text,
-        selected && offset === 0 ? t.warn : t.surface,
-        selected && offset === 0,
+        fit(line.labelText, line.labelWidth),
+        selected && line.header ? t.background : t.text,
+        selected && line.header ? t.warn : t.surface,
+        selected && line.header,
       ),
     );
     write(
       frame,
-      row + offset,
-      textColumn,
+      line.row,
+      line.bodyColumn,
       paint(
-        fit(`${line.continuation ? ">" : " "}${line.text}${marker}`, textAreaWidth),
+        fit(`${line.continuation ? ">" : " "}${line.bodyText}${marker}`, line.bodyWidth),
         selected ? t.background : t.text,
         selected ? t.warn : t.surface,
         selected,
       ),
     );
   }
-  hitTargets.add({ column: rect.column, row, width: rect.width, height }, {
+  hitTargets.add(projection.hit, {
     type: "control",
     id: "textbox",
     action: "focus",
   });
-  return row + height;
+  return projection.nextRow;
 }
 
 function writeWrappedOptions(

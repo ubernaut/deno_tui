@@ -14738,6 +14738,70 @@ function apiWorkbenchDropdownPopoverRect(options) {
     height: Math.max(2, options.items.length + 2)
   };
 }
+function apiWorkbenchTextboxProjection(options) {
+  const rect = options.rect;
+  const bottom = rect.row + Math.max(0, rect.height);
+  const row = Math.floor(options.row);
+  if (row >= bottom || rect.width <= 0) {
+    return {
+      rows: [],
+      hit: { column: rect.column, row, width: Math.max(0, rect.width), height: 0, id: "textbox", action: "focus" },
+      nextRow: row,
+      height: 0,
+      startVisualRow: 0
+    };
+  }
+  const minHeight = Math.max(1, Math.floor(options.minHeight ?? 2));
+  const maxHeight = Math.max(minHeight, Math.floor(options.maxHeight ?? 5));
+  const height = Math.min(maxHeight, Math.max(minHeight, bottom - row));
+  const labelReserveWidth = Math.max(0, Math.floor(options.labelReserveWidth ?? 12));
+  const labelWidth = Math.min(
+    Math.max(0, Math.floor(options.labelMaxWidth ?? 10)),
+    Math.max(0, rect.width - labelReserveWidth)
+  );
+  const bodyColumn = rect.column + labelWidth;
+  const bodyWidth = Math.max(1, rect.width - labelWidth);
+  const visualLines = wrapTextBoxLines(options.lines, bodyWidth - 2, { wordWrap: options.wordWrap ?? true });
+  const cursorRow = visualLines.findIndex(
+    (line) => line.lineIndex === options.cursor.y && options.cursor.x >= line.startColumn && options.cursor.x <= line.endColumn
+  );
+  const startVisualRow = Math.max(
+    0,
+    Math.min(Math.max(0, cursorRow - height + 1), Math.max(0, visualLines.length - height))
+  );
+  const rows2 = [];
+  for (let offset = 0; offset < height; offset += 1) {
+    const visualLine = visualLines[startVisualRow + offset] ?? {
+      text: "",
+      lineIndex: 0,
+      startColumn: 0,
+      endColumn: 0,
+      continuation: false
+    };
+    const cursor = options.active && visualLine.lineIndex === options.cursor.y && options.cursor.x >= visualLine.startColumn && options.cursor.x <= visualLine.endColumn;
+    rows2.push({
+      row: row + offset,
+      labelColumn: rect.column,
+      labelWidth,
+      labelText: offset === 0 ? `${options.active ? ">" : " "} TextBox` : " ".repeat(Math.max(0, labelWidth)),
+      bodyColumn,
+      bodyWidth,
+      bodyText: visualLine.text,
+      visualLine,
+      cursor,
+      continuation: visualLine.continuation,
+      active: options.active,
+      header: offset === 0
+    });
+  }
+  return {
+    rows: rows2,
+    hit: { column: rect.column, row, width: rect.width, height, id: "textbox", action: "focus" },
+    nextRow: row + height,
+    height,
+    startVisualRow
+  };
+}
 function nextSortableDataColumn(columns2, currentColumnId, delta) {
   let sortableCount = 0;
   let currentSortableIndex = -1;
@@ -16928,58 +16992,46 @@ function renderControls(frame, rect) {
   }
 }
 function renderTextboxControl(frame, rect, row, t) {
-  if (row >= rect.row + rect.height) return row;
   const selected = activeControl.peek() === "textbox";
-  const height = Math.min(5, Math.max(2, rect.row + rect.height - row));
-  const labelWidth = Math.min(10, Math.max(0, rect.width - 12));
-  const textColumn = rect.column + labelWidth;
-  const textAreaWidth = Math.max(1, rect.width - labelWidth);
-  const visualLines = wrapTextBoxLines(textBox.lines.peek(), textAreaWidth - 2, { wordWrap: true });
-  const cursor = textBox.cursorPosition.peek();
-  const cursorRow = visualLines.findIndex(
-    (line) => line.lineIndex === cursor.y && cursor.x >= line.startColumn && cursor.x <= line.endColumn
-  );
-  const start = Math.max(0, Math.min(Math.max(0, cursorRow - height + 1), Math.max(0, visualLines.length - height)));
-  const header = `${selected ? ">" : " "} TextBox`;
-  for (let offset = 0; offset < height; offset += 1) {
-    const line = visualLines[start + offset] ?? {
-      text: "",
-      lineIndex: 0,
-      startColumn: 0,
-      endColumn: 0,
-      continuation: false
-    };
-    const cursorOnLine = selected && line.lineIndex === cursor.y && cursor.x >= line.startColumn && cursor.x <= line.endColumn;
-    const marker = cursorOnLine ? "|" : " ";
+  const projection = apiWorkbenchTextboxProjection({
+    rect,
+    row,
+    lines: textBox.lines.peek(),
+    cursor: textBox.cursorPosition.peek(),
+    active: selected
+  });
+  if (projection.height <= 0) return projection.nextRow;
+  for (const line of projection.rows) {
+    const marker = line.cursor ? "|" : " ";
     write(
       frame,
-      row + offset,
-      rect.column,
+      line.row,
+      line.labelColumn,
       paint(
-        fit(offset === 0 ? header : " ".repeat(Math.max(0, labelWidth)), labelWidth),
-        selected && offset === 0 ? t.background : t.text,
-        selected && offset === 0 ? t.warn : t.surface,
-        selected && offset === 0
+        fit(line.labelText, line.labelWidth),
+        selected && line.header ? t.background : t.text,
+        selected && line.header ? t.warn : t.surface,
+        selected && line.header
       )
     );
     write(
       frame,
-      row + offset,
-      textColumn,
+      line.row,
+      line.bodyColumn,
       paint(
-        fit(`${line.continuation ? ">" : " "}${line.text}${marker}`, textAreaWidth),
+        fit(`${line.continuation ? ">" : " "}${line.bodyText}${marker}`, line.bodyWidth),
         selected ? t.background : t.text,
         selected ? t.warn : t.surface,
         selected
       )
     );
   }
-  hitTargets.add({ column: rect.column, row, width: rect.width, height }, {
+  hitTargets.add(projection.hit, {
     type: "control",
     id: "textbox",
     action: "focus"
   });
-  return row + height;
+  return projection.nextRow;
 }
 function writeWrappedOptions(frame, rect, startRow, id2, items, selectedIndex, t) {
   const width = Math.max(8, rect.width - 4);

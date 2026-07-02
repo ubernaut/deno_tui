@@ -8,6 +8,7 @@ import {
   apiWorkbenchDropdownPopoverRect,
   apiWorkbenchSliderSetHit,
   apiWorkbenchStepperHitPlacementsInto,
+  apiWorkbenchTextboxProjection,
   nextApiWorkbenchControlId,
   nextSortableDataColumn,
 } from "../app/api_workbench_controls.ts";
@@ -159,6 +160,84 @@ Deno.test("api workbench dropdown popover rectangle follows shared adapter geome
       label: "Tiny",
     }),
     { column: 3, row: 4, width: 16, height: 5 },
+  );
+});
+
+Deno.test("api workbench textbox projection wraps reveals cursor and emits shared hit geometry", () => {
+  const projection = apiWorkbenchTextboxProjection({
+    rect: { column: 5, row: 10, width: 24, height: 8 },
+    row: 12,
+    lines: ["alpha beta gamma delta", "second line"],
+    cursor: { x: 18, y: 0 },
+    active: true,
+  });
+
+  assertEquals(projection.height, 5);
+  assertEquals(projection.nextRow, 17);
+  assertEquals(projection.hit, { column: 5, row: 12, width: 24, height: 5, id: "textbox", action: "focus" });
+  assertEquals(
+    projection.rows.map((entry) => ({
+      row: entry.row,
+      label: entry.labelText,
+      body: entry.bodyText,
+      cursor: entry.cursor,
+      continuation: entry.continuation,
+      header: entry.header,
+      labelWidth: entry.labelWidth,
+      bodyWidth: entry.bodyWidth,
+    })),
+    [
+      {
+        row: 12,
+        label: "> TextBox",
+        body: "alpha beta",
+        cursor: false,
+        continuation: false,
+        header: true,
+        labelWidth: 10,
+        bodyWidth: 14,
+      },
+      {
+        row: 13,
+        label: "          ",
+        body: "gamma delta",
+        cursor: true,
+        continuation: true,
+        header: false,
+        labelWidth: 10,
+        bodyWidth: 14,
+      },
+      {
+        row: 14,
+        label: "          ",
+        body: "second line",
+        cursor: false,
+        continuation: false,
+        header: false,
+        labelWidth: 10,
+        bodyWidth: 14,
+      },
+      {
+        row: 15,
+        label: "          ",
+        body: "",
+        cursor: false,
+        continuation: false,
+        header: false,
+        labelWidth: 10,
+        bodyWidth: 14,
+      },
+      {
+        row: 16,
+        label: "          ",
+        body: "",
+        cursor: false,
+        continuation: false,
+        header: false,
+        labelWidth: 10,
+        bodyWidth: 14,
+      },
+    ],
   );
 });
 

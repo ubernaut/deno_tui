@@ -15,6 +15,7 @@ keeping renderer-specific paint and hit-stack plumbing local.
       through it.
 - [x] Extract shared dropdown popover rectangle projection so terminal and browser adapters keep matching overlay
       placement.
+- [x] Extract shared multiline textbox projection for wrapping, cursor reveal, body rows, and focus hit geometry.
 - [ ] Extract a renderer-neutral controls row projection for button, slider, checkbox, radio, combo, dropdown, input,
       textbox, stepper, and progress rows.
 - [ ] Add adapter-parity tests that compare terminal/web controls row geometry and hit regions from the shared
