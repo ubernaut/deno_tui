@@ -13814,13 +13814,19 @@ function sanitizeDiagnosticCode(value) {
 // app/styles.ts
 function hexToRgb(hex2) {
   const normalized = hex2.replace(/^#/, "");
-  const value = normalized.length === 3 ? normalized.split("").map((char) => char + char).join("") : normalized;
+  const value = normalized.length === 3 ? expandShortHex(normalized) : normalized;
   const intValue = Number.parseInt(value, 16);
   return {
     r: intValue >> 16 & 255,
     g: intValue >> 8 & 255,
     b: intValue & 255
   };
+}
+function expandShortHex(value) {
+  const r = value[0] ?? "0";
+  const g = value[1] ?? "0";
+  const b = value[2] ?? "0";
+  return `${r}${r}${g}${g}${b}${b}`;
 }
 function makeStyle(options = {}) {
   const codes = [];

@@ -152,11 +152,7 @@ export function buildNeonRenderContext(options: {
 }
 
 export function neonSuiteSummary(source: "opentui" | "web" | "extended" = "extended") {
-  const suite = source === "opentui"
-    ? neonOpenTuiDemoIds
-    : source === "web"
-    ? neonWebDemoIds
-    : undefined;
+  const suite = source === "opentui" ? neonOpenTuiDemoIds : source === "web" ? neonWebDemoIds : undefined;
   const entries = suite ? demosForIds(suite) : demos;
   const sections: Record<NeonSection, number> = {
     overview: 0,
