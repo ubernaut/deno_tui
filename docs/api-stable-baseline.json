@@ -4099,6 +4099,27 @@
     },
     {
       "module": "src/app/workbench_status.ts",
+      "name": "workbenchEmptyWorkspaceMessage",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_status.ts",
+      "name": "WorkbenchEmptyWorkspaceMessageOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_status.ts",
+      "name": "WorkbenchEmptyWorkspaceWindowState",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_status.ts",
       "name": "workbenchStatusLeft",
       "kind": "function",
       "typeOnly": false,

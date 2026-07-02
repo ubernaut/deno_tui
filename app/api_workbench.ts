@@ -57,6 +57,7 @@ import {
   upsertWorkbenchWorkspace,
   workbenchAdaptiveWindowLayout,
   workbenchContentViewport,
+  workbenchEmptyWorkspaceMessage,
   type WorkbenchFrame,
   workbenchHorizontalScrollbarCellsInto,
   workbenchShelfEntriesInto,
@@ -2584,17 +2585,7 @@ function renderActiveDropdownOverlay(frame: Frame): void {
 }
 
 function emptyWorkspaceMessage(): string {
-  const inspection = windowManager.inspect();
-  let minimizedCount = 0;
-  let openCount = 0;
-  for (let index = 0; index < inspection.windows.length; index += 1) {
-    const entry = inspection.windows[index]!;
-    if (!entry.closed) openCount += 1;
-    if (entry.minimized) minimizedCount += 1;
-  }
-  if (openCount === 0) return "All windows closed. Use New to add a widget window.";
-  if (minimizedCount > 0) return "All open windows minimized. Press R or use the shelf to restore.";
-  return "No visible windows. Use New to add a widget window.";
+  return workbenchEmptyWorkspaceMessage({ windows: windowManager.inspect().windows });
 }
 
 function renderModalOverlay(frame: Frame): void {

@@ -75,6 +75,7 @@ import {
   workbenchButtonPaintOptions,
   type WorkbenchButtonRowItem,
   type WorkbenchButtonRowPlacement,
+  workbenchEmptyWorkspaceMessage,
   type WorkbenchPanelWorkspaceState,
   workbenchShelfEntriesInto,
   workbenchStatusLeft,
@@ -635,7 +636,17 @@ function draw(): void {
     renderPanel(virtual, maximized.peek()!, layout.bounds);
   } else {
     if (layout.rects.size === 0) {
-      write(virtual, 1, 2, paint("All panels minimized. Press R or click restore."));
+      write(
+        virtual,
+        1,
+        2,
+        paint(
+          workbenchEmptyWorkspaceMessage({
+            windows: webWindows.inspect().windows,
+            labels: { minimized: "All panels minimized. Press R or click restore." },
+          }),
+        ),
+      );
       hitTargets.add({ ...layout.bounds, row: 0 }, { type: "restore" });
     } else {
       for (const [id, rect] of layout.rects) {

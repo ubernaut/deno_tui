@@ -1,5 +1,9 @@
 import { assertEquals } from "./deps.ts";
-import { workbenchStatusLeft, workbenchTileDensityLabel } from "../src/app/workbench/mod.ts";
+import {
+  workbenchEmptyWorkspaceMessage,
+  workbenchStatusLeft,
+  workbenchTileDensityLabel,
+} from "../src/app/workbench/mod.ts";
 
 Deno.test("workbench status helpers bucket tile density", () => {
   assertEquals(workbenchTileDensityLabel(-2), "wide");
@@ -16,5 +20,27 @@ Deno.test("workbench status helper composes optional diagnostics", () => {
   assertEquals(
     workbenchStatusLeft({ focus: "Data", theme: "Unit-01", tileDensity: 1, diagnostics: "diag 1 warning" }),
     "focus Data | Unit-01 | tiles dense | diag 1 warning",
+  );
+});
+
+Deno.test("workbench empty workspace messages classify closed minimized and hidden states", () => {
+  assertEquals(
+    workbenchEmptyWorkspaceMessage({ windows: [{ closed: true }, { closed: true }] }),
+    "All windows closed. Use New to add a widget window.",
+  );
+  assertEquals(
+    workbenchEmptyWorkspaceMessage({ windows: [{ minimized: true }, { minimized: true }] }),
+    "All open windows minimized. Press R or use the shelf to restore.",
+  );
+  assertEquals(
+    workbenchEmptyWorkspaceMessage({ windows: [{}, { closed: true }] }),
+    "No visible windows. Use New to add a widget window.",
+  );
+  assertEquals(
+    workbenchEmptyWorkspaceMessage({
+      windows: [{ minimized: true }],
+      labels: { minimized: "All panels minimized. Press R or click restore." },
+    }),
+    "All panels minimized. Press R or click restore.",
   );
 });

@@ -11636,6 +11636,22 @@ function workbenchStatusLeft(options) {
   if (diagnostics) parts.push(diagnostics);
   return parts.join(" | ");
 }
+function workbenchEmptyWorkspaceMessage(options) {
+  let minimizedCount = 0;
+  let openCount = 0;
+  for (let index = 0; index < options.windows.length; index += 1) {
+    const entry = options.windows[index];
+    if (!entry.closed) openCount += 1;
+    if (entry.minimized) minimizedCount += 1;
+  }
+  if (openCount === 0) {
+    return options.labels?.closed ?? "All windows closed. Use New to add a widget window.";
+  }
+  if (minimizedCount > 0) {
+    return options.labels?.minimized ?? "All open windows minimized. Press R or use the shelf to restore.";
+  }
+  return options.labels?.empty ?? "No visible windows. Use New to add a widget window.";
+}
 
 // src/runtime/pty_backend.ts
 var INPUT_DECODER = new TextDecoder();
@@ -15768,7 +15784,17 @@ function draw() {
     renderPanel(virtual, maximized.peek(), layout.bounds);
   } else {
     if (layout.rects.size === 0) {
-      write(virtual, 1, 2, paint("All panels minimized. Press R or click restore."));
+      write(
+        virtual,
+        1,
+        2,
+        paint(
+          workbenchEmptyWorkspaceMessage({
+            windows: webWindows.inspect().windows,
+            labels: { minimized: "All panels minimized. Press R or click restore." }
+          })
+        )
+      );
       hitTargets.add({ ...layout.bounds, row: 0 }, { type: "restore" });
     } else {
       for (const [id2, rect] of layout.rects) {

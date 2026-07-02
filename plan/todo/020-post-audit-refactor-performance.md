@@ -25,3 +25,4 @@ performance, shared terminal/web workbench projections, and oversized module red
 
 - Extracted shared adaptive workbench window layout through `workbenchAdaptiveWindowLayout`.
 - Extracted shared header menu/close-button geometry through `layoutWorkbenchHeader`.
+- Extracted shared empty-workspace message classification through `workbenchEmptyWorkspaceMessage`.
