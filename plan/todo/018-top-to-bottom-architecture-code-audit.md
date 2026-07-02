@@ -1009,6 +1009,9 @@ Work:
   - [x] Reduced terminal workspace layout lookup clone churn by using internal read-only pane references for active,
         zoomed, and prune checks while preserving defensive clones on public lookup APIs, with a focused
         terminal-workspace layout churn benchmark added.
+  - [x] Extended the read-only pane lookup pattern into `TerminalWorkspaceController` focus, split, close, zoom, and
+        normalization paths so renderer-neutral terminal workspace commands no longer rely on public defensive-clone
+        lookup helpers for internal state decisions.
 - [x] Make demo-only assets and NGE-inspired primitives clearly separate from library APIs.
   - [x] Added `app/neon_three_catalog.ts` for supported Three scene metadata and labels, keeping demo/NGE catalog data
         separate from the monolithic scene factory and shared by visualization footers plus scene coverage tests.
