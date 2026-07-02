@@ -907,8 +907,8 @@ Work:
         intersection checks with indexed candidate membership.
   - [x] Added non-cloning `DirtyRegion` segment traversal for render-path spatial queries while preserving cloned
         inspection output for diagnostics.
-  - [x] Added bounded top-N ranking for limited command surface and command search index queries, avoiding full match
-        sorting when callers request a small result set.
+  - [x] Added shared bounded top-N ranking for limited command surface and command search index queries, avoiding full
+        match sorting when callers request a small result set.
   - [x] Reduced direct command surface search allocation by building weighted search fields in one pass per item.
 - [x] Make demo-only assets and NGE-inspired primitives clearly separate from library APIs.
   - [x] Added `app/neon_three_catalog.ts` for supported Three scene metadata and labels, keeping demo/NGE catalog data

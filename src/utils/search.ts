@@ -69,6 +69,25 @@ export function scoreSearchField(field: string, term: string, weight: number): n
   return acronymStartsWith(field, term) ? weight : 0;
 }
 
+/** Inserts a ranked candidate into a sorted top-N buffer. */
+export function insertBoundedRanked<T>(
+  ranked: T[],
+  candidate: T,
+  limit: number,
+  compare: (left: T, right: T) => number,
+): void {
+  let low = 0;
+  let high = ranked.length;
+  while (low < high) {
+    const middle = (low + high) >> 1;
+    if (compare(candidate, ranked[middle]!) < 0) high = middle;
+    else low = middle + 1;
+  }
+  if (low >= limit) return;
+  ranked.splice(low, 0, candidate);
+  if (ranked.length > limit) ranked.pop();
+}
+
 function hasWordStartingWith(field: string, term: string): boolean {
   let wordStart = 0;
   for (let index = 0; index <= field.length; index += 1) {

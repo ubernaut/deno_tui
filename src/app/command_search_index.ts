@@ -3,6 +3,7 @@ import { Signal } from "../signals/mod.ts";
 import type { AsyncScheduler, ScheduledTaskOptions } from "../runtime/scheduler.ts";
 import type { AsyncStore } from "../runtime/storage.ts";
 import {
+  insertBoundedRanked,
   normalizeSearchText,
   scoreWeightedSearchFields,
   searchTerms,
@@ -139,7 +140,7 @@ export function searchCommandSearchIndex(
       if (limit === undefined) {
         ranked.push(candidate);
       } else {
-        insertRankedCommandSearchMatch(ranked, candidate, limit);
+        insertBoundedRanked(ranked, candidate, limit, compareCommandSearchMatches);
       }
     }
   }
@@ -329,21 +330,4 @@ function compareCommandSearchMatches(
     Number(left.item.disabled) - Number(right.item.disabled) ||
     left.item.label.localeCompare(right.item.label) ||
     left.index - right.index;
-}
-
-function insertRankedCommandSearchMatch(
-  ranked: Array<CommandSearchMatch & { index: number }>,
-  candidate: CommandSearchMatch & { index: number },
-  limit: number,
-): void {
-  let low = 0;
-  let high = ranked.length;
-  while (low < high) {
-    const middle = (low + high) >> 1;
-    if (compareCommandSearchMatches(candidate, ranked[middle]!) < 0) high = middle;
-    else low = middle + 1;
-  }
-  if (low >= limit) return;
-  ranked.splice(low, 0, candidate);
-  if (ranked.length > limit) ranked.pop();
 }
