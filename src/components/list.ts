@@ -168,6 +168,7 @@ export class List extends Component {
   items: Signal<string[]>;
   selectedIndex: Signal<number>;
   readonly controller: ListController;
+  readonly #rows: Computed<string[]>;
 
   constructor(options: ListOptions) {
     super(options);
@@ -180,17 +181,17 @@ export class List extends Component {
       });
     this.items = this.controller.items;
     this.selectedIndex = this.controller.selectedIndex;
+    this.#rows = new Computed(() => this.controller.rows(this.rectangle.value.height));
 
     this.on("keyPress", (event) => {
       this.controller.handleKeyPress(event, this.rectangle.peek().height);
     });
+    this.on("destroy", () => this.#rows.dispose());
     if (ownsController) this.on("destroy", () => this.controller.dispose());
   }
 
   override draw(): void {
     super.draw();
-
-    const lines = new Computed(() => this.controller.rows(this.rectangle.value.height));
-    drawTextRows(this, lines);
+    drawTextRows(this, this.#rows);
   }
 }

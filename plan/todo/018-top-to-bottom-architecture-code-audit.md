@@ -895,6 +895,8 @@ Work:
         lifecycle.
   - [x] Applied the same lifecycle-owned row computation pattern to `Stepper`, `ContextMenu`, and `RadioGroup`.
   - [x] Moved `EmptyState`, `Chart`, `LogViewer`, and `ToastStack` row projections into owned computed fields.
+  - [x] Moved base `List` visible-row projection into an owned computed field so list-backed widgets do not allocate it
+        from `draw`.
 - [x] Make demo-only assets and NGE-inspired primitives clearly separate from library APIs.
   - [x] Added `app/neon_three_catalog.ts` for supported Three scene metadata and labels, keeping demo/NGE catalog data
         separate from the monolithic scene factory and shared by visualization footers plus scene coverage tests.
