@@ -564,6 +564,9 @@ Deno.test("ThreePanelFrameView can use Kitty image frames without drawing ASCII 
   try {
     await waitFor(() => surface.puts.length >= 1);
     assertEquals(panel.grid.peek(), Array.from({ length: 4 }, () => Array.from({ length: 8 }, () => " ")));
+    const firstGrid = panel.grid.peek();
+    await waitFor(() => surface.puts.length >= 2);
+    assertEquals(panel.grid.peek() === firstGrid, true);
     assertEquals(surface.puts[0]!.image.format, 32);
     assertEquals(surface.puts[0]!.placement, { column: 5, row: 6, width: 8, height: 4, zIndex: 1 });
   } finally {

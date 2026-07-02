@@ -29,3 +29,5 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Extracted terminal status tone and input-mode label presentation helpers out of the terminal workbench renderer.
 - Extracted live shell status-line composition out of the terminal workbench renderer.
 - Moved terminal status tone color mapping into the shared workbench terminal style helper.
+- Cached unchanged Kitty-only blank terminal grids so image-mode Three panels stop reallocating no-op ASCII cells every
+  frame.

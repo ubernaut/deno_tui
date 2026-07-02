@@ -233,6 +233,9 @@ export class ThreePanelFrameView {
   private appliedEffectOptions?: ReturnType<typeof asciiEffectOptions>;
   private appliedTerminalEdgeBias?: number;
   private appliedTerminalGlyphStyle?: AsciiOptions["terminalGlyphStyle"];
+  private blankGridCache: string[][] = [];
+  private blankGridColumns = -1;
+  private blankGridRows = -1;
 
   constructor(
     private readonly options: {
@@ -434,7 +437,7 @@ export class ThreePanelFrameView {
       }
 
       this.failed = false;
-      this.setGrid(policy.renderAscii ? frame.grid ?? [] : blankGrid(rect.width, rect.height));
+      this.setGrid(policy.renderAscii ? frame.grid ?? [] : this.blankGridFor(rect.width, rect.height));
     } catch (error) {
       if (!this.ownsFrame(frameGeneration, renderer, bundle)) {
         return;
@@ -472,6 +475,14 @@ export class ThreePanelFrameView {
     if (this.disposed) return;
     this.grid.jink(grid);
     this.onUpdate?.();
+  }
+
+  private blankGridFor(columns: number, rows: number): string[][] {
+    if (this.blankGridColumns === columns && this.blankGridRows === rows) return this.blankGridCache;
+    this.blankGridColumns = columns;
+    this.blankGridRows = rows;
+    this.blankGridCache = blankGrid(columns, rows);
+    return this.blankGridCache;
   }
 
   private invalidateFrame(): void {
