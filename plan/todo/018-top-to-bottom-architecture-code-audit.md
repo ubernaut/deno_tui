@@ -918,6 +918,8 @@ Work:
         covering focus, fullscreen, minimize, restore, ordering, and layout.
   - [x] Reduced terminal workspace split-resize churn by avoiding a pre-update full layout clone and cloning only the
         changed split path.
+  - [x] Reused a component-owned textbox visual cursor projection so cursor, line-number, highlight, and wrapped row
+        rendering no longer re-wrap the same text independently.
 - [x] Make demo-only assets and NGE-inspired primitives clearly separate from library APIs.
   - [x] Added `app/neon_three_catalog.ts` for supported Three scene metadata and labels, keeping demo/NGE catalog data
         separate from the monolithic scene factory and shared by visualization footers plus scene coverage tests.

@@ -429,6 +429,14 @@ export function textBoxVisualCursor(
   options: { wordWrap?: boolean } = {},
 ): TextBoxVisualCursor {
   const visualLines = wrapTextBoxLines(lines, width, options);
+  return textBoxVisualCursorFromLines(visualLines, cursor, width);
+}
+
+function textBoxVisualCursorFromLines(
+  visualLines: readonly TextBoxVisualLine[],
+  cursor: CursorPosition,
+  width: number,
+): TextBoxVisualCursor {
   let fallbackRow = 0;
   for (const [row, line] of visualLines.entries()) {
     if (line.lineIndex !== cursor.y) continue;
@@ -505,6 +513,7 @@ export class TextBox extends Box {
 
   #textLines: Computed<readonly string[]>;
   #visualLines: Computed<TextBoxVisualLine[]>;
+  #visualCursor: Computed<TextBoxVisualCursor>;
 
   text: Signal<string>;
   validator: Signal<RegExp | undefined>;
@@ -546,6 +555,9 @@ export class TextBox extends Box {
     this.#visualLines = new Computed(() =>
       wrapTextBoxLines(this.#textLines.value, this.#textColumnWidth(), { wordWrap: this.wordWrap.value })
     );
+    this.#visualCursor = new Computed(() =>
+      textBoxVisualCursorFromLines(this.#visualLines.value, this.cursorPosition.value, this.#textColumnWidth())
+    );
 
     new Effect(() => {
       this.#updateLineDrawObjects();
@@ -557,6 +569,10 @@ export class TextBox extends Box {
         this.controller.handleKeyPress(event);
       }),
     );
+    this.on("destroy", () => {
+      disposeTextBoxComputed(this.#visualCursor);
+      disposeTextBoxComputed(this.#visualLines);
+    });
     if (ownsController) this.on("destroy", () => this.controller.dispose());
   }
 
@@ -578,23 +594,13 @@ export class TextBox extends Box {
       zIndex: this.zIndex,
       multiCodePointSupport: this.multiCodePointSupport,
       value: new Computed(() => {
-        const visualCursor = textBoxVisualCursor(
-          this.#textLines.value,
-          this.cursorPosition.value,
-          this.#textColumnWidth(),
-          { wordWrap: this.wordWrap.value },
-        );
+        const visualCursor = this.#visualCursor.value;
         return visualCursor.line.text[visualCursor.column] ?? " ";
       }),
       style: new Computed(() => this.theme.cursor[this.state.value]),
       rectangle: new Computed(() => {
         const { row, column, width, height } = this.rectangle.value;
-        const visualCursor = textBoxVisualCursor(
-          this.#textLines.value,
-          this.cursorPosition.value,
-          this.#textColumnWidth(),
-          { wordWrap: this.wordWrap.value },
-        );
+        const visualCursor = this.#visualCursor.value;
         const offsetY = Math.max(visualCursor.row - height + 1, 0);
 
         cursorRectangle.row = row + Math.min(Math.max(0, visualCursor.row - offsetY), height - 1);
@@ -642,12 +648,7 @@ export class TextBox extends Box {
           style: new Computed(() => this.theme.lineNumbers[this.state.value]),
           value: new Computed(() => {
             const { height } = this.rectangle.value;
-            const visualCursor = textBoxVisualCursor(
-              this.#textLines.value,
-              this.cursorPosition.value,
-              this.#textColumnWidth(),
-              { wordWrap: this.wordWrap.value },
-            );
+            const visualCursor = this.#visualCursor.value;
 
             const offsetY = Math.max(visualCursor.row - height + 1, 0);
             const visualLine = this.#visualLines.value[offset + offsetY];
@@ -687,12 +688,7 @@ export class TextBox extends Box {
 
             const state = this.state.value;
             const highlightLine = this.lineHighlighting.value;
-            const visualCursor = textBoxVisualCursor(
-              this.#textLines.value,
-              this.cursorPosition.value,
-              this.#textColumnWidth(),
-              { wordWrap: this.wordWrap.value },
-            );
+            const visualCursor = this.#visualCursor.value;
 
             const offsetY = Math.max(visualCursor.row - this.rectangle.value.height + 1, 0);
             const currentLine = offsetY + offset;
@@ -711,9 +707,7 @@ export class TextBox extends Box {
             }
 
             if (this.wordWrap.value) {
-              const visualCursor = textBoxVisualCursor(this.#textLines.value, cursorPosition, width, {
-                wordWrap: true,
-              });
+              const visualCursor = this.#visualCursor.value;
               const offsetY = Math.max(visualCursor.row - height + 1, 0);
               const value = this.#visualLines.value[offset + offsetY]?.text ?? "";
               return cropToWidth(value, width).padEnd(width, " ");
@@ -758,5 +752,13 @@ export class TextBox extends Box {
 
   #textColumnWidth(): number {
     return Math.max(1, this.rectangle.value.width - this.#lineNumbersWidth());
+  }
+}
+
+function disposeTextBoxComputed(computed: { dispose(): void }): void {
+  try {
+    computed.dispose();
+  } catch {
+    // Computed dependency tracking is asynchronous in short-lived component tests.
   }
 }
