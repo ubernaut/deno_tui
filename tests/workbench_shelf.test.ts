@@ -1,5 +1,12 @@
 import { assertEquals } from "./deps.ts";
-import { layoutWorkbenchShelf, layoutWorkbenchTabs } from "../src/app/workbench_shelf.ts";
+import {
+  layoutWorkbenchShelf,
+  layoutWorkbenchTabs,
+  workbenchShelfEntriesInto,
+  type WorkbenchShelfSource,
+  workbenchTabEntriesInto,
+  type WorkbenchTabSource,
+} from "../src/app/workbench_shelf.ts";
 
 Deno.test("workbench shelf layout places minimized buttons after the prefix", () => {
   const layout = layoutWorkbenchShelf({
@@ -55,4 +62,30 @@ Deno.test("workbench shelf and tab layout clip buttons to the available row widt
 
   assertEquals(shelf.buttons[0]?.rect, { column: 10, row: 0, width: 7, height: 1 });
   assertEquals(tabs.buttons[0]?.rect, { column: 8, row: 0, width: 10, height: 1 });
+});
+
+Deno.test("workbench shelf projections reuse buffers for minimized windows and tabs", () => {
+  const shelf: WorkbenchShelfSource<"one" | "two" | "three">[] = [{ id: "one", title: "stale" }];
+  const tabs: WorkbenchTabSource<"one" | "two" | "three">[] = [];
+  const windows = [
+    { id: "one", minimized: true },
+    { id: "two", minimized: false },
+    { id: "three", minimized: true, closed: true },
+  ];
+
+  assertEquals(workbenchShelfEntriesInto(shelf, windows, (id) => `Window ${id}`), [
+    { id: "one", title: "Window one" },
+  ]);
+  assertEquals(shelf.length, 1);
+
+  assertEquals(
+    workbenchTabEntriesInto(tabs, [
+      { id: "one", fullscreen: true },
+      { id: "two", minimized: true },
+    ], (id) => `Window ${id}`),
+    [
+      { id: "one", title: "Window one", selected: true, hidden: false },
+      { id: "two", title: "Window two", selected: false, hidden: true },
+    ],
+  );
 });

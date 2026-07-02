@@ -57,7 +57,9 @@ import {
   workbenchAdaptiveTileOptions,
   workbenchContentViewport,
   type WorkbenchFrame,
+  workbenchShelfEntriesInto,
   workbenchStatusLeft,
+  workbenchTabEntriesInto,
   type WorkbenchTitlebarButtonKind,
   workbenchVerticalScrollbarRect,
   workbenchVisualizationIdFromWindowId,
@@ -455,6 +457,8 @@ const newWindowMenuSlice: VisibleMenuSlice = { items: [], indexes: [] };
 const newWindowMenuLabels: string[] = [];
 const workspaceMenuSlice: VisibleMenuSlice = { items: [], indexes: [] };
 const workspaceMenuLabelBuffer: string[] = [];
+const minimizedShelfEntries: Array<{ id: WindowId; title: string }> = [];
+const fullscreenTabEntries: Array<{ id: WindowId; title: string; selected?: boolean; hidden?: boolean }> = [];
 let dropdownOverlay: DropdownOverlay | null = null;
 let threeDragWindow: WindowId | null = null;
 let windowRenderContext: WindowRenderContext | null = null;
@@ -2150,9 +2154,7 @@ function addInlineStepperHits(rect: Rectangle, row: number): void {
 
 function renderShelf(frame: Frame): void {
   const row = currentHeight() - 2;
-  const entries = windowManager.inspect().windows
-    .filter((entry) => entry.minimized && !entry.closed)
-    .map((entry) => ({ id: entry.id as WindowId, title: windowTitle(entry.id as WindowId) }));
+  const entries = workbenchShelfEntriesInto(minimizedShelfEntries, windowManager.inspect().windows, windowTitle);
   if (entries.length === 0) return;
   const layout = layoutWorkbenchShelf({ row, column: 1, width: Math.max(0, currentWidth() - 1), entries });
   write(frame, row, layout.prefixRect.column, paint(layout.prefix, { fg: theme().muted, bg: theme().backgroundSoft }));
@@ -2170,12 +2172,7 @@ function renderWindowTabs(frame: Frame): void {
     row,
     column: 1,
     width: Math.max(0, currentWidth() - 1),
-    tabs: windowManager.inspect().tabs.map((tab) => ({
-      id: tab.id as WindowId,
-      title: windowTitle(tab.id as WindowId),
-      selected: tab.fullscreen,
-      hidden: tab.minimized,
-    })),
+    tabs: workbenchTabEntriesInto(fullscreenTabEntries, windowManager.inspect().tabs, windowTitle),
   });
   write(frame, row, layout.prefixRect.column, paint(layout.prefix, { fg: t.muted, bg: t.backgroundSoft }));
   for (const button of layout.buttons) {

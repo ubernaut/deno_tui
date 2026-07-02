@@ -49,6 +49,50 @@ export interface WorkbenchTabLayoutOptions<TId extends string = string> {
   tabs: readonly WorkbenchTabSource<TId>[];
 }
 
+/** Minimal window inspection shape used to project shelf and tab row sources. */
+export interface WorkbenchShelfWindowInspectionShape {
+  id: string;
+  fullscreen?: boolean;
+  minimized?: boolean;
+  closed?: boolean;
+}
+
+/** Projects minimized, open windows into a caller-owned shelf source buffer. */
+export function workbenchShelfEntriesInto<TId extends string>(
+  target: WorkbenchShelfSource<TId>[],
+  windows: readonly WorkbenchShelfWindowInspectionShape[],
+  titleForId: (id: TId) => string,
+): WorkbenchShelfSource<TId>[] {
+  target.length = 0;
+  for (let index = 0; index < windows.length; index += 1) {
+    const entry = windows[index]!;
+    if (!entry.minimized || entry.closed) continue;
+    const id = entry.id as TId;
+    target.push({ id, title: titleForId(id) });
+  }
+  return target;
+}
+
+/** Projects fullscreen tabs into a caller-owned tab source buffer. */
+export function workbenchTabEntriesInto<TId extends string>(
+  target: WorkbenchTabSource<TId>[],
+  tabs: readonly WorkbenchShelfWindowInspectionShape[],
+  titleForId: (id: TId) => string,
+): WorkbenchTabSource<TId>[] {
+  target.length = tabs.length;
+  for (let index = 0; index < tabs.length; index += 1) {
+    const tab = tabs[index]!;
+    const id = tab.id as TId;
+    target[index] = {
+      id,
+      title: titleForId(id),
+      selected: tab.fullscreen === true,
+      hidden: tab.minimized === true,
+    };
+  }
+  return target;
+}
+
 /** Calculates a minimized-window shelf row with clipped button hit rectangles. */
 export function layoutWorkbenchShelf<TId extends string>(
   options: WorkbenchShelfLayoutOptions<TId>,

@@ -67,7 +67,9 @@ import {
   translateHitTargets,
   workbenchAdaptiveTileOptions,
   type WorkbenchPanelWorkspaceState,
+  workbenchShelfEntriesInto,
   workbenchStatusLeft,
+  workbenchTabEntriesInto,
   type WorkbenchTitlebarButtonKind,
   workbenchVerticalScrollbarRect,
   workbenchWindowLayout,
@@ -257,6 +259,8 @@ const hitTargets = new HitTargetStack<Hit>();
 const screenRows: string[] = [];
 const workspaceVirtualRows: string[] = [];
 const threePreviewOrbRows: string[] = [];
+const minimizedShelfEntries: Array<{ id: PanelId; title: string }> = [];
+const fullscreenTabEntries: Array<{ id: PanelId; title: string; selected?: boolean; hidden?: boolean }> = [];
 let dropdownOverlay: DropdownOverlay | null = null;
 let pointerDrag: {
   x: number;
@@ -622,9 +626,8 @@ function draw(): void {
 
 function renderShelf(frame: string[]): void {
   const row = rowsCount() - 2;
-  const entries = (Object.entries(minimized.peek()) as Array<[PanelId, boolean]>)
-    .filter(([, value]) => value)
-    .map(([id]) => ({ id, title: panelTitle(id) }));
+  syncWebWindowManagerState();
+  const entries = workbenchShelfEntriesInto(minimizedShelfEntries, webWindows.inspect().windows, panelTitle);
   if (entries.length === 0) return;
   const layout = layoutWorkbenchShelf({ row, column: 2, width: Math.max(0, cols() - 2), entries });
   write(frame, row, layout.prefixRect.column, paint(layout.prefix, theme().muted, theme().backgroundSoft));
@@ -697,16 +700,12 @@ function menuItemRect(menuStart: number, itemId: string, preferredWidth: number,
 
 function renderWindowTabs(frame: string[]): void {
   const row = rowsCount() - 2;
+  syncWebWindowManagerState();
   const layout = layoutWorkbenchTabs({
     row,
     column: 2,
     width: Math.max(0, cols() - 2),
-    tabs: panelIds.map((id) => ({
-      id,
-      title: panelTitle(id),
-      selected: maximized.peek() === id,
-      hidden: minimized.peek()[id],
-    })),
+    tabs: workbenchTabEntriesInto(fullscreenTabEntries, webWindows.inspect().tabs, panelTitle),
   });
   write(frame, row, layout.prefixRect.column, paint(layout.prefix, theme().muted, theme().backgroundSoft));
   for (const button of layout.buttons) {
