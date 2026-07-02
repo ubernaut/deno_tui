@@ -10144,7 +10144,8 @@ function layoutWorkbenchShelf(options) {
     column: options.column,
     width: options.width,
     prefix: options.prefix ?? "minimized ",
-    entries: options.entries.map((entry) => ({ ...entry, selected: false, hidden: true }))
+    entries: options.entries,
+    mode: "shelf"
   });
 }
 function layoutWorkbenchTabs(options) {
@@ -10153,12 +10154,8 @@ function layoutWorkbenchTabs(options) {
     column: options.column,
     width: options.width,
     prefix: options.prefix ?? "windows ",
-    entries: options.tabs.map((tab) => ({
-      ...tab,
-      title: `${tab.selected ? "\u25CF" : tab.hidden ? "\u25CB" : " "} ${tab.title}`,
-      selected: tab.selected === true,
-      hidden: tab.hidden === true
-    }))
+    entries: options.tabs,
+    mode: "tabs"
   });
 }
 function layoutButtonRow(options) {
@@ -10168,15 +10165,19 @@ function layoutButtonRow(options) {
   const buttons = [];
   for (const entry of options.entries) {
     if (column >= right) break;
+    const tab = entry;
+    const selected = options.mode === "tabs" && tab.selected === true;
+    const hidden = options.mode === "shelf" || options.mode === "tabs" && tab.hidden === true;
+    const label = options.mode === "tabs" ? `${selected ? "\u25CF" : hidden ? "\u25CB" : " "} ${entry.title}` : entry.title;
     const available = Math.max(0, right - column);
-    const width = Math.min(textWidth(buttonText(entry.title)), available);
+    const width = Math.min(textWidth(buttonText(label)), available);
     if (width <= 0) break;
     buttons.push({
       id: entry.id,
-      label: entry.title,
+      label,
       rect: { column, row: options.row, width, height: 1 },
-      selected: entry.selected === true,
-      hidden: entry.hidden === true
+      selected,
+      hidden
     });
     column += width + 1;
   }
