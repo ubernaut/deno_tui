@@ -151,6 +151,8 @@ Work:
         `renderDataTableRows(...).map(...)` plus spread composition in the redraw path.
   - [x] Reworked API Workbench explorer row styling to reuse a render-row buffer instead of allocating a mapped style
         array on every frame.
+  - [x] Reworked API Workbench inspector rows to reuse header/action buffers instead of chained slice/flatMap/map
+        projections and spread composition during redraw.
 - [x] Replace duplicated theme/window/menu persistence code with a shared versioned serializer.
   - [x] Extracted shared workbench workspace normalization, panel-state normalization, upsert, rename, delete, lookup,
         and legacy window-entry expansion helpers into `src/app/workbench_workspace.ts`.

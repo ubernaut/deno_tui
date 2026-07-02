@@ -283,6 +283,8 @@ const dataTableTextRows: string[] = [];
 const dataTableBodyRows: RowStyle[] = [];
 const dataTableRenderRows: RowStyle[] = [];
 const explorerRenderRows: RowStyle[] = [];
+const inspectorRenderRows: RowStyle[] = [];
+const inspectorActionTextRows: string[] = [];
 const explorerKeys = new Set(["up", "down", "left", "right", "pageup", "pagedown", "home", "end", "space", "return"]);
 const htmlCssLayoutWindowOption: NewWindowOption = {
   id: HTML_CSS_LAYOUT_OPTION_ID,
@@ -1378,7 +1380,8 @@ function renderExplorer(frame: Frame, rect: Rectangle): void {
 
 function renderInspector(frame: Frame, rect: Rectangle): void {
   const t = theme();
-  const headerLines = [
+  inspectorRenderRows.length = 0;
+  inspectorRenderRows.push(
     { text: " Composable API surfaces ", fg: t.background, bg: t.accent, bold: true },
     { text: "explorer  FileExplorerController", fg: t.good, bg: t.surface },
     { text: "menu      MenuBarController", fg: t.good, bg: t.surface },
@@ -1390,18 +1393,28 @@ function renderInspector(frame: Frame, rect: Rectangle): void {
     { text: `theme     ${themes[themeIndex.peek()]!.label}`, fg: t.warn, bg: t.surface, bold: true },
     { text: "", bg: t.surface },
     { text: " Recent actions ", fg: t.background, bg: t.border, bold: true },
-  ];
-  const availableActionRows = Math.max(0, rect.height - headerLines.length);
-  const actionLines = commandLog.peek()
-    .slice(-Math.max(4, availableActionRows))
-    .flatMap((line) => wrapPlainText(`• ${line}`, rect.width, fit))
-    .slice(-availableActionRows)
-    .map((line) => ({
-      text: line,
-      fg: t.text,
-      bg: t.panelSoft,
-    }));
-  writeRows(frame, rect, [...headerLines, ...actionLines]);
+  );
+  const availableActionRows = Math.max(0, rect.height - inspectorRenderRows.length);
+  inspectorActionTextRows.length = 0;
+  if (availableActionRows > 0) {
+    const logs = commandLog.peek();
+    const start = Math.max(0, logs.length - Math.max(4, availableActionRows));
+    for (let index = start; index < logs.length; index += 1) {
+      const wrapped = wrapPlainText(`• ${logs[index]!}`, rect.width, fit);
+      for (let row = 0; row < wrapped.length; row += 1) {
+        inspectorActionTextRows.push(wrapped[row]!);
+      }
+    }
+    const firstActionRow = Math.max(0, inspectorActionTextRows.length - availableActionRows);
+    for (let index = firstActionRow; index < inspectorActionTextRows.length; index += 1) {
+      inspectorRenderRows.push({
+        text: inspectorActionTextRows[index]!,
+        fg: t.text,
+        bg: t.panelSoft,
+      });
+    }
+  }
+  writeRows(frame, rect, inspectorRenderRows);
 }
 
 function renderData(frame: Frame, rect: Rectangle): void {
