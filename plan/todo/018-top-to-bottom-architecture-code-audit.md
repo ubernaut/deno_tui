@@ -569,6 +569,8 @@ Work:
       repeated linear-to-sRGB conversion, block blending, ANSI lookup, and cell string assembly.
 - [x] Made edge compute output resources lazy so default block-style renderers do not allocate the Sobel edge storage
       buffer or bind group until an edge-enabled ASCII config actually needs them.
+- [x] Kept terminal-only Three ASCII config changes from dirtying GPU compute bind groups, and read effect colors
+      directly from the active node instead of cloning them every rendered frame.
 
 Acceptance checks:
 

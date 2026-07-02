@@ -438,7 +438,6 @@ export class ThreeAsciiRenderer {
 
   setTerminalEdgeBias(value: number): void {
     this.terminalEdgeBias = Math.max(0.5, value);
-    this.computeDirty = true;
   }
 
   getTerminalGlyphStyle(): TerminalGlyphStyle {
@@ -447,7 +446,6 @@ export class ThreeAsciiRenderer {
 
   setTerminalGlyphStyle(value: TerminalGlyphStyle): void {
     this.terminalGlyphStyle = value;
-    this.computeDirty = true;
   }
 
   async renderToAnsiGrid(
@@ -793,8 +791,8 @@ export class ThreeAsciiRenderer {
       depthFalloff: Number(asciiNode.depthFalloff.value),
       depthOffset: Number(asciiNode.depthOffset.value),
       edgeThreshold: Number(asciiNode.edgeThreshold.value),
-      asciiColor: (asciiNode.asciiColor.value as Color).clone(),
-      backgroundColor: (asciiNode.backgroundColor.value as Color).clone(),
+      asciiColor: asciiNode.asciiColor.value as Color,
+      backgroundColor: asciiNode.backgroundColor.value as Color,
     };
   }
 
