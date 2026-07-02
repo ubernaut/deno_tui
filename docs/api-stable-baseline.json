@@ -5463,6 +5463,13 @@
       "documented": true
     },
     {
+      "module": "src/components/list.ts",
+      "name": "visibleListRowsInto",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
       "module": "src/components/log_viewer.ts",
       "name": "LogViewer",
       "kind": "class",

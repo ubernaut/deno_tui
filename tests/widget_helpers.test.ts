@@ -27,7 +27,7 @@ import { InputController } from "../src/components/input.ts";
 import { hitTestWidgetRegions, stackedRowHitRegions, stackedRowIndexAt } from "../src/components/interaction.ts";
 import { labelLineLayout } from "../src/components/label.ts";
 import { renderKeyHelp } from "../src/components/key_help.ts";
-import { ListController, virtualRows, visibleListRows } from "../src/components/list.ts";
+import { ListController, virtualRows, visibleListRows, visibleListRowsInto } from "../src/components/list.ts";
 import {
   clampMenuIndex,
   MenuBarController,
@@ -101,6 +101,14 @@ Deno.test("visibleListRows centers the selected item when space allows", () => {
     "> gamma",
     "  delta",
   ]);
+  const buffer = ["stale", "rows"];
+  assertEquals(visibleListRowsInto(buffer, ["alpha", "beta", "gamma", "delta"], 2, 3), [
+    "  beta",
+    "> gamma",
+    "  delta",
+  ]);
+  assertEquals(visibleListRowsInto(buffer, ["alpha"], 0, 2), buffer);
+  assertEquals(buffer, ["> alpha"]);
 });
 
 Deno.test("shared widget hit helpers map stacked rows and z-ordered regions", () => {

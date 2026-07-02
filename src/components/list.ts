@@ -43,13 +43,26 @@ export function virtualRows<T>(
 
 /** Public helper for visible List Rows. */
 export function visibleListRows(items: readonly string[], selectedIndex: number, height: number): string[] {
-  const rows = virtualRows(items, selectedIndex, height);
-  const output = new Array<string>(rows.length);
-  for (let index = 0; index < rows.length; index += 1) {
-    const row = rows[index]!;
-    output[index] = `${row.selected ? ">" : " "} ${row.item}`;
+  return visibleListRowsInto([], items, selectedIndex, height);
+}
+
+/** Renders visible List Rows into a caller-owned buffer. */
+export function visibleListRowsInto(
+  target: string[],
+  items: readonly string[],
+  selectedIndex: number,
+  height: number,
+): string[] {
+  const safeHeight = Math.max(0, height);
+  const selected = clampSelectionIndex(items.length, selectedIndex);
+  const window = selectionWindow(items.length, selected, safeHeight);
+  const count = Math.max(0, window.end - window.start);
+  target.length = count;
+  for (let offset = 0; offset < count; offset += 1) {
+    const index = window.start + offset;
+    target[offset] = `${index === selected ? ">" : " "} ${items[index]!}`;
   }
-  return output;
+  return target;
 }
 
 /** Options for configuring list Controller. */
@@ -169,6 +182,7 @@ export class List extends Component {
   selectedIndex: Signal<number>;
   readonly controller: ListController;
   readonly #rows: Computed<string[]>;
+  readonly #rowBuffer: string[] = [];
 
   constructor(options: ListOptions) {
     super(options);
@@ -181,7 +195,9 @@ export class List extends Component {
       });
     this.items = this.controller.items;
     this.selectedIndex = this.controller.selectedIndex;
-    this.#rows = new Computed(() => this.controller.rows(this.rectangle.value.height));
+    this.#rows = new Computed(() =>
+      visibleListRowsInto(this.#rowBuffer, this.items.value, this.selectedIndex.value, this.rectangle.value.height)
+    );
 
     this.on("keyPress", (event) => {
       this.controller.handleKeyPress(event, this.rectangle.peek().height);
