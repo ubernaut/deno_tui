@@ -1,5 +1,9 @@
 import { assertEquals, assertThrows } from "./deps.ts";
-import { createThreeAsciiReadbackLayout, createThreeAsciiReadbackViews } from "../src/three_ascii/readback.ts";
+import {
+  createThreeAsciiReadbackLayout,
+  createThreeAsciiReadbackViews,
+  ThreeAsciiReadbackLayoutCache,
+} from "../src/three_ascii/readback.ts";
 
 Deno.test("three ascii readback layout packs fill edge and color buffers", () => {
   const layout = createThreeAsciiReadbackLayout({
@@ -62,4 +66,49 @@ Deno.test("three ascii readback layout rejects unaligned byte lengths", () => {
     RangeError,
     "Float32-aligned",
   );
+});
+
+Deno.test("three ascii readback layout cache reuses unchanged layouts", () => {
+  const cache = new ThreeAsciiReadbackLayoutCache();
+  const first = cache.resolve({
+    fillByteLength: 8,
+    edgeByteLength: 16,
+    colorByteLength: 32,
+    includeEdges: true,
+  });
+  const second = cache.resolve({
+    fillByteLength: 8,
+    edgeByteLength: 16,
+    colorByteLength: 32,
+    includeEdges: true,
+  });
+
+  assertEquals(second === first, true);
+});
+
+Deno.test("three ascii readback layout cache invalidates on shape changes and clear", () => {
+  const cache = new ThreeAsciiReadbackLayoutCache();
+  const first = cache.resolve({
+    fillByteLength: 8,
+    edgeByteLength: 16,
+    colorByteLength: 32,
+    includeEdges: true,
+  });
+  const withoutEdges = cache.resolve({
+    fillByteLength: 8,
+    edgeByteLength: 16,
+    colorByteLength: 32,
+    includeEdges: false,
+  });
+  cache.clear();
+  const afterClear = cache.resolve({
+    fillByteLength: 8,
+    edgeByteLength: 16,
+    colorByteLength: 32,
+    includeEdges: false,
+  });
+
+  assertEquals(withoutEdges === first, false);
+  assertEquals(withoutEdges.edgeOffset, undefined);
+  assertEquals(afterClear === withoutEdges, false);
 });

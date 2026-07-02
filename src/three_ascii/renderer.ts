@@ -13,9 +13,9 @@ import type { TerminalGlyphStyle } from "./glyphs.ts";
 import { HeadlessCanvas } from "./headless_canvas.ts";
 import { loadAsciiLutTextures } from "./loadAsciiLuts.ts";
 import {
-  createThreeAsciiReadbackLayout,
   createThreeAsciiReadbackViews,
   type ThreeAsciiReadbackLayout,
+  ThreeAsciiReadbackLayoutCache,
 } from "./readback.ts";
 import { getCompatibleWebGPUDevice } from "./webgpu_compat.ts";
 
@@ -354,6 +354,7 @@ export class ThreeAsciiRenderer {
   private outputReadback?: ReadbackBuffer;
   private uniformValues = new Float32Array(24);
   private readonly ansiGridAssembler = new ThreeAsciiAnsiGridAssembler({ reuseGrid: true });
+  private readonly readbackLayoutCache = new ThreeAsciiReadbackLayoutCache();
   private outputCellCount = 0;
   private sizeDirty = true;
   private computeDirty = true;
@@ -550,7 +551,7 @@ export class ThreeAsciiRenderer {
       workgroupsY,
     );
 
-    const readbackLayout = createThreeAsciiReadbackLayout({
+    const readbackLayout = this.readbackLayoutCache.resolve({
       fillByteLength: this.fillOutput!.byteLength,
       edgeByteLength: this.edgeOutput?.byteLength ?? 0,
       colorByteLength: this.colorOutput!.byteLength,
@@ -594,6 +595,7 @@ export class ThreeAsciiRenderer {
     this.outputReadback = this.destroyReadbackBuffer(this.outputReadback);
     this.paramsBuffer?.destroy();
     this.paramsBuffer = undefined;
+    this.readbackLayoutCache.clear();
 
     this.renderPipeline?.dispose();
     this.renderPipeline = undefined;

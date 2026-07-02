@@ -35,3 +35,5 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Extracted responsive workbench header help text into a shared status helper.
 - Skipped unchanged Three panel grid publication so Kitty-only image frames do not request terminal redraws for the same
   cached blank grid.
+- Added a cached Three ASCII readback layout helper so renderer ANSI frames can reuse stable GPU readback metadata until
+  the output shape or edge payload changes.

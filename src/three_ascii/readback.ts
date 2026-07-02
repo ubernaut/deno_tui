@@ -25,6 +25,42 @@ export interface ThreeAsciiReadbackViews {
   colors: Float32Array;
 }
 
+/** Reuses readback layout metadata while the GPU output buffer shape is unchanged. */
+export class ThreeAsciiReadbackLayoutCache {
+  private cached?: ThreeAsciiReadbackLayout;
+  private fillByteLength = -1;
+  private edgeByteLength = -1;
+  private colorByteLength = -1;
+  private includeEdges = false;
+
+  resolve(options: ThreeAsciiReadbackLayoutOptions): ThreeAsciiReadbackLayout {
+    if (
+      this.cached &&
+      this.fillByteLength === options.fillByteLength &&
+      this.edgeByteLength === options.edgeByteLength &&
+      this.colorByteLength === options.colorByteLength &&
+      this.includeEdges === options.includeEdges
+    ) {
+      return this.cached;
+    }
+
+    this.cached = createThreeAsciiReadbackLayout(options);
+    this.fillByteLength = options.fillByteLength;
+    this.edgeByteLength = options.edgeByteLength;
+    this.colorByteLength = options.colorByteLength;
+    this.includeEdges = options.includeEdges;
+    return this.cached;
+  }
+
+  clear(): void {
+    this.cached = undefined;
+    this.fillByteLength = -1;
+    this.edgeByteLength = -1;
+    this.colorByteLength = -1;
+    this.includeEdges = false;
+  }
+}
+
 export function createThreeAsciiReadbackLayout(options: ThreeAsciiReadbackLayoutOptions): ThreeAsciiReadbackLayout {
   const fillByteLength = validateByteLength("fill", options.fillByteLength);
   const edgeByteLength = validateByteLength("edge", options.edgeByteLength);
