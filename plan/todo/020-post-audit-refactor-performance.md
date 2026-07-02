@@ -39,3 +39,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   the output shape or edge payload changes.
 - Extracted workbench workspace persistence into a reusable storage adapter with normalized load/persist helpers and
   recoverable storage diagnostics.
+- Extracted browser panel workspace cache, hydrate, and persist helpers so the web workbench can share tested storage
+  diagnostics for localStorage and async stores.

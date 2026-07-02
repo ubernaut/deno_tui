@@ -5,11 +5,14 @@ import {
   defaultWorkbenchMinimizedState,
   deleteWorkbenchWorkspace,
   findWorkbenchWorkspace,
+  hydrateWorkbenchPanelWorkspaceStore,
+  loadWorkbenchPanelWorkspaceCache,
   loadWorkbenchWorkspaceStorage,
   normalizeWorkbenchPanelWorkspaceState,
   normalizeWorkbenchWorkspaceName,
   normalizeWorkbenchWorkspaces,
   normalizeWorkbenchWorkspaceStorage,
+  persistWorkbenchPanelWorkspaceState,
   persistWorkbenchWorkspaceStorage,
   renameWorkbenchWorkspace,
   serializeWorkbenchWorkspaces,
@@ -209,3 +212,73 @@ Deno.test("workbench workspace store factory falls back to json when indexeddb i
 
   assertEquals(store.constructor.name, "JsonFileStore");
 });
+
+Deno.test("workbench panel workspace cache loads normalized state and reports malformed cache", () => {
+  const diagnostics: unknown[] = [];
+  const cache = new TestPanelWorkspaceCache();
+  cache.setItem("workspace", JSON.stringify({ active: "right" }));
+
+  const loaded = loadWorkbenchPanelWorkspaceCache({
+    key: "workspace",
+    cache,
+    fallback: {},
+    normalize: (value) =>
+      normalizeWorkbenchPanelWorkspaceState(value as { active?: "left" | "right" }, {
+        panelIds: ["left", "right"],
+        defaultActive: "left",
+      }),
+  });
+  cache.setItem("workspace", "{");
+  const recovered = loadWorkbenchPanelWorkspaceCache({
+    key: "workspace",
+    cache,
+    fallback: { active: "left" },
+    normalize: (value) => value as { active?: string },
+    diagnostics: { report: (entry: unknown) => diagnostics.push(entry) },
+    diagnosticSource: "test-workbench",
+  });
+
+  assertEquals(loaded.active, "right");
+  assertEquals(recovered, { active: "left" });
+  assertEquals((diagnostics[0] as { operation: string; storage: string }).operation, "workspace-read");
+  assertEquals((diagnostics[0] as { operation: string; storage: string }).storage, "localStorage");
+});
+
+Deno.test("workbench panel workspace store hydrates and persists state", async () => {
+  const cache = new TestPanelWorkspaceCache();
+  const store = new MemoryStore<{ active?: string }>();
+  await store.set("default", { active: "right" });
+  let applied: { active?: string } | undefined;
+
+  await hydrateWorkbenchPanelWorkspaceStore({
+    key: "default",
+    store,
+    normalize: (value) => value as { active?: string },
+    apply: (state) => {
+      applied = state;
+    },
+  });
+  persistWorkbenchPanelWorkspaceState({ active: "left" }, {
+    cache,
+    cacheKey: "workspace",
+    store,
+    storeKey: "default",
+  });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  assertEquals(applied, { active: "right" });
+  assertEquals(cache.getItem("workspace"), '{"active":"left"}');
+  assertEquals(await store.get("default"), { active: "left" });
+});
+
+class TestPanelWorkspaceCache {
+  readonly values = new Map<string, string>();
+
+  getItem(key: string): string | null {
+    return this.values.get(key) ?? null;
+  }
+
+  setItem(key: string, value: string): void {
+    this.values.set(key, value);
+  }
+}

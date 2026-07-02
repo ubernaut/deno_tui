@@ -26,6 +26,7 @@ import {
   formatWorkbenchDiagnosticStatus,
   type HitTarget,
   HitTargetStack,
+  hydrateWorkbenchPanelWorkspaceStore,
   initialWorkbenchDiagnosticLogRows,
   InputController,
   isWorkbenchMenuActivationKey,
@@ -40,6 +41,7 @@ import {
   layoutWorkbenchTitlebar,
   layoutWorkbenchTopMenuItemRect,
   layoutWrappedControlOptions,
+  loadWorkbenchPanelWorkspaceCache,
   maxTextWidth,
   MenuBarController,
   modalContentHeight,
@@ -47,6 +49,7 @@ import {
   moveWorkbenchMenuIndex,
   normalizeTerminalWorkspaceSnapshot,
   normalizeWorkbenchPanelWorkspaceState,
+  persistWorkbenchPanelWorkspaceState,
   prepareWorkbenchRows,
   ProgressBarController,
   RadioGroupController,
@@ -2558,23 +2561,24 @@ function defaultMinimizedState(): Record<PanelId, boolean> {
 }
 
 function loadCachedWebWorkspaceState(): WebWorkspaceState {
-  try {
-    const saved = globalThis.localStorage?.getItem(WORKSPACE_STORAGE_KEY);
-    if (!saved) return {};
-    return normalizeWebWorkspaceState(JSON.parse(saved) as WebWorkspaceState);
-  } catch (error) {
-    reportWebStorageDiagnostic("workspace-read", "localStorage", error);
-    return {};
-  }
+  return loadWorkbenchPanelWorkspaceCache({
+    key: WORKSPACE_STORAGE_KEY,
+    normalize: normalizeWebWorkspaceState,
+    fallback: {},
+    diagnostics: storageDiagnostics,
+    diagnosticSource: "web-workbench",
+  });
 }
 
 async function hydrateWebWorkspaceState(): Promise<void> {
-  try {
-    const stored = await webWorkspaceStore.get("default");
-    if (stored) applyWebWorkspaceState(normalizeWebWorkspaceState(stored));
-  } catch (error) {
-    reportWebStorageDiagnostic("workspace-hydrate", "IndexedDB", error);
-  }
+  await hydrateWorkbenchPanelWorkspaceStore({
+    key: "default",
+    store: webWorkspaceStore,
+    normalize: normalizeWebWorkspaceState,
+    apply: applyWebWorkspaceState,
+    diagnostics: storageDiagnostics,
+    diagnosticSource: "web-workbench",
+  });
 }
 
 function applyWebWorkspaceState(state: WebWorkspaceState): void {
@@ -2585,33 +2589,32 @@ function applyWebWorkspaceState(state: WebWorkspaceState): void {
   if (state.terminal) applyWebTerminalWorkspaceSnapshot(state.terminal);
 }
 
-function normalizeWebWorkspaceState(value: WebWorkspaceState | null | undefined): WebWorkspaceState {
-  const state = normalizeWorkbenchPanelWorkspaceState(value, {
+function normalizeWebWorkspaceState(value: unknown): WebWorkspaceState {
+  const candidate = value && typeof value === "object" ? value as WebWorkspaceState : undefined;
+  const state = normalizeWorkbenchPanelWorkspaceState(candidate, {
     panelIds,
     defaultActive: "inspector",
     minTileDensity: -3,
     maxTileDensity: 3,
   });
-  const terminal = normalizeWebTerminalWorkspaceSnapshot(value?.terminal);
+  const terminal = normalizeWebTerminalWorkspaceSnapshot(candidate?.terminal);
   return terminal ? { ...state, terminal } : state;
 }
 
 function persistWebWorkspaceState(): void {
-  try {
-    const snapshot: WebWorkspaceState = {
-      active: active.peek(),
-      maximized: maximized.peek(),
-      minimized: minimized.peek(),
-      tileDensity: tileDensity.peek(),
-      terminal: snapshotTerminalWorkspace(webTerminalWorkspace),
-    };
-    globalThis.localStorage?.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify(snapshot));
-    void webWorkspaceStore.set("default", snapshot).catch((error) =>
-      reportWebStorageDiagnostic("workspace-persist", "IndexedDB", error)
-    );
-  } catch (error) {
-    reportWebStorageDiagnostic("workspace-persist", "localStorage", error);
-  }
+  persistWorkbenchPanelWorkspaceState({
+    active: active.peek(),
+    maximized: maximized.peek(),
+    minimized: minimized.peek(),
+    tileDensity: tileDensity.peek(),
+    terminal: snapshotTerminalWorkspace(webTerminalWorkspace),
+  }, {
+    cacheKey: WORKSPACE_STORAGE_KEY,
+    storeKey: "default",
+    store: webWorkspaceStore,
+    diagnostics: storageDiagnostics,
+    diagnosticSource: "web-workbench",
+  });
 }
 
 function normalizeWebTerminalWorkspaceSnapshot(value: unknown): TerminalWorkspaceSnapshot | undefined {

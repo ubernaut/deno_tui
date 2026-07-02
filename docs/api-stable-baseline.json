@@ -4021,6 +4021,62 @@
       "documented": true
     },
     {
+      "module": "src/app/workbench_panel_workspace_store.ts",
+      "name": "hydrateWorkbenchPanelWorkspaceStore",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_panel_workspace_store.ts",
+      "name": "HydrateWorkbenchPanelWorkspaceStoreOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_panel_workspace_store.ts",
+      "name": "loadWorkbenchPanelWorkspaceCache",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_panel_workspace_store.ts",
+      "name": "LoadWorkbenchPanelWorkspaceCacheOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_panel_workspace_store.ts",
+      "name": "persistWorkbenchPanelWorkspaceState",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_panel_workspace_store.ts",
+      "name": "PersistWorkbenchPanelWorkspaceStateOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_panel_workspace_store.ts",
+      "name": "WorkbenchPanelWorkspaceCache",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_panel_workspace_store.ts",
+      "name": "WorkbenchPanelWorkspaceStorageDiagnostics",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
       "module": "src/app/workbench_shelf.ts",
       "name": "layoutWorkbenchShelf",
       "kind": "function",
