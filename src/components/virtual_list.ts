@@ -269,6 +269,7 @@ export class VirtualList<T> extends Component {
   readonly selection: SelectionController;
   readonly format: (item: T, index: number) => string;
   readonly controller: VirtualListController<T>;
+  readonly #displayRows: Computed<string[]>;
   readonly #syncViewportHeight = () => {
     this.controller.setViewportHeight(this.rectangle.peek().height);
   };
@@ -286,6 +287,7 @@ export class VirtualList<T> extends Component {
     this.items = this.controller.items;
     this.selection = this.controller.selection;
     this.format = this.controller.format;
+    this.#displayRows = new Computed(() => renderVirtualRows(this.controller.rows.value));
     this.#syncViewportHeight();
     this.rectangle.subscribe(this.#syncViewportHeight);
 
@@ -298,19 +300,24 @@ export class VirtualList<T> extends Component {
     });
     this.on("destroy", () => {
       this.rectangle.unsubscribe(this.#syncViewportHeight);
+      this.#displayRows.dispose();
       if (ownsController) this.controller.dispose();
     });
   }
 
   override draw(): void {
     super.draw();
-    const rows = new Computed(() =>
-      this.controller.rows.value.map((row) => {
-        const cursor = row.active ? ">" : " ";
-        const marker = row.selected ? "●" : " ";
-        return `${cursor} ${marker} ${row.text}`;
-      })
-    );
-    drawTextRows(this, rows);
+    drawTextRows(this, this.#displayRows);
   }
+}
+
+function renderVirtualRows<T>(rows: readonly VirtualListRow<T>[]): string[] {
+  const output = new Array<string>(rows.length);
+  for (let index = 0; index < rows.length; index += 1) {
+    const row = rows[index]!;
+    const cursor = row.active ? ">" : " ";
+    const marker = row.selected ? "●" : " ";
+    output[index] = `${cursor} ${marker} ${row.text}`;
+  }
+  return output;
 }

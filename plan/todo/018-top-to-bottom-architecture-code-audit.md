@@ -891,6 +891,8 @@ Work:
         keeping primitive-mode fallback output directly fixture-testable outside the main visualization dispatcher.
   - [x] Optimized `ThreeAsciiObject` canvas handoff to queue only changed ASCII cells between frames, with a fake
         renderer regression proving stable frames do not enqueue redundant repaint cells.
+  - [x] Removed per-draw `Computed` allocation from `VirtualList` by making formatted display rows part of the component
+        lifecycle.
 - [x] Make demo-only assets and NGE-inspired primitives clearly separate from library APIs.
   - [x] Added `app/neon_three_catalog.ts` for supported Three scene metadata and labels, keeping demo/NGE catalog data
         separate from the monolithic scene factory and shared by visualization footers plus scene coverage tests.
