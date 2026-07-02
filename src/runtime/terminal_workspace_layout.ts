@@ -95,7 +95,7 @@ export function terminalWorkspaceLayoutWithActive(
   sessionId: string,
 ): TerminalWorkspaceLayoutState {
   const pane = findTerminalWorkspacePaneBySession(layout.root, sessionId) ??
-    collectTerminalWorkspacePanes(layout.root)[0];
+    firstTerminalWorkspacePane(layout.root);
   return {
     root: layout.root ? cloneTerminalWorkspaceLayoutNode(layout.root) : undefined,
     activePaneId: pane?.id,
@@ -175,9 +175,9 @@ export function pruneTerminalWorkspaceLayoutSessions(
 export function collectTerminalWorkspacePanes(
   node: TerminalWorkspaceLayoutNode | undefined,
 ): TerminalWorkspacePaneNode[] {
-  if (!node) return [];
-  if (node.kind === "pane") return [cloneTerminalWorkspacePaneNode(node)];
-  return [...collectTerminalWorkspacePanes(node.first), ...collectTerminalWorkspacePanes(node.second)];
+  const panes: TerminalWorkspacePaneNode[] = [];
+  collectTerminalWorkspacePanesInto(node, panes);
+  return panes;
 }
 
 export function findTerminalWorkspacePane(
@@ -204,7 +204,7 @@ export function findActiveTerminalWorkspacePane(
 ): TerminalWorkspacePaneNode | undefined {
   return layout.activePaneId
     ? findTerminalWorkspacePane(layout.root, layout.activePaneId)
-    : collectTerminalWorkspacePanes(layout.root)[0];
+    : firstTerminalWorkspacePane(layout.root);
 }
 
 export function replaceTerminalWorkspacePane(
@@ -268,20 +268,7 @@ export function findNearestTerminalWorkspaceSplit(
   node: TerminalWorkspaceLayoutNode | undefined,
   paneId: string,
 ): { split: TerminalWorkspaceSplitNode; activeSide: "first" | "second" } | undefined {
-  if (!node || node.kind === "pane") return undefined;
-  if (findTerminalWorkspacePane(node.first, paneId)) {
-    return findNearestTerminalWorkspaceSplit(node.first, paneId) ?? {
-      split: cloneTerminalWorkspaceSplitNode(node),
-      activeSide: "first",
-    };
-  }
-  if (findTerminalWorkspacePane(node.second, paneId)) {
-    return findNearestTerminalWorkspaceSplit(node.second, paneId) ?? {
-      split: cloneTerminalWorkspaceSplitNode(node),
-      activeSide: "second",
-    };
-  }
-  return undefined;
+  return findNearestTerminalWorkspaceSplitSearch(node, paneId).nearest;
 }
 
 export function uniqueTerminalWorkspaceLayoutId(prefix: string, root?: TerminalWorkspaceLayoutNode): string {
@@ -417,6 +404,58 @@ function cloneTerminalWorkspaceSplitNode(node: TerminalWorkspaceSplitNode): Term
     first: cloneTerminalWorkspaceLayoutNode(node.first),
     second: cloneTerminalWorkspaceLayoutNode(node.second),
   };
+}
+
+function collectTerminalWorkspacePanesInto(
+  node: TerminalWorkspaceLayoutNode | undefined,
+  panes: TerminalWorkspacePaneNode[],
+): void {
+  if (!node) return;
+  if (node.kind === "pane") {
+    panes.push(cloneTerminalWorkspacePaneNode(node));
+    return;
+  }
+  collectTerminalWorkspacePanesInto(node.first, panes);
+  collectTerminalWorkspacePanesInto(node.second, panes);
+}
+
+function firstTerminalWorkspacePane(
+  node: TerminalWorkspaceLayoutNode | undefined,
+): TerminalWorkspacePaneNode | undefined {
+  if (!node) return undefined;
+  if (node.kind === "pane") return cloneTerminalWorkspacePaneNode(node);
+  return firstTerminalWorkspacePane(node.first) ?? firstTerminalWorkspacePane(node.second);
+}
+
+function findNearestTerminalWorkspaceSplitSearch(
+  node: TerminalWorkspaceLayoutNode | undefined,
+  paneId: string,
+): {
+  found: boolean;
+  nearest?: { split: TerminalWorkspaceSplitNode; activeSide: "first" | "second" };
+} {
+  if (!node) return { found: false };
+  if (node.kind === "pane") return { found: node.id === paneId };
+
+  const first = findNearestTerminalWorkspaceSplitSearch(node.first, paneId);
+  if (first.nearest) return first;
+  if (first.found) {
+    return {
+      found: true,
+      nearest: { split: cloneTerminalWorkspaceSplitNode(node), activeSide: "first" },
+    };
+  }
+
+  const second = findNearestTerminalWorkspaceSplitSearch(node.second, paneId);
+  if (second.nearest) return second;
+  if (second.found) {
+    return {
+      found: true,
+      nearest: { split: cloneTerminalWorkspaceSplitNode(node), activeSide: "second" },
+    };
+  }
+
+  return { found: false };
 }
 
 function collectLayoutIds(node: TerminalWorkspaceLayoutNode | undefined, ids: Set<string>): void {

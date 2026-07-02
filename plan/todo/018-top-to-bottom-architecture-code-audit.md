@@ -270,6 +270,8 @@ Work:
         topmost scan instead of per-pointer copy/filter/sort allocation, with z/id tie-break regression coverage.
   - [x] Reworked log viewer, terminal output, and metric-series bounded buffers to avoid spread/map/slice churn in
         append, trim, snapshot, and inspection paths while preserving dashboard and terminal behavior.
+  - [x] Reworked terminal workspace pane collection and nearest-split lookup to use accumulator/search traversal instead
+        of recursive spread collection and clone-heavy subtree membership probes.
 
 Acceptance checks:
 
