@@ -92,13 +92,16 @@ export function parseCssStylesheet(source: string): TuiCssStylesheet {
 
 /** Parses CSS-like declarations from a rule body or inline style attribute. */
 export function parseCssDeclarations(source: string): TuiCssDeclaration[] {
-  return splitDeclarations(source).map((part) => {
+  const parts = splitDeclarations(source);
+  const declarations: TuiCssDeclaration[] = [];
+  for (const part of parts) {
     const colon = part.indexOf(":");
-    if (colon < 0) return undefined;
+    if (colon < 0) continue;
     const property = part.slice(0, colon).trim().toLowerCase();
     const value = part.slice(colon + 1).trim();
-    return property && value ? { property, value } : undefined;
-  }).filter((entry): entry is TuiCssDeclaration => entry !== undefined);
+    if (property && value) declarations.push({ property, value });
+  }
+  return declarations;
 }
 
 /** Returns a compact CSS specificity score for a selector. */
@@ -106,10 +109,11 @@ export function cssSelectorSpecificity(selector: string): number {
   const idCount = (selector.match(/#[A-Za-z_][\w-]*/g) ?? []).length;
   const classCount = (selector.match(/\.[A-Za-z_][\w-]*/g) ?? []).length;
   const pseudoCount = (selector.match(/:[A-Za-z_][\w-]*/g) ?? []).length;
-  const tagCount = selectorParts(selector)
-    .map((part) => /^(#text|[A-Za-z][\w-]*|\*)/.exec(part.simple)?.[1])
-    .filter((tag) => tag !== undefined && tag !== "*")
-    .length;
+  let tagCount = 0;
+  for (const part of selectorParts(selector)) {
+    const tag = /^(#text|[A-Za-z][\w-]*|\*)/.exec(part.simple)?.[1];
+    if (tag !== undefined && tag !== "*") tagCount += 1;
+  }
   return idCount * 100 + (classCount + pseudoCount) * 10 + tagCount;
 }
 
@@ -130,7 +134,15 @@ export function selectorParts(selector: string): Array<{ simple: string; combina
 }
 
 function splitSelectorList(source: string): string[] {
-  return source.split(",").map((selector) => selector.trim()).filter(Boolean);
+  const selectors: string[] = [];
+  let start = 0;
+  for (let index = 0; index <= source.length; index += 1) {
+    if (index !== source.length && source[index] !== ",") continue;
+    const selector = source.slice(start, index).trim();
+    if (selector) selectors.push(selector);
+    start = index + 1;
+  }
+  return selectors;
 }
 
 function splitDeclarations(source: string): string[] {
@@ -148,7 +160,7 @@ function splitDeclarations(source: string): string[] {
   }
   const last = source.slice(start).trim();
   if (last) declarations.push(last);
-  return declarations.filter(Boolean);
+  return declarations;
 }
 
 function stripCssComments(source: string): string {

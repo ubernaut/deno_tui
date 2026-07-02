@@ -337,6 +337,8 @@ Work:
         instead of map/filter chains while preserving the bounded scan behavior.
   - [x] Reworked HTML-like markup tree conversion to collect meaningful children, text, classes, layout children, and
         node counts with direct passes instead of repeated filter/map/reduce scans before layout solving.
+  - [x] Reworked CSS cascade matching, child recursion, variable normalization, declaration parsing, selector-list
+        parsing, and specificity tag counting to avoid repeated filter/map pipelines during markup layout.
 
 Acceptance checks:
 

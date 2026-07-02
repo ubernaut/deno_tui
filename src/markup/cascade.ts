@@ -96,17 +96,20 @@ function applyNode(
   style.visibility = inherited.visibility;
   style.variables = { ...inherited.variables };
 
-  const matches = stylesheet.rules
-    .filter((rule) =>
+  const matches: MatchedRule[] = [];
+  for (const rule of stylesheet.rules) {
+    if (
       matchesCssMedia(rule.media, options.viewport) &&
       matchesCssSelector(rule.selector, node, ancestors, options.states ?? {})
-    )
-    .map((rule): MatchedRule => ({
-      declarations: rule.declarations,
-      specificity: rule.specificity,
-      order: rule.order,
-    }))
-    .sort((left, right) => left.specificity - right.specificity || left.order - right.order);
+    ) {
+      matches.push({
+        declarations: rule.declarations,
+        specificity: rule.specificity,
+        order: rule.order,
+      });
+    }
+  }
+  matches.sort((left, right) => left.specificity - right.specificity || left.order - right.order);
 
   next.style = applyMatchedRules(style, matches);
   const inline = node.attributes.style ? parseCssDeclarations(node.attributes.style) : [];
@@ -114,8 +117,11 @@ function applyNode(
     next.style = applyMatchedRules(next.style, [{ declarations: inline, specificity: 1_000, order: 1_000_000 }]);
   }
 
-  const childAncestors = [...ancestors, next];
-  next.children = node.children.map((child) => applyNode(child, childAncestors, next.style, stylesheet, options));
+  const childAncestors = appendAncestor(ancestors, next);
+  next.children = new Array<LayoutNode>(node.children.length);
+  for (let index = 0; index < node.children.length; index += 1) {
+    next.children[index] = applyNode(node.children[index]!, childAncestors, next.style, stylesheet, options);
+  }
   return next;
 }
 
@@ -174,8 +180,18 @@ function matchesSimpleSelector(
 
 function normalizeVariables(variables: Record<string, string>): Record<string, string> {
   const normalized: Record<string, string> = {};
-  for (const [name, value] of Object.entries(variables)) {
+  for (const name in variables) {
+    const value = variables[name]!;
     normalized[name.startsWith("--") ? name : `--${name}`] = value;
   }
   return normalized;
+}
+
+function appendAncestor(ancestors: readonly LayoutNode[], node: LayoutNode): LayoutNode[] {
+  const next = new Array<LayoutNode>(ancestors.length + 1);
+  for (let index = 0; index < ancestors.length; index += 1) {
+    next[index] = ancestors[index]!;
+  }
+  next[ancestors.length] = node;
+  return next;
 }
