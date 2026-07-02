@@ -5688,7 +5688,7 @@ function parseTuiMarkup(markup, options = {}) {
       stack.push(node);
     }
   }
-  const children = root2.children.filter((child) => child.tag !== "#text" || Boolean(child.text?.trim()));
+  const children = meaningfulMarkupChildren(root2.children);
   const selected = children.length === 1 && !options.rootTag && !options.rootId ? children[0] : { ...root2, children };
   let generated = 0;
   const layoutRoot = toLayoutNode(selected, () => `markup-${++generated}`);
@@ -5735,24 +5735,69 @@ function normalizeTagName(value) {
   return value.trim().toLowerCase();
 }
 function toLayoutNode(node, nextId) {
-  const elementChildren = node.children.filter((child) => child.tag !== "#text");
-  const textChildren = node.children.filter((child) => child.tag === "#text").map((child) => child.text ?? "");
-  const text = node.text ?? (elementChildren.length === 0 ? textChildren.join("").trim() || void 0 : void 0);
-  const children = elementChildren.length === 0 ? [] : node.children.map((child) => toLayoutNode(child, nextId)).filter((child) => child.tag !== "#text" || child.text);
+  const hasElementChildren = markupHasElementChildren(node.children);
+  const text = node.text ?? (hasElementChildren ? void 0 : markupText(node.children));
+  const children = hasElementChildren ? layoutChildren2(node.children, nextId) : [];
   return createLayoutNode({
     id: node.attributes.id ?? nextId(),
     tag: node.tag,
     attributes: { ...node.attributes },
-    classes: node.attributes.class?.split(/\s+/).filter(Boolean) ?? [],
+    classes: splitClassNames(node.attributes.class),
     text,
     children
   });
+}
+function meaningfulMarkupChildren(children) {
+  const result = [];
+  for (const child of children) {
+    if (child.tag === "#text" && !child.text?.trim()) continue;
+    result.push(child);
+  }
+  return result;
+}
+function markupHasElementChildren(children) {
+  for (const child of children) {
+    if (child.tag !== "#text") return true;
+  }
+  return false;
+}
+function markupText(children) {
+  let text = "";
+  for (const child of children) {
+    if (child.tag === "#text") text += child.text ?? "";
+  }
+  const trimmed = text.trim();
+  return trimmed || void 0;
+}
+function layoutChildren2(children, nextId) {
+  const result = [];
+  for (const child of children) {
+    const layoutNode = toLayoutNode(child, nextId);
+    if (layoutNode.tag === "#text" && !layoutNode.text) continue;
+    result.push(layoutNode);
+  }
+  return result;
+}
+function splitClassNames(value) {
+  if (!value) return [];
+  const classes = [];
+  let start = 0;
+  for (let index = 0; index <= value.length; index += 1) {
+    if (index !== value.length && !/\s/.test(value[index])) continue;
+    if (index > start) classes.push(value.slice(start, index));
+    start = index + 1;
+  }
+  return classes;
 }
 function decodeEntities(value) {
   return value.replaceAll("&lt;", "<").replaceAll("&gt;", ">").replaceAll("&amp;", "&").replaceAll("&quot;", '"').replaceAll("&#39;", "'");
 }
 function countLayoutNodes(node) {
-  return 1 + node.children.reduce((sum2, child) => sum2 + countLayoutNodes(child), 0);
+  let count = 1;
+  for (const child of node.children) {
+    count += countLayoutNodes(child);
+  }
+  return count;
 }
 
 // src/components/button.ts
@@ -6209,7 +6254,10 @@ function shiftRadioIndex(options, activeIndex, delta) {
   return activeIndex;
 }
 function optionForValue(options, value) {
-  return options.find((option) => option.value === value);
+  for (const option of options) {
+    if (option.value === value) return option;
+  }
+  return void 0;
 }
 var RadioGroupController = class {
   options;
@@ -6263,7 +6311,7 @@ var RadioGroupController = class {
     return this.selectActive();
   }
   selectValue(value) {
-    const index = this.options.peek().findIndex((option2) => option2.value === value);
+    const index = radioOptionIndexForValue(this.options.peek(), value);
     if (index < 0) return void 0;
     const option = this.options.peek()[index];
     if (!option || option.disabled) return void 0;
@@ -6297,7 +6345,7 @@ var RadioGroupController = class {
     this.activeIndex.value = clampRadioIndex(this.options.peek(), this.activeIndex.peek());
   }
   inspect() {
-    const options = this.options.peek().map((option) => ({ ...option }));
+    const options = cloneRadioOptions(this.options.peek());
     const activeIndex = clampRadioIndex(options, this.activeIndex.peek());
     const active2 = options[activeIndex];
     const selected = optionForValue(options, this.selectedValue.peek());
@@ -6317,6 +6365,19 @@ var RadioGroupController = class {
     if (this.#ownsActiveIndex) this.activeIndex.dispose();
   }
 };
+function radioOptionIndexForValue(options, value) {
+  for (let index = 0; index < options.length; index += 1) {
+    if (options[index].value === value) return index;
+  }
+  return -1;
+}
+function cloneRadioOptions(options) {
+  const clone = new Array(options.length);
+  for (let index = 0; index < options.length; index += 1) {
+    clone[index] = { ...options[index] };
+  }
+  return clone;
+}
 
 // src/components/scroll_area.ts
 function maxScrollOffset(contentWidth, contentHeight, viewportWidth, viewportHeight) {
@@ -6676,7 +6737,7 @@ var TabsController = class {
     }
   }
   inspect() {
-    const tabs = this.tabs.peek().map((tab) => ({ ...tab }));
+    const tabs = cloneTabs(this.tabs.peek());
     const activeIndex = clampTabIndex(tabs, this.activeIndex.peek());
     const active2 = tabForIndex(tabs, activeIndex);
     return {
@@ -6692,6 +6753,13 @@ var TabsController = class {
     if (this.#ownsActiveIndex) this.activeIndex.dispose();
   }
 };
+function cloneTabs(tabs) {
+  const clone = new Array(tabs.length);
+  for (let index = 0; index < tabs.length; index += 1) {
+    clone[index] = { ...tabs[index] };
+  }
+  return clone;
+}
 
 // src/components/textbox.ts
 var TextLineCache = class {
@@ -8112,7 +8180,12 @@ var FileExplorerController = class {
     this.#onOpen = options.onOpen;
   }
   entries() {
-    return this.tree.visibleRows().map(fileExplorerEntry);
+    const rows2 = this.tree.visibleRows();
+    const entries = new Array(rows2.length);
+    for (let index = 0; index < rows2.length; index += 1) {
+      entries[index] = fileExplorerEntry(rows2[index]);
+    }
+    return entries;
   }
   selected() {
     const row = this.tree.selected();
@@ -8224,10 +8297,14 @@ function compareExplorerNodes(left, right) {
 
 // src/components/menu_bar.ts
 function renderMenuBar(items, activeIndex) {
-  return items.map((item, index) => {
+  let output = "";
+  for (let index = 0; index < items.length; index += 1) {
+    const item = items[index];
     const label = item.disabled ? `(${item.label})` : item.label;
-    return index === activeIndex ? `[${label}]` : label;
-  }).join(" ");
+    if (output) output += " ";
+    output += index === activeIndex ? `[${label}]` : label;
+  }
+  return output;
 }
 function shiftMenuIndex(items, activeIndex, delta) {
   if (items.length === 0) return -1;
@@ -8313,7 +8390,7 @@ var MenuBarController = class {
     }
   }
   inspect() {
-    const items = this.items.peek().map((item) => ({ ...item }));
+    const items = cloneMenuBarItems(this.items.peek());
     const activeIndex = clampMenuIndex(items, this.activeIndex.peek());
     const active2 = menuItemForIndex(items, activeIndex);
     return {
@@ -8329,6 +8406,13 @@ var MenuBarController = class {
     if (this.#ownsActiveIndex) this.activeIndex.dispose();
   }
 };
+function cloneMenuBarItems(items) {
+  const clone = new Array(items.length);
+  for (let index = 0; index < items.length; index += 1) {
+    clone[index] = { ...items[index] };
+  }
+  return clone;
+}
 
 // src/components/modal.ts
 var ModalController = class {
@@ -8419,12 +8503,12 @@ var ModalController = class {
     return void 0;
   }
   inspect() {
-    const actions = this.actions.peek().map((action) => ({ ...action }));
+    const actions = cloneModalActions(this.actions.peek());
     const selectedActionIndex = clampModalActionIndex(actions, this.selectedActionIndex.peek());
     return {
       open: this.openState.peek(),
       title: this.title.peek(),
-      body: [...this.body.peek()],
+      body: cloneModalBody(this.body.peek()),
       tone: this.tone.peek(),
       actions,
       selectedActionIndex,
@@ -8446,11 +8530,10 @@ function renderModalRows(inspection, options) {
   if (width <= 0) return [];
   const innerWidth = Math.max(0, width - 4);
   const tone = options.showTone === false ? "" : `[${inspection.tone.toUpperCase()}] `;
-  const rows2 = [
-    cropToWidth(`${tone}${inspection.title}`, innerWidth),
-    "",
-    ...inspection.body.flatMap((line) => wrapModalLine(line, innerWidth))
-  ];
+  const rows2 = [cropToWidth(`${tone}${inspection.title}`, innerWidth), ""];
+  for (const line of inspection.body) {
+    appendModalWrappedLines(rows2, line, innerWidth);
+  }
   const actions = renderModalActions(inspection.actions, inspection.selectedActionIndex, innerWidth);
   if (actions) rows2.push("", actions);
   const height = options.height === void 0 ? rows2.length : Math.max(0, Math.floor(options.height));
@@ -8462,11 +8545,15 @@ function modalContentHeight(inspection, width) {
   return renderModalRows(inspection, { width }).length + 2;
 }
 function normalizeModalBody(body) {
-  if (Array.isArray(body)) return body.flatMap((line) => `${line}`.split("\n"));
+  if (Array.isArray(body)) {
+    const lines = [];
+    for (const line of body) appendSplitModalLines(lines, line);
+    return lines;
+  }
   return body === void 0 ? [] : `${body}`.split("\n");
 }
 function normalizeModalActions(actions) {
-  return (actions ?? [{ id: "ok", label: "OK", default: true }]).map((action) => ({ ...action }));
+  return cloneModalActions(actions ?? [{ id: "ok", label: "OK", default: true }]);
 }
 function defaultModalActionIndex(actions) {
   const preferred = actions.findIndex((action) => action.default && !action.disabled);
@@ -8481,30 +8568,66 @@ function clampModalActionIndex(actions, index) {
   return fallback >= 0 ? fallback : clamped;
 }
 function renderModalActions(actions, selectedIndex, width) {
-  const row = actions.map((action, index) => {
+  let row = "";
+  for (let index = 0; index < actions.length; index += 1) {
+    const action = actions[index];
     const label = action.disabled ? `(${action.label})` : action.label;
     const token = index === selectedIndex ? `[ ${label} ]` : `  ${label}  `;
-    return action.destructive ? `!${token}!` : token;
-  }).join(" ");
+    if (row) row += " ";
+    row += action.destructive ? `!${token}!` : token;
+  }
   return cropToWidth(row, width);
 }
-function wrapModalLine(value, width) {
-  if (width <= 0) return [""];
-  const words = value.split(/\s+/).filter(Boolean);
-  if (words.length === 0) return [""];
-  const rows2 = [];
+function appendModalWrappedLines(rows2, value, width) {
+  if (width <= 0) {
+    rows2.push("");
+    return;
+  }
+  const words = value.split(/\s+/);
   let line = "";
+  let appended = false;
   for (const word of words) {
+    if (!word) continue;
     const next = line ? `${line} ${word}` : word;
     if (textWidth(next) <= width) {
       line = next;
     } else {
-      if (line) rows2.push(cropToWidth(line, width));
+      if (line) {
+        rows2.push(cropToWidth(line, width));
+        appended = true;
+      }
       line = cropToWidth(word, width);
     }
   }
-  if (line) rows2.push(cropToWidth(line, width));
-  return rows2;
+  if (line) {
+    rows2.push(cropToWidth(line, width));
+    appended = true;
+  }
+  if (!appended) rows2.push("");
+}
+function appendSplitModalLines(lines, value) {
+  const text = `${value}`;
+  let start = 0;
+  for (let index = 0; index < text.length; index += 1) {
+    if (text[index] !== "\n") continue;
+    lines.push(text.slice(start, index));
+    start = index + 1;
+  }
+  lines.push(text.slice(start));
+}
+function cloneModalBody(body) {
+  const clone = new Array(body.length);
+  for (let index = 0; index < body.length; index += 1) {
+    clone[index] = body[index];
+  }
+  return clone;
+}
+function cloneModalActions(actions) {
+  const clone = new Array(actions.length);
+  for (let index = 0; index < actions.length; index += 1) {
+    clone[index] = { ...actions[index] };
+  }
+  return clone;
 }
 
 // src/components/progressbar.ts
@@ -8675,10 +8798,20 @@ function renderStatusBar(left, right, width) {
 
 // src/components/stepper.ts
 function renderStepper(steps, activeIndex, orientation = "horizontal", width = Number.POSITIVE_INFINITY, separator = "\u2192") {
+  const active2 = clampStepperIndex(steps, activeIndex);
   if (orientation === "vertical") {
-    return steps.map((step, index) => renderVerticalStep(step, index === clampStepperIndex(steps, activeIndex)));
+    const rows2 = new Array(steps.length);
+    for (let index = 0; index < steps.length; index += 1) {
+      rows2[index] = renderVerticalStep(steps[index], index === active2);
+    }
+    return rows2;
   }
-  const text = steps.map((step, index) => renderHorizontalStep(step, index === clampStepperIndex(steps, activeIndex))).join(` ${separator} `);
+  const separatorText = ` ${separator} `;
+  let text = "";
+  for (let index = 0; index < steps.length; index += 1) {
+    if (text) text += separatorText;
+    text += renderHorizontalStep(steps[index], index === active2);
+  }
   return [text.length <= width ? text : truncateStepperText(text, width)];
 }
 function clampStepperIndex(steps, activeIndex) {
@@ -8758,7 +8891,7 @@ var StepperController = class {
     }
   }
   inspect() {
-    const steps = this.steps.peek().map((step) => ({ ...step }));
+    const steps = cloneStepperSteps(this.steps.peek());
     const activeIndex = clampStepperIndex(steps, this.activeIndex.peek());
     const active2 = stepForIndex(steps, activeIndex);
     return {
@@ -8776,6 +8909,13 @@ var StepperController = class {
     if (this.#ownsOrientation) this.orientation.dispose();
   }
 };
+function cloneStepperSteps(steps) {
+  const clone = new Array(steps.length);
+  for (let index = 0; index < steps.length; index += 1) {
+    clone[index] = { ...steps[index] };
+  }
+  return clone;
+}
 function renderHorizontalStep(step, active2) {
   const label = step.disabled ? `(${step.label})` : step.label;
   if (active2) return `[${label}]`;
@@ -11459,7 +11599,7 @@ function parseAnsiCell(value) {
   const matches = value.matchAll(/\x1b\[([0-9;]*)m/g);
   for (const match of matches) {
     if (match.index !== void 0 && match.index > textIndex) break;
-    const params = match[1] ? match[1].split(";").map((part) => Number(part)) : [0];
+    const params = parseSgrParams(match[1] ?? "");
     for (let index = 0; index < params.length; index += 1) {
       const param = params[index] ?? 0;
       if (param === 0) {
@@ -11500,6 +11640,18 @@ function parseAnsiCell(value) {
     }
   }
   return style2;
+}
+function parseSgrParams(value) {
+  if (!value) return [0];
+  const params = [];
+  let start = 0;
+  for (let index = 0; index <= value.length; index += 1) {
+    if (index !== value.length && value[index] !== ";") continue;
+    const part = value.slice(start, index);
+    params.push(part ? Number(part) : 0);
+    start = index + 1;
+  }
+  return params;
 }
 function firstPrintableIndex(value) {
   for (let index = 0; index < value.length; index += 1) {
