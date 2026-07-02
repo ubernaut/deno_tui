@@ -345,6 +345,8 @@ Work:
         direct insertion helper to reduce catalog inspection churn.
   - [x] Reworked API Workbench data-window content width sizing and window-id projection to use direct loops/casts
         instead of reducer and copy-map passes during redraw-driven projection.
+  - [x] Reworked Neon suite demo id, section, lookup, and summary projections around a precomputed id map and direct
+        loops instead of chained filter/map/find passes.
   - [x] Added a direct sampled-series value helper and migrated compact network monitor traces off temporary RX/TX
         sampled arrays in narrow live-render paths.
   - [x] Added source-array keyed overlay z-order caches and reverse-loop modal hit testing so repeated menu/modal

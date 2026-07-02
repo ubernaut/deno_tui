@@ -35,24 +35,30 @@ const tallWebDemoIds = new Set([
   "component-index",
 ]);
 
-export const neonOpenTuiDemoIds = demos.filter((demo) => demo.id !== "three-ascii-studio").map((demo) => demo.id);
+const demosById = new Map<string, NeonDemo>();
+for (const demo of demos) demosById.set(demo.id, demo);
 
-export const neonWebDemoIds = [
-  ...demos.filter((demo) => demo.id !== "three-ascii-studio" && !tallWebDemoIds.has(demo.id)).map((demo) => demo.id),
-  ...demos.filter((demo) => demo.id !== "three-ascii-studio" && tallWebDemoIds.has(demo.id)).map((demo) => demo.id),
-];
+export const neonOpenTuiDemoIds = neonDemoIds({ includeTallWebLast: false });
+
+export const neonWebDemoIds = neonDemoIds({ includeTallWebLast: true });
 
 export function neonDemosForSection(
   section: NeonSuiteSection,
   options: { source?: "opentui" | "web" | "extended" } = {},
 ): NeonDemo[] {
   const ids = options.source === "web" ? neonWebDemoIds : options.source === "opentui" ? neonOpenTuiDemoIds : undefined;
-  const source = ids ? ids.map((id) => demoById(id)).filter((demo): demo is NeonDemo => Boolean(demo)) : demos;
-  return section === "all" ? source : source.filter((demo) => demo.section === section);
+  const source = ids ? demosForIds(ids) : demos;
+  if (section === "all") return source;
+  const filtered: NeonDemo[] = [];
+  for (let index = 0; index < source.length; index += 1) {
+    const demo = source[index]!;
+    if (demo.section === section) filtered.push(demo);
+  }
+  return filtered;
 }
 
 export function demoById(id: string): NeonDemo | undefined {
-  return demos.find((demo) => demo.id === id);
+  return demosById.get(id);
 }
 
 export function demoIndex(id: string, section: NeonSuiteSection, source: "opentui" | "web" | "extended" = "extended") {
@@ -150,18 +156,56 @@ export function neonSuiteSummary(source: "opentui" | "web" | "extended" = "exten
     ? neonOpenTuiDemoIds
     : source === "web"
     ? neonWebDemoIds
-    : demos.map((demo) => demo.id);
-  const entries = suite.map((id) => demoById(id)).filter((demo): demo is NeonDemo => Boolean(demo));
+    : undefined;
+  const entries = suite ? demosForIds(suite) : demos;
+  const sections: Record<NeonSection, number> = {
+    overview: 0,
+    signals: 0,
+    control: 0,
+    three: 0,
+  };
+  let threeCount = 0;
+  for (let index = 0; index < entries.length; index += 1) {
+    const section = entries[index]!.section;
+    sections[section] += 1;
+    if (section === "three") threeCount += 1;
+  }
   return {
     source,
     count: entries.length,
-    sections: Object.fromEntries(
-      neonSuiteSections
-        .filter((section) => section !== "all")
-        .map((section) => [section, entries.filter((demo) => demo.section === section).length]),
-    ) as Record<NeonSection, number>,
-    threeCount: entries.filter((demo) => demo.section === "three").length,
+    sections,
+    threeCount,
   };
+}
+
+function neonDemoIds(options: { includeTallWebLast: boolean }): string[] {
+  const ids: string[] = [];
+  if (!options.includeTallWebLast) {
+    for (let index = 0; index < demos.length; index += 1) {
+      const demo = demos[index]!;
+      if (demo.id !== "three-ascii-studio") ids.push(demo.id);
+    }
+    return ids;
+  }
+
+  for (let index = 0; index < demos.length; index += 1) {
+    const demo = demos[index]!;
+    if (demo.id !== "three-ascii-studio" && !tallWebDemoIds.has(demo.id)) ids.push(demo.id);
+  }
+  for (let index = 0; index < demos.length; index += 1) {
+    const demo = demos[index]!;
+    if (demo.id !== "three-ascii-studio" && tallWebDemoIds.has(demo.id)) ids.push(demo.id);
+  }
+  return ids;
+}
+
+function demosForIds(ids: readonly string[]): NeonDemo[] {
+  const found: NeonDemo[] = [];
+  for (let index = 0; index < ids.length; index += 1) {
+    const demo = demosById.get(ids[index]!);
+    if (demo) found.push(demo);
+  }
+  return found;
 }
 
 export function formatNeonSuiteAlert(
