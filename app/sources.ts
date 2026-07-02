@@ -357,7 +357,7 @@ function syntheticPulseSource(phase: number): SourceFrame {
     name: "Synthetic Pulse",
     accent: "signal",
     value: (Math.sin(phase * 0.22) + 1) / 2,
-    series: range(48).map((index) => clamp((Math.sin((phase + index) * 0.24) + 1) / 2, 0, 1)),
+    series: syntheticPulseSeries(phase, 48),
     detailLines: ["REACTIVE PULSE BUS", "STABLE CONTROL DRIVER"],
   };
 }
@@ -368,7 +368,7 @@ function syntheticClockSource(phase: number): SourceFrame {
     name: "Synthetic Clock",
     accent: "amber",
     value: ((phase % 60) + 1) / 60,
-    series: range(48).map((index) => ((phase + index) % 16) / 16),
+    series: syntheticClockSeries(phase, 48),
     detailLines: [
       `TICK ${String(phase).padStart(5, "0")}`,
       `STEP ${String(phase % 60).padStart(2, "0")}`,
@@ -382,13 +382,33 @@ function syntheticNoiseSource(phase: number): SourceFrame {
     name: "Synthetic Noise",
     accent: "phosphor",
     value: pseudoRandom(phase, phase * 0.13),
-    series: range(48).map((index) => pseudoRandom(index + phase, index * 0.17)),
+    series: syntheticNoiseSeries(phase, 48),
     detailLines: ["PSEUDO-RANDOM VECTOR FIELD", "LOW CONFIDENCE INPUT"],
   };
 }
 
-function range(count: number) {
-  return Array.from({ length: count }, (_, index) => index);
+function syntheticPulseSeries(phase: number, length: number): number[] {
+  const series = new Array<number>(length);
+  for (let index = 0; index < length; index += 1) {
+    series[index] = clamp((Math.sin((phase + index) * 0.24) + 1) / 2, 0, 1);
+  }
+  return series;
+}
+
+function syntheticClockSeries(phase: number, length: number): number[] {
+  const series = new Array<number>(length);
+  for (let index = 0; index < length; index += 1) {
+    series[index] = ((phase + index) % 16) / 16;
+  }
+  return series;
+}
+
+function syntheticNoiseSeries(phase: number, length: number): number[] {
+  const series = new Array<number>(length);
+  for (let index = 0; index < length; index += 1) {
+    series[index] = pseudoRandom(index + phase, index * 0.17);
+  }
+  return series;
 }
 
 function pseudoRandom(seedA: number, seedB: number) {

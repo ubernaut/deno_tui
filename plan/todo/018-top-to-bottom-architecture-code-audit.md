@@ -201,6 +201,8 @@ Work:
         so long-running animated scenes avoid unbounded ANSI/color cache growth without adding per-cell churn.
   - [x] Reworked system monitor history initialization and update helpers to use bounded loop allocation instead of
         repeated `Array.from()`, `slice()`, and `unshift()` churn.
+  - [x] Reworked audio meter history updates and synthetic source series generation to avoid steady-state
+        `slice()`/`push()` and `range().map()` allocation in live visualization data feeds.
 
 Acceptance checks:
 

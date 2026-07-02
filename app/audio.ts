@@ -98,7 +98,7 @@ export class AudioRegistry {
         snapshot: {
           rms: 0,
           peak: 0,
-          history: Array.from({ length: 64 }, () => 0),
+          history: zeroHistory(64),
           active: false,
         },
       });
@@ -109,7 +109,7 @@ export class AudioRegistry {
     return this.#meters.get(id)?.snapshot ?? {
       rms: 0,
       peak: 0,
-      history: Array.from({ length: 64 }, () => 0),
+      history: zeroHistory(64),
       active: false,
     };
   }
@@ -232,8 +232,7 @@ export class AudioRegistry {
     meter.snapshot.active = false;
     meter.snapshot.rms = 0;
     meter.snapshot.peak = 0;
-    meter.snapshot.history = meter.snapshot.history.slice(-63);
-    meter.snapshot.history.push(0);
+    pushAudioHistory(meter.snapshot.history, 0);
     try {
       meter.process?.kill("SIGTERM");
     } catch (error) {
@@ -276,8 +275,7 @@ export class AudioRegistry {
     const rms = Math.sqrt(sum / samples);
     meter.snapshot.rms = rms;
     meter.snapshot.peak = peak;
-    meter.snapshot.history = meter.snapshot.history.slice(-63);
-    meter.snapshot.history.push(rms);
+    pushAudioHistory(meter.snapshot.history, rms);
     meter.snapshot.active = true;
   }
 }
@@ -298,6 +296,21 @@ function audioCommand(
   commandOptions: Deno.CommandOptions,
 ): AudioCommand {
   return options.commandFactory?.(command, commandOptions) ?? new Deno.Command(command, commandOptions);
+}
+
+function zeroHistory(length: number): number[] {
+  return new Array<number>(length).fill(0);
+}
+
+function pushAudioHistory(history: number[], value: number): void {
+  if (history.length === 0) {
+    history.push(value);
+    return;
+  }
+  for (let index = 1; index < history.length; index += 1) {
+    history[index - 1] = history[index] ?? 0;
+  }
+  history[history.length - 1] = value;
 }
 
 function errorDetail(error: unknown): string {
