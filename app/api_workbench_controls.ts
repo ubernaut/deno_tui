@@ -2,6 +2,7 @@ import { type ApiWorkbenchControlId, apiWorkbenchControlIds } from "./api_workbe
 
 export * from "./api_workbench_control_line.ts";
 export * from "./api_workbench_control_rows.ts";
+export * from "./api_workbench_control_style.ts";
 export * from "./api_workbench_control_types.ts";
 export * from "./api_workbench_dropdown.ts";
 export * from "./api_workbench_stepper.ts";

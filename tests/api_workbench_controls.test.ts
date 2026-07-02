@@ -3,8 +3,11 @@ import {
   apiWorkbenchButtonRowInto,
   apiWorkbenchCheckboxRowsInto,
   apiWorkbenchComboHeaderRowsInto,
+  apiWorkbenchControlBaseStyle,
+  apiWorkbenchControlButtonDetailStyle,
   type ApiWorkbenchControlHitPlacement,
   apiWorkbenchControlIds,
+  apiWorkbenchControlLineFallbackStyle,
   apiWorkbenchControlLineInto,
   type ApiWorkbenchControlLineRenderCommand,
   apiWorkbenchControlLineRenderCommandsInto,
@@ -20,15 +23,24 @@ import {
   apiWorkbenchSliderSetHit,
   apiWorkbenchStepperHitPlacementsInto,
   apiWorkbenchStepperRowInto,
+  apiWorkbenchTextboxCommandStyle,
   apiWorkbenchTextboxProjection,
   apiWorkbenchTextboxProjectionInto,
   type ApiWorkbenchTextboxRenderCommand,
   apiWorkbenchTextboxRenderCommandsInto,
   type ApiWorkbenchWrappedOptionsRenderCommand,
   apiWorkbenchWrappedOptionsRenderCommandsInto,
+  apiWorkbenchWrappedOptionStyle,
   nextApiWorkbenchControlId,
   nextSortableDataColumn,
 } from "../app/api_workbench_controls.ts";
+
+const controlTheme = {
+  background: "#000000",
+  text: "#eeeeee",
+  surface: "#111111",
+  warn: "#ffaa00",
+};
 
 Deno.test("api workbench control ids preserve keyboard traversal order", () => {
   assertEquals(apiWorkbenchControlIds[0], "button");
@@ -71,6 +83,47 @@ Deno.test("api workbench sortable column traversal handles empty sortable sets",
     ),
     undefined,
   );
+});
+
+Deno.test("api workbench control styles preserve shared active and detail colors", () => {
+  assertEquals(apiWorkbenchControlBaseStyle(controlTheme, false), {
+    fg: "#eeeeee",
+    bg: "#111111",
+    bold: false,
+  });
+  assertEquals(apiWorkbenchControlBaseStyle(controlTheme, true), {
+    fg: "#000000",
+    bg: "#ffaa00",
+    bold: true,
+  });
+  assertEquals(apiWorkbenchControlButtonDetailStyle(controlTheme, true), {
+    fg: "#ffaa00",
+    bg: "#111111",
+    bold: true,
+  });
+  assertEquals(apiWorkbenchControlLineFallbackStyle(controlTheme, "detail", true), {
+    fg: "#ffaa00",
+    bg: "#111111",
+    bold: true,
+  });
+});
+
+Deno.test("api workbench textbox and wrapped-option styles share highlight policy", () => {
+  assertEquals(apiWorkbenchTextboxCommandStyle(controlTheme, { role: "label", header: true }, true), {
+    fg: "#000000",
+    bg: "#ffaa00",
+    bold: true,
+  });
+  assertEquals(apiWorkbenchTextboxCommandStyle(controlTheme, { role: "label", header: false }, true), {
+    fg: "#eeeeee",
+    bg: "#111111",
+    bold: false,
+  });
+  assertEquals(apiWorkbenchWrappedOptionStyle(controlTheme, true), {
+    fg: "#000000",
+    bg: "#ffaa00",
+    bold: true,
+  });
 });
 
 Deno.test("api workbench control line projection emits segments and hit regions", () => {

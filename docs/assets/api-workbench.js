@@ -15555,6 +15555,33 @@ function writeProjectedControlRow(target, id2, value, options) {
   return row;
 }
 
+// app/api_workbench_control_style.ts
+function apiWorkbenchControlBaseStyle(theme2, active2) {
+  return {
+    fg: active2 ? theme2.background : theme2.text,
+    bg: active2 ? theme2.warn : theme2.surface,
+    bold: active2
+  };
+}
+function apiWorkbenchControlButtonDetailStyle(theme2, active2) {
+  return {
+    fg: active2 ? theme2.warn : theme2.text,
+    bg: theme2.surface,
+    bold: active2
+  };
+}
+function apiWorkbenchTextboxCommandStyle(theme2, command, active2) {
+  const highlighted = active2 && (command.role === "body" || command.header);
+  return {
+    fg: highlighted ? theme2.background : theme2.text,
+    bg: highlighted ? theme2.warn : theme2.surface,
+    bold: highlighted
+  };
+}
+function apiWorkbenchWrappedOptionStyle(theme2, active2) {
+  return apiWorkbenchControlBaseStyle(theme2, active2);
+}
+
 // app/api_workbench_dropdown.ts
 function apiWorkbenchDropdownPopoverRect(options) {
   const rect = options.rect;
@@ -18002,6 +18029,7 @@ function renderControls(frame, rect) {
         write(frame, command.row, command.column, paint(" ".repeat(command.width), t.text, t.surface));
         continue;
       }
+      const style2 = command.role === "detail" ? apiWorkbenchControlButtonDetailStyle(t, selected) : apiWorkbenchControlBaseStyle(t, selected);
       if (options.button && command.role === "button") {
         writeButton(frame, command.row, command.column, command.text.replace(/^\[\s*|\s*\]$/g, ""), {
           state: selected ? "active" : "base",
@@ -18012,19 +18040,14 @@ function renderControls(frame, rect) {
           frame,
           command.row,
           command.column,
-          paint(command.text, selected ? t.warn : t.text, t.surface, selected)
+          paint(command.text, style2.fg, style2.bg, style2.bold)
         );
       } else {
         write(
           frame,
           command.row,
           command.column,
-          paint(
-            command.text,
-            selected ? t.background : t.text,
-            selected ? t.warn : t.surface,
-            selected
-          )
+          paint(command.text, style2.fg, style2.bg, style2.bold)
         );
       }
     }
@@ -18174,18 +18197,12 @@ function renderTextboxControl(frame, rect, row, t) {
     continuationGlyph: ">"
   });
   for (const command of commands) {
-    const activeBody = command.role === "body" && selected;
-    const activeHeader = command.header && selected;
+    const style2 = apiWorkbenchTextboxCommandStyle(t, command, selected);
     write(
       frame,
       command.row,
       command.column,
-      paint(
-        command.text,
-        activeBody || activeHeader ? t.background : t.text,
-        activeBody || activeHeader ? t.warn : t.surface,
-        activeBody || activeHeader
-      )
+      paint(command.text, style2.fg, style2.bg, style2.bold)
     );
   }
   hitTargets.add(projection.hit, {
@@ -18209,11 +18226,12 @@ function writeWrappedOptions(frame, rect, startRow, id2, items, selectedIndex, t
     }
   );
   for (const command of commands) {
+    const style2 = apiWorkbenchWrappedOptionStyle(t, command.active);
     write(
       frame,
       command.row,
       command.column,
-      paint(command.text, command.active ? t.background : t.text, command.active ? t.warn : t.surface, command.active)
+      paint(command.text, style2.fg, style2.bg, style2.bold)
     );
   }
   for (let index = 0; index < controlWrappedOptionHitPlacements.length; index += 1) {

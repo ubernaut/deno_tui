@@ -145,3 +145,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   mapped-at-creation buffer compatibility shim for Three.js geometry uploads.
 - Extracted the HTML/CSS layout demo box, outline, label, detail, and summary projection into shared renderer-neutral
   commands so terminal and web workbench adapters no longer duplicate that paint logic.
+- Extracted shared API workbench control/textbox/wrapped-option paint-style helpers so terminal and browser workbench
+  adapters keep theme-highlight behavior aligned behind focused tests.

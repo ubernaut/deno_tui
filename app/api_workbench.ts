@@ -187,6 +187,8 @@ import {
   type ApiWorkbenchCheckboxOption,
   apiWorkbenchCheckboxRowsInto,
   apiWorkbenchComboHeaderRowsInto,
+  apiWorkbenchControlBaseStyle,
+  apiWorkbenchControlButtonDetailStyle,
   type ApiWorkbenchControlHitPlacement,
   type ApiWorkbenchControlId,
   apiWorkbenchControlLineInto,
@@ -206,12 +208,14 @@ import {
   apiWorkbenchSliderSetHitInto,
   apiWorkbenchStepperHitPlacementsInto,
   apiWorkbenchStepperRowInto,
+  apiWorkbenchTextboxCommandStyle,
   apiWorkbenchTextboxProjectionInto,
   type ApiWorkbenchTextboxProjectionRow,
   type ApiWorkbenchTextboxRenderCommand,
   apiWorkbenchTextboxRenderCommandsInto,
   type ApiWorkbenchWrappedOptionsRenderCommand,
   apiWorkbenchWrappedOptionsRenderCommandsInto,
+  apiWorkbenchWrappedOptionStyle,
   nextApiWorkbenchControlId,
   nextSortableDataColumn,
 } from "./api_workbench_controls.ts";
@@ -1649,11 +1653,7 @@ function renderControls(frame: Frame, rect: Rectangle): void {
     );
     if (nextRow === row) return;
     const active = activeControl.peek() === id;
-    const baseStyle = {
-      fg: active ? t.background : t.text,
-      bg: active ? t.warn : t.surface,
-      bold: active,
-    };
+    const baseStyle = apiWorkbenchControlBaseStyle(t, active);
     const renderCommands = apiWorkbenchControlLineRenderCommandsInto(controlLineRenderCommands, controlLineSegments, {
       rect,
       row: startRow,
@@ -1668,11 +1668,7 @@ function renderControls(frame: Frame, rect: Rectangle): void {
         const style = command.role === "button"
           ? buttonPaintOptions(t, active ? "active" : "base")
           : command.role === "detail"
-          ? {
-            fg: active ? t.warn : t.text,
-            bg: t.surface,
-            bold: active,
-          }
+          ? apiWorkbenchControlButtonDetailStyle(t, active)
           : baseStyle;
         write(
           frame,
@@ -1833,17 +1829,11 @@ function renderTextboxControl(frame: Frame, rect: Rectangle, row: number, t: The
   if (projection.height <= 0) return projection.nextRow;
   const commands = apiWorkbenchTextboxRenderCommandsInto(controlTextboxRenderCommands, projection.rows);
   for (const command of commands) {
-    const activeBody = command.role === "body" && active;
-    const activeHeader = command.header && active;
     write(
       frame,
       command.row,
       command.column,
-      paint(command.text, {
-        fg: activeBody || activeHeader ? t.background : t.text,
-        bg: activeBody || activeHeader ? t.warn : t.surface,
-        bold: activeBody || activeHeader,
-      }),
+      paint(command.text, apiWorkbenchTextboxCommandStyle(t, command, active)),
     );
   }
   addHit(projection.hit, {
@@ -2467,11 +2457,7 @@ function writeWrappedOptions(
       frame,
       command.row,
       command.column,
-      paint(command.text, {
-        fg: command.active ? t.background : t.text,
-        bg: command.active ? t.warn : t.surface,
-        bold: command.active,
-      }),
+      paint(command.text, apiWorkbenchWrappedOptionStyle(t, command.active)),
     );
   }
   for (let index = 0; index < controlWrappedOptionHitPlacements.length; index += 1) {
