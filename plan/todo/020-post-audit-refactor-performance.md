@@ -134,3 +134,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   focused module behind the existing controls facade.
 - Split API workbench table-sort, dropdown popover, and stepper hit helpers into focused modules so
   `api_workbench_controls.ts` is now a compatibility barrel plus keyboard traversal.
+- Extracted Three ASCII GPU buffer slot allocation/reuse/destruction into a small tested helper so renderer resource
+  lifecycle logic is isolated from scene orchestration.

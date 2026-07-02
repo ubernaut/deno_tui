@@ -13,6 +13,11 @@ import type { TerminalGlyphStyle } from "./glyphs.ts";
 import { HeadlessCanvas } from "./headless_canvas.ts";
 import { loadAsciiLutTextures } from "./loadAsciiLuts.ts";
 import {
+  destroyThreeAsciiGpuBufferSlot,
+  ensureThreeAsciiGpuBufferSlot,
+  type ThreeAsciiGpuBufferSlot,
+} from "./gpu_buffers.ts";
+import {
   type ThreeAsciiReadbackLayout,
   ThreeAsciiReadbackLayoutCache,
   ThreeAsciiReadbackViewCache,
@@ -246,16 +251,6 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
 }
 `;
 
-interface GpuBufferSlot {
-  gpu: GPUBuffer;
-  byteLength: number;
-}
-
-interface ReadbackBuffer {
-  gpu: GPUBuffer;
-  byteLength: number;
-}
-
 interface EffectState {
   edges: boolean;
   fill: boolean;
@@ -348,10 +343,10 @@ export class ThreeAsciiRenderer {
   private fillBindGroup?: GPUBindGroup;
   private edgeBindGroup?: GPUBindGroup;
   private colorBindGroup?: GPUBindGroup;
-  private fillOutput?: GpuBufferSlot;
-  private edgeOutput?: GpuBufferSlot;
-  private colorOutput?: GpuBufferSlot;
-  private outputReadback?: ReadbackBuffer;
+  private fillOutput?: ThreeAsciiGpuBufferSlot<GPUBuffer>;
+  private edgeOutput?: ThreeAsciiGpuBufferSlot<GPUBuffer>;
+  private colorOutput?: ThreeAsciiGpuBufferSlot<GPUBuffer>;
+  private outputReadback?: ThreeAsciiGpuBufferSlot<GPUBuffer>;
   private uniformValues = new Float32Array(24);
   private readonly ansiGridAssembler = new ThreeAsciiAnsiGridAssembler({ reuseGrid: true });
   private readonly readbackLayoutCache = new ThreeAsciiReadbackLayoutCache();
@@ -599,10 +594,10 @@ export class ThreeAsciiRenderer {
   }
 
   destroy(): void {
-    this.fillOutput = this.destroyBufferSlot(this.fillOutput);
-    this.edgeOutput = this.destroyBufferSlot(this.edgeOutput);
-    this.colorOutput = this.destroyBufferSlot(this.colorOutput);
-    this.outputReadback = this.destroyReadbackBuffer(this.outputReadback);
+    this.fillOutput = destroyThreeAsciiGpuBufferSlot(this.fillOutput);
+    this.edgeOutput = destroyThreeAsciiGpuBufferSlot(this.edgeOutput);
+    this.colorOutput = destroyThreeAsciiGpuBufferSlot(this.colorOutput);
+    this.outputReadback = destroyThreeAsciiGpuBufferSlot(this.outputReadback);
     this.paramsBuffer?.destroy();
     this.paramsBuffer = undefined;
     this.readbackLayoutCache.clear();
@@ -708,8 +703,12 @@ export class ThreeAsciiRenderer {
 
     const cellCount = this.columns * this.rows;
     if (this.outputCellCount !== cellCount) {
-      this.fillOutput = this.ensureBufferSlot(this.fillOutput, cellCount * Float32Array.BYTES_PER_ELEMENT, "fill");
-      this.colorOutput = this.ensureBufferSlot(
+      this.fillOutput = this.ensureStorageBufferSlot(
+        this.fillOutput,
+        cellCount * Float32Array.BYTES_PER_ELEMENT,
+        "fill",
+      );
+      this.colorOutput = this.ensureStorageBufferSlot(
         this.colorOutput,
         cellCount * 4 * Float32Array.BYTES_PER_ELEMENT,
         "color",
@@ -720,7 +719,7 @@ export class ThreeAsciiRenderer {
 
     if (includeTerminalEdges) {
       const hadEdgeOutput = this.edgeOutput !== undefined;
-      this.edgeOutput = this.ensureBufferSlot(
+      this.edgeOutput = this.ensureStorageBufferSlot(
         this.edgeOutput,
         cellCount * 4 * Float32Array.BYTES_PER_ELEMENT,
         "edge",
@@ -729,7 +728,7 @@ export class ThreeAsciiRenderer {
         this.computeDirty = true;
       }
     } else if (this.edgeOutput) {
-      this.edgeOutput = this.destroyBufferSlot(this.edgeOutput);
+      this.edgeOutput = destroyThreeAsciiGpuBufferSlot(this.edgeOutput);
       this.edgeBindGroup = undefined;
     }
 
@@ -883,48 +882,27 @@ export class ThreeAsciiRenderer {
     });
   }
 
-  private ensureBufferSlot(current: GpuBufferSlot | undefined, byteLength: number, label: string): GpuBufferSlot {
-    if (current?.byteLength === byteLength) {
-      return current;
-    }
-
-    this.destroyBufferSlot(current);
-
-    return {
-      gpu: this.device!.createBuffer({
-        label: `deno_tui.three_ascii.${label}.storage`,
-        size: byteLength,
-        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC,
-      }),
+  private ensureStorageBufferSlot(
+    current: ThreeAsciiGpuBufferSlot<GPUBuffer> | undefined,
+    byteLength: number,
+    label: string,
+  ): ThreeAsciiGpuBufferSlot<GPUBuffer> {
+    return ensureThreeAsciiGpuBufferSlot(this.device!, current, {
+      label: `deno_tui.three_ascii.${label}.storage`,
       byteLength,
-    };
+      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC,
+    });
   }
 
-  private destroyBufferSlot(current: GpuBufferSlot | undefined): undefined {
-    current?.gpu.destroy();
-    return undefined;
-  }
-
-  private ensureReadbackBuffer(current: ReadbackBuffer | undefined, byteLength: number): ReadbackBuffer {
-    if (current?.byteLength === byteLength) {
-      return current;
-    }
-
-    this.destroyReadbackBuffer(current);
-
-    return {
-      gpu: this.device!.createBuffer({
-        label: "deno_tui.three_ascii.output.readback",
-        size: byteLength,
-        usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
-      }),
+  private ensureReadbackBuffer(
+    current: ThreeAsciiGpuBufferSlot<GPUBuffer> | undefined,
+    byteLength: number,
+  ): ThreeAsciiGpuBufferSlot<GPUBuffer> {
+    return ensureThreeAsciiGpuBufferSlot(this.device!, current, {
+      label: "deno_tui.three_ascii.output.readback",
       byteLength,
-    };
-  }
-
-  private destroyReadbackBuffer(current: ReadbackBuffer | undefined): undefined {
-    current?.gpu.destroy();
-    return undefined;
+      usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+    });
   }
 
   private dispatchComputePass(
