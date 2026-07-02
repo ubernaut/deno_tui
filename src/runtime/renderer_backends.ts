@@ -174,6 +174,8 @@ export class RuntimeRendererBackend {
 /** Registry for storing and querying runtime Renderer Backend definitions. */
 export class RuntimeRendererBackendRegistry {
   readonly #backends = new Map<string, RuntimeRendererBackend>();
+  #orderedBackends?: RuntimeRendererBackend[];
+  #orderedIds?: string[];
 
   constructor(
     backends: Iterable<RuntimeRendererBackend | RuntimeRendererBackendDefinition> = runtimeRendererBackendDefinitions,
@@ -186,11 +188,18 @@ export class RuntimeRendererBackendRegistry {
   register(backend: RuntimeRendererBackend | RuntimeRendererBackendDefinition): this {
     const normalized = backend instanceof RuntimeRendererBackend ? backend : createRuntimeRendererBackend(backend);
     this.#backends.set(normalized.id, normalized);
+    this.#orderedBackends = undefined;
+    this.#orderedIds = undefined;
     return this;
   }
 
   unregister(id: string): boolean {
-    return this.#backends.delete(id);
+    const deleted = this.#backends.delete(id);
+    if (deleted) {
+      this.#orderedBackends = undefined;
+      this.#orderedIds = undefined;
+    }
+    return deleted;
   }
 
   has(id: string): boolean {
@@ -202,33 +211,46 @@ export class RuntimeRendererBackendRegistry {
   }
 
   ids(): string[] {
-    const backends = this.backends();
-    const ids = new Array<string>(backends.length);
-    for (let index = 0; index < backends.length; index += 1) {
-      ids[index] = backends[index]!.id;
+    if (!this.#orderedIds) {
+      const backends = this.#orderedBackendList();
+      const ids = new Array<string>(backends.length);
+      for (let index = 0; index < backends.length; index += 1) {
+        ids[index] = backends[index]!.id;
+      }
+      this.#orderedIds = ids;
     }
-    return ids;
+    return cloneStringArray(this.#orderedIds);
   }
 
   backends(): RuntimeRendererBackend[] {
-    return [...this.#backends.values()].sort(compareRendererBackends);
+    return cloneRendererBackendArray(this.#orderedBackendList());
   }
 
   inspect(capabilities: RuntimeCapabilities = detectRuntimeCapabilities()): RuntimeRendererBackendInspection[] {
-    return inspectRuntimeRendererBackends(this.backends(), capabilities);
+    return inspectRuntimeRendererBackends(this.#orderedBackendList(), capabilities);
   }
 
   select(
     capabilities: RuntimeCapabilities = detectRuntimeCapabilities(),
     options: RuntimeRendererBackendSelectionOptions = {},
   ): RuntimeRendererBackendInspection | undefined {
-    return selectRuntimeRendererBackend(this.backends(), capabilities, options);
+    return selectRuntimeRendererBackend(this.#orderedBackendList(), capabilities, options);
   }
 
   catalog(
     options: Omit<RuntimeRendererBackendCatalogOptions, "backends"> = {},
   ): RuntimeRendererBackendCatalogReport {
-    return createRuntimeRendererBackendCatalogReport({ ...options, backends: this.backends() });
+    return createRuntimeRendererBackendCatalogReport({ ...options, backends: this.#orderedBackendList() });
+  }
+
+  #orderedBackendList(): readonly RuntimeRendererBackend[] {
+    if (!this.#orderedBackends) {
+      const backends: RuntimeRendererBackend[] = [];
+      for (const backend of this.#backends.values()) backends.push(backend);
+      backends.sort(compareRendererBackends);
+      this.#orderedBackends = backends;
+    }
+    return this.#orderedBackends;
   }
 }
 
@@ -542,6 +564,14 @@ function uniqueSorted<T extends string>(values: Iterable<T>): T[] {
 
 function cloneStringArray<T extends string>(values: readonly T[]): T[] {
   const output = new Array<T>(values.length);
+  for (let index = 0; index < values.length; index += 1) {
+    output[index] = values[index]!;
+  }
+  return output;
+}
+
+function cloneRendererBackendArray(values: readonly RuntimeRendererBackend[]): RuntimeRendererBackend[] {
+  const output = new Array<RuntimeRendererBackend>(values.length);
   for (let index = 0; index < values.length; index += 1) {
     output[index] = values[index]!;
   }

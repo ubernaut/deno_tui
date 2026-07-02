@@ -923,6 +923,8 @@ Work:
   - [x] Optimized core theme style composition by replacing `filter`/`reduce` pipelines with single-pass composition and
         loop-based application.
   - [x] Removed duplicate option-child scans from markup combobox/select hydration.
+  - [x] Cached sorted runtime renderer backend ids and definitions inside the backend registry, avoiding repeated sort
+        and projection work during renderer selection, inspection, controller cycling, and catalog rendering.
 - [x] Make demo-only assets and NGE-inspired primitives clearly separate from library APIs.
   - [x] Added `app/neon_three_catalog.ts` for supported Three scene metadata and labels, keeping demo/NGE catalog data
         separate from the monolithic scene factory and shared by visualization footers plus scene coverage tests.
