@@ -43,3 +43,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   diagnostics for localStorage and async stores.
 - Added a tight-row fast path for Three ASCII image readback compaction and covered Kitty/image RGBA compaction in the
   benchmark catalog.
+- Consolidated CPU hex-grid keyboard navigation and process sample labeling inside the visualization module so the
+  workbench renderer only owns focus, scrolling, and logging side effects.

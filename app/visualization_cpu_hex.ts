@@ -2,6 +2,10 @@ import { clamp, formatPercent } from "./styles.ts";
 import { buildVisualizationDrive } from "./visualization_drive.ts";
 import type { PanelRender, RenderContext, Severity } from "./types.ts";
 
+type CpuCoreSnapshot = RenderContext["system"]["cpuCores"][number];
+type CpuProcessSnapshot = RenderContext["system"]["processes"][number];
+export type CpuHexNavigationKey = "left" | "right" | "up" | "down" | "home" | "end";
+
 const cpuHexColorStops = [
   { percent: 0, rgb: [45, 112, 255] },
   { percent: 25, rgb: [22, 214, 107] },
@@ -84,6 +88,52 @@ export function cpuHexTileLayout(
     };
   }
   return layout;
+}
+
+export function processMatchesCpuLabel(process: CpuProcessSnapshot, label: string): boolean {
+  const cpuId = Number(label);
+  return Number.isFinite(cpuId) ? process.processor === cpuId : String(process.processor) === label;
+}
+
+export function topCpuProcessLabelForCpu(
+  label: string,
+  processes: readonly CpuProcessSnapshot[],
+  limit = 3,
+): string {
+  const boundedLimit = Math.max(0, Math.floor(limit));
+  let count = 0;
+  let output = "";
+  for (let index = 0; index < processes.length && count < boundedLimit; index += 1) {
+    const process = processes[index]!;
+    if (!processMatchesCpuLabel(process, label)) continue;
+    if (count > 0) output += ", ";
+    output += `${process.name}:${process.cpuPercent.toFixed(0)}%`;
+    count += 1;
+  }
+  return count > 0 ? output : "no top process in sample";
+}
+
+export function nextCpuHexLabel(
+  cores: readonly CpuCoreSnapshot[],
+  currentLabel: string | undefined,
+  key: CpuHexNavigationKey,
+  columns: number,
+): string | undefined {
+  if (cores.length === 0) return undefined;
+  const currentIndex = Math.max(0, cores.findIndex((core) => core.label === currentLabel));
+  const clampedColumns = Math.max(1, Math.floor(columns));
+  const rawNextIndex = key === "home"
+    ? 0
+    : key === "end"
+    ? cores.length - 1
+    : key === "left"
+    ? currentIndex - 1
+    : key === "right"
+    ? currentIndex + 1
+    : key === "up"
+    ? currentIndex - clampedColumns
+    : currentIndex + clampedColumns;
+  return cores[Math.max(0, Math.min(cores.length - 1, rawNextIndex))]!.label;
 }
 
 export function renderCpuHexGrid(context: RenderContext): PanelRender {
@@ -335,12 +385,10 @@ function cpuHexSelectionLines(
     return [header, crop("PROCESSOR FIELD UNAVAILABLE IN THIS SAMPLE", width)];
   }
 
-  const cpuId = Number(core.label);
   const maxProcesses = width >= 48 ? 6 : 4;
   let matchCount = 0;
   for (const process of system.processes) {
-    const matches = Number.isFinite(cpuId) ? process.processor === cpuId : String(process.processor) === core.label;
-    if (matches) matchCount += 1;
+    if (processMatchesCpuLabel(process, core.label)) matchCount += 1;
   }
   if (matchCount === 0) {
     return [header, crop("NO TOP PROCESS LAST SEEN ON THIS CPU", width)];
@@ -352,8 +400,7 @@ function cpuHexSelectionLines(
   rows[2] = crop(width >= 48 ? "PID      CPU%   MEM%  S  NAME" : "PID     CPU%  MEM% NAME", width);
   let rowIndex = 3;
   for (const process of system.processes) {
-    const matches = Number.isFinite(cpuId) ? process.processor === cpuId : String(process.processor) === core.label;
-    if (!matches) continue;
+    if (!processMatchesCpuLabel(process, core.label)) continue;
     rows[rowIndex] = cpuHexProcessLine(process, width);
     rowIndex += 1;
     if (rowIndex >= rows.length) break;

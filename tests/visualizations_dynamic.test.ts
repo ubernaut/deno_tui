@@ -5,7 +5,10 @@ import {
   buildVisualizationDrive,
   cpuActivityRgb,
   cpuHexTileLayout,
+  nextCpuHexLabel,
+  processMatchesCpuLabel,
   renderVisualization,
+  topCpuProcessLabelForCpu,
   visualizations,
 } from "../app/visualizations.ts";
 import { visualizationCatalog, visualizationFamily, visualizationsByFamily } from "../app/visualization_catalog.ts";
@@ -453,6 +456,25 @@ Deno.test("cpu hex grid selection shows cpu id range and processes for that proc
   assert(plain.includes("9002"));
   assert(!plain.includes("9003"));
   assert(rendered.body.includes("\x1b[1;38;2;5;7;13;48;2;"));
+});
+
+Deno.test("cpu hex helpers navigate tiles and summarize processor samples", () => {
+  const cores = Array.from({ length: 8 }, (_, index) => ({ label: String(index), usage: index * 10 }));
+  assertEquals(nextCpuHexLabel(cores, undefined, "right", 4), "1");
+  assertEquals(nextCpuHexLabel(cores, "4", "up", 4), "0");
+  assertEquals(nextCpuHexLabel(cores, "4", "down", 4), "7");
+  assertEquals(nextCpuHexLabel(cores, "6", "end", 4), "7");
+  assertEquals(nextCpuHexLabel([], undefined, "home", 4), undefined);
+
+  const processes = [
+    { pid: 1, name: "alpha", state: "R", cpuPercent: 18.2, memoryPercent: 1, memoryBytes: 1, processor: 2 },
+    { pid: 2, name: "beta", state: "S", cpuPercent: 9.6, memoryPercent: 1, memoryBytes: 1, processor: 2 },
+    { pid: 3, name: "gamma", state: "S", cpuPercent: 4.1, memoryPercent: 1, memoryBytes: 1, processor: 3 },
+  ];
+  assertEquals(processMatchesCpuLabel(processes[0]!, "2"), true);
+  assertEquals(processMatchesCpuLabel(processes[2]!, "2"), false);
+  assertEquals(topCpuProcessLabelForCpu("2", processes), "alpha:18%, beta:10%");
+  assertEquals(topCpuProcessLabelForCpu("4", processes), "no top process in sample");
 });
 
 Deno.test("network monitor adapts to narrow and short panes", () => {

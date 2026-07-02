@@ -52,7 +52,15 @@ import type { Accent, PanelRender, RenderContext, ThreeSceneMode, VisualizationD
 
 export { buildVisualizationDrive } from "./visualization_drive.ts";
 export type { VisualizationDrive, VisualizationSourceDrive } from "./visualization_drive.ts";
-export { cpuActivityRgb, cpuHexGridColumnCount, cpuHexTileLayout } from "./visualization_cpu_hex.ts";
+export {
+  cpuActivityRgb,
+  cpuHexGridColumnCount,
+  cpuHexTileLayout,
+  nextCpuHexLabel,
+  processMatchesCpuLabel,
+  topCpuProcessLabelForCpu,
+} from "./visualization_cpu_hex.ts";
+export type { CpuHexNavigationKey } from "./visualization_cpu_hex.ts";
 
 export const visualizations: VisualizationDescriptor[] = visualizationCatalog.map((entry) => ({ ...entry }));
 

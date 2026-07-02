@@ -228,7 +228,6 @@ import type {
   Accent,
   AsciiOptions,
   PanelRender,
-  ProcessSnapshot,
   RenderContext,
   SlotConfig,
   SourceFrame,
@@ -236,7 +235,15 @@ import type {
   ThreeSceneMode,
   ThreeSceneSignal,
 } from "./types.ts";
-import { cpuHexGridColumnCount, cpuHexTileLayout, renderVisualization, visualizations } from "./visualizations.ts";
+import {
+  cpuHexGridColumnCount,
+  type CpuHexNavigationKey,
+  cpuHexTileLayout,
+  nextCpuHexLabel,
+  renderVisualization,
+  topCpuProcessLabelForCpu,
+  visualizations,
+} from "./visualizations.ts";
 import {
   monitorSourceIds,
   monitorSourceIdsInto,
@@ -4356,28 +4363,14 @@ function handleCpuHexGridKey(event: { key: string; ctrl?: boolean; meta?: boolea
   const cores = system.cpuCores;
   if (cores.length === 0) return true;
 
-  const currentLabel = selectedCpuHexTiles.peek()[id];
-  const currentIndex = Math.max(0, cores.findIndex((core) => core.label === currentLabel));
   const scroll = windowScroll(id);
   const columns = cpuHexGridColumnCount(
     cores,
     Math.max(8, scroll.contentWidth.peek()),
     Math.max(4, scroll.viewportHeight.peek()),
   );
-  const rawNextIndex = key === "home"
-    ? 0
-    : key === "end"
-    ? cores.length - 1
-    : key === "left"
-    ? currentIndex - 1
-    : key === "right"
-    ? currentIndex + 1
-    : key === "up"
-    ? currentIndex - columns
-    : currentIndex + columns;
-  const nextIndex = Math.max(0, Math.min(cores.length - 1, rawNextIndex));
-
-  selectCpuHexTile(id, cores[nextIndex]!.label);
+  const nextLabel = nextCpuHexLabel(cores, selectedCpuHexTiles.peek()[id], key as CpuHexNavigationKey, columns);
+  if (nextLabel) selectCpuHexTile(id, nextLabel);
   return true;
 }
 
@@ -4749,7 +4742,7 @@ function selectCpuHexTile(id: VisualizationWindowId, label: string): void {
   windowManager.focus(id);
   syncWindowSignalsFromManager();
   ensureCpuHexTileVisible(id, label);
-  pushLog(`cpu ${label} selected: ${topCpuProcessLabel(label, systemMonitor.snapshot.peek())}`);
+  pushLog(`cpu ${label} selected: ${topCpuProcessLabelForCpu(label, systemMonitor.snapshot.peek().processes)}`);
 }
 
 function selectedCpuHexTilesWith(
@@ -4764,24 +4757,6 @@ function selectedCpuHexTilesWith(
   }
   next[id] = label;
   return next;
-}
-
-function topCpuProcessLabel(label: string, system: SystemSnapshot): string {
-  let count = 0;
-  let output = "";
-  for (let index = 0; index < system.processes.length && count < 3; index += 1) {
-    const process = system.processes[index]!;
-    if (!processMatchesCpuLabel(process, label)) continue;
-    if (count > 0) output += ", ";
-    output += `${process.name}:${process.cpuPercent.toFixed(0)}%`;
-    count += 1;
-  }
-  return count > 0 ? output : "no top process in sample";
-}
-
-function processMatchesCpuLabel(process: ProcessSnapshot, label: string): boolean {
-  const cpuId = Number(label);
-  return Number.isFinite(cpuId) ? process.processor === cpuId : String(process.processor) === label;
 }
 
 function ensureCpuHexTileVisible(id: VisualizationWindowId, label: string): void {
