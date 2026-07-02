@@ -140,3 +140,6 @@ performance, shared terminal/web workbench projections, and oversized module red
   confirmation states so terminal and browser workbench adapters no longer duplicate those modal definitions.
 - Extracted Three ASCII ANSI glyph-key selection and edge-promotion heuristics into a focused internal helper with
   direct tests, leaving grid assembly responsible for row/cell caches.
+- Fixed the standalone Three ASCII demo window layer order so the renderer/fallback body is no longer hidden behind the
+  window background, switched the standalone titlebar controls to ASCII-safe labels, and added a Deno WebGPU
+  mapped-at-creation buffer compatibility shim for Three.js geometry uploads.

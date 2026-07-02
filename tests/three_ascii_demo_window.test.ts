@@ -2,6 +2,7 @@
 import { assertEquals } from "./deps.ts";
 import {
   layoutThreeAsciiDemoWindow,
+  THREE_ASCII_DEMO_WINDOW_CONTROL_TEXT,
   threeAsciiDemoBodyRect,
   threeAsciiDemoControlRect,
   threeAsciiDemoSidePanelVisible,
@@ -76,6 +77,7 @@ Deno.test("three ascii demo window derives body title and control rectangles", (
 
 Deno.test("three ascii demo titlebar hit testing maps compact controls", () => {
   const rect = { column: 2, row: 2, width: 78, height: 36 };
+  assertEquals(/^[\x20-\x7e]+$/.test(THREE_ASCII_DEMO_WINDOW_CONTROL_TEXT), true);
   assertEquals(threeAsciiDemoTitlebarControlAt(rect, 64, 2), "minimize");
   assertEquals(threeAsciiDemoTitlebarControlAt(rect, 68, 2), "maximize");
   assertEquals(threeAsciiDemoTitlebarControlAt(rect, 72, 2), "restore");

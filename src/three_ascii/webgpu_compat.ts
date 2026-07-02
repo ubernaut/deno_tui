@@ -2,6 +2,7 @@ let compatibleDevicePromise: Promise<GPUDevice> | undefined;
 type RafCallback = (time: number) => void;
 const WRITE_BUFFER_PATCHED = Symbol.for("deno_tui.three_ascii.write_buffer_patched");
 const SHADER_MODULE_PATCHED = Symbol.for("deno_tui.three_ascii.shader_module_patched");
+const CREATE_BUFFER_PATCHED = Symbol.for("deno_tui.three_ascii.create_buffer_patched");
 
 function ensureAnimationFrame(): void {
   if (!("requestAnimationFrame" in globalThis)) {
@@ -77,6 +78,56 @@ function patchShaderModules(device: GPUDevice): GPUDevice {
   return device;
 }
 
+function patchMappedAtCreationBuffers(device: GPUDevice): GPUDevice {
+  const patchedDevice = device as GPUDevice & {
+    [CREATE_BUFFER_PATCHED]?: boolean;
+    createBuffer: GPUDevice["createBuffer"];
+  };
+
+  if (patchedDevice[CREATE_BUFFER_PATCHED]) {
+    return device;
+  }
+
+  const originalCreateBuffer = patchedDevice.createBuffer.bind(device);
+
+  patchedDevice.createBuffer = ((descriptor) => {
+    if (!descriptor.mappedAtCreation) {
+      return originalCreateBuffer(descriptor);
+    }
+
+    const byteLength = Math.max(0, Math.ceil(Number(descriptor.size) || 0));
+    const canAddCopyDst = (descriptor.usage & GPUBufferUsage.MAP_WRITE) === 0;
+    const usage = canAddCopyDst ? descriptor.usage | GPUBufferUsage.COPY_DST : descriptor.usage;
+    const buffer = originalCreateBuffer({ ...descriptor, mappedAtCreation: false, usage });
+    let shadow: ArrayBuffer | undefined = new ArrayBuffer(byteLength);
+    let uploaded = false;
+
+    buffer.getMappedRange = ((offset = 0, size?: number) => {
+      if (!shadow) {
+        throw new Error("GPUBuffer mapping is no longer available.");
+      }
+      if (offset === 0 && (size === undefined || size === shadow.byteLength)) {
+        return shadow;
+      }
+      return shadow.slice(offset, size === undefined ? undefined : offset + size);
+    }) as GPUBuffer["getMappedRange"];
+
+    buffer.unmap = (() => {
+      if (!shadow || uploaded) {
+        return;
+      }
+      device.queue.writeBuffer(buffer, 0, shadow);
+      shadow = undefined;
+      uploaded = true;
+    }) as GPUBuffer["unmap"];
+
+    return buffer;
+  }) as GPUDevice["createBuffer"];
+
+  patchedDevice[CREATE_BUFFER_PATCHED] = true;
+  return device;
+}
+
 /** Public helper for get Compatible Web GPUDevice. */
 export async function getCompatibleWebGPUDevice(): Promise<GPUDevice> {
   ensureAnimationFrame();
@@ -101,7 +152,9 @@ export async function getCompatibleWebGPUDevice(): Promise<GPUDevice> {
       requiredLimits: {},
     });
 
-    return patchErrorScopes(patchShaderModules(patchQueueWriteBuffer(ensureDeviceLostPromise(device))));
+    return patchMappedAtCreationBuffers(
+      patchErrorScopes(patchShaderModules(patchQueueWriteBuffer(ensureDeviceLostPromise(device)))),
+    );
   })();
 
   return await compatibleDevicePromise;

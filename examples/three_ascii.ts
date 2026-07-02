@@ -288,7 +288,7 @@ new Box({
   parent: tui,
   theme: { base: crayon.bgBlack },
   rectangle: renderWindowRectangle,
-  zIndex: 2,
+  zIndex: 0,
 });
 
 new Frame({
