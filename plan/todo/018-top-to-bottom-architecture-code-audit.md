@@ -191,6 +191,8 @@ Work:
         added a 25k-row table filter benchmark to catch future search regressions.
   - [x] Reworked terminal screen text/cell snapshot extraction to share loop-based row cloning and avoid nested `map()`
         chains in terminal inspection helpers.
+  - [x] Reworked terminal screen private-mode inspection to build sorted DEC mode snapshots directly instead of
+        `Array.from(...).sort()` conversion.
   - [x] Reworked API Workbench synthetic source/system generation to reuse loop-based waveform helpers instead of
         repeated `Array.from()` closures in frame-driven demo data.
   - [x] Extracted shared synthetic waveform helpers and migrated API Workbench, Neon suite, and showcase demo data onto

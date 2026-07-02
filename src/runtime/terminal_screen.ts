@@ -161,7 +161,7 @@ export class TerminalScreenController {
       cursor: this.cursor,
       cursorVisible: this.#cursorVisible,
       cursorStyle: { ...this.#cursorStyle },
-      privateModes: Array.from(this.#privateModes).sort((left, right) => left - right),
+      privateModes: sortedPrivateModes(this.#privateModes),
       scrollbackRows: this.#scrollback.length,
       alternate: this.alternate,
       title: this.#title,
@@ -651,6 +651,16 @@ function parseExtendedSgrColor(
     };
   }
   return undefined;
+}
+
+function sortedPrivateModes(modes: ReadonlySet<number>): number[] {
+  const sorted: number[] = [];
+  for (const mode of modes) {
+    let insertAt = sorted.length;
+    while (insertAt > 0 && sorted[insertAt - 1]! > mode) insertAt -= 1;
+    sorted.splice(insertAt, 0, mode);
+  }
+  return sorted;
 }
 
 function createRows(columns: number, rows: number): TerminalScreenCell[][] {
