@@ -188,6 +188,8 @@ import {
 } from "../../src/app/workbench_ascii.ts";
 import {
   layoutWorkbenchAsciiConfigModal,
+  type WorkbenchAsciiConfigModalAction,
+  workbenchAsciiConfigModalActionItemsInto,
   type WorkbenchAsciiConfigRowPlacement,
   workbenchAsciiConfigRowPlacementsInto,
 } from "../../src/app/workbench_ascii_modal.ts";
@@ -223,7 +225,7 @@ type Hit =
   | { type: "close"; id: PanelId }
   | { type: "threeConfig"; id: PanelId }
   | { type: "asciiConfig"; index: number; action?: ConfigHitAction }
-  | { type: "asciiConfigAction"; action: AsciiConfigModalAction }
+  | { type: "asciiConfigAction"; action: WorkbenchAsciiConfigModalAction }
   | { type: "asciiConfigBackdrop" }
   | { type: "theme"; index: number }
   | { type: "modalAction"; index: number }
@@ -238,7 +240,6 @@ type Hit =
   | { type: "workspaceScrollbar" };
 type ControlHitAction = "previous" | "next" | "activate" | "set" | "focus" | "toggle";
 type ConfigHitAction = "previous" | "next" | "activate";
-type AsciiConfigModalAction = "cancel" | "apply" | "ok";
 type ButtonTone = "default" | "danger" | "warning" | "success" | "muted";
 type MobileAction = WorkbenchMobileCommandAction;
 type WebTerminalAction = WorkbenchTerminalToolbarAction;
@@ -388,9 +389,9 @@ const webTerminalButtonItems: WorkbenchButtonRowItem<WebTerminalAction>[] = [];
 const webTerminalButtonPlacements: WorkbenchButtonRowPlacement<WebTerminalAction>[] = [];
 const webTerminalButtonCommands: WorkbenchButtonRowRenderCommand<WebTerminalAction>[] = [];
 const asciiConfigRowPlacements: WorkbenchAsciiConfigRowPlacement<AsciiConfigRow>[] = [];
-const asciiConfigActionButtonItems: WorkbenchButtonRowItem<AsciiConfigModalAction>[] = [];
-const asciiConfigActionButtonPlacements: WorkbenchButtonRowPlacement<AsciiConfigModalAction>[] = [];
-const asciiConfigActionButtonCommands: WorkbenchButtonRowRenderCommand<AsciiConfigModalAction>[] = [];
+const asciiConfigActionButtonItems: WorkbenchButtonRowItem<WorkbenchAsciiConfigModalAction>[] = [];
+const asciiConfigActionButtonPlacements: WorkbenchButtonRowPlacement<WorkbenchAsciiConfigModalAction>[] = [];
+const asciiConfigActionButtonCommands: WorkbenchButtonRowRenderCommand<WorkbenchAsciiConfigModalAction>[] = [];
 const mobileCommandButtonItems: WorkbenchButtonRowItem<MobileAction>[] = [];
 const mobileCommandButtonPlacements: WorkbenchButtonRowPlacement<MobileAction>[] = [];
 const mobileCommandButtonCommands: WorkbenchButtonRowRenderCommand<MobileAction>[] = [];
@@ -1965,10 +1966,7 @@ function renderThreeConfigModal(frame: string[]): void {
     hitTargets.add(placement.nextRect, { type: "asciiConfig", index: placement.rowIndex, action: "next" });
   }
 
-  asciiConfigActionButtonItems[0] = { label: "Cancel", action: "cancel", tone: "muted" };
-  asciiConfigActionButtonItems[1] = { label: "Apply", action: "apply" };
-  asciiConfigActionButtonItems[2] = { label: "OK", action: "ok", active: true, tone: "success" };
-  asciiConfigActionButtonItems.length = 3;
+  workbenchAsciiConfigModalActionItemsInto(asciiConfigActionButtonItems);
   layoutWorkbenchButtonRowInto(
     asciiConfigActionButtonPlacements,
     asciiConfigActionButtonItems,
@@ -2115,7 +2113,7 @@ function restoreThreeConfigBaseline(): void {
   push("three config canceled");
 }
 
-function applyThreeConfigModalAction(action: AsciiConfigModalAction): void {
+function applyThreeConfigModalAction(action: WorkbenchAsciiConfigModalAction): void {
   if (action === "cancel") {
     restoreThreeConfigBaseline();
     closeThreeConfigModal();

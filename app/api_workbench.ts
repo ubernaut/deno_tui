@@ -107,6 +107,8 @@ import {
 } from "../src/app/workbench_ascii.ts";
 import {
   layoutWorkbenchAsciiConfigModal,
+  type WorkbenchAsciiConfigModalAction,
+  workbenchAsciiConfigModalActionItemsInto,
   type WorkbenchAsciiConfigRowPlacement,
   workbenchAsciiConfigRowPlacementsInto,
 } from "../src/app/workbench_ascii_modal.ts";
@@ -343,7 +345,7 @@ type HitAction =
   | { type: "threeConfig"; id: WindowId }
   | { type: "threeViewport"; id: WindowId }
   | { type: "asciiConfig"; index: number; action?: ConfigHitAction }
-  | { type: "asciiConfigAction"; action: AsciiConfigModalAction }
+  | { type: "asciiConfigAction"; action: WorkbenchAsciiConfigModalAction }
   | { type: "asciiConfigBackdrop" }
   | { type: "theme"; index: number }
   | { type: "newWindow"; index: number }
@@ -364,7 +366,6 @@ type HitAction =
   | { type: "workspaceScrollbar" };
 type ControlHitAction = "previous" | "next" | "activate" | "set" | "focus" | "toggle";
 type ConfigHitAction = "previous" | "next" | "activate";
-type AsciiConfigModalAction = "cancel" | "apply" | "ok";
 type TerminalOutputAction = WorkbenchTerminalOutputToolbarAction;
 type TerminalShellAction = WorkbenchTerminalToolbarAction;
 type ButtonTone = "default" | "danger" | "warning" | "success" | "muted";
@@ -411,6 +412,9 @@ const controlStepperHitPlacements: ApiWorkbenchControlHitPlacement[] = [];
 const modalActionButtonItems: WorkbenchButtonRowItem<number>[] = [];
 const modalActionButtonPlacements: WorkbenchButtonRowPlacement<number>[] = [];
 const modalActionButtonCommands: WorkbenchButtonRowRenderCommand<number>[] = [];
+const asciiConfigActionButtonItems: WorkbenchButtonRowItem<WorkbenchAsciiConfigModalAction>[] = [];
+const asciiConfigActionButtonPlacements: WorkbenchButtonRowPlacement<WorkbenchAsciiConfigModalAction>[] = [];
+const asciiConfigActionButtonCommands: WorkbenchButtonRowRenderCommand<WorkbenchAsciiConfigModalAction>[] = [];
 const modalRowRenderCommands: WorkbenchModalRowRenderCommand[] = [];
 const themes: ThemeSpec[] = createApiWorkbenchThemes();
 const themeLabels = themes.map((entry) => entry.label);
@@ -2680,22 +2684,25 @@ function renderThreeConfigModal(frame: Frame): void {
       action: "next",
     });
   }
-  let actionColumn = inner.column;
-  for (
-    const action of [
-      { id: "cancel" as const, label: "Cancel", tone: "muted" as const },
-      { id: "apply" as const, label: "Apply", tone: "default" as const },
-      { id: "ok" as const, label: "OK", tone: "success" as const },
-    ]
-  ) {
-    const width = textWidth(buttonText(action.label));
-    if (actionColumn + width > inner.column + inner.width) break;
-    writeButton(frame, layout.actionRow, actionColumn, action.label, { tone: action.tone });
-    addHit({ column: actionColumn, row: layout.actionRow, width, height: 1 }, {
+  workbenchAsciiConfigModalActionItemsInto(asciiConfigActionButtonItems);
+  layoutWorkbenchButtonRowInto(
+    asciiConfigActionButtonPlacements,
+    asciiConfigActionButtonItems,
+    { column: inner.column, row: layout.actionRow, width: inner.width, height: 1 },
+    layout.actionRow,
+  );
+  workbenchButtonRowRenderCommandsInto(asciiConfigActionButtonCommands, asciiConfigActionButtonPlacements);
+  for (const command of asciiConfigActionButtonCommands) {
+    write(
+      frame,
+      command.rect.row,
+      command.rect.column,
+      paint(command.text, buttonPaintOptions(theme(), command.state, command.tone ?? "default")),
+    );
+    addHit(command.hitRect, {
       type: "asciiConfigAction",
-      action: action.id,
+      action: command.item.action,
     });
-    actionColumn += width + 1;
   }
   const footer = "Up/Down select  Left/Right change  Enter toggle  A apply  O OK  Esc cancel";
   write(
@@ -3050,7 +3057,7 @@ function setConfiguredAscii(
   pushLog(`${message} (${windowTitle(id)})`);
 }
 
-function applyThreeConfigModalAction(action: AsciiConfigModalAction): void {
+function applyThreeConfigModalAction(action: WorkbenchAsciiConfigModalAction): void {
   if (action === "cancel") {
     const baseline = threeConfigBaseline.peek();
     if (baseline) {

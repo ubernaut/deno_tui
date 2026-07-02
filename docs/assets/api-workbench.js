@@ -16591,6 +16591,15 @@ function workbenchAsciiConfigRowPlacementsInto(target, rows2, options) {
   }
   return target;
 }
+function workbenchAsciiConfigModalActionItemsInto(target) {
+  target.length = 0;
+  target.push(
+    { label: "Cancel", action: "cancel", tone: "muted" },
+    { label: "Apply", action: "apply" },
+    { label: "OK", action: "ok", active: true, tone: "success" }
+  );
+  return target;
+}
 function normalizeRect4(rect) {
   return {
     column: Math.floor(rect.column),
@@ -18345,10 +18354,7 @@ function renderThreeConfigModal(frame) {
     hitTargets.add(placement.previousRect, { type: "asciiConfig", index: placement.rowIndex, action: "previous" });
     hitTargets.add(placement.nextRect, { type: "asciiConfig", index: placement.rowIndex, action: "next" });
   }
-  asciiConfigActionButtonItems[0] = { label: "Cancel", action: "cancel", tone: "muted" };
-  asciiConfigActionButtonItems[1] = { label: "Apply", action: "apply" };
-  asciiConfigActionButtonItems[2] = { label: "OK", action: "ok", active: true, tone: "success" };
-  asciiConfigActionButtonItems.length = 3;
+  workbenchAsciiConfigModalActionItemsInto(asciiConfigActionButtonItems);
   layoutWorkbenchButtonRowInto(
     asciiConfigActionButtonPlacements,
     asciiConfigActionButtonItems,

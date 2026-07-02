@@ -161,3 +161,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   and shared config row action/selection helpers across terminal and browser adapters with direct tests.
 - Extracted Three ASCII config modal row placements into the shared modal helper so terminal and browser adapters reuse
   selected-row windowing and previous/next hit rectangle projection.
+- Extracted the Three ASCII config modal action buttons into the shared modal helper and routed terminal/browser adapters
+  through the standard reusable button-row render commands.

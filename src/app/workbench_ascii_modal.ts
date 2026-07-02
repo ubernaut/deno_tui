@@ -1,7 +1,8 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { Rectangle } from "../types.ts";
 import { clipRect, inset } from "./hit_targets.ts";
-import { type WorkbenchAsciiConfigAction, workbenchAsciiConfigVisibleRowStart } from "./workbench_ascii.ts";
+import { workbenchAsciiConfigVisibleRowStart } from "./workbench_ascii.ts";
+import type { WorkbenchButtonRowItem } from "./workbench_control_layout.ts";
 
 /** Options for laying out the Three ASCII renderer configuration modal. */
 export interface WorkbenchAsciiConfigModalLayoutOptions {
@@ -35,6 +36,9 @@ export interface WorkbenchAsciiConfigRowPlacement<Row> {
   previousRect: Rectangle;
   nextRect: Rectangle;
 }
+
+/** Action ids used by Three ASCII config modal buttons. */
+export type WorkbenchAsciiConfigModalAction = "cancel" | "apply" | "ok";
 
 /** Calculates centered, clipped geometry for the Three ASCII renderer configuration modal. */
 export function layoutWorkbenchAsciiConfigModal(
@@ -123,8 +127,18 @@ export function workbenchAsciiConfigRowPlacementsInto<Row>(
   return target;
 }
 
-/** Convenience hit action type used by modal row placements. */
-export type WorkbenchAsciiConfigRowPlacementAction = WorkbenchAsciiConfigAction;
+/** Projects the standard Three ASCII config modal action buttons into reusable button-row items. */
+export function workbenchAsciiConfigModalActionItemsInto(
+  target: WorkbenchButtonRowItem<WorkbenchAsciiConfigModalAction>[],
+): WorkbenchButtonRowItem<WorkbenchAsciiConfigModalAction>[] {
+  target.length = 0;
+  target.push(
+    { label: "Cancel", action: "cancel", tone: "muted" },
+    { label: "Apply", action: "apply" },
+    { label: "OK", action: "ok", active: true, tone: "success" },
+  );
+  return target;
+}
 
 function normalizeRect(rect: Rectangle): Rectangle {
   return {

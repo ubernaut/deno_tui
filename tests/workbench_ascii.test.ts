@@ -17,6 +17,7 @@ import {
 } from "../src/app/workbench_ascii.ts";
 import {
   layoutWorkbenchAsciiConfigModal,
+  workbenchAsciiConfigModalActionItemsInto,
   workbenchAsciiConfigRowPlacementsInto,
 } from "../src/app/workbench_ascii_modal.ts";
 
@@ -226,4 +227,13 @@ Deno.test("workbench ascii config row placements keep selected rows visible and 
   assertEquals(placements[0]?.rect, { column: 4, row: 6, width: 36, height: 1 });
   assertEquals(placements[0]?.previousRect, { column: 4, row: 6, width: 18, height: 1 });
   assertEquals(placements[0]?.nextRect, { column: 22, row: 6, width: 18, height: 1 });
+});
+
+Deno.test("workbench ascii config action buttons expose stable labels and tones", () => {
+  const items = workbenchAsciiConfigModalActionItemsInto([]);
+  assertEquals(items, [
+    { label: "Cancel", action: "cancel", tone: "muted" },
+    { label: "Apply", action: "apply" },
+    { label: "OK", action: "ok", active: true, tone: "success" },
+  ]);
 });
