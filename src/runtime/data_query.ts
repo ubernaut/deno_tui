@@ -7,6 +7,8 @@ import {
   type CachedAsyncResourceOptions,
 } from "./resource.ts";
 
+const QUERY_WHITESPACE = /\s/;
+
 /** Public type alias for a data Query Sort Direction. */
 export type DataQuerySortDirection = "asc" | "desc";
 
@@ -231,8 +233,11 @@ export function queryLocalData<
   options: LocalDataQueryOptions<TRow, TFilters> = {},
 ): DataQueryResult<TRow> {
   const normalized = normalizeDataQueryParams(params);
-  const terms = normalized.query.trim().toLowerCase().split(/\s+/).filter(Boolean);
-  const filtered = rows.filter((row) => matchesDataQuery(row, terms, normalized.filters, options));
+  const terms = parseDataQueryTerms(normalized.query);
+  const filtered: TRow[] = [];
+  for (const row of rows) {
+    if (matchesDataQuery(row, terms, normalized.filters, options)) filtered.push(row);
+  }
   const sorted = sortLocalData(filtered, normalized.sort, options.compare);
   return pageDataQueryRows(sorted, normalized);
 }
@@ -247,8 +252,13 @@ export function pageDataQueryRows<TRow>(
   const pageCount = Math.max(1, Math.ceil(rows.length / pageSize));
   const page = clamp(normalized.page, 0, pageCount - 1);
   const start = page * pageSize;
+  const end = Math.min(rows.length, start + pageSize);
+  const pageRows = new Array<TRow>(Math.max(0, end - start));
+  for (let index = start; index < end; index += 1) {
+    pageRows[index - start] = rows[index]!;
+  }
   return {
-    rows: rows.slice(start, start + pageSize),
+    rows: pageRows,
     totalRows: rows.length,
     page,
     pageSize,
@@ -307,14 +317,15 @@ function searchableValueIncludes<TRow extends Record<string, unknown>>(
     }
     return false;
   }
-  for (const value of Object.values(row)) {
-    if (stringifyDataQueryValue(value).toLowerCase().includes(term)) return true;
+  for (const field of Object.keys(row)) {
+    if (stringifyDataQueryValue(row[field]).toLowerCase().includes(term)) return true;
   }
   return false;
 }
 
 function matchesExactFilters(row: Record<string, unknown>, filters: DataQueryFilters): boolean {
-  for (const [field, expected] of Object.entries(filters)) {
+  for (const field of Object.keys(filters)) {
+    const expected = filters[field];
     if (expected === undefined || expected === null || expected === "") continue;
     const actual = row[field];
     if (Array.isArray(expected)) {
@@ -324,6 +335,25 @@ function matchesExactFilters(row: Record<string, unknown>, filters: DataQueryFil
     if (actual !== expected) return false;
   }
   return true;
+}
+
+function parseDataQueryTerms(query: string): string[] {
+  const normalized = query.trim().toLowerCase();
+  if (!normalized) return [];
+  const terms: string[] = [];
+  let start = -1;
+  for (let index = 0; index <= normalized.length; index += 1) {
+    const whitespace = index >= normalized.length || QUERY_WHITESPACE.test(normalized[index]!);
+    if (whitespace) {
+      if (start >= 0) {
+        terms.push(normalized.slice(start, index));
+        start = -1;
+      }
+    } else if (start < 0) {
+      start = index;
+    }
+  }
+  return terms;
 }
 
 function sortLocalData<TRow extends Record<string, unknown>>(

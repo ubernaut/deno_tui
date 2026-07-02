@@ -261,6 +261,8 @@ Work:
         lookup, and preset-map construction while preserving cloned preset API boundaries.
   - [x] Reworked data-table filtering, header rendering, row rendering, sortable-column checks, keyed selection lookup,
         and query term parsing to avoid callback pipelines in reusable table view paths.
+  - [x] Reworked local data-query filtering, default search scans, exact-filter scans, and page projection to avoid
+        filter/slice/Object.entries/Object.values allocation in resource-backed table query paths.
 
 Acceptance checks:
 
