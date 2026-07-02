@@ -805,7 +805,7 @@ function createFillGlyphKeyTable(mode: TerminalGlyphMode): number[] {
     } else if (mode === GLYPH_MODE_MIXED) {
       table[index] = pickMixedFillGlyph(index);
     } else {
-      table[index] = bucket;
+      table[index] = bucket > 0 ? 14 : 0;
     }
   }
   return table;

@@ -3841,7 +3841,7 @@ function createFillGlyphKeyTable(mode) {
     } else if (mode === GLYPH_MODE_MIXED) {
       table2[index] = pickMixedFillGlyph(index);
     } else {
-      table2[index] = bucket;
+      table2[index] = bucket > 0 ? 14 : 0;
     }
   }
   return table2;

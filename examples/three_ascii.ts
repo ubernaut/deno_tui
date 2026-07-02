@@ -310,7 +310,7 @@ new Text({
     );
   }),
   rectangle: new Computed<TextRectangle>(() => threeAsciiDemoTitleRect(renderWindowRectangle.value)),
-  zIndex: 4,
+  zIndex: 8,
 });
 
 new Text({
@@ -320,7 +320,7 @@ new Text({
     threeAsciiDemoControlRect(renderWindowRectangle.value).width > 0 ? THREE_ASCII_DEMO_WINDOW_CONTROL_TEXT : ""
   ),
   rectangle: new Computed<TextRectangle>(() => threeAsciiDemoControlRect(renderWindowRectangle.value)),
-  zIndex: 4,
+  zIndex: 8,
 });
 
 function applyPresetByIndex(index: number): void {

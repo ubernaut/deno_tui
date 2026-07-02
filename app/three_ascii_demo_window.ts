@@ -34,19 +34,17 @@ export function threeAsciiDemoSidePanelVisible(
 export function layoutThreeAsciiDemoWindow(options: ThreeAsciiDemoWindowOptions): ThreeAsciiDemoRect {
   const menuOuterWidth = Math.max(0, Math.floor(options.menuOuterWidth ?? 36));
   const panelGap = Math.max(0, Math.floor(options.panelGap ?? 2));
-  const minBodyWidth = Math.max(1, Math.floor(options.minBodyWidth ?? 20));
+  const minBodyWidth = Math.max(1, Math.floor(options.minBodyWidth ?? 64));
   const terminalWidth = Math.max(0, Math.floor(options.terminalWidth));
   const terminalHeight = Math.max(0, Math.floor(options.terminalHeight));
+  const availableWidth = Math.max(0, terminalWidth - 4);
   const reservePanel = threeAsciiDemoSidePanelVisible(options) &&
     terminalWidth >= minBodyWidth + menuOuterWidth + panelGap + 4;
 
   return {
     column: 2,
     row: 2,
-    width: Math.max(
-      minBodyWidth,
-      terminalWidth - 4 - (reservePanel ? menuOuterWidth + panelGap : 0),
-    ),
+    width: Math.max(1, availableWidth - (reservePanel ? menuOuterWidth + panelGap : 0)),
     height: options.minimized ? 3 : Math.max(10, terminalHeight - 4),
   };
 }

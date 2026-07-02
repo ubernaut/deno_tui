@@ -36,6 +36,17 @@ Deno.test("three ascii demo window reserves side panel only when useful", () => 
     }),
     { column: 2, row: 2, width: 56, height: 16 },
   );
+
+  assertEquals(
+    layoutThreeAsciiDemoWindow({
+      terminalWidth: 80,
+      terminalHeight: 24,
+      menuVisible: true,
+      minimized: false,
+      maximized: false,
+    }),
+    { column: 2, row: 2, width: 76, height: 20 },
+  );
 });
 
 Deno.test("three ascii demo window derives body title and control rectangles", () => {

@@ -109,6 +109,39 @@ Deno.test("three ascii ANSI grid assembly reuses repeated non-adjacent block cel
   assertEquals(grid[0][3], grid[0][1]);
 });
 
+Deno.test("three ascii block mode normalizes all nonzero buckets to the same full-cell escape", () => {
+  const grid = buildThreeAsciiAnsiGrid({
+    columns: 4,
+    rows: 1,
+    fillGlyphs: new Float32Array([6, 7, 11, 14]),
+    colors: new Float32Array([
+      0,
+      1,
+      0,
+      1,
+      0,
+      1,
+      0,
+      1,
+      0,
+      1,
+      0,
+      1,
+      0,
+      1,
+      0,
+      1,
+    ]),
+    terminalGlyphStyle: "blocks",
+    backgroundColor: 0x000000,
+  });
+
+  assertEquals(grid[0][0], "\x1b[48;2;0;255;0m\x1b[38;2;0;255;0m█\x1b[0m");
+  assertEquals(grid[0][1], grid[0][0]);
+  assertEquals(grid[0][2], grid[0][0]);
+  assertEquals(grid[0][3], grid[0][0]);
+});
+
 Deno.test("three ascii ANSI grid assembly clamps saturated color channels on the fast path", () => {
   const grid = buildThreeAsciiAnsiGrid({
     columns: 2,
