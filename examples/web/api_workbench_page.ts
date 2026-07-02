@@ -64,6 +64,7 @@ import {
   StepperController,
   subscribeWorkbenchDiagnosticLog,
   TerminalScreenController,
+  TerminalScrollbackController,
   type TerminalWorkspacePaneRect,
   terminalWorkspacePaneRects,
   type TerminalWorkspaceSnapshot,
@@ -152,7 +153,10 @@ type WebTerminalAction =
   | "splitColumn"
   | "zoomPane"
   | "closePane"
-  | "restart";
+  | "restart"
+  | "search"
+  | "previousMatch"
+  | "nextMatch";
 
 interface DropdownOverlay {
   kind: "theme" | "control";
@@ -246,6 +250,7 @@ webTerminalWorkspace.activeId.subscribe(persistWebWorkspaceState);
 webTerminalWorkspace.sessions.subscribe(persistWebWorkspaceState);
 webTerminalWorkspace.layout.subscribe(persistWebWorkspaceState);
 const webTerminalScreens = new Map<string, TerminalScreenController>();
+const webTerminalScrollbacks = new Map<string, TerminalScrollbackController>();
 const webTerminalScreenKeys = new Map<string, string>();
 const webTerminalPaneRects: TerminalWorkspacePaneRect[] = [];
 const hitTargets = new HitTargetStack<Hit>();
@@ -266,6 +271,9 @@ const webTerminalButtonItems: WorkbenchButtonRowItem<WebTerminalAction>[] = [
   { label: "Zoom", action: "zoomPane" },
   { label: "Close Pane", action: "closePane", tone: "danger" },
   { label: "Restart", action: "restart", tone: "warning" },
+  { label: "Search", action: "search" },
+  { label: "Prev Hit", action: "previousMatch" },
+  { label: "Next Hit", action: "nextMatch" },
 ];
 const webTerminalButtonPlacements: WorkbenchButtonRowPlacement<WebTerminalAction>[] = [];
 const webTerminalSessionTabSources: WorkbenchTerminalSessionTab[] = [];
@@ -1040,12 +1048,29 @@ function renderTerminalToolbar(
   workspace = webTerminalWorkspace.inspect(),
 ): void {
   if (rect.height <= 0 || rect.width <= 0) return;
-  webTerminalButtonItems[1]!.disabled = workspace.sessions.length < 2;
-  webTerminalButtonItems[2]!.disabled = workspace.sessions.length < 2;
-  webTerminalButtonItems[3]!.disabled = workspace.sessions.length <= 1;
-  webTerminalButtonItems[6]!.active = workspace.layout.zoomedPaneId !== undefined;
-  webTerminalButtonItems[7]!.disabled = workspace.layout.count < 2;
-  webTerminalButtonItems[8]!.disabled = !workspace.activeId;
+  const scrollback = activeWebTerminalScrollback();
+  const scrollbackInspection = scrollback?.inspect();
+  const hasMatches = (scrollbackInspection?.matches.length ?? 0) > 0;
+  for (const item of webTerminalButtonItems) {
+    item.disabled = false;
+    item.active = false;
+    if (item.action === "previous" || item.action === "next") {
+      item.disabled = workspace.sessions.length < 2;
+    } else if (item.action === "close") {
+      item.disabled = workspace.sessions.length <= 1;
+    } else if (item.action === "zoomPane") {
+      item.active = workspace.layout.zoomedPaneId !== undefined;
+    } else if (item.action === "closePane") {
+      item.disabled = workspace.layout.count < 2;
+    } else if (item.action === "restart") {
+      item.disabled = !workspace.activeId;
+    } else if (item.action === "search") {
+      item.active = !!scrollbackInspection?.query;
+      item.disabled = !scrollbackInspection || scrollbackInspection.totalRows === 0;
+    } else if (item.action === "previousMatch" || item.action === "nextMatch") {
+      item.disabled = !hasMatches;
+    }
+  }
   layoutWorkbenchButtonRowInto(webTerminalButtonPlacements, webTerminalButtonItems, rect, rect.row);
   for (const placement of webTerminalButtonPlacements) {
     const written = writeButton(frame, placement.rect.row, placement.rect.column, placement.item.label, {
@@ -1145,7 +1170,9 @@ function renderWebTerminalPane(
     content = { column: rect.column, row: rect.row + 1, width: rect.width, height: rect.height - 1 };
   }
   const screen = syncWebTerminalScreen(sessionId, content.width, content.height);
-  const rows = screen.textRows();
+  const scrollback = syncWebTerminalScrollback(sessionId, screen, content.height);
+  const inspection = scrollback.inspect();
+  const rows = inspection.mode === "copy" ? inspection.visibleRows : screen.textRows();
   const screenRowCount = Math.min(rows.length, content.height);
   for (let index = 0; index < screenRowCount; index += 1) {
     const line = rows[index]!;
@@ -1156,6 +1183,15 @@ function renderWebTerminalPane(
       paint(fit(line, content.width), t.text, activePane ? t.background : t.surface),
     );
   }
+  if (inspection.mode === "copy") {
+    const status = inspection.query
+      ? `search "${inspection.query}" ${inspection.matches.length} hit(s)`
+      : `copy rows ${inspection.offset + 1}-${
+        Math.min(inspection.offset + inspection.viewportRows, inspection.totalRows)
+      }`;
+    write(frame, content.row, content.column, paint(fit(status, content.width), t.warn, t.panelSoft, true));
+    return;
+  }
   const cursor = screen.cursor;
   if (activePane && cursor.row < content.height && cursor.column < content.width) {
     write(
@@ -1165,6 +1201,29 @@ function renderWebTerminalPane(
       paint(" ", t.background, t.accent, true),
     );
   }
+}
+
+function activeWebTerminalScrollback(): TerminalScrollbackController | undefined {
+  const sessionId = webTerminalWorkspace.inspect().activeId;
+  if (!sessionId) return undefined;
+  const screen = webTerminalScreens.get(sessionId) ?? syncWebTerminalScreen(sessionId, 80, 20);
+  return syncWebTerminalScrollback(sessionId, screen, screen.rows);
+}
+
+function syncWebTerminalScrollback(
+  sessionId: string | undefined,
+  screen: TerminalScreenController,
+  viewportRows: number,
+): TerminalScrollbackController {
+  const safeId = sessionId ?? "none";
+  let scrollback = webTerminalScrollbacks.get(safeId);
+  if (!scrollback) {
+    scrollback = new TerminalScrollbackController({ screen, viewportRows });
+    webTerminalScrollbacks.set(safeId, scrollback);
+  } else {
+    scrollback.setViewportRows(viewportRows);
+  }
+  return scrollback;
 }
 
 function syncWebTerminalScreen(sessionId: string | undefined, width: number, height: number): TerminalScreenController {
@@ -1284,6 +1343,18 @@ function applyWebTerminalAction(action: WebTerminalAction): void {
       webTerminalWorkspace.restart(inspection.activeId);
       push(`terminal restart ${webTerminalWorkspace.active?.title ?? inspection.activeId}`);
     }
+  } else if (action === "search") {
+    const scrollback = activeWebTerminalScrollback();
+    if (scrollback) {
+      const current = scrollback.inspect().query ?? "terminal";
+      const query = prompt("Search terminal scrollback", current) ?? "";
+      const matches = scrollback.search(query);
+      push(matches.length > 0 ? `terminal search ${matches.length} hits` : "terminal search no matches");
+    }
+  } else if (action === "previousMatch" || action === "nextMatch") {
+    const scrollback = activeWebTerminalScrollback();
+    const row = scrollback?.nextMatch(action === "previousMatch" ? -1 : 1);
+    push(row === undefined ? "terminal search no matches" : `terminal search row ${row + 1}`);
   }
   webTerminalScreenKeys.clear();
   active.value = "terminal";

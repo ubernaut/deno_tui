@@ -137,3 +137,6 @@ developer workflows.
 - Added console Workbench Shell search controls backed by `TerminalScrollbackController`, including a modal search
   prompt, toolbar buttons for search/previous/next match, and keyboard shortcuts for `/`, `N`, and `Shift+N` while copy
   mode is active.
+- Added matching browser-demo terminal search controls to the GitHub Pages workbench. The web facade now exports
+  `TerminalScrollbackController`, and the browser-safe terminal panes use the shared scrollback inspection for
+  search/copy-mode rows and match navigation.

@@ -47,6 +47,7 @@ export * from "./src/runtime/scheduler.ts";
 export * from "./src/runtime/storage.ts";
 export * from "./src/runtime/telemetry.ts";
 export * from "./src/runtime/terminal_screen.ts";
+export * from "./src/runtime/terminal_scrollback.ts";
 export * from "./src/runtime/terminal_workspace.ts";
 export * from "./src/runtime/worker_pool.ts";
 

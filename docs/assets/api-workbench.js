@@ -6643,6 +6643,7 @@ function matchesSimpleSelector(selector, node, parent, isRoot, states) {
     if (!(name in node.attributes)) return false;
     if (expected !== void 0 && node.attributes[name] !== expected) return false;
   }
+  if (!selector.includes(":")) return true;
   for (const pseudo of selector.matchAll(/:([A-Za-z_][\w-]*)(?:\(([^)]*)\))?/g)) {
     const state = pseudo[1];
     if (state === "root") {
@@ -11463,6 +11464,200 @@ function workbenchStatusLeft(options) {
 // src/runtime/pty_backend.ts
 var INPUT_DECODER = new TextDecoder();
 
+// src/runtime/terminal_scrollback.ts
+var TerminalScrollbackController = class {
+  screen;
+  #viewportRows;
+  #mode;
+  #offset;
+  #query;
+  #matches = [];
+  #activeMatch = -1;
+  #selection;
+  constructor(options) {
+    this.screen = options.screen;
+    this.#viewportRows = normalizePositiveInteger(options.viewportRows, this.screen.rows);
+    this.#mode = options.mode ?? "live";
+    this.#offset = Math.max(0, Math.floor(options.offset ?? this.#maxOffset()));
+    this.#query = normalizeQuery(options.query);
+    this.#selection = normalizeSelection(options.selection, this.#rows().length);
+    this.#refreshSearch();
+    this.#clampOffset();
+  }
+  get mode() {
+    return this.#mode;
+  }
+  get offset() {
+    return this.#mode === "live" ? this.#maxOffset() : this.#offset;
+  }
+  enterCopyMode() {
+    if (this.#mode === "copy") return;
+    this.#mode = "copy";
+    this.#offset = this.#maxOffset();
+  }
+  exitCopyMode() {
+    this.#mode = "live";
+    this.#selection = void 0;
+    this.#clampOffset();
+  }
+  toggleCopyMode() {
+    if (this.#mode === "copy") this.exitCopyMode();
+    else this.enterCopyMode();
+    return this.#mode;
+  }
+  setViewportRows(rows2) {
+    this.#viewportRows = normalizePositiveInteger(rows2, this.#viewportRows);
+    this.#clampOffset();
+  }
+  scrollLines(delta) {
+    if (this.#mode !== "copy") this.enterCopyMode();
+    this.#offset = clamp3(this.#offset + Math.trunc(delta), 0, this.#maxOffset());
+    return this.#offset;
+  }
+  page(delta) {
+    return this.scrollLines(Math.trunc(delta) * this.#viewportRows);
+  }
+  toTop() {
+    if (this.#mode !== "copy") this.enterCopyMode();
+    this.#offset = 0;
+    return this.#offset;
+  }
+  toBottom() {
+    if (this.#mode !== "copy") this.enterCopyMode();
+    this.#offset = this.#maxOffset();
+    return this.#offset;
+  }
+  search(query) {
+    this.#query = normalizeQuery(query);
+    this.#refreshSearch();
+    if (this.#matches.length > 0) {
+      this.enterCopyMode();
+      this.#activeMatch = 0;
+      this.#offset = clamp3(this.#matches[0], 0, this.#maxOffset());
+    }
+    return cloneNumberArray(this.#matches);
+  }
+  nextMatch(delta = 1) {
+    if (this.#matches.length === 0) return void 0;
+    this.enterCopyMode();
+    this.#activeMatch = (this.#activeMatch + Math.trunc(delta) + this.#matches.length) % this.#matches.length;
+    const row = this.#matches[this.#activeMatch];
+    this.#offset = clamp3(row, 0, this.#maxOffset());
+    return row;
+  }
+  setSelection(anchor, focus2 = anchor) {
+    const rows2 = this.#rows();
+    this.#selection = normalizeSelection({ anchor, focus: focus2 }, rows2.length);
+    if (this.#selection) {
+      this.enterCopyMode();
+      this.#offset = clamp3(Math.min(this.#selection.anchor, this.#selection.focus), 0, this.#maxOffset());
+    }
+    return this.#selection ? { ...this.#selection } : void 0;
+  }
+  clearSelection() {
+    this.#selection = void 0;
+  }
+  copySelection() {
+    const rows2 = this.#rows();
+    return selectedRowsText(rows2, this.#selection);
+  }
+  inspect() {
+    this.#refreshSearch();
+    this.#clampOffset();
+    const rows2 = this.#rows();
+    const offset = this.offset;
+    const selection = this.#selection ? { ...this.#selection } : void 0;
+    const inspection = {
+      mode: this.#mode,
+      offset,
+      maxOffset: this.#maxOffset(rows2.length),
+      viewportRows: this.#viewportRows,
+      totalRows: rows2.length,
+      scrollbackRows: this.screen.inspect().scrollbackRows,
+      liveRows: this.screen.rows,
+      visibleRows: visibleRows(rows2, offset, this.#viewportRows),
+      matches: cloneNumberArray(this.#matches)
+    };
+    if (this.#query) inspection.query = this.#query;
+    if (this.#activeMatch >= 0) inspection.activeMatch = this.#activeMatch;
+    if (selection) {
+      inspection.selection = selection;
+      inspection.selectedText = selectedRowsText(rows2, selection);
+    }
+    return inspection;
+  }
+  #rows() {
+    const scrollbackRows = this.screen.scrollbackTextRows();
+    const liveRows = this.screen.textRows();
+    const rows2 = new Array(scrollbackRows.length + liveRows.length);
+    let write2 = 0;
+    for (let index = 0; index < scrollbackRows.length; index += 1) rows2[write2++] = scrollbackRows[index];
+    for (let index = 0; index < liveRows.length; index += 1) rows2[write2++] = liveRows[index];
+    return rows2;
+  }
+  #maxOffset(rowCount = this.#rows().length) {
+    return Math.max(0, rowCount - this.#viewportRows);
+  }
+  #clampOffset() {
+    this.#offset = this.#mode === "live" ? this.#maxOffset() : clamp3(this.#offset, 0, this.#maxOffset());
+  }
+  #refreshSearch() {
+    const query = this.#query;
+    if (!query) {
+      this.#matches = [];
+    } else {
+      const rows2 = this.#rows();
+      const matches = [];
+      for (let index = 0; index < rows2.length; index += 1) {
+        if (rows2[index].toLowerCase().includes(query)) matches.push(index);
+      }
+      this.#matches = matches;
+    }
+    if (this.#matches.length === 0) this.#activeMatch = -1;
+    else this.#activeMatch = clamp3(this.#activeMatch, 0, this.#matches.length - 1);
+  }
+};
+function normalizePositiveInteger(value, fallback) {
+  if (!Number.isFinite(value)) return Math.max(1, Math.floor(fallback));
+  return Math.max(1, Math.floor(value));
+}
+function normalizeQuery(query) {
+  const trimmed = query?.trim().toLowerCase();
+  return trimmed ? trimmed : void 0;
+}
+function normalizeSelection(selection, rowCount) {
+  if (!selection || rowCount <= 0) return void 0;
+  return {
+    anchor: clamp3(Math.trunc(selection.anchor), 0, rowCount - 1),
+    focus: clamp3(Math.trunc(selection.focus), 0, rowCount - 1)
+  };
+}
+function selectedRowsText(rows2, selection) {
+  if (!selection) return "";
+  const start = Math.min(selection.anchor, selection.focus);
+  const end = Math.max(selection.anchor, selection.focus);
+  let text = "";
+  for (let index = start; index <= end; index += 1) {
+    if (index > start) text += "\n";
+    text += rows2[index] ?? "";
+  }
+  return text;
+}
+function visibleRows(rows2, offset, viewportRows) {
+  const end = Math.min(rows2.length, offset + viewportRows);
+  const visible = [];
+  for (let index = offset; index < end; index += 1) visible.push(rows2[index]);
+  return visible;
+}
+function cloneNumberArray(values) {
+  const cloned = new Array(values.length);
+  for (let index = 0; index < values.length; index += 1) cloned[index] = values[index];
+  return cloned;
+}
+function clamp3(value, min2, max2) {
+  return Math.max(min2, Math.min(max2, value));
+}
+
 // src/runtime/terminal_sequences.ts
 function parseTerminalControlSequence(value, start = 0) {
   const osc = parseOscSequence(value, start);
@@ -11744,23 +11939,23 @@ var TerminalScreenController = class {
         this.#setCursorPosition(params[0] ?? 1, params[1] ?? 1);
         break;
       case "A":
-        this.#state.cursor.row = clamp3(this.#state.cursor.row - (params[0] || 1), 0, this.#rows - 1);
+        this.#state.cursor.row = clamp4(this.#state.cursor.row - (params[0] || 1), 0, this.#rows - 1);
         break;
       case "B":
-        this.#state.cursor.row = clamp3(this.#state.cursor.row + (params[0] || 1), 0, this.#rows - 1);
+        this.#state.cursor.row = clamp4(this.#state.cursor.row + (params[0] || 1), 0, this.#rows - 1);
         break;
       case "C":
-        this.#state.cursor.column = clamp3(this.#state.cursor.column + (params[0] || 1), 0, this.#columns - 1);
+        this.#state.cursor.column = clamp4(this.#state.cursor.column + (params[0] || 1), 0, this.#columns - 1);
         break;
       case "a":
-        this.#state.cursor.column = clamp3(this.#state.cursor.column + (params[0] || 1), 0, this.#columns - 1);
+        this.#state.cursor.column = clamp4(this.#state.cursor.column + (params[0] || 1), 0, this.#columns - 1);
         break;
       case "D":
         if (sequence.kind === "esc") {
           this.#index();
           break;
         }
-        this.#state.cursor.column = clamp3(this.#state.cursor.column - (params[0] || 1), 0, this.#columns - 1);
+        this.#state.cursor.column = clamp4(this.#state.cursor.column - (params[0] || 1), 0, this.#columns - 1);
         break;
       case "E":
         if (sequence.kind === "esc") {
@@ -11768,24 +11963,24 @@ var TerminalScreenController = class {
           this.#index();
           break;
         }
-        this.#state.cursor.row = clamp3(this.#state.cursor.row + (params[0] || 1), 0, this.#rows - 1);
+        this.#state.cursor.row = clamp4(this.#state.cursor.row + (params[0] || 1), 0, this.#rows - 1);
         this.#state.cursor.column = 0;
         break;
       case "F":
-        this.#state.cursor.row = clamp3(this.#state.cursor.row - (params[0] || 1), 0, this.#rows - 1);
+        this.#state.cursor.row = clamp4(this.#state.cursor.row - (params[0] || 1), 0, this.#rows - 1);
         this.#state.cursor.column = 0;
         break;
       case "G":
-        this.#state.cursor.column = clamp3((params[0] || 1) - 1, 0, this.#columns - 1);
+        this.#state.cursor.column = clamp4((params[0] || 1) - 1, 0, this.#columns - 1);
         break;
       case "`":
-        this.#state.cursor.column = clamp3((params[0] || 1) - 1, 0, this.#columns - 1);
+        this.#state.cursor.column = clamp4((params[0] || 1) - 1, 0, this.#columns - 1);
         break;
       case "d":
         this.#setCursorPosition(params[0] || 1, this.#state.cursor.column + 1);
         break;
       case "e":
-        this.#state.cursor.row = clamp3(this.#state.cursor.row + (params[0] || 1), 0, this.#rows - 1);
+        this.#state.cursor.row = clamp4(this.#state.cursor.row + (params[0] || 1), 0, this.#rows - 1);
         break;
       case "I":
         this.#cursorForwardTabs(params[0] || 1);
@@ -11901,17 +12096,17 @@ var TerminalScreenController = class {
     }
   }
   #setCursorPosition(row, column) {
-    const nextColumn = clamp3(column - 1, 0, this.#columns - 1);
+    const nextColumn = clamp4(column - 1, 0, this.#columns - 1);
     if (!this.#originMode) {
       this.#state.cursor = {
         column: nextColumn,
-        row: clamp3(row - 1, 0, this.#rows - 1)
+        row: clamp4(row - 1, 0, this.#rows - 1)
       };
       return;
     }
     this.#state.cursor = {
       column: nextColumn,
-      row: clamp3(this.#scrollRegion.top + row - 1, this.#scrollRegion.top, this.#scrollRegion.bottom)
+      row: clamp4(this.#scrollRegion.top + row - 1, this.#scrollRegion.top, this.#scrollRegion.bottom)
     };
   }
   #setTabStop() {
@@ -11923,8 +12118,8 @@ var TerminalScreenController = class {
   #restoreCursor() {
     if (!this.#savedCursor) return;
     this.#state.cursor = {
-      column: clamp3(this.#savedCursor.column, 0, this.#columns - 1),
-      row: clamp3(this.#savedCursor.row, 0, this.#rows - 1)
+      column: clamp4(this.#savedCursor.column, 0, this.#columns - 1),
+      row: clamp4(this.#savedCursor.row, 0, this.#rows - 1)
     };
   }
   #clearTabStops(mode) {
@@ -12029,25 +12224,25 @@ var TerminalScreenController = class {
   #insertCharacters(count) {
     const row = this.#state.cells[this.#state.cursor.row];
     const column = this.#state.cursor.column;
-    const amount = clamp3(Math.floor(count), 1, this.#columns - column);
+    const amount = clamp4(Math.floor(count), 1, this.#columns - column);
     shiftCellsRight(row, column, amount, this.#columns);
   }
   #deleteCharacters(count) {
     const row = this.#state.cells[this.#state.cursor.row];
     const column = this.#state.cursor.column;
-    const amount = clamp3(Math.floor(count), 1, this.#columns - column);
+    const amount = clamp4(Math.floor(count), 1, this.#columns - column);
     shiftCellsLeft(row, column, amount, this.#columns);
   }
   #eraseCharacters(count) {
     const row = this.#state.cells[this.#state.cursor.row];
     const column = this.#state.cursor.column;
-    const amount = clamp3(Math.floor(count), 1, this.#columns - column);
+    const amount = clamp4(Math.floor(count), 1, this.#columns - column);
     fillBlankCells(row, column, amount);
   }
   #insertLines(count) {
     const row = this.#state.cursor.row;
     if (row < this.#scrollRegion.top || row > this.#scrollRegion.bottom) return;
-    const amount = clamp3(Math.floor(count), 1, this.#scrollRegion.bottom - row + 1);
+    const amount = clamp4(Math.floor(count), 1, this.#scrollRegion.bottom - row + 1);
     for (let index = 0; index < amount; index += 1) {
       this.#state.cells.splice(row, 0, blankRow(this.#columns));
       this.#state.cells.splice(this.#scrollRegion.bottom + 1, 1);
@@ -12056,7 +12251,7 @@ var TerminalScreenController = class {
   #deleteLines(count) {
     const row = this.#state.cursor.row;
     if (row < this.#scrollRegion.top || row > this.#scrollRegion.bottom) return;
-    const amount = clamp3(Math.floor(count), 1, this.#scrollRegion.bottom - row + 1);
+    const amount = clamp4(Math.floor(count), 1, this.#scrollRegion.bottom - row + 1);
     for (let index = 0; index < amount; index += 1) {
       this.#state.cells.splice(row, 1);
       this.#state.cells.splice(this.#scrollRegion.bottom, 0, blankRow(this.#columns));
@@ -12068,8 +12263,8 @@ var TerminalScreenController = class {
       this.#state.cursor = { column: 0, row: 0 };
       return;
     }
-    const top = clamp3((params[0] || 1) - 1, 0, this.#rows - 1);
-    const bottom = clamp3((params[1] || this.#rows) - 1, 0, this.#rows - 1);
+    const top = clamp4((params[0] || 1) - 1, 0, this.#rows - 1);
+    const bottom = clamp4((params[1] || this.#rows) - 1, 0, this.#rows - 1);
     if (bottom <= top) {
       this.#scrollRegion = fullScrollRegion(this.#rows);
       this.#state.cursor = { column: 0, row: 0 };
@@ -12079,7 +12274,7 @@ var TerminalScreenController = class {
     this.#state.cursor = { column: 0, row: 0 };
   }
   #scrollRegionUp(top, bottom, count) {
-    const amount = clamp3(Math.floor(count), 1, bottom - top + 1);
+    const amount = clamp4(Math.floor(count), 1, bottom - top + 1);
     for (let index = 0; index < amount; index += 1) {
       const shifted = this.#state.cells.splice(top, 1)[0] ?? blankRow(this.#columns);
       if (top === 0 && bottom === this.#rows - 1 && !this.alternate) {
@@ -12090,7 +12285,7 @@ var TerminalScreenController = class {
     }
   }
   #scrollRegionDown(top, bottom, count) {
-    const amount = clamp3(Math.floor(count), 1, bottom - top + 1);
+    const amount = clamp4(Math.floor(count), 1, bottom - top + 1);
     for (let index = 0; index < amount; index += 1) {
       this.#state.cells.splice(bottom, 1);
       this.#state.cells.splice(top, 0, blankRow(this.#columns));
@@ -12280,8 +12475,8 @@ function resizeState(state, columns2, rows2) {
   return {
     cells,
     cursor: {
-      column: clamp3(state.cursor.column, 0, columns2 - 1),
-      row: clamp3(state.cursor.row, 0, rows2 - 1)
+      column: clamp4(state.cursor.column, 0, columns2 - 1),
+      row: clamp4(state.cursor.row, 0, rows2 - 1)
     }
   };
 }
@@ -12295,11 +12490,11 @@ function normalizeDimension(value, fallback) {
   if (!Number.isFinite(value)) return fallback;
   return Math.max(1, Math.floor(value));
 }
-function clamp3(value, min2, max2) {
+function clamp4(value, min2, max2) {
   return Math.max(min2, Math.min(max2, value));
 }
 function clampByte(value) {
-  return clamp3(Math.floor(value), 0, 255);
+  return clamp4(Math.floor(value), 0, 255);
 }
 
 // src/app/workbench_terminal.ts
@@ -14439,6 +14634,7 @@ webTerminalWorkspace.activeId.subscribe(persistWebWorkspaceState);
 webTerminalWorkspace.sessions.subscribe(persistWebWorkspaceState);
 webTerminalWorkspace.layout.subscribe(persistWebWorkspaceState);
 var webTerminalScreens = /* @__PURE__ */ new Map();
+var webTerminalScrollbacks = /* @__PURE__ */ new Map();
 var webTerminalScreenKeys = /* @__PURE__ */ new Map();
 var webTerminalPaneRects = [];
 var hitTargets = new HitTargetStack();
@@ -14458,7 +14654,10 @@ var webTerminalButtonItems = [
   { label: "Split V", action: "splitColumn" },
   { label: "Zoom", action: "zoomPane" },
   { label: "Close Pane", action: "closePane", tone: "danger" },
-  { label: "Restart", action: "restart", tone: "warning" }
+  { label: "Restart", action: "restart", tone: "warning" },
+  { label: "Search", action: "search" },
+  { label: "Prev Hit", action: "previousMatch" },
+  { label: "Next Hit", action: "nextMatch" }
 ];
 var webTerminalButtonPlacements = [];
 var webTerminalSessionTabSources = [];
@@ -15180,12 +15379,29 @@ function renderTerminalProtocol(frame, rect) {
 }
 function renderTerminalToolbar(frame, rect, workspace = webTerminalWorkspace.inspect()) {
   if (rect.height <= 0 || rect.width <= 0) return;
-  webTerminalButtonItems[1].disabled = workspace.sessions.length < 2;
-  webTerminalButtonItems[2].disabled = workspace.sessions.length < 2;
-  webTerminalButtonItems[3].disabled = workspace.sessions.length <= 1;
-  webTerminalButtonItems[6].active = workspace.layout.zoomedPaneId !== void 0;
-  webTerminalButtonItems[7].disabled = workspace.layout.count < 2;
-  webTerminalButtonItems[8].disabled = !workspace.activeId;
+  const scrollback = activeWebTerminalScrollback();
+  const scrollbackInspection = scrollback?.inspect();
+  const hasMatches = (scrollbackInspection?.matches.length ?? 0) > 0;
+  for (const item of webTerminalButtonItems) {
+    item.disabled = false;
+    item.active = false;
+    if (item.action === "previous" || item.action === "next") {
+      item.disabled = workspace.sessions.length < 2;
+    } else if (item.action === "close") {
+      item.disabled = workspace.sessions.length <= 1;
+    } else if (item.action === "zoomPane") {
+      item.active = workspace.layout.zoomedPaneId !== void 0;
+    } else if (item.action === "closePane") {
+      item.disabled = workspace.layout.count < 2;
+    } else if (item.action === "restart") {
+      item.disabled = !workspace.activeId;
+    } else if (item.action === "search") {
+      item.active = !!scrollbackInspection?.query;
+      item.disabled = !scrollbackInspection || scrollbackInspection.totalRows === 0;
+    } else if (item.action === "previousMatch" || item.action === "nextMatch") {
+      item.disabled = !hasMatches;
+    }
+  }
   layoutWorkbenchButtonRowInto(webTerminalButtonPlacements, webTerminalButtonItems, rect, rect.row);
   for (const placement of webTerminalButtonPlacements) {
     const written = writeButton(frame, placement.rect.row, placement.rect.column, placement.item.label, {
@@ -15272,7 +15488,9 @@ function renderWebTerminalPane(frame, rect, sessionId, pane, activePane) {
     content = { column: rect.column, row: rect.row + 1, width: rect.width, height: rect.height - 1 };
   }
   const screen = syncWebTerminalScreen(sessionId, content.width, content.height);
-  const rows2 = screen.textRows();
+  const scrollback = syncWebTerminalScrollback(sessionId, screen, content.height);
+  const inspection = scrollback.inspect();
+  const rows2 = inspection.mode === "copy" ? inspection.visibleRows : screen.textRows();
   const screenRowCount = Math.min(rows2.length, content.height);
   for (let index = 0; index < screenRowCount; index += 1) {
     const line = rows2[index];
@@ -15283,6 +15501,11 @@ function renderWebTerminalPane(frame, rect, sessionId, pane, activePane) {
       paint(fit(line, content.width), t.text, activePane ? t.background : t.surface)
     );
   }
+  if (inspection.mode === "copy") {
+    const status = inspection.query ? `search "${inspection.query}" ${inspection.matches.length} hit(s)` : `copy rows ${inspection.offset + 1}-${Math.min(inspection.offset + inspection.viewportRows, inspection.totalRows)}`;
+    write(frame, content.row, content.column, paint(fit(status, content.width), t.warn, t.panelSoft, true));
+    return;
+  }
   const cursor = screen.cursor;
   if (activePane && cursor.row < content.height && cursor.column < content.width) {
     write(
@@ -15292,6 +15515,23 @@ function renderWebTerminalPane(frame, rect, sessionId, pane, activePane) {
       paint(" ", t.background, t.accent, true)
     );
   }
+}
+function activeWebTerminalScrollback() {
+  const sessionId = webTerminalWorkspace.inspect().activeId;
+  if (!sessionId) return void 0;
+  const screen = webTerminalScreens.get(sessionId) ?? syncWebTerminalScreen(sessionId, 80, 20);
+  return syncWebTerminalScrollback(sessionId, screen, screen.rows);
+}
+function syncWebTerminalScrollback(sessionId, screen, viewportRows) {
+  const safeId = sessionId ?? "none";
+  let scrollback = webTerminalScrollbacks.get(safeId);
+  if (!scrollback) {
+    scrollback = new TerminalScrollbackController({ screen, viewportRows });
+    webTerminalScrollbacks.set(safeId, scrollback);
+  } else {
+    scrollback.setViewportRows(viewportRows);
+  }
+  return scrollback;
 }
 function syncWebTerminalScreen(sessionId, width, height) {
   const columns2 = Math.max(20, Math.floor(width));
@@ -15405,6 +15645,18 @@ function applyWebTerminalAction(action) {
       webTerminalWorkspace.restart(inspection.activeId);
       push(`terminal restart ${webTerminalWorkspace.active?.title ?? inspection.activeId}`);
     }
+  } else if (action === "search") {
+    const scrollback = activeWebTerminalScrollback();
+    if (scrollback) {
+      const current = scrollback.inspect().query ?? "terminal";
+      const query = prompt("Search terminal scrollback", current) ?? "";
+      const matches = scrollback.search(query);
+      push(matches.length > 0 ? `terminal search ${matches.length} hits` : "terminal search no matches");
+    }
+  } else if (action === "previousMatch" || action === "nextMatch") {
+    const scrollback = activeWebTerminalScrollback();
+    const row = scrollback?.nextMatch(action === "previousMatch" ? -1 : 1);
+    push(row === void 0 ? "terminal search no matches" : `terminal search row ${row + 1}`);
   }
   webTerminalScreenKeys.clear();
   active.value = "terminal";
