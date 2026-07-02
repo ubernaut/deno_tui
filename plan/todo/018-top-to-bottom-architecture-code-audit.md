@@ -266,6 +266,8 @@ Work:
   - [x] Reworked command palette/controller projections, command-surface item projection, and command registry
         list/projection/key-binding/inspection helpers to reuse cached filtered state and avoid map/filter chains in
         command-surface paths.
+  - [x] Reworked stacked widget hit-region projection and widget hit testing to use direct buffers and a one-pass
+        topmost scan instead of per-pointer copy/filter/sort allocation, with z/id tie-break regression coverage.
 
 Acceptance checks:
 

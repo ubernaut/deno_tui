@@ -44,18 +44,23 @@ export function stackedRowHitRegions<TPayload>(
   } = {},
 ): Array<WidgetHitRegion<TPayload>> {
   const rowHeight = Math.max(1, Math.floor(options.rowHeight ?? 1));
-  return rows.map((row, index) => ({
-    id: `${options.idPrefix ?? "row"}-${index}`,
-    bounds: {
-      column: bounds.column,
-      row: bounds.row + index * rowHeight,
-      width: bounds.width,
-      height: rowHeight,
-    },
-    zIndex: options.zIndex,
-    disabled: options.disabled?.(row, index) ?? false,
-    payload: row,
-  }));
+  const regions = new Array<WidgetHitRegion<TPayload>>(rows.length);
+  for (let index = 0; index < rows.length; index += 1) {
+    const row = rows[index]!;
+    regions[index] = {
+      id: `${options.idPrefix ?? "row"}-${index}`,
+      bounds: {
+        column: bounds.column,
+        row: bounds.row + index * rowHeight,
+        width: bounds.width,
+        height: rowHeight,
+      },
+      zIndex: options.zIndex,
+      disabled: options.disabled?.(row, index) ?? false,
+      payload: row,
+    };
+  }
+  return regions;
 }
 
 /** Returns the topmost non-disabled region under a point. */
@@ -63,15 +68,23 @@ export function hitTestWidgetRegions<TPayload>(
   regions: readonly WidgetHitRegion<TPayload>[],
   point: { column: number; row: number },
 ): WidgetHit<TPayload> | undefined {
-  const region = [...regions]
-    .filter((entry) => !entry.disabled && pointInWidgetRegion(entry, point))
-    .sort((left, right) => (right.zIndex ?? 0) - (left.zIndex ?? 0) || right.id.localeCompare(left.id))[0];
-  if (!region) return undefined;
+  let region: WidgetHitRegion<TPayload> | undefined;
+  for (const candidate of regions) {
+    if (candidate.disabled || !pointInWidgetRegion(candidate, point)) continue;
+    if (!region || compareWidgetHitRegionPriority(candidate, region) > 0) {
+      region = candidate;
+    }
+  }
+  if (region === undefined) return undefined;
   return {
     region,
     localColumn: point.column - region.bounds.column,
     localRow: point.row - region.bounds.row,
   };
+}
+
+function compareWidgetHitRegionPriority(left: WidgetHitRegion, right: WidgetHitRegion): number {
+  return (left.zIndex ?? 0) - (right.zIndex ?? 0) || left.id.localeCompare(right.id);
 }
 
 /** Returns true when a point is inside a widget hit region. */

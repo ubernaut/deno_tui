@@ -120,6 +120,14 @@ Deno.test("shared widget hit helpers map stacked rows and z-ordered regions", ()
   ]);
   assertEquals(hitTestWidgetRegions(regions, { column: 5, row: 3 }), undefined);
   assertEquals(hitTestWidgetRegions(regions, { column: 5, row: 4 })?.region.payload, "gamma");
+  assertEquals(
+    hitTestWidgetRegions([
+      { id: "low", zIndex: 1, bounds: { column: 0, row: 0, width: 5, height: 1 } },
+      { id: "alpha", zIndex: 3, bounds: { column: 0, row: 0, width: 5, height: 1 } },
+      { id: "omega", zIndex: 3, bounds: { column: 0, row: 0, width: 5, height: 1 } },
+    ], { column: 1, row: 0 })?.region.id,
+    "omega",
+  );
 });
 
 Deno.test("labelLineLayout crops and aligns text inside fixed rectangles", () => {
