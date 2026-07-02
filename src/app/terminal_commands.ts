@@ -2,6 +2,7 @@
 import type { TerminalOutputController, TerminalOutputInspection } from "../components/terminal_output.ts";
 import type { ProcessSessionController, ProcessSessionInspection } from "../runtime/process_session.ts";
 import type { TerminalScrollbackController, TerminalScrollbackInspection } from "../runtime/terminal_scrollback.ts";
+import { isSpawnTerminalTemplate } from "../runtime/terminal_templates.ts";
 import type { TerminalWorkspaceController, TerminalWorkspaceInspection } from "../runtime/terminal_workspace.ts";
 import type { Action } from "./actions.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
@@ -95,6 +96,7 @@ export type TerminalWorkspaceCommandKind =
   | "growActive"
   | "shrinkActive"
   | "duplicateSession"
+  | "restartSession"
   | "detachSession"
   | "attachSession";
 
@@ -106,6 +108,7 @@ export type TerminalWorkspaceCommandAction =
   | Action<"terminalWorkspace.paneActivated", TerminalWorkspaceCommandPayload>
   | Action<"terminalWorkspace.paneResized", TerminalWorkspaceCommandPayload & { delta: number }>
   | Action<"terminalWorkspace.sessionDuplicated", TerminalWorkspaceCommandPayload>
+  | Action<"terminalWorkspace.sessionRestarted", TerminalWorkspaceCommandPayload>
   | Action<"terminalWorkspace.sessionDetached", TerminalWorkspaceCommandPayload>
   | Action<"terminalWorkspace.sessionAttached", TerminalWorkspaceCommandPayload>;
 
@@ -538,6 +541,24 @@ export function terminalWorkspaceCommands<TAction extends Action = TerminalWorks
           return {
             type: "terminalWorkspace.sessionDuplicated",
             payload: terminalWorkspacePayload(workspace, id, undefined, duplicate?.id),
+          } as TAction;
+        },
+      },
+      {
+        id: `${idPrefix}.restartSession`,
+        label: label("restartSession", "Restart Terminal Session"),
+        group,
+        keywords: ["terminal", "workspace", "session", "tab", "restart", "rerun"],
+        disabled: () => {
+          const active = workspace.inspect().active;
+          return !active || !isSpawnTerminalTemplate(active.template);
+        },
+        action: () => {
+          const sessionId = workspace.inspect().activeId;
+          if (sessionId) workspace.restart(sessionId);
+          return {
+            type: "terminalWorkspace.sessionRestarted",
+            payload: terminalWorkspacePayload(workspace, id, undefined, sessionId),
           } as TAction;
         },
       },

@@ -229,6 +229,15 @@ Deno.test("terminal workspace controller duplicates and detaches sessions", () =
   assertEquals(source?.updatedAt, 40);
   assertEquals(workspace.inspect().activeId, "server");
 
+  now = 50;
+  assertEquals(workspace.restart("server"), true);
+  source = workspace.inspect().sessions.find((session) => session.id === "server");
+  assertEquals(source?.status, "idle");
+  assertEquals(source?.running, false);
+  assertEquals(source?.detached, false);
+  assertEquals(source?.runtimeTitle, undefined);
+  assertEquals(source?.updatedAt, 50);
+
   workspace.dispose();
 });
 
@@ -328,6 +337,7 @@ Deno.test("terminal workspace commands drive pane operations", async () => {
     ["terminalWorkspace.growActive", true],
     ["terminalWorkspace.shrinkActive", true],
     ["terminalWorkspace.duplicateSession", false],
+    ["terminalWorkspace.restartSession", false],
     ["terminalWorkspace.detachSession", true],
     ["terminalWorkspace.attachSession", true],
   ]);
@@ -358,6 +368,9 @@ Deno.test("terminal workspace commands drive pane operations", async () => {
   assertEquals(await registry.execute("terminal.main.duplicateSession", (action) => void actions.push(action)), true);
   assertEquals(actions[5]?.type, "terminalWorkspace.sessionDuplicated");
   assertEquals(workspace.inspect().sessions.map((session) => session.id), ["shell-main", "logs", "logs-copy"]);
+  assertEquals(await registry.execute("terminal.main.restartSession", (action) => void actions.push(action)), true);
+  assertEquals(actions[6]?.type, "terminalWorkspace.sessionRestarted");
+  assertEquals(workspace.inspect().active?.status, "idle");
 
   dispose();
   assertEquals(registry.list("terminal"), []);

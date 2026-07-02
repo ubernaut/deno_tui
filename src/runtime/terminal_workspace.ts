@@ -27,7 +27,11 @@ import {
   duplicateTerminalSessionDescriptor,
   shouldAdoptRuntimeTitle,
 } from "./terminal_workspace_sessions.ts";
-import { type TerminalSessionDescriptor, type TerminalTemplate } from "./terminal_templates.ts";
+import {
+  isSpawnTerminalTemplate,
+  type TerminalSessionDescriptor,
+  type TerminalTemplate,
+} from "./terminal_templates.ts";
 
 /** Options for constructing a terminal workspace controller. */
 export interface TerminalWorkspaceControllerOptions {
@@ -321,6 +325,22 @@ export class TerminalWorkspaceController {
     if (index < 0) return false;
     const descriptor = cloneTerminalSessionDescriptor(sessions[index]!);
     if (!descriptor.detached) return false;
+    descriptor.detached = false;
+    descriptor.updatedAt = this.#now();
+    this.sessions.value = replaceTerminalSession(sessions, index, descriptor);
+    return this.activate(id);
+  }
+
+  restart(id = this.activeId.peek()): boolean {
+    if (!id) return false;
+    const sessions = this.sessions.peek();
+    const index = terminalSessionIndex(sessions, id);
+    if (index < 0) return false;
+    const descriptor = cloneTerminalSessionDescriptor(sessions[index]!);
+    if (!isSpawnTerminalTemplate(descriptor.template)) return false;
+    descriptor.runtimeTitle = undefined;
+    descriptor.status = "idle";
+    descriptor.running = false;
     descriptor.detached = false;
     descriptor.updatedAt = this.#now();
     this.sessions.value = replaceTerminalSession(sessions, index, descriptor);

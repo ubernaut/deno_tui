@@ -96,3 +96,5 @@ developer workflows.
   text framed as `CSI 200~`/`CSI 201~` while explicit raw paste buffers remain byte-preserving.
 - Added SGR mouse routing for embedded shells that negotiate DEC private modes 1000/1002/1003 plus 1006, including local
   shell-body coordinate translation and byte-preserving raw mouse buffers.
+- Added renderer-neutral terminal workspace session restart metadata and command-surface action support so spawnable
+  session tabs can be reset for backend respawn while attach-only sessions remain protected.
