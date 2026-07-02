@@ -4236,10 +4236,18 @@ var WindowManagerController = class {
     return this.active();
   }
   focusNext(delta = 1) {
-    const ids = this.ids();
-    if (ids.length === 0) return void 0;
-    const current = Math.max(0, ids.indexOf(this.activeId.peek() ?? ""));
-    return this.focus(ids[(current + delta + ids.length) % ids.length]);
+    const windows = this.#orderedWindows(false);
+    if (windows.length === 0) return void 0;
+    const activeId = this.activeId.peek();
+    let currentIndex = -1;
+    for (let index = 0; index < windows.length; index += 1) {
+      if (windows[index].id === activeId) {
+        currentIndex = index;
+        break;
+      }
+    }
+    const current = Math.max(0, currentIndex);
+    return this.focus(windows[(current + delta + windows.length) % windows.length].id);
   }
   minimize(id2 = this.activeId.peek()) {
     if (!id2) return void 0;
@@ -9783,9 +9791,11 @@ var ProgressBarController = class {
 function renderStatusBar(left, right, width) {
   const safeWidth = Math.max(0, width);
   const leftText = left.slice(0, safeWidth);
-  const rightText = right.slice(0, Math.max(0, safeWidth - leftText.length));
-  const gap = Math.max(1, safeWidth - leftText.length - rightText.length);
-  return `${leftText}${" ".repeat(gap)}${rightText}`.slice(0, safeWidth);
+  const remaining = safeWidth - leftText.length;
+  if (remaining <= 0) return leftText;
+  const rightText = right.slice(0, remaining);
+  const gap = Math.max(0, safeWidth - leftText.length - rightText.length);
+  return `${leftText}${" ".repeat(gap)}${rightText}`;
 }
 
 // src/components/stepper.ts
