@@ -10625,6 +10625,25 @@ function linearRgbChannel(channel) {
   return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
 }
 
+// src/app/workbench_button_style.ts
+function workbenchButtonPaintOptions(theme2, contrast, state = "base", tone = "default") {
+  if (state === "disabled") {
+    return { fg: theme2.buttonMutedText, bg: theme2.buttonMutedBg, bold: false };
+  }
+  const toneBg = tone === "danger" ? theme2.danger : tone === "warning" ? theme2.warn : tone === "success" ? theme2.good : tone === "muted" ? theme2.border : void 0;
+  if (toneBg) {
+    return { fg: contrast(toneBg, theme2.background, theme2.text), bg: toneBg, bold: true };
+  }
+  if (state === "active") {
+    return {
+      fg: contrast(theme2.buttonActiveBg, theme2.background, theme2.text),
+      bg: theme2.buttonActiveBg,
+      bold: true
+    };
+  }
+  return { fg: contrast(theme2.buttonBg, theme2.background, theme2.text), bg: theme2.buttonBg, bold: true };
+}
+
 // src/runtime/diagnostics.ts
 var DiagnosticsCollector = class {
   constructor(maxEntries = 200) {
@@ -15733,11 +15752,7 @@ function writeButton(frame, row, column, label, options = {}) {
   return width;
 }
 function buttonPaintOptions(state = "base", tone = "default") {
-  if (state === "disabled") return { fg: theme().muted, bg: theme().buttonMutedBg, bold: false };
-  const toneBg = tone === "danger" ? theme().danger : tone === "warning" ? theme().warn : tone === "success" ? theme().good : tone === "muted" ? theme().border : void 0;
-  if (toneBg) return { fg: contrastText(toneBg, theme().background, theme().text), bg: toneBg, bold: true };
-  const bg = state === "active" ? theme().buttonActiveBg : theme().buttonBg;
-  return { fg: contrastText(bg, theme().background, theme().text), bg, bold: true };
+  return workbenchButtonPaintOptions(theme(), contrastText, state, tone);
 }
 function paint(value, fg = theme().text, bg = theme().background, bold = false) {
   return makeStyle({ fg, bg, bold })(value);

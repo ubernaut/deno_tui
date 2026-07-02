@@ -3363,6 +3363,41 @@
       "documented": true
     },
     {
+      "module": "src/app/workbench_button_style.ts",
+      "name": "WorkbenchButtonContrast",
+      "kind": "type",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_button_style.ts",
+      "name": "workbenchButtonPaintOptions",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_button_style.ts",
+      "name": "WorkbenchButtonState",
+      "kind": "type",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_button_style.ts",
+      "name": "WorkbenchButtonTheme",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_button_style.ts",
+      "name": "WorkbenchButtonTone",
+      "kind": "type",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
       "module": "src/app/workbench_diagnostics.ts",
       "name": "appendBoundedWorkbenchLogRow",
       "kind": "function",

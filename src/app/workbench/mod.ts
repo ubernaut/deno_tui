@@ -7,6 +7,7 @@
  */
 export * from "../hit_targets.ts";
 export * from "../workbench_frame.ts";
+export * from "../workbench_button_style.ts";
 export * from "../workbench_diagnostics.ts";
 export * from "../workbench_layout.ts";
 export * from "../workbench_menu.ts";

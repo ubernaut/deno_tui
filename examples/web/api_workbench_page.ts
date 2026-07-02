@@ -66,6 +66,7 @@ import {
   textWidth,
   translateHitTargets,
   workbenchAdaptiveTileOptions,
+  workbenchButtonPaintOptions,
   type WorkbenchPanelWorkspaceState,
   workbenchShelfEntriesInto,
   workbenchStatusLeft,
@@ -2136,19 +2137,7 @@ function buttonPaintOptions(
   state: "base" | "active" | "disabled" = "base",
   tone: ButtonTone = "default",
 ): { fg: string; bg: string; bold: boolean } {
-  if (state === "disabled") return { fg: theme().muted, bg: theme().buttonMutedBg, bold: false };
-  const toneBg = tone === "danger"
-    ? theme().danger
-    : tone === "warning"
-    ? theme().warn
-    : tone === "success"
-    ? theme().good
-    : tone === "muted"
-    ? theme().border
-    : undefined;
-  if (toneBg) return { fg: contrastText(toneBg, theme().background, theme().text), bg: toneBg, bold: true };
-  const bg = state === "active" ? theme().buttonActiveBg : theme().buttonBg;
-  return { fg: contrastText(bg, theme().background, theme().text), bg, bold: true };
+  return workbenchButtonPaintOptions(theme(), contrastText, state, tone);
 }
 
 function paint(value: string, fg = theme().text, bg = theme().background, bold = false): string {
