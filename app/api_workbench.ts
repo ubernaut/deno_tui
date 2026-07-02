@@ -329,6 +329,13 @@ const terminalShellWindowOption: NewWindowOption = {
   windowId: TERMINAL_SHELL_WINDOW_ID,
 };
 const visualizationWindowOptions: NewWindowOption[] = createWorkbenchVisualizationWindowOptions(visualizations);
+const visualizationWindowOptionIds = new Array<string>(visualizationWindowOptions.length);
+const visualizationWindowOptionById = new Map<string, NewWindowOption>();
+for (let index = 0; index < visualizationWindowOptions.length; index += 1) {
+  const option = visualizationWindowOptions[index]!;
+  visualizationWindowOptionIds[index] = option.id;
+  visualizationWindowOptionById.set(option.id, option);
+}
 const newWindowOptions: NewWindowOption[] = [
   terminalShellWindowOption,
   terminalOutputWindowOption,
@@ -3219,7 +3226,7 @@ function handleWorkspaceNameKey(event: { key: string; ctrl?: boolean; meta?: boo
 async function saveCurrentWorkspace(): Promise<void> {
   const name = normalizeWorkspaceName(workspaceNameDraft.peek());
   const windows = currentWorkspaceWindows();
-  const visualizationIds = windows.map((window) => window.visualizationId);
+  const visualizationIds = workspaceVisualizationIdsFromWindows(windows);
   const next: SavedWorkspace = { name, visualizationIds, windows, savedAt: Date.now() };
   savedWorkspaces.value = upsertWorkbenchWorkspace(savedWorkspaces.peek(), next);
   await persistSavedWorkspaces();
@@ -3356,13 +3363,17 @@ function currentWorkspaceVisualizationIds(): string[] {
 }
 
 function currentWorkspaceWindows(): SavedWorkspaceWindow[] {
-  return windowManager.ids()
-    .filter((id) => isVisualizationWindow(id as WindowId))
-    .flatMap((id): SavedWorkspaceWindow[] => {
-      const windowId = id as VisualizationWindowId;
-      const visualizationId = dynamicVisualizationWindows.peek()[windowId];
-      return visualizationId ? [{ visualizationId, ascii: cloneAsciiOptions(asciiForWindow(windowId).peek()) }] : [];
-    });
+  const ids = windowManager.ids();
+  const dynamicWindows = dynamicVisualizationWindows.peek();
+  const windows: SavedWorkspaceWindow[] = [];
+  for (let index = 0; index < ids.length; index += 1) {
+    const windowId = ids[index] as WindowId;
+    if (!isVisualizationWindow(windowId)) continue;
+    const visualizationId = dynamicWindows[windowId];
+    if (!visualizationId) continue;
+    windows.push({ visualizationId, ascii: cloneAsciiOptions(asciiForWindow(windowId).peek()) });
+  }
+  return windows;
 }
 
 function defaultWorkspaceName(): string {
@@ -3379,7 +3390,7 @@ function workspaceByName(name: string | null | undefined): SavedWorkspace | unde
 
 function workspaceWindowEntries(workspace: SavedWorkspace): SavedWorkspaceWindow[] {
   return workbenchWorkspaceWindowEntries(workspace, {
-    validVisualizationIds: visualizationWindowOptions.map((option) => option.id),
+    validVisualizationIds: visualizationWindowOptionIds,
     normalizeAscii: (value) =>
       value ? normalizeAsciiOptions(value as AsciiOptions, createDefaultWorkbenchAsciiOptions()) : undefined,
   });
@@ -3392,7 +3403,7 @@ async function persistActiveWorkspaceState(): Promise<void> {
   const windows = currentWorkspaceWindows();
   const next: SavedWorkspace = {
     ...workspace,
-    visualizationIds: windows.map((window) => window.visualizationId),
+    visualizationIds: workspaceVisualizationIdsFromWindows(windows),
     windows,
     savedAt: Date.now(),
   };
@@ -3426,7 +3437,7 @@ function reportWorkspaceStorageFallback(operation: string, error: unknown): void
 
 function normalizeSavedWorkspaces(value: unknown): SavedWorkspace[] {
   return normalizeWorkbenchWorkspaceStorage(value, {
-    validVisualizationIds: visualizationWindowOptions.map((option) => option.id),
+    validVisualizationIds: visualizationWindowOptionIds,
     normalizeName: (name, index) => normalizeWorkbenchWorkspaceName(name, `Workspace ${index + 1}`),
     normalizeAscii: (candidate) =>
       candidate ? normalizeAsciiOptions(candidate as AsciiOptions, createDefaultWorkbenchAsciiOptions()) : undefined,
@@ -4562,7 +4573,7 @@ function visualizationWindowId(visualizationId: string): VisualizationWindowId {
 }
 
 function visualizationOption(visualizationId: string | undefined): NewWindowOption | undefined {
-  return visualizationId ? visualizationWindowOptions.find((entry) => entry.id === visualizationId) : undefined;
+  return visualizationId ? visualizationWindowOptionById.get(visualizationId) : undefined;
 }
 
 function accentColor(accent: Accent): string {

@@ -173,6 +173,8 @@ Work:
         docs/introspection output without `Object.keys(...).sort()` callback-path allocation.
   - [x] Reworked API Workbench minimized-state sync and data-table sort-column cycling to use direct loops/shared
         helpers instead of `Object.fromEntries(...map(...))` and per-keypress filtered sortable arrays.
+  - [x] Reworked API Workbench workspace serialization to scan window ids once, cache valid visualization option ids,
+        and resolve visualization options through an id map instead of repeated `map`/`filter`/`flatMap`/`find` passes.
 - [x] Replace duplicated theme/window/menu persistence code with a shared versioned serializer.
   - [x] Extracted shared workbench workspace normalization, panel-state normalization, upsert, rename, delete, lookup,
         and legacy window-entry expansion helpers into `src/app/workbench_workspace.ts`.

@@ -9026,7 +9026,7 @@ var DataTableController = class {
 };
 function filterDataRows(rows2, columns2, query) {
   const terms = parseSearchTerms(query);
-  if (terms.length === 0) return [...rows2];
+  if (terms.length === 0) return copyDataRows(rows2);
   const filtered = [];
   for (const row of rows2) {
     if (dataRowMatchesTerms(row, columns2, terms)) filtered.push(row);
@@ -9047,9 +9047,16 @@ function dataRowMatchesTerms(row, columns2, terms) {
   return true;
 }
 function sortDataRows(rows2, sort) {
-  if (!sort) return [...rows2];
+  const sorted = copyDataRows(rows2);
+  if (!sort) return sorted;
   const direction = sort.direction === "desc" ? -1 : 1;
-  return [...rows2].sort((left, right) => compareCells(left[sort.columnId], right[sort.columnId]) * direction);
+  sorted.sort((left, right) => compareCells(left[sort.columnId], right[sort.columnId]) * direction);
+  return sorted;
+}
+function copyDataRows(rows2) {
+  const output = new Array(rows2.length);
+  for (let index = 0; index < rows2.length; index += 1) output[index] = rows2[index];
+  return output;
 }
 function renderDataTableHeader(columns2, sort) {
   let header = "";
@@ -9250,16 +9257,25 @@ function fileExplorerEntry(row) {
   };
 }
 function sortExplorerNodes(nodes) {
-  const sorted = nodes.slice();
+  const sorted = copyExplorerNodes(nodes);
   sorted.sort(compareExplorerNodes);
   const output = new Array(sorted.length);
   for (let index = 0; index < sorted.length; index += 1) {
     const node = sorted[index];
     output[index] = {
-      ...node,
+      id: node.id,
+      label: node.label,
+      path: node.path,
+      kind: node.kind,
+      expanded: node.expanded,
       children: node.children.length > 0 ? sortExplorerNodes(node.children) : void 0
     };
   }
+  return output;
+}
+function copyExplorerNodes(nodes) {
+  const output = new Array(nodes.length);
+  for (let index = 0; index < nodes.length; index += 1) output[index] = nodes[index];
   return output;
 }
 function compareExplorerNodes(left, right) {
