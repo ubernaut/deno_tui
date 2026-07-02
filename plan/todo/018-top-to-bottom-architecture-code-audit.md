@@ -217,6 +217,8 @@ Work:
         closures when constructing Three ASCII demo windows.
   - [x] Reworked shared workbench workspace normalization, serialization, lookup, and menu label projection to use
         loop-based buffers in workspace load/save and redraw-heavy dropdown paths.
+  - [x] Reworked Three ASCII renderer option patching to use explicit typed assignments instead of `Object.entries()`
+        reflection when applying live config updates.
 
 Acceptance checks:
 

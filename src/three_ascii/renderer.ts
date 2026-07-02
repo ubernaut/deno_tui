@@ -398,16 +398,38 @@ export class ThreeAsciiRenderer {
       this.effectOptions.backgroundColor = colorValue(options.backgroundColor, 0x000000);
     }
 
-    for (const [key, value] of Object.entries(options)) {
-      if (value === undefined || key === "asciiColor" || key === "backgroundColor") {
-        continue;
-      }
-
-      (this.effectOptions as Record<string, unknown>)[key] = value;
-    }
+    this.applyEffectOptionPatch(options);
 
     this.asciiNode?.applyOptions(options);
     this.computeDirty = true;
+  }
+
+  private applyEffectOptionPatch(options: Partial<AcerolaAsciiNodeOptions>): void {
+    if (options.resolutionScale !== undefined) this.effectOptions.resolutionScale = options.resolutionScale;
+    if (options.zoom !== undefined) this.effectOptions.zoom = options.zoom;
+    if (options.offset !== undefined) this.effectOptions.offset = options.offset;
+    if (options.kernelSize !== undefined) this.effectOptions.kernelSize = options.kernelSize;
+    if (options.sigma !== undefined) this.effectOptions.sigma = options.sigma;
+    if (options.sigmaScale !== undefined) this.effectOptions.sigmaScale = options.sigmaScale;
+    if (options.tau !== undefined) this.effectOptions.tau = options.tau;
+    if (options.threshold !== undefined) this.effectOptions.threshold = options.threshold;
+    if (options.useDepth !== undefined) this.effectOptions.useDepth = options.useDepth;
+    if (options.depthThreshold !== undefined) this.effectOptions.depthThreshold = options.depthThreshold;
+    if (options.useNormals !== undefined) this.effectOptions.useNormals = options.useNormals;
+    if (options.normalThreshold !== undefined) this.effectOptions.normalThreshold = options.normalThreshold;
+    if (options.depthCutoff !== undefined) this.effectOptions.depthCutoff = options.depthCutoff;
+    if (options.edgeThreshold !== undefined) this.effectOptions.edgeThreshold = options.edgeThreshold;
+    if (options.edges !== undefined) this.effectOptions.edges = options.edges;
+    if (options.fill !== undefined) this.effectOptions.fill = options.fill;
+    if (options.exposure !== undefined) this.effectOptions.exposure = options.exposure;
+    if (options.attenuation !== undefined) this.effectOptions.attenuation = options.attenuation;
+    if (options.invertLuminance !== undefined) this.effectOptions.invertLuminance = options.invertLuminance;
+    if (options.blendWithBase !== undefined) this.effectOptions.blendWithBase = options.blendWithBase;
+    if (options.depthFalloff !== undefined) this.effectOptions.depthFalloff = options.depthFalloff;
+    if (options.depthOffset !== undefined) this.effectOptions.depthOffset = options.depthOffset;
+    if (options.viewDog !== undefined) this.effectOptions.viewDog = options.viewDog;
+    if (options.viewUncompressed !== undefined) this.effectOptions.viewUncompressed = options.viewUncompressed;
+    if (options.viewEdges !== undefined) this.effectOptions.viewEdges = options.viewEdges;
   }
 
   getTerminalEdgeBias(): number {
