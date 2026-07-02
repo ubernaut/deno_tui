@@ -138,7 +138,11 @@ export class ThemeEnginePipeline {
   }
 
   activeIds(): string[] {
-    return this.ids().filter((id) => this.#enabled.has(id));
+    const ids: string[] = [];
+    for (const id of this.#steps.keys()) {
+      if (this.#enabled.has(id)) ids.push(id);
+    }
+    return ids;
   }
 
   setEnabled(id: string, enabled: boolean): boolean {
@@ -185,7 +189,9 @@ export class ThemeEnginePipeline {
 
   apply(base: ThemeEngine): ThemeEngine {
     let engine = base;
-    this.activeIds().forEach((id, index) => {
+    let index = 0;
+    for (const id of this.#steps.keys()) {
+      if (!this.#enabled.has(id)) continue;
       const step = this.#steps.get(id)!;
       if (step.options) {
         engine = engine.extend(step.options);
@@ -194,18 +200,27 @@ export class ThemeEnginePipeline {
         const result = step.transform(engine, { pipelineId: this.id, stepId: id, index });
         engine = isThemeEngine(result) ? result : engine.extend(result);
       }
-    });
+      index += 1;
+    }
     return engine;
   }
 
   inspect(): ThemeEnginePipelineInspection {
-    const steps = this.ids().map((id) => inspectPipelineStep(this.#steps.get(id)!, this.#enabled.has(id)));
+    const steps = new Array<ThemeEnginePipelineStepInspection>(this.#steps.size);
+    let index = 0;
+    let activeStepCount = 0;
+    for (const [id, step] of this.#steps) {
+      const enabled = this.#enabled.has(id);
+      if (enabled) activeStepCount += 1;
+      steps[index] = inspectPipelineStep(step, enabled);
+      index += 1;
+    }
     return {
       id: this.id,
       label: this.label,
       description: this.description,
       stepCount: steps.length,
-      activeStepCount: steps.filter((step) => step.enabled).length,
+      activeStepCount,
       steps,
     };
   }
@@ -234,7 +249,10 @@ export async function prewarmThemeEnginePipelines(
 ): Promise<ThemeEnginePipelineBuildResult[]> {
   const scheduler = options.scheduler ?? new AsyncScheduler();
   const requested = options.ids ? new Set(options.ids) : undefined;
-  const selected = pipelines.filter((pipeline) => !requested || requested.has(pipeline.id));
+  const selected: ThemeEnginePipeline[] = [];
+  for (const pipeline of pipelines) {
+    if (!requested || requested.has(pipeline.id)) selected.push(pipeline);
+  }
   const base = options.base ?? (() => new ThemeEngine());
   const results = await runTaskBatch(selected, {
     scheduler,
@@ -249,7 +267,11 @@ export async function prewarmThemeEnginePipelines(
       };
     },
   });
-  return results.map((result) => result.value);
+  const values = new Array<ThemeEnginePipelineBuildResult>(results.length);
+  for (let index = 0; index < results.length; index += 1) {
+    values[index] = results[index]!.value;
+  }
+  return values;
 }
 
 function inspectPipelineStep(
@@ -259,8 +281,10 @@ function inspectPipelineStep(
   const options = step.options ?? {};
   const components = options.components ?? {};
   const variants: Record<string, string[]> = {};
-  for (const [component, definition] of Object.entries(components).sort(([a], [b]) => a.localeCompare(b))) {
-    variants[component] = Object.keys(definition.variants ?? {}).sort();
+  const componentNames = sortedObjectKeys(components);
+  for (const component of componentNames) {
+    const definition = components[component]!;
+    variants[component] = sortedObjectKeys(definition.variants ?? {});
   }
   return {
     id: step.id,
@@ -269,14 +293,26 @@ function inspectPipelineStep(
     enabled,
     hasTransform: step.transform !== undefined,
     tokenOverrides: sortedThemeTokens(Object.keys(options.tokens ?? {})),
-    components: Object.keys(components).sort(),
+    components: componentNames,
     variants,
   };
 }
 
 function sortedThemeTokens(values: Iterable<string>): ThemeTokenName[] {
   const requested = new Set(values);
-  return themeTokenNames.filter((token) => requested.has(token));
+  const tokens: ThemeTokenName[] = [];
+  for (const token of themeTokenNames) {
+    if (requested.has(token)) tokens.push(token);
+  }
+  return tokens;
+}
+
+function sortedObjectKeys(value: object): string[] {
+  const keys: string[] = [];
+  for (const key in value) {
+    keys.push(key);
+  }
+  return keys.sort();
 }
 
 function isThemeEngine(value: ThemeEngine | ThemeEngineOptions): value is ThemeEngine {

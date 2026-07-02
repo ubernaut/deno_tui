@@ -300,6 +300,9 @@ Work:
   - [x] Reworked theme engine factory ids, inspections, prewarm selection, catalog aggregation, prewarm result
         projection, token filtering, and search matching to use direct buffers and scanned terms instead of chained
         `map/filter/flatMap` pipelines and joined haystacks.
+  - [x] Reworked theme engine pipeline active-id scans, apply ordering, inspection aggregation, prewarm selection,
+        prewarm result projection, component-key sorting, and token filtering to avoid active-id `filter/map` and
+        `Object.entries().sort()` pipelines.
   - [x] Reworked EventEmitter aggregate counting, event-name projection, and inspection to avoid Object.values/entries
         pipelines in core canvas/component/web host event paths.
   - [x] Reworked runtime diagnostics bounded trimming, cloning, status counting, and text formatting to avoid map/filter
