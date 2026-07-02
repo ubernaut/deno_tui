@@ -285,6 +285,8 @@ Work:
         breakpoint, slot, and missing-layout projection instead of flatMap/map/filter intermediates.
   - [x] Reworked runtime renderer backend inspection, query, selection, and catalog summaries to use one-pass buffers
         and set accumulation instead of chained map/filter/flatMap scans in startup/report paths.
+  - [x] Reworked runtime renderer backend search queries to scan normalized terms directly instead of allocating
+        `trim().split().filter()` buffers during catalog filtering.
   - [x] Reworked runtime profile registry inspection, profile lookup, query, and catalog summaries with explicit buffers
         and one-pass strategy/tag accumulation while preserving priority and definition ordering.
   - [x] Reworked runtime and terminal capability entry/summary/format helpers to use stable ID lists and one-pass

@@ -494,12 +494,27 @@ function matchesRendererBackend(
   if (query.available !== undefined && backend.available !== query.available) return false;
   if (query.accelerated !== undefined && backend.accelerated !== query.accelerated) return false;
   if (!query.search) return true;
-  const parts = query.search.trim().toLowerCase().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return true;
-  for (const part of parts) {
-    if (!rendererBackendIncludesSearchPart(backend, part)) return false;
+  return rendererBackendMatchesSearch(backend, query.search);
+}
+
+function rendererBackendMatchesSearch(backend: RuntimeRendererBackendInspection, search: string): boolean {
+  let start = -1;
+  const normalized = search.toLowerCase();
+  for (let index = 0; index <= normalized.length; index += 1) {
+    const char = index < normalized.length ? normalized[index] : " ";
+    if (char !== undefined && !isSearchWhitespace(char)) {
+      if (start < 0) start = index;
+      continue;
+    }
+    if (start < 0) continue;
+    if (!rendererBackendIncludesSearchPart(backend, normalized.slice(start, index))) return false;
+    start = -1;
   }
   return true;
+}
+
+function isSearchWhitespace(char: string): boolean {
+  return char === " " || char === "\n" || char === "\t" || char === "\r" || char === "\f";
 }
 
 function compareRendererBackends(left: RuntimeRendererBackend, right: RuntimeRendererBackend): number {
