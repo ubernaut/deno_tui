@@ -154,7 +154,11 @@ export class TerminalWorkspaceController {
 
   constructor(options: TerminalWorkspaceControllerOptions = {}) {
     this.#now = options.now ?? (() => Date.now());
-    const sessions = (options.sessions ?? []).map((session) => cloneTerminalSessionDescriptor(session));
+    const sourceSessions = options.sessions ?? [];
+    const sessions = new Array<TerminalSessionDescriptor>(sourceSessions.length);
+    for (let index = 0; index < sourceSessions.length; index += 1) {
+      sessions[index] = cloneTerminalSessionDescriptor(sourceSessions[index]!);
+    }
     const activeId = options.activeId && sessions.some((session) => session.id === options.activeId)
       ? options.activeId
       : sessions[0]?.id;
@@ -182,9 +186,10 @@ export class TerminalWorkspaceController {
     const nextDescriptor = cloneTerminalSessionDescriptor(descriptor);
     const sessions = this.sessions.peek();
     const index = sessions.findIndex((session) => session.id === nextDescriptor.id);
-    this.sessions.value = index >= 0
-      ? sessions.map((session, sessionIndex) => sessionIndex === index ? nextDescriptor : session)
-      : [...sessions, nextDescriptor];
+    this.sessions.value = index >= 0 ? replaceTerminalSession(sessions, index, nextDescriptor) : appendTerminalSession(
+      sessions,
+      nextDescriptor,
+    );
     if (options.activate || !this.activeId.peek()) this.activeId.value = nextDescriptor.id;
     if (!this.layout.peek().root) {
       this.layout.value = terminalWorkspaceLayoutWithActive({
@@ -210,15 +215,12 @@ export class TerminalWorkspaceController {
     const sessions = this.sessions.peek();
     const index = sessions.findIndex((session) => session.id === id);
     if (index < 0) return false;
-    const next = sessions.filter((session) => session.id !== id);
+    const next = removeTerminalSessionAt(sessions, index);
     this.sessions.value = next;
+    const sessionIds = new Set<string>();
+    for (const session of next) sessionIds.add(session.id);
     this.layout.value = normalizeTerminalWorkspaceLayout(
-      pruneTerminalWorkspaceLayoutSessions(
-        this.layout.peek(),
-        new Set(next.map(
-          (session) => session.id,
-        )),
-      ),
+      pruneTerminalWorkspaceLayoutSessions(this.layout.peek(), sessionIds),
       next,
       this.activeId.peek(),
     );
@@ -241,7 +243,7 @@ export class TerminalWorkspaceController {
     const descriptor = cloneTerminalSessionDescriptor(sessions[index]!);
     descriptor.title = trimmed;
     descriptor.updatedAt = this.#now();
-    this.sessions.value = sessions.map((session, sessionIndex) => sessionIndex === index ? descriptor : session);
+    this.sessions.value = replaceTerminalSession(sessions, index, descriptor);
     return true;
   }
 
@@ -261,7 +263,7 @@ export class TerminalWorkspaceController {
       descriptor.title = trimmed;
     }
     descriptor.updatedAt = this.#now();
-    this.sessions.value = sessions.map((session, sessionIndex) => sessionIndex === index ? descriptor : session);
+    this.sessions.value = replaceTerminalSession(sessions, index, descriptor);
     if (descriptor.title !== previousVisibleTitle) {
       this.layout.value = updateTerminalWorkspacePaneRuntimeTitles(
         this.layout.peek(),
@@ -310,7 +312,7 @@ export class TerminalWorkspaceController {
     descriptor.reconnectable = true;
     descriptor.running = false;
     descriptor.updatedAt = this.#now();
-    this.sessions.value = sessions.map((session, sessionIndex) => sessionIndex === index ? descriptor : session);
+    this.sessions.value = replaceTerminalSession(sessions, index, descriptor);
     return true;
   }
 
@@ -323,7 +325,7 @@ export class TerminalWorkspaceController {
     if (!descriptor.detached) return false;
     descriptor.detached = false;
     descriptor.updatedAt = this.#now();
-    this.sessions.value = sessions.map((session, sessionIndex) => sessionIndex === index ? descriptor : session);
+    this.sessions.value = replaceTerminalSession(sessions, index, descriptor);
     return this.activate(id);
   }
 
@@ -429,7 +431,11 @@ export class TerminalWorkspaceController {
   }
 
   inspect(): TerminalWorkspaceInspection {
-    const sessions = this.sessions.peek().map((session) => cloneTerminalSessionDescriptor(session));
+    const source = this.sessions.peek();
+    const sessions = new Array<TerminalSessionDescriptor>(source.length);
+    for (let index = 0; index < source.length; index += 1) {
+      sessions[index] = cloneTerminalSessionDescriptor(source[index]!);
+    }
     const activeId = this.activeId.peek();
     const active = activeId ? sessions.find((session) => session.id === activeId) : undefined;
     return {
@@ -469,7 +475,8 @@ function normalizeTerminalWorkspaceLayout(
   sessions: readonly TerminalSessionDescriptor[],
   activeId: string | undefined,
 ): TerminalWorkspaceLayoutState {
-  const sessionIds = new Set(sessions.map((session) => session.id));
+  const sessionIds = new Set<string>();
+  for (const session of sessions) sessionIds.add(session.id);
   const pruned = pruneTerminalWorkspaceLayoutSessions(layout ?? {}, sessionIds);
   if (!pruned.root && activeId && sessionIds.has(activeId)) {
     const activeSession = sessions.find((session) => session.id === activeId);
@@ -496,15 +503,20 @@ function inspectTerminalWorkspaceLayout(
   sessions: readonly TerminalSessionDescriptor[],
 ): TerminalWorkspaceLayoutInspection {
   const normalized = normalizeTerminalWorkspaceLayout(layout, sessions, sessions[0]?.id);
-  const sessionById = new Map(sessions.map((session) => [session.id, session]));
-  const panes = collectTerminalWorkspacePanes(normalized.root).map((pane) => ({
-    ...cloneTerminalWorkspacePaneNode(pane),
-    active: pane.id === normalized.activePaneId,
-    zoomed: pane.id === normalized.zoomedPaneId,
-    session: sessionById.has(pane.sessionId)
-      ? cloneTerminalSessionDescriptor(sessionById.get(pane.sessionId)!)
-      : undefined,
-  }));
+  const sessionById = new Map<string, TerminalSessionDescriptor>();
+  for (const session of sessions) sessionById.set(session.id, session);
+  const sourcePanes = collectTerminalWorkspacePanes(normalized.root);
+  const panes = new Array<TerminalWorkspacePaneInspection>(sourcePanes.length);
+  for (let index = 0; index < sourcePanes.length; index += 1) {
+    const pane = sourcePanes[index]!;
+    const session = sessionById.get(pane.sessionId);
+    panes[index] = {
+      ...cloneTerminalWorkspacePaneNode(pane),
+      active: pane.id === normalized.activePaneId,
+      zoomed: pane.id === normalized.zoomedPaneId,
+      session: session ? cloneTerminalSessionDescriptor(session) : undefined,
+    };
+  }
   return {
     root: normalized.root ? cloneTerminalWorkspaceLayoutNode(normalized.root) : undefined,
     activePaneId: normalized.activePaneId,
@@ -512,4 +524,40 @@ function inspectTerminalWorkspaceLayout(
     panes,
     count: panes.length,
   };
+}
+
+function appendTerminalSession(
+  sessions: readonly TerminalSessionDescriptor[],
+  descriptor: TerminalSessionDescriptor,
+): TerminalSessionDescriptor[] {
+  const next = new Array<TerminalSessionDescriptor>(sessions.length + 1);
+  for (let index = 0; index < sessions.length; index += 1) next[index] = sessions[index]!;
+  next[sessions.length] = descriptor;
+  return next;
+}
+
+function replaceTerminalSession(
+  sessions: readonly TerminalSessionDescriptor[],
+  index: number,
+  descriptor: TerminalSessionDescriptor,
+): TerminalSessionDescriptor[] {
+  const next = new Array<TerminalSessionDescriptor>(sessions.length);
+  for (let sessionIndex = 0; sessionIndex < sessions.length; sessionIndex += 1) {
+    next[sessionIndex] = sessionIndex === index ? descriptor : sessions[sessionIndex]!;
+  }
+  return next;
+}
+
+function removeTerminalSessionAt(
+  sessions: readonly TerminalSessionDescriptor[],
+  index: number,
+): TerminalSessionDescriptor[] {
+  const next = new Array<TerminalSessionDescriptor>(Math.max(0, sessions.length - 1));
+  let target = 0;
+  for (let sessionIndex = 0; sessionIndex < sessions.length; sessionIndex += 1) {
+    if (sessionIndex === index) continue;
+    next[target] = sessions[sessionIndex]!;
+    target += 1;
+  }
+  return next;
 }

@@ -243,6 +243,8 @@ Work:
         of `some/find/map/flatMap/slice` chains in common render paths.
   - [x] Reworked `buildVisualizationDrive()` source construction and aggregate metrics to use explicit loops instead of
         `map/reduce/filter/some` and closure-based average helpers in every dynamic visualization frame.
+  - [x] Reworked terminal workspace session replacement, removal, layout normalization, and inspection cloning to use
+        explicit buffers instead of repeated `map/filter` chains in tmux-like workspace state paths.
 
 Acceptance checks:
 
