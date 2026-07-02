@@ -149,3 +149,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   adapters keep theme-highlight behavior aligned behind focused tests.
 - Wrapped Three ASCII GPU readback mapping failures in a stable `ThreeAsciiReadbackError` so Deno/WebGPU readback
   limitations surface as deterministic fallback/diagnostic failures instead of raw validation exceptions.
+- Extracted Three ASCII compute uniform packing into a focused internal helper with direct tests, keeping renderer GPU
+  orchestration separate from byte-level uniform layout.

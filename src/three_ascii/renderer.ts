@@ -22,6 +22,11 @@ import {
   ThreeAsciiReadbackLayoutCache,
   ThreeAsciiReadbackViewCache,
 } from "./readback.ts";
+import {
+  THREE_ASCII_UNIFORM_FLOAT_COUNT,
+  type ThreeAsciiUniformEffectState,
+  writeThreeAsciiUniformValues,
+} from "./uniforms.ts";
 import { getCompatibleWebGPUDevice } from "./webgpu_compat.ts";
 
 const TILE_SIZE = 8;
@@ -251,16 +256,7 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
 }
 `;
 
-interface EffectState {
-  edges: boolean;
-  fill: boolean;
-  invertLuminance: boolean;
-  exposure: number;
-  attenuation: number;
-  blendWithBase: number;
-  depthFalloff: number;
-  depthOffset: number;
-  edgeThreshold: number;
+interface EffectState extends ThreeAsciiUniformEffectState {
   asciiColor: Color;
   backgroundColor: Color;
 }
@@ -359,7 +355,7 @@ export class ThreeAsciiRenderer {
   private edgeOutput?: ThreeAsciiGpuBufferSlot<GPUBuffer>;
   private colorOutput?: ThreeAsciiGpuBufferSlot<GPUBuffer>;
   private outputReadback?: ThreeAsciiGpuBufferSlot<GPUBuffer>;
-  private uniformValues = new Float32Array(24);
+  private uniformValues = new Float32Array(THREE_ASCII_UNIFORM_FLOAT_COUNT);
   private readonly ansiGridAssembler = new ThreeAsciiAnsiGridAssembler({ reuseGrid: true });
   private readonly readbackLayoutCache = new ThreeAsciiReadbackLayoutCache();
   private readonly readbackViewCache = new ThreeAsciiReadbackViewCache();
@@ -829,42 +825,16 @@ export class ThreeAsciiRenderer {
       return;
     }
 
-    const uniforms = this.uniformValues;
+    writeThreeAsciiUniformValues(this.uniformValues, {
+      columns: this.columns,
+      rows: this.rows,
+      tileSize: TILE_SIZE,
+      terminalEdgeBias: this.terminalEdgeBias,
+      terminalEdgeThresholdScale: TERMINAL_EDGE_THRESHOLD_SCALE,
+      effectState,
+    });
 
-    uniforms[0] = this.columns;
-    uniforms[1] = this.rows;
-    uniforms[2] = this.columns * TILE_SIZE;
-    uniforms[3] = this.rows * TILE_SIZE;
-
-    uniforms[4] = effectState.edges ? 1 : 0;
-    uniforms[5] = effectState.fill ? 1 : 0;
-    uniforms[6] = effectState.invertLuminance ? 1 : 0;
-    // Browser output uses sparse 8x8 bitmap masks inside each tile. A terminal
-    // edge glyph fills the whole cell much more aggressively, so we bias the
-    // effective threshold upward to keep fill glyphs from being overwhelmed.
-    uniforms[7] = effectState.edgeThreshold * TERMINAL_EDGE_THRESHOLD_SCALE * this.terminalEdgeBias;
-
-    uniforms[8] = effectState.exposure;
-    uniforms[9] = effectState.attenuation;
-    uniforms[10] = effectState.blendWithBase;
-    uniforms[11] = effectState.depthFalloff;
-
-    uniforms[12] = effectState.depthOffset;
-    uniforms[13] = 0;
-    uniforms[14] = 0;
-    uniforms[15] = 0;
-
-    uniforms[16] = effectState.asciiColor.r;
-    uniforms[17] = effectState.asciiColor.g;
-    uniforms[18] = effectState.asciiColor.b;
-    uniforms[19] = 1;
-
-    uniforms[20] = effectState.backgroundColor.r;
-    uniforms[21] = effectState.backgroundColor.g;
-    uniforms[22] = effectState.backgroundColor.b;
-    uniforms[23] = 1;
-
-    this.device!.queue.writeBuffer(this.paramsBuffer!, 0, uniforms);
+    this.device!.queue.writeBuffer(this.paramsBuffer!, 0, this.uniformValues);
     this.uniformDirty = false;
   }
 
