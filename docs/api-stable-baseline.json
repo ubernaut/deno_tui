@@ -4267,6 +4267,34 @@
     },
     {
       "module": "src/app/workbench_status.ts",
+      "name": "workbenchStatusLine",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_status.ts",
+      "name": "WorkbenchStatusLineOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_status.ts",
+      "name": "WorkbenchStatusShortcutProfile",
+      "kind": "type",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_status.ts",
+      "name": "workbenchStatusShortcuts",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_status.ts",
       "name": "workbenchTileDensityLabel",
       "kind": "function",
       "typeOnly": false,

@@ -12,7 +12,6 @@ import { ProgressBarController } from "../src/components/progressbar.ts";
 import { RadioGroupController } from "../src/components/radio_group.ts";
 import { ScrollAreaController, scrollbarOffsetForPointer } from "../src/components/scroll_area.ts";
 import { SliderController } from "../src/components/slider.ts";
-import { renderStatusBar } from "../src/components/statusbar.ts";
 import { StepperController } from "../src/components/stepper.ts";
 import { formatTerminalOutputLine } from "../src/components/terminal_output.ts";
 import { TextBoxController, type TextBoxVisualLine } from "../src/components/textbox.ts";
@@ -69,7 +68,7 @@ import {
   workbenchHorizontalScrollbarCellsInto,
   type WorkbenchMenuBarHitLayout,
   workbenchShelfEntriesInto,
-  workbenchStatusLeft,
+  workbenchStatusLine,
   workbenchTabEntriesInto,
   type WorkbenchTitlebarButtonKind,
   type WorkbenchTitlebarLayout,
@@ -2591,14 +2590,14 @@ function renderWindowTabs(frame: Frame): void {
 function renderStatus(frame: Frame): void {
   const t = theme();
   const width = currentWidth();
-  const left = workbenchStatusLeft({
+  const line = workbenchStatusLine({
     focus: windowTitle(activeWindow.peek()),
     theme: theme().label,
     tileDensity: tileDensity.peek(),
     diagnostics: formatWorkbenchDiagnosticStatus(workbenchDiagnostics),
+    width,
   });
-  const right = "F10 menu  N new  Shift+T themes  G config  0 restore minimized";
-  write(frame, currentHeight() - 1, 0, paint(renderStatusBar(left, right, width), { fg: t.text, bg: t.panelSoft }));
+  write(frame, currentHeight() - 1, 0, paint(line, { fg: t.text, bg: t.panelSoft }));
 }
 
 function renderActiveDropdownOverlay(frame: Frame): void {

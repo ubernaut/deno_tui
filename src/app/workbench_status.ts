@@ -1,7 +1,11 @@
 // Copyright 2023 Im-Beast. MIT license.
+import { renderStatusBar } from "../components/statusbar.ts";
 
 /** Human-readable density bucket for adaptive workbench tile layouts. */
 export type WorkbenchTileDensityLabel = "wide" | "balanced" | "dense";
+
+/** Workbench host profile used for responsive shortcut text. */
+export type WorkbenchStatusShortcutProfile = "terminal" | "web";
 
 /** Options for composing a compact workbench status-bar left segment. */
 export interface WorkbenchStatusLeftOptions {
@@ -33,6 +37,12 @@ export interface WorkbenchHeaderHelpOptions {
   minVisibleWidth?: number;
 }
 
+/** Options for composing a full workbench status-bar row. */
+export interface WorkbenchStatusLineOptions extends WorkbenchStatusLeftOptions {
+  width: number;
+  shortcutProfile?: WorkbenchStatusShortcutProfile;
+}
+
 /** Converts a signed tile-density preference into a status-bar label. */
 export function workbenchTileDensityLabel(value: number): WorkbenchTileDensityLabel {
   if (value === 0 || !Number.isFinite(value)) return "balanced";
@@ -49,6 +59,22 @@ export function workbenchStatusLeft(options: WorkbenchStatusLeftOptions): string
   const diagnostics = options.diagnostics?.trim();
   if (diagnostics) parts.push(diagnostics);
   return parts.join(" | ");
+}
+
+/** Builds right-aligned shortcut text for the bottom workbench status bar. */
+export function workbenchStatusShortcuts(profile: WorkbenchStatusShortcutProfile = "terminal"): string {
+  return profile === "web"
+    ? "1-8 focus  T theme  H help  Q quit  click controls"
+    : "F10 menu  N new  Shift+T themes  G config  0 restore minimized";
+}
+
+/** Builds the fully-aligned workbench status-bar text shared by terminal and web adapters. */
+export function workbenchStatusLine(options: WorkbenchStatusLineOptions): string {
+  return renderStatusBar(
+    workbenchStatusLeft(options),
+    workbenchStatusShortcuts(options.shortcutProfile),
+    options.width,
+  );
 }
 
 /** Builds the responsive workbench header help text, or an empty string when too narrow. */

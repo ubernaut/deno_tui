@@ -11771,6 +11771,16 @@ function workbenchStatusLeft(options) {
   if (diagnostics) parts.push(diagnostics);
   return parts.join(" | ");
 }
+function workbenchStatusShortcuts(profile = "terminal") {
+  return profile === "web" ? "1-8 focus  T theme  H help  Q quit  click controls" : "F10 menu  N new  Shift+T themes  G config  0 restore minimized";
+}
+function workbenchStatusLine(options) {
+  return renderStatusBar(
+    workbenchStatusLeft(options),
+    workbenchStatusShortcuts(options.shortcutProfile),
+    options.width
+  );
+}
 function workbenchEmptyWorkspaceMessage(options) {
   let minimizedCount = 0;
   let openCount = 0;
@@ -16014,16 +16024,14 @@ function draw() {
   renderModalOverlay(frame);
   frame[height - 1] = fit(
     paint(
-      renderStatusBar(
-        workbenchStatusLeft({
-          focus: active.peek(),
-          theme: theme().label,
-          tileDensity: tileDensity.peek(),
-          diagnostics: formatWorkbenchDiagnosticStatus(webDiagnostics)
-        }),
-        "1-8 focus  T theme  H help  Q quit  click controls",
-        width
-      ),
+      workbenchStatusLine({
+        focus: active.peek(),
+        theme: theme().label,
+        tileDensity: tileDensity.peek(),
+        diagnostics: formatWorkbenchDiagnosticStatus(webDiagnostics),
+        width,
+        shortcutProfile: "web"
+      }),
       theme().text,
       theme().panelSoft
     ),

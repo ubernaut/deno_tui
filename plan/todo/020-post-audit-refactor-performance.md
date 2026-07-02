@@ -68,3 +68,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   replacement.
 - Tightened Three ASCII readback cache keys so disabled-edge layouts ignore unused edge bytes and equivalent packed
   layouts reuse typed readback views.
+- Extracted shared workbench status-line shortcut/profile composition so terminal and browser workbench adapters render
+  bottom status bars through the same tested helper.

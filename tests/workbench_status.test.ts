@@ -3,6 +3,8 @@ import {
   workbenchEmptyWorkspaceMessage,
   workbenchHeaderHelp,
   workbenchStatusLeft,
+  workbenchStatusLine,
+  workbenchStatusShortcuts,
   workbenchTileDensityLabel,
 } from "../src/app/workbench/mod.ts";
 
@@ -21,6 +23,40 @@ Deno.test("workbench status helper composes optional diagnostics", () => {
   assertEquals(
     workbenchStatusLeft({ focus: "Data", theme: "Unit-01", tileDensity: 1, diagnostics: "diag 1 warning" }),
     "focus Data | Unit-01 | tiles dense | diag 1 warning",
+  );
+});
+
+Deno.test("workbench status helper exposes terminal and web shortcut profiles", () => {
+  assertEquals(
+    workbenchStatusShortcuts(),
+    "F10 menu  N new  Shift+T themes  G config  0 restore minimized",
+  );
+  assertEquals(
+    workbenchStatusShortcuts("web"),
+    "1-8 focus  T theme  H help  Q quit  click controls",
+  );
+});
+
+Deno.test("workbench status helper composes aligned full status lines", () => {
+  assertEquals(
+    workbenchStatusLine({
+      focus: "Inspector",
+      theme: "Unit-01",
+      tileDensity: 0,
+      width: 24,
+    }),
+    "focus Inspector | Unit-0",
+  );
+  assertEquals(
+    workbenchStatusLine({
+      focus: "data",
+      theme: "Unit-01",
+      tileDensity: 1,
+      diagnostics: "diag ok",
+      shortcutProfile: "web",
+      width: 72,
+    }),
+    "focus data | Unit-01 | tiles dense | diag ok1-8 focus  T theme  H help  ",
   );
 });
 

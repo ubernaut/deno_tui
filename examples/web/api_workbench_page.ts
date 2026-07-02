@@ -58,7 +58,6 @@ import {
   renderDataTableRowsInto,
   renderMenuBar,
   renderModalRows,
-  renderStatusBar,
   ScrollAreaController,
   scrollbarGlyph,
   scrollbarOffsetForPointer,
@@ -87,7 +86,7 @@ import {
   type WorkbenchMenuBarHitLayout,
   type WorkbenchPanelWorkspaceState,
   workbenchShelfEntriesInto,
-  workbenchStatusLeft,
+  workbenchStatusLine,
   workbenchTabEntriesInto,
   type WorkbenchTerminalPaneProjection,
   workbenchTerminalPaneProjectionsInto,
@@ -686,16 +685,14 @@ function draw(): void {
   renderModalOverlay(frame);
   frame[height - 1] = fit(
     paint(
-      renderStatusBar(
-        workbenchStatusLeft({
-          focus: active.peek(),
-          theme: theme().label,
-          tileDensity: tileDensity.peek(),
-          diagnostics: formatWorkbenchDiagnosticStatus(webDiagnostics),
-        }),
-        "1-8 focus  T theme  H help  Q quit  click controls",
+      workbenchStatusLine({
+        focus: active.peek(),
+        theme: theme().label,
+        tileDensity: tileDensity.peek(),
+        diagnostics: formatWorkbenchDiagnosticStatus(webDiagnostics),
         width,
-      ),
+        shortcutProfile: "web",
+      }),
       theme().text,
       theme().panelSoft,
     ),
