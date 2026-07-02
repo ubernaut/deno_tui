@@ -1,6 +1,6 @@
 import { PerspectiveCamera, Scene } from "npm:three@0.183.2";
-import { assertEquals } from "./deps.ts";
-import { ThreeAsciiRenderer } from "../src/three_ascii/renderer.ts";
+import { assertEquals, assertRejects } from "./deps.ts";
+import { ThreeAsciiReadbackError, ThreeAsciiRenderer } from "../src/three_ascii/renderer.ts";
 
 Deno.test("ThreeAsciiRenderer skips unchanged uniform buffer uploads", () => {
   const renderer = new ThreeAsciiRenderer({
@@ -70,4 +70,47 @@ Deno.test("ThreeAsciiRenderer marks compute resources dirty when terminal glyph 
 
   renderer.setTerminalGlyphStyle("glyphs");
   assertEquals(internals.computeDirty, true);
+});
+
+Deno.test("ThreeAsciiRenderer wraps failed GPU readback mapping with a stable error", async () => {
+  const renderer = new ThreeAsciiRenderer({
+    scene: new Scene(),
+    camera: new PerspectiveCamera(),
+    columns: 1,
+    rows: 1,
+  });
+  const cause = new Error("validation error occurred");
+  let unmapped = false;
+  const internals = renderer as unknown as {
+    outputReadback: unknown;
+    fillOutput: unknown;
+    colorOutput: unknown;
+    buildAnsiGridFromReadback(layout: unknown, backgroundColor: unknown): Promise<string[][]>;
+  };
+  internals.outputReadback = {
+    byteLength: 8,
+    gpu: {
+      mapAsync: () => Promise.reject(cause),
+      getMappedRange: () => new ArrayBuffer(8),
+      unmap: () => {
+        unmapped = true;
+      },
+    },
+  };
+  internals.fillOutput = { byteLength: 4, gpu: {} };
+  internals.colorOutput = { byteLength: 4, gpu: {} };
+
+  const error = await assertRejects(
+    () =>
+      internals.buildAnsiGridFromReadback(
+        { byteLength: 8, fillOffset: 0, colorOffset: 4 },
+        { r: 0, g: 0, b: 0 },
+      ),
+    ThreeAsciiReadbackError,
+    "GPU readback unavailable",
+  );
+
+  assertEquals(error.code, "three-ascii-readback-unavailable");
+  assertEquals(error.cause, cause);
+  assertEquals(unmapped, false);
 });

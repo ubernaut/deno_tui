@@ -305,6 +305,18 @@ export interface ThreeAsciiRenderFrame {
   image?: ThreeAsciiImageFrame;
 }
 
+/** Stable error raised when WebGPU output buffers cannot be mapped back to CPU-readable memory. */
+export class ThreeAsciiReadbackError extends Error {
+  readonly code = "three-ascii-readback-unavailable";
+  override readonly cause: unknown;
+
+  constructor(cause: unknown) {
+    super("Three ASCII GPU readback unavailable.");
+    this.name = "ThreeAsciiReadbackError";
+    this.cause = cause;
+  }
+}
+
 /** Input buffers for assembling a terminal ANSI grid from three Ascii GPU readback data. */
 export interface ThreeAsciiAnsiGridInput extends InternalThreeAsciiAnsiGridInput {}
 
@@ -929,7 +941,11 @@ export class ThreeAsciiRenderer {
       throw new Error("ThreeAsciiRenderer readback buffers have not been initialized.");
     }
 
-    await readback.gpu.mapAsync(GPUMapMode.READ);
+    try {
+      await readback.gpu.mapAsync(GPUMapMode.READ);
+    } catch (error) {
+      throw new ThreeAsciiReadbackError(error);
+    }
 
     try {
       const source = readback.gpu.getMappedRange();

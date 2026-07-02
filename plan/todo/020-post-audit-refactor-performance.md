@@ -147,3 +147,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   commands so terminal and web workbench adapters no longer duplicate that paint logic.
 - Extracted shared API workbench control/textbox/wrapped-option paint-style helpers so terminal and browser workbench
   adapters keep theme-highlight behavior aligned behind focused tests.
+- Wrapped Three ASCII GPU readback mapping failures in a stable `ThreeAsciiReadbackError` so Deno/WebGPU readback
+  limitations surface as deterministic fallback/diagnostic failures instead of raw validation exceptions.

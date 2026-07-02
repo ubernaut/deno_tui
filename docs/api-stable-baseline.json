@@ -14340,6 +14340,13 @@
     },
     {
       "module": "src/three_ascii/renderer.ts",
+      "name": "ThreeAsciiReadbackError",
+      "kind": "class",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/three_ascii/renderer.ts",
       "name": "ThreeAsciiRenderer",
       "kind": "class",
       "typeOnly": false,
