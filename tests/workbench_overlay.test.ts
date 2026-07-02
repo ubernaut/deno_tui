@@ -1,5 +1,9 @@
 import { assertEquals } from "./deps.ts";
-import { layoutWorkbenchModal, layoutWorkbenchPopover } from "../src/app/workbench_overlay.ts";
+import {
+  layoutWorkbenchModal,
+  layoutWorkbenchPopover,
+  workbenchModalActionButtonsInto,
+} from "../src/app/workbench_overlay.ts";
 
 Deno.test("workbench modal layout centers within desktop bounds", () => {
   const layout = layoutWorkbenchModal({
@@ -42,4 +46,23 @@ Deno.test("workbench popover layout clips or hides too-small overlays", () => {
     }),
     undefined,
   );
+});
+
+Deno.test("workbench modal action buttons project selected disabled and destructive state", () => {
+  const target = [{ label: "stale", action: 99 }];
+  const buttons = workbenchModalActionButtonsInto(target, {
+    selectedActionIndex: 2,
+    actions: [
+      { id: "cancel", label: "Cancel" },
+      { id: "details", label: "Details", disabled: true },
+      { id: "delete", label: "Delete", destructive: true },
+    ],
+  });
+
+  assertEquals(buttons, [
+    { label: "Cancel", action: 0, disabled: undefined, active: false, tone: "default" },
+    { label: "Details", action: 1, disabled: true, active: false, tone: "default" },
+    { label: "Delete", action: 2, disabled: undefined, active: true, tone: "danger" },
+  ]);
+  assertEquals(buttons, target);
 });

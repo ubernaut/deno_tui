@@ -11626,6 +11626,22 @@ function layoutWorkbenchPopover(options) {
   const clipped = clipRect(normalizeRect2(options.rect), normalizeRect2(options.bounds));
   return clipped.width < minWidth || clipped.height < minHeight ? void 0 : clipped;
 }
+function workbenchModalActionButtonsInto(target, inspection, options = {}) {
+  const dangerTone = options.dangerTone ?? "danger";
+  const defaultTone = options.defaultTone ?? "default";
+  target.length = 0;
+  for (let index = 0; index < inspection.actions.length; index += 1) {
+    const action = inspection.actions[index];
+    target.push({
+      label: action.label,
+      action: index,
+      disabled: action.disabled,
+      active: index === inspection.selectedActionIndex,
+      tone: action.destructive ? dangerTone : defaultTone
+    });
+  }
+  return target;
+}
 function insetRect2(rect, amount) {
   const inset = Math.max(0, Math.floor(amount));
   return {
@@ -17153,17 +17169,7 @@ function renderModalOverlay(frame) {
   }
   if (inspection.actions.length === 0 || rows2.length === 0) return;
   const actionRow = inner.row + Math.min(rows2.length, inner.height) - 1;
-  modalActionButtonItems.length = 0;
-  for (let index = 0; index < inspection.actions.length; index += 1) {
-    const action = inspection.actions[index];
-    modalActionButtonItems.push({
-      label: action.label,
-      action: index,
-      disabled: action.disabled,
-      active: index === inspection.selectedActionIndex,
-      tone: action.destructive ? "danger" : "default"
-    });
-  }
+  workbenchModalActionButtonsInto(modalActionButtonItems, inspection);
   layoutWorkbenchButtonRowInto(
     modalActionButtonPlacements,
     modalActionButtonItems,

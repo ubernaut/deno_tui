@@ -1,6 +1,8 @@
 // Copyright 2023 Im-Beast. MIT license.
+import type { ModalInspection } from "../components/modal.ts";
 import type { Rectangle } from "../types.ts";
 import { clipRect } from "./hit_targets.ts";
+import type { WorkbenchButtonRowItem } from "./workbench_control_layout.ts";
 
 /** Options for laying out a centered workbench modal overlay. */
 export interface WorkbenchModalLayoutOptions {
@@ -19,6 +21,12 @@ export interface WorkbenchModalLayout {
   rect: Rectangle;
   inner: Rectangle;
   shadow: Rectangle;
+}
+
+/** Options for projecting modal actions into workbench button-row items. */
+export interface WorkbenchModalActionButtonOptions {
+  dangerTone?: "danger";
+  defaultTone?: "default";
 }
 
 /** Options for clipping an already-positioned workbench popover/dropdown. */
@@ -67,6 +75,28 @@ export function layoutWorkbenchPopover(options: WorkbenchPopoverLayoutOptions): 
   const minHeight = Math.max(0, Math.floor(options.minHeight ?? 1));
   const clipped = clipRect(normalizeRect(options.rect), normalizeRect(options.bounds));
   return clipped.width < minWidth || clipped.height < minHeight ? undefined : clipped;
+}
+
+/** Projects modal actions into reusable button-row items shared by terminal and browser adapters. */
+export function workbenchModalActionButtonsInto(
+  target: WorkbenchButtonRowItem<number>[],
+  inspection: Pick<ModalInspection, "actions" | "selectedActionIndex">,
+  options: WorkbenchModalActionButtonOptions = {},
+): WorkbenchButtonRowItem<number>[] {
+  const dangerTone = options.dangerTone ?? "danger";
+  const defaultTone = options.defaultTone ?? "default";
+  target.length = 0;
+  for (let index = 0; index < inspection.actions.length; index += 1) {
+    const action = inspection.actions[index]!;
+    target.push({
+      label: action.label,
+      action: index,
+      disabled: action.disabled,
+      active: index === inspection.selectedActionIndex,
+      tone: action.destructive ? dangerTone : defaultTone,
+    });
+  }
+  return target;
 }
 
 function insetRect(rect: Rectangle, amount: number): Rectangle {

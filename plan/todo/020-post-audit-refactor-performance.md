@@ -72,3 +72,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   bottom status bars through the same tested helper.
 - Extracted shared workbench help-row profiles so terminal and browser help modals use the same tested navigation
   guidance source.
+- Extracted shared modal action button projection so terminal and browser workbench modals use one tested mapping from
+  `ModalInspection` actions to renderer-neutral button rows.

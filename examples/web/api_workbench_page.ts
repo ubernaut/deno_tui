@@ -85,6 +85,7 @@ import {
   type WorkbenchHeaderLayout,
   workbenchHelpRows,
   type WorkbenchMenuBarHitLayout,
+  workbenchModalActionButtonsInto,
   type WorkbenchPanelWorkspaceState,
   workbenchShelfEntriesInto,
   workbenchStatusLine,
@@ -1880,17 +1881,7 @@ function renderModalOverlay(frame: string[]): void {
   }
   if (inspection.actions.length === 0 || rows.length === 0) return;
   const actionRow = inner.row + Math.min(rows.length, inner.height) - 1;
-  modalActionButtonItems.length = 0;
-  for (let index = 0; index < inspection.actions.length; index += 1) {
-    const action = inspection.actions[index]!;
-    modalActionButtonItems.push({
-      label: action.label,
-      action: index,
-      disabled: action.disabled,
-      active: index === inspection.selectedActionIndex,
-      tone: action.destructive ? "danger" : "default",
-    });
-  }
+  workbenchModalActionButtonsInto(modalActionButtonItems, inspection);
   layoutWorkbenchButtonRowInto(
     modalActionButtonPlacements,
     modalActionButtonItems,

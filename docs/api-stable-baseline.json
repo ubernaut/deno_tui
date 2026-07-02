@@ -4050,6 +4050,20 @@
     },
     {
       "module": "src/app/workbench_overlay.ts",
+      "name": "WorkbenchModalActionButtonOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_overlay.ts",
+      "name": "workbenchModalActionButtonsInto",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_overlay.ts",
       "name": "WorkbenchModalLayout",
       "kind": "interface",
       "typeOnly": true,
