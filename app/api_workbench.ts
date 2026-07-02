@@ -115,6 +115,7 @@ import {
   terminalBackendKindLabel,
 } from "../src/runtime/terminal_status.ts";
 import { shellTerminalTemplate } from "../src/runtime/terminal_templates.ts";
+import { type TerminalWorkspacePaneRect, terminalWorkspacePaneRects } from "../src/runtime/terminal_workspace.ts";
 import { terminalCellStyle, terminalOutputLineStyle } from "../src/app/workbench_terminal_style.ts";
 import { Computed, Signal } from "../src/signals/mod.ts";
 import { probeCompatibleWebGPUDevice } from "../src/three_ascii/webgpu_compat.ts";
@@ -268,6 +269,7 @@ type HitAction =
   | { type: "control"; id: ControlId; action?: ControlHitAction; index?: number }
   | { type: "terminalOutput"; action: TerminalOutputAction }
   | { type: "terminalShell"; action: TerminalShellAction }
+  | { type: "terminalShellPane"; id: string }
   | { type: "terminalShellSession"; id: string }
   | { type: "terminalShellContent" }
   | { type: "dataRow"; index: number }
@@ -285,6 +287,10 @@ type TerminalShellAction =
   | "previous"
   | "next"
   | "close"
+  | "splitRow"
+  | "splitColumn"
+  | "zoomPane"
+  | "closePane"
   | "start"
   | "stop"
   | "restart"
@@ -322,6 +328,10 @@ const terminalShellButtonItems: WorkbenchButtonRowItem<TerminalShellAction>[] = 
   { label: "Prev", action: "previous", tone: "muted" },
   { label: "Next", action: "next", tone: "muted" },
   { label: "Close", action: "close", tone: "danger" },
+  { label: "Split H", action: "splitRow" },
+  { label: "Split V", action: "splitColumn" },
+  { label: "Zoom", action: "zoomPane" },
+  { label: "Close Pane", action: "closePane", tone: "danger" },
   { label: "Start", action: "start" },
   { label: "Stop", action: "stop", tone: "danger" },
   { label: "Restart", action: "restart", tone: "warning" },
@@ -334,6 +344,7 @@ const terminalShellButtonItems: WorkbenchButtonRowItem<TerminalShellAction>[] = 
 const terminalShellButtonPlacements: WorkbenchButtonRowPlacement<TerminalShellAction>[] = [];
 const terminalShellSessionTabSources: WorkbenchTerminalSessionTab[] = [];
 const terminalShellSessionTabPlacements: WorkbenchTerminalSessionTabPlacement[] = [];
+const terminalShellPaneRects: TerminalWorkspacePaneRect[] = [];
 const modalActionButtonItems: WorkbenchButtonRowItem<number>[] = [];
 const modalActionButtonPlacements: WorkbenchButtonRowPlacement<number>[] = [];
 const themes: ThemeSpec[] = createApiWorkbenchThemes();
@@ -1936,8 +1947,6 @@ function renderTerminalShell(frame: Frame, rect: Rectangle): void {
   row = renderTerminalShellToolbar(frame, rect, row);
   if (row >= rect.row + rect.height) return;
 
-  const screenHeight = Math.max(1, rect.row + rect.height - row - 2);
-  terminalShell.resize(rect.width, screenHeight);
   const shell = activeTerminalShell();
   const inspection = shell?.inspect();
   if (!inspection || !shell) {
@@ -1991,6 +2000,12 @@ function renderTerminalShell(frame: Frame, rect: Rectangle): void {
   write(frame, row, rect.column, paint(fit(hint, rect.width), { fg: t.soft, bg: t.panelSoft }));
   row += 1;
 
+  const bodyRect = {
+    column: rect.column,
+    row,
+    width: rect.width,
+    height: Math.max(0, rect.row + rect.height - row),
+  };
   if (inspection.error) {
     write(
       frame,
@@ -2017,49 +2032,109 @@ function renderTerminalShell(frame: Frame, rect: Rectangle): void {
     return;
   }
 
-  if (copyMode) {
-    const rows = inspection.scrollback.visibleRows;
-    for (let screenRow = 0; screenRow < screenHeight; screenRow += 1) {
-      const text = rows[screenRow] ?? "";
-      const lineNumber = inspection.scrollback.offset + screenRow + 1;
-      const prefix = `${lineNumber.toString().padStart(4, " ")} `;
-      write(
-        frame,
-        row + screenRow,
-        rect.column,
-        paint(fit(prefix, Math.min(5, rect.width)), {
-          fg: t.soft,
-          bg: t.panelSoft,
-        }),
-      );
-      if (rect.width > 5) {
-        write(
-          frame,
-          row + screenRow,
-          rect.column + 5,
-          paint(fit(text, rect.width - 5), {
-            fg: t.text,
-            bg: t.surface,
-          }),
-        );
-      }
-    }
+  renderTerminalShellPanes(frame, bodyRect, copyMode);
+}
+
+function renderTerminalShellPanes(frame: Frame, rect: Rectangle, copyMode: boolean): void {
+  if (rect.width <= 0 || rect.height <= 0) return;
+  const layout = terminalShell.inspect().workspace.layout;
+  terminalShellPaneRects.length = 0;
+  for (const entry of terminalWorkspacePaneRects(layout, rect, { gap: 1 })) {
+    terminalShellPaneRects.push(entry);
+  }
+  if (terminalShellPaneRects.length === 0) {
+    const shell = activeTerminalShell();
+    if (shell) renderTerminalShellPane(frame, rect, undefined, shell, copyMode, true);
     return;
   }
+  for (const entry of terminalShellPaneRects) {
+    const shell = terminalShell.shell(entry.pane.sessionId);
+    if (!shell) continue;
+    renderTerminalShellPane(frame, entry.rect, entry, shell, copyMode && entry.active, entry.active);
+  }
+}
 
+function renderTerminalShellPane(
+  frame: Frame,
+  rect: Rectangle,
+  pane: TerminalWorkspacePaneRect | undefined,
+  shell: TerminalShellController,
+  copyMode: boolean,
+  active: boolean,
+): void {
+  if (rect.width <= 0 || rect.height <= 0) return;
+  const t = theme();
+  fillRect(frame, rect, active ? t.surface : t.background);
+  let content = rect;
+  if (pane && rect.height > 2) {
+    const title = `${active ? ">" : " "} ${pane.pane.title ?? shell.inspect().title ?? pane.pane.sessionId}`;
+    const bg = active ? t.accentDeep : t.panelSoft;
+    write(
+      frame,
+      rect.row,
+      rect.column,
+      paint(fit(title, rect.width), {
+        fg: active ? contrastText(bg, t.background, t.text) : t.soft,
+        bg,
+        bold: active,
+      }),
+    );
+    addHit({ column: rect.column, row: rect.row, width: rect.width, height: 1 }, {
+      type: "terminalShellPane",
+      id: pane.pane.id,
+    });
+    content = { column: rect.column, row: rect.row + 1, width: rect.width, height: rect.height - 1 };
+  }
+  if (content.width <= 0 || content.height <= 0) return;
+  shell.resize(content.width, content.height);
+  if (copyMode) {
+    renderTerminalShellCopyPane(frame, content, shell);
+    return;
+  }
   const cursor = shell.screen.cursor;
   const cursorActive = activeWindow.peek() === TERMINAL_SHELL_WINDOW_ID && terminalShellInputMode.peek() === "raw" &&
-    shell.running;
+    active && shell.running;
   const rows = shell.screen.cellRows();
-  addHit({ column: rect.column, row, width: rect.width, height: screenHeight }, { type: "terminalShellContent" });
-  for (let screenRow = 0; screenRow < screenHeight; screenRow += 1) {
+  if (active) addHit(content, { type: "terminalShellContent" });
+  for (let screenRow = 0; screenRow < content.height; screenRow += 1) {
     const cells = rows[screenRow] ?? [];
-    for (let column = 0; column < rect.width; column += 1) {
+    for (let column = 0; column < content.width; column += 1) {
       const cell = cells[column] ?? { char: " " };
       const atCursor = cursorActive && cursor.row === screenRow && cursor.column === column;
       const style = terminalCellStyle(cell, t, atCursor);
       const char = atCursor && cell.char === " " ? " " : cell.char;
-      write(frame, row + screenRow, rect.column + column, paint(char, style));
+      write(frame, content.row + screenRow, content.column + column, paint(char, style));
+    }
+  }
+}
+
+function renderTerminalShellCopyPane(frame: Frame, rect: Rectangle, shell: TerminalShellController): void {
+  const t = theme();
+  const inspection = shell.inspect();
+  const rows = inspection.scrollback.visibleRows;
+  for (let screenRow = 0; screenRow < rect.height; screenRow += 1) {
+    const text = rows[screenRow] ?? "";
+    const lineNumber = inspection.scrollback.offset + screenRow + 1;
+    const prefix = `${lineNumber.toString().padStart(4, " ")} `;
+    write(
+      frame,
+      rect.row + screenRow,
+      rect.column,
+      paint(fit(prefix, Math.min(5, rect.width)), {
+        fg: t.soft,
+        bg: t.panelSoft,
+      }),
+    );
+    if (rect.width > 5) {
+      write(
+        frame,
+        rect.row + screenRow,
+        rect.column + 5,
+        paint(fit(text, rect.width - 5), {
+          fg: t.text,
+          bg: t.surface,
+        }),
+      );
     }
   }
 }
@@ -2073,13 +2148,15 @@ function renderTerminalShellToolbar(frame: Frame, rect: Rectangle, startRow: num
   terminalShellButtonItems[1]!.disabled = workspaceInspection.sessions.length < 2;
   terminalShellButtonItems[2]!.disabled = workspaceInspection.sessions.length < 2;
   terminalShellButtonItems[3]!.disabled = !workspaceInspection.activeId || workspaceInspection.sessions.length <= 1;
-  terminalShellButtonItems[4]!.disabled = !shell || shell.running || shell.status.peek() === "starting";
-  terminalShellButtonItems[5]!.disabled = !shell?.running;
-  terminalShellButtonItems[8]!.active = terminalShellInputMode.peek() === "raw";
-  terminalShellButtonItems[8]!.disabled = !shell?.running;
-  terminalShellButtonItems[9]!.active = shell?.scrollback.mode === "copy";
-  terminalShellButtonItems[10]!.disabled = scrollDisabled;
-  terminalShellButtonItems[11]!.disabled = scrollDisabled;
+  terminalShellButtonItems[6]!.active = workspaceInspection.workspace.layout.zoomedPaneId !== undefined;
+  terminalShellButtonItems[7]!.disabled = workspaceInspection.workspace.layout.count < 2;
+  terminalShellButtonItems[8]!.disabled = !shell || shell.running || shell.status.peek() === "starting";
+  terminalShellButtonItems[9]!.disabled = !shell?.running;
+  terminalShellButtonItems[12]!.active = terminalShellInputMode.peek() === "raw";
+  terminalShellButtonItems[12]!.disabled = !shell?.running;
+  terminalShellButtonItems[13]!.active = shell?.scrollback.mode === "copy";
+  terminalShellButtonItems[14]!.disabled = scrollDisabled;
+  terminalShellButtonItems[15]!.disabled = scrollDisabled;
   const nextRow = layoutWorkbenchButtonRowInto(
     terminalShellButtonPlacements,
     terminalShellButtonItems,
@@ -2134,6 +2211,17 @@ function nextWorkbenchShellSessionId(): string {
 function sessionTitleFromId(id: string): string {
   const match = /^shell-(\d+)$/.exec(id);
   return match ? `Shell ${match[1]}` : "Shell";
+}
+
+function addSplitTerminalShell(direction: "row" | "column") {
+  const id = nextWorkbenchShellSessionId();
+  const descriptor = terminalShell.add(shellTerminalTemplate({ id, title: sessionTitleFromId(id) }), {
+    activate: false,
+  });
+  terminalShell.workspace.splitActive(direction, descriptor.id, { title: descriptor.title });
+  terminalShell.activate(descriptor.id);
+  void terminalShell.start(descriptor.id).then(() => scheduleDraw());
+  return descriptor;
 }
 
 function renderTerminalShellSessionTabs(
@@ -3648,7 +3736,8 @@ function openHelpModal(): void {
       "Mouse: click windows to focus them, click rows to select them, click controls to change values, drag or click scrollbars to move through overflow content.",
       "Use the New menu to add Monitor, Neon Exodus, and Neon 3D widget windows to the workspace.",
       "The New menu also includes Shell, Terminal Output, and HTML/CSS Layout windows for interactive shells, process output, and markup/CSS layout demos.",
-      "In Shell, P/S/U/K start, stop, restart, and clear. Press I for raw input; while raw, type normal commands, Ctrl+C interrupts the shell, and Escape returns to Workbench mode.",
+      "In Shell, P/S/U/K start, stop, restart, and clear. N opens a new shell, - splits horizontally, \\ splits vertically, Z toggles pane zoom, and I enters raw input.",
+      "While Shell raw input is active, type normal commands, Ctrl+C interrupts the shell, and Escape returns to Workbench mode.",
       "In Terminal Output, P/S/U/K/V/Y run, stop, restart, clear, follow, and copy the command. Press I while the process is running to send printable keys to child stdin; Escape returns to workbench mode.",
       "Use the Workspace menu to save, open, rename, or delete workspace layouts. Opening a saved workspace replaces the currently loaded widget windows.",
       "Use the Theme menu to switch palettes. Click the [x] button in the top-right menu bar or press Q to open quit confirmation.",
@@ -3752,6 +3841,12 @@ function applyHit(target: { rect: Rectangle; action: HitAction }, x: number, y: 
     void applyTerminalOutputAction(action.action);
   } else if (action.type === "terminalShell") {
     void applyTerminalShellAction(action.action);
+  } else if (action.type === "terminalShellPane") {
+    if (terminalShell.workspace.activatePane(action.id)) {
+      terminalShellInputMode.value = activeTerminalShell()?.running ? "raw" : "workbench";
+      focus(TERMINAL_SHELL_WINDOW_ID);
+      pushLog("shell pane active");
+    }
   } else if (action.type === "terminalShellSession") {
     if (terminalShell.activate(action.id)) {
       const session = terminalShell.inspect().sessions.find((entry) => entry.id === action.id);
@@ -3839,6 +3934,25 @@ async function applyTerminalShellAction(action: TerminalShellAction): Promise<vo
       await terminalShell.remove(activeId);
       terminalShellInputMode.value = activeTerminalShell()?.running ? "raw" : "workbench";
       pushLog("shell session closed");
+    }
+  } else if (action === "splitRow" || action === "splitColumn") {
+    const descriptor = addSplitTerminalShell(action === "splitRow" ? "row" : "column");
+    if (descriptor) {
+      terminalShellInputMode.value = "raw";
+      pushLog(`shell split ${descriptor.title}`);
+    }
+  } else if (action === "zoomPane") {
+    const paneId = terminalShell.workspace.inspectLayout().activePaneId;
+    if (paneId) {
+      terminalShell.workspace.toggleZoomPane(paneId);
+      pushLog("shell pane zoom");
+    }
+  } else if (action === "closePane") {
+    const paneId = terminalShell.workspace.inspectLayout().activePaneId;
+    if (paneId && terminalShell.workspace.inspectLayout().count > 1) {
+      terminalShell.workspace.closePane(paneId);
+      terminalShellInputMode.value = activeTerminalShell()?.running ? "raw" : "workbench";
+      pushLog("shell pane closed");
     }
   } else if (action === "start") {
     await terminalShell.start();
@@ -4008,6 +4122,12 @@ function handleTerminalShellKey(event: KeyPressEvent): boolean {
     ? "clear"
     : key === "n"
     ? "new"
+    : key === "-"
+    ? "splitRow"
+    : key === "\\"
+    ? "splitColumn"
+    : key === "z"
+    ? "zoomPane"
     : key === ","
     ? "previous"
     : key === "."

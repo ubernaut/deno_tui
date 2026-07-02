@@ -128,3 +128,6 @@ developer workflows.
 - Added matching browser workbench terminal workspace controls for New/Prev/Next/Close/Restart so the static web demo
   exposes the same multi-session workspace affordances as the console shell window, using mock/browser-safe sessions by
   default.
+- Added console Workbench Shell split-pane rendering backed by the existing terminal workspace layout tree. Split
+  controls now create fresh live shell sessions, render multiple panes with active-pane headers, support pane focus,
+  zoom, and close-pane controls, and preserve raw input/copy mode for the active pane.
