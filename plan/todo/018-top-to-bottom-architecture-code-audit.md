@@ -1046,6 +1046,8 @@ Work:
   - [x] Added shared bounded top-N ranking for limited command surface and command search index queries, avoiding full
         match sorting when callers request a small result set.
   - [x] Reduced direct command surface search allocation by building weighted search fields in one pass per item.
+  - [x] Precomputed acronyms for reusable weighted search fields and command search index entries, reducing repeated
+        acronym scans in the indexed command-search benchmark while preserving the allocation-light live search path.
   - [x] Cached flattened tree rows and row labels in `TreeController`, avoiding repeated full-tree projection during
         selection, inspection, and file-explorer navigation.
   - [x] Added a no-filter local data query fast path and benchmark so paging large unchanged datasets avoids redundant

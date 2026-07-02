@@ -2,6 +2,7 @@
 export interface WeightedSearchField {
   value: string;
   normalized: string;
+  acronym?: string;
   weight: number;
 }
 
@@ -21,13 +22,20 @@ export function weightedSearchFields(fields: readonly { value: string; weight: n
   const weighted = new Array<WeightedSearchField>(fields.length);
   for (let index = 0; index < fields.length; index += 1) {
     const field = fields[index]!;
-    weighted[index] = {
-      value: field.value,
-      weight: field.weight,
-      normalized: normalizeSearchText(field.value),
-    };
+    weighted[index] = weightedSearchField(field.value, field.weight);
   }
   return weighted;
+}
+
+/** Builds one weighted search field with precomputed normalized text and acronym. */
+export function weightedSearchField(value: string, weight: number): WeightedSearchField {
+  const normalized = normalizeSearchText(value);
+  return {
+    value,
+    weight,
+    normalized,
+    acronym: searchAcronym(normalized),
+  };
 }
 
 /** Scores an item with weighted fields against all query terms. */
@@ -46,7 +54,7 @@ export function scoreWeightedSearchFields(
     let best = 0;
     let bestValue: string | undefined;
     for (const field of fields) {
-      const fieldScore = scoreSearchField(field.normalized, term, field.weight);
+      const fieldScore = scoreWeightedSearchField(field, term);
       if (fieldScore > best) {
         best = fieldScore;
         bestValue = field.value;
@@ -67,6 +75,17 @@ export function scoreSearchField(field: string, term: string, weight: number): n
   if (hasWordStartingWith(field, term)) return weight + 15;
   if (field.includes(term)) return weight + 5;
   return acronymStartsWith(field, term) ? weight : 0;
+}
+
+function scoreWeightedSearchField(field: WeightedSearchField, term: string): number {
+  const normalized = field.normalized;
+  const weight = field.weight;
+  if (normalized === term) return weight + 40;
+  if (normalized.startsWith(term)) return weight + 25;
+  if (hasWordStartingWith(normalized, term)) return weight + 15;
+  if (normalized.includes(term)) return weight + 5;
+  if (field.acronym !== undefined) return field.acronym.startsWith(term) ? weight : 0;
+  return acronymStartsWith(normalized, term) ? weight : 0;
 }
 
 /** Inserts a ranked candidate into a sorted top-N buffer. */
@@ -124,6 +143,22 @@ function acronymStartsWith(field: string, term: string): boolean {
     atWordStart = false;
   }
   return termIndex >= term.length;
+}
+
+function searchAcronym(field: string): string {
+  let acronym = "";
+  let atWordStart = true;
+  for (let index = 0; index < field.length; index += 1) {
+    const char = field[index];
+    if (char === " ") {
+      atWordStart = true;
+      continue;
+    }
+    if (!atWordStart) continue;
+    acronym += char;
+    atWordStart = false;
+  }
+  return acronym;
 }
 
 function uniqueStrings(values: readonly string[]): string[] {

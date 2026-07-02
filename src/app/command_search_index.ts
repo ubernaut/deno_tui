@@ -4,10 +4,10 @@ import type { AsyncScheduler, ScheduledTaskOptions } from "../runtime/scheduler.
 import type { AsyncStore } from "../runtime/storage.ts";
 import {
   insertBoundedRanked,
-  normalizeSearchText,
   scoreWeightedSearchFields,
   searchTerms,
   type WeightedSearchField,
+  weightedSearchField,
 } from "../utils/search.ts";
 import type { Action } from "./actions.ts";
 import type { CommandDispatch, CommandRegistry } from "./commands.ts";
@@ -340,7 +340,7 @@ function createCommandSearchIndexEntry(
 }
 
 function commandSearchIndexField(value: string, weight: number): WeightedSearchField {
-  return { value, weight, normalized: normalizeSearchText(value) };
+  return weightedSearchField(value, weight);
 }
 
 function scoreCommandSearchIndexEntry(
