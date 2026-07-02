@@ -225,6 +225,8 @@ Work:
         spread/map/reduce allocation while preserving mixed-mode glyph selection behavior.
   - [x] Added frame-boundary cache pruning and stable primitive background reuse to the Three ASCII ANSI grid assembler
         so long-running animated scenes avoid unbounded ANSI/color cache growth without adding per-cell churn.
+  - [x] Added per-cell raw-color byte-key caching to the Three ASCII ANSI grid assembler, preserving in-place buffer
+        mutation correctness while cutting repeated linear-to-sRGB conversion in recurring readback frames.
   - [x] Reworked system monitor history initialization and update helpers to use bounded loop allocation instead of
         repeated `Array.from()`, `slice()`, and `unshift()` churn.
   - [x] Reworked audio meter history updates and synthetic source series generation to avoid steady-state

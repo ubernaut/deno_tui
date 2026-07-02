@@ -207,6 +207,27 @@ Deno.test("three ascii ANSI grid assembler observes reused Color background muta
   assertEquals(blue, "\x1b[48;2;0;0;255m\x1b[38;2;255;0;0m█\x1b[0m");
 });
 
+Deno.test("three ascii ANSI grid assembler observes reused color buffer mutations", () => {
+  const assembler = new ThreeAsciiAnsiGridAssembler();
+  const colors = new Float32Array([1, 0, 0, 1, 0, 1, 0, 1]);
+  const base = {
+    columns: 2,
+    rows: 1,
+    fillGlyphs: new Float32Array([14, 14]),
+    colors,
+    backgroundColor: 0x000000,
+  };
+
+  const first = assembler.build(base);
+  colors[0] = 0;
+  colors[2] = 1;
+  const second = assembler.build(base);
+
+  assertEquals(first[0][0], "\x1b[48;2;0;0;0m\x1b[38;2;255;0;0m█\x1b[0m");
+  assertEquals(second[0][0], "\x1b[48;2;0;0;0m\x1b[38;2;0;0;255m█\x1b[0m");
+  assertEquals(second[0][1], "\x1b[48;2;0;0;0m\x1b[38;2;0;255;0m█\x1b[0m");
+});
+
 Deno.test("three ascii ANSI grid assembler keeps glyph style cache keys distinct", () => {
   const assembler = new ThreeAsciiAnsiGridAssembler();
   const base = {

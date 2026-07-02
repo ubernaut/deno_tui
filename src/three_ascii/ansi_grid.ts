@@ -58,6 +58,10 @@ export class ThreeAsciiAnsiGridAssembler {
   private backgroundRed = 0;
   private backgroundGreen = 0;
   private backgroundBlue = 0;
+  private cachedColorRawRed = new Float64Array(0);
+  private cachedColorRawGreen = new Float64Array(0);
+  private cachedColorRawBlue = new Float64Array(0);
+  private cachedColorByteKeys = new Uint32Array(0);
   private stableBackgroundInput: string | number | undefined;
   private hasStableBackgroundInput = false;
   private stableBackgroundColorRef?: Color;
@@ -80,7 +84,9 @@ export class ThreeAsciiAnsiGridAssembler {
     const terminalGlyphMode = terminalGlyphModeForStyle(terminalGlyphStyle);
     const terminalFillGlyphKeys = terminalFillGlyphKeysForMode(terminalGlyphMode);
     const terminalEdgeBias = Math.max(0.5, input.terminalEdgeBias ?? DEFAULT_TERMINAL_EDGE_BIAS);
+    const cellCount = columns * rows;
     this.setBackground(input.backgroundColor);
+    this.prepareColorCache(cellCount);
     this.pruneCaches();
     let lastForegroundKey = -1;
     let lastGlyphKey = -1;
@@ -152,9 +158,10 @@ export class ThreeAsciiAnsiGridAssembler {
           continue;
         }
 
-        let foregroundRed = this.toByte(rawRed);
-        let foregroundGreen = this.toByte(rawGreen);
-        let foregroundBlue = this.toByte(rawBlue);
+        const baseForegroundKey = this.byteColorKeyForIndex(index, rawRed, rawGreen, rawBlue);
+        let foregroundRed = (baseForegroundKey >> 16) & 0xff;
+        let foregroundGreen = (baseForegroundKey >> 8) & 0xff;
+        let foregroundBlue = baseForegroundKey & 0xff;
         if (
           terminalGlyphMode === GLYPH_MODE_BLOCKS && glyphKey > 0 && glyphKey < GLYPH_KEY_GLYPHS_OFFSET &&
           fillGlyphIndex < 14
@@ -200,6 +207,10 @@ export class ThreeAsciiAnsiGridAssembler {
     this.stableBackgroundColorRed = Number.NaN;
     this.stableBackgroundColorGreen = Number.NaN;
     this.stableBackgroundColorBlue = Number.NaN;
+    this.cachedColorRawRed = new Float64Array(0);
+    this.cachedColorRawGreen = new Float64Array(0);
+    this.cachedColorRawBlue = new Float64Array(0);
+    this.cachedColorByteKeys = new Uint32Array(0);
     this.toByte.clear();
   }
 
@@ -241,9 +252,10 @@ export class ThreeAsciiAnsiGridAssembler {
           continue;
         }
 
-        let foregroundRed = this.toByte(rawRed);
-        let foregroundGreen = this.toByte(rawGreen);
-        let foregroundBlue = this.toByte(rawBlue);
+        const baseForegroundKey = this.byteColorKeyForIndex(index, rawRed, rawGreen, rawBlue);
+        let foregroundRed = (baseForegroundKey >> 16) & 0xff;
+        let foregroundGreen = (baseForegroundKey >> 8) & 0xff;
+        let foregroundBlue = baseForegroundKey & 0xff;
         if (terminalGlyphMode === GLYPH_MODE_BLOCKS && glyphKey > 0 && fillGlyphIndex < 14) {
           const amount = fillBucketFromGlyphIndex(fillGlyphIndex) / 9;
           foregroundRed = mixByteChannel(this.backgroundRed, foregroundRed, amount);
@@ -316,6 +328,37 @@ export class ThreeAsciiAnsiGridAssembler {
     return grid;
   }
 
+  private prepareColorCache(cellCount: number): void {
+    if (this.cachedColorByteKeys.length === cellCount) {
+      return;
+    }
+
+    this.cachedColorRawRed = createNaNFloat64Array(cellCount);
+    this.cachedColorRawGreen = createNaNFloat64Array(cellCount);
+    this.cachedColorRawBlue = createNaNFloat64Array(cellCount);
+    this.cachedColorByteKeys = new Uint32Array(cellCount);
+  }
+
+  private byteColorKeyForIndex(index: number, rawRed: number, rawGreen: number, rawBlue: number): number {
+    if (
+      this.cachedColorRawRed[index] === rawRed &&
+      this.cachedColorRawGreen[index] === rawGreen &&
+      this.cachedColorRawBlue[index] === rawBlue
+    ) {
+      return this.cachedColorByteKeys[index]!;
+    }
+
+    const foregroundRed = this.toByte(rawRed);
+    const foregroundGreen = this.toByte(rawGreen);
+    const foregroundBlue = this.toByte(rawBlue);
+    const key = (foregroundRed << 16) | (foregroundGreen << 8) | foregroundBlue;
+    this.cachedColorRawRed[index] = rawRed;
+    this.cachedColorRawGreen[index] = rawGreen;
+    this.cachedColorRawBlue[index] = rawBlue;
+    this.cachedColorByteKeys[index] = key;
+    return key;
+  }
+
   private setBackground(backgroundColor: Color | string | number | undefined): void {
     if (!(backgroundColor instanceof Color)) {
       const stableInput = backgroundColor ?? 0;
@@ -381,6 +424,12 @@ function createStringGrid(rows: number, columns: number): string[][] {
     grid[row] = new Array<string>(columns);
   }
   return grid;
+}
+
+function createNaNFloat64Array(length: number): Float64Array<ArrayBuffer> {
+  const values = new Float64Array(length);
+  values.fill(Number.NaN);
+  return values;
 }
 
 function linearToSrgb(value: number): number {
