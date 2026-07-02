@@ -14,6 +14,8 @@ import type {
 import {
   createWorkbenchShellSession,
   resolveWorkbenchShellBackend,
+  type WorkbenchTerminalOutputToolbarAction,
+  workbenchTerminalOutputToolbarItemsInto,
   workbenchTerminalPaneProjectionsInto,
   workbenchTerminalSessionTabsInto,
   type WorkbenchTerminalToolbarAction,
@@ -236,6 +238,51 @@ Deno.test("workbenchTerminalToolbarItemsInto reuses caller-owned button items", 
   assertEquals(target[0] === first, true);
   assertEquals(target[1] === second, true);
   assertEquals(target[1]?.disabled, false);
+});
+
+Deno.test("workbenchTerminalOutputToolbarItemsInto projects process-output button state", () => {
+  const items = workbenchTerminalOutputToolbarItemsInto([], {
+    running: true,
+    outputLineCount: 4,
+    follow: true,
+    inputMode: "raw",
+  });
+
+  assertEquals(items.map((item) => item.action), ["run", "stop", "restart", "clear", "follow", "raw", "copy"]);
+  assertEquals(items.find((item) => item.action === "run")?.disabled, true);
+  assertEquals(items.find((item) => item.action === "stop")?.disabled, false);
+  assertEquals(items.find((item) => item.action === "clear")?.disabled, false);
+  assertEquals(items.find((item) => item.action === "follow")?.active, true);
+  assertEquals(items.find((item) => item.action === "raw")?.active, true);
+  assertEquals(items.find((item) => item.action === "raw")?.disabled, false);
+  assertEquals(items.find((item) => item.action === "copy")?.tone, "muted");
+});
+
+Deno.test("workbenchTerminalOutputToolbarItemsInto supports subsets and reuse", () => {
+  const actions: WorkbenchTerminalOutputToolbarAction[] = ["run", "clear", "raw"];
+  const first = workbenchTerminalOutputToolbarItemsInto([], {
+    running: false,
+    outputLineCount: 0,
+    follow: false,
+    inputMode: "workbench",
+  }, { actions });
+  const run = first[0];
+  const raw = first[2];
+
+  assertEquals(first.map((item) => item.action), actions);
+  assertEquals(first.map((item) => item.disabled), [false, true, true]);
+
+  const second = workbenchTerminalOutputToolbarItemsInto(first, {
+    running: true,
+    outputLineCount: 1,
+    follow: false,
+    inputMode: "raw",
+  }, { actions });
+
+  assertEquals(second[0] === run, true);
+  assertEquals(second[2] === raw, true);
+  assertEquals(second.map((item) => item.disabled), [true, false, false]);
+  assertEquals(second[2]?.active, true);
 });
 
 function fakeBackend(id: string, pty: boolean): TerminalBackend {

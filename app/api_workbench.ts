@@ -72,6 +72,8 @@ import {
   workbenchShelfEntriesInto,
   workbenchStatusLine,
   workbenchTabEntriesInto,
+  type WorkbenchTerminalOutputToolbarAction,
+  workbenchTerminalOutputToolbarItemsInto,
   type WorkbenchTitlebarButtonKind,
   type WorkbenchTitlebarLayout,
   workbenchVerticalScrollbarCellsInto,
@@ -336,7 +338,7 @@ type HitAction =
 type ControlHitAction = "previous" | "next" | "activate" | "set" | "focus" | "toggle";
 type ConfigHitAction = "previous" | "next" | "activate";
 type AsciiConfigModalAction = "cancel" | "apply" | "ok";
-type TerminalOutputAction = "run" | "stop" | "restart" | "clear" | "follow" | "copy" | "raw";
+type TerminalOutputAction = WorkbenchTerminalOutputToolbarAction;
 type TerminalShellAction = WorkbenchTerminalToolbarAction;
 type ButtonTone = "default" | "danger" | "warning" | "success" | "muted";
 type AsciiNumericKey = WorkbenchAsciiNumericKey;
@@ -352,15 +354,7 @@ type SavedWorkspace = WorkbenchWorkspace<AsciiOptions>;
 type SavedWorkspaceWindow = WorkbenchWorkspaceWindow<AsciiOptions>;
 
 type WorkspaceNameMode = "save" | "rename";
-const terminalOutputButtonItems: WorkbenchButtonRowItem<TerminalOutputAction>[] = [
-  { label: "Run", action: "run", tone: "success" },
-  { label: "Stop", action: "stop", tone: "danger" },
-  { label: "Restart", action: "restart", tone: "warning" },
-  { label: "Clear", action: "clear", tone: "muted" },
-  { label: "Follow", action: "follow" },
-  { label: "Raw", action: "raw" },
-  { label: "Copy Cmd", action: "copy", tone: "muted" },
-];
+const terminalOutputButtonItems: WorkbenchButtonRowItem<TerminalOutputAction>[] = [];
 const terminalOutputButtonPlacements: WorkbenchButtonRowPlacement<TerminalOutputAction>[] = [];
 const terminalShellButtonItems: WorkbenchButtonRowItem<TerminalShellAction>[] = [];
 const terminalShellButtonPlacements: WorkbenchButtonRowPlacement<TerminalShellAction>[] = [];
@@ -1931,12 +1925,12 @@ function renderTerminalOutput(frame: Frame, rect: Rectangle): void {
 }
 
 function renderTerminalOutputToolbar(frame: Frame, rect: Rectangle, startRow: number): number {
-  terminalOutputButtonItems[0]!.disabled = terminalOutputSession.running;
-  terminalOutputButtonItems[1]!.disabled = !terminalOutputSession.running;
-  terminalOutputButtonItems[3]!.disabled = terminalOutputSession.output.lines.peek().length === 0;
-  terminalOutputButtonItems[4]!.active = terminalOutputSession.output.follow.peek();
-  terminalOutputButtonItems[5]!.active = terminalInputMode.peek() === "raw";
-  terminalOutputButtonItems[5]!.disabled = !terminalOutputSession.running;
+  workbenchTerminalOutputToolbarItemsInto(terminalOutputButtonItems, {
+    running: terminalOutputSession.running,
+    outputLineCount: terminalOutputSession.output.lines.peek().length,
+    follow: terminalOutputSession.output.follow.peek(),
+    inputMode: terminalInputMode.peek(),
+  });
   const nextRow = layoutWorkbenchButtonRowInto(
     terminalOutputButtonPlacements,
     terminalOutputButtonItems,

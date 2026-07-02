@@ -86,3 +86,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   tests, preserving the object behavior while making the frame-diff hot path easier to optimize independently.
 - Extracted the web workbench mobile command-strip action projection into an internal shared helper and routed it
   through the existing button-row layout so touch/mobile controls no longer carry bespoke wrapping logic.
+- Extracted the API Workbench process-output terminal toolbar into a shared renderer-neutral projection helper so
+  console rendering no longer mutates fixed local button slots before layout.

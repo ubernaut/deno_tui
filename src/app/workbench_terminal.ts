@@ -87,6 +87,9 @@ export type WorkbenchTerminalToolbarAction =
   | "top"
   | "bottom";
 
+/** Legacy process-output terminal toolbar actions used by the API Workbench command output pane. */
+export type WorkbenchTerminalOutputToolbarAction = "run" | "stop" | "restart" | "clear" | "follow" | "copy" | "raw";
+
 /** State snapshot used to project terminal toolbar actions without knowing the renderer. */
 export interface WorkbenchTerminalToolbarState {
   sessionCount: number;
@@ -103,9 +106,22 @@ export interface WorkbenchTerminalToolbarState {
   searchMatchCount?: number;
 }
 
+/** State snapshot used to project the process-output toolbar without knowing the renderer. */
+export interface WorkbenchTerminalOutputToolbarState {
+  running: boolean;
+  outputLineCount: number;
+  follow: boolean;
+  inputMode?: "raw" | "workbench";
+}
+
 /** Options for projecting a terminal toolbar action list. */
 export interface WorkbenchTerminalToolbarItemOptions {
   actions?: readonly WorkbenchTerminalToolbarAction[];
+}
+
+/** Options for projecting process-output terminal toolbar actions. */
+export interface WorkbenchTerminalOutputToolbarItemOptions {
+  actions?: readonly WorkbenchTerminalOutputToolbarAction[];
 }
 
 /** Projected pane frame metadata shared by terminal and browser workbench shell renderers. */
@@ -148,6 +164,17 @@ export const WORKBENCH_TERMINAL_TOOLBAR_ACTIONS: readonly WorkbenchTerminalToolb
   "nextMatch",
   "top",
   "bottom",
+] as const;
+
+/** Default action ordering for the API Workbench process-output toolbar. */
+export const WORKBENCH_TERMINAL_OUTPUT_TOOLBAR_ACTIONS: readonly WorkbenchTerminalOutputToolbarAction[] = [
+  "run",
+  "stop",
+  "restart",
+  "clear",
+  "follow",
+  "raw",
+  "copy",
 ] as const;
 
 /** Resolves the preferred PTY shell backend and falls back to the process backend when PTY is unavailable. */
@@ -273,6 +300,36 @@ export function workbenchTerminalToolbarItemsInto(
   return target;
 }
 
+/** Projects process-output toolbar button descriptors into caller-owned storage. */
+export function workbenchTerminalOutputToolbarItemsInto(
+  target: WorkbenchButtonRowItem<WorkbenchTerminalOutputToolbarAction>[],
+  state: WorkbenchTerminalOutputToolbarState,
+  options: WorkbenchTerminalOutputToolbarItemOptions = {},
+): WorkbenchButtonRowItem<WorkbenchTerminalOutputToolbarAction>[] {
+  const actions = options.actions ?? WORKBENCH_TERMINAL_OUTPUT_TOOLBAR_ACTIONS;
+  let written = 0;
+  for (let index = 0; index < actions.length; index += 1) {
+    const action = actions[index]!;
+    const item = workbenchTerminalOutputToolbarItemForAction(target[written], action);
+    if (action === "run") {
+      item.disabled = state.running;
+    } else if (action === "stop") {
+      item.disabled = !state.running;
+    } else if (action === "clear") {
+      item.disabled = state.outputLineCount <= 0;
+    } else if (action === "follow") {
+      item.active = state.follow;
+    } else if (action === "raw") {
+      item.active = state.inputMode === "raw";
+      item.disabled = !state.running;
+    }
+    target[written] = item;
+    written += 1;
+  }
+  target.length = written;
+  return target;
+}
+
 /** Projects a terminal workspace layout into pane frames with content rectangles and optional title rows. */
 export function workbenchTerminalPaneProjectionsInto(
   target: WorkbenchTerminalPaneProjection[],
@@ -365,6 +422,38 @@ function workbenchTerminalToolbarItemForAction(
     item.label = "Top";
   } else {
     item.label = "Bottom";
+  }
+  return item;
+}
+
+function workbenchTerminalOutputToolbarItemForAction(
+  target: WorkbenchButtonRowItem<WorkbenchTerminalOutputToolbarAction> | undefined,
+  action: WorkbenchTerminalOutputToolbarAction,
+): WorkbenchButtonRowItem<WorkbenchTerminalOutputToolbarAction> {
+  const item = target ?? { label: "", action };
+  item.action = action;
+  item.disabled = false;
+  item.active = false;
+  item.tone = undefined;
+  if (action === "run") {
+    item.label = "Run";
+    item.tone = "success";
+  } else if (action === "stop") {
+    item.label = "Stop";
+    item.tone = "danger";
+  } else if (action === "restart") {
+    item.label = "Restart";
+    item.tone = "warning";
+  } else if (action === "clear") {
+    item.label = "Clear";
+    item.tone = "muted";
+  } else if (action === "follow") {
+    item.label = "Follow";
+  } else if (action === "raw") {
+    item.label = "Raw";
+  } else {
+    item.label = "Copy Cmd";
+    item.tone = "muted";
   }
   return item;
 }

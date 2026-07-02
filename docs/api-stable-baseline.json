@@ -4358,6 +4358,13 @@
     },
     {
       "module": "src/app/workbench_terminal.ts",
+      "name": "WORKBENCH_TERMINAL_OUTPUT_TOOLBAR_ACTIONS",
+      "kind": "const",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_terminal.ts",
       "name": "WORKBENCH_TERMINAL_TOOLBAR_ACTIONS",
       "kind": "const",
       "typeOnly": false,
@@ -4387,6 +4394,34 @@
     {
       "module": "src/app/workbench_terminal.ts",
       "name": "WorkbenchShellSessionOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_terminal.ts",
+      "name": "WorkbenchTerminalOutputToolbarAction",
+      "kind": "type",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_terminal.ts",
+      "name": "WorkbenchTerminalOutputToolbarItemOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_terminal.ts",
+      "name": "workbenchTerminalOutputToolbarItemsInto",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_terminal.ts",
+      "name": "WorkbenchTerminalOutputToolbarState",
       "kind": "interface",
       "typeOnly": true,
       "documented": true
