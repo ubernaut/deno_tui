@@ -34,3 +34,15 @@ Deno.test("parseDfDiskRows caps output and preserves numeric byte fields", () =>
     { filesystem: "/dev/b", mount: "/b", total: 20, used: 10, available: 10, percent: 50 },
   ]);
 });
+
+Deno.test("parseDfDiskRows preserves stable ordering for equal pressure and zero limits", () => {
+  const output = [
+    "Filesystem 1B-blocks Used Available Use% Mounted on",
+    "/dev/a 10 7 3 70% /a",
+    "/dev/b 10 7 3 70% /b",
+    "/dev/c 10 9 1 90% /c",
+  ].join("\n");
+
+  assertEquals(parseDfDiskRows(output, 0), []);
+  assertEquals(parseDfDiskRows(output, 3).map((disk) => disk.mount), ["/c", "/a", "/b"]);
+});
