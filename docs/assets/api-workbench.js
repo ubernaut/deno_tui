@@ -14685,6 +14685,32 @@ function apiWorkbenchControlLineInto(segments, hits, id2, value, rect, row, acti
   hits.length = hitCount;
   return row + 1;
 }
+function apiWorkbenchControlTrack(options) {
+  const minWidth = Math.max(1, Math.floor(options.minWidth ?? 8));
+  const maxWidth = Math.max(minWidth, Math.floor(options.maxWidth ?? 24));
+  const reservedWidth = Math.max(0, Math.floor(options.reservedWidth ?? 18));
+  const available = Math.max(minWidth, Math.floor(options.boundsWidth) - reservedWidth);
+  const width = Math.max(minWidth, Math.min(maxWidth, available));
+  const ratio = Math.max(0, Math.min(1, Number.isFinite(options.ratio) ? options.ratio : 0));
+  const filled = Math.max(0, Math.min(width, Math.round(ratio * width)));
+  const fillGlyph = options.fillGlyph ?? "\u2588";
+  const emptyGlyph = options.emptyGlyph ?? "\u2591";
+  return {
+    width,
+    filled,
+    text: `${fillGlyph.repeat(filled)}${emptyGlyph.repeat(Math.max(0, width - filled))}`
+  };
+}
+function apiWorkbenchSliderSetHitInto(target, rect, row, track, options = {}) {
+  target.column = rect.column + Math.max(0, Math.floor(options.columnOffset ?? 12));
+  target.row = row;
+  target.width = Math.max(1, Math.floor(track.width));
+  target.height = 1;
+  target.id = "slider";
+  target.action = "set";
+  target.index = void 0;
+  return target;
+}
 function nextSortableDataColumn(columns2, currentColumnId, delta) {
   let sortableCount = 0;
   let currentSortableIndex = -1;
@@ -15161,6 +15187,14 @@ var webTerminalSessionTabSources = [];
 var webTerminalSessionTabPlacements = [];
 var controlLineSegments = [];
 var controlLineHitPlacements = [];
+var controlSliderSetHit = {
+  column: 0,
+  row: 0,
+  width: 0,
+  height: 1,
+  id: "slider",
+  action: "set"
+};
 var controlStepperHitPlacements = [];
 var modalActionButtonItems = [];
 var modalActionButtonPlacements = [];
@@ -16776,10 +16810,18 @@ function renderControls(frame, rect) {
     }
     row = nextRow;
   };
-  const sliderTrack = `${"\u2588".repeat(slider.value.peek())}${"\u2591".repeat(10 - slider.value.peek())}`;
-  const progressWidth = Math.max(8, Math.min(18, rect.width - 18));
-  const progressFilled = Math.round(progress.ratio() * progressWidth);
-  const progressTrack = `${"\u2588".repeat(progressFilled)}${"\u2591".repeat(progressWidth - progressFilled)}`;
+  const sliderTrack = apiWorkbenchControlTrack({
+    ratio: slider.inspect().normalizedValue,
+    boundsWidth: rect.width,
+    reservedWidth: 20,
+    maxWidth: 24
+  });
+  const progressTrack = apiWorkbenchControlTrack({
+    ratio: progress.ratio(),
+    boundsWidth: rect.width,
+    reservedWidth: 18,
+    maxWidth: 24
+  });
   writeControl("button", `${buttonText2("Run Action")} presses=${actionButton.pressCount.peek()}`, { button: true });
   writeControl("genericButton", `${buttonText2("Generic Button")} presses=${genericButton.pressCount.peek()}`, {
     button: true
@@ -16787,14 +16829,20 @@ function renderControls(frame, rect) {
   writeControl("modal", `${buttonText2("Open Modal")} state=${modal.openState.peek() ? "open" : "closed"}`, {
     button: true
   });
-  writeControl("slider", `Slider    ${sliderTrack} ${slider.value.peek()}/10`, {
+  writeControl("slider", `Slider    ${sliderTrack.text} ${slider.value.peek()}/10`, {
     previous: true,
     next: true
   });
-  hitTargets.add({ column: rect.column + 12, row: row - 1, width: 10, height: 1 }, {
+  const sliderSetHit = apiWorkbenchSliderSetHitInto(controlSliderSetHit, rect, row - 1, sliderTrack);
+  hitTargets.add({
+    column: sliderSetHit.column,
+    row: sliderSetHit.row,
+    width: sliderSetHit.width,
+    height: sliderSetHit.height
+  }, {
     type: "control",
-    id: "slider",
-    action: "set"
+    id: sliderSetHit.id,
+    action: sliderSetHit.action
   });
   writeControl("checkbox", "Checkboxes");
   writeControl("checkbox", `${renderCheckBoxMark(live.checked.peek())} live preview`, { indent: true, index: 0 });
@@ -16847,7 +16895,7 @@ function renderControls(frame, rect) {
       frame,
       row,
       rect.column,
-      paint(fit(`Progress  ${progressTrack} ${progress.value.peek()}%`, rect.width), t.text, t.surface)
+      paint(fit(`Progress  ${progressTrack.text} ${progress.value.peek()}%`, rect.width), t.text, t.surface)
     );
   }
 }

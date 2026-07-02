@@ -11,6 +11,8 @@ keeping renderer-specific paint and hit-stack plumbing local.
 - [x] Migrate the browser controls panel to the shared wrapped option-token layout used by the terminal controls panel.
 - [x] Extract shared single-line control segment and hit projection, then route terminal/browser `writeControl` helpers
       through it.
+- [x] Extract shared slider/progress track projection and slider set-hit geometry, then route terminal/browser controls
+      through it.
 - [ ] Extract a renderer-neutral controls row projection for button, slider, checkbox, radio, combo, dropdown, input,
       textbox, stepper, and progress rows.
 - [ ] Add adapter-parity tests that compare terminal/web controls row geometry and hit regions from the shared

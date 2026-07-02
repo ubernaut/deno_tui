@@ -4,6 +4,8 @@ import {
   apiWorkbenchControlIds,
   apiWorkbenchControlLineInto,
   type ApiWorkbenchControlLineSegment,
+  apiWorkbenchControlTrack,
+  apiWorkbenchSliderSetHit,
   apiWorkbenchStepperHitPlacementsInto,
   nextApiWorkbenchControlId,
   nextSortableDataColumn,
@@ -119,6 +121,23 @@ Deno.test("api workbench control line projection keeps button token segments sco
   assertEquals(segments[0] === firstSegment, true);
   assertEquals(hits[0] === firstHit, true);
   assertEquals(hits.length, 1);
+});
+
+Deno.test("api workbench control track projects clamped fill and slider hit geometry", () => {
+  const track = apiWorkbenchControlTrack({ ratio: 0.42, boundsWidth: 80, reservedWidth: 20, maxWidth: 24 });
+  assertEquals(track, {
+    width: 24,
+    filled: 10,
+    text: "██████████░░░░░░░░░░░░░░",
+  });
+  assertEquals(
+    apiWorkbenchSliderSetHit({ column: 3, row: 4, width: 80, height: 2 }, 9, track),
+    { column: 15, row: 9, width: 24, height: 1, id: "slider", action: "set", index: undefined },
+  );
+  assertEquals(
+    apiWorkbenchControlTrack({ ratio: 2, boundsWidth: 14, reservedWidth: 20, minWidth: 8, maxWidth: 24 }),
+    { width: 8, filled: 8, text: "████████" },
+  );
 });
 
 Deno.test("api workbench stepper hit placements clip and reuse caller storage", () => {

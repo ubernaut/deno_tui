@@ -162,6 +162,8 @@ import {
   type ApiWorkbenchControlId,
   apiWorkbenchControlLineInto,
   type ApiWorkbenchControlLineSegment,
+  apiWorkbenchControlTrack,
+  apiWorkbenchSliderSetHitInto,
   apiWorkbenchStepperHitPlacementsInto,
   nextApiWorkbenchControlId,
   nextSortableDataColumn,
@@ -321,6 +323,14 @@ const terminalShellSessionTabPlacements: WorkbenchTerminalSessionTabPlacement[] 
 const terminalShellPaneProjections: WorkbenchTerminalPaneProjection[] = [];
 const controlLineSegments: ApiWorkbenchControlLineSegment[] = [];
 const controlLineHitPlacements: ApiWorkbenchControlHitPlacement[] = [];
+const controlSliderSetHit: ApiWorkbenchControlHitPlacement = {
+  column: 0,
+  row: 0,
+  width: 0,
+  height: 1,
+  id: "slider",
+  action: "set",
+};
 const controlStepperHitPlacements: ApiWorkbenchControlHitPlacement[] = [];
 const modalActionButtonItems: WorkbenchButtonRowItem<number>[] = [];
 const modalActionButtonPlacements: WorkbenchButtonRowPlacement<number>[] = [];
@@ -1633,13 +1643,19 @@ function renderControls(frame: Frame, rect: Rectangle): void {
   const writeSection = (id: ControlId, label: string) => {
     writeControl(id, label, { action: "activate" });
   };
-  const trackWidth = Math.max(8, Math.min(24, rect.width - 20));
   const slider = density.inspect();
-  const filled = Math.round(slider.normalizedValue * trackWidth);
-  const track = `${"█".repeat(filled)}${"░".repeat(Math.max(0, trackWidth - filled))}`;
-  const progressTrackWidth = Math.max(8, Math.min(24, rect.width - 18));
-  const progressFilled = Math.round(progress.ratio() * progressTrackWidth);
-  const progressTrack = `${"█".repeat(progressFilled)}${"░".repeat(Math.max(0, progressTrackWidth - progressFilled))}`;
+  const sliderTrack = apiWorkbenchControlTrack({
+    ratio: slider.normalizedValue,
+    boundsWidth: rect.width,
+    reservedWidth: 20,
+    maxWidth: 24,
+  });
+  const progressTrack = apiWorkbenchControlTrack({
+    ratio: progress.ratio(),
+    boundsWidth: rect.width,
+    reservedWidth: 18,
+    maxWidth: 24,
+  });
   writeControl(
     "button",
     `${buttonText("Run Action")} presses=${actionButton.pressCount.peek()}`,
@@ -1655,14 +1671,20 @@ function renderControls(frame: Frame, rect: Rectangle): void {
     `${buttonText("Open Modal")} state=${modal.openState.peek() ? "open" : "closed"}`,
     { button: true },
   );
-  writeControl("slider", `Slider    ${track} ${density.value.peek()}/10`, {
+  writeControl("slider", `Slider    ${sliderTrack.text} ${density.value.peek()}/10`, {
     previous: true,
     next: true,
   });
-  addHit({ column: rect.column + 12, row: row - 1, width: trackWidth, height: 1 }, {
+  const sliderSetHit = apiWorkbenchSliderSetHitInto(controlSliderSetHit, rect, row - 1, sliderTrack);
+  addHit({
+    column: sliderSetHit.column,
+    row: sliderSetHit.row,
+    width: sliderSetHit.width,
+    height: sliderSetHit.height,
+  }, {
     type: "control",
-    id: "slider",
-    action: "set",
+    id: sliderSetHit.id,
+    action: sliderSetHit.action,
   });
   writeControl("checkbox", "Checkboxes");
   writeControl("checkbox", `${renderCheckBoxMark(livePreview.checked.peek())} live preview`, {
@@ -1739,7 +1761,7 @@ function renderControls(frame: Frame, rect: Rectangle): void {
       frame,
       row,
       rect.column,
-      paint(fit(`Progress  ${progressTrack} ${progress.value.peek()}%`, rect.width), {
+      paint(fit(`Progress  ${progressTrack.text} ${progress.value.peek()}%`, rect.width), {
         fg: t.text,
         bg: t.surface,
       }),
