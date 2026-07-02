@@ -51,12 +51,21 @@ export function renderStepper(
   width = Number.POSITIVE_INFINITY,
   separator = "→",
 ): string[] {
+  const active = clampStepperIndex(steps, activeIndex);
   if (orientation === "vertical") {
-    return steps.map((step, index) => renderVerticalStep(step, index === clampStepperIndex(steps, activeIndex)));
+    const rows = new Array<string>(steps.length);
+    for (let index = 0; index < steps.length; index += 1) {
+      rows[index] = renderVerticalStep(steps[index]!, index === active);
+    }
+    return rows;
   }
 
-  const text = steps.map((step, index) => renderHorizontalStep(step, index === clampStepperIndex(steps, activeIndex)))
-    .join(` ${separator} `);
+  const separatorText = ` ${separator} `;
+  let text = "";
+  for (let index = 0; index < steps.length; index += 1) {
+    if (text) text += separatorText;
+    text += renderHorizontalStep(steps[index]!, index === active);
+  }
   return [text.length <= width ? text : truncateStepperText(text, width)];
 }
 
@@ -152,7 +161,7 @@ export class StepperController {
   }
 
   inspect(): StepperInspection {
-    const steps = this.steps.peek().map((step) => ({ ...step }));
+    const steps = cloneStepperSteps(this.steps.peek());
     const activeIndex = clampStepperIndex(steps, this.activeIndex.peek());
     const active = stepForIndex(steps, activeIndex);
     return {
@@ -170,6 +179,14 @@ export class StepperController {
     if (this.#ownsActiveIndex) this.activeIndex.dispose();
     if (this.#ownsOrientation) this.orientation.dispose();
   }
+}
+
+function cloneStepperSteps(steps: readonly StepperStep[]): StepperStep[] {
+  const clone = new Array<StepperStep>(steps.length);
+  for (let index = 0; index < steps.length; index += 1) {
+    clone[index] = { ...steps[index]! };
+  }
+  return clone;
 }
 
 function renderHorizontalStep(step: StepperStep, active: boolean): string {

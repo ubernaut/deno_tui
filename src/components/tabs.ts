@@ -40,10 +40,14 @@ export interface TabsInspection {
 /** Renders tabs into deterministic text rows. */
 export function renderTabs(tabs: readonly TabItem[], activeIndex: number): string {
   const active = clampTabIndex(tabs, activeIndex);
-  return tabs.map((tab, index) => {
+  let output = "";
+  for (let index = 0; index < tabs.length; index += 1) {
+    const tab = tabs[index]!;
     const label = tab.disabled ? `(${tab.label})` : tab.label;
-    return index === active ? `[${label}]` : ` ${label} `;
-  }).join(" ");
+    if (output) output += " ";
+    output += index === active ? `[${label}]` : ` ${label} `;
+  }
+  return output;
 }
 
 /** Clamps tab Index to its valid range. */
@@ -132,7 +136,7 @@ export class TabsController {
   }
 
   inspect(): TabsInspection {
-    const tabs = this.tabs.peek().map((tab) => ({ ...tab }));
+    const tabs = cloneTabs(this.tabs.peek());
     const activeIndex = clampTabIndex(tabs, this.activeIndex.peek());
     const active = tabForIndex(tabs, activeIndex);
     return {
@@ -148,6 +152,14 @@ export class TabsController {
     if (this.#ownsTabs) this.tabs.dispose();
     if (this.#ownsActiveIndex) this.activeIndex.dispose();
   }
+}
+
+function cloneTabs(tabs: readonly TabItem[]): TabItem[] {
+  const clone = new Array<TabItem>(tabs.length);
+  for (let index = 0; index < tabs.length; index += 1) {
+    clone[index] = { ...tabs[index]! };
+  }
+  return clone;
 }
 
 /** Public class implementing a tabs. */

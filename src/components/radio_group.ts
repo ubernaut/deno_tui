@@ -109,7 +109,10 @@ export function shiftRadioIndex(options: readonly RadioOption[], activeIndex: nu
 
 /** Public helper for option For Value. */
 export function optionForValue(options: readonly RadioOption[], value: string | undefined): RadioOption | undefined {
-  return options.find((option) => option.value === value);
+  for (const option of options) {
+    if (option.value === value) return option;
+  }
+  return undefined;
 }
 
 /** State controller for radio Group behavior. */
@@ -177,7 +180,7 @@ export class RadioGroupController {
   }
 
   selectValue(value: string | undefined): RadioOption | undefined {
-    const index = this.options.peek().findIndex((option) => option.value === value);
+    const index = radioOptionIndexForValue(this.options.peek(), value);
     if (index < 0) return undefined;
     const option = this.options.peek()[index];
     if (!option || option.disabled) return undefined;
@@ -218,7 +221,7 @@ export class RadioGroupController {
   }
 
   inspect(): RadioGroupInspection {
-    const options = this.options.peek().map((option) => ({ ...option }));
+    const options = cloneRadioOptions(this.options.peek());
     const activeIndex = clampRadioIndex(options, this.activeIndex.peek());
     const active = options[activeIndex];
     const selected = optionForValue(options, this.selectedValue.peek());
@@ -238,6 +241,21 @@ export class RadioGroupController {
     if (this.#ownsSelectedValue) this.selectedValue.dispose();
     if (this.#ownsActiveIndex) this.activeIndex.dispose();
   }
+}
+
+function radioOptionIndexForValue(options: readonly RadioOption[], value: string | undefined): number {
+  for (let index = 0; index < options.length; index += 1) {
+    if (options[index]!.value === value) return index;
+  }
+  return -1;
+}
+
+function cloneRadioOptions(options: readonly RadioOption[]): RadioOption[] {
+  const clone = new Array<RadioOption>(options.length);
+  for (let index = 0; index < options.length; index += 1) {
+    clone[index] = { ...options[index]! };
+  }
+  return clone;
 }
 
 /** Public class implementing a radio Group. */

@@ -60,7 +60,12 @@ export class FileExplorerController {
   }
 
   entries(): FileExplorerEntry[] {
-    return this.tree.visibleRows().map(fileExplorerEntry);
+    const rows = this.tree.visibleRows();
+    const entries = new Array<FileExplorerEntry>(rows.length);
+    for (let index = 0; index < rows.length; index += 1) {
+      entries[index] = fileExplorerEntry(rows[index]!);
+    }
+    return entries;
   }
 
   selected(): FileExplorerEntry | undefined {

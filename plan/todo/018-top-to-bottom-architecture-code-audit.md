@@ -329,6 +329,8 @@ Work:
         intermediate token array.
   - [x] Reworked pad content measurement, modal body/action rendering, and toast inspection cloning to avoid short-lived
         map/reduce/flatMap/filter buffers in reusable widget helper paths.
+  - [x] Reworked tabs, menu bar, radio group, stepper, and file-explorer entry projection to use explicit render and
+        clone buffers instead of map/find chains in common controller inspection and draw helpers.
 
 Acceptance checks:
 

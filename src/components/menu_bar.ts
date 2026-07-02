@@ -40,10 +40,14 @@ export interface MenuBarInspection {
 
 /** Renders menu Bar into deterministic text rows. */
 export function renderMenuBar(items: readonly MenuBarItem[], activeIndex: number): string {
-  return items.map((item, index) => {
+  let output = "";
+  for (let index = 0; index < items.length; index += 1) {
+    const item = items[index]!;
     const label = item.disabled ? `(${item.label})` : item.label;
-    return index === activeIndex ? `[${label}]` : label;
-  }).join(" ");
+    if (output) output += " ";
+    output += index === activeIndex ? `[${label}]` : label;
+  }
+  return output;
 }
 
 /** Moves menu Index by a relative offset. */
@@ -146,7 +150,7 @@ export class MenuBarController {
   }
 
   inspect(): MenuBarInspection {
-    const items = this.items.peek().map((item) => ({ ...item }));
+    const items = cloneMenuBarItems(this.items.peek());
     const activeIndex = clampMenuIndex(items, this.activeIndex.peek());
     const active = menuItemForIndex(items, activeIndex);
     return {
@@ -162,6 +166,14 @@ export class MenuBarController {
     if (this.#ownsItems) this.items.dispose();
     if (this.#ownsActiveIndex) this.activeIndex.dispose();
   }
+}
+
+function cloneMenuBarItems(items: readonly MenuBarItem[]): MenuBarItem[] {
+  const clone = new Array<MenuBarItem>(items.length);
+  for (let index = 0; index < items.length; index += 1) {
+    clone[index] = { ...items[index]! };
+  }
+  return clone;
 }
 
 /** Public class implementing a menu Bar. */
