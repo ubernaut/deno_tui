@@ -5,17 +5,25 @@ import { composeThemeOptionsCore } from "./theme_core.ts";
 /** Returns the active base pack plus active layer options for provider coverage/reporting. */
 export function themeProviderActiveOptions(provider: ThemeProvider): ThemeEngineOptions {
   const activePack = provider.registry.get(provider.activeId.peek());
+  const activeLayers = provider.layers.activeLayers();
+  const options = new Array<ThemeEngineOptions>(activeLayers.length + 1);
+  options[0] = activePack?.options ?? {};
+  for (let index = 0; index < activeLayers.length; index += 1) {
+    options[index + 1] = activeLayers[index]!.options;
+  }
   return composeThemeOptionsCore(
-    activePack?.options ?? {},
-    ...provider.layers.activeLayers().map((layer) => layer.options),
+    ...options,
   );
 }
 
 /** Returns all registered pack options that contribute validation context for layer checks. */
 export function themeRegistryOptions(provider: ThemeProvider): ThemeEngineOptions[] {
-  return provider.registry.ids()
-    .map((id) => provider.registry.get(id)?.options)
-    .filter((options): options is ThemeEngineOptions => options !== undefined);
+  const options: ThemeEngineOptions[] = [];
+  for (const id of provider.registry.ids()) {
+    const packOptions = provider.registry.get(id)?.options;
+    if (packOptions !== undefined) options.push(packOptions);
+  }
+  return options;
 }
 
 /** Collects provider theme and layer validation issues with stable source metadata. */
@@ -27,28 +35,30 @@ export function inspectThemeProviderIssues(
   for (const id of provider.registry.ids()) {
     const pack = provider.registry.get(id);
     if (!pack?.options) continue;
-    issues.push(
-      ...validateThemeOptions(pack.options).map((issue) => ({
+    const packIssues = validateThemeOptions(pack.options);
+    for (const issue of packIssues) {
+      issues.push({
         ...issue,
         source: "theme" as const,
         sourceId: id,
-      })),
-    );
+      });
+    }
   }
 
+  const registryOptions = themeRegistryOptions(provider);
   for (const id of provider.layers.ids()) {
     const layer = provider.layers.get(id);
     if (!layer) continue;
     const layerComponents = new Set(Object.keys(layer.options.components ?? {}));
-    issues.push(
-      ...validateThemeOptions(composeThemeOptionsCore(...themeRegistryOptions(provider), layer.options))
-        .filter((issue) => !issue.component || layerComponents.has(issue.component))
-        .map((issue) => ({
-          ...issue,
-          source: "layer" as const,
-          sourceId: id,
-        })),
-    );
+    const layerIssues = validateThemeOptions(composeThemeOptionsCore(...registryOptions, layer.options));
+    for (const issue of layerIssues) {
+      if (issue.component && !layerComponents.has(issue.component)) continue;
+      issues.push({
+        ...issue,
+        source: "layer" as const,
+        sourceId: id,
+      });
+    }
   }
   return issues;
 }

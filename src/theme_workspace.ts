@@ -88,7 +88,11 @@ export class ThemeWorkspace {
 
   /** Returns the configured pipeline ids in application order. */
   pipelineIds(): string[] {
-    return this.pipelines.map((pipeline) => pipeline.id);
+    const ids = new Array<string>(this.pipelines.length);
+    for (let index = 0; index < this.pipelines.length; index += 1) {
+      ids[index] = this.pipelines[index]!.id;
+    }
+    return ids;
   }
 
   /** Applies selected pipelines to a base engine in workspace order. */
@@ -144,10 +148,14 @@ export class ThemeWorkspace {
 
   /** Returns provider, factory, pipeline, and active engine metadata in one serializable snapshot. */
   inspect(query: ThemeEngineFactoryCatalogQuery = {}): ThemeWorkspaceInspection {
+    const pipelines = new Array<ThemeEnginePipelineInspection>(this.pipelines.length);
+    for (let index = 0; index < this.pipelines.length; index += 1) {
+      pipelines[index] = this.pipelines[index]!.inspect();
+    }
     return {
       provider: this.provider.inspect(),
       factories: this.factories.catalog(query),
-      pipelines: this.pipelines.map((pipeline) => pipeline.inspect()),
+      pipelines,
       activeEngine: this.activeEngine().inspect(),
     };
   }
