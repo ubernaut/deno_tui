@@ -313,6 +313,8 @@ Work:
   - [x] Reworked TerminalWorkspaceController session id lookups, mutation indices, active inspection lookup, close-pane
         fallback, and session reordering to avoid repeated find/some/findIndex and spread/splice paths.
   - [x] Reworked terminal workspace descriptor duplication to populate id sets directly instead of mapping session ids.
+  - [x] Reworked MouseInteractionRouter inspection, hit testing, target snapshots, and ordered target cache population
+        to avoid map/find/spread allocation in input dispatch paths.
 
 Acceptance checks:
 

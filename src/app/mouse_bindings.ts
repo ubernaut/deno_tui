@@ -108,17 +108,23 @@ export class MouseInteractionRouter {
   }
 
   inspect(): MouseInteractionInspection[] {
-    return this.targets().map((target) => ({
-      id: target.id,
-      bounds: boundsOf(target),
-      zIndex: target.zIndex ?? 0,
-      disabled: disabled(target),
-      captureDrag: target.captureDrag ?? true,
-      hasPressHandler: target.onPress !== undefined,
-      hasDragHandler: target.onDrag !== undefined,
-      hasReleaseHandler: target.onRelease !== undefined,
-      hasScrollHandler: target.onScroll !== undefined,
-    }));
+    const targets = this.#ordered();
+    const inspected = new Array<MouseInteractionInspection>(targets.length);
+    for (let index = 0; index < targets.length; index += 1) {
+      const target = targets[index]!;
+      inspected[index] = {
+        id: target.id,
+        bounds: boundsOf(target),
+        zIndex: target.zIndex ?? 0,
+        disabled: disabled(target),
+        captureDrag: target.captureDrag ?? true,
+        hasPressHandler: target.onPress !== undefined,
+        hasDragHandler: target.onDrag !== undefined,
+        hasReleaseHandler: target.onRelease !== undefined,
+        hasScrollHandler: target.onScroll !== undefined,
+      };
+    }
+    return inspected;
   }
 
   async dispatch(event: MouseInteractionEvent): Promise<MouseInteractionDispatchResult> {
@@ -162,21 +168,30 @@ export class MouseInteractionRouter {
   }
 
   hitTest(x: number, y: number, kind: MouseInteractionKind = "press"): RegisteredMouseInteractionTarget | undefined {
-    return this.#ordered().find((target) =>
-      !disabled(target) &&
-      contains(boundsOf(target), x, y) &&
-      handlerFor(target, kind) !== undefined
-    );
+    const targets = this.#ordered();
+    for (let index = 0; index < targets.length; index += 1) {
+      const target = targets[index]!;
+      if (!disabled(target) && contains(boundsOf(target), x, y) && handlerFor(target, kind) !== undefined) {
+        return target;
+      }
+    }
+    return undefined;
   }
 
   targets(): RegisteredMouseInteractionTarget[] {
-    return [...this.#ordered()];
+    const source = this.#ordered();
+    const targets = new Array<RegisteredMouseInteractionTarget>(source.length);
+    for (let index = 0; index < source.length; index += 1) targets[index] = source[index]!;
+    return targets;
   }
 
   #ordered(): RegisteredMouseInteractionTarget[] {
-    this.#orderedTargets ??= [...this.#targets.values()].sort((left, right) =>
-      (right.zIndex ?? 0) - (left.zIndex ?? 0) || right.sequence - left.sequence
-    );
+    if (!this.#orderedTargets) {
+      const targets: RegisteredMouseInteractionTarget[] = [];
+      for (const target of this.#targets.values()) targets.push(target);
+      targets.sort((left, right) => (right.zIndex ?? 0) - (left.zIndex ?? 0) || right.sequence - left.sequence);
+      this.#orderedTargets = targets;
+    }
     return this.#orderedTargets;
   }
 }
