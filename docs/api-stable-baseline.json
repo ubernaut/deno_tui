@@ -8200,6 +8200,48 @@
       "documented": true
     },
     {
+      "module": "src/markup/layout_worker.ts",
+      "name": "createMarkupLayoutWorkerHandler",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/markup/layout_worker.ts",
+      "name": "MarkupLayoutWorkerHandler",
+      "kind": "type",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/markup/layout_worker.ts",
+      "name": "MarkupLayoutWorkerHandlerOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/markup/layout_worker.ts",
+      "name": "MarkupLayoutWorkerPayload",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/markup/layout_worker.ts",
+      "name": "MarkupLayoutWorkerResult",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/markup/layout_worker.ts",
+      "name": "runMarkupLayoutInWorker",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
       "module": "src/markup/support.ts",
       "name": "inspectTuiCssSupport",
       "kind": "function",

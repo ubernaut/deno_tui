@@ -345,8 +345,11 @@ Deno.test("createMarkupLayoutWorkerHandler solves markup layout without hydratin
 });
 
 Deno.test("runMarkupLayoutInWorker solves markup layout through WorkerPool", async () => {
+  const workerUrl = new URL("./fixtures/markup_layout_worker.ts", import.meta.url);
+  const permission = await Deno.permissions.query({ name: "read", path: workerUrl });
+  if (permission.state !== "granted") return;
   const pool = new WorkerPool<MarkupLayoutWorkerPayload, MarkupLayoutWorkerResult>({
-    workerUrl: new URL("./fixtures/markup_layout_worker.ts", import.meta.url),
+    workerUrl,
     size: 1,
   });
   try {

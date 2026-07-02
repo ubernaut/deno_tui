@@ -4751,7 +4751,10 @@ function resolveGridTracks(template, count, available, gap, autoTrack) {
     }
   }
   shrinkGridTracksToFit(sizes, availableWithoutGaps);
-  return sizes.map((size) => Math.max(0, Math.floor(size)));
+  for (let index = 0; index < sizes.length; index += 1) {
+    sizes[index] = Math.max(0, Math.floor(sizes[index] ?? 0));
+  }
+  return sizes;
 }
 function gridTrackOffsets(start, tracks, gap) {
   const offsets = [];
@@ -4889,7 +4892,9 @@ function alignmentOffset(available, size, alignment) {
   return 0;
 }
 function shrinkGridTracksToFit(sizes, available) {
-  let overflow = sizes.reduce((sum2, size) => sum2 + size, 0) - Math.max(0, available);
+  let total = 0;
+  for (const size of sizes) total += size;
+  let overflow = total - Math.max(0, available);
   for (let index = sizes.length - 1; index >= 0 && overflow > 0; index -= 1) {
     const removable = Math.min(sizes[index] ?? 0, overflow);
     sizes[index] = Math.max(0, (sizes[index] ?? 0) - removable);
@@ -5394,31 +5399,21 @@ function measureTextIntrinsic(text, availableWidth, defaultTextHeight) {
   return { width, height: Math.max(defaultTextHeight, height) };
 }
 function intrinsicMeasurementCacheKey(node, availableWidth, defaultTextHeight) {
-  return [
-    "v1",
-    Math.max(1, Math.floor(availableWidth)),
-    Math.max(1, Math.floor(defaultTextHeight)),
-    node.tag,
-    node.text ?? "",
-    node.intrinsic?.width ?? "",
-    node.intrinsic?.height ?? "",
-    node.style.display,
-    node.style.flexDirection,
-    node.style.columnGap,
-    ...node.children.map((child) => intrinsicNodeSignature(child))
-  ].join("");
+  let key = "v1" + Math.max(1, Math.floor(availableWidth)) + "" + Math.max(1, Math.floor(defaultTextHeight)) + "" + node.tag + "" + (node.text ?? "") + "" + (node.intrinsic?.width ?? "") + "" + (node.intrinsic?.height ?? "") + "" + node.style.display + "" + node.style.flexDirection + "" + node.style.columnGap;
+  for (const child of node.children) {
+    key += "" + intrinsicNodeSignature(child);
+  }
+  return key;
 }
 function intrinsicNodeSignature(node) {
-  return [
-    node.tag,
-    node.text ?? "",
-    node.intrinsic?.width ?? "",
-    node.intrinsic?.height ?? "",
-    node.style.display,
-    node.style.flexDirection,
-    node.style.columnGap,
-    node.children.map((child) => intrinsicNodeSignature(child)).join("")
-  ].join("");
+  let signature = node.tag + "" + (node.text ?? "") + "" + (node.intrinsic?.width ?? "") + "" + (node.intrinsic?.height ?? "") + "" + node.style.display + "" + node.style.flexDirection + "" + node.style.columnGap;
+  if (node.children.length === 0) return signature + "";
+  signature += "";
+  for (let index = 0; index < node.children.length; index += 1) {
+    if (index > 0) signature += "";
+    signature += intrinsicNodeSignature(node.children[index]);
+  }
+  return signature;
 }
 function scrollSize(node, contentRect, children) {
   const textSize = node.text ? measureTextIntrinsic(node.text, Math.max(1, contentRect.width), 1) : { width: 0, height: 0 };
