@@ -3223,10 +3223,9 @@ function blockFillGlyphForBucket(luminanceBucket) {
   return BLOCK_FILL_GLYPHS[Math.max(0, Math.min(BLOCK_FILL_GLYPHS.length - 1, luminanceBucket))];
 }
 
-// src/three_ascii/ansi_grid.ts
+// src/three_ascii/ansi_glyph_keys.ts
 var TILE_PIXEL_COUNT = 64;
 var DEFAULT_TERMINAL_EDGE_BIAS = 1;
-var RESET = "\x1B[0m";
 var GOHU_11_EDGE_SHAPE_MISMATCH = [0, 3, 10, 9];
 var GOHU_11_FILL_GLYPH_COVERAGE = [0, 2, 4, 6, 9, 11, 13, 15, 18, 18];
 var ASCII_FILL_GLYPH_COVERAGE = [0, 1, 2, 4, 6, 8, 10, 13, 16, 18];
@@ -3236,15 +3235,157 @@ var GLYPH_KEY_GLYPHS_OFFSET = 16;
 var GLYPH_KEY_MIXED_OFFSET = 32;
 var EDGE_GLYPH_KEY_OFFSET = 48;
 var GLYPHS_BY_KEY = createGlyphKeyTable();
-var MAX_LINEAR_BYTE_CACHE_SIZE = 65536;
-var MAX_FOREGROUND_ANSI_CACHE_SIZE = 4096;
-var MAX_CELL_CACHE_SIZE = 16384;
 var GLYPH_MODE_BLOCKS = 0;
 var GLYPH_MODE_GLYPHS = 1;
 var GLYPH_MODE_MIXED = 2;
 var BLOCK_FILL_GLYPH_KEYS_BY_INDEX = createFillGlyphKeyTable(GLYPH_MODE_BLOCKS);
 var ASCII_FILL_GLYPH_KEYS_BY_INDEX = createFillGlyphKeyTable(GLYPH_MODE_GLYPHS);
 var MIXED_FILL_GLYPH_KEYS_BY_INDEX = createFillGlyphKeyTable(GLYPH_MODE_MIXED);
+function glyphForKey(key) {
+  return GLYPHS_BY_KEY[Math.max(0, Math.min(GLYPHS_BY_KEY.length - 1, key))] ?? " ";
+}
+function isSolidBlockFillGlyphKey(key) {
+  return key > 0 && key < GLYPH_KEY_GLYPHS_OFFSET;
+}
+function terminalGlyphModeForStyle(style2) {
+  switch (style2) {
+    case "glyphs":
+      return GLYPH_MODE_GLYPHS;
+    case "mixed":
+      return GLYPH_MODE_MIXED;
+    default:
+      return GLYPH_MODE_BLOCKS;
+  }
+}
+function terminalFillGlyphKeysForMode(mode) {
+  if (mode === GLYPH_MODE_GLYPHS) return ASCII_FILL_GLYPH_KEYS_BY_INDEX;
+  if (mode === GLYPH_MODE_MIXED) return MIXED_FILL_GLYPH_KEYS_BY_INDEX;
+  return BLOCK_FILL_GLYPH_KEYS_BY_INDEX;
+}
+function fillGlyphKeyForIndex(keys, fillGlyphIndex) {
+  return keys[Math.max(0, Math.min(keys.length - 1, fillGlyphIndex))] ?? 0;
+}
+function terminalGlyphForCell(fillGlyphKeys, edgeGlyphIndex, dominantCount, totalCount, secondCount, fillGlyphIndex, edgeBias) {
+  const edgeCandidate = shouldUseGohu11EdgeGlyph(
+    edgeGlyphIndex,
+    dominantCount,
+    totalCount,
+    secondCount,
+    fillGlyphIndex,
+    edgeBias
+  );
+  if (edgeCandidate) {
+    const edgeIndex = Math.max(0, Math.min(EDGE_GLYPHS.length - 1, edgeGlyphIndex));
+    return EDGE_GLYPH_KEY_OFFSET + edgeIndex;
+  }
+  return fillGlyphKeyForIndex(fillGlyphKeys, fillGlyphIndex);
+}
+function fillBucketFromGlyphIndex(index) {
+  return Math.max(0, Math.min(FILL_GLYPHS.length - 1, index - 5));
+}
+function clampUnit(value) {
+  return Math.max(0, Math.min(1, value));
+}
+function fillCoverageForGohu11(fillGlyphIndex) {
+  if (fillGlyphIndex < 5) {
+    return 0;
+  }
+  const bucket = Math.max(0, Math.min(GOHU_11_FILL_GLYPH_COVERAGE.length - 1, fillGlyphIndex - 5));
+  return GOHU_11_FILL_GLYPH_COVERAGE[bucket] / TILE_PIXEL_COUNT;
+}
+function fillCoverageForAscii(fillBucket) {
+  const bucket = Math.max(0, Math.min(ASCII_FILL_GLYPH_COVERAGE.length - 1, fillBucket));
+  return ASCII_FILL_GLYPH_COVERAGE[bucket] / TILE_PIXEL_COUNT;
+}
+function createMixedFillGlyphTable() {
+  const table2 = new Array(FILL_GLYPHS.length + 5);
+  for (let fillGlyphIndex = 0; fillGlyphIndex < table2.length; fillGlyphIndex++) {
+    const bucket = fillBucketFromGlyphIndex(fillGlyphIndex);
+    const targetCoverage = fillCoverageForGohu11(fillGlyphIndex);
+    let bestGlyph = " ";
+    let bestScore = Number.POSITIVE_INFINITY;
+    for (let index = 0; index < FILL_GLYPHS.length; index++) {
+      const score = mixedFillGlyphScore(
+        (GOHU_11_FILL_GLYPH_COVERAGE[index] ?? 0) / TILE_PIXEL_COUNT,
+        index,
+        bucket,
+        targetCoverage,
+        0
+      );
+      if (score < bestScore) {
+        bestScore = score;
+        bestGlyph = FILL_GLYPHS[index] ?? " ";
+      }
+    }
+    for (let index = 0; index < ASCII_FILL_GLYPHS.length; index++) {
+      const score = mixedFillGlyphScore(fillCoverageForAscii(index), index, bucket, targetCoverage, 2e-3);
+      if (score < bestScore) {
+        bestScore = score;
+        bestGlyph = ASCII_FILL_GLYPHS[index] ?? " ";
+      }
+    }
+    table2[fillGlyphIndex] = bestGlyph;
+  }
+  return table2;
+}
+function mixedFillGlyphScore(coverage, index, bucket, targetCoverage, familyBias) {
+  return Math.abs(coverage - targetCoverage) + Math.abs(index - bucket) * 1e-3 + familyBias;
+}
+function createGlyphKeyTable() {
+  const table2 = Array(CELL_GLYPH_KEY_STRIDE).fill(" ");
+  for (let index = 0; index < FILL_GLYPHS.length + 5; index += 1) {
+    const bucket = fillBucketFromGlyphIndex(index);
+    table2[index] = blockFillGlyphForBucket(bucket);
+    table2[GLYPH_KEY_GLYPHS_OFFSET + index] = ASCII_FILL_GLYPHS[bucket] ?? " ";
+    table2[GLYPH_KEY_MIXED_OFFSET + index] = MIXED_FILL_GLYPHS_BY_INDEX[index] ?? " ";
+  }
+  for (let index = 0; index < EDGE_GLYPHS.length; index += 1) {
+    table2[EDGE_GLYPH_KEY_OFFSET + index] = EDGE_GLYPHS[index] ?? " ";
+  }
+  return table2;
+}
+function pickMixedFillGlyph(fillGlyphIndex) {
+  const index = Math.max(0, Math.min(MIXED_FILL_GLYPHS_BY_INDEX.length - 1, fillGlyphIndex));
+  return GLYPH_KEY_MIXED_OFFSET + index;
+}
+function createFillGlyphKeyTable(mode) {
+  const table2 = new Array(FILL_GLYPHS.length + 5);
+  for (let index = 0; index < table2.length; index += 1) {
+    const bucket = fillBucketFromGlyphIndex(index);
+    if (mode === GLYPH_MODE_GLYPHS) {
+      table2[index] = GLYPH_KEY_GLYPHS_OFFSET + bucket;
+    } else if (mode === GLYPH_MODE_MIXED) {
+      table2[index] = pickMixedFillGlyph(index);
+    } else {
+      table2[index] = bucket > 0 ? 14 : 0;
+    }
+  }
+  return table2;
+}
+function shouldUseGohu11EdgeGlyph(edgeGlyphIndex, dominantCount, totalCount, secondCount, fillGlyphIndex, edgeBias = DEFAULT_TERMINAL_EDGE_BIAS) {
+  const direction = edgeGlyphIndex - 1;
+  if (direction < 0 || direction >= GOHU_11_EDGE_SHAPE_MISMATCH.length || dominantCount <= 0 || totalCount <= 0) {
+    return false;
+  }
+  const mismatchWeight = GOHU_11_EDGE_SHAPE_MISMATCH[direction] / 48;
+  const directionShare = dominantCount / totalCount;
+  const separation = secondCount > 0 ? (dominantCount - secondCount) / dominantCount : 1;
+  const dominantCoverage = dominantCount / TILE_PIXEL_COUNT;
+  const fillCoverage = fillCoverageForGohu11(fillGlyphIndex);
+  const clampedBias = Math.max(0.5, edgeBias);
+  const biasOffset = clampedBias - 1;
+  const minShare = 0.54 + mismatchWeight * 0.6 + biasOffset * 0.12;
+  const minSeparation = 0.12 + mismatchWeight * 0.55 + biasOffset * 0.18;
+  const minCoverage = 0.09 + fillCoverage * 0.14 + mismatchWeight * 0.08 + biasOffset * 0.06;
+  return directionShare >= clampUnit(minShare) && separation >= clampUnit(minSeparation) && dominantCoverage >= clampUnit(minCoverage);
+}
+
+// src/three_ascii/ansi_grid.ts
+var DEFAULT_TERMINAL_EDGE_BIAS2 = 1;
+var RESET = "\x1B[0m";
+var MAX_LINEAR_BYTE_CACHE_SIZE = 65536;
+var MAX_FOREGROUND_ANSI_CACHE_SIZE = 4096;
+var MAX_CELL_CACHE_SIZE = 16384;
 var ThreeAsciiAnsiGridAssembler = class {
   toByte = createLinearByteCache();
   foregroundAnsiCache = /* @__PURE__ */ new Map();
@@ -3285,7 +3426,7 @@ var ThreeAsciiAnsiGridAssembler = class {
     const edgeGlyphs = input2.edgeGlyphs;
     const hasEdges = edgeGlyphs !== void 0 && terminalGlyphMode !== GLYPH_MODE_BLOCKS;
     const terminalFillGlyphKeys = terminalFillGlyphKeysForMode(terminalGlyphMode);
-    const terminalEdgeBias = Math.max(0.5, input2.terminalEdgeBias ?? DEFAULT_TERMINAL_EDGE_BIAS);
+    const terminalEdgeBias = Math.max(0.5, input2.terminalEdgeBias ?? DEFAULT_TERMINAL_EDGE_BIAS2);
     const cellCount = columns2 * rows2;
     const denseFill = fillGlyphs.length >= cellCount;
     const denseColors = colors.length >= cellCount * 4;
@@ -3717,144 +3858,6 @@ function rgbToAnsiForeground(red, green, blue) {
 }
 function rgbToAnsiBackground(red, green, blue) {
   return `\x1B[48;2;${red};${green};${blue}m`;
-}
-function fillBucketFromGlyphIndex(index) {
-  return Math.max(0, Math.min(FILL_GLYPHS.length - 1, index - 5));
-}
-function clampUnit(value) {
-  return Math.max(0, Math.min(1, value));
-}
-function fillCoverageForGohu11(fillGlyphIndex) {
-  if (fillGlyphIndex < 5) {
-    return 0;
-  }
-  const bucket = Math.max(0, Math.min(GOHU_11_FILL_GLYPH_COVERAGE.length - 1, fillGlyphIndex - 5));
-  return GOHU_11_FILL_GLYPH_COVERAGE[bucket] / TILE_PIXEL_COUNT;
-}
-function fillCoverageForAscii(fillBucket) {
-  const bucket = Math.max(0, Math.min(ASCII_FILL_GLYPH_COVERAGE.length - 1, fillBucket));
-  return ASCII_FILL_GLYPH_COVERAGE[bucket] / TILE_PIXEL_COUNT;
-}
-function createMixedFillGlyphTable() {
-  const table2 = new Array(FILL_GLYPHS.length + 5);
-  for (let fillGlyphIndex = 0; fillGlyphIndex < table2.length; fillGlyphIndex++) {
-    const bucket = fillBucketFromGlyphIndex(fillGlyphIndex);
-    const targetCoverage = fillCoverageForGohu11(fillGlyphIndex);
-    let bestGlyph = " ";
-    let bestScore = Number.POSITIVE_INFINITY;
-    for (let index = 0; index < FILL_GLYPHS.length; index++) {
-      const score = mixedFillGlyphScore(
-        (GOHU_11_FILL_GLYPH_COVERAGE[index] ?? 0) / TILE_PIXEL_COUNT,
-        index,
-        bucket,
-        targetCoverage,
-        0
-      );
-      if (score < bestScore) {
-        bestScore = score;
-        bestGlyph = FILL_GLYPHS[index] ?? " ";
-      }
-    }
-    for (let index = 0; index < ASCII_FILL_GLYPHS.length; index++) {
-      const score = mixedFillGlyphScore(fillCoverageForAscii(index), index, bucket, targetCoverage, 2e-3);
-      if (score < bestScore) {
-        bestScore = score;
-        bestGlyph = ASCII_FILL_GLYPHS[index] ?? " ";
-      }
-    }
-    table2[fillGlyphIndex] = bestGlyph;
-  }
-  return table2;
-}
-function mixedFillGlyphScore(coverage, index, bucket, targetCoverage, familyBias) {
-  return Math.abs(coverage - targetCoverage) + Math.abs(index - bucket) * 1e-3 + familyBias;
-}
-function createGlyphKeyTable() {
-  const table2 = Array(CELL_GLYPH_KEY_STRIDE).fill(" ");
-  for (let index = 0; index < FILL_GLYPHS.length + 5; index += 1) {
-    const bucket = fillBucketFromGlyphIndex(index);
-    table2[index] = blockFillGlyphForBucket(bucket);
-    table2[GLYPH_KEY_GLYPHS_OFFSET + index] = ASCII_FILL_GLYPHS[bucket] ?? " ";
-    table2[GLYPH_KEY_MIXED_OFFSET + index] = MIXED_FILL_GLYPHS_BY_INDEX[index] ?? " ";
-  }
-  for (let index = 0; index < EDGE_GLYPHS.length; index += 1) {
-    table2[EDGE_GLYPH_KEY_OFFSET + index] = EDGE_GLYPHS[index] ?? " ";
-  }
-  return table2;
-}
-function glyphForKey(key) {
-  return GLYPHS_BY_KEY[Math.max(0, Math.min(GLYPHS_BY_KEY.length - 1, key))] ?? " ";
-}
-function isSolidBlockFillGlyphKey(key) {
-  return key > 0 && key < GLYPH_KEY_GLYPHS_OFFSET;
-}
-function pickMixedFillGlyph(fillGlyphIndex) {
-  const index = Math.max(0, Math.min(MIXED_FILL_GLYPHS_BY_INDEX.length - 1, fillGlyphIndex));
-  return GLYPH_KEY_MIXED_OFFSET + index;
-}
-function createFillGlyphKeyTable(mode) {
-  const table2 = new Array(FILL_GLYPHS.length + 5);
-  for (let index = 0; index < table2.length; index += 1) {
-    const bucket = fillBucketFromGlyphIndex(index);
-    if (mode === GLYPH_MODE_GLYPHS) {
-      table2[index] = GLYPH_KEY_GLYPHS_OFFSET + bucket;
-    } else if (mode === GLYPH_MODE_MIXED) {
-      table2[index] = pickMixedFillGlyph(index);
-    } else {
-      table2[index] = bucket > 0 ? 14 : 0;
-    }
-  }
-  return table2;
-}
-function terminalGlyphModeForStyle(style2) {
-  switch (style2) {
-    case "glyphs":
-      return GLYPH_MODE_GLYPHS;
-    case "mixed":
-      return GLYPH_MODE_MIXED;
-    default:
-      return GLYPH_MODE_BLOCKS;
-  }
-}
-function terminalFillGlyphKeysForMode(mode) {
-  if (mode === GLYPH_MODE_GLYPHS) return ASCII_FILL_GLYPH_KEYS_BY_INDEX;
-  if (mode === GLYPH_MODE_MIXED) return MIXED_FILL_GLYPH_KEYS_BY_INDEX;
-  return BLOCK_FILL_GLYPH_KEYS_BY_INDEX;
-}
-function fillGlyphKeyForIndex(keys, fillGlyphIndex) {
-  return keys[Math.max(0, Math.min(keys.length - 1, fillGlyphIndex))] ?? 0;
-}
-function terminalGlyphForCell(fillGlyphKeys, edgeGlyphIndex, dominantCount, totalCount, secondCount, fillGlyphIndex, edgeBias) {
-  const edgeCandidate = shouldUseGohu11EdgeGlyph(
-    edgeGlyphIndex,
-    dominantCount,
-    totalCount,
-    secondCount,
-    fillGlyphIndex,
-    edgeBias
-  );
-  if (edgeCandidate) {
-    const edgeIndex = Math.max(0, Math.min(EDGE_GLYPHS.length - 1, edgeGlyphIndex));
-    return EDGE_GLYPH_KEY_OFFSET + edgeIndex;
-  }
-  return fillGlyphKeyForIndex(fillGlyphKeys, fillGlyphIndex);
-}
-function shouldUseGohu11EdgeGlyph(edgeGlyphIndex, dominantCount, totalCount, secondCount, fillGlyphIndex, edgeBias = DEFAULT_TERMINAL_EDGE_BIAS) {
-  const direction = edgeGlyphIndex - 1;
-  if (direction < 0 || direction >= GOHU_11_EDGE_SHAPE_MISMATCH.length || dominantCount <= 0 || totalCount <= 0) {
-    return false;
-  }
-  const mismatchWeight = GOHU_11_EDGE_SHAPE_MISMATCH[direction] / 48;
-  const directionShare = dominantCount / totalCount;
-  const separation = secondCount > 0 ? (dominantCount - secondCount) / dominantCount : 1;
-  const dominantCoverage = dominantCount / TILE_PIXEL_COUNT;
-  const fillCoverage = fillCoverageForGohu11(fillGlyphIndex);
-  const clampedBias = Math.max(0.5, edgeBias);
-  const biasOffset = clampedBias - 1;
-  const minShare = 0.54 + mismatchWeight * 0.6 + biasOffset * 0.12;
-  const minSeparation = 0.12 + mismatchWeight * 0.55 + biasOffset * 0.18;
-  const minCoverage = 0.09 + fillCoverage * 0.14 + mismatchWeight * 0.08 + biasOffset * 0.06;
-  return directionShare >= clampUnit(minShare) && separation >= clampUnit(minSeparation) && dominantCoverage >= clampUnit(minCoverage);
 }
 
 // src/three_ascii/loadAsciiLuts.ts

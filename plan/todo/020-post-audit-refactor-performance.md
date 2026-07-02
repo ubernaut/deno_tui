@@ -138,3 +138,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   lifecycle logic is isolated from scene orchestration.
 - Extracted shared workbench modal content helpers for generic modal demos, help, quit confirmation, details, and
   confirmation states so terminal and browser workbench adapters no longer duplicate those modal definitions.
+- Extracted Three ASCII ANSI glyph-key selection and edge-promotion heuristics into a focused internal helper with
+  direct tests, leaving grid assembly responsible for row/cell caches.
