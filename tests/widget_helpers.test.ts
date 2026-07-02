@@ -2046,6 +2046,8 @@ Deno.test("keymap registry formats sorted bindings", () => {
 
   assertEquals(formatKeyBinding({ key: "p", description: "palette", ctrl: true }), "C-p palette");
   assertEquals(renderKeyHelp(registry.list("global"), 40), "C-p palette  q quit");
+  assertEquals(renderKeyHelp(registry.list("global"), 18), "C-p palette  q qui");
+  assertEquals(renderKeyHelp(registry.list("global"), 0), "");
   assertEquals(registry.inspect("global"), {
     count: 2,
     groups: ["global"],

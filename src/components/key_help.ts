@@ -19,9 +19,10 @@ export function renderKeyHelp(bindings: readonly KeyBinding[], width: number): s
   let row = "";
   for (let index = 0; index < bindings.length; index += 1) {
     const segment = formatKeyBinding(bindings[index]!);
-    const next = index === 0 ? segment : `${row}  ${segment}`;
-    if (next.length >= limit) return next.slice(0, limit);
-    row = next;
+    const prefix = index === 0 ? "" : "  ";
+    const nextLength = row.length + prefix.length + segment.length;
+    if (nextLength >= limit) return `${row}${prefix}${segment}`.slice(0, limit);
+    row += `${prefix}${segment}`;
   }
   return row;
 }
