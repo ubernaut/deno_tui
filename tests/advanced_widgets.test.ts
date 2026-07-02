@@ -508,8 +508,11 @@ Deno.test("ToastStackController bounds messages and exposes inspection", () => {
   assertEquals(controller.inspect().empty, true);
   controller.push({ id: "a", message: "A" });
   controller.push({ id: "b", message: "B" });
+  controller.push({ id: "c", message: "C" });
+  controller.setLimit(2);
+  assertEquals(controller.inspect().messages, [{ id: "b", message: "B" }, { id: "c", message: "C" }]);
   controller.setLimit(1);
-  assertEquals(controller.inspect().messages, [{ id: "b", message: "B" }]);
+  assertEquals(controller.inspect().messages, [{ id: "c", message: "C" }]);
   controller.setLimit(0);
   assertEquals(controller.inspect().empty, true);
   controller.dispose();

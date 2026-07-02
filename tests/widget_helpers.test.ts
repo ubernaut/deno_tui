@@ -1244,7 +1244,12 @@ Deno.test("renderModalRows formats wrapped body and focused actions", () => {
     "",
     "[ Dismiss ]   Details  ",
   ]);
-  assertEquals(renderModalRows(controller.inspect(), { width: 28, height: 4 }).at(-1), "[ Dismiss ]   Details  ");
+  assertEquals(renderModalRows(controller.inspect(), { width: 28, height: 4 }), [
+    "[ERROR] Validation faile",
+    "",
+    "One field is invalid and",
+    "[ Dismiss ]   Details  ",
+  ]);
 
   controller.dispose();
 });

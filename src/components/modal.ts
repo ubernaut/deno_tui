@@ -198,8 +198,11 @@ export function renderModalRows(inspection: ModalInspection, options: RenderModa
   if (actions) rows.push("", actions);
   const height = options.height === undefined ? rows.length : Math.max(0, Math.floor(options.height));
   if (options.height === undefined || height <= 0 || rows.length <= height) return rows;
-  if (!actions || height === 1) return rows.slice(0, height);
-  const clipped = rows.slice(0, height);
+  const clipped = new Array<string>(height);
+  for (let index = 0; index < height; index += 1) {
+    clipped[index] = rows[index] ?? "";
+  }
+  if (!actions || height === 1) return clipped;
   clipped[height - 1] = actions;
   return clipped;
 }

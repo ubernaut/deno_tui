@@ -77,7 +77,7 @@ export class ToastStackController {
   setLimit(limit: number): void {
     const normalizedLimit = normalizedToastLimit(limit);
     this.limit.value = normalizedLimit;
-    this.messages.value = normalizedLimit === 0 ? [] : this.messages.peek().slice(-normalizedLimit);
+    this.messages.value = copyLatestToastMessages(this.messages.peek(), normalizedLimit);
   }
 
   clear(): void {
@@ -110,6 +110,18 @@ export class ToastStackController {
       this.messages.value.shift();
     }
   }
+}
+
+function copyLatestToastMessages(messages: readonly ToastMessage[], limit: number): ToastMessage[] {
+  const normalizedLimit = normalizedToastLimit(limit);
+  if (normalizedLimit === 0 || messages.length === 0) return [];
+  const count = Math.min(normalizedLimit, messages.length);
+  const start = messages.length - count;
+  const output = new Array<ToastMessage>(count);
+  for (let index = 0; index < count; index += 1) {
+    output[index] = messages[start + index]!;
+  }
+  return output;
 }
 
 /** Public class implementing a toast Stack. */

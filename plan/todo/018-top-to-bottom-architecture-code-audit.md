@@ -249,6 +249,7 @@ Work:
         discarded `Array.from()` allocations; log viewer now shares one visible-row computation across rendered lines.
   - [x] Reworked toast, empty-state, and label layout rendering to use loop-based row allocation and avoid short-lived
         padding/layout arrays.
+  - [x] Reworked modal row clipping and toast limit trimming to use direct bounded copies instead of `slice()` allocation.
   - [x] Reworked empty-state row projection to append visible rows directly instead of building filtered/sliced/mapped
         line arrays on each render.
   - [x] Added a shared internal text-row drawing helper and migrated row-oriented widgets to it, removing duplicated
