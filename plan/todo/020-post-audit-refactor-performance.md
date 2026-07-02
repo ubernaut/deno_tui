@@ -90,3 +90,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   console rendering no longer mutates fixed local button slots before layout.
 - Added a reusable workbench button-row render-command projection and routed terminal/web toolbar and modal button
   rendering through it so clipped labels and hit rectangles are computed once in shared code.
+- Changed Three ASCII block-mode fill cells to paint their background with the same truecolor source color as the block
+  glyph, improving solid block richness and terminal line-gap coverage without changing glyph or edge modes.

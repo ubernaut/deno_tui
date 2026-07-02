@@ -478,7 +478,11 @@ export class ThreeAsciiAnsiGridAssembler {
       this.foregroundAnsiCache.set(foregroundKey, foregroundAnsi);
     }
 
-    cell = `${this.backgroundAnsi}${foregroundAnsi}${glyphForKey(glyphKey)}${RESET}`;
+    const glyph = glyphForKey(glyphKey);
+    const backgroundAnsi = isSolidBlockFillGlyphKey(glyphKey)
+      ? rgbToAnsiBackground(foregroundRed, foregroundGreen, foregroundBlue)
+      : this.backgroundAnsi;
+    cell = `${backgroundAnsi}${foregroundAnsi}${glyph}${RESET}`;
     this.cellCache.set(cellKey, cell);
     return cell;
   }
@@ -781,6 +785,10 @@ function createGlyphKeyTable(): string[] {
 
 function glyphForKey(key: number): string {
   return GLYPHS_BY_KEY[Math.max(0, Math.min(GLYPHS_BY_KEY.length - 1, key))] ?? " ";
+}
+
+function isSolidBlockFillGlyphKey(key: number): boolean {
+  return key > 0 && key < GLYPH_KEY_GLYPHS_OFFSET;
 }
 
 function pickMixedFillGlyph(fillGlyphIndex: number): number {
