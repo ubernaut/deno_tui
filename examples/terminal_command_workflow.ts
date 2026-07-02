@@ -1,20 +1,26 @@
 import {
   type Action,
+  bindTerminalWorkspaceCommands,
   CommandRegistry,
   commandSurfaceItems,
+  commandTerminalTemplate,
   createTerminalPlan,
   createTerminalSessionController,
+  createTerminalWorkspaceController,
   detectTerminalCapabilities,
   executeCommandSurfaceItem,
   formatTerminalPlan,
   rankCommandSurfaceItems,
+  shellTerminalTemplate,
   terminalSessionSequences,
+  type TerminalWorkspaceCommandAction,
 } from "../mod.ts";
 
 type DemoAction =
   | Action<"route.open", { route: string }>
   | Action<"session.entered", { bytes: number }>
-  | Action<"session.exited", { bytes: number }>;
+  | Action<"session.exited", { bytes: number }>
+  | TerminalWorkspaceCommandAction;
 
 const terminalPlan = createTerminalPlan(detectTerminalCapabilities(), {
   preferAlternateScreen: true,
@@ -30,6 +36,9 @@ const writer = {
   },
 };
 const session = createTerminalSessionController(writer, { plan: terminalPlan });
+const workspace = createTerminalWorkspaceController({ now: () => 1 });
+workspace.add(shellTerminalTemplate({ id: "shell-main", shell: "bash", columns: 100, rows: 30 }));
+workspace.add(commandTerminalTemplate({ id: "logs", title: "Logs", command: "tail", args: ["-f", "app.log"] }));
 const registry = new CommandRegistry<DemoAction>();
 const events: string[] = [];
 
@@ -73,6 +82,14 @@ registry.registerAll([
   },
 ]);
 
+bindTerminalWorkspaceCommands(registry, workspace, {
+  id: "workspace",
+  idPrefix: "workspace",
+  group: "workspace",
+  sessionId: () => workspace.inspect().activeId,
+  renameTitle: "Build Logs",
+});
+
 const dispatch = (action: DemoAction) => {
   switch (action.type) {
     case "route.open":
@@ -84,13 +101,32 @@ const dispatch = (action: DemoAction) => {
     case "session.exited":
       events.push(`exited:${action.payload?.bytes ?? 0}`);
       break;
+    case "terminalWorkspace.sessionActivated":
+      events.push(`workspace-active:${action.payload?.sessionId ?? "none"}`);
+      break;
+    case "terminalWorkspace.sessionRenamed":
+      events.push(`workspace-renamed:${action.payload?.sessionId ?? "none"}`);
+      break;
+    case "terminalWorkspace.sessionMoved":
+      events.push(`workspace-moved:${action.payload?.sessionId ?? "none"}:${action.payload?.delta ?? 0}`);
+      break;
+    case "terminalWorkspace.sessionClosed":
+      events.push(`workspace-closed:${action.payload?.sessionId ?? "none"}`);
+      break;
+    default:
+      events.push(action.type);
+      break;
   }
 };
 
-const ranked = rankCommandSurfaceItems(commandSurfaceItems(registry), "terminal", { limit: 3 });
+const ranked = rankCommandSurfaceItems(commandSurfaceItems(registry), "alternate screen", { limit: 3 });
 await executeCommandSurfaceItem(registry, ranked[0]!.item, dispatch);
 await registry.execute("session.exit", dispatch);
 await registry.execute("route.runtime", dispatch);
+await registry.execute("workspace.nextSession", dispatch);
+await registry.execute("workspace.previousSession", dispatch);
+await registry.execute("workspace.renameSession", dispatch);
+await registry.execute("workspace.moveSessionNext", dispatch);
 
 console.log("# Terminal Command Workflow Demo");
 console.log("");
@@ -107,4 +143,6 @@ console.log(
   }`,
 );
 console.log(`Ranked terminal hits: ${ranked.map((match) => `${match.item.id}:${match.score}`).join(", ")}`);
+console.log(`Workspace active: ${workspace.inspect().activeId}`);
+console.log(`Workspace sessions: ${workspace.inspect().sessions.map((item) => `${item.id}:${item.title}`).join(", ")}`);
 console.log(`Events: ${events.join(", ")}`);
