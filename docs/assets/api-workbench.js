@@ -2426,7 +2426,17 @@ var DirtyRegion = class _DirtyRegion {
   }
   /** Returns true when any dirty segment intersects the rectangle. */
   intersects(rectangle) {
-    return this.intersections(rectangle).length > 0;
+    const rowStart = Math.floor(rectangle.row);
+    const rowEnd = rowStart + Math.max(0, Math.floor(rectangle.height));
+    const columnStart = Math.floor(rectangle.column);
+    const columnEnd = columnStart + Math.max(0, Math.floor(rectangle.width));
+    if (rowEnd <= rowStart || columnEnd <= columnStart) return false;
+    for (let row = rowStart; row < rowEnd; row += 1) {
+      for (const segment of this.#rows.get(row) ?? []) {
+        if (Math.min(columnEnd, segment.endColumn) > Math.max(columnStart, segment.startColumn)) return true;
+      }
+    }
+    return false;
   }
   /** Returns row segments clipped to the supplied rectangle. */
   intersections(rectangle) {
@@ -9678,7 +9688,11 @@ function contrastText(background, dark, light) {
 function parseHexColor(value) {
   const color = value.trim().replace(/^#/, "");
   if (!/^[\da-f]{6}$/i.test(color)) return void 0;
-  return [0, 2, 4].map((index) => Number.parseInt(color.slice(index, index + 2), 16));
+  return [
+    Number.parseInt(color.slice(0, 2), 16),
+    Number.parseInt(color.slice(2, 4), 16),
+    Number.parseInt(color.slice(4, 6), 16)
+  ];
 }
 function contrastRatio(left, right) {
   const leftLum = relativeLuminance(left);
@@ -9688,11 +9702,14 @@ function contrastRatio(left, right) {
   return (brightest + 0.05) / (darkest + 0.05);
 }
 function relativeLuminance([red, green, blue]) {
-  const [r, g, b] = [red, green, blue].map((channel) => {
-    const value = channel / 255;
-    return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
-  });
+  const r = linearRgbChannel(red);
+  const g = linearRgbChannel(green);
+  const b = linearRgbChannel(blue);
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+function linearRgbChannel(channel) {
+  const value = channel / 255;
+  return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
 }
 
 // src/runtime/diagnostics.ts
