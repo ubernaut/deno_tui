@@ -294,6 +294,8 @@ Work:
         use explicit id buffers and one-pass count/tag accumulation.
   - [x] Reworked MemoryCanvasSink update and range recording to clone inspection buffers with direct loops instead of
         spread/map projection.
+  - [x] Reworked DirtyRegion inspection and row-segment merge setup to use explicit row/segment buffers and avoid
+        entries/flatMap/spread projection in canvas invalidation helpers.
 
 Acceptance checks:
 

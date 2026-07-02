@@ -72,9 +72,21 @@ export class DirtyRegion {
 
   /** Returns cloned row segments sorted by row then start column. */
   inspect(): DirtyRowSegment[] {
-    return [...this.#rows.entries()]
-      .sort(([left], [right]) => left - right)
-      .flatMap(([, segments]) => segments.map((segment) => ({ ...segment })));
+    const rows: number[] = [];
+    for (const row of this.#rows.keys()) {
+      rows.push(row);
+    }
+    rows.sort((left, right) => left - right);
+
+    const output: DirtyRowSegment[] = [];
+    for (const row of rows) {
+      const segments = this.#rows.get(row);
+      if (!segments) continue;
+      for (const segment of segments) {
+        output.push({ ...segment });
+      }
+    }
+    return output;
   }
 
   /** Returns true when any dirty segment intersects the rectangle. */
@@ -111,14 +123,16 @@ export class DirtyRegion {
 }
 
 function mergeRowSegments(segments: readonly DirtyRowSegment[]): DirtyRowSegment[] {
-  const sorted = [...segments].sort((left, right) =>
-    left.startColumn - right.startColumn || left.endColumn - right.endColumn
-  );
+  const sorted = new Array<DirtyRowSegment>(segments.length);
+  for (let index = 0; index < segments.length; index += 1) {
+    sorted[index] = { ...segments[index]! };
+  }
+  sorted.sort((left, right) => left.startColumn - right.startColumn || left.endColumn - right.endColumn);
   const merged: DirtyRowSegment[] = [];
   for (const segment of sorted) {
     const previous = merged.at(-1);
     if (!previous || segment.startColumn > previous.endColumn) {
-      merged.push({ ...segment });
+      merged.push(segment);
       continue;
     }
     previous.endColumn = Math.max(previous.endColumn, segment.endColumn);
