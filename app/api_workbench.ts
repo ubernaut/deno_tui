@@ -263,6 +263,7 @@ type HitAction =
   | { type: "control"; id: ControlId; action?: ControlHitAction; index?: number }
   | { type: "terminalOutput"; action: TerminalOutputAction }
   | { type: "terminalShell"; action: TerminalShellAction }
+  | { type: "terminalShellSession"; id: string }
   | { type: "terminalShellContent" }
   | { type: "dataRow"; index: number }
   | { type: "explorerRow"; index: number }
@@ -2114,6 +2115,20 @@ function activeTerminalShell(): TerminalShellController | undefined {
   return terminalShell.activeShell;
 }
 
+function nextWorkbenchShellSessionId(): string {
+  const existing = new Set(terminalShell.inspect().sessions.map((session) => session.id));
+  for (let index = 1; index < 10000; index += 1) {
+    const id = `shell-${index}`;
+    if (!existing.has(id)) return id;
+  }
+  return `shell-${Date.now()}`;
+}
+
+function sessionTitleFromId(id: string): string {
+  const match = /^shell-(\d+)$/.exec(id);
+  return match ? `Shell ${match[1]}` : "Shell";
+}
+
 function renderTerminalShellSessionTabs(
   frame: Frame,
   rect: Rectangle,
@@ -2129,11 +2144,13 @@ function renderTerminalShellSessionTabs(
     const active = session.id === inspection.activeId;
     const status = session.shell.running ? "*" : session.shell.status[0]?.toUpperCase() ?? "?";
     const label = fit(buttonText(`${status} ${session.title}`), Math.max(4, Math.min(22, maxColumn - column)));
+    const width = textWidth(label);
     const style = active
       ? { fg: contrastText(t.accent, t.background, t.text), bg: t.accent, bold: true }
       : { fg: t.text, bg: t.panelSoft, bold: false };
     write(frame, startRow, column, paint(label, style));
-    column += textWidth(label) + 1;
+    addHit({ column, row: startRow, width, height: 1 }, { type: "terminalShellSession", id: session.id });
+    column += width + 1;
   }
   if (column < maxColumn) {
     write(frame, startRow, column, paint(" ".repeat(maxColumn - column), { fg: t.soft, bg: t.panelSoft }));
@@ -3712,6 +3729,13 @@ function applyHit(target: { rect: Rectangle; action: HitAction }, x: number, y: 
     void applyTerminalOutputAction(action.action);
   } else if (action.type === "terminalShell") {
     void applyTerminalShellAction(action.action);
+  } else if (action.type === "terminalShellSession") {
+    if (terminalShell.activate(action.id)) {
+      const session = terminalShell.inspect().sessions.find((entry) => entry.id === action.id);
+      terminalShellInputMode.value = session?.shell.running ? "raw" : "workbench";
+      focus(TERMINAL_SHELL_WINDOW_ID);
+      pushLog(`shell active ${session?.title ?? action.id}`);
+    }
   } else if (action.type === "modalAction") {
     if (action.index >= 0) modal.activateAction(action.index);
   } else if (action.type === "dataRow") selectDataRow(action.index);
@@ -3773,8 +3797,8 @@ async function applyTerminalShellAction(action: TerminalShellAction): Promise<vo
   focus(TERMINAL_SHELL_WINDOW_ID);
   const shell = activeTerminalShell();
   if (action === "new") {
-    const count = terminalShell.inspect().sessions.length + 1;
-    const descriptor = terminalShell.add(shellTerminalTemplate({ id: `shell-${count}`, title: `Shell ${count}` }), {
+    const id = nextWorkbenchShellSessionId();
+    const descriptor = terminalShell.add(shellTerminalTemplate({ id, title: sessionTitleFromId(id) }), {
       activate: true,
       start: true,
     });
@@ -3961,6 +3985,10 @@ function handleTerminalShellKey(event: KeyPressEvent): boolean {
     ? "clear"
     : key === "n"
     ? "new"
+    : key === ","
+    ? "previous"
+    : key === "."
+    ? "next"
     : key === "i"
     ? "raw"
     : event.key === "home"
