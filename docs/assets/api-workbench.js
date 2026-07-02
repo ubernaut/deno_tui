@@ -8369,12 +8369,26 @@ var MarkupWidgetHydration = class {
   constructor(widgets) {
     this.widgets = new Array(widgets.length);
     this.byId = /* @__PURE__ */ new Map();
-    const focusOrder = [];
+    const focusEntries = [];
     for (let index = 0; index < widgets.length; index += 1) {
       const widget = widgets[index];
       this.widgets[index] = widget;
       this.byId.set(widget.id, widget);
-      if (widget.focusable) focusOrder.push(widget.id);
+      if (widget.focusable) {
+        const tabIndex = tabIndexForWidget(widget);
+        if (tabIndex >= 0) focusEntries.push({ id: widget.id, tabIndex, order: index });
+      }
+    }
+    focusEntries.sort((left, right) => {
+      const leftPositive = left.tabIndex > 0;
+      const rightPositive = right.tabIndex > 0;
+      if (leftPositive && rightPositive && left.tabIndex !== right.tabIndex) return left.tabIndex - right.tabIndex;
+      if (leftPositive !== rightPositive) return leftPositive ? -1 : 1;
+      return left.order - right.order;
+    });
+    const focusOrder = new Array(focusEntries.length);
+    for (let index = 0; index < focusEntries.length; index += 1) {
+      focusOrder[index] = focusEntries[index].id;
     }
     this.focusOrder = focusOrder;
   }
@@ -8877,6 +8891,12 @@ function numberAttr(attributes, name, fallback) {
 }
 function stringAttr(attributes, name, fallback) {
   return attributes[name] ?? fallback;
+}
+function tabIndexForWidget(widget) {
+  const value = widget.node.attributes.tabindex ?? widget.node.attributes.tabIndex;
+  if (value === void 0) return 0;
+  const parsed = Number.parseInt(value.trim(), 10);
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 function normalizeTag(tag) {
   return tag.trim().toLowerCase();

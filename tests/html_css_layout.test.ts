@@ -1236,6 +1236,32 @@ Deno.test("hydrateMarkupWidgets supports custom widget registries", () => {
   assertEquals(widgets.byId.get("cpu")?.kind, "container");
 });
 
+Deno.test("hydrateMarkupWidgets orders focusable controls by tabindex", () => {
+  const result = createMarkupLayout({
+    markup: `
+      <window id="main">
+        <button id="doc-a">A</button>
+        <button id="skip" tabindex="-1">Skip</button>
+        <input id="third" tabindex="3" />
+        <button id="first" tabindex="1">First</button>
+        <input id="doc-b" tabindex="0" />
+        <button id="second" tabindex="2">Second</button>
+      </window>
+    `,
+    css: `
+      window {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        height: 100%;
+      }
+    `,
+    bounds: { column: 0, row: 0, width: 40, height: 10 },
+  });
+
+  assertEquals(result.widgets.inspect().focusOrder, ["first", "second", "third", "doc-a", "doc-b"]);
+});
+
 Deno.test("yogaLayoutSolver computes basic flex boxes through the markup API", () => {
   const result = createMarkupLayout({
     markup: `

@@ -479,6 +479,8 @@ Recommended routing:
   measurement for no-wrap and long-token wrapping behavior.
 - The selector subset now includes bounded structural pseudo-classes for common terminal list and toolbar styling:
   `:first-child`, `:last-child`, `:only-child`, and `:nth-child(number|odd|even)`.
+- Markup widget hydration now honors `tabindex` for focus order: positive indexes sort first, `0` and missing values
+  follow document order, and negative values are omitted from traversal.
 - Intrinsic measurement cache keys now include the flow-affecting style fields used by that sizing path, including
   position, explicit/min/max dimensions, flex basis, and gap values.
 - The next high-value solver work is richer block/intrinsic text behavior, full Grid/Taffy parity, and either a Taffy
