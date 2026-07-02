@@ -3561,7 +3561,7 @@ var ThreeAsciiAnsiGridAssembler = class {
   }
   foregroundKeyForCell(index, rawRed, rawGreen, rawBlue, fillGlyphIndex, glyphKey, terminalGlyphMode) {
     const baseForegroundKey = this.byteColorKeyForIndex(index, rawRed, rawGreen, rawBlue);
-    if (terminalGlyphMode !== GLYPH_MODE_BLOCKS || glyphKey <= 0 || glyphKey >= GLYPH_KEY_GLYPHS_OFFSET || fillGlyphIndex >= 14) {
+    if (terminalGlyphMode !== GLYPH_MODE_MIXED || glyphKey <= 0 || glyphKey >= GLYPH_KEY_GLYPHS_OFFSET || fillGlyphIndex >= 14) {
       return baseForegroundKey;
     }
     return this.mixedForegroundKeyFor(baseForegroundKey, fillGlyphIndex);

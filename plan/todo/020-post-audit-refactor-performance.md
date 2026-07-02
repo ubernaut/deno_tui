@@ -76,3 +76,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   `ModalInspection` actions to renderer-neutral button rows.
 - Extracted workspace modal content projection into tested pure helpers so the terminal workbench keeps only state,
   persistence, and side-effect orchestration for workspace save/rename/delete flows.
+- Restored the rejected clipped Three ASCII diff experiment, then fixed monitor window control visibility and block-mode
+  truecolor output without regressing the Three ASCII benchmark suite.

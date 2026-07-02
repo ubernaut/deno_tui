@@ -437,7 +437,7 @@ export class ThreeAsciiAnsiGridAssembler {
   ): number {
     const baseForegroundKey = this.byteColorKeyForIndex(index, rawRed, rawGreen, rawBlue);
     if (
-      terminalGlyphMode !== GLYPH_MODE_BLOCKS || glyphKey <= 0 || glyphKey >= GLYPH_KEY_GLYPHS_OFFSET ||
+      terminalGlyphMode !== GLYPH_MODE_MIXED || glyphKey <= 0 || glyphKey >= GLYPH_KEY_GLYPHS_OFFSET ||
       fillGlyphIndex >= 14
     ) {
       return baseForegroundKey;

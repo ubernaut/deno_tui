@@ -45,6 +45,9 @@ import {
 import { renderVisualization, visualizations } from "./visualizations.ts";
 
 const PANEL_SCROLLBAR_LINE_LIMIT = 256;
+const WINDOW_CONTROL_TEXT = "[-] [□] [↺] [x]";
+const WINDOW_CONTROL_WIDTH = 15;
+const WINDOW_CONTROL_MIN_WIDTH = WINDOW_CONTROL_WIDTH + 1;
 
 type MonitorHit =
   | { type: "focus"; id: SlotId }
@@ -570,16 +573,16 @@ const windowControlText: TextObject[] = slotIds.map((slotId) =>
     overwriteRectangle: true,
     rectangle: new Computed<TextRectangle>(() => {
       const rect = slotWindowRect(slotId);
-      const visible = rect.width >= 28 && rect.height >= 4;
+      const visible = rect.width >= WINDOW_CONTROL_MIN_WIDTH && rect.height >= 4;
       return {
-        column: visible ? rect.column + Math.max(0, rect.width - 16) : 0,
+        column: visible ? rect.column + Math.max(0, rect.width - WINDOW_CONTROL_MIN_WIDTH) : 0,
         row: visible ? rect.row : 0,
-        width: visible ? 15 : 0,
+        width: visible ? WINDOW_CONTROL_WIDTH : 0,
       };
     }),
     value: new Computed<string>(() => {
       const rect = slotWindowRect(slotId);
-      return rect.width >= 28 && rect.height >= 4 ? "[-] [□] [↺] [x]" : "";
+      return rect.width >= WINDOW_CONTROL_MIN_WIDTH && rect.height >= 4 ? WINDOW_CONTROL_TEXT : "";
     }),
   })
 );
@@ -1219,8 +1222,8 @@ function rebuildHitTargets(): void {
     if (!slotIds.includes(slotId) || !entry.rect) continue;
     const rect = entry.rect;
     hitTargets.push({ rect, hit: { type: "focus", id: slotId } });
-    if (rect.width >= 28 && rect.height >= 4) {
-      const column = rect.column + Math.max(0, rect.width - 16);
+    if (rect.width >= WINDOW_CONTROL_MIN_WIDTH && rect.height >= 4) {
+      const column = rect.column + Math.max(0, rect.width - WINDOW_CONTROL_MIN_WIDTH);
       hitTargets.push({ rect: { column, row: rect.row, width: 3, height: 1 }, hit: { type: "minimize", id: slotId } });
       hitTargets.push({
         rect: { column: column + 4, row: rect.row, width: 3, height: 1 },

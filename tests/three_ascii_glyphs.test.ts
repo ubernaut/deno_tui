@@ -63,7 +63,7 @@ Deno.test("three ascii ANSI grid assembly skips color work for proven blank cell
   assertEquals(grid[0][0], "\x1b[48;2;0;0;0m\x1b[38;2;0;0;0m \x1b[0m");
 });
 
-Deno.test("three ascii block grid assembly only blends partial block buckets", () => {
+Deno.test("three ascii block grid assembly preserves true foreground color", () => {
   const grid = buildThreeAsciiAnsiGrid({
     columns: 2,
     rows: 1,
@@ -73,7 +73,7 @@ Deno.test("three ascii block grid assembly only blends partial block buckets", (
     backgroundColor: 0x0000ff,
   });
 
-  assertMatch(grid[0][0], /^\x1b\[48;2;0;0;255m\x1b\[38;2;227;0;28m█\x1b\[0m$/);
+  assertEquals(grid[0][0], "\x1b[48;2;0;0;255m\x1b[38;2;255;0;0m█\x1b[0m");
   assertEquals(grid[0][1], "\x1b[48;2;0;0;255m\x1b[38;2;255;0;0m█\x1b[0m");
 });
 
@@ -222,7 +222,7 @@ Deno.test("three ascii ANSI grid assembler invalidates cached cells when backgro
   assertEquals(tinted !== dark, true);
 });
 
-Deno.test("three ascii ANSI grid assembler invalidates partial block blends when background changes", () => {
+Deno.test("three ascii ANSI grid assembler keeps partial blocks at source color across backgrounds", () => {
   const assembler = new ThreeAsciiAnsiGridAssembler();
   const base = {
     columns: 1,
@@ -236,8 +236,8 @@ Deno.test("three ascii ANSI grid assembler invalidates partial block blends when
   const blue = assembler.build({ ...base, backgroundColor: 0x0000ff })[0][0];
   const blueAgain = assembler.build({ ...base, backgroundColor: 0x0000ff })[0][0];
 
-  assertEquals(dark, "\x1b[48;2;0;0;0m\x1b[38;2;227;0;0m█\x1b[0m");
-  assertEquals(blue, "\x1b[48;2;0;0;255m\x1b[38;2;227;0;28m█\x1b[0m");
+  assertEquals(dark, "\x1b[48;2;0;0;0m\x1b[38;2;255;0;0m█\x1b[0m");
+  assertEquals(blue, "\x1b[48;2;0;0;255m\x1b[38;2;255;0;0m█\x1b[0m");
   assertEquals(blueAgain, blue);
 });
 
