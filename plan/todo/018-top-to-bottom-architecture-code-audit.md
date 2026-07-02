@@ -912,6 +912,8 @@ Work:
   - [x] Reduced direct command surface search allocation by building weighted search fields in one pass per item.
   - [x] Cached flattened tree rows and row labels in `TreeController`, avoiding repeated full-tree projection during
         selection, inspection, and file-explorer navigation.
+  - [x] Added a no-filter local data query fast path and benchmark so paging large unchanged datasets avoids redundant
+        filter/sort copies.
 - [x] Make demo-only assets and NGE-inspired primitives clearly separate from library APIs.
   - [x] Added `app/neon_three_catalog.ts` for supported Three scene metadata and labels, keeping demo/NGE catalog data
         separate from the monolithic scene factory and shared by visualization footers plus scene coverage tests.

@@ -16,6 +16,7 @@ import {
   filterDataRows,
   flexRects,
   MemoryCanvasSink,
+  queryLocalData,
   renderSparkline,
   runTaskBatch,
   searchCommandSurfaceItems,
@@ -907,6 +908,20 @@ export const benchmarkCases: BenchmarkCase[] = [
     run: () => {
       const rows = filterDataRows(largeDataRows, largeDataColumns, "process-12 user");
       if (rows.length === 0) throw new Error("table filter returned no rows");
+    },
+  },
+  {
+    name: "data/local-query-page-25k",
+    category: "data",
+    description: "Page a 25k-row local data query without filters or sorting.",
+    tags: ["data", "query", "paging"],
+    iterations: 500,
+    maxAverageMs: 2,
+    run: () => {
+      const page = queryLocalData(largeDataRows, { page: 17, pageSize: 50 });
+      if (page.rows.length !== 50 || page.totalRows !== largeDataRows.length || page.rows[0]?.id !== 850) {
+        throw new Error("local data query page benchmark returned unexpected rows");
+      }
     },
   },
   {

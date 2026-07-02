@@ -234,11 +234,15 @@ export function queryLocalData<
 ): DataQueryResult<TRow> {
   const normalized = normalizeDataQueryParams(params);
   const terms = parseDataQueryTerms(normalized.query);
-  const filtered: TRow[] = [];
-  for (const row of rows) {
-    if (matchesDataQuery(row, terms, normalized.filters, options)) filtered.push(row);
+  let matched: readonly TRow[] = rows;
+  if (terms.length > 0 || hasActiveDataQueryFilters(normalized.filters) || options.filter) {
+    const filtered: TRow[] = [];
+    for (const row of rows) {
+      if (matchesDataQuery(row, terms, normalized.filters, options)) filtered.push(row);
+    }
+    matched = filtered;
   }
-  const sorted = sortLocalData(filtered, normalized.sort, options.compare);
+  const sorted = sortLocalData(matched, normalized.sort, options.compare);
   return pageDataQueryRows(sorted, normalized);
 }
 
@@ -337,6 +341,14 @@ function matchesExactFilters(row: Record<string, unknown>, filters: DataQueryFil
   return true;
 }
 
+function hasActiveDataQueryFilters(filters: DataQueryFilters): boolean {
+  for (const field of Object.keys(filters)) {
+    const expected = filters[field];
+    if (expected !== undefined && expected !== null && expected !== "") return true;
+  }
+  return false;
+}
+
 function parseDataQueryTerms(query: string): string[] {
   const normalized = query.trim().toLowerCase();
   if (!normalized) return [];
@@ -360,8 +372,8 @@ function sortLocalData<TRow extends Record<string, unknown>>(
   rows: readonly TRow[],
   sort: DataQuerySort | undefined,
   compare: LocalDataQueryOptions<TRow>["compare"],
-): TRow[] {
-  if (!sort) return [...rows];
+): readonly TRow[] {
+  if (!sort) return rows;
   const direction = sort.direction === "desc" ? -1 : 1;
   return [...rows].sort((left, right) =>
     (compare?.(left[sort.field], right[sort.field], sort) ??
