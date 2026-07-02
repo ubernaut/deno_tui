@@ -1,7 +1,10 @@
 import { assertEquals } from "./deps.ts";
 import {
+  createWorkbenchShelfLayoutBuffers,
   layoutWorkbenchShelf,
+  layoutWorkbenchShelfInto,
   layoutWorkbenchTabs,
+  layoutWorkbenchTabsInto,
   workbenchShelfEntriesInto,
   type WorkbenchShelfSource,
   workbenchTabEntriesInto,
@@ -62,6 +65,53 @@ Deno.test("workbench shelf and tab layout clip buttons to the available row widt
 
   assertEquals(shelf.buttons[0]?.rect, { column: 10, row: 0, width: 7, height: 1 });
   assertEquals(tabs.buttons[0]?.rect, { column: 8, row: 0, width: 10, height: 1 });
+});
+
+Deno.test("workbench shelf and tab layouts can reuse caller-owned buffers", () => {
+  const shelfBuffers = createWorkbenchShelfLayoutBuffers<"logs" | "three">();
+  const first = layoutWorkbenchShelfInto(shelfBuffers, {
+    row: 8,
+    column: 1,
+    width: 60,
+    entries: [
+      { id: "logs", title: "Logs" },
+      { id: "three", title: "Three ASCII" },
+    ],
+  });
+  const firstButtons = first.buttons;
+  const firstItems = shelfBuffers.items;
+  const firstPlacements = shelfBuffers.placements;
+
+  const second = layoutWorkbenchShelfInto(shelfBuffers, {
+    row: 9,
+    column: 2,
+    width: 24,
+    entries: [{ id: "three", title: "Three ASCII" }],
+  });
+
+  assertEquals(second.buttons === firstButtons, true);
+  assertEquals(shelfBuffers.items === firstItems, true);
+  assertEquals(shelfBuffers.placements === firstPlacements, true);
+  assertEquals(second.buttons.map((button) => [button.id, button.rect]), [
+    ["three", { column: 12, row: 9, width: 14, height: 1 }],
+  ]);
+
+  const tabBuffers = createWorkbenchShelfLayoutBuffers<"logs">();
+  const tabs = layoutWorkbenchTabsInto(tabBuffers, {
+    row: 4,
+    column: 0,
+    width: 30,
+    tabs: [{ id: "logs", title: "Logs", selected: true }],
+  });
+  assertEquals(tabs.buttons, [
+    {
+      id: "logs",
+      label: "● Logs",
+      rect: { column: 8, row: 4, width: 10, height: 1 },
+      selected: true,
+      hidden: false,
+    },
+  ]);
 });
 
 Deno.test("workbench shelf projections reuse buffers for minimized windows and tabs", () => {

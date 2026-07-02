@@ -11018,11 +11018,6 @@ function workbenchButtonPaintOptions(theme2, contrast, state = "base", tone = "d
 }
 
 // src/app/workbench_control_layout.ts
-function layoutWorkbenchButtonRow(items, bounds, startRow, options = {}) {
-  const placements = [];
-  const nextRow = layoutWorkbenchButtonRowInto(placements, items, bounds, startRow, options);
-  return { placements, nextRow };
-}
 function layoutWorkbenchButtonRowInto(target, items, bounds, startRow, options = {}) {
   target.length = 0;
   const gap = Math.max(0, Math.floor(options.gap ?? 1));
@@ -11664,8 +11659,8 @@ function workbenchTabEntriesInto(target, tabs, titleForId) {
   }
   return target;
 }
-function layoutWorkbenchShelf(options) {
-  return layoutButtonRow({
+function layoutWorkbenchShelfInto(target, options) {
+  return layoutButtonRowInto(target, {
     row: options.row,
     column: options.column,
     width: options.width,
@@ -11674,8 +11669,8 @@ function layoutWorkbenchShelf(options) {
     mode: "shelf"
   });
 }
-function layoutWorkbenchTabs(options) {
-  return layoutButtonRow({
+function layoutWorkbenchTabsInto(target, options) {
+  return layoutButtonRowInto(target, {
     row: options.row,
     column: options.column,
     width: options.width,
@@ -11684,10 +11679,18 @@ function layoutWorkbenchTabs(options) {
     mode: "tabs"
   });
 }
-function layoutButtonRow(options) {
+function createWorkbenchShelfLayoutBuffers() {
+  return {
+    buttons: [],
+    items: [],
+    placements: []
+  };
+}
+function layoutButtonRowInto(target, options) {
   const right = options.column + Math.max(0, options.width);
   const prefixWidth = Math.min(textWidth(options.prefix), Math.max(0, right - options.column));
-  const items = new Array(options.entries.length);
+  const items = target.items;
+  items.length = options.entries.length;
   for (let index = 0; index < options.entries.length; index += 1) {
     const entry = options.entries[index];
     const tab = entry;
@@ -11702,8 +11705,10 @@ function layoutButtonRow(options) {
     width: Math.max(0, options.width - prefixWidth),
     height: 1
   };
-  const placements = layoutWorkbenchButtonRow(items, buttonBounds, options.row).placements;
-  const buttons = new Array(placements.length);
+  layoutWorkbenchButtonRowInto(target.placements, items, buttonBounds, options.row);
+  const placements = target.placements;
+  const buttons = target.buttons;
+  buttons.length = placements.length;
   for (let index = 0; index < placements.length; index += 1) {
     const placement = placements[index];
     const item = placement.item;
@@ -15557,6 +15562,8 @@ var threePreviewOrbRows = [];
 var htmlCssLayoutBoxes = [];
 var minimizedShelfEntries = [];
 var fullscreenTabEntries = [];
+var minimizedShelfLayoutBuffers = createWorkbenchShelfLayoutBuffers();
+var fullscreenTabLayoutBuffers = createWorkbenchShelfLayoutBuffers();
 var windowFrameBoxLines = [];
 var verticalScrollbarCells = [];
 var webTerminalActions = [
@@ -15962,7 +15969,12 @@ function renderShelf(frame) {
   syncWebWindowManagerState();
   const entries = workbenchShelfEntriesInto(minimizedShelfEntries, webWindows.inspect().windows, panelTitle);
   if (entries.length === 0) return;
-  const layout = layoutWorkbenchShelf({ row, column: 2, width: Math.max(0, cols() - 2), entries });
+  const layout = layoutWorkbenchShelfInto(minimizedShelfLayoutBuffers, {
+    row,
+    column: 2,
+    width: Math.max(0, cols() - 2),
+    entries
+  });
   write(frame, row, layout.prefixRect.column, paint(layout.prefix, theme().muted, theme().backgroundSoft));
   for (const button of layout.buttons) {
     writeButton(frame, row, button.rect.column, button.label, { tone: "muted", maxWidth: button.rect.width });
@@ -16028,7 +16040,7 @@ function menuItemRect(menuStart, itemId, preferredWidth, preferredHeight) {
 function renderWindowTabs(frame) {
   const row = rowsCount() - 2;
   syncWebWindowManagerState();
-  const layout = layoutWorkbenchTabs({
+  const layout = layoutWorkbenchTabsInto(fullscreenTabLayoutBuffers, {
     row,
     column: 2,
     width: Math.max(0, cols() - 2),

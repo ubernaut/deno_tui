@@ -1,7 +1,11 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { Rectangle } from "../types.ts";
 import { textWidth } from "../utils/strings.ts";
-import { layoutWorkbenchButtonRow, type WorkbenchButtonRowItem } from "./workbench_control_layout.ts";
+import {
+  layoutWorkbenchButtonRowInto,
+  type WorkbenchButtonRowItem,
+  type WorkbenchButtonRowPlacement,
+} from "./workbench_control_layout.ts";
 
 /** Source item for minimized-window shelf buttons. */
 export interface WorkbenchShelfSource<TId extends string = string> {
@@ -29,6 +33,13 @@ export interface WorkbenchShelfLayout<TId extends string = string> {
   prefix: string;
   prefixRect: Rectangle;
   buttons: WorkbenchShelfButton<TId>[];
+}
+
+/** Reusable storage for shelf and tab layout projection. */
+export interface WorkbenchShelfLayoutBuffers<TId extends string = string> {
+  buttons: WorkbenchShelfButton<TId>[];
+  items: WorkbenchShelfButtonRowItem<TId>[];
+  placements: WorkbenchButtonRowPlacement<TId>[];
 }
 
 /** Options for calculating minimized-window shelf layout. */
@@ -97,7 +108,15 @@ export function workbenchTabEntriesInto<TId extends string>(
 export function layoutWorkbenchShelf<TId extends string>(
   options: WorkbenchShelfLayoutOptions<TId>,
 ): WorkbenchShelfLayout<TId> {
-  return layoutButtonRow({
+  return layoutWorkbenchShelfInto(createWorkbenchShelfLayoutBuffers<TId>(), options);
+}
+
+/** Calculates a minimized-window shelf row into caller-owned storage. */
+export function layoutWorkbenchShelfInto<TId extends string>(
+  target: WorkbenchShelfLayoutBuffers<TId>,
+  options: WorkbenchShelfLayoutOptions<TId>,
+): WorkbenchShelfLayout<TId> {
+  return layoutButtonRowInto(target, {
     row: options.row,
     column: options.column,
     width: options.width,
@@ -111,7 +130,15 @@ export function layoutWorkbenchShelf<TId extends string>(
 export function layoutWorkbenchTabs<TId extends string>(
   options: WorkbenchTabLayoutOptions<TId>,
 ): WorkbenchShelfLayout<TId> {
-  return layoutButtonRow({
+  return layoutWorkbenchTabsInto(createWorkbenchShelfLayoutBuffers<TId>(), options);
+}
+
+/** Calculates fullscreen window tabs into caller-owned storage. */
+export function layoutWorkbenchTabsInto<TId extends string>(
+  target: WorkbenchShelfLayoutBuffers<TId>,
+  options: WorkbenchTabLayoutOptions<TId>,
+): WorkbenchShelfLayout<TId> {
+  return layoutButtonRowInto(target, {
     row: options.row,
     column: options.column,
     width: options.width,
@@ -121,7 +148,17 @@ export function layoutWorkbenchTabs<TId extends string>(
   });
 }
 
-function layoutButtonRow<TId extends string>(
+/** Creates reusable storage for shelf and tab layout projection. */
+export function createWorkbenchShelfLayoutBuffers<TId extends string = string>(): WorkbenchShelfLayoutBuffers<TId> {
+  return {
+    buttons: [],
+    items: [],
+    placements: [],
+  };
+}
+
+function layoutButtonRowInto<TId extends string>(
+  target: WorkbenchShelfLayoutBuffers<TId>,
   options: {
     row: number;
     column: number;
@@ -133,7 +170,8 @@ function layoutButtonRow<TId extends string>(
 ): WorkbenchShelfLayout<TId> {
   const right = options.column + Math.max(0, options.width);
   const prefixWidth = Math.min(textWidth(options.prefix), Math.max(0, right - options.column));
-  const items = new Array<ShelfButtonRowItem<TId>>(options.entries.length);
+  const items = target.items;
+  items.length = options.entries.length;
 
   for (let index = 0; index < options.entries.length; index += 1) {
     const entry = options.entries[index]!;
@@ -149,11 +187,13 @@ function layoutButtonRow<TId extends string>(
     width: Math.max(0, options.width - prefixWidth),
     height: 1,
   };
-  const placements = layoutWorkbenchButtonRow(items, buttonBounds, options.row).placements;
-  const buttons = new Array<WorkbenchShelfButton<TId>>(placements.length);
+  layoutWorkbenchButtonRowInto(target.placements, items, buttonBounds, options.row);
+  const placements = target.placements;
+  const buttons = target.buttons;
+  buttons.length = placements.length;
   for (let index = 0; index < placements.length; index += 1) {
     const placement = placements[index]!;
-    const item = placement.item as ShelfButtonRowItem<TId>;
+    const item = placement.item as WorkbenchShelfButtonRowItem<TId>;
     buttons[index] = {
       id: item.action,
       label: item.label,
@@ -170,7 +210,8 @@ function layoutButtonRow<TId extends string>(
   };
 }
 
-interface ShelfButtonRowItem<TId extends string> extends WorkbenchButtonRowItem<TId> {
+/** Intermediate toolbar item state used while projecting shelf and tab layouts. */
+export interface WorkbenchShelfButtonRowItem<TId extends string> extends WorkbenchButtonRowItem<TId> {
   selected: boolean;
   hidden: boolean;
 }

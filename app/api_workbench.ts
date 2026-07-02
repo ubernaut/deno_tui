@@ -23,6 +23,7 @@ import {
   clampWorkbenchTileDensity,
   clipRect,
   contrastText,
+  createWorkbenchShelfLayoutBuffers,
   createWorkbenchVisualizationWindowOptions,
   createWorkbenchWorkspaceStore,
   deleteWorkbenchWorkspace,
@@ -41,8 +42,8 @@ import {
   layoutWorkbenchMenuBarHits,
   layoutWorkbenchModal,
   layoutWorkbenchPopover,
-  layoutWorkbenchShelf,
-  layoutWorkbenchTabs,
+  layoutWorkbenchShelfInto,
+  layoutWorkbenchTabsInto,
   layoutWorkbenchTitlebar,
   layoutWorkbenchTopMenuItemRect,
   loadWorkbenchWorkspaceStorage,
@@ -598,6 +599,8 @@ const workspaceMenuLabelBuffer: string[] = [];
 const realSourceIdBuffer: string[] = [];
 const minimizedShelfEntries: Array<{ id: WindowId; title: string }> = [];
 const fullscreenTabEntries: Array<{ id: WindowId; title: string; selected?: boolean; hidden?: boolean }> = [];
+const minimizedShelfLayoutBuffers = createWorkbenchShelfLayoutBuffers<WindowId>();
+const fullscreenTabLayoutBuffers = createWorkbenchShelfLayoutBuffers<WindowId>();
 const windowFrameBoxLines: WorkbenchFrameBoxLine[] = [];
 const verticalScrollbarCells: Array<{ column: number; row: number; glyph: string }> = [];
 const horizontalScrollbarCells: Array<{ column: number; row: number; glyph: string }> = [];
@@ -2546,7 +2549,12 @@ function renderShelf(frame: Frame): void {
   const row = currentHeight() - 2;
   const entries = workbenchShelfEntriesInto(minimizedShelfEntries, windowManager.inspect().windows, windowTitle);
   if (entries.length === 0) return;
-  const layout = layoutWorkbenchShelf({ row, column: 1, width: Math.max(0, currentWidth() - 1), entries });
+  const layout = layoutWorkbenchShelfInto(minimizedShelfLayoutBuffers, {
+    row,
+    column: 1,
+    width: Math.max(0, currentWidth() - 1),
+    entries,
+  });
   write(frame, row, layout.prefixRect.column, paint(layout.prefix, { fg: theme().muted, bg: theme().backgroundSoft }));
   for (const button of layout.buttons) {
     writeButton(frame, row, button.rect.column, button.label, { tone: "muted", maxWidth: button.rect.width });
@@ -2558,7 +2566,7 @@ function renderWindowTabs(frame: Frame): void {
   const row = currentHeight() - 2;
   const t = theme();
   fillRow(frame, row, t.backgroundSoft);
-  const layout = layoutWorkbenchTabs({
+  const layout = layoutWorkbenchTabsInto(fullscreenTabLayoutBuffers, {
     row,
     column: 1,
     width: Math.max(0, currentWidth() - 1),

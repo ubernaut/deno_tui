@@ -57,3 +57,4 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Added `wrapPlainTextInto` and routed API workbench recent-action wrapping through caller-owned rows.
 - Consolidated repeated settings-binding reentrancy guards behind a shared internal sync gate.
 - Added a reusable Three ASCII readback view cache and routed renderer readback assembly through it.
+- Added reusable shelf/tab layout buffers and routed terminal and web workbench shelf rendering through them.

@@ -4092,7 +4092,21 @@
     },
     {
       "module": "src/app/workbench_shelf.ts",
+      "name": "createWorkbenchShelfLayoutBuffers",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_shelf.ts",
       "name": "layoutWorkbenchShelf",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_shelf.ts",
+      "name": "layoutWorkbenchShelfInto",
       "kind": "function",
       "typeOnly": false,
       "documented": true
@@ -4106,7 +4120,21 @@
     },
     {
       "module": "src/app/workbench_shelf.ts",
+      "name": "layoutWorkbenchTabsInto",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_shelf.ts",
       "name": "WorkbenchShelfButton",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_shelf.ts",
+      "name": "WorkbenchShelfButtonRowItem",
       "kind": "interface",
       "typeOnly": true,
       "documented": true
@@ -4121,6 +4149,13 @@
     {
       "module": "src/app/workbench_shelf.ts",
       "name": "WorkbenchShelfLayout",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_shelf.ts",
+      "name": "WorkbenchShelfLayoutBuffers",
       "kind": "interface",
       "typeOnly": true,
       "documented": true

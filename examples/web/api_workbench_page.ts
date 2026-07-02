@@ -18,6 +18,7 @@ import {
   createRuntimeStore,
   createTerminalWorkspaceController,
   createWebTui,
+  createWorkbenchShelfLayoutBuffers,
   DataTableController,
   defaultWorkbenchMinimizedState,
   FileExplorerController,
@@ -36,8 +37,8 @@ import {
   layoutWorkbenchMenuBarHits,
   layoutWorkbenchModal,
   layoutWorkbenchPopover,
-  layoutWorkbenchShelf,
-  layoutWorkbenchTabs,
+  layoutWorkbenchShelfInto,
+  layoutWorkbenchTabsInto,
   layoutWorkbenchTitlebar,
   layoutWorkbenchTopMenuItemRect,
   layoutWrappedControlOptions,
@@ -279,6 +280,8 @@ const threePreviewOrbRows: string[] = [];
 const htmlCssLayoutBoxes: ComputedLayoutBox[] = [];
 const minimizedShelfEntries: Array<{ id: PanelId; title: string }> = [];
 const fullscreenTabEntries: Array<{ id: PanelId; title: string; selected?: boolean; hidden?: boolean }> = [];
+const minimizedShelfLayoutBuffers = createWorkbenchShelfLayoutBuffers<PanelId>();
+const fullscreenTabLayoutBuffers = createWorkbenchShelfLayoutBuffers<PanelId>();
 const windowFrameBoxLines: WorkbenchFrameBoxLine[] = [];
 const verticalScrollbarCells: Array<{ column: number; row: number; glyph: string }> = [];
 const webTerminalActions: readonly WebTerminalAction[] = [
@@ -701,7 +704,12 @@ function renderShelf(frame: string[]): void {
   syncWebWindowManagerState();
   const entries = workbenchShelfEntriesInto(minimizedShelfEntries, webWindows.inspect().windows, panelTitle);
   if (entries.length === 0) return;
-  const layout = layoutWorkbenchShelf({ row, column: 2, width: Math.max(0, cols() - 2), entries });
+  const layout = layoutWorkbenchShelfInto(minimizedShelfLayoutBuffers, {
+    row,
+    column: 2,
+    width: Math.max(0, cols() - 2),
+    entries,
+  });
   write(frame, row, layout.prefixRect.column, paint(layout.prefix, theme().muted, theme().backgroundSoft));
   for (const button of layout.buttons) {
     writeButton(frame, row, button.rect.column, button.label, { tone: "muted", maxWidth: button.rect.width });
@@ -773,7 +781,7 @@ function menuItemRect(menuStart: number, itemId: string, preferredWidth: number,
 function renderWindowTabs(frame: string[]): void {
   const row = rowsCount() - 2;
   syncWebWindowManagerState();
-  const layout = layoutWorkbenchTabs({
+  const layout = layoutWorkbenchTabsInto(fullscreenTabLayoutBuffers, {
     row,
     column: 2,
     width: Math.max(0, cols() - 2),
