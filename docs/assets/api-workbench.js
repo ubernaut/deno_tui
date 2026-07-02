@@ -9414,16 +9414,27 @@ function formatWorkbenchDiagnosticStatus(diagnostics, options = {}) {
 }
 function initialWorkbenchDiagnosticLogRows(diagnostics, rows2, options = {}) {
   const maxLogEntries = Math.max(1, Math.floor(options.maxLogEntries ?? 40));
-  return [
-    ...rows2,
-    ...diagnostics.entries().map((entry) => formatWorkbenchDiagnosticLogEntry(entry, options))
-  ].slice(-maxLogEntries);
+  const output = [];
+  appendBoundedRows(output, rows2, maxLogEntries);
+  const entries = diagnostics.entries();
+  for (let index = 0; index < entries.length; index += 1) {
+    appendBoundedRow(output, formatWorkbenchDiagnosticLogEntry(entries[index], options), maxLogEntries);
+  }
+  return output;
 }
 function subscribeWorkbenchDiagnosticLog(diagnostics, onLog, options = {}) {
   return diagnostics.subscribe((entry) => {
     if (!entry) return;
     onLog(formatWorkbenchDiagnosticLogEntry(entry, options));
   });
+}
+function appendBoundedRows(target, rows2, limit) {
+  const start = Math.max(0, rows2.length - limit);
+  for (let index = start; index < rows2.length; index += 1) appendBoundedRow(target, rows2[index], limit);
+}
+function appendBoundedRow(target, row, limit) {
+  if (target.length >= limit) target.shift();
+  target.push(row);
 }
 
 // src/app/workbench_viewport.ts
@@ -9767,7 +9778,12 @@ function workbenchStatusLeft(options) {
 // src/runtime/process_session.ts
 var INPUT_ENCODER = new TextEncoder();
 function formatProcessCommandLine(command) {
-  return [command.command, ...command.args ?? []].map(quoteCommandToken).join(" ");
+  let line = quoteCommandToken(command.command);
+  const args = command.args ?? [];
+  for (let index = 0; index < args.length; index += 1) {
+    line += ` ${quoteCommandToken(args[index])}`;
+  }
+  return line;
 }
 function quoteCommandToken(token) {
   if (/^[\w./:=@+-]+$/.test(token)) return token;
@@ -9828,7 +9844,17 @@ function parseTerminalControlSequence(value, start = 0) {
 }
 function parseTerminalParams(params) {
   if (!params) return [];
-  return params.split(/[;:]/).map((value) => Number.parseInt(value || "0", 10)).filter(Number.isFinite);
+  const values = [];
+  let tokenStart = 0;
+  for (let index = 0; index <= params.length; index += 1) {
+    const code = index < params.length ? params.charCodeAt(index) : 59;
+    if (code !== 59 && code !== 58) continue;
+    const token = params.slice(tokenStart, index);
+    const value = Number.parseInt(token || "0", 10);
+    if (Number.isFinite(value)) values.push(value);
+    tokenStart = index + 1;
+  }
+  return values;
 }
 function parseOscSequence(value, start) {
   if (!value.startsWith("\x1B]", start)) return void 0;
