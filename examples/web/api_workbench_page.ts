@@ -185,9 +185,12 @@ import {
   moveWorkbenchAsciiConfigSelection,
   WorkbenchAsciiConfigController,
   type WorkbenchAsciiConfigRow,
-  workbenchAsciiConfigVisibleRowStart,
 } from "../../src/app/workbench_ascii.ts";
-import { layoutWorkbenchAsciiConfigModal } from "../../src/app/workbench_ascii_modal.ts";
+import {
+  layoutWorkbenchAsciiConfigModal,
+  type WorkbenchAsciiConfigRowPlacement,
+  workbenchAsciiConfigRowPlacementsInto,
+} from "../../src/app/workbench_ascii_modal.ts";
 import {
   applyWorkbenchWindowSignalState,
   inspectWorkbenchWindowSignalState,
@@ -384,6 +387,7 @@ const webTerminalActions: readonly WebTerminalAction[] = [
 const webTerminalButtonItems: WorkbenchButtonRowItem<WebTerminalAction>[] = [];
 const webTerminalButtonPlacements: WorkbenchButtonRowPlacement<WebTerminalAction>[] = [];
 const webTerminalButtonCommands: WorkbenchButtonRowRenderCommand<WebTerminalAction>[] = [];
+const asciiConfigRowPlacements: WorkbenchAsciiConfigRowPlacement<AsciiConfigRow>[] = [];
 const asciiConfigActionButtonItems: WorkbenchButtonRowItem<AsciiConfigModalAction>[] = [];
 const asciiConfigActionButtonPlacements: WorkbenchButtonRowPlacement<AsciiConfigModalAction>[] = [];
 const asciiConfigActionButtonCommands: WorkbenchButtonRowRenderCommand<AsciiConfigModalAction>[] = [];
@@ -1936,30 +1940,29 @@ function renderThreeConfigModal(frame: string[]): void {
     ),
   );
 
-  const selected = threeConfigSelected.peek();
-  const firstRow = workbenchAsciiConfigVisibleRowStart(selected, asciiConfigRows.length, layout.visibleRows);
-  for (let index = 0; index < layout.visibleRows && index < asciiConfigRows.length; index += 1) {
-    const rowIndex = firstRow + index;
-    const row = asciiConfigRows[rowIndex]!;
-    const targetRow = layout.rowsTop + index;
-    const activeRow = rowIndex === selected;
-    const text = formatWorkbenchAsciiConfigRowText(row, options, {
+  const placements = workbenchAsciiConfigRowPlacementsInto(asciiConfigRowPlacements, asciiConfigRows, {
+    inner: layout.inner,
+    rowsTop: layout.rowsTop,
+    visibleRows: layout.visibleRows,
+    selectedIndex: threeConfigSelected.peek(),
+    splitMinWidth: 1,
+  });
+  for (const placement of placements) {
+    const text = formatWorkbenchAsciiConfigRowText(placement.row, options, {
       kittyStatus: "browser preview",
       trackWidth: Math.max(8, Math.min(18, layout.inner.width - 42)),
     });
-    const bg = activeRow ? theme().warn : theme().panelSoft;
-    const fg = activeRow ? contrastText(theme().warn, theme().background, theme().text) : theme().text;
-    write(frame, targetRow, layout.inner.column, paint(fit(text, layout.inner.width), fg, bg, activeRow));
-    const rowRect = { column: layout.inner.column, row: targetRow, width: layout.inner.width, height: 1 };
-    hitTargets.add(rowRect, { type: "asciiConfig", index: rowIndex, action: "activate" });
-    if (row.kind === "preset" || row.kind === "glyphStyle" || row.kind === "numeric") {
-      const half = Math.max(1, Math.floor(rowRect.width / 2));
-      hitTargets.add({ ...rowRect, width: half }, { type: "asciiConfig", index: rowIndex, action: "previous" });
-      hitTargets.add(
-        { column: rowRect.column + half, row: rowRect.row, width: rowRect.width - half, height: 1 },
-        { type: "asciiConfig", index: rowIndex, action: "next" },
-      );
-    }
+    const bg = placement.selected ? theme().warn : theme().panelSoft;
+    const fg = placement.selected ? contrastText(theme().warn, theme().background, theme().text) : theme().text;
+    write(
+      frame,
+      placement.rect.row,
+      layout.inner.column,
+      paint(fit(text, layout.inner.width), fg, bg, placement.selected),
+    );
+    hitTargets.add(placement.rect, { type: "asciiConfig", index: placement.rowIndex, action: "activate" });
+    hitTargets.add(placement.previousRect, { type: "asciiConfig", index: placement.rowIndex, action: "previous" });
+    hitTargets.add(placement.nextRect, { type: "asciiConfig", index: placement.rowIndex, action: "next" });
   }
 
   asciiConfigActionButtonItems[0] = { label: "Cancel", action: "cancel", tone: "muted" };

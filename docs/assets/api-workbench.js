@@ -16556,6 +16556,41 @@ function layoutWorkbenchAsciiConfigModal(options) {
     visibleRows: Math.max(0, actionRow - rowsTop)
   };
 }
+function workbenchAsciiConfigRowPlacementsInto(target, rows2, options) {
+  target.length = 0;
+  const visibleRows2 = Math.max(0, Math.floor(options.visibleRows));
+  const firstRow = workbenchAsciiConfigVisibleRowStart(options.selectedIndex, rows2.length, visibleRows2);
+  const count = Math.min(visibleRows2, rows2.length);
+  const splitMinWidth = Math.max(1, Math.floor(options.splitMinWidth ?? 6));
+  for (let visibleIndex = 0; visibleIndex < count; visibleIndex += 1) {
+    const rowIndex = firstRow + visibleIndex;
+    const row = rows2[rowIndex];
+    if (row === void 0) continue;
+    const rect = {
+      column: options.inner.column,
+      row: options.rowsTop + visibleIndex,
+      width: options.inner.width,
+      height: 1
+    };
+    const leftWidth = Math.max(splitMinWidth, Math.floor(rect.width / 2));
+    const previousRect = { ...rect, width: Math.min(rect.width, leftWidth) };
+    const nextRect = {
+      column: rect.column + previousRect.width,
+      row: rect.row,
+      width: Math.max(0, rect.width - previousRect.width),
+      height: 1
+    };
+    target.push({
+      row,
+      rowIndex,
+      selected: rowIndex === options.selectedIndex,
+      rect,
+      previousRect,
+      nextRect
+    });
+  }
+  return target;
+}
 function normalizeRect4(rect) {
   return {
     column: Math.floor(rect.column),
@@ -16855,6 +16890,7 @@ var webTerminalActions = [
 var webTerminalButtonItems = [];
 var webTerminalButtonPlacements = [];
 var webTerminalButtonCommands = [];
+var asciiConfigRowPlacements = [];
 var asciiConfigActionButtonItems = [];
 var asciiConfigActionButtonPlacements = [];
 var asciiConfigActionButtonCommands = [];
@@ -18285,30 +18321,29 @@ function renderThreeConfigModal(frame) {
       theme().panelSoft
     )
   );
-  const selected = threeConfigSelected.peek();
-  const firstRow = workbenchAsciiConfigVisibleRowStart(selected, asciiConfigRows.length, layout.visibleRows);
-  for (let index = 0; index < layout.visibleRows && index < asciiConfigRows.length; index += 1) {
-    const rowIndex = firstRow + index;
-    const row = asciiConfigRows[rowIndex];
-    const targetRow = layout.rowsTop + index;
-    const activeRow = rowIndex === selected;
-    const text = formatWorkbenchAsciiConfigRowText(row, options, {
+  const placements = workbenchAsciiConfigRowPlacementsInto(asciiConfigRowPlacements, asciiConfigRows, {
+    inner: layout.inner,
+    rowsTop: layout.rowsTop,
+    visibleRows: layout.visibleRows,
+    selectedIndex: threeConfigSelected.peek(),
+    splitMinWidth: 1
+  });
+  for (const placement of placements) {
+    const text = formatWorkbenchAsciiConfigRowText(placement.row, options, {
       kittyStatus: "browser preview",
       trackWidth: Math.max(8, Math.min(18, layout.inner.width - 42))
     });
-    const bg = activeRow ? theme().warn : theme().panelSoft;
-    const fg = activeRow ? contrastText(theme().warn, theme().background, theme().text) : theme().text;
-    write(frame, targetRow, layout.inner.column, paint(fit(text, layout.inner.width), fg, bg, activeRow));
-    const rowRect = { column: layout.inner.column, row: targetRow, width: layout.inner.width, height: 1 };
-    hitTargets.add(rowRect, { type: "asciiConfig", index: rowIndex, action: "activate" });
-    if (row.kind === "preset" || row.kind === "glyphStyle" || row.kind === "numeric") {
-      const half = Math.max(1, Math.floor(rowRect.width / 2));
-      hitTargets.add({ ...rowRect, width: half }, { type: "asciiConfig", index: rowIndex, action: "previous" });
-      hitTargets.add(
-        { column: rowRect.column + half, row: rowRect.row, width: rowRect.width - half, height: 1 },
-        { type: "asciiConfig", index: rowIndex, action: "next" }
-      );
-    }
+    const bg = placement.selected ? theme().warn : theme().panelSoft;
+    const fg = placement.selected ? contrastText(theme().warn, theme().background, theme().text) : theme().text;
+    write(
+      frame,
+      placement.rect.row,
+      layout.inner.column,
+      paint(fit(text, layout.inner.width), fg, bg, placement.selected)
+    );
+    hitTargets.add(placement.rect, { type: "asciiConfig", index: placement.rowIndex, action: "activate" });
+    hitTargets.add(placement.previousRect, { type: "asciiConfig", index: placement.rowIndex, action: "previous" });
+    hitTargets.add(placement.nextRect, { type: "asciiConfig", index: placement.rowIndex, action: "next" });
   }
   asciiConfigActionButtonItems[0] = { label: "Cancel", action: "cancel", tone: "muted" };
   asciiConfigActionButtonItems[1] = { label: "Apply", action: "apply" };

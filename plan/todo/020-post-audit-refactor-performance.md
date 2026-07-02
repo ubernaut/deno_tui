@@ -159,3 +159,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   math in `app/api_workbench.ts`.
 - Added a real browser workbench Three ASCII config modal, persisted its renderer options in the web workspace snapshot,
   and shared config row action/selection helpers across terminal and browser adapters with direct tests.
+- Extracted Three ASCII config modal row placements into the shared modal helper so terminal and browser adapters reuse
+  selected-row windowing and previous/next hit rectangle projection.

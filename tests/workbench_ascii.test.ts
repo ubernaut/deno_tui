@@ -15,7 +15,10 @@ import {
   workbenchAsciiConfigVisibleRowStart,
   workbenchAsciiRendererModeLabel,
 } from "../src/app/workbench_ascii.ts";
-import { layoutWorkbenchAsciiConfigModal } from "../src/app/workbench_ascii_modal.ts";
+import {
+  layoutWorkbenchAsciiConfigModal,
+  workbenchAsciiConfigRowPlacementsInto,
+} from "../src/app/workbench_ascii_modal.ts";
 
 Deno.test("workbench ascii controller owns root and per-window config signals", () => {
   const controller = new WorkbenchAsciiConfigController<"three" | "viz">("three");
@@ -203,4 +206,24 @@ Deno.test("workbench ascii config modal layout stays inside cramped bounds", () 
   assertEquals(layout.footerRow, 11);
   assertEquals(layout.visibleRows, 4);
   assertEquals(layout.shadow, { column: 5, row: 4, width: 36, height: 10 });
+});
+
+Deno.test("workbench ascii config row placements keep selected rows visible and split hits", () => {
+  const layout = layoutWorkbenchAsciiConfigModal({
+    bounds: { column: 3, row: 2, width: 38, height: 13 },
+    rowCount: defaultWorkbenchAsciiConfigRows.length,
+  });
+  const placements = workbenchAsciiConfigRowPlacementsInto([], defaultWorkbenchAsciiConfigRows, {
+    inner: layout.inner,
+    rowsTop: layout.rowsTop,
+    visibleRows: layout.visibleRows,
+    selectedIndex: 16,
+  });
+
+  assertEquals(placements.length, 4);
+  assertEquals(placements.map((placement) => placement.rowIndex), [13, 14, 15, 16]);
+  assertEquals(placements.at(-1)?.selected, true);
+  assertEquals(placements[0]?.rect, { column: 4, row: 6, width: 36, height: 1 });
+  assertEquals(placements[0]?.previousRect, { column: 4, row: 6, width: 18, height: 1 });
+  assertEquals(placements[0]?.nextRect, { column: 22, row: 6, width: 18, height: 1 });
 });

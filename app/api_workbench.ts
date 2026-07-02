@@ -104,9 +104,12 @@ import {
   moveWorkbenchAsciiConfigSelection,
   WorkbenchAsciiConfigController,
   type WorkbenchAsciiConfigRow,
-  workbenchAsciiConfigVisibleRowStart,
 } from "../src/app/workbench_ascii.ts";
-import { layoutWorkbenchAsciiConfigModal } from "../src/app/workbench_ascii_modal.ts";
+import {
+  layoutWorkbenchAsciiConfigModal,
+  type WorkbenchAsciiConfigRowPlacement,
+  workbenchAsciiConfigRowPlacementsInto,
+} from "../src/app/workbench_ascii_modal.ts";
 import { handleInput } from "../src/input.ts";
 import type { KeyPressEvent, MousePressEvent, MouseScrollEvent, PasteEvent } from "../src/input_reader/types.ts";
 import {
@@ -2631,6 +2634,7 @@ function renderModalOverlay(frame: Frame): void {
 type ThreeConfigRow = WorkbenchAsciiConfigRow;
 
 const threeConfigRows: readonly ThreeConfigRow[] = defaultWorkbenchAsciiConfigRows;
+const threeConfigRowPlacements: WorkbenchAsciiConfigRowPlacement<ThreeConfigRow>[] = [];
 
 function renderThreeConfigModal(frame: Frame): void {
   const t = theme();
@@ -2647,34 +2651,32 @@ function renderThreeConfigModal(frame: Frame): void {
     terminalGlyphStyleLabel(current.terminalGlyphStyle)
   } · ${asciiPresetLabel(current.preset)}`;
   write(frame, inner.row, inner.column, paint(fit(title, inner.width), { fg: t.accent, bg: t.panelSoft, bold: true }));
-  const selectedIndex = threeConfigSelected.peek();
-  const firstRow = workbenchAsciiConfigVisibleRowStart(
-    selectedIndex,
-    threeConfigRows.length,
-    layout.visibleRows,
-  );
-  for (
-    let visibleIndex = 0;
-    visibleIndex < Math.min(layout.visibleRows, threeConfigRows.length);
-    visibleIndex += 1
-  ) {
-    const rowIndex = firstRow + visibleIndex;
-    const row = threeConfigRows[rowIndex]!;
-    const y = layout.rowsTop + visibleIndex;
-    const selected = selectedIndex === rowIndex;
+  const placements = workbenchAsciiConfigRowPlacementsInto(threeConfigRowPlacements, threeConfigRows, {
+    inner,
+    rowsTop: layout.rowsTop,
+    visibleRows: layout.visibleRows,
+    selectedIndex: threeConfigSelected.peek(),
+  });
+  for (const placement of placements) {
+    const y = placement.rect.row;
+    const selected = placement.selected;
     const bg = selected ? t.warn : t.surface;
     const fg = selected ? t.background : t.text;
     write(frame, y, inner.column, paint(" ".repeat(inner.width), { bg }));
-    write(frame, y, inner.column, paint(fit(threeConfigRowText(row), inner.width), { fg, bg, bold: selected }));
-    const leftWidth = Math.max(6, Math.floor(inner.width / 2));
-    addHit({ column: inner.column, row: y, width: leftWidth, height: 1 }, {
+    write(
+      frame,
+      y,
+      inner.column,
+      paint(fit(threeConfigRowText(placement.row), inner.width), { fg, bg, bold: selected }),
+    );
+    addHit(placement.previousRect, {
       type: "asciiConfig",
-      index: rowIndex,
+      index: placement.rowIndex,
       action: "previous",
     });
-    addHit({ column: inner.column + leftWidth, row: y, width: inner.width - leftWidth, height: 1 }, {
+    addHit(placement.nextRect, {
       type: "asciiConfig",
-      index: rowIndex,
+      index: placement.rowIndex,
       action: "next",
     });
   }

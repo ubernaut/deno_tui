@@ -1,6 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { Rectangle } from "../types.ts";
 import { clipRect, inset } from "./hit_targets.ts";
+import { type WorkbenchAsciiConfigAction, workbenchAsciiConfigVisibleRowStart } from "./workbench_ascii.ts";
 
 /** Options for laying out the Three ASCII renderer configuration modal. */
 export interface WorkbenchAsciiConfigModalLayoutOptions {
@@ -23,6 +24,16 @@ export interface WorkbenchAsciiConfigModalLayout {
   actionRow: number;
   footerRow: number;
   visibleRows: number;
+}
+
+/** Concrete row placement for a visible Three ASCII config modal row. */
+export interface WorkbenchAsciiConfigRowPlacement<Row> {
+  row: Row;
+  rowIndex: number;
+  selected: boolean;
+  rect: Rectangle;
+  previousRect: Rectangle;
+  nextRect: Rectangle;
 }
 
 /** Calculates centered, clipped geometry for the Three ASCII renderer configuration modal. */
@@ -64,6 +75,56 @@ export function layoutWorkbenchAsciiConfigModal(
     visibleRows: Math.max(0, actionRow - rowsTop),
   };
 }
+
+/** Projects visible Three ASCII config rows into exact row and previous/next hit rectangles. */
+export function workbenchAsciiConfigRowPlacementsInto<Row>(
+  target: WorkbenchAsciiConfigRowPlacement<Row>[],
+  rows: readonly Row[],
+  options: {
+    inner: Rectangle;
+    rowsTop: number;
+    visibleRows: number;
+    selectedIndex: number;
+    splitMinWidth?: number;
+  },
+): WorkbenchAsciiConfigRowPlacement<Row>[] {
+  target.length = 0;
+  const visibleRows = Math.max(0, Math.floor(options.visibleRows));
+  const firstRow = workbenchAsciiConfigVisibleRowStart(options.selectedIndex, rows.length, visibleRows);
+  const count = Math.min(visibleRows, rows.length);
+  const splitMinWidth = Math.max(1, Math.floor(options.splitMinWidth ?? 6));
+  for (let visibleIndex = 0; visibleIndex < count; visibleIndex += 1) {
+    const rowIndex = firstRow + visibleIndex;
+    const row = rows[rowIndex];
+    if (row === undefined) continue;
+    const rect = {
+      column: options.inner.column,
+      row: options.rowsTop + visibleIndex,
+      width: options.inner.width,
+      height: 1,
+    };
+    const leftWidth = Math.max(splitMinWidth, Math.floor(rect.width / 2));
+    const previousRect = { ...rect, width: Math.min(rect.width, leftWidth) };
+    const nextRect = {
+      column: rect.column + previousRect.width,
+      row: rect.row,
+      width: Math.max(0, rect.width - previousRect.width),
+      height: 1,
+    };
+    target.push({
+      row,
+      rowIndex,
+      selected: rowIndex === options.selectedIndex,
+      rect,
+      previousRect,
+      nextRect,
+    });
+  }
+  return target;
+}
+
+/** Convenience hit action type used by modal row placements. */
+export type WorkbenchAsciiConfigRowPlacementAction = WorkbenchAsciiConfigAction;
 
 function normalizeRect(rect: Rectangle): Rectangle {
   return {
