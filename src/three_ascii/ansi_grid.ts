@@ -64,6 +64,11 @@ export class ThreeAsciiAnsiGridAssembler {
   private cachedColorRawGreen = new Float64Array(0);
   private cachedColorRawBlue = new Float64Array(0);
   private cachedColorByteKeys = new Uint32Array(0);
+  private cachedCellForegroundKeys = new Int32Array(0);
+  private cachedCellGlyphKeys = new Int32Array(0);
+  private cachedCellStrings: string[] = [];
+  private cachedCellBackgroundKey = -1;
+  private cachedCellGlyphMode = -1;
   private stableBackgroundInput: string | number | undefined;
   private hasStableBackgroundInput = false;
   private stableBackgroundColorRef?: Color;
@@ -88,7 +93,7 @@ export class ThreeAsciiAnsiGridAssembler {
     const terminalEdgeBias = Math.max(0.5, input.terminalEdgeBias ?? DEFAULT_TERMINAL_EDGE_BIAS);
     const cellCount = columns * rows;
     this.setBackground(input.backgroundColor);
-    this.prepareColorCache(cellCount);
+    this.prepareFrameCaches(cellCount, terminalGlyphMode);
     this.pruneCaches();
     let lastForegroundKey = -1;
     let lastGlyphKey = -1;
@@ -169,10 +174,23 @@ export class ThreeAsciiAnsiGridAssembler {
           continue;
         }
 
+        const cachedCell = this.cachedCellForIndex(index, foregroundKey, glyphKey);
+        if (cachedCell !== undefined) {
+          outputRow[column] = cachedCell;
+          lastForegroundKey = foregroundKey;
+          lastGlyphKey = glyphKey;
+          lastCell = cachedCell;
+          lastRawRed = rawRed;
+          lastRawGreen = rawGreen;
+          lastRawBlue = rawBlue;
+          continue;
+        }
+
         const foregroundRed = (foregroundKey >> 16) & 0xff;
         const foregroundGreen = (foregroundKey >> 8) & 0xff;
         const foregroundBlue = foregroundKey & 0xff;
         const cell = this.cellFor(foregroundKey, foregroundRed, foregroundGreen, foregroundBlue, glyphKey);
+        this.setCachedCellForIndex(index, foregroundKey, glyphKey, cell);
 
         lastForegroundKey = foregroundKey;
         lastGlyphKey = glyphKey;
@@ -205,6 +223,11 @@ export class ThreeAsciiAnsiGridAssembler {
     this.cachedColorRawGreen = new Float64Array(0);
     this.cachedColorRawBlue = new Float64Array(0);
     this.cachedColorByteKeys = new Uint32Array(0);
+    this.cachedCellForegroundKeys = new Int32Array(0);
+    this.cachedCellGlyphKeys = new Int32Array(0);
+    this.cachedCellStrings = [];
+    this.cachedCellBackgroundKey = -1;
+    this.cachedCellGlyphMode = -1;
     this.toByte.clear();
   }
 
@@ -261,10 +284,23 @@ export class ThreeAsciiAnsiGridAssembler {
           continue;
         }
 
+        const cachedCell = this.cachedCellForIndex(index, foregroundKey, glyphKey);
+        if (cachedCell !== undefined) {
+          outputRow[column] = cachedCell;
+          lastForegroundKey = foregroundKey;
+          lastGlyphKey = glyphKey;
+          lastCell = cachedCell;
+          lastRawRed = rawRed;
+          lastRawGreen = rawGreen;
+          lastRawBlue = rawBlue;
+          continue;
+        }
+
         const foregroundRed = (foregroundKey >> 16) & 0xff;
         const foregroundGreen = (foregroundKey >> 8) & 0xff;
         const foregroundBlue = foregroundKey & 0xff;
         const cell = this.cellFor(foregroundKey, foregroundRed, foregroundGreen, foregroundBlue, glyphKey);
+        this.setCachedCellForIndex(index, foregroundKey, glyphKey, cell);
         lastForegroundKey = foregroundKey;
         lastGlyphKey = glyphKey;
         lastCell = cell;
@@ -361,15 +397,45 @@ export class ThreeAsciiAnsiGridAssembler {
     return grid;
   }
 
-  private prepareColorCache(cellCount: number): void {
-    if (this.cachedColorByteKeys.length === cellCount) {
+  private prepareFrameCaches(cellCount: number, terminalGlyphMode: TerminalGlyphMode): void {
+    if (this.cachedColorByteKeys.length !== cellCount) {
+      this.cachedColorRawRed = createNaNFloat64Array(cellCount);
+      this.cachedColorRawGreen = createNaNFloat64Array(cellCount);
+      this.cachedColorRawBlue = createNaNFloat64Array(cellCount);
+      this.cachedColorByteKeys = new Uint32Array(cellCount);
+    }
+
+    if (
+      this.cachedCellForegroundKeys.length === cellCount &&
+      this.cachedCellBackgroundKey === this.backgroundKey &&
+      this.cachedCellGlyphMode === terminalGlyphMode
+    ) {
       return;
     }
 
-    this.cachedColorRawRed = createNaNFloat64Array(cellCount);
-    this.cachedColorRawGreen = createNaNFloat64Array(cellCount);
-    this.cachedColorRawBlue = createNaNFloat64Array(cellCount);
-    this.cachedColorByteKeys = new Uint32Array(cellCount);
+    this.cachedCellForegroundKeys = new Int32Array(cellCount);
+    this.cachedCellForegroundKeys.fill(-1);
+    this.cachedCellGlyphKeys = new Int32Array(cellCount);
+    this.cachedCellGlyphKeys.fill(-1);
+    this.cachedCellStrings = new Array<string>(cellCount);
+    this.cachedCellBackgroundKey = this.backgroundKey;
+    this.cachedCellGlyphMode = terminalGlyphMode;
+  }
+
+  private cachedCellForIndex(index: number, foregroundKey: number, glyphKey: number): string | undefined {
+    if (
+      this.cachedCellForegroundKeys[index] === foregroundKey &&
+      this.cachedCellGlyphKeys[index] === glyphKey
+    ) {
+      return this.cachedCellStrings[index];
+    }
+    return undefined;
+  }
+
+  private setCachedCellForIndex(index: number, foregroundKey: number, glyphKey: number, cell: string): void {
+    this.cachedCellForegroundKeys[index] = foregroundKey;
+    this.cachedCellGlyphKeys[index] = glyphKey;
+    this.cachedCellStrings[index] = cell;
   }
 
   private byteColorKeyForIndex(index: number, rawRed: number, rawGreen: number, rawBlue: number): number {
