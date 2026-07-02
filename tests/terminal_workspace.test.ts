@@ -1,4 +1,4 @@
-import { assertEquals } from "./deps.ts";
+import { assertEquals, assertNotStrictEquals } from "./deps.ts";
 import { CommandRegistry } from "../src/app/commands.ts";
 import {
   bindTerminalWorkspaceCommands,
@@ -23,7 +23,14 @@ import {
   shellTerminalTemplate,
   terminalTemplateToSpawnOptions,
 } from "../src/runtime/terminal_templates.ts";
-import { createTerminalWorkspaceController, terminalWorkspacePaneRects } from "../src/runtime/terminal_workspace.ts";
+import {
+  createTerminalWorkspaceController,
+  createTerminalWorkspaceControllerFromSnapshot,
+  normalizeTerminalWorkspaceSnapshot,
+  snapshotTerminalWorkspace,
+  TERMINAL_WORKSPACE_SNAPSHOT_VERSION,
+  terminalWorkspacePaneRects,
+} from "../src/runtime/terminal_workspace.ts";
 import type { ProcessSessionCommand, ProcessSessionInspection, ProcessSessionStatus } from "../src/runtime/mod.ts";
 
 Deno.test("terminal templates normalize shell command deno task and project task metadata", () => {
@@ -248,7 +255,7 @@ Deno.test("terminal workspace controller manages split pane layout", () => {
   workspace.add(commandTerminalTemplate({ id: "tests", title: "Tests", command: "deno", args: ["test"] }));
 
   assertEquals(workspace.inspectLayout().panes.map((pane) => pane.sessionId), ["shell-main"]);
-  const logsPane = workspace.splitActive("row", "logs", { ratio: 0.6 })!;
+  const logsPane = workspace.splitActive("row", "logs", { ratio: 0.6, title: "Logs" })!;
   assertEquals(logsPane.sessionId, "logs");
   assertEquals(workspace.inspect().activeId, "logs");
   assertEquals(workspace.inspectLayout().root?.kind, "split");
@@ -312,6 +319,71 @@ Deno.test("terminal workspace pane rects project split layouts", () => {
   );
 
   workspace.dispose();
+});
+
+Deno.test("terminal workspace snapshots round trip sessions active pane and layout", () => {
+  const workspace = createTerminalWorkspaceController({ now: () => 1 });
+  workspace.add(shellTerminalTemplate({ id: "shell-main", shell: "bash" }));
+  workspace.add(commandTerminalTemplate({ id: "logs", title: "Logs", command: "tail", args: ["-f"] }));
+  const logsPane = workspace.splitActive("row", "logs", { ratio: 0.6 })!;
+  workspace.toggleZoomPane(logsPane.id);
+
+  const snapshot = workspace.snapshot();
+  assertEquals(snapshot.version, TERMINAL_WORKSPACE_SNAPSHOT_VERSION);
+  assertEquals(snapshot.activeId, "logs");
+  assertEquals(snapshot.sessions.map((session) => session.id), ["shell-main", "logs"]);
+  assertEquals(snapshot.layout.activePaneId, logsPane.id);
+  assertEquals(snapshot.layout.zoomedPaneId, logsPane.id);
+
+  const restored = createTerminalWorkspaceControllerFromSnapshot(snapshot, { now: () => 50 });
+  assertEquals(restored.inspect().activeId, "logs");
+  assertEquals(restored.inspectLayout().panes.map((pane) => [pane.sessionId, pane.active, pane.zoomed]), [
+    ["shell-main", false, false],
+    ["logs", true, true],
+  ]);
+
+  snapshot.sessions[1]!.title = "mutated";
+  if (snapshot.layout.root?.kind === "split" && snapshot.layout.root.second.kind === "pane") {
+    snapshot.layout.root.second.title = "mutated";
+  }
+  assertEquals(restored.inspect().sessions[1]!.title, "Logs");
+
+  workspace.dispose();
+  restored.dispose();
+});
+
+Deno.test("terminal workspace snapshot helpers clone and normalize missing saved panes", () => {
+  const source = createTerminalWorkspaceController({ now: () => 1 });
+  source.add(shellTerminalTemplate({ id: "shell-main", shell: "bash" }));
+  const inspection = source.inspect();
+  const snapshot = snapshotTerminalWorkspace(inspection);
+
+  assertNotStrictEquals(snapshot.sessions[0], inspection.sessions[0]);
+  assertNotStrictEquals(snapshot.layout.root, inspection.layout.root);
+
+  const normalized = normalizeTerminalWorkspaceSnapshot({
+    ...snapshot,
+    activeId: "missing",
+    layout: {
+      root: { kind: "pane", id: "pane-missing", sessionId: "missing" },
+      activePaneId: "pane-missing",
+      zoomedPaneId: "pane-missing",
+    },
+  });
+
+  assertEquals(normalized.activeId, "shell-main");
+  assertEquals(normalized.layout.root, {
+    kind: "pane",
+    id: "pane-shell-main",
+    sessionId: "shell-main",
+    title: "Shell",
+    minColumns: undefined,
+    minRows: undefined,
+  });
+  assertEquals(normalized.layout.activePaneId, "pane-shell-main");
+  assertEquals(normalized.layout.zoomedPaneId, undefined);
+
+  source.dispose();
 });
 
 Deno.test("terminal workspace commands drive pane operations", async () => {

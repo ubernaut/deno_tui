@@ -11064,6 +11064,13 @@
     },
     {
       "module": "src/runtime/terminal_workspace.ts",
+      "name": "createTerminalWorkspaceControllerFromSnapshot",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/runtime/terminal_workspace.ts",
       "name": "DuplicateTerminalWorkspaceSessionOptions",
       "kind": "interface",
       "typeOnly": true,
@@ -11071,9 +11078,30 @@
     },
     {
       "module": "src/runtime/terminal_workspace.ts",
+      "name": "normalizeTerminalWorkspaceSnapshot",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/runtime/terminal_workspace.ts",
+      "name": "snapshotTerminalWorkspace",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/runtime/terminal_workspace.ts",
       "name": "SplitTerminalWorkspacePaneOptions",
       "kind": "interface",
       "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/runtime/terminal_workspace.ts",
+      "name": "TERMINAL_WORKSPACE_SNAPSHOT_VERSION",
+      "kind": "const",
+      "typeOnly": false,
       "documented": true
     },
     {
@@ -11158,6 +11186,13 @@
       "name": "terminalWorkspacePaneRects",
       "kind": "function",
       "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/runtime/terminal_workspace.ts",
+      "name": "TerminalWorkspaceSnapshot",
+      "kind": "interface",
+      "typeOnly": true,
       "documented": true
     },
     {

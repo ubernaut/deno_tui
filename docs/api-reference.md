@@ -6,10 +6,10 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 ## Summary
 
 - Entrypoints: 9
-- Module visits: 521
-- Re-export declarations: 512
-- Exported symbols: 4659
-- Documented symbols: 4659
+- Module visits: 523
+- Re-export declarations: 514
+- Exported symbols: 4701
+- Documented symbols: 4701
 - Documentation coverage: 100.00%
 - Duplicate symbol groups: 0
 - Missing targets: 0
@@ -18,13 +18,13 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 
 | Specifier       | Path                           | Runtime  | Stability    | Modules | Symbols |    Docs |
 | --------------- | ------------------------------ | -------- | ------------ | ------: | ------: | ------: |
-| `.`             | `./mod.ts`                     | terminal | stable       |     235 |    1985 | 100.00% |
-| `./web`         | `./mod.web.ts`                 | browser  | beta         |     214 |    1848 | 100.00% |
+| `.`             | `./mod.ts`                     | terminal | stable       |     236 |    2001 | 100.00% |
+| `./web`         | `./mod.web.ts`                 | browser  | beta         |     215 |    1864 | 100.00% |
 | `./remote`      | `./mod.remote.ts`              | remote   | experimental |       4 |      38 | 100.00% |
 | `./three-ascii` | `./mod.three_ascii.ts`         | shared   | experimental |       8 |      54 | 100.00% |
 | `./theme`       | `./mod.theme.ts`               | shared   | beta         |      10 |     198 | 100.00% |
-| `./runtime`     | `./mod.runtime.ts`             | shared   | beta         |      30 |     369 | 100.00% |
-| `./terminal`    | `./mod.terminal.ts`            | terminal | beta         |      15 |     142 | 100.00% |
+| `./runtime`     | `./mod.runtime.ts`             | shared   | beta         |      30 |     374 | 100.00% |
+| `./terminal`    | `./mod.terminal.ts`            | terminal | beta         |      15 |     147 | 100.00% |
 | `./testing`     | `./mod.testing.ts`             | shared   | beta         |       4 |      22 | 100.00% |
 | `./layout/yoga` | `./src/layout/solvers/yoga.ts` | shared   | experimental |       1 |       3 | 100.00% |
 
@@ -39,10 +39,10 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 ### Summary
 
 - Entrypoint: `mod.ts`
-- Modules: 235
-- Re-export declarations: 234
-- Exported symbols: 1985
-- Documented symbols: 1985
+- Modules: 236
+- Re-export declarations: 235
+- Exported symbols: 2001
+- Documented symbols: 2001
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -104,7 +104,7 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 | [`src/app/table_commands.ts`](#src-app-table-commands-ts)                               |          0 |       6 |          6 |
 | [`src/app/tabs_commands.ts`](#src-app-tabs-commands-ts)                                 |          0 |       6 |          6 |
 | [`src/app/terminal_commands.ts`](#src-app-terminal-commands-ts)                         |          0 |      18 |         18 |
-| [`src/app/terminal_input.ts`](#src-app-terminal-input-ts)                               |          0 |      14 |         14 |
+| [`src/app/terminal_input.ts`](#src-app-terminal-input-ts)                               |          0 |      17 |         17 |
 | [`src/app/terminal_window_bindings.ts`](#src-app-terminal-window-bindings-ts)           |          0 |       5 |          5 |
 | [`src/app/textbox_commands.ts`](#src-app-textbox-commands-ts)                           |          0 |       6 |          6 |
 | [`src/app/theme_commands.ts`](#src-app-theme-commands-ts)                               |          0 |      10 |         10 |
@@ -115,8 +115,9 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 | [`src/app/toast_commands.ts`](#src-app-toast-commands-ts)                               |          0 |       6 |          6 |
 | [`src/app/tree_commands.ts`](#src-app-tree-commands-ts)                                 |          0 |       6 |          6 |
 | [`src/app/window_manager_commands.ts`](#src-app-window-manager-commands-ts)             |          0 |       8 |          8 |
+| [`src/app/workbench_button_style.ts`](#src-app-workbench-button-style-ts)               |          0 |       5 |          5 |
 | [`src/app/workbench_diagnostics.ts`](#src-app-workbench-diagnostics-ts)                 |          0 |       6 |          6 |
-| [`src/app/workbench_frame.ts`](#src-app-workbench-frame-ts)                             |          0 |      16 |         16 |
+| [`src/app/workbench_frame.ts`](#src-app-workbench-frame-ts)                             |          0 |      17 |         17 |
 | [`src/app/workbench_layout.ts`](#src-app-workbench-layout-ts)                           |          0 |      20 |         20 |
 | [`src/app/workbench_menu.ts`](#src-app-workbench-menu-ts)                               |          0 |      14 |         14 |
 | [`src/app/workbench_overlay.ts`](#src-app-workbench-overlay-ts)                         |          0 |       5 |          5 |
@@ -128,7 +129,7 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 | [`src/app/workbench_viewport.ts`](#src-app-workbench-viewport-ts)                       |          0 |       4 |          4 |
 | [`src/app/workbench_window_registry.ts`](#src-app-workbench-window-registry-ts)         |          0 |      14 |         14 |
 | [`src/app/workbench_workspace.ts`](#src-app-workbench-workspace-ts)                     |          0 |      18 |         18 |
-| [`src/app/workbench/mod.ts`](#src-app-workbench-mod-ts)                                 |         14 |       0 |          0 |
+| [`src/app/workbench/mod.ts`](#src-app-workbench-mod-ts)                                 |         15 |       0 |          0 |
 | [`src/canvas/box.ts`](#src-canvas-box-ts)                                               |          0 |       2 |          2 |
 | [`src/canvas/canvas.ts`](#src-canvas-canvas-ts)                                         |          0 |       4 |          4 |
 | [`src/canvas/dirty_region.ts`](#src-canvas-dirty-region-ts)                             |          0 |       2 |          2 |
@@ -157,7 +158,7 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 | [`src/components/interaction.ts`](#src-components-interaction-ts)                       |          0 |       7 |          7 |
 | [`src/components/key_help.ts`](#src-components-key-help-ts)                             |          0 |       3 |          3 |
 | [`src/components/label.ts`](#src-components-label-ts)                                   |          0 |       6 |          6 |
-| [`src/components/list.ts`](#src-components-list-ts)                                     |          0 |       8 |          8 |
+| [`src/components/list.ts`](#src-components-list-ts)                                     |          0 |       9 |          9 |
 | [`src/components/log_viewer.ts`](#src-components-log-viewer-ts)                         |          0 |       6 |          6 |
 | [`src/components/menu_bar.ts`](#src-components-menu-bar-ts)                             |          0 |      10 |         10 |
 | [`src/components/metric_series.ts`](#src-components-metric-series-ts)                   |          0 |      10 |         10 |
@@ -180,7 +181,7 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 | [`src/components/three_ascii.ts`](#src-components-three-ascii-ts)                       |          0 |       2 |          2 |
 | [`src/components/toast.ts`](#src-components-toast-ts)                                   |          0 |       8 |          8 |
 | [`src/components/tree.ts`](#src-components-tree-ts)                                     |          0 |      11 |         11 |
-| [`src/components/virtual_list.ts`](#src-components-virtual-list-ts)                     |          0 |       8 |          8 |
+| [`src/components/virtual_list.ts`](#src-components-virtual-list-ts)                     |          0 |       9 |          9 |
 | [`src/controls.ts`](#src-controls-ts)                                                   |          0 |       2 |          2 |
 | [`src/event_emitter.ts`](#src-event-emitter-ts)                                         |          0 |       5 |          5 |
 | [`src/focus.ts`](#src-focus-ts)                                                         |          0 |       7 |          7 |
@@ -243,7 +244,7 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 | [`src/runtime/terminal_shell.ts`](#src-runtime-terminal-shell-ts)                       |          0 |       3 |          3 |
 | [`src/runtime/terminal_status.ts`](#src-runtime-terminal-status-ts)                     |          0 |       8 |          8 |
 | [`src/runtime/terminal_templates.ts`](#src-runtime-terminal-templates-ts)               |          0 |      22 |         22 |
-| [`src/runtime/terminal_workspace.ts`](#src-runtime-terminal-workspace-ts)               |          0 |      19 |         19 |
+| [`src/runtime/terminal_workspace.ts`](#src-runtime-terminal-workspace-ts)               |          0 |      24 |         24 |
 | [`src/runtime/worker_pool.ts`](#src-runtime-worker-pool-ts)                             |          0 |      12 |         12 |
 | [`src/selection.ts`](#src-selection-ts)                                                 |          0 |      16 |         16 |
 | [`src/signals/computed.ts`](#src-signals-computed-ts)                                   |          0 |       3 |          3 |
@@ -1057,6 +1058,7 @@ _No direct exported symbols._
 | `encodeTerminalKeyPress`               | function  | no        | yes   |
 | `encodeTerminalMouse`                  | function  | no        | yes   |
 | `encodeTerminalPaste`                  | function  | no        | yes   |
+| `inspectTerminalPaste`                 | function  | no        | yes   |
 | `isReservedTerminalKey`                | function  | no        | yes   |
 | `routeTerminalKeyPress`                | function  | no        | yes   |
 | `routeTerminalMouse`                   | function  | no        | yes   |
@@ -1068,6 +1070,8 @@ _No direct exported symbols._
 | `TerminalMouseInputEvent`              | interface | yes       | yes   |
 | `terminalMouseRoutingFromPrivateModes` | function  | no        | yes   |
 | `TerminalMouseTrackingMode`            | type      | yes       | yes   |
+| `TerminalPasteConfirmationPolicy`      | type      | yes       | yes   |
+| `TerminalPasteInspection`              | interface | yes       | yes   |
 
 #### src/app/terminal_window_bindings.ts
 
@@ -1187,6 +1191,16 @@ _No direct exported symbols._
 | `WindowManagerRenameFactory`  | type      | yes       | yes   |
 | `WindowManagerWindowFactory`  | type      | yes       | yes   |
 
+#### src/app/workbench_button_style.ts
+
+| Symbol                        | Kind      | Type Only | JSDoc |
+| ----------------------------- | --------- | --------- | ----- |
+| `WorkbenchButtonContrast`     | type      | yes       | yes   |
+| `workbenchButtonPaintOptions` | function  | no        | yes   |
+| `WorkbenchButtonState`        | type      | yes       | yes   |
+| `WorkbenchButtonTheme`        | interface | yes       | yes   |
+| `WorkbenchButtonTone`         | type      | yes       | yes   |
+
 #### src/app/workbench_diagnostics.ts
 
 | Symbol                              | Kind      | Type Only | JSDoc |
@@ -1207,6 +1221,7 @@ _No direct exported symbols._
 | `contrastText`          | function | no        | yes   |
 | `fillFrameRect`         | function | no        | yes   |
 | `fillFrameRow`          | function | no        | yes   |
+| `fillStringFrameRect`   | function | no        | yes   |
 | `fitCellText`           | function | no        | yes   |
 | `parseHexColor`         | function | no        | yes   |
 | `prepareWorkbenchFrame` | function | no        | yes   |
@@ -1391,6 +1406,7 @@ _No direct exported symbols._
 | -------------------------------------- | ---- | ----- |
 | `src/app/hit_targets.ts`               | star | -     |
 | `src/app/workbench_frame.ts`           | star | -     |
+| `src/app/workbench_button_style.ts`    | star | -     |
 | `src/app/workbench_diagnostics.ts`     | star | -     |
 | `src/app/workbench_layout.ts`          | star | -     |
 | `src/app/workbench_menu.ts`            | star | -     |
@@ -1727,6 +1743,7 @@ _No direct exported symbols._
 | `VirtualRow`            | interface | yes       | yes   |
 | `virtualRows`           | function  | no        | yes   |
 | `visibleListRows`       | function  | no        | yes   |
+| `visibleListRowsInto`   | function  | no        | yes   |
 
 #### src/components/log_viewer.ts
 
@@ -2079,6 +2096,7 @@ _No direct exported symbols._
 | Symbol                         | Kind      | Type Only | JSDoc |
 | ------------------------------ | --------- | --------- | ----- |
 | `renderVirtualListRows`        | function  | no        | yes   |
+| `renderVirtualListRowsInto`    | function  | no        | yes   |
 | `VirtualList`                  | class     | no        | yes   |
 | `VirtualListController`        | class     | no        | yes   |
 | `VirtualListControllerOptions` | interface | yes       | yes   |
@@ -3046,27 +3064,32 @@ _No direct exported symbols._
 
 #### src/runtime/terminal_workspace.ts
 
-| Symbol                                     | Kind      | Type Only | JSDoc |
-| ------------------------------------------ | --------- | --------- | ----- |
-| `AddTerminalWorkspaceSessionOptions`       | interface | yes       | yes   |
-| `createTerminalWorkspaceController`        | function  | no        | yes   |
-| `DuplicateTerminalWorkspaceSessionOptions` | interface | yes       | yes   |
-| `SplitTerminalWorkspacePaneOptions`        | interface | yes       | yes   |
-| `TerminalWorkspaceController`              | class     | no        | yes   |
-| `TerminalWorkspaceControllerOptions`       | interface | yes       | yes   |
-| `TerminalWorkspaceInspection`              | interface | yes       | yes   |
-| `TerminalWorkspaceLayoutInspection`        | interface | yes       | yes   |
-| `TerminalWorkspaceLayoutNode`              | type      | yes       | yes   |
-| `TerminalWorkspaceLayoutState`             | interface | yes       | yes   |
-| `TerminalWorkspacePaneInspection`          | interface | yes       | yes   |
-| `TerminalWorkspacePaneNode`                | interface | yes       | yes   |
-| `TerminalWorkspacePanePlacement`           | type      | yes       | yes   |
-| `TerminalWorkspacePaneRect`                | interface | yes       | yes   |
-| `TerminalWorkspacePaneRectOptions`         | interface | yes       | yes   |
-| `terminalWorkspacePaneRects`               | function  | no        | yes   |
-| `TerminalWorkspaceSplitDirection`          | type      | yes       | yes   |
-| `TerminalWorkspaceSplitNode`               | interface | yes       | yes   |
-| `UpsertTerminalWorkspaceSessionOptions`    | interface | yes       | yes   |
+| Symbol                                          | Kind      | Type Only | JSDoc |
+| ----------------------------------------------- | --------- | --------- | ----- |
+| `AddTerminalWorkspaceSessionOptions`            | interface | yes       | yes   |
+| `createTerminalWorkspaceController`             | function  | no        | yes   |
+| `createTerminalWorkspaceControllerFromSnapshot` | function  | no        | yes   |
+| `DuplicateTerminalWorkspaceSessionOptions`      | interface | yes       | yes   |
+| `normalizeTerminalWorkspaceSnapshot`            | function  | no        | yes   |
+| `snapshotTerminalWorkspace`                     | function  | no        | yes   |
+| `SplitTerminalWorkspacePaneOptions`             | interface | yes       | yes   |
+| `TERMINAL_WORKSPACE_SNAPSHOT_VERSION`           | const     | no        | yes   |
+| `TerminalWorkspaceController`                   | class     | no        | yes   |
+| `TerminalWorkspaceControllerOptions`            | interface | yes       | yes   |
+| `TerminalWorkspaceInspection`                   | interface | yes       | yes   |
+| `TerminalWorkspaceLayoutInspection`             | interface | yes       | yes   |
+| `TerminalWorkspaceLayoutNode`                   | type      | yes       | yes   |
+| `TerminalWorkspaceLayoutState`                  | interface | yes       | yes   |
+| `TerminalWorkspacePaneInspection`               | interface | yes       | yes   |
+| `TerminalWorkspacePaneNode`                     | interface | yes       | yes   |
+| `TerminalWorkspacePanePlacement`                | type      | yes       | yes   |
+| `TerminalWorkspacePaneRect`                     | interface | yes       | yes   |
+| `TerminalWorkspacePaneRectOptions`              | interface | yes       | yes   |
+| `terminalWorkspacePaneRects`                    | function  | no        | yes   |
+| `TerminalWorkspaceSnapshot`                     | interface | yes       | yes   |
+| `TerminalWorkspaceSplitDirection`               | type      | yes       | yes   |
+| `TerminalWorkspaceSplitNode`                    | interface | yes       | yes   |
+| `UpsertTerminalWorkspaceSessionOptions`         | interface | yes       | yes   |
 
 #### src/runtime/worker_pool.ts
 
@@ -3720,10 +3743,10 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 ### Summary
 
 - Entrypoint: `mod.web.ts`
-- Modules: 214
-- Re-export declarations: 213
-- Exported symbols: 1848
-- Documented symbols: 1848
+- Modules: 215
+- Re-export declarations: 214
+- Exported symbols: 1864
+- Documented symbols: 1864
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -3785,7 +3808,7 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 | [`src/app/table_commands.ts`](#src-app-table-commands-ts)                         |          0 |       6 |          6 |
 | [`src/app/tabs_commands.ts`](#src-app-tabs-commands-ts)                           |          0 |       6 |          6 |
 | [`src/app/terminal_commands.ts`](#src-app-terminal-commands-ts)                   |          0 |      18 |         18 |
-| [`src/app/terminal_input.ts`](#src-app-terminal-input-ts)                         |          0 |      14 |         14 |
+| [`src/app/terminal_input.ts`](#src-app-terminal-input-ts)                         |          0 |      17 |         17 |
 | [`src/app/terminal_window_bindings.ts`](#src-app-terminal-window-bindings-ts)     |          0 |       5 |          5 |
 | [`src/app/textbox_commands.ts`](#src-app-textbox-commands-ts)                     |          0 |       6 |          6 |
 | [`src/app/theme_commands.ts`](#src-app-theme-commands-ts)                         |          0 |      10 |         10 |
@@ -3796,8 +3819,9 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 | [`src/app/toast_commands.ts`](#src-app-toast-commands-ts)                         |          0 |       6 |          6 |
 | [`src/app/tree_commands.ts`](#src-app-tree-commands-ts)                           |          0 |       6 |          6 |
 | [`src/app/window_manager_commands.ts`](#src-app-window-manager-commands-ts)       |          0 |       8 |          8 |
+| [`src/app/workbench_button_style.ts`](#src-app-workbench-button-style-ts)         |          0 |       5 |          5 |
 | [`src/app/workbench_diagnostics.ts`](#src-app-workbench-diagnostics-ts)           |          0 |       6 |          6 |
-| [`src/app/workbench_frame.ts`](#src-app-workbench-frame-ts)                       |          0 |      16 |         16 |
+| [`src/app/workbench_frame.ts`](#src-app-workbench-frame-ts)                       |          0 |      17 |         17 |
 | [`src/app/workbench_layout.ts`](#src-app-workbench-layout-ts)                     |          0 |      20 |         20 |
 | [`src/app/workbench_menu.ts`](#src-app-workbench-menu-ts)                         |          0 |      14 |         14 |
 | [`src/app/workbench_overlay.ts`](#src-app-workbench-overlay-ts)                   |          0 |       5 |          5 |
@@ -3809,7 +3833,7 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 | [`src/app/workbench_viewport.ts`](#src-app-workbench-viewport-ts)                 |          0 |       4 |          4 |
 | [`src/app/workbench_window_registry.ts`](#src-app-workbench-window-registry-ts)   |          0 |      14 |         14 |
 | [`src/app/workbench_workspace.ts`](#src-app-workbench-workspace-ts)               |          0 |      18 |         18 |
-| [`src/app/workbench/mod.ts`](#src-app-workbench-mod-ts)                           |         14 |       0 |          0 |
+| [`src/app/workbench/mod.ts`](#src-app-workbench-mod-ts)                           |         15 |       0 |          0 |
 | [`src/canvas/box.ts`](#src-canvas-box-ts)                                         |          0 |       2 |          2 |
 | [`src/canvas/canvas.ts`](#src-canvas-canvas-ts)                                   |          0 |       4 |          4 |
 | [`src/canvas/draw_object.ts`](#src-canvas-draw-object-ts)                         |          0 |       2 |          2 |
@@ -3834,7 +3858,7 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 | [`src/components/interaction.ts`](#src-components-interaction-ts)                 |          0 |       7 |          7 |
 | [`src/components/key_help.ts`](#src-components-key-help-ts)                       |          0 |       3 |          3 |
 | [`src/components/label.ts`](#src-components-label-ts)                             |          0 |       6 |          6 |
-| [`src/components/list.ts`](#src-components-list-ts)                               |          0 |       8 |          8 |
+| [`src/components/list.ts`](#src-components-list-ts)                               |          0 |       9 |          9 |
 | [`src/components/log_viewer.ts`](#src-components-log-viewer-ts)                   |          0 |       6 |          6 |
 | [`src/components/menu_bar.ts`](#src-components-menu-bar-ts)                       |          0 |      10 |         10 |
 | [`src/components/metric_series.ts`](#src-components-metric-series-ts)             |          0 |      10 |         10 |
@@ -3857,7 +3881,7 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 | [`src/components/three_ascii.ts`](#src-components-three-ascii-ts)                 |          0 |       2 |          2 |
 | [`src/components/toast.ts`](#src-components-toast-ts)                             |          0 |       8 |          8 |
 | [`src/components/tree.ts`](#src-components-tree-ts)                               |          0 |      11 |         11 |
-| [`src/components/virtual_list.ts`](#src-components-virtual-list-ts)               |          0 |       8 |          8 |
+| [`src/components/virtual_list.ts`](#src-components-virtual-list-ts)               |          0 |       9 |          9 |
 | [`src/event_emitter.ts`](#src-event-emitter-ts)                                   |          0 |       5 |          5 |
 | [`src/focus.ts`](#src-focus-ts)                                                   |          0 |       7 |          7 |
 | [`src/grwizard_themes.ts`](#src-grwizard-themes-ts)                               |          0 |       5 |          5 |
@@ -3906,7 +3930,7 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 | [`src/runtime/storage.ts`](#src-runtime-storage-ts)                               |          0 |      10 |         10 |
 | [`src/runtime/telemetry.ts`](#src-runtime-telemetry-ts)                           |          0 |      15 |         15 |
 | [`src/runtime/terminal_screen.ts`](#src-runtime-terminal-screen-ts)               |          0 |       6 |          6 |
-| [`src/runtime/terminal_workspace.ts`](#src-runtime-terminal-workspace-ts)         |          0 |      19 |         19 |
+| [`src/runtime/terminal_workspace.ts`](#src-runtime-terminal-workspace-ts)         |          0 |      24 |         24 |
 | [`src/runtime/worker_pool.ts`](#src-runtime-worker-pool-ts)                       |          0 |      12 |         12 |
 | [`src/selection.ts`](#src-selection-ts)                                           |          0 |      16 |         16 |
 | [`src/signals/computed.ts`](#src-signals-computed-ts)                             |          0 |       3 |          3 |
@@ -4735,6 +4759,7 @@ _No direct exported symbols._
 | `encodeTerminalKeyPress`               | function  | no        | yes   |
 | `encodeTerminalMouse`                  | function  | no        | yes   |
 | `encodeTerminalPaste`                  | function  | no        | yes   |
+| `inspectTerminalPaste`                 | function  | no        | yes   |
 | `isReservedTerminalKey`                | function  | no        | yes   |
 | `routeTerminalKeyPress`                | function  | no        | yes   |
 | `routeTerminalMouse`                   | function  | no        | yes   |
@@ -4746,6 +4771,8 @@ _No direct exported symbols._
 | `TerminalMouseInputEvent`              | interface | yes       | yes   |
 | `terminalMouseRoutingFromPrivateModes` | function  | no        | yes   |
 | `TerminalMouseTrackingMode`            | type      | yes       | yes   |
+| `TerminalPasteConfirmationPolicy`      | type      | yes       | yes   |
+| `TerminalPasteInspection`              | interface | yes       | yes   |
 
 #### src/app/terminal_window_bindings.ts
 
@@ -4865,6 +4892,16 @@ _No direct exported symbols._
 | `WindowManagerRenameFactory`  | type      | yes       | yes   |
 | `WindowManagerWindowFactory`  | type      | yes       | yes   |
 
+#### src/app/workbench_button_style.ts
+
+| Symbol                        | Kind      | Type Only | JSDoc |
+| ----------------------------- | --------- | --------- | ----- |
+| `WorkbenchButtonContrast`     | type      | yes       | yes   |
+| `workbenchButtonPaintOptions` | function  | no        | yes   |
+| `WorkbenchButtonState`        | type      | yes       | yes   |
+| `WorkbenchButtonTheme`        | interface | yes       | yes   |
+| `WorkbenchButtonTone`         | type      | yes       | yes   |
+
 #### src/app/workbench_diagnostics.ts
 
 | Symbol                              | Kind      | Type Only | JSDoc |
@@ -4885,6 +4922,7 @@ _No direct exported symbols._
 | `contrastText`          | function | no        | yes   |
 | `fillFrameRect`         | function | no        | yes   |
 | `fillFrameRow`          | function | no        | yes   |
+| `fillStringFrameRect`   | function | no        | yes   |
 | `fitCellText`           | function | no        | yes   |
 | `parseHexColor`         | function | no        | yes   |
 | `prepareWorkbenchFrame` | function | no        | yes   |
@@ -5069,6 +5107,7 @@ _No direct exported symbols._
 | -------------------------------------- | ---- | ----- |
 | `src/app/hit_targets.ts`               | star | -     |
 | `src/app/workbench_frame.ts`           | star | -     |
+| `src/app/workbench_button_style.ts`    | star | -     |
 | `src/app/workbench_diagnostics.ts`     | star | -     |
 | `src/app/workbench_layout.ts`          | star | -     |
 | `src/app/workbench_menu.ts`            | star | -     |
@@ -5367,6 +5406,7 @@ _No direct exported symbols._
 | `VirtualRow`            | interface | yes       | yes   |
 | `virtualRows`           | function  | no        | yes   |
 | `visibleListRows`       | function  | no        | yes   |
+| `visibleListRowsInto`   | function  | no        | yes   |
 
 #### src/components/log_viewer.ts
 
@@ -5719,6 +5759,7 @@ _No direct exported symbols._
 | Symbol                         | Kind      | Type Only | JSDoc |
 | ------------------------------ | --------- | --------- | ----- |
 | `renderVirtualListRows`        | function  | no        | yes   |
+| `renderVirtualListRowsInto`    | function  | no        | yes   |
 | `VirtualList`                  | class     | no        | yes   |
 | `VirtualListController`        | class     | no        | yes   |
 | `VirtualListControllerOptions` | interface | yes       | yes   |
@@ -6464,27 +6505,32 @@ _No direct exported symbols._
 
 #### src/runtime/terminal_workspace.ts
 
-| Symbol                                     | Kind      | Type Only | JSDoc |
-| ------------------------------------------ | --------- | --------- | ----- |
-| `AddTerminalWorkspaceSessionOptions`       | interface | yes       | yes   |
-| `createTerminalWorkspaceController`        | function  | no        | yes   |
-| `DuplicateTerminalWorkspaceSessionOptions` | interface | yes       | yes   |
-| `SplitTerminalWorkspacePaneOptions`        | interface | yes       | yes   |
-| `TerminalWorkspaceController`              | class     | no        | yes   |
-| `TerminalWorkspaceControllerOptions`       | interface | yes       | yes   |
-| `TerminalWorkspaceInspection`              | interface | yes       | yes   |
-| `TerminalWorkspaceLayoutInspection`        | interface | yes       | yes   |
-| `TerminalWorkspaceLayoutNode`              | type      | yes       | yes   |
-| `TerminalWorkspaceLayoutState`             | interface | yes       | yes   |
-| `TerminalWorkspacePaneInspection`          | interface | yes       | yes   |
-| `TerminalWorkspacePaneNode`                | interface | yes       | yes   |
-| `TerminalWorkspacePanePlacement`           | type      | yes       | yes   |
-| `TerminalWorkspacePaneRect`                | interface | yes       | yes   |
-| `TerminalWorkspacePaneRectOptions`         | interface | yes       | yes   |
-| `terminalWorkspacePaneRects`               | function  | no        | yes   |
-| `TerminalWorkspaceSplitDirection`          | type      | yes       | yes   |
-| `TerminalWorkspaceSplitNode`               | interface | yes       | yes   |
-| `UpsertTerminalWorkspaceSessionOptions`    | interface | yes       | yes   |
+| Symbol                                          | Kind      | Type Only | JSDoc |
+| ----------------------------------------------- | --------- | --------- | ----- |
+| `AddTerminalWorkspaceSessionOptions`            | interface | yes       | yes   |
+| `createTerminalWorkspaceController`             | function  | no        | yes   |
+| `createTerminalWorkspaceControllerFromSnapshot` | function  | no        | yes   |
+| `DuplicateTerminalWorkspaceSessionOptions`      | interface | yes       | yes   |
+| `normalizeTerminalWorkspaceSnapshot`            | function  | no        | yes   |
+| `snapshotTerminalWorkspace`                     | function  | no        | yes   |
+| `SplitTerminalWorkspacePaneOptions`             | interface | yes       | yes   |
+| `TERMINAL_WORKSPACE_SNAPSHOT_VERSION`           | const     | no        | yes   |
+| `TerminalWorkspaceController`                   | class     | no        | yes   |
+| `TerminalWorkspaceControllerOptions`            | interface | yes       | yes   |
+| `TerminalWorkspaceInspection`                   | interface | yes       | yes   |
+| `TerminalWorkspaceLayoutInspection`             | interface | yes       | yes   |
+| `TerminalWorkspaceLayoutNode`                   | type      | yes       | yes   |
+| `TerminalWorkspaceLayoutState`                  | interface | yes       | yes   |
+| `TerminalWorkspacePaneInspection`               | interface | yes       | yes   |
+| `TerminalWorkspacePaneNode`                     | interface | yes       | yes   |
+| `TerminalWorkspacePanePlacement`                | type      | yes       | yes   |
+| `TerminalWorkspacePaneRect`                     | interface | yes       | yes   |
+| `TerminalWorkspacePaneRectOptions`              | interface | yes       | yes   |
+| `terminalWorkspacePaneRects`                    | function  | no        | yes   |
+| `TerminalWorkspaceSnapshot`                     | interface | yes       | yes   |
+| `TerminalWorkspaceSplitDirection`               | type      | yes       | yes   |
+| `TerminalWorkspaceSplitNode`                    | interface | yes       | yes   |
+| `UpsertTerminalWorkspaceSessionOptions`         | interface | yes       | yes   |
 
 #### src/runtime/worker_pool.ts
 
@@ -7642,8 +7688,8 @@ Shared runtime primitives for scheduling, storage, workers, resources, diagnosti
 - Entrypoint: `mod.runtime.ts`
 - Modules: 30
 - Re-export declarations: 29
-- Exported symbols: 369
-- Documented symbols: 369
+- Exported symbols: 374
+- Documented symbols: 374
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -7680,7 +7726,7 @@ Shared runtime primitives for scheduling, storage, workers, resources, diagnosti
 | [`src/runtime/terminal_shell.ts`](#src-runtime-terminal-shell-ts)                       |          0 |       3 |          3 |
 | [`src/runtime/terminal_status.ts`](#src-runtime-terminal-status-ts)                     |          0 |       8 |          8 |
 | [`src/runtime/terminal_templates.ts`](#src-runtime-terminal-templates-ts)               |          0 |      22 |         22 |
-| [`src/runtime/terminal_workspace.ts`](#src-runtime-terminal-workspace-ts)               |          0 |      19 |         19 |
+| [`src/runtime/terminal_workspace.ts`](#src-runtime-terminal-workspace-ts)               |          0 |      24 |         24 |
 | [`src/runtime/worker_pool.ts`](#src-runtime-worker-pool-ts)                             |          0 |      12 |         12 |
 
 ### Modules
@@ -8198,27 +8244,32 @@ _No direct exported symbols._
 
 #### src/runtime/terminal_workspace.ts
 
-| Symbol                                     | Kind      | Type Only | JSDoc |
-| ------------------------------------------ | --------- | --------- | ----- |
-| `AddTerminalWorkspaceSessionOptions`       | interface | yes       | yes   |
-| `createTerminalWorkspaceController`        | function  | no        | yes   |
-| `DuplicateTerminalWorkspaceSessionOptions` | interface | yes       | yes   |
-| `SplitTerminalWorkspacePaneOptions`        | interface | yes       | yes   |
-| `TerminalWorkspaceController`              | class     | no        | yes   |
-| `TerminalWorkspaceControllerOptions`       | interface | yes       | yes   |
-| `TerminalWorkspaceInspection`              | interface | yes       | yes   |
-| `TerminalWorkspaceLayoutInspection`        | interface | yes       | yes   |
-| `TerminalWorkspaceLayoutNode`              | type      | yes       | yes   |
-| `TerminalWorkspaceLayoutState`             | interface | yes       | yes   |
-| `TerminalWorkspacePaneInspection`          | interface | yes       | yes   |
-| `TerminalWorkspacePaneNode`                | interface | yes       | yes   |
-| `TerminalWorkspacePanePlacement`           | type      | yes       | yes   |
-| `TerminalWorkspacePaneRect`                | interface | yes       | yes   |
-| `TerminalWorkspacePaneRectOptions`         | interface | yes       | yes   |
-| `terminalWorkspacePaneRects`               | function  | no        | yes   |
-| `TerminalWorkspaceSplitDirection`          | type      | yes       | yes   |
-| `TerminalWorkspaceSplitNode`               | interface | yes       | yes   |
-| `UpsertTerminalWorkspaceSessionOptions`    | interface | yes       | yes   |
+| Symbol                                          | Kind      | Type Only | JSDoc |
+| ----------------------------------------------- | --------- | --------- | ----- |
+| `AddTerminalWorkspaceSessionOptions`            | interface | yes       | yes   |
+| `createTerminalWorkspaceController`             | function  | no        | yes   |
+| `createTerminalWorkspaceControllerFromSnapshot` | function  | no        | yes   |
+| `DuplicateTerminalWorkspaceSessionOptions`      | interface | yes       | yes   |
+| `normalizeTerminalWorkspaceSnapshot`            | function  | no        | yes   |
+| `snapshotTerminalWorkspace`                     | function  | no        | yes   |
+| `SplitTerminalWorkspacePaneOptions`             | interface | yes       | yes   |
+| `TERMINAL_WORKSPACE_SNAPSHOT_VERSION`           | const     | no        | yes   |
+| `TerminalWorkspaceController`                   | class     | no        | yes   |
+| `TerminalWorkspaceControllerOptions`            | interface | yes       | yes   |
+| `TerminalWorkspaceInspection`                   | interface | yes       | yes   |
+| `TerminalWorkspaceLayoutInspection`             | interface | yes       | yes   |
+| `TerminalWorkspaceLayoutNode`                   | type      | yes       | yes   |
+| `TerminalWorkspaceLayoutState`                  | interface | yes       | yes   |
+| `TerminalWorkspacePaneInspection`               | interface | yes       | yes   |
+| `TerminalWorkspacePaneNode`                     | interface | yes       | yes   |
+| `TerminalWorkspacePanePlacement`                | type      | yes       | yes   |
+| `TerminalWorkspacePaneRect`                     | interface | yes       | yes   |
+| `TerminalWorkspacePaneRectOptions`              | interface | yes       | yes   |
+| `terminalWorkspacePaneRects`                    | function  | no        | yes   |
+| `TerminalWorkspaceSnapshot`                     | interface | yes       | yes   |
+| `TerminalWorkspaceSplitDirection`               | type      | yes       | yes   |
+| `TerminalWorkspaceSplitNode`                    | interface | yes       | yes   |
+| `UpsertTerminalWorkspaceSessionOptions`         | interface | yes       | yes   |
 
 #### src/runtime/worker_pool.ts
 
@@ -8250,8 +8301,8 @@ Terminal parser, screen, shell, backend, PTY, workspace, and input-reader primit
 - Entrypoint: `mod.terminal.ts`
 - Modules: 15
 - Re-export declarations: 14
-- Exported symbols: 142
-- Documented symbols: 142
+- Exported symbols: 147
+- Documented symbols: 147
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -8274,7 +8325,7 @@ Terminal parser, screen, shell, backend, PTY, workspace, and input-reader primit
 | [`src/runtime/terminal_shell.ts`](#src-runtime-terminal-shell-ts)                       |          0 |       3 |          3 |
 | [`src/runtime/terminal_status.ts`](#src-runtime-terminal-status-ts)                     |          0 |       8 |          8 |
 | [`src/runtime/terminal_templates.ts`](#src-runtime-terminal-templates-ts)               |          0 |      22 |         22 |
-| [`src/runtime/terminal_workspace.ts`](#src-runtime-terminal-workspace-ts)               |          0 |      19 |         19 |
+| [`src/runtime/terminal_workspace.ts`](#src-runtime-terminal-workspace-ts)               |          0 |      24 |         24 |
 
 ### Modules
 
@@ -8489,27 +8540,32 @@ _No direct exported symbols._
 
 #### src/runtime/terminal_workspace.ts
 
-| Symbol                                     | Kind      | Type Only | JSDoc |
-| ------------------------------------------ | --------- | --------- | ----- |
-| `AddTerminalWorkspaceSessionOptions`       | interface | yes       | yes   |
-| `createTerminalWorkspaceController`        | function  | no        | yes   |
-| `DuplicateTerminalWorkspaceSessionOptions` | interface | yes       | yes   |
-| `SplitTerminalWorkspacePaneOptions`        | interface | yes       | yes   |
-| `TerminalWorkspaceController`              | class     | no        | yes   |
-| `TerminalWorkspaceControllerOptions`       | interface | yes       | yes   |
-| `TerminalWorkspaceInspection`              | interface | yes       | yes   |
-| `TerminalWorkspaceLayoutInspection`        | interface | yes       | yes   |
-| `TerminalWorkspaceLayoutNode`              | type      | yes       | yes   |
-| `TerminalWorkspaceLayoutState`             | interface | yes       | yes   |
-| `TerminalWorkspacePaneInspection`          | interface | yes       | yes   |
-| `TerminalWorkspacePaneNode`                | interface | yes       | yes   |
-| `TerminalWorkspacePanePlacement`           | type      | yes       | yes   |
-| `TerminalWorkspacePaneRect`                | interface | yes       | yes   |
-| `TerminalWorkspacePaneRectOptions`         | interface | yes       | yes   |
-| `terminalWorkspacePaneRects`               | function  | no        | yes   |
-| `TerminalWorkspaceSplitDirection`          | type      | yes       | yes   |
-| `TerminalWorkspaceSplitNode`               | interface | yes       | yes   |
-| `UpsertTerminalWorkspaceSessionOptions`    | interface | yes       | yes   |
+| Symbol                                          | Kind      | Type Only | JSDoc |
+| ----------------------------------------------- | --------- | --------- | ----- |
+| `AddTerminalWorkspaceSessionOptions`            | interface | yes       | yes   |
+| `createTerminalWorkspaceController`             | function  | no        | yes   |
+| `createTerminalWorkspaceControllerFromSnapshot` | function  | no        | yes   |
+| `DuplicateTerminalWorkspaceSessionOptions`      | interface | yes       | yes   |
+| `normalizeTerminalWorkspaceSnapshot`            | function  | no        | yes   |
+| `snapshotTerminalWorkspace`                     | function  | no        | yes   |
+| `SplitTerminalWorkspacePaneOptions`             | interface | yes       | yes   |
+| `TERMINAL_WORKSPACE_SNAPSHOT_VERSION`           | const     | no        | yes   |
+| `TerminalWorkspaceController`                   | class     | no        | yes   |
+| `TerminalWorkspaceControllerOptions`            | interface | yes       | yes   |
+| `TerminalWorkspaceInspection`                   | interface | yes       | yes   |
+| `TerminalWorkspaceLayoutInspection`             | interface | yes       | yes   |
+| `TerminalWorkspaceLayoutNode`                   | type      | yes       | yes   |
+| `TerminalWorkspaceLayoutState`                  | interface | yes       | yes   |
+| `TerminalWorkspacePaneInspection`               | interface | yes       | yes   |
+| `TerminalWorkspacePaneNode`                     | interface | yes       | yes   |
+| `TerminalWorkspacePanePlacement`                | type      | yes       | yes   |
+| `TerminalWorkspacePaneRect`                     | interface | yes       | yes   |
+| `TerminalWorkspacePaneRectOptions`              | interface | yes       | yes   |
+| `terminalWorkspacePaneRects`                    | function  | no        | yes   |
+| `TerminalWorkspaceSnapshot`                     | interface | yes       | yes   |
+| `TerminalWorkspaceSplitDirection`               | type      | yes       | yes   |
+| `TerminalWorkspaceSplitNode`                    | interface | yes       | yes   |
+| `UpsertTerminalWorkspaceSessionOptions`         | interface | yes       | yes   |
 
 ## Entrypoint ./testing
 

@@ -112,3 +112,6 @@ developer workflows.
 - Added optional geometry-aware pane focus commands for left/right/up/down movement. Render adapters can supply current
   pane rectangles and reuse the shared command layer for tmux-like directional focus while retaining next/previous pane
   cycling as a fallback.
+- Added a versioned renderer-neutral terminal workspace snapshot API so shell sessions, active session, pane layout,
+  zoom/focus state, and descriptors can be persisted and restored by console or browser adapters through one normalized
+  contract.

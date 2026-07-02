@@ -12596,6 +12596,7 @@ function uniqueTerminalWorkspaceSessionId(prefix, ids) {
 }
 
 // src/runtime/terminal_workspace.ts
+var TERMINAL_WORKSPACE_SNAPSHOT_VERSION = 1;
 var TerminalWorkspaceController = class {
   sessions;
   activeId;
@@ -12890,6 +12891,9 @@ var TerminalWorkspaceController = class {
       layout: inspectTerminalWorkspaceLayout(this.layout.peek(), sessions)
     };
   }
+  snapshot() {
+    return snapshotTerminalWorkspace(this.inspect());
+  }
   dispose() {
     this.sessions.dispose();
     this.activeId.dispose();
@@ -12898,6 +12902,29 @@ var TerminalWorkspaceController = class {
 };
 function createTerminalWorkspaceController(options = {}) {
   return new TerminalWorkspaceController(options);
+}
+function normalizeTerminalWorkspaceSnapshot(snapshot) {
+  const sessions = new Array(snapshot.sessions.length);
+  for (let index = 0; index < snapshot.sessions.length; index += 1) {
+    sessions[index] = cloneTerminalSessionDescriptor(snapshot.sessions[index]);
+  }
+  const activeId = snapshot.activeId && hasTerminalSession(sessions, snapshot.activeId) ? snapshot.activeId : sessions[0]?.id;
+  const layout = normalizeTerminalWorkspaceLayout(snapshot.layout, sessions, activeId);
+  return {
+    version: TERMINAL_WORKSPACE_SNAPSHOT_VERSION,
+    activeId,
+    sessions,
+    layout: cloneTerminalWorkspaceLayoutState(layout)
+  };
+}
+function snapshotTerminalWorkspace(source) {
+  const inspection = source instanceof TerminalWorkspaceController ? source.inspect() : source;
+  return normalizeTerminalWorkspaceSnapshot({
+    version: TERMINAL_WORKSPACE_SNAPSHOT_VERSION,
+    activeId: inspection.activeId,
+    sessions: inspection.sessions,
+    layout: inspection.layout
+  });
 }
 function normalizeTerminalWorkspaceLayout(layout, sessions, activeId) {
   const sessionIds = /* @__PURE__ */ new Set();
@@ -12918,6 +12945,13 @@ function normalizeTerminalWorkspaceLayout(layout, sessions, activeId) {
     root: pruned.root,
     activePaneId: nextActive?.id,
     zoomedPaneId: pruned.zoomedPaneId && findTerminalWorkspacePaneRef2(pruned.root, pruned.zoomedPaneId) ? pruned.zoomedPaneId : void 0
+  };
+}
+function cloneTerminalWorkspaceLayoutState(layout) {
+  return {
+    root: layout.root ? cloneTerminalWorkspaceLayoutNode(layout.root) : void 0,
+    activePaneId: layout.activePaneId,
+    zoomedPaneId: layout.zoomedPaneId
   };
 }
 function findTerminalSession(sessions, id2) {

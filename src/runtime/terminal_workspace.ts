@@ -145,6 +145,17 @@ export interface TerminalWorkspaceInspection {
   layout: TerminalWorkspaceLayoutInspection;
 }
 
+/** Current serialized terminal workspace snapshot schema version. */
+export const TERMINAL_WORKSPACE_SNAPSHOT_VERSION = 1;
+
+/** Versioned terminal workspace state intended for persistence. */
+export interface TerminalWorkspaceSnapshot {
+  version: typeof TERMINAL_WORKSPACE_SNAPSHOT_VERSION;
+  activeId?: string;
+  sessions: TerminalSessionDescriptor[];
+  layout: TerminalWorkspaceLayoutState;
+}
+
 /** Renderer-neutral session/tab model for tmux-like terminal workspaces. */
 export class TerminalWorkspaceController {
   readonly sessions: Signal<TerminalSessionDescriptor[]>;
@@ -482,6 +493,10 @@ export class TerminalWorkspaceController {
     };
   }
 
+  snapshot(): TerminalWorkspaceSnapshot {
+    return snapshotTerminalWorkspace(this.inspect());
+  }
+
   dispose(): void {
     this.sessions.dispose();
     this.activeId.dispose();
@@ -494,6 +509,51 @@ export function createTerminalWorkspaceController(
   options: TerminalWorkspaceControllerOptions = {},
 ): TerminalWorkspaceController {
   return new TerminalWorkspaceController(options);
+}
+
+/** Creates a terminal workspace controller from a persisted snapshot. */
+export function createTerminalWorkspaceControllerFromSnapshot(
+  snapshot: TerminalWorkspaceSnapshot,
+  options: Pick<TerminalWorkspaceControllerOptions, "now"> = {},
+): TerminalWorkspaceController {
+  const restored = normalizeTerminalWorkspaceSnapshot(snapshot);
+  return new TerminalWorkspaceController({
+    ...options,
+    sessions: restored.sessions,
+    activeId: restored.activeId,
+    layout: restored.layout,
+  });
+}
+
+/** Normalizes and clones a terminal workspace snapshot for persistence or restore. */
+export function normalizeTerminalWorkspaceSnapshot(snapshot: TerminalWorkspaceSnapshot): TerminalWorkspaceSnapshot {
+  const sessions = new Array<TerminalSessionDescriptor>(snapshot.sessions.length);
+  for (let index = 0; index < snapshot.sessions.length; index += 1) {
+    sessions[index] = cloneTerminalSessionDescriptor(snapshot.sessions[index]!);
+  }
+  const activeId = snapshot.activeId && hasTerminalSession(sessions, snapshot.activeId)
+    ? snapshot.activeId
+    : sessions[0]?.id;
+  const layout = normalizeTerminalWorkspaceLayout(snapshot.layout, sessions, activeId);
+  return {
+    version: TERMINAL_WORKSPACE_SNAPSHOT_VERSION,
+    activeId,
+    sessions,
+    layout: cloneTerminalWorkspaceLayoutState(layout),
+  };
+}
+
+/** Captures a versioned, clone-safe terminal workspace snapshot from controller inspection state. */
+export function snapshotTerminalWorkspace(
+  source: TerminalWorkspaceController | TerminalWorkspaceInspection,
+): TerminalWorkspaceSnapshot {
+  const inspection = source instanceof TerminalWorkspaceController ? source.inspect() : source;
+  return normalizeTerminalWorkspaceSnapshot({
+    version: TERMINAL_WORKSPACE_SNAPSHOT_VERSION,
+    activeId: inspection.activeId,
+    sessions: inspection.sessions,
+    layout: inspection.layout,
+  });
 }
 
 /** Projects a terminal workspace pane tree into terminal-cell rectangles. */
@@ -530,6 +590,14 @@ function normalizeTerminalWorkspaceLayout(
     zoomedPaneId: pruned.zoomedPaneId && findTerminalWorkspacePaneRef(pruned.root, pruned.zoomedPaneId)
       ? pruned.zoomedPaneId
       : undefined,
+  };
+}
+
+function cloneTerminalWorkspaceLayoutState(layout: TerminalWorkspaceLayoutState): TerminalWorkspaceLayoutState {
+  return {
+    root: layout.root ? cloneTerminalWorkspaceLayoutNode(layout.root) : undefined,
+    activePaneId: layout.activePaneId,
+    zoomedPaneId: layout.zoomedPaneId,
   };
 }
 
