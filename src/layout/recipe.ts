@@ -166,7 +166,7 @@ export function layoutRecipeSlots<T extends string>(region: LayoutRegion<T>): T[
 export function inspectLayoutRecipe<T extends string>(
   recipe: ResponsiveLayoutRecipe<T>,
 ): LayoutRecipeInspection<T> {
-  const layoutIds = Object.keys(recipe.layouts).sort();
+  const layoutIds = sortedLayoutIds(recipe.layouts);
   const breakpoints = new Array<LayoutRecipeBreakpointInspection<T>>(recipe.breakpoints.length);
   const missingLayouts: string[] = [];
   for (let index = 0; index < recipe.breakpoints.length; index += 1) {
@@ -299,12 +299,22 @@ function collectLayoutRecipeSlots<T extends string>(region: LayoutRegion<T>, slo
   });
 }
 
+function sortedLayoutIds<T extends string>(layouts: Record<string, LayoutRegion<T>>): string[] {
+  const output: string[] = [];
+  for (const id in layouts) {
+    output.push(id);
+  }
+  output.sort();
+  return output;
+}
+
 function sortedSetValues<T extends string>(values: Set<T>): T[] {
   const output: T[] = [];
   for (const value of values) {
     output.push(value);
   }
-  return output.sort();
+  output.sort();
+  return output;
 }
 
 function mainSize(bounds: Rectangle, direction: LayoutRegionDirection): number {

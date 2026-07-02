@@ -169,6 +169,8 @@ Work:
         immutable result semantics.
   - [x] Reworked file-explorer tree sorting to use explicit copy/projection loops instead of `slice()` cloning and
         object spread when materializing immutable nodes.
+  - [x] Reworked layout recipe inspection to collect and sort layout ids through explicit buffers, keeping deterministic
+        docs/introspection output without `Object.keys(...).sort()` callback-path allocation.
 - [x] Replace duplicated theme/window/menu persistence code with a shared versioned serializer.
   - [x] Extracted shared workbench workspace normalization, panel-state normalization, upsert, rename, delete, lookup,
         and legacy window-entry expansion helpers into `src/app/workbench_workspace.ts`.
