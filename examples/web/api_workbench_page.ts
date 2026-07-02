@@ -1217,49 +1217,49 @@ function handlePointerDrag(
 
 function focus(id: PanelId): void {
   syncWebWindowManagerState();
-  webWindows.focus(id);
+  workbenchController.focusWindow(id);
   syncWebSignalsFromWindowManager();
   push(`focus ${id}`);
 }
 function focusNext(): void {
   syncWebWindowManagerState();
-  const focused = webWindows.focusNext();
+  const focused = workbenchController.focusNextWindow();
   syncWebSignalsFromWindowManager();
-  if (focused) push(`focus ${focused.id}`);
+  if (focused) push(`focus ${focused}`);
 }
 function focusPrevious(): void {
   syncWebWindowManagerState();
-  const focused = webWindows.focusNext(-1);
+  const focused = workbenchController.focusNextWindow(-1);
   syncWebSignalsFromWindowManager();
-  if (focused) push(`focus ${focused.id}`);
+  if (focused) push(`focus ${focused}`);
 }
 function minimize(id: PanelId): void {
   syncWebWindowManagerState();
-  webWindows.minimize(id);
+  workbenchController.minimizeWindow(id);
   syncWebSignalsFromWindowManager();
   push(`minimize ${id}`);
 }
 function closePanel(id: PanelId): void {
   syncWebWindowManagerState();
-  webWindows.minimize(id);
+  workbenchController.closeWindow(id);
   syncWebSignalsFromWindowManager();
   push(`close ${id}`);
 }
 function toggleMax(id: PanelId): void {
   syncWebWindowManagerState();
-  webWindows.fullscreen(id);
+  workbenchController.toggleFullscreenWindow(id);
   syncWebSignalsFromWindowManager();
   push(`${maximized.peek() ? "maximize" : "restore"} ${id}`);
 }
 function restorePanel(id: PanelId): void {
   syncWebWindowManagerState();
-  webWindows.restore(id);
+  workbenchController.restoreWindows(id);
   syncWebSignalsFromWindowManager();
   push(`restore ${id}`);
 }
 function restore(): void {
   syncWebWindowManagerState();
-  webWindows.restore();
+  workbenchController.restoreWindows();
   syncWebSignalsFromWindowManager();
   push("restore all");
 }

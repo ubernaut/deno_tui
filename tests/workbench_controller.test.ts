@@ -30,6 +30,7 @@ Deno.test("WorkbenchController coordinates menus and window state", () => {
   assertEquals(controller.restoreWindows("explorer"), "explorer");
   assertEquals(controller.closeWindow("explorer"), "explorer");
   assertEquals(controller.inspect().closedWindowIds, ["explorer", "logs"]);
+  assertEquals(controller.inspect().visibleWindowIds, ["inspector"]);
 
   assertEquals(events, [
     { openId: "theme", focused: true },
@@ -84,6 +85,35 @@ Deno.test("WorkbenchController supports matching terminal and web adapter flows"
   web.dispose();
 });
 
+Deno.test("WorkbenchController close command removes windows from adapter visibility", () => {
+  const terminal = createAdapterController<"theme" | "newWindow" | "workspace">();
+  const web = createAdapterController<"theme">();
+
+  assertEquals(runCloseAdapterFlow(terminal), {
+    activeWindowId: "data",
+    fullscreenWindowId: undefined,
+    menu: { openId: null, focused: false },
+    menuIndexes: {},
+    windowIds: ["inspector", "data", "logs"],
+    visibleWindowIds: ["data", "logs"],
+    minimizedWindowIds: [],
+    closedWindowIds: ["inspector"],
+  });
+  assertEquals(runCloseAdapterFlow(web), {
+    activeWindowId: "data",
+    fullscreenWindowId: undefined,
+    menu: { openId: null, focused: false },
+    menuIndexes: {},
+    windowIds: ["inspector", "data", "logs"],
+    visibleWindowIds: ["data", "logs"],
+    minimizedWindowIds: [],
+    closedWindowIds: ["inspector"],
+  });
+
+  terminal.dispose();
+  web.dispose();
+});
+
 function createAdapterController<MenuId extends string>(): WorkbenchController<MenuId> {
   return new WorkbenchController<MenuId>({
     activeId: "inspector",
@@ -117,5 +147,10 @@ function runWebAdapterFlow(controller: WorkbenchController<"theme">) {
   controller.focusWindow("logs");
   controller.focusNextWindow(-1);
   controller.toggleFullscreenWindow();
+  return controller.inspect();
+}
+
+function runCloseAdapterFlow<MenuId extends string>(controller: WorkbenchController<MenuId>) {
+  controller.closeWindow("inspector");
   return controller.inspect();
 }
