@@ -292,6 +292,8 @@ Work:
         `Array.from()` allocation in layout paths used by the workbench and HTML/CSS solver.
   - [x] Reworked data-table and runtime data-query search matching to avoid per-row `map().join()` haystack arrays and
         added a 25k-row table filter benchmark to catch future search regressions.
+  - [x] Reworked data-table query term parsing to use direct whitespace character checks instead of a regex test inside
+        the per-character parser loop, keeping `data/table-filter-25k` near the lower end of its observed run variance.
   - [x] Reworked terminal screen text/cell snapshot extraction to share loop-based row cloning and avoid nested `map()`
         chains in terminal inspection helpers.
   - [x] Reworked terminal screen private-mode inspection to build sorted DEC mode snapshots directly instead of

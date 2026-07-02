@@ -9039,7 +9039,6 @@ function htmlCssLayoutDemoBoxLabel(box) {
 }
 
 // src/components/data_table.ts
-var SEARCH_WHITESPACE = /\s/;
 function createDataTableView(rows2, columns2, state = {}, rowKey) {
   const query = state.query ?? "";
   const filtered = query.trim() ? filterDataRows(rows2, columns2, query) : rows2;
@@ -9269,7 +9268,7 @@ function parseSearchTerms(query) {
   const terms = [];
   let start = -1;
   for (let index = 0; index <= normalized.length; index += 1) {
-    const whitespace = index >= normalized.length || SEARCH_WHITESPACE.test(normalized[index]);
+    const whitespace = index >= normalized.length || isSearchWhitespace(normalized.charCodeAt(index));
     if (whitespace) {
       if (start >= 0) {
         terms.push(normalized.slice(start, index));
@@ -9280,6 +9279,9 @@ function parseSearchTerms(query) {
     }
   }
   return terms;
+}
+function isSearchWhitespace(charCode) {
+  return charCode === 32 || charCode === 9 || charCode === 10 || charCode === 13 || charCode === 12 || charCode === 11;
 }
 function stringifyCell(value) {
   if (value === void 0 || value === null) return "";

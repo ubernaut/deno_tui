@@ -5,8 +5,6 @@ import { Computed, Signal } from "../signals/mod.ts";
 import { clamp } from "../utils/numbers.ts";
 import { cropToWidth, textWidth } from "../utils/strings.ts";
 
-const SEARCH_WHITESPACE = /\s/;
-
 /** Public type alias for a sort Direction. */
 export type SortDirection = "asc" | "desc";
 
@@ -383,7 +381,7 @@ function parseSearchTerms(query: string): string[] {
   const terms: string[] = [];
   let start = -1;
   for (let index = 0; index <= normalized.length; index += 1) {
-    const whitespace = index >= normalized.length || SEARCH_WHITESPACE.test(normalized[index]!);
+    const whitespace = index >= normalized.length || isSearchWhitespace(normalized.charCodeAt(index));
     if (whitespace) {
       if (start >= 0) {
         terms.push(normalized.slice(start, index));
@@ -394,6 +392,10 @@ function parseSearchTerms(query: string): string[] {
     }
   }
   return terms;
+}
+
+function isSearchWhitespace(charCode: number): boolean {
+  return charCode === 32 || charCode === 9 || charCode === 10 || charCode === 13 || charCode === 12 || charCode === 11;
 }
 
 function stringifyCell(value: unknown): string {
