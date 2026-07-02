@@ -371,7 +371,8 @@ export function wrapTextBoxLines(
   const safeWidth = Math.max(1, Math.floor(width));
   const wordWrap = options.wordWrap ?? true;
 
-  for (const [lineIndex, line] of lines.entries()) {
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
+    const line = lines[lineIndex]!;
     if (!wordWrap || line.length <= safeWidth) {
       visual.push({
         lineIndex,
