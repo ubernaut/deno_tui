@@ -2388,11 +2388,13 @@ var textDecoder = new TextDecoder();
 // src/canvas/box.ts
 var BoxObject = class extends DrawObject {
   filler;
+  rerenderRanges;
   #rectangleSubscription;
   constructor(options) {
     super("box", options);
     this.rectangle = signalify(options.rectangle);
     this.filler = signalify(options.filler ?? " ");
+    this.rerenderRanges = [];
     const { updateObjects } = this.canvas;
     this.#rectangleSubscription = () => {
       this.moved = true;
@@ -2405,6 +2407,26 @@ var BoxObject = class extends DrawObject {
       }
     };
   }
+  queueRerender(row, column) {
+    this.queueRerenderRange(row, column, column + 1);
+  }
+  queueRerenderRange(row, startColumn, endColumn) {
+    const viewRectangle = this.view.peek()?.rectangle?.peek();
+    if (row < 0) return;
+    const { columns: columns2, rows: rows2 } = this.canvas.size.peek();
+    if (row >= rows2) return;
+    let start = Math.max(0, Math.floor(startColumn));
+    let end = Math.min(columns2, Math.ceil(endColumn));
+    if (viewRectangle) {
+      if (row < viewRectangle.row || row >= viewRectangle.row + viewRectangle.height) return;
+      start = Math.max(start, viewRectangle.column);
+      end = Math.min(end, viewRectangle.column + viewRectangle.width);
+    }
+    if (end <= start) return;
+    const normalizedRow = Math.floor(row);
+    const ranges = this.rerenderRanges[normalizedRow] ??= [];
+    ranges.push({ row: normalizedRow, startColumn: start, endColumn: end });
+  }
   draw() {
     this.rectangle.subscribe(this.#rectangleSubscription);
     super.draw();
@@ -2414,7 +2436,7 @@ var BoxObject = class extends DrawObject {
     super.erase();
   }
   rerender() {
-    const { canvas, rerenderCells, omitCells } = this;
+    const { canvas, rerenderCells, rerenderRanges, omitCells } = this;
     const { frameBuffer, rerenderQueue } = canvas;
     const { rows: rows2, columns: columns2 } = canvas.size.peek();
     const rectangle = this.rectangle.peek();
@@ -2428,28 +2450,63 @@ var BoxObject = class extends DrawObject {
       rowRange = Math.min(rowRange, viewRectangle.row + viewRectangle.height);
       columnRange = Math.min(columnRange, viewRectangle.column + viewRectangle.width);
     }
-    for (let row = rectangle.row; row < rerenderCells.length; ++row) {
-      if (!(row in rerenderCells)) continue;
-      else if (row >= rowRange) continue;
+    const rowStart = Math.max(0, Math.floor(rectangle.row));
+    const rerenderRowRange = Math.max(rerenderCells.length, rerenderRanges.length);
+    for (let row = rowStart; row < rerenderRowRange; ++row) {
+      if (row >= rowRange) continue;
       const rerenderColumns = rerenderCells[row];
-      if (!rerenderColumns) break;
+      const ranges = rerenderRanges[row];
+      if (!rerenderColumns?.size && !ranges?.length) continue;
       const omitColumns = omitCells[row];
       if (omitColumns?.size === rectangle.width) {
+        rerenderColumns?.clear();
+        if (ranges) ranges.length = 0;
         continue;
       }
       const rowBuffer = frameBuffer[row] ??= [];
       const rerenderQueueRow = rerenderQueue[row] ??= /* @__PURE__ */ new Set();
-      for (const column of rerenderColumns) {
-        if (omitColumns?.has(column) || column < rectangle.column || column >= columnRange) {
-          continue;
+      if (ranges?.length) {
+        mergeBoxRowRanges(ranges);
+        for (const range of ranges) {
+          const start = Math.max(range.startColumn, rectangle.column);
+          const end = Math.min(range.endColumn, columnRange);
+          for (let column = start; column < end; column += 1) {
+            if (omitColumns?.has(column)) continue;
+            rowBuffer[column] = styledFiller;
+            rerenderQueueRow.add(column);
+          }
         }
-        rowBuffer[column] = styledFiller;
-        rerenderQueueRow.add(column);
+        ranges.length = 0;
       }
-      rerenderColumns.clear();
+      if (rerenderColumns?.size) {
+        for (const column of rerenderColumns) {
+          if (omitColumns?.has(column) || column < rectangle.column || column >= columnRange) {
+            continue;
+          }
+          rowBuffer[column] = styledFiller;
+          rerenderQueueRow.add(column);
+        }
+        rerenderColumns.clear();
+      }
     }
   }
 };
+function mergeBoxRowRanges(ranges) {
+  if (ranges.length < 2) return;
+  ranges.sort((left, right) => left.startColumn - right.startColumn || left.endColumn - right.endColumn);
+  let writeIndex = 0;
+  for (let readIndex = 1; readIndex < ranges.length; readIndex += 1) {
+    const active2 = ranges[writeIndex];
+    const next = ranges[readIndex];
+    if (next.startColumn <= active2.endColumn) {
+      active2.endColumn = Math.max(active2.endColumn, next.endColumn);
+      continue;
+    }
+    writeIndex += 1;
+    ranges[writeIndex] = next;
+  }
+  ranges.length = writeIndex + 1;
+}
 
 // src/canvas/dirty_region.ts
 var DirtyRegion = class _DirtyRegion {

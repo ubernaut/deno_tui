@@ -281,6 +281,9 @@ Work:
   - [x] Reused a `DirtyRegion` instance inside `Canvas.render()` so overlap/modal churn does not allocate a fresh region
         object for every movement pass.
   - [x] Reused canvas cell-update and row-range buffers across render passes via target-aware row-range coalescing.
+  - [x] Added a box-specific row-range invalidation queue so large filled panels and modal backgrounds process
+        contiguous spans before falling back to per-cell queues, reducing `render/canvas-overlap-modal-churn` from
+        roughly `26.5ms` to `18.7-19.6ms` in focused benchmark runs.
   - [x] Reworked empty-state row projection to append visible rows directly instead of building filtered/sliced/mapped
         line arrays on each render.
   - [x] Added a shared internal text-row drawing helper and migrated row-oriented widgets to it, removing duplicated

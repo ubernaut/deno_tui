@@ -89,6 +89,39 @@ Deno.test("box renderer styles solid filler once per render pass", () => {
   assertEquals(sink.updates.every((update) => update.value === "X"), true);
 });
 
+Deno.test("box renderer flushes queued row ranges as contiguous updates", () => {
+  const sink = new MemoryCanvasSink();
+  const canvas = new Canvas({
+    sink,
+    size: { columns: 8, rows: 2 },
+  });
+  const box = new BoxObject({
+    canvas,
+    rectangle: { column: 1, row: 0, width: 6, height: 2 },
+    filler: "q",
+    style: (text) => text,
+    zIndex: 1,
+  });
+
+  box.draw();
+  canvas.render();
+  sink.clear();
+
+  box.queueRerenderRange(0, 2, 6);
+  box.updated = false;
+  canvas.updateObjects.push(box);
+  canvas.render();
+
+  assertEquals(sink.updates, [
+    { row: 0, column: 2, value: "q" },
+    { row: 0, column: 3, value: "q" },
+    { row: 0, column: 4, value: "q" },
+    { row: 0, column: 5, value: "q" },
+  ]);
+  assertEquals(sink.rowRanges, [{ row: 0, startColumn: 2, values: ["q", "q", "q", "q"] }]);
+  assertEquals(sink.lastStats?.flushedCells, 4);
+});
+
 Deno.test("canvas notifies sinks when size changes", () => {
   const sink = new MemoryCanvasSink();
   const canvas = new Canvas({
