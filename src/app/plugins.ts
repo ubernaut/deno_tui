@@ -296,14 +296,15 @@ export class AppPluginDefinitionRegistry<TAction extends Action = Action, TRoute
   }
 
   unregister(id: string): boolean {
-    const index = this.#definitions.findIndex((definition) => pluginDefinitionKey(definition) === id);
+    const index = pluginDefinitionIndex(this.#definitions, id);
     if (index < 0) return false;
     this.#definitions.splice(index, 1);
     return true;
   }
 
   get(id: string): AppPluginDefinition<TAction, TRoute> | undefined {
-    return this.#definitions.find((definition) => pluginDefinitionKey(definition) === id);
+    const index = pluginDefinitionIndex(this.#definitions, id);
+    return index < 0 ? undefined : this.#definitions[index];
   }
 
   has(id: string): boolean {
@@ -459,6 +460,16 @@ function anonymousPluginDefinitionCount<TAction extends Action, TRoute extends R
     if (!pluginDefinitionKey(definition)) count += 1;
   }
   return count;
+}
+
+function pluginDefinitionIndex<TAction extends Action, TRoute extends Route>(
+  definitions: readonly AppPluginDefinition<TAction, TRoute>[],
+  id: string,
+): number {
+  for (let index = 0; index < definitions.length; index += 1) {
+    if (pluginDefinitionKey(definitions[index]!) === id) return index;
+  }
+  return -1;
 }
 
 function pluginSearchIncludes(plugin: AppPluginDefinitionInspection, term: string): boolean {
