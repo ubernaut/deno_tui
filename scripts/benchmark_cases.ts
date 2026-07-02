@@ -40,6 +40,7 @@ import {
   visibleListRows,
   WindowManagerController,
   type WorkbenchFrame,
+  wrapTextBoxLinesInto,
   writeFrame,
 } from "../mod.ts";
 import { createHtmlCssLayoutDemo } from "../app/html_css_layout_demo.ts";
@@ -96,6 +97,12 @@ const ansiRichRows = Array.from({ length: 250 }, (_, index) => {
     `\x1b[48;2;${blue};${red};${green}m ${"█".repeat((index % 18) + 1)} \x1b[0m ` +
     `cpu=${(index * 7) % 100}% mem=${(index * 13) % 100}%`;
 });
+const textBoxWrapRows = Array.from({ length: 250 }, (_, index) => [
+  `note-${index.toString().padStart(3, "0")} alpha beta gamma delta epsilon zeta eta theta`,
+  `wrapped control row ${index % 11} with keyboard mouse and theme state`,
+  index % 5 === 0 ? "" : `tail segment ${index} tracks cursor projection and viewport stability`,
+]).flat();
+const textBoxWrapVisualLines: ReturnType<typeof wrapTextBoxLinesInto> = [];
 const terminalInputEncoder = new TextEncoder();
 const terminalInputDecodeBatch = terminalInputEncoder.encode(
   [
@@ -369,6 +376,18 @@ function runDirtyRegionWorkload(): void {
   }
   if (region.isEmpty() || intersections <= 0) {
     throw new Error("dirty region workload did not produce intersections");
+  }
+}
+
+function runTextBoxWrapWorkload(): void {
+  const rows = wrapTextBoxLinesInto(textBoxWrapVisualLines, textBoxWrapRows, 31, { wordWrap: true });
+  let checksum = 0;
+  for (let index = 0; index < rows.length; index += 1) {
+    const row = rows[index]!;
+    checksum += row.text.length + row.lineIndex + row.startColumn + (row.continuation ? 1 : 0);
+  }
+  if (rows.length < textBoxWrapRows.length || checksum <= 0) {
+    throw new Error("textbox wrap workload produced no wrapped rows");
   }
 }
 
@@ -963,6 +982,15 @@ export const benchmarkCases: BenchmarkCase[] = [
         throw new Error("ANSI text measurement produced no output");
       }
     },
+  },
+  {
+    name: "render/textbox-wrap-250",
+    category: "render",
+    description: "Wrap 250 multiline textbox rows into reusable visual-line storage.",
+    tags: ["render", "text", "textbox", "wrap"],
+    iterations: 400,
+    maxAverageMs: 5,
+    run: runTextBoxWrapWorkload,
   },
   {
     name: "render/three-ascii-ansi-grid-96x40",

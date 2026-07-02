@@ -53,3 +53,4 @@ performance, shared terminal/web workbench projections, and oversized module red
   row buffers across draws.
 - Added `wrapTextBoxLinesInto` so multiline textbox wrapping can reuse caller-owned visual-line objects, and wired the
   API workbench textbox projection through it.
+- Added a benchmark case for reusable textbox wrapping so future multiline text changes have a measured guardrail.
