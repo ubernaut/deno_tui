@@ -123,19 +123,13 @@ export class ThreeAsciiAnsiGridAssembler {
       for (let column = 0; column < columns; column += 1) {
         const index = rowOffset + column;
         const fillGlyphIndex = Math.round(fillGlyphs[index] ?? 0);
-        let edgeGlyphIndex = 0;
-        let dominantCount = 0;
-        let totalCount = 0;
-        let secondCount = 0;
-        if (hasEdges) {
-          const edgeOffset = index * 4;
-          edgeGlyphIndex = Math.round(edgeGlyphs[edgeOffset] ?? 0);
-          dominantCount = edgeGlyphs[edgeOffset + 1] ?? 0;
-          totalCount = edgeGlyphs[edgeOffset + 2] ?? 0;
-          secondCount = edgeGlyphs[edgeOffset + 3] ?? 0;
-        }
+        const edgeOffset = index * 4;
+        const edgeGlyphIndex = Math.round(edgeGlyphs[edgeOffset] ?? 0);
+        const dominantCount = edgeGlyphs[edgeOffset + 1] ?? 0;
+        const totalCount = edgeGlyphs[edgeOffset + 2] ?? 0;
+        const secondCount = edgeGlyphs[edgeOffset + 3] ?? 0;
 
-        if (fillGlyphIndex < 5 && (!hasEdges || edgeGlyphIndex <= 0 || dominantCount <= 0 || totalCount <= 0)) {
+        if (fillGlyphIndex < 5 && (edgeGlyphIndex <= 0 || dominantCount <= 0 || totalCount <= 0)) {
           outputRow[column] = this.blankAnsi;
           continue;
         }
