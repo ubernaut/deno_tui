@@ -190,6 +190,7 @@ import type {
   Accent,
   AsciiOptions,
   PanelRender,
+  ProcessSnapshot,
   RenderContext,
   SlotConfig,
   SourceFrame,
@@ -4318,33 +4319,62 @@ function selectExplorerRow(index: number): void {
 
 function selectCpuHexTile(id: VisualizationWindowId, label: string): void {
   if (dynamicVisualizationWindows.peek()[id] !== "cpu-hex-grid") return;
-  selectedCpuHexTiles.value = { ...selectedCpuHexTiles.peek(), [id]: label };
+  selectedCpuHexTiles.value = selectedCpuHexTilesWith(id, label);
   windowManager.focus(id);
   syncWindowSignalsFromManager();
   ensureCpuHexTileVisible(id, label);
-  const processes = processesForCpuLabel(label, systemMonitor.snapshot.peek()).slice(0, 3);
-  const processLabel = processes.length > 0
-    ? processes.map((process) => `${process.name}:${process.cpuPercent.toFixed(0)}%`).join(", ")
-    : "no top process in sample";
-  pushLog(`cpu ${label} selected: ${processLabel}`);
+  pushLog(`cpu ${label} selected: ${topCpuProcessLabel(label, systemMonitor.snapshot.peek())}`);
 }
 
-function processesForCpuLabel(label: string, system: SystemSnapshot) {
+function selectedCpuHexTilesWith(
+  id: VisualizationWindowId,
+  label: string,
+): Record<VisualizationWindowId, string> {
+  const source = selectedCpuHexTiles.peek();
+  const next: Record<VisualizationWindowId, string> = {};
+  for (const key in source) {
+    const windowId = key as VisualizationWindowId;
+    next[windowId] = source[windowId]!;
+  }
+  next[id] = label;
+  return next;
+}
+
+function topCpuProcessLabel(label: string, system: SystemSnapshot): string {
+  let count = 0;
+  let output = "";
+  for (let index = 0; index < system.processes.length && count < 3; index += 1) {
+    const process = system.processes[index]!;
+    if (!processMatchesCpuLabel(process, label)) continue;
+    if (count > 0) output += ", ";
+    output += `${process.name}:${process.cpuPercent.toFixed(0)}%`;
+    count += 1;
+  }
+  return count > 0 ? output : "no top process in sample";
+}
+
+function processMatchesCpuLabel(process: ProcessSnapshot, label: string): boolean {
   const cpuId = Number(label);
-  return Number.isFinite(cpuId)
-    ? system.processes.filter((process) => process.processor === cpuId)
-    : system.processes.filter((process) => String(process.processor) === label);
+  return Number.isFinite(cpuId) ? process.processor === cpuId : String(process.processor) === label;
 }
 
 function ensureCpuHexTileVisible(id: VisualizationWindowId, label: string): void {
   const scroll = windowScrolls.get(id);
   if (!scroll) return;
   const system = systemMonitor.snapshot.peek();
-  const tile = cpuHexTileLayout(
+  const tiles = cpuHexTileLayout(
     system.cpuCores,
     Math.max(8, scroll.contentWidth.peek()),
     Math.max(4, scroll.viewportHeight.peek()),
-  ).find((entry) => entry.label === label);
+  );
+  let tile: (typeof tiles)[number] | undefined;
+  for (let index = 0; index < tiles.length; index += 1) {
+    const entry = tiles[index]!;
+    if (entry.label === label) {
+      tile = entry;
+      break;
+    }
+  }
   if (!tile) return;
 
   const bodyHeaderRows = 2;

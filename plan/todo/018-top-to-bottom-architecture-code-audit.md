@@ -177,6 +177,8 @@ Work:
         and resolve visualization options through an id map instead of repeated `map`/`filter`/`flatMap`/`find` passes.
   - [x] Reworked browser API Workbench panel rows, sortable-column cycling, minimized-state keys, and RGB parsing to use
         shared helpers plus caller-owned/direct loops instead of redraw-time spread/slice/map/filter/forEach paths.
+  - [x] Reworked API Workbench CPU hex-grid selection to copy selected tile state, format matching top-process labels,
+        and locate tile rows with direct scans instead of spread/filter/slice/map/find allocation on each click.
 - [x] Replace duplicated theme/window/menu persistence code with a shared versioned serializer.
   - [x] Extracted shared workbench workspace normalization, panel-state normalization, upsert, rename, delete, lookup,
         and legacy window-entry expansion helpers into `src/app/workbench_workspace.ts`.
