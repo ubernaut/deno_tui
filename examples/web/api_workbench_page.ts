@@ -11,7 +11,6 @@ import {
   ComboBoxController,
   Computed,
   type ComputedLayoutBox,
-  contains,
   contrastText,
   createAnsiStyle,
   createFileExplorerTree,
@@ -2532,12 +2531,7 @@ function findHit(x: number, y: number): HitTarget<Hit> | undefined {
   const target = hitTargets.find(x, y);
   if (target) return target;
   if (!isTouchOptimizedLayout()) return undefined;
-  const entries = hitTargets.entries();
-  for (let index = entries.length - 1; index >= 0; index -= 1) {
-    const expandedTarget = entries[index]!;
-    const expanded = expandedTouchHitRect(expandedTarget.rect);
-    if (contains(expanded, x, y)) return { ...expandedTarget, rect: expanded };
-  }
+  return hitTargets.findExpanded(x, y, (rect) => expandedTouchHitRect(rect));
 }
 
 function isTouchOptimizedLayout(): boolean {

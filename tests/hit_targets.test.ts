@@ -29,6 +29,23 @@ Deno.test("HitTargetStack supports indexed update remove clear and cloned inspec
   assertEquals(stack.length, 0);
 });
 
+Deno.test("HitTargetStack finds expanded targets without cloning the whole stack", () => {
+  const stack = new HitTargetStack<string>();
+  stack.add({ column: 0, row: 0, width: 1, height: 1 }, "bottom");
+  stack.add({ column: 4, row: 0, width: 1, height: 1 }, "top");
+
+  const hit = stack.findExpanded(3, 0, (rect) => ({
+    column: rect.column - 1,
+    row: rect.row,
+    width: rect.width + 2,
+    height: rect.height,
+  }));
+
+  assertEquals(hit, { rect: { column: 3, row: 0, width: 3, height: 1 }, action: "top" });
+  hit!.rect.column = 99;
+  assertEquals(stack.find(4, 0), { rect: { column: 4, row: 0, width: 1, height: 1 }, action: "top" });
+});
+
 Deno.test("translateHitTargets translates clips and removes a stack suffix", () => {
   const stack = new HitTargetStack<string>();
   stack.add({ column: 0, row: 0, width: 2, height: 2 }, "before");

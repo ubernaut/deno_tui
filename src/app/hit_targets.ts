@@ -44,6 +44,18 @@ export class HitTargetStack<Action> {
     }
   }
 
+  findExpanded(
+    x: number,
+    y: number,
+    expand: (rect: Rectangle, target: HitTarget<Action>) => Rectangle | undefined,
+  ): HitTarget<Action> | undefined {
+    for (let index = this.#targets.length - 1; index >= 0; index -= 1) {
+      const target = this.#targets[index]!;
+      const rect = expand(target.rect, target);
+      if (rect && contains(rect, x, y)) return { rect, action: target.action };
+    }
+  }
+
   entries(): Array<HitTarget<Action>> {
     const entries = new Array<HitTarget<Action>>(this.#targets.length);
     for (let index = 0; index < this.#targets.length; index += 1) {

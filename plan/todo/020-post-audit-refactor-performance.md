@@ -62,3 +62,5 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Added reusable header layout projection and routed terminal and web workbench header rendering through it.
 - Added reusable titlebar layout projection and routed terminal and web workbench titlebar rendering through per-window
   buffers so hit rectangles remain stable for each draw.
+- Added expanded hit-target lookup to support touch-friendly web hit expansion without cloning the full hit stack on
+  every pointer lookup.

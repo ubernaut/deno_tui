@@ -10830,6 +10830,13 @@ var HitTargetStack = class {
       if (contains(target.rect, x, y)) return target;
     }
   }
+  findExpanded(x, y, expand) {
+    for (let index = this.#targets.length - 1; index >= 0; index -= 1) {
+      const target = this.#targets[index];
+      const rect = expand(target.rect, target);
+      if (rect && contains(rect, x, y)) return { rect, action: target.action };
+    }
+  }
   entries() {
     const entries = new Array(this.#targets.length);
     for (let index = 0; index < this.#targets.length; index += 1) {
@@ -17674,12 +17681,7 @@ function findHit(x, y) {
   const target = hitTargets.find(x, y);
   if (target) return target;
   if (!isTouchOptimizedLayout()) return void 0;
-  const entries = hitTargets.entries();
-  for (let index = entries.length - 1; index >= 0; index -= 1) {
-    const expandedTarget = entries[index];
-    const expanded = expandedTouchHitRect(expandedTarget.rect);
-    if (contains(expanded, x, y)) return { ...expandedTarget, rect: expanded };
-  }
+  return hitTargets.findExpanded(x, y, (rect) => expandedTouchHitRect(rect));
 }
 function isTouchOptimizedLayout() {
   const coarsePointer = globalThis.matchMedia?.("(pointer: coarse)")?.matches ?? false;
