@@ -18,6 +18,7 @@ export interface WorkbenchControlOptionRow {
   tokens: WorkbenchControlOptionToken[];
 }
 
+/** Segment classes produced by a control row containing a clickable button token and trailing detail text. */
 export type WorkbenchControlButtonLineSegmentKind = "prefix" | "button" | "detail";
 
 /** One styled segment in a control row containing a clickable button token and trailing detail text. */

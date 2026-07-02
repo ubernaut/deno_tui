@@ -3419,6 +3419,83 @@
       "documented": true
     },
     {
+      "module": "src/app/workbench_control_layout.ts",
+      "name": "layoutWorkbenchButtonRow",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_control_layout.ts",
+      "name": "layoutWorkbenchControlButtonLine",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_control_layout.ts",
+      "name": "layoutWrappedControlOptions",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_control_layout.ts",
+      "name": "WorkbenchButtonRowItem",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_control_layout.ts",
+      "name": "WorkbenchButtonRowLayout",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_control_layout.ts",
+      "name": "WorkbenchButtonRowPlacement",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_control_layout.ts",
+      "name": "WorkbenchControlButtonLineSegment",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_control_layout.ts",
+      "name": "WorkbenchControlButtonLineSegmentKind",
+      "kind": "type",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_control_layout.ts",
+      "name": "WorkbenchControlOptionRow",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_control_layout.ts",
+      "name": "WorkbenchControlOptionToken",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_control_layout.ts",
+      "name": "wrappedControlOptionRowCount",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
       "module": "src/app/workbench_diagnostics.ts",
       "name": "appendBoundedWorkbenchLogRow",
       "kind": "function",
