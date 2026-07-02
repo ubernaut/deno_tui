@@ -75,7 +75,8 @@ export function duplicateTerminalSessionDescriptor(
   options: DuplicateTerminalWorkspaceDescriptorOptions,
   now: number,
 ): TerminalSessionDescriptor {
-  const ids = new Set(sessions.map((session) => session.id));
+  const ids = new Set<string>();
+  for (let index = 0; index < sessions.length; index += 1) ids.add(sessions[index]!.id);
   const id = uniqueTerminalWorkspaceSessionId(options.id ?? `${source.id}-copy`, ids);
   const title = options.title ?? `${source.title} Copy`;
   const template = cloneTerminalTemplate(source.template);

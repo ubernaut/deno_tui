@@ -312,6 +312,7 @@ Work:
         fallback paths around explicit helper scans without changing tiling geometry.
   - [x] Reworked TerminalWorkspaceController session id lookups, mutation indices, active inspection lookup, close-pane
         fallback, and session reordering to avoid repeated find/some/findIndex and spread/splice paths.
+  - [x] Reworked terminal workspace descriptor duplication to populate id sets directly instead of mapping session ids.
 
 Acceptance checks:
 
