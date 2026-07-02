@@ -111,6 +111,8 @@ import { type TerminalBackend } from "../src/runtime/terminal_backend.ts";
 import type { TerminalShellController } from "../src/runtime/terminal_shell.ts";
 import { TerminalShellWorkspaceController } from "../src/runtime/terminal_shell_workspace.ts";
 import {
+  formatTerminalOutputHint,
+  formatTerminalShellHint,
   formatTerminalShellStatusLine,
   formatTerminalShellWindowTitle,
   summarizeTerminalStatus,
@@ -1862,10 +1864,12 @@ function renderTerminalOutput(frame: Frame, rect: Rectangle): void {
   );
   row += 1;
 
-  const hint = terminalInputMode.peek() === "raw"
-    ? "raw input: printable keys go to child process  Esc workbench mode  Ctrl+C reserved"
-    : "keys: P run  S stop  U restart  K clear  V follow  Y copy  I raw input";
-  write(frame, row, rect.column, paint(fit(hint, rect.width), { fg: t.soft, bg: t.panelSoft }));
+  write(
+    frame,
+    row,
+    rect.column,
+    paint(fit(formatTerminalOutputHint(terminalInputMode.peek()), rect.width), { fg: t.soft, bg: t.panelSoft }),
+  );
   row += 1;
 
   const outputHeight = Math.max(0, rect.row + rect.height - row);
@@ -1986,12 +1990,15 @@ function renderTerminalShell(frame: Frame, rect: Rectangle): void {
   );
   row += 1;
 
-  const hint = copyMode
-    ? "copy mode: PageUp/PageDown scroll  Space select  Shift+Up/Down extend  C copy  Esc live input"
-    : terminalShellInputMode.peek() === "raw"
-    ? "raw shell input: keys go to shell  Ctrl+C interrupts shell  Esc returns to Workbench"
-    : "keys: P start  S stop  U restart  K clear  I raw input  PageUp copy scroll";
-  write(frame, row, rect.column, paint(fit(hint, rect.width), { fg: t.soft, bg: t.panelSoft }));
+  write(
+    frame,
+    row,
+    rect.column,
+    paint(
+      fit(formatTerminalShellHint({ copyMode, inputMode: terminalShellInputMode.peek() }), rect.width),
+      { fg: t.soft, bg: t.panelSoft },
+    ),
+  );
   row += 1;
 
   const bodyRect = {

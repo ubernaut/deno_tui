@@ -3,6 +3,8 @@ import { TerminalOutputController } from "../src/components/terminal_output.ts";
 import type { ProcessSessionInspection } from "../src/runtime/process_session.ts";
 import type { TerminalSessionHandleInspection } from "../src/runtime/terminal_backend.ts";
 import {
+  formatTerminalOutputHint,
+  formatTerminalShellHint,
   formatTerminalShellStatusLine,
   formatTerminalShellWindowTitle,
   summarizeTerminalStatus,
@@ -155,5 +157,28 @@ Deno.test("formatTerminalShellStatusLine composes backend command and scrollback
       scrollbackTotalRows: 0,
     }),
     "COPY MODE STARTING PROCESS FALLBACK pending · bash · rows 0-0/0",
+  );
+});
+
+Deno.test("terminal hint formatters cover process output shell and copy modes", () => {
+  assertEquals(
+    formatTerminalOutputHint("raw"),
+    "raw input: printable keys go to child process  Esc workbench mode  Ctrl+C reserved",
+  );
+  assertEquals(
+    formatTerminalOutputHint("workbench"),
+    "keys: P run  S stop  U restart  K clear  V follow  Y copy  I raw input",
+  );
+  assertEquals(
+    formatTerminalShellHint({ inputMode: "raw" }),
+    "raw shell input: keys go to shell  Ctrl+C interrupts shell  Esc returns to Workbench",
+  );
+  assertEquals(
+    formatTerminalShellHint({ inputMode: "workbench" }),
+    "keys: P start  S stop  U restart  K clear  I raw input  PageUp copy scroll",
+  );
+  assertEquals(
+    formatTerminalShellHint({ inputMode: "raw", copyMode: true }),
+    "copy mode: PageUp/PageDown scroll  Space select  Shift+Up/Down extend  C copy  Esc live input",
   );
 });

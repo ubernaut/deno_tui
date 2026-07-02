@@ -59,6 +59,12 @@ export interface TerminalShellStatusLineOptions {
   scrollbackTotalRows: number;
 }
 
+/** Options for formatting a live shell keyboard hint. */
+export interface TerminalShellHintOptions {
+  copyMode?: boolean;
+  inputMode: "raw" | "workbench";
+}
+
 /** Semantic tone categories for terminal status presentation. */
 export type TerminalStatusTone = "good" | "accent" | "warning" | "danger" | "muted";
 
@@ -190,6 +196,23 @@ export function formatTerminalShellStatusLine(options: TerminalShellStatusLineOp
       options.backendLabel ?? "pending"
     } · ${options.commandLine} · rows ${firstRow}-${lastRow}/${totalRows}`,
   );
+}
+
+/** Formats keyboard hints for process-output panes with optional raw child-process input. */
+export function formatTerminalOutputHint(mode: "raw" | "workbench"): string {
+  return mode === "raw"
+    ? "raw input: printable keys go to child process  Esc workbench mode  Ctrl+C reserved"
+    : "keys: P run  S stop  U restart  K clear  V follow  Y copy  I raw input";
+}
+
+/** Formats keyboard hints for live shell panes and copy-mode scrollback. */
+export function formatTerminalShellHint(options: TerminalShellHintOptions): string {
+  if (options.copyMode) {
+    return "copy mode: PageUp/PageDown scroll  Space select  Shift+Up/Down extend  C copy  Esc live input";
+  }
+  return options.inputMode === "raw"
+    ? "raw shell input: keys go to shell  Ctrl+C interrupts shell  Esc returns to Workbench"
+    : "keys: P start  S stop  U restart  K clear  I raw input  PageUp copy scroll";
 }
 
 /** Formats a shell window title with mode, status, and optional OSC/runtime title. */
