@@ -11343,13 +11343,6 @@ function terminalWorkspaceLayoutWithActive(layout, sessionId) {
     zoomedPaneId: layout.zoomedPaneId
   };
 }
-function cloneTerminalWorkspaceLayoutState(layout) {
-  return {
-    root: layout.root ? cloneTerminalWorkspaceLayoutNode(layout.root) : void 0,
-    activePaneId: layout.activePaneId,
-    zoomedPaneId: layout.zoomedPaneId
-  };
-}
 function cloneTerminalWorkspaceLayoutNode(node) {
   return node.kind === "pane" ? cloneTerminalWorkspacePaneNode(node) : {
     kind: "split",
@@ -11719,8 +11712,13 @@ var TerminalWorkspaceController = class {
     this.activeId.value = id2;
     const layout = this.layout.peek();
     const pane = findTerminalWorkspacePaneBySession(layout.root, id2);
-    if (pane) this.layout.value = { ...cloneTerminalWorkspaceLayoutState(layout), activePaneId: pane.id };
-    else if (!layout.root) {
+    if (pane) {
+      this.layout.value = {
+        root: layout.root,
+        activePaneId: pane.id,
+        zoomedPaneId: layout.zoomedPaneId
+      };
+    } else if (!layout.root) {
       this.layout.value = terminalWorkspaceLayoutWithActive({ root: createTerminalWorkspacePaneNode(id2) }, id2);
     }
     return true;
@@ -11741,7 +11739,14 @@ var TerminalWorkspaceController = class {
     if (this.activeId.peek() === id2) {
       this.activeId.value = next[index]?.id ?? next[index - 1]?.id;
       const pane = this.activeId.peek() ? findTerminalWorkspacePaneBySession(this.layout.peek().root, this.activeId.peek()) : void 0;
-      if (pane) this.layout.value = { ...cloneTerminalWorkspaceLayoutState(this.layout.peek()), activePaneId: pane.id };
+      if (pane) {
+        const layout = this.layout.peek();
+        this.layout.value = {
+          root: layout.root,
+          activePaneId: pane.id,
+          zoomedPaneId: layout.zoomedPaneId
+        };
+      }
     }
     return true;
   }
@@ -11881,12 +11886,17 @@ var TerminalWorkspaceController = class {
   activatePane(paneId) {
     const pane = findTerminalWorkspacePane(this.layout.peek().root, paneId);
     if (!pane || !hasTerminalSession(this.sessions.peek(), pane.sessionId)) return false;
-    this.layout.value = { ...cloneTerminalWorkspaceLayoutState(this.layout.peek()), activePaneId: pane.id };
+    const layout = this.layout.peek();
+    this.layout.value = {
+      root: layout.root,
+      activePaneId: pane.id,
+      zoomedPaneId: layout.zoomedPaneId
+    };
     this.activeId.value = pane.sessionId;
     return true;
   }
   closePane(paneId) {
-    const current = cloneTerminalWorkspaceLayoutState(this.layout.peek());
+    const current = this.layout.peek();
     if (!findTerminalWorkspacePane(current.root, paneId)) return false;
     const root2 = removeTerminalWorkspacePane(current.root, paneId);
     const panes = collectTerminalWorkspacePanes(root2);
@@ -11921,9 +11931,9 @@ var TerminalWorkspaceController = class {
   }
   toggleZoomPane(paneId = this.layout.peek().activePaneId) {
     if (!paneId || !findTerminalWorkspacePane(this.layout.peek().root, paneId)) return false;
-    const current = cloneTerminalWorkspaceLayoutState(this.layout.peek());
+    const current = this.layout.peek();
     this.layout.value = {
-      ...current,
+      root: current.root,
       activePaneId: paneId,
       zoomedPaneId: current.zoomedPaneId === paneId ? void 0 : paneId
     };
