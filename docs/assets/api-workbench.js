@@ -9068,9 +9068,6 @@ function renderDataTableHeader(columns2, sort) {
   }
   return header;
 }
-function renderDataTableRows(rows2, columns2, selectedIndex = 0) {
-  return renderDataTableRowsInto(new Array(rows2.length), rows2, columns2, selectedIndex);
-}
 function renderDataTableRowsInto(target, rows2, columns2, selectedIndex = 0) {
   target.length = rows2.length;
   for (let index = 0; index < rows2.length; index += 1) {
@@ -13515,6 +13512,27 @@ function nextApiWorkbenchControlId(current, delta, options = {}) {
   if (!options.wrap && (next < 0 || next >= apiWorkbenchControlIds.length)) return void 0;
   return apiWorkbenchControlIds[(next % apiWorkbenchControlIds.length + apiWorkbenchControlIds.length) % apiWorkbenchControlIds.length];
 }
+function nextSortableDataColumn(columns2, currentColumnId, delta) {
+  let sortableCount = 0;
+  let currentSortableIndex = -1;
+  for (let index = 0; index < columns2.length; index += 1) {
+    const column = columns2[index];
+    if (column.sortable === false) continue;
+    if (column.id === currentColumnId) currentSortableIndex = sortableCount;
+    sortableCount += 1;
+  }
+  if (sortableCount === 0) return void 0;
+  let targetSortableIndex = currentSortableIndex < 0 ? 0 : currentSortableIndex;
+  targetSortableIndex = ((targetSortableIndex + delta) % sortableCount + sortableCount) % sortableCount;
+  let sortableIndex = 0;
+  for (let index = 0; index < columns2.length; index += 1) {
+    const column = columns2[index];
+    if (column.sortable === false) continue;
+    if (sortableIndex === targetSortableIndex) return column;
+    sortableIndex += 1;
+  }
+  return void 0;
+}
 
 // app/html_css_layout_view.ts
 function htmlCssLayoutBoxStyle(box, theme2, contrast) {
@@ -13781,6 +13799,8 @@ var themeMenuWidth = Math.max(22, maxTextWidth(themeLabels) + 6);
 var rows = apiWorkbenchRows;
 var columns = apiWorkbenchColumns;
 var docs = apiWorkbenchDocs;
+var panelLineBuffer = [];
+var panelDataRowsBuffer = [];
 var panelIds = [
   "explorer",
   "inspector",
@@ -14371,10 +14391,11 @@ function renderPanel(frame, id2, rect) {
   else if (id2 === "terminal") renderTerminalProtocol(frame, inner);
   else {
     const lines = panelLines(id2, inner.height);
-    lines.forEach((line, index) => {
+    for (let index = 0; index < lines.length; index += 1) {
+      const line = lines[index];
       const style2 = panelLineStyle(id2, index);
       write(frame, inner.row + index, inner.column, paint(fit(line, inner.width), style2.fg, style2.bg, style2.bold));
-    });
+    }
     if (id2 === "data") {
       for (let index = 0; index < Math.min(table.view.peek().rows.length, Math.max(0, inner.height - 1)); index += 1) {
         hitTargets.add({ column: inner.column, row: inner.row + 1 + index, width: inner.width, height: 1 }, {
@@ -14684,11 +14705,35 @@ function syncWebTerminalScreen(width, height) {
   webTerminalScreen.write(transcript.join("\r\n"));
 }
 function panelLines(id2, height) {
-  const source = id2 === "data" ? [
-    renderDataTableHeader(table.columns.peek(), table.state.peek().sort),
-    ...renderDataTableRows(table.view.peek().rows, table.columns.peek(), table.view.peek().selectedIndex)
-  ] : id2 === "controls" ? [] : id2 === "logs" ? [...log.peek()].slice(-Math.max(1, height)) : ["API Workbench Web", ...docs];
-  return source.slice(0, height);
+  panelLineBuffer.length = 0;
+  const safeHeight = Math.max(0, height);
+  if (safeHeight === 0 || id2 === "controls") return panelLineBuffer;
+  if (id2 === "data") {
+    panelLineBuffer.push(renderDataTableHeader(table.columns.peek(), table.state.peek().sort));
+    renderDataTableRowsInto(
+      panelDataRowsBuffer,
+      table.view.peek().rows,
+      table.columns.peek(),
+      table.view.peek().selectedIndex
+    );
+    for (let index = 0; index < panelDataRowsBuffer.length && panelLineBuffer.length < safeHeight; index += 1) {
+      panelLineBuffer.push(panelDataRowsBuffer[index]);
+    }
+    return panelLineBuffer;
+  }
+  if (id2 === "logs") {
+    const source = log.peek();
+    const start = Math.max(0, source.length - Math.max(1, safeHeight));
+    for (let index = start; index < source.length && panelLineBuffer.length < safeHeight; index += 1) {
+      panelLineBuffer.push(source[index]);
+    }
+    return panelLineBuffer;
+  }
+  panelLineBuffer.push("API Workbench Web");
+  for (let index = 0; index < docs.length && panelLineBuffer.length < safeHeight; index += 1) {
+    panelLineBuffer.push(docs[index]);
+  }
+  return panelLineBuffer;
 }
 function ensureLines() {
   for (let row = lineSignals.length; row < rowsCount(); row++) {
@@ -14857,11 +14902,9 @@ function focusPanelByNumber(key) {
   return true;
 }
 function cycleDataSortColumn(delta) {
-  const sortable = table.columns.peek().filter((column) => column.sortable !== false);
-  if (sortable.length === 0) return;
   const current = table.state.peek().sort?.columnId;
-  const index = Math.max(0, sortable.findIndex((column) => column.id === current));
-  const next = sortable[(index + delta + sortable.length) % sortable.length];
+  const next = nextSortableDataColumn(table.columns.peek(), current, delta);
+  if (!next) return;
   table.toggleSort(next.id);
   push(`sort data by ${next.label}`);
 }
@@ -14888,7 +14931,11 @@ function workspaceLayout(bounds) {
 function syncWebWindowManagerState() {
   const fullscreenId = maximized.peek() ?? void 0;
   const minimizedState = minimized.peek();
-  const key = `${active.peek()}|${fullscreenId ?? ""}|${panelIds.map((id2) => minimizedState[id2] ? "1" : "0").join("")}`;
+  let minimizedKey = "";
+  for (let index = 0; index < panelIds.length; index += 1) {
+    minimizedKey += minimizedState[panelIds[index]] ? "1" : "0";
+  }
+  const key = `${active.peek()}|${fullscreenId ?? ""}|${minimizedKey}`;
   if (key === webWindowManagerStateKey) return;
   webWindowManagerStateKey = key;
   webWindows.activeId.value = active.peek();
@@ -15614,7 +15661,11 @@ function expandedTouchHitRect(rect) {
 }
 function hex(value) {
   const color = value.replace("#", "");
-  return [0, 2, 4].map((index) => Number.parseInt(color.slice(index, index + 2), 16));
+  return [
+    Number.parseInt(color.slice(0, 2), 16),
+    Number.parseInt(color.slice(2, 4), 16),
+    Number.parseInt(color.slice(4, 6), 16)
+  ];
 }
 function initialThemeIndex() {
   try {

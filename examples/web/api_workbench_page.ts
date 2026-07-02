@@ -47,7 +47,7 @@ import {
   RadioGroupController,
   renderCheckBoxMark,
   renderDataTableHeader,
-  renderDataTableRows,
+  renderDataTableRowsInto,
   renderMenuBar,
   renderModalRows,
   renderStatusBar,
@@ -88,7 +88,11 @@ import {
   type ApiWorkbenchThemeSpec,
   createApiWorkbenchThemes,
 } from "../../app/api_workbench_catalog.ts";
-import { type ApiWorkbenchControlId, nextApiWorkbenchControlId } from "../../app/api_workbench_controls.ts";
+import {
+  type ApiWorkbenchControlId,
+  nextApiWorkbenchControlId,
+  nextSortableDataColumn,
+} from "../../app/api_workbench_controls.ts";
 import { htmlCssLayoutBoxStyle, htmlCssVisibleLayoutBoxesInto } from "../../app/html_css_layout_view.ts";
 import { WorkbenchController } from "../../src/app/workbench/controller.ts";
 import { createHtmlCssLayoutDemo, htmlCssLayoutDemoBoxLabel } from "../../src/markup/demo_fixtures.ts";
@@ -156,6 +160,8 @@ const themeMenuWidth = Math.max(22, maxTextWidth(themeLabels) + 6);
 const rows: Row[] = apiWorkbenchRows;
 const columns = apiWorkbenchColumns;
 const docs = apiWorkbenchDocs;
+const panelLineBuffer: string[] = [];
+const panelDataRowsBuffer: string[] = [];
 const panelIds: readonly PanelId[] = [
   "explorer",
   "inspector",
@@ -771,10 +777,11 @@ function renderPanel(frame: string[], id: PanelId, rect: Rectangle): void {
   else if (id === "terminal") renderTerminalProtocol(frame, inner);
   else {
     const lines = panelLines(id, inner.height);
-    lines.forEach((line, index) => {
+    for (let index = 0; index < lines.length; index += 1) {
+      const line = lines[index]!;
       const style = panelLineStyle(id, index);
       write(frame, inner.row + index, inner.column, paint(fit(line, inner.width), style.fg, style.bg, style.bold));
-    });
+    }
     if (id === "data") {
       for (let index = 0; index < Math.min(table.view.peek().rows.length, Math.max(0, inner.height - 1)); index += 1) {
         hitTargets.add({ column: inner.column, row: inner.row + 1 + index, width: inner.width, height: 1 }, {
@@ -1116,17 +1123,38 @@ function syncWebTerminalScreen(width: number, height: number): void {
 }
 
 function panelLines(id: PanelId, height: number): string[] {
-  const source = id === "data"
-    ? [
-      renderDataTableHeader(table.columns.peek(), table.state.peek().sort),
-      ...renderDataTableRows(table.view.peek().rows, table.columns.peek(), table.view.peek().selectedIndex),
-    ]
-    : id === "controls"
-    ? []
-    : id === "logs"
-    ? [...log.peek()].slice(-Math.max(1, height))
-    : ["API Workbench Web", ...docs];
-  return source.slice(0, height);
+  panelLineBuffer.length = 0;
+  const safeHeight = Math.max(0, height);
+  if (safeHeight === 0 || id === "controls") return panelLineBuffer;
+
+  if (id === "data") {
+    panelLineBuffer.push(renderDataTableHeader(table.columns.peek(), table.state.peek().sort));
+    renderDataTableRowsInto(
+      panelDataRowsBuffer,
+      table.view.peek().rows,
+      table.columns.peek(),
+      table.view.peek().selectedIndex,
+    );
+    for (let index = 0; index < panelDataRowsBuffer.length && panelLineBuffer.length < safeHeight; index += 1) {
+      panelLineBuffer.push(panelDataRowsBuffer[index]!);
+    }
+    return panelLineBuffer;
+  }
+
+  if (id === "logs") {
+    const source = log.peek();
+    const start = Math.max(0, source.length - Math.max(1, safeHeight));
+    for (let index = start; index < source.length && panelLineBuffer.length < safeHeight; index += 1) {
+      panelLineBuffer.push(source[index]!);
+    }
+    return panelLineBuffer;
+  }
+
+  panelLineBuffer.push("API Workbench Web");
+  for (let index = 0; index < docs.length && panelLineBuffer.length < safeHeight; index += 1) {
+    panelLineBuffer.push(docs[index]!);
+  }
+  return panelLineBuffer;
 }
 
 function ensureLines(): void {
@@ -1312,11 +1340,9 @@ function focusPanelByNumber(key: string): boolean {
 }
 
 function cycleDataSortColumn(delta: number): void {
-  const sortable = table.columns.peek().filter((column) => column.sortable !== false);
-  if (sortable.length === 0) return;
   const current = table.state.peek().sort?.columnId;
-  const index = Math.max(0, sortable.findIndex((column) => column.id === current));
-  const next = sortable[(index + delta + sortable.length) % sortable.length]!;
+  const next = nextSortableDataColumn(table.columns.peek(), current, delta);
+  if (!next) return;
   table.toggleSort(next.id);
   push(`sort data by ${next.label}`);
 }
@@ -1350,7 +1376,11 @@ function workspaceLayout(bounds: Rectangle): {
 function syncWebWindowManagerState(): void {
   const fullscreenId = maximized.peek() ?? undefined;
   const minimizedState = minimized.peek();
-  const key = `${active.peek()}|${fullscreenId ?? ""}|${panelIds.map((id) => minimizedState[id] ? "1" : "0").join("")}`;
+  let minimizedKey = "";
+  for (let index = 0; index < panelIds.length; index += 1) {
+    minimizedKey += minimizedState[panelIds[index]!] ? "1" : "0";
+  }
+  const key = `${active.peek()}|${fullscreenId ?? ""}|${minimizedKey}`;
   if (key === webWindowManagerStateKey) return;
   webWindowManagerStateKey = key;
   webWindows.activeId.value = active.peek();
@@ -2159,7 +2189,11 @@ function expandedTouchHitRect(rect: Rectangle): Rectangle {
 }
 function hex(value: string): [number, number, number] {
   const color = value.replace("#", "");
-  return [0, 2, 4].map((index) => Number.parseInt(color.slice(index, index + 2), 16)) as [number, number, number];
+  return [
+    Number.parseInt(color.slice(0, 2), 16),
+    Number.parseInt(color.slice(2, 4), 16),
+    Number.parseInt(color.slice(4, 6), 16),
+  ];
 }
 function initialThemeIndex(): number {
   try {

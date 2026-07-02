@@ -175,6 +175,8 @@ Work:
         helpers instead of `Object.fromEntries(...map(...))` and per-keypress filtered sortable arrays.
   - [x] Reworked API Workbench workspace serialization to scan window ids once, cache valid visualization option ids,
         and resolve visualization options through an id map instead of repeated `map`/`filter`/`flatMap`/`find` passes.
+  - [x] Reworked browser API Workbench panel rows, sortable-column cycling, minimized-state keys, and RGB parsing to use
+        shared helpers plus caller-owned/direct loops instead of redraw-time spread/slice/map/filter/forEach paths.
 - [x] Replace duplicated theme/window/menu persistence code with a shared versioned serializer.
   - [x] Extracted shared workbench workspace normalization, panel-state normalization, upsert, rename, delete, lookup,
         and legacy window-entry expansion helpers into `src/app/workbench_workspace.ts`.
