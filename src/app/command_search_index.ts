@@ -124,21 +124,29 @@ export function searchCommandSearchIndex(
   options: Pick<CommandSearchOptions, "limit"> = {},
 ): CommandSearchMatch[] {
   const terms = searchTerms(query);
+  const limit = options.limit === undefined ? undefined : Math.max(0, Math.floor(options.limit));
+  if (limit === 0) return [];
   const ranked: Array<CommandSearchMatch & { index: number }> = [];
   for (const entry of index.entries) {
     const match = scoreCommandSearchIndexEntry(entry, terms);
     if (match) {
-      ranked.push({
+      const candidate = {
         item: entry.item,
         score: match.score,
         matched: match.matched,
         index: entry.index,
-      });
+      };
+      if (limit === undefined) {
+        ranked.push(candidate);
+      } else {
+        insertRankedCommandSearchMatch(ranked, candidate, limit);
+      }
     }
   }
-  ranked.sort(compareCommandSearchMatches);
-  const limit = options.limit === undefined ? ranked.length : Math.max(0, Math.floor(options.limit));
-  const count = Math.min(limit, ranked.length);
+  if (limit === undefined) {
+    ranked.sort(compareCommandSearchMatches);
+  }
+  const count = limit === undefined ? ranked.length : Math.min(limit, ranked.length);
   const matches = new Array<CommandSearchMatch>(count);
   for (let index = 0; index < count; index += 1) {
     const match = ranked[index]!;
@@ -321,4 +329,21 @@ function compareCommandSearchMatches(
     Number(left.item.disabled) - Number(right.item.disabled) ||
     left.item.label.localeCompare(right.item.label) ||
     left.index - right.index;
+}
+
+function insertRankedCommandSearchMatch(
+  ranked: Array<CommandSearchMatch & { index: number }>,
+  candidate: CommandSearchMatch & { index: number },
+  limit: number,
+): void {
+  let low = 0;
+  let high = ranked.length;
+  while (low < high) {
+    const middle = (low + high) >> 1;
+    if (compareCommandSearchMatches(candidate, ranked[middle]!) < 0) high = middle;
+    else low = middle + 1;
+  }
+  if (low >= limit) return;
+  ranked.splice(low, 0, candidate);
+  if (ranked.length > limit) ranked.pop();
 }
