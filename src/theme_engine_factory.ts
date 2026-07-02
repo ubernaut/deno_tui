@@ -182,7 +182,12 @@ export class ThemeEngineFactoryRegistry {
 
   /** Returns factory ids in priority order. */
   ids(): string[] {
-    return this.factories().map((factory) => factory.id);
+    const factories = this.factories();
+    const ids = new Array<string>(factories.length);
+    for (let index = 0; index < factories.length; index += 1) {
+      ids[index] = factories[index]!.id;
+    }
+    return ids;
   }
 
   /** Returns factories sorted by priority and id. */
@@ -192,7 +197,7 @@ export class ThemeEngineFactoryRegistry {
 
   /** Returns serializable inspections for all factories. */
   inspect(): ThemeEngineFactoryInspection[] {
-    return this.factories().map((factory) => factory.inspect());
+    return inspectThemeEngineFactories(this.factories());
   }
 
   /** Returns a filtered catalog report for settings panes, docs, and marketplaces. */
@@ -212,7 +217,11 @@ export class ThemeEngineFactoryRegistry {
   /** Builds registered factories through the scheduler for startup prewarming. */
   prewarm(options: ThemeEnginePrewarmOptions = {}): Promise<ThemeEngineFactoryBuildResult[]> {
     const requested = options.ids ? new Set(options.ids) : undefined;
-    const factories = this.factories().filter((factory) => !requested || requested.has(factory.id));
+    const sorted = this.factories();
+    const factories: ThemeEngineFactory[] = [];
+    for (const factory of sorted) {
+      if (!requested || requested.has(factory.id)) factories.push(factory);
+    }
     return prewarmThemeEngines(factories, options);
   }
 }
@@ -242,24 +251,38 @@ export function queryThemeEngineFactories(
   factories: Iterable<ThemeEngineFactory | ThemeEngineFactoryDefinition>,
   query: ThemeEngineFactoryCatalogQuery = {},
 ): ThemeEngineFactoryInspection[] {
-  return normalizeFactories(factories)
-    .map((factory) => factory.inspect())
-    .filter((factory) => matchesFactoryQuery(factory, query))
-    .sort((left, right) => right.priority - left.priority || left.label.localeCompare(right.label));
+  const matches: ThemeEngineFactoryInspection[] = [];
+  for (const factory of normalizeFactories(factories)) {
+    const inspection = factory.inspect();
+    if (matchesFactoryQuery(inspection, query)) matches.push(inspection);
+  }
+  return matches.sort(compareThemeEngineFactoryInspections);
 }
 
 /** Aggregates factory catalog metadata for diagnostics and settings screens. */
 export function inspectThemeEngineFactoryCatalog(
   factories: readonly ThemeEngineFactoryInspection[],
 ): ThemeEngineFactoryCatalogInspection {
+  let valid = 0;
+  const palettes = new Set<string>();
+  const tags = new Set<string>();
+  const components = new Set<string>();
+  const tokenOverrides = new Set<string>();
+  for (const factory of factories) {
+    if (factory.valid) valid += 1;
+    if (factory.palette) palettes.add(factory.palette);
+    for (const tag of factory.tags) tags.add(tag);
+    for (const component of factory.components) components.add(component);
+    for (const token of factory.tokenOverrides) tokenOverrides.add(token);
+  }
   return {
     count: factories.length,
-    valid: factories.filter((factory) => factory.valid).length,
-    invalid: factories.filter((factory) => !factory.valid).length,
-    palettes: uniqueSorted(factories.map((factory) => factory.palette)),
-    tags: uniqueSorted(factories.flatMap((factory) => factory.tags)),
-    components: uniqueSorted(factories.flatMap((factory) => factory.components)),
-    tokenOverrides: sortedThemeTokens(factories.flatMap((factory) => factory.tokenOverrides)),
+    valid,
+    invalid: factories.length - valid,
+    palettes: sortedSetValues(palettes),
+    tags: sortedSetValues(tags),
+    components: sortedSetValues(components),
+    tokenOverrides: sortedThemeTokens(tokenOverrides),
   };
 }
 
@@ -320,12 +343,20 @@ export async function prewarmThemeEngines(
     },
   });
 
-  return results.map((result) => result.value);
+  const values = new Array<ThemeEngineFactoryBuildResult>(results.length);
+  for (let index = 0; index < results.length; index += 1) {
+    values[index] = results[index]!.value;
+  }
+  return values;
 }
 
 function sortedThemeTokens(values: Iterable<string>): ThemeTokenName[] {
   const requested = new Set(values);
-  return themeTokenNames.filter((token) => requested.has(token));
+  const tokens: ThemeTokenName[] = [];
+  for (const token of themeTokenNames) {
+    if (requested.has(token)) tokens.push(token);
+  }
+  return tokens;
 }
 
 function themePaletteId(palette: ThemePaletteReference): string {
@@ -335,9 +366,11 @@ function themePaletteId(palette: ThemePaletteReference): string {
 function normalizeFactories(
   factories: Iterable<ThemeEngineFactory | ThemeEngineFactoryDefinition>,
 ): ThemeEngineFactory[] {
-  return [...factories].map((factory) =>
-    factory instanceof ThemeEngineFactory ? factory : createThemeEngineFactory(factory)
-  );
+  const normalized: ThemeEngineFactory[] = [];
+  for (const factory of factories) {
+    normalized.push(factory instanceof ThemeEngineFactory ? factory : createThemeEngineFactory(factory));
+  }
+  return normalized;
 }
 
 function matchesFactoryQuery(
@@ -353,21 +386,67 @@ function matchesFactoryQuery(
     (factory.tokenOverrides.length > 0) !== query.hasTokenOverrides
   ) return false;
   if (!query.search) return true;
-  const needle = query.search.trim().toLowerCase();
-  if (!needle) return true;
-  const haystack = [
-    factory.id,
-    factory.label,
-    factory.description,
-    factory.palette,
-    ...factory.tags,
-    ...factory.components,
-    ...factory.tokenOverrides,
-    ...Object.values(factory.variants).flat(),
-  ].join(" ").toLowerCase();
-  return needle.split(/\s+/).every((part) => haystack.includes(part));
+  return factoryMatchesSearch(factory, query.search);
 }
 
-function uniqueSorted(values: Iterable<string | undefined>): string[] {
-  return [...new Set([...values].filter((value): value is string => !!value))].sort();
+function inspectThemeEngineFactories(factories: readonly ThemeEngineFactory[]): ThemeEngineFactoryInspection[] {
+  const inspections = new Array<ThemeEngineFactoryInspection>(factories.length);
+  for (let index = 0; index < factories.length; index += 1) {
+    inspections[index] = factories[index]!.inspect();
+  }
+  return inspections;
+}
+
+function compareThemeEngineFactoryInspections(
+  left: ThemeEngineFactoryInspection,
+  right: ThemeEngineFactoryInspection,
+): number {
+  return right.priority - left.priority || left.label.localeCompare(right.label);
+}
+
+function sortedSetValues(values: Set<string>): string[] {
+  return [...values].sort();
+}
+
+function factoryMatchesSearch(factory: ThemeEngineFactoryInspection, search: string): boolean {
+  let start = -1;
+  const normalized = search.toLowerCase();
+  for (let index = 0; index <= normalized.length; index += 1) {
+    const char = index < normalized.length ? normalized[index] : " ";
+    if (char !== undefined && !isFactorySearchWhitespace(char)) {
+      if (start < 0) start = index;
+      continue;
+    }
+    if (start < 0) continue;
+    if (!factoryIncludesSearchPart(factory, normalized.slice(start, index))) return false;
+    start = -1;
+  }
+  return true;
+}
+
+function factoryIncludesSearchPart(factory: ThemeEngineFactoryInspection, part: string): boolean {
+  if (factory.id.toLowerCase().includes(part)) return true;
+  if (factory.label.toLowerCase().includes(part)) return true;
+  if (factory.description?.toLowerCase().includes(part)) return true;
+  if (factory.palette.toLowerCase().includes(part)) return true;
+  for (const tag of factory.tags) {
+    if (tag.toLowerCase().includes(part)) return true;
+  }
+  for (const component of factory.components) {
+    if (component.toLowerCase().includes(part)) return true;
+  }
+  for (const token of factory.tokenOverrides) {
+    if (token.toLowerCase().includes(part)) return true;
+  }
+  for (const variant in factory.variants) {
+    const states = factory.variants[variant]!;
+    for (const state of states) {
+      if (state.toLowerCase().includes(part)) return true;
+    }
+  }
+  return false;
+}
+
+function isFactorySearchWhitespace(char: string): boolean {
+  return char === " " || char === "\n" || char === "\t" || char === "\r" || char === "\f";
 }
