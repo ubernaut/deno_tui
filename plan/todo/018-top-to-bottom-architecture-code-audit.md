@@ -308,6 +308,8 @@ Work:
         helpers to avoid filter/map/flatMap pipelines in docs and demo discovery paths.
   - [x] Reworked TerminalScrollbackController row aggregation, search matching, visible row snapshots, match cloning,
         and selection copying to avoid spread/slice/map/filter churn in shell copy mode.
+  - [x] Reworked WindowManagerController id/open-window lookup, active/fullscreen repair, and minimize/close focus
+        fallback paths around explicit helper scans without changing tiling geometry.
 
 Acceptance checks:
 

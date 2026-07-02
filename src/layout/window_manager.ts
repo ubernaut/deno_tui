@@ -100,12 +100,12 @@ export class WindowManagerController {
   }
 
   active(): WindowManagerWindow | undefined {
-    return this.windows.peek().find((entry) => entry.id === this.activeId.peek());
+    return findWindowById(this.windows.peek(), this.activeId.peek());
   }
 
   upsert(window: WindowManagerWindow): WindowManagerWindow {
     const windows = this.windows.peek();
-    const existing = windows.find((entry) => entry.id === window.id);
+    const existing = findWindowById(windows, window.id);
     const next: WindowManagerWindow = {
       ...existing,
       ...window,
@@ -181,7 +181,7 @@ export class WindowManagerController {
     if (!window || windowState(window) === "closed") return undefined;
     this.#setState(id, "minimized");
     if (this.fullscreenId.peek() === id) this.fullscreenId.value = undefined;
-    const next = this.orderedWindows().find((entry) => windowState(entry) !== "minimized");
+    const next = firstNonMinimizedWindow(this.orderedWindows());
     this.activeId.value = next?.id ?? id;
     this.#repairState();
     return this.#window(id);
@@ -193,7 +193,7 @@ export class WindowManagerController {
     if (!window || window.closable === false) return window;
     this.#setState(id, "closed");
     if (this.fullscreenId.peek() === id) this.fullscreenId.value = undefined;
-    const next = this.orderedWindows().find((entry) => windowState(entry) !== "minimized");
+    const next = firstNonMinimizedWindow(this.orderedWindows());
     this.activeId.value = next?.id;
     this.#repairState();
     return this.#window(id);
@@ -247,7 +247,7 @@ export class WindowManagerController {
     let contentHeight = bounds.height;
 
     if (fullscreenId) {
-      const fullscreen = windows.find((entry) => entry.id === fullscreenId && windowState(entry) !== "closed");
+      const fullscreen = findOpenWindowById(windows, fullscreenId);
       if (fullscreen) rects.set(fullscreen.id, bounds);
     } else if (visible.length > 0) {
       let minWidth = 20;
@@ -307,7 +307,7 @@ export class WindowManagerController {
   }
 
   #window(id: string): WindowManagerWindow | undefined {
-    return this.windows.peek().find((entry) => entry.id === id);
+    return findWindowById(this.windows.peek(), id);
   }
 
   #setState(id: string, state: WindowManagerWindowState): void {
@@ -317,11 +317,11 @@ export class WindowManagerController {
 
   #repairState(): void {
     const windows = this.orderedWindows();
-    if (!windows.some((entry) => entry.id === this.activeId.peek())) {
+    if (!hasOpenWindowId(windows, this.activeId.peek())) {
       this.activeId.value = firstOpenWindow(windows)?.id;
     }
     const fullscreenId = this.fullscreenId.peek();
-    if (fullscreenId && !windows.some((entry) => entry.id === fullscreenId && windowState(entry) !== "closed")) {
+    if (fullscreenId && !hasOpenWindowId(windows, fullscreenId)) {
       this.fullscreenId.value = undefined;
     }
   }
@@ -374,11 +374,47 @@ function nextWindowOrder(windows: readonly WindowManagerWindow[]): number {
 }
 
 function normalizeWindowId(windows: readonly WindowManagerWindow[], id?: string | null): string | undefined {
-  return id && windows.some((entry) => entry.id === id && windowState(entry) !== "closed") ? id : undefined;
+  return id && hasOpenWindowId(windows, id) ? id : undefined;
 }
 
 function firstOpenWindow(windows: readonly WindowManagerWindow[]): WindowManagerWindow | undefined {
-  return windows.find((entry) => windowState(entry) !== "closed");
+  for (let index = 0; index < windows.length; index += 1) {
+    const window = windows[index]!;
+    if (windowState(window) !== "closed") return window;
+  }
+  return undefined;
+}
+
+function firstNonMinimizedWindow(windows: readonly WindowManagerWindow[]): WindowManagerWindow | undefined {
+  for (let index = 0; index < windows.length; index += 1) {
+    const window = windows[index]!;
+    if (windowState(window) !== "minimized") return window;
+  }
+  return undefined;
+}
+
+function findWindowById(
+  windows: readonly WindowManagerWindow[],
+  id: string | undefined,
+): WindowManagerWindow | undefined {
+  if (!id) return undefined;
+  for (let index = 0; index < windows.length; index += 1) {
+    const window = windows[index]!;
+    if (window.id === id) return window;
+  }
+  return undefined;
+}
+
+function findOpenWindowById(
+  windows: readonly WindowManagerWindow[],
+  id: string,
+): WindowManagerWindow | undefined {
+  const window = findWindowById(windows, id);
+  return window && windowState(window) !== "closed" ? window : undefined;
+}
+
+function hasOpenWindowId(windows: readonly WindowManagerWindow[], id: string | undefined): boolean {
+  return id ? findOpenWindowById(windows, id) !== undefined : false;
 }
 
 function windowState(window: WindowManagerWindow): WindowManagerWindowState {
