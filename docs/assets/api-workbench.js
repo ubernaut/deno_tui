@@ -2532,22 +2532,28 @@ var DirtyRegion = class _DirtyRegion {
   }
   /** Returns row segments clipped to the supplied rectangle. */
   intersections(rectangle) {
+    const intersections = [];
+    this.forEachIntersection(rectangle, (segment) => {
+      intersections.push({ ...segment });
+    });
+    return intersections;
+  }
+  /** Visits row segments clipped to the supplied rectangle without allocating an output array. */
+  forEachIntersection(rectangle, visitor) {
     const rowStart = Math.floor(rectangle.row);
     const rowEnd = rowStart + Math.max(0, Math.floor(rectangle.height));
     const columnStart = Math.floor(rectangle.column);
     const columnEnd = columnStart + Math.max(0, Math.floor(rectangle.width));
-    if (rowEnd <= rowStart || columnEnd <= columnStart) return [];
-    const intersections = [];
+    if (rowEnd <= rowStart || columnEnd <= columnStart) return;
     for (let row = rowStart; row < rowEnd; row += 1) {
       for (const segment of this.#rows.get(row) ?? []) {
         const startColumn = Math.max(columnStart, segment.startColumn);
         const endColumn = Math.min(columnEnd, segment.endColumn);
         if (endColumn > startColumn) {
-          intersections.push({ row, startColumn, endColumn });
+          visitor({ row, startColumn, endColumn });
         }
       }
     }
-    return intersections;
   }
   mergeRows() {
     for (const [row, segments] of this.#rows) {
@@ -2577,6 +2583,7 @@ function mergeRowSegments(segments) {
 var DrawObjectSpatialIndex = class _DrawObjectSpatialIndex {
   #rows = /* @__PURE__ */ new Map();
   #objects = /* @__PURE__ */ new Set();
+  #querySeen = /* @__PURE__ */ new Set();
   #rowEntries = 0;
   static fromObjects(objects) {
     const index = new _DrawObjectSpatialIndex();
@@ -2605,12 +2612,18 @@ var DrawObjectSpatialIndex = class _DrawObjectSpatialIndex {
     }
   }
   query(rectangle) {
+    return this.queryInto([], rectangle);
+  }
+  /** Writes objects intersecting the rectangle into a caller-owned buffer. */
+  queryInto(target, rectangle) {
+    target.length = 0;
     const startRow = Math.floor(rectangle.row);
     const endRow = startRow + Math.max(0, Math.floor(rectangle.height));
     const startColumn = Math.floor(rectangle.column);
     const endColumn = startColumn + Math.max(0, Math.floor(rectangle.width));
-    if (endRow <= startRow || endColumn <= startColumn) return [];
-    const candidates = /* @__PURE__ */ new Set();
+    if (endRow <= startRow || endColumn <= startColumn) return target;
+    const candidates = this.#querySeen;
+    candidates.clear();
     for (let row = startRow; row < endRow; row += 1) {
       for (const object of this.#rows.get(row) ?? []) {
         const objectRectangle = object.rectangle.peek();
@@ -2620,11 +2633,19 @@ var DrawObjectSpatialIndex = class _DrawObjectSpatialIndex {
         candidates.add(object);
       }
     }
-    return [...candidates];
+    for (const object of candidates) target.push(object);
+    candidates.clear();
+    return target;
   }
   queryDirtyRegion(region) {
-    if (region.isEmpty()) return [];
-    const candidates = /* @__PURE__ */ new Set();
+    return this.queryDirtyRegionInto([], region);
+  }
+  /** Writes objects intersecting the dirty region into a caller-owned buffer. */
+  queryDirtyRegionInto(target, region) {
+    target.length = 0;
+    if (region.isEmpty()) return target;
+    const candidates = this.#querySeen;
+    candidates.clear();
     region.forEachSegment((segment) => {
       const startColumn = segment.startColumn;
       const endColumn = segment.endColumn;
@@ -2636,7 +2657,9 @@ var DrawObjectSpatialIndex = class _DrawObjectSpatialIndex {
         candidates.add(object);
       }
     });
-    return [...candidates];
+    for (const object of candidates) target.push(object);
+    candidates.clear();
+    return target;
   }
   inspect() {
     return {
@@ -2701,13 +2724,13 @@ var AnsiCanvasSink = class {
     }
   }
 };
-function coalesceCanvasRowRanges(updates) {
-  const ranges = [];
+function coalesceCanvasRowRanges(updates, target = []) {
+  target.length = 0;
   let active2;
   for (const update of updates) {
     if (!active2 || update.row !== active2.row || update.column !== active2.nextColumn) {
       if (active2) {
-        ranges.push({ row: active2.row, startColumn: active2.startColumn, values: active2.values });
+        target.push({ row: active2.row, startColumn: active2.startColumn, values: active2.values });
       }
       active2 = {
         row: update.row,
@@ -2720,9 +2743,9 @@ function coalesceCanvasRowRanges(updates) {
     active2.nextColumn = update.column + 1;
   }
   if (active2) {
-    ranges.push({ row: active2.row, startColumn: active2.startColumn, values: active2.values });
+    target.push({ row: active2.row, startColumn: active2.startColumn, values: active2.values });
   }
-  return ranges;
+  return target;
 }
 function defaultAnsiFlushLimit() {
   const deno = globalThis;
@@ -2742,6 +2765,8 @@ var Canvas = class extends EventEmitter {
   resizeNeeded;
   lastRenderStats;
   drawnOrderVersion;
+  cellUpdatesBuffer;
+  rowRangesBuffer;
   constructor(options) {
     super();
     this.frameBuffer = [];
@@ -2759,6 +2784,8 @@ var Canvas = class extends EventEmitter {
     this.resizeNeeded = false;
     this.lastRenderStats = emptyRenderStats();
     this.drawnOrderVersion = 0;
+    this.cellUpdatesBuffer = [];
+    this.rowRangesBuffer = [];
     this.size = signalify(options.size, { deepObserve: true });
     this.size.subscribe(() => {
       this.resizeNeeded = true;
@@ -2883,10 +2910,11 @@ var Canvas = class extends EventEmitter {
     let intersectionCandidateChecks = 0;
     if (intersectionsDirty) {
       objectsToRender.sort((a, b) => b.zIndex.peek() - a.zIndex.peek() || b.id - a.id);
+      const intersectionCandidates = [];
       for (const object of objectsToRender) {
         intersectionCandidateChecks += this.updateIntersections(
           object,
-          spatialIndex.query(object.rectangle.peek())
+          spatialIndex.queryInto(intersectionCandidates, object.rectangle.peek())
         );
         object.moved = false;
         if (!object.outOfBounds) {
@@ -2923,7 +2951,8 @@ var Canvas = class extends EventEmitter {
     let flushedCells = 0;
     let dirtyRows = 0;
     let dirtyCells = 0;
-    const cellUpdates = [];
+    const cellUpdates = this.cellUpdatesBuffer;
+    cellUpdates.length = 0;
     for (let row = 0; row < size.rows; ++row) {
       const columns2 = rerenderQueue[row];
       if (!columns2?.size) continue;
@@ -2938,7 +2967,7 @@ var Canvas = class extends EventEmitter {
       }
       columns2.clear();
     }
-    const rowRanges = coalesceCanvasRowRanges(cellUpdates);
+    const rowRanges = coalesceCanvasRowRanges(cellUpdates, this.rowRangesBuffer);
     this.lastRenderStats = {
       updatedObjects: i,
       renderedObjects,
@@ -2995,7 +3024,8 @@ function affectedDrawObjects(objects, dirtyRegion, requiredObjects, movedObjects
   for (const object of movedObjects) {
     required.add(object);
   }
-  for (const object of spatialIndex.queryDirtyRegion(dirtyRegion)) {
+  const dirtyCandidates = spatialIndex.queryDirtyRegionInto([], dirtyRegion);
+  for (const object of dirtyCandidates) {
     required.add(object);
   }
   const affected = [];
@@ -3007,9 +3037,9 @@ function affectedDrawObjects(objects, dirtyRegion, requiredObjects, movedObjects
   return affected;
 }
 function queueDirtyRegion(object, dirtyRegion) {
-  for (const segment of dirtyRegion.intersections(object.rectangle.peek())) {
+  dirtyRegion.forEachIntersection(object.rectangle.peek(), (segment) => {
     object.queueRerenderRange(segment.row, segment.startColumn, segment.endColumn);
-  }
+  });
 }
 
 // src/three_ascii/renderer.ts
