@@ -5,7 +5,9 @@ import type { TerminalSessionHandleInspection } from "../src/runtime/terminal_ba
 import {
   formatTerminalShellWindowTitle,
   summarizeTerminalStatus,
+  terminalInputModeDisplayLabel,
   terminalStatusFields,
+  terminalStatusTone,
 } from "../src/runtime/terminal_status.ts";
 import { denoTaskTerminalTemplate, type TerminalSessionDescriptor } from "../src/runtime/terminal_templates.ts";
 
@@ -114,4 +116,15 @@ Deno.test("formatTerminalShellWindowTitle includes OSC runtime titles", () => {
     formatTerminalShellWindowTitle({ status: "idle", title: "   " }, { mode: "wb" }),
     "Shell WB IDLE",
   );
+});
+
+Deno.test("terminal status presenters expose stable tone and mode labels", () => {
+  assertEquals(terminalStatusTone("running"), "good");
+  assertEquals(terminalStatusTone("failed"), "danger");
+  assertEquals(terminalStatusTone("cancelled"), "warning");
+  assertEquals(terminalStatusTone("starting"), "accent");
+  assertEquals(terminalStatusTone("idle"), "muted");
+  assertEquals(terminalInputModeDisplayLabel("raw"), "RAW INPUT");
+  assertEquals(terminalInputModeDisplayLabel("raw", { rawLabel: "RAW SHELL" }), "RAW SHELL");
+  assertEquals(terminalInputModeDisplayLabel("workbench"), "WORKBENCH");
 });

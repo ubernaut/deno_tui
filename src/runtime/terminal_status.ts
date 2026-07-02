@@ -47,6 +47,9 @@ export interface TerminalShellWindowTitleOptions {
   prefix?: string;
 }
 
+/** Semantic tone categories for terminal status presentation. */
+export type TerminalStatusTone = "good" | "accent" | "warning" | "danger" | "muted";
+
 /** Creates a compact, serializable terminal status summary from process, backend, or workspace metadata. */
 export function summarizeTerminalStatus(
   source: TerminalStatusSource,
@@ -142,6 +145,25 @@ export function terminalStatusFields(options: {
 /** Returns the user-facing backend kind label for terminal shell/session status. */
 export function terminalBackendKindLabel(pty: boolean): string {
   return pty ? "PTY" : "PROCESS FALLBACK";
+}
+
+/** Returns the semantic status tone used by terminal/workbench presenters. */
+export function terminalStatusTone(
+  status: ProcessSessionStatus | "starting" | undefined,
+): TerminalStatusTone {
+  if (status === "running") return "good";
+  if (status === "failed") return "danger";
+  if (status === "cancelled") return "warning";
+  if (status === "starting") return "accent";
+  return "muted";
+}
+
+/** Formats terminal input mode labels consistently across renderer adapters. */
+export function terminalInputModeDisplayLabel(
+  mode: "raw" | "workbench",
+  options: { rawLabel?: string; workbenchLabel?: string } = {},
+): string {
+  return mode === "raw" ? options.rawLabel ?? "RAW INPUT" : options.workbenchLabel ?? "WORKBENCH";
 }
 
 /** Formats a shell window title with mode, status, and optional OSC/runtime title. */

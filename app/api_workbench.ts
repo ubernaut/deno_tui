@@ -114,6 +114,8 @@ import {
   formatTerminalShellWindowTitle,
   summarizeTerminalStatus,
   terminalBackendKindLabel,
+  terminalInputModeDisplayLabel,
+  terminalStatusTone,
 } from "../src/runtime/terminal_status.ts";
 import { shellTerminalTemplate } from "../src/runtime/terminal_templates.ts";
 import { terminalCellStyle, terminalOutputLineStyle } from "../src/app/workbench_terminal_style.ts";
@@ -1845,13 +1847,7 @@ function renderTerminalOutput(frame: Frame, rect: Rectangle): void {
   row = renderTerminalOutputToolbar(frame, rect, row);
   if (row >= rect.row + rect.height) return;
 
-  const statusTone = inspection.status === "running"
-    ? t.good
-    : inspection.status === "failed"
-    ? t.danger
-    : inspection.status === "cancelled"
-    ? t.warn
-    : t.accent;
+  const statusTone = terminalStatusToneColor(inspection.status);
   const statusSummary = summarizeTerminalStatus(inspection, {
     title: terminalInputModeLabel(),
     backendId: "process",
@@ -1930,7 +1926,7 @@ function renderTerminalOutputToolbar(frame: Frame, rect: Rectangle, startRow: nu
 }
 
 function terminalInputModeLabel(): string {
-  return terminalInputMode.peek() === "raw" ? "RAW INPUT" : "WORKBENCH";
+  return terminalInputModeDisplayLabel(terminalInputMode.peek());
 }
 
 function toggleTerminalInputMode(): void {
@@ -1969,15 +1965,7 @@ function renderTerminalShell(frame: Frame, rect: Rectangle): void {
     return;
   }
   const copyMode = inspection.scrollback.mode === "copy";
-  const statusTone = inspection.status === "running"
-    ? t.good
-    : inspection.status === "failed"
-    ? t.danger
-    : inspection.status === "cancelled"
-    ? t.warn
-    : inspection.status === "starting"
-    ? t.accent
-    : t.borderStrong;
+  const statusTone = terminalStatusToneColor(inspection.status);
   const backend = inspection.backendLabel ?? "pending";
   const mode = copyMode ? "COPY MODE" : terminalShellInputModeLabel();
   const status = compactSpaces(
@@ -2197,7 +2185,23 @@ function renderTerminalShellToolbar(frame: Frame, rect: Rectangle, startRow: num
 }
 
 function terminalShellInputModeLabel(): string {
-  return terminalShellInputMode.peek() === "raw" ? "RAW SHELL" : "WORKBENCH";
+  return terminalInputModeDisplayLabel(terminalShellInputMode.peek(), { rawLabel: "RAW SHELL" });
+}
+
+function terminalStatusToneColor(status: Parameters<typeof terminalStatusTone>[0]): string {
+  const t = theme();
+  switch (terminalStatusTone(status)) {
+    case "good":
+      return t.good;
+    case "danger":
+      return t.danger;
+    case "warning":
+      return t.warn;
+    case "accent":
+      return t.accent;
+    case "muted":
+      return t.borderStrong;
+  }
 }
 
 function toggleTerminalShellInputMode(): void {
