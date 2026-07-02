@@ -31,6 +31,8 @@ export class SettingsController {
   readonly store: AsyncStore<unknown>;
   readonly #onError?: (error: unknown) => void;
   readonly #settings = new Map<string, PersistentSignal<unknown, unknown>>();
+  #keys?: string[];
+  #localKeys?: string[];
 
   constructor(options: SettingsControllerOptions) {
     this.store = options.store;
@@ -55,6 +57,8 @@ export class SettingsController {
       onError: this.#onError,
     });
     this.#settings.set(key, setting as PersistentSignal<unknown, unknown>);
+    this.#keys = undefined;
+    this.#localKeys = undefined;
     return setting;
   }
 
@@ -67,20 +71,27 @@ export class SettingsController {
   }
 
   keys(): string[] {
-    const keys: string[] = [];
-    for (const key of this.#settings.keys()) {
-      keys.push(key);
+    if (!this.#keys) {
+      const keys: string[] = [];
+      for (const key of this.#settings.keys()) {
+        keys.push(key);
+      }
+      keys.sort();
+      this.#keys = keys;
     }
-    return keys.sort();
+    return cloneStringArray(this.#keys);
   }
 
   localKeys(): string[] {
-    const keys = this.keys();
-    const localKeys = new Array<string>(keys.length);
-    for (let index = 0; index < keys.length; index += 1) {
-      localKeys[index] = this.localKey(keys[index]!);
+    if (!this.#localKeys) {
+      const keys = this.keys();
+      const localKeys = new Array<string>(keys.length);
+      for (let index = 0; index < keys.length; index += 1) {
+        localKeys[index] = this.localKey(keys[index]!);
+      }
+      this.#localKeys = localKeys;
     }
-    return localKeys;
+    return cloneStringArray(this.#localKeys);
   }
 
   async ready(): Promise<void> {
@@ -127,6 +138,8 @@ export class SettingsController {
       setting.value.dispose();
     }
     this.#settings.clear();
+    this.#keys = undefined;
+    this.#localKeys = undefined;
   }
 
   key(key: string): string {
@@ -142,4 +155,10 @@ export class SettingsController {
 /** Creates an settings Controller. */
 export function createSettingsController(options: SettingsControllerOptions): SettingsController {
   return new SettingsController(options);
+}
+
+function cloneStringArray(values: readonly string[]): string[] {
+  const cloned = new Array<string>(values.length);
+  for (let index = 0; index < values.length; index += 1) cloned[index] = values[index]!;
+  return cloned;
 }
