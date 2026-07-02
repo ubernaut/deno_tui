@@ -10,6 +10,7 @@ import {
   createMouseInteractionRouter,
   createRenderLoop,
   createStandardComponentThemeDefinitions,
+  createTerminalWorkspaceController,
   createThemeProvider,
   createThemeProviderReport,
   cropToWidth,
@@ -28,6 +29,7 @@ import {
   searchCommandSurfaceItems,
   standardThemeComponentNames,
   TableController,
+  terminalWorkspacePaneRects,
   TextObject,
   textWidth,
   ThreeAsciiAnsiGridAssembler,
@@ -151,6 +153,19 @@ const benchmarkWindowManager = new WindowManagerController({
   })),
 });
 let windowManagerBenchmarkStep = 0;
+const terminalWorkspaceBenchmark = createTerminalWorkspaceController({ now: () => 1_000 });
+for (let index = 0; index < 24; index += 1) {
+  terminalWorkspaceBenchmark.add({
+    id: `shell-${index}`,
+    title: `Shell ${index}`,
+    cwd: `/tmp/work-${index % 4}`,
+    template: { kind: "spawn", command: "bash", cwd: `/tmp/work-${index % 4}` },
+  });
+  if (index > 0) {
+    terminalWorkspaceBenchmark.splitActive(index % 2 === 0 ? "row" : "column", `shell-${index}`);
+  }
+}
+let terminalWorkspaceBenchmarkStep = 0;
 const mouseRouter = createMouseInteractionRouter();
 const dirtyRegionRectangles = Array.from({ length: 400 }, (_, index) => ({
   column: (index * 7) % 180,
@@ -344,6 +359,27 @@ function runWindowManagerChurnWorkload(): void {
     }
   }
   windowManagerBenchmarkStep = (windowManagerBenchmarkStep + windowManagerBenchmarkBounds.length) % 10_000;
+}
+
+function runTerminalWorkspaceLayoutWorkload(): void {
+  const sessionId = `shell-${terminalWorkspaceBenchmarkStep % 24}`;
+  terminalWorkspaceBenchmark.activate(sessionId);
+  if (terminalWorkspaceBenchmarkStep % 5 === 0) {
+    terminalWorkspaceBenchmark.toggleZoomPane();
+  } else if (terminalWorkspaceBenchmark.inspectLayout().zoomedPaneId) {
+    terminalWorkspaceBenchmark.toggleZoomPane();
+  }
+  if (terminalWorkspaceBenchmarkStep % 3 === 0) {
+    terminalWorkspaceBenchmark.resizeActiveSplit(terminalWorkspaceBenchmarkStep % 2 === 0 ? 0.04 : -0.04);
+  }
+  const bounds = resizeBounds[terminalWorkspaceBenchmarkStep % resizeBounds.length]!;
+  const rects = terminalWorkspacePaneRects(terminalWorkspaceBenchmark.inspectLayout(), bounds, {
+    gap: terminalWorkspaceBenchmarkStep % 2,
+  });
+  if (rects.length === 0 || rects.some((entry) => entry.rect.width < 0 || entry.rect.height < 0)) {
+    throw new Error("terminal workspace pane projection produced invalid rectangles");
+  }
+  terminalWorkspaceBenchmarkStep = (terminalWorkspaceBenchmarkStep + 1) % 10_000;
 }
 
 function runApiWorkbenchFrameWorkload(): void {
@@ -1013,6 +1049,15 @@ export const benchmarkCases: BenchmarkCase[] = [
         throw new Error("terminal screen edit benchmark lost rows");
       }
     },
+  },
+  {
+    name: "runtime/terminal-workspace-layout-churn",
+    category: "runtime",
+    description: "Churn terminal workspace pane focus, zoom, split resize, and rect projection across resize bounds.",
+    tags: ["runtime", "terminal", "workspace", "layout", "resize"],
+    iterations: 500,
+    maxAverageMs: 2,
+    run: runTerminalWorkspaceLayoutWorkload,
   },
   {
     name: "data/table-select-100k",

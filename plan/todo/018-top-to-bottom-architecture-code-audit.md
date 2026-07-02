@@ -1006,6 +1006,9 @@ Work:
         from the non-indexed command-surface projection path.
   - [x] Reworked `TreeController.setExpanded()` to preserve unchanged subtree identity and allocate only along the
         changed branch, with regression coverage for no-op and nested expansion updates.
+  - [x] Reduced terminal workspace layout lookup clone churn by using internal read-only pane references for active,
+        zoomed, and prune checks while preserving defensive clones on public lookup APIs, with a focused
+        terminal-workspace layout churn benchmark added.
 - [x] Make demo-only assets and NGE-inspired primitives clearly separate from library APIs.
   - [x] Added `app/neon_three_catalog.ts` for supported Three scene metadata and labels, keeping demo/NGE catalog data
         separate from the monolithic scene factory and shared by visualization footers plus scene coverage tests.
