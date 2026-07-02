@@ -47,9 +47,15 @@ export function emptyGpuSnapshot(): GpuSnapshot {
 }
 
 export function parseNvidiaSmiGpuRow(row: string): GpuSnapshot | null {
-  const [name, utilization, memoryUsed, memoryTotal, temperature, power, graphicsClock, memoryClock] = row
-    .split(",")
-    .map((part) => part.trim());
+  const parts = row.split(",");
+  const name = parts[0]?.trim();
+  const utilization = parts[1]?.trim();
+  const memoryUsed = parts[2]?.trim();
+  const memoryTotal = parts[3]?.trim();
+  const temperature = parts[4]?.trim();
+  const power = parts[5]?.trim();
+  const graphicsClock = parts[6]?.trim();
+  const memoryClock = parts[7]?.trim();
   if (!name) return null;
   const total = parseMetricNumber(memoryTotal);
   const used = parseMetricNumber(memoryUsed);
@@ -107,10 +113,14 @@ async function sampleNvidiaSmiGpu(
       };
     }
 
-    const rows = COMMAND_OUTPUT_DECODER.decode(result.stdout).trim().split("\n").filter(Boolean);
-    const gpus = rows.map(parseNvidiaSmiGpuRow).filter((gpu): gpu is GpuSnapshot => gpu !== null);
-    const gpu = gpus.sort((left, right) => right.utilizationPercent - left.utilizationPercent)[0] ??
-      (current.available ? current : emptyGpuSnapshot());
+    let gpu: GpuSnapshot | undefined;
+    for (const row of COMMAND_OUTPUT_DECODER.decode(result.stdout).split("\n")) {
+      if (!row.trim()) continue;
+      const parsed = parseNvidiaSmiGpuRow(row);
+      if (!parsed) continue;
+      if (!gpu || parsed.utilizationPercent > gpu.utilizationPercent) gpu = parsed;
+    }
+    gpu ??= current.available ? current : emptyGpuSnapshot();
     return {
       gpu,
       diagnostic: {

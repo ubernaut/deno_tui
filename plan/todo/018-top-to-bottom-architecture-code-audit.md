@@ -235,6 +235,8 @@ Work:
         pointer checks avoid repeated sorted/filter/reverse arrays inside the overlay controller.
   - [x] Reworked window-manager ordering, state replacement, layout inspection, and z-order projection to use explicit
         output buffers instead of map/filter/spread pipelines in workbench window state paths.
+  - [x] Reworked disk, CPU, and NVIDIA GPU metrics parsers to avoid chained filter/map/reduce/sort allocations while
+        preserving fixture-backed monitor sampling behavior.
 
 Acceptance checks:
 

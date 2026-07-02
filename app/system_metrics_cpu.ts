@@ -19,16 +19,22 @@ export function sampleCpuStatRows(
   previousTimes: readonly CpuTimes[],
   fallbackCores: readonly CpuCoreSnapshot[],
 ): CpuStatSample {
-  const rows = text.split("\n").filter((line) => line.startsWith("cpu"));
   const times: CpuTimes[] = [];
   const cores: CpuCoreSnapshot[] = [];
   let overall = 0;
   let totalDelta = 1;
+  let index = 0;
 
-  for (const [index, row] of rows.entries()) {
-    const parts = row.trim().split(/\s+/).slice(1).map(Number);
-    const idle = (parts[3] ?? 0) + (parts[4] ?? 0);
-    const total = parts.reduce((sum, value) => sum + value, 0);
+  for (const row of text.split("\n")) {
+    if (!row.startsWith("cpu")) continue;
+    const parts = row.trim().split(/\s+/);
+    let idle = 0;
+    let total = 0;
+    for (let partIndex = 1; partIndex < parts.length; partIndex += 1) {
+      const value = Number(parts[partIndex] ?? 0);
+      total += value;
+      if (partIndex === 4 || partIndex === 5) idle += value;
+    }
     const previous = previousTimes[index] ?? { total, idle };
     const nextTotalDelta = total - previous.total;
     const idleDelta = idle - previous.idle;
@@ -44,6 +50,7 @@ export function sampleCpuStatRows(
         usage,
       });
     }
+    index += 1;
   }
 
   return {
