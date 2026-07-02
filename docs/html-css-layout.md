@@ -142,7 +142,11 @@ Run the report demo:
 ```bash
 deno task html-css-layout
 deno task html-css-layout:yoga
+deno task html-css-layout:worker
 ```
+
+The worker report uses `WorkerPool`, `createMarkupLayoutWorkerHandler()`, and `runMarkupLayoutInWorker()` to run
+parse/cascade/layout off the UI thread while leaving widget-controller hydration in the foreground app.
 
 Run the portfolio window demo:
 
