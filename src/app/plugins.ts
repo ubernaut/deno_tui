@@ -472,11 +472,14 @@ function workloadSourceIds(sources: readonly RuntimeWorkloadSource[]): string[] 
 }
 
 function uniqueSorted<T extends string>(values: Iterable<T>): T[] {
-  const set = new Set<T>();
-  for (const value of values) set.add(value);
   const output: T[] = [];
-  for (const value of set) output.push(value);
-  return output.sort();
+  for (const value of values) {
+    let index = 0;
+    while (index < output.length && output[index]! < value) index += 1;
+    if (output[index] === value) continue;
+    output.splice(index, 0, value);
+  }
+  return output;
 }
 
 function cloneStringArray<T extends string>(values: readonly T[]): T[] {
