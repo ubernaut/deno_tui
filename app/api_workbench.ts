@@ -110,6 +110,7 @@ import {
   type WorkbenchAsciiNumericKey,
   type WorkbenchAsciiToggleKey,
 } from "../src/app/workbench_ascii.ts";
+import { layoutWorkbenchAsciiConfigModal } from "../src/app/workbench_ascii_modal.ts";
 import { handleInput } from "../src/input.ts";
 import type { KeyPressEvent, MousePressEvent, MouseScrollEvent, PasteEvent } from "../src/input_reader/types.ts";
 import {
@@ -2643,36 +2644,25 @@ function renderThreeConfigModal(frame: Frame): void {
   const t = theme();
   const screen = { column: 0, row: 0, width: currentWidth(), height: currentHeight() };
   addHit(screen, { type: "asciiConfigBackdrop" });
-  const width = Math.min(Math.max(54, currentWidth() - 8), 82);
-  const height = Math.min(Math.max(16, threeConfigRows.length + 7), Math.max(10, currentHeight() - 4));
-  const rect = {
-    column: Math.max(0, Math.floor((currentWidth() - width) / 2)),
-    row: Math.max(1, Math.floor((currentHeight() - height) / 2)),
-    width,
-    height,
-  };
-  const shadow = clipRect(
-    { column: rect.column + 2, row: rect.row + 1, width: rect.width, height: rect.height },
-    screen,
-  );
-  if (shadow.width > 0 && shadow.height > 0) fillRect(frame, shadow, t.background);
-  fillRect(frame, rect, t.panelSoft);
-  drawFrame(frame, rect, "Three Renderer Config", true);
+  const layout = layoutWorkbenchAsciiConfigModal({ bounds: screen, rowCount: threeConfigRows.length });
+  if (layout.shadow.width > 0 && layout.shadow.height > 0) fillRect(frame, layout.shadow, t.background);
+  fillRect(frame, layout.rect, t.panelSoft);
+  drawFrame(frame, layout.rect, "Three Renderer Config", true);
 
-  const inner = inset(rect, 1);
+  const inner = layout.inner;
   const current = configuredAscii().peek();
   const title = `ASCII ${windowTitle(configuredAsciiWindow())} · ${
     terminalGlyphStyleLabel(current.terminalGlyphStyle)
   } · ${asciiPresetLabel(current.preset)}`;
   write(frame, inner.row, inner.column, paint(fit(title, inner.width), { fg: t.accent, bg: t.panelSoft, bold: true }));
-  const rowsTop = inner.row + 2;
-  const actionRow = inner.row + inner.height - 2;
-  const footerRow = inner.row + inner.height - 1;
-  const visibleRows = Math.max(0, actionRow - rowsTop);
-  for (let visibleIndex = 0; visibleIndex < Math.min(visibleRows, threeConfigRows.length); visibleIndex += 1) {
+  for (
+    let visibleIndex = 0;
+    visibleIndex < Math.min(layout.visibleRows, threeConfigRows.length);
+    visibleIndex += 1
+  ) {
     const rowIndex = visibleIndex;
     const row = threeConfigRows[rowIndex]!;
-    const y = rowsTop + visibleIndex;
+    const y = layout.rowsTop + visibleIndex;
     const selected = threeConfigSelected.peek() === rowIndex;
     const bg = selected ? t.warn : t.surface;
     const fg = selected ? t.background : t.text;
@@ -2700,8 +2690,8 @@ function renderThreeConfigModal(frame: Frame): void {
   ) {
     const width = textWidth(buttonText(action.label));
     if (actionColumn + width > inner.column + inner.width) break;
-    writeButton(frame, actionRow, actionColumn, action.label, { tone: action.tone });
-    addHit({ column: actionColumn, row: actionRow, width, height: 1 }, {
+    writeButton(frame, layout.actionRow, actionColumn, action.label, { tone: action.tone });
+    addHit({ column: actionColumn, row: layout.actionRow, width, height: 1 }, {
       type: "asciiConfigAction",
       action: action.id,
     });
@@ -2710,7 +2700,7 @@ function renderThreeConfigModal(frame: Frame): void {
   const footer = "Up/Down select  Left/Right change  Enter toggle  A apply  O OK  Esc cancel";
   write(
     frame,
-    footerRow,
+    layout.footerRow,
     inner.column,
     paint(fit(footer, inner.width), {
       fg: t.muted,

@@ -12,6 +12,7 @@ import {
   WorkbenchAsciiConfigController,
   workbenchAsciiRendererModeLabel,
 } from "../src/app/workbench_ascii.ts";
+import { layoutWorkbenchAsciiConfigModal } from "../src/app/workbench_ascii_modal.ts";
 
 Deno.test("workbench ascii controller owns root and per-window config signals", () => {
   const controller = new WorkbenchAsciiConfigController<"three" | "viz">("three");
@@ -117,4 +118,34 @@ Deno.test("workbench ascii config rows expose reusable modal text", () => {
     ),
     "Wire thickness     [<] █░░░  8.00 [>]",
   );
+});
+
+Deno.test("workbench ascii config modal layout centers rows actions and footer", () => {
+  const layout = layoutWorkbenchAsciiConfigModal({
+    bounds: { column: 0, row: 0, width: 120, height: 40 },
+    rowCount: defaultWorkbenchAsciiConfigRows.length,
+  });
+
+  assertEquals(layout.rect, { column: 19, row: 8, width: 82, height: 24 });
+  assertEquals(layout.inner, { column: 20, row: 9, width: 80, height: 22 });
+  assertEquals(layout.rowsTop, 11);
+  assertEquals(layout.actionRow, 29);
+  assertEquals(layout.footerRow, 30);
+  assertEquals(layout.visibleRows, 18);
+  assertEquals(layout.shadow, { column: 21, row: 9, width: 82, height: 24 });
+});
+
+Deno.test("workbench ascii config modal layout stays inside cramped bounds", () => {
+  const layout = layoutWorkbenchAsciiConfigModal({
+    bounds: { column: 3, row: 2, width: 38, height: 13 },
+    rowCount: defaultWorkbenchAsciiConfigRows.length,
+  });
+
+  assertEquals(layout.rect, { column: 3, row: 3, width: 38, height: 10 });
+  assertEquals(layout.inner, { column: 4, row: 4, width: 36, height: 8 });
+  assertEquals(layout.rowsTop, 6);
+  assertEquals(layout.actionRow, 10);
+  assertEquals(layout.footerRow, 11);
+  assertEquals(layout.visibleRows, 4);
+  assertEquals(layout.shadow, { column: 5, row: 4, width: 36, height: 10 });
 });
