@@ -263,6 +263,8 @@ Work:
         pass instead of once per dirty cell.
   - [x] Reworked workbench frame assembly to avoid temporary dense row arrays in `renderFrameRow()`/`renderFrameSlice()`
         and to style rectangle fills once per fill operation.
+  - [x] Reworked styled `textWidth()` and `cropToWidth()` to scan ANSI/Unicode text directly instead of allocating a
+        generator result object per rendered cell, cutting the ANSI text benchmark roughly in half.
   - [x] Added `visibleListRowsInto()` and rewired the `List` component to reuse its row buffer instead of allocating
         virtual row objects plus output rows on every render.
   - [x] Added `renderVirtualListRowsInto()` and rewired `VirtualList` display rows to reuse caller-owned output storage.

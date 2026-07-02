@@ -82,9 +82,19 @@ export function textWidth(text: string, start = 0): number {
   if (asciiWidth !== undefined) return asciiWidth;
 
   let width = 0;
-  for (const cell of iterateTextCells(text, start)) {
-    if (cell.plain === "\n") break;
-    width += characterWidth(cell.plain);
+  for (let index = Math.max(0, Math.floor(start)); index < text.length;) {
+    if (text.charCodeAt(index) === 0x1b) {
+      const sequence = readAnsiSequenceAt(text, index);
+      if (sequence) {
+        index += sequence.length;
+        continue;
+      }
+    }
+
+    const char = nextTextCharacter(text, index);
+    if (char === "\n") break;
+    width += characterWidth(char);
+    index += char.length;
   }
 
   return width;
@@ -97,30 +107,42 @@ export function cropToWidth(text: string, width: number): string {
 
   let cropped = "";
   let croppedWidth = 0;
+  let prefix = "";
 
-  for (const cell of iterateTextCells(text)) {
-    const plain = cell.plain;
-    if (!plain) {
-      cropped += cell.raw;
-      continue;
+  for (let index = 0; index < text.length;) {
+    if (text.charCodeAt(index) === 0x1b) {
+      const sequence = readAnsiSequenceAt(text, index);
+      if (sequence) {
+        prefix += sequence;
+        index += sequence.length;
+        continue;
+      }
     }
-    if (plain === "\n") break;
-    const charWidth = characterWidth(plain);
+
+    const char = nextTextCharacter(text, index);
+    if (char === "\n") break;
+    const charWidth = characterWidth(char);
 
     if (croppedWidth + charWidth > width) {
-      const leading = cell.raw.slice(0, cell.raw.length - plain.length);
-      if (leading && isAnsiResetOnly(leading)) {
-        cropped += leading;
+      if (prefix && isAnsiResetOnly(prefix)) {
+        cropped += prefix;
       }
       if (croppedWidth + 1 === width) {
         cropped += " ";
       }
+      prefix = "";
       break;
     } else {
       croppedWidth += charWidth;
     }
 
-    cropped += cell.raw;
+    cropped += prefix + char;
+    prefix = "";
+    index += char.length;
+  }
+
+  if (prefix) {
+    cropped += prefix;
   }
 
   return cropped;
@@ -145,30 +167,6 @@ function cropPlainAsciiToWidth(text: string, width: number): string | undefined 
     if (code === 0x1b || code >= 0x80) return undefined;
   }
   return text.length <= safeWidth ? text : text.slice(0, limit);
-}
-
-function* iterateTextCells(text: string, start = 0): Generator<{ raw: string; plain: string }, void, void> {
-  let index = start;
-  let prefix = "";
-  while (index < text.length) {
-    if (text.charCodeAt(index) === 0x1b) {
-      const sequence = readAnsiSequenceAt(text, index);
-      if (sequence) {
-        prefix += sequence;
-        index += sequence.length;
-        continue;
-      }
-    }
-
-    const char = nextTextCharacter(text, index);
-    yield { raw: prefix + char, plain: char };
-    prefix = "";
-    index += char.length;
-  }
-
-  if (prefix) {
-    yield { raw: prefix, plain: "" };
-  }
 }
 
 function nextTextCharacter(text: string, index: number): string {
