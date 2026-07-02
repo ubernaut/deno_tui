@@ -228,6 +228,11 @@ export class ThreePanelFrameView {
   private readonly interaction = new ThreePanelInteractionController();
   private graphicsHandle?: GraphicsHandle;
   private lastGraphicsUnavailableKey?: string;
+  private appliedColumns = 0;
+  private appliedRows = 0;
+  private appliedEffectOptions?: ReturnType<typeof asciiEffectOptions>;
+  private appliedTerminalEdgeBias?: number;
+  private appliedTerminalGlyphStyle?: AsciiOptions["terminalGlyphStyle"];
 
   constructor(
     private readonly options: {
@@ -317,15 +322,17 @@ export class ThreePanelFrameView {
       this.failed = false;
       const rendererFactory = this.options.rendererFactory ??
         ((rendererOptions) => new ThreeAsciiRenderer(rendererOptions));
+      const effectOptions = asciiEffectOptions(ascii);
       this.renderer = rendererFactory({
         scene: bundle.scene,
         camera: bundle.camera,
         columns: rect.width,
         rows: rect.height,
-        effect: asciiEffectOptions(ascii),
+        effect: effectOptions,
         terminalEdgeBias: ascii.terminalEdgeBias,
         terminalGlyphStyle: ascii.terminalGlyphStyle,
       });
+      this.captureAppliedRendererState(rect, ascii, effectOptions);
       this.setGrid([]);
     }
 
@@ -336,10 +343,9 @@ export class ThreePanelFrameView {
       return;
     }
 
-    this.renderer?.setSize(rect.width, rect.height);
-    this.renderer?.setEffectOptions(asciiEffectOptions(ascii));
-    this.renderer?.setTerminalEdgeBias(ascii.terminalEdgeBias);
-    this.renderer?.setTerminalGlyphStyle(ascii.terminalGlyphStyle);
+    if (this.renderer) {
+      this.applyRendererState(this.renderer, rect, ascii);
+    }
 
     if (!this.running) {
       this.running = true;
@@ -391,8 +397,8 @@ export class ThreePanelFrameView {
       const deltaTime = (now - this.lastFrameTime) / 1000;
       this.lastFrameTime = now;
 
-      renderer.setSize(rect.width, rect.height);
       const ascii = this.options.ascii.peek();
+      this.applyRendererState(renderer, rect, ascii);
       const graphicsSurface = this.resolveGraphicsSurface();
       const graphicsRectangle = this.options.graphicsRectangle?.peek() ?? rect;
       const graphicsInspection = graphicsSurface?.inspect();
@@ -531,12 +537,63 @@ export class ThreePanelFrameView {
 
     this.renderer?.destroy();
     this.renderer = undefined;
+    this.resetAppliedRendererState();
     void this.clearGraphicsImage();
     this.bundle?.dispose();
     this.bundle = undefined;
     this.activeMode = undefined;
     this.activeWireframeThickness = undefined;
     this.interaction.clearBaseTransform();
+  }
+
+  private resetAppliedRendererState(): void {
+    this.appliedColumns = 0;
+    this.appliedRows = 0;
+    this.appliedEffectOptions = undefined;
+    this.appliedTerminalEdgeBias = undefined;
+    this.appliedTerminalGlyphStyle = undefined;
+  }
+
+  private captureAppliedRendererState(
+    rect: Pick<Rect, "width" | "height">,
+    ascii: AsciiOptions,
+    effectOptions = asciiEffectOptions(ascii),
+  ): void {
+    this.appliedColumns = Math.max(1, Math.floor(rect.width));
+    this.appliedRows = Math.max(1, Math.floor(rect.height));
+    this.appliedEffectOptions = effectOptions;
+    this.appliedTerminalEdgeBias = ascii.terminalEdgeBias;
+    this.appliedTerminalGlyphStyle = ascii.terminalGlyphStyle;
+  }
+
+  private applyRendererState(
+    renderer: ThreePanelGridRenderer,
+    rect: Pick<Rect, "width" | "height">,
+    ascii: AsciiOptions,
+  ) {
+    const columns = Math.max(1, Math.floor(rect.width));
+    const rows = Math.max(1, Math.floor(rect.height));
+    if (this.appliedColumns !== columns || this.appliedRows !== rows) {
+      renderer.setSize(columns, rows);
+      this.appliedColumns = columns;
+      this.appliedRows = rows;
+    }
+
+    const effectOptions = asciiEffectOptions(ascii);
+    if (!threeAsciiEffectOptionsEqual(this.appliedEffectOptions, effectOptions)) {
+      renderer.setEffectOptions(effectOptions);
+      this.appliedEffectOptions = effectOptions;
+    }
+
+    if (this.appliedTerminalEdgeBias !== ascii.terminalEdgeBias) {
+      renderer.setTerminalEdgeBias(ascii.terminalEdgeBias);
+      this.appliedTerminalEdgeBias = ascii.terminalEdgeBias;
+    }
+
+    if (this.appliedTerminalGlyphStyle !== ascii.terminalGlyphStyle) {
+      renderer.setTerminalGlyphStyle(ascii.terminalGlyphStyle);
+      this.appliedTerminalGlyphStyle = ascii.terminalGlyphStyle;
+    }
   }
 
   dispose(): void {
@@ -664,6 +721,24 @@ function blankGrid(width: number, height: number): string[][] {
     grid[row] = gridRow;
   }
   return grid;
+}
+
+function threeAsciiEffectOptionsEqual(
+  left: ReturnType<typeof asciiEffectOptions> | undefined,
+  right: ReturnType<typeof asciiEffectOptions>,
+): boolean {
+  if (!left) return false;
+  return left.edgeThreshold === right.edgeThreshold &&
+    left.normalThreshold === right.normalThreshold &&
+    left.depthThreshold === right.depthThreshold &&
+    left.exposure === right.exposure &&
+    left.attenuation === right.attenuation &&
+    left.blendWithBase === right.blendWithBase &&
+    left.depthFalloff === right.depthFalloff &&
+    left.depthOffset === right.depthOffset &&
+    left.edges === right.edges &&
+    left.fill === right.fill &&
+    left.invertLuminance === right.invertLuminance;
 }
 
 function graphicsFallbackReason(

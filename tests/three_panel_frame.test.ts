@@ -236,6 +236,45 @@ Deno.test("ThreePanelFrameView starts after same-tick rectangle activation", asy
   }
 });
 
+Deno.test("ThreePanelFrameView only applies renderer settings when they change", async () => {
+  const rectangle = new Signal({ column: 0, row: 0, width: 12, height: 6 }, { deepObserve: true });
+  const scene = new Signal<ThreeSceneState | null>(sceneState());
+  const ascii = new Signal(createDefaultAsciiOptions("sharp"));
+  const enabled = new Signal(true);
+  let renderer: FakeGridRenderer | undefined;
+  const panel = new ThreePanelFrameView({
+    rectangle,
+    scene,
+    ascii,
+    enabled,
+    frameInterval: 1,
+    rendererFactory: (options) => renderer = new FakeGridRenderer(options.columns, options.rows),
+  });
+
+  try {
+    await waitFor(() => (renderer?.renderCount ?? 0) >= 3);
+
+    assertEquals(renderer?.setSizeCalls, 0);
+    assertEquals(renderer?.setEffectOptionsCalls, 0);
+    assertEquals(renderer?.setTerminalEdgeBiasCalls, 0);
+    assertEquals(renderer?.setTerminalGlyphStyleCalls, 0);
+
+    ascii.value = { ...ascii.peek(), edgeThreshold: ascii.peek().edgeThreshold + 1 };
+    await waitFor(() => (renderer?.setEffectOptionsCalls ?? 0) >= 1);
+
+    assertEquals(renderer?.setSizeCalls, 0);
+    assertEquals(renderer?.setEffectOptionsCalls, 1);
+    assertEquals(renderer?.setTerminalEdgeBiasCalls, 0);
+    assertEquals(renderer?.setTerminalGlyphStyleCalls, 0);
+  } finally {
+    panel.dispose();
+    rectangle.dispose();
+    scene.dispose();
+    ascii.dispose();
+    enabled.dispose();
+  }
+});
+
 Deno.test("ThreePanelFrameView defers resize while a frame is rendering", async () => {
   const rectangle = new Signal({ column: 0, row: 0, width: 12, height: 6 }, { deepObserve: true });
   const scene = new Signal<ThreeSceneState | null>(sceneState());
@@ -768,23 +807,32 @@ function clearQueuedCells(object: ThreeAsciiObject): void {
 class FakeGridRenderer implements ThreePanelGridRenderer, ThreeAsciiGridRenderer {
   readonly scene = {} as Scene;
   readonly camera = {} as Camera;
+  setSizeCalls = 0;
+  setEffectOptionsCalls = 0;
+  setTerminalEdgeBiasCalls = 0;
+  setTerminalGlyphStyleCalls = 0;
+  renderCount = 0;
   private terminalEdgeBias = 1;
   private terminalGlyphStyle: TerminalGlyphStyle = "blocks";
 
   constructor(private columns: number, private rows: number, private readonly glyph = "█") {}
 
   setSize(columns: number, rows: number): void {
+    this.setSizeCalls += 1;
     this.columns = columns;
     this.rows = rows;
   }
 
-  setEffectOptions(): void {}
+  setEffectOptions(): void {
+    this.setEffectOptionsCalls += 1;
+  }
 
   getTerminalEdgeBias(): number {
     return this.terminalEdgeBias;
   }
 
   setTerminalEdgeBias(value: number): void {
+    this.setTerminalEdgeBiasCalls += 1;
     this.terminalEdgeBias = value;
   }
 
@@ -793,6 +841,7 @@ class FakeGridRenderer implements ThreePanelGridRenderer, ThreeAsciiGridRenderer
   }
 
   setTerminalGlyphStyle(value: TerminalGlyphStyle): void {
+    this.setTerminalGlyphStyleCalls += 1;
     this.terminalGlyphStyle = value;
   }
 
@@ -801,6 +850,7 @@ class FakeGridRenderer implements ThreePanelGridRenderer, ThreeAsciiGridRenderer
     onFrame?: (deltaTime: number) => void | Promise<void>,
   ): Promise<string[][]> {
     await onFrame?.(0.016);
+    this.renderCount += 1;
     return Array.from(
       { length: this.rows },
       (_, row) => Array.from({ length: this.columns }, (_, column) => (row + column) % 2 === 0 ? this.glyph : " "),

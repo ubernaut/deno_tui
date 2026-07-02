@@ -1124,6 +1124,8 @@ Work:
         96x40 frame-diff benchmark that measures changed-cell queueing separately from ANSI grid assembly.
   - [x] Hoisted per-row cell offsets in the Three ASCII ANSI assembler edge and fill-only loops to avoid repeated row
         multiplication in the per-cell CPU assembly path.
+  - [x] Cached the `ThreePanelFrameView` renderer size, effect options, edge bias, and glyph style at the panel boundary
+        so live workbench frames do not resend unchanged settings into the Three.js ASCII renderer.
   - [x] Reworked `TreeController.setExpanded()` to preserve unchanged subtree identity and allocate only along the
         changed branch, with regression coverage for no-op and nested expansion updates.
   - [x] Reduced terminal workspace layout lookup clone churn by using internal read-only pane references for active,
