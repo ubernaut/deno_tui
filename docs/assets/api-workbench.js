@@ -4546,7 +4546,7 @@ function createLayoutNode(options) {
   return {
     id: id2,
     tag: options.tag,
-    classes: [...classNames],
+    classes: cloneStringArray(classNames),
     attributes,
     text: options.text,
     style: options.style ? cloneComputedLayoutStyle(options.style) : defaultComputedLayoutStyle(),
@@ -4555,14 +4555,18 @@ function createLayoutNode(options) {
   };
 }
 function cloneLayoutNode(node) {
+  const children = new Array(node.children.length);
+  for (let index = 0; index < node.children.length; index += 1) {
+    children[index] = cloneLayoutNode(node.children[index]);
+  }
   return {
     id: node.id,
     tag: node.tag,
-    classes: [...node.classes],
+    classes: cloneStringArray(node.classes),
     attributes: { ...node.attributes },
     text: node.text,
     style: cloneComputedLayoutStyle(node.style),
-    children: node.children.map(cloneLayoutNode),
+    children,
     intrinsic: node.intrinsic ? { ...node.intrinsic } : void 0
   };
 }
@@ -4591,7 +4595,29 @@ function flattenComputedLayoutBoxes(root2) {
   }
 }
 function splitClassList(value) {
-  return value?.split(/\s+/).filter(Boolean) ?? [];
+  if (!value) return [];
+  const classes = [];
+  let start = -1;
+  for (let index = 0; index <= value.length; index += 1) {
+    const char = index < value.length ? value[index] : " ";
+    if (char !== void 0 && !isClassWhitespace(char)) {
+      if (start < 0) start = index;
+      continue;
+    }
+    if (start >= 0) {
+      classes.push(value.slice(start, index));
+      start = -1;
+    }
+  }
+  return classes;
+}
+function cloneStringArray(values) {
+  const cloned = new Array(values.length);
+  for (let index = 0; index < values.length; index += 1) cloned[index] = values[index];
+  return cloned;
+}
+function isClassWhitespace(char) {
+  return char === " " || char === "\n" || char === "	" || char === "\r" || char === "\f";
 }
 
 // src/layout/measurement.ts
