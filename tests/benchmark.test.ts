@@ -190,6 +190,7 @@ Deno.test("benchmark CLI selectors filter executable cases", () => {
 
   assertEquals(options.json, true);
   assertEquals(options.list, false);
+  assertEquals(options.repeat, 1);
   assertEquals(options.query, { search: "terminal replay", tag: "terminal" });
   assertEquals(selected.map((entry) => entry.name), ["runtime/terminal-screen-replay"]);
 });
@@ -213,4 +214,12 @@ Deno.test("benchmark CLI accepts query as a search alias", () => {
     ],
   );
   assertEquals(assigned.query, { search: "workbench frame" });
+});
+
+Deno.test("benchmark CLI repeat count is opt-in and bounded", () => {
+  assertEquals(parseBenchmarkCliOptions(["--repeat", "3"]).repeat, 3);
+  assertEquals(parseBenchmarkCliOptions(["--repeat=4"]).repeat, 4);
+  assertEquals(parseBenchmarkCliOptions(["--repeat=0"]).repeat, 1);
+  assertEquals(parseBenchmarkCliOptions(["--repeat=100"]).repeat, 25);
+  assertEquals(parseBenchmarkCliOptions(["--repeat=nope"]).repeat, 1);
 });

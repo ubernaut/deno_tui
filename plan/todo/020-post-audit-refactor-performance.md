@@ -177,3 +177,6 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Re-ran Three ASCII focused benchmarks after the report; ANSI grid cases returned near prior ranges on a second run,
   while frame diff measured slower than the last committed baseline and needs another isolated sample before further
   hot-loop edits.
+- Added an opt-in `deno task benchmark -- --repeat N` mode that reruns selected benchmark cases and reports the best
+  average per case, making noisy renderer micro-benchmark checks less dependent on a single local sample while
+  preserving the default report format.

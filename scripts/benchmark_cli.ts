@@ -5,6 +5,7 @@ export interface BenchmarkCliOptions {
   query: BenchmarkCatalogQuery;
   list: boolean;
   json: boolean;
+  repeat: number;
 }
 
 /** Parses benchmark CLI selectors without executing benchmark work. */
@@ -12,6 +13,7 @@ export function parseBenchmarkCliOptions(args: readonly string[]): BenchmarkCliO
   const query: BenchmarkCatalogQuery = {};
   let list = false;
   let json = false;
+  let repeat = 1;
 
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index]!;
@@ -19,6 +21,14 @@ export function parseBenchmarkCliOptions(args: readonly string[]): BenchmarkCliO
       list = true;
     } else if (arg === "--json") {
       json = true;
+    } else if (arg === "--repeat") {
+      const value = args[index + 1];
+      if (value !== undefined) {
+        repeat = parseRepeatCount(value);
+        index += 1;
+      }
+    } else if (arg.startsWith("--repeat=")) {
+      repeat = parseRepeatCount(arg.slice("--repeat=".length));
     } else if (arg === "--filter" || arg === "--search" || arg === "--query") {
       const value = args[index + 1];
       if (value !== undefined) {
@@ -54,7 +64,7 @@ export function parseBenchmarkCliOptions(args: readonly string[]): BenchmarkCliO
     }
   }
 
-  return { query, list, json };
+  return { query, list, json, repeat };
 }
 
 /** Returns matching benchmark cases in their original execution order. */
@@ -64,4 +74,10 @@ export function selectBenchmarkCases(
 ): BenchmarkCase[] {
   const matchedNames = new Set(queryBenchmarkCases(cases, query).map((entry) => entry.name));
   return cases.filter((benchmark) => matchedNames.has(benchmark.name));
+}
+
+function parseRepeatCount(value: string): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return 1;
+  return Math.max(1, Math.min(25, Math.floor(parsed)));
 }
