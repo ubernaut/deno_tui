@@ -119,7 +119,7 @@ export class Label extends Component {
       const valueLines = this.#valueLines.value;
 
       if (!overwriteRectangle) {
-        rectangle.width = valueLines.reduce((p, c) => Math.max(p, textWidth(c)), 0);
+        rectangle.width = maxLineWidth(valueLines);
         rectangle.height = valueLines.length;
       }
 
@@ -246,5 +246,10 @@ function labelSourceOffset(lineCount: number, visibleCount: number, vertical: La
 }
 
 function maxLineWidth(lines: readonly string[]): number {
-  return lines.reduce((width, line) => Math.max(width, textWidth(line)), 0);
+  let width = 0;
+  for (const line of lines) {
+    const lineWidth = textWidth(line);
+    if (lineWidth > width) width = lineWidth;
+  }
+  return width;
 }

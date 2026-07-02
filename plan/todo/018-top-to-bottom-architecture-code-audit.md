@@ -955,6 +955,8 @@ Work:
         repeated active-step scans during pipeline apply, prewarm, and settings binding.
   - [x] Cached theme palette registry ids behind palette register/unregister, preserving defensive public array copies
         while reducing repeated sorting in palette inspections and provider setup.
+  - [x] Reduced label and key-help render-helper allocations by replacing hot-path `reduce`/`map().join()` formatting
+        with bounded loops that preserve existing output.
 - [x] Make demo-only assets and NGE-inspired primitives clearly separate from library APIs.
   - [x] Added `app/neon_three_catalog.ts` for supported Three scene metadata and labels, keeping demo/NGE catalog data
         separate from the monolithic scene factory and shared by visualization footers plus scene coverage tests.

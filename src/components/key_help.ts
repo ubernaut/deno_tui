@@ -13,7 +13,17 @@ export interface KeyHelpOptions extends ComponentOptions {
 
 /** Renders key Help into deterministic text rows. */
 export function renderKeyHelp(bindings: readonly KeyBinding[], width: number): string {
-  return bindings.map(formatKeyBinding).join("  ").slice(0, Math.max(0, width));
+  const limit = Math.max(0, width);
+  if (limit === 0 || bindings.length === 0) return "";
+
+  let row = "";
+  for (let index = 0; index < bindings.length; index += 1) {
+    const segment = formatKeyBinding(bindings[index]!);
+    const next = index === 0 ? segment : `${row}  ${segment}`;
+    if (next.length >= limit) return next.slice(0, limit);
+    row = next;
+  }
+  return row;
 }
 
 /** Public class implementing a key Help. */
