@@ -205,6 +205,23 @@ export interface ApiWorkbenchProgressRowOptions {
   title?: string;
 }
 
+export interface ApiWorkbenchControlsRowsOptions {
+  buttonPressCount: number;
+  genericButtonPressCount: number;
+  modalOpen: boolean;
+  slider: ApiWorkbenchSliderRowOptions;
+  checkboxes: readonly ApiWorkbenchCheckboxOption[];
+  radio: {
+    items: readonly ApiWorkbenchRadioOption[];
+    activeIndex: number;
+  };
+  combo: ApiWorkbenchComboHeaderRowsOptions;
+  dropdown: ApiWorkbenchDropdownHeaderRowOptions;
+  input: ApiWorkbenchInputRowOptions;
+  stepper: ApiWorkbenchStepperRowOptions;
+  progress: ApiWorkbenchProgressRowOptions;
+}
+
 export function nextApiWorkbenchControlId(
   current: ApiWorkbenchControlId,
   delta: number,
@@ -593,6 +610,88 @@ export function apiWorkbenchProgressRowInto(
     "slider",
     `${options.title ?? "Progress"}  ${options.track.text} ${options.value}${suffix}`,
   );
+}
+
+export function apiWorkbenchControlsRowsInto(
+  target: ApiWorkbenchProjectedControlRow[],
+  options: ApiWorkbenchControlsRowsOptions,
+): ApiWorkbenchProjectedControlRow[] {
+  let written = 0;
+  target[written] = apiWorkbenchButtonRowInto(target[written], {
+    id: "button",
+    label: "Run Action",
+    detail: `presses=${options.buttonPressCount}`,
+  });
+  written += 1;
+  target[written] = apiWorkbenchButtonRowInto(target[written], {
+    id: "genericButton",
+    label: "Generic Button",
+    detail: `presses=${options.genericButtonPressCount}`,
+  });
+  written += 1;
+  target[written] = apiWorkbenchButtonRowInto(target[written], {
+    id: "modal",
+    label: "Open Modal",
+    detail: `state=${options.modalOpen ? "open" : "closed"}`,
+  });
+  written += 1;
+  target[written] = apiWorkbenchSliderRowInto(target[written], options.slider);
+  written += 1;
+  target[written] = writeProjectedControlRow(target[written], "checkbox", "Checkboxes");
+  written += 1;
+  for (let index = 0; index < options.checkboxes.length; index += 1) {
+    const item = options.checkboxes[index]!;
+    target[written] = writeProjectedControlRow(
+      target[written],
+      "checkbox",
+      `${renderCheckBoxMark(item.checked)} ${item.label}`,
+      { indent: true, index },
+    );
+    written += 1;
+  }
+  target[written] = writeProjectedControlRow(target[written], "radio", "Radio", { previous: true, next: true });
+  written += 1;
+  for (let index = 0; index < options.radio.items.length; index += 1) {
+    const item = options.radio.items[index]!;
+    const mark = item.selected ? "●" : "○";
+    const cursor = index === options.radio.activeIndex ? ">" : " ";
+    target[written] = writeProjectedControlRow(
+      target[written],
+      "radio",
+      `${cursor} ${mark} ${item.label}`,
+      { indent: true, index },
+    );
+    written += 1;
+  }
+  const expandedGlyph = options.combo.expandedGlyph ?? "▾";
+  const collapsedGlyph = options.combo.collapsedGlyph ?? "▸";
+  const comboGlyph = options.combo.expanded ? expandedGlyph : collapsedGlyph;
+  const comboTitle = `${options.combo.title}  ${comboGlyph}`;
+  const comboHeader = `${comboTitle} ${options.combo.label}`;
+  const comboShouldSplit = textWidth(`> ${comboHeader}`) > options.combo.rectWidth &&
+    options.combo.rectWidth > Math.max(0, Math.floor(options.combo.splitMinWidth ?? 16));
+  target[written] = writeProjectedControlRow(target[written], "combo", comboShouldSplit ? comboTitle : comboHeader, {
+    action: "activate",
+    previous: options.combo.previous,
+    next: options.combo.next,
+  });
+  written += 1;
+  if (comboShouldSplit) {
+    target[written] = writeProjectedControlRow(target[written], "combo", options.combo.label, { indent: true });
+    written += 1;
+  }
+  target[written] = apiWorkbenchDropdownHeaderRowInto(target[written], options.dropdown);
+  written += 1;
+  target[written] = apiWorkbenchInputRowInto(target[written], options.input);
+  written += 1;
+  target[written] = apiWorkbenchStepperRowInto(target[written], options.stepper);
+  written += 1;
+  target[written] = writeProjectedControlRow(target[written], "textbox", "TextBox", { action: "focus" });
+  written += 1;
+  target[written] = apiWorkbenchProgressRowInto(target[written], options.progress);
+  written += 1;
+  target.length = written;
+  return target;
 }
 
 export function nextSortableDataColumn<TRow extends Record<string, unknown>>(

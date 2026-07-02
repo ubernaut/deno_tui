@@ -7,6 +7,7 @@ import {
   apiWorkbenchControlIds,
   apiWorkbenchControlLineInto,
   type ApiWorkbenchControlLineSegment,
+  apiWorkbenchControlsRowsInto,
   apiWorkbenchControlTrack,
   apiWorkbenchDropdownHeaderRowInto,
   apiWorkbenchDropdownPopoverRect,
@@ -396,6 +397,91 @@ Deno.test("api workbench simple control row projectors preserve renderer-neutral
       options: undefined,
     },
   );
+});
+
+Deno.test("api workbench controls panel rows project shared adapter order", () => {
+  const rows = apiWorkbenchControlsRowsInto([], {
+    buttonPressCount: 2,
+    genericButtonPressCount: 3,
+    modalOpen: true,
+    slider: { track: { text: "██░░" }, value: 5, max: 10 },
+    checkboxes: [
+      { label: "live preview", checked: true },
+      { label: "compact rows", checked: false },
+    ],
+    radio: {
+      items: [
+        { label: "Fast", selected: false },
+        { label: "Unit-01 Signal", selected: true },
+      ],
+      activeIndex: 1,
+    },
+    combo: {
+      title: "Theme",
+      label: "Unit-01 Signal",
+      expanded: true,
+      rectWidth: 18,
+    },
+    dropdown: {
+      title: "Dropdown",
+      label: "Geometry",
+      expanded: false,
+    },
+    input: {
+      title: "Input",
+      text: "deno task health",
+      active: true,
+    },
+    stepper: {
+      steps: [
+        { id: "draft", label: "Draft", completed: true },
+        { id: "review", label: "Review" },
+      ],
+      activeIndex: 1,
+      rectWidth: 42,
+    },
+    progress: {
+      track: { text: "███░" },
+      value: 75,
+    },
+  });
+
+  assertEquals(rows.map((row) => [row.id, row.value, row.options]), [
+    ["button", "[ Run Action ] presses=2", { button: true, action: undefined }],
+    ["genericButton", "[ Generic Button ] presses=3", { button: true, action: undefined }],
+    ["modal", "[ Open Modal ] state=open", { button: true, action: undefined }],
+    ["slider", "Slider    ██░░ 5/10", { previous: true, next: true }],
+    ["checkbox", "Checkboxes", undefined],
+    ["checkbox", "✓ live preview", { indent: true, index: 0 }],
+    ["checkbox", "✗ compact rows", { indent: true, index: 1 }],
+    ["radio", "Radio", { previous: true, next: true }],
+    ["radio", "  ○ Fast", { indent: true, index: 0 }],
+    ["radio", "> ● Unit-01 Signal", { indent: true, index: 1 }],
+    ["combo", "Theme  ▾", { action: "activate", previous: undefined, next: undefined }],
+    ["combo", "Unit-01 Signal", { indent: true }],
+    ["dropdown", "Dropdown  ▸ Geometry", { action: "toggle" }],
+    ["input", "Input     deno task health▌", { action: "focus" }],
+    ["stepper", "Stepper   ✓ Draft → [Review]", { previous: true, next: true }],
+    ["textbox", "TextBox", { action: "focus" }],
+    ["slider", "Progress  ███░ 75%", undefined],
+  ]);
+
+  const first = rows[0];
+  apiWorkbenchControlsRowsInto(rows, {
+    buttonPressCount: 4,
+    genericButtonPressCount: 0,
+    modalOpen: false,
+    slider: { track: { text: "░░░░" }, value: 1, max: 10 },
+    checkboxes: [],
+    radio: { items: [], activeIndex: 0 },
+    combo: { title: "Theme", label: "A", expanded: false, rectWidth: 80 },
+    dropdown: { title: "Dropdown", label: "A", expanded: true },
+    input: { title: "Input", text: "", active: false },
+    stepper: { steps: [], activeIndex: 0, rectWidth: 20 },
+    progress: { track: { text: "░░░░" }, value: 0 },
+  });
+  assertEquals(rows[0] === first, true);
+  assertEquals(rows.at(-1), { id: "slider", value: "Progress  ░░░░ 0%", options: undefined });
 });
 
 Deno.test("api workbench stepper hit placements clip and reuse caller storage", () => {

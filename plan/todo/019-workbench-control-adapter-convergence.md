@@ -19,11 +19,11 @@ keeping renderer-specific paint and hit-stack plumbing local.
 - [x] Extract shared checkbox and radio option row projection with caller-owned storage.
 - [x] Extract shared responsive combo header row projection while preserving adapter-specific glyphs and hit options.
 - [x] Extract shared button, dropdown, input, stepper, and progress row projectors used by both adapters.
-- [ ] Extract a renderer-neutral controls row projection for button, slider, checkbox, radio, combo, dropdown, input,
+- [x] Extract a renderer-neutral controls row projection for button, slider, checkbox, radio, combo, dropdown, input,
       textbox, stepper, and progress rows.
 - [ ] Add adapter-parity tests that compare terminal/web controls row geometry and hit regions from the shared
       projection.
-- [ ] Use the shared projection in both workbench adapters, leaving only ANSI/string-frame painting local.
+- [x] Use the shared projection in both workbench adapters, leaving only ANSI/string-frame painting local.
 
 ## Acceptance
 
