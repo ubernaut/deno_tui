@@ -170,6 +170,18 @@ Deno.test("workbenchTerminalToolbarItemsInto supports browser-safe action subset
   assertEquals(items.some((item) => item.action === "start"), false);
 });
 
+Deno.test("workbenchTerminalToolbarItemsInto reuses caller-owned button items", () => {
+  const target = workbenchTerminalToolbarItemsInto([], { activeId: "shell-1", sessionCount: 1 });
+  const first = target[0];
+  const second = target[1];
+
+  workbenchTerminalToolbarItemsInto(target, { activeId: "shell-1", sessionCount: 2, shellRunning: true });
+
+  assertEquals(target[0] === first, true);
+  assertEquals(target[1] === second, true);
+  assertEquals(target[1]?.disabled, false);
+});
+
 function fakeBackend(id: string, pty: boolean): TerminalBackend {
   return {
     id,

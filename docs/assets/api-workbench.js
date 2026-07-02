@@ -12683,13 +12683,13 @@ function workbenchTerminalSessionTabsInto(target, sessions, activeId, rect, opti
   return target;
 }
 function workbenchTerminalToolbarItemsInto(target, state, options = {}) {
-  target.length = 0;
   const actions = options.actions ?? WORKBENCH_TERMINAL_TOOLBAR_ACTIONS;
   const hasMatches = (state.searchMatchCount ?? 0) > 0;
   const scrollDisabled = (state.scrollbackTotalRows ?? 0) <= (state.scrollbackViewportRows ?? 0);
-  for (const action of actions) {
-    const item = workbenchTerminalToolbarItemForAction(action);
-    if (item === void 0) continue;
+  let written = 0;
+  for (let index = 0; index < actions.length; index += 1) {
+    const action = actions[index];
+    const item = workbenchTerminalToolbarItemForAction(target[written], action);
     if (action === "previous" || action === "next") {
       item.disabled = state.sessionCount < 2;
     } else if (action === "close") {
@@ -12717,30 +12717,66 @@ function workbenchTerminalToolbarItemsInto(target, state, options = {}) {
     } else if (action === "top" || action === "bottom") {
       item.disabled = scrollDisabled;
     }
-    target.push(item);
+    target[written] = item;
+    written += 1;
   }
+  target.length = written;
   return target;
 }
-function workbenchTerminalToolbarItemForAction(action) {
-  if (action === "new") return { label: "New", action, tone: "success" };
-  if (action === "previous") return { label: "Prev", action, tone: "muted" };
-  if (action === "next") return { label: "Next", action, tone: "muted" };
-  if (action === "close") return { label: "Close", action, tone: "danger" };
-  if (action === "splitRow") return { label: "Split H", action };
-  if (action === "splitColumn") return { label: "Split V", action };
-  if (action === "zoomPane") return { label: "Zoom", action };
-  if (action === "closePane") return { label: "Close Pane", action, tone: "danger" };
-  if (action === "start") return { label: "Start", action };
-  if (action === "stop") return { label: "Stop", action, tone: "danger" };
-  if (action === "restart") return { label: "Restart", action, tone: "warning" };
-  if (action === "clear") return { label: "Clear", action, tone: "muted" };
-  if (action === "raw") return { label: "Raw", action };
-  if (action === "copy") return { label: "Copy", action };
-  if (action === "search") return { label: "Search", action };
-  if (action === "previousMatch") return { label: "Prev Hit", action };
-  if (action === "nextMatch") return { label: "Next Hit", action };
-  if (action === "top") return { label: "Top", action };
-  if (action === "bottom") return { label: "Bottom", action };
+function workbenchTerminalToolbarItemForAction(target, action) {
+  const item = target ?? { label: "", action };
+  item.action = action;
+  item.disabled = false;
+  item.active = false;
+  item.tone = void 0;
+  if (action === "new") {
+    item.label = "New";
+    item.tone = "success";
+  } else if (action === "previous") {
+    item.label = "Prev";
+    item.tone = "muted";
+  } else if (action === "next") {
+    item.label = "Next";
+    item.tone = "muted";
+  } else if (action === "close") {
+    item.label = "Close";
+    item.tone = "danger";
+  } else if (action === "splitRow") {
+    item.label = "Split H";
+  } else if (action === "splitColumn") {
+    item.label = "Split V";
+  } else if (action === "zoomPane") {
+    item.label = "Zoom";
+  } else if (action === "closePane") {
+    item.label = "Close Pane";
+    item.tone = "danger";
+  } else if (action === "start") {
+    item.label = "Start";
+  } else if (action === "stop") {
+    item.label = "Stop";
+    item.tone = "danger";
+  } else if (action === "restart") {
+    item.label = "Restart";
+    item.tone = "warning";
+  } else if (action === "clear") {
+    item.label = "Clear";
+    item.tone = "muted";
+  } else if (action === "raw") {
+    item.label = "Raw";
+  } else if (action === "copy") {
+    item.label = "Copy";
+  } else if (action === "search") {
+    item.label = "Search";
+  } else if (action === "previousMatch") {
+    item.label = "Prev Hit";
+  } else if (action === "nextMatch") {
+    item.label = "Next Hit";
+  } else if (action === "top") {
+    item.label = "Top";
+  } else {
+    item.label = "Bottom";
+  }
+  return item;
 }
 
 // src/app/workbench_titlebar.ts
