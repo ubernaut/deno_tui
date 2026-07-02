@@ -187,7 +187,7 @@ export function createThemePlugin<
         id,
         label,
         provider: provider.inspect(),
-        pipelines: pipelines.map((pipeline) => pipeline.inspect()),
+        pipelines: inspectThemePluginPipelines(pipelines),
         commandsEnabled: (options.commands ?? true) !== false,
         pipelineCommandsEnabled: (options.commands ?? true) !== false &&
           pipelines.some((pipeline) =>
@@ -197,15 +197,36 @@ export function createThemePlugin<
         themePersistenceEnabled: options.settings !== undefined && (options.persistTheme ?? true) !== false,
         layerPersistenceEnabled: options.settings !== undefined &&
           (options.persistLayers ?? provider.layers.ids().length > 0) !== false,
-        pipelinePersistenceIds: options.settings === undefined ? [] : pipelines
-          .filter((pipeline) =>
-            pipelineSettingOptionsFor(options.persistPipelines ?? pipelines.length > 0, pipeline.id)
-          )
-          .map((pipeline) => pipeline.id),
+        pipelinePersistenceIds: options.settings === undefined ? [] : persistedThemePluginPipelineIds(
+          pipelines,
+          options.persistPipelines ?? pipelines.length > 0,
+        ),
         keymapMirroringEnabled: options.mirrorKeymap !== undefined && options.mirrorKeymap !== false,
       };
     },
   };
+}
+
+function inspectThemePluginPipelines(
+  pipelines: readonly ThemeEnginePipeline[],
+): ReturnType<ThemeEnginePipeline["inspect"]>[] {
+  const inspections = new Array<ReturnType<ThemeEnginePipeline["inspect"]>>(pipelines.length);
+  for (let index = 0; index < pipelines.length; index += 1) {
+    inspections[index] = pipelines[index]!.inspect();
+  }
+  return inspections;
+}
+
+function persistedThemePluginPipelineIds(
+  pipelines: readonly ThemeEnginePipeline[],
+  persist: ThemePluginOptions["persistPipelines"] | undefined,
+): string[] {
+  if (persist === undefined) return [];
+  const ids: string[] = [];
+  for (const pipeline of pipelines) {
+    if (pipelineSettingOptionsFor(persist, pipeline.id)) ids.push(pipeline.id);
+  }
+  return ids;
 }
 
 function commandOptionsFrom(options: boolean | ThemeCommandOptions | undefined): ThemeCommandOptions {

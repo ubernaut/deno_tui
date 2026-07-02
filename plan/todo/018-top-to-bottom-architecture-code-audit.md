@@ -400,6 +400,9 @@ Work:
         accumulation instead of `filter/map` projection chains.
   - [x] Reworked component catalog command projection and data-table sort command keyword creation to use direct command
         and keyword buffers instead of `map()` and short-lived `filter(Boolean)` arrays.
+  - [x] Reworked theme plugin inspection and theme-engine factory command projection to use direct buffers for pipeline
+        inspections, persisted pipeline ids, command definitions, and variant keywords instead of `map/filter` and
+        `Object.values().flat()` pipelines.
   - [x] Reworked scheduler and worker batch helpers to build promise buffers explicitly instead of per-item `map(async)`
         closures while preserving ordered results and abort behavior.
 

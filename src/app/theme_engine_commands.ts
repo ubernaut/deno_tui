@@ -78,37 +78,32 @@ export function themeEngineFactoryCommands(
   const registry = factoryRegistry(source);
   const group = options.group ?? "theme";
   const prefix = options.prefix ?? "theme.engine";
+  const factories = registry.inspect();
+  const commands = new Array<Command<ThemeEngineCommandAction>>(factories.length);
 
-  return registry.inspect().map((factory) => ({
-    id: `${prefix}.preview.${factory.id}`,
-    label: `Theme Engine: ${factory.label}`,
-    description: factory.description ?? `Preview the ${factory.label} theme engine.`,
-    group,
-    keywords: [
-      "theme",
-      "engine",
-      "factory",
-      "preview",
-      factory.id,
-      factory.label,
-      factory.palette,
-      ...factory.tags,
-      ...factory.components,
-      ...Object.values(factory.variants).flat(),
-    ],
-    disabled: options.disableInvalidFactories ?? true ? () => !registry.get(factory.id)?.inspect().valid : false,
-    action: () => {
-      const engine = buildFactoryEngine(source, factory.id, options);
-      return {
-        type: "theme.engine.previewed",
-        payload: {
-          id: factory.id,
-          inspection: registry.get(factory.id)?.inspect() ?? factory,
-          engine: engine.inspect(),
-        },
-      };
-    },
-  }));
+  for (let index = 0; index < factories.length; index += 1) {
+    const factory = factories[index]!;
+    commands[index] = {
+      id: `${prefix}.preview.${factory.id}`,
+      label: `Theme Engine: ${factory.label}`,
+      description: factory.description ?? `Preview the ${factory.label} theme engine.`,
+      group,
+      keywords: themeEngineFactoryKeywords(factory),
+      disabled: options.disableInvalidFactories ?? true ? () => !registry.get(factory.id)?.inspect().valid : false,
+      action: () => {
+        const engine = buildFactoryEngine(source, factory.id, options);
+        return {
+          type: "theme.engine.previewed",
+          payload: {
+            id: factory.id,
+            inspection: registry.get(factory.id)?.inspect() ?? factory,
+            engine: engine.inspect(),
+          },
+        };
+      },
+    };
+  }
+  return commands;
 }
 
 /** Builds command definitions for theme Engine Catalog. */
@@ -164,6 +159,26 @@ function buildFactoryEngine(
 
 function isThemeWorkspace(source: ThemeEngineCommandSource): source is ThemeWorkspace {
   return "factoryEngine" in source && typeof source.factoryEngine === "function";
+}
+
+function themeEngineFactoryKeywords(factory: ReturnType<ThemeEngineFactoryRegistry["inspect"]>[number]): string[] {
+  const keywords = [
+    "theme",
+    "engine",
+    "factory",
+    "preview",
+    factory.id,
+    factory.label,
+    factory.palette,
+  ];
+  for (const tag of factory.tags) keywords.push(tag);
+  for (const component of factory.components) keywords.push(component);
+  for (const variant in factory.variants) {
+    for (const state of factory.variants[variant]!) {
+      keywords.push(state);
+    }
+  }
+  return keywords;
 }
 
 function markdownOptions(
