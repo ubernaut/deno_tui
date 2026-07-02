@@ -21,6 +21,7 @@ export interface DrawObjectSpatialIndexStats {
 export class DrawObjectSpatialIndex {
   readonly #rows = new Map<number, DrawObject[]>();
   readonly #objects = new Set<DrawObject>();
+  readonly #querySeen = new Set<DrawObject>();
   #rowEntries = 0;
 
   static fromObjects(objects: Iterable<DrawObject>): DrawObjectSpatialIndex {
@@ -53,13 +54,20 @@ export class DrawObjectSpatialIndex {
   }
 
   query(rectangle: Rectangle): DrawObject[] {
+    return this.queryInto([], rectangle);
+  }
+
+  /** Writes objects intersecting the rectangle into a caller-owned buffer. */
+  queryInto(target: DrawObject[], rectangle: Rectangle): DrawObject[] {
+    target.length = 0;
     const startRow = Math.floor(rectangle.row);
     const endRow = startRow + Math.max(0, Math.floor(rectangle.height));
     const startColumn = Math.floor(rectangle.column);
     const endColumn = startColumn + Math.max(0, Math.floor(rectangle.width));
-    if (endRow <= startRow || endColumn <= startColumn) return [];
+    if (endRow <= startRow || endColumn <= startColumn) return target;
 
-    const candidates = new Set<DrawObject>();
+    const candidates = this.#querySeen;
+    candidates.clear();
     for (let row = startRow; row < endRow; row += 1) {
       for (const object of this.#rows.get(row) ?? []) {
         const objectRectangle = object.rectangle.peek();
@@ -69,12 +77,21 @@ export class DrawObjectSpatialIndex {
         candidates.add(object);
       }
     }
-    return [...candidates];
+    for (const object of candidates) target.push(object);
+    candidates.clear();
+    return target;
   }
 
   queryDirtyRegion(region: DirtyRegion): DrawObject[] {
-    if (region.isEmpty()) return [];
-    const candidates = new Set<DrawObject>();
+    return this.queryDirtyRegionInto([], region);
+  }
+
+  /** Writes objects intersecting the dirty region into a caller-owned buffer. */
+  queryDirtyRegionInto(target: DrawObject[], region: DirtyRegion): DrawObject[] {
+    target.length = 0;
+    if (region.isEmpty()) return target;
+    const candidates = this.#querySeen;
+    candidates.clear();
     region.forEachSegment((segment) => {
       const startColumn = segment.startColumn;
       const endColumn = segment.endColumn;
@@ -86,7 +103,9 @@ export class DrawObjectSpatialIndex {
         candidates.add(object);
       }
     });
-    return [...candidates];
+    for (const object of candidates) target.push(object);
+    candidates.clear();
+    return target;
   }
 
   inspect(): DrawObjectSpatialIndexStats {

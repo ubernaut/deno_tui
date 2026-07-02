@@ -1,5 +1,5 @@
 import { assertEquals } from "./deps.ts";
-import { BoxObject, DrawObjectSpatialIndex } from "../src/canvas/mod.ts";
+import { BoxObject, DirtyRegion, DrawObjectSpatialIndex } from "../src/canvas/mod.ts";
 import { createTestCanvas } from "../src/testing/mod.ts";
 
 Deno.test("DrawObjectSpatialIndex returns unique row-overlap candidates", () => {
@@ -30,6 +30,13 @@ Deno.test("DrawObjectSpatialIndex returns unique row-overlap candidates", () => 
   assertEquals(index.query({ column: 10, row: 2, width: 1, height: 1 }), [middle]);
   assertEquals(index.query({ column: 0, row: 10, width: 80, height: 2 }), []);
   assertEquals(index.query({ column: 0, row: 12, width: 80, height: 6 }), [bottom]);
+  const buffer = [bottom];
+  assertEquals(index.queryInto(buffer, { column: 0, row: 2, width: 80, height: 1 }), [top, middle]);
+  assertEquals(index.queryInto(buffer, { column: 0, row: 2, width: 80, height: 1 }), buffer);
+  const dirtyRegion = DirtyRegion.fromRectangles([{ column: 0, row: 2, width: 80, height: 1 }]);
+  assertEquals(index.queryDirtyRegionInto(buffer, dirtyRegion), [top, middle]);
+  assertEquals(index.queryDirtyRegionInto(buffer, DirtyRegion.fromRectangles([])), buffer);
+  assertEquals(buffer, []);
   assertEquals(index.inspect(), { objects: 3, rows: 9, rowEntries: 10 });
 });
 

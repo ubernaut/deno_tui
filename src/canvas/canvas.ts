@@ -243,10 +243,11 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
     let intersectionCandidateChecks = 0;
     if (intersectionsDirty) {
       objectsToRender.sort((a, b) => b.zIndex.peek() - a.zIndex.peek() || b.id - a.id);
+      const intersectionCandidates: DrawObject[] = [];
       for (const object of objectsToRender) {
         intersectionCandidateChecks += this.updateIntersections(
           object,
-          spatialIndex!.query(object.rectangle.peek()),
+          spatialIndex!.queryInto(intersectionCandidates, object.rectangle.peek()),
         );
         object.moved = false;
         if (!object.outOfBounds) {
@@ -377,7 +378,8 @@ function affectedDrawObjects(
   for (const object of movedObjects) {
     required.add(object);
   }
-  for (const object of spatialIndex.queryDirtyRegion(dirtyRegion)) {
+  const dirtyCandidates = spatialIndex.queryDirtyRegionInto([], dirtyRegion);
+  for (const object of dirtyCandidates) {
     required.add(object);
   }
   const affected: DrawObject[] = [];
