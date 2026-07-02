@@ -14,9 +14,11 @@ export interface StatusBarOptions extends ComponentOptions {
 export function renderStatusBar(left: string, right: string, width: number): string {
   const safeWidth = Math.max(0, width);
   const leftText = left.slice(0, safeWidth);
-  const rightText = right.slice(0, Math.max(0, safeWidth - leftText.length));
-  const gap = Math.max(1, safeWidth - leftText.length - rightText.length);
-  return `${leftText}${" ".repeat(gap)}${rightText}`.slice(0, safeWidth);
+  const remaining = safeWidth - leftText.length;
+  if (remaining <= 0) return leftText;
+  const rightText = right.slice(0, remaining);
+  const gap = Math.max(0, safeWidth - leftText.length - rightText.length);
+  return `${leftText}${" ".repeat(gap)}${rightText}`;
 }
 
 /** Public class implementing a status Bar. */

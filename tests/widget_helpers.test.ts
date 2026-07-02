@@ -1914,7 +1914,9 @@ Deno.test("padCommands expose movement and cursor reveal actions", async () => {
 
 Deno.test("renderStatusBar keeps left and right content inside width", () => {
   assertEquals(renderStatusBar("READY", "12:00", 12), "READY  12:00");
+  assertEquals(renderStatusBar("READY", "12:00", 10), "READY12:00");
   assertEquals(renderStatusBar("LONG LEFT", "RIGHT", 8), "LONG LEF");
+  assertEquals(renderStatusBar("READY", "12:00", 0), "");
 });
 
 Deno.test("TextLineCache reuses line snapshots until text changes", () => {
