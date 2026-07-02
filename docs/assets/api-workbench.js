@@ -1824,12 +1824,26 @@ function characterWidth(character) {
   if (plain.length === 2 && firstCodePoint > 65535) {
     return codePointWidth(firstCodePoint);
   }
-  const codePoints = [...plain].map((char) => char.codePointAt(0) ?? 0);
-  if (codePoints.some((codePoint2) => codePoint2 === 8205)) return 2;
-  if (codePoints.length === 2 && codePoints.every(isRegionalIndicator)) return 2;
-  if (codePoints.some((codePoint2) => codePoint2 === 65039) && codePoints.some(isEmojiSymbol)) return 2;
-  const codePoint = codePoints[0] ?? 0;
-  return codePointWidth(codePoint);
+  let firstScannedCodePoint = 0;
+  let count = 0;
+  let allRegional = true;
+  let hasZeroWidthJoiner = false;
+  let hasEmojiVariation = false;
+  let hasEmoji = false;
+  for (let index = 0; index < plain.length; ) {
+    const codePoint = plain.codePointAt(index) ?? 0;
+    if (count === 0) firstScannedCodePoint = codePoint;
+    count += 1;
+    if (codePoint === 8205) hasZeroWidthJoiner = true;
+    if (codePoint === 65039) hasEmojiVariation = true;
+    if (isEmojiSymbol(codePoint)) hasEmoji = true;
+    if (!isRegionalIndicator(codePoint)) allRegional = false;
+    index += codePoint > 65535 ? 2 : 1;
+  }
+  if (hasZeroWidthJoiner) return 2;
+  if (count === 2 && allRegional) return 2;
+  if (hasEmojiVariation && hasEmoji) return 2;
+  return codePointWidth(firstScannedCodePoint);
 }
 function codePointWidth(codePoint) {
   if (codePoint === 8203 || codePoint === 8205 || isCombiningMark(codePoint) || isVariationSelector(codePoint) || isEmojiModifier(codePoint)) {
