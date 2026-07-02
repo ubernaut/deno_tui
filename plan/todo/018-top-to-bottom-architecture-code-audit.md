@@ -957,6 +957,8 @@ Work:
         while reducing repeated sorting in palette inspections and provider setup.
   - [x] Reduced label and key-help render-helper allocations by replacing hot-path `reduce`/`map().join()` formatting
         with bounded loops that preserve existing output.
+  - [x] Reduced modal row rendering churn by clipping height in-place and stopping action-row assembly once the visible
+        width is filled.
 - [x] Make demo-only assets and NGE-inspired primitives clearly separate from library APIs.
   - [x] Added `app/neon_three_catalog.ts` for supported Three scene metadata and labels, keeping demo/NGE catalog data
         separate from the monolithic scene factory and shared by visualization footers plus scene coverage tests.

@@ -199,7 +199,9 @@ export function renderModalRows(inspection: ModalInspection, options: RenderModa
   const height = options.height === undefined ? rows.length : Math.max(0, Math.floor(options.height));
   if (options.height === undefined || height <= 0 || rows.length <= height) return rows;
   if (!actions || height === 1) return rows.slice(0, height);
-  return [...rows.slice(0, height - 1), actions];
+  const clipped = rows.slice(0, height);
+  clipped[height - 1] = actions;
+  return clipped;
 }
 
 /** Public helper for modal Content Height. */
@@ -235,6 +237,7 @@ function clampModalActionIndex(actions: readonly ModalAction[], index: number): 
 }
 
 function renderModalActions(actions: readonly ModalAction[], selectedIndex: number, width: number): string {
+  if (width <= 0 || actions.length === 0) return "";
   let row = "";
   for (let index = 0; index < actions.length; index += 1) {
     const action = actions[index]!;
@@ -242,8 +245,9 @@ function renderModalActions(actions: readonly ModalAction[], selectedIndex: numb
     const token = index === selectedIndex ? `[ ${label} ]` : `  ${label}  `;
     if (row) row += " ";
     row += action.destructive ? `!${token}!` : token;
+    if (textWidth(row) >= width) return cropToWidth(row, width);
   }
-  return cropToWidth(row, width);
+  return row;
 }
 
 function wrapModalLine(value: string, width: number): string[] {
