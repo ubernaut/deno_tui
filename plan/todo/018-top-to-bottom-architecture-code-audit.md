@@ -1103,6 +1103,8 @@ Work:
         common ANSI-parsed cells and cutting the ANSI measure/crop benchmark roughly in half.
   - [x] Added a pre-indexed 1k-command search benchmark so the reusable command-search index path is tracked separately
         from the non-indexed command-surface projection path.
+  - [x] Removed per-item `Set` allocation from shared weighted search match de-duplication, keeping stable match order
+        with a small direct scan that fits command labels and keyword lists.
   - [x] Reworked `TreeController.setExpanded()` to preserve unchanged subtree identity and allocate only along the
         changed branch, with regression coverage for no-op and nested expansion updates.
   - [x] Reduced terminal workspace layout lookup clone churn by using internal read-only pane references for active,

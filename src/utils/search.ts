@@ -127,12 +127,18 @@ function acronymStartsWith(field: string, term: string): boolean {
 }
 
 function uniqueStrings(values: readonly string[]): string[] {
-  if (values.length < 2) return [...values];
-  const seen = new Set<string>();
+  if (values.length === 0) return [];
   const unique: string[] = [];
-  for (const value of values) {
-    if (seen.has(value)) continue;
-    seen.add(value);
+  for (let index = 0; index < values.length; index += 1) {
+    const value = values[index]!;
+    let seen = false;
+    for (let uniqueIndex = 0; uniqueIndex < unique.length; uniqueIndex += 1) {
+      if (unique[uniqueIndex] === value) {
+        seen = true;
+        break;
+      }
+    }
+    if (seen) continue;
     unique.push(value);
   }
   return unique;
