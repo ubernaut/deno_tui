@@ -151,3 +151,9 @@ performance, shared terminal/web workbench projections, and oversized module red
   limitations surface as deterministic fallback/diagnostic failures instead of raw validation exceptions.
 - Extracted Three ASCII compute uniform packing into a focused internal helper with direct tests, keeping renderer GPU
   orchestration separate from byte-level uniform layout.
+- Extracted Three ASCII readback copy planning and then cached unchanged copy plans so renderer frames do not allocate
+  copy command arrays on stable output shapes.
+- Stabilized default Three ASCII block rendering by using ASCII-safe shared window controls and removing fog from the
+  default block preset so truecolor block cells keep source color depth.
+- Extracted the workbench Three ASCII config modal geometry into a tested internal layout helper, reducing inline modal
+  math in `app/api_workbench.ts`.
