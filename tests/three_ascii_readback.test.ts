@@ -114,7 +114,26 @@ Deno.test("three ascii readback layout cache invalidates on shape changes and cl
   assertEquals(afterClear === withoutEdges, false);
 });
 
-Deno.test("three ascii readback view cache reuses views by source and layout identity", () => {
+Deno.test("three ascii readback layout cache ignores unused edge bytes when edges are disabled", () => {
+  const cache = new ThreeAsciiReadbackLayoutCache();
+  const first = cache.resolve({
+    fillByteLength: 8,
+    edgeByteLength: 16,
+    colorByteLength: 32,
+    includeEdges: false,
+  });
+  const second = cache.resolve({
+    fillByteLength: 8,
+    edgeByteLength: 64,
+    colorByteLength: 32,
+    includeEdges: false,
+  });
+
+  assertEquals(second === first, true);
+  assertEquals(second.edgeOffset, undefined);
+});
+
+Deno.test("three ascii readback view cache reuses views by source and equivalent layout", () => {
   const cache = new ThreeAsciiReadbackViewCache();
   const layout = createThreeAsciiReadbackLayout({
     fillByteLength: 8,
@@ -135,7 +154,7 @@ Deno.test("three ascii readback view cache reuses views by source and layout ide
   const differentLayout = cache.resolve(source, equivalentLayout);
 
   assertEquals(second === first, true);
-  assertEquals(differentLayout === first, false);
+  assertEquals(differentLayout === first, true);
 
   cache.clear();
   assertEquals(cache.resolve(source, equivalentLayout) === differentLayout, false);

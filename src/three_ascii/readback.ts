@@ -34,19 +34,20 @@ export class ThreeAsciiReadbackLayoutCache {
   private includeEdges = false;
 
   resolve(options: ThreeAsciiReadbackLayoutOptions): ThreeAsciiReadbackLayout {
+    const edgeByteLength = options.includeEdges ? options.edgeByteLength : 0;
     if (
       this.cached &&
       this.fillByteLength === options.fillByteLength &&
-      this.edgeByteLength === options.edgeByteLength &&
+      this.edgeByteLength === edgeByteLength &&
       this.colorByteLength === options.colorByteLength &&
       this.includeEdges === options.includeEdges
     ) {
       return this.cached;
     }
 
-    this.cached = createThreeAsciiReadbackLayout(options);
+    this.cached = createThreeAsciiReadbackLayout({ ...options, edgeByteLength });
     this.fillByteLength = options.fillByteLength;
-    this.edgeByteLength = options.edgeByteLength;
+    this.edgeByteLength = edgeByteLength;
     this.colorByteLength = options.colorByteLength;
     this.includeEdges = options.includeEdges;
     return this.cached;
@@ -64,23 +65,52 @@ export class ThreeAsciiReadbackLayoutCache {
 /** Reuses typed readback views while the mapped range and layout are unchanged. */
 export class ThreeAsciiReadbackViewCache {
   private source?: ArrayBuffer;
-  private layout?: ThreeAsciiReadbackLayout;
+  private fillOffset = -1;
+  private edgeOffset = -2;
+  private colorOffset = -1;
+  private byteLength = -1;
+  private fillFloatLength = -1;
+  private edgeFloatLength = -1;
+  private colorFloatLength = -1;
   private cached?: ThreeAsciiReadbackViews;
 
   resolve(source: ArrayBuffer, layout: ThreeAsciiReadbackLayout): ThreeAsciiReadbackViews {
-    if (this.cached && this.source === source && this.layout === layout) {
+    const edgeOffset = layout.edgeOffset ?? -1;
+    if (
+      this.cached &&
+      this.source === source &&
+      this.fillOffset === layout.fillOffset &&
+      this.edgeOffset === edgeOffset &&
+      this.colorOffset === layout.colorOffset &&
+      this.byteLength === layout.byteLength &&
+      this.fillFloatLength === layout.fillFloatLength &&
+      this.edgeFloatLength === layout.edgeFloatLength &&
+      this.colorFloatLength === layout.colorFloatLength
+    ) {
       return this.cached;
     }
 
     this.source = source;
-    this.layout = layout;
+    this.fillOffset = layout.fillOffset;
+    this.edgeOffset = edgeOffset;
+    this.colorOffset = layout.colorOffset;
+    this.byteLength = layout.byteLength;
+    this.fillFloatLength = layout.fillFloatLength;
+    this.edgeFloatLength = layout.edgeFloatLength;
+    this.colorFloatLength = layout.colorFloatLength;
     this.cached = createThreeAsciiReadbackViews(source, layout);
     return this.cached;
   }
 
   clear(): void {
     this.source = undefined;
-    this.layout = undefined;
+    this.fillOffset = -1;
+    this.edgeOffset = -2;
+    this.colorOffset = -1;
+    this.byteLength = -1;
+    this.fillFloatLength = -1;
+    this.edgeFloatLength = -1;
+    this.colorFloatLength = -1;
     this.cached = undefined;
   }
 }

@@ -66,3 +66,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   every pointer lookup.
 - Added a string-backed full-row write fast path for browser workbench frames plus a benchmark guard for styled row
   replacement.
+- Tightened Three ASCII readback cache keys so disabled-edge layouts ignore unused edge bytes and equivalent packed
+  layouts reuse typed readback views.
