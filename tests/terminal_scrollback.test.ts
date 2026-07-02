@@ -71,6 +71,21 @@ Deno.test("TerminalScrollbackController selects and copies line ranges", () => {
   assertEquals(scrollback.inspect().selection, undefined);
 });
 
+Deno.test("TerminalScrollbackController supports interactive visible-row selection", () => {
+  const screen = new TerminalScreenController({ columns: 10, rows: 2, scrollbackLimit: 10 });
+  screen.write("first\nsecond\nthird\nfourth\nfifth");
+  const scrollback = new TerminalScrollbackController({ screen, viewportRows: 2 });
+
+  scrollback.toTop();
+  assertEquals(scrollback.selectVisibleRow(1), { anchor: 1, focus: 1 });
+  assertEquals(scrollback.copySelection(), "second");
+  assertEquals(scrollback.moveSelection(2), { anchor: 1, focus: 3 });
+  assertEquals(scrollback.inspect().visibleRows, ["third", "fourth"]);
+  assertEquals(scrollback.copySelection(), "second\nthird\nfourth");
+  assertEquals(scrollback.moveSelection(-1, false), { anchor: 2, focus: 2 });
+  assertEquals(scrollback.copySelection(), "third");
+});
+
 Deno.test("terminal scrollback commands drive copy mode search and selection", async () => {
   const screen = new TerminalScreenController({ columns: 10, rows: 2, scrollbackLimit: 10 });
   screen.write("alpha\nbeta\ngamma\nalphabet");

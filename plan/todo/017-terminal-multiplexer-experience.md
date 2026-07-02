@@ -143,3 +143,6 @@ developer workflows.
 - Added wheel-driven shell scrollback in the console and browser workbenches. Wheel events still route to child
   terminals that request SGR mouse reporting; otherwise they enter/use copy-mode scrollback locally instead of moving
   the outer workspace.
+- Added renderer-neutral interactive scrollback selection helpers plus console Workbench copy-pane selection. Copy mode
+  now supports row clicks, Space to start a selection, Shift+Up/Down to extend it, selected-row highlighting, and `C` to
+  copy the selected range.

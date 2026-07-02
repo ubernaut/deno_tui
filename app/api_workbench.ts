@@ -272,6 +272,7 @@ type HitAction =
   | { type: "terminalShellPane"; id: string }
   | { type: "terminalShellSession"; id: string }
   | { type: "terminalShellContent" }
+  | { type: "terminalShellCopyRow"; index: number }
   | { type: "dataRow"; index: number }
   | { type: "explorerRow"; index: number }
   | { type: "cpuHexTile"; id: VisualizationWindowId; label: string }
@@ -2011,7 +2012,7 @@ function renderTerminalShell(frame: Frame, rect: Rectangle): void {
   row += 1;
 
   const hint = copyMode
-    ? "copy mode: PageUp/PageDown scroll  Home/End jump  C copy selection  Esc live input"
+    ? "copy mode: PageUp/PageDown scroll  Space select  Shift+Up/Down extend  C copy  Esc live input"
     : terminalShellInputMode.peek() === "raw"
     ? "raw shell input: keys go to shell  Ctrl+C interrupts shell  Esc returns to Workbench"
     : "keys: P start  S stop  U restart  K clear  I raw input  PageUp copy scroll";
@@ -2130,17 +2131,27 @@ function renderTerminalShellCopyPane(frame: Frame, rect: Rectangle, shell: Termi
   const t = theme();
   const inspection = shell.inspect();
   const rows = inspection.scrollback.visibleRows;
+  const selection = inspection.scrollback.selection;
+  const selectionStart = selection ? Math.min(selection.anchor, selection.focus) : -1;
+  const selectionEnd = selection ? Math.max(selection.anchor, selection.focus) : -1;
   for (let screenRow = 0; screenRow < rect.height; screenRow += 1) {
     const text = rows[screenRow] ?? "";
     const lineNumber = inspection.scrollback.offset + screenRow + 1;
+    const rowIndex = lineNumber - 1;
+    const selected = rowIndex >= selectionStart && rowIndex <= selectionEnd;
     const prefix = `${lineNumber.toString().padStart(4, " ")} `;
+    addHit({ column: rect.column, row: rect.row + screenRow, width: rect.width, height: 1 }, {
+      type: "terminalShellCopyRow",
+      index: rowIndex,
+    });
     write(
       frame,
       rect.row + screenRow,
       rect.column,
       paint(fit(prefix, Math.min(5, rect.width)), {
-        fg: t.soft,
-        bg: t.panelSoft,
+        fg: selected ? t.background : t.soft,
+        bg: selected ? t.warn : t.panelSoft,
+        bold: selected,
       }),
     );
     if (rect.width > 5) {
@@ -2149,8 +2160,9 @@ function renderTerminalShellCopyPane(frame: Frame, rect: Rectangle, shell: Termi
         rect.row + screenRow,
         rect.column + 5,
         paint(fit(text, rect.width - 5), {
-          fg: t.text,
-          bg: t.surface,
+          fg: selected ? t.background : t.text,
+          bg: selected ? t.warn : t.surface,
+          bold: selected,
         }),
       );
     }
@@ -3992,6 +4004,13 @@ function applyHit(target: { rect: Rectangle; action: HitAction }, x: number, y: 
       focus(TERMINAL_SHELL_WINDOW_ID);
       pushLog(`shell active ${session?.title ?? action.id}`);
     }
+  } else if (action.type === "terminalShellCopyRow") {
+    const shell = activeTerminalShell();
+    if (shell?.scrollback.setSelection(action.index)) {
+      terminalShellInputMode.value = "workbench";
+      focus(TERMINAL_SHELL_WINDOW_ID);
+      pushLog(`shell selected row ${action.index + 1}`);
+    }
   } else if (action.type === "modalAction") {
     if (action.index >= 0) modal.activateAction(action.index);
   } else if (action.type === "dataRow") selectDataRow(action.index);
@@ -4217,6 +4236,11 @@ function handleTerminalShellKey(event: KeyPressEvent): boolean {
     else if (event.key === "pagedown") shell.scrollback.page(1);
     else if (event.key === "home") shell.scrollback.toTop();
     else if (event.key === "end") shell.scrollback.toBottom();
+    else if (event.key === "space") {
+      shell.scrollback.selectVisibleRow(0);
+      pushLog("shell selection started");
+    } else if (event.key === "up" && event.shift) shell.scrollback.moveSelection(-1);
+    else if (event.key === "down" && event.shift) shell.scrollback.moveSelection(1);
     else if (event.key === "up") shell.scrollback.scrollLines(-1);
     else if (event.key === "down") shell.scrollback.scrollLines(1);
     else if (event.key === "/") openTerminalShellSearchModal();

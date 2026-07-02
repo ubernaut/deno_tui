@@ -142,6 +142,23 @@ export class TerminalScrollbackController {
     return this.#selection ? { ...this.#selection } : undefined;
   }
 
+  selectVisibleRow(row: number, extend = false): TerminalScrollbackSelection | undefined {
+    const rows = this.#rows();
+    if (rows.length === 0) return undefined;
+    const focus = clamp(this.offset + Math.trunc(row), 0, rows.length - 1);
+    const anchor = extend && this.#selection ? this.#selection.anchor : focus;
+    return this.#setSelectionAndReveal(anchor, focus, rows.length);
+  }
+
+  moveSelection(delta: number, extend = true): TerminalScrollbackSelection | undefined {
+    const rows = this.#rows();
+    if (rows.length === 0) return undefined;
+    const current = this.#selection?.focus ?? this.offset;
+    const focus = clamp(current + Math.trunc(delta), 0, rows.length - 1);
+    const anchor = extend ? this.#selection?.anchor ?? current : focus;
+    return this.#setSelectionAndReveal(anchor, focus, rows.length);
+  }
+
   clearSelection(): void {
     this.#selection = undefined;
   }
@@ -209,6 +226,27 @@ export class TerminalScrollbackController {
     }
     if (this.#matches.length === 0) this.#activeMatch = -1;
     else this.#activeMatch = clamp(this.#activeMatch, 0, this.#matches.length - 1);
+  }
+
+  #setSelectionAndReveal(
+    anchor: number,
+    focus: number,
+    rowCount: number,
+  ): TerminalScrollbackSelection | undefined {
+    this.#selection = normalizeSelection({ anchor, focus }, rowCount);
+    if (!this.#selection) return undefined;
+    this.enterCopyMode();
+    this.#revealRow(this.#selection.focus);
+    return { ...this.#selection };
+  }
+
+  #revealRow(row: number): void {
+    const target = clamp(Math.trunc(row), 0, Math.max(0, this.#rows().length - 1));
+    if (target < this.#offset) {
+      this.#offset = target;
+    } else if (target >= this.#offset + this.#viewportRows) {
+      this.#offset = clamp(target - this.#viewportRows + 1, 0, this.#maxOffset());
+    }
   }
 }
 
