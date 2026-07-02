@@ -316,6 +316,8 @@ Work:
   - [x] Reworked MouseInteractionRouter inspection, hit testing, target snapshots, and ordered target cache population
         to avoid map/find/spread allocation in input dispatch paths.
   - [x] Reworked HitTargetStack inspection snapshots to clone target rectangles with a preallocated buffer.
+  - [x] Reworked workbench text width and wrapping helpers to avoid reduce callbacks and redundant filter passes in
+        frequent menu/panel text measurement.
 
 Acceptance checks:
 

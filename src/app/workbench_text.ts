@@ -14,7 +14,11 @@ export function compactSpaces(value: string): string {
 
 /** Returns the maximum printable width among raw rows. */
 export function maxTextWidth(values: readonly string[]): number {
-  return values.reduce((max, value) => Math.max(max, textWidth(value)), 0);
+  let max = 0;
+  for (let index = 0; index < values.length; index += 1) {
+    max = Math.max(max, textWidth(values[index]!));
+  }
+  return max;
 }
 
 /** Returns the maximum printable width among values projected to display text. */
@@ -28,14 +32,19 @@ export function maxTextWidthBy<T>(values: Iterable<T>, project: (value: T) => st
 
 /** Returns the maximum printable width among non-empty trimmed rows. */
 export function maxTrimmedTextWidth(values: readonly string[]): number {
-  return values.reduce((max, value) => Math.max(max, textWidth(value.trimEnd())), 0);
+  let max = 0;
+  for (let index = 0; index < values.length; index += 1) {
+    max = Math.max(max, textWidth(values[index]!.trimEnd()));
+  }
+  return max;
 }
 
 /** Wraps plain text to terminal-cell width after stripping ANSI styles and normalizing whitespace. */
 export function wrapPlainText(value: string, width: number, fit: (value: string, width: number) => string): string[] {
   const safeWidth = Math.max(1, width);
-  const words = stripStyles(value).replace(/\s+/g, " ").trim().split(" ").filter(Boolean);
-  if (words.length === 0) return [""];
+  const normalized = compactSpaces(stripStyles(value));
+  if (!normalized) return [""];
+  const words = normalized.split(" ");
   const rows: string[] = [];
   let line = "";
   for (const word of words) {
