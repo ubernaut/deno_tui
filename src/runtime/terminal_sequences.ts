@@ -71,7 +71,17 @@ export function parseTerminalControlSequence(
 /** Parses semicolon/colon-separated numeric terminal parameters. */
 export function parseTerminalParams(params: string): number[] {
   if (!params) return [];
-  return params.split(/[;:]/).map((value) => Number.parseInt(value || "0", 10)).filter(Number.isFinite);
+  const values: number[] = [];
+  let tokenStart = 0;
+  for (let index = 0; index <= params.length; index += 1) {
+    const code = index < params.length ? params.charCodeAt(index) : 0x3b;
+    if (code !== 0x3b && code !== 0x3a) continue;
+    const token = params.slice(tokenStart, index);
+    const value = Number.parseInt(token || "0", 10);
+    if (Number.isFinite(value)) values.push(value);
+    tokenStart = index + 1;
+  }
+  return values;
 }
 
 function parseOscSequence(value: string, start: number): ParsedTerminalControlSequence | undefined {

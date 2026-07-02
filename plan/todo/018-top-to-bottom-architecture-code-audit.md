@@ -318,6 +318,7 @@ Work:
   - [x] Reworked HitTargetStack inspection snapshots to clone target rectangles with a preallocated buffer.
   - [x] Reworked workbench text width and wrapping helpers to avoid reduce callbacks and redundant filter passes in
         frequent menu/panel text measurement.
+  - [x] Reworked terminal parameter parsing to scan CSI parameter strings directly instead of split/map/filter chains.
 
 Acceptance checks:
 
