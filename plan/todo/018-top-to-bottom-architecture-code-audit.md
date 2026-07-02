@@ -728,6 +728,8 @@ Work:
         Yoga named-area parity documented as an unsupported gap.
   - [x] Added CSS `visibility` inheritance in the markup cascade so hidden containers suppress descendant hit regions by
         default while explicit `visibility: visible` descendants can opt back in.
+  - [x] Fixed partial intrinsic size handling in the simple solver so explicit intrinsic width/height overrides merge
+        with measured text/child fallback dimensions instead of collapsing the unspecified axis.
 
 Acceptance checks:
 

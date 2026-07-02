@@ -5,12 +5,15 @@ import {
   CheckBoxController,
   ComboBoxController,
   createHtmlCssLayoutDemo,
+  createLayoutNode,
   createMarkupLayout,
   createMarkupLayoutWorkerHandler,
+  defaultComputedLayoutStyle,
   hydrateMarkupWidgets,
   InputController,
   inspectTuiCssSupport,
   LayoutMeasurementCache,
+  layoutTree,
   MarkupLayoutCache,
   MarkupWidgetHydrationRegistry,
   matchesCssMedia,
@@ -694,6 +697,39 @@ Deno.test("createMarkupLayout reuses intrinsic measurements in the simple solver
   assert(afterSecond.hits > afterFirst.hits);
   assertEquals(second.layout.byId.get("a")!.rect, first.layout.byId.get("a")!.rect);
   assertEquals(second.layout.byId.get("b")!.rect, first.layout.byId.get("b")!.rect);
+});
+
+Deno.test("simple layout solver merges partial intrinsic dimensions with measured fallback", () => {
+  const rootStyle = defaultComputedLayoutStyle();
+  rootStyle.display = "flex";
+  rootStyle.flexDirection = "row";
+  rootStyle.alignItems = "start";
+
+  const heightOnly = createLayoutNode({
+    id: "height-only",
+    tag: "panel",
+    text: "wide text",
+    intrinsic: { height: 3 },
+  });
+  const widthOnly = createLayoutNode({
+    id: "width-only",
+    tag: "panel",
+    text: "one two three four five six",
+    intrinsic: { width: 9 },
+  });
+  const root = createLayoutNode({
+    id: "root",
+    tag: "window",
+    style: rootStyle,
+    children: [heightOnly, widthOnly],
+  });
+
+  const result = layoutTree(root, { column: 0, row: 0, width: 40, height: 10 });
+
+  assertEquals(result.byId.get("height-only")!.rect.width, 9);
+  assertEquals(result.byId.get("height-only")!.rect.height, 3);
+  assertEquals(result.byId.get("width-only")!.rect.width, 9);
+  assertEquals(result.byId.get("width-only")!.rect.height > 1, true);
 });
 
 Deno.test("createMarkupLayout applies simple solver justify-content to flex rows", () => {

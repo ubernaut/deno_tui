@@ -601,24 +601,32 @@ function measureNodeIntrinsic(
     if (cached) return cached;
   }
 
-  let measured: LayoutIntrinsicSize;
+  const intrinsicWidth = node.intrinsic?.width;
+  const measurementWidth = intrinsicWidth === undefined ? availableWidth : Math.max(1, Math.floor(intrinsicWidth));
+  let measured = measureNodeIntrinsicBase(node, measurementWidth, defaultTextHeight, measurementCache);
   if (node.intrinsic?.width !== undefined || node.intrinsic?.height !== undefined) {
     measured = {
-      width: Math.max(0, Math.floor(node.intrinsic.width ?? 0)),
-      height: Math.max(defaultTextHeight, Math.floor(node.intrinsic.height ?? defaultTextHeight)),
+      width: node.intrinsic.width === undefined ? measured.width : Math.max(0, Math.floor(node.intrinsic.width)),
+      height: node.intrinsic.height === undefined
+        ? measured.height
+        : Math.max(defaultTextHeight, Math.floor(node.intrinsic.height)),
     };
-    if (cacheKey) measurementCache?.set(cacheKey, measured);
-    return measured;
   }
+  if (cacheKey) measurementCache?.set(cacheKey, measured);
+  return measured;
+}
+
+function measureNodeIntrinsicBase(
+  node: LayoutNode,
+  availableWidth: number,
+  defaultTextHeight: number,
+  measurementCache?: LayoutMeasurementCache,
+): LayoutIntrinsicSize {
   if (node.text) {
-    measured = measureTextIntrinsic(node.text, availableWidth, defaultTextHeight);
-    if (cacheKey) measurementCache?.set(cacheKey, measured);
-    return measured;
+    return measureTextIntrinsic(node.text, availableWidth, defaultTextHeight);
   }
   if (node.children.length === 0) {
-    measured = { width: 1, height: defaultTextHeight };
-    if (cacheKey) measurementCache?.set(cacheKey, measured);
-    return measured;
+    return { width: 1, height: defaultTextHeight };
   }
 
   if (node.style.display === "flex" && node.style.flexDirection === "row") {
@@ -629,12 +637,10 @@ function measureNodeIntrinsic(
       width += childSize.width;
       height = Math.max(height, childSize.height);
     }
-    measured = {
+    return {
       width: width + Math.max(0, node.children.length - 1) * node.style.columnGap,
       height,
     };
-    if (cacheKey) measurementCache?.set(cacheKey, measured);
-    return measured;
   }
   let width = 1;
   let height = 0;
@@ -643,12 +649,10 @@ function measureNodeIntrinsic(
     width = Math.max(width, childSize.width);
     height += Math.max(defaultTextHeight, childSize.height);
   }
-  measured = {
+  return {
     width,
     height,
   };
-  if (cacheKey) measurementCache?.set(cacheKey, measured);
-  return measured;
 }
 
 function measureTextIntrinsic(text: string, availableWidth: number, defaultTextHeight: number): LayoutIntrinsicSize {
