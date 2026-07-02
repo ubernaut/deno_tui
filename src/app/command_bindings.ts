@@ -2,7 +2,12 @@
 import { bindingId, type KeyBinding, type KeymapRegistry } from "../keymap.ts";
 import type { KeyPressEvent } from "../input_reader/types.ts";
 import { Signal } from "../signals/mod.ts";
-import { scoreWeightedSearchFields, searchTerms, weightedSearchFields } from "../utils/search.ts";
+import {
+  normalizeSearchText,
+  scoreWeightedSearchFields,
+  searchTerms,
+  type WeightedSearchField,
+} from "../utils/search.ts";
 import type { Action } from "./actions.ts";
 import type { Command, CommandDispatch, CommandRegistry } from "./commands.ts";
 
@@ -391,15 +396,20 @@ function scoreCommandSurfaceItem(
   item: CommandSurfaceItem,
   terms: readonly string[],
 ): { score: number; matched: string[] } | undefined {
-  const rawFields: Array<{ value: string; weight: number }> = [
-    { value: item.label, weight: 100 },
-    { value: item.id, weight: 80 },
-  ];
+  const keywordCount = item.keywords?.length ?? 0;
+  const fields = new Array<WeightedSearchField>(2 + keywordCount);
+  fields[0] = commandSurfaceSearchField(item.label, 100);
+  fields[1] = commandSurfaceSearchField(item.id, 80);
   if (item.keywords) {
-    for (const value of item.keywords) rawFields.push({ value, weight: 40 });
+    for (let index = 0; index < item.keywords.length; index += 1) {
+      fields[index + 2] = commandSurfaceSearchField(item.keywords[index]!, 40);
+    }
   }
-  const fields = weightedSearchFields(rawFields);
   return scoreWeightedSearchFields(fields, terms, item.disabled);
+}
+
+function commandSurfaceSearchField(value: string, weight: number): WeightedSearchField {
+  return { value, weight, normalized: normalizeSearchText(value) };
 }
 
 function compareCommandSearchMatches(
