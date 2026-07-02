@@ -5862,24 +5862,24 @@ function measureNodeIntrinsic(node, availableWidth, defaultTextHeight, measureme
     const cached = measurementCache?.get(cacheKey);
     if (cached) return cached;
   }
-  let measured;
+  const intrinsicWidth = node.intrinsic?.width;
+  const measurementWidth = intrinsicWidth === void 0 ? availableWidth : Math.max(1, Math.floor(intrinsicWidth));
+  let measured = measureNodeIntrinsicBase(node, measurementWidth, defaultTextHeight, measurementCache);
   if (node.intrinsic?.width !== void 0 || node.intrinsic?.height !== void 0) {
     measured = {
-      width: Math.max(0, Math.floor(node.intrinsic.width ?? 0)),
-      height: Math.max(defaultTextHeight, Math.floor(node.intrinsic.height ?? defaultTextHeight))
+      width: node.intrinsic.width === void 0 ? measured.width : Math.max(0, Math.floor(node.intrinsic.width)),
+      height: node.intrinsic.height === void 0 ? measured.height : Math.max(defaultTextHeight, Math.floor(node.intrinsic.height))
     };
-    if (cacheKey) measurementCache?.set(cacheKey, measured);
-    return measured;
   }
+  if (cacheKey) measurementCache?.set(cacheKey, measured);
+  return measured;
+}
+function measureNodeIntrinsicBase(node, availableWidth, defaultTextHeight, measurementCache) {
   if (node.text) {
-    measured = measureTextIntrinsic(node.text, availableWidth, defaultTextHeight);
-    if (cacheKey) measurementCache?.set(cacheKey, measured);
-    return measured;
+    return measureTextIntrinsic(node.text, availableWidth, defaultTextHeight);
   }
   if (node.children.length === 0) {
-    measured = { width: 1, height: defaultTextHeight };
-    if (cacheKey) measurementCache?.set(cacheKey, measured);
-    return measured;
+    return { width: 1, height: defaultTextHeight };
   }
   if (node.style.display === "flex" && node.style.flexDirection === "row") {
     let width2 = 0;
@@ -5889,12 +5889,10 @@ function measureNodeIntrinsic(node, availableWidth, defaultTextHeight, measureme
       width2 += childSize.width;
       height2 = Math.max(height2, childSize.height);
     }
-    measured = {
+    return {
       width: width2 + Math.max(0, node.children.length - 1) * node.style.columnGap,
       height: height2
     };
-    if (cacheKey) measurementCache?.set(cacheKey, measured);
-    return measured;
   }
   let width = 1;
   let height = 0;
@@ -5903,12 +5901,10 @@ function measureNodeIntrinsic(node, availableWidth, defaultTextHeight, measureme
     width = Math.max(width, childSize.width);
     height += Math.max(defaultTextHeight, childSize.height);
   }
-  measured = {
+  return {
     width,
     height
   };
-  if (cacheKey) measurementCache?.set(cacheKey, measured);
-  return measured;
 }
 function measureTextIntrinsic(text, availableWidth, defaultTextHeight) {
   const wrapWidth = Math.max(1, availableWidth);
@@ -10634,12 +10630,18 @@ function workbenchVerticalScrollbarRect(options) {
   };
 }
 function workbenchVerticalScrollbarCellsInto(cells, rect, thumb) {
-  cells.length = 0;
-  if (rect.width <= 0 || rect.height <= 0) return cells;
+  if (rect.width <= 0 || rect.height <= 0) {
+    cells.length = 0;
+    return cells;
+  }
   const column = rect.column + rect.width - 1;
   for (let row = 0; row < rect.height; row += 1) {
-    cells.push({ column, row: rect.row + row, glyph: scrollbarGlyph(row, thumb) });
+    const cell = cells[row] ??= { column: 0, row: 0, glyph: "" };
+    cell.column = column;
+    cell.row = rect.row + row;
+    cell.glyph = scrollbarGlyph(row, thumb);
   }
+  cells.length = rect.height;
   return cells;
 }
 

@@ -3553,6 +3553,13 @@
     },
     {
       "module": "src/app/workbench_layout.ts",
+      "name": "workbenchHorizontalScrollbarCellsInto",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_layout.ts",
       "name": "WorkbenchLayoutEntryShape",
       "kind": "interface",
       "typeOnly": true,
@@ -3563,6 +3570,20 @@
       "name": "WorkbenchLayoutShape",
       "kind": "interface",
       "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_layout.ts",
+      "name": "WorkbenchScrollbarCell",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_layout.ts",
+      "name": "workbenchVerticalScrollbarCellsInto",
+      "kind": "function",
+      "typeOnly": false,
       "documented": true
     },
     {
@@ -3770,6 +3791,13 @@
     },
     {
       "module": "src/app/workbench_shelf.ts",
+      "name": "workbenchShelfEntriesInto",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_shelf.ts",
       "name": "WorkbenchShelfLayout",
       "kind": "interface",
       "typeOnly": true,
@@ -3787,6 +3815,20 @@
       "name": "WorkbenchShelfSource",
       "kind": "interface",
       "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_shelf.ts",
+      "name": "WorkbenchShelfWindowInspectionShape",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_shelf.ts",
+      "name": "workbenchTabEntriesInto",
+      "kind": "function",
+      "typeOnly": false,
       "documented": true
     },
     {
