@@ -937,6 +937,8 @@ Work:
         keymap binding sync, key lookup, palette projection, and command inspection.
   - [x] Cached route id and route-index projections in `RouteManager`, invalidating through the route signal so
         navigation, registration, active lookup, and inspection avoid repeated linear scans.
+  - [x] Cached `ActionBus` middleware dispatch snapshots and invalidated them on middleware registration/disposal,
+        avoiding per-dispatch array rebuilds while preserving dispatch-order semantics.
 - [x] Make demo-only assets and NGE-inspired primitives clearly separate from library APIs.
   - [x] Added `app/neon_three_catalog.ts` for supported Three scene metadata and labels, keeping demo/NGE catalog data
         separate from the monolithic scene factory and shared by visualization footers plus scene coverage tests.

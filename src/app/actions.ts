@@ -32,6 +32,7 @@ export class ActionBus<TAction extends Action = Action> {
   private readonly handlers = new Set<ActionHandler<TAction>>();
   private readonly middleware = new Set<ActionMiddleware<TAction>>();
   private dispatchDepth = 0;
+  private middlewareSnapshot?: ActionMiddleware<TAction>[];
 
   /** Registers a handler for every dispatched action. */
   subscribe(handler: ActionHandler<TAction>): () => void {
@@ -54,20 +55,17 @@ export class ActionBus<TAction extends Action = Action> {
   /** Adds middleware that can observe, transform, or stop actions before subscribers run. */
   use(middleware: ActionMiddleware<TAction>): () => void {
     this.middleware.add(middleware);
-    return () => this.middleware.delete(middleware);
+    this.middlewareSnapshot = undefined;
+    return () => {
+      if (this.middleware.delete(middleware)) this.middlewareSnapshot = undefined;
+    };
   }
 
   /** Dispatches an action through middleware and subscribers in registration order. */
   async dispatch(action: TAction): Promise<void> {
     this.dispatchDepth++;
     try {
-      const middleware = new Array<ActionMiddleware<TAction>>(this.middleware.size);
-      let index = 0;
-      for (const entry of this.middleware) {
-        middleware[index] = entry;
-        index += 1;
-      }
-      await this.dispatchMiddleware(middleware, action);
+      await this.dispatchMiddleware(this.middlewareList(), action);
     } finally {
       this.dispatchDepth--;
     }
@@ -99,5 +97,18 @@ export class ActionBus<TAction extends Action = Action> {
     for (const handler of this.handlers) {
       await handler(action);
     }
+  }
+
+  private middlewareList(): readonly ActionMiddleware<TAction>[] {
+    if (!this.middlewareSnapshot) {
+      const middleware = new Array<ActionMiddleware<TAction>>(this.middleware.size);
+      let index = 0;
+      for (const entry of this.middleware) {
+        middleware[index] = entry;
+        index += 1;
+      }
+      this.middlewareSnapshot = middleware;
+    }
+    return this.middlewareSnapshot;
   }
 }
