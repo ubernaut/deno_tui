@@ -219,6 +219,8 @@ Work:
         loop-based buffers in workspace load/save and redraw-heavy dropdown paths.
   - [x] Reworked Three ASCII renderer option patching to use explicit typed assignments instead of `Object.entries()`
         reflection when applying live config updates.
+  - [x] Extracted API Workbench Kitty/tmux graphics surface ownership into a tested controller with injectable tmux
+        passthrough probing, reducing renderer setup logic in the main demo file.
 
 Acceptance checks:
 

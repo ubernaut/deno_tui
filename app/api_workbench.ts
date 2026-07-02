@@ -96,7 +96,6 @@ import {
   terminalMouseRoutingFromPrivateModes,
 } from "../src/app/terminal_input.ts";
 import { DiagnosticsCollector } from "../src/runtime/diagnostics.ts";
-import { createKittyGraphicsSurface, type GraphicsSurface } from "../src/runtime/graphics_surface.ts";
 import { formatProcessCommandLine, ProcessSessionController } from "../src/runtime/process_session.ts";
 import { MicrotaskScheduler } from "../src/runtime/render_loop.ts";
 import { type AsyncStore, createRuntimeStore, JsonFileStore } from "../src/runtime/storage.ts";
@@ -173,6 +172,7 @@ import {
   workspaceMenuLabelsInto,
   workspaceNameModalBody as buildWorkspaceNameModalBody,
 } from "./workbench_workspace_menu.ts";
+import { WorkbenchKittyGraphicsController } from "./workbench_kitty_graphics.ts";
 import type {
   Accent,
   AsciiOptions,
@@ -312,7 +312,6 @@ const savedWorkspaces = new Signal<SavedWorkspace[]>(await loadSavedWorkspaces()
 const threeAsciiAvailable = new Signal(await probeCompatibleWebGPUDevice());
 const asciiConfigs = new WorkbenchAsciiConfigController<WindowId>("three");
 const ascii = asciiConfigs.root;
-const tmuxPassthroughAllowed = await detectWorkbenchTmuxPassthrough();
 
 const tui = new Tui({
   style: makeStyle({ bg: themes[0]!.background }),
@@ -320,8 +319,14 @@ const tui = new Tui({
   enableMouse: true,
 });
 const kittyTextEncoder = new TextEncoder();
-const autoKittyGraphicsSurface: GraphicsSurface = createWorkbenchKittySurface(false);
-const forcedKittyGraphicsSurface: GraphicsSurface = createWorkbenchKittySurface(true);
+const kittyGraphics = await WorkbenchKittyGraphicsController.create({
+  writer: {
+    write: (data) => {
+      tui.stdout.writeSync(kittyTextEncoder.encode(data));
+    },
+  },
+  diagnostics: workbenchDiagnostics,
+});
 const terminalOutputSession = new ProcessSessionController({
   command: Deno.execPath(),
   args: [
@@ -374,47 +379,6 @@ async function createWorkbenchShellBackend(): Promise<TerminalBackend> {
     onFallback: (reason) => pushLog(`shell PTY unavailable; using process fallback: ${reason}`),
   });
   return resolution.backend;
-}
-
-function createWorkbenchKittySurface(force: boolean): GraphicsSurface {
-  const canForce = force && (!Deno.env.get("TMUX") || tmuxPassthroughAllowed);
-  return createKittyGraphicsSurface({
-    writer: {
-      write: (data) => {
-        tui.stdout.writeSync(kittyTextEncoder.encode(data));
-      },
-    },
-    detection: canForce && Deno.env.get("TMUX") ? { tmuxPassthrough: true } : undefined,
-    force: canForce,
-    quiet: 2,
-    maxChunkBytes: 16384,
-    diagnostics: workbenchDiagnostics,
-  });
-}
-
-function kittyGraphicsSurfaceFor(options: AsciiOptions): GraphicsSurface {
-  return options.kittyGraphics ? forcedKittyGraphicsSurface : autoKittyGraphicsSurface;
-}
-
-async function clearKittyGraphicsSurfaces(): Promise<void> {
-  await Promise.all([
-    autoKittyGraphicsSurface.clear("visible"),
-    forcedKittyGraphicsSurface.clear("visible"),
-  ]);
-}
-
-async function detectWorkbenchTmuxPassthrough(): Promise<boolean> {
-  if (!Deno.env.get("TMUX")) return true;
-  try {
-    const output = await new Deno.Command("tmux", {
-      args: ["show-options", "-gqv", "allow-passthrough"],
-    }).output();
-    if (!output.success) return false;
-    const value = new TextDecoder().decode(output.stdout).trim().toLowerCase();
-    return value === "on" || value === "all" || value === "1" || value === "yes";
-  } catch {
-    return false;
-  }
 }
 
 handleInput(tui);
@@ -684,7 +648,7 @@ const threePanel = new ThreePanelFrameView({
   scene: threeScene,
   ascii,
   enabled: threeAsciiAvailable,
-  graphicsSurface: () => kittyGraphicsSurfaceFor(ascii.peek()),
+  graphicsSurface: () => kittyGraphics.surfaceFor(ascii.peek()),
   frameInterval: 1000 / 18,
   diagnostics: workbenchDiagnostics,
   onUpdate: scheduleDraw,
@@ -867,7 +831,7 @@ tui.on("destroy", () => {
   threeScene.dispose();
   threeBodyRect.dispose();
   threeGraphicsRect.dispose();
-  void clearKittyGraphicsSurfaces();
+  void kittyGraphics.clear("visible");
   void terminalOutputSession.dispose();
   void terminalShell.dispose();
   terminalInputMode.dispose();
@@ -2434,10 +2398,10 @@ function toggleAsciiKittyOption(key: AsciiKittyKey): void {
 }
 
 function kittyGraphicsStatus(): string {
-  if (configuredAscii().peek().kittyGraphics && Deno.env.get("TMUX") && !tmuxPassthroughAllowed) {
+  if (configuredAscii().peek().kittyGraphics && kittyGraphics.tmux && !kittyGraphics.tmuxPassthroughAllowed) {
     return "[unavailable: tmux allow-passthrough off]";
   }
-  const inspection = kittyGraphicsSurfaceFor(configuredAscii().peek()).inspect();
+  const inspection = kittyGraphics.surfaceFor(configuredAscii().peek()).inspect();
   if (inspection.available) return `[${inspection.mode ?? "available"}]`;
   return `[unavailable: ${inspection.reason ?? "not detected"}]`;
 }
@@ -2696,7 +2660,7 @@ function ensureVisualizationThreePanel(id: VisualizationWindowId): DynamicThreeP
     scene,
     ascii: asciiForWindow(id),
     enabled: threeAsciiAvailable,
-    graphicsSurface: () => kittyGraphicsSurfaceFor(asciiForWindow(id).peek()),
+    graphicsSurface: () => kittyGraphics.surfaceFor(asciiForWindow(id).peek()),
     frameInterval: 1000 / 18,
     diagnostics: workbenchDiagnostics,
     onUpdate: scheduleDraw,
