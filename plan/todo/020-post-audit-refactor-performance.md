@@ -60,3 +60,5 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Added reusable shelf/tab layout buffers and routed terminal and web workbench shelf rendering through them.
 - Added reusable top-menu hit layout projection and routed terminal and web workbench menu hit rendering through it.
 - Added reusable header layout projection and routed terminal and web workbench header rendering through it.
+- Added reusable titlebar layout projection and routed terminal and web workbench titlebar rendering through per-window
+  buffers so hit rectangles remain stable for each draw.

@@ -24,6 +24,7 @@ import {
   clipRect,
   contrastText,
   createWorkbenchShelfLayoutBuffers,
+  createWorkbenchTitlebarLayout,
   createWorkbenchVisualizationWindowOptions,
   createWorkbenchWorkspaceStore,
   deleteWorkbenchWorkspace,
@@ -44,7 +45,7 @@ import {
   layoutWorkbenchPopover,
   layoutWorkbenchShelfInto,
   layoutWorkbenchTabsInto,
-  layoutWorkbenchTitlebar,
+  layoutWorkbenchTitlebarInto,
   layoutWorkbenchTopMenuItemRect,
   loadWorkbenchWorkspaceStorage,
   maxTextWidthBy,
@@ -71,6 +72,7 @@ import {
   workbenchStatusLeft,
   workbenchTabEntriesInto,
   type WorkbenchTitlebarButtonKind,
+  type WorkbenchTitlebarLayout,
   workbenchVerticalScrollbarCellsInto,
   workbenchVerticalScrollbarRect,
   workbenchVisualizationIdFromWindowId,
@@ -594,6 +596,7 @@ const hitTargets = new HitTargetStack<HitAction>();
 const screenFrame: Frame = [];
 const workspaceVirtualFrame: Frame = [];
 const windowContentFrames = new Map<WindowId, Frame>();
+const titlebarLayouts = new Map<WindowId, WorkbenchTitlebarLayout>();
 const newWindowMenuSlice: VisibleMenuSlice = { items: [], indexes: [] };
 const newWindowMenuLabels: string[] = [];
 const workspaceMenuSlice: VisibleMenuSlice = { items: [], indexes: [] };
@@ -1235,13 +1238,12 @@ function renderWindow(frame: Frame, id: WindowId, rect: Rectangle): void {
   const active = activeWindow.peek() === id;
   addHit(rect, { type: "focus", id });
   drawFrame(frame, rect, windowTitle(id), active);
-  for (
-    const button of layoutWorkbenchTitlebar({
-      rect,
-      title: windowTitle(id),
-      showConfig: isThreeRenderedWindow(id),
-    }).buttons
-  ) {
+  const titlebar = layoutWorkbenchTitlebarInto(titlebarLayout(id), {
+    rect,
+    title: windowTitle(id),
+    showConfig: isThreeRenderedWindow(id),
+  });
+  for (const button of titlebar.buttons) {
     writeButton(frame, button.rect.row, button.rect.column, button.label, {
       compact: button.compact,
       tone: button.tone,
@@ -5000,6 +5002,15 @@ function windowTitle(id: WindowId): string {
     : id === TERMINAL_SHELL_WINDOW_ID
     ? terminalShellWindowTitle()
     : apiWorkbenchPanelTitle(id, "Three ASCII");
+}
+
+function titlebarLayout(id: WindowId): WorkbenchTitlebarLayout {
+  let layout = titlebarLayouts.get(id);
+  if (!layout) {
+    layout = createWorkbenchTitlebarLayout();
+    titlebarLayouts.set(id, layout);
+  }
+  return layout;
 }
 
 function terminalOutputWindowTitle(): string {

@@ -4477,7 +4477,21 @@
     },
     {
       "module": "src/app/workbench_titlebar.ts",
+      "name": "createWorkbenchTitlebarLayout",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_titlebar.ts",
       "name": "layoutWorkbenchTitlebar",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_titlebar.ts",
+      "name": "layoutWorkbenchTitlebarInto",
       "kind": "function",
       "typeOnly": false,
       "documented": true

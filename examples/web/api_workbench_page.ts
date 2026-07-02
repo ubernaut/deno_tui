@@ -19,6 +19,7 @@ import {
   createTerminalWorkspaceController,
   createWebTui,
   createWorkbenchShelfLayoutBuffers,
+  createWorkbenchTitlebarLayout,
   DataTableController,
   defaultWorkbenchMinimizedState,
   FileExplorerController,
@@ -39,7 +40,7 @@ import {
   layoutWorkbenchPopover,
   layoutWorkbenchShelfInto,
   layoutWorkbenchTabsInto,
-  layoutWorkbenchTitlebar,
+  layoutWorkbenchTitlebarInto,
   layoutWorkbenchTopMenuItemRect,
   layoutWrappedControlOptions,
   loadWorkbenchPanelWorkspaceCache,
@@ -97,6 +98,7 @@ import {
   type WorkbenchTerminalToolbarAction,
   workbenchTerminalToolbarItemsInto,
   type WorkbenchTitlebarButtonKind,
+  type WorkbenchTitlebarLayout,
   workbenchVerticalScrollbarCellsInto,
   workbenchVerticalScrollbarRect,
   WorkbenchWorkspaceViewportController,
@@ -276,6 +278,7 @@ const webTerminalScrollbacks = new Map<string, TerminalScrollbackController>();
 const webTerminalScreenKeys = new Map<string, string>();
 const webTerminalPaneProjections: WorkbenchTerminalPaneProjection[] = [];
 const hitTargets = new HitTargetStack<Hit>();
+const titlebarLayouts = new Map<PanelId, WorkbenchTitlebarLayout>();
 const screenRows: string[] = [];
 const workspaceVirtualRows: string[] = [];
 const threePreviewOrbRows: string[] = [];
@@ -815,7 +818,8 @@ function renderPanel(frame: string[], id: PanelId, rect: Rectangle): void {
     rect.column,
     paint(fit(top, rect.width), border, selected ? theme().panelSoft : theme().panel, selected),
   );
-  for (const button of layoutWorkbenchTitlebar({ rect, title: panelTitle(id) }).buttons) {
+  const titlebar = layoutWorkbenchTitlebarInto(titlebarLayout(id), { rect, title: panelTitle(id) });
+  for (const button of titlebar.buttons) {
     if (button.kind === "config") continue;
     writeButton(frame, button.rect.row, button.rect.column, button.label, {
       compact: button.compact,
@@ -877,6 +881,15 @@ function panelTitlebarHit(id: PanelId, kind: WorkbenchTitlebarButtonKind): Hit {
 
 function panelTitle(id: PanelId): string {
   return apiWorkbenchPanelTitle(id, id[0]!.toUpperCase() + id.slice(1));
+}
+
+function titlebarLayout(id: PanelId): WorkbenchTitlebarLayout {
+  let layout = titlebarLayouts.get(id);
+  if (!layout) {
+    layout = createWorkbenchTitlebarLayout();
+    titlebarLayouts.set(id, layout);
+  }
+  return layout;
 }
 
 function shortPanelTitle(id: PanelId): string {

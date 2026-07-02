@@ -1,5 +1,9 @@
 import { assertEquals } from "./deps.ts";
-import { layoutWorkbenchTitlebar } from "../src/app/workbench_titlebar.ts";
+import {
+  createWorkbenchTitlebarLayout,
+  layoutWorkbenchTitlebar,
+  layoutWorkbenchTitlebarInto,
+} from "../src/app/workbench_titlebar.ts";
 
 Deno.test("workbench titlebar layout anchors window controls inside the right border", () => {
   const layout = layoutWorkbenchTitlebar({
@@ -45,4 +49,27 @@ Deno.test("workbench titlebar layout only adds config when it fits between title
     height: 1,
   });
   assertEquals(narrow.buttons.some((button) => button.kind === "config"), false);
+});
+
+Deno.test("workbench titlebar layout can reuse caller-owned button geometry", () => {
+  const target = createWorkbenchTitlebarLayout();
+  const first = layoutWorkbenchTitlebarInto(target, {
+    rect: { column: 0, row: 0, width: 64, height: 8 },
+    title: "Three",
+    showConfig: true,
+  });
+  const config = first.buttons[0];
+
+  const second = layoutWorkbenchTitlebarInto(target, {
+    rect: { column: 4, row: 3, width: 48, height: 8 },
+    title: "Data",
+    showConfig: false,
+  });
+
+  assertEquals(second === target, true);
+  assertEquals(second.buttons.length, 4);
+  assertEquals(second.buttons[0] === config, true);
+  assertEquals(second.buttons.some((button) => button.kind === "config"), false);
+  assertEquals(second.buttons[0].rect, { column: 36, row: 3, width: 3, height: 1 });
+  assertEquals(second.buttons[3].rect, { column: 48, row: 3, width: 3, height: 1 });
 });

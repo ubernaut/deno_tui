@@ -13925,44 +13925,80 @@ var WINDOW_CONTROL_SPECS = [
   { kind: "maximize", label: "\u25A1", tone: "success", compact: true },
   { kind: "minimize", label: "-", tone: "warning", compact: true }
 ];
-function layoutWorkbenchTitlebar(options) {
+function createWorkbenchTitlebarLayout() {
+  return { buttons: [], hasWindowControls: false };
+}
+function layoutWorkbenchTitlebarInto(target, options) {
   const controlsMinWidth = options.controlsMinWidth ?? 22;
   const configLabel = options.configLabel ?? "config";
-  let buttons = [];
+  const buttons = target.buttons;
+  let buttonCount = 0;
   const row = options.rect.row;
   const rightBorderColumn = options.rect.column + options.rect.width - 1;
   const hasWindowControls = options.rect.width >= controlsMinWidth;
+  target.hasWindowControls = hasWindowControls;
   let leftmostControlColumn = rightBorderColumn;
   if (hasWindowControls) {
-    const controlButtons = new Array(WINDOW_CONTROL_SPECS.length);
     let cursor = rightBorderColumn;
     for (let index = 0; index < WINDOW_CONTROL_SPECS.length; index += 1) {
       const spec = WINDOW_CONTROL_SPECS[index];
       const width = textWidth(buttonText(spec.label, { compact: spec.compact }));
       const column = cursor - width;
-      controlButtons[WINDOW_CONTROL_SPECS.length - index - 1] = { ...spec, rect: { column, row, width, height: 1 } };
+      writeTitlebarButton(buttons, WINDOW_CONTROL_SPECS.length - index - 1, spec, column, row, width);
       leftmostControlColumn = column;
       cursor = column - 1;
     }
-    buttons = controlButtons;
+    buttonCount = WINDOW_CONTROL_SPECS.length;
   }
   const configWidth = textWidth(buttonText(configLabel));
   const configColumn = leftmostControlColumn - configWidth - 1;
   const titleEnd = options.rect.column + textWidth(options.title) + 3;
   if (options.showConfig && configColumn > titleEnd) {
-    const configButton = {
-      kind: "config",
-      label: configLabel,
-      tone: "default",
-      compact: false,
-      rect: { column: configColumn, row, width: configWidth, height: 1 }
-    };
-    buttons = hasWindowControls ? [configButton, ...buttons] : [configButton];
+    if (hasWindowControls) {
+      for (let index = buttonCount; index > 0; index -= 1) {
+        buttons[index] = buttons[index - 1];
+      }
+      writeTitlebarButton(
+        buttons,
+        0,
+        { kind: "config", label: configLabel, tone: "default", compact: false },
+        configColumn,
+        row,
+        configWidth
+      );
+      buttonCount += 1;
+    } else {
+      writeTitlebarButton(
+        buttons,
+        0,
+        { kind: "config", label: configLabel, tone: "default", compact: false },
+        configColumn,
+        row,
+        configWidth
+      );
+      buttonCount = 1;
+    }
   }
-  return {
-    buttons,
-    hasWindowControls
+  buttons.length = buttonCount;
+  return target;
+}
+function writeTitlebarButton(buttons, index, spec, column, row, width) {
+  const button = buttons[index] ?? {
+    kind: spec.kind,
+    label: spec.label,
+    tone: spec.tone,
+    compact: spec.compact,
+    rect: { column, row, width, height: 1 }
   };
+  button.kind = spec.kind;
+  button.label = spec.label;
+  button.tone = spec.tone;
+  button.compact = spec.compact;
+  button.rect.column = column;
+  button.rect.row = row;
+  button.rect.width = width;
+  button.rect.height = 1;
+  buttons[index] = button;
 }
 
 // src/app/workbench_text.ts
@@ -15567,6 +15603,7 @@ var webTerminalScrollbacks = /* @__PURE__ */ new Map();
 var webTerminalScreenKeys = /* @__PURE__ */ new Map();
 var webTerminalPaneProjections = [];
 var hitTargets = new HitTargetStack();
+var titlebarLayouts = /* @__PURE__ */ new Map();
 var screenRows = [];
 var workspaceVirtualRows = [];
 var threePreviewOrbRows = [];
@@ -16084,7 +16121,8 @@ function renderPanel(frame, id2, rect) {
     rect.column,
     paint(fit(top, rect.width), border, selected ? theme().panelSoft : theme().panel, selected)
   );
-  for (const button of layoutWorkbenchTitlebar({ rect, title: panelTitle(id2) }).buttons) {
+  const titlebar = layoutWorkbenchTitlebarInto(titlebarLayout(id2), { rect, title: panelTitle(id2) });
+  for (const button of titlebar.buttons) {
     if (button.kind === "config") continue;
     writeButton(frame, button.rect.row, button.rect.column, button.label, {
       compact: button.compact,
@@ -16144,6 +16182,14 @@ function panelTitlebarHit(id2, kind) {
 }
 function panelTitle(id2) {
   return apiWorkbenchPanelTitle(id2, id2[0].toUpperCase() + id2.slice(1));
+}
+function titlebarLayout(id2) {
+  let layout = titlebarLayouts.get(id2);
+  if (!layout) {
+    layout = createWorkbenchTitlebarLayout();
+    titlebarLayouts.set(id2, layout);
+  }
+  return layout;
 }
 function shortPanelTitle(id2) {
   return apiWorkbenchShortPanelTitle(id2, panelTitle(id2));
