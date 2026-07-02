@@ -28,14 +28,13 @@ export function renderEmptyState(
   height: number,
   center = true,
 ): string[] {
-  const lines = [
-    content.icon ?? "",
-    content.title,
-    content.message ?? "",
-    content.action ?? "",
-  ].filter((line) => line.length > 0);
   const safeHeight = Math.max(0, Math.floor(height));
-  const visible = lines.slice(0, safeHeight).map((line) => fitEmptyStateLine(line, width));
+  if (safeHeight === 0) return [];
+  const visible: string[] = [];
+  appendEmptyStateLine(visible, content.icon ?? "", width, safeHeight);
+  appendEmptyStateLine(visible, content.title, width, safeHeight);
+  appendEmptyStateLine(visible, content.message ?? "", width, safeHeight);
+  appendEmptyStateLine(visible, content.action ?? "", width, safeHeight);
   if (!center || visible.length >= safeHeight) return visible;
 
   const topPadding = Math.floor((safeHeight - visible.length) / 2);
@@ -47,6 +46,11 @@ export function renderEmptyState(
     centered[topPadding + index] = visible[index]!;
   }
   return centered;
+}
+
+function appendEmptyStateLine(target: string[], line: string, width: number, maxRows: number): void {
+  if (target.length >= maxRows || line.length === 0) return;
+  target.push(fitEmptyStateLine(line, width));
 }
 
 function fitEmptyStateLine(line: string, width: number): string {

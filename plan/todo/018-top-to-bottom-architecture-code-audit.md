@@ -183,6 +183,8 @@ Work:
         discarded `Array.from()` allocations; log viewer now shares one visible-row computation across rendered lines.
   - [x] Reworked toast, empty-state, and label layout rendering to use loop-based row allocation and avoid short-lived
         padding/layout arrays.
+  - [x] Reworked empty-state row projection to append visible rows directly instead of building filtered/sliced/mapped
+        line arrays on each render.
   - [x] Added a shared internal text-row drawing helper and migrated row-oriented widgets to it, removing duplicated
         `Text` subcomponent wiring while preserving each widget's row projection logic.
   - [x] Reworked responsive tiling, grid track resolution, and window order assignment to avoid temporary map/spread/
