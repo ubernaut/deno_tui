@@ -10,11 +10,20 @@ import type {
 } from "./types.ts";
 
 export function pushHistory(history: number[], value: number, limit: number): number[] {
-  const next = history.slice(-Math.max(0, limit - 1));
-  next.push(clamp(value, 0, 1));
-  while (next.length < limit) {
-    next.unshift(0);
+  const safeLimit = Math.max(0, limit);
+  if (safeLimit === 0) return [];
+
+  const next = new Array<number>(safeLimit);
+  const retained = Math.min(history.length, Math.max(0, safeLimit - 1));
+  const padding = safeLimit - retained - 1;
+  for (let index = 0; index < padding; index++) {
+    next[index] = 0;
   }
+  const sourceStart = Math.max(0, history.length - retained);
+  for (let index = 0; index < retained; index++) {
+    next[padding + index] = history[sourceStart + index] ?? 0;
+  }
+  next[safeLimit - 1] = clamp(value, 0, 1);
   return next;
 }
 
@@ -131,10 +140,10 @@ export function emptySnapshot(hostname: string, osRelease: string, historyLength
     loadavg: [0, 0, 0],
     cpuOverall: 0,
     cpuCores: [],
-    cpuHistory: Array.from({ length: historyLength }, () => 0),
+    cpuHistory: zeroHistory(historyLength),
     gpu: emptyGpuSnapshot(),
-    gpuUtilizationHistory: Array.from({ length: historyLength }, () => 0),
-    gpuMemoryHistory: Array.from({ length: historyLength }, () => 0),
+    gpuUtilizationHistory: zeroHistory(historyLength),
+    gpuMemoryHistory: zeroHistory(historyLength),
     memory: {
       total: 0,
       used: 0,
@@ -145,15 +154,19 @@ export function emptySnapshot(hostname: string, osRelease: string, historyLength
       percent: 0,
       swapPercent: 0,
     },
-    memoryHistory: Array.from({ length: historyLength }, () => 0),
-    swapHistory: Array.from({ length: historyLength }, () => 0),
+    memoryHistory: zeroHistory(historyLength),
+    swapHistory: zeroHistory(historyLength),
     temperatures: [],
     disks: [],
     networks: [],
-    rxHistory: Array.from({ length: historyLength }, () => 0),
-    txHistory: Array.from({ length: historyLength }, () => 0),
+    rxHistory: zeroHistory(historyLength),
+    txHistory: zeroHistory(historyLength),
     processes: [],
     alerts: [],
     diagnostics: [],
   };
+}
+
+function zeroHistory(length: number): number[] {
+  return new Array<number>(Math.max(0, length)).fill(0);
 }
