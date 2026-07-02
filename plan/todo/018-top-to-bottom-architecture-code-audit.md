@@ -133,6 +133,8 @@ Work:
         local ANSI-cell slice/join writer.
   - [x] Migrated web API Workbench control traversal onto `api_workbench_controls.ts` so browser and terminal adapters
         share the same control order and edge-aware Tab behavior.
+  - [x] Routed web API Workbench focus/minimize/fullscreen/restore actions through the shared `WindowManagerController`
+        and projected the inspection back into persisted adapter signals.
 - [x] Replace duplicated theme/window/menu persistence code with a shared versioned serializer.
   - [x] Extracted shared workbench workspace normalization, panel-state normalization, upsert, rename, delete, lookup,
         and legacy window-entry expansion helpers into `src/app/workbench_workspace.ts`.

@@ -1273,44 +1273,51 @@ function handlePointerDrag(
 }
 
 function focus(id: PanelId): void {
-  if (minimized.peek()[id]) minimized.value[id] = false;
-  active.value = id;
+  syncWebWindowManagerState();
+  webWindows.focus(id);
+  syncWebSignalsFromWindowManager();
   push(`focus ${id}`);
 }
 function focusNext(): void {
-  const ids = panelIds.filter((id) => !minimized.peek()[id]);
-  if (ids.length === 0) return;
-  focus(ids[(ids.indexOf(active.peek()) + 1) % ids.length]!);
+  syncWebWindowManagerState();
+  const focused = webWindows.focusNext();
+  syncWebSignalsFromWindowManager();
+  if (focused) push(`focus ${focused.id}`);
 }
 function focusPrevious(): void {
-  const ids = panelIds.filter((id) => !minimized.peek()[id]);
-  if (ids.length === 0) return;
-  focus(ids[(ids.indexOf(active.peek()) - 1 + ids.length) % ids.length]!);
+  syncWebWindowManagerState();
+  const focused = webWindows.focusNext(-1);
+  syncWebSignalsFromWindowManager();
+  if (focused) push(`focus ${focused.id}`);
 }
 function minimize(id: PanelId): void {
-  minimized.value[id] = true;
-  if (maximized.peek() === id) maximized.value = null;
+  syncWebWindowManagerState();
+  webWindows.minimize(id);
+  syncWebSignalsFromWindowManager();
   push(`minimize ${id}`);
 }
 function closePanel(id: PanelId): void {
-  minimized.value[id] = true;
-  if (maximized.peek() === id) maximized.value = null;
-  const next = panelIds.find((panel) => !minimized.peek()[panel]);
-  if (next) active.value = next;
+  syncWebWindowManagerState();
+  webWindows.minimize(id);
+  syncWebSignalsFromWindowManager();
   push(`close ${id}`);
 }
 function toggleMax(id: PanelId): void {
-  maximized.value = maximized.peek() === id ? null : id;
+  syncWebWindowManagerState();
+  webWindows.fullscreen(id);
+  syncWebSignalsFromWindowManager();
   push(`${maximized.peek() ? "maximize" : "restore"} ${id}`);
 }
 function restorePanel(id: PanelId): void {
-  minimized.value[id] = false;
-  maximized.value = null;
-  focus(id);
+  syncWebWindowManagerState();
+  webWindows.restore(id);
+  syncWebSignalsFromWindowManager();
+  push(`restore ${id}`);
 }
 function restore(): void {
-  maximized.value = null;
-  minimized.value = defaultMinimizedState();
+  syncWebWindowManagerState();
+  webWindows.restore();
+  syncWebSignalsFromWindowManager();
   push("restore all");
 }
 function setTheme(index: number): void {
@@ -1398,6 +1405,24 @@ function syncWebWindowManagerState(): void {
     minWidth: 26,
     minHeight: 10,
   }));
+}
+
+function syncWebSignalsFromWindowManager(): void {
+  const inspection = webWindows.inspect();
+  const activeId = panelIdFromString(inspection.activeId);
+  if (activeId) active.value = activeId;
+  maximized.value = panelIdFromString(inspection.fullscreenId) ?? null;
+  const nextMinimized = defaultMinimizedState();
+  for (const entry of inspection.windows) {
+    const id = panelIdFromString(entry.id);
+    if (id) nextMinimized[id] = entry.minimized;
+  }
+  minimized.value = nextMinimized;
+  webWindowManagerStateKey = "";
+}
+
+function panelIdFromString(value: string | undefined): PanelId | undefined {
+  return panelIds.includes(value as PanelId) ? value as PanelId : undefined;
 }
 
 function blitWorkspace(frame: string[], virtual: string[], bounds: Rectangle, offset: number, width: number): void {
