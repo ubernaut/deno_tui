@@ -96,6 +96,8 @@ import {
   workbenchTerminalPaneProjectionsInto,
   type WorkbenchTerminalSessionTab,
   type WorkbenchTerminalSessionTabPlacement,
+  type WorkbenchTerminalSessionTabRenderCommand,
+  workbenchTerminalSessionTabRenderCommandsInto,
   workbenchTerminalSessionTabsInto,
   type WorkbenchTerminalToolbarAction,
   workbenchTerminalToolbarItemsInto,
@@ -319,6 +321,7 @@ const mobileCommandButtonPlacements: WorkbenchButtonRowPlacement<MobileAction>[]
 const mobileCommandButtonCommands: WorkbenchButtonRowRenderCommand<MobileAction>[] = [];
 const webTerminalSessionTabSources: WorkbenchTerminalSessionTab[] = [];
 const webTerminalSessionTabPlacements: WorkbenchTerminalSessionTabPlacement[] = [];
+const webTerminalSessionTabCommands: WorkbenchTerminalSessionTabRenderCommand[] = [];
 const controlLineSegments: ApiWorkbenchControlLineSegment[] = [];
 const controlLineHitPlacements: ApiWorkbenchControlHitPlacement[] = [];
 const controlProjectedRows: ApiWorkbenchProjectedControlRow[] = [];
@@ -1163,29 +1166,31 @@ function renderTerminalSessionTabs(frame: string[], rect: Rectangle): void {
       status: session.status,
     });
   }
-  fillRect(frame, rect, theme().panelSoft);
-  const tabs = workbenchTerminalSessionTabsInto(
+  workbenchTerminalSessionTabsInto(
     webTerminalSessionTabPlacements,
     webTerminalSessionTabSources,
     workspace.activeId,
     rect,
   );
-  for (const tab of tabs) {
+  workbenchTerminalSessionTabRenderCommandsInto(webTerminalSessionTabCommands, webTerminalSessionTabPlacements, rect);
+  for (const command of webTerminalSessionTabCommands) {
     write(
       frame,
-      rect.row,
-      tab.column,
+      command.rect.row,
+      command.rect.column,
       paint(
-        tab.label,
-        tab.active ? contrastText(t.accent, t.background, t.text) : t.text,
-        tab.active ? t.accent : t.panelSoft,
-        tab.active,
+        command.text,
+        command.active ? contrastText(t.accent, t.background, t.text) : t.text,
+        command.active ? t.accent : t.panelSoft,
+        command.active,
       ),
     );
-    hitTargets.add({ column: tab.column, row: tab.row, width: tab.width, height: 1 }, {
-      type: "terminalSession",
-      id: tab.id,
-    });
+    if (command.kind === "tab" && command.id) {
+      hitTargets.add(command.rect, {
+        type: "terminalSession",
+        id: command.id,
+      });
+    }
   }
 }
 

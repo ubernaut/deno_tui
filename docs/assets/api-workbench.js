@@ -13873,6 +13873,38 @@ function workbenchTerminalSessionTabsInto(target, sessions, activeId, rect, opti
   }
   return target;
 }
+function workbenchTerminalSessionTabRenderCommandsInto(target, placements, rect) {
+  let written = 0;
+  if (rect.width <= 0 || rect.height <= 0) {
+    target.length = 0;
+    return target;
+  }
+  const row = rect.row;
+  const maxColumn = rect.column + rect.width;
+  let column = rect.column;
+  for (let index = 0; index < placements.length; index += 1) {
+    const tab = placements[index];
+    if (tab.row !== row) continue;
+    const tabColumn = Math.max(rect.column, Math.min(maxColumn, tab.column));
+    if (tabColumn > column) {
+      writeSessionTabRenderCommand(target, written, "gap", void 0, false, column, row, tabColumn - column);
+      written += 1;
+    }
+    const width = Math.max(0, Math.min(tab.width, maxColumn - tabColumn));
+    if (width > 0) {
+      const text = fitCellText(tab.label, width);
+      writeSessionTabRenderCommand(target, written, "tab", tab.id, tab.active, tabColumn, row, width, text);
+      written += 1;
+      column = tabColumn + width;
+    }
+  }
+  if (column < maxColumn) {
+    writeSessionTabRenderCommand(target, written, "gap", void 0, false, column, row, maxColumn - column);
+    written += 1;
+  }
+  target.length = written;
+  return target;
+}
 function workbenchTerminalToolbarItemsInto(target, state, options = {}) {
   const actions = options.actions ?? WORKBENCH_TERMINAL_TOOLBAR_ACTIONS;
   const hasMatches = (state.searchMatchCount ?? 0) > 0;
@@ -14033,6 +14065,23 @@ function setRect2(target, source) {
   target.row = source.row;
   target.width = source.width;
   target.height = source.height;
+}
+function writeSessionTabRenderCommand(target, index, kind, id2, active2, column, row, width, text = " ".repeat(width)) {
+  const command = target[index] ?? {
+    kind,
+    text: "",
+    rect: { column: 0, row: 0, width: 0, height: 1 },
+    active: false
+  };
+  command.kind = kind;
+  command.id = id2;
+  command.active = active2;
+  command.text = text;
+  command.rect.column = column;
+  command.rect.row = row;
+  command.rect.width = width;
+  command.rect.height = 1;
+  target[index] = command;
 }
 
 // src/app/workbench_titlebar.ts
@@ -15768,6 +15817,7 @@ var mobileCommandButtonPlacements = [];
 var mobileCommandButtonCommands = [];
 var webTerminalSessionTabSources = [];
 var webTerminalSessionTabPlacements = [];
+var webTerminalSessionTabCommands = [];
 var controlLineSegments = [];
 var controlLineHitPlacements = [];
 var controlProjectedRows = [];
@@ -16559,29 +16609,31 @@ function renderTerminalSessionTabs(frame, rect) {
       status: session.status
     });
   }
-  fillRect(frame, rect, theme().panelSoft);
-  const tabs = workbenchTerminalSessionTabsInto(
+  workbenchTerminalSessionTabsInto(
     webTerminalSessionTabPlacements,
     webTerminalSessionTabSources,
     workspace.activeId,
     rect
   );
-  for (const tab of tabs) {
+  workbenchTerminalSessionTabRenderCommandsInto(webTerminalSessionTabCommands, webTerminalSessionTabPlacements, rect);
+  for (const command of webTerminalSessionTabCommands) {
     write(
       frame,
-      rect.row,
-      tab.column,
+      command.rect.row,
+      command.rect.column,
       paint(
-        tab.label,
-        tab.active ? contrastText(t.accent, t.background, t.text) : t.text,
-        tab.active ? t.accent : t.panelSoft,
-        tab.active
+        command.text,
+        command.active ? contrastText(t.accent, t.background, t.text) : t.text,
+        command.active ? t.accent : t.panelSoft,
+        command.active
       )
     );
-    hitTargets.add({ column: tab.column, row: tab.row, width: tab.width, height: 1 }, {
-      type: "terminalSession",
-      id: tab.id
-    });
+    if (command.kind === "tab" && command.id) {
+      hitTargets.add(command.rect, {
+        type: "terminalSession",
+        id: command.id
+      });
+    }
   }
 }
 function renderWebTerminalPanes(frame, rect, workspace = webTerminalWorkspace.inspect()) {

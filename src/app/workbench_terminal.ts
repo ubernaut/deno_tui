@@ -59,6 +59,15 @@ export interface WorkbenchTerminalSessionTabPlacement {
   active: boolean;
 }
 
+/** Renderer-neutral command for painting terminal session tab rows. */
+export interface WorkbenchTerminalSessionTabRenderCommand {
+  kind: "gap" | "tab";
+  text: string;
+  rect: Rectangle;
+  id?: string;
+  active: boolean;
+}
+
 /** Options for projecting terminal session tabs into one terminal-cell row. */
 export interface WorkbenchTerminalSessionTabOptions {
   minWidth?: number;
@@ -250,6 +259,44 @@ export function workbenchTerminalSessionTabsInto(
     });
     column += width + 1;
   }
+  return target;
+}
+
+/** Projects session tab placements into a complete row of tab and gap paint commands. */
+export function workbenchTerminalSessionTabRenderCommandsInto(
+  target: WorkbenchTerminalSessionTabRenderCommand[],
+  placements: readonly WorkbenchTerminalSessionTabPlacement[],
+  rect: Rectangle,
+): WorkbenchTerminalSessionTabRenderCommand[] {
+  let written = 0;
+  if (rect.width <= 0 || rect.height <= 0) {
+    target.length = 0;
+    return target;
+  }
+  const row = rect.row;
+  const maxColumn = rect.column + rect.width;
+  let column = rect.column;
+  for (let index = 0; index < placements.length; index += 1) {
+    const tab = placements[index]!;
+    if (tab.row !== row) continue;
+    const tabColumn = Math.max(rect.column, Math.min(maxColumn, tab.column));
+    if (tabColumn > column) {
+      writeSessionTabRenderCommand(target, written, "gap", undefined, false, column, row, tabColumn - column);
+      written += 1;
+    }
+    const width = Math.max(0, Math.min(tab.width, maxColumn - tabColumn));
+    if (width > 0) {
+      const text = fitCellText(tab.label, width);
+      writeSessionTabRenderCommand(target, written, "tab", tab.id, tab.active, tabColumn, row, width, text);
+      written += 1;
+      column = tabColumn + width;
+    }
+  }
+  if (column < maxColumn) {
+    writeSessionTabRenderCommand(target, written, "gap", undefined, false, column, row, maxColumn - column);
+    written += 1;
+  }
+  target.length = written;
   return target;
 }
 
@@ -501,4 +548,32 @@ function setRect(target: Rectangle, source: Rectangle): void {
   target.row = source.row;
   target.width = source.width;
   target.height = source.height;
+}
+
+function writeSessionTabRenderCommand(
+  target: WorkbenchTerminalSessionTabRenderCommand[],
+  index: number,
+  kind: WorkbenchTerminalSessionTabRenderCommand["kind"],
+  id: string | undefined,
+  active: boolean,
+  column: number,
+  row: number,
+  width: number,
+  text = " ".repeat(width),
+): void {
+  const command = target[index] ?? {
+    kind,
+    text: "",
+    rect: { column: 0, row: 0, width: 0, height: 1 },
+    active: false,
+  };
+  command.kind = kind;
+  command.id = id;
+  command.active = active;
+  command.text = text;
+  command.rect.column = column;
+  command.rect.row = row;
+  command.rect.width = width;
+  command.rect.height = 1;
+  target[index] = command;
 }

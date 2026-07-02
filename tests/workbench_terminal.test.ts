@@ -17,6 +17,7 @@ import {
   type WorkbenchTerminalOutputToolbarAction,
   workbenchTerminalOutputToolbarItemsInto,
   workbenchTerminalPaneProjectionsInto,
+  workbenchTerminalSessionTabRenderCommandsInto,
   workbenchTerminalSessionTabsInto,
   type WorkbenchTerminalToolbarAction,
   workbenchTerminalToolbarItemsInto,
@@ -112,6 +113,84 @@ Deno.test("workbenchTerminalSessionTabsInto projects clipped selectable tabs", (
   assertEquals(tabs[0]?.label, "[ * Shell One ]");
   assertEquals(tabs[1]?.label.startsWith("[ I Very"), true);
   assertEquals(tabs.every((tab) => tab.column + tab.width <= 32), true);
+});
+
+Deno.test("workbenchTerminalSessionTabRenderCommandsInto projects tabs and row gaps", () => {
+  const placements = workbenchTerminalSessionTabsInto(
+    [],
+    [
+      { id: "shell-1", title: "One", running: true },
+      { id: "shell-2", title: "Two", status: "idle" },
+    ],
+    "shell-2",
+    { column: 2, row: 5, width: 24, height: 1 },
+    { maxWidth: 9 },
+  );
+  const commands = workbenchTerminalSessionTabRenderCommandsInto(
+    [],
+    placements,
+    { column: 0, row: 5, width: 28, height: 1 },
+  );
+
+  assertEquals(
+    commands.map((command) => ({
+      kind: command.kind,
+      id: command.id,
+      text: command.text,
+      rect: command.rect,
+      active: command.active,
+    })),
+    [
+      { kind: "gap", id: undefined, text: "  ", rect: { column: 0, row: 5, width: 2, height: 1 }, active: false },
+      {
+        kind: "tab",
+        id: "shell-1",
+        text: "[ * One ]",
+        rect: { column: 2, row: 5, width: 9, height: 1 },
+        active: false,
+      },
+      { kind: "gap", id: undefined, text: " ", rect: { column: 11, row: 5, width: 1, height: 1 }, active: false },
+      {
+        kind: "tab",
+        id: "shell-2",
+        text: "[ I Two ]",
+        rect: { column: 12, row: 5, width: 9, height: 1 },
+        active: true,
+      },
+      { kind: "gap", id: undefined, text: "       ", rect: { column: 21, row: 5, width: 7, height: 1 }, active: false },
+    ],
+  );
+});
+
+Deno.test("workbenchTerminalSessionTabRenderCommandsInto reuses caller-owned commands", () => {
+  const placements = workbenchTerminalSessionTabsInto(
+    [],
+    [{ id: "shell-1", title: "Reusable", running: true }],
+    "shell-1",
+    { column: 0, row: 0, width: 14, height: 1 },
+  );
+  const commands = workbenchTerminalSessionTabRenderCommandsInto(
+    [],
+    placements,
+    { column: 0, row: 0, width: 14, height: 1 },
+  );
+  const first = commands[0];
+
+  const nextPlacements = workbenchTerminalSessionTabsInto(
+    placements,
+    [{ id: "shell-2", title: "Next", status: "idle" }],
+    undefined,
+    { column: 1, row: 2, width: 12, height: 1 },
+  );
+  workbenchTerminalSessionTabRenderCommandsInto(commands, nextPlacements, { column: 1, row: 2, width: 12, height: 1 });
+
+  assertEquals(commands[0] === first, true);
+  assertEquals(commands[0]?.kind, "tab");
+  assertEquals(commands[0]?.id, "shell-2");
+  assertEquals(commands[0]?.rect, { column: 1, row: 2, width: 10, height: 1 });
+  assertEquals(commands[0]?.text, "[ I Next ]");
+  assertEquals(commands[1]?.kind, "gap");
+  assertEquals(commands[1]?.rect, { column: 11, row: 2, width: 2, height: 1 });
 });
 
 Deno.test("workbenchTerminalPaneProjectionsInto projects title rows and content rectangles", () => {

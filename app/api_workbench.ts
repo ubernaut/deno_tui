@@ -162,6 +162,8 @@ import {
   workbenchTerminalPaneProjectionsInto,
   type WorkbenchTerminalSessionTab,
   type WorkbenchTerminalSessionTabPlacement,
+  type WorkbenchTerminalSessionTabRenderCommand,
+  workbenchTerminalSessionTabRenderCommandsInto,
   workbenchTerminalSessionTabsInto,
   type WorkbenchTerminalToolbarAction,
   workbenchTerminalToolbarItemsInto,
@@ -364,6 +366,7 @@ const terminalShellButtonPlacements: WorkbenchButtonRowPlacement<TerminalShellAc
 const terminalShellButtonCommands: WorkbenchButtonRowRenderCommand<TerminalShellAction>[] = [];
 const terminalShellSessionTabSources: WorkbenchTerminalSessionTab[] = [];
 const terminalShellSessionTabPlacements: WorkbenchTerminalSessionTabPlacement[] = [];
+const terminalShellSessionTabCommands: WorkbenchTerminalSessionTabRenderCommand[] = [];
 const terminalShellPaneProjections: WorkbenchTerminalPaneProjection[] = [];
 const controlLineSegments: ApiWorkbenchControlLineSegment[] = [];
 const controlLineHitPlacements: ApiWorkbenchControlHitPlacement[] = [];
@@ -2372,7 +2375,6 @@ function renderTerminalShellSessionTabs(
 ): number {
   const t = theme();
   if (startRow >= rect.row + rect.height) return startRow;
-  const maxColumn = rect.column + rect.width;
   terminalShellSessionTabSources.length = 0;
   for (const session of inspection.sessions) {
     terminalShellSessionTabSources.push({
@@ -2382,29 +2384,29 @@ function renderTerminalShellSessionTabs(
       status: session.shell.status,
     });
   }
-  const tabs = workbenchTerminalSessionTabsInto(
+  workbenchTerminalSessionTabsInto(
     terminalShellSessionTabPlacements,
     terminalShellSessionTabSources,
     inspection.activeId,
     { column: rect.column, row: startRow, width: rect.width, height: 1 },
   );
-  let column = rect.column;
-  for (const tab of tabs) {
-    if (tab.column > column) {
-      write(frame, startRow, column, paint(" ".repeat(tab.column - column), { fg: t.soft, bg: t.panelSoft }));
-    }
-    const style = tab.active
+  workbenchTerminalSessionTabRenderCommandsInto(terminalShellSessionTabCommands, terminalShellSessionTabPlacements, {
+    column: rect.column,
+    row: startRow,
+    width: rect.width,
+    height: 1,
+  });
+  for (const command of terminalShellSessionTabCommands) {
+    const style = command.active
       ? { fg: contrastText(t.accent, t.background, t.text), bg: t.accent, bold: true }
       : { fg: t.text, bg: t.panelSoft, bold: false };
-    write(frame, startRow, tab.column, paint(tab.label, style));
-    addHit({ column: tab.column, row: tab.row, width: tab.width, height: 1 }, {
-      type: "terminalShellSession",
-      id: tab.id,
-    });
-    column = tab.column + tab.width + 1;
-  }
-  if (column < maxColumn) {
-    write(frame, startRow, column, paint(" ".repeat(maxColumn - column), { fg: t.soft, bg: t.panelSoft }));
+    write(frame, command.rect.row, command.rect.column, paint(command.text, style));
+    if (command.kind === "tab" && command.id) {
+      addHit(command.rect, {
+        type: "terminalShellSession",
+        id: command.id,
+      });
+    }
   }
   return startRow + 1;
 }

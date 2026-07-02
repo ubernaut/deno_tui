@@ -4484,6 +4484,20 @@
     },
     {
       "module": "src/app/workbench_terminal.ts",
+      "name": "WorkbenchTerminalSessionTabRenderCommand",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_terminal.ts",
+      "name": "workbenchTerminalSessionTabRenderCommandsInto",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_terminal.ts",
       "name": "workbenchTerminalSessionTabsInto",
       "kind": "function",
       "typeOnly": false,

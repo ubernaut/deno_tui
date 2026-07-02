@@ -8,8 +8,8 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 - Entrypoints: 9
 - Module visits: 534
 - Re-export declarations: 525
-- Exported symbols: 4908
-- Documented symbols: 4908
+- Exported symbols: 4912
+- Documented symbols: 4912
 - Documentation coverage: 100.00%
 - Duplicate symbol groups: 0
 - Missing targets: 0
@@ -18,8 +18,8 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 
 | Specifier       | Path                           | Runtime  | Stability    | Modules | Symbols |    Docs |
 | --------------- | ------------------------------ | -------- | ------------ | ------: | ------: | ------: |
-| `.`             | `./mod.ts`                     | terminal | stable       |     241 |    2098 | 100.00% |
-| `./web`         | `./mod.web.ts`                 | browser  | beta         |     220 |    1953 | 100.00% |
+| `.`             | `./mod.ts`                     | terminal | stable       |     241 |    2100 | 100.00% |
+| `./web`         | `./mod.web.ts`                 | browser  | beta         |     220 |    1955 | 100.00% |
 | `./remote`      | `./mod.remote.ts`              | remote   | experimental |       4 |      38 | 100.00% |
 | `./three-ascii` | `./mod.three_ascii.ts`         | shared   | experimental |       8 |      54 | 100.00% |
 | `./theme`       | `./mod.theme.ts`               | shared   | beta         |      10 |     198 | 100.00% |
@@ -41,8 +41,8 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 - Entrypoint: `mod.ts`
 - Modules: 241
 - Re-export declarations: 240
-- Exported symbols: 2098
-- Documented symbols: 2098
+- Exported symbols: 2100
+- Documented symbols: 2100
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -126,7 +126,7 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 | [`src/app/workbench_panel_workspace_store.ts`](#src-app-workbench-panel-workspace-store-ts) |          0 |       8 |          8 |
 | [`src/app/workbench_shelf.ts`](#src-app-workbench-shelf-ts)                                 |          0 |      16 |         16 |
 | [`src/app/workbench_status.ts`](#src-app-workbench-status-ts)                               |          0 |      13 |         13 |
-| [`src/app/workbench_terminal.ts`](#src-app-workbench-terminal-ts)                           |          0 |      23 |         23 |
+| [`src/app/workbench_terminal.ts`](#src-app-workbench-terminal-ts)                           |          0 |      25 |         25 |
 | [`src/app/workbench_text.ts`](#src-app-workbench-text-ts)                                   |          0 |      10 |         10 |
 | [`src/app/workbench_titlebar.ts`](#src-app-workbench-titlebar-ts)                           |          0 |       8 |          8 |
 | [`src/app/workbench_viewport.ts`](#src-app-workbench-viewport-ts)                           |          0 |       4 |          4 |
@@ -1392,31 +1392,33 @@ _No direct exported symbols._
 
 #### src/app/workbench_terminal.ts
 
-| Symbol                                      | Kind      | Type Only | JSDoc |
-| ------------------------------------------- | --------- | --------- | ----- |
-| `createWorkbenchShellSession`               | function  | no        | yes   |
-| `resolveWorkbenchShellBackend`              | function  | no        | yes   |
-| `WORKBENCH_TERMINAL_OUTPUT_TOOLBAR_ACTIONS` | const     | no        | yes   |
-| `WORKBENCH_TERMINAL_TOOLBAR_ACTIONS`        | const     | no        | yes   |
-| `WorkbenchShellBackendResolution`           | interface | yes       | yes   |
-| `WorkbenchShellBackendResolverOptions`      | interface | yes       | yes   |
-| `WorkbenchShellSession`                     | interface | yes       | yes   |
-| `WorkbenchShellSessionOptions`              | interface | yes       | yes   |
-| `WorkbenchTerminalOutputToolbarAction`      | type      | yes       | yes   |
-| `WorkbenchTerminalOutputToolbarItemOptions` | interface | yes       | yes   |
-| `workbenchTerminalOutputToolbarItemsInto`   | function  | no        | yes   |
-| `WorkbenchTerminalOutputToolbarState`       | interface | yes       | yes   |
-| `WorkbenchTerminalPaneProjection`           | interface | yes       | yes   |
-| `WorkbenchTerminalPaneProjectionOptions`    | interface | yes       | yes   |
-| `workbenchTerminalPaneProjectionsInto`      | function  | no        | yes   |
-| `WorkbenchTerminalSessionTab`               | interface | yes       | yes   |
-| `WorkbenchTerminalSessionTabOptions`        | interface | yes       | yes   |
-| `WorkbenchTerminalSessionTabPlacement`      | interface | yes       | yes   |
-| `workbenchTerminalSessionTabsInto`          | function  | no        | yes   |
-| `WorkbenchTerminalToolbarAction`            | type      | yes       | yes   |
-| `WorkbenchTerminalToolbarItemOptions`       | interface | yes       | yes   |
-| `workbenchTerminalToolbarItemsInto`         | function  | no        | yes   |
-| `WorkbenchTerminalToolbarState`             | interface | yes       | yes   |
+| Symbol                                          | Kind      | Type Only | JSDoc |
+| ----------------------------------------------- | --------- | --------- | ----- |
+| `createWorkbenchShellSession`                   | function  | no        | yes   |
+| `resolveWorkbenchShellBackend`                  | function  | no        | yes   |
+| `WORKBENCH_TERMINAL_OUTPUT_TOOLBAR_ACTIONS`     | const     | no        | yes   |
+| `WORKBENCH_TERMINAL_TOOLBAR_ACTIONS`            | const     | no        | yes   |
+| `WorkbenchShellBackendResolution`               | interface | yes       | yes   |
+| `WorkbenchShellBackendResolverOptions`          | interface | yes       | yes   |
+| `WorkbenchShellSession`                         | interface | yes       | yes   |
+| `WorkbenchShellSessionOptions`                  | interface | yes       | yes   |
+| `WorkbenchTerminalOutputToolbarAction`          | type      | yes       | yes   |
+| `WorkbenchTerminalOutputToolbarItemOptions`     | interface | yes       | yes   |
+| `workbenchTerminalOutputToolbarItemsInto`       | function  | no        | yes   |
+| `WorkbenchTerminalOutputToolbarState`           | interface | yes       | yes   |
+| `WorkbenchTerminalPaneProjection`               | interface | yes       | yes   |
+| `WorkbenchTerminalPaneProjectionOptions`        | interface | yes       | yes   |
+| `workbenchTerminalPaneProjectionsInto`          | function  | no        | yes   |
+| `WorkbenchTerminalSessionTab`                   | interface | yes       | yes   |
+| `WorkbenchTerminalSessionTabOptions`            | interface | yes       | yes   |
+| `WorkbenchTerminalSessionTabPlacement`          | interface | yes       | yes   |
+| `WorkbenchTerminalSessionTabRenderCommand`      | interface | yes       | yes   |
+| `workbenchTerminalSessionTabRenderCommandsInto` | function  | no        | yes   |
+| `workbenchTerminalSessionTabsInto`              | function  | no        | yes   |
+| `WorkbenchTerminalToolbarAction`                | type      | yes       | yes   |
+| `WorkbenchTerminalToolbarItemOptions`           | interface | yes       | yes   |
+| `workbenchTerminalToolbarItemsInto`             | function  | no        | yes   |
+| `WorkbenchTerminalToolbarState`                 | interface | yes       | yes   |
 
 #### src/app/workbench_text.ts
 
@@ -3877,8 +3879,8 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 - Entrypoint: `mod.web.ts`
 - Modules: 220
 - Re-export declarations: 219
-- Exported symbols: 1953
-- Documented symbols: 1953
+- Exported symbols: 1955
+- Documented symbols: 1955
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -3962,7 +3964,7 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 | [`src/app/workbench_panel_workspace_store.ts`](#src-app-workbench-panel-workspace-store-ts) |          0 |       8 |          8 |
 | [`src/app/workbench_shelf.ts`](#src-app-workbench-shelf-ts)                                 |          0 |      16 |         16 |
 | [`src/app/workbench_status.ts`](#src-app-workbench-status-ts)                               |          0 |      13 |         13 |
-| [`src/app/workbench_terminal.ts`](#src-app-workbench-terminal-ts)                           |          0 |      23 |         23 |
+| [`src/app/workbench_terminal.ts`](#src-app-workbench-terminal-ts)                           |          0 |      25 |         25 |
 | [`src/app/workbench_text.ts`](#src-app-workbench-text-ts)                                   |          0 |      10 |         10 |
 | [`src/app/workbench_titlebar.ts`](#src-app-workbench-titlebar-ts)                           |          0 |       8 |          8 |
 | [`src/app/workbench_viewport.ts`](#src-app-workbench-viewport-ts)                           |          0 |       4 |          4 |
@@ -5226,31 +5228,33 @@ _No direct exported symbols._
 
 #### src/app/workbench_terminal.ts
 
-| Symbol                                      | Kind      | Type Only | JSDoc |
-| ------------------------------------------- | --------- | --------- | ----- |
-| `createWorkbenchShellSession`               | function  | no        | yes   |
-| `resolveWorkbenchShellBackend`              | function  | no        | yes   |
-| `WORKBENCH_TERMINAL_OUTPUT_TOOLBAR_ACTIONS` | const     | no        | yes   |
-| `WORKBENCH_TERMINAL_TOOLBAR_ACTIONS`        | const     | no        | yes   |
-| `WorkbenchShellBackendResolution`           | interface | yes       | yes   |
-| `WorkbenchShellBackendResolverOptions`      | interface | yes       | yes   |
-| `WorkbenchShellSession`                     | interface | yes       | yes   |
-| `WorkbenchShellSessionOptions`              | interface | yes       | yes   |
-| `WorkbenchTerminalOutputToolbarAction`      | type      | yes       | yes   |
-| `WorkbenchTerminalOutputToolbarItemOptions` | interface | yes       | yes   |
-| `workbenchTerminalOutputToolbarItemsInto`   | function  | no        | yes   |
-| `WorkbenchTerminalOutputToolbarState`       | interface | yes       | yes   |
-| `WorkbenchTerminalPaneProjection`           | interface | yes       | yes   |
-| `WorkbenchTerminalPaneProjectionOptions`    | interface | yes       | yes   |
-| `workbenchTerminalPaneProjectionsInto`      | function  | no        | yes   |
-| `WorkbenchTerminalSessionTab`               | interface | yes       | yes   |
-| `WorkbenchTerminalSessionTabOptions`        | interface | yes       | yes   |
-| `WorkbenchTerminalSessionTabPlacement`      | interface | yes       | yes   |
-| `workbenchTerminalSessionTabsInto`          | function  | no        | yes   |
-| `WorkbenchTerminalToolbarAction`            | type      | yes       | yes   |
-| `WorkbenchTerminalToolbarItemOptions`       | interface | yes       | yes   |
-| `workbenchTerminalToolbarItemsInto`         | function  | no        | yes   |
-| `WorkbenchTerminalToolbarState`             | interface | yes       | yes   |
+| Symbol                                          | Kind      | Type Only | JSDoc |
+| ----------------------------------------------- | --------- | --------- | ----- |
+| `createWorkbenchShellSession`                   | function  | no        | yes   |
+| `resolveWorkbenchShellBackend`                  | function  | no        | yes   |
+| `WORKBENCH_TERMINAL_OUTPUT_TOOLBAR_ACTIONS`     | const     | no        | yes   |
+| `WORKBENCH_TERMINAL_TOOLBAR_ACTIONS`            | const     | no        | yes   |
+| `WorkbenchShellBackendResolution`               | interface | yes       | yes   |
+| `WorkbenchShellBackendResolverOptions`          | interface | yes       | yes   |
+| `WorkbenchShellSession`                         | interface | yes       | yes   |
+| `WorkbenchShellSessionOptions`                  | interface | yes       | yes   |
+| `WorkbenchTerminalOutputToolbarAction`          | type      | yes       | yes   |
+| `WorkbenchTerminalOutputToolbarItemOptions`     | interface | yes       | yes   |
+| `workbenchTerminalOutputToolbarItemsInto`       | function  | no        | yes   |
+| `WorkbenchTerminalOutputToolbarState`           | interface | yes       | yes   |
+| `WorkbenchTerminalPaneProjection`               | interface | yes       | yes   |
+| `WorkbenchTerminalPaneProjectionOptions`        | interface | yes       | yes   |
+| `workbenchTerminalPaneProjectionsInto`          | function  | no        | yes   |
+| `WorkbenchTerminalSessionTab`                   | interface | yes       | yes   |
+| `WorkbenchTerminalSessionTabOptions`            | interface | yes       | yes   |
+| `WorkbenchTerminalSessionTabPlacement`          | interface | yes       | yes   |
+| `WorkbenchTerminalSessionTabRenderCommand`      | interface | yes       | yes   |
+| `workbenchTerminalSessionTabRenderCommandsInto` | function  | no        | yes   |
+| `workbenchTerminalSessionTabsInto`              | function  | no        | yes   |
+| `WorkbenchTerminalToolbarAction`                | type      | yes       | yes   |
+| `WorkbenchTerminalToolbarItemOptions`           | interface | yes       | yes   |
+| `workbenchTerminalToolbarItemsInto`             | function  | no        | yes   |
+| `WorkbenchTerminalToolbarState`                 | interface | yes       | yes   |
 
 #### src/app/workbench_text.ts
 
