@@ -61,7 +61,13 @@ export class ActionBus<TAction extends Action = Action> {
   async dispatch(action: TAction): Promise<void> {
     this.dispatchDepth++;
     try {
-      await this.dispatchMiddleware([...this.middleware], action);
+      const middleware = new Array<ActionMiddleware<TAction>>(this.middleware.size);
+      let index = 0;
+      for (const entry of this.middleware) {
+        middleware[index] = entry;
+        index += 1;
+      }
+      await this.dispatchMiddleware(middleware, action);
     } finally {
       this.dispatchDepth--;
     }

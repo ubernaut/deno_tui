@@ -286,6 +286,8 @@ Work:
         pipelines in degradation-reporting paths.
   - [x] Reworked SettingsController key projection and ready/flush/reset aggregation to use explicit sorted buffers and
         promise lists instead of spread/map chains across persistent app settings.
+  - [x] Reworked focus application/scope snapshots and ActionBus middleware dispatch snapshots with explicit buffers,
+        preserving focus restore and middleware ordering while avoiding callback/spread allocation.
 
 Acceptance checks:
 

@@ -102,9 +102,10 @@ export class FocusManager {
   }
 
   private applyFocus(): void {
-    this.items.forEach((item, itemIndex) => {
+    for (let itemIndex = 0; itemIndex < this.items.length; itemIndex += 1) {
+      const item = this.items[itemIndex]!;
       item.state.value = itemIndex === this.index ? "focused" : "base";
-    });
+    }
   }
 }
 
@@ -155,7 +156,10 @@ export class FocusScope {
 
   enter(initialIndex = 0): Focusable | undefined {
     this.previous = this.manager.current();
-    this.previousItems = [...this.manager.items];
+    this.previousItems = new Array<Focusable>(this.manager.items.length);
+    for (let index = 0; index < this.manager.items.length; index += 1) {
+      this.previousItems[index] = this.manager.items[index]!;
+    }
     this.previousIndex = this.manager.index;
     for (const item of this.previousItems) {
       item.state.value = "base";
