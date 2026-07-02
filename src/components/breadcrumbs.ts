@@ -25,12 +25,17 @@ export function renderBreadcrumbs(
   maxWidth = Number.POSITIVE_INFINITY,
 ): string {
   const safeWidth = Math.max(0, maxWidth);
-  const full = items.map((item) => item.label).join(` ${separator} `);
+  const separatorText = ` ${separator} `;
+  let full = "";
+  for (let index = 0; index < items.length; index += 1) {
+    if (index > 0) full += separatorText;
+    full += items[index]!.label;
+  }
   if (full.length <= safeWidth) return full;
   if (safeWidth <= 1) return "…".slice(0, safeWidth);
 
   const last = items.at(-1)?.label ?? "";
-  const prefix = `… ${separator} `;
+  const prefix = `…${separatorText}`;
   if (prefix.length + last.length <= safeWidth) {
     return `${prefix}${last}`;
   }

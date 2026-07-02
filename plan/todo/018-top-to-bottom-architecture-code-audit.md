@@ -251,6 +251,8 @@ Work:
         padding/layout arrays.
   - [x] Reworked modal row clipping and toast limit trimming to use direct bounded copies instead of `slice()`
         allocation.
+  - [x] Reworked breadcrumb rendering to build the visible path directly instead of allocating a label array before
+        joining.
   - [x] Reworked empty-state row projection to append visible rows directly instead of building filtered/sliced/mapped
         line arrays on each render.
   - [x] Added a shared internal text-row drawing helper and migrated row-oriented widgets to it, removing duplicated

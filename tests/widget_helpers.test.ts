@@ -1151,6 +1151,9 @@ Deno.test("renderBreadcrumbs truncates from the left", () => {
   assertEquals(renderBreadcrumbs(items, "/"), "App / Settings / Runtime");
   assertEquals(renderBreadcrumbs(items, "/", 12), "… / Runtime");
   assertEquals(renderBreadcrumbs(items, "/", 6), "… / R…");
+  assertEquals(renderBreadcrumbs([], "/", 6), "");
+  assertEquals(renderBreadcrumbs(items, "/", 1), "…");
+  assertEquals(renderBreadcrumbs(items, "/", 0), "");
 });
 
 Deno.test("renderEmptyState centers and truncates content", () => {
