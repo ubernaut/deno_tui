@@ -199,7 +199,12 @@ import type {
   ThreeSceneSignal,
 } from "./types.ts";
 import { cpuHexGridColumnCount, cpuHexTileLayout, renderVisualization, visualizations } from "./visualizations.ts";
-import { monitorSourceIds, syntheticWorkbenchSources, syntheticWorkbenchSystem } from "./workbench_synthetic.ts";
+import {
+  monitorSourceIds,
+  monitorSourceIdsInto,
+  syntheticWorkbenchSources,
+  syntheticWorkbenchSystem,
+} from "./workbench_synthetic.ts";
 import type { ComputedLayoutBox } from "../src/layout/mod.ts";
 
 const TERMINAL_OUTPUT_WINDOW_ID = "terminalOutput";
@@ -496,6 +501,7 @@ const newWindowMenuSlice: VisibleMenuSlice = { items: [], indexes: [] };
 const newWindowMenuLabels: string[] = [];
 const workspaceMenuSlice: VisibleMenuSlice = { items: [], indexes: [] };
 const workspaceMenuLabelBuffer: string[] = [];
+const realSourceIdBuffer: string[] = [];
 const minimizedShelfEntries: Array<{ id: WindowId; title: string }> = [];
 const fullscreenTabEntries: Array<{ id: WindowId; title: string; selected?: boolean; hidden?: boolean }> = [];
 const verticalScrollbarCells: Array<{ column: number; row: number; glyph: string }> = [];
@@ -2638,9 +2644,12 @@ function buildVisualizationContext(
 }
 
 function realWorkbenchSources(visualizationId: string, system: SystemSnapshot, phase: number): SourceFrame[] {
-  return monitorSourceIds(visualizationId).map((sourceId) =>
-    getSourceFrame(sourceId, system, workbenchAudioRegistry, phase)
-  );
+  const sourceIds = monitorSourceIdsInto(realSourceIdBuffer, visualizationId);
+  const sources = new Array<SourceFrame>(sourceIds.length);
+  for (let index = 0; index < sourceIds.length; index += 1) {
+    sources[index] = getSourceFrame(sourceIds[index]!, system, workbenchAudioRegistry, phase);
+  }
+  return sources;
 }
 
 function translateContentHits(

@@ -179,6 +179,8 @@ Work:
         shared helpers plus caller-owned/direct loops instead of redraw-time spread/slice/map/filter/forEach paths.
   - [x] Reworked API Workbench CPU hex-grid selection to copy selected tile state, format matching top-process labels,
         and locate tile rows with direct scans instead of spread/filter/slice/map/find allocation on each click.
+  - [x] Added caller-owned monitor source-id projection and migrated API Workbench real monitor source-frame assembly
+        away from per-render source-id array plus `map` allocation.
 - [x] Replace duplicated theme/window/menu persistence code with a shared versioned serializer.
   - [x] Extracted shared workbench workspace normalization, panel-state normalization, upsert, rename, delete, lookup,
         and legacy window-entry expansion helpers into `src/app/workbench_workspace.ts`.

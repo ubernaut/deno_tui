@@ -12,32 +12,50 @@ export interface SyntheticWorkbenchSystemOptions {
 }
 
 export function monitorSourceIds(visualizationId: string): string[] {
+  return monitorSourceIdsInto([], visualizationId);
+}
+
+export function monitorSourceIdsInto(target: string[], visualizationId: string): string[] {
+  target.length = 0;
   switch (visualizationId) {
     case "cpu-monitor":
-      return ["sys:cpu", "sys:load"];
+      target.push("sys:cpu", "sys:load");
+      break;
     case "cpu-legend":
-      return ["sys:cpu-cores"];
+      target.push("sys:cpu-cores");
+      break;
     case "cpu-hex-grid":
-      return ["sys:cpu-cores", "sys:processes"];
+      target.push("sys:cpu-cores", "sys:processes");
+      break;
     case "gpu-combined-monitor":
-      return ["sys:gpu", "sys:gpu-chip", "sys:gpu-memory"];
+      target.push("sys:gpu", "sys:gpu-chip", "sys:gpu-memory");
+      break;
     case "gpu-chip-monitor":
-      return ["sys:gpu-chip", "sys:gpu"];
+      target.push("sys:gpu-chip", "sys:gpu");
+      break;
     case "gpu-memory-monitor":
-      return ["sys:gpu-memory", "sys:gpu"];
+      target.push("sys:gpu-memory", "sys:gpu");
+      break;
     case "memory-monitor":
-      return ["sys:memory", "sys:swap", "sys:load"];
+      target.push("sys:memory", "sys:swap", "sys:load");
+      break;
     case "temperature-monitor":
-      return ["sys:temperature", "sys:alerts"];
+      target.push("sys:temperature", "sys:alerts");
+      break;
     case "disk-monitor":
-      return ["sys:disk", "sys:alerts"];
+      target.push("sys:disk", "sys:alerts");
+      break;
     case "network-monitor":
-      return ["sys:network"];
+      target.push("sys:network");
+      break;
     case "process-monitor":
-      return ["sys:processes", "sys:cpu"];
+      target.push("sys:processes", "sys:cpu");
+      break;
     default:
-      return ["sys:cpu", "sys:memory", "sys:alerts"];
+      target.push("sys:cpu", "sys:memory", "sys:alerts");
+      break;
   }
+  return target;
 }
 
 export function syntheticWorkbenchSources(

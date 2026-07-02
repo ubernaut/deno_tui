@@ -1,6 +1,7 @@
 import { assert, assertEquals, assertNotEquals } from "jsr:@std/assert";
 import {
   monitorSourceIds,
+  monitorSourceIdsInto,
   syntheticWorkbenchSources,
   syntheticWorkbenchSystem,
   unitWave,
@@ -11,6 +12,14 @@ Deno.test("workbench synthetic monitor source ids cover specialized monitor widg
   assertEquals(monitorSourceIds("gpu-combined-monitor"), ["sys:gpu", "sys:gpu-chip", "sys:gpu-memory"]);
   assertEquals(monitorSourceIds("network-monitor"), ["sys:network"]);
   assertEquals(monitorSourceIds("unknown-widget"), ["sys:cpu", "sys:memory", "sys:alerts"]);
+});
+
+Deno.test("workbench monitor source ids can reuse caller buffers", () => {
+  const target = ["stale", "values"];
+  assertEquals(monitorSourceIdsInto(target, "memory-monitor"), ["sys:memory", "sys:swap", "sys:load"]);
+  assertEquals(target, ["sys:memory", "sys:swap", "sys:load"]);
+  assertEquals(monitorSourceIdsInto(target, "network-monitor"), ["sys:network"]);
+  assertEquals(target, ["sys:network"]);
 });
 
 Deno.test("workbench synthetic sources are deterministic and bounded", () => {
