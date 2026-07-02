@@ -278,6 +278,8 @@ Work:
   - [x] Reworked local data-query filtering to precompute active exact filters once per query instead of per row.
   - [x] Added caller-owned spatial-index query buffers and reused them in canvas overlap invalidation.
   - [x] Added a non-allocating dirty-region intersection visitor and used it for canvas rerender range queuing.
+  - [x] Reused a `DirtyRegion` instance inside `Canvas.render()` so overlap/modal churn does not allocate a fresh
+        region object for every movement pass.
   - [x] Reused canvas cell-update and row-range buffers across render passes via target-aware row-range coalescing.
   - [x] Reworked empty-state row projection to append visible rows directly instead of building filtered/sliced/mapped
         line arrays on each render.
@@ -1023,6 +1025,8 @@ Work:
         keeping primitive-mode fallback output directly fixture-testable outside the main visualization dispatcher.
   - [x] Optimized `ThreeAsciiObject` canvas handoff to queue only changed ASCII cells between frames, with a fake
         renderer regression proving stable frames do not enqueue redundant repaint cells.
+  - [x] Reworked `ThreeAsciiObject` changed-cell queueing to clip once per frame and write visible cells directly into
+        row queues for integer-aligned terminal rectangles, while preserving the generic fallback path.
   - [x] Removed per-draw `Computed` allocation from `VirtualList` by making formatted display rows part of the component
         lifecycle.
   - [x] Applied the same lifecycle-owned row computation pattern to `Stepper`, `ContextMenu`, and `RadioGroup`.
