@@ -1,5 +1,6 @@
 import { assertEquals, assertThrows } from "./deps.ts";
 import {
+  createThreeAsciiReadbackCopyPlan,
   createThreeAsciiReadbackLayout,
   createThreeAsciiReadbackViews,
   ThreeAsciiReadbackLayoutCache,
@@ -53,6 +54,72 @@ Deno.test("three ascii readback views point at packed source ranges", () => {
   assertEquals(Array.from(views.fillGlyphs), [1, 2]);
   assertEquals(Array.from(views.edgeGlyphs ?? []), [3, 4, 5, 6]);
   assertEquals(Array.from(views.colors), [7, 8, 9, 10]);
+});
+
+Deno.test("three ascii readback copy plan follows packed layout offsets", () => {
+  const layout = createThreeAsciiReadbackLayout({
+    fillByteLength: 8,
+    edgeByteLength: 16,
+    colorByteLength: 32,
+    includeEdges: true,
+  });
+
+  const plan = createThreeAsciiReadbackCopyPlan({
+    fill: { label: "fill", byteLength: 8 },
+    edge: { label: "edge", byteLength: 16 },
+    color: { label: "color", byteLength: 32 },
+    includeEdges: true,
+    layout,
+  });
+
+  assertEquals(plan.layout, layout);
+  assertEquals(plan.commands, [
+    { label: "fill", byteLength: 8, targetOffset: 0 },
+    { label: "edge", byteLength: 16, targetOffset: 8 },
+    { label: "color", byteLength: 32, targetOffset: 24 },
+  ]);
+});
+
+Deno.test("three ascii readback copy plan omits edge copy when edge output is unused", () => {
+  const layout = createThreeAsciiReadbackLayout({
+    fillByteLength: 8,
+    edgeByteLength: 16,
+    colorByteLength: 32,
+    includeEdges: false,
+  });
+
+  const plan = createThreeAsciiReadbackCopyPlan({
+    fill: { label: "fill", byteLength: 8 },
+    color: { label: "color", byteLength: 32 },
+    includeEdges: false,
+    layout,
+  });
+
+  assertEquals(plan.commands, [
+    { label: "fill", byteLength: 8, targetOffset: 0 },
+    { label: "color", byteLength: 32, targetOffset: 8 },
+  ]);
+});
+
+Deno.test("three ascii readback copy plan rejects missing requested edge output", () => {
+  const layout = createThreeAsciiReadbackLayout({
+    fillByteLength: 8,
+    edgeByteLength: 16,
+    colorByteLength: 32,
+    includeEdges: true,
+  });
+
+  assertThrows(
+    () =>
+      createThreeAsciiReadbackCopyPlan({
+        fill: { label: "fill", byteLength: 8 },
+        color: { label: "color", byteLength: 32 },
+        includeEdges: true,
+        layout,
+      }),
+    Error,
+    "without an edge output",
+  );
 });
 
 Deno.test("three ascii readback layout rejects unaligned byte lengths", () => {

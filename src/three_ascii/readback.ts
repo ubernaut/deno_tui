@@ -25,6 +25,20 @@ export interface ThreeAsciiReadbackViews {
   colors: Float32Array;
 }
 
+export interface ThreeAsciiReadbackCopySource {
+  label: "fill" | "edge" | "color";
+  byteLength: number;
+}
+
+export interface ThreeAsciiReadbackCopyCommand extends ThreeAsciiReadbackCopySource {
+  targetOffset: number;
+}
+
+export interface ThreeAsciiReadbackCopyPlan {
+  layout: ThreeAsciiReadbackLayout;
+  commands: ThreeAsciiReadbackCopyCommand[];
+}
+
 /** Reuses readback layout metadata while the GPU output buffer shape is unchanged. */
 export class ThreeAsciiReadbackLayoutCache {
   private cached?: ThreeAsciiReadbackLayout;
@@ -145,6 +159,41 @@ export function createThreeAsciiReadbackViews(
       : new Float32Array(source, layout.edgeOffset, layout.edgeFloatLength),
     colors: new Float32Array(source, layout.colorOffset, layout.colorFloatLength),
   };
+}
+
+export function createThreeAsciiReadbackCopyPlan(options: {
+  fill: ThreeAsciiReadbackCopySource;
+  edge?: ThreeAsciiReadbackCopySource;
+  color: ThreeAsciiReadbackCopySource;
+  includeEdges: boolean;
+  layout: ThreeAsciiReadbackLayout;
+}): ThreeAsciiReadbackCopyPlan {
+  const commands: ThreeAsciiReadbackCopyCommand[] = [
+    {
+      label: "fill",
+      byteLength: options.fill.byteLength,
+      targetOffset: options.layout.fillOffset,
+    },
+  ];
+
+  if (options.includeEdges) {
+    if (!options.edge || options.layout.edgeOffset === undefined) {
+      throw new Error("Three ASCII edge readback requested without an edge output layout.");
+    }
+    commands.push({
+      label: "edge",
+      byteLength: options.edge.byteLength,
+      targetOffset: options.layout.edgeOffset,
+    });
+  }
+
+  commands.push({
+    label: "color",
+    byteLength: options.color.byteLength,
+    targetOffset: options.layout.colorOffset,
+  });
+
+  return { layout: options.layout, commands };
 }
 
 function validateByteLength(label: string, value: number): number {

@@ -18,6 +18,7 @@ import {
   type ThreeAsciiGpuBufferSlot,
 } from "./gpu_buffers.ts";
 import {
+  createThreeAsciiReadbackCopyPlan,
   type ThreeAsciiReadbackLayout,
   ThreeAsciiReadbackLayoutCache,
   ThreeAsciiReadbackViewCache,
@@ -571,30 +572,31 @@ export class ThreeAsciiRenderer {
       includeEdges: includeTerminalEdges,
     });
     this.outputReadback = this.ensureReadbackBuffer(this.outputReadback, readbackLayout.byteLength);
-
-    commandEncoder.copyBufferToBuffer(
-      this.fillOutput!.gpu,
-      0,
-      this.outputReadback.gpu,
-      readbackLayout.fillOffset,
-      this.fillOutput!.byteLength,
-    );
-    if (includeTerminalEdges && readbackLayout.edgeOffset !== undefined) {
+    const readbackCopyPlan = createThreeAsciiReadbackCopyPlan({
+      fill: { label: "fill", byteLength: this.fillOutput!.byteLength },
+      edge: this.edgeOutput ? { label: "edge", byteLength: this.edgeOutput.byteLength } : undefined,
+      color: { label: "color", byteLength: this.colorOutput!.byteLength },
+      includeEdges: includeTerminalEdges,
+      layout: readbackLayout,
+    });
+    const copySources = {
+      fill: this.fillOutput!.gpu,
+      edge: this.edgeOutput?.gpu,
+      color: this.colorOutput!.gpu,
+    };
+    for (const command of readbackCopyPlan.commands) {
+      const source = copySources[command.label];
+      if (!source) {
+        throw new Error(`ThreeAsciiRenderer missing ${command.label} output buffer for readback.`);
+      }
       commandEncoder.copyBufferToBuffer(
-        this.edgeOutput!.gpu,
+        source,
         0,
         this.outputReadback.gpu,
-        readbackLayout.edgeOffset,
-        this.edgeOutput!.byteLength,
+        command.targetOffset,
+        command.byteLength,
       );
     }
-    commandEncoder.copyBufferToBuffer(
-      this.colorOutput!.gpu,
-      0,
-      this.outputReadback.gpu,
-      readbackLayout.colorOffset,
-      this.colorOutput!.byteLength,
-    );
 
     this.device!.queue.submit([commandEncoder.finish()]);
 
