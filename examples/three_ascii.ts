@@ -15,10 +15,11 @@ import {
 } from "npm:three@0.183.2";
 
 import { handleInput } from "../src/input.ts";
-import { handleKeyboardControls } from "../src/controls.ts";
+import { handleKeyboardControls, handleMouseControls } from "../src/controls.ts";
 import { Box } from "../src/components/box.ts";
 import { Frame } from "../src/components/frame.ts";
 import { Text } from "../src/components/text.ts";
+import type { TextRectangle } from "../src/canvas/text.ts";
 import { ThreeAscii } from "../src/components/three_ascii.ts";
 import { emptyStyle } from "../src/theme.ts";
 import { ASCII_DEMO_PRESETS, ASCII_NUMERIC_CONTROLS, ASCII_TOGGLE_CONTROLS } from "../src/three_ascii/demo_presets.ts";
@@ -39,10 +40,12 @@ requireInteractiveTerminal("deno task three-ascii");
 const tui = new Tui({
   style: crayon.bgBlack,
   refreshRate: 1000 / 30,
+  enableMouse: true,
 });
 
 handleInput(tui);
 handleKeyboardControls(tui);
+handleMouseControls(tui);
 tui.dispatch();
 tui.run();
 
@@ -129,29 +132,46 @@ new Text({
 });
 
 const menuVisible = new Signal(showControlsAtStartup);
+const renderMinimized = new Signal(false);
+const renderMaximized = new Signal(false);
 const selectedRow = new Signal(0);
 const menuWidth = 34;
 const panelOuterWidth = menuWidth + 2;
 const panelGap = 2;
+const windowControlText = "[-] [□] [↺] [x]";
+const windowControlWidth = 15;
 const asciiOptions = createDefaultAsciiOptions();
+const sidePanelVisible = new Computed(() => menuVisible.value && !renderMaximized.value && !renderMinimized.value);
+
+const renderWindowRectangle = new Computed(() => {
+  const reservePanel = sidePanelVisible.value &&
+    tui.rectangle.value.width >= 20 + panelOuterWidth + panelGap + 4;
+  return {
+    column: 2,
+    row: 2,
+    width: Math.max(
+      20,
+      tui.rectangle.value.width - 4 - (reservePanel ? panelOuterWidth + panelGap : 0),
+    ),
+    height: renderMinimized.value ? 3 : Math.max(10, tui.rectangle.value.height - 4),
+  };
+});
+
+const renderBodyRectangle = new Computed(() => {
+  const rect = renderWindowRectangle.value;
+  return {
+    column: rect.column + 1,
+    row: rect.row + 1,
+    width: Math.max(1, rect.width - 2),
+    height: Math.max(1, rect.height - 2),
+  };
+});
 
 const ascii = new ThreeAscii({
   parent: tui,
   theme: { base: emptyStyle },
-  rectangle: new Computed(() => {
-    const reservePanel = menuVisible.value &&
-      tui.rectangle.value.width >= 20 + panelOuterWidth + panelGap + 4;
-
-    return {
-      column: 2,
-      row: 2,
-      width: Math.max(
-        20,
-        tui.rectangle.value.width - 4 - (reservePanel ? panelOuterWidth + panelGap : 0),
-      ),
-      height: Math.max(10, tui.rectangle.value.height - 4),
-    };
-  }),
+  rectangle: renderBodyRectangle,
+  visible: new Computed(() => !renderMinimized.value),
   zIndex: 1,
   scene,
   camera,
@@ -260,6 +280,51 @@ function applyTerminalGlyphStyle(style: TerminalGlyphStyle): void {
   getAsciiObject()?.setTerminalGlyphStyle(style);
 }
 
+new Box({
+  parent: tui,
+  theme: { base: crayon.bgBlack },
+  rectangle: renderWindowRectangle,
+  zIndex: 2,
+});
+
+new Frame({
+  parent: tui,
+  theme: { base: crayon.white },
+  rectangle: renderWindowRectangle,
+  zIndex: 3,
+  charMap: "rounded",
+});
+
+new Text({
+  parent: tui,
+  theme: { base: crayon.bgBlack.white.bold },
+  text: new Computed<string>(() => {
+    const label = renderMinimized.value ? "THREE ASCII RENDERER · MINIMIZED" : "THREE ASCII RENDERER";
+    return ` ${label} `.slice(0, Math.max(0, renderWindowRectangle.value.width - windowControlWidth - 3));
+  }),
+  rectangle: new Computed<TextRectangle>(() => ({
+    column: renderWindowRectangle.value.column + 2,
+    row: renderWindowRectangle.value.row,
+    width: Math.max(0, renderWindowRectangle.value.width - windowControlWidth - 4),
+  })),
+  zIndex: 4,
+});
+
+new Text({
+  parent: tui,
+  theme: { base: crayon.bgBlack.white },
+  text: new Computed<string>(() =>
+    renderWindowRectangle.value.width >= windowControlWidth + 4 ? windowControlText : ""
+  ),
+  rectangle: new Computed<TextRectangle>(() => ({
+    column: renderWindowRectangle.value.column +
+      Math.max(1, renderWindowRectangle.value.width - windowControlWidth - 1),
+    row: renderWindowRectangle.value.row,
+    width: renderWindowRectangle.value.width >= windowControlWidth + 4 ? windowControlWidth : 0,
+  })),
+  zIndex: 4,
+});
+
 function applyPresetByIndex(index: number): void {
   const preset = ASCII_DEMO_PRESETS[(index + ASCII_DEMO_PRESETS.length) % ASCII_DEMO_PRESETS.length];
   applyAsciiPreset(asciiOptions, preset.id);
@@ -351,7 +416,7 @@ new Box({
   parent: tui,
   theme: { base: crayon.bgBlack.white },
   rectangle: panelRectangle,
-  visible: menuVisible,
+  visible: sidePanelVisible,
   zIndex: 5,
 });
 
@@ -359,7 +424,7 @@ new Frame({
   parent: tui,
   theme: { base: crayon.white },
   rectangle: panelRectangle,
-  visible: menuVisible,
+  visible: sidePanelVisible,
   zIndex: 6,
   charMap: "rounded",
 });
@@ -372,7 +437,7 @@ new Text({
     column: panelRectangle.value.column + 1,
     row: panelRectangle.value.row,
   })),
-  visible: menuVisible,
+  visible: sidePanelVisible,
   zIndex: 7,
 });
 
@@ -384,7 +449,7 @@ new Text({
     column: panelRectangle.value.column + 1,
     row: panelRectangle.value.row + 1,
   })),
-  visible: menuVisible,
+  visible: sidePanelVisible,
   zIndex: 7,
 });
 
@@ -397,7 +462,7 @@ menuLines.forEach((line, index) => {
       column: panelRectangle.value.column + 1,
       row: panelRectangle.value.row + 2 + index,
     })),
-    visible: menuVisible,
+    visible: sidePanelVisible,
     zIndex: 7,
   });
 });
@@ -409,6 +474,23 @@ tui.on("keyPress", ({ key, ctrl, meta, shift }) => {
 
   if (key === "m") {
     menuVisible.value = !menuVisible.peek();
+    return;
+  }
+
+  if (key === "f") {
+    renderMaximized.value = !renderMaximized.peek();
+    if (renderMaximized.peek()) renderMinimized.value = false;
+    return;
+  }
+
+  if (key === "r") {
+    renderMinimized.value = false;
+    renderMaximized.value = false;
+    return;
+  }
+
+  if (key === "x") {
+    tui.emit("destroy");
     return;
   }
 
@@ -442,5 +524,37 @@ tui.on("keyPress", ({ key, ctrl, meta, shift }) => {
     adjustSelected(1);
   }
 });
+
+tui.on("mousePress", ({ x, y, release, drag, ctrl, meta, shift }) => {
+  if (release || drag || ctrl || meta || shift) return;
+  const hit = titlebarControlAt(x, y);
+  if (!hit) return;
+  if (hit === "minimize") {
+    renderMinimized.value = true;
+    renderMaximized.value = false;
+  } else if (hit === "maximize") {
+    renderMaximized.value = true;
+    renderMinimized.value = false;
+  } else if (hit === "restore") {
+    renderMinimized.value = false;
+    renderMaximized.value = false;
+  } else {
+    tui.emit("destroy");
+  }
+});
+
+function titlebarControlAt(
+  x: number,
+  y: number,
+): "minimize" | "maximize" | "restore" | "close" | undefined {
+  const rect = renderWindowRectangle.peek();
+  if (y !== rect.row || rect.width < windowControlWidth + 4) return undefined;
+  const start = rect.column + Math.max(1, rect.width - windowControlWidth - 1);
+  if (x >= start && x < start + 3) return "minimize";
+  if (x >= start + 4 && x < start + 7) return "maximize";
+  if (x >= start + 8 && x < start + 11) return "restore";
+  if (x >= start + 12 && x < start + 15) return "close";
+  return undefined;
+}
 
 refreshMenu();
