@@ -34,10 +34,13 @@ export function initialWorkbenchDiagnosticLogRows(
   options: WorkbenchDiagnosticFormatOptions = {},
 ): string[] {
   const maxLogEntries = Math.max(1, Math.floor(options.maxLogEntries ?? 40));
-  return [
-    ...rows,
-    ...diagnostics.entries().map((entry) => formatWorkbenchDiagnosticLogEntry(entry, options)),
-  ].slice(-maxLogEntries);
+  const output: string[] = [];
+  appendBoundedRows(output, rows, maxLogEntries);
+  const entries = diagnostics.entries();
+  for (let index = 0; index < entries.length; index += 1) {
+    appendBoundedRow(output, formatWorkbenchDiagnosticLogEntry(entries[index]!, options), maxLogEntries);
+  }
+  return output;
 }
 
 /** Subscribes a workbench log sink to future diagnostics. */
@@ -50,4 +53,14 @@ export function subscribeWorkbenchDiagnosticLog(
     if (!entry) return;
     onLog(formatWorkbenchDiagnosticLogEntry(entry, options));
   });
+}
+
+function appendBoundedRows(target: string[], rows: readonly string[], limit: number): void {
+  const start = Math.max(0, rows.length - limit);
+  for (let index = start; index < rows.length; index += 1) appendBoundedRow(target, rows[index]!, limit);
+}
+
+function appendBoundedRow(target: string[], row: string, limit: number): void {
+  if (target.length >= limit) target.shift();
+  target.push(row);
 }

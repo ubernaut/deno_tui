@@ -321,6 +321,8 @@ Work:
   - [x] Reworked terminal parameter parsing to scan CSI parameter strings directly instead of split/map/filter chains.
   - [x] Reworked Kitty graphics control cleaning, deterministic key ordering, and command control serialization to use
         explicit buffers instead of Object.entries/fromEntries/map/filter pipelines.
+  - [x] Reworked initial workbench diagnostic log rows to use bounded append buffers instead of spread/map/slice
+        projection.
 
 Acceptance checks:
 
