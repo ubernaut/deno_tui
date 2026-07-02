@@ -933,6 +933,8 @@ Work:
         linear scans in plugin lookup, replacement, unregister, and registry inspection paths.
   - [x] Cached settings controller key and local-key projections, preserving cloned public inspection output while
         avoiding repeated sort/remap work in settings panes and app inspection.
+  - [x] Cached command registry sorted command and group projections, avoiding repeated sorting across command surfaces,
+        keymap binding sync, key lookup, palette projection, and command inspection.
 - [x] Make demo-only assets and NGE-inspired primitives clearly separate from library APIs.
   - [x] Added `app/neon_three_catalog.ts` for supported Three scene metadata and labels, keeping demo/NGE catalog data
         separate from the monolithic scene factory and shared by visualization footers plus scene coverage tests.

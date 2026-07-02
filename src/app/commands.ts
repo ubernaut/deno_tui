@@ -58,9 +58,12 @@ export type CommandRegistryListener = () => void;
 export class CommandRegistry<TAction extends Action = Action> {
   private readonly commands = new Map<string, Command<TAction>>();
   private readonly listeners = new Set<CommandRegistryListener>();
+  private orderedCommands?: Command<TAction>[];
+  private orderedGroups?: string[];
 
   register(command: Command<TAction>): () => void {
     this.commands.set(command.id, command);
+    this.invalidate();
     this.notify();
     return () => {
       if (this.commands.get(command.id) === command) {
@@ -85,6 +88,7 @@ export class CommandRegistry<TAction extends Action = Action> {
 
   unregister(id: string): void {
     if (this.commands.delete(id)) {
+      this.invalidate();
       this.notify();
     }
   }
@@ -98,12 +102,14 @@ export class CommandRegistry<TAction extends Action = Action> {
   }
 
   list(group?: string): Command<TAction>[] {
-    const commands: Command<TAction>[] = [];
-    for (const command of this.commands.values()) {
-      if (group === undefined || command.group === group) commands.push(command);
+    const commands = this.orderedCommandList();
+    if (group === undefined) return cloneCommandArray(commands);
+    const filtered: Command<TAction>[] = [];
+    for (let index = 0; index < commands.length; index += 1) {
+      const command = commands[index]!;
+      if (command.group === group) filtered.push(command);
     }
-    commands.sort(compareCommands);
-    return commands;
+    return filtered;
   }
 
   enabled(command: Command<TAction>): boolean {
@@ -141,17 +147,21 @@ export class CommandRegistry<TAction extends Action = Action> {
   }
 
   groups(): string[] {
-    const groups: Array<string | undefined> = [];
-    for (const command of this.commands.values()) {
-      groups.push(command.group);
+    if (!this.orderedGroups) {
+      const groups: Array<string | undefined> = [];
+      for (const command of this.commands.values()) {
+        groups.push(command.group);
+      }
+      this.orderedGroups = uniqueSorted(groups);
     }
-    return uniqueSorted(groups);
+    return cloneStringArray(this.orderedGroups);
   }
 
   clear(group?: string): void {
     if (group === undefined) {
       if (this.commands.size === 0) return;
       this.commands.clear();
+      this.invalidate();
       this.notify();
       return;
     }
@@ -163,7 +173,10 @@ export class CommandRegistry<TAction extends Action = Action> {
         changed = true;
       }
     }
-    if (changed) this.notify();
+    if (changed) {
+      this.invalidate();
+      this.notify();
+    }
   }
 
   inspect(group?: string): CommandRegistryInspection {
@@ -219,6 +232,21 @@ export class CommandRegistry<TAction extends Action = Action> {
       listener();
     }
   }
+
+  private orderedCommandList(): readonly Command<TAction>[] {
+    if (!this.orderedCommands) {
+      const commands: Command<TAction>[] = [];
+      for (const command of this.commands.values()) commands.push(command);
+      commands.sort(compareCommands);
+      this.orderedCommands = commands;
+    }
+    return this.orderedCommands;
+  }
+
+  private invalidate(): void {
+    this.orderedCommands = undefined;
+    this.orderedGroups = undefined;
+  }
 }
 
 function compareCommands<TAction extends Action>(a: Command<TAction>, b: Command<TAction>): number {
@@ -233,4 +261,16 @@ function uniqueSorted(values: Array<string | undefined>): string[] {
   }
   unique.sort();
   return unique;
+}
+
+function cloneCommandArray<TAction extends Action>(commands: readonly Command<TAction>[]): Command<TAction>[] {
+  const output = new Array<Command<TAction>>(commands.length);
+  for (let index = 0; index < commands.length; index += 1) output[index] = commands[index]!;
+  return output;
+}
+
+function cloneStringArray(values: readonly string[]): string[] {
+  const output = new Array<string>(values.length);
+  for (let index = 0; index < values.length; index += 1) output[index] = values[index]!;
+  return output;
 }
