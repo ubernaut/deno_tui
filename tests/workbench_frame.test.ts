@@ -30,6 +30,14 @@ Deno.test("workbench frame helpers preserve ANSI styling per terminal cell", () 
   assertEquals(renderFrameSlice(frame[0]!, 1, 2), "\x1b[31mA\x1b[0m\x1b[31mB\x1b[0m");
 });
 
+Deno.test("workbench frame writes clip negative columns without sparse negative keys", () => {
+  const frame: WorkbenchFrame = [[]];
+  writeFrame(frame, 3, 0, -2, "\x1b[32mABCDE\x1b[0m");
+
+  assertEquals(renderFrameRow(frame[0]!, 3), "\x1b[32mC\x1b[0m\x1b[32mD\x1b[0m\x1b[32mE\x1b[0m");
+  assertEquals(Object.hasOwn(frame[0]!, "-1"), false);
+});
+
 Deno.test("workbench frame row preparation reuses arrays and clears retained sparse rows", () => {
   const rows: WorkbenchFrame = [["x"], ["y"], ["z"]];
   const originalFirstRow = rows[0];

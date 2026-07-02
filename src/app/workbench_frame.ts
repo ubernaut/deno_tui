@@ -71,9 +71,24 @@ function readSgrSequenceAt(value: string, start: number): string | undefined {
 export function writeFrame(frame: WorkbenchFrame, width: number, row: number, column: number, value: string): void {
   if (row < 0 || row >= frame.length || column >= width) return;
   const cells = frame[row] ??= [];
-  const styledCells = toStyledCells(value);
-  for (let index = 0; index < styledCells.length && column + index < width; index += 1) {
-    cells[column + index] = styledCells[index]!;
+  let style = "";
+  let targetColumn = column;
+  for (let index = 0; index < value.length && targetColumn < width;) {
+    if (value.charCodeAt(index) === 0x1b) {
+      const sequence = readSgrSequenceAt(value, index);
+      if (sequence) {
+        style = sequence.includes("[0m") ? "" : style + sequence;
+        index += sequence.length;
+        continue;
+      }
+    }
+
+    const char = value[index]!;
+    if (targetColumn >= 0) {
+      cells[targetColumn] = style ? `${style}${char}\x1b[0m` : char;
+    }
+    targetColumn += 1;
+    index += char.length;
   }
 }
 
