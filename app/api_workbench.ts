@@ -60,6 +60,8 @@ import {
   workbenchContentViewport,
   workbenchEmptyWorkspaceMessage,
   type WorkbenchFrame,
+  type WorkbenchFrameBoxLine,
+  workbenchFrameBoxLinesInto,
   workbenchHeaderHelp,
   workbenchHorizontalScrollbarCellsInto,
   workbenchShelfEntriesInto,
@@ -587,6 +589,7 @@ const workspaceMenuLabelBuffer: string[] = [];
 const realSourceIdBuffer: string[] = [];
 const minimizedShelfEntries: Array<{ id: WindowId; title: string }> = [];
 const fullscreenTabEntries: Array<{ id: WindowId; title: string; selected?: boolean; hidden?: boolean }> = [];
+const windowFrameBoxLines: WorkbenchFrameBoxLine[] = [];
 const verticalScrollbarCells: Array<{ column: number; row: number; glyph: string }> = [];
 const horizontalScrollbarCells: Array<{ column: number; row: number; glyph: string }> = [];
 let dropdownOverlay: DropdownOverlay | null = null;
@@ -2820,14 +2823,11 @@ function drawFrame(frame: Frame, rect: Rectangle, title: string, active: boolean
   fillRect(frame, rect, active ? t.panelSoft : t.panel);
   const borderStyle = { fg: active ? t.accent : t.borderStrong, bg: active ? t.panelSoft : t.panel, bold: active };
   const titleStyle = { fg: t.background, bg: active ? t.accent : t.border, bold: true };
-  const horizontal = "─".repeat(Math.max(0, rect.width - 2));
-  write(frame, rect.row, rect.column, paint(`┌${horizontal}┐`, borderStyle));
-  for (let y = rect.row + 1; y < rect.row + rect.height - 1; y += 1) {
-    write(frame, y, rect.column, paint("│", borderStyle));
-    write(frame, y, rect.column + rect.width - 1, paint("│", borderStyle));
+  const lines = workbenchFrameBoxLinesInto(windowFrameBoxLines, rect, title);
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index]!;
+    write(frame, line.row, line.column, paint(line.text, line.kind === "title" ? titleStyle : borderStyle));
   }
-  write(frame, rect.row + rect.height - 1, rect.column, paint(`└${horizontal}┘`, borderStyle));
-  write(frame, rect.row, rect.column + 2, paint(` ${title.toUpperCase()} `, titleStyle));
 }
 
 function workspaceLayout(bounds: Rectangle): {

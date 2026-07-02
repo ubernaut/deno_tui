@@ -79,6 +79,8 @@ import {
   type WorkbenchButtonRowItem,
   type WorkbenchButtonRowPlacement,
   workbenchEmptyWorkspaceMessage,
+  type WorkbenchFrameBoxLine,
+  workbenchFrameBoxLinesInto,
   type WorkbenchPanelWorkspaceState,
   workbenchShelfEntriesInto,
   workbenchStatusLeft,
@@ -275,6 +277,7 @@ const threePreviewOrbRows: string[] = [];
 const htmlCssLayoutBoxes: ComputedLayoutBox[] = [];
 const minimizedShelfEntries: Array<{ id: PanelId; title: string }> = [];
 const fullscreenTabEntries: Array<{ id: PanelId; title: string; selected?: boolean; hidden?: boolean }> = [];
+const windowFrameBoxLines: WorkbenchFrameBoxLine[] = [];
 const verticalScrollbarCells: Array<{ column: number; row: number; glyph: string }> = [];
 const webTerminalActions: readonly WebTerminalAction[] = [
   "new",
@@ -2448,23 +2451,18 @@ function fillRect(frame: string[], rect: Rectangle, bg: string): void {
 function drawFrame(frame: string[], rect: Rectangle, title: string, selected: boolean): void {
   const border = selected ? theme().accent : theme().borderStrong;
   const bg = selected ? theme().panelSoft : theme().panel;
-  write(frame, rect.row, rect.column, paint(`┌${"─".repeat(Math.max(0, rect.width - 2))}┐`, border, bg, selected));
-  for (let row = rect.row + 1; row < rect.row + rect.height - 1; row += 1) {
-    write(frame, row, rect.column, paint("│", border, bg, selected));
-    write(frame, row, rect.column + rect.width - 1, paint("│", border, bg, selected));
+  const lines = workbenchFrameBoxLinesInto(windowFrameBoxLines, rect, title);
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index]!;
+    write(
+      frame,
+      line.row,
+      line.column,
+      line.kind === "title"
+        ? paint(line.text, theme().background, selected ? theme().accent : theme().border, true)
+        : paint(line.text, border, bg, selected),
+    );
   }
-  write(
-    frame,
-    rect.row + rect.height - 1,
-    rect.column,
-    paint(`└${"─".repeat(Math.max(0, rect.width - 2))}┘`, border, bg, selected),
-  );
-  write(
-    frame,
-    rect.row,
-    rect.column + 2,
-    paint(` ${title.toUpperCase()} `, theme().background, selected ? theme().accent : theme().border, true),
-  );
 }
 
 function buttonText(label: string, compact = false): string {

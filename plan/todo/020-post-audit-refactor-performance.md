@@ -45,3 +45,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   benchmark catalog.
 - Consolidated CPU hex-grid keyboard navigation and process sample labeling inside the visualization module so the
   workbench renderer only owns focus, scrolling, and logging side effects.
+- Extracted shared workbench frame-box border/title projection so terminal and web workbench demos use the same
+  renderer-neutral window-frame geometry.

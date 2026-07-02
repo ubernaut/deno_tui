@@ -10925,6 +10925,24 @@ function fillStringFrameRect(frame, width, rect, value) {
     writeStringFrameRow(frame, width, row, rect.column, value);
   }
 }
+function workbenchFrameBoxLinesInto(target, rect, title) {
+  target.length = 0;
+  if (rect.width <= 0 || rect.height <= 0) return target;
+  const horizontal = "\u2500".repeat(Math.max(0, rect.width - 2));
+  target.push({ kind: "border", row: rect.row, column: rect.column, text: `\u250C${horizontal}\u2510` });
+  const rightColumn = rect.column + rect.width - 1;
+  for (let row = rect.row + 1; row < rect.row + rect.height - 1; row += 1) {
+    target.push({ kind: "border", row, column: rect.column, text: "\u2502" });
+    if (rect.width > 1) target.push({ kind: "border", row, column: rightColumn, text: "\u2502" });
+  }
+  if (rect.height > 1) {
+    target.push({ kind: "border", row: rect.row + rect.height - 1, column: rect.column, text: `\u2514${horizontal}\u2518` });
+  }
+  if (rect.width > 2) {
+    target.push({ kind: "title", row: rect.row, column: rect.column + 2, text: ` ${title.toUpperCase()} ` });
+  }
+  return target;
+}
 function fitCellText(value, width) {
   const visible = textWidth(value);
   if (visible === width) return value;
@@ -15491,6 +15509,7 @@ var threePreviewOrbRows = [];
 var htmlCssLayoutBoxes = [];
 var minimizedShelfEntries = [];
 var fullscreenTabEntries = [];
+var windowFrameBoxLines = [];
 var verticalScrollbarCells = [];
 var webTerminalActions = [
   "new",
@@ -17500,23 +17519,16 @@ function fillRect(frame, rect, bg) {
 function drawFrame(frame, rect, title, selected) {
   const border = selected ? theme().accent : theme().borderStrong;
   const bg = selected ? theme().panelSoft : theme().panel;
-  write(frame, rect.row, rect.column, paint(`\u250C${"\u2500".repeat(Math.max(0, rect.width - 2))}\u2510`, border, bg, selected));
-  for (let row = rect.row + 1; row < rect.row + rect.height - 1; row += 1) {
-    write(frame, row, rect.column, paint("\u2502", border, bg, selected));
-    write(frame, row, rect.column + rect.width - 1, paint("\u2502", border, bg, selected));
+  const lines = workbenchFrameBoxLinesInto(windowFrameBoxLines, rect, title);
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    write(
+      frame,
+      line.row,
+      line.column,
+      line.kind === "title" ? paint(line.text, theme().background, selected ? theme().accent : theme().border, true) : paint(line.text, border, bg, selected)
+    );
   }
-  write(
-    frame,
-    rect.row + rect.height - 1,
-    rect.column,
-    paint(`\u2514${"\u2500".repeat(Math.max(0, rect.width - 2))}\u2518`, border, bg, selected)
-  );
-  write(
-    frame,
-    rect.row,
-    rect.column + 2,
-    paint(` ${title.toUpperCase()} `, theme().background, selected ? theme().accent : theme().border, true)
-  );
 }
 function buttonText2(label, compact2 = false) {
   return buttonText(label, { compact: compact2 });

@@ -8,6 +8,14 @@ export type WorkbenchFrame = string[][];
 /** Style function used by frame fill helpers. */
 export type WorkbenchFrameStyle = (text: string) => string;
 
+/** One drawable text segment for a framed workbench window. */
+export interface WorkbenchFrameBoxLine {
+  kind: "border" | "title";
+  row: number;
+  column: number;
+  text: string;
+}
+
 /** Prepares a reusable row array to a fixed length. */
 export function prepareWorkbenchRows<T>(
   rows: T[],
@@ -162,6 +170,34 @@ export function fillStringFrameRect(
   for (let row = rect.row; row < rect.row + rect.height; row += 1) {
     writeStringFrameRow(frame, width, row, rect.column, value);
   }
+}
+
+/** Projects border and title text for a workbench window frame into caller-owned storage. */
+export function workbenchFrameBoxLinesInto(
+  target: WorkbenchFrameBoxLine[],
+  rect: Rectangle,
+  title: string,
+): WorkbenchFrameBoxLine[] {
+  target.length = 0;
+  if (rect.width <= 0 || rect.height <= 0) return target;
+
+  const horizontal = "─".repeat(Math.max(0, rect.width - 2));
+  target.push({ kind: "border", row: rect.row, column: rect.column, text: `┌${horizontal}┐` });
+
+  const rightColumn = rect.column + rect.width - 1;
+  for (let row = rect.row + 1; row < rect.row + rect.height - 1; row += 1) {
+    target.push({ kind: "border", row, column: rect.column, text: "│" });
+    if (rect.width > 1) target.push({ kind: "border", row, column: rightColumn, text: "│" });
+  }
+
+  if (rect.height > 1) {
+    target.push({ kind: "border", row: rect.row + rect.height - 1, column: rect.column, text: `└${horizontal}┘` });
+  }
+  if (rect.width > 2) {
+    target.push({ kind: "title", row: rect.row, column: rect.column + 2, text: ` ${title.toUpperCase()} ` });
+  }
+
+  return target;
 }
 
 /** Pads or truncates text to a terminal-cell width. */

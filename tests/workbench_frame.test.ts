@@ -14,6 +14,7 @@ import {
   renderFrameSlice,
   toStyledCells,
   type WorkbenchFrame,
+  workbenchFrameBoxLinesInto,
   writeFrame,
   writeStringFrameRow,
 } from "../src/app/workbench_frame.ts";
@@ -90,6 +91,23 @@ Deno.test("workbench frame fill helpers clip to the configured width", () => {
   assertEquals(renderFrameRow(frame[1]!, 4), "  ..");
   assertEquals(renderFrameRow(frame[2]!, 4), "  ..");
   assertEquals(styleCalls, 2);
+});
+
+Deno.test("workbench frame box projection reuses storage and emits border and title lines", () => {
+  const target = [{ kind: "border" as const, row: 99, column: 99, text: "stale" }];
+  const lines = workbenchFrameBoxLinesInto(target, { column: 2, row: 3, width: 6, height: 4 }, "Logs");
+
+  assertEquals(lines === target, true);
+  assertEquals(lines, [
+    { kind: "border", row: 3, column: 2, text: "┌────┐" },
+    { kind: "border", row: 4, column: 2, text: "│" },
+    { kind: "border", row: 4, column: 7, text: "│" },
+    { kind: "border", row: 5, column: 2, text: "│" },
+    { kind: "border", row: 5, column: 7, text: "│" },
+    { kind: "border", row: 6, column: 2, text: "└────┘" },
+    { kind: "title", row: 3, column: 4, text: " LOGS " },
+  ]);
+  assertEquals(workbenchFrameBoxLinesInto(target, { column: 0, row: 0, width: 0, height: 4 }, "x"), []);
 });
 
 Deno.test("workbench frame text helpers fit center and format buttons", () => {
