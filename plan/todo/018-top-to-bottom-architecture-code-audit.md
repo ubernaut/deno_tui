@@ -245,6 +245,8 @@ Work:
         `map/reduce/filter/some` and closure-based average helpers in every dynamic visualization frame.
   - [x] Reworked terminal workspace session replacement, removal, layout normalization, and inspection cloning to use
         explicit buffers instead of repeated `map/filter` chains in tmux-like workspace state paths.
+  - [x] Reworked runtime workload telemetry source snapshots, registry inspection, report construction, and aggregate
+        counts to use one-pass loops instead of repeated map/reduce/filter projections.
 
 Acceptance checks:
 

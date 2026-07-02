@@ -101,7 +101,13 @@ export class RuntimeWorkloadRegistry {
   }
 
   sources(): RuntimeWorkloadSource[] {
-    return [...this.#sources.values()].map((source) => ({ ...source }));
+    const sources = new Array<RuntimeWorkloadSource>(this.#sources.size);
+    let index = 0;
+    for (const source of this.#sources.values()) {
+      sources[index] = { ...source };
+      index += 1;
+    }
+    return sources;
   }
 
   clear(): void {
@@ -114,11 +120,20 @@ export class RuntimeWorkloadRegistry {
 
   inspect(): RuntimeWorkloadRegistryInspection {
     const report = this.report();
+    const sourceIds = new Array<string>(report.workloads.length);
+    const labels = new Array<string>(report.workloads.length);
+    const kindsSet = new Set<RuntimeWorkloadKind>();
+    for (let index = 0; index < report.workloads.length; index += 1) {
+      const workload = report.workloads[index]!;
+      sourceIds[index] = workload.id;
+      labels[index] = workload.label;
+      kindsSet.add(workload.kind);
+    }
     return {
       ...report.inspection,
-      sourceIds: report.workloads.map((workload) => workload.id),
-      labels: report.workloads.map((workload) => workload.label),
-      kinds: uniqueSorted(report.workloads.map((workload) => workload.kind)),
+      sourceIds,
+      labels,
+      kinds: uniqueSorted(kindsSet),
     };
   }
 
@@ -145,7 +160,8 @@ export function inspectRuntimeWorkload(source: RuntimeWorkloadSource): RuntimeWo
 
 /** Creates an aggregate runtime workload report from scheduler and worker-pool sources. */
 export function createRuntimeWorkloadReport(options: RuntimeWorkloadReportOptions): RuntimeWorkloadReport {
-  const workloads = [...options.sources].map(inspectRuntimeWorkload);
+  const workloads: RuntimeWorkloadInspection[] = [];
+  for (const source of options.sources) workloads.push(inspectRuntimeWorkload(source));
   return {
     workloads,
     inspection: inspectRuntimeWorkloadReport(workloads),
@@ -156,16 +172,34 @@ export function createRuntimeWorkloadReport(options: RuntimeWorkloadReportOption
 export function inspectRuntimeWorkloadReport(
   workloads: readonly RuntimeWorkloadInspection[],
 ): RuntimeWorkloadReportInspection {
+  let running = 0;
+  let queued = 0;
+  let pending = 0;
+  let capacity = 0;
+  let saturated = 0;
+  let terminated = 0;
+  let idle = true;
+  let maxSaturation = 0;
+  for (const workload of workloads) {
+    running += workload.running;
+    queued += workload.queued;
+    pending += workload.pending;
+    capacity += workload.capacity;
+    if (workload.state === "saturated" || workload.state === "queued") saturated += 1;
+    if (workload.terminated) terminated += 1;
+    if (!workload.idle) idle = false;
+    maxSaturation = Math.max(maxSaturation, workload.saturation);
+  }
   return {
     count: workloads.length,
-    running: workloads.reduce((total, workload) => total + workload.running, 0),
-    queued: workloads.reduce((total, workload) => total + workload.queued, 0),
-    pending: workloads.reduce((total, workload) => total + workload.pending, 0),
-    capacity: workloads.reduce((total, workload) => total + workload.capacity, 0),
-    saturated: workloads.filter((workload) => workload.state === "saturated" || workload.state === "queued").length,
-    terminated: workloads.filter((workload) => workload.terminated).length,
-    idle: workloads.every((workload) => workload.idle),
-    maxSaturation: workloads.reduce((max, workload) => Math.max(max, workload.saturation), 0),
+    running,
+    queued,
+    pending,
+    capacity,
+    saturated,
+    terminated,
+    idle,
+    maxSaturation,
   };
 }
 
