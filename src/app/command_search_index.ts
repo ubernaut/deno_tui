@@ -94,14 +94,25 @@ export function createCommandSearchIndex(
   items: readonly CommandSurfaceItem[],
   options: CommandSearchIndexOptions = {},
 ): CommandSearchIndex {
-  const entries = items.map((item, index) => createCommandSearchIndexEntry(item, index, options));
+  const entries = new Array<CommandSearchIndexEntry>(items.length);
+  let disabled = 0;
+  let fieldCount = 0;
+  let keywordCount = 0;
+  for (let index = 0; index < items.length; index += 1) {
+    const item = items[index]!;
+    const entry = createCommandSearchIndexEntry(item, index, options);
+    entries[index] = entry;
+    if (item.disabled) disabled += 1;
+    fieldCount += entry.fields.length;
+    keywordCount += item.keywords?.length ?? 0;
+  }
   return {
     entries,
     inspection: {
       count: entries.length,
-      disabled: entries.filter((entry) => entry.item.disabled).length,
-      fieldCount: entries.reduce((total, entry) => total + entry.fields.length, 0),
-      keywordCount: entries.reduce((total, entry) => total + (entry.item.keywords?.length ?? 0), 0),
+      disabled,
+      fieldCount,
+      keywordCount,
     },
   };
 }
@@ -152,7 +163,7 @@ export function createIndexedCommandSurface<TAction extends Action = Action>(
   const initial = build();
   const query = new Signal(options.query ?? "");
   const index = new Signal(initial, { deepObserve: true });
-  const items = new Signal(initial.entries.map((entry) => entry.item), { deepObserve: true });
+  const items = new Signal(commandSearchIndexItems(initial.entries), { deepObserve: true });
   const matches = new Signal(searchCommandSearchIndex(initial, query.peek(), options), { deepObserve: true });
   const syncMatches = () => {
     if (!disposed) {
@@ -164,7 +175,7 @@ export function createIndexedCommandSurface<TAction extends Action = Action>(
   const applyIndex = (next: CommandSearchIndex, buildRevision: number) => {
     if (disposed || buildRevision !== revision) return next;
     index.value = next;
-    items.value = next.entries.map((entry) => entry.item);
+    items.value = commandSearchIndexItems(next.entries);
     syncMatches();
     return next;
   };
@@ -262,6 +273,14 @@ export function createIndexedCommandSurface<TAction extends Action = Action>(
       matches.dispose();
     },
   };
+}
+
+function commandSearchIndexItems(entries: readonly CommandSearchIndexEntry[]): CommandSurfaceItem[] {
+  const items = new Array<CommandSurfaceItem>(entries.length);
+  for (let index = 0; index < entries.length; index += 1) {
+    items[index] = entries[index]!.item;
+  }
+  return items;
 }
 
 function createCommandSearchIndexEntry(
