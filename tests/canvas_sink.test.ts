@@ -115,19 +115,25 @@ Deno.test("ansi canvas sink preserves stdout terminal output path", () => {
 });
 
 Deno.test("coalesceCanvasRowRanges groups sorted adjacent cells only", () => {
+  const updates = [
+    { row: 0, column: 0, value: "A" },
+    { row: 0, column: 1, value: "B" },
+    { row: 0, column: 3, value: "C" },
+    { row: 1, column: 0, value: "D" },
+  ];
   assertEquals(
-    coalesceCanvasRowRanges([
-      { row: 0, column: 0, value: "A" },
-      { row: 0, column: 1, value: "B" },
-      { row: 0, column: 3, value: "C" },
-      { row: 1, column: 0, value: "D" },
-    ]),
+    coalesceCanvasRowRanges(updates),
     [
       { row: 0, startColumn: 0, values: ["A", "B"] },
       { row: 0, startColumn: 3, values: ["C"] },
       { row: 1, startColumn: 0, values: ["D"] },
     ],
   );
+  const target = [{ row: 9, startColumn: 9, values: ["stale"] }];
+  assertEquals(coalesceCanvasRowRanges(updates, target), target);
+  assertEquals(target.length, 3);
+  assertEquals(coalesceCanvasRowRanges([], target), target);
+  assertEquals(target, []);
 });
 
 class RangeOnlySink {

@@ -267,6 +267,7 @@ Work:
   - [x] Reworked local data-query filtering to precompute active exact filters once per query instead of per row.
   - [x] Added caller-owned spatial-index query buffers and reused them in canvas overlap invalidation.
   - [x] Added a non-allocating dirty-region intersection visitor and used it for canvas rerender range queuing.
+  - [x] Reused canvas cell-update and row-range buffers across render passes via target-aware row-range coalescing.
   - [x] Reworked empty-state row projection to append visible rows directly instead of building filtered/sliced/mapped
         line arrays on each render.
   - [x] Added a shared internal text-row drawing helper and migrated row-oriented widgets to it, removing duplicated

@@ -150,14 +150,17 @@ function cloneCanvasRangeValues(values: readonly (string | Uint8Array)[]): (stri
 }
 
 /** Coalesces sorted canvas cell updates into contiguous row ranges. */
-export function coalesceCanvasRowRanges(updates: readonly CanvasCellUpdate[]): CanvasRowRangeUpdate[] {
-  const ranges: CanvasRowRangeUpdate[] = [];
+export function coalesceCanvasRowRanges(
+  updates: readonly CanvasCellUpdate[],
+  target: CanvasRowRangeUpdate[] = [],
+): CanvasRowRangeUpdate[] {
+  target.length = 0;
   let active: { row: number; startColumn: number; nextColumn: number; values: (string | Uint8Array)[] } | undefined;
 
   for (const update of updates) {
     if (!active || update.row !== active.row || update.column !== active.nextColumn) {
       if (active) {
-        ranges.push({ row: active.row, startColumn: active.startColumn, values: active.values });
+        target.push({ row: active.row, startColumn: active.startColumn, values: active.values });
       }
       active = {
         row: update.row,
@@ -171,9 +174,9 @@ export function coalesceCanvasRowRanges(updates: readonly CanvasCellUpdate[]): C
   }
 
   if (active) {
-    ranges.push({ row: active.row, startColumn: active.startColumn, values: active.values });
+    target.push({ row: active.row, startColumn: active.startColumn, values: active.values });
   }
-  return ranges;
+  return target;
 }
 
 function defaultAnsiFlushLimit(): number {

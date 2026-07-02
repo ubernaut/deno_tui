@@ -66,6 +66,8 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
   resizeNeeded: boolean;
   lastRenderStats: CanvasRenderStats;
   drawnOrderVersion: number;
+  cellUpdatesBuffer: CanvasCellUpdate[];
+  rowRangesBuffer: ReturnType<typeof coalesceCanvasRowRanges>;
 
   constructor(options: CanvasOptions) {
     super();
@@ -85,6 +87,8 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
     this.resizeNeeded = false;
     this.lastRenderStats = emptyRenderStats();
     this.drawnOrderVersion = 0;
+    this.cellUpdatesBuffer = [];
+    this.rowRangesBuffer = [];
 
     this.size = signalify(options.size, { deepObserve: true });
 
@@ -289,7 +293,8 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
     let flushedCells = 0;
     let dirtyRows = 0;
     let dirtyCells = 0;
-    const cellUpdates: CanvasCellUpdate[] = [];
+    const cellUpdates = this.cellUpdatesBuffer;
+    cellUpdates.length = 0;
 
     for (let row = 0; row < size.rows; ++row) {
       const columns = rerenderQueue[row];
@@ -309,7 +314,7 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
       columns.clear();
     }
 
-    const rowRanges = coalesceCanvasRowRanges(cellUpdates);
+    const rowRanges = coalesceCanvasRowRanges(cellUpdates, this.rowRangesBuffer);
     this.lastRenderStats = {
       updatedObjects: i,
       renderedObjects,
