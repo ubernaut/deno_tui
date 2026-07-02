@@ -13,7 +13,7 @@ import { RadioGroupController } from "../src/components/radio_group.ts";
 import { ScrollAreaController, scrollbarOffsetForPointer } from "../src/components/scroll_area.ts";
 import { SliderController } from "../src/components/slider.ts";
 import { renderStatusBar } from "../src/components/statusbar.ts";
-import { renderStepper, StepperController } from "../src/components/stepper.ts";
+import { StepperController } from "../src/components/stepper.ts";
 import { formatTerminalOutputLine } from "../src/components/terminal_output.ts";
 import { TextBoxController } from "../src/components/textbox.ts";
 import {
@@ -158,6 +158,7 @@ import {
   createApiWorkbenchThemes,
 } from "./api_workbench_catalog.ts";
 import {
+  apiWorkbenchButtonRowInto,
   type ApiWorkbenchCheckboxOption,
   apiWorkbenchCheckboxRowsInto,
   apiWorkbenchComboHeaderRowsInto,
@@ -166,13 +167,17 @@ import {
   apiWorkbenchControlLineInto,
   type ApiWorkbenchControlLineSegment,
   apiWorkbenchControlTrack,
+  apiWorkbenchDropdownHeaderRowInto,
   apiWorkbenchDropdownPopoverRect,
+  apiWorkbenchInputRowInto,
   type ApiWorkbenchOptionControlRow,
+  apiWorkbenchProgressRowInto,
   type ApiWorkbenchProjectedControlRow,
   type ApiWorkbenchRadioOption,
   apiWorkbenchRadioRowsInto,
   apiWorkbenchSliderSetHitInto,
   apiWorkbenchStepperHitPlacementsInto,
+  apiWorkbenchStepperRowInto,
   apiWorkbenchTextboxProjection,
   nextApiWorkbenchControlId,
   nextSortableDataColumn,
@@ -335,6 +340,7 @@ const controlLineHitPlacements: ApiWorkbenchControlHitPlacement[] = [];
 const controlCheckboxRows: ApiWorkbenchOptionControlRow[] = [];
 const controlRadioRows: ApiWorkbenchOptionControlRow[] = [];
 const controlComboHeaderRows: ApiWorkbenchProjectedControlRow[] = [];
+const controlProjectedRows: ApiWorkbenchProjectedControlRow[] = [];
 const controlCheckboxOptions: ApiWorkbenchCheckboxOption[] = [];
 const controlRadioOptions: ApiWorkbenchRadioOption[] = [];
 const controlSliderSetHit: ApiWorkbenchControlHitPlacement = {
@@ -1670,21 +1676,24 @@ function renderControls(frame: Frame, rect: Rectangle): void {
     reservedWidth: 18,
     maxWidth: 24,
   });
-  writeControl(
-    "button",
-    `${buttonText("Run Action")} presses=${actionButton.pressCount.peek()}`,
-    { button: true },
-  );
-  writeControl(
-    "genericButton",
-    `${buttonText("Generic Button")} presses=${genericButton.pressCount.peek()}`,
-    { button: true },
-  );
-  writeControl(
-    "modal",
-    `${buttonText("Open Modal")} state=${modal.openState.peek() ? "open" : "closed"}`,
-    { button: true },
-  );
+  controlProjectedRows[0] = apiWorkbenchButtonRowInto(controlProjectedRows[0], {
+    id: "button",
+    label: "Run Action",
+    detail: `presses=${actionButton.pressCount.peek()}`,
+  });
+  writeControl(controlProjectedRows[0].id, controlProjectedRows[0].value, controlProjectedRows[0].options);
+  controlProjectedRows[1] = apiWorkbenchButtonRowInto(controlProjectedRows[1], {
+    id: "genericButton",
+    label: "Generic Button",
+    detail: `presses=${genericButton.pressCount.peek()}`,
+  });
+  writeControl(controlProjectedRows[1].id, controlProjectedRows[1].value, controlProjectedRows[1].options);
+  controlProjectedRows[2] = apiWorkbenchButtonRowInto(controlProjectedRows[2], {
+    id: "modal",
+    label: "Open Modal",
+    detail: `state=${modal.openState.peek() ? "open" : "closed"}`,
+  });
+  writeControl(controlProjectedRows[2].id, controlProjectedRows[2].value, controlProjectedRows[2].options);
   writeControl("slider", `Slider    ${sliderTrack.text} ${density.value.peek()}/10`, {
     previous: true,
     next: true,
@@ -1733,9 +1742,12 @@ function renderControls(frame: Frame, rect: Rectangle): void {
   }
   writeWrappedOptions(frame, rect, row, "combo", themeCombo.items.peek(), themeCombo.selectedIndex.peek(), t);
   row += wrappedControlOptionRowCount(themeCombo.items.peek(), undefined, rect.width - 4);
-  writeControl("dropdown", `Dropdown  ${dropdown.expanded.peek() ? "▾" : "▸"} ${dropdown.label()}`, {
-    action: "toggle",
+  controlProjectedRows[3] = apiWorkbenchDropdownHeaderRowInto(controlProjectedRows[3], {
+    title: "Dropdown",
+    label: dropdown.label(),
+    expanded: dropdown.expanded.peek(),
   });
+  writeControl(controlProjectedRows[3].id, controlProjectedRows[3].value, controlProjectedRows[3].options);
   if (dropdown.expanded.peek()) {
     const items = dropdown.items.peek();
     dropdownOverlay = {
@@ -1746,33 +1758,31 @@ function renderControls(frame: Frame, rect: Rectangle): void {
       selectedIndex: dropdown.selectedIndex.peek(),
     };
   }
-  writeControl("input", `Input     ${commandInput.text.peek()}${activeControl.peek() === "input" ? "▌" : ""}`, {
-    action: "focus",
+  controlProjectedRows[4] = apiWorkbenchInputRowInto(controlProjectedRows[4], {
+    title: "Input",
+    text: commandInput.text.peek(),
+    active: activeControl.peek() === "input",
   });
+  writeControl(controlProjectedRows[4].id, controlProjectedRows[4].value, controlProjectedRows[4].options);
   const stepperRow = row;
-  writeControl(
-    "stepper",
-    `Stepper   ${
-      renderStepper(
-        workflowStepper.steps.peek(),
-        workflowStepper.activeIndex.peek(),
-        "horizontal",
-        Math.max(8, rect.width - 12),
-      )[0] ?? ""
-    }`,
-    {
-      previous: true,
-      next: true,
-    },
-  );
+  controlProjectedRows[5] = apiWorkbenchStepperRowInto(controlProjectedRows[5], {
+    steps: workflowStepper.steps.peek(),
+    activeIndex: workflowStepper.activeIndex.peek(),
+    rectWidth: rect.width,
+  });
+  writeControl(controlProjectedRows[5].id, controlProjectedRows[5].value, controlProjectedRows[5].options);
   addInlineStepperHits(rect, stepperRow);
   row = renderTextboxControl(frame, rect, row, t);
   if (row < rect.row + rect.height) {
+    controlProjectedRows[6] = apiWorkbenchProgressRowInto(controlProjectedRows[6], {
+      track: progressTrack,
+      value: progress.value.peek(),
+    });
     write(
       frame,
       row,
       rect.column,
-      paint(fit(`Progress  ${progressTrack.text} ${progress.value.peek()}%`, rect.width), {
+      paint(fit(controlProjectedRows[6].value, rect.width), {
         fg: t.text,
         bg: t.surface,
       }),

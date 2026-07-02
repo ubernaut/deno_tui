@@ -1,11 +1,12 @@
 import type { DataColumn } from "../src/components/data_table.ts";
 import { renderCheckBoxMark } from "../src/components/checkbox.ts";
+import { renderStepper, type StepperStep } from "../src/components/stepper.ts";
 import { type CursorPosition, type TextBoxVisualLine, wrapTextBoxLines } from "../src/components/textbox.ts";
 import {
   layoutWorkbenchControlButtonLine,
   type WorkbenchControlButtonLineSegmentKind,
 } from "../src/app/workbench_control_layout.ts";
-import { fitCellText } from "../src/app/workbench_frame.ts";
+import { buttonText, fitCellText } from "../src/app/workbench_frame.ts";
 import type { Rectangle } from "../src/types.ts";
 import { textWidth } from "../src/utils/strings.ts";
 
@@ -157,6 +158,44 @@ export interface ApiWorkbenchComboHeaderRowsOptions {
   splitMinWidth?: number;
   previous?: boolean;
   next?: boolean;
+}
+
+export interface ApiWorkbenchButtonRowOptions {
+  id: Extract<ApiWorkbenchControlId, "button" | "genericButton" | "modal">;
+  label: string;
+  detail?: string;
+  compact?: boolean;
+  action?: ApiWorkbenchControlHitAction;
+}
+
+export interface ApiWorkbenchDropdownHeaderRowOptions {
+  title: string;
+  label: string;
+  expanded: boolean;
+  expandedGlyph?: string;
+  collapsedGlyph?: string;
+}
+
+export interface ApiWorkbenchInputRowOptions {
+  title: string;
+  text: string;
+  active: boolean;
+  cursorGlyph?: string;
+}
+
+export interface ApiWorkbenchStepperRowOptions {
+  steps: readonly StepperStep[];
+  activeIndex: number;
+  rectWidth: number;
+  title?: string;
+  columnReserveWidth?: number;
+}
+
+export interface ApiWorkbenchProgressRowOptions {
+  track: Pick<ApiWorkbenchControlTrack, "text">;
+  value: number;
+  suffix?: string;
+  title?: string;
 }
 
 export function nextApiWorkbenchControlId(
@@ -468,6 +507,73 @@ export function apiWorkbenchComboHeaderRowsInto(
     target.length = 1;
   }
   return target;
+}
+
+export function apiWorkbenchButtonRowInto(
+  target: ApiWorkbenchProjectedControlRow | undefined,
+  options: ApiWorkbenchButtonRowOptions,
+): ApiWorkbenchProjectedControlRow {
+  const detail = options.detail ? ` ${options.detail}` : "";
+  return writeProjectedControlRow(
+    target,
+    options.id,
+    `${buttonText(options.label, { compact: options.compact })}${detail}`,
+    { button: true, action: options.action },
+  );
+}
+
+export function apiWorkbenchDropdownHeaderRowInto(
+  target: ApiWorkbenchProjectedControlRow | undefined,
+  options: ApiWorkbenchDropdownHeaderRowOptions,
+): ApiWorkbenchProjectedControlRow {
+  const expandedGlyph = options.expandedGlyph ?? "▾";
+  const collapsedGlyph = options.collapsedGlyph ?? "▸";
+  return writeProjectedControlRow(
+    target,
+    "dropdown",
+    `${options.title}  ${options.expanded ? expandedGlyph : collapsedGlyph} ${options.label}`,
+    { action: "toggle" },
+  );
+}
+
+export function apiWorkbenchInputRowInto(
+  target: ApiWorkbenchProjectedControlRow | undefined,
+  options: ApiWorkbenchInputRowOptions,
+): ApiWorkbenchProjectedControlRow {
+  return writeProjectedControlRow(
+    target,
+    "input",
+    `${options.title}     ${options.text}${options.active ? options.cursorGlyph ?? "▌" : ""}`,
+    { action: "focus" },
+  );
+}
+
+export function apiWorkbenchStepperRowInto(
+  target: ApiWorkbenchProjectedControlRow | undefined,
+  options: ApiWorkbenchStepperRowOptions,
+): ApiWorkbenchProjectedControlRow {
+  const reserve = Math.max(0, Math.floor(options.columnReserveWidth ?? 12));
+  const stepWidth = Math.max(8, Math.floor(options.rectWidth) - reserve);
+  return writeProjectedControlRow(
+    target,
+    "stepper",
+    `${options.title ?? "Stepper"}   ${
+      renderStepper(options.steps, options.activeIndex, "horizontal", stepWidth)[0] ?? ""
+    }`,
+    { previous: true, next: true },
+  );
+}
+
+export function apiWorkbenchProgressRowInto(
+  target: ApiWorkbenchProjectedControlRow | undefined,
+  options: ApiWorkbenchProgressRowOptions,
+): ApiWorkbenchProjectedControlRow {
+  const suffix = options.suffix ?? "%";
+  return writeProjectedControlRow(
+    target,
+    "slider",
+    `${options.title ?? "Progress"}  ${options.track.text} ${options.value}${suffix}`,
+  );
 }
 
 export function nextSortableDataColumn<TRow extends Record<string, unknown>>(

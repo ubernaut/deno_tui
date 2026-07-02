@@ -1,5 +1,6 @@
 import { assertEquals } from "./deps.ts";
 import {
+  apiWorkbenchButtonRowInto,
   apiWorkbenchCheckboxRowsInto,
   apiWorkbenchComboHeaderRowsInto,
   type ApiWorkbenchControlHitPlacement,
@@ -7,10 +8,14 @@ import {
   apiWorkbenchControlLineInto,
   type ApiWorkbenchControlLineSegment,
   apiWorkbenchControlTrack,
+  apiWorkbenchDropdownHeaderRowInto,
   apiWorkbenchDropdownPopoverRect,
+  apiWorkbenchInputRowInto,
+  apiWorkbenchProgressRowInto,
   apiWorkbenchRadioRowsInto,
   apiWorkbenchSliderSetHit,
   apiWorkbenchStepperHitPlacementsInto,
+  apiWorkbenchStepperRowInto,
   apiWorkbenchTextboxProjection,
   nextApiWorkbenchControlId,
   nextSortableDataColumn,
@@ -306,6 +311,76 @@ Deno.test("api workbench combo header projection preserves responsive split and 
       },
       { id: "combo", value: "Unit-01 Signal", options: { indent: true } },
     ],
+  );
+});
+
+Deno.test("api workbench simple control row projectors preserve renderer-neutral values", () => {
+  const button = apiWorkbenchButtonRowInto(undefined, {
+    id: "genericButton",
+    label: "Generic Button",
+    detail: "presses=3",
+  });
+  assertEquals(button, {
+    id: "genericButton",
+    value: "[ Generic Button ] presses=3",
+    options: { button: true, action: undefined },
+  });
+
+  const reused = apiWorkbenchDropdownHeaderRowInto(button, {
+    title: "Dropdown",
+    label: "Primary",
+    expanded: false,
+    expandedGlyph: "v",
+    collapsedGlyph: ">",
+  });
+  assertEquals(reused === button, true);
+  assertEquals(reused, {
+    id: "dropdown",
+    value: "Dropdown  > Primary",
+    options: { action: "toggle" },
+  });
+
+  assertEquals(
+    apiWorkbenchInputRowInto(undefined, {
+      title: "Input",
+      text: "deno task health",
+      active: true,
+      cursorGlyph: "|",
+    }),
+    {
+      id: "input",
+      value: "Input     deno task health|",
+      options: { action: "focus" },
+    },
+  );
+
+  assertEquals(
+    apiWorkbenchStepperRowInto(undefined, {
+      steps: [
+        { id: "draft", label: "Draft", completed: true },
+        { id: "review", label: "Review" },
+        { id: "ship", label: "Ship" },
+      ],
+      activeIndex: 1,
+      rectWidth: 48,
+    }),
+    {
+      id: "stepper",
+      value: "Stepper   ✓ Draft → [Review] → Ship",
+      options: { previous: true, next: true },
+    },
+  );
+
+  assertEquals(
+    apiWorkbenchProgressRowInto(undefined, {
+      track: { text: "██░░" },
+      value: 50,
+    }),
+    {
+      id: "slider",
+      value: "Progress  ██░░ 50%",
+      options: undefined,
+    },
   );
 });
 
