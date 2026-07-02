@@ -6,6 +6,7 @@ import {
   layoutWorkbenchControlButtonLine,
   layoutWrappedControlOptions,
   type WorkbenchButtonRowPlacement,
+  workbenchButtonRowRenderCommandsInto,
   wrappedControlOptionRowCount,
 } from "../src/app/workbench_control_layout.ts";
 
@@ -141,4 +142,68 @@ Deno.test("layoutWorkbenchButtonRowInto reuses caller-owned placement storage", 
     state: "active",
     tone: undefined,
   }]);
+});
+
+Deno.test("workbenchButtonRowRenderCommandsInto clips labels and reports exact hit rectangles", () => {
+  const placements = layoutWorkbenchButtonRow(
+    [
+      { label: "Very Wide Button", action: "wide", tone: "warning" },
+      { label: "OK", action: "ok", disabled: true },
+    ],
+    { column: 5, row: 1, width: 18, height: 2 },
+    1,
+  ).placements;
+
+  const commands = workbenchButtonRowRenderCommandsInto([], placements);
+
+  assertEquals(
+    commands.map((command) => ({
+      action: command.item.action,
+      text: command.text,
+      rect: command.rect,
+      hitRect: command.hitRect,
+      state: command.state,
+      tone: command.tone,
+    })),
+    [
+      {
+        action: "wide",
+        text: "[ Very Wide Butto…",
+        rect: { column: 5, row: 1, width: 18, height: 1 },
+        hitRect: { column: 5, row: 1, width: 18, height: 1 },
+        state: "base",
+        tone: "warning",
+      },
+      {
+        action: "ok",
+        text: "[ OK ]",
+        rect: { column: 5, row: 2, width: 6, height: 1 },
+        hitRect: { column: 5, row: 2, width: 6, height: 1 },
+        state: "disabled",
+        tone: undefined,
+      },
+    ],
+  );
+});
+
+Deno.test("workbenchButtonRowRenderCommandsInto reuses caller-owned command objects", () => {
+  const placements = layoutWorkbenchButtonRow(
+    [{ label: "First", action: "first" }],
+    { column: 0, row: 0, width: 16, height: 1 },
+    0,
+  ).placements;
+  const commands = workbenchButtonRowRenderCommandsInto([], placements);
+  const first = commands[0];
+
+  const nextPlacements = layoutWorkbenchButtonRow(
+    [{ label: "Second", action: "second", active: true }],
+    { column: 2, row: 3, width: 20, height: 1 },
+    3,
+  ).placements;
+  workbenchButtonRowRenderCommandsInto(commands, nextPlacements);
+
+  assertEquals(commands[0] === first, true);
+  assertEquals(commands[0]?.text, "[ Second ]");
+  assertEquals(commands[0]?.rect, { column: 2, row: 3, width: 10, height: 1 });
+  assertEquals(commands[0]?.state, "active");
 });

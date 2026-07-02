@@ -88,3 +88,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   through the existing button-row layout so touch/mobile controls no longer carry bespoke wrapping logic.
 - Extracted the API Workbench process-output terminal toolbar into a shared renderer-neutral projection helper so
   console rendering no longer mutates fixed local button slots before layout.
+- Added a reusable workbench button-row render-command projection and routed terminal/web toolbar and modal button
+  rendering through it so clipped labels and hit rectangles are computed once in shared code.

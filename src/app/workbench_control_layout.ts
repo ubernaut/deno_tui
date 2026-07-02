@@ -52,6 +52,16 @@ export interface WorkbenchButtonRowLayout<TAction = string> {
   nextRow: number;
 }
 
+/** Renderer-neutral draw command for one laid-out workbench toolbar button. */
+export interface WorkbenchButtonRowRenderCommand<TAction = string> {
+  item: WorkbenchButtonRowItem<TAction>;
+  text: string;
+  rect: Rectangle;
+  hitRect: Rectangle;
+  state: WorkbenchButtonState;
+  tone?: WorkbenchButtonTone;
+}
+
 /** Computes wrapped toolbar button positions without knowing how a renderer paints buttons. */
 export function layoutWorkbenchButtonRow<TAction>(
   items: readonly WorkbenchButtonRowItem<TAction>[],
@@ -99,6 +109,38 @@ export function layoutWorkbenchButtonRowInto<TAction>(
   }
 
   return Math.min(bottom, row + 1);
+}
+
+/** Projects laid-out toolbar placements into clipped text plus exact hit rectangles. */
+export function workbenchButtonRowRenderCommandsInto<TAction>(
+  target: WorkbenchButtonRowRenderCommand<TAction>[],
+  placements: readonly WorkbenchButtonRowPlacement<TAction>[],
+  options: { compact?: boolean } = {},
+): WorkbenchButtonRowRenderCommand<TAction>[] {
+  let written = 0;
+  for (let index = 0; index < placements.length; index += 1) {
+    const placement = placements[index]!;
+    const text = buttonText(placement.item.label, { compact: options.compact });
+    const width = Math.max(0, Math.min(textWidth(text), placement.rect.width));
+    if (width <= 0) continue;
+    const command = target[written] ?? {
+      item: placement.item,
+      text: "",
+      rect: { column: 0, row: 0, width: 0, height: 1 },
+      hitRect: { column: 0, row: 0, width: 0, height: 1 },
+      state: placement.state,
+    };
+    command.item = placement.item;
+    command.text = fitCellText(text, width);
+    command.state = placement.state;
+    command.tone = placement.tone;
+    setRect(command.rect, placement.rect.column, placement.rect.row, width, 1);
+    setRect(command.hitRect, placement.rect.column, placement.rect.row, width, 1);
+    target[written] = command;
+    written += 1;
+  }
+  target.length = written;
+  return target;
 }
 
 /** Computes clipped button/detail segments without letting the button background paint trailing whitespace. */
@@ -180,4 +222,11 @@ export function wrappedControlOptionRowCount(
     lineWidth += tokenWidth;
   }
   return rows + 1;
+}
+
+function setRect(target: Rectangle, column: number, row: number, width: number, height: number): void {
+  target.column = column;
+  target.row = row;
+  target.width = width;
+  target.height = height;
 }

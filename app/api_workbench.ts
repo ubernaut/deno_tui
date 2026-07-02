@@ -146,6 +146,8 @@ import {
   layoutWrappedControlOptions,
   type WorkbenchButtonRowItem,
   type WorkbenchButtonRowPlacement,
+  type WorkbenchButtonRowRenderCommand,
+  workbenchButtonRowRenderCommandsInto,
   wrappedControlOptionRowCount,
 } from "../src/app/workbench_control_layout.ts";
 import {
@@ -356,8 +358,10 @@ type SavedWorkspaceWindow = WorkbenchWorkspaceWindow<AsciiOptions>;
 type WorkspaceNameMode = "save" | "rename";
 const terminalOutputButtonItems: WorkbenchButtonRowItem<TerminalOutputAction>[] = [];
 const terminalOutputButtonPlacements: WorkbenchButtonRowPlacement<TerminalOutputAction>[] = [];
+const terminalOutputButtonCommands: WorkbenchButtonRowRenderCommand<TerminalOutputAction>[] = [];
 const terminalShellButtonItems: WorkbenchButtonRowItem<TerminalShellAction>[] = [];
 const terminalShellButtonPlacements: WorkbenchButtonRowPlacement<TerminalShellAction>[] = [];
+const terminalShellButtonCommands: WorkbenchButtonRowRenderCommand<TerminalShellAction>[] = [];
 const terminalShellSessionTabSources: WorkbenchTerminalSessionTab[] = [];
 const terminalShellSessionTabPlacements: WorkbenchTerminalSessionTabPlacement[] = [];
 const terminalShellPaneProjections: WorkbenchTerminalPaneProjection[] = [];
@@ -379,6 +383,7 @@ const controlSliderSetHit: ApiWorkbenchControlHitPlacement = {
 const controlStepperHitPlacements: ApiWorkbenchControlHitPlacement[] = [];
 const modalActionButtonItems: WorkbenchButtonRowItem<number>[] = [];
 const modalActionButtonPlacements: WorkbenchButtonRowPlacement<number>[] = [];
+const modalActionButtonCommands: WorkbenchButtonRowRenderCommand<number>[] = [];
 const themes: ThemeSpec[] = createApiWorkbenchThemes();
 const themeLabels = themes.map((entry) => entry.label);
 const themeMenuWidth = Math.max(20, maxTextWidth(themeLabels) + 6);
@@ -1938,14 +1943,16 @@ function renderTerminalOutputToolbar(frame: Frame, rect: Rectangle, startRow: nu
     startRow,
   );
 
-  for (const button of terminalOutputButtonPlacements) {
-    const written = writeButton(frame, button.rect.row, button.rect.column, button.item.label, {
-      state: button.state,
-      tone: button.tone,
-      maxWidth: button.rect.width,
-    });
+  workbenchButtonRowRenderCommandsInto(terminalOutputButtonCommands, terminalOutputButtonPlacements);
+  for (const button of terminalOutputButtonCommands) {
+    write(
+      frame,
+      button.rect.row,
+      button.rect.column,
+      paint(button.text, buttonPaintOptions(theme(), button.state, button.tone ?? "default")),
+    );
     if (!button.item.disabled) {
-      addHit({ ...button.rect, width: written }, { type: "terminalOutput", action: button.item.action });
+      addHit(button.hitRect, { type: "terminalOutput", action: button.item.action });
     }
   }
   return nextRow;
@@ -2202,14 +2209,16 @@ function renderTerminalShellToolbar(frame: Frame, rect: Rectangle, startRow: num
     startRow,
   );
 
-  for (const button of terminalShellButtonPlacements) {
-    const written = writeButton(frame, button.rect.row, button.rect.column, button.item.label, {
-      state: button.state,
-      tone: button.tone,
-      maxWidth: button.rect.width,
-    });
+  workbenchButtonRowRenderCommandsInto(terminalShellButtonCommands, terminalShellButtonPlacements);
+  for (const button of terminalShellButtonCommands) {
+    write(
+      frame,
+      button.rect.row,
+      button.rect.column,
+      paint(button.text, buttonPaintOptions(theme(), button.state, button.tone ?? "default")),
+    );
     if (!button.item.disabled) {
-      addHit({ ...button.rect, width: written }, { type: "terminalShell", action: button.item.action });
+      addHit(button.hitRect, { type: "terminalShell", action: button.item.action });
     }
   }
   return renderTerminalShellSessionTabs(frame, rect, nextRow, workspaceInspection);
@@ -2660,12 +2669,15 @@ function renderModalOverlay(frame: Frame): void {
     { column: inner.column, row: actionRow, width: inner.width, height: 1 },
     actionRow,
   );
-  for (const placement of modalActionButtonPlacements) {
-    writeButton(frame, placement.rect.row, placement.rect.column, placement.item.label, {
-      state: placement.state,
-      tone: placement.tone,
-    });
-    addHit(placement.rect, { type: "modalAction", index: placement.item.action });
+  workbenchButtonRowRenderCommandsInto(modalActionButtonCommands, modalActionButtonPlacements);
+  for (const command of modalActionButtonCommands) {
+    write(
+      frame,
+      command.rect.row,
+      command.rect.column,
+      paint(command.text, buttonPaintOptions(theme(), command.state, command.tone ?? "default")),
+    );
+    addHit(command.hitRect, { type: "modalAction", index: command.item.action });
   }
 }
 

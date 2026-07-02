@@ -11099,6 +11099,32 @@ function layoutWorkbenchButtonRowInto(target, items, bounds, startRow, options =
   }
   return Math.min(bottom, row + 1);
 }
+function workbenchButtonRowRenderCommandsInto(target, placements, options = {}) {
+  let written = 0;
+  for (let index = 0; index < placements.length; index += 1) {
+    const placement = placements[index];
+    const text = buttonText(placement.item.label, { compact: options.compact });
+    const width = Math.max(0, Math.min(textWidth(text), placement.rect.width));
+    if (width <= 0) continue;
+    const command = target[written] ?? {
+      item: placement.item,
+      text: "",
+      rect: { column: 0, row: 0, width: 0, height: 1 },
+      hitRect: { column: 0, row: 0, width: 0, height: 1 },
+      state: placement.state
+    };
+    command.item = placement.item;
+    command.text = fitCellText(text, width);
+    command.state = placement.state;
+    command.tone = placement.tone;
+    setRect(command.rect, placement.rect.column, placement.rect.row, width, 1);
+    setRect(command.hitRect, placement.rect.column, placement.rect.row, width, 1);
+    target[written] = command;
+    written += 1;
+  }
+  target.length = written;
+  return target;
+}
 function layoutWorkbenchControlButtonLine(prefix, value, width) {
   const safeWidth = Math.max(0, Math.floor(width));
   const segments = [];
@@ -11159,6 +11185,12 @@ function wrappedControlOptionRowCount(items, selectedIndex, width) {
     lineWidth += tokenWidth;
   }
   return rows2 + 1;
+}
+function setRect(target, column, row, width, height) {
+  target.column = column;
+  target.row = row;
+  target.width = width;
+  target.height = height;
 }
 
 // src/runtime/diagnostics.ts
@@ -13978,20 +14010,20 @@ function writeTerminalPaneProjection(target, index, pane, rect, active2, session
   projection.zoomed = pane?.zoomed ?? false;
   projection.titleVisible = pane !== void 0 && rect.height > 2;
   projection.title = projection.titleVisible ? `${active2 ? ">" : " "} ${title ?? sessionId ?? ""}` : "";
-  setRect(projection.rect, rect);
+  setRect2(projection.rect, rect);
   if (projection.titleVisible) {
-    setRect(projection.contentRect, {
+    setRect2(projection.contentRect, {
       column: rect.column,
       row: rect.row + 1,
       width: rect.width,
       height: rect.height - 1
     });
   } else {
-    setRect(projection.contentRect, rect);
+    setRect2(projection.contentRect, rect);
   }
   target[index] = projection;
 }
-function setRect(target, source) {
+function setRect2(target, source) {
   target.column = source.column;
   target.row = source.row;
   target.width = source.width;
@@ -15725,8 +15757,10 @@ var webTerminalActions = [
 ];
 var webTerminalButtonItems = [];
 var webTerminalButtonPlacements = [];
+var webTerminalButtonCommands = [];
 var mobileCommandButtonItems = [];
 var mobileCommandButtonPlacements = [];
+var mobileCommandButtonCommands = [];
 var webTerminalSessionTabSources = [];
 var webTerminalSessionTabPlacements = [];
 var controlLineSegments = [];
@@ -15747,6 +15781,7 @@ var controlSliderSetHit = {
 var controlStepperHitPlacements = [];
 var modalActionButtonItems = [];
 var modalActionButtonPlacements = [];
+var modalActionButtonCommands = [];
 var dropdownOverlay = null;
 var pointerDrag = null;
 themeIndex.subscribe((index) => persistThemeIndex(index));
@@ -16150,17 +16185,11 @@ function renderMobileCommandStrip(frame) {
     { column: 1, row: 1, width: Math.max(0, cols() - 2), height: 2 },
     1
   );
-  for (const placement of mobileCommandButtonPlacements) {
-    const width = writeButton(frame, placement.rect.row, placement.rect.column, placement.item.label, {
-      state: placement.state,
-      tone: placement.tone ?? "default",
-      maxWidth: placement.rect.width
-    });
-    if (width <= 0) continue;
-    hitTargets.add(
-      { column: placement.rect.column, row: placement.rect.row, width, height: 1 },
-      { type: "mobileAction", action: placement.item.action }
-    );
+  workbenchButtonRowRenderCommandsInto(mobileCommandButtonCommands, mobileCommandButtonPlacements);
+  for (const command of mobileCommandButtonCommands) {
+    const style2 = buttonPaintOptions(command.state, command.tone ?? "default");
+    write(frame, command.rect.row, command.rect.column, paint(command.text, style2.fg, style2.bg, style2.bold));
+    hitTargets.add(command.hitRect, { type: "mobileAction", action: command.item.action });
   }
 }
 function menuItemRect(menuStart, itemId, preferredWidth, preferredHeight) {
@@ -16503,14 +16532,12 @@ function renderTerminalToolbar(frame, rect, workspace = webTerminalWorkspace.ins
     searchMatchCount: scrollbackInspection?.matches.length
   }, { actions: webTerminalActions });
   layoutWorkbenchButtonRowInto(webTerminalButtonPlacements, webTerminalButtonItems, rect, rect.row);
-  for (const placement of webTerminalButtonPlacements) {
-    const written = writeButton(frame, placement.rect.row, placement.rect.column, placement.item.label, {
-      state: placement.state,
-      tone: placement.tone,
-      maxWidth: placement.rect.width
-    });
-    if (!placement.item.disabled && written > 0) {
-      hitTargets.add({ ...placement.rect, width: written }, { type: "terminalAction", action: placement.item.action });
+  workbenchButtonRowRenderCommandsInto(webTerminalButtonCommands, webTerminalButtonPlacements);
+  for (const command of webTerminalButtonCommands) {
+    const style2 = buttonPaintOptions(command.state, command.tone ?? "default");
+    write(frame, command.rect.row, command.rect.column, paint(command.text, style2.fg, style2.bg, style2.bold));
+    if (!command.item.disabled) {
+      hitTargets.add(command.hitRect, { type: "terminalAction", action: command.item.action });
     }
   }
 }
@@ -17185,12 +17212,11 @@ function renderModalOverlay(frame) {
     { column: inner.column, row: actionRow, width: inner.width, height: 1 },
     actionRow
   );
-  for (const placement of modalActionButtonPlacements) {
-    writeButton(frame, placement.rect.row, placement.rect.column, placement.item.label, {
-      state: placement.state,
-      tone: placement.tone
-    });
-    hitTargets.add(placement.rect, { type: "modalAction", index: placement.item.action });
+  workbenchButtonRowRenderCommandsInto(modalActionButtonCommands, modalActionButtonPlacements);
+  for (const command of modalActionButtonCommands) {
+    const style2 = buttonPaintOptions(command.state, command.tone ?? "default");
+    write(frame, command.rect.row, command.rect.column, paint(command.text, style2.fg, style2.bg, style2.bold));
+    hitTargets.add(command.hitRect, { type: "modalAction", index: command.item.action });
   }
 }
 function panelLineStyle(id2, index) {

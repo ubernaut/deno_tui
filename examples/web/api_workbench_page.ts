@@ -79,6 +79,8 @@ import {
   workbenchButtonPaintOptions,
   type WorkbenchButtonRowItem,
   type WorkbenchButtonRowPlacement,
+  type WorkbenchButtonRowRenderCommand,
+  workbenchButtonRowRenderCommandsInto,
   workbenchEmptyWorkspaceMessage,
   type WorkbenchFrameBoxLine,
   workbenchFrameBoxLinesInto,
@@ -311,8 +313,10 @@ const webTerminalActions: readonly WebTerminalAction[] = [
 ];
 const webTerminalButtonItems: WorkbenchButtonRowItem<WebTerminalAction>[] = [];
 const webTerminalButtonPlacements: WorkbenchButtonRowPlacement<WebTerminalAction>[] = [];
+const webTerminalButtonCommands: WorkbenchButtonRowRenderCommand<WebTerminalAction>[] = [];
 const mobileCommandButtonItems: WorkbenchButtonRowItem<MobileAction>[] = [];
 const mobileCommandButtonPlacements: WorkbenchButtonRowPlacement<MobileAction>[] = [];
+const mobileCommandButtonCommands: WorkbenchButtonRowRenderCommand<MobileAction>[] = [];
 const webTerminalSessionTabSources: WorkbenchTerminalSessionTab[] = [];
 const webTerminalSessionTabPlacements: WorkbenchTerminalSessionTabPlacement[] = [];
 const controlLineSegments: ApiWorkbenchControlLineSegment[] = [];
@@ -333,6 +337,7 @@ const controlSliderSetHit: ApiWorkbenchControlHitPlacement = {
 const controlStepperHitPlacements: ApiWorkbenchControlHitPlacement[] = [];
 const modalActionButtonItems: WorkbenchButtonRowItem<number>[] = [];
 const modalActionButtonPlacements: WorkbenchButtonRowPlacement<number>[] = [];
+const modalActionButtonCommands: WorkbenchButtonRowRenderCommand<number>[] = [];
 let dropdownOverlay: DropdownOverlay | null = null;
 let pointerDrag: {
   x: number;
@@ -755,17 +760,11 @@ function renderMobileCommandStrip(frame: string[]): void {
     { column: 1, row: 1, width: Math.max(0, cols() - 2), height: 2 },
     1,
   );
-  for (const placement of mobileCommandButtonPlacements) {
-    const width = writeButton(frame, placement.rect.row, placement.rect.column, placement.item.label, {
-      state: placement.state,
-      tone: placement.tone ?? "default",
-      maxWidth: placement.rect.width,
-    });
-    if (width <= 0) continue;
-    hitTargets.add(
-      { column: placement.rect.column, row: placement.rect.row, width, height: 1 },
-      { type: "mobileAction", action: placement.item.action },
-    );
+  workbenchButtonRowRenderCommandsInto(mobileCommandButtonCommands, mobileCommandButtonPlacements);
+  for (const command of mobileCommandButtonCommands) {
+    const style = buttonPaintOptions(command.state, command.tone ?? "default");
+    write(frame, command.rect.row, command.rect.column, paint(command.text, style.fg, style.bg, style.bold));
+    hitTargets.add(command.hitRect, { type: "mobileAction", action: command.item.action });
   }
 }
 
@@ -1141,14 +1140,12 @@ function renderTerminalToolbar(
     searchMatchCount: scrollbackInspection?.matches.length,
   }, { actions: webTerminalActions });
   layoutWorkbenchButtonRowInto(webTerminalButtonPlacements, webTerminalButtonItems, rect, rect.row);
-  for (const placement of webTerminalButtonPlacements) {
-    const written = writeButton(frame, placement.rect.row, placement.rect.column, placement.item.label, {
-      state: placement.state,
-      tone: placement.tone,
-      maxWidth: placement.rect.width,
-    });
-    if (!placement.item.disabled && written > 0) {
-      hitTargets.add({ ...placement.rect, width: written }, { type: "terminalAction", action: placement.item.action });
+  workbenchButtonRowRenderCommandsInto(webTerminalButtonCommands, webTerminalButtonPlacements);
+  for (const command of webTerminalButtonCommands) {
+    const style = buttonPaintOptions(command.state, command.tone ?? "default");
+    write(frame, command.rect.row, command.rect.column, paint(command.text, style.fg, style.bg, style.bold));
+    if (!command.item.disabled) {
+      hitTargets.add(command.hitRect, { type: "terminalAction", action: command.item.action });
     }
   }
 }
@@ -1888,12 +1885,11 @@ function renderModalOverlay(frame: string[]): void {
     { column: inner.column, row: actionRow, width: inner.width, height: 1 },
     actionRow,
   );
-  for (const placement of modalActionButtonPlacements) {
-    writeButton(frame, placement.rect.row, placement.rect.column, placement.item.label, {
-      state: placement.state,
-      tone: placement.tone,
-    });
-    hitTargets.add(placement.rect, { type: "modalAction", index: placement.item.action });
+  workbenchButtonRowRenderCommandsInto(modalActionButtonCommands, modalActionButtonPlacements);
+  for (const command of modalActionButtonCommands) {
+    const style = buttonPaintOptions(command.state, command.tone ?? "default");
+    write(frame, command.rect.row, command.rect.column, paint(command.text, style.fg, style.bg, style.bold));
+    hitTargets.add(command.hitRect, { type: "modalAction", index: command.item.action });
   }
 }
 

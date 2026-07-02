@@ -3511,6 +3511,20 @@
     },
     {
       "module": "src/app/workbench_control_layout.ts",
+      "name": "WorkbenchButtonRowRenderCommand",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_control_layout.ts",
+      "name": "workbenchButtonRowRenderCommandsInto",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_control_layout.ts",
       "name": "WorkbenchControlButtonLineSegment",
       "kind": "interface",
       "typeOnly": true,
