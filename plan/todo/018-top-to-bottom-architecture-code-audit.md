@@ -339,6 +339,8 @@ Work:
         node counts with direct passes instead of repeated filter/map/reduce scans before layout solving.
   - [x] Reworked CSS cascade matching, child recursion, variable normalization, declaration parsing, selector-list
         parsing, and specificity tag counting to avoid repeated filter/map pipelines during markup layout.
+  - [x] Added `MarkupLayoutCache`, a bounded cloned-result cache for parsed markup and CSS stylesheets, and wired
+        `createMarkupLayout()` through a default cache with opt-out support for callers that need uncached parsing.
 
 Acceptance checks:
 

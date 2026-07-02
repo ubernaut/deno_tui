@@ -8173,6 +8173,20 @@
     },
     {
       "module": "src/markup/hydrate.ts",
+      "name": "MarkupLayoutCache",
+      "kind": "class",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/markup/hydrate.ts",
+      "name": "MarkupLayoutCacheOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/markup/hydrate.ts",
       "name": "MarkupLayoutOptions",
       "kind": "interface",
       "typeOnly": true,

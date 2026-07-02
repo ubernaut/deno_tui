@@ -10,6 +10,7 @@ import {
   InputController,
   inspectTuiCssSupport,
   LayoutMeasurementCache,
+  MarkupLayoutCache,
   MarkupWidgetHydrationRegistry,
   matchesCssMedia,
   matchesCssSelector,
@@ -285,6 +286,38 @@ Deno.test("createMarkupLayout applies media rules from layout bounds", () => {
 
   assertEquals(wide.layout.byId.get("card")!.rect.width, 20);
   assertEquals(narrow.layout.byId.get("card")!.rect.width, 12);
+});
+
+Deno.test("MarkupLayoutCache reuses parsed markup and stylesheets with cloned results", () => {
+  const cache = new MarkupLayoutCache({ maxEntries: 2 });
+  const options = {
+    markup: `<window id="main"><panel id="card">Card</panel></window>`,
+    css: `#card { width: 10; height: 2; }`,
+    bounds: { column: 0, row: 0, width: 40, height: 8 },
+    cache,
+  };
+
+  const first = createMarkupLayout(options);
+  first.document.root.children[0]!.id = "mutated";
+  first.styledRoot.children[0]!.style.width = { unit: "cell", value: 99 };
+
+  const second = createMarkupLayout(options);
+
+  assertEquals(cache.inspect(), { documents: 1, stylesheets: 1, maxEntries: 2 });
+  assertEquals(second.document.root.children[0]!.id, "card");
+  assertEquals(second.layout.byId.get("card")!.rect.width, 10);
+});
+
+Deno.test("MarkupLayoutCache can be disabled per layout call", () => {
+  const cache = new MarkupLayoutCache();
+  createMarkupLayout({
+    markup: `<window id="main"></window>`,
+    css: `window { width: 10; }`,
+    bounds: { column: 0, row: 0, width: 20, height: 4 },
+    cache: false,
+  });
+
+  assertEquals(cache.inspect(), { documents: 0, stylesheets: 0, maxEntries: 32 });
 });
 
 Deno.test("createMarkupLayout computes CSS grid tracks and item placement", () => {
