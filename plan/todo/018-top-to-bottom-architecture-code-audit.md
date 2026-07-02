@@ -903,6 +903,8 @@ Work:
         copying only the visible page rows.
   - [x] Added a conservative plain-ASCII fast path for `textWidth` and `cropToWidth`, preserving ANSI/Unicode fallback
         behavior.
+  - [x] Reused the canvas spatial index for dirty-region affected object selection, replacing per-object dirty
+        intersection checks with indexed candidate membership.
 - [x] Make demo-only assets and NGE-inspired primitives clearly separate from library APIs.
   - [x] Added `app/neon_three_catalog.ts` for supported Three scene metadata and labels, keeping demo/NGE catalog data
         separate from the monolithic scene factory and shared by visualization footers plus scene coverage tests.

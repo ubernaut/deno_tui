@@ -230,17 +230,23 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
     }
 
     const dirtyRegion = DirtyRegion.fromRectangles(dirtyRectangles);
+    const spatialIndex = intersectionsDirty ? DrawObjectSpatialIndex.fromObjects(this.drawnObjects) : undefined;
     const objectsToRender = intersectionsDirty
-      ? affectedDrawObjects(this.drawnObjects, dirtyRegion, nonMovingUpdatedObjects)
+      ? affectedDrawObjects(
+        this.drawnObjects,
+        dirtyRegion,
+        nonMovingUpdatedObjects,
+        movedOwnObjects,
+        spatialIndex!,
+      )
       : objectsToUpdate;
     let intersectionCandidateChecks = 0;
     if (intersectionsDirty) {
-      const spatialIndex = DrawObjectSpatialIndex.fromObjects(this.drawnObjects);
       objectsToRender.sort((a, b) => b.zIndex.peek() - a.zIndex.peek() || b.id - a.id);
       for (const object of objectsToRender) {
         intersectionCandidateChecks += this.updateIntersections(
           object,
-          spatialIndex.query(object.rectangle.peek()),
+          spatialIndex!.query(object.rectangle.peek()),
         );
         object.moved = false;
         if (!object.outOfBounds) {
@@ -360,15 +366,23 @@ function affectedDrawObjects(
   objects: Iterable<DrawObject>,
   dirtyRegion: DirtyRegion,
   requiredObjects: readonly DrawObject[],
+  movedObjects: ReadonlySet<DrawObject>,
+  spatialIndex: DrawObjectSpatialIndex,
 ): DrawObject[] {
   if (dirtyRegion.isEmpty()) {
     return [...objects];
   }
 
   const required = new Set(requiredObjects);
+  for (const object of movedObjects) {
+    required.add(object);
+  }
+  for (const object of spatialIndex.queryDirtyRegion(dirtyRegion)) {
+    required.add(object);
+  }
   const affected: DrawObject[] = [];
   for (const object of objects) {
-    if (required.has(object) || object.moved || dirtyRegion.intersects(object.rectangle.peek())) {
+    if (required.has(object)) {
       affected.push(object);
     }
   }
