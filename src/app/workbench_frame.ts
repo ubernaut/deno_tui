@@ -101,18 +101,18 @@ export function fillFrameRect(
 
 /** Assembles one frame row from sparse styled cells. */
 export function renderFrameRow(cells: string[], width: number): string {
-  const row: string[] = [];
+  const row = new Array<string>(Math.max(0, width));
   for (let column = 0; column < width; column += 1) {
-    row.push(cells[column] ?? " ");
+    row[column] = cells[column] ?? " ";
   }
   return row.join("");
 }
 
 /** Assembles a clipped frame row slice from sparse styled cells. */
 export function renderFrameSlice(cells: string[], start: number, width: number): string {
-  const row: string[] = [];
+  const row = new Array<string>(Math.max(0, width));
   for (let column = 0; column < width; column += 1) {
-    row.push(cells[start + column] ?? " ");
+    row[column] = cells[start + column] ?? " ";
   }
   return row.join("");
 }

@@ -16,7 +16,10 @@ import {
   filterDataRows,
   flexRects,
   MemoryCanvasSink,
+  prepareWorkbenchFrame,
   queryLocalData,
+  renderFrameRow,
+  renderFrameSlice,
   renderSparkline,
   runTaskBatch,
   searchCommandSurfaceItems,
@@ -28,6 +31,8 @@ import {
   tileRects,
   visibleListRows,
   WindowManagerController,
+  type WorkbenchFrame,
+  writeFrame,
 } from "../mod.ts";
 import { createHtmlCssLayoutDemo } from "../app/html_css_layout_demo.ts";
 import { LayoutMeasurementCache, simpleLayoutSolver } from "../src/layout/mod.ts";
@@ -87,6 +92,10 @@ const terminalScreenTranscript = [
   "\x1b]8;id=docs;https://example.test/docs\x1b\\docs\x1b]8;;\x1b\\\r\n",
 ];
 const terminalScreenChunks = terminalScreenTranscript.map((chunk) => new TextEncoder().encode(chunk));
+const workbenchSparseFrame: WorkbenchFrame = [];
+const workbenchFrameRows = 54;
+const workbenchFrameWidth = 168;
+let workbenchFrameChecksum = 0;
 const largeListItems = Array.from({ length: 50_000 }, (_, index) => `process-${index.toString().padStart(5, "0")}`);
 const largeTable = new TableController({ rowCount: 100_000, viewportHeight: 44 });
 const largeDataRows = Array.from({ length: 25_000 }, (_, index) => ({
@@ -475,6 +484,41 @@ function drawWorkbenchText(
   }).draw();
 }
 
+function runWorkbenchSparseFrameWorkload(): void {
+  const frame = prepareWorkbenchFrame(workbenchSparseFrame, workbenchFrameRows);
+  for (let row = 0; row < workbenchFrameRows; row += 1) {
+    writeFrame(
+      frame,
+      workbenchFrameWidth,
+      row,
+      0,
+      `\x1b[48;2;18;8;32m ${row.toString().padStart(2, "0")} \x1b[0m`,
+    );
+    writeFrame(
+      frame,
+      workbenchFrameWidth,
+      row,
+      8,
+      `\x1b[38;2;180;255;120mmetric-${row % 9}\x1b[0m ` +
+        `value=${((row * 13) % 101).toString().padStart(3, "0")} ` +
+        "█".repeat((row % 22) + 1),
+    );
+    if (row % 4 === 0) {
+      writeFrame(frame, workbenchFrameWidth, row, 92, "[ Config ] [ Focus ] [ Close ]");
+    }
+  }
+
+  let total = 0;
+  for (let row = 0; row < workbenchFrameRows; row += 1) {
+    total += renderFrameRow(frame[row] ?? [], workbenchFrameWidth).length;
+    total += renderFrameSlice(frame[row] ?? [], 18, 72).length;
+  }
+  workbenchFrameChecksum = (workbenchFrameChecksum + total) % 1_000_000;
+  if (!Number.isFinite(workbenchFrameChecksum)) {
+    throw new Error("workbench sparse frame checksum failed");
+  }
+}
+
 class BenchmarkMetricsProvider implements SystemMetricsProvider {
   step = 0;
   processStatReads = 0;
@@ -712,6 +756,15 @@ export const benchmarkCases: BenchmarkCase[] = [
     iterations: 35,
     maxAverageMs: 35,
     run: runApiWorkbenchFrameWorkload,
+  },
+  {
+    name: "render/workbench-sparse-frame",
+    category: "render",
+    description: "Build and assemble sparse workbench frame rows with ANSI styled cells and clipped viewport slices.",
+    tags: ["render", "workbench", "frame", "ansi"],
+    iterations: 500,
+    maxAverageMs: 5,
+    run: runWorkbenchSparseFrameWorkload,
   },
   {
     name: "render/ansi-text-measure-crop-250",

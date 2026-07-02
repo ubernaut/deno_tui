@@ -974,6 +974,8 @@ Work:
         timing for pre/post mutation command actions.
   - [x] Reused the stateless Three ASCII ANSI grid assembler behind `buildThreeAsciiAnsiGrid`, preserving fresh grid
         returns while keeping ANSI/color/cell caches warm across repeated renderer frames.
+  - [x] Added a sparse workbench frame benchmark and changed frame row/slice assembly to fixed-size row arrays, reducing
+        hot sparse-frame assembly time in the focused benchmark.
 - [x] Make demo-only assets and NGE-inspired primitives clearly separate from library APIs.
   - [x] Added `app/neon_three_catalog.ts` for supported Three scene metadata and labels, keeping demo/NGE catalog data
         separate from the monolithic scene factory and shared by visualization footers plus scene coverage tests.
