@@ -136,9 +136,9 @@ export function isReservedTerminalKey(
   event: Pick<KeyPressEvent, "key" | "ctrl" | "meta">,
   options: TerminalInputRoutingOptions = {},
 ): boolean {
-  const reservedKeys = new Set([...(options.reservedKeys ?? defaultReservedKeys)]);
-  const reservedCtrlKeys = new Set([...(options.reservedCtrlKeys ?? defaultReservedCtrlKeys)]);
-  return event.meta || reservedKeys.has(event.key) || (event.ctrl && reservedCtrlKeys.has(event.key));
+  return event.meta ||
+    terminalReservedKeyIncludes(options.reservedKeys, defaultReservedKeys, event.key) ||
+    (event.ctrl && terminalReservedKeyIncludes(options.reservedCtrlKeys, defaultReservedCtrlKeys, event.key));
 }
 
 /** Routes a key press to a process session when raw terminal input mode is active. */
@@ -192,6 +192,18 @@ function writeTerminalInput(session: TerminalInputTarget, data: Uint8Array): Pro
   if (session.writeInput) return session.writeInput(data);
   if (session.write) return session.write(data);
   return Promise.resolve(false);
+}
+
+function terminalReservedKeyIncludes(
+  override: readonly string[] | undefined,
+  defaults: ReadonlySet<string>,
+  key: string,
+): boolean {
+  if (!override) return defaults.has(key);
+  for (let index = 0; index < override.length; index += 1) {
+    if (override[index] === key) return true;
+  }
+  return false;
 }
 
 function specialKeyBytes(key: string): string | undefined {
