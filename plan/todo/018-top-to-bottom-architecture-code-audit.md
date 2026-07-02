@@ -209,6 +209,8 @@ Work:
         palette, command bindings, and indexed command search to it, and added a 1k-command ranking benchmark.
   - [x] Reworked visible-row projection helpers for lists, virtual lists, context menus, radio groups, terminal output,
         and log viewers to avoid `slice().map()` allocation in scrollable widget viewport paths.
+  - [x] Reworked shared Neon Three geometry trace/ribbon/contour builders to use direct point buffers instead of
+        setup-time `Array.from()` closures during Three ASCII scene construction.
 
 Acceptance checks:
 

@@ -124,23 +124,25 @@ export function createMapSlabMesh() {
 }
 
 export function createWaveRibbon(color: string, count = 96) {
-  const points = Array.from({ length: count }, (_, index) => {
+  const points = new Array<THREE.Vector3>(count);
+  for (let index = 0; index < count; index += 1) {
     const x = (index / (count - 1) - 0.5) * 4.2;
     const y = Math.sin(index * 0.28) * 0.42 + Math.sin(index * 0.071) * 0.18;
-    return new THREE.Vector3(x, y, Math.cos(index * 0.19) * 0.22);
-  });
+    points[index] = new THREE.Vector3(x, y, Math.cos(index * 0.19) * 0.22);
+  }
   return createPolyline(points, color);
 }
 
 export function createLissajousTrace(color: string, scaleX: number, scaleY: number, phase = 0) {
-  const points = Array.from({ length: 180 }, (_, index) => {
+  const points = new Array<THREE.Vector3>(180);
+  for (let index = 0; index < points.length; index += 1) {
     const t = (index / 179) * Math.PI * 2;
-    return new THREE.Vector3(
+    points[index] = new THREE.Vector3(
       Math.sin(t * 3 + phase) * scaleX,
       Math.sin(t * 4 + phase * 0.7) * scaleY,
       Math.cos(t * 5 + phase) * 0.18,
     );
-  });
+  }
   return createPolyline(points, color);
 }
 
@@ -179,15 +181,16 @@ export function createGrid(width: number, height: number, columns: number, rows:
 export function createContourField(color: string, layers = 9): THREE.Group {
   const field = new THREE.Group();
   for (let layer = 0; layer < layers; layer += 1) {
-    const points = Array.from({ length: 90 }, (_, index) => {
+    const points = new Array<THREE.Vector3>(90);
+    for (let index = 0; index < points.length; index += 1) {
       const t = (index / 89) * Math.PI * 2;
       const radius = 0.5 + layer * 0.14 + Math.sin(index * 0.33 + layer) * 0.05;
-      return new THREE.Vector3(
+      points[index] = new THREE.Vector3(
         Math.cos(t) * radius * (0.78 + layer * 0.035),
         Math.sin(t) * radius * (1.05 - layer * 0.025),
         Math.sin(t * 2.7 + layer) * 0.05,
       );
-    });
+    }
     const line = createPolyline(points, color);
     line.position.set(-1.25 + layer * 0.055, 0.2 - layer * 0.025, -0.2 + layer * 0.018);
     field.add(line);
