@@ -16600,6 +16600,16 @@ function workbenchAsciiConfigModalActionItemsInto(target) {
   );
   return target;
 }
+function workbenchAsciiConfigModalActionRenderCommandsInto(target, items, placements, options) {
+  workbenchAsciiConfigModalActionItemsInto(items);
+  layoutWorkbenchButtonRowInto(
+    placements,
+    items,
+    { column: options.inner.column, row: options.actionRow, width: options.inner.width, height: 1 },
+    options.actionRow
+  );
+  return workbenchButtonRowRenderCommandsInto(target, placements);
+}
 function normalizeRect4(rect) {
   return {
     column: Math.floor(rect.column),
@@ -18354,14 +18364,12 @@ function renderThreeConfigModal(frame) {
     hitTargets.add(placement.previousRect, { type: "asciiConfig", index: placement.rowIndex, action: "previous" });
     hitTargets.add(placement.nextRect, { type: "asciiConfig", index: placement.rowIndex, action: "next" });
   }
-  workbenchAsciiConfigModalActionItemsInto(asciiConfigActionButtonItems);
-  layoutWorkbenchButtonRowInto(
-    asciiConfigActionButtonPlacements,
+  workbenchAsciiConfigModalActionRenderCommandsInto(
+    asciiConfigActionButtonCommands,
     asciiConfigActionButtonItems,
-    { column: layout.inner.column, row: layout.actionRow, width: layout.inner.width, height: 1 },
-    layout.actionRow
+    asciiConfigActionButtonPlacements,
+    { inner: layout.inner, actionRow: layout.actionRow }
   );
-  workbenchButtonRowRenderCommandsInto(asciiConfigActionButtonCommands, asciiConfigActionButtonPlacements);
   for (const command of asciiConfigActionButtonCommands) {
     const style2 = buttonPaintOptions(command.state, command.tone ?? "default");
     write(frame, command.rect.row, command.rect.column, paint(command.text, style2.fg, style2.bg, style2.bold));

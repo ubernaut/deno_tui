@@ -108,7 +108,7 @@ import {
 import {
   layoutWorkbenchAsciiConfigModal,
   type WorkbenchAsciiConfigModalAction,
-  workbenchAsciiConfigModalActionItemsInto,
+  workbenchAsciiConfigModalActionRenderCommandsInto,
   type WorkbenchAsciiConfigRowPlacement,
   workbenchAsciiConfigRowPlacementsInto,
 } from "../src/app/workbench_ascii_modal.ts";
@@ -2684,14 +2684,12 @@ function renderThreeConfigModal(frame: Frame): void {
       action: "next",
     });
   }
-  workbenchAsciiConfigModalActionItemsInto(asciiConfigActionButtonItems);
-  layoutWorkbenchButtonRowInto(
-    asciiConfigActionButtonPlacements,
+  workbenchAsciiConfigModalActionRenderCommandsInto(
+    asciiConfigActionButtonCommands,
     asciiConfigActionButtonItems,
-    { column: inner.column, row: layout.actionRow, width: inner.width, height: 1 },
-    layout.actionRow,
+    asciiConfigActionButtonPlacements,
+    { inner, actionRow: layout.actionRow },
   );
-  workbenchButtonRowRenderCommandsInto(asciiConfigActionButtonCommands, asciiConfigActionButtonPlacements);
   for (const command of asciiConfigActionButtonCommands) {
     write(
       frame,

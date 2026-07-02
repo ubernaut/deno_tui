@@ -17,9 +17,12 @@ import {
 } from "../src/app/workbench_ascii.ts";
 import {
   layoutWorkbenchAsciiConfigModal,
+  type WorkbenchAsciiConfigModalAction,
   workbenchAsciiConfigModalActionItemsInto,
+  workbenchAsciiConfigModalActionRenderCommandsInto,
   workbenchAsciiConfigRowPlacementsInto,
 } from "../src/app/workbench_ascii_modal.ts";
+import type { WorkbenchButtonRowItem, WorkbenchButtonRowPlacement } from "../src/app/workbench_control_layout.ts";
 
 Deno.test("workbench ascii controller owns root and per-window config signals", () => {
   const controller = new WorkbenchAsciiConfigController<"three" | "viz">("three");
@@ -236,4 +239,32 @@ Deno.test("workbench ascii config action buttons expose stable labels and tones"
     { label: "Apply", action: "apply" },
     { label: "OK", action: "ok", active: true, tone: "success" },
   ]);
+});
+
+Deno.test("workbench ascii config action button commands project reusable render commands", () => {
+  const items: WorkbenchButtonRowItem<WorkbenchAsciiConfigModalAction>[] = [];
+  const placements: WorkbenchButtonRowPlacement<WorkbenchAsciiConfigModalAction>[] = [];
+  const commands = workbenchAsciiConfigModalActionRenderCommandsInto([], items, placements, {
+    inner: { column: 4, row: 3, width: 32, height: 8 },
+    actionRow: 10,
+  });
+
+  assertEquals(commands.map((command) => command.text), ["[ Cancel ]", "[ Apply ]", "[ OK ]"]);
+  assertEquals(commands.map((command) => command.item.action), ["cancel", "apply", "ok"]);
+  assertEquals(commands.map((command) => command.rect), [
+    { column: 4, row: 10, width: 10, height: 1 },
+    { column: 15, row: 10, width: 9, height: 1 },
+    { column: 25, row: 10, width: 6, height: 1 },
+  ]);
+  assertEquals(commands[2]?.state, "active");
+  assertEquals(commands[2]?.tone, "success");
+
+  const firstCommand = commands[0];
+  const reused = workbenchAsciiConfigModalActionRenderCommandsInto(commands, items, placements, {
+    inner: { column: 1, row: 0, width: 6, height: 8 },
+    actionRow: 2,
+  });
+  assertEquals(reused, commands);
+  assertEquals(reused[0], firstCommand);
+  assertEquals(reused.map((command) => command.text), ["[ Can…"]);
 });

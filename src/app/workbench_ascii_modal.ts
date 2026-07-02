@@ -2,7 +2,13 @@
 import type { Rectangle } from "../types.ts";
 import { clipRect, inset } from "./hit_targets.ts";
 import { workbenchAsciiConfigVisibleRowStart } from "./workbench_ascii.ts";
-import type { WorkbenchButtonRowItem } from "./workbench_control_layout.ts";
+import {
+  layoutWorkbenchButtonRowInto,
+  type WorkbenchButtonRowItem,
+  type WorkbenchButtonRowPlacement,
+  type WorkbenchButtonRowRenderCommand,
+  workbenchButtonRowRenderCommandsInto,
+} from "./workbench_control_layout.ts";
 
 /** Options for laying out the Three ASCII renderer configuration modal. */
 export interface WorkbenchAsciiConfigModalLayoutOptions {
@@ -138,6 +144,26 @@ export function workbenchAsciiConfigModalActionItemsInto(
     { label: "OK", action: "ok", active: true, tone: "success" },
   );
   return target;
+}
+
+/** Projects the standard Three ASCII config modal action buttons into render commands. */
+export function workbenchAsciiConfigModalActionRenderCommandsInto(
+  target: WorkbenchButtonRowRenderCommand<WorkbenchAsciiConfigModalAction>[],
+  items: WorkbenchButtonRowItem<WorkbenchAsciiConfigModalAction>[],
+  placements: WorkbenchButtonRowPlacement<WorkbenchAsciiConfigModalAction>[],
+  options: {
+    inner: Rectangle;
+    actionRow: number;
+  },
+): WorkbenchButtonRowRenderCommand<WorkbenchAsciiConfigModalAction>[] {
+  workbenchAsciiConfigModalActionItemsInto(items);
+  layoutWorkbenchButtonRowInto(
+    placements,
+    items,
+    { column: options.inner.column, row: options.actionRow, width: options.inner.width, height: 1 },
+    options.actionRow,
+  );
+  return workbenchButtonRowRenderCommandsInto(target, placements);
 }
 
 function normalizeRect(rect: Rectangle): Rectangle {

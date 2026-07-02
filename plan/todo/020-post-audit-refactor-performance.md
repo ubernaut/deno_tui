@@ -167,3 +167,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   block-mode truecolor cells so Canvas2D preserves full-background color instead of glyph/text quantization.
 - Added a fully visible integer-rectangle fast path to Three ASCII frame diffing, reducing the focused
   `three-ascii-frame-diff-96x40` benchmark from roughly 2.32ms to 2.15ms without changing clipped or fractional paths.
+- Extracted Three ASCII config modal action-button render-command projection into the shared modal helper so terminal
+  and browser workbench adapters no longer duplicate the standard Cancel/Apply/OK layout sequence.

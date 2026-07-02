@@ -189,7 +189,7 @@ import {
 import {
   layoutWorkbenchAsciiConfigModal,
   type WorkbenchAsciiConfigModalAction,
-  workbenchAsciiConfigModalActionItemsInto,
+  workbenchAsciiConfigModalActionRenderCommandsInto,
   type WorkbenchAsciiConfigRowPlacement,
   workbenchAsciiConfigRowPlacementsInto,
 } from "../../src/app/workbench_ascii_modal.ts";
@@ -1966,14 +1966,12 @@ function renderThreeConfigModal(frame: string[]): void {
     hitTargets.add(placement.nextRect, { type: "asciiConfig", index: placement.rowIndex, action: "next" });
   }
 
-  workbenchAsciiConfigModalActionItemsInto(asciiConfigActionButtonItems);
-  layoutWorkbenchButtonRowInto(
-    asciiConfigActionButtonPlacements,
+  workbenchAsciiConfigModalActionRenderCommandsInto(
+    asciiConfigActionButtonCommands,
     asciiConfigActionButtonItems,
-    { column: layout.inner.column, row: layout.actionRow, width: layout.inner.width, height: 1 },
-    layout.actionRow,
+    asciiConfigActionButtonPlacements,
+    { inner: layout.inner, actionRow: layout.actionRow },
   );
-  workbenchButtonRowRenderCommandsInto(asciiConfigActionButtonCommands, asciiConfigActionButtonPlacements);
   for (const command of asciiConfigActionButtonCommands) {
     const style = buttonPaintOptions(command.state, command.tone ?? "default");
     write(frame, command.rect.row, command.rect.column, paint(command.text, style.fg, style.bg, style.bold));
