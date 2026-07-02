@@ -3990,9 +3990,9 @@ function cloneComputedLayoutStyle(style2) {
   return {
     ...style2,
     flexBasis: { ...style2.flexBasis },
-    gridTemplateColumns: style2.gridTemplateColumns.map((track) => ({ ...track })),
-    gridTemplateRows: style2.gridTemplateRows.map((track) => ({ ...track })),
-    gridTemplateAreas: style2.gridTemplateAreas.map((row) => [...row]),
+    gridTemplateColumns: cloneLayoutLengths(style2.gridTemplateColumns),
+    gridTemplateRows: cloneLayoutLengths(style2.gridTemplateRows),
+    gridTemplateAreas: cloneGridAreas(style2.gridTemplateAreas),
     gridAutoColumns: { ...style2.gridAutoColumns },
     gridAutoRows: { ...style2.gridAutoRows },
     gridColumn: { ...style2.gridColumn },
@@ -4042,35 +4042,45 @@ function parseLayoutLength(value, fallback = autoLength()) {
   return { ...fallback };
 }
 function parseGridTrackList(value, fallback = []) {
-  if (value === void 0) return fallback.map((track) => ({ ...track }));
+  if (value === void 0) return cloneLayoutLengths(fallback);
   const trimmed = value.trim().toLowerCase();
   if (!trimmed || trimmed === "none") return [];
-  return tokenizeGridTrackList(expandGridRepeat(trimmed)).map((part) => parseLayoutLength(part, autoLength()));
+  const tokens = tokenizeGridTrackList(expandGridRepeat(trimmed));
+  const tracks = new Array(tokens.length);
+  for (let index = 0; index < tokens.length; index += 1) {
+    tracks[index] = parseLayoutLength(tokens[index], autoLength());
+  }
+  return tracks;
 }
 function parseGridTemplateAreas(value, fallback = []) {
-  if (value === void 0) return fallback.map((row) => [...row]);
+  if (value === void 0) return cloneGridAreas(fallback);
   const trimmed = value.trim();
   if (!trimmed || trimmed.toLowerCase() === "none") return [];
   const rows2 = [];
   for (const match of trimmed.matchAll(/"([^"]*)"|'([^']*)'/g)) {
     const source = (match[1] ?? match[2] ?? "").trim();
-    if (!source) return fallback.map((row) => [...row]);
-    const cells = source.split(/\s+/).filter(Boolean);
-    if (cells.some((cell) => cell !== "." && !/^[A-Za-z_][\w-]*$/.test(cell))) {
-      return fallback.map((row) => [...row]);
+    if (!source) return cloneGridAreas(fallback);
+    const cells = splitCssWords(source);
+    for (const cell of cells) {
+      if (cell !== "." && !/^[A-Za-z_][\w-]*$/.test(cell)) return cloneGridAreas(fallback);
     }
     rows2.push(cells);
   }
-  if (rows2.length === 0) return fallback.map((row) => [...row]);
+  if (rows2.length === 0) return cloneGridAreas(fallback);
   const width = rows2[0]?.length ?? 0;
-  if (width === 0 || rows2.some((row) => row.length !== width)) return fallback.map((row) => [...row]);
+  if (width === 0) return cloneGridAreas(fallback);
+  for (const row of rows2) {
+    if (row.length !== width) return cloneGridAreas(fallback);
+  }
   return rows2;
 }
 function parseGridPlacement(value, fallback = {}) {
   if (value === void 0) return { ...fallback };
   const trimmed = value.trim().toLowerCase();
   if (!trimmed || trimmed === "auto") return {};
-  const [startPart = "", endPart = ""] = trimmed.split("/").map((part) => part.trim());
+  const slash = trimmed.indexOf("/");
+  const startPart = slash < 0 ? trimmed : trimmed.slice(0, slash).trim();
+  const endPart = slash < 0 ? "" : trimmed.slice(slash + 1).trim();
   const placement = {};
   const startSpan = parseGridSpan(startPart);
   const startLine = parsePositiveInteger(startPart);
@@ -4106,7 +4116,11 @@ function parseLayoutInteger(value, fallback = 0) {
 }
 function parseBoxEdges(value, fallback = ZERO_BOX_EDGES) {
   if (value === void 0) return { ...fallback };
-  const parts = value.trim().split(/\s+/).filter(Boolean).map((part) => parseLayoutInteger(part, 0));
+  const words = splitCssWords(value.trim());
+  const parts = new Array(words.length);
+  for (let index = 0; index < words.length; index += 1) {
+    parts[index] = parseLayoutInteger(words[index], 0);
+  }
   if (parts.length === 0) return { ...fallback };
   const [top, right = top, bottom = top, left = right] = parts;
   return { top: top ?? 0, right: right ?? 0, bottom: bottom ?? 0, left: left ?? 0 };
@@ -4178,7 +4192,7 @@ function applyLayoutDeclaration(style2, property, value) {
       next.gridAutoRows = parseLayoutLength(resolved, next.gridAutoRows);
       break;
     case "grid-auto-flow":
-      next.gridAutoFlow = parseOneOf(resolved.split(/\s+/)[0] ?? resolved, ["row", "column"], next.gridAutoFlow);
+      next.gridAutoFlow = parseOneOf(firstCssWord(resolved) ?? resolved, ["row", "column"], next.gridAutoFlow);
       break;
     case "grid-column":
       next.gridColumn = parseGridPlacement(resolved, next.gridColumn);
@@ -4305,7 +4319,7 @@ function applyLayoutDeclaration(style2, property, value) {
   return next;
 }
 function applyFlexShorthand(style2, value) {
-  const parts = value.split(/\s+/).filter(Boolean);
+  const parts = splitCssWords(value);
   if (parts.length === 1) {
     if (parts[0] === "none") {
       style2.flexGrow = 0;
@@ -4327,16 +4341,25 @@ function applyFlexShorthand(style2, value) {
   if (parts[2]) style2.flexBasis = parseLayoutLength(parts[2], style2.flexBasis);
 }
 function applyFlexFlowShorthand(style2, value) {
-  for (const part of value.split(/\s+/).filter(Boolean)) {
+  for (const part of splitCssWords(value)) {
     style2.flexDirection = parseOneOf(part, ["row", "column"], style2.flexDirection);
     style2.flexWrap = parseOneOf(part, ["nowrap", "wrap", "wrap-reverse"], style2.flexWrap);
   }
 }
 function applyBorderShorthand(style2, value) {
-  const parts = value.split(/\s+/).filter(Boolean);
-  const width = parts.find((part) => /^-?\d+(\.\d+)?/.test(part));
-  const color = parts.find((part) => part.startsWith("#") || part.startsWith("rgb") || part.startsWith("var("));
-  const stylePart = parts.find((part) => ["none", "single", "double", "solid", "round", "heavy"].includes(part));
+  const parts = splitCssWords(value);
+  let width;
+  let color;
+  let stylePart;
+  for (const part of parts) {
+    if (width === void 0 && /^-?\d+(\.\d+)?/.test(part)) width = part;
+    if (color === void 0 && (part.startsWith("#") || part.startsWith("rgb") || part.startsWith("var("))) {
+      color = part;
+    }
+    if (stylePart === void 0 && ["none", "single", "double", "solid", "round", "heavy"].includes(part)) {
+      stylePart = part;
+    }
+  }
   if (width) style2.border = parseBoxEdges(width, style2.border);
   else if (value.trim() && value.trim() !== "none") style2.border = parseBoxEdges("1", style2.border);
   if (color) style2.borderColor = color;
@@ -4345,11 +4368,18 @@ function applyBorderShorthand(style2, value) {
 function expandGridRepeat(value) {
   return value.replace(/repeat\(\s*(\d+)\s*,\s*([^)]+)\)/g, (_match, countText, trackText) => {
     const count = Math.max(0, Math.floor(Number.parseFloat(countText)));
-    return Array.from({ length: Math.min(count, 256) }, () => trackText.trim()).join(" ");
+    const bounded = Math.min(count, 256);
+    let output = "";
+    const track = trackText.trim();
+    for (let index = 0; index < bounded; index += 1) {
+      if (output) output += " ";
+      output += track;
+    }
+    return output;
   });
 }
 function tokenizeGridTrackList(value) {
-  return value.split(/\s+/).map((part) => part.trim()).filter(Boolean);
+  return splitCssWords(value);
 }
 function parseGridSpan(value) {
   const match = value.match(/^span\s+(\d+)$/);
@@ -4389,7 +4419,11 @@ function applyBoxEdge(edges, edge, value) {
 }
 function parseBoxEdgeLengths(value, fallback) {
   if (value === void 0) return cloneBoxEdgeLengths(fallback);
-  const parts = value.trim().split(/\s+/).filter(Boolean).map((part) => parseLayoutLength(part));
+  const words = splitCssWords(value.trim());
+  const parts = new Array(words.length);
+  for (let index = 0; index < words.length; index += 1) {
+    parts[index] = parseLayoutLength(words[index]);
+  }
   if (parts.length === 0) return cloneBoxEdgeLengths(fallback);
   const [top, right = top, bottom = top, left = right] = parts;
   return {
@@ -4428,7 +4462,9 @@ function normalizeSelfAlignment(value, fallback) {
   return parseOneOf(normalized, ["start", "end", "center", "stretch"], fallback);
 }
 function applyPlaceSelfShorthand(style2, value) {
-  const [align, justify = align] = value.split(/\s+/).filter(Boolean);
+  const parts = splitCssWords(value);
+  const align = parts[0];
+  const justify = parts[1] ?? align;
   if (align) style2.alignSelf = normalizeSelfAlignment(align, style2.alignSelf);
   if (justify) style2.justifySelf = normalizeSelfAlignment(justify, style2.justifySelf);
 }
@@ -4442,6 +4478,43 @@ function nonNegativeFloat(value, fallback) {
 }
 function finiteNumber(value, fallback) {
   return Number.isFinite(value) ? value : fallback;
+}
+function cloneLayoutLengths(values) {
+  const clone = new Array(values.length);
+  for (let index = 0; index < values.length; index += 1) {
+    clone[index] = { ...values[index] };
+  }
+  return clone;
+}
+function cloneGridAreas(values) {
+  const clone = new Array(values.length);
+  for (let row = 0; row < values.length; row += 1) {
+    const source = values[row];
+    const target = new Array(source.length);
+    for (let column = 0; column < source.length; column += 1) {
+      target[column] = source[column];
+    }
+    clone[row] = target;
+  }
+  return clone;
+}
+function firstCssWord(value) {
+  const words = splitCssWords(value);
+  return words[0];
+}
+function splitCssWords(value) {
+  const words = [];
+  let start = -1;
+  for (let index = 0; index <= value.length; index += 1) {
+    const atEnd = index === value.length;
+    const whitespace = !atEnd && /\s/.test(value[index]);
+    if (!atEnd && !whitespace && start < 0) start = index;
+    if ((atEnd || whitespace) && start >= 0) {
+      words.push(value.slice(start, index));
+      start = -1;
+    }
+  }
+  return words;
 }
 
 // src/layout/solver.ts
@@ -5433,19 +5506,26 @@ function parseCssStylesheet(source) {
   }
 }
 function parseCssDeclarations(source) {
-  return splitDeclarations(source).map((part) => {
+  const parts = splitDeclarations(source);
+  const declarations = [];
+  for (const part of parts) {
     const colon = part.indexOf(":");
-    if (colon < 0) return void 0;
+    if (colon < 0) continue;
     const property = part.slice(0, colon).trim().toLowerCase();
     const value = part.slice(colon + 1).trim();
-    return property && value ? { property, value } : void 0;
-  }).filter((entry) => entry !== void 0);
+    if (property && value) declarations.push({ property, value });
+  }
+  return declarations;
 }
 function cssSelectorSpecificity(selector) {
   const idCount = (selector.match(/#[A-Za-z_][\w-]*/g) ?? []).length;
   const classCount = (selector.match(/\.[A-Za-z_][\w-]*/g) ?? []).length;
   const pseudoCount = (selector.match(/:[A-Za-z_][\w-]*/g) ?? []).length;
-  const tagCount = selectorParts(selector).map((part) => /^(#text|[A-Za-z][\w-]*|\*)/.exec(part.simple)?.[1]).filter((tag) => tag !== void 0 && tag !== "*").length;
+  let tagCount = 0;
+  for (const part of selectorParts(selector)) {
+    const tag = /^(#text|[A-Za-z][\w-]*|\*)/.exec(part.simple)?.[1];
+    if (tag !== void 0 && tag !== "*") tagCount += 1;
+  }
   return idCount * 100 + (classCount + pseudoCount) * 10 + tagCount;
 }
 function selectorParts(selector) {
@@ -5463,7 +5543,15 @@ function selectorParts(selector) {
   return parts;
 }
 function splitSelectorList(source) {
-  return source.split(",").map((selector) => selector.trim()).filter(Boolean);
+  const selectors = [];
+  let start = 0;
+  for (let index = 0; index <= source.length; index += 1) {
+    if (index !== source.length && source[index] !== ",") continue;
+    const selector = source.slice(start, index).trim();
+    if (selector) selectors.push(selector);
+    start = index + 1;
+  }
+  return selectors;
 }
 function splitDeclarations(source) {
   const declarations = [];
@@ -5480,7 +5568,7 @@ function splitDeclarations(source) {
   }
   const last = source.slice(start).trim();
   if (last) declarations.push(last);
-  return declarations.filter(Boolean);
+  return declarations;
 }
 function stripCssComments(source) {
   return source.replace(/\/\*[\s\S]*?\*\//g, "");
@@ -5564,20 +5652,27 @@ function applyNode(node, ancestors, inherited, stylesheet, options) {
   style2.color = inherited.color;
   style2.visibility = inherited.visibility;
   style2.variables = { ...inherited.variables };
-  const matches = stylesheet.rules.filter(
-    (rule) => matchesCssMedia(rule.media, options.viewport) && matchesCssSelector(rule.selector, node, ancestors, options.states ?? {})
-  ).map((rule) => ({
-    declarations: rule.declarations,
-    specificity: rule.specificity,
-    order: rule.order
-  })).sort((left, right) => left.specificity - right.specificity || left.order - right.order);
+  const matches = [];
+  for (const rule of stylesheet.rules) {
+    if (matchesCssMedia(rule.media, options.viewport) && matchesCssSelector(rule.selector, node, ancestors, options.states ?? {})) {
+      matches.push({
+        declarations: rule.declarations,
+        specificity: rule.specificity,
+        order: rule.order
+      });
+    }
+  }
+  matches.sort((left, right) => left.specificity - right.specificity || left.order - right.order);
   next.style = applyMatchedRules(style2, matches);
   const inline = node.attributes.style ? parseCssDeclarations(node.attributes.style) : [];
   if (inline.length > 0) {
     next.style = applyMatchedRules(next.style, [{ declarations: inline, specificity: 1e3, order: 1e6 }]);
   }
-  const childAncestors = [...ancestors, next];
-  next.children = node.children.map((child) => applyNode(child, childAncestors, next.style, stylesheet, options));
+  const childAncestors = appendAncestor(ancestors, next);
+  next.children = new Array(node.children.length);
+  for (let index = 0; index < node.children.length; index += 1) {
+    next.children[index] = applyNode(node.children[index], childAncestors, next.style, stylesheet, options);
+  }
   return next;
 }
 function matchesCssMedia(media, viewport) {
@@ -5622,10 +5717,19 @@ function matchesSimpleSelector(selector, node, isRoot, states) {
 }
 function normalizeVariables(variables) {
   const normalized = {};
-  for (const [name, value] of Object.entries(variables)) {
+  for (const name in variables) {
+    const value = variables[name];
     normalized[name.startsWith("--") ? name : `--${name}`] = value;
   }
   return normalized;
+}
+function appendAncestor(ancestors, node) {
+  const next = new Array(ancestors.length + 1);
+  for (let index = 0; index < ancestors.length; index += 1) {
+    next[index] = ancestors[index];
+  }
+  next[ancestors.length] = node;
+  return next;
 }
 
 // src/markup/html.ts
@@ -7260,9 +7364,16 @@ var MarkupWidgetHydration = class {
   byId;
   focusOrder;
   constructor(widgets) {
-    this.widgets = [...widgets];
-    this.byId = new Map(this.widgets.map((widget) => [widget.id, widget]));
-    this.focusOrder = this.widgets.filter((widget) => widget.focusable).map((widget) => widget.id);
+    this.widgets = new Array(widgets.length);
+    this.byId = /* @__PURE__ */ new Map();
+    const focusOrder = [];
+    for (let index = 0; index < widgets.length; index += 1) {
+      const widget = widgets[index];
+      this.widgets[index] = widget;
+      this.byId.set(widget.id, widget);
+      if (widget.focusable) focusOrder.push(widget.id);
+    }
+    this.focusOrder = focusOrder;
   }
   dispatch(event) {
     const widget = this.byId.get(event.id);
@@ -7270,17 +7381,30 @@ var MarkupWidgetHydration = class {
     return dispatchMarkupWidgetEvent(widget, event);
   }
   inspect() {
-    return {
-      widgetCount: this.widgets.length,
-      focusOrder: [...this.focusOrder],
-      widgets: this.widgets.map((widget) => ({
+    const focusOrder = new Array(this.focusOrder.length);
+    for (let index = 0; index < this.focusOrder.length; index += 1) {
+      focusOrder[index] = this.focusOrder[index];
+    }
+    const widgets = new Array(this.widgets.length);
+    for (let index = 0; index < this.widgets.length; index += 1) {
+      const widget = this.widgets[index];
+      const actions = new Array(widget.actions.length);
+      for (let actionIndex = 0; actionIndex < widget.actions.length; actionIndex += 1) {
+        actions[actionIndex] = widget.actions[actionIndex];
+      }
+      widgets[index] = {
         id: widget.id,
         tag: widget.tag,
         kind: widget.kind,
         focusable: widget.focusable,
-        actions: [...widget.actions],
+        actions,
         controller: widget.controller?.constructor.name
-      }))
+      };
+    }
+    return {
+      widgetCount: this.widgets.length,
+      focusOrder,
+      widgets
     };
   }
   dispose() {
@@ -7482,7 +7606,11 @@ function checkboxWidget(node) {
   };
 }
 function comboboxWidget(node) {
-  const items = optionNodes(node).map((option) => labelForNode(option));
+  const options = optionNodes(node);
+  const items = new Array(options.length);
+  for (let index = 0; index < options.length; index += 1) {
+    items[index] = labelForNode(options[index]);
+  }
   const selectedIndex = selectedOptionIndex(node);
   return {
     kind: "combobox",
@@ -7514,7 +7642,11 @@ function inputWidget(node) {
   };
 }
 function radioGroupWidget(node) {
-  const options = optionNodes(node, ["option", "radio"]).map(radioOptionForNode);
+  const optionNodeList = optionNodes(node, ["option", "radio"]);
+  const options = new Array(optionNodeList.length);
+  for (let index = 0; index < optionNodeList.length; index += 1) {
+    options[index] = radioOptionForNode(optionNodeList[index]);
+  }
   const selectedValue = node.attributes["selected-value"] ?? node.attributes.value;
   return {
     kind: "radio-group",
@@ -7576,7 +7708,11 @@ function sliderWidget(node) {
   };
 }
 function tabsWidget(node) {
-  const tabs = node.children.filter((child) => child.tag === "tab").map(tabForNode);
+  const tabNodes = childNodesForTags(node, ["tab"]);
+  const tabs = new Array(tabNodes.length);
+  for (let index = 0; index < tabNodes.length; index += 1) {
+    tabs[index] = tabForNode(tabNodes[index]);
+  }
   return {
     kind: "tabs",
     controller: new TabsController({
@@ -7601,7 +7737,7 @@ function treeWidget(node) {
   return {
     kind: "tree",
     controller: new TreeController({
-      nodes: node.children.filter((child) => child.tag === "tree-node").map(treeNodeForNode),
+      nodes: treeNodesForChildren(node.children),
       selectedIndex: numberAttr(node.attributes, "selected-index", 0)
     })
   };
@@ -7623,8 +7759,7 @@ function defaultActionsForKind(kind) {
   return [];
 }
 function optionNodes(node, tags = ["option"]) {
-  const wanted = new Set(tags);
-  return node.children.filter((child) => wanted.has(child.tag));
+  return childNodesForTags(node, tags);
 }
 function radioOptionForNode(node) {
   const label = labelForNode(node);
@@ -7642,13 +7777,31 @@ function tabForNode(node) {
   };
 }
 function treeNodeForNode(node) {
-  const children = node.children.filter((child) => child.tag === "tree-node").map(treeNodeForNode);
+  const children = treeNodesForChildren(node.children);
   return {
     id: stringAttr(node.attributes, "value", node.id),
     label: labelForNode(node),
     expanded: booleanAttr(node.attributes, "expanded"),
     children: children.length > 0 ? children : void 0
   };
+}
+function childNodesForTags(node, tags) {
+  const nodes = [];
+  for (const child of node.children) {
+    for (const tag of tags) {
+      if (child.tag !== tag) continue;
+      nodes.push(child);
+      break;
+    }
+  }
+  return nodes;
+}
+function treeNodesForChildren(children) {
+  const nodes = [];
+  for (const child of children) {
+    if (child.tag === "tree-node") nodes.push(treeNodeForNode(child));
+  }
+  return nodes;
 }
 function selectedOptionIndex(node) {
   const explicit = numberAttr(node.attributes, "selected-index", void 0);
@@ -7674,7 +7827,14 @@ function labelForNode(node) {
 }
 function textForNode(node) {
   if (node.text !== void 0) return node.text;
-  return node.children.map(textForNode).join(" ").trim();
+  let text = "";
+  for (const child of node.children) {
+    const childText = textForNode(child);
+    if (!childText) continue;
+    if (text) text += " ";
+    text += childText;
+  }
+  return text.trim();
 }
 function boxAsSliderTrack(box, _orientation) {
   if (!box) return void 0;
@@ -7714,9 +7874,55 @@ function normalizeTag(tag) {
 }
 
 // src/markup/hydrate.ts
+var MarkupLayoutCache = class {
+  #maxEntries;
+  #documents = /* @__PURE__ */ new Map();
+  #stylesheets = /* @__PURE__ */ new Map();
+  constructor(options = {}) {
+    this.#maxEntries = Math.max(0, Math.floor(options.maxEntries ?? 32));
+  }
+  document(markup, options) {
+    const key = markupCacheKey(markup, options);
+    const cached = this.#documents.get(key);
+    if (cached) return cloneMarkupDocument(cached);
+    const parsed = parseTuiMarkup(markup, options);
+    this.#set(this.#documents, key, parsed);
+    return cloneMarkupDocument(parsed);
+  }
+  stylesheet(css) {
+    const cached = this.#stylesheets.get(css);
+    if (cached) return cloneStylesheet(cached);
+    const parsed = parseCssStylesheet(css);
+    this.#set(this.#stylesheets, css, parsed);
+    return cloneStylesheet(parsed);
+  }
+  clear() {
+    this.#documents.clear();
+    this.#stylesheets.clear();
+  }
+  inspect() {
+    return {
+      documents: this.#documents.size,
+      stylesheets: this.#stylesheets.size,
+      maxEntries: this.#maxEntries
+    };
+  }
+  #set(target, key, value) {
+    if (this.#maxEntries === 0) return;
+    if (target.has(key)) target.delete(key);
+    target.set(key, value);
+    while (target.size > this.#maxEntries) {
+      const oldest = target.keys().next().value;
+      if (oldest === void 0) break;
+      target.delete(oldest);
+    }
+  }
+};
+var defaultMarkupLayoutCache = new MarkupLayoutCache();
 function createMarkupLayout(options) {
-  const document2 = parseTuiMarkup(options.markup, options.parse);
-  const stylesheet = options.stylesheet ?? parseCssStylesheet(options.css ?? "");
+  const cache = options.cache === false ? void 0 : options.cache ?? defaultMarkupLayoutCache;
+  const document2 = cache ? cache.document(options.markup, options.parse) : parseTuiMarkup(options.markup, options.parse);
+  const stylesheet = options.stylesheet ?? (cache ? cache.stylesheet(options.css ?? "") : parseCssStylesheet(options.css ?? ""));
   const styledRoot = applyCssCascade(document2.root, stylesheet, {
     ...options.cascade ?? {},
     viewport: options.cascade?.viewport ?? {
@@ -7730,6 +7936,45 @@ function createMarkupLayout(options) {
   });
   const widgets = options.widgets === false ? new MarkupWidgetHydration([]) : hydrateMarkupWidgets(styledRoot, { layout, ...options.widgets ?? {} });
   return { document: document2, styledRoot, layout, widgets };
+}
+function markupCacheKey(markup, options) {
+  return `${options?.rootTag ?? ""}${options?.rootId ?? ""}${options?.preserveWhitespace ? "1" : "0"}${markup}`;
+}
+function cloneMarkupDocument(document2) {
+  return {
+    root: cloneLayoutNode(document2.root),
+    nodeCount: document2.nodeCount
+  };
+}
+function cloneStylesheet(stylesheet) {
+  const rules = new Array(stylesheet.rules.length);
+  for (let index = 0; index < stylesheet.rules.length; index += 1) {
+    rules[index] = cloneCssRule(stylesheet.rules[index]);
+  }
+  return { rules };
+}
+function cloneCssRule(rule) {
+  return {
+    selector: rule.selector,
+    declarations: cloneCssDeclarations(rule.declarations),
+    specificity: rule.specificity,
+    order: rule.order,
+    media: rule.media ? { source: rule.media.source, conditions: cloneMediaConditions(rule.media.conditions) } : void 0
+  };
+}
+function cloneCssDeclarations(declarations) {
+  const clone = new Array(declarations.length);
+  for (let index = 0; index < declarations.length; index += 1) {
+    clone[index] = { ...declarations[index] };
+  }
+  return clone;
+}
+function cloneMediaConditions(conditions) {
+  const clone = new Array(conditions.length);
+  for (let index = 0; index < conditions.length; index += 1) {
+    clone[index] = { ...conditions[index] };
+  }
+  return clone;
 }
 
 // src/markup/demo_fixtures.ts
@@ -9272,6 +9517,37 @@ function errorMessage(error) {
   return error instanceof Error ? error.message : String(error);
 }
 
+// src/runtime/process_session.ts
+var INPUT_ENCODER = new TextEncoder();
+function formatProcessCommandLine(command) {
+  let line = quoteCommandToken(command.command);
+  const args = command.args ?? [];
+  for (let index = 0; index < args.length; index += 1) {
+    line += ` ${quoteCommandToken(args[index])}`;
+  }
+  return line;
+}
+function quoteCommandToken(token) {
+  if (/^[\w./:=@+-]+$/.test(token)) return token;
+  return `"${token.replaceAll("\\", "\\\\").replaceAll('"', '\\"')}"`;
+}
+
+// src/runtime/terminal_templates.ts
+function isSpawnTerminalTemplate(template) {
+  return template.kind !== "attach";
+}
+function describeAttachTerminalTemplate(template, now = Date.now()) {
+  return {
+    id: template.id,
+    title: template.title,
+    template: { ...template, metadata: template.metadata ? { ...template.metadata } : void 0 },
+    reconnectable: true,
+    restartPolicy: "never",
+    createdAt: now,
+    updatedAt: now
+  };
+}
+
 // src/app/terminal_input.ts
 var textEncoder4 = new TextEncoder();
 
@@ -9913,21 +10189,6 @@ function workbenchStatusLeft(options) {
   const diagnostics = options.diagnostics?.trim();
   if (diagnostics) parts.push(diagnostics);
   return parts.join(" | ");
-}
-
-// src/runtime/process_session.ts
-var INPUT_ENCODER = new TextEncoder();
-function formatProcessCommandLine(command) {
-  let line = quoteCommandToken(command.command);
-  const args = command.args ?? [];
-  for (let index = 0; index < args.length; index += 1) {
-    line += ` ${quoteCommandToken(args[index])}`;
-  }
-  return line;
-}
-function quoteCommandToken(token) {
-  if (/^[\w./:=@+-]+$/.test(token)) return token;
-  return `"${token.replaceAll("\\", "\\\\").replaceAll('"', '\\"')}"`;
 }
 
 // src/runtime/pty_backend.ts
@@ -10664,22 +10925,6 @@ function clampByte(value) {
   return clamp3(Math.floor(value), 0, 255);
 }
 
-// src/runtime/terminal_templates.ts
-function isSpawnTerminalTemplate(template) {
-  return template.kind !== "attach";
-}
-function describeAttachTerminalTemplate(template, now = Date.now()) {
-  return {
-    id: template.id,
-    title: template.title,
-    template: { ...template, metadata: template.metadata ? { ...template.metadata } : void 0 },
-    reconnectable: true,
-    restartPolicy: "never",
-    createdAt: now,
-    updatedAt: now
-  };
-}
-
 // src/app/workbench_titlebar.ts
 function layoutWorkbenchTitlebar(options) {
   const controlsMinWidth = options.controlsMinWidth ?? 22;
@@ -11284,6 +11529,21 @@ var TerminalWorkspaceController = class {
     if (index < 0) return false;
     const descriptor = cloneTerminalSessionDescriptor(sessions[index]);
     if (!descriptor.detached) return false;
+    descriptor.detached = false;
+    descriptor.updatedAt = this.#now();
+    this.sessions.value = replaceTerminalSession(sessions, index, descriptor);
+    return this.activate(id2);
+  }
+  restart(id2 = this.activeId.peek()) {
+    if (!id2) return false;
+    const sessions = this.sessions.peek();
+    const index = terminalSessionIndex(sessions, id2);
+    if (index < 0) return false;
+    const descriptor = cloneTerminalSessionDescriptor(sessions[index]);
+    if (!isSpawnTerminalTemplate(descriptor.template)) return false;
+    descriptor.runtimeTitle = void 0;
+    descriptor.status = "idle";
+    descriptor.running = false;
     descriptor.detached = false;
     descriptor.updatedAt = this.#now();
     this.sessions.value = replaceTerminalSession(sessions, index, descriptor);
