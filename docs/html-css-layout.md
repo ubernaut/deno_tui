@@ -143,10 +143,13 @@ Run the report demo:
 deno task html-css-layout
 deno task html-css-layout:yoga
 deno task html-css-layout:worker
+deno task html-css-workbench
 ```
 
 The worker report uses `WorkerPool`, `createMarkupLayoutWorkerHandler()`, and `runMarkupLayoutInWorker()` to run
-parse/cascade/layout off the UI thread while leaving widget-controller hydration in the foreground app.
+parse/cascade/layout off the UI thread while leaving widget-controller hydration in the foreground app. The workbench
+preview renders the shared layout fixture as colored terminal cells so the same flex, grid, media-rule, and
+absolute-positioning behavior is visible without launching the full API Workbench.
 
 Run the portfolio window demo:
 

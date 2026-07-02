@@ -561,6 +561,7 @@ Acceptance:
 ### Phase 6: Demo, Docs, And Developer Experience
 
 - Add `examples/html_css_workbench.ts`.
+  - Done: `deno task html-css-workbench` renders the shared HTML/CSS workbench layout fixture as colored terminal cells.
 - Add `examples/web/html_css_page.ts`.
 - Add a docs page explaining the supported CSS subset.
 - Add API reference coverage for markup and layout engine APIs.

@@ -881,9 +881,10 @@ import { yogaLayoutSolver } from "https://deno.land/x/tui@VERSION/layout/yoga";
 ```
 
 Run `deno task html-css-layout`, `deno task html-css-layout:yoga`, or `deno task html-css-layout:worker` to inspect the
-same markup tree through the simple solver, Yoga, or a WorkerPool-backed parse/cascade/layout job. The API Workbench
-portfolio also exposes this as a live window: launch `./visualization portfolio` or `deno task api-workbench`, open
-`New`, and toggle `Layout: HTML/CSS Layout`.
+same markup tree through the simple solver, Yoga, or a WorkerPool-backed parse/cascade/layout job. Run
+`deno task html-css-workbench` for a colored terminal-cell preview of the shared workbench-style layout fixture. The API
+Workbench portfolio also exposes this as a live window: launch `./visualization portfolio` or `deno task api-workbench`,
+open `New`, and toggle `Layout: HTML/CSS Layout`.
 
 ### Split Panes
 
@@ -2533,6 +2534,7 @@ const preset = findAsciiDemoPreset("mixed-best");
 | `examples/layout_recipe_report.ts`      | Responsive layout recipe report example                        |
 | `examples/html_css_layout.ts`           | HTML/CSS-style layout tree report with simple and Yoga solvers |
 | `examples/html_css_layout_worker.ts`    | WorkerPool-backed HTML/CSS parse, cascade, and layout report   |
+| `examples/html_css_workbench.ts`        | Colored terminal-cell preview of the HTML/CSS workbench layout |
 | `examples/app_shell.ts`                 | App primitives, settings-backed routes, commands, and toasts   |
 | `examples/command_search_index.ts`      | Scheduler-backed indexed command search demo                   |
 | `examples/dashboard.ts`                 | Dashboard widgets, semantic theme tokens, and key help         |
