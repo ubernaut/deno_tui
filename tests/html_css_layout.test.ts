@@ -733,6 +733,7 @@ Deno.test("measureTerminalTextIntrinsic wraps text on terminal word boundaries",
   assertEquals(measureTerminalTextIntrinsic("abc ", 3), { width: 4, height: 1 });
   assertEquals(measureTerminalTextIntrinsic("alpha beta", 5, 1, { wrap: false }), { width: 10, height: 1 });
   assertEquals(measureTerminalTextIntrinsic("abcdefghij", 5, 1, { breakWords: false }), { width: 10, height: 1 });
+  assertEquals(measureTerminalTextIntrinsic("aa\tbb cc", 5), { width: 8, height: 2 });
 });
 
 Deno.test("simple layout solver measures auto height after resolving explicit text width", () => {

@@ -262,6 +262,8 @@ Work:
         sorting match lists on each layout solve.
   - [x] Reworked the simple HTML/CSS layout solver's child splitting, grid placement, flex line sizing, and text
         intrinsic measurement loops to avoid callback pipelines and duplicate line-width scans in layout solve paths.
+  - [x] Reworked terminal text intrinsic wrapping to scan whitespace and word tokens directly instead of allocating
+        regex token arrays for each measured line in HTML/CSS layout hot paths.
   - [x] Added a direct sampled-series value helper and migrated compact network monitor traces off temporary RX/TX
         sampled arrays in narrow live-render paths.
   - [x] Added source-array keyed overlay z-order caches and reverse-loop modal hit testing so repeated menu/modal

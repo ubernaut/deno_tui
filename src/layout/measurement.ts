@@ -109,15 +109,25 @@ function measureWrappedTerminalLineHeight(line: string, wrapWidth: number, break
   const wrappedLine = line.trimEnd();
   if (!wrappedLine) return 1;
 
-  const tokens = wrappedLine.match(/\S+|\s+/g) ?? [wrappedLine];
   let rows = 1;
   let currentWidth = 0;
 
-  for (const token of tokens) {
+  for (let tokenStart = 0; tokenStart < wrappedLine.length;) {
+    const whitespace = isAsciiWhitespace(wrappedLine.charCodeAt(tokenStart));
+    let tokenEnd = tokenStart + 1;
+    while (
+      tokenEnd < wrappedLine.length &&
+      isAsciiWhitespace(wrappedLine.charCodeAt(tokenEnd)) === whitespace
+    ) {
+      tokenEnd += 1;
+    }
+
+    const token = wrappedLine.slice(tokenStart, tokenEnd);
+    tokenStart = tokenEnd;
     const tokenWidth = textWidth(token);
     if (tokenWidth <= 0) continue;
 
-    if (/^\s+$/.test(token)) {
+    if (whitespace) {
       if (currentWidth === 0) continue;
       if (currentWidth + tokenWidth <= wrapWidth) {
         currentWidth += tokenWidth;
@@ -151,4 +161,8 @@ function measureWrappedTerminalLineHeight(line: string, wrapWidth: number, break
   }
 
   return rows;
+}
+
+function isAsciiWhitespace(code: number): boolean {
+  return code === 0x20 || code === 0x09 || code === 0x0b || code === 0x0c;
 }
