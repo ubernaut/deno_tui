@@ -132,3 +132,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   controls facade export surface.
 - Split API workbench one-line control projection, render commands, track geometry, and slider hit placement into a
   focused module behind the existing controls facade.
+- Split API workbench table-sort, dropdown popover, and stepper hit helpers into focused modules so
+  `api_workbench_controls.ts` is now a compatibility barrel plus keyboard traversal.
