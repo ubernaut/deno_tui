@@ -333,6 +333,8 @@ Work:
         clone buffers instead of map/find chains in common controller inspection and draw helpers.
   - [x] Reworked browser DOM HTML serialization and ANSI-cell SGR parsing to avoid child/style/attribute map chains and
         split/map parameter buffers in web runtime render paths.
+  - [x] Reworked live process stat sampling to build settled read promises and failed-read counts with direct buffers
+        instead of map/filter chains while preserving the bounded scan behavior.
 
 Acceptance checks:
 

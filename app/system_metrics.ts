@@ -358,17 +358,21 @@ export class SystemMonitor {
       };
     }
 
-    const stats = await Promise.allSettled(
-      entries.map(async (pid) => {
-        const stat = await this.#provider.readTextFile(`/proc/${pid}/stat`);
-        return { pid, stat };
-      }),
-    );
+    const reads = new Array<Promise<{ pid: number; stat: string }>>(entries.length);
+    for (let index = 0; index < entries.length; index += 1) {
+      const pid = entries[index]!;
+      reads[index] = this.#provider.readTextFile(`/proc/${pid}/stat`).then((stat) => ({ pid, stat }));
+    }
+    const stats = await Promise.allSettled(reads);
+    let failedReads = 0;
+    for (const result of stats) {
+      if (result.status === "rejected") failedReads += 1;
+    }
 
     return {
       stats,
       scanned: entries.length,
-      failedReads: stats.filter((result) => result.status === "rejected").length,
+      failedReads,
       limited: entries.length >= this.#processScanLimit,
       durationMs: performance.now() - started,
     };
