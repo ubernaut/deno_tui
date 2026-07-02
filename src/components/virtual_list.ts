@@ -96,11 +96,12 @@ export function renderVirtualListRowsInto<T>(
 ): string[] {
   const window = selectionWindow(items.length, state.activeIndex, height);
   const count = Math.max(0, window.end - window.start);
+  const selected = state.selected.length > 8 ? new Set(state.selected) : undefined;
   target.length = count;
   for (let offset = 0; offset < count; offset += 1) {
     const index = window.start + offset;
     const cursor = index === state.activeIndex ? ">" : " ";
-    const marker = virtualListIndexSelected(state.selected, index) ? "●" : " ";
+    const marker = (selected ? selected.has(index) : virtualListIndexSelected(state.selected, index)) ? "●" : " ";
     target[offset] = `${cursor} ${marker} ${format(items[index]!, index)}`;
   }
   return target;

@@ -1115,6 +1115,8 @@ Work:
         retaining full sort for small samples where the visible limit is close to the scanned row count.
   - [x] Added a large system-monitor process benchmark that scans 1k fixture PIDs and selects the top 100 rows, keeping
         the bounded process-row path measured separately from the small fixture monitor sample.
+  - [x] Aligned virtual-list string row rendering with object row projection by switching large multi-selection lookups
+        to a transient `Set` instead of scanning the selected indexes for every visible row.
   - [x] Reworked `TreeController.setExpanded()` to preserve unchanged subtree identity and allocate only along the
         changed branch, with regression coverage for no-op and nested expansion updates.
   - [x] Reduced terminal workspace layout lookup clone churn by using internal read-only pane references for active,
