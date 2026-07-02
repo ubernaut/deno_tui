@@ -180,8 +180,12 @@ export function searchCommandSurfaceItems<TAction extends Action = Action>(
   registry: CommandRegistry<TAction>,
   options: CommandSearchOptions = {},
 ): CommandSurfaceItem[] {
-  return rankCommandSurfaceItems(commandSurfaceItems(registry, options), options.query ?? "", options)
-    .map((match) => match.item);
+  const matches = rankCommandSurfaceItems(commandSurfaceItems(registry, options), options.query ?? "", options);
+  const items = new Array<CommandSurfaceItem>(matches.length);
+  for (let index = 0; index < matches.length; index += 1) {
+    items[index] = matches[index]!.item;
+  }
+  return items;
 }
 
 /** Public helper for rank Command Surface Items. */
@@ -191,27 +195,23 @@ export function rankCommandSurfaceItems(
   options: Pick<CommandSearchOptions, "limit"> = {},
 ): CommandSearchMatch[] {
   const terms = searchTerms(query);
-  const ranked = items
-    .map((item, index) => {
-      const match = scoreCommandSurfaceItem(item, terms);
-      return match
-        ? {
-          item,
-          score: match.score,
-          matched: match.matched,
-          index,
-        }
-        : undefined;
-    })
-    .filter((match): match is CommandSearchMatch & { index: number } => match !== undefined)
-    .sort((left, right) =>
-      right.score - left.score ||
-      Number(left.item.disabled) - Number(right.item.disabled) ||
-      left.item.label.localeCompare(right.item.label) ||
-      left.index - right.index
-    );
+  const ranked: Array<CommandSearchMatch & { index: number }> = [];
+  for (let index = 0; index < items.length; index += 1) {
+    const item = items[index]!;
+    const match = scoreCommandSurfaceItem(item, terms);
+    if (match) {
+      ranked.push({ item, score: match.score, matched: match.matched, index });
+    }
+  }
+  ranked.sort(compareCommandSearchMatches);
   const limit = options.limit === undefined ? ranked.length : Math.max(0, Math.floor(options.limit));
-  return ranked.slice(0, limit).map(({ index: _index, ...match }) => match);
+  const count = Math.min(limit, ranked.length);
+  const matches = new Array<CommandSearchMatch>(count);
+  for (let index = 0; index < count; index += 1) {
+    const match = ranked[index]!;
+    matches[index] = { item: match.item, score: match.score, matched: match.matched };
+  }
+  return matches;
 }
 
 /** Public helper for execute Command Surface Item. */
@@ -375,6 +375,16 @@ function scoreCommandSurfaceItem(
     ...(item.keywords ?? []).map((value) => ({ value, weight: 40 })),
   ]);
   return scoreWeightedSearchFields(fields, terms, item.disabled);
+}
+
+function compareCommandSearchMatches(
+  left: CommandSearchMatch & { index: number },
+  right: CommandSearchMatch & { index: number },
+): number {
+  return right.score - left.score ||
+    Number(left.item.disabled) - Number(right.item.disabled) ||
+    left.item.label.localeCompare(right.item.label) ||
+    left.index - right.index;
 }
 
 function inspectCommandKeyBindingConflicts(

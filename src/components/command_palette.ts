@@ -52,7 +52,12 @@ export function filterCommandPaletteItems(
   items: readonly CommandPaletteItem[],
   query: string,
 ): CommandPaletteItem[] {
-  return rankCommandPaletteItems(items, query).map((match) => match.item);
+  const matches = rankCommandPaletteItems(items, query);
+  const output = new Array<CommandPaletteItem>(matches.length);
+  for (let index = 0; index < matches.length; index += 1) {
+    output[index] = matches[index]!.item;
+  }
+  return output;
 }
 
 /** Public helper for rank Command Palette Items. */
@@ -62,22 +67,29 @@ export function rankCommandPaletteItems(
 ): CommandPaletteMatch[] {
   const terms = searchTerms(query);
   if (terms.length === 0) {
-    return items.map((item) => ({ item, score: item.disabled ? -1 : 0, matched: [] }));
+    const matches = new Array<CommandPaletteMatch>(items.length);
+    for (let index = 0; index < items.length; index += 1) {
+      const item = items[index]!;
+      matches[index] = { item, score: item.disabled ? -1 : 0, matched: [] };
+    }
+    return matches;
   }
 
-  return items
-    .map((item, index) => {
-      const match = scoreCommandPaletteItem(item, terms);
-      return match ? { item, score: match.score, matched: match.matched, index } : undefined;
-    })
-    .filter((match): match is CommandPaletteMatch & { index: number } => match !== undefined)
-    .sort((left, right) =>
-      right.score - left.score ||
-      Number(left.item.disabled) - Number(right.item.disabled) ||
-      left.item.label.localeCompare(right.item.label) ||
-      left.index - right.index
-    )
-    .map(({ index: _index, ...match }) => match);
+  const ranked: Array<CommandPaletteMatch & { index: number }> = [];
+  for (let index = 0; index < items.length; index += 1) {
+    const item = items[index]!;
+    const match = scoreCommandPaletteItem(item, terms);
+    if (match) {
+      ranked.push({ item, score: match.score, matched: match.matched, index });
+    }
+  }
+  ranked.sort(compareCommandPaletteMatches);
+  const matches = new Array<CommandPaletteMatch>(ranked.length);
+  for (let index = 0; index < ranked.length; index += 1) {
+    const match = ranked[index]!;
+    matches[index] = { item: match.item, score: match.score, matched: match.matched };
+  }
+  return matches;
 }
 
 /** Moves command Palette Selection by a relative offset. */
@@ -298,4 +310,14 @@ function scoreCommandPaletteItem(
     ...(item.keywords ?? []).map((value) => ({ value, weight: 40 })),
   ]);
   return scoreWeightedSearchFields(fields, terms, item.disabled);
+}
+
+function compareCommandPaletteMatches(
+  left: CommandPaletteMatch & { index: number },
+  right: CommandPaletteMatch & { index: number },
+): number {
+  return right.score - left.score ||
+    Number(left.item.disabled) - Number(right.item.disabled) ||
+    left.item.label.localeCompare(right.item.label) ||
+    left.index - right.index;
 }

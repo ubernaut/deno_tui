@@ -113,27 +113,27 @@ export function searchCommandSearchIndex(
   options: Pick<CommandSearchOptions, "limit"> = {},
 ): CommandSearchMatch[] {
   const terms = searchTerms(query);
-  const ranked = index.entries
-    .map((entry) => {
-      const match = scoreCommandSearchIndexEntry(entry, terms);
-      return match
-        ? {
-          item: entry.item,
-          score: match.score,
-          matched: match.matched,
-          index: entry.index,
-        }
-        : undefined;
-    })
-    .filter((match): match is CommandSearchMatch & { index: number } => match !== undefined)
-    .sort((left, right) =>
-      right.score - left.score ||
-      Number(left.item.disabled) - Number(right.item.disabled) ||
-      left.item.label.localeCompare(right.item.label) ||
-      left.index - right.index
-    );
+  const ranked: Array<CommandSearchMatch & { index: number }> = [];
+  for (const entry of index.entries) {
+    const match = scoreCommandSearchIndexEntry(entry, terms);
+    if (match) {
+      ranked.push({
+        item: entry.item,
+        score: match.score,
+        matched: match.matched,
+        index: entry.index,
+      });
+    }
+  }
+  ranked.sort(compareCommandSearchMatches);
   const limit = options.limit === undefined ? ranked.length : Math.max(0, Math.floor(options.limit));
-  return ranked.slice(0, limit).map(({ index: _index, ...match }) => match);
+  const count = Math.min(limit, ranked.length);
+  const matches = new Array<CommandSearchMatch>(count);
+  for (let index = 0; index < count; index += 1) {
+    const match = ranked[index]!;
+    matches[index] = { item: match.item, score: match.score, matched: match.matched };
+  }
+  return matches;
 }
 
 /** Creates an indexed Command Surface. */
@@ -283,4 +283,14 @@ function scoreCommandSearchIndexEntry(
   terms: readonly string[],
 ): { score: number; matched: string[] } | undefined {
   return scoreWeightedSearchFields(entry.fields, terms, entry.item.disabled);
+}
+
+function compareCommandSearchMatches(
+  left: CommandSearchMatch & { index: number },
+  right: CommandSearchMatch & { index: number },
+): number {
+  return right.score - left.score ||
+    Number(left.item.disabled) - Number(right.item.disabled) ||
+    left.item.label.localeCompare(right.item.label) ||
+    left.index - right.index;
 }
