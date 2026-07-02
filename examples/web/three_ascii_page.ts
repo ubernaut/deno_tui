@@ -14,6 +14,15 @@ import {
   ThreeAsciiObject,
 } from "../../mod.web.ts";
 import { createNeonThreeScene } from "../../app/neon_three.ts";
+import {
+  layoutThreeAsciiDemoWindow,
+  THREE_ASCII_DEMO_WINDOW_CONTROL_TEXT,
+  THREE_ASCII_DEMO_WINDOW_CONTROL_WIDTH,
+  threeAsciiDemoBodyRect,
+  threeAsciiDemoControlRect,
+  threeAsciiDemoTitlebarControlAt,
+  threeAsciiDemoTitleRect,
+} from "../../app/three_ascii_demo_window.ts";
 import { type ThreeSceneMode, threeSceneModes } from "../../app/types.ts";
 import { applyAsciiPreset, asciiEffectOptions, createDefaultAsciiOptions } from "../../src/three_ascii/options.ts";
 
@@ -40,10 +49,22 @@ const presetIndex = new Signal(
 );
 const asciiConfigVersion = new Signal(0);
 const paused = new Signal(false);
+const renderMinimized = new Signal(false);
+const renderMaximized = new Signal(false);
 const webgpuReady = new Signal("probing webgpu");
 const status = new Signal("initializing acerola ascii renderer");
 
 let bundle = createNeonThreeScene(sceneModes[sceneIndex.peek()]!);
+const renderWindowRectangle = new Computed(() =>
+  layoutThreeAsciiDemoWindow({
+    terminalWidth: columns(),
+    terminalHeight: rows(),
+    menuVisible: false,
+    minimized: renderMinimized.value,
+    maximized: renderMaximized.value,
+  })
+);
+const renderBodyRectangle = new Computed(() => threeAsciiDemoBodyRect(renderWindowRectangle.value));
 
 new BoxObject({
   canvas: host.canvas,
@@ -78,14 +99,97 @@ new TextObject({
   zIndex: 3,
 }).draw();
 
-const ascii = new ThreeAsciiObject({
+new BoxObject({
+  canvas: host.canvas,
+  rectangle: renderWindowRectangle,
+  filler: " ",
+  style: createAnsiStyle({ background: [3, 5, 10] }),
+  zIndex: 0,
+}).draw();
+
+new TextObject({
+  canvas: host.canvas,
+  rectangle: new Computed<TextRectangle>(() => ({
+    column: renderWindowRectangle.value.column,
+    row: renderWindowRectangle.value.row,
+    width: renderWindowRectangle.value.width,
+  })),
+  value: new Computed(() => frameTop(renderWindowRectangle.value.width)),
+  overwriteRectangle: true,
+  style: createAnsiStyle({ foreground: [185, 242, 255], background: [3, 5, 10] }),
+  zIndex: 4,
+}).draw();
+
+new TextObject({
+  canvas: host.canvas,
+  rectangle: new Computed<TextRectangle>(() => ({
+    column: renderWindowRectangle.value.column,
+    row: renderWindowRectangle.value.row + Math.max(0, renderWindowRectangle.value.height - 1),
+    width: renderWindowRectangle.value.width,
+  })),
+  value: new Computed(() => frameBottom(renderWindowRectangle.value.width)),
+  overwriteRectangle: true,
+  style: createAnsiStyle({ foreground: [185, 242, 255], background: [3, 5, 10] }),
+  zIndex: 4,
+}).draw();
+
+new BoxObject({
   canvas: host.canvas,
   rectangle: new Computed(() => ({
-    column: 1,
-    row: 3,
-    width: Math.max(24, columns() - 2),
-    height: Math.max(12, rows() - 5),
+    column: renderWindowRectangle.value.column,
+    row: renderWindowRectangle.value.row + 1,
+    width: 1,
+    height: Math.max(0, renderWindowRectangle.value.height - 2),
   })),
+  filler: "│",
+  style: createAnsiStyle({ foreground: [185, 242, 255], background: [3, 5, 10] }),
+  zIndex: 4,
+}).draw();
+
+new BoxObject({
+  canvas: host.canvas,
+  rectangle: new Computed(() => ({
+    column: renderWindowRectangle.value.column + Math.max(0, renderWindowRectangle.value.width - 1),
+    row: renderWindowRectangle.value.row + 1,
+    width: 1,
+    height: Math.max(0, renderWindowRectangle.value.height - 2),
+  })),
+  filler: "│",
+  style: createAnsiStyle({ foreground: [185, 242, 255], background: [3, 5, 10] }),
+  zIndex: 4,
+}).draw();
+
+new TextObject({
+  canvas: host.canvas,
+  rectangle: new Computed<TextRectangle>(() => threeAsciiDemoTitleRect(renderWindowRectangle.value)),
+  value: new Computed(() => {
+    const label = renderMinimized.value ? "THREE ASCII WEBGPU · MINIMIZED" : "THREE ASCII WEBGPU";
+    return ` ${label} `.slice(
+      0,
+      Math.max(0, renderWindowRectangle.value.width - THREE_ASCII_DEMO_WINDOW_CONTROL_WIDTH - 3),
+    );
+  }),
+  overwriteRectangle: true,
+  style: createAnsiStyle({ foreground: [3, 5, 10], background: [185, 242, 255], bold: true }),
+  zIndex: 5,
+}).draw();
+
+new TextObject({
+  canvas: host.canvas,
+  rectangle: new Computed<TextRectangle>(() => threeAsciiDemoControlRect(renderWindowRectangle.value)),
+  value: new Computed<string>(() =>
+    threeAsciiDemoControlRect(renderWindowRectangle.value).width > 0 ? THREE_ASCII_DEMO_WINDOW_CONTROL_TEXT : ""
+  ),
+  overwriteRectangle: true,
+  style: createAnsiStyle({ foreground: [3, 5, 10], background: [255, 207, 64], bold: true }),
+  zIndex: 6,
+}).draw();
+
+const ascii = new ThreeAsciiObject({
+  canvas: host.canvas,
+  rectangle: new Computed(() =>
+    renderMinimized.value ? { ...renderBodyRectangle.value, height: 1 } : renderBodyRectangle.value
+  ),
   style: createAnsiStyle({}),
   zIndex: 1,
   scene: bundle.scene,
@@ -117,10 +221,37 @@ host.on("keyPress", ({ key }) => {
   else if (key === "g") applyGlyph(TERMINAL_GLYPH_STYLES.indexOf(asciiOptions.terminalGlyphStyle) + 1);
   else if (key === "s") applyScene(sceneIndex.peek() + 1);
   else if (key === "space") paused.value = !paused.peek();
+  else if (key === "m") {
+    renderMinimized.value = true;
+    renderMaximized.value = false;
+  } else if (key === "f") {
+    renderMaximized.value = true;
+    renderMinimized.value = false;
+  } else if (key === "r") {
+    renderMinimized.value = false;
+    renderMaximized.value = false;
+  } else if (key === "x") host.destroy();
   else if (key === "left") bundle.camera.position.x -= 0.18;
   else if (key === "right") bundle.camera.position.x += 0.18;
   else if (key === "up") bundle.camera.position.z = Math.max(2.2, bundle.camera.position.z - 0.22);
   else if (key === "down") bundle.camera.position.z = Math.min(9, bundle.camera.position.z + 0.22);
+});
+
+host.on("mousePress", ({ x, y, release, drag, ctrl, meta, shift }) => {
+  if (release || drag || ctrl || meta || shift) return;
+  const hit = threeAsciiDemoTitlebarControlAt(renderWindowRectangle.peek(), x, y);
+  if (hit === "minimize") {
+    renderMinimized.value = true;
+    renderMaximized.value = false;
+  } else if (hit === "maximize") {
+    renderMaximized.value = true;
+    renderMinimized.value = false;
+  } else if (hit === "restore") {
+    renderMinimized.value = false;
+    renderMaximized.value = false;
+  } else if (hit === "close") {
+    host.destroy();
+  }
 });
 
 host.start();
@@ -182,4 +313,14 @@ function rows(): number {
 
 function wrap(index: number, length: number): number {
   return ((index % length) + length) % length;
+}
+
+function frameTop(width: number): string {
+  const inner = Math.max(0, width - 2);
+  return width <= 0 ? "" : width === 1 ? "╭" : `╭${"─".repeat(inner)}╮`;
+}
+
+function frameBottom(width: number): string {
+  const inner = Math.max(0, width - 2);
+  return width <= 0 ? "" : width === 1 ? "╰" : `╰${"─".repeat(inner)}╯`;
 }

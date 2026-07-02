@@ -52,6 +52,12 @@ Deno.test("parseAnsiCell extracts text and ANSI colors for browser rendering", (
     bold: true,
     dim: false,
   });
+  assertEquals(parseAnsiCell("\x1b[48;2;137;225;255m \x1b[0m"), {
+    text: " ",
+    background: "rgb(137,225,255)",
+    bold: false,
+    dim: false,
+  });
 });
 
 Deno.test("BrowserCellCanvasSink paints dirty cells to a 2D context", () => {
@@ -103,6 +109,54 @@ Deno.test("BrowserCellCanvasSink paints dirty cells to a 2D context", () => {
   assertExists(operations.find((operation) => operation[0] === "fillRect" && operation[5] === "#3b82f6"));
   assertExists(operations.find((operation) => operation[0] === "fillText" && operation[1] === "A"));
   assertEquals(sink.inspectSink().lastStats?.flushedCells, 1);
+});
+
+Deno.test("BrowserCellCanvasSink paints truecolor block cells without quantizing to text color", () => {
+  const operations: unknown[][] = [];
+  const context = {
+    fillStyle: "",
+    font: "",
+    textBaseline: "top" as CanvasTextBaseline,
+    scale: (x: number, y: number) => operations.push(["scale", x, y]),
+    setTransform: (...args: number[]) => operations.push(["setTransform", ...args]),
+    fillRect: (x: number, y: number, width: number, height: number) =>
+      operations.push(["fillRect", x, y, width, height, context.fillStyle]),
+    fillText: (text: string, x: number, y: number) => operations.push(["fillText", text, x, y, context.fillStyle]),
+  };
+  const canvas = {
+    width: 0,
+    height: 0,
+    getContext: (kind: string) => kind === "2d" ? context : null,
+  };
+  const sink = new BrowserCellCanvasSink({
+    canvas: canvas as unknown as HTMLCanvasElement,
+    cellWidth: 8,
+    cellHeight: 16,
+    devicePixelRatio: 1,
+    foreground: "#fff",
+    background: "#000",
+  });
+
+  sink.resize(1, 1);
+  sink.flush([
+    { row: 0, column: 0, value: "\x1b[48;2;137;225;255m \x1b[0m" },
+  ], {
+    updatedObjects: 0,
+    renderedObjects: 0,
+    rerenderedObjects: 0,
+    intersectionUpdates: 0,
+    intersectionCandidateChecks: 0,
+    intersectionsDirty: false,
+    dirtyRectangles: 0,
+    dirtyRowRanges: 1,
+    dirtyRows: 0,
+    dirtyCells: 1,
+    fullRedraws: 0,
+    flushedCells: 1,
+  });
+
+  assertExists(operations.find((operation) => operation[0] === "fillRect" && operation[5] === "rgb(137,225,255)"));
+  assertEquals(operations.some((operation) => operation[0] === "fillText"), false);
 });
 
 Deno.test("BrowserInputSource reports pointer positions in terminal cells", () => {
