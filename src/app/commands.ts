@@ -1,8 +1,8 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { bindingId, type KeyBinding } from "../keymap.ts";
-import { insertUniqueSortedString } from "../utils/sorted_array.ts";
 import type { Action } from "./actions.ts";
 import { DisposableStack } from "./disposables.ts";
+import { insertUniqueSortedString } from "./sorted_strings.ts";
 
 /** Public type alias for a command Action Factory. */
 export type CommandActionFactory<TAction extends Action = Action> = (

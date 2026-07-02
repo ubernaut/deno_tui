@@ -3,7 +3,6 @@ import { bindFocusNavigation, FocusManager, type FocusNavigationOptions } from "
 import { KeymapRegistry } from "../keymap.ts";
 import { RuntimeWorkloadRegistry } from "../runtime/telemetry.ts";
 import { Tui, type TuiOptions } from "../tui.ts";
-import { insertUniqueSortedString } from "../utils/sorted_array.ts";
 import { type Action, ActionBus, type ActionHandler, type ActionMiddleware, type ActionOfType } from "./actions.ts";
 import {
   bindCommandKeymap,
@@ -15,6 +14,7 @@ import { CommandRegistry } from "./commands.ts";
 import { DisposableStack } from "./disposables.ts";
 import { bindMouseInteractions, MouseInteractionRouter } from "./mouse_bindings.ts";
 import { type Route, RouteManager } from "./router.ts";
+import { insertUniqueSortedString } from "./sorted_strings.ts";
 
 /** Construction options for a high-level TUI application shell. */
 export interface TuiAppOptions<TRoute extends Route = Route> {

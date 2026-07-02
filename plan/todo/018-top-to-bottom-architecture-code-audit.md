@@ -1109,8 +1109,8 @@ Work:
         their label/disabled ordering without rebuilding weighted normalized fields for every command.
   - [x] Replaced command key-binding conflict group `Set`/spread/sort projection with direct unique sorted insertion for
         stable diagnostics with less transient allocation.
-  - [x] Extracted the direct sorted string insertion helper into `src/utils/sorted_array.ts` and reused it across app
-        inspection, command registry groups, and command binding conflict reports.
+  - [x] Extracted a non-barreled sorted string insertion helper for app internals and reused it across app inspection,
+        command registry groups, and command binding conflict reports without expanding the stable utility API.
   - [x] Changed system process finalization to use a bounded comparator-ordered top-N list for large `/proc` scans while
         retaining full sort for small samples where the visible limit is close to the scanned row count.
   - [x] Added a large system-monitor process benchmark that scans 1k fixture PIDs and selects the top 100 rows, keeping
