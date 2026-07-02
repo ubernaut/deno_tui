@@ -381,12 +381,27 @@ function matchesPluginQuery(plugin: AppPluginDefinitionInspection, query: AppPlu
   ) return false;
   if (query.hasInstaller !== undefined && plugin.hasInstaller !== query.hasInstaller) return false;
   if (!query.search) return true;
-  const terms = query.search.trim().toLowerCase().split(/\s+/).filter(Boolean);
-  if (terms.length === 0) return true;
-  for (const term of terms) {
-    if (!pluginSearchIncludes(plugin, term)) return false;
+  return pluginMatchesSearch(plugin, query.search);
+}
+
+function pluginMatchesSearch(plugin: AppPluginDefinitionInspection, search: string): boolean {
+  let start = -1;
+  const normalized = search.toLowerCase();
+  for (let index = 0; index <= normalized.length; index += 1) {
+    const char = index < normalized.length ? normalized[index] : " ";
+    if (char !== undefined && !isPluginSearchWhitespace(char)) {
+      if (start < 0) start = index;
+      continue;
+    }
+    if (start < 0) continue;
+    if (!pluginSearchIncludes(plugin, normalized.slice(start, index))) return false;
+    start = -1;
   }
   return true;
+}
+
+function isPluginSearchWhitespace(char: string): boolean {
+  return char === " " || char === "\n" || char === "\t" || char === "\r" || char === "\f";
 }
 
 function pluginRouteIds<TRoute extends Route>(routes: readonly (TRoute | AppPluginRoute<TRoute>)[]): string[] {

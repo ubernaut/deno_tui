@@ -307,6 +307,8 @@ Work:
         explicit cloned route buffers instead of map/filter/find pipelines.
   - [x] Reworked app plugin definition inspection, query, catalog summaries, registry cloning, and registry inspection
         to use explicit id buffers and one-pass count/tag accumulation.
+  - [x] Reworked app plugin catalog search matching to scan normalized query terms directly instead of
+        `trim().split().filter()` token buffers.
   - [x] Reworked MemoryCanvasSink update and range recording to clone inspection buffers with direct loops instead of
         spread/map projection.
   - [x] Reworked DirtyRegion inspection and row-segment merge setup to use explicit row/segment buffers and avoid
