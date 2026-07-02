@@ -6,6 +6,7 @@ import {
   layoutWorkbenchTabs,
   layoutWorkbenchTabsInto,
   workbenchShelfEntriesInto,
+  workbenchShelfRenderCommandsInto,
   type WorkbenchShelfSource,
   workbenchTabEntriesInto,
   type WorkbenchTabSource,
@@ -138,4 +139,105 @@ Deno.test("workbench shelf projections reuse buffers for minimized windows and t
       { id: "two", title: "Window two", selected: false, hidden: true },
     ],
   );
+});
+
+Deno.test("workbench shelf render commands project prefix buttons and hit rectangles", () => {
+  const layout = layoutWorkbenchShelf({
+    row: 3,
+    column: 1,
+    width: 32,
+    entries: [{ id: "logs", title: "Logs" }],
+  });
+  const commands = workbenchShelfRenderCommandsInto([], layout);
+
+  assertEquals(commands, [
+    {
+      kind: "prefix",
+      text: "minimized ",
+      rect: { column: 1, row: 3, width: 10, height: 1 },
+    },
+    {
+      kind: "button",
+      id: "logs",
+      label: "Logs",
+      text: "[ Logs ]",
+      rect: { column: 11, row: 3, width: 8, height: 1 },
+      hitRect: { column: 11, row: 3, width: 8, height: 1 },
+      selected: false,
+      hidden: true,
+      state: "base",
+      tone: "muted",
+    },
+  ]);
+});
+
+Deno.test("workbench tab render commands map selected and hidden state", () => {
+  const layout = layoutWorkbenchTabs({
+    row: 5,
+    column: 0,
+    width: 40,
+    tabs: [
+      { id: "data", title: "Data", selected: true },
+      { id: "logs", title: "Logs", hidden: true },
+    ],
+  });
+  const target = workbenchShelfRenderCommandsInto([], layout);
+  const firstButton = target[1];
+  const secondButton = target[2];
+
+  assertEquals(firstButton?.kind, "button");
+  if (firstButton?.kind === "button") {
+    assertEquals([firstButton.id, firstButton.state, firstButton.tone, firstButton.selected, firstButton.hidden], [
+      "data",
+      "active",
+      "default",
+      true,
+      false,
+    ]);
+  }
+  assertEquals(secondButton?.kind, "button");
+  if (secondButton?.kind === "button") {
+    assertEquals([secondButton.id, secondButton.state, secondButton.tone, secondButton.selected, secondButton.hidden], [
+      "logs",
+      "base",
+      "muted",
+      false,
+      true,
+    ]);
+  }
+});
+
+Deno.test("workbench shelf render commands clip and reuse caller buffers", () => {
+  const layout = layoutWorkbenchShelf({
+    row: 2,
+    column: 0,
+    width: 17,
+    entries: [{ id: "long", title: "Very Long Window" }],
+  });
+  const target = workbenchShelfRenderCommandsInto([], layout);
+  const prefix = target[0];
+  const button = target[1];
+
+  assertEquals(button?.kind, "button");
+  if (button?.kind === "button") {
+    assertEquals(button.text, "[ Very…");
+    assertEquals(button.rect, { column: 10, row: 2, width: 7, height: 1 });
+    assertEquals(button.hitRect, button.rect);
+  }
+
+  const reusedPrefix = prefix;
+  const reusedButton = button;
+  const next = workbenchShelfRenderCommandsInto(
+    target,
+    layoutWorkbenchShelf({
+      row: 4,
+      column: 1,
+      width: 20,
+      entries: [{ id: "long", title: "Short" }],
+    }),
+  );
+
+  assertEquals(next[0] === reusedPrefix, true);
+  assertEquals(next[1] === reusedButton, true);
+  assertEquals(next.length, 2);
 });

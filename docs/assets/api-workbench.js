@@ -11804,6 +11804,54 @@ function createWorkbenchShelfLayoutBuffers() {
     placements: []
   };
 }
+function workbenchShelfRenderCommandsInto(target, layout) {
+  let written = 0;
+  const prefixWidth = Math.max(0, layout.prefixRect.width);
+  if (prefixWidth > 0 && layout.prefix.length > 0) {
+    const command = target[written] ?? {
+      kind: "prefix",
+      text: "",
+      rect: { column: 0, row: 0, width: 0, height: 1 }
+    };
+    command.kind = "prefix";
+    command.text = fitCellText(layout.prefix, prefixWidth);
+    setRect2(command.rect, layout.prefixRect.column, layout.prefixRect.row, prefixWidth, 1);
+    target[written] = command;
+    written += 1;
+  }
+  for (let index = 0; index < layout.buttons.length; index += 1) {
+    const button = layout.buttons[index];
+    const text = buttonText(button.label);
+    const width = Math.max(0, Math.min(textWidth(text), button.rect.width));
+    if (width <= 0) continue;
+    const command = target[written] ?? {
+      kind: "button",
+      id: button.id,
+      label: "",
+      text: "",
+      rect: { column: 0, row: 0, width: 0, height: 1 },
+      hitRect: { column: 0, row: 0, width: 0, height: 1 },
+      selected: false,
+      hidden: false,
+      state: "base",
+      tone: "default"
+    };
+    command.kind = "button";
+    command.id = button.id;
+    command.label = button.label;
+    command.text = fitCellText(text, width);
+    command.selected = button.selected;
+    command.hidden = button.hidden;
+    command.state = button.selected ? "active" : "base";
+    command.tone = button.hidden ? "muted" : "default";
+    setRect2(command.rect, button.rect.column, button.rect.row, width, 1);
+    setRect2(command.hitRect, button.rect.column, button.rect.row, width, 1);
+    target[written] = command;
+    written += 1;
+  }
+  target.length = written;
+  return target;
+}
 function layoutButtonRowInto(target, options) {
   const right = options.column + Math.max(0, options.width);
   const prefixWidth = Math.min(textWidth(options.prefix), Math.max(0, right - options.column));
@@ -11843,6 +11891,12 @@ function layoutButtonRowInto(target, options) {
     prefixRect: { column: options.column, row: options.row, width: prefixWidth, height: 1 },
     buttons
   };
+}
+function setRect2(rect, column, row, width, height) {
+  rect.column = column;
+  rect.row = row;
+  rect.width = width;
+  rect.height = height;
 }
 
 // src/app/workbench_status.ts
@@ -14047,20 +14101,20 @@ function writeTerminalPaneProjection(target, index, pane, rect, active2, session
   projection.zoomed = pane?.zoomed ?? false;
   projection.titleVisible = pane !== void 0 && rect.height > 2;
   projection.title = projection.titleVisible ? `${active2 ? ">" : " "} ${title ?? sessionId ?? ""}` : "";
-  setRect2(projection.rect, rect);
+  setRect3(projection.rect, rect);
   if (projection.titleVisible) {
-    setRect2(projection.contentRect, {
+    setRect3(projection.contentRect, {
       column: rect.column,
       row: rect.row + 1,
       width: rect.width,
       height: rect.height - 1
     });
   } else {
-    setRect2(projection.contentRect, rect);
+    setRect3(projection.contentRect, rect);
   }
   target[index] = projection;
 }
-function setRect2(target, source) {
+function setRect3(target, source) {
   target.column = source.column;
   target.row = source.row;
   target.width = source.width;
@@ -15791,6 +15845,8 @@ var minimizedShelfEntries = [];
 var fullscreenTabEntries = [];
 var minimizedShelfLayoutBuffers = createWorkbenchShelfLayoutBuffers();
 var fullscreenTabLayoutBuffers = createWorkbenchShelfLayoutBuffers();
+var minimizedShelfRenderCommands = [];
+var fullscreenTabRenderCommands = [];
 var menuBarHitLayouts = [];
 var headerLayout = { menu: { column: 0, row: 0, width: 0, height: 1 } };
 var windowFrameBoxLines = [];
@@ -16208,10 +16264,18 @@ function renderShelf(frame) {
     width: Math.max(0, cols() - 2),
     entries
   });
-  write(frame, row, layout.prefixRect.column, paint(layout.prefix, theme().muted, theme().backgroundSoft));
-  for (const button of layout.buttons) {
-    writeButton(frame, row, button.rect.column, button.label, { tone: "muted", maxWidth: button.rect.width });
-    hitTargets.add(button.rect, { type: "restore", id: button.id });
+  const commands = workbenchShelfRenderCommandsInto(minimizedShelfRenderCommands, layout);
+  for (const command of commands) {
+    if (command.kind === "prefix") {
+      write(frame, command.rect.row, command.rect.column, paint(command.text, theme().muted, theme().backgroundSoft));
+    } else {
+      writeButton(frame, command.rect.row, command.rect.column, command.label, {
+        state: command.state,
+        tone: command.tone,
+        maxWidth: command.rect.width
+      });
+      hitTargets.add(command.hitRect, { type: "restore", id: command.id });
+    }
   }
 }
 function renderMenuHits(column, row, width) {
@@ -16268,14 +16332,18 @@ function renderWindowTabs(frame) {
     width: Math.max(0, cols() - 2),
     tabs: workbenchTabEntriesInto(fullscreenTabEntries, webWindows.inspect().tabs, panelTitle)
   });
-  write(frame, row, layout.prefixRect.column, paint(layout.prefix, theme().muted, theme().backgroundSoft));
-  for (const button of layout.buttons) {
-    writeButton(frame, row, button.rect.column, button.label, {
-      state: button.selected ? "active" : "base",
-      tone: button.hidden ? "muted" : "default",
-      maxWidth: button.rect.width
-    });
-    hitTargets.add(button.rect, { type: "restore", id: button.id });
+  const commands = workbenchShelfRenderCommandsInto(fullscreenTabRenderCommands, layout);
+  for (const command of commands) {
+    if (command.kind === "prefix") {
+      write(frame, command.rect.row, command.rect.column, paint(command.text, theme().muted, theme().backgroundSoft));
+    } else {
+      writeButton(frame, command.rect.row, command.rect.column, command.label, {
+        state: command.state,
+        tone: command.tone,
+        maxWidth: command.rect.width
+      });
+      hitTargets.add(command.hitRect, { type: "restore", id: command.id });
+    }
   }
 }
 function renderPanel(frame, id2, rect) {

@@ -4197,6 +4197,13 @@
     },
     {
       "module": "src/app/workbench_shelf.ts",
+      "name": "WorkbenchShelfButtonRenderCommand",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_shelf.ts",
       "name": "WorkbenchShelfButtonRowItem",
       "kind": "interface",
       "typeOnly": true,
@@ -4228,6 +4235,27 @@
       "name": "WorkbenchShelfLayoutOptions",
       "kind": "interface",
       "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_shelf.ts",
+      "name": "WorkbenchShelfPrefixRenderCommand",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_shelf.ts",
+      "name": "WorkbenchShelfRenderCommand",
+      "kind": "type",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_shelf.ts",
+      "name": "workbenchShelfRenderCommandsInto",
+      "kind": "function",
+      "typeOnly": false,
       "documented": true
     },
     {

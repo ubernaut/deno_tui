@@ -70,6 +70,7 @@ import {
   type WorkbenchMenuBarHitLayout,
   workbenchModalActionButtonsInto,
   workbenchShelfEntriesInto,
+  workbenchShelfRenderCommandsInto,
   workbenchStatusLine,
   workbenchTabEntriesInto,
   type WorkbenchTerminalOutputToolbarAction,
@@ -618,6 +619,8 @@ const minimizedShelfEntries: Array<{ id: WindowId; title: string }> = [];
 const fullscreenTabEntries: Array<{ id: WindowId; title: string; selected?: boolean; hidden?: boolean }> = [];
 const minimizedShelfLayoutBuffers = createWorkbenchShelfLayoutBuffers<WindowId>();
 const fullscreenTabLayoutBuffers = createWorkbenchShelfLayoutBuffers<WindowId>();
+const minimizedShelfRenderCommands: ReturnType<typeof workbenchShelfRenderCommandsInto<WindowId>> = [];
+const fullscreenTabRenderCommands: ReturnType<typeof workbenchShelfRenderCommandsInto<WindowId>> = [];
 const windowFrameBoxLines: WorkbenchFrameBoxLine[] = [];
 const verticalScrollbarCells: Array<{ column: number; row: number; glyph: string }> = [];
 const horizontalScrollbarCells: Array<{ column: number; row: number; glyph: string }> = [];
@@ -2573,10 +2576,23 @@ function renderShelf(frame: Frame): void {
     width: Math.max(0, currentWidth() - 1),
     entries,
   });
-  write(frame, row, layout.prefixRect.column, paint(layout.prefix, { fg: theme().muted, bg: theme().backgroundSoft }));
-  for (const button of layout.buttons) {
-    writeButton(frame, row, button.rect.column, button.label, { tone: "muted", maxWidth: button.rect.width });
-    addHit(button.rect, { type: "restore", id: button.id });
+  const commands = workbenchShelfRenderCommandsInto(minimizedShelfRenderCommands, layout);
+  for (const command of commands) {
+    if (command.kind === "prefix") {
+      write(
+        frame,
+        command.rect.row,
+        command.rect.column,
+        paint(command.text, { fg: theme().muted, bg: theme().backgroundSoft }),
+      );
+    } else {
+      writeButton(frame, command.rect.row, command.rect.column, command.label, {
+        state: command.state,
+        tone: command.tone,
+        maxWidth: command.rect.width,
+      });
+      addHit(command.hitRect, { type: "restore", id: command.id });
+    }
   }
 }
 
@@ -2590,14 +2606,18 @@ function renderWindowTabs(frame: Frame): void {
     width: Math.max(0, currentWidth() - 1),
     tabs: workbenchTabEntriesInto(fullscreenTabEntries, windowManager.inspect().tabs, windowTitle),
   });
-  write(frame, row, layout.prefixRect.column, paint(layout.prefix, { fg: t.muted, bg: t.backgroundSoft }));
-  for (const button of layout.buttons) {
-    writeButton(frame, row, button.rect.column, button.label, {
-      state: button.selected ? "active" : "base",
-      tone: button.hidden ? "muted" : "default",
-      maxWidth: button.rect.width,
-    });
-    addHit(button.rect, { type: "windowTab", id: button.id });
+  const commands = workbenchShelfRenderCommandsInto(fullscreenTabRenderCommands, layout);
+  for (const command of commands) {
+    if (command.kind === "prefix") {
+      write(frame, command.rect.row, command.rect.column, paint(command.text, { fg: t.muted, bg: t.backgroundSoft }));
+    } else {
+      writeButton(frame, command.rect.row, command.rect.column, command.label, {
+        state: command.state,
+        tone: command.tone,
+        maxWidth: command.rect.width,
+      });
+      addHit(command.hitRect, { type: "windowTab", id: command.id });
+    }
   }
 }
 

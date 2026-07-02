@@ -90,6 +90,7 @@ import {
   workbenchModalActionButtonsInto,
   type WorkbenchPanelWorkspaceState,
   workbenchShelfEntriesInto,
+  workbenchShelfRenderCommandsInto,
   workbenchStatusLine,
   workbenchTabEntriesInto,
   type WorkbenchTerminalPaneProjection,
@@ -295,6 +296,8 @@ const minimizedShelfEntries: Array<{ id: PanelId; title: string }> = [];
 const fullscreenTabEntries: Array<{ id: PanelId; title: string; selected?: boolean; hidden?: boolean }> = [];
 const minimizedShelfLayoutBuffers = createWorkbenchShelfLayoutBuffers<PanelId>();
 const fullscreenTabLayoutBuffers = createWorkbenchShelfLayoutBuffers<PanelId>();
+const minimizedShelfRenderCommands: ReturnType<typeof workbenchShelfRenderCommandsInto<PanelId>> = [];
+const fullscreenTabRenderCommands: ReturnType<typeof workbenchShelfRenderCommandsInto<PanelId>> = [];
 const menuBarHitLayouts: WorkbenchMenuBarHitLayout[] = [];
 const headerLayout: WorkbenchHeaderLayout = { menu: { column: 0, row: 0, width: 0, height: 1 } };
 const windowFrameBoxLines: WorkbenchFrameBoxLine[] = [];
@@ -729,10 +732,18 @@ function renderShelf(frame: string[]): void {
     width: Math.max(0, cols() - 2),
     entries,
   });
-  write(frame, row, layout.prefixRect.column, paint(layout.prefix, theme().muted, theme().backgroundSoft));
-  for (const button of layout.buttons) {
-    writeButton(frame, row, button.rect.column, button.label, { tone: "muted", maxWidth: button.rect.width });
-    hitTargets.add(button.rect, { type: "restore", id: button.id });
+  const commands = workbenchShelfRenderCommandsInto(minimizedShelfRenderCommands, layout);
+  for (const command of commands) {
+    if (command.kind === "prefix") {
+      write(frame, command.rect.row, command.rect.column, paint(command.text, theme().muted, theme().backgroundSoft));
+    } else {
+      writeButton(frame, command.rect.row, command.rect.column, command.label, {
+        state: command.state,
+        tone: command.tone,
+        maxWidth: command.rect.width,
+      });
+      hitTargets.add(command.hitRect, { type: "restore", id: command.id });
+    }
   }
 }
 
@@ -793,14 +804,18 @@ function renderWindowTabs(frame: string[]): void {
     width: Math.max(0, cols() - 2),
     tabs: workbenchTabEntriesInto(fullscreenTabEntries, webWindows.inspect().tabs, panelTitle),
   });
-  write(frame, row, layout.prefixRect.column, paint(layout.prefix, theme().muted, theme().backgroundSoft));
-  for (const button of layout.buttons) {
-    writeButton(frame, row, button.rect.column, button.label, {
-      state: button.selected ? "active" : "base",
-      tone: button.hidden ? "muted" : "default",
-      maxWidth: button.rect.width,
-    });
-    hitTargets.add(button.rect, { type: "restore", id: button.id });
+  const commands = workbenchShelfRenderCommandsInto(fullscreenTabRenderCommands, layout);
+  for (const command of commands) {
+    if (command.kind === "prefix") {
+      write(frame, command.rect.row, command.rect.column, paint(command.text, theme().muted, theme().backgroundSoft));
+    } else {
+      writeButton(frame, command.rect.row, command.rect.column, command.label, {
+        state: command.state,
+        tone: command.tone,
+        maxWidth: command.rect.width,
+      });
+      hitTargets.add(command.hitRect, { type: "restore", id: command.id });
+    }
   }
 }
 

@@ -8,8 +8,8 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 - Entrypoints: 9
 - Module visits: 534
 - Re-export declarations: 525
-- Exported symbols: 4912
-- Documented symbols: 4912
+- Exported symbols: 4920
+- Documented symbols: 4920
 - Documentation coverage: 100.00%
 - Duplicate symbol groups: 0
 - Missing targets: 0
@@ -18,8 +18,8 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 
 | Specifier       | Path                           | Runtime  | Stability    | Modules | Symbols |    Docs |
 | --------------- | ------------------------------ | -------- | ------------ | ------: | ------: | ------: |
-| `.`             | `./mod.ts`                     | terminal | stable       |     241 |    2100 | 100.00% |
-| `./web`         | `./mod.web.ts`                 | browser  | beta         |     220 |    1955 | 100.00% |
+| `.`             | `./mod.ts`                     | terminal | stable       |     241 |    2104 | 100.00% |
+| `./web`         | `./mod.web.ts`                 | browser  | beta         |     220 |    1959 | 100.00% |
 | `./remote`      | `./mod.remote.ts`              | remote   | experimental |       4 |      38 | 100.00% |
 | `./three-ascii` | `./mod.three_ascii.ts`         | shared   | experimental |       8 |      54 | 100.00% |
 | `./theme`       | `./mod.theme.ts`               | shared   | beta         |      10 |     198 | 100.00% |
@@ -41,8 +41,8 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 - Entrypoint: `mod.ts`
 - Modules: 241
 - Re-export declarations: 240
-- Exported symbols: 2100
-- Documented symbols: 2100
+- Exported symbols: 2104
+- Documented symbols: 2104
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -124,7 +124,7 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 | [`src/app/workbench_menu.ts`](#src-app-workbench-menu-ts)                                   |          0 |      19 |         19 |
 | [`src/app/workbench_overlay.ts`](#src-app-workbench-overlay-ts)                             |          0 |       7 |          7 |
 | [`src/app/workbench_panel_workspace_store.ts`](#src-app-workbench-panel-workspace-store-ts) |          0 |       8 |          8 |
-| [`src/app/workbench_shelf.ts`](#src-app-workbench-shelf-ts)                                 |          0 |      16 |         16 |
+| [`src/app/workbench_shelf.ts`](#src-app-workbench-shelf-ts)                                 |          0 |      20 |         20 |
 | [`src/app/workbench_status.ts`](#src-app-workbench-status-ts)                               |          0 |      13 |         13 |
 | [`src/app/workbench_terminal.ts`](#src-app-workbench-terminal-ts)                           |          0 |      25 |         25 |
 | [`src/app/workbench_text.ts`](#src-app-workbench-text-ts)                                   |          0 |      10 |         10 |
@@ -1361,11 +1361,15 @@ _No direct exported symbols._
 | `layoutWorkbenchTabs`                 | function  | no        | yes   |
 | `layoutWorkbenchTabsInto`             | function  | no        | yes   |
 | `WorkbenchShelfButton`                | interface | yes       | yes   |
+| `WorkbenchShelfButtonRenderCommand`   | interface | yes       | yes   |
 | `WorkbenchShelfButtonRowItem`         | interface | yes       | yes   |
 | `workbenchShelfEntriesInto`           | function  | no        | yes   |
 | `WorkbenchShelfLayout`                | interface | yes       | yes   |
 | `WorkbenchShelfLayoutBuffers`         | interface | yes       | yes   |
 | `WorkbenchShelfLayoutOptions`         | interface | yes       | yes   |
+| `WorkbenchShelfPrefixRenderCommand`   | interface | yes       | yes   |
+| `WorkbenchShelfRenderCommand`         | type      | yes       | yes   |
+| `workbenchShelfRenderCommandsInto`    | function  | no        | yes   |
 | `WorkbenchShelfSource`                | interface | yes       | yes   |
 | `WorkbenchShelfWindowInspectionShape` | interface | yes       | yes   |
 | `workbenchTabEntriesInto`             | function  | no        | yes   |
@@ -3879,8 +3883,8 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 - Entrypoint: `mod.web.ts`
 - Modules: 220
 - Re-export declarations: 219
-- Exported symbols: 1955
-- Documented symbols: 1955
+- Exported symbols: 1959
+- Documented symbols: 1959
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -3962,7 +3966,7 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 | [`src/app/workbench_menu.ts`](#src-app-workbench-menu-ts)                                   |          0 |      19 |         19 |
 | [`src/app/workbench_overlay.ts`](#src-app-workbench-overlay-ts)                             |          0 |       7 |          7 |
 | [`src/app/workbench_panel_workspace_store.ts`](#src-app-workbench-panel-workspace-store-ts) |          0 |       8 |          8 |
-| [`src/app/workbench_shelf.ts`](#src-app-workbench-shelf-ts)                                 |          0 |      16 |         16 |
+| [`src/app/workbench_shelf.ts`](#src-app-workbench-shelf-ts)                                 |          0 |      20 |         20 |
 | [`src/app/workbench_status.ts`](#src-app-workbench-status-ts)                               |          0 |      13 |         13 |
 | [`src/app/workbench_terminal.ts`](#src-app-workbench-terminal-ts)                           |          0 |      25 |         25 |
 | [`src/app/workbench_text.ts`](#src-app-workbench-text-ts)                                   |          0 |      10 |         10 |
@@ -5197,11 +5201,15 @@ _No direct exported symbols._
 | `layoutWorkbenchTabs`                 | function  | no        | yes   |
 | `layoutWorkbenchTabsInto`             | function  | no        | yes   |
 | `WorkbenchShelfButton`                | interface | yes       | yes   |
+| `WorkbenchShelfButtonRenderCommand`   | interface | yes       | yes   |
 | `WorkbenchShelfButtonRowItem`         | interface | yes       | yes   |
 | `workbenchShelfEntriesInto`           | function  | no        | yes   |
 | `WorkbenchShelfLayout`                | interface | yes       | yes   |
 | `WorkbenchShelfLayoutBuffers`         | interface | yes       | yes   |
 | `WorkbenchShelfLayoutOptions`         | interface | yes       | yes   |
+| `WorkbenchShelfPrefixRenderCommand`   | interface | yes       | yes   |
+| `WorkbenchShelfRenderCommand`         | type      | yes       | yes   |
+| `workbenchShelfRenderCommandsInto`    | function  | no        | yes   |
 | `WorkbenchShelfSource`                | interface | yes       | yes   |
 | `WorkbenchShelfWindowInspectionShape` | interface | yes       | yes   |
 | `workbenchTabEntriesInto`             | function  | no        | yes   |

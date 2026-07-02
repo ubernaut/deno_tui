@@ -6,6 +6,8 @@ import {
   type WorkbenchButtonRowItem,
   type WorkbenchButtonRowPlacement,
 } from "./workbench_control_layout.ts";
+import type { WorkbenchButtonState, WorkbenchButtonTone } from "./workbench_button_style.ts";
+import { buttonText, fitCellText } from "./workbench_frame.ts";
 
 /** Source item for minimized-window shelf buttons. */
 export interface WorkbenchShelfSource<TId extends string = string> {
@@ -34,6 +36,32 @@ export interface WorkbenchShelfLayout<TId extends string = string> {
   prefixRect: Rectangle;
   buttons: WorkbenchShelfButton<TId>[];
 }
+
+/** Renderer-neutral command for painting the shelf or tab row prefix. */
+export interface WorkbenchShelfPrefixRenderCommand {
+  kind: "prefix";
+  text: string;
+  rect: Rectangle;
+}
+
+/** Renderer-neutral command for painting one shelf or tab button. */
+export interface WorkbenchShelfButtonRenderCommand<TId extends string = string> {
+  kind: "button";
+  id: TId;
+  label: string;
+  text: string;
+  rect: Rectangle;
+  hitRect: Rectangle;
+  selected: boolean;
+  hidden: boolean;
+  state: WorkbenchButtonState;
+  tone: WorkbenchButtonTone;
+}
+
+/** Renderer-neutral command for painting a shelf or fullscreen tab row. */
+export type WorkbenchShelfRenderCommand<TId extends string = string> =
+  | WorkbenchShelfPrefixRenderCommand
+  | WorkbenchShelfButtonRenderCommand<TId>;
 
 /** Reusable storage for shelf and tab layout projection. */
 export interface WorkbenchShelfLayoutBuffers<TId extends string = string> {
@@ -157,6 +185,61 @@ export function createWorkbenchShelfLayoutBuffers<TId extends string = string>()
   };
 }
 
+/** Projects a shelf or fullscreen tab layout into clipped renderer-neutral paint and hit commands. */
+export function workbenchShelfRenderCommandsInto<TId extends string>(
+  target: WorkbenchShelfRenderCommand<TId>[],
+  layout: WorkbenchShelfLayout<TId>,
+): WorkbenchShelfRenderCommand<TId>[] {
+  let written = 0;
+  const prefixWidth = Math.max(0, layout.prefixRect.width);
+  if (prefixWidth > 0 && layout.prefix.length > 0) {
+    const command = (target[written] ?? {
+      kind: "prefix",
+      text: "",
+      rect: { column: 0, row: 0, width: 0, height: 1 },
+    }) as WorkbenchShelfPrefixRenderCommand;
+    command.kind = "prefix";
+    command.text = fitCellText(layout.prefix, prefixWidth);
+    setRect(command.rect, layout.prefixRect.column, layout.prefixRect.row, prefixWidth, 1);
+    target[written] = command;
+    written += 1;
+  }
+
+  for (let index = 0; index < layout.buttons.length; index += 1) {
+    const button = layout.buttons[index]!;
+    const text = buttonText(button.label);
+    const width = Math.max(0, Math.min(textWidth(text), button.rect.width));
+    if (width <= 0) continue;
+    const command = (target[written] ?? {
+      kind: "button",
+      id: button.id,
+      label: "",
+      text: "",
+      rect: { column: 0, row: 0, width: 0, height: 1 },
+      hitRect: { column: 0, row: 0, width: 0, height: 1 },
+      selected: false,
+      hidden: false,
+      state: "base",
+      tone: "default",
+    }) as WorkbenchShelfButtonRenderCommand<TId>;
+    command.kind = "button";
+    command.id = button.id;
+    command.label = button.label;
+    command.text = fitCellText(text, width);
+    command.selected = button.selected;
+    command.hidden = button.hidden;
+    command.state = button.selected ? "active" : "base";
+    command.tone = button.hidden ? "muted" : "default";
+    setRect(command.rect, button.rect.column, button.rect.row, width, 1);
+    setRect(command.hitRect, button.rect.column, button.rect.row, width, 1);
+    target[written] = command;
+    written += 1;
+  }
+
+  target.length = written;
+  return target;
+}
+
 function layoutButtonRowInto<TId extends string>(
   target: WorkbenchShelfLayoutBuffers<TId>,
   options: {
@@ -214,4 +297,11 @@ function layoutButtonRowInto<TId extends string>(
 export interface WorkbenchShelfButtonRowItem<TId extends string> extends WorkbenchButtonRowItem<TId> {
   selected: boolean;
   hidden: boolean;
+}
+
+function setRect(rect: Rectangle, column: number, row: number, width: number, height: number): void {
+  rect.column = column;
+  rect.row = row;
+  rect.width = width;
+  rect.height = height;
 }
