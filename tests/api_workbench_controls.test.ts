@@ -1,6 +1,7 @@
 import { assertEquals } from "./deps.ts";
 import {
   apiWorkbenchCheckboxRowsInto,
+  apiWorkbenchComboHeaderRowsInto,
   type ApiWorkbenchControlHitPlacement,
   apiWorkbenchControlIds,
   apiWorkbenchControlLineInto,
@@ -267,6 +268,45 @@ Deno.test("api workbench option rows project checkbox and radio controls with re
     { id: "radio", value: "  ○ Fast", options: { indent: true, index: 0 } },
     { id: "radio", value: "> ● Unit-01 Signal", options: { indent: true, index: 1 } },
   ]);
+});
+
+Deno.test("api workbench combo header projection preserves responsive split and hit options", () => {
+  assertEquals(
+    apiWorkbenchComboHeaderRowsInto([], {
+      title: "Theme",
+      label: "Unit-01 Signal",
+      expanded: true,
+      rectWidth: 48,
+    }),
+    [
+      {
+        id: "combo",
+        value: "Theme  ▾ Unit-01 Signal",
+        options: { action: "activate", previous: undefined, next: undefined },
+      },
+    ],
+  );
+
+  assertEquals(
+    apiWorkbenchComboHeaderRowsInto([], {
+      title: "Theme combo",
+      label: "Unit-01 Signal",
+      expanded: false,
+      rectWidth: 18,
+      expandedGlyph: "v",
+      collapsedGlyph: ">",
+      previous: true,
+      next: true,
+    }),
+    [
+      {
+        id: "combo",
+        value: "Theme combo  >",
+        options: { action: "activate", previous: true, next: true },
+      },
+      { id: "combo", value: "Unit-01 Signal", options: { indent: true } },
+    ],
+  );
 });
 
 Deno.test("api workbench stepper hit placements clip and reuse caller storage", () => {

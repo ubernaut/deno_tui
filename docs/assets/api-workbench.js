@@ -14841,6 +14841,26 @@ function apiWorkbenchRadioRowsInto(target, items, activeIndex, options = {}) {
   target.length = written;
   return target;
 }
+function apiWorkbenchComboHeaderRowsInto(target, options) {
+  const expandedGlyph = options.expandedGlyph ?? "\u25BE";
+  const collapsedGlyph = options.collapsedGlyph ?? "\u25B8";
+  const glyph = options.expanded ? expandedGlyph : collapsedGlyph;
+  const title = `${options.title}  ${glyph}`;
+  const header = `${title} ${options.label}`;
+  const shouldSplit = textWidth(`> ${header}`) > options.rectWidth && options.rectWidth > Math.max(0, Math.floor(options.splitMinWidth ?? 16));
+  target[0] = writeProjectedControlRow(target[0], "combo", shouldSplit ? title : header, {
+    action: "activate",
+    previous: options.previous,
+    next: options.next
+  });
+  if (shouldSplit) {
+    target[1] = writeProjectedControlRow(target[1], "combo", options.label, { indent: true });
+    target.length = 2;
+  } else {
+    target.length = 1;
+  }
+  return target;
+}
 function nextSortableDataColumn(columns2, currentColumnId, delta) {
   let sortableCount = 0;
   let currentSortableIndex = -1;
@@ -14932,6 +14952,13 @@ function writeControlHit(target, index, source) {
   target[index] = hit;
 }
 function writeOptionControlRow(target, id2, value, options) {
+  const row = target ?? { id: id2, value };
+  row.id = id2;
+  row.value = value;
+  row.options = options;
+  return row;
+}
+function writeProjectedControlRow(target, id2, value, options) {
   const row = target ?? { id: id2, value };
   row.id = id2;
   row.value = value;
@@ -15331,6 +15358,7 @@ var controlLineSegments = [];
 var controlLineHitPlacements = [];
 var controlCheckboxRows = [];
 var controlRadioRows = [];
+var controlComboHeaderRows = [];
 var controlCheckboxOptions = [];
 var controlRadioOptions = [];
 var controlSliderSetHit = {
@@ -17009,10 +17037,18 @@ function renderControls(frame, rect) {
   for (const controlRow of apiWorkbenchRadioRowsInto(controlRadioRows, controlRadioOptions, radio.activeIndex.peek())) {
     writeControl(controlRow.id, controlRow.value, controlRow.options);
   }
-  writeControl("combo", `Theme combo  ${combo.expanded.peek() ? "v" : ">"} ${combo.label()}`, {
+  for (const controlRow of apiWorkbenchComboHeaderRowsInto(controlComboHeaderRows, {
+    title: "Theme combo",
+    label: combo.label(),
+    expanded: combo.expanded.peek(),
+    rectWidth: rect.width,
+    expandedGlyph: "v",
+    collapsedGlyph: ">",
     previous: true,
     next: true
-  });
+  })) {
+    writeControl(controlRow.id, controlRow.value, controlRow.options);
+  }
   writeWrappedOptions(frame, rect, row, "combo", combo.items.peek(), combo.selectedIndex.peek(), t);
   row += wrappedControlOptionRowCount(combo.items.peek(), void 0, rect.width - 4);
   writeControl("dropdown", `Dropdown  ${dropdown.expanded.peek() ? "v" : ">"} ${dropdown.label()}`, {

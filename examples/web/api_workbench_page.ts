@@ -108,6 +108,7 @@ import {
 import {
   type ApiWorkbenchCheckboxOption,
   apiWorkbenchCheckboxRowsInto,
+  apiWorkbenchComboHeaderRowsInto,
   type ApiWorkbenchControlHitPlacement,
   type ApiWorkbenchControlId,
   apiWorkbenchControlLineInto,
@@ -115,6 +116,7 @@ import {
   apiWorkbenchControlTrack,
   apiWorkbenchDropdownPopoverRect,
   type ApiWorkbenchOptionControlRow,
+  type ApiWorkbenchProjectedControlRow,
   type ApiWorkbenchRadioOption,
   apiWorkbenchRadioRowsInto,
   apiWorkbenchSliderSetHitInto,
@@ -287,6 +289,7 @@ const controlLineSegments: ApiWorkbenchControlLineSegment[] = [];
 const controlLineHitPlacements: ApiWorkbenchControlHitPlacement[] = [];
 const controlCheckboxRows: ApiWorkbenchOptionControlRow[] = [];
 const controlRadioRows: ApiWorkbenchOptionControlRow[] = [];
+const controlComboHeaderRows: ApiWorkbenchProjectedControlRow[] = [];
 const controlCheckboxOptions: ApiWorkbenchCheckboxOption[] = [];
 const controlRadioOptions: ApiWorkbenchRadioOption[] = [];
 const controlSliderSetHit: ApiWorkbenchControlHitPlacement = {
@@ -2100,10 +2103,20 @@ function renderControls(frame: string[], rect: Rectangle): void {
   for (const controlRow of apiWorkbenchRadioRowsInto(controlRadioRows, controlRadioOptions, radio.activeIndex.peek())) {
     writeControl(controlRow.id, controlRow.value, controlRow.options);
   }
-  writeControl("combo", `Theme combo  ${combo.expanded.peek() ? "v" : ">"} ${combo.label()}`, {
-    previous: true,
-    next: true,
-  });
+  for (
+    const controlRow of apiWorkbenchComboHeaderRowsInto(controlComboHeaderRows, {
+      title: "Theme combo",
+      label: combo.label(),
+      expanded: combo.expanded.peek(),
+      rectWidth: rect.width,
+      expandedGlyph: "v",
+      collapsedGlyph: ">",
+      previous: true,
+      next: true,
+    })
+  ) {
+    writeControl(controlRow.id, controlRow.value, controlRow.options);
+  }
   writeWrappedOptions(frame, rect, row, "combo", combo.items.peek(), combo.selectedIndex.peek(), t);
   row += wrappedControlOptionRowCount(combo.items.peek(), undefined, rect.width - 4);
   writeControl("dropdown", `Dropdown  ${dropdown.expanded.peek() ? "v" : ">"} ${dropdown.label()}`, {

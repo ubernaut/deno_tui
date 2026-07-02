@@ -160,6 +160,7 @@ import {
 import {
   type ApiWorkbenchCheckboxOption,
   apiWorkbenchCheckboxRowsInto,
+  apiWorkbenchComboHeaderRowsInto,
   type ApiWorkbenchControlHitPlacement,
   type ApiWorkbenchControlId,
   apiWorkbenchControlLineInto,
@@ -167,6 +168,7 @@ import {
   apiWorkbenchControlTrack,
   apiWorkbenchDropdownPopoverRect,
   type ApiWorkbenchOptionControlRow,
+  type ApiWorkbenchProjectedControlRow,
   type ApiWorkbenchRadioOption,
   apiWorkbenchRadioRowsInto,
   apiWorkbenchSliderSetHitInto,
@@ -332,6 +334,7 @@ const controlLineSegments: ApiWorkbenchControlLineSegment[] = [];
 const controlLineHitPlacements: ApiWorkbenchControlHitPlacement[] = [];
 const controlCheckboxRows: ApiWorkbenchOptionControlRow[] = [];
 const controlRadioRows: ApiWorkbenchOptionControlRow[] = [];
+const controlComboHeaderRows: ApiWorkbenchProjectedControlRow[] = [];
 const controlCheckboxOptions: ApiWorkbenchCheckboxOption[] = [];
 const controlRadioOptions: ApiWorkbenchRadioOption[] = [];
 const controlSliderSetHit: ApiWorkbenchControlHitPlacement = {
@@ -1718,12 +1721,15 @@ function renderControls(frame: Frame, rect: Rectangle): void {
   ) {
     writeControl(controlRow.id, controlRow.value, controlRow.options);
   }
-  const themeHeader = `Theme  ${themeCombo.expanded.peek() ? "▾" : "▸"} ${themeCombo.label()}`;
-  if (textWidth(`> ${themeHeader}`) > rect.width && rect.width > 16) {
-    writeSection("combo", `Theme  ${themeCombo.expanded.peek() ? "▾" : "▸"}`);
-    writeControl("combo", themeCombo.label(), { indent: true });
-  } else {
-    writeSection("combo", themeHeader);
+  for (
+    const controlRow of apiWorkbenchComboHeaderRowsInto(controlComboHeaderRows, {
+      title: "Theme",
+      label: themeCombo.label(),
+      expanded: themeCombo.expanded.peek(),
+      rectWidth: rect.width,
+    })
+  ) {
+    writeControl(controlRow.id, controlRow.value, controlRow.options);
   }
   writeWrappedOptions(frame, rect, row, "combo", themeCombo.items.peek(), themeCombo.selectedIndex.peek(), t);
   row += wrappedControlOptionRowCount(themeCombo.items.peek(), undefined, rect.width - 4);

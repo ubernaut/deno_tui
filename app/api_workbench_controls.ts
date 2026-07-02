@@ -131,6 +131,12 @@ export interface ApiWorkbenchOptionControlRow {
   options?: ApiWorkbenchControlLineOptions;
 }
 
+export interface ApiWorkbenchProjectedControlRow {
+  id: ApiWorkbenchControlId;
+  value: string;
+  options?: ApiWorkbenchControlLineOptions;
+}
+
 export interface ApiWorkbenchCheckboxOption {
   label: string;
   checked: boolean;
@@ -139,6 +145,18 @@ export interface ApiWorkbenchCheckboxOption {
 export interface ApiWorkbenchRadioOption {
   label: string;
   selected: boolean;
+}
+
+export interface ApiWorkbenchComboHeaderRowsOptions {
+  title: string;
+  label: string;
+  expanded: boolean;
+  rectWidth: number;
+  expandedGlyph?: string;
+  collapsedGlyph?: string;
+  splitMinWidth?: number;
+  previous?: boolean;
+  next?: boolean;
 }
 
 export function nextApiWorkbenchControlId(
@@ -427,6 +445,31 @@ export function apiWorkbenchRadioRowsInto(
   return target;
 }
 
+export function apiWorkbenchComboHeaderRowsInto(
+  target: ApiWorkbenchProjectedControlRow[],
+  options: ApiWorkbenchComboHeaderRowsOptions,
+): ApiWorkbenchProjectedControlRow[] {
+  const expandedGlyph = options.expandedGlyph ?? "▾";
+  const collapsedGlyph = options.collapsedGlyph ?? "▸";
+  const glyph = options.expanded ? expandedGlyph : collapsedGlyph;
+  const title = `${options.title}  ${glyph}`;
+  const header = `${title} ${options.label}`;
+  const shouldSplit = textWidth(`> ${header}`) > options.rectWidth &&
+    options.rectWidth > Math.max(0, Math.floor(options.splitMinWidth ?? 16));
+  target[0] = writeProjectedControlRow(target[0], "combo", shouldSplit ? title : header, {
+    action: "activate",
+    previous: options.previous,
+    next: options.next,
+  });
+  if (shouldSplit) {
+    target[1] = writeProjectedControlRow(target[1], "combo", options.label, { indent: true });
+    target.length = 2;
+  } else {
+    target.length = 1;
+  }
+  return target;
+}
+
 export function nextSortableDataColumn<TRow extends Record<string, unknown>>(
   columns: readonly DataColumn<TRow>[],
   currentColumnId: string | undefined,
@@ -553,6 +596,19 @@ function writeOptionControlRow(
   value: string,
   options?: ApiWorkbenchControlLineOptions,
 ): ApiWorkbenchOptionControlRow {
+  const row = target ?? { id, value };
+  row.id = id;
+  row.value = value;
+  row.options = options;
+  return row;
+}
+
+function writeProjectedControlRow(
+  target: ApiWorkbenchProjectedControlRow | undefined,
+  id: ApiWorkbenchControlId,
+  value: string,
+  options?: ApiWorkbenchControlLineOptions,
+): ApiWorkbenchProjectedControlRow {
   const row = target ?? { id, value };
   row.id = id;
   row.value = value;
