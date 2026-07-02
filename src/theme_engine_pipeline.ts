@@ -86,6 +86,9 @@ export class ThemeEnginePipeline {
   readonly #steps = new Map<string, ThemeEnginePipelineStepDefinition>();
   readonly #enabled = new Set<string>();
   readonly #listeners = new Set<ThemeEnginePipelineListener>();
+  #ids?: string[];
+  #activeIds?: string[];
+  #activeSteps?: Array<readonly [string, ThemeEnginePipelineStepDefinition]>;
 
   constructor(definition: ThemeEnginePipelineDefinition) {
     this.id = definition.id;
@@ -134,15 +137,23 @@ export class ThemeEnginePipeline {
   }
 
   ids(): string[] {
-    return [...this.#steps.keys()];
+    if (!this.#ids) {
+      const ids: string[] = [];
+      for (const id of this.#steps.keys()) ids.push(id);
+      this.#ids = ids;
+    }
+    return cloneStringArray(this.#ids);
   }
 
   activeIds(): string[] {
-    const ids: string[] = [];
-    for (const id of this.#steps.keys()) {
-      if (this.#enabled.has(id)) ids.push(id);
+    if (!this.#activeIds) {
+      const ids: string[] = [];
+      for (const id of this.#steps.keys()) {
+        if (this.#enabled.has(id)) ids.push(id);
+      }
+      this.#activeIds = ids;
     }
-    return ids;
+    return cloneStringArray(this.#activeIds);
   }
 
   setEnabled(id: string, enabled: boolean): boolean {
@@ -190,9 +201,9 @@ export class ThemeEnginePipeline {
   apply(base: ThemeEngine): ThemeEngine {
     let engine = base;
     let index = 0;
-    for (const id of this.#steps.keys()) {
-      if (!this.#enabled.has(id)) continue;
-      const step = this.#steps.get(id)!;
+    const steps = this.activeStepEntries();
+    for (let stepIndex = 0; stepIndex < steps.length; stepIndex += 1) {
+      const [id, step] = steps[stepIndex]!;
       if (step.options) {
         engine = engine.extend(step.options);
       }
@@ -231,9 +242,23 @@ export class ThemeEnginePipeline {
   }
 
   #notify(): void {
+    this.#ids = undefined;
+    this.#activeIds = undefined;
+    this.#activeSteps = undefined;
     for (const listener of this.#listeners) {
       listener();
     }
+  }
+
+  private activeStepEntries(): readonly (readonly [string, ThemeEnginePipelineStepDefinition])[] {
+    if (!this.#activeSteps) {
+      const steps: Array<readonly [string, ThemeEnginePipelineStepDefinition]> = [];
+      for (const [id, step] of this.#steps) {
+        if (this.#enabled.has(id)) steps.push([id, step]);
+      }
+      this.#activeSteps = steps;
+    }
+    return this.#activeSteps;
   }
 }
 
@@ -313,6 +338,12 @@ function sortedObjectKeys(value: object): string[] {
     keys.push(key);
   }
   return keys.sort();
+}
+
+function cloneStringArray(values: readonly string[]): string[] {
+  const output = new Array<string>(values.length);
+  for (let index = 0; index < values.length; index += 1) output[index] = values[index]!;
+  return output;
 }
 
 function isThemeEngine(value: ThemeEngine | ThemeEngineOptions): value is ThemeEngine {
