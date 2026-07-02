@@ -75,8 +75,15 @@ import {
   WorkbenchWorkspaceViewportController,
   wrapTextBoxLines,
 } from "../../mod.web.ts";
+import {
+  apiWorkbenchColumns,
+  apiWorkbenchDocs,
+  apiWorkbenchRows,
+  type ApiWorkbenchProcessRow,
+  type ApiWorkbenchThemeSpec,
+  createApiWorkbenchThemes,
+} from "../../app/api_workbench_catalog.ts";
 import { WorkbenchController } from "../../src/app/workbench/controller.ts";
-import { grWizardThemePalettes } from "../../src/grwizard_themes.ts";
 import { createHtmlCssLayoutDemo, htmlCssLayoutDemoBoxLabel } from "../../src/markup/demo_fixtures.ts";
 import { DiagnosticsCollector } from "../../src/runtime/diagnostics.ts";
 import { StorageFallbackDiagnostics } from "../../src/runtime/storage_diagnostics.ts";
@@ -124,38 +131,12 @@ interface DropdownOverlay {
   selectedIndex?: number;
 }
 
-interface ThemeSpec {
-  id: string;
-  label: string;
-  bg: string;
-  bgAlt: string;
-  panel: string;
-  panelAlt: string;
-  surface: string;
-  border: string;
-  borderStrong: string;
-  accent: string;
-  accentDeep: string;
-  text: string;
-  muted: string;
-  soft: string;
-  good: string;
-  warn: string;
-  danger: string;
-  buttonBg: string;
-  buttonActiveBg: string;
-  buttonMutedBg: string;
-}
+type ThemeSpec = ApiWorkbenchThemeSpec;
 
 const THEME_STORAGE_KEY = "deno-tui.web-workbench.theme";
 const WORKSPACE_STORAGE_KEY = "deno-tui.web-workbench.workspace";
 
-interface Row extends Record<string, unknown> {
-  id: string;
-  surface: string;
-  state: string;
-  ms: number;
-}
+type Row = ApiWorkbenchProcessRow;
 
 const root = document.querySelector<HTMLElement>("#api-workbench");
 if (!root) throw new Error("Missing #api-workbench mount element.");
@@ -173,54 +154,12 @@ const host = createWebTui({
   },
 });
 
-const themes: ThemeSpec[] = grWizardThemePalettes.map((palette) => ({
-  id: palette.name,
-  label: palette.label,
-  bg: palette.bg,
-  bgAlt: palette.bgAlt,
-  panel: palette.panel,
-  panelAlt: palette.panelAlt,
-  surface: palette.surface,
-  border: palette.border,
-  borderStrong: palette.borderStrong,
-  accent: palette.accent,
-  accentDeep: palette.accentDeep,
-  text: palette.text,
-  muted: palette.textMuted,
-  soft: palette.textSoft,
-  good: palette.success,
-  warn: palette.warning,
-  danger: palette.danger,
-  buttonBg: palette.accentDeep,
-  buttonActiveBg: palette.accent,
-  buttonMutedBg: palette.panelAlt,
-}));
+const themes: ThemeSpec[] = createApiWorkbenchThemes();
 const themeLabels = themes.map((entry) => entry.label);
 const themeMenuWidth = Math.max(22, maxTextWidth(themeLabels) + 6);
-const rows: Row[] = [
-  { id: "explorer", surface: "FileExplorer", state: "browsing", ms: 3 },
-  { id: "menu", surface: "MenuBar", state: "active", ms: 2 },
-  { id: "tiles", surface: "Tile Layout", state: "balanced", ms: 5 },
-  { id: "layout", surface: "HTML/CSS Layout", state: "solver", ms: 7 },
-  { id: "table", surface: "DataTable", state: "sorted", ms: 8 },
-  { id: "scroll", surface: "ScrollArea", state: "tracking", ms: 3 },
-  { id: "theme", surface: "Theme", state: "bound", ms: 4 },
-  { id: "terminal", surface: "Remote Terminal", state: "browser-safe", ms: 5 },
-  { id: "mouse", surface: "Pointer", state: "captured", ms: 1 },
-  { id: "three", surface: "Three ASCII", state: "preview", ms: 6 },
-];
-const docs = [
-  "Click panel buttons to minimize, maximize, or restore.",
-  "Open the Theme menu for the same dropdown-style theme selector as the terminal workbench.",
-  "Use Tab, 1-8, M, F, R, T, H, Q, [ and ] from the keyboard.",
-  "The browser host maps pointer cells to the same mouse events as the terminal.",
-  "Touch: compact command buttons, larger hit targets, and drag scrolling are enabled on small/coarse-pointer screens.",
-  "Resize the browser: the terminal grid recalculates from CSS dimensions.",
-  "The web workbench includes Explorer, Data, Controls, Logs, and a browser-safe Three ASCII preview pane.",
-  "HTML/CSS Layout previews parseTuiMarkup, CSS cascade, flex wrap, and absolute positioning in a browser-hosted window.",
-  "Terminal shows browser-safe session tabs backed by TerminalWorkspaceController and TerminalScreenController.",
-  "The demo uses public controllers and canvas primitives from mod.web.ts.",
-];
+const rows: Row[] = apiWorkbenchRows;
+const columns = apiWorkbenchColumns;
+const docs = apiWorkbenchDocs;
 const panelIds: readonly PanelId[] = [
   "explorer",
   "inspector",
@@ -448,20 +387,16 @@ const explorer = new FileExplorerController({
 });
 const table = new DataTableController<Row>({
   rows,
-  columns: [
-    { id: "surface", label: "Surface", width: 14, sortable: true },
-    { id: "state", label: "State", width: 10, sortable: true },
-    { id: "ms", label: "ms", width: 4, sortable: true, format: (value) => `${value}` },
-  ],
+  columns,
   rowKey: (row) => row.id,
-  initialState: { pageSize: 4, sort: { columnId: "ms", direction: "asc" } },
+  initialState: { pageSize: 4, sort: { columnId: "latency", direction: "asc" } },
 });
 
 new BoxObject({
   canvas: host.canvas,
   rectangle: new Computed(() => ({ column: 0, row: 0, width: cols(), height: rowsCount() })),
   filler: " ",
-  style: new Computed(() => createAnsiStyle({ background: hex(theme().bg) })),
+  style: new Computed(() => createAnsiStyle({ background: hex(theme().background) })),
   zIndex: -2,
 }).draw();
 
@@ -553,7 +488,10 @@ host.start();
 draw();
 const timer = setInterval(() => {
   if (live.checked.peek()) {
-    table.rows.value = rows.map((row, index) => ({ ...row, ms: ((row.ms + index + slider.value.peek()) % 18) + 1 }));
+    table.rows.value = rows.map((row, index) => ({
+      ...row,
+      latency: ((row.latency + index + slider.value.peek()) % 18) + 1,
+    }));
     draw();
   }
 }, 650);
@@ -589,11 +527,11 @@ function draw(): void {
     screenRows,
     height,
     () => "",
-    () => paint(" ".repeat(width), theme().text, theme().bg),
+    () => paint(" ".repeat(width), theme().text, theme().background),
   );
-  write(frame, 0, 0, paint(" ".repeat(width), theme().text, theme().bgAlt));
+  write(frame, 0, 0, paint(" ".repeat(width), theme().text, theme().backgroundSoft));
   write(frame, 1, 0, paint(" ".repeat(width), theme().text, theme().panel));
-  write(frame, 0, 1, paint(` API WORKBENCH `, theme().bg, theme().accent, true));
+  write(frame, 0, 1, paint(` API WORKBENCH `, theme().background, theme().accent, true));
   const closeLabel = buttonText("x", true);
   const closeWidth = textWidth(closeLabel);
   const menuWidth = Math.max(0, width - 18 - closeWidth);
@@ -602,7 +540,7 @@ function draw(): void {
     frame,
     0,
     17,
-    paint(fit(renderMenuBar(menu.items.peek(), menu.activeIndex.peek()), menuWidth), theme().text, theme().bgAlt),
+    paint(fit(renderMenuBar(menu.items.peek(), menu.activeIndex.peek()), menuWidth), theme().text, theme().backgroundSoft),
   );
   if (width >= 22) {
     writeButton(frame, 0, width - closeWidth, "x", { compact: true, tone: "danger" });
@@ -634,9 +572,9 @@ function draw(): void {
     workspaceVirtualRows,
     Math.max(body.height, layout.contentHeight),
     () => "",
-    () => paint(" ".repeat(layout.bounds.width), theme().text, theme().bgAlt),
+    () => paint(" ".repeat(layout.bounds.width), theme().text, theme().backgroundSoft),
   );
-  fillRect(virtual, layout.bounds, theme().bgAlt);
+  fillRect(virtual, layout.bounds, theme().backgroundSoft);
   const hitStart = hitTargets.length;
   if (maximized.peek()) {
     renderPanel(virtual, maximized.peek()!, layout.bounds);
@@ -676,7 +614,7 @@ function draw(): void {
         width,
       ),
       theme().text,
-      theme().panelAlt,
+      theme().panelSoft,
     ),
     width,
   );
@@ -691,7 +629,7 @@ function renderShelf(frame: string[]): void {
     .map(([id]) => ({ id, title: panelTitle(id) }));
   if (entries.length === 0) return;
   const layout = layoutWorkbenchShelf({ row, column: 2, width: Math.max(0, cols() - 2), entries });
-  write(frame, row, layout.prefixRect.column, paint(layout.prefix, theme().muted, theme().bgAlt));
+  write(frame, row, layout.prefixRect.column, paint(layout.prefix, theme().muted, theme().backgroundSoft));
   for (const button of layout.buttons) {
     writeButton(frame, row, button.rect.column, button.label, { tone: "muted", maxWidth: button.rect.width });
     hitTargets.add(button.rect, { type: "restore", id: button.id });
@@ -772,7 +710,7 @@ function renderWindowTabs(frame: string[]): void {
       hidden: minimized.peek()[id],
     })),
   });
-  write(frame, row, layout.prefixRect.column, paint(layout.prefix, theme().muted, theme().bgAlt));
+  write(frame, row, layout.prefixRect.column, paint(layout.prefix, theme().muted, theme().backgroundSoft));
   for (const button of layout.buttons) {
     writeButton(frame, row, button.rect.column, button.label, {
       state: button.selected ? "active" : "base",
@@ -787,7 +725,7 @@ function renderPanel(frame: string[], id: PanelId, rect: Rectangle): void {
   if (rect.width < 10 || rect.height < 4) return;
   hitTargets.add(rect, { type: "focus", id });
   const selected = active.peek() === id;
-  fillRect(frame, rect, selected ? theme().panelAlt : theme().panel);
+  fillRect(frame, rect, selected ? theme().panelSoft : theme().panel);
   const border = selected ? theme().accent : theme().borderStrong;
   const title = panelTitle(id).toUpperCase();
   const top = `┌ ${title} ${"─".repeat(Math.max(0, rect.width - title.length - 24))}             ┐`;
@@ -795,7 +733,7 @@ function renderPanel(frame: string[], id: PanelId, rect: Rectangle): void {
     frame,
     rect.row,
     rect.column,
-    paint(fit(top, rect.width), border, selected ? theme().panelAlt : theme().panel, selected),
+    paint(fit(top, rect.width), border, selected ? theme().panelSoft : theme().panel, selected),
   );
   for (const button of layoutWorkbenchTitlebar({ rect, title: panelTitle(id) }).buttons) {
     if (button.kind === "config") continue;
@@ -810,14 +748,14 @@ function renderPanel(frame: string[], id: PanelId, rect: Rectangle): void {
       frame,
       rect.row + r,
       rect.column,
-      paint(`│${" ".repeat(rect.width - 2)}│`, border, selected ? theme().panelAlt : theme().panel),
+      paint(`│${" ".repeat(rect.width - 2)}│`, border, selected ? theme().panelSoft : theme().panel),
     );
   }
   write(
     frame,
     rect.row + rect.height - 1,
     rect.column,
-    paint(`└${"─".repeat(rect.width - 2)}┘`, border, selected ? theme().panelAlt : theme().panel),
+    paint(`└${"─".repeat(rect.width - 2)}┘`, border, selected ? theme().panelSoft : theme().panel),
   );
   const inner = {
     column: rect.column + 2,
@@ -908,7 +846,7 @@ function renderExplorer(frame: string[], rect: Rectangle): void {
       paint(
         fit(label, rect.width),
         selected
-          ? contrastText(theme().warn, theme().bg, theme().text)
+          ? contrastText(theme().warn, theme().background, theme().text)
           : node.kind === "directory"
           ? theme().good
           : theme().text,
@@ -964,7 +902,7 @@ function writeThreePreviewLine(frame: string[], rect: Rectangle, index: number, 
     rect.column,
     paint(
       fit(line, rect.width),
-      header ? contrastText(theme().accent, theme().bg, theme().text) : accent,
+      header ? contrastText(theme().accent, theme().background, theme().text) : accent,
       header ? theme().accent : theme().surface,
       header || index > 3,
     ),
@@ -1012,7 +950,7 @@ function renderHtmlCssLayout(frame: string[], rect: Rectangle): void {
       frame,
       start + index,
       rect.column,
-      paint(fit(rows[index]!, rect.width), index === 0 ? t.accent : t.soft, t.panelAlt, index === 0),
+      paint(fit(rows[index]!, rect.width), index === 0 ? t.accent : t.soft, t.panelSoft, index === 0),
     );
   }
 }
@@ -1044,23 +982,23 @@ function htmlCssLayoutBoxStyle(
   t: ThemeSpec,
 ): { fg: string; bg: string; border: string; bold?: boolean } {
   if (box.id === "layout-toolbar") {
-    return { fg: contrastText(t.accentDeep, t.bg, t.text), bg: t.accentDeep, border: t.accent, bold: true };
+    return { fg: contrastText(t.accentDeep, t.background, t.text), bg: t.accentDeep, border: t.accent, bold: true };
   }
-  if (box.id === "layout-stage") return { fg: t.text, bg: t.panelAlt, border: t.borderStrong, bold: true };
+  if (box.id === "layout-stage") return { fg: t.text, bg: t.panelSoft, border: t.borderStrong, bold: true };
   if (box.id === "layout-grid") return { fg: t.text, bg: t.surface, border: t.accent, bold: true };
   if (box.id === "grid-shell") {
-    return { fg: contrastText(t.buttonActiveBg, t.bg, t.text), bg: t.buttonActiveBg, border: t.accent, bold: true };
+    return { fg: contrastText(t.buttonActiveBg, t.background, t.text), bg: t.buttonActiveBg, border: t.accent, bold: true };
   }
   if (box.id === "grid-worker") {
-    return { fg: contrastText(t.warn, t.bg, t.text), bg: t.warn, border: t.danger, bold: true };
+    return { fg: contrastText(t.warn, t.background, t.text), bg: t.warn, border: t.danger, bold: true };
   }
   if (box.id.startsWith("grid-")) return { fg: t.text, bg: t.panel, border: t.accent };
   if (box.id === "layout-badge") {
-    return { fg: contrastText(t.warn, t.bg, t.text), bg: t.warn, border: t.danger, bold: true };
+    return { fg: contrastText(t.warn, t.background, t.text), bg: t.warn, border: t.danger, bold: true };
   }
   if (box.id === "layout-footer") return { fg: t.muted, bg: t.panel, border: t.border };
   if (box.id === "metric-cpu") {
-    return { fg: contrastText(t.buttonActiveBg, t.bg, t.text), bg: t.buttonActiveBg, border: t.accent, bold: true };
+    return { fg: contrastText(t.buttonActiveBg, t.background, t.text), bg: t.buttonActiveBg, border: t.accent, bold: true };
   }
   if (box.id.startsWith("metric-")) return { fg: t.text, bg: t.panel, border: t.accent };
   return { fg: t.text, bg: t.surface, border: t.border };
@@ -1112,20 +1050,20 @@ function renderTerminalProtocol(frame: string[], rect: Rectangle): void {
     }  screen ${inspection.columns}x${inspection.rows}  cursor ${inspection.cursor.column},${inspection.cursor.row}  sessions ${workspace.count}`,
   ];
   headerRows.slice(0, Math.min(2, rect.height)).forEach((line, index) => {
-    const bg = index === 0 ? t.accentDeep : t.panelAlt;
-    const fg = index === 0 ? contrastText(t.accentDeep, t.bg, t.text) : index === 1 ? t.warn : t.soft;
+    const bg = index === 0 ? t.accentDeep : t.panelSoft;
+    const fg = index === 0 ? contrastText(t.accentDeep, t.background, t.text) : index === 1 ? t.warn : t.soft;
     write(frame, rect.row + index, rect.column, paint(fit(line, rect.width), fg, bg, index === 0));
   });
   renderTerminalSessionTabs(frame, { column: rect.column, row: rect.row + 2, width: rect.width, height: 1 });
 
-  fillRect(frame, screenRect, t.bg);
+  fillRect(frame, screenRect, t.background);
   const rows = webTerminalScreen.textRows();
   rows.slice(0, screenRect.height).forEach((line, index) => {
-    write(frame, screenRect.row + index, screenRect.column, paint(fit(line, screenRect.width), t.text, t.bg));
+    write(frame, screenRect.row + index, screenRect.column, paint(fit(line, screenRect.width), t.text, t.background));
   });
   const cursor = webTerminalScreen.cursor;
   if (cursor.row < screenRect.height && cursor.column < screenRect.width) {
-    write(frame, screenRect.row + cursor.row, screenRect.column + cursor.column, paint(" ", t.bg, t.accent, true));
+    write(frame, screenRect.row + cursor.row, screenRect.column + cursor.column, paint(" ", t.background, t.accent, true));
   }
 
   const footerRow = rect.row + rect.height - 1;
@@ -1140,7 +1078,7 @@ function renderTerminalSessionTabs(frame: string[], rect: Rectangle): void {
   if (rect.height <= 0 || rect.width <= 0) return;
   const workspace = webTerminalWorkspace.inspect();
   let column = rect.column;
-  fillRect(frame, rect, theme().panelAlt);
+  fillRect(frame, rect, theme().panelSoft);
   for (const session of workspace.sessions) {
     const activeSession = workspace.activeId === session.id;
     const label = `${activeSession ? "●" : "○"} ${session.title}`;
@@ -1152,8 +1090,8 @@ function renderTerminalSessionTabs(frame: string[], rect: Rectangle): void {
       column,
       paint(
         fit(` ${label}`, width),
-        activeSession ? contrastText(theme().accent, theme().bg, theme().text) : theme().text,
-        activeSession ? theme().accent : theme().panelAlt,
+        activeSession ? contrastText(theme().accent, theme().background, theme().text) : theme().text,
+        activeSession ? theme().accent : theme().panelSoft,
         activeSession,
       ),
     );
@@ -1456,7 +1394,7 @@ function renderWorkspaceScrollbar(frame: string[], bounds: Rectangle): void {
   const thumb = overflow.rows.thumb;
   hitTargets.add(rect, { type: "workspaceScrollbar" });
   for (let row = 0; row < bounds.height; row += 1) {
-    write(frame, bounds.row + row, column, paint(scrollbarGlyph(row, thumb), theme().accent, theme().bgAlt, true));
+    write(frame, bounds.row + row, column, paint(scrollbarGlyph(row, thumb), theme().accent, theme().backgroundSoft, true));
   }
 }
 
@@ -1468,12 +1406,12 @@ function renderDropdownOverlay(frame: string[]): void {
     bounds: { column: 0, row: 0, width: cols(), height: rowsCount() },
   });
   if (!rect) return;
-  fillRect(frame, rect, theme().panelAlt);
+  fillRect(frame, rect, theme().panelSoft);
   write(
     frame,
     rect.row,
     rect.column,
-    paint(`┌${"─".repeat(Math.max(0, rect.width - 2))}┐`, theme().accent, theme().panelAlt, true),
+    paint(`┌${"─".repeat(Math.max(0, rect.width - 2))}┐`, theme().accent, theme().panelSoft, true),
   );
   for (const [index, item] of overlay.items.entries()) {
     const row = rect.row + 1 + index;
@@ -1486,8 +1424,8 @@ function renderDropdownOverlay(frame: string[]): void {
       rect.column,
       paint(
         `│ ${fit(`${marker} ${item}`, rect.width - 4)} │`,
-        selected ? contrastText(theme().warn, theme().bg, theme().text) : theme().text,
-        selected ? theme().warn : theme().panelAlt,
+        selected ? contrastText(theme().warn, theme().background, theme().text) : theme().text,
+        selected ? theme().warn : theme().panelSoft,
         selected,
       ),
     );
@@ -1500,7 +1438,7 @@ function renderDropdownOverlay(frame: string[]): void {
     frame,
     rect.row + rect.height - 1,
     rect.column,
-    paint(`└${"─".repeat(Math.max(0, rect.width - 2))}┘`, theme().accent, theme().panelAlt, true),
+    paint(`└${"─".repeat(Math.max(0, rect.width - 2))}┘`, theme().accent, theme().panelSoft, true),
   );
 }
 
@@ -1514,8 +1452,8 @@ function renderModalOverlay(frame: string[]): void {
     contentHeight: modalContentHeight(inspection, probeWidth),
     maxWidth: 74,
   });
-  if (shadow.width > 0 && shadow.height > 0) fillRect(frame, shadow, theme().bg);
-  fillRect(frame, rect, theme().panelAlt);
+  if (shadow.width > 0 && shadow.height > 0) fillRect(frame, shadow, theme().background);
+  fillRect(frame, rect, theme().panelSoft);
   drawFrame(frame, rect, inspection.title, true);
   const rows = renderModalRows(inspection, { width: rect.width, height: inner.height });
   for (let index = 0; index < rows.length && index < inner.height; index += 1) {
@@ -1528,7 +1466,7 @@ function renderModalOverlay(frame: string[]): void {
       paint(
         fit(actionRow ? "" : rows[index]!, inner.width),
         titleRow ? theme().accent : theme().text,
-        actionRow ? theme().panel : theme().panelAlt,
+        actionRow ? theme().panel : theme().panelSoft,
         actionRow || titleRow,
       ),
     );
@@ -1551,13 +1489,13 @@ function renderModalOverlay(frame: string[]): void {
 function panelLineStyle(id: PanelId, index: number): { fg: string; bg: string; bold?: boolean } {
   const t = theme();
   if (id === "data" && index === 0) {
-    return { fg: contrastText(t.accentDeep, t.bg, t.text), bg: t.accentDeep, bold: true };
+    return { fg: contrastText(t.accentDeep, t.background, t.text), bg: t.accentDeep, bold: true };
   }
   if (id === "data" && index > 0 && index - 1 === table.view.peek().selectedIndex) {
-    return { fg: contrastText(t.warn, t.bg, t.text), bg: t.warn, bold: true };
+    return { fg: contrastText(t.warn, t.background, t.text), bg: t.warn, bold: true };
   }
   if (id === "inspector" && (index === 0 || index === 7)) {
-    return { fg: t.bg, bg: index === 0 ? t.accent : t.border, bold: true };
+    return { fg: t.background, bg: index === 0 ? t.accent : t.border, bold: true };
   }
   if (id === "logs") return { fg: t.text, bg: t.surface };
   return { fg: t.text, bg: t.surface };
@@ -1696,7 +1634,7 @@ function renderControls(frame: string[], rect: Rectangle): void {
         frame,
         row,
         rect.column,
-        paint(fit(prefix, rect.width), selected ? t.bg : t.text, selected ? t.warn : t.surface, selected),
+        paint(fit(prefix, rect.width), selected ? t.background : t.text, selected ? t.warn : t.surface, selected),
       );
       let column = rect.column + textWidth(prefix);
       const buttonWidth = Math.max(0, rect.width - textWidth(prefix));
@@ -1720,7 +1658,7 @@ function renderControls(frame: string[], rect: Rectangle): void {
         rect.column,
         paint(
           fit(`${prefix}${value}`, rect.width),
-          selected ? t.bg : t.text,
+          selected ? t.background : t.text,
           selected ? t.warn : t.surface,
           selected,
         ),
@@ -1862,7 +1800,7 @@ function renderTextboxControl(frame: string[], rect: Rectangle, row: number, t: 
       rect.column,
       paint(
         fit(offset === 0 ? header : " ".repeat(Math.max(0, labelWidth)), labelWidth),
-        selected && offset === 0 ? t.bg : t.text,
+        selected && offset === 0 ? t.background : t.text,
         selected && offset === 0 ? t.warn : t.surface,
         selected && offset === 0,
       ),
@@ -1873,7 +1811,7 @@ function renderTextboxControl(frame: string[], rect: Rectangle, row: number, t: 
       textColumn,
       paint(
         fit(`${line.continuation ? ">" : " "}${line.text}${marker}`, textAreaWidth),
-        selected ? t.bg : t.text,
+        selected ? t.background : t.text,
         selected ? t.warn : t.surface,
         selected,
       ),
@@ -1906,7 +1844,7 @@ function writeWrappedOptions(
       frame,
       row,
       rect.column + 2,
-      paint(fit(line, width), selected ? t.bg : t.text, selected ? t.warn : t.surface, selected),
+      paint(fit(line, width), selected ? t.background : t.text, selected ? t.warn : t.surface, selected),
     );
     line = "";
     row += 1;
@@ -1960,12 +1898,12 @@ function addInlineStepperHits(rect: Rectangle, row: number): void {
 
 function renderControlDropdownPopover(frame: string[], rect: Rectangle): void {
   const t = theme();
-  fillRect(frame, rect, t.panelAlt);
+  fillRect(frame, rect, t.panelSoft);
   write(
     frame,
     rect.row,
     rect.column,
-    paint(`┌${"─".repeat(Math.max(0, rect.width - 2))}┐`, t.accent, t.panelAlt, true),
+    paint(`┌${"─".repeat(Math.max(0, rect.width - 2))}┐`, t.accent, t.panelSoft, true),
   );
   for (const [index, item] of dropdown.items.peek().entries()) {
     const selected = dropdown.selectedIndex.peek() === index;
@@ -1977,8 +1915,8 @@ function renderControlDropdownPopover(frame: string[], rect: Rectangle): void {
       rect.column,
       paint(
         `│ ${fit(`${marker} ${item}`, rect.width - 4)} │`,
-        selected ? contrastText(t.warn, t.bg, t.text) : t.text,
-        selected ? t.warn : t.panelAlt,
+        selected ? contrastText(t.warn, t.background, t.text) : t.text,
+        selected ? t.warn : t.panelSoft,
         selected,
       ),
     );
@@ -1993,7 +1931,7 @@ function renderControlDropdownPopover(frame: string[], rect: Rectangle): void {
     frame,
     rect.row + rect.height - 1,
     rect.column,
-    paint(`└${"─".repeat(Math.max(0, rect.width - 2))}┘`, t.accent, t.panelAlt, true),
+    paint(`└${"─".repeat(Math.max(0, rect.width - 2))}┘`, t.accent, t.panelSoft, true),
   );
 }
 
@@ -2126,7 +2064,7 @@ function fillRect(frame: string[], rect: Rectangle, bg: string): void {
 
 function drawFrame(frame: string[], rect: Rectangle, title: string, selected: boolean): void {
   const border = selected ? theme().accent : theme().borderStrong;
-  const bg = selected ? theme().panelAlt : theme().panel;
+  const bg = selected ? theme().panelSoft : theme().panel;
   write(frame, rect.row, rect.column, paint(`┌${"─".repeat(Math.max(0, rect.width - 2))}┐`, border, bg, selected));
   for (let row = rect.row + 1; row < rect.row + rect.height - 1; row += 1) {
     write(frame, row, rect.column, paint("│", border, bg, selected));
@@ -2142,7 +2080,7 @@ function drawFrame(frame: string[], rect: Rectangle, title: string, selected: bo
     frame,
     rect.row,
     rect.column + 2,
-    paint(` ${title.toUpperCase()} `, theme().bg, selected ? theme().accent : theme().border, true),
+    paint(` ${title.toUpperCase()} `, theme().background, selected ? theme().accent : theme().border, true),
   );
 }
 
@@ -2184,12 +2122,12 @@ function buttonPaintOptions(
     : tone === "muted"
     ? theme().border
     : undefined;
-  if (toneBg) return { fg: contrastText(toneBg, theme().bg, theme().text), bg: toneBg, bold: true };
+  if (toneBg) return { fg: contrastText(toneBg, theme().background, theme().text), bg: toneBg, bold: true };
   const bg = state === "active" ? theme().buttonActiveBg : theme().buttonBg;
-  return { fg: contrastText(bg, theme().bg, theme().text), bg, bold: true };
+  return { fg: contrastText(bg, theme().background, theme().text), bg, bold: true };
 }
 
-function paint(value: string, fg = theme().text, bg = theme().bg, bold = false): string {
+function paint(value: string, fg = theme().text, bg = theme().background, bold = false): string {
   return makeStyle({ fg, bg, bold })(value);
 }
 function findHit(x: number, y: number): HitTarget<Hit> | undefined {
