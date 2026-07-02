@@ -5,6 +5,7 @@ import {
   apiWorkbenchControlLineInto,
   type ApiWorkbenchControlLineSegment,
   apiWorkbenchControlTrack,
+  apiWorkbenchDropdownPopoverRect,
   apiWorkbenchSliderSetHit,
   apiWorkbenchStepperHitPlacementsInto,
   nextApiWorkbenchControlId,
@@ -137,6 +138,27 @@ Deno.test("api workbench control track projects clamped fill and slider hit geom
   assertEquals(
     apiWorkbenchControlTrack({ ratio: 2, boundsWidth: 14, reservedWidth: 20, minWidth: 8, maxWidth: 24 }),
     { width: 8, filled: 8, text: "████████" },
+  );
+});
+
+Deno.test("api workbench dropdown popover rectangle follows shared adapter geometry", () => {
+  assertEquals(
+    apiWorkbenchDropdownPopoverRect({
+      rect: { column: 10, row: 4, width: 42, height: 12 },
+      row: 9,
+      items: ["Alpha", "Longer choice"],
+      label: "Current",
+    }),
+    { column: 12, row: 9, width: 19, height: 4 },
+  );
+  assertEquals(
+    apiWorkbenchDropdownPopoverRect({
+      rect: { column: 1, row: 2, width: 10, height: 5 },
+      row: 4,
+      items: ["A", "B", "C"],
+      label: "Tiny",
+    }),
+    { column: 3, row: 4, width: 16, height: 5 },
   );
 });
 

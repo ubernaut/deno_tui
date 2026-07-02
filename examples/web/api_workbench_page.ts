@@ -113,6 +113,7 @@ import {
   apiWorkbenchControlLineInto,
   type ApiWorkbenchControlLineSegment,
   apiWorkbenchControlTrack,
+  apiWorkbenchDropdownPopoverRect,
   apiWorkbenchSliderSetHitInto,
   apiWorkbenchStepperHitPlacementsInto,
   nextApiWorkbenchControlId,
@@ -2094,15 +2095,11 @@ function renderControls(frame: string[], rect: Rectangle): void {
     action: "toggle",
   });
   if (dropdown.expanded.peek()) {
-    renderControlDropdownPopover(frame, {
-      column: rect.column + 2,
-      row,
-      width: Math.min(
-        Math.max(16, maxTextWidth(dropdown.items.peek()) + 6),
-        Math.max(16, rect.width - 4),
-      ),
-      height: dropdown.items.peek().length + 2,
-    });
+    const items = dropdown.items.peek();
+    renderControlDropdownPopover(
+      frame,
+      apiWorkbenchDropdownPopoverRect({ rect, row, items, label: dropdown.label() }),
+    );
   }
   writeControl("input", `Input     ${input.text.peek()}${activeControl.peek() === "input" ? "|" : ""}`, {
     action: "focus",

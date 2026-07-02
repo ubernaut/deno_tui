@@ -163,6 +163,7 @@ import {
   apiWorkbenchControlLineInto,
   type ApiWorkbenchControlLineSegment,
   apiWorkbenchControlTrack,
+  apiWorkbenchDropdownPopoverRect,
   apiWorkbenchSliderSetHitInto,
   apiWorkbenchStepperHitPlacementsInto,
   nextApiWorkbenchControlId,
@@ -1721,16 +1722,10 @@ function renderControls(frame: Frame, rect: Rectangle): void {
   });
   if (dropdown.expanded.peek()) {
     const items = dropdown.items.peek();
-    const contentWidth = Math.max(maxTextWidth(items), textWidth(dropdown.label()), 12);
     dropdownOverlay = {
       kind: "control",
       coordinate: "workspace",
-      rect: {
-        column: rect.column + 2,
-        row,
-        width: Math.min(Math.max(16, contentWidth + 6), Math.max(16, rect.width - 4)),
-        height: items.length + 2,
-      },
+      rect: apiWorkbenchDropdownPopoverRect({ rect, row, items, label: dropdown.label() }),
       items,
       selectedIndex: dropdown.selectedIndex.peek(),
     };

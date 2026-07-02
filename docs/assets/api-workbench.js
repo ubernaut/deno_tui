@@ -14711,6 +14711,25 @@ function apiWorkbenchSliderSetHitInto(target, rect, row, track, options = {}) {
   target.index = void 0;
   return target;
 }
+function apiWorkbenchDropdownPopoverRect(options) {
+  const rect = options.rect;
+  const horizontalInset = Math.max(0, Math.floor(options.horizontalInset ?? 2));
+  const padding = Math.max(0, Math.floor(options.padding ?? 6));
+  const minContentWidth = Math.max(1, Math.floor(options.minContentWidth ?? 12));
+  const maxWidth = Math.max(1, Math.floor(rect.width) - horizontalInset * 2);
+  const contentWidth = Math.max(
+    minContentWidth,
+    maxItemTextWidth(options.items),
+    textWidth(options.label ?? "")
+  );
+  const width = Math.max(1, Math.min(Math.max(16, contentWidth + padding), Math.max(16, maxWidth)));
+  return {
+    column: rect.column + horizontalInset,
+    row: options.row,
+    width,
+    height: Math.max(2, options.items.length + 2)
+  };
+}
 function nextSortableDataColumn(columns2, currentColumnId, delta) {
   let sortableCount = 0;
   let currentSortableIndex = -1;
@@ -14800,6 +14819,11 @@ function writeControlHit(target, index, source) {
   hit.action = source.action;
   hit.index = source.index;
   target[index] = hit;
+}
+function maxItemTextWidth(items) {
+  let width = 0;
+  for (const item of items) width = Math.max(width, textWidth(item));
+  return width;
 }
 
 // app/html_css_layout_view.ts
@@ -16866,15 +16890,11 @@ function renderControls(frame, rect) {
     action: "toggle"
   });
   if (dropdown.expanded.peek()) {
-    renderControlDropdownPopover(frame, {
-      column: rect.column + 2,
-      row,
-      width: Math.min(
-        Math.max(16, maxTextWidth(dropdown.items.peek()) + 6),
-        Math.max(16, rect.width - 4)
-      ),
-      height: dropdown.items.peek().length + 2
-    });
+    const items = dropdown.items.peek();
+    renderControlDropdownPopover(
+      frame,
+      apiWorkbenchDropdownPopoverRect({ rect, row, items, label: dropdown.label() })
+    );
   }
   writeControl("input", `Input     ${input.text.peek()}${activeControl.peek() === "input" ? "|" : ""}`, {
     action: "focus"
