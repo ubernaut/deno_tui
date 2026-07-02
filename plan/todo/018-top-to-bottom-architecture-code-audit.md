@@ -901,6 +901,8 @@ Work:
         projection during draw.
   - [x] Reduced `DataTableController` view churn by avoiding whole-table copies when no filter or sort is active and
         copying only the visible page rows.
+  - [x] Added a conservative plain-ASCII fast path for `textWidth` and `cropToWidth`, preserving ANSI/Unicode fallback
+        behavior.
 - [x] Make demo-only assets and NGE-inspired primitives clearly separate from library APIs.
   - [x] Added `app/neon_three_catalog.ts` for supported Three scene metadata and labels, keeping demo/NGE catalog data
         separate from the monolithic scene factory and shared by visualization footers plus scene coverage tests.

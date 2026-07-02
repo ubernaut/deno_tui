@@ -78,6 +78,8 @@ export function insertAt(string: string, index: number, value: string): string {
 /** Returns real {text} width */
 export function textWidth(text: string, start = 0): number {
   if (!text) return 0;
+  const asciiWidth = plainAsciiWidth(text, start);
+  if (asciiWidth !== undefined) return asciiWidth;
 
   let width = 0;
   for (const cell of iterateTextCells(text, start)) {
@@ -90,6 +92,9 @@ export function textWidth(text: string, start = 0): number {
 
 /** Crops {text} to given {width} */
 export function cropToWidth(text: string, width: number): string {
+  const asciiCropped = cropPlainAsciiToWidth(text, width);
+  if (asciiCropped !== undefined) return asciiCropped;
+
   let cropped = "";
   let croppedWidth = 0;
 
@@ -119,6 +124,27 @@ export function cropToWidth(text: string, width: number): string {
   }
 
   return cropped;
+}
+
+function plainAsciiWidth(text: string, start = 0): number | undefined {
+  const offset = Math.max(0, Math.floor(start));
+  for (let index = offset; index < text.length; index += 1) {
+    const code = text.charCodeAt(index);
+    if (code === 0x0a) return index - offset;
+    if (code === 0x1b || code >= 0x80) return undefined;
+  }
+  return Math.max(0, text.length - offset);
+}
+
+function cropPlainAsciiToWidth(text: string, width: number): string | undefined {
+  const safeWidth = Math.max(0, Math.floor(width));
+  const limit = Math.min(text.length, safeWidth);
+  for (let index = 0; index < text.length; index += 1) {
+    const code = text.charCodeAt(index);
+    if (code === 0x0a) return text.slice(0, Math.min(index, safeWidth));
+    if (code === 0x1b || code >= 0x80) return undefined;
+  }
+  return text.length <= safeWidth ? text : text.slice(0, limit);
 }
 
 function* iterateTextCells(text: string, start = 0): Generator<{ raw: string; plain: string }, void, void> {
