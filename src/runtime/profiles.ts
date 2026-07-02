@@ -167,7 +167,7 @@ export class RuntimeProfile {
     this.label = definition.label ?? definition.id;
     this.description = definition.description;
     this.options = { ...definition.options };
-    this.tags = [...new Set(definition.tags ?? [])].sort();
+    this.tags = uniqueSorted(definition.tags ?? []);
     this.priority = definition.priority ?? 0;
   }
 
@@ -177,7 +177,7 @@ export class RuntimeProfile {
       label: this.label,
       description: this.description,
       options: { ...this.options },
-      tags: [...this.tags],
+      tags: cloneStringArray(this.tags),
       priority: this.priority,
     };
   }
@@ -234,15 +234,29 @@ export class RuntimeProfileRegistry {
   }
 
   ids(): string[] {
-    return this.profiles().map((profile) => profile.id);
+    const profiles = this.profiles();
+    const ids = new Array<string>(profiles.length);
+    for (let index = 0; index < profiles.length; index += 1) {
+      ids[index] = profiles[index]!.id;
+    }
+    return ids;
   }
 
   profiles(): RuntimeProfile[] {
-    return [...this.#profiles.values()].sort((a, b) => b.priority - a.priority || a.id.localeCompare(b.id));
+    const profiles: RuntimeProfile[] = [];
+    for (const profile of this.#profiles.values()) {
+      profiles.push(profile);
+    }
+    return profiles.sort(compareRuntimeProfiles);
   }
 
   inspect(): RuntimeProfileInspection[] {
-    return this.profiles().map((profile) => profile.inspect());
+    const profiles = this.profiles();
+    const inspections = new Array<RuntimeProfileInspection>(profiles.length);
+    for (let index = 0; index < profiles.length; index += 1) {
+      inspections[index] = profiles[index]!.inspect();
+    }
+    return inspections;
   }
 
   plan(id: string, capabilities: RuntimeCapabilities = detectRuntimeCapabilities()): RuntimePlan {
@@ -374,15 +388,23 @@ export function createRuntimeProfileController(
 
 /** Public helper for runtime Profiles. */
 export function runtimeProfiles(): RuntimeProfile[] {
-  return runtimeProfileDefinitions.map(createRuntimeProfile);
+  const profiles = new Array<RuntimeProfile>(runtimeProfileDefinitions.length);
+  for (let index = 0; index < runtimeProfileDefinitions.length; index += 1) {
+    profiles[index] = createRuntimeProfile(runtimeProfileDefinitions[index]!);
+  }
+  return profiles;
 }
 
 /** Finds a matching runtime Profile record when one exists. */
 export function findRuntimeProfile(idOrLabel: string): RuntimeProfile | undefined {
   const normalized = normalizeProfileLookup(idOrLabel);
-  return runtimeProfiles().find((profile) =>
-    normalizeProfileLookup(profile.id) === normalized || normalizeProfileLookup(profile.label) === normalized
-  );
+  for (const definition of runtimeProfileDefinitions) {
+    const profile = createRuntimeProfile(definition);
+    if (normalizeProfileLookup(profile.id) === normalized || normalizeProfileLookup(profile.label) === normalized) {
+      return profile;
+    }
+  }
+  return undefined;
 }
 
 /** Queries runtime Profiles records with deterministic filtering. */
@@ -391,26 +413,39 @@ export function queryRuntimeProfiles(
   query: RuntimeProfileCatalogQuery = {},
   capabilities: RuntimeCapabilities = detectRuntimeCapabilities(),
 ): RuntimeProfilePlanInspection[] {
-  return normalizeProfiles(profiles)
-    .map((profile) => profile.inspectPlan(capabilities))
-    .filter((profile) => matchesRuntimeProfileQuery(profile, query))
-    .sort((left, right) => right.priority - left.priority || left.label.localeCompare(right.label));
+  const matches: RuntimeProfilePlanInspection[] = [];
+  for (const profile of normalizeProfiles(profiles)) {
+    const inspection = profile.inspectPlan(capabilities);
+    if (matchesRuntimeProfileQuery(inspection, query)) matches.push(inspection);
+  }
+  return matches.sort(compareRuntimeProfilePlans);
 }
 
 /** Creates a serializable inspection snapshot for runtime Profile Catalog. */
 export function inspectRuntimeProfileCatalog(
   profiles: readonly RuntimeProfilePlanInspection[],
 ): RuntimeProfileCatalogInspection {
+  let accelerated = 0;
+  const workerStrategies = new Set<RuntimeWorkerStrategy>();
+  const storageStrategies = new Set<RuntimeStorageStrategy>();
+  const rendererStrategies = new Set<RuntimeRendererStrategy>();
+  const tags = new Set<string>();
+  for (const profile of profiles) {
+    if (profile.accelerated.workers || profile.accelerated.storage || profile.accelerated.renderer) {
+      accelerated += 1;
+    }
+    workerStrategies.add(profile.strategies.workers);
+    storageStrategies.add(profile.strategies.storage);
+    rendererStrategies.add(profile.strategies.renderer);
+    for (const tag of profile.tags) tags.add(tag);
+  }
   return {
     count: profiles.length,
-    accelerated:
-      profiles.filter((profile) =>
-        profile.accelerated.workers || profile.accelerated.storage || profile.accelerated.renderer
-      ).length,
-    workerStrategies: uniqueSorted(profiles.map((profile) => profile.strategies.workers)),
-    storageStrategies: uniqueSorted(profiles.map((profile) => profile.strategies.storage)),
-    rendererStrategies: uniqueSorted(profiles.map((profile) => profile.strategies.renderer)),
-    tags: uniqueSorted(profiles.flatMap((profile) => profile.tags)),
+    accelerated,
+    workerStrategies: uniqueSorted(workerStrategies),
+    storageStrategies: uniqueSorted(storageStrategies),
+    rendererStrategies: uniqueSorted(rendererStrategies),
+    tags: uniqueSorted(tags),
   };
 }
 
@@ -452,7 +487,11 @@ export function formatRuntimeProfileCatalogMarkdown(options: RuntimeProfileCatal
 function normalizeProfiles(
   profiles: Iterable<RuntimeProfile | RuntimeProfileDefinition>,
 ): RuntimeProfile[] {
-  return [...profiles].map((profile) => profile instanceof RuntimeProfile ? profile : createRuntimeProfile(profile));
+  const normalized: RuntimeProfile[] = [];
+  for (const profile of profiles) {
+    normalized.push(profile instanceof RuntimeProfile ? profile : createRuntimeProfile(profile));
+  }
+  return normalized;
 }
 
 function matchesRuntimeProfileQuery(
@@ -470,15 +509,15 @@ function matchesRuntimeProfileQuery(
   if (!query.search) return true;
   const needle = normalizeProfileLookup(query.search);
   if (!needle) return true;
-  return [
-    profile.id,
-    profile.label,
-    profile.description,
-    ...profile.tags,
-    profile.strategies.workers,
-    profile.strategies.storage,
-    profile.strategies.renderer,
-  ].some((value) => value && normalizeProfileLookup(value).includes(needle));
+  if (profileSearchValueIncludes(profile.id, needle)) return true;
+  if (profileSearchValueIncludes(profile.label, needle)) return true;
+  if (profile.description && profileSearchValueIncludes(profile.description, needle)) return true;
+  for (const tag of profile.tags) {
+    if (profileSearchValueIncludes(tag, needle)) return true;
+  }
+  if (profileSearchValueIncludes(profile.strategies.workers, needle)) return true;
+  if (profileSearchValueIncludes(profile.strategies.storage, needle)) return true;
+  return profileSearchValueIncludes(profile.strategies.renderer, needle);
 }
 
 function normalizeProfileLookup(value: string): string {
@@ -486,5 +525,33 @@ function normalizeProfileLookup(value: string): string {
 }
 
 function uniqueSorted<T extends string>(values: Iterable<T>): T[] {
-  return [...new Set(values)].sort();
+  const set = new Set<T>();
+  for (const value of values) {
+    set.add(value);
+  }
+  const output: T[] = [];
+  for (const value of set) {
+    output.push(value);
+  }
+  return output.sort();
+}
+
+function compareRuntimeProfiles(left: RuntimeProfile, right: RuntimeProfile): number {
+  return right.priority - left.priority || left.id.localeCompare(right.id);
+}
+
+function compareRuntimeProfilePlans(left: RuntimeProfilePlanInspection, right: RuntimeProfilePlanInspection): number {
+  return right.priority - left.priority || left.label.localeCompare(right.label);
+}
+
+function cloneStringArray<T extends string>(values: readonly T[]): T[] {
+  const output = new Array<T>(values.length);
+  for (let index = 0; index < values.length; index += 1) {
+    output[index] = values[index]!;
+  }
+  return output;
+}
+
+function profileSearchValueIncludes(value: string, needle: string): boolean {
+  return normalizeProfileLookup(value).includes(needle);
 }
