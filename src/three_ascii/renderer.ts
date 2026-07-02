@@ -18,7 +18,7 @@ import {
   type ThreeAsciiGpuBufferSlot,
 } from "./gpu_buffers.ts";
 import {
-  createThreeAsciiReadbackCopyPlan,
+  ThreeAsciiReadbackCopyPlanCache,
   type ThreeAsciiReadbackLayout,
   ThreeAsciiReadbackLayoutCache,
   ThreeAsciiReadbackViewCache,
@@ -359,6 +359,7 @@ export class ThreeAsciiRenderer {
   private uniformValues = new Float32Array(THREE_ASCII_UNIFORM_FLOAT_COUNT);
   private readonly ansiGridAssembler = new ThreeAsciiAnsiGridAssembler({ reuseGrid: true });
   private readonly readbackLayoutCache = new ThreeAsciiReadbackLayoutCache();
+  private readonly readbackCopyPlanCache = new ThreeAsciiReadbackCopyPlanCache();
   private readonly readbackViewCache = new ThreeAsciiReadbackViewCache();
   private outputCellCount = 0;
   private sizeDirty = true;
@@ -572,7 +573,7 @@ export class ThreeAsciiRenderer {
       includeEdges: includeTerminalEdges,
     });
     this.outputReadback = this.ensureReadbackBuffer(this.outputReadback, readbackLayout.byteLength);
-    const readbackCopyPlan = createThreeAsciiReadbackCopyPlan({
+    const readbackCopyPlan = this.readbackCopyPlanCache.resolve({
       fill: { label: "fill", byteLength: this.fillOutput!.byteLength },
       edge: this.edgeOutput ? { label: "edge", byteLength: this.edgeOutput.byteLength } : undefined,
       color: { label: "color", byteLength: this.colorOutput!.byteLength },
@@ -611,6 +612,7 @@ export class ThreeAsciiRenderer {
     this.paramsBuffer?.destroy();
     this.paramsBuffer = undefined;
     this.readbackLayoutCache.clear();
+    this.readbackCopyPlanCache.clear();
     this.readbackViewCache.clear();
 
     this.renderPipeline?.dispose();

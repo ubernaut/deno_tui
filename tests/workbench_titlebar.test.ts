@@ -15,8 +15,8 @@ Deno.test("workbench titlebar layout anchors window controls inside the right bo
   assertEquals(layout.hasWindowControls, true);
   assertEquals(layout.buttons.map((button) => [button.kind, button.label, button.rect]), [
     ["minimize", "-", { column: 34, row: 4, width: 3, height: 1 }],
-    ["maximize", "□", { column: 38, row: 4, width: 3, height: 1 }],
-    ["restore", "↺", { column: 42, row: 4, width: 3, height: 1 }],
+    ["maximize", "M", { column: 38, row: 4, width: 3, height: 1 }],
+    ["restore", "R", { column: 42, row: 4, width: 3, height: 1 }],
     ["close", "x", { column: 46, row: 4, width: 3, height: 1 }],
   ]);
 });
@@ -86,8 +86,8 @@ Deno.test("workbench titlebar render commands expose clipped text and hit rectan
   assertEquals(commands.map((command) => [command.kind, command.label, command.text, command.rect]), [
     ["config", "config", "[ config ]", { column: 37, row: 2, width: 10, height: 1 }],
     ["minimize", "-", "[-]", { column: 48, row: 2, width: 3, height: 1 }],
-    ["maximize", "□", "[□]", { column: 52, row: 2, width: 3, height: 1 }],
-    ["restore", "↺", "[↺]", { column: 56, row: 2, width: 3, height: 1 }],
+    ["maximize", "M", "[M]", { column: 52, row: 2, width: 3, height: 1 }],
+    ["restore", "R", "[R]", { column: 56, row: 2, width: 3, height: 1 }],
     ["close", "x", "[x]", { column: 60, row: 2, width: 3, height: 1 }],
   ]);
   assertEquals(commands.map((command) => command.hitRect), commands.map((command) => command.rect));

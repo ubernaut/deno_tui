@@ -54,6 +54,7 @@ Deno.test("workbench ascii defaults favor terminal-visible wire thickness", () =
   const options = createDefaultAsciiOptions("sharp");
   assertEquals(options.preset, "opentui-blocks");
   assertEquals(options.terminalGlyphStyle, "blocks");
+  assertEquals(options.depthFalloff, 0);
   assertEquals(options.wireframeThickness, 8);
   assertEquals(options.kittyGraphics, false);
   assertEquals(options.kittyDisableAscii, false);

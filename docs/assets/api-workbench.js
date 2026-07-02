@@ -10376,7 +10376,7 @@ var ASCII_DEMO_PRESETS = [
       exposure: 1.28,
       attenuation: 0.96,
       blendWithBase: 1,
-      depthFalloff: 0.04,
+      depthFalloff: 0,
       depthOffset: 150,
       edges: false,
       fill: true,
@@ -14262,8 +14262,8 @@ function writeSessionTabRenderCommand(target, index, kind, id2, active2, column,
 // src/app/workbench_titlebar.ts
 var WINDOW_CONTROL_SPECS = [
   { kind: "close", label: "x", tone: "danger", compact: true },
-  { kind: "restore", label: "\u21BA", tone: "muted", compact: true },
-  { kind: "maximize", label: "\u25A1", tone: "success", compact: true },
+  { kind: "restore", label: "R", tone: "muted", compact: true },
+  { kind: "maximize", label: "M", tone: "success", compact: true },
   { kind: "minimize", label: "-", tone: "warning", compact: true }
 ];
 function createWorkbenchTitlebarLayout() {

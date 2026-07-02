@@ -27,7 +27,7 @@ const ascii = {
   exposure: 1.28,
   attenuation: 0.96,
   blendWithBase: 1,
-  depthFalloff: 0.04,
+  depthFalloff: 0,
   depthOffset: 150,
   wireframeThickness: 8,
   edges: false,

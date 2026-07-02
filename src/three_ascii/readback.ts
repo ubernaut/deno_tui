@@ -39,6 +39,53 @@ export interface ThreeAsciiReadbackCopyPlan {
   commands: ThreeAsciiReadbackCopyCommand[];
 }
 
+/** Reuses readback copy commands while the packed output shape is unchanged. */
+export class ThreeAsciiReadbackCopyPlanCache {
+  private cached?: ThreeAsciiReadbackCopyPlan;
+  private layout?: ThreeAsciiReadbackLayout;
+  private fillByteLength = -1;
+  private edgeByteLength = -1;
+  private colorByteLength = -1;
+  private includeEdges = false;
+
+  resolve(options: {
+    fill: ThreeAsciiReadbackCopySource;
+    edge?: ThreeAsciiReadbackCopySource;
+    color: ThreeAsciiReadbackCopySource;
+    includeEdges: boolean;
+    layout: ThreeAsciiReadbackLayout;
+  }): ThreeAsciiReadbackCopyPlan {
+    const edgeByteLength = options.includeEdges ? options.edge?.byteLength ?? -1 : 0;
+    if (
+      this.cached &&
+      this.layout === options.layout &&
+      this.fillByteLength === options.fill.byteLength &&
+      this.edgeByteLength === edgeByteLength &&
+      this.colorByteLength === options.color.byteLength &&
+      this.includeEdges === options.includeEdges
+    ) {
+      return this.cached;
+    }
+
+    this.cached = createThreeAsciiReadbackCopyPlan(options);
+    this.layout = options.layout;
+    this.fillByteLength = options.fill.byteLength;
+    this.edgeByteLength = edgeByteLength;
+    this.colorByteLength = options.color.byteLength;
+    this.includeEdges = options.includeEdges;
+    return this.cached;
+  }
+
+  clear(): void {
+    this.cached = undefined;
+    this.layout = undefined;
+    this.fillByteLength = -1;
+    this.edgeByteLength = -1;
+    this.colorByteLength = -1;
+    this.includeEdges = false;
+  }
+}
+
 /** Reuses readback layout metadata while the GPU output buffer shape is unchanged. */
 export class ThreeAsciiReadbackLayoutCache {
   private cached?: ThreeAsciiReadbackLayout;

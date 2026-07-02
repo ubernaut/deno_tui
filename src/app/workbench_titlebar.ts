@@ -47,8 +47,8 @@ export interface WorkbenchTitlebarButtonRenderCommand {
 
 const WINDOW_CONTROL_SPECS: readonly Omit<WorkbenchTitlebarButton, "rect">[] = [
   { kind: "close", label: "x", tone: "danger", compact: true },
-  { kind: "restore", label: "↺", tone: "muted", compact: true },
-  { kind: "maximize", label: "□", tone: "success", compact: true },
+  { kind: "restore", label: "R", tone: "muted", compact: true },
+  { kind: "maximize", label: "M", tone: "success", compact: true },
   { kind: "minimize", label: "-", tone: "warning", compact: true },
 ];
 

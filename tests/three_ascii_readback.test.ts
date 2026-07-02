@@ -3,6 +3,7 @@ import {
   createThreeAsciiReadbackCopyPlan,
   createThreeAsciiReadbackLayout,
   createThreeAsciiReadbackViews,
+  ThreeAsciiReadbackCopyPlanCache,
   ThreeAsciiReadbackLayoutCache,
   ThreeAsciiReadbackViewCache,
 } from "../src/three_ascii/readback.ts";
@@ -120,6 +121,80 @@ Deno.test("three ascii readback copy plan rejects missing requested edge output"
     Error,
     "without an edge output",
   );
+});
+
+Deno.test("three ascii readback copy plan cache reuses unchanged command arrays", () => {
+  const cache = new ThreeAsciiReadbackCopyPlanCache();
+  const layout = createThreeAsciiReadbackLayout({
+    fillByteLength: 8,
+    edgeByteLength: 16,
+    colorByteLength: 32,
+    includeEdges: true,
+  });
+
+  const first = cache.resolve({
+    fill: { label: "fill", byteLength: 8 },
+    edge: { label: "edge", byteLength: 16 },
+    color: { label: "color", byteLength: 32 },
+    includeEdges: true,
+    layout,
+  });
+  const second = cache.resolve({
+    fill: { label: "fill", byteLength: 8 },
+    edge: { label: "edge", byteLength: 16 },
+    color: { label: "color", byteLength: 32 },
+    includeEdges: true,
+    layout,
+  });
+
+  assertEquals(second, first);
+  assertEquals(second.commands, first.commands);
+
+  cache.clear();
+  const afterClear = cache.resolve({
+    fill: { label: "fill", byteLength: 8 },
+    edge: { label: "edge", byteLength: 16 },
+    color: { label: "color", byteLength: 32 },
+    includeEdges: true,
+    layout,
+  });
+  assertEquals(afterClear === first, false);
+});
+
+Deno.test("three ascii readback copy plan cache invalidates on edge mode changes", () => {
+  const cache = new ThreeAsciiReadbackCopyPlanCache();
+  const withEdges = createThreeAsciiReadbackLayout({
+    fillByteLength: 8,
+    edgeByteLength: 16,
+    colorByteLength: 32,
+    includeEdges: true,
+  });
+  const withoutEdges = createThreeAsciiReadbackLayout({
+    fillByteLength: 8,
+    edgeByteLength: 16,
+    colorByteLength: 32,
+    includeEdges: false,
+  });
+
+  const first = cache.resolve({
+    fill: { label: "fill", byteLength: 8 },
+    edge: { label: "edge", byteLength: 16 },
+    color: { label: "color", byteLength: 32 },
+    includeEdges: true,
+    layout: withEdges,
+  });
+  const second = cache.resolve({
+    fill: { label: "fill", byteLength: 8 },
+    color: { label: "color", byteLength: 32 },
+    includeEdges: false,
+    layout: withoutEdges,
+  });
+
+  assertEquals(second === first, false);
+  assertEquals(second.commands, [
+    { label: "fill", byteLength: 8, targetOffset: 0 },
+    { label: "color", byteLength: 32, targetOffset: 8 },
+  ]);
 });
 
 Deno.test("three ascii readback layout rejects unaligned byte lengths", () => {
