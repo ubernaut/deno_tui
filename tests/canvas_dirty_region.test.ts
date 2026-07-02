@@ -57,3 +57,15 @@ Deno.test("DirtyRegion ignores empty dimensions and supports clearing", () => {
   region.clear();
   assertEquals(region.isEmpty(), true);
 });
+
+Deno.test("DirtyRegion can reset from rectangle batches", () => {
+  const region = DirtyRegion.fromRectangles([{ row: 0, column: 0, width: 10, height: 1 }]);
+  assertEquals(region.inspect(), [{ row: 0, startColumn: 0, endColumn: 10 }]);
+
+  region.resetFromRectangles([
+    { row: 2, column: 5, width: 3, height: 1 },
+    { row: 2, column: 7, width: 4, height: 1 },
+  ]);
+
+  assertEquals(region.inspect(), [{ row: 2, startColumn: 5, endColumn: 11 }]);
+});

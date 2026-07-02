@@ -15,11 +15,17 @@ export class DirtyRegion {
   /** Creates a dirty region from rectangle bounds. */
   static fromRectangles(rectangles: readonly Rectangle[]): DirtyRegion {
     const region = new DirtyRegion();
-    for (const rectangle of rectangles) {
-      region.addRectangleUnmerged(rectangle);
-    }
-    region.mergeRows();
+    region.resetFromRectangles(rectangles);
     return region;
+  }
+
+  /** Replaces the region contents with merged rectangle bounds. */
+  resetFromRectangles(rectangles: readonly Rectangle[]): void {
+    this.clear();
+    for (const rectangle of rectangles) {
+      this.addRectangleUnmerged(rectangle);
+    }
+    this.mergeRows();
   }
 
   private addRectangleUnmerged(rectangle: Rectangle): void {

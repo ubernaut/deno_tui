@@ -77,6 +77,7 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
   requiredObjectsBuffer: Set<DrawObject>;
   dirtyCandidatesBuffer: DrawObject[];
   intersectionCandidatesBuffer: DrawObject[];
+  dirtyRegionBuffer: DirtyRegion;
 
   constructor(options: CanvasOptions) {
     super();
@@ -107,6 +108,7 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
     this.requiredObjectsBuffer = new Set();
     this.dirtyCandidatesBuffer = [];
     this.intersectionCandidatesBuffer = [];
+    this.dirtyRegionBuffer = new DirtyRegion();
 
     this.size = signalify(options.size, { deepObserve: true });
 
@@ -256,7 +258,8 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
       }
     }
 
-    const dirtyRegion = DirtyRegion.fromRectangles(dirtyRectangles);
+    const dirtyRegion = this.dirtyRegionBuffer;
+    dirtyRegion.resetFromRectangles(dirtyRectangles);
     const spatialIndex = intersectionsDirty ? DrawObjectSpatialIndex.fromObjects(this.drawnObjects) : undefined;
     const objectsToRender = intersectionsDirty
       ? affectedDrawObjects(
