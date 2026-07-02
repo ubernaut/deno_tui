@@ -941,6 +941,8 @@ Work:
         avoiding per-dispatch array rebuilds while preserving dispatch-order semantics.
   - [x] Removed full terminal workspace layout clones for active-pane and zoom metadata updates, keeping cloned tree
         updates only on pane structure changes.
+  - [x] Cached ordered theme engine factory ids and factory lists inside `ThemeEngineFactoryRegistry`, avoiding repeated
+        priority sorting across catalogs, inspections, and prewarm selection.
 - [x] Make demo-only assets and NGE-inspired primitives clearly separate from library APIs.
   - [x] Added `app/neon_three_catalog.ts` for supported Three scene metadata and labels, keeping demo/NGE catalog data
         separate from the monolithic scene factory and shared by visualization footers plus scene coverage tests.

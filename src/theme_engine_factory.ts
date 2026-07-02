@@ -150,6 +150,8 @@ export class ThemeEngineFactory {
 /** Ordered registry for theme engine factories supplied by apps or plugins. */
 export class ThemeEngineFactoryRegistry {
   readonly #factories = new Map<string, ThemeEngineFactory>();
+  #orderedFactories?: ThemeEngineFactory[];
+  #orderedIds?: string[];
 
   /** Creates a registry and optionally registers initial factories. */
   constructor(factories: Iterable<ThemeEngineFactory | ThemeEngineFactoryDefinition> = []) {
@@ -162,12 +164,19 @@ export class ThemeEngineFactoryRegistry {
   register(factory: ThemeEngineFactory | ThemeEngineFactoryDefinition): this {
     const normalized = factory instanceof ThemeEngineFactory ? factory : createThemeEngineFactory(factory);
     this.#factories.set(normalized.id, normalized);
+    this.#orderedFactories = undefined;
+    this.#orderedIds = undefined;
     return this;
   }
 
   /** Removes a factory by id. */
   unregister(id: string): boolean {
-    return this.#factories.delete(id);
+    const deleted = this.#factories.delete(id);
+    if (deleted) {
+      this.#orderedFactories = undefined;
+      this.#orderedIds = undefined;
+    }
+    return deleted;
   }
 
   /** Returns whether a factory id is registered. */
@@ -182,27 +191,30 @@ export class ThemeEngineFactoryRegistry {
 
   /** Returns factory ids in priority order. */
   ids(): string[] {
-    const factories = this.factories();
-    const ids = new Array<string>(factories.length);
-    for (let index = 0; index < factories.length; index += 1) {
-      ids[index] = factories[index]!.id;
+    if (!this.#orderedIds) {
+      const factories = this.orderedFactoryList();
+      const ids = new Array<string>(factories.length);
+      for (let index = 0; index < factories.length; index += 1) {
+        ids[index] = factories[index]!.id;
+      }
+      this.#orderedIds = ids;
     }
-    return ids;
+    return cloneFactoryStringArray(this.#orderedIds);
   }
 
   /** Returns factories sorted by priority and id. */
   factories(): ThemeEngineFactory[] {
-    return [...this.#factories.values()].sort((a, b) => b.priority - a.priority || a.id.localeCompare(b.id));
+    return cloneThemeEngineFactories(this.orderedFactoryList());
   }
 
   /** Returns serializable inspections for all factories. */
   inspect(): ThemeEngineFactoryInspection[] {
-    return inspectThemeEngineFactories(this.factories());
+    return inspectThemeEngineFactories(this.orderedFactoryList());
   }
 
   /** Returns a filtered catalog report for settings panes, docs, and marketplaces. */
   catalog(query: ThemeEngineFactoryCatalogQuery = {}): ThemeEngineFactoryCatalogReport {
-    return createThemeEngineFactoryCatalogReport({ factories: this.factories(), query });
+    return createThemeEngineFactoryCatalogReport({ factories: this.orderedFactoryList(), query });
   }
 
   /** Builds one registered factory by id. */
@@ -217,12 +229,22 @@ export class ThemeEngineFactoryRegistry {
   /** Builds registered factories through the scheduler for startup prewarming. */
   prewarm(options: ThemeEnginePrewarmOptions = {}): Promise<ThemeEngineFactoryBuildResult[]> {
     const requested = options.ids ? new Set(options.ids) : undefined;
-    const sorted = this.factories();
+    const sorted = this.orderedFactoryList();
     const factories: ThemeEngineFactory[] = [];
     for (const factory of sorted) {
       if (!requested || requested.has(factory.id)) factories.push(factory);
     }
     return prewarmThemeEngines(factories, options);
+  }
+
+  private orderedFactoryList(): readonly ThemeEngineFactory[] {
+    if (!this.#orderedFactories) {
+      const factories: ThemeEngineFactory[] = [];
+      for (const factory of this.#factories.values()) factories.push(factory);
+      factories.sort(compareThemeEngineFactories);
+      this.#orderedFactories = factories;
+    }
+    return this.#orderedFactories;
   }
 }
 
@@ -402,6 +424,22 @@ function compareThemeEngineFactoryInspections(
   right: ThemeEngineFactoryInspection,
 ): number {
   return right.priority - left.priority || left.label.localeCompare(right.label);
+}
+
+function compareThemeEngineFactories(left: ThemeEngineFactory, right: ThemeEngineFactory): number {
+  return right.priority - left.priority || left.id.localeCompare(right.id);
+}
+
+function cloneThemeEngineFactories(values: readonly ThemeEngineFactory[]): ThemeEngineFactory[] {
+  const output = new Array<ThemeEngineFactory>(values.length);
+  for (let index = 0; index < values.length; index += 1) output[index] = values[index]!;
+  return output;
+}
+
+function cloneFactoryStringArray(values: readonly string[]): string[] {
+  const output = new Array<string>(values.length);
+  for (let index = 0; index < values.length; index += 1) output[index] = values[index]!;
+  return output;
 }
 
 function sortedSetValues(values: Set<string>): string[] {
