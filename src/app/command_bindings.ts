@@ -9,6 +9,7 @@ import {
   searchTerms,
   type WeightedSearchField,
 } from "../utils/search.ts";
+import { insertUniqueSortedString } from "../utils/sorted_array.ts";
 import type { Action } from "./actions.ts";
 import type { Command, CommandDispatch, CommandRegistry } from "./commands.ts";
 
@@ -480,22 +481,9 @@ function inspectCommandKeyBindingConflicts(
 function uniqueSortedGroups(bindings: readonly { group?: string }[]): string[] {
   const groups: string[] = [];
   for (const binding of bindings) {
-    if (binding.group) insertUniqueSorted(groups, binding.group);
+    if (binding.group) insertUniqueSortedString(groups, binding.group);
   }
   return groups;
-}
-
-function insertUniqueSorted(values: string[], value: string): void {
-  let low = 0;
-  let high = values.length;
-  while (low < high) {
-    const middle = (low + high) >> 1;
-    const comparison = value.localeCompare(values[middle]!);
-    if (comparison === 0) return;
-    if (comparison < 0) high = middle;
-    else low = middle + 1;
-  }
-  values.splice(low, 0, value);
 }
 
 function conflictingCommandCount(conflicts: readonly CommandKeyBindingConflict[]): number {

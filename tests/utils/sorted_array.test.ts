@@ -1,6 +1,6 @@
 // Copyright 2023 Im-Beast. MIT license.
 
-import { SortedArray } from "../../src/utils/sorted_array.ts";
+import { insertUniqueSortedString, SortedArray } from "../../src/utils/sorted_array.ts";
 import { assertEquals } from "../deps.ts";
 
 Deno.test("utils/sorted_array.ts", async (t) => {
@@ -13,5 +13,13 @@ Deno.test("utils/sorted_array.ts", async (t) => {
     assertEquals([...array], [100, 10, 1, -2, -5, -1000]);
     array.remove(404);
     assertEquals([...array], [100, 10, 1, -2, -5, -1000]);
+  });
+
+  await t.step("insertUniqueSortedString", () => {
+    const values = ["beta", "delta"];
+    insertUniqueSortedString(values, "alpha");
+    insertUniqueSortedString(values, "gamma");
+    insertUniqueSortedString(values, "beta");
+    assertEquals(values, ["alpha", "beta", "delta", "gamma"]);
   });
 });

@@ -1,5 +1,6 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { bindingId, type KeyBinding } from "../keymap.ts";
+import { insertUniqueSortedString } from "../utils/sorted_array.ts";
 import type { Action } from "./actions.ts";
 import { DisposableStack } from "./disposables.ts";
 
@@ -255,11 +256,10 @@ function compareCommands<TAction extends Action>(a: Command<TAction>, b: Command
 
 function uniqueSorted(values: Array<string | undefined>): string[] {
   const unique: string[] = [];
-  for (const value of values) {
-    if (!value || unique.includes(value)) continue;
-    unique.push(value);
+  for (let index = 0; index < values.length; index += 1) {
+    const value = values[index];
+    if (value) insertUniqueSortedString(unique, value);
   }
-  unique.sort();
   return unique;
 }
 

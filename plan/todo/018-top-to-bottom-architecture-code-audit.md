@@ -1109,6 +1109,8 @@ Work:
         their label/disabled ordering without rebuilding weighted normalized fields for every command.
   - [x] Replaced command key-binding conflict group `Set`/spread/sort projection with direct unique sorted insertion for
         stable diagnostics with less transient allocation.
+  - [x] Extracted the direct sorted string insertion helper into `src/utils/sorted_array.ts` and reused it across app
+        inspection, command registry groups, and command binding conflict reports.
   - [x] Reworked `TreeController.setExpanded()` to preserve unchanged subtree identity and allocate only along the
         changed branch, with regression coverage for no-op and nested expansion updates.
   - [x] Reduced terminal workspace layout lookup clone churn by using internal read-only pane references for active,

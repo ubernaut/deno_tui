@@ -3,6 +3,7 @@ import { bindFocusNavigation, FocusManager, type FocusNavigationOptions } from "
 import { KeymapRegistry } from "../keymap.ts";
 import { RuntimeWorkloadRegistry } from "../runtime/telemetry.ts";
 import { Tui, type TuiOptions } from "../tui.ts";
+import { insertUniqueSortedString } from "../utils/sorted_array.ts";
 import { type Action, ActionBus, type ActionHandler, type ActionMiddleware, type ActionOfType } from "./actions.ts";
 import {
   bindCommandKeymap,
@@ -214,17 +215,17 @@ export class TuiApp<TAction extends Action = Action, TRoute extends Route = Rout
     const keyBindings = this.keymap.list();
     const routeIds: string[] = [];
     for (let index = 0; index < routes.length; index += 1) routeIds.push(routes[index]!.id);
-    const commandGroups = new Set<string>();
+    const commandGroups: string[] = [];
     let enabledCommands = 0;
     for (let index = 0; index < commands.length; index += 1) {
       const command = commands[index]!;
       if (this.commands.enabled(command)) enabledCommands += 1;
-      if (command.group) commandGroups.add(command.group);
+      if (command.group) insertUniqueSortedString(commandGroups, command.group);
     }
-    const keymapGroups = new Set<string>();
+    const keymapGroups: string[] = [];
     for (let index = 0; index < keyBindings.length; index += 1) {
       const group = keyBindings[index]!.group;
-      if (group) keymapGroups.add(group);
+      if (group) insertUniqueSortedString(keymapGroups, group);
     }
     return {
       destroyed: this.#destroyed,
@@ -240,11 +241,11 @@ export class TuiApp<TAction extends Action = Action, TRoute extends Route = Rout
         count: commands.length,
         enabled: enabledCommands,
         disabled: commands.length - enabledCommands,
-        groups: sortedSetValues(commandGroups),
+        groups: cloneStringArray(commandGroups),
       },
       keymap: {
         count: keyBindings.length,
-        groups: sortedSetValues(keymapGroups),
+        groups: cloneStringArray(keymapGroups),
       },
       focus: this.focus.inspect(),
       mouse: this.mouse.inspect(),
@@ -332,13 +333,6 @@ export class TuiApp<TAction extends Action = Action, TRoute extends Route = Rout
     this.#pluginIds = undefined;
     this.#pluginInspections = undefined;
   }
-}
-
-function sortedSetValues(values: Set<string>): string[] {
-  const sorted: string[] = [];
-  for (const value of values) sorted.push(value);
-  sorted.sort();
-  return sorted;
 }
 
 function cloneStringArray(values: readonly string[]): string[] {
