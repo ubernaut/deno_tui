@@ -9,6 +9,7 @@ import {
   visibleMenuSliceInto,
   visibleProjectedMenuSliceInto,
   wrapPlainText,
+  wrapPlainTextInto,
 } from "../src/app/workbench_text.ts";
 
 const fit = (value: string, width: number) => value.slice(0, Math.max(0, width));
@@ -28,6 +29,17 @@ Deno.test("workbench text helpers wrap plain text after stripping styles", () =>
   ]);
   assertEquals(wrapPlainText("supercalifragilistic", 5, fit), ["super"]);
   assertEquals(wrapPlainText("   ", 5, fit), [""]);
+
+  const target = wrapPlainText("first pass", 5, fit);
+  const sameTarget = wrapPlainTextInto(target, "\x1b[32mhello\x1b[0m compact world", 8, fit);
+  assertEquals(sameTarget === target, true);
+  assertEquals(target, [
+    "hello",
+    "compact",
+    "world",
+  ]);
+  assertEquals(wrapPlainTextInto(target, "   ", 8, fit), [""]);
+  assertEquals(target.length, 1);
 });
 
 Deno.test("workbench text helpers project visible menu slices around selection", () => {

@@ -140,7 +140,12 @@ import {
   type WorkbenchButtonRowPlacement,
   wrappedControlOptionRowCount,
 } from "../src/app/workbench_control_layout.ts";
-import { maxTextWidth, type VisibleMenuSlice, visibleMenuSliceInto, wrapPlainText } from "../src/app/workbench_text.ts";
+import {
+  maxTextWidth,
+  type VisibleMenuSlice,
+  visibleMenuSliceInto,
+  wrapPlainTextInto,
+} from "../src/app/workbench_text.ts";
 import {
   resolveWorkbenchShellBackend,
   type WorkbenchTerminalPaneProjection,
@@ -381,6 +386,7 @@ const dataTableRenderRows: RowStyle[] = [];
 const explorerRenderRows: RowStyle[] = [];
 const inspectorRenderRows: RowStyle[] = [];
 const inspectorActionTextRows: string[] = [];
+const inspectorWrappedTextRows: string[] = [];
 const visualizationTextRows: string[] = [];
 const visualizationRenderRows: RowStyle[] = [];
 const threeFallbackRowsBuffer: RowStyle[] = [];
@@ -1525,7 +1531,7 @@ function renderInspector(frame: Frame, rect: Rectangle): void {
     const logs = commandLog.peek();
     const start = Math.max(0, logs.length - Math.max(4, availableActionRows));
     for (let index = start; index < logs.length; index += 1) {
-      const wrapped = wrapPlainText(`• ${logs[index]!}`, rect.width, fit);
+      const wrapped = wrapPlainTextInto(inspectorWrappedTextRows, `• ${logs[index]!}`, rect.width, fit);
       for (let row = 0; row < wrapped.length; row += 1) {
         inspectorActionTextRows.push(wrapped[row]!);
       }

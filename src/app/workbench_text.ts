@@ -41,11 +41,25 @@ export function maxTrimmedTextWidth(values: readonly string[]): number {
 
 /** Wraps plain text to terminal-cell width after stripping ANSI styles and normalizing whitespace. */
 export function wrapPlainText(value: string, width: number, fit: (value: string, width: number) => string): string[] {
+  return wrapPlainTextInto([], value, width, fit);
+}
+
+/** Wraps plain text into caller-owned row storage. */
+export function wrapPlainTextInto(
+  rows: string[],
+  value: string,
+  width: number,
+  fit: (value: string, width: number) => string,
+): string[] {
   const safeWidth = Math.max(1, width);
   const normalized = compactSpaces(stripStyles(value));
-  if (!normalized) return [""];
+  if (!normalized) {
+    rows[0] = "";
+    rows.length = 1;
+    return rows;
+  }
   const words = normalized.split(" ");
-  const rows: string[] = [];
+  let rowCount = 0;
   let line = "";
   for (const word of words) {
     const next = line.length > 0 ? `${line} ${word}` : word;
@@ -53,10 +67,17 @@ export function wrapPlainText(value: string, width: number, fit: (value: string,
       line = next;
       continue;
     }
-    if (line.length > 0) rows.push(line);
+    if (line.length > 0) {
+      rows[rowCount] = line;
+      rowCount += 1;
+    }
     line = textWidth(word) <= safeWidth ? word : fit(word, safeWidth).trimEnd();
   }
-  if (line.length > 0) rows.push(line);
+  if (line.length > 0) {
+    rows[rowCount] = line;
+    rowCount += 1;
+  }
+  rows.length = rowCount;
   return rows;
 }
 

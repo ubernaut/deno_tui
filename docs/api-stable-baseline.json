@@ -4420,6 +4420,13 @@
       "documented": true
     },
     {
+      "module": "src/app/workbench_text.ts",
+      "name": "wrapPlainTextInto",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
       "module": "src/app/workbench_titlebar.ts",
       "name": "layoutWorkbenchTitlebar",
       "kind": "function",
