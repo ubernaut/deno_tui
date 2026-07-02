@@ -189,8 +189,8 @@ Work:
         `Array.from()` allocation in layout paths used by the workbench and HTML/CSS solver.
   - [x] Reworked data-table and runtime data-query search matching to avoid per-row `map().join()` haystack arrays and
         added a 25k-row table filter benchmark to catch future search regressions.
-  - [x] Reworked terminal screen text/cell snapshot extraction to share loop-based row cloning and avoid nested
-        `map()` chains in terminal inspection helpers.
+  - [x] Reworked terminal screen text/cell snapshot extraction to share loop-based row cloning and avoid nested `map()`
+        chains in terminal inspection helpers.
   - [x] Reworked API Workbench synthetic source/system generation to reuse loop-based waveform helpers instead of
         repeated `Array.from()` closures in frame-driven demo data.
   - [x] Extracted shared synthetic waveform helpers and migrated API Workbench, Neon suite, and showcase demo data onto
