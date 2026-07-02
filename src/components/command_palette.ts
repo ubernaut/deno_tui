@@ -225,6 +225,7 @@ export class CommandPalette extends Component {
   query: Signal<string>;
   selectedIndex: Signal<number>;
   readonly controller: CommandPaletteController;
+  readonly #labels: Computed<string[]>;
 
   constructor(private readonly options: CommandPaletteOptions) {
     super(options);
@@ -238,18 +239,19 @@ export class CommandPalette extends Component {
     this.items = this.controller.items;
     this.query = this.controller.query;
     this.selectedIndex = this.controller.selectedIndex;
+    this.#labels = new Computed(() => commandPaletteLabels(this.controller.filtered.value));
 
     this.on("keyPress", (event) => {
       const item = this.controller.handleKeyPress(event);
       if (item) void this.options.onSelect?.(item);
     });
+    this.on("destroy", () => this.#labels.dispose());
     if (ownsController) this.on("destroy", () => this.controller.dispose());
   }
 
   override draw(): void {
     super.draw();
 
-    const filtered = new Computed(() => filterCommandPaletteItems(this.items.value, this.query.value));
     const input = new Text({
       parent: this,
       theme: this.theme,
@@ -267,7 +269,7 @@ export class CommandPalette extends Component {
       parent: this,
       theme: this.theme,
       zIndex: this.zIndex,
-      items: new Computed(() => commandPaletteLabels(filtered.value)),
+      items: this.#labels,
       selectedIndex: this.selectedIndex,
       rectangle: new Computed(() => ({
         column: this.rectangle.value.column,
