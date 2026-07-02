@@ -32,7 +32,14 @@ export interface LogViewerInspection {
 /** Public helper for visible Log Lines. */
 export function visibleLogLines(lines: readonly string[], height: number, follow = true): string[] {
   const safeHeight = Math.max(0, height);
-  return (follow ? lines.slice(-safeHeight) : lines.slice(0, safeHeight)).map((line) => line);
+  if (safeHeight === 0) return [];
+  const start = follow ? Math.max(0, lines.length - safeHeight) : 0;
+  const end = Math.min(lines.length, start + safeHeight);
+  const visible = new Array<string>(Math.max(0, end - start));
+  for (let index = 0; index < visible.length; index += 1) {
+    visible[index] = lines[start + index] ?? "";
+  }
+  return visible;
 }
 
 /** State controller for log Viewer behavior. */

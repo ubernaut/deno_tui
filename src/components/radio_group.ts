@@ -47,13 +47,17 @@ export function renderRadioGroupRows(
   activeIndex: number,
   height: number,
 ): string[] {
-  return visibleRadioOptions(options, activeIndex, height).map((row) => {
+  const visible = visibleRadioOptions(options, activeIndex, height);
+  const rows = new Array<string>(visible.length);
+  for (let index = 0; index < visible.length; index += 1) {
+    const row = visible[index]!;
     const selected = row.option.value === selectedValue;
     const cursor = row.active ? ">" : " ";
     const mark = selected ? "●" : "○";
     const label = row.option.disabled ? `(${row.option.label})` : row.option.label;
-    return `${cursor} ${mark} ${label}`;
-  });
+    rows[index] = `${cursor} ${mark} ${label}`;
+  }
+  return rows;
 }
 
 /** Public helper for visible Radio Options. */
@@ -66,14 +70,18 @@ export function visibleRadioOptions(
   if (safeHeight === 0) return [];
   const active = clampRadioIndex(options, activeIndex);
   const offset = Math.max(0, Math.min(active - Math.floor(safeHeight / 2), Math.max(0, options.length - safeHeight)));
-  return options.slice(offset, offset + safeHeight).map((option, index) => {
+  const count = Math.max(0, Math.min(options.length, offset + safeHeight) - offset);
+  const rows = new Array<{ option: RadioOption; index: number; active: boolean }>(count);
+  for (let index = 0; index < count; index += 1) {
     const optionIndex = offset + index;
-    return {
+    const option = options[optionIndex]!;
+    rows[index] = {
       option,
       index: optionIndex,
       active: optionIndex === active && !option.disabled,
     };
-  });
+  }
+  return rows;
 }
 
 /** Clamps radio Index to its valid range. */

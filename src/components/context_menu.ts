@@ -40,12 +40,19 @@ export function renderContextMenuRows(
   selectedIndex: number,
   height: number,
 ): string[] {
-  return visibleContextMenuItems(items, selectedIndex, height).map((row) => {
-    if (row.item.separatorBefore) return "─".repeat(Math.max(1, row.label.length + 2));
+  const visible = visibleContextMenuItems(items, selectedIndex, height);
+  const rows = new Array<string>(visible.length);
+  for (let index = 0; index < visible.length; index += 1) {
+    const row = visible[index]!;
+    if (row.item.separatorBefore) {
+      rows[index] = "─".repeat(Math.max(1, row.label.length + 2));
+      continue;
+    }
     const marker = row.selected ? ">" : " ";
     const label = row.item.disabled ? `(${row.label})` : row.label;
-    return `${marker} ${label}`;
-  });
+    rows[index] = `${marker} ${label}`;
+  }
+  return rows;
 }
 
 /** Public helper for visible Context Menu Items. */
@@ -58,15 +65,19 @@ export function visibleContextMenuItems(
   if (safeHeight === 0) return [];
   const selected = clampContextMenuSelection(items, selectedIndex);
   const offset = Math.max(0, Math.min(selected - Math.floor(safeHeight / 2), Math.max(0, items.length - safeHeight)));
-  return items.slice(offset, offset + safeHeight).map((item, index) => {
+  const count = Math.max(0, Math.min(items.length, offset + safeHeight) - offset);
+  const rows = new Array<{ item: ContextMenuItem; index: number; label: string; selected: boolean }>(count);
+  for (let index = 0; index < count; index += 1) {
     const itemIndex = offset + index;
-    return {
+    const item = items[itemIndex]!;
+    rows[index] = {
       item,
       index: itemIndex,
       label: item.label,
       selected: itemIndex === selected && !item.disabled && !item.separatorBefore,
     };
-  });
+  }
+  return rows;
 }
 
 /** Clamps context Menu Selection to its valid range. */

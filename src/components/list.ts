@@ -29,16 +29,27 @@ export function virtualRows<T>(
   const safeHeight = Math.max(0, height);
   const selected = clampSelectionIndex(items.length, selectedIndex);
   const window = selectionWindow(items.length, selected, safeHeight);
-  return items.slice(window.start, window.end).map((item, index) => ({
-    item,
-    index: window.start + index,
-    selected: window.start + index === selected,
-  }));
+  const rows = new Array<VirtualRow<T>>(Math.max(0, window.end - window.start));
+  for (let offset = 0; offset < rows.length; offset += 1) {
+    const index = window.start + offset;
+    rows[offset] = {
+      item: items[index]!,
+      index,
+      selected: index === selected,
+    };
+  }
+  return rows;
 }
 
 /** Public helper for visible List Rows. */
 export function visibleListRows(items: readonly string[], selectedIndex: number, height: number): string[] {
-  return virtualRows(items, selectedIndex, height).map((row) => `${row.selected ? ">" : " "} ${row.item}`);
+  const rows = virtualRows(items, selectedIndex, height);
+  const output = new Array<string>(rows.length);
+  for (let index = 0; index < rows.length; index += 1) {
+    const row = rows[index]!;
+    output[index] = `${row.selected ? ">" : " "} ${row.item}`;
+  }
+  return output;
 }
 
 /** Options for configuring list Controller. */

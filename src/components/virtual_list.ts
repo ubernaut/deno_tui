@@ -61,16 +61,19 @@ export function virtualListRows<T>(
 ): VirtualListRow<T>[] {
   const window = selectionWindow(items.length, state.activeIndex, height);
   const selected = new Set(state.selected);
-  return items.slice(window.start, window.end).map((item, offset) => {
+  const rows = new Array<VirtualListRow<T>>(Math.max(0, window.end - window.start));
+  for (let offset = 0; offset < rows.length; offset += 1) {
     const index = window.start + offset;
-    return {
+    const item = items[index]!;
+    rows[offset] = {
       item,
       index,
       active: index === state.activeIndex,
       selected: selected.has(index),
       text: format(item, index),
     };
-  });
+  }
+  return rows;
 }
 
 /** Renders virtual List Rows into deterministic text rows. */
@@ -80,11 +83,15 @@ export function renderVirtualListRows<T>(
   height: number,
   format?: (item: T, index: number) => string,
 ): string[] {
-  return virtualListRows(items, state, height, format).map((row) => {
+  const rows = virtualListRows(items, state, height, format);
+  const output = new Array<string>(rows.length);
+  for (let index = 0; index < rows.length; index += 1) {
+    const row = rows[index]!;
     const cursor = row.active ? ">" : " ";
     const marker = row.selected ? "●" : " ";
-    return `${cursor} ${marker} ${row.text}`;
-  });
+    output[index] = `${cursor} ${marker} ${row.text}`;
+  }
+  return output;
 }
 
 /** State controller for virtual List behavior. */

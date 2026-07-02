@@ -207,6 +207,8 @@ Work:
         `map()`, and `filter()` chains in reusable list/table/tree selection paths.
   - [x] Extracted shared weighted command-search scoring with allocation-light word/acronym matching, migrated command
         palette, command bindings, and indexed command search to it, and added a 1k-command ranking benchmark.
+  - [x] Reworked visible-row projection helpers for lists, virtual lists, context menus, radio groups, terminal output,
+        and log viewers to avoid `slice().map()` allocation in scrollable widget viewport paths.
 
 Acceptance checks:
 
