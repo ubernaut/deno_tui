@@ -32,6 +32,8 @@ export class ThemeEngine {
   readonly theme: Theme & { tokens: ThemeTokens };
   protected readonly components: Record<string, ComponentThemeDefinition>;
   readonly #createInheritanceError: (chain: string[]) => Error;
+  #componentNames?: string[];
+  #variants = new Map<string, string[]>();
 
   constructor(
     options: ThemeEngineOptions = {},
@@ -71,11 +73,21 @@ export class ThemeEngine {
   }
 
   componentNames(): string[] {
-    return Object.keys(this.components).sort();
+    if (!this.#componentNames) {
+      const names = Object.keys(this.components);
+      names.sort();
+      this.#componentNames = names;
+    }
+    return cloneStringArray(this.#componentNames);
   }
 
   variants(componentName: string): string[] {
-    return Object.keys(this.resolveComponentDefinition(componentName).variants ?? {}).sort();
+    const cached = this.#variants.get(componentName);
+    if (cached) return cloneStringArray(cached);
+    const variants = Object.keys(this.resolveComponentDefinition(componentName).variants ?? {});
+    variants.sort();
+    this.#variants.set(componentName, variants);
+    return cloneStringArray(variants);
   }
 
   inspect(): ThemeInspection {
@@ -112,6 +124,12 @@ export class ThemeEngine {
       variants: definition.variants,
     });
   }
+}
+
+function cloneStringArray(values: readonly string[]): string[] {
+  const output = new Array<string>(values.length);
+  for (let index = 0; index < values.length; index += 1) output[index] = values[index]!;
+  return output;
 }
 
 /** Error thrown for invalid theme Inheritance operations. */

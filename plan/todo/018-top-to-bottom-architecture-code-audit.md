@@ -945,6 +945,8 @@ Work:
         priority sorting across catalogs, inspections, and prewarm selection.
   - [x] Cached sorted theme pack ids inside `ThemeRegistryImplementation`, preserving cloned public ids while reducing
         repeated provider cycle/inspection sorting.
+  - [x] Cached `ThemeEngine` component-name and variant metadata per engine, preserving cloned public returns while
+        reducing repeated theme inspection and gallery projection work.
 - [x] Make demo-only assets and NGE-inspired primitives clearly separate from library APIs.
   - [x] Added `app/neon_three_catalog.ts` for supported Three scene metadata and labels, keeping demo/NGE catalog data
         separate from the monolithic scene factory and shared by visualization footers plus scene coverage tests.
