@@ -1003,8 +1003,57 @@ var componentCatalog = [
   component("label", "Label", "primitive", "Aligned text component.", ["component", "themeable"]),
   component("text", "Text", "primitive", "Raw text draw object.", ["component", "themeable"])
 ];
+var COMPONENT_LOOKUP_INDEX = createComponentLookupIndex(componentCatalog);
+var COMPONENT_SEARCH_INDEX = createComponentSearchIndex(componentCatalog);
+var COMPONENT_CATEGORIES = collectComponentCategories(componentCatalog);
+var COMPONENT_CAPABILITIES = collectComponentCapabilities(componentCatalog);
 function component(id2, name, category, description, capabilities) {
   return { id: id2, name, category, description, capabilities };
+}
+function normalizeComponentLookup(value) {
+  return value.toLowerCase().replace(/[\s_-]+/g, "");
+}
+function createComponentLookupIndex(entries) {
+  const lookup = /* @__PURE__ */ new Map();
+  for (let index = 0; index < entries.length; index += 1) {
+    const entry = entries[index];
+    lookup.set(normalizeComponentLookup(entry.id), entry);
+    lookup.set(normalizeComponentLookup(entry.name), entry);
+  }
+  return lookup;
+}
+function createComponentSearchIndex(entries) {
+  const lookup = /* @__PURE__ */ new Map();
+  for (let index = 0; index < entries.length; index += 1) {
+    const entry = entries[index];
+    let text = `${normalizeComponentLookup(entry.id)} ${normalizeComponentLookup(entry.name)} ${normalizeComponentLookup(entry.description)} ${normalizeComponentLookup(entry.category)}`;
+    for (let capabilityIndex = 0; capabilityIndex < entry.capabilities.length; capabilityIndex += 1) {
+      text += ` ${normalizeComponentLookup(entry.capabilities[capabilityIndex])}`;
+    }
+    lookup.set(entry, text);
+  }
+  return lookup;
+}
+function collectComponentCategories(entries) {
+  const categories = /* @__PURE__ */ new Set();
+  for (let index = 0; index < entries.length; index += 1) categories.add(entries[index].category);
+  return sortedSetValues(categories);
+}
+function collectComponentCapabilities(entries) {
+  const capabilities = /* @__PURE__ */ new Set();
+  for (let index = 0; index < entries.length; index += 1) {
+    const entryCapabilities = entries[index].capabilities;
+    for (let capabilityIndex = 0; capabilityIndex < entryCapabilities.length; capabilityIndex += 1) {
+      capabilities.add(entryCapabilities[capabilityIndex]);
+    }
+  }
+  return sortedSetValues(capabilities);
+}
+function sortedSetValues(values) {
+  const sorted = [];
+  for (const value of values) sorted.push(value);
+  sorted.sort();
+  return sorted;
 }
 
 // src/theme_standard_components.ts
@@ -7749,7 +7798,7 @@ function comboboxWidget(node) {
   for (let index = 0; index < options.length; index += 1) {
     items[index] = labelForNode(options[index]);
   }
-  const selectedIndex = selectedOptionIndex(node);
+  const selectedIndex = selectedOptionIndex(node, options);
   return {
     kind: "combobox",
     controller: new ComboBoxController({
@@ -7941,18 +7990,24 @@ function treeNodesForChildren(children) {
   }
   return nodes;
 }
-function selectedOptionIndex(node) {
+function selectedOptionIndex(node, options = optionNodes(node)) {
   const explicit = numberAttr(node.attributes, "selected-index", void 0);
   if (explicit !== void 0) return explicit;
   const value = node.attributes.value ?? node.attributes["selected-value"];
   if (value !== void 0) {
-    const index = optionNodes(node).findIndex(
-      (option) => option.attributes.value === value || labelForNode(option) === value
-    );
+    let index = -1;
+    for (let optionIndex = 0; optionIndex < options.length; optionIndex += 1) {
+      const option = options[optionIndex];
+      if (option.attributes.value === value || labelForNode(option) === value) {
+        index = optionIndex;
+        break;
+      }
+    }
     if (index >= 0) return index;
   }
-  const selected = optionNodes(node).findIndex((option) => booleanAttr(option.attributes, "selected"));
-  if (selected >= 0) return selected;
+  for (let optionIndex = 0; optionIndex < options.length; optionIndex += 1) {
+    if (booleanAttr(options[optionIndex].attributes, "selected")) return optionIndex;
+  }
   return void 0;
 }
 function selectedTabIndex(tabs) {
@@ -9541,6 +9596,68 @@ var CAPABILITY_METADATA = {
   }
 };
 var RUNTIME_CAPABILITY_IDS = Object.keys(CAPABILITY_METADATA);
+
+// src/runtime/profiles.ts
+var runtimeProfileDefinitions = [
+  {
+    id: "balanced",
+    label: "Balanced",
+    description: "Use workers, persistent storage, and GPU rendering when available.",
+    tags: ["default", "adaptive"],
+    priority: 100
+  },
+  {
+    id: "throughput",
+    label: "Throughput",
+    description: "Prefer every available acceleration path for busy dashboards and visualizations.",
+    tags: ["performance", "visualization"],
+    priority: 90,
+    options: {
+      preferWorkers: true,
+      preferPersistentStorage: true,
+      preferGpuRenderer: true,
+      allowWebGlFallback: true
+    }
+  },
+  {
+    id: "portable",
+    label: "Portable",
+    description: "Avoid workers and GPU rendering while still using persistent storage when available.",
+    tags: ["fallback", "portable"],
+    priority: 40,
+    options: {
+      preferWorkers: false,
+      preferPersistentStorage: true,
+      preferGpuRenderer: false
+    }
+  },
+  {
+    id: "ephemeral",
+    label: "Ephemeral",
+    description: "Avoid persistent storage for demos, tests, and disposable sessions.",
+    tags: ["memory", "testing"],
+    priority: 30,
+    options: {
+      preferWorkers: true,
+      preferPersistentStorage: false,
+      preferGpuRenderer: true,
+      allowWebGlFallback: true
+    }
+  }
+];
+var RUNTIME_PROFILE_LOOKUP_INDEX = createRuntimeProfileLookupIndex(runtimeProfileDefinitions);
+function normalizeProfileLookup(value) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+function createRuntimeProfileLookupIndex(definitions) {
+  const lookup = /* @__PURE__ */ new Map();
+  for (let index = 0; index < definitions.length; index += 1) {
+    const definition = definitions[index];
+    lookup.set(normalizeProfileLookup(definition.id), definition);
+    lookup.set(normalizeProfileLookup(definition.label ?? definition.id), definition);
+  }
+  return lookup;
+}
 
 // src/runtime/storage.ts
 var MemoryStore = class {
@@ -11312,27 +11429,39 @@ function removeTerminalWorkspacePane(node, paneId) {
 }
 function updateTerminalWorkspaceSplitRatio(node, splitId, ratio) {
   if (!node) return { changed: false };
-  if (node.kind === "pane") return { node: cloneTerminalWorkspacePaneNode(node), changed: false };
+  if (node.kind === "pane") return { node, changed: false };
   if (node.id === splitId) {
     return {
       node: {
         ...node,
-        ratio,
-        first: cloneTerminalWorkspaceLayoutNode(node.first),
-        second: cloneTerminalWorkspaceLayoutNode(node.second)
+        ratio
       },
       changed: true
     };
   }
   const first = updateTerminalWorkspaceSplitRatio(node.first, splitId, ratio);
+  if (first.changed) {
+    return {
+      node: {
+        ...node,
+        first: first.node ?? node.first
+      },
+      changed: true
+    };
+  }
   const second = updateTerminalWorkspaceSplitRatio(node.second, splitId, ratio);
+  if (second.changed) {
+    return {
+      node: {
+        ...node,
+        second: second.node ?? node.second
+      },
+      changed: true
+    };
+  }
   return {
-    node: {
-      ...node,
-      first: first.node ?? cloneTerminalWorkspaceLayoutNode(node.first),
-      second: second.node ?? cloneTerminalWorkspaceLayoutNode(node.second)
-    },
-    changed: first.changed || second.changed
+    node,
+    changed: false
   };
 }
 function findNearestTerminalWorkspaceSplit(node, paneId) {
@@ -11771,14 +11900,18 @@ var TerminalWorkspaceController = class {
     return true;
   }
   resizeSplit(splitId, ratio) {
-    const current = cloneTerminalWorkspaceLayoutState(this.layout.peek());
+    const current = this.layout.peek();
     const root2 = updateTerminalWorkspaceSplitRatio(current.root, splitId, clampTerminalWorkspaceSplitRatio(ratio));
     if (!root2.changed) return false;
-    this.layout.value = { ...current, root: root2.node };
+    this.layout.value = {
+      root: root2.node,
+      activePaneId: current.activePaneId,
+      zoomedPaneId: current.zoomedPaneId
+    };
     return true;
   }
   resizeActiveSplit(delta) {
-    const current = cloneTerminalWorkspaceLayoutState(this.layout.peek());
+    const current = this.layout.peek();
     const activePane = findActiveTerminalWorkspacePane(current);
     if (!activePane) return false;
     const nearest = findNearestTerminalWorkspaceSplit(current.root, activePane.id);
