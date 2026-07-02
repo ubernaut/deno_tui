@@ -170,12 +170,12 @@ export function hitTestOverlaySurfaces(
   point: OverlayPoint,
   options: { respectModal?: boolean } = {},
 ): OverlayHit | undefined {
-  const zOrder = sortOverlaySurfaces(surfaces).filter((surface) => surface.visible);
+  const zOrder = sortOverlaySurfaces(surfaces);
   const modal = options.respectModal === false ? undefined : topmostModal(zOrder);
-  const candidates = modal
-    ? zOrder.filter((surface) => surface.id === modal.id || surface.ownerId === modal.id)
-    : zOrder;
-  for (const surface of [...candidates].reverse()) {
+  for (let index = zOrder.length - 1; index >= 0; index -= 1) {
+    const surface = zOrder[index]!;
+    if (!surface.visible) continue;
+    if (modal && surface.id !== modal.id && surface.ownerId !== modal.id) continue;
     if (pointInRect(point, surface.rect)) return overlayHit(surface, point);
   }
   return undefined;
@@ -186,6 +186,10 @@ export class OverlayStackController {
   readonly surfaces: Signal<OverlaySurfaceInspection[]>;
   readonly activeId: Signal<string | undefined>;
   #nextOrder = 0;
+  #sortedSource?: readonly OverlaySurfaceInspection[];
+  #sortedCache?: OverlaySurfaceInspection[];
+  #visibleSource?: readonly OverlaySurfaceInspection[];
+  #visibleCache?: OverlaySurfaceInspection[];
 
   constructor(options: OverlayStackOptions = {}) {
     const surfaces = (options.surfaces ?? []).map((surface, index) => {
@@ -254,23 +258,32 @@ export class OverlayStackController {
   }
 
   zOrder(): OverlaySurfaceInspection[] {
-    return sortOverlaySurfaces(this.surfaces.peek()).filter((surface) => surface.visible);
+    return [...this.#visibleZOrder()];
   }
 
   top(): OverlaySurfaceInspection | undefined {
-    return this.zOrder().at(-1);
+    const zOrder = this.#visibleZOrder();
+    return zOrder[zOrder.length - 1];
   }
 
   topModal(): OverlaySurfaceInspection | undefined {
-    return topmostModal(this.zOrder());
+    return topmostModal(this.#visibleZOrder());
   }
 
   hitTest(point: OverlayPoint, options: { respectModal?: boolean } = {}): OverlayHit | undefined {
-    return hitTestOverlaySurfaces(this.surfaces.peek(), point, options);
+    const zOrder = this.#sortedZOrder();
+    const modal = options.respectModal === false ? undefined : topmostModal(zOrder);
+    for (let index = zOrder.length - 1; index >= 0; index -= 1) {
+      const surface = zOrder[index]!;
+      if (!surface.visible) continue;
+      if (modal && surface.id !== modal.id && surface.ownerId !== modal.id) continue;
+      if (pointInRect(point, surface.rect)) return overlayHit(surface, point);
+    }
+    return undefined;
   }
 
   handlePointerDown(point: OverlayPoint): OverlayPointerResult {
-    const zOrder = this.zOrder();
+    const zOrder = this.#visibleZOrder();
     const modal = topmostModal(zOrder);
     if (modal && !pointInRect(point, modal.rect)) {
       if (modal.closeOnOutsideClick) {
@@ -285,10 +298,23 @@ export class OverlayStackController {
   }
 
   inspect(): OverlayStackInspection {
-    const surfaces = this.surfaces.peek().map((surface) => ({ ...surface, rect: { ...surface.rect } }));
-    const visible = surfaces.filter((surface) => surface.visible);
-    const zOrder = sortOverlaySurfaces(visible);
-    const top = zOrder.at(-1);
+    const source = this.surfaces.peek();
+    const surfaces = new Array<OverlaySurfaceInspection>(source.length);
+    for (let index = 0; index < source.length; index += 1) {
+      const surface = source[index]!;
+      surfaces[index] = { ...surface, rect: { ...surface.rect } };
+    }
+    const visible: OverlaySurfaceInspection[] = [];
+    for (const surface of source) {
+      if (surface.visible) visible.push({ ...surface, rect: { ...surface.rect } });
+    }
+    const zOrderSource = this.#visibleZOrder();
+    const zOrder = new Array<OverlaySurfaceInspection>(zOrderSource.length);
+    for (let index = 0; index < zOrderSource.length; index += 1) {
+      const surface = zOrderSource[index]!;
+      zOrder[index] = { ...surface, rect: { ...surface.rect } };
+    }
+    const top = zOrder[zOrder.length - 1];
     return {
       activeId: this.activeId.peek(),
       surfaces,
@@ -310,6 +336,31 @@ export class OverlayStackController {
     );
     if (this.activeId.peek() && ids.has(this.activeId.peek()!)) this.activeId.value = this.top()?.id;
     return [...ids];
+  }
+
+  #sortedZOrder(): readonly OverlaySurfaceInspection[] {
+    const source = this.surfaces.peek();
+    if (this.#sortedSource !== source) {
+      this.#sortedSource = source;
+      this.#sortedCache = sortOverlaySurfaces(source);
+      this.#visibleSource = undefined;
+      this.#visibleCache = undefined;
+    }
+    return this.#sortedCache ?? [];
+  }
+
+  #visibleZOrder(): readonly OverlaySurfaceInspection[] {
+    const source = this.surfaces.peek();
+    if (this.#visibleSource !== source) {
+      const sorted = this.#sortedZOrder();
+      const visible: OverlaySurfaceInspection[] = [];
+      for (const surface of sorted) {
+        if (surface.visible) visible.push(surface);
+      }
+      this.#visibleSource = source;
+      this.#visibleCache = visible;
+    }
+    return this.#visibleCache ?? [];
   }
 }
 
@@ -369,7 +420,11 @@ function overlayHit(surface: OverlaySurfaceInspection, point: OverlayPoint): Ove
 }
 
 function topmostModal(surfaces: readonly OverlaySurfaceInspection[]): OverlaySurfaceInspection | undefined {
-  return [...surfaces].reverse().find((surface) => surface.visible && surface.modal);
+  for (let index = surfaces.length - 1; index >= 0; index -= 1) {
+    const surface = surfaces[index]!;
+    if (surface.visible && surface.modal) return surface;
+  }
+  return undefined;
 }
 
 function popoverRectForPlacement(
