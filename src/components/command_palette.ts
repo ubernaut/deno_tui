@@ -6,6 +6,7 @@ import { signalify } from "../utils/signals.ts";
 import { List, visibleListRows } from "./list.ts";
 import { Text } from "./text.ts";
 import type { KeyPressEvent } from "../input_reader/types.ts";
+import { scoreWeightedSearchFields, searchTerms, weightedSearchFields } from "../utils/search.ts";
 
 /** Public interface describing a command Palette Item. */
 export interface CommandPaletteItem {
@@ -291,48 +292,10 @@ function scoreCommandPaletteItem(
   item: CommandPaletteItem,
   terms: readonly string[],
 ): { score: number; matched: string[] } | undefined {
-  const fields = [
+  const fields = weightedSearchFields([
     { value: item.label, weight: 100 },
     { value: item.id, weight: 80 },
     ...(item.keywords ?? []).map((value) => ({ value, weight: 40 })),
-  ].map((field) => ({ ...field, normalized: normalizeSearchText(field.value) }));
-
-  let score = item.disabled ? -10 : 0;
-  const matched: string[] = [];
-  for (const term of terms) {
-    let best = 0;
-    let bestValue: string | undefined;
-    for (const field of fields) {
-      const fieldScore = scoreSearchField(field.normalized, term, field.weight);
-      if (fieldScore > best) {
-        best = fieldScore;
-        bestValue = field.value;
-      }
-    }
-    if (best <= 0) return undefined;
-    score += best;
-    if (bestValue) matched.push(bestValue);
-  }
-
-  return { score, matched: [...new Set(matched)] };
-}
-
-function scoreSearchField(field: string, term: string, weight: number): number {
-  if (field === term) return weight + 40;
-  if (field.startsWith(term)) return weight + 25;
-  if (field.split(" ").some((part) => part.startsWith(term))) return weight + 15;
-  if (field.includes(term)) return weight + 5;
-  return acronym(field).startsWith(term) ? weight : 0;
-}
-
-function searchTerms(query: string): string[] {
-  return normalizeSearchText(query).split(/\s+/).filter(Boolean);
-}
-
-function normalizeSearchText(value: string): string {
-  return value.trim().toLowerCase().replace(/[_.:/]+/g, " ").replace(/\s+/g, " ");
-}
-
-function acronym(value: string): string {
-  return value.split(/\s+/).map((part) => part[0] ?? "").join("");
+  ]);
+  return scoreWeightedSearchFields(fields, terms, item.disabled);
 }

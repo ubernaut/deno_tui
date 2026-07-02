@@ -2,6 +2,12 @@
 import { Signal } from "../signals/mod.ts";
 import type { AsyncScheduler, ScheduledTaskOptions } from "../runtime/scheduler.ts";
 import type { AsyncStore } from "../runtime/storage.ts";
+import {
+  scoreWeightedSearchFields,
+  searchTerms,
+  type WeightedSearchField,
+  weightedSearchFields,
+} from "../utils/search.ts";
 import type { Action } from "./actions.ts";
 import type { CommandDispatch, CommandRegistry } from "./commands.ts";
 import {
@@ -13,11 +19,7 @@ import {
 } from "./command_bindings.ts";
 
 /** Public interface describing a command Search Index Field. */
-export interface CommandSearchIndexField {
-  value: string;
-  normalized: string;
-  weight: number;
-}
+export interface CommandSearchIndexField extends WeightedSearchField {}
 
 /** Entry record used by command Search Index catalogs or renderers. */
 export interface CommandSearchIndexEntry {
@@ -267,11 +269,11 @@ function createCommandSearchIndexEntry(
   index: number,
   options: CommandSearchIndexOptions,
 ): CommandSearchIndexEntry {
-  const fields = [
+  const fields = weightedSearchFields([
     { value: item.label, weight: options.labelWeight ?? 100 },
     { value: item.id, weight: options.idWeight ?? 80 },
     ...(item.keywords ?? []).map((value) => ({ value, weight: options.keywordWeight ?? 40 })),
-  ].map((field) => ({ ...field, normalized: normalizeSearchText(field.value) }));
+  ]);
 
   return { item, fields, index };
 }
@@ -280,46 +282,5 @@ function scoreCommandSearchIndexEntry(
   entry: CommandSearchIndexEntry,
   terms: readonly string[],
 ): { score: number; matched: string[] } | undefined {
-  if (terms.length === 0) {
-    return { score: entry.item.disabled ? -1 : 0, matched: [] };
-  }
-
-  let score = entry.item.disabled ? -10 : 0;
-  const matched: string[] = [];
-  for (const term of terms) {
-    let best = 0;
-    let bestValue: string | undefined;
-    for (const field of entry.fields) {
-      const fieldScore = scoreSearchField(field.normalized, term, field.weight);
-      if (fieldScore > best) {
-        best = fieldScore;
-        bestValue = field.value;
-      }
-    }
-    if (best <= 0) return undefined;
-    score += best;
-    if (bestValue) matched.push(bestValue);
-  }
-
-  return { score, matched: [...new Set(matched)] };
-}
-
-function scoreSearchField(field: string, term: string, weight: number): number {
-  if (field === term) return weight + 40;
-  if (field.startsWith(term)) return weight + 25;
-  if (field.split(" ").some((part) => part.startsWith(term))) return weight + 15;
-  if (field.includes(term)) return weight + 5;
-  return acronym(field).startsWith(term) ? weight : 0;
-}
-
-function searchTerms(query: string): string[] {
-  return normalizeSearchText(query).split(/\s+/).filter(Boolean);
-}
-
-function normalizeSearchText(value: string): string {
-  return value.trim().toLowerCase().replace(/[_.:/]+/g, " ").replace(/\s+/g, " ");
-}
-
-function acronym(value: string): string {
-  return value.split(/\s+/).map((part) => part[0] ?? "").join("");
+  return scoreWeightedSearchFields(entry.fields, terms, entry.item.disabled);
 }

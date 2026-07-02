@@ -205,6 +205,8 @@ Work:
         `slice()`/`push()` and `range().map()` allocation in live visualization data feeds.
   - [x] Reworked core selection range/value helpers to use direct output buffers instead of temporary `Array.from()`,
         `map()`, and `filter()` chains in reusable list/table/tree selection paths.
+  - [x] Extracted shared weighted command-search scoring with allocation-light word/acronym matching, migrated command
+        palette, command bindings, and indexed command search to it, and added a 1k-command ranking benchmark.
 
 Acceptance checks:
 

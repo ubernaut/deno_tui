@@ -4,6 +4,7 @@ import {
   BoxObject,
   buildThreeAsciiAnsiGrid,
   Canvas,
+  CommandRegistry,
   createMouseInteractionRouter,
   createRenderLoop,
   createStandardComponentThemeDefinitions,
@@ -17,6 +18,7 @@ import {
   MemoryCanvasSink,
   renderSparkline,
   runTaskBatch,
+  searchCommandSurfaceItems,
   standardThemeComponentNames,
   TableController,
   TextObject,
@@ -99,6 +101,23 @@ const largeDataColumns = [
   { id: "owner", width: 10 },
   { id: "cpu", width: 6 },
 ] as const;
+const commandSearchRegistry = new CommandRegistry();
+for (let index = 0; index < 1_000; index += 1) {
+  commandSearchRegistry.register({
+    id: `workspace.${index % 25}.service.${index}`,
+    label: `${index % 3 === 0 ? "Restart" : index % 3 === 1 ? "Inspect" : "Open"} ${
+      index % 2 === 0 ? "GPU" : "Monitor"
+    } Service ${index}`,
+    group: index % 5 === 0 ? "system" : "workspace",
+    description: `Synthetic command ${index}`,
+    keywords: [
+      index % 2 === 0 ? "gpu" : "cpu",
+      index % 7 === 0 ? "critical" : "normal",
+      `service-${index % 40}`,
+    ],
+    disabled: index % 37 === 0,
+  });
+}
 const resizeBounds = Array.from({ length: 96 }, (_, index) => ({
   column: 0,
   row: 0,
@@ -888,6 +907,23 @@ export const benchmarkCases: BenchmarkCase[] = [
     run: () => {
       const rows = filterDataRows(largeDataRows, largeDataColumns, "process-12 user");
       if (rows.length === 0) throw new Error("table filter returned no rows");
+    },
+  },
+  {
+    name: "data/command-search-1k",
+    category: "data",
+    description: "Rank 1k command-surface entries across labels, ids, groups, bindings, keywords, and acronyms.",
+    tags: ["data", "commands", "search", "ranking"],
+    iterations: 250,
+    maxAverageMs: 8,
+    run: () => {
+      const results = searchCommandSurfaceItems(commandSearchRegistry, {
+        query: "restart gpu service",
+        limit: 20,
+      });
+      if (results.length === 0 || !results[0]?.label.toLowerCase().includes("restart")) {
+        throw new Error("command search benchmark did not produce expected ranked results");
+      }
     },
   },
   {
