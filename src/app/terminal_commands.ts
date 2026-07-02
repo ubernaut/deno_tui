@@ -96,6 +96,7 @@ export type TerminalWorkspaceCommandKind =
   | "growActive"
   | "shrinkActive"
   | "closeSession"
+  | "renameSession"
   | "duplicateSession"
   | "moveSessionPrevious"
   | "moveSessionNext"
@@ -111,6 +112,7 @@ export type TerminalWorkspaceCommandAction =
   | Action<"terminalWorkspace.paneActivated", TerminalWorkspaceCommandPayload>
   | Action<"terminalWorkspace.paneResized", TerminalWorkspaceCommandPayload & { delta: number }>
   | Action<"terminalWorkspace.sessionClosed", TerminalWorkspaceCommandPayload>
+  | Action<"terminalWorkspace.sessionRenamed", TerminalWorkspaceCommandPayload & { title: string }>
   | Action<"terminalWorkspace.sessionDuplicated", TerminalWorkspaceCommandPayload>
   | Action<"terminalWorkspace.sessionMoved", TerminalWorkspaceCommandPayload & { delta: number }>
   | Action<"terminalWorkspace.sessionRestarted", TerminalWorkspaceCommandPayload>
@@ -131,6 +133,7 @@ export interface TerminalWorkspaceCommandOptions {
   idPrefix?: string;
   group?: string;
   sessionId?: string | (() => string | undefined);
+  renameTitle?: string | (() => string | undefined);
   resizeStep?: number;
   includeSplitCommands?: boolean;
   includeZoom?: boolean;
@@ -426,6 +429,7 @@ export function terminalWorkspaceCommands<TAction extends Action = TerminalWorks
   const resizeStep = Math.max(0.01, Math.min(0.25, options.resizeStep ?? 0.05));
   const label = (kind: TerminalWorkspaceCommandKind, fallback: string) => options.labels?.[kind] ?? fallback;
   const sessionId = () => typeof options.sessionId === "function" ? options.sessionId() : options.sessionId;
+  const renameTitle = () => typeof options.renameTitle === "function" ? options.renameTitle() : options.renameTitle;
   const targetSessionId = () => sessionId() ?? workspace.inspect().activeId;
   const activePaneId = () => workspace.inspectLayout().activePaneId;
   const payload = (paneId = activePaneId()): TerminalWorkspaceCommandPayload => {
@@ -547,6 +551,22 @@ export function terminalWorkspaceCommands<TAction extends Action = TerminalWorks
           return {
             type: "terminalWorkspace.sessionClosed",
             payload: terminalWorkspacePayload(workspace, id, undefined, sessionId),
+          } as TAction;
+        },
+      },
+      {
+        id: `${idPrefix}.renameSession`,
+        label: label("renameSession", "Rename Terminal Session"),
+        group,
+        keywords: ["terminal", "workspace", "session", "tab", "rename", "title"],
+        disabled: () => !targetSessionId() || !renameTitle()?.trim(),
+        action: () => {
+          const target = targetSessionId();
+          const title = renameTitle()?.trim() ?? "";
+          if (target && title) workspace.rename(target, title);
+          return {
+            type: "terminalWorkspace.sessionRenamed",
+            payload: { ...terminalWorkspacePayload(workspace, id, undefined, target), title },
           } as TAction;
         },
       },

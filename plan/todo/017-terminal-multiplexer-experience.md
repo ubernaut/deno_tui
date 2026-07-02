@@ -100,3 +100,5 @@ developer workflows.
   session tabs can be reset for backend respawn while attach-only sessions remain protected.
 - Added terminal workspace command-surface actions for close-session and move-session previous/next so session tabs now
   expose close, duplicate, restart, detach, attach, and reorder operations through renderer-neutral commands.
+- Added a renderer-neutral terminal workspace rename-session command that accepts a caller-provided title, allowing
+  command palettes and prompt/modal UIs to rename shell tabs without embedding prompt logic in the workspace model.

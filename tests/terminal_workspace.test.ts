@@ -320,10 +320,12 @@ Deno.test("terminal workspace commands drive pane operations", async () => {
   workspace.add(commandTerminalTemplate({ id: "logs", title: "Logs", command: "tail", args: ["-f"] }));
   const registry = new CommandRegistry<TerminalWorkspaceCommandAction>();
   const actions: TerminalWorkspaceCommandAction[] = [];
+  let renameTitle = "Renamed Logs";
   const dispose = bindTerminalWorkspaceCommands(registry, workspace, {
     id: "term",
     idPrefix: "terminal.main",
     sessionId: "logs",
+    renameTitle: () => renameTitle,
     resizeStep: 0.1,
   });
 
@@ -337,6 +339,7 @@ Deno.test("terminal workspace commands drive pane operations", async () => {
     ["terminalWorkspace.growActive", true],
     ["terminalWorkspace.shrinkActive", true],
     ["terminalWorkspace.closeSession", false],
+    ["terminalWorkspace.renameSession", true],
     ["terminalWorkspace.duplicateSession", false],
     ["terminalWorkspace.moveSessionPrevious", false],
     ["terminalWorkspace.moveSessionNext", false],
@@ -368,23 +371,31 @@ Deno.test("terminal workspace commands drive pane operations", async () => {
   assertEquals(await registry.execute("terminal.main.closePane", (action) => void actions.push(action)), true);
   assertEquals(actions[4]?.type, "terminalWorkspace.paneClosed");
   assertEquals(workspace.inspectLayout().count, 1);
+  assertEquals(await registry.execute("terminal.main.renameSession", (action) => void actions.push(action)), true);
+  assertEquals(actions[5]?.type, "terminalWorkspace.sessionRenamed");
+  assertEquals(workspace.inspect().sessions.find((session) => session.id === "logs")?.title, "Renamed Logs");
+  renameTitle = " ";
+  assertEquals(
+    commandDisabled(registry.list("terminal").find((command) => command.id === "terminal.main.renameSession")!),
+    true,
+  );
   assertEquals(await registry.execute("terminal.main.duplicateSession", (action) => void actions.push(action)), true);
-  assertEquals(actions[5]?.type, "terminalWorkspace.sessionDuplicated");
+  assertEquals(actions[6]?.type, "terminalWorkspace.sessionDuplicated");
   assertEquals(workspace.inspect().sessions.map((session) => session.id), ["shell-main", "logs", "logs-copy"]);
   assertEquals(
     await registry.execute("terminal.main.moveSessionPrevious", (action) => void actions.push(action)),
     true,
   );
-  assertEquals(actions[6]?.type, "terminalWorkspace.sessionMoved");
+  assertEquals(actions[7]?.type, "terminalWorkspace.sessionMoved");
   assertEquals(workspace.inspect().sessions.map((session) => session.id), ["shell-main", "logs-copy", "logs"]);
   assertEquals(await registry.execute("terminal.main.moveSessionNext", (action) => void actions.push(action)), true);
-  assertEquals(actions[7]?.type, "terminalWorkspace.sessionMoved");
+  assertEquals(actions[8]?.type, "terminalWorkspace.sessionMoved");
   assertEquals(workspace.inspect().sessions.map((session) => session.id), ["shell-main", "logs", "logs-copy"]);
   assertEquals(await registry.execute("terminal.main.restartSession", (action) => void actions.push(action)), true);
-  assertEquals(actions[8]?.type, "terminalWorkspace.sessionRestarted");
+  assertEquals(actions[9]?.type, "terminalWorkspace.sessionRestarted");
   assertEquals(workspace.inspect().active?.status, "idle");
   assertEquals(await registry.execute("terminal.main.closeSession", (action) => void actions.push(action)), true);
-  assertEquals(actions[9]?.type, "terminalWorkspace.sessionClosed");
+  assertEquals(actions[10]?.type, "terminalWorkspace.sessionClosed");
   assertEquals(workspace.inspect().sessions.map((session) => session.id), ["shell-main", "logs"]);
 
   dispose();
