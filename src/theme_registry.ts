@@ -17,6 +17,7 @@ export class ThemeRegistryImplementation {
   readonly #createEngine: (pack: ThemePack, overrides: ThemeEngineOptions) => ThemeEngine;
   readonly #paletteId: (palette: ThemePack["palette"]) => string;
   readonly #createNotFoundError: (id: string) => Error;
+  #ids?: string[];
 
   constructor(packs: Iterable<ThemePack> = [], options: ThemeRegistryImplementationOptions = {}) {
     this.#createEngine = options.createEngine ?? ((pack, engineOptions) =>
@@ -39,6 +40,7 @@ export class ThemeRegistryImplementation {
       ...pack,
       options: pack.options ? composeThemeOptionsCore(pack.options) : undefined,
     });
+    this.#ids = undefined;
     return this;
   }
 
@@ -57,7 +59,13 @@ export class ThemeRegistryImplementation {
   }
 
   ids(): string[] {
-    return [...this.#packs.keys()].sort();
+    if (!this.#ids) {
+      const ids: string[] = [];
+      for (const id of this.#packs.keys()) ids.push(id);
+      ids.sort();
+      this.#ids = ids;
+    }
+    return cloneStringArray(this.#ids);
   }
 
   engine(id: string, overrides: ThemeEngineOptions = {}): ThemeEngine {
@@ -87,6 +95,12 @@ export class ThemeRegistryImplementation {
     }
     return inspections;
   }
+}
+
+function cloneStringArray(values: readonly string[]): string[] {
+  const output = new Array<string>(values.length);
+  for (let index = 0; index < values.length; index += 1) output[index] = values[index]!;
+  return output;
 }
 
 /** Error thrown for invalid theme pack lookup operations. */
