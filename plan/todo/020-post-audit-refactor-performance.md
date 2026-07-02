@@ -28,3 +28,4 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Extracted shared empty-workspace message classification through `workbenchEmptyWorkspaceMessage`.
 - Extracted terminal status tone and input-mode label presentation helpers out of the terminal workbench renderer.
 - Extracted live shell status-line composition out of the terminal workbench renderer.
+- Moved terminal status tone color mapping into the shared workbench terminal style helper.

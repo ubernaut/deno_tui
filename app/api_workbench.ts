@@ -115,10 +115,13 @@ import {
   formatTerminalShellWindowTitle,
   summarizeTerminalStatus,
   terminalInputModeDisplayLabel,
-  terminalStatusTone,
 } from "../src/runtime/terminal_status.ts";
 import { shellTerminalTemplate } from "../src/runtime/terminal_templates.ts";
-import { terminalCellStyle, terminalOutputLineStyle } from "../src/app/workbench_terminal_style.ts";
+import {
+  terminalCellStyle,
+  terminalOutputLineStyle,
+  terminalStatusToneColor,
+} from "../src/app/workbench_terminal_style.ts";
 import { Computed, Signal } from "../src/signals/mod.ts";
 import { probeCompatibleWebGPUDevice } from "../src/three_ascii/webgpu_compat.ts";
 import { Tui } from "../src/tui.ts";
@@ -1841,7 +1844,7 @@ function renderTerminalOutput(frame: Frame, rect: Rectangle): void {
   row = renderTerminalOutputToolbar(frame, rect, row);
   if (row >= rect.row + rect.height) return;
 
-  const statusTone = terminalStatusToneColor(inspection.status);
+  const statusTone = terminalStatusToneColor(inspection.status, t);
   const statusSummary = summarizeTerminalStatus(inspection, {
     title: terminalInputModeLabel(),
     backendId: "process",
@@ -1959,7 +1962,7 @@ function renderTerminalShell(frame: Frame, rect: Rectangle): void {
     return;
   }
   const copyMode = inspection.scrollback.mode === "copy";
-  const statusTone = terminalStatusToneColor(inspection.status);
+  const statusTone = terminalStatusToneColor(inspection.status, t);
   const mode = copyMode ? "COPY MODE" : terminalShellInputModeLabel();
   const status = formatTerminalShellStatusLine({
     mode,
@@ -2182,22 +2185,6 @@ function renderTerminalShellToolbar(frame: Frame, rect: Rectangle, startRow: num
 
 function terminalShellInputModeLabel(): string {
   return terminalInputModeDisplayLabel(terminalShellInputMode.peek(), { rawLabel: "RAW SHELL" });
-}
-
-function terminalStatusToneColor(status: Parameters<typeof terminalStatusTone>[0]): string {
-  const t = theme();
-  switch (terminalStatusTone(status)) {
-    case "good":
-      return t.good;
-    case "danger":
-      return t.danger;
-    case "warning":
-      return t.warn;
-    case "accent":
-      return t.accent;
-    case "muted":
-      return t.borderStrong;
-  }
 }
 
 function toggleTerminalShellInputMode(): void {

@@ -4,6 +4,7 @@ import {
   terminalAnsiColor,
   terminalCellStyle,
   terminalOutputLineStyle,
+  terminalStatusToneColor,
   type WorkbenchTerminalTheme,
 } from "../src/app/workbench_terminal_style.ts";
 
@@ -63,4 +64,12 @@ Deno.test("terminalOutputLineStyle maps process streams to readable theme styles
     bg: theme.panelSoft,
     bold: true,
   });
+});
+
+Deno.test("terminalStatusToneColor maps runtime terminal states to theme colors", () => {
+  assertEquals(terminalStatusToneColor("running", theme), theme.good);
+  assertEquals(terminalStatusToneColor("failed", theme), theme.danger);
+  assertEquals(terminalStatusToneColor("cancelled", theme), theme.warn);
+  assertEquals(terminalStatusToneColor("starting", theme), theme.accent);
+  assertEquals(terminalStatusToneColor("idle", theme), theme.borderStrong);
 });

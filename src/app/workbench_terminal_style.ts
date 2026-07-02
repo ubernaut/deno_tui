@@ -1,4 +1,6 @@
 // Copyright 2023 Im-Beast. MIT license.
+import { terminalStatusTone } from "../runtime/terminal_status.ts";
+import type { ProcessSessionStatus } from "../runtime/process_session.ts";
 
 /** Theme colors used by workbench terminal surface renderers. */
 export interface WorkbenchTerminalTheme {
@@ -28,6 +30,25 @@ export function terminalOutputLineStyle(
   if (source === "stderr") return { fg: theme.danger, bg: theme.surface, bold: true };
   if (source === "system") return { fg: theme.warn, bg: theme.panelSoft, bold: true };
   return { fg: theme.text, bg: theme.surface };
+}
+
+/** Maps runtime terminal status onto the active workbench terminal theme. */
+export function terminalStatusToneColor(
+  status: ProcessSessionStatus | "starting" | undefined,
+  theme: WorkbenchTerminalTheme,
+): string {
+  switch (terminalStatusTone(status)) {
+    case "good":
+      return theme.good;
+    case "danger":
+      return theme.danger;
+    case "warning":
+      return theme.warn;
+    case "accent":
+      return theme.accent;
+    case "muted":
+      return theme.borderStrong;
+  }
 }
 
 /** Maps ANSI 8-color foreground/background codes onto the active workbench theme. */
