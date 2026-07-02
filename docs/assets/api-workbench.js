@@ -15496,6 +15496,43 @@ function apiWorkbenchTextboxRenderCommandsInto(target, rows2, options = {}) {
   target.length = written;
   return target;
 }
+function apiWorkbenchWrappedOptionsRenderCommandsInto(target, hits, options) {
+  const inset = Math.max(0, Math.floor(options.horizontalInset ?? 2));
+  const width = Math.max(Math.max(1, Math.floor(options.minWidth ?? 8)), Math.floor(options.rect.width) - inset * 2);
+  const rows2 = layoutWrappedControlOptions(options.items, options.selectedIndex, width);
+  const bottom = options.rect.row + Math.max(0, Math.floor(options.rect.height));
+  const column = options.rect.column + inset;
+  const active2 = options.activeId === options.id;
+  let written = 0;
+  let hitCount = 0;
+  for (let offset = 0; offset < rows2.length; offset += 1) {
+    const line = rows2[offset];
+    const row = Math.floor(options.startRow) + offset;
+    if (row >= bottom || line.text.length === 0) break;
+    writeWrappedOptionRenderCommand(target, written++, {
+      text: fitCellText(line.text, width),
+      column,
+      row,
+      width,
+      active: active2
+    });
+    for (let index = 0; index < line.tokens.length; index += 1) {
+      const token = line.tokens[index];
+      writeControlHit(hits, hitCount++, {
+        column: column + token.columnOffset,
+        row,
+        width: token.width,
+        height: 1,
+        id: options.id,
+        action: "activate",
+        index: token.index
+      });
+    }
+  }
+  target.length = written;
+  hits.length = hitCount;
+  return target;
+}
 function apiWorkbenchButtonRowInto(target, options) {
   const detail = options.detail ? ` ${options.detail}` : "";
   return writeProjectedControlRow(
@@ -15734,6 +15771,21 @@ function writeTextboxRenderCommand(target, index, options) {
   command.width = options.width;
   command.active = options.active;
   command.header = options.header;
+  target[index] = command;
+}
+function writeWrappedOptionRenderCommand(target, index, options) {
+  const command = target[index] ?? {
+    text: "",
+    column: 0,
+    row: 0,
+    width: 0,
+    active: false
+  };
+  command.text = options.text;
+  command.column = options.column;
+  command.row = options.row;
+  command.width = options.width;
+  command.active = options.active;
   target[index] = command;
 }
 function writeControlHit(target, index, source) {
@@ -16143,6 +16195,8 @@ var controlRadioOptions = [];
 var controlTextboxProjectionRows = [];
 var controlTextboxRenderCommands = [];
 var controlTextboxVisualLines = [];
+var controlWrappedOptionRenderCommands = [];
+var controlWrappedOptionHitPlacements = [];
 var controlSliderSetHit = {
   column: 0,
   row: 0,
@@ -17940,28 +17994,34 @@ function renderTextboxControl(frame, rect, row, t) {
   return projection.nextRow;
 }
 function writeWrappedOptions(frame, rect, startRow, id2, items, selectedIndex, t) {
-  const width = Math.max(8, rect.width - 4);
-  const rows2 = layoutWrappedControlOptions(items, selectedIndex, width);
-  for (let offset = 0; offset < rows2.length; offset += 1) {
-    const line = rows2[offset];
-    const row = startRow + offset;
-    if (row >= rect.row + rect.height || line.text.length === 0) return;
-    const selected = activeControl.peek() === id2;
+  const commands = apiWorkbenchWrappedOptionsRenderCommandsInto(
+    controlWrappedOptionRenderCommands,
+    controlWrappedOptionHitPlacements,
+    {
+      rect,
+      startRow,
+      id: id2,
+      items,
+      selectedIndex,
+      activeId: activeControl.peek()
+    }
+  );
+  for (const command of commands) {
     write(
       frame,
-      row,
-      rect.column + 2,
-      paint(fit(line.text, width), selected ? t.background : t.text, selected ? t.warn : t.surface, selected)
+      command.row,
+      command.column,
+      paint(command.text, command.active ? t.background : t.text, command.active ? t.warn : t.surface, command.active)
     );
-    for (let index = 0; index < line.tokens.length; index += 1) {
-      const token = line.tokens[index];
-      hitTargets.add({ column: rect.column + 2 + token.columnOffset, row, width: token.width, height: 1 }, {
-        type: "control",
-        id: id2,
-        action: "activate",
-        index: token.index
-      });
-    }
+  }
+  for (let index = 0; index < controlWrappedOptionHitPlacements.length; index += 1) {
+    const hit = controlWrappedOptionHitPlacements[index];
+    hitTargets.add({ column: hit.column, row: hit.row, width: hit.width, height: hit.height }, {
+      type: "control",
+      id: hit.id,
+      action: hit.action,
+      index: hit.index
+    });
   }
 }
 function addInlineStepperHits(rect, row) {

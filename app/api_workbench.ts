@@ -148,7 +148,6 @@ import { textWidth } from "../src/utils/strings.ts";
 import { workbenchButtonPaintOptions } from "../src/app/workbench_button_style.ts";
 import {
   layoutWorkbenchButtonRowInto,
-  layoutWrappedControlOptions,
   type WorkbenchButtonRowItem,
   type WorkbenchButtonRowPlacement,
   type WorkbenchButtonRowRenderCommand,
@@ -212,6 +211,8 @@ import {
   type ApiWorkbenchTextboxProjectionRow,
   type ApiWorkbenchTextboxRenderCommand,
   apiWorkbenchTextboxRenderCommandsInto,
+  type ApiWorkbenchWrappedOptionsRenderCommand,
+  apiWorkbenchWrappedOptionsRenderCommandsInto,
   nextApiWorkbenchControlId,
   nextSortableDataColumn,
 } from "./api_workbench_controls.ts";
@@ -386,6 +387,8 @@ const controlRadioOptions: ApiWorkbenchRadioOption[] = [];
 const controlTextboxProjectionRows: ApiWorkbenchTextboxProjectionRow[] = [];
 const controlTextboxRenderCommands: ApiWorkbenchTextboxRenderCommand[] = [];
 const controlTextboxVisualLines: TextBoxVisualLine[] = [];
+const controlWrappedOptionRenderCommands: ApiWorkbenchWrappedOptionsRenderCommand[] = [];
+const controlWrappedOptionHitPlacements: ApiWorkbenchControlHitPlacement[] = [];
 const controlSliderSetHit: ApiWorkbenchControlHitPlacement = {
   column: 0,
   row: 0,
@@ -2526,30 +2529,38 @@ function writeWrappedOptions(
   selectedIndex: number | undefined,
   t: ThemeSpec,
 ): void {
-  const width = Math.max(8, rect.width - 4);
-  const rows = layoutWrappedControlOptions(items, selectedIndex, width);
-  for (const [offset, line] of rows.entries()) {
-    const row = startRow + offset;
-    if (row >= rect.row + rect.height || line.text.length === 0) return;
-    const active = activeControl.peek() === id;
+  const commands = apiWorkbenchWrappedOptionsRenderCommandsInto(
+    controlWrappedOptionRenderCommands,
+    controlWrappedOptionHitPlacements,
+    {
+      rect,
+      startRow,
+      id,
+      items,
+      selectedIndex,
+      activeId: activeControl.peek(),
+    },
+  );
+  for (const command of commands) {
     write(
       frame,
-      row,
-      rect.column + 2,
-      paint(fit(line.text, width), {
-        fg: active ? t.background : t.text,
-        bg: active ? t.warn : t.surface,
-        bold: active,
+      command.row,
+      command.column,
+      paint(command.text, {
+        fg: command.active ? t.background : t.text,
+        bg: command.active ? t.warn : t.surface,
+        bold: command.active,
       }),
     );
-    for (const token of line.tokens) {
-      addHit({ column: rect.column + 2 + token.columnOffset, row, width: token.width, height: 1 }, {
-        type: "control",
-        id,
-        action: "activate",
-        index: token.index,
-      });
-    }
+  }
+  for (let index = 0; index < controlWrappedOptionHitPlacements.length; index += 1) {
+    const hit = controlWrappedOptionHitPlacements[index]!;
+    addHit({ column: hit.column, row: hit.row, width: hit.width, height: hit.height }, {
+      type: "control",
+      id: hit.id,
+      action: hit.action,
+      index: hit.index,
+    });
   }
 }
 

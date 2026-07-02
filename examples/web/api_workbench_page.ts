@@ -40,7 +40,6 @@ import {
   layoutWorkbenchTabsInto,
   layoutWorkbenchTitlebarInto,
   layoutWorkbenchTopMenuItemRect,
-  layoutWrappedControlOptions,
   loadWorkbenchPanelWorkspaceCache,
   maxTextWidth,
   MenuBarController,
@@ -153,6 +152,8 @@ import {
   type ApiWorkbenchTextboxProjectionRow,
   type ApiWorkbenchTextboxRenderCommand,
   apiWorkbenchTextboxRenderCommandsInto,
+  type ApiWorkbenchWrappedOptionsRenderCommand,
+  apiWorkbenchWrappedOptionsRenderCommandsInto,
   nextApiWorkbenchControlId,
   nextSortableDataColumn,
 } from "../../app/api_workbench_controls.ts";
@@ -343,6 +344,8 @@ const controlRadioOptions: ApiWorkbenchRadioOption[] = [];
 const controlTextboxProjectionRows: ApiWorkbenchTextboxProjectionRow[] = [];
 const controlTextboxRenderCommands: ApiWorkbenchTextboxRenderCommand[] = [];
 const controlTextboxVisualLines: TextBoxVisualLine[] = [];
+const controlWrappedOptionRenderCommands: ApiWorkbenchWrappedOptionsRenderCommand[] = [];
+const controlWrappedOptionHitPlacements: ApiWorkbenchControlHitPlacement[] = [];
 const controlSliderSetHit: ApiWorkbenchControlHitPlacement = {
   column: 0,
   row: 0,
@@ -2293,28 +2296,34 @@ function writeWrappedOptions(
   selectedIndex: number | undefined,
   t: ThemeSpec,
 ): void {
-  const width = Math.max(8, rect.width - 4);
-  const rows = layoutWrappedControlOptions(items, selectedIndex, width);
-  for (let offset = 0; offset < rows.length; offset += 1) {
-    const line = rows[offset]!;
-    const row = startRow + offset;
-    if (row >= rect.row + rect.height || line.text.length === 0) return;
-    const selected = activeControl.peek() === id;
+  const commands = apiWorkbenchWrappedOptionsRenderCommandsInto(
+    controlWrappedOptionRenderCommands,
+    controlWrappedOptionHitPlacements,
+    {
+      rect,
+      startRow,
+      id,
+      items,
+      selectedIndex,
+      activeId: activeControl.peek(),
+    },
+  );
+  for (const command of commands) {
     write(
       frame,
-      row,
-      rect.column + 2,
-      paint(fit(line.text, width), selected ? t.background : t.text, selected ? t.warn : t.surface, selected),
+      command.row,
+      command.column,
+      paint(command.text, command.active ? t.background : t.text, command.active ? t.warn : t.surface, command.active),
     );
-    for (let index = 0; index < line.tokens.length; index += 1) {
-      const token = line.tokens[index]!;
-      hitTargets.add({ column: rect.column + 2 + token.columnOffset, row, width: token.width, height: 1 }, {
-        type: "control",
-        id,
-        action: "activate",
-        index: token.index,
-      });
-    }
+  }
+  for (let index = 0; index < controlWrappedOptionHitPlacements.length; index += 1) {
+    const hit = controlWrappedOptionHitPlacements[index]!;
+    hitTargets.add({ column: hit.column, row: hit.row, width: hit.width, height: hit.height }, {
+      type: "control",
+      id: hit.id,
+      action: hit.action,
+      index: hit.index,
+    });
   }
 }
 

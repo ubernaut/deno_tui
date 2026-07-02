@@ -112,3 +112,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   configurable cursor and continuation glyphs.
 - Switched Three ASCII block-mode cells to source truecolor background fills, removing font-glyph banding and reducing
   per-cell ANSI output on block-heavy frames.
+- Added shared API workbench wrapped-option render commands so terminal and browser combo/radio option rows reuse the
+  same text and hit geometry projection.

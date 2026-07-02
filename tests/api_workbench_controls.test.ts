@@ -24,6 +24,8 @@ import {
   apiWorkbenchTextboxProjectionInto,
   type ApiWorkbenchTextboxRenderCommand,
   apiWorkbenchTextboxRenderCommandsInto,
+  type ApiWorkbenchWrappedOptionsRenderCommand,
+  apiWorkbenchWrappedOptionsRenderCommandsInto,
   nextApiWorkbenchControlId,
   nextSortableDataColumn,
 } from "../app/api_workbench_controls.ts";
@@ -234,6 +236,88 @@ Deno.test("api workbench dropdown popover rectangle follows shared adapter geome
     }),
     { column: 3, row: 4, width: 16, height: 5 },
   );
+});
+
+Deno.test("api workbench wrapped option render commands project rows and token hits", () => {
+  const hits: ApiWorkbenchControlHitPlacement[] = [];
+  const commands = apiWorkbenchWrappedOptionsRenderCommandsInto([], hits, {
+    rect: { column: 4, row: 10, width: 20, height: 4 },
+    startRow: 11,
+    id: "combo",
+    items: ["Unit-01", "Signal", "Arcane"],
+    selectedIndex: 1,
+    activeId: "combo",
+  });
+
+  assertEquals(commands, [
+    {
+      text: " Unit-01        ",
+      column: 6,
+      row: 11,
+      width: 16,
+      active: true,
+    },
+    {
+      text: "[Signal]        ",
+      column: 6,
+      row: 12,
+      width: 16,
+      active: true,
+    },
+    {
+      text: " Arcane         ",
+      column: 6,
+      row: 13,
+      width: 16,
+      active: true,
+    },
+  ]);
+  assertEquals(hits, [
+    { column: 6, row: 11, width: 10, height: 1, id: "combo", action: "activate", index: 0 },
+    { column: 6, row: 12, width: 9, height: 1, id: "combo", action: "activate", index: 1 },
+    { column: 6, row: 13, width: 9, height: 1, id: "combo", action: "activate", index: 2 },
+  ]);
+});
+
+Deno.test("api workbench wrapped option render commands clip and reuse caller storage", () => {
+  const target: ApiWorkbenchWrappedOptionsRenderCommand[] = [];
+  const hits: ApiWorkbenchControlHitPlacement[] = [];
+  apiWorkbenchWrappedOptionsRenderCommandsInto(target, hits, {
+    rect: { column: 0, row: 0, width: 18, height: 3 },
+    startRow: 1,
+    id: "radio",
+    items: ["Alpha", "Beta"],
+    selectedIndex: 0,
+    activeId: "button",
+  });
+  const firstCommand = target[0];
+  const firstHit = hits[0];
+
+  apiWorkbenchWrappedOptionsRenderCommandsInto(target, hits, {
+    rect: { column: 2, row: 4, width: 12, height: 1 },
+    startRow: 4,
+    id: "radio",
+    items: ["One", "Two"],
+    selectedIndex: undefined,
+    activeId: "radio",
+  });
+  assertEquals(target[0] === firstCommand, true);
+  assertEquals(hits[0] === firstHit, true);
+  assertEquals(target, [{ text: " One    ", column: 4, row: 4, width: 8, active: true }]);
+  assertEquals(hits, [{ column: 4, row: 4, width: 6, height: 1, id: "radio", action: "activate", index: 0 }]);
+
+  assertEquals(
+    apiWorkbenchWrappedOptionsRenderCommandsInto(target, hits, {
+      rect: { column: 0, row: 0, width: 10, height: 1 },
+      startRow: 2,
+      id: "radio",
+      items: ["Hidden"],
+      selectedIndex: undefined,
+      activeId: "radio",
+    }),
+    [],
+  );
+  assertEquals(hits, []);
 });
 
 Deno.test("api workbench textbox projection wraps reveals cursor and emits shared hit geometry", () => {
