@@ -49,8 +49,7 @@ export function normalizeSelection(
   const anchorIndex = clampSelectionIndex(length, state.anchorIndex ?? activeIndex);
   const selected = mode === "single"
     ? (length > 0 ? [activeIndex] : [])
-    : uniqueSorted((state.selected ?? [activeIndex]).map((index) => clampSelectionIndex(length, index)))
-      .filter((index) => length > 0 && index >= 0 && index < length);
+    : normalizeMultipleSelection(state.selected, activeIndex, length);
 
   return { activeIndex, anchorIndex, selected };
 }
@@ -272,6 +271,46 @@ function nextSelectionIndex(length: number, activeIndex: number, delta: number, 
   return ((next % length) + length) % length;
 }
 
+function normalizeMultipleSelection(
+  selected: readonly number[] | undefined,
+  activeIndex: number,
+  length: number,
+): number[] {
+  if (length <= 0) return [];
+  if (selected === undefined) return [activeIndex];
+  const normalized = new Array<number>(selected.length);
+  let count = 0;
+  for (let index = 0; index < selected.length; index += 1) {
+    const next = clampSelectionIndex(length, selected[index]!);
+    if (next >= 0 && next < length) {
+      normalized[count] = next;
+      count += 1;
+    }
+  }
+  normalized.length = count;
+  normalized.sort((left, right) => left - right);
+  let write = 0;
+  for (let read = 0; read < normalized.length; read += 1) {
+    const value = normalized[read]!;
+    if (read === 0 || value !== normalized[read - 1]) {
+      normalized[write] = value;
+      write += 1;
+    }
+  }
+  normalized.length = write;
+  return normalized;
+}
+
 function uniqueSorted(values: number[]): number[] {
-  return [...new Set(values)].sort((left, right) => left - right);
+  values.sort((left, right) => left - right);
+  let write = 0;
+  for (let read = 0; read < values.length; read += 1) {
+    const value = values[read]!;
+    if (read === 0 || value !== values[read - 1]) {
+      values[write] = value;
+      write += 1;
+    }
+  }
+  values.length = write;
+  return values;
 }

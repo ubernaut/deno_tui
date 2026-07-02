@@ -30,6 +30,16 @@ Deno.test("selection helpers support multi select toggle and range", () => {
   const state = createSelection(6, 2, "multiple");
   const toggled = toggleSelection(state, 6, 4);
 
+  assertEquals(normalizeSelection({ activeIndex: 2, selected: [5, 2, 2, -1, 99] }, 6, "multiple"), {
+    activeIndex: 2,
+    anchorIndex: 2,
+    selected: [0, 2, 5],
+  });
+  assertEquals(normalizeSelection({ activeIndex: 2, selected: [] }, 6, "multiple"), {
+    activeIndex: 2,
+    anchorIndex: 2,
+    selected: [],
+  });
   assertEquals(toggled, { activeIndex: 4, anchorIndex: 4, selected: [2, 4] });
   assertEquals(toggleSelection(toggled, 6, 2), { activeIndex: 2, anchorIndex: 2, selected: [4] });
   assertEquals(selectRange({ ...state, anchorIndex: 1 }, 6, 4), {
