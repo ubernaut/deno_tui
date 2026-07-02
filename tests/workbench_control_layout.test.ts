@@ -1,6 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { assertEquals } from "./deps.ts";
 import {
+  layoutWorkbenchButtonRow,
   layoutWorkbenchControlButtonLine,
   layoutWrappedControlOptions,
   wrappedControlOptionRowCount,
@@ -44,4 +45,63 @@ Deno.test("layoutWrappedControlOptions wraps tokens without splitting individual
 Deno.test("layoutWrappedControlOptions returns one empty row for empty option lists", () => {
   assertEquals(layoutWrappedControlOptions([], undefined, 4), [{ text: "", tokens: [] }]);
   assertEquals(wrappedControlOptionRowCount([], undefined, 4), 1);
+});
+
+Deno.test("layoutWorkbenchButtonRow wraps buttons and reports paint state", () => {
+  const result = layoutWorkbenchButtonRow(
+    [
+      { label: "Run", action: "run", tone: "success" },
+      { label: "Stop", action: "stop", disabled: true, tone: "danger" },
+      { label: "Raw", action: "raw", active: true },
+    ],
+    { column: 2, row: 4, width: 16, height: 3 },
+    4,
+  );
+
+  assertEquals(result, {
+    placements: [
+      {
+        item: { label: "Run", action: "run", tone: "success" },
+        rect: { column: 2, row: 4, width: 7, height: 1 },
+        state: "base",
+        tone: "success",
+      },
+      {
+        item: { label: "Stop", action: "stop", disabled: true, tone: "danger" },
+        rect: { column: 10, row: 4, width: 8, height: 1 },
+        state: "disabled",
+        tone: "danger",
+      },
+      {
+        item: { label: "Raw", action: "raw", active: true },
+        rect: { column: 2, row: 5, width: 7, height: 1 },
+        state: "active",
+        tone: undefined,
+      },
+    ],
+    nextRow: 6,
+  });
+});
+
+Deno.test("layoutWorkbenchButtonRow clips overwide buttons and stops at bottom", () => {
+  const result = layoutWorkbenchButtonRow(
+    [
+      { label: "Very Wide Button", action: "wide" },
+      { label: "Hidden", action: "hidden" },
+    ],
+    { column: 0, row: 0, width: 8, height: 1 },
+    0,
+  );
+
+  assertEquals(result, {
+    placements: [
+      {
+        item: { label: "Very Wide Button", action: "wide" },
+        rect: { column: 0, row: 0, width: 8, height: 1 },
+        state: "base",
+        tone: undefined,
+      },
+    ],
+    nextRow: 1,
+  });
 });

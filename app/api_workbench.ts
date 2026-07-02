@@ -121,6 +121,7 @@ import type { Rectangle } from "../src/types.ts";
 import { stripStyles, textWidth } from "../src/utils/strings.ts";
 import { workbenchButtonPaintOptions } from "../src/app/workbench_button_style.ts";
 import {
+  layoutWorkbenchButtonRow,
   layoutWorkbenchControlButtonLine,
   layoutWrappedControlOptions,
   wrappedControlOptionRowCount,
@@ -1832,37 +1833,41 @@ function renderTerminalOutput(frame: Frame, rect: Rectangle): void {
 }
 
 function renderTerminalOutputToolbar(frame: Frame, rect: Rectangle, startRow: number): number {
-  const bottom = rect.row + rect.height;
-  let row = startRow;
-  let column = rect.column;
-  const gap = 1;
-  const addButton = (
-    label: string,
-    action: TerminalOutputAction,
-    options: { disabled?: boolean; tone?: ButtonTone; active?: boolean } = {},
-  ) => {
-    const width = textWidth(buttonText(label));
-    if (column > rect.column && column + width > rect.column + rect.width) {
-      row += 1;
-      column = rect.column;
-    }
-    if (row >= bottom) return;
-    const state = options.disabled ? "disabled" : options.active ? "active" : "base";
-    const written = writeButton(frame, row, column, label, { state, tone: options.tone });
-    if (!options.disabled) {
-      addHit({ column, row, width: written, height: 1 }, { type: "terminalOutput", action });
-    }
-    column += written + gap;
-  };
+  const layout = layoutWorkbenchButtonRow<TerminalOutputAction>(
+    [
+      { label: "Run", action: "run", disabled: terminalOutputSession.running, tone: "success" },
+      { label: "Stop", action: "stop", disabled: !terminalOutputSession.running, tone: "danger" },
+      { label: "Restart", action: "restart", tone: "warning" },
+      {
+        label: "Clear",
+        action: "clear",
+        disabled: terminalOutputSession.output.lines.peek().length === 0,
+        tone: "muted",
+      },
+      { label: "Follow", action: "follow", active: terminalOutputSession.output.follow.peek() },
+      {
+        label: "Raw",
+        action: "raw",
+        active: terminalInputMode.peek() === "raw",
+        disabled: !terminalOutputSession.running,
+      },
+      { label: "Copy Cmd", action: "copy", tone: "muted" },
+    ],
+    rect,
+    startRow,
+  );
 
-  addButton("Run", "run", { disabled: terminalOutputSession.running, tone: "success" });
-  addButton("Stop", "stop", { disabled: !terminalOutputSession.running, tone: "danger" });
-  addButton("Restart", "restart", { tone: "warning" });
-  addButton("Clear", "clear", { disabled: terminalOutputSession.output.lines.peek().length === 0, tone: "muted" });
-  addButton("Follow", "follow", { active: terminalOutputSession.output.follow.peek() });
-  addButton("Raw", "raw", { active: terminalInputMode.peek() === "raw", disabled: !terminalOutputSession.running });
-  addButton("Copy Cmd", "copy", { tone: "muted" });
-  return Math.min(bottom, row + 1);
+  for (const button of layout.placements) {
+    const written = writeButton(frame, button.rect.row, button.rect.column, button.item.label, {
+      state: button.state,
+      tone: button.tone,
+      maxWidth: button.rect.width,
+    });
+    if (!button.item.disabled) {
+      addHit({ ...button.rect, width: written }, { type: "terminalOutput", action: button.item.action });
+    }
+  }
+  return layout.nextRow;
 }
 
 function terminalInputModeLabel(): string {
@@ -2006,42 +2011,43 @@ function renderTerminalShell(frame: Frame, rect: Rectangle): void {
 }
 
 function renderTerminalShellToolbar(frame: Frame, rect: Rectangle, startRow: number): number {
-  const bottom = rect.row + rect.height;
-  let row = startRow;
-  let column = rect.column;
   const shellInspection = terminalShell.inspect();
-  const addButton = (
-    label: string,
-    action: TerminalShellAction,
-    options: { disabled?: boolean; tone?: ButtonTone; active?: boolean } = {},
-  ) => {
-    const width = textWidth(buttonText(label));
-    if (column > rect.column && column + width > rect.column + rect.width) {
-      row += 1;
-      column = rect.column;
-    }
-    if (row >= bottom) return;
-    const state = options.disabled ? "disabled" : options.active ? "active" : "base";
-    const written = writeButton(frame, row, column, label, { state, tone: options.tone });
-    if (!options.disabled) {
-      addHit({ column, row, width: written, height: 1 }, { type: "terminalShell", action });
-    }
-    column += written + 1;
-  };
+  const scrollDisabled = shellInspection.scrollback.totalRows <= shellInspection.scrollback.viewportRows;
+  const layout = layoutWorkbenchButtonRow<TerminalShellAction>(
+    [
+      {
+        label: "Start",
+        action: "start",
+        disabled: terminalShell.running || terminalShell.status.peek() === "starting",
+      },
+      { label: "Stop", action: "stop", disabled: !terminalShell.running, tone: "danger" },
+      { label: "Restart", action: "restart", tone: "warning" },
+      { label: "Clear", action: "clear", tone: "muted" },
+      {
+        label: "Raw",
+        action: "raw",
+        active: terminalShellInputMode.peek() === "raw",
+        disabled: !terminalShell.running,
+      },
+      { label: "Copy", action: "copy", active: terminalShell.scrollback.mode === "copy" },
+      { label: "Top", action: "top", disabled: scrollDisabled },
+      { label: "Bottom", action: "bottom", disabled: scrollDisabled },
+    ],
+    rect,
+    startRow,
+  );
 
-  addButton("Start", "start", { disabled: terminalShell.running || terminalShell.status.peek() === "starting" });
-  addButton("Stop", "stop", { disabled: !terminalShell.running, tone: "danger" });
-  addButton("Restart", "restart", { tone: "warning" });
-  addButton("Clear", "clear", { tone: "muted" });
-  addButton("Raw", "raw", { active: terminalShellInputMode.peek() === "raw", disabled: !terminalShell.running });
-  addButton("Copy", "copy", { active: terminalShell.scrollback.mode === "copy" });
-  addButton("Top", "top", {
-    disabled: shellInspection.scrollback.totalRows <= shellInspection.scrollback.viewportRows,
-  });
-  addButton("Bottom", "bottom", {
-    disabled: shellInspection.scrollback.totalRows <= shellInspection.scrollback.viewportRows,
-  });
-  return Math.min(bottom, row + 1);
+  for (const button of layout.placements) {
+    const written = writeButton(frame, button.rect.row, button.rect.column, button.item.label, {
+      state: button.state,
+      tone: button.tone,
+      maxWidth: button.rect.width,
+    });
+    if (!button.item.disabled) {
+      addHit({ ...button.rect, width: written }, { type: "terminalShell", action: button.item.action });
+    }
+  }
+  return layout.nextRow;
 }
 
 function terminalShellInputModeLabel(): string {

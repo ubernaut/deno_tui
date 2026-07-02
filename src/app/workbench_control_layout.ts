@@ -1,5 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
-import { fitCellText } from "./workbench_frame.ts";
+import type { Rectangle } from "../types.ts";
+import { type WorkbenchButtonState, type WorkbenchButtonTone } from "./workbench_button_style.ts";
+import { buttonText, fitCellText } from "./workbench_frame.ts";
 import { textWidth } from "../utils/strings.ts";
 
 /** One selectable option token inside a wrapped control option row. */
@@ -24,6 +26,65 @@ export interface WorkbenchControlButtonLineSegment {
   text: string;
   columnOffset: number;
   width: number;
+}
+
+/** Render-neutral descriptor for a wrapped workbench toolbar button. */
+export interface WorkbenchButtonRowItem<TAction = string> {
+  label: string;
+  action: TAction;
+  disabled?: boolean;
+  active?: boolean;
+  tone?: WorkbenchButtonTone;
+}
+
+/** Concrete placement for one wrapped toolbar button. */
+export interface WorkbenchButtonRowPlacement<TAction = string> {
+  item: WorkbenchButtonRowItem<TAction>;
+  rect: Rectangle;
+  state: WorkbenchButtonState;
+  tone?: WorkbenchButtonTone;
+}
+
+/** Result of laying out a responsive toolbar button row. */
+export interface WorkbenchButtonRowLayout<TAction = string> {
+  placements: WorkbenchButtonRowPlacement<TAction>[];
+  nextRow: number;
+}
+
+/** Computes wrapped toolbar button positions without knowing how a renderer paints buttons. */
+export function layoutWorkbenchButtonRow<TAction>(
+  items: readonly WorkbenchButtonRowItem<TAction>[],
+  bounds: Rectangle,
+  startRow: number,
+  options: { gap?: number } = {},
+): WorkbenchButtonRowLayout<TAction> {
+  const gap = Math.max(0, Math.floor(options.gap ?? 1));
+  const right = bounds.column + Math.max(0, Math.floor(bounds.width));
+  const bottom = bounds.row + Math.max(0, Math.floor(bounds.height));
+  const placements: WorkbenchButtonRowPlacement<TAction>[] = [];
+  let row = Math.max(bounds.row, Math.floor(startRow));
+  let column = bounds.column;
+
+  for (const item of items) {
+    if (row >= bottom || bounds.width <= 0) break;
+    const width = Math.min(textWidth(buttonText(item.label)), Math.max(0, bounds.width));
+    if (width <= 0) continue;
+    if (column > bounds.column && column + width > right) {
+      row += 1;
+      column = bounds.column;
+    }
+    if (row >= bottom) break;
+    const state: WorkbenchButtonState = item.disabled ? "disabled" : item.active ? "active" : "base";
+    placements.push({
+      item,
+      rect: { column, row, width, height: 1 },
+      state,
+      tone: item.tone,
+    });
+    column += width + gap;
+  }
+
+  return { placements, nextRow: Math.min(bottom, row + 1) };
 }
 
 /** Computes clipped button/detail segments without letting the button background paint trailing whitespace. */
