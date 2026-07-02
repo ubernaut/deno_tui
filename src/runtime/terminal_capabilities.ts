@@ -173,6 +173,8 @@ const TERMINAL_CAPABILITY_METADATA: Record<
   },
 };
 
+const TERMINAL_CAPABILITY_IDS = Object.keys(TERMINAL_CAPABILITY_METADATA) as TerminalCapabilityId[];
+
 const COLOR_DEPTH_RANK: Record<TerminalColorDepth, number> = {
   none: 0,
   ansi16: 1,
@@ -237,11 +239,16 @@ export function detectTerminalEnvironment(
 
 /** Converts raw terminal capability booleans into labeled display entries. */
 export function terminalCapabilityEntries(capabilities: TerminalCapabilities): TerminalCapabilityEntry[] {
-  return (Object.keys(TERMINAL_CAPABILITY_METADATA) as TerminalCapabilityId[]).map((id) => ({
-    id,
-    ...TERMINAL_CAPABILITY_METADATA[id],
-    available: capabilities[id],
-  }));
+  const entries = new Array<TerminalCapabilityEntry>(TERMINAL_CAPABILITY_IDS.length);
+  for (let index = 0; index < TERMINAL_CAPABILITY_IDS.length; index += 1) {
+    const id = TERMINAL_CAPABILITY_IDS[index]!;
+    entries[index] = {
+      id,
+      ...TERMINAL_CAPABILITY_METADATA[id],
+      available: capabilities[id],
+    };
+  }
+  return entries;
 }
 
 /** Summarizes terminal capability availability counts and color depth. */
@@ -249,7 +256,10 @@ export function summarizeTerminalCapabilities(
   capabilities: TerminalCapabilities = detectTerminalCapabilities(),
 ): TerminalCapabilitySummary {
   const entries = terminalCapabilityEntries(capabilities);
-  const available = entries.filter((entry) => entry.available).length;
+  let available = 0;
+  for (const entry of entries) {
+    if (entry.available) available += 1;
+  }
   return {
     total: entries.length,
     available,
@@ -264,11 +274,13 @@ export function formatTerminalCapabilities(
   capabilities: TerminalCapabilities = detectTerminalCapabilities(),
 ): string {
   const summary = summarizeTerminalCapabilities(capabilities);
-  const rows = summary.entries.map((entry) => `${entry.available ? "ok" : "missing"} ${entry.label}`);
-  return [
-    `Terminal capabilities: ${summary.available}/${summary.total} available, ${summary.colorDepth} color`,
-    ...rows,
-  ].join("\n");
+  const rows = new Array<string>(summary.entries.length + 1);
+  rows[0] = `Terminal capabilities: ${summary.available}/${summary.total} available, ${summary.colorDepth} color`;
+  for (let index = 0; index < summary.entries.length; index += 1) {
+    const entry = summary.entries[index]!;
+    rows[index + 1] = `${entry.available ? "ok" : "missing"} ${entry.label}`;
+  }
+  return rows.join("\n");
 }
 
 /** Returns setup diagnostics for terminal, SSH, tmux/screen, Unicode, and color behavior. */

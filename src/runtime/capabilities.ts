@@ -81,6 +81,8 @@ const CAPABILITY_METADATA: Record<RuntimeCapabilityId, Omit<RuntimeCapabilityEnt
   },
 };
 
+const RUNTIME_CAPABILITY_IDS = Object.keys(CAPABILITY_METADATA) as RuntimeCapabilityId[];
+
 interface CanvasLike {
   getContext(type: string): unknown;
 }
@@ -99,11 +101,16 @@ export function detectRuntimeCapabilities(scope: typeof globalThis = globalThis)
 
 /** Converts raw capability booleans into labeled display entries. */
 export function runtimeCapabilityEntries(capabilities: RuntimeCapabilities): RuntimeCapabilityEntry[] {
-  return (Object.keys(CAPABILITY_METADATA) as RuntimeCapabilityId[]).map((id) => ({
-    id,
-    ...CAPABILITY_METADATA[id],
-    available: capabilities[id],
-  }));
+  const entries = new Array<RuntimeCapabilityEntry>(RUNTIME_CAPABILITY_IDS.length);
+  for (let index = 0; index < RUNTIME_CAPABILITY_IDS.length; index += 1) {
+    const id = RUNTIME_CAPABILITY_IDS[index]!;
+    entries[index] = {
+      id,
+      ...CAPABILITY_METADATA[id],
+      available: capabilities[id],
+    };
+  }
+  return entries;
 }
 
 /** Summarizes capability availability counts and labeled entries. */
@@ -111,7 +118,10 @@ export function summarizeRuntimeCapabilities(
   capabilities: RuntimeCapabilities = detectRuntimeCapabilities(),
 ): RuntimeCapabilitySummary {
   const entries = runtimeCapabilityEntries(capabilities);
-  const available = entries.filter((entry) => entry.available).length;
+  let available = 0;
+  for (const entry of entries) {
+    if (entry.available) available += 1;
+  }
   return {
     total: entries.length,
     available,
@@ -125,11 +135,13 @@ export function formatRuntimeCapabilities(
   capabilities: RuntimeCapabilities = detectRuntimeCapabilities(),
 ): string {
   const summary = summarizeRuntimeCapabilities(capabilities);
-  const rows = summary.entries.map((entry) => `${entry.available ? "ok" : "missing"} ${entry.label}`);
-  return [
-    `Runtime capabilities: ${summary.available}/${summary.total} available`,
-    ...rows,
-  ].join("\n");
+  const rows = new Array<string>(summary.entries.length + 1);
+  rows[0] = `Runtime capabilities: ${summary.available}/${summary.total} available`;
+  for (let index = 0; index < summary.entries.length; index += 1) {
+    const entry = summary.entries[index]!;
+    rows[index + 1] = `${entry.available ? "ok" : "missing"} ${entry.label}`;
+  }
+  return rows.join("\n");
 }
 
 /** Builds a deterministic strategy plan from runtime capabilities and app preferences. */

@@ -278,6 +278,8 @@ Work:
         set accumulation instead of chained map/filter/flatMap scans in startup/report paths.
   - [x] Reworked runtime profile registry inspection, profile lookup, query, and catalog summaries with explicit buffers
         and one-pass strategy/tag accumulation while preserving priority and definition ordering.
+  - [x] Reworked runtime and terminal capability entry/summary/format helpers to use stable ID lists and one-pass
+        availability counts instead of object-key map/filter chains.
 
 Acceptance checks:
 
