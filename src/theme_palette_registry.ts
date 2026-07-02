@@ -82,14 +82,18 @@ export class ThemePaletteRegistryImplementation {
 
   /** Returns serializable palette metadata. */
   inspect(): ThemePaletteInspection[] {
-    return this.ids().map((id) => {
+    const ids = this.ids();
+    const inspections = new Array<ThemePaletteInspection>(ids.length);
+    for (let index = 0; index < ids.length; index += 1) {
+      const id = ids[index]!;
       const palette = this.#palettes.get(id)!;
-      return {
+      inspections[index] = {
         id,
         label: palette.label ?? id,
         tokens: sortedThemeTokenNames(Object.keys(palette.tokens)),
       };
-    });
+    }
+    return inspections;
   }
 }
 
@@ -103,7 +107,11 @@ export class ThemePaletteNotFoundErrorImplementation extends Error {
 
 function sortedThemeTokenNames(values: Iterable<string>): ThemeTokenName[] {
   const requested = new Set(values);
-  return themeTokenNames.filter((token) => requested.has(token));
+  const tokens: ThemeTokenName[] = [];
+  for (const token of themeTokenNames) {
+    if (requested.has(token)) tokens.push(token);
+  }
+  return tokens;
 }
 
 const themeTokenNames: ThemeTokenName[] = [

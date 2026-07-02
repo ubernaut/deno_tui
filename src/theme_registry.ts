@@ -73,15 +73,19 @@ export class ThemeRegistryImplementation {
   }
 
   inspect(): ThemePackInspection[] {
-    return this.ids().map((id) => {
+    const ids = this.ids();
+    const inspections = new Array<ThemePackInspection>(ids.length);
+    for (let index = 0; index < ids.length; index += 1) {
+      const id = ids[index]!;
       const pack = this.#packs.get(id)!;
-      return {
+      inspections[index] = {
         id,
         label: pack.label ?? id,
         palette: this.#paletteId(pack.palette),
         components: this.engine(id).inspect().components,
       };
-    });
+    }
+    return inspections;
   }
 }
 

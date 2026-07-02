@@ -17,7 +17,7 @@ export class ThemeLayerStackImplementation {
     }
     this.options = new Computed(() => {
       this.#revision.value;
-      return composeThemeOptionsCore(...this.activeLayers().map((layer) => layer.options));
+      return composeThemeOptionsCore(...this.#activeLayerOptions());
     });
   }
 
@@ -50,13 +50,7 @@ export class ThemeLayerStackImplementation {
 
   get(id: string): ThemeLayer | undefined {
     const layer = this.#layers.get(id);
-    return layer
-      ? {
-        ...layer,
-        enabled: this.#enabled.has(id),
-        options: composeThemeOptionsCore(layer.options),
-      }
-      : undefined;
+    return layer ? this.#cloneLayer(layer, this.#enabled.has(id)) : undefined;
   }
 
   ids(): string[] {
@@ -64,11 +58,20 @@ export class ThemeLayerStackImplementation {
   }
 
   activeIds(): string[] {
-    return this.ids().filter((id) => this.#enabled.has(id));
+    const ids: string[] = [];
+    for (const id of this.#layers.keys()) {
+      if (this.#enabled.has(id)) ids.push(id);
+    }
+    return ids;
   }
 
   activeLayers(): ThemeLayer[] {
-    return this.activeIds().map((id) => this.get(id)!);
+    const layers: ThemeLayer[] = [];
+    for (const [id, layer] of this.#layers) {
+      if (!this.#enabled.has(id)) continue;
+      layers.push(this.#cloneLayer(layer, true));
+    }
+    return layers;
   }
 
   setActiveIds(ids: Iterable<string>): string[] {
@@ -117,19 +120,20 @@ export class ThemeLayerStackImplementation {
   }
 
   compose(overrides: ThemeEngineOptions = {}): ThemeEngineOptions {
-    return composeThemeOptionsCore(overrides, ...this.activeLayers().map((layer) => layer.options));
+    return composeThemeOptionsCore(overrides, ...this.#activeLayerOptions());
   }
 
   inspect(): ThemeLayerInspection[] {
-    return this.ids().map((id) => {
-      const layer = this.#layers.get(id)!;
-      return {
+    const inspections: ThemeLayerInspection[] = [];
+    for (const [id, layer] of this.#layers) {
+      inspections.push({
         id,
         label: layer.label ?? id,
         enabled: this.#enabled.has(id),
         components: new ThemeEngine(layer.options).inspect().components,
-      };
-    });
+      });
+    }
+    return inspections;
   }
 
   dispose(): void {
@@ -139,5 +143,21 @@ export class ThemeLayerStackImplementation {
 
   #touch(): void {
     this.#revision.value++;
+  }
+
+  #activeLayerOptions(): ThemeEngineOptions[] {
+    const options: ThemeEngineOptions[] = [];
+    for (const [id, layer] of this.#layers) {
+      if (this.#enabled.has(id)) options.push(layer.options);
+    }
+    return options;
+  }
+
+  #cloneLayer(layer: ThemeLayer, enabled: boolean): ThemeLayer {
+    return {
+      ...layer,
+      enabled,
+      options: composeThemeOptionsCore(layer.options),
+    };
   }
 }
