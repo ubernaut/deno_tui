@@ -3,6 +3,7 @@ import {
   createThreeAsciiReadbackLayout,
   createThreeAsciiReadbackViews,
   ThreeAsciiReadbackLayoutCache,
+  ThreeAsciiReadbackViewCache,
 } from "../src/three_ascii/readback.ts";
 
 Deno.test("three ascii readback layout packs fill edge and color buffers", () => {
@@ -111,4 +112,31 @@ Deno.test("three ascii readback layout cache invalidates on shape changes and cl
   assertEquals(withoutEdges === first, false);
   assertEquals(withoutEdges.edgeOffset, undefined);
   assertEquals(afterClear === withoutEdges, false);
+});
+
+Deno.test("three ascii readback view cache reuses views by source and layout identity", () => {
+  const cache = new ThreeAsciiReadbackViewCache();
+  const layout = createThreeAsciiReadbackLayout({
+    fillByteLength: 8,
+    edgeByteLength: 16,
+    colorByteLength: 16,
+    includeEdges: true,
+  });
+  const source = new ArrayBuffer(layout.byteLength);
+
+  const first = cache.resolve(source, layout);
+  const second = cache.resolve(source, layout);
+  const equivalentLayout = createThreeAsciiReadbackLayout({
+    fillByteLength: 8,
+    edgeByteLength: 16,
+    colorByteLength: 16,
+    includeEdges: true,
+  });
+  const differentLayout = cache.resolve(source, equivalentLayout);
+
+  assertEquals(second === first, true);
+  assertEquals(differentLayout === first, false);
+
+  cache.clear();
+  assertEquals(cache.resolve(source, equivalentLayout) === differentLayout, false);
 });

@@ -54,6 +54,7 @@ import {
   SystemMonitor,
 } from "../app/system_metrics.ts";
 import { compactMappedRgbaRows } from "../src/three_ascii/headless_canvas.ts";
+import { createThreeAsciiReadbackLayout, ThreeAsciiReadbackViewCache } from "../src/three_ascii/readback.ts";
 
 const sparklineValues = Array.from({ length: 200 }, (_, index) => Math.sin(index / 8));
 const threeAsciiColumns = 96;
@@ -80,6 +81,15 @@ const threeAsciiReadbackColorSource = new Float32Array(threeAsciiCellCount * 4);
 const threeAsciiReadbackFillCpu = new Float32Array(threeAsciiCellCount);
 const threeAsciiReadbackEdgeCpu = new Float32Array(threeAsciiCellCount * 4);
 const threeAsciiReadbackColorCpu = new Float32Array(threeAsciiCellCount * 4);
+const threeAsciiReadbackLayout = createThreeAsciiReadbackLayout({
+  fillByteLength: threeAsciiReadbackFillSource.byteLength,
+  edgeByteLength: threeAsciiReadbackEdgeSource.byteLength,
+  colorByteLength: threeAsciiReadbackColorSource.byteLength,
+  includeEdges: true,
+});
+const threeAsciiReadbackPacked = new ArrayBuffer(threeAsciiReadbackLayout.byteLength);
+const threeAsciiReadbackPackedFloats = new Float32Array(threeAsciiReadbackPacked);
+const threeAsciiReadbackViewCache = new ThreeAsciiReadbackViewCache();
 const threeAsciiGridAssembler = new ThreeAsciiAnsiGridAssembler({ reuseGrid: true });
 const threeAsciiImageWidth = threeAsciiColumns * 8;
 const threeAsciiImageHeight = threeAsciiRows * 8;
@@ -292,6 +302,18 @@ for (let index = 0; index < threeAsciiCellCount; index += 1) {
 threeAsciiReadbackFillSource.set(threeAsciiFillGlyphs);
 threeAsciiReadbackEdgeSource.set(threeAsciiEdgeGlyphs);
 threeAsciiReadbackColorSource.set(threeAsciiColors);
+threeAsciiReadbackPackedFloats.set(
+  threeAsciiReadbackFillSource,
+  threeAsciiReadbackLayout.fillOffset / Float32Array.BYTES_PER_ELEMENT,
+);
+threeAsciiReadbackPackedFloats.set(
+  threeAsciiReadbackEdgeSource,
+  threeAsciiReadbackLayout.edgeOffset! / Float32Array.BYTES_PER_ELEMENT,
+);
+threeAsciiReadbackPackedFloats.set(
+  threeAsciiReadbackColorSource,
+  threeAsciiReadbackLayout.colorOffset / Float32Array.BYTES_PER_ELEMENT,
+);
 for (let index = 0; index < threeAsciiImageSource.length; index += 1) {
   threeAsciiImageSource[index] = (index * 17 + (index >>> 7)) & 0xff;
 }
@@ -551,6 +573,7 @@ function runThreeAsciiReadbackCopyWorkload(): void {
   threeAsciiReadbackFillCpu.set(threeAsciiReadbackFillSource);
   threeAsciiReadbackEdgeCpu.set(threeAsciiReadbackEdgeSource);
   threeAsciiReadbackColorCpu.set(threeAsciiReadbackColorSource);
+  const views = threeAsciiReadbackViewCache.resolve(threeAsciiReadbackPacked, threeAsciiReadbackLayout);
 
   const fillIndex = threeAsciiReadbackCursor % threeAsciiReadbackFillCpu.length;
   const edgeIndex = (threeAsciiReadbackCursor * 3) % threeAsciiReadbackEdgeCpu.length;
@@ -560,7 +583,10 @@ function runThreeAsciiReadbackCopyWorkload(): void {
     threeAsciiReadbackChecksum +
     threeAsciiReadbackFillCpu[fillIndex] +
     threeAsciiReadbackEdgeCpu[edgeIndex] +
-    threeAsciiReadbackColorCpu[colorIndex]
+    threeAsciiReadbackColorCpu[colorIndex] +
+    views.fillGlyphs[fillIndex] +
+    views.edgeGlyphs![edgeIndex] +
+    views.colors[colorIndex]
   ) % 1_000_000;
 
   if (!Number.isFinite(threeAsciiReadbackChecksum)) {

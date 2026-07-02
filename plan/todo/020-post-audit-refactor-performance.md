@@ -56,3 +56,4 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Added a benchmark case for reusable textbox wrapping so future multiline text changes have a measured guardrail.
 - Added `wrapPlainTextInto` and routed API workbench recent-action wrapping through caller-owned rows.
 - Consolidated repeated settings-binding reentrancy guards behind a shared internal sync gate.
+- Added a reusable Three ASCII readback view cache and routed renderer readback assembly through it.

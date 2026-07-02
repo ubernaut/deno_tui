@@ -61,6 +61,30 @@ export class ThreeAsciiReadbackLayoutCache {
   }
 }
 
+/** Reuses typed readback views while the mapped range and layout are unchanged. */
+export class ThreeAsciiReadbackViewCache {
+  private source?: ArrayBuffer;
+  private layout?: ThreeAsciiReadbackLayout;
+  private cached?: ThreeAsciiReadbackViews;
+
+  resolve(source: ArrayBuffer, layout: ThreeAsciiReadbackLayout): ThreeAsciiReadbackViews {
+    if (this.cached && this.source === source && this.layout === layout) {
+      return this.cached;
+    }
+
+    this.source = source;
+    this.layout = layout;
+    this.cached = createThreeAsciiReadbackViews(source, layout);
+    return this.cached;
+  }
+
+  clear(): void {
+    this.source = undefined;
+    this.layout = undefined;
+    this.cached = undefined;
+  }
+}
+
 export function createThreeAsciiReadbackLayout(options: ThreeAsciiReadbackLayoutOptions): ThreeAsciiReadbackLayout {
   const fillByteLength = validateByteLength("fill", options.fillByteLength);
   const edgeByteLength = validateByteLength("edge", options.edgeByteLength);
