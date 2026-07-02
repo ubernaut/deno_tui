@@ -39,6 +39,9 @@ Deno.test("utils/strings.ts", async (t) => {
 
     assertEquals(characterWidth("👀"), 2);
     assertEquals(characterWidth("👨‍👩‍👧‍👦"), 2);
+    assertEquals(characterWidth("🇺🇸"), 2);
+    assertEquals(characterWidth("⚠️"), 2);
+    assertEquals(characterWidth("\x1b[35m🇺🇸\x1b[0m"), 2);
     assertEquals(characterWidth("a\u0301"), 1);
     assertEquals(characterWidth("\u0301"), 0);
   });

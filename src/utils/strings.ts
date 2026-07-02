@@ -254,13 +254,29 @@ export function characterWidth(character: string): number {
     return codePointWidth(firstCodePoint);
   }
 
-  const codePoints = [...plain].map((char) => char.codePointAt(0) ?? 0);
-  if (codePoints.some((codePoint) => codePoint === 0x200d)) return 2;
-  if (codePoints.length === 2 && codePoints.every(isRegionalIndicator)) return 2;
-  if (codePoints.some((codePoint) => codePoint === 0xfe0f) && codePoints.some(isEmojiSymbol)) return 2;
+  let firstScannedCodePoint = 0;
+  let count = 0;
+  let allRegional = true;
+  let hasZeroWidthJoiner = false;
+  let hasEmojiVariation = false;
+  let hasEmoji = false;
 
-  const codePoint = codePoints[0] ?? 0;
-  return codePointWidth(codePoint);
+  for (let index = 0; index < plain.length;) {
+    const codePoint = plain.codePointAt(index) ?? 0;
+    if (count === 0) firstScannedCodePoint = codePoint;
+    count += 1;
+    if (codePoint === 0x200d) hasZeroWidthJoiner = true;
+    if (codePoint === 0xfe0f) hasEmojiVariation = true;
+    if (isEmojiSymbol(codePoint)) hasEmoji = true;
+    if (!isRegionalIndicator(codePoint)) allRegional = false;
+    index += codePoint > 0xffff ? 2 : 1;
+  }
+
+  if (hasZeroWidthJoiner) return 2;
+  if (count === 2 && allRegional) return 2;
+  if (hasEmojiVariation && hasEmoji) return 2;
+
+  return codePointWidth(firstScannedCodePoint);
 }
 
 function codePointWidth(codePoint: number): number {

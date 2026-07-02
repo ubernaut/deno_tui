@@ -335,6 +335,8 @@ Work:
         reducer callbacks and full network clone/sort when sampling monitor snapshots.
   - [x] Reworked `df` disk parsing to maintain a stable bounded top-N buffer during parsing instead of sorting every
         candidate filesystem and slicing the result.
+  - [x] Reworked multi-codepoint `characterWidth()` measurement to scan Unicode clusters in one pass instead of
+        allocating a codepoint array for emoji/flag/combining sequences.
   - [x] Added a direct sampled-series value helper and migrated compact network monitor traces off temporary RX/TX
         sampled arrays in narrow live-render paths.
   - [x] Added source-array keyed overlay z-order caches and reverse-loop modal hit testing so repeated menu/modal
