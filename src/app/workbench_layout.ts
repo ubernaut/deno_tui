@@ -205,12 +205,18 @@ export function workbenchVerticalScrollbarCellsInto<TCell extends WorkbenchScrol
   rect: Rectangle,
   thumb: ScrollbarThumb,
 ): TCell[] {
-  cells.length = 0;
-  if (rect.width <= 0 || rect.height <= 0) return cells;
+  if (rect.width <= 0 || rect.height <= 0) {
+    cells.length = 0;
+    return cells;
+  }
   const column = rect.column + rect.width - 1;
   for (let row = 0; row < rect.height; row += 1) {
-    cells.push({ column, row: rect.row + row, glyph: scrollbarGlyph(row, thumb) } as TCell);
+    const cell = cells[row] ??= { column: 0, row: 0, glyph: "" } as TCell;
+    cell.column = column;
+    cell.row = rect.row + row;
+    cell.glyph = scrollbarGlyph(row, thumb);
   }
+  cells.length = rect.height;
   return cells;
 }
 
@@ -220,11 +226,17 @@ export function workbenchHorizontalScrollbarCellsInto<TCell extends WorkbenchScr
   rect: Rectangle,
   thumb: ScrollbarThumb,
 ): TCell[] {
-  cells.length = 0;
-  if (rect.width <= 0 || rect.height <= 0) return cells;
+  if (rect.width <= 0 || rect.height <= 0) {
+    cells.length = 0;
+    return cells;
+  }
   const row = rect.row + rect.height - 1;
   for (let column = 0; column < rect.width; column += 1) {
-    cells.push({ column: rect.column + column, row, glyph: scrollbarGlyph(column, thumb) } as TCell);
+    const cell = cells[column] ??= { column: 0, row: 0, glyph: "" } as TCell;
+    cell.column = rect.column + column;
+    cell.row = row;
+    cell.glyph = scrollbarGlyph(column, thumb);
   }
+  cells.length = rect.width;
   return cells;
 }

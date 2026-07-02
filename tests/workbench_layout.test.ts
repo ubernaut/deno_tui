@@ -1,4 +1,4 @@
-import { assertEquals } from "./deps.ts";
+import { assertEquals, assertStrictEquals } from "./deps.ts";
 import {
   clampWorkbenchTileDensity,
   WorkbenchActiveRevealTracker,
@@ -84,6 +84,7 @@ Deno.test("workbenchVerticalScrollbarRect locates the right-edge workspace hit r
 
 Deno.test("workbench scrollbar cell projectors use caller-owned buffers", () => {
   const vertical: Array<{ column: number; row: number; glyph: string }> = [{ column: -1, row: -1, glyph: "x" }];
+  const firstVerticalCell = vertical[0];
   const verticalResult = workbenchVerticalScrollbarCellsInto(
     vertical,
     { column: 4, row: 2, width: 1, height: 4 },
@@ -91,6 +92,7 @@ Deno.test("workbench scrollbar cell projectors use caller-owned buffers", () => 
   );
 
   assertEquals(verticalResult, vertical);
+  assertStrictEquals(vertical[0], firstVerticalCell);
   assertEquals(vertical, [
     { column: 4, row: 2, glyph: "│" },
     { column: 4, row: 3, glyph: "█" },
@@ -113,6 +115,14 @@ Deno.test("workbench scrollbar cell projectors use caller-owned buffers", () => 
       { column: 7, row: 8, glyph: "│" },
     ],
   );
+  const firstHorizontalCell = horizontal[0];
+  workbenchHorizontalScrollbarCellsInto(
+    horizontal,
+    { column: 0, row: 0, width: 2, height: 1 },
+    { start: 0, size: 1, visible: true },
+  );
+  assertStrictEquals(horizontal[0], firstHorizontalCell);
+  assertEquals(horizontal.length, 2);
 });
 
 Deno.test("WorkbenchActiveRevealTracker only emits offsets when active item or viewport changes", () => {
