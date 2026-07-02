@@ -130,3 +130,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   with shared control IDs/hit types in an acyclic base module.
 - Split API workbench wrapped combo/radio option render commands into a focused module while preserving the existing
   controls facade export surface.
+- Split API workbench one-line control projection, render commands, track geometry, and slider hit placement into a
+  focused module behind the existing controls facade.

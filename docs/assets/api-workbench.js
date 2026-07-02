@@ -15233,6 +15233,185 @@ var apiWorkbenchControlIds = [
   "textbox"
 ];
 
+// app/api_workbench_control_line.ts
+function apiWorkbenchControlLineInto(segments, hits, id2, value, rect, row, activeId, options = {}) {
+  let segmentCount = 0;
+  let hitCount = 0;
+  const bottom = rect.row + Math.max(0, rect.height);
+  if (row >= bottom || rect.width <= 0) {
+    segments.length = 0;
+    hits.length = 0;
+    return row;
+  }
+  const active2 = activeId === id2;
+  const prefix = `${active2 && !options.indent ? ">" : " "} ${options.indent ? "  " : ""}`;
+  if (options.button) {
+    const buttonSegments = layoutWorkbenchControlButtonLine(prefix, value, rect.width);
+    for (let index = 0; index < buttonSegments.length; index += 1) {
+      const segment = buttonSegments[index];
+      writeControlLineSegment(
+        segments,
+        segmentCount,
+        segment.kind,
+        segment.text,
+        rect.column + segment.columnOffset,
+        row,
+        segment.width,
+        active2
+      );
+      segmentCount += 1;
+    }
+  } else {
+    const line = fitCellText(`${prefix}${value}`, rect.width);
+    writeControlLineSegment(segments, 0, "line", line, rect.column, row, textWidth(line), active2);
+    segmentCount = 1;
+  }
+  writeControlHit(hits, hitCount, {
+    column: rect.column,
+    row,
+    width: rect.width,
+    height: 1,
+    id: id2,
+    action: options.action ?? "activate",
+    index: options.index
+  });
+  hitCount += 1;
+  if (options.previous) {
+    writeControlHit(hits, hitCount, {
+      column: rect.column,
+      row,
+      width: Math.max(1, Math.floor(rect.width / 2)),
+      height: 1,
+      id: id2,
+      action: "previous"
+    });
+    hitCount += 1;
+  }
+  if (options.next) {
+    writeControlHit(hits, hitCount, {
+      column: rect.column + Math.floor(rect.width / 2),
+      row,
+      width: Math.ceil(rect.width / 2),
+      height: 1,
+      id: id2,
+      action: "next"
+    });
+    hitCount += 1;
+  }
+  segments.length = segmentCount;
+  hits.length = hitCount;
+  return row + 1;
+}
+function apiWorkbenchControlLineRenderCommandsInto(target, segments, options) {
+  let written = 0;
+  if (options.button) {
+    writeControlLineRenderCommand(target, written++, {
+      kind: "fill",
+      role: "base",
+      text: "",
+      column: options.rect.column,
+      row: options.row,
+      width: Math.max(0, Math.floor(options.rect.width)),
+      active: false
+    });
+  }
+  for (let index = 0; index < segments.length; index += 1) {
+    const segment = segments[index];
+    const role = options.button && segment.kind === "button" ? "button" : options.button && segment.kind === "detail" ? "detail" : "base";
+    writeControlLineRenderCommand(target, written++, {
+      kind: "segment",
+      role,
+      text: segment.text,
+      column: segment.column,
+      row: segment.row,
+      width: segment.width,
+      active: segment.active
+    });
+  }
+  target.length = written;
+  return target;
+}
+function apiWorkbenchControlTrack(options) {
+  const minWidth = Math.max(1, Math.floor(options.minWidth ?? 8));
+  const maxWidth = Math.max(minWidth, Math.floor(options.maxWidth ?? 24));
+  const reservedWidth = Math.max(0, Math.floor(options.reservedWidth ?? 18));
+  const available = Math.max(minWidth, Math.floor(options.boundsWidth) - reservedWidth);
+  const width = Math.max(minWidth, Math.min(maxWidth, available));
+  const ratio = Math.max(0, Math.min(1, Number.isFinite(options.ratio) ? options.ratio : 0));
+  const filled = Math.max(0, Math.min(width, Math.round(ratio * width)));
+  const fillGlyph = options.fillGlyph ?? "\u2588";
+  const emptyGlyph = options.emptyGlyph ?? "\u2591";
+  return {
+    width,
+    filled,
+    text: `${fillGlyph.repeat(filled)}${emptyGlyph.repeat(Math.max(0, width - filled))}`
+  };
+}
+function apiWorkbenchSliderSetHitInto(target, rect, row, track, options = {}) {
+  target.column = rect.column + Math.max(0, Math.floor(options.columnOffset ?? 12));
+  target.row = row;
+  target.width = Math.max(1, Math.floor(track.width));
+  target.height = 1;
+  target.id = "slider";
+  target.action = "set";
+  target.index = void 0;
+  return target;
+}
+function writeControlLineSegment(target, index, kind, text, column, row, width, active2) {
+  const segment = target[index] ?? {
+    kind: "line",
+    text: "",
+    column: 0,
+    row: 0,
+    width: 0,
+    active: false
+  };
+  segment.kind = kind;
+  segment.text = text;
+  segment.column = column;
+  segment.row = row;
+  segment.width = width;
+  segment.active = active2;
+  target[index] = segment;
+}
+function writeControlLineRenderCommand(target, index, options) {
+  const command = target[index] ?? {
+    kind: "segment",
+    role: "base",
+    text: "",
+    column: 0,
+    row: 0,
+    width: 0,
+    active: false
+  };
+  command.kind = options.kind;
+  command.role = options.role;
+  command.text = options.text;
+  command.column = options.column;
+  command.row = options.row;
+  command.width = options.width;
+  command.active = options.active;
+  target[index] = command;
+}
+function writeControlHit(target, index, source) {
+  const hit = target[index] ?? {
+    column: 0,
+    row: 0,
+    width: 0,
+    height: 1,
+    id: source.id,
+    action: source.action
+  };
+  hit.column = source.column;
+  hit.row = source.row;
+  hit.width = source.width;
+  hit.height = source.height;
+  hit.id = source.id;
+  hit.action = source.action;
+  hit.index = source.index;
+  target[index] = hit;
+}
+
 // app/api_workbench_control_rows.ts
 function apiWorkbenchButtonRowInto(target, options) {
   const detail = options.detail ? ` ${options.detail}` : "";
@@ -15531,7 +15710,7 @@ function apiWorkbenchWrappedOptionsRenderCommandsInto(target, hits, options) {
     });
     for (let index = 0; index < line.tokens.length; index += 1) {
       const token = line.tokens[index];
-      writeControlHit(hits, hitCount++, {
+      writeControlHit2(hits, hitCount++, {
         column: column + token.columnOffset,
         row,
         width: token.width,
@@ -15561,7 +15740,7 @@ function writeWrappedOptionRenderCommand(target, index, options) {
   command.active = options.active;
   target[index] = command;
 }
-function writeControlHit(target, index, source) {
+function writeControlHit2(target, index, source) {
   const hit = target[index] ?? {
     column: 0,
     row: 0,
@@ -15587,129 +15766,6 @@ function nextApiWorkbenchControlId(current, delta, options = {}) {
   const next = index + delta;
   if (!options.wrap && (next < 0 || next >= apiWorkbenchControlIds.length)) return void 0;
   return apiWorkbenchControlIds[(next % apiWorkbenchControlIds.length + apiWorkbenchControlIds.length) % apiWorkbenchControlIds.length];
-}
-function apiWorkbenchControlLineInto(segments, hits, id2, value, rect, row, activeId, options = {}) {
-  let segmentCount = 0;
-  let hitCount = 0;
-  const bottom = rect.row + Math.max(0, rect.height);
-  if (row >= bottom || rect.width <= 0) {
-    segments.length = 0;
-    hits.length = 0;
-    return row;
-  }
-  const active2 = activeId === id2;
-  const prefix = `${active2 && !options.indent ? ">" : " "} ${options.indent ? "  " : ""}`;
-  if (options.button) {
-    const buttonSegments = layoutWorkbenchControlButtonLine(prefix, value, rect.width);
-    for (let index = 0; index < buttonSegments.length; index += 1) {
-      const segment = buttonSegments[index];
-      writeControlLineSegment(
-        segments,
-        segmentCount,
-        segment.kind,
-        segment.text,
-        rect.column + segment.columnOffset,
-        row,
-        segment.width,
-        active2
-      );
-      segmentCount += 1;
-    }
-  } else {
-    const line = fitCellText(`${prefix}${value}`, rect.width);
-    writeControlLineSegment(segments, 0, "line", line, rect.column, row, textWidth(line), active2);
-    segmentCount = 1;
-  }
-  writeControlHit2(hits, hitCount, {
-    column: rect.column,
-    row,
-    width: rect.width,
-    height: 1,
-    id: id2,
-    action: options.action ?? "activate",
-    index: options.index
-  });
-  hitCount += 1;
-  if (options.previous) {
-    writeControlHit2(hits, hitCount, {
-      column: rect.column,
-      row,
-      width: Math.max(1, Math.floor(rect.width / 2)),
-      height: 1,
-      id: id2,
-      action: "previous"
-    });
-    hitCount += 1;
-  }
-  if (options.next) {
-    writeControlHit2(hits, hitCount, {
-      column: rect.column + Math.floor(rect.width / 2),
-      row,
-      width: Math.ceil(rect.width / 2),
-      height: 1,
-      id: id2,
-      action: "next"
-    });
-    hitCount += 1;
-  }
-  segments.length = segmentCount;
-  hits.length = hitCount;
-  return row + 1;
-}
-function apiWorkbenchControlLineRenderCommandsInto(target, segments, options) {
-  let written = 0;
-  if (options.button) {
-    writeControlLineRenderCommand(target, written++, {
-      kind: "fill",
-      role: "base",
-      text: "",
-      column: options.rect.column,
-      row: options.row,
-      width: Math.max(0, Math.floor(options.rect.width)),
-      active: false
-    });
-  }
-  for (let index = 0; index < segments.length; index += 1) {
-    const segment = segments[index];
-    const role = options.button && segment.kind === "button" ? "button" : options.button && segment.kind === "detail" ? "detail" : "base";
-    writeControlLineRenderCommand(target, written++, {
-      kind: "segment",
-      role,
-      text: segment.text,
-      column: segment.column,
-      row: segment.row,
-      width: segment.width,
-      active: segment.active
-    });
-  }
-  target.length = written;
-  return target;
-}
-function apiWorkbenchControlTrack(options) {
-  const minWidth = Math.max(1, Math.floor(options.minWidth ?? 8));
-  const maxWidth = Math.max(minWidth, Math.floor(options.maxWidth ?? 24));
-  const reservedWidth = Math.max(0, Math.floor(options.reservedWidth ?? 18));
-  const available = Math.max(minWidth, Math.floor(options.boundsWidth) - reservedWidth);
-  const width = Math.max(minWidth, Math.min(maxWidth, available));
-  const ratio = Math.max(0, Math.min(1, Number.isFinite(options.ratio) ? options.ratio : 0));
-  const filled = Math.max(0, Math.min(width, Math.round(ratio * width)));
-  const fillGlyph = options.fillGlyph ?? "\u2588";
-  const emptyGlyph = options.emptyGlyph ?? "\u2591";
-  return {
-    width,
-    filled,
-    text: `${fillGlyph.repeat(filled)}${emptyGlyph.repeat(Math.max(0, width - filled))}`
-  };
-}
-function apiWorkbenchSliderSetHitInto(target, rect, row, track, options = {}) {
-  target.column = rect.column + Math.max(0, Math.floor(options.columnOffset ?? 12));
-  target.row = row;
-  target.width = Math.max(1, Math.floor(track.width));
-  target.height = 1;
-  target.id = "slider";
-  target.action = "set";
-  target.index = void 0;
-  return target;
 }
 function apiWorkbenchDropdownPopoverRect(options) {
   const rect = options.rect;
@@ -15784,60 +15840,6 @@ function apiWorkbenchStepperHitPlacementsInto(target, steps, activeIndex, rect, 
   }
   target.length = written;
   return target;
-}
-function writeControlLineSegment(target, index, kind, text, column, row, width, active2) {
-  const segment = target[index] ?? {
-    kind: "line",
-    text: "",
-    column: 0,
-    row: 0,
-    width: 0,
-    active: false
-  };
-  segment.kind = kind;
-  segment.text = text;
-  segment.column = column;
-  segment.row = row;
-  segment.width = width;
-  segment.active = active2;
-  target[index] = segment;
-}
-function writeControlLineRenderCommand(target, index, options) {
-  const command = target[index] ?? {
-    kind: "segment",
-    role: "base",
-    text: "",
-    column: 0,
-    row: 0,
-    width: 0,
-    active: false
-  };
-  command.kind = options.kind;
-  command.role = options.role;
-  command.text = options.text;
-  command.column = options.column;
-  command.row = options.row;
-  command.width = options.width;
-  command.active = options.active;
-  target[index] = command;
-}
-function writeControlHit2(target, index, source) {
-  const hit = target[index] ?? {
-    column: 0,
-    row: 0,
-    width: 0,
-    height: 1,
-    id: source.id,
-    action: source.action
-  };
-  hit.column = source.column;
-  hit.row = source.row;
-  hit.width = source.width;
-  hit.height = source.height;
-  hit.id = source.id;
-  hit.action = source.action;
-  hit.index = source.index;
-  target[index] = hit;
 }
 function maxItemTextWidth(items) {
   let width = 0;
