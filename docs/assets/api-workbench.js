@@ -10804,6 +10804,30 @@ function normalizeRect2(rect) {
 }
 
 // src/app/workbench_shelf.ts
+function workbenchShelfEntriesInto(target, windows, titleForId) {
+  target.length = 0;
+  for (let index = 0; index < windows.length; index += 1) {
+    const entry = windows[index];
+    if (!entry.minimized || entry.closed) continue;
+    const id2 = entry.id;
+    target.push({ id: id2, title: titleForId(id2) });
+  }
+  return target;
+}
+function workbenchTabEntriesInto(target, tabs, titleForId) {
+  target.length = tabs.length;
+  for (let index = 0; index < tabs.length; index += 1) {
+    const tab = tabs[index];
+    const id2 = tab.id;
+    target[index] = {
+      id: id2,
+      title: titleForId(id2),
+      selected: tab.fullscreen === true,
+      hidden: tab.minimized === true
+    };
+  }
+  return target;
+}
 function layoutWorkbenchShelf(options) {
   return layoutButtonRow({
     row: options.row,
@@ -13524,6 +13548,8 @@ var hitTargets = new HitTargetStack();
 var screenRows = [];
 var workspaceVirtualRows = [];
 var threePreviewOrbRows = [];
+var minimizedShelfEntries = [];
+var fullscreenTabEntries = [];
 var dropdownOverlay = null;
 var pointerDrag = null;
 themeIndex.subscribe((index) => persistThemeIndex(index));
@@ -13872,7 +13898,8 @@ function draw() {
 }
 function renderShelf(frame) {
   const row = rowsCount() - 2;
-  const entries = Object.entries(minimized.peek()).filter(([, value]) => value).map(([id2]) => ({ id: id2, title: panelTitle(id2) }));
+  syncWebWindowManagerState();
+  const entries = workbenchShelfEntriesInto(minimizedShelfEntries, webWindows.inspect().windows, panelTitle);
   if (entries.length === 0) return;
   const layout = layoutWorkbenchShelf({ row, column: 2, width: Math.max(0, cols() - 2), entries });
   write(frame, row, layout.prefixRect.column, paint(layout.prefix, theme().muted, theme().backgroundSoft));
@@ -13939,16 +13966,12 @@ function menuItemRect(menuStart, itemId, preferredWidth, preferredHeight) {
 }
 function renderWindowTabs(frame) {
   const row = rowsCount() - 2;
+  syncWebWindowManagerState();
   const layout = layoutWorkbenchTabs({
     row,
     column: 2,
     width: Math.max(0, cols() - 2),
-    tabs: panelIds.map((id2) => ({
-      id: id2,
-      title: panelTitle(id2),
-      selected: maximized.peek() === id2,
-      hidden: minimized.peek()[id2]
-    }))
+    tabs: workbenchTabEntriesInto(fullscreenTabEntries, webWindows.inspect().tabs, panelTitle)
   });
   write(frame, row, layout.prefixRect.column, paint(layout.prefix, theme().muted, theme().backgroundSoft));
   for (const button of layout.buttons) {
