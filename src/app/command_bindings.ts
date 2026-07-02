@@ -478,11 +478,24 @@ function inspectCommandKeyBindingConflicts(
 }
 
 function uniqueSortedGroups(bindings: readonly { group?: string }[]): string[] {
-  const groups = new Set<string>();
+  const groups: string[] = [];
   for (const binding of bindings) {
-    if (binding.group) groups.add(binding.group);
+    if (binding.group) insertUniqueSorted(groups, binding.group);
   }
-  return [...groups].sort();
+  return groups;
+}
+
+function insertUniqueSorted(values: string[], value: string): void {
+  let low = 0;
+  let high = values.length;
+  while (low < high) {
+    const middle = (low + high) >> 1;
+    const comparison = value.localeCompare(values[middle]!);
+    if (comparison === 0) return;
+    if (comparison < 0) high = middle;
+    else low = middle + 1;
+  }
+  values.splice(low, 0, value);
 }
 
 function conflictingCommandCount(conflicts: readonly CommandKeyBindingConflict[]): number {

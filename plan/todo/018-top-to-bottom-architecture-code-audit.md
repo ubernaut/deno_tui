@@ -1107,6 +1107,8 @@ Work:
         with a small direct scan that fits command labels and keyword lists.
   - [x] Added empty-query fast paths to indexed and non-indexed command-surface search so palette/menu open states keep
         their label/disabled ordering without rebuilding weighted normalized fields for every command.
+  - [x] Replaced command key-binding conflict group `Set`/spread/sort projection with direct unique sorted insertion for
+        stable diagnostics with less transient allocation.
   - [x] Reworked `TreeController.setExpanded()` to preserve unchanged subtree identity and allocate only along the
         changed branch, with regression coverage for no-op and nested expansion updates.
   - [x] Reduced terminal workspace layout lookup clone churn by using internal read-only pane references for active,
