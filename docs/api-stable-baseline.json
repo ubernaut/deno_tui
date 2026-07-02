@@ -3742,6 +3742,27 @@
     },
     {
       "module": "src/app/workbench_layout.ts",
+      "name": "workbenchAdaptiveWindowLayout",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_layout.ts",
+      "name": "WorkbenchAdaptiveWindowLayoutManager",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_layout.ts",
+      "name": "WorkbenchAdaptiveWindowLayoutOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_layout.ts",
       "name": "workbenchHorizontalScrollbarCellsInto",
       "kind": "function",
       "typeOnly": false,

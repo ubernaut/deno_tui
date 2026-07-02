@@ -16,7 +16,7 @@ performance, shared terminal/web workbench projections, and oversized module red
 ## Tasks
 
 - [x] Add benchmark selector ergonomics and coverage for `--query` as a search alias.
-- [ ] Extract another shared renderer-neutral workbench projection from terminal/web duplication.
+- [x] Extract another shared renderer-neutral workbench projection from terminal/web duplication.
 - [ ] Re-run focused and full health checks after each retained milestone.
 - [ ] Continue reducing oversized app/demo modules only at clean abstraction points.
 - [ ] Keep Three ASCII performance changes benchmark-gated; revert any micro-optimization that loses on focused cases.

@@ -32,6 +32,19 @@ export interface WorkbenchLayoutShape {
   visible: readonly WorkbenchLayoutEntryShape[];
 }
 
+/** Minimal window manager shape needed to compute an adaptive workbench layout. */
+export interface WorkbenchAdaptiveWindowLayoutManager {
+  layout(options: {
+    bounds: Rectangle;
+    tileOptions?: Partial<Omit<TileLayoutOptions, "itemCount">>;
+  }): WorkbenchLayoutShape;
+}
+
+/** Options for projecting a window manager layout with shared workbench tile defaults. */
+export interface WorkbenchAdaptiveWindowLayoutOptions extends Omit<WorkbenchAdaptiveTileOptions, "bounds"> {
+  bounds: Rectangle;
+}
+
 /** Options for locating a workbench vertical scrollbar hit region. */
 export interface WorkbenchVerticalScrollbarRectOptions {
   bounds: Rectangle;
@@ -196,6 +209,19 @@ export function workbenchWindowLayout<Id extends string>(
     if (entry.rect) rects.set(entry.id as Id, entry.rect);
   }
   return { bounds, contentHeight: Math.max(bounds.height, layout.contentHeight), rects };
+}
+
+/** Runs a compatible window manager with shared adaptive tile defaults and projects visible rectangles. */
+export function workbenchAdaptiveWindowLayout<Id extends string>(
+  manager: WorkbenchAdaptiveWindowLayoutManager,
+  options: WorkbenchAdaptiveWindowLayoutOptions,
+): WorkbenchWindowLayout<Id> {
+  const bounds = options.bounds;
+  const layout = manager.layout({
+    bounds,
+    tileOptions: workbenchAdaptiveTileOptions(options),
+  });
+  return workbenchWindowLayout<Id>(bounds, layout);
 }
 
 /** Locates the workspace vertical scrollbar hit rectangle, or undefined when it should be hidden. */

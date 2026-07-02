@@ -54,7 +54,7 @@ import {
   subscribeWorkbenchDiagnosticLog,
   translateHitTargets,
   upsertWorkbenchWorkspace,
-  workbenchAdaptiveTileOptions,
+  workbenchAdaptiveWindowLayout,
   workbenchContentViewport,
   type WorkbenchFrame,
   workbenchHorizontalScrollbarCellsInto,
@@ -66,7 +66,6 @@ import {
   workbenchVerticalScrollbarRect,
   workbenchVisualizationIdFromWindowId,
   workbenchVisualizationWindowId,
-  workbenchWindowLayout,
   type WorkbenchWindowOption,
   workbenchWindowOptionMenuLabelsInto,
   workbenchWindowOptionMinimums,
@@ -2849,11 +2848,7 @@ function workspaceLayout(bounds: Rectangle): {
   contentHeight: number;
   rects: Map<WindowId, Rectangle>;
 } {
-  const layout = windowManager.layout({
-    bounds,
-    tileOptions: workbenchAdaptiveTileOptions({ bounds, tileDensity: tileDensity.peek() }),
-  });
-  return workbenchWindowLayout<WindowId>(bounds, layout);
+  return workbenchAdaptiveWindowLayout<WindowId>(windowManager, { bounds, tileDensity: tileDensity.peek() });
 }
 
 function windowScroll(id: WindowId): ScrollAreaController {

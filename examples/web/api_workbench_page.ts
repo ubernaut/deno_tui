@@ -70,7 +70,7 @@ import {
   type TextRectangle,
   textWidth,
   translateHitTargets,
-  workbenchAdaptiveTileOptions,
+  workbenchAdaptiveWindowLayout,
   workbenchButtonPaintOptions,
   type WorkbenchButtonRowItem,
   type WorkbenchButtonRowPlacement,
@@ -88,7 +88,6 @@ import {
   type WorkbenchTitlebarButtonKind,
   workbenchVerticalScrollbarCellsInto,
   workbenchVerticalScrollbarRect,
-  workbenchWindowLayout,
   WorkbenchWorkspaceViewportController,
   wrappedControlOptionRowCount,
   writeStringFrameRow,
@@ -1696,11 +1695,7 @@ function workspaceLayout(bounds: Rectangle): {
   rects: Map<PanelId, Rectangle>;
 } {
   syncWebWindowManagerState();
-  const layout = webWindows.layout({
-    bounds,
-    tileOptions: workbenchAdaptiveTileOptions({ bounds, tileDensity: tileDensity.peek() }),
-  });
-  return workbenchWindowLayout<PanelId>(bounds, layout);
+  return workbenchAdaptiveWindowLayout<PanelId>(webWindows, { bounds, tileDensity: tileDensity.peek() });
 }
 
 function syncWebWindowManagerState(): void {

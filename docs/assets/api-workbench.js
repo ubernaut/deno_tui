@@ -11321,6 +11321,14 @@ function workbenchWindowLayout(bounds, layout) {
   }
   return { bounds, contentHeight: Math.max(bounds.height, layout.contentHeight), rects };
 }
+function workbenchAdaptiveWindowLayout(manager, options) {
+  const bounds = options.bounds;
+  const layout = manager.layout({
+    bounds,
+    tileOptions: workbenchAdaptiveTileOptions(options)
+  });
+  return workbenchWindowLayout(bounds, layout);
+}
 function workbenchVerticalScrollbarRect(options) {
   const minWidth = Math.max(1, Math.floor(options.minWidth ?? 2));
   const bounds = options.bounds;
@@ -16712,11 +16720,7 @@ function adjustTileDensity(delta) {
 }
 function workspaceLayout(bounds) {
   syncWebWindowManagerState();
-  const layout = webWindows.layout({
-    bounds,
-    tileOptions: workbenchAdaptiveTileOptions({ bounds, tileDensity: tileDensity.peek() })
-  });
-  return workbenchWindowLayout(bounds, layout);
+  return workbenchAdaptiveWindowLayout(webWindows, { bounds, tileDensity: tileDensity.peek() });
 }
 function syncWebWindowManagerState() {
   const fullscreenId = maximized.peek() ?? void 0;

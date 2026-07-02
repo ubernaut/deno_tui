@@ -3,6 +3,7 @@ import {
   clampWorkbenchTileDensity,
   WorkbenchActiveRevealTracker,
   workbenchAdaptiveTileOptions,
+  workbenchAdaptiveWindowLayout,
   workbenchHorizontalScrollbarCellsInto,
   workbenchVerticalScrollbarCellsInto,
   workbenchVerticalScrollbarRect,
@@ -58,6 +59,34 @@ Deno.test("workbenchWindowLayout projects visible rects and clamps content heigh
   assertEquals(layout.contentHeight, 20);
   assertEquals(layout.rects.get("a"), { column: 1, row: 2, width: 20, height: 10 });
   assertEquals(layout.rects.has("b"), false);
+});
+
+Deno.test("workbenchAdaptiveWindowLayout runs managers with shared tile defaults", () => {
+  const calls: unknown[] = [];
+  const bounds = { column: 0, row: 0, width: 180, height: 30 };
+  const layout = workbenchAdaptiveWindowLayout<"a">({
+    layout(options) {
+      calls.push(options);
+      return {
+        contentHeight: 42,
+        visible: [{ id: "a", rect: { column: 2, row: 3, width: 40, height: 12 } }],
+      };
+    },
+  }, { bounds, tileDensity: 1 });
+
+  assertEquals(calls, [{
+    bounds,
+    tileOptions: {
+      minTileWidth: 34,
+      minTileHeight: 10,
+      maxColumns: 4,
+      targetAspectRatio: 2.37,
+      allowVerticalOverflow: true,
+      gap: 1,
+    },
+  }]);
+  assertEquals(layout.contentHeight, 42);
+  assertEquals(layout.rects.get("a"), { column: 2, row: 3, width: 40, height: 12 });
 });
 
 Deno.test("workbenchVerticalScrollbarRect locates the right-edge workspace hit region", () => {
