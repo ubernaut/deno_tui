@@ -28,15 +28,21 @@ export function createThemeProviderReportCore(
   const catalog = provider.catalog();
   const activeLayers = provider.layers.activeIds();
   const coverageOptions = options.coverage === false ? undefined : options.coverage ?? {};
+  const componentNames = new Array<string>(catalog.components.length);
+  let variantCount = 0;
+  for (let index = 0; index < catalog.components.length; index += 1) {
+    const component = catalog.components[index]!;
+    componentNames[index] = component.name;
+    variantCount += component.variants.length;
+  }
   const coverage = coverageOptions
     ? deps.inspectCoverage(deps.activeOptions(provider), {
-      components: catalog.components.map((component) => component.name),
+      components: componentNames,
       ...coverageOptions,
     })
     : undefined;
   const preview = options.preview === false ? undefined : deps.previewProvider(provider, options.preview ?? {});
   const issues = deps.inspectIssues(provider);
-  const variantCount = catalog.components.reduce((total, component) => total + component.variants.length, 0);
 
   return {
     title: options.title ?? "Theme Provider Report",
