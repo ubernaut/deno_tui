@@ -255,6 +255,8 @@ Work:
         `map/find/slice` allocation in reusable tree and file-explorer controller paths.
   - [x] Reworked file-explorer path parsing, child lookup, and sorted output projection to avoid split/filter/find/map
         chains while preserving directory-first ordering and empty path segment normalization.
+  - [x] Reworked Three ASCII ANSI assembly to resolve terminal glyph style once per frame and use precomputed fill-key
+        tables in the inner cell loops instead of per-cell style switching and bucket projection.
 
 Acceptance checks:
 

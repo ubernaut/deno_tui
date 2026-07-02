@@ -24,6 +24,14 @@ const GLYPHS_BY_KEY = createGlyphKeyTable();
 const MAX_LINEAR_BYTE_CACHE_SIZE = 65536;
 const MAX_FOREGROUND_ANSI_CACHE_SIZE = 4096;
 const MAX_CELL_CACHE_SIZE = 16384;
+const GLYPH_MODE_BLOCKS = 0;
+const GLYPH_MODE_GLYPHS = 1;
+const GLYPH_MODE_MIXED = 2;
+
+type TerminalGlyphMode = typeof GLYPH_MODE_BLOCKS | typeof GLYPH_MODE_GLYPHS | typeof GLYPH_MODE_MIXED;
+const BLOCK_FILL_GLYPH_KEYS_BY_INDEX = createFillGlyphKeyTable(GLYPH_MODE_BLOCKS);
+const ASCII_FILL_GLYPH_KEYS_BY_INDEX = createFillGlyphKeyTable(GLYPH_MODE_GLYPHS);
+const MIXED_FILL_GLYPH_KEYS_BY_INDEX = createFillGlyphKeyTable(GLYPH_MODE_MIXED);
 
 /** Input buffers for assembling a terminal ANSI grid from three Ascii GPU readback data. */
 export interface ThreeAsciiAnsiGridInput {
@@ -65,6 +73,8 @@ export class ThreeAsciiAnsiGridAssembler {
     const hasEdges = edgeGlyphs !== undefined;
     const colors = input.colors;
     const terminalGlyphStyle = input.terminalGlyphStyle ?? "blocks";
+    const terminalGlyphMode = terminalGlyphModeForStyle(terminalGlyphStyle);
+    const terminalFillGlyphKeys = terminalFillGlyphKeysForMode(terminalGlyphMode);
     const terminalEdgeBias = Math.max(0.5, input.terminalEdgeBias ?? DEFAULT_TERMINAL_EDGE_BIAS);
     this.setBackground(input.backgroundColor);
     this.pruneCaches();
@@ -83,7 +93,8 @@ export class ThreeAsciiAnsiGridAssembler {
         rows,
         fillGlyphs,
         colors,
-        terminalGlyphStyle,
+        terminalGlyphMode,
+        terminalFillGlyphKeys,
         lastForegroundKey,
         lastGlyphKey,
         lastCell,
@@ -117,7 +128,7 @@ export class ThreeAsciiAnsiGridAssembler {
         }
 
         const glyphKey = terminalGlyphForCell(
-          terminalGlyphStyle,
+          terminalFillGlyphKeys,
           edgeGlyphIndex,
           dominantCount,
           totalCount,
@@ -141,7 +152,8 @@ export class ThreeAsciiAnsiGridAssembler {
         let foregroundGreen = this.toByte(rawGreen);
         let foregroundBlue = this.toByte(rawBlue);
         if (
-          terminalGlyphStyle === "blocks" && glyphKey > 0 && glyphKey < GLYPH_KEY_GLYPHS_OFFSET && fillGlyphIndex < 14
+          terminalGlyphMode === GLYPH_MODE_BLOCKS && glyphKey > 0 && glyphKey < GLYPH_KEY_GLYPHS_OFFSET &&
+          fillGlyphIndex < 14
         ) {
           const amount = fillBucketFromGlyphIndex(fillGlyphIndex) / 9;
           foregroundRed = mixByteChannel(this.backgroundRed, foregroundRed, amount);
@@ -189,7 +201,8 @@ export class ThreeAsciiAnsiGridAssembler {
     rows: number,
     fillGlyphs: ArrayLike<number>,
     colors: ArrayLike<number>,
-    terminalGlyphStyle: TerminalGlyphStyle,
+    terminalGlyphMode: TerminalGlyphMode,
+    terminalFillGlyphKeys: readonly number[],
     lastForegroundKey: number,
     lastGlyphKey: number,
     lastCell: string,
@@ -208,7 +221,7 @@ export class ThreeAsciiAnsiGridAssembler {
           continue;
         }
 
-        const glyphKey = terminalFillGlyphForCell(terminalGlyphStyle, fillGlyphIndex);
+        const glyphKey = fillGlyphKeyForIndex(terminalFillGlyphKeys, fillGlyphIndex);
         const colorOffset = index * 4;
         const rawRed = colors[colorOffset] ?? 0;
         const rawGreen = colors[colorOffset + 1] ?? 0;
@@ -223,9 +236,7 @@ export class ThreeAsciiAnsiGridAssembler {
         let foregroundRed = this.toByte(rawRed);
         let foregroundGreen = this.toByte(rawGreen);
         let foregroundBlue = this.toByte(rawBlue);
-        if (
-          terminalGlyphStyle === "blocks" && glyphKey > 0 && glyphKey < GLYPH_KEY_GLYPHS_OFFSET && fillGlyphIndex < 14
-        ) {
+        if (terminalGlyphMode === GLYPH_MODE_BLOCKS && glyphKey > 0 && fillGlyphIndex < 14) {
           const amount = fillBucketFromGlyphIndex(fillGlyphIndex) / 9;
           foregroundRed = mixByteChannel(this.backgroundRed, foregroundRed, amount);
           foregroundGreen = mixByteChannel(this.backgroundGreen, foregroundGreen, amount);
@@ -492,20 +503,44 @@ function pickMixedFillGlyph(fillGlyphIndex: number): number {
   return GLYPH_KEY_MIXED_OFFSET + index;
 }
 
-function terminalFillGlyphForCell(style: TerminalGlyphStyle, fillGlyphIndex: number): number {
-  const bucket = fillBucketFromGlyphIndex(fillGlyphIndex);
+function createFillGlyphKeyTable(mode: TerminalGlyphMode): number[] {
+  const table = new Array<number>(FILL_GLYPHS.length + 5);
+  for (let index = 0; index < table.length; index += 1) {
+    const bucket = fillBucketFromGlyphIndex(index);
+    if (mode === GLYPH_MODE_GLYPHS) {
+      table[index] = GLYPH_KEY_GLYPHS_OFFSET + bucket;
+    } else if (mode === GLYPH_MODE_MIXED) {
+      table[index] = pickMixedFillGlyph(index);
+    } else {
+      table[index] = bucket;
+    }
+  }
+  return table;
+}
+
+function terminalGlyphModeForStyle(style: TerminalGlyphStyle): TerminalGlyphMode {
   switch (style) {
     case "glyphs":
-      return GLYPH_KEY_GLYPHS_OFFSET + bucket;
+      return GLYPH_MODE_GLYPHS;
     case "mixed":
-      return pickMixedFillGlyph(fillGlyphIndex);
+      return GLYPH_MODE_MIXED;
     default:
-      return bucket;
+      return GLYPH_MODE_BLOCKS;
   }
 }
 
+function terminalFillGlyphKeysForMode(mode: TerminalGlyphMode): readonly number[] {
+  if (mode === GLYPH_MODE_GLYPHS) return ASCII_FILL_GLYPH_KEYS_BY_INDEX;
+  if (mode === GLYPH_MODE_MIXED) return MIXED_FILL_GLYPH_KEYS_BY_INDEX;
+  return BLOCK_FILL_GLYPH_KEYS_BY_INDEX;
+}
+
+function fillGlyphKeyForIndex(keys: readonly number[], fillGlyphIndex: number): number {
+  return keys[Math.max(0, Math.min(keys.length - 1, fillGlyphIndex))] ?? 0;
+}
+
 function terminalGlyphForCell(
-  style: TerminalGlyphStyle,
+  fillGlyphKeys: readonly number[],
   edgeGlyphIndex: number,
   dominantCount: number,
   totalCount: number,
@@ -527,7 +562,7 @@ function terminalGlyphForCell(
     return EDGE_GLYPH_KEY_OFFSET + edgeIndex;
   }
 
-  return terminalFillGlyphForCell(style, fillGlyphIndex);
+  return fillGlyphKeyForIndex(fillGlyphKeys, fillGlyphIndex);
 }
 
 function shouldUseGohu11EdgeGlyph(
