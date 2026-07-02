@@ -484,6 +484,7 @@ Deno.test("FileExplorerController builds path trees and opens files", () => {
   const opened: string[] = [];
   const controller = new FileExplorerController({
     root: createFileExplorerTree([
+      "/src//components/alert.ts",
       "/src/components/button.ts",
       "/src/components/tree.ts",
       "/src/layout/window_manager.ts",
@@ -495,13 +496,14 @@ Deno.test("FileExplorerController builds path trees and opens files", () => {
   assertEquals(controller.entries().map((entry) => entry.path), [
     "/src",
     "/src/components",
+    "/src/components/alert.ts",
     "/src/components/button.ts",
     "/src/components/tree.ts",
     "/src/layout",
     "/src/layout/window_manager.ts",
     "/README.md",
   ]);
-  controller.tree.setSelectedIndex(2);
+  controller.tree.setSelectedIndex(3);
   assertEquals(controller.selected()?.kind, "file");
   controller.openActive();
   assertEquals(opened, ["/src/components/button.ts"]);

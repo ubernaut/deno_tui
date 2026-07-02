@@ -253,6 +253,8 @@ Work:
         `reduce()` callbacks from table layout recomputation while preserving current sizing behavior.
   - [x] Reworked tree row text projection, visible-window slicing, toggle lookup, and inspection rows to avoid
         `map/find/slice` allocation in reusable tree and file-explorer controller paths.
+  - [x] Reworked file-explorer path parsing, child lookup, and sorted output projection to avoid split/filter/find/map
+        chains while preserving directory-first ordering and empty path segment normalization.
 
 Acceptance checks:
 

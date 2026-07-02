@@ -107,13 +107,14 @@ export class FileExplorerController {
 export function createFileExplorerTree(paths: readonly string[]): FileExplorerNode[] {
   const root: MutableFileExplorerNode[] = [];
   for (const path of paths) {
-    const parts = path.split("/").filter(Boolean);
+    const parts = splitPathParts(path);
     let current = root;
     let accumulated = "";
-    for (const [index, part] of parts.entries()) {
+    for (let index = 0; index < parts.length; index += 1) {
+      const part = parts[index]!;
       accumulated = `${accumulated}/${part}`;
       const isFile = index === parts.length - 1 && /\.[^/.]+$/.test(part);
-      let node = current.find((entry) => entry.label === part);
+      let node = findExplorerNode(current, part);
       if (!node) {
         node = {
           id: accumulated,
@@ -129,6 +130,27 @@ export function createFileExplorerTree(paths: readonly string[]): FileExplorerNo
     }
   }
   return sortExplorerNodes(root);
+}
+
+function splitPathParts(path: string): string[] {
+  const parts: string[] = [];
+  let start = 0;
+  for (let index = 0; index <= path.length; index += 1) {
+    if (index !== path.length && path[index] !== "/") continue;
+    if (index > start) parts.push(path.slice(start, index));
+    start = index + 1;
+  }
+  return parts;
+}
+
+function findExplorerNode(
+  nodes: readonly MutableFileExplorerNode[],
+  label: string,
+): MutableFileExplorerNode | undefined {
+  for (const node of nodes) {
+    if (node.label === label) return node;
+  }
+  return undefined;
 }
 
 function fileExplorerEntry(row: TreeRow): FileExplorerEntry {
@@ -149,13 +171,20 @@ interface MutableFileExplorerNode extends FileExplorerNode {
 }
 
 function sortExplorerNodes(nodes: readonly MutableFileExplorerNode[]): FileExplorerNode[] {
-  return [...nodes]
-    .sort((left, right) => {
-      if (left.kind !== right.kind) return left.kind === "directory" ? -1 : 1;
-      return left.label.localeCompare(right.label);
-    })
-    .map((node) => ({
+  const sorted = nodes.slice();
+  sorted.sort(compareExplorerNodes);
+  const output = new Array<FileExplorerNode>(sorted.length);
+  for (let index = 0; index < sorted.length; index += 1) {
+    const node = sorted[index]!;
+    output[index] = {
       ...node,
       children: node.children.length > 0 ? sortExplorerNodes(node.children) : undefined,
-    }));
+    };
+  }
+  return output;
+}
+
+function compareExplorerNodes(left: FileExplorerNode, right: FileExplorerNode): number {
+  if (left.kind !== right.kind) return left.kind === "directory" ? -1 : 1;
+  return left.label.localeCompare(right.label);
 }
