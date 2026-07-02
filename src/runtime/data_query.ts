@@ -8,6 +8,7 @@ import {
 } from "./resource.ts";
 
 const QUERY_WHITESPACE = /\s/;
+type ActiveDataQueryFilter = { field: string; expected: unknown };
 
 /** Public type alias for a data Query Sort Direction. */
 export type DataQuerySortDirection = "asc" | "desc";
@@ -234,11 +235,12 @@ export function queryLocalData<
 ): DataQueryResult<TRow> {
   const normalized = normalizeDataQueryParams(params);
   const terms = parseDataQueryTerms(normalized.query);
+  const activeFilters = activeDataQueryFilters(normalized.filters);
   let matched: readonly TRow[] = rows;
-  if (terms.length > 0 || hasActiveDataQueryFilters(normalized.filters) || options.filter) {
+  if (terms.length > 0 || activeFilters.length > 0 || options.filter) {
     const filtered: TRow[] = [];
     for (const row of rows) {
-      if (matchesDataQuery(row, terms, normalized.filters, options)) filtered.push(row);
+      if (matchesDataQuery(row, terms, activeFilters, normalized.filters, options)) filtered.push(row);
     }
     matched = filtered;
   }
@@ -284,11 +286,12 @@ function emptyDataQueryResult<TRow>(params: DataQueryParams): DataQueryResult<TR
 function matchesDataQuery<TRow extends Record<string, unknown>, TFilters extends DataQueryFilters>(
   row: TRow,
   terms: readonly string[],
+  activeFilters: readonly ActiveDataQueryFilter[],
   filters: TFilters,
   options: LocalDataQueryOptions<TRow, TFilters>,
 ): boolean {
   if (options.filter && !options.filter(row, filters)) return false;
-  if (!matchesExactFilters(row, filters)) return false;
+  if (!matchesExactFilters(row, activeFilters)) return false;
   if (terms.length === 0) return true;
   return matchesSearchableTerms(row, terms, options.searchable);
 }
@@ -327,11 +330,11 @@ function searchableValueIncludes<TRow extends Record<string, unknown>>(
   return false;
 }
 
-function matchesExactFilters(row: Record<string, unknown>, filters: DataQueryFilters): boolean {
-  for (const field of Object.keys(filters)) {
-    const expected = filters[field];
-    if (expected === undefined || expected === null || expected === "") continue;
-    const actual = row[field];
+function matchesExactFilters(row: Record<string, unknown>, filters: readonly ActiveDataQueryFilter[]): boolean {
+  for (let index = 0; index < filters.length; index += 1) {
+    const filter = filters[index]!;
+    const actual = row[filter.field];
+    const expected = filter.expected;
     if (Array.isArray(expected)) {
       if (!expected.includes(actual)) return false;
       continue;
@@ -341,12 +344,15 @@ function matchesExactFilters(row: Record<string, unknown>, filters: DataQueryFil
   return true;
 }
 
-function hasActiveDataQueryFilters(filters: DataQueryFilters): boolean {
+function activeDataQueryFilters(filters: DataQueryFilters): ActiveDataQueryFilter[] {
+  const active: ActiveDataQueryFilter[] = [];
   for (const field of Object.keys(filters)) {
     const expected = filters[field];
-    if (expected !== undefined && expected !== null && expected !== "") return true;
+    if (expected !== undefined && expected !== null && expected !== "") {
+      active.push({ field, expected });
+    }
   }
-  return false;
+  return active;
 }
 
 function parseDataQueryTerms(query: string): string[] {

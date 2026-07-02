@@ -89,6 +89,11 @@ Deno.test("queryLocalData filters searches sorts and pages rows", () => {
     pageSize: 2,
     pageCount: 1,
   });
+
+  assertEquals(
+    queryLocalData(rows, { filters: { group: ["shell"], cpu: null }, pageSize: 10 }).rows.map((row) => row.pid),
+    [2],
+  );
 });
 
 Deno.test("nextDataQuerySort cycles ascending descending and cleared", () => {

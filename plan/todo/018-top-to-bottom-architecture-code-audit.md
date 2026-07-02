@@ -264,6 +264,7 @@ Work:
   - [x] Reworked `virtualListRows()` to avoid `Set` allocation for common small-selection windows while preserving the
         indexed lookup path for larger selections.
   - [x] Reworked multiple-selection normalization to avoid chained `map()`/`filter()` plus `Set` allocations.
+  - [x] Reworked local data-query filtering to precompute active exact filters once per query instead of per row.
   - [x] Reworked empty-state row projection to append visible rows directly instead of building filtered/sliced/mapped
         line arrays on each render.
   - [x] Added a shared internal text-row drawing helper and migrated row-oriented widgets to it, removing duplicated
