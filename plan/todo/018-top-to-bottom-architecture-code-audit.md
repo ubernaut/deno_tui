@@ -261,6 +261,8 @@ Work:
   - [x] Reworked `Canvas.render()` to reuse scratch arrays/sets for update dedupe, dirty rectangles, affected objects,
         required-object lookup, and intersection candidates; solid box rendering now styles its filler once per render
         pass instead of once per dirty cell.
+  - [x] Reworked workbench frame assembly to avoid temporary dense row arrays in `renderFrameRow()`/`renderFrameSlice()`
+        and to style rectangle fills once per fill operation.
   - [x] Added `visibleListRowsInto()` and rewired the `List` component to reuse its row buffer instead of allocating
         virtual row objects plus output rows on every render.
   - [x] Added `renderVirtualListRowsInto()` and rewired `VirtualList` display rows to reuse caller-owned output storage.

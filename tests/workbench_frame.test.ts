@@ -70,7 +70,11 @@ Deno.test("workbench frame row preparation reuses arrays and clears retained spa
 
 Deno.test("workbench frame fill helpers clip to the configured width", () => {
   const frame: WorkbenchFrame = [[], [], []];
-  const style = (text: string) => text.replaceAll(" ", ".");
+  let styleCalls = 0;
+  const style = (text: string) => {
+    styleCalls += 1;
+    return text.replaceAll(" ", ".");
+  };
 
   fillFrameRow(frame, 4, 0, style);
   fillFrameRect(frame, 4, { column: 2, row: 1, width: 4, height: 2 }, style);
@@ -78,6 +82,7 @@ Deno.test("workbench frame fill helpers clip to the configured width", () => {
   assertEquals(renderFrameRow(frame[0]!, 4), "....");
   assertEquals(renderFrameRow(frame[1]!, 4), "  ..");
   assertEquals(renderFrameRow(frame[2]!, 4), "  ..");
+  assertEquals(styleCalls, 2);
 });
 
 Deno.test("workbench frame text helpers fit center and format buttons", () => {

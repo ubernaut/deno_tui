@@ -109,27 +109,28 @@ export function fillFrameRect(
   rect: Rectangle,
   style: WorkbenchFrameStyle,
 ): void {
+  const value = style(" ".repeat(Math.max(0, rect.width)));
   for (let row = rect.row; row < rect.row + rect.height; row += 1) {
-    writeFrame(frame, width, row, rect.column, style(" ".repeat(Math.max(0, rect.width))));
+    writeFrame(frame, width, row, rect.column, value);
   }
 }
 
 /** Assembles one frame row from sparse styled cells. */
 export function renderFrameRow(cells: string[], width: number): string {
-  const row = new Array<string>(Math.max(0, width));
+  let row = "";
   for (let column = 0; column < width; column += 1) {
-    row[column] = cells[column] ?? " ";
+    row += cells[column] ?? " ";
   }
-  return row.join("");
+  return row;
 }
 
 /** Assembles a clipped frame row slice from sparse styled cells. */
 export function renderFrameSlice(cells: string[], start: number, width: number): string {
-  const row = new Array<string>(Math.max(0, width));
+  let row = "";
   for (let column = 0; column < width; column += 1) {
-    row[column] = cells[start + column] ?? " ";
+    row += cells[start + column] ?? " ";
   }
-  return row.join("");
+  return row;
 }
 
 /** Writes ANSI-styled text into a string-backed frame row. */
