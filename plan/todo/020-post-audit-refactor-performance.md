@@ -126,3 +126,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   visualization-window helper with direct tests, leaving the web page to handle paint only.
 - Routed terminal and web API workbench slider pointer updates through `SliderController.handlePointer`, removing
   duplicated renderer-local pointer math.
+- Split API workbench TextBox projection and render commands into a focused module behind the existing controls facade,
+  with shared control IDs/hit types in an acyclic base module.
