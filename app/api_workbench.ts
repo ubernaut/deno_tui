@@ -153,6 +153,7 @@ import {
 import { htmlCssLayoutBoxStyle, htmlCssVisibleLayoutBoxesInto } from "./html_css_layout_view.ts";
 import {
   ASCII_DEMO_PRESETS,
+  asciiDemoPresetIds,
   asciiPresetLabel,
   cloneAsciiOptions,
   formatAsciiControlValue,
@@ -300,6 +301,7 @@ const THREE_FALLBACK_BODY: readonly string[] = [
   "      .-#%%%@@@@@@%%%#-.       ",
   "         `-=========-'         ",
 ];
+const ASCII_DEMO_PRESET_IDS = asciiDemoPresetIds();
 const explorerKeys = new Set(["up", "down", "left", "right", "pageup", "pagedown", "home", "end", "space", "return"]);
 const htmlCssLayoutWindowOption: NewWindowOption = {
   id: HTML_CSS_LAYOUT_OPTION_ID,
@@ -2424,7 +2426,7 @@ function applyThreeConfigRow(index: number, action: ConfigHitAction = "activate"
 
 function stepAsciiPreset(delta: number): void {
   const current = configuredAscii().peek();
-  const next = stepWorkbenchAsciiPreset(current, ASCII_DEMO_PRESETS.map((preset) => preset.id), delta);
+  const next = stepWorkbenchAsciiPreset(current, ASCII_DEMO_PRESET_IDS, delta);
   setConfiguredAscii(next.options, `three config preset ${next.label}`, { persist: false });
 }
 
