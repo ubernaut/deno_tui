@@ -176,14 +176,39 @@ export function renderProcessMonitor(context: RenderContext): PanelRender {
 
 function topCpuCoreSummary(cores: RenderContext["system"]["cpuCores"]): string {
   if (cores.length === 0) return "";
-  const sorted = cores.slice().sort((a, b) => b.usage - a.usage);
-  const count = Math.min(4, sorted.length);
+  const sorted = topCpuCores(cores, 4);
+  const count = sorted.length;
   const rows = new Array<string>(count);
   for (let index = 0; index < count; index += 1) {
     const core = sorted[index]!;
     rows[index] = `CPU${core.label.padStart(2, "0")} ${core.usage.toFixed(0).padStart(3, " ")}%`;
   }
   return rows.join("  ");
+}
+
+function topCpuCores(
+  cores: RenderContext["system"]["cpuCores"],
+  limit: number,
+): RenderContext["system"]["cpuCores"] {
+  const count = Math.min(Math.max(0, Math.floor(limit)), cores.length);
+  const top = new Array<RenderContext["system"]["cpuCores"][number]>(count);
+  for (let index = 0; index < cores.length; index += 1) {
+    const core = cores[index]!;
+    let insertAt = -1;
+    for (let target = 0; target < count; target += 1) {
+      const existing = top[target];
+      if (!existing || core.usage > existing.usage) {
+        insertAt = target;
+        break;
+      }
+    }
+    if (insertAt < 0) continue;
+    for (let target = count - 1; target > insertAt; target -= 1) {
+      top[target] = top[target - 1]!;
+    }
+    top[insertAt] = core;
+  }
+  return top;
 }
 
 function formatLoadAverage(values: readonly number[]): string {

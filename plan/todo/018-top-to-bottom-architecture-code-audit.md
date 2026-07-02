@@ -239,6 +239,8 @@ Work:
         `Array.from()` helpers in the dynamic visualization hot path.
   - [x] Reworked CPU legend, network compact trace/history, and GPU memory bank render paths to avoid nested temporary
         arrays in frame-critical monitor widgets.
+  - [x] Reworked CPU monitor hottest-core summary to keep a fixed top-four buffer instead of cloning and sorting all
+        cores on high-core systems.
   - [x] Reworked the chart renderer to scan sampled values in-place and compute component rows once per draw update
         instead of once per rendered line.
   - [x] Reworked CPU hex-grid label measurement, tile layout, row buffers, and selected CPU range projection to avoid

@@ -113,6 +113,30 @@ Deno.test("system CPU monitor renders load, history, and hottest cores", () => {
   assertEquals(panel.accent, "signal");
 });
 
+Deno.test("system CPU monitor shows only the hottest four cores", () => {
+  const panel = renderCpuMonitor(
+    context({
+      ...baseSystem,
+      cpuCores: [
+        { label: "0", usage: 10 },
+        { label: "1", usage: 95 },
+        { label: "2", usage: 40 },
+        { label: "3", usage: 91 },
+        { label: "4", usage: 85 },
+        { label: "5", usage: 84 },
+        { label: "6", usage: 83 },
+      ],
+    }),
+    dependencies,
+  );
+
+  assertStringIncludes(panel.body, "CPU01  95%");
+  assertStringIncludes(panel.body, "CPU03  91%");
+  assertStringIncludes(panel.body, "CPU04  85%");
+  assertStringIncludes(panel.body, "CPU05  84%");
+  assertEquals(panel.body.includes("CPU06  83%"), false);
+});
+
 Deno.test("system CPU legend includes every core across wrapped rows", () => {
   const panel = renderCpuLegend(context(baseSystem, 30, 8), dependencies);
   assertStringIncludes(panel.body, "000");
