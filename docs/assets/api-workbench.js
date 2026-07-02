@@ -2447,6 +2447,14 @@ var DirtyRegion = class _DirtyRegion {
     }
     return output;
   }
+  /** Visits row segments without cloning them for hot render paths. */
+  forEachSegment(visitor) {
+    for (const segments of this.#rows.values()) {
+      for (const segment of segments) {
+        visitor(segment);
+      }
+    }
+  }
   /** Returns true when any dirty segment intersects the rectangle. */
   intersects(rectangle) {
     const rowStart = Math.floor(rectangle.row);
@@ -2551,6 +2559,22 @@ var DrawObjectSpatialIndex = class _DrawObjectSpatialIndex {
         candidates.add(object);
       }
     }
+    return [...candidates];
+  }
+  queryDirtyRegion(region) {
+    if (region.isEmpty()) return [];
+    const candidates = /* @__PURE__ */ new Set();
+    region.forEachSegment((segment) => {
+      const startColumn = segment.startColumn;
+      const endColumn = segment.endColumn;
+      for (const object of this.#rows.get(segment.row) ?? []) {
+        const objectRectangle = object.rectangle.peek();
+        const objectStartColumn = Math.floor(objectRectangle.column);
+        const objectEndColumn = objectStartColumn + Math.max(0, Math.floor(objectRectangle.width));
+        if (objectEndColumn <= startColumn || objectStartColumn >= endColumn) continue;
+        candidates.add(object);
+      }
+    });
     return [...candidates];
   }
   inspect() {
@@ -2787,10 +2811,16 @@ var Canvas = class extends EventEmitter {
       }
     }
     const dirtyRegion = DirtyRegion.fromRectangles(dirtyRectangles);
-    const objectsToRender = intersectionsDirty ? affectedDrawObjects(this.drawnObjects, dirtyRegion, nonMovingUpdatedObjects) : objectsToUpdate;
+    const spatialIndex = intersectionsDirty ? DrawObjectSpatialIndex.fromObjects(this.drawnObjects) : void 0;
+    const objectsToRender = intersectionsDirty ? affectedDrawObjects(
+      this.drawnObjects,
+      dirtyRegion,
+      nonMovingUpdatedObjects,
+      movedOwnObjects,
+      spatialIndex
+    ) : objectsToUpdate;
     let intersectionCandidateChecks = 0;
     if (intersectionsDirty) {
-      const spatialIndex = DrawObjectSpatialIndex.fromObjects(this.drawnObjects);
       objectsToRender.sort((a, b) => b.zIndex.peek() - a.zIndex.peek() || b.id - a.id);
       for (const object of objectsToRender) {
         intersectionCandidateChecks += this.updateIntersections(
@@ -2896,14 +2926,20 @@ function cloneRectangle(rectangle) {
     height: rectangle.height
   };
 }
-function affectedDrawObjects(objects, dirtyRegion, requiredObjects) {
+function affectedDrawObjects(objects, dirtyRegion, requiredObjects, movedObjects, spatialIndex) {
   if (dirtyRegion.isEmpty()) {
     return [...objects];
   }
   const required = new Set(requiredObjects);
+  for (const object of movedObjects) {
+    required.add(object);
+  }
+  for (const object of spatialIndex.queryDirtyRegion(dirtyRegion)) {
+    required.add(object);
+  }
   const affected = [];
   for (const object of objects) {
-    if (required.has(object) || object.moved || dirtyRegion.intersects(object.rectangle.peek())) {
+    if (required.has(object)) {
       affected.push(object);
     }
   }
@@ -3630,27 +3666,42 @@ var WindowManagerController = class {
   activeId;
   fullscreenId;
   tileOptions;
+  #orderedAll = [];
+  #orderedOpen = [];
+  #syncOrderedWindows = () => {
+    const source = this.windows.peek();
+    const all = new Array(source.length);
+    const open = [];
+    for (let index = 0; index < source.length; index += 1) {
+      const entry = source[index];
+      all[index] = entry;
+      if (windowState(entry) !== "closed") open.push(entry);
+    }
+    all.sort(compareWindowOrder);
+    open.sort(compareWindowOrder);
+    this.#orderedAll = all;
+    this.#orderedOpen = open;
+  };
   constructor(options) {
     const windows = normalizeWindows(options.windows);
     this.windows = new Signal(windows, { deepObserve: true });
     this.activeId = new Signal(normalizeWindowId(windows, options.activeId) ?? firstOpenWindow(windows)?.id);
     this.fullscreenId = new Signal(normalizeWindowId(windows, options.fullscreenId ?? void 0));
     this.tileOptions = new Signal({ ...options.tileOptions ?? {} }, { deepObserve: true });
+    this.#syncOrderedWindows();
+    this.windows.subscribe(this.#syncOrderedWindows);
     this.#repairState();
   }
   ids(options = {}) {
-    const windows = this.orderedWindows(options);
+    const windows = this.#orderedWindows(options.includeClosed);
     const ids = new Array(windows.length);
     for (let index = 0; index < windows.length; index += 1) ids[index] = windows[index].id;
     return ids;
   }
   orderedWindows(options = {}) {
-    const source = this.windows.peek();
-    const windows = [];
-    for (const entry of source) {
-      if (options.includeClosed || windowState(entry) !== "closed") windows.push(entry);
-    }
-    windows.sort((left, right) => (left.order ?? 0) - (right.order ?? 0));
+    const source = this.#orderedWindows(options.includeClosed);
+    const windows = new Array(source.length);
+    for (let index = 0; index < source.length; index += 1) windows[index] = source[index];
     return windows;
   }
   active() {
@@ -3729,7 +3780,7 @@ var WindowManagerController = class {
     if (!window || windowState(window) === "closed") return void 0;
     this.#setState(id2, "minimized");
     if (this.fullscreenId.peek() === id2) this.fullscreenId.value = void 0;
-    const next = firstNonMinimizedWindow(this.orderedWindows());
+    const next = firstNonMinimizedWindow(this.#orderedWindows(false));
     this.activeId.value = next?.id ?? id2;
     this.#repairState();
     return this.#window(id2);
@@ -3740,7 +3791,7 @@ var WindowManagerController = class {
     if (!window || window.closable === false) return window;
     this.#setState(id2, "closed");
     if (this.fullscreenId.peek() === id2) this.fullscreenId.value = void 0;
-    const next = firstNonMinimizedWindow(this.orderedWindows());
+    const next = firstNonMinimizedWindow(this.#orderedWindows(false));
     this.activeId.value = next?.id;
     this.#repairState();
     return this.#window(id2);
@@ -3782,7 +3833,7 @@ var WindowManagerController = class {
     const bounds = options.bounds;
     const rects = /* @__PURE__ */ new Map();
     const fullscreenId = this.fullscreenId.peek();
-    const windows = this.orderedWindows({ includeClosed: true });
+    const windows = this.#orderedWindows(true);
     const visible = [];
     for (const entry of windows) {
       if (windowState(entry) === "normal") visible.push(entry);
@@ -3839,6 +3890,7 @@ var WindowManagerController = class {
     return this.layout({ bounds: { column: 0, row: 0, width: 0, height: 0 } });
   }
   dispose() {
+    this.windows.unsubscribe(this.#syncOrderedWindows);
     this.windows.dispose();
     this.activeId.dispose();
     this.fullscreenId.dispose();
@@ -3852,7 +3904,7 @@ var WindowManagerController = class {
     if (window) this.windows.value = replaceWindow(this.windows.peek(), id2, { ...window, state });
   }
   #repairState() {
-    const windows = this.orderedWindows();
+    const windows = this.#orderedWindows(false);
     if (!hasOpenWindowId(windows, this.activeId.peek())) {
       this.activeId.value = firstOpenWindow(windows)?.id;
     }
@@ -3860,6 +3912,9 @@ var WindowManagerController = class {
     if (fullscreenId && !hasOpenWindowId(windows, fullscreenId)) {
       this.fullscreenId.value = void 0;
     }
+  }
+  #orderedWindows(includeClosed = false) {
+    return includeClosed ? this.#orderedAll : this.#orderedOpen;
   }
 };
 function windowManagerZOrder(windows) {
@@ -3889,6 +3944,9 @@ function replaceWindow(windows, id2, replacement) {
     next[index] = entry.id === id2 ? replacement : entry;
   }
   return next;
+}
+function compareWindowOrder(left, right) {
+  return (left.order ?? 0) - (right.order ?? 0);
 }
 function nextWindowOrder(windows) {
   let order = -1;
@@ -7260,10 +7318,21 @@ function inspectTreeRow(row) {
 var TreeController = class {
   nodes;
   selectedIndex;
+  #rows = [];
+  #rowTexts = [];
   #ownsNodes;
   #ownsSelectedIndex;
   #onSelect;
   #onToggle;
+  #syncRows = () => {
+    const rows2 = flattenTreeRows(this.nodes.peek());
+    const texts = new Array(rows2.length);
+    for (let index = 0; index < rows2.length; index += 1) {
+      texts[index] = rows2[index].text;
+    }
+    this.#rows = rows2;
+    this.#rowTexts = texts;
+  };
   #syncSelection = () => {
     this.selectedIndex.value = clampSelectionIndex(this.visibleRows().length, this.selectedIndex.peek());
   };
@@ -7274,19 +7343,16 @@ var TreeController = class {
     this.selectedIndex = signalify(options.selectedIndex ?? 0);
     this.#onSelect = options.onSelect;
     this.#onToggle = options.onToggle;
+    this.#syncRows();
+    this.nodes.subscribe(this.#syncRows);
     this.nodes.subscribe(this.#syncSelection);
     this.#syncSelection();
   }
   visibleRows() {
-    return flattenTreeRows(this.nodes.peek());
+    return this.#rows;
   }
   rowTexts() {
-    const rows2 = this.visibleRows();
-    const texts = new Array(rows2.length);
-    for (let index = 0; index < rows2.length; index += 1) {
-      texts[index] = rows2[index].text;
-    }
-    return texts;
+    return this.#rowTexts;
   }
   visible(height) {
     const rows2 = this.visibleRows();
@@ -7403,6 +7469,7 @@ var TreeController = class {
     };
   }
   dispose() {
+    this.nodes.unsubscribe(this.#syncRows);
     this.nodes.unsubscribe(this.#syncSelection);
     if (this.#ownsNodes) this.nodes.dispose();
     if (this.#ownsSelectedIndex) this.selectedIndex.dispose();
