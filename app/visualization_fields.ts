@@ -17,9 +17,14 @@ import {
 } from "./visualization_primitives.ts";
 
 function normalizeFieldRows(lines: readonly string[], width: number, height: number) {
-  const rows = lines.slice(0, Math.max(1, height)).map((line) => crop(line, width).padEnd(width, " "));
-  while (rows.length < height) {
-    rows.push(" ".repeat(width));
+  const visible = Math.min(lines.length, Math.max(1, height));
+  const rows = new Array<string>(Math.max(visible, height));
+  for (let index = 0; index < visible; index += 1) {
+    rows[index] = crop(lines[index]!, width).padEnd(width, " ");
+  }
+  const emptyRow = " ".repeat(width);
+  for (let index = visible; index < height; index += 1) {
+    rows[index] = emptyRow;
   }
   return rows.join("\n");
 }
@@ -364,10 +369,12 @@ export function componentIndex(
   const header = `INDEX ${(drive.current * 100).toFixed(0)}%  Δ${
     (drive.divergence * 100).toFixed(0)
   }  SRC ${drive.activeCount}/${drive.sources.length}`;
-  const entries = labels.map((label, index) => {
+  const entries = new Array<string>(labels.length);
+  for (let index = 0; index < labels.length; index += 1) {
+    const label = labels[index]!;
     const pulse = drive.pulseSeries[index % drive.pulseSeries.length] ?? drive.current;
     const marker = pulse >= 0.82 ? "█" : pulse >= 0.6 ? "▓" : pulse >= 0.36 ? "▒" : "░";
-    return `${marker} ${label.toUpperCase()}`;
-  });
+    entries[index] = `${marker} ${label.toUpperCase()}`;
+  }
   return normalizeFieldRows([header, ...gridify(entries, width).split("\n")], width, height);
 }

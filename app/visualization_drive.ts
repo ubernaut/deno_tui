@@ -297,7 +297,11 @@ function mergeValueFromSeries(values: number[]): number {
   if (values.length === 0) {
     return 0.12;
   }
-  return clamp(values.reduce((sum, value) => sum + value, 0) / values.length, 0, 1);
+  let sum = 0;
+  for (let index = 0; index < values.length; index += 1) {
+    sum += values[index]!;
+  }
+  return clamp(sum / values.length, 0, 1);
 }
 
 function last(values: number[]): number {

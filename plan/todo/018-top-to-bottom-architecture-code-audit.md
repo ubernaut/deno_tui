@@ -885,6 +885,8 @@ Work:
         injected from the visualization renderer instead of duplicating shared drawing utilities.
   - [x] Reworked network visualization row assembly to use bounded direct buffers instead of visible-row `slice`/`map`
         pipelines during redraw.
+  - [x] Reduced shared visualization drive and Neon field renderer projection churn by replacing hot aggregate and
+        visible-row transformations with direct loops.
   - [x] Extracted Three visualization text fallback body/footer rendering into `app/visualization_three_fallback.ts`,
         keeping primitive-mode fallback output directly fixture-testable outside the main visualization dispatcher.
   - [x] Optimized `ThreeAsciiObject` canvas handoff to queue only changed ASCII cells between frames, with a fake
