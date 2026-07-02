@@ -176,16 +176,26 @@ interface MutableFileExplorerNode extends FileExplorerNode {
 }
 
 function sortExplorerNodes(nodes: readonly MutableFileExplorerNode[]): FileExplorerNode[] {
-  const sorted = nodes.slice();
+  const sorted = copyExplorerNodes(nodes);
   sorted.sort(compareExplorerNodes);
   const output = new Array<FileExplorerNode>(sorted.length);
   for (let index = 0; index < sorted.length; index += 1) {
     const node = sorted[index]!;
     output[index] = {
-      ...node,
+      id: node.id,
+      label: node.label,
+      path: node.path,
+      kind: node.kind,
+      expanded: node.expanded,
       children: node.children.length > 0 ? sortExplorerNodes(node.children) : undefined,
     };
   }
+  return output;
+}
+
+function copyExplorerNodes(nodes: readonly MutableFileExplorerNode[]): MutableFileExplorerNode[] {
+  const output = new Array<MutableFileExplorerNode>(nodes.length);
+  for (let index = 0; index < nodes.length; index += 1) output[index] = nodes[index]!;
   return output;
 }
 

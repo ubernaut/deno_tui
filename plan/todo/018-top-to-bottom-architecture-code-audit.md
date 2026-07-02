@@ -167,6 +167,8 @@ Work:
         projections while preserving the same hit targets and scroll behavior.
   - [x] Reworked data-table filter/sort cloning to use an explicit copy helper instead of spread arrays while preserving
         immutable result semantics.
+  - [x] Reworked file-explorer tree sorting to use explicit copy/projection loops instead of `slice()` cloning and
+        object spread when materializing immutable nodes.
 - [x] Replace duplicated theme/window/menu persistence code with a shared versioned serializer.
   - [x] Extracted shared workbench workspace normalization, panel-state normalization, upsert, rename, delete, lookup,
         and legacy window-entry expansion helpers into `src/app/workbench_workspace.ts`.
