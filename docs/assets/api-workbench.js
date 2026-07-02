@@ -10580,6 +10580,11 @@ function writeStringFrameRow(frame, width, row, column, value) {
   }
   frame[row] = renderFrameRow(cells, width);
 }
+function fillStringFrameRect(frame, width, rect, value) {
+  for (let row = rect.row; row < rect.row + rect.height; row += 1) {
+    writeStringFrameRow(frame, width, row, rect.column, value);
+  }
+}
 function fitCellText(value, width) {
   const visible = textWidth(value);
   if (visible === width) return value;
@@ -15715,9 +15720,7 @@ function fit(value, width) {
   return fitCellText(value, width);
 }
 function fillRect(frame, rect, bg) {
-  for (let row = rect.row; row < rect.row + rect.height; row += 1) {
-    write(frame, row, rect.column, paint(" ".repeat(Math.max(0, rect.width)), theme().text, bg));
-  }
+  fillStringFrameRect(frame, cols(), rect, paint(" ".repeat(Math.max(0, rect.width)), theme().text, bg));
 }
 function drawFrame(frame, rect, title, selected) {
   const border = selected ? theme().accent : theme().borderStrong;

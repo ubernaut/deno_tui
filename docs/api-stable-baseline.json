@@ -3476,6 +3476,13 @@
     },
     {
       "module": "src/app/workbench_frame.ts",
+      "name": "fillStringFrameRect",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_frame.ts",
       "name": "fitCellText",
       "kind": "function",
       "typeOnly": false,

@@ -21,6 +21,7 @@ import {
   DataTableController,
   defaultWorkbenchMinimizedState,
   FileExplorerController,
+  fillStringFrameRect,
   fitCellText,
   formatWorkbenchDiagnosticStatus,
   type HitTarget,
@@ -2082,9 +2083,7 @@ function fit(value: string, width: number): string {
   return fitCellText(value, width);
 }
 function fillRect(frame: string[], rect: Rectangle, bg: string): void {
-  for (let row = rect.row; row < rect.row + rect.height; row += 1) {
-    write(frame, row, rect.column, paint(" ".repeat(Math.max(0, rect.width)), theme().text, bg));
-  }
+  fillStringFrameRect(frame, cols(), rect, paint(" ".repeat(Math.max(0, rect.width)), theme().text, bg));
 }
 
 function drawFrame(frame: string[], rect: Rectangle, title: string, selected: boolean): void {

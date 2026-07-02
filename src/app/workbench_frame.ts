@@ -152,6 +152,18 @@ export function writeStringFrameRow(
   frame[row] = renderFrameRow(cells, width);
 }
 
+/** Writes a repeated string-backed fill row into a rectangular frame region. */
+export function fillStringFrameRect(
+  frame: string[],
+  width: number,
+  rect: Rectangle,
+  value: string,
+): void {
+  for (let row = rect.row; row < rect.row + rect.height; row += 1) {
+    writeStringFrameRow(frame, width, row, rect.column, value);
+  }
+}
+
 /** Pads or truncates text to a terminal-cell width. */
 export function fitCellText(value: string, width: number): string {
   const visible = textWidth(value);

@@ -5,6 +5,7 @@ import {
   contrastText,
   fillFrameRect,
   fillFrameRow,
+  fillStringFrameRect,
   fitCellText,
   parseHexColor,
   prepareWorkbenchFrame,
@@ -46,6 +47,12 @@ Deno.test("workbench frame writes ANSI strings into string-backed rows", () => {
 
   writeStringFrameRow(frame, 5, 0, -1, "\x1b[32mXY\x1b[0m");
   assertEquals(frame[0], "\x1b[32mY\x1b[0m\x1b[31mA\x1b[0m\x1b[31mB\x1b[0m..");
+
+  const rectFrame = [".....", ".....", "....."];
+  fillStringFrameRect(rectFrame, 5, { column: 1, row: 1, width: 3, height: 2 }, "\x1b[34m...\x1b[0m");
+  assertEquals(rectFrame[0], ".....");
+  assertEquals(rectFrame[1], ".\x1b[34m.\x1b[0m\x1b[34m.\x1b[0m\x1b[34m.\x1b[0m.");
+  assertEquals(rectFrame[2], ".\x1b[34m.\x1b[0m\x1b[34m.\x1b[0m\x1b[34m.\x1b[0m.");
 });
 
 Deno.test("workbench frame row preparation reuses arrays and clears retained sparse rows", () => {
