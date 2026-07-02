@@ -89,7 +89,12 @@ import {
 import { clampTabIndex, renderTabs, shiftTabIndex, tabForIndex, TabsController } from "../src/components/tabs.ts";
 import { TextBoxController, textBoxVisualCursor, TextLineCache, wrapTextBoxLines } from "../src/components/textbox.ts";
 import { flattenTree, flattenTreeRows, TreeController } from "../src/components/tree.ts";
-import { renderVirtualListRows, VirtualListController, virtualListRows } from "../src/components/virtual_list.ts";
+import {
+  renderVirtualListRows,
+  renderVirtualListRowsInto,
+  VirtualListController,
+  virtualListRows,
+} from "../src/components/virtual_list.ts";
 import type { Key, KeyPressEvent } from "../src/input_reader/types.ts";
 import { Signal } from "../src/signals/mod.ts";
 import type { Component } from "../src/component.ts";
@@ -833,6 +838,17 @@ Deno.test("virtual list rows support formatted multi selection windows", () => {
     "> ● delta",
     "    epsilon",
   ]);
+  const buffer = ["stale"];
+  assertEquals(renderVirtualListRowsInto(buffer, items, state, 3, (item, index) => `${index}:${item}`), [
+    "    2:gamma",
+    "> ● 3:delta",
+    "    4:epsilon",
+  ]);
+  assertEquals(
+    renderVirtualListRowsInto(buffer, ["alpha"], { activeIndex: 0, anchorIndex: 0, selected: [] }, 3),
+    buffer,
+  );
+  assertEquals(buffer, [">   alpha"]);
 });
 
 Deno.test("VirtualListController drives viewport rows and key navigation", () => {

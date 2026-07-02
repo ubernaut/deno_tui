@@ -83,15 +83,27 @@ export function renderVirtualListRows<T>(
   height: number,
   format?: (item: T, index: number) => string,
 ): string[] {
-  const rows = virtualListRows(items, state, height, format);
-  const output = new Array<string>(rows.length);
-  for (let index = 0; index < rows.length; index += 1) {
-    const row = rows[index]!;
-    const cursor = row.active ? ">" : " ";
-    const marker = row.selected ? "●" : " ";
-    output[index] = `${cursor} ${marker} ${row.text}`;
+  return renderVirtualListRowsInto([], items, state, height, format);
+}
+
+/** Renders virtual List Rows into a caller-owned deterministic text row buffer. */
+export function renderVirtualListRowsInto<T>(
+  target: string[],
+  items: readonly T[],
+  state: SelectionState,
+  height: number,
+  format: (item: T, index: number) => string = String,
+): string[] {
+  const window = selectionWindow(items.length, state.activeIndex, height);
+  const count = Math.max(0, window.end - window.start);
+  target.length = count;
+  for (let offset = 0; offset < count; offset += 1) {
+    const index = window.start + offset;
+    const cursor = index === state.activeIndex ? ">" : " ";
+    const marker = virtualListIndexSelected(state.selected, index) ? "●" : " ";
+    target[offset] = `${cursor} ${marker} ${format(items[index]!, index)}`;
   }
-  return output;
+  return target;
 }
 
 /** State controller for virtual List behavior. */
@@ -270,6 +282,7 @@ export class VirtualList<T> extends Component {
   readonly format: (item: T, index: number) => string;
   readonly controller: VirtualListController<T>;
   readonly #displayRows: Computed<string[]>;
+  readonly #displayBuffer: string[] = [];
   readonly #syncViewportHeight = () => {
     this.controller.setViewportHeight(this.rectangle.peek().height);
   };
@@ -287,7 +300,7 @@ export class VirtualList<T> extends Component {
     this.items = this.controller.items;
     this.selection = this.controller.selection;
     this.format = this.controller.format;
-    this.#displayRows = new Computed(() => renderVirtualRows(this.controller.rows.value));
+    this.#displayRows = new Computed(() => renderVirtualRowsInto(this.#displayBuffer, this.controller.rows.value));
     this.#syncViewportHeight();
     this.rectangle.subscribe(this.#syncViewportHeight);
 
@@ -311,13 +324,20 @@ export class VirtualList<T> extends Component {
   }
 }
 
-function renderVirtualRows<T>(rows: readonly VirtualListRow<T>[]): string[] {
-  const output = new Array<string>(rows.length);
+function renderVirtualRowsInto<T>(target: string[], rows: readonly VirtualListRow<T>[]): string[] {
+  target.length = rows.length;
   for (let index = 0; index < rows.length; index += 1) {
     const row = rows[index]!;
     const cursor = row.active ? ">" : " ";
     const marker = row.selected ? "●" : " ";
-    output[index] = `${cursor} ${marker} ${row.text}`;
+    target[index] = `${cursor} ${marker} ${row.text}`;
   }
-  return output;
+  return target;
+}
+
+function virtualListIndexSelected(selected: readonly number[], index: number): boolean {
+  for (let offset = 0; offset < selected.length; offset += 1) {
+    if (selected[offset] === index) return true;
+  }
+  return false;
 }

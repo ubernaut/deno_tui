@@ -260,6 +260,7 @@ Work:
         an id list per focus movement.
   - [x] Added `visibleListRowsInto()` and rewired the `List` component to reuse its row buffer instead of allocating
         virtual row objects plus output rows on every render.
+  - [x] Added `renderVirtualListRowsInto()` and rewired `VirtualList` display rows to reuse caller-owned output storage.
   - [x] Reworked empty-state row projection to append visible rows directly instead of building filtered/sliced/mapped
         line arrays on each render.
   - [x] Added a shared internal text-row drawing helper and migrated row-oriented widgets to it, removing duplicated

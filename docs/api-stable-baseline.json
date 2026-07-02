@@ -6829,6 +6829,13 @@
     },
     {
       "module": "src/components/virtual_list.ts",
+      "name": "renderVirtualListRowsInto",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/components/virtual_list.ts",
       "name": "VirtualList",
       "kind": "class",
       "typeOnly": false,
