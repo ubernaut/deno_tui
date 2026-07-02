@@ -362,6 +362,8 @@ Work:
         `find/every` scans while keeping tmux-like command actions renderer-neutral.
   - [x] Reworked Yoga layout child projection, Yoga text measurement, simple-solver intrinsic cache signatures, and grid
         track shrinking to use direct accumulation instead of map/reduce/spread pipelines in layout solve paths.
+  - [x] Reworked shared layout-node cloning and class-list parsing to use explicit child/string buffers instead of
+        `children.map()` and `split().filter()` during markup cascade and hydration.
   - [x] Added a worker-compatible markup layout adapter so browser and console callers can run parse/cascade/layout jobs
         through `WorkerPool` while keeping widget-controller hydration on the UI thread.
   - [x] Reworked route binding source projection, route command keywords, and visible-route shifting to use shared

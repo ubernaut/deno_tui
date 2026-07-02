@@ -111,7 +111,7 @@ export function createLayoutNode(options: LayoutNodeOptions): LayoutNode {
   return {
     id,
     tag: options.tag,
-    classes: [...classNames],
+    classes: cloneStringArray(classNames),
     attributes,
     text: options.text,
     style: options.style ? cloneComputedLayoutStyle(options.style) : defaultComputedLayoutStyle(),
@@ -122,14 +122,18 @@ export function createLayoutNode(options: LayoutNodeOptions): LayoutNode {
 
 /** Clones a renderer-neutral layout tree node recursively. */
 export function cloneLayoutNode(node: LayoutNode): LayoutNode {
+  const children = new Array<LayoutNode>(node.children.length);
+  for (let index = 0; index < node.children.length; index += 1) {
+    children[index] = cloneLayoutNode(node.children[index]!);
+  }
   return {
     id: node.id,
     tag: node.tag,
-    classes: [...node.classes],
+    classes: cloneStringArray(node.classes),
     attributes: { ...node.attributes },
     text: node.text,
     style: cloneComputedLayoutStyle(node.style),
-    children: node.children.map(cloneLayoutNode),
+    children,
     intrinsic: node.intrinsic ? { ...node.intrinsic } : undefined,
   };
 }
@@ -170,5 +174,29 @@ export function flattenComputedLayoutBoxes(root: ComputedLayoutBox): ComputedLay
 }
 
 function splitClassList(value: string | undefined): string[] {
-  return value?.split(/\s+/).filter(Boolean) ?? [];
+  if (!value) return [];
+  const classes: string[] = [];
+  let start = -1;
+  for (let index = 0; index <= value.length; index += 1) {
+    const char = index < value.length ? value[index] : " ";
+    if (char !== undefined && !isClassWhitespace(char)) {
+      if (start < 0) start = index;
+      continue;
+    }
+    if (start >= 0) {
+      classes.push(value.slice(start, index));
+      start = -1;
+    }
+  }
+  return classes;
+}
+
+function cloneStringArray(values: readonly string[]): string[] {
+  const cloned = new Array<string>(values.length);
+  for (let index = 0; index < values.length; index += 1) cloned[index] = values[index]!;
+  return cloned;
+}
+
+function isClassWhitespace(char: string): boolean {
+  return char === " " || char === "\n" || char === "\t" || char === "\r" || char === "\f";
 }
