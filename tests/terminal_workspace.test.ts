@@ -336,6 +336,10 @@ Deno.test("terminal workspace commands drive pane operations", async () => {
     ["terminalWorkspace.closePane", false],
     ["terminalWorkspace.nextPane", true],
     ["terminalWorkspace.previousPane", true],
+    ["terminalWorkspace.focusLeft", true],
+    ["terminalWorkspace.focusRight", true],
+    ["terminalWorkspace.focusUp", true],
+    ["terminalWorkspace.focusDown", true],
     ["terminalWorkspace.growActive", true],
     ["terminalWorkspace.shrinkActive", true],
     ["terminalWorkspace.closeSession", false],
@@ -400,6 +404,60 @@ Deno.test("terminal workspace commands drive pane operations", async () => {
 
   dispose();
   assertEquals(registry.list("terminal"), []);
+  workspace.dispose();
+});
+
+Deno.test("terminal workspace commands use supplied pane geometry for directional focus", async () => {
+  const workspace = createTerminalWorkspaceController({ now: () => 1 });
+  workspace.add(shellTerminalTemplate({ id: "left", shell: "bash" }));
+  workspace.add(shellTerminalTemplate({ id: "right", shell: "bash" }));
+  workspace.add(shellTerminalTemplate({ id: "bottom", shell: "bash" }));
+  workspace.splitActive("row", "right");
+  workspace.activate("left");
+  workspace.splitActive("column", "bottom");
+
+  const registry = new CommandRegistry<TerminalWorkspaceCommandAction>();
+  const actions: TerminalWorkspaceCommandAction[] = [];
+  const paneRects = () =>
+    terminalWorkspacePaneRects(workspace.inspect().layout, {
+      column: 0,
+      row: 0,
+      width: 41,
+      height: 21,
+    });
+  const dispose = bindTerminalWorkspaceCommands(registry, workspace, {
+    id: "term",
+    idPrefix: "terminal.main",
+    paneRects,
+    includeSplitCommands: false,
+    includeZoom: false,
+    includeClosePane: false,
+    includeResizeCommands: false,
+    includeSessionCommands: false,
+  });
+
+  assertEquals(
+    commandDisabled(registry.list("terminal").find((command) => command.id === "terminal.main.focusRight")!),
+    false,
+  );
+  workspace.activate("bottom");
+  assertEquals(await registry.execute("terminal.main.focusRight", (action) => void actions.push(action)), true);
+  assertEquals(actions.at(-1)?.type, "terminalWorkspace.paneActivated");
+  assertEquals(workspace.inspect().activeId, "right");
+
+  workspace.activate("right");
+  assertEquals(await registry.execute("terminal.main.focusLeft", (action) => void actions.push(action)), true);
+  assertEquals(workspace.inspect().activeId, "left");
+
+  workspace.activate("left");
+  assertEquals(await registry.execute("terminal.main.focusDown", (action) => void actions.push(action)), true);
+  assertEquals(workspace.inspect().activeId, "bottom");
+
+  workspace.activate("bottom");
+  assertEquals(await registry.execute("terminal.main.focusUp", (action) => void actions.push(action)), true);
+  assertEquals(workspace.inspect().activeId, "left");
+
+  dispose();
   workspace.dispose();
 });
 

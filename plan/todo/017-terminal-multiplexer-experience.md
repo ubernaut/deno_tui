@@ -106,3 +106,6 @@ developer workflows.
   expose close, duplicate, restart, detach, attach, and reorder operations through renderer-neutral commands.
 - Added a renderer-neutral terminal workspace rename-session command that accepts a caller-provided title, allowing
   command palettes and prompt/modal UIs to rename shell tabs without embedding prompt logic in the workspace model.
+- Added optional geometry-aware pane focus commands for left/right/up/down movement. Render adapters can supply current
+  pane rectangles and reuse the shared command layer for tmux-like directional focus while retaining next/previous pane
+  cycling as a fallback.

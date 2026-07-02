@@ -3,7 +3,11 @@ import type { TerminalOutputController, TerminalOutputInspection } from "../comp
 import type { ProcessSessionController, ProcessSessionInspection } from "../runtime/process_session.ts";
 import type { TerminalScrollbackController, TerminalScrollbackInspection } from "../runtime/terminal_scrollback.ts";
 import { isSpawnTerminalTemplate } from "../runtime/terminal_templates.ts";
-import type { TerminalWorkspaceController, TerminalWorkspaceInspection } from "../runtime/terminal_workspace.ts";
+import type {
+  TerminalWorkspaceController,
+  TerminalWorkspaceInspection,
+  TerminalWorkspacePaneRect,
+} from "../runtime/terminal_workspace.ts";
 import type { Action } from "./actions.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
@@ -93,6 +97,10 @@ export type TerminalWorkspaceCommandKind =
   | "closePane"
   | "nextPane"
   | "previousPane"
+  | "focusLeft"
+  | "focusRight"
+  | "focusUp"
+  | "focusDown"
   | "growActive"
   | "shrinkActive"
   | "closeSession"
@@ -139,6 +147,7 @@ export interface TerminalWorkspaceCommandOptions {
   includeZoom?: boolean;
   includeClosePane?: boolean;
   includeFocusCommands?: boolean;
+  paneRects?: readonly TerminalWorkspacePaneRect[] | (() => readonly TerminalWorkspacePaneRect[]);
   includeResizeCommands?: boolean;
   includeSessionCommands?: boolean;
   labels?: Partial<Record<TerminalWorkspaceCommandKind, string>>;
@@ -509,6 +518,50 @@ export function terminalWorkspaceCommands<TAction extends Action = TerminalWorks
     commands.push(
       terminalPaneFocusCommand(workspace, id, idPrefix, group, "nextPane", "Next Terminal Pane", 1, label),
       terminalPaneFocusCommand(workspace, id, idPrefix, group, "previousPane", "Previous Terminal Pane", -1, label),
+      terminalPaneDirectionalFocusCommand(
+        workspace,
+        options.paneRects,
+        id,
+        idPrefix,
+        group,
+        "focusLeft",
+        "Focus Terminal Pane Left",
+        "left",
+        label,
+      ),
+      terminalPaneDirectionalFocusCommand(
+        workspace,
+        options.paneRects,
+        id,
+        idPrefix,
+        group,
+        "focusRight",
+        "Focus Terminal Pane Right",
+        "right",
+        label,
+      ),
+      terminalPaneDirectionalFocusCommand(
+        workspace,
+        options.paneRects,
+        id,
+        idPrefix,
+        group,
+        "focusUp",
+        "Focus Terminal Pane Up",
+        "up",
+        label,
+      ),
+      terminalPaneDirectionalFocusCommand(
+        workspace,
+        options.paneRects,
+        id,
+        idPrefix,
+        group,
+        "focusDown",
+        "Focus Terminal Pane Down",
+        "down",
+        label,
+      ),
     );
   }
 
@@ -728,6 +781,92 @@ function terminalPaneFocusCommand<TAction extends Action>(
       } as TAction;
     },
   };
+}
+
+type TerminalPaneFocusDirection = "left" | "right" | "up" | "down";
+
+function terminalPaneDirectionalFocusCommand<TAction extends Action>(
+  workspace: TerminalWorkspaceController,
+  paneRects: TerminalWorkspaceCommandOptions["paneRects"],
+  id: string,
+  idPrefix: string,
+  group: string,
+  kind: "focusLeft" | "focusRight" | "focusUp" | "focusDown",
+  fallback: string,
+  direction: TerminalPaneFocusDirection,
+  label: (kind: TerminalWorkspaceCommandKind, fallback: string) => string,
+): Command<TAction> {
+  const rects = () => typeof paneRects === "function" ? paneRects() : paneRects;
+  return {
+    id: `${idPrefix}.${kind}`,
+    label: label(kind, fallback),
+    group,
+    keywords: ["terminal", "workspace", "pane", "focus", direction],
+    disabled: () => !nearestTerminalPaneInDirection(rects(), workspace.inspectLayout().activePaneId, direction),
+    action: () => {
+      const next = nearestTerminalPaneInDirection(rects(), workspace.inspectLayout().activePaneId, direction);
+      if (next) workspace.activatePane(next.pane.id);
+      return {
+        type: "terminalWorkspace.paneActivated",
+        payload: terminalWorkspacePayload(workspace, id, next?.pane.id),
+      } as TAction;
+    },
+  };
+}
+
+function nearestTerminalPaneInDirection(
+  rects: readonly TerminalWorkspacePaneRect[] | undefined,
+  activePaneId: string | undefined,
+  direction: TerminalPaneFocusDirection,
+): TerminalWorkspacePaneRect | undefined {
+  if (!rects || !activePaneId) return undefined;
+  let active: TerminalWorkspacePaneRect | undefined;
+  for (let index = 0; index < rects.length; index += 1) {
+    const entry = rects[index]!;
+    if (entry.pane.id === activePaneId) {
+      active = entry;
+      break;
+    }
+  }
+  if (!active) return undefined;
+
+  const activeCenterColumn = active.rect.column + active.rect.width / 2;
+  const activeCenterRow = active.rect.row + active.rect.height / 2;
+  let best: TerminalWorkspacePaneRect | undefined;
+  let bestScore = Number.POSITIVE_INFINITY;
+
+  for (let index = 0; index < rects.length; index += 1) {
+    const candidate = rects[index]!;
+    if (candidate.pane.id === activePaneId) continue;
+    const candidateCenterColumn = candidate.rect.column + candidate.rect.width / 2;
+    const candidateCenterRow = candidate.rect.row + candidate.rect.height / 2;
+    const deltaColumn = candidateCenterColumn - activeCenterColumn;
+    const deltaRow = candidateCenterRow - activeCenterRow;
+    const primary = direction === "left"
+      ? -deltaColumn
+      : direction === "right"
+      ? deltaColumn
+      : direction === "up"
+      ? -deltaRow
+      : deltaRow;
+    if (primary <= 0) continue;
+    const secondary = direction === "left" || direction === "right" ? Math.abs(deltaRow) : Math.abs(deltaColumn);
+    const overlap = direction === "left" || direction === "right"
+      ? rectRangeOverlap(active.rect.row, active.rect.height, candidate.rect.row, candidate.rect.height)
+      : rectRangeOverlap(active.rect.column, active.rect.width, candidate.rect.column, candidate.rect.width);
+    const alignmentPenalty = overlap > 0 ? 0 : 1_000_000;
+    const score = alignmentPenalty + primary * 1000 + secondary - overlap;
+    if (score < bestScore) {
+      best = candidate;
+      bestScore = score;
+    }
+  }
+
+  return best;
+}
+
+function rectRangeOverlap(start: number, size: number, candidateStart: number, candidateSize: number): number {
+  return Math.max(0, Math.min(start + size, candidateStart + candidateSize) - Math.max(start, candidateStart));
 }
 
 function terminalScrollbackScrollCommand<TAction extends Action>(
