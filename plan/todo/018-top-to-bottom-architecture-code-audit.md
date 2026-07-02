@@ -197,6 +197,8 @@ Work:
         the same loop-based source/history generation primitive.
   - [x] Reworked Three ASCII mixed glyph table initialization to score candidates with direct loops instead of
         spread/map/reduce allocation while preserving mixed-mode glyph selection behavior.
+  - [x] Added frame-boundary cache pruning and stable primitive background reuse to the Three ASCII ANSI grid assembler
+        so long-running animated scenes avoid unbounded ANSI/color cache growth without adding per-cell churn.
   - [x] Reworked system monitor history initialization and update helpers to use bounded loop allocation instead of
         repeated `Array.from()`, `slice()`, and `unshift()` churn.
 

@@ -21,6 +21,9 @@ const GLYPH_KEY_GLYPHS_OFFSET = 16;
 const GLYPH_KEY_MIXED_OFFSET = 32;
 const EDGE_GLYPH_KEY_OFFSET = 48;
 const GLYPHS_BY_KEY = createGlyphKeyTable();
+const MAX_LINEAR_BYTE_CACHE_SIZE = 65536;
+const MAX_FOREGROUND_ANSI_CACHE_SIZE = 4096;
+const MAX_CELL_CACHE_SIZE = 16384;
 
 /** Input buffers for assembling a terminal ANSI grid from three Ascii GPU readback data. */
 export interface ThreeAsciiAnsiGridInput {
@@ -47,6 +50,8 @@ export class ThreeAsciiAnsiGridAssembler {
   private backgroundRed = 0;
   private backgroundGreen = 0;
   private backgroundBlue = 0;
+  private stableBackgroundInput: string | number | undefined;
+  private hasStableBackgroundInput = false;
 
   constructor(options: { reuseGrid?: boolean } = {}) {
     this.reuseGrid = options.reuseGrid ?? false;
@@ -61,7 +66,8 @@ export class ThreeAsciiAnsiGridAssembler {
     const colors = input.colors;
     const terminalGlyphStyle = input.terminalGlyphStyle ?? "blocks";
     const terminalEdgeBias = Math.max(0.5, input.terminalEdgeBias ?? DEFAULT_TERMINAL_EDGE_BIAS);
-    this.setBackground(colorValue(input.backgroundColor, 0x000000));
+    this.setBackground(input.backgroundColor);
+    this.pruneCaches();
     let lastForegroundKey = -1;
     let lastGlyphKey = -1;
     let lastCell = "";
@@ -172,6 +178,9 @@ export class ThreeAsciiAnsiGridAssembler {
     this.backgroundKey = -1;
     this.backgroundAnsi = "";
     this.blankAnsi = "";
+    this.hasStableBackgroundInput = false;
+    this.stableBackgroundInput = undefined;
+    this.toByte.clear();
   }
 
   private buildFillOnlyGrid(
@@ -266,6 +275,18 @@ export class ThreeAsciiAnsiGridAssembler {
     return cell;
   }
 
+  private pruneCaches(): void {
+    this.toByte.prune();
+    if (this.foregroundAnsiCache.size > MAX_FOREGROUND_ANSI_CACHE_SIZE) {
+      this.foregroundAnsiCache.clear();
+      this.cellCache.clear();
+      return;
+    }
+    if (this.cellCache.size > MAX_CELL_CACHE_SIZE) {
+      this.cellCache.clear();
+    }
+  }
+
   private prepareReusableGrid(rows: number, columns: number): string[][] {
     const grid = this.reusableGrid;
     grid.length = rows;
@@ -276,7 +297,24 @@ export class ThreeAsciiAnsiGridAssembler {
     return grid;
   }
 
-  private setBackground(backgroundColor: Color): void {
+  private setBackground(backgroundColor: Color | string | number | undefined): void {
+    if (!(backgroundColor instanceof Color)) {
+      const stableInput = backgroundColor ?? 0;
+      if (this.hasStableBackgroundInput && this.stableBackgroundInput === stableInput) {
+        return;
+      }
+      this.hasStableBackgroundInput = true;
+      this.stableBackgroundInput = stableInput;
+      this.setBackgroundColor(colorValue(backgroundColor, 0x000000));
+      return;
+    }
+
+    this.hasStableBackgroundInput = false;
+    this.stableBackgroundInput = undefined;
+    this.setBackgroundColor(backgroundColor);
+  }
+
+  private setBackgroundColor(backgroundColor: Color): void {
     const [backgroundRed, backgroundGreen, backgroundBlue] = colorToBytes(backgroundColor);
     const backgroundKey = (backgroundRed << 16) | (backgroundGreen << 8) | backgroundBlue;
     if (backgroundKey === this.backgroundKey) {
@@ -320,15 +358,28 @@ function linearUnitToByte(value: number): number {
   return Math.round(linearToSrgb(value) * 255);
 }
 
-function createLinearByteCache(): (value: number) => number {
+interface LinearByteCache {
+  (value: number): number;
+  clear(): void;
+  prune(): void;
+}
+
+function createLinearByteCache(): LinearByteCache {
   const cache = new Map<number, number>();
-  return (value: number): number => {
+  const read = ((value: number): number => {
     const cached = cache.get(value);
     if (cached !== undefined) return cached;
     const byte = linearUnitToByte(value);
     cache.set(value, byte);
     return byte;
+  }) as LinearByteCache;
+  read.clear = () => cache.clear();
+  read.prune = () => {
+    if (cache.size > MAX_LINEAR_BYTE_CACHE_SIZE) {
+      cache.clear();
+    }
   };
+  return read;
 }
 
 function colorToBytes(color: Color): [number, number, number] {
