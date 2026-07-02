@@ -65,9 +65,10 @@ export class DiagnosticsCollector {
       context: input.context ? { ...input.context } : undefined,
     };
     this.#entries.push(entry);
-    while (this.#entries.length > Math.max(1, this.maxEntries)) this.#entries.shift();
+    const overflow = this.#entries.length - Math.max(1, this.maxEntries);
+    if (overflow > 0) this.#entries.splice(0, overflow);
     this.#emit(entry);
-    return { ...entry, context: entry.context ? { ...entry.context } : undefined };
+    return cloneDiagnosticEntry(entry)!;
   }
 
   clear(): void {
@@ -77,7 +78,7 @@ export class DiagnosticsCollector {
   }
 
   entries(): DiagnosticEntry[] {
-    return this.#entries.map((entry) => ({ ...entry, context: entry.context ? { ...entry.context } : undefined }));
+    return cloneDiagnosticEntries(this.#entries);
   }
 
   inspect(): DiagnosticsInspection {
@@ -108,13 +109,14 @@ export class DiagnosticsCollector {
 /** Formats diagnostics for status panels and text reports without noisy stack output. */
 export function formatDiagnostics(entries: readonly DiagnosticEntry[]): string {
   if (entries.length === 0) return "Diagnostics: none";
-  return entries
-    .map((entry) =>
-      `${entry.severity.toUpperCase()} ${entry.source}/${entry.code}: ${entry.message}${
-        entry.detail ? ` (${entry.detail})` : ""
-      }`
-    )
-    .join("\n");
+  const rows = new Array<string>(entries.length);
+  for (let index = 0; index < entries.length; index += 1) {
+    const entry = entries[index]!;
+    rows[index] = `${entry.severity.toUpperCase()} ${entry.source}/${entry.code}: ${entry.message}${
+      entry.detail ? ` (${entry.detail})` : ""
+    }`;
+  }
+  return rows.join("\n");
 }
 
 /** Summarizes diagnostics for status bars without exposing raw log volume. */
@@ -150,10 +152,7 @@ export function formatDiagnosticStatus(
   const summary = summarizeDiagnostics(entries);
   if (summary.ok) return `${label} ok`;
 
-  const counts = (["error", "warning", "info", "debug"] as const)
-    .filter((severity) => summary.bySeverity[severity] > 0)
-    .map((severity) => `${summary.bySeverity[severity]} ${severity}`)
-    .join(", ");
+  const counts = formatSeverityCounts(summary.bySeverity);
   const latest = options.includeLatest !== false && summary.latest
     ? ` latest ${summary.latest.source}/${summary.latest.code}`
     : "";
@@ -188,6 +187,25 @@ export function formatDiagnosticsMarkdown(
 
 function cloneDiagnosticEntry(entry: DiagnosticEntry | undefined): DiagnosticEntry | undefined {
   return entry ? { ...entry, context: entry.context ? { ...entry.context } : undefined } : undefined;
+}
+
+function cloneDiagnosticEntries(entries: readonly DiagnosticEntry[]): DiagnosticEntry[] {
+  const output = new Array<DiagnosticEntry>(entries.length);
+  for (let index = 0; index < entries.length; index += 1) {
+    output[index] = cloneDiagnosticEntry(entries[index])!;
+  }
+  return output;
+}
+
+function formatSeverityCounts(bySeverity: Record<DiagnosticSeverity, number>): string {
+  const severities: readonly DiagnosticSeverity[] = ["error", "warning", "info", "debug"];
+  let output = "";
+  for (const severity of severities) {
+    const count = bySeverity[severity];
+    if (count <= 0) continue;
+    output += `${output ? ", " : ""}${count} ${severity}`;
+  }
+  return output;
 }
 
 function severityWeight(severity: DiagnosticSeverity): number {

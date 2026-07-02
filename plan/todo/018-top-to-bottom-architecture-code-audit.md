@@ -282,6 +282,8 @@ Work:
         availability counts instead of object-key map/filter chains.
   - [x] Reworked EventEmitter aggregate counting, event-name projection, and inspection to avoid Object.values/entries
         pipelines in core canvas/component/web host event paths.
+  - [x] Reworked runtime diagnostics bounded trimming, cloning, status counting, and text formatting to avoid map/filter
+        pipelines in degradation-reporting paths.
 
 Acceptance checks:
 
