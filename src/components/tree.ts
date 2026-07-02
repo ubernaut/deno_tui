@@ -91,7 +91,12 @@ export function flattenTreeRows(nodes: readonly TreeNode[], depth = 0, rows: Tre
 
 /** Public helper for flatten Tree. */
 export function flattenTree(nodes: readonly TreeNode[], depth = 0): string[] {
-  return flattenTreeRows(nodes, depth).map((row) => row.text);
+  const rows = flattenTreeRows(nodes, depth);
+  const texts = new Array<string>(rows.length);
+  for (let index = 0; index < rows.length; index += 1) {
+    texts[index] = rows[index]!.text;
+  }
+  return texts;
 }
 
 /** Creates a serializable inspection snapshot for tree Row. */
@@ -135,14 +140,24 @@ export class TreeController {
   }
 
   rowTexts(): string[] {
-    return this.visibleRows().map((row) => row.text);
+    const rows = this.visibleRows();
+    const texts = new Array<string>(rows.length);
+    for (let index = 0; index < rows.length; index += 1) {
+      texts[index] = rows[index]!.text;
+    }
+    return texts;
   }
 
-  visible(height = this.visibleRows().length): TreeRow[] {
+  visible(height?: number): TreeRow[] {
     const rows = this.visibleRows();
     const selected = clampSelectionIndex(rows.length, this.selectedIndex.peek());
-    const window = selectionWindow(rows.length, selected, Math.max(0, Math.floor(height)));
-    return rows.slice(window.start, window.end);
+    const viewportHeight = height === undefined ? rows.length : Math.max(0, Math.floor(height));
+    const window = selectionWindow(rows.length, selected, viewportHeight);
+    const visible = new Array<TreeRow>(Math.max(0, window.end - window.start));
+    for (let index = window.start; index < window.end; index += 1) {
+      visible[index - window.start] = rows[index]!;
+    }
+    return visible;
   }
 
   selected(): TreeRow | undefined {
@@ -183,7 +198,7 @@ export class TreeController {
     const row = this.selected();
     if (!row?.hasChildren) return row;
     this.setExpanded(row.id, !row.expanded);
-    const next = this.visibleRows().find((entry) => entry.id === row.id) ?? row;
+    const next = this.visibleRowById(row.id) ?? row;
     void this.#onToggle?.(next, next.expanded);
     return next;
   }
@@ -192,7 +207,7 @@ export class TreeController {
     const row = this.selected();
     if (!row?.hasChildren || row.expanded) return row;
     this.setExpanded(row.id, true);
-    const next = this.visibleRows().find((entry) => entry.id === row.id) ?? row;
+    const next = this.visibleRowById(row.id) ?? row;
     void this.#onToggle?.(next, true);
     return next;
   }
@@ -201,7 +216,7 @@ export class TreeController {
     const row = this.selected();
     if (!row?.hasChildren || !row.expanded) return row;
     this.setExpanded(row.id, false);
-    const next = this.visibleRows().find((entry) => entry.id === row.id) ?? row;
+    const next = this.visibleRowById(row.id) ?? row;
     void this.#onToggle?.(next, false);
     return next;
   }
@@ -247,16 +262,21 @@ export class TreeController {
     return undefined;
   }
 
-  inspect(height = this.visibleRows().length): TreeInspection {
+  inspect(height?: number): TreeInspection {
     const rows = this.visibleRows();
     const selectedIndex = clampSelectionIndex(rows.length, this.selectedIndex.peek());
+    const viewportHeight = height === undefined ? rows.length : Math.max(0, Math.floor(height));
+    const inspectedRows = new Array<TreeRowInspection>(rows.length);
+    for (let index = 0; index < rows.length; index += 1) {
+      inspectedRows[index] = inspectTreeRow(rows[index]!);
+    }
     return {
       nodes: structuredClone(this.nodes.peek()),
-      rows: rows.map(inspectTreeRow),
+      rows: inspectedRows,
       rowCount: rows.length,
       selectedIndex,
       selected: rows[selectedIndex] ? inspectTreeRow(rows[selectedIndex]) : undefined,
-      window: selectionWindow(rows.length, selectedIndex, Math.max(0, Math.floor(height))),
+      window: selectionWindow(rows.length, selectedIndex, viewportHeight),
       empty: rows.length === 0,
     };
   }
@@ -265,6 +285,14 @@ export class TreeController {
     this.nodes.unsubscribe(this.#syncSelection);
     if (this.#ownsNodes) this.nodes.dispose();
     if (this.#ownsSelectedIndex) this.selectedIndex.dispose();
+  }
+
+  private visibleRowById(id: string): TreeRow | undefined {
+    const rows = this.visibleRows();
+    for (const row of rows) {
+      if (row.id === id) return row;
+    }
+    return undefined;
   }
 }
 
