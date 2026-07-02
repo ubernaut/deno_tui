@@ -1,6 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { workbenchAsciiRendererModeLabel } from "../src/app/workbench_ascii.ts";
 import { compactSpaces, maxTrimmedTextWidth } from "../src/app/workbench_text.ts";
+import { prepareWorkbenchRows } from "../src/app/workbench_frame.ts";
 import { terminalGlyphStyleLabel } from "./ascii_options.ts";
 import type { RowStyle } from "./workbench_rows.ts";
 import type { AsciiOptions, PanelRender } from "./types.ts";
@@ -37,6 +38,16 @@ export interface WorkbenchThreeFallbackRowsOptions {
   rendererAvailable: boolean;
   theme: WorkbenchThreeFallbackTheme;
   center?: (text: string, width: number) => string;
+}
+
+/** Options for projecting the browser workbench Three preview rows. */
+export interface WorkbenchThreePreviewRowsOptions {
+  width: number;
+  height: number;
+  phase: number;
+  tileDensity: number;
+  themeLabel: string;
+  orbRows?: string[];
 }
 
 export const WORKBENCH_THREE_FALLBACK_BODY: readonly string[] = [
@@ -144,6 +155,41 @@ export function workbenchThreeFallbackRowsInto(
   return target;
 }
 
+/** Builds the web-safe Three preview rows shown in the browser API workbench pane. */
+export function workbenchThreePreviewRowsInto(
+  target: string[],
+  options: WorkbenchThreePreviewRowsOptions,
+): string[] {
+  const mode = workbenchThreePreviewMode(options.tileDensity);
+  target.length = 0;
+  target.push(
+    ` ACEROLA THREE ASCII · ${mode} · WEB SAFE PREVIEW `,
+    "Full WebGPU renderer is mounted below this workbench on the Pages build.",
+    "Use the standalone Three demo for live WebGPU; this pane mirrors controls and state.",
+    "",
+  );
+  const bodyHeight = Math.max(3, Math.floor(options.height) - 6);
+  const orbRows = asciiOrbInto(options.orbRows ?? [], options.width, bodyHeight, options.phase);
+  for (let index = 0; index < orbRows.length; index += 1) {
+    if (target.length >= options.height) return target;
+    target.push(orbRows[index]!);
+  }
+  if (target.length < options.height) target.push("");
+  if (target.length < options.height) {
+    target.push(
+      `preset mixed-best  glyph ${mode.toLowerCase()}  density ${
+        Math.trunc(options.tileDensity)
+      }  theme ${options.themeLabel}`,
+    );
+  }
+  return target;
+}
+
+/** Maps tile-density state into the web Three preview renderer mode label. */
+export function workbenchThreePreviewMode(tileDensity: number): string {
+  return ["BLOCKS", "GLYPHS", "MIXED"][Math.abs(Math.trunc(tileDensity)) % 3] ?? "MIXED";
+}
+
 export { compactSpaces, maxTrimmedTextWidth };
 
 function appendBodyLines(target: string[], body: string): void {
@@ -160,4 +206,22 @@ function centerText(text: string, width: number): string {
   if (text.length >= safeWidth) return text.slice(0, safeWidth);
   const left = Math.floor((safeWidth - text.length) / 2);
   return `${" ".repeat(left)}${text}`;
+}
+
+function asciiOrbInto(target: string[], width: number, height: number, phase: number): string[] {
+  const columns = Math.max(8, Math.floor(width));
+  const rows = Math.max(3, Math.floor(height));
+  const glyphs = " .:-=+*#%@";
+  return prepareWorkbenchRows(target, rows, () => "", (_line, row) => {
+    let line = "";
+    for (let column = 0; column < columns; column += 1) {
+      const x = (column / Math.max(1, columns - 1)) * 2 - 1;
+      const y = (row / Math.max(1, rows - 1)) * 2 - 1;
+      const ring = Math.abs(Math.sqrt(x * x * 2.8 + y * y * 1.8) - 0.62);
+      const wave = Math.sin(column * 0.32 + phase * 0.18) + Math.cos(row * 0.7 - phase * 0.14);
+      const value = Math.max(0, Math.min(1, 1 - ring * 3.5 + wave * 0.15));
+      line += glyphs[Math.floor(value * (glyphs.length - 1))] ?? " ";
+    }
+    return line;
+  });
 }

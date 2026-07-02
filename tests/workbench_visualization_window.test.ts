@@ -10,6 +10,8 @@ import {
   visualizationWindowRows,
   visualizationWindowRowsInto,
   workbenchThreeFallbackRowsInto,
+  workbenchThreePreviewMode,
+  workbenchThreePreviewRowsInto,
   type WorkbenchVisualizationWindowOption,
 } from "../app/workbench_visualization_window.ts";
 import type { PanelRender } from "../app/types.ts";
@@ -137,6 +139,45 @@ Deno.test("workbenchThreeFallbackRowsInto reports warming state without alarm bo
   assertEquals(rows[0]?.text, " THREE ASCII FALLBACK · MIXED ");
   assertEquals(rows[1], { text: "renderer warming up", fg: rowTheme.warn, bg: rowTheme.surface, bold: false });
   assertEquals(rows.length, 4);
+});
+
+Deno.test("workbenchThreePreviewRowsInto projects web-safe preview rows", () => {
+  const target = ["stale"];
+  const orbRows: string[] = [];
+  const rows = workbenchThreePreviewRowsInto(target, {
+    width: 16,
+    height: 9,
+    phase: 4,
+    tileDensity: 2,
+    themeLabel: "Unit-01",
+    orbRows,
+  });
+
+  assertEquals(rows, target);
+  assertEquals(rows[0], " ACEROLA THREE ASCII · MIXED · WEB SAFE PREVIEW ");
+  assertStringIncludes(rows[1]!, "WebGPU renderer");
+  assertStringIncludes(rows.at(-1)!, "theme Unit-01");
+  assertEquals(orbRows.length, 3);
+});
+
+Deno.test("workbenchThreePreviewRowsInto clips to short panes and reuses orb storage", () => {
+  const target: string[] = [];
+  const orbRows = ["old", "rows"];
+  const firstOrb = orbRows[0];
+  const rows = workbenchThreePreviewRowsInto(target, {
+    width: 10,
+    height: 4,
+    phase: 0,
+    tileDensity: -1,
+    themeLabel: "Signal",
+    orbRows,
+  });
+
+  assertEquals(rows.length, 4);
+  assertEquals(workbenchThreePreviewMode(-1), "GLYPHS");
+  assertEquals(workbenchThreePreviewMode(3), "BLOCKS");
+  assertEquals(orbRows[0] === firstOrb, false);
+  assertEquals(orbRows.length, 3);
 });
 
 Deno.test("compactSpaces and maxTrimmedTextWidth keep display helpers deterministic", () => {

@@ -158,6 +158,7 @@ import {
   nextSortableDataColumn,
 } from "../../app/api_workbench_controls.ts";
 import { htmlCssLayoutBoxStyle, htmlCssVisibleLayoutBoxesInto } from "../../app/html_css_layout_view.ts";
+import { workbenchThreePreviewRowsInto } from "../../app/workbench_visualization_window.ts";
 import {
   type WorkbenchMobileCommandAction,
   workbenchMobileCommandStripItemsInto,
@@ -300,6 +301,7 @@ const titlebarLayouts = new Map<PanelId, WorkbenchTitlebarLayout>();
 const titlebarRenderCommands = new Map<PanelId, WorkbenchTitlebarButtonRenderCommand[]>();
 const screenRows: string[] = [];
 const workspaceVirtualRows: string[] = [];
+const threePreviewRows: string[] = [];
 const threePreviewOrbRows: string[] = [];
 const htmlCssLayoutBoxes: ComputedLayoutBox[] = [];
 const minimizedShelfEntries: Array<{ id: PanelId; title: string }> = [];
@@ -998,33 +1000,17 @@ function renderExplorer(frame: string[], rect: Rectangle): void {
 
 function renderThreePreview(frame: string[], rect: Rectangle): void {
   const phase = Math.floor(performance.now() / 90);
-  const mode = ["BLOCKS", "GLYPHS", "MIXED"][Math.abs(tileDensity.peek()) % 3] ?? "MIXED";
-  let row = 0;
-  row = writeThreePreviewLine(frame, rect, row, ` ACEROLA THREE ASCII · ${mode} · WEB SAFE PREVIEW `);
-  row = writeThreePreviewLine(
-    frame,
-    rect,
-    row,
-    "Full WebGPU renderer is mounted below this workbench on the Pages build.",
-  );
-  row = writeThreePreviewLine(
-    frame,
-    rect,
-    row,
-    "Use the standalone Three demo for live WebGPU; this pane mirrors controls and state.",
-  );
-  row = writeThreePreviewLine(frame, rect, row, "");
-  for (const line of asciiOrb(threePreviewOrbRows, rect.width, Math.max(3, rect.height - 6), phase)) {
-    row = writeThreePreviewLine(frame, rect, row, line);
-    if (row >= rect.height) return;
+  const rows = workbenchThreePreviewRowsInto(threePreviewRows, {
+    width: rect.width,
+    height: rect.height,
+    phase,
+    tileDensity: tileDensity.peek(),
+    themeLabel: theme().label,
+    orbRows: threePreviewOrbRows,
+  });
+  for (let index = 0; index < rows.length && index < rect.height; index += 1) {
+    writeThreePreviewLine(frame, rect, index, rows[index]!);
   }
-  row = writeThreePreviewLine(frame, rect, row, "");
-  writeThreePreviewLine(
-    frame,
-    rect,
-    row,
-    `preset mixed-best  glyph ${mode.toLowerCase()}  density ${tileDensity.peek()}  theme ${theme().label}`,
-  );
 }
 
 function writeThreePreviewLine(frame: string[], rect: Rectangle, index: number, line: string): number {
@@ -1043,24 +1029,6 @@ function writeThreePreviewLine(frame: string[], rect: Rectangle, index: number, 
     ),
   );
   return index + 1;
-}
-
-function asciiOrb(target: string[], width: number, height: number, phase: number): string[] {
-  const columns = Math.max(8, width);
-  const rows = Math.max(3, height);
-  const glyphs = " .:-=+*#%@";
-  return prepareWorkbenchRows(target, rows, () => "", (_line, row) => {
-    let line = "";
-    for (let column = 0; column < columns; column += 1) {
-      const x = (column / Math.max(1, columns - 1)) * 2 - 1;
-      const y = (row / Math.max(1, rows - 1)) * 2 - 1;
-      const ring = Math.abs(Math.sqrt(x * x * 2.8 + y * y * 1.8) - 0.62);
-      const wave = Math.sin(column * 0.32 + phase * 0.18) + Math.cos(row * 0.7 - phase * 0.14);
-      const value = Math.max(0, Math.min(1, 1 - ring * 3.5 + wave * 0.15));
-      line += glyphs[Math.floor(value * (glyphs.length - 1))] ?? " ";
-    }
-    return line;
-  });
 }
 
 function renderHtmlCssLayout(frame: string[], rect: Rectangle): void {

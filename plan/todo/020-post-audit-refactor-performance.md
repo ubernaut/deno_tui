@@ -122,3 +122,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   controls module as the stable facade for terminal and browser callers.
 - Extracted built-in Three fallback row projection into `workbench_visualization_window.ts` with direct tests so the
   main API workbench renderer keeps less static presentation logic.
+- Extracted the browser API workbench Three preview row projection and ASCII orb generation into the shared
+  visualization-window helper with direct tests, leaving the web page to handle paint only.
