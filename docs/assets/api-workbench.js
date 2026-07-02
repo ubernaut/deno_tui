@@ -3551,10 +3551,19 @@ var WindowManagerController = class {
     this.#repairState();
   }
   ids(options = {}) {
-    return this.orderedWindows(options).map((entry) => entry.id);
+    const windows = this.orderedWindows(options);
+    const ids = new Array(windows.length);
+    for (let index = 0; index < windows.length; index += 1) ids[index] = windows[index].id;
+    return ids;
   }
   orderedWindows(options = {}) {
-    return [...this.windows.peek()].filter((entry) => options.includeClosed || windowState(entry) !== "closed").sort((left, right) => (left.order ?? 0) - (right.order ?? 0));
+    const source = this.windows.peek();
+    const windows = [];
+    for (const entry of source) {
+      if (options.includeClosed || windowState(entry) !== "closed") windows.push(entry);
+    }
+    windows.sort((left, right) => (left.order ?? 0) - (right.order ?? 0));
+    return windows;
   }
   active() {
     return this.windows.peek().find((entry) => entry.id === this.activeId.peek());
@@ -3568,7 +3577,14 @@ var WindowManagerController = class {
       state: window.state ?? existing?.state ?? "normal",
       order: window.order ?? existing?.order ?? nextWindowOrder(windows)
     };
-    this.windows.value = existing ? windows.map((entry) => entry.id === window.id ? next : entry) : [...windows, next];
+    if (existing) {
+      this.windows.value = replaceWindow(windows, window.id, next);
+    } else {
+      const nextWindows = new Array(windows.length + 1);
+      for (let index = 0; index < windows.length; index += 1) nextWindows[index] = windows[index];
+      nextWindows[windows.length] = next;
+      this.windows.value = nextWindows;
+    }
     this.#repairState();
     return this.#window(window.id);
   }
@@ -3577,9 +3593,7 @@ var WindowManagerController = class {
     if (!window) return void 0;
     const normalizedTitle = title.trim();
     if (!normalizedTitle) return window;
-    this.windows.value = this.windows.peek().map(
-      (entry) => entry.id === id2 ? { ...entry, title: normalizedTitle } : entry
-    );
+    this.windows.value = replaceWindow(this.windows.peek(), id2, { ...window, title: normalizedTitle });
     this.#repairState();
     return this.#window(id2);
   }
@@ -3592,8 +3606,17 @@ var WindowManagerController = class {
     const reordered = [...windows];
     const [window] = reordered.splice(index, 1);
     reordered.splice(target, 0, window);
-    const order = new Map(reordered.map((entry, nextOrder) => [entry.id, nextOrder]));
-    this.windows.value = this.windows.peek().map((entry) => ({ ...entry, order: order.get(entry.id) ?? entry.order }));
+    const order = /* @__PURE__ */ new Map();
+    for (let nextOrder = 0; nextOrder < reordered.length; nextOrder += 1) {
+      order.set(reordered[nextOrder].id, nextOrder);
+    }
+    const source = this.windows.peek();
+    const nextWindows = new Array(source.length);
+    for (let sourceIndex = 0; sourceIndex < source.length; sourceIndex += 1) {
+      const entry = source[sourceIndex];
+      nextWindows[sourceIndex] = { ...entry, order: order.get(entry.id) ?? entry.order };
+    }
+    this.windows.value = nextWindows;
     this.#repairState();
     return this.#window(id2);
   }
@@ -3642,9 +3665,13 @@ var WindowManagerController = class {
       return this.#window(id2);
     }
     this.fullscreenId.value = void 0;
-    this.windows.value = this.windows.peek().map(
-      (entry) => windowState(entry) === "minimized" ? { ...entry, state: "normal" } : entry
-    );
+    const source = this.windows.peek();
+    const nextWindows = new Array(source.length);
+    for (let index = 0; index < source.length; index += 1) {
+      const entry = source[index];
+      nextWindows[index] = windowState(entry) === "minimized" ? { ...entry, state: "normal" } : entry;
+    }
+    this.windows.value = nextWindows;
     this.#repairState();
     return this.active();
   }
@@ -3668,14 +3695,21 @@ var WindowManagerController = class {
     const rects = /* @__PURE__ */ new Map();
     const fullscreenId = this.fullscreenId.peek();
     const windows = this.orderedWindows({ includeClosed: true });
-    const visible = windows.filter((entry) => windowState(entry) === "normal");
+    const visible = [];
+    for (const entry of windows) {
+      if (windowState(entry) === "normal") visible.push(entry);
+    }
     let contentHeight = bounds.height;
     if (fullscreenId) {
       const fullscreen = windows.find((entry) => entry.id === fullscreenId && windowState(entry) !== "closed");
       if (fullscreen) rects.set(fullscreen.id, bounds);
     } else if (visible.length > 0) {
-      const minWidth = Math.max(20, ...visible.map((entry) => entry.minWidth ?? 0));
-      const minHeight = Math.max(6, ...visible.map((entry) => entry.minHeight ?? 0));
+      let minWidth = 20;
+      let minHeight = 6;
+      for (const entry of visible) {
+        minWidth = Math.max(minWidth, entry.minWidth ?? 0);
+        minHeight = Math.max(minHeight, entry.minHeight ?? 0);
+      }
       const layout = tileRects(bounds, {
         itemCount: visible.length,
         minTileWidth: minWidth,
@@ -3692,17 +3726,24 @@ var WindowManagerController = class {
       }
       contentHeight = Math.max(bounds.height, layout.contentHeight);
     }
-    const inspected = windows.map(
-      (entry) => inspectWindow(entry, this.activeId.peek(), fullscreenId, rects.get(entry.id))
-    );
+    const activeId = this.activeId.peek();
+    const inspected = new Array(windows.length);
+    const visibleInspected = [];
+    const tabs = [];
+    for (let index = 0; index < windows.length; index += 1) {
+      const entry = inspectWindow(windows[index], activeId, fullscreenId, rects.get(windows[index].id));
+      inspected[index] = entry;
+      if (entry.rect !== void 0) visibleInspected.push(entry);
+      if (!entry.closed) tabs.push(entry);
+    }
     return {
       bounds,
       contentHeight,
-      activeId: this.activeId.peek(),
+      activeId,
       fullscreenId,
       windows: inspected,
-      visible: inspected.filter((entry) => entry.rect !== void 0),
-      tabs: inspected.filter((entry) => !entry.closed),
+      visible: visibleInspected,
+      tabs,
       zOrder: windowManagerZOrder(inspected)
     };
   }
@@ -3719,7 +3760,8 @@ var WindowManagerController = class {
     return this.windows.peek().find((entry) => entry.id === id2);
   }
   #setState(id2, state) {
-    this.windows.value = this.windows.peek().map((entry) => entry.id === id2 ? { ...entry, state } : entry);
+    const window = this.#window(id2);
+    if (window) this.windows.value = replaceWindow(this.windows.peek(), id2, { ...window, state });
   }
   #repairState() {
     const windows = this.orderedWindows();
@@ -3733,14 +3775,32 @@ var WindowManagerController = class {
   }
 };
 function windowManagerZOrder(windows) {
-  return [...windows].filter((entry) => !entry.closed).sort((left, right) => left.zIndex - right.zIndex || (left.order ?? 0) - (right.order ?? 0));
+  const zOrder = [];
+  for (const entry of windows) {
+    if (!entry.closed) zOrder.push(entry);
+  }
+  zOrder.sort((left, right) => left.zIndex - right.zIndex || (left.order ?? 0) - (right.order ?? 0));
+  return zOrder;
 }
 function normalizeWindows(windows) {
-  return windows.map((entry, index) => ({
-    ...entry,
-    state: entry.state ?? "normal",
-    order: entry.order ?? index
-  }));
+  const normalized = new Array(windows.length);
+  for (let index = 0; index < windows.length; index += 1) {
+    const entry = windows[index];
+    normalized[index] = {
+      ...entry,
+      state: entry.state ?? "normal",
+      order: entry.order ?? index
+    };
+  }
+  return normalized;
+}
+function replaceWindow(windows, id2, replacement) {
+  const next = new Array(windows.length);
+  for (let index = 0; index < windows.length; index += 1) {
+    const entry = windows[index];
+    next[index] = entry.id === id2 ? replacement : entry;
+  }
+  return next;
 }
 function nextWindowOrder(windows) {
   let order = -1;
