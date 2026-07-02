@@ -922,6 +922,7 @@ Work:
         rendering no longer re-wrap the same text independently.
   - [x] Optimized core theme style composition by replacing `filter`/`reduce` pipelines with single-pass composition and
         loop-based application.
+  - [x] Removed duplicate option-child scans from markup combobox/select hydration.
 - [x] Make demo-only assets and NGE-inspired primitives clearly separate from library APIs.
   - [x] Added `app/neon_three_catalog.ts` for supported Three scene metadata and labels, keeping demo/NGE catalog data
         separate from the monolithic scene factory and shared by visualization footers plus scene coverage tests.

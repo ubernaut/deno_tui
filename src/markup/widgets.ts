@@ -434,7 +434,7 @@ function comboboxWidget(node: LayoutNode): MarkupWidgetDescriptor {
   for (let index = 0; index < options.length; index += 1) {
     items[index] = labelForNode(options[index]!);
   }
-  const selectedIndex = selectedOptionIndex(node);
+  const selectedIndex = selectedOptionIndex(node, options);
   return {
     kind: "combobox",
     controller: new ComboBoxController({
@@ -643,18 +643,24 @@ function treeNodesForChildren(children: readonly LayoutNode[]): TreeNode[] {
   return nodes;
 }
 
-function selectedOptionIndex(node: LayoutNode): number | undefined {
+function selectedOptionIndex(node: LayoutNode, options: readonly LayoutNode[] = optionNodes(node)): number | undefined {
   const explicit = numberAttr(node.attributes, "selected-index", undefined);
   if (explicit !== undefined) return explicit;
   const value = node.attributes.value ?? node.attributes["selected-value"];
   if (value !== undefined) {
-    const index = optionNodes(node).findIndex((option) =>
-      option.attributes.value === value || labelForNode(option) === value
-    );
+    let index = -1;
+    for (let optionIndex = 0; optionIndex < options.length; optionIndex += 1) {
+      const option = options[optionIndex]!;
+      if (option.attributes.value === value || labelForNode(option) === value) {
+        index = optionIndex;
+        break;
+      }
+    }
     if (index >= 0) return index;
   }
-  const selected = optionNodes(node).findIndex((option) => booleanAttr(option.attributes, "selected"));
-  if (selected >= 0) return selected;
+  for (let optionIndex = 0; optionIndex < options.length; optionIndex += 1) {
+    if (booleanAttr(options[optionIndex]!.attributes, "selected")) return optionIndex;
+  }
   return undefined;
 }
 
