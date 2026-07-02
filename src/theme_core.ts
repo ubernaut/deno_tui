@@ -70,10 +70,26 @@ export function mergeComponentThemeDefinitionCore(
 }
 
 export function composeStylesCore(...styles: Style[]): Style {
-  const active = styles.filter((style) => style !== emptyStyle);
-  if (active.length === 0) return emptyStyle;
-  if (active.length === 1) return active[0];
-  return (value) => active.reduce((text, style) => style(text), value);
+  let first: Style | undefined;
+  let active: Style[] | undefined;
+  for (const style of styles) {
+    if (style === emptyStyle) continue;
+    if (!first) {
+      first = style;
+    } else {
+      active ??= [first];
+      active.push(style);
+    }
+  }
+  if (!first) return emptyStyle;
+  if (!active) return first;
+  return (value) => {
+    let output = value;
+    for (let index = 0; index < active.length; index += 1) {
+      output = active[index]!(output);
+    }
+    return output;
+  };
 }
 
 export function resolveThemeStyleReferenceCore(reference: ThemeStyleReference, tokens: ThemeTokens): Style {
