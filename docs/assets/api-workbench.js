@@ -13184,6 +13184,28 @@ var apiWorkbenchDocs = [
   "Use Tab or 1-8 to focus built-in windows; use M, F, R for window controls."
 ];
 
+// app/api_workbench_controls.ts
+var apiWorkbenchControlIds = [
+  "button",
+  "genericButton",
+  "modal",
+  "slider",
+  "checkbox",
+  "radio",
+  "combo",
+  "dropdown",
+  "input",
+  "stepper",
+  "textbox"
+];
+function nextApiWorkbenchControlId(current, delta, options = {}) {
+  const index = apiWorkbenchControlIds.indexOf(current);
+  if (index < 0) return options.wrap ? apiWorkbenchControlIds[0] : void 0;
+  const next = index + delta;
+  if (!options.wrap && (next < 0 || next >= apiWorkbenchControlIds.length)) return void 0;
+  return apiWorkbenchControlIds[(next % apiWorkbenchControlIds.length + apiWorkbenchControlIds.length) % apiWorkbenchControlIds.length];
+}
+
 // src/app/workbench/controller.ts
 var WorkbenchController = class {
   menus;
@@ -13635,7 +13657,7 @@ host.on("keyPress", (event) => {
     draw();
     return;
   }
-  if (key === "tab" && active.peek() === "controls") focusNextControl();
+  if (key === "tab" && active.peek() === "controls") focusNextControl(event.shift ? -1 : 1);
   else if (key === "tab") focusNext();
   else if (focusPanelByNumber(key)) return draw();
   else if (key === "h" || key === "?") openHelpModal();
@@ -14407,39 +14429,51 @@ function handlePointerDrag(event, target) {
   return true;
 }
 function focus(id2) {
-  if (minimized.peek()[id2]) minimized.value[id2] = false;
-  active.value = id2;
+  syncWebWindowManagerState();
+  webWindows.focus(id2);
+  syncWebSignalsFromWindowManager();
   push(`focus ${id2}`);
 }
 function focusNext() {
-  const ids = panelIds.filter((id2) => !minimized.peek()[id2]);
-  if (ids.length === 0) return;
-  focus(ids[(ids.indexOf(active.peek()) + 1) % ids.length]);
+  syncWebWindowManagerState();
+  const focused = webWindows.focusNext();
+  syncWebSignalsFromWindowManager();
+  if (focused) push(`focus ${focused.id}`);
+}
+function focusPrevious() {
+  syncWebWindowManagerState();
+  const focused = webWindows.focusNext(-1);
+  syncWebSignalsFromWindowManager();
+  if (focused) push(`focus ${focused.id}`);
 }
 function minimize(id2) {
-  minimized.value[id2] = true;
-  if (maximized.peek() === id2) maximized.value = null;
+  syncWebWindowManagerState();
+  webWindows.minimize(id2);
+  syncWebSignalsFromWindowManager();
   push(`minimize ${id2}`);
 }
 function closePanel(id2) {
-  minimized.value[id2] = true;
-  if (maximized.peek() === id2) maximized.value = null;
-  const next = panelIds.find((panel) => !minimized.peek()[panel]);
-  if (next) active.value = next;
+  syncWebWindowManagerState();
+  webWindows.minimize(id2);
+  syncWebSignalsFromWindowManager();
   push(`close ${id2}`);
 }
 function toggleMax(id2) {
-  maximized.value = maximized.peek() === id2 ? null : id2;
+  syncWebWindowManagerState();
+  webWindows.fullscreen(id2);
+  syncWebSignalsFromWindowManager();
   push(`${maximized.peek() ? "maximize" : "restore"} ${id2}`);
 }
 function restorePanel(id2) {
-  minimized.value[id2] = false;
-  maximized.value = null;
-  focus(id2);
+  syncWebWindowManagerState();
+  webWindows.restore(id2);
+  syncWebSignalsFromWindowManager();
+  push(`restore ${id2}`);
 }
 function restore() {
-  maximized.value = null;
-  minimized.value = defaultMinimizedState();
+  syncWebWindowManagerState();
+  webWindows.restore();
+  syncWebSignalsFromWindowManager();
   push("restore all");
 }
 function setTheme(index) {
@@ -14515,6 +14549,22 @@ function syncWebWindowManagerState() {
     minWidth: 26,
     minHeight: 10
   }));
+}
+function syncWebSignalsFromWindowManager() {
+  const inspection = webWindows.inspect();
+  const activeId = panelIdFromString(inspection.activeId);
+  if (activeId) active.value = activeId;
+  maximized.value = panelIdFromString(inspection.fullscreenId) ?? null;
+  const nextMinimized = defaultMinimizedState();
+  for (const entry of inspection.windows) {
+    const id2 = panelIdFromString(entry.id);
+    if (id2) nextMinimized[id2] = entry.minimized;
+  }
+  minimized.value = nextMinimized;
+  webWindowManagerStateKey = "";
+}
+function panelIdFromString(value) {
+  return panelIds.includes(value) ? value : void 0;
 }
 function blitWorkspace(frame, virtual, bounds, offset, width) {
   for (let row = 0; row < bounds.height; row += 1) {
@@ -15110,26 +15160,21 @@ function blurTextControl() {
   activeControl.value = controlAt(1);
   push(`control ${previous} blur`);
 }
-function focusNextControl() {
+function focusNextControl(delta = 1) {
   active.value = "controls";
-  activeControl.value = controlAt(1);
-  push(`control ${activeControl.peek()} focus`);
+  const next = controlAtEdge(delta);
+  if (next) {
+    activeControl.value = next;
+    push(`control ${activeControl.peek()} focus`);
+    return;
+  }
+  delta < 0 ? focusPrevious() : focusNext();
 }
 function controlAt(delta) {
-  const ids = [
-    "button",
-    "genericButton",
-    "modal",
-    "slider",
-    "checkbox",
-    "radio",
-    "combo",
-    "dropdown",
-    "input",
-    "stepper",
-    "textbox"
-  ];
-  return ids[(ids.indexOf(activeControl.peek()) + delta + ids.length) % ids.length];
+  return nextApiWorkbenchControlId(activeControl.peek(), delta, { wrap: true }) ?? "button";
+}
+function controlAtEdge(delta) {
+  return nextApiWorkbenchControlId(activeControl.peek(), delta);
 }
 function isTextControlActive() {
   return active.peek() === "controls" && (activeControl.peek() === "input" || activeControl.peek() === "textbox");
