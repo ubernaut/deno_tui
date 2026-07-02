@@ -237,6 +237,8 @@ Work:
         output buffers instead of map/filter/spread pipelines in workbench window state paths.
   - [x] Reworked disk, CPU, and NVIDIA GPU metrics parsers to avoid chained filter/map/reduce/sort allocations while
         preserving fixture-backed monitor sampling behavior.
+  - [x] Reworked visualization source frame generation to use explicit output buffers and bounded detail/series helpers
+        for monitor-backed sources instead of per-frame `slice().map()` projections.
 
 Acceptance checks:
 

@@ -148,7 +148,11 @@ export function resolveSourceFrames(
     return [syntheticPulseSource(phase)];
   }
 
-  return sourceIds.map((sourceId) => getSourceFrame(sourceId, system, audio, phase));
+  const frames = new Array<SourceFrame>(sourceIds.length);
+  for (let index = 0; index < sourceIds.length; index += 1) {
+    frames[index] = getSourceFrame(sourceIds[index]!, system, audio, phase);
+  }
+  return frames;
 }
 
 export function getSourceFrame(
@@ -176,8 +180,8 @@ export function getSourceFrame(
         name: "CPU Cores",
         accent: "signal",
         value: clamp(system.cpuOverall / 100, 0, 1),
-        series: system.cpuCores.map((core) => core.usage / 100),
-        detailLines: system.cpuCores.map((core) => `CPU${core.label.padStart(2, "0")} ${core.usage.toFixed(0)}%`),
+        series: cpuCoreSeries(system),
+        detailLines: cpuCoreDetailLines(system),
       };
     case "sys:gpu":
       return {
@@ -187,9 +191,7 @@ export function getSourceFrame(
         value: system.gpu.available
           ? clamp(Math.max(system.gpu.utilizationPercent, system.gpu.memoryPercent) / 100, 0, 1)
           : 0,
-        series: system.gpuUtilizationHistory.map((value, index) =>
-          Math.max(value, system.gpuMemoryHistory[index] ?? 0)
-        ),
+        series: combinedHistory(system.gpuUtilizationHistory, system.gpuMemoryHistory),
         detailLines: gpuDetailLines(system),
       };
     case "sys:gpu-chip":
@@ -240,10 +242,8 @@ export function getSourceFrame(
         name: "Network",
         accent: "signal",
         value: clamp(Math.max(last(system.rxHistory), last(system.txHistory)), 0, 1),
-        series: system.rxHistory.map((value, index) => Math.max(value, system.txHistory[index] ?? 0)),
-        detailLines: system.networks.slice(0, 3).map((network) =>
-          `${network.name.toUpperCase()} ${bytesToShort(network.rxRate)}↓ ${bytesToShort(network.txRate)}↑`
-        ),
+        series: combinedHistory(system.rxHistory, system.txHistory),
+        detailLines: networkDetailLines(system, 3),
       };
     case "sys:disk":
       return {
@@ -251,8 +251,8 @@ export function getSourceFrame(
         name: "Disks",
         accent: system.disks[0]?.percent >= 90 ? "alarm" : "amber",
         value: clamp((system.disks[0]?.percent ?? 0) / 100, 0, 1),
-        series: system.disks.map((disk) => disk.percent / 100),
-        detailLines: system.disks.slice(0, 4).map((disk) => `${disk.mount.toUpperCase()} ${disk.percent}%`),
+        series: diskSeries(system),
+        detailLines: diskDetailLines(system, 4),
       };
     case "sys:temperature":
       return {
@@ -264,10 +264,8 @@ export function getSourceFrame(
           ? "amber"
           : "violet",
         value: clamp((system.temperatures[0]?.celsius ?? 0) / 100, 0, 1),
-        series: system.temperatures.map((entry) => clamp(entry.celsius / 100, 0, 1)),
-        detailLines: system.temperatures.slice(0, 4).map((entry) =>
-          `${entry.label.toUpperCase()} ${entry.celsius.toFixed(1)}C`
-        ),
+        series: temperatureSeries(system),
+        detailLines: temperatureDetailLines(system, 4),
       };
     case "sys:processes":
       return {
@@ -275,10 +273,8 @@ export function getSourceFrame(
         name: "Processes",
         accent: "amber",
         value: clamp((system.processes[0]?.cpuPercent ?? 0) / 100, 0, 1),
-        series: system.processes.slice(0, 12).map((process) => clamp(process.cpuPercent / 100, 0, 1)),
-        detailLines: system.processes.slice(0, 5).map((process) =>
-          `${process.name.toUpperCase()} ${process.cpuPercent.toFixed(1)}%`
-        ),
+        series: processSeries(system, 12),
+        detailLines: processDetailLines(system, 5),
       };
     case "sys:load": {
       const cores = Math.max(1, navigator.hardwareConcurrency || 1);
@@ -287,7 +283,7 @@ export function getSourceFrame(
         name: "Load Average",
         accent: system.loadavg[0] >= cores * 0.9 ? "alarm" : system.loadavg[0] >= cores * 0.7 ? "amber" : "signal",
         value: clamp(system.loadavg[0] / cores, 0, 1),
-        series: system.loadavg.map((value) => clamp(value / cores, 0, 1)),
+        series: loadAverageSeries(system, cores),
         detailLines: [
           `1M ${system.loadavg[0].toFixed(2)}`,
           `5M ${system.loadavg[1].toFixed(2)}`,
@@ -301,16 +297,12 @@ export function getSourceFrame(
         name: "Alert Bus",
         accent: system.alerts[0]?.severity === "alarm" ? "alarm" : system.alerts.length > 0 ? "amber" : "signal",
         value: system.alerts.length > 0 ? 1 : 0.12,
-        series: system.alerts.map((_, index) => clamp(1 - index * 0.18, 0.2, 1)),
-        detailLines: system.alerts.length > 0
-          ? system.alerts.map((alert) => `${alert.title} ${alert.detail}`).slice(0, 4)
-          : ["NO ACTIVE SYSTEM ALERTS"],
+        series: alertSeries(system),
+        detailLines: system.alerts.length > 0 ? alertDetailLines(system, 4) : ["NO ACTIVE SYSTEM ALERTS"],
       };
     case "sys:diagnostics": {
-      const degraded = system.diagnostics.filter((diagnostic) => diagnostic.status !== "ok");
-      const lines = (degraded.length > 0 ? degraded : system.diagnostics).slice(0, 5).map((diagnostic) =>
-        `${diagnostic.source.toUpperCase()} ${diagnostic.status.toUpperCase()} ${diagnostic.detail}`
-      );
+      const degraded = degradedDiagnostics(system);
+      const lines = diagnosticDetailLines(degraded.length > 0 ? degraded : system.diagnostics, 5);
       return {
         id: sourceId,
         name: "Diagnostics",
@@ -320,7 +312,7 @@ export function getSourceFrame(
           ? "amber"
           : "signal",
         value: degraded.length > 0 ? 1 : 0.12,
-        series: system.diagnostics.map((diagnostic) => diagnostic.status === "ok" ? 0.2 : 1),
+        series: diagnosticSeries(system),
         detailLines: lines.length > 0 ? lines : ["NO SAMPLER DIAGNOSTICS"],
       };
     }
@@ -349,6 +341,149 @@ export function getSourceFrame(
       }
       return syntheticPulseSource(phase);
   }
+}
+
+function cpuCoreSeries(system: SystemSnapshot): number[] {
+  const series = new Array<number>(system.cpuCores.length);
+  for (let index = 0; index < system.cpuCores.length; index += 1) {
+    series[index] = system.cpuCores[index]!.usage / 100;
+  }
+  return series;
+}
+
+function cpuCoreDetailLines(system: SystemSnapshot): string[] {
+  const lines = new Array<string>(system.cpuCores.length);
+  for (let index = 0; index < system.cpuCores.length; index += 1) {
+    const core = system.cpuCores[index]!;
+    lines[index] = `CPU${core.label.padStart(2, "0")} ${core.usage.toFixed(0)}%`;
+  }
+  return lines;
+}
+
+function combinedHistory(left: readonly number[], right: readonly number[]): number[] {
+  const length = Math.max(left.length, right.length);
+  const series = new Array<number>(length);
+  for (let index = 0; index < length; index += 1) {
+    series[index] = Math.max(left[index] ?? 0, right[index] ?? 0);
+  }
+  return series;
+}
+
+function networkDetailLines(system: SystemSnapshot, limit: number): string[] {
+  const count = Math.min(system.networks.length, Math.max(0, Math.floor(limit)));
+  const lines = new Array<string>(count);
+  for (let index = 0; index < count; index += 1) {
+    const network = system.networks[index]!;
+    lines[index] = `${network.name.toUpperCase()} ${bytesToShort(network.rxRate)}↓ ${bytesToShort(network.txRate)}↑`;
+  }
+  return lines;
+}
+
+function diskSeries(system: SystemSnapshot): number[] {
+  const series = new Array<number>(system.disks.length);
+  for (let index = 0; index < system.disks.length; index += 1) {
+    series[index] = system.disks[index]!.percent / 100;
+  }
+  return series;
+}
+
+function diskDetailLines(system: SystemSnapshot, limit: number): string[] {
+  const count = Math.min(system.disks.length, Math.max(0, Math.floor(limit)));
+  const lines = new Array<string>(count);
+  for (let index = 0; index < count; index += 1) {
+    const disk = system.disks[index]!;
+    lines[index] = `${disk.mount.toUpperCase()} ${disk.percent}%`;
+  }
+  return lines;
+}
+
+function temperatureSeries(system: SystemSnapshot): number[] {
+  const series = new Array<number>(system.temperatures.length);
+  for (let index = 0; index < system.temperatures.length; index += 1) {
+    series[index] = clamp(system.temperatures[index]!.celsius / 100, 0, 1);
+  }
+  return series;
+}
+
+function temperatureDetailLines(system: SystemSnapshot, limit: number): string[] {
+  const count = Math.min(system.temperatures.length, Math.max(0, Math.floor(limit)));
+  const lines = new Array<string>(count);
+  for (let index = 0; index < count; index += 1) {
+    const entry = system.temperatures[index]!;
+    lines[index] = `${entry.label.toUpperCase()} ${entry.celsius.toFixed(1)}C`;
+  }
+  return lines;
+}
+
+function processSeries(system: SystemSnapshot, limit: number): number[] {
+  const count = Math.min(system.processes.length, Math.max(0, Math.floor(limit)));
+  const series = new Array<number>(count);
+  for (let index = 0; index < count; index += 1) {
+    series[index] = clamp(system.processes[index]!.cpuPercent / 100, 0, 1);
+  }
+  return series;
+}
+
+function processDetailLines(system: SystemSnapshot, limit: number): string[] {
+  const count = Math.min(system.processes.length, Math.max(0, Math.floor(limit)));
+  const lines = new Array<string>(count);
+  for (let index = 0; index < count; index += 1) {
+    const process = system.processes[index]!;
+    lines[index] = `${process.name.toUpperCase()} ${process.cpuPercent.toFixed(1)}%`;
+  }
+  return lines;
+}
+
+function loadAverageSeries(system: SystemSnapshot, cores: number): number[] {
+  const series = new Array<number>(system.loadavg.length);
+  for (let index = 0; index < system.loadavg.length; index += 1) {
+    series[index] = clamp(system.loadavg[index]! / cores, 0, 1);
+  }
+  return series;
+}
+
+function alertSeries(system: SystemSnapshot): number[] {
+  const series = new Array<number>(system.alerts.length);
+  for (let index = 0; index < system.alerts.length; index += 1) {
+    series[index] = clamp(1 - index * 0.18, 0.2, 1);
+  }
+  return series;
+}
+
+function alertDetailLines(system: SystemSnapshot, limit: number): string[] {
+  const count = Math.min(system.alerts.length, Math.max(0, Math.floor(limit)));
+  const lines = new Array<string>(count);
+  for (let index = 0; index < count; index += 1) {
+    const alert = system.alerts[index]!;
+    lines[index] = `${alert.title} ${alert.detail}`;
+  }
+  return lines;
+}
+
+function degradedDiagnostics(system: SystemSnapshot): SystemSnapshot["diagnostics"] {
+  const diagnostics: SystemSnapshot["diagnostics"] = [];
+  for (const diagnostic of system.diagnostics) {
+    if (diagnostic.status !== "ok") diagnostics.push(diagnostic);
+  }
+  return diagnostics;
+}
+
+function diagnosticSeries(system: SystemSnapshot): number[] {
+  const series = new Array<number>(system.diagnostics.length);
+  for (let index = 0; index < system.diagnostics.length; index += 1) {
+    series[index] = system.diagnostics[index]!.status === "ok" ? 0.2 : 1;
+  }
+  return series;
+}
+
+function diagnosticDetailLines(diagnostics: SystemSnapshot["diagnostics"], limit: number): string[] {
+  const count = Math.min(diagnostics.length, Math.max(0, Math.floor(limit)));
+  const lines = new Array<string>(count);
+  for (let index = 0; index < count; index += 1) {
+    const diagnostic = diagnostics[index]!;
+    lines[index] = `${diagnostic.source.toUpperCase()} ${diagnostic.status.toUpperCase()} ${diagnostic.detail}`;
+  }
+  return lines;
 }
 
 function syntheticPulseSource(phase: number): SourceFrame {
