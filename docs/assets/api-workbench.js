@@ -1815,13 +1815,23 @@ function readOscSequenceAt(value, start) {
   return value.slice(start, end + (end === stEnd ? 2 : 1));
 }
 function characterWidth(character) {
-  const plain = stripStyles(character);
+  const plain = character.includes("\x1B") ? stripStyles(character) : character;
   if (!plain) return 0;
+  if (plain.length === 1) {
+    return codePointWidth(plain.charCodeAt(0));
+  }
+  const firstCodePoint = plain.codePointAt(0) ?? 0;
+  if (plain.length === 2 && firstCodePoint > 65535) {
+    return codePointWidth(firstCodePoint);
+  }
   const codePoints = [...plain].map((char) => char.codePointAt(0) ?? 0);
   if (codePoints.some((codePoint2) => codePoint2 === 8205)) return 2;
   if (codePoints.length === 2 && codePoints.every(isRegionalIndicator)) return 2;
   if (codePoints.some((codePoint2) => codePoint2 === 65039) && codePoints.some(isEmojiSymbol)) return 2;
   const codePoint = codePoints[0] ?? 0;
+  return codePointWidth(codePoint);
+}
+function codePointWidth(codePoint) {
   if (codePoint === 8203 || codePoint === 8205 || isCombiningMark(codePoint) || isVariationSelector(codePoint) || isEmojiModifier(codePoint)) {
     return 0;
   }
@@ -7820,17 +7830,28 @@ var TreeController = class {
   }
   setExpanded(id2, expanded) {
     let changed = false;
-    const visit = (nodes) => nodes.map((node) => {
-      const children = node.children ? visit(node.children) : void 0;
-      if (node.id !== id2 || !node.children?.length) {
-        return children && children !== node.children ? { ...node, children } : node;
+    const visit = (nodes) => {
+      let next2;
+      for (let index = 0; index < nodes.length; index += 1) {
+        const node = nodes[index];
+        const children = node.children ? visit(node.children) : void 0;
+        let nextNode = node;
+        if (node.id === id2 && node.children?.length && Boolean(node.expanded) !== expanded) {
+          changed = true;
+          nextNode = { ...node, children: children ?? node.children, expanded };
+        } else if (children && children !== node.children) {
+          nextNode = { ...node, children };
+        }
+        if (nextNode !== node && !next2) {
+          next2 = new Array(nodes.length);
+          for (let copy = 0; copy < index; copy += 1) {
+            next2[copy] = nodes[copy];
+          }
+        }
+        if (next2) next2[index] = nextNode;
       }
-      if (Boolean(node.expanded) === expanded) {
-        return children && children !== node.children ? { ...node, children } : node;
-      }
-      changed = true;
-      return { ...node, children, expanded };
-    });
+      return next2 ?? nodes;
+    };
     const next = visit(this.nodes.peek());
     if (changed) {
       this.nodes.value = next;
