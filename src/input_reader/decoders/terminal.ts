@@ -3,14 +3,19 @@ import type { PasteEvent, TerminalFocusEvent } from "../types.ts";
 
 const PASTE_START = "\x1b[200~";
 const PASTE_END = "\x1b[201~";
+const textDecoder = new TextDecoder();
 
 /** Decode xterm bracketed paste as one payload event. */
-export function decodeBracketedPaste(buffer: Uint8Array, code: string): PasteEvent | undefined {
+export function decodeBracketedPaste(
+  buffer: Uint8Array,
+  code: string,
+  decoder = textDecoder,
+): PasteEvent | undefined {
   if (!code.startsWith(PASTE_START) || !code.endsWith(PASTE_END)) return undefined;
   const payload = buffer.subarray(PASTE_START.length, buffer.length - PASTE_END.length);
   return {
     key: "paste",
-    text: new TextDecoder().decode(payload),
+    text: decoder.decode(payload),
     buffer,
   };
 }
