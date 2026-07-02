@@ -55,3 +55,4 @@ performance, shared terminal/web workbench projections, and oversized module red
   API workbench textbox projection through it.
 - Added a benchmark case for reusable textbox wrapping so future multiline text changes have a measured guardrail.
 - Added `wrapPlainTextInto` and routed API workbench recent-action wrapping through caller-owned rows.
+- Consolidated repeated settings-binding reentrancy guards behind a shared internal sync gate.

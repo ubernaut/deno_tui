@@ -129,27 +129,26 @@ export function bindSettingSignal<T, Stored = T>(
 ): () => void {
   const equals = options.equals ?? Object.is;
   let disposed = false;
-  let syncing = false;
-
+  const sync = createSyncGate();
   const setTarget = (value: T) => {
     if (equals(target.peek(), value)) return;
-    syncing = true;
-    target.value = value;
-    syncing = false;
+    sync.apply(() => {
+      target.value = value;
+    });
   };
   const setSetting = (value: T) => {
     if (equals(setting.value.peek(), value)) return;
-    syncing = true;
-    setting.set(value);
-    syncing = false;
+    sync.apply(() => {
+      setting.set(value);
+    });
   };
 
   const syncTargetFromSetting = (value: T) => {
-    if (disposed || syncing) return;
+    if (disposed || sync.active) return;
     setTarget(value);
   };
   const syncSettingFromTarget = (value: T) => {
-    if (disposed || syncing) return;
+    if (disposed || sync.active) return;
     setSetting(value);
   };
 
@@ -244,26 +243,22 @@ export function bindThemeLayerSetting<Stored = readonly string[]>(
     }));
 
   let disposed = false;
-  let syncing = false;
+  const sync = createSyncGate();
   const equals = options.equals ?? stringArrayEqual;
 
   const applyLayers = (value: readonly string[]) => {
     if (equals(layers.activeIds(), value)) return;
-    syncing = true;
-    layers.setActiveIds(value);
-    syncing = false;
+    sync.apply(() => layers.setActiveIds(value));
   };
   const applySetting = () => {
-    if (disposed || syncing) return;
+    if (disposed || sync.active) return;
     const activeIds = layers.activeIds();
     if (!equals(setting.value.peek(), activeIds)) {
-      syncing = true;
-      setting.set(activeIds);
-      syncing = false;
+      sync.apply(() => setting.set(activeIds));
     }
   };
   const applyLoadedSetting = (value: readonly string[]) => {
-    if (disposed || syncing) return;
+    if (disposed || sync.active) return;
     applyLayers(value);
   };
 
@@ -304,33 +299,27 @@ export function bindThemePipelineSetting<Stored = readonly string[]>(
     }));
 
   let disposed = false;
-  let syncing = false;
+  const sync = createSyncGate();
   const equals = options.equals ?? stringArrayEqual;
 
   const applyPipeline = (value: readonly string[]) => {
     const next = sanitizePipelineStepIds(pipeline, value);
     if (equals(pipeline.activeIds(), next)) return;
-    syncing = true;
-    pipeline.setActiveIds(next);
-    syncing = false;
+    sync.apply(() => pipeline.setActiveIds(next));
   };
   const applySetting = () => {
-    if (disposed || syncing) return;
+    if (disposed || sync.active) return;
     const activeIds = pipeline.activeIds();
     if (!equals(setting.value.peek(), activeIds)) {
-      syncing = true;
-      setting.set(activeIds);
-      syncing = false;
+      sync.apply(() => setting.set(activeIds));
     }
   };
   const applyLoadedSetting = (value: readonly string[]) => {
-    if (disposed || syncing) return;
+    if (disposed || sync.active) return;
     const next = sanitizePipelineStepIds(pipeline, value);
     applyPipeline(next);
     if (!equals(setting.value.peek(), next)) {
-      syncing = true;
-      setting.set(next);
-      syncing = false;
+      sync.apply(() => setting.set(next));
     }
   };
 
@@ -372,7 +361,7 @@ export function bindRuntimeProfileSetting<Stored = string>(
     }));
 
   let disposed = false;
-  let syncing = false;
+  const sync = createSyncGate();
   const equals = options.equals ?? Object.is;
 
   const fallbackId = () => controller.ids()[0] ?? "";
@@ -380,27 +369,21 @@ export function bindRuntimeProfileSetting<Stored = string>(
   const applyController = (id: string) => {
     const next = sanitize(id);
     if (equals(controller.activeId.peek(), next)) return;
-    syncing = true;
-    controller.setProfile(next);
-    syncing = false;
+    sync.apply(() => controller.setProfile(next));
   };
   const applySetting = (id: string) => {
-    if (disposed || syncing) return;
+    if (disposed || sync.active) return;
     const next = sanitize(id);
     if (!equals(setting.value.peek(), next)) {
-      syncing = true;
-      setting.set(next);
-      syncing = false;
+      sync.apply(() => setting.set(next));
     }
   };
   const applyLoadedSetting = (id: string) => {
-    if (disposed || syncing) return;
+    if (disposed || sync.active) return;
     const next = sanitize(id);
     applyController(next);
     if (!equals(setting.value.peek(), next)) {
-      syncing = true;
-      setting.set(next);
-      syncing = false;
+      sync.apply(() => setting.set(next));
     }
   };
 
@@ -441,7 +424,7 @@ export function bindRuntimeRendererBackendSetting<Stored = string>(
     }));
 
   let disposed = false;
-  let syncing = false;
+  const sync = createSyncGate();
   const equals = options.equals ?? Object.is;
 
   const fallbackId = () => controller.selected()?.id ?? controller.ids()[0] ?? "";
@@ -449,27 +432,21 @@ export function bindRuntimeRendererBackendSetting<Stored = string>(
   const applyController = (id: string) => {
     const next = sanitize(id);
     if (equals(controller.activeId.peek(), next)) return;
-    syncing = true;
-    controller.setBackend(next);
-    syncing = false;
+    sync.apply(() => controller.setBackend(next));
   };
   const applySetting = (id: string) => {
-    if (disposed || syncing) return;
+    if (disposed || sync.active) return;
     const next = sanitize(id);
     if (!equals(setting.value.peek(), next)) {
-      syncing = true;
-      setting.set(next);
-      syncing = false;
+      sync.apply(() => setting.set(next));
     }
   };
   const applyLoadedSetting = (id: string) => {
-    if (disposed || syncing) return;
+    if (disposed || sync.active) return;
     const next = sanitize(id);
     applyController(next);
     if (!equals(setting.value.peek(), next)) {
-      syncing = true;
-      setting.set(next);
-      syncing = false;
+      sync.apply(() => setting.set(next));
     }
   };
 
@@ -510,26 +487,22 @@ export function bindSplitPaneSetting<Stored = SplitPaneControllerOptions>(
     }));
 
   let disposed = false;
-  let syncing = false;
+  const sync = createSyncGate();
   const equals = options.equals ?? splitPaneOptionsEqual;
 
   const applyController = (value: SplitPaneControllerOptions) => {
     if (equals(controller.snapshot(), value)) return;
-    syncing = true;
-    controller.update(value);
-    syncing = false;
+    sync.apply(() => controller.update(value));
   };
   const applySetting = () => {
-    if (disposed || syncing) return;
+    if (disposed || sync.active) return;
     const snapshot = controller.snapshot();
     if (!equals(setting.value.peek(), snapshot)) {
-      syncing = true;
-      setting.set(snapshot);
-      syncing = false;
+      sync.apply(() => setting.set(snapshot));
     }
   };
   const applyLoadedSetting = (value: SplitPaneControllerOptions) => {
-    if (disposed || syncing) return;
+    if (disposed || sync.active) return;
     applyController(value);
   };
 
@@ -576,33 +549,29 @@ export function bindDataTableSetting<
     }));
 
   let disposed = false;
-  let syncing = false;
+  const sync = createSyncGate();
   const equals = options.equals ?? dataTableStateEqual;
 
   const applyController = (value: DataTableState) => {
     const next = sanitizeDataTableState(controller, value);
     if (equals(sanitizeDataTableState(controller, controller.state.peek()), next)) return;
-    syncing = true;
-    controller.state.value = next;
-    syncing = false;
+    sync.apply(() => {
+      controller.state.value = next;
+    });
   };
   const applySetting = () => {
-    if (disposed || syncing) return;
+    if (disposed || sync.active) return;
     const next = snapshotDataTableState(controller);
     if (!equals(setting.value.peek(), next)) {
-      syncing = true;
-      setting.set(next);
-      syncing = false;
+      sync.apply(() => setting.set(next));
     }
   };
   const applyLoadedSetting = (value: DataTableState) => {
-    if (disposed || syncing) return;
+    if (disposed || sync.active) return;
     const next = sanitizeDataTableState(controller, value);
     applyController(value);
     if (!equals(setting.value.peek(), next)) {
-      syncing = true;
-      setting.set(next);
-      syncing = false;
+      sync.apply(() => setting.set(next));
     }
   };
 
@@ -650,33 +619,29 @@ export function bindDataQuerySetting<
     }));
 
   let disposed = false;
-  let syncing = false;
+  const sync = createSyncGate();
   const equals = options.equals ?? dataQueryParamsEqual;
 
   const applyController = (value: DataQueryParams<TFilters>) => {
     const next = sanitizeDataQueryParams(value);
     if (equals(sanitizeDataQueryParams(controller.params.peek()), next)) return;
-    syncing = true;
-    controller.params.value = next;
-    syncing = false;
+    sync.apply(() => {
+      controller.params.value = next;
+    });
   };
   const applySetting = () => {
-    if (disposed || syncing) return;
+    if (disposed || sync.active) return;
     const next = sanitizeDataQueryParams(controller.params.peek());
     if (!equals(setting.value.peek(), next)) {
-      syncing = true;
-      setting.set(next);
-      syncing = false;
+      sync.apply(() => setting.set(next));
     }
   };
   const applyLoadedSetting = (value: NormalizedDataQueryParams<TFilters>) => {
-    if (disposed || syncing) return;
+    if (disposed || sync.active) return;
     const next = sanitizeDataQueryParams(value);
     applyController(next);
     if (!equals(setting.value.peek(), next)) {
-      syncing = true;
-      setting.set(next);
-      syncing = false;
+      sync.apply(() => setting.set(next));
     }
   };
 
@@ -706,6 +671,23 @@ function settingDefinition<T, Stored>(
   definition: AppSettingDefinition<T, Stored>,
 ): AppSettingDefinition<T, Stored> {
   return definition;
+}
+
+function createSyncGate(): { readonly active: boolean; apply: (callback: () => void) => void } {
+  let active = false;
+  return {
+    get active() {
+      return active;
+    },
+    apply(callback: () => void) {
+      active = true;
+      try {
+        callback();
+      } finally {
+        active = false;
+      }
+    },
+  };
 }
 
 function sanitizeDataTableState<TRow extends Record<string, unknown>>(
