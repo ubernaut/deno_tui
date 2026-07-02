@@ -234,6 +234,8 @@ Work:
         and bracketed paste so parser regressions are measured alongside routing benchmarks.
   - [x] Reworked terminal input decoding to scan batched input boundaries once instead of pre-scanning for completeness
         and then walking chunks again, and replaced key modifier regex parsing with direct numeric scanning.
+  - [x] Reworked CSI parameter parsing to scan numeric fields directly instead of slicing tokens and calling
+        `parseInt()` for every terminal control sequence.
 - [x] Record thresholds in the benchmark catalog and wire the most useful non-flaky cases into health or e2e.
   - [x] Added benchmark CLI selectors for filtering by name/search, category, tag, and thresholded status so long
         optimization passes can rerun only the relevant integration workload before the full health gate.

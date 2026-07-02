@@ -72,14 +72,19 @@ export function parseTerminalControlSequence(
 export function parseTerminalParams(params: string): number[] {
   if (!params) return [];
   const values: number[] = [];
-  let tokenStart = 0;
+  let value = 0;
+  let sawDigit = false;
   for (let index = 0; index <= params.length; index += 1) {
     const code = index < params.length ? params.charCodeAt(index) : 0x3b;
+    if (code >= 0x30 && code <= 0x39) {
+      value = value * 10 + code - 0x30;
+      sawDigit = true;
+      continue;
+    }
     if (code !== 0x3b && code !== 0x3a) continue;
-    const token = params.slice(tokenStart, index);
-    const value = Number.parseInt(token || "0", 10);
-    if (Number.isFinite(value)) values.push(value);
-    tokenStart = index + 1;
+    values.push(sawDigit ? value : 0);
+    value = 0;
+    sawDigit = false;
   }
   return values;
 }
