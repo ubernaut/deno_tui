@@ -765,9 +765,14 @@ function sanitizeDataQueryParams<TFilters extends DataQueryFilters>(
 }
 
 function sanitizeDataQueryFilters<TFilters extends DataQueryFilters>(filters: TFilters): TFilters {
-  return Object.fromEntries(
-    Object.entries(filters).filter(([, value]) => value !== undefined && value !== null && value !== ""),
-  ) as TFilters;
+  const sanitized: Record<string, unknown> = {};
+  for (const key in filters) {
+    const value = filters[key];
+    if (value !== undefined && value !== null && value !== "") {
+      sanitized[key] = value;
+    }
+  }
+  return sanitized as TFilters;
 }
 
 function sanitizeDataQuerySort(sort: DataQuerySort | undefined): DataQuerySort | undefined {
@@ -790,7 +795,11 @@ function dataQueryParamsEqual<TFilters extends DataQueryFilters>(
 
 function sanitizePipelineStepIds(pipeline: ThemeEnginePipeline, ids: readonly string[]): string[] {
   const requested = new Set(ids);
-  return pipeline.ids().filter((id) => requested.has(id));
+  const sanitized: string[] = [];
+  for (const id of pipeline.ids()) {
+    if (requested.has(id)) sanitized.push(id);
+  }
+  return sanitized;
 }
 
 function splitPaneOptionsEqual(left: SplitPaneControllerOptions, right: SplitPaneControllerOptions): boolean {

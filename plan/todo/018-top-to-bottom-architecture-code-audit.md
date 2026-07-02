@@ -315,6 +315,8 @@ Work:
         pipelines in degradation-reporting paths.
   - [x] Reworked SettingsController key projection and ready/flush/reset aggregation to use explicit sorted buffers and
         promise lists instead of spread/map chains across persistent app settings.
+  - [x] Reworked app settings binding sanitizers for data-query filters and theme pipeline step ids to use direct copies
+        instead of `Object.entries().filter()` and active-id `filter()` chains.
   - [x] Reworked focus application/scope snapshots and ActionBus middleware dispatch snapshots with explicit buffers,
         preserving focus restore and middleware ordering while avoiding callback/spread allocation.
   - [x] Reworked RouteManager lookup, registration, removal, navigation, and inspection helpers to use indexed scans and
