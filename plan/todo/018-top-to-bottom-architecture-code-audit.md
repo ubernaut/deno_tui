@@ -959,6 +959,8 @@ Work:
         with bounded loops that preserve existing output.
   - [x] Reduced modal row rendering churn by clipping height in-place and stopping action-row assembly once the visible
         width is filled.
+  - [x] Precomputed standard theme component names, sorted catalog entries, and normalized lookup keys so theme preset
+        construction no longer re-sorts the static component catalog.
 - [x] Make demo-only assets and NGE-inspired primitives clearly separate from library APIs.
   - [x] Added `app/neon_three_catalog.ts` for supported Three scene metadata and labels, keeping demo/NGE catalog data
         separate from the monolithic scene factory and shared by visualization footers plus scene coverage tests.

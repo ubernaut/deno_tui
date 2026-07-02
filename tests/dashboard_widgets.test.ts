@@ -708,6 +708,9 @@ Deno.test("standard component themes cover the public widget catalog", () => {
 
   assertEquals(names.includes("Button"), true);
   assertEquals(names.includes("ThreeAscii"), true);
+  const mutatedNames = standardThemeComponentNames();
+  mutatedNames.push("Mutated");
+  assertEquals(standardThemeComponentNames(), names);
   assertEquals(Object.keys(definitions), names);
   assertEquals(audit.missingComponents, []);
   assertEquals(audit.extraComponents, []);

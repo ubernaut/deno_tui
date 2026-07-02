@@ -2,9 +2,17 @@
 import { componentCatalog, type ComponentCatalogEntry } from "./components/catalog.ts";
 import type { ComponentThemeDefinition, StandardComponentThemeOptions } from "./theme.ts";
 
+const standardComponentEntries = [...componentCatalog].sort((a, b) => a.name.localeCompare(b.name));
+const standardComponentNames = standardComponentEntries.map((entry) => entry.name);
+const standardComponentKeySet = new Set(
+  standardComponentEntries.flatMap((
+    entry,
+  ) => [normalizeThemeComponentName(entry.id), normalizeThemeComponentName(entry.name)]),
+);
+
 /** Returns the canonical component names covered by the standard theme preset. */
 export function standardThemeComponentNames(): string[] {
-  return componentCatalog.map((entry) => entry.name).sort((a, b) => a.localeCompare(b));
+  return cloneStringArray(standardComponentNames);
 }
 
 /** Creates component theme definitions for the built-in widget catalog. */
@@ -14,7 +22,7 @@ export function createStandardComponentThemeDefinitions(
   const requested = options.components ? new Set([...options.components].map(normalizeThemeComponentName)) : undefined;
   const definitions: Record<string, ComponentThemeDefinition> = {};
 
-  for (const entry of [...componentCatalog].sort((a, b) => a.name.localeCompare(b.name))) {
+  for (const entry of standardComponentEntries) {
     if (
       requested && !requested.has(normalizeThemeComponentName(entry.id)) &&
       !requested.has(normalizeThemeComponentName(entry.name))
@@ -25,13 +33,8 @@ export function createStandardComponentThemeDefinitions(
   }
 
   if (requested) {
-    const known = new Set(
-      componentCatalog.flatMap((
-        entry,
-      ) => [normalizeThemeComponentName(entry.id), normalizeThemeComponentName(entry.name)]),
-    );
     for (const name of options.components ?? []) {
-      if (!known.has(normalizeThemeComponentName(name))) {
+      if (!standardComponentKeySet.has(normalizeThemeComponentName(name))) {
         definitions[name] = standardGenericComponentDefinition();
       }
     }
@@ -158,4 +161,10 @@ function standardFeedbackComponentDefinition(): ComponentThemeDefinition {
 
 function normalizeThemeComponentName(value: string): string {
   return value.toLowerCase().replaceAll(/[^a-z0-9]/g, "");
+}
+
+function cloneStringArray(values: readonly string[]): string[] {
+  const output = new Array<string>(values.length);
+  for (let index = 0; index < values.length; index += 1) output[index] = values[index]!;
+  return output;
 }
