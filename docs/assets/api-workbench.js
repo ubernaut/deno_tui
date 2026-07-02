@@ -3289,6 +3289,8 @@ var ThreeAsciiAnsiGridAssembler = class {
     const terminalFillGlyphKeys = terminalFillGlyphKeysForMode(terminalGlyphMode);
     const terminalEdgeBias = Math.max(0.5, input2.terminalEdgeBias ?? DEFAULT_TERMINAL_EDGE_BIAS);
     const cellCount = columns2 * rows2;
+    const denseFill = fillGlyphs.length >= cellCount;
+    const denseColors = colors.length >= cellCount * 4;
     this.setBackground(input2.backgroundColor);
     this.prepareFrameCaches(cellCount, terminalGlyphMode);
     this.pruneCaches();
@@ -3300,6 +3302,23 @@ var ThreeAsciiAnsiGridAssembler = class {
     let lastRawBlue = Number.NaN;
     const grid = this.reuseGrid ? this.prepareReusableGrid(rows2, columns2) : createStringGrid(rows2, columns2);
     if (!hasEdges) {
+      if (denseFill && denseColors) {
+        return this.buildDenseFillOnlyGrid(
+          grid,
+          columns2,
+          rows2,
+          fillGlyphs,
+          colors,
+          terminalGlyphMode,
+          terminalFillGlyphKeys,
+          lastForegroundKey,
+          lastGlyphKey,
+          lastCell,
+          lastRawRed,
+          lastRawGreen,
+          lastRawBlue
+        );
+      }
       return this.buildFillOnlyGrid(
         grid,
         columns2,
@@ -3428,6 +3447,66 @@ var ThreeAsciiAnsiGridAssembler = class {
         const rawRed = colors[colorOffset] ?? 0;
         const rawGreen = colors[colorOffset + 1] ?? 0;
         const rawBlue = colors[colorOffset + 2] ?? 0;
+        if (rawRed === lastRawRed && rawGreen === lastRawGreen && rawBlue === lastRawBlue && glyphKey === lastGlyphKey) {
+          outputRow[column] = lastCell;
+          continue;
+        }
+        const foregroundKey = this.foregroundKeyForCell(
+          index,
+          rawRed,
+          rawGreen,
+          rawBlue,
+          fillGlyphIndex,
+          glyphKey,
+          terminalGlyphMode
+        );
+        if (foregroundKey === lastForegroundKey && glyphKey === lastGlyphKey) {
+          outputRow[column] = lastCell;
+          continue;
+        }
+        const cachedCell = this.cachedCellForIndex(index, foregroundKey, glyphKey);
+        if (cachedCell !== void 0) {
+          outputRow[column] = cachedCell;
+          lastForegroundKey = foregroundKey;
+          lastGlyphKey = glyphKey;
+          lastCell = cachedCell;
+          lastRawRed = rawRed;
+          lastRawGreen = rawGreen;
+          lastRawBlue = rawBlue;
+          continue;
+        }
+        const foregroundRed = foregroundKey >> 16 & 255;
+        const foregroundGreen = foregroundKey >> 8 & 255;
+        const foregroundBlue = foregroundKey & 255;
+        const cell = this.cellFor(foregroundKey, foregroundRed, foregroundGreen, foregroundBlue, glyphKey);
+        this.setCachedCellForIndex(index, foregroundKey, glyphKey, cell);
+        lastForegroundKey = foregroundKey;
+        lastGlyphKey = glyphKey;
+        lastCell = cell;
+        lastRawRed = rawRed;
+        lastRawGreen = rawGreen;
+        lastRawBlue = rawBlue;
+        outputRow[column] = cell;
+      }
+    }
+    return grid;
+  }
+  buildDenseFillOnlyGrid(grid, columns2, rows2, fillGlyphs, colors, terminalGlyphMode, terminalFillGlyphKeys, lastForegroundKey, lastGlyphKey, lastCell, lastRawRed, lastRawGreen, lastRawBlue) {
+    for (let row = 0; row < rows2; row += 1) {
+      const outputRow = grid[row];
+      const rowOffset = row * columns2;
+      for (let column = 0; column < columns2; column += 1) {
+        const index = rowOffset + column;
+        const fillGlyphIndex = Math.round(fillGlyphs[index]);
+        if (fillGlyphIndex < 5) {
+          outputRow[column] = this.blankAnsi;
+          continue;
+        }
+        const glyphKey = fillGlyphKeyForIndex(terminalFillGlyphKeys, fillGlyphIndex);
+        const colorOffset = index * 4;
+        const rawRed = colors[colorOffset];
+        const rawGreen = colors[colorOffset + 1];
+        const rawBlue = colors[colorOffset + 2];
         if (rawRed === lastRawRed && rawGreen === lastRawGreen && rawBlue === lastRawBlue && glyphKey === lastGlyphKey) {
           outputRow[column] = lastCell;
           continue;
