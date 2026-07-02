@@ -21,11 +21,11 @@ keeping renderer-specific paint and hit-stack plumbing local.
 - [x] Extract shared button, dropdown, input, stepper, and progress row projectors used by both adapters.
 - [x] Extract a renderer-neutral controls row projection for button, slider, checkbox, radio, combo, dropdown, input,
       textbox, stepper, and progress rows.
-- [ ] Add adapter-parity tests that compare terminal/web controls row geometry and hit regions from the shared
+- [x] Add adapter-parity tests that compare terminal/web controls row geometry and hit regions from the shared
       projection.
 - [x] Use the shared projection in both workbench adapters, leaving only ANSI/string-frame painting local.
 
 ## Acceptance
 
-- [ ] Console and browser controls panels derive row/hit geometry from the same projection helper.
-- [ ] `deno task health` passes.
+- [x] Console and browser controls panels derive row/hit geometry from the same projection helper.
+- [x] `deno task health` passes.

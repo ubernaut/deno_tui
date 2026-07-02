@@ -484,6 +484,62 @@ Deno.test("api workbench controls panel rows project shared adapter order", () =
   assertEquals(rows.at(-1), { id: "slider", value: "Progress  ░░░░ 0%", options: undefined });
 });
 
+Deno.test("api workbench controls panel rows keep terminal and web geometry in parity", () => {
+  const projectedRows = apiWorkbenchControlsRowsInto([], {
+    buttonPressCount: 1,
+    genericButtonPressCount: 0,
+    modalOpen: false,
+    slider: { track: { text: "██░░" }, value: 5, max: 10 },
+    checkboxes: [{ label: "live preview", checked: true }],
+    radio: {
+      items: [
+        { label: "Fast", selected: true },
+        { label: "Ship", selected: false },
+      ],
+      activeIndex: 0,
+    },
+    combo: {
+      title: "Theme",
+      label: "Unit-01 Signal",
+      expanded: false,
+      rectWidth: 24,
+      previous: true,
+      next: true,
+    },
+    dropdown: {
+      title: "Dropdown",
+      label: "Geometry",
+      expanded: true,
+    },
+    input: {
+      title: "Input",
+      text: "abc",
+      active: false,
+    },
+    stepper: {
+      steps: [
+        { id: "draft", label: "Draft", completed: true },
+        { id: "ship", label: "Ship" },
+      ],
+      activeIndex: 1,
+      rectWidth: 40,
+    },
+    progress: { track: { text: "███░" }, value: 75 },
+  });
+  const terminal = projectRowsForAdapter(projectedRows, "radio");
+  const web = projectRowsForAdapter(projectedRows, "radio");
+
+  assertEquals(web, terminal);
+  assertEquals(
+    terminal.hits.filter((hit) => hit.id === "slider" && hit.action === "previous").length,
+    1,
+  );
+  assertEquals(
+    terminal.segments.some((segment) => segment.kind === "button" && segment.text === "[ Run Action ]"),
+    true,
+  );
+});
+
 Deno.test("api workbench stepper hit placements clip and reuse caller storage", () => {
   const target = apiWorkbenchStepperHitPlacementsInto(
     [],
@@ -519,3 +575,31 @@ Deno.test("api workbench stepper hit placements clip and reuse caller storage", 
     [8, 3, 3, 1],
   ]);
 });
+
+function projectRowsForAdapter(
+  rows: readonly { id: (typeof apiWorkbenchControlIds)[number]; value: string; options?: unknown }[],
+  activeId: (typeof apiWorkbenchControlIds)[number],
+): { segments: ApiWorkbenchControlLineSegment[]; hits: ApiWorkbenchControlHitPlacement[] } {
+  const segments: ApiWorkbenchControlLineSegment[] = [];
+  const hits: ApiWorkbenchControlHitPlacement[] = [];
+  const projectedSegments: ApiWorkbenchControlLineSegment[] = [];
+  const projectedHits: ApiWorkbenchControlHitPlacement[] = [];
+  const rect = { column: 4, row: 2, width: 28, height: 64 };
+  let row = rect.row;
+  for (const controlRow of rows) {
+    if (controlRow.id === "textbox" || controlRow.value.startsWith("Progress")) continue;
+    row = apiWorkbenchControlLineInto(
+      projectedSegments,
+      projectedHits,
+      controlRow.id,
+      controlRow.value,
+      rect,
+      row,
+      activeId,
+      controlRow.options as Parameters<typeof apiWorkbenchControlLineInto>[7],
+    );
+    for (const segment of projectedSegments) segments.push({ ...segment });
+    for (const hit of projectedHits) hits.push({ ...hit });
+  }
+  return { segments, hits };
+}
