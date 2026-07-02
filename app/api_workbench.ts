@@ -4601,7 +4601,7 @@ function terminalShellWindowTitle(): string {
 }
 
 function windowIds(): WindowId[] {
-  return windowManager.ids().map((id) => id as WindowId);
+  return windowManager.ids() as WindowId[];
 }
 
 function isVisualizationWindow(id: WindowId): id is VisualizationWindowId {
