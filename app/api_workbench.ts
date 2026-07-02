@@ -308,6 +308,8 @@ const terminalShellButtonItems: WorkbenchButtonRowItem<TerminalShellAction>[] = 
   { label: "Bottom", action: "bottom" },
 ];
 const terminalShellButtonPlacements: WorkbenchButtonRowPlacement<TerminalShellAction>[] = [];
+const modalActionButtonItems: WorkbenchButtonRowItem<number>[] = [];
+const modalActionButtonPlacements: WorkbenchButtonRowPlacement<number>[] = [];
 const themes: ThemeSpec[] = createApiWorkbenchThemes();
 const themeLabels = themes.map((entry) => entry.label);
 const themeMenuWidth = Math.max(20, maxTextWidth(themeLabels) + 6);
@@ -2326,16 +2328,29 @@ function renderModalOverlay(frame: Frame): void {
 
   if (inspection.actions.length === 0 || rows.length === 0) return;
   const actionRow = inner.row + Math.min(rows.length, inner.height) - 1;
-  let cursor = inner.column;
-  for (const [index, action] of inspection.actions.entries()) {
-    const width = textWidth(buttonText(action.label));
-    if (cursor + width > inner.column + inner.width) break;
-    writeButton(frame, actionRow, cursor, action.label, {
-      state: action.disabled ? "disabled" : index === inspection.selectedActionIndex ? "active" : "base",
+  modalActionButtonItems.length = 0;
+  for (let index = 0; index < inspection.actions.length; index += 1) {
+    const action = inspection.actions[index]!;
+    modalActionButtonItems.push({
+      label: action.label,
+      action: index,
+      disabled: action.disabled,
+      active: index === inspection.selectedActionIndex,
       tone: action.destructive ? "danger" : "default",
     });
-    addHit({ column: cursor, row: actionRow, width, height: 1 }, { type: "modalAction", index });
-    cursor += width + 1;
+  }
+  layoutWorkbenchButtonRowInto(
+    modalActionButtonPlacements,
+    modalActionButtonItems,
+    { column: inner.column, row: actionRow, width: inner.width, height: 1 },
+    actionRow,
+  );
+  for (const placement of modalActionButtonPlacements) {
+    writeButton(frame, placement.rect.row, placement.rect.column, placement.item.label, {
+      state: placement.state,
+      tone: placement.tone,
+    });
+    addHit(placement.rect, { type: "modalAction", index: placement.item.action });
   }
 }
 

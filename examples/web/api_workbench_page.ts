@@ -30,6 +30,7 @@ import {
   InputController,
   isWorkbenchMenuActivationKey,
   isWorkbenchMenuCloseKey,
+  layoutWorkbenchButtonRowInto,
   layoutWorkbenchMenuBarHits,
   layoutWorkbenchModal,
   layoutWorkbenchPopover,
@@ -71,6 +72,8 @@ import {
   translateHitTargets,
   workbenchAdaptiveTileOptions,
   workbenchButtonPaintOptions,
+  type WorkbenchButtonRowItem,
+  type WorkbenchButtonRowPlacement,
   type WorkbenchPanelWorkspaceState,
   workbenchShelfEntriesInto,
   workbenchStatusLeft,
@@ -235,6 +238,8 @@ const htmlCssLayoutBoxes: ComputedLayoutBox[] = [];
 const minimizedShelfEntries: Array<{ id: PanelId; title: string }> = [];
 const fullscreenTabEntries: Array<{ id: PanelId; title: string; selected?: boolean; hidden?: boolean }> = [];
 const verticalScrollbarCells: Array<{ column: number; row: number; glyph: string }> = [];
+const modalActionButtonItems: WorkbenchButtonRowItem<number>[] = [];
+const modalActionButtonPlacements: WorkbenchButtonRowPlacement<number>[] = [];
 let dropdownOverlay: DropdownOverlay | null = null;
 let pointerDrag: {
   x: number;
@@ -1467,16 +1472,29 @@ function renderModalOverlay(frame: string[]): void {
   }
   if (inspection.actions.length === 0 || rows.length === 0) return;
   const actionRow = inner.row + Math.min(rows.length, inner.height) - 1;
-  let column = inner.column;
-  for (const [index, action] of inspection.actions.entries()) {
-    const width = textWidth(buttonText(action.label));
-    if (column + width > inner.column + inner.width) break;
-    writeButton(frame, actionRow, column, action.label, {
-      state: action.disabled ? "disabled" : index === inspection.selectedActionIndex ? "active" : "base",
+  modalActionButtonItems.length = 0;
+  for (let index = 0; index < inspection.actions.length; index += 1) {
+    const action = inspection.actions[index]!;
+    modalActionButtonItems.push({
+      label: action.label,
+      action: index,
+      disabled: action.disabled,
+      active: index === inspection.selectedActionIndex,
       tone: action.destructive ? "danger" : "default",
     });
-    hitTargets.add({ column, row: actionRow, width, height: 1 }, { type: "modalAction", index });
-    column += width + 1;
+  }
+  layoutWorkbenchButtonRowInto(
+    modalActionButtonPlacements,
+    modalActionButtonItems,
+    { column: inner.column, row: actionRow, width: inner.width, height: 1 },
+    actionRow,
+  );
+  for (const placement of modalActionButtonPlacements) {
+    writeButton(frame, placement.rect.row, placement.rect.column, placement.item.label, {
+      state: placement.state,
+      tone: placement.tone,
+    });
+    hitTargets.add(placement.rect, { type: "modalAction", index: placement.item.action });
   }
 }
 
