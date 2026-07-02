@@ -80,3 +80,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   truecolor output without regressing the Three ASCII benchmark suite.
 - Added a standalone Three ASCII demo titlebar shell with mouse-enabled minimize, maximize, restore, and close controls
   so the default renderer launch has the same basic window affordances as the portfolio demos.
+- Extracted standalone Three ASCII demo window geometry and titlebar hit testing into a small tested helper instead of
+  leaving the new window shell math embedded in the demo.
