@@ -479,6 +479,8 @@ Recommended routing:
   measurement for no-wrap and long-token wrapping behavior.
 - The selector subset now includes bounded structural pseudo-classes for common terminal list and toolbar styling:
   `:first-child`, `:last-child`, `:only-child`, and `:nth-child(number|odd|even)`.
+- The Flexbox subset now includes stable `order` support in both the simple TypeScript solver and the optional Yoga
+  adapter.
 - Markup widget hydration now honors `tabindex` for focus order: positive indexes sort first, `0` and missing values
   follow document order, and negative values are omitted from traversal.
 - Intrinsic measurement cache keys now include the flow-affecting style fields used by that sizing path, including

@@ -23,6 +23,7 @@ const supportedProperties = [
   "flex-shrink",
   "flex-basis",
   "flex",
+  "order",
   "align-items",
   "justify-content",
   "align-self",

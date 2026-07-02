@@ -233,6 +233,24 @@ Deno.test("applyCssCascade parses flex flow shorthand into direction and wrappin
   assertEquals(styled.style.flexWrap, "wrap-reverse");
 });
 
+Deno.test("applyCssCascade parses flex item order", () => {
+  const document = parseTuiMarkup(`
+    <window id="main">
+      <panel id="late">Late</panel>
+      <panel id="early">Early</panel>
+    </window>
+  `);
+  const stylesheet = parseCssStylesheet(`
+    #late { order: 2; }
+    #early { order: -1; }
+  `);
+
+  const styled = applyCssCascade(document.root, stylesheet);
+
+  assertEquals(findLayoutNode(styled, "late")!.style.order, 2);
+  assertEquals(findLayoutNode(styled, "early")!.style.order, -1);
+});
+
 Deno.test("applyCssCascade parses grid templates placement and auto flow", () => {
   const document = parseTuiMarkup(`
     <window id="main">
@@ -405,6 +423,7 @@ Deno.test("inspectTuiCssSupport reports the documented HTML/CSS subset", () => {
   assert(report.properties.includes("grid-template-columns"));
   assert(report.properties.includes("grid-template-areas"));
   assert(report.properties.includes("flex-flow"));
+  assert(report.properties.includes("order"));
   assert(report.properties.includes("white-space"));
   assert(report.properties.includes("overflow-wrap"));
   assert(report.selectors.includes(":first-child"));
@@ -1044,6 +1063,41 @@ Deno.test("createMarkupLayout applies simple solver justify-content to flex rows
   assertEquals(result.layout.byId.get("b")!.rect, { column: 6, row: 0, width: 2, height: 1 });
 });
 
+Deno.test("createMarkupLayout applies flex item order in the simple solver", () => {
+  const result = createMarkupLayout({
+    markup: `
+      <window id="main">
+        <panel id="late">Late</panel>
+        <panel id="middle">Middle</panel>
+        <panel id="early">Early</panel>
+      </window>
+    `,
+    css: `
+      window {
+        display: flex;
+        flex-direction: row;
+        width: 100%;
+        height: 100%;
+      }
+
+      panel {
+        width: 3;
+        height: 1;
+        flex-shrink: 0;
+      }
+
+      #late { order: 2; }
+      #early { order: -1; }
+    `,
+    bounds: { column: 0, row: 0, width: 12, height: 3 },
+  });
+
+  assertEquals(result.layout.root.children.map((box) => box.id), ["early", "middle", "late"]);
+  assertEquals(result.layout.byId.get("early")!.rect.column, 0);
+  assertEquals(result.layout.byId.get("middle")!.rect.column, 3);
+  assertEquals(result.layout.byId.get("late")!.rect.column, 6);
+});
+
 Deno.test("createMarkupLayout positions absolute children without affecting simple solver flow", () => {
   const result = createMarkupLayout({
     markup: `
@@ -1294,6 +1348,42 @@ Deno.test("yogaLayoutSolver computes basic flex boxes through the markup API", (
 
   assertEquals(result.layout.byId.get("toolbar")!.rect, { column: 0, row: 0, width: 80, height: 3 });
   assertEquals(result.layout.byId.get("body")!.rect, { column: 0, row: 3, width: 80, height: 21 });
+});
+
+Deno.test("yogaLayoutSolver applies flex item order through the markup API", () => {
+  const result = createMarkupLayout({
+    markup: `
+      <window id="main">
+        <panel id="late">Late</panel>
+        <panel id="middle">Middle</panel>
+        <panel id="early">Early</panel>
+      </window>
+    `,
+    css: `
+      window {
+        display: flex;
+        flex-direction: row;
+        width: 100%;
+        height: 100%;
+      }
+
+      panel {
+        width: 3;
+        height: 1;
+        flex-shrink: 0;
+      }
+
+      #late { order: 2; }
+      #early { order: -1; }
+    `,
+    bounds: { column: 0, row: 0, width: 12, height: 3 },
+    solver: yogaLayoutSolver(),
+  });
+
+  assertEquals(result.layout.root.children.map((box) => box.id), ["early", "middle", "late"]);
+  assertEquals(result.layout.byId.get("early")!.rect.column, 0);
+  assertEquals(result.layout.byId.get("middle")!.rect.column, 3);
+  assertEquals(result.layout.byId.get("late")!.rect.column, 6);
 });
 
 Deno.test("yogaLayoutSolver accepts wrapped flex rows through the markup API", () => {

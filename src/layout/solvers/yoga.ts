@@ -60,8 +60,9 @@ export class YogaLayoutSolver implements LayoutSolver {
         return measured;
       });
     }
-    for (let index = 0; index < node.children.length; index += 1) {
-      const child = node.children[index]!;
+    const children = yogaLayoutChildren(node);
+    for (let index = 0; index < children.length; index += 1) {
+      const child = children[index]!;
       yogaNode.insertChild(this.#createYogaNode(child), index);
     }
     return yogaNode;
@@ -84,8 +85,9 @@ export class YogaLayoutSolver implements LayoutSolver {
     const children: ComputedLayoutBox[] = [];
     let scrollWidth = contentRect.width;
     let scrollHeight = contentRect.height;
-    for (let index = 0; index < node.children.length; index += 1) {
-      const child = node.children[index]!;
+    const orderedChildren = yogaLayoutChildren(node);
+    for (let index = 0; index < orderedChildren.length; index += 1) {
+      const child = orderedChildren[index]!;
       const childYogaNode = yogaNode.getChild(index) as YogaNode;
       const childBox = this.#toComputedBox(child, childYogaNode, rootBounds, { column: rect.column, row: rect.row });
       children.push(childBox);
@@ -131,6 +133,24 @@ export function yogaLayoutSolver(options: YogaLayoutSolverOptions = {}): YogaLay
 }
 
 type YogaNode = ReturnType<typeof Yoga.Node.create>;
+
+function yogaLayoutChildren(node: LayoutNode): LayoutNode[] {
+  const children = node.children.slice();
+  let ordered = false;
+  for (const child of children) {
+    if (child.style.order !== 0) {
+      ordered = true;
+      break;
+    }
+  }
+  if (!ordered) return children;
+  const positions = new Map<LayoutNode, number>();
+  for (let index = 0; index < children.length; index += 1) positions.set(children[index]!, index);
+  children.sort((left, right) =>
+    left.style.order - right.style.order || (positions.get(left) ?? 0) - (positions.get(right) ?? 0)
+  );
+  return children;
+}
 
 function applyYogaStyle(node: YogaNode, style: ComputedLayoutStyle): void {
   node.setDisplay(style.display === "none" ? Yoga.DISPLAY_NONE : Yoga.DISPLAY_FLEX);

@@ -4743,6 +4743,7 @@ function defaultComputedLayoutStyle() {
     flexGrow: 0,
     flexShrink: 1,
     flexBasis: autoLength(),
+    order: 0,
     alignItems: "stretch",
     justifyContent: "start",
     alignSelf: "stretch",
@@ -4910,6 +4911,11 @@ function parseLayoutInteger(value, fallback = 0) {
   const parsed = Number.parseFloat(value.trim());
   return Number.isFinite(parsed) ? Math.max(0, Math.floor(parsed)) : fallback;
 }
+function parseSignedLayoutInteger(value, fallback = 0) {
+  if (value === void 0) return fallback;
+  const parsed = Number.parseFloat(value.trim());
+  return Number.isFinite(parsed) ? Math.floor(parsed) : fallback;
+}
 function parseBoxEdges(value, fallback = ZERO_BOX_EDGES) {
   if (value === void 0) return { ...fallback };
   const words = splitCssWords(value.trim());
@@ -4956,6 +4962,9 @@ function applyLayoutDeclaration(style2, property, value) {
       break;
     case "flex":
       applyFlexShorthand(next, resolved);
+      break;
+    case "order":
+      next.order = parseSignedLayoutInteger(resolved, next.order);
       break;
     case "align-items":
       next.alignItems = normalizeAlignItems(resolved, next.alignItems);
@@ -6025,7 +6034,23 @@ function layoutChildren(node) {
   for (const child of node.children) {
     if (child.style.display !== "none" && child.style.position !== "absolute") children.push(child);
   }
+  sortLayoutChildrenByOrder(children);
   return children;
+}
+function sortLayoutChildrenByOrder(children) {
+  let ordered = false;
+  for (const child of children) {
+    if (child.style.order !== 0) {
+      ordered = true;
+      break;
+    }
+  }
+  if (!ordered) return;
+  const positions = /* @__PURE__ */ new Map();
+  for (let index = 0; index < children.length; index += 1) positions.set(children[index], index);
+  children.sort(
+    (left, right) => left.style.order - right.style.order || (positions.get(left) ?? 0) - (positions.get(right) ?? 0)
+  );
 }
 function normalizeRect(rect) {
   return {
@@ -6308,14 +6333,14 @@ function measureTextIntrinsic(text, availableWidth, defaultTextHeight, style2) {
   });
 }
 function intrinsicMeasurementCacheKey(node, availableWidth, defaultTextHeight) {
-  let key = "v1" + Math.max(1, Math.floor(availableWidth)) + "" + Math.max(1, Math.floor(defaultTextHeight)) + "" + node.tag + "" + (node.text ?? "") + "" + (node.intrinsic?.width ?? "") + "" + (node.intrinsic?.height ?? "") + "" + node.style.display + "" + node.style.position + "" + node.style.flexDirection + "" + layoutLengthSignature(node.style.flexBasis) + "" + layoutLengthSignature(node.style.width) + "" + layoutLengthSignature(node.style.height) + "" + layoutLengthSignature(node.style.minWidth) + "" + layoutLengthSignature(node.style.minHeight) + "" + layoutLengthSignature(node.style.maxWidth) + "" + layoutLengthSignature(node.style.maxHeight) + "" + node.style.gap + "" + node.style.rowGap + "" + node.style.columnGap + "" + node.style.whiteSpace + "" + node.style.overflowWrap;
+  let key = "v1" + Math.max(1, Math.floor(availableWidth)) + "" + Math.max(1, Math.floor(defaultTextHeight)) + "" + node.tag + "" + (node.text ?? "") + "" + (node.intrinsic?.width ?? "") + "" + (node.intrinsic?.height ?? "") + "" + node.style.display + "" + node.style.position + "" + node.style.order + "" + node.style.flexDirection + "" + layoutLengthSignature(node.style.flexBasis) + "" + layoutLengthSignature(node.style.width) + "" + layoutLengthSignature(node.style.height) + "" + layoutLengthSignature(node.style.minWidth) + "" + layoutLengthSignature(node.style.minHeight) + "" + layoutLengthSignature(node.style.maxWidth) + "" + layoutLengthSignature(node.style.maxHeight) + "" + node.style.gap + "" + node.style.rowGap + "" + node.style.columnGap + "" + node.style.whiteSpace + "" + node.style.overflowWrap;
   for (const child of node.children) {
     key += "" + intrinsicNodeSignature(child);
   }
   return key;
 }
 function intrinsicNodeSignature(node) {
-  let signature = node.tag + "" + (node.text ?? "") + "" + (node.intrinsic?.width ?? "") + "" + (node.intrinsic?.height ?? "") + "" + node.style.display + "" + node.style.position + "" + node.style.flexDirection + "" + layoutLengthSignature(node.style.flexBasis) + "" + layoutLengthSignature(node.style.width) + "" + layoutLengthSignature(node.style.height) + "" + layoutLengthSignature(node.style.minWidth) + "" + layoutLengthSignature(node.style.minHeight) + "" + layoutLengthSignature(node.style.maxWidth) + "" + layoutLengthSignature(node.style.maxHeight) + "" + node.style.gap + "" + node.style.rowGap + "" + node.style.columnGap + "" + node.style.whiteSpace + "" + node.style.overflowWrap;
+  let signature = node.tag + "" + (node.text ?? "") + "" + (node.intrinsic?.width ?? "") + "" + (node.intrinsic?.height ?? "") + "" + node.style.display + "" + node.style.position + "" + node.style.order + "" + node.style.flexDirection + "" + layoutLengthSignature(node.style.flexBasis) + "" + layoutLengthSignature(node.style.width) + "" + layoutLengthSignature(node.style.height) + "" + layoutLengthSignature(node.style.minWidth) + "" + layoutLengthSignature(node.style.minHeight) + "" + layoutLengthSignature(node.style.maxWidth) + "" + layoutLengthSignature(node.style.maxHeight) + "" + node.style.gap + "" + node.style.rowGap + "" + node.style.columnGap + "" + node.style.whiteSpace + "" + node.style.overflowWrap;
   if (node.children.length === 0) return signature + "";
   signature += "";
   for (let index = 0; index < node.children.length; index += 1) {

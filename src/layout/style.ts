@@ -66,6 +66,7 @@ export interface ComputedLayoutStyle {
   flexGrow: number;
   flexShrink: number;
   flexBasis: LayoutLengthValue;
+  order: number;
   alignItems: LayoutAlignItems;
   justifyContent: LayoutJustifyContent;
   alignSelf: LayoutSelfAlignment;
@@ -141,6 +142,7 @@ export function defaultComputedLayoutStyle(): ComputedLayoutStyle {
     flexGrow: 0,
     flexShrink: 1,
     flexBasis: autoLength(),
+    order: 0,
     alignItems: "stretch",
     justifyContent: "start",
     alignSelf: "stretch",
@@ -352,6 +354,12 @@ export function parseLayoutInteger(value: string | undefined, fallback = 0): num
   return Number.isFinite(parsed) ? Math.max(0, Math.floor(parsed)) : fallback;
 }
 
+function parseSignedLayoutInteger(value: string | undefined, fallback = 0): number {
+  if (value === undefined) return fallback;
+  const parsed = Number.parseFloat(value.trim());
+  return Number.isFinite(parsed) ? Math.floor(parsed) : fallback;
+}
+
 /** Expands one-to-four CSS box values into top, right, bottom, and left edges. */
 export function parseBoxEdges(
   value: string | undefined,
@@ -410,6 +418,9 @@ export function applyLayoutDeclaration(
       break;
     case "flex":
       applyFlexShorthand(next, resolved);
+      break;
+    case "order":
+      next.order = parseSignedLayoutInteger(resolved, next.order);
       break;
     case "align-items":
       next.alignItems = normalizeAlignItems(resolved, next.alignItems);

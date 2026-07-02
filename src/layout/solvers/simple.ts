@@ -290,7 +290,24 @@ function layoutChildren(node: LayoutNode): LayoutNode[] {
   for (const child of node.children) {
     if (child.style.display !== "none" && child.style.position !== "absolute") children.push(child);
   }
+  sortLayoutChildrenByOrder(children);
   return children;
+}
+
+function sortLayoutChildrenByOrder(children: LayoutNode[]): void {
+  let ordered = false;
+  for (const child of children) {
+    if (child.style.order !== 0) {
+      ordered = true;
+      break;
+    }
+  }
+  if (!ordered) return;
+  const positions = new Map<LayoutNode, number>();
+  for (let index = 0; index < children.length; index += 1) positions.set(children[index]!, index);
+  children.sort((left, right) =>
+    left.style.order - right.style.order || (positions.get(left) ?? 0) - (positions.get(right) ?? 0)
+  );
 }
 
 function normalizeRect(rect: Rectangle): Rectangle {
@@ -709,6 +726,7 @@ function intrinsicMeasurementCacheKey(node: LayoutNode, availableWidth: number, 
     "\u001f" + (node.intrinsic?.height ?? "") +
     "\u001f" + node.style.display +
     "\u001f" + node.style.position +
+    "\u001f" + node.style.order +
     "\u001f" + node.style.flexDirection +
     "\u001f" + layoutLengthSignature(node.style.flexBasis) +
     "\u001f" + layoutLengthSignature(node.style.width) +
@@ -735,6 +753,7 @@ function intrinsicNodeSignature(node: LayoutNode): string {
     "\u001f" + (node.intrinsic?.height ?? "") +
     "\u001f" + node.style.display +
     "\u001f" + node.style.position +
+    "\u001f" + node.style.order +
     "\u001f" + node.style.flexDirection +
     "\u001f" + layoutLengthSignature(node.style.flexBasis) +
     "\u001f" + layoutLengthSignature(node.style.width) +
