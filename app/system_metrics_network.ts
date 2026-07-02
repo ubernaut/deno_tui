@@ -35,43 +35,38 @@ export function sampleNetworkStats(
   let totalTxRate = 0;
   const counters = new Map<string, NetCounters>();
 
-  const networks = text
-    .split("\n")
-    .slice(2)
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      const [namePart, countersPart] = line.split(":");
-      const name = namePart?.trim() ?? "";
-      const values = countersPart?.trim().split(/\s+/).map(Number) ?? [];
-      const rxBytes = values[0] ?? 0;
-      const txBytes = values[8] ?? 0;
-      const previous = previousCounters.get(name) ?? { rxBytes, txBytes, sampledAt };
-      const elapsedSeconds = Math.max(0.001, (sampledAt - previous.sampledAt) / 1000);
-      const rxRate = Math.max(0, (rxBytes - previous.rxBytes) / elapsedSeconds);
-      const txRate = Math.max(0, (txBytes - previous.txBytes) / elapsedSeconds);
-      counters.set(name, { rxBytes, txBytes, sampledAt });
-      if (name !== "lo") {
-        totalRxRate += rxRate;
-        totalTxRate += txRate;
+  const networks: NetworkSnapshot[] = [];
+  const lines = text.split("\n");
+  for (let index = 2; index < lines.length; index += 1) {
+    const line = lines[index]?.trim();
+    if (!line) continue;
+    const separator = line.indexOf(":");
+    if (separator < 0) continue;
+    const name = line.slice(0, separator).trim();
+    const { rxBytes, txBytes } = parseNetworkByteCounters(line.slice(separator + 1));
+    const previous = previousCounters.get(name) ?? { rxBytes, txBytes, sampledAt };
+    const elapsedSeconds = Math.max(0.001, (sampledAt - previous.sampledAt) / 1000);
+    const rxRate = Math.max(0, (rxBytes - previous.rxBytes) / elapsedSeconds);
+    const txRate = Math.max(0, (txBytes - previous.txBytes) / elapsedSeconds);
+    counters.set(name, { rxBytes, txBytes, sampledAt });
+    if (name !== "lo") {
+      totalRxRate += rxRate;
+      totalTxRate += txRate;
+      const addresses = addressMap.get(name) ?? [];
+      if (addresses.length > 0 || rxRate > 0 || txRate > 0) {
+        networks.push({
+          name,
+          addresses,
+          rxBytes,
+          txBytes,
+          rxRate,
+          txRate,
+        });
       }
-      return {
-        name,
-        addresses: addressMap.get(name) ?? [],
-        rxBytes,
-        txBytes,
-        rxRate,
-        txRate,
-      } satisfies NetworkSnapshot;
-    })
-    .filter((entry) => entry.name !== "lo")
-    .filter((entry) => entry.addresses.length > 0 || entry.rxRate > 0 || entry.txRate > 0)
-    .sort((a, b) => {
-      const aWeight = a.rxRate + a.txRate + (a.addresses.length > 0 ? 10_000_000_000 : 0);
-      const bWeight = b.rxRate + b.txRate + (b.addresses.length > 0 ? 10_000_000_000 : 0);
-      return bWeight - aWeight;
-    })
-    .slice(0, 8);
+    }
+  }
+  networks.sort(compareNetworkSnapshots);
+  if (networks.length > 8) networks.length = 8;
 
   return {
     networks,
@@ -79,4 +74,38 @@ export function sampleNetworkStats(
     totalTxRate,
     counters,
   };
+}
+
+function parseNetworkByteCounters(value: string): { rxBytes: number; txBytes: number } {
+  let field = 0;
+  let start = -1;
+  let rxBytes = 0;
+  let txBytes = 0;
+  for (let index = 0; index <= value.length; index += 1) {
+    const char = index < value.length ? value[index] : " ";
+    if (char !== undefined && !isNetworkCounterWhitespace(char)) {
+      if (start < 0) start = index;
+      continue;
+    }
+    if (start < 0) continue;
+    if (field === 0) {
+      rxBytes = Number(value.slice(start, index)) || 0;
+    } else if (field === 8) {
+      txBytes = Number(value.slice(start, index)) || 0;
+      break;
+    }
+    field += 1;
+    start = -1;
+  }
+  return { rxBytes, txBytes };
+}
+
+function isNetworkCounterWhitespace(char: string): boolean {
+  return char === " " || char === "\t" || char === "\r" || char === "\n" || char === "\f";
+}
+
+function compareNetworkSnapshots(a: NetworkSnapshot, b: NetworkSnapshot): number {
+  const aWeight = a.rxRate + a.txRate + (a.addresses.length > 0 ? 10_000_000_000 : 0);
+  const bWeight = b.rxRate + b.txRate + (b.addresses.length > 0 ? 10_000_000_000 : 0);
+  return bWeight - aWeight;
 }
