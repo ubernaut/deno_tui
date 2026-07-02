@@ -15,7 +15,7 @@ import { SliderController } from "../src/components/slider.ts";
 import { renderStatusBar } from "../src/components/statusbar.ts";
 import { StepperController } from "../src/components/stepper.ts";
 import { formatTerminalOutputLine } from "../src/components/terminal_output.ts";
-import { TextBoxController } from "../src/components/textbox.ts";
+import { TextBoxController, type TextBoxVisualLine } from "../src/components/textbox.ts";
 import {
   appendBoundedWorkbenchLogRow,
   buttonText,
@@ -355,6 +355,7 @@ const controlProjectedRows: ApiWorkbenchProjectedControlRow[] = [];
 const controlCheckboxOptions: ApiWorkbenchCheckboxOption[] = [];
 const controlRadioOptions: ApiWorkbenchRadioOption[] = [];
 const controlTextboxProjectionRows: ApiWorkbenchTextboxProjectionRow[] = [];
+const controlTextboxVisualLines: TextBoxVisualLine[] = [];
 const controlSliderSetHit: ApiWorkbenchControlHitPlacement = {
   column: 0,
   row: 0,
@@ -1797,6 +1798,7 @@ function renderTextboxControl(frame: Frame, rect: Rectangle, row: number, t: The
     rect,
     row,
     lines: notes.lines.peek(),
+    visualLines: controlTextboxVisualLines,
     cursor: notes.cursorPosition.peek(),
     active,
   });

@@ -7136,6 +7136,13 @@
       "documented": true
     },
     {
+      "module": "src/components/textbox.ts",
+      "name": "wrapTextBoxLinesInto",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
       "module": "src/components/three_ascii.ts",
       "name": "ThreeAscii",
       "kind": "class",

@@ -70,6 +70,7 @@ import {
   TerminalScrollbackController,
   type TerminalWorkspaceSnapshot,
   TextBoxController,
+  type TextBoxVisualLine,
   TextObject,
   type TextRectangle,
   textWidth,
@@ -304,6 +305,7 @@ const controlProjectedRows: ApiWorkbenchProjectedControlRow[] = [];
 const controlCheckboxOptions: ApiWorkbenchCheckboxOption[] = [];
 const controlRadioOptions: ApiWorkbenchRadioOption[] = [];
 const controlTextboxProjectionRows: ApiWorkbenchTextboxProjectionRow[] = [];
+const controlTextboxVisualLines: TextBoxVisualLine[] = [];
 const controlSliderSetHit: ApiWorkbenchControlHitPlacement = {
   column: 0,
   row: 0,
@@ -2202,6 +2204,7 @@ function renderTextboxControl(frame: string[], rect: Rectangle, row: number, t: 
     rect,
     row,
     lines: textBox.lines.peek(),
+    visualLines: controlTextboxVisualLines,
     cursor: textBox.cursorPosition.peek(),
     active: selected,
   });

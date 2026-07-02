@@ -288,6 +288,30 @@ Deno.test("api workbench textbox projection can reuse caller-owned rows", () => 
   assertEquals(clipped.rows.length, 0);
 });
 
+Deno.test("api workbench textbox projection reuses caller-owned visual lines", () => {
+  const visualLines = apiWorkbenchTextboxProjection({
+    rect: { column: 2, row: 4, width: 18, height: 4 },
+    row: 5,
+    lines: ["alpha beta gamma"],
+    cursor: { x: 0, y: 0 },
+    active: false,
+  }).rows.map((row) => row.visualLine);
+  const firstVisualLine = visualLines[0];
+
+  const projection = apiWorkbenchTextboxProjection({
+    rect: { column: 2, row: 4, width: 18, height: 4 },
+    row: 5,
+    lines: ["short"],
+    visualLines,
+    cursor: { x: 0, y: 0 },
+    active: false,
+  });
+
+  assertEquals(projection.rows[0]?.visualLine === firstVisualLine, true);
+  assertEquals(projection.rows[0]?.visualLine.text, "short");
+  assertEquals(visualLines.length, 1);
+});
+
 Deno.test("api workbench option rows project checkbox and radio controls with reusable storage", () => {
   const rows = apiWorkbenchCheckboxRowsInto([], [
     { label: "live preview", checked: true },

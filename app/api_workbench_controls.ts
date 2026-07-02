@@ -1,7 +1,7 @@
 import type { DataColumn } from "../src/components/data_table.ts";
 import { renderCheckBoxMark } from "../src/components/checkbox.ts";
 import { renderStepper, type StepperStep } from "../src/components/stepper.ts";
-import { type CursorPosition, type TextBoxVisualLine, wrapTextBoxLines } from "../src/components/textbox.ts";
+import { type CursorPosition, type TextBoxVisualLine, wrapTextBoxLinesInto } from "../src/components/textbox.ts";
 import {
   layoutWorkbenchControlButtonLine,
   type WorkbenchControlButtonLineSegmentKind,
@@ -94,6 +94,7 @@ export interface ApiWorkbenchTextboxProjectionOptions {
   rect: Rectangle;
   row: number;
   lines: readonly string[];
+  visualLines?: TextBoxVisualLine[];
   cursor: CursorPosition;
   active: boolean;
   maxHeight?: number;
@@ -422,7 +423,9 @@ export function apiWorkbenchTextboxProjectionInto(
   );
   const bodyColumn = rect.column + labelWidth;
   const bodyWidth = Math.max(1, rect.width - labelWidth);
-  const visualLines = wrapTextBoxLines(options.lines, bodyWidth - 2, { wordWrap: options.wordWrap ?? true });
+  const visualLines = wrapTextBoxLinesInto(options.visualLines ?? [], options.lines, bodyWidth - 2, {
+    wordWrap: options.wordWrap ?? true,
+  });
   let cursorRow = -1;
   for (let index = 0; index < visualLines.length; index += 1) {
     const line = visualLines[index]!;

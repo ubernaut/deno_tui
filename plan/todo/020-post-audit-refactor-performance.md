@@ -51,3 +51,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   allocating full option projections.
 - Added a reusable textbox projection path for API workbench controls so terminal and web renderers keep caller-owned
   row buffers across draws.
+- Added `wrapTextBoxLinesInto` so multiline textbox wrapping can reuse caller-owned visual-line objects, and wired the
+  API workbench textbox projection through it.

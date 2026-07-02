@@ -87,7 +87,13 @@ import {
   tableVisibleCapacity,
 } from "../src/components/table.ts";
 import { clampTabIndex, renderTabs, shiftTabIndex, tabForIndex, TabsController } from "../src/components/tabs.ts";
-import { TextBoxController, textBoxVisualCursor, TextLineCache, wrapTextBoxLines } from "../src/components/textbox.ts";
+import {
+  TextBoxController,
+  textBoxVisualCursor,
+  TextLineCache,
+  wrapTextBoxLines,
+  wrapTextBoxLinesInto,
+} from "../src/components/textbox.ts";
 import { flattenTree, flattenTreeRows, TreeController } from "../src/components/tree.ts";
 import {
   renderVirtualListRows,
@@ -2013,6 +2019,18 @@ Deno.test("TextBoxController exposes wrapped visual lines and cursor projection"
   });
   assertEquals(wrapTextBoxLines(["alpha beta"], 20, { wordWrap: false }), [
     { lineIndex: 0, startColumn: 0, endColumn: 10, text: "alpha beta", continuation: false },
+  ]);
+
+  const reusable = wrapTextBoxLines(lines, 7, { wordWrap: true });
+  const first = reusable[0];
+  const secondPass = wrapTextBoxLinesInto(reusable, ["short"], 20, { wordWrap: false });
+  assertEquals(secondPass === reusable, true);
+  assertEquals(secondPass[0] === first, true);
+  assertEquals(secondPass, [
+    { lineIndex: 0, startColumn: 0, endColumn: 5, text: "short", continuation: false },
+  ]);
+  assertEquals(wrapTextBoxLinesInto(reusable, [], 10), [
+    { lineIndex: 0, startColumn: 0, endColumn: 0, text: "", continuation: false },
   ]);
 });
 

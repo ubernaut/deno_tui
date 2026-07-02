@@ -8195,56 +8195,66 @@ var TextBoxController = class {
     return { x: lines[y]?.length ?? 0, y };
   }
 };
-function wrapTextBoxLines(lines, width, options = {}) {
-  const visual = [];
+function wrapTextBoxLinesInto(visual, lines, width, options = {}) {
+  let written = 0;
   const safeWidth = Math.max(1, Math.floor(width));
   const wordWrap = options.wordWrap ?? true;
+  const writeVisualLine = (lineIndex, startColumn, endColumn, text, continuation) => {
+    const target = visual[written] ??= {
+      lineIndex: 0,
+      startColumn: 0,
+      endColumn: 0,
+      text: "",
+      continuation: false
+    };
+    target.lineIndex = lineIndex;
+    target.startColumn = startColumn;
+    target.endColumn = endColumn;
+    target.text = text;
+    target.continuation = continuation;
+    written += 1;
+  };
   for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
     const line = lines[lineIndex];
     if (!wordWrap || line.length <= safeWidth) {
-      visual.push({
-        lineIndex,
-        startColumn: 0,
-        endColumn: line.length,
-        text: cropToWidth(line.replaceAll("	", " "), safeWidth),
-        continuation: false
-      });
+      writeVisualLine(lineIndex, 0, line.length, cropToWidth(line.replaceAll("	", " "), safeWidth), false);
       continue;
     }
     if (line.length === 0) {
-      visual.push({ lineIndex, startColumn: 0, endColumn: 0, text: "", continuation: false });
+      writeVisualLine(lineIndex, 0, 0, "", false);
       continue;
     }
     let startColumn = 0;
     let continuation = false;
     while (startColumn < line.length) {
-      const remaining = line.slice(startColumn);
-      if (remaining.length <= safeWidth) {
-        visual.push({
+      if (line.length - startColumn <= safeWidth) {
+        writeVisualLine(
           lineIndex,
           startColumn,
-          endColumn: line.length,
-          text: remaining.replaceAll("	", " "),
+          line.length,
+          line.slice(startColumn).replaceAll("	", " "),
           continuation
-        });
+        );
         break;
       }
       const slice = line.slice(startColumn, startColumn + safeWidth);
       const space = slice.lastIndexOf(" ");
       const endColumn = space > 0 ? startColumn + space : startColumn + safeWidth;
-      visual.push({
+      writeVisualLine(
         lineIndex,
         startColumn,
         endColumn,
-        text: line.slice(startColumn, endColumn).replaceAll("	", " "),
+        line.slice(startColumn, endColumn).replaceAll("	", " "),
         continuation
-      });
+      );
       startColumn = space > 0 ? endColumn + 1 : endColumn;
       while (line[startColumn] === " ") startColumn += 1;
       continuation = true;
     }
   }
-  return visual.length > 0 ? visual : [{ lineIndex: 0, startColumn: 0, endColumn: 0, text: "", continuation: false }];
+  if (written === 0) writeVisualLine(0, 0, 0, "", false);
+  visual.length = written;
+  return visual;
 }
 
 // src/components/tree.ts
@@ -14933,7 +14943,9 @@ function apiWorkbenchTextboxProjectionInto(rows2, options) {
   );
   const bodyColumn = rect.column + labelWidth;
   const bodyWidth = Math.max(1, rect.width - labelWidth);
-  const visualLines = wrapTextBoxLines(options.lines, bodyWidth - 2, { wordWrap: options.wordWrap ?? true });
+  const visualLines = wrapTextBoxLinesInto(options.visualLines ?? [], options.lines, bodyWidth - 2, {
+    wordWrap: options.wordWrap ?? true
+  });
   let cursorRow = -1;
   for (let index = 0; index < visualLines.length; index += 1) {
     const line = visualLines[index];
@@ -15571,6 +15583,7 @@ var controlProjectedRows = [];
 var controlCheckboxOptions = [];
 var controlRadioOptions = [];
 var controlTextboxProjectionRows = [];
+var controlTextboxVisualLines = [];
 var controlSliderSetHit = {
   column: 0,
   row: 0,
@@ -17331,6 +17344,7 @@ function renderTextboxControl(frame, rect, row, t) {
     rect,
     row,
     lines: textBox.lines.peek(),
+    visualLines: controlTextboxVisualLines,
     cursor: textBox.cursorPosition.peek(),
     active: selected
   });
