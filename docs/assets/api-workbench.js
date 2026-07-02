@@ -11014,6 +11014,30 @@ function layoutWorkbenchButtonRowInto(target, items, bounds, startRow, options =
   }
   return Math.min(bottom, row + 1);
 }
+function layoutWrappedControlOptions(items, selectedIndex, width) {
+  const safeWidth = Math.max(8, width);
+  const rows2 = [];
+  let line = "";
+  let tokens = [];
+  const flush = () => {
+    if (line.length === 0) return;
+    rows2.push({ text: line, tokens });
+    line = "";
+    tokens = [];
+  };
+  for (const [index, item] of items.entries()) {
+    const token = `${index === selectedIndex ? "[" : " "}${item}${index === selectedIndex ? "]" : " "} `;
+    const tokenWidth = textWidth(token);
+    if (line.length > 0 && textWidth(line) + tokenWidth > safeWidth) flush();
+    tokens.push({ index, text: token, columnOffset: textWidth(line), width: tokenWidth });
+    line += token;
+  }
+  flush();
+  return rows2.length > 0 ? rows2 : [{ text: "", tokens: [] }];
+}
+function wrappedControlOptionRowCount(items, selectedIndex, width) {
+  return layoutWrappedControlOptions(items, selectedIndex, width).length;
+}
 
 // src/runtime/diagnostics.ts
 var DiagnosticsCollector = class {
@@ -14595,6 +14619,40 @@ function nextSortableDataColumn(columns2, currentColumnId, delta) {
   }
   return void 0;
 }
+function apiWorkbenchStepperHitPlacementsInto(target, steps, activeIndex, rect, row, options = {}) {
+  const columnOffset = Math.max(0, Math.floor(options.columnOffset ?? 12));
+  const gap = Math.max(0, Math.floor(options.gap ?? 3));
+  const endColumn = rect.column + rect.width;
+  let column = rect.column + columnOffset;
+  let written = 0;
+  for (let index = 0; index < steps.length; index += 1) {
+    const step = steps[index];
+    const label = step.disabled ? `(${step.label})` : step.completed ? `\u2713 ${step.label}` : step.label;
+    const token = index === activeIndex ? `[${label}]` : label;
+    const width = textWidth(token);
+    if (column + width > endColumn) break;
+    const placement = target[written] ?? {
+      column: 0,
+      row: 0,
+      width: 0,
+      height: 1,
+      id: "stepper",
+      action: "activate"
+    };
+    placement.column = column;
+    placement.row = row;
+    placement.width = width;
+    placement.height = 1;
+    placement.id = "stepper";
+    placement.action = "activate";
+    placement.index = index;
+    target[written] = placement;
+    written += 1;
+    column += width + gap;
+  }
+  target.length = written;
+  return target;
+}
 
 // app/html_css_layout_view.ts
 function htmlCssLayoutBoxStyle(box, theme2, contrast) {
@@ -14979,6 +15037,7 @@ var webTerminalButtonItems = [];
 var webTerminalButtonPlacements = [];
 var webTerminalSessionTabSources = [];
 var webTerminalSessionTabPlacements = [];
+var controlStepperHitPlacements = [];
 var modalActionButtonItems = [];
 var modalActionButtonPlacements = [];
 var dropdownOverlay = null;
@@ -16643,7 +16702,7 @@ function renderControls(frame, rect) {
     next: true
   });
   writeWrappedOptions(frame, rect, row, "combo", combo.items.peek(), combo.selectedIndex.peek(), t);
-  row += wrappedOptionRowCount(combo.items.peek(), rect.width - 4);
+  row += wrappedControlOptionRowCount(combo.items.peek(), void 0, rect.width - 4);
   writeControl("dropdown", `Dropdown  ${dropdown.expanded.peek() ? "v" : ">"} ${dropdown.label()}`, {
     action: "toggle"
   });
@@ -16737,62 +16796,50 @@ function renderTextboxControl(frame, rect, row, t) {
 }
 function writeWrappedOptions(frame, rect, startRow, id2, items, selectedIndex, t) {
   const width = Math.max(8, rect.width - 4);
-  let row = startRow;
-  let line = "";
-  const flush = () => {
-    if (row >= rect.row + rect.height || line.length === 0) return;
+  const rows2 = layoutWrappedControlOptions(items, selectedIndex, width);
+  for (let offset = 0; offset < rows2.length; offset += 1) {
+    const line = rows2[offset];
+    const row = startRow + offset;
+    if (row >= rect.row + rect.height || line.text.length === 0) return;
     const selected = activeControl.peek() === id2;
     write(
       frame,
       row,
       rect.column + 2,
-      paint(fit(line, width), selected ? t.background : t.text, selected ? t.warn : t.surface, selected)
+      paint(fit(line.text, width), selected ? t.background : t.text, selected ? t.warn : t.surface, selected)
     );
-    line = "";
-    row += 1;
-  };
-  for (const [index, item] of items.entries()) {
-    const token = `${index === selectedIndex ? "[" : " "}${item}${index === selectedIndex ? "]" : " "} `;
-    if (textWidth(line) + textWidth(token) > width) flush();
-    hitTargets.add({ column: rect.column + 2 + textWidth(line), row, width: textWidth(token), height: 1 }, {
-      type: "control",
-      id: id2,
-      action: "activate",
-      index
-    });
-    line += token;
-  }
-  flush();
-}
-function wrappedOptionRowCount(items, width) {
-  const safeWidth = Math.max(8, width);
-  let rows2 = 1;
-  let lineWidth = 0;
-  for (const item of items) {
-    const tokenWidth = textWidth(` ${item}  `);
-    if (lineWidth > 0 && lineWidth + tokenWidth > safeWidth) {
-      rows2 += 1;
-      lineWidth = 0;
+    for (let index = 0; index < line.tokens.length; index += 1) {
+      const token = line.tokens[index];
+      hitTargets.add({ column: rect.column + 2 + token.columnOffset, row, width: token.width, height: 1 }, {
+        type: "control",
+        id: id2,
+        action: "activate",
+        index: token.index
+      });
     }
-    lineWidth += tokenWidth;
   }
-  return rows2;
 }
 function addInlineStepperHits(rect, row) {
-  const steps = stepper.steps.peek();
-  let column = rect.column + 12;
-  for (const [index, step] of steps.entries()) {
-    const label = step.disabled ? `(${step.label})` : step.completed ? `\u2713 ${step.label}` : step.label;
-    const token = index === stepper.activeIndex.peek() ? `[${label}]` : label;
-    const width = textWidth(token);
-    if (column + width > rect.column + rect.width) break;
-    hitTargets.add({ column, row, width, height: 1 }, {
+  const placements = apiWorkbenchStepperHitPlacementsInto(
+    controlStepperHitPlacements,
+    stepper.steps.peek(),
+    stepper.activeIndex.peek(),
+    rect,
+    row
+  );
+  for (let index = 0; index < placements.length; index += 1) {
+    const placement = placements[index];
+    hitTargets.add({
+      column: placement.column,
+      row: placement.row,
+      width: placement.width,
+      height: placement.height
+    }, {
       type: "control",
-      id: "stepper",
-      action: "activate",
-      index
+      id: placement.id,
+      action: placement.action,
+      index: placement.index
     });
-    column += width + 3;
   }
 }
 function renderControlDropdownPopover(frame, rect) {
