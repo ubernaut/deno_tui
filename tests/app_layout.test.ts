@@ -79,6 +79,21 @@ Deno.test("monitor layout hides slots not present in the wall", () => {
   });
 });
 
+Deno.test("monitor layout keeps cramped splits within bounds", () => {
+  const cramped = { column: 0, row: 0, width: 28, height: 13 };
+  const cpu = slotRect("monitor", cramped, "cpu", "memory");
+  const legend = slotRect("monitor", cramped, "cpuLegend", "memory");
+  const network = slotRect("monitor", cramped, "network", "memory");
+  const processes = slotRect("monitor", cramped, "processes", "memory");
+
+  assertEquals(cpu.column + cpu.width <= legend.column, true);
+  assertEquals(legend.column + legend.width <= cramped.width, true);
+  assertEquals(network.column + network.width <= processes.column, true);
+  assertEquals(processes.column + processes.width <= cramped.width, true);
+  assertEquals(network.row + network.height <= cramped.height, true);
+  assertEquals(processes.row + processes.height <= cramped.height, true);
+});
+
 Deno.test("responsive layout collapses the monitor wall on compact and mobile screens", () => {
   assertEquals(
     detectViewportMode({ column: 0, row: 0, width: 120, height: 30 }),

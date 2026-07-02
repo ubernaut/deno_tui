@@ -199,35 +199,49 @@ export function slotRect(currentLayout: LayoutId, bounds: Rect, slotId: SlotId, 
 }
 
 function weightedSplit(total: number, weights: number[], minimums: number[]) {
-  if (weights.length !== minimums.length || weights.length === 0) {
+  const count = weights.length;
+  if (count !== minimums.length || count === 0) {
     return [];
   }
 
   const safeTotal = Math.max(0, total);
+  const output = new Array<number>(count);
   if (safeTotal === 0) {
-    return weights.map(() => 0);
+    for (let index = 0; index < count; index += 1) output[index] = 0;
+    return output;
   }
 
-  const count = weights.length;
-  const minimumSum = minimums.reduce((sum, value) => sum + value, 0);
+  let minimumSum = 0;
+  for (let index = 0; index < count; index += 1) minimumSum += minimums[index] ?? 0;
   if (minimumSum >= safeTotal) {
-    const base = minimums.map((value) => Math.min(value, safeTotal));
-    let overflow = base.reduce((sum, value) => sum + value, 0) - safeTotal;
+    let allocated = 0;
+    for (let index = 0; index < count; index += 1) {
+      const value = Math.min(minimums[index] ?? 0, safeTotal);
+      output[index] = value;
+      allocated += value;
+    }
+    let overflow = allocated - safeTotal;
     for (let index = count - 1; index >= 0 && overflow > 0; index -= 1) {
-      const reduction = Math.min(base[index] ?? 0, overflow);
-      base[index] = (base[index] ?? 0) - reduction;
+      const current = output[index] ?? 0;
+      const reduction = Math.min(current, overflow);
+      output[index] = current - reduction;
       overflow -= reduction;
     }
-    return base;
+    return output;
   }
 
-  const weightTotal = weights.reduce((sum, value) => sum + value, 0);
+  let weightTotal = 0;
+  for (let index = 0; index < count; index += 1) weightTotal += weights[index] ?? 0;
   const flexible = safeTotal - minimumSum;
-  const output = weights.map((weight, index) =>
-    (minimums[index] ?? 0) + Math.floor(flexible * (weight / Math.max(1, weightTotal)))
-  );
+  const divisor = Math.max(1, weightTotal);
 
-  let allocated = output.reduce((sum, value) => sum + value, 0);
+  let allocated = 0;
+  for (let index = 0; index < count; index += 1) {
+    const value = (minimums[index] ?? 0) + Math.floor(flexible * ((weights[index] ?? 0) / divisor));
+    output[index] = value;
+    allocated += value;
+  }
+
   let index = 0;
   while (allocated < safeTotal) {
     output[index % count] = (output[index % count] ?? 0) + 1;
