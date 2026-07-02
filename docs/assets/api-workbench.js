@@ -5971,14 +5971,18 @@ function visibleRadioOptions(options, activeIndex, height) {
   if (safeHeight === 0) return [];
   const active2 = clampRadioIndex(options, activeIndex);
   const offset = Math.max(0, Math.min(active2 - Math.floor(safeHeight / 2), Math.max(0, options.length - safeHeight)));
-  return options.slice(offset, offset + safeHeight).map((option, index) => {
+  const count = Math.max(0, Math.min(options.length, offset + safeHeight) - offset);
+  const rows2 = new Array(count);
+  for (let index = 0; index < count; index += 1) {
     const optionIndex = offset + index;
-    return {
+    const option = options[optionIndex];
+    rows2[index] = {
       option,
       index: optionIndex,
       active: optionIndex === active2 && !option.disabled
     };
-  });
+  }
+  return rows2;
 }
 function clampRadioIndex(options, activeIndex) {
   if (options.length === 0) return 0;

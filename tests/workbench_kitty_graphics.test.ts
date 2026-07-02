@@ -50,6 +50,15 @@ Deno.test("WorkbenchKittyGraphicsController selects auto and forced surfaces", (
   const controller = new WorkbenchKittyGraphicsController({
     tmux: null,
     tmuxPassthroughAllowed: true,
+    capability: {
+      supported: false,
+      mode: "disabled",
+      reason: "test",
+      term: "",
+      termProgram: "",
+      multiplexer: "none",
+      remote: false,
+    },
     writer: { write: () => {} },
   });
 

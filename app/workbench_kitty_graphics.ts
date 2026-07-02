@@ -5,6 +5,7 @@ import {
   type GraphicsSurfaceWriter,
 } from "../src/runtime/graphics_surface.ts";
 import type { DiagnosticsCollector } from "../src/runtime/diagnostics.ts";
+import type { KittyGraphicsCapability } from "../src/runtime/kitty_graphics.ts";
 
 export interface TmuxPassthroughProbeResult {
   success: boolean;
@@ -20,6 +21,7 @@ export interface DetectTmuxPassthroughOptions {
 export interface WorkbenchKittyGraphicsControllerOptions {
   writer: GraphicsSurfaceWriter;
   diagnostics?: DiagnosticsCollector;
+  capability?: KittyGraphicsCapability;
   tmux?: string | null;
   tmuxPassthroughAllowed: boolean;
 }
@@ -85,6 +87,7 @@ export class WorkbenchKittyGraphicsController {
     const canForce = force && (!this.tmux || this.tmuxPassthroughAllowed);
     return createKittyGraphicsSurface({
       writer: options.writer,
+      capability: options.capability,
       detection: canForce && this.tmux ? { tmuxPassthrough: true } : undefined,
       force: canForce,
       quiet: 2,
