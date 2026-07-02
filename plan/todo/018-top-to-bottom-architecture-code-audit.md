@@ -221,6 +221,8 @@ Work:
         reflection when applying live config updates.
   - [x] Extracted API Workbench Kitty/tmux graphics surface ownership into a tested controller with injectable tmux
         passthrough probing, reducing renderer setup logic in the main demo file.
+  - [x] Extracted pure API Workbench row builders for Three ASCII headers and data-table footers, with direct tests and
+        loop-based footer styling for wrapped rows.
 
 Acceptance checks:
 

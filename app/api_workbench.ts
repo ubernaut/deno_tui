@@ -173,6 +173,7 @@ import {
   workspaceNameModalBody as buildWorkspaceNameModalBody,
 } from "./workbench_workspace_menu.ts";
 import { WorkbenchKittyGraphicsController } from "./workbench_kitty_graphics.ts";
+import { dataFooterRows, type RowStyle, threeHeaderRows } from "./workbench_rows.ts";
 import type {
   Accent,
   AsciiOptions,
@@ -1389,13 +1390,14 @@ function renderInspector(frame: Frame, rect: Rectangle): void {
 function renderData(frame: Frame, rect: Rectangle): void {
   const t = theme();
   const pendingView = table.view.peek();
-  const footerRows = dataFooterRows(
-    pendingView.page + 1,
-    pendingView.pageCount,
-    pendingView.selectedKey,
-    rect.width,
-    t,
-  );
+  const footerRows = dataFooterRows({
+    page: pendingView.page + 1,
+    pageCount: pendingView.pageCount,
+    selectedKey: pendingView.selectedKey,
+    width: rect.width,
+    theme: t,
+    fit,
+  });
   table.setPageSize(Math.max(1, rect.height - 2 - footerRows.length));
   const view = table.view.peek();
   const bodyRows = renderDataTableRows(view.rows, columns, view.selectedIndex).map((line, index) => ({
@@ -1413,7 +1415,14 @@ function renderData(frame: Frame, rect: Rectangle): void {
     },
     ...bodyRows,
     { text: "", bg: t.surface },
-    ...dataFooterRows(view.page + 1, view.pageCount, view.selectedKey, rect.width, t),
+    ...dataFooterRows({
+      page: view.page + 1,
+      pageCount: view.pageCount,
+      selectedKey: view.selectedKey,
+      width: rect.width,
+      theme: t,
+      fit,
+    }),
   ]);
   for (let index = 0; index < Math.min(view.rows.length, Math.max(0, rect.height - 1)); index += 1) {
     addHit({ column: rect.column, row: rect.row + 1 + index, width: rect.width, height: 1 }, {
@@ -4386,8 +4395,6 @@ function ensureLineObjects(): void {
   }
 }
 
-type RowStyle = { text: string; fg?: string; bg?: string; bold?: boolean };
-
 function writeRows(frame: Frame, rect: Rectangle, rows: RowStyle[]): void {
   const t = theme();
   for (let index = 0; index < Math.min(rect.height, rows.length); index += 1) {
@@ -4415,40 +4422,6 @@ function fillRow(frame: Frame, row: number, bg: string): void {
 
 function fillRect(frame: Frame, rect: Rectangle, bg: string): void {
   fillFrameRect(frame, currentWidth(), rect, makeStyle({ bg }));
-}
-
-function threeHeaderRows(mode: string, width: number, t: ThemeSpec): RowStyle[] {
-  const title = compactSpaces(`ACEROLA THREE.JS ASCII · ${mode} · STUDIO GEOMETRY`);
-  const compactTitle = compactSpaces(`THREE ASCII · ${mode}`);
-  const geometry = "torus knot · sphere · block · floor plane";
-  const compactGeometry = "torus · sphere · block · floor";
-  const titleText = width >= textWidth(` ${title} `) ? ` ${title} ` : ` ${compactTitle} `;
-  const detailText = width >= textWidth(geometry) ? geometry : compactGeometry;
-  return [
-    {
-      text: titleText,
-      fg: t.buttonActiveText,
-      bg: t.buttonActiveBg,
-      bold: true,
-    },
-    { text: detailText, fg: t.soft, bg: t.surface },
-    { text: "", bg: t.surface },
-  ];
-}
-
-function dataFooterRows(
-  page: number,
-  pageCount: number,
-  selectedKey: string | undefined,
-  width: number,
-  t: ThemeSpec,
-): RowStyle[] {
-  const selected = selectedKey ?? "-";
-  const full = compactSpaces(`page ${page}/${pageCount}  selected ${selected}  arrows/page keys  S sort`);
-  const rows = textWidth(full) <= width
-    ? [full]
-    : wrapPlainText(`page ${page}/${pageCount} selected ${selected} arrows/page keys S sort`, width, fit);
-  return rows.map((text) => ({ text, fg: t.muted, bg: t.panelSoft }));
 }
 
 function paint(text: string, options: { fg?: string; bg?: string; bold?: boolean } = {}): string {
