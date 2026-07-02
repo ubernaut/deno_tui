@@ -17,6 +17,7 @@ import { renderStepper, StepperController } from "../src/components/stepper.ts";
 import { formatTerminalOutputLine } from "../src/components/terminal_output.ts";
 import { TextBoxController, wrapTextBoxLines } from "../src/components/textbox.ts";
 import {
+  appendBoundedWorkbenchLogRow,
   buttonText,
   centerCellText as centerText,
   clampWorkbenchTileDensity,
@@ -4375,7 +4376,11 @@ function controlAtEdge(delta: number): ControlId | undefined {
 }
 
 function pushLog(message: string): void {
-  commandLog.value = [...commandLog.peek(), `${new Date().toLocaleTimeString()} ${message}`].slice(-8);
+  commandLog.value = appendBoundedWorkbenchLogRow(
+    commandLog.peek(),
+    `${new Date().toLocaleTimeString()} ${message}`,
+    8,
+  );
 }
 
 function ensureLineObjects(): void {

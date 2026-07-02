@@ -1,5 +1,6 @@
 import { assertEquals } from "./deps.ts";
 import {
+  appendBoundedWorkbenchLogRow,
   defaultWorkbenchMinimizedState,
   deleteWorkbenchWorkspace,
   findWorkbenchWorkspace,
@@ -14,6 +15,15 @@ import {
   type WorkbenchWorkspace,
   workbenchWorkspaceWindowEntries,
 } from "../src/app/mod.ts";
+
+Deno.test("workbench log helpers append bounded immutable rows", () => {
+  const rows = ["one", "two", "three"];
+  const next = appendBoundedWorkbenchLogRow(rows, "four", 3);
+
+  assertEquals(next, ["two", "three", "four"]);
+  assertEquals(rows, ["one", "two", "three"]);
+  assertEquals(appendBoundedWorkbenchLogRow([], "only", 0), ["only"]);
+});
 
 Deno.test("workbench workspace helpers normalize names and panel state", () => {
   const panelIds = ["left", "right", "logs"] as const;

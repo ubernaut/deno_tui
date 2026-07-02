@@ -1,6 +1,7 @@
 /// <reference lib="dom" />
 /// <reference lib="dom.iterable" />
 import {
+  appendBoundedWorkbenchLogRow,
   BoxObject,
   ButtonController,
   buttonText as formatButtonText,
@@ -77,8 +78,8 @@ import {
 import {
   apiWorkbenchColumns,
   apiWorkbenchDocs,
-  apiWorkbenchRows,
   type ApiWorkbenchProcessRow,
+  apiWorkbenchRows,
   type ApiWorkbenchThemeSpec,
   createApiWorkbenchThemes,
 } from "../../app/api_workbench_catalog.ts";
@@ -541,7 +542,11 @@ function draw(): void {
     frame,
     0,
     17,
-    paint(fit(renderMenuBar(menu.items.peek(), menu.activeIndex.peek()), menuWidth), theme().text, theme().backgroundSoft),
+    paint(
+      fit(renderMenuBar(menu.items.peek(), menu.activeIndex.peek()), menuWidth),
+      theme().text,
+      theme().backgroundSoft,
+    ),
   );
   if (width >= 22) {
     writeButton(frame, 0, width - closeWidth, "x", { compact: true, tone: "danger" });
@@ -988,7 +993,12 @@ function htmlCssLayoutBoxStyle(
   if (box.id === "layout-stage") return { fg: t.text, bg: t.panelSoft, border: t.borderStrong, bold: true };
   if (box.id === "layout-grid") return { fg: t.text, bg: t.surface, border: t.accent, bold: true };
   if (box.id === "grid-shell") {
-    return { fg: contrastText(t.buttonActiveBg, t.background, t.text), bg: t.buttonActiveBg, border: t.accent, bold: true };
+    return {
+      fg: contrastText(t.buttonActiveBg, t.background, t.text),
+      bg: t.buttonActiveBg,
+      border: t.accent,
+      bold: true,
+    };
   }
   if (box.id === "grid-worker") {
     return { fg: contrastText(t.warn, t.background, t.text), bg: t.warn, border: t.danger, bold: true };
@@ -999,7 +1009,12 @@ function htmlCssLayoutBoxStyle(
   }
   if (box.id === "layout-footer") return { fg: t.muted, bg: t.panel, border: t.border };
   if (box.id === "metric-cpu") {
-    return { fg: contrastText(t.buttonActiveBg, t.background, t.text), bg: t.buttonActiveBg, border: t.accent, bold: true };
+    return {
+      fg: contrastText(t.buttonActiveBg, t.background, t.text),
+      bg: t.buttonActiveBg,
+      border: t.accent,
+      bold: true,
+    };
   }
   if (box.id.startsWith("metric-")) return { fg: t.text, bg: t.panel, border: t.accent };
   return { fg: t.text, bg: t.surface, border: t.border };
@@ -1064,7 +1079,12 @@ function renderTerminalProtocol(frame: string[], rect: Rectangle): void {
   });
   const cursor = webTerminalScreen.cursor;
   if (cursor.row < screenRect.height && cursor.column < screenRect.width) {
-    write(frame, screenRect.row + cursor.row, screenRect.column + cursor.column, paint(" ", t.background, t.accent, true));
+    write(
+      frame,
+      screenRect.row + cursor.row,
+      screenRect.column + cursor.column,
+      paint(" ", t.background, t.accent, true),
+    );
   }
 
   const footerRow = rect.row + rect.height - 1;
@@ -1399,7 +1419,12 @@ function renderWorkspaceScrollbar(frame: string[], bounds: Rectangle): void {
   const thumb = overflow.rows.thumb;
   hitTargets.add(rect, { type: "workspaceScrollbar" });
   for (let row = 0; row < bounds.height; row += 1) {
-    write(frame, bounds.row + row, column, paint(scrollbarGlyph(row, thumb), theme().accent, theme().backgroundSoft, true));
+    write(
+      frame,
+      bounds.row + row,
+      column,
+      paint(scrollbarGlyph(row, thumb), theme().accent, theme().backgroundSoft, true),
+    );
   }
 }
 
@@ -1506,7 +1531,7 @@ function panelLineStyle(id: PanelId, index: number): { fg: string; bg: string; b
   return { fg: t.text, bg: t.surface };
 }
 function push(message: string): void {
-  log.value = [...log.peek(), `${new Date().toLocaleTimeString()} ${message}`].slice(-40);
+  log.value = appendBoundedWorkbenchLogRow(log.peek(), `${new Date().toLocaleTimeString()} ${message}`, 40);
 }
 
 function openWorkbenchModal(): void {

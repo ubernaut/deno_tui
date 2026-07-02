@@ -55,6 +55,23 @@ export function subscribeWorkbenchDiagnosticLog(
   });
 }
 
+/** Returns a new bounded log row array with `row` appended and older rows trimmed from the front. */
+export function appendBoundedWorkbenchLogRow(
+  rows: readonly string[],
+  row: string,
+  limit = 40,
+): string[] {
+  const maxLogEntries = Math.max(1, Math.floor(limit));
+  const retained = Math.min(rows.length, maxLogEntries - 1);
+  const output = new Array<string>(retained + 1);
+  const start = Math.max(0, rows.length - retained);
+  for (let index = 0; index < retained; index += 1) {
+    output[index] = rows[start + index]!;
+  }
+  output[retained] = row;
+  return output;
+}
+
 function appendBoundedRows(target: string[], rows: readonly string[], limit: number): void {
   const start = Math.max(0, rows.length - limit);
   for (let index = start; index < rows.length; index += 1) appendBoundedRow(target, rows[index]!, limit);
