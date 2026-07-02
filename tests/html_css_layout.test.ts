@@ -18,6 +18,7 @@ import {
   MarkupWidgetHydrationRegistry,
   matchesCssMedia,
   matchesCssSelector,
+  measureTerminalTextIntrinsic,
   parseCssMediaQuery,
   parseCssStylesheet,
   parseTuiMarkup,
@@ -697,6 +698,32 @@ Deno.test("createMarkupLayout reuses intrinsic measurements in the simple solver
   assert(afterSecond.hits > afterFirst.hits);
   assertEquals(second.layout.byId.get("a")!.rect, first.layout.byId.get("a")!.rect);
   assertEquals(second.layout.byId.get("b")!.rect, first.layout.byId.get("b")!.rect);
+});
+
+Deno.test("measureTerminalTextIntrinsic wraps text on terminal word boundaries", () => {
+  assertEquals(measureTerminalTextIntrinsic("aa bbbb cc", 6), { width: 10, height: 3 });
+  assertEquals(measureTerminalTextIntrinsic("wide\ntext", 6), { width: 4, height: 2 });
+  assertEquals(measureTerminalTextIntrinsic("abcdefghij", 5), { width: 10, height: 2 });
+  assertEquals(measureTerminalTextIntrinsic("abc ", 3), { width: 4, height: 1 });
+});
+
+Deno.test("simple layout solver measures auto height after resolving explicit text width", () => {
+  const result = createMarkupLayout({
+    markup: `
+      <window id="root">
+        <panel id="card">aa bbbb cc</panel>
+      </window>
+    `,
+    css: `
+      #card {
+        width: 6;
+        height: auto;
+      }
+    `,
+    bounds: { column: 0, row: 0, width: 20, height: 12 },
+  });
+
+  assertEquals(result.layout.byId.get("card")!.rect, { column: 0, row: 0, width: 6, height: 3 });
 });
 
 Deno.test("simple layout solver merges partial intrinsic dimensions with measured fallback", () => {

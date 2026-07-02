@@ -1,6 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 
 import type { LayoutIntrinsicSize } from "./solver.ts";
+import { textWidth } from "../utils/strings.ts";
 
 /** A cached intrinsic measurement entry for text and layout nodes. */
 export interface LayoutMeasurementCacheEntry extends LayoutIntrinsicSize {
@@ -64,4 +65,78 @@ export class LayoutMeasurementCache {
       misses: this.#misses,
     };
   }
+}
+
+/** Measures terminal text for intrinsic layout using physical newlines and word-aware wrapping. */
+export function measureTerminalTextIntrinsic(
+  text: string,
+  availableWidth: number,
+  defaultTextHeight = 1,
+): LayoutIntrinsicSize {
+  const wrapWidth = Math.max(1, Math.floor(availableWidth));
+  const fallbackHeight = Math.max(1, Math.floor(defaultTextHeight));
+  let width = 1;
+  let height = 0;
+  let lineStart = 0;
+
+  for (let index = 0; index <= text.length; index += 1) {
+    const char = text[index];
+    if (index < text.length && char !== "\n" && char !== "\r") continue;
+    const line = text.slice(lineStart, index);
+    const lineWidth = textWidth(line);
+    width = Math.max(width, lineWidth);
+    height += measureWrappedTerminalLineHeight(line, wrapWidth);
+    if (char === "\r" && text[index + 1] === "\n") index += 1;
+    lineStart = index + 1;
+  }
+
+  return { width, height: Math.max(fallbackHeight, height) };
+}
+
+function measureWrappedTerminalLineHeight(line: string, wrapWidth: number): number {
+  const wrappedLine = line.trimEnd();
+  if (!wrappedLine) return 1;
+
+  const tokens = wrappedLine.match(/\S+|\s+/g) ?? [wrappedLine];
+  let rows = 1;
+  let currentWidth = 0;
+
+  for (const token of tokens) {
+    const tokenWidth = textWidth(token);
+    if (tokenWidth <= 0) continue;
+
+    if (/^\s+$/.test(token)) {
+      if (currentWidth === 0) continue;
+      if (currentWidth + tokenWidth <= wrapWidth) {
+        currentWidth += tokenWidth;
+      } else {
+        rows += 1;
+        currentWidth = 0;
+      }
+      continue;
+    }
+
+    if (tokenWidth <= wrapWidth) {
+      if (currentWidth > 0 && currentWidth + tokenWidth > wrapWidth) {
+        rows += 1;
+        currentWidth = tokenWidth;
+      } else {
+        currentWidth += tokenWidth;
+      }
+      continue;
+    }
+
+    if (currentWidth > 0) {
+      rows += 1;
+      currentWidth = 0;
+    }
+    rows += Math.floor(tokenWidth / wrapWidth);
+    currentWidth = tokenWidth % wrapWidth;
+    if (currentWidth === 0) {
+      rows -= 1;
+      currentWidth = wrapWidth;
+    }
+  }
+
+  return rows;
 }

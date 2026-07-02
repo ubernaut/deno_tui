@@ -1,7 +1,6 @@
 // Copyright 2023 Im-Beast. MIT license.
-import { textWidth } from "../../utils/strings.ts";
 import type { Rectangle } from "../../types.ts";
-import { LayoutMeasurementCache } from "../measurement.ts";
+import { LayoutMeasurementCache, measureTerminalTextIntrinsic } from "../measurement.ts";
 import { type FlexDirection, type FlexItem, flexRects } from "../flex_layout.ts";
 import { clampLayoutSize, type ComputedLayoutStyle, type LayoutJustifyContent, resolveLayoutLength } from "../style.ts";
 import {
@@ -321,15 +320,15 @@ function resolveNodeRect(
   measurementCache?: LayoutMeasurementCache,
 ): Rectangle {
   const style = node.style;
-  const intrinsic = measureNodeIntrinsic(node, Math.max(1, allocated.width), defaultTextHeight, measurementCache);
   const fallbackWidth = allocated.width;
-  const fallbackHeight = isRoot || fillAllocated ? allocated.height : intrinsic.height || allocated.height;
   const width = clampLayoutSize(
     resolveLayoutLength(style.width, allocated.width, Math.min(allocated.width, fallbackWidth)),
     allocated.width,
     style.minWidth,
     style.maxWidth,
   );
+  const intrinsic = measureNodeIntrinsic(node, Math.max(1, width), defaultTextHeight, measurementCache);
+  const fallbackHeight = isRoot || fillAllocated ? allocated.height : intrinsic.height || allocated.height;
   const height = clampLayoutSize(
     resolveLayoutLength(style.height, allocated.height, Math.min(allocated.height, fallbackHeight)),
     allocated.height,
@@ -363,8 +362,8 @@ function preferredBlockChildSize(
   defaultTextHeight: number,
   measurementCache?: LayoutMeasurementCache,
 ): LayoutIntrinsicSize {
-  const intrinsic = measureNodeIntrinsic(node, Math.max(1, bounds.width), defaultTextHeight, measurementCache);
   const width = resolveLayoutLength(node.style.width, bounds.width, bounds.width);
+  const intrinsic = measureNodeIntrinsic(node, Math.max(1, width), defaultTextHeight, measurementCache);
   const height = resolveLayoutLength(
     node.style.height,
     bounds.height,
@@ -688,20 +687,7 @@ function childLayoutIntrinsicSize(
 }
 
 function measureTextIntrinsic(text: string, availableWidth: number, defaultTextHeight: number): LayoutIntrinsicSize {
-  const wrapWidth = Math.max(1, availableWidth);
-  let width = 1;
-  let height = 0;
-  let lineStart = 0;
-  for (let index = 0; index <= text.length; index += 1) {
-    const char = text[index];
-    if (index < text.length && char !== "\n" && char !== "\r") continue;
-    const lineWidth = textWidth(text.slice(lineStart, index));
-    width = Math.max(width, lineWidth);
-    height += Math.max(1, Math.ceil(lineWidth / wrapWidth));
-    if (char === "\r" && text[index + 1] === "\n") index += 1;
-    lineStart = index + 1;
-  }
-  return { width, height: Math.max(defaultTextHeight, height) };
+  return measureTerminalTextIntrinsic(text, availableWidth, defaultTextHeight);
 }
 
 function intrinsicMeasurementCacheKey(node: LayoutNode, availableWidth: number, defaultTextHeight: number): string {

@@ -8,8 +8,8 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 - Entrypoints: 9
 - Module visits: 521
 - Re-export declarations: 512
-- Exported symbols: 4649
-- Documented symbols: 4649
+- Exported symbols: 4651
+- Documented symbols: 4651
 - Documentation coverage: 100.00%
 - Duplicate symbol groups: 0
 - Missing targets: 0
@@ -18,8 +18,8 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 
 | Specifier       | Path                           | Runtime  | Stability    | Modules | Symbols |    Docs |
 | --------------- | ------------------------------ | -------- | ------------ | ------: | ------: | ------: |
-| `.`             | `./mod.ts`                     | terminal | stable       |     235 |    1980 | 100.00% |
-| `./web`         | `./mod.web.ts`                 | browser  | beta         |     214 |    1843 | 100.00% |
+| `.`             | `./mod.ts`                     | terminal | stable       |     235 |    1981 | 100.00% |
+| `./web`         | `./mod.web.ts`                 | browser  | beta         |     214 |    1844 | 100.00% |
 | `./remote`      | `./mod.remote.ts`              | remote   | experimental |       4 |      38 | 100.00% |
 | `./three-ascii` | `./mod.three_ascii.ts`         | shared   | experimental |       8 |      54 | 100.00% |
 | `./theme`       | `./mod.theme.ts`               | shared   | beta         |      10 |     198 | 100.00% |
@@ -41,8 +41,8 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 - Entrypoint: `mod.ts`
 - Modules: 235
 - Re-export declarations: 234
-- Exported symbols: 1980
-- Documented symbols: 1980
+- Exported symbols: 1981
+- Documented symbols: 1981
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -193,7 +193,7 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 | [`src/layout/flex_layout.ts`](#src-layout-flex-layout-ts)                               |          0 |       3 |          3 |
 | [`src/layout/grid_layout.ts`](#src-layout-grid-layout-ts)                               |          0 |       3 |          3 |
 | [`src/layout/horizontal_layout.ts`](#src-layout-horizontal-layout-ts)                   |          0 |       1 |          1 |
-| [`src/layout/measurement.ts`](#src-layout-measurement-ts)                               |          0 |       4 |          4 |
+| [`src/layout/measurement.ts`](#src-layout-measurement-ts)                               |          0 |       5 |          5 |
 | [`src/layout/mod.ts`](#src-layout-mod-ts)                                               |         16 |       0 |          0 |
 | [`src/layout/overlay.ts`](#src-layout-overlay-ts)                                       |          0 |      19 |         19 |
 | [`src/layout/recipe.ts`](#src-layout-recipe-ts)                                         |          0 |      18 |         18 |
@@ -2197,6 +2197,7 @@ _No direct exported symbols._
 | `LayoutMeasurementCacheEntry`   | interface | yes       | yes   |
 | `LayoutMeasurementCacheOptions` | interface | yes       | yes   |
 | `LayoutMeasurementCacheStats`   | interface | yes       | yes   |
+| `measureTerminalTextIntrinsic`  | function  | no        | yes   |
 
 #### src/layout/mod.ts
 
@@ -3717,8 +3718,8 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 - Entrypoint: `mod.web.ts`
 - Modules: 214
 - Re-export declarations: 213
-- Exported symbols: 1843
-- Documented symbols: 1843
+- Exported symbols: 1844
+- Documented symbols: 1844
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -3861,7 +3862,7 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 | [`src/layout/flex_layout.ts`](#src-layout-flex-layout-ts)                         |          0 |       3 |          3 |
 | [`src/layout/grid_layout.ts`](#src-layout-grid-layout-ts)                         |          0 |       3 |          3 |
 | [`src/layout/horizontal_layout.ts`](#src-layout-horizontal-layout-ts)             |          0 |       1 |          1 |
-| [`src/layout/measurement.ts`](#src-layout-measurement-ts)                         |          0 |       4 |          4 |
+| [`src/layout/measurement.ts`](#src-layout-measurement-ts)                         |          0 |       5 |          5 |
 | [`src/layout/mod.ts`](#src-layout-mod-ts)                                         |         16 |       0 |          0 |
 | [`src/layout/overlay.ts`](#src-layout-overlay-ts)                                 |          0 |      19 |         19 |
 | [`src/layout/recipe.ts`](#src-layout-recipe-ts)                                   |          0 |      18 |         18 |
@@ -5801,6 +5802,7 @@ _No direct exported symbols._
 | `LayoutMeasurementCacheEntry`   | interface | yes       | yes   |
 | `LayoutMeasurementCacheOptions` | interface | yes       | yes   |
 | `LayoutMeasurementCacheStats`   | interface | yes       | yes   |
+| `measureTerminalTextIntrinsic`  | function  | no        | yes   |
 
 #### src/layout/mod.ts
 

@@ -1,7 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import Yoga from "yoga-layout";
-import { textWidth } from "../../utils/strings.ts";
 import type { Rectangle } from "../../types.ts";
+import { measureTerminalTextIntrinsic } from "../measurement.ts";
 import type { ComputedLayoutStyle, LayoutAlignItems, LayoutJustifyContent, LayoutLengthValue } from "../style.ts";
 import {
   type ComputedLayoutBox,
@@ -272,28 +272,5 @@ function yogaContentRect(rect: Rectangle, style: ComputedLayoutStyle): Rectangle
 }
 
 function defaultMeasureText(text: string, width: number): { width: number; height: number } {
-  let measuredWidth = 1;
-  let lineStart = 0;
-  for (let index = 0; index <= text.length; index += 1) {
-    const char = text[index];
-    if (index < text.length && char !== "\n" && char !== "\r") continue;
-    measuredWidth = Math.max(measuredWidth, textWidth(text.slice(lineStart, index)));
-    if (char === "\r" && text[index + 1] === "\n") index += 1;
-    lineStart = index + 1;
-  }
-  const wrapWidth = Math.max(1, Math.min(width, measuredWidth));
-  let height = 0;
-  lineStart = 0;
-  for (let index = 0; index <= text.length; index += 1) {
-    const char = text[index];
-    if (index < text.length && char !== "\n" && char !== "\r") continue;
-    const lineWidth = textWidth(text.slice(lineStart, index));
-    height += Math.max(1, Math.ceil(lineWidth / wrapWidth));
-    if (char === "\r" && text[index + 1] === "\n") index += 1;
-    lineStart = index + 1;
-  }
-  return {
-    width: measuredWidth,
-    height,
-  };
+  return measureTerminalTextIntrinsic(text, width);
 }

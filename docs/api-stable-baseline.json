@@ -7192,6 +7192,13 @@
       "documented": true
     },
     {
+      "module": "src/layout/measurement.ts",
+      "name": "measureTerminalTextIntrinsic",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
       "module": "src/layout/overlay.ts",
       "name": "clampRectToBounds",
       "kind": "function",
