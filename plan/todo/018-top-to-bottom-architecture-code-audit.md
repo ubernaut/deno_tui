@@ -316,6 +316,8 @@ Work:
         completeness, and covered/missing state arrays in direct passes instead of repeated `map/reduce/filter` scans.
   - [x] Reworked component theme binding group inspection to build binding snapshots plus component and variant sets in
         one pass instead of cloning bindings and then mapping them again for aggregates.
+  - [x] Reworked theme catalog component merging to project sorted component entries into a direct output buffer with a
+        shared default-first variant comparator.
   - [x] Reworked EventEmitter aggregate counting, event-name projection, and inspection to avoid Object.values/entries
         pipelines in core canvas/component/web host event paths.
   - [x] Reworked runtime diagnostics bounded trimming, cloning, status counting, and text formatting to avoid map/filter

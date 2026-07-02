@@ -16,14 +16,20 @@ export function mergeThemeCatalogComponents(
     }
   }
 
-  return [...components.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([name, variants]) => ({
+  const entries = [...components.entries()].sort(([a], [b]) => a.localeCompare(b));
+  const merged = new Array<ThemeCatalogComponent>(entries.length);
+  for (let index = 0; index < entries.length; index += 1) {
+    const [name, variants] = entries[index]!;
+    merged[index] = {
       name,
-      variants: [...variants].sort((a, b) => {
-        if (a === "default") return -1;
-        if (b === "default") return 1;
-        return a.localeCompare(b);
-      }),
-    }));
+      variants: [...variants].sort(compareThemeCatalogVariants),
+    };
+  }
+  return merged;
+}
+
+function compareThemeCatalogVariants(a: string, b: string): number {
+  if (a === "default") return -1;
+  if (b === "default") return 1;
+  return a.localeCompare(b);
 }
