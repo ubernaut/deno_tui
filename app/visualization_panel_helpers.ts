@@ -24,30 +24,47 @@ export function driveAlert(drive: VisualizationDrive) {
 }
 
 export function hottestAccent(sources: readonly SourceFrame[]): Accent {
-  if (sources.some((source) => source.accent === "alarm")) {
-    return "alarm";
+  let hasAmber = false;
+  for (const source of sources) {
+    if (source.accent === "alarm") return "alarm";
+    if (source.accent === "amber") hasAmber = true;
   }
-  if (sources.some((source) => source.accent === "amber")) {
-    return "amber";
-  }
+  if (hasAmber) return "amber";
   return sources[0]?.accent ?? "signal";
 }
 
 export function sourceFooter(sources: readonly SourceFrame[]) {
-  return `SRC ${sources.map((source) => crop(source.name.toUpperCase(), 12)).join(" + ") || "NONE"}`;
+  if (sources.length === 0) return "SRC NONE";
+  let footer = "SRC ";
+  for (let index = 0; index < sources.length; index += 1) {
+    if (index > 0) footer += " + ";
+    footer += crop(sources[index]!.name.toUpperCase(), 12);
+  }
+  return footer;
 }
 
 export function sourceDetailFooter(sources: readonly SourceFrame[]) {
-  const details = sources.slice(0, 2).map((source) => {
+  if (sources.length === 0) return sourceFooter(sources);
+  let footer = "";
+  const count = Math.min(2, sources.length);
+  for (let index = 0; index < count; index += 1) {
+    const source = sources[index]!;
     const detail = source.detailLines[0] ?? `${Math.round(source.value * 100)}%`;
-    return `${crop(source.name.toUpperCase(), 8)} ${crop(detail, 20)}`;
-  });
-  return details.join(" / ") || sourceFooter(sources);
+    if (index > 0) footer += " / ";
+    footer += `${crop(source.name.toUpperCase(), 8)} ${crop(detail, 20)}`;
+  }
+  return footer || sourceFooter(sources);
 }
 
 export function sceneAlert(sources: readonly SourceFrame[]) {
-  const hottest = sources.find((source) => source.accent === "alarm") ??
-    sources.find((source) => source.accent === "amber");
+  let hottest: SourceFrame | undefined;
+  for (const source of sources) {
+    if (source.accent === "alarm") {
+      hottest = source;
+      break;
+    }
+    if (!hottest && source.accent === "amber") hottest = source;
+  }
   if (!hottest) {
     return "";
   }
@@ -58,16 +75,31 @@ export function sceneAlert(sources: readonly SourceFrame[]) {
 }
 
 export function sourceWarnings(sources: readonly SourceFrame[], drive: VisualizationDrive) {
-  return [
-    ...sources.flatMap((source) => source.detailLines.map((line) => `${source.name.toUpperCase()}  ${line}`)),
-    `VECTOR DRIVE ${(drive.current * 100).toFixed(0)}%`,
-    `OSCILLATION ${(drive.volatility * 100).toFixed(0)}%`,
+  const warnings: string[] = [];
+  for (const source of sources) {
+    const name = source.name.toUpperCase();
+    for (const line of source.detailLines) {
+      warnings.push(`${name}  ${line}`);
+      if (warnings.length >= 4) return warnings;
+    }
+  }
+  warnings.push(`VECTOR DRIVE ${(drive.current * 100).toFixed(0)}%`);
+  if (warnings.length >= 4) return warnings;
+  warnings.push(`OSCILLATION ${(drive.volatility * 100).toFixed(0)}%`);
+  if (warnings.length >= 4) return warnings;
+  warnings.push(
     drive.divergence >= 0.6
       ? `CHANNEL SPLIT ${(drive.divergence * 100).toFixed(0)}%`
       : `DENSITY ${(drive.density * 100).toFixed(0)}%`,
-  ].slice(0, 4);
+  );
+  return warnings;
 }
 
 export function sourceNameMatrix(sources: readonly SourceFrame[]) {
-  return sources.map((source) => crop(source.name.toUpperCase(), 8)).join(" / ");
+  let matrix = "";
+  for (let index = 0; index < sources.length; index += 1) {
+    if (index > 0) matrix += " / ";
+    matrix += crop(sources[index]!.name.toUpperCase(), 8);
+  }
+  return matrix;
 }

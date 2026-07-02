@@ -239,6 +239,8 @@ Work:
         preserving fixture-backed monitor sampling behavior.
   - [x] Reworked visualization source frame generation to use explicit output buffers and bounded detail/series helpers
         for monitor-backed sources instead of per-frame `slice().map()` projections.
+  - [x] Reworked shared visualization panel footer, alert, source-name, and warning helpers to use bounded loops instead
+        of `some/find/map/flatMap/slice` chains in common render paths.
 
 Acceptance checks:
 
