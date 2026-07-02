@@ -15218,6 +15218,145 @@ var apiWorkbenchDocs = [
   "Use Tab or 1-8 to focus built-in windows; use M, F, R for window controls."
 ];
 
+// app/api_workbench_control_rows.ts
+function apiWorkbenchButtonRowInto(target, options) {
+  const detail = options.detail ? ` ${options.detail}` : "";
+  return writeProjectedControlRow(
+    target,
+    options.id,
+    `${buttonText(options.label, { compact: options.compact })}${detail}`,
+    { button: true, action: options.action }
+  );
+}
+function apiWorkbenchDropdownHeaderRowInto(target, options) {
+  const expandedGlyph = options.expandedGlyph ?? "\u25BE";
+  const collapsedGlyph = options.collapsedGlyph ?? "\u25B8";
+  return writeProjectedControlRow(
+    target,
+    "dropdown",
+    `${options.title}  ${options.expanded ? expandedGlyph : collapsedGlyph} ${options.label}`,
+    { action: "toggle" }
+  );
+}
+function apiWorkbenchInputRowInto(target, options) {
+  return writeProjectedControlRow(
+    target,
+    "input",
+    `${options.title}     ${options.text}${options.active ? options.cursorGlyph ?? "\u258C" : ""}`,
+    { action: "focus" }
+  );
+}
+function apiWorkbenchSliderRowInto(target, options) {
+  return writeProjectedControlRow(
+    target,
+    "slider",
+    `${options.title ?? "Slider"}    ${options.track.text} ${options.value}/${options.max}`,
+    { previous: true, next: true }
+  );
+}
+function apiWorkbenchStepperRowInto(target, options) {
+  const reserve = Math.max(0, Math.floor(options.columnReserveWidth ?? 12));
+  const stepWidth = Math.max(8, Math.floor(options.rectWidth) - reserve);
+  return writeProjectedControlRow(
+    target,
+    "stepper",
+    `${options.title ?? "Stepper"}   ${renderStepper(options.steps, options.activeIndex, "horizontal", stepWidth)[0] ?? ""}`,
+    { previous: true, next: true }
+  );
+}
+function apiWorkbenchProgressRowInto(target, options) {
+  const suffix = options.suffix ?? "%";
+  return writeProjectedControlRow(
+    target,
+    "slider",
+    `${options.title ?? "Progress"}  ${options.track.text} ${options.value}${suffix}`
+  );
+}
+function apiWorkbenchControlsRowsInto(target, options) {
+  let written = 0;
+  target[written] = apiWorkbenchButtonRowInto(target[written], {
+    id: "button",
+    label: "Run Action",
+    detail: `presses=${options.buttonPressCount}`
+  });
+  written += 1;
+  target[written] = apiWorkbenchButtonRowInto(target[written], {
+    id: "genericButton",
+    label: "Generic Button",
+    detail: `presses=${options.genericButtonPressCount}`
+  });
+  written += 1;
+  target[written] = apiWorkbenchButtonRowInto(target[written], {
+    id: "modal",
+    label: "Open Modal",
+    detail: `state=${options.modalOpen ? "open" : "closed"}`
+  });
+  written += 1;
+  target[written] = apiWorkbenchSliderRowInto(target[written], options.slider);
+  written += 1;
+  target[written] = writeProjectedControlRow(target[written], "checkbox", "Checkboxes");
+  written += 1;
+  for (let index = 0; index < options.checkboxes.length; index += 1) {
+    const item = options.checkboxes[index];
+    target[written] = writeProjectedControlRow(
+      target[written],
+      "checkbox",
+      `${renderCheckBoxMark(item.checked)} ${item.label}`,
+      { indent: true, index }
+    );
+    written += 1;
+  }
+  target[written] = writeProjectedControlRow(target[written], "radio", "Radio", { previous: true, next: true });
+  written += 1;
+  for (let index = 0; index < options.radio.items.length; index += 1) {
+    const item = options.radio.items[index];
+    const mark = item.selected ? "\u25CF" : "\u25CB";
+    const cursor = index === options.radio.activeIndex ? ">" : " ";
+    target[written] = writeProjectedControlRow(
+      target[written],
+      "radio",
+      `${cursor} ${mark} ${item.label}`,
+      { indent: true, index }
+    );
+    written += 1;
+  }
+  const expandedGlyph = options.combo.expandedGlyph ?? "\u25BE";
+  const collapsedGlyph = options.combo.collapsedGlyph ?? "\u25B8";
+  const comboGlyph = options.combo.expanded ? expandedGlyph : collapsedGlyph;
+  const comboTitle = `${options.combo.title}  ${comboGlyph}`;
+  const comboHeader = `${comboTitle} ${options.combo.label}`;
+  const comboShouldSplit = textWidth(`> ${comboHeader}`) > options.combo.rectWidth && options.combo.rectWidth > Math.max(0, Math.floor(options.combo.splitMinWidth ?? 16));
+  target[written] = writeProjectedControlRow(target[written], "combo", comboShouldSplit ? comboTitle : comboHeader, {
+    action: "activate",
+    previous: options.combo.previous,
+    next: options.combo.next
+  });
+  written += 1;
+  if (comboShouldSplit) {
+    target[written] = writeProjectedControlRow(target[written], "combo", options.combo.label, { indent: true });
+    written += 1;
+  }
+  target[written] = apiWorkbenchDropdownHeaderRowInto(target[written], options.dropdown);
+  written += 1;
+  target[written] = apiWorkbenchInputRowInto(target[written], options.input);
+  written += 1;
+  target[written] = apiWorkbenchStepperRowInto(target[written], options.stepper);
+  written += 1;
+  target[written] = writeProjectedControlRow(target[written], "textbox", "TextBox", { action: "focus" });
+  written += 1;
+  target[written] = apiWorkbenchProgressRowInto(target[written], options.progress);
+  written += 1;
+  target.length = written;
+  return target;
+}
+function writeProjectedControlRow(target, id2, value, options) {
+  const row = target ?? { id: id2, value };
+  row.id = id2;
+  row.value = value;
+  row.options = options;
+  return row;
+}
+
 // app/api_workbench_controls.ts
 var apiWorkbenchControlIds = [
   "button",
@@ -15533,136 +15672,6 @@ function apiWorkbenchWrappedOptionsRenderCommandsInto(target, hits, options) {
   hits.length = hitCount;
   return target;
 }
-function apiWorkbenchButtonRowInto(target, options) {
-  const detail = options.detail ? ` ${options.detail}` : "";
-  return writeProjectedControlRow(
-    target,
-    options.id,
-    `${buttonText(options.label, { compact: options.compact })}${detail}`,
-    { button: true, action: options.action }
-  );
-}
-function apiWorkbenchDropdownHeaderRowInto(target, options) {
-  const expandedGlyph = options.expandedGlyph ?? "\u25BE";
-  const collapsedGlyph = options.collapsedGlyph ?? "\u25B8";
-  return writeProjectedControlRow(
-    target,
-    "dropdown",
-    `${options.title}  ${options.expanded ? expandedGlyph : collapsedGlyph} ${options.label}`,
-    { action: "toggle" }
-  );
-}
-function apiWorkbenchInputRowInto(target, options) {
-  return writeProjectedControlRow(
-    target,
-    "input",
-    `${options.title}     ${options.text}${options.active ? options.cursorGlyph ?? "\u258C" : ""}`,
-    { action: "focus" }
-  );
-}
-function apiWorkbenchSliderRowInto(target, options) {
-  return writeProjectedControlRow(
-    target,
-    "slider",
-    `${options.title ?? "Slider"}    ${options.track.text} ${options.value}/${options.max}`,
-    { previous: true, next: true }
-  );
-}
-function apiWorkbenchStepperRowInto(target, options) {
-  const reserve = Math.max(0, Math.floor(options.columnReserveWidth ?? 12));
-  const stepWidth = Math.max(8, Math.floor(options.rectWidth) - reserve);
-  return writeProjectedControlRow(
-    target,
-    "stepper",
-    `${options.title ?? "Stepper"}   ${renderStepper(options.steps, options.activeIndex, "horizontal", stepWidth)[0] ?? ""}`,
-    { previous: true, next: true }
-  );
-}
-function apiWorkbenchProgressRowInto(target, options) {
-  const suffix = options.suffix ?? "%";
-  return writeProjectedControlRow(
-    target,
-    "slider",
-    `${options.title ?? "Progress"}  ${options.track.text} ${options.value}${suffix}`
-  );
-}
-function apiWorkbenchControlsRowsInto(target, options) {
-  let written = 0;
-  target[written] = apiWorkbenchButtonRowInto(target[written], {
-    id: "button",
-    label: "Run Action",
-    detail: `presses=${options.buttonPressCount}`
-  });
-  written += 1;
-  target[written] = apiWorkbenchButtonRowInto(target[written], {
-    id: "genericButton",
-    label: "Generic Button",
-    detail: `presses=${options.genericButtonPressCount}`
-  });
-  written += 1;
-  target[written] = apiWorkbenchButtonRowInto(target[written], {
-    id: "modal",
-    label: "Open Modal",
-    detail: `state=${options.modalOpen ? "open" : "closed"}`
-  });
-  written += 1;
-  target[written] = apiWorkbenchSliderRowInto(target[written], options.slider);
-  written += 1;
-  target[written] = writeProjectedControlRow(target[written], "checkbox", "Checkboxes");
-  written += 1;
-  for (let index = 0; index < options.checkboxes.length; index += 1) {
-    const item = options.checkboxes[index];
-    target[written] = writeProjectedControlRow(
-      target[written],
-      "checkbox",
-      `${renderCheckBoxMark(item.checked)} ${item.label}`,
-      { indent: true, index }
-    );
-    written += 1;
-  }
-  target[written] = writeProjectedControlRow(target[written], "radio", "Radio", { previous: true, next: true });
-  written += 1;
-  for (let index = 0; index < options.radio.items.length; index += 1) {
-    const item = options.radio.items[index];
-    const mark = item.selected ? "\u25CF" : "\u25CB";
-    const cursor = index === options.radio.activeIndex ? ">" : " ";
-    target[written] = writeProjectedControlRow(
-      target[written],
-      "radio",
-      `${cursor} ${mark} ${item.label}`,
-      { indent: true, index }
-    );
-    written += 1;
-  }
-  const expandedGlyph = options.combo.expandedGlyph ?? "\u25BE";
-  const collapsedGlyph = options.combo.collapsedGlyph ?? "\u25B8";
-  const comboGlyph = options.combo.expanded ? expandedGlyph : collapsedGlyph;
-  const comboTitle = `${options.combo.title}  ${comboGlyph}`;
-  const comboHeader = `${comboTitle} ${options.combo.label}`;
-  const comboShouldSplit = textWidth(`> ${comboHeader}`) > options.combo.rectWidth && options.combo.rectWidth > Math.max(0, Math.floor(options.combo.splitMinWidth ?? 16));
-  target[written] = writeProjectedControlRow(target[written], "combo", comboShouldSplit ? comboTitle : comboHeader, {
-    action: "activate",
-    previous: options.combo.previous,
-    next: options.combo.next
-  });
-  written += 1;
-  if (comboShouldSplit) {
-    target[written] = writeProjectedControlRow(target[written], "combo", options.combo.label, { indent: true });
-    written += 1;
-  }
-  target[written] = apiWorkbenchDropdownHeaderRowInto(target[written], options.dropdown);
-  written += 1;
-  target[written] = apiWorkbenchInputRowInto(target[written], options.input);
-  written += 1;
-  target[written] = apiWorkbenchStepperRowInto(target[written], options.stepper);
-  written += 1;
-  target[written] = writeProjectedControlRow(target[written], "textbox", "TextBox", { action: "focus" });
-  written += 1;
-  target[written] = apiWorkbenchProgressRowInto(target[written], options.progress);
-  written += 1;
-  target.length = written;
-  return target;
-}
 function nextSortableDataColumn(columns2, currentColumnId, delta) {
   let sortableCount = 0;
   let currentSortableIndex = -1;
@@ -15805,13 +15814,6 @@ function writeControlHit(target, index, source) {
   hit.action = source.action;
   hit.index = source.index;
   target[index] = hit;
-}
-function writeProjectedControlRow(target, id2, value, options) {
-  const row = target ?? { id: id2, value };
-  row.id = id2;
-  row.value = value;
-  row.options = options;
-  return row;
 }
 function maxItemTextWidth(items) {
   let width = 0;

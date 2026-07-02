@@ -118,3 +118,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   buffer uploads.
 - Strengthened Three ASCII block-mode output to paint solid cells with matching truecolor foreground/background full
   blocks, and made standalone renderer window controls ASCII-safe and high contrast.
+- Split API workbench option/control row projection into `api_workbench_control_rows.ts` while keeping the existing
+  controls module as the stable facade for terminal and browser callers.
