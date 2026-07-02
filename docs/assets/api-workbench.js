@@ -11700,6 +11700,51 @@ function layoutWorkbenchPopover(options) {
   const clipped = clipRect(normalizeRect2(options.rect), normalizeRect2(options.bounds));
   return clipped.width < minWidth || clipped.height < minHeight ? void 0 : clipped;
 }
+function workbenchDropdownOverlayRenderCommandsInto(target, options) {
+  const rect = normalizeRect2(options.rect);
+  const bounds = normalizeRect2(options.bounds);
+  const clipped = layoutWorkbenchPopover({ rect, bounds });
+  if (!clipped || options.items.length === 0) {
+    target.length = 0;
+    return target;
+  }
+  let written = 0;
+  writeDropdownCommand(target, written++, "fill", clipped);
+  written = writeDropdownRow(target, written, "top", rect.row, rect.column, dropdownBorder("top", rect.width), bounds);
+  const lastItemRow = rect.row + rect.height - 1;
+  for (let index = 0; index < options.items.length; index += 1) {
+    const row = rect.row + 1 + index;
+    if (row >= lastItemRow) break;
+    const selected = options.selectedIndex === index;
+    const marker = selected ? "\u25CF" : "\u25CB";
+    const text = `\u2502 ${fitPlain(`${marker} ${options.items[index]}`, rect.width - 4)} \u2502`;
+    const next = writeDropdownRow(target, written, "item", row, rect.column, text, bounds);
+    if (next !== written) {
+      const command = target[written];
+      command.selected = selected;
+      command.sourceIndex = index;
+      command.itemIndex = options.itemIndexes?.[index] ?? index;
+      command.hitRect = clipRect({
+        column: rect.column + 1,
+        row,
+        width: Math.max(0, rect.width - 2),
+        height: 1
+      }, bounds);
+    }
+    written = next;
+  }
+  written = writeDropdownRow(
+    target,
+    written,
+    "bottom",
+    rect.row + rect.height - 1,
+    rect.column,
+    dropdownBorder("bottom", rect.width),
+    bounds
+  );
+  target.length = written;
+  return target;
+}
 function workbenchModalActionButtonsInto(target, inspection, options = {}) {
   const dangerTone = options.dangerTone ?? "danger";
   const defaultTone = options.defaultTone ?? "default";
@@ -11715,6 +11760,49 @@ function workbenchModalActionButtonsInto(target, inspection, options = {}) {
     });
   }
   return target;
+}
+function writeDropdownRow(target, index, kind, row, column, text, bounds) {
+  if (row < bounds.row || row >= bounds.row + bounds.height) return index;
+  const start = Math.max(column, bounds.column);
+  const end = Math.min(column + text.length, bounds.column + bounds.width);
+  if (end <= start) return index;
+  const visibleWidth = end - start;
+  const leftTrim = Math.max(0, start - column);
+  const command = writeDropdownCommand(target, index, kind, {
+    column: start,
+    row,
+    width: visibleWidth,
+    height: 1
+  });
+  command.text = fitPlain(text.slice(leftTrim, leftTrim + visibleWidth), visibleWidth);
+  return index + 1;
+}
+function writeDropdownCommand(target, index, kind, rect) {
+  const command = target[index] ?? {
+    kind,
+    rect: { column: 0, row: 0, width: 0, height: 0 }
+  };
+  command.kind = kind;
+  command.rect.column = rect.column;
+  command.rect.row = rect.row;
+  command.rect.width = rect.width;
+  command.rect.height = rect.height;
+  delete command.text;
+  delete command.selected;
+  delete command.sourceIndex;
+  delete command.itemIndex;
+  delete command.hitRect;
+  target[index] = command;
+  return command;
+}
+function dropdownBorder(kind, width) {
+  const innerWidth = Math.max(0, width - 2);
+  return kind === "top" ? `\u250C${"\u2500".repeat(innerWidth)}\u2510` : `\u2514${"\u2500".repeat(innerWidth)}\u2518`;
+}
+function fitPlain(text, width) {
+  const normalizedWidth = Math.max(0, Math.floor(width));
+  if (text.length >= normalizedWidth) return text.slice(0, normalizedWidth);
+  return text.padEnd(normalizedWidth, " ");
 }
 function insetRect2(rect, amount) {
   const inset = Math.max(0, Math.floor(amount));
@@ -15975,6 +16063,7 @@ var controlStepperHitPlacements = [];
 var modalActionButtonItems = [];
 var modalActionButtonPlacements = [];
 var modalActionButtonCommands = [];
+var dropdownOverlayRenderCommands = [];
 var dropdownOverlay = null;
 var pointerDrag = null;
 themeIndex.subscribe((index) => persistThemeIndex(index));
@@ -17350,45 +17439,35 @@ function renderWorkspaceScrollbar(frame, bounds) {
 function renderDropdownOverlay(frame) {
   const overlay = dropdownOverlay;
   if (!overlay || overlay.items.length === 0) return;
-  const rect = layoutWorkbenchPopover({
+  const commands = workbenchDropdownOverlayRenderCommandsInto(dropdownOverlayRenderCommands, {
     rect: overlay.rect,
-    bounds: { column: 0, row: 0, width: cols(), height: rowsCount() }
+    bounds: { column: 0, row: 0, width: cols(), height: rowsCount() },
+    items: overlay.items,
+    selectedIndex: overlay.selectedIndex
   });
-  if (!rect) return;
-  fillRect(frame, rect, theme().panelSoft);
-  write(
-    frame,
-    rect.row,
-    rect.column,
-    paint(`\u250C${"\u2500".repeat(Math.max(0, rect.width - 2))}\u2510`, theme().accent, theme().panelSoft, true)
-  );
-  for (const [index, item] of overlay.items.entries()) {
-    const row = rect.row + 1 + index;
-    if (row >= rect.row + rect.height - 1) break;
-    const selected = overlay.selectedIndex === index;
-    const marker = selected ? "\u25CF" : "\u25CB";
+  for (const command of commands) {
+    if (command.kind === "fill") {
+      fillRect(frame, command.rect, theme().panelSoft);
+      continue;
+    }
     write(
       frame,
-      row,
-      rect.column,
+      command.rect.row,
+      command.rect.column,
       paint(
-        `\u2502 ${fit(`${marker} ${item}`, rect.width - 4)} \u2502`,
-        selected ? contrastText(theme().warn, theme().background, theme().text) : theme().text,
-        selected ? theme().warn : theme().panelSoft,
-        selected
+        command.text ?? "",
+        command.selected ? contrastText(theme().warn, theme().background, theme().text) : command.kind === "item" ? theme().text : theme().accent,
+        command.selected ? theme().warn : theme().panelSoft,
+        command.selected || command.kind !== "item"
       )
     );
-    hitTargets.add({ column: rect.column + 1, row, width: Math.max(0, rect.width - 2), height: 1 }, {
-      type: "theme",
-      index
-    });
+    if (command.kind === "item" && command.hitRect) {
+      hitTargets.add(
+        command.hitRect,
+        overlay.kind === "theme" ? { type: "theme", index: command.itemIndex ?? command.sourceIndex ?? 0 } : { type: "control", id: "dropdown", action: "activate", index: command.itemIndex ?? command.sourceIndex }
+      );
+    }
   }
-  write(
-    frame,
-    rect.row + rect.height - 1,
-    rect.column,
-    paint(`\u2514${"\u2500".repeat(Math.max(0, rect.width - 2))}\u2518`, theme().accent, theme().panelSoft, true)
-  );
 }
 function renderModalOverlay(frame) {
   if (!modal.openState.peek()) return;

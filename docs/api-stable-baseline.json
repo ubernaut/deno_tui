@@ -4092,6 +4092,27 @@
     },
     {
       "module": "src/app/workbench_overlay.ts",
+      "name": "WorkbenchDropdownOverlayRenderCommand",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_overlay.ts",
+      "name": "workbenchDropdownOverlayRenderCommandsInto",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_overlay.ts",
+      "name": "WorkbenchDropdownOverlayRenderOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_overlay.ts",
       "name": "WorkbenchModalActionButtonOptions",
       "kind": "interface",
       "typeOnly": true,

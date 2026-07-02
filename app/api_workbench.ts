@@ -41,7 +41,6 @@ import {
   layoutWorkbenchHeaderInto,
   layoutWorkbenchMenuBarHitsInto,
   layoutWorkbenchModal,
-  layoutWorkbenchPopover,
   layoutWorkbenchShelfInto,
   layoutWorkbenchTabsInto,
   layoutWorkbenchTitlebarInto,
@@ -59,6 +58,8 @@ import {
   upsertWorkbenchWorkspace,
   workbenchAdaptiveWindowLayout,
   workbenchContentViewport,
+  type WorkbenchDropdownOverlayRenderCommand,
+  workbenchDropdownOverlayRenderCommandsInto,
   workbenchEmptyWorkspaceMessage,
   type WorkbenchFrame,
   type WorkbenchFrameBoxLine,
@@ -141,7 +142,7 @@ import { Computed, Signal } from "../src/signals/mod.ts";
 import { probeCompatibleWebGPUDevice } from "../src/three_ascii/webgpu_compat.ts";
 import { Tui } from "../src/tui.ts";
 import type { Rectangle } from "../src/types.ts";
-import { stripStyles, textWidth } from "../src/utils/strings.ts";
+import { textWidth } from "../src/utils/strings.ts";
 import { workbenchButtonPaintOptions } from "../src/app/workbench_button_style.ts";
 import {
   layoutWorkbenchButtonRowInto,
@@ -626,6 +627,7 @@ const fullscreenTabRenderCommands: ReturnType<typeof workbenchShelfRenderCommand
 const windowFrameBoxLines: WorkbenchFrameBoxLine[] = [];
 const windowScrollbarRenderCommands: WorkbenchScrollbarRenderCommand[] = [];
 const workspaceScrollbarRenderCommands: WorkbenchScrollbarRenderCommand[] = [];
+const dropdownOverlayRenderCommands: WorkbenchDropdownOverlayRenderCommand[] = [];
 let dropdownOverlay: DropdownOverlay | null = null;
 let threeDragWindow: WindowId | null = null;
 let windowRenderContext: WindowRenderContext | null = null;
@@ -3305,26 +3307,28 @@ function renderDropdownOverlay(frame: Frame, bounds: Rectangle, offset: number):
     : overlay.rect;
   if (!intersects(rect, clip)) return;
 
-  const clipped = layoutWorkbenchPopover({ rect, bounds: clip });
-  if (!clipped) return;
-
-  fillRect(frame, clipped, t.panelSoft);
-  const top = `┌${"─".repeat(Math.max(0, rect.width - 2))}┐`;
-  const bottom = `└${"─".repeat(Math.max(0, rect.width - 2))}┘`;
-  writeClippedOverlayRow(frame, clip, rect.row, rect.column, top, { fg: t.accent, bg: t.panelSoft, bold: true });
-  for (const [index, item] of overlay.items.entries()) {
-    const selected = overlay.selectedIndex === index;
-    const actionIndex = overlay.itemIndexes?.[index] ?? index;
-    const marker = selected ? "●" : "○";
-    const row = rect.row + 1 + index;
-    const style = selected
+  const commands = workbenchDropdownOverlayRenderCommandsInto(dropdownOverlayRenderCommands, {
+    rect,
+    bounds: clip,
+    items: overlay.items,
+    itemIndexes: overlay.itemIndexes,
+    selectedIndex: overlay.selectedIndex,
+  });
+  for (const command of commands) {
+    if (command.kind === "fill") {
+      fillRect(frame, command.rect, t.panelSoft);
+      continue;
+    }
+    const style = command.selected
       ? { fg: t.background, bg: t.warn, bold: true }
-      : { fg: t.text, bg: t.panelSoft, bold: false };
-    writeClippedOverlayRow(frame, clip, row, rect.column, `│ ${fit(`${marker} ${item}`, rect.width - 4)} │`, style);
-    const hit = clipRect({ column: rect.column + 1, row, width: Math.max(0, rect.width - 2), height: 1 }, clip);
-    if (hit.width > 0 && hit.height > 0) {
+      : command.kind === "item"
+      ? { fg: t.text, bg: t.panelSoft, bold: false }
+      : { fg: t.accent, bg: t.panelSoft, bold: true };
+    write(frame, command.rect.row, command.rect.column, paint(command.text ?? "", style));
+    if (command.kind === "item" && command.hitRect && command.hitRect.width > 0 && command.hitRect.height > 0) {
+      const actionIndex = command.itemIndex ?? command.sourceIndex ?? 0;
       addHit(
-        hit,
+        command.hitRect,
         overlay.kind === "theme"
           ? { type: "theme", index: actionIndex }
           : overlay.kind === "newWindow"
@@ -3335,32 +3339,6 @@ function renderDropdownOverlay(frame: Frame, bounds: Rectangle, offset: number):
       );
     }
   }
-  writeClippedOverlayRow(
-    frame,
-    clip,
-    rect.row + rect.height - 1,
-    rect.column,
-    bottom,
-    { fg: t.accent, bg: t.panelSoft, bold: true },
-  );
-}
-
-function writeClippedOverlayRow(
-  frame: Frame,
-  bounds: Rectangle,
-  row: number,
-  column: number,
-  value: string,
-  style: { fg?: string; bg?: string; bold?: boolean },
-): void {
-  if (row < bounds.row || row >= bounds.row + bounds.height) return;
-  const start = Math.max(column, bounds.column);
-  const end = Math.min(column + textWidth(value), bounds.column + bounds.width);
-  if (end <= start) return;
-  const visibleWidth = end - start;
-  const leftTrim = Math.max(0, start - column);
-  const text = stripStyles(value).slice(leftTrim, leftTrim + visibleWidth);
-  write(frame, row, start, paint(fit(text, visibleWidth), style));
 }
 
 function scrollWindow(id: WindowId, columns: number, rows: number): void {

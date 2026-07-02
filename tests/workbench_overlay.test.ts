@@ -2,6 +2,7 @@ import { assertEquals } from "./deps.ts";
 import {
   layoutWorkbenchModal,
   layoutWorkbenchPopover,
+  workbenchDropdownOverlayRenderCommandsInto,
   workbenchModalActionButtonsInto,
 } from "../src/app/workbench_overlay.ts";
 
@@ -45,6 +46,75 @@ Deno.test("workbench popover layout clips or hides too-small overlays", () => {
       bounds: { column: 0, row: 0, width: 24, height: 8 },
     }),
     undefined,
+  );
+});
+
+Deno.test("workbench dropdown overlay render commands project clipped rows and hits", () => {
+  const commands = workbenchDropdownOverlayRenderCommandsInto([], {
+    rect: { column: 4, row: 2, width: 12, height: 5 },
+    bounds: { column: 6, row: 0, width: 8, height: 8 },
+    items: ["Alpha", "Beta", "Gamma", "Delta"],
+    selectedIndex: 1,
+    itemIndexes: [10, 11, 12, 13],
+  });
+
+  assertEquals(commands, [
+    { kind: "fill", rect: { column: 6, row: 2, width: 8, height: 5 } },
+    { kind: "top", rect: { column: 6, row: 2, width: 8, height: 1 }, text: "────────" },
+    {
+      kind: "item",
+      rect: { column: 6, row: 3, width: 8, height: 1 },
+      text: "○ Alpha ",
+      selected: false,
+      sourceIndex: 0,
+      itemIndex: 10,
+      hitRect: { column: 6, row: 3, width: 8, height: 1 },
+    },
+    {
+      kind: "item",
+      rect: { column: 6, row: 4, width: 8, height: 1 },
+      text: "● Beta  ",
+      selected: true,
+      sourceIndex: 1,
+      itemIndex: 11,
+      hitRect: { column: 6, row: 4, width: 8, height: 1 },
+    },
+    {
+      kind: "item",
+      rect: { column: 6, row: 5, width: 8, height: 1 },
+      text: "○ Gamma ",
+      selected: false,
+      sourceIndex: 2,
+      itemIndex: 12,
+      hitRect: { column: 6, row: 5, width: 8, height: 1 },
+    },
+    { kind: "bottom", rect: { column: 6, row: 6, width: 8, height: 1 }, text: "────────" },
+  ]);
+});
+
+Deno.test("workbench dropdown overlay render commands reuse caller storage and hide empty overlays", () => {
+  const commands = workbenchDropdownOverlayRenderCommandsInto([], {
+    rect: { column: 1, row: 1, width: 10, height: 4 },
+    bounds: { column: 0, row: 0, width: 20, height: 10 },
+    items: ["One"],
+  });
+  const first = commands[0];
+
+  workbenchDropdownOverlayRenderCommandsInto(commands, {
+    rect: { column: 2, row: 2, width: 10, height: 4 },
+    bounds: { column: 0, row: 0, width: 20, height: 10 },
+    items: ["Two"],
+  });
+  assertEquals(commands[0] === first, true);
+  assertEquals(commands[0]?.rect, { column: 2, row: 2, width: 10, height: 4 });
+
+  assertEquals(
+    workbenchDropdownOverlayRenderCommandsInto(commands, {
+      rect: { column: 2, row: 2, width: 10, height: 4 },
+      bounds: { column: 0, row: 0, width: 20, height: 10 },
+      items: [],
+    }),
+    [],
   );
 });
 

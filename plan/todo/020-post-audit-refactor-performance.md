@@ -94,3 +94,9 @@ performance, shared terminal/web workbench projections, and oversized module red
   glyph, improving solid block richness and terminal line-gap coverage without changing glyph or edge modes.
 - Extracted terminal session-tab render commands so console and browser workbench adapters share row gap, clipped label,
   active-state, and hit-rectangle projection.
+- Extracted workbench scrollbar render commands so console and browser adapters share vertical/horizontal scrollbar cell
+  projection and hit rectangles.
+- Fixed Three ASCII block-mode color fidelity by keying adjacent-cell reuse on fill buckets and tinting full-height
+  partial blocks against the active background without regressing the Three ASCII assembly benchmarks.
+- Extracted workbench dropdown overlay render commands so console and browser adapters share clipped popover rows,
+  selected-item text, item-index mapping, and hit rectangles.

@@ -36,7 +36,6 @@ import {
   layoutWorkbenchHeaderInto,
   layoutWorkbenchMenuBarHitsInto,
   layoutWorkbenchModal,
-  layoutWorkbenchPopover,
   layoutWorkbenchShelfInto,
   layoutWorkbenchTabsInto,
   layoutWorkbenchTitlebarInto,
@@ -81,6 +80,8 @@ import {
   type WorkbenchButtonRowPlacement,
   type WorkbenchButtonRowRenderCommand,
   workbenchButtonRowRenderCommandsInto,
+  type WorkbenchDropdownOverlayRenderCommand,
+  workbenchDropdownOverlayRenderCommandsInto,
   workbenchEmptyWorkspaceMessage,
   type WorkbenchFrameBoxLine,
   workbenchFrameBoxLinesInto,
@@ -347,6 +348,7 @@ const controlStepperHitPlacements: ApiWorkbenchControlHitPlacement[] = [];
 const modalActionButtonItems: WorkbenchButtonRowItem<number>[] = [];
 const modalActionButtonPlacements: WorkbenchButtonRowPlacement<number>[] = [];
 const modalActionButtonCommands: WorkbenchButtonRowRenderCommand<number>[] = [];
+const dropdownOverlayRenderCommands: WorkbenchDropdownOverlayRenderCommand[] = [];
 let dropdownOverlay: DropdownOverlay | null = null;
 let pointerDrag: {
   x: number;
@@ -1839,45 +1841,41 @@ function renderWorkspaceScrollbar(frame: string[], bounds: Rectangle): void {
 function renderDropdownOverlay(frame: string[]): void {
   const overlay = dropdownOverlay;
   if (!overlay || overlay.items.length === 0) return;
-  const rect = layoutWorkbenchPopover({
+  const commands = workbenchDropdownOverlayRenderCommandsInto(dropdownOverlayRenderCommands, {
     rect: overlay.rect,
     bounds: { column: 0, row: 0, width: cols(), height: rowsCount() },
+    items: overlay.items,
+    selectedIndex: overlay.selectedIndex,
   });
-  if (!rect) return;
-  fillRect(frame, rect, theme().panelSoft);
-  write(
-    frame,
-    rect.row,
-    rect.column,
-    paint(`┌${"─".repeat(Math.max(0, rect.width - 2))}┐`, theme().accent, theme().panelSoft, true),
-  );
-  for (const [index, item] of overlay.items.entries()) {
-    const row = rect.row + 1 + index;
-    if (row >= rect.row + rect.height - 1) break;
-    const selected = overlay.selectedIndex === index;
-    const marker = selected ? "●" : "○";
+  for (const command of commands) {
+    if (command.kind === "fill") {
+      fillRect(frame, command.rect, theme().panelSoft);
+      continue;
+    }
     write(
       frame,
-      row,
-      rect.column,
+      command.rect.row,
+      command.rect.column,
       paint(
-        `│ ${fit(`${marker} ${item}`, rect.width - 4)} │`,
-        selected ? contrastText(theme().warn, theme().background, theme().text) : theme().text,
-        selected ? theme().warn : theme().panelSoft,
-        selected,
+        command.text ?? "",
+        command.selected
+          ? contrastText(theme().warn, theme().background, theme().text)
+          : command.kind === "item"
+          ? theme().text
+          : theme().accent,
+        command.selected ? theme().warn : theme().panelSoft,
+        command.selected || command.kind !== "item",
       ),
     );
-    hitTargets.add({ column: rect.column + 1, row, width: Math.max(0, rect.width - 2), height: 1 }, {
-      type: "theme",
-      index,
-    });
+    if (command.kind === "item" && command.hitRect) {
+      hitTargets.add(
+        command.hitRect,
+        overlay.kind === "theme"
+          ? { type: "theme", index: command.itemIndex ?? command.sourceIndex ?? 0 }
+          : { type: "control", id: "dropdown", action: "activate", index: command.itemIndex ?? command.sourceIndex },
+      );
+    }
   }
-  write(
-    frame,
-    rect.row + rect.height - 1,
-    rect.column,
-    paint(`└${"─".repeat(Math.max(0, rect.width - 2))}┘`, theme().accent, theme().panelSoft, true),
-  );
 }
 
 function renderModalOverlay(frame: string[]): void {

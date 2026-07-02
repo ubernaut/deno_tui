@@ -38,6 +38,26 @@ export interface WorkbenchPopoverLayoutOptions {
   minHeight?: number;
 }
 
+/** Options for projecting a dropdown/popover into renderer-neutral row commands. */
+export interface WorkbenchDropdownOverlayRenderOptions {
+  rect: Rectangle;
+  bounds: Rectangle;
+  items: readonly string[];
+  selectedIndex?: number;
+  itemIndexes?: readonly number[];
+}
+
+/** Renderer-neutral command for painting a workbench dropdown/popover overlay. */
+export interface WorkbenchDropdownOverlayRenderCommand {
+  kind: "fill" | "top" | "item" | "bottom";
+  rect: Rectangle;
+  text?: string;
+  selected?: boolean;
+  sourceIndex?: number;
+  itemIndex?: number;
+  hitRect?: Rectangle;
+}
+
 /** Returns centered modal geometry shared by terminal and browser workbench adapters. */
 export function layoutWorkbenchModal(options: WorkbenchModalLayoutOptions): WorkbenchModalLayout {
   const bounds = normalizeRect(options.bounds);
@@ -78,6 +98,59 @@ export function layoutWorkbenchPopover(options: WorkbenchPopoverLayoutOptions): 
   return clipped.width < minWidth || clipped.height < minHeight ? undefined : clipped;
 }
 
+/** Projects dropdown/popover rows and hit rectangles into reusable command storage. */
+export function workbenchDropdownOverlayRenderCommandsInto(
+  target: WorkbenchDropdownOverlayRenderCommand[],
+  options: WorkbenchDropdownOverlayRenderOptions,
+): WorkbenchDropdownOverlayRenderCommand[] {
+  const rect = normalizeRect(options.rect);
+  const bounds = normalizeRect(options.bounds);
+  const clipped = layoutWorkbenchPopover({ rect, bounds });
+  if (!clipped || options.items.length === 0) {
+    target.length = 0;
+    return target;
+  }
+
+  let written = 0;
+  writeDropdownCommand(target, written++, "fill", clipped);
+  written = writeDropdownRow(target, written, "top", rect.row, rect.column, dropdownBorder("top", rect.width), bounds);
+
+  const lastItemRow = rect.row + rect.height - 1;
+  for (let index = 0; index < options.items.length; index += 1) {
+    const row = rect.row + 1 + index;
+    if (row >= lastItemRow) break;
+    const selected = options.selectedIndex === index;
+    const marker = selected ? "●" : "○";
+    const text = `│ ${fitPlain(`${marker} ${options.items[index]!}`, rect.width - 4)} │`;
+    const next = writeDropdownRow(target, written, "item", row, rect.column, text, bounds);
+    if (next !== written) {
+      const command = target[written]!;
+      command.selected = selected;
+      command.sourceIndex = index;
+      command.itemIndex = options.itemIndexes?.[index] ?? index;
+      command.hitRect = clipRect({
+        column: rect.column + 1,
+        row,
+        width: Math.max(0, rect.width - 2),
+        height: 1,
+      }, bounds);
+    }
+    written = next;
+  }
+
+  written = writeDropdownRow(
+    target,
+    written,
+    "bottom",
+    rect.row + rect.height - 1,
+    rect.column,
+    dropdownBorder("bottom", rect.width),
+    bounds,
+  );
+  target.length = written;
+  return target;
+}
+
 /** Projects modal actions into reusable button-row items shared by terminal and browser adapters. */
 export function workbenchModalActionButtonsInto(
   target: WorkbenchButtonRowItem<number>[],
@@ -98,6 +171,66 @@ export function workbenchModalActionButtonsInto(
     });
   }
   return target;
+}
+
+function writeDropdownRow(
+  target: WorkbenchDropdownOverlayRenderCommand[],
+  index: number,
+  kind: WorkbenchDropdownOverlayRenderCommand["kind"],
+  row: number,
+  column: number,
+  text: string,
+  bounds: Rectangle,
+): number {
+  if (row < bounds.row || row >= bounds.row + bounds.height) return index;
+  const start = Math.max(column, bounds.column);
+  const end = Math.min(column + text.length, bounds.column + bounds.width);
+  if (end <= start) return index;
+  const visibleWidth = end - start;
+  const leftTrim = Math.max(0, start - column);
+  const command = writeDropdownCommand(target, index, kind, {
+    column: start,
+    row,
+    width: visibleWidth,
+    height: 1,
+  });
+  command.text = fitPlain(text.slice(leftTrim, leftTrim + visibleWidth), visibleWidth);
+  return index + 1;
+}
+
+function writeDropdownCommand(
+  target: WorkbenchDropdownOverlayRenderCommand[],
+  index: number,
+  kind: WorkbenchDropdownOverlayRenderCommand["kind"],
+  rect: Rectangle,
+): WorkbenchDropdownOverlayRenderCommand {
+  const command = target[index] ?? {
+    kind,
+    rect: { column: 0, row: 0, width: 0, height: 0 },
+  };
+  command.kind = kind;
+  command.rect.column = rect.column;
+  command.rect.row = rect.row;
+  command.rect.width = rect.width;
+  command.rect.height = rect.height;
+  delete command.text;
+  delete command.selected;
+  delete command.sourceIndex;
+  delete command.itemIndex;
+  delete command.hitRect;
+  target[index] = command;
+  return command;
+}
+
+function dropdownBorder(kind: "top" | "bottom", width: number): string {
+  const innerWidth = Math.max(0, width - 2);
+  return kind === "top" ? `┌${"─".repeat(innerWidth)}┐` : `└${"─".repeat(innerWidth)}┘`;
+}
+
+function fitPlain(text: string, width: number): string {
+  const normalizedWidth = Math.max(0, Math.floor(width));
+  if (text.length >= normalizedWidth) return text.slice(0, normalizedWidth);
+  return text.padEnd(normalizedWidth, " ");
 }
 
 function insetRect(rect: Rectangle, amount: number): Rectangle {
