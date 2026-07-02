@@ -5944,14 +5944,14 @@ function measureTextIntrinsic(text, availableWidth, defaultTextHeight) {
   return { width, height: Math.max(defaultTextHeight, height) };
 }
 function intrinsicMeasurementCacheKey(node, availableWidth, defaultTextHeight) {
-  let key = "v1" + Math.max(1, Math.floor(availableWidth)) + "" + Math.max(1, Math.floor(defaultTextHeight)) + "" + node.tag + "" + (node.text ?? "") + "" + (node.intrinsic?.width ?? "") + "" + (node.intrinsic?.height ?? "") + "" + node.style.display + "" + node.style.flexDirection + "" + node.style.columnGap;
+  let key = "v1" + Math.max(1, Math.floor(availableWidth)) + "" + Math.max(1, Math.floor(defaultTextHeight)) + "" + node.tag + "" + (node.text ?? "") + "" + (node.intrinsic?.width ?? "") + "" + (node.intrinsic?.height ?? "") + "" + node.style.display + "" + node.style.position + "" + node.style.flexDirection + "" + layoutLengthSignature(node.style.flexBasis) + "" + layoutLengthSignature(node.style.width) + "" + layoutLengthSignature(node.style.height) + "" + layoutLengthSignature(node.style.minWidth) + "" + layoutLengthSignature(node.style.minHeight) + "" + layoutLengthSignature(node.style.maxWidth) + "" + layoutLengthSignature(node.style.maxHeight) + "" + node.style.gap + "" + node.style.rowGap + "" + node.style.columnGap;
   for (const child of node.children) {
     key += "" + intrinsicNodeSignature(child);
   }
   return key;
 }
 function intrinsicNodeSignature(node) {
-  let signature = node.tag + "" + (node.text ?? "") + "" + (node.intrinsic?.width ?? "") + "" + (node.intrinsic?.height ?? "") + "" + node.style.display + "" + node.style.flexDirection + "" + node.style.columnGap;
+  let signature = node.tag + "" + (node.text ?? "") + "" + (node.intrinsic?.width ?? "") + "" + (node.intrinsic?.height ?? "") + "" + node.style.display + "" + node.style.position + "" + node.style.flexDirection + "" + layoutLengthSignature(node.style.flexBasis) + "" + layoutLengthSignature(node.style.width) + "" + layoutLengthSignature(node.style.height) + "" + layoutLengthSignature(node.style.minWidth) + "" + layoutLengthSignature(node.style.minHeight) + "" + layoutLengthSignature(node.style.maxWidth) + "" + layoutLengthSignature(node.style.maxHeight) + "" + node.style.gap + "" + node.style.rowGap + "" + node.style.columnGap;
   if (node.children.length === 0) return signature + "";
   signature += "";
   for (let index = 0; index < node.children.length; index += 1) {
@@ -5959,6 +5959,9 @@ function intrinsicNodeSignature(node) {
     signature += intrinsicNodeSignature(node.children[index]);
   }
   return signature;
+}
+function layoutLengthSignature(value) {
+  return `${value.unit}:${value.value}`;
 }
 function scrollSize(node, contentRect, children) {
   const textSize = node.text ? measureTextIntrinsic(node.text, Math.max(1, contentRect.width), 1) : { width: 0, height: 0 };
