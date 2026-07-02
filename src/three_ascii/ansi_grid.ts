@@ -345,8 +345,10 @@ export class ThreeAsciiAnsiGridAssembler {
 
 /** Builds the terminal ANSI cell grid for a three Ascii frame. */
 export function buildThreeAsciiAnsiGrid(input: ThreeAsciiAnsiGridInput): string[][] {
-  return new ThreeAsciiAnsiGridAssembler().build(input);
+  return sharedThreeAsciiAnsiGridAssembler.build(input);
 }
+
+const sharedThreeAsciiAnsiGridAssembler = new ThreeAsciiAnsiGridAssembler();
 
 export function colorValue(input: Color | string | number | undefined, fallback: number): Color {
   return input instanceof Color ? input : new Color(input ?? fallback);
