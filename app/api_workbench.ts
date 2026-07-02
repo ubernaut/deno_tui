@@ -242,6 +242,7 @@ import {
   visualizationTextContentSize,
   visualizationThreeStatusLine,
   visualizationWindowRowsInto,
+  workbenchThreeFallbackRowsInto,
 } from "./workbench_visualization_window.ts";
 import {
   buildWorkspaceMenuEntries,
@@ -421,17 +422,6 @@ const visualizationTextRows: string[] = [];
 const visualizationRenderRows: RowStyle[] = [];
 const threeFallbackRowsBuffer: RowStyle[] = [];
 const logRenderRows: RowStyle[] = [];
-const THREE_FALLBACK_BODY: readonly string[] = [
-  "         .-=========-.         ",
-  "      .-#%%%@@@@@@%%%#-.       ",
-  "    .+%%@*=-.     .-=*@%+.     ",
-  "   :#%@-     TORUS     -@%#:   ",
-  "   *%@=   <> SPHERE <>  =@%*   ",
-  "   :#%@-      CUBE      -@%#:  ",
-  "    .+%%@*=-.     .-=*@%+.     ",
-  "      .-#%%%@@@@@@%%%#-.       ",
-  "         `-=========-'         ",
-];
 const ASCII_DEMO_PRESET_IDS = asciiDemoPresetIds();
 const explorerKeys = new Set(["up", "down", "left", "right", "pageup", "pagedown", "home", "end", "space", "return"]);
 const htmlCssLayoutWindowOption: NewWindowOption = {
@@ -1465,7 +1455,14 @@ function renderThree(frame: Frame, rect: Rectangle): void {
 
   setThreeBodyRect({ column: 0, row: 0, width: 0, height: 0 });
   setThreeGraphicsRect({ column: 0, row: 0, width: 0, height: 0 });
-  const fallback = renderThreeFallbackInto(threeFallbackRowsBuffer, rect.width, rect.height, t);
+  const fallback = workbenchThreeFallbackRowsInto(threeFallbackRowsBuffer, {
+    width: rect.width,
+    height: rect.height,
+    terminalGlyphStyle: ascii.peek().terminalGlyphStyle,
+    rendererAvailable: threeAsciiAvailable.peek(),
+    theme: t,
+    center: centerText,
+  });
   writeRows(frame, rect, fallback);
 }
 
@@ -1490,34 +1487,6 @@ function renderThreeGrid(frame: Frame, rect: Rectangle, grid: string[][], t: The
       target[rect.column + column] = source[column] ?? paint(" ", { bg: t.surface });
     }
   }
-}
-
-function renderThreeFallbackInto(target: RowStyle[], width: number, height: number, t: ThemeSpec): RowStyle[] {
-  const title = ` THREE ASCII FALLBACK · ${terminalGlyphStyleLabel(ascii.peek().terminalGlyphStyle).toUpperCase()} `;
-  target.length = 0;
-  target.push(
-    { text: title, fg: t.buttonActiveText, bg: t.buttonActiveBg, bold: true },
-    {
-      text: threeAsciiAvailable.peek()
-        ? "renderer warming up"
-        : "WebGPU/WebGL backend unavailable; text preview active",
-      fg: t.warn,
-      bg: t.surface,
-      bold: !threeAsciiAvailable.peek(),
-    },
-    { text: "", bg: t.surface },
-  );
-  const bodyRows = Math.min(THREE_FALLBACK_BODY.length, Math.max(0, height - 5));
-  for (let index = 0; index < bodyRows; index += 1) {
-    target.push({
-      text: centerText(THREE_FALLBACK_BODY[index]!, width),
-      fg: index % 3 === 0 ? t.accent : index % 3 === 1 ? t.good : t.warn,
-      bg: t.surface,
-      bold: true,
-    });
-  }
-  target.push({ text: "scene: torus knot + sphere + box + floor", fg: t.soft, bg: t.surface });
-  return target;
 }
 
 function renderExplorer(frame: Frame, rect: Rectangle): void {

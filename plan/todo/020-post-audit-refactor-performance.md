@@ -120,3 +120,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   blocks, and made standalone renderer window controls ASCII-safe and high contrast.
 - Split API workbench option/control row projection into `api_workbench_control_rows.ts` while keeping the existing
   controls module as the stable facade for terminal and browser callers.
+- Extracted built-in Three fallback row projection into `workbench_visualization_window.ts` with direct tests so the
+  main API workbench renderer keeps less static presentation logic.
