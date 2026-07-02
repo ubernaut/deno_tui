@@ -1180,14 +1180,24 @@ function renderWebTerminalPane(
   hitTargets.add(content, { type: "terminalContent", sessionId, paneId: pane?.pane.id });
   const inspection = scrollback.inspect();
   const rows = inspection.mode === "copy" ? inspection.visibleRows : screen.textRows();
+  const selection = inspection.selection;
+  const selectionStart = selection ? Math.min(selection.anchor, selection.focus) : -1;
+  const selectionEnd = selection ? Math.max(selection.anchor, selection.focus) : -1;
   const screenRowCount = Math.min(rows.length, content.height);
   for (let index = 0; index < screenRowCount; index += 1) {
     const line = rows[index]!;
+    const rowIndex = inspection.offset + index;
+    const selected = inspection.mode === "copy" && rowIndex >= selectionStart && rowIndex <= selectionEnd;
     write(
       frame,
       content.row + index,
       content.column,
-      paint(fit(line, content.width), t.text, activePane ? t.background : t.surface),
+      paint(
+        fit(line, content.width),
+        selected ? t.background : t.text,
+        selected ? t.warn : activePane ? t.background : t.surface,
+        selected,
+      ),
     );
   }
   if (inspection.mode === "copy") {
@@ -1196,7 +1206,12 @@ function renderWebTerminalPane(
       : `copy rows ${inspection.offset + 1}-${
         Math.min(inspection.offset + inspection.viewportRows, inspection.totalRows)
       }`;
-    write(frame, content.row, content.column, paint(fit(status, content.width), t.warn, t.panelSoft, true));
+    write(
+      frame,
+      content.row + Math.max(0, content.height - 1),
+      content.column,
+      paint(fit(status, content.width), t.warn, t.panelSoft, true),
+    );
     return;
   }
   const cursor = screen.cursor;
@@ -1486,6 +1501,12 @@ function applyHit(target: HitTarget<Hit>, x: number, y: number): void {
   } else if (hit.type === "terminalContent") {
     if (hit.paneId) webTerminalWorkspace.activatePane(hit.paneId);
     else if (hit.sessionId) webTerminalWorkspace.activate(hit.sessionId);
+    const screen = webTerminalScreens.get(hit.sessionId ?? "");
+    if (screen) {
+      const scrollback = syncWebTerminalScrollback(hit.sessionId, screen, target.rect.height);
+      scrollback.selectVisibleRow(y - target.rect.row);
+      push("terminal row selected");
+    }
     active.value = "terminal";
   } else if (hit.type === "terminalAction") {
     applyWebTerminalAction(hit.action);

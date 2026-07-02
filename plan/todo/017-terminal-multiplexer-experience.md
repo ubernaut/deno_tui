@@ -146,3 +146,4 @@ developer workflows.
 - Added renderer-neutral interactive scrollback selection helpers plus console Workbench copy-pane selection. Copy mode
   now supports row clicks, Space to start a selection, Shift+Up/Down to extend it, selected-row highlighting, and `C` to
   copy the selected range.
+- Added matching browser-demo scrollback row selection and selected-row highlighting in the GitHub Pages terminal panes.

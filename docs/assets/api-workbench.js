@@ -11579,6 +11579,21 @@ var TerminalScrollbackController = class {
     }
     return this.#selection ? { ...this.#selection } : void 0;
   }
+  selectVisibleRow(row, extend = false) {
+    const rows2 = this.#rows();
+    if (rows2.length === 0) return void 0;
+    const focus2 = clamp3(this.offset + Math.trunc(row), 0, rows2.length - 1);
+    const anchor = extend && this.#selection ? this.#selection.anchor : focus2;
+    return this.#setSelectionAndReveal(anchor, focus2, rows2.length);
+  }
+  moveSelection(delta, extend = true) {
+    const rows2 = this.#rows();
+    if (rows2.length === 0) return void 0;
+    const current = this.#selection?.focus ?? this.offset;
+    const focus2 = clamp3(current + Math.trunc(delta), 0, rows2.length - 1);
+    const anchor = extend ? this.#selection?.anchor ?? current : focus2;
+    return this.#setSelectionAndReveal(anchor, focus2, rows2.length);
+  }
   clearSelection() {
     this.#selection = void 0;
   }
@@ -11640,6 +11655,21 @@ var TerminalScrollbackController = class {
     }
     if (this.#matches.length === 0) this.#activeMatch = -1;
     else this.#activeMatch = clamp3(this.#activeMatch, 0, this.#matches.length - 1);
+  }
+  #setSelectionAndReveal(anchor, focus2, rowCount) {
+    this.#selection = normalizeSelection({ anchor, focus: focus2 }, rowCount);
+    if (!this.#selection) return void 0;
+    this.enterCopyMode();
+    this.#revealRow(this.#selection.focus);
+    return { ...this.#selection };
+  }
+  #revealRow(row) {
+    const target = clamp3(Math.trunc(row), 0, Math.max(0, this.#rows().length - 1));
+    if (target < this.#offset) {
+      this.#offset = target;
+    } else if (target >= this.#offset + this.#viewportRows) {
+      this.#offset = clamp3(target - this.#viewportRows + 1, 0, this.#maxOffset());
+    }
   }
 };
 function normalizePositiveInteger(value, fallback) {
@@ -15522,19 +15552,34 @@ function renderWebTerminalPane(frame, rect, sessionId, pane, activePane) {
   hitTargets.add(content, { type: "terminalContent", sessionId, paneId: pane?.pane.id });
   const inspection = scrollback.inspect();
   const rows2 = inspection.mode === "copy" ? inspection.visibleRows : screen.textRows();
+  const selection = inspection.selection;
+  const selectionStart = selection ? Math.min(selection.anchor, selection.focus) : -1;
+  const selectionEnd = selection ? Math.max(selection.anchor, selection.focus) : -1;
   const screenRowCount = Math.min(rows2.length, content.height);
   for (let index = 0; index < screenRowCount; index += 1) {
     const line = rows2[index];
+    const rowIndex = inspection.offset + index;
+    const selected = inspection.mode === "copy" && rowIndex >= selectionStart && rowIndex <= selectionEnd;
     write(
       frame,
       content.row + index,
       content.column,
-      paint(fit(line, content.width), t.text, activePane ? t.background : t.surface)
+      paint(
+        fit(line, content.width),
+        selected ? t.background : t.text,
+        selected ? t.warn : activePane ? t.background : t.surface,
+        selected
+      )
     );
   }
   if (inspection.mode === "copy") {
     const status = inspection.query ? `search "${inspection.query}" ${inspection.matches.length} hit(s)` : `copy rows ${inspection.offset + 1}-${Math.min(inspection.offset + inspection.viewportRows, inspection.totalRows)}`;
-    write(frame, content.row, content.column, paint(fit(status, content.width), t.warn, t.panelSoft, true));
+    write(
+      frame,
+      content.row + Math.max(0, content.height - 1),
+      content.column,
+      paint(fit(status, content.width), t.warn, t.panelSoft, true)
+    );
     return;
   }
   const cursor = screen.cursor;
@@ -15800,6 +15845,12 @@ function applyHit(target, x, y) {
   } else if (hit.type === "terminalContent") {
     if (hit.paneId) webTerminalWorkspace.activatePane(hit.paneId);
     else if (hit.sessionId) webTerminalWorkspace.activate(hit.sessionId);
+    const screen = webTerminalScreens.get(hit.sessionId ?? "");
+    if (screen) {
+      const scrollback = syncWebTerminalScrollback(hit.sessionId, screen, target.rect.height);
+      scrollback.selectVisibleRow(y - target.rect.row);
+      push("terminal row selected");
+    }
     active.value = "terminal";
   } else if (hit.type === "terminalAction") {
     applyWebTerminalAction(hit.action);
