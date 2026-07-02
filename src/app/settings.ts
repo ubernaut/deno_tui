@@ -67,19 +67,36 @@ export class SettingsController {
   }
 
   keys(): string[] {
-    return [...this.#settings.keys()].sort();
+    const keys: string[] = [];
+    for (const key of this.#settings.keys()) {
+      keys.push(key);
+    }
+    return keys.sort();
   }
 
   localKeys(): string[] {
-    return this.keys().map((key) => this.localKey(key));
+    const keys = this.keys();
+    const localKeys = new Array<string>(keys.length);
+    for (let index = 0; index < keys.length; index += 1) {
+      localKeys[index] = this.localKey(keys[index]!);
+    }
+    return localKeys;
   }
 
   async ready(): Promise<void> {
-    await Promise.all([...this.#settings.values()].map((setting) => setting.ready));
+    const pending: Promise<unknown>[] = [];
+    for (const setting of this.#settings.values()) {
+      pending.push(setting.ready);
+    }
+    await Promise.all(pending);
   }
 
   async flush(): Promise<void> {
-    await Promise.all([...this.#settings.values()].map((setting) => setting.flush()));
+    const pending: Promise<unknown>[] = [];
+    for (const setting of this.#settings.values()) {
+      pending.push(setting.flush());
+    }
+    await Promise.all(pending);
   }
 
   async reset(key: string): Promise<boolean> {
@@ -90,7 +107,11 @@ export class SettingsController {
   }
 
   async resetAll(): Promise<void> {
-    await Promise.all([...this.#settings.values()].map((setting) => setting.reset()));
+    const pending: Promise<unknown>[] = [];
+    for (const setting of this.#settings.values()) {
+      pending.push(setting.reset());
+    }
+    await Promise.all(pending);
   }
 
   inspect(): SettingsControllerInspection {

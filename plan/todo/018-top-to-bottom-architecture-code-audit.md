@@ -284,6 +284,8 @@ Work:
         pipelines in core canvas/component/web host event paths.
   - [x] Reworked runtime diagnostics bounded trimming, cloning, status counting, and text formatting to avoid map/filter
         pipelines in degradation-reporting paths.
+  - [x] Reworked SettingsController key projection and ready/flush/reset aggregation to use explicit sorted buffers and
+        promise lists instead of spread/map chains across persistent app settings.
 
 Acceptance checks:
 
