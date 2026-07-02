@@ -3353,31 +3353,36 @@ function flexRects(bounds, direction, items, gap = 0) {
 }
 function solveFlexSizes(total, items) {
   if (items.length === 0 || total <= 0) {
-    return items.map(() => 0);
+    const empty2 = new Array(items.length);
+    for (let index = 0; index < items.length; index += 1) empty2[index] = 0;
+    return empty2;
   }
-  const minimums = items.map((item) => Math.max(0, Math.floor(item.min ?? 0)));
-  const maximums = items.map((item, index) => {
+  const minimums = new Array(items.length);
+  const maximums = new Array(items.length);
+  const sizes = new Array(items.length);
+  for (let index = 0; index < items.length; index += 1) {
+    const item = items[index];
+    const min2 = Math.max(0, Math.floor(item.min ?? 0));
     const rawMax = item.max == null ? MAX_FLEX_SIZE : Math.floor(item.max);
-    return Math.max(minimums[index] ?? 0, rawMax);
-  });
-  const sizes = items.map((item, index) => {
-    const min2 = minimums[index] ?? 0;
-    const max2 = maximums[index] ?? MAX_FLEX_SIZE;
+    const max2 = Math.max(min2, rawMax);
     const basis = item.basis == null ? min2 : Math.floor(item.basis);
-    return Math.min(max2, Math.max(min2, basis));
-  });
+    minimums[index] = min2;
+    maximums[index] = max2;
+    sizes[index] = Math.min(max2, Math.max(min2, basis));
+  }
   let delta = total - sum(sizes);
   if (delta > 0) {
-    distributePositive(sizes, delta, items.map((item) => Math.max(0, item.grow ?? 1)), maximums);
+    const weights = flexWeights(items, "grow");
+    distributePositive(sizes, delta, weights, maximums);
     return sizes;
   }
   if (delta < 0) {
-    const weights = items.map((item) => Math.max(0, item.shrink ?? 1));
+    const weights = flexWeights(items, "shrink");
     delta = -delta;
     distributeNegative(sizes, delta, weights, minimums);
     const overflow = sum(sizes) - total;
     if (overflow > 0) {
-      distributeNegative(sizes, overflow, weights, items.map(() => 0));
+      distributeNegative(sizes, overflow, weights, zeroes(items.length));
     }
   }
   return sizes;
@@ -3385,17 +3390,22 @@ function solveFlexSizes(total, items) {
 function distributePositive(sizes, extra, weights, maximums) {
   let remaining = extra;
   while (remaining > 0) {
-    const active2 = sizes.map((size, index) => ({ index, room: Math.max(0, (maximums[index] ?? MAX_FLEX_SIZE) - size) })).filter((entry) => entry.room > 0);
-    if (active2.length === 0) break;
-    const totalWeight = active2.reduce((sum2, entry) => sum2 + Math.max(1, weights[entry.index] ?? 1), 0);
+    let totalWeight = 0;
+    for (let index = 0; index < sizes.length; index += 1) {
+      const room = Math.max(0, (maximums[index] ?? MAX_FLEX_SIZE) - (sizes[index] ?? 0));
+      if (room > 0) totalWeight += Math.max(1, weights[index] ?? 1);
+    }
+    if (totalWeight === 0) break;
     let used = 0;
-    for (const entry of active2) {
+    for (let index = 0; index < sizes.length; index += 1) {
       if (remaining <= 0) break;
-      const weight = Math.max(1, weights[entry.index] ?? 1);
+      const room = Math.max(0, (maximums[index] ?? MAX_FLEX_SIZE) - (sizes[index] ?? 0));
+      if (room <= 0) continue;
+      const weight = Math.max(1, weights[index] ?? 1);
       let share = Math.floor(remaining * (weight / Math.max(1, totalWeight)));
       if (share <= 0) share = 1;
-      const delta = Math.min(entry.room, share, remaining);
-      sizes[entry.index] = (sizes[entry.index] ?? 0) + delta;
+      const delta = Math.min(room, share, remaining);
+      sizes[index] = (sizes[index] ?? 0) + delta;
       remaining -= delta;
       used += delta;
     }
@@ -3405,17 +3415,22 @@ function distributePositive(sizes, extra, weights, maximums) {
 function distributeNegative(sizes, deficit, weights, minimums) {
   let remaining = deficit;
   while (remaining > 0) {
-    const active2 = sizes.map((size, index) => ({ index, room: Math.max(0, size - (minimums[index] ?? 0)) })).filter((entry) => entry.room > 0);
-    if (active2.length === 0) break;
-    const totalWeight = active2.reduce((sum2, entry) => sum2 + Math.max(1, weights[entry.index] ?? 1), 0);
+    let totalWeight = 0;
+    for (let index = 0; index < sizes.length; index += 1) {
+      const room = Math.max(0, (sizes[index] ?? 0) - (minimums[index] ?? 0));
+      if (room > 0) totalWeight += Math.max(1, weights[index] ?? 1);
+    }
+    if (totalWeight === 0) break;
     let used = 0;
-    for (const entry of active2) {
+    for (let index = 0; index < sizes.length; index += 1) {
       if (remaining <= 0) break;
-      const weight = Math.max(1, weights[entry.index] ?? 1);
+      const room = Math.max(0, (sizes[index] ?? 0) - (minimums[index] ?? 0));
+      if (room <= 0) continue;
+      const weight = Math.max(1, weights[index] ?? 1);
       let share = Math.floor(remaining * (weight / Math.max(1, totalWeight)));
       if (share <= 0) share = 1;
-      const delta = Math.min(entry.room, share, remaining);
-      sizes[entry.index] = (sizes[entry.index] ?? 0) - delta;
+      const delta = Math.min(room, share, remaining);
+      sizes[index] = (sizes[index] ?? 0) - delta;
       remaining -= delta;
       used += delta;
     }
@@ -3423,7 +3438,21 @@ function distributeNegative(sizes, deficit, weights, minimums) {
   }
 }
 function sum(values) {
-  return values.reduce((total, value) => total + value, 0);
+  let total = 0;
+  for (let index = 0; index < values.length; index += 1) total += values[index] ?? 0;
+  return total;
+}
+function flexWeights(items, key) {
+  const weights = new Array(items.length);
+  for (let index = 0; index < items.length; index += 1) {
+    weights[index] = Math.max(0, items[index][key] ?? 1);
+  }
+  return weights;
+}
+function zeroes(length) {
+  const values = new Array(length);
+  for (let index = 0; index < length; index += 1) values[index] = 0;
+  return values;
 }
 
 // src/layout/responsive.ts
