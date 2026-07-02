@@ -117,17 +117,20 @@ export function encodeTerminalMouse(
 export function terminalMouseRoutingFromPrivateModes(
   modes: Iterable<number>,
 ): Pick<TerminalInputRoutingOptions, "mouseTracking" | "sgrMouse"> {
-  const active = new Set(modes);
-  const mouseTracking: TerminalMouseTrackingMode = active.has(1003)
-    ? "any"
-    : active.has(1002)
-    ? "button"
-    : active.has(1000)
-    ? "press"
-    : "none";
+  let hasPress = false;
+  let hasButton = false;
+  let hasAny = false;
+  let sgrMouse = false;
+  for (const mode of modes) {
+    if (mode === 1000) hasPress = true;
+    else if (mode === 1002) hasButton = true;
+    else if (mode === 1003) hasAny = true;
+    else if (mode === 1006) sgrMouse = true;
+  }
+  const mouseTracking: TerminalMouseTrackingMode = hasAny ? "any" : hasButton ? "button" : hasPress ? "press" : "none";
   return {
     mouseTracking,
-    sgrMouse: active.has(1006),
+    sgrMouse,
   };
 }
 
