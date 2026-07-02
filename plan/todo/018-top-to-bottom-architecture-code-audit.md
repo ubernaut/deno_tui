@@ -131,6 +131,8 @@ Work:
         command logs off local spread/slice trimming.
   - [x] Added shared string-backed frame row writing in `workbench_frame.ts` and moved the web API Workbench off its
         local ANSI-cell slice/join writer.
+  - [x] Migrated web API Workbench control traversal onto `api_workbench_controls.ts` so browser and terminal adapters
+        share the same control order and edge-aware Tab behavior.
 - [x] Replace duplicated theme/window/menu persistence code with a shared versioned serializer.
   - [x] Extracted shared workbench workspace normalization, panel-state normalization, upsert, rename, delete, lookup,
         and legacy window-entry expansion helpers into `src/app/workbench_workspace.ts`.

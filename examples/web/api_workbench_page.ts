@@ -83,6 +83,7 @@ import {
   type ApiWorkbenchThemeSpec,
   createApiWorkbenchThemes,
 } from "../../app/api_workbench_catalog.ts";
+import { type ApiWorkbenchControlId, nextApiWorkbenchControlId } from "../../app/api_workbench_controls.ts";
 import { WorkbenchController } from "../../src/app/workbench/controller.ts";
 import { createHtmlCssLayoutDemo, htmlCssLayoutDemoBoxLabel } from "../../src/markup/demo_fixtures.ts";
 import { DiagnosticsCollector } from "../../src/runtime/diagnostics.ts";
@@ -91,18 +92,7 @@ import type { Rectangle } from "../../src/types.ts";
 import { makeStyle } from "../../app/styles.ts";
 
 type PanelId = "explorer" | "inspector" | "data" | "controls" | "logs" | "three" | "htmlLayout" | "terminal";
-type ControlId =
-  | "button"
-  | "genericButton"
-  | "modal"
-  | "slider"
-  | "checkbox"
-  | "radio"
-  | "combo"
-  | "dropdown"
-  | "input"
-  | "stepper"
-  | "textbox";
+type ControlId = ApiWorkbenchControlId;
 type Hit =
   | { type: "menu"; index: number }
   | { type: "mobileAction"; action: MobileAction }
@@ -430,7 +420,7 @@ host.on("keyPress", (event) => {
     draw();
     return;
   }
-  if (key === "tab" && active.peek() === "controls") focusNextControl();
+  if (key === "tab" && active.peek() === "controls") focusNextControl(event.shift ? -1 : 1);
   else if (key === "tab") focusNext();
   else if (focusPanelByNumber(key)) return draw();
   else if (key === "h" || key === "?") openHelpModal();
@@ -1292,6 +1282,11 @@ function focusNext(): void {
   if (ids.length === 0) return;
   focus(ids[(ids.indexOf(active.peek()) + 1) % ids.length]!);
 }
+function focusPrevious(): void {
+  const ids = panelIds.filter((id) => !minimized.peek()[id]);
+  if (ids.length === 0) return;
+  focus(ids[(ids.indexOf(active.peek()) - 1 + ids.length) % ids.length]!);
+}
 function minimize(id: PanelId): void {
   minimized.value[id] = true;
   if (maximized.peek() === id) maximized.value = null;
@@ -2047,27 +2042,23 @@ function blurTextControl(): void {
   push(`control ${previous} blur`);
 }
 
-function focusNextControl(): void {
+function focusNextControl(delta = 1): void {
   active.value = "controls";
-  activeControl.value = controlAt(1);
-  push(`control ${activeControl.peek()} focus`);
+  const next = controlAtEdge(delta);
+  if (next) {
+    activeControl.value = next;
+    push(`control ${activeControl.peek()} focus`);
+    return;
+  }
+  delta < 0 ? focusPrevious() : focusNext();
 }
 
 function controlAt(delta: number): ControlId {
-  const ids: ControlId[] = [
-    "button",
-    "genericButton",
-    "modal",
-    "slider",
-    "checkbox",
-    "radio",
-    "combo",
-    "dropdown",
-    "input",
-    "stepper",
-    "textbox",
-  ];
-  return ids[(ids.indexOf(activeControl.peek()) + delta + ids.length) % ids.length]!;
+  return nextApiWorkbenchControlId(activeControl.peek(), delta, { wrap: true }) ?? "button";
+}
+
+function controlAtEdge(delta: number): ControlId | undefined {
+  return nextApiWorkbenchControlId(activeControl.peek(), delta);
 }
 function isTextControlActive(): boolean {
   return active.peek() === "controls" && (activeControl.peek() === "input" || activeControl.peek() === "textbox");
