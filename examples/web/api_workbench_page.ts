@@ -83,6 +83,7 @@ import {
   type WorkbenchFrameBoxLine,
   workbenchFrameBoxLinesInto,
   type WorkbenchHeaderLayout,
+  workbenchHelpRows,
   type WorkbenchMenuBarHitLayout,
   type WorkbenchPanelWorkspaceState,
   workbenchShelfEntriesInto,
@@ -1946,14 +1947,7 @@ function openHelpModal(): void {
   modal.open({
     title: "Web Workbench Help",
     tone: "info",
-    body: [
-      "Keyboard: Tab cycles panels. Use 1-8 to focus Explorer, Inspector, Data, Controls, Logs, Three ASCII, HTML/CSS Layout, and Terminal.",
-      "Use M to minimize, F or Enter to maximize/restore, R to restore all panels, T for themes, H for help, and Q to quit.",
-      "Controls: arrow keys adjust sliders, radio groups, combo boxes, steppers, and dropdowns. Enter or Space activates.",
-      "Mouse: click panels to focus, click rows to select, click controls to change values, and click scrollbars to jump.",
-      "Touch: use the compact command strip, tap larger hit zones around controls, and drag inside panels to scroll.",
-      "Resize the browser. The same tiled layout helper used by the terminal workbench recomputes panel geometry.",
-    ],
+    body: workbenchHelpRows({ profile: "web" }),
     actions: [
       { id: "dismiss", label: "Dismiss", default: true },
       { id: "controls", label: "Focus Controls" },

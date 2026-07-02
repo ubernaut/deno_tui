@@ -70,3 +70,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   layouts reuse typed readback views.
 - Extracted shared workbench status-line shortcut/profile composition so terminal and browser workbench adapters render
   bottom status bars through the same tested helper.
+- Extracted shared workbench help-row profiles so terminal and browser help modals use the same tested navigation
+  guidance source.
