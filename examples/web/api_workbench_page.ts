@@ -178,6 +178,21 @@ import {
   workbenchMobileCommandStripItemsInto,
 } from "../../src/app/workbench_mobile.ts";
 import {
+  createDefaultWorkbenchAsciiOptions,
+  defaultWorkbenchAsciiConfigRows,
+  formatWorkbenchAsciiConfigRowText,
+  stepWorkbenchAsciiGlyphStyle,
+  stepWorkbenchAsciiNumericOption,
+  stepWorkbenchAsciiPreset,
+  toggleWorkbenchAsciiOption,
+  WorkbenchAsciiConfigController,
+  type WorkbenchAsciiConfigRow,
+  type WorkbenchAsciiKittyKey,
+  type WorkbenchAsciiNumericKey,
+  type WorkbenchAsciiToggleKey,
+} from "../../src/app/workbench_ascii.ts";
+import { layoutWorkbenchAsciiConfigModal } from "../../src/app/workbench_ascii_modal.ts";
+import {
   applyWorkbenchWindowSignalState,
   inspectWorkbenchWindowSignalState,
   WorkbenchController,
@@ -185,6 +200,14 @@ import {
 import { createHtmlCssLayoutDemo } from "../../src/markup/demo_fixtures.ts";
 import { DiagnosticsCollector } from "../../src/runtime/diagnostics.ts";
 import { StorageFallbackDiagnostics } from "../../src/runtime/storage_diagnostics.ts";
+import { asciiDemoPresetIds } from "../../src/three_ascii/demo_presets.ts";
+import {
+  asciiPresetLabel,
+  cloneAsciiOptions,
+  normalizeAsciiOptions,
+  terminalGlyphStyleLabel,
+  type ThreeAsciiConfigOptions,
+} from "../../src/three_ascii/options.ts";
 import type { Rectangle } from "../../src/types.ts";
 import { makeStyle } from "../../app/styles.ts";
 
@@ -200,6 +223,9 @@ type Hit =
   | { type: "restore"; id?: PanelId }
   | { type: "close"; id: PanelId }
   | { type: "threeConfig"; id: PanelId }
+  | { type: "asciiConfig"; index: number; action?: ConfigHitAction }
+  | { type: "asciiConfigAction"; action: AsciiConfigModalAction }
+  | { type: "asciiConfigBackdrop" }
   | { type: "theme"; index: number }
   | { type: "modalAction"; index: number }
   | { type: "control"; id: ControlId; action?: ControlHitAction; index?: number }
@@ -212,9 +238,13 @@ type Hit =
   | { type: "terminalSession"; id: string }
   | { type: "workspaceScrollbar" };
 type ControlHitAction = "previous" | "next" | "activate" | "set" | "focus" | "toggle";
+type ConfigHitAction = "previous" | "next" | "activate";
+type AsciiConfigModalAction = "cancel" | "apply" | "ok";
 type ButtonTone = "default" | "danger" | "warning" | "success" | "muted";
 type MobileAction = WorkbenchMobileCommandAction;
 type WebTerminalAction = WorkbenchTerminalToolbarAction;
+type AsciiOptions = ThreeAsciiConfigOptions;
+type AsciiConfigRow = WorkbenchAsciiConfigRow;
 
 interface DropdownOverlay {
   kind: "theme" | "control";
@@ -253,6 +283,8 @@ const rows: Row[] = apiWorkbenchRows;
 const liveRowsBuffer: Row[] = [];
 const columns = apiWorkbenchColumns;
 const docs = apiWorkbenchDocs;
+const ASCII_DEMO_PRESET_IDS = asciiDemoPresetIds();
+const asciiConfigRows: readonly AsciiConfigRow[] = defaultWorkbenchAsciiConfigRows;
 const panelLineBuffer: string[] = [];
 const panelDataRowsBuffer: string[] = [];
 const panelIds: readonly PanelId[] = [
@@ -295,6 +327,15 @@ const topMenus = workbenchController.menus;
 const webWindows = workbenchController.windows;
 let webWindowManagerStateKey = "";
 const tileDensity = new Signal(Math.max(-3, Math.min(3, Math.floor(initialWorkspace.tileDensity ?? 0))));
+const asciiConfigs = new WorkbenchAsciiConfigController<PanelId>(
+  "three",
+  normalizeAsciiOptions(initialWorkspace.ascii, createDefaultWorkbenchAsciiOptions()),
+);
+const ascii = asciiConfigs.root;
+const threeConfigOpen = new Signal(false);
+const threeConfigSelected = new Signal(0);
+const threeConfigWindow = new Signal<PanelId>("three");
+const threeConfigBaseline = new Signal<AsciiOptions | null>(null);
 const lineSignals: Signal<string>[] = [];
 const log = new Signal<string[]>(
   initialWorkbenchDiagnosticLogRows(webDiagnostics, ["ready: web api workbench mounted"], { maxLogEntries: 40 }),
@@ -347,6 +388,9 @@ const webTerminalActions: readonly WebTerminalAction[] = [
 const webTerminalButtonItems: WorkbenchButtonRowItem<WebTerminalAction>[] = [];
 const webTerminalButtonPlacements: WorkbenchButtonRowPlacement<WebTerminalAction>[] = [];
 const webTerminalButtonCommands: WorkbenchButtonRowRenderCommand<WebTerminalAction>[] = [];
+const asciiConfigActionButtonItems: WorkbenchButtonRowItem<AsciiConfigModalAction>[] = [];
+const asciiConfigActionButtonPlacements: WorkbenchButtonRowPlacement<AsciiConfigModalAction>[] = [];
+const asciiConfigActionButtonCommands: WorkbenchButtonRowRenderCommand<AsciiConfigModalAction>[] = [];
 const mobileCommandButtonItems: WorkbenchButtonRowItem<MobileAction>[] = [];
 const mobileCommandButtonPlacements: WorkbenchButtonRowPlacement<MobileAction>[] = [];
 const mobileCommandButtonCommands: WorkbenchButtonRowRenderCommand<MobileAction>[] = [];
@@ -393,6 +437,7 @@ active.subscribe(persistWebWorkspaceState);
 maximized.subscribe(persistWebWorkspaceState);
 minimized.subscribe(persistWebWorkspaceState);
 tileDensity.subscribe(persistWebWorkspaceState);
+ascii.subscribe(persistWebWorkspaceState);
 void hydrateWebWorkspaceState();
 
 const menu = new MenuBarController({
@@ -523,6 +568,11 @@ host.platform.size.subscribe(() => {
 
 host.on("keyPress", (event) => {
   const { key } = event;
+  if (threeConfigOpen.peek()) {
+    handleThreeConfigKey(event);
+    draw();
+    return;
+  }
   if (modal.openState.peek()) {
     modal.handleKeyPress(event);
     draw();
@@ -632,6 +682,11 @@ globalThis.addEventListener("beforeunload", () => {
   workbenchController.dispose();
   themeMenuOpen.dispose();
   tileDensity.dispose();
+  asciiConfigs.dispose();
+  threeConfigOpen.dispose();
+  threeConfigSelected.dispose();
+  threeConfigWindow.dispose();
+  threeConfigBaseline.dispose();
   host.destroy();
 });
 
@@ -735,6 +790,7 @@ function draw(): void {
   renderWorkspaceScrollbar(frame, body);
   maximized.peek() ? renderWindowTabs(frame) : renderShelf(frame);
   renderDropdownOverlay(frame);
+  renderThreeConfigModal(frame);
   renderModalOverlay(frame);
   frame[height - 1] = fit(
     paint(
@@ -1026,6 +1082,7 @@ function renderThreePreview(frame: string[], rect: Rectangle): void {
     phase,
     tileDensity: tileDensity.peek(),
     themeLabel: theme().label,
+    asciiOptions: ascii.peek(),
     orbRows: threePreviewOrbRows,
   });
   for (let index = 0; index < rows.length && index < rect.height; index += 1) {
@@ -1547,7 +1604,12 @@ function applyHit(target: HitTarget<Hit>, x: number, y: number): void {
   else if (hit.type === "max") toggleMax(hit.id);
   else if (hit.type === "close") closePanel(hit.id);
   else if (hit.type === "threeConfig") openThreeConfigModal(hit.id);
-  else if (hit.type === "restore") hit.id ? restorePanel(hit.id) : restore();
+  else if (hit.type === "asciiConfig") applyThreeConfigHit(hit.index, hit.action ?? "activate");
+  else if (hit.type === "asciiConfigAction") applyThreeConfigModalAction(hit.action);
+  else if (hit.type === "asciiConfigBackdrop") {
+    restoreThreeConfigBaseline();
+    closeThreeConfigModal();
+  } else if (hit.type === "restore") hit.id ? restorePanel(hit.id) : restore();
   else if (hit.type === "control") applyControlHit(hit.id, hit.action ?? "activate", target.rect, x, hit.index);
   else if (hit.type === "modalAction" && hit.index >= 0) modal.activateAction(hit.index);
   else if (hit.type === "dataRow") selectDataRow(hit.index);
@@ -1846,6 +1908,92 @@ function renderDropdownOverlay(frame: string[]): void {
   }
 }
 
+function renderThreeConfigModal(frame: string[]): void {
+  if (!threeConfigOpen.peek()) return;
+  const layout = layoutWorkbenchAsciiConfigModal({
+    bounds: { column: 0, row: 0, width: cols(), height: rowsCount() },
+    rowCount: asciiConfigRows.length,
+  });
+  hitTargets.add({ column: 0, row: 0, width: cols(), height: rowsCount() }, { type: "asciiConfigBackdrop" });
+  if (layout.shadow.width > 0 && layout.shadow.height > 0) fillRect(frame, layout.shadow, theme().background);
+  fillRect(frame, layout.rect, theme().panelSoft);
+  drawFrame(frame, layout.rect, "Three ASCII Config", true);
+
+  const options = currentThreeConfigSignal().peek();
+  const header = ` ${asciiPresetLabel(options.preset)} · ${
+    terminalGlyphStyleLabel(options.terminalGlyphStyle)
+  } · web preview `;
+  write(
+    frame,
+    layout.inner.row,
+    layout.inner.column,
+    paint(fit(header, layout.inner.width), theme().background, theme().accent, true),
+  );
+  write(
+    frame,
+    layout.inner.row + 1,
+    layout.inner.column,
+    paint(
+      fit("Use arrows/clicks to adjust. A apply, Enter OK, Esc cancel.", layout.inner.width),
+      theme().muted,
+      theme().panelSoft,
+    ),
+  );
+
+  const selected = threeConfigSelected.peek();
+  const firstRow = Math.max(0, Math.min(selected, Math.max(0, asciiConfigRows.length - layout.visibleRows)));
+  for (let index = 0; index < layout.visibleRows && index < asciiConfigRows.length; index += 1) {
+    const rowIndex = firstRow + index;
+    const row = asciiConfigRows[rowIndex]!;
+    const targetRow = layout.rowsTop + index;
+    const activeRow = rowIndex === selected;
+    const text = formatWorkbenchAsciiConfigRowText(row, options, {
+      kittyStatus: "browser preview",
+      trackWidth: Math.max(8, Math.min(18, layout.inner.width - 42)),
+    });
+    const bg = activeRow ? theme().warn : theme().panelSoft;
+    const fg = activeRow ? contrastText(theme().warn, theme().background, theme().text) : theme().text;
+    write(frame, targetRow, layout.inner.column, paint(fit(text, layout.inner.width), fg, bg, activeRow));
+    const rowRect = { column: layout.inner.column, row: targetRow, width: layout.inner.width, height: 1 };
+    hitTargets.add(rowRect, { type: "asciiConfig", index: rowIndex, action: "activate" });
+    if (row.kind === "preset" || row.kind === "glyphStyle" || row.kind === "numeric") {
+      const half = Math.max(1, Math.floor(rowRect.width / 2));
+      hitTargets.add({ ...rowRect, width: half }, { type: "asciiConfig", index: rowIndex, action: "previous" });
+      hitTargets.add(
+        { column: rowRect.column + half, row: rowRect.row, width: rowRect.width - half, height: 1 },
+        { type: "asciiConfig", index: rowIndex, action: "next" },
+      );
+    }
+  }
+
+  asciiConfigActionButtonItems[0] = { label: "Cancel", action: "cancel", tone: "muted" };
+  asciiConfigActionButtonItems[1] = { label: "Apply", action: "apply" };
+  asciiConfigActionButtonItems[2] = { label: "OK", action: "ok", active: true, tone: "success" };
+  asciiConfigActionButtonItems.length = 3;
+  layoutWorkbenchButtonRowInto(
+    asciiConfigActionButtonPlacements,
+    asciiConfigActionButtonItems,
+    { column: layout.inner.column, row: layout.actionRow, width: layout.inner.width, height: 1 },
+    layout.actionRow,
+  );
+  workbenchButtonRowRenderCommandsInto(asciiConfigActionButtonCommands, asciiConfigActionButtonPlacements);
+  for (const command of asciiConfigActionButtonCommands) {
+    const style = buttonPaintOptions(command.state, command.tone ?? "default");
+    write(frame, command.rect.row, command.rect.column, paint(command.text, style.fg, style.bg, style.bold));
+    hitTargets.add(command.hitRect, { type: "asciiConfigAction", action: command.item.action });
+  }
+  write(
+    frame,
+    layout.footerRow,
+    layout.inner.column,
+    paint(
+      fit("This editor persists to the web workspace snapshot.", layout.inner.width),
+      theme().soft,
+      theme().panelSoft,
+    ),
+  );
+}
+
 function renderModalOverlay(frame: string[]): void {
   if (!modal.openState.peek()) return;
   hitTargets.add({ column: 0, row: 0, width: cols(), height: rowsCount() }, { type: "modalAction", index: -1 });
@@ -1915,39 +2063,147 @@ function push(message: string): void {
 
 function openWorkbenchModal(): void {
   closeThemeMenu();
+  closeThreeConfigModal();
   modal.open(workbenchDemoModalContent({ profile: "web" }));
   push("modal opened");
 }
 
 function openHelpModal(): void {
   closeThemeMenu();
+  closeThreeConfigModal();
   modal.open(workbenchHelpModalContent({ profile: "web" }));
   push("help opened");
 }
 
 function openQuitModal(): void {
   closeThemeMenu();
+  closeThreeConfigModal();
   modal.open(workbenchQuitModalContent({ profile: "web" }));
   push("quit confirmation");
 }
 
 function openThreeConfigModal(id: PanelId): void {
   closeThemeMenu();
+  modal.close();
   active.value = id;
-  modal.open({
-    title: "Three ASCII Renderer",
-    tone: "info",
-    body: [
-      "The browser workbench preview now exposes the same renderer titlebar control as the terminal workbench.",
-      "Use the standalone Three ASCII web demo for live WebGPU scene controls, preset cycling, glyph/block/mixed mode, and orbit keys.",
-      "Terminal parity work will replace this notice with the full ASCII option editor.",
-    ],
-    actions: [
-      { id: "three-dismiss", label: "OK", default: true },
-      { id: "three-focus", label: "Focus Three" },
-    ],
-  });
+  threeConfigWindow.value = "three";
+  threeConfigBaseline.value = cloneAsciiOptions(currentThreeConfigSignal().peek());
+  threeConfigSelected.value = 0;
+  threeConfigOpen.value = true;
   push("three config opened");
+}
+
+function closeThreeConfigModal(): void {
+  threeConfigOpen.value = false;
+  threeConfigBaseline.value = null;
+}
+
+function currentThreeConfigSignal(): Signal<AsciiOptions> {
+  return asciiConfigs.configuredSignal(threeConfigWindow.peek(), (id) => id === "three");
+}
+
+function setCurrentThreeConfig(options: AsciiOptions, message: string, persist = false): void {
+  asciiConfigs.setForWindow(threeConfigWindow.peek(), options);
+  if (persist) persistWebWorkspaceState();
+  push(message);
+}
+
+function restoreThreeConfigBaseline(): void {
+  const baseline = threeConfigBaseline.peek();
+  if (!baseline) return;
+  asciiConfigs.setForWindow(threeConfigWindow.peek(), baseline);
+  persistWebWorkspaceState();
+  push("three config canceled");
+}
+
+function applyThreeConfigModalAction(action: AsciiConfigModalAction): void {
+  if (action === "cancel") {
+    restoreThreeConfigBaseline();
+    closeThreeConfigModal();
+    return;
+  }
+  persistWebWorkspaceState();
+  push("three config applied");
+  if (action === "ok") closeThreeConfigModal();
+}
+
+function handleThreeConfigKey(event: { key: string; shift?: boolean }): void {
+  const key = event.key.toLowerCase();
+  if (key === "escape") {
+    restoreThreeConfigBaseline();
+    closeThreeConfigModal();
+    return;
+  }
+  if (key === "a") {
+    applyThreeConfigModalAction("apply");
+    return;
+  }
+  if (key === "o" || key === "return") {
+    applyThreeConfigModalAction("ok");
+    return;
+  }
+  if (key === "up") {
+    moveThreeConfigSelection(-1);
+    return;
+  }
+  if (key === "down" || key === "tab") {
+    moveThreeConfigSelection(event.shift ? -1 : 1);
+    return;
+  }
+  if (key === "pageup") {
+    moveThreeConfigSelection(-5);
+    return;
+  }
+  if (key === "pagedown") {
+    moveThreeConfigSelection(5);
+    return;
+  }
+  if (key === "left") {
+    applyThreeConfigHit(threeConfigSelected.peek(), "previous");
+    return;
+  }
+  if (key === "right") {
+    applyThreeConfigHit(threeConfigSelected.peek(), "next");
+    return;
+  }
+  if (key === "space") applyThreeConfigHit(threeConfigSelected.peek(), "activate");
+}
+
+function moveThreeConfigSelection(delta: number): void {
+  const count = asciiConfigRows.length;
+  threeConfigSelected.value = (threeConfigSelected.peek() + delta + count) % count;
+}
+
+function applyThreeConfigHit(index: number, action: ConfigHitAction): void {
+  const row = asciiConfigRows[index];
+  if (!row) return;
+  threeConfigSelected.value = index;
+  const options = currentThreeConfigSignal().peek();
+  if (row.kind === "preset") {
+    const delta = action === "previous" ? -1 : 1;
+    const stepped = stepWorkbenchAsciiPreset(options, ASCII_DEMO_PRESET_IDS, delta);
+    setCurrentThreeConfig(stepped.options, `three preset ${stepped.label}`);
+    return;
+  }
+  if (row.kind === "glyphStyle") {
+    const delta = action === "previous" ? -1 : action === "next" ? 1 : 1;
+    setCurrentThreeConfig(stepWorkbenchAsciiGlyphStyle(options, delta), "three glyph style");
+    return;
+  }
+  if (row.kind === "toggle" || row.kind === "kitty") {
+    setCurrentThreeConfig(
+      toggleWorkbenchAsciiOption(options, row.key as WorkbenchAsciiToggleKey | WorkbenchAsciiKittyKey),
+      `three ${row.label}`,
+    );
+    return;
+  }
+  if (row.kind === "numeric") {
+    const delta = action === "previous" ? -1 : 1;
+    setCurrentThreeConfig(
+      stepWorkbenchAsciiNumericOption(options, row.key as WorkbenchAsciiNumericKey, delta),
+      `three ${row.label}`,
+    );
+  }
 }
 
 function applyModalAction(actionId: string): void {
@@ -2516,6 +2772,7 @@ function initialThemeIndex(): number {
 
 type WebWorkspaceState = WorkbenchPanelWorkspaceState<PanelId> & {
   terminal?: TerminalWorkspaceSnapshot;
+  ascii?: ThreeAsciiConfigOptions;
 };
 
 function defaultMinimizedState(): Record<PanelId, boolean> {
@@ -2548,6 +2805,7 @@ function applyWebWorkspaceState(state: WebWorkspaceState): void {
   if (state.maximized !== undefined) maximized.value = state.maximized;
   if (state.minimized) minimized.value = { ...defaultMinimizedState(), ...state.minimized };
   if (state.tileDensity !== undefined) tileDensity.value = Math.max(-3, Math.min(3, Math.floor(state.tileDensity)));
+  if (state.ascii) asciiConfigs.setForWindow("three", state.ascii);
   if (state.terminal) applyWebTerminalWorkspaceSnapshot(state.terminal);
 }
 
@@ -2560,7 +2818,10 @@ function normalizeWebWorkspaceState(value: unknown): WebWorkspaceState {
     maxTileDensity: 3,
   });
   const terminal = normalizeWebTerminalWorkspaceSnapshot(candidate?.terminal);
-  return terminal ? { ...state, terminal } : state;
+  const asciiOptions = candidate?.ascii
+    ? normalizeAsciiOptions(candidate.ascii, createDefaultWorkbenchAsciiOptions())
+    : undefined;
+  return { ...state, ...(terminal ? { terminal } : {}), ...(asciiOptions ? { ascii: asciiOptions } : {}) };
 }
 
 function persistWebWorkspaceState(): void {
@@ -2569,6 +2830,7 @@ function persistWebWorkspaceState(): void {
     maximized: maximized.peek(),
     minimized: minimized.peek(),
     tileDensity: tileDensity.peek(),
+    ascii: cloneAsciiOptions(ascii.peek()),
     terminal: snapshotTerminalWorkspace(webTerminalWorkspace),
   }, {
     cacheKey: WORKSPACE_STORAGE_KEY,

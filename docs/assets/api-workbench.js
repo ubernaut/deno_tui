@@ -3219,6 +3219,7 @@ var EDGE_GLYPHS = [" ", "|", "-", "\\", "/"];
 var FILL_GLYPHS = [" ", "\u2581", "\u2582", "\u2583", "\u2584", "\u2585", "\u2586", "\u2587", "\u2588", "\u2588"];
 var BLOCK_FILL_GLYPHS = [" ", "\u2588", "\u2588", "\u2588", "\u2588", "\u2588", "\u2588", "\u2588", "\u2588", "\u2588"];
 var ASCII_FILL_GLYPHS = [" ", ".", ":", "-", "=", "+", "*", "#", "%", "@"];
+var TERMINAL_GLYPH_STYLES = ["blocks", "glyphs", "mixed"];
 function blockFillGlyphForBucket(luminanceBucket) {
   return BLOCK_FILL_GLYPHS[Math.max(0, Math.min(BLOCK_FILL_GLYPHS.length - 1, luminanceBucket))];
 }
@@ -10516,8 +10517,18 @@ var ASCII_DEMO_PRESETS = [
     terminalGlyphStyle: "blocks"
   }
 ];
+function asciiDemoPresetIds(style2) {
+  const presets = ASCII_DEMO_PRESETS;
+  const ids = [];
+  for (const preset of presets) {
+    if (style2 !== void 0 && (preset.terminalGlyphStyle ?? "blocks") !== style2) continue;
+    ids.push(preset.id);
+  }
+  return ids;
+}
 
 // src/three_ascii/options.ts
+var THREE_ASCII_BORDER_MODES = ["rounded", "sharp", "ascii"];
 var presetMap = createPresetMap();
 function createPresetMap() {
   const map = /* @__PURE__ */ new Map();
@@ -10525,6 +10536,128 @@ function createPresetMap() {
     map.set(preset.id, preset);
   }
   return map;
+}
+function createDefaultAsciiOptions(border = "sharp") {
+  return buildAsciiOptionsFromPreset("opentui-blocks", border);
+}
+function cloneAsciiOptions(options) {
+  return { ...options };
+}
+function buildAsciiOptionsFromPreset(presetId, border) {
+  const preset = presetMap.get(presetId) ?? ASCII_DEMO_PRESETS[0];
+  const effect = {
+    ...DEFAULT_ASCII_DEMO_EFFECT,
+    ...preset.effect
+  };
+  return {
+    preset: preset.id,
+    border,
+    terminalGlyphStyle: preset.terminalGlyphStyle ?? "blocks",
+    terminalEdgeBias: preset.terminalEdgeBias ?? 1,
+    edgeThreshold: effect.edgeThreshold ?? 10,
+    normalThreshold: effect.normalThreshold ?? 0.18,
+    depthThreshold: effect.depthThreshold ?? 0.11,
+    exposure: effect.exposure ?? 1.25,
+    attenuation: effect.attenuation ?? 1.2,
+    blendWithBase: effect.blendWithBase ?? 0.24,
+    depthFalloff: effect.depthFalloff ?? 0.18,
+    depthOffset: effect.depthOffset ?? 110,
+    wireframeThickness: 8,
+    edges: effect.edges ?? true,
+    fill: effect.fill ?? true,
+    invertLuminance: effect.invertLuminance ?? false,
+    kittyGraphics: false,
+    kittyDisableAscii: false
+  };
+}
+function normalizeAsciiOptions(value, fallback = createDefaultAsciiOptions("sharp")) {
+  const base = cloneAsciiOptions(fallback);
+  if (!value || typeof value !== "object") return base;
+  const candidate = value;
+  const numeric = (key) => {
+    const next = Number(candidate[key]);
+    return clampAsciiControlValue(key, Number.isFinite(next) ? next : Number(base[key]));
+  };
+  return {
+    preset: typeof candidate.preset === "string" ? candidate.preset : base.preset,
+    border: THREE_ASCII_BORDER_MODES.includes(candidate.border) ? candidate.border : base.border,
+    terminalGlyphStyle: candidate.terminalGlyphStyle && TERMINAL_GLYPH_STYLES.includes(candidate.terminalGlyphStyle) ? candidate.terminalGlyphStyle : base.terminalGlyphStyle,
+    terminalEdgeBias: numeric("terminalEdgeBias"),
+    edgeThreshold: numeric("edgeThreshold"),
+    normalThreshold: numeric("normalThreshold"),
+    depthThreshold: numeric("depthThreshold"),
+    exposure: numeric("exposure"),
+    attenuation: numeric("attenuation"),
+    blendWithBase: numeric("blendWithBase"),
+    depthFalloff: numeric("depthFalloff"),
+    depthOffset: numeric("depthOffset"),
+    wireframeThickness: numeric("wireframeThickness"),
+    edges: typeof candidate.edges === "boolean" ? candidate.edges : base.edges,
+    fill: typeof candidate.fill === "boolean" ? candidate.fill : base.fill,
+    invertLuminance: typeof candidate.invertLuminance === "boolean" ? candidate.invertLuminance : base.invertLuminance,
+    kittyGraphics: typeof candidate.kittyGraphics === "boolean" ? candidate.kittyGraphics : base.kittyGraphics,
+    kittyDisableAscii: typeof candidate.kittyDisableAscii === "boolean" ? candidate.kittyDisableAscii : base.kittyDisableAscii
+  };
+}
+function terminalGlyphStyleLabel(style2) {
+  switch (style2) {
+    case "blocks":
+      return "Blocks";
+    case "glyphs":
+      return "Glyphs";
+    case "mixed":
+      return "Mixed";
+  }
+}
+function applyAsciiPreset(target, presetId) {
+  const kittyGraphics = target.kittyGraphics;
+  const kittyDisableAscii = target.kittyDisableAscii;
+  const next = buildAsciiOptionsFromPreset(presetId, target.border);
+  Object.assign(target, next, { kittyGraphics, kittyDisableAscii });
+}
+function asciiPresetLabel(presetId) {
+  return presetMap.get(presetId)?.label ?? presetId.toUpperCase();
+}
+function asciiControlValues(key) {
+  switch (key) {
+    case "edgeThreshold":
+      return [4, 6, 8, 10, 12, 14, 16, 18];
+    case "normalThreshold":
+      return [0.08, 0.12, 0.16, 0.18, 0.22, 0.26, 0.3];
+    case "depthThreshold":
+      return [0.05, 0.08, 0.11, 0.14, 0.17, 0.2];
+    case "exposure":
+      return [0.8, 1, 1.1, 1.25, 1.4, 1.6, 1.8];
+    case "attenuation":
+      return [0.8, 1, 1.1, 1.2, 1.3, 1.4, 1.6];
+    case "blendWithBase":
+      return [0, 0.12, 0.24, 0.32, 0.5, 0.75, 1];
+    case "depthFalloff":
+      return [0, 0.08, 0.14, 0.18, 0.24, 0.32, 0.4];
+    case "depthOffset":
+      return [0, 60, 90, 105, 110, 116, 140, 180];
+    case "wireframeThickness":
+      return [0.5, 0.75, 1, 1.4, 1.8, 2, 2.4, 3, 4, 6, 8, 12, 16, 24, 32];
+    case "terminalEdgeBias":
+      return [0.6, 0.8, 0.92, 1, 1.15, 1.3, 1.4, 1.6, 1.8];
+  }
+}
+function clampAsciiControlValue(key, value) {
+  const values = asciiControlValues(key);
+  const min2 = values[0] ?? 0;
+  const max2 = values.at(-1) ?? min2;
+  if (!Number.isFinite(value)) return min2;
+  return Math.max(min2, Math.min(max2, value));
+}
+function formatAsciiControlValue(key, value) {
+  switch (key) {
+    case "edgeThreshold":
+      return value.toFixed(1);
+    case "depthOffset":
+      return value.toFixed(0);
+    default:
+      return value.toFixed(2);
+  }
 }
 
 // src/runtime/capabilities.ts
@@ -10844,6 +10977,14 @@ function clipRect(rect, clip) {
   const right = Math.min(rect.column + rect.width, clip.column + clip.width);
   const bottom = Math.min(rect.row + rect.height, clip.row + clip.height);
   return { column, row, width: Math.max(0, right - column), height: Math.max(0, bottom - row) };
+}
+function inset(rect, amount) {
+  return {
+    column: rect.column + amount,
+    row: rect.row + amount,
+    width: Math.max(0, rect.width - amount * 2),
+    height: Math.max(0, rect.height - amount * 2)
+  };
 }
 
 // src/app/workbench_frame.ts
@@ -11801,12 +11942,12 @@ function fitPlain(text, width) {
   return text.padEnd(normalizedWidth, " ");
 }
 function insetRect2(rect, amount) {
-  const inset = Math.max(0, Math.floor(amount));
+  const inset2 = Math.max(0, Math.floor(amount));
   return {
-    column: rect.column + inset,
-    row: rect.row + inset,
-    width: Math.max(0, rect.width - inset * 2),
-    height: Math.max(0, rect.height - inset * 2)
+    column: rect.column + inset2,
+    row: rect.row + inset2,
+    width: Math.max(0, rect.width - inset2 * 2),
+    height: Math.max(0, rect.height - inset2 * 2)
   };
 }
 function normalizeRect2(rect) {
@@ -15805,11 +15946,11 @@ function writeTextboxRenderCommand(target, index, options) {
 
 // app/api_workbench_wrapped_options.ts
 function apiWorkbenchWrappedOptionsRenderCommandsInto(target, hits, options) {
-  const inset = Math.max(0, Math.floor(options.horizontalInset ?? 2));
-  const width = Math.max(Math.max(1, Math.floor(options.minWidth ?? 8)), Math.floor(options.rect.width) - inset * 2);
+  const inset2 = Math.max(0, Math.floor(options.horizontalInset ?? 2));
+  const width = Math.max(Math.max(1, Math.floor(options.minWidth ?? 8)), Math.floor(options.rect.width) - inset2 * 2);
   const rows2 = layoutWrappedControlOptions(options.items, options.selectedIndex, width);
   const bottom = options.rect.row + Math.max(0, Math.floor(options.rect.height));
-  const column = options.rect.column + inset;
+  const column = options.rect.column + inset2;
   const active2 = options.activeId === options.id;
   let written = 0;
   let hitCount = 0;
@@ -16152,9 +16293,146 @@ function workbenchModalConfirmedContent(options = {}) {
   };
 }
 
+// src/app/workbench_ascii.ts
+var defaultWorkbenchAsciiConfigRows = [
+  { kind: "preset", label: "Preset" },
+  { kind: "glyphStyle", label: "Glyph style" },
+  { kind: "kitty", key: "kittyGraphics", label: "Kitty graphics" },
+  { kind: "kitty", key: "kittyDisableAscii", label: "Disable ASCII under Kitty" },
+  { kind: "numeric", key: "terminalEdgeBias", label: "Edge glyph bias" },
+  { kind: "numeric", key: "wireframeThickness", label: "Wire thickness" },
+  { kind: "toggle", key: "edges", label: "Edge pass" },
+  { kind: "toggle", key: "fill", label: "Fill pass" },
+  { kind: "toggle", key: "invertLuminance", label: "Invert luminance" },
+  { kind: "numeric", key: "edgeThreshold", label: "Edge threshold" },
+  { kind: "numeric", key: "normalThreshold", label: "Normal edge" },
+  { kind: "numeric", key: "depthThreshold", label: "Depth edge" },
+  { kind: "numeric", key: "exposure", label: "Exposure" },
+  { kind: "numeric", key: "attenuation", label: "Attenuation" },
+  { kind: "numeric", key: "blendWithBase", label: "Base blend" },
+  { kind: "numeric", key: "depthFalloff", label: "Fog falloff" },
+  { kind: "numeric", key: "depthOffset", label: "Fog offset" }
+];
+function createDefaultWorkbenchAsciiOptions() {
+  return {
+    ...createDefaultAsciiOptions("sharp"),
+    preset: "custom"
+  };
+}
+function asciiNumericOptionRatio(values, value) {
+  const min2 = values[0] ?? 0;
+  const max2 = values.at(-1) ?? min2;
+  return max2 === min2 ? 1 : Math.max(0, Math.min(1, (value - min2) / (max2 - min2)));
+}
+function closestAsciiControlValueIndex(values, value) {
+  let best = 0;
+  let distance = Number.POSITIVE_INFINITY;
+  for (let index = 0; index < values.length; index += 1) {
+    const candidate = values[index];
+    const nextDistance = Math.abs(candidate - value);
+    if (nextDistance < distance) {
+      best = index;
+      distance = nextDistance;
+    }
+  }
+  return best;
+}
+function formatWorkbenchAsciiConfigRowText(row, options, formatOptions = {}) {
+  const labelWidth = formatOptions.labelWidth ?? 18;
+  if (row.kind === "preset") {
+    return `${row.label.padEnd(labelWidth)} [<] ${asciiPresetLabel(options.preset)} [>]`;
+  }
+  if (row.kind === "glyphStyle") {
+    let labels = "";
+    for (let index = 0; index < TERMINAL_GLYPH_STYLES.length; index += 1) {
+      const style2 = TERMINAL_GLYPH_STYLES[index];
+      if (index > 0) labels += " ";
+      labels += style2 === options.terminalGlyphStyle ? `[${terminalGlyphStyleLabel(style2)}]` : ` ${terminalGlyphStyleLabel(style2)} `;
+    }
+    return `${row.label.padEnd(labelWidth)} ${labels}`;
+  }
+  if (row.kind === "toggle") {
+    return `${row.label.padEnd(labelWidth)} ${options[row.key] ? "[x]" : "[ ]"}`;
+  }
+  if (row.kind === "kitty") {
+    const status = row.key === "kittyGraphics" ? formatOptions.kittyStatus ?? "" : "applies only when Kitty is active";
+    return `${row.label.padEnd(formatOptions.kittyLabelWidth ?? 26)} ${options[row.key] ? "[x]" : "[ ]"} ${status}`;
+  }
+  const value = Number(options[row.key]);
+  const values = asciiControlValues(row.key);
+  const ratio = asciiNumericOptionRatio(values, value);
+  const trackWidth = formatOptions.trackWidth ?? 14;
+  const filled = Math.round(ratio * trackWidth);
+  const track = `${"\u2588".repeat(filled)}${"\u2591".repeat(Math.max(0, trackWidth - filled))}`;
+  return `${row.label.padEnd(labelWidth)} [<] ${track} ${formatAsciiControlValue(row.key, value).padStart(5)} [>]`;
+}
+function stepWorkbenchAsciiPreset(options, presetIds, delta) {
+  const ids = presetIds.length ? presetIds : [options.preset];
+  const currentIndex = Math.max(0, ids.indexOf(options.preset));
+  const presetId = ids[(currentIndex + delta + ids.length) % ids.length];
+  const next = cloneAsciiOptions(options);
+  applyAsciiPreset(next, presetId);
+  return { options: next, presetId, label: asciiPresetLabel(presetId) };
+}
+function stepWorkbenchAsciiGlyphStyle(options, delta) {
+  const index = TERMINAL_GLYPH_STYLES.indexOf(options.terminalGlyphStyle);
+  const next = TERMINAL_GLYPH_STYLES[(index + delta + TERMINAL_GLYPH_STYLES.length) % TERMINAL_GLYPH_STYLES.length];
+  return { ...options, terminalGlyphStyle: next, preset: "custom" };
+}
+function toggleWorkbenchAsciiOption(options, key) {
+  return { ...options, [key]: !options[key], preset: "custom" };
+}
+function stepWorkbenchAsciiNumericOption(options, key, delta) {
+  const values = asciiControlValues(key);
+  const currentValue = Number(options[key]);
+  const closest = closestAsciiControlValueIndex(values, currentValue);
+  const nextValue = values[Math.max(0, Math.min(values.length - 1, closest + delta))];
+  return { ...options, [key]: nextValue, preset: "custom" };
+}
+var WorkbenchAsciiConfigController = class {
+  constructor(rootWindowId, initial = createDefaultWorkbenchAsciiOptions()) {
+    this.rootWindowId = rootWindowId;
+    this.root = new Signal(cloneAsciiOptions(initial));
+    this.signals.set(rootWindowId, this.root);
+  }
+  root;
+  signals = /* @__PURE__ */ new Map();
+  signalForWindow(id2) {
+    const existing = this.signals.get(id2);
+    if (existing) return existing;
+    const created = new Signal(cloneAsciiOptions(this.root.peek()));
+    this.signals.set(id2, created);
+    return created;
+  }
+  setForWindow(id2, options) {
+    this.signalForWindow(id2).value = cloneAsciiOptions(options);
+  }
+  disposeWindow(id2) {
+    if (id2 === this.rootWindowId) return;
+    const signal = this.signals.get(id2);
+    signal?.dispose();
+    this.signals.delete(id2);
+  }
+  configuredWindow(candidate, isSupported) {
+    return isSupported(candidate) ? candidate : this.rootWindowId;
+  }
+  configuredSignal(candidate, isSupported) {
+    return this.signalForWindow(this.configuredWindow(candidate, isSupported));
+  }
+  dispose() {
+    for (const [id2, signal] of this.signals) {
+      if (id2 !== this.rootWindowId) signal.dispose();
+    }
+    this.signals.clear();
+    this.root.dispose();
+  }
+};
+
 // app/workbench_visualization_window.ts
 function workbenchThreePreviewRowsInto(target, options) {
-  const mode = workbenchThreePreviewMode(options.tileDensity);
+  const mode = options.asciiOptions ? terminalGlyphStyleLabel(options.asciiOptions.terminalGlyphStyle).toUpperCase() : workbenchThreePreviewMode(options.tileDensity);
+  const preset = options.asciiOptions?.preset ?? "mixed-best";
+  const transport = options.asciiOptions?.kittyGraphics ? options.asciiOptions.kittyDisableAscii ? "kitty only" : "kitty + ascii" : "ascii";
   target.length = 0;
   target.push(
     ` ACEROLA THREE ASCII \xB7 ${mode} \xB7 WEB SAFE PREVIEW `,
@@ -16171,7 +16449,7 @@ function workbenchThreePreviewRowsInto(target, options) {
   if (target.length < options.height) target.push("");
   if (target.length < options.height) {
     target.push(
-      `preset mixed-best  glyph ${mode.toLowerCase()}  density ${Math.trunc(options.tileDensity)}  theme ${options.themeLabel}`
+      `preset ${preset}  glyph ${mode.toLowerCase()}  ${transport}  density ${Math.trunc(options.tileDensity)}  theme ${options.themeLabel}`
     );
   }
   return target;
@@ -16208,6 +16486,52 @@ function workbenchMobileCommandStripItemsInto(target, options) {
   target[5] = { action: "wide", label: "Wide", tone: "muted" };
   target[6] = { action: "dense", label: "Dense", tone: "muted" };
   return target;
+}
+
+// src/app/workbench_ascii_modal.ts
+function layoutWorkbenchAsciiConfigModal(options) {
+  const bounds = normalizeRect4(options.bounds);
+  const minWidth = Math.max(1, Math.floor(options.minWidth ?? 54));
+  const maxWidth = Math.max(minWidth, Math.floor(options.maxWidth ?? 82));
+  const horizontalMargin = Math.max(0, Math.floor(options.horizontalMargin ?? 8));
+  const minHeight = Math.max(1, Math.floor(options.minHeight ?? 16));
+  const verticalMargin = Math.max(0, Math.floor(options.verticalMargin ?? 4));
+  const topMargin = Math.max(0, Math.floor(options.topMargin ?? 1));
+  const rowCount = Math.max(0, Math.floor(options.rowCount));
+  const width = Math.min(Math.max(minWidth, bounds.width - horizontalMargin), maxWidth, bounds.width);
+  const height = Math.min(Math.max(minHeight, rowCount + 7), Math.max(10, bounds.height - verticalMargin));
+  const rect = clipRect({
+    column: bounds.column + Math.max(0, Math.floor((bounds.width - width) / 2)),
+    row: bounds.row + Math.max(topMargin, Math.floor((bounds.height - height) / 2)),
+    width,
+    height
+  }, bounds);
+  const inner = inset(rect, 1);
+  const rowsTop = inner.row + 2;
+  const actionRow = inner.row + inner.height - 2;
+  const footerRow = inner.row + inner.height - 1;
+  return {
+    rect,
+    inner,
+    shadow: clipRect({
+      column: rect.column + 2,
+      row: rect.row + 1,
+      width: rect.width,
+      height: rect.height
+    }, bounds),
+    rowsTop,
+    actionRow,
+    footerRow,
+    visibleRows: Math.max(0, actionRow - rowsTop)
+  };
+}
+function normalizeRect4(rect) {
+  return {
+    column: Math.floor(rect.column),
+    row: Math.floor(rect.row),
+    width: Math.max(0, Math.floor(rect.width)),
+    height: Math.max(0, Math.floor(rect.height))
+  };
 }
 
 // src/app/workbench/controller.ts
@@ -16396,6 +16720,8 @@ var rows = apiWorkbenchRows;
 var liveRowsBuffer = [];
 var columns = apiWorkbenchColumns;
 var docs = apiWorkbenchDocs;
+var ASCII_DEMO_PRESET_IDS = asciiDemoPresetIds();
+var asciiConfigRows = defaultWorkbenchAsciiConfigRows;
 var panelLineBuffer = [];
 var panelDataRowsBuffer = [];
 var panelIds = [
@@ -16437,6 +16763,15 @@ var topMenus = workbenchController.menus;
 var webWindows = workbenchController.windows;
 var webWindowManagerStateKey = "";
 var tileDensity = new Signal(Math.max(-3, Math.min(3, Math.floor(initialWorkspace.tileDensity ?? 0))));
+var asciiConfigs = new WorkbenchAsciiConfigController(
+  "three",
+  normalizeAsciiOptions(initialWorkspace.ascii, createDefaultWorkbenchAsciiOptions())
+);
+var ascii = asciiConfigs.root;
+var threeConfigOpen = new Signal(false);
+var threeConfigSelected = new Signal(0);
+var threeConfigWindow = new Signal("three");
+var threeConfigBaseline = new Signal(null);
 var lineSignals = [];
 var log = new Signal(
   initialWorkbenchDiagnosticLogRows(webDiagnostics, ["ready: web api workbench mounted"], { maxLogEntries: 40 }),
@@ -16489,6 +16824,9 @@ var webTerminalActions = [
 var webTerminalButtonItems = [];
 var webTerminalButtonPlacements = [];
 var webTerminalButtonCommands = [];
+var asciiConfigActionButtonItems = [];
+var asciiConfigActionButtonPlacements = [];
+var asciiConfigActionButtonCommands = [];
 var mobileCommandButtonItems = [];
 var mobileCommandButtonPlacements = [];
 var mobileCommandButtonCommands = [];
@@ -16527,6 +16865,7 @@ active.subscribe(persistWebWorkspaceState);
 maximized.subscribe(persistWebWorkspaceState);
 minimized.subscribe(persistWebWorkspaceState);
 tileDensity.subscribe(persistWebWorkspaceState);
+ascii.subscribe(persistWebWorkspaceState);
 void hydrateWebWorkspaceState();
 var menu = new MenuBarController({
   items: ["File", "View", "Layout", "Theme", "Help"].map((label) => ({ id: label.toLowerCase(), label })),
@@ -16653,6 +16992,11 @@ host.platform.size.subscribe(() => {
 });
 host.on("keyPress", (event) => {
   const { key } = event;
+  if (threeConfigOpen.peek()) {
+    handleThreeConfigKey(event);
+    draw();
+    return;
+  }
   if (modal.openState.peek()) {
     modal.handleKeyPress(event);
     draw();
@@ -16759,6 +17103,11 @@ globalThis.addEventListener("beforeunload", () => {
   workbenchController.dispose();
   themeMenuOpen.dispose();
   tileDensity.dispose();
+  asciiConfigs.dispose();
+  threeConfigOpen.dispose();
+  threeConfigSelected.dispose();
+  threeConfigWindow.dispose();
+  threeConfigBaseline.dispose();
   host.destroy();
 });
 function draw() {
@@ -16861,6 +17210,7 @@ function draw() {
   renderWorkspaceScrollbar(frame, body);
   maximized.peek() ? renderWindowTabs(frame) : renderShelf(frame);
   renderDropdownOverlay(frame);
+  renderThreeConfigModal(frame);
   renderModalOverlay(frame);
   frame[height - 1] = fit(
     paint(
@@ -17134,6 +17484,7 @@ function renderThreePreview(frame, rect) {
     phase,
     tileDensity: tileDensity.peek(),
     themeLabel: theme().label,
+    asciiOptions: ascii.peek(),
     orbRows: threePreviewOrbRows
   });
   for (let index = 0; index < rows2.length && index < rect.height; index += 1) {
@@ -17604,7 +17955,12 @@ function applyHit(target, x, y) {
   else if (hit.type === "max") toggleMax(hit.id);
   else if (hit.type === "close") closePanel(hit.id);
   else if (hit.type === "threeConfig") openThreeConfigModal(hit.id);
-  else if (hit.type === "restore") hit.id ? restorePanel(hit.id) : restore();
+  else if (hit.type === "asciiConfig") applyThreeConfigHit(hit.index, hit.action ?? "activate");
+  else if (hit.type === "asciiConfigAction") applyThreeConfigModalAction(hit.action);
+  else if (hit.type === "asciiConfigBackdrop") {
+    restoreThreeConfigBaseline();
+    closeThreeConfigModal();
+  } else if (hit.type === "restore") hit.id ? restorePanel(hit.id) : restore();
   else if (hit.type === "control") applyControlHit(hit.id, hit.action ?? "activate", target.rect, x, hit.index);
   else if (hit.type === "modalAction" && hit.index >= 0) modal.activateAction(hit.index);
   else if (hit.type === "dataRow") selectDataRow(hit.index);
@@ -17870,6 +18226,86 @@ function renderDropdownOverlay(frame) {
     }
   }
 }
+function renderThreeConfigModal(frame) {
+  if (!threeConfigOpen.peek()) return;
+  const layout = layoutWorkbenchAsciiConfigModal({
+    bounds: { column: 0, row: 0, width: cols(), height: rowsCount() },
+    rowCount: asciiConfigRows.length
+  });
+  hitTargets.add({ column: 0, row: 0, width: cols(), height: rowsCount() }, { type: "asciiConfigBackdrop" });
+  if (layout.shadow.width > 0 && layout.shadow.height > 0) fillRect(frame, layout.shadow, theme().background);
+  fillRect(frame, layout.rect, theme().panelSoft);
+  drawFrame(frame, layout.rect, "Three ASCII Config", true);
+  const options = currentThreeConfigSignal().peek();
+  const header = ` ${asciiPresetLabel(options.preset)} \xB7 ${terminalGlyphStyleLabel(options.terminalGlyphStyle)} \xB7 web preview `;
+  write(
+    frame,
+    layout.inner.row,
+    layout.inner.column,
+    paint(fit(header, layout.inner.width), theme().background, theme().accent, true)
+  );
+  write(
+    frame,
+    layout.inner.row + 1,
+    layout.inner.column,
+    paint(
+      fit("Use arrows/clicks to adjust. A apply, Enter OK, Esc cancel.", layout.inner.width),
+      theme().muted,
+      theme().panelSoft
+    )
+  );
+  const selected = threeConfigSelected.peek();
+  const firstRow = Math.max(0, Math.min(selected, Math.max(0, asciiConfigRows.length - layout.visibleRows)));
+  for (let index = 0; index < layout.visibleRows && index < asciiConfigRows.length; index += 1) {
+    const rowIndex = firstRow + index;
+    const row = asciiConfigRows[rowIndex];
+    const targetRow = layout.rowsTop + index;
+    const activeRow = rowIndex === selected;
+    const text = formatWorkbenchAsciiConfigRowText(row, options, {
+      kittyStatus: "browser preview",
+      trackWidth: Math.max(8, Math.min(18, layout.inner.width - 42))
+    });
+    const bg = activeRow ? theme().warn : theme().panelSoft;
+    const fg = activeRow ? contrastText(theme().warn, theme().background, theme().text) : theme().text;
+    write(frame, targetRow, layout.inner.column, paint(fit(text, layout.inner.width), fg, bg, activeRow));
+    const rowRect = { column: layout.inner.column, row: targetRow, width: layout.inner.width, height: 1 };
+    hitTargets.add(rowRect, { type: "asciiConfig", index: rowIndex, action: "activate" });
+    if (row.kind === "preset" || row.kind === "glyphStyle" || row.kind === "numeric") {
+      const half = Math.max(1, Math.floor(rowRect.width / 2));
+      hitTargets.add({ ...rowRect, width: half }, { type: "asciiConfig", index: rowIndex, action: "previous" });
+      hitTargets.add(
+        { column: rowRect.column + half, row: rowRect.row, width: rowRect.width - half, height: 1 },
+        { type: "asciiConfig", index: rowIndex, action: "next" }
+      );
+    }
+  }
+  asciiConfigActionButtonItems[0] = { label: "Cancel", action: "cancel", tone: "muted" };
+  asciiConfigActionButtonItems[1] = { label: "Apply", action: "apply" };
+  asciiConfigActionButtonItems[2] = { label: "OK", action: "ok", active: true, tone: "success" };
+  asciiConfigActionButtonItems.length = 3;
+  layoutWorkbenchButtonRowInto(
+    asciiConfigActionButtonPlacements,
+    asciiConfigActionButtonItems,
+    { column: layout.inner.column, row: layout.actionRow, width: layout.inner.width, height: 1 },
+    layout.actionRow
+  );
+  workbenchButtonRowRenderCommandsInto(asciiConfigActionButtonCommands, asciiConfigActionButtonPlacements);
+  for (const command of asciiConfigActionButtonCommands) {
+    const style2 = buttonPaintOptions(command.state, command.tone ?? "default");
+    write(frame, command.rect.row, command.rect.column, paint(command.text, style2.fg, style2.bg, style2.bold));
+    hitTargets.add(command.hitRect, { type: "asciiConfigAction", action: command.item.action });
+  }
+  write(
+    frame,
+    layout.footerRow,
+    layout.inner.column,
+    paint(
+      fit("This editor persists to the web workspace snapshot.", layout.inner.width),
+      theme().soft,
+      theme().panelSoft
+    )
+  );
+}
 function renderModalOverlay(frame) {
   if (!modal.openState.peek()) return;
   hitTargets.add({ column: 0, row: 0, width: cols(), height: rowsCount() }, { type: "modalAction", index: -1 });
@@ -17937,36 +18373,136 @@ function push(message) {
 }
 function openWorkbenchModal() {
   closeThemeMenu();
+  closeThreeConfigModal();
   modal.open(workbenchDemoModalContent({ profile: "web" }));
   push("modal opened");
 }
 function openHelpModal() {
   closeThemeMenu();
+  closeThreeConfigModal();
   modal.open(workbenchHelpModalContent({ profile: "web" }));
   push("help opened");
 }
 function openQuitModal() {
   closeThemeMenu();
+  closeThreeConfigModal();
   modal.open(workbenchQuitModalContent({ profile: "web" }));
   push("quit confirmation");
 }
 function openThreeConfigModal(id2) {
   closeThemeMenu();
+  modal.close();
   active.value = id2;
-  modal.open({
-    title: "Three ASCII Renderer",
-    tone: "info",
-    body: [
-      "The browser workbench preview now exposes the same renderer titlebar control as the terminal workbench.",
-      "Use the standalone Three ASCII web demo for live WebGPU scene controls, preset cycling, glyph/block/mixed mode, and orbit keys.",
-      "Terminal parity work will replace this notice with the full ASCII option editor."
-    ],
-    actions: [
-      { id: "three-dismiss", label: "OK", default: true },
-      { id: "three-focus", label: "Focus Three" }
-    ]
-  });
+  threeConfigWindow.value = "three";
+  threeConfigBaseline.value = cloneAsciiOptions(currentThreeConfigSignal().peek());
+  threeConfigSelected.value = 0;
+  threeConfigOpen.value = true;
   push("three config opened");
+}
+function closeThreeConfigModal() {
+  threeConfigOpen.value = false;
+  threeConfigBaseline.value = null;
+}
+function currentThreeConfigSignal() {
+  return asciiConfigs.configuredSignal(threeConfigWindow.peek(), (id2) => id2 === "three");
+}
+function setCurrentThreeConfig(options, message, persist = false) {
+  asciiConfigs.setForWindow(threeConfigWindow.peek(), options);
+  if (persist) persistWebWorkspaceState();
+  push(message);
+}
+function restoreThreeConfigBaseline() {
+  const baseline = threeConfigBaseline.peek();
+  if (!baseline) return;
+  asciiConfigs.setForWindow(threeConfigWindow.peek(), baseline);
+  persistWebWorkspaceState();
+  push("three config canceled");
+}
+function applyThreeConfigModalAction(action) {
+  if (action === "cancel") {
+    restoreThreeConfigBaseline();
+    closeThreeConfigModal();
+    return;
+  }
+  persistWebWorkspaceState();
+  push("three config applied");
+  if (action === "ok") closeThreeConfigModal();
+}
+function handleThreeConfigKey(event) {
+  const key = event.key.toLowerCase();
+  if (key === "escape") {
+    restoreThreeConfigBaseline();
+    closeThreeConfigModal();
+    return;
+  }
+  if (key === "a") {
+    applyThreeConfigModalAction("apply");
+    return;
+  }
+  if (key === "o" || key === "return") {
+    applyThreeConfigModalAction("ok");
+    return;
+  }
+  if (key === "up") {
+    moveThreeConfigSelection(-1);
+    return;
+  }
+  if (key === "down" || key === "tab") {
+    moveThreeConfigSelection(event.shift ? -1 : 1);
+    return;
+  }
+  if (key === "pageup") {
+    moveThreeConfigSelection(-5);
+    return;
+  }
+  if (key === "pagedown") {
+    moveThreeConfigSelection(5);
+    return;
+  }
+  if (key === "left") {
+    applyThreeConfigHit(threeConfigSelected.peek(), "previous");
+    return;
+  }
+  if (key === "right") {
+    applyThreeConfigHit(threeConfigSelected.peek(), "next");
+    return;
+  }
+  if (key === "space") applyThreeConfigHit(threeConfigSelected.peek(), "activate");
+}
+function moveThreeConfigSelection(delta) {
+  const count = asciiConfigRows.length;
+  threeConfigSelected.value = (threeConfigSelected.peek() + delta + count) % count;
+}
+function applyThreeConfigHit(index, action) {
+  const row = asciiConfigRows[index];
+  if (!row) return;
+  threeConfigSelected.value = index;
+  const options = currentThreeConfigSignal().peek();
+  if (row.kind === "preset") {
+    const delta = action === "previous" ? -1 : 1;
+    const stepped = stepWorkbenchAsciiPreset(options, ASCII_DEMO_PRESET_IDS, delta);
+    setCurrentThreeConfig(stepped.options, `three preset ${stepped.label}`);
+    return;
+  }
+  if (row.kind === "glyphStyle") {
+    const delta = action === "previous" ? -1 : action === "next" ? 1 : 1;
+    setCurrentThreeConfig(stepWorkbenchAsciiGlyphStyle(options, delta), "three glyph style");
+    return;
+  }
+  if (row.kind === "toggle" || row.kind === "kitty") {
+    setCurrentThreeConfig(
+      toggleWorkbenchAsciiOption(options, row.key),
+      `three ${row.label}`
+    );
+    return;
+  }
+  if (row.kind === "numeric") {
+    const delta = action === "previous" ? -1 : 1;
+    setCurrentThreeConfig(
+      stepWorkbenchAsciiNumericOption(options, row.key, delta),
+      `three ${row.label}`
+    );
+  }
 }
 function applyModalAction(actionId) {
   if (actionId === "details") {
@@ -18494,6 +19030,7 @@ function applyWebWorkspaceState(state) {
   if (state.maximized !== void 0) maximized.value = state.maximized;
   if (state.minimized) minimized.value = { ...defaultMinimizedState(), ...state.minimized };
   if (state.tileDensity !== void 0) tileDensity.value = Math.max(-3, Math.min(3, Math.floor(state.tileDensity)));
+  if (state.ascii) asciiConfigs.setForWindow("three", state.ascii);
   if (state.terminal) applyWebTerminalWorkspaceSnapshot(state.terminal);
 }
 function normalizeWebWorkspaceState(value) {
@@ -18505,7 +19042,8 @@ function normalizeWebWorkspaceState(value) {
     maxTileDensity: 3
   });
   const terminal = normalizeWebTerminalWorkspaceSnapshot(candidate?.terminal);
-  return terminal ? { ...state, terminal } : state;
+  const asciiOptions = candidate?.ascii ? normalizeAsciiOptions(candidate.ascii, createDefaultWorkbenchAsciiOptions()) : void 0;
+  return { ...state, ...terminal ? { terminal } : {}, ...asciiOptions ? { ascii: asciiOptions } : {} };
 }
 function persistWebWorkspaceState() {
   persistWorkbenchPanelWorkspaceState({
@@ -18513,6 +19051,7 @@ function persistWebWorkspaceState() {
     maximized: maximized.peek(),
     minimized: minimized.peek(),
     tileDensity: tileDensity.peek(),
+    ascii: cloneAsciiOptions(ascii.peek()),
     terminal: snapshotTerminalWorkspace(webTerminalWorkspace)
   }, {
     cacheKey: WORKSPACE_STORAGE_KEY,

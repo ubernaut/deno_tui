@@ -47,6 +47,7 @@ export interface WorkbenchThreePreviewRowsOptions {
   phase: number;
   tileDensity: number;
   themeLabel: string;
+  asciiOptions?: Pick<AsciiOptions, "preset" | "terminalGlyphStyle" | "kittyGraphics" | "kittyDisableAscii">;
   orbRows?: string[];
 }
 
@@ -160,7 +161,13 @@ export function workbenchThreePreviewRowsInto(
   target: string[],
   options: WorkbenchThreePreviewRowsOptions,
 ): string[] {
-  const mode = workbenchThreePreviewMode(options.tileDensity);
+  const mode = options.asciiOptions
+    ? terminalGlyphStyleLabel(options.asciiOptions.terminalGlyphStyle).toUpperCase()
+    : workbenchThreePreviewMode(options.tileDensity);
+  const preset = options.asciiOptions?.preset ?? "mixed-best";
+  const transport = options.asciiOptions?.kittyGraphics
+    ? options.asciiOptions.kittyDisableAscii ? "kitty only" : "kitty + ascii"
+    : "ascii";
   target.length = 0;
   target.push(
     ` ACEROLA THREE ASCII · ${mode} · WEB SAFE PREVIEW `,
@@ -177,7 +184,7 @@ export function workbenchThreePreviewRowsInto(
   if (target.length < options.height) target.push("");
   if (target.length < options.height) {
     target.push(
-      `preset mixed-best  glyph ${mode.toLowerCase()}  density ${
+      `preset ${preset}  glyph ${mode.toLowerCase()}  ${transport}  density ${
         Math.trunc(options.tileDensity)
       }  theme ${options.themeLabel}`,
     );
