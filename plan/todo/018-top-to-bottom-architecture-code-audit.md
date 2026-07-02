@@ -223,6 +223,8 @@ Work:
         passthrough probing, reducing renderer setup logic in the main demo file.
   - [x] Extracted pure API Workbench row builders for Three ASCII headers and data-table footers, with direct tests and
         loop-based footer styling for wrapped rows.
+  - [x] Reworked the shared flex layout size solver to avoid active-entry arrays in grow/shrink distribution loops,
+        improving the focused `layout/flex-rects-3-pane` benchmark while preserving layout tests.
 
 Acceptance checks:
 
