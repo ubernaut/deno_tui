@@ -98,6 +98,9 @@ developer workflows.
   save/restore cursor semantics for `CSI ? 1049 h/l`) so more curses/full-screen apps restore shell state correctly.
 - Added bracketed-paste-aware raw input routing so embedded shells that negotiate DEC private mode 2004 receive pasted
   text framed as `CSI 200~`/`CSI 201~` while explicit raw paste buffers remain byte-preserving.
+- Added a shared paste inspection and confirmation policy hook for raw terminal input routing, allowing terminal,
+  multiplexer, and browser-remote adapters to require approval for multiline or control-character paste payloads before
+  bytes are written to a child shell.
 - Added SGR mouse routing for embedded shells that negotiate DEC private modes 1000/1002/1003 plus 1006, including local
   shell-body coordinate translation and byte-preserving raw mouse buffers.
 - Added renderer-neutral terminal workspace session restart metadata and command-surface action support so spawnable

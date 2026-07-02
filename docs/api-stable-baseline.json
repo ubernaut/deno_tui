@@ -2811,6 +2811,13 @@
     },
     {
       "module": "src/app/terminal_input.ts",
+      "name": "inspectTerminalPaste",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/terminal_input.ts",
       "name": "isReservedTerminalKey",
       "kind": "function",
       "typeOnly": false,
@@ -2883,6 +2890,20 @@
       "module": "src/app/terminal_input.ts",
       "name": "TerminalMouseTrackingMode",
       "kind": "type",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/terminal_input.ts",
+      "name": "TerminalPasteConfirmationPolicy",
+      "kind": "type",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/terminal_input.ts",
+      "name": "TerminalPasteInspection",
+      "kind": "interface",
       "typeOnly": true,
       "documented": true
     },

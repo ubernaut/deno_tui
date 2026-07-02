@@ -9,6 +9,7 @@ import {
   encodeTerminalKeyPress,
   encodeTerminalMouse,
   encodeTerminalPaste,
+  inspectTerminalPaste,
   routeTerminalKeyPress,
   routeTerminalMouse,
   routeTerminalPaste,
@@ -326,6 +327,71 @@ Deno.test("terminal paste routing supports negotiated bracketed paste framing", 
     "encoded",
   );
   assertEquals(writes, ["\x1b[200~safe\npaste\x1b[201~"]);
+
+  resolveStatus({ code: 0, success: true });
+  await run;
+  await session.dispose();
+});
+
+Deno.test("terminal paste routing supports opt-in confirmation policies", async () => {
+  const encoder = new TextEncoder();
+  assertEquals(inspectTerminalPaste(paste("one\ntwo")), {
+    byteLength: 7,
+    lineCount: 2,
+    multiline: true,
+    containsControlCharacters: false,
+  });
+  assertEquals(inspectTerminalPaste({ ...paste("ignored"), buffer: encoder.encode("raw\x01") }), {
+    byteLength: 4,
+    lineCount: 1,
+    multiline: false,
+    containsControlCharacters: true,
+  });
+
+  const writes: string[] = [];
+  let resolveStatus!: (status: { code: number; signal?: string | null; success: boolean }) => void;
+  const status = new Promise<{ code: number; signal?: string | null; success: boolean }>((resolve) => {
+    resolveStatus = resolve;
+  });
+  const session = new ProcessSessionController({
+    command: "demo",
+    spawn: () => ({
+      stdin: writableTextSink(writes),
+      stdout: streamFromText(""),
+      stderr: streamFromText(""),
+      status,
+      kill: () => resolveStatus({ code: 143, signal: "SIGTERM", success: false }),
+    }),
+  });
+  const run = session.start();
+
+  assertEquals(
+    (await routeTerminalPaste(session, paste("one\ntwo"), {
+      mode: "raw",
+      pasteConfirmationPolicy: "multiline",
+    })).reason,
+    "paste-rejected",
+  );
+  assertEquals(writes, []);
+
+  assertEquals(
+    (await routeTerminalPaste(session, paste("one\ntwo"), {
+      mode: "raw",
+      pasteConfirmationPolicy: "multiline",
+      confirmPaste: () => true,
+    })).reason,
+    "encoded",
+  );
+  assertEquals(writes, ["one\ntwo"]);
+
+  assertEquals(
+    (await routeTerminalPaste(session, { ...paste("ignored"), buffer: encoder.encode("raw\x01") }, {
+      mode: "raw",
+      pasteConfirmationPolicy: "control",
+      confirmPaste: (inspection) => !inspection.containsControlCharacters,
+    })).reason,
+    "paste-rejected",
+  );
 
   resolveStatus({ code: 0, success: true });
   await run;

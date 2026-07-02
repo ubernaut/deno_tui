@@ -7,6 +7,9 @@ export type TerminalInputMode = "workbench" | "raw";
 /** DEC mouse tracking mode currently negotiated by a child terminal application. */
 export type TerminalMouseTrackingMode = "none" | "press" | "button" | "any";
 
+/** Paste safety policy for raw terminal input routing. */
+export type TerminalPasteConfirmationPolicy = "never" | "multiline" | "control";
+
 /** Minimal process or PTY target accepted by terminal input routing helpers. */
 export interface TerminalInputTarget {
   readonly running?: boolean;
@@ -19,6 +22,8 @@ export interface TerminalInputTarget {
 export interface TerminalInputRoutingOptions {
   mode?: TerminalInputMode;
   bracketedPaste?: boolean;
+  pasteConfirmationPolicy?: TerminalPasteConfirmationPolicy;
+  confirmPaste?: (inspection: TerminalPasteInspection) => boolean | Promise<boolean>;
   mouseTracking?: TerminalMouseTrackingMode;
   sgrMouse?: boolean;
   mouseOrigin?: { column: number; row: number };
@@ -26,11 +31,27 @@ export interface TerminalInputRoutingOptions {
   reservedCtrlKeys?: readonly string[];
 }
 
+/** Inspection summary used by paste confirmation policies. */
+export interface TerminalPasteInspection {
+  byteLength: number;
+  lineCount: number;
+  multiline: boolean;
+  containsControlCharacters: boolean;
+}
+
 /** Serializable decision for whether a key was routed to a child process. */
 export interface TerminalInputRouteDecision {
   routed: boolean;
-  reason: "encoded" | "workbench-mode" | "reserved" | "unencodable" | "not-running" | "write-failed";
+  reason:
+    | "encoded"
+    | "workbench-mode"
+    | "reserved"
+    | "unencodable"
+    | "not-running"
+    | "write-failed"
+    | "paste-rejected";
   bytes?: Uint8Array;
+  paste?: TerminalPasteInspection;
 }
 
 /** Minimal mouse event shape accepted by terminal mouse encoders. */
@@ -76,6 +97,14 @@ export function encodeTerminalPaste(
   if (event.buffer.byteLength > 0) return new Uint8Array(event.buffer);
   const text = options.bracketedPaste ? `\x1b[200~${event.text}\x1b[201~` : event.text;
   return textEncoder.encode(text);
+}
+
+/** Inspects paste payloads before they are routed into a raw child terminal. */
+export function inspectTerminalPaste(event: Pick<PasteEvent, "text" | "buffer">): TerminalPasteInspection {
+  if (event.buffer.byteLength > 0) {
+    return inspectTerminalPasteBytes(event.buffer);
+  }
+  return inspectTerminalPasteText(event.text);
 }
 
 /** Encodes a mouse press or wheel event as xterm SGR mouse input for a child process. */
@@ -167,9 +196,14 @@ export async function routeTerminalPaste(
 ): Promise<TerminalInputRouteDecision> {
   if ((options.mode ?? "workbench") !== "raw") return { routed: false, reason: "workbench-mode" };
   if (!terminalInputTargetRunning(session)) return { routed: false, reason: "not-running" };
+  const paste = inspectTerminalPaste(event);
+  if (terminalPasteRequiresConfirmation(paste, options.pasteConfirmationPolicy ?? "never")) {
+    const confirmed = await options.confirmPaste?.(paste);
+    if (!confirmed) return { routed: false, reason: "paste-rejected", paste };
+  }
   const bytes = encodeTerminalPaste(event, options);
   const routed = await writeTerminalInput(session, bytes);
-  return routed ? { routed, reason: "encoded", bytes } : { routed, reason: "write-failed", bytes };
+  return routed ? { routed, reason: "encoded", bytes, paste } : { routed, reason: "write-failed", bytes, paste };
 }
 
 /** Routes a mouse event to a process session when raw terminal input and negotiated mouse mode are active. */
@@ -189,6 +223,53 @@ export async function routeTerminalMouse(
 function terminalInputTargetRunning(session: TerminalInputTarget): boolean {
   if (typeof session.running === "boolean") return session.running;
   return session.inspect?.().running ?? false;
+}
+
+function terminalPasteRequiresConfirmation(
+  paste: TerminalPasteInspection,
+  policy: TerminalPasteConfirmationPolicy,
+): boolean {
+  if (policy === "never") return false;
+  if (policy === "multiline") return paste.multiline;
+  return paste.multiline || paste.containsControlCharacters;
+}
+
+function inspectTerminalPasteText(text: string): TerminalPasteInspection {
+  let lineCount = text.length > 0 ? 1 : 0;
+  let containsControlCharacters = false;
+  for (let index = 0; index < text.length; index += 1) {
+    const code = text.charCodeAt(index);
+    if (code === 10) {
+      lineCount += 1;
+    } else if (code < 32 && code !== 9 && code !== 13) {
+      containsControlCharacters = true;
+    }
+  }
+  return {
+    byteLength: textEncoder.encode(text).byteLength,
+    lineCount,
+    multiline: lineCount > 1,
+    containsControlCharacters,
+  };
+}
+
+function inspectTerminalPasteBytes(buffer: Uint8Array): TerminalPasteInspection {
+  let lineCount = buffer.byteLength > 0 ? 1 : 0;
+  let containsControlCharacters = false;
+  for (let index = 0; index < buffer.byteLength; index += 1) {
+    const byte = buffer[index]!;
+    if (byte === 10) {
+      lineCount += 1;
+    } else if (byte < 32 && byte !== 9 && byte !== 13) {
+      containsControlCharacters = true;
+    }
+  }
+  return {
+    byteLength: buffer.byteLength,
+    lineCount,
+    multiline: lineCount > 1,
+    containsControlCharacters,
+  };
 }
 
 function writeTerminalInput(session: TerminalInputTarget, data: Uint8Array): Promise<boolean> {
