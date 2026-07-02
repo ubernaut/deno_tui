@@ -1,5 +1,5 @@
 // Copyright 2023 Im-Beast. MIT license.
-import type { ModalInspection } from "../components/modal.ts";
+import { type ModalInspection, renderModalRows } from "../components/modal.ts";
 import type { Rectangle } from "../types.ts";
 import { clipRect } from "./hit_targets.ts";
 import type { WorkbenchButtonTone } from "./workbench_button_style.ts";
@@ -58,6 +58,20 @@ export interface WorkbenchDropdownOverlayRenderCommand {
   hitRect?: Rectangle;
 }
 
+/** Options for projecting modal content rows into renderer-neutral row commands. */
+export interface WorkbenchModalRowRenderOptions {
+  inspection: ModalInspection;
+  inner: Rectangle;
+  contentWidth?: number;
+}
+
+/** Renderer-neutral command for painting modal title/body/action rows. */
+export interface WorkbenchModalRowRenderCommand {
+  kind: "title" | "body" | "actions";
+  rect: Rectangle;
+  text: string;
+}
+
 /** Returns centered modal geometry shared by terminal and browser workbench adapters. */
 export function layoutWorkbenchModal(options: WorkbenchModalLayoutOptions): WorkbenchModalLayout {
   const bounds = normalizeRect(options.bounds);
@@ -88,6 +102,41 @@ export function layoutWorkbenchModal(options: WorkbenchModalLayoutOptions): Work
       height: clippedRect.height,
     }, bounds),
   };
+}
+
+/** Projects modal rows into reusable renderer-neutral row commands. */
+export function workbenchModalRowRenderCommandsInto(
+  target: WorkbenchModalRowRenderCommand[],
+  options: WorkbenchModalRowRenderOptions,
+): WorkbenchModalRowRenderCommand[] {
+  const inner = normalizeRect(options.inner);
+  const contentWidth = Math.max(0, Math.floor(options.contentWidth ?? inner.width));
+  if (inner.width <= 0 || inner.height <= 0 || contentWidth <= 0) {
+    target.length = 0;
+    return target;
+  }
+
+  const rows = renderModalRows(options.inspection, { width: contentWidth, height: inner.height });
+  let written = 0;
+  for (let index = 0; index < rows.length && index < inner.height; index += 1) {
+    const actionRow = options.inspection.actions.length > 0 && index === rows.length - 1;
+    const titleRow = index === 0;
+    const command = writeModalRowCommand(
+      target,
+      written++,
+      actionRow ? "actions" : titleRow ? "title" : "body",
+      {
+        column: inner.column,
+        row: inner.row + index,
+        width: inner.width,
+        height: 1,
+      },
+      actionRow ? "" : rows[index]!,
+    );
+    command.text = fitPlain(command.text, command.rect.width);
+  }
+  target.length = written;
+  return target;
 }
 
 /** Clips a popover/dropdown rectangle and returns undefined when it is too small to render. */
@@ -171,6 +220,28 @@ export function workbenchModalActionButtonsInto(
     });
   }
   return target;
+}
+
+function writeModalRowCommand(
+  target: WorkbenchModalRowRenderCommand[],
+  index: number,
+  kind: WorkbenchModalRowRenderCommand["kind"],
+  rect: Rectangle,
+  text: string,
+): WorkbenchModalRowRenderCommand {
+  const command = target[index] ?? {
+    kind,
+    rect: { column: 0, row: 0, width: 0, height: 0 },
+    text: "",
+  };
+  command.kind = kind;
+  command.rect.column = rect.column;
+  command.rect.row = rect.row;
+  command.rect.width = rect.width;
+  command.rect.height = rect.height;
+  command.text = text;
+  target[index] = command;
+  return command;
 }
 
 function writeDropdownRow(

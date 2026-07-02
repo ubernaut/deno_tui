@@ -4141,6 +4141,27 @@
     },
     {
       "module": "src/app/workbench_overlay.ts",
+      "name": "WorkbenchModalRowRenderCommand",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_overlay.ts",
+      "name": "workbenchModalRowRenderCommandsInto",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_overlay.ts",
+      "name": "WorkbenchModalRowRenderOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_overlay.ts",
       "name": "WorkbenchPopoverLayoutOptions",
       "kind": "interface",
       "typeOnly": true,

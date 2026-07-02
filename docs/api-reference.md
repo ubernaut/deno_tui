@@ -8,8 +8,8 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 - Entrypoints: 9
 - Module visits: 534
 - Re-export declarations: 525
-- Exported symbols: 4938
-- Documented symbols: 4938
+- Exported symbols: 4944
+- Documented symbols: 4944
 - Documentation coverage: 100.00%
 - Duplicate symbol groups: 0
 - Missing targets: 0
@@ -18,8 +18,8 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 
 | Specifier       | Path                           | Runtime  | Stability    | Modules | Symbols |    Docs |
 | --------------- | ------------------------------ | -------- | ------------ | ------: | ------: | ------: |
-| `.`             | `./mod.ts`                     | terminal | stable       |     241 |    2113 | 100.00% |
-| `./web`         | `./mod.web.ts`                 | browser  | beta         |     220 |    1968 | 100.00% |
+| `.`             | `./mod.ts`                     | terminal | stable       |     241 |    2116 | 100.00% |
+| `./web`         | `./mod.web.ts`                 | browser  | beta         |     220 |    1971 | 100.00% |
 | `./remote`      | `./mod.remote.ts`              | remote   | experimental |       4 |      38 | 100.00% |
 | `./three-ascii` | `./mod.three_ascii.ts`         | shared   | experimental |       8 |      54 | 100.00% |
 | `./theme`       | `./mod.theme.ts`               | shared   | beta         |      10 |     198 | 100.00% |
@@ -41,8 +41,8 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 - Entrypoint: `mod.ts`
 - Modules: 241
 - Re-export declarations: 240
-- Exported symbols: 2113
-- Documented symbols: 2113
+- Exported symbols: 2116
+- Documented symbols: 2116
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -122,7 +122,7 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 | [`src/app/workbench_help.ts`](#src-app-workbench-help-ts)                                   |          0 |       3 |          3 |
 | [`src/app/workbench_layout.ts`](#src-app-workbench-layout-ts)                               |          0 |      27 |         27 |
 | [`src/app/workbench_menu.ts`](#src-app-workbench-menu-ts)                                   |          0 |      19 |         19 |
-| [`src/app/workbench_overlay.ts`](#src-app-workbench-overlay-ts)                             |          0 |      10 |         10 |
+| [`src/app/workbench_overlay.ts`](#src-app-workbench-overlay-ts)                             |          0 |      13 |         13 |
 | [`src/app/workbench_panel_workspace_store.ts`](#src-app-workbench-panel-workspace-store-ts) |          0 |       8 |          8 |
 | [`src/app/workbench_shelf.ts`](#src-app-workbench-shelf-ts)                                 |          0 |      20 |         20 |
 | [`src/app/workbench_status.ts`](#src-app-workbench-status-ts)                               |          0 |      13 |         13 |
@@ -1343,6 +1343,9 @@ _No direct exported symbols._
 | `workbenchModalActionButtonsInto`            | function  | no        | yes   |
 | `WorkbenchModalLayout`                       | interface | yes       | yes   |
 | `WorkbenchModalLayoutOptions`                | interface | yes       | yes   |
+| `WorkbenchModalRowRenderCommand`             | interface | yes       | yes   |
+| `workbenchModalRowRenderCommandsInto`        | function  | no        | yes   |
+| `WorkbenchModalRowRenderOptions`             | interface | yes       | yes   |
 | `WorkbenchPopoverLayoutOptions`              | interface | yes       | yes   |
 
 #### src/app/workbench_panel_workspace_store.ts
@@ -3892,8 +3895,8 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 - Entrypoint: `mod.web.ts`
 - Modules: 220
 - Re-export declarations: 219
-- Exported symbols: 1968
-- Documented symbols: 1968
+- Exported symbols: 1971
+- Documented symbols: 1971
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -3973,7 +3976,7 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 | [`src/app/workbench_help.ts`](#src-app-workbench-help-ts)                                   |          0 |       3 |          3 |
 | [`src/app/workbench_layout.ts`](#src-app-workbench-layout-ts)                               |          0 |      27 |         27 |
 | [`src/app/workbench_menu.ts`](#src-app-workbench-menu-ts)                                   |          0 |      19 |         19 |
-| [`src/app/workbench_overlay.ts`](#src-app-workbench-overlay-ts)                             |          0 |      10 |         10 |
+| [`src/app/workbench_overlay.ts`](#src-app-workbench-overlay-ts)                             |          0 |      13 |         13 |
 | [`src/app/workbench_panel_workspace_store.ts`](#src-app-workbench-panel-workspace-store-ts) |          0 |       8 |          8 |
 | [`src/app/workbench_shelf.ts`](#src-app-workbench-shelf-ts)                                 |          0 |      20 |         20 |
 | [`src/app/workbench_status.ts`](#src-app-workbench-status-ts)                               |          0 |      13 |         13 |
@@ -5192,6 +5195,9 @@ _No direct exported symbols._
 | `workbenchModalActionButtonsInto`            | function  | no        | yes   |
 | `WorkbenchModalLayout`                       | interface | yes       | yes   |
 | `WorkbenchModalLayoutOptions`                | interface | yes       | yes   |
+| `WorkbenchModalRowRenderCommand`             | interface | yes       | yes   |
+| `workbenchModalRowRenderCommandsInto`        | function  | no        | yes   |
+| `WorkbenchModalRowRenderOptions`             | interface | yes       | yes   |
 | `WorkbenchPopoverLayoutOptions`              | interface | yes       | yes   |
 
 #### src/app/workbench_panel_workspace_store.ts

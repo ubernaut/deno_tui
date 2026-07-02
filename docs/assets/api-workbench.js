@@ -11694,6 +11694,35 @@ function layoutWorkbenchModal(options) {
     }, bounds)
   };
 }
+function workbenchModalRowRenderCommandsInto(target, options) {
+  const inner = normalizeRect2(options.inner);
+  const contentWidth = Math.max(0, Math.floor(options.contentWidth ?? inner.width));
+  if (inner.width <= 0 || inner.height <= 0 || contentWidth <= 0) {
+    target.length = 0;
+    return target;
+  }
+  const rows2 = renderModalRows(options.inspection, { width: contentWidth, height: inner.height });
+  let written = 0;
+  for (let index = 0; index < rows2.length && index < inner.height; index += 1) {
+    const actionRow = options.inspection.actions.length > 0 && index === rows2.length - 1;
+    const titleRow = index === 0;
+    const command = writeModalRowCommand(
+      target,
+      written++,
+      actionRow ? "actions" : titleRow ? "title" : "body",
+      {
+        column: inner.column,
+        row: inner.row + index,
+        width: inner.width,
+        height: 1
+      },
+      actionRow ? "" : rows2[index]
+    );
+    command.text = fitPlain(command.text, command.rect.width);
+  }
+  target.length = written;
+  return target;
+}
 function layoutWorkbenchPopover(options) {
   const minWidth = Math.max(0, Math.floor(options.minWidth ?? 8));
   const minHeight = Math.max(0, Math.floor(options.minHeight ?? 1));
@@ -11760,6 +11789,21 @@ function workbenchModalActionButtonsInto(target, inspection, options = {}) {
     });
   }
   return target;
+}
+function writeModalRowCommand(target, index, kind, rect, text) {
+  const command = target[index] ?? {
+    kind,
+    rect: { column: 0, row: 0, width: 0, height: 0 },
+    text: ""
+  };
+  command.kind = kind;
+  command.rect.column = rect.column;
+  command.rect.row = rect.row;
+  command.rect.width = rect.width;
+  command.rect.height = rect.height;
+  command.text = text;
+  target[index] = command;
+  return command;
 }
 function writeDropdownRow(target, index, kind, row, column, text, bounds) {
   if (row < bounds.row || row >= bounds.row + bounds.height) return index;
@@ -16063,6 +16107,7 @@ var controlStepperHitPlacements = [];
 var modalActionButtonItems = [];
 var modalActionButtonPlacements = [];
 var modalActionButtonCommands = [];
+var modalRowRenderCommands = [];
 var dropdownOverlayRenderCommands = [];
 var dropdownOverlay = null;
 var pointerDrag = null;
@@ -17482,24 +17527,27 @@ function renderModalOverlay(frame) {
   if (shadow.width > 0 && shadow.height > 0) fillRect(frame, shadow, theme().background);
   fillRect(frame, rect, theme().panelSoft);
   drawFrame(frame, rect, inspection.title, true);
-  const rows2 = renderModalRows(inspection, { width: rect.width, height: inner.height });
-  for (let index = 0; index < rows2.length && index < inner.height; index += 1) {
-    const actionRow2 = inspection.actions.length > 0 && index === rows2.length - 1;
-    const titleRow = index === 0;
+  const rowCommands = workbenchModalRowRenderCommandsInto(modalRowRenderCommands, {
+    inspection,
+    inner,
+    contentWidth: rect.width
+  });
+  let actionRow;
+  for (const command of rowCommands) {
+    if (command.kind === "actions") actionRow = command.rect.row;
     write(
       frame,
-      inner.row + index,
-      inner.column,
+      command.rect.row,
+      command.rect.column,
       paint(
-        fit(actionRow2 ? "" : rows2[index], inner.width),
-        titleRow ? theme().accent : theme().text,
-        actionRow2 ? theme().panel : theme().panelSoft,
-        actionRow2 || titleRow
+        fit(command.text, command.rect.width),
+        command.kind === "title" ? theme().accent : theme().text,
+        command.kind === "actions" ? theme().panel : theme().panelSoft,
+        command.kind === "actions" || command.kind === "title"
       )
     );
   }
-  if (inspection.actions.length === 0 || rows2.length === 0) return;
-  const actionRow = inner.row + Math.min(rows2.length, inner.height) - 1;
+  if (inspection.actions.length === 0 || actionRow === void 0) return;
   workbenchModalActionButtonsInto(modalActionButtonItems, inspection);
   layoutWorkbenchButtonRowInto(
     modalActionButtonPlacements,

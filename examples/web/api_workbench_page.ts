@@ -56,7 +56,6 @@ import {
   renderDataTableHeader,
   renderDataTableRowsInto,
   renderMenuBar,
-  renderModalRows,
   ScrollAreaController,
   scrollbarGlyph,
   scrollbarOffsetForPointer,
@@ -89,6 +88,8 @@ import {
   workbenchHelpRows,
   type WorkbenchMenuBarHitLayout,
   workbenchModalActionButtonsInto,
+  type WorkbenchModalRowRenderCommand,
+  workbenchModalRowRenderCommandsInto,
   type WorkbenchPanelWorkspaceState,
   type WorkbenchScrollbarRenderCommand,
   workbenchShelfEntriesInto,
@@ -348,6 +349,7 @@ const controlStepperHitPlacements: ApiWorkbenchControlHitPlacement[] = [];
 const modalActionButtonItems: WorkbenchButtonRowItem<number>[] = [];
 const modalActionButtonPlacements: WorkbenchButtonRowPlacement<number>[] = [];
 const modalActionButtonCommands: WorkbenchButtonRowRenderCommand<number>[] = [];
+const modalRowRenderCommands: WorkbenchModalRowRenderCommand[] = [];
 const dropdownOverlayRenderCommands: WorkbenchDropdownOverlayRenderCommand[] = [];
 let dropdownOverlay: DropdownOverlay | null = null;
 let pointerDrag: {
@@ -1891,24 +1893,27 @@ function renderModalOverlay(frame: string[]): void {
   if (shadow.width > 0 && shadow.height > 0) fillRect(frame, shadow, theme().background);
   fillRect(frame, rect, theme().panelSoft);
   drawFrame(frame, rect, inspection.title, true);
-  const rows = renderModalRows(inspection, { width: rect.width, height: inner.height });
-  for (let index = 0; index < rows.length && index < inner.height; index += 1) {
-    const actionRow = inspection.actions.length > 0 && index === rows.length - 1;
-    const titleRow = index === 0;
+  const rowCommands = workbenchModalRowRenderCommandsInto(modalRowRenderCommands, {
+    inspection,
+    inner,
+    contentWidth: rect.width,
+  });
+  let actionRow: number | undefined;
+  for (const command of rowCommands) {
+    if (command.kind === "actions") actionRow = command.rect.row;
     write(
       frame,
-      inner.row + index,
-      inner.column,
+      command.rect.row,
+      command.rect.column,
       paint(
-        fit(actionRow ? "" : rows[index]!, inner.width),
-        titleRow ? theme().accent : theme().text,
-        actionRow ? theme().panel : theme().panelSoft,
-        actionRow || titleRow,
+        fit(command.text, command.rect.width),
+        command.kind === "title" ? theme().accent : theme().text,
+        command.kind === "actions" ? theme().panel : theme().panelSoft,
+        command.kind === "actions" || command.kind === "title",
       ),
     );
   }
-  if (inspection.actions.length === 0 || rows.length === 0) return;
-  const actionRow = inner.row + Math.min(rows.length, inner.height) - 1;
+  if (inspection.actions.length === 0 || actionRow === undefined) return;
   workbenchModalActionButtonsInto(modalActionButtonItems, inspection);
   layoutWorkbenchButtonRowInto(
     modalActionButtonPlacements,

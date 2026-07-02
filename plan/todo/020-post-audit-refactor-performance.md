@@ -102,3 +102,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   selected-item text, item-index mapping, and hit rectangles.
 - Routed the web workbench control dropdown popover through the same shared overlay projection so both top-level and
   control dropdowns share clipping, row text, selected-state, and hit-rectangle math.
+- Extracted workbench modal row render commands so console and browser adapters share title/body/action row projection
+  while keeping renderer-specific modal paint styles local.

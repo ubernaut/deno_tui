@@ -4,6 +4,7 @@ import {
   layoutWorkbenchPopover,
   workbenchDropdownOverlayRenderCommandsInto,
   workbenchModalActionButtonsInto,
+  workbenchModalRowRenderCommandsInto,
 } from "../src/app/workbench_overlay.ts";
 
 Deno.test("workbench modal layout centers within desktop bounds", () => {
@@ -46,6 +47,79 @@ Deno.test("workbench popover layout clips or hides too-small overlays", () => {
       bounds: { column: 0, row: 0, width: 24, height: 8 },
     }),
     undefined,
+  );
+});
+
+Deno.test("workbench modal row render commands project title body and actions", () => {
+  const commands = workbenchModalRowRenderCommandsInto([], {
+    inspection: {
+      open: true,
+      title: "Quit",
+      body: ["Use arrows"],
+      tone: "info",
+      actions: [
+        { id: "cancel", label: "Cancel" },
+        { id: "ok", label: "OK", default: true },
+      ],
+      selectedActionIndex: 1,
+      selectedAction: { id: "ok", label: "OK", default: true },
+    },
+    inner: { column: 2, row: 3, width: 18, height: 5 },
+    contentWidth: 20,
+  });
+
+  assertEquals(commands, [
+    { kind: "title", rect: { column: 2, row: 3, width: 18, height: 1 }, text: "[INFO] Quit       " },
+    { kind: "body", rect: { column: 2, row: 4, width: 18, height: 1 }, text: "                  " },
+    { kind: "body", rect: { column: 2, row: 5, width: 18, height: 1 }, text: "Use arrows        " },
+    { kind: "body", rect: { column: 2, row: 6, width: 18, height: 1 }, text: "                  " },
+    { kind: "actions", rect: { column: 2, row: 7, width: 18, height: 1 }, text: "                  " },
+  ]);
+});
+
+Deno.test("workbench modal row render commands reuse caller storage and hide invalid rows", () => {
+  const target = workbenchModalRowRenderCommandsInto([], {
+    inspection: {
+      open: true,
+      title: "One",
+      body: [],
+      tone: "info",
+      actions: [],
+      selectedActionIndex: 0,
+    },
+    inner: { column: 1, row: 1, width: 12, height: 2 },
+  });
+  const first = target[0];
+
+  workbenchModalRowRenderCommandsInto(target, {
+    inspection: {
+      open: true,
+      title: "Two",
+      body: [],
+      tone: "info",
+      actions: [],
+      selectedActionIndex: 0,
+    },
+    inner: { column: 4, row: 5, width: 10, height: 1 },
+  });
+
+  assertEquals(target[0] === first, true);
+  assertEquals(target, [
+    { kind: "title", rect: { column: 4, row: 5, width: 10, height: 1 }, text: "[INFO]    " },
+  ]);
+  assertEquals(
+    workbenchModalRowRenderCommandsInto(target, {
+      inspection: {
+        open: true,
+        title: "Hidden",
+        body: [],
+        tone: "info",
+        actions: [],
+        selectedActionIndex: 0,
+      },
+      inner: { column: 0, row: 0, width: 0, height: 2 },
+    }),
+    [],
   );
 });
 
