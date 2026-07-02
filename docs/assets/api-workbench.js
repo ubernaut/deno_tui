@@ -11883,15 +11883,26 @@ var WorkbenchController = class {
   }
   inspect() {
     const windows = this.windows.inspect().windows;
+    const windowIds = [];
+    const visibleWindowIds = [];
+    const minimizedWindowIds = [];
+    const closedWindowIds = [];
+    for (let index = 0; index < windows.length; index += 1) {
+      const window = windows[index];
+      windowIds.push(window.id);
+      if (window.rect !== void 0 || !window.minimized && !window.closed) visibleWindowIds.push(window.id);
+      if (window.minimized) minimizedWindowIds.push(window.id);
+      if (window.closed) closedWindowIds.push(window.id);
+    }
     return {
       activeWindowId: this.windows.activeId.peek(),
       fullscreenWindowId: this.windows.fullscreenId.peek(),
       menu: this.menus.inspect(),
       menuIndexes: { ...this.#menuIndexes },
-      windowIds: windows.map((entry) => entry.id),
-      visibleWindowIds: windows.filter((entry) => entry.rect !== void 0 || !entry.minimized && !entry.closed).map((entry) => entry.id),
-      minimizedWindowIds: windows.filter((entry) => entry.minimized).map((entry) => entry.id),
-      closedWindowIds: windows.filter((entry) => entry.closed).map((entry) => entry.id)
+      windowIds,
+      visibleWindowIds,
+      minimizedWindowIds,
+      closedWindowIds
     };
   }
   menuIndex(id2) {
