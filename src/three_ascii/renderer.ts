@@ -455,6 +455,7 @@ export class ThreeAsciiRenderer {
   setTerminalGlyphStyle(value: TerminalGlyphStyle): void {
     if (this.terminalGlyphStyle === value) return;
     this.terminalGlyphStyle = value;
+    this.computeDirty = true;
   }
 
   async renderToAnsiGrid(
@@ -523,7 +524,8 @@ export class ThreeAsciiRenderer {
 
   private async computeAnsiGrid(): Promise<string[][]> {
     const effectState = this.getEffectState();
-    await this.ensureComputeResources(effectState);
+    const includeTerminalEdges = effectState.edges && this.terminalGlyphStyle !== "blocks";
+    await this.ensureComputeResources(effectState, includeTerminalEdges);
     this.writeUniforms(effectState);
 
     const commandEncoder = this.device!.createCommandEncoder({
@@ -540,7 +542,7 @@ export class ThreeAsciiRenderer {
       workgroupsX,
       workgroupsY,
     );
-    if (effectState.edges) {
+    if (includeTerminalEdges) {
       this.dispatchComputePass(
         commandEncoder,
         "deno_tui.three_ascii.edge",
@@ -563,7 +565,7 @@ export class ThreeAsciiRenderer {
       fillByteLength: this.fillOutput!.byteLength,
       edgeByteLength: this.edgeOutput?.byteLength ?? 0,
       colorByteLength: this.colorOutput!.byteLength,
-      includeEdges: effectState.edges,
+      includeEdges: includeTerminalEdges,
     });
     this.outputReadback = this.ensureReadbackBuffer(this.outputReadback, readbackLayout.byteLength);
 
@@ -574,7 +576,7 @@ export class ThreeAsciiRenderer {
       readbackLayout.fillOffset,
       this.fillOutput!.byteLength,
     );
-    if (effectState.edges && readbackLayout.edgeOffset !== undefined) {
+    if (includeTerminalEdges && readbackLayout.edgeOffset !== undefined) {
       commandEncoder.copyBufferToBuffer(
         this.edgeOutput!.gpu,
         0,
@@ -678,7 +680,10 @@ export class ThreeAsciiRenderer {
     }
   }
 
-  private async ensureComputeResources(effectState: EffectState): Promise<void> {
+  private async ensureComputeResources(
+    effectState: EffectState,
+    includeTerminalEdges = effectState.edges,
+  ): Promise<void> {
     if (!this.device || !this.renderer || !this.asciiNode) {
       throw new Error("ThreeAsciiRenderer has not been initialized.");
     }
@@ -688,7 +693,7 @@ export class ThreeAsciiRenderer {
       this.colorPipeline = this.createComputePipeline("deno_tui.three_ascii.color", COLOR_SHADER);
     }
 
-    if (effectState.edges && !this.edgePipeline) {
+    if (includeTerminalEdges && !this.edgePipeline) {
       this.edgePipeline = this.createComputePipeline("deno_tui.three_ascii.edge", EDGE_SHADER);
     }
 
@@ -713,7 +718,7 @@ export class ThreeAsciiRenderer {
       this.computeDirty = true;
     }
 
-    if (effectState.edges) {
+    if (includeTerminalEdges) {
       const hadEdgeOutput = this.edgeOutput !== undefined;
       this.edgeOutput = this.ensureBufferSlot(
         this.edgeOutput,
@@ -745,7 +750,7 @@ export class ThreeAsciiRenderer {
       ],
     });
 
-    if (effectState.edges) {
+    if (includeTerminalEdges) {
       const sobelTexture = this.getGpuTexture(this.asciiNode.sobelTarget.texture);
       this.edgeBindGroup = this.device.createBindGroup({
         label: "deno_tui.three_ascii.edge.bindings",

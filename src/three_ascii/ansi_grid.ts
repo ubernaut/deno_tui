@@ -82,11 +82,11 @@ export class ThreeAsciiAnsiGridAssembler {
     const columns = Math.max(0, Math.floor(input.columns));
     const rows = Math.max(0, Math.floor(input.rows));
     const fillGlyphs = input.fillGlyphs;
-    const edgeGlyphs = input.edgeGlyphs;
-    const hasEdges = edgeGlyphs !== undefined;
     const colors = input.colors;
     const terminalGlyphStyle = input.terminalGlyphStyle ?? "blocks";
     const terminalGlyphMode = terminalGlyphModeForStyle(terminalGlyphStyle);
+    const edgeGlyphs = input.edgeGlyphs;
+    const hasEdges = edgeGlyphs !== undefined && terminalGlyphMode !== GLYPH_MODE_BLOCKS;
     const terminalFillGlyphKeys = terminalFillGlyphKeysForMode(terminalGlyphMode);
     const terminalEdgeBias = Math.max(0.5, input.terminalEdgeBias ?? DEFAULT_TERMINAL_EDGE_BIAS);
     const cellCount = columns * rows;

@@ -51,3 +51,23 @@ Deno.test("ThreeAsciiRenderer skips unchanged uniform buffer uploads", () => {
   internals.writeUniforms(effectState);
   assertEquals(writes, 3);
 });
+
+Deno.test("ThreeAsciiRenderer marks compute resources dirty when terminal glyph style changes", () => {
+  const renderer = new ThreeAsciiRenderer({
+    scene: new Scene(),
+    camera: new PerspectiveCamera(),
+    columns: 8,
+    rows: 4,
+    terminalGlyphStyle: "blocks",
+  });
+  const internals = renderer as unknown as {
+    computeDirty: boolean;
+  };
+
+  internals.computeDirty = false;
+  renderer.setTerminalGlyphStyle("blocks");
+  assertEquals(internals.computeDirty, false);
+
+  renderer.setTerminalGlyphStyle("glyphs");
+  assertEquals(internals.computeDirty, true);
+});

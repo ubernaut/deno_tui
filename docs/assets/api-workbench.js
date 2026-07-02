@@ -3279,11 +3279,11 @@ var ThreeAsciiAnsiGridAssembler = class {
     const columns2 = Math.max(0, Math.floor(input2.columns));
     const rows2 = Math.max(0, Math.floor(input2.rows));
     const fillGlyphs = input2.fillGlyphs;
-    const edgeGlyphs = input2.edgeGlyphs;
-    const hasEdges = edgeGlyphs !== void 0;
     const colors = input2.colors;
     const terminalGlyphStyle = input2.terminalGlyphStyle ?? "blocks";
     const terminalGlyphMode = terminalGlyphModeForStyle(terminalGlyphStyle);
+    const edgeGlyphs = input2.edgeGlyphs;
+    const hasEdges = edgeGlyphs !== void 0 && terminalGlyphMode !== GLYPH_MODE_BLOCKS;
     const terminalFillGlyphKeys = terminalFillGlyphKeysForMode(terminalGlyphMode);
     const terminalEdgeBias = Math.max(0.5, input2.terminalEdgeBias ?? DEFAULT_TERMINAL_EDGE_BIAS);
     const cellCount = columns2 * rows2;
