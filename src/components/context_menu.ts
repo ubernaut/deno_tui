@@ -186,6 +186,7 @@ export class ContextMenu extends Component {
   items: Signal<ContextMenuItem[]>;
   selectedIndex: Signal<number>;
   readonly controller: ContextMenuController;
+  readonly #rows: Computed<string[]>;
 
   constructor(private readonly options: ContextMenuOptions) {
     super(options);
@@ -197,11 +198,15 @@ export class ContextMenu extends Component {
       });
     this.items = this.controller.items;
     this.selectedIndex = this.controller.selectedIndex;
+    this.#rows = new Computed(() =>
+      renderContextMenuRows(this.items.value, this.selectedIndex.value, this.rectangle.value.height)
+    );
 
     this.on("keyPress", (event) => {
       const item = this.controller.handleKeyPress(event);
       if (item) void this.options.onSelect?.(item);
     });
+    this.on("destroy", () => this.#rows.dispose());
     if (ownsController) this.on("destroy", () => this.controller.dispose());
   }
 
@@ -211,9 +216,6 @@ export class ContextMenu extends Component {
 
   override draw(): void {
     super.draw();
-    const rows = new Computed(() =>
-      renderContextMenuRows(this.items.value, this.selectedIndex.value, this.rectangle.value.height)
-    );
-    drawTextRows(this, rows);
+    drawTextRows(this, this.#rows);
   }
 }

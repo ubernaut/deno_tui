@@ -264,6 +264,7 @@ export class RadioGroup extends Component {
   selectedValue: Signal<string | undefined>;
   activeIndex: Signal<number>;
   readonly controller: RadioGroupController;
+  readonly #rows: Computed<string[]>;
 
   constructor(groupOptions: RadioGroupOptions) {
     super(groupOptions);
@@ -278,12 +279,21 @@ export class RadioGroup extends Component {
     this.options = this.controller.options;
     this.selectedValue = this.controller.selectedValue;
     this.activeIndex = this.controller.activeIndex;
+    this.#rows = new Computed(() =>
+      renderRadioGroupRows(
+        this.options.value,
+        this.selectedValue.value,
+        this.activeIndex.value,
+        this.rectangle.value.height,
+      )
+    );
 
     this.on("keyPress", (event) => this.controller.handleKeyPress(event));
     this.on("mousePress", (event) => {
       if (event.drag || event.release) return;
       this.controller.handleMousePress(event, this.rectangle.peek().row, this.rectangle.peek().height);
     });
+    this.on("destroy", () => this.#rows.dispose());
     if (ownsController) this.on("destroy", () => this.controller.dispose());
   }
 
@@ -301,14 +311,6 @@ export class RadioGroup extends Component {
 
   override draw(): void {
     super.draw();
-    const rows = new Computed(() =>
-      renderRadioGroupRows(
-        this.options.value,
-        this.selectedValue.value,
-        this.activeIndex.value,
-        this.rectangle.value.height,
-      )
-    );
-    drawTextRows(this, rows);
+    drawTextRows(this, this.#rows);
   }
 }

@@ -217,6 +217,7 @@ export class Stepper extends Component {
   orientation: Signal<StepperOrientation>;
   separator: Signal<string>;
   readonly controller: StepperController;
+  readonly #rows: Computed<string[]>;
 
   constructor(private readonly stepperOptions: StepperOptions) {
     super(stepperOptions);
@@ -232,8 +233,18 @@ export class Stepper extends Component {
     this.activeIndex = this.controller.activeIndex;
     this.orientation = this.controller.orientation;
     this.separator = signalify(stepperOptions.separator ?? "→");
+    this.#rows = new Computed(() =>
+      renderStepper(
+        this.steps.value,
+        this.activeIndex.value,
+        this.orientation.value,
+        this.rectangle.value.width,
+        this.separator.value,
+      )
+    );
 
     this.on("keyPress", (event) => this.controller.handleKeyPress(event));
+    this.on("destroy", () => this.#rows.dispose());
     if (ownsController) this.on("destroy", () => this.controller.dispose());
   }
 
@@ -251,15 +262,6 @@ export class Stepper extends Component {
 
   override draw(): void {
     super.draw();
-    const rows = new Computed(() =>
-      renderStepper(
-        this.steps.value,
-        this.activeIndex.value,
-        this.orientation.value,
-        this.rectangle.value.width,
-        this.separator.value,
-      )
-    );
-    drawTextRows(this, rows);
+    drawTextRows(this, this.#rows);
   }
 }
