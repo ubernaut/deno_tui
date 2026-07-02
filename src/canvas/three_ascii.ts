@@ -320,16 +320,35 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
     }
 
     let changed = false;
+    const canvasSize = this.canvas.size.peek();
+    const viewRectangle = this.view.peek()?.rectangle?.peek();
+    const canvasColumnStart = Math.max(0, Math.floor(rectangle.column));
+    const canvasColumnEnd = Math.min(canvasSize.columns, Math.ceil(rectangle.column + columns));
+    const visibleColumnStart = viewRectangle ? Math.max(canvasColumnStart, viewRectangle.column) : canvasColumnStart;
+    const visibleColumnEnd = viewRectangle
+      ? Math.min(canvasColumnEnd, viewRectangle.column + viewRectangle.width)
+      : canvasColumnEnd;
+    const integerAligned = Number.isInteger(rectangle.column) && Number.isInteger(rectangle.row);
+
     for (let row = 0; row < rows; row += 1) {
       const outputRow = grid[row];
       const rowOffset = row * columns;
       const canvasRow = rectangle.row + row;
+      const rowVisible = canvasRow >= 0 && canvasRow < canvasSize.rows &&
+        (!viewRectangle || (canvasRow >= viewRectangle.row && canvasRow < viewRectangle.row + viewRectangle.height));
+      const queueRow = rowVisible ? (this.rerenderCells[canvasRow] ??= new Set<number>()) : undefined;
+
       for (let column = 0; column < columns; column += 1) {
         const index = rowOffset + column;
         const cell = outputRow?.[column] ?? " ";
         if (cacheValid && this.previousGridCells[index] === cell) continue;
         this.previousGridCells[index] = cell;
-        this.queueRerender(canvasRow, rectangle.column + column);
+        const canvasColumn = rectangle.column + column;
+        if (integerAligned && queueRow && canvasColumn >= visibleColumnStart && canvasColumn < visibleColumnEnd) {
+          queueRow.add(canvasColumn);
+        } else if (!integerAligned) {
+          this.queueRerender(canvasRow, canvasColumn);
+        }
         changed = true;
       }
     }

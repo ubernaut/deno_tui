@@ -19,6 +19,7 @@ import type {
 } from "../src/runtime/graphics_surface.ts";
 import { DiagnosticsCollector } from "../src/runtime/diagnostics.ts";
 import { emptyStyle } from "../src/theme.ts";
+import { View } from "../src/view.ts";
 import type { Camera, Scene } from "npm:three@0.183.2";
 import type { TerminalGlyphStyle } from "../src/three_ascii/glyphs.ts";
 import type { ThreeAsciiRenderFrameOptions } from "../src/three_ascii/renderer.ts";
@@ -767,6 +768,46 @@ Deno.test("ThreeAsciiObject queues rerender cells only for changed ASCII grid ce
   } finally {
     object.erase();
     rectangle.dispose();
+  }
+});
+
+Deno.test("ThreeAsciiObject changed-cell queue respects view clipping", async () => {
+  const rectangle = new Signal({ column: 0, row: 0, width: 3, height: 2 }, { deepObserve: true });
+  const view = new View({ rectangle: { column: 1, row: 0, width: 1, height: 1 } });
+  const sink = new MemoryCanvasSink();
+  const canvas = new Canvas({ sink, size: { columns: 8, rows: 8 } });
+  let renderer: ControlledSequenceGridRenderer | undefined;
+  const object = new ThreeAsciiObject({
+    canvas,
+    rectangle,
+    view,
+    scene: {} as Scene,
+    camera: {} as Camera,
+    style: emptyStyle,
+    zIndex: 1,
+    frameInterval: 5,
+    rendererFactory: () =>
+      renderer = new ControlledSequenceGridRenderer([
+        [["A", "B", "C"], ["D", "E", "F"]],
+      ]),
+  });
+
+  object.draw();
+
+  try {
+    await waitFor(() => (renderer?.startCount ?? 0) >= 1);
+    renderer?.completeFrame();
+    await waitFor(() => queuedCellCount(object) === 1);
+    assertEquals(object.rerenderCells[0]?.has(1), true);
+    assertEquals(object.rerenderCells[0]?.has(0), false);
+    assertEquals(object.rerenderCells[0]?.has(2), false);
+    assertEquals(object.rerenderCells[1]?.size ?? 0, 0);
+  } finally {
+    object.erase();
+    rectangle.dispose();
+    view.rectangle.dispose();
+    view.offset.dispose();
+    view.maxOffset.dispose();
   }
 });
 
