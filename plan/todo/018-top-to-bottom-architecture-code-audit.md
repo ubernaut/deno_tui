@@ -1117,6 +1117,8 @@ Work:
         the bounded process-row path measured separately from the small fixture monitor sample.
   - [x] Aligned virtual-list string row rendering with object row projection by switching large multi-selection lookups
         to a transient `Set` instead of scanning the selected indexes for every visible row.
+  - [x] Removed `Object.keys()` array allocation from local data-query default searchable scans and active filter
+        extraction by iterating object fields directly.
   - [x] Reworked `TreeController.setExpanded()` to preserve unchanged subtree identity and allocate only along the
         changed branch, with regression coverage for no-op and nested expansion updates.
   - [x] Reduced terminal workspace layout lookup clone churn by using internal read-only pane references for active,

@@ -324,7 +324,7 @@ function searchableValueIncludes<TRow extends Record<string, unknown>>(
     }
     return false;
   }
-  for (const field of Object.keys(row)) {
+  for (const field in row) {
     if (stringifyDataQueryValue(row[field]).toLowerCase().includes(term)) return true;
   }
   return false;
@@ -346,7 +346,7 @@ function matchesExactFilters(row: Record<string, unknown>, filters: readonly Act
 
 function activeDataQueryFilters(filters: DataQueryFilters): ActiveDataQueryFilter[] {
   const active: ActiveDataQueryFilter[] = [];
-  for (const field of Object.keys(filters)) {
+  for (const field in filters) {
     const expected = filters[field];
     if (expected !== undefined && expected !== null && expected !== "") {
       active.push({ field, expected });
