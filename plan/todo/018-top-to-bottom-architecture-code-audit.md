@@ -296,6 +296,8 @@ Work:
         spread/map projection.
   - [x] Reworked DirtyRegion inspection and row-segment merge setup to use explicit row/segment buffers and avoid
         entries/flatMap/spread projection in canvas invalidation helpers.
+  - [x] Reworked TerminalBackendRegistry id/provider projection, explicit-id resolution, and sorted provider buffers to
+        avoid singleton filter arrays and spread/map cloning in shell backend selection.
 
 Acceptance checks:
 

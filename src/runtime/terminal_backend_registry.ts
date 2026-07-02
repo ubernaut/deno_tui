@@ -82,15 +82,19 @@ export class TerminalBackendRegistry {
 
   get(id: string): TerminalBackendProvider | undefined {
     const provider = this.#providers.get(id);
-    return provider ? { ...provider } : undefined;
+    return provider ? cloneTerminalBackendProvider(provider) : undefined;
   }
 
   ids(): string[] {
-    return [...this.#providers.keys()];
+    const ids: string[] = [];
+    for (const id of this.#providers.keys()) ids.push(id);
+    return ids;
   }
 
   providers(): TerminalBackendProvider[] {
-    return [...this.#providers.values()].map((provider) => ({ ...provider }));
+    const providers: TerminalBackendProvider[] = [];
+    for (const provider of this.#providers.values()) providers.push(cloneTerminalBackendProvider(provider));
+    return providers;
   }
 
   async inspect(): Promise<TerminalBackendProviderInspection[]> {
@@ -111,10 +115,15 @@ export class TerminalBackendRegistry {
   }
 
   async resolve(options: TerminalBackendResolveOptions = {}): Promise<TerminalBackend | undefined> {
-    const providers = options.id
-      ? [this.#providers.get(options.id)].filter((provider): provider is TerminalBackendProvider => Boolean(provider))
-      : this.sortedProviders(options.preferPty);
-    for (const provider of providers) {
+    if (options.id) {
+      const provider = this.#providers.get(options.id);
+      if (!provider || (options.requirePty && !provider.pty)) return undefined;
+      const availability = await probeTerminalBackendProvider(provider, this.#diagnostics);
+      return availability.available ? await provider.create() : undefined;
+    }
+    const providers = this.sortedProviders(options.preferPty);
+    for (let index = 0; index < providers.length; index += 1) {
+      const provider = providers[index]!;
       if (options.requirePty && !provider.pty) continue;
       const availability = await probeTerminalBackendProvider(provider, this.#diagnostics);
       if (!availability.available) continue;
@@ -124,10 +133,13 @@ export class TerminalBackendRegistry {
   }
 
   sortedProviders(preferPty = false): TerminalBackendProvider[] {
-    return [...this.#providers.values()].sort((left, right) => {
+    const providers: TerminalBackendProvider[] = [];
+    for (const provider of this.#providers.values()) providers.push(provider);
+    providers.sort((left, right) => {
       if (preferPty && left.pty !== right.pty) return left.pty ? -1 : 1;
       return (right.priority ?? 0) - (left.priority ?? 0) || left.id.localeCompare(right.id);
     });
+    return providers;
   }
 }
 
@@ -205,4 +217,8 @@ function normalizeTerminalBackendProvider(provider: TerminalBackendProvider): Te
     detachable: provider.detachable ?? false,
     reconnectable: provider.reconnectable ?? false,
   };
+}
+
+function cloneTerminalBackendProvider(provider: TerminalBackendProvider): TerminalBackendProvider {
+  return { ...provider };
 }
