@@ -178,18 +178,14 @@ import {
   workbenchMobileCommandStripItemsInto,
 } from "../../src/app/workbench_mobile.ts";
 import {
+  applyWorkbenchAsciiConfigRowAction,
   createDefaultWorkbenchAsciiOptions,
   defaultWorkbenchAsciiConfigRows,
   formatWorkbenchAsciiConfigRowText,
-  stepWorkbenchAsciiGlyphStyle,
-  stepWorkbenchAsciiNumericOption,
-  stepWorkbenchAsciiPreset,
-  toggleWorkbenchAsciiOption,
+  moveWorkbenchAsciiConfigSelection,
   WorkbenchAsciiConfigController,
   type WorkbenchAsciiConfigRow,
-  type WorkbenchAsciiKittyKey,
-  type WorkbenchAsciiNumericKey,
-  type WorkbenchAsciiToggleKey,
+  workbenchAsciiConfigVisibleRowStart,
 } from "../../src/app/workbench_ascii.ts";
 import { layoutWorkbenchAsciiConfigModal } from "../../src/app/workbench_ascii_modal.ts";
 import {
@@ -1941,7 +1937,7 @@ function renderThreeConfigModal(frame: string[]): void {
   );
 
   const selected = threeConfigSelected.peek();
-  const firstRow = Math.max(0, Math.min(selected, Math.max(0, asciiConfigRows.length - layout.visibleRows)));
+  const firstRow = workbenchAsciiConfigVisibleRowStart(selected, asciiConfigRows.length, layout.visibleRows);
   for (let index = 0; index < layout.visibleRows && index < asciiConfigRows.length; index += 1) {
     const rowIndex = firstRow + index;
     const row = asciiConfigRows[rowIndex]!;
@@ -2170,40 +2166,24 @@ function handleThreeConfigKey(event: { key: string; shift?: boolean }): void {
 }
 
 function moveThreeConfigSelection(delta: number): void {
-  const count = asciiConfigRows.length;
-  threeConfigSelected.value = (threeConfigSelected.peek() + delta + count) % count;
+  threeConfigSelected.value = moveWorkbenchAsciiConfigSelection(
+    threeConfigSelected.peek(),
+    asciiConfigRows.length,
+    delta,
+  );
 }
 
 function applyThreeConfigHit(index: number, action: ConfigHitAction): void {
   const row = asciiConfigRows[index];
   if (!row) return;
   threeConfigSelected.value = index;
-  const options = currentThreeConfigSignal().peek();
-  if (row.kind === "preset") {
-    const delta = action === "previous" ? -1 : 1;
-    const stepped = stepWorkbenchAsciiPreset(options, ASCII_DEMO_PRESET_IDS, delta);
-    setCurrentThreeConfig(stepped.options, `three preset ${stepped.label}`);
-    return;
-  }
-  if (row.kind === "glyphStyle") {
-    const delta = action === "previous" ? -1 : action === "next" ? 1 : 1;
-    setCurrentThreeConfig(stepWorkbenchAsciiGlyphStyle(options, delta), "three glyph style");
-    return;
-  }
-  if (row.kind === "toggle" || row.kind === "kitty") {
-    setCurrentThreeConfig(
-      toggleWorkbenchAsciiOption(options, row.key as WorkbenchAsciiToggleKey | WorkbenchAsciiKittyKey),
-      `three ${row.label}`,
-    );
-    return;
-  }
-  if (row.kind === "numeric") {
-    const delta = action === "previous" ? -1 : 1;
-    setCurrentThreeConfig(
-      stepWorkbenchAsciiNumericOption(options, row.key as WorkbenchAsciiNumericKey, delta),
-      `three ${row.label}`,
-    );
-  }
+  const next = applyWorkbenchAsciiConfigRowAction(
+    currentThreeConfigSignal().peek(),
+    row,
+    action,
+    ASCII_DEMO_PRESET_IDS,
+  );
+  setCurrentThreeConfig(next.options, `three ${next.message}`);
 }
 
 function applyModalAction(actionId: string): void {

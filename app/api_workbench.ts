@@ -97,18 +97,14 @@ import {
 } from "../src/app/workbench/mod.ts";
 import { inspectWorkbenchWindowSignalState, WorkbenchController } from "../src/app/workbench/controller.ts";
 import {
+  applyWorkbenchAsciiConfigRowAction,
   createDefaultWorkbenchAsciiOptions,
   defaultWorkbenchAsciiConfigRows,
   formatWorkbenchAsciiConfigRowText,
-  stepWorkbenchAsciiGlyphStyle,
-  stepWorkbenchAsciiNumericOption,
-  stepWorkbenchAsciiPreset,
-  toggleWorkbenchAsciiOption,
+  moveWorkbenchAsciiConfigSelection,
   WorkbenchAsciiConfigController,
   type WorkbenchAsciiConfigRow,
-  type WorkbenchAsciiKittyKey,
-  type WorkbenchAsciiNumericKey,
-  type WorkbenchAsciiToggleKey,
+  workbenchAsciiConfigVisibleRowStart,
 } from "../src/app/workbench_ascii.ts";
 import { layoutWorkbenchAsciiConfigModal } from "../src/app/workbench_ascii_modal.ts";
 import { handleInput } from "../src/input.ts";
@@ -235,7 +231,6 @@ import {
   asciiDemoPresetIds,
   asciiPresetLabel,
   cloneAsciiOptions,
-  formatAsciiControlValue,
   normalizeAsciiOptions,
   terminalGlyphStyleLabel,
 } from "./ascii_options.ts";
@@ -370,9 +365,6 @@ type AsciiConfigModalAction = "cancel" | "apply" | "ok";
 type TerminalOutputAction = WorkbenchTerminalOutputToolbarAction;
 type TerminalShellAction = WorkbenchTerminalToolbarAction;
 type ButtonTone = "default" | "danger" | "warning" | "success" | "muted";
-type AsciiNumericKey = WorkbenchAsciiNumericKey;
-type AsciiToggleKey = WorkbenchAsciiToggleKey;
-type AsciiKittyKey = WorkbenchAsciiKittyKey;
 
 type ThemeSpec = ApiWorkbenchThemeSpec;
 type ProcessRow = ApiWorkbenchProcessRow;
@@ -2655,15 +2647,21 @@ function renderThreeConfigModal(frame: Frame): void {
     terminalGlyphStyleLabel(current.terminalGlyphStyle)
   } · ${asciiPresetLabel(current.preset)}`;
   write(frame, inner.row, inner.column, paint(fit(title, inner.width), { fg: t.accent, bg: t.panelSoft, bold: true }));
+  const selectedIndex = threeConfigSelected.peek();
+  const firstRow = workbenchAsciiConfigVisibleRowStart(
+    selectedIndex,
+    threeConfigRows.length,
+    layout.visibleRows,
+  );
   for (
     let visibleIndex = 0;
     visibleIndex < Math.min(layout.visibleRows, threeConfigRows.length);
     visibleIndex += 1
   ) {
-    const rowIndex = visibleIndex;
+    const rowIndex = firstRow + visibleIndex;
     const row = threeConfigRows[rowIndex]!;
     const y = layout.rowsTop + visibleIndex;
-    const selected = threeConfigSelected.peek() === rowIndex;
+    const selected = selectedIndex === rowIndex;
     const bg = selected ? t.warn : t.surface;
     const fg = selected ? t.background : t.text;
     write(frame, y, inner.column, paint(" ".repeat(inner.width), { bg }));
@@ -2721,53 +2719,8 @@ function applyThreeConfigRow(index: number, action: ConfigHitAction = "activate"
   const row = threeConfigRows[index];
   if (!row) return;
   threeConfigSelected.value = index;
-  if (row.kind === "preset") {
-    stepAsciiPreset(action === "previous" ? -1 : 1);
-  } else if (row.kind === "glyphStyle") {
-    stepAsciiGlyphStyle(action === "previous" ? -1 : 1);
-  } else if (row.kind === "kitty") {
-    toggleAsciiKittyOption(row.key);
-  } else if (row.kind === "toggle") {
-    toggleAsciiOption(row.key);
-  } else {
-    stepAsciiNumeric(row.key, action === "previous" ? -1 : 1);
-  }
-}
-
-function stepAsciiPreset(delta: number): void {
-  const current = configuredAscii().peek();
-  const next = stepWorkbenchAsciiPreset(current, ASCII_DEMO_PRESET_IDS, delta);
-  setConfiguredAscii(next.options, `three config preset ${next.label}`, { persist: false });
-}
-
-function stepAsciiGlyphStyle(delta: number): void {
-  const current = configuredAscii().peek();
-  const next = stepWorkbenchAsciiGlyphStyle(current, delta);
-  setConfiguredAscii(
-    next,
-    `three config glyph style ${terminalGlyphStyleLabel(next.terminalGlyphStyle)}`,
-    { persist: false },
-  );
-}
-
-function toggleAsciiOption(key: AsciiToggleKey): void {
-  const current = configuredAscii().peek();
-  const next = toggleWorkbenchAsciiOption(current, key);
-  setConfiguredAscii(
-    next,
-    `three config ${key} ${next[key] ? "on" : "off"}`,
-    { persist: false },
-  );
-}
-
-function toggleAsciiKittyOption(key: AsciiKittyKey): void {
-  const current = configuredAscii().peek();
-  const next = toggleWorkbenchAsciiOption(current, key);
-  setConfiguredAscii(
-    next,
-    `three config ${key} ${next[key] ? "on" : "off"}`,
-    { persist: false },
-  );
+  const next = applyWorkbenchAsciiConfigRowAction(configuredAscii().peek(), row, action, ASCII_DEMO_PRESET_IDS);
+  setConfiguredAscii(next.options, `three config ${next.message}`, { persist: false });
 }
 
 function kittyGraphicsStatus(): string {
@@ -2777,16 +2730,6 @@ function kittyGraphicsStatus(): string {
   const inspection = kittyGraphics.surfaceFor(configuredAscii().peek()).inspect();
   if (inspection.available) return `[${inspection.mode ?? "available"}]`;
   return `[unavailable: ${inspection.reason ?? "not detected"}]`;
-}
-
-function stepAsciiNumeric(key: AsciiNumericKey, delta: number): void {
-  const current = configuredAscii().peek();
-  const next = stepWorkbenchAsciiNumericOption(current, key, delta);
-  setConfiguredAscii(
-    next,
-    `three config ${key} ${formatAsciiControlValue(key, Number(next[key]))}`,
-    { persist: false },
-  );
 }
 
 function drawFrame(frame: Frame, rect: Rectangle, title: string, active: boolean): void {
@@ -4349,12 +4292,20 @@ function handleThreeConfigKey(event: { key: string; shift?: boolean }): void {
     return;
   }
   if (event.key === "up") {
-    threeConfigSelected.value = (threeConfigSelected.peek() - 1 + threeConfigRows.length) % threeConfigRows.length;
+    threeConfigSelected.value = moveWorkbenchAsciiConfigSelection(
+      threeConfigSelected.peek(),
+      threeConfigRows.length,
+      -1,
+    );
     return;
   }
   if (event.key === "down" || event.key === "tab") {
     const delta = event.shift ? -1 : 1;
-    threeConfigSelected.value = (threeConfigSelected.peek() + delta + threeConfigRows.length) % threeConfigRows.length;
+    threeConfigSelected.value = moveWorkbenchAsciiConfigSelection(
+      threeConfigSelected.peek(),
+      threeConfigRows.length,
+      delta,
+    );
     return;
   }
   if (event.key === "left") {

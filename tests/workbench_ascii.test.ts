@@ -1,15 +1,18 @@
 import { assert, assertEquals } from "jsr:@std/assert";
 import {
+  applyWorkbenchAsciiConfigRowAction,
   asciiNumericOptionRatio,
   closestAsciiControlValueIndex,
   createDefaultWorkbenchAsciiOptions,
   defaultWorkbenchAsciiConfigRows,
   formatWorkbenchAsciiConfigRowText,
+  moveWorkbenchAsciiConfigSelection,
   stepWorkbenchAsciiGlyphStyle,
   stepWorkbenchAsciiNumericOption,
   stepWorkbenchAsciiPreset,
   toggleWorkbenchAsciiOption,
   WorkbenchAsciiConfigController,
+  workbenchAsciiConfigVisibleRowStart,
   workbenchAsciiRendererModeLabel,
 } from "../src/app/workbench_ascii.ts";
 import { layoutWorkbenchAsciiConfigModal } from "../src/app/workbench_ascii_modal.ts";
@@ -52,6 +55,58 @@ Deno.test("workbench ascii option helpers step presets glyphs toggles and numeri
   const stepped = stepWorkbenchAsciiNumericOption(initial, "wireframeThickness", 1);
   assert(stepped.wireframeThickness >= initial.wireframeThickness);
   assertEquals(stepped.preset, "custom");
+});
+
+Deno.test("workbench ascii config action helper applies rows and formats messages", () => {
+  const initial = createDefaultWorkbenchAsciiOptions();
+
+  const preset = applyWorkbenchAsciiConfigRowAction(
+    initial,
+    { kind: "preset", label: "Preset" },
+    "next",
+    ["opentui-blocks", "glyph-atlas"],
+  );
+  assertEquals(preset.options.terminalGlyphStyle, "glyphs");
+  assertEquals(preset.message, "preset Glyph Atlas");
+
+  const glyph = applyWorkbenchAsciiConfigRowAction(
+    initial,
+    { kind: "glyphStyle", label: "Glyph style" },
+    "next",
+    [],
+  );
+  assertEquals(glyph.options.terminalGlyphStyle, "glyphs");
+  assertEquals(glyph.message, "glyph style Glyphs");
+
+  const toggle = applyWorkbenchAsciiConfigRowAction(
+    initial,
+    { kind: "toggle", key: "edges", label: "Edge pass" },
+    "activate",
+    [],
+  );
+  assertEquals(toggle.options.edges, !initial.edges);
+  assertEquals(toggle.message, `edges ${toggle.options.edges ? "on" : "off"}`);
+
+  const numeric = applyWorkbenchAsciiConfigRowAction(
+    initial,
+    { kind: "numeric", key: "wireframeThickness", label: "Wire thickness" },
+    "next",
+    [],
+  );
+  assertEquals(numeric.options.wireframeThickness, 12);
+  assertEquals(numeric.message, "wireframeThickness 12.00");
+});
+
+Deno.test("workbench ascii config selection helpers wrap and keep selected row visible", () => {
+  assertEquals(moveWorkbenchAsciiConfigSelection(0, 17, -1), 16);
+  assertEquals(moveWorkbenchAsciiConfigSelection(16, 17, 1), 0);
+  assertEquals(moveWorkbenchAsciiConfigSelection(5, 0, 1), 0);
+
+  assertEquals(workbenchAsciiConfigVisibleRowStart(0, 17, 4), 0);
+  assertEquals(workbenchAsciiConfigVisibleRowStart(3, 17, 4), 3);
+  assertEquals(workbenchAsciiConfigVisibleRowStart(16, 17, 4), 13);
+  assertEquals(workbenchAsciiConfigVisibleRowStart(99, 17, 4), 13);
+  assertEquals(workbenchAsciiConfigVisibleRowStart(3, 17, 0), 0);
 });
 
 Deno.test("workbench ascii helpers report ratios closest values and renderer modes", () => {

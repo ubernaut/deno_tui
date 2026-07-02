@@ -38,6 +38,15 @@ export interface WorkbenchAsciiConfigRowTextOptions {
   trackWidth?: number;
 }
 
+/** User action applied to a Three ASCII config row. */
+export type WorkbenchAsciiConfigAction = "previous" | "next" | "activate";
+
+/** Result of applying a Three ASCII config row action. */
+export interface WorkbenchAsciiConfigActionResult {
+  options: ThreeAsciiConfigOptions;
+  message: string;
+}
+
 /** Default row set for workbench Three ASCII configuration modals. */
 export const defaultWorkbenchAsciiConfigRows: readonly WorkbenchAsciiConfigRow[] = [
   { kind: "preset", label: "Preset" },
@@ -137,6 +146,26 @@ export function formatWorkbenchAsciiConfigRowText(
   return `${row.label.padEnd(labelWidth)} [<] ${track} ${formatAsciiControlValue(row.key, value).padStart(5)} [>]`;
 }
 
+/** Returns a wrapped selected row index for keyboard navigation. */
+export function moveWorkbenchAsciiConfigSelection(current: number, rowCount: number, delta: number): number {
+  const count = Math.max(0, Math.floor(rowCount));
+  if (count === 0) return 0;
+  return (Math.floor(current) + Math.floor(delta) + count) % count;
+}
+
+/** Returns the first row index that keeps the selected row visible in a clipped config modal. */
+export function workbenchAsciiConfigVisibleRowStart(
+  selected: number,
+  rowCount: number,
+  visibleRows: number,
+): number {
+  const count = Math.max(0, Math.floor(rowCount));
+  const visible = Math.max(0, Math.floor(visibleRows));
+  if (count === 0 || visible === 0) return 0;
+  const clampedSelected = Math.max(0, Math.min(count - 1, Math.floor(selected)));
+  return Math.max(0, Math.min(clampedSelected, count - visible));
+}
+
 /** Return the next ASCII preset configuration, preserving transport preferences through `applyAsciiPreset()`. */
 export function stepWorkbenchAsciiPreset(
   options: ThreeAsciiConfigOptions,
@@ -180,6 +209,32 @@ export function stepWorkbenchAsciiNumericOption(
   const closest = closestAsciiControlValueIndex(values, currentValue);
   const nextValue = values[Math.max(0, Math.min(values.length - 1, closest + delta))]!;
   return { ...options, [key]: nextValue, preset: "custom" };
+}
+
+/** Apply a renderer-neutral config row action and return the next options plus a log-safe summary. */
+export function applyWorkbenchAsciiConfigRowAction(
+  options: ThreeAsciiConfigOptions,
+  row: WorkbenchAsciiConfigRow,
+  action: WorkbenchAsciiConfigAction,
+  presetIds: readonly string[],
+): WorkbenchAsciiConfigActionResult {
+  if (row.kind === "preset") {
+    const next = stepWorkbenchAsciiPreset(options, presetIds, action === "previous" ? -1 : 1);
+    return { options: next.options, message: `preset ${next.label}` };
+  }
+  if (row.kind === "glyphStyle") {
+    const next = stepWorkbenchAsciiGlyphStyle(options, action === "previous" ? -1 : 1);
+    return { options: next, message: `glyph style ${terminalGlyphStyleLabel(next.terminalGlyphStyle)}` };
+  }
+  if (row.kind === "toggle" || row.kind === "kitty") {
+    const next = toggleWorkbenchAsciiOption(options, row.key);
+    return { options: next, message: `${row.key} ${next[row.key] ? "on" : "off"}` };
+  }
+  const next = stepWorkbenchAsciiNumericOption(options, row.key, action === "previous" ? -1 : 1);
+  return {
+    options: next,
+    message: `${row.key} ${formatAsciiControlValue(row.key, Number(next[row.key]))}`,
+  };
 }
 
 /** Owns per-window Three ASCII config signals for workbench-style hosts. */

@@ -157,3 +157,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   default block preset so truecolor block cells keep source color depth.
 - Extracted the workbench Three ASCII config modal geometry into a tested internal layout helper, reducing inline modal
   math in `app/api_workbench.ts`.
+- Added a real browser workbench Three ASCII config modal, persisted its renderer options in the web workspace snapshot,
+  and shared config row action/selection helpers across terminal and browser adapters with direct tests.

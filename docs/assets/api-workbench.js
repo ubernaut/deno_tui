@@ -16366,6 +16366,18 @@ function formatWorkbenchAsciiConfigRowText(row, options, formatOptions = {}) {
   const track = `${"\u2588".repeat(filled)}${"\u2591".repeat(Math.max(0, trackWidth - filled))}`;
   return `${row.label.padEnd(labelWidth)} [<] ${track} ${formatAsciiControlValue(row.key, value).padStart(5)} [>]`;
 }
+function moveWorkbenchAsciiConfigSelection(current, rowCount, delta) {
+  const count = Math.max(0, Math.floor(rowCount));
+  if (count === 0) return 0;
+  return (Math.floor(current) + Math.floor(delta) + count) % count;
+}
+function workbenchAsciiConfigVisibleRowStart(selected, rowCount, visibleRows2) {
+  const count = Math.max(0, Math.floor(rowCount));
+  const visible = Math.max(0, Math.floor(visibleRows2));
+  if (count === 0 || visible === 0) return 0;
+  const clampedSelected = Math.max(0, Math.min(count - 1, Math.floor(selected)));
+  return Math.max(0, Math.min(clampedSelected, count - visible));
+}
 function stepWorkbenchAsciiPreset(options, presetIds, delta) {
   const ids = presetIds.length ? presetIds : [options.preset];
   const currentIndex = Math.max(0, ids.indexOf(options.preset));
@@ -16388,6 +16400,25 @@ function stepWorkbenchAsciiNumericOption(options, key, delta) {
   const closest = closestAsciiControlValueIndex(values, currentValue);
   const nextValue = values[Math.max(0, Math.min(values.length - 1, closest + delta))];
   return { ...options, [key]: nextValue, preset: "custom" };
+}
+function applyWorkbenchAsciiConfigRowAction(options, row, action, presetIds) {
+  if (row.kind === "preset") {
+    const next2 = stepWorkbenchAsciiPreset(options, presetIds, action === "previous" ? -1 : 1);
+    return { options: next2.options, message: `preset ${next2.label}` };
+  }
+  if (row.kind === "glyphStyle") {
+    const next2 = stepWorkbenchAsciiGlyphStyle(options, action === "previous" ? -1 : 1);
+    return { options: next2, message: `glyph style ${terminalGlyphStyleLabel(next2.terminalGlyphStyle)}` };
+  }
+  if (row.kind === "toggle" || row.kind === "kitty") {
+    const next2 = toggleWorkbenchAsciiOption(options, row.key);
+    return { options: next2, message: `${row.key} ${next2[row.key] ? "on" : "off"}` };
+  }
+  const next = stepWorkbenchAsciiNumericOption(options, row.key, action === "previous" ? -1 : 1);
+  return {
+    options: next,
+    message: `${row.key} ${formatAsciiControlValue(row.key, Number(next[row.key]))}`
+  };
 }
 var WorkbenchAsciiConfigController = class {
   constructor(rootWindowId, initial = createDefaultWorkbenchAsciiOptions()) {
@@ -18255,7 +18286,7 @@ function renderThreeConfigModal(frame) {
     )
   );
   const selected = threeConfigSelected.peek();
-  const firstRow = Math.max(0, Math.min(selected, Math.max(0, asciiConfigRows.length - layout.visibleRows)));
+  const firstRow = workbenchAsciiConfigVisibleRowStart(selected, asciiConfigRows.length, layout.visibleRows);
   for (let index = 0; index < layout.visibleRows && index < asciiConfigRows.length; index += 1) {
     const rowIndex = firstRow + index;
     const row = asciiConfigRows[rowIndex];
@@ -18470,39 +18501,23 @@ function handleThreeConfigKey(event) {
   if (key === "space") applyThreeConfigHit(threeConfigSelected.peek(), "activate");
 }
 function moveThreeConfigSelection(delta) {
-  const count = asciiConfigRows.length;
-  threeConfigSelected.value = (threeConfigSelected.peek() + delta + count) % count;
+  threeConfigSelected.value = moveWorkbenchAsciiConfigSelection(
+    threeConfigSelected.peek(),
+    asciiConfigRows.length,
+    delta
+  );
 }
 function applyThreeConfigHit(index, action) {
   const row = asciiConfigRows[index];
   if (!row) return;
   threeConfigSelected.value = index;
-  const options = currentThreeConfigSignal().peek();
-  if (row.kind === "preset") {
-    const delta = action === "previous" ? -1 : 1;
-    const stepped = stepWorkbenchAsciiPreset(options, ASCII_DEMO_PRESET_IDS, delta);
-    setCurrentThreeConfig(stepped.options, `three preset ${stepped.label}`);
-    return;
-  }
-  if (row.kind === "glyphStyle") {
-    const delta = action === "previous" ? -1 : action === "next" ? 1 : 1;
-    setCurrentThreeConfig(stepWorkbenchAsciiGlyphStyle(options, delta), "three glyph style");
-    return;
-  }
-  if (row.kind === "toggle" || row.kind === "kitty") {
-    setCurrentThreeConfig(
-      toggleWorkbenchAsciiOption(options, row.key),
-      `three ${row.label}`
-    );
-    return;
-  }
-  if (row.kind === "numeric") {
-    const delta = action === "previous" ? -1 : 1;
-    setCurrentThreeConfig(
-      stepWorkbenchAsciiNumericOption(options, row.key, delta),
-      `three ${row.label}`
-    );
-  }
+  const next = applyWorkbenchAsciiConfigRowAction(
+    currentThreeConfigSignal().peek(),
+    row,
+    action,
+    ASCII_DEMO_PRESET_IDS
+  );
+  setCurrentThreeConfig(next.options, `three ${next.message}`);
 }
 function applyModalAction(actionId) {
   if (actionId === "details") {
