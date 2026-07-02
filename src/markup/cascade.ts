@@ -36,7 +36,6 @@ interface MatchedRule {
   specificity: number;
   order: number;
 }
-
 /** Applies CSS-like rules and inline styles to a cloned layout tree. */
 export function applyCssCascade(
   root: LayoutNode,
@@ -182,6 +181,7 @@ function matchesSimpleSelector(
     if (!(name in node.attributes)) return false;
     if (expected !== undefined && node.attributes[name] !== expected) return false;
   }
+  if (!selector.includes(":")) return true;
   for (const pseudo of selector.matchAll(/:([A-Za-z_][\w-]*)(?:\(([^)]*)\))?/g)) {
     const state = pseudo[1];
     if (state === "root") {
