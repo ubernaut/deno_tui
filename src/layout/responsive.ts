@@ -57,10 +57,20 @@ export interface TileLayout {
 
 /** Resolves breakpoint from the provided inputs. */
 export function resolveBreakpoint(bounds: Rectangle, breakpoints: readonly Breakpoint[]): string {
-  const matches = breakpoints
-    .filter((breakpoint) => bounds.width >= (breakpoint.minWidth ?? 0) && bounds.height >= (breakpoint.minHeight ?? 0))
-    .sort((a, b) => (b.minWidth ?? 0) - (a.minWidth ?? 0) || (b.minHeight ?? 0) - (a.minHeight ?? 0));
-  return matches[0]?.id ?? breakpoints[0]?.id ?? "";
+  let best: Breakpoint | undefined;
+  let bestWidth = -1;
+  let bestHeight = -1;
+  for (const breakpoint of breakpoints) {
+    const minWidth = breakpoint.minWidth ?? 0;
+    const minHeight = breakpoint.minHeight ?? 0;
+    if (bounds.width < minWidth || bounds.height < minHeight) continue;
+    if (best === undefined || minWidth > bestWidth || (minWidth === bestWidth && minHeight > bestHeight)) {
+      best = breakpoint;
+      bestWidth = minWidth;
+      bestHeight = minHeight;
+    }
+  }
+  return best?.id ?? breakpoints[0]?.id ?? "";
 }
 
 /** Public helper for inset Rect. */

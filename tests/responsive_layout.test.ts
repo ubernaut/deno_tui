@@ -21,6 +21,13 @@ Deno.test("resolveBreakpoint picks the largest matching breakpoint", () => {
     ]),
     "wide",
   );
+  assertEquals(
+    resolveBreakpoint(bounds, [
+      { id: "first", minWidth: 80, minHeight: 20 },
+      { id: "second", minWidth: 80, minHeight: 20 },
+    ]),
+    "first",
+  );
 });
 
 Deno.test("insetRect clamps dimensions", () => {

@@ -225,6 +225,8 @@ Work:
         loop-based footer styling for wrapped rows.
   - [x] Reworked the shared flex layout size solver to avoid active-entry arrays in grow/shrink distribution loops,
         improving the focused `layout/flex-rects-3-pane` benchmark while preserving layout tests.
+  - [x] Reworked responsive breakpoint resolution to scan matching breakpoints in one pass instead of allocating and
+        sorting match lists on each layout solve.
 
 Acceptance checks:
 
