@@ -335,6 +335,8 @@ Work:
         split/map parameter buffers in web runtime render paths.
   - [x] Reworked live process stat sampling to build settled read promises and failed-read counts with direct buffers
         instead of map/filter chains while preserving the bounded scan behavior.
+  - [x] Reworked HTML-like markup tree conversion to collect meaningful children, text, classes, layout children, and
+        node counts with direct passes instead of repeated filter/map/reduce scans before layout solving.
 
 Acceptance checks:
 

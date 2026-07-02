@@ -88,7 +88,7 @@ export function parseTuiMarkup(markup: string, options: TuiMarkupParseOptions = 
     }
   }
 
-  const children = root.children.filter((child) => child.tag !== "#text" || Boolean(child.text?.trim()));
+  const children = meaningfulMarkupChildren(root.children);
   const selected = children.length === 1 && !options.rootTag && !options.rootId ? children[0]! : { ...root, children };
   let generated = 0;
   const layoutRoot = toLayoutNode(selected, () => `markup-${++generated}`);
@@ -141,20 +141,64 @@ function normalizeTagName(value: string): string {
 }
 
 function toLayoutNode(node: MutableMarkupNode, nextId: () => string): LayoutNode {
-  const elementChildren = node.children.filter((child) => child.tag !== "#text");
-  const textChildren = node.children.filter((child) => child.tag === "#text").map((child) => child.text ?? "");
-  const text = node.text ?? (elementChildren.length === 0 ? textChildren.join("").trim() || undefined : undefined);
-  const children = elementChildren.length === 0
-    ? []
-    : node.children.map((child) => toLayoutNode(child, nextId)).filter((child) => child.tag !== "#text" || child.text);
+  const hasElementChildren = markupHasElementChildren(node.children);
+  const text = node.text ?? (hasElementChildren ? undefined : markupText(node.children));
+  const children = hasElementChildren ? layoutChildren(node.children, nextId) : [];
   return createLayoutNode({
     id: node.attributes.id ?? nextId(),
     tag: node.tag,
     attributes: { ...node.attributes },
-    classes: node.attributes.class?.split(/\s+/).filter(Boolean) ?? [],
+    classes: splitClassNames(node.attributes.class),
     text,
     children,
   });
+}
+
+function meaningfulMarkupChildren(children: readonly MutableMarkupNode[]): MutableMarkupNode[] {
+  const result: MutableMarkupNode[] = [];
+  for (const child of children) {
+    if (child.tag === "#text" && !child.text?.trim()) continue;
+    result.push(child);
+  }
+  return result;
+}
+
+function markupHasElementChildren(children: readonly MutableMarkupNode[]): boolean {
+  for (const child of children) {
+    if (child.tag !== "#text") return true;
+  }
+  return false;
+}
+
+function markupText(children: readonly MutableMarkupNode[]): string | undefined {
+  let text = "";
+  for (const child of children) {
+    if (child.tag === "#text") text += child.text ?? "";
+  }
+  const trimmed = text.trim();
+  return trimmed || undefined;
+}
+
+function layoutChildren(children: readonly MutableMarkupNode[], nextId: () => string): LayoutNode[] {
+  const result: LayoutNode[] = [];
+  for (const child of children) {
+    const layoutNode = toLayoutNode(child, nextId);
+    if (layoutNode.tag === "#text" && !layoutNode.text) continue;
+    result.push(layoutNode);
+  }
+  return result;
+}
+
+function splitClassNames(value: string | undefined): string[] {
+  if (!value) return [];
+  const classes: string[] = [];
+  let start = 0;
+  for (let index = 0; index <= value.length; index += 1) {
+    if (index !== value.length && !/\s/.test(value[index]!)) continue;
+    if (index > start) classes.push(value.slice(start, index));
+    start = index + 1;
+  }
+  return classes;
 }
 
 function decodeEntities(value: string): string {
@@ -167,5 +211,9 @@ function decodeEntities(value: string): string {
 }
 
 function countLayoutNodes(node: LayoutNode): number {
-  return 1 + node.children.reduce((sum, child) => sum + countLayoutNodes(child), 0);
+  let count = 1;
+  for (const child of node.children) {
+    count += countLayoutNodes(child);
+  }
+  return count;
 }
