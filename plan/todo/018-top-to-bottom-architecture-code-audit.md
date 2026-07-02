@@ -310,6 +310,8 @@ Work:
         and selection copying to avoid spread/slice/map/filter churn in shell copy mode.
   - [x] Reworked WindowManagerController id/open-window lookup, active/fullscreen repair, and minimize/close focus
         fallback paths around explicit helper scans without changing tiling geometry.
+  - [x] Reworked TerminalWorkspaceController session id lookups, mutation indices, active inspection lookup, close-pane
+        fallback, and session reordering to avoid repeated find/some/findIndex and spread/splice paths.
 
 Acceptance checks:
 

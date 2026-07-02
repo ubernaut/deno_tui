@@ -159,7 +159,7 @@ export class TerminalWorkspaceController {
     for (let index = 0; index < sourceSessions.length; index += 1) {
       sessions[index] = cloneTerminalSessionDescriptor(sourceSessions[index]!);
     }
-    const activeId = options.activeId && sessions.some((session) => session.id === options.activeId)
+    const activeId = options.activeId && hasTerminalSession(sessions, options.activeId)
       ? options.activeId
       : sessions[0]?.id;
     this.sessions = new Signal(sessions);
@@ -169,7 +169,7 @@ export class TerminalWorkspaceController {
 
   get active(): TerminalSessionDescriptor | undefined {
     const id = this.activeId.peek();
-    return id ? this.sessions.peek().find((session) => session.id === id) : undefined;
+    return findTerminalSession(this.sessions.peek(), id);
   }
 
   add(template: TerminalTemplate, options: AddTerminalWorkspaceSessionOptions = {}): TerminalSessionDescriptor {
@@ -185,7 +185,7 @@ export class TerminalWorkspaceController {
   ): TerminalSessionDescriptor {
     const nextDescriptor = cloneTerminalSessionDescriptor(descriptor);
     const sessions = this.sessions.peek();
-    const index = sessions.findIndex((session) => session.id === nextDescriptor.id);
+    const index = terminalSessionIndex(sessions, nextDescriptor.id);
     this.sessions.value = index >= 0 ? replaceTerminalSession(sessions, index, nextDescriptor) : appendTerminalSession(
       sessions,
       nextDescriptor,
@@ -200,7 +200,7 @@ export class TerminalWorkspaceController {
   }
 
   activate(id: string): boolean {
-    if (!this.sessions.peek().some((session) => session.id === id)) return false;
+    if (!hasTerminalSession(this.sessions.peek(), id)) return false;
     this.activeId.value = id;
     const layout = this.layout.peek();
     const pane = findTerminalWorkspacePaneBySession(layout.root, id);
@@ -213,7 +213,7 @@ export class TerminalWorkspaceController {
 
   remove(id: string): boolean {
     const sessions = this.sessions.peek();
-    const index = sessions.findIndex((session) => session.id === id);
+    const index = terminalSessionIndex(sessions, id);
     if (index < 0) return false;
     const next = removeTerminalSessionAt(sessions, index);
     this.sessions.value = next;
@@ -238,7 +238,7 @@ export class TerminalWorkspaceController {
     const trimmed = title.trim();
     if (!trimmed) return false;
     const sessions = this.sessions.peek();
-    const index = sessions.findIndex((session) => session.id === id);
+    const index = terminalSessionIndex(sessions, id);
     if (index < 0) return false;
     const descriptor = cloneTerminalSessionDescriptor(sessions[index]!);
     descriptor.title = trimmed;
@@ -251,7 +251,7 @@ export class TerminalWorkspaceController {
     const trimmed = title?.trim();
     if (!trimmed) return false;
     const sessions = this.sessions.peek();
-    const index = sessions.findIndex((session) => session.id === id);
+    const index = terminalSessionIndex(sessions, id);
     if (index < 0) return false;
 
     const previous = sessions[index]!;
@@ -278,14 +278,12 @@ export class TerminalWorkspaceController {
   }
 
   move(id: string, delta: number): boolean {
-    const sessions = [...this.sessions.peek()];
-    const index = sessions.findIndex((session) => session.id === id);
+    const sessions = this.sessions.peek();
+    const index = terminalSessionIndex(sessions, id);
     if (index < 0 || sessions.length < 2) return false;
     const nextIndex = Math.max(0, Math.min(sessions.length - 1, index + Math.trunc(delta)));
     if (nextIndex === index) return false;
-    const [session] = sessions.splice(index, 1);
-    sessions.splice(nextIndex, 0, session!);
-    this.sessions.value = sessions;
+    this.sessions.value = moveTerminalSession(sessions, index, nextIndex);
     return true;
   }
 
@@ -295,7 +293,7 @@ export class TerminalWorkspaceController {
   ): TerminalSessionDescriptor | undefined {
     if (!id) return undefined;
     const sessions = this.sessions.peek();
-    const source = sessions.find((session) => session.id === id);
+    const source = findTerminalSession(sessions, id);
     if (!source) return undefined;
 
     const descriptor = duplicateTerminalSessionDescriptor(source, sessions, options, this.#now());
@@ -305,7 +303,7 @@ export class TerminalWorkspaceController {
   detach(id = this.activeId.peek()): boolean {
     if (!id) return false;
     const sessions = this.sessions.peek();
-    const index = sessions.findIndex((session) => session.id === id);
+    const index = terminalSessionIndex(sessions, id);
     if (index < 0) return false;
     const descriptor = cloneTerminalSessionDescriptor(sessions[index]!);
     descriptor.detached = true;
@@ -319,7 +317,7 @@ export class TerminalWorkspaceController {
   attach(id = this.activeId.peek()): boolean {
     if (!id) return false;
     const sessions = this.sessions.peek();
-    const index = sessions.findIndex((session) => session.id === id);
+    const index = terminalSessionIndex(sessions, id);
     if (index < 0) return false;
     const descriptor = cloneTerminalSessionDescriptor(sessions[index]!);
     if (!descriptor.detached) return false;
@@ -340,7 +338,7 @@ export class TerminalWorkspaceController {
     sessionId: string,
     options: SplitTerminalWorkspacePaneOptions = {},
   ): TerminalWorkspacePaneNode | undefined {
-    if (!this.sessions.peek().some((session) => session.id === sessionId)) return undefined;
+    if (!hasTerminalSession(this.sessions.peek(), sessionId)) return undefined;
     const current = normalizeTerminalWorkspaceLayout(this.layout.peek(), this.sessions.peek(), this.activeId.peek());
     if (!current.root) {
       const pane = createTerminalWorkspacePaneNode(sessionId, undefined, options);
@@ -376,7 +374,7 @@ export class TerminalWorkspaceController {
 
   activatePane(paneId: string): boolean {
     const pane = findTerminalWorkspacePane(this.layout.peek().root, paneId);
-    if (!pane || !this.sessions.peek().some((session) => session.id === pane.sessionId)) return false;
+    if (!pane || !hasTerminalSession(this.sessions.peek(), pane.sessionId)) return false;
     this.layout.value = { ...cloneTerminalWorkspaceLayoutState(this.layout.peek()), activePaneId: pane.id };
     this.activeId.value = pane.sessionId;
     return true;
@@ -387,7 +385,7 @@ export class TerminalWorkspaceController {
     if (!findTerminalWorkspacePane(current.root, paneId)) return false;
     const root = removeTerminalWorkspacePane(current.root, paneId);
     const panes = collectTerminalWorkspacePanes(root);
-    const activePane = panes.find((pane) => pane.id === current.activePaneId) ?? panes[0];
+    const activePane = findTerminalWorkspacePaneInList(panes, current.activePaneId) ?? panes[0];
     this.layout.value = {
       root,
       activePaneId: activePane?.id,
@@ -437,7 +435,7 @@ export class TerminalWorkspaceController {
       sessions[index] = cloneTerminalSessionDescriptor(source[index]!);
     }
     const activeId = this.activeId.peek();
-    const active = activeId ? sessions.find((session) => session.id === activeId) : undefined;
+    const active = findTerminalSession(sessions, activeId);
     return {
       activeId,
       active,
@@ -479,7 +477,7 @@ function normalizeTerminalWorkspaceLayout(
   for (const session of sessions) sessionIds.add(session.id);
   const pruned = pruneTerminalWorkspaceLayoutSessions(layout ?? {}, sessionIds);
   if (!pruned.root && activeId && sessionIds.has(activeId)) {
-    const activeSession = sessions.find((session) => session.id === activeId);
+    const activeSession = findTerminalSession(sessions, activeId);
     return terminalWorkspaceLayoutWithActive({
       root: createTerminalWorkspacePaneNode(activeId, undefined, { title: activeSession?.title }),
       zoomedPaneId: undefined,
@@ -496,6 +494,58 @@ function normalizeTerminalWorkspaceLayout(
       ? pruned.zoomedPaneId
       : undefined,
   };
+}
+
+function findTerminalSession(
+  sessions: readonly TerminalSessionDescriptor[],
+  id: string | undefined,
+): TerminalSessionDescriptor | undefined {
+  if (!id) return undefined;
+  for (let index = 0; index < sessions.length; index += 1) {
+    const session = sessions[index]!;
+    if (session.id === id) return session;
+  }
+  return undefined;
+}
+
+function hasTerminalSession(sessions: readonly TerminalSessionDescriptor[], id: string): boolean {
+  return findTerminalSession(sessions, id) !== undefined;
+}
+
+function terminalSessionIndex(sessions: readonly TerminalSessionDescriptor[], id: string): number {
+  for (let index = 0; index < sessions.length; index += 1) {
+    if (sessions[index]!.id === id) return index;
+  }
+  return -1;
+}
+
+function moveTerminalSession(
+  sessions: readonly TerminalSessionDescriptor[],
+  fromIndex: number,
+  toIndex: number,
+): TerminalSessionDescriptor[] {
+  const moved = sessions[fromIndex]!;
+  const next = new Array<TerminalSessionDescriptor>(sessions.length);
+  let write = 0;
+  for (let index = 0; index < sessions.length; index += 1) {
+    if (write === toIndex) next[write++] = moved;
+    if (index === fromIndex) continue;
+    next[write++] = sessions[index]!;
+  }
+  if (write < next.length) next[write] = moved;
+  return next;
+}
+
+function findTerminalWorkspacePaneInList(
+  panes: readonly TerminalWorkspacePaneNode[],
+  id: string | undefined,
+): TerminalWorkspacePaneNode | undefined {
+  if (!id) return undefined;
+  for (let index = 0; index < panes.length; index += 1) {
+    const pane = panes[index]!;
+    if (pane.id === id) return pane;
+  }
+  return undefined;
 }
 
 function inspectTerminalWorkspaceLayout(
