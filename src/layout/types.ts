@@ -26,6 +26,7 @@ export interface Layout<T extends string> {
   element(name: T): Signal<Rectangle>;
   updatePattern(): void;
   updateElements(): void;
+  dispose?(): void;
 
   rectangle: Signal<Rectangle>;
   gapX: Signal<number>;

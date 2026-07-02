@@ -77,6 +77,8 @@ export class GridLayout<T extends string> implements Layout<T> {
   totalUnitLengthY: number;
   elements: GridLayoutElement<T>[];
   elementNameToIndex: Map<T, number>;
+  private readonly patternEffect: Effect;
+  private readonly elementsEffect: Effect;
 
   constructor(options: GridLayoutOptions<T>) {
     this.totalUnitLengthX = 0;
@@ -88,14 +90,17 @@ export class GridLayout<T extends string> implements Layout<T> {
       deepObserve: true,
       watchObjectIndex: true,
     });
-    new Effect(() => this.updatePattern());
 
     this.gapX = signalify(options.gapX ?? 0);
     this.gapY = signalify(options.gapY ?? 0);
 
     this.rectangle = signalify(options.rectangle, { deepObserve: true });
 
-    new Effect(() => this.updateElements());
+    this.patternEffect = new Effect(() => {
+      this.updatePattern();
+      this.updateElements();
+    });
+    this.elementsEffect = new Effect(() => this.updateElements());
   }
 
   updatePattern(): void {
@@ -104,13 +109,20 @@ export class GridLayout<T extends string> implements Layout<T> {
 
     const pattern = this.pattern.value;
     this.totalUnitLengthY = pattern.length;
-    this.totalUnitLengthX = pattern[0].length;
+    this.totalUnitLengthX = pattern[0]?.length ?? 0;
 
     const { elements } = this;
+    if (this.totalUnitLengthX === 0 || this.totalUnitLengthY === 0) {
+      elements.length = 0;
+      return;
+    }
 
     let i = 0;
     for (let row = 0; row < pattern.length; ++row) {
       const rowElements = pattern[row];
+      if (rowElements.length !== this.totalUnitLengthX) {
+        throw new LayoutInvalidElementsPatternError();
+      }
       let column = 0;
 
       for (const name of rowElements) {
@@ -152,6 +164,7 @@ export class GridLayout<T extends string> implements Layout<T> {
       }
     }
 
+    elements.length = i;
     for (const element of elements) {
       if (element.accumulatedX / element.unitLengthX !== element.unitLengthY) {
         throw new LayoutInvalidElementsPatternError();
@@ -161,6 +174,7 @@ export class GridLayout<T extends string> implements Layout<T> {
 
   updateElements(): void {
     const { elements, totalUnitLengthX, totalUnitLengthY, elementNameToIndex } = this;
+    if (elements.length === 0 || totalUnitLengthX <= 0 || totalUnitLengthY <= 0) return;
 
     const { column, row, width, height } = this.rectangle.value;
     const pattern = this.pattern.value;
@@ -275,5 +289,10 @@ export class GridLayout<T extends string> implements Layout<T> {
     const element = this.elements.find((element) => element.name === name);
     if (!element) throw new LayoutMissingElementError(name);
     return element.rectangle;
+  }
+
+  dispose(): void {
+    this.patternEffect.dispose();
+    this.elementsEffect.dispose();
   }
 }

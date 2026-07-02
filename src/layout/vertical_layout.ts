@@ -59,6 +59,8 @@ export class VerticalLayout<T extends string> implements Layout<T> {
   totalUnitLength: number;
   elements: LayoutElement<T>[];
   elementNameToIndex: Map<T, number>;
+  private readonly patternEffect: Effect;
+  private readonly elementsEffect: Effect;
 
   constructor(options: LayoutOptions<T>) {
     this.totalUnitLength = 0;
@@ -70,13 +72,16 @@ export class VerticalLayout<T extends string> implements Layout<T> {
       deepObserve: true,
       watchObjectIndex: true,
     });
-    new Effect(() => this.updatePattern());
 
     this.gapX = signalify(options.gapX ?? 0);
     this.gapY = signalify(options.gapY ?? 0);
 
     this.rectangle = signalify(options.rectangle, { deepObserve: true });
-    new Effect(() => this.updateElements());
+    this.patternEffect = new Effect(() => {
+      this.updatePattern();
+      this.updateElements();
+    });
+    this.elementsEffect = new Effect(() => this.updateElements());
   }
 
   updatePattern(): void {
@@ -86,7 +91,12 @@ export class VerticalLayout<T extends string> implements Layout<T> {
     const pattern = this.pattern.value;
     this.totalUnitLength = pattern.length;
 
-    const elementToIndex = new Map<string, number>();
+    if (pattern.length === 0) {
+      this.elements.length = 0;
+      return;
+    }
+
+    const elementToIndex = new Map<T, number>();
 
     const { elements } = this;
     let lastElement: T | undefined;
@@ -107,6 +117,7 @@ export class VerticalLayout<T extends string> implements Layout<T> {
         }
         key = i++;
         elementToIndex.set(name, key);
+        elementNameToIndex.set(name, key);
       } else if (lastElement !== name) {
         throw new LayoutInvalidElementsPatternError();
       }
@@ -115,10 +126,14 @@ export class VerticalLayout<T extends string> implements Layout<T> {
 
       lastElement = name;
     }
+
+    elements.length = i;
   }
 
-  updateElements() {
+  updateElements(): void {
     const { elements, totalUnitLength } = this;
+    if (elements.length === 0 || totalUnitLength <= 0) return;
+
     const gapX = this.gapX.value;
     const gapY = this.gapY.value;
 
@@ -155,5 +170,10 @@ export class VerticalLayout<T extends string> implements Layout<T> {
     const element = this.elements.find((element) => element.name === name);
     if (!element) throw new LayoutMissingElementError(name);
     return element.rectangle;
+  }
+
+  dispose(): void {
+    this.patternEffect.dispose();
+    this.elementsEffect.dispose();
   }
 }
