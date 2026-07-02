@@ -484,6 +484,8 @@ interface LinearByteCache {
 function createLinearByteCache(): LinearByteCache {
   const cache = new Map<number, number>();
   const read = ((value: number): number => {
+    if (value <= 0) return 0;
+    if (value >= 1) return 255;
     const cached = cache.get(value);
     if (cached !== undefined) return cached;
     const byte = linearUnitToByte(value);

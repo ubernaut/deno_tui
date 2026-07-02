@@ -3583,6 +3583,8 @@ function linearUnitToByte(value) {
 function createLinearByteCache() {
   const cache = /* @__PURE__ */ new Map();
   const read = (value) => {
+    if (value <= 0) return 0;
+    if (value >= 1) return 255;
     const cached = cache.get(value);
     if (cached !== void 0) return cached;
     const byte = linearUnitToByte(value);
