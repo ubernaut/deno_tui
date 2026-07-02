@@ -1632,6 +1632,8 @@ function insertAt(string, index, value) {
 }
 function textWidth(text, start = 0) {
   if (!text) return 0;
+  const asciiWidth = plainAsciiWidth(text, start);
+  if (asciiWidth !== void 0) return asciiWidth;
   let width = 0;
   for (const cell of iterateTextCells(text, start)) {
     if (cell.plain === "\n") break;
@@ -1640,6 +1642,8 @@ function textWidth(text, start = 0) {
   return width;
 }
 function cropToWidth(text, width) {
+  const asciiCropped = cropPlainAsciiToWidth(text, width);
+  if (asciiCropped !== void 0) return asciiCropped;
   let cropped = "";
   let croppedWidth = 0;
   for (const cell of iterateTextCells(text)) {
@@ -1665,6 +1669,25 @@ function cropToWidth(text, width) {
     cropped += cell.raw;
   }
   return cropped;
+}
+function plainAsciiWidth(text, start = 0) {
+  const offset = Math.max(0, Math.floor(start));
+  for (let index = offset; index < text.length; index += 1) {
+    const code = text.charCodeAt(index);
+    if (code === 10) return index - offset;
+    if (code === 27 || code >= 128) return void 0;
+  }
+  return Math.max(0, text.length - offset);
+}
+function cropPlainAsciiToWidth(text, width) {
+  const safeWidth = Math.max(0, Math.floor(width));
+  const limit = Math.min(text.length, safeWidth);
+  for (let index = 0; index < text.length; index += 1) {
+    const code = text.charCodeAt(index);
+    if (code === 10) return text.slice(0, Math.min(index, safeWidth));
+    if (code === 27 || code >= 128) return void 0;
+  }
+  return text.length <= safeWidth ? text : text.slice(0, limit);
 }
 function* iterateTextCells(text, start = 0) {
   let index = start;
@@ -8214,15 +8237,16 @@ function htmlCssLayoutDemoBoxLabel(box) {
 // src/components/data_table.ts
 var SEARCH_WHITESPACE = /\s/;
 function createDataTableView(rows2, columns, state = {}, rowKey) {
-  const filtered = filterDataRows(rows2, columns, state.query ?? "");
-  const sorted = sortDataRows(filtered, state.sort);
+  const query = state.query ?? "";
+  const filtered = query.trim() ? filterDataRows(rows2, columns, query) : rows2;
+  const sorted = state.sort ? sortDataRows(filtered, state.sort) : filtered;
   const pageSize = Math.max(1, Math.floor(state.pageSize ?? (sorted.length || 1)));
   const selectedAbsoluteIndex = selectedRowIndex(sorted, state, rowKey);
   const pageForSelection = selectedAbsoluteIndex >= 0 ? Math.floor(selectedAbsoluteIndex / pageSize) : void 0;
   const pageCount = Math.max(1, Math.ceil(sorted.length / pageSize));
   const page = clamp(Math.floor(pageForSelection ?? state.page ?? 0), 0, pageCount - 1);
   const start = page * pageSize;
-  const pageRows = sorted.slice(start, start + pageSize);
+  const pageRows = copyDataTablePageRows(sorted, start, pageSize);
   const selectedIndex = selectedAbsoluteIndex >= start && selectedAbsoluteIndex < start + pageRows.length ? selectedAbsoluteIndex - start : clampSelectionIndex(pageRows.length, state.selectedIndex ?? 0);
   const selectedRow = pageRows[selectedIndex];
   return {
@@ -8235,6 +8259,14 @@ function createDataTableView(rows2, columns, state = {}, rowKey) {
     selectedKey: selectedRow && rowKey ? rowKey(selectedRow, start + selectedIndex) : void 0,
     selectedRow
   };
+}
+function copyDataTablePageRows(rows2, start, pageSize) {
+  const count = Math.max(0, Math.min(pageSize, rows2.length - start));
+  const pageRows = new Array(count);
+  for (let index = 0; index < count; index += 1) {
+    pageRows[index] = rows2[start + index];
+  }
+  return pageRows;
 }
 var DataTableController = class {
   rows;
