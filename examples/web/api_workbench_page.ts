@@ -114,6 +114,7 @@ import {
 import { createHtmlCssLayoutDemo, htmlCssLayoutDemoBoxLabel } from "../../src/markup/demo_fixtures.ts";
 import { DiagnosticsCollector } from "../../src/runtime/diagnostics.ts";
 import { StorageFallbackDiagnostics } from "../../src/runtime/storage_diagnostics.ts";
+import { type TerminalWorkspacePaneRect, terminalWorkspacePaneRects } from "../../src/runtime/terminal_workspace.ts";
 import type { Rectangle } from "../../src/types.ts";
 import { makeStyle } from "../../app/styles.ts";
 
@@ -135,12 +136,22 @@ type Hit =
   | { type: "explorerRow"; index: number }
   | { type: "logScrollbar" }
   | { type: "terminalAction"; action: WebTerminalAction }
+  | { type: "terminalPane"; id: string }
   | { type: "terminalSession"; id: string }
   | { type: "workspaceScrollbar" };
 type ControlHitAction = "previous" | "next" | "activate" | "set" | "focus" | "toggle";
 type ButtonTone = "default" | "danger" | "warning" | "success" | "muted";
 type MobileAction = "next" | "controls" | "theme" | "help" | "restore" | "wide" | "dense";
-type WebTerminalAction = "new" | "previous" | "next" | "close" | "restart";
+type WebTerminalAction =
+  | "new"
+  | "previous"
+  | "next"
+  | "close"
+  | "splitRow"
+  | "splitColumn"
+  | "zoomPane"
+  | "closePane"
+  | "restart";
 
 interface DropdownOverlay {
   kind: "theme" | "control";
@@ -227,14 +238,15 @@ const log = new Signal<string[]>(
   { deepObserve: true },
 );
 subscribeWorkbenchDiagnosticLog(webDiagnostics, push);
-const webTerminalScreen = new TerminalScreenController({ columns: 80, rows: 12, scrollbackLimit: 64 });
 const webTerminalWorkspace = createTerminalWorkspaceController({
   ...(initialWorkspace.terminal ?? defaultWebTerminalWorkspaceSnapshot()),
 });
 webTerminalWorkspace.activeId.subscribe(persistWebWorkspaceState);
 webTerminalWorkspace.sessions.subscribe(persistWebWorkspaceState);
 webTerminalWorkspace.layout.subscribe(persistWebWorkspaceState);
-let webTerminalScreenKey = "";
+const webTerminalScreens = new Map<string, TerminalScreenController>();
+const webTerminalScreenKeys = new Map<string, string>();
+const webTerminalPaneRects: TerminalWorkspacePaneRect[] = [];
 const hitTargets = new HitTargetStack<Hit>();
 const screenRows: string[] = [];
 const workspaceVirtualRows: string[] = [];
@@ -248,6 +260,10 @@ const webTerminalButtonItems: WorkbenchButtonRowItem<WebTerminalAction>[] = [
   { label: "Prev", action: "previous", tone: "muted" },
   { label: "Next", action: "next", tone: "muted" },
   { label: "Close", action: "close", tone: "danger" },
+  { label: "Split H", action: "splitRow" },
+  { label: "Split V", action: "splitColumn" },
+  { label: "Zoom", action: "zoomPane" },
+  { label: "Close Pane", action: "closePane", tone: "danger" },
   { label: "Restart", action: "restart", tone: "warning" },
 ];
 const webTerminalButtonPlacements: WorkbenchButtonRowPlacement<WebTerminalAction>[] = [];
@@ -987,15 +1003,14 @@ function renderTerminalProtocol(frame: string[], rect: Rectangle): void {
     width: rect.width,
     height: Math.min(screenHeight, Math.max(0, rect.height - 5)),
   };
-  syncWebTerminalScreen(screenRect.width, screenRect.height);
-
-  const inspection = webTerminalScreen.inspect();
   const workspace = webTerminalWorkspace.inspect();
+  const activeScreen = syncWebTerminalScreen(workspace.activeId, screenRect.width, screenRect.height);
+  const inspection = activeScreen.inspect();
   const headerRows = [
     "REMOTE TERMINAL / BROWSER SHELL MODEL",
     `active ${
       workspace.active?.title ?? "none"
-    }  screen ${inspection.columns}x${inspection.rows}  cursor ${inspection.cursor.column},${inspection.cursor.row}  sessions ${workspace.count}`,
+    }  screen ${inspection.columns}x${inspection.rows}  cursor ${inspection.cursor.column},${inspection.cursor.row}  sessions ${workspace.count}  panes ${workspace.layout.count}`,
   ];
   const headerRowCount = Math.min(2, rect.height);
   for (let index = 0; index < headerRowCount; index += 1) {
@@ -1008,21 +1023,7 @@ function renderTerminalProtocol(frame: string[], rect: Rectangle): void {
   renderTerminalToolbar(frame, { column: rect.column, row: rect.row + 3, width: rect.width, height: 1 }, workspace);
 
   fillRect(frame, screenRect, t.background);
-  const rows = webTerminalScreen.textRows();
-  const screenRowCount = Math.min(rows.length, screenRect.height);
-  for (let index = 0; index < screenRowCount; index += 1) {
-    const line = rows[index]!;
-    write(frame, screenRect.row + index, screenRect.column, paint(fit(line, screenRect.width), t.text, t.background));
-  }
-  const cursor = webTerminalScreen.cursor;
-  if (cursor.row < screenRect.height && cursor.column < screenRect.width) {
-    write(
-      frame,
-      screenRect.row + cursor.row,
-      screenRect.column + cursor.column,
-      paint(" ", t.background, t.accent, true),
-    );
-  }
+  renderWebTerminalPanes(frame, screenRect, workspace);
 
   const footerRow = rect.row + rect.height - 1;
   if (footerRow >= screenRect.row) {
@@ -1041,7 +1042,9 @@ function renderTerminalToolbar(
   webTerminalButtonItems[1]!.disabled = workspace.sessions.length < 2;
   webTerminalButtonItems[2]!.disabled = workspace.sessions.length < 2;
   webTerminalButtonItems[3]!.disabled = workspace.sessions.length <= 1;
-  webTerminalButtonItems[4]!.disabled = !workspace.activeId;
+  webTerminalButtonItems[6]!.active = workspace.layout.zoomedPaneId !== undefined;
+  webTerminalButtonItems[7]!.disabled = workspace.layout.count < 2;
+  webTerminalButtonItems[8]!.disabled = !workspace.activeId;
   layoutWorkbenchButtonRowInto(webTerminalButtonPlacements, webTerminalButtonItems, rect, rect.row);
   for (const placement of webTerminalButtonPlacements) {
     const written = writeButton(frame, placement.rect.row, placement.rect.column, placement.item.label, {
@@ -1094,16 +1097,90 @@ function renderTerminalSessionTabs(frame: string[], rect: Rectangle): void {
   }
 }
 
-function syncWebTerminalScreen(width: number, height: number): void {
+function renderWebTerminalPanes(
+  frame: string[],
+  rect: Rectangle,
+  workspace = webTerminalWorkspace.inspect(),
+): void {
+  if (rect.width <= 0 || rect.height <= 0) return;
+  webTerminalPaneRects.length = 0;
+  for (const entry of terminalWorkspacePaneRects(workspace.layout, rect, { gap: 1 })) {
+    webTerminalPaneRects.push(entry);
+  }
+  if (webTerminalPaneRects.length === 0) {
+    renderWebTerminalPane(frame, rect, workspace.activeId, undefined, true);
+    return;
+  }
+  for (const entry of webTerminalPaneRects) {
+    renderWebTerminalPane(frame, entry.rect, entry.pane.sessionId, entry, entry.active);
+  }
+}
+
+function renderWebTerminalPane(
+  frame: string[],
+  rect: Rectangle,
+  sessionId: string | undefined,
+  pane: TerminalWorkspacePaneRect | undefined,
+  activePane: boolean,
+): void {
+  if (rect.width <= 0 || rect.height <= 0) return;
+  const t = theme();
+  fillRect(frame, rect, activePane ? t.background : t.surface);
+  let content = rect;
+  if (pane && rect.height > 2) {
+    const session = webTerminalWorkspace.inspect().sessions.find((entry) => entry.id === pane.pane.sessionId);
+    const title = `${activePane ? ">" : " "} ${pane.pane.title ?? session?.title ?? pane.pane.sessionId}`;
+    const bg = activePane ? t.accentDeep : t.panelSoft;
+    write(
+      frame,
+      rect.row,
+      rect.column,
+      paint(fit(title, rect.width), activePane ? contrastText(bg, t.background, t.text) : t.soft, bg, activePane),
+    );
+    hitTargets.add({ column: rect.column, row: rect.row, width: rect.width, height: 1 }, {
+      type: "terminalPane",
+      id: pane.pane.id,
+    });
+    content = { column: rect.column, row: rect.row + 1, width: rect.width, height: rect.height - 1 };
+  }
+  const screen = syncWebTerminalScreen(sessionId, content.width, content.height);
+  const rows = screen.textRows();
+  const screenRowCount = Math.min(rows.length, content.height);
+  for (let index = 0; index < screenRowCount; index += 1) {
+    const line = rows[index]!;
+    write(
+      frame,
+      content.row + index,
+      content.column,
+      paint(fit(line, content.width), t.text, activePane ? t.background : t.surface),
+    );
+  }
+  const cursor = screen.cursor;
+  if (activePane && cursor.row < content.height && cursor.column < content.width) {
+    write(
+      frame,
+      content.row + cursor.row,
+      content.column + cursor.column,
+      paint(" ", t.background, t.accent, true),
+    );
+  }
+}
+
+function syncWebTerminalScreen(sessionId: string | undefined, width: number, height: number): TerminalScreenController {
   const columns = Math.max(20, Math.floor(width));
   const rows = Math.max(3, Math.floor(height));
-  const activeSession = webTerminalWorkspace.active;
-  const key = `${columns}x${rows}:${theme().id}:${activeSession?.id ?? "none"}`;
-  if (key === webTerminalScreenKey) return;
-  webTerminalScreenKey = key;
-  webTerminalScreen.resize(columns, rows);
-  webTerminalScreen.clear();
-  const transcript = activeSession?.id === "remote-attach"
+  const safeId = sessionId ?? "none";
+  let screen = webTerminalScreens.get(safeId);
+  if (!screen) {
+    screen = new TerminalScreenController({ columns, rows, scrollbackLimit: 64 });
+    webTerminalScreens.set(safeId, screen);
+  }
+  const key = `${columns}x${rows}:${theme().id}:${safeId}`;
+  if (key === webTerminalScreenKeys.get(safeId)) return screen;
+  webTerminalScreenKeys.set(safeId, key);
+  screen.resize(columns, rows);
+  screen.clear();
+  const transcript = safeId === "remote-attach"
     ? [
       "\x1b[1mremote-attach\x1b[0m:\x1b[34m~/deno_tui\x1b[0m$ connect ws://localhost:8787/terminal",
       "\x1b[33mwaiting for explicit endpoint\x1b[0m",
@@ -1114,7 +1191,7 @@ function syncWebTerminalScreen(width: number, height: number): void {
       "",
       "\x1b[1mremote-attach\x1b[0m$ _",
     ]
-    : activeSession?.id === "ci-task"
+    : safeId === "ci-task"
     ? [
       "\x1b[1mci-task\x1b[0m:\x1b[34m~/deno_tui\x1b[0m$ deno task health",
       "Check scripts/health.ts",
@@ -1136,7 +1213,8 @@ function syncWebTerminalScreen(width: number, height: number): void {
       "",
       "\x1b[1mweb-shell\x1b[0m:\x1b[34m~/deno_tui\x1b[0m$ _",
     ];
-  webTerminalScreen.write(transcript.join("\r\n"));
+  screen.write(transcript.join("\r\n"));
+  return screen;
 }
 
 function applyWebTerminalAction(action: WebTerminalAction): void {
@@ -1168,13 +1246,45 @@ function applyWebTerminalAction(action: WebTerminalAction): void {
       webTerminalWorkspace.remove(inspection.activeId);
       push("terminal session closed");
     }
+  } else if (action === "splitRow" || action === "splitColumn") {
+    const id = nextWebTerminalSessionId();
+    const title = webTerminalSessionTitle(id);
+    const descriptor = webTerminalWorkspace.add({
+      id,
+      title,
+      kind: "command",
+      command: "web-shell",
+      metadata: { source: "browser-demo" },
+    }, {
+      activate: false,
+      backendId: "browser-mock",
+      status: "running",
+      running: true,
+    });
+    webTerminalWorkspace.splitActive(action === "splitRow" ? "row" : "column", descriptor.id, {
+      title: descriptor.title,
+    });
+    webTerminalWorkspace.activate(descriptor.id);
+    push(`terminal split ${title}`);
+  } else if (action === "zoomPane") {
+    const paneId = webTerminalWorkspace.inspect().layout.activePaneId;
+    if (paneId) {
+      webTerminalWorkspace.toggleZoomPane(paneId);
+      push("terminal pane zoom");
+    }
+  } else if (action === "closePane") {
+    const layout = webTerminalWorkspace.inspect().layout;
+    if (layout.activePaneId && layout.count > 1) {
+      webTerminalWorkspace.closePane(layout.activePaneId);
+      push("terminal pane closed");
+    }
   } else if (action === "restart") {
     if (inspection.activeId) {
       webTerminalWorkspace.restart(inspection.activeId);
       push(`terminal restart ${webTerminalWorkspace.active?.title ?? inspection.activeId}`);
     }
   }
-  webTerminalScreenKey = "";
+  webTerminalScreenKeys.clear();
   active.value = "terminal";
 }
 
@@ -1267,9 +1377,15 @@ function applyHit(target: HitTarget<Hit>, x: number, y: number): void {
     active.value = "logs";
   } else if (hit.type === "terminalSession") {
     webTerminalWorkspace.activate(hit.id);
-    webTerminalScreenKey = "";
+    webTerminalScreenKeys.clear();
     active.value = "terminal";
     push(`terminal session ${hit.id}`);
+  } else if (hit.type === "terminalPane") {
+    if (webTerminalWorkspace.activatePane(hit.id)) {
+      webTerminalScreenKeys.clear();
+      active.value = "terminal";
+      push("terminal pane active");
+    }
   } else if (hit.type === "terminalAction") {
     applyWebTerminalAction(hit.action);
   } else if (hit.type === "workspaceScrollbar") {
@@ -2356,7 +2472,7 @@ function applyWebTerminalWorkspaceSnapshot(snapshot: TerminalWorkspaceSnapshot):
   webTerminalWorkspace.sessions.value = restored.sessions;
   webTerminalWorkspace.activeId.value = restored.activeId;
   webTerminalWorkspace.layout.value = restored.layout;
-  webTerminalScreenKey = "";
+  webTerminalScreenKeys.clear();
 }
 
 function defaultWebTerminalWorkspaceSnapshot(): Pick<TerminalWorkspaceSnapshot, "activeId" | "sessions" | "layout"> {

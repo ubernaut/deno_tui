@@ -131,3 +131,6 @@ developer workflows.
 - Added console Workbench Shell split-pane rendering backed by the existing terminal workspace layout tree. Split
   controls now create fresh live shell sessions, render multiple panes with active-pane headers, support pane focus,
   zoom, and close-pane controls, and preserve raw input/copy mode for the active pane.
+- Added matching browser workbench split-pane rendering for the remote terminal demo. The static GitHub Pages workbench
+  now projects the shared terminal workspace pane tree, renders independent browser-safe mock screens per session,
+  supports split/zoom/close-pane toolbar actions, and lets pointer selection activate panes.
