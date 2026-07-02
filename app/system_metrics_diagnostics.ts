@@ -11,13 +11,12 @@ export interface ProcessDiagnosticsInput {
 export function compactDiagnostics(
   diagnostics: Array<SystemMetricDiagnostic | undefined>,
 ): SystemMetricDiagnostic[] {
-  return diagnostics
-    .filter((diagnostic): diagnostic is SystemMetricDiagnostic => diagnostic !== undefined)
-    .sort((left, right) => {
-      const leftWeight = diagnosticWeight(left.status);
-      const rightWeight = diagnosticWeight(right.status);
-      return rightWeight - leftWeight || left.source.localeCompare(right.source);
-    });
+  const compacted: SystemMetricDiagnostic[] = [];
+  for (let index = 0; index < diagnostics.length; index += 1) {
+    const diagnostic = diagnostics[index];
+    if (diagnostic) insertDiagnostic(compacted, diagnostic);
+  }
+  return compacted;
 }
 
 export function processDiagnostics(sample: ProcessDiagnosticsInput, sampledAt: number): SystemMetricDiagnostic {
@@ -70,4 +69,17 @@ function diagnosticWeight(status: SystemMetricDiagnostic["status"]): number {
     case "ok":
       return 1;
   }
+}
+
+function insertDiagnostic(target: SystemMetricDiagnostic[], diagnostic: SystemMetricDiagnostic): void {
+  let index = 0;
+  while (index < target.length && compareDiagnostics(diagnostic, target[index]!) >= 0) {
+    index += 1;
+  }
+  target.splice(index, 0, diagnostic);
+}
+
+function compareDiagnostics(left: SystemMetricDiagnostic, right: SystemMetricDiagnostic): number {
+  const weight = diagnosticWeight(right.status) - diagnosticWeight(left.status);
+  return weight || left.source.localeCompare(right.source);
 }
