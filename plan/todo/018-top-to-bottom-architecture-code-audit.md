@@ -313,6 +313,8 @@ Work:
         and selection copying to avoid spread/slice/map/filter churn in shell copy mode.
   - [x] Reworked WindowManagerController id/open-window lookup, active/fullscreen repair, and minimize/close focus
         fallback paths around explicit helper scans without changing tiling geometry.
+  - [x] Reworked workbench shelf and fullscreen tab layout to derive button labels and state in one pass instead of
+        mapping source entries into intermediate button descriptors each redraw.
   - [x] Reworked TerminalWorkspaceController session id lookups, mutation indices, active inspection lookup, close-pane
         fallback, and session reordering to avoid repeated find/some/findIndex and spread/splice paths.
   - [x] Reworked terminal workspace descriptor duplication to populate id sets directly instead of mapping session ids.

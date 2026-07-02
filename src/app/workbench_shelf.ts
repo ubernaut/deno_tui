@@ -58,7 +58,8 @@ export function layoutWorkbenchShelf<TId extends string>(
     column: options.column,
     width: options.width,
     prefix: options.prefix ?? "minimized ",
-    entries: options.entries.map((entry) => ({ ...entry, selected: false, hidden: true })),
+    entries: options.entries,
+    mode: "shelf",
   });
 }
 
@@ -71,12 +72,8 @@ export function layoutWorkbenchTabs<TId extends string>(
     column: options.column,
     width: options.width,
     prefix: options.prefix ?? "windows ",
-    entries: options.tabs.map((tab) => ({
-      ...tab,
-      title: `${tab.selected ? "●" : tab.hidden ? "○" : " "} ${tab.title}`,
-      selected: tab.selected === true,
-      hidden: tab.hidden === true,
-    })),
+    entries: options.tabs,
+    mode: "tabs",
   });
 }
 
@@ -86,7 +83,8 @@ function layoutButtonRow<TId extends string>(
     column: number;
     width: number;
     prefix: string;
-    entries: ReadonlyArray<WorkbenchTabSource<TId>>;
+    entries: ReadonlyArray<WorkbenchShelfSource<TId> | WorkbenchTabSource<TId>>;
+    mode: "shelf" | "tabs";
   },
 ): WorkbenchShelfLayout<TId> {
   const right = options.column + Math.max(0, options.width);
@@ -96,15 +94,19 @@ function layoutButtonRow<TId extends string>(
 
   for (const entry of options.entries) {
     if (column >= right) break;
+    const tab = entry as WorkbenchTabSource<TId>;
+    const selected = options.mode === "tabs" && tab.selected === true;
+    const hidden = options.mode === "shelf" || (options.mode === "tabs" && tab.hidden === true);
+    const label = options.mode === "tabs" ? `${selected ? "●" : hidden ? "○" : " "} ${entry.title}` : entry.title;
     const available = Math.max(0, right - column);
-    const width = Math.min(textWidth(buttonText(entry.title)), available);
+    const width = Math.min(textWidth(buttonText(label)), available);
     if (width <= 0) break;
     buttons.push({
       id: entry.id,
-      label: entry.title,
+      label,
       rect: { column, row: options.row, width, height: 1 },
-      selected: entry.selected === true,
-      hidden: entry.hidden === true,
+      selected,
+      hidden,
     });
     column += width + 1;
   }
