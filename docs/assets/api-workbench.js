@@ -3547,7 +3547,7 @@ var ThreeAsciiAnsiGridAssembler = class {
     let cell = this.cellCache.get(cellKey);
     if (cell !== void 0) return cell;
     if (isSolidBlockFillGlyphKey(glyphKey)) {
-      cell = `${rgbToAnsiBackground(foregroundRed, foregroundGreen, foregroundBlue)} ${RESET}`;
+      cell = `${rgbToAnsiBackground(foregroundRed, foregroundGreen, foregroundBlue)}${rgbToAnsiForeground(foregroundRed, foregroundGreen, foregroundBlue)}\u2588${RESET}`;
       this.cellCache.set(cellKey, cell);
       return cell;
     }

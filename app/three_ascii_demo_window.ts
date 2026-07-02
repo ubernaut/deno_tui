@@ -20,7 +20,7 @@ export interface ThreeAsciiDemoWindowOptions {
 
 export type ThreeAsciiDemoTitlebarControl = "minimize" | "maximize" | "restore" | "close";
 
-export const THREE_ASCII_DEMO_WINDOW_CONTROL_TEXT = "[-] [□] [↺] [x]";
+export const THREE_ASCII_DEMO_WINDOW_CONTROL_TEXT = "[-] [+] [r] [x]";
 export const THREE_ASCII_DEMO_WINDOW_CONTROL_WIDTH = 15;
 
 /** Returns whether the standalone Three ASCII side panel should reserve layout space. */

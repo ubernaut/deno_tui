@@ -116,3 +116,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   same text and hit geometry projection.
 - Added a Three ASCII renderer uniform dirty flag and benchmark guard so unchanged frames skip redundant compute uniform
   buffer uploads.
+- Strengthened Three ASCII block-mode output to paint solid cells with matching truecolor foreground/background full
+  blocks, and made standalone renderer window controls ASCII-safe and high contrast.

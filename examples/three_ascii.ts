@@ -315,7 +315,7 @@ new Text({
 
 new Text({
   parent: tui,
-  theme: { base: crayon.bgBlack.white.bold },
+  theme: { base: crayon.bgWhite.black.bold },
   text: new Computed<string>(() =>
     threeAsciiDemoControlRect(renderWindowRectangle.value).width > 0 ? THREE_ASCII_DEMO_WINDOW_CONTROL_TEXT : ""
   ),
