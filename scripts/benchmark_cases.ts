@@ -158,8 +158,9 @@ for (let index = 0; index < 24; index += 1) {
   terminalWorkspaceBenchmark.add({
     id: `shell-${index}`,
     title: `Shell ${index}`,
+    kind: "command",
+    command: "bash",
     cwd: `/tmp/work-${index % 4}`,
-    template: { kind: "spawn", command: "bash", cwd: `/tmp/work-${index % 4}` },
   });
   if (index > 0) {
     terminalWorkspaceBenchmark.splitActive(index % 2 === 0 ? "row" : "column", `shell-${index}`);

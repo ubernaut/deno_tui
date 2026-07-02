@@ -5884,26 +5884,47 @@ function measureNodeIntrinsicBase(node, availableWidth, defaultTextHeight, measu
   if (node.style.display === "flex" && node.style.flexDirection === "row") {
     let width2 = 0;
     let height2 = defaultTextHeight;
+    let count2 = 0;
+    const gap2 = Math.max(0, node.style.columnGap || node.style.gap);
     for (const child of node.children) {
-      const childSize = measureNodeIntrinsic(child, availableWidth, defaultTextHeight, measurementCache);
+      if (!participatesInLayout(child)) continue;
+      const childSize = childLayoutIntrinsicSize(child, availableWidth, defaultTextHeight, measurementCache);
       width2 += childSize.width;
       height2 = Math.max(height2, childSize.height);
+      count2 += 1;
     }
     return {
-      width: width2 + Math.max(0, node.children.length - 1) * node.style.columnGap,
+      width: width2 + Math.max(0, count2 - 1) * gap2,
       height: height2
     };
   }
   let width = 1;
   let height = 0;
+  let count = 0;
+  const gap = Math.max(0, node.style.rowGap || node.style.gap);
   for (const child of node.children) {
-    const childSize = measureNodeIntrinsic(child, availableWidth, defaultTextHeight, measurementCache);
+    if (!participatesInLayout(child)) continue;
+    const childSize = childLayoutIntrinsicSize(child, availableWidth, defaultTextHeight, measurementCache);
     width = Math.max(width, childSize.width);
+    if (count > 0) height += gap;
     height += Math.max(defaultTextHeight, childSize.height);
+    count += 1;
   }
   return {
     width,
-    height
+    height: count === 0 ? defaultTextHeight : height
+  };
+}
+function participatesInLayout(node) {
+  return node.style.display !== "none" && node.style.position !== "absolute";
+}
+function childLayoutIntrinsicSize(node, availableWidth, defaultTextHeight, measurementCache) {
+  const measured = measureNodeIntrinsic(node, availableWidth, defaultTextHeight, measurementCache);
+  const width = node.style.width.unit === "auto" ? measured.width : resolveLayoutLength(node.style.width, availableWidth, measured.width);
+  const height = node.style.height.unit === "auto" ? measured.height : resolveLayoutLength(node.style.height, Math.max(defaultTextHeight, measured.height), measured.height);
+  return {
+    width: Math.max(0, width),
+    height: Math.max(defaultTextHeight, height)
   };
 }
 function measureTextIntrinsic(text, availableWidth, defaultTextHeight) {
@@ -11799,7 +11820,7 @@ function createTerminalWorkspacePaneNode(sessionId, root2, options = {}) {
   };
 }
 function terminalWorkspaceLayoutWithActive(layout, sessionId) {
-  const pane = findTerminalWorkspacePaneBySession(layout.root, sessionId) ?? firstTerminalWorkspacePane(layout.root);
+  const pane = findTerminalWorkspacePaneBySessionRef(layout.root, sessionId) ?? firstTerminalWorkspacePaneRef(layout.root);
   return {
     root: layout.root ? cloneTerminalWorkspaceLayoutNode(layout.root) : void 0,
     activePaneId: pane?.id,
@@ -11843,27 +11864,14 @@ function pruneTerminalWorkspaceLayoutSessions(layout, sessionIds) {
   const root2 = pruneLayoutNode(layout.root, sessionIds);
   return {
     root: root2,
-    activePaneId: layout.activePaneId && findTerminalWorkspacePane(root2, layout.activePaneId) ? layout.activePaneId : void 0,
-    zoomedPaneId: layout.zoomedPaneId && findTerminalWorkspacePane(root2, layout.zoomedPaneId) ? layout.zoomedPaneId : void 0
+    activePaneId: layout.activePaneId && findTerminalWorkspacePaneRef(root2, layout.activePaneId) ? layout.activePaneId : void 0,
+    zoomedPaneId: layout.zoomedPaneId && findTerminalWorkspacePaneRef(root2, layout.zoomedPaneId) ? layout.zoomedPaneId : void 0
   };
 }
 function collectTerminalWorkspacePanes(node) {
   const panes = [];
   collectTerminalWorkspacePanesInto(node, panes);
   return panes;
-}
-function findTerminalWorkspacePane(node, paneId) {
-  if (!node) return void 0;
-  if (node.kind === "pane") return node.id === paneId ? cloneTerminalWorkspacePaneNode(node) : void 0;
-  return findTerminalWorkspacePane(node.first, paneId) ?? findTerminalWorkspacePane(node.second, paneId);
-}
-function findTerminalWorkspacePaneBySession(node, sessionId) {
-  if (!node) return void 0;
-  if (node.kind === "pane") return node.sessionId === sessionId ? cloneTerminalWorkspacePaneNode(node) : void 0;
-  return findTerminalWorkspacePaneBySession(node.first, sessionId) ?? findTerminalWorkspacePaneBySession(node.second, sessionId);
-}
-function findActiveTerminalWorkspacePane(layout) {
-  return layout.activePaneId ? findTerminalWorkspacePane(layout.root, layout.activePaneId) : firstTerminalWorkspacePane(layout.root);
 }
 function replaceTerminalWorkspacePane(node, paneId, replacement) {
   if (node.kind === "pane") {
@@ -11995,10 +12003,20 @@ function collectTerminalWorkspacePanesInto(node, panes) {
   collectTerminalWorkspacePanesInto(node.first, panes);
   collectTerminalWorkspacePanesInto(node.second, panes);
 }
-function firstTerminalWorkspacePane(node) {
+function findTerminalWorkspacePaneRef(node, paneId) {
   if (!node) return void 0;
-  if (node.kind === "pane") return cloneTerminalWorkspacePaneNode(node);
-  return firstTerminalWorkspacePane(node.first) ?? firstTerminalWorkspacePane(node.second);
+  if (node.kind === "pane") return node.id === paneId ? node : void 0;
+  return findTerminalWorkspacePaneRef(node.first, paneId) ?? findTerminalWorkspacePaneRef(node.second, paneId);
+}
+function findTerminalWorkspacePaneBySessionRef(node, sessionId) {
+  if (!node) return void 0;
+  if (node.kind === "pane") return node.sessionId === sessionId ? node : void 0;
+  return findTerminalWorkspacePaneBySessionRef(node.first, sessionId) ?? findTerminalWorkspacePaneBySessionRef(node.second, sessionId);
+}
+function firstTerminalWorkspacePaneRef(node) {
+  if (!node) return void 0;
+  if (node.kind === "pane") return node;
+  return firstTerminalWorkspacePaneRef(node.first) ?? firstTerminalWorkspacePaneRef(node.second);
 }
 function findNearestTerminalWorkspaceSplitSearch(node, paneId) {
   if (!node) return { found: false };
@@ -12174,7 +12192,7 @@ var TerminalWorkspaceController = class {
     if (!hasTerminalSession(this.sessions.peek(), id2)) return false;
     this.activeId.value = id2;
     const layout = this.layout.peek();
-    const pane = findTerminalWorkspacePaneBySession(layout.root, id2);
+    const pane = findTerminalWorkspacePaneBySessionRef2(layout.root, id2);
     if (pane) {
       this.layout.value = {
         root: layout.root,
@@ -12201,7 +12219,7 @@ var TerminalWorkspaceController = class {
     );
     if (this.activeId.peek() === id2) {
       this.activeId.value = next[index]?.id ?? next[index - 1]?.id;
-      const pane = this.activeId.peek() ? findTerminalWorkspacePaneBySession(this.layout.peek().root, this.activeId.peek()) : void 0;
+      const pane = this.activeId.peek() ? findTerminalWorkspacePaneBySessionRef2(this.layout.peek().root, this.activeId.peek()) : void 0;
       if (pane) {
         const layout = this.layout.peek();
         this.layout.value = {
@@ -12324,7 +12342,7 @@ var TerminalWorkspaceController = class {
       this.activeId.value = sessionId;
       return cloneTerminalWorkspacePaneNode(pane);
     }
-    const activePane = options.paneId ? findTerminalWorkspacePane(current.root, options.paneId) : findActiveTerminalWorkspacePane(current);
+    const activePane = options.paneId ? findTerminalWorkspacePaneRef2(current.root, options.paneId) : findActiveTerminalWorkspacePaneRef(current);
     if (!activePane) return void 0;
     const nextPane = createTerminalWorkspacePaneNode(sessionId, current.root, options);
     const ratio = clampTerminalWorkspaceSplitRatio(options.ratio ?? 0.5);
@@ -12347,7 +12365,7 @@ var TerminalWorkspaceController = class {
     return cloneTerminalWorkspacePaneNode(nextPane);
   }
   activatePane(paneId) {
-    const pane = findTerminalWorkspacePane(this.layout.peek().root, paneId);
+    const pane = findTerminalWorkspacePaneRef2(this.layout.peek().root, paneId);
     if (!pane || !hasTerminalSession(this.sessions.peek(), pane.sessionId)) return false;
     const layout = this.layout.peek();
     this.layout.value = {
@@ -12360,16 +12378,16 @@ var TerminalWorkspaceController = class {
   }
   closePane(paneId) {
     const current = this.layout.peek();
-    if (!findTerminalWorkspacePane(current.root, paneId)) return false;
+    if (!findTerminalWorkspacePaneRef2(current.root, paneId)) return false;
     const root2 = removeTerminalWorkspacePane(current.root, paneId);
-    const panes = collectTerminalWorkspacePanes(root2);
-    const activePane = findTerminalWorkspacePaneInList(panes, current.activePaneId) ?? panes[0];
+    const activePane = current.activePaneId ? findTerminalWorkspacePaneRef2(root2, current.activePaneId) : void 0;
+    const nextActivePane = activePane ?? firstTerminalWorkspacePaneRef2(root2);
     this.layout.value = {
       root: root2,
-      activePaneId: activePane?.id,
+      activePaneId: nextActivePane?.id,
       zoomedPaneId: current.zoomedPaneId === paneId ? void 0 : current.zoomedPaneId
     };
-    if (activePane) this.activeId.value = activePane.sessionId;
+    if (nextActivePane) this.activeId.value = nextActivePane.sessionId;
     return true;
   }
   resizeSplit(splitId, ratio) {
@@ -12385,7 +12403,7 @@ var TerminalWorkspaceController = class {
   }
   resizeActiveSplit(delta) {
     const current = this.layout.peek();
-    const activePane = findActiveTerminalWorkspacePane(current);
+    const activePane = findActiveTerminalWorkspacePaneRef(current);
     if (!activePane) return false;
     const nearest = findNearestTerminalWorkspaceSplit(current.root, activePane.id);
     if (!nearest) return false;
@@ -12393,7 +12411,7 @@ var TerminalWorkspaceController = class {
     return this.resizeSplit(nearest.split.id, nextRatio);
   }
   toggleZoomPane(paneId = this.layout.peek().activePaneId) {
-    if (!paneId || !findTerminalWorkspacePane(this.layout.peek().root, paneId)) return false;
+    if (!paneId || !findTerminalWorkspacePaneRef2(this.layout.peek().root, paneId)) return false;
     const current = this.layout.peek();
     this.layout.value = {
       root: current.root,
@@ -12441,14 +12459,14 @@ function normalizeTerminalWorkspaceLayout(layout, sessions, activeId) {
       zoomedPaneId: void 0
     }, activeId);
   }
-  const activePane = pruned.activePaneId ? findTerminalWorkspacePane(pruned.root, pruned.activePaneId) : void 0;
-  const fallbackPane = activeId ? findTerminalWorkspacePaneBySession(pruned.root, activeId) : void 0;
-  const firstPane = collectTerminalWorkspacePanes(pruned.root)[0];
+  const activePane = pruned.activePaneId ? findTerminalWorkspacePaneRef2(pruned.root, pruned.activePaneId) : void 0;
+  const fallbackPane = activeId ? findTerminalWorkspacePaneBySessionRef2(pruned.root, activeId) : void 0;
+  const firstPane = firstTerminalWorkspacePaneRef2(pruned.root);
   const nextActive = activePane ?? fallbackPane ?? firstPane;
   return {
     root: pruned.root,
     activePaneId: nextActive?.id,
-    zoomedPaneId: pruned.zoomedPaneId && findTerminalWorkspacePane(pruned.root, pruned.zoomedPaneId) ? pruned.zoomedPaneId : void 0
+    zoomedPaneId: pruned.zoomedPaneId && findTerminalWorkspacePaneRef2(pruned.root, pruned.zoomedPaneId) ? pruned.zoomedPaneId : void 0
   };
 }
 function findTerminalSession(sessions, id2) {
@@ -12479,14 +12497,6 @@ function moveTerminalSession(sessions, fromIndex, toIndex) {
   }
   if (write2 < next.length) next[write2] = moved;
   return next;
-}
-function findTerminalWorkspacePaneInList(panes, id2) {
-  if (!id2) return void 0;
-  for (let index = 0; index < panes.length; index += 1) {
-    const pane = panes[index];
-    if (pane.id === id2) return pane;
-  }
-  return void 0;
 }
 function inspectTerminalWorkspaceLayout(layout, sessions) {
   const normalized = normalizeTerminalWorkspaceLayout(layout, sessions, sessions[0]?.id);
@@ -12534,6 +12544,24 @@ function removeTerminalSessionAt(sessions, index) {
     target += 1;
   }
   return next;
+}
+function findTerminalWorkspacePaneRef2(node, paneId) {
+  if (!node) return void 0;
+  if (node.kind === "pane") return node.id === paneId ? node : void 0;
+  return findTerminalWorkspacePaneRef2(node.first, paneId) ?? findTerminalWorkspacePaneRef2(node.second, paneId);
+}
+function findTerminalWorkspacePaneBySessionRef2(node, sessionId) {
+  if (!node) return void 0;
+  if (node.kind === "pane") return node.sessionId === sessionId ? node : void 0;
+  return findTerminalWorkspacePaneBySessionRef2(node.first, sessionId) ?? findTerminalWorkspacePaneBySessionRef2(node.second, sessionId);
+}
+function findActiveTerminalWorkspacePaneRef(layout) {
+  return layout.activePaneId ? findTerminalWorkspacePaneRef2(layout.root, layout.activePaneId) : firstTerminalWorkspacePaneRef2(layout.root);
+}
+function firstTerminalWorkspacePaneRef2(node) {
+  if (!node) return void 0;
+  if (node.kind === "pane") return node;
+  return firstTerminalWorkspacePaneRef2(node.first) ?? firstTerminalWorkspacePaneRef2(node.second);
 }
 
 // src/platform/types.ts
