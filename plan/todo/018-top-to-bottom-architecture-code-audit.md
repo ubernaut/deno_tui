@@ -288,6 +288,8 @@ Work:
         promise lists instead of spread/map chains across persistent app settings.
   - [x] Reworked focus application/scope snapshots and ActionBus middleware dispatch snapshots with explicit buffers,
         preserving focus restore and middleware ordering while avoiding callback/spread allocation.
+  - [x] Reworked RouteManager lookup, registration, removal, navigation, and inspection helpers to use indexed scans and
+        explicit cloned route buffers instead of map/filter/find pipelines.
 
 Acceptance checks:
 
