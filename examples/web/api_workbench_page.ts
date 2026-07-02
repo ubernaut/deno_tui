@@ -71,6 +71,7 @@ import {
   workbenchStatusLeft,
   workbenchTabEntriesInto,
   type WorkbenchTitlebarButtonKind,
+  workbenchVerticalScrollbarCellsInto,
   workbenchVerticalScrollbarRect,
   workbenchWindowLayout,
   WorkbenchWorkspaceViewportController,
@@ -261,6 +262,7 @@ const workspaceVirtualRows: string[] = [];
 const threePreviewOrbRows: string[] = [];
 const minimizedShelfEntries: Array<{ id: PanelId; title: string }> = [];
 const fullscreenTabEntries: Array<{ id: PanelId; title: string; selected?: boolean; hidden?: boolean }> = [];
+const verticalScrollbarCells: Array<{ column: number; row: number; glyph: string }> = [];
 let dropdownOverlay: DropdownOverlay | null = null;
 let pointerDrag: {
   x: number;
@@ -1426,15 +1428,13 @@ function renderWorkspaceScrollbar(frame: string[], bounds: Rectangle): void {
   const overflow = workspaceScroll.inspectOverflow();
   const rect = workbenchVerticalScrollbarRect({ bounds, visible: overflow.rows.scrollbarVisible });
   if (!rect) return;
-  const column = rect.column;
-  const thumb = overflow.rows.thumb;
   hitTargets.add(rect, { type: "workspaceScrollbar" });
-  for (let row = 0; row < bounds.height; row += 1) {
+  for (const cell of workbenchVerticalScrollbarCellsInto(verticalScrollbarCells, rect, overflow.rows.thumb)) {
     write(
       frame,
-      bounds.row + row,
-      column,
-      paint(scrollbarGlyph(row, thumb), theme().accent, theme().backgroundSoft, true),
+      cell.row,
+      cell.column,
+      paint(cell.glyph, theme().accent, theme().backgroundSoft, true),
     );
   }
 }

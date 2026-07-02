@@ -3,6 +3,8 @@ import {
   clampWorkbenchTileDensity,
   WorkbenchActiveRevealTracker,
   workbenchAdaptiveTileOptions,
+  workbenchHorizontalScrollbarCellsInto,
+  workbenchVerticalScrollbarCellsInto,
   workbenchVerticalScrollbarRect,
   workbenchWindowLayout,
   WorkbenchWorkspaceViewportController,
@@ -77,6 +79,39 @@ Deno.test("workbenchVerticalScrollbarRect locates the right-edge workspace hit r
       visible: false,
     }),
     undefined,
+  );
+});
+
+Deno.test("workbench scrollbar cell projectors use caller-owned buffers", () => {
+  const vertical: Array<{ column: number; row: number; glyph: string }> = [{ column: -1, row: -1, glyph: "x" }];
+  const verticalResult = workbenchVerticalScrollbarCellsInto(
+    vertical,
+    { column: 4, row: 2, width: 1, height: 4 },
+    { start: 1, size: 2, visible: true },
+  );
+
+  assertEquals(verticalResult, vertical);
+  assertEquals(vertical, [
+    { column: 4, row: 2, glyph: "│" },
+    { column: 4, row: 3, glyph: "█" },
+    { column: 4, row: 4, glyph: "█" },
+    { column: 4, row: 5, glyph: "│" },
+  ]);
+
+  const horizontal: Array<{ column: number; row: number; glyph: string }> = [];
+  assertEquals(
+    workbenchHorizontalScrollbarCellsInto(
+      horizontal,
+      { column: 3, row: 8, width: 5, height: 1 },
+      { start: 2, size: 2, visible: true },
+    ),
+    [
+      { column: 3, row: 8, glyph: "│" },
+      { column: 4, row: 8, glyph: "│" },
+      { column: 5, row: 8, glyph: "█" },
+      { column: 6, row: 8, glyph: "█" },
+      { column: 7, row: 8, glyph: "│" },
+    ],
   );
 });
 

@@ -1,6 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { TileLayoutOptions } from "../layout/responsive.ts";
 import type { Rectangle } from "../types.ts";
+import { scrollbarGlyph, type ScrollbarThumb } from "../components/scroll_area.ts";
 import { workbenchRevealActiveRowOffset } from "./workbench_viewport.ts";
 
 /** Options for deriving adaptive workbench tile layout defaults. */
@@ -35,6 +36,13 @@ export interface WorkbenchVerticalScrollbarRectOptions {
   bounds: Rectangle;
   visible: boolean;
   minWidth?: number;
+}
+
+/** Renderer-neutral scrollbar cell placement. */
+export interface WorkbenchScrollbarCell {
+  column: number;
+  row: number;
+  glyph: string;
 }
 
 /** Options for updating active workbench item reveal tracking. */
@@ -189,4 +197,34 @@ export function workbenchVerticalScrollbarRect(
     width: 1,
     height: bounds.height,
   };
+}
+
+/** Projects vertical scrollbar glyph cells into a caller-owned buffer. */
+export function workbenchVerticalScrollbarCellsInto<TCell extends WorkbenchScrollbarCell>(
+  cells: TCell[],
+  rect: Rectangle,
+  thumb: ScrollbarThumb,
+): TCell[] {
+  cells.length = 0;
+  if (rect.width <= 0 || rect.height <= 0) return cells;
+  const column = rect.column + rect.width - 1;
+  for (let row = 0; row < rect.height; row += 1) {
+    cells.push({ column, row: rect.row + row, glyph: scrollbarGlyph(row, thumb) } as TCell);
+  }
+  return cells;
+}
+
+/** Projects horizontal scrollbar glyph cells into a caller-owned buffer. */
+export function workbenchHorizontalScrollbarCellsInto<TCell extends WorkbenchScrollbarCell>(
+  cells: TCell[],
+  rect: Rectangle,
+  thumb: ScrollbarThumb,
+): TCell[] {
+  cells.length = 0;
+  if (rect.width <= 0 || rect.height <= 0) return cells;
+  const row = rect.row + rect.height - 1;
+  for (let column = 0; column < rect.width; column += 1) {
+    cells.push({ column: rect.column + column, row, glyph: scrollbarGlyph(column, thumb) } as TCell);
+  }
+  return cells;
 }

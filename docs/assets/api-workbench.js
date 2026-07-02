@@ -10633,6 +10633,15 @@ function workbenchVerticalScrollbarRect(options) {
     height: bounds.height
   };
 }
+function workbenchVerticalScrollbarCellsInto(cells, rect, thumb) {
+  cells.length = 0;
+  if (rect.width <= 0 || rect.height <= 0) return cells;
+  const column = rect.column + rect.width - 1;
+  for (let row = 0; row < rect.height; row += 1) {
+    cells.push({ column, row: rect.row + row, glyph: scrollbarGlyph(row, thumb) });
+  }
+  return cells;
+}
 
 // src/app/workbench_menu.ts
 var WorkbenchTopMenuController = class {
@@ -13550,6 +13559,7 @@ var workspaceVirtualRows = [];
 var threePreviewOrbRows = [];
 var minimizedShelfEntries = [];
 var fullscreenTabEntries = [];
+var verticalScrollbarCells = [];
 var dropdownOverlay = null;
 var pointerDrag = null;
 themeIndex.subscribe((index) => persistThemeIndex(index));
@@ -14618,15 +14628,13 @@ function renderWorkspaceScrollbar(frame, bounds) {
   const overflow = workspaceScroll.inspectOverflow();
   const rect = workbenchVerticalScrollbarRect({ bounds, visible: overflow.rows.scrollbarVisible });
   if (!rect) return;
-  const column = rect.column;
-  const thumb = overflow.rows.thumb;
   hitTargets.add(rect, { type: "workspaceScrollbar" });
-  for (let row = 0; row < bounds.height; row += 1) {
+  for (const cell of workbenchVerticalScrollbarCellsInto(verticalScrollbarCells, rect, overflow.rows.thumb)) {
     write(
       frame,
-      bounds.row + row,
-      column,
-      paint(scrollbarGlyph(row, thumb), theme().accent, theme().backgroundSoft, true)
+      cell.row,
+      cell.column,
+      paint(cell.glyph, theme().accent, theme().backgroundSoft, true)
     );
   }
 }

@@ -10,7 +10,7 @@ import { MenuBarController, renderMenuBar } from "../src/components/menu_bar.ts"
 import { modalContentHeight, ModalController, renderModalRows } from "../src/components/modal.ts";
 import { ProgressBarController } from "../src/components/progressbar.ts";
 import { RadioGroupController } from "../src/components/radio_group.ts";
-import { ScrollAreaController, scrollbarGlyph, scrollbarOffsetForPointer } from "../src/components/scroll_area.ts";
+import { ScrollAreaController, scrollbarOffsetForPointer } from "../src/components/scroll_area.ts";
 import { SliderController } from "../src/components/slider.ts";
 import { renderStatusBar } from "../src/components/statusbar.ts";
 import { renderStepper, StepperController } from "../src/components/stepper.ts";
@@ -57,10 +57,12 @@ import {
   workbenchAdaptiveTileOptions,
   workbenchContentViewport,
   type WorkbenchFrame,
+  workbenchHorizontalScrollbarCellsInto,
   workbenchShelfEntriesInto,
   workbenchStatusLeft,
   workbenchTabEntriesInto,
   type WorkbenchTitlebarButtonKind,
+  workbenchVerticalScrollbarCellsInto,
   workbenchVerticalScrollbarRect,
   workbenchVisualizationIdFromWindowId,
   workbenchVisualizationWindowId,
@@ -459,6 +461,8 @@ const workspaceMenuSlice: VisibleMenuSlice = { items: [], indexes: [] };
 const workspaceMenuLabelBuffer: string[] = [];
 const minimizedShelfEntries: Array<{ id: WindowId; title: string }> = [];
 const fullscreenTabEntries: Array<{ id: WindowId; title: string; selected?: boolean; hidden?: boolean }> = [];
+const verticalScrollbarCells: Array<{ column: number; row: number; glyph: string }> = [];
+const horizontalScrollbarCells: Array<{ column: number; row: number; glyph: string }> = [];
 let dropdownOverlay: DropdownOverlay | null = null;
 let threeDragWindow: WindowId | null = null;
 let windowRenderContext: WindowRenderContext | null = null;
@@ -2634,28 +2638,26 @@ function renderWindowScrollbars(
   const t = theme();
   const overflow = scroll.inspectOverflow();
   if (overflow.rows.scrollbarVisible && viewport.height > 0) {
-    const column = inner.column + inner.width - 1;
-    const thumb = overflow.rows.thumb;
-    addHit({ column, row: viewport.row, width: 1, height: viewport.height }, { type: "windowVScrollbar", id });
-    for (let row = 0; row < viewport.height; row += 1) {
+    const rect = { column: inner.column + inner.width - 1, row: viewport.row, width: 1, height: viewport.height };
+    addHit(rect, { type: "windowVScrollbar", id });
+    for (const cell of workbenchVerticalScrollbarCellsInto(verticalScrollbarCells, rect, overflow.rows.thumb)) {
       write(
         frame,
-        viewport.row + row,
-        column,
-        paint(scrollbarGlyph(row, thumb), { fg: t.accent, bg: t.panelSoft, bold: true }),
+        cell.row,
+        cell.column,
+        paint(cell.glyph, { fg: t.accent, bg: t.panelSoft, bold: true }),
       );
     }
   }
   if (overflow.columns.scrollbarVisible && viewport.width > 0) {
-    const row = inner.row + inner.height - 1;
-    const thumb = overflow.columns.thumb;
-    addHit({ column: viewport.column, row, width: viewport.width, height: 1 }, { type: "windowHScrollbar", id });
-    for (let column = 0; column < viewport.width; column += 1) {
+    const rect = { column: viewport.column, row: inner.row + inner.height - 1, width: viewport.width, height: 1 };
+    addHit(rect, { type: "windowHScrollbar", id });
+    for (const cell of workbenchHorizontalScrollbarCellsInto(horizontalScrollbarCells, rect, overflow.columns.thumb)) {
       write(
         frame,
-        row,
-        viewport.column + column,
-        paint(scrollbarGlyph(column, thumb), { fg: t.accent, bg: t.panelSoft, bold: true }),
+        cell.row,
+        cell.column,
+        paint(cell.glyph, { fg: t.accent, bg: t.panelSoft, bold: true }),
       );
     }
   }
@@ -2857,15 +2859,13 @@ function renderWorkspaceScrollbar(frame: Frame, bounds: Rectangle): void {
   const rect = workbenchVerticalScrollbarRect({ bounds, visible: overflow.rows.scrollbarVisible });
   if (!rect) return;
   const t = theme();
-  const column = rect.column;
-  const thumb = overflow.rows.thumb;
   addHit(rect, { type: "workspaceScrollbar" });
-  for (let row = 0; row < bounds.height; row += 1) {
+  for (const cell of workbenchVerticalScrollbarCellsInto(verticalScrollbarCells, rect, overflow.rows.thumb)) {
     write(
       frame,
-      bounds.row + row,
-      column,
-      paint(scrollbarGlyph(row, thumb), { fg: t.accent, bg: t.backgroundSoft, bold: true }),
+      cell.row,
+      cell.column,
+      paint(cell.glyph, { fg: t.accent, bg: t.backgroundSoft, bold: true }),
     );
   }
 }
