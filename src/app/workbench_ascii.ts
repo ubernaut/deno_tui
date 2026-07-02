@@ -89,7 +89,8 @@ export function asciiNumericOptionRatio(values: readonly number[], value: number
 export function closestAsciiControlValueIndex(values: readonly number[], value: number): number {
   let best = 0;
   let distance = Number.POSITIVE_INFINITY;
-  for (const [index, candidate] of values.entries()) {
+  for (let index = 0; index < values.length; index += 1) {
+    const candidate = values[index]!;
     const nextDistance = Math.abs(candidate - value);
     if (nextDistance < distance) {
       best = index;
@@ -110,11 +111,14 @@ export function formatWorkbenchAsciiConfigRowText(
     return `${row.label.padEnd(labelWidth)} [<] ${asciiPresetLabel(options.preset)} [>]`;
   }
   if (row.kind === "glyphStyle") {
-    const labels = TERMINAL_GLYPH_STYLES.map((style) =>
-      style === options.terminalGlyphStyle
+    let labels = "";
+    for (let index = 0; index < TERMINAL_GLYPH_STYLES.length; index += 1) {
+      const style = TERMINAL_GLYPH_STYLES[index]!;
+      if (index > 0) labels += " ";
+      labels += style === options.terminalGlyphStyle
         ? `[${terminalGlyphStyleLabel(style)}]`
-        : ` ${terminalGlyphStyleLabel(style)} `
-    ).join(" ");
+        : ` ${terminalGlyphStyleLabel(style)} `;
+    }
     return `${row.label.padEnd(labelWidth)} ${labels}`;
   }
   if (row.kind === "toggle") {

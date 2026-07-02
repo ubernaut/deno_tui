@@ -1142,6 +1142,8 @@ Work:
         mouse-mode checks while preserving configurable host key overrides.
   - [x] Removed per-command-state `Set` allocation from theme pipeline enable/disable commands by scanning cached active
         ids directly.
+  - [x] Reworked workbench ASCII config helper formatting and closest-value lookup to avoid iterator tuple and map/join
+        allocation in modal redraw paths.
 - [x] Make demo-only assets and NGE-inspired primitives clearly separate from library APIs.
   - [x] Added `app/neon_three_catalog.ts` for supported Three scene metadata and labels, keeping demo/NGE catalog data
         separate from the monolithic scene factory and shared by visualization footers plus scene coverage tests.
