@@ -10753,6 +10753,35 @@ function workbenchButtonPaintOptions(theme2, contrast, state = "base", tone = "d
   return { fg: contrast(theme2.buttonBg, theme2.background, theme2.text), bg: theme2.buttonBg, bold: true };
 }
 
+// src/app/workbench_control_layout.ts
+function layoutWorkbenchButtonRow(items, bounds, startRow, options = {}) {
+  const gap = Math.max(0, Math.floor(options.gap ?? 1));
+  const right = bounds.column + Math.max(0, Math.floor(bounds.width));
+  const bottom = bounds.row + Math.max(0, Math.floor(bounds.height));
+  const placements = [];
+  let row = Math.max(bounds.row, Math.floor(startRow));
+  let column = bounds.column;
+  for (const item of items) {
+    if (row >= bottom || bounds.width <= 0) break;
+    const width = Math.min(textWidth(buttonText(item.label)), Math.max(0, bounds.width));
+    if (width <= 0) continue;
+    if (column > bounds.column && column + width > right) {
+      row += 1;
+      column = bounds.column;
+    }
+    if (row >= bottom) break;
+    const state = item.disabled ? "disabled" : item.active ? "active" : "base";
+    placements.push({
+      item,
+      rect: { column, row, width, height: 1 },
+      state,
+      tone: item.tone
+    });
+    column += width + gap;
+  }
+  return { placements, nextRow: Math.min(bottom, row + 1) };
+}
+
 // src/runtime/diagnostics.ts
 var DiagnosticsCollector = class {
   constructor(maxEntries = 200) {
@@ -11252,25 +11281,33 @@ function layoutWorkbenchTabs(options) {
 function layoutButtonRow(options) {
   const right = options.column + Math.max(0, options.width);
   const prefixWidth = Math.min(textWidth(options.prefix), Math.max(0, right - options.column));
-  let column = options.column + prefixWidth;
-  const buttons = [];
-  for (const entry of options.entries) {
-    if (column >= right) break;
+  const items = new Array(options.entries.length);
+  for (let index = 0; index < options.entries.length; index += 1) {
+    const entry = options.entries[index];
     const tab = entry;
     const selected = options.mode === "tabs" && tab.selected === true;
     const hidden = options.mode === "shelf" || options.mode === "tabs" && tab.hidden === true;
     const label = options.mode === "tabs" ? `${selected ? "\u25CF" : hidden ? "\u25CB" : " "} ${entry.title}` : entry.title;
-    const available = Math.max(0, right - column);
-    const width = Math.min(textWidth(buttonText(label)), available);
-    if (width <= 0) break;
-    buttons.push({
-      id: entry.id,
-      label,
-      rect: { column, row: options.row, width, height: 1 },
-      selected,
-      hidden
-    });
-    column += width + 1;
+    items[index] = { action: entry.id, label, selected, hidden };
+  }
+  const buttonBounds = {
+    column: options.column + prefixWidth,
+    row: options.row,
+    width: Math.max(0, options.width - prefixWidth),
+    height: 1
+  };
+  const placements = layoutWorkbenchButtonRow(items, buttonBounds, options.row).placements;
+  const buttons = new Array(placements.length);
+  for (let index = 0; index < placements.length; index += 1) {
+    const placement = placements[index];
+    const item = placement.item;
+    buttons[index] = {
+      id: item.action,
+      label: item.label,
+      rect: placement.rect,
+      selected: item.selected,
+      hidden: item.hidden
+    };
   }
   return {
     prefix: options.prefix,

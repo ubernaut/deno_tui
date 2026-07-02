@@ -1,7 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { Rectangle } from "../types.ts";
 import { textWidth } from "../utils/strings.ts";
-import { buttonText } from "./workbench_frame.ts";
+import { layoutWorkbenchButtonRow, type WorkbenchButtonRowItem } from "./workbench_control_layout.ts";
 
 /** Source item for minimized-window shelf buttons. */
 export interface WorkbenchShelfSource<TId extends string = string> {
@@ -133,26 +133,34 @@ function layoutButtonRow<TId extends string>(
 ): WorkbenchShelfLayout<TId> {
   const right = options.column + Math.max(0, options.width);
   const prefixWidth = Math.min(textWidth(options.prefix), Math.max(0, right - options.column));
-  let column = options.column + prefixWidth;
-  const buttons: WorkbenchShelfButton<TId>[] = [];
+  const items = new Array<ShelfButtonRowItem<TId>>(options.entries.length);
 
-  for (const entry of options.entries) {
-    if (column >= right) break;
+  for (let index = 0; index < options.entries.length; index += 1) {
+    const entry = options.entries[index]!;
     const tab = entry as WorkbenchTabSource<TId>;
     const selected = options.mode === "tabs" && tab.selected === true;
     const hidden = options.mode === "shelf" || (options.mode === "tabs" && tab.hidden === true);
     const label = options.mode === "tabs" ? `${selected ? "●" : hidden ? "○" : " "} ${entry.title}` : entry.title;
-    const available = Math.max(0, right - column);
-    const width = Math.min(textWidth(buttonText(label)), available);
-    if (width <= 0) break;
-    buttons.push({
-      id: entry.id,
-      label,
-      rect: { column, row: options.row, width, height: 1 },
-      selected,
-      hidden,
-    });
-    column += width + 1;
+    items[index] = { action: entry.id, label, selected, hidden };
+  }
+  const buttonBounds = {
+    column: options.column + prefixWidth,
+    row: options.row,
+    width: Math.max(0, options.width - prefixWidth),
+    height: 1,
+  };
+  const placements = layoutWorkbenchButtonRow(items, buttonBounds, options.row).placements;
+  const buttons = new Array<WorkbenchShelfButton<TId>>(placements.length);
+  for (let index = 0; index < placements.length; index += 1) {
+    const placement = placements[index]!;
+    const item = placement.item as ShelfButtonRowItem<TId>;
+    buttons[index] = {
+      id: item.action,
+      label: item.label,
+      rect: placement.rect,
+      selected: item.selected,
+      hidden: item.hidden,
+    };
   }
 
   return {
@@ -160,4 +168,9 @@ function layoutButtonRow<TId extends string>(
     prefixRect: { column: options.column, row: options.row, width: prefixWidth, height: 1 },
     buttons,
   };
+}
+
+interface ShelfButtonRowItem<TId extends string> extends WorkbenchButtonRowItem<TId> {
+  selected: boolean;
+  hidden: boolean;
 }
