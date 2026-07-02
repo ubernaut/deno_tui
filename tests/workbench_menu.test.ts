@@ -4,6 +4,7 @@ import {
   isWorkbenchMenuCloseKey,
   layoutWorkbenchHeader,
   layoutWorkbenchMenuBarHits,
+  layoutWorkbenchMenuBarHitsInto,
   layoutWorkbenchTopMenuItemRect,
   moveWorkbenchMenuIndex,
   WorkbenchTopMenuController,
@@ -111,6 +112,34 @@ Deno.test("layoutWorkbenchMenuBarHits returns visible menu item rectangles", () 
       { index: 1, rect: { column: 7, row: 0, width: 6, height: 1 }, token: "[View]" },
     ],
   );
+});
+
+Deno.test("layoutWorkbenchMenuBarHitsInto reuses caller-owned storage", () => {
+  const target = layoutWorkbenchMenuBarHits({
+    column: 2,
+    row: 0,
+    width: 17,
+    activeIndex: 1,
+    items: [
+      { id: "file", label: "File" },
+      { id: "view", label: "View" },
+    ],
+  });
+  const sameTarget = layoutWorkbenchMenuBarHitsInto(target, {
+    column: 4,
+    row: 2,
+    width: 20,
+    items: [
+      { id: "theme", label: "Theme" },
+      { id: "help", label: "Help", disabled: true },
+    ],
+  });
+
+  assertEquals(sameTarget === target, true);
+  assertEquals(target, [
+    { index: 0, rect: { column: 4, row: 2, width: 5, height: 1 }, token: "Theme" },
+    { index: 1, rect: { column: 10, row: 2, width: 6, height: 1 }, token: "(Help)" },
+  ]);
 });
 
 Deno.test("layoutWorkbenchHeader projects menu and close button geometry", () => {

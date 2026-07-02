@@ -34,7 +34,7 @@ import {
   isWorkbenchMenuCloseKey,
   layoutWorkbenchButtonRowInto,
   layoutWorkbenchHeader,
-  layoutWorkbenchMenuBarHits,
+  layoutWorkbenchMenuBarHitsInto,
   layoutWorkbenchModal,
   layoutWorkbenchPopover,
   layoutWorkbenchShelfInto,
@@ -83,6 +83,7 @@ import {
   workbenchEmptyWorkspaceMessage,
   type WorkbenchFrameBoxLine,
   workbenchFrameBoxLinesInto,
+  type WorkbenchMenuBarHitLayout,
   type WorkbenchPanelWorkspaceState,
   workbenchShelfEntriesInto,
   workbenchStatusLeft,
@@ -282,6 +283,7 @@ const minimizedShelfEntries: Array<{ id: PanelId; title: string }> = [];
 const fullscreenTabEntries: Array<{ id: PanelId; title: string; selected?: boolean; hidden?: boolean }> = [];
 const minimizedShelfLayoutBuffers = createWorkbenchShelfLayoutBuffers<PanelId>();
 const fullscreenTabLayoutBuffers = createWorkbenchShelfLayoutBuffers<PanelId>();
+const menuBarHitLayouts: WorkbenchMenuBarHitLayout[] = [];
 const windowFrameBoxLines: WorkbenchFrameBoxLine[] = [];
 const verticalScrollbarCells: Array<{ column: number; row: number; glyph: string }> = [];
 const webTerminalActions: readonly WebTerminalAction[] = [
@@ -718,16 +720,15 @@ function renderShelf(frame: string[]): void {
 }
 
 function renderMenuHits(column: number, row: number, width: number): void {
-  for (
-    const hit of layoutWorkbenchMenuBarHits({
-      column,
-      row,
-      width,
-      items: menu.items.peek(),
-      activeIndex: menu.activeIndex.peek(),
-      measureText: textWidth,
-    })
-  ) {
+  const hits = layoutWorkbenchMenuBarHitsInto(menuBarHitLayouts, {
+    column,
+    row,
+    width,
+    items: menu.items.peek(),
+    activeIndex: menu.activeIndex.peek(),
+    measureText: textWidth,
+  });
+  for (const hit of hits) {
     hitTargets.add(hit.rect, { type: "menu", index: hit.index });
   }
 }

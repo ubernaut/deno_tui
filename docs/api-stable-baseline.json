@@ -3910,6 +3910,13 @@
     },
     {
       "module": "src/app/workbench_menu.ts",
+      "name": "layoutWorkbenchMenuBarHitsInto",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_menu.ts",
       "name": "layoutWorkbenchTopMenuItemRect",
       "kind": "function",
       "typeOnly": false,

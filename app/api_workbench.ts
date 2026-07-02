@@ -39,7 +39,7 @@ import {
   isWorkbenchMenuActivationKey,
   isWorkbenchVisualizationWindowId,
   layoutWorkbenchHeader,
-  layoutWorkbenchMenuBarHits,
+  layoutWorkbenchMenuBarHitsInto,
   layoutWorkbenchModal,
   layoutWorkbenchPopover,
   layoutWorkbenchShelfInto,
@@ -65,6 +65,7 @@ import {
   workbenchFrameBoxLinesInto,
   workbenchHeaderHelp,
   workbenchHorizontalScrollbarCellsInto,
+  type WorkbenchMenuBarHitLayout,
   workbenchShelfEntriesInto,
   workbenchStatusLeft,
   workbenchTabEntriesInto,
@@ -597,6 +598,7 @@ const newWindowMenuLabels: string[] = [];
 const workspaceMenuSlice: VisibleMenuSlice = { items: [], indexes: [] };
 const workspaceMenuLabelBuffer: string[] = [];
 const realSourceIdBuffer: string[] = [];
+const menuBarHitLayouts: WorkbenchMenuBarHitLayout[] = [];
 const minimizedShelfEntries: Array<{ id: WindowId; title: string }> = [];
 const fullscreenTabEntries: Array<{ id: WindowId; title: string; selected?: boolean; hidden?: boolean }> = [];
 const minimizedShelfLayoutBuffers = createWorkbenchShelfLayoutBuffers<WindowId>();
@@ -1140,16 +1142,15 @@ function renderHeader(frame: Frame): void {
 }
 
 function renderMenuHits(column: number, row: number, width: number): void {
-  for (
-    const hit of layoutWorkbenchMenuBarHits({
-      column,
-      row,
-      width,
-      items: menu.items.peek(),
-      activeIndex: menu.activeIndex.peek(),
-      measureText: textWidth,
-    })
-  ) {
+  const hits = layoutWorkbenchMenuBarHitsInto(menuBarHitLayouts, {
+    column,
+    row,
+    width,
+    items: menu.items.peek(),
+    activeIndex: menu.activeIndex.peek(),
+    measureText: textWidth,
+  });
+  for (const hit of hits) {
     addHit(hit.rect, { type: "menu", index: hit.index });
   }
 }
