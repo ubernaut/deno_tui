@@ -965,6 +965,9 @@ Work:
         preserving defensive copies for public app inspection.
   - [x] Trimmed textbox word-wrap iteration by replacing iterator destructuring with indexed traversal in the visual
         line renderer.
+  - [x] Reworked terminal screen character insert/delete/erase paths to shift and blank cells in-place instead of
+        allocating temporary blank rows and spreading them into row splices, with a targeted terminal edit-churn
+        benchmark added to keep that path measured.
 - [x] Make demo-only assets and NGE-inspired primitives clearly separate from library APIs.
   - [x] Added `app/neon_three_catalog.ts` for supported Three scene metadata and labels, keeping demo/NGE catalog data
         separate from the monolithic scene factory and shared by visualization footers plus scene coverage tests.

@@ -937,6 +937,27 @@ export const benchmarkCases: BenchmarkCase[] = [
     },
   },
   {
+    name: "runtime/terminal-screen-edit-churn",
+    category: "runtime",
+    description: "Apply repeated terminal insert, delete, and erase character operations to an active screen row.",
+    tags: ["runtime", "terminal", "ansi", "screen", "editing"],
+    iterations: 500,
+    maxAverageMs: 2,
+    run: () => {
+      const screen = new TerminalScreenController({ columns: 96, rows: 12, scrollbackLimit: 32 });
+      screen.write("abcdefghijklmnopqrstuvwxyz0123456789".repeat(3));
+      for (let index = 0; index < 80; index += 1) {
+        screen.write(`\x1b[${(index % 12) + 1}G`);
+        screen.write(`\x1b[${(index % 5) + 1}@`);
+        screen.write(`\x1b[${(index % 4) + 1}P`);
+        screen.write(`\x1b[${(index % 6) + 1}X`);
+      }
+      if (screen.textRows().length !== 12) {
+        throw new Error("terminal screen edit benchmark lost rows");
+      }
+    },
+  },
+  {
     name: "data/table-select-100k",
     category: "data",
     description: "Select, reveal, page, scroll, and inspect a 100k-row table controller.",
