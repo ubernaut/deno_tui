@@ -169,21 +169,31 @@ export function queryBenchmarkCases(
   cases: readonly BenchmarkCase[],
   query: BenchmarkCatalogQuery = {},
 ): BenchmarkCaseInspection[] {
-  return cases
-    .map(inspectBenchmarkCase)
-    .filter((benchmark) => matchesBenchmarkQuery(benchmark, query))
-    .sort((left, right) =>
-      (left.category ?? "").localeCompare(right.category ?? "") || left.name.localeCompare(right.name)
-    );
+  const matches: BenchmarkCaseInspection[] = [];
+  for (const benchmark of cases) {
+    const inspection = inspectBenchmarkCase(benchmark);
+    if (matchesBenchmarkQuery(inspection, query)) matches.push(inspection);
+  }
+  return matches.sort(compareBenchmarkCaseInspections);
 }
 
 /** Aggregates benchmark catalog metadata. */
 export function inspectBenchmarkCatalog(cases: readonly BenchmarkCaseInspection[]): BenchmarkCatalogInspection {
+  let thresholded = 0;
+  const categories = new Set<string>();
+  const tags = new Set<string>();
+  for (const benchmark of cases) {
+    if (benchmark.thresholded) thresholded += 1;
+    if (benchmark.category !== undefined) categories.add(benchmark.category);
+    for (const tag of benchmark.tags) {
+      tags.add(tag);
+    }
+  }
   return {
     count: cases.length,
-    thresholded: cases.filter((benchmark) => benchmark.thresholded).length,
-    categories: uniqueSorted(cases.map((benchmark) => benchmark.category).filter(isString)),
-    tags: uniqueSorted(cases.flatMap((benchmark) => benchmark.tags)),
+    thresholded,
+    categories: sortedSetValues(categories),
+    tags: sortedSetValues(tags),
   };
 }
 
@@ -217,10 +227,17 @@ export function formatBenchmarkCatalogMarkdown(options: BenchmarkCatalogMarkdown
 
 /** Summarizes previously collected benchmark results. */
 export function summarizeBenchmarkResults(results: readonly BenchmarkResult[]): BenchmarkSummary {
-  const failed = results.filter((result) => !result.passed);
-  const totalMs = results.reduce((total, result) => total + result.totalMs, 0);
+  let totalMs = 0;
+  const failed: BenchmarkResult[] = [];
+  const clonedResults = new Array<BenchmarkResult>(results.length);
+  for (let index = 0; index < results.length; index += 1) {
+    const result = results[index]!;
+    clonedResults[index] = result;
+    totalMs += result.totalMs;
+    if (!result.passed) failed.push(result);
+  }
   return {
-    results: [...results],
+    results: clonedResults,
     passed: failed.length === 0,
     failed,
     totalMs,
@@ -230,13 +247,14 @@ export function summarizeBenchmarkResults(results: readonly BenchmarkResult[]): 
 
 /** Formats benchmark results as stable text for CLI output and smoke tests. */
 export function formatBenchmarkResults(results: readonly BenchmarkResult[]): string {
-  return results
-    .map((result) =>
-      `${result.passed ? "ok" : "fail"} ${result.name}: ${
-        result.averageMs.toFixed(3)
-      }ms avg (${result.iterations} iterations, ${result.totalMs.toFixed(3)}ms total${formatThresholds(result)})`
-    )
-    .join("\n");
+  const lines = new Array<string>(results.length);
+  for (let index = 0; index < results.length; index += 1) {
+    const result = results[index]!;
+    lines[index] = `${result.passed ? "ok" : "fail"} ${result.name}: ${
+      result.averageMs.toFixed(3)
+    }ms avg (${result.iterations} iterations, ${result.totalMs.toFixed(3)}ms total${formatThresholds(result)})`;
+  }
+  return lines.join("\n");
 }
 
 /** Formats a benchmark summary with an aggregate footer for CLI reports. */
@@ -251,18 +269,16 @@ export function formatBenchmarkSummary(summary: BenchmarkSummary): string {
 }
 
 function formatThresholds(result: BenchmarkResult): string {
-  const thresholds = [
-    result.maxAverageMs === undefined ? undefined : `max avg ${result.maxAverageMs.toFixed(3)}ms`,
-    result.maxTotalMs === undefined ? undefined : `max total ${result.maxTotalMs.toFixed(3)}ms`,
-  ].filter((value): value is string => value !== undefined);
+  const thresholds: string[] = [];
+  if (result.maxAverageMs !== undefined) thresholds.push(`max avg ${result.maxAverageMs.toFixed(3)}ms`);
+  if (result.maxTotalMs !== undefined) thresholds.push(`max total ${result.maxTotalMs.toFixed(3)}ms`);
   return thresholds.length === 0 ? "" : `, ${thresholds.join(", ")}`;
 }
 
 function formatBenchmarkCaseThresholds(benchmark: BenchmarkCaseInspection): string {
-  const thresholds = [
-    benchmark.maxAverageMs === undefined ? undefined : `avg <= ${benchmark.maxAverageMs}`,
-    benchmark.maxTotalMs === undefined ? undefined : `total <= ${benchmark.maxTotalMs}`,
-  ].filter(isString);
+  const thresholds: string[] = [];
+  if (benchmark.maxAverageMs !== undefined) thresholds.push(`avg <= ${benchmark.maxAverageMs}`);
+  if (benchmark.maxTotalMs !== undefined) thresholds.push(`total <= ${benchmark.maxTotalMs}`);
   return thresholds.join(", ") || "-";
 }
 
@@ -271,21 +287,43 @@ function matchesBenchmarkQuery(benchmark: BenchmarkCaseInspection, query: Benchm
   if (query.tag && !benchmark.tags.includes(query.tag)) return false;
   if (query.thresholded !== undefined && benchmark.thresholded !== query.thresholded) return false;
   if (!query.search) return true;
-  const parts = query.search.trim().toLowerCase().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return true;
-  const haystack = [
-    benchmark.name,
-    benchmark.category,
-    benchmark.description,
-    ...benchmark.tags,
-  ].join(" ").toLowerCase();
-  return parts.every((part) => haystack.includes(part));
+  return benchmarkMatchesSearch(benchmark, query.search);
 }
 
-function uniqueSorted<T extends string>(values: Iterable<T>): T[] {
-  return [...new Set(values)].sort();
+function sortedSetValues<T extends string>(values: Set<T>): T[] {
+  return [...values].sort();
 }
 
-function isString(value: string | undefined): value is string {
-  return value !== undefined;
+function compareBenchmarkCaseInspections(left: BenchmarkCaseInspection, right: BenchmarkCaseInspection): number {
+  return (left.category ?? "").localeCompare(right.category ?? "") || left.name.localeCompare(right.name);
+}
+
+function benchmarkMatchesSearch(benchmark: BenchmarkCaseInspection, search: string): boolean {
+  let start = -1;
+  const normalized = search.toLowerCase();
+  for (let index = 0; index <= normalized.length; index += 1) {
+    const char = index < normalized.length ? normalized[index] : " ";
+    if (char !== undefined && !isSearchWhitespace(char)) {
+      if (start < 0) start = index;
+      continue;
+    }
+    if (start < 0) continue;
+    if (!benchmarkIncludesSearchPart(benchmark, normalized.slice(start, index))) return false;
+    start = -1;
+  }
+  return true;
+}
+
+function benchmarkIncludesSearchPart(benchmark: BenchmarkCaseInspection, part: string): boolean {
+  if (benchmark.name.toLowerCase().includes(part)) return true;
+  if (benchmark.category?.toLowerCase().includes(part)) return true;
+  if (benchmark.description?.toLowerCase().includes(part)) return true;
+  for (const tag of benchmark.tags) {
+    if (tag.toLowerCase().includes(part)) return true;
+  }
+  return false;
+}
+
+function isSearchWhitespace(char: string): boolean {
+  return char === " " || char === "\n" || char === "\t" || char === "\r" || char === "\f";
 }
