@@ -119,18 +119,37 @@ export function cssSelectorSpecificity(selector: string): number {
 
 /** Public helper for parsing selector parts from left to right. */
 export function selectorParts(selector: string): Array<{ simple: string; combinator?: "child" | "descendant" }> {
-  const tokens = selector.replace(/\s*>\s*/g, " > ").trim().split(/\s+/).filter(Boolean);
   const parts: Array<{ simple: string; combinator?: "child" | "descendant" }> = [];
   let combinator: "child" | "descendant" = "descendant";
-  for (const token of tokens) {
-    if (token === ">") {
+  let tokenStart = -1;
+  const flushToken = (end: number) => {
+    if (tokenStart < 0) return;
+    const token = selector.slice(tokenStart, end);
+    if (token.length > 0) {
+      parts.push({ simple: token, combinator: parts.length === 0 ? undefined : combinator });
+      combinator = "descendant";
+    }
+    tokenStart = -1;
+  };
+
+  for (let index = 0; index <= selector.length; index += 1) {
+    const char = index < selector.length ? selector[index] : " ";
+    if (char === ">") {
+      flushToken(index);
       combinator = "child";
       continue;
     }
-    parts.push({ simple: token, combinator: parts.length === 0 ? undefined : combinator });
-    combinator = "descendant";
+    if (char === undefined || isCssSelectorWhitespace(char)) {
+      flushToken(index);
+      continue;
+    }
+    if (tokenStart < 0) tokenStart = index;
   }
   return parts;
+}
+
+function isCssSelectorWhitespace(char: string): boolean {
+  return char === " " || char === "\n" || char === "\t" || char === "\r" || char === "\f";
 }
 
 function splitSelectorList(source: string): string[] {

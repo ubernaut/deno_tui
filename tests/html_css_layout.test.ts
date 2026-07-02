@@ -21,6 +21,7 @@ import {
   RadioGroupController,
   runMarkupLayoutInWorker,
   ScrollAreaController,
+  selectorParts,
   simpleLayoutSolver,
   SliderController,
   TabsController,
@@ -86,6 +87,19 @@ Deno.test("applyCssCascade resolves selectors variables pseudo states and inline
   assertEquals(run.style.height, { unit: "cell", value: 3 });
   assertEquals(run.style.backgroundColor, "#102030");
   assertEquals(run.style.color, "yellow");
+});
+
+Deno.test("selectorParts parses child and descendant combinators without spacing assumptions", () => {
+  assertEquals(selectorParts("window .toolbar>button:focus"), [
+    { simple: "window", combinator: undefined },
+    { simple: ".toolbar", combinator: "descendant" },
+    { simple: "button:focus", combinator: "child" },
+  ]);
+  assertEquals(selectorParts("window   panel >  button.primary"), [
+    { simple: "window", combinator: undefined },
+    { simple: "panel", combinator: "descendant" },
+    { simple: "button.primary", combinator: "child" },
+  ]);
 });
 
 Deno.test("applyCssCascade parses flex flow shorthand into direction and wrapping", () => {
