@@ -82,3 +82,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   so the default renderer launch has the same basic window affordances as the portfolio demos.
 - Extracted standalone Three ASCII demo window geometry and titlebar hit testing into a small tested helper instead of
   leaving the new window shell math embedded in the demo.
+- Extracted Three ASCII changed-cell diff state and visible rerender queueing into a reusable canvas helper with direct
+  tests, preserving the object behavior while making the frame-diff hot path easier to optimize independently.

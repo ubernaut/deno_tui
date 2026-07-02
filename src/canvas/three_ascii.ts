@@ -7,6 +7,11 @@ import type { Camera, Scene } from "npm:three@0.183.2";
 import type { AcerolaAsciiNodeOptions } from "../three_ascii/AcerolaAsciiNode.ts";
 import type { TerminalGlyphStyle } from "../three_ascii/glyphs.ts";
 import {
+  clearThreeAsciiGridDiffState,
+  createThreeAsciiGridDiffState,
+  queueChangedThreeAsciiGridCells,
+} from "./three_ascii_diff.ts";
+import {
   type ThreeAsciiImageFrame,
   ThreeAsciiRenderer,
   type ThreeAsciiRendererOptions,
@@ -73,9 +78,7 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
   private pendingEffectOptions?: Partial<AcerolaAsciiNodeOptions>;
   private pendingTerminalEdgeBias?: number;
   private pendingTerminalGlyphStyle?: TerminalGlyphStyle;
-  private previousGridCells: string[] = [];
-  private previousGridColumns = 0;
-  private previousGridRows = 0;
+  private readonly previousGrid = createThreeAsciiGridDiffState();
 
   constructor(options: ThreeAsciiObjectOptions) {
     super("three_ascii", { ...options, style: emptyStyle });
@@ -307,80 +310,18 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
   }
 
   private queueChangedGridCells(grid: string[][], rectangle: Rectangle): boolean {
-    const columns = Math.max(0, rectangle.width);
-    const rows = Math.max(0, rectangle.height);
-    const cellCount = columns * rows;
-    const cacheValid = this.previousGridColumns === columns && this.previousGridRows === rows &&
-      this.previousGridCells.length === cellCount;
-
-    if (!cacheValid) {
-      this.previousGridCells.length = cellCount;
-      this.previousGridColumns = columns;
-      this.previousGridRows = rows;
-    }
-
-    let changed = false;
-    const canvasSize = this.canvas.size.peek();
-    const viewRectangle = this.view.peek()?.rectangle?.peek();
-    const canvasColumnStart = Math.max(0, Math.floor(rectangle.column));
-    const canvasColumnEnd = Math.min(canvasSize.columns, Math.ceil(rectangle.column + columns));
-    const visibleColumnStart = viewRectangle ? Math.max(canvasColumnStart, viewRectangle.column) : canvasColumnStart;
-    const visibleColumnEnd = viewRectangle
-      ? Math.min(canvasColumnEnd, viewRectangle.column + viewRectangle.width)
-      : canvasColumnEnd;
-    const integerAligned = Number.isInteger(rectangle.column) && Number.isInteger(rectangle.row);
-
-    if (integerAligned) {
-      const rectangleColumn = rectangle.column;
-      const rectangleRow = rectangle.row;
-      const visibleGridColumnStart = Math.max(0, visibleColumnStart - rectangleColumn);
-      const visibleGridColumnEnd = Math.min(columns, visibleColumnEnd - rectangleColumn);
-      for (let row = 0; row < rows; row += 1) {
-        const outputRow = grid[row];
-        const rowOffset = row * columns;
-        const canvasRow = rectangleRow + row;
-        const rowVisible = canvasRow >= 0 && canvasRow < canvasSize.rows &&
-          (!viewRectangle || (canvasRow >= viewRectangle.row && canvasRow < viewRectangle.row + viewRectangle.height));
-        const queueRow = rowVisible ? (this.rerenderCells[canvasRow] ??= new Set<number>()) : undefined;
-
-        for (let column = 0; column < columns; column += 1) {
-          const index = rowOffset + column;
-          const cell = outputRow?.[column] ?? " ";
-          if (cacheValid && this.previousGridCells[index] === cell) continue;
-          this.previousGridCells[index] = cell;
-          if (queueRow && column >= visibleGridColumnStart && column < visibleGridColumnEnd) {
-            queueRow.add(rectangleColumn + column);
-          }
-          changed = true;
-        }
-      }
-
-      return changed;
-    }
-
-    for (let row = 0; row < rows; row += 1) {
-      const outputRow = grid[row];
-      const rowOffset = row * columns;
-      const canvasRow = rectangle.row + row;
-
-      for (let column = 0; column < columns; column += 1) {
-        const index = rowOffset + column;
-        const cell = outputRow?.[column] ?? " ";
-        if (cacheValid && this.previousGridCells[index] === cell) continue;
-        this.previousGridCells[index] = cell;
-        const canvasColumn = rectangle.column + column;
-        this.queueRerender(canvasRow, canvasColumn);
-        changed = true;
-      }
-    }
-
-    return changed;
+    return queueChangedThreeAsciiGridCells(
+      grid,
+      rectangle,
+      this.canvas.size.peek(),
+      this.rerenderCells,
+      this.previousGrid,
+      this.view.peek()?.rectangle?.peek(),
+    );
   }
 
   private clearPreviousGridCells(): void {
-    this.previousGridCells.length = 0;
-    this.previousGridColumns = 0;
-    this.previousGridRows = 0;
+    clearThreeAsciiGridDiffState(this.previousGrid);
   }
 }
 
