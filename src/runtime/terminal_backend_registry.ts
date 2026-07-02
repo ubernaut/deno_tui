@@ -58,6 +58,10 @@ export interface DefaultTerminalBackendRegistryOptions {
 export class TerminalBackendRegistry {
   readonly #providers = new Map<string, TerminalBackendProvider>();
   readonly #diagnostics?: DiagnosticsCollector;
+  #ids?: string[];
+  #providersSnapshot?: TerminalBackendProvider[];
+  #sortedProviders?: TerminalBackendProvider[];
+  #sortedPtyProviders?: TerminalBackendProvider[];
 
   constructor(
     providers: readonly TerminalBackendProvider[] = [],
@@ -69,11 +73,14 @@ export class TerminalBackendRegistry {
 
   register(provider: TerminalBackendProvider): this {
     this.#providers.set(provider.id, normalizeTerminalBackendProvider(provider));
+    this.#invalidate();
     return this;
   }
 
   unregister(id: string): boolean {
-    return this.#providers.delete(id);
+    const deleted = this.#providers.delete(id);
+    if (deleted) this.#invalidate();
+    return deleted;
   }
 
   has(id: string): boolean {
@@ -86,15 +93,21 @@ export class TerminalBackendRegistry {
   }
 
   ids(): string[] {
-    const ids: string[] = [];
-    for (const id of this.#providers.keys()) ids.push(id);
-    return ids;
+    if (!this.#ids) {
+      const ids: string[] = [];
+      for (const id of this.#providers.keys()) ids.push(id);
+      this.#ids = ids;
+    }
+    return cloneStringArray(this.#ids);
   }
 
   providers(): TerminalBackendProvider[] {
-    const providers: TerminalBackendProvider[] = [];
-    for (const provider of this.#providers.values()) providers.push(cloneTerminalBackendProvider(provider));
-    return providers;
+    if (!this.#providersSnapshot) {
+      const providers: TerminalBackendProvider[] = [];
+      for (const provider of this.#providers.values()) providers.push(cloneTerminalBackendProvider(provider));
+      this.#providersSnapshot = providers;
+    }
+    return cloneTerminalBackendProviders(this.#providersSnapshot);
   }
 
   async inspect(): Promise<TerminalBackendProviderInspection[]> {
@@ -133,13 +146,24 @@ export class TerminalBackendRegistry {
   }
 
   sortedProviders(preferPty = false): TerminalBackendProvider[] {
+    const cached = preferPty ? this.#sortedPtyProviders : this.#sortedProviders;
+    if (cached) return cloneTerminalBackendProviders(cached);
     const providers: TerminalBackendProvider[] = [];
     for (const provider of this.#providers.values()) providers.push(provider);
     providers.sort((left, right) => {
       if (preferPty && left.pty !== right.pty) return left.pty ? -1 : 1;
       return (right.priority ?? 0) - (left.priority ?? 0) || left.id.localeCompare(right.id);
     });
-    return providers;
+    if (preferPty) this.#sortedPtyProviders = providers;
+    else this.#sortedProviders = providers;
+    return cloneTerminalBackendProviders(providers);
+  }
+
+  #invalidate(): void {
+    this.#ids = undefined;
+    this.#providersSnapshot = undefined;
+    this.#sortedProviders = undefined;
+    this.#sortedPtyProviders = undefined;
   }
 }
 
@@ -221,4 +245,20 @@ function normalizeTerminalBackendProvider(provider: TerminalBackendProvider): Te
 
 function cloneTerminalBackendProvider(provider: TerminalBackendProvider): TerminalBackendProvider {
   return { ...provider };
+}
+
+function cloneTerminalBackendProviders(providers: readonly TerminalBackendProvider[]): TerminalBackendProvider[] {
+  const output = new Array<TerminalBackendProvider>(providers.length);
+  for (let index = 0; index < providers.length; index += 1) {
+    output[index] = cloneTerminalBackendProvider(
+      providers[index]!,
+    );
+  }
+  return output;
+}
+
+function cloneStringArray(values: readonly string[]): string[] {
+  const output = new Array<string>(values.length);
+  for (let index = 0; index < values.length; index += 1) output[index] = values[index]!;
+  return output;
 }
