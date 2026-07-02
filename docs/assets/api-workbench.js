@@ -3109,8 +3109,16 @@ var ThreeAsciiAnsiGridAssembler = class {
   backgroundRed = 0;
   backgroundGreen = 0;
   backgroundBlue = 0;
+  cachedColorRawRed = new Float64Array(0);
+  cachedColorRawGreen = new Float64Array(0);
+  cachedColorRawBlue = new Float64Array(0);
+  cachedColorByteKeys = new Uint32Array(0);
   stableBackgroundInput;
   hasStableBackgroundInput = false;
+  stableBackgroundColorRef;
+  stableBackgroundColorRed = Number.NaN;
+  stableBackgroundColorGreen = Number.NaN;
+  stableBackgroundColorBlue = Number.NaN;
   constructor(options = {}) {
     this.reuseGrid = options.reuseGrid ?? false;
   }
@@ -3125,7 +3133,9 @@ var ThreeAsciiAnsiGridAssembler = class {
     const terminalGlyphMode = terminalGlyphModeForStyle(terminalGlyphStyle);
     const terminalFillGlyphKeys = terminalFillGlyphKeysForMode(terminalGlyphMode);
     const terminalEdgeBias = Math.max(0.5, input2.terminalEdgeBias ?? DEFAULT_TERMINAL_EDGE_BIAS);
+    const cellCount = columns2 * rows2;
     this.setBackground(input2.backgroundColor);
+    this.prepareColorCache(cellCount);
     this.pruneCaches();
     let lastForegroundKey = -1;
     let lastGlyphKey = -1;
@@ -3188,9 +3198,10 @@ var ThreeAsciiAnsiGridAssembler = class {
           outputRow[column] = lastCell;
           continue;
         }
-        let foregroundRed = this.toByte(rawRed);
-        let foregroundGreen = this.toByte(rawGreen);
-        let foregroundBlue = this.toByte(rawBlue);
+        const baseForegroundKey = this.byteColorKeyForIndex(index, rawRed, rawGreen, rawBlue);
+        let foregroundRed = baseForegroundKey >> 16 & 255;
+        let foregroundGreen = baseForegroundKey >> 8 & 255;
+        let foregroundBlue = baseForegroundKey & 255;
         if (terminalGlyphMode === GLYPH_MODE_BLOCKS && glyphKey > 0 && glyphKey < GLYPH_KEY_GLYPHS_OFFSET && fillGlyphIndex < 14) {
           const amount = fillBucketFromGlyphIndex(fillGlyphIndex) / 9;
           foregroundRed = mixByteChannel(this.backgroundRed, foregroundRed, amount);
@@ -3223,6 +3234,14 @@ var ThreeAsciiAnsiGridAssembler = class {
     this.blankAnsi = "";
     this.hasStableBackgroundInput = false;
     this.stableBackgroundInput = void 0;
+    this.stableBackgroundColorRef = void 0;
+    this.stableBackgroundColorRed = Number.NaN;
+    this.stableBackgroundColorGreen = Number.NaN;
+    this.stableBackgroundColorBlue = Number.NaN;
+    this.cachedColorRawRed = new Float64Array(0);
+    this.cachedColorRawGreen = new Float64Array(0);
+    this.cachedColorRawBlue = new Float64Array(0);
+    this.cachedColorByteKeys = new Uint32Array(0);
     this.toByte.clear();
   }
   buildFillOnlyGrid(grid, columns2, rows2, fillGlyphs, colors, terminalGlyphMode, terminalFillGlyphKeys, lastForegroundKey, lastGlyphKey, lastCell, lastRawRed, lastRawGreen, lastRawBlue) {
@@ -3244,9 +3263,10 @@ var ThreeAsciiAnsiGridAssembler = class {
           outputRow[column] = lastCell;
           continue;
         }
-        let foregroundRed = this.toByte(rawRed);
-        let foregroundGreen = this.toByte(rawGreen);
-        let foregroundBlue = this.toByte(rawBlue);
+        const baseForegroundKey = this.byteColorKeyForIndex(index, rawRed, rawGreen, rawBlue);
+        let foregroundRed = baseForegroundKey >> 16 & 255;
+        let foregroundGreen = baseForegroundKey >> 8 & 255;
+        let foregroundBlue = baseForegroundKey & 255;
         if (terminalGlyphMode === GLYPH_MODE_BLOCKS && glyphKey > 0 && fillGlyphIndex < 14) {
           const amount = fillBucketFromGlyphIndex(fillGlyphIndex) / 9;
           foregroundRed = mixByteChannel(this.backgroundRed, foregroundRed, amount);
@@ -3303,6 +3323,29 @@ var ThreeAsciiAnsiGridAssembler = class {
     }
     return grid;
   }
+  prepareColorCache(cellCount) {
+    if (this.cachedColorByteKeys.length === cellCount) {
+      return;
+    }
+    this.cachedColorRawRed = createNaNFloat64Array(cellCount);
+    this.cachedColorRawGreen = createNaNFloat64Array(cellCount);
+    this.cachedColorRawBlue = createNaNFloat64Array(cellCount);
+    this.cachedColorByteKeys = new Uint32Array(cellCount);
+  }
+  byteColorKeyForIndex(index, rawRed, rawGreen, rawBlue) {
+    if (this.cachedColorRawRed[index] === rawRed && this.cachedColorRawGreen[index] === rawGreen && this.cachedColorRawBlue[index] === rawBlue) {
+      return this.cachedColorByteKeys[index];
+    }
+    const foregroundRed = this.toByte(rawRed);
+    const foregroundGreen = this.toByte(rawGreen);
+    const foregroundBlue = this.toByte(rawBlue);
+    const key = foregroundRed << 16 | foregroundGreen << 8 | foregroundBlue;
+    this.cachedColorRawRed[index] = rawRed;
+    this.cachedColorRawGreen[index] = rawGreen;
+    this.cachedColorRawBlue[index] = rawBlue;
+    this.cachedColorByteKeys[index] = key;
+    return key;
+  }
   setBackground(backgroundColor) {
     if (!(backgroundColor instanceof Color2)) {
       const stableInput = backgroundColor ?? 0;
@@ -3311,11 +3354,19 @@ var ThreeAsciiAnsiGridAssembler = class {
       }
       this.hasStableBackgroundInput = true;
       this.stableBackgroundInput = stableInput;
+      this.stableBackgroundColorRef = void 0;
       this.setBackgroundColor(colorValue(backgroundColor, 0));
       return;
     }
     this.hasStableBackgroundInput = false;
     this.stableBackgroundInput = void 0;
+    if (this.stableBackgroundColorRef === backgroundColor && this.stableBackgroundColorRed === backgroundColor.r && this.stableBackgroundColorGreen === backgroundColor.g && this.stableBackgroundColorBlue === backgroundColor.b) {
+      return;
+    }
+    this.stableBackgroundColorRef = backgroundColor;
+    this.stableBackgroundColorRed = backgroundColor.r;
+    this.stableBackgroundColorGreen = backgroundColor.g;
+    this.stableBackgroundColorBlue = backgroundColor.b;
     this.setBackgroundColor(backgroundColor);
   }
   setBackgroundColor(backgroundColor) {
@@ -3344,6 +3395,11 @@ function createStringGrid(rows2, columns2) {
     grid[row] = new Array(columns2);
   }
   return grid;
+}
+function createNaNFloat64Array(length) {
+  const values = new Float64Array(length);
+  values.fill(Number.NaN);
+  return values;
 }
 function linearToSrgb(value) {
   const clamped = Math.max(0, Math.min(1, value));
@@ -5153,6 +5209,65 @@ var LayoutMeasurementCache = class {
     };
   }
 };
+function measureTerminalTextIntrinsic(text, availableWidth, defaultTextHeight = 1) {
+  const wrapWidth = Math.max(1, Math.floor(availableWidth));
+  const fallbackHeight = Math.max(1, Math.floor(defaultTextHeight));
+  let width = 1;
+  let height = 0;
+  let lineStart = 0;
+  for (let index = 0; index <= text.length; index += 1) {
+    const char = text[index];
+    if (index < text.length && char !== "\n" && char !== "\r") continue;
+    const line = text.slice(lineStart, index);
+    const lineWidth = textWidth(line);
+    width = Math.max(width, lineWidth);
+    height += measureWrappedTerminalLineHeight(line, wrapWidth);
+    if (char === "\r" && text[index + 1] === "\n") index += 1;
+    lineStart = index + 1;
+  }
+  return { width, height: Math.max(fallbackHeight, height) };
+}
+function measureWrappedTerminalLineHeight(line, wrapWidth) {
+  const wrappedLine = line.trimEnd();
+  if (!wrappedLine) return 1;
+  const tokens = wrappedLine.match(/\S+|\s+/g) ?? [wrappedLine];
+  let rows2 = 1;
+  let currentWidth = 0;
+  for (const token of tokens) {
+    const tokenWidth = textWidth(token);
+    if (tokenWidth <= 0) continue;
+    if (/^\s+$/.test(token)) {
+      if (currentWidth === 0) continue;
+      if (currentWidth + tokenWidth <= wrapWidth) {
+        currentWidth += tokenWidth;
+      } else {
+        rows2 += 1;
+        currentWidth = 0;
+      }
+      continue;
+    }
+    if (tokenWidth <= wrapWidth) {
+      if (currentWidth > 0 && currentWidth + tokenWidth > wrapWidth) {
+        rows2 += 1;
+        currentWidth = tokenWidth;
+      } else {
+        currentWidth += tokenWidth;
+      }
+      continue;
+    }
+    if (currentWidth > 0) {
+      rows2 += 1;
+      currentWidth = 0;
+    }
+    rows2 += Math.floor(tokenWidth / wrapWidth);
+    currentWidth = tokenWidth % wrapWidth;
+    if (currentWidth === 0) {
+      rows2 -= 1;
+      currentWidth = wrapWidth;
+    }
+  }
+  return rows2;
+}
 
 // src/layout/solvers/simple_grid.ts
 function placeGridChildren(children, bounds) {
@@ -5672,15 +5787,15 @@ function shrinkByMargin(rect, margin) {
 }
 function resolveNodeRect(node, allocated, isRoot, fillAllocated, defaultTextHeight, measurementCache) {
   const style2 = node.style;
-  const intrinsic = measureNodeIntrinsic(node, Math.max(1, allocated.width), defaultTextHeight, measurementCache);
   const fallbackWidth = allocated.width;
-  const fallbackHeight = isRoot || fillAllocated ? allocated.height : intrinsic.height || allocated.height;
   const width = clampLayoutSize(
     resolveLayoutLength(style2.width, allocated.width, Math.min(allocated.width, fallbackWidth)),
     allocated.width,
     style2.minWidth,
     style2.maxWidth
   );
+  const intrinsic = measureNodeIntrinsic(node, Math.max(1, width), defaultTextHeight, measurementCache);
+  const fallbackHeight = isRoot || fillAllocated ? allocated.height : intrinsic.height || allocated.height;
   const height = clampLayoutSize(
     resolveLayoutLength(style2.height, allocated.height, Math.min(allocated.height, fallbackHeight)),
     allocated.height,
@@ -5707,8 +5822,8 @@ function contentRectangle(rect, style2) {
   };
 }
 function preferredBlockChildSize(node, bounds, defaultTextHeight, measurementCache) {
-  const intrinsic = measureNodeIntrinsic(node, Math.max(1, bounds.width), defaultTextHeight, measurementCache);
   const width = resolveLayoutLength(node.style.width, bounds.width, bounds.width);
+  const intrinsic = measureNodeIntrinsic(node, Math.max(1, width), defaultTextHeight, measurementCache);
   const height = resolveLayoutLength(
     node.style.height,
     bounds.height,
@@ -5928,20 +6043,7 @@ function childLayoutIntrinsicSize(node, availableWidth, defaultTextHeight, measu
   };
 }
 function measureTextIntrinsic(text, availableWidth, defaultTextHeight) {
-  const wrapWidth = Math.max(1, availableWidth);
-  let width = 1;
-  let height = 0;
-  let lineStart = 0;
-  for (let index = 0; index <= text.length; index += 1) {
-    const char = text[index];
-    if (index < text.length && char !== "\n" && char !== "\r") continue;
-    const lineWidth = textWidth(text.slice(lineStart, index));
-    width = Math.max(width, lineWidth);
-    height += Math.max(1, Math.ceil(lineWidth / wrapWidth));
-    if (char === "\r" && text[index + 1] === "\n") index += 1;
-    lineStart = index + 1;
-  }
-  return { width, height: Math.max(defaultTextHeight, height) };
+  return measureTerminalTextIntrinsic(text, availableWidth, defaultTextHeight);
 }
 function intrinsicMeasurementCacheKey(node, availableWidth, defaultTextHeight) {
   let key = "v1" + Math.max(1, Math.floor(availableWidth)) + "" + Math.max(1, Math.floor(defaultTextHeight)) + "" + node.tag + "" + (node.text ?? "") + "" + (node.intrinsic?.width ?? "") + "" + (node.intrinsic?.height ?? "") + "" + node.style.display + "" + node.style.position + "" + node.style.flexDirection + "" + layoutLengthSignature(node.style.flexBasis) + "" + layoutLengthSignature(node.style.width) + "" + layoutLengthSignature(node.style.height) + "" + layoutLengthSignature(node.style.minWidth) + "" + layoutLengthSignature(node.style.minHeight) + "" + layoutLengthSignature(node.style.maxWidth) + "" + layoutLengthSignature(node.style.maxHeight) + "" + node.style.gap + "" + node.style.rowGap + "" + node.style.columnGap;
@@ -11040,6 +11142,8 @@ var TerminalScreenController = class {
   #originMode = false;
   #autoWrap = true;
   #insertMode = false;
+  #lastPrintableCell;
+  #lastPrintableWidth = 1;
   #tabStops;
   #decoder = new TextDecoder();
   constructor(options = {}) {
@@ -11068,7 +11172,7 @@ var TerminalScreenController = class {
   write(data) {
     const text = typeof data === "string" ? data : this.#decoder.decode(data);
     for (let index = 0; index < text.length; ) {
-      const char = text[index];
+      const char = readTerminalGraphic(text, index);
       if (char === "\x1B") {
         const parsed = parseTerminalControlSequence(text, index);
         if (parsed) {
@@ -11138,12 +11242,22 @@ var TerminalScreenController = class {
       return;
     }
     if (char < " ") return;
+    const width = terminalGraphicWidth(char);
+    const cell = this.#styledCell(char);
+    this.#writeCell(cell);
+    for (let index = 1; index < width; index += 1) {
+      this.#writeCell(BLANK_CELL);
+    }
+    this.#lastPrintableCell = { ...cell };
+    this.#lastPrintableWidth = width;
+  }
+  #writeCell(cell) {
     const row = this.#state.cells[this.#state.cursor.row];
     if (this.#insertMode) {
       row.splice(this.#state.cursor.column, 0, { char: " " });
       row.length = this.#columns;
     }
-    row[this.#state.cursor.column] = this.#styledCell(char);
+    row[this.#state.cursor.column] = cell;
     if (this.#state.cursor.column >= this.#columns - 1) {
       if (!this.#autoWrap) return;
       this.#state.cursor.column = 0;
@@ -11204,6 +11318,9 @@ var TerminalScreenController = class {
       case "C":
         this.#state.cursor.column = clamp3(this.#state.cursor.column + (params[0] || 1), 0, this.#columns - 1);
         break;
+      case "a":
+        this.#state.cursor.column = clamp3(this.#state.cursor.column + (params[0] || 1), 0, this.#columns - 1);
+        break;
       case "D":
         if (sequence.kind === "esc") {
           this.#index();
@@ -11227,8 +11344,23 @@ var TerminalScreenController = class {
       case "G":
         this.#state.cursor.column = clamp3((params[0] || 1) - 1, 0, this.#columns - 1);
         break;
+      case "`":
+        this.#state.cursor.column = clamp3((params[0] || 1) - 1, 0, this.#columns - 1);
+        break;
       case "d":
         this.#setCursorPosition(params[0] || 1, this.#state.cursor.column + 1);
+        break;
+      case "e":
+        this.#state.cursor.row = clamp3(this.#state.cursor.row + (params[0] || 1), 0, this.#rows - 1);
+        break;
+      case "I":
+        this.#cursorForwardTabs(params[0] || 1);
+        break;
+      case "Z":
+        this.#cursorBackwardTabs(params[0] || 1);
+        break;
+      case "b":
+        this.#repeatLastPrintable(params[0] || 1);
         break;
       case "c":
         if (sequence.kind === "esc") this.#reset();
@@ -11367,6 +11499,28 @@ var TerminalScreenController = class {
       return;
     }
     if (mode === 0) this.#tabStops.delete(this.#state.cursor.column);
+  }
+  #cursorForwardTabs(count) {
+    const amount = Math.max(1, Math.floor(count));
+    for (let index = 0; index < amount; index += 1) {
+      this.#state.cursor.column = nextTabStop(this.#tabStops, this.#state.cursor.column, this.#columns);
+    }
+  }
+  #cursorBackwardTabs(count) {
+    const amount = Math.max(1, Math.floor(count));
+    for (let index = 0; index < amount; index += 1) {
+      this.#state.cursor.column = previousTabStop(this.#tabStops, this.#state.cursor.column);
+    }
+  }
+  #repeatLastPrintable(count) {
+    if (!this.#lastPrintableCell) return;
+    const amount = Math.max(1, Math.floor(count));
+    for (let index = 0; index < amount; index += 1) {
+      this.#writeCell({ ...this.#lastPrintableCell });
+      for (let width = 1; width < this.#lastPrintableWidth; width += 1) {
+        this.#writeCell(BLANK_CELL);
+      }
+    }
   }
   #applyCursorStyle(style2) {
     switch (style2) {
@@ -11528,6 +11682,8 @@ var TerminalScreenController = class {
     this.#originMode = false;
     this.#autoWrap = true;
     this.#insertMode = false;
+    this.#lastPrintableCell = void 0;
+    this.#lastPrintableWidth = 1;
     this.clear();
   }
   #enterAlternate() {
@@ -11581,6 +11737,18 @@ function createRows(columns2, rows2) {
 }
 function blankRow(columns2) {
   return new Array(columns2).fill(BLANK_CELL);
+}
+function readTerminalGraphic(text, index) {
+  const code = text.charCodeAt(index);
+  if (code < 128) return text[index] ?? "";
+  UNICODE_CHAR_REGEXP.lastIndex = index;
+  const match = UNICODE_CHAR_REGEXP.exec(text);
+  if (match?.index === index) return match[0];
+  const codePoint = text.codePointAt(index);
+  return codePoint === void 0 ? text[index] ?? "" : String.fromCodePoint(codePoint);
+}
+function terminalGraphicWidth(char) {
+  return Math.max(1, Math.min(2, textWidth(char)));
 }
 function fillBlankCells(row, start, count) {
   const end = Math.min(row.length, start + Math.max(0, count));
@@ -11660,6 +11828,13 @@ function nextTabStop(stops, column, columns2) {
     if (stop > column && stop < next) next = stop;
   }
   return next;
+}
+function previousTabStop(stops, column) {
+  let previous = 0;
+  for (const stop of stops) {
+    if (stop < column && stop > previous) previous = stop;
+  }
+  return previous;
 }
 function resizeState(state, columns2, rows2) {
   const cells = createRows(columns2, rows2);
