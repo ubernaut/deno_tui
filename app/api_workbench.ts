@@ -59,6 +59,7 @@ import {
   workbenchContentViewport,
   workbenchEmptyWorkspaceMessage,
   type WorkbenchFrame,
+  workbenchHeaderHelp,
   workbenchHorizontalScrollbarCellsInto,
   workbenchShelfEntriesInto,
   workbenchStatusLeft,
@@ -1099,15 +1100,9 @@ function renderHeader(frame: Frame): void {
       selectedIndex: visible.indexes.indexOf(workspaceMenuIndex.peek()),
     };
   }
-  const help = width >= 132
-    ? "F10 menu  N new  T theme  G config  C close  Tab focus  M/F/R  Q quit"
-    : width >= 96
-    ? "F10 menu  N new  G config  Tab  M/F/R  Q quit"
-    : width >= 56
-    ? "F10 menu  N new  Tab focus  Q quit"
-    : "F10 menu  Q quit";
+  const help = workbenchHeaderHelp({ width });
   const helpWidth = textWidth(help);
-  const showHelp = width >= 34;
+  const showHelp = help.length > 0;
   const helpStart = showHelp ? Math.max(0, width - helpWidth) : width;
   if (showHelp) {
     write(

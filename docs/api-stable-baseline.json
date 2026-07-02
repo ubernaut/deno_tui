@@ -4120,6 +4120,20 @@
     },
     {
       "module": "src/app/workbench_status.ts",
+      "name": "workbenchHeaderHelp",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_status.ts",
+      "name": "WorkbenchHeaderHelpOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_status.ts",
       "name": "workbenchStatusLeft",
       "kind": "function",
       "typeOnly": false,

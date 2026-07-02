@@ -32,3 +32,4 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Cached unchanged Kitty-only blank terminal grids so image-mode Three panels stop reallocating no-op ASCII cells every
   frame.
 - Extracted process-output and live-shell keyboard hint text into shared terminal status presenters.
+- Extracted responsive workbench header help text into a shared status helper.

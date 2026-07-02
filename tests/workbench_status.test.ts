@@ -1,6 +1,7 @@
 import { assertEquals } from "./deps.ts";
 import {
   workbenchEmptyWorkspaceMessage,
+  workbenchHeaderHelp,
   workbenchStatusLeft,
   workbenchTileDensityLabel,
 } from "../src/app/workbench/mod.ts";
@@ -43,4 +44,16 @@ Deno.test("workbench empty workspace messages classify closed minimized and hidd
     }),
     "All panels minimized. Press R or click restore.",
   );
+});
+
+Deno.test("workbench header help adapts to available width", () => {
+  assertEquals(workbenchHeaderHelp({ width: 20 }), "");
+  assertEquals(workbenchHeaderHelp({ width: 40 }), "F10 menu  Q quit");
+  assertEquals(workbenchHeaderHelp({ width: 56 }), "F10 menu  N new  Tab focus  Q quit");
+  assertEquals(workbenchHeaderHelp({ width: 96 }), "F10 menu  N new  G config  Tab  M/F/R  Q quit");
+  assertEquals(
+    workbenchHeaderHelp({ width: 132 }),
+    "F10 menu  N new  T theme  G config  C close  Tab focus  M/F/R  Q quit",
+  );
+  assertEquals(workbenchHeaderHelp({ width: 20, minVisibleWidth: 12 }), "F10 menu  Q quit");
 });

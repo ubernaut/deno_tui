@@ -27,6 +27,12 @@ export interface WorkbenchEmptyWorkspaceMessageOptions {
   };
 }
 
+/** Options for responsive workbench header help text. */
+export interface WorkbenchHeaderHelpOptions {
+  width: number;
+  minVisibleWidth?: number;
+}
+
 /** Converts a signed tile-density preference into a status-bar label. */
 export function workbenchTileDensityLabel(value: number): WorkbenchTileDensityLabel {
   if (value === 0 || !Number.isFinite(value)) return "balanced";
@@ -43,6 +49,16 @@ export function workbenchStatusLeft(options: WorkbenchStatusLeftOptions): string
   const diagnostics = options.diagnostics?.trim();
   if (diagnostics) parts.push(diagnostics);
   return parts.join(" | ");
+}
+
+/** Builds the responsive workbench header help text, or an empty string when too narrow. */
+export function workbenchHeaderHelp(options: WorkbenchHeaderHelpOptions): string {
+  const width = Math.max(0, Math.floor(options.width));
+  if (width < (options.minVisibleWidth ?? 34)) return "";
+  if (width >= 132) return "F10 menu  N new  T theme  G config  C close  Tab focus  M/F/R  Q quit";
+  if (width >= 96) return "F10 menu  N new  G config  Tab  M/F/R  Q quit";
+  if (width >= 56) return "F10 menu  N new  Tab focus  Q quit";
+  return "F10 menu  Q quit";
 }
 
 /** Builds a user-facing message for workspace layouts with no visible normal windows. */
