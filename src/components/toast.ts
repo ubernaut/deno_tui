@@ -85,7 +85,11 @@ export class ToastStackController {
   }
 
   inspect(): ToastStackInspection {
-    const messages = this.messages.peek().map((message) => ({ ...message }));
+    const sourceMessages = this.messages.peek();
+    const messages = new Array<ToastMessage>(sourceMessages.length);
+    for (let index = 0; index < sourceMessages.length; index += 1) {
+      messages[index] = { ...sourceMessages[index]! };
+    }
     const limit = normalizedToastLimit(this.limit.peek());
     return {
       messages,

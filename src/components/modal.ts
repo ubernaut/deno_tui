@@ -160,12 +160,12 @@ export class ModalController {
   }
 
   inspect(): ModalInspection {
-    const actions = this.actions.peek().map((action) => ({ ...action }));
+    const actions = cloneModalActions(this.actions.peek());
     const selectedActionIndex = clampModalActionIndex(actions, this.selectedActionIndex.peek());
     return {
       open: this.openState.peek(),
       title: this.title.peek(),
-      body: [...this.body.peek()],
+      body: cloneModalBody(this.body.peek()),
       tone: this.tone.peek(),
       actions,
       selectedActionIndex,
@@ -190,11 +190,10 @@ export function renderModalRows(inspection: ModalInspection, options: RenderModa
   if (width <= 0) return [];
   const innerWidth = Math.max(0, width - 4);
   const tone = options.showTone === false ? "" : `[${inspection.tone.toUpperCase()}] `;
-  const rows = [
-    cropToWidth(`${tone}${inspection.title}`, innerWidth),
-    "",
-    ...inspection.body.flatMap((line) => wrapModalLine(line, innerWidth)),
-  ];
+  const rows = [cropToWidth(`${tone}${inspection.title}`, innerWidth), ""];
+  for (const line of inspection.body) {
+    appendModalWrappedLines(rows, line, innerWidth);
+  }
   const actions = renderModalActions(inspection.actions, inspection.selectedActionIndex, innerWidth);
   if (actions) rows.push("", actions);
   const height = options.height === undefined ? rows.length : Math.max(0, Math.floor(options.height));
@@ -209,12 +208,16 @@ export function modalContentHeight(inspection: ModalInspection, width: number): 
 }
 
 function normalizeModalBody(body: string | string[] | undefined): string[] {
-  if (Array.isArray(body)) return body.flatMap((line) => `${line}`.split("\n"));
+  if (Array.isArray(body)) {
+    const lines: string[] = [];
+    for (const line of body) appendSplitModalLines(lines, line);
+    return lines;
+  }
   return body === undefined ? [] : `${body}`.split("\n");
 }
 
 function normalizeModalActions(actions: readonly ModalAction[] | undefined): ModalAction[] {
-  return (actions ?? [{ id: "ok", label: "OK", default: true }]).map((action) => ({ ...action }));
+  return cloneModalActions(actions ?? [{ id: "ok", label: "OK", default: true }]);
 }
 
 function defaultModalActionIndex(actions: readonly ModalAction[]): number {
@@ -232,31 +235,77 @@ function clampModalActionIndex(actions: readonly ModalAction[], index: number): 
 }
 
 function renderModalActions(actions: readonly ModalAction[], selectedIndex: number, width: number): string {
-  const row = actions.map((action, index) => {
+  let row = "";
+  for (let index = 0; index < actions.length; index += 1) {
+    const action = actions[index]!;
     const label = action.disabled ? `(${action.label})` : action.label;
     const token = index === selectedIndex ? `[ ${label} ]` : `  ${label}  `;
-    return action.destructive ? `!${token}!` : token;
-  }).join(" ");
+    if (row) row += " ";
+    row += action.destructive ? `!${token}!` : token;
+  }
   return cropToWidth(row, width);
 }
 
 function wrapModalLine(value: string, width: number): string[] {
   if (width <= 0) return [""];
-  const words = value.split(/\s+/).filter(Boolean);
-  if (words.length === 0) return [""];
   const rows: string[] = [];
+  appendModalWrappedLines(rows, value, width);
+  return rows;
+}
+
+function appendModalWrappedLines(rows: string[], value: string, width: number): void {
+  if (width <= 0) {
+    rows.push("");
+    return;
+  }
+  const words = value.split(/\s+/);
   let line = "";
+  let appended = false;
   for (const word of words) {
+    if (!word) continue;
     const next = line ? `${line} ${word}` : word;
     if (textWidth(next) <= width) {
       line = next;
     } else {
-      if (line) rows.push(cropToWidth(line, width));
+      if (line) {
+        rows.push(cropToWidth(line, width));
+        appended = true;
+      }
       line = cropToWidth(word, width);
     }
   }
-  if (line) rows.push(cropToWidth(line, width));
-  return rows;
+  if (line) {
+    rows.push(cropToWidth(line, width));
+    appended = true;
+  }
+  if (!appended) rows.push("");
+}
+
+function appendSplitModalLines(lines: string[], value: unknown): void {
+  const text = `${value}`;
+  let start = 0;
+  for (let index = 0; index < text.length; index += 1) {
+    if (text[index] !== "\n") continue;
+    lines.push(text.slice(start, index));
+    start = index + 1;
+  }
+  lines.push(text.slice(start));
+}
+
+function cloneModalBody(body: readonly string[]): string[] {
+  const clone = new Array<string>(body.length);
+  for (let index = 0; index < body.length; index += 1) {
+    clone[index] = body[index]!;
+  }
+  return clone;
+}
+
+function cloneModalActions(actions: readonly ModalAction[]): ModalAction[] {
+  const clone = new Array<ModalAction>(actions.length);
+  for (let index = 0; index < actions.length; index += 1) {
+    clone[index] = { ...actions[index]! };
+  }
+  return clone;
 }
 
 /** Public class implementing a modal. */

@@ -327,6 +327,8 @@ Work:
         cloning, and group inspection around one-pass loops instead of repeated map/filter/some/reduce chains.
   - [x] Reworked process command-line formatting to append quoted command arguments directly without building an
         intermediate token array.
+  - [x] Reworked pad content measurement, modal body/action rendering, and toast inspection cloning to avoid short-lived
+        map/reduce/flatMap/filter buffers in reusable widget helper paths.
 
 Acceptance checks:
 

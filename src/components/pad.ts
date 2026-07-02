@@ -62,14 +62,22 @@ export interface PadInspection extends ScrollAreaInspection {
 /** Normalizes pad content into immutable logical lines. */
 export function normalizePadLines(content: PadContent): string[] {
   if (typeof content === "string") return content.replaceAll("\r\n", "\n").replaceAll("\r", "\n").split("\n");
-  return content.map((line) => String(line));
+  const lines = new Array<string>(content.length);
+  for (let index = 0; index < content.length; index += 1) {
+    lines[index] = String(content[index]);
+  }
+  return lines;
 }
 
 /** Measures normalized width and height for pad content. */
 export function measurePadContent(content: PadContent): PadContentSize {
   const lines = normalizePadLines(content);
+  let width = 0;
+  for (let index = 0; index < lines.length; index += 1) {
+    width = Math.max(width, lines[index]!.length);
+  }
   return {
-    width: lines.reduce((max, line) => Math.max(max, line.length), 0),
+    width,
     height: lines.length,
   };
 }
