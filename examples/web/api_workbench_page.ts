@@ -64,6 +64,8 @@ import {
   StepperController,
   subscribeWorkbenchDiagnosticLog,
   TerminalScreenController,
+  type TerminalWorkspacePaneRect,
+  terminalWorkspacePaneRects,
   type TerminalWorkspaceSnapshot,
   TextBoxController,
   TextObject,
@@ -114,7 +116,6 @@ import {
 import { createHtmlCssLayoutDemo, htmlCssLayoutDemoBoxLabel } from "../../src/markup/demo_fixtures.ts";
 import { DiagnosticsCollector } from "../../src/runtime/diagnostics.ts";
 import { StorageFallbackDiagnostics } from "../../src/runtime/storage_diagnostics.ts";
-import { type TerminalWorkspacePaneRect, terminalWorkspacePaneRects } from "../../src/runtime/terminal_workspace.ts";
 import type { Rectangle } from "../../src/types.ts";
 import { makeStyle } from "../../app/styles.ts";
 
