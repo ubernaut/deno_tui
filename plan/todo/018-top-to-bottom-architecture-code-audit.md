@@ -298,6 +298,8 @@ Work:
         entries/flatMap/spread projection in canvas invalidation helpers.
   - [x] Reworked TerminalBackendRegistry id/provider projection, explicit-id resolution, and sorted provider buffers to
         avoid singleton filter arrays and spread/map cloning in shell backend selection.
+  - [x] Reworked OverlayStackController initialization, register/update/remove, visible z-order projection, inspection,
+        and modal close-tree handling around explicit buffers to reduce popover/modal state churn.
 
 Acceptance checks:
 

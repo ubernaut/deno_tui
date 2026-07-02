@@ -160,8 +160,14 @@ export function placePopover(
 
 /** Sorts surfaces from back to front using layer, z-index, and registration order. */
 export function sortOverlaySurfaces(surfaces: readonly OverlaySurface[]): OverlaySurfaceInspection[] {
-  return surfaces.map(normalizeOverlaySurface)
-    .sort((left, right) => left.zIndex - right.zIndex || left.order - right.order || left.id.localeCompare(right.id));
+  const sorted: OverlaySurfaceInspection[] = [];
+  for (let index = 0; index < surfaces.length; index += 1) {
+    sorted.push(normalizeOverlaySurface(surfaces[index]!));
+  }
+  sorted.sort((left, right) =>
+    left.zIndex - right.zIndex || left.order - right.order || left.id.localeCompare(right.id)
+  );
+  return sorted;
 }
 
 /** Returns the topmost visible surface at a point, optionally respecting a modal blocker. */
@@ -192,29 +198,34 @@ export class OverlayStackController {
   #visibleCache?: OverlaySurfaceInspection[];
 
   constructor(options: OverlayStackOptions = {}) {
-    const surfaces = (options.surfaces ?? []).map((surface, index) => {
+    const inputSurfaces = options.surfaces ?? [];
+    const surfaces: OverlaySurfaceInspection[] = [];
+    for (let index = 0; index < inputSurfaces.length; index += 1) {
+      const surface = inputSurfaces[index]!;
       this.#nextOrder = Math.max(this.#nextOrder, (surface.order ?? index) + 1);
-      return normalizeOverlaySurface(surface, surface.order ?? index);
-    });
+      surfaces.push(normalizeOverlaySurface(surface, surface.order ?? index));
+    }
     this.surfaces = new Signal(surfaces, { deepObserve: true });
     this.activeId = new Signal(options.activeId);
   }
 
   register(surface: OverlaySurface): OverlaySurfaceInspection {
-    const existing = this.surfaces.peek().find((entry) => entry.id === surface.id);
+    const source = this.surfaces.peek();
+    const existing = findOverlaySurface(source, surface.id);
     const next = normalizeOverlaySurface(surface, existing?.order ?? this.#nextOrder++);
     this.surfaces.value = existing
-      ? this.surfaces.peek().map((entry) => entry.id === surface.id ? next : entry)
-      : [...this.surfaces.peek(), next];
+      ? replaceOverlaySurface(source, surface.id, next)
+      : appendOverlaySurface(source, next);
     if (next.visible) this.activeId.value = next.id;
     return next;
   }
 
   update(id: string, patch: Partial<OverlaySurface>): OverlaySurfaceInspection | undefined {
-    const existing = this.surfaces.peek().find((entry) => entry.id === id);
+    const source = this.surfaces.peek();
+    const existing = findOverlaySurface(source, id);
     if (!existing) return undefined;
     const next = normalizeOverlaySurface({ ...existing, ...patch, id }, existing.order);
-    this.surfaces.value = this.surfaces.peek().map((entry) => entry.id === id ? next : entry);
+    this.surfaces.value = replaceOverlaySurface(source, id, next);
     return next;
   }
 
@@ -238,7 +249,7 @@ export class OverlayStackController {
   remove(id: string): OverlaySurfaceInspection | undefined {
     const existing = this.surface(id);
     if (!existing) return undefined;
-    this.surfaces.value = this.surfaces.peek().filter((entry) => entry.id !== id);
+    this.surfaces.value = removeOverlaySurface(this.surfaces.peek(), id);
     if (this.activeId.peek() === id) this.activeId.value = this.top()?.id;
     return existing;
   }
@@ -248,17 +259,20 @@ export class OverlayStackController {
     if (!existing) return undefined;
     const order = this.#nextOrder++;
     const next = normalizeOverlaySurface({ ...existing, order, zIndex: undefined }, order);
-    this.surfaces.value = this.surfaces.peek().map((entry) => entry.id === id ? next : entry);
+    this.surfaces.value = replaceOverlaySurface(this.surfaces.peek(), id, next);
     this.activeId.value = id;
     return next;
   }
 
   surface(id: string): OverlaySurfaceInspection | undefined {
-    return this.surfaces.peek().find((entry) => entry.id === id);
+    return findOverlaySurface(this.surfaces.peek(), id);
   }
 
   zOrder(): OverlaySurfaceInspection[] {
-    return [...this.#visibleZOrder()];
+    const source = this.#visibleZOrder();
+    const zOrder: OverlaySurfaceInspection[] = [];
+    for (let index = 0; index < source.length; index += 1) zOrder.push(source[index]!);
+    return zOrder;
   }
 
   top(): OverlaySurfaceInspection | undefined {
@@ -302,17 +316,17 @@ export class OverlayStackController {
     const surfaces = new Array<OverlaySurfaceInspection>(source.length);
     for (let index = 0; index < source.length; index += 1) {
       const surface = source[index]!;
-      surfaces[index] = { ...surface, rect: { ...surface.rect } };
+      surfaces[index] = cloneOverlaySurface(surface);
     }
     const visible: OverlaySurfaceInspection[] = [];
     for (const surface of source) {
-      if (surface.visible) visible.push({ ...surface, rect: { ...surface.rect } });
+      if (surface.visible) visible.push(cloneOverlaySurface(surface));
     }
     const zOrderSource = this.#visibleZOrder();
     const zOrder = new Array<OverlaySurfaceInspection>(zOrderSource.length);
     for (let index = 0; index < zOrderSource.length; index += 1) {
       const surface = zOrderSource[index]!;
-      zOrder[index] = { ...surface, rect: { ...surface.rect } };
+      zOrder[index] = cloneOverlaySurface(surface);
     }
     const top = zOrder[zOrder.length - 1];
     return {
@@ -320,7 +334,7 @@ export class OverlayStackController {
       surfaces,
       visible,
       zOrder,
-      top: top ? { ...top, rect: { ...top.rect } } : undefined,
+      top: top ? cloneOverlaySurface(top) : undefined,
     };
   }
 
@@ -330,12 +344,25 @@ export class OverlayStackController {
   }
 
   #closeSurfaceTree(id: string): string[] {
-    const ids = new Set([id, ...this.surfaces.peek().filter((entry) => entry.ownerId === id).map((entry) => entry.id)]);
-    this.surfaces.value = this.surfaces.peek().map((entry) =>
-      ids.has(entry.id) ? normalizeOverlaySurface({ ...entry, visible: false }, entry.order) : entry
-    );
+    const source = this.surfaces.peek();
+    const ids = new Set<string>();
+    const closedIds: string[] = [];
+    ids.add(id);
+    closedIds.push(id);
+    for (let index = 0; index < source.length; index += 1) {
+      const entry = source[index]!;
+      if (entry.ownerId !== id) continue;
+      ids.add(entry.id);
+      closedIds.push(entry.id);
+    }
+    const next = new Array<OverlaySurfaceInspection>(source.length);
+    for (let index = 0; index < source.length; index += 1) {
+      const entry = source[index]!;
+      next[index] = ids.has(entry.id) ? normalizeOverlaySurface({ ...entry, visible: false }, entry.order) : entry;
+    }
+    this.surfaces.value = next;
     if (this.activeId.peek() && ids.has(this.activeId.peek()!)) this.activeId.value = this.top()?.id;
-    return [...ids];
+    return closedIds;
   }
 
   #sortedZOrder(): readonly OverlaySurfaceInspection[] {
@@ -362,6 +389,62 @@ export class OverlayStackController {
     }
     return this.#visibleCache ?? [];
   }
+}
+
+function findOverlaySurface(
+  surfaces: readonly OverlaySurfaceInspection[],
+  id: string,
+): OverlaySurfaceInspection | undefined {
+  for (let index = 0; index < surfaces.length; index += 1) {
+    const surface = surfaces[index]!;
+    if (surface.id === id) return surface;
+  }
+  return undefined;
+}
+
+function replaceOverlaySurface(
+  surfaces: readonly OverlaySurfaceInspection[],
+  id: string,
+  next: OverlaySurfaceInspection,
+): OverlaySurfaceInspection[] {
+  const replaced = new Array<OverlaySurfaceInspection>(surfaces.length);
+  for (let index = 0; index < surfaces.length; index += 1) {
+    const surface = surfaces[index]!;
+    replaced[index] = surface.id === id ? next : surface;
+  }
+  return replaced;
+}
+
+function appendOverlaySurface(
+  surfaces: readonly OverlaySurfaceInspection[],
+  surface: OverlaySurfaceInspection,
+): OverlaySurfaceInspection[] {
+  const next = new Array<OverlaySurfaceInspection>(surfaces.length + 1);
+  for (let index = 0; index < surfaces.length; index += 1) next[index] = surfaces[index]!;
+  next[surfaces.length] = surface;
+  return next;
+}
+
+function removeOverlaySurface(
+  surfaces: readonly OverlaySurfaceInspection[],
+  id: string,
+): OverlaySurfaceInspection[] {
+  let count = 0;
+  for (let index = 0; index < surfaces.length; index += 1) {
+    if (surfaces[index]!.id !== id) count += 1;
+  }
+  const next = new Array<OverlaySurfaceInspection>(count);
+  let write = 0;
+  for (let index = 0; index < surfaces.length; index += 1) {
+    const surface = surfaces[index]!;
+    if (surface.id === id) continue;
+    next[write++] = surface;
+  }
+  return next;
+}
+
+function cloneOverlaySurface(surface: OverlaySurfaceInspection): OverlaySurfaceInspection {
+  return { ...surface, rect: { ...surface.rect } };
 }
 
 function normalizeOverlaySurface(
