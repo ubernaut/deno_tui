@@ -233,6 +233,8 @@ Work:
         sampled arrays in narrow live-render paths.
   - [x] Added source-array keyed overlay z-order caches and reverse-loop modal hit testing so repeated menu/modal
         pointer checks avoid repeated sorted/filter/reverse arrays inside the overlay controller.
+  - [x] Reworked window-manager ordering, state replacement, layout inspection, and z-order projection to use explicit
+        output buffers instead of map/filter/spread pipelines in workbench window state paths.
 
 Acceptance checks:
 
