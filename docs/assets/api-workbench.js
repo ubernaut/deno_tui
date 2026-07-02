@@ -1057,21 +1057,23 @@ function sortedSetValues(values) {
 }
 
 // src/theme_standard_components.ts
+var standardComponentEntries = [...componentCatalog].sort((a, b) => a.name.localeCompare(b.name));
+var standardComponentNames = standardComponentEntries.map((entry) => entry.name);
+var standardComponentKeySet = new Set(
+  standardComponentEntries.flatMap((entry) => [normalizeThemeComponentName(entry.id), normalizeThemeComponentName(entry.name)])
+);
 function createStandardComponentThemeDefinitions(options = {}) {
   const requested = options.components ? new Set([...options.components].map(normalizeThemeComponentName)) : void 0;
   const definitions = {};
-  for (const entry of [...componentCatalog].sort((a, b) => a.name.localeCompare(b.name))) {
+  for (const entry of standardComponentEntries) {
     if (requested && !requested.has(normalizeThemeComponentName(entry.id)) && !requested.has(normalizeThemeComponentName(entry.name))) {
       continue;
     }
     definitions[entry.name] = standardComponentDefinition(entry);
   }
   if (requested) {
-    const known = new Set(
-      componentCatalog.flatMap((entry) => [normalizeThemeComponentName(entry.id), normalizeThemeComponentName(entry.name)])
-    );
     for (const name of options.components ?? []) {
-      if (!known.has(normalizeThemeComponentName(name))) {
+      if (!standardComponentKeySet.has(normalizeThemeComponentName(name))) {
         definitions[name] = standardGenericComponentDefinition();
       }
     }
@@ -8986,7 +8988,9 @@ function renderModalRows(inspection, options) {
   const height = options.height === void 0 ? rows2.length : Math.max(0, Math.floor(options.height));
   if (options.height === void 0 || height <= 0 || rows2.length <= height) return rows2;
   if (!actions || height === 1) return rows2.slice(0, height);
-  return [...rows2.slice(0, height - 1), actions];
+  const clipped = rows2.slice(0, height);
+  clipped[height - 1] = actions;
+  return clipped;
 }
 function modalContentHeight(inspection, width) {
   return renderModalRows(inspection, { width }).length + 2;
@@ -9015,6 +9019,7 @@ function clampModalActionIndex(actions, index) {
   return fallback >= 0 ? fallback : clamped;
 }
 function renderModalActions(actions, selectedIndex, width) {
+  if (width <= 0 || actions.length === 0) return "";
   let row = "";
   for (let index = 0; index < actions.length; index += 1) {
     const action = actions[index];
@@ -9022,8 +9027,9 @@ function renderModalActions(actions, selectedIndex, width) {
     const token = index === selectedIndex ? `[ ${label} ]` : `  ${label}  `;
     if (row) row += " ";
     row += action.destructive ? `!${token}!` : token;
+    if (textWidth(row) >= width) return cropToWidth(row, width);
   }
-  return cropToWidth(row, width);
+  return row;
 }
 function appendModalWrappedLines(rows2, value, width) {
   if (width <= 0) {
