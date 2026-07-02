@@ -550,6 +550,7 @@ Deno.test("ThreePanelFrameView can use Kitty image frames without drawing ASCII 
   });
   const enabled = new Signal(true);
   const surface = new FakeGraphicsSurface();
+  let updates = 0;
   const panel = new ThreePanelFrameView({
     rectangle,
     graphicsRectangle,
@@ -558,6 +559,9 @@ Deno.test("ThreePanelFrameView can use Kitty image frames without drawing ASCII 
     enabled,
     graphicsSurface: surface,
     frameInterval: 1000 / 30,
+    onUpdate: () => {
+      updates += 1;
+    },
     rendererFactory: (options) => new FakeGridRenderer(options.columns, options.rows),
   });
 
@@ -565,8 +569,10 @@ Deno.test("ThreePanelFrameView can use Kitty image frames without drawing ASCII 
     await waitFor(() => surface.puts.length >= 1);
     assertEquals(panel.grid.peek(), Array.from({ length: 4 }, () => Array.from({ length: 8 }, () => " ")));
     const firstGrid = panel.grid.peek();
+    const updatesAfterFirstGrid = updates;
     await waitFor(() => surface.puts.length >= 2);
     assertEquals(panel.grid.peek() === firstGrid, true);
+    assertEquals(updates, updatesAfterFirstGrid);
     assertEquals(surface.puts[0]!.image.format, 32);
     assertEquals(surface.puts[0]!.placement, { column: 5, row: 6, width: 8, height: 4, zIndex: 1 });
   } finally {

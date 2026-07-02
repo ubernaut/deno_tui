@@ -473,6 +473,7 @@ export class ThreePanelFrameView {
 
   private setGrid(grid: string[][]): void {
     if (this.disposed) return;
+    if (this.grid.peek() === grid) return;
     this.grid.jink(grid);
     this.onUpdate?.();
   }

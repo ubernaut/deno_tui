@@ -33,3 +33,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   frame.
 - Extracted process-output and live-shell keyboard hint text into shared terminal status presenters.
 - Extracted responsive workbench header help text into a shared status helper.
+- Skipped unchanged Three panel grid publication so Kitty-only image frames do not request terminal redraws for the same
+  cached blank grid.
