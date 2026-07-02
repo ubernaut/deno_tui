@@ -935,6 +935,8 @@ Work:
         avoiding repeated sort/remap work in settings panes and app inspection.
   - [x] Cached command registry sorted command and group projections, avoiding repeated sorting across command surfaces,
         keymap binding sync, key lookup, palette projection, and command inspection.
+  - [x] Cached route id and route-index projections in `RouteManager`, invalidating through the route signal so
+        navigation, registration, active lookup, and inspection avoid repeated linear scans.
 - [x] Make demo-only assets and NGE-inspired primitives clearly separate from library APIs.
   - [x] Added `app/neon_three_catalog.ts` for supported Three scene metadata and labels, keeping demo/NGE catalog data
         separate from the monolithic scene factory and shared by visualization footers plus scene coverage tests.

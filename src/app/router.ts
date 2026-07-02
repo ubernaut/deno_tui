@@ -33,20 +33,26 @@ export class RouteManager<TRoute extends Route = Route> {
   readonly routes: Signal<TRoute[]>;
   readonly activeRouteId: Signal<string>;
   #pendingFallbackRouteId?: string;
+  #routeIndex?: Map<string, number>;
+  #ids?: string[];
 
   constructor(routes: readonly TRoute[], initialRouteId = routes[0]?.id ?? "") {
     this.routes = new Signal(cloneRoutes(routes), { deepObserve: true });
     this.activeRouteId = new Signal(initialRouteId);
-    this.routes.subscribe(() => this.normalizeActiveRoute());
+    this.routes.subscribe(() => {
+      this.invalidateRouteCache();
+      this.normalizeActiveRoute();
+    });
     this.normalizeActiveRoute();
   }
 
   active(): TRoute | undefined {
-    return findRoute(this.routes.peek(), this.activeRouteId.peek());
+    return this.get(this.activeRouteId.peek());
   }
 
   get(routeId: string): TRoute | undefined {
-    return findRoute(this.routes.peek(), routeId);
+    const index = this.routeIndex(routeId);
+    return index < 0 ? undefined : this.routes.peek()[index];
   }
 
   has(routeId: string): boolean {
@@ -54,21 +60,24 @@ export class RouteManager<TRoute extends Route = Route> {
   }
 
   ids(): string[] {
-    const routes = this.routes.peek();
-    const ids = new Array<string>(routes.length);
-    for (let index = 0; index < routes.length; index += 1) {
-      ids[index] = routes[index]!.id;
+    if (!this.#ids) {
+      const routes = this.routes.peek();
+      const ids = new Array<string>(routes.length);
+      for (let index = 0; index < routes.length; index += 1) {
+        ids[index] = routes[index]!.id;
+      }
+      this.#ids = ids;
     }
-    return ids;
+    return cloneStringArray(this.#ids);
   }
 
   activeIndex(): number {
-    return routeIndex(this.routes.peek(), this.activeRouteId.peek());
+    return this.routeIndex(this.activeRouteId.peek());
   }
 
   register(route: TRoute, options: RouteRegisterOptions = {}): boolean {
     const routes = this.routes.peek();
-    const index = routeIndex(routes, route.id);
+    const index = this.routeIndex(route.id);
     if (index >= 0 && !options.replace) return false;
 
     this.routes.value = index >= 0 ? replaceRouteAt(routes, index, route) : appendRoute(routes, route);
@@ -81,7 +90,7 @@ export class RouteManager<TRoute extends Route = Route> {
 
   unregister(routeId: string, options: RouteUnregisterOptions = {}): boolean {
     const routes = this.routes.peek();
-    if (routeIndex(routes, routeId) < 0) return false;
+    if (this.routeIndex(routeId) < 0) return false;
 
     this.#pendingFallbackRouteId = options.fallbackRouteId;
     this.routes.value = removeRoute(routes, routeId);
@@ -91,7 +100,7 @@ export class RouteManager<TRoute extends Route = Route> {
   }
 
   navigate(routeId: string): boolean {
-    if (routeIndex(this.routes.peek(), routeId) < 0) {
+    if (this.routeIndex(routeId) < 0) {
       return false;
     }
     this.activeRouteId.value = routeId;
@@ -121,11 +130,9 @@ export class RouteManager<TRoute extends Route = Route> {
   private normalizeActiveRoute(fallbackRouteId = this.#pendingFallbackRouteId): void {
     const routes = this.routes.peek();
     const active = this.activeRouteId.peek();
-    if (routeIndex(routes, active) >= 0) return;
+    if (this.routeIndex(active) >= 0) return;
 
-    const fallback = fallbackRouteId && routeIndex(routes, fallbackRouteId) >= 0
-      ? fallbackRouteId
-      : routes[0]?.id ?? "";
+    const fallback = fallbackRouteId && this.routeIndex(fallbackRouteId) >= 0 ? fallbackRouteId : routes[0]?.id ?? "";
     if (active !== fallback) {
       this.activeRouteId.value = fallback;
     }
@@ -134,23 +141,28 @@ export class RouteManager<TRoute extends Route = Route> {
   private shift(delta: number): TRoute | undefined {
     const routes = this.routes.peek();
     if (routes.length === 0) return undefined;
-    const currentIndex = Math.max(0, routeIndex(routes, this.activeRouteId.peek()));
+    const currentIndex = Math.max(0, this.routeIndex(this.activeRouteId.peek()));
     const nextRoute = routes[(currentIndex + delta + routes.length) % routes.length]!;
     this.activeRouteId.value = nextRoute.id;
     return nextRoute;
   }
-}
 
-function findRoute<TRoute extends Route>(routes: readonly TRoute[], routeId: string): TRoute | undefined {
-  const index = routeIndex(routes, routeId);
-  return index < 0 ? undefined : routes[index];
-}
-
-function routeIndex<TRoute extends Route>(routes: readonly TRoute[], routeId: string): number {
-  for (let index = 0; index < routes.length; index += 1) {
-    if (routes[index]!.id === routeId) return index;
+  private routeIndex(routeId: string): number {
+    if (!this.#routeIndex) {
+      const routes = this.routes.peek();
+      const lookup = new Map<string, number>();
+      for (let index = 0; index < routes.length; index += 1) {
+        lookup.set(routes[index]!.id, index);
+      }
+      this.#routeIndex = lookup;
+    }
+    return this.#routeIndex.get(routeId) ?? -1;
   }
-  return -1;
+
+  private invalidateRouteCache(): void {
+    this.#routeIndex = undefined;
+    this.#ids = undefined;
+  }
 }
 
 function cloneRoutes<TRoute extends Route>(routes: readonly TRoute[]): TRoute[] {
@@ -158,6 +170,12 @@ function cloneRoutes<TRoute extends Route>(routes: readonly TRoute[]): TRoute[] 
   for (let index = 0; index < routes.length; index += 1) {
     output[index] = routes[index]!;
   }
+  return output;
+}
+
+function cloneStringArray(values: readonly string[]): string[] {
+  const output = new Array<string>(values.length);
+  for (let index = 0; index < values.length; index += 1) output[index] = values[index]!;
   return output;
 }
 
