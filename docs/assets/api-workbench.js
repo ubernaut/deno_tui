@@ -6556,7 +6556,9 @@ function matchesCssSelector(selector, node, ancestors = [], states = {}) {
   function matchPart(partIndex, nodeIndex) {
     if (nodeIndex < 0) return false;
     const part = parts[partIndex];
-    if (!matchesSimpleSelector(part.simple, chainNodeAt(ancestors, node, nodeIndex), nodeIndex === 0, states)) {
+    const current = chainNodeAt(ancestors, node, nodeIndex);
+    const parent = nodeIndex > 0 ? chainNodeAt(ancestors, node, nodeIndex - 1) : void 0;
+    if (!matchesSimpleSelector(part.simple, current, parent, nodeIndex === 0, states)) {
       return false;
     }
     if (partIndex === 0) return true;
@@ -6598,7 +6600,7 @@ function applyNode(node, ancestors, inherited, stylesheet, options) {
   if (inline.length > 0) {
     next.style = applyMatchedRules(next.style, [{ declarations: inline, specificity: 1e3, order: 1e6 }]);
   }
-  const childAncestors = appendAncestor(ancestors, next);
+  const childAncestors = appendAncestor(ancestors, node);
   next.children = new Array(node.children.length);
   for (let index = 0; index < node.children.length; index += 1) {
     next.children[index] = applyNode(node.children[index], childAncestors, next.style, stylesheet, options);
@@ -6625,7 +6627,7 @@ function applyMatchedRules(style2, matches) {
   }
   return next;
 }
-function matchesSimpleSelector(selector, node, isRoot, states) {
+function matchesSimpleSelector(selector, node, parent, isRoot, states) {
   if (selector === "*") return true;
   const tag = /^(#text|[A-Za-z][\w-]*|\*)/.exec(selector)?.[1];
   if (tag && tag !== "*" && tag.toLowerCase() !== node.tag) return false;
@@ -6641,15 +6643,51 @@ function matchesSimpleSelector(selector, node, isRoot, states) {
     if (!(name in node.attributes)) return false;
     if (expected !== void 0 && node.attributes[name] !== expected) return false;
   }
-  for (const pseudo of selector.matchAll(/:([A-Za-z_][\w-]*)/g)) {
+  for (const pseudo of selector.matchAll(/:([A-Za-z_][\w-]*)(?:\(([^)]*)\))?/g)) {
     const state = pseudo[1];
     if (state === "root") {
       if (!isRoot) return false;
-    } else if (!states[node.id]?.includes(state)) {
+      continue;
+    }
+    if (isStructuralPseudo(state)) {
+      if (!matchesStructuralPseudo(state, pseudo[2], node, parent)) return false;
+      continue;
+    }
+    if (!states[node.id]?.includes(state)) {
       return false;
     }
   }
   return true;
+}
+function isStructuralPseudo(pseudo) {
+  return pseudo === "first-child" || pseudo === "last-child" || pseudo === "only-child" || pseudo === "nth-child";
+}
+function matchesStructuralPseudo(pseudo, argument, node, parent) {
+  if (!parent) return false;
+  const index = childIndex(parent, node);
+  if (index < 0) return false;
+  const position = index + 1;
+  const count = parent.children.length;
+  if (pseudo === "first-child") return position === 1;
+  if (pseudo === "last-child") return position === count;
+  if (pseudo === "only-child") return count === 1;
+  return matchesNthChild(argument, position);
+}
+function matchesNthChild(argument, position) {
+  const normalized = argument?.trim().toLowerCase();
+  if (!normalized) return false;
+  if (normalized === "odd") return position % 2 === 1;
+  if (normalized === "even") return position % 2 === 0;
+  if (!/^\d+$/.test(normalized)) return false;
+  return position === Number.parseInt(normalized, 10);
+}
+function childIndex(parent, node) {
+  for (let index = 0; index < parent.children.length; index += 1) {
+    const child = parent.children[index];
+    if (!child) continue;
+    if (child === node || child.id === node.id) return index;
+  }
+  return -1;
 }
 function normalizeAttributeSelectorValue(value) {
   if (value === void 0) return void 0;
