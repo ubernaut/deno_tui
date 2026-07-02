@@ -666,7 +666,10 @@ function terminalSessionMoveCommand<TAction extends Action>(
     label: label(kind, fallback),
     group,
     keywords: ["terminal", "workspace", "session", "tab", "move", delta < 0 ? "previous" : "next"],
-    disabled: () => workspace.inspect().sessions.length < 2 || !workspace.inspect().activeId,
+    disabled: () => {
+      const inspection = workspace.inspect();
+      return inspection.sessions.length < 2 || !inspection.activeId;
+    },
     action: () => {
       const sessionId = workspace.inspect().activeId;
       if (sessionId) workspace.move(sessionId, delta);

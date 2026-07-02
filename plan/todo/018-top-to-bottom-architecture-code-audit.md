@@ -970,6 +970,8 @@ Work:
         benchmark added to keep that path measured.
   - [x] Cached runtime workload registry source snapshots behind source register/unregister/clear while preserving
         cloned public `sources()` results and live source inspection.
+  - [x] Reduced redundant terminal workspace inspection in session-move command disabled checks without changing payload
+        timing for pre/post mutation command actions.
 - [x] Make demo-only assets and NGE-inspired primitives clearly separate from library APIs.
   - [x] Added `app/neon_three_catalog.ts` for supported Three scene metadata and labels, keeping demo/NGE catalog data
         separate from the monolithic scene factory and shared by visualization footers plus scene coverage tests.
