@@ -116,7 +116,7 @@ export function dataTableCommands<
         id: `${idPrefix}.sort.${column.id}`,
         label: `${label("sort", "Sort")}: ${column.label ?? column.id}`,
         group,
-        keywords: [column.id, column.label, "sort"].filter((keyword): keyword is string => !!keyword),
+        keywords: dataTableSortKeywords(column.id, column.label),
         action: () => table.toggleSort(column.id),
       });
     }
@@ -135,4 +135,9 @@ export function bindDataTableCommands<
   options: DataTableCommandOptions = {},
 ): () => void {
   return registry.registerAll(dataTableCommands<TAction, TRow>(table, options));
+}
+
+function dataTableSortKeywords(id: string, label: string | undefined): string[] {
+  if (!label) return [id, "sort"];
+  return [id, label, "sort"];
 }

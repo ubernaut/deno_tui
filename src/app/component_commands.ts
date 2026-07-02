@@ -31,18 +31,23 @@ export function componentCatalogCommands<TAction extends Action = ComponentCatal
   const group = options.group ?? "components";
   const entries = options.entries ?? queryComponents(options.query);
 
-  return entries.map((entry) => ({
-    id: `${idPrefix}.select.${entry.id}`,
-    label: options.label?.(entry) ?? entry.name,
-    description: entry.description,
-    group,
-    keywords: options.keywords?.(entry) ?? componentKeywords(entry),
-    disabled: options.disabled ? () => options.disabled!(entry) : false,
-    action: async () => {
-      const action = await options.action?.(entry);
-      return (action ?? { type: "component.selected", payload: entry }) as TAction;
-    },
-  }));
+  const commands = new Array<Command<TAction>>(entries.length);
+  for (let index = 0; index < entries.length; index += 1) {
+    const entry = entries[index]!;
+    commands[index] = {
+      id: `${idPrefix}.select.${entry.id}`,
+      label: options.label?.(entry) ?? entry.name,
+      description: entry.description,
+      group,
+      keywords: options.keywords?.(entry) ?? componentKeywords(entry),
+      disabled: options.disabled ? () => options.disabled!(entry) : false,
+      action: async () => {
+        const action = await options.action?.(entry);
+        return (action ?? { type: "component.selected", payload: entry }) as TAction;
+      },
+    };
+  }
+  return commands;
 }
 
 /** Binds component Catalog Commands behavior and returns a disposer when applicable. */
@@ -64,11 +69,13 @@ export function inspectComponentCatalogCommands(options: ComponentCatalogCommand
 }
 
 function componentKeywords(entry: ComponentCatalogEntry): string[] {
-  return [
-    entry.id,
-    entry.name,
-    entry.category,
-    entry.description,
-    ...entry.capabilities,
-  ];
+  const keywords = new Array<string>(4 + entry.capabilities.length);
+  keywords[0] = entry.id;
+  keywords[1] = entry.name;
+  keywords[2] = entry.category;
+  keywords[3] = entry.description;
+  for (let index = 0; index < entry.capabilities.length; index += 1) {
+    keywords[index + 4] = entry.capabilities[index]!;
+  }
+  return keywords;
 }
