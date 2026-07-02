@@ -131,11 +131,13 @@ type Hit =
   | { type: "dataRow"; index: number }
   | { type: "explorerRow"; index: number }
   | { type: "logScrollbar" }
+  | { type: "terminalAction"; action: WebTerminalAction }
   | { type: "terminalSession"; id: string }
   | { type: "workspaceScrollbar" };
 type ControlHitAction = "previous" | "next" | "activate" | "set" | "focus" | "toggle";
 type ButtonTone = "default" | "danger" | "warning" | "success" | "muted";
 type MobileAction = "next" | "controls" | "theme" | "help" | "restore" | "wide" | "dense";
+type WebTerminalAction = "new" | "previous" | "next" | "close" | "restart";
 
 interface DropdownOverlay {
   kind: "theme" | "control";
@@ -238,6 +240,14 @@ const htmlCssLayoutBoxes: ComputedLayoutBox[] = [];
 const minimizedShelfEntries: Array<{ id: PanelId; title: string }> = [];
 const fullscreenTabEntries: Array<{ id: PanelId; title: string; selected?: boolean; hidden?: boolean }> = [];
 const verticalScrollbarCells: Array<{ column: number; row: number; glyph: string }> = [];
+const webTerminalButtonItems: WorkbenchButtonRowItem<WebTerminalAction>[] = [
+  { label: "New", action: "new", tone: "success" },
+  { label: "Prev", action: "previous", tone: "muted" },
+  { label: "Next", action: "next", tone: "muted" },
+  { label: "Close", action: "close", tone: "danger" },
+  { label: "Restart", action: "restart", tone: "warning" },
+];
+const webTerminalButtonPlacements: WorkbenchButtonRowPlacement<WebTerminalAction>[] = [];
 const modalActionButtonItems: WorkbenchButtonRowItem<number>[] = [];
 const modalActionButtonPlacements: WorkbenchButtonRowPlacement<number>[] = [];
 let dropdownOverlay: DropdownOverlay | null = null;
@@ -990,6 +1000,7 @@ function renderTerminalProtocol(frame: string[], rect: Rectangle): void {
     write(frame, rect.row + index, rect.column, paint(fit(line, rect.width), fg, bg, index === 0));
   }
   renderTerminalSessionTabs(frame, { column: rect.column, row: rect.row + 2, width: rect.width, height: 1 });
+  renderTerminalToolbar(frame, { column: rect.column, row: rect.row + 3, width: rect.width, height: 1 }, workspace);
 
   fillRect(frame, screenRect, t.background);
   const rows = webTerminalScreen.textRows();
@@ -1013,6 +1024,29 @@ function renderTerminalProtocol(frame: string[], rect: Rectangle): void {
     const footer =
       "GitHub Pages uses this safe mock; hosted apps attach a PTY/process backend over the remote protocol.";
     write(frame, footerRow, rect.column, paint(fit(footer, rect.width), t.muted, t.surface));
+  }
+}
+
+function renderTerminalToolbar(
+  frame: string[],
+  rect: Rectangle,
+  workspace = webTerminalWorkspace.inspect(),
+): void {
+  if (rect.height <= 0 || rect.width <= 0) return;
+  webTerminalButtonItems[1]!.disabled = workspace.sessions.length < 2;
+  webTerminalButtonItems[2]!.disabled = workspace.sessions.length < 2;
+  webTerminalButtonItems[3]!.disabled = workspace.sessions.length <= 1;
+  webTerminalButtonItems[4]!.disabled = !workspace.activeId;
+  layoutWorkbenchButtonRowInto(webTerminalButtonPlacements, webTerminalButtonItems, rect, rect.row);
+  for (const placement of webTerminalButtonPlacements) {
+    const written = writeButton(frame, placement.rect.row, placement.rect.column, placement.item.label, {
+      state: placement.state,
+      tone: placement.tone,
+      maxWidth: placement.rect.width,
+    });
+    if (!placement.item.disabled && written > 0) {
+      hitTargets.add({ ...placement.rect, width: written }, { type: "terminalAction", action: placement.item.action });
+    }
   }
 }
 
@@ -1086,6 +1120,59 @@ function syncWebTerminalScreen(width: number, height: number): void {
       "\x1b[1mweb-shell\x1b[0m:\x1b[34m~/deno_tui\x1b[0m$ _",
     ];
   webTerminalScreen.write(transcript.join("\r\n"));
+}
+
+function applyWebTerminalAction(action: WebTerminalAction): void {
+  const inspection = webTerminalWorkspace.inspect();
+  if (action === "new") {
+    const id = nextWebTerminalSessionId();
+    const title = webTerminalSessionTitle(id);
+    webTerminalWorkspace.add({
+      id,
+      title,
+      kind: "command",
+      command: "web-shell",
+      metadata: { source: "browser-demo" },
+    }, {
+      activate: true,
+      backendId: "browser-mock",
+      status: "running",
+      running: true,
+    });
+    push(`terminal new ${title}`);
+  } else if (action === "previous") {
+    const descriptor = webTerminalWorkspace.activateRelative(-1);
+    push(descriptor ? `terminal session ${descriptor.title}` : "terminal previous unavailable");
+  } else if (action === "next") {
+    const descriptor = webTerminalWorkspace.activateRelative(1);
+    push(descriptor ? `terminal session ${descriptor.title}` : "terminal next unavailable");
+  } else if (action === "close") {
+    if (inspection.activeId && inspection.sessions.length > 1) {
+      webTerminalWorkspace.remove(inspection.activeId);
+      push("terminal session closed");
+    }
+  } else if (action === "restart") {
+    if (inspection.activeId) {
+      webTerminalWorkspace.restart(inspection.activeId);
+      push(`terminal restart ${webTerminalWorkspace.active?.title ?? inspection.activeId}`);
+    }
+  }
+  webTerminalScreenKey = "";
+  active.value = "terminal";
+}
+
+function nextWebTerminalSessionId(): string {
+  const existing = new Set(webTerminalWorkspace.inspect().sessions.map((session) => session.id));
+  for (let index = 1; index < 10000; index += 1) {
+    const id = `pages-shell-${index}`;
+    if (!existing.has(id)) return id;
+  }
+  return `pages-shell-${Date.now()}`;
+}
+
+function webTerminalSessionTitle(id: string): string {
+  const match = /^pages-shell-(\d+)$/.exec(id);
+  return match ? `Pages Shell ${match[1]}` : "Pages Shell";
 }
 
 function panelLines(id: PanelId, height: number): string[] {
@@ -1166,6 +1253,8 @@ function applyHit(target: HitTarget<Hit>, x: number, y: number): void {
     webTerminalScreenKey = "";
     active.value = "terminal";
     push(`terminal session ${hit.id}`);
+  } else if (hit.type === "terminalAction") {
+    applyWebTerminalAction(hit.action);
   } else if (hit.type === "workspaceScrollbar") {
     workspaceScroll.scrollTo(
       0,

@@ -123,3 +123,8 @@ developer workflows.
 - Added live shell workspace command adapters for new shell, start, stop, restart, previous/next session, close, and
   sync actions so command palettes and workbench menus can drive multi-session shell workspaces without renderer-local
   lifecycle code.
+- Wired the API Workbench Shell window to `TerminalShellWorkspaceController`, including New/Prev/Next/Close controls,
+  selectable session tabs, stable id allocation after closes, and active-session raw input/copy-mode routing.
+- Added matching browser workbench terminal workspace controls for New/Prev/Next/Close/Restart so the static web demo
+  exposes the same multi-session workspace affordances as the console shell window, using mock/browser-safe sessions by
+  default.
