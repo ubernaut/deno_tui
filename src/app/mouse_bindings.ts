@@ -63,6 +63,11 @@ interface RegisteredMouseInteractionTarget<TPayload = unknown> extends MouseInte
   sequence: number;
 }
 
+interface ResolvedMouseInteractionTarget {
+  target: RegisteredMouseInteractionTarget;
+  bounds: Rectangle;
+}
+
 /** Public class implementing a mouse Interaction Router. */
 export class MouseInteractionRouter {
   readonly #targets = new Map<string, RegisteredMouseInteractionTarget>();
@@ -132,7 +137,10 @@ export class MouseInteractionRouter {
     const capturedTarget = this.#captureId && (kind === "drag" || kind === "release")
       ? this.#targets.get(this.#captureId)
       : undefined;
-    const target = capturedTarget && !disabled(capturedTarget) ? capturedTarget : this.hitTest(event.x, event.y, kind);
+    const resolved = capturedTarget && !disabled(capturedTarget)
+      ? { target: capturedTarget, bounds: boundsOf(capturedTarget) }
+      : this.#resolveHit(event.x, event.y, kind);
+    const target = resolved?.target;
     const captured = target !== undefined && target.id === this.#captureId;
 
     if (!target) {
@@ -146,7 +154,7 @@ export class MouseInteractionRouter {
       return { handled: false, targetId: target.id, kind, captured };
     }
 
-    const bounds = boundsOf(target);
+    const bounds = resolved.bounds;
     const handled = await handler(event, {
       id: target.id,
       bounds,
@@ -168,11 +176,19 @@ export class MouseInteractionRouter {
   }
 
   hitTest(x: number, y: number, kind: MouseInteractionKind = "press"): RegisteredMouseInteractionTarget | undefined {
+    return this.#resolveHit(x, y, kind)?.target;
+  }
+
+  #resolveHit(x: number, y: number, kind: MouseInteractionKind): ResolvedMouseInteractionTarget | undefined {
     const targets = this.#ordered();
     for (let index = 0; index < targets.length; index += 1) {
       const target = targets[index]!;
-      if (!disabled(target) && contains(boundsOf(target), x, y) && handlerFor(target, kind) !== undefined) {
-        return target;
+      if (disabled(target) || handlerFor(target, kind) === undefined) {
+        continue;
+      }
+      const bounds = boundsOf(target);
+      if (contains(bounds, x, y)) {
+        return { target, bounds };
       }
     }
     return undefined;

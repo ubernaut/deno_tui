@@ -1134,6 +1134,8 @@ Work:
   - [x] Extended the read-only pane lookup pattern into `TerminalWorkspaceController` focus, split, close, zoom, and
         normalization paths so renderer-neutral terminal workspace commands no longer rely on public defensive-clone
         lookup helpers for internal state decisions.
+  - [x] Reduced mouse interaction dispatch churn by resolving dynamic hit-target bounds once per event dispatch and
+        added direct router coverage for z-order, capture, and local-coordinate behavior.
 - [x] Make demo-only assets and NGE-inspired primitives clearly separate from library APIs.
   - [x] Added `app/neon_three_catalog.ts` for supported Three scene metadata and labels, keeping demo/NGE catalog data
         separate from the monolithic scene factory and shared by visualization footers plus scene coverage tests.
