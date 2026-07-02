@@ -91,7 +91,18 @@ export class DirtyRegion {
 
   /** Returns true when any dirty segment intersects the rectangle. */
   intersects(rectangle: Rectangle): boolean {
-    return this.intersections(rectangle).length > 0;
+    const rowStart = Math.floor(rectangle.row);
+    const rowEnd = rowStart + Math.max(0, Math.floor(rectangle.height));
+    const columnStart = Math.floor(rectangle.column);
+    const columnEnd = columnStart + Math.max(0, Math.floor(rectangle.width));
+    if (rowEnd <= rowStart || columnEnd <= columnStart) return false;
+
+    for (let row = rowStart; row < rowEnd; row += 1) {
+      for (const segment of this.#rows.get(row) ?? []) {
+        if (Math.min(columnEnd, segment.endColumn) > Math.max(columnStart, segment.startColumn)) return true;
+      }
+    }
+    return false;
   }
 
   /** Returns row segments clipped to the supplied rectangle. */

@@ -422,9 +422,11 @@ Work:
 - [x] Add optional render stats for dirty rectangle count, dirty cell count, full redraw count, and intersection query
       cost.
 - [x] Keep the current cell sink contract stable while allowing future sinks to consume row ranges.
-- [x] Add a dedicated DirtyRegion row-segment merge/probe benchmark.
+  - [x] Add a dedicated DirtyRegion row-segment merge/probe benchmark.
   - [x] Optimized bulk dirty-region construction to collect row segments first and merge each row once, reducing the
         400-rectangle dirty-region benchmark without changing incremental `addRectangle()` behavior.
+  - [x] Reworked `DirtyRegion.intersects()` to scan row segments with early exit instead of allocating clipped
+        intersection arrays for boolean probes.
 
 Acceptance checks:
 
