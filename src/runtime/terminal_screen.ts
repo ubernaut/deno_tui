@@ -75,6 +75,7 @@ export class TerminalScreenController {
   #originMode = false;
   #autoWrap = true;
   #insertMode = false;
+  #lastPrintableCell?: TerminalScreenCell;
   #tabStops: Set<number>;
   readonly #decoder = new TextDecoder();
 
@@ -187,12 +188,18 @@ export class TerminalScreenController {
     }
     if (char < " ") return;
 
+    const cell = this.#styledCell(char);
+    this.#writeCell(cell);
+    this.#lastPrintableCell = { ...cell };
+  }
+
+  #writeCell(cell: TerminalScreenCell): void {
     const row = this.#state.cells[this.#state.cursor.row]!;
     if (this.#insertMode) {
       row.splice(this.#state.cursor.column, 0, { char: " " });
       row.length = this.#columns;
     }
-    row[this.#state.cursor.column] = this.#styledCell(char);
+    row[this.#state.cursor.column] = cell;
     if (this.#state.cursor.column >= this.#columns - 1) {
       if (!this.#autoWrap) return;
       this.#state.cursor.column = 0;
@@ -256,6 +263,9 @@ export class TerminalScreenController {
       case "C":
         this.#state.cursor.column = clamp(this.#state.cursor.column + (params[0] || 1), 0, this.#columns - 1);
         break;
+      case "a":
+        this.#state.cursor.column = clamp(this.#state.cursor.column + (params[0] || 1), 0, this.#columns - 1);
+        break;
       case "D":
         if (sequence.kind === "esc") {
           this.#index();
@@ -279,8 +289,23 @@ export class TerminalScreenController {
       case "G":
         this.#state.cursor.column = clamp((params[0] || 1) - 1, 0, this.#columns - 1);
         break;
+      case "`":
+        this.#state.cursor.column = clamp((params[0] || 1) - 1, 0, this.#columns - 1);
+        break;
       case "d":
         this.#setCursorPosition(params[0] || 1, this.#state.cursor.column + 1);
+        break;
+      case "e":
+        this.#state.cursor.row = clamp(this.#state.cursor.row + (params[0] || 1), 0, this.#rows - 1);
+        break;
+      case "I":
+        this.#cursorForwardTabs(params[0] || 1);
+        break;
+      case "Z":
+        this.#cursorBackwardTabs(params[0] || 1);
+        break;
+      case "b":
+        this.#repeatLastPrintable(params[0] || 1);
         break;
       case "c":
         if (sequence.kind === "esc") this.#reset();
@@ -429,6 +454,28 @@ export class TerminalScreenController {
       return;
     }
     if (mode === 0) this.#tabStops.delete(this.#state.cursor.column);
+  }
+
+  #cursorForwardTabs(count: number): void {
+    const amount = Math.max(1, Math.floor(count));
+    for (let index = 0; index < amount; index += 1) {
+      this.#state.cursor.column = nextTabStop(this.#tabStops, this.#state.cursor.column, this.#columns);
+    }
+  }
+
+  #cursorBackwardTabs(count: number): void {
+    const amount = Math.max(1, Math.floor(count));
+    for (let index = 0; index < amount; index += 1) {
+      this.#state.cursor.column = previousTabStop(this.#tabStops, this.#state.cursor.column);
+    }
+  }
+
+  #repeatLastPrintable(count: number): void {
+    if (!this.#lastPrintableCell) return;
+    const amount = Math.max(1, Math.floor(count));
+    for (let index = 0; index < amount; index += 1) {
+      this.#writeCell({ ...this.#lastPrintableCell });
+    }
   }
 
   #applyCursorStyle(style: number): void {
@@ -604,6 +651,7 @@ export class TerminalScreenController {
     this.#originMode = false;
     this.#autoWrap = true;
     this.#insertMode = false;
+    this.#lastPrintableCell = undefined;
     this.clear();
   }
 
@@ -759,6 +807,14 @@ function nextTabStop(stops: Set<number>, column: number, columns: number): numbe
     if (stop > column && stop < next) next = stop;
   }
   return next;
+}
+
+function previousTabStop(stops: Set<number>, column: number): number {
+  let previous = 0;
+  for (const stop of stops) {
+    if (stop < column && stop > previous) previous = stop;
+  }
+  return previous;
 }
 
 function resizeState(state: TerminalScreenState, columns: number, rows: number): TerminalScreenState {

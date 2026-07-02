@@ -54,6 +54,15 @@ Deno.test("TerminalScreenController supports common absolute and line cursor con
   assertEquals(screen.inspect().cursor, { column: 3, row: 2 });
 });
 
+Deno.test("TerminalScreenController supports common xterm cursor aliases", () => {
+  const screen = new TerminalScreenController({ columns: 12, rows: 4 });
+
+  screen.write("A\x1b[5`B\x1b[2aC\x1b[2eD");
+
+  assertEquals(screen.textRows(), ["A   B  C", "", "        D", ""]);
+  assertEquals(screen.inspect().cursor, { column: 9, row: 2 });
+});
+
 Deno.test("TerminalScreenController applies erase-before and erase-character controls", () => {
   const screen = new TerminalScreenController({ columns: 8, rows: 3 });
 
@@ -91,6 +100,15 @@ Deno.test("TerminalScreenController supports clearing all tab stops", () => {
 
   screen.write("\x1b[2;5H\x1bH\x1b[2;1HC\tD");
   assertEquals(screen.textRows()[1], "C   D");
+});
+
+Deno.test("TerminalScreenController supports forward and backward tab controls", () => {
+  const screen = new TerminalScreenController({ columns: 20, rows: 2 });
+
+  screen.write("\x1b[3g\x1b[6G\x1bH\x1b[11G\x1bH\x1b[1G\x1b[2IAB\x1b[1ZC");
+
+  assertEquals(screen.textRows()[0], "          CB");
+  assertEquals(screen.inspect().cursor, { column: 11, row: 0 });
 });
 
 Deno.test("TerminalScreenController preserves in-range tab stops after resize", () => {
@@ -165,6 +183,18 @@ Deno.test("TerminalScreenController supports insert and replace character modes"
 
   screen.write("\x1b[4l\x1b[1;3HZZ");
   assertEquals(screen.textRows()[0], "abZZcdef");
+});
+
+Deno.test("TerminalScreenController supports repeat preceding graphic character", () => {
+  const screen = new TerminalScreenController({ columns: 8, rows: 2 });
+
+  screen.write("\x1b[31mX\x1b[3b\x1b[0mY");
+
+  assertEquals(screen.textRows()[0], "XXXXY");
+  const [row] = screen.cellRows();
+  assertEquals(row![0], { char: "X", foreground: 31 });
+  assertEquals(row![3], { char: "X", foreground: 31 });
+  assertEquals(row![4], { char: "Y" });
 });
 
 Deno.test("TerminalScreenController supports ESC index and next-line controls", () => {
