@@ -433,8 +433,9 @@ export function centeredRect(bounds: Rect, width: number, height: number): Rect 
 }
 
 export function fitTextWidth(lines: string[], minWidth = 24, maxWidth = 80) {
-  return Math.min(
-    maxWidth,
-    Math.max(minWidth, lines.reduce((width, line) => Math.max(width, textWidth(line)), minWidth)),
-  );
+  let width = minWidth;
+  for (let index = 0; index < lines.length; index += 1) {
+    width = Math.max(width, textWidth(lines[index] ?? ""));
+  }
+  return Math.min(maxWidth, width);
 }

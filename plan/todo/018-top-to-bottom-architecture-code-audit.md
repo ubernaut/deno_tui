@@ -331,6 +331,8 @@ Work:
         regex token arrays for each measured line in HTML/CSS layout hot paths.
   - [x] Reworked the monitor layout weighted split helper to use a single output buffer and direct accumulation instead
         of `map`/`reduce` passes, with cramped-bounds regression coverage.
+  - [x] Reworked panel text width fitting and system-alert network pressure detection to use direct scans instead of
+        reducer callbacks and full network clone/sort when sampling monitor snapshots.
   - [x] Added a direct sampled-series value helper and migrated compact network monitor traces off temporary RX/TX
         sampled arrays in narrow live-render paths.
   - [x] Added source-array keyed overlay z-order caches and reverse-loop modal hit testing so repeated menu/modal

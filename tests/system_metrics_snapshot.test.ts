@@ -46,3 +46,36 @@ Deno.test("collectAlerts reports high-priority system pressure and caps output",
     "THERMAL LIMIT",
   ]);
 });
+
+Deno.test("collectAlerts scans busiest network without input ordering assumptions", () => {
+  const alerts = collectAlerts({
+    cpuOverall: 10,
+    memoryPercent: 10,
+    swapPercent: 0,
+    temperatures: [],
+    disks: [],
+    networks: [
+      { name: "lo", addresses: [], rxBytes: 0, txBytes: 0, rxRate: 1, txRate: 1 },
+      { name: "eth1", addresses: [], rxBytes: 0, txBytes: 0, rxRate: 10_000, txRate: 10_000 },
+      { name: "uplink0", addresses: [], rxBytes: 0, txBytes: 0, rxRate: 126_000_000, txRate: 2_000_000 },
+    ],
+    gpu: {
+      available: false,
+      name: "unavailable",
+      utilizationPercent: 0,
+      memoryUsed: 0,
+      memoryTotal: 0,
+      memoryPercent: 0,
+      temperatureCelsius: null,
+      powerWatts: null,
+      graphicsClockMhz: null,
+      memoryClockMhz: null,
+    },
+  });
+
+  assertEquals(alerts, [{
+    severity: "warning",
+    title: "NETWORK SURGE",
+    detail: "UPLINK0 ABOVE 125 MiB/s",
+  }]);
+});

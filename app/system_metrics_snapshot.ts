@@ -104,7 +104,16 @@ export function collectAlerts(input: {
     });
   }
 
-  const busiestNetwork = [...input.networks].sort((a, b) => (b.rxRate + b.txRate) - (a.rxRate + a.txRate))[0];
+  let busiestNetwork: NetworkSnapshot | undefined;
+  let busiestNetworkRate = -1;
+  for (let index = 0; index < input.networks.length; index += 1) {
+    const network = input.networks[index]!;
+    const rate = network.rxRate + network.txRate;
+    if (rate > busiestNetworkRate) {
+      busiestNetwork = network;
+      busiestNetworkRate = rate;
+    }
+  }
   if (busiestNetwork && busiestNetwork.rxRate + busiestNetwork.txRate > 125_000_000) {
     alerts.push({
       severity: "warning",
@@ -128,7 +137,10 @@ export function collectAlerts(input: {
     });
   }
 
-  return alerts.slice(0, 4);
+  if (alerts.length <= 4) return alerts;
+  const capped = new Array<AlertMessage>(4);
+  for (let index = 0; index < capped.length; index += 1) capped[index] = alerts[index]!;
+  return capped;
 }
 
 export function emptySnapshot(hostname: string, osRelease: string, historyLength: number): SystemSnapshot {
