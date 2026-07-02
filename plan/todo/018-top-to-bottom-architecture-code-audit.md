@@ -362,6 +362,8 @@ Work:
         recursive text projection to use direct buffers instead of map/filter chains.
   - [x] Reworked terminal workspace command payload and detached-session lookup helpers to avoid repeated inline
         `find/every` scans while keeping tmux-like command actions renderer-neutral.
+  - [x] Reworked terminal-window resize sync to populate visible-window lookup maps directly instead of constructing
+        tuple arrays with `layout.visible.map()`.
   - [x] Reworked Yoga layout child projection, Yoga text measurement, simple-solver intrinsic cache signatures, and grid
         track shrinking to use direct accumulation instead of map/reduce/spread pipelines in layout solve paths.
   - [x] Reworked shared layout-node cloning and class-list parsing to use explicit child/string buffers instead of

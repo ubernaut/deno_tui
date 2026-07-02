@@ -37,7 +37,8 @@ export async function syncTerminalWindowLayout(
   bindings: readonly TerminalWindowBinding[],
   options: TerminalWindowLayoutSyncOptions = {},
 ): Promise<TerminalWindowLayoutSyncResult[]> {
-  const windows = new Map(layout.visible.map((entry) => [entry.id, entry]));
+  const windows = new Map<string, WindowManagerWindowInspection>();
+  for (const entry of layout.visible) windows.set(entry.id, entry);
   const results: TerminalWindowLayoutSyncResult[] = [];
   for (const binding of bindings) {
     const window = windows.get(binding.windowId);
