@@ -116,9 +116,10 @@ export class ThreeAsciiAnsiGridAssembler {
 
     for (let row = 0; row < rows; row += 1) {
       const outputRow = grid[row];
+      const rowOffset = row * columns;
 
       for (let column = 0; column < columns; column += 1) {
-        const index = row * columns + column;
+        const index = rowOffset + column;
         const fillGlyphIndex = Math.round(fillGlyphs[index] ?? 0);
         let edgeGlyphIndex = 0;
         let dominantCount = 0;
@@ -231,9 +232,10 @@ export class ThreeAsciiAnsiGridAssembler {
   ): string[][] {
     for (let row = 0; row < rows; row += 1) {
       const outputRow = grid[row];
+      const rowOffset = row * columns;
 
       for (let column = 0; column < columns; column += 1) {
-        const index = row * columns + column;
+        const index = rowOffset + column;
         const fillGlyphIndex = Math.round(fillGlyphs[index] ?? 0);
         if (fillGlyphIndex < 5) {
           outputRow[column] = this.blankAnsi;
