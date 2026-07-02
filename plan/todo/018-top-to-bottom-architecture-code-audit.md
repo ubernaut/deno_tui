@@ -268,6 +268,8 @@ Work:
         command-surface paths.
   - [x] Reworked stacked widget hit-region projection and widget hit testing to use direct buffers and a one-pass
         topmost scan instead of per-pointer copy/filter/sort allocation, with z/id tie-break regression coverage.
+  - [x] Reworked log viewer, terminal output, and metric-series bounded buffers to avoid spread/map/slice churn in
+        append, trim, snapshot, and inspection paths while preserving dashboard and terminal behavior.
 
 Acceptance checks:
 

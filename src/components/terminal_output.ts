@@ -78,7 +78,9 @@ export class TerminalOutputController {
   }
 
   appendMany(lines: readonly TerminalOutputLine[]): void {
-    this.lines.value.push(...lines.map(normalizeTerminalOutputLine));
+    for (const line of lines) {
+      this.lines.value.push(normalizeTerminalOutputLine(line));
+    }
     this.#trim();
   }
 
@@ -89,7 +91,7 @@ export class TerminalOutputController {
   setLimit(limit: number): void {
     const normalizedLimit = normalizedTerminalOutputLimit(limit);
     this.limit.value = normalizedLimit;
-    this.lines.value = normalizedLimit === 0 ? [] : this.lines.peek().slice(-normalizedLimit);
+    this.lines.value = tailTerminalOutputLines(this.lines.peek(), normalizedLimit);
   }
 
   setFollow(follow: boolean): void {
@@ -106,7 +108,7 @@ export class TerminalOutputController {
   }
 
   inspect(height = this.lines.peek().length): TerminalOutputInspection {
-    const lines = this.lines.peek().map((line) => ({ ...line }));
+    const lines = cloneTerminalOutputLines(this.lines.peek());
     return {
       lines,
       lineCount: lines.length,
@@ -128,9 +130,28 @@ export class TerminalOutputController {
     if (limit === 0) {
       this.lines.value = [];
     } else if (this.lines.value.length > limit) {
-      this.lines.value = this.lines.peek().slice(-limit);
+      this.lines.value = tailTerminalOutputLines(this.lines.peek(), limit);
     }
   }
+}
+
+function tailTerminalOutputLines(lines: readonly TerminalOutputLine[], limit: number): TerminalOutputLine[] {
+  const normalizedLimit = normalizedTerminalOutputLimit(limit);
+  if (normalizedLimit === 0 || lines.length === 0) return [];
+  const start = Math.max(0, lines.length - normalizedLimit);
+  const output = new Array<TerminalOutputLine>(lines.length - start);
+  for (let index = start; index < lines.length; index += 1) {
+    output[index - start] = normalizeTerminalOutputLine(lines[index]!);
+  }
+  return output;
+}
+
+function cloneTerminalOutputLines(lines: readonly TerminalOutputLine[]): TerminalOutputLine[] {
+  const output = new Array<TerminalOutputLine>(lines.length);
+  for (let index = 0; index < lines.length; index += 1) {
+    output[index] = normalizeTerminalOutputLine(lines[index]!);
+  }
+  return output;
 }
 
 function normalizeTerminalOutputLine(line: TerminalOutputLine): TerminalOutputLine {

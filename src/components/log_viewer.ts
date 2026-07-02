@@ -61,7 +61,9 @@ export class LogViewerController {
   }
 
   appendMany(lines: readonly string[]): void {
-    this.lines.value.push(...lines);
+    for (const line of lines) {
+      this.lines.value.push(line);
+    }
     this.#trim();
   }
 
@@ -72,7 +74,7 @@ export class LogViewerController {
   setLimit(limit: number): void {
     const normalizedLimit = normalizedLogLimit(limit);
     this.limit.value = normalizedLimit;
-    this.lines.value = normalizedLimit === 0 ? [] : this.lines.peek().slice(-normalizedLimit);
+    this.lines.value = tailLogLines(this.lines.peek(), normalizedLimit);
   }
 
   setFollow(follow: boolean): void {
@@ -89,7 +91,7 @@ export class LogViewerController {
   }
 
   inspect(height = this.lines.peek().length): LogViewerInspection {
-    const lines = this.lines.peek().map((line) => line);
+    const lines = cloneLogLines(this.lines.peek());
     return {
       lines,
       lineCount: lines.length,
@@ -111,7 +113,7 @@ export class LogViewerController {
     if (limit === 0) {
       this.lines.value = [];
     } else if (this.lines.value.length > limit) {
-      this.lines.value = this.lines.peek().slice(-limit);
+      this.lines.value = tailLogLines(this.lines.peek(), limit);
     }
   }
 }
@@ -134,4 +136,23 @@ export class LogViewer extends Component {
 
 function normalizedLogLimit(limit: number): number {
   return Math.max(0, Math.floor(Number.isFinite(limit) ? limit : DEFAULT_LOG_LINE_LIMIT));
+}
+
+function tailLogLines(lines: readonly string[], limit: number): string[] {
+  const normalizedLimit = normalizedLogLimit(limit);
+  if (normalizedLimit === 0 || lines.length === 0) return [];
+  const start = Math.max(0, lines.length - normalizedLimit);
+  const output = new Array<string>(lines.length - start);
+  for (let index = start; index < lines.length; index += 1) {
+    output[index - start] = lines[index] ?? "";
+  }
+  return output;
+}
+
+function cloneLogLines(lines: readonly string[]): string[] {
+  const output = new Array<string>(lines.length);
+  for (let index = 0; index < lines.length; index += 1) {
+    output[index] = lines[index] ?? "";
+  }
+  return output;
 }

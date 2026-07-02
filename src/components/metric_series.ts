@@ -61,8 +61,13 @@ export function pushMetricValue(
   const normalizedLimit = normalizeMetricLimit(limit);
   if (normalizedLimit === 0) return [];
 
-  const next = values.slice(-Math.max(0, normalizedLimit - 1));
-  next.push(normalizeMetricValue(value, clamp));
+  const retained = Math.min(values.length, normalizedLimit - 1);
+  const next = new Array<number>(retained + 1);
+  const start = values.length - retained;
+  for (let index = 0; index < retained; index += 1) {
+    next[index] = normalizeMetricValue(values[start + index] ?? 0, clamp);
+  }
+  next[retained] = normalizeMetricValue(value, clamp);
   return next;
 }
 
@@ -121,20 +126,17 @@ export class MetricSeriesController {
       return;
     }
 
-    const normalized = values.map((value) => normalizeMetricValue(value, this.#clamp));
-    this.#setValues([...this.values.peek(), ...normalized].slice(-limit));
+    this.#setValues(tailMetricValuesFromAppend(this.values.peek(), values, limit, this.#clamp));
   }
 
   reset(values: readonly number[] = []): void {
-    const limit = this.limit.peek();
-    const normalized = values.map((value) => normalizeMetricValue(value, this.#clamp));
-    this.#setValues(limit === 0 ? [] : normalized.slice(-limit));
+    this.#setValues(tailMetricValues(values, this.limit.peek(), this.#clamp));
   }
 
   setLimit(limit: number): void {
     const normalizedLimit = normalizeMetricLimit(limit);
     this.limit.value = normalizedLimit;
-    this.#setValues(normalizedLimit === 0 ? [] : this.values.peek().slice(-normalizedLimit));
+    this.#setValues(tailMetricValues(this.values.peek(), normalizedLimit, this.#clamp));
   }
 
   setClamp(clamp?: boolean | MetricClampRange): void {
@@ -148,7 +150,7 @@ export class MetricSeriesController {
   }
 
   snapshot(): number[] {
-    return [...this.values.peek()];
+    return cloneMetricValues(this.values.peek());
   }
 
   inspect(): MetricSeriesInspection {
@@ -171,4 +173,51 @@ export class MetricSeriesController {
     this.values.value = values;
     this.stats.value = metricSeriesStats(values);
   }
+}
+
+function tailMetricValues(
+  values: readonly number[],
+  limit: number,
+  clamp?: boolean | MetricClampRange,
+): number[] {
+  const normalizedLimit = normalizeMetricLimit(limit);
+  if (normalizedLimit === 0 || values.length === 0) return [];
+
+  const start = Math.max(0, values.length - normalizedLimit);
+  const output = new Array<number>(values.length - start);
+  for (let index = start; index < values.length; index += 1) {
+    output[index - start] = normalizeMetricValue(values[index] ?? 0, clamp);
+  }
+  return output;
+}
+
+function tailMetricValuesFromAppend(
+  current: readonly number[],
+  appended: readonly number[],
+  limit: number,
+  clamp?: boolean | MetricClampRange,
+): number[] {
+  const normalizedLimit = normalizeMetricLimit(limit);
+  if (normalizedLimit === 0) return [];
+
+  const total = current.length + appended.length;
+  const outputLength = Math.min(normalizedLimit, total);
+  const start = total - outputLength;
+  const output = new Array<number>(outputLength);
+  for (let index = 0; index < outputLength; index += 1) {
+    const sourceIndex = start + index;
+    const value = sourceIndex < current.length
+      ? current[sourceIndex] ?? 0
+      : appended[sourceIndex - current.length] ?? 0;
+    output[index] = normalizeMetricValue(value, clamp);
+  }
+  return output;
+}
+
+function cloneMetricValues(values: readonly number[]): number[] {
+  const output = new Array<number>(values.length);
+  for (let index = 0; index < values.length; index += 1) {
+    output[index] = values[index] ?? 0;
+  }
+  return output;
 }
