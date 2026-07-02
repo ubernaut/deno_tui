@@ -427,6 +427,8 @@ Work:
         400-rectangle dirty-region benchmark without changing incremental `addRectangle()` behavior.
   - [x] Reworked `DirtyRegion.intersects()` to scan row segments with early exit instead of allocating clipped
         intersection arrays for boolean probes.
+  - [x] Reworked workbench frame color parsing and luminance conversion to avoid temporary channel arrays in
+        theme/button contrast helpers.
 
 Acceptance checks:
 

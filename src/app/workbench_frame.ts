@@ -152,10 +152,10 @@ export function contrastText(background: string, dark: string, light: string): s
 export function parseHexColor(value: string): [number, number, number] | undefined {
   const color = value.trim().replace(/^#/, "");
   if (!/^[\da-f]{6}$/i.test(color)) return undefined;
-  return [0, 2, 4].map((index) => Number.parseInt(color.slice(index, index + 2), 16)) as [
-    number,
-    number,
-    number,
+  return [
+    Number.parseInt(color.slice(0, 2), 16),
+    Number.parseInt(color.slice(2, 4), 16),
+    Number.parseInt(color.slice(4, 6), 16),
   ];
 }
 
@@ -168,9 +168,13 @@ function contrastRatio(left: [number, number, number], right: [number, number, n
 }
 
 function relativeLuminance([red, green, blue]: [number, number, number]): number {
-  const [r, g, b] = [red, green, blue].map((channel) => {
-    const value = channel / 255;
-    return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
-  });
-  return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!;
+  const r = linearRgbChannel(red);
+  const g = linearRgbChannel(green);
+  const b = linearRgbChannel(blue);
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+function linearRgbChannel(channel: number): number {
+  const value = channel / 255;
+  return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
 }
