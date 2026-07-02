@@ -263,6 +263,9 @@ export function formatAppPluginCatalogMarkdown<TAction extends Action = Action, 
 /** Registry for storing and querying app Plugin Definition definitions. */
 export class AppPluginDefinitionRegistry<TAction extends Action = Action, TRoute extends Route = Route> {
   readonly #definitions: AppPluginDefinition<TAction, TRoute>[] = [];
+  readonly #byKey = new Map<string, AppPluginDefinition<TAction, TRoute>>();
+  #ids?: string[];
+  #anonymous?: number;
 
   constructor(definitions: readonly AppPluginDefinition<TAction, TRoute>[] = []) {
     this.registerAll(definitions);
@@ -274,10 +277,14 @@ export class AppPluginDefinitionRegistry<TAction extends Action = Action, TRoute
       this.unregister(id);
     }
     this.#definitions.push(definition);
+    if (id) this.#byKey.set(id, definition);
+    this.#invalidateInspectionCache();
     return () => {
       const index = this.#definitions.indexOf(definition);
       if (index >= 0) {
         this.#definitions.splice(index, 1);
+        if (id && this.#byKey.get(id) === definition) this.#byKey.delete(id);
+        this.#invalidateInspectionCache();
       }
     };
   }
@@ -296,19 +303,22 @@ export class AppPluginDefinitionRegistry<TAction extends Action = Action, TRoute
   }
 
   unregister(id: string): boolean {
-    const index = pluginDefinitionIndex(this.#definitions, id);
+    const definition = this.#byKey.get(id);
+    if (!definition) return false;
+    const index = this.#definitions.indexOf(definition);
     if (index < 0) return false;
     this.#definitions.splice(index, 1);
+    this.#byKey.delete(id);
+    this.#invalidateInspectionCache();
     return true;
   }
 
   get(id: string): AppPluginDefinition<TAction, TRoute> | undefined {
-    const index = pluginDefinitionIndex(this.#definitions, id);
-    return index < 0 ? undefined : this.#definitions[index];
+    return this.#byKey.get(id);
   }
 
   has(id: string): boolean {
-    return this.get(id) !== undefined;
+    return this.#byKey.has(id);
   }
 
   definitions(): AppPluginDefinition<TAction, TRoute>[] {
@@ -335,13 +345,30 @@ export class AppPluginDefinitionRegistry<TAction extends Action = Action, TRoute
     const report = this.report();
     return {
       ...report.inspection,
-      ids: pluginDefinitionIds(this.#definitions),
-      anonymous: anonymousPluginDefinitionCount(this.#definitions),
+      ids: this.#definitionIds(),
+      anonymous: this.#anonymousCount(),
     };
   }
 
   clear(): void {
     this.#definitions.length = 0;
+    this.#byKey.clear();
+    this.#invalidateInspectionCache();
+  }
+
+  #definitionIds(): string[] {
+    if (!this.#ids) this.#ids = pluginDefinitionIds(this.#definitions);
+    return cloneStringArray(this.#ids);
+  }
+
+  #anonymousCount(): number {
+    this.#anonymous ??= anonymousPluginDefinitionCount(this.#definitions);
+    return this.#anonymous;
+  }
+
+  #invalidateInspectionCache(): void {
+    this.#ids = undefined;
+    this.#anonymous = undefined;
   }
 }
 
@@ -452,6 +479,14 @@ function uniqueSorted<T extends string>(values: Iterable<T>): T[] {
   return output.sort();
 }
 
+function cloneStringArray<T extends string>(values: readonly T[]): T[] {
+  const output = new Array<T>(values.length);
+  for (let index = 0; index < values.length; index += 1) {
+    output[index] = values[index]!;
+  }
+  return output;
+}
+
 function comparePluginInspections(left: AppPluginDefinitionInspection, right: AppPluginDefinitionInspection): number {
   return (left.label ?? left.id ?? "").localeCompare(right.label ?? right.id ?? "");
 }
@@ -475,16 +510,6 @@ function anonymousPluginDefinitionCount<TAction extends Action, TRoute extends R
     if (!pluginDefinitionKey(definition)) count += 1;
   }
   return count;
-}
-
-function pluginDefinitionIndex<TAction extends Action, TRoute extends Route>(
-  definitions: readonly AppPluginDefinition<TAction, TRoute>[],
-  id: string,
-): number {
-  for (let index = 0; index < definitions.length; index += 1) {
-    if (pluginDefinitionKey(definitions[index]!) === id) return index;
-  }
-  return -1;
 }
 
 function pluginSearchIncludes(plugin: AppPluginDefinitionInspection, term: string): boolean {
