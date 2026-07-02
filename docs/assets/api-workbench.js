@@ -15303,6 +15303,35 @@ function apiWorkbenchControlLineInto(segments, hits, id2, value, rect, row, acti
   hits.length = hitCount;
   return row + 1;
 }
+function apiWorkbenchControlLineRenderCommandsInto(target, segments, options) {
+  let written = 0;
+  if (options.button) {
+    writeControlLineRenderCommand(target, written++, {
+      kind: "fill",
+      role: "base",
+      text: "",
+      column: options.rect.column,
+      row: options.row,
+      width: Math.max(0, Math.floor(options.rect.width)),
+      active: false
+    });
+  }
+  for (let index = 0; index < segments.length; index += 1) {
+    const segment = segments[index];
+    const role = options.button && segment.kind === "button" ? "button" : options.button && segment.kind === "detail" ? "detail" : "base";
+    writeControlLineRenderCommand(target, written++, {
+      kind: "segment",
+      role,
+      text: segment.text,
+      column: segment.column,
+      row: segment.row,
+      width: segment.width,
+      active: segment.active
+    });
+  }
+  target.length = written;
+  return target;
+}
 function apiWorkbenchControlTrack(options) {
   const minWidth = Math.max(1, Math.floor(options.minWidth ?? 8));
   const maxWidth = Math.max(minWidth, Math.floor(options.maxWidth ?? 24));
@@ -15633,6 +15662,25 @@ function writeControlLineSegment(target, index, kind, text, column, row, width, 
   segment.width = width;
   segment.active = active2;
   target[index] = segment;
+}
+function writeControlLineRenderCommand(target, index, options) {
+  const command = target[index] ?? {
+    kind: "segment",
+    role: "base",
+    text: "",
+    column: 0,
+    row: 0,
+    width: 0,
+    active: false
+  };
+  command.kind = options.kind;
+  command.role = options.role;
+  command.text = options.text;
+  command.column = options.column;
+  command.row = options.row;
+  command.width = options.width;
+  command.active = options.active;
+  target[index] = command;
 }
 function writeControlHit(target, index, source) {
   const hit = target[index] ?? {
@@ -16033,6 +16081,7 @@ var webTerminalSessionTabSources = [];
 var webTerminalSessionTabPlacements = [];
 var webTerminalSessionTabCommands = [];
 var controlLineSegments = [];
+var controlLineRenderCommands = [];
 var controlLineHitPlacements = [];
 var controlProjectedRows = [];
 var controlCheckboxOptions = [];
@@ -17632,30 +17681,35 @@ function renderControls(frame, rect) {
     );
     if (nextRow === row) return;
     const selected = activeControl.peek() === id2;
-    if (options.button) {
-      write(frame, startRow, rect.column, paint(" ".repeat(rect.width), t.text, t.surface));
-    }
-    for (let index = 0; index < controlLineSegments.length; index += 1) {
-      const segment = controlLineSegments[index];
-      if (options.button && segment.kind === "button") {
-        writeButton(frame, segment.row, segment.column, segment.text.replace(/^\[\s*|\s*\]$/g, ""), {
+    const renderCommands = apiWorkbenchControlLineRenderCommandsInto(controlLineRenderCommands, controlLineSegments, {
+      rect,
+      row: startRow,
+      button: options.button
+    });
+    for (const command of renderCommands) {
+      if (command.kind === "fill") {
+        write(frame, command.row, command.column, paint(" ".repeat(command.width), t.text, t.surface));
+        continue;
+      }
+      if (options.button && command.role === "button") {
+        writeButton(frame, command.row, command.column, command.text.replace(/^\[\s*|\s*\]$/g, ""), {
           state: selected ? "active" : "base",
-          maxWidth: segment.width
+          maxWidth: command.width
         });
-      } else if (options.button && segment.kind === "detail") {
+      } else if (options.button && command.role === "detail") {
         write(
           frame,
-          segment.row,
-          segment.column,
-          paint(segment.text, selected ? t.warn : t.text, t.surface, selected)
+          command.row,
+          command.column,
+          paint(command.text, selected ? t.warn : t.text, t.surface, selected)
         );
       } else {
         write(
           frame,
-          segment.row,
-          segment.column,
+          command.row,
+          command.column,
           paint(
-            segment.text,
+            command.text,
             selected ? t.background : t.text,
             selected ? t.warn : t.surface,
             selected

@@ -6,6 +6,8 @@ import {
   type ApiWorkbenchControlHitPlacement,
   apiWorkbenchControlIds,
   apiWorkbenchControlLineInto,
+  type ApiWorkbenchControlLineRenderCommand,
+  apiWorkbenchControlLineRenderCommandsInto,
   type ApiWorkbenchControlLineSegment,
   apiWorkbenchControlsRowsInto,
   apiWorkbenchControlTrack,
@@ -134,6 +136,64 @@ Deno.test("api workbench control line projection keeps button token segments sco
   assertEquals(segments[0] === firstSegment, true);
   assertEquals(hits[0] === firstHit, true);
   assertEquals(hits.length, 1);
+});
+
+Deno.test("api workbench control line render commands classify fill button and detail segments", () => {
+  const segments: ApiWorkbenchControlLineSegment[] = [];
+  const hits: ApiWorkbenchControlHitPlacement[] = [];
+  apiWorkbenchControlLineInto(
+    segments,
+    hits,
+    "genericButton",
+    "[ Apply ] count=3",
+    { column: 3, row: 8, width: 24, height: 2 },
+    8,
+    "genericButton",
+    { button: true },
+  );
+  const commands = apiWorkbenchControlLineRenderCommandsInto([], segments, {
+    rect: { column: 3, row: 8, width: 24, height: 2 },
+    row: 8,
+    button: true,
+  });
+
+  assertEquals(commands, [
+    { kind: "fill", role: "base", text: "", column: 3, row: 8, width: 24, active: false },
+    { kind: "segment", role: "base", text: "> ", column: 3, row: 8, width: 2, active: true },
+    { kind: "segment", role: "button", text: "[ Apply ]", column: 5, row: 8, width: 9, active: true },
+    { kind: "segment", role: "detail", text: " count=3", column: 14, row: 8, width: 8, active: true },
+  ]);
+});
+
+Deno.test("api workbench control line render commands reuse caller storage", () => {
+  const target: ApiWorkbenchControlLineRenderCommand[] = [];
+  const first = apiWorkbenchControlLineRenderCommandsInto(target, [
+    { kind: "line", text: "> Slider", column: 1, row: 2, width: 8, active: true },
+  ], {
+    rect: { column: 1, row: 2, width: 20, height: 1 },
+    row: 2,
+  })[0];
+
+  apiWorkbenchControlLineRenderCommandsInto(target, [
+    { kind: "button", text: "[ Run ]", column: 4, row: 5, width: 7, active: false },
+  ], {
+    rect: { column: 2, row: 5, width: 16, height: 1 },
+    row: 5,
+    button: true,
+  });
+
+  assertEquals(target[0] === first, true);
+  assertEquals(target, [
+    { kind: "fill", role: "base", text: "", column: 2, row: 5, width: 16, active: false },
+    { kind: "segment", role: "button", text: "[ Run ]", column: 4, row: 5, width: 7, active: false },
+  ]);
+  assertEquals(
+    apiWorkbenchControlLineRenderCommandsInto(target, [], {
+      rect: { column: 0, row: 0, width: 10, height: 1 },
+      row: 0,
+    }),
+    [],
+  );
 });
 
 Deno.test("api workbench control track projects clamped fill and slider hit geometry", () => {

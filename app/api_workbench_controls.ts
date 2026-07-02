@@ -49,6 +49,18 @@ export interface ApiWorkbenchControlLineSegment {
   active: boolean;
 }
 
+export type ApiWorkbenchControlLineRenderRole = "base" | "button" | "detail";
+
+export interface ApiWorkbenchControlLineRenderCommand {
+  kind: "fill" | "segment";
+  role: ApiWorkbenchControlLineRenderRole;
+  text: string;
+  column: number;
+  row: number;
+  width: number;
+  active: boolean;
+}
+
 export interface ApiWorkbenchControlLineOptions {
   previous?: boolean;
   next?: boolean;
@@ -316,6 +328,44 @@ export function apiWorkbenchControlLineInto(
   segments.length = segmentCount;
   hits.length = hitCount;
   return row + 1;
+}
+
+export function apiWorkbenchControlLineRenderCommandsInto(
+  target: ApiWorkbenchControlLineRenderCommand[],
+  segments: readonly ApiWorkbenchControlLineSegment[],
+  options: { rect: Rectangle; row: number; button?: boolean },
+): ApiWorkbenchControlLineRenderCommand[] {
+  let written = 0;
+  if (options.button) {
+    writeControlLineRenderCommand(target, written++, {
+      kind: "fill",
+      role: "base",
+      text: "",
+      column: options.rect.column,
+      row: options.row,
+      width: Math.max(0, Math.floor(options.rect.width)),
+      active: false,
+    });
+  }
+  for (let index = 0; index < segments.length; index += 1) {
+    const segment = segments[index]!;
+    const role = options.button && segment.kind === "button"
+      ? "button"
+      : options.button && segment.kind === "detail"
+      ? "detail"
+      : "base";
+    writeControlLineRenderCommand(target, written++, {
+      kind: "segment",
+      role,
+      text: segment.text,
+      column: segment.column,
+      row: segment.row,
+      width: segment.width,
+      active: segment.active,
+    });
+  }
+  target.length = written;
+  return target;
 }
 
 export function apiWorkbenchControlTrack(options: ApiWorkbenchControlTrackOptions): ApiWorkbenchControlTrack {
@@ -820,6 +870,30 @@ function writeControlLineSegment(
   segment.width = width;
   segment.active = active;
   target[index] = segment;
+}
+
+function writeControlLineRenderCommand(
+  target: ApiWorkbenchControlLineRenderCommand[],
+  index: number,
+  options: ApiWorkbenchControlLineRenderCommand,
+): void {
+  const command = target[index] ?? {
+    kind: "segment",
+    role: "base",
+    text: "",
+    column: 0,
+    row: 0,
+    width: 0,
+    active: false,
+  };
+  command.kind = options.kind;
+  command.role = options.role;
+  command.text = options.text;
+  command.column = options.column;
+  command.row = options.row;
+  command.width = options.width;
+  command.active = options.active;
+  target[index] = command;
 }
 
 function writeControlHit(

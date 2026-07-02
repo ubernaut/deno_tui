@@ -192,6 +192,8 @@ import {
   type ApiWorkbenchControlHitPlacement,
   type ApiWorkbenchControlId,
   apiWorkbenchControlLineInto,
+  type ApiWorkbenchControlLineRenderCommand,
+  apiWorkbenchControlLineRenderCommandsInto,
   type ApiWorkbenchControlLineSegment,
   apiWorkbenchControlsRowsInto,
   apiWorkbenchControlTrack,
@@ -374,6 +376,7 @@ const terminalShellSessionTabPlacements: WorkbenchTerminalSessionTabPlacement[] 
 const terminalShellSessionTabCommands: WorkbenchTerminalSessionTabRenderCommand[] = [];
 const terminalShellPaneProjections: WorkbenchTerminalPaneProjection[] = [];
 const controlLineSegments: ApiWorkbenchControlLineSegment[] = [];
+const controlLineRenderCommands: ApiWorkbenchControlLineRenderCommand[] = [];
 const controlLineHitPlacements: ApiWorkbenchControlHitPlacement[] = [];
 const controlProjectedRows: ApiWorkbenchProjectedControlRow[] = [];
 const controlCheckboxOptions: ApiWorkbenchCheckboxOption[] = [];
@@ -1666,15 +1669,20 @@ function renderControls(frame: Frame, rect: Rectangle): void {
       bg: active ? t.warn : t.surface,
       bold: active,
     };
-    if (options.button) {
-      write(frame, startRow, rect.column, paint(" ".repeat(rect.width), { fg: t.text, bg: t.surface }));
-    }
-    for (let index = 0; index < controlLineSegments.length; index += 1) {
-      const segment = controlLineSegments[index]!;
+    const renderCommands = apiWorkbenchControlLineRenderCommandsInto(controlLineRenderCommands, controlLineSegments, {
+      rect,
+      row: startRow,
+      button: options.button,
+    });
+    for (const command of renderCommands) {
+      if (command.kind === "fill") {
+        write(frame, command.row, command.column, paint(" ".repeat(command.width), { fg: t.text, bg: t.surface }));
+        continue;
+      }
       if (options.button) {
-        const style = segment.kind === "button"
+        const style = command.role === "button"
           ? buttonPaintOptions(t, active ? "active" : "base")
-          : segment.kind === "detail"
+          : command.role === "detail"
           ? {
             fg: active ? t.warn : t.text,
             bg: t.surface,
@@ -1683,12 +1691,12 @@ function renderControls(frame: Frame, rect: Rectangle): void {
           : baseStyle;
         write(
           frame,
-          segment.row,
-          segment.column,
-          paint(segment.text, style),
+          command.row,
+          command.column,
+          paint(command.text, style),
         );
       } else {
-        write(frame, segment.row, segment.column, paint(segment.text, baseStyle));
+        write(frame, command.row, command.column, paint(command.text, baseStyle));
       }
     }
     for (let index = 0; index < controlLineHitPlacements.length; index += 1) {

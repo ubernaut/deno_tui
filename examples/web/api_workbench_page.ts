@@ -133,6 +133,8 @@ import {
   type ApiWorkbenchControlHitPlacement,
   type ApiWorkbenchControlId,
   apiWorkbenchControlLineInto,
+  type ApiWorkbenchControlLineRenderCommand,
+  apiWorkbenchControlLineRenderCommandsInto,
   type ApiWorkbenchControlLineSegment,
   apiWorkbenchControlsRowsInto,
   apiWorkbenchControlTrack,
@@ -331,6 +333,7 @@ const webTerminalSessionTabSources: WorkbenchTerminalSessionTab[] = [];
 const webTerminalSessionTabPlacements: WorkbenchTerminalSessionTabPlacement[] = [];
 const webTerminalSessionTabCommands: WorkbenchTerminalSessionTabRenderCommand[] = [];
 const controlLineSegments: ApiWorkbenchControlLineSegment[] = [];
+const controlLineRenderCommands: ApiWorkbenchControlLineRenderCommand[] = [];
 const controlLineHitPlacements: ApiWorkbenchControlHitPlacement[] = [];
 const controlProjectedRows: ApiWorkbenchProjectedControlRow[] = [];
 const controlCheckboxOptions: ApiWorkbenchCheckboxOption[] = [];
@@ -2071,30 +2074,35 @@ function renderControls(frame: string[], rect: Rectangle): void {
     );
     if (nextRow === row) return;
     const selected = activeControl.peek() === id;
-    if (options.button) {
-      write(frame, startRow, rect.column, paint(" ".repeat(rect.width), t.text, t.surface));
-    }
-    for (let index = 0; index < controlLineSegments.length; index += 1) {
-      const segment = controlLineSegments[index]!;
-      if (options.button && segment.kind === "button") {
-        writeButton(frame, segment.row, segment.column, segment.text.replace(/^\[\s*|\s*\]$/g, ""), {
+    const renderCommands = apiWorkbenchControlLineRenderCommandsInto(controlLineRenderCommands, controlLineSegments, {
+      rect,
+      row: startRow,
+      button: options.button,
+    });
+    for (const command of renderCommands) {
+      if (command.kind === "fill") {
+        write(frame, command.row, command.column, paint(" ".repeat(command.width), t.text, t.surface));
+        continue;
+      }
+      if (options.button && command.role === "button") {
+        writeButton(frame, command.row, command.column, command.text.replace(/^\[\s*|\s*\]$/g, ""), {
           state: selected ? "active" : "base",
-          maxWidth: segment.width,
+          maxWidth: command.width,
         });
-      } else if (options.button && segment.kind === "detail") {
+      } else if (options.button && command.role === "detail") {
         write(
           frame,
-          segment.row,
-          segment.column,
-          paint(segment.text, selected ? t.warn : t.text, t.surface, selected),
+          command.row,
+          command.column,
+          paint(command.text, selected ? t.warn : t.text, t.surface, selected),
         );
       } else {
         write(
           frame,
-          segment.row,
-          segment.column,
+          command.row,
+          command.column,
           paint(
-            segment.text,
+            command.text,
             selected ? t.background : t.text,
             selected ? t.warn : t.surface,
             selected,

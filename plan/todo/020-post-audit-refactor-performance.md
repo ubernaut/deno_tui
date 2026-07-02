@@ -106,3 +106,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   while keeping renderer-specific modal paint styles local.
 - Simplified Three ASCII block-mode color assembly so full-height block cells preserve source truecolor instead of
   quantizing through fill-bucket background tinting, improving partial-block assembly benchmark throughput.
+- Added API workbench control-line render commands so terminal and browser controls share fill/base/button/detail
+  segment classification while keeping their paint adapters independent.
