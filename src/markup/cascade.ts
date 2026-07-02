@@ -58,13 +58,15 @@ export function matchesCssSelector(
 ): boolean {
   const parts = selectorParts(selector);
   if (parts.length === 0) return false;
-  const chain = [...ancestors, node];
-  return matchPart(parts.length - 1, chain.length - 1);
+  const chainLength = ancestors.length + 1;
+  return matchPart(parts.length - 1, chainLength - 1);
 
   function matchPart(partIndex: number, nodeIndex: number): boolean {
     if (nodeIndex < 0) return false;
     const part = parts[partIndex]!;
-    if (!matchesSimpleSelector(part.simple, chain[nodeIndex]!, nodeIndex === 0, states)) return false;
+    if (!matchesSimpleSelector(part.simple, chainNodeAt(ancestors, node, nodeIndex), nodeIndex === 0, states)) {
+      return false;
+    }
     if (partIndex === 0) return true;
 
     const relation = part.combinator ?? "descendant";
@@ -74,6 +76,10 @@ export function matchesCssSelector(
     }
     return false;
   }
+}
+
+function chainNodeAt(ancestors: readonly LayoutNode[], node: LayoutNode, index: number): LayoutNode {
+  return index === ancestors.length ? node : ancestors[index]!;
 }
 
 /** Resolves CSS variable functions in a declaration value. */
