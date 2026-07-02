@@ -21,13 +21,11 @@ export function renderCpuMonitor(
     graphHeight,
     dependencies.monitorGlyph(drive, "signal"),
   );
-  const topCores = system.cpuCores.slice().sort((a, b) => b.usage - a.usage).slice(0, 4)
-    .map((core) => `CPU${core.label.padStart(2, "0")} ${core.usage.toFixed(0).padStart(3, " ")}%`)
-    .join("  ");
+  const topCores = topCpuCoreSummary(system.cpuCores);
 
   return {
     body: [
-      `AVG ${system.cpuOverall.toFixed(1)}%   LOAD ${system.loadavg.map((value) => value.toFixed(2)).join(" / ")}`,
+      `AVG ${system.cpuOverall.toFixed(1)}%   LOAD ${formatLoadAverage(system.loadavg)}`,
       graph,
       topCores || "NO CORE DATA",
     ].join("\n"),
@@ -123,11 +121,7 @@ export function renderTemperatureMonitor(
   return {
     body: temperatures.length === 0
       ? "NO THERMAL ZONES REPORTED"
-      : temperatures.slice(0, Math.max(1, context.height)).map((entry) =>
-        `${entry.label.toUpperCase().padEnd(18, " ")} ${entry.celsius.toFixed(1).padStart(6, " ")}C ${
-          heatMeter(entry.celsius / 100, drive.hazard, dependencies)
-        }`
-      ).join("\n"),
+      : temperatureRows(temperatures, Math.max(1, context.height), drive.hazard, dependencies).join("\n"),
     footer: temperatures[0]
       ? `HOTTEST ${temperatures[0].label.toUpperCase()} ${temperatures[0].celsius.toFixed(1)}C  FLUX ${
         (drive.volatility * 100).toFixed(0)
@@ -148,11 +142,7 @@ export function renderDiskMonitor(
   return {
     body: disks.length === 0
       ? "NO DISK METRICS AVAILABLE"
-      : disks.slice(0, Math.max(1, context.height)).map((disk) =>
-        `${crop(disk.mount.toUpperCase(), 12).padEnd(12, " ")} ${String(disk.percent).padStart(3, " ")}% ${
-          dependencies.miniMeter(disk.percent / 100, 7, drive.hazard)
-        } ${formatBytes(disk.available).padStart(8, " ")} FREE`
-      ).join("\n"),
+      : diskRows(disks, Math.max(1, context.height), drive.hazard, dependencies).join("\n"),
     footer: disks[0]
       ? `FULL ${disks[0].mount.toUpperCase()} ${disks[0].percent}%  ${formatBytes(disks[0].used)} / ${
         formatBytes(disks[0].total)
@@ -167,11 +157,7 @@ export function renderDiskMonitor(
 export function renderProcessMonitor(context: RenderContext): PanelRender {
   const drive = buildVisualizationDrive(context, 24);
   const header = "PID     NAME             CPU%   MEM%";
-  const rows = context.system.processes.slice(0, 100).map((process) =>
-    `${String(process.pid).padEnd(7, " ")}${crop(process.name, 16).padEnd(16, " ")}${
-      process.cpuPercent.toFixed(1).padStart(6, " ")
-    }${process.memoryPercent.toFixed(1).padStart(7, " ")}`
-  );
+  const rows = processRows(context.system.processes, 100);
 
   return {
     body: [header, ...rows].join("\n"),
@@ -186,6 +172,73 @@ export function renderProcessMonitor(context: RenderContext): PanelRender {
     accent: context.system.processes[0]?.cpuPercent >= 90 ? "alarm" : "amber",
     severity: context.system.processes[0]?.cpuPercent >= 90 ? "alarm" : "info",
   };
+}
+
+function topCpuCoreSummary(cores: RenderContext["system"]["cpuCores"]): string {
+  if (cores.length === 0) return "";
+  const sorted = cores.slice().sort((a, b) => b.usage - a.usage);
+  const count = Math.min(4, sorted.length);
+  const rows = new Array<string>(count);
+  for (let index = 0; index < count; index += 1) {
+    const core = sorted[index]!;
+    rows[index] = `CPU${core.label.padStart(2, "0")} ${core.usage.toFixed(0).padStart(3, " ")}%`;
+  }
+  return rows.join("  ");
+}
+
+function formatLoadAverage(values: readonly number[]): string {
+  if (values.length === 0) return "";
+  const parts = new Array<string>(values.length);
+  for (let index = 0; index < values.length; index += 1) {
+    parts[index] = values[index]!.toFixed(2);
+  }
+  return parts.join(" / ");
+}
+
+function temperatureRows(
+  temperatures: RenderContext["system"]["temperatures"],
+  limit: number,
+  hazard: number,
+  dependencies: SystemMonitorRenderDependencies,
+): string[] {
+  const count = Math.min(limit, temperatures.length);
+  const rows = new Array<string>(count);
+  for (let index = 0; index < count; index += 1) {
+    const entry = temperatures[index]!;
+    rows[index] = `${entry.label.toUpperCase().padEnd(18, " ")} ${entry.celsius.toFixed(1).padStart(6, " ")}C ${
+      heatMeter(entry.celsius / 100, hazard, dependencies)
+    }`;
+  }
+  return rows;
+}
+
+function diskRows(
+  disks: RenderContext["system"]["disks"],
+  limit: number,
+  hazard: number,
+  dependencies: SystemMonitorRenderDependencies,
+): string[] {
+  const count = Math.min(limit, disks.length);
+  const rows = new Array<string>(count);
+  for (let index = 0; index < count; index += 1) {
+    const disk = disks[index]!;
+    rows[index] = `${crop(disk.mount.toUpperCase(), 12).padEnd(12, " ")} ${String(disk.percent).padStart(3, " ")}% ${
+      dependencies.miniMeter(disk.percent / 100, 7, hazard)
+    } ${formatBytes(disk.available).padStart(8, " ")} FREE`;
+  }
+  return rows;
+}
+
+function processRows(processes: RenderContext["system"]["processes"], limit: number): string[] {
+  const count = Math.min(limit, processes.length);
+  const rows = new Array<string>(count);
+  for (let index = 0; index < count; index += 1) {
+    const process = processes[index]!;
+    rows[index] = `${String(process.pid).padEnd(7, " ")}${crop(process.name, 16).padEnd(16, " ")}${
+      process.cpuPercent.toFixed(1).padStart(6, " ")
+    }${process.memoryPercent.toFixed(1).padStart(7, " ")}`;
+  }
+  return rows;
 }
 
 function cpuLegendRows(

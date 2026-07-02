@@ -262,6 +262,8 @@ Work:
         counts to use one-pass loops instead of repeated map/reduce/filter projections.
   - [x] Reworked CPU hex monitor color-stop lookup, hot-core selection, selected-process projection, load-average
         formatting, and compact legends to avoid map/filter/reduce/find/slice chains in the per-frame monitor path.
+  - [x] Reworked system monitor visualization row builders for CPU load averages, top cores, temperature rows, disk
+        rows, and process rows to use bounded direct buffers instead of `slice().map()` render projections.
   - [x] Extracted table auto-width measurement into a loop-based helper with sparse-row coverage, removing per-column
         `reduce()` callbacks from table layout recomputation while preserving current sizing behavior.
   - [x] Reworked tree row text projection, visible-window slicing, toggle lookup, and inspection rows to avoid
