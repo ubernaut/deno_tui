@@ -257,6 +257,8 @@ Work:
         chains while preserving directory-first ordering and empty path segment normalization.
   - [x] Reworked Three ASCII ANSI assembly to resolve terminal glyph style once per frame and use precomputed fill-key
         tables in the inner cell loops instead of per-cell style switching and bucket projection.
+  - [x] Reworked Three ASCII preset/config helpers to use explicit loops for ids, filtered clones, summaries, fallback
+        lookup, and preset-map construction while preserving cloned preset API boundaries.
 
 Acceptance checks:
 

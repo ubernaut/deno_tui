@@ -30,7 +30,15 @@ export interface ThreeAsciiConfigOptions {
   kittyDisableAscii: boolean;
 }
 
-const presetMap = new Map<string, AsciiDemoPreset>(ASCII_DEMO_PRESETS.map((preset) => [preset.id, preset]));
+const presetMap = createPresetMap();
+
+function createPresetMap(): Map<string, AsciiDemoPreset> {
+  const map = new Map<string, AsciiDemoPreset>();
+  for (const preset of ASCII_DEMO_PRESETS) {
+    map.set(preset.id, preset);
+  }
+  return map;
+}
 
 /** Create the default block-style Three ASCII configuration. */
 export function createDefaultAsciiOptions(border: ThreeAsciiBorderMode = "sharp"): ThreeAsciiConfigOptions {

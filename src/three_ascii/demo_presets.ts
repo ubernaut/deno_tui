@@ -245,34 +245,47 @@ export const ASCII_DEMO_PRESETS: readonly AsciiDemoPreset[] = [
 
 /** Public helper for ascii Demo Preset Ids. */
 export function asciiDemoPresetIds(style?: TerminalGlyphStyle): string[] {
-  return asciiDemoPresets(style).map((preset) => preset.id);
+  const presets = ASCII_DEMO_PRESETS;
+  const ids: string[] = [];
+  for (const preset of presets) {
+    if (style !== undefined && (preset.terminalGlyphStyle ?? "blocks") !== style) continue;
+    ids.push(preset.id);
+  }
+  return ids;
 }
 
 /** Public helper for ascii Demo Presets. */
 export function asciiDemoPresets(style?: TerminalGlyphStyle): AsciiDemoPreset[] {
-  return ASCII_DEMO_PRESETS
-    .filter((preset) => style === undefined || (preset.terminalGlyphStyle ?? "blocks") === style)
-    .map(cloneAsciiDemoPreset);
+  const presets: AsciiDemoPreset[] = [];
+  for (const preset of ASCII_DEMO_PRESETS) {
+    if (style !== undefined && (preset.terminalGlyphStyle ?? "blocks") !== style) continue;
+    presets.push(cloneAsciiDemoPreset(preset));
+  }
+  return presets;
 }
 
 /** Finds a matching ascii Demo Preset record when one exists. */
 export function findAsciiDemoPreset(id: string, fallbackId = ASCII_DEMO_PRESETS[0]?.id): AsciiDemoPreset | undefined {
-  const preset = ASCII_DEMO_PRESETS.find((candidate) => candidate.id === id) ??
-    ASCII_DEMO_PRESETS.find((candidate) => candidate.id === fallbackId);
-  return preset ? cloneAsciiDemoPreset(preset) : undefined;
+  const preset = findPreset(id) ?? findPreset(fallbackId);
+  return preset === undefined ? undefined : cloneAsciiDemoPreset(preset);
 }
 
 /** Public helper for ascii Demo Preset Summaries. */
 export function asciiDemoPresetSummaries(style?: TerminalGlyphStyle): AsciiDemoPresetSummary[] {
-  return asciiDemoPresets(style).map((preset) => ({
-    id: preset.id,
-    label: preset.label,
-    description: preset.description,
-    terminalGlyphStyle: preset.terminalGlyphStyle ?? "blocks",
-    terminalEdgeBias: preset.terminalEdgeBias ?? 1,
-    edges: preset.effect.edges ?? DEFAULT_ASCII_DEMO_EFFECT.edges ?? false,
-    fill: preset.effect.fill ?? DEFAULT_ASCII_DEMO_EFFECT.fill ?? true,
-  }));
+  const summaries: AsciiDemoPresetSummary[] = [];
+  for (const preset of ASCII_DEMO_PRESETS) {
+    if (style !== undefined && (preset.terminalGlyphStyle ?? "blocks") !== style) continue;
+    summaries.push({
+      id: preset.id,
+      label: preset.label,
+      description: preset.description,
+      terminalGlyphStyle: preset.terminalGlyphStyle ?? "blocks",
+      terminalEdgeBias: preset.terminalEdgeBias ?? 1,
+      edges: preset.effect.edges ?? DEFAULT_ASCII_DEMO_EFFECT.edges ?? false,
+      fill: preset.effect.fill ?? DEFAULT_ASCII_DEMO_EFFECT.fill ?? true,
+    });
+  }
+  return summaries;
 }
 
 function cloneAsciiDemoPreset(preset: AsciiDemoPreset): AsciiDemoPreset {
@@ -280,4 +293,12 @@ function cloneAsciiDemoPreset(preset: AsciiDemoPreset): AsciiDemoPreset {
     ...preset,
     effect: { ...preset.effect },
   };
+}
+
+function findPreset(id: string | undefined): AsciiDemoPreset | undefined {
+  if (id === undefined) return undefined;
+  for (const preset of ASCII_DEMO_PRESETS) {
+    if (preset.id === id) return preset;
+  }
+  return undefined;
 }
