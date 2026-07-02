@@ -274,6 +274,8 @@ Work:
         of recursive spread collection and clone-heavy subtree membership probes.
   - [x] Reworked layout recipe inspection and Markdown formatting helpers to preserve public ordering with loop-based
         breakpoint, slot, and missing-layout projection instead of flatMap/map/filter intermediates.
+  - [x] Reworked runtime renderer backend inspection, query, selection, and catalog summaries to use one-pass buffers and
+        set accumulation instead of chained map/filter/flatMap scans in startup/report paths.
 
 Acceptance checks:
 

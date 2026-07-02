@@ -146,20 +146,23 @@ export class RuntimeRendererBackend {
     this.label = definition.label ?? definition.id;
     this.description = definition.description;
     this.strategy = definition.strategy;
-    this.capabilities = [...new Set(definition.capabilities ?? [])].sort();
-    this.tags = [...new Set(definition.tags ?? [])].sort();
+    this.capabilities = uniqueSorted(definition.capabilities ?? []);
+    this.tags = uniqueSorted(definition.tags ?? []);
     this.priority = definition.priority ?? 0;
   }
 
   inspect(capabilities: RuntimeCapabilities = detectRuntimeCapabilities()): RuntimeRendererBackendInspection {
-    const missingCapabilities = this.capabilities.filter((capability) => !capabilities[capability]);
+    const missingCapabilities: RuntimeCapabilityId[] = [];
+    for (const capability of this.capabilities) {
+      if (!capabilities[capability]) missingCapabilities.push(capability);
+    }
     return {
       id: this.id,
       label: this.label,
       description: this.description,
       strategy: this.strategy,
-      capabilities: [...this.capabilities],
-      tags: [...this.tags],
+      capabilities: cloneStringArray(this.capabilities),
+      tags: cloneStringArray(this.tags),
       priority: this.priority,
       available: missingCapabilities.length === 0,
       missingCapabilities,
@@ -199,7 +202,12 @@ export class RuntimeRendererBackendRegistry {
   }
 
   ids(): string[] {
-    return this.backends().map((backend) => backend.id);
+    const backends = this.backends();
+    const ids = new Array<string>(backends.length);
+    for (let index = 0; index < backends.length; index += 1) {
+      ids[index] = backends[index]!.id;
+    }
+    return ids;
   }
 
   backends(): RuntimeRendererBackend[] {
@@ -343,7 +351,11 @@ export function createRuntimeRendererBackendController(
 
 /** Public helper for runtime Renderer Backends. */
 export function runtimeRendererBackends(): RuntimeRendererBackend[] {
-  return runtimeRendererBackendDefinitions.map(createRuntimeRendererBackend);
+  const backends = new Array<RuntimeRendererBackend>(runtimeRendererBackendDefinitions.length);
+  for (let index = 0; index < runtimeRendererBackendDefinitions.length; index += 1) {
+    backends[index] = createRuntimeRendererBackend(runtimeRendererBackendDefinitions[index]!);
+  }
+  return backends;
 }
 
 /** Creates a serializable inspection snapshot for runtime Renderer Backends. */
@@ -351,7 +363,12 @@ export function inspectRuntimeRendererBackends(
   backends: Iterable<RuntimeRendererBackend | RuntimeRendererBackendDefinition>,
   capabilities: RuntimeCapabilities = detectRuntimeCapabilities(),
 ): RuntimeRendererBackendInspection[] {
-  return normalizeRendererBackends(backends).map((backend) => backend.inspect(capabilities));
+  const normalized = normalizeRendererBackends(backends);
+  const inspections = new Array<RuntimeRendererBackendInspection>(normalized.length);
+  for (let index = 0; index < normalized.length; index += 1) {
+    inspections[index] = normalized[index]!.inspect(capabilities);
+  }
+  return inspections;
 }
 
 /** Queries runtime Renderer Backends records with deterministic filtering. */
@@ -360,22 +377,38 @@ export function queryRuntimeRendererBackends(
   query: RuntimeRendererBackendQuery = {},
   capabilities: RuntimeCapabilities = detectRuntimeCapabilities(),
 ): RuntimeRendererBackendInspection[] {
-  return inspectRuntimeRendererBackends(backends, capabilities)
-    .filter((backend) => matchesRendererBackend(backend, query))
-    .sort(compareRendererBackendInspections);
+  const normalized = normalizeRendererBackends(backends);
+  const matches: RuntimeRendererBackendInspection[] = [];
+  for (const backend of normalized) {
+    const inspection = backend.inspect(capabilities);
+    if (matchesRendererBackend(inspection, query)) matches.push(inspection);
+  }
+  return matches.sort(compareRendererBackendInspections);
 }
 
 /** Creates a serializable inspection snapshot for runtime Renderer Backend Catalog. */
 export function inspectRuntimeRendererBackendCatalog(
   backends: readonly RuntimeRendererBackendInspection[],
 ): RuntimeRendererBackendCatalogInspection {
+  let available = 0;
+  let accelerated = 0;
+  const strategies = new Set<RuntimeRendererStrategy>();
+  const capabilities = new Set<RuntimeCapabilityId>();
+  const tags = new Set<string>();
+  for (const backend of backends) {
+    if (backend.available) available += 1;
+    if (backend.accelerated) accelerated += 1;
+    strategies.add(backend.strategy);
+    for (const capability of backend.capabilities) capabilities.add(capability);
+    for (const tag of backend.tags) tags.add(tag);
+  }
   return {
     count: backends.length,
-    available: backends.filter((backend) => backend.available).length,
-    accelerated: backends.filter((backend) => backend.accelerated).length,
-    strategies: uniqueSorted(backends.map((backend) => backend.strategy)),
-    capabilities: uniqueSorted(backends.flatMap((backend) => backend.capabilities)),
-    tags: uniqueSorted(backends.flatMap((backend) => backend.tags)),
+    available,
+    accelerated,
+    strategies: uniqueSorted(strategies),
+    capabilities: uniqueSorted(capabilities),
+    tags: uniqueSorted(tags),
   };
 }
 
@@ -391,9 +424,11 @@ export function selectRuntimeRendererBackend(
     strategy: options.strategy,
     tag: options.tag,
   };
-  const candidates = queryRuntimeRendererBackends(backends, query, capabilities)
-    .filter((backend) => allowCpuFallback || backend.strategy !== "cpu");
-  return candidates[0];
+  const candidates = queryRuntimeRendererBackends(backends, query, capabilities);
+  for (const backend of candidates) {
+    if (allowCpuFallback || backend.strategy !== "cpu") return backend;
+  }
+  return undefined;
 }
 
 /** Creates an runtime Renderer Backend Catalog Report. */
@@ -443,9 +478,11 @@ export function formatRuntimeRendererBackendCatalogMarkdown(
 function normalizeRendererBackends(
   backends: Iterable<RuntimeRendererBackend | RuntimeRendererBackendDefinition>,
 ): RuntimeRendererBackend[] {
-  return [...backends].map((backend) =>
-    backend instanceof RuntimeRendererBackend ? backend : createRuntimeRendererBackend(backend)
-  ).sort(compareRendererBackends);
+  const normalized: RuntimeRendererBackend[] = [];
+  for (const backend of backends) {
+    normalized.push(backend instanceof RuntimeRendererBackend ? backend : createRuntimeRendererBackend(backend));
+  }
+  return normalized.sort(compareRendererBackends);
 }
 
 function matchesRendererBackend(
@@ -459,15 +496,10 @@ function matchesRendererBackend(
   if (!query.search) return true;
   const parts = query.search.trim().toLowerCase().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return true;
-  const haystack = [
-    backend.id,
-    backend.label,
-    backend.description ?? "",
-    backend.strategy,
-    ...backend.capabilities,
-    ...backend.tags,
-  ].join(" ").toLowerCase();
-  return parts.every((part) => haystack.includes(part));
+  for (const part of parts) {
+    if (!rendererBackendIncludesSearchPart(backend, part)) return false;
+  }
+  return true;
 }
 
 function compareRendererBackends(left: RuntimeRendererBackend, right: RuntimeRendererBackend): number {
@@ -482,7 +514,40 @@ function compareRendererBackendInspections(
 }
 
 function uniqueSorted<T extends string>(values: Iterable<T>): T[] {
-  return [...new Set(values)].sort();
+  const set = new Set<T>();
+  for (const value of values) {
+    set.add(value);
+  }
+  const output: T[] = [];
+  for (const value of set) {
+    output.push(value);
+  }
+  return output.sort();
+}
+
+function cloneStringArray<T extends string>(values: readonly T[]): T[] {
+  const output = new Array<T>(values.length);
+  for (let index = 0; index < values.length; index += 1) {
+    output[index] = values[index]!;
+  }
+  return output;
+}
+
+function rendererBackendIncludesSearchPart(
+  backend: RuntimeRendererBackendInspection,
+  part: string,
+): boolean {
+  if (backend.id.toLowerCase().includes(part)) return true;
+  if (backend.label.toLowerCase().includes(part)) return true;
+  if ((backend.description ?? "").toLowerCase().includes(part)) return true;
+  if (backend.strategy.toLowerCase().includes(part)) return true;
+  for (const capability of backend.capabilities) {
+    if (capability.toLowerCase().includes(part)) return true;
+  }
+  for (const tag of backend.tags) {
+    if (tag.toLowerCase().includes(part)) return true;
+  }
+  return false;
 }
 
 function escapeMarkdownCell(value: string): string {
