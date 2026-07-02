@@ -156,7 +156,11 @@ import {
   nextApiWorkbenchControlId,
   nextSortableDataColumn,
 } from "../../app/api_workbench_controls.ts";
-import { htmlCssLayoutBoxStyle, htmlCssVisibleLayoutBoxesInto } from "../../app/html_css_layout_view.ts";
+import {
+  type HtmlCssLayoutRenderCommand,
+  htmlCssLayoutRenderCommandsInto,
+  htmlCssVisibleLayoutBoxesInto,
+} from "../../app/html_css_layout_view.ts";
 import {
   workbenchDemoModalContent,
   workbenchHelpModalContent,
@@ -174,7 +178,7 @@ import {
   inspectWorkbenchWindowSignalState,
   WorkbenchController,
 } from "../../src/app/workbench/controller.ts";
-import { createHtmlCssLayoutDemo, htmlCssLayoutDemoBoxLabel } from "../../src/markup/demo_fixtures.ts";
+import { createHtmlCssLayoutDemo } from "../../src/markup/demo_fixtures.ts";
 import { DiagnosticsCollector } from "../../src/runtime/diagnostics.ts";
 import { StorageFallbackDiagnostics } from "../../src/runtime/storage_diagnostics.ts";
 import type { Rectangle } from "../../src/types.ts";
@@ -311,6 +315,7 @@ const workspaceVirtualRows: string[] = [];
 const threePreviewRows: string[] = [];
 const threePreviewOrbRows: string[] = [];
 const htmlCssLayoutBoxes: ComputedLayoutBox[] = [];
+const htmlCssLayoutRenderCommands: HtmlCssLayoutRenderCommand[] = [];
 const minimizedShelfEntries: Array<{ id: PanelId; title: string }> = [];
 const fullscreenTabEntries: Array<{ id: PanelId; title: string; selected?: boolean; hidden?: boolean }> = [];
 const minimizedShelfLayoutBuffers = createWorkbenchShelfLayoutBuffers<PanelId>();
@@ -1046,62 +1051,30 @@ function renderHtmlCssLayout(frame: string[], rect: Rectangle): void {
   const t = theme();
   const result = createHtmlCssLayoutDemo(rect);
   const boxes = htmlCssVisibleLayoutBoxesInto(htmlCssLayoutBoxes, result.layout.boxes);
-
-  for (const box of boxes) {
-    renderHtmlCssLayoutBox(frame, box, rect, t);
-  }
-
   const rows = [
     "parseTuiMarkup -> parseCssStylesheet -> applyCssCascade -> LayoutEngine",
     "Flex rows wrap; nested CSS Grid uses fr tracks, spans, and media rules.",
     "Resize the browser to recalculate terminal-cell layout through the web host.",
   ];
-  const start = Math.max(rect.row, rect.row + rect.height - rows.length);
-  for (let index = 0; index < rows.length && start + index < rect.row + rect.height; index += 1) {
-    write(
-      frame,
-      start + index,
-      rect.column,
-      paint(fit(rows[index]!, rect.width), index === 0 ? t.accent : t.soft, t.panelSoft, index === 0),
-    );
+  const commands = htmlCssLayoutRenderCommandsInto(htmlCssLayoutRenderCommands, {
+    bounds: rect,
+    boxes,
+    theme: t,
+    contrast: contrastText,
+    summaryRows: rows,
+  });
+  for (const command of commands) {
+    if (command.kind === "fill") {
+      fillRect(frame, command.rect, command.bg);
+    } else {
+      write(
+        frame,
+        command.row,
+        command.column,
+        paint(fit(command.text, command.maxWidth), command.fg, command.bg, command.bold),
+      );
+    }
   }
-}
-
-function renderHtmlCssLayoutBox(frame: string[], box: ComputedLayoutBox, bounds: Rectangle, t: ThemeSpec): void {
-  const rect = clipRect(box.rect, bounds);
-  if (rect.width <= 0 || rect.height <= 0) return;
-  const style = htmlCssLayoutBoxStyle(box, t, contrastText);
-  fillRect(frame, rect, style.bg);
-  if (box.id !== "layout-demo") {
-    drawHtmlCssLayoutOutline(frame, rect, style.border, style.bg, style.bold);
-  }
-
-  const content = clipRect(box.contentRect, bounds);
-  if (content.width <= 0 || content.height <= 0) return;
-  const label = htmlCssLayoutDemoBoxLabel(box);
-  write(frame, content.row, content.column, paint(fit(label, content.width), style.fg, style.bg, style.bold));
-  if (content.height > 1 && box.text) {
-    write(frame, content.row + 1, content.column, paint(fit(box.text, content.width), t.text, style.bg));
-  }
-  if (content.height > 2 && (box.id.startsWith("metric-") || box.id.startsWith("grid-"))) {
-    const detail = `${box.rect.width}x${box.rect.height} content ${box.contentRect.width}x${box.contentRect.height}`;
-    write(frame, content.row + 2, content.column, paint(fit(detail, content.width), t.muted, style.bg));
-  }
-}
-
-function drawHtmlCssLayoutOutline(frame: string[], rect: Rectangle, fg: string, bg: string, bold = false): void {
-  if (rect.width < 2 || rect.height < 2) return;
-  write(frame, rect.row, rect.column, paint(`┌${"─".repeat(Math.max(0, rect.width - 2))}┐`, fg, bg, bold));
-  for (let row = rect.row + 1; row < rect.row + rect.height - 1; row += 1) {
-    write(frame, row, rect.column, paint("│", fg, bg, bold));
-    write(frame, row, rect.column + rect.width - 1, paint("│", fg, bg, bold));
-  }
-  write(
-    frame,
-    rect.row + rect.height - 1,
-    rect.column,
-    paint(`└${"─".repeat(Math.max(0, rect.width - 2))}┘`, fg, bg, bold),
-  );
 }
 
 function renderTerminalProtocol(frame: string[], rect: Rectangle): void {

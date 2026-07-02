@@ -143,3 +143,5 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Fixed the standalone Three ASCII demo window layer order so the renderer/fallback body is no longer hidden behind the
   window background, switched the standalone titlebar controls to ASCII-safe labels, and added a Deno WebGPU
   mapped-at-creation buffer compatibility shim for Three.js geometry uploads.
+- Extracted the HTML/CSS layout demo box, outline, label, detail, and summary projection into shared renderer-neutral
+  commands so terminal and web workbench adapters no longer duplicate that paint logic.

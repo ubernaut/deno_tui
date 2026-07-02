@@ -3,6 +3,8 @@ import { assertEquals } from "./deps.ts";
 import {
   htmlCssLayoutBoxPaintOrder,
   htmlCssLayoutBoxStyle,
+  type HtmlCssLayoutRenderCommand,
+  htmlCssLayoutRenderCommandsInto,
   type HtmlCssLayoutTheme,
   htmlCssVisibleLayoutBoxesInto,
 } from "../app/html_css_layout_view.ts";
@@ -19,6 +21,7 @@ const theme: HtmlCssLayoutTheme = {
   muted: "#888888",
   panel: "#151515",
   panelSoft: "#222222",
+  soft: "#bbbbbb",
   surface: "#050505",
   text: "#eeeeee",
   warn: "#ffcc00",
@@ -103,4 +106,65 @@ Deno.test("htmlCssVisibleLayoutBoxesInto filters hidden boxes and reuses caller 
     result.map((box) => box.id),
     ["layout-demo", "metric-cpu", "grid-worker", "layout-badge"],
   );
+});
+
+Deno.test("htmlCssLayoutRenderCommandsInto projects boxes outlines labels and summaries", () => {
+  const target: HtmlCssLayoutRenderCommand[] = [{
+    kind: "fill",
+    rect: { column: 9, row: 9, width: 1, height: 1 },
+    bg: "stale",
+  }];
+  const commands = htmlCssLayoutRenderCommandsInto(target, {
+    bounds: { column: 0, row: 0, width: 20, height: 8 },
+    boxes: [
+      {
+        id: "metric-cpu",
+        tag: "panel",
+        classes: [],
+        rect: { column: 1, row: 1, width: 10, height: 5 },
+        contentRect: { column: 2, row: 2, width: 8, height: 3 },
+        text: "CPU 42%",
+        visible: true,
+        zIndex: 0,
+        children: [],
+        styles: {},
+      } as any,
+    ],
+    theme,
+    contrast,
+    summaryRows: ["pipeline", "resize"],
+  });
+
+  assertEquals(commands, target);
+  assertEquals(commands[0], {
+    kind: "fill",
+    rect: { column: 1, row: 1, width: 10, height: 5 },
+    bg: theme.buttonActiveBg,
+  });
+  assertEquals(
+    commands.some((command) => command.kind === "text" && command.text === "primary @media width:16"),
+    true,
+  );
+  assertEquals(commands.some((command) => command.kind === "text" && command.text === "CPU 42%"), true);
+  assertEquals(commands.some((command) => command.kind === "text" && command.text === "10x5 content 8x3"), true);
+  assertEquals(commands.at(-2), {
+    kind: "text",
+    row: 6,
+    column: 0,
+    text: "pipeline",
+    maxWidth: 20,
+    fg: theme.accent,
+    bg: theme.panelSoft,
+    bold: true,
+  });
+  assertEquals(commands.at(-1), {
+    kind: "text",
+    row: 7,
+    column: 0,
+    text: "resize",
+    maxWidth: 20,
+    fg: theme.soft,
+    bg: theme.panelSoft,
+    bold: false,
+  });
 });

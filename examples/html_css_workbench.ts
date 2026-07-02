@@ -61,6 +61,7 @@ function renderBox(frame: Cell[][], box: ComputedLayoutBox, bounds: Rectangle): 
     muted: palette.dim,
     panel: palette.panel,
     panelSoft: palette.panelSoft,
+    soft: palette.dim,
     surface: palette.voidSoft,
     text: palette.paper,
     warn: palette.amber,

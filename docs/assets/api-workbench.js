@@ -15927,6 +15927,124 @@ function htmlCssVisibleLayoutBoxesInto(target, boxes) {
 function compareHtmlCssLayoutPaintOrder(left, right) {
   return left.zIndex - right.zIndex || htmlCssLayoutBoxPaintOrder(left) - htmlCssLayoutBoxPaintOrder(right);
 }
+function htmlCssLayoutRenderCommandsInto(target, options) {
+  target.length = 0;
+  let written = 0;
+  for (const box of options.boxes) {
+    written = writeHtmlCssLayoutBoxCommands(target, written, box, options);
+  }
+  const summaryStart = Math.max(
+    options.bounds.row,
+    options.bounds.row + options.bounds.height - options.summaryRows.length
+  );
+  for (let index = 0; index < options.summaryRows.length && summaryStart + index < options.bounds.row + options.bounds.height; index += 1) {
+    written = writeTextCommand(target, written, {
+      row: summaryStart + index,
+      column: options.bounds.column,
+      text: options.summaryRows[index],
+      maxWidth: options.bounds.width,
+      fg: index === 0 ? options.theme.accent : options.theme.soft,
+      bg: options.theme.panelSoft,
+      bold: index === 0
+    });
+  }
+  target.length = written;
+  return target;
+}
+function writeHtmlCssLayoutBoxCommands(target, written, box, options) {
+  const rect = clipRect(box.rect, options.bounds);
+  if (rect.width <= 0 || rect.height <= 0) return written;
+  const style2 = htmlCssLayoutBoxStyle(box, options.theme, options.contrast);
+  written = writeFillCommand(target, written, rect, style2.bg);
+  if (box.id !== "layout-demo") {
+    written = writeHtmlCssLayoutOutlineCommands(target, written, rect, style2);
+  }
+  const content = clipRect(box.contentRect, options.bounds);
+  if (content.width <= 0 || content.height <= 0) return written;
+  written = writeTextCommand(target, written, {
+    row: content.row,
+    column: content.column,
+    text: htmlCssLayoutDemoBoxLabel(box),
+    maxWidth: content.width,
+    fg: style2.fg,
+    bg: style2.bg,
+    bold: style2.bold
+  });
+  if (content.height > 1 && box.text) {
+    written = writeTextCommand(target, written, {
+      row: content.row + 1,
+      column: content.column,
+      text: box.text,
+      maxWidth: content.width,
+      fg: options.theme.text,
+      bg: style2.bg
+    });
+  }
+  if (content.height > 2 && (box.id.startsWith("metric-") || box.id.startsWith("grid-"))) {
+    written = writeTextCommand(target, written, {
+      row: content.row + 2,
+      column: content.column,
+      text: `${box.rect.width}x${box.rect.height} content ${box.contentRect.width}x${box.contentRect.height}`,
+      maxWidth: content.width,
+      fg: options.theme.muted,
+      bg: style2.bg
+    });
+  }
+  return written;
+}
+function writeHtmlCssLayoutOutlineCommands(target, written, rect, style2) {
+  if (rect.width < 2 || rect.height < 2) return written;
+  written = writeTextCommand(target, written, {
+    row: rect.row,
+    column: rect.column,
+    text: `\u250C${"\u2500".repeat(Math.max(0, rect.width - 2))}\u2510`,
+    maxWidth: rect.width,
+    fg: style2.border,
+    bg: style2.bg,
+    bold: style2.bold
+  });
+  for (let row = rect.row + 1; row < rect.row + rect.height - 1; row += 1) {
+    written = writeTextCommand(target, written, {
+      row,
+      column: rect.column,
+      text: "\u2502",
+      maxWidth: 1,
+      fg: style2.border,
+      bg: style2.bg,
+      bold: style2.bold
+    });
+    written = writeTextCommand(target, written, {
+      row,
+      column: rect.column + rect.width - 1,
+      text: "\u2502",
+      maxWidth: 1,
+      fg: style2.border,
+      bg: style2.bg,
+      bold: style2.bold
+    });
+  }
+  return writeTextCommand(target, written, {
+    row: rect.row + rect.height - 1,
+    column: rect.column,
+    text: `\u2514${"\u2500".repeat(Math.max(0, rect.width - 2))}\u2518`,
+    maxWidth: rect.width,
+    fg: style2.border,
+    bg: style2.bg,
+    bold: style2.bold
+  });
+}
+function writeFillCommand(target, index, rect, bg) {
+  target[index] = {
+    kind: "fill",
+    rect,
+    bg
+  };
+  return index + 1;
+}
+function writeTextCommand(target, index, command) {
+  target[index] = { kind: "text", ...command };
+  return index + 1;
+}
 
 // app/workbench_modal_content.ts
 function workbenchDemoModalContent(options = {}) {
@@ -16316,6 +16434,7 @@ var workspaceVirtualRows = [];
 var threePreviewRows = [];
 var threePreviewOrbRows = [];
 var htmlCssLayoutBoxes = [];
+var htmlCssLayoutRenderCommands = [];
 var minimizedShelfEntries = [];
 var fullscreenTabEntries = [];
 var minimizedShelfLayoutBuffers = createWorkbenchShelfLayoutBuffers();
@@ -17015,57 +17134,30 @@ function renderHtmlCssLayout(frame, rect) {
   const t = theme();
   const result = createHtmlCssLayoutDemo(rect);
   const boxes = htmlCssVisibleLayoutBoxesInto(htmlCssLayoutBoxes, result.layout.boxes);
-  for (const box of boxes) {
-    renderHtmlCssLayoutBox(frame, box, rect, t);
-  }
   const rows2 = [
     "parseTuiMarkup -> parseCssStylesheet -> applyCssCascade -> LayoutEngine",
     "Flex rows wrap; nested CSS Grid uses fr tracks, spans, and media rules.",
     "Resize the browser to recalculate terminal-cell layout through the web host."
   ];
-  const start = Math.max(rect.row, rect.row + rect.height - rows2.length);
-  for (let index = 0; index < rows2.length && start + index < rect.row + rect.height; index += 1) {
-    write(
-      frame,
-      start + index,
-      rect.column,
-      paint(fit(rows2[index], rect.width), index === 0 ? t.accent : t.soft, t.panelSoft, index === 0)
-    );
+  const commands = htmlCssLayoutRenderCommandsInto(htmlCssLayoutRenderCommands, {
+    bounds: rect,
+    boxes,
+    theme: t,
+    contrast: contrastText,
+    summaryRows: rows2
+  });
+  for (const command of commands) {
+    if (command.kind === "fill") {
+      fillRect(frame, command.rect, command.bg);
+    } else {
+      write(
+        frame,
+        command.row,
+        command.column,
+        paint(fit(command.text, command.maxWidth), command.fg, command.bg, command.bold)
+      );
+    }
   }
-}
-function renderHtmlCssLayoutBox(frame, box, bounds, t) {
-  const rect = clipRect(box.rect, bounds);
-  if (rect.width <= 0 || rect.height <= 0) return;
-  const style2 = htmlCssLayoutBoxStyle(box, t, contrastText);
-  fillRect(frame, rect, style2.bg);
-  if (box.id !== "layout-demo") {
-    drawHtmlCssLayoutOutline(frame, rect, style2.border, style2.bg, style2.bold);
-  }
-  const content = clipRect(box.contentRect, bounds);
-  if (content.width <= 0 || content.height <= 0) return;
-  const label = htmlCssLayoutDemoBoxLabel(box);
-  write(frame, content.row, content.column, paint(fit(label, content.width), style2.fg, style2.bg, style2.bold));
-  if (content.height > 1 && box.text) {
-    write(frame, content.row + 1, content.column, paint(fit(box.text, content.width), t.text, style2.bg));
-  }
-  if (content.height > 2 && (box.id.startsWith("metric-") || box.id.startsWith("grid-"))) {
-    const detail = `${box.rect.width}x${box.rect.height} content ${box.contentRect.width}x${box.contentRect.height}`;
-    write(frame, content.row + 2, content.column, paint(fit(detail, content.width), t.muted, style2.bg));
-  }
-}
-function drawHtmlCssLayoutOutline(frame, rect, fg, bg, bold = false) {
-  if (rect.width < 2 || rect.height < 2) return;
-  write(frame, rect.row, rect.column, paint(`\u250C${"\u2500".repeat(Math.max(0, rect.width - 2))}\u2510`, fg, bg, bold));
-  for (let row = rect.row + 1; row < rect.row + rect.height - 1; row += 1) {
-    write(frame, row, rect.column, paint("\u2502", fg, bg, bold));
-    write(frame, row, rect.column + rect.width - 1, paint("\u2502", fg, bg, bold));
-  }
-  write(
-    frame,
-    rect.row + rect.height - 1,
-    rect.column,
-    paint(`\u2514${"\u2500".repeat(Math.max(0, rect.width - 2))}\u2518`, fg, bg, bold)
-  );
 }
 function renderTerminalProtocol(frame, rect) {
   const t = theme();

@@ -219,9 +219,12 @@ import {
   createHtmlCssLayoutDemo,
   HTML_CSS_LAYOUT_OPTION_ID,
   HTML_CSS_LAYOUT_WINDOW_ID,
-  htmlCssLayoutDemoBoxLabel,
 } from "../src/markup/demo_fixtures.ts";
-import { htmlCssLayoutBoxStyle, htmlCssVisibleLayoutBoxesInto } from "./html_css_layout_view.ts";
+import {
+  type HtmlCssLayoutRenderCommand,
+  htmlCssLayoutRenderCommandsInto,
+  htmlCssVisibleLayoutBoxesInto,
+} from "./html_css_layout_view.ts";
 import {
   ASCII_DEMO_PRESETS,
   asciiDemoPresetIds,
@@ -417,6 +420,7 @@ const liveRowsBuffer: ProcessRow[] = [];
 const columns = apiWorkbenchColumns;
 const docs = apiWorkbenchDocs;
 const htmlCssLayoutBoxes: ComputedLayoutBox[] = [];
+const htmlCssLayoutRenderCommands: HtmlCssLayoutRenderCommand[] = [];
 const dataTableTextRows: string[] = [];
 const dataTableBodyRows: RowStyle[] = [];
 const dataTableRenderRows: RowStyle[] = [];
@@ -2407,92 +2411,34 @@ function renderHtmlCssLayout(frame: Frame, rect: Rectangle): void {
   const t = theme();
   const result = createHtmlCssLayoutDemo(rect);
   const boxes = htmlCssVisibleLayoutBoxesInto(htmlCssLayoutBoxes, result.layout.boxes);
-
-  for (const box of boxes) {
-    renderHtmlCssLayoutBox(frame, box, rect, t);
-  }
-
   const summaryRows = [
     "parseTuiMarkup -> parseCssStylesheet -> applyCssCascade -> LayoutEngine",
     "Default solver supports flex-wrap, CSS Grid tracks, fr units, and absolute inset.",
     "Resize this window: metric cards wrap; nested grid retessellates with media rules.",
   ];
-  const summaryStart = Math.max(rect.row, rect.row + rect.height - summaryRows.length);
-  for (let index = 0; index < summaryRows.length && summaryStart + index < rect.row + rect.height; index += 1) {
-    write(
-      frame,
-      summaryStart + index,
-      rect.column,
-      paint(fit(summaryRows[index]!, rect.width), {
-        fg: index === 0 ? t.accent : t.soft,
-        bg: t.panelSoft,
-        bold: index === 0,
-      }),
-    );
+  const commands = htmlCssLayoutRenderCommandsInto(htmlCssLayoutRenderCommands, {
+    bounds: rect,
+    boxes,
+    theme: t,
+    contrast: contrastText,
+    summaryRows,
+  });
+  for (const command of commands) {
+    if (command.kind === "fill") {
+      fillRect(frame, command.rect, command.bg);
+    } else {
+      write(
+        frame,
+        command.row,
+        command.column,
+        paint(fit(command.text, command.maxWidth), {
+          fg: command.fg,
+          bg: command.bg,
+          bold: command.bold,
+        }),
+      );
+    }
   }
-}
-
-function renderHtmlCssLayoutBox(
-  frame: Frame,
-  box: ComputedLayoutBox,
-  bounds: Rectangle,
-  t: ThemeSpec,
-): void {
-  const rect = clipRect(box.rect, bounds);
-  if (rect.width <= 0 || rect.height <= 0) return;
-  const style = htmlCssLayoutBoxStyle(box, t, contrastText);
-  fillRect(frame, rect, style.bg);
-  if (box.id !== "layout-demo") {
-    drawHtmlCssLayoutOutline(frame, rect, style.border, style.bg, style.bold);
-  }
-
-  const content = clipRect(box.contentRect, bounds);
-  if (content.width <= 0 || content.height <= 0) return;
-  const label = htmlCssLayoutDemoBoxLabel(box);
-  write(
-    frame,
-    content.row,
-    content.column,
-    paint(fit(label, content.width), {
-      fg: style.fg,
-      bg: style.bg,
-      bold: style.bold,
-    }),
-  );
-  if (content.height > 1 && box.text) {
-    write(
-      frame,
-      content.row + 1,
-      content.column,
-      paint(fit(box.text, content.width), { fg: t.text, bg: style.bg }),
-    );
-  }
-  if (content.height > 2 && (box.id.startsWith("metric-") || box.id.startsWith("grid-"))) {
-    const detail = `${box.rect.width}x${box.rect.height}  content ${box.contentRect.width}x${box.contentRect.height}`;
-    write(frame, content.row + 2, content.column, paint(fit(detail, content.width), { fg: t.muted, bg: style.bg }));
-  }
-}
-
-function drawHtmlCssLayoutOutline(
-  frame: Frame,
-  rect: Rectangle,
-  fg: string,
-  bg: string,
-  bold = false,
-): void {
-  if (rect.width < 2 || rect.height < 2) return;
-  const style = { fg, bg, bold };
-  write(frame, rect.row, rect.column, paint(`┌${"─".repeat(Math.max(0, rect.width - 2))}┐`, style));
-  for (let row = rect.row + 1; row < rect.row + rect.height - 1; row += 1) {
-    write(frame, row, rect.column, paint("│", style));
-    write(frame, row, rect.column + rect.width - 1, paint("│", style));
-  }
-  write(
-    frame,
-    rect.row + rect.height - 1,
-    rect.column,
-    paint(`└${"─".repeat(Math.max(0, rect.width - 2))}┘`, style),
-  );
 }
 
 function writeWrappedOptions(

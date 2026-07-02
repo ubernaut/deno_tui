@@ -1,5 +1,8 @@
 // Copyright 2023 Im-Beast. MIT license.
+import { clipRect } from "../src/app/hit_targets.ts";
 import type { ComputedLayoutBox } from "../src/layout/mod.ts";
+import { htmlCssLayoutDemoBoxLabel } from "../src/markup/demo_fixtures.ts";
+import type { Rectangle } from "../src/types.ts";
 
 /** Theme colors consumed by the HTML/CSS layout demo renderer. */
 export interface HtmlCssLayoutTheme {
@@ -14,6 +17,7 @@ export interface HtmlCssLayoutTheme {
   muted: string;
   panel: string;
   panelSoft: string;
+  soft: string;
   surface: string;
   text: string;
   warn: string;
@@ -29,6 +33,39 @@ export interface HtmlCssLayoutBoxStyle {
 
 /** Minimal contrast picker used by extracted layout-demo styling. */
 export type HtmlCssLayoutContrast = (color: string, dark: string, light: string) => string;
+
+/** Renderer-neutral paint command for the HTML/CSS layout demo. */
+export type HtmlCssLayoutRenderCommand =
+  | HtmlCssLayoutFillRenderCommand
+  | HtmlCssLayoutTextRenderCommand;
+
+/** Renderer-neutral fill command for one HTML/CSS layout box. */
+export interface HtmlCssLayoutFillRenderCommand {
+  kind: "fill";
+  rect: Rectangle;
+  bg: string;
+}
+
+/** Renderer-neutral text command for one HTML/CSS layout row. */
+export interface HtmlCssLayoutTextRenderCommand {
+  kind: "text";
+  row: number;
+  column: number;
+  text: string;
+  maxWidth: number;
+  fg: string;
+  bg: string;
+  bold?: boolean;
+}
+
+/** Options for projecting an HTML/CSS layout demo into renderer-neutral commands. */
+export interface HtmlCssLayoutRenderCommandOptions {
+  bounds: Rectangle;
+  boxes: readonly ComputedLayoutBox[];
+  theme: HtmlCssLayoutTheme;
+  contrast: HtmlCssLayoutContrast;
+  summaryRows: readonly string[];
+}
 
 /** Resolves workbench theme colors for a computed HTML/CSS layout demo box. */
 export function htmlCssLayoutBoxStyle(
@@ -115,4 +152,161 @@ export function compareHtmlCssLayoutPaintOrder(
   right: Pick<ComputedLayoutBox, "id" | "zIndex">,
 ): number {
   return left.zIndex - right.zIndex || htmlCssLayoutBoxPaintOrder(left) - htmlCssLayoutBoxPaintOrder(right);
+}
+
+/** Projects layout-demo boxes and summary rows into reusable renderer-neutral paint commands. */
+export function htmlCssLayoutRenderCommandsInto(
+  target: HtmlCssLayoutRenderCommand[],
+  options: HtmlCssLayoutRenderCommandOptions,
+): HtmlCssLayoutRenderCommand[] {
+  target.length = 0;
+  let written = 0;
+
+  for (const box of options.boxes) {
+    written = writeHtmlCssLayoutBoxCommands(target, written, box, options);
+  }
+
+  const summaryStart = Math.max(
+    options.bounds.row,
+    options.bounds.row + options.bounds.height - options.summaryRows.length,
+  );
+  for (
+    let index = 0;
+    index < options.summaryRows.length && summaryStart + index < options.bounds.row + options.bounds.height;
+    index += 1
+  ) {
+    written = writeTextCommand(target, written, {
+      row: summaryStart + index,
+      column: options.bounds.column,
+      text: options.summaryRows[index]!,
+      maxWidth: options.bounds.width,
+      fg: index === 0 ? options.theme.accent : options.theme.soft,
+      bg: options.theme.panelSoft,
+      bold: index === 0,
+    });
+  }
+
+  target.length = written;
+  return target;
+}
+
+function writeHtmlCssLayoutBoxCommands(
+  target: HtmlCssLayoutRenderCommand[],
+  written: number,
+  box: ComputedLayoutBox,
+  options: HtmlCssLayoutRenderCommandOptions,
+): number {
+  const rect = clipRect(box.rect, options.bounds);
+  if (rect.width <= 0 || rect.height <= 0) return written;
+  const style = htmlCssLayoutBoxStyle(box, options.theme, options.contrast);
+  written = writeFillCommand(target, written, rect, style.bg);
+  if (box.id !== "layout-demo") {
+    written = writeHtmlCssLayoutOutlineCommands(target, written, rect, style);
+  }
+
+  const content = clipRect(box.contentRect, options.bounds);
+  if (content.width <= 0 || content.height <= 0) return written;
+  written = writeTextCommand(target, written, {
+    row: content.row,
+    column: content.column,
+    text: htmlCssLayoutDemoBoxLabel(box),
+    maxWidth: content.width,
+    fg: style.fg,
+    bg: style.bg,
+    bold: style.bold,
+  });
+
+  if (content.height > 1 && box.text) {
+    written = writeTextCommand(target, written, {
+      row: content.row + 1,
+      column: content.column,
+      text: box.text,
+      maxWidth: content.width,
+      fg: options.theme.text,
+      bg: style.bg,
+    });
+  }
+
+  if (content.height > 2 && (box.id.startsWith("metric-") || box.id.startsWith("grid-"))) {
+    written = writeTextCommand(target, written, {
+      row: content.row + 2,
+      column: content.column,
+      text: `${box.rect.width}x${box.rect.height} content ${box.contentRect.width}x${box.contentRect.height}`,
+      maxWidth: content.width,
+      fg: options.theme.muted,
+      bg: style.bg,
+    });
+  }
+
+  return written;
+}
+
+function writeHtmlCssLayoutOutlineCommands(
+  target: HtmlCssLayoutRenderCommand[],
+  written: number,
+  rect: Rectangle,
+  style: HtmlCssLayoutBoxStyle,
+): number {
+  if (rect.width < 2 || rect.height < 2) return written;
+  written = writeTextCommand(target, written, {
+    row: rect.row,
+    column: rect.column,
+    text: `┌${"─".repeat(Math.max(0, rect.width - 2))}┐`,
+    maxWidth: rect.width,
+    fg: style.border,
+    bg: style.bg,
+    bold: style.bold,
+  });
+  for (let row = rect.row + 1; row < rect.row + rect.height - 1; row += 1) {
+    written = writeTextCommand(target, written, {
+      row,
+      column: rect.column,
+      text: "│",
+      maxWidth: 1,
+      fg: style.border,
+      bg: style.bg,
+      bold: style.bold,
+    });
+    written = writeTextCommand(target, written, {
+      row,
+      column: rect.column + rect.width - 1,
+      text: "│",
+      maxWidth: 1,
+      fg: style.border,
+      bg: style.bg,
+      bold: style.bold,
+    });
+  }
+  return writeTextCommand(target, written, {
+    row: rect.row + rect.height - 1,
+    column: rect.column,
+    text: `└${"─".repeat(Math.max(0, rect.width - 2))}┘`,
+    maxWidth: rect.width,
+    fg: style.border,
+    bg: style.bg,
+    bold: style.bold,
+  });
+}
+
+function writeFillCommand(
+  target: HtmlCssLayoutRenderCommand[],
+  index: number,
+  rect: Rectangle,
+  bg: string,
+): number {
+  target[index] = {
+    kind: "fill",
+    rect,
+    bg,
+  };
+  return index + 1;
+}
+
+function writeTextCommand(
+  target: HtmlCssLayoutRenderCommand[],
+  index: number,
+  command: Omit<HtmlCssLayoutTextRenderCommand, "kind">,
+): number {
+  target[index] = { kind: "text", ...command };
+  return index + 1;
 }
