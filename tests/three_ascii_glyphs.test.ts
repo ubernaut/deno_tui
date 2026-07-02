@@ -187,6 +187,25 @@ Deno.test("three ascii ANSI grid assembler invalidates cached cells when backgro
   assertEquals(tinted !== dark, true);
 });
 
+Deno.test("three ascii ANSI grid assembler invalidates partial block blends when background changes", () => {
+  const assembler = new ThreeAsciiAnsiGridAssembler();
+  const base = {
+    columns: 1,
+    rows: 1,
+    fillGlyphs: new Float32Array([13]),
+    colors: new Float32Array([1, 0, 0, 1]),
+    terminalGlyphStyle: "blocks" as const,
+  };
+
+  const dark = assembler.build({ ...base, backgroundColor: 0x000000 })[0][0];
+  const blue = assembler.build({ ...base, backgroundColor: 0x0000ff })[0][0];
+  const blueAgain = assembler.build({ ...base, backgroundColor: 0x0000ff })[0][0];
+
+  assertEquals(dark, "\x1b[48;2;0;0;0m\x1b[38;2;227;0;0m█\x1b[0m");
+  assertEquals(blue, "\x1b[48;2;0;0;255m\x1b[38;2;227;0;28m█\x1b[0m");
+  assertEquals(blueAgain, blue);
+});
+
 Deno.test("three ascii ANSI grid assembler observes reused Color background mutations", () => {
   const assembler = new ThreeAsciiAnsiGridAssembler();
   const background = new Color(0x000000);

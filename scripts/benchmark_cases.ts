@@ -66,6 +66,9 @@ const threeAsciiSolidColors = new Float32Array(threeAsciiCellCount * 4);
 const threeAsciiPatternFillGlyphs = new Float32Array(threeAsciiCellCount);
 const threeAsciiPatternEdgeGlyphs = new Float32Array(threeAsciiCellCount * 4);
 const threeAsciiPatternColors = new Float32Array(threeAsciiCellCount * 4);
+const threeAsciiPartialFillGlyphs = new Float32Array(threeAsciiCellCount);
+const threeAsciiPartialEdgeGlyphs = new Float32Array(threeAsciiCellCount * 4);
+const threeAsciiPartialColors = new Float32Array(threeAsciiCellCount * 4);
 const threeAsciiSparseFillGlyphs = new Float32Array(threeAsciiCellCount);
 const threeAsciiSparseEdgeGlyphs = new Float32Array(threeAsciiCellCount * 4);
 const threeAsciiSparseColors = new Float32Array(threeAsciiCellCount * 4);
@@ -242,6 +245,19 @@ for (let index = 0; index < threeAsciiCellCount; index += 1) {
     threeAsciiPatternEdgeGlyphs[edgeOffset + 1] = 20;
     threeAsciiPatternEdgeGlyphs[edgeOffset + 2] = 24;
     threeAsciiPatternEdgeGlyphs[edgeOffset + 3] = 1;
+  }
+
+  threeAsciiPartialFillGlyphs[index] = 8 + ((x + y) % 6);
+  const partialColor = threeAsciiPatternPalette[(x + y * 2) % threeAsciiPatternPalette.length];
+  threeAsciiPartialColors[colorOffset] = partialColor[0];
+  threeAsciiPartialColors[colorOffset + 1] = partialColor[1];
+  threeAsciiPartialColors[colorOffset + 2] = partialColor[2];
+  threeAsciiPartialColors[colorOffset + 3] = 1;
+  if ((x * 2 + y) % 17 === 0) {
+    threeAsciiPartialEdgeGlyphs[edgeOffset] = 1 + (y % 4);
+    threeAsciiPartialEdgeGlyphs[edgeOffset + 1] = 14;
+    threeAsciiPartialEdgeGlyphs[edgeOffset + 2] = 24;
+    threeAsciiPartialEdgeGlyphs[edgeOffset + 3] = 2;
   }
 
   const sparseColorOffset = index * 4;
@@ -967,6 +983,29 @@ export const benchmarkCases: BenchmarkCase[] = [
       });
       if (grid.length !== threeAsciiRows || grid[0]?.length !== threeAsciiColumns) {
         throw new Error("solid three Ascii grid dimensions changed");
+      }
+    },
+  },
+  {
+    name: "render/three-ascii-ansi-grid-partial-block-96x40",
+    category: "render",
+    description: "CPU-assemble a partial block-mode Three ASCII grid with recurring mixed foreground colors.",
+    tags: ["render", "three", "ascii", "ansi", "cpu", "assembly", "cache", "blocks"],
+    iterations: 250,
+    maxAverageMs: 6,
+    run: () => {
+      const grid = buildThreeAsciiAnsiGrid({
+        columns: threeAsciiColumns,
+        rows: threeAsciiRows,
+        fillGlyphs: threeAsciiPartialFillGlyphs,
+        edgeGlyphs: threeAsciiPartialEdgeGlyphs,
+        colors: threeAsciiPartialColors,
+        terminalGlyphStyle: "blocks",
+        terminalEdgeBias: 1.15,
+        backgroundColor: 0x020014,
+      });
+      if (grid.length !== threeAsciiRows || grid[0]?.length !== threeAsciiColumns) {
+        throw new Error("partial block three Ascii grid dimensions changed");
       }
     },
   },
