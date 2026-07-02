@@ -5,6 +5,8 @@ import { Computed, Signal } from "../signals/mod.ts";
 import { clamp } from "../utils/numbers.ts";
 import { cropToWidth, textWidth } from "../utils/strings.ts";
 
+const SEARCH_WHITESPACE = /\s/;
+
 /** Public type alias for a sort Direction. */
 export type SortDirection = "asc" | "desc";
 
@@ -242,9 +244,13 @@ export function filterDataRows<TRow extends Record<string, unknown>>(
   columns: readonly DataColumn<TRow>[],
   query: string,
 ): TRow[] {
-  const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const terms = parseSearchTerms(query);
   if (terms.length === 0) return [...rows];
-  return rows.filter((row) => dataRowMatchesTerms(row, columns, terms));
+  const filtered: TRow[] = [];
+  for (const row of rows) {
+    if (dataRowMatchesTerms(row, columns, terms)) filtered.push(row);
+  }
+  return filtered;
 }
 
 function dataRowMatchesTerms<TRow extends Record<string, unknown>>(
@@ -280,10 +286,14 @@ export function renderDataTableHeader<TRow extends Record<string, unknown>>(
   columns: readonly DataColumn<TRow>[],
   sort?: DataSort,
 ): string {
-  return columns.map((column) => {
+  let header = "";
+  for (let index = 0; index < columns.length; index += 1) {
+    const column = columns[index]!;
     const suffix = sort?.columnId === column.id ? (sort.direction === "asc" ? "↑" : "↓") : "";
-    return padCell(`${column.label ?? column.id}${suffix}`, column.width);
-  }).join(" ");
+    if (index > 0) header += " ";
+    header += padCell(`${column.label ?? column.id}${suffix}`, column.width);
+  }
+  return header;
 }
 
 /** Renders data Table Rows into deterministic text rows. */
@@ -292,14 +302,20 @@ export function renderDataTableRows<TRow extends Record<string, unknown>>(
   columns: readonly DataColumn<TRow>[],
   selectedIndex = 0,
 ): string[] {
-  return rows.map((row, index) => {
+  const output = new Array<string>(rows.length);
+  for (let index = 0; index < rows.length; index += 1) {
+    const row = rows[index]!;
     const marker = index === selectedIndex ? ">" : " ";
-    const cells = columns.map((column) => {
+    let line = `${marker} `;
+    for (let columnIndex = 0; columnIndex < columns.length; columnIndex += 1) {
+      const column = columns[columnIndex]!;
       const value = column.format ? column.format(row[column.id], row) : stringifyCell(row[column.id]);
-      return padCell(value, column.width);
-    });
-    return `${marker} ${cells.join(" ")}`;
-  });
+      if (columnIndex > 0) line += " ";
+      line += padCell(value, column.width);
+    }
+    output[index] = line;
+  }
+  return output;
 }
 
 /** Public helper for next Sort. */
@@ -315,7 +331,10 @@ export function canSortColumn<TRow extends Record<string, unknown>>(
   columns: readonly DataColumn<TRow>[],
   columnId: string,
 ): boolean {
-  return columns.some((column) => column.id === columnId && column.sortable !== false);
+  for (const column of columns) {
+    if (column.id === columnId && column.sortable !== false) return true;
+  }
+  return false;
 }
 
 function selectedRowIndex<TRow extends Record<string, unknown>>(
@@ -324,7 +343,29 @@ function selectedRowIndex<TRow extends Record<string, unknown>>(
   rowKey?: (row: TRow, index: number) => string,
 ): number {
   if (!rowKey || state.selectedKey === undefined) return -1;
-  return rows.findIndex((row, index) => rowKey(row, index) === state.selectedKey);
+  for (let index = 0; index < rows.length; index += 1) {
+    if (rowKey(rows[index]!, index) === state.selectedKey) return index;
+  }
+  return -1;
+}
+
+function parseSearchTerms(query: string): string[] {
+  const normalized = query.trim().toLowerCase();
+  if (!normalized) return [];
+  const terms: string[] = [];
+  let start = -1;
+  for (let index = 0; index <= normalized.length; index += 1) {
+    const whitespace = index >= normalized.length || SEARCH_WHITESPACE.test(normalized[index]!);
+    if (whitespace) {
+      if (start >= 0) {
+        terms.push(normalized.slice(start, index));
+        start = -1;
+      }
+    } else if (start < 0) {
+      start = index;
+    }
+  }
+  return terms;
 }
 
 function stringifyCell(value: unknown): string {

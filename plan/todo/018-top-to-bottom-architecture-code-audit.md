@@ -259,6 +259,8 @@ Work:
         tables in the inner cell loops instead of per-cell style switching and bucket projection.
   - [x] Reworked Three ASCII preset/config helpers to use explicit loops for ids, filtered clones, summaries, fallback
         lookup, and preset-map construction while preserving cloned preset API boundaries.
+  - [x] Reworked data-table filtering, header rendering, row rendering, sortable-column checks, keyed selection lookup,
+        and query term parsing to avoid callback pipelines in reusable table view paths.
 
 Acceptance checks:
 
