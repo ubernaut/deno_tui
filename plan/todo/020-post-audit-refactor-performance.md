@@ -84,3 +84,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   leaving the new window shell math embedded in the demo.
 - Extracted Three ASCII changed-cell diff state and visible rerender queueing into a reusable canvas helper with direct
   tests, preserving the object behavior while making the frame-diff hot path easier to optimize independently.
+- Extracted the web workbench mobile command-strip action projection into an internal shared helper and routed it
+  through the existing button-row layout so touch/mobile controls no longer carry bespoke wrapping logic.

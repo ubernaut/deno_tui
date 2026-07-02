@@ -15439,6 +15439,19 @@ function compareHtmlCssLayoutPaintOrder(left, right) {
   return left.zIndex - right.zIndex || htmlCssLayoutBoxPaintOrder(left) - htmlCssLayoutBoxPaintOrder(right);
 }
 
+// src/app/workbench_mobile.ts
+function workbenchMobileCommandStripItemsInto(target, options) {
+  target.length = 7;
+  target[0] = { action: "next", label: `Next ${options.activeTitle}` };
+  target[1] = { action: "controls", label: "Controls", active: options.controlsActive === true };
+  target[2] = { action: "theme", label: "Theme", active: options.themeActive === true };
+  target[3] = { action: "help", label: "Help" };
+  target[4] = { action: "restore", label: "Restore", tone: "muted" };
+  target[5] = { action: "wide", label: "Wide", tone: "muted" };
+  target[6] = { action: "dense", label: "Dense", tone: "muted" };
+  return target;
+}
+
 // src/app/workbench/controller.ts
 var WorkbenchController = class {
   menus;
@@ -15712,6 +15725,8 @@ var webTerminalActions = [
 ];
 var webTerminalButtonItems = [];
 var webTerminalButtonPlacements = [];
+var mobileCommandButtonItems = [];
+var mobileCommandButtonPlacements = [];
 var webTerminalSessionTabSources = [];
 var webTerminalSessionTabPlacements = [];
 var controlLineSegments = [];
@@ -16124,34 +16139,28 @@ function renderMenuHits(column, row, width) {
 }
 function renderMobileCommandStrip(frame) {
   if (!isTouchOptimizedLayout() || rowsCount() < 8) return;
-  const actions = [
-    { action: "next", label: `Next ${shortPanelTitle(active.peek())}` },
-    { action: "controls", label: "Controls", active: active.peek() === "controls" },
-    { action: "theme", label: "Theme", active: themeMenuOpen.peek() },
-    { action: "help", label: "Help" },
-    { action: "restore", label: "Restore", tone: "muted" },
-    { action: "wide", label: "Wide", tone: "muted" },
-    { action: "dense", label: "Dense", tone: "muted" }
-  ];
-  let row = 1;
-  let column = 1;
-  for (const entry of actions) {
-    if (column >= cols() - 1) break;
-    let maxWidth = Math.max(0, cols() - column - 1);
-    const desiredWidth = textWidth(buttonText2(entry.label));
-    if (desiredWidth > maxWidth && row < 2) {
-      row += 1;
-      column = 1;
-      maxWidth = Math.max(0, cols() - column - 1);
-    }
-    const width = writeButton(frame, row, column, entry.label, {
-      state: entry.active ? "active" : "base",
-      tone: entry.tone ?? "default",
-      maxWidth
+  workbenchMobileCommandStripItemsInto(mobileCommandButtonItems, {
+    activeTitle: shortPanelTitle(active.peek()),
+    controlsActive: active.peek() === "controls",
+    themeActive: themeMenuOpen.peek()
+  });
+  layoutWorkbenchButtonRowInto(
+    mobileCommandButtonPlacements,
+    mobileCommandButtonItems,
+    { column: 1, row: 1, width: Math.max(0, cols() - 2), height: 2 },
+    1
+  );
+  for (const placement of mobileCommandButtonPlacements) {
+    const width = writeButton(frame, placement.rect.row, placement.rect.column, placement.item.label, {
+      state: placement.state,
+      tone: placement.tone ?? "default",
+      maxWidth: placement.rect.width
     });
-    if (width <= 0) break;
-    hitTargets.add({ column, row, width, height: 1 }, { type: "mobileAction", action: entry.action });
-    column += width + 1;
+    if (width <= 0) continue;
+    hitTargets.add(
+      { column: placement.rect.column, row: placement.rect.row, width, height: 1 },
+      { type: "mobileAction", action: placement.item.action }
+    );
   }
 }
 function menuItemRect(menuStart, itemId, preferredWidth, preferredHeight) {

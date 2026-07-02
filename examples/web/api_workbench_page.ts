@@ -145,6 +145,10 @@ import {
 } from "../../app/api_workbench_controls.ts";
 import { htmlCssLayoutBoxStyle, htmlCssVisibleLayoutBoxesInto } from "../../app/html_css_layout_view.ts";
 import {
+  type WorkbenchMobileCommandAction,
+  workbenchMobileCommandStripItemsInto,
+} from "../../src/app/workbench_mobile.ts";
+import {
   applyWorkbenchWindowSignalState,
   inspectWorkbenchWindowSignalState,
   WorkbenchController,
@@ -179,7 +183,7 @@ type Hit =
   | { type: "workspaceScrollbar" };
 type ControlHitAction = "previous" | "next" | "activate" | "set" | "focus" | "toggle";
 type ButtonTone = "default" | "danger" | "warning" | "success" | "muted";
-type MobileAction = "next" | "controls" | "theme" | "help" | "restore" | "wide" | "dense";
+type MobileAction = WorkbenchMobileCommandAction;
 type WebTerminalAction = WorkbenchTerminalToolbarAction;
 
 interface DropdownOverlay {
@@ -307,6 +311,8 @@ const webTerminalActions: readonly WebTerminalAction[] = [
 ];
 const webTerminalButtonItems: WorkbenchButtonRowItem<WebTerminalAction>[] = [];
 const webTerminalButtonPlacements: WorkbenchButtonRowPlacement<WebTerminalAction>[] = [];
+const mobileCommandButtonItems: WorkbenchButtonRowItem<MobileAction>[] = [];
+const mobileCommandButtonPlacements: WorkbenchButtonRowPlacement<MobileAction>[] = [];
 const webTerminalSessionTabSources: WorkbenchTerminalSessionTab[] = [];
 const webTerminalSessionTabPlacements: WorkbenchTerminalSessionTabPlacement[] = [];
 const controlLineSegments: ApiWorkbenchControlLineSegment[] = [];
@@ -738,34 +744,28 @@ function renderMenuHits(column: number, row: number, width: number): void {
 
 function renderMobileCommandStrip(frame: string[]): void {
   if (!isTouchOptimizedLayout() || rowsCount() < 8) return;
-  const actions: Array<{ action: MobileAction; label: string; tone?: ButtonTone; active?: boolean }> = [
-    { action: "next", label: `Next ${shortPanelTitle(active.peek())}` },
-    { action: "controls", label: "Controls", active: active.peek() === "controls" },
-    { action: "theme", label: "Theme", active: themeMenuOpen.peek() },
-    { action: "help", label: "Help" },
-    { action: "restore", label: "Restore", tone: "muted" },
-    { action: "wide", label: "Wide", tone: "muted" },
-    { action: "dense", label: "Dense", tone: "muted" },
-  ];
-  let row = 1;
-  let column = 1;
-  for (const entry of actions) {
-    if (column >= cols() - 1) break;
-    let maxWidth = Math.max(0, cols() - column - 1);
-    const desiredWidth = textWidth(buttonText(entry.label));
-    if (desiredWidth > maxWidth && row < 2) {
-      row += 1;
-      column = 1;
-      maxWidth = Math.max(0, cols() - column - 1);
-    }
-    const width = writeButton(frame, row, column, entry.label, {
-      state: entry.active ? "active" : "base",
-      tone: entry.tone ?? "default",
-      maxWidth,
+  workbenchMobileCommandStripItemsInto(mobileCommandButtonItems, {
+    activeTitle: shortPanelTitle(active.peek()),
+    controlsActive: active.peek() === "controls",
+    themeActive: themeMenuOpen.peek(),
+  });
+  layoutWorkbenchButtonRowInto(
+    mobileCommandButtonPlacements,
+    mobileCommandButtonItems,
+    { column: 1, row: 1, width: Math.max(0, cols() - 2), height: 2 },
+    1,
+  );
+  for (const placement of mobileCommandButtonPlacements) {
+    const width = writeButton(frame, placement.rect.row, placement.rect.column, placement.item.label, {
+      state: placement.state,
+      tone: placement.tone ?? "default",
+      maxWidth: placement.rect.width,
     });
-    if (width <= 0) break;
-    hitTargets.add({ column, row, width, height: 1 }, { type: "mobileAction", action: entry.action });
-    column += width + 1;
+    if (width <= 0) continue;
+    hitTargets.add(
+      { column: placement.rect.column, row: placement.rect.row, width, height: 1 },
+      { type: "mobileAction", action: placement.item.action },
+    );
   }
 }
 
