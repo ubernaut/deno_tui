@@ -961,6 +961,8 @@ Work:
         width is filled.
   - [x] Precomputed standard theme component names, sorted catalog entries, and normalized lookup keys so theme preset
         construction no longer re-sorts the static component catalog.
+  - [x] Cached installed app plugin ids and inspection metadata behind plugin install/dispose invalidation, while
+        preserving defensive copies for public app inspection.
 - [x] Make demo-only assets and NGE-inspired primitives clearly separate from library APIs.
   - [x] Added `app/neon_three_catalog.ts` for supported Three scene metadata and labels, keeping demo/NGE catalog data
         separate from the monolithic scene factory and shared by visualization footers plus scene coverage tests.

@@ -1455,6 +1455,12 @@ Deno.test("TuiApp inspects plugins and skips duplicate identified installs", () 
   assertEquals(app.hasPlugin("settings"), true);
   assertEquals(app.pluginIds(), ["settings"]);
   assertEquals(app.plugins(), [{ id: "settings", label: "Settings Pack" }]);
+  const ids = app.pluginIds();
+  ids.push("mutated");
+  const plugins = app.plugins();
+  plugins[0]!.label = "Mutated";
+  assertEquals(app.pluginIds(), ["settings"]);
+  assertEquals(app.plugins(), [{ id: "settings", label: "Settings Pack" }]);
 
   disposeDuplicate();
   assertEquals(app.hasPlugin("settings"), true);

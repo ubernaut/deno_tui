@@ -104,6 +104,8 @@ export class TuiApp<TAction extends Action = Action, TRoute extends Route = Rout
   readonly routes: RouteManager<TRoute>;
   readonly #disposers = new Set<() => void>();
   readonly #plugins = new Map<string, AppPluginInspection & { dispose: () => void }>();
+  #pluginIds: string[] | undefined;
+  #pluginInspections: AppPluginInspection[] | undefined;
   #destroyed = false;
 
   constructor(options: TuiAppOptions<TRoute> = {}) {
@@ -197,16 +199,12 @@ export class TuiApp<TAction extends Action = Action, TRoute extends Route = Rout
 
   /** Returns installed plugin ids in registration order. */
   pluginIds(): string[] {
-    const ids: string[] = [];
-    for (const id of this.#plugins.keys()) ids.push(id);
-    return ids;
+    return cloneStringArray(this.#cachedPluginIds());
   }
 
   /** Returns installed plugin metadata without exposing internal disposers. */
   plugins(): AppPluginInspection[] {
-    const plugins: AppPluginInspection[] = [];
-    for (const plugin of this.#plugins.values()) plugins.push({ id: plugin.id, label: plugin.label });
-    return plugins;
+    return clonePluginInspections(this.#cachedPluginInspections());
   }
 
   /** Returns an aggregate app state snapshot. */
@@ -298,6 +296,7 @@ export class TuiApp<TAction extends Action = Action, TRoute extends Route = Rout
       active = false;
       if (metadata?.id && this.#plugins.get(metadata.id)?.dispose === dispose) {
         this.#plugins.delete(metadata.id);
+        this.#invalidatePluginCache();
       }
       pluginDisposer?.();
     };
@@ -306,8 +305,32 @@ export class TuiApp<TAction extends Action = Action, TRoute extends Route = Rout
         ...metadata,
         dispose,
       });
+      this.#invalidatePluginCache();
     }
     return dispose;
+  }
+
+  #cachedPluginIds(): readonly string[] {
+    if (!this.#pluginIds) {
+      const ids: string[] = [];
+      for (const id of this.#plugins.keys()) ids.push(id);
+      this.#pluginIds = ids;
+    }
+    return this.#pluginIds;
+  }
+
+  #cachedPluginInspections(): readonly AppPluginInspection[] {
+    if (!this.#pluginInspections) {
+      const plugins: AppPluginInspection[] = [];
+      for (const plugin of this.#plugins.values()) plugins.push({ id: plugin.id, label: plugin.label });
+      this.#pluginInspections = plugins;
+    }
+    return this.#pluginInspections;
+  }
+
+  #invalidatePluginCache(): void {
+    this.#pluginIds = undefined;
+    this.#pluginInspections = undefined;
   }
 }
 
@@ -316,6 +339,21 @@ function sortedSetValues(values: Set<string>): string[] {
   for (const value of values) sorted.push(value);
   sorted.sort();
   return sorted;
+}
+
+function cloneStringArray(values: readonly string[]): string[] {
+  const output = new Array<string>(values.length);
+  for (let index = 0; index < values.length; index += 1) output[index] = values[index]!;
+  return output;
+}
+
+function clonePluginInspections(values: readonly AppPluginInspection[]): AppPluginInspection[] {
+  const output = new Array<AppPluginInspection>(values.length);
+  for (let index = 0; index < values.length; index += 1) {
+    const plugin = values[index]!;
+    output[index] = { id: plugin.id, label: plugin.label };
+  }
+  return output;
 }
 
 function pluginMetadata<TAction extends Action, TRoute extends Route>(
