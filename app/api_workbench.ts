@@ -143,7 +143,11 @@ import {
   type ApiWorkbenchThemeSpec,
   createApiWorkbenchThemes,
 } from "./api_workbench_catalog.ts";
-import { type ApiWorkbenchControlId, nextApiWorkbenchControlId } from "./api_workbench_controls.ts";
+import {
+  type ApiWorkbenchControlId,
+  nextApiWorkbenchControlId,
+  nextSortableDataColumn,
+} from "./api_workbench_controls.ts";
 import {
   createHtmlCssLayoutDemo,
   HTML_CSS_LAYOUT_OPTION_ID,
@@ -3088,9 +3092,12 @@ function syncWindowSignalsFromManager(): void {
   const inspection = windowManager.inspect();
   activeWindow.value = (inspection.activeId as WindowId | undefined) ?? "explorer";
   maximized.value = (inspection.fullscreenId as WindowId | undefined) ?? null;
-  minimized.value = Object.fromEntries(
-    inspection.windows.map((entry) => [entry.id, entry.minimized]),
-  );
+  const nextMinimized: Record<string, boolean> = {};
+  for (let index = 0; index < inspection.windows.length; index += 1) {
+    const entry = inspection.windows[index]!;
+    nextMinimized[entry.id as WindowId] = entry.minimized;
+  }
+  minimized.value = nextMinimized;
 }
 
 function adjustTileDensity(delta: number): void {
@@ -3099,11 +3106,9 @@ function adjustTileDensity(delta: number): void {
 }
 
 function cycleDataSortColumn(delta: number): void {
-  const sortable = columns.filter((column) => column.sortable !== false);
-  if (sortable.length === 0) return;
   const current = table.state.peek().sort?.columnId;
-  const index = Math.max(0, sortable.findIndex((column) => column.id === current));
-  const next = sortable[(index + delta + sortable.length) % sortable.length]!;
+  const next = nextSortableDataColumn(columns, current, delta);
+  if (!next) return;
   table.toggleSort(next.id);
   pushLog(`sort data by ${next.label}`);
 }

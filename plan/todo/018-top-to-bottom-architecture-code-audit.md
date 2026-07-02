@@ -171,6 +171,8 @@ Work:
         object spread when materializing immutable nodes.
   - [x] Reworked layout recipe inspection to collect and sort layout ids through explicit buffers, keeping deterministic
         docs/introspection output without `Object.keys(...).sort()` callback-path allocation.
+  - [x] Reworked API Workbench minimized-state sync and data-table sort-column cycling to use direct loops/shared
+        helpers instead of `Object.fromEntries(...map(...))` and per-keypress filtered sortable arrays.
 - [x] Replace duplicated theme/window/menu persistence code with a shared versioned serializer.
   - [x] Extracted shared workbench workspace normalization, panel-state normalization, upsert, rename, delete, lookup,
         and legacy window-entry expansion helpers into `src/app/workbench_workspace.ts`.
