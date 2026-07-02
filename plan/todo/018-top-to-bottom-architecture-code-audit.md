@@ -248,6 +248,8 @@ Work:
         closures when constructing Three ASCII demo windows.
   - [x] Reworked shared workbench workspace normalization, serialization, lookup, and menu label projection to use
         loop-based buffers in workspace load/save and redraw-heavy dropdown paths.
+  - [x] Reworked workbench titlebar button layout to reuse static button specs and emit controls in measured order
+        without per-redraw sorting.
   - [x] Reworked workbench window option catalog construction to append built-ins and visualization options into one
         pre-sized buffer instead of spread/map projection during New Window menu setup.
   - [x] Reworked Three ASCII renderer option patching to use explicit typed assignments instead of `Object.entries()`
