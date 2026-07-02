@@ -2,6 +2,7 @@
 import type { ModalInspection } from "../components/modal.ts";
 import type { Rectangle } from "../types.ts";
 import { clipRect } from "./hit_targets.ts";
+import type { WorkbenchButtonTone } from "./workbench_button_style.ts";
 import type { WorkbenchButtonRowItem } from "./workbench_control_layout.ts";
 
 /** Options for laying out a centered workbench modal overlay. */
@@ -25,8 +26,8 @@ export interface WorkbenchModalLayout {
 
 /** Options for projecting modal actions into workbench button-row items. */
 export interface WorkbenchModalActionButtonOptions {
-  dangerTone?: "danger";
-  defaultTone?: "default";
+  dangerTone?: WorkbenchButtonTone;
+  defaultTone?: WorkbenchButtonTone;
 }
 
 /** Options for clipping an already-positioned workbench popover/dropdown. */

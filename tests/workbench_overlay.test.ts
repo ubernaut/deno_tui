@@ -65,4 +65,12 @@ Deno.test("workbench modal action buttons project selected disabled and destruct
     { label: "Delete", action: 2, disabled: undefined, active: true, tone: "danger" },
   ]);
   assertEquals(buttons, target);
+
+  assertEquals(
+    workbenchModalActionButtonsInto([], {
+      selectedActionIndex: 0,
+      actions: [{ id: "remove", label: "Remove", destructive: true }],
+    }, { dangerTone: "muted" }),
+    [{ label: "Remove", action: 0, disabled: undefined, active: true, tone: "muted" }],
+  );
 });
