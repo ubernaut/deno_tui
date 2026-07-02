@@ -256,6 +256,8 @@ Work:
   - [x] Reworked key-help rendering to append segments incrementally instead of rebuilding the accumulated row on every
         binding.
   - [x] Reworked status bar composition to avoid forced gap plus final slice, preserving exact-fit right content.
+  - [x] Reworked `WindowManagerController.focusNext()` to traverse cached ordered windows directly instead of allocating
+        an id list per focus movement.
   - [x] Reworked empty-state row projection to append visible rows directly instead of building filtered/sliced/mapped
         line arrays on each render.
   - [x] Added a shared internal text-row drawing helper and migrated row-oriented widgets to it, removing duplicated

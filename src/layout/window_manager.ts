@@ -184,10 +184,18 @@ export class WindowManagerController {
   }
 
   focusNext(delta = 1): WindowManagerWindow | undefined {
-    const ids = this.ids();
-    if (ids.length === 0) return undefined;
-    const current = Math.max(0, ids.indexOf(this.activeId.peek() ?? ""));
-    return this.focus(ids[(current + delta + ids.length) % ids.length]!);
+    const windows = this.#orderedWindows(false);
+    if (windows.length === 0) return undefined;
+    const activeId = this.activeId.peek();
+    let currentIndex = -1;
+    for (let index = 0; index < windows.length; index += 1) {
+      if (windows[index]!.id === activeId) {
+        currentIndex = index;
+        break;
+      }
+    }
+    const current = Math.max(0, currentIndex);
+    return this.focus(windows[(current + delta + windows.length) % windows.length]!.id);
   }
 
   minimize(id = this.activeId.peek()): WindowManagerWindow | undefined {
