@@ -231,20 +231,30 @@ export class TreeController {
 
   setExpanded(id: string, expanded: boolean): boolean {
     let changed = false;
-    const visit = (nodes: readonly TreeNode[]): TreeNode[] =>
-      nodes.map((node) => {
+    const visit = (nodes: readonly TreeNode[]): readonly TreeNode[] => {
+      let next: TreeNode[] | undefined;
+      for (let index = 0; index < nodes.length; index += 1) {
+        const node = nodes[index]!;
         const children = node.children ? visit(node.children) : undefined;
-        if (node.id !== id || !node.children?.length) {
-          return children && children !== node.children ? { ...node, children } : node;
+        let nextNode = node;
+        if (node.id === id && node.children?.length && Boolean(node.expanded) !== expanded) {
+          changed = true;
+          nextNode = { ...node, children: (children ?? node.children) as TreeNode[], expanded };
+        } else if (children && children !== node.children) {
+          nextNode = { ...node, children: children as TreeNode[] };
         }
-        if (Boolean(node.expanded) === expanded) {
-          return children && children !== node.children ? { ...node, children } : node;
+        if (nextNode !== node && !next) {
+          next = new Array<TreeNode>(nodes.length);
+          for (let copy = 0; copy < index; copy += 1) {
+            next[copy] = nodes[copy]!;
+          }
         }
-        changed = true;
-        return { ...node, children, expanded };
-      });
+        if (next) next[index] = nextNode;
+      }
+      return next ?? nodes;
+    };
 
-    const next = visit(this.nodes.peek());
+    const next = visit(this.nodes.peek()) as TreeNode[];
     if (changed) {
       this.nodes.value = next;
       this.#syncSelection();

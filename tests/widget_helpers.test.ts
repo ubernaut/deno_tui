@@ -472,11 +472,21 @@ Deno.test("TreeController flattens navigates toggles and inspects rows", () => {
     ["components", 1, 2],
     ["readme", 0, 3],
   ]);
+  const initialNodes = controller.nodes.peek();
+  const initialComponents = initialNodes[0]!.children![1]!;
+  assertEquals(controller.setExpanded("missing", true), false);
+  assertEquals(controller.nodes.peek() === initialNodes, true);
 
   controller.handleKeyPress(keyPress("down"), 3);
   controller.handleKeyPress(keyPress("down"), 3);
   assertEquals(controller.selected()?.id, "components");
   assertEquals(controller.handleKeyPress(keyPress("right"), 3)?.expanded, true);
+  const expandedNodes = controller.nodes.peek();
+  assertEquals(expandedNodes === initialNodes, false);
+  assertEquals(expandedNodes[1] === initialNodes[1], true);
+  assertEquals(expandedNodes[0] === initialNodes[0], false);
+  assertEquals(expandedNodes[0]!.children![0] === initialNodes[0]!.children![0], true);
+  assertEquals(expandedNodes[0]!.children![1] === initialComponents, false);
   assertEquals(controller.rowTexts(), ["▾ src", "    mod.ts", "  ▾ components", "      button.ts", "  README.md"]);
   assertEquals(controller.inspect(2).window, { start: 1, end: 3 });
 

@@ -982,6 +982,8 @@ Work:
         common ANSI-parsed cells and cutting the ANSI measure/crop benchmark roughly in half.
   - [x] Added a pre-indexed 1k-command search benchmark so the reusable command-search index path is tracked separately
         from the non-indexed command-surface projection path.
+  - [x] Reworked `TreeController.setExpanded()` to preserve unchanged subtree identity and allocate only along the
+        changed branch, with regression coverage for no-op and nested expansion updates.
 - [x] Make demo-only assets and NGE-inspired primitives clearly separate from library APIs.
   - [x] Added `app/neon_three_catalog.ts` for supported Three scene metadata and labels, keeping demo/NGE catalog data
         separate from the monolithic scene factory and shared by visualization footers plus scene coverage tests.
