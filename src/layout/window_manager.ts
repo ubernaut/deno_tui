@@ -72,6 +72,22 @@ export class WindowManagerController {
   readonly activeId: Signal<string | undefined>;
   readonly fullscreenId: Signal<string | undefined>;
   readonly tileOptions: Signal<Partial<Omit<TileLayoutOptions, "itemCount">>>;
+  #orderedAll: WindowManagerWindow[] = [];
+  #orderedOpen: WindowManagerWindow[] = [];
+  readonly #syncOrderedWindows = () => {
+    const source = this.windows.peek();
+    const all = new Array<WindowManagerWindow>(source.length);
+    const open: WindowManagerWindow[] = [];
+    for (let index = 0; index < source.length; index += 1) {
+      const entry = source[index]!;
+      all[index] = entry;
+      if (windowState(entry) !== "closed") open.push(entry);
+    }
+    all.sort(compareWindowOrder);
+    open.sort(compareWindowOrder);
+    this.#orderedAll = all;
+    this.#orderedOpen = open;
+  };
 
   constructor(options: WindowManagerOptions) {
     const windows = normalizeWindows(options.windows);
@@ -79,23 +95,22 @@ export class WindowManagerController {
     this.activeId = new Signal(normalizeWindowId(windows, options.activeId) ?? firstOpenWindow(windows)?.id);
     this.fullscreenId = new Signal(normalizeWindowId(windows, options.fullscreenId ?? undefined));
     this.tileOptions = new Signal({ ...(options.tileOptions ?? {}) }, { deepObserve: true });
+    this.#syncOrderedWindows();
+    this.windows.subscribe(this.#syncOrderedWindows);
     this.#repairState();
   }
 
   ids(options: { includeClosed?: boolean } = {}): string[] {
-    const windows = this.orderedWindows(options);
+    const windows = this.#orderedWindows(options.includeClosed);
     const ids = new Array<string>(windows.length);
     for (let index = 0; index < windows.length; index += 1) ids[index] = windows[index]!.id;
     return ids;
   }
 
   orderedWindows(options: { includeClosed?: boolean } = {}): WindowManagerWindow[] {
-    const source = this.windows.peek();
-    const windows: WindowManagerWindow[] = [];
-    for (const entry of source) {
-      if (options.includeClosed || windowState(entry) !== "closed") windows.push(entry);
-    }
-    windows.sort((left, right) => (left.order ?? 0) - (right.order ?? 0));
+    const source = this.#orderedWindows(options.includeClosed);
+    const windows = new Array<WindowManagerWindow>(source.length);
+    for (let index = 0; index < source.length; index += 1) windows[index] = source[index]!;
     return windows;
   }
 
@@ -181,7 +196,7 @@ export class WindowManagerController {
     if (!window || windowState(window) === "closed") return undefined;
     this.#setState(id, "minimized");
     if (this.fullscreenId.peek() === id) this.fullscreenId.value = undefined;
-    const next = firstNonMinimizedWindow(this.orderedWindows());
+    const next = firstNonMinimizedWindow(this.#orderedWindows(false));
     this.activeId.value = next?.id ?? id;
     this.#repairState();
     return this.#window(id);
@@ -193,7 +208,7 @@ export class WindowManagerController {
     if (!window || window.closable === false) return window;
     this.#setState(id, "closed");
     if (this.fullscreenId.peek() === id) this.fullscreenId.value = undefined;
-    const next = firstNonMinimizedWindow(this.orderedWindows());
+    const next = firstNonMinimizedWindow(this.#orderedWindows(false));
     this.activeId.value = next?.id;
     this.#repairState();
     return this.#window(id);
@@ -239,7 +254,7 @@ export class WindowManagerController {
     const bounds = options.bounds;
     const rects = new Map<string, Rectangle>();
     const fullscreenId = this.fullscreenId.peek();
-    const windows = this.orderedWindows({ includeClosed: true });
+    const windows = this.#orderedWindows(true);
     const visible: WindowManagerWindow[] = [];
     for (const entry of windows) {
       if (windowState(entry) === "normal") visible.push(entry);
@@ -300,6 +315,7 @@ export class WindowManagerController {
   }
 
   dispose(): void {
+    this.windows.unsubscribe(this.#syncOrderedWindows);
     this.windows.dispose();
     this.activeId.dispose();
     this.fullscreenId.dispose();
@@ -316,7 +332,7 @@ export class WindowManagerController {
   }
 
   #repairState(): void {
-    const windows = this.orderedWindows();
+    const windows = this.#orderedWindows(false);
     if (!hasOpenWindowId(windows, this.activeId.peek())) {
       this.activeId.value = firstOpenWindow(windows)?.id;
     }
@@ -324,6 +340,10 @@ export class WindowManagerController {
     if (fullscreenId && !hasOpenWindowId(windows, fullscreenId)) {
       this.fullscreenId.value = undefined;
     }
+  }
+
+  #orderedWindows(includeClosed = false): readonly WindowManagerWindow[] {
+    return includeClosed ? this.#orderedAll : this.#orderedOpen;
   }
 }
 
@@ -363,6 +383,10 @@ function replaceWindow(
     next[index] = entry.id === id ? replacement : entry;
   }
   return next;
+}
+
+function compareWindowOrder(left: WindowManagerWindow, right: WindowManagerWindow): number {
+  return (left.order ?? 0) - (right.order ?? 0);
 }
 
 function nextWindowOrder(windows: readonly WindowManagerWindow[]): number {

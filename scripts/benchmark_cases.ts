@@ -27,6 +27,7 @@ import {
   ThreeAsciiAnsiGridAssembler,
   tileRects,
   visibleListRows,
+  WindowManagerController,
 } from "../mod.ts";
 import { createHtmlCssLayoutDemo } from "../app/html_css_layout_demo.ts";
 import { LayoutMeasurementCache, simpleLayoutSolver } from "../src/layout/mod.ts";
@@ -125,6 +126,18 @@ const resizeBounds = Array.from({ length: 96 }, (_, index) => ({
   width: 72 + (index % 12) * 12,
   height: 24 + (index % 8) * 4,
 }));
+const windowManagerBenchmarkBounds = resizeBounds.slice(0, 24);
+const benchmarkWindowManager = new WindowManagerController({
+  activeId: "bench-0",
+  tileOptions: { minTileWidth: 28, minTileHeight: 8, allowVerticalOverflow: true },
+  windows: Array.from({ length: 18 }, (_, index) => ({
+    id: `bench-${index}`,
+    title: `Bench ${index}`,
+    minWidth: 24 + index % 6,
+    minHeight: 7 + index % 4,
+  })),
+});
+let windowManagerBenchmarkStep = 0;
 const mouseRouter = createMouseInteractionRouter();
 const dirtyRegionRectangles = Array.from({ length: 400 }, (_, index) => ({
   column: (index * 7) % 180,
@@ -286,6 +299,38 @@ function runDirtyRegionWorkload(): void {
   if (region.isEmpty() || intersections <= 0) {
     throw new Error("dirty region workload did not produce intersections");
   }
+}
+
+function runWindowManagerChurnWorkload(): void {
+  for (let index = 0; index < windowManagerBenchmarkBounds.length; index += 1) {
+    const step = windowManagerBenchmarkStep + index;
+    const id = `bench-${step % 18}`;
+    switch (step % 6) {
+      case 0:
+        benchmarkWindowManager.focus(id);
+        break;
+      case 1:
+        benchmarkWindowManager.fullscreen(id);
+        break;
+      case 2:
+        benchmarkWindowManager.minimize(id);
+        break;
+      case 3:
+        benchmarkWindowManager.restore(id);
+        break;
+      case 4:
+        benchmarkWindowManager.move(id, step % 2 === 0 ? 1 : -1);
+        break;
+      default:
+        benchmarkWindowManager.upsert({ id, title: `Bench ${id}`, state: "normal" });
+        break;
+    }
+    const layout = benchmarkWindowManager.layout({ bounds: windowManagerBenchmarkBounds[index]! });
+    if (layout.zOrder.length > 0 && layout.zOrder.at(-1)?.closed) {
+      throw new Error("window manager churn exposed a closed top window");
+    }
+  }
+  windowManagerBenchmarkStep = (windowManagerBenchmarkStep + windowManagerBenchmarkBounds.length) % 10_000;
 }
 
 function runApiWorkbenchFrameWorkload(): void {
@@ -603,6 +648,15 @@ export const benchmarkCases: BenchmarkCase[] = [
         });
       }
     },
+  },
+  {
+    name: "layout/window-manager-churn",
+    category: "layout",
+    description: "Churn window focus, fullscreen, minimize, restore, ordering, and resize layouts.",
+    tags: ["layout", "windows", "resize", "state"],
+    iterations: 150,
+    maxAverageMs: 8,
+    run: runWindowManagerChurnWorkload,
   },
   {
     name: "layout/html-css-demo-solve",
