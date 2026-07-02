@@ -470,6 +470,9 @@ Recommended routing:
 - Markup layout can be offloaded through `createMarkupLayoutWorkerHandler()` and `runMarkupLayoutInWorker()`, allowing
   browser or console apps to parse CSS/markup and solve layout in a `WorkerPool` while keeping widget controllers on the
   UI thread.
+- Simple-solver intrinsic measurement now follows flow layout participation for parent auto sizing: `display:none` and
+  absolute-positioned children are excluded, explicit child dimensions are respected, and `gap` fallback contributes to
+  block and flex-row intrinsic sizes.
 - The next high-value solver work is richer block/intrinsic text behavior, full Grid/Taffy parity, and either a Taffy
   WASM adapter or a Taffy-compatible internal style mapping layer.
 

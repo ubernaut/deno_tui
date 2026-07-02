@@ -732,6 +732,57 @@ Deno.test("simple layout solver merges partial intrinsic dimensions with measure
   assertEquals(result.byId.get("width-only")!.rect.height > 1, true);
 });
 
+Deno.test("simple layout solver intrinsic block sizing ignores non-flow children and applies gap", () => {
+  const result = createMarkupLayout({
+    markup: `
+      <window id="root">
+        <panel id="card">
+          <panel id="a">A</panel>
+          <panel id="gone">Hidden</panel>
+          <panel id="float">Float</panel>
+          <panel id="b">B</panel>
+        </panel>
+      </window>
+    `,
+    css: `
+      #card { height: auto; gap: 2; }
+      #a { height: 2; }
+      #b { height: 3; }
+      #gone { display: none; height: 20; }
+      #float { position: absolute; height: 12; }
+    `,
+    bounds: { column: 0, row: 0, width: 30, height: 20 },
+  });
+
+  assertEquals(result.layout.byId.get("card")!.rect.height, 7);
+});
+
+Deno.test("simple layout solver intrinsic flex row basis uses gap fallback and ignores non-flow children", () => {
+  const result = createMarkupLayout({
+    markup: `
+      <window id="root">
+        <panel id="cluster">
+          <panel id="a">A</panel>
+          <panel id="gone">Hidden</panel>
+          <panel id="float">Float</panel>
+          <panel id="b">B</panel>
+        </panel>
+      </window>
+    `,
+    css: `
+      #root { display: flex; flex-direction: row; align-items: start; }
+      #cluster { display: flex; flex-direction: row; width: auto; gap: 3; }
+      #a { width: 4; height: 1; }
+      #b { width: 5; height: 1; }
+      #gone { display: none; width: 40; }
+      #float { position: absolute; width: 30; }
+    `,
+    bounds: { column: 0, row: 0, width: 40, height: 8 },
+  });
+
+  assertEquals(result.layout.byId.get("cluster")!.rect.width, 12);
+});
+
 Deno.test("createMarkupLayout applies simple solver justify-content to flex rows", () => {
   const result = createMarkupLayout({
     markup: `

@@ -632,26 +632,58 @@ function measureNodeIntrinsicBase(
   if (node.style.display === "flex" && node.style.flexDirection === "row") {
     let width = 0;
     let height = defaultTextHeight;
+    let count = 0;
+    const gap = Math.max(0, node.style.columnGap || node.style.gap);
     for (const child of node.children) {
-      const childSize = measureNodeIntrinsic(child, availableWidth, defaultTextHeight, measurementCache);
+      if (!participatesInLayout(child)) continue;
+      const childSize = childLayoutIntrinsicSize(child, availableWidth, defaultTextHeight, measurementCache);
       width += childSize.width;
       height = Math.max(height, childSize.height);
+      count += 1;
     }
     return {
-      width: width + Math.max(0, node.children.length - 1) * node.style.columnGap,
+      width: width + Math.max(0, count - 1) * gap,
       height,
     };
   }
   let width = 1;
   let height = 0;
+  let count = 0;
+  const gap = Math.max(0, node.style.rowGap || node.style.gap);
   for (const child of node.children) {
-    const childSize = measureNodeIntrinsic(child, availableWidth, defaultTextHeight, measurementCache);
+    if (!participatesInLayout(child)) continue;
+    const childSize = childLayoutIntrinsicSize(child, availableWidth, defaultTextHeight, measurementCache);
     width = Math.max(width, childSize.width);
+    if (count > 0) height += gap;
     height += Math.max(defaultTextHeight, childSize.height);
+    count += 1;
   }
   return {
     width,
-    height,
+    height: count === 0 ? defaultTextHeight : height,
+  };
+}
+
+function participatesInLayout(node: LayoutNode): boolean {
+  return node.style.display !== "none" && node.style.position !== "absolute";
+}
+
+function childLayoutIntrinsicSize(
+  node: LayoutNode,
+  availableWidth: number,
+  defaultTextHeight: number,
+  measurementCache?: LayoutMeasurementCache,
+): LayoutIntrinsicSize {
+  const measured = measureNodeIntrinsic(node, availableWidth, defaultTextHeight, measurementCache);
+  const width = node.style.width.unit === "auto"
+    ? measured.width
+    : resolveLayoutLength(node.style.width, availableWidth, measured.width);
+  const height = node.style.height.unit === "auto"
+    ? measured.height
+    : resolveLayoutLength(node.style.height, Math.max(defaultTextHeight, measured.height), measured.height);
+  return {
+    width: Math.max(0, width),
+    height: Math.max(defaultTextHeight, height),
   };
 }
 
