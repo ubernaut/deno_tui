@@ -14178,9 +14178,7 @@ function layoutWorkbenchTitlebarInto(target, options) {
       for (let index = buttonCount; index > 0; index -= 1) {
         buttons[index] = buttons[index - 1];
       }
-      writeTitlebarButton(
-        buttons,
-        0,
+      buttons[0] = createTitlebarButton(
         { kind: "config", label: configLabel, tone: "default", compact: false },
         configColumn,
         row,
@@ -14202,6 +14200,37 @@ function layoutWorkbenchTitlebarInto(target, options) {
   buttons.length = buttonCount;
   return target;
 }
+function workbenchTitlebarButtonRenderCommandsInto(target, layout) {
+  let written = 0;
+  for (let index = 0; index < layout.buttons.length; index += 1) {
+    const button = layout.buttons[index];
+    const text = buttonText(button.label, { compact: button.compact });
+    const width = Math.max(0, Math.min(textWidth(text), button.rect.width));
+    if (width <= 0) continue;
+    const command = target[written] ?? {
+      button,
+      kind: button.kind,
+      label: "",
+      text: "",
+      rect: { column: 0, row: 0, width: 0, height: 1 },
+      hitRect: { column: 0, row: 0, width: 0, height: 1 },
+      tone: button.tone,
+      compact: button.compact
+    };
+    command.button = button;
+    command.kind = button.kind;
+    command.label = button.label;
+    command.text = fitCellText(text, width);
+    command.tone = button.tone;
+    command.compact = button.compact;
+    setRect4(command.rect, button.rect.column, button.rect.row, width, 1);
+    setRect4(command.hitRect, button.rect.column, button.rect.row, width, 1);
+    target[written] = command;
+    written += 1;
+  }
+  target.length = written;
+  return target;
+}
 function writeTitlebarButton(buttons, index, spec, column, row, width) {
   const button = buttons[index] ?? {
     kind: spec.kind,
@@ -14219,6 +14248,21 @@ function writeTitlebarButton(buttons, index, spec, column, row, width) {
   button.rect.width = width;
   button.rect.height = 1;
   buttons[index] = button;
+}
+function createTitlebarButton(spec, column, row, width) {
+  return {
+    kind: spec.kind,
+    label: spec.label,
+    tone: spec.tone,
+    compact: spec.compact,
+    rect: { column, row, width, height: 1 }
+  };
+}
+function setRect4(target, column, row, width, height) {
+  target.column = column;
+  target.row = row;
+  target.width = width;
+  target.height = height;
 }
 
 // src/app/workbench_text.ts
@@ -15837,6 +15881,7 @@ var webTerminalScreenKeys = /* @__PURE__ */ new Map();
 var webTerminalPaneProjections = [];
 var hitTargets = new HitTargetStack();
 var titlebarLayouts = /* @__PURE__ */ new Map();
+var titlebarRenderCommands = /* @__PURE__ */ new Map();
 var screenRows = [];
 var workspaceVirtualRows = [];
 var threePreviewOrbRows = [];
@@ -16361,13 +16406,14 @@ function renderPanel(frame, id2, rect) {
     paint(fit(top, rect.width), border, selected ? theme().panelSoft : theme().panel, selected)
   );
   const titlebar = layoutWorkbenchTitlebarInto(titlebarLayout(id2), { rect, title: panelTitle(id2) });
-  for (const button of titlebar.buttons) {
-    if (button.kind === "config") continue;
-    writeButton(frame, button.rect.row, button.rect.column, button.label, {
-      compact: button.compact,
-      tone: button.tone
+  const titlebarCommands = workbenchTitlebarButtonRenderCommandsInto(titlebarRenderCommandBuffer(id2), titlebar);
+  for (const command of titlebarCommands) {
+    if (command.kind === "config") continue;
+    writeButton(frame, command.rect.row, command.rect.column, command.label, {
+      compact: command.compact,
+      tone: command.tone
     });
-    hitTargets.add(button.rect, panelTitlebarHit(id2, button.kind));
+    hitTargets.add(command.hitRect, panelTitlebarHit(id2, command.kind));
   }
   for (let r = 1; r < rect.height - 1; r++) {
     write(
@@ -16429,6 +16475,14 @@ function titlebarLayout(id2) {
     titlebarLayouts.set(id2, layout);
   }
   return layout;
+}
+function titlebarRenderCommandBuffer(id2) {
+  let commands = titlebarRenderCommands.get(id2);
+  if (!commands) {
+    commands = [];
+    titlebarRenderCommands.set(id2, commands);
+  }
+  return commands;
 }
 function shortPanelTitle(id2) {
   return apiWorkbenchShortPanelTitle(id2, panelTitle(id2));

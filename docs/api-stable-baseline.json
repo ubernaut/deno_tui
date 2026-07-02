@@ -4666,6 +4666,20 @@
     },
     {
       "module": "src/app/workbench_titlebar.ts",
+      "name": "WorkbenchTitlebarButtonRenderCommand",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_titlebar.ts",
+      "name": "workbenchTitlebarButtonRenderCommandsInto",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_titlebar.ts",
       "name": "WorkbenchTitlebarButtonTone",
       "kind": "type",
       "typeOnly": true,

@@ -1,6 +1,6 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { Rectangle } from "../types.ts";
-import { buttonText } from "./workbench_frame.ts";
+import { buttonText, fitCellText } from "./workbench_frame.ts";
 import { textWidth } from "../utils/strings.ts";
 
 /** Button action kinds exposed by workbench titlebars. */
@@ -31,6 +31,18 @@ export interface WorkbenchTitlebarLayoutOptions {
 export interface WorkbenchTitlebarLayout {
   buttons: WorkbenchTitlebarButton[];
   hasWindowControls: boolean;
+}
+
+/** Renderer-neutral paint and hit command for one workbench titlebar button. */
+export interface WorkbenchTitlebarButtonRenderCommand {
+  button: WorkbenchTitlebarButton;
+  kind: WorkbenchTitlebarButtonKind;
+  label: string;
+  text: string;
+  rect: Rectangle;
+  hitRect: Rectangle;
+  tone: WorkbenchTitlebarButtonTone;
+  compact: boolean;
 }
 
 const WINDOW_CONTROL_SPECS: readonly Omit<WorkbenchTitlebarButton, "rect">[] = [
@@ -86,9 +98,7 @@ export function layoutWorkbenchTitlebarInto(
       for (let index = buttonCount; index > 0; index -= 1) {
         buttons[index] = buttons[index - 1]!;
       }
-      writeTitlebarButton(
-        buttons,
-        0,
+      buttons[0] = createTitlebarButton(
         { kind: "config", label: configLabel, tone: "default", compact: false },
         configColumn,
         row,
@@ -109,6 +119,42 @@ export function layoutWorkbenchTitlebarInto(
   }
   buttons.length = buttonCount;
 
+  return target;
+}
+
+/** Projects titlebar button layout into clipped renderer-neutral paint and hit commands. */
+export function workbenchTitlebarButtonRenderCommandsInto(
+  target: WorkbenchTitlebarButtonRenderCommand[],
+  layout: WorkbenchTitlebarLayout,
+): WorkbenchTitlebarButtonRenderCommand[] {
+  let written = 0;
+  for (let index = 0; index < layout.buttons.length; index += 1) {
+    const button = layout.buttons[index]!;
+    const text = buttonText(button.label, { compact: button.compact });
+    const width = Math.max(0, Math.min(textWidth(text), button.rect.width));
+    if (width <= 0) continue;
+    const command = target[written] ?? {
+      button,
+      kind: button.kind,
+      label: "",
+      text: "",
+      rect: { column: 0, row: 0, width: 0, height: 1 },
+      hitRect: { column: 0, row: 0, width: 0, height: 1 },
+      tone: button.tone,
+      compact: button.compact,
+    };
+    command.button = button;
+    command.kind = button.kind;
+    command.label = button.label;
+    command.text = fitCellText(text, width);
+    command.tone = button.tone;
+    command.compact = button.compact;
+    setRect(command.rect, button.rect.column, button.rect.row, width, 1);
+    setRect(command.hitRect, button.rect.column, button.rect.row, width, 1);
+    target[written] = command;
+    written += 1;
+  }
+  target.length = written;
   return target;
 }
 
@@ -136,4 +182,26 @@ function writeTitlebarButton(
   button.rect.width = width;
   button.rect.height = 1;
   buttons[index] = button;
+}
+
+function createTitlebarButton(
+  spec: Omit<WorkbenchTitlebarButton, "rect">,
+  column: number,
+  row: number,
+  width: number,
+): WorkbenchTitlebarButton {
+  return {
+    kind: spec.kind,
+    label: spec.label,
+    tone: spec.tone,
+    compact: spec.compact,
+    rect: { column, row, width, height: 1 },
+  };
+}
+
+function setRect(target: Rectangle, column: number, row: number, width: number, height: number): void {
+  target.column = column;
+  target.row = row;
+  target.width = width;
+  target.height = height;
 }

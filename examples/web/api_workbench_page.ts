@@ -103,6 +103,8 @@ import {
   type WorkbenchTerminalToolbarAction,
   workbenchTerminalToolbarItemsInto,
   type WorkbenchTitlebarButtonKind,
+  type WorkbenchTitlebarButtonRenderCommand,
+  workbenchTitlebarButtonRenderCommandsInto,
   type WorkbenchTitlebarLayout,
   workbenchVerticalScrollbarCellsInto,
   workbenchVerticalScrollbarRect,
@@ -288,6 +290,7 @@ const webTerminalScreenKeys = new Map<string, string>();
 const webTerminalPaneProjections: WorkbenchTerminalPaneProjection[] = [];
 const hitTargets = new HitTargetStack<Hit>();
 const titlebarLayouts = new Map<PanelId, WorkbenchTitlebarLayout>();
+const titlebarRenderCommands = new Map<PanelId, WorkbenchTitlebarButtonRenderCommand[]>();
 const screenRows: string[] = [];
 const workspaceVirtualRows: string[] = [];
 const threePreviewOrbRows: string[] = [];
@@ -834,13 +837,14 @@ function renderPanel(frame: string[], id: PanelId, rect: Rectangle): void {
     paint(fit(top, rect.width), border, selected ? theme().panelSoft : theme().panel, selected),
   );
   const titlebar = layoutWorkbenchTitlebarInto(titlebarLayout(id), { rect, title: panelTitle(id) });
-  for (const button of titlebar.buttons) {
-    if (button.kind === "config") continue;
-    writeButton(frame, button.rect.row, button.rect.column, button.label, {
-      compact: button.compact,
-      tone: button.tone,
+  const titlebarCommands = workbenchTitlebarButtonRenderCommandsInto(titlebarRenderCommandBuffer(id), titlebar);
+  for (const command of titlebarCommands) {
+    if (command.kind === "config") continue;
+    writeButton(frame, command.rect.row, command.rect.column, command.label, {
+      compact: command.compact,
+      tone: command.tone,
     });
-    hitTargets.add(button.rect, panelTitlebarHit(id, button.kind));
+    hitTargets.add(command.hitRect, panelTitlebarHit(id, command.kind));
   }
   for (let r = 1; r < rect.height - 1; r++) {
     write(
@@ -905,6 +909,15 @@ function titlebarLayout(id: PanelId): WorkbenchTitlebarLayout {
     titlebarLayouts.set(id, layout);
   }
   return layout;
+}
+
+function titlebarRenderCommandBuffer(id: PanelId): WorkbenchTitlebarButtonRenderCommand[] {
+  let commands = titlebarRenderCommands.get(id);
+  if (!commands) {
+    commands = [];
+    titlebarRenderCommands.set(id, commands);
+  }
+  return commands;
 }
 
 function shortPanelTitle(id: PanelId): string {

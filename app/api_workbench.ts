@@ -76,6 +76,8 @@ import {
   type WorkbenchTerminalOutputToolbarAction,
   workbenchTerminalOutputToolbarItemsInto,
   type WorkbenchTitlebarButtonKind,
+  type WorkbenchTitlebarButtonRenderCommand,
+  workbenchTitlebarButtonRenderCommandsInto,
   type WorkbenchTitlebarLayout,
   workbenchVerticalScrollbarCellsInto,
   workbenchVerticalScrollbarRect,
@@ -608,6 +610,7 @@ const screenFrame: Frame = [];
 const workspaceVirtualFrame: Frame = [];
 const windowContentFrames = new Map<WindowId, Frame>();
 const titlebarLayouts = new Map<WindowId, WorkbenchTitlebarLayout>();
+const titlebarRenderCommands = new Map<WindowId, WorkbenchTitlebarButtonRenderCommand[]>();
 const newWindowMenuSlice: VisibleMenuSlice = { items: [], indexes: [] };
 const newWindowMenuLabels: string[] = [];
 const workspaceMenuSlice: VisibleMenuSlice = { items: [], indexes: [] };
@@ -1256,12 +1259,13 @@ function renderWindow(frame: Frame, id: WindowId, rect: Rectangle): void {
     title: windowTitle(id),
     showConfig: isThreeRenderedWindow(id),
   });
-  for (const button of titlebar.buttons) {
-    writeButton(frame, button.rect.row, button.rect.column, button.label, {
-      compact: button.compact,
-      tone: button.tone,
+  const titlebarCommands = workbenchTitlebarButtonRenderCommandsInto(titlebarRenderCommandBuffer(id), titlebar);
+  for (const command of titlebarCommands) {
+    writeButton(frame, command.rect.row, command.rect.column, command.label, {
+      compact: command.compact,
+      tone: command.tone,
     });
-    addHit(button.rect, titlebarHit(id, button.kind));
+    addHit(command.hitRect, titlebarHit(id, command.kind));
   }
 
   const inner = inset(rect, 1);
@@ -4971,6 +4975,15 @@ function titlebarLayout(id: WindowId): WorkbenchTitlebarLayout {
     titlebarLayouts.set(id, layout);
   }
   return layout;
+}
+
+function titlebarRenderCommandBuffer(id: WindowId): WorkbenchTitlebarButtonRenderCommand[] {
+  let commands = titlebarRenderCommands.get(id);
+  if (!commands) {
+    commands = [];
+    titlebarRenderCommands.set(id, commands);
+  }
+  return commands;
 }
 
 function terminalOutputWindowTitle(): string {
