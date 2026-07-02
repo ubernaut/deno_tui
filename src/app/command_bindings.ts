@@ -109,9 +109,10 @@ export function commandForKeyEvent<TAction extends Action = Action>(
   options: CommandKeyBindingOptions = {},
 ): Command<TAction> | undefined {
   const eventId = bindingId(event);
-  return registry.list(options.group).find((command) => {
-    return command.binding && registry.enabled(command) && bindingId(command.binding) === eventId;
-  });
+  for (const command of registry.list(options.group)) {
+    if (command.binding && registry.enabled(command) && bindingId(command.binding) === eventId) return command;
+  }
+  return undefined;
 }
 
 /** Binds command Keys behavior and returns a disposer when applicable. */
@@ -144,9 +145,11 @@ export function bindCommandKeymap<TAction extends Action = Action>(
   };
   const sync = () => {
     clear();
-    disposers = registry
-      .keyBindings(options.group, options.includeDisabled ?? false)
-      .map((binding: KeyBinding) => keymap.register(binding));
+    const bindings = registry.keyBindings(options.group, options.includeDisabled ?? false);
+    disposers = new Array<() => void>(bindings.length);
+    for (let index = 0; index < bindings.length; index += 1) {
+      disposers[index] = keymap.register(bindings[index]!);
+    }
   };
 
   sync();
@@ -279,27 +282,30 @@ export function inspectCommandKeyBindings<TAction extends Action = Action>(
 ): CommandKeyBindingInspection[] {
   const includeDisabled = options.includeDisabled ?? false;
   const includeUnbound = options.includeUnbound ?? false;
-  return registry.list(options.group)
-    .filter((command) => (includeDisabled || registry.enabled(command)) && (includeUnbound || command.binding))
-    .map((command) => {
-      const binding = command.binding;
-      return {
-        commandId: command.id,
-        label: command.label,
-        group: command.group,
-        disabled: !registry.enabled(command),
-        bindingId: binding ? bindingId(binding) : "",
-        key: binding?.key ?? "",
-        ctrl: binding?.ctrl,
-        meta: binding?.meta,
-        shift: binding?.shift,
-      };
-    })
-    .sort((left, right) =>
-      left.bindingId.localeCompare(right.bindingId) ||
-      (left.group ?? "").localeCompare(right.group ?? "") ||
-      left.label.localeCompare(right.label)
-    );
+  const output: CommandKeyBindingInspection[] = [];
+  for (const command of registry.list(options.group)) {
+    const enabled = registry.enabled(command);
+    if (!includeDisabled && !enabled) continue;
+    if (!includeUnbound && !command.binding) continue;
+    const binding = command.binding;
+    output.push({
+      commandId: command.id,
+      label: command.label,
+      group: command.group,
+      disabled: !enabled,
+      bindingId: binding ? bindingId(binding) : "",
+      key: binding?.key ?? "",
+      ctrl: binding?.ctrl,
+      meta: binding?.meta,
+      shift: binding?.shift,
+    });
+  }
+  output.sort((left, right) =>
+    left.bindingId.localeCompare(right.bindingId) ||
+    (left.group ?? "").localeCompare(right.group ?? "") ||
+    left.label.localeCompare(right.label)
+  );
+  return output;
 }
 
 /** Creates an command Key Binding Report. */
@@ -314,9 +320,9 @@ export function createCommandKeyBindingReport<TAction extends Action = Action>(
     conflicts,
     inspection: {
       count: bindings.length,
-      groups: uniqueSorted(bindings.map((binding) => binding.group)),
+      groups: uniqueSortedGroups(bindings),
       conflictCount: conflicts.length,
-      conflictingCommandCount: conflicts.reduce((total, conflict) => total + conflict.commands.length, 0),
+      conflictingCommandCount: conflictingCommandCount(conflicts),
     },
   };
 }
@@ -348,7 +354,7 @@ export function formatCommandKeyBindingMarkdown<TAction extends Action = Action>
     for (const conflict of report.conflicts) {
       lines.push(
         `| ${conflict.bindingId} | ${escapeMarkdownCell(conflict.groups.join(", "))} | ${
-          escapeMarkdownCell(conflict.commands.map((command) => command.commandId).join(", "))
+          escapeMarkdownCell(commandIdsText(conflict.commands))
         } |`,
       );
     }
@@ -377,11 +383,14 @@ function scoreCommandSurfaceItem(
   item: CommandSurfaceItem,
   terms: readonly string[],
 ): { score: number; matched: string[] } | undefined {
-  const fields = weightedSearchFields([
+  const rawFields: Array<{ value: string; weight: number }> = [
     { value: item.label, weight: 100 },
     { value: item.id, weight: 80 },
-    ...(item.keywords ?? []).map((value) => ({ value, weight: 40 })),
-  ]);
+  ];
+  if (item.keywords) {
+    for (const value of item.keywords) rawFields.push({ value, weight: 40 });
+  }
+  const fields = weightedSearchFields(rawFields);
   return scoreWeightedSearchFields(fields, terms, item.disabled);
 }
 
@@ -401,23 +410,48 @@ function inspectCommandKeyBindingConflicts(
   const byBinding = new Map<string, CommandKeyBindingInspection[]>();
   for (const binding of bindings) {
     if (!binding.bindingId) continue;
-    const commands = byBinding.get(binding.bindingId) ?? [];
+    let commands = byBinding.get(binding.bindingId);
+    if (!commands) {
+      commands = [];
+      byBinding.set(binding.bindingId, commands);
+    }
     commands.push(binding);
-    byBinding.set(binding.bindingId, commands);
   }
 
-  return [...byBinding.entries()]
-    .filter(([, commands]) => commands.length > 1)
-    .map(([bindingId, commands]) => ({
+  const conflicts: CommandKeyBindingConflict[] = [];
+  for (const [bindingId, commands] of byBinding) {
+    if (commands.length <= 1) continue;
+    conflicts.push({
       bindingId,
-      groups: uniqueSorted(commands.map((command) => command.group)),
+      groups: uniqueSortedGroups(commands),
       commands,
-    }))
-    .sort((left, right) => left.bindingId.localeCompare(right.bindingId));
+    });
+  }
+  conflicts.sort((left, right) => left.bindingId.localeCompare(right.bindingId));
+  return conflicts;
 }
 
-function uniqueSorted(values: Array<string | undefined>): string[] {
-  return [...new Set(values.filter((value): value is string => !!value))].sort();
+function uniqueSortedGroups(bindings: readonly { group?: string }[]): string[] {
+  const groups = new Set<string>();
+  for (const binding of bindings) {
+    if (binding.group) groups.add(binding.group);
+  }
+  return [...groups].sort();
+}
+
+function conflictingCommandCount(conflicts: readonly CommandKeyBindingConflict[]): number {
+  let count = 0;
+  for (const conflict of conflicts) count += conflict.commands.length;
+  return count;
+}
+
+function commandIdsText(commands: readonly CommandKeyBindingInspection[]): string {
+  let output = "";
+  for (let index = 0; index < commands.length; index += 1) {
+    if (index > 0) output += ", ";
+    output += commands[index]!.commandId;
+  }
+  return output;
 }
 
 function escapeMarkdownCell(value: string): string {

@@ -353,6 +353,8 @@ Work:
         through `WorkerPool` while keeping widget-controller hydration on the UI thread.
   - [x] Reworked route binding source projection, route command keywords, and visible-route shifting to use shared
         direct lookup/projection helpers instead of repeated nested `some/filter/map/findIndex` scans.
+  - [x] Reworked command key lookup, keymap synchronization, key-binding inspection, conflict grouping, conflict
+        markdown, and command-surface search field construction to use explicit buffers instead of callback pipelines.
 
 Acceptance checks:
 
