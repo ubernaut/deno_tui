@@ -331,6 +331,8 @@ Work:
         map/reduce/flatMap/filter buffers in reusable widget helper paths.
   - [x] Reworked tabs, menu bar, radio group, stepper, and file-explorer entry projection to use explicit render and
         clone buffers instead of map/find chains in common controller inspection and draw helpers.
+  - [x] Reworked browser DOM HTML serialization and ANSI-cell SGR parsing to avoid child/style/attribute map chains and
+        split/map parameter buffers in web runtime render paths.
 
 Acceptance checks:
 

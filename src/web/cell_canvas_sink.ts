@@ -132,7 +132,7 @@ export function parseAnsiCell(value: string): ParsedAnsiCell {
   const matches = value.matchAll(/\x1b\[([0-9;]*)m/g);
   for (const match of matches) {
     if (match.index !== undefined && match.index > textIndex) break;
-    const params = match[1] ? match[1].split(";").map((part) => Number(part)) : [0];
+    const params = parseSgrParams(match[1] ?? "");
     for (let index = 0; index < params.length; index += 1) {
       const param = params[index] ?? 0;
       if (param === 0) {
@@ -175,6 +175,19 @@ export function parseAnsiCell(value: string): ParsedAnsiCell {
     }
   }
   return style;
+}
+
+function parseSgrParams(value: string): number[] {
+  if (!value) return [0];
+  const params: number[] = [];
+  let start = 0;
+  for (let index = 0; index <= value.length; index += 1) {
+    if (index !== value.length && value[index] !== ";") continue;
+    const part = value.slice(start, index);
+    params.push(part ? Number(part) : 0);
+    start = index + 1;
+  }
+  return params;
 }
 
 function firstPrintableIndex(value: string): number {

@@ -97,8 +97,11 @@ export class DomRenderTarget {
 export function renderDomNodeToHtml(node: DomRenderNode): string {
   const tag = node.tag ?? "div";
   const attributes = domAttributes(node);
-  const children = (node.children ?? []).map(renderDomNodeToHtml).join("");
   const text = node.text === undefined ? "" : escapeHtml(node.text);
+  let children = "";
+  for (const child of node.children ?? []) {
+    children += renderDomNodeToHtml(child);
+  }
   return `<${tag}${attributes}>${text}${children}</${tag}>`;
 }
 
@@ -139,17 +142,24 @@ function domAttributes(node: DomRenderNode): string {
     style: node.style ? styleToString(node.style) : undefined,
     ...node.attributes,
   };
-  return Object.entries(attributes)
-    .filter(([, value]) => value !== undefined && value !== false)
-    .map(([name, value]) => value === true ? ` ${name}` : ` ${name}="${escapeHtml(String(value))}"`)
-    .join("");
+  let output = "";
+  for (const name in attributes) {
+    const value = attributes[name];
+    if (value === undefined || value === false) continue;
+    output += value === true ? ` ${name}` : ` ${name}="${escapeHtml(String(value))}"`;
+  }
+  return output;
 }
 
 function styleToString(style: DomNodeStyle): string {
-  return Object.entries(style)
-    .filter(([, value]) => value !== undefined)
-    .map(([name, value]) => `${kebabCase(name)}:${String(value)}`)
-    .join(";");
+  let output = "";
+  for (const name in style) {
+    const value = style[name];
+    if (value === undefined) continue;
+    if (output) output += ";";
+    output += `${kebabCase(name)}:${String(value)}`;
+  }
+  return output;
 }
 
 function kebabCase(value: string): string {
