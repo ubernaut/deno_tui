@@ -227,6 +227,8 @@ Work:
         improving the focused `layout/flex-rects-3-pane` benchmark while preserving layout tests.
   - [x] Reworked responsive breakpoint resolution to scan matching breakpoints in one pass instead of allocating and
         sorting match lists on each layout solve.
+  - [x] Reworked the simple HTML/CSS layout solver's child splitting, grid placement, flex line sizing, and text
+        intrinsic measurement loops to avoid callback pipelines and duplicate line-width scans in layout solve paths.
 
 Acceptance checks:
 

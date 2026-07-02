@@ -76,12 +76,12 @@ export class SimpleLayoutSolver implements LayoutSolver {
     );
     const contentRect = contentRectangle(rect, style);
     const visible = style.visibility === "visible" && style.display !== "none";
-    const flowChildren = style.display === "flex"
+    const children = style.display === "flex"
       ? this.#layoutFlexChildren(node, contentRect)
       : style.display === "grid"
       ? this.#layoutGridChildren(node, contentRect)
       : this.#layoutBlockChildren(node, contentRect);
-    const children = [...flowChildren, ...this.#layoutAbsoluteChildren(node, contentRect)];
+    this.#layoutAbsoluteChildrenInto(children, node, contentRect);
     const scroll = scrollSize(node, contentRect, children);
 
     return {
@@ -153,7 +153,9 @@ export class SimpleLayoutSolver implements LayoutSolver {
       0,
       direction === "row" ? node.style.rowGap || node.style.gap : node.style.columnGap || node.style.gap,
     );
-    const items = children.map((child): FlexLayoutItem => {
+    const items = new Array<FlexLayoutItem>(children.length);
+    for (let index = 0; index < children.length; index += 1) {
+      const child = children[index]!;
       const basis = preferredFlexBasis(
         child,
         bounds,
@@ -164,7 +166,7 @@ export class SimpleLayoutSolver implements LayoutSolver {
       const minimum = resolveFlexMinimum(child, bounds, direction);
       const maximum = resolveFlexMaximum(child, bounds, direction);
       const max = child.style.flexGrow === 0 ? Math.max(minimum, Math.min(maximum ?? basis, basis)) : maximum;
-      return {
+      items[index] = {
         node: child,
         id: child.id,
         basis,
@@ -180,15 +182,20 @@ export class SimpleLayoutSolver implements LayoutSolver {
           this.#intrinsicMeasurementCache,
         ),
       };
-    });
+    }
     const lines = node.style.flexWrap === "nowrap"
       ? [items]
       : wrapFlexLines(items, mainSize(bounds, direction), mainGap);
-    const orderedLines = node.style.flexWrap === "wrap-reverse" ? [...lines].reverse() : lines;
     const boxes: ComputedLayoutBox[] = [];
     let crossCursor = direction === "row" ? bounds.row : bounds.column;
 
-    for (const line of orderedLines) {
+    const reverseLines = node.style.flexWrap === "wrap-reverse";
+    for (
+      let lineIndex = reverseLines ? lines.length - 1 : 0;
+      reverseLines ? lineIndex >= 0 : lineIndex < lines.length;
+      lineIndex += reverseLines ? -1 : 1
+    ) {
+      const line = lines[lineIndex]!;
       const lineCrossSize = lineFlexCrossSize(
         line,
         bounds,
@@ -222,16 +229,12 @@ export class SimpleLayoutSolver implements LayoutSolver {
       autoFlow: node.style.gridAutoFlow,
       areas: node.style.gridTemplateAreas,
     });
-    const columnCount = Math.max(
-      1,
-      node.style.gridTemplateColumns.length,
-      ...placed.map((item) => item.column + item.columnSpan),
-    );
-    const rowCount = Math.max(
-      1,
-      node.style.gridTemplateRows.length,
-      ...placed.map((item) => item.row + item.rowSpan),
-    );
+    let columnCount = Math.max(1, node.style.gridTemplateColumns.length);
+    let rowCount = Math.max(1, node.style.gridTemplateRows.length);
+    for (const item of placed) {
+      columnCount = Math.max(columnCount, item.column + item.columnSpan);
+      rowCount = Math.max(rowCount, item.row + item.rowSpan);
+    }
     const columns = resolveGridTracks(
       node.style.gridTemplateColumns,
       columnCount,
@@ -249,23 +252,27 @@ export class SimpleLayoutSolver implements LayoutSolver {
     const columnOffsets = gridTrackOffsets(bounds.column, columns, columnGap);
     const rowOffsets = gridTrackOffsets(bounds.row, rows, rowGap);
 
-    return placed.map((item) => {
+    const boxes = new Array<ComputedLayoutBox>(placed.length);
+    for (let index = 0; index < placed.length; index += 1) {
+      const item = placed[index]!;
       const column = columnOffsets[item.column] ?? bounds.column;
       const row = rowOffsets[item.row] ?? bounds.row;
       const width = gridSpanSize(columns, item.column, item.columnSpan, columnGap);
       const height = gridSpanSize(rows, item.row, item.rowSpan, rowGap);
       const itemBounds = alignGridItemBounds(item.node, { column, row, width, height });
-      return this.#layoutNode(item.node, itemBounds, false, true);
-    });
+      boxes[index] = this.#layoutNode(item.node, itemBounds, false, true);
+    }
+    return boxes;
   }
 
-  #layoutAbsoluteChildren(node: LayoutNode, bounds: Rectangle): ComputedLayoutBox[] {
-    return layoutAbsoluteChildren(node).map((child) => {
-      return this.#layoutNode(
+  #layoutAbsoluteChildrenInto(target: ComputedLayoutBox[], node: LayoutNode, bounds: Rectangle): void {
+    for (const child of node.children) {
+      if (child.style.display === "none" || child.style.position !== "absolute") continue;
+      target.push(this.#layoutNode(
         child,
         absoluteChildBounds(child, bounds, this.#defaultTextHeight, this.#intrinsicMeasurementCache),
-      );
-    });
+      ));
+    }
   }
 }
 
@@ -280,11 +287,11 @@ interface FlexLayoutItem extends FlexItem<string> {
 }
 
 function layoutChildren(node: LayoutNode): LayoutNode[] {
-  return node.children.filter((child) => child.style.display !== "none" && child.style.position !== "absolute");
-}
-
-function layoutAbsoluteChildren(node: LayoutNode): LayoutNode[] {
-  return node.children.filter((child) => child.style.display !== "none" && child.style.position === "absolute");
+  const children: LayoutNode[] = [];
+  for (const child of node.children) {
+    if (child.style.display !== "none" && child.style.position !== "absolute") children.push(child);
+  }
+  return children;
 }
 
 function normalizeRect(rect: Rectangle): Rectangle {
@@ -507,7 +514,9 @@ function lineFlexCrossSize(
   singleLine: boolean,
 ): number {
   if (alignItems === "stretch" && singleLine) return crossSize(bounds, direction);
-  return Math.max(1, ...items.map((item) => item.crossSize));
+  let size = 1;
+  for (const item of items) size = Math.max(size, item.crossSize);
+  return size;
 }
 
 function flexLineRects(
@@ -518,9 +527,15 @@ function flexLineRects(
   justifyContent: LayoutJustifyContent,
 ): Record<string, Rectangle> {
   const rects = flexRects(bounds, direction, items, gap);
-  const ordered = items.map((item) => rects[item.id] ?? bounds);
-  const sizes = ordered.map((rect) => mainSize(rect, direction));
-  const used = sizes.reduce((sum, size) => sum + size, 0) + Math.max(0, items.length - 1) * gap;
+  const sizes = new Array<number>(items.length);
+  let usedSize = 0;
+  for (let index = 0; index < items.length; index += 1) {
+    const item = items[index]!;
+    const size = mainSize(rects[item.id] ?? bounds, direction);
+    sizes[index] = size;
+    usedSize += size;
+  }
+  const used = usedSize + Math.max(0, items.length - 1) * gap;
   const free = Math.max(0, mainSize(bounds, direction) - used);
   let leading = 0;
   let resolvedGap = gap;
@@ -606,31 +621,50 @@ function measureNodeIntrinsic(
     return measured;
   }
 
-  const childSizes = node.children.map((child) =>
-    measureNodeIntrinsic(child, availableWidth, defaultTextHeight, measurementCache)
-  );
   if (node.style.display === "flex" && node.style.flexDirection === "row") {
+    let width = 0;
+    let height = defaultTextHeight;
+    for (const child of node.children) {
+      const childSize = measureNodeIntrinsic(child, availableWidth, defaultTextHeight, measurementCache);
+      width += childSize.width;
+      height = Math.max(height, childSize.height);
+    }
     measured = {
-      width: childSizes.reduce((sum, size) => sum + size.width, 0) +
-        Math.max(0, childSizes.length - 1) * node.style.columnGap,
-      height: Math.max(defaultTextHeight, ...childSizes.map((size) => size.height)),
+      width: width + Math.max(0, node.children.length - 1) * node.style.columnGap,
+      height,
     };
     if (cacheKey) measurementCache?.set(cacheKey, measured);
     return measured;
   }
+  let width = 1;
+  let height = 0;
+  for (const child of node.children) {
+    const childSize = measureNodeIntrinsic(child, availableWidth, defaultTextHeight, measurementCache);
+    width = Math.max(width, childSize.width);
+    height += Math.max(defaultTextHeight, childSize.height);
+  }
   measured = {
-    width: Math.max(1, ...childSizes.map((size) => size.width)),
-    height: childSizes.reduce((sum, size) => sum + Math.max(defaultTextHeight, size.height), 0),
+    width,
+    height,
   };
   if (cacheKey) measurementCache?.set(cacheKey, measured);
   return measured;
 }
 
 function measureTextIntrinsic(text: string, availableWidth: number, defaultTextHeight: number): LayoutIntrinsicSize {
-  const lines = text.split(/\r?\n/);
-  const width = Math.max(1, ...lines.map((line) => textWidth(line)));
   const wrapWidth = Math.max(1, availableWidth);
-  const height = lines.reduce((sum, line) => sum + Math.max(1, Math.ceil(textWidth(line) / wrapWidth)), 0);
+  let width = 1;
+  let height = 0;
+  let lineStart = 0;
+  for (let index = 0; index <= text.length; index += 1) {
+    const char = text[index];
+    if (index < text.length && char !== "\n" && char !== "\r") continue;
+    const lineWidth = textWidth(text.slice(lineStart, index));
+    width = Math.max(width, lineWidth);
+    height += Math.max(1, Math.ceil(lineWidth / wrapWidth));
+    if (char === "\r" && text[index + 1] === "\n") index += 1;
+    lineStart = index + 1;
+  }
   return { width, height: Math.max(defaultTextHeight, height) };
 }
 

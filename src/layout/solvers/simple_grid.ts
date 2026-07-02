@@ -22,6 +22,7 @@ export interface GridPlacedItem {
 }
 
 interface GridPlacementCandidate {
+  index: number;
   node: LayoutNode;
   columnSpan: number;
   rowSpan: number;
@@ -43,15 +44,18 @@ interface FindGridSlotOptions {
 
 /** Places grid children using explicit coordinates first, then auto-flow placement. */
 export function placeGridChildren(children: readonly LayoutNode[], bounds: GridPlacementBounds): GridPlacedItem[] {
-  const placed = new Map<LayoutNode, GridPlacedItem>();
+  const placed = new Array<GridPlacedItem>(children.length);
   const occupied = new Set<string>();
   const autoColumns = bounds.columns > 0 ? bounds.columns : Math.max(1, Math.ceil(Math.sqrt(children.length)));
   const autoRows = bounds.rows > 0 ? bounds.rows : Math.max(1, Math.ceil(Math.sqrt(children.length)));
-  const candidates = children.map((child): GridPlacementCandidate => {
+  const candidates = new Array<GridPlacementCandidate>(children.length);
+  for (let index = 0; index < children.length; index += 1) {
+    const child = children[index]!;
     const area = child.style.gridArea ? gridTemplateAreaBounds(bounds.areas ?? [], child.style.gridArea) : undefined;
     const hasExplicitColumn = gridPlacementHasExplicitLine(child.style.gridColumn);
     const hasExplicitRow = gridPlacementHasExplicitLine(child.style.gridRow);
-    return {
+    candidates[index] = {
+      index,
       node: child,
       columnSpan: hasExplicitColumn ? gridPlacementSpan(child.style.gridColumn) : area?.columnSpan ??
         gridPlacementSpan(child.style.gridColumn),
@@ -60,61 +64,62 @@ export function placeGridChildren(children: readonly LayoutNode[], bounds: GridP
       explicitColumn: gridPlacementStart(child.style.gridColumn) ?? area?.column,
       explicitRow: gridPlacementStart(child.style.gridRow) ?? area?.row,
     };
-  });
-  const placementOrder = [
-    ...candidates.filter((candidate) => candidate.explicitColumn !== undefined && candidate.explicitRow !== undefined),
-    ...candidates.filter((candidate) =>
-      (candidate.explicitColumn !== undefined) !== (candidate.explicitRow !== undefined)
-    ),
-    ...candidates.filter((candidate) => candidate.explicitColumn === undefined && candidate.explicitRow === undefined),
-  ];
-
-  for (const candidate of placementOrder) {
-    const position = candidate.explicitColumn !== undefined && candidate.explicitRow !== undefined
-      ? { column: candidate.explicitColumn, row: candidate.explicitRow }
-      : candidate.explicitColumn !== undefined
-      ? findGridSlot(occupied, {
-        preferredColumn: candidate.explicitColumn,
-        columnSpan: candidate.columnSpan,
-        rowSpan: candidate.rowSpan,
-        maxColumns: undefined,
-        maxRows: undefined,
-        scanColumns: Math.max(autoColumns, candidate.explicitColumn + candidate.columnSpan),
-        scanRows: autoRows,
-        autoFlow: bounds.autoFlow,
-      })
-      : candidate.explicitRow !== undefined
-      ? findGridSlot(occupied, {
-        preferredRow: candidate.explicitRow,
-        columnSpan: candidate.columnSpan,
-        rowSpan: candidate.rowSpan,
-        maxColumns: bounds.columns > 0 ? bounds.columns : undefined,
-        maxRows: undefined,
-        scanColumns: autoColumns,
-        scanRows: Math.max(autoRows, candidate.explicitRow + candidate.rowSpan),
-        autoFlow: bounds.autoFlow,
-      })
-      : findGridSlot(occupied, {
-        columnSpan: candidate.columnSpan,
-        rowSpan: candidate.rowSpan,
-        maxColumns: bounds.autoFlow === "row" && bounds.columns > 0 ? bounds.columns : undefined,
-        maxRows: bounds.autoFlow === "column" && bounds.rows > 0 ? bounds.rows : undefined,
-        scanColumns: autoColumns,
-        scanRows: autoRows,
-        autoFlow: bounds.autoFlow,
-      });
-
-    occupyGridCells(occupied, position.row, position.column, candidate.rowSpan, candidate.columnSpan);
-    placed.set(candidate.node, {
-      node: candidate.node,
-      column: position.column,
-      row: position.row,
-      columnSpan: candidate.columnSpan,
-      rowSpan: candidate.rowSpan,
-    });
   }
 
-  return children.map((child) => placed.get(child)!).filter(Boolean);
+  for (let phase = 0; phase < 3; phase += 1) {
+    for (const candidate of candidates) {
+      const explicitColumn = candidate.explicitColumn !== undefined;
+      const explicitRow = candidate.explicitRow !== undefined;
+      if (phase === 0 && (!explicitColumn || !explicitRow)) continue;
+      if (phase === 1 && explicitColumn === explicitRow) continue;
+      if (phase === 2 && (explicitColumn || explicitRow)) continue;
+
+      const position = candidate.explicitColumn !== undefined && candidate.explicitRow !== undefined
+        ? { column: candidate.explicitColumn, row: candidate.explicitRow }
+        : candidate.explicitColumn !== undefined
+        ? findGridSlot(occupied, {
+          preferredColumn: candidate.explicitColumn,
+          columnSpan: candidate.columnSpan,
+          rowSpan: candidate.rowSpan,
+          maxColumns: undefined,
+          maxRows: undefined,
+          scanColumns: Math.max(autoColumns, candidate.explicitColumn + candidate.columnSpan),
+          scanRows: autoRows,
+          autoFlow: bounds.autoFlow,
+        })
+        : candidate.explicitRow !== undefined
+        ? findGridSlot(occupied, {
+          preferredRow: candidate.explicitRow,
+          columnSpan: candidate.columnSpan,
+          rowSpan: candidate.rowSpan,
+          maxColumns: bounds.columns > 0 ? bounds.columns : undefined,
+          maxRows: undefined,
+          scanColumns: autoColumns,
+          scanRows: Math.max(autoRows, candidate.explicitRow + candidate.rowSpan),
+          autoFlow: bounds.autoFlow,
+        })
+        : findGridSlot(occupied, {
+          columnSpan: candidate.columnSpan,
+          rowSpan: candidate.rowSpan,
+          maxColumns: bounds.autoFlow === "row" && bounds.columns > 0 ? bounds.columns : undefined,
+          maxRows: bounds.autoFlow === "column" && bounds.rows > 0 ? bounds.rows : undefined,
+          scanColumns: autoColumns,
+          scanRows: autoRows,
+          autoFlow: bounds.autoFlow,
+        });
+
+      occupyGridCells(occupied, position.row, position.column, candidate.rowSpan, candidate.columnSpan);
+      placed[candidate.index] = {
+        node: candidate.node,
+        column: position.column,
+        row: position.row,
+        columnSpan: candidate.columnSpan,
+        rowSpan: candidate.rowSpan,
+      };
+    }
+  }
+
+  return placed;
 }
 
 /** Aligns a grid item inside its resolved grid cell. */
