@@ -280,6 +280,8 @@ Work:
         and one-pass strategy/tag accumulation while preserving priority and definition ordering.
   - [x] Reworked runtime and terminal capability entry/summary/format helpers to use stable ID lists and one-pass
         availability counts instead of object-key map/filter chains.
+  - [x] Reworked EventEmitter aggregate counting, event-name projection, and inspection to avoid Object.values/entries
+        pipelines in core canvas/component/web host event paths.
 
 Acceptance checks:
 

@@ -97,23 +97,34 @@ export class EventEmitter<EventMap extends EventRecord> {
 
   listenerCount<Type extends keyof EventMap>(type?: Type): number {
     if (type !== undefined) return this.listeners[type]?.length ?? 0;
-    return Object.values(this.listeners).reduce((total, listeners) => total + (listeners?.length ?? 0), 0);
+    let total = 0;
+    for (const key in this.listeners) {
+      total += this.listeners[key]?.length ?? 0;
+    }
+    return total;
   }
 
   eventNames(): string[] {
-    return Object.entries(this.listeners)
-      .filter(([, listeners]) => listeners.length > 0)
-      .map(([type]) => type);
+    const names: string[] = [];
+    for (const type in this.listeners) {
+      if ((this.listeners[type]?.length ?? 0) > 0) names.push(type);
+    }
+    return names;
   }
 
   inspect(): EventEmitterInspection {
-    const events = Object.entries(this.listeners)
-      .map(([type, listeners]) => ({ type, listenerCount: listeners.length }))
-      .filter((entry) => entry.listenerCount > 0)
-      .sort((left, right) => left.type.localeCompare(right.type));
+    const events: EventEmitterInspection["events"] = [];
+    let listenerCount = 0;
+    for (const type in this.listeners) {
+      const count = this.listeners[type]?.length ?? 0;
+      if (count <= 0) continue;
+      listenerCount += count;
+      events.push({ type, listenerCount: count });
+    }
+    events.sort((left, right) => left.type.localeCompare(right.type));
     return {
       eventCount: events.length,
-      listenerCount: events.reduce((total, event) => total + event.listenerCount, 0),
+      listenerCount,
       events,
     };
   }
