@@ -292,6 +292,8 @@ Work:
         explicit cloned route buffers instead of map/filter/find pipelines.
   - [x] Reworked app plugin definition inspection, query, catalog summaries, registry cloning, and registry inspection to
         use explicit id buffers and one-pass count/tag accumulation.
+  - [x] Reworked MemoryCanvasSink update and range recording to clone inspection buffers with direct loops instead of
+        spread/map projection.
 
 Acceptance checks:
 
