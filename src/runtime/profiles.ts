@@ -153,6 +153,8 @@ export const runtimeProfileDefinitions = [
   },
 ] as const satisfies readonly RuntimeProfileDefinition[];
 
+const RUNTIME_PROFILE_LOOKUP_INDEX = createRuntimeProfileLookupIndex(runtimeProfileDefinitions);
+
 /** Named runtime policy that turns capabilities into a concrete strategy plan. */
 export class RuntimeProfile {
   readonly id: string;
@@ -208,6 +210,8 @@ export class RuntimeProfile {
 /** Ordered registry of runtime policy profiles for settings panes and launchers. */
 export class RuntimeProfileRegistry {
   readonly #profiles = new Map<string, RuntimeProfile>();
+  #orderedProfiles?: RuntimeProfile[];
+  #orderedIds?: string[];
 
   constructor(profiles: Iterable<RuntimeProfile | RuntimeProfileDefinition> = runtimeProfileDefinitions) {
     for (const profile of profiles) {
@@ -218,11 +222,18 @@ export class RuntimeProfileRegistry {
   register(profile: RuntimeProfile | RuntimeProfileDefinition): this {
     const normalized = profile instanceof RuntimeProfile ? profile : createRuntimeProfile(profile);
     this.#profiles.set(normalized.id, normalized);
+    this.#orderedProfiles = undefined;
+    this.#orderedIds = undefined;
     return this;
   }
 
   unregister(id: string): boolean {
-    return this.#profiles.delete(id);
+    const deleted = this.#profiles.delete(id);
+    if (deleted) {
+      this.#orderedProfiles = undefined;
+      this.#orderedIds = undefined;
+    }
+    return deleted;
   }
 
   has(id: string): boolean {
@@ -234,24 +245,23 @@ export class RuntimeProfileRegistry {
   }
 
   ids(): string[] {
-    const profiles = this.profiles();
-    const ids = new Array<string>(profiles.length);
-    for (let index = 0; index < profiles.length; index += 1) {
-      ids[index] = profiles[index]!.id;
+    if (!this.#orderedIds) {
+      const profiles = this.#orderedProfileList();
+      const ids = new Array<string>(profiles.length);
+      for (let index = 0; index < profiles.length; index += 1) {
+        ids[index] = profiles[index]!.id;
+      }
+      this.#orderedIds = ids;
     }
-    return ids;
+    return cloneStringArray(this.#orderedIds);
   }
 
   profiles(): RuntimeProfile[] {
-    const profiles: RuntimeProfile[] = [];
-    for (const profile of this.#profiles.values()) {
-      profiles.push(profile);
-    }
-    return profiles.sort(compareRuntimeProfiles);
+    return cloneRuntimeProfiles(this.#orderedProfileList());
   }
 
   inspect(): RuntimeProfileInspection[] {
-    const profiles = this.profiles();
+    const profiles = this.#orderedProfileList();
     const inspections = new Array<RuntimeProfileInspection>(profiles.length);
     for (let index = 0; index < profiles.length; index += 1) {
       inspections[index] = profiles[index]!.inspect();
@@ -266,7 +276,17 @@ export class RuntimeProfileRegistry {
   }
 
   catalog(options: Omit<RuntimeProfileCatalogReportOptions, "profiles"> = {}): RuntimeProfileCatalogReport {
-    return createRuntimeProfileCatalogReport({ ...options, profiles: this.profiles() });
+    return createRuntimeProfileCatalogReport({ ...options, profiles: this.#orderedProfileList() });
+  }
+
+  #orderedProfileList(): readonly RuntimeProfile[] {
+    if (!this.#orderedProfiles) {
+      const profiles: RuntimeProfile[] = [];
+      for (const profile of this.#profiles.values()) profiles.push(profile);
+      profiles.sort(compareRuntimeProfiles);
+      this.#orderedProfiles = profiles;
+    }
+    return this.#orderedProfiles;
   }
 }
 
@@ -397,14 +417,8 @@ export function runtimeProfiles(): RuntimeProfile[] {
 
 /** Finds a matching runtime Profile record when one exists. */
 export function findRuntimeProfile(idOrLabel: string): RuntimeProfile | undefined {
-  const normalized = normalizeProfileLookup(idOrLabel);
-  for (const definition of runtimeProfileDefinitions) {
-    const profile = createRuntimeProfile(definition);
-    if (normalizeProfileLookup(profile.id) === normalized || normalizeProfileLookup(profile.label) === normalized) {
-      return profile;
-    }
-  }
-  return undefined;
+  const definition = RUNTIME_PROFILE_LOOKUP_INDEX.get(normalizeProfileLookup(idOrLabel));
+  return definition ? createRuntimeProfile(definition) : undefined;
 }
 
 /** Queries runtime Profiles records with deterministic filtering. */
@@ -554,4 +568,24 @@ function cloneStringArray<T extends string>(values: readonly T[]): T[] {
 
 function profileSearchValueIncludes(value: string, needle: string): boolean {
   return normalizeProfileLookup(value).includes(needle);
+}
+
+function cloneRuntimeProfiles(values: readonly RuntimeProfile[]): RuntimeProfile[] {
+  const output = new Array<RuntimeProfile>(values.length);
+  for (let index = 0; index < values.length; index += 1) {
+    output[index] = values[index]!;
+  }
+  return output;
+}
+
+function createRuntimeProfileLookupIndex(
+  definitions: readonly RuntimeProfileDefinition[],
+): Map<string, RuntimeProfileDefinition> {
+  const lookup = new Map<string, RuntimeProfileDefinition>();
+  for (let index = 0; index < definitions.length; index += 1) {
+    const definition = definitions[index]!;
+    lookup.set(normalizeProfileLookup(definition.id), definition);
+    lookup.set(normalizeProfileLookup(definition.label ?? definition.id), definition);
+  }
+  return lookup;
 }
