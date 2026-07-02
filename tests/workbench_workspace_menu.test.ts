@@ -6,6 +6,7 @@ import {
   defaultWorkspaceName,
   normalizeWorkspaceName,
   workspaceMenuLabels,
+  workspaceMenuLabelsInto,
   workspaceNameModalBody,
 } from "../app/workbench_workspace_menu.ts";
 import type { WorkbenchWorkspace, WorkbenchWorkspaceWindow } from "../src/app/mod.ts";
@@ -17,6 +18,9 @@ Deno.test("buildWorkspaceMenuEntries includes save and empty states", () => {
     { label: "    No saved workspaces", action: "empty" },
   ]);
   assertEquals(workspaceMenuLabels(entries), ["[+] Save Current...", "    No saved workspaces"]);
+  const target = ["stale"];
+  assertEquals(workspaceMenuLabelsInto(target, entries), ["[+] Save Current...", "    No saved workspaces"]);
+  assertEquals(target, ["[+] Save Current...", "    No saved workspaces"]);
 });
 
 Deno.test("buildWorkspaceMenuEntries expands each workspace into open rename and delete actions", () => {

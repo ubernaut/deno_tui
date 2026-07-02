@@ -170,7 +170,7 @@ import {
   defaultWorkspaceName as defaultWorkspaceNameFromCount,
   normalizeWorkspaceName as normalizeWorkspaceNameFromCount,
   type WorkspaceMenuEntry,
-  workspaceMenuLabels as workspaceMenuEntryLabels,
+  workspaceMenuLabelsInto,
   workspaceNameModalBody as buildWorkspaceNameModalBody,
 } from "./workbench_workspace_menu.ts";
 import type {
@@ -481,6 +481,7 @@ const windowContentFrames = new Map<WindowId, Frame>();
 const newWindowMenuSlice: VisibleMenuSlice = { items: [], indexes: [] };
 const newWindowMenuLabels: string[] = [];
 const workspaceMenuSlice: VisibleMenuSlice = { items: [], indexes: [] };
+const workspaceMenuLabelBuffer: string[] = [];
 let dropdownOverlay: DropdownOverlay | null = null;
 let threeDragWindow: WindowId | null = null;
 let windowRenderContext: WindowRenderContext | null = null;
@@ -3314,7 +3315,7 @@ function workspaceMenuEntries(): WorkspaceMenuEntry[] {
 }
 
 function workspaceMenuLabels(): string[] {
-  return workspaceMenuEntryLabels(workspaceMenuEntries());
+  return workspaceMenuLabelsInto(workspaceMenuLabelBuffer, workspaceMenuEntries());
 }
 
 function workspaceMenuItemCount(): number {

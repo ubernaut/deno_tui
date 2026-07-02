@@ -215,6 +215,8 @@ Work:
         instead of `map().filter().sort().map()` pipelines, keeping the 1k-command ranking benchmark under threshold.
   - [x] Reworked remaining Neon Three scene setup arrays to use pre-sized object buffers instead of `Array.from()`
         closures when constructing Three ASCII demo windows.
+  - [x] Reworked shared workbench workspace normalization, serialization, lookup, and menu label projection to use
+        loop-based buffers in workspace load/save and redraw-heavy dropdown paths.
 
 Acceptance checks:
 

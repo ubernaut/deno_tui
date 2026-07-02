@@ -49,7 +49,19 @@ export function buildWorkspaceMenuEntries(workspaces: readonly WorkbenchWorkspac
 
 /** Returns display labels for the workspace menu entries. */
 export function workspaceMenuLabels(entries: readonly WorkspaceMenuEntry[]): string[] {
-  return entries.map((entry) => entry.label);
+  return workspaceMenuLabelsInto([], entries);
+}
+
+/** Projects display labels into a caller-owned buffer for redraw-heavy menus. */
+export function workspaceMenuLabelsInto(
+  target: string[],
+  entries: readonly WorkspaceMenuEntry[],
+): string[] {
+  target.length = entries.length;
+  for (let index = 0; index < entries.length; index++) {
+    target[index] = entries[index]!.label;
+  }
+  return target;
 }
 
 /** Builds a deterministic fallback workspace name from the saved workspace count. */
@@ -64,7 +76,11 @@ export function normalizeWorkspaceName(name: string, savedWorkspaceCount: number
 
 /** Returns visualization ids in the same order as saved workspace window entries. */
 export function currentWorkspaceVisualizationIds(windows: readonly WorkbenchWorkspaceWindow[]): string[] {
-  return windows.map((window) => window.visualizationId);
+  const ids = new Array<string>(windows.length);
+  for (let index = 0; index < windows.length; index++) {
+    ids[index] = windows[index]!.visualizationId;
+  }
+  return ids;
 }
 
 /** Builds the modal body for save/rename workspace prompts. */
