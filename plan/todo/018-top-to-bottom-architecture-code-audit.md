@@ -1120,6 +1120,8 @@ Work:
   - [x] Removed `Object.keys()` array allocation from local data-query default searchable scans and active filter
         extraction by iterating object fields directly.
   - [x] Removed remaining shared form/query command key-array scans from form disposal and clear-filter disabled checks.
+  - [x] Tightened `ThreeAsciiObject` frame diffing by hoisting per-row offsets out of the inner cell loop and added a
+        96x40 frame-diff benchmark that measures changed-cell queueing separately from ANSI grid assembly.
   - [x] Reworked `TreeController.setExpanded()` to preserve unchanged subtree identity and allocate only along the
         changed branch, with regression coverage for no-op and nested expansion updates.
   - [x] Reduced terminal workspace layout lookup clone churn by using internal read-only pane references for active,

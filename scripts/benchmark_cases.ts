@@ -33,6 +33,8 @@ import {
   TextObject,
   textWidth,
   ThreeAsciiAnsiGridAssembler,
+  type ThreeAsciiGridRenderer,
+  ThreeAsciiObject,
   tileRects,
   visibleListRows,
   WindowManagerController,
@@ -505,6 +507,77 @@ function runThreeAsciiReadbackCopyWorkload(): void {
   if (!Number.isFinite(threeAsciiReadbackChecksum)) {
     throw new Error("three Ascii readback copy produced invalid data");
   }
+}
+
+interface ThreeAsciiDiffQueueTarget {
+  queueChangedGridCells(
+    grid: string[][],
+    rectangle: { column: number; row: number; width: number; height: number },
+  ): boolean;
+}
+
+const threeAsciiDiffRectangle = { column: 0, row: 0, width: 96, height: 40 };
+const threeAsciiDiffGridA = createThreeAsciiDiffGrid(threeAsciiDiffRectangle.width, threeAsciiDiffRectangle.height, 0);
+const threeAsciiDiffGridB = createThreeAsciiDiffGrid(threeAsciiDiffRectangle.width, threeAsciiDiffRectangle.height, 1);
+const threeAsciiDiffCanvas = new Canvas({
+  sink: new MemoryCanvasSink(),
+  size: { columns: threeAsciiDiffRectangle.width, rows: threeAsciiDiffRectangle.height },
+});
+const threeAsciiDiffObject = new ThreeAsciiObject({
+  canvas: threeAsciiDiffCanvas,
+  rectangle: threeAsciiDiffRectangle,
+  scene: {} as never,
+  camera: {} as never,
+  style: emptyStyle,
+  zIndex: 1,
+  rendererFactory: () => createNoopThreeAsciiRenderer(),
+});
+const threeAsciiDiffQueueTarget = threeAsciiDiffObject as unknown as ThreeAsciiDiffQueueTarget;
+
+function runThreeAsciiDiffQueueWorkload(): void {
+  threeAsciiDiffQueueTarget.queueChangedGridCells(threeAsciiDiffGridA, threeAsciiDiffRectangle);
+  clearThreeAsciiDiffQueue();
+  for (let step = 0; step < 64; step += 1) {
+    threeAsciiDiffQueueTarget.queueChangedGridCells(
+      step % 2 === 0 ? threeAsciiDiffGridB : threeAsciiDiffGridA,
+      threeAsciiDiffRectangle,
+    );
+    clearThreeAsciiDiffQueue();
+  }
+}
+
+function createThreeAsciiDiffGrid(columns: number, rows: number, phase: number): string[][] {
+  const grid = new Array<string[]>(rows);
+  for (let row = 0; row < rows; row += 1) {
+    const outputRow = new Array<string>(columns);
+    for (let column = 0; column < columns; column += 1) {
+      const active = (row * 17 + column * 7 + phase) % 23 === 0;
+      outputRow[column] = active ? "\x1b[38;2;180;255;120m█\x1b[0m" : " ";
+    }
+    grid[row] = outputRow;
+  }
+  return grid;
+}
+
+function clearThreeAsciiDiffQueue(): void {
+  for (let row = 0; row < threeAsciiDiffObject.rerenderCells.length; row += 1) {
+    threeAsciiDiffObject.rerenderCells[row]?.clear();
+  }
+}
+
+function createNoopThreeAsciiRenderer(): ThreeAsciiGridRenderer {
+  return {
+    scene: {} as never,
+    camera: {} as never,
+    setSize: () => {},
+    setEffectOptions: () => {},
+    getTerminalEdgeBias: () => 1,
+    setTerminalEdgeBias: () => {},
+    getTerminalGlyphStyle: () => "blocks",
+    setTerminalGlyphStyle: () => {},
+    renderToAnsiGrid: () => Promise.resolve([]),
+    destroy: () => {},
+  };
 }
 
 function drawWorkbenchText(
@@ -1004,6 +1077,15 @@ export const benchmarkCases: BenchmarkCase[] = [
     iterations: 1_000,
     maxAverageMs: 2,
     run: runThreeAsciiReadbackCopyWorkload,
+  },
+  {
+    name: "render/three-ascii-frame-diff-96x40",
+    category: "render",
+    description: "Diff recurring 96x40 Three ASCII terminal grids and queue only changed canvas cells.",
+    tags: ["render", "three", "ascii", "canvas", "diff"],
+    iterations: 200,
+    maxAverageMs: 10,
+    run: runThreeAsciiDiffQueueWorkload,
   },
   {
     name: "render/render-loop-300-steps",

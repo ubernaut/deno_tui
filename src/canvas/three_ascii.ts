@@ -322,12 +322,14 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
     let changed = false;
     for (let row = 0; row < rows; row += 1) {
       const outputRow = grid[row];
+      const rowOffset = row * columns;
+      const canvasRow = rectangle.row + row;
       for (let column = 0; column < columns; column += 1) {
-        const index = row * columns + column;
+        const index = rowOffset + column;
         const cell = outputRow?.[column] ?? " ";
         if (cacheValid && this.previousGridCells[index] === cell) continue;
         this.previousGridCells[index] = cell;
-        this.queueRerender(rectangle.row + row, rectangle.column + column);
+        this.queueRerender(canvasRow, rectangle.column + column);
         changed = true;
       }
     }
