@@ -13,6 +13,7 @@ import {
   apiWorkbenchInputRowInto,
   apiWorkbenchProgressRowInto,
   apiWorkbenchRadioRowsInto,
+  apiWorkbenchSliderRowInto,
   apiWorkbenchSliderSetHit,
   apiWorkbenchStepperHitPlacementsInto,
   apiWorkbenchStepperRowInto,
@@ -351,6 +352,19 @@ Deno.test("api workbench simple control row projectors preserve renderer-neutral
       id: "input",
       value: "Input     deno task health|",
       options: { action: "focus" },
+    },
+  );
+
+  assertEquals(
+    apiWorkbenchSliderRowInto(undefined, {
+      track: { text: "██░░" },
+      value: 5,
+      max: 10,
+    }),
+    {
+      id: "slider",
+      value: "Slider    ██░░ 5/10",
+      options: { previous: true, next: true },
     },
   );
 

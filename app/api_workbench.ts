@@ -175,6 +175,7 @@ import {
   type ApiWorkbenchProjectedControlRow,
   type ApiWorkbenchRadioOption,
   apiWorkbenchRadioRowsInto,
+  apiWorkbenchSliderRowInto,
   apiWorkbenchSliderSetHitInto,
   apiWorkbenchStepperHitPlacementsInto,
   apiWorkbenchStepperRowInto,
@@ -1694,10 +1695,12 @@ function renderControls(frame: Frame, rect: Rectangle): void {
     detail: `state=${modal.openState.peek() ? "open" : "closed"}`,
   });
   writeControl(controlProjectedRows[2].id, controlProjectedRows[2].value, controlProjectedRows[2].options);
-  writeControl("slider", `Slider    ${sliderTrack.text} ${density.value.peek()}/10`, {
-    previous: true,
-    next: true,
+  controlProjectedRows[7] = apiWorkbenchSliderRowInto(controlProjectedRows[7], {
+    track: sliderTrack,
+    value: density.value.peek(),
+    max: 10,
   });
+  writeControl(controlProjectedRows[7].id, controlProjectedRows[7].value, controlProjectedRows[7].options);
   const sliderSetHit = apiWorkbenchSliderSetHitInto(controlSliderSetHit, rect, row - 1, sliderTrack);
   addHit({
     column: sliderSetHit.column,

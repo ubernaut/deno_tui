@@ -14888,6 +14888,14 @@ function apiWorkbenchInputRowInto(target, options) {
     { action: "focus" }
   );
 }
+function apiWorkbenchSliderRowInto(target, options) {
+  return writeProjectedControlRow(
+    target,
+    "slider",
+    `${options.title ?? "Slider"}    ${options.track.text} ${options.value}/${options.max}`,
+    { previous: true, next: true }
+  );
+}
 function apiWorkbenchStepperRowInto(target, options) {
   const reserve = Math.max(0, Math.floor(options.columnReserveWidth ?? 12));
   const stepWidth = Math.max(8, Math.floor(options.rectWidth) - reserve);
@@ -17060,10 +17068,12 @@ function renderControls(frame, rect) {
     detail: `state=${modal.openState.peek() ? "open" : "closed"}`
   });
   writeControl(controlProjectedRows[2].id, controlProjectedRows[2].value, controlProjectedRows[2].options);
-  writeControl("slider", `Slider    ${sliderTrack.text} ${slider.value.peek()}/10`, {
-    previous: true,
-    next: true
+  controlProjectedRows[7] = apiWorkbenchSliderRowInto(controlProjectedRows[7], {
+    track: sliderTrack,
+    value: slider.value.peek(),
+    max: 10
   });
+  writeControl(controlProjectedRows[7].id, controlProjectedRows[7].value, controlProjectedRows[7].options);
   const sliderSetHit = apiWorkbenchSliderSetHitInto(controlSliderSetHit, rect, row - 1, sliderTrack);
   hitTargets.add({
     column: sliderSetHit.column,

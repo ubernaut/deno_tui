@@ -183,6 +183,13 @@ export interface ApiWorkbenchInputRowOptions {
   cursorGlyph?: string;
 }
 
+export interface ApiWorkbenchSliderRowOptions {
+  track: Pick<ApiWorkbenchControlTrack, "text">;
+  value: number;
+  max: number;
+  title?: string;
+}
+
 export interface ApiWorkbenchStepperRowOptions {
   steps: readonly StepperStep[];
   activeIndex: number;
@@ -545,6 +552,18 @@ export function apiWorkbenchInputRowInto(
     "input",
     `${options.title}     ${options.text}${options.active ? options.cursorGlyph ?? "▌" : ""}`,
     { action: "focus" },
+  );
+}
+
+export function apiWorkbenchSliderRowInto(
+  target: ApiWorkbenchProjectedControlRow | undefined,
+  options: ApiWorkbenchSliderRowOptions,
+): ApiWorkbenchProjectedControlRow {
+  return writeProjectedControlRow(
+    target,
+    "slider",
+    `${options.title ?? "Slider"}    ${options.track.text} ${options.value}/${options.max}`,
+    { previous: true, next: true },
   );
 }
 
