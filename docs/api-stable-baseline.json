@@ -4134,6 +4134,27 @@
     },
     {
       "module": "src/app/workbench_terminal.ts",
+      "name": "WorkbenchTerminalPaneProjection",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_terminal.ts",
+      "name": "WorkbenchTerminalPaneProjectionOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_terminal.ts",
+      "name": "workbenchTerminalPaneProjectionsInto",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_terminal.ts",
       "name": "WorkbenchTerminalSessionTab",
       "kind": "interface",
       "typeOnly": true,

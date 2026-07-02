@@ -12631,273 +12631,6 @@ function clampByte(value) {
   return clamp4(Math.floor(value), 0, 255);
 }
 
-// src/app/workbench_terminal.ts
-var WORKBENCH_TERMINAL_TOOLBAR_ACTIONS = [
-  "new",
-  "previous",
-  "next",
-  "close",
-  "splitRow",
-  "splitColumn",
-  "zoomPane",
-  "closePane",
-  "start",
-  "stop",
-  "restart",
-  "clear",
-  "raw",
-  "copy",
-  "search",
-  "previousMatch",
-  "nextMatch",
-  "top",
-  "bottom"
-];
-function workbenchTerminalSessionTabsInto(target, sessions, activeId, rect, options = {}) {
-  target.length = 0;
-  if (rect.width <= 0 || rect.height <= 0) return target;
-  const minWidth = Math.max(1, Math.floor(options.minWidth ?? 4));
-  const maxWidth = Math.max(minWidth, Math.floor(options.maxWidth ?? 22));
-  let column = rect.column;
-  const endColumn = rect.column + rect.width;
-  for (let index = 0; index < sessions.length && column < endColumn; index += 1) {
-    const session = sessions[index];
-    const active2 = session.id === activeId;
-    const status = session.running ? "*" : session.status?.[0]?.toUpperCase() ?? "?";
-    const available = endColumn - column;
-    const width = Math.max(
-      1,
-      Math.min(available, Math.max(minWidth, Math.min(maxWidth, textWidth(session.title) + 6)))
-    );
-    const label = fitCellText(buttonText(`${status} ${session.title}`), width);
-    target.push({
-      id: session.id,
-      label,
-      column,
-      row: rect.row,
-      width: textWidth(label),
-      active: active2
-    });
-    column += width + 1;
-  }
-  return target;
-}
-function workbenchTerminalToolbarItemsInto(target, state, options = {}) {
-  const actions = options.actions ?? WORKBENCH_TERMINAL_TOOLBAR_ACTIONS;
-  const hasMatches = (state.searchMatchCount ?? 0) > 0;
-  const scrollDisabled = (state.scrollbackTotalRows ?? 0) <= (state.scrollbackViewportRows ?? 0);
-  let written = 0;
-  for (let index = 0; index < actions.length; index += 1) {
-    const action = actions[index];
-    const item = workbenchTerminalToolbarItemForAction(target[written], action);
-    if (action === "previous" || action === "next") {
-      item.disabled = state.sessionCount < 2;
-    } else if (action === "close") {
-      item.disabled = state.activeId === void 0 || state.sessionCount <= 1;
-    } else if (action === "zoomPane") {
-      item.active = state.zoomedPaneId !== void 0;
-    } else if (action === "closePane") {
-      item.disabled = (state.paneCount ?? 1) < 2;
-    } else if (action === "start") {
-      item.disabled = state.activeId === void 0 || state.shellRunning === true || state.shellStarting === true;
-    } else if (action === "stop") {
-      item.disabled = state.shellRunning !== true;
-    } else if (action === "restart") {
-      item.disabled = state.activeId === void 0;
-    } else if (action === "raw") {
-      item.active = state.inputMode === "raw";
-      item.disabled = state.shellRunning !== true;
-    } else if (action === "copy") {
-      item.active = state.copyMode === true;
-    } else if (action === "search") {
-      item.active = !!state.searchQuery;
-      item.disabled = (state.scrollbackTotalRows ?? 0) <= 0;
-    } else if (action === "previousMatch" || action === "nextMatch") {
-      item.disabled = !hasMatches;
-    } else if (action === "top" || action === "bottom") {
-      item.disabled = scrollDisabled;
-    }
-    target[written] = item;
-    written += 1;
-  }
-  target.length = written;
-  return target;
-}
-function workbenchTerminalToolbarItemForAction(target, action) {
-  const item = target ?? { label: "", action };
-  item.action = action;
-  item.disabled = false;
-  item.active = false;
-  item.tone = void 0;
-  if (action === "new") {
-    item.label = "New";
-    item.tone = "success";
-  } else if (action === "previous") {
-    item.label = "Prev";
-    item.tone = "muted";
-  } else if (action === "next") {
-    item.label = "Next";
-    item.tone = "muted";
-  } else if (action === "close") {
-    item.label = "Close";
-    item.tone = "danger";
-  } else if (action === "splitRow") {
-    item.label = "Split H";
-  } else if (action === "splitColumn") {
-    item.label = "Split V";
-  } else if (action === "zoomPane") {
-    item.label = "Zoom";
-  } else if (action === "closePane") {
-    item.label = "Close Pane";
-    item.tone = "danger";
-  } else if (action === "start") {
-    item.label = "Start";
-  } else if (action === "stop") {
-    item.label = "Stop";
-    item.tone = "danger";
-  } else if (action === "restart") {
-    item.label = "Restart";
-    item.tone = "warning";
-  } else if (action === "clear") {
-    item.label = "Clear";
-    item.tone = "muted";
-  } else if (action === "raw") {
-    item.label = "Raw";
-  } else if (action === "copy") {
-    item.label = "Copy";
-  } else if (action === "search") {
-    item.label = "Search";
-  } else if (action === "previousMatch") {
-    item.label = "Prev Hit";
-  } else if (action === "nextMatch") {
-    item.label = "Next Hit";
-  } else if (action === "top") {
-    item.label = "Top";
-  } else {
-    item.label = "Bottom";
-  }
-  return item;
-}
-
-// src/app/workbench_titlebar.ts
-var WINDOW_CONTROL_SPECS = [
-  { kind: "close", label: "x", tone: "danger", compact: true },
-  { kind: "restore", label: "\u21BA", tone: "muted", compact: true },
-  { kind: "maximize", label: "\u25A1", tone: "success", compact: true },
-  { kind: "minimize", label: "-", tone: "warning", compact: true }
-];
-function layoutWorkbenchTitlebar(options) {
-  const controlsMinWidth = options.controlsMinWidth ?? 22;
-  const configLabel = options.configLabel ?? "config";
-  let buttons = [];
-  const row = options.rect.row;
-  const rightBorderColumn = options.rect.column + options.rect.width - 1;
-  const hasWindowControls = options.rect.width >= controlsMinWidth;
-  let leftmostControlColumn = rightBorderColumn;
-  if (hasWindowControls) {
-    const controlButtons = new Array(WINDOW_CONTROL_SPECS.length);
-    let cursor = rightBorderColumn;
-    for (let index = 0; index < WINDOW_CONTROL_SPECS.length; index += 1) {
-      const spec = WINDOW_CONTROL_SPECS[index];
-      const width = textWidth(buttonText(spec.label, { compact: spec.compact }));
-      const column = cursor - width;
-      controlButtons[WINDOW_CONTROL_SPECS.length - index - 1] = { ...spec, rect: { column, row, width, height: 1 } };
-      leftmostControlColumn = column;
-      cursor = column - 1;
-    }
-    buttons = controlButtons;
-  }
-  const configWidth = textWidth(buttonText(configLabel));
-  const configColumn = leftmostControlColumn - configWidth - 1;
-  const titleEnd = options.rect.column + textWidth(options.title) + 3;
-  if (options.showConfig && configColumn > titleEnd) {
-    const configButton = {
-      kind: "config",
-      label: configLabel,
-      tone: "default",
-      compact: false,
-      rect: { column: configColumn, row, width: configWidth, height: 1 }
-    };
-    buttons = hasWindowControls ? [configButton, ...buttons] : [configButton];
-  }
-  return {
-    buttons,
-    hasWindowControls
-  };
-}
-
-// src/app/workbench_text.ts
-function maxTextWidth(values) {
-  let max2 = 0;
-  for (let index = 0; index < values.length; index += 1) {
-    max2 = Math.max(max2, textWidth(values[index]));
-  }
-  return max2;
-}
-
-// src/app/workbench_workspace.ts
-function defaultWorkbenchMinimizedState(panelIds2, minimized2 = {}) {
-  const state = {};
-  for (const id2 of panelIds2) {
-    state[id2] = Boolean(minimized2[id2]);
-  }
-  return state;
-}
-function normalizeWorkbenchPanelWorkspaceState(value, options) {
-  const panelSet = new Set(options.panelIds);
-  const isPanelId = (candidate) => typeof candidate === "string" && panelSet.has(candidate);
-  const active2 = isPanelId(value?.active) ? value.active : options.defaultActive;
-  const maximized2 = value?.maximized === null || isPanelId(value?.maximized) ? value.maximized ?? null : void 0;
-  const minimized2 = defaultWorkbenchMinimizedState(options.panelIds, value?.minimized ?? {});
-  if (active2) minimized2[active2] = false;
-  if (maximized2) minimized2[maximized2] = false;
-  const minDensity = options.minTileDensity ?? -3;
-  const maxDensity = options.maxTileDensity ?? 3;
-  const tileDensity2 = Number.isFinite(value?.tileDensity) ? Math.max(minDensity, Math.min(maxDensity, Math.floor(value.tileDensity))) : void 0;
-  return { active: active2, maximized: maximized2, minimized: minimized2, tileDensity: tileDensity2 };
-}
-
-// src/runtime/terminal_capabilities.ts
-var TERMINAL_CAPABILITY_METADATA = {
-  interactive: {
-    label: "Interactive TTY",
-    description: "Stdout is attached to an interactive terminal."
-  },
-  unicode: {
-    label: "Unicode",
-    description: "Terminal environment is suitable for box drawing, glyphs, and wide text."
-  },
-  hyperlinks: {
-    label: "OSC 8 Hyperlinks",
-    description: "Terminal is likely to support clickable OSC 8 hyperlinks."
-  },
-  mouse: {
-    label: "Mouse Input",
-    description: "Terminal can report mouse presses or scroll events."
-  },
-  sgrMouse: {
-    label: "SGR Mouse",
-    description: "Terminal can report extended SGR mouse coordinates."
-  },
-  bracketedPaste: {
-    label: "Bracketed Paste",
-    description: "Terminal can distinguish pasted text from typed keys."
-  },
-  focusEvents: {
-    label: "Focus Events",
-    description: "Terminal can report focus-in and focus-out transitions."
-  },
-  alternateScreen: {
-    label: "Alternate Screen",
-    description: "Terminal can enter a full-screen app buffer."
-  },
-  cursorShape: {
-    label: "Cursor Shape",
-    description: "Terminal can change cursor style for modes such as insert or normal."
-  }
-};
-var TERMINAL_CAPABILITY_IDS = Object.keys(TERMINAL_CAPABILITY_METADATA);
-
 // src/runtime/terminal_workspace_layout.ts
 function terminalWorkspacePaneRects(layout, bounds, options = {}) {
   const normalizedBounds = normalizeRect3(bounds);
@@ -13766,6 +13499,338 @@ function firstTerminalWorkspacePaneRef2(node) {
   if (node.kind === "pane") return node;
   return firstTerminalWorkspacePaneRef2(node.first) ?? firstTerminalWorkspacePaneRef2(node.second);
 }
+
+// src/app/workbench_terminal.ts
+var WORKBENCH_TERMINAL_TOOLBAR_ACTIONS = [
+  "new",
+  "previous",
+  "next",
+  "close",
+  "splitRow",
+  "splitColumn",
+  "zoomPane",
+  "closePane",
+  "start",
+  "stop",
+  "restart",
+  "clear",
+  "raw",
+  "copy",
+  "search",
+  "previousMatch",
+  "nextMatch",
+  "top",
+  "bottom"
+];
+function workbenchTerminalSessionTabsInto(target, sessions, activeId, rect, options = {}) {
+  target.length = 0;
+  if (rect.width <= 0 || rect.height <= 0) return target;
+  const minWidth = Math.max(1, Math.floor(options.minWidth ?? 4));
+  const maxWidth = Math.max(minWidth, Math.floor(options.maxWidth ?? 22));
+  let column = rect.column;
+  const endColumn = rect.column + rect.width;
+  for (let index = 0; index < sessions.length && column < endColumn; index += 1) {
+    const session = sessions[index];
+    const active2 = session.id === activeId;
+    const status = session.running ? "*" : session.status?.[0]?.toUpperCase() ?? "?";
+    const available = endColumn - column;
+    const width = Math.max(
+      1,
+      Math.min(available, Math.max(minWidth, Math.min(maxWidth, textWidth(session.title) + 6)))
+    );
+    const label = fitCellText(buttonText(`${status} ${session.title}`), width);
+    target.push({
+      id: session.id,
+      label,
+      column,
+      row: rect.row,
+      width: textWidth(label),
+      active: active2
+    });
+    column += width + 1;
+  }
+  return target;
+}
+function workbenchTerminalToolbarItemsInto(target, state, options = {}) {
+  const actions = options.actions ?? WORKBENCH_TERMINAL_TOOLBAR_ACTIONS;
+  const hasMatches = (state.searchMatchCount ?? 0) > 0;
+  const scrollDisabled = (state.scrollbackTotalRows ?? 0) <= (state.scrollbackViewportRows ?? 0);
+  let written = 0;
+  for (let index = 0; index < actions.length; index += 1) {
+    const action = actions[index];
+    const item = workbenchTerminalToolbarItemForAction(target[written], action);
+    if (action === "previous" || action === "next") {
+      item.disabled = state.sessionCount < 2;
+    } else if (action === "close") {
+      item.disabled = state.activeId === void 0 || state.sessionCount <= 1;
+    } else if (action === "zoomPane") {
+      item.active = state.zoomedPaneId !== void 0;
+    } else if (action === "closePane") {
+      item.disabled = (state.paneCount ?? 1) < 2;
+    } else if (action === "start") {
+      item.disabled = state.activeId === void 0 || state.shellRunning === true || state.shellStarting === true;
+    } else if (action === "stop") {
+      item.disabled = state.shellRunning !== true;
+    } else if (action === "restart") {
+      item.disabled = state.activeId === void 0;
+    } else if (action === "raw") {
+      item.active = state.inputMode === "raw";
+      item.disabled = state.shellRunning !== true;
+    } else if (action === "copy") {
+      item.active = state.copyMode === true;
+    } else if (action === "search") {
+      item.active = !!state.searchQuery;
+      item.disabled = (state.scrollbackTotalRows ?? 0) <= 0;
+    } else if (action === "previousMatch" || action === "nextMatch") {
+      item.disabled = !hasMatches;
+    } else if (action === "top" || action === "bottom") {
+      item.disabled = scrollDisabled;
+    }
+    target[written] = item;
+    written += 1;
+  }
+  target.length = written;
+  return target;
+}
+function workbenchTerminalPaneProjectionsInto(target, layout, bounds, options = {}) {
+  const entries = terminalWorkspacePaneRects2(layout, bounds, {
+    gap: options.gap,
+    respectZoom: options.respectZoom
+  });
+  let written = 0;
+  if (entries.length === 0) {
+    if (bounds.width > 0 && bounds.height > 0) {
+      writeTerminalPaneProjection(target, written, void 0, bounds, true, options.fallbackSessionId, void 0);
+      written += 1;
+    }
+  } else {
+    for (let index = 0; index < entries.length; index += 1) {
+      const entry = entries[index];
+      const sessionId = entry.pane.sessionId;
+      writeTerminalPaneProjection(
+        target,
+        written,
+        entry,
+        entry.rect,
+        entry.active,
+        sessionId,
+        entry.pane.title ?? options.titleForSession?.(sessionId) ?? sessionId
+      );
+      written += 1;
+    }
+  }
+  target.length = written;
+  return target;
+}
+function workbenchTerminalToolbarItemForAction(target, action) {
+  const item = target ?? { label: "", action };
+  item.action = action;
+  item.disabled = false;
+  item.active = false;
+  item.tone = void 0;
+  if (action === "new") {
+    item.label = "New";
+    item.tone = "success";
+  } else if (action === "previous") {
+    item.label = "Prev";
+    item.tone = "muted";
+  } else if (action === "next") {
+    item.label = "Next";
+    item.tone = "muted";
+  } else if (action === "close") {
+    item.label = "Close";
+    item.tone = "danger";
+  } else if (action === "splitRow") {
+    item.label = "Split H";
+  } else if (action === "splitColumn") {
+    item.label = "Split V";
+  } else if (action === "zoomPane") {
+    item.label = "Zoom";
+  } else if (action === "closePane") {
+    item.label = "Close Pane";
+    item.tone = "danger";
+  } else if (action === "start") {
+    item.label = "Start";
+  } else if (action === "stop") {
+    item.label = "Stop";
+    item.tone = "danger";
+  } else if (action === "restart") {
+    item.label = "Restart";
+    item.tone = "warning";
+  } else if (action === "clear") {
+    item.label = "Clear";
+    item.tone = "muted";
+  } else if (action === "raw") {
+    item.label = "Raw";
+  } else if (action === "copy") {
+    item.label = "Copy";
+  } else if (action === "search") {
+    item.label = "Search";
+  } else if (action === "previousMatch") {
+    item.label = "Prev Hit";
+  } else if (action === "nextMatch") {
+    item.label = "Next Hit";
+  } else if (action === "top") {
+    item.label = "Top";
+  } else {
+    item.label = "Bottom";
+  }
+  return item;
+}
+function writeTerminalPaneProjection(target, index, pane, rect, active2, sessionId, title) {
+  const projection = target[index] ?? {
+    rect: { column: 0, row: 0, width: 0, height: 0 },
+    contentRect: { column: 0, row: 0, width: 0, height: 0 },
+    active: false,
+    zoomed: false,
+    titleVisible: false,
+    title: ""
+  };
+  projection.pane = pane;
+  projection.paneId = pane?.pane.id;
+  projection.sessionId = sessionId;
+  projection.active = active2;
+  projection.zoomed = pane?.zoomed ?? false;
+  projection.titleVisible = pane !== void 0 && rect.height > 2;
+  projection.title = projection.titleVisible ? `${active2 ? ">" : " "} ${title ?? sessionId ?? ""}` : "";
+  setRect(projection.rect, rect);
+  if (projection.titleVisible) {
+    setRect(projection.contentRect, {
+      column: rect.column,
+      row: rect.row + 1,
+      width: rect.width,
+      height: rect.height - 1
+    });
+  } else {
+    setRect(projection.contentRect, rect);
+  }
+  target[index] = projection;
+}
+function setRect(target, source) {
+  target.column = source.column;
+  target.row = source.row;
+  target.width = source.width;
+  target.height = source.height;
+}
+
+// src/app/workbench_titlebar.ts
+var WINDOW_CONTROL_SPECS = [
+  { kind: "close", label: "x", tone: "danger", compact: true },
+  { kind: "restore", label: "\u21BA", tone: "muted", compact: true },
+  { kind: "maximize", label: "\u25A1", tone: "success", compact: true },
+  { kind: "minimize", label: "-", tone: "warning", compact: true }
+];
+function layoutWorkbenchTitlebar(options) {
+  const controlsMinWidth = options.controlsMinWidth ?? 22;
+  const configLabel = options.configLabel ?? "config";
+  let buttons = [];
+  const row = options.rect.row;
+  const rightBorderColumn = options.rect.column + options.rect.width - 1;
+  const hasWindowControls = options.rect.width >= controlsMinWidth;
+  let leftmostControlColumn = rightBorderColumn;
+  if (hasWindowControls) {
+    const controlButtons = new Array(WINDOW_CONTROL_SPECS.length);
+    let cursor = rightBorderColumn;
+    for (let index = 0; index < WINDOW_CONTROL_SPECS.length; index += 1) {
+      const spec = WINDOW_CONTROL_SPECS[index];
+      const width = textWidth(buttonText(spec.label, { compact: spec.compact }));
+      const column = cursor - width;
+      controlButtons[WINDOW_CONTROL_SPECS.length - index - 1] = { ...spec, rect: { column, row, width, height: 1 } };
+      leftmostControlColumn = column;
+      cursor = column - 1;
+    }
+    buttons = controlButtons;
+  }
+  const configWidth = textWidth(buttonText(configLabel));
+  const configColumn = leftmostControlColumn - configWidth - 1;
+  const titleEnd = options.rect.column + textWidth(options.title) + 3;
+  if (options.showConfig && configColumn > titleEnd) {
+    const configButton = {
+      kind: "config",
+      label: configLabel,
+      tone: "default",
+      compact: false,
+      rect: { column: configColumn, row, width: configWidth, height: 1 }
+    };
+    buttons = hasWindowControls ? [configButton, ...buttons] : [configButton];
+  }
+  return {
+    buttons,
+    hasWindowControls
+  };
+}
+
+// src/app/workbench_text.ts
+function maxTextWidth(values) {
+  let max2 = 0;
+  for (let index = 0; index < values.length; index += 1) {
+    max2 = Math.max(max2, textWidth(values[index]));
+  }
+  return max2;
+}
+
+// src/app/workbench_workspace.ts
+function defaultWorkbenchMinimizedState(panelIds2, minimized2 = {}) {
+  const state = {};
+  for (const id2 of panelIds2) {
+    state[id2] = Boolean(minimized2[id2]);
+  }
+  return state;
+}
+function normalizeWorkbenchPanelWorkspaceState(value, options) {
+  const panelSet = new Set(options.panelIds);
+  const isPanelId = (candidate) => typeof candidate === "string" && panelSet.has(candidate);
+  const active2 = isPanelId(value?.active) ? value.active : options.defaultActive;
+  const maximized2 = value?.maximized === null || isPanelId(value?.maximized) ? value.maximized ?? null : void 0;
+  const minimized2 = defaultWorkbenchMinimizedState(options.panelIds, value?.minimized ?? {});
+  if (active2) minimized2[active2] = false;
+  if (maximized2) minimized2[maximized2] = false;
+  const minDensity = options.minTileDensity ?? -3;
+  const maxDensity = options.maxTileDensity ?? 3;
+  const tileDensity2 = Number.isFinite(value?.tileDensity) ? Math.max(minDensity, Math.min(maxDensity, Math.floor(value.tileDensity))) : void 0;
+  return { active: active2, maximized: maximized2, minimized: minimized2, tileDensity: tileDensity2 };
+}
+
+// src/runtime/terminal_capabilities.ts
+var TERMINAL_CAPABILITY_METADATA = {
+  interactive: {
+    label: "Interactive TTY",
+    description: "Stdout is attached to an interactive terminal."
+  },
+  unicode: {
+    label: "Unicode",
+    description: "Terminal environment is suitable for box drawing, glyphs, and wide text."
+  },
+  hyperlinks: {
+    label: "OSC 8 Hyperlinks",
+    description: "Terminal is likely to support clickable OSC 8 hyperlinks."
+  },
+  mouse: {
+    label: "Mouse Input",
+    description: "Terminal can report mouse presses or scroll events."
+  },
+  sgrMouse: {
+    label: "SGR Mouse",
+    description: "Terminal can report extended SGR mouse coordinates."
+  },
+  bracketedPaste: {
+    label: "Bracketed Paste",
+    description: "Terminal can distinguish pasted text from typed keys."
+  },
+  focusEvents: {
+    label: "Focus Events",
+    description: "Terminal can report focus-in and focus-out transitions."
+  },
+  alternateScreen: {
+    label: "Alternate Screen",
+    description: "Terminal can enter a full-screen app buffer."
+  },
+  cursorShape: {
+    label: "Cursor Shape",
+    description: "Terminal can change cursor style for modes such as insert or normal."
+  }
+};
+var TERMINAL_CAPABILITY_IDS = Object.keys(TERMINAL_CAPABILITY_METADATA);
 
 // src/runtime/terminal_session.ts
 var ENCODER = new TextEncoder();
@@ -14887,7 +14952,7 @@ webTerminalWorkspace.layout.subscribe(persistWebWorkspaceState);
 var webTerminalScreens = /* @__PURE__ */ new Map();
 var webTerminalScrollbacks = /* @__PURE__ */ new Map();
 var webTerminalScreenKeys = /* @__PURE__ */ new Map();
-var webTerminalPaneRects = [];
+var webTerminalPaneProjections = [];
 var hitTargets = new HitTargetStack();
 var screenRows = [];
 var workspaceVirtualRows = [];
@@ -15700,42 +15765,51 @@ function renderTerminalSessionTabs(frame, rect) {
 }
 function renderWebTerminalPanes(frame, rect, workspace = webTerminalWorkspace.inspect()) {
   if (rect.width <= 0 || rect.height <= 0) return;
-  webTerminalPaneRects.length = 0;
-  for (const entry of terminalWorkspacePaneRects2(workspace.layout, rect, { gap: 1 })) {
-    webTerminalPaneRects.push(entry);
-  }
-  if (webTerminalPaneRects.length === 0) {
-    renderWebTerminalPane(frame, rect, workspace.activeId, void 0, true);
-    return;
-  }
-  for (const entry of webTerminalPaneRects) {
-    renderWebTerminalPane(frame, entry.rect, entry.pane.sessionId, entry, entry.active);
+  const projections = workbenchTerminalPaneProjectionsInto(
+    webTerminalPaneProjections,
+    workspace.layout,
+    rect,
+    {
+      gap: 1,
+      fallbackSessionId: workspace.activeId,
+      titleForSession: (sessionId) => workspace.sessions.find((entry) => entry.id === sessionId)?.title
+    }
+  );
+  for (const projection of projections) {
+    renderWebTerminalPane(frame, projection);
   }
 }
-function renderWebTerminalPane(frame, rect, sessionId, pane, activePane) {
+function renderWebTerminalPane(frame, projection) {
+  const rect = projection.rect;
   if (rect.width <= 0 || rect.height <= 0) return;
   const t = theme();
+  const activePane = projection.active;
   fillRect(frame, rect, activePane ? t.background : t.surface);
-  let content = rect;
-  if (pane && rect.height > 2) {
-    const session = webTerminalWorkspace.inspect().sessions.find((entry) => entry.id === pane.pane.sessionId);
-    const title = `${activePane ? ">" : " "} ${pane.pane.title ?? session?.title ?? pane.pane.sessionId}`;
+  const content = projection.contentRect;
+  if (projection.titleVisible) {
     const bg = activePane ? t.accentDeep : t.panelSoft;
     write(
       frame,
       rect.row,
       rect.column,
-      paint(fit(title, rect.width), activePane ? contrastText(bg, t.background, t.text) : t.soft, bg, activePane)
+      paint(
+        fit(projection.title, rect.width),
+        activePane ? contrastText(bg, t.background, t.text) : t.soft,
+        bg,
+        activePane
+      )
     );
-    hitTargets.add({ column: rect.column, row: rect.row, width: rect.width, height: 1 }, {
-      type: "terminalPane",
-      id: pane.pane.id
-    });
-    content = { column: rect.column, row: rect.row + 1, width: rect.width, height: rect.height - 1 };
+    if (projection.paneId) {
+      hitTargets.add({ column: rect.column, row: rect.row, width: rect.width, height: 1 }, {
+        type: "terminalPane",
+        id: projection.paneId
+      });
+    }
   }
+  const sessionId = projection.sessionId;
   const screen = syncWebTerminalScreen(sessionId, content.width, content.height);
   const scrollback = syncWebTerminalScrollback(sessionId, screen, content.height);
-  hitTargets.add(content, { type: "terminalContent", sessionId, paneId: pane?.pane.id });
+  hitTargets.add(content, { type: "terminalContent", sessionId, paneId: projection.paneId });
   const inspection = scrollback.inspect();
   const rows2 = inspection.mode === "copy" ? inspection.visibleRows : screen.textRows();
   const selection = inspection.selection;

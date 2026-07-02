@@ -14,6 +14,7 @@ import type {
 import {
   createWorkbenchShellSession,
   resolveWorkbenchShellBackend,
+  workbenchTerminalPaneProjectionsInto,
   workbenchTerminalSessionTabsInto,
   type WorkbenchTerminalToolbarAction,
   workbenchTerminalToolbarItemsInto,
@@ -109,6 +110,61 @@ Deno.test("workbenchTerminalSessionTabsInto projects clipped selectable tabs", (
   assertEquals(tabs[0]?.label, "[ * Shell One ]");
   assertEquals(tabs[1]?.label.startsWith("[ I Very"), true);
   assertEquals(tabs.every((tab) => tab.column + tab.width <= 32), true);
+});
+
+Deno.test("workbenchTerminalPaneProjectionsInto projects title rows and content rectangles", () => {
+  const panes = workbenchTerminalPaneProjectionsInto(
+    [],
+    {
+      root: {
+        kind: "pane",
+        id: "pane-1",
+        sessionId: "shell-1",
+        title: "One",
+        minColumns: 10,
+        minRows: 4,
+      },
+      activePaneId: "pane-1",
+    },
+    { column: 2, row: 3, width: 40, height: 8 },
+  );
+
+  assertEquals(panes.length, 1);
+  assertEquals(panes[0]?.paneId, "pane-1");
+  assertEquals(panes[0]?.sessionId, "shell-1");
+  assertEquals(panes[0]?.active, true);
+  assertEquals(panes[0]?.titleVisible, true);
+  assertEquals(panes[0]?.title, "> One");
+  assertEquals(panes[0]?.rect, { column: 2, row: 3, width: 40, height: 8 });
+  assertEquals(panes[0]?.contentRect, { column: 2, row: 4, width: 40, height: 7 });
+});
+
+Deno.test("workbenchTerminalPaneProjectionsInto supports fallback panes and caller-owned reuse", () => {
+  const target = workbenchTerminalPaneProjectionsInto(
+    [],
+    {},
+    { column: 0, row: 1, width: 20, height: 3 },
+    { fallbackSessionId: "shell-a" },
+  );
+  const first = target[0];
+
+  assertEquals(target.length, 1);
+  assertEquals(first?.paneId, undefined);
+  assertEquals(first?.sessionId, "shell-a");
+  assertEquals(first?.titleVisible, false);
+  assertEquals(first?.contentRect, { column: 0, row: 1, width: 20, height: 3 });
+
+  workbenchTerminalPaneProjectionsInto(
+    target,
+    {},
+    { column: 1, row: 2, width: 10, height: 2 },
+    { fallbackSessionId: "shell-b" },
+  );
+
+  assertEquals(target.length, 1);
+  assertEquals(target[0] === first, true);
+  assertEquals(target[0]?.sessionId, "shell-b");
+  assertEquals(target[0]?.contentRect, { column: 1, row: 2, width: 10, height: 2 });
 });
 
 Deno.test("workbenchTerminalToolbarItemsInto projects console shell button state", () => {

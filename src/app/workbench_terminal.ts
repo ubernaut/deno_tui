@@ -2,6 +2,12 @@
 import { createProcessTerminalBackend, type TerminalBackend } from "../runtime/terminal_backend.ts";
 import { createSigmaPtyTerminalBackend } from "../runtime/pty_backend.ts";
 import { TerminalShellController, type TerminalShellControllerOptions } from "../runtime/terminal_shell.ts";
+import {
+  type TerminalWorkspaceLayoutState,
+  type TerminalWorkspacePaneRect,
+  type TerminalWorkspacePaneRectOptions,
+  terminalWorkspacePaneRects,
+} from "../runtime/terminal_workspace.ts";
 import type { Rectangle } from "../types.ts";
 import { textWidth } from "../utils/strings.ts";
 import { buttonText, fitCellText } from "./workbench_frame.ts";
@@ -100,6 +106,25 @@ export interface WorkbenchTerminalToolbarState {
 /** Options for projecting a terminal toolbar action list. */
 export interface WorkbenchTerminalToolbarItemOptions {
   actions?: readonly WorkbenchTerminalToolbarAction[];
+}
+
+/** Projected pane frame metadata shared by terminal and browser workbench shell renderers. */
+export interface WorkbenchTerminalPaneProjection {
+  pane?: TerminalWorkspacePaneRect;
+  paneId?: string;
+  sessionId?: string;
+  rect: Rectangle;
+  contentRect: Rectangle;
+  active: boolean;
+  zoomed: boolean;
+  titleVisible: boolean;
+  title: string;
+}
+
+/** Options for projecting terminal workspace panes into render-ready frame metadata. */
+export interface WorkbenchTerminalPaneProjectionOptions extends TerminalWorkspacePaneRectOptions {
+  fallbackSessionId?: string;
+  titleForSession?: (sessionId: string) => string | undefined;
 }
 
 /** Default Workbench terminal toolbar action ordering for full console shell panes. */
@@ -248,6 +273,43 @@ export function workbenchTerminalToolbarItemsInto(
   return target;
 }
 
+/** Projects a terminal workspace layout into pane frames with content rectangles and optional title rows. */
+export function workbenchTerminalPaneProjectionsInto(
+  target: WorkbenchTerminalPaneProjection[],
+  layout: TerminalWorkspaceLayoutState,
+  bounds: Rectangle,
+  options: WorkbenchTerminalPaneProjectionOptions = {},
+): WorkbenchTerminalPaneProjection[] {
+  const entries = terminalWorkspacePaneRects(layout, bounds, {
+    gap: options.gap,
+    respectZoom: options.respectZoom,
+  });
+  let written = 0;
+  if (entries.length === 0) {
+    if (bounds.width > 0 && bounds.height > 0) {
+      writeTerminalPaneProjection(target, written, undefined, bounds, true, options.fallbackSessionId, undefined);
+      written += 1;
+    }
+  } else {
+    for (let index = 0; index < entries.length; index += 1) {
+      const entry = entries[index]!;
+      const sessionId = entry.pane.sessionId;
+      writeTerminalPaneProjection(
+        target,
+        written,
+        entry,
+        entry.rect,
+        entry.active,
+        sessionId,
+        entry.pane.title ?? options.titleForSession?.(sessionId) ?? sessionId,
+      );
+      written += 1;
+    }
+  }
+  target.length = written;
+  return target;
+}
+
 function workbenchTerminalToolbarItemForAction(
   target: WorkbenchButtonRowItem<WorkbenchTerminalToolbarAction> | undefined,
   action: WorkbenchTerminalToolbarAction,
@@ -305,4 +367,49 @@ function workbenchTerminalToolbarItemForAction(
     item.label = "Bottom";
   }
   return item;
+}
+
+function writeTerminalPaneProjection(
+  target: WorkbenchTerminalPaneProjection[],
+  index: number,
+  pane: TerminalWorkspacePaneRect | undefined,
+  rect: Rectangle,
+  active: boolean,
+  sessionId: string | undefined,
+  title: string | undefined,
+): void {
+  const projection = target[index] ?? {
+    rect: { column: 0, row: 0, width: 0, height: 0 },
+    contentRect: { column: 0, row: 0, width: 0, height: 0 },
+    active: false,
+    zoomed: false,
+    titleVisible: false,
+    title: "",
+  };
+  projection.pane = pane;
+  projection.paneId = pane?.pane.id;
+  projection.sessionId = sessionId;
+  projection.active = active;
+  projection.zoomed = pane?.zoomed ?? false;
+  projection.titleVisible = pane !== undefined && rect.height > 2;
+  projection.title = projection.titleVisible ? `${active ? ">" : " "} ${title ?? sessionId ?? ""}` : "";
+  setRect(projection.rect, rect);
+  if (projection.titleVisible) {
+    setRect(projection.contentRect, {
+      column: rect.column,
+      row: rect.row + 1,
+      width: rect.width,
+      height: rect.height - 1,
+    });
+  } else {
+    setRect(projection.contentRect, rect);
+  }
+  target[index] = projection;
+}
+
+function setRect(target: Rectangle, source: Rectangle): void {
+  target.column = source.column;
+  target.row = source.row;
+  target.width = source.width;
+  target.height = source.height;
 }

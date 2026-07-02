@@ -65,8 +65,6 @@ import {
   subscribeWorkbenchDiagnosticLog,
   TerminalScreenController,
   TerminalScrollbackController,
-  type TerminalWorkspacePaneRect,
-  terminalWorkspacePaneRects,
   type TerminalWorkspaceSnapshot,
   TextBoxController,
   TextObject,
@@ -81,6 +79,8 @@ import {
   workbenchShelfEntriesInto,
   workbenchStatusLeft,
   workbenchTabEntriesInto,
+  type WorkbenchTerminalPaneProjection,
+  workbenchTerminalPaneProjectionsInto,
   type WorkbenchTerminalSessionTab,
   type WorkbenchTerminalSessionTabPlacement,
   workbenchTerminalSessionTabsInto,
@@ -243,7 +243,7 @@ webTerminalWorkspace.layout.subscribe(persistWebWorkspaceState);
 const webTerminalScreens = new Map<string, TerminalScreenController>();
 const webTerminalScrollbacks = new Map<string, TerminalScrollbackController>();
 const webTerminalScreenKeys = new Map<string, string>();
-const webTerminalPaneRects: TerminalWorkspacePaneRect[] = [];
+const webTerminalPaneProjections: WorkbenchTerminalPaneProjection[] = [];
 const hitTargets = new HitTargetStack<Hit>();
 const screenRows: string[] = [];
 const workspaceVirtualRows: string[] = [];
@@ -1115,49 +1115,55 @@ function renderWebTerminalPanes(
   workspace = webTerminalWorkspace.inspect(),
 ): void {
   if (rect.width <= 0 || rect.height <= 0) return;
-  webTerminalPaneRects.length = 0;
-  for (const entry of terminalWorkspacePaneRects(workspace.layout, rect, { gap: 1 })) {
-    webTerminalPaneRects.push(entry);
-  }
-  if (webTerminalPaneRects.length === 0) {
-    renderWebTerminalPane(frame, rect, workspace.activeId, undefined, true);
-    return;
-  }
-  for (const entry of webTerminalPaneRects) {
-    renderWebTerminalPane(frame, entry.rect, entry.pane.sessionId, entry, entry.active);
+  const projections = workbenchTerminalPaneProjectionsInto(
+    webTerminalPaneProjections,
+    workspace.layout,
+    rect,
+    {
+      gap: 1,
+      fallbackSessionId: workspace.activeId,
+      titleForSession: (sessionId) => workspace.sessions.find((entry) => entry.id === sessionId)?.title,
+    },
+  );
+  for (const projection of projections) {
+    renderWebTerminalPane(frame, projection);
   }
 }
 
 function renderWebTerminalPane(
   frame: string[],
-  rect: Rectangle,
-  sessionId: string | undefined,
-  pane: TerminalWorkspacePaneRect | undefined,
-  activePane: boolean,
+  projection: WorkbenchTerminalPaneProjection,
 ): void {
+  const rect = projection.rect;
   if (rect.width <= 0 || rect.height <= 0) return;
   const t = theme();
+  const activePane = projection.active;
   fillRect(frame, rect, activePane ? t.background : t.surface);
-  let content = rect;
-  if (pane && rect.height > 2) {
-    const session = webTerminalWorkspace.inspect().sessions.find((entry) => entry.id === pane.pane.sessionId);
-    const title = `${activePane ? ">" : " "} ${pane.pane.title ?? session?.title ?? pane.pane.sessionId}`;
+  const content = projection.contentRect;
+  if (projection.titleVisible) {
     const bg = activePane ? t.accentDeep : t.panelSoft;
     write(
       frame,
       rect.row,
       rect.column,
-      paint(fit(title, rect.width), activePane ? contrastText(bg, t.background, t.text) : t.soft, bg, activePane),
+      paint(
+        fit(projection.title, rect.width),
+        activePane ? contrastText(bg, t.background, t.text) : t.soft,
+        bg,
+        activePane,
+      ),
     );
-    hitTargets.add({ column: rect.column, row: rect.row, width: rect.width, height: 1 }, {
-      type: "terminalPane",
-      id: pane.pane.id,
-    });
-    content = { column: rect.column, row: rect.row + 1, width: rect.width, height: rect.height - 1 };
+    if (projection.paneId) {
+      hitTargets.add({ column: rect.column, row: rect.row, width: rect.width, height: 1 }, {
+        type: "terminalPane",
+        id: projection.paneId,
+      });
+    }
   }
+  const sessionId = projection.sessionId;
   const screen = syncWebTerminalScreen(sessionId, content.width, content.height);
   const scrollback = syncWebTerminalScrollback(sessionId, screen, content.height);
-  hitTargets.add(content, { type: "terminalContent", sessionId, paneId: pane?.pane.id });
+  hitTargets.add(content, { type: "terminalContent", sessionId, paneId: projection.paneId });
   const inspection = scrollback.inspect();
   const rows = inspection.mode === "copy" ? inspection.visibleRows : screen.textRows();
   const selection = inspection.selection;

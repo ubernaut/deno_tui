@@ -115,6 +115,8 @@ Work:
         trimming duplicated terminal/web workspace layout math.
   - [x] Extracted shared terminal workspace toolbar action definitions and button-state projection into
         `workbench_terminal.ts`, so console and browser shell panes reuse one enablement/active-state contract.
+  - [x] Extracted shared terminal pane frame projection into `workbench_terminal.ts`, so console and browser shell panes
+        share workspace layout, title-row, content-rect, and active-pane geometry.
   - [x] Extracted shared active-window reveal tracking plus workspace viewport scroll sizing into `workbench_layout.ts`,
         leaving terminal and web adapters to call one scroll/update controller.
   - [x] Added reusable workbench row-buffer preparation helpers and migrated terminal/web workspace virtual frames off

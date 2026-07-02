@@ -115,7 +115,6 @@ import {
   terminalBackendKindLabel,
 } from "../src/runtime/terminal_status.ts";
 import { shellTerminalTemplate } from "../src/runtime/terminal_templates.ts";
-import { type TerminalWorkspacePaneRect, terminalWorkspacePaneRects } from "../src/runtime/terminal_workspace.ts";
 import { terminalCellStyle, terminalOutputLineStyle } from "../src/app/workbench_terminal_style.ts";
 import { Computed, Signal } from "../src/signals/mod.ts";
 import { probeCompatibleWebGPUDevice } from "../src/three_ascii/webgpu_compat.ts";
@@ -140,6 +139,8 @@ import {
 } from "../src/app/workbench_text.ts";
 import {
   resolveWorkbenchShellBackend,
+  type WorkbenchTerminalPaneProjection,
+  workbenchTerminalPaneProjectionsInto,
   type WorkbenchTerminalSessionTab,
   type WorkbenchTerminalSessionTabPlacement,
   workbenchTerminalSessionTabsInto,
@@ -314,7 +315,7 @@ const terminalShellButtonItems: WorkbenchButtonRowItem<TerminalShellAction>[] = 
 const terminalShellButtonPlacements: WorkbenchButtonRowPlacement<TerminalShellAction>[] = [];
 const terminalShellSessionTabSources: WorkbenchTerminalSessionTab[] = [];
 const terminalShellSessionTabPlacements: WorkbenchTerminalSessionTabPlacement[] = [];
-const terminalShellPaneRects: TerminalWorkspacePaneRect[] = [];
+const terminalShellPaneProjections: WorkbenchTerminalPaneProjection[] = [];
 const modalActionButtonItems: WorkbenchButtonRowItem<number>[] = [];
 const modalActionButtonPlacements: WorkbenchButtonRowPlacement<number>[] = [];
 const themes: ThemeSpec[] = createApiWorkbenchThemes();
@@ -2019,53 +2020,54 @@ function renderTerminalShell(frame: Frame, rect: Rectangle): void {
 
 function renderTerminalShellPanes(frame: Frame, rect: Rectangle, copyMode: boolean): void {
   if (rect.width <= 0 || rect.height <= 0) return;
-  const layout = terminalShell.inspect().workspace.layout;
-  terminalShellPaneRects.length = 0;
-  for (const entry of terminalWorkspacePaneRects(layout, rect, { gap: 1 })) {
-    terminalShellPaneRects.push(entry);
-  }
-  if (terminalShellPaneRects.length === 0) {
-    const shell = activeTerminalShell();
-    if (shell) renderTerminalShellPane(frame, rect, undefined, shell, copyMode, true);
-    return;
-  }
-  for (const entry of terminalShellPaneRects) {
-    const shell = terminalShell.shell(entry.pane.sessionId);
+  const workspace = terminalShell.inspect().workspace;
+  const projections = workbenchTerminalPaneProjectionsInto(
+    terminalShellPaneProjections,
+    workspace.layout,
+    rect,
+    {
+      gap: 1,
+      fallbackSessionId: workspace.activeId,
+      titleForSession: (sessionId) => workspace.sessions.find((entry) => entry.id === sessionId)?.title,
+    },
+  );
+  for (const projection of projections) {
+    const shell = projection.sessionId ? terminalShell.shell(projection.sessionId) : activeTerminalShell();
     if (!shell) continue;
-    renderTerminalShellPane(frame, entry.rect, entry, shell, copyMode && entry.active, entry.active);
+    renderTerminalShellPane(frame, projection, shell, copyMode && projection.active);
   }
 }
 
 function renderTerminalShellPane(
   frame: Frame,
-  rect: Rectangle,
-  pane: TerminalWorkspacePaneRect | undefined,
+  projection: WorkbenchTerminalPaneProjection,
   shell: TerminalShellController,
   copyMode: boolean,
-  active: boolean,
 ): void {
+  const rect = projection.rect;
   if (rect.width <= 0 || rect.height <= 0) return;
+  const active = projection.active;
   const t = theme();
   fillRect(frame, rect, active ? t.surface : t.background);
-  let content = rect;
-  if (pane && rect.height > 2) {
-    const title = `${active ? ">" : " "} ${pane.pane.title ?? shell.inspect().title ?? pane.pane.sessionId}`;
+  const content = projection.contentRect;
+  if (projection.titleVisible) {
     const bg = active ? t.accentDeep : t.panelSoft;
     write(
       frame,
       rect.row,
       rect.column,
-      paint(fit(title, rect.width), {
+      paint(fit(projection.title, rect.width), {
         fg: active ? contrastText(bg, t.background, t.text) : t.soft,
         bg,
         bold: active,
       }),
     );
-    addHit({ column: rect.column, row: rect.row, width: rect.width, height: 1 }, {
-      type: "terminalShellPane",
-      id: pane.pane.id,
-    });
-    content = { column: rect.column, row: rect.row + 1, width: rect.width, height: rect.height - 1 };
+    if (projection.paneId) {
+      addHit({ column: rect.column, row: rect.row, width: rect.width, height: 1 }, {
+        type: "terminalShellPane",
+        id: projection.paneId,
+      });
+    }
   }
   if (content.width <= 0 || content.height <= 0) return;
   shell.resize(content.width, content.height);
