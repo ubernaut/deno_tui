@@ -137,15 +137,23 @@ export class ComponentThemeBindingGroup {
   }
 
   inspect(): ComponentThemeBindingGroupInspection {
-    const bindings = [...this.#bindings.values()].map((binding) => ({
-      id: binding.id,
-      componentName: binding.componentName,
-      variant: bindingVariant(binding.variant),
-    }));
+    const bindings: ComponentThemeBindingInspection[] = [];
+    const components = new Set<string>();
+    const variants = new Set<string>();
+    for (const binding of this.#bindings.values()) {
+      const variant = bindingVariant(binding.variant);
+      components.add(binding.componentName);
+      variants.add(variant);
+      bindings.push({
+        id: binding.id,
+        componentName: binding.componentName,
+        variant,
+      });
+    }
     return {
       count: bindings.length,
-      components: [...new Set(bindings.map((binding) => binding.componentName))].sort(),
-      variants: [...new Set(bindings.map((binding) => binding.variant))].sort(),
+      components: [...components].sort(),
+      variants: [...variants].sort(),
       bindings,
     };
   }
