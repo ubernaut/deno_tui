@@ -155,6 +155,8 @@ Work:
         projections and spread composition during redraw.
   - [x] Added caller-owned visualization window row projection and migrated text visualization windows off body
         split/map/spread row composition in the API Workbench redraw path.
+  - [x] Reworked the API Workbench Three ASCII fallback renderer to use a static body table and caller-owned row buffer
+        instead of slice/map/spread composition.
 - [x] Replace duplicated theme/window/menu persistence code with a shared versioned serializer.
   - [x] Extracted shared workbench workspace normalization, panel-state normalization, upsert, rename, delete, lookup,
         and legacy window-entry expansion helpers into `src/app/workbench_workspace.ts`.
