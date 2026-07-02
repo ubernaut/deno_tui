@@ -22,12 +22,23 @@ export function visualizationWindowRows(
   option: WorkbenchVisualizationWindowOption,
   rendered: PanelRender,
 ): string[] {
-  return [
+  return visualizationWindowRowsInto([], option, rendered);
+}
+
+/** Builds visualization rows into caller-owned storage. */
+export function visualizationWindowRowsInto(
+  target: string[],
+  option: WorkbenchVisualizationWindowOption,
+  rendered: PanelRender,
+): string[] {
+  target.length = 0;
+  target.push(
     ` ${option.group.toUpperCase()} · ${rendered.title ?? option.label.toUpperCase()} `,
     rendered.alert ? `! ${rendered.alert}` : option.description,
-    ...rendered.body.split("\n"),
-    rendered.footer,
-  ];
+  );
+  appendBodyLines(target, rendered.body);
+  target.push(rendered.footer);
+  return target;
 }
 
 /** Computes scrollable text dimensions for a rendered visualization panel. */
@@ -37,14 +48,18 @@ export function visualizationTextContentSize(
   baseWidth: number,
   baseHeight: number,
 ): WorkbenchVisualizationContentSize {
-  const rows = visualizationWindowRows(option, rendered);
-  const scrollableRows = [
-    ...rendered.body.split("\n"),
-    rendered.footer,
-  ];
+  let rowCount = 3;
+  let width = Math.max(baseWidth, rendered.footer.trimEnd().length);
+  let start = 0;
+  for (let index = 0; index <= rendered.body.length; index += 1) {
+    if (index < rendered.body.length && rendered.body[index] !== "\n") continue;
+    width = Math.max(width, rendered.body.slice(start, index).trimEnd().length);
+    rowCount += 1;
+    start = index + 1;
+  }
   return {
-    width: Math.max(baseWidth, maxTrimmedTextWidth(scrollableRows)),
-    height: Math.max(baseHeight, rows.length),
+    width,
+    height: Math.max(baseHeight, rowCount),
   };
 }
 
@@ -64,3 +79,12 @@ export function threeRendererModeLabel(options: AsciiOptions): string {
 }
 
 export { compactSpaces, maxTrimmedTextWidth };
+
+function appendBodyLines(target: string[], body: string): void {
+  let start = 0;
+  for (let index = 0; index <= body.length; index += 1) {
+    if (index < body.length && body[index] !== "\n") continue;
+    target.push(body.slice(start, index));
+    start = index + 1;
+  }
+}

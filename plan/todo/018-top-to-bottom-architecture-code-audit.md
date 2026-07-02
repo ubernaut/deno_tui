@@ -153,6 +153,8 @@ Work:
         array on every frame.
   - [x] Reworked API Workbench inspector rows to reuse header/action buffers instead of chained slice/flatMap/map
         projections and spread composition during redraw.
+  - [x] Added caller-owned visualization window row projection and migrated text visualization windows off body
+        split/map/spread row composition in the API Workbench redraw path.
 - [x] Replace duplicated theme/window/menu persistence code with a shared versioned serializer.
   - [x] Extracted shared workbench workspace normalization, panel-state normalization, upsert, rename, delete, lookup,
         and legacy window-entry expansion helpers into `src/app/workbench_workspace.ts`.

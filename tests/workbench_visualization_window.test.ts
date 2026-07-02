@@ -8,6 +8,7 @@ import {
   visualizationTextContentSize,
   visualizationThreeStatusLine,
   visualizationWindowRows,
+  visualizationWindowRowsInto,
   type WorkbenchVisualizationWindowOption,
 } from "../app/workbench_visualization_window.ts";
 import type { PanelRender } from "../app/types.ts";
@@ -36,6 +37,20 @@ Deno.test("visualizationWindowRows assembles title description body and footer",
     "selected cpu-1",
   ]);
   assertEquals(visualizationWindowRows(option, { ...render, alert: "thermal warning" })[1], "! thermal warning");
+});
+
+Deno.test("visualizationWindowRowsInto reuses caller storage", () => {
+  const target = ["stale", "rows"];
+  const rows = visualizationWindowRowsInto(target, option, render);
+
+  assertEquals(rows, target);
+  assertEquals(rows, [
+    " MONITOR · Hex Grid ",
+    "core utilization topology",
+    "core 0  12%",
+    "core 1  95%      ",
+    "selected cpu-1",
+  ]);
 });
 
 Deno.test("visualizationTextContentSize expands to rendered text dimensions", () => {

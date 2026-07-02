@@ -168,7 +168,7 @@ import {
   threeRendererModeLabel,
   visualizationTextContentSize,
   visualizationThreeStatusLine,
-  visualizationWindowRows,
+  visualizationWindowRowsInto,
 } from "./workbench_visualization_window.ts";
 import {
   buildWorkspaceMenuEntries,
@@ -285,6 +285,8 @@ const dataTableRenderRows: RowStyle[] = [];
 const explorerRenderRows: RowStyle[] = [];
 const inspectorRenderRows: RowStyle[] = [];
 const inspectorActionTextRows: string[] = [];
+const visualizationTextRows: string[] = [];
+const visualizationRenderRows: RowStyle[] = [];
 const explorerKeys = new Set(["up", "down", "left", "right", "pageup", "pagedown", "home", "end", "space", "return"]);
 const htmlCssLayoutWindowOption: NewWindowOption = {
   id: HTML_CSS_LAYOUT_OPTION_ID,
@@ -1182,7 +1184,6 @@ function renderVisualizationWindow(frame: Frame, id: VisualizationWindowId, rect
   const context = buildVisualizationContext(visualizationId, rect, { windowId: id });
   const rendered = renderVisualization(context);
   const accent = accentColor(rendered.accent);
-  const lines = rendered.body.split("\n");
   const useThreeScene = Boolean(rendered.three && threeAsciiAvailable.peek() && rect.width >= 8 && rect.height >= 9);
   if (useThreeScene) {
     writeRows(frame, rect, [
@@ -1229,27 +1230,36 @@ function renderVisualizationWindow(frame: Frame, id: VisualizationWindowId, rect
     return;
   }
   hideVisualizationThreePanel(id);
-  writeRows(frame, rect, [
-    {
-      text: ` ${option.group.toUpperCase()} · ${rendered.title ?? option.label.toUpperCase()} `,
-      fg: contrastText(accent, t.background, t.text),
-      bg: accent,
-      bold: true,
-    },
-    {
-      text: rendered.alert ? `! ${rendered.alert}` : option.description,
-      fg: rendered.severity === "alarm" ? t.danger : rendered.severity === "warning" ? t.warn : t.soft,
-      bg: t.surface,
-      bold: rendered.severity !== "info",
-    },
-    ...lines.map((text, index) => ({
-      text,
-      fg: index % 3 === 0 ? accent : index % 3 === 1 ? t.text : t.soft,
-      bg: t.surface,
-      bold: index === 0,
-    })),
-    { text: rendered.footer, fg: t.muted, bg: t.panelSoft },
-  ]);
+  const rows = visualizationWindowRowsInto(visualizationTextRows, option, rendered);
+  visualizationRenderRows.length = rows.length;
+  for (let index = 0; index < rows.length; index += 1) {
+    if (index === 0) {
+      visualizationRenderRows[index] = {
+        text: rows[index]!,
+        fg: contrastText(accent, t.background, t.text),
+        bg: accent,
+        bold: true,
+      };
+    } else if (index === 1) {
+      visualizationRenderRows[index] = {
+        text: rows[index]!,
+        fg: rendered.severity === "alarm" ? t.danger : rendered.severity === "warning" ? t.warn : t.soft,
+        bg: t.surface,
+        bold: rendered.severity !== "info",
+      };
+    } else if (index === rows.length - 1) {
+      visualizationRenderRows[index] = { text: rows[index]!, fg: t.muted, bg: t.panelSoft };
+    } else {
+      const bodyIndex = index - 2;
+      visualizationRenderRows[index] = {
+        text: rows[index]!,
+        fg: bodyIndex % 3 === 0 ? accent : bodyIndex % 3 === 1 ? t.text : t.soft,
+        bg: t.surface,
+        bold: bodyIndex === 0,
+      };
+    }
+  }
+  writeRows(frame, rect, visualizationRenderRows);
   if (visualizationId === "cpu-hex-grid") {
     addCpuHexTileHits(id, rect, context);
   }
