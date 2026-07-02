@@ -477,6 +477,8 @@ Recommended routing:
   measured after explicit width resolution, so wrapped text, scroll extents, and panel bounds agree.
 - The CSS subset now includes `white-space`, `overflow-wrap`, and `word-wrap`, with solver-aware intrinsic text
   measurement for no-wrap and long-token wrapping behavior.
+- The selector subset now includes bounded structural pseudo-classes for common terminal list and toolbar styling:
+  `:first-child`, `:last-child`, `:only-child`, and `:nth-child(number|odd|even)`.
 - Intrinsic measurement cache keys now include the flow-affecting style fields used by that sizing path, including
   position, explicit/min/max dimensions, flex basis, and gap values.
 - The next high-value solver work is richer block/intrinsic text behavior, full Grid/Taffy parity, and either a Taffy

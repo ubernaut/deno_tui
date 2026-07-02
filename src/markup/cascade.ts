@@ -64,7 +64,9 @@ export function matchesCssSelector(
   function matchPart(partIndex: number, nodeIndex: number): boolean {
     if (nodeIndex < 0) return false;
     const part = parts[partIndex]!;
-    if (!matchesSimpleSelector(part.simple, chainNodeAt(ancestors, node, nodeIndex), nodeIndex === 0, states)) {
+    const current = chainNodeAt(ancestors, node, nodeIndex);
+    const parent = nodeIndex > 0 ? chainNodeAt(ancestors, node, nodeIndex - 1) : undefined;
+    if (!matchesSimpleSelector(part.simple, current, parent, nodeIndex === 0, states)) {
       return false;
     }
     if (partIndex === 0) return true;
@@ -123,7 +125,7 @@ function applyNode(
     next.style = applyMatchedRules(next.style, [{ declarations: inline, specificity: 1_000, order: 1_000_000 }]);
   }
 
-  const childAncestors = appendAncestor(ancestors, next);
+  const childAncestors = appendAncestor(ancestors, node);
   next.children = new Array<LayoutNode>(node.children.length);
   for (let index = 0; index < node.children.length; index += 1) {
     next.children[index] = applyNode(node.children[index]!, childAncestors, next.style, stylesheet, options);
@@ -160,6 +162,7 @@ function applyMatchedRules(style: ComputedLayoutStyle, matches: readonly Matched
 function matchesSimpleSelector(
   selector: string,
   node: LayoutNode,
+  parent: LayoutNode | undefined,
   isRoot: boolean,
   states: Record<string, readonly TuiCssNodeState[]>,
 ): boolean {
@@ -179,15 +182,60 @@ function matchesSimpleSelector(
     if (!(name in node.attributes)) return false;
     if (expected !== undefined && node.attributes[name] !== expected) return false;
   }
-  for (const pseudo of selector.matchAll(/:([A-Za-z_][\w-]*)/g)) {
+  for (const pseudo of selector.matchAll(/:([A-Za-z_][\w-]*)(?:\(([^)]*)\))?/g)) {
     const state = pseudo[1];
     if (state === "root") {
       if (!isRoot) return false;
-    } else if (!states[node.id]?.includes(state as TuiCssNodeState)) {
+      continue;
+    }
+    if (isStructuralPseudo(state)) {
+      if (!matchesStructuralPseudo(state, pseudo[2], node, parent)) return false;
+      continue;
+    }
+    if (!states[node.id]?.includes(state as TuiCssNodeState)) {
       return false;
     }
   }
   return true;
+}
+
+function isStructuralPseudo(pseudo: string | undefined): boolean {
+  return pseudo === "first-child" || pseudo === "last-child" || pseudo === "only-child" || pseudo === "nth-child";
+}
+
+function matchesStructuralPseudo(
+  pseudo: string | undefined,
+  argument: string | undefined,
+  node: LayoutNode,
+  parent: LayoutNode | undefined,
+): boolean {
+  if (!parent) return false;
+  const index = childIndex(parent, node);
+  if (index < 0) return false;
+  const position = index + 1;
+  const count = parent.children.length;
+  if (pseudo === "first-child") return position === 1;
+  if (pseudo === "last-child") return position === count;
+  if (pseudo === "only-child") return count === 1;
+  return matchesNthChild(argument, position);
+}
+
+function matchesNthChild(argument: string | undefined, position: number): boolean {
+  const normalized = argument?.trim().toLowerCase();
+  if (!normalized) return false;
+  if (normalized === "odd") return position % 2 === 1;
+  if (normalized === "even") return position % 2 === 0;
+  if (!/^\d+$/.test(normalized)) return false;
+  return position === Number.parseInt(normalized, 10);
+}
+
+function childIndex(parent: LayoutNode, node: LayoutNode): number {
+  for (let index = 0; index < parent.children.length; index += 1) {
+    const child = parent.children[index];
+    if (!child) continue;
+    if (child === node || child.id === node.id) return index;
+  }
+  return -1;
 }
 
 function normalizeAttributeSelectorValue(value: string | undefined): string | undefined {

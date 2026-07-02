@@ -143,6 +143,76 @@ Deno.test("applyCssCascade supports attribute selectors", () => {
   assertEquals(plain.style.width, { unit: "cell", value: 8 });
 });
 
+Deno.test("applyCssCascade supports bounded structural pseudo selectors", () => {
+  const document = parseTuiMarkup(`
+    <window id="main">
+      <button id="one">One</button>
+      <button id="two">Two</button>
+      <button id="three">Three</button>
+    </window>
+  `);
+  const stylesheet = parseCssStylesheet(`
+    button:first-child {
+      width: 8;
+    }
+
+    button:nth-child(even) {
+      background: #112233;
+    }
+
+    button:nth-child(3) {
+      color: #eeee00;
+    }
+
+    button:last-child {
+      height: 2;
+    }
+
+    button:nth-child(2n+1) {
+      border-width: 3;
+    }
+  `);
+
+  const styled = applyCssCascade(document.root, stylesheet);
+  const one = findLayoutNode(styled, "one")!;
+  const two = findLayoutNode(styled, "two")!;
+  const three = findLayoutNode(styled, "three")!;
+
+  assertEquals(matchesCssSelector("button:first-child", one, [styled]), true);
+  assertEquals(matchesCssSelector("button:last-child", three, [styled]), true);
+  assertEquals(matchesCssSelector("button:nth-child(even)", two, [styled]), true);
+  assertEquals(matchesCssSelector("button:nth-child(2n+1)", one, [styled]), false);
+  assertEquals(one.style.width, { unit: "cell", value: 8 });
+  assertEquals(two.style.backgroundColor, "#112233");
+  assertEquals(three.style.color, "#eeee00");
+  assertEquals(three.style.height, { unit: "cell", value: 2 });
+  assertEquals(one.style.border, { top: 0, right: 0, bottom: 0, left: 0 });
+});
+
+Deno.test("applyCssCascade supports only-child pseudo selector", () => {
+  const document = parseTuiMarkup(`
+    <window id="main">
+      <panel id="single"><button id="solo">Solo</button></panel>
+      <panel id="pair"><button id="left">Left</button><button id="right">Right</button></panel>
+    </window>
+  `);
+  const styled = applyCssCascade(
+    document.root,
+    parseCssStylesheet(`
+      button:only-child {
+        color: #00ff99;
+      }
+    `),
+  );
+  const single = findLayoutNode(styled, "single")!;
+  const pair = findLayoutNode(styled, "pair")!;
+
+  assertEquals(matchesCssSelector("button:only-child", findLayoutNode(styled, "solo")!, [styled, single]), true);
+  assertEquals(matchesCssSelector("button:only-child", findLayoutNode(styled, "left")!, [styled, pair]), false);
+  assertEquals(findLayoutNode(styled, "solo")!.style.color, "#00ff99");
+  assertEquals(findLayoutNode(styled, "left")!.style.color, undefined);
+});
+
 Deno.test("applyCssCascade parses flex flow shorthand into direction and wrapping", () => {
   const document = parseTuiMarkup(`
     <window id="main">
@@ -337,6 +407,8 @@ Deno.test("inspectTuiCssSupport reports the documented HTML/CSS subset", () => {
   assert(report.properties.includes("flex-flow"));
   assert(report.properties.includes("white-space"));
   assert(report.properties.includes("overflow-wrap"));
+  assert(report.selectors.includes(":first-child"));
+  assert(report.selectors.includes(":nth-child(number|odd|even)"));
   assert(report.mediaFeatures.includes("max-width"));
   assert(report.pseudoStates.includes("focus"));
   assert(report.hydratedWidgetTags.includes("radio-group"));
