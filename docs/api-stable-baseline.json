@@ -4126,6 +4126,34 @@
       "documented": true
     },
     {
+      "module": "src/app/workbench_terminal.ts",
+      "name": "WorkbenchTerminalSessionTab",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_terminal.ts",
+      "name": "WorkbenchTerminalSessionTabOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_terminal.ts",
+      "name": "WorkbenchTerminalSessionTabPlacement",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_terminal.ts",
+      "name": "workbenchTerminalSessionTabsInto",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
       "module": "src/app/workbench_text.ts",
       "name": "compactSpaces",
       "kind": "function",

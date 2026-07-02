@@ -8,8 +8,8 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 - Entrypoints: 9
 - Module visits: 527
 - Re-export declarations: 518
-- Exported symbols: 4747
-- Documented symbols: 4747
+- Exported symbols: 4755
+- Documented symbols: 4755
 - Documentation coverage: 100.00%
 - Duplicate symbol groups: 0
 - Missing targets: 0
@@ -18,8 +18,8 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 
 | Specifier       | Path                           | Runtime  | Stability    | Modules | Symbols |    Docs |
 | --------------- | ------------------------------ | -------- | ------------ | ------: | ------: | ------: |
-| `.`             | `./mod.ts`                     | terminal | stable       |     238 |    2024 | 100.00% |
-| `./web`         | `./mod.web.ts`                 | browser  | beta         |     216 |    1882 | 100.00% |
+| `.`             | `./mod.ts`                     | terminal | stable       |     238 |    2028 | 100.00% |
+| `./web`         | `./mod.web.ts`                 | browser  | beta         |     216 |    1886 | 100.00% |
 | `./remote`      | `./mod.remote.ts`              | remote   | experimental |       4 |      38 | 100.00% |
 | `./three-ascii` | `./mod.three_ascii.ts`         | shared   | experimental |       8 |      54 | 100.00% |
 | `./theme`       | `./mod.theme.ts`               | shared   | beta         |      10 |     198 | 100.00% |
@@ -41,8 +41,8 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 - Entrypoint: `mod.ts`
 - Modules: 238
 - Re-export declarations: 237
-- Exported symbols: 2024
-- Documented symbols: 2024
+- Exported symbols: 2028
+- Documented symbols: 2028
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -124,7 +124,7 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 | [`src/app/workbench_overlay.ts`](#src-app-workbench-overlay-ts)                         |          0 |       5 |          5 |
 | [`src/app/workbench_shelf.ts`](#src-app-workbench-shelf-ts)                             |          0 |      11 |         11 |
 | [`src/app/workbench_status.ts`](#src-app-workbench-status-ts)                           |          0 |       4 |          4 |
-| [`src/app/workbench_terminal.ts`](#src-app-workbench-terminal-ts)                       |          0 |       6 |          6 |
+| [`src/app/workbench_terminal.ts`](#src-app-workbench-terminal-ts)                       |          0 |      10 |         10 |
 | [`src/app/workbench_text.ts`](#src-app-workbench-text-ts)                               |          0 |       9 |          9 |
 | [`src/app/workbench_titlebar.ts`](#src-app-workbench-titlebar-ts)                       |          0 |       6 |          6 |
 | [`src/app/workbench_viewport.ts`](#src-app-workbench-viewport-ts)                       |          0 |       4 |          4 |
@@ -1348,6 +1348,10 @@ _No direct exported symbols._
 | `WorkbenchShellBackendResolverOptions` | interface | yes       | yes   |
 | `WorkbenchShellSession`                | interface | yes       | yes   |
 | `WorkbenchShellSessionOptions`         | interface | yes       | yes   |
+| `WorkbenchTerminalSessionTab`          | interface | yes       | yes   |
+| `WorkbenchTerminalSessionTabOptions`   | interface | yes       | yes   |
+| `WorkbenchTerminalSessionTabPlacement` | interface | yes       | yes   |
+| `workbenchTerminalSessionTabsInto`     | function  | no        | yes   |
 
 #### src/app/workbench_text.ts
 
@@ -3782,8 +3786,8 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 - Entrypoint: `mod.web.ts`
 - Modules: 216
 - Re-export declarations: 215
-- Exported symbols: 1882
-- Documented symbols: 1882
+- Exported symbols: 1886
+- Documented symbols: 1886
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -3865,7 +3869,7 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 | [`src/app/workbench_overlay.ts`](#src-app-workbench-overlay-ts)                   |          0 |       5 |          5 |
 | [`src/app/workbench_shelf.ts`](#src-app-workbench-shelf-ts)                       |          0 |      11 |         11 |
 | [`src/app/workbench_status.ts`](#src-app-workbench-status-ts)                     |          0 |       4 |          4 |
-| [`src/app/workbench_terminal.ts`](#src-app-workbench-terminal-ts)                 |          0 |       6 |          6 |
+| [`src/app/workbench_terminal.ts`](#src-app-workbench-terminal-ts)                 |          0 |      10 |         10 |
 | [`src/app/workbench_text.ts`](#src-app-workbench-text-ts)                         |          0 |       9 |          9 |
 | [`src/app/workbench_titlebar.ts`](#src-app-workbench-titlebar-ts)                 |          0 |       6 |          6 |
 | [`src/app/workbench_viewport.ts`](#src-app-workbench-viewport-ts)                 |          0 |       4 |          4 |
@@ -5085,6 +5089,10 @@ _No direct exported symbols._
 | `WorkbenchShellBackendResolverOptions` | interface | yes       | yes   |
 | `WorkbenchShellSession`                | interface | yes       | yes   |
 | `WorkbenchShellSessionOptions`         | interface | yes       | yes   |
+| `WorkbenchTerminalSessionTab`          | interface | yes       | yes   |
+| `WorkbenchTerminalSessionTabOptions`   | interface | yes       | yes   |
+| `WorkbenchTerminalSessionTabPlacement` | interface | yes       | yes   |
+| `workbenchTerminalSessionTabsInto`     | function  | no        | yes   |
 
 #### src/app/workbench_text.ts
 

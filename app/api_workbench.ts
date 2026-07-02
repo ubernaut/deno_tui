@@ -137,7 +137,12 @@ import {
   visibleMenuSliceInto,
   wrapPlainText,
 } from "../src/app/workbench_text.ts";
-import { resolveWorkbenchShellBackend } from "../src/app/workbench_terminal.ts";
+import {
+  resolveWorkbenchShellBackend,
+  type WorkbenchTerminalSessionTab,
+  type WorkbenchTerminalSessionTabPlacement,
+  workbenchTerminalSessionTabsInto,
+} from "../src/app/workbench_terminal.ts";
 import { AudioRegistry } from "./audio.ts";
 import {
   apiWorkbenchColumns,
@@ -327,6 +332,8 @@ const terminalShellButtonItems: WorkbenchButtonRowItem<TerminalShellAction>[] = 
   { label: "Bottom", action: "bottom" },
 ];
 const terminalShellButtonPlacements: WorkbenchButtonRowPlacement<TerminalShellAction>[] = [];
+const terminalShellSessionTabSources: WorkbenchTerminalSessionTab[] = [];
+const terminalShellSessionTabPlacements: WorkbenchTerminalSessionTabPlacement[] = [];
 const modalActionButtonItems: WorkbenchButtonRowItem<number>[] = [];
 const modalActionButtonPlacements: WorkbenchButtonRowPlacement<number>[] = [];
 const themes: ThemeSpec[] = createApiWorkbenchThemes();
@@ -2137,20 +2144,36 @@ function renderTerminalShellSessionTabs(
 ): number {
   const t = theme();
   if (startRow >= rect.row + rect.height) return startRow;
-  let column = rect.column;
   const maxColumn = rect.column + rect.width;
+  terminalShellSessionTabSources.length = 0;
   for (const session of inspection.sessions) {
-    if (column >= maxColumn) break;
-    const active = session.id === inspection.activeId;
-    const status = session.shell.running ? "*" : session.shell.status[0]?.toUpperCase() ?? "?";
-    const label = fit(buttonText(`${status} ${session.title}`), Math.max(4, Math.min(22, maxColumn - column)));
-    const width = textWidth(label);
-    const style = active
+    terminalShellSessionTabSources.push({
+      id: session.id,
+      title: session.title,
+      running: session.shell.running,
+      status: session.shell.status,
+    });
+  }
+  const tabs = workbenchTerminalSessionTabsInto(
+    terminalShellSessionTabPlacements,
+    terminalShellSessionTabSources,
+    inspection.activeId,
+    { column: rect.column, row: startRow, width: rect.width, height: 1 },
+  );
+  let column = rect.column;
+  for (const tab of tabs) {
+    if (tab.column > column) {
+      write(frame, startRow, column, paint(" ".repeat(tab.column - column), { fg: t.soft, bg: t.panelSoft }));
+    }
+    const style = tab.active
       ? { fg: contrastText(t.accent, t.background, t.text), bg: t.accent, bold: true }
       : { fg: t.text, bg: t.panelSoft, bold: false };
-    write(frame, startRow, column, paint(label, style));
-    addHit({ column, row: startRow, width, height: 1 }, { type: "terminalShellSession", id: session.id });
-    column += width + 1;
+    write(frame, startRow, tab.column, paint(tab.label, style));
+    addHit({ column: tab.column, row: tab.row, width: tab.width, height: 1 }, {
+      type: "terminalShellSession",
+      id: tab.id,
+    });
+    column = tab.column + tab.width + 1;
   }
   if (column < maxColumn) {
     write(frame, startRow, column, paint(" ".repeat(maxColumn - column), { fg: t.soft, bg: t.panelSoft }));

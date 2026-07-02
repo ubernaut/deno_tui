@@ -78,6 +78,9 @@ import {
   workbenchShelfEntriesInto,
   workbenchStatusLeft,
   workbenchTabEntriesInto,
+  type WorkbenchTerminalSessionTab,
+  type WorkbenchTerminalSessionTabPlacement,
+  workbenchTerminalSessionTabsInto,
   type WorkbenchTitlebarButtonKind,
   workbenchVerticalScrollbarCellsInto,
   workbenchVerticalScrollbarRect,
@@ -248,6 +251,8 @@ const webTerminalButtonItems: WorkbenchButtonRowItem<WebTerminalAction>[] = [
   { label: "Restart", action: "restart", tone: "warning" },
 ];
 const webTerminalButtonPlacements: WorkbenchButtonRowPlacement<WebTerminalAction>[] = [];
+const webTerminalSessionTabSources: WorkbenchTerminalSessionTab[] = [];
+const webTerminalSessionTabPlacements: WorkbenchTerminalSessionTabPlacement[] = [];
 const modalActionButtonItems: WorkbenchButtonRowItem<number>[] = [];
 const modalActionButtonPlacements: WorkbenchButtonRowPlacement<number>[] = [];
 let dropdownOverlay: DropdownOverlay | null = null;
@@ -1053,27 +1058,39 @@ function renderTerminalToolbar(
 function renderTerminalSessionTabs(frame: string[], rect: Rectangle): void {
   if (rect.height <= 0 || rect.width <= 0) return;
   const workspace = webTerminalWorkspace.inspect();
-  let column = rect.column;
-  fillRect(frame, rect, theme().panelSoft);
+  const t = theme();
+  webTerminalSessionTabSources.length = 0;
   for (const session of workspace.sessions) {
-    const activeSession = workspace.activeId === session.id;
-    const label = `${activeSession ? "●" : "○"} ${session.title}`;
-    const width = Math.min(rect.column + rect.width - column, Math.max(8, textWidth(label) + 2));
-    if (width <= 0) break;
+    webTerminalSessionTabSources.push({
+      id: session.id,
+      title: session.title,
+      running: session.running,
+      status: session.status,
+    });
+  }
+  fillRect(frame, rect, theme().panelSoft);
+  const tabs = workbenchTerminalSessionTabsInto(
+    webTerminalSessionTabPlacements,
+    webTerminalSessionTabSources,
+    workspace.activeId,
+    rect,
+  );
+  for (const tab of tabs) {
     write(
       frame,
       rect.row,
-      column,
+      tab.column,
       paint(
-        fit(` ${label}`, width),
-        activeSession ? contrastText(theme().accent, theme().background, theme().text) : theme().text,
-        activeSession ? theme().accent : theme().panelSoft,
-        activeSession,
+        tab.label,
+        tab.active ? contrastText(t.accent, t.background, t.text) : t.text,
+        tab.active ? t.accent : t.panelSoft,
+        tab.active,
       ),
     );
-    hitTargets.add({ column, row: rect.row, width, height: 1 }, { type: "terminalSession", id: session.id });
-    column += width;
-    if (column >= rect.column + rect.width) break;
+    hitTargets.add({ column: tab.column, row: tab.row, width: tab.width, height: 1 }, {
+      type: "terminalSession",
+      id: tab.id,
+    });
   }
 }
 

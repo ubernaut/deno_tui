@@ -11,7 +11,11 @@ import type {
   TerminalSessionHandle,
   TerminalSessionHandleInspection,
 } from "../src/runtime/terminal_backend.ts";
-import { createWorkbenchShellSession, resolveWorkbenchShellBackend } from "../src/app/workbench/mod.ts";
+import {
+  createWorkbenchShellSession,
+  resolveWorkbenchShellBackend,
+  workbenchTerminalSessionTabsInto,
+} from "../src/app/workbench/mod.ts";
 
 Deno.test("resolveWorkbenchShellBackend prefers an available PTY backend", async () => {
   const ptyBackend = fakeBackend("fake-pty", true);
@@ -81,6 +85,28 @@ Deno.test("createWorkbenchShellSession runs command and fullscreen PTY smoke thr
   } finally {
     await session.shell.dispose();
   }
+});
+
+Deno.test("workbenchTerminalSessionTabsInto projects clipped selectable tabs", () => {
+  const tabs = workbenchTerminalSessionTabsInto(
+    [],
+    [
+      { id: "shell-1", title: "Shell One", running: true },
+      { id: "shell-2", title: "Very Long Session Name", status: "idle" },
+      { id: "shell-3", title: "Hidden", status: "failed" },
+    ],
+    "shell-2",
+    { column: 4, row: 2, width: 28, height: 1 },
+    { maxWidth: 16 },
+  );
+
+  assertEquals(tabs.map((tab) => [tab.id, tab.column, tab.row, tab.active]), [
+    ["shell-1", 4, 2, false],
+    ["shell-2", 20, 2, true],
+  ]);
+  assertEquals(tabs[0]?.label, "[ * Shell One ]");
+  assertEquals(tabs[1]?.label.startsWith("[ I Very"), true);
+  assertEquals(tabs.every((tab) => tab.column + tab.width <= 32), true);
 });
 
 function fakeBackend(id: string, pty: boolean): TerminalBackend {
