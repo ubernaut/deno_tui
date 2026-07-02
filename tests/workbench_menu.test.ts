@@ -2,6 +2,7 @@ import { assertEquals } from "./deps.ts";
 import {
   isWorkbenchMenuActivationKey,
   isWorkbenchMenuCloseKey,
+  layoutWorkbenchHeader,
   layoutWorkbenchMenuBarHits,
   layoutWorkbenchTopMenuItemRect,
   moveWorkbenchMenuIndex,
@@ -109,5 +110,37 @@ Deno.test("layoutWorkbenchMenuBarHits returns visible menu item rectangles", () 
       { index: 0, rect: { column: 2, row: 0, width: 4, height: 1 }, token: "File" },
       { index: 1, rect: { column: 7, row: 0, width: 6, height: 1 }, token: "[View]" },
     ],
+  );
+});
+
+Deno.test("layoutWorkbenchHeader projects menu and close button geometry", () => {
+  assertEquals(
+    layoutWorkbenchHeader({ width: 80, menuStart: 17, closeWidth: 3, closeMinWidth: 20 }),
+    {
+      menu: { column: 17, row: 0, width: 60, height: 1 },
+      close: { column: 77, row: 0, width: 3, height: 1 },
+    },
+  );
+
+  assertEquals(
+    layoutWorkbenchHeader({ width: 19, menuStart: 17, closeWidth: 3, closeMinWidth: 20 }),
+    {
+      menu: { column: 17, row: 0, width: 2, height: 1 },
+      close: undefined,
+    },
+  );
+
+  assertEquals(
+    layoutWorkbenchHeader({
+      width: 19,
+      menuStart: 17,
+      closeWidth: 3,
+      closeMinWidth: 22,
+      reserveCloseWhenHidden: true,
+    }),
+    {
+      menu: { column: 17, row: 0, width: 0, height: 1 },
+      close: undefined,
+    },
   );
 });

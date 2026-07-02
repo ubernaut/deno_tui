@@ -11469,6 +11469,19 @@ function layoutWorkbenchMenuBarHits(options) {
   }
   return hits;
 }
+function layoutWorkbenchHeader(options) {
+  const width = Math.max(0, Math.floor(options.width));
+  const row = Math.max(0, Math.floor(options.row ?? 0));
+  const menuStart = Math.max(0, Math.floor(options.menuStart ?? 17));
+  const closeWidth = Math.max(0, Math.floor(options.closeWidth ?? 0));
+  const closeVisible = closeWidth > 0 && width >= Math.max(0, Math.floor(options.closeMinWidth ?? 0));
+  const reservedCloseWidth = closeVisible || options.reserveCloseWhenHidden ? closeWidth : 0;
+  const menuWidth = Math.max(0, width - menuStart - reservedCloseWidth);
+  return {
+    menu: { column: menuStart, row, width: menuWidth, height: 1 },
+    close: closeVisible ? { column: Math.max(0, width - closeWidth), row, width: closeWidth, height: 1 } : void 0
+  };
+}
 
 // src/app/workbench_overlay.ts
 function layoutWorkbenchModal(options) {
@@ -15699,21 +15712,27 @@ function draw() {
   write(frame, 0, 1, paint(` API WORKBENCH `, theme().background, theme().accent, true));
   const closeLabel = buttonText2("x", true);
   const closeWidth = textWidth(closeLabel);
-  const menuWidth = Math.max(0, width - 18 - closeWidth);
-  renderMenuHits(17, 0, menuWidth);
+  const header = layoutWorkbenchHeader({
+    width,
+    menuStart: 17,
+    closeWidth,
+    closeMinWidth: 22,
+    reserveCloseWhenHidden: true
+  });
+  renderMenuHits(header.menu.column, header.menu.row, header.menu.width);
   write(
     frame,
-    0,
-    17,
+    header.menu.row,
+    header.menu.column,
     paint(
-      fit(renderMenuBar(menu.items.peek(), menu.activeIndex.peek()), menuWidth),
+      fit(renderMenuBar(menu.items.peek(), menu.activeIndex.peek()), header.menu.width),
       theme().text,
       theme().backgroundSoft
     )
   );
-  if (width >= 22) {
-    writeButton(frame, 0, width - closeWidth, "x", { compact: true, tone: "danger" });
-    hitTargets.add({ column: width - closeWidth, row: 0, width: closeWidth, height: 1 }, { type: "quit" });
+  if (header.close) {
+    writeButton(frame, header.close.row, header.close.column, "x", { compact: true, tone: "danger" });
+    hitTargets.add(header.close, { type: "quit" });
   }
   if (themeMenuOpen.peek()) {
     dropdownOverlay = {

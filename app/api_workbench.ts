@@ -36,6 +36,7 @@ import {
   intersects,
   isWorkbenchMenuActivationKey,
   isWorkbenchVisualizationWindowId,
+  layoutWorkbenchHeader,
   layoutWorkbenchMenuBarHits,
   layoutWorkbenchModal,
   layoutWorkbenchPopover,
@@ -1017,25 +1018,24 @@ function renderHeader(frame: Frame): void {
   fillRow(frame, 0, t.backgroundSoft);
   fillRow(frame, 1, t.panel);
   write(frame, 0, 0, paint(" API WORKBENCH ", { fg: t.background, bg: t.accent, bold: true }));
-  const menuStart = 17;
   const closeLabel = width >= 20 ? buttonText("x", { compact: true }) : "";
   const closeWidth = textWidth(closeLabel);
-  const menuWidth = Math.max(0, width - menuStart - closeWidth);
-  renderMenuHits(menuStart, 0, menuWidth);
+  const header = layoutWorkbenchHeader({ width, menuStart: 17, closeWidth, closeMinWidth: 20 });
+  renderMenuHits(header.menu.column, header.menu.row, header.menu.width);
   write(
     frame,
-    0,
-    menuStart,
-    paint(fit(renderMenuBar(menu.items.peek(), menu.activeIndex.peek()), menuWidth), {
+    header.menu.row,
+    header.menu.column,
+    paint(fit(renderMenuBar(menu.items.peek(), menu.activeIndex.peek()), header.menu.width), {
       fg: t.text,
       bg: t.backgroundSoft,
     }),
   );
-  if (closeLabel) {
-    const closeColumn = Math.max(0, width - closeWidth);
-    writeButton(frame, 0, closeColumn, "x", { compact: true, tone: "danger" });
-    addHit({ column: closeColumn, row: 0, width: closeWidth, height: 1 }, { type: "quit" });
+  if (header.close) {
+    writeButton(frame, header.close.row, header.close.column, "x", { compact: true, tone: "danger" });
+    addHit(header.close, { type: "quit" });
   }
+  const menuStart = header.menu.column;
   if (themeMenuOpen.peek()) {
     const themeRect = menuItemRect(
       menuStart,

@@ -49,6 +49,22 @@ export interface WorkbenchMenuBarHitLayoutOptions {
   measureText?: (value: string) => number;
 }
 
+/** Options for laying out a workbench top header menu and optional close button. */
+export interface WorkbenchHeaderLayoutOptions {
+  width: number;
+  menuStart?: number;
+  row?: number;
+  closeWidth?: number;
+  closeMinWidth?: number;
+  reserveCloseWhenHidden?: boolean;
+}
+
+/** Renderer-neutral geometry for a workbench header row. */
+export interface WorkbenchHeaderLayout {
+  menu: Rectangle;
+  close?: Rectangle;
+}
+
 /** Serializable inspection snapshot for mutually-exclusive top menu disclosure state. */
 export interface WorkbenchTopMenuInspection<MenuId extends string = string> {
   openId: MenuId | null;
@@ -199,4 +215,19 @@ export function layoutWorkbenchMenuBarHits(options: WorkbenchMenuBarHitLayoutOpt
   }
 
   return hits;
+}
+
+/** Lays out the header menu strip and optional close button for workbench render adapters. */
+export function layoutWorkbenchHeader(options: WorkbenchHeaderLayoutOptions): WorkbenchHeaderLayout {
+  const width = Math.max(0, Math.floor(options.width));
+  const row = Math.max(0, Math.floor(options.row ?? 0));
+  const menuStart = Math.max(0, Math.floor(options.menuStart ?? 17));
+  const closeWidth = Math.max(0, Math.floor(options.closeWidth ?? 0));
+  const closeVisible = closeWidth > 0 && width >= Math.max(0, Math.floor(options.closeMinWidth ?? 0));
+  const reservedCloseWidth = closeVisible || options.reserveCloseWhenHidden ? closeWidth : 0;
+  const menuWidth = Math.max(0, width - menuStart - reservedCloseWidth);
+  return {
+    menu: { column: menuStart, row, width: menuWidth, height: 1 },
+    close: closeVisible ? { column: Math.max(0, width - closeWidth), row, width: closeWidth, height: 1 } : undefined,
+  };
 }

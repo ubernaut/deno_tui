@@ -31,6 +31,7 @@ import {
   isWorkbenchMenuActivationKey,
   isWorkbenchMenuCloseKey,
   layoutWorkbenchButtonRowInto,
+  layoutWorkbenchHeader,
   layoutWorkbenchMenuBarHits,
   layoutWorkbenchModal,
   layoutWorkbenchPopover,
@@ -578,21 +579,27 @@ function draw(): void {
   write(frame, 0, 1, paint(` API WORKBENCH `, theme().background, theme().accent, true));
   const closeLabel = buttonText("x", true);
   const closeWidth = textWidth(closeLabel);
-  const menuWidth = Math.max(0, width - 18 - closeWidth);
-  renderMenuHits(17, 0, menuWidth);
+  const header = layoutWorkbenchHeader({
+    width,
+    menuStart: 17,
+    closeWidth,
+    closeMinWidth: 22,
+    reserveCloseWhenHidden: true,
+  });
+  renderMenuHits(header.menu.column, header.menu.row, header.menu.width);
   write(
     frame,
-    0,
-    17,
+    header.menu.row,
+    header.menu.column,
     paint(
-      fit(renderMenuBar(menu.items.peek(), menu.activeIndex.peek()), menuWidth),
+      fit(renderMenuBar(menu.items.peek(), menu.activeIndex.peek()), header.menu.width),
       theme().text,
       theme().backgroundSoft,
     ),
   );
-  if (width >= 22) {
-    writeButton(frame, 0, width - closeWidth, "x", { compact: true, tone: "danger" });
-    hitTargets.add({ column: width - closeWidth, row: 0, width: closeWidth, height: 1 }, { type: "quit" });
+  if (header.close) {
+    writeButton(frame, header.close.row, header.close.column, "x", { compact: true, tone: "danger" });
+    hitTargets.add(header.close, { type: "quit" });
   }
   if (themeMenuOpen.peek()) {
     dropdownOverlay = {

@@ -20,3 +20,8 @@ performance, shared terminal/web workbench projections, and oversized module red
 - [ ] Re-run focused and full health checks after each retained milestone.
 - [ ] Continue reducing oversized app/demo modules only at clean abstraction points.
 - [ ] Keep Three ASCII performance changes benchmark-gated; revert any micro-optimization that loses on focused cases.
+
+## Progress
+
+- Extracted shared adaptive workbench window layout through `workbenchAdaptiveWindowLayout`.
+- Extracted shared header menu/close-button geometry through `layoutWorkbenchHeader`.
