@@ -380,6 +380,8 @@ Work:
         direct lookup/projection helpers instead of repeated nested `some/filter/map/findIndex` scans.
   - [x] Reworked command key lookup, keymap synchronization, key-binding inspection, conflict grouping, conflict
         markdown, and command-surface search field construction to use explicit buffers instead of callback pipelines.
+  - [x] Reworked standalone keymap registry list, group, and inspection helpers to use direct buffers and set
+        accumulation instead of `filter/map` projection chains.
   - [x] Reworked component catalog command projection and data-table sort command keyword creation to use direct command
         and keyword buffers instead of `map()` and short-lived `filter(Boolean)` arrays.
   - [x] Reworked scheduler and worker batch helpers to build promise buffers explicitly instead of per-item `map(async)`

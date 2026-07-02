@@ -63,13 +63,19 @@ export class KeymapRegistry {
   }
 
   list(group?: string): KeyBinding[] {
-    return [...this.bindings.values()]
-      .filter((binding) => group === undefined || binding.group === group)
-      .sort((a, b) => (a.group ?? "").localeCompare(b.group ?? "") || a.key.localeCompare(b.key));
+    const bindings: KeyBinding[] = [];
+    for (const binding of this.bindings.values()) {
+      if (group === undefined || binding.group === group) bindings.push(binding);
+    }
+    return bindings.sort(compareKeyBindings);
   }
 
   groups(): string[] {
-    return uniqueSorted(this.list().map((binding) => binding.group));
+    const groups = new Set<string>();
+    for (const binding of this.bindings.values()) {
+      if (binding.group) groups.add(binding.group);
+    }
+    return sortedSetValues(groups);
   }
 
   clear(group?: string): void {
@@ -86,13 +92,17 @@ export class KeymapRegistry {
   }
 
   inspect(group?: string): KeymapInspection {
-    const bindings = this.list(group).map((binding) => ({
-      ...binding,
-      id: bindingId(binding),
-    }));
+    const list = this.list(group);
+    const bindings = new Array<KeyBindingInspection>(list.length);
+    const groups = new Set<string>();
+    for (let index = 0; index < list.length; index += 1) {
+      const binding = list[index]!;
+      if (binding.group) groups.add(binding.group);
+      bindings[index] = { ...binding, id: bindingId(binding) };
+    }
     return {
       count: bindings.length,
-      groups: uniqueSorted(bindings.map((binding) => binding.group)),
+      groups: sortedSetValues(groups),
       bindings,
     };
   }
@@ -108,6 +118,10 @@ export function formatKeyBinding(binding: KeyBinding): string {
   return `${bindingId(binding)} ${binding.description}`;
 }
 
-function uniqueSorted(values: Array<string | undefined>): string[] {
-  return [...new Set(values.filter((value): value is string => !!value))].sort();
+function compareKeyBindings(left: KeyBinding, right: KeyBinding): number {
+  return (left.group ?? "").localeCompare(right.group ?? "") || left.key.localeCompare(right.key);
+}
+
+function sortedSetValues(values: Set<string>): string[] {
+  return [...values].sort();
 }
