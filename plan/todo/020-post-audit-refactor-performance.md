@@ -47,3 +47,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   workbench renderer only owns focus, scrolling, and logging side effects.
 - Extracted shared workbench frame-box border/title projection so terminal and web workbench demos use the same
   renderer-neutral window-frame geometry.
+- Reduced wrapped control option layout overhead by tracking row width incrementally and counting required rows without
+  allocating full option projections.

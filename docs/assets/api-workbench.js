@@ -11063,25 +11063,43 @@ function layoutWrappedControlOptions(items, selectedIndex, width) {
   const safeWidth = Math.max(8, width);
   const rows2 = [];
   let line = "";
+  let lineWidth = 0;
   let tokens = [];
   const flush = () => {
     if (line.length === 0) return;
     rows2.push({ text: line, tokens });
     line = "";
+    lineWidth = 0;
     tokens = [];
   };
   for (const [index, item] of items.entries()) {
     const token = `${index === selectedIndex ? "[" : " "}${item}${index === selectedIndex ? "]" : " "} `;
     const tokenWidth = textWidth(token);
-    if (line.length > 0 && textWidth(line) + tokenWidth > safeWidth) flush();
-    tokens.push({ index, text: token, columnOffset: textWidth(line), width: tokenWidth });
+    if (line.length > 0 && lineWidth + tokenWidth > safeWidth) flush();
+    tokens.push({ index, text: token, columnOffset: lineWidth, width: tokenWidth });
     line += token;
+    lineWidth += tokenWidth;
   }
   flush();
   return rows2.length > 0 ? rows2 : [{ text: "", tokens: [] }];
 }
 function wrappedControlOptionRowCount(items, selectedIndex, width) {
-  return layoutWrappedControlOptions(items, selectedIndex, width).length;
+  if (items.length === 0) return 1;
+  const safeWidth = Math.max(8, width);
+  let rows2 = 0;
+  let lineWidth = 0;
+  for (let index = 0; index < items.length; index += 1) {
+    const item = items[index];
+    const tokenWidth = textWidth(
+      `${index === selectedIndex ? "[" : " "}${item}${index === selectedIndex ? "]" : " "} `
+    );
+    if (lineWidth > 0 && lineWidth + tokenWidth > safeWidth) {
+      rows2 += 1;
+      lineWidth = 0;
+    }
+    lineWidth += tokenWidth;
+  }
+  return rows2 + 1;
 }
 
 // src/runtime/diagnostics.ts

@@ -44,6 +44,18 @@ Deno.test("layoutWrappedControlOptions wraps tokens without splitting individual
   assertEquals(wrappedControlOptionRowCount(["alpha", "beta", "gamma", "delta"], undefined, 16), 2);
 });
 
+Deno.test("wrappedControlOptionRowCount matches projected row count without requiring row allocation", () => {
+  const items = ["Unit-01", "Signal", "Arcane Tide", "Forge Ember", "Verdant Grove"];
+  for (const width of [4, 8, 14, 24, 80]) {
+    for (const selected of [undefined, 0, 2, 4]) {
+      assertEquals(
+        wrappedControlOptionRowCount(items, selected, width),
+        layoutWrappedControlOptions(items, selected, width).length,
+      );
+    }
+  }
+});
+
 Deno.test("layoutWrappedControlOptions returns one empty row for empty option lists", () => {
   assertEquals(layoutWrappedControlOptions([], undefined, 4), [{ text: "", tokens: [] }]);
   assertEquals(wrappedControlOptionRowCount([], undefined, 4), 1);
