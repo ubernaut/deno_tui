@@ -25,6 +25,25 @@ export interface WorkbenchControllerInspection<MenuId extends string = string> {
   closedWindowIds: string[];
 }
 
+/** Renderer adapter state mirrored from a WindowManagerController. */
+export interface WorkbenchWindowSignalState<TWindowId extends string = string> {
+  activeId?: TWindowId;
+  fullscreenId?: TWindowId | null;
+  minimized: Record<TWindowId, boolean>;
+}
+
+/** Options for projecting window-manager state into renderer adapter signals. */
+export interface InspectWorkbenchWindowSignalStateOptions<TWindowId extends string = string> {
+  windowIds: readonly TWindowId[];
+  defaultActiveId?: TWindowId;
+}
+
+/** Options for applying renderer adapter signals back to a WindowManagerController. */
+export interface ApplyWorkbenchWindowSignalStateOptions<TWindowId extends string = string> {
+  windowIds: readonly TWindowId[];
+  createWindow: (id: TWindowId, order: number) => WindowManagerOptions["windows"][number];
+}
+
 /** Shared controller for workbench menus, launcher indices, and window-manager state. */
 export class WorkbenchController<MenuId extends string = string> {
   readonly menus: WorkbenchTopMenuController<MenuId>;
@@ -125,6 +144,45 @@ export class WorkbenchController<MenuId extends string = string> {
   dispose(): void {
     this.windows.dispose();
   }
+}
+
+/** Projects window-manager state into the small signal shape used by renderer adapters. */
+export function inspectWorkbenchWindowSignalState<TWindowId extends string>(
+  controller: WindowManagerController,
+  options: InspectWorkbenchWindowSignalStateOptions<TWindowId>,
+): WorkbenchWindowSignalState<TWindowId> {
+  const validIds = new Set<string>(options.windowIds);
+  const inspection = controller.inspect();
+  const minimized = {} as Record<TWindowId, boolean>;
+  for (let index = 0; index < options.windowIds.length; index += 1) {
+    minimized[options.windowIds[index]!] = false;
+  }
+  for (let index = 0; index < inspection.windows.length; index += 1) {
+    const entry = inspection.windows[index]!;
+    if (validIds.has(entry.id)) minimized[entry.id as TWindowId] = entry.minimized;
+  }
+  const activeId = validIds.has(inspection.activeId ?? "") ? inspection.activeId as TWindowId : options.defaultActiveId;
+  const fullscreenId = validIds.has(inspection.fullscreenId ?? "") ? inspection.fullscreenId as TWindowId : null;
+  return { activeId, fullscreenId, minimized };
+}
+
+/** Applies renderer adapter signal state to a WindowManagerController without renderer-specific branching. */
+export function applyWorkbenchWindowSignalState<TWindowId extends string>(
+  controller: WindowManagerController,
+  state: Partial<WorkbenchWindowSignalState<TWindowId>>,
+  options: ApplyWorkbenchWindowSignalStateOptions<TWindowId>,
+): void {
+  const validIds = new Set<string>(options.windowIds);
+  const fullscreenId = validIds.has(state.fullscreenId ?? "") ? state.fullscreenId ?? undefined : undefined;
+  const activeId = validIds.has(state.activeId ?? "") ? state.activeId : undefined;
+  const minimized = state.minimized ?? ({} as Record<TWindowId, boolean>);
+  controller.activeId.value = activeId;
+  controller.fullscreenId.value = fullscreenId;
+  controller.windows.value = options.windowIds.map((id, order) => ({
+    ...options.createWindow(id, order),
+    order,
+    state: minimized[id] && id !== fullscreenId ? "minimized" : "normal",
+  }));
 }
 
 function clampMenuIndex(index: number, itemCount: number): number {

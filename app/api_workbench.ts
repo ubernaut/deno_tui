@@ -77,7 +77,7 @@ import {
   workbenchWorkspaceWindowEntries,
   writeFrame,
 } from "../src/app/workbench/mod.ts";
-import { WorkbenchController } from "../src/app/workbench/controller.ts";
+import { inspectWorkbenchWindowSignalState, WorkbenchController } from "../src/app/workbench/controller.ts";
 import {
   createDefaultWorkbenchAsciiOptions,
   defaultWorkbenchAsciiConfigRows,
@@ -3115,15 +3115,13 @@ function restoreAll(): void {
 }
 
 function syncWindowSignalsFromManager(): void {
-  const inspection = windowManager.inspect();
-  activeWindow.value = (inspection.activeId as WindowId | undefined) ?? "explorer";
-  maximized.value = (inspection.fullscreenId as WindowId | undefined) ?? null;
-  const nextMinimized: Record<string, boolean> = {};
-  for (let index = 0; index < inspection.windows.length; index += 1) {
-    const entry = inspection.windows[index]!;
-    nextMinimized[entry.id as WindowId] = entry.minimized;
-  }
-  minimized.value = nextMinimized;
+  const state = inspectWorkbenchWindowSignalState<WindowId>(windowManager, {
+    windowIds: windowManager.ids({ includeClosed: true }) as WindowId[],
+    defaultActiveId: "explorer",
+  });
+  activeWindow.value = state.activeId ?? "explorer";
+  maximized.value = state.fullscreenId ?? null;
+  minimized.value = state.minimized;
 }
 
 function adjustTileDensity(delta: number): void {

@@ -100,7 +100,11 @@ import {
   nextSortableDataColumn,
 } from "../../app/api_workbench_controls.ts";
 import { htmlCssLayoutBoxStyle, htmlCssVisibleLayoutBoxesInto } from "../../app/html_css_layout_view.ts";
-import { WorkbenchController } from "../../src/app/workbench/controller.ts";
+import {
+  applyWorkbenchWindowSignalState,
+  inspectWorkbenchWindowSignalState,
+  WorkbenchController,
+} from "../../src/app/workbench/controller.ts";
 import { createHtmlCssLayoutDemo, htmlCssLayoutDemoBoxLabel } from "../../src/markup/demo_fixtures.ts";
 import { DiagnosticsCollector } from "../../src/runtime/diagnostics.ts";
 import { StorageFallbackDiagnostics } from "../../src/runtime/storage_diagnostics.ts";
@@ -1340,34 +1344,31 @@ function syncWebWindowManagerState(): void {
   const key = `${active.peek()}|${fullscreenId ?? ""}|${minimizedKey}`;
   if (key === webWindowManagerStateKey) return;
   webWindowManagerStateKey = key;
-  webWindows.activeId.value = active.peek();
-  webWindows.fullscreenId.value = fullscreenId;
-  webWindows.windows.value = panelIds.map((id, order) => ({
-    id,
-    title: apiWorkbenchPanelTitle(id),
-    order,
-    state: minimizedState[id] && id !== fullscreenId ? "minimized" : "normal",
-    minWidth: 26,
-    minHeight: 10,
-  }));
+  applyWorkbenchWindowSignalState<PanelId>(
+    webWindows,
+    { activeId: active.peek(), fullscreenId, minimized: minimizedState },
+    {
+      windowIds: panelIds,
+      createWindow: (id, order) => ({
+        id,
+        title: apiWorkbenchPanelTitle(id),
+        order,
+        minWidth: 26,
+        minHeight: 10,
+      }),
+    },
+  );
 }
 
 function syncWebSignalsFromWindowManager(): void {
-  const inspection = webWindows.inspect();
-  const activeId = panelIdFromString(inspection.activeId);
-  if (activeId) active.value = activeId;
-  maximized.value = panelIdFromString(inspection.fullscreenId) ?? null;
-  const nextMinimized = defaultMinimizedState();
-  for (const entry of inspection.windows) {
-    const id = panelIdFromString(entry.id);
-    if (id) nextMinimized[id] = entry.minimized;
-  }
-  minimized.value = nextMinimized;
+  const state = inspectWorkbenchWindowSignalState<PanelId>(webWindows, {
+    windowIds: panelIds,
+    defaultActiveId: "inspector",
+  });
+  if (state.activeId) active.value = state.activeId;
+  maximized.value = state.fullscreenId ?? null;
+  minimized.value = state.minimized;
   webWindowManagerStateKey = "";
-}
-
-function panelIdFromString(value: string | undefined): PanelId | undefined {
-  return panelIds.includes(value as PanelId) ? value as PanelId : undefined;
 }
 
 function blitWorkspace(frame: string[], virtual: string[], bounds: Rectangle, offset: number, width: number): void {

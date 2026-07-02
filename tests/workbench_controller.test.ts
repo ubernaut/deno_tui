@@ -1,5 +1,9 @@
 import { assertEquals } from "./deps.ts";
-import { WorkbenchController } from "../src/app/workbench/controller.ts";
+import {
+  applyWorkbenchWindowSignalState,
+  inspectWorkbenchWindowSignalState,
+  WorkbenchController,
+} from "../src/app/workbench/controller.ts";
 
 Deno.test("WorkbenchController coordinates menus and window state", () => {
   const events: unknown[] = [];
@@ -112,6 +116,75 @@ Deno.test("WorkbenchController close command removes windows from adapter visibi
 
   terminal.dispose();
   web.dispose();
+});
+
+Deno.test("workbench window signal bridge round trips adapter state", () => {
+  type Id = "inspector" | "data" | "logs";
+  const controller = createAdapterController<"theme">();
+
+  applyWorkbenchWindowSignalState<Id>(
+    controller.windows,
+    {
+      activeId: "data",
+      fullscreenId: "logs",
+      minimized: { inspector: true, data: false, logs: false },
+    },
+    {
+      windowIds: ["inspector", "data", "logs"],
+      createWindow: (id, order) => ({ id, title: id, order, minWidth: 20, minHeight: 8 }),
+    },
+  );
+
+  assertEquals(
+    inspectWorkbenchWindowSignalState<Id>(controller.windows, {
+      windowIds: ["inspector", "data", "logs"],
+      defaultActiveId: "inspector",
+    }),
+    {
+      activeId: "data",
+      fullscreenId: "logs",
+      minimized: { inspector: true, data: false, logs: false },
+    },
+  );
+
+  controller.dispose();
+});
+
+Deno.test("workbench window signal bridge ignores stale adapter ids", () => {
+  type Id = "inspector" | "data";
+  const controller = new WorkbenchController<"theme">({
+    windows: [
+      { id: "inspector", title: "Inspector" },
+      { id: "data", title: "Data" },
+    ],
+  });
+
+  applyWorkbenchWindowSignalState<Id>(
+    controller.windows,
+    {
+      activeId: "missing" as Id,
+      fullscreenId: "missing" as Id,
+      minimized: { inspector: false, data: true },
+    },
+    {
+      windowIds: ["inspector", "data"],
+      createWindow: (id, order) => ({ id, title: id, order }),
+    },
+  );
+
+  assertEquals(
+    inspectWorkbenchWindowSignalState<Id>(controller.windows, {
+      windowIds: ["inspector", "data"],
+      defaultActiveId: "inspector",
+    }),
+    {
+      activeId: "inspector",
+      fullscreenId: null,
+      minimized: { inspector: false, data: true },
+    },
+  );
+
+  controller.dispose();
 });
 
 function createAdapterController<MenuId extends string>(): WorkbenchController<MenuId> {

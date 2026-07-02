@@ -14002,6 +14002,34 @@ var WorkbenchController = class {
     this.windows.dispose();
   }
 };
+function inspectWorkbenchWindowSignalState(controller, options) {
+  const validIds = new Set(options.windowIds);
+  const inspection = controller.inspect();
+  const minimized2 = {};
+  for (let index = 0; index < options.windowIds.length; index += 1) {
+    minimized2[options.windowIds[index]] = false;
+  }
+  for (let index = 0; index < inspection.windows.length; index += 1) {
+    const entry = inspection.windows[index];
+    if (validIds.has(entry.id)) minimized2[entry.id] = entry.minimized;
+  }
+  const activeId = validIds.has(inspection.activeId ?? "") ? inspection.activeId : options.defaultActiveId;
+  const fullscreenId = validIds.has(inspection.fullscreenId ?? "") ? inspection.fullscreenId : null;
+  return { activeId, fullscreenId, minimized: minimized2 };
+}
+function applyWorkbenchWindowSignalState(controller, state, options) {
+  const validIds = new Set(options.windowIds);
+  const fullscreenId = validIds.has(state.fullscreenId ?? "") ? state.fullscreenId ?? void 0 : void 0;
+  const activeId = validIds.has(state.activeId ?? "") ? state.activeId : void 0;
+  const minimized2 = state.minimized ?? {};
+  controller.activeId.value = activeId;
+  controller.fullscreenId.value = fullscreenId;
+  controller.windows.value = options.windowIds.map((id2, order) => ({
+    ...options.createWindow(id2, order),
+    order,
+    state: minimized2[id2] && id2 !== fullscreenId ? "minimized" : "normal"
+  }));
+}
 function clampMenuIndex2(index, itemCount) {
   const normalized = Number.isFinite(index) ? Math.trunc(index) : 0;
   if (itemCount <= 0) return 0;
@@ -15207,32 +15235,30 @@ function syncWebWindowManagerState() {
   const key = `${active.peek()}|${fullscreenId ?? ""}|${minimizedKey}`;
   if (key === webWindowManagerStateKey) return;
   webWindowManagerStateKey = key;
-  webWindows.activeId.value = active.peek();
-  webWindows.fullscreenId.value = fullscreenId;
-  webWindows.windows.value = panelIds.map((id2, order) => ({
-    id: id2,
-    title: apiWorkbenchPanelTitle(id2),
-    order,
-    state: minimizedState[id2] && id2 !== fullscreenId ? "minimized" : "normal",
-    minWidth: 26,
-    minHeight: 10
-  }));
+  applyWorkbenchWindowSignalState(
+    webWindows,
+    { activeId: active.peek(), fullscreenId, minimized: minimizedState },
+    {
+      windowIds: panelIds,
+      createWindow: (id2, order) => ({
+        id: id2,
+        title: apiWorkbenchPanelTitle(id2),
+        order,
+        minWidth: 26,
+        minHeight: 10
+      })
+    }
+  );
 }
 function syncWebSignalsFromWindowManager() {
-  const inspection = webWindows.inspect();
-  const activeId = panelIdFromString(inspection.activeId);
-  if (activeId) active.value = activeId;
-  maximized.value = panelIdFromString(inspection.fullscreenId) ?? null;
-  const nextMinimized = defaultMinimizedState();
-  for (const entry of inspection.windows) {
-    const id2 = panelIdFromString(entry.id);
-    if (id2) nextMinimized[id2] = entry.minimized;
-  }
-  minimized.value = nextMinimized;
+  const state = inspectWorkbenchWindowSignalState(webWindows, {
+    windowIds: panelIds,
+    defaultActiveId: "inspector"
+  });
+  if (state.activeId) active.value = state.activeId;
+  maximized.value = state.fullscreenId ?? null;
+  minimized.value = state.minimized;
   webWindowManagerStateKey = "";
-}
-function panelIdFromString(value) {
-  return panelIds.includes(value) ? value : void 0;
 }
 function blitWorkspace(frame, virtual, bounds, offset, width) {
   for (let row = 0; row < bounds.height; row += 1) {
