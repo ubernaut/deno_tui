@@ -426,9 +426,7 @@ export class ThreeAsciiAnsiGridAssembler {
     if (cell !== undefined) return cell;
 
     if (isSolidBlockFillGlyphKey(glyphKey)) {
-      cell = `${rgbToAnsiBackground(foregroundRed, foregroundGreen, foregroundBlue)}${
-        rgbToAnsiForeground(foregroundRed, foregroundGreen, foregroundBlue)
-      }█${RESET}`;
+      cell = `${rgbToAnsiBackground(foregroundRed, foregroundGreen, foregroundBlue)} ${RESET}`;
       this.cellCache.set(cellKey, cell);
       return cell;
     }

@@ -185,6 +185,7 @@ type Hit =
   | { type: "max"; id: PanelId }
   | { type: "restore"; id?: PanelId }
   | { type: "close"; id: PanelId }
+  | { type: "threeConfig"; id: PanelId }
   | { type: "theme"; index: number }
   | { type: "modalAction"; index: number }
   | { type: "control"; id: ControlId; action?: ControlHitAction; index?: number }
@@ -851,10 +852,13 @@ function renderPanel(frame: string[], id: PanelId, rect: Rectangle): void {
     rect.column,
     paint(fit(top, rect.width), border, selected ? theme().panelSoft : theme().panel, selected),
   );
-  const titlebar = layoutWorkbenchTitlebarInto(titlebarLayout(id), { rect, title: panelTitle(id) });
+  const titlebar = layoutWorkbenchTitlebarInto(titlebarLayout(id), {
+    rect,
+    title: panelTitle(id),
+    showConfig: id === "three",
+  });
   const titlebarCommands = workbenchTitlebarButtonRenderCommandsInto(titlebarRenderCommandBuffer(id), titlebar);
   for (const command of titlebarCommands) {
-    if (command.kind === "config") continue;
     writeButton(frame, command.rect.row, command.rect.column, command.label, {
       compact: command.compact,
       tone: command.tone,
@@ -907,6 +911,7 @@ function renderPanel(frame: string[], id: PanelId, rect: Rectangle): void {
 }
 
 function panelTitlebarHit(id: PanelId, kind: WorkbenchTitlebarButtonKind): Hit {
+  if (kind === "config") return { type: "threeConfig", id };
   if (kind === "minimize") return { type: "min", id };
   if (kind === "maximize") return { type: "max", id };
   if (kind === "close") return { type: "close", id };
@@ -1558,6 +1563,7 @@ function applyHit(target: HitTarget<Hit>, x: number, y: number): void {
   else if (hit.type === "min") minimize(hit.id);
   else if (hit.type === "max") toggleMax(hit.id);
   else if (hit.type === "close") closePanel(hit.id);
+  else if (hit.type === "threeConfig") openThreeConfigModal(hit.id);
   else if (hit.type === "restore") hit.id ? restorePanel(hit.id) : restore();
   else if (hit.type === "control") applyControlHit(hit.id, hit.action ?? "activate", target.rect, x, hit.index);
   else if (hit.type === "modalAction" && hit.index >= 0) modal.activateAction(hit.index);
@@ -1973,6 +1979,25 @@ function openQuitModal(): void {
   push("quit confirmation");
 }
 
+function openThreeConfigModal(id: PanelId): void {
+  closeThemeMenu();
+  active.value = id;
+  modal.open({
+    title: "Three ASCII Renderer",
+    tone: "info",
+    body: [
+      "The browser workbench preview now exposes the same renderer titlebar control as the terminal workbench.",
+      "Use the standalone Three ASCII web demo for live WebGPU scene controls, preset cycling, glyph/block/mixed mode, and orbit keys.",
+      "Terminal parity work will replace this notice with the full ASCII option editor.",
+    ],
+    actions: [
+      { id: "three-dismiss", label: "OK", default: true },
+      { id: "three-focus", label: "Focus Three" },
+    ],
+  });
+  push("three config opened");
+}
+
 function applyModalAction(actionId: string): void {
   if (actionId === "details") {
     modal.open({
@@ -2008,6 +2033,11 @@ function applyModalAction(actionId: string): void {
   if (actionId === "controls") {
     modal.close();
     focus("controls");
+    return;
+  }
+  if (actionId === "three-focus") {
+    modal.close();
+    focus("three");
     return;
   }
   if (actionId === "quit") {
