@@ -6,6 +6,7 @@ import {
   ComboBoxController,
   createHtmlCssLayoutDemo,
   createMarkupLayout,
+  createMarkupLayoutWorkerHandler,
   hydrateMarkupWidgets,
   InputController,
   inspectTuiCssSupport,
@@ -18,15 +19,17 @@ import {
   parseCssStylesheet,
   parseTuiMarkup,
   RadioGroupController,
+  runMarkupLayoutInWorker,
   ScrollAreaController,
   simpleLayoutSolver,
   SliderController,
   TabsController,
   TextBoxController,
   TreeController,
+  WorkerPool,
 } from "../mod.ts";
 import { yogaLayoutSolver } from "../src/layout/solvers/yoga.ts";
-import type { LayoutNode } from "../mod.ts";
+import type { LayoutNode, MarkupLayoutWorkerPayload, MarkupLayoutWorkerResult } from "../mod.ts";
 
 Deno.test("parseTuiMarkup builds a layout tree with stable ids classes and text", () => {
   const document = parseTuiMarkup(`
@@ -318,6 +321,46 @@ Deno.test("MarkupLayoutCache can be disabled per layout call", () => {
   });
 
   assertEquals(cache.inspect(), { documents: 0, stylesheets: 0, maxEntries: 32 });
+});
+
+Deno.test("createMarkupLayoutWorkerHandler solves markup layout without hydrating controllers", () => {
+  const handler = createMarkupLayoutWorkerHandler();
+  const markup = `<window id="main"><panel id="left">A</panel><panel id="right">B</panel></window>`;
+  const css = `window { display: flex; flex-direction: row; } panel { width: 10; height: 4; }`;
+  const first = handler({
+    markup,
+    css,
+    bounds: { column: 0, row: 0, width: 30, height: 6 },
+  });
+  const second = handler({
+    markup,
+    css,
+    bounds: { column: 0, row: 0, width: 30, height: 6 },
+  });
+
+  assertEquals(first.layout.byId.get("right")?.rect.column, 10);
+  assertEquals(first.layout.boxes.length, 3);
+  assertEquals(first.cache, { documents: 1, stylesheets: 1, maxEntries: 32 });
+  assertEquals(second.cache, { documents: 1, stylesheets: 1, maxEntries: 32 });
+});
+
+Deno.test("runMarkupLayoutInWorker solves markup layout through WorkerPool", async () => {
+  const pool = new WorkerPool<MarkupLayoutWorkerPayload, MarkupLayoutWorkerResult>({
+    workerUrl: new URL("./fixtures/markup_layout_worker.ts", import.meta.url),
+    size: 1,
+  });
+  try {
+    const result = await runMarkupLayoutInWorker(pool, {
+      markup: `<window id="main"><panel id="hero">Hero</panel></window>`,
+      css: `#hero { width: 18; height: 3; }`,
+      bounds: { column: 2, row: 1, width: 40, height: 10 },
+    });
+
+    assertEquals(result.document.nodeCount, 2);
+    assertEquals(result.layout.byId.get("hero")?.rect, { column: 2, row: 1, width: 18, height: 3 });
+  } finally {
+    pool.terminate();
+  }
 });
 
 Deno.test("createMarkupLayout computes CSS grid tracks and item placement", () => {

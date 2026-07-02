@@ -347,8 +347,10 @@ Work:
         recursive text projection to use direct buffers instead of map/filter chains.
   - [x] Reworked terminal workspace command payload and detached-session lookup helpers to avoid repeated inline
         `find/every` scans while keeping tmux-like command actions renderer-neutral.
-  - [x] Reworked Yoga layout child projection, Yoga text measurement, simple-solver intrinsic cache signatures, and
-        grid track shrinking to use direct accumulation instead of map/reduce/spread pipelines in layout solve paths.
+  - [x] Reworked Yoga layout child projection, Yoga text measurement, simple-solver intrinsic cache signatures, and grid
+        track shrinking to use direct accumulation instead of map/reduce/spread pipelines in layout solve paths.
+  - [x] Added a worker-compatible markup layout adapter so browser and console callers can run parse/cascade/layout jobs
+        through `WorkerPool` while keeping widget-controller hydration on the UI thread.
 
 Acceptance checks:
 
@@ -640,6 +642,7 @@ Acceptance checks:
 
 - [x] Layout fixtures run against the simple solver and Yoga solver where supported.
 - [x] Workbench can host a markup-created panel using the same scroll and hit routing semantics as hand-built panels.
+- [x] Markup parse/cascade/layout has a worker-friendly adapter and fixture-backed WorkerPool test coverage.
 
 ### P2: Split Theme Architecture Into Smaller Modules
 

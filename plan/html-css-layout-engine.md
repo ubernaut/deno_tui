@@ -467,6 +467,9 @@ Recommended routing:
   absolute-positioned children, box edges, overflow metadata, and hit regions.
 - The optional Yoga solver consumes the same normalized style model and now maps `flex-wrap`/`flex-flow` into Yoga's
   Flexbox implementation plus `inset`/side offsets into Yoga absolute positioning.
+- Markup layout can be offloaded through `createMarkupLayoutWorkerHandler()` and `runMarkupLayoutInWorker()`, allowing
+  browser or console apps to parse CSS/markup and solve layout in a `WorkerPool` while keeping widget controllers on the
+  UI thread.
 - The next high-value solver work is richer block/intrinsic text behavior, full Grid/Taffy parity, and either a Taffy
   WASM adapter or a Taffy-compatible internal style mapping layer.
 
@@ -603,6 +606,9 @@ Test layers:
 - Track dirty style/layout/render regions separately.
 - Incrementally relayout from the nearest dirty ancestor.
 - Run expensive parse/layout work in a worker where browser/runtime support exists.
+  - `createMarkupLayoutWorkerHandler()` and `runMarkupLayoutInWorker()` now provide the first renderer-neutral worker
+    seam for parse/cascade/layout jobs. The current worker result intentionally disables widget hydration so controller
+    state remains local to the interactive UI adapter.
 - Keep Yoga/Taffy solver instances pooled or disposable with explicit lifecycle rules.
 
 ## Risks

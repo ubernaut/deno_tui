@@ -4,5 +4,6 @@ export * from "./css.ts";
 export * from "./demo_fixtures.ts";
 export * from "./html.ts";
 export * from "./hydrate.ts";
+export * from "./layout_worker.ts";
 export * from "./support.ts";
 export * from "./widgets.ts";
