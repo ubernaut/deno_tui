@@ -203,6 +203,8 @@ Work:
         repeated `Array.from()`, `slice()`, and `unshift()` churn.
   - [x] Reworked audio meter history updates and synthetic source series generation to avoid steady-state
         `slice()`/`push()` and `range().map()` allocation in live visualization data feeds.
+  - [x] Reworked core selection range/value helpers to use direct output buffers instead of temporary `Array.from()`,
+        `map()`, and `filter()` chains in reusable list/table/tree selection paths.
 
 Acceptance checks:
 

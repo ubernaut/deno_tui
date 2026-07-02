@@ -124,7 +124,10 @@ export function selectRange(state: SelectionState, length: number, toIndex: numb
   const anchorIndex = clampSelectionIndex(length, state.anchorIndex);
   const start = Math.min(anchorIndex, activeIndex);
   const end = Math.max(anchorIndex, activeIndex);
-  const selected = Array.from({ length: end - start + 1 }, (_, index) => start + index);
+  const selected = new Array<number>(end - start + 1);
+  for (let index = 0; index < selected.length; index += 1) {
+    selected[index] = start + index;
+  }
   return normalizeSelection({ activeIndex, anchorIndex, selected }, length, "multiple");
 }
 
@@ -140,12 +143,14 @@ export function selectedValues<TItem, TValue = TItem>(
   options: SelectionValueOptions<TItem, TValue> = {},
 ): TValue[] {
   const valueForItem = options.valueForItem ?? ((item: TItem) => item as unknown as TValue);
-  return state.selected
-    .map((index) => {
-      const item = items[index];
-      return item === undefined ? undefined : valueForItem(item, index);
-    })
-    .filter((value): value is TValue => value !== undefined);
+  const values: TValue[] = [];
+  for (const index of state.selected) {
+    const item = items[index];
+    if (item !== undefined) {
+      values.push(valueForItem(item, index));
+    }
+  }
+  return values;
 }
 
 /** Reconstructs selection state from stable domain values. */
@@ -159,9 +164,13 @@ export function selectionFromValues<TItem, TValue = TItem>(
 ): SelectionState {
   const valueForItem = options.valueForItem ?? ((item: TItem) => item as unknown as TValue);
   const equals = options.equals ?? Object.is;
-  const selected = values
-    .map((value) => items.findIndex((item, index) => equals(valueForItem(item, index), value)))
-    .filter((index) => index >= 0);
+  const selected: number[] = [];
+  for (const value of values) {
+    const index = items.findIndex((item, itemIndex) => equals(valueForItem(item, itemIndex), value));
+    if (index >= 0) {
+      selected.push(index);
+    }
+  }
   const activeIndex = selected[0] ?? clampSelectionIndex(items.length, options.fallbackIndex ?? 0);
 
   return normalizeSelection(
