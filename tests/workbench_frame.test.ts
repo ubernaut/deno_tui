@@ -14,6 +14,7 @@ import {
   toStyledCells,
   type WorkbenchFrame,
   writeFrame,
+  writeStringFrameRow,
 } from "../src/app/workbench_frame.ts";
 
 Deno.test("workbench frame helpers preserve ANSI styling per terminal cell", () => {
@@ -36,6 +37,15 @@ Deno.test("workbench frame writes clip negative columns without sparse negative 
 
   assertEquals(renderFrameRow(frame[0]!, 3), "\x1b[32mC\x1b[0m\x1b[32mD\x1b[0m\x1b[32mE\x1b[0m");
   assertEquals(Object.hasOwn(frame[0]!, "-1"), false);
+});
+
+Deno.test("workbench frame writes ANSI strings into string-backed rows", () => {
+  const frame = ["....."];
+  writeStringFrameRow(frame, 5, 0, 1, "\x1b[31mAB\x1b[0m");
+  assertEquals(frame[0], ".\x1b[31mA\x1b[0m\x1b[31mB\x1b[0m..");
+
+  writeStringFrameRow(frame, 5, 0, -1, "\x1b[32mXY\x1b[0m");
+  assertEquals(frame[0], "\x1b[32mY\x1b[0m\x1b[31mA\x1b[0m\x1b[31mB\x1b[0m..");
 });
 
 Deno.test("workbench frame row preparation reuses arrays and clears retained sparse rows", () => {

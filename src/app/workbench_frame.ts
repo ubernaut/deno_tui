@@ -132,6 +132,25 @@ export function renderFrameSlice(cells: string[], start: number, width: number):
   return row.join("");
 }
 
+/** Writes ANSI-styled text into a string-backed frame row. */
+export function writeStringFrameRow(
+  frame: string[],
+  width: number,
+  row: number,
+  column: number,
+  value: string,
+): void {
+  if (row < 0 || row >= frame.length || column >= width) return;
+  const cells = toStyledCells(frame[row] ?? "");
+  const valueCells = toStyledCells(value);
+  let targetColumn = column;
+  for (let index = 0; index < valueCells.length && targetColumn < width; index += 1) {
+    if (targetColumn >= 0) cells[targetColumn] = valueCells[index]!;
+    targetColumn += 1;
+  }
+  frame[row] = renderFrameRow(cells, width);
+}
+
 /** Pads or truncates text to a terminal-cell width. */
 export function fitCellText(value: string, width: number): string {
   const visible = textWidth(value);

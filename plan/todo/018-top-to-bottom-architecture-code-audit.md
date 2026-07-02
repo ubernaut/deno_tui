@@ -129,6 +129,8 @@ Work:
         constructing and disposing a `WindowManagerController` during every draw.
   - [x] Promoted immutable bounded log-row append into `workbench_diagnostics.ts` and moved terminal/web workbench
         command logs off local spread/slice trimming.
+  - [x] Added shared string-backed frame row writing in `workbench_frame.ts` and moved the web API Workbench off its
+        local ANSI-cell slice/join writer.
 - [x] Replace duplicated theme/window/menu persistence code with a shared versioned serializer.
   - [x] Extracted shared workbench workspace normalization, panel-state normalization, upsert, rename, delete, lookup,
         and legacy window-entry expansion helpers into `src/app/workbench_workspace.ts`.

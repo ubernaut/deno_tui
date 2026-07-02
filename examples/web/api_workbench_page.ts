@@ -64,7 +64,6 @@ import {
   TextObject,
   type TextRectangle,
   textWidth,
-  toStyledCells,
   translateHitTargets,
   workbenchAdaptiveTileOptions,
   type WorkbenchPanelWorkspaceState,
@@ -74,6 +73,7 @@ import {
   workbenchWindowLayout,
   WorkbenchWorkspaceViewportController,
   wrapTextBoxLines,
+  writeStringFrameRow,
 } from "../../mod.web.ts";
 import {
   apiWorkbenchColumns,
@@ -2073,14 +2073,7 @@ function isTextControlActive(): boolean {
   return active.peek() === "controls" && (activeControl.peek() === "input" || activeControl.peek() === "textbox");
 }
 function write(frame: string[], row: number, column: number, value: string): void {
-  if (row < 0 || row >= frame.length || column >= cols()) return;
-  const cells = toStyledCells(frame[row] ?? "");
-  const valueCells = toStyledCells(value);
-  while (cells.length < column) cells.push(" ");
-  for (let index = 0; index < valueCells.length && column + index < cols(); index += 1) {
-    cells[column + index] = valueCells[index]!;
-  }
-  frame[row] = cells.slice(0, cols()).join("");
+  writeStringFrameRow(frame, cols(), row, column, value);
 }
 
 function fit(value: string, width: number): string {
