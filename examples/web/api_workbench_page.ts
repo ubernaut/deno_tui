@@ -139,6 +139,7 @@ type Hit =
   | { type: "logScrollbar" }
   | { type: "terminalAction"; action: WebTerminalAction }
   | { type: "terminalPane"; id: string }
+  | { type: "terminalContent"; sessionId?: string; paneId?: string }
   | { type: "terminalSession"; id: string }
   | { type: "workspaceScrollbar" };
 type ControlHitAction = "previous" | "next" | "activate" | "set" | "focus" | "toggle";
@@ -496,6 +497,11 @@ host.on("mousePress", (event) => {
 });
 
 host.on("mouseScroll", (event) => {
+  const target = findHit(event.x, event.y);
+  if (target?.action.type === "terminalContent" && handleWebTerminalScroll(target.action, event.scroll)) {
+    draw();
+    return;
+  }
   if (active.peek() === "logs") logScroll.scrollBy(0, event.scroll);
   else workspaceScroll.scrollBy(0, event.scroll);
   draw();
@@ -1171,6 +1177,7 @@ function renderWebTerminalPane(
   }
   const screen = syncWebTerminalScreen(sessionId, content.width, content.height);
   const scrollback = syncWebTerminalScrollback(sessionId, screen, content.height);
+  hitTargets.add(content, { type: "terminalContent", sessionId, paneId: pane?.pane.id });
   const inspection = scrollback.inspect();
   const rows = inspection.mode === "copy" ? inspection.visibleRows : screen.textRows();
   const screenRowCount = Math.min(rows.length, content.height);
@@ -1208,6 +1215,24 @@ function activeWebTerminalScrollback(): TerminalScrollbackController | undefined
   if (!sessionId) return undefined;
   const screen = webTerminalScreens.get(sessionId) ?? syncWebTerminalScreen(sessionId, 80, 20);
   return syncWebTerminalScrollback(sessionId, screen, screen.rows);
+}
+
+function handleWebTerminalScroll(
+  target: Extract<Hit, { type: "terminalContent" }>,
+  delta: number,
+): boolean {
+  if (target.paneId) webTerminalWorkspace.activatePane(target.paneId);
+  else if (target.sessionId) webTerminalWorkspace.activate(target.sessionId);
+  const sessionId = target.sessionId ?? webTerminalWorkspace.inspect().activeId;
+  const screen = webTerminalScreens.get(sessionId ?? "");
+  if (!screen) return false;
+  const scrollback = syncWebTerminalScrollback(sessionId, screen, screen.rows);
+  const inspection = scrollback.inspect();
+  if (inspection.totalRows <= inspection.viewportRows) return false;
+  scrollback.scrollLines(delta);
+  active.value = "terminal";
+  if (inspection.mode === "live") push("terminal copy mode on");
+  return true;
 }
 
 function syncWebTerminalScrollback(
@@ -1458,6 +1483,10 @@ function applyHit(target: HitTarget<Hit>, x: number, y: number): void {
       active.value = "terminal";
       push("terminal pane active");
     }
+  } else if (hit.type === "terminalContent") {
+    if (hit.paneId) webTerminalWorkspace.activatePane(hit.paneId);
+    else if (hit.sessionId) webTerminalWorkspace.activate(hit.sessionId);
+    active.value = "terminal";
   } else if (hit.type === "terminalAction") {
     applyWebTerminalAction(hit.action);
   } else if (hit.type === "workspaceScrollbar") {

@@ -892,6 +892,10 @@ tui.on("mouseScroll", (event) => {
     draw();
     return;
   }
+  if (shellHit?.action.type === "terminalShellContent" && handleTerminalShellScroll(event)) {
+    draw();
+    return;
+  }
   if (zoomThreeWindowAt(event)) {
     draw();
     return;
@@ -2101,6 +2105,7 @@ function renderTerminalShellPane(
   }
   if (content.width <= 0 || content.height <= 0) return;
   shell.resize(content.width, content.height);
+  if (active) addHit(content, { type: "terminalShellContent" });
   if (copyMode) {
     renderTerminalShellCopyPane(frame, content, shell);
     return;
@@ -2109,7 +2114,6 @@ function renderTerminalShellPane(
   const cursorActive = activeWindow.peek() === TERMINAL_SHELL_WINDOW_ID && terminalShellInputMode.peek() === "raw" &&
     active && shell.running;
   const rows = shell.screen.cellRows();
-  if (active) addHit(content, { type: "terminalShellContent" });
   for (let screenRow = 0; screenRow < content.height; screenRow += 1) {
     const cells = rows[screenRow] ?? [];
     for (let column = 0; column < content.width; column += 1) {
@@ -4321,6 +4325,18 @@ function handleTerminalShellMouse(event: MousePressEvent | MouseScrollEvent, rec
     if (!decision.routed && decision.reason !== "unencodable") pushLog(`shell mouse ${decision.reason}`);
     scheduleDraw();
   });
+  return true;
+}
+
+function handleTerminalShellScroll(event: MouseScrollEvent): boolean {
+  if (activeWindow.peek() !== TERMINAL_SHELL_WINDOW_ID) return false;
+  const shell = activeTerminalShell();
+  if (!shell) return false;
+  const inspection = shell.scrollback.inspect();
+  if (inspection.totalRows <= inspection.viewportRows) return false;
+  shell.scrollback.scrollLines(event.scroll);
+  terminalShellInputMode.value = "workbench";
+  if (inspection.mode === "live") pushLog("shell copy mode on");
   return true;
 }
 

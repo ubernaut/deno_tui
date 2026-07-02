@@ -140,3 +140,6 @@ developer workflows.
 - Added matching browser-demo terminal search controls to the GitHub Pages workbench. The web facade now exports
   `TerminalScrollbackController`, and the browser-safe terminal panes use the shared scrollback inspection for
   search/copy-mode rows and match navigation.
+- Added wheel-driven shell scrollback in the console and browser workbenches. Wheel events still route to child
+  terminals that request SGR mouse reporting; otherwise they enter/use copy-mode scrollback locally instead of moving
+  the outer workspace.
