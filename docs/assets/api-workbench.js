@@ -3207,8 +3207,9 @@ var ThreeAsciiAnsiGridAssembler = class {
     }
     for (let row = 0; row < rows2; row += 1) {
       const outputRow = grid[row];
+      const rowOffset = row * columns2;
       for (let column = 0; column < columns2; column += 1) {
-        const index = row * columns2 + column;
+        const index = rowOffset + column;
         const fillGlyphIndex = Math.round(fillGlyphs[index] ?? 0);
         let edgeGlyphIndex = 0;
         let dominantCount = 0;
@@ -3291,8 +3292,9 @@ var ThreeAsciiAnsiGridAssembler = class {
   buildFillOnlyGrid(grid, columns2, rows2, fillGlyphs, colors, terminalGlyphMode, terminalFillGlyphKeys, lastForegroundKey, lastGlyphKey, lastCell, lastRawRed, lastRawGreen, lastRawBlue) {
     for (let row = 0; row < rows2; row += 1) {
       const outputRow = grid[row];
+      const rowOffset = row * columns2;
       for (let column = 0; column < columns2; column += 1) {
-        const index = row * columns2 + column;
+        const index = rowOffset + column;
         const fillGlyphIndex = Math.round(fillGlyphs[index] ?? 0);
         if (fillGlyphIndex < 5) {
           outputRow[column] = this.blankAnsi;
