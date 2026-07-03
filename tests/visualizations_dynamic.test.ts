@@ -11,6 +11,7 @@ import {
   renderVisualization,
   topCpuProcessLabelForCpu,
   visualizations,
+  visualizationUsesThreeRenderer,
 } from "../app/visualizations.ts";
 import { visualizationCatalog, visualizationFamily, visualizationsByFamily } from "../app/visualization_catalog.ts";
 import type { RenderContext, SlotConfig, SourceFrame, SystemSnapshot } from "../app/types.ts";
@@ -320,6 +321,16 @@ Deno.test("visualization catalog classifies every workbench visualization by fam
     assert(group, `${visualization.id} should map to a workbench group`);
     assert(["Monitor", "Neon", "Neon 3D"].includes(group), `${visualization.id} should map to a known group`);
   }
+});
+
+Deno.test("visualization metadata identifies Three-backed workbench windows", () => {
+  assertEquals(visualizationUsesThreeRenderer("three-lattice"), true);
+  assertEquals(visualizationUsesThreeRenderer("three-ascii-studio"), true);
+  assertEquals(visualizationUsesThreeRenderer("magi-board"), true);
+  assertEquals(visualizationUsesThreeRenderer("network-topology"), true);
+  assertEquals(visualizationUsesThreeRenderer("warning-stack"), false);
+  assertEquals(visualizationUsesThreeRenderer("component-index"), false);
+  assertEquals(visualizationUsesThreeRenderer("cpu-monitor"), false);
 });
 
 Deno.test("cpu legend exposes every core for scrollable panels", () => {

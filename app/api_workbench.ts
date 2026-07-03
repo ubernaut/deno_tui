@@ -300,6 +300,7 @@ import {
   renderVisualization,
   topCpuProcessLabelForCpu,
   visualizations,
+  visualizationUsesThreeRenderer,
 } from "./visualizations.ts";
 import {
   monitorSourceIds,
@@ -1400,7 +1401,7 @@ function renderVisualizationWindow(frame: Frame, id: VisualizationWindowId, rect
     const entry = ensureVisualizationThreePanel(id);
     setSignalRect(entry.rectangle, { column: 0, row: 0, width: sceneRect.width, height: sceneRect.height });
     setSignalRect(entry.graphicsRectangle, contentRectToGraphicsRect(sceneRect));
-    entry.scene.value = rendered.three ?? null;
+    setThreeSceneSignal(entry.scene, rendered.three ?? null);
     renderedVisualizationThreePanels.add(id);
     renderThreeGrid(frame, sceneRect, entry.panel.grid.peek(), t);
     return;
@@ -2718,6 +2719,9 @@ function visualizationWindowContentSize(
   const visualizationId = dynamicVisualizationWindows.peek()[id];
   const option = visualizationOption(visualizationId);
   if (!visualizationId || !option) return { width: baseWidth, height: baseHeight };
+  if (threeAsciiAvailable.peek() && visualizationUsesThreeRenderer(visualizationId)) {
+    return { width: baseWidth, height: baseHeight };
+  }
 
   const rendered = renderVisualization(buildVisualizationContext(visualizationId, {
     ...viewport,
@@ -2869,7 +2873,7 @@ function ensureVisualizationThreePanel(id: VisualizationWindowId): DynamicThreeP
 function hideVisualizationThreePanel(id: VisualizationWindowId): void {
   const entry = visualizationThreePanels.get(id);
   if (!entry) return;
-  entry.scene.value = null;
+  setThreeSceneSignal(entry.scene, null);
   setSignalRect(entry.rectangle, { column: 0, row: 0, width: 0, height: 0 });
   setSignalRect(entry.graphicsRectangle, { column: 0, row: 0, width: 0, height: 0 });
 }
@@ -2907,6 +2911,26 @@ function setSignalRect(target: Signal<Rectangle>, rect: Rectangle): void {
     return;
   }
   target.value = rect;
+}
+
+function setThreeSceneSignal(target: Signal<WorkbenchThreeScene | null>, next: WorkbenchThreeScene | null): void {
+  if (sameWorkbenchThreeScene(target.peek(), next)) return;
+  target.value = next;
+}
+
+function sameWorkbenchThreeScene(left: WorkbenchThreeScene | null, right: WorkbenchThreeScene | null): boolean {
+  if (left === right) return true;
+  if (!left || !right || left.mode !== right.mode) return false;
+  const leftSignal = left.signal;
+  const rightSignal = right.signal;
+  return leftSignal.x === rightSignal.x &&
+    leftSignal.y === rightSignal.y &&
+    leftSignal.depth === rightSignal.depth &&
+    leftSignal.twist === rightSignal.twist &&
+    leftSignal.lift === rightSignal.lift &&
+    leftSignal.pulse === rightSignal.pulse &&
+    leftSignal.active === rightSignal.active &&
+    leftSignal.pressed === rightSignal.pressed;
 }
 
 function screenDropdownOpen(): boolean {

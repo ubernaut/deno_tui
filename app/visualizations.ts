@@ -178,6 +178,10 @@ export function renderVisualization(context: RenderContext): PanelRender {
   };
 }
 
+export function visualizationUsesThreeRenderer(visualizationId: string): boolean {
+  return visualizationId in threeSceneVisualizationModes || visualizationId in ngePrimitiveSceneModes;
+}
+
 function applyNgePrimitiveScene(context: RenderContext, panel: PanelRender): PanelRender {
   const visualizationId = context.slot.visualizationId;
   if (!neonDemoIds.has(visualizationId) || textOnlyNeonDemoIds.has(visualizationId)) {
