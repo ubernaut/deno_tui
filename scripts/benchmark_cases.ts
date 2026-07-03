@@ -58,6 +58,11 @@ import {
 } from "../app/system_metrics.ts";
 import { compactMappedRgbaRows } from "../src/three_ascii/headless_canvas.ts";
 import { createThreeAsciiReadbackLayout, ThreeAsciiReadbackViewCache } from "../src/three_ascii/readback.ts";
+import {
+  queueRerenderCellInto,
+  queueRerenderRangeInto,
+  queueRerenderRangeOnlyInto,
+} from "../src/canvas/rerender_queue.ts";
 
 const sparklineValues = Array.from({ length: 200 }, (_, index) => Math.sin(index / 8));
 const threeAsciiColumns = 96;
@@ -677,6 +682,10 @@ const threeAsciiDiffObject = new ThreeAsciiObject({
   rendererFactory: () => createNoopThreeAsciiRenderer(),
 });
 const threeAsciiDiffQueueTarget = threeAsciiDiffObject as unknown as ThreeAsciiDiffQueueTarget;
+const rerenderQueueBenchmarkSize = { columns: 160, rows: 50 };
+const rerenderQueueBenchmarkView = { column: 12, row: 4, width: 100, height: 32 };
+const rerenderQueueCellQueue: Array<Set<number> | undefined> = [];
+const rerenderQueueRangeQueue: Array<Array<{ row: number; startColumn: number; endColumn: number }> | undefined> = [];
 
 function runThreeAsciiDiffQueueWorkload(): void {
   threeAsciiDiffQueueTarget.queueChangedGridCells(threeAsciiDiffGridA, threeAsciiDiffRectangle);
@@ -688,6 +697,43 @@ function runThreeAsciiDiffQueueWorkload(): void {
     );
     clearThreeAsciiDiffQueue();
   }
+}
+
+function runDenseRerenderRangeQueueWorkload(): void {
+  for (let step = 0; step < 50; step += 1) {
+    const row = step % rerenderQueueBenchmarkSize.rows;
+    queueRerenderRangeOnlyInto(rerenderQueueRangeQueue, row, 0, rerenderQueueBenchmarkSize.columns, {
+      columns: rerenderQueueBenchmarkSize.columns,
+      rows: rerenderQueueBenchmarkSize.rows,
+    });
+  }
+  clearRerenderRangeBenchmarkQueue();
+}
+
+function runSparseRerenderCellQueueWorkload(): void {
+  for (let step = 0; step < 1_000; step += 1) {
+    queueRerenderCellInto(
+      rerenderQueueCellQueue,
+      step % rerenderQueueBenchmarkSize.rows,
+      (step * 17) % rerenderQueueBenchmarkSize.columns,
+      rerenderQueueBenchmarkSize,
+    );
+  }
+  clearRerenderCellBenchmarkQueue();
+}
+
+function runClippedRerenderRangeQueueWorkload(): void {
+  for (let step = 0; step < 120; step += 1) {
+    queueRerenderRangeInto(
+      rerenderQueueCellQueue,
+      step % rerenderQueueBenchmarkSize.rows,
+      -8 + step % 19,
+      rerenderQueueBenchmarkSize.columns + 8,
+      rerenderQueueBenchmarkSize,
+      rerenderQueueBenchmarkView,
+    );
+  }
+  clearRerenderCellBenchmarkQueue();
 }
 
 function createThreeAsciiDiffGrid(columns: number, rows: number, phase: number): string[][] {
@@ -709,6 +755,19 @@ function clearThreeAsciiDiffQueue(): void {
   }
   for (let row = 0; row < threeAsciiDiffObject.rerenderRanges.length; row += 1) {
     const ranges = threeAsciiDiffObject.rerenderRanges[row];
+    if (ranges) ranges.length = 0;
+  }
+}
+
+function clearRerenderCellBenchmarkQueue(): void {
+  for (let row = 0; row < rerenderQueueCellQueue.length; row += 1) {
+    rerenderQueueCellQueue[row]?.clear();
+  }
+}
+
+function clearRerenderRangeBenchmarkQueue(): void {
+  for (let row = 0; row < rerenderQueueRangeQueue.length; row += 1) {
+    const ranges = rerenderQueueRangeQueue[row];
     if (ranges) ranges.length = 0;
   }
 }
@@ -1319,6 +1378,33 @@ export const benchmarkCases: BenchmarkCase[] = [
     iterations: 200,
     maxAverageMs: 10,
     run: runThreeAsciiDiffQueueWorkload,
+  },
+  {
+    name: "render/rerender-range-dense-160x50",
+    category: "render",
+    description: "Queue dense dirty row ranges without expanding them to per-cell sets.",
+    tags: ["render", "canvas", "queue", "range", "dense"],
+    iterations: 2_000,
+    maxAverageMs: 1,
+    run: runDenseRerenderRangeQueueWorkload,
+  },
+  {
+    name: "render/rerender-cell-sparse-1k",
+    category: "render",
+    description: "Queue sparse single-cell dirty updates through the compatibility cell queue.",
+    tags: ["render", "canvas", "queue", "cell", "sparse"],
+    iterations: 1_000,
+    maxAverageMs: 2,
+    run: runSparseRerenderCellQueueWorkload,
+  },
+  {
+    name: "render/rerender-range-clipped-120",
+    category: "render",
+    description: "Queue clipped dirty row ranges through the legacy cell queue path.",
+    tags: ["render", "canvas", "queue", "range", "clipped"],
+    iterations: 1_000,
+    maxAverageMs: 2,
+    run: runClippedRerenderRangeQueueWorkload,
   },
   {
     name: "render/render-loop-300-steps",
