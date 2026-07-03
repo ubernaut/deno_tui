@@ -2,6 +2,10 @@
 import type { Rectangle } from "../types.ts";
 import { stripStyles, textWidth } from "../utils/strings.ts";
 
+const RESET = "\x1b[0m";
+const MAX_FRAME_CELL_PARTS_CACHE_SIZE = 32768;
+const frameCellPartsCache = new Map<string, FrameCellParts>();
+
 /** Cell matrix used by immediate-mode workbench renderers before row assembly. */
 export type WorkbenchFrame = string[][];
 
@@ -125,20 +129,57 @@ export function fillFrameRect(
 
 /** Assembles one frame row from sparse styled cells. */
 export function renderFrameRow(cells: string[], width: number): string {
-  let row = "";
-  for (let column = 0; column < width; column += 1) {
-    row += cells[column] ?? " ";
-  }
-  return row;
+  return renderFrameCells((column) => cells[column] ?? " ", width);
 }
 
 /** Assembles a clipped frame row slice from sparse styled cells. */
 export function renderFrameSlice(cells: string[], start: number, width: number): string {
+  return renderFrameCells((column) => cells[start + column] ?? " ", width);
+}
+
+function renderFrameCells(cellAt: (column: number) => string, width: number): string {
   let row = "";
-  for (let column = 0; column < width; column += 1) {
-    row += cells[start + column] ?? " ";
+  for (let column = 0; column < width;) {
+    const first = splitFrameCell(cellAt(column));
+    let text = first.text;
+    let next = column + 1;
+    while (next < width) {
+      const current = splitFrameCell(cellAt(next));
+      if (current.prefix !== first.prefix || current.suffix !== first.suffix) break;
+      text += current.text;
+      next += 1;
+    }
+    row += `${first.prefix}${text}${first.suffix}`;
+    column = next;
   }
   return row;
+}
+
+interface FrameCellParts {
+  prefix: string;
+  text: string;
+  suffix: string;
+}
+
+function splitFrameCell(cell: string): FrameCellParts {
+  if (!cell.includes("\x1b[") || !cell.endsWith("\x1b[0m")) {
+    return { prefix: "", text: cell, suffix: "" };
+  }
+  const cached = frameCellPartsCache.get(cell);
+  if (cached) return cached;
+
+  const body = cell.slice(0, -RESET.length);
+  const parts = Array.from(body);
+  const text = parts.pop();
+  if (!text || text.charCodeAt(0) === 0x1b) {
+    return { prefix: "", text: cell, suffix: "" };
+  }
+  const split = { prefix: parts.join(""), text, suffix: RESET };
+  if (frameCellPartsCache.size > MAX_FRAME_CELL_PARTS_CACHE_SIZE) {
+    frameCellPartsCache.clear();
+  }
+  frameCellPartsCache.set(cell, split);
+  return split;
 }
 
 /** Writes ANSI-styled text into a string-backed frame row. */

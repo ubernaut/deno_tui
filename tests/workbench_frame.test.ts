@@ -29,43 +29,37 @@ Deno.test("workbench frame helpers preserve ANSI styling per terminal cell", () 
 
   const frame: WorkbenchFrame = [[], []];
   writeFrame(frame, 5, 0, 1, "\x1b[31mAB\x1b[0m");
-  assertEquals(renderFrameRow(frame[0]!, 5), " \x1b[31mA\x1b[0m\x1b[31mB\x1b[0m  ");
-  assertEquals(renderFrameSlice(frame[0]!, 1, 2), "\x1b[31mA\x1b[0m\x1b[31mB\x1b[0m");
+  assertEquals(renderFrameRow(frame[0]!, 5), " \x1b[31mAB\x1b[0m  ");
+  assertEquals(renderFrameSlice(frame[0]!, 1, 2), "\x1b[31mAB\x1b[0m");
 });
 
 Deno.test("workbench frame writes clip negative columns without sparse negative keys", () => {
   const frame: WorkbenchFrame = [[]];
   writeFrame(frame, 3, 0, -2, "\x1b[32mABCDE\x1b[0m");
 
-  assertEquals(renderFrameRow(frame[0]!, 3), "\x1b[32mC\x1b[0m\x1b[32mD\x1b[0m\x1b[32mE\x1b[0m");
+  assertEquals(renderFrameRow(frame[0]!, 3), "\x1b[32mCDE\x1b[0m");
   assertEquals(Object.hasOwn(frame[0]!, "-1"), false);
 });
 
 Deno.test("workbench frame writes ANSI strings into string-backed rows", () => {
   const frame = ["....."];
   writeStringFrameRow(frame, 5, 0, 1, "\x1b[31mAB\x1b[0m");
-  assertEquals(frame[0], ".\x1b[31mA\x1b[0m\x1b[31mB\x1b[0m..");
+  assertEquals(frame[0], ".\x1b[31mAB\x1b[0m..");
 
   writeStringFrameRow(frame, 5, 0, -1, "\x1b[32mXY\x1b[0m");
-  assertEquals(frame[0], "\x1b[32mY\x1b[0m\x1b[31mA\x1b[0m\x1b[31mB\x1b[0m..");
+  assertEquals(frame[0], "\x1b[32mY\x1b[0m\x1b[31mAB\x1b[0m..");
 
   writeStringFrameRow(frame, 5, 0, 0, "\x1b[35m12345\x1b[0m");
-  assertEquals(
-    frame[0],
-    "\x1b[35m1\x1b[0m\x1b[35m2\x1b[0m\x1b[35m3\x1b[0m\x1b[35m4\x1b[0m\x1b[35m5\x1b[0m",
-  );
+  assertEquals(frame[0], "\x1b[35m12345\x1b[0m");
 
   writeStringFrameRow(frame, 5, 0, -2, "\x1b[36mabcdefg\x1b[0m");
-  assertEquals(
-    frame[0],
-    "\x1b[36mc\x1b[0m\x1b[36md\x1b[0m\x1b[36me\x1b[0m\x1b[36mf\x1b[0m\x1b[36mg\x1b[0m",
-  );
+  assertEquals(frame[0], "\x1b[36mcdefg\x1b[0m");
 
   const rectFrame = [".....", ".....", "....."];
   fillStringFrameRect(rectFrame, 5, { column: 1, row: 1, width: 3, height: 2 }, "\x1b[34m...\x1b[0m");
   assertEquals(rectFrame[0], ".....");
-  assertEquals(rectFrame[1], ".\x1b[34m.\x1b[0m\x1b[34m.\x1b[0m\x1b[34m.\x1b[0m.");
-  assertEquals(rectFrame[2], ".\x1b[34m.\x1b[0m\x1b[34m.\x1b[0m\x1b[34m.\x1b[0m.");
+  assertEquals(rectFrame[1], ".\x1b[34m...\x1b[0m.");
+  assertEquals(rectFrame[2], ".\x1b[34m...\x1b[0m.");
 });
 
 Deno.test("workbench frame row preparation reuses arrays and clears retained sparse rows", () => {

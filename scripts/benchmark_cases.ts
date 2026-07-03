@@ -1411,6 +1411,33 @@ export const benchmarkCases: BenchmarkCase[] = [
     },
   },
   {
+    name: "render/three-ascii-terminal-row-sparse-96x40",
+    category: "render",
+    description: "Assemble terminal row output for a sparse block-mode Three ASCII frame with styled-run compaction.",
+    tags: ["render", "three", "ascii", "ansi", "terminal", "sparse"],
+    iterations: 200,
+    maxAverageMs: 8,
+    run: () => {
+      const grid = buildThreeAsciiAnsiGrid({
+        columns: threeAsciiColumns,
+        rows: threeAsciiRows,
+        fillGlyphs: threeAsciiSparseFillGlyphs,
+        edgeGlyphs: threeAsciiSparseEdgeGlyphs,
+        colors: threeAsciiSparseColors,
+        terminalGlyphStyle: "blocks",
+        terminalEdgeBias: 1.15,
+        backgroundColor: 0x000000,
+      });
+      let bytes = 0;
+      for (const row of grid) {
+        bytes += renderFrameRow(row, threeAsciiColumns).length;
+      }
+      if (bytes <= threeAsciiRows * threeAsciiColumns) {
+        throw new Error("terminal row output did not include ANSI styling");
+      }
+    },
+  },
+  {
     name: "render/three-ascii-readback-copy-96x40",
     category: "render",
     description: "Copy a 96x40 Three Ascii fill, edge, and color readback payload into CPU-visible buffers.",

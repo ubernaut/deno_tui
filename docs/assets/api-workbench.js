@@ -3896,8 +3896,7 @@ var ThreeAsciiAnsiGridAssembler = class {
     this.backgroundGreen = backgroundGreen;
     this.backgroundBlue = backgroundBlue;
     this.backgroundAnsi = rgbToAnsiBackground(backgroundRed, backgroundGreen, backgroundBlue);
-    const backgroundForeground = rgbToAnsiForeground(backgroundRed, backgroundGreen, backgroundBlue);
-    this.blankAnsi = `${this.backgroundAnsi}${backgroundForeground} ${RESET}`;
+    this.blankAnsi = `${this.backgroundAnsi} ${RESET}`;
     this.cellCache.clear();
   }
 };
@@ -11084,6 +11083,9 @@ function inset(rect, amount) {
 }
 
 // src/app/workbench_frame.ts
+var RESET2 = "\x1B[0m";
+var MAX_FRAME_CELL_PARTS_CACHE_SIZE = 32768;
+var frameCellPartsCache = /* @__PURE__ */ new Map();
 function prepareWorkbenchRows(rows2, count, create, reset) {
   const rowCount = Math.max(0, Math.floor(count));
   rows2.length = rowCount;
@@ -11126,18 +11128,46 @@ function readSgrSequenceAt(value, start) {
   return value.slice(start, index + 1);
 }
 function renderFrameRow(cells, width) {
+  return renderFrameCells((column) => cells[column] ?? " ", width);
+}
+function renderFrameSlice(cells, start, width) {
+  return renderFrameCells((column) => cells[start + column] ?? " ", width);
+}
+function renderFrameCells(cellAt, width) {
   let row = "";
-  for (let column = 0; column < width; column += 1) {
-    row += cells[column] ?? " ";
+  for (let column = 0; column < width; ) {
+    const first = splitFrameCell(cellAt(column));
+    let text = first.text;
+    let next = column + 1;
+    while (next < width) {
+      const current = splitFrameCell(cellAt(next));
+      if (current.prefix !== first.prefix || current.suffix !== first.suffix) break;
+      text += current.text;
+      next += 1;
+    }
+    row += `${first.prefix}${text}${first.suffix}`;
+    column = next;
   }
   return row;
 }
-function renderFrameSlice(cells, start, width) {
-  let row = "";
-  for (let column = 0; column < width; column += 1) {
-    row += cells[start + column] ?? " ";
+function splitFrameCell(cell) {
+  if (!cell.includes("\x1B[") || !cell.endsWith("\x1B[0m")) {
+    return { prefix: "", text: cell, suffix: "" };
   }
-  return row;
+  const cached = frameCellPartsCache.get(cell);
+  if (cached) return cached;
+  const body = cell.slice(0, -RESET2.length);
+  const parts = Array.from(body);
+  const text = parts.pop();
+  if (!text || text.charCodeAt(0) === 27) {
+    return { prefix: "", text: cell, suffix: "" };
+  }
+  const split = { prefix: parts.join(""), text, suffix: RESET2 };
+  if (frameCellPartsCache.size > MAX_FRAME_CELL_PARTS_CACHE_SIZE) {
+    frameCellPartsCache.clear();
+  }
+  frameCellPartsCache.set(cell, split);
+  return split;
 }
 function writeStringFrameRow(frame, width, row, column, value) {
   if (row < 0 || row >= frame.length || column >= width) return;

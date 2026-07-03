@@ -575,8 +575,7 @@ export class ThreeAsciiAnsiGridAssembler {
     this.backgroundGreen = backgroundGreen;
     this.backgroundBlue = backgroundBlue;
     this.backgroundAnsi = rgbToAnsiBackground(backgroundRed, backgroundGreen, backgroundBlue);
-    const backgroundForeground = rgbToAnsiForeground(backgroundRed, backgroundGreen, backgroundBlue);
-    this.blankAnsi = `${this.backgroundAnsi}${backgroundForeground} ${RESET}`;
+    this.blankAnsi = `${this.backgroundAnsi} ${RESET}`;
     this.cellCache.clear();
   }
 }
