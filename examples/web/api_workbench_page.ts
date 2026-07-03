@@ -52,6 +52,7 @@ import {
   persistWorkbenchPanelWorkspaceState,
   prepareWorkbenchRows,
   ProgressBarController,
+  projectWorkbenchButton,
   RadioGroupController,
   renderMenuBar,
   ScrollAreaController,
@@ -77,6 +78,7 @@ import {
   type WorkbenchButtonRowPlacement,
   type WorkbenchButtonRowRenderCommand,
   workbenchButtonRowRenderCommandsInto,
+  type WorkbenchButtonTone,
   type WorkbenchDropdownOverlayRenderCommand,
   workbenchDropdownOverlayRenderCommandsInto,
   workbenchEmptyWorkspaceMessage,
@@ -246,7 +248,7 @@ type Hit =
   | { type: "workspaceScrollbar" };
 type ControlHitAction = "previous" | "next" | "activate" | "set" | "focus" | "toggle";
 type ConfigHitAction = "previous" | "next" | "activate";
-type ButtonTone = "default" | "danger" | "warning" | "success" | "muted";
+type ButtonTone = WorkbenchButtonTone;
 type MobileAction = WorkbenchMobileCommandAction;
 type WebTerminalAction = WorkbenchTerminalToolbarAction;
 type AsciiOptions = ThreeAsciiConfigOptions;
@@ -2665,12 +2667,15 @@ function writeButton(
     maxWidth?: number;
   } = {},
 ): number {
-  const text = buttonText(label, options.compact);
-  const width = Math.max(0, Math.min(textWidth(text), options.maxWidth ?? textWidth(text)));
-  if (width <= 0) return 0;
-  const style = buttonPaintOptions(options.state ?? "base", options.tone ?? "default");
-  write(frame, row, column, paint(fit(text, width), style.fg, style.bg, style.bold));
-  return width;
+  const button = projectWorkbenchButton(label, theme(), contrastText, {
+    compact: options.compact,
+    maxWidth: options.maxWidth,
+    state: options.state,
+    tone: options.tone,
+  });
+  if (button.width <= 0) return 0;
+  write(frame, row, column, paint(button.text, button.style.fg, button.style.bg, button.style.bold));
+  return button.width;
 }
 
 function buttonPaintOptions(

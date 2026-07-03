@@ -3427,6 +3427,13 @@
     },
     {
       "module": "src/app/workbench_button_style.ts",
+      "name": "projectWorkbenchButton",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_button_style.ts",
       "name": "WorkbenchButtonContrast",
       "kind": "type",
       "typeOnly": true,
@@ -3437,6 +3444,20 @@
       "name": "workbenchButtonPaintOptions",
       "kind": "function",
       "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_button_style.ts",
+      "name": "WorkbenchButtonProjection",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_button_style.ts",
+      "name": "WorkbenchButtonProjectionOptions",
+      "kind": "interface",
+      "typeOnly": true,
       "documented": true
     },
     {

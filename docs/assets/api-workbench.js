@@ -11276,6 +11276,16 @@ function workbenchButtonPaintOptions(theme2, contrast, state = "base", tone = "d
   }
   return { fg: contrast(theme2.buttonBg, theme2.background, theme2.text), bg: theme2.buttonBg, bold: true };
 }
+function projectWorkbenchButton(label, theme2, contrast, options = {}) {
+  const rawText = buttonText(label, { compact: options.compact });
+  const rawWidth = textWidth(rawText);
+  const width = Math.max(0, Math.min(rawWidth, options.maxWidth ?? rawWidth));
+  return {
+    text: fitCellText(rawText, width),
+    width,
+    style: workbenchButtonPaintOptions(theme2, contrast, options.state ?? "base", options.tone ?? "default")
+  };
+}
 
 // src/app/workbench_control_layout.ts
 function layoutWorkbenchButtonRowInto(target, items, bounds, startRow, options = {}) {
@@ -19327,12 +19337,15 @@ function buttonText2(label, compact2 = false) {
   return buttonText(label, { compact: compact2 });
 }
 function writeButton(frame, row, column, label, options = {}) {
-  const text = buttonText2(label, options.compact);
-  const width = Math.max(0, Math.min(textWidth(text), options.maxWidth ?? textWidth(text)));
-  if (width <= 0) return 0;
-  const style2 = buttonPaintOptions(options.state ?? "base", options.tone ?? "default");
-  write(frame, row, column, paint(fit(text, width), style2.fg, style2.bg, style2.bold));
-  return width;
+  const button = projectWorkbenchButton(label, theme(), contrastText, {
+    compact: options.compact,
+    maxWidth: options.maxWidth,
+    state: options.state,
+    tone: options.tone
+  });
+  if (button.width <= 0) return 0;
+  write(frame, row, column, paint(button.text, button.style.fg, button.style.bg, button.style.bold));
+  return button.width;
 }
 function buttonPaintOptions(state = "base", tone = "default") {
   return workbenchButtonPaintOptions(theme(), contrastText, state, tone);

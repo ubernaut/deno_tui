@@ -230,3 +230,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   same renderer-neutral projection path without duplicating inline explanatory rows.
 - Matched the terminal API workbench log panel to the browser panel by projecting static documentation and live command
   log rows through the same multi-source log adapter.
+- Added a shared `projectWorkbenchButton()` helper and routed terminal/browser workbench button writers through it so
+  button label clipping and theme-derived paint stay consistent across renderers.

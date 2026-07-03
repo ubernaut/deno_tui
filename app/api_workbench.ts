@@ -49,6 +49,7 @@ import {
   normalizeWorkbenchWorkspaceName,
   persistWorkbenchWorkspaceStorage,
   prepareWorkbenchFrame,
+  projectWorkbenchButton,
   renameWorkbenchWorkspace,
   renderFrameRow,
   renderFrameSlice,
@@ -56,6 +57,7 @@ import {
   translateHitTargets,
   upsertWorkbenchWorkspace,
   workbenchAdaptiveWindowLayout,
+  type WorkbenchButtonTone,
   workbenchContentViewport,
   type WorkbenchDropdownOverlayRenderCommand,
   workbenchDropdownOverlayRenderCommandsInto,
@@ -368,7 +370,7 @@ type ControlHitAction = "previous" | "next" | "activate" | "set" | "focus" | "to
 type ConfigHitAction = "previous" | "next" | "activate";
 type TerminalOutputAction = WorkbenchTerminalOutputToolbarAction;
 type TerminalShellAction = WorkbenchTerminalToolbarAction;
-type ButtonTone = "default" | "danger" | "warning" | "success" | "muted";
+type ButtonTone = WorkbenchButtonTone;
 
 type ThemeSpec = ApiWorkbenchThemeSpec;
 type ProcessRow = ApiWorkbenchProcessRow;
@@ -4590,16 +4592,20 @@ function writeButton(
     maxWidth?: number;
   } = {},
 ): number {
-  const text = buttonText(label, { compact: options.compact });
-  const width = Math.max(0, Math.min(textWidth(text), options.maxWidth ?? textWidth(text)));
-  if (width <= 0) return 0;
-  write(
-    frame,
-    row,
-    column,
-    paint(fit(text, width), buttonPaintOptions(theme(), options.state ?? "base", options.tone ?? "default")),
+  const button = projectWorkbenchButton(
+    label,
+    theme(),
+    contrastText,
+    {
+      compact: options.compact,
+      maxWidth: options.maxWidth,
+      state: options.state,
+      tone: options.tone,
+    },
   );
-  return width;
+  if (button.width <= 0) return 0;
+  write(frame, row, column, paint(button.text, button.style));
+  return button.width;
 }
 
 function buttonPaintOptions(

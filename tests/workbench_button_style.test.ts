@@ -1,6 +1,10 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { assertEquals } from "./deps.ts";
-import { workbenchButtonPaintOptions, type WorkbenchButtonTheme } from "../src/app/workbench_button_style.ts";
+import {
+  projectWorkbenchButton,
+  workbenchButtonPaintOptions,
+  type WorkbenchButtonTheme,
+} from "../src/app/workbench_button_style.ts";
 
 const theme: WorkbenchButtonTheme = {
   background: "#000000",
@@ -55,5 +59,26 @@ Deno.test("workbenchButtonPaintOptions lets semantic tones override active color
     fg: "contrast:#444444",
     bg: theme.border,
     bold: true,
+  });
+});
+
+Deno.test("projectWorkbenchButton clips text and resolves shared paint options", () => {
+  assertEquals(projectWorkbenchButton(" Launch ", theme, contrast, { maxWidth: 5 }), {
+    text: "[ La…",
+    width: 5,
+    style: {
+      fg: "contrast:#2255ff",
+      bg: theme.buttonBg,
+      bold: true,
+    },
+  });
+  assertEquals(projectWorkbenchButton("x", theme, contrast, { compact: true, tone: "danger" }), {
+    text: "[x]",
+    width: 3,
+    style: {
+      fg: "contrast:#ff2255",
+      bg: theme.danger,
+      bold: true,
+    },
   });
 });
