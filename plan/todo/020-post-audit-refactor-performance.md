@@ -17,7 +17,7 @@ performance, shared terminal/web workbench projections, and oversized module red
 
 - [x] Add benchmark selector ergonomics and coverage for `--query` as a search alias.
 - [x] Extract another shared renderer-neutral workbench projection from terminal/web duplication.
-- [ ] Re-run focused and full health checks after each retained milestone.
+- [x] Re-run focused and full health checks after each retained milestone.
 - [ ] Continue reducing oversized app/demo modules only at clean abstraction points.
 - [ ] Keep Three ASCII performance changes benchmark-gated; revert any micro-optimization that loses on focused cases.
 
@@ -180,3 +180,11 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Added an opt-in `deno task benchmark -- --repeat N` mode that reruns selected benchmark cases and reports the best
   average per case, making noisy renderer micro-benchmark checks less dependent on a single local sample while
   preserving the default report format.
+- Moved repeated benchmark best-of aggregation into the reusable performance API with direct tests and an updated stable
+  API baseline.
+- Fixed compact monitor/demo window control visibility so minimized panes retain titlebar controls, and normalized
+  Three ASCII block-mode blank fill handling so invisible buckets do not render colored foreground spaces.
+- Shared terminal-session id and title helpers between terminal and browser workbench adapters, removing duplicated
+  session id scans and keeping web/console behavior aligned.
+- Added a benchmark-retained Three ASCII ANSI-grid shortcut for block-mode fill-only cells so visible block cells skip
+  the fill-glyph table lookup while preserving glyph and mixed modes.
