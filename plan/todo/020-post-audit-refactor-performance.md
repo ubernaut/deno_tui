@@ -203,3 +203,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   ordering, selected-state propagation, and caller-owned command reuse.
 - Extracted API workbench scrollable content-size decisions into a renderer-neutral helper with tests for built-ins,
   terminal clamps, visualization delegation, data widths, and reusable text projection.
+- Moved process-output window title formatting into the shared terminal status presenter with direct tests, keeping
+  shell and process terminal title composition aligned outside the workbench renderer.

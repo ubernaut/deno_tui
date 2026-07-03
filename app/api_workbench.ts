@@ -130,6 +130,7 @@ import type { TerminalShellController } from "../src/runtime/terminal_shell.ts";
 import { TerminalShellWorkspaceController } from "../src/runtime/terminal_shell_workspace.ts";
 import {
   formatTerminalOutputHint,
+  formatTerminalOutputWindowTitle,
   formatTerminalShellHint,
   formatTerminalShellStatusLine,
   formatTerminalShellWindowTitle,
@@ -4660,7 +4661,7 @@ function titlebarRenderCommandBuffer(id: WindowId): WorkbenchTitlebarButtonRende
 
 function terminalOutputWindowTitle(): string {
   const mode = terminalInputMode.peek() === "raw" ? "RAW" : "WB";
-  return `Terminal Output ${mode} ${terminalOutputSession.status.peek().toUpperCase()}`;
+  return formatTerminalOutputWindowTitle(terminalOutputSession.inspect(), { mode });
 }
 
 function terminalShellWindowTitle(): string {

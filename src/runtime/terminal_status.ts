@@ -47,6 +47,12 @@ export interface TerminalShellWindowTitleOptions {
   prefix?: string;
 }
 
+/** Options for formatting a process-output window title. */
+export interface TerminalOutputWindowTitleOptions {
+  mode?: string;
+  prefix?: string;
+}
+
 /** Options for formatting a live shell status line. */
 export interface TerminalShellStatusLineOptions {
   mode: string;
@@ -213,6 +219,16 @@ export function formatTerminalShellHint(options: TerminalShellHintOptions): stri
   return options.inputMode === "raw"
     ? "raw shell input: keys go to shell  Ctrl+C interrupts shell  Esc returns to Workbench"
     : "keys: P start  S stop  U restart  K clear  I raw input  PageUp copy scroll";
+}
+
+/** Formats a process-output window title with input mode and process status. */
+export function formatTerminalOutputWindowTitle(
+  source: { status: ProcessSessionStatus | "starting" },
+  options: TerminalOutputWindowTitleOptions = {},
+): string {
+  const prefix = options.prefix ?? "Terminal Output";
+  const mode = options.mode ? ` ${options.mode.toUpperCase()}` : "";
+  return `${prefix}${mode} ${source.status.toUpperCase()}`;
 }
 
 /** Formats a shell window title with mode, status, and optional OSC/runtime title. */

@@ -4,6 +4,7 @@ import type { ProcessSessionInspection } from "../src/runtime/process_session.ts
 import type { TerminalSessionHandleInspection } from "../src/runtime/terminal_backend.ts";
 import {
   formatTerminalOutputHint,
+  formatTerminalOutputWindowTitle,
   formatTerminalShellHint,
   formatTerminalShellStatusLine,
   formatTerminalShellWindowTitle,
@@ -108,6 +109,17 @@ Deno.test("summarizeTerminalStatus reads workspace descriptor metadata", () => {
     "reconnectable",
   ]);
   assertEquals(terminalStatusFields({ status: "idle", running: false, includeCommand: false }), ["IDLE"]);
+});
+
+Deno.test("formatTerminalOutputWindowTitle includes input mode and status", () => {
+  assertEquals(
+    formatTerminalOutputWindowTitle({ status: "running" }, { mode: "raw" }),
+    "Terminal Output RAW RUNNING",
+  );
+  assertEquals(
+    formatTerminalOutputWindowTitle({ status: "starting" }, { mode: "wb", prefix: "Process" }),
+    "Process WB STARTING",
+  );
 });
 
 Deno.test("formatTerminalShellWindowTitle includes OSC runtime titles", () => {
