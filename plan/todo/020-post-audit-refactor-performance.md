@@ -300,3 +300,8 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Added Three-backed visualization metadata and routed workbench content sizing through it so 3D visualization windows
   avoid duplicate render passes during layout; dynamic Three scene signal assignment now skips unchanged mode/signal
   payloads.
+- Extracted workspace-window snapshot projection from the API workbench into a focused workspace-menu helper so saved
+  workspace persistence can be tested independently of the large interactive app module.
+- Added adaptive Three panel render-cell budgeting driven by live renderer telemetry; sustained slow frames now step the
+  panel down to a lower source grid without mutating saved ASCII settings, and the resize path restarts the render loop
+  instead of getting stranded after an adaptive cap change.

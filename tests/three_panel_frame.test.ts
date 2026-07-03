@@ -2,6 +2,7 @@ import { assert, assertEquals } from "./deps.ts";
 import { Signal } from "../src/signals/mod.ts";
 import { createDefaultAsciiOptions } from "../app/ascii_options.ts";
 import {
+  resolveThreePanelAdaptiveRenderBudget,
   resolveThreePanelRenderPolicy,
   resolveThreePanelRenderSize,
   ThreePanelFrameView,
@@ -91,6 +92,39 @@ Deno.test("resolveThreePanelRenderSize preserves small panes and caps large pane
   assert(capped.rows < 60);
   assert(capped.columns * capped.rows <= 3_840);
   assert(capped.columns / capped.rows > 160 / 60 - 0.2);
+});
+
+Deno.test("resolveThreePanelAdaptiveRenderBudget steps down on sustained slow frames", () => {
+  const first = resolveThreePanelAdaptiveRenderBudget({
+    requestedMaxCells: 3_840,
+    frameMs: 220,
+    targetMs: 1000 / 18,
+    slowFrames: 0,
+    fastFrames: 0,
+  });
+  assertEquals(first.direction, "steady");
+  assertEquals(first.maxCells, undefined);
+
+  const second = resolveThreePanelAdaptiveRenderBudget({
+    requestedMaxCells: 3_840,
+    frameMs: 220,
+    targetMs: 1000 / 18,
+    slowFrames: first.slowFrames,
+    fastFrames: first.fastFrames,
+  });
+  assertEquals(second.direction, "down");
+  assertEquals(second.maxCells, 1_920);
+
+  const recovered = resolveThreePanelAdaptiveRenderBudget({
+    requestedMaxCells: 3_840,
+    currentMaxCells: 1_920,
+    frameMs: 20,
+    targetMs: 1000 / 18,
+    slowFrames: 0,
+    fastFrames: 119,
+  });
+  assertEquals(recovered.direction, "up");
+  assertEquals(recovered.maxCells, undefined);
 });
 
 Deno.test("resolveThreePanelLifecycleState reports explicit transition phases", () => {
@@ -382,6 +416,43 @@ Deno.test("ThreePanelFrameView caps large ASCII renderer sizes", async () => {
 
     rectangle.value = { column: 0, row: 0, width: 80, height: 24 };
     await waitFor(() => renderer?.sizes.some(([columns, rows]) => columns === 80 && rows === 24) === true);
+  } finally {
+    panel.dispose();
+    rectangle.dispose();
+    scene.dispose();
+    ascii.dispose();
+    enabled.dispose();
+  }
+});
+
+Deno.test("ThreePanelFrameView lowers render cells after slow renderer telemetry", async () => {
+  const rectangle = new Signal({ column: 0, row: 0, width: 160, height: 60 }, { deepObserve: true });
+  const scene = new Signal<ThreeSceneState | null>(sceneState());
+  const ascii = new Signal({ ...createDefaultAsciiOptions("sharp"), renderMaxCells: 3_840 });
+  const enabled = new Signal(true);
+  const diagnostics = new DiagnosticsCollector();
+  let renderer: TelemetryGridRenderer | undefined;
+  const panel = new ThreePanelFrameView({
+    rectangle,
+    scene,
+    ascii,
+    enabled,
+    frameInterval: 1,
+    diagnostics,
+    rendererFactory: (options) => renderer = new TelemetryGridRenderer(options.columns, options.rows, 220),
+  });
+
+  try {
+    await waitFor(() => (renderer?.renderCount ?? 0) >= 3);
+
+    assert(renderer);
+    assertEquals(ascii.peek().renderMaxCells, 3_840);
+    assert(renderer.sizes.some(([columns, rows]) => columns * rows <= 1_920));
+    assert(
+      diagnostics.entries().some((entry) =>
+        entry.source === "three-panel" && entry.code === "three-ascii-adaptive-render-cells"
+      ),
+    );
   } finally {
     panel.dispose();
     rectangle.dispose();
@@ -1121,6 +1192,26 @@ class ReusedGridRenderer extends FakeGridRenderer {
     const glyph = String(this.renderCount % 10);
     for (const row of this.grid) row.fill(glyph);
     return this.grid;
+  }
+}
+
+class TelemetryGridRenderer extends FakeGridRenderer {
+  constructor(columns: number, rows: number, private readonly totalMs: number) {
+    super(columns, rows);
+  }
+
+  inspectPerformance() {
+    return {
+      columns: this.columns,
+      rows: this.rows,
+      cells: this.columns * this.rows,
+      terminalGlyphStyle: this.getTerminalGlyphStyle(),
+      totalMs: this.totalMs,
+      sceneMs: this.totalMs * 0.7,
+      ansiMs: this.totalMs * 0.3,
+      readbackMs: this.totalMs * 0.2,
+      assemblyMs: this.totalMs * 0.05,
+    };
   }
 }
 
