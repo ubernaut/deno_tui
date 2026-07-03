@@ -1,0 +1,31 @@
+# Range-Aware Render Queue
+
+## Goal
+
+Reduce renderer-side CPU overhead for dense or bursty redraws by allowing canvas objects to queue dirty column ranges
+without immediately expanding every changed cell into a `Set<number>`.
+
+## Motivation
+
+Three ASCII frame diffing is now one of the slower CPU-side renderer paths. Focused runs keep the
+`render/three-ascii-frame-diff-96x40` case under budget, but profiling by inspection shows the hot path still scans the
+grid and expands each changed cell into the legacy per-row `Set<number>` queue. Dense changed runs would be cheaper as
+row ranges until the final sink flush.
+
+## Proposed Shape
+
+- Add a renderer-neutral row dirty queue abstraction that can represent sparse cells and contiguous ranges.
+- Keep the existing `Set<number>` compatibility path during migration so current `DrawObject` implementations do not
+  break.
+- Route `DrawObject.queueRerenderRange`, canvas dirty-region routing, and Three ASCII changed-cell diffing through the
+  abstraction.
+- Teach memory, ANSI stdout, and browser canvas sinks to consume coalesced row ranges without losing per-cell fallback
+  behavior.
+- Add benchmarks for sparse, dense, clipped, and fractional dirty queues before replacing the legacy set expansion.
+
+## Verification
+
+- `deno task benchmark -- --query three-ascii-frame-diff --repeat 8`
+- `deno task benchmark -- --query canvas --repeat 5`
+- `deno test -A tests/canvas_* tests/three_ascii_diff.test.ts tests/three_panel_frame.test.ts`
+- `deno task health`
