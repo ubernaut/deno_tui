@@ -63,27 +63,61 @@ export function syntheticWorkbenchSources(
   group: WorkbenchSyntheticGroup,
   phase: number,
 ): SourceFrame[] {
+  return syntheticWorkbenchSourcesInto([], id, group, phase);
+}
+
+export function syntheticWorkbenchSourcesInto(
+  target: SourceFrame[],
+  id: string,
+  group: WorkbenchSyntheticGroup,
+  phase: number,
+): SourceFrame[] {
   const seed = stringSeed(id);
-  const specs: Array<{ id: string; name: string; accent: Accent; offset: number }> = [
-    { id: "primary", name: group, accent: group === "Monitor" ? "signal" : "phosphor", offset: seed % 29 },
-    { id: "secondary", name: "Harmonic", accent: "violet", offset: seed % 41 },
-    { id: "noise", name: "Noise", accent: seed % 2 === 0 ? "amber" : "alarm", offset: seed % 17 },
-  ];
-  const sources = new Array<SourceFrame>(specs.length);
-  for (let index = 0; index < specs.length; index++) {
-    const spec = specs[index]!;
-    const series = waveSeries(72, phase + spec.offset, 0.08 + index * 0.025, 0.11 + index * 0.07);
-    const value = series.at(-1) ?? 0.5;
-    sources[index] = {
-      id: `workbench:${id}:${spec.id}`,
-      name: spec.name,
-      accent: spec.accent,
-      value,
-      series,
-      detailLines: [`${Math.round(value * 100)}%`, group],
-    };
-  }
-  return sources;
+  target.length = 3;
+  target[0] = syntheticWorkbenchSourceFrame(
+    id,
+    group,
+    "primary",
+    group,
+    group === "Monitor" ? "signal" : "phosphor",
+    seed % 29,
+    phase,
+    0,
+  );
+  target[1] = syntheticWorkbenchSourceFrame(id, group, "secondary", "Harmonic", "violet", seed % 41, phase, 1);
+  target[2] = syntheticWorkbenchSourceFrame(
+    id,
+    group,
+    "noise",
+    "Noise",
+    seed % 2 === 0 ? "amber" : "alarm",
+    seed % 17,
+    phase,
+    2,
+  );
+  return target;
+}
+
+function syntheticWorkbenchSourceFrame(
+  id: string,
+  group: WorkbenchSyntheticGroup,
+  sourceId: string,
+  name: string,
+  accent: Accent,
+  offset: number,
+  phase: number,
+  index: number,
+): SourceFrame {
+  const series = waveSeries(72, phase + offset, 0.08 + index * 0.025, 0.11 + index * 0.07);
+  const value = series.at(-1) ?? 0.5;
+  return {
+    id: `workbench:${id}:${sourceId}`,
+    name,
+    accent,
+    value,
+    series,
+    detailLines: [`${Math.round(value * 100)}%`, group],
+  };
 }
 
 export function syntheticWorkbenchSystem(

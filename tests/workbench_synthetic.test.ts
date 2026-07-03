@@ -3,6 +3,7 @@ import {
   monitorSourceIds,
   monitorSourceIdsInto,
   syntheticWorkbenchSources,
+  syntheticWorkbenchSourcesInto,
   syntheticWorkbenchSystem,
   unitWave,
 } from "../app/workbench_synthetic.ts";
@@ -32,6 +33,26 @@ Deno.test("workbench synthetic sources are deterministic and bounded", () => {
   assertEquals(first[0]?.series.length, 72);
   assert(first.every((source) => source.value >= 0 && source.value <= 1));
   assert(first.every((source) => source.detailLines.at(-1) === "Neon 3D"));
+});
+
+Deno.test("workbench synthetic sources can reuse caller buffers", () => {
+  const target = [
+    { id: "stale", name: "Stale", accent: "signal" as const, value: 0, series: [], detailLines: [] },
+    { id: "trim", name: "Trim", accent: "signal" as const, value: 0, series: [], detailLines: [] },
+    { id: "trim2", name: "Trim2", accent: "signal" as const, value: 0, series: [], detailLines: [] },
+    { id: "trim3", name: "Trim3", accent: "signal" as const, value: 0, series: [], detailLines: [] },
+  ];
+
+  assertEquals(syntheticWorkbenchSourcesInto(target, "magi-board", "Neon", 8), target);
+  assertEquals(target.length, 3);
+  assertEquals(target.map((source) => source.id), [
+    "workbench:magi-board:primary",
+    "workbench:magi-board:secondary",
+    "workbench:magi-board:noise",
+  ]);
+  assertEquals(target[0]?.name, "Neon");
+  assertEquals(target[1]?.name, "Harmonic");
+  assert(target.every((source) => source.series.length === 72));
 });
 
 Deno.test("workbench synthetic system supports injected cpu count and timestamp", () => {

@@ -302,7 +302,7 @@ import {
 import {
   monitorSourceIds,
   monitorSourceIdsInto,
-  syntheticWorkbenchSources,
+  syntheticWorkbenchSourcesInto,
   syntheticWorkbenchSystem,
 } from "./workbench_synthetic.ts";
 import type { ComputedLayoutBox } from "../src/layout/mod.ts";
@@ -639,6 +639,7 @@ const workspaceMenuEntryBuffer: WorkspaceMenuEntry[] = [];
 const workspaceMenuLabelBuffer: string[] = [];
 const realSourceIdBuffer: string[] = [];
 const realSourceFrameBuffer: SourceFrame[] = [];
+const syntheticSourceFrameBuffer: SourceFrame[] = [];
 const menuBarHitLayouts: WorkbenchMenuBarHitLayout[] = [];
 const headerLayout: WorkbenchHeaderLayout = { menu: { column: 0, row: 0, width: 0, height: 1 } };
 const minimizedShelfEntries: Array<{ id: WindowId; title: string }> = [];
@@ -2744,9 +2745,12 @@ function buildVisualizationContext(
   const system = usesRealSystem
     ? systemMonitor.snapshot.peek()
     : syntheticWorkbenchSystem(phase, option?.group ?? "Monitor");
-  const sources = usesRealSystem
-    ? realWorkbenchSources(visualizationId, system, phase)
-    : syntheticWorkbenchSources(visualizationId, option?.group ?? "Monitor", phase);
+  const sources = usesRealSystem ? realWorkbenchSources(visualizationId, system, phase) : syntheticWorkbenchSourcesInto(
+    syntheticSourceFrameBuffer,
+    visualizationId,
+    option?.group ?? "Monitor",
+    phase,
+  );
   const slot: SlotConfig = {
     id: "cpu",
     name: option?.label ?? visualizationId,

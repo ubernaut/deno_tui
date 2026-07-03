@@ -244,3 +244,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   windows through it so redraws reuse the frame array while keeping sampled source payloads fresh.
 - Routed the standalone visualization monitor through per-slot source-frame buffers so each panel reuses its source
   array without sharing mutable context across sibling slots.
+- Added caller-owned synthetic workbench source projection and routed non-monitor workbench visualization contexts
+  through it, avoiding the per-frame source descriptor and frame-list allocations.
