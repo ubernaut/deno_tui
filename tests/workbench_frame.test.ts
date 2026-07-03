@@ -13,6 +13,7 @@ import {
   renderFrameRow,
   renderFrameSlice,
   toStyledCells,
+  updateWorkbenchLineSignals,
   type WorkbenchFrame,
   workbenchFrameBoxLinesInto,
   writeFrame,
@@ -82,6 +83,24 @@ Deno.test("workbench frame row preparation reuses arrays and clears retained spa
   assertEquals(expanded, ["OLD", "new-1", "new-2"]);
 });
 
+Deno.test("workbench frame line signal updates skip unchanged rows and clear stale rows", () => {
+  const frame: WorkbenchFrame = [[], []];
+  writeFrame(frame, 5, 0, 0, "hello");
+  writeFrame(frame, 5, 1, 0, "\x1b[31mAB\x1b[0m");
+  const signals = [
+    new FakeLineSignal("hello"),
+    new FakeLineSignal(""),
+    new FakeLineSignal("stale"),
+  ];
+
+  assertEquals(updateWorkbenchLineSignals(signals, frame, 5, 2), { rows: 2, changed: 1, cleared: 1 });
+  assertEquals(signals.map((signal) => signal.peek()), ["hello", "\x1b[31mAB\x1b[0m   ", ""]);
+  assertEquals(signals.map((signal) => signal.writes), [0, 1, 1]);
+
+  assertEquals(updateWorkbenchLineSignals(signals, frame, 5, 2), { rows: 2, changed: 0, cleared: 0 });
+  assertEquals(signals.map((signal) => signal.writes), [0, 1, 1]);
+});
+
 Deno.test("workbench frame fill helpers clip to the configured width", () => {
   const frame: WorkbenchFrame = [[], [], []];
   let styleCalls = 0;
@@ -130,3 +149,18 @@ Deno.test("workbench frame color helpers parse hex and choose contrast text", ()
   assertEquals(contrastText("#000000", "#000000", "#ffffff"), "#ffffff");
   assertEquals(contrastText("#ffffff", "#000000", "#ffffff"), "#000000");
 });
+
+class FakeLineSignal {
+  writes = 0;
+
+  constructor(private current: string) {}
+
+  peek(): string {
+    return this.current;
+  }
+
+  set value(value: string) {
+    this.writes += 1;
+    this.current = value;
+  }
+}

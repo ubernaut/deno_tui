@@ -56,6 +56,7 @@ import {
   renderFrameSlice,
   subscribeWorkbenchDiagnosticLog,
   translateHitTargets,
+  updateWorkbenchLineSignals,
   upsertWorkbenchWorkspace,
   workbenchAdaptiveWindowLayout,
   workbenchButtonPaintOptions,
@@ -1076,19 +1077,7 @@ function draw(): void {
   renderStatus(frame);
   renderActiveDropdownOverlay(frame);
   renderModalOverlay(frame);
-  for (let row = 0; row < height; row += 1) {
-    const nextLine = renderFrameRow(frame[row] ?? [], width);
-    const signal = lineSignals[row]!;
-    if (signal.peek() !== nextLine) {
-      signal.value = nextLine;
-    }
-  }
-  for (let row = height; row < lineSignals.length; row += 1) {
-    const signal = lineSignals[row]!;
-    if (signal.peek() !== "") {
-      signal.value = "";
-    }
-  }
+  updateWorkbenchLineSignals(lineSignals, frame, width, height);
 }
 
 function scheduleDraw(): void {

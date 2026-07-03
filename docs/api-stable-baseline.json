@@ -3728,6 +3728,13 @@
     },
     {
       "module": "src/app/workbench_frame.ts",
+      "name": "updateWorkbenchLineSignals",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_frame.ts",
       "name": "WorkbenchFrame",
       "kind": "type",
       "typeOnly": true,
@@ -3751,6 +3758,20 @@
       "module": "src/app/workbench_frame.ts",
       "name": "WorkbenchFrameStyle",
       "kind": "type",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_frame.ts",
+      "name": "WorkbenchLineSignal",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_frame.ts",
+      "name": "WorkbenchLineSignalUpdateStats",
+      "kind": "interface",
       "typeOnly": true,
       "documented": true
     },

@@ -12,6 +12,19 @@ export type WorkbenchFrame = string[][];
 /** Style function used by frame fill helpers. */
 export type WorkbenchFrameStyle = (text: string) => string;
 
+/** Minimal retained line signal interface used by terminal workbench frame flushing. */
+export interface WorkbenchLineSignal {
+  peek(): string;
+  value: string;
+}
+
+/** Summary of a line-signal frame flush. */
+export interface WorkbenchLineSignalUpdateStats {
+  rows: number;
+  changed: number;
+  cleared: number;
+}
+
 /** One drawable text segment for a framed workbench window. */
 export interface WorkbenchFrameBoxLine {
   kind: "border" | "title";
@@ -135,6 +148,38 @@ export function renderFrameRow(cells: string[], width: number): string {
 /** Assembles a clipped frame row slice from sparse styled cells. */
 export function renderFrameSlice(cells: string[], start: number, width: number): string {
   return renderFrameCells((column) => cells[start + column] ?? " ", width);
+}
+
+/** Applies a sparse workbench frame to retained line signals while skipping unchanged terminal rows. */
+export function updateWorkbenchLineSignals(
+  signals: readonly WorkbenchLineSignal[],
+  frame: WorkbenchFrame,
+  width: number,
+  height: number,
+): WorkbenchLineSignalUpdateStats {
+  const rows = Math.max(0, Math.min(signals.length, Math.floor(height)));
+  const columns = Math.max(0, Math.floor(width));
+  let changed = 0;
+  let cleared = 0;
+
+  for (let row = 0; row < rows; row += 1) {
+    const nextLine = renderFrameRow(frame[row] ?? [], columns);
+    const signal = signals[row]!;
+    if (signal.peek() !== nextLine) {
+      signal.value = nextLine;
+      changed += 1;
+    }
+  }
+
+  for (let row = rows; row < signals.length; row += 1) {
+    const signal = signals[row]!;
+    if (signal.peek() !== "") {
+      signal.value = "";
+      cleared += 1;
+    }
+  }
+
+  return { rows, changed, cleared };
 }
 
 function renderFrameCells(cellAt: (column: number) => string, width: number): string {

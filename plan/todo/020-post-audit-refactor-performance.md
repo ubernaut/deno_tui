@@ -180,6 +180,8 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Added an opt-in `deno task benchmark -- --repeat N` mode that reruns selected benchmark cases and reports the best
   average per case, making noisy renderer micro-benchmark checks less dependent on a single local sample while
   preserving the default report format.
+- Extracted the workbench line-signal diff into a shared frame helper and benchmarked the unchanged-row skip path so
+  terminal output throttling remains guarded.
 - Moved repeated benchmark best-of aggregation into the reusable performance API with direct tests and an updated stable
   API baseline.
 - Fixed compact monitor/demo window control visibility so minimized panes retain titlebar controls, and normalized Three

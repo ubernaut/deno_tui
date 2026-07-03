@@ -40,6 +40,7 @@ import {
   ThreeAsciiObject,
   ThreeAsciiRenderer,
   tileRects,
+  updateWorkbenchLineSignals,
   visibleListRows,
   WindowManagerController,
   type WorkbenchFrame,
@@ -226,11 +227,32 @@ const terminalScreenTranscript = [
   "\x1b]8;id=docs;https://example.test/docs\x1b\\docs\x1b]8;;\x1b\\\r\n",
 ];
 const terminalScreenChunks = terminalScreenTranscript.map((chunk) => new TextEncoder().encode(chunk));
+
+class BenchmarkLineSignal {
+  writes = 0;
+
+  constructor(private current: string) {}
+
+  peek(): string {
+    return this.current;
+  }
+
+  set value(value: string) {
+    this.writes += 1;
+    this.current = value;
+  }
+}
+
 const workbenchSparseFrame: WorkbenchFrame = [];
 const workbenchStringFrame: string[] = [];
+const workbenchLineSignalFrame: WorkbenchFrame = [];
 const workbenchScaledThreeFrame: WorkbenchFrame = [];
 const workbenchFrameRows = 54;
 const workbenchFrameWidth = 168;
+const workbenchLineSignals = Array.from(
+  { length: workbenchFrameRows + 10 },
+  () => new BenchmarkLineSignal(""),
+);
 const workbenchScaledThreeSourceRows = 34;
 const workbenchScaledThreeSourceColumns = 109;
 const workbenchScaledThreeTargetRows = 70;
@@ -246,6 +268,7 @@ const workbenchScaledThreeGrid = Array.from(
     }),
 );
 let workbenchFrameChecksum = 0;
+let workbenchLineSignalFrameIndex = 0;
 const largeListItems = Array.from({ length: 50_000 }, (_, index) => `process-${index.toString().padStart(5, "0")}`);
 const largeTable = new TableController({ rowCount: 100_000, viewportHeight: 44 });
 const largeDataRows = Array.from({ length: 25_000 }, (_, index) => ({
@@ -986,6 +1009,31 @@ function runWorkbenchStringFrameFullRowWorkload(): void {
   }
 }
 
+function runWorkbenchLineSignalDiffWorkload(): void {
+  workbenchLineSignalFrameIndex = 1 - workbenchLineSignalFrameIndex;
+  const frame = prepareWorkbenchFrame(workbenchLineSignalFrame, workbenchFrameRows);
+  for (let row = 0; row < workbenchFrameRows; row += 1) {
+    const accent = 80 + ((row + workbenchLineSignalFrameIndex * 31) % 120);
+    writeFrame(
+      frame,
+      workbenchFrameWidth,
+      row,
+      0,
+      `\x1b[48;2;12;8;28m\x1b[38;2;${accent};255;180m${row.toString().padStart(2, "0")} ${
+        "▰".repeat(workbenchFrameWidth - 3)
+      }\x1b[0m`,
+    );
+  }
+
+  const first = updateWorkbenchLineSignals(workbenchLineSignals, frame, workbenchFrameWidth, workbenchFrameRows);
+  const second = updateWorkbenchLineSignals(workbenchLineSignals, frame, workbenchFrameWidth, workbenchFrameRows);
+  workbenchFrameChecksum = (workbenchFrameChecksum + first.changed + first.cleared + second.changed + second.cleared) %
+    1_000_000;
+  if (first.changed !== workbenchFrameRows || second.changed !== 0 || !Number.isFinite(workbenchFrameChecksum)) {
+    throw new Error("workbench line signal diff workload failed");
+  }
+}
+
 function runWorkbenchScaledThreeGridWorkload(): void {
   const frame = prepareWorkbenchFrame(workbenchScaledThreeFrame, workbenchScaledThreeTargetRows);
   writeWorkbenchThreeGrid(
@@ -1303,6 +1351,16 @@ export const benchmarkCases: BenchmarkCase[] = [
     iterations: 500,
     maxAverageMs: 5,
     run: runWorkbenchStringFrameFullRowWorkload,
+  },
+  {
+    name: "render/workbench-line-signal-diff-168x54",
+    category: "render",
+    description:
+      "Apply assembled workbench frame rows to retained terminal line signals while skipping unchanged rows.",
+    tags: ["render", "workbench", "frame", "signals", "terminal"],
+    iterations: 250,
+    maxAverageMs: 8,
+    run: runWorkbenchLineSignalDiffWorkload,
   },
   {
     name: "render/textobject-full-row-canvas-220x70",
