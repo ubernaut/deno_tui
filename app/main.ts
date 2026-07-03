@@ -21,7 +21,7 @@ import { AudioRegistry, discoverAudioSources } from "./audio.ts";
 import { detectViewportMode } from "./layout.ts";
 import { type MultiPaneLayoutId, shiftVisualizationForSlot } from "./navigation.ts";
 import { defaultVisualizationForSlot, orderVisualizationsForSlot } from "./panel_defaults.ts";
-import { buildSourceCatalog, resolveSourceFrames } from "./sources.ts";
+import { buildSourceCatalog, resolveSourceFramesInto } from "./sources.ts";
 import { accentColor, formatDuration, makeStyle, palette, severityAccent } from "./styles.ts";
 import { SystemMonitor } from "./system_metrics.ts";
 import { requireInteractiveTerminal } from "./terminal_guard.ts";
@@ -46,6 +46,7 @@ import {
   type SlotConfig,
   type SlotId,
   slotIds,
+  type SourceFrame,
   type ViewportMode,
 } from "./types.ts";
 import { renderVisualization, visualizations } from "./visualizations.ts";
@@ -386,6 +387,7 @@ const slotPanels = new Map<SlotId, PanelView>();
 const slotScenes = new Map<SlotId, ThreePanelView>();
 const slotRenders = new Map<SlotId, Computed<PanelRender>>();
 const slotScrolls = new Map<SlotId, ScrollAreaController>();
+const slotSourceFrameBuffers = new Map<SlotId, SourceFrame[]>();
 const scrollTeardowns: Array<() => void> = [];
 let sceneDragSlot: SlotId | null = null;
 
@@ -406,7 +408,18 @@ for (const slotId of slotIds) {
       };
     }
     const slot = slots.value[slotId];
-    const sources = resolveSourceFrames(slot.inputSourceIds, systemMonitor.snapshot.value, audioRegistry, phase.value);
+    let sourceBuffer = slotSourceFrameBuffers.get(slotId);
+    if (!sourceBuffer) {
+      sourceBuffer = [];
+      slotSourceFrameBuffers.set(slotId, sourceBuffer);
+    }
+    const sources = resolveSourceFramesInto(
+      sourceBuffer,
+      slot.inputSourceIds,
+      systemMonitor.snapshot.value,
+      audioRegistry,
+      phase.value,
+    );
     return renderVisualization({
       slot,
       system: systemMonitor.snapshot.value,
