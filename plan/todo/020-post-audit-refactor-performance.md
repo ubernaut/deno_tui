@@ -295,3 +295,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   top of it; the default workbench Three pane keeps the same 18 FPS cadence as dynamic Three visualization panes.
 - Skipped unchanged workbench line-signal assignments so animated Three panes do not force every terminal row through
   `TextObject` propagation and range flushing when only a subset of rows changed.
+- Compacted truecolor background-styled workbench frame rows so animated block-mode Three ASCII panes avoid resetting
+  ANSI state after every cell while preserving full 24-bit background color fidelity.
+- Added Three-backed visualization metadata and routed workbench content sizing through it so 3D visualization windows
+  avoid duplicate render passes during layout; dynamic Three scene signal assignment now skips unchanged mode/signal
+  payloads.
