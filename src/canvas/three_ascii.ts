@@ -109,6 +109,7 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
     this.destroyPending = false;
     this.syncPending = false;
     super.draw();
+    this.showStatusGrid("INITIALIZING", "ASCII RENDERER STARTING");
     queueMicrotask(() => void this.renderLoop());
   }
 
@@ -121,6 +122,8 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
       this.frameTimer = undefined;
     }
     this.rectangle.unsubscribe(this.handleResize);
+    this.grid = [];
+    this.clearPreviousGridCells();
     if (this.rendering) {
       this.destroyPending = true;
     } else {
@@ -356,6 +359,17 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
   private clearPreviousGridCells(): void {
     clearThreeAsciiGridDiffState(this.previousGrid);
   }
+
+  private showStatusGrid(detail: string, heading = "ASCII RENDERER OFFLINE"): void {
+    const rectangle = this.rectangle.peek();
+    if (rectangle.width <= 0 || rectangle.height <= 0) return;
+    this.grid = buildFallbackGrid(rectangle.width, rectangle.height, detail, heading);
+    this.clearPreviousGridCells();
+    if (this.queueChangedGridCells(this.grid, rectangle)) {
+      this.updated = false;
+      this.canvas.updateObjects.push(this);
+    }
+  }
 }
 
 /** Formats three Ascii Fallback Detail for display or diagnostics. */
@@ -379,7 +393,12 @@ export function formatThreeAsciiFallbackDetail(error: unknown): string {
 }
 
 /** Public helper for build Fallback Grid. */
-export function buildFallbackGrid(width: number, height: number, detail: string): string[][] {
+export function buildFallbackGrid(
+  width: number,
+  height: number,
+  detail: string,
+  heading = "ASCII RENDERER OFFLINE",
+): string[][] {
   const columns = Math.max(1, width);
   const rows = Math.max(1, height);
   const grid = new Array<string[]>(rows);
@@ -390,7 +409,6 @@ export function buildFallbackGrid(width: number, height: number, detail: string)
     }
     grid[row] = gridRow;
   }
-  const heading = "ASCII RENDERER OFFLINE";
   const message = cropMessage(detail, columns);
   const lineCount = message.length > 0 && message !== heading ? 2 : 1;
   const lines = new Array<string>(lineCount);

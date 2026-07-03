@@ -248,6 +248,35 @@ Deno.test("ThreePanelFrameView starts after same-tick rectangle activation", asy
   }
 });
 
+Deno.test("ThreePanelFrameView shows startup grid while first frame initializes", async () => {
+  const rectangle = new Signal({ column: 0, row: 0, width: 32, height: 8 }, { deepObserve: true });
+  const scene = new Signal<ThreeSceneState | null>(sceneState());
+  const ascii = new Signal(createDefaultAsciiOptions("sharp"));
+  const enabled = new Signal(true);
+  let renderer: SlowGridRenderer | undefined;
+  const panel = new ThreePanelFrameView({
+    rectangle,
+    scene,
+    ascii,
+    enabled,
+    frameInterval: 1000 / 30,
+    rendererFactory: (options) => renderer = new SlowGridRenderer(options.columns, options.rows),
+  });
+
+  try {
+    await waitFor(() => (renderer?.startCount ?? 0) >= 1);
+    assertEquals(panel.grid.peek().flat().join("").includes("ASCII RENDERER STARTING"), true);
+    renderer?.completeFrame();
+    await waitFor(() => panel.grid.peek().flat().join("").includes("ASCII RENDERER STARTING") === false);
+  } finally {
+    panel.dispose();
+    rectangle.dispose();
+    scene.dispose();
+    ascii.dispose();
+    enabled.dispose();
+  }
+});
+
 Deno.test("ThreePanelFrameView only applies renderer settings when they change", async () => {
   const rectangle = new Signal({ column: 0, row: 0, width: 12, height: 6 }, { deepObserve: true });
   const scene = new Signal<ThreeSceneState | null>(sceneState());
@@ -465,7 +494,7 @@ Deno.test("ThreePanelFrameView drops stale frames after a rebuild request", asyn
     renderers[0]?.completeFrame();
 
     await waitFor(() => (renderers[1]?.startCount ?? 0) >= 1);
-    assertEquals(panel.grid.peek(), []);
+    assertEquals(panel.grid.peek()[0]?.[0] === "A", false);
     assertEquals(renderers[0]?.destroyed, true);
 
     renderers[1]?.completeFrame();
@@ -549,7 +578,7 @@ Deno.test("ThreePanelFrameView drops stale frames after ascii config rebuilds", 
     renderers[0]?.completeFrame();
 
     await waitFor(() => (renderers[1]?.startCount ?? 0) >= 1);
-    assertEquals(panel.grid.peek(), []);
+    assertEquals(panel.grid.peek()[0]?.[0] === "A", false);
     assertEquals(renderers[0]?.destroyed, true);
 
     renderers[1]?.completeFrame();
@@ -796,6 +825,36 @@ Deno.test("ThreeAsciiObject defers resize while a frame is rendering", async () 
   }
 });
 
+Deno.test("ThreeAsciiObject queues a startup grid before first frame completes", async () => {
+  const rectangle = new Signal({ column: 0, row: 0, width: 32, height: 8 }, { deepObserve: true });
+  const sink = new MemoryCanvasSink();
+  const canvas = new Canvas({ sink, size: { columns: 40, rows: 20 } });
+  let renderer: SlowGridRenderer | undefined;
+  const object = new ThreeAsciiObject({
+    canvas,
+    rectangle,
+    scene: {} as Scene,
+    camera: {} as Camera,
+    style: emptyStyle,
+    zIndex: 1,
+    frameInterval: 1000 / 30,
+    rendererFactory: (options) => renderer = new SlowGridRenderer(options.columns, options.rows),
+  });
+
+  object.draw();
+
+  try {
+    assertEquals(object.grid.flat().join("").includes("ASCII RENDERER STARTING"), true);
+    assert(queuedCellCount(object) > 0);
+    await waitFor(() => (renderer?.startCount ?? 0) >= 1);
+    renderer?.completeFrame();
+    await waitFor(() => object.grid.flat().join("").includes("ASCII RENDERER STARTING") === false);
+  } finally {
+    object.erase();
+    rectangle.dispose();
+  }
+});
+
 Deno.test("ThreeAsciiObject erases safely while a frame is rendering", async () => {
   const rectangle = new Signal({ column: 0, row: 0, width: 12, height: 6 }, { deepObserve: true });
   const sink = new MemoryCanvasSink();
@@ -844,11 +903,12 @@ Deno.test("ThreeAsciiObject queues rerender cells only for changed ASCII grid ce
   });
 
   object.draw();
+  clearQueuedCells(object);
 
   try {
     await waitFor(() => (renderer?.startCount ?? 0) >= 1);
     renderer?.completeFrame();
-    await waitFor(() => queuedCellCount(object) === 4);
+    await waitFor(() => queuedCellCount(object) === 3);
 
     clearQueuedCells(object);
     await waitFor(() => (renderer?.startCount ?? 0) >= 2);

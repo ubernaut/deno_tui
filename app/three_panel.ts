@@ -361,7 +361,10 @@ export class ThreePanelFrameView {
         terminalGlyphStyle: ascii.terminalGlyphStyle,
       });
       this.captureAppliedRendererState(rect, ascii, effectOptions);
-      this.setGrid([]);
+      const renderSize = this.renderSizeFor(rect, ascii);
+      this.setGrid(
+        buildFallbackGrid(renderSize.columns, renderSize.rows, "INITIALIZING", "ASCII RENDERER STARTING"),
+      );
     }
 
     if (this.rendering) {
