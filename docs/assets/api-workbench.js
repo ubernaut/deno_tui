@@ -14821,6 +14821,7 @@ var NoopLifecycleController = class {
 // src/web/cell_canvas_sink.ts
 var textDecoder4 = new TextDecoder();
 var BrowserCellCanvasSink = class {
+  requiresCellUpdates = false;
   #canvas;
   #context;
   #font;
@@ -14862,17 +14863,17 @@ var BrowserCellCanvasSink = class {
   }
   flush(updates, stats) {
     for (const update of updates) {
-      const value = typeof update.value === "string" ? update.value : textDecoder4.decode(update.value);
-      const parsed = parseAnsiCell(value);
-      const x = update.column * this.#cellWidth;
-      const y = update.row * this.#cellHeight;
-      this.#context.fillStyle = parsed.background ?? this.#background;
-      this.#context.fillRect(x, y, this.#cellWidth, this.#cellHeight);
-      const text = parsed.text || stripStyles(value) || " ";
-      if (text.trim().length === 0) continue;
-      this.#context.font = parsed.bold ? `700 ${this.#font}` : this.#font;
-      this.#context.fillStyle = parsed.dim ? dimColor(parsed.foreground ?? this.#foreground) : parsed.foreground ?? this.#foreground;
-      this.#context.fillText(text, x, y);
+      this.#paintCell(update.row, update.column, update.value);
+    }
+    this.#lastStats = { ...stats };
+  }
+  flushRanges(ranges, stats, _updates = []) {
+    for (const range of ranges) {
+      let column = range.startColumn;
+      for (const value of range.values) {
+        this.#paintCell(range.row, column, value);
+        column += 1;
+      }
     }
     this.#lastStats = { ...stats };
   }
@@ -14886,6 +14887,19 @@ var BrowserCellCanvasSink = class {
       background: this.#background,
       lastStats: this.#lastStats ? { ...this.#lastStats } : void 0
     };
+  }
+  #paintCell(row, column, rawValue) {
+    const value = typeof rawValue === "string" ? rawValue : textDecoder4.decode(rawValue);
+    const parsed = parseAnsiCell(value);
+    const x = column * this.#cellWidth;
+    const y = row * this.#cellHeight;
+    this.#context.fillStyle = parsed.background ?? this.#background;
+    this.#context.fillRect(x, y, this.#cellWidth, this.#cellHeight);
+    const text = parsed.text || stripStyles(value) || " ";
+    if (text.trim().length === 0) return;
+    this.#context.font = parsed.bold ? `700 ${this.#font}` : this.#font;
+    this.#context.fillStyle = parsed.dim ? dimColor(parsed.foreground ?? this.#foreground) : parsed.foreground ?? this.#foreground;
+    this.#context.fillText(text, x, y);
   }
 };
 function parseAnsiCell(value) {

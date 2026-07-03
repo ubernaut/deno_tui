@@ -40,3 +40,5 @@ row ranges until the final sink flush.
   range-aware sinks.
 - Updated the Three ASCII frame-diff benchmark cleanup to clear both legacy cell queues and range queues. Focused
   `render/three-ascii-frame-diff-96x40` improved to `1.745ms avg` over 8 repeats on this machine.
+- Added `BrowserCellCanvasSink.flushRanges()` so browser-hosted canvases can consume row ranges directly and skip legacy
+  cell update allocation for range-aware renderers.

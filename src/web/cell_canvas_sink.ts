@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
 /// <reference lib="dom.iterable" />
 // Copyright 2023 Im-Beast. MIT license.
-import type { CanvasCellSink, CanvasCellUpdate } from "../canvas/sink.ts";
+import type { CanvasCellSink, CanvasCellUpdate, CanvasRowRangeUpdate } from "../canvas/sink.ts";
 import type { CanvasRenderStats } from "../canvas/canvas.ts";
 import { stripStyles } from "../utils/strings.ts";
 
@@ -51,6 +51,8 @@ export interface ParsedAnsiCell {
 
 /** Canvas2D-backed cell sink for browser-hosted TUI rendering. */
 export class BrowserCellCanvasSink implements CanvasCellSink {
+  readonly requiresCellUpdates = false;
+
   readonly #canvas: HTMLCanvasElement | OffscreenCanvas;
   readonly #context: CellCanvasContext;
   readonly #font: string;
@@ -95,19 +97,22 @@ export class BrowserCellCanvasSink implements CanvasCellSink {
 
   flush(updates: readonly CanvasCellUpdate[], stats: CanvasRenderStats): void {
     for (const update of updates) {
-      const value = typeof update.value === "string" ? update.value : textDecoder.decode(update.value);
-      const parsed = parseAnsiCell(value);
-      const x = update.column * this.#cellWidth;
-      const y = update.row * this.#cellHeight;
-      this.#context.fillStyle = parsed.background ?? this.#background;
-      this.#context.fillRect(x, y, this.#cellWidth, this.#cellHeight);
+      this.#paintCell(update.row, update.column, update.value);
+    }
+    this.#lastStats = { ...stats };
+  }
 
-      const text = parsed.text || stripStyles(value) || " ";
-      if (text.trim().length === 0) continue;
-      this.#context.font = parsed.bold ? `700 ${this.#font}` : this.#font;
-      this.#context.fillStyle = parsed.dim ? dimColor(parsed.foreground ?? this.#foreground) : parsed.foreground ??
-        this.#foreground;
-      this.#context.fillText(text, x, y);
+  flushRanges(
+    ranges: readonly CanvasRowRangeUpdate[],
+    stats: CanvasRenderStats,
+    _updates: readonly CanvasCellUpdate[] = [],
+  ): void {
+    for (const range of ranges) {
+      let column = range.startColumn;
+      for (const value of range.values) {
+        this.#paintCell(range.row, column, value);
+        column += 1;
+      }
     }
     this.#lastStats = { ...stats };
   }
@@ -122,6 +127,22 @@ export class BrowserCellCanvasSink implements CanvasCellSink {
       background: this.#background,
       lastStats: this.#lastStats ? { ...this.#lastStats } : undefined,
     };
+  }
+
+  #paintCell(row: number, column: number, rawValue: string | Uint8Array): void {
+    const value = typeof rawValue === "string" ? rawValue : textDecoder.decode(rawValue);
+    const parsed = parseAnsiCell(value);
+    const x = column * this.#cellWidth;
+    const y = row * this.#cellHeight;
+    this.#context.fillStyle = parsed.background ?? this.#background;
+    this.#context.fillRect(x, y, this.#cellWidth, this.#cellHeight);
+
+    const text = parsed.text || stripStyles(value) || " ";
+    if (text.trim().length === 0) return;
+    this.#context.font = parsed.bold ? `700 ${this.#font}` : this.#font;
+    this.#context.fillStyle = parsed.dim ? dimColor(parsed.foreground ?? this.#foreground) : parsed.foreground ??
+      this.#foreground;
+    this.#context.fillText(text, x, y);
   }
 }
 
