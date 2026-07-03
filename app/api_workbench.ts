@@ -248,6 +248,7 @@ import { workbenchExplorerRowsInto } from "./workbench_explorer.ts";
 import { workbenchInspectorRowsInto } from "./workbench_inspector.ts";
 import { workbenchLogRowsFromSourcesInto } from "./workbench_logs.ts";
 import { writeWorkbenchThreeGrid } from "./workbench_three_grid.ts";
+import { setWorkbenchThreeSceneSignal, type WorkbenchThreeScene } from "./workbench_three_scene.ts";
 import {
   threeRendererModeLabel,
   visualizationTextContentSize,
@@ -288,8 +289,6 @@ import type {
   SlotConfig,
   SourceFrame,
   SystemSnapshot,
-  ThreeSceneMode,
-  ThreeSceneSignal,
 } from "./types.ts";
 import {
   cpuHexGridColumnCount,
@@ -672,7 +671,6 @@ interface DropdownOverlay {
   itemIndexes?: number[];
   selectedIndex?: number;
 }
-type WorkbenchThreeScene = { mode: ThreeSceneMode; signal: ThreeSceneSignal };
 interface DynamicThreePanel {
   rectangle: Signal<Rectangle>;
   graphicsRectangle: Signal<Rectangle>;
@@ -838,7 +836,7 @@ const table = new DataTableController<ProcessRow>({
 });
 const threeBodyRect = new Signal<Rectangle>({ column: 0, row: 0, width: 0, height: 0 }, { deepObserve: true });
 const threeGraphicsRect = new Signal<Rectangle>({ column: 0, row: 0, width: 0, height: 0 }, { deepObserve: true });
-const threeScene = new Computed<{ mode: ThreeSceneMode; signal: ThreeSceneSignal } | null>(() =>
+const threeScene = new Computed<WorkbenchThreeScene | null>(() =>
   minimized.value.three || !threeAsciiAvailable.value ? null : {
     mode: "studio",
     signal: {
@@ -1401,7 +1399,7 @@ function renderVisualizationWindow(frame: Frame, id: VisualizationWindowId, rect
     const entry = ensureVisualizationThreePanel(id);
     setSignalRect(entry.rectangle, { column: 0, row: 0, width: sceneRect.width, height: sceneRect.height });
     setSignalRect(entry.graphicsRectangle, contentRectToGraphicsRect(sceneRect));
-    setThreeSceneSignal(entry.scene, rendered.three ?? null);
+    setWorkbenchThreeSceneSignal(entry.scene, rendered.three ?? null);
     renderedVisualizationThreePanels.add(id);
     renderThreeGrid(frame, sceneRect, entry.panel.grid.peek(), t);
     return;
@@ -2873,7 +2871,7 @@ function ensureVisualizationThreePanel(id: VisualizationWindowId): DynamicThreeP
 function hideVisualizationThreePanel(id: VisualizationWindowId): void {
   const entry = visualizationThreePanels.get(id);
   if (!entry) return;
-  setThreeSceneSignal(entry.scene, null);
+  setWorkbenchThreeSceneSignal(entry.scene, null);
   setSignalRect(entry.rectangle, { column: 0, row: 0, width: 0, height: 0 });
   setSignalRect(entry.graphicsRectangle, { column: 0, row: 0, width: 0, height: 0 });
 }
@@ -2911,26 +2909,6 @@ function setSignalRect(target: Signal<Rectangle>, rect: Rectangle): void {
     return;
   }
   target.value = rect;
-}
-
-function setThreeSceneSignal(target: Signal<WorkbenchThreeScene | null>, next: WorkbenchThreeScene | null): void {
-  if (sameWorkbenchThreeScene(target.peek(), next)) return;
-  target.value = next;
-}
-
-function sameWorkbenchThreeScene(left: WorkbenchThreeScene | null, right: WorkbenchThreeScene | null): boolean {
-  if (left === right) return true;
-  if (!left || !right || left.mode !== right.mode) return false;
-  const leftSignal = left.signal;
-  const rightSignal = right.signal;
-  return leftSignal.x === rightSignal.x &&
-    leftSignal.y === rightSignal.y &&
-    leftSignal.depth === rightSignal.depth &&
-    leftSignal.twist === rightSignal.twist &&
-    leftSignal.lift === rightSignal.lift &&
-    leftSignal.pulse === rightSignal.pulse &&
-    leftSignal.active === rightSignal.active &&
-    leftSignal.pressed === rightSignal.pressed;
 }
 
 function screenDropdownOpen(): boolean {
