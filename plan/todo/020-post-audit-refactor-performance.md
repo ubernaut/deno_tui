@@ -184,6 +184,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   terminal output throttling remains guarded.
 - Capped workbench Three ASCII terminal blits so render-size limits are not immediately expanded back to full-pane ANSI
   output on large windows.
+- Added a same-cell run fast path to workbench frame row assembly, reducing repeated styled fill and line-signal diff
+  costs in block-heavy terminal frames.
 - Moved repeated benchmark best-of aggregation into the reusable performance API with direct tests and an updated stable
   API baseline.
 - Fixed compact monitor/demo window control visibility so minimized panes retain titlebar controls, and normalized Three

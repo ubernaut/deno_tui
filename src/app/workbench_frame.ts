@@ -185,14 +185,23 @@ export function updateWorkbenchLineSignals(
 function renderFrameCells(cellAt: (column: number) => string, width: number): string {
   let row = "";
   for (let column = 0; column < width;) {
-    const first = splitFrameCell(cellAt(column));
-    let text = first.text;
+    const firstCell = cellAt(column);
+    const first = splitFrameCell(firstCell);
     let next = column + 1;
-    while (next < width) {
-      const current = splitFrameCell(cellAt(next));
-      if (current.prefix !== first.prefix || current.suffix !== first.suffix) break;
-      text += current.text;
+    while (next < width && cellAt(next) === firstCell) {
       next += 1;
+    }
+    let text = next - column === 1 ? first.text : first.text.repeat(next - column);
+    while (next < width) {
+      const currentCell = cellAt(next);
+      const current = splitFrameCell(currentCell);
+      if (current.prefix !== first.prefix || current.suffix !== first.suffix) break;
+      let repeatEnd = next + 1;
+      while (repeatEnd < width && cellAt(repeatEnd) === currentCell) {
+        repeatEnd += 1;
+      }
+      text += repeatEnd - next === 1 ? current.text : current.text.repeat(repeatEnd - next);
+      next = repeatEnd;
     }
     row += `${first.prefix}${text}${first.suffix}`;
     column = next;
