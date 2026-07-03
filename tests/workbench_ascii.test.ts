@@ -6,6 +6,7 @@ import {
   createDefaultWorkbenchAsciiOptions,
   defaultWorkbenchAsciiConfigRows,
   formatWorkbenchAsciiConfigRowText,
+  formatWorkbenchAsciiConfigTitle,
   moveWorkbenchAsciiConfigSelection,
   stepWorkbenchAsciiGlyphStyle,
   stepWorkbenchAsciiNumericOption,
@@ -180,6 +181,23 @@ Deno.test("workbench ascii config rows expose reusable modal text", () => {
       { trackWidth: 4 },
     ),
     "Wire thickness     [<] █░░░  8.00 [>]",
+  );
+});
+
+Deno.test("workbench ascii config title composes window preset and glyph style", () => {
+  const options = {
+    ...createDefaultWorkbenchAsciiOptions(),
+    terminalGlyphStyle: "mixed" as const,
+    preset: "glyph-atlas",
+  };
+
+  assertEquals(
+    formatWorkbenchAsciiConfigTitle("Neon Torus", options),
+    "ASCII Neon Torus · Mixed · Glyph Atlas",
+  );
+  assertEquals(
+    formatWorkbenchAsciiConfigTitle("Neon Torus", options, { prefix: "Renderer" }),
+    "Renderer Neon Torus · Mixed · Glyph Atlas",
   );
 });
 

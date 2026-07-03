@@ -205,3 +205,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   terminal clamps, visualization delegation, data widths, and reusable text projection.
 - Moved process-output window title formatting into the shared terminal status presenter with direct tests, keeping
   shell and process terminal title composition aligned outside the workbench renderer.
+- Moved Three ASCII config modal title composition into the shared workbench ASCII helper with direct tests, trimming
+  renderer-local preset/glyph label formatting from the terminal workbench.

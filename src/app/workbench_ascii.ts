@@ -38,6 +38,11 @@ export interface WorkbenchAsciiConfigRowTextOptions {
   trackWidth?: number;
 }
 
+/** Options for formatting a workbench Three ASCII configuration modal title. */
+export interface WorkbenchAsciiConfigTitleOptions {
+  prefix?: string;
+}
+
 /** User action applied to a Three ASCII config row. */
 export type WorkbenchAsciiConfigAction = "previous" | "next" | "activate";
 
@@ -144,6 +149,18 @@ export function formatWorkbenchAsciiConfigRowText(
   const filled = Math.round(ratio * trackWidth);
   const track = `${"█".repeat(filled)}${"░".repeat(Math.max(0, trackWidth - filled))}`;
   return `${row.label.padEnd(labelWidth)} [<] ${track} ${formatAsciiControlValue(row.key, value).padStart(5)} [>]`;
+}
+
+/** Formats a compact title for a per-window Three ASCII configuration modal. */
+export function formatWorkbenchAsciiConfigTitle(
+  windowTitle: string,
+  options: Pick<ThreeAsciiConfigOptions, "terminalGlyphStyle" | "preset">,
+  formatOptions: WorkbenchAsciiConfigTitleOptions = {},
+): string {
+  const prefix = formatOptions.prefix ?? "ASCII";
+  return `${prefix} ${windowTitle} · ${terminalGlyphStyleLabel(options.terminalGlyphStyle)} · ${
+    asciiPresetLabel(options.preset)
+  }`;
 }
 
 /** Returns a wrapped selected row index for keyboard navigation. */

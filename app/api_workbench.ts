@@ -100,6 +100,7 @@ import {
   createDefaultWorkbenchAsciiOptions,
   defaultWorkbenchAsciiConfigRows,
   formatWorkbenchAsciiConfigRowText,
+  formatWorkbenchAsciiConfigTitle,
   moveWorkbenchAsciiConfigSelection,
   WorkbenchAsciiConfigController,
   type WorkbenchAsciiConfigRow,
@@ -230,14 +231,7 @@ import {
   htmlCssLayoutRenderCommandsInto,
   htmlCssVisibleLayoutBoxesInto,
 } from "./html_css_layout_view.ts";
-import {
-  ASCII_DEMO_PRESETS,
-  asciiDemoPresetIds,
-  asciiPresetLabel,
-  cloneAsciiOptions,
-  normalizeAsciiOptions,
-  terminalGlyphStyleLabel,
-} from "./ascii_options.ts";
+import { ASCII_DEMO_PRESETS, asciiDemoPresetIds, cloneAsciiOptions, normalizeAsciiOptions } from "./ascii_options.ts";
 import { getSourceFrame } from "./sources.ts";
 import { makeStyle } from "./styles.ts";
 import { SystemMonitor } from "./system_metrics.ts";
@@ -2569,9 +2563,7 @@ function renderThreeConfigModal(frame: Frame): void {
 
   const inner = layout.inner;
   const current = configuredAscii().peek();
-  const title = `ASCII ${windowTitle(configuredAsciiWindow())} · ${
-    terminalGlyphStyleLabel(current.terminalGlyphStyle)
-  } · ${asciiPresetLabel(current.preset)}`;
+  const title = formatWorkbenchAsciiConfigTitle(windowTitle(configuredAsciiWindow()), current);
   write(frame, inner.row, inner.column, paint(fit(title, inner.width), { fg: t.accent, bg: t.panelSoft, bold: true }));
   const placements = workbenchAsciiConfigRowPlacementsInto(threeConfigRowPlacements, threeConfigRows, {
     inner,
