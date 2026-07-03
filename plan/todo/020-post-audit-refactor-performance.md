@@ -283,3 +283,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   canvas path behind the default workbench surface; local best-of workbench runs measured it around 2.55ms per frame.
 - Lowered the workbench-specific default Three ASCII render-cell cap from 3,840 to 1,920 while preserving saved
   overrides and the package renderer default, favoring startup interactivity in terminal/SSH sessions.
+- Moved the full-row `TextObject` terminal-canvas benchmark fixture out of the main benchmark catalog so the measured
+  guard stays reusable while `scripts/benchmark_cases.ts` remains easier to scan.
