@@ -3388,6 +3388,7 @@ var MAX_LINEAR_BYTE_CACHE_SIZE = 65536;
 var MAX_FOREGROUND_ANSI_CACHE_SIZE = 4096;
 var MAX_CELL_CACHE_SIZE = 16384;
 var MIN_VISIBLE_FILL_GLYPH_INDEX = 6;
+var SOLID_BLOCK_GLYPH_KEY = 14;
 var ThreeAsciiAnsiGridAssembler = class {
   toByte = createLinearByteCache();
   foregroundAnsiCache = /* @__PURE__ */ new Map();
@@ -3586,7 +3587,7 @@ var ThreeAsciiAnsiGridAssembler = class {
           column -= 1;
           continue;
         }
-        const glyphKey = fillGlyphKeyForIndex(terminalFillGlyphKeys, fillGlyphIndex);
+        const glyphKey = terminalGlyphMode === GLYPH_MODE_BLOCKS ? SOLID_BLOCK_GLYPH_KEY : fillGlyphKeyForIndex(terminalFillGlyphKeys, fillGlyphIndex);
         const colorOffset = index * 4;
         const rawRed = colors[colorOffset] ?? 0;
         const rawGreen = colors[colorOffset + 1] ?? 0;
@@ -3646,7 +3647,7 @@ var ThreeAsciiAnsiGridAssembler = class {
           column -= 1;
           continue;
         }
-        const glyphKey = fillGlyphKeyForIndex(terminalFillGlyphKeys, fillGlyphIndex);
+        const glyphKey = terminalGlyphMode === GLYPH_MODE_BLOCKS ? SOLID_BLOCK_GLYPH_KEY : fillGlyphKeyForIndex(terminalFillGlyphKeys, fillGlyphIndex);
         const colorOffset = index * 4;
         const rawRed = colors[colorOffset];
         const rawGreen = colors[colorOffset + 1];

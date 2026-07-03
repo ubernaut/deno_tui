@@ -20,6 +20,7 @@ const MAX_LINEAR_BYTE_CACHE_SIZE = 65536;
 const MAX_FOREGROUND_ANSI_CACHE_SIZE = 4096;
 const MAX_CELL_CACHE_SIZE = 16384;
 const MIN_VISIBLE_FILL_GLYPH_INDEX = 6;
+const SOLID_BLOCK_GLYPH_KEY = 14;
 
 /** Input buffers for assembling a terminal ANSI grid from three Ascii GPU readback data. */
 export interface ThreeAsciiAnsiGridInput {
@@ -273,7 +274,9 @@ export class ThreeAsciiAnsiGridAssembler {
           continue;
         }
 
-        const glyphKey = fillGlyphKeyForIndex(terminalFillGlyphKeys, fillGlyphIndex);
+        const glyphKey = terminalGlyphMode === GLYPH_MODE_BLOCKS
+          ? SOLID_BLOCK_GLYPH_KEY
+          : fillGlyphKeyForIndex(terminalFillGlyphKeys, fillGlyphIndex);
         const colorOffset = index * 4;
         const rawRed = colors[colorOffset] ?? 0;
         const rawGreen = colors[colorOffset + 1] ?? 0;
@@ -362,7 +365,9 @@ export class ThreeAsciiAnsiGridAssembler {
           continue;
         }
 
-        const glyphKey = fillGlyphKeyForIndex(terminalFillGlyphKeys, fillGlyphIndex);
+        const glyphKey = terminalGlyphMode === GLYPH_MODE_BLOCKS
+          ? SOLID_BLOCK_GLYPH_KEY
+          : fillGlyphKeyForIndex(terminalFillGlyphKeys, fillGlyphIndex);
         const colorOffset = index * 4;
         const rawRed = colors[colorOffset] as number;
         const rawGreen = colors[colorOffset + 1] as number;
