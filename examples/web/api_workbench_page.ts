@@ -74,7 +74,6 @@ import {
   textWidth,
   translateHitTargets,
   workbenchAdaptiveWindowLayout,
-  workbenchButtonPaintOptions,
   type WorkbenchButtonRowItem,
   type WorkbenchButtonRowPlacement,
   type WorkbenchButtonRowRenderCommand,
@@ -2697,13 +2696,6 @@ function writeButton(
   if (button.width <= 0) return 0;
   write(frame, row, column, paint(button.text, button.style.fg, button.style.bg, button.style.bold));
   return button.width;
-}
-
-function buttonPaintOptions(
-  state: "base" | "active" | "disabled" = "base",
-  tone: ButtonTone = "default",
-): { fg: string; bg: string; bold: boolean } {
-  return workbenchButtonPaintOptions(theme(), contrastText, state, tone);
 }
 
 function paint(value: string, fg = theme().text, bg = theme().background, bold = false): string {

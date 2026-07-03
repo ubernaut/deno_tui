@@ -58,6 +58,7 @@ import {
   translateHitTargets,
   upsertWorkbenchWorkspace,
   workbenchAdaptiveWindowLayout,
+  workbenchButtonPaintOptions,
   type WorkbenchButtonTone,
   workbenchContentViewport,
   type WorkbenchDropdownOverlayRenderCommand,
@@ -152,7 +153,6 @@ import { probeCompatibleWebGPUDevice } from "../src/three_ascii/webgpu_compat.ts
 import { Tui } from "../src/tui.ts";
 import type { Rectangle } from "../src/types.ts";
 import { textWidth } from "../src/utils/strings.ts";
-import { workbenchButtonPaintOptions } from "../src/app/workbench_button_style.ts";
 import {
   layoutWorkbenchButtonRowInto,
   type WorkbenchButtonRowItem,
@@ -1596,7 +1596,7 @@ function renderControls(frame: Frame, rect: Rectangle): void {
       }
       if (options.button) {
         const style = command.role === "button"
-          ? buttonPaintOptions(t, active ? "active" : "base")
+          ? workbenchButtonPaintOptions(t, contrastText, active ? "active" : "base")
           : command.role === "detail"
           ? apiWorkbenchControlButtonDetailStyle(t, active)
           : baseStyle;
@@ -4611,14 +4611,6 @@ function writeButton(
   if (button.width <= 0) return 0;
   write(frame, row, column, paint(button.text, button.style));
   return button.width;
-}
-
-function buttonPaintOptions(
-  t: ThemeSpec,
-  state: "base" | "active" | "disabled" = "base",
-  tone: ButtonTone = "default",
-): { fg: string; bg: string; bold: boolean } {
-  return workbenchButtonPaintOptions(t, contrastText, state, tone);
 }
 
 function addHit(rect: Rectangle, action: HitAction): void {
