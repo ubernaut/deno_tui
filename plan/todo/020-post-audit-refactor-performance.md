@@ -285,3 +285,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   overrides and the package renderer default, favoring startup interactivity in terminal/SSH sessions.
 - Moved the full-row `TextObject` terminal-canvas benchmark fixture out of the main benchmark catalog so the measured
   guard stays reusable while `scripts/benchmark_cases.ts` remains easier to scan.
+- Fixed Three ASCII frame pacing so render duration is subtracted from the next timer delay instead of being added on
+  top of it; the default workbench Three pane keeps the same 18 FPS cadence as dynamic Three visualization panes.

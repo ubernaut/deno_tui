@@ -4,6 +4,7 @@ import { Effect, Signal, SignalBatchScheduler, type SignalOfObject } from "../sr
 import { emptyStyle } from "../src/theme.ts";
 import type { GraphicsHandle, GraphicsSurface, GraphicsSurfaceInspection } from "../src/runtime/graphics_surface.ts";
 import type { DiagnosticsCollector } from "../src/runtime/diagnostics.ts";
+import { nextFrameDelay } from "../src/runtime/frame_timing.ts";
 import {
   type ThreeAsciiImageFrame,
   ThreeAsciiRenderer,
@@ -415,6 +416,7 @@ export class ThreePanelFrameView {
 
     const frameGeneration = this.frameGeneration;
     this.rendering = true;
+    const frameStartedAt = performance.now();
 
     try {
       const rect = this.options.rectangle.peek();
@@ -424,9 +426,8 @@ export class ThreePanelFrameView {
         return;
       }
 
-      const now = performance.now();
-      const deltaTime = (now - this.lastFrameTime) / 1000;
-      this.lastFrameTime = now;
+      const deltaTime = (frameStartedAt - this.lastFrameTime) / 1000;
+      this.lastFrameTime = frameStartedAt;
 
       const ascii = this.options.ascii.peek();
       this.applyRendererState(renderer, rect, ascii);
@@ -495,7 +496,10 @@ export class ThreePanelFrameView {
         this.syncPending = false;
         this.scheduleSync();
       } else if (this.running) {
-        this.frameTimer = setTimeout(() => void this.renderLoop(), this.frameInterval);
+        this.frameTimer = setTimeout(
+          () => void this.renderLoop(),
+          nextFrameDelay(this.frameInterval, frameStartedAt, performance.now()),
+        );
       }
     }
   }

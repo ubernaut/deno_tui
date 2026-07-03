@@ -19,6 +19,7 @@ import {
   type ThreeAsciiRenderFrame,
   type ThreeAsciiRenderFrameOptions,
 } from "../three_ascii/renderer.ts";
+import { nextFrameDelay } from "../runtime/frame_timing.ts";
 
 /** Public interface describing a three Ascii Grid Renderer. */
 export interface ThreeAsciiGridRenderer {
@@ -262,13 +263,13 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
     const renderer = this.renderer;
     const frameGeneration = this.frameGeneration;
     this.rendering = true;
+    const frameStartedAt = performance.now();
 
     try {
       const rectangle = this.rectangle.peek();
       if (rectangle.width > 0 && rectangle.height > 0) {
-        const now = performance.now();
-        const deltaTime = (now - this.lastFrameTime) / 1000;
-        this.lastFrameTime = now;
+        const deltaTime = (frameStartedAt - this.lastFrameTime) / 1000;
+        this.lastFrameTime = frameStartedAt;
 
         this.flushPendingRendererOptions();
         renderer.setSize(rectangle.width, rectangle.height);
@@ -315,7 +316,10 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
         this.running = true;
         this.frameTimer = setTimeout(() => void this.renderLoop(), 0);
       } else if (this.running) {
-        this.frameTimer = setTimeout(() => void this.renderLoop(), this.frameInterval);
+        this.frameTimer = setTimeout(
+          () => void this.renderLoop(),
+          nextFrameDelay(this.frameInterval, frameStartedAt, performance.now()),
+        );
       }
     }
   }
