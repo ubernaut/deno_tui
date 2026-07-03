@@ -56,6 +56,45 @@ Deno.test("workbench three grid can scale lower-resolution source cells", () => 
   ]);
 });
 
+Deno.test("workbench three grid scale-down mode centers capped grids instead of scaling up", () => {
+  const frame: WorkbenchFrame = [];
+  writeWorkbenchThreeGrid(
+    frame,
+    { column: 0, row: 0, width: 4, height: 4 },
+    [["A", "B"], ["C", "D"]],
+    ".",
+    { scale: "down" },
+  );
+
+  assertEquals(frame[0], undefined);
+  assertEquals(frame[1]?.[0], undefined);
+  assertEquals(frame[1]?.slice(1, 3), ["A", "B"]);
+  assertEquals(frame[2]?.[0], undefined);
+  assertEquals(frame[2]?.slice(1, 3), ["C", "D"]);
+  assertEquals(frame[3], undefined);
+});
+
+Deno.test("workbench three grid scale-down mode still scales oversized grids into the target", () => {
+  const frame: WorkbenchFrame = [];
+  writeWorkbenchThreeGrid(
+    frame,
+    { column: 0, row: 0, width: 2, height: 2 },
+    [
+      ["A", "B", "C", "D"],
+      ["E", "F", "G", "H"],
+      ["I", "J", "K", "L"],
+      ["M", "N", "O", "P"],
+    ],
+    ".",
+    { scale: "down" },
+  );
+
+  assertEquals(frame, [
+    ["A", "C"],
+    ["I", "K"],
+  ]);
+});
+
 Deno.test("workbench three grid ignores empty rectangles", () => {
   const frame: WorkbenchFrame = [["keep"]];
   writeWorkbenchThreeGrid(frame, { column: 0, row: 0, width: 0, height: 2 }, [["A"]], ".");

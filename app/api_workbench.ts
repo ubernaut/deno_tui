@@ -1480,7 +1480,7 @@ function renderThreeGrid(frame: Frame, rect: Rectangle, grid: string[][], t: The
     return;
   }
 
-  writeWorkbenchThreeGrid(frame, rect, grid, paint(" ", { bg: t.surface }), { scale: true });
+  writeWorkbenchThreeGrid(frame, rect, grid, paint(" ", { bg: t.surface }), { scale: "down" });
 }
 
 function renderExplorer(frame: Frame, rect: Rectangle): void {

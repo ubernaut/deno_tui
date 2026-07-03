@@ -1054,6 +1054,26 @@ function runWorkbenchScaledThreeGridWorkload(): void {
   }
 }
 
+function runWorkbenchCappedThreeGridWorkload(): void {
+  const frame = prepareWorkbenchFrame(workbenchScaledThreeFrame, workbenchScaledThreeTargetRows);
+  writeWorkbenchThreeGrid(
+    frame,
+    { column: 0, row: 0, width: workbenchScaledThreeTargetColumns, height: workbenchScaledThreeTargetRows },
+    workbenchScaledThreeGrid,
+    "\x1b[48;2;8;6;18m \x1b[0m",
+    { scale: "down" },
+  );
+
+  let total = 0;
+  for (let row = 0; row < workbenchScaledThreeTargetRows; row += 1) {
+    total += renderFrameRow(frame[row] ?? [], workbenchScaledThreeTargetColumns).length;
+  }
+  workbenchFrameChecksum = (workbenchFrameChecksum + total) % 1_000_000;
+  if (!Number.isFinite(workbenchFrameChecksum)) {
+    throw new Error("workbench capped Three grid checksum failed");
+  }
+}
+
 function runAnsiStyledCharacterSplitWorkload(): void {
   const cells = getMultiCodePointCharacters(ansiStyledSplitRow);
   if (cells.length !== 160) {
@@ -1379,6 +1399,15 @@ export const benchmarkCases: BenchmarkCase[] = [
     iterations: 200,
     maxAverageMs: 8,
     run: runWorkbenchScaledThreeGridWorkload,
+  },
+  {
+    name: "render/workbench-capped-three-grid-220x70",
+    category: "render",
+    description: "Render a capped Three ASCII source grid without scaling it back up to a large terminal pane.",
+    tags: ["render", "workbench", "three", "ascii", "frame", "terminal"],
+    iterations: 200,
+    maxAverageMs: 6,
+    run: runWorkbenchCappedThreeGridWorkload,
   },
   {
     name: "render/ansi-styled-character-split-160",
