@@ -212,12 +212,40 @@ Deno.test("ansi canvas sink compacts styled row ranges before terminal writes", 
 
   const output = new TextDecoder().decode(chunks[0]);
   assertStringIncludes(output, "\x1b[48;2;1;2;3m  \x1b[0m");
-  assertStringIncludes(output, "\x1b[38;2;255;0;0mAB\x1b[0m\x1b[0m");
+  assertStringIncludes(output, "\x1b[38;2;255;0;0mAB\x1b[0m");
   assertEquals(output.includes("\x1b[48;2;1;2;3m \x1b[0m\x1b[48;2;1;2;3m \x1b[0m"), false);
   assertEquals(
     output.includes("\x1b[38;2;255;0;0mA\x1b[0m\x1b[0m\x1b[38;2;255;0;0mB\x1b[0m\x1b[0m"),
     false,
   );
+});
+
+Deno.test("ansi canvas sink avoids per-cell resets for complete truecolor background runs", () => {
+  const chunks: Uint8Array[] = [];
+  const sink = new AnsiCanvasSink({
+    stdout: {
+      writeSync(data) {
+        chunks.push(data);
+        return data.length;
+      },
+    },
+  });
+
+  sink.flushRanges([
+    {
+      row: 0,
+      startColumn: 0,
+      values: [
+        "\x1b[48;2;1;2;3m \x1b[0m",
+        "\x1b[48;2;4;5;6m \x1b[0m",
+        "\x1b[48;2;7;8;9m \x1b[0m",
+      ],
+    },
+  ], emptyCanvasRenderStats({ dirtyCells: 3, dirtyRowRanges: 1, dirtyRows: 1, flushedCells: 3 }));
+
+  const output = new TextDecoder().decode(chunks[0]);
+  assertStringIncludes(output, "\x1b[48;2;1;2;3m \x1b[48;2;4;5;6m \x1b[48;2;7;8;9m \x1b[0m");
+  assertEquals(output.split("\x1b[0m").length - 1, 1);
 });
 
 Deno.test("coalesceCanvasRowRanges groups sorted adjacent cells only", () => {
@@ -241,6 +269,24 @@ Deno.test("coalesceCanvasRowRanges groups sorted adjacent cells only", () => {
   assertEquals(coalesceCanvasRowRanges([], target), target);
   assertEquals(target, []);
 });
+
+function emptyCanvasRenderStats(patch: Partial<CanvasRenderStats> = {}): CanvasRenderStats {
+  return {
+    updatedObjects: 0,
+    renderedObjects: 0,
+    rerenderedObjects: 0,
+    intersectionUpdates: 0,
+    intersectionCandidateChecks: 0,
+    intersectionsDirty: false,
+    dirtyRectangles: 0,
+    dirtyRowRanges: 0,
+    dirtyRows: 0,
+    dirtyCells: 0,
+    fullRedraws: 0,
+    flushedCells: 0,
+    ...patch,
+  };
+}
 
 class RangeOnlySink {
   readonly ranges: Array<{ row: number; startColumn: number; values: readonly (string | Uint8Array)[] }> = [];

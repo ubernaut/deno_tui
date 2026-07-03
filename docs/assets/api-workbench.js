@@ -2834,18 +2834,13 @@ var AnsiCanvasSink = class {
   flushRanges(ranges, _stats) {
     let drawSequence = "";
     for (const range of ranges) {
-      let column = range.startColumn;
-      drawSequence += moveCursor(range.row, column);
-      for (let index = 0; index < range.values.length; ) {
-        const span = compactAnsiCellSpan(range.values, index);
-        if (drawSequence.length + span.text.length > this.#flushLimit) {
-          this.#stdout.writeSync(textEncoder2.encode(drawSequence));
-          drawSequence = moveCursor(range.row, column);
-        }
-        drawSequence += span.text;
-        column += span.cells;
-        index += span.cells;
+      drawSequence += moveCursor(range.row, range.startColumn);
+      const text = compactAnsiCellRange(range.values);
+      if (drawSequence.length + text.length > this.#flushLimit) {
+        this.#stdout.writeSync(textEncoder2.encode(drawSequence));
+        drawSequence = moveCursor(range.row, range.startColumn);
       }
+      drawSequence += text;
     }
     if (drawSequence.length > 0) {
       this.#stdout.writeSync(textEncoder2.encode(drawSequence));
@@ -2888,6 +2883,44 @@ function compactAnsiCellSpan(values, start) {
     text: `${first.prefix}${text}${first.suffix}`,
     cells: index - start
   };
+}
+function compactAnsiCellRange(values) {
+  let output = "";
+  let activePrefix = "";
+  let activeState = ansiPrefixState("");
+  let needsReset = false;
+  for (let index = 0; index < values.length; ) {
+    const span = compactAnsiCellSpan(values, index);
+    const first = splitAnsiCellValue(values[index]);
+    if (first.prefix !== activePrefix) {
+      const nextState = ansiPrefixState(first.prefix);
+      if (needsReset && !ansiPrefixCanOverrideActive(activeState, nextState)) {
+        output += "\x1B[0m";
+        needsReset = false;
+      }
+      output += first.prefix;
+      activePrefix = first.prefix;
+      activeState = nextState;
+    }
+    output += span.text.slice(first.prefix.length, span.text.length - first.suffix.length);
+    if (first.prefix || first.suffix) needsReset = true;
+    index += span.cells;
+  }
+  if (needsReset) output += "\x1B[0m";
+  return output;
+}
+function ansiPrefixState(prefix) {
+  return {
+    foreground: prefix.includes("[38;") || prefix.includes(";38;"),
+    background: prefix.includes("[48;") || prefix.includes(";48;"),
+    other: prefix.includes("[0m") || prefix.includes("[1m") || prefix.includes(";1m")
+  };
+}
+function ansiPrefixCanOverrideActive(active2, next) {
+  if (active2.other) return false;
+  if (active2.foreground && !next.foreground) return false;
+  if (active2.background && !next.background) return false;
+  return true;
 }
 function splitAnsiCellValue(value) {
   const cell = typeof value === "string" ? value : textDecoder3.decode(value);

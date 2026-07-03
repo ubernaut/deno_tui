@@ -266,3 +266,6 @@ performance, shared terminal/web workbench projections, and oversized module red
   improved locally after the change.
 - Added a plain-ASCII `getMultiCodePointCharacters` fast path and benchmark so unstyled terminal text avoids the large
   Unicode grapheme regexp while preserving the Unicode fallback for non-ASCII content.
+- Optimized ANSI range flushing for truecolor block frames by carrying SGR state across cells when the next prefix fully
+  overwrites the active color channels; this reduces redundant reset sequences in mixed-background Three ASCII rows and
+  adds a benchmark for that terminal-bandwidth-heavy path.

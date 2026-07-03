@@ -84,18 +84,13 @@ export class AnsiCanvasSink implements CanvasCellSink {
   flushRanges(ranges: readonly CanvasRowRangeUpdate[], _stats: CanvasRenderStats): void {
     let drawSequence = "";
     for (const range of ranges) {
-      let column = range.startColumn;
-      drawSequence += moveCursor(range.row, column);
-      for (let index = 0; index < range.values.length;) {
-        const span = compactAnsiCellSpan(range.values, index);
-        if (drawSequence.length + span.text.length > this.#flushLimit) {
-          this.#stdout.writeSync(textEncoder.encode(drawSequence));
-          drawSequence = moveCursor(range.row, column);
-        }
-        drawSequence += span.text;
-        column += span.cells;
-        index += span.cells;
+      drawSequence += moveCursor(range.row, range.startColumn);
+      const text = compactAnsiCellRange(range.values);
+      if (drawSequence.length + text.length > this.#flushLimit) {
+        this.#stdout.writeSync(textEncoder.encode(drawSequence));
+        drawSequence = moveCursor(range.row, range.startColumn);
       }
+      drawSequence += text;
     }
 
     if (drawSequence.length > 0) {
@@ -157,6 +152,55 @@ function compactAnsiCellSpan(values: readonly (string | Uint8Array)[], start: nu
     text: `${first.prefix}${text}${first.suffix}`,
     cells: index - start,
   };
+}
+
+function compactAnsiCellRange(values: readonly (string | Uint8Array)[]): string {
+  let output = "";
+  let activePrefix = "";
+  let activeState = ansiPrefixState("");
+  let needsReset = false;
+
+  for (let index = 0; index < values.length;) {
+    const span = compactAnsiCellSpan(values, index);
+    const first = splitAnsiCellValue(values[index]!);
+    if (first.prefix !== activePrefix) {
+      const nextState = ansiPrefixState(first.prefix);
+      if (needsReset && !ansiPrefixCanOverrideActive(activeState, nextState)) {
+        output += "\x1b[0m";
+        needsReset = false;
+      }
+      output += first.prefix;
+      activePrefix = first.prefix;
+      activeState = nextState;
+    }
+    output += span.text.slice(first.prefix.length, span.text.length - first.suffix.length);
+    if (first.prefix || first.suffix) needsReset = true;
+    index += span.cells;
+  }
+
+  if (needsReset) output += "\x1b[0m";
+  return output;
+}
+
+interface AnsiPrefixState {
+  foreground: boolean;
+  background: boolean;
+  other: boolean;
+}
+
+function ansiPrefixState(prefix: string): AnsiPrefixState {
+  return {
+    foreground: prefix.includes("[38;") || prefix.includes(";38;"),
+    background: prefix.includes("[48;") || prefix.includes(";48;"),
+    other: prefix.includes("[0m") || prefix.includes("[1m") || prefix.includes(";1m"),
+  };
+}
+
+function ansiPrefixCanOverrideActive(active: AnsiPrefixState, next: AnsiPrefixState): boolean {
+  if (active.other) return false;
+  if (active.foreground && !next.foreground) return false;
+  if (active.background && !next.background) return false;
+  return true;
 }
 
 function splitAnsiCellValue(value: string | Uint8Array): AnsiCellParts {

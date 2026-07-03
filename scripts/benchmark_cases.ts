@@ -109,6 +109,12 @@ const ansiSinkStyledRangeValues = Array.from(
   { length: 160 },
   () => "\x1b[38;2;242;236;255;48;2;66;37;95m█\x1b[0m\x1b[0m",
 );
+const ansiSinkTruecolorBackgroundValues = Array.from({ length: 160 }, (_, index) => {
+  const red = (index * 17) % 256;
+  const green = (64 + index * 13) % 256;
+  const blue = (160 + index * 7) % 256;
+  return `\x1b[48;2;${red};${green};${blue}m \x1b[0m`;
+});
 const ansiStyledSplitRow = "\x1b[38;2;242;236;255;48;2;66;37;95m".concat(" ".repeat(160), "\x1b[0m\x1b[0m");
 const plainAsciiSplitRow = "api-workbench plain ascii row ".concat(".".repeat(132));
 const ansiSinkStyledRangeStats = {
@@ -124,6 +130,11 @@ const ansiSinkStyledRangeStats = {
   dirtyCells: ansiSinkStyledRangeValues.length,
   fullRedraws: 0,
   flushedCells: ansiSinkStyledRangeValues.length,
+};
+const ansiSinkTruecolorBackgroundStats = {
+  ...ansiSinkStyledRangeStats,
+  dirtyCells: ansiSinkTruecolorBackgroundValues.length,
+  flushedCells: ansiSinkTruecolorBackgroundValues.length,
 };
 let ansiSinkBytes = 0;
 let ansiStyledSplitChecksum = 0;
@@ -1287,6 +1298,23 @@ export const benchmarkCases: BenchmarkCase[] = [
       ], ansiSinkStyledRangeStats);
       if (ansiSinkBytes <= ansiSinkStyledRangeValues.length) {
         throw new Error("ANSI sink emitted an unexpectedly small terminal sequence");
+      }
+    },
+  },
+  {
+    name: "render/ansi-canvas-sink-truecolor-background-range-160",
+    category: "render",
+    description: "Flush a long mixed truecolor background row without redundant per-cell ANSI resets.",
+    tags: ["render", "ansi", "canvas", "terminal", "three"],
+    iterations: 1_000,
+    maxAverageMs: 2,
+    run: () => {
+      ansiSinkBytes = 0;
+      ansiSink.flushRanges([
+        { row: 0, startColumn: 0, values: ansiSinkTruecolorBackgroundValues },
+      ], ansiSinkTruecolorBackgroundStats);
+      if (ansiSinkBytes <= ansiSinkTruecolorBackgroundValues.length) {
+        throw new Error("ANSI sink emitted an unexpectedly small truecolor terminal sequence");
       }
     },
   },
