@@ -174,6 +174,7 @@ import {
 } from "../../app/workbench_modal_content.ts";
 import { workbenchDataTablePageSize, workbenchDataTableRowsInto } from "../../app/workbench_data_table.ts";
 import { workbenchExplorerRowsInto } from "../../app/workbench_explorer.ts";
+import { workbenchLogRowsFromSourcesInto } from "../../app/workbench_logs.ts";
 import type { RowStyle } from "../../app/workbench_rows.ts";
 import { workbenchThreePreviewRowsInto } from "../../app/workbench_visualization_window.ts";
 import {
@@ -365,6 +366,7 @@ const dataTableTextRows: string[] = [];
 const dataTableBodyRows: RowStyle[] = [];
 const dataTableRenderRows: RowStyle[] = [];
 const explorerRenderRows: RowStyle[] = [];
+const logRenderRows: RowStyle[] = [];
 const htmlCssLayoutBoxes: ComputedLayoutBox[] = [];
 const htmlCssLayoutRenderCommands: HtmlCssLayoutRenderCommand[] = [];
 const minimizedShelfEntries: Array<{ id: PanelId; title: string }> = [];
@@ -1002,13 +1004,15 @@ function renderLogs(frame: string[], rect: Rectangle): void {
   const overflow = logScroll.inspectOverflow();
   const bodyWidth = Math.max(0, rect.width - 1);
   const end = Math.min(lineCount, offset + rect.height);
+  const t = theme();
+  const rows = workbenchLogRowsFromSourcesInto(logRenderRows, [docs, logRows], t);
   for (let sourceIndex = offset; sourceIndex < end; sourceIndex += 1) {
-    const line = sourceIndex < docs.length ? docs[sourceIndex]! : logRows[sourceIndex - docs.length]!;
+    const row = rows[sourceIndex]!;
     write(
       frame,
       rect.row + sourceIndex - offset,
       rect.column,
-      paint(fit(line, bodyWidth), theme().text, theme().surface),
+      paint(fit(row.text, bodyWidth), row.fg ?? t.text, row.bg ?? t.surface, row.bold),
     );
   }
   if (!overflow.rows.scrollbarVisible || rect.width < 1) return;
@@ -1016,7 +1020,7 @@ function renderLogs(frame: string[], rect: Rectangle): void {
   const thumb = overflow.rows.thumb;
   hitTargets.add({ column, row: rect.row, width: 1, height: rect.height }, { type: "logScrollbar" });
   for (let row = 0; row < rect.height; row += 1) {
-    write(frame, rect.row + row, column, paint(scrollbarGlyph(row, thumb), theme().accent, theme().surface, true));
+    write(frame, rect.row + row, column, paint(scrollbarGlyph(row, thumb), t.accent, t.surface, true));
   }
 }
 

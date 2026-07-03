@@ -16448,6 +16448,29 @@ function workbenchExplorerRowsInto(target, options) {
   return target;
 }
 
+// app/workbench_logs.ts
+function workbenchLogRowsFromSourcesInto(target, sources, theme2) {
+  let rowCount = 0;
+  for (let sourceIndex = 0; sourceIndex < sources.length; sourceIndex += 1) {
+    rowCount += sources[sourceIndex].length;
+  }
+  target.length = rowCount;
+  let targetIndex = 0;
+  for (let sourceIndex = 0; sourceIndex < sources.length; sourceIndex += 1) {
+    const source = sources[sourceIndex];
+    for (let index = 0; index < source.length; index += 1) {
+      const row = target[targetIndex] ?? { text: "" };
+      row.text = source[index];
+      row.fg = theme2.text;
+      row.bg = theme2.surface;
+      row.bold = void 0;
+      target[targetIndex] = row;
+      targetIndex += 1;
+    }
+  }
+  return target;
+}
+
 // src/app/workbench_ascii.ts
 var defaultWorkbenchAsciiConfigRows = [
   { kind: "preset", label: "Preset" },
@@ -17038,6 +17061,7 @@ var dataTableTextRows = [];
 var dataTableBodyRows = [];
 var dataTableRenderRows = [];
 var explorerRenderRows = [];
+var logRenderRows = [];
 var htmlCssLayoutBoxes = [];
 var htmlCssLayoutRenderCommands = [];
 var minimizedShelfEntries = [];
@@ -17647,13 +17671,15 @@ function renderLogs(frame, rect) {
   const overflow = logScroll.inspectOverflow();
   const bodyWidth = Math.max(0, rect.width - 1);
   const end = Math.min(lineCount, offset + rect.height);
+  const t = theme();
+  const rows2 = workbenchLogRowsFromSourcesInto(logRenderRows, [docs, logRows], t);
   for (let sourceIndex = offset; sourceIndex < end; sourceIndex += 1) {
-    const line = sourceIndex < docs.length ? docs[sourceIndex] : logRows[sourceIndex - docs.length];
+    const row = rows2[sourceIndex];
     write(
       frame,
       rect.row + sourceIndex - offset,
       rect.column,
-      paint(fit(line, bodyWidth), theme().text, theme().surface)
+      paint(fit(row.text, bodyWidth), row.fg ?? t.text, row.bg ?? t.surface, row.bold)
     );
   }
   if (!overflow.rows.scrollbarVisible || rect.width < 1) return;
@@ -17661,7 +17687,7 @@ function renderLogs(frame, rect) {
   const thumb = overflow.rows.thumb;
   hitTargets.add({ column, row: rect.row, width: 1, height: rect.height }, { type: "logScrollbar" });
   for (let row = 0; row < rect.height; row += 1) {
-    write(frame, rect.row + row, column, paint(scrollbarGlyph(row, thumb), theme().accent, theme().surface, true));
+    write(frame, rect.row + row, column, paint(scrollbarGlyph(row, thumb), t.accent, t.surface, true));
   }
 }
 function renderExplorer(frame, rect) {

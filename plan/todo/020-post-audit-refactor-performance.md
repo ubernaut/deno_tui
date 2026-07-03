@@ -217,3 +217,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   removing duplicated icon, selection, and theme styling logic from the web renderer.
 - Routed the browser API workbench data table through the shared data-table row/page-size projection so footer wrapping,
   selected-row contrast, and caller-owned row buffers stay aligned with the terminal adapter.
+- Extended the workbench log-row projection to consume multiple sources without concatenation and routed browser logs
+  through it so docs/runtime log styling shares the terminal adapter path.
