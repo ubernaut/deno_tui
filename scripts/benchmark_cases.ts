@@ -70,6 +70,7 @@ import {
   queueRerenderRangeInto,
   queueRerenderRangeOnlyInto,
 } from "../src/canvas/rerender_queue.ts";
+import { Signal } from "../src/signals/mod.ts";
 
 const sparklineValues = Array.from({ length: 200 }, (_, index) => Math.sin(index / 8));
 const threeAsciiColumns = 96;
@@ -148,6 +149,47 @@ const ansiSink = new AnsiCanvasSink({
     },
   },
 });
+let textObjectCanvasSinkBytes = 0;
+const textObjectCanvasColumns = 220;
+const textObjectCanvasRows = 70;
+const textObjectCanvasSink = new AnsiCanvasSink({
+  stdout: {
+    writeSync(data) {
+      textObjectCanvasSinkBytes += data.length;
+      return data.length;
+    },
+  },
+});
+const textObjectCanvas = new Canvas({
+  sink: textObjectCanvasSink,
+  size: { columns: textObjectCanvasColumns, rows: textObjectCanvasRows },
+});
+const textObjectFrameRows = Array.from({ length: textObjectCanvasRows }, (_, row) => {
+  const baseRed = (row * 11) % 256;
+  const baseGreen = (64 + row * 7) % 256;
+  const baseBlue = (130 + row * 5) % 256;
+  return [
+    `\x1b[38;2;242;236;255;48;2;${baseRed};${baseGreen};${baseBlue}m${" ".repeat(textObjectCanvasColumns)}\x1b[0m`,
+    `\x1b[38;2;242;236;255;48;2;${(baseRed + 37) % 256};${(baseGreen + 53) % 256};${(baseBlue + 71) % 256}m${
+      "█".repeat(textObjectCanvasColumns)
+    }\x1b[0m`,
+  ] satisfies [string, string];
+});
+const textObjectLineSignals = textObjectFrameRows.map((rows, row) => {
+  const signal = new Signal<string>(rows[0]);
+  new TextObject({
+    canvas: textObjectCanvas,
+    rectangle: { column: 0, row, width: textObjectCanvasColumns },
+    value: signal,
+    overwriteRectangle: true,
+    multiCodePointSupport: true,
+    style: (text) => text,
+    zIndex: 1,
+  }).draw();
+  return signal;
+});
+textObjectCanvas.render();
+let textObjectFrameIndex = 0;
 const threeAsciiImageWidth = threeAsciiColumns * 8;
 const threeAsciiImageHeight = threeAsciiRows * 8;
 const threeAsciiImageBytesPerRow = threeAsciiImageWidth * 4;
@@ -984,6 +1026,18 @@ function runWorkbenchStringFrameFullRowWorkload(): void {
   }
 }
 
+function runTextObjectFullRowCanvasWorkload(): void {
+  textObjectFrameIndex = 1 - textObjectFrameIndex;
+  textObjectCanvasSinkBytes = 0;
+  for (let row = 0; row < textObjectCanvasRows; row += 1) {
+    textObjectLineSignals[row]!.value = textObjectFrameRows[row]![textObjectFrameIndex];
+  }
+  textObjectCanvas.render();
+  if (textObjectCanvasSinkBytes <= textObjectCanvasRows * textObjectCanvasColumns) {
+    throw new Error("text object canvas workload did not flush styled full rows");
+  }
+}
+
 function runWorkbenchScaledThreeGridWorkload(): void {
   const frame = prepareWorkbenchFrame(workbenchScaledThreeFrame, workbenchScaledThreeTargetRows);
   writeWorkbenchThreeGrid(
@@ -1301,6 +1355,15 @@ export const benchmarkCases: BenchmarkCase[] = [
     iterations: 500,
     maxAverageMs: 5,
     run: runWorkbenchStringFrameFullRowWorkload,
+  },
+  {
+    name: "render/textobject-full-row-canvas-220x70",
+    category: "render",
+    description: "Update full-width ANSI styled TextObject rows through the terminal canvas range sink.",
+    tags: ["render", "workbench", "canvas", "ansi", "text", "terminal"],
+    iterations: 80,
+    maxAverageMs: 20,
+    run: runTextObjectFullRowCanvasWorkload,
   },
   {
     name: "render/workbench-scaled-three-grid-220x70",

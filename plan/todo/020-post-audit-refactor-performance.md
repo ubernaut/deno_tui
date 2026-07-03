@@ -279,3 +279,5 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Fixed the terminal canvas direct-row-range flush path so sinks that disable legacy per-cell updates still flush dense
   range-only rows, and routed overwrite `TextObject` rows through direct row ranges. This targets the default workbench
   Three ASCII path where every visible pane row is published as a full-width text object.
+- Added `render/textobject-full-row-canvas-220x70` to benchmark the actual full-width styled `TextObject` + terminal
+  canvas path behind the default workbench surface; local best-of workbench runs measured it around 2.55ms per frame.
