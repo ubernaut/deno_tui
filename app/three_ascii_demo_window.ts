@@ -22,6 +22,8 @@ export type ThreeAsciiDemoTitlebarControl = "minimize" | "maximize" | "restore" 
 
 export const THREE_ASCII_DEMO_WINDOW_CONTROL_TEXT = "[-] [M] [R] [x]";
 export const THREE_ASCII_DEMO_WINDOW_CONTROL_WIDTH = 15;
+export const THREE_ASCII_DEMO_WINDOW_COMPACT_CONTROL_TEXT = "[-][M][R][x]";
+export const THREE_ASCII_DEMO_WINDOW_COMPACT_CONTROL_WIDTH = 12;
 
 /** Returns whether the standalone Three ASCII side panel should reserve layout space. */
 export function threeAsciiDemoSidePanelVisible(
@@ -71,13 +73,21 @@ export function threeAsciiDemoTitleRect(rect: ThreeAsciiDemoRect): ThreeAsciiDem
 
 /** Calculates the titlebar control rectangle, returning width 0 when controls cannot fit. */
 export function threeAsciiDemoControlRect(rect: ThreeAsciiDemoRect): ThreeAsciiDemoRect {
-  const visible = rect.width >= THREE_ASCII_DEMO_WINDOW_CONTROL_WIDTH + 2;
+  const controlWidth = threeAsciiDemoControlWidth(rect.width);
   return {
-    column: rect.column + Math.max(1, rect.width - THREE_ASCII_DEMO_WINDOW_CONTROL_WIDTH - 1),
+    column: rect.column + Math.max(1, rect.width - controlWidth - 1),
     row: rect.row,
-    width: visible ? THREE_ASCII_DEMO_WINDOW_CONTROL_WIDTH : 0,
+    width: controlWidth,
     height: 1,
   };
+}
+
+/** Returns the titlebar control text appropriate for the current standalone Three ASCII window width. */
+export function threeAsciiDemoControlText(rect: ThreeAsciiDemoRect): string {
+  const width = threeAsciiDemoControlWidth(rect.width);
+  if (width === THREE_ASCII_DEMO_WINDOW_CONTROL_WIDTH) return THREE_ASCII_DEMO_WINDOW_CONTROL_TEXT;
+  if (width === THREE_ASCII_DEMO_WINDOW_COMPACT_CONTROL_WIDTH) return THREE_ASCII_DEMO_WINDOW_COMPACT_CONTROL_TEXT;
+  return "";
 }
 
 /** Resolves a titlebar pointer position to the standalone Three ASCII window control under it. */
@@ -88,9 +98,18 @@ export function threeAsciiDemoTitlebarControlAt(
 ): ThreeAsciiDemoTitlebarControl | undefined {
   const controls = threeAsciiDemoControlRect(rect);
   if (controls.width <= 0 || y !== controls.row) return undefined;
+  const gap = controls.width === THREE_ASCII_DEMO_WINDOW_CONTROL_WIDTH ? 1 : 0;
   if (x >= controls.column && x < controls.column + 3) return "minimize";
-  if (x >= controls.column + 4 && x < controls.column + 7) return "maximize";
-  if (x >= controls.column + 8 && x < controls.column + 11) return "restore";
-  if (x >= controls.column + 12 && x < controls.column + 15) return "close";
+  if (x >= controls.column + 3 + gap && x < controls.column + 6 + gap) return "maximize";
+  if (x >= controls.column + 6 + gap * 2 && x < controls.column + 9 + gap * 2) return "restore";
+  if (x >= controls.column + 9 + gap * 3 && x < controls.column + 12 + gap * 3) return "close";
   return undefined;
+}
+
+function threeAsciiDemoControlWidth(windowWidth: number): number {
+  if (windowWidth >= THREE_ASCII_DEMO_WINDOW_CONTROL_WIDTH + 2) return THREE_ASCII_DEMO_WINDOW_CONTROL_WIDTH;
+  if (windowWidth >= THREE_ASCII_DEMO_WINDOW_COMPACT_CONTROL_WIDTH + 2) {
+    return THREE_ASCII_DEMO_WINDOW_COMPACT_CONTROL_WIDTH;
+  }
+  return 0;
 }

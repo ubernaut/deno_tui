@@ -33,10 +33,10 @@ import { TERMINAL_GLYPH_STYLES, type TerminalGlyphStyle } from "../src/three_asc
 import { requireInteractiveTerminal } from "../app/terminal_guard.ts";
 import {
   layoutThreeAsciiDemoWindow,
-  THREE_ASCII_DEMO_WINDOW_CONTROL_TEXT,
   THREE_ASCII_DEMO_WINDOW_CONTROL_WIDTH,
   threeAsciiDemoBodyRect,
   threeAsciiDemoControlRect,
+  threeAsciiDemoControlText,
   threeAsciiDemoSidePanelVisible,
   threeAsciiDemoTitlebarControlAt,
   threeAsciiDemoTitleRect,
@@ -316,9 +316,7 @@ new Text({
 new Text({
   parent: tui,
   theme: { base: crayon.bgWhite.black.bold },
-  text: new Computed<string>(() =>
-    threeAsciiDemoControlRect(renderWindowRectangle.value).width > 0 ? THREE_ASCII_DEMO_WINDOW_CONTROL_TEXT : ""
-  ),
+  text: new Computed<string>(() => threeAsciiDemoControlText(renderWindowRectangle.value)),
   rectangle: new Computed<TextRectangle>(() => threeAsciiDemoControlRect(renderWindowRectangle.value)),
   zIndex: 13,
 });

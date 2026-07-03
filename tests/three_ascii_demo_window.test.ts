@@ -2,9 +2,11 @@
 import { assertEquals } from "./deps.ts";
 import {
   layoutThreeAsciiDemoWindow,
+  THREE_ASCII_DEMO_WINDOW_COMPACT_CONTROL_TEXT,
   THREE_ASCII_DEMO_WINDOW_CONTROL_TEXT,
   threeAsciiDemoBodyRect,
   threeAsciiDemoControlRect,
+  threeAsciiDemoControlText,
   threeAsciiDemoSidePanelVisible,
   threeAsciiDemoTitlebarControlAt,
   threeAsciiDemoTitleRect,
@@ -72,7 +74,21 @@ Deno.test("three ascii demo window derives body title and control rectangles", (
     width: 15,
     height: 1,
   });
-  assertEquals(threeAsciiDemoControlRect({ column: 2, row: 2, width: 16, height: 10 }).width, 0);
+  assertEquals(
+    threeAsciiDemoControlText({ column: 2, row: 2, width: 18, height: 10 }),
+    THREE_ASCII_DEMO_WINDOW_CONTROL_TEXT,
+  );
+  assertEquals(threeAsciiDemoControlRect({ column: 2, row: 2, width: 16, height: 10 }), {
+    column: 5,
+    row: 2,
+    width: 12,
+    height: 1,
+  });
+  assertEquals(
+    threeAsciiDemoControlText({ column: 2, row: 2, width: 16, height: 10 }),
+    THREE_ASCII_DEMO_WINDOW_COMPACT_CONTROL_TEXT,
+  );
+  assertEquals(threeAsciiDemoControlRect({ column: 2, row: 2, width: 13, height: 10 }).width, 0);
 });
 
 Deno.test("three ascii demo titlebar hit testing maps compact controls", () => {
@@ -84,4 +100,14 @@ Deno.test("three ascii demo titlebar hit testing maps compact controls", () => {
   assertEquals(threeAsciiDemoTitlebarControlAt(rect, 76, 2), "close");
   assertEquals(threeAsciiDemoTitlebarControlAt(rect, 67, 2), undefined);
   assertEquals(threeAsciiDemoTitlebarControlAt(rect, 64, 3), undefined);
+});
+
+Deno.test("three ascii demo titlebar keeps compact controls addressable in narrow windows", () => {
+  const rect = { column: 2, row: 2, width: 16, height: 10 };
+  assertEquals(threeAsciiDemoControlText(rect), "[-][M][R][x]");
+  assertEquals(threeAsciiDemoTitlebarControlAt(rect, 5, 2), "minimize");
+  assertEquals(threeAsciiDemoTitlebarControlAt(rect, 8, 2), "maximize");
+  assertEquals(threeAsciiDemoTitlebarControlAt(rect, 11, 2), "restore");
+  assertEquals(threeAsciiDemoTitlebarControlAt(rect, 14, 2), "close");
+  assertEquals(threeAsciiDemoTitlebarControlAt(rect, 4, 2), undefined);
 });
