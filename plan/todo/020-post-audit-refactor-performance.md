@@ -240,3 +240,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   preserving each toolbar's public state rules and caller-owned item reuse.
 - Added caller-owned workspace menu entry projection and routed the terminal workbench through it so workspace menu
   labels and item counts no longer rebuild a fresh entry list on every draw.
+- Added caller-owned source-frame resolution for monitor visualization contexts and routed real workbench monitor
+  windows through it so redraws reuse the frame array while keeping sampled source payloads fresh.

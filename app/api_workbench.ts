@@ -236,7 +236,7 @@ import {
   htmlCssVisibleLayoutBoxesInto,
 } from "./html_css_layout_view.ts";
 import { ASCII_DEMO_PRESETS, asciiDemoPresetIds, cloneAsciiOptions, normalizeAsciiOptions } from "./ascii_options.ts";
-import { getSourceFrame } from "./sources.ts";
+import { resolveSourceFramesInto } from "./sources.ts";
 import { makeStyle } from "./styles.ts";
 import { SystemMonitor } from "./system_metrics.ts";
 import { requireInteractiveTerminal } from "./terminal_guard.ts";
@@ -638,6 +638,7 @@ const workspaceMenuSlice: VisibleMenuSlice = { items: [], indexes: [] };
 const workspaceMenuEntryBuffer: WorkspaceMenuEntry[] = [];
 const workspaceMenuLabelBuffer: string[] = [];
 const realSourceIdBuffer: string[] = [];
+const realSourceFrameBuffer: SourceFrame[] = [];
 const menuBarHitLayouts: WorkbenchMenuBarHitLayout[] = [];
 const headerLayout: WorkbenchHeaderLayout = { menu: { column: 0, row: 0, width: 0, height: 1 } };
 const minimizedShelfEntries: Array<{ id: WindowId; title: string }> = [];
@@ -2772,11 +2773,7 @@ function buildVisualizationContext(
 
 function realWorkbenchSources(visualizationId: string, system: SystemSnapshot, phase: number): SourceFrame[] {
   const sourceIds = monitorSourceIdsInto(realSourceIdBuffer, visualizationId);
-  const sources = new Array<SourceFrame>(sourceIds.length);
-  for (let index = 0; index < sourceIds.length; index += 1) {
-    sources[index] = getSourceFrame(sourceIds[index]!, system, workbenchAudioRegistry, phase);
-  }
-  return sources;
+  return resolveSourceFramesInto(realSourceFrameBuffer, sourceIds, system, workbenchAudioRegistry, phase);
 }
 
 function translateContentHits(

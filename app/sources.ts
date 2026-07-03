@@ -144,15 +144,27 @@ export function resolveSourceFrames(
   audio: AudioRegistry,
   phase: number,
 ) {
+  return resolveSourceFramesInto([], sourceIds, system, audio, phase);
+}
+
+export function resolveSourceFramesInto(
+  target: SourceFrame[],
+  sourceIds: readonly string[],
+  system: SystemSnapshot,
+  audio: AudioRegistry,
+  phase: number,
+): SourceFrame[] {
   if (sourceIds.length === 0) {
-    return [syntheticPulseSource(phase)];
+    target[0] = syntheticPulseSource(phase);
+    target.length = 1;
+    return target;
   }
 
-  const frames = new Array<SourceFrame>(sourceIds.length);
+  target.length = sourceIds.length;
   for (let index = 0; index < sourceIds.length; index += 1) {
-    frames[index] = getSourceFrame(sourceIds[index]!, system, audio, phase);
+    target[index] = getSourceFrame(sourceIds[index]!, system, audio, phase);
   }
-  return frames;
+  return target;
 }
 
 export function getSourceFrame(

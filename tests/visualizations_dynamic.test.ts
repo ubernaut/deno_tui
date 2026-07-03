@@ -1,6 +1,6 @@
 import { assert, assertEquals, assertNotEquals } from "./deps.ts";
 import { AudioRegistry } from "../app/audio.ts";
-import { getSourceFrame } from "../app/sources.ts";
+import { getSourceFrame, resolveSourceFramesInto } from "../app/sources.ts";
 import {
   buildVisualizationDrive,
   cpuActivityRgb,
@@ -337,6 +337,36 @@ Deno.test("cpu legend exposes every core for scrollable panels", () => {
   assertEquals(source.detailLines.length, 16);
   assertEquals(legend.body.split("\n").length, 17);
   assert(legend.body.includes("015"));
+});
+
+Deno.test("resolveSourceFramesInto reuses caller buffers and keeps synthetic fallback", () => {
+  const audio = new AudioRegistry([]);
+  const target: SourceFrame[] = [
+    {
+      id: "stale",
+      name: "Stale",
+      accent: "signal",
+      value: 0,
+      series: [],
+      detailLines: [],
+    },
+    {
+      id: "trim",
+      name: "Trim",
+      accent: "signal",
+      value: 0,
+      series: [],
+      detailLines: [],
+    },
+  ];
+
+  assertEquals(resolveSourceFramesInto(target, ["sys:cpu", "sys:memory"], calmSystem, audio, 0), target);
+  assertEquals(target.map((source) => source.id), ["sys:cpu", "sys:memory"]);
+  assertEquals(target.length, 2);
+
+  assertEquals(resolveSourceFramesInto(target, [], calmSystem, audio, 3), target);
+  assertEquals(target.length, 1);
+  assertEquals(target[0]?.id, "synth:pulse");
 });
 
 Deno.test("cpu hex grid renders every core with unique truecolor activity shades", () => {
