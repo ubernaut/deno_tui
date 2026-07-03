@@ -163,6 +163,7 @@ import {
 import {
   type HtmlCssLayoutRenderCommand,
   htmlCssLayoutRenderCommandsInto,
+  htmlCssLayoutSummaryRows,
   htmlCssVisibleLayoutBoxesInto,
 } from "../../app/html_css_layout_view.ts";
 import {
@@ -1152,17 +1153,12 @@ function renderHtmlCssLayout(frame: string[], rect: Rectangle): void {
   const t = theme();
   const result = createHtmlCssLayoutDemo(rect);
   const boxes = htmlCssVisibleLayoutBoxesInto(htmlCssLayoutBoxes, result.layout.boxes);
-  const rows = [
-    "parseTuiMarkup -> parseCssStylesheet -> applyCssCascade -> LayoutEngine",
-    "Flex rows wrap; nested CSS Grid uses fr tracks, spans, and media rules.",
-    "Resize the browser to recalculate terminal-cell layout through the web host.",
-  ];
   const commands = htmlCssLayoutRenderCommandsInto(htmlCssLayoutRenderCommands, {
     bounds: rect,
     boxes,
     theme: t,
     contrast: contrastText,
-    summaryRows: rows,
+    summaryRows: htmlCssLayoutSummaryRows("web"),
   });
   for (const command of commands) {
     if (command.kind === "fill") {

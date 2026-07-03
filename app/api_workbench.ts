@@ -229,6 +229,7 @@ import {
 import {
   type HtmlCssLayoutRenderCommand,
   htmlCssLayoutRenderCommandsInto,
+  htmlCssLayoutSummaryRows,
   htmlCssVisibleLayoutBoxesInto,
 } from "./html_css_layout_view.ts";
 import { ASCII_DEMO_PRESETS, asciiDemoPresetIds, cloneAsciiOptions, normalizeAsciiOptions } from "./ascii_options.ts";
@@ -2312,17 +2313,12 @@ function renderHtmlCssLayout(frame: Frame, rect: Rectangle): void {
   const t = theme();
   const result = createHtmlCssLayoutDemo(rect);
   const boxes = htmlCssVisibleLayoutBoxesInto(htmlCssLayoutBoxes, result.layout.boxes);
-  const summaryRows = [
-    "parseTuiMarkup -> parseCssStylesheet -> applyCssCascade -> LayoutEngine",
-    "Default solver supports flex-wrap, CSS Grid tracks, fr units, and absolute inset.",
-    "Resize this window: metric cards wrap; nested grid retessellates with media rules.",
-  ];
   const commands = htmlCssLayoutRenderCommandsInto(htmlCssLayoutRenderCommands, {
     bounds: rect,
     boxes,
     theme: t,
     contrast: contrastText,
-    summaryRows,
+    summaryRows: htmlCssLayoutSummaryRows("terminal"),
   });
   for (const command of commands) {
     if (command.kind === "fill") {

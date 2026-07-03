@@ -226,3 +226,5 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Repaired the standalone web Three ASCII window chrome so it uses the same compact titlebar control projection as the
   terminal demo; block-mode color paths still emit 24-bit background fills, so remaining color complaints should be
   verified against terminal/browser rendering rather than ANSI grid quantization.
+- Shared the HTML/CSS layout demo summary copy through a terminal/web profile helper so both workbench hosts use the
+  same renderer-neutral projection path without duplicating inline explanatory rows.

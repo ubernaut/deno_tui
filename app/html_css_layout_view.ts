@@ -67,6 +67,29 @@ export interface HtmlCssLayoutRenderCommandOptions {
   summaryRows: readonly string[];
 }
 
+/** Host profile for the HTML/CSS layout demo explanatory summary. */
+export type HtmlCssLayoutSummaryProfile = "terminal" | "web";
+
+/** Returns the compact summary rows shown below the HTML/CSS layout demo. */
+export function htmlCssLayoutSummaryRows(profile: HtmlCssLayoutSummaryProfile = "terminal"): readonly string[] {
+  if (profile === "web") {
+    return WEB_HTML_CSS_LAYOUT_SUMMARY_ROWS;
+  }
+  return TERMINAL_HTML_CSS_LAYOUT_SUMMARY_ROWS;
+}
+
+const TERMINAL_HTML_CSS_LAYOUT_SUMMARY_ROWS: readonly string[] = [
+  "parseTuiMarkup -> parseCssStylesheet -> applyCssCascade -> LayoutEngine",
+  "Default solver supports flex-wrap, CSS Grid tracks, fr units, and absolute inset.",
+  "Resize this window: metric cards wrap; nested grid retessellates with media rules.",
+];
+
+const WEB_HTML_CSS_LAYOUT_SUMMARY_ROWS: readonly string[] = [
+  "parseTuiMarkup -> parseCssStylesheet -> applyCssCascade -> LayoutEngine",
+  "Flex rows wrap; nested CSS Grid uses fr tracks, spans, and media rules.",
+  "Resize the browser to recalculate terminal-cell layout through the web host.",
+];
+
 /** Resolves workbench theme colors for a computed HTML/CSS layout demo box. */
 export function htmlCssLayoutBoxStyle(
   box: Pick<ComputedLayoutBox, "id">,

@@ -5,6 +5,7 @@ import {
   htmlCssLayoutBoxStyle,
   type HtmlCssLayoutRenderCommand,
   htmlCssLayoutRenderCommandsInto,
+  htmlCssLayoutSummaryRows,
   type HtmlCssLayoutTheme,
   htmlCssVisibleLayoutBoxesInto,
 } from "../app/html_css_layout_view.ts";
@@ -106,6 +107,17 @@ Deno.test("htmlCssVisibleLayoutBoxesInto filters hidden boxes and reuses caller 
     result.map((box) => box.id),
     ["layout-demo", "metric-cpu", "grid-worker", "layout-badge"],
   );
+});
+
+Deno.test("htmlCssLayoutSummaryRows exposes terminal and web host profiles", () => {
+  const terminal = htmlCssLayoutSummaryRows("terminal");
+  const web = htmlCssLayoutSummaryRows("web");
+
+  assertEquals(terminal.length, 3);
+  assertEquals(web.length, 3);
+  assertEquals(terminal[0], web[0]);
+  assertEquals(terminal[1]?.includes("Default solver"), true);
+  assertEquals(web[2]?.includes("browser"), true);
 });
 
 Deno.test("htmlCssLayoutRenderCommandsInto projects boxes outlines labels and summaries", () => {

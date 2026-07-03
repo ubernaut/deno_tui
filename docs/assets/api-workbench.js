@@ -16094,6 +16094,22 @@ function nextApiWorkbenchControlId(current, delta, options = {}) {
 }
 
 // app/html_css_layout_view.ts
+function htmlCssLayoutSummaryRows(profile = "terminal") {
+  if (profile === "web") {
+    return WEB_HTML_CSS_LAYOUT_SUMMARY_ROWS;
+  }
+  return TERMINAL_HTML_CSS_LAYOUT_SUMMARY_ROWS;
+}
+var TERMINAL_HTML_CSS_LAYOUT_SUMMARY_ROWS = [
+  "parseTuiMarkup -> parseCssStylesheet -> applyCssCascade -> LayoutEngine",
+  "Default solver supports flex-wrap, CSS Grid tracks, fr units, and absolute inset.",
+  "Resize this window: metric cards wrap; nested grid retessellates with media rules."
+];
+var WEB_HTML_CSS_LAYOUT_SUMMARY_ROWS = [
+  "parseTuiMarkup -> parseCssStylesheet -> applyCssCascade -> LayoutEngine",
+  "Flex rows wrap; nested CSS Grid uses fr tracks, spans, and media rules.",
+  "Resize the browser to recalculate terminal-cell layout through the web host."
+];
 function htmlCssLayoutBoxStyle(box, theme2, contrast) {
   if (box.id === "layout-toolbar") {
     return {
@@ -17852,17 +17868,12 @@ function renderHtmlCssLayout(frame, rect) {
   const t = theme();
   const result = createHtmlCssLayoutDemo(rect);
   const boxes = htmlCssVisibleLayoutBoxesInto(htmlCssLayoutBoxes, result.layout.boxes);
-  const rows2 = [
-    "parseTuiMarkup -> parseCssStylesheet -> applyCssCascade -> LayoutEngine",
-    "Flex rows wrap; nested CSS Grid uses fr tracks, spans, and media rules.",
-    "Resize the browser to recalculate terminal-cell layout through the web host."
-  ];
   const commands = htmlCssLayoutRenderCommandsInto(htmlCssLayoutRenderCommands, {
     bounds: rect,
     boxes,
     theme: t,
     contrast: contrastText,
-    summaryRows: rows2
+    summaryRows: htmlCssLayoutSummaryRows("web")
   });
   for (const command of commands) {
     if (command.kind === "fill") {
