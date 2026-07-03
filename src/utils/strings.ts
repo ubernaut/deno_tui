@@ -25,9 +25,22 @@ export function getMultiCodePointCharacters(text: string): string[] {
     return getStyledCharacters(text);
   }
 
+  const plainAscii = getPlainAsciiCharacters(text);
+  if (plainAscii) return plainAscii;
+
   const matched = text.match(UNICODE_CHAR_REGEXP);
 
   return matched ?? empty;
+}
+
+function getPlainAsciiCharacters(text: string): string[] | undefined {
+  const cells = new Array<string>(text.length);
+  for (let index = 0; index < text.length; index += 1) {
+    const code = text.charCodeAt(index);
+    if (code >= 0x80) return undefined;
+    cells[index] = text[index] ?? "";
+  }
+  return cells;
 }
 
 function getStyledCharacters(text: string): string[] {

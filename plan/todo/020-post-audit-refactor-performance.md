@@ -264,3 +264,5 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Reused repeated styled cell strings inside ANSI-aware text splitting so block-mode workbench rows avoid rebuilding the
   same truecolor background-space cell across long runs; focused `ansi-styled` and workbench full-row benchmarks
   improved locally after the change.
+- Added a plain-ASCII `getMultiCodePointCharacters` fast path and benchmark so unstyled terminal text avoids the large
+  Unicode grapheme regexp while preserving the Unicode fallback for non-ASCII content.

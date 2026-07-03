@@ -1672,8 +1672,19 @@ function getMultiCodePointCharacters(text) {
   if (text.includes("\x1B")) {
     return getStyledCharacters(text);
   }
+  const plainAscii = getPlainAsciiCharacters(text);
+  if (plainAscii) return plainAscii;
   const matched = text.match(UNICODE_CHAR_REGEXP);
   return matched ?? empty;
+}
+function getPlainAsciiCharacters(text) {
+  const cells = new Array(text.length);
+  for (let index = 0; index < text.length; index += 1) {
+    const code = text.charCodeAt(index);
+    if (code >= 128) return void 0;
+    cells[index] = text[index] ?? "";
+  }
+  return cells;
 }
 function getStyledCharacters(text) {
   const cells = [];

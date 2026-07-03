@@ -110,6 +110,7 @@ const ansiSinkStyledRangeValues = Array.from(
   () => "\x1b[38;2;242;236;255;48;2;66;37;95m█\x1b[0m\x1b[0m",
 );
 const ansiStyledSplitRow = "\x1b[38;2;242;236;255;48;2;66;37;95m".concat(" ".repeat(160), "\x1b[0m\x1b[0m");
+const plainAsciiSplitRow = "api-workbench plain ascii row ".concat(".".repeat(132));
 const ansiSinkStyledRangeStats = {
   updatedObjects: 0,
   renderedObjects: 0,
@@ -126,6 +127,7 @@ const ansiSinkStyledRangeStats = {
 };
 let ansiSinkBytes = 0;
 let ansiStyledSplitChecksum = 0;
+let plainAsciiSplitChecksum = 0;
 const ansiSink = new AnsiCanvasSink({
   stdout: {
     writeSync(data) {
@@ -966,6 +968,17 @@ function runAnsiStyledCharacterSplitWorkload(): void {
   }
 }
 
+function runPlainAsciiCharacterSplitWorkload(): void {
+  const cells = getMultiCodePointCharacters(plainAsciiSplitRow);
+  if (cells.length !== plainAsciiSplitRow.length) {
+    throw new Error(`Plain ASCII split produced ${cells.length} cells`);
+  }
+  plainAsciiSplitChecksum = (plainAsciiSplitChecksum + cells.length + cells[0]!.charCodeAt(0)) % 1_000_000;
+  if (!Number.isFinite(plainAsciiSplitChecksum)) {
+    throw new Error("Plain ASCII split checksum failed");
+  }
+}
+
 class BenchmarkMetricsProvider implements SystemMetricsProvider {
   step = 0;
   processStatReads = 0;
@@ -1250,6 +1263,15 @@ export const benchmarkCases: BenchmarkCase[] = [
     iterations: 1_000,
     maxAverageMs: 2,
     run: runAnsiStyledCharacterSplitWorkload,
+  },
+  {
+    name: "render/plain-ascii-character-split-160",
+    category: "render",
+    description: "Split a plain ASCII terminal row into TextObject cells without Unicode regex work.",
+    tags: ["render", "text", "workbench"],
+    iterations: 1_000,
+    maxAverageMs: 2,
+    run: runPlainAsciiCharacterSplitWorkload,
   },
   {
     name: "render/ansi-canvas-sink-styled-range-160",
