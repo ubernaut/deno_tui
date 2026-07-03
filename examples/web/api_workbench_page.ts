@@ -290,7 +290,6 @@ const columns = apiWorkbenchColumns;
 const docs = apiWorkbenchDocs;
 const ASCII_DEMO_PRESET_IDS = asciiDemoPresetIds();
 const asciiConfigRows: readonly AsciiConfigRow[] = defaultWorkbenchAsciiConfigRows;
-const panelLineBuffer: string[] = [];
 const panelIds: readonly PanelId[] = [
   "explorer",
   "inspector",
@@ -956,14 +955,6 @@ function renderPanel(frame: string[], id: PanelId, rect: Rectangle): void {
   else if (id === "three") renderThreePreview(frame, inner);
   else if (id === "htmlLayout") renderHtmlCssLayout(frame, inner);
   else if (id === "terminal") renderTerminalProtocol(frame, inner);
-  else {
-    const lines = panelLines(id, inner.height);
-    for (let index = 0; index < lines.length; index += 1) {
-      const line = lines[index]!;
-      const style = panelLineStyle(id, index);
-      write(frame, inner.row + index, inner.column, paint(fit(line, inner.width), style.fg, style.bg, style.bold));
-    }
-  }
 }
 
 function panelTitlebarHit(id: PanelId, kind: WorkbenchTitlebarButtonKind): Hit {
@@ -1582,27 +1573,6 @@ function webTerminalSessionTitle(id: string): string {
   return workbenchTerminalSessionTitleFromId(id, { prefix: "pages-shell", label: "Pages Shell" });
 }
 
-function panelLines(id: PanelId, height: number): string[] {
-  panelLineBuffer.length = 0;
-  const safeHeight = Math.max(0, height);
-  if (safeHeight === 0 || id === "controls") return panelLineBuffer;
-
-  if (id === "logs") {
-    const source = log.peek();
-    const start = Math.max(0, source.length - Math.max(1, safeHeight));
-    for (let index = start; index < source.length && panelLineBuffer.length < safeHeight; index += 1) {
-      panelLineBuffer.push(source[index]!);
-    }
-    return panelLineBuffer;
-  }
-
-  panelLineBuffer.push("API Workbench Web");
-  for (let index = 0; index < docs.length && panelLineBuffer.length < safeHeight; index += 1) {
-    panelLineBuffer.push(docs[index]!);
-  }
-  return panelLineBuffer;
-}
-
 function ensureLines(): void {
   for (let row = lineSignals.length; row < rowsCount(); row++) {
     const signal = new Signal("");
@@ -2066,11 +2036,6 @@ function renderModalOverlay(frame: string[]): void {
   }
 }
 
-function panelLineStyle(id: PanelId, index: number): { fg: string; bg: string; bold?: boolean } {
-  const t = theme();
-  if (id === "logs") return { fg: t.text, bg: t.surface };
-  return { fg: t.text, bg: t.surface };
-}
 function push(message: string): void {
   log.value = appendBoundedWorkbenchLogRow(log.peek(), `${new Date().toLocaleTimeString()} ${message}`, 40);
 }

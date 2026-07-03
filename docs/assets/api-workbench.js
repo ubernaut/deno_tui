@@ -17025,7 +17025,6 @@ var columns = apiWorkbenchColumns;
 var docs = apiWorkbenchDocs;
 var ASCII_DEMO_PRESET_IDS = asciiDemoPresetIds();
 var asciiConfigRows = defaultWorkbenchAsciiConfigRows;
-var panelLineBuffer = [];
 var panelIds = [
   "explorer",
   "inspector",
@@ -17668,14 +17667,6 @@ function renderPanel(frame, id2, rect) {
   else if (id2 === "three") renderThreePreview(frame, inner);
   else if (id2 === "htmlLayout") renderHtmlCssLayout(frame, inner);
   else if (id2 === "terminal") renderTerminalProtocol(frame, inner);
-  else {
-    const lines = panelLines(id2, inner.height);
-    for (let index = 0; index < lines.length; index += 1) {
-      const line = lines[index];
-      const style2 = panelLineStyle(id2, index);
-      write(frame, inner.row + index, inner.column, paint(fit(line, inner.width), style2.fg, style2.bg, style2.bold));
-    }
-  }
 }
 function panelTitlebarHit(id2, kind) {
   if (kind === "config") return { type: "threeConfig", id: id2 };
@@ -18238,24 +18229,6 @@ function nextWebTerminalSessionId() {
 function webTerminalSessionTitle(id2) {
   return workbenchTerminalSessionTitleFromId(id2, { prefix: "pages-shell", label: "Pages Shell" });
 }
-function panelLines(id2, height) {
-  panelLineBuffer.length = 0;
-  const safeHeight = Math.max(0, height);
-  if (safeHeight === 0 || id2 === "controls") return panelLineBuffer;
-  if (id2 === "logs") {
-    const source = log.peek();
-    const start = Math.max(0, source.length - Math.max(1, safeHeight));
-    for (let index = start; index < source.length && panelLineBuffer.length < safeHeight; index += 1) {
-      panelLineBuffer.push(source[index]);
-    }
-    return panelLineBuffer;
-  }
-  panelLineBuffer.push("API Workbench Web");
-  for (let index = 0; index < docs.length && panelLineBuffer.length < safeHeight; index += 1) {
-    panelLineBuffer.push(docs[index]);
-  }
-  return panelLineBuffer;
-}
 function ensureLines() {
   for (let row = lineSignals.length; row < rowsCount(); row++) {
     const signal = new Signal("");
@@ -18677,11 +18650,6 @@ function renderModalOverlay(frame) {
     write(frame, command.rect.row, command.rect.column, paint(command.text, style2.fg, style2.bg, style2.bold));
     hitTargets.add(command.hitRect, { type: "modalAction", index: command.item.action });
   }
-}
-function panelLineStyle(id2, index) {
-  const t = theme();
-  if (id2 === "logs") return { fg: t.text, bg: t.surface };
-  return { fg: t.text, bg: t.surface };
 }
 function push(message) {
   log.value = appendBoundedWorkbenchLogRow(log.peek(), `${(/* @__PURE__ */ new Date()).toLocaleTimeString()} ${message}`, 40);

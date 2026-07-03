@@ -221,3 +221,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   through it so docs/runtime log styling shares the terminal adapter path.
 - Routed the browser API workbench inspector through the shared inspector row projection so API-surface rows, theme
   labels, and recent-action wrapping match the terminal adapter.
+- Removed the now-unreachable browser workbench generic panel fallback after all current panel ids moved onto focused
+  renderers or shared row projections.
