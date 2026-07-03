@@ -241,6 +241,7 @@ import { makeStyle } from "./styles.ts";
 import { SystemMonitor } from "./system_metrics.ts";
 import { requireInteractiveTerminal } from "./terminal_guard.ts";
 import { ThreePanelFrameView } from "./three_panel.ts";
+import { workbenchExplorerRowsInto } from "./workbench_explorer.ts";
 import { workbenchInspectorRowsInto } from "./workbench_inspector.ts";
 import { workbenchLogRowsInto } from "./workbench_logs.ts";
 import { writeWorkbenchThreeGrid } from "./workbench_three_grid.ts";
@@ -1498,24 +1499,17 @@ function renderThreeGrid(frame: Frame, rect: Rectangle, grid: string[][], t: The
 }
 
 function renderExplorer(frame: Frame, rect: Rectangle): void {
-  const t = theme();
   const visible = explorer.tree.visibleRows();
-  const selectedIndex = explorer.tree.selectedIndex.peek();
-  explorerRenderRows.length = visible.length;
-  for (let index = 0; index < visible.length; index += 1) {
-    const row = visible[index]!;
-    const selected = row.index === selectedIndex;
-    const node = row.node as { kind?: string; path?: string };
-    const icon = row.hasChildren ? row.expanded ? "▾" : "▸" : node.kind === "file" ? "·" : " ";
-    const label = `${"  ".repeat(row.depth)}${icon} ${row.label}`;
-    explorerRenderRows[index] = {
-      text: label,
-      fg: selected ? contrastText(t.warn, t.background, t.text) : node.kind === "directory" ? t.good : t.text,
-      bg: selected ? t.warn : t.surface,
-      bold: selected || node.kind === "directory",
-    };
-  }
-  writeRows(frame, rect, explorerRenderRows);
+  writeRows(
+    frame,
+    rect,
+    workbenchExplorerRowsInto(explorerRenderRows, {
+      rows: visible,
+      selectedIndex: explorer.tree.selectedIndex.peek(),
+      theme: theme(),
+      contrast: contrastText,
+    }),
+  );
   for (let index = 0; index < visible.length; index += 1) {
     addHit({ column: rect.column, row: rect.row + index, width: rect.width, height: 1 }, {
       type: "explorerRow",

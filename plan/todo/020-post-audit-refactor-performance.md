@@ -193,3 +193,5 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Extracted API workbench Inspector row projection into a focused helper with direct tests, keeping the main renderer
   responsible only for writing projected rows.
 - Extracted API workbench Logs row projection into a focused helper that reuses row objects across draws.
+- Extracted API workbench Explorer row projection into a focused helper with direct tests for selection, icons, and
+  caller-owned row reuse.
