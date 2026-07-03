@@ -36,3 +36,7 @@ row ranges until the final sink flush.
 - Routed `DrawObject.queueRerenderRange()` through the helper so future range storage can be introduced behind one queue
   boundary.
 - Routed the Three ASCII fractional fallback queueing path through the helper to keep clipping behavior shared.
+- Added a range-only queue path for dense Three ASCII changed-row runs, plus canvas-side direct range flush support for
+  range-aware sinks.
+- Updated the Three ASCII frame-diff benchmark cleanup to clear both legacy cell queues and range queues. Focused
+  `render/three-ascii-frame-diff-96x40` improved to `1.745ms avg` over 8 repeats on this machine.

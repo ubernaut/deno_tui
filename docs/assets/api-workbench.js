@@ -1376,30 +1376,42 @@ var SortedArray = class extends Array {
 
 // src/canvas/rerender_queue.ts
 function queueRerenderRangeInto(queue, row, startColumn, endColumn, canvasSize, viewRectangle) {
-  if (row < 0 || row >= canvasSize.rows) {
+  const clipped = clipRerenderRange(row, startColumn, endColumn, canvasSize, viewRectangle);
+  if (!clipped) {
     return emptyQueueResult(row);
+  }
+  const queueRow = queue[clipped.row] ??= /* @__PURE__ */ new Set();
+  const before = queueRow.size;
+  for (let column = clipped.startColumn; column < clipped.endColumn; column += 1) {
+    queueRow.add(column);
+  }
+  return {
+    row: clipped.row,
+    startColumn: clipped.startColumn,
+    endColumn: clipped.endColumn,
+    queuedCells: queueRow.size - before
+  };
+}
+function emptyQueueResult(row) {
+  return { row, startColumn: 0, endColumn: 0, queuedCells: 0 };
+}
+function clipRerenderRange(row, startColumn, endColumn, canvasSize, viewRectangle) {
+  if (row < 0 || row >= canvasSize.rows) {
+    return void 0;
   }
   let start = Math.max(0, Math.floor(startColumn));
   let end = Math.min(canvasSize.columns, Math.ceil(endColumn));
   if (viewRectangle) {
     if (row < viewRectangle.row || row >= viewRectangle.row + viewRectangle.height) {
-      return emptyQueueResult(row);
+      return void 0;
     }
     start = Math.max(start, viewRectangle.column);
     end = Math.min(end, viewRectangle.column + viewRectangle.width);
   }
   if (end <= start) {
-    return emptyQueueResult(row);
+    return void 0;
   }
-  const queueRow = queue[row] ??= /* @__PURE__ */ new Set();
-  const before = queueRow.size;
-  for (let column = start; column < end; column += 1) {
-    queueRow.add(column);
-  }
-  return { row, startColumn: start, endColumn: end, queuedCells: queueRow.size - before };
-}
-function emptyQueueResult(row) {
-  return { row, startColumn: 0, endColumn: 0, queuedCells: 0 };
+  return { row, startColumn: start, endColumn: end };
 }
 
 // src/canvas/draw_object.ts
@@ -2772,6 +2784,7 @@ var DrawObjectSpatialIndex = class _DrawObjectSpatialIndex {
 var textEncoder2 = new TextEncoder();
 var textDecoder3 = new TextDecoder();
 var AnsiCanvasSink = class {
+  requiresCellUpdates = false;
   #stdout;
   #flushLimit;
   constructor(options) {
@@ -2858,6 +2871,7 @@ var Canvas = class extends EventEmitter {
   rerenderedObjects;
   frameBuffer;
   rerenderQueue;
+  rerenderRanges;
   drawnObjects;
   updateObjects;
   resizeNeeded;
@@ -2865,8 +2879,10 @@ var Canvas = class extends EventEmitter {
   drawnOrderVersion;
   cellUpdatesBuffer;
   rowRangesBuffer;
+  directRowRangesBuffer;
   objectsToUpdateBuffer;
   seenObjectsBuffer;
+  dirtyRowsSeenBuffer;
   dirtyRectanglesBuffer;
   movedOwnObjectsBuffer;
   nonMovingUpdatedObjectsBuffer;
@@ -2879,6 +2895,7 @@ var Canvas = class extends EventEmitter {
     super();
     this.frameBuffer = [];
     this.rerenderQueue = [];
+    this.rerenderRanges = [];
     this.stdout = options.stdout;
     if (options.sink) {
       this.sink = options.sink;
@@ -2894,8 +2911,10 @@ var Canvas = class extends EventEmitter {
     this.drawnOrderVersion = 0;
     this.cellUpdatesBuffer = [];
     this.rowRangesBuffer = [];
+    this.directRowRangesBuffer = [];
     this.objectsToUpdateBuffer = [];
     this.seenObjectsBuffer = /* @__PURE__ */ new Set();
+    this.dirtyRowsSeenBuffer = /* @__PURE__ */ new Set();
     this.dirtyRectanglesBuffer = [];
     this.movedOwnObjectsBuffer = /* @__PURE__ */ new Set();
     this.nonMovingUpdatedObjectsBuffer = [];
@@ -3073,17 +3092,39 @@ var Canvas = class extends EventEmitter {
       }
     }
     this.rerenderedObjects = i;
-    const { rerenderQueue } = this;
+    const { rerenderQueue, rerenderRanges } = this;
     const size = this.size.peek();
     let flushedCells = 0;
     let dirtyRows = 0;
     let dirtyCells = 0;
     const cellUpdates = this.cellUpdatesBuffer;
+    const directRowRanges = this.directRowRangesBuffer;
+    const dirtyRowsSeen = this.dirtyRowsSeenBuffer;
     cellUpdates.length = 0;
+    directRowRanges.length = 0;
+    dirtyRowsSeen.clear();
+    const needsCellUpdates = !this.sink.flushRanges || this.sink.requiresCellUpdates !== false;
     for (let row = 0; row < size.rows; ++row) {
+      const ranges = rerenderRanges[row];
+      if (ranges?.length) {
+        dirtyRowsSeen.add(row);
+        const rowBuffer2 = frameBuffer[row] ??= [];
+        for (const range of ranges) {
+          dirtyCells += Math.max(0, range.endColumn - range.startColumn);
+          flushedCells += appendCanvasRowRangeUpdates(
+            row,
+            range.startColumn,
+            range.endColumn,
+            rowBuffer2,
+            directRowRanges,
+            needsCellUpdates ? cellUpdates : void 0
+          );
+        }
+        ranges.length = 0;
+      }
       const columns2 = rerenderQueue[row];
       if (!columns2?.size) continue;
-      dirtyRows += 1;
+      dirtyRowsSeen.add(row);
       dirtyCells += columns2.size;
       const rowBuffer = frameBuffer[row] ??= [];
       for (const column of columns2) {
@@ -3094,7 +3135,14 @@ var Canvas = class extends EventEmitter {
       }
       columns2.clear();
     }
-    const rowRanges = coalesceCanvasRowRanges(cellUpdates, this.rowRangesBuffer);
+    const rowRanges = this.sink.flushRanges ? directRowRanges : coalesceCanvasRowRanges(cellUpdates, this.rowRangesBuffer);
+    if (this.sink.flushRanges && cellUpdates.length > 0) {
+      coalesceCanvasRowRanges(cellUpdates, this.rowRangesBuffer);
+      for (const range of this.rowRangesBuffer) {
+        directRowRanges.push(range);
+      }
+    }
+    dirtyRows = dirtyRowsSeen.size;
     this.lastRenderStats = {
       updatedObjects: i,
       renderedObjects,
@@ -3172,6 +3220,32 @@ function queueDirtyRegion(object, dirtyRegion) {
   dirtyRegion.forEachIntersectionValue(object.rectangle.peek(), (row, startColumn, endColumn) => {
     object.queueRerenderRange(row, startColumn, endColumn);
   });
+}
+function appendCanvasRowRangeUpdates(row, startColumn, endColumn, rowBuffer, rowRanges, cellUpdates) {
+  let flushedCells = 0;
+  let activeValues;
+  let activeStart = startColumn;
+  for (let column = startColumn; column < endColumn; column += 1) {
+    const value = rowBuffer[column];
+    if (value === void 0) {
+      if (activeValues?.length) {
+        rowRanges.push({ row, startColumn: activeStart, values: activeValues });
+      }
+      activeValues = void 0;
+      continue;
+    }
+    if (!activeValues) {
+      activeValues = [];
+      activeStart = column;
+    }
+    activeValues.push(value);
+    cellUpdates?.push({ row, column, value });
+    flushedCells += 1;
+  }
+  if (activeValues?.length) {
+    rowRanges.push({ row, startColumn: activeStart, values: activeValues });
+  }
+  return flushedCells;
 }
 
 // src/three_ascii/renderer.ts

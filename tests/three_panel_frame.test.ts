@@ -773,7 +773,7 @@ Deno.test("ThreeAsciiObject queues rerender cells only for changed ASCII grid ce
     await waitFor(() => (renderer?.startCount ?? 0) >= 3);
     renderer?.completeFrame();
     await waitFor(() => queuedCellCount(object) === 1);
-    assertEquals(object.rerenderCells[0]?.has(1), true);
+    assertEquals(object.rerenderRanges[0], [{ row: 0, startColumn: 1, endColumn: 2 }]);
   } finally {
     object.erase();
     rectangle.dispose();
@@ -807,10 +807,10 @@ Deno.test("ThreeAsciiObject changed-cell queue respects view clipping", async ()
     await waitFor(() => (renderer?.startCount ?? 0) >= 1);
     renderer?.completeFrame();
     await waitFor(() => queuedCellCount(object) === 1);
-    assertEquals(object.rerenderCells[0]?.has(1), true);
-    assertEquals(object.rerenderCells[0]?.has(0), false);
-    assertEquals(object.rerenderCells[0]?.has(2), false);
-    assertEquals(object.rerenderCells[1]?.size ?? 0, 0);
+    assertEquals(object.rerenderRanges[0], [{ row: 0, startColumn: 1, endColumn: 2 }]);
+    assertEquals(object.rerenderCells[0]?.has(0) ?? false, false);
+    assertEquals(object.rerenderCells[0]?.has(2) ?? false, false);
+    assertEquals(object.rerenderRanges[1]?.length ?? 0, 0);
   } finally {
     object.erase();
     rectangle.dispose();
@@ -845,12 +845,19 @@ async function waitFor(condition: () => boolean): Promise<void> {
 }
 
 function queuedCellCount(object: ThreeAsciiObject): number {
-  return object.rerenderCells.reduce((total, row) => total + (row?.size ?? 0), 0);
+  const cellCount = object.rerenderCells.reduce((total, row) => total + (row?.size ?? 0), 0);
+  return object.rerenderRanges.reduce(
+    (total, row) => total + (row?.reduce((rowTotal, range) => rowTotal + range.endColumn - range.startColumn, 0) ?? 0),
+    cellCount,
+  );
 }
 
 function clearQueuedCells(object: ThreeAsciiObject): void {
   for (const row of object.rerenderCells) {
     row?.clear();
+  }
+  for (const row of object.rerenderRanges) {
+    if (row) row.length = 0;
   }
 }
 

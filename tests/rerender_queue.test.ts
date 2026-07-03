@@ -1,5 +1,9 @@
 import { assertEquals } from "./deps.ts";
-import { queueRerenderCellInto, queueRerenderRangeInto } from "../src/canvas/rerender_queue.ts";
+import {
+  queueRerenderCellInto,
+  queueRerenderRangeInto,
+  queueRerenderRangeOnlyInto,
+} from "../src/canvas/rerender_queue.ts";
 
 Deno.test("queueRerenderRangeInto clips ranges to canvas bounds", () => {
   const queue: Array<Set<number> | undefined> = [];
@@ -40,6 +44,21 @@ Deno.test("queueRerenderRangeInto reports only newly queued cells", () => {
     queuedCells: 2,
   });
   assertEquals([...queue[0]!], [1, 2, 3, 4, 5]);
+});
+
+Deno.test("queueRerenderRangeOnlyInto queues clipped ranges without cell expansion", () => {
+  const ranges: Array<Array<{ row: number; startColumn: number; endColumn: number }> | undefined> = [];
+
+  assertEquals(
+    queueRerenderRangeOnlyInto(ranges, 1, -2, 5.2, { columns: 10, rows: 3 }, {
+      column: 2,
+      row: 0,
+      width: 4,
+      height: 2,
+    }),
+    { row: 1, startColumn: 2, endColumn: 6, queuedCells: 4 },
+  );
+  assertEquals(ranges[1], [{ row: 1, startColumn: 2, endColumn: 6 }]);
 });
 
 Deno.test("queueRerenderCellInto queues one floored fractional cell", () => {

@@ -15,9 +15,11 @@ import {
   AnsiCanvasSink,
   type CanvasCellSink,
   type CanvasCellUpdate,
+  type CanvasRowRangeUpdate,
   type CanvasStdout,
   coalesceCanvasRowRanges,
 } from "./sink.ts";
+import type { DirtyRowSegment } from "./dirty_region.ts";
 
 /** Interface defining object that {Canvas}'s constructor can interpret */
 export interface CanvasOptions {
@@ -61,6 +63,7 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
   rerenderedObjects?: number;
   frameBuffer: (string | Uint8Array)[][];
   rerenderQueue: Set<number>[];
+  rerenderRanges: DirtyRowSegment[][];
   drawnObjects: SortedArray<DrawObject>;
   updateObjects: DrawObject[];
   resizeNeeded: boolean;
@@ -68,8 +71,10 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
   drawnOrderVersion: number;
   cellUpdatesBuffer: CanvasCellUpdate[];
   rowRangesBuffer: ReturnType<typeof coalesceCanvasRowRanges>;
+  directRowRangesBuffer: CanvasRowRangeUpdate[];
   objectsToUpdateBuffer: DrawObject[];
   seenObjectsBuffer: Set<DrawObject>;
+  dirtyRowsSeenBuffer: Set<number>;
   dirtyRectanglesBuffer: Rectangle[];
   movedOwnObjectsBuffer: Set<DrawObject>;
   nonMovingUpdatedObjectsBuffer: DrawObject[];
@@ -84,6 +89,7 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
 
     this.frameBuffer = [];
     this.rerenderQueue = [];
+    this.rerenderRanges = [];
     this.stdout = options.stdout;
     if (options.sink) {
       this.sink = options.sink;
@@ -99,8 +105,10 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
     this.drawnOrderVersion = 0;
     this.cellUpdatesBuffer = [];
     this.rowRangesBuffer = [];
+    this.directRowRangesBuffer = [];
     this.objectsToUpdateBuffer = [];
     this.seenObjectsBuffer = new Set();
+    this.dirtyRowsSeenBuffer = new Set();
     this.dirtyRectanglesBuffer = [];
     this.movedOwnObjectsBuffer = new Set();
     this.nonMovingUpdatedObjectsBuffer = [];
@@ -317,18 +325,41 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
 
     this.rerenderedObjects = i;
 
-    const { rerenderQueue } = this;
+    const { rerenderQueue, rerenderRanges } = this;
     const size = this.size.peek();
     let flushedCells = 0;
     let dirtyRows = 0;
     let dirtyCells = 0;
     const cellUpdates = this.cellUpdatesBuffer;
+    const directRowRanges = this.directRowRangesBuffer;
+    const dirtyRowsSeen = this.dirtyRowsSeenBuffer;
     cellUpdates.length = 0;
+    directRowRanges.length = 0;
+    dirtyRowsSeen.clear();
+    const needsCellUpdates = !this.sink.flushRanges || this.sink.requiresCellUpdates !== false;
 
     for (let row = 0; row < size.rows; ++row) {
+      const ranges = rerenderRanges[row];
+      if (ranges?.length) {
+        dirtyRowsSeen.add(row);
+        const rowBuffer = frameBuffer[row] ??= [];
+        for (const range of ranges) {
+          dirtyCells += Math.max(0, range.endColumn - range.startColumn);
+          flushedCells += appendCanvasRowRangeUpdates(
+            row,
+            range.startColumn,
+            range.endColumn,
+            rowBuffer,
+            directRowRanges,
+            needsCellUpdates ? cellUpdates : undefined,
+          );
+        }
+        ranges.length = 0;
+      }
+
       const columns = rerenderQueue[row];
       if (!columns?.size) continue;
-      dirtyRows += 1;
+      dirtyRowsSeen.add(row);
       dirtyCells += columns.size;
 
       const rowBuffer = frameBuffer[row] ??= [];
@@ -343,7 +374,16 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
       columns.clear();
     }
 
-    const rowRanges = coalesceCanvasRowRanges(cellUpdates, this.rowRangesBuffer);
+    const rowRanges = this.sink.flushRanges
+      ? directRowRanges
+      : coalesceCanvasRowRanges(cellUpdates, this.rowRangesBuffer);
+    if (this.sink.flushRanges && cellUpdates.length > 0) {
+      coalesceCanvasRowRanges(cellUpdates, this.rowRangesBuffer);
+      for (const range of this.rowRangesBuffer) {
+        directRowRanges.push(range);
+      }
+    }
+    dirtyRows = dirtyRowsSeen.size;
     this.lastRenderStats = {
       updatedObjects: i,
       renderedObjects,
@@ -437,4 +477,41 @@ function queueDirtyRegion(object: DrawObject, dirtyRegion: DirtyRegion): void {
   dirtyRegion.forEachIntersectionValue(object.rectangle.peek(), (row, startColumn, endColumn) => {
     object.queueRerenderRange(row, startColumn, endColumn);
   });
+}
+
+function appendCanvasRowRangeUpdates(
+  row: number,
+  startColumn: number,
+  endColumn: number,
+  rowBuffer: (string | Uint8Array)[],
+  rowRanges: CanvasRowRangeUpdate[],
+  cellUpdates?: CanvasCellUpdate[],
+): number {
+  let flushedCells = 0;
+  let activeValues: (string | Uint8Array)[] | undefined;
+  let activeStart = startColumn;
+
+  for (let column = startColumn; column < endColumn; column += 1) {
+    const value = rowBuffer[column];
+    if (value === undefined) {
+      if (activeValues?.length) {
+        rowRanges.push({ row, startColumn: activeStart, values: activeValues });
+      }
+      activeValues = undefined;
+      continue;
+    }
+
+    if (!activeValues) {
+      activeValues = [];
+      activeStart = column;
+    }
+    activeValues.push(value);
+    cellUpdates?.push({ row, column, value });
+    flushedCells += 1;
+  }
+
+  if (activeValues?.length) {
+    rowRanges.push({ row, startColumn: activeStart, values: activeValues });
+  }
+  return flushedCells;
 }

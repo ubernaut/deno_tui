@@ -3,6 +3,7 @@ import { DrawObject, type DrawObjectOptions } from "./draw_object.ts";
 import { Signal, type SignalOfObject } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
 import type { Rectangle } from "../types.ts";
+import type { DirtyRowSegment } from "./dirty_region.ts";
 import type { Camera, Scene } from "npm:three@0.183.2";
 import type { AcerolaAsciiNodeOptions } from "../three_ascii/AcerolaAsciiNode.ts";
 import type { TerminalGlyphStyle } from "../three_ascii/glyphs.ts";
@@ -66,6 +67,7 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
   frameInterval: number;
   onFrame?: (deltaTime: number) => void | Promise<void>;
   grid: string[][] = [];
+  readonly rerenderRanges: DirtyRowSegment[][] = [];
 
   private lastFrameTime = performance.now();
   private rendering = false;
@@ -128,7 +130,7 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
   }
 
   override rerender(): void {
-    const { frameBuffer, rerenderQueue } = this.canvas;
+    const { frameBuffer, rerenderQueue, rerenderRanges } = this.canvas;
     const rectangle = this.rectangle.peek();
     const { columns, rows } = this.canvas.size.peek();
     const viewRectangle = this.view.peek()?.rectangle?.peek();
@@ -143,13 +145,43 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
 
     for (let row = rectangle.row; row < rowLimit; row += 1) {
       const rerenderColumns = this.rerenderCells[row];
-      if (!rerenderColumns?.size) continue;
+      const ranges = this.rerenderRanges[row];
+      if (!rerenderColumns?.size && !ranges?.length) continue;
 
       const outputRow = this.grid[row - rectangle.row];
       const frameRow = frameBuffer[row] ??= [];
-      const queueRow = rerenderQueue[row] ??= new Set();
       const omitColumns = this.omitCells[row];
 
+      if (ranges?.length) {
+        const hasOmissions = !!omitColumns?.size;
+        const queueRanges = hasOmissions ? undefined : rerenderRanges[row] ??= [];
+        const fallbackQueueRow = hasOmissions ? rerenderQueue[row] ??= new Set<number>() : undefined;
+
+        for (const range of ranges) {
+          const start = Math.max(range.startColumn, rectangle.column);
+          const end = Math.min(range.endColumn, columnLimit);
+          if (end <= start) continue;
+
+          if (!hasOmissions) {
+            for (let column = start; column < end; column += 1) {
+              frameRow[column] = outputRow?.[column - rectangle.column] ?? " ";
+            }
+            queueRanges!.push({ row, startColumn: start, endColumn: end });
+            continue;
+          }
+
+          for (let column = start; column < end; column += 1) {
+            if (omitColumns!.has(column)) continue;
+            frameRow[column] = outputRow?.[column - rectangle.column] ?? " ";
+            fallbackQueueRow!.add(column);
+          }
+        }
+
+        ranges.length = 0;
+      }
+
+      if (!rerenderColumns?.size) continue;
+      const queueRow = rerenderQueue[row] ??= new Set();
       for (const column of rerenderColumns) {
         if (column < rectangle.column || column >= columnLimit || omitColumns?.has(column)) continue;
         frameRow[column] = outputRow?.[column - rectangle.column] ?? " ";
@@ -317,6 +349,7 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
       this.rerenderCells,
       this.previousGrid,
       this.view.peek()?.rectangle?.peek(),
+      this.rerenderRanges,
     );
   }
 

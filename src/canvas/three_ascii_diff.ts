@@ -1,6 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { Rectangle } from "../types.ts";
-import { queueRerenderCellInto } from "./rerender_queue.ts";
+import type { DirtyRowSegment } from "./dirty_region.ts";
+import { queueRerenderCellInto, queueRerenderRangeInto, queueRerenderRangeOnlyInto } from "./rerender_queue.ts";
 
 /** Terminal canvas size used when clipping changed three ASCII grid cells. */
 export interface ThreeAsciiDiffCanvasSize {
@@ -10,6 +11,7 @@ export interface ThreeAsciiDiffCanvasSize {
 
 /** Mutable queue shape used by DrawObject rerender scheduling. */
 export type ThreeAsciiDiffQueue = Array<Set<number> | undefined>;
+export type ThreeAsciiDiffRangeQueue = Array<DirtyRowSegment[] | undefined>;
 
 /** State retained between three ASCII frames so unchanged terminal cells are not queued again. */
 export interface ThreeAsciiGridDiffState {
@@ -38,6 +40,7 @@ export function queueChangedThreeAsciiGridCells(
   rerenderCells: ThreeAsciiDiffQueue,
   previous: ThreeAsciiGridDiffState,
   viewRectangle?: Rectangle,
+  rerenderRanges?: ThreeAsciiDiffRangeQueue,
 ): boolean {
   const columns = Math.max(0, rectangle.width);
   const rows = Math.max(0, rectangle.height);
@@ -68,6 +71,7 @@ export function queueChangedThreeAsciiGridCells(
         cacheValid,
         columns,
         rows,
+        rerenderRanges,
       });
     }
     return queueChangedIntegerAlignedCells({
@@ -80,6 +84,7 @@ export function queueChangedThreeAsciiGridCells(
       cacheValid,
       columns,
       rows,
+      rerenderRanges,
     });
   }
 
@@ -109,14 +114,16 @@ interface QueueIntegerAlignedCellsOptions extends QueueChangedCellsInternalOptio
   canvasSize: ThreeAsciiDiffCanvasSize;
   rerenderCells: ThreeAsciiDiffQueue;
   viewRectangle?: Rectangle;
+  rerenderRanges?: ThreeAsciiDiffRangeQueue;
 }
 
 interface QueueFullyVisibleIntegerCellsOptions extends QueueChangedCellsInternalOptions {
   rerenderCells: ThreeAsciiDiffQueue;
+  rerenderRanges?: ThreeAsciiDiffRangeQueue;
 }
 
 function queueChangedFullyVisibleIntegerCells(options: QueueFullyVisibleIntegerCellsOptions): boolean {
-  const { grid, rectangle, rerenderCells, previous, cacheValid, columns, rows } = options;
+  const { grid, rectangle, rerenderCells, rerenderRanges, previous, cacheValid, columns, rows } = options;
   let changed = false;
   const rectangleColumn = rectangle.column;
   const rectangleRow = rectangle.row;
@@ -126,17 +133,45 @@ function queueChangedFullyVisibleIntegerCells(options: QueueFullyVisibleIntegerC
     const outputRow = grid[row];
     const rowOffset = row * columns;
     const canvasRow = rectangleRow + row;
-    let queueRow: Set<number> | undefined;
+    let runStart = -1;
 
     if (outputRow && outputRow.length >= columns) {
       for (let column = 0; column < columns; column += 1) {
         const index = rowOffset + column;
         const cell = outputRow[column] as string;
-        if (cacheValid && previousCells[index] === cell) continue;
+        if (cacheValid && previousCells[index] === cell) {
+          if (runStart !== -1) {
+            queueChangedRun(
+              rerenderCells,
+              rerenderRanges,
+              canvasRow,
+              rectangleColumn + runStart,
+              rectangleColumn + column,
+              {
+                columns: rectangleColumn + columns,
+                rows: canvasRow + 1,
+              },
+            );
+            runStart = -1;
+          }
+          continue;
+        }
         previousCells[index] = cell;
-        queueRow ??= rerenderCells[canvasRow] ??= new Set<number>();
-        queueRow.add(rectangleColumn + column);
+        if (runStart === -1) runStart = column;
         changed = true;
+      }
+      if (runStart !== -1) {
+        queueChangedRun(
+          rerenderCells,
+          rerenderRanges,
+          canvasRow,
+          rectangleColumn + runStart,
+          rectangleColumn + columns,
+          {
+            columns: rectangleColumn + columns,
+            rows: canvasRow + 1,
+          },
+        );
       }
       continue;
     }
@@ -144,11 +179,32 @@ function queueChangedFullyVisibleIntegerCells(options: QueueFullyVisibleIntegerC
     for (let column = 0; column < columns; column += 1) {
       const index = rowOffset + column;
       const cell = outputRow?.[column] ?? " ";
-      if (cacheValid && previousCells[index] === cell) continue;
+      if (cacheValid && previousCells[index] === cell) {
+        if (runStart !== -1) {
+          queueChangedRun(
+            rerenderCells,
+            rerenderRanges,
+            canvasRow,
+            rectangleColumn + runStart,
+            rectangleColumn + column,
+            {
+              columns: rectangleColumn + columns,
+              rows: canvasRow + 1,
+            },
+          );
+          runStart = -1;
+        }
+        continue;
+      }
       previousCells[index] = cell;
-      queueRow ??= rerenderCells[canvasRow] ??= new Set<number>();
-      queueRow.add(rectangleColumn + column);
+      if (runStart === -1) runStart = column;
       changed = true;
+    }
+    if (runStart !== -1) {
+      queueChangedRun(rerenderCells, rerenderRanges, canvasRow, rectangleColumn + runStart, rectangleColumn + columns, {
+        columns: rectangleColumn + columns,
+        rows: canvasRow + 1,
+      });
     }
   }
 
@@ -156,7 +212,18 @@ function queueChangedFullyVisibleIntegerCells(options: QueueFullyVisibleIntegerC
 }
 
 function queueChangedIntegerAlignedCells(options: QueueIntegerAlignedCellsOptions): boolean {
-  const { grid, rectangle, canvasSize, viewRectangle, rerenderCells, previous, cacheValid, columns, rows } = options;
+  const {
+    grid,
+    rectangle,
+    canvasSize,
+    viewRectangle,
+    rerenderCells,
+    rerenderRanges,
+    previous,
+    cacheValid,
+    columns,
+    rows,
+  } = options;
   let changed = false;
   const rectangleColumn = rectangle.column;
   const rectangleRow = rectangle.row;
@@ -176,20 +243,55 @@ function queueChangedIntegerAlignedCells(options: QueueIntegerAlignedCellsOption
     const canvasRow = rectangleRow + row;
     const rowVisible = canvasRow >= 0 && canvasRow < canvasSize.rows &&
       (!viewRectangle || (canvasRow >= viewRectangle.row && canvasRow < viewRectangle.row + viewRectangle.height));
-    let queueRow: Set<number> | undefined;
+    let runStart = -1;
 
     for (let column = 0; column < columns; column += 1) {
       const index = rowOffset + column;
       const cell = outputRow?.[column] ?? " ";
-      if (cacheValid && previousCells[index] === cell) continue;
+      if (cacheValid && previousCells[index] === cell) {
+        if (runStart !== -1 && rowVisible) {
+          queueChangedRun(
+            rerenderCells,
+            rerenderRanges,
+            canvasRow,
+            rectangleColumn + runStart,
+            rectangleColumn + column,
+            canvasSize,
+            viewRectangle,
+          );
+          runStart = -1;
+        }
+        continue;
+      }
       previousCells[index] = cell;
       if (
         rowVisible && column >= visibleGridColumnStart && column < visibleGridColumnEnd
       ) {
-        queueRow ??= rerenderCells[canvasRow] ??= new Set<number>();
-        queueRow.add(rectangleColumn + column);
+        if (runStart === -1) runStart = column;
+      } else if (runStart !== -1) {
+        queueChangedRun(
+          rerenderCells,
+          rerenderRanges,
+          canvasRow,
+          rectangleColumn + runStart,
+          rectangleColumn + column,
+          canvasSize,
+          viewRectangle,
+        );
+        runStart = -1;
       }
       changed = true;
+    }
+    if (runStart !== -1 && rowVisible) {
+      queueChangedRun(
+        rerenderCells,
+        rerenderRanges,
+        canvasRow,
+        rectangleColumn + runStart,
+        rectangleColumn + columns,
+        canvasSize,
+        viewRectangle,
+      );
     }
   }
 
@@ -234,4 +336,20 @@ function queueFractionalRerenderCell(options: QueueFractionalCellsOptions, row: 
     options.canvasSize,
     options.viewRectangle,
   );
+}
+
+function queueChangedRun(
+  rerenderCells: ThreeAsciiDiffQueue,
+  rerenderRanges: ThreeAsciiDiffRangeQueue | undefined,
+  row: number,
+  startColumn: number,
+  endColumn: number,
+  canvasSize: ThreeAsciiDiffCanvasSize,
+  viewRectangle?: Rectangle,
+): void {
+  if (rerenderRanges) {
+    queueRerenderRangeOnlyInto(rerenderRanges, row, startColumn, endColumn, canvasSize, viewRectangle);
+    return;
+  }
+  queueRerenderRangeInto(rerenderCells, row, startColumn, endColumn, canvasSize, viewRectangle);
 }

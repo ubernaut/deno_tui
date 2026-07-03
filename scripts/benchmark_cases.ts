@@ -707,6 +707,10 @@ function clearThreeAsciiDiffQueue(): void {
   for (let row = 0; row < threeAsciiDiffObject.rerenderCells.length; row += 1) {
     threeAsciiDiffObject.rerenderCells[row]?.clear();
   }
+  for (let row = 0; row < threeAsciiDiffObject.rerenderRanges.length; row += 1) {
+    const ranges = threeAsciiDiffObject.rerenderRanges[row];
+    if (ranges) ranges.length = 0;
+  }
 }
 
 function createNoopThreeAsciiRenderer(): ThreeAsciiGridRenderer {

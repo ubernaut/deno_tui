@@ -26,6 +26,8 @@ export interface CanvasRowRangeUpdate {
 
 /** Public interface describing a canvas Cell Sink. */
 export interface CanvasCellSink {
+  /** Set false when a range-aware sink does not need legacy per-cell update objects for range flushes. */
+  requiresCellUpdates?: boolean;
   resize?(columns: number, rows: number): void;
   flush(updates: readonly CanvasCellUpdate[], stats: CanvasRenderStats): void;
   flushRanges?(
@@ -43,6 +45,8 @@ export interface AnsiCanvasSinkOptions {
 
 /** Terminal sink that converts dirty canvas cells into cursor-addressed ANSI writes. */
 export class AnsiCanvasSink implements CanvasCellSink {
+  readonly requiresCellUpdates = false;
+
   readonly #stdout: CanvasStdout;
   readonly #flushLimit: number;
 
@@ -105,6 +109,8 @@ export class AnsiCanvasSink implements CanvasCellSink {
 
 /** Public class implementing a memory Canvas Sink. */
 export class MemoryCanvasSink implements CanvasCellSink {
+  readonly requiresCellUpdates = true;
+
   readonly updates: CanvasCellUpdate[] = [];
   readonly rowRanges: CanvasRowRangeUpdate[] = [];
   lastStats?: CanvasRenderStats;
