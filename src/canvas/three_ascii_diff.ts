@@ -119,6 +119,7 @@ function queueChangedFullyVisibleIntegerCells(options: QueueFullyVisibleIntegerC
   let changed = false;
   const rectangleColumn = rectangle.column;
   const rectangleRow = rectangle.row;
+  const previousCells = previous.cells;
 
   for (let row = 0; row < rows; row += 1) {
     const outputRow = grid[row];
@@ -130,8 +131,8 @@ function queueChangedFullyVisibleIntegerCells(options: QueueFullyVisibleIntegerC
       for (let column = 0; column < columns; column += 1) {
         const index = rowOffset + column;
         const cell = outputRow[column] as string;
-        if (cacheValid && previous.cells[index] === cell) continue;
-        previous.cells[index] = cell;
+        if (cacheValid && previousCells[index] === cell) continue;
+        previousCells[index] = cell;
         queueRow ??= rerenderCells[canvasRow] ??= new Set<number>();
         queueRow.add(rectangleColumn + column);
         changed = true;
@@ -142,8 +143,8 @@ function queueChangedFullyVisibleIntegerCells(options: QueueFullyVisibleIntegerC
     for (let column = 0; column < columns; column += 1) {
       const index = rowOffset + column;
       const cell = outputRow?.[column] ?? " ";
-      if (cacheValid && previous.cells[index] === cell) continue;
-      previous.cells[index] = cell;
+      if (cacheValid && previousCells[index] === cell) continue;
+      previousCells[index] = cell;
       queueRow ??= rerenderCells[canvasRow] ??= new Set<number>();
       queueRow.add(rectangleColumn + column);
       changed = true;
@@ -166,6 +167,7 @@ function queueChangedIntegerAlignedCells(options: QueueIntegerAlignedCellsOption
     : canvasColumnEnd;
   const visibleGridColumnStart = Math.max(0, visibleColumnStart - rectangleColumn);
   const visibleGridColumnEnd = Math.min(columns, visibleColumnEnd - rectangleColumn);
+  const previousCells = previous.cells;
 
   for (let row = 0; row < rows; row += 1) {
     const outputRow = grid[row];
@@ -178,8 +180,8 @@ function queueChangedIntegerAlignedCells(options: QueueIntegerAlignedCellsOption
     for (let column = 0; column < columns; column += 1) {
       const index = rowOffset + column;
       const cell = outputRow?.[column] ?? " ";
-      if (cacheValid && previous.cells[index] === cell) continue;
-      previous.cells[index] = cell;
+      if (cacheValid && previousCells[index] === cell) continue;
+      previousCells[index] = cell;
       if (
         rowVisible && column >= visibleGridColumnStart && column < visibleGridColumnEnd
       ) {
@@ -202,6 +204,7 @@ interface QueueFractionalCellsOptions extends QueueChangedCellsInternalOptions {
 function queueChangedFractionalCells(options: QueueFractionalCellsOptions): boolean {
   const { grid, rectangle, previous, cacheValid, columns, rows } = options;
   let changed = false;
+  const previousCells = previous.cells;
 
   for (let row = 0; row < rows; row += 1) {
     const outputRow = grid[row];
@@ -211,8 +214,8 @@ function queueChangedFractionalCells(options: QueueFractionalCellsOptions): bool
     for (let column = 0; column < columns; column += 1) {
       const index = rowOffset + column;
       const cell = outputRow?.[column] ?? " ";
-      if (cacheValid && previous.cells[index] === cell) continue;
-      previous.cells[index] = cell;
+      if (cacheValid && previousCells[index] === cell) continue;
+      previousCells[index] = cell;
       queueFractionalRerenderCell(options, canvasRow, rectangle.column + column);
       changed = true;
     }

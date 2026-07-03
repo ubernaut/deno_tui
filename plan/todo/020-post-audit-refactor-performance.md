@@ -209,3 +209,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   renderer-local preset/glyph label formatting from the terminal workbench.
 - Added a dense-row fast path for fully visible Three ASCII grid diffing, reducing the focused
   `three-ascii-frame-diff-96x40` best-of benchmark from 1.881ms to 1.762ms while preserving sparse-row fallback cells.
+- Tightened retained-cell access in Three ASCII grid diff loops through local state references, keeping clipped and
+  fractional paths behavior-compatible while measuring the focused frame-diff case at 1.785ms after the follow-up pass.
