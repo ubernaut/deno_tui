@@ -261,3 +261,6 @@ performance, shared terminal/web workbench projections, and oversized module red
   so CPU hex interaction geometry stops allocating tile arrays on every draw or selection reveal.
 - Added focused benchmark guards for reusable monitor source-frame resolution and 88-core CPU hex tile layout projection
   so future source/monitor refactors keep those hot paths measured.
+- Reused repeated styled cell strings inside ANSI-aware text splitting so block-mode workbench rows avoid rebuilding the
+  same truecolor background-space cell across long runs; focused `ansi-styled` and workbench full-row benchmarks
+  improved locally after the change.

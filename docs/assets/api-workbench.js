@@ -1678,6 +1678,9 @@ function getMultiCodePointCharacters(text) {
 function getStyledCharacters(text) {
   const cells = [];
   let style2 = "";
+  let lastStyle = "";
+  let lastChar = "";
+  let lastCell = "";
   for (let index = 0; index < text.length; ) {
     if (text.charCodeAt(index) === 27) {
       const sequence = readCsiSequenceAt(text, index);
@@ -1690,7 +1693,14 @@ function getStyledCharacters(text) {
       }
     }
     const char = nextTextCharacter(text, index);
-    cells.push(style2 ? `${style2}${char}\x1B[0m` : char);
+    if (style2 === lastStyle && char === lastChar) {
+      cells.push(lastCell);
+    } else {
+      lastStyle = style2;
+      lastChar = char;
+      lastCell = style2 ? `${style2}${char}\x1B[0m` : char;
+      cells.push(lastCell);
+    }
     index += char.length;
   }
   return cells;

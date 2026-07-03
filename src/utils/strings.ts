@@ -33,6 +33,9 @@ export function getMultiCodePointCharacters(text: string): string[] {
 function getStyledCharacters(text: string): string[] {
   const cells: string[] = [];
   let style = "";
+  let lastStyle = "";
+  let lastChar = "";
+  let lastCell = "";
 
   for (let index = 0; index < text.length;) {
     if (text.charCodeAt(index) === 0x1b) {
@@ -47,7 +50,14 @@ function getStyledCharacters(text: string): string[] {
     }
 
     const char = nextTextCharacter(text, index);
-    cells.push(style ? `${style}${char}\x1b[0m` : char);
+    if (style === lastStyle && char === lastChar) {
+      cells.push(lastCell);
+    } else {
+      lastStyle = style;
+      lastChar = char;
+      lastCell = style ? `${style}${char}\x1b[0m` : char;
+      cells.push(lastCell);
+    }
     index += char.length;
   }
 
