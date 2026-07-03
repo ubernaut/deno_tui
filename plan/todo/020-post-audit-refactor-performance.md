@@ -228,3 +228,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   verified against terminal/browser rendering rather than ANSI grid quantization.
 - Shared the HTML/CSS layout demo summary copy through a terminal/web profile helper so both workbench hosts use the
   same renderer-neutral projection path without duplicating inline explanatory rows.
+- Matched the terminal API workbench log panel to the browser panel by projecting static documentation and live command
+  log rows through the same multi-source log adapter.

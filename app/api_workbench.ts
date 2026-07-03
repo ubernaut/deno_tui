@@ -242,7 +242,7 @@ import { workbenchDataTablePageSize, workbenchDataTableRowsInto } from "./workbe
 import { explorerTextRowsInto, workbenchWindowContentSize } from "./workbench_content_size.ts";
 import { workbenchExplorerRowsInto } from "./workbench_explorer.ts";
 import { workbenchInspectorRowsInto } from "./workbench_inspector.ts";
-import { workbenchLogRowsInto } from "./workbench_logs.ts";
+import { workbenchLogRowsFromSourcesInto } from "./workbench_logs.ts";
 import { writeWorkbenchThreeGrid } from "./workbench_three_grid.ts";
 import {
   threeRendererModeLabel,
@@ -1772,7 +1772,7 @@ function renderTextboxControl(frame: Frame, rect: Rectangle, row: number, t: The
 }
 
 function renderLogs(frame: Frame, rect: Rectangle): void {
-  writeRows(frame, rect, workbenchLogRowsInto(logRenderRows, docs, theme()));
+  writeRows(frame, rect, workbenchLogRowsFromSourcesInto(logRenderRows, [docs, commandLog.peek()], theme()));
 }
 
 function renderTerminalOutput(frame: Frame, rect: Rectangle): void {
