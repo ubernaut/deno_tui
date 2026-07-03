@@ -20,6 +20,7 @@ import {
   emptyStyle,
   filterDataRows,
   flexRects,
+  getMultiCodePointCharacters,
   MemoryCanvasSink,
   prepareWorkbenchFrame,
   queryLocalData,
@@ -108,6 +109,7 @@ const ansiSinkStyledRangeValues = Array.from(
   { length: 160 },
   () => "\x1b[38;2;242;236;255;48;2;66;37;95m█\x1b[0m\x1b[0m",
 );
+const ansiStyledSplitRow = "\x1b[38;2;242;236;255;48;2;66;37;95m".concat(" ".repeat(160), "\x1b[0m\x1b[0m");
 const ansiSinkStyledRangeStats = {
   updatedObjects: 0,
   renderedObjects: 0,
@@ -123,6 +125,7 @@ const ansiSinkStyledRangeStats = {
   flushedCells: ansiSinkStyledRangeValues.length,
 };
 let ansiSinkBytes = 0;
+let ansiStyledSplitChecksum = 0;
 const ansiSink = new AnsiCanvasSink({
   stdout: {
     writeSync(data) {
@@ -952,6 +955,17 @@ function runWorkbenchStringFrameFullRowWorkload(): void {
   }
 }
 
+function runAnsiStyledCharacterSplitWorkload(): void {
+  const cells = getMultiCodePointCharacters(ansiStyledSplitRow);
+  if (cells.length !== 160) {
+    throw new Error(`ANSI styled split produced ${cells.length} cells`);
+  }
+  ansiStyledSplitChecksum = (ansiStyledSplitChecksum + cells.length + cells[0]!.length) % 1_000_000;
+  if (!Number.isFinite(ansiStyledSplitChecksum)) {
+    throw new Error("ANSI styled split checksum failed");
+  }
+}
+
 class BenchmarkMetricsProvider implements SystemMetricsProvider {
   step = 0;
   processStatReads = 0;
@@ -1227,6 +1241,15 @@ export const benchmarkCases: BenchmarkCase[] = [
     iterations: 500,
     maxAverageMs: 5,
     run: runWorkbenchStringFrameFullRowWorkload,
+  },
+  {
+    name: "render/ansi-styled-character-split-160",
+    category: "render",
+    description: "Split a full-width truecolor ANSI background row into TextObject cells.",
+    tags: ["render", "ansi", "text", "workbench"],
+    iterations: 1_000,
+    maxAverageMs: 2,
+    run: runAnsiStyledCharacterSplitWorkload,
   },
   {
     name: "render/ansi-canvas-sink-styled-range-160",

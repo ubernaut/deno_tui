@@ -219,6 +219,12 @@ performance, shared terminal/web workbench projections, and oversized module red
   selected-row contrast, and caller-owned row buffers stay aligned with the terminal adapter.
 - Extended the workbench log-row projection to consume multiple sources without concatenation and routed browser logs
   through it so docs/runtime log styling shares the terminal adapter path.
+- Added a styled ANSI split benchmark and routed `getStyledCharacters` through the existing ASCII fast path so
+  block-mode workbench rows no longer run the Unicode grapheme regex for every styled space.
+- Added rate-limited Three ASCII slow-frame diagnostics that report total, scene, ANSI/readback, and assembly timings
+  into the existing workbench diagnostics stream.
+- Reduced default workbench `studio` scene geometry density for ASCII rendering by lowering the torus knot and sphere
+  segment counts while preserving the same objects and motion.
 - Fixed the Three ASCII block-rendering throughput regression by making blank block cells background-only and compacting
   repeated styled frame cells into row spans; added a terminal-row benchmark that covers the real ANSI output path
   missed by the grid-only microbenchmarks.

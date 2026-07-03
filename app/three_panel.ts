@@ -8,6 +8,7 @@ import {
   type ThreeAsciiImageFrame,
   ThreeAsciiRenderer,
   type ThreeAsciiRendererOptions,
+  type ThreeAsciiRendererPerformance,
   type ThreeAsciiRenderFrame,
   type ThreeAsciiRenderFrameOptions,
 } from "../src/three_ascii/renderer.ts";
@@ -63,6 +64,7 @@ export interface ThreePanelGridRenderer {
     onFrame?: (deltaTime: number) => void | Promise<void>,
     options?: ThreeAsciiRenderFrameOptions,
   ): Promise<ThreeAsciiRenderFrame>;
+  inspectPerformance?(): ThreeAsciiRendererPerformance | undefined;
   destroy(): void;
 }
 
@@ -236,6 +238,7 @@ export class ThreePanelFrameView {
   private blankGridCache: string[][] = [];
   private blankGridColumns = -1;
   private blankGridRows = -1;
+  private lastSlowFrameReportTime = 0;
 
   constructor(
     private readonly options: {
@@ -438,6 +441,7 @@ export class ThreePanelFrameView {
 
       this.failed = false;
       this.setGrid(policy.renderAscii ? frame.grid ?? [] : this.blankGridFor(rect.width, rect.height));
+      this.reportSlowFrame(renderer);
     } catch (error) {
       if (!this.ownsFrame(frameGeneration, renderer, bundle)) {
         return;
@@ -464,6 +468,38 @@ export class ThreePanelFrameView {
         this.frameTimer = setTimeout(() => void this.renderLoop(), this.frameInterval);
       }
     }
+  }
+
+  private reportSlowFrame(renderer: ThreePanelGridRenderer): void {
+    const performanceInfo = renderer.inspectPerformance?.();
+    if (!performanceInfo) return;
+    const now = performance.now();
+    const targetMs = Math.max(1, this.frameInterval);
+    const slowThreshold = Math.max(80, targetMs * 1.5);
+    if (performanceInfo.totalMs < slowThreshold || now - this.lastSlowFrameReportTime < 2_000) return;
+    this.lastSlowFrameReportTime = now;
+    this.options.diagnostics?.report({
+      source: "three-panel",
+      code: "three-ascii-slow-frame",
+      severity: "debug",
+      message: `Three ASCII frame ${
+        performanceInfo.totalMs.toFixed(1)
+      }ms at ${performanceInfo.columns}x${performanceInfo.rows}`,
+      detail: `scene ${performanceInfo.sceneMs.toFixed(1)}ms, ansi ${performanceInfo.ansiMs.toFixed(1)}ms, readback ${
+        performanceInfo.readbackMs.toFixed(1)
+      }ms, assembly ${performanceInfo.assemblyMs.toFixed(1)}ms`,
+      context: {
+        columns: performanceInfo.columns,
+        rows: performanceInfo.rows,
+        cells: performanceInfo.cells,
+        glyphStyle: performanceInfo.terminalGlyphStyle,
+        totalMs: Math.round(performanceInfo.totalMs * 10) / 10,
+        sceneMs: Math.round(performanceInfo.sceneMs * 10) / 10,
+        ansiMs: Math.round(performanceInfo.ansiMs * 10) / 10,
+        readbackMs: Math.round(performanceInfo.readbackMs * 10) / 10,
+        assemblyMs: Math.round(performanceInfo.assemblyMs * 10) / 10,
+      },
+    });
   }
 
   private scheduleSync(): void {

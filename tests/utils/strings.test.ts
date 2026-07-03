@@ -75,4 +75,13 @@ Deno.test("utils/strings.ts", async (t) => {
     assertEquals(cells[0], "\x1b[38;2;0;255;79;48;2;0;0;0m█\x1b[0m");
     assertEquals(cells[1], "\x1b[38;2;156;255;79m▇\x1b[0m");
   });
+
+  await t.step("getMultiCodePointCharacters() splits styled ASCII rows", () => {
+    const cells = getMultiCodePointCharacters("\x1b[38;2;1;2;3;48;2;4;5;6mABC   \x1b[0m\x1b[0m");
+
+    assertEquals(cells.length, 6);
+    assertEquals(stripStyles(cells.join("")), "ABC   ");
+    assertEquals(cells[0], "\x1b[38;2;1;2;3;48;2;4;5;6mA\x1b[0m");
+    assertEquals(cells[5], "\x1b[38;2;1;2;3;48;2;4;5;6m \x1b[0m");
+  });
 });

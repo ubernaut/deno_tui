@@ -188,7 +188,7 @@ export function createNeonThreeScene(mode: ThreeSceneMode, options: NeonThreeSce
         camera.position.set(0, 1.4, 7);
 
         const torus = new THREE.Mesh(
-          new THREE.TorusKnotGeometry(1.25, 0.45, 256, 36),
+          new THREE.TorusKnotGeometry(1.25, 0.45, 96, 18),
           new THREE.MeshPhongMaterial({
             color: new THREE.Color("#9cff3a"),
             emissive: new THREE.Color("#163a05"),
@@ -200,7 +200,7 @@ export function createNeonThreeScene(mode: ThreeSceneMode, options: NeonThreeSce
         group.add(torus);
 
         const sphere = new THREE.Mesh(
-          new THREE.SphereGeometry(0.9, 64, 64),
+          new THREE.SphereGeometry(0.9, 32, 24),
           new THREE.MeshPhongMaterial({
             color: new THREE.Color("#1ee7d2"),
             emissive: new THREE.Color("#052f2a"),

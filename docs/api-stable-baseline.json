@@ -14459,6 +14459,13 @@
     },
     {
       "module": "src/three_ascii/renderer.ts",
+      "name": "ThreeAsciiRendererPerformance",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/three_ascii/renderer.ts",
       "name": "ThreeAsciiRenderFrame",
       "kind": "interface",
       "typeOnly": true,

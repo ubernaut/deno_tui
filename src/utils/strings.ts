@@ -46,11 +46,7 @@ function getStyledCharacters(text: string): string[] {
       }
     }
 
-    UNICODE_CHAR_REGEXP.lastIndex = index;
-    const match = UNICODE_CHAR_REGEXP.exec(text);
-    const char = match?.index === index
-      ? match[0]
-      : String.fromCodePoint(text.codePointAt(index) ?? text.charCodeAt(index));
+    const char = nextTextCharacter(text, index);
     cells.push(style ? `${style}${char}\x1b[0m` : char);
     index += char.length;
   }

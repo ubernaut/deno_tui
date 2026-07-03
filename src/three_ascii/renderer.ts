@@ -302,6 +302,19 @@ export interface ThreeAsciiRenderFrame {
   image?: ThreeAsciiImageFrame;
 }
 
+/** Last-frame timing breakdown for terminal Three ASCII rendering. */
+export interface ThreeAsciiRendererPerformance {
+  columns: number;
+  rows: number;
+  cells: number;
+  terminalGlyphStyle: TerminalGlyphStyle;
+  totalMs: number;
+  sceneMs: number;
+  ansiMs: number;
+  readbackMs: number;
+  assemblyMs: number;
+}
+
 /** Stable error raised when WebGPU output buffers cannot be mapped back to CPU-readable memory. */
 export class ThreeAsciiReadbackError extends Error {
   readonly code = "three-ascii-readback-unavailable";
@@ -365,6 +378,9 @@ export class ThreeAsciiRenderer {
   private sizeDirty = true;
   private computeDirty = true;
   private uniformDirty = true;
+  private lastPerformance?: ThreeAsciiRendererPerformance;
+  private lastReadbackMs = 0;
+  private lastAssemblyMs = 0;
 
   constructor(options: ThreeAsciiRendererOptions) {
     this.scene = options.scene;
@@ -457,6 +473,10 @@ export class ThreeAsciiRenderer {
     return this.terminalGlyphStyle;
   }
 
+  inspectPerformance(): ThreeAsciiRendererPerformance | undefined {
+    return this.lastPerformance ? { ...this.lastPerformance } : undefined;
+  }
+
   setTerminalGlyphStyle(value: TerminalGlyphStyle): void {
     if (this.terminalGlyphStyle === value) return;
     this.terminalGlyphStyle = value;
@@ -487,6 +507,7 @@ export class ThreeAsciiRenderer {
     onFrame?: (deltaTime: number) => void | Promise<void>,
     options: ThreeAsciiRenderFrameOptions = { ansi: true },
   ): Promise<ThreeAsciiRenderFrame> {
+    const frameStart = performance.now();
     const renderAnsi = options.ansi ?? true;
     const renderImage = options.image ?? false;
 
@@ -495,6 +516,7 @@ export class ThreeAsciiRenderer {
     }
 
     await this.renderScene(deltaTime, onFrame);
+    const sceneEnd = performance.now();
 
     const frame: ThreeAsciiRenderFrame = {};
     if (renderImage) {
@@ -510,6 +532,18 @@ export class ThreeAsciiRenderer {
     if (renderAnsi) {
       frame.grid = await this.computeAnsiGrid();
     }
+    const frameEnd = performance.now();
+    this.lastPerformance = {
+      columns: this.columns,
+      rows: this.rows,
+      cells: this.columns * this.rows,
+      terminalGlyphStyle: this.terminalGlyphStyle,
+      totalMs: frameEnd - frameStart,
+      sceneMs: sceneEnd - frameStart,
+      ansiMs: renderAnsi ? frameEnd - sceneEnd : 0,
+      readbackMs: renderAnsi ? this.lastReadbackMs : 0,
+      assemblyMs: renderAnsi ? this.lastAssemblyMs : 0,
+    };
 
     return frame;
   }
@@ -916,15 +950,19 @@ export class ThreeAsciiRenderer {
     }
 
     try {
+      const readbackStart = performance.now();
       await readback.gpu.mapAsync(GPUMapMode.READ);
+      const readbackEnd = performance.now();
+      this.lastReadbackMs = readbackEnd - readbackStart;
     } catch (error) {
       throw new ThreeAsciiReadbackError(error);
     }
 
     try {
+      const assemblyStart = performance.now();
       const source = readback.gpu.getMappedRange();
       const views = this.readbackViewCache.resolve(source, layout);
-      return this.ansiGridAssembler.build({
+      const grid = this.ansiGridAssembler.build({
         columns: this.columns,
         rows: this.rows,
         fillGlyphs: views.fillGlyphs,
@@ -934,6 +972,8 @@ export class ThreeAsciiRenderer {
         terminalEdgeBias: this.terminalEdgeBias,
         backgroundColor,
       });
+      this.lastAssemblyMs = performance.now() - assemblyStart;
+      return grid;
     } finally {
       readback.gpu.unmap();
     }
