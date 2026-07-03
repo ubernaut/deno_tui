@@ -16448,6 +16448,46 @@ function workbenchExplorerRowsInto(target, options) {
   return target;
 }
 
+// app/workbench_inspector.ts
+function workbenchInspectorRowsInto(target, options) {
+  const t = options.theme;
+  target.length = 0;
+  target.push(
+    { text: " Composable API surfaces ", fg: t.background, bg: t.accent, bold: true },
+    { text: "explorer  FileExplorerController", fg: t.good, bg: t.surface },
+    { text: "menu      MenuBarController", fg: t.good, bg: t.surface },
+    { text: "layout    WindowManagerController", fg: t.good, bg: t.surface },
+    { text: "viewport  ScrollAreaController", fg: t.good, bg: t.surface },
+    { text: "data      DataTableController", fg: t.good, bg: t.surface },
+    { text: "controls  SliderController / CheckBoxController", fg: t.good, bg: t.surface },
+    { text: "three     ThreePanelFrameView + Acerola ASCII", fg: t.good, bg: t.surface },
+    { text: `theme     ${options.themeLabel}`, fg: t.warn, bg: t.surface, bold: true },
+    { text: "", bg: t.surface },
+    { text: " Recent actions ", fg: t.background, bg: t.border, bold: true }
+  );
+  const availableActionRows = Math.max(0, Math.floor(options.height) - target.length);
+  const actionRows = options.buffers.actionTextRows;
+  const wrappedRows = options.buffers.wrappedTextRows;
+  actionRows.length = 0;
+  if (availableActionRows <= 0) return target;
+  const start = Math.max(0, options.logs.length - Math.max(4, availableActionRows));
+  for (let index = start; index < options.logs.length; index += 1) {
+    const wrapped = wrapPlainTextInto(wrappedRows, `\u2022 ${options.logs[index]}`, options.width, options.fit);
+    for (let row = 0; row < wrapped.length; row += 1) {
+      actionRows.push(wrapped[row]);
+    }
+  }
+  const firstActionRow = Math.max(0, actionRows.length - availableActionRows);
+  for (let index = firstActionRow; index < actionRows.length; index += 1) {
+    target.push({
+      text: actionRows[index],
+      fg: t.text,
+      bg: t.panelSoft
+    });
+  }
+  return target;
+}
+
 // app/workbench_logs.ts
 function workbenchLogRowsFromSourcesInto(target, sources, theme2) {
   let rowCount = 0;
@@ -17061,6 +17101,9 @@ var dataTableTextRows = [];
 var dataTableBodyRows = [];
 var dataTableRenderRows = [];
 var explorerRenderRows = [];
+var inspectorRenderRows = [];
+var inspectorActionTextRows = [];
+var inspectorWrappedTextRows = [];
 var logRenderRows = [];
 var htmlCssLayoutBoxes = [];
 var htmlCssLayoutRenderCommands = [];
@@ -17618,6 +17661,7 @@ function renderPanel(frame, id2, rect) {
   };
   fillRect(frame, inner, theme().surface);
   if (id2 === "explorer") renderExplorer(frame, inner);
+  else if (id2 === "inspector") renderInspector(frame, inner);
   else if (id2 === "controls") renderControls(frame, inner);
   else if (id2 === "logs") renderLogs(frame, inner);
   else if (id2 === "data") renderData(frame, inner);
@@ -17716,6 +17760,30 @@ function renderExplorer(frame, rect) {
       type: "explorerRow",
       index: visible[offset].index
     });
+  }
+}
+function renderInspector(frame, rect) {
+  const t = theme();
+  const rows2 = workbenchInspectorRowsInto(inspectorRenderRows, {
+    width: rect.width,
+    height: rect.height,
+    themeLabel: t.label,
+    logs: log.peek(),
+    theme: t,
+    fit,
+    buffers: {
+      actionTextRows: inspectorActionTextRows,
+      wrappedTextRows: inspectorWrappedTextRows
+    }
+  });
+  for (let index = 0; index < Math.min(rect.height, rows2.length); index += 1) {
+    const row = rows2[index];
+    write(
+      frame,
+      rect.row + index,
+      rect.column,
+      paint(fit(row.text, rect.width), row.fg ?? t.text, row.bg ?? t.surface, row.bold)
+    );
   }
 }
 function renderData(frame, rect) {
@@ -18612,9 +18680,6 @@ function renderModalOverlay(frame) {
 }
 function panelLineStyle(id2, index) {
   const t = theme();
-  if (id2 === "inspector" && (index === 0 || index === 7)) {
-    return { fg: t.background, bg: index === 0 ? t.accent : t.border, bold: true };
-  }
   if (id2 === "logs") return { fg: t.text, bg: t.surface };
   return { fg: t.text, bg: t.surface };
 }

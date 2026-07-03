@@ -174,6 +174,7 @@ import {
 } from "../../app/workbench_modal_content.ts";
 import { workbenchDataTablePageSize, workbenchDataTableRowsInto } from "../../app/workbench_data_table.ts";
 import { workbenchExplorerRowsInto } from "../../app/workbench_explorer.ts";
+import { workbenchInspectorRowsInto } from "../../app/workbench_inspector.ts";
 import { workbenchLogRowsFromSourcesInto } from "../../app/workbench_logs.ts";
 import type { RowStyle } from "../../app/workbench_rows.ts";
 import { workbenchThreePreviewRowsInto } from "../../app/workbench_visualization_window.ts";
@@ -366,6 +367,9 @@ const dataTableTextRows: string[] = [];
 const dataTableBodyRows: RowStyle[] = [];
 const dataTableRenderRows: RowStyle[] = [];
 const explorerRenderRows: RowStyle[] = [];
+const inspectorRenderRows: RowStyle[] = [];
+const inspectorActionTextRows: string[] = [];
+const inspectorWrappedTextRows: string[] = [];
 const logRenderRows: RowStyle[] = [];
 const htmlCssLayoutBoxes: ComputedLayoutBox[] = [];
 const htmlCssLayoutRenderCommands: HtmlCssLayoutRenderCommand[] = [];
@@ -945,6 +949,7 @@ function renderPanel(frame: string[], id: PanelId, rect: Rectangle): void {
   };
   fillRect(frame, inner, theme().surface);
   if (id === "explorer") renderExplorer(frame, inner);
+  else if (id === "inspector") renderInspector(frame, inner);
   else if (id === "controls") renderControls(frame, inner);
   else if (id === "logs") renderLogs(frame, inner);
   else if (id === "data") renderData(frame, inner);
@@ -1050,6 +1055,31 @@ function renderExplorer(frame: string[], rect: Rectangle): void {
       type: "explorerRow",
       index: visible[offset]!.index,
     });
+  }
+}
+
+function renderInspector(frame: string[], rect: Rectangle): void {
+  const t = theme();
+  const rows = workbenchInspectorRowsInto(inspectorRenderRows, {
+    width: rect.width,
+    height: rect.height,
+    themeLabel: t.label,
+    logs: log.peek(),
+    theme: t,
+    fit,
+    buffers: {
+      actionTextRows: inspectorActionTextRows,
+      wrappedTextRows: inspectorWrappedTextRows,
+    },
+  });
+  for (let index = 0; index < Math.min(rect.height, rows.length); index += 1) {
+    const row = rows[index]!;
+    write(
+      frame,
+      rect.row + index,
+      rect.column,
+      paint(fit(row.text, rect.width), row.fg ?? t.text, row.bg ?? t.surface, row.bold),
+    );
   }
 }
 
@@ -2038,9 +2068,6 @@ function renderModalOverlay(frame: string[]): void {
 
 function panelLineStyle(id: PanelId, index: number): { fg: string; bg: string; bold?: boolean } {
   const t = theme();
-  if (id === "inspector" && (index === 0 || index === 7)) {
-    return { fg: t.background, bg: index === 0 ? t.accent : t.border, bold: true };
-  }
   if (id === "logs") return { fg: t.text, bg: t.surface };
   return { fg: t.text, bg: t.surface };
 }

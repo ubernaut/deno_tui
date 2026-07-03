@@ -219,3 +219,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   selected-row contrast, and caller-owned row buffers stay aligned with the terminal adapter.
 - Extended the workbench log-row projection to consume multiple sources without concatenation and routed browser logs
   through it so docs/runtime log styling shares the terminal adapter path.
+- Routed the browser API workbench inspector through the shared inspector row projection so API-surface rows, theme
+  labels, and recent-action wrapping match the terminal adapter.
