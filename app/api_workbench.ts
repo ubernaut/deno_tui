@@ -242,6 +242,7 @@ import { SystemMonitor } from "./system_metrics.ts";
 import { requireInteractiveTerminal } from "./terminal_guard.ts";
 import { ThreePanelFrameView } from "./three_panel.ts";
 import { workbenchInspectorRowsInto } from "./workbench_inspector.ts";
+import { workbenchLogRowsInto } from "./workbench_logs.ts";
 import { writeWorkbenchThreeGrid } from "./workbench_three_grid.ts";
 import {
   threeRendererModeLabel,
@@ -1818,16 +1819,7 @@ function renderTextboxControl(frame: Frame, rect: Rectangle, row: number, t: The
 }
 
 function renderLogs(frame: Frame, rect: Rectangle): void {
-  const t = theme();
-  logRenderRows.length = docs.length;
-  for (let index = 0; index < docs.length; index += 1) {
-    logRenderRows[index] = {
-      text: docs[index]!,
-      fg: t.text,
-      bg: t.surface,
-    };
-  }
-  writeRows(frame, rect, logRenderRows);
+  writeRows(frame, rect, workbenchLogRowsInto(logRenderRows, docs, theme()));
 }
 
 function renderTerminalOutput(frame: Frame, rect: Rectangle): void {

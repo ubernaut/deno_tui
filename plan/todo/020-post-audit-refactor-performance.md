@@ -192,3 +192,4 @@ performance, shared terminal/web workbench projections, and oversized module red
   owns the inner grid-copy loop or repeated fallback-cell styling.
 - Extracted API workbench Inspector row projection into a focused helper with direct tests, keeping the main renderer
   responsible only for writing projected rows.
+- Extracted API workbench Logs row projection into a focused helper that reuses row objects across draws.
