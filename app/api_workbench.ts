@@ -255,7 +255,7 @@ import {
   workbenchVisualizationRowsInto,
 } from "./workbench_visualization_window.ts";
 import {
-  buildWorkspaceMenuEntries,
+  buildWorkspaceMenuEntriesInto,
   currentWorkspaceVisualizationIds as workspaceVisualizationIdsFromWindows,
   defaultWorkspaceName as defaultWorkspaceNameFromCount,
   deleteWorkspaceModalContent,
@@ -635,6 +635,7 @@ const titlebarRenderCommands = new Map<WindowId, WorkbenchTitlebarButtonRenderCo
 const newWindowMenuSlice: VisibleMenuSlice = { items: [], indexes: [] };
 const newWindowMenuLabels: string[] = [];
 const workspaceMenuSlice: VisibleMenuSlice = { items: [], indexes: [] };
+const workspaceMenuEntryBuffer: WorkspaceMenuEntry[] = [];
 const workspaceMenuLabelBuffer: string[] = [];
 const realSourceIdBuffer: string[] = [];
 const menuBarHitLayouts: WorkbenchMenuBarHitLayout[] = [];
@@ -3395,7 +3396,7 @@ function closeAllWindowsForWorkspaceLoad(): void {
 }
 
 function workspaceMenuEntries(): WorkspaceMenuEntry[] {
-  return buildWorkspaceMenuEntries(savedWorkspaces.peek());
+  return buildWorkspaceMenuEntriesInto(workspaceMenuEntryBuffer, savedWorkspaces.peek());
 }
 
 function workspaceMenuLabels(): string[] {

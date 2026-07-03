@@ -238,3 +238,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   helpers and the aggregate controls panel cannot drift.
 - Routed shell and process-output terminal toolbar item projection through one private reusable action loop while
   preserving each toolbar's public state rules and caller-owned item reuse.
+- Added caller-owned workspace menu entry projection and routed the terminal workbench through it so workspace menu
+  labels and item counts no longer rebuild a fresh entry list on every draw.

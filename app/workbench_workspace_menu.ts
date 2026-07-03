@@ -121,20 +121,36 @@ export function workspaceDeletedModalContent(name: string): ModalContent {
 
 /** Builds the API workbench workspace menu entries from persisted workspace state. */
 export function buildWorkspaceMenuEntries(workspaces: readonly WorkbenchWorkspace[]): WorkspaceMenuEntry[] {
-  const entries: WorkspaceMenuEntry[] = [{ label: "[+] Save Current...", action: "save" }];
+  return buildWorkspaceMenuEntriesInto([], workspaces);
+}
+
+/** Projects API workbench workspace menu entries into a caller-owned buffer. */
+export function buildWorkspaceMenuEntriesInto(
+  target: WorkspaceMenuEntry[],
+  workspaces: readonly WorkbenchWorkspace[],
+): WorkspaceMenuEntry[] {
+  let written = 0;
+  target[written] = workspaceMenuEntry(target[written], "[+] Save Current...", "save");
+  written += 1;
   for (const workspace of workspaces) {
-    entries.push(
-      {
-        label: `[>] Open ${workspace.name} (${workspace.visualizationIds.length})`,
-        action: "open",
-        workspaceName: workspace.name,
-      },
-      { label: `[~] Rename ${workspace.name}`, action: "rename", workspaceName: workspace.name },
-      { label: `[x] Delete ${workspace.name}`, action: "delete", workspaceName: workspace.name },
+    target[written] = workspaceMenuEntry(
+      target[written],
+      `[>] Open ${workspace.name} (${workspace.visualizationIds.length})`,
+      "open",
+      workspace.name,
     );
+    written += 1;
+    target[written] = workspaceMenuEntry(target[written], `[~] Rename ${workspace.name}`, "rename", workspace.name);
+    written += 1;
+    target[written] = workspaceMenuEntry(target[written], `[x] Delete ${workspace.name}`, "delete", workspace.name);
+    written += 1;
   }
-  if (workspaces.length === 0) entries.push({ label: "    No saved workspaces", action: "empty" });
-  return entries;
+  if (workspaces.length === 0) {
+    target[written] = workspaceMenuEntry(target[written], "    No saved workspaces", "empty");
+    written += 1;
+  }
+  target.length = written;
+  return target;
 }
 
 /** Returns display labels for the workspace menu entries. */
@@ -193,4 +209,21 @@ export function workspaceNameModalBody(options: WorkspaceNameModalBodyOptions): 
     `Windows: ${loaded.length === 0 ? "none" : loaded.join(", ")}`,
     `Storage: ${options.storageLabel}`,
   ];
+}
+
+function workspaceMenuEntry(
+  entry: WorkspaceMenuEntry | undefined,
+  label: string,
+  action: WorkspaceMenuAction,
+  workspaceName?: string,
+): WorkspaceMenuEntry {
+  const next = entry ?? { label, action };
+  next.label = label;
+  next.action = action;
+  if (workspaceName === undefined) {
+    delete next.workspaceName;
+  } else {
+    next.workspaceName = workspaceName;
+  }
+  return next;
 }

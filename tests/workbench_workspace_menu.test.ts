@@ -1,7 +1,8 @@
 // Copyright 2023 Im-Beast. MIT license.
-import { assertEquals } from "./deps.ts";
+import { assertEquals, assertStrictEquals } from "./deps.ts";
 import {
   buildWorkspaceMenuEntries,
+  buildWorkspaceMenuEntriesInto,
   currentWorkspaceVisualizationIds,
   defaultWorkspaceName,
   deleteWorkspaceModalContent,
@@ -9,6 +10,7 @@ import {
   renameWorkspaceModalContent,
   saveWorkspaceModalContent,
   workspaceDeletedModalContent,
+  type WorkspaceMenuEntry,
   workspaceMenuLabels,
   workspaceMenuLabelsInto,
   workspaceMissingModalContent,
@@ -45,6 +47,41 @@ Deno.test("buildWorkspaceMenuEntries expands each workspace into open rename and
     { label: "[~] Rename Beta", action: "rename", workspaceName: "Beta" },
     { label: "[x] Delete Beta", action: "delete", workspaceName: "Beta" },
   ]);
+});
+
+Deno.test("buildWorkspaceMenuEntriesInto reuses and trims caller-owned entries", () => {
+  const workspaces: WorkbenchWorkspace[] = [
+    { name: "Alpha", visualizationIds: ["cpu", "gpu"], savedAt: 10 },
+  ];
+  const target: WorkspaceMenuEntry[] = [
+    { label: "stale", action: "empty", workspaceName: "old" },
+    { label: "stale", action: "empty", workspaceName: "old" },
+    { label: "stale", action: "empty", workspaceName: "old" },
+    { label: "stale", action: "empty", workspaceName: "old" },
+    { label: "trim", action: "empty" },
+  ];
+  const firstEntry = target[0];
+  const secondEntry = target[1];
+
+  assertEquals(buildWorkspaceMenuEntriesInto(target, workspaces), [
+    { label: "[+] Save Current...", action: "save" },
+    { label: "[>] Open Alpha (2)", action: "open", workspaceName: "Alpha" },
+    { label: "[~] Rename Alpha", action: "rename", workspaceName: "Alpha" },
+    { label: "[x] Delete Alpha", action: "delete", workspaceName: "Alpha" },
+  ]);
+  assertEquals(target.length, 4);
+  assertStrictEquals(target[0], firstEntry);
+  assertStrictEquals(target[1], secondEntry);
+  assertEquals(target[0]?.workspaceName, undefined);
+
+  assertEquals(buildWorkspaceMenuEntriesInto(target, []), [
+    { label: "[+] Save Current...", action: "save" },
+    { label: "    No saved workspaces", action: "empty" },
+  ]);
+  assertEquals(target.length, 2);
+  assertStrictEquals(target[0], firstEntry);
+  assertStrictEquals(target[1], secondEntry);
+  assertEquals(target[1]?.workspaceName, undefined);
 });
 
 Deno.test("workspace name helpers normalize names with count-based fallbacks", () => {
