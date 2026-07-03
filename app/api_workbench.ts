@@ -3,7 +3,7 @@ import { TextObject, type TextRectangle } from "../src/canvas/text.ts";
 import { ButtonController } from "../src/components/button.ts";
 import { CheckBoxController } from "../src/components/checkbox.ts";
 import { ComboBoxController } from "../src/components/combobox.ts";
-import { DataTableController, renderDataTableHeader, renderDataTableRowsInto } from "../src/components/data_table.ts";
+import { DataTableController } from "../src/components/data_table.ts";
 import { createFileExplorerTree, FileExplorerController } from "../src/components/file_explorer.ts";
 import { InputController } from "../src/components/input.ts";
 import { MenuBarController, renderMenuBar } from "../src/components/menu_bar.ts";
@@ -241,6 +241,7 @@ import { makeStyle } from "./styles.ts";
 import { SystemMonitor } from "./system_metrics.ts";
 import { requireInteractiveTerminal } from "./terminal_guard.ts";
 import { ThreePanelFrameView } from "./three_panel.ts";
+import { workbenchDataTablePageSize, workbenchDataTableRowsInto } from "./workbench_data_table.ts";
 import { workbenchExplorerRowsInto } from "./workbench_explorer.ts";
 import { workbenchInspectorRowsInto } from "./workbench_inspector.ts";
 import { workbenchLogRowsInto } from "./workbench_logs.ts";
@@ -276,7 +277,7 @@ import {
   workbenchQuitModalContent,
 } from "./workbench_modal_content.ts";
 import { WorkbenchKittyGraphicsController } from "./workbench_kitty_graphics.ts";
-import { dataFooterRows, type RowStyle, threeHeaderRows } from "./workbench_rows.ts";
+import { type RowStyle, threeHeaderRows } from "./workbench_rows.ts";
 import type {
   Accent,
   AsciiOptions,
@@ -1540,51 +1541,30 @@ function renderInspector(frame: Frame, rect: Rectangle): void {
 function renderData(frame: Frame, rect: Rectangle): void {
   const t = theme();
   const pendingView = table.view.peek();
-  const footerRows = dataFooterRows({
+  table.setPageSize(workbenchDataTablePageSize({
+    height: rect.height,
+    width: rect.width,
     page: pendingView.page + 1,
     pageCount: pendingView.pageCount,
     selectedKey: pendingView.selectedKey,
-    width: rect.width,
     theme: t,
     fit,
-  });
-  table.setPageSize(Math.max(1, rect.height - 2 - footerRows.length));
+  }));
   const view = table.view.peek();
-  const textRows = renderDataTableRowsInto(dataTableTextRows, view.rows, columns, view.selectedIndex);
-  dataTableBodyRows.length = textRows.length;
-  for (let index = 0; index < textRows.length; index += 1) {
-    const selected = index === view.selectedIndex;
-    dataTableBodyRows[index] = {
-      text: textRows[index]!,
-      fg: selected ? contrastText(t.warn, t.background, t.text) : t.text,
-      bg: selected ? t.warn : t.surface,
-      bold: selected,
-    };
-  }
-
-  const finalFooterRows = dataFooterRows({
-    page: view.page + 1,
-    pageCount: view.pageCount,
-    selectedKey: view.selectedKey,
-    width: rect.width,
-    theme: t,
-    fit,
-  });
-  dataTableRenderRows.length = 0;
-  dataTableRenderRows.push({
-    text: renderDataTableHeader(columns, table.state.peek().sort),
-    fg: contrastText(t.accentDeep, t.background, t.text),
-    bg: t.accentDeep,
-    bold: true,
-  });
-  for (let index = 0; index < dataTableBodyRows.length; index += 1) {
-    dataTableRenderRows.push(dataTableBodyRows[index]!);
-  }
-  dataTableRenderRows.push({ text: "", bg: t.surface });
-  for (let index = 0; index < finalFooterRows.length; index += 1) {
-    dataTableRenderRows.push(finalFooterRows[index]!);
-  }
-  writeRows(frame, rect, dataTableRenderRows);
+  writeRows(
+    frame,
+    rect,
+    workbenchDataTableRowsInto(dataTableRenderRows, {
+      view,
+      columns,
+      sort: table.state.peek().sort,
+      width: rect.width,
+      theme: t,
+      fit,
+      contrast: contrastText,
+      buffers: { textRows: dataTableTextRows, bodyRows: dataTableBodyRows },
+    }),
+  );
   for (let index = 0; index < Math.min(view.rows.length, Math.max(0, rect.height - 1)); index += 1) {
     addHit({ column: rect.column, row: rect.row + 1 + index, width: rect.width, height: 1 }, {
       type: "dataRow",
