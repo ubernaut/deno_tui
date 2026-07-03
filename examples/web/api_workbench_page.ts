@@ -174,6 +174,8 @@ import {
   workbenchModalDetailsContent,
   workbenchQuitModalContent,
 } from "../../app/workbench_modal_content.ts";
+import { workbenchExplorerRowsInto } from "../../app/workbench_explorer.ts";
+import type { RowStyle } from "../../app/workbench_rows.ts";
 import { workbenchThreePreviewRowsInto } from "../../app/workbench_visualization_window.ts";
 import {
   type WorkbenchMobileCommandAction,
@@ -361,6 +363,7 @@ const screenRows: string[] = [];
 const workspaceVirtualRows: string[] = [];
 const threePreviewRows: string[] = [];
 const threePreviewOrbRows: string[] = [];
+const explorerRenderRows: RowStyle[] = [];
 const htmlCssLayoutBoxes: ComputedLayoutBox[] = [];
 const htmlCssLayoutRenderCommands: HtmlCssLayoutRenderCommand[] = [];
 const minimizedShelfEntries: Array<{ id: PanelId; title: string }> = [];
@@ -1025,32 +1028,29 @@ function renderLogs(frame: string[], rect: Rectangle): void {
 
 function renderExplorer(frame: string[], rect: Rectangle): void {
   const visible = explorer.tree.visibleRows();
-  const selectedIndex = explorer.tree.selectedIndex.peek();
-  const rowCount = Math.min(visible.length, rect.height);
+  const projected = workbenchExplorerRowsInto(explorerRenderRows, {
+    rows: visible,
+    selectedIndex: explorer.tree.selectedIndex.peek(),
+    theme: theme(),
+    contrast: contrastText,
+  });
+  const rowCount = Math.min(projected.length, rect.height);
   for (let offset = 0; offset < rowCount; offset += 1) {
-    const row = visible[offset]!;
-    const selected = row.index === selectedIndex;
-    const node = row.node as { kind?: string; path?: string };
-    const icon = row.hasChildren ? row.expanded ? "▾" : "▸" : node.kind === "file" ? "·" : " ";
-    const label = `${"  ".repeat(row.depth)}${icon} ${row.label}`;
+    const row = projected[offset]!;
     write(
       frame,
       rect.row + offset,
       rect.column,
       paint(
-        fit(label, rect.width),
-        selected
-          ? contrastText(theme().warn, theme().background, theme().text)
-          : node.kind === "directory"
-          ? theme().good
-          : theme().text,
-        selected ? theme().warn : theme().surface,
-        selected || node.kind === "directory",
+        fit(row.text, rect.width),
+        row.fg ?? theme().text,
+        row.bg ?? theme().surface,
+        row.bold,
       ),
     );
     hitTargets.add({ column: rect.column, row: rect.row + offset, width: rect.width, height: 1 }, {
       type: "explorerRow",
-      index: row.index,
+      index: visible[offset]!.index,
     });
   }
 }

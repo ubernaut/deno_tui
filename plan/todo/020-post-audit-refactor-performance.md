@@ -213,3 +213,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   fractional paths behavior-compatible while measuring the focused frame-diff case at 1.785ms after the follow-up pass.
 - Routed the browser API workbench panel chrome through the shared frame-box projection instead of bespoke border string
   assembly, keeping terminal and web window framing behavior closer together.
+- Routed the browser API workbench explorer panel through the same tested row projection used by the terminal adapter,
+  removing duplicated icon, selection, and theme styling logic from the web renderer.

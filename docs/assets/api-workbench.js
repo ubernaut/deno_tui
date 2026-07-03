@@ -16325,6 +16325,25 @@ function workbenchModalConfirmedContent(options = {}) {
   };
 }
 
+// app/workbench_explorer.ts
+function workbenchExplorerRowsInto(target, options) {
+  const { rows: rows2, selectedIndex, theme: t, contrast } = options;
+  target.length = rows2.length;
+  for (let index = 0; index < rows2.length; index += 1) {
+    const treeRow = rows2[index];
+    const selected = treeRow.index === selectedIndex;
+    const node = treeRow.node;
+    const icon = treeRow.hasChildren ? treeRow.expanded ? "\u25BE" : "\u25B8" : node.kind === "file" ? "\xB7" : " ";
+    const row = target[index] ?? { text: "" };
+    row.text = `${"  ".repeat(treeRow.depth)}${icon} ${treeRow.label}`;
+    row.fg = selected ? contrast(t.warn, t.background, t.text) : node.kind === "directory" ? t.good : t.text;
+    row.bg = selected ? t.warn : t.surface;
+    row.bold = selected || node.kind === "directory";
+    target[index] = row;
+  }
+  return target;
+}
+
 // src/app/workbench_ascii.ts
 var defaultWorkbenchAsciiConfigRows = [
   { kind: "preset", label: "Preset" },
@@ -16912,6 +16931,7 @@ var screenRows = [];
 var workspaceVirtualRows = [];
 var threePreviewRows = [];
 var threePreviewOrbRows = [];
+var explorerRenderRows = [];
 var htmlCssLayoutBoxes = [];
 var htmlCssLayoutRenderCommands = [];
 var minimizedShelfEntries = [];
@@ -17547,28 +17567,29 @@ function renderLogs(frame, rect) {
 }
 function renderExplorer(frame, rect) {
   const visible = explorer.tree.visibleRows();
-  const selectedIndex = explorer.tree.selectedIndex.peek();
-  const rowCount = Math.min(visible.length, rect.height);
+  const projected = workbenchExplorerRowsInto(explorerRenderRows, {
+    rows: visible,
+    selectedIndex: explorer.tree.selectedIndex.peek(),
+    theme: theme(),
+    contrast: contrastText
+  });
+  const rowCount = Math.min(projected.length, rect.height);
   for (let offset = 0; offset < rowCount; offset += 1) {
-    const row = visible[offset];
-    const selected = row.index === selectedIndex;
-    const node = row.node;
-    const icon = row.hasChildren ? row.expanded ? "\u25BE" : "\u25B8" : node.kind === "file" ? "\xB7" : " ";
-    const label = `${"  ".repeat(row.depth)}${icon} ${row.label}`;
+    const row = projected[offset];
     write(
       frame,
       rect.row + offset,
       rect.column,
       paint(
-        fit(label, rect.width),
-        selected ? contrastText(theme().warn, theme().background, theme().text) : node.kind === "directory" ? theme().good : theme().text,
-        selected ? theme().warn : theme().surface,
-        selected || node.kind === "directory"
+        fit(row.text, rect.width),
+        row.fg ?? theme().text,
+        row.bg ?? theme().surface,
+        row.bold
       )
     );
     hitTargets.add({ column: rect.column, row: rect.row + offset, width: rect.width, height: 1 }, {
       type: "explorerRow",
-      index: row.index
+      index: visible[offset].index
     });
   }
 }
