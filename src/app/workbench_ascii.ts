@@ -79,6 +79,7 @@ export function createDefaultWorkbenchAsciiOptions(): ThreeAsciiConfigOptions {
   return {
     ...createDefaultAsciiOptions("sharp"),
     preset: "custom",
+    renderMaxCells: 1_920,
   };
 }
 

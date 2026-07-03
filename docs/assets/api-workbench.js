@@ -16968,7 +16968,8 @@ var defaultWorkbenchAsciiConfigRows = [
 function createDefaultWorkbenchAsciiOptions() {
   return {
     ...createDefaultAsciiOptions("sharp"),
-    preset: "custom"
+    preset: "custom",
+    renderMaxCells: 1920
   };
 }
 function asciiNumericOptionRatio(values, value) {

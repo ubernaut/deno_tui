@@ -281,3 +281,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   Three ASCII path where every visible pane row is published as a full-width text object.
 - Added `render/textobject-full-row-canvas-220x70` to benchmark the actual full-width styled `TextObject` + terminal
   canvas path behind the default workbench surface; local best-of workbench runs measured it around 2.55ms per frame.
+- Lowered the workbench-specific default Three ASCII render-cell cap from 3,840 to 1,920 while preserving saved
+  overrides and the package renderer default, favoring startup interactivity in terminal/SSH sessions.
