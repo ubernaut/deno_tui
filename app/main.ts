@@ -26,6 +26,12 @@ import { accentColor, formatDuration, makeStyle, palette, severityAccent } from 
 import { SystemMonitor } from "./system_metrics.ts";
 import { requireInteractiveTerminal } from "./terminal_guard.ts";
 import { ThreePanelView } from "./three_panel.ts";
+import {
+  MONITOR_WINDOW_CONTROL_TEXT,
+  monitorWindowControlAt,
+  monitorWindowControlRect,
+  monitorWindowControlsVisible,
+} from "./monitor_window_controls.ts";
 import { centeredRect, fitTextWidth, FrameView, ListView, MultilineTextView, PanelView } from "./ui.ts";
 import {
   type Accent,
@@ -45,10 +51,6 @@ import {
 import { renderVisualization, visualizations } from "./visualizations.ts";
 
 const PANEL_SCROLLBAR_LINE_LIMIT = 256;
-const WINDOW_CONTROL_TEXT = "[-] [□] [↺] [x]";
-const WINDOW_CONTROL_WIDTH = 15;
-const WINDOW_CONTROL_MIN_WIDTH = WINDOW_CONTROL_WIDTH + 1;
-
 type MonitorHit =
   | { type: "focus"; id: SlotId }
   | { type: "minimize"; id: SlotId }
@@ -573,16 +575,11 @@ const windowControlText: TextObject[] = slotIds.map((slotId) =>
     overwriteRectangle: true,
     rectangle: new Computed<TextRectangle>(() => {
       const rect = slotWindowRect(slotId);
-      const visible = rect.width >= WINDOW_CONTROL_MIN_WIDTH && rect.height >= 4;
-      return {
-        column: visible ? rect.column + Math.max(0, rect.width - WINDOW_CONTROL_MIN_WIDTH) : 0,
-        row: visible ? rect.row : 0,
-        width: visible ? WINDOW_CONTROL_WIDTH : 0,
-      };
+      return monitorWindowControlRect(rect);
     }),
     value: new Computed<string>(() => {
       const rect = slotWindowRect(slotId);
-      return rect.width >= WINDOW_CONTROL_MIN_WIDTH && rect.height >= 4 ? WINDOW_CONTROL_TEXT : "";
+      return monitorWindowControlsVisible(rect) ? MONITOR_WINDOW_CONTROL_TEXT : "";
     }),
   })
 );
@@ -1222,8 +1219,8 @@ function rebuildHitTargets(): void {
     if (!slotIds.includes(slotId) || !entry.rect) continue;
     const rect = entry.rect;
     hitTargets.push({ rect, hit: { type: "focus", id: slotId } });
-    if (rect.width >= WINDOW_CONTROL_MIN_WIDTH && rect.height >= 4) {
-      const column = rect.column + Math.max(0, rect.width - WINDOW_CONTROL_MIN_WIDTH);
+    if (monitorWindowControlsVisible(rect)) {
+      const column = monitorWindowControlRect(rect).column;
       hitTargets.push({ rect: { column, row: rect.row, width: 3, height: 1 }, hit: { type: "minimize", id: slotId } });
       hitTargets.push({
         rect: { column: column + 4, row: rect.row, width: 3, height: 1 },
