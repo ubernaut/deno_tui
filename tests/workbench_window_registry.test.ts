@@ -9,6 +9,7 @@ import {
   workbenchWindowOptionMenuLabel,
   workbenchWindowOptionMenuLabelsInto,
   workbenchWindowOptionMinimums,
+  workbenchWindowOptionWindowId,
 } from "../src/app/workbench_window_registry.ts";
 
 Deno.test("workbench window registry projects visualization metadata into launcher options", () => {
@@ -49,6 +50,8 @@ Deno.test("workbench window registry normalizes visualization window ids and loa
   assertEquals(id, "viz:cpu-hex-grid--");
   assertEquals(isWorkbenchVisualizationWindowId(id), true);
   assertEquals(workbenchVisualizationIdFromWindowId(id), "cpu-hex-grid--");
+  assertEquals(workbenchWindowOptionWindowId(option), id);
+  assertEquals(workbenchWindowOptionWindowId({ ...option, windowId: "cpu" }), "cpu");
   assertEquals(isWorkbenchWindowOptionLoaded(option, [id]), true);
   assertEquals(isWorkbenchWindowOptionLoaded({ ...option, windowId: "cpu" }, ["cpu"]), true);
 });

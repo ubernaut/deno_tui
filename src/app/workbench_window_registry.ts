@@ -105,7 +105,12 @@ export function isWorkbenchWindowOptionLoaded(
   loadedWindowIds: Iterable<string>,
 ): boolean {
   const ids = loadedWindowIds instanceof Set ? loadedWindowIds : new Set(loadedWindowIds);
-  return ids.has(option.windowId ?? workbenchVisualizationWindowId(option.id));
+  return ids.has(workbenchWindowOptionWindowId(option));
+}
+
+/** Resolve the concrete managed window id for a launcher option. */
+export function workbenchWindowOptionWindowId(option: WorkbenchWindowOption): string {
+  return option.windowId ?? workbenchVisualizationWindowId(option.id);
 }
 
 /** Render a New Window menu label with checkbox state, group, and title. */
@@ -125,7 +130,7 @@ export function workbenchWindowOptionMenuLabelsInto(
     const option = options[index]!;
     target[index] = workbenchWindowOptionMenuLabel(
       option,
-      ids.has(option.windowId ?? workbenchVisualizationWindowId(option.id)),
+      ids.has(workbenchWindowOptionWindowId(option)),
     );
   }
   return target;
