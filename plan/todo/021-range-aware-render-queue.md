@@ -42,5 +42,6 @@ row ranges until the final sink flush.
   `render/three-ascii-frame-diff-96x40` improved to `1.745ms avg` over 8 repeats on this machine.
 - Added `BrowserCellCanvasSink.flushRanges()` so browser-hosted canvases can consume row ranges directly and skip legacy
   cell update allocation for range-aware renderers.
-- Added benchmark guardrails for dense range insertion, sparse single-cell insertion, and clipped range insertion so
-  queue representation changes can be measured independently from full Three ASCII frame diffing.
+- Added benchmark guardrails for dense range insertion, sparse single-cell insertion, clipped range insertion, and
+  fractional clipped cell insertion so queue representation changes can be measured independently from full Three ASCII
+  frame diffing.

@@ -736,6 +736,19 @@ function runClippedRerenderRangeQueueWorkload(): void {
   clearRerenderCellBenchmarkQueue();
 }
 
+function runFractionalRerenderCellQueueWorkload(): void {
+  for (let step = 0; step < 1_000; step += 1) {
+    queueRerenderCellInto(
+      rerenderQueueCellQueue,
+      step % rerenderQueueBenchmarkSize.rows,
+      ((step * 13) % rerenderQueueBenchmarkSize.columns) + 0.75,
+      rerenderQueueBenchmarkSize,
+      rerenderQueueBenchmarkView,
+    );
+  }
+  clearRerenderCellBenchmarkQueue();
+}
+
 function createThreeAsciiDiffGrid(columns: number, rows: number, phase: number): string[][] {
   const grid = new Array<string[]>(rows);
   for (let row = 0; row < rows; row += 1) {
@@ -1405,6 +1418,15 @@ export const benchmarkCases: BenchmarkCase[] = [
     iterations: 1_000,
     maxAverageMs: 2,
     run: runClippedRerenderRangeQueueWorkload,
+  },
+  {
+    name: "render/rerender-cell-fractional-1k",
+    category: "render",
+    description: "Queue fractional dirty cells through the clipped compatibility cell queue path.",
+    tags: ["render", "canvas", "queue", "cell", "fractional", "clipped"],
+    iterations: 1_000,
+    maxAverageMs: 2,
+    run: runFractionalRerenderCellQueueWorkload,
   },
   {
     name: "render/render-loop-300-steps",
