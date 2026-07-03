@@ -16,10 +16,10 @@ import {
 import { createNeonThreeScene } from "../../app/neon_three.ts";
 import {
   layoutThreeAsciiDemoWindow,
-  THREE_ASCII_DEMO_WINDOW_CONTROL_TEXT,
   THREE_ASCII_DEMO_WINDOW_CONTROL_WIDTH,
   threeAsciiDemoBodyRect,
   threeAsciiDemoControlRect,
+  threeAsciiDemoControlText,
   threeAsciiDemoTitlebarControlAt,
   threeAsciiDemoTitleRect,
 } from "../../app/three_ascii_demo_window.ts";
@@ -177,9 +177,7 @@ new TextObject({
 new TextObject({
   canvas: host.canvas,
   rectangle: new Computed<TextRectangle>(() => threeAsciiDemoControlRect(renderWindowRectangle.value)),
-  value: new Computed<string>(() =>
-    threeAsciiDemoControlRect(renderWindowRectangle.value).width > 0 ? THREE_ASCII_DEMO_WINDOW_CONTROL_TEXT : ""
-  ),
+  value: new Computed<string>(() => threeAsciiDemoControlText(renderWindowRectangle.value)),
   overwriteRectangle: true,
   style: createAnsiStyle({ foreground: [3, 5, 10], background: [255, 207, 64], bold: true }),
   zIndex: 6,

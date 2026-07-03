@@ -223,3 +223,6 @@ performance, shared terminal/web workbench projections, and oversized module red
   labels, and recent-action wrapping match the terminal adapter.
 - Removed the now-unreachable browser workbench generic panel fallback after all current panel ids moved onto focused
   renderers or shared row projections.
+- Repaired the standalone web Three ASCII window chrome so it uses the same compact titlebar control projection as the
+  terminal demo; block-mode color paths still emit 24-bit background fills, so remaining color complaints should be
+  verified against terminal/browser rendering rather than ANSI grid quantization.
