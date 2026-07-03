@@ -1,4 +1,4 @@
-import { PerspectiveCamera, Scene } from "npm:three@0.183.2";
+import { Color, PerspectiveCamera, Scene } from "npm:three@0.183.2";
 import { assertEquals, assertRejects } from "./deps.ts";
 import { ThreeAsciiReadbackError, ThreeAsciiRenderer } from "../src/three_ascii/renderer.ts";
 
@@ -114,3 +114,108 @@ Deno.test("ThreeAsciiRenderer wraps failed GPU readback mapping with a stable er
   assertEquals(error.cause, cause);
   assertEquals(unmapped, false);
 });
+
+Deno.test("ThreeAsciiRenderer consumes resolved deferred readback frames", () => {
+  const renderer = new ThreeAsciiRenderer({
+    scene: new Scene(),
+    camera: new PerspectiveCamera(),
+    columns: 1,
+    rows: 1,
+    readbackStrategy: "deferred",
+  });
+  const buffer = deferredReadbackBuffer([14, 1, 0.2, 0.1, 1]);
+  const internals = renderer as unknown as {
+    pendingDeferredReadbacks: unknown[];
+    consumeCompletedDeferredReadbacks(): string[][] | undefined;
+    lastDeferredGrid: string[][];
+    lastReadbackMs: number;
+  };
+  internals.pendingDeferredReadbacks.push({
+    slot: { byteLength: buffer.source.byteLength, gpu: buffer },
+    layout: {
+      byteLength: buffer.source.byteLength,
+      fillOffset: 0,
+      colorOffset: 4,
+      fillFloatLength: 1,
+      colorFloatLength: 4,
+    },
+    columns: 1,
+    rows: 1,
+    terminalGlyphStyle: "blocks",
+    terminalEdgeBias: 1,
+    backgroundColor: new Color(0x000000),
+    generation: 0,
+    resolved: true,
+    readbackStart: 0,
+    readbackMs: 7,
+  });
+
+  const grid = internals.consumeCompletedDeferredReadbacks();
+
+  assertEquals(grid?.length, 1);
+  assertEquals(grid?.[0]?.length, 1);
+  assertEquals(grid?.[0]?.[0].includes("\x1b["), true);
+  assertEquals(internals.lastDeferredGrid, grid);
+  assertEquals(internals.lastReadbackMs, 7);
+  assertEquals(buffer.getMappedRangeCalls, 1);
+  assertEquals(buffer.unmapCalls, 1);
+  assertEquals(internals.pendingDeferredReadbacks.length, 0);
+});
+
+Deno.test("ThreeAsciiRenderer skips stale deferred readbacks after size generation changes", () => {
+  const renderer = new ThreeAsciiRenderer({
+    scene: new Scene(),
+    camera: new PerspectiveCamera(),
+    columns: 1,
+    rows: 1,
+    readbackStrategy: "deferred",
+  });
+  renderer.setSize(2, 1);
+  const buffer = deferredReadbackBuffer([14, 1, 1, 1, 1]);
+  const internals = renderer as unknown as {
+    pendingDeferredReadbacks: unknown[];
+    consumeCompletedDeferredReadbacks(): string[][] | undefined;
+  };
+  internals.pendingDeferredReadbacks.push({
+    slot: { byteLength: buffer.source.byteLength, gpu: buffer },
+    layout: {
+      byteLength: buffer.source.byteLength,
+      fillOffset: 0,
+      colorOffset: 4,
+      fillFloatLength: 1,
+      colorFloatLength: 4,
+    },
+    columns: 1,
+    rows: 1,
+    terminalGlyphStyle: "blocks",
+    terminalEdgeBias: 1,
+    backgroundColor: new Color(0x000000),
+    generation: 0,
+    resolved: true,
+    readbackStart: 0,
+    readbackMs: 3,
+  });
+
+  assertEquals(internals.consumeCompletedDeferredReadbacks(), undefined);
+  assertEquals(buffer.getMappedRangeCalls, 0);
+  assertEquals(buffer.unmapCalls, 1);
+  assertEquals(internals.pendingDeferredReadbacks.length, 0);
+});
+
+function deferredReadbackBuffer(values: number[]) {
+  const source = new Float32Array(values).buffer;
+  return {
+    source,
+    getMappedRangeCalls: 0,
+    unmapCalls: 0,
+    mapAsync: () => Promise.resolve(),
+    getMappedRange() {
+      this.getMappedRangeCalls += 1;
+      return this.source;
+    },
+    unmap() {
+      this.unmapCalls += 1;
+    },
+    destroy() {},
+  };
+}

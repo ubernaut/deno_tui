@@ -305,3 +305,6 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Added adaptive Three panel render-cell budgeting driven by live renderer telemetry; sustained slow frames now step the
   panel down to a lower source grid without mutating saved ASCII settings, and the resize path restarts the render loop
   instead of getting stranded after an adaptive cap change.
+- Added an opt-in deferred WebGPU readback strategy for Three ASCII renderer frames and enabled it for workbench-hosted
+  Three panels, decoupling terminal frame cadence from same-frame `mapAsync()` stalls while preserving blocking readback
+  as the package default.

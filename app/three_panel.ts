@@ -435,7 +435,7 @@ export class ThreePanelFrameView {
       this.interaction.captureBaseTransform(bundle);
       this.failed = false;
       const rendererFactory = this.options.rendererFactory ??
-        ((rendererOptions) => new ThreeAsciiRenderer(rendererOptions));
+        ((rendererOptions) => new ThreeAsciiRenderer({ ...rendererOptions, readbackStrategy: "deferred" }));
       const effectOptions = asciiEffectOptions(ascii);
       this.renderer = rendererFactory({
         scene: bundle.scene,
