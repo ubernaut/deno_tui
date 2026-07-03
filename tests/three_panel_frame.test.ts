@@ -3,6 +3,7 @@ import { Signal } from "../src/signals/mod.ts";
 import { createDefaultAsciiOptions } from "../app/ascii_options.ts";
 import {
   resolveThreePanelRenderPolicy,
+  resolveThreePanelRenderSize,
   ThreePanelFrameView,
   type ThreePanelGridRenderer,
   type ThreeSceneState,
@@ -80,6 +81,16 @@ Deno.test("resolveThreePanelRenderPolicy selects ASCII and Kitty frame modes", (
     }).kittyActive,
     false,
   );
+});
+
+Deno.test("resolveThreePanelRenderSize preserves small panes and caps large panes by area", () => {
+  assertEquals(resolveThreePanelRenderSize({ width: 80, height: 24 }, 3_840), { columns: 80, rows: 24 });
+
+  const capped = resolveThreePanelRenderSize({ width: 160, height: 60 }, 3_840);
+  assert(capped.columns < 160);
+  assert(capped.rows < 60);
+  assert(capped.columns * capped.rows <= 3_840);
+  assert(capped.columns / capped.rows > 160 / 60 - 0.2);
 });
 
 Deno.test("resolveThreePanelLifecycleState reports explicit transition phases", () => {
@@ -267,6 +278,41 @@ Deno.test("ThreePanelFrameView only applies renderer settings when they change",
     assertEquals(renderer?.setEffectOptionsCalls, 1);
     assertEquals(renderer?.setTerminalEdgeBiasCalls, 0);
     assertEquals(renderer?.setTerminalGlyphStyleCalls, 0);
+  } finally {
+    panel.dispose();
+    rectangle.dispose();
+    scene.dispose();
+    ascii.dispose();
+    enabled.dispose();
+  }
+});
+
+Deno.test("ThreePanelFrameView caps large ASCII renderer sizes", async () => {
+  const rectangle = new Signal({ column: 0, row: 0, width: 160, height: 60 }, { deepObserve: true });
+  const scene = new Signal<ThreeSceneState | null>(sceneState());
+  const ascii = new Signal(createDefaultAsciiOptions("sharp"));
+  const enabled = new Signal(true);
+  let renderer: FakeGridRenderer | undefined;
+  const panel = new ThreePanelFrameView({
+    rectangle,
+    scene,
+    ascii,
+    enabled,
+    frameInterval: 1,
+    maxRenderCells: 3_840,
+    rendererFactory: (options) => renderer = new FakeGridRenderer(options.columns, options.rows),
+  });
+
+  try {
+    await waitFor(() => (renderer?.renderCount ?? 0) >= 1);
+
+    assert(renderer);
+    assert(renderer.columns * renderer.rows <= 3_840);
+    assert(renderer.columns < 160);
+    assert(renderer.rows < 60);
+
+    rectangle.value = { column: 0, row: 0, width: 80, height: 24 };
+    await waitFor(() => renderer?.sizes.some(([columns, rows]) => columns === 80 && rows === 24) === true);
   } finally {
     panel.dispose();
     rectangle.dispose();
@@ -869,15 +915,19 @@ class FakeGridRenderer implements ThreePanelGridRenderer, ThreeAsciiGridRenderer
   setTerminalEdgeBiasCalls = 0;
   setTerminalGlyphStyleCalls = 0;
   renderCount = 0;
+  sizes: Array<[number, number]> = [];
   private terminalEdgeBias = 1;
   private terminalGlyphStyle: TerminalGlyphStyle = "blocks";
 
-  constructor(private columns: number, private rows: number, private readonly glyph = "█") {}
+  constructor(public columns: number, public rows: number, private readonly glyph = "█") {
+    this.sizes.push([columns, rows]);
+  }
 
   setSize(columns: number, rows: number): void {
     this.setSizeCalls += 1;
     this.columns = columns;
     this.rows = rows;
+    this.sizes.push([columns, rows]);
   }
 
   setEffectOptions(): void {
@@ -1027,7 +1077,6 @@ class UnavailableGraphicsSurface extends FakeGraphicsSurface {
 }
 
 class SlowGridRenderer extends FakeGridRenderer {
-  readonly sizes: Array<[number, number]> = [];
   startCount = 0;
   setSizeDuringRender = 0;
   destroyed = false;

@@ -47,6 +47,7 @@ import {
   writeFrame,
   writeStringFrameRow,
 } from "../mod.ts";
+import { writeWorkbenchThreeGrid } from "../app/workbench_three_grid.ts";
 import { PerspectiveCamera, Scene } from "npm:three@0.183.2";
 import { AudioRegistry } from "../app/audio.ts";
 import { createHtmlCssLayoutDemo } from "../app/html_css_layout_demo.ts";
@@ -225,8 +226,23 @@ const terminalScreenTranscript = [
 const terminalScreenChunks = terminalScreenTranscript.map((chunk) => new TextEncoder().encode(chunk));
 const workbenchSparseFrame: WorkbenchFrame = [];
 const workbenchStringFrame: string[] = [];
+const workbenchScaledThreeFrame: WorkbenchFrame = [];
 const workbenchFrameRows = 54;
 const workbenchFrameWidth = 168;
+const workbenchScaledThreeSourceRows = 34;
+const workbenchScaledThreeSourceColumns = 109;
+const workbenchScaledThreeTargetRows = 70;
+const workbenchScaledThreeTargetColumns = 220;
+const workbenchScaledThreeGrid = Array.from(
+  { length: workbenchScaledThreeSourceRows },
+  (_, row) =>
+    Array.from({ length: workbenchScaledThreeSourceColumns }, (_, column) => {
+      const red = (row * 17 + column * 11) % 256;
+      const green = (64 + row * 7 + column * 13) % 256;
+      const blue = (160 + row * 5 + column * 3) % 256;
+      return `\x1b[48;2;${red};${green};${blue}m \x1b[0m`;
+    }),
+);
 let workbenchFrameChecksum = 0;
 const largeListItems = Array.from({ length: 50_000 }, (_, index) => `process-${index.toString().padStart(5, "0")}`);
 const largeTable = new TableController({ rowCount: 100_000, viewportHeight: 44 });
@@ -968,6 +984,26 @@ function runWorkbenchStringFrameFullRowWorkload(): void {
   }
 }
 
+function runWorkbenchScaledThreeGridWorkload(): void {
+  const frame = prepareWorkbenchFrame(workbenchScaledThreeFrame, workbenchScaledThreeTargetRows);
+  writeWorkbenchThreeGrid(
+    frame,
+    { column: 0, row: 0, width: workbenchScaledThreeTargetColumns, height: workbenchScaledThreeTargetRows },
+    workbenchScaledThreeGrid,
+    " ",
+    { scale: true },
+  );
+
+  let total = 0;
+  for (let row = 0; row < workbenchScaledThreeTargetRows; row += 1) {
+    total += renderFrameRow(frame[row] ?? [], workbenchScaledThreeTargetColumns).length;
+  }
+  workbenchFrameChecksum = (workbenchFrameChecksum + total) % 1_000_000;
+  if (!Number.isFinite(workbenchFrameChecksum)) {
+    throw new Error("workbench scaled Three grid checksum failed");
+  }
+}
+
 function runAnsiStyledCharacterSplitWorkload(): void {
   const cells = getMultiCodePointCharacters(ansiStyledSplitRow);
   if (cells.length !== 160) {
@@ -1265,6 +1301,15 @@ export const benchmarkCases: BenchmarkCase[] = [
     iterations: 500,
     maxAverageMs: 5,
     run: runWorkbenchStringFrameFullRowWorkload,
+  },
+  {
+    name: "render/workbench-scaled-three-grid-220x70",
+    category: "render",
+    description: "Scale a capped Three ASCII source grid into a large workbench pane and assemble terminal rows.",
+    tags: ["render", "workbench", "three", "ascii", "frame"],
+    iterations: 200,
+    maxAverageMs: 8,
+    run: runWorkbenchScaledThreeGridWorkload,
   },
   {
     name: "render/ansi-styled-character-split-160",

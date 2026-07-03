@@ -53,6 +53,28 @@ export interface ThreePanelLifecycleInspection {
   frameGeneration: number;
 }
 
+export interface ThreePanelRenderSize {
+  columns: number;
+  rows: number;
+}
+
+export function resolveThreePanelRenderSize(
+  rect: Pick<Rect, "width" | "height">,
+  maxCells?: number,
+): ThreePanelRenderSize {
+  const columns = Math.max(1, Math.floor(rect.width));
+  const rows = Math.max(1, Math.floor(rect.height));
+  const cellLimit = Math.max(1, Math.floor(maxCells ?? columns * rows));
+  const cells = columns * rows;
+  if (cells <= cellLimit) return { columns, rows };
+
+  const scale = Math.sqrt(cellLimit / cells);
+  return {
+    columns: Math.max(1, Math.min(columns, Math.floor(columns * scale))),
+    rows: Math.max(1, Math.min(rows, Math.floor(rows * scale))),
+  };
+}
+
 export interface ThreePanelGridRenderer {
   setSize(columns: number, rows: number): void;
   setEffectOptions(options: ReturnType<typeof asciiEffectOptions>): void;
@@ -250,6 +272,7 @@ export class ThreePanelFrameView {
       graphicsRectangle?: SignalOfObject<Rect>;
       diagnostics?: DiagnosticsCollector;
       frameInterval?: number;
+      maxRenderCells?: number;
       onUpdate?: () => void;
       rendererFactory?: ThreePanelRendererFactory;
     },
@@ -332,8 +355,7 @@ export class ThreePanelFrameView {
       this.renderer = rendererFactory({
         scene: bundle.scene,
         camera: bundle.camera,
-        columns: rect.width,
-        rows: rect.height,
+        ...this.renderSizeFor(rect),
         effect: effectOptions,
         terminalEdgeBias: ascii.terminalEdgeBias,
         terminalGlyphStyle: ascii.terminalGlyphStyle,
@@ -440,7 +462,8 @@ export class ThreePanelFrameView {
       }
 
       this.failed = false;
-      this.setGrid(policy.renderAscii ? frame.grid ?? [] : this.blankGridFor(rect.width, rect.height));
+      const renderSize = this.renderSizeFor(rect);
+      this.setGrid(policy.renderAscii ? frame.grid ?? [] : this.blankGridFor(renderSize.columns, renderSize.rows));
       this.reportSlowFrame(renderer);
     } catch (error) {
       if (!this.ownsFrame(frameGeneration, renderer, bundle)) {
@@ -450,7 +473,8 @@ export class ThreePanelFrameView {
       this.running = false;
       await this.clearGraphicsImage();
       const rect = this.options.rectangle.peek();
-      this.setGrid(buildFallbackGrid(rect.width, rect.height, formatThreeAsciiFallbackDetail(error)));
+      const renderSize = this.renderSizeFor(rect);
+      this.setGrid(buildFallbackGrid(renderSize.columns, renderSize.rows, formatThreeAsciiFallbackDetail(error)));
       this.destroyPending = true;
     } finally {
       this.rendering = false;
@@ -607,8 +631,9 @@ export class ThreePanelFrameView {
     ascii: AsciiOptions,
     effectOptions = asciiEffectOptions(ascii),
   ): void {
-    this.appliedColumns = Math.max(1, Math.floor(rect.width));
-    this.appliedRows = Math.max(1, Math.floor(rect.height));
+    const renderSize = this.renderSizeFor(rect);
+    this.appliedColumns = renderSize.columns;
+    this.appliedRows = renderSize.rows;
     this.appliedEffectOptions = effectOptions;
     this.appliedTerminalEdgeBias = ascii.terminalEdgeBias;
     this.appliedTerminalGlyphStyle = ascii.terminalGlyphStyle;
@@ -619,8 +644,7 @@ export class ThreePanelFrameView {
     rect: Pick<Rect, "width" | "height">,
     ascii: AsciiOptions,
   ) {
-    const columns = Math.max(1, Math.floor(rect.width));
-    const rows = Math.max(1, Math.floor(rect.height));
+    const { columns, rows } = this.renderSizeFor(rect);
     if (this.appliedColumns !== columns || this.appliedRows !== rows) {
       renderer.setSize(columns, rows);
       this.appliedColumns = columns;
@@ -642,6 +666,10 @@ export class ThreePanelFrameView {
       renderer.setTerminalGlyphStyle(ascii.terminalGlyphStyle);
       this.appliedTerminalGlyphStyle = ascii.terminalGlyphStyle;
     }
+  }
+
+  private renderSizeFor(rect: Pick<Rect, "width" | "height">): ThreePanelRenderSize {
+    return resolveThreePanelRenderSize(rect, this.options.maxRenderCells);
   }
 
   dispose(): void {

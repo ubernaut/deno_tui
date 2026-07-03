@@ -859,6 +859,7 @@ const threePanel = new ThreePanelFrameView({
   enabled: threeAsciiAvailable,
   graphicsSurface: () => kittyGraphics.surfaceFor(ascii.peek()),
   frameInterval: 1000 / 18,
+  maxRenderCells: 3_840,
   diagnostics: workbenchDiagnostics,
   onUpdate: scheduleDraw,
 });
@@ -1484,7 +1485,7 @@ function renderThreeGrid(frame: Frame, rect: Rectangle, grid: string[][], t: The
     return;
   }
 
-  writeWorkbenchThreeGrid(frame, rect, grid, paint(" ", { bg: t.surface }));
+  writeWorkbenchThreeGrid(frame, rect, grid, paint(" ", { bg: t.surface }), { scale: true });
 }
 
 function renderExplorer(frame: Frame, rect: Rectangle): void {
@@ -2862,6 +2863,7 @@ function ensureVisualizationThreePanel(id: VisualizationWindowId): DynamicThreeP
     enabled: threeAsciiAvailable,
     graphicsSurface: () => kittyGraphics.surfaceFor(asciiForWindow(id).peek()),
     frameInterval: 1000 / 18,
+    maxRenderCells: 3_840,
     diagnostics: workbenchDiagnostics,
     onUpdate: scheduleDraw,
   });

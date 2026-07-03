@@ -269,3 +269,6 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Optimized ANSI range flushing for truecolor block frames by carrying SGR state across cells when the next prefix fully
   overwrites the active color channels; this reduces redundant reset sequences in mixed-background Three ASCII rows and
   adds a benchmark for that terminal-bandwidth-heavy path.
+- Added an adaptive workbench Three ASCII render-size cap and scaled grid blitting so large panes keep their visual
+  footprint while reducing WebGPU readback cells and terminal truecolor payload; a 220x70 probe dropped full-frame
+  output from roughly 303KB to 158KB with a 3,840-cell source cap.

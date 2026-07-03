@@ -38,6 +38,24 @@ Deno.test("workbench three grid uses caller-provided fallback cells", () => {
   ]);
 });
 
+Deno.test("workbench three grid can scale lower-resolution source cells", () => {
+  const frame: WorkbenchFrame = [];
+  writeWorkbenchThreeGrid(
+    frame,
+    { column: 0, row: 0, width: 4, height: 4 },
+    [["A", "B"], ["C", "D"]],
+    ".",
+    { scale: true },
+  );
+
+  assertEquals(frame, [
+    ["A", "A", "B", "B"],
+    ["A", "A", "B", "B"],
+    ["C", "C", "D", "D"],
+    ["C", "C", "D", "D"],
+  ]);
+});
+
 Deno.test("workbench three grid ignores empty rectangles", () => {
   const frame: WorkbenchFrame = [["keep"]];
   writeWorkbenchThreeGrid(frame, { column: 0, row: 0, width: 0, height: 2 }, [["A"]], ".");
