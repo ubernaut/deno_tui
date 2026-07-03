@@ -10808,6 +10808,7 @@ function buildAsciiOptionsFromPreset(presetId, border) {
     depthFalloff: effect.depthFalloff ?? 0.18,
     depthOffset: effect.depthOffset ?? 110,
     wireframeThickness: 8,
+    renderMaxCells: 3840,
     edges: effect.edges ?? true,
     fill: effect.fill ?? true,
     invertLuminance: effect.invertLuminance ?? false,
@@ -10837,6 +10838,7 @@ function normalizeAsciiOptions(value, fallback = createDefaultAsciiOptions("shar
     depthFalloff: numeric("depthFalloff"),
     depthOffset: numeric("depthOffset"),
     wireframeThickness: numeric("wireframeThickness"),
+    renderMaxCells: numeric("renderMaxCells"),
     edges: typeof candidate.edges === "boolean" ? candidate.edges : base.edges,
     fill: typeof candidate.fill === "boolean" ? candidate.fill : base.fill,
     invertLuminance: typeof candidate.invertLuminance === "boolean" ? candidate.invertLuminance : base.invertLuminance,
@@ -10857,8 +10859,9 @@ function terminalGlyphStyleLabel(style2) {
 function applyAsciiPreset(target, presetId) {
   const kittyGraphics = target.kittyGraphics;
   const kittyDisableAscii = target.kittyDisableAscii;
+  const renderMaxCells = target.renderMaxCells;
   const next = buildAsciiOptionsFromPreset(presetId, target.border);
-  Object.assign(target, next, { kittyGraphics, kittyDisableAscii });
+  Object.assign(target, next, { kittyGraphics, kittyDisableAscii, renderMaxCells });
 }
 function asciiPresetLabel(presetId) {
   return presetMap.get(presetId)?.label ?? presetId.toUpperCase();
@@ -10883,6 +10886,8 @@ function asciiControlValues(key) {
       return [0, 60, 90, 105, 110, 116, 140, 180];
     case "wireframeThickness":
       return [0.5, 0.75, 1, 1.4, 1.8, 2, 2.4, 3, 4, 6, 8, 12, 16, 24, 32];
+    case "renderMaxCells":
+      return [960, 1920, 3840, 7680, 15400, 30720];
     case "terminalEdgeBias":
       return [0.6, 0.8, 0.92, 1, 1.15, 1.3, 1.4, 1.6, 1.8];
   }
@@ -10899,6 +10904,7 @@ function formatAsciiControlValue(key, value) {
     case "edgeThreshold":
       return value.toFixed(1);
     case "depthOffset":
+    case "renderMaxCells":
       return value.toFixed(0);
     default:
       return value.toFixed(2);
@@ -16866,6 +16872,7 @@ var defaultWorkbenchAsciiConfigRows = [
   { kind: "kitty", key: "kittyDisableAscii", label: "Disable ASCII under Kitty" },
   { kind: "numeric", key: "terminalEdgeBias", label: "Edge glyph bias" },
   { kind: "numeric", key: "wireframeThickness", label: "Wire thickness" },
+  { kind: "numeric", key: "renderMaxCells", label: "Render cells" },
   { kind: "toggle", key: "edges", label: "Edge pass" },
   { kind: "toggle", key: "fill", label: "Fill pass" },
   { kind: "toggle", key: "invertLuminance", label: "Invert luminance" },

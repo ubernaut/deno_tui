@@ -23,6 +23,7 @@ export interface ThreeAsciiConfigOptions {
   depthFalloff: number;
   depthOffset: number;
   wireframeThickness: number;
+  renderMaxCells: number;
   edges: boolean;
   fill: boolean;
   invertLuminance: boolean;
@@ -72,6 +73,7 @@ export function buildAsciiOptionsFromPreset(presetId: string, border: ThreeAscii
     depthFalloff: effect.depthFalloff ?? 0.18,
     depthOffset: effect.depthOffset ?? 110,
     wireframeThickness: 8,
+    renderMaxCells: 3_840,
     edges: effect.edges ?? true,
     fill: effect.fill ?? true,
     invertLuminance: effect.invertLuminance ?? false,
@@ -111,6 +113,7 @@ export function normalizeAsciiOptions(
     depthFalloff: numeric("depthFalloff"),
     depthOffset: numeric("depthOffset"),
     wireframeThickness: numeric("wireframeThickness"),
+    renderMaxCells: numeric("renderMaxCells"),
     edges: typeof candidate.edges === "boolean" ? candidate.edges : base.edges,
     fill: typeof candidate.fill === "boolean" ? candidate.fill : base.fill,
     invertLuminance: typeof candidate.invertLuminance === "boolean" ? candidate.invertLuminance : base.invertLuminance,
@@ -137,8 +140,9 @@ export function terminalGlyphStyleLabel(style: TerminalGlyphStyle) {
 export function applyAsciiPreset(target: ThreeAsciiConfigOptions, presetId: string) {
   const kittyGraphics = target.kittyGraphics;
   const kittyDisableAscii = target.kittyDisableAscii;
+  const renderMaxCells = target.renderMaxCells;
   const next = buildAsciiOptionsFromPreset(presetId, target.border);
-  Object.assign(target, next, { kittyGraphics, kittyDisableAscii });
+  Object.assign(target, next, { kittyGraphics, kittyDisableAscii, renderMaxCells });
 }
 
 /** Return the display label for a named ASCII preset. */
@@ -187,6 +191,8 @@ export function asciiControlValues(
       return [0, 60, 90, 105, 110, 116, 140, 180];
     case "wireframeThickness":
       return [0.5, 0.75, 1, 1.4, 1.8, 2, 2.4, 3, 4, 6, 8, 12, 16, 24, 32];
+    case "renderMaxCells":
+      return [960, 1_920, 3_840, 7_680, 15_400, 30_720];
     case "terminalEdgeBias":
       return [0.6, 0.8, 0.92, 1, 1.15, 1.3, 1.4, 1.6, 1.8];
   }
@@ -204,6 +210,7 @@ export type ThreeAsciiOptionNumericControlKey = keyof Pick<
   | "depthFalloff"
   | "depthOffset"
   | "wireframeThickness"
+  | "renderMaxCells"
   | "terminalEdgeBias"
 >;
 
@@ -225,6 +232,7 @@ export function formatAsciiControlValue(
     case "edgeThreshold":
       return value.toFixed(1);
     case "depthOffset":
+    case "renderMaxCells":
       return value.toFixed(0);
     default:
       return value.toFixed(2);

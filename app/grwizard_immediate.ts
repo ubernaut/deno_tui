@@ -861,6 +861,7 @@ function renderVisualizationBody(
       depthFalloff: 1,
       depthOffset: 0,
       wireframeThickness: 8,
+      renderMaxCells: 3_840,
       edges: false,
       fill: true,
       invertLuminance: false,

@@ -299,7 +299,6 @@ Deno.test("ThreePanelFrameView caps large ASCII renderer sizes", async () => {
     ascii,
     enabled,
     frameInterval: 1,
-    maxRenderCells: 3_840,
     rendererFactory: (options) => renderer = new FakeGridRenderer(options.columns, options.rows),
   });
 
@@ -310,6 +309,12 @@ Deno.test("ThreePanelFrameView caps large ASCII renderer sizes", async () => {
     assert(renderer.columns * renderer.rows <= 3_840);
     assert(renderer.columns < 160);
     assert(renderer.rows < 60);
+
+    const expanded = resolveThreePanelRenderSize(rectangle.peek(), 7_680);
+    ascii.value = { ...ascii.peek(), renderMaxCells: 7_680 };
+    await waitFor(() =>
+      renderer?.sizes.some(([columns, rows]) => columns === expanded.columns && rows === expanded.rows) === true
+    );
 
     rectangle.value = { column: 0, row: 0, width: 80, height: 24 };
     await waitFor(() => renderer?.sizes.some(([columns, rows]) => columns === 80 && rows === 24) === true);

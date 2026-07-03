@@ -56,12 +56,14 @@ Deno.test("workbench ascii defaults favor terminal-visible wire thickness", () =
   assertEquals(options.terminalGlyphStyle, "blocks");
   assertEquals(options.depthFalloff, 0);
   assertEquals(options.wireframeThickness, 8);
+  assertEquals(options.renderMaxCells, 3840);
   assertEquals(options.kittyGraphics, false);
   assertEquals(options.kittyDisableAscii, false);
 
   const values = asciiControlValues("wireframeThickness");
   assertEquals(values.includes(8), true);
   assertEquals(values.at(-1), 32);
+  assertEquals(asciiControlValues("renderMaxCells"), [960, 1920, 3840, 7680, 15400, 30720]);
 });
 
 Deno.test("app ascii option shim preserves package option behavior", () => {
@@ -78,15 +80,19 @@ Deno.test("ascii option normalization defaults to blocks but preserves saved gly
 Deno.test("ascii option normalization clamps numeric config to control ranges", () => {
   assertEquals(clampAsciiControlValue("wireframeThickness", 99), 32);
   assertEquals(clampAsciiControlValue("wireframeThickness", -1), 0.5);
+  assertEquals(clampAsciiControlValue("renderMaxCells", 99), 960);
+  assertEquals(clampAsciiControlValue("renderMaxCells", 99_999), 30720);
   assertEquals(clampAsciiControlValue("exposure", 1.33), 1.33);
 
   const normalized = normalizeAsciiOptions({
     wireframeThickness: 99,
     exposure: -4,
     terminalEdgeBias: 99,
+    renderMaxCells: 99_999,
   });
 
   assertEquals(normalized.wireframeThickness, 32);
   assertEquals(normalized.exposure, 0.8);
   assertEquals(normalized.terminalEdgeBias, 1.8);
+  assertEquals(normalized.renderMaxCells, 30720);
 });

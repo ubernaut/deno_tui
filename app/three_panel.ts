@@ -355,7 +355,7 @@ export class ThreePanelFrameView {
       this.renderer = rendererFactory({
         scene: bundle.scene,
         camera: bundle.camera,
-        ...this.renderSizeFor(rect),
+        ...this.renderSizeFor(rect, ascii),
         effect: effectOptions,
         terminalEdgeBias: ascii.terminalEdgeBias,
         terminalGlyphStyle: ascii.terminalGlyphStyle,
@@ -462,7 +462,7 @@ export class ThreePanelFrameView {
       }
 
       this.failed = false;
-      const renderSize = this.renderSizeFor(rect);
+      const renderSize = this.renderSizeFor(rect, ascii);
       this.setGrid(policy.renderAscii ? frame.grid ?? [] : this.blankGridFor(renderSize.columns, renderSize.rows));
       this.reportSlowFrame(renderer);
     } catch (error) {
@@ -473,7 +473,7 @@ export class ThreePanelFrameView {
       this.running = false;
       await this.clearGraphicsImage();
       const rect = this.options.rectangle.peek();
-      const renderSize = this.renderSizeFor(rect);
+      const renderSize = this.renderSizeFor(rect, this.options.ascii.peek());
       this.setGrid(buildFallbackGrid(renderSize.columns, renderSize.rows, formatThreeAsciiFallbackDetail(error)));
       this.destroyPending = true;
     } finally {
@@ -631,7 +631,7 @@ export class ThreePanelFrameView {
     ascii: AsciiOptions,
     effectOptions = asciiEffectOptions(ascii),
   ): void {
-    const renderSize = this.renderSizeFor(rect);
+    const renderSize = this.renderSizeFor(rect, ascii);
     this.appliedColumns = renderSize.columns;
     this.appliedRows = renderSize.rows;
     this.appliedEffectOptions = effectOptions;
@@ -644,7 +644,7 @@ export class ThreePanelFrameView {
     rect: Pick<Rect, "width" | "height">,
     ascii: AsciiOptions,
   ) {
-    const { columns, rows } = this.renderSizeFor(rect);
+    const { columns, rows } = this.renderSizeFor(rect, ascii);
     if (this.appliedColumns !== columns || this.appliedRows !== rows) {
       renderer.setSize(columns, rows);
       this.appliedColumns = columns;
@@ -668,8 +668,11 @@ export class ThreePanelFrameView {
     }
   }
 
-  private renderSizeFor(rect: Pick<Rect, "width" | "height">): ThreePanelRenderSize {
-    return resolveThreePanelRenderSize(rect, this.options.maxRenderCells);
+  private renderSizeFor(
+    rect: Pick<Rect, "width" | "height">,
+    ascii: Pick<AsciiOptions, "renderMaxCells">,
+  ): ThreePanelRenderSize {
+    return resolveThreePanelRenderSize(rect, this.options.maxRenderCells ?? ascii.renderMaxCells);
   }
 
   dispose(): void {
