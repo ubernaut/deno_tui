@@ -14560,12 +14560,48 @@ function setRect4(target, column, row, width, height) {
 }
 
 // src/app/workbench_text.ts
+function compactSpaces(value) {
+  return value.replace(/\s+/g, " ").trim();
+}
 function maxTextWidth(values) {
   let max2 = 0;
   for (let index = 0; index < values.length; index += 1) {
     max2 = Math.max(max2, textWidth(values[index]));
   }
   return max2;
+}
+function wrapPlainText(value, width, fit2) {
+  return wrapPlainTextInto([], value, width, fit2);
+}
+function wrapPlainTextInto(rows2, value, width, fit2) {
+  const safeWidth = Math.max(1, width);
+  const normalized = compactSpaces(stripStyles(value));
+  if (!normalized) {
+    rows2[0] = "";
+    rows2.length = 1;
+    return rows2;
+  }
+  const words = normalized.split(" ");
+  let rowCount = 0;
+  let line = "";
+  for (const word of words) {
+    const next = line.length > 0 ? `${line} ${word}` : word;
+    if (textWidth(next) <= safeWidth) {
+      line = next;
+      continue;
+    }
+    if (line.length > 0) {
+      rows2[rowCount] = line;
+      rowCount += 1;
+    }
+    line = textWidth(word) <= safeWidth ? word : fit2(word, safeWidth).trimEnd();
+  }
+  if (line.length > 0) {
+    rows2[rowCount] = line;
+    rowCount += 1;
+  }
+  rows2.length = rowCount;
+  return rows2;
 }
 
 // src/app/workbench_workspace.ts
@@ -16325,6 +16361,74 @@ function workbenchModalConfirmedContent(options = {}) {
   };
 }
 
+// app/workbench_rows.ts
+function dataFooterRows(options) {
+  const selected = options.selectedKey ?? "-";
+  const full = compactSpaces(
+    `page ${options.page}/${options.pageCount}  selected ${selected}  arrows/page keys  S sort`
+  );
+  const texts = textWidth(full) <= options.width ? [full] : wrapPlainText(
+    `page ${options.page}/${options.pageCount} selected ${selected} arrows/page keys S sort`,
+    options.width,
+    options.fit
+  );
+  const rows2 = new Array(texts.length);
+  for (let index = 0; index < texts.length; index++) {
+    rows2[index] = { text: texts[index], fg: options.theme.muted, bg: options.theme.panelSoft };
+  }
+  return rows2;
+}
+
+// app/workbench_data_table.ts
+function workbenchDataTableRowsInto(target, options) {
+  const { view, columns: columns2, width, theme: t, fit: fit2, contrast, buffers } = options;
+  const textRows = renderDataTableRowsInto(buffers.textRows, view.rows, columns2, view.selectedIndex);
+  buffers.bodyRows.length = textRows.length;
+  for (let index = 0; index < textRows.length; index += 1) {
+    const selected = index === view.selectedIndex;
+    const row = buffers.bodyRows[index] ?? { text: "" };
+    row.text = textRows[index];
+    row.fg = selected ? contrast(t.warn, t.background, t.text) : t.text;
+    row.bg = selected ? t.warn : t.surface;
+    row.bold = selected;
+    buffers.bodyRows[index] = row;
+  }
+  const footerRows = dataFooterRows({
+    page: view.page + 1,
+    pageCount: view.pageCount,
+    selectedKey: view.selectedKey,
+    width,
+    theme: t,
+    fit: fit2
+  });
+  target.length = 0;
+  target.push({
+    text: renderDataTableHeader(columns2, options.sort),
+    fg: contrast(t.accentDeep, t.background, t.text),
+    bg: t.accentDeep,
+    bold: true
+  });
+  for (let index = 0; index < buffers.bodyRows.length; index += 1) {
+    target.push(buffers.bodyRows[index]);
+  }
+  target.push({ text: "", bg: t.surface });
+  for (let index = 0; index < footerRows.length; index += 1) {
+    target.push(footerRows[index]);
+  }
+  return target;
+}
+function workbenchDataTablePageSize(options) {
+  const footerRows = dataFooterRows({
+    page: options.page,
+    pageCount: options.pageCount,
+    selectedKey: options.selectedKey,
+    width: options.width,
+    theme: options.theme,
+    fit: options.fit
+  });
+  return Math.max(1, Math.floor(options.height) - 2 - footerRows.length);
+}
+
 // app/workbench_explorer.ts
 function workbenchExplorerRowsInto(target, options) {
   const { rows: rows2, selectedIndex, theme: t, contrast } = options;
@@ -16859,7 +16963,6 @@ var docs = apiWorkbenchDocs;
 var ASCII_DEMO_PRESET_IDS = asciiDemoPresetIds();
 var asciiConfigRows = defaultWorkbenchAsciiConfigRows;
 var panelLineBuffer = [];
-var panelDataRowsBuffer = [];
 var panelIds = [
   "explorer",
   "inspector",
@@ -16931,6 +17034,9 @@ var screenRows = [];
 var workspaceVirtualRows = [];
 var threePreviewRows = [];
 var threePreviewOrbRows = [];
+var dataTableTextRows = [];
+var dataTableBodyRows = [];
+var dataTableRenderRows = [];
 var explorerRenderRows = [];
 var htmlCssLayoutBoxes = [];
 var htmlCssLayoutRenderCommands = [];
@@ -17490,6 +17596,7 @@ function renderPanel(frame, id2, rect) {
   if (id2 === "explorer") renderExplorer(frame, inner);
   else if (id2 === "controls") renderControls(frame, inner);
   else if (id2 === "logs") renderLogs(frame, inner);
+  else if (id2 === "data") renderData(frame, inner);
   else if (id2 === "three") renderThreePreview(frame, inner);
   else if (id2 === "htmlLayout") renderHtmlCssLayout(frame, inner);
   else if (id2 === "terminal") renderTerminalProtocol(frame, inner);
@@ -17499,14 +17606,6 @@ function renderPanel(frame, id2, rect) {
       const line = lines[index];
       const style2 = panelLineStyle(id2, index);
       write(frame, inner.row + index, inner.column, paint(fit(line, inner.width), style2.fg, style2.bg, style2.bold));
-    }
-    if (id2 === "data") {
-      for (let index = 0; index < Math.min(table.view.peek().rows.length, Math.max(0, inner.height - 1)); index += 1) {
-        hitTargets.add({ column: inner.column, row: inner.row + 1 + index, width: inner.width, height: 1 }, {
-          type: "dataRow",
-          index
-        });
-      }
     }
   }
 }
@@ -17590,6 +17689,45 @@ function renderExplorer(frame, rect) {
     hitTargets.add({ column: rect.column, row: rect.row + offset, width: rect.width, height: 1 }, {
       type: "explorerRow",
       index: visible[offset].index
+    });
+  }
+}
+function renderData(frame, rect) {
+  const t = theme();
+  const pendingView = table.view.peek();
+  table.setPageSize(workbenchDataTablePageSize({
+    height: rect.height,
+    width: rect.width,
+    page: pendingView.page + 1,
+    pageCount: pendingView.pageCount,
+    selectedKey: pendingView.selectedKey,
+    theme: t,
+    fit
+  }));
+  const view = table.view.peek();
+  const rows2 = workbenchDataTableRowsInto(dataTableRenderRows, {
+    view,
+    columns,
+    sort: table.state.peek().sort,
+    width: rect.width,
+    theme: t,
+    fit,
+    contrast: contrastText,
+    buffers: { textRows: dataTableTextRows, bodyRows: dataTableBodyRows }
+  });
+  for (let index = 0; index < Math.min(rect.height, rows2.length); index += 1) {
+    const row = rows2[index];
+    write(
+      frame,
+      rect.row + index,
+      rect.column,
+      paint(fit(row.text, rect.width), row.fg ?? t.text, row.bg ?? t.surface, row.bold)
+    );
+  }
+  for (let index = 0; index < Math.min(view.rows.length, Math.max(0, rect.height - 1)); index += 1) {
+    hitTargets.add({ column: rect.column, row: rect.row + 1 + index, width: rect.width, height: 1 }, {
+      type: "dataRow",
+      index
     });
   }
 }
@@ -18010,19 +18148,6 @@ function panelLines(id2, height) {
   panelLineBuffer.length = 0;
   const safeHeight = Math.max(0, height);
   if (safeHeight === 0 || id2 === "controls") return panelLineBuffer;
-  if (id2 === "data") {
-    panelLineBuffer.push(renderDataTableHeader(table.columns.peek(), table.state.peek().sort));
-    renderDataTableRowsInto(
-      panelDataRowsBuffer,
-      table.view.peek().rows,
-      table.columns.peek(),
-      table.view.peek().selectedIndex
-    );
-    for (let index = 0; index < panelDataRowsBuffer.length && panelLineBuffer.length < safeHeight; index += 1) {
-      panelLineBuffer.push(panelDataRowsBuffer[index]);
-    }
-    return panelLineBuffer;
-  }
   if (id2 === "logs") {
     const source = log.peek();
     const start = Math.max(0, source.length - Math.max(1, safeHeight));
@@ -18461,12 +18586,6 @@ function renderModalOverlay(frame) {
 }
 function panelLineStyle(id2, index) {
   const t = theme();
-  if (id2 === "data" && index === 0) {
-    return { fg: contrastText(t.accentDeep, t.background, t.text), bg: t.accentDeep, bold: true };
-  }
-  if (id2 === "data" && index > 0 && index - 1 === table.view.peek().selectedIndex) {
-    return { fg: contrastText(t.warn, t.background, t.text), bg: t.warn, bold: true };
-  }
   if (id2 === "inspector" && (index === 0 || index === 7)) {
     return { fg: t.background, bg: index === 0 ? t.accent : t.border, bold: true };
   }

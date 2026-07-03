@@ -53,8 +53,6 @@ import {
   prepareWorkbenchRows,
   ProgressBarController,
   RadioGroupController,
-  renderDataTableHeader,
-  renderDataTableRowsInto,
   renderMenuBar,
   ScrollAreaController,
   scrollbarGlyph,
@@ -174,6 +172,7 @@ import {
   workbenchModalDetailsContent,
   workbenchQuitModalContent,
 } from "../../app/workbench_modal_content.ts";
+import { workbenchDataTablePageSize, workbenchDataTableRowsInto } from "../../app/workbench_data_table.ts";
 import { workbenchExplorerRowsInto } from "../../app/workbench_explorer.ts";
 import type { RowStyle } from "../../app/workbench_rows.ts";
 import { workbenchThreePreviewRowsInto } from "../../app/workbench_visualization_window.ts";
@@ -290,7 +289,6 @@ const docs = apiWorkbenchDocs;
 const ASCII_DEMO_PRESET_IDS = asciiDemoPresetIds();
 const asciiConfigRows: readonly AsciiConfigRow[] = defaultWorkbenchAsciiConfigRows;
 const panelLineBuffer: string[] = [];
-const panelDataRowsBuffer: string[] = [];
 const panelIds: readonly PanelId[] = [
   "explorer",
   "inspector",
@@ -363,6 +361,9 @@ const screenRows: string[] = [];
 const workspaceVirtualRows: string[] = [];
 const threePreviewRows: string[] = [];
 const threePreviewOrbRows: string[] = [];
+const dataTableTextRows: string[] = [];
+const dataTableBodyRows: RowStyle[] = [];
+const dataTableRenderRows: RowStyle[] = [];
 const explorerRenderRows: RowStyle[] = [];
 const htmlCssLayoutBoxes: ComputedLayoutBox[] = [];
 const htmlCssLayoutRenderCommands: HtmlCssLayoutRenderCommand[] = [];
@@ -944,6 +945,7 @@ function renderPanel(frame: string[], id: PanelId, rect: Rectangle): void {
   if (id === "explorer") renderExplorer(frame, inner);
   else if (id === "controls") renderControls(frame, inner);
   else if (id === "logs") renderLogs(frame, inner);
+  else if (id === "data") renderData(frame, inner);
   else if (id === "three") renderThreePreview(frame, inner);
   else if (id === "htmlLayout") renderHtmlCssLayout(frame, inner);
   else if (id === "terminal") renderTerminalProtocol(frame, inner);
@@ -953,14 +955,6 @@ function renderPanel(frame: string[], id: PanelId, rect: Rectangle): void {
       const line = lines[index]!;
       const style = panelLineStyle(id, index);
       write(frame, inner.row + index, inner.column, paint(fit(line, inner.width), style.fg, style.bg, style.bold));
-    }
-    if (id === "data") {
-      for (let index = 0; index < Math.min(table.view.peek().rows.length, Math.max(0, inner.height - 1)); index += 1) {
-        hitTargets.add({ column: inner.column, row: inner.row + 1 + index, width: inner.width, height: 1 }, {
-          type: "dataRow",
-          index,
-        });
-      }
     }
   }
 }
@@ -1051,6 +1045,46 @@ function renderExplorer(frame: string[], rect: Rectangle): void {
     hitTargets.add({ column: rect.column, row: rect.row + offset, width: rect.width, height: 1 }, {
       type: "explorerRow",
       index: visible[offset]!.index,
+    });
+  }
+}
+
+function renderData(frame: string[], rect: Rectangle): void {
+  const t = theme();
+  const pendingView = table.view.peek();
+  table.setPageSize(workbenchDataTablePageSize({
+    height: rect.height,
+    width: rect.width,
+    page: pendingView.page + 1,
+    pageCount: pendingView.pageCount,
+    selectedKey: pendingView.selectedKey,
+    theme: t,
+    fit,
+  }));
+  const view = table.view.peek();
+  const rows = workbenchDataTableRowsInto(dataTableRenderRows, {
+    view,
+    columns,
+    sort: table.state.peek().sort,
+    width: rect.width,
+    theme: t,
+    fit,
+    contrast: contrastText,
+    buffers: { textRows: dataTableTextRows, bodyRows: dataTableBodyRows },
+  });
+  for (let index = 0; index < Math.min(rect.height, rows.length); index += 1) {
+    const row = rows[index]!;
+    write(
+      frame,
+      rect.row + index,
+      rect.column,
+      paint(fit(row.text, rect.width), row.fg ?? t.text, row.bg ?? t.surface, row.bold),
+    );
+  }
+  for (let index = 0; index < Math.min(view.rows.length, Math.max(0, rect.height - 1)); index += 1) {
+    hitTargets.add({ column: rect.column, row: rect.row + 1 + index, width: rect.width, height: 1 }, {
+      type: "dataRow",
+      index,
     });
   }
 }
@@ -1518,20 +1552,6 @@ function panelLines(id: PanelId, height: number): string[] {
   panelLineBuffer.length = 0;
   const safeHeight = Math.max(0, height);
   if (safeHeight === 0 || id === "controls") return panelLineBuffer;
-
-  if (id === "data") {
-    panelLineBuffer.push(renderDataTableHeader(table.columns.peek(), table.state.peek().sort));
-    renderDataTableRowsInto(
-      panelDataRowsBuffer,
-      table.view.peek().rows,
-      table.columns.peek(),
-      table.view.peek().selectedIndex,
-    );
-    for (let index = 0; index < panelDataRowsBuffer.length && panelLineBuffer.length < safeHeight; index += 1) {
-      panelLineBuffer.push(panelDataRowsBuffer[index]!);
-    }
-    return panelLineBuffer;
-  }
 
   if (id === "logs") {
     const source = log.peek();
@@ -2014,12 +2034,6 @@ function renderModalOverlay(frame: string[]): void {
 
 function panelLineStyle(id: PanelId, index: number): { fg: string; bg: string; bold?: boolean } {
   const t = theme();
-  if (id === "data" && index === 0) {
-    return { fg: contrastText(t.accentDeep, t.background, t.text), bg: t.accentDeep, bold: true };
-  }
-  if (id === "data" && index > 0 && index - 1 === table.view.peek().selectedIndex) {
-    return { fg: contrastText(t.warn, t.background, t.text), bg: t.warn, bold: true };
-  }
   if (id === "inspector" && (index === 0 || index === 7)) {
     return { fg: t.background, bg: index === 0 ? t.accent : t.border, bold: true };
   }
