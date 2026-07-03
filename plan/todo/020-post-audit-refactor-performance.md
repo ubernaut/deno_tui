@@ -248,3 +248,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   through it, avoiding the per-frame source descriptor and frame-list allocations.
 - Added caller-owned CPU hex tile layout projection and routed workbench tile hit/reveal paths through reusable buffers
   so CPU hex interaction geometry stops allocating tile arrays on every draw or selection reveal.
+- Added focused benchmark guards for reusable monitor source-frame resolution and 88-core CPU hex tile layout projection
+  so future source/monitor refactors keep those hot paths measured.

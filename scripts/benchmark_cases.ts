@@ -46,7 +46,9 @@ import {
   writeStringFrameRow,
 } from "../mod.ts";
 import { PerspectiveCamera, Scene } from "npm:three@0.183.2";
+import { AudioRegistry } from "../app/audio.ts";
 import { createHtmlCssLayoutDemo } from "../app/html_css_layout_demo.ts";
+import { resolveSourceFramesInto } from "../app/sources.ts";
 import { LayoutMeasurementCache, simpleLayoutSolver } from "../src/layout/mod.ts";
 import { TerminalScreenController } from "../src/runtime/terminal_screen.ts";
 import {
@@ -56,6 +58,8 @@ import {
   type SystemMetricsProvider,
   SystemMonitor,
 } from "../app/system_metrics.ts";
+import { syntheticWorkbenchSystem } from "../app/workbench_synthetic.ts";
+import { cpuHexTileLayoutInto } from "../app/visualization_cpu_hex.ts";
 import { compactMappedRgbaRows } from "../src/three_ascii/headless_canvas.ts";
 import { createThreeAsciiReadbackLayout, ThreeAsciiReadbackViewCache } from "../src/three_ascii/readback.ts";
 import {
@@ -196,6 +200,11 @@ const largeDataColumns = [
   { id: "owner", width: 10 },
   { id: "cpu", width: 6 },
 ] as const;
+const benchmarkAudioRegistry = new AudioRegistry([]);
+const benchmarkSourceSystem = syntheticWorkbenchSystem(42, "Monitor", { cpuCoreCount: 88, timestamp: 1_000 });
+const benchmarkSourceIds = ["sys:cpu", "sys:gpu", "sys:memory", "sys:network", "sys:alerts"];
+const benchmarkSourceFrameBuffer: ReturnType<typeof resolveSourceFramesInto> = [];
+const benchmarkCpuHexTileBuffer: ReturnType<typeof cpuHexTileLayoutInto> = [];
 const commandSearchRegistry = new CommandRegistry();
 for (let index = 0; index < 1_000; index += 1) {
   commandSearchRegistry.register({
@@ -446,6 +455,42 @@ function runTextBoxWrapWorkload(): void {
   }
   if (rows.length < textBoxWrapRows.length || checksum <= 0) {
     throw new Error("textbox wrap workload produced no wrapped rows");
+  }
+}
+
+function runSourceFrameResolutionWorkload(): void {
+  let checksum = 0;
+  for (let step = 0; step < 24; step += 1) {
+    const frames = resolveSourceFramesInto(
+      benchmarkSourceFrameBuffer,
+      benchmarkSourceIds,
+      benchmarkSourceSystem,
+      benchmarkAudioRegistry,
+      step,
+    );
+    for (let index = 0; index < frames.length; index += 1) {
+      const frame = frames[index]!;
+      checksum += frame.id.length + frame.detailLines.length + Math.round(frame.value * 100);
+    }
+  }
+  if (benchmarkSourceFrameBuffer.length !== benchmarkSourceIds.length || checksum <= 0) {
+    throw new Error("source frame resolution workload produced invalid frames");
+  }
+}
+
+function runCpuHexTileLayoutWorkload(): void {
+  let checksum = 0;
+  for (let step = 0; step < 48; step += 1) {
+    const width = 48 + (step % 6) * 12;
+    const height = 8 + (step % 4) * 3;
+    const tiles = cpuHexTileLayoutInto(benchmarkCpuHexTileBuffer, benchmarkSourceSystem.cpuCores, width, height);
+    for (let index = 0; index < tiles.length; index += 1) {
+      const tile = tiles[index]!;
+      checksum += tile.column + tile.row + tile.width + tile.height + tile.label.length;
+    }
+  }
+  if (benchmarkCpuHexTileBuffer.length !== benchmarkSourceSystem.cpuCores.length || checksum <= 0) {
+    throw new Error("CPU hex tile layout workload produced invalid tiles");
   }
 }
 
@@ -1090,6 +1135,15 @@ export const benchmarkCases: BenchmarkCase[] = [
     },
   },
   {
+    name: "layout/cpu-hex-tile-layout-88",
+    category: "layout",
+    description: "Project 88 CPU cores into reusable hex tile geometry buffers.",
+    tags: ["layout", "monitor", "cpu", "reuse"],
+    iterations: 1_000,
+    maxAverageMs: 2,
+    run: runCpuHexTileLayoutWorkload,
+  },
+  {
     name: "render/sparkline-80",
     category: "render",
     description: "Render a dense dashboard sparkline into an 80-cell text series.",
@@ -1619,6 +1673,15 @@ export const benchmarkCases: BenchmarkCase[] = [
         throw new Error("large process monitor sample did not respect the process scan cap");
       }
     },
+  },
+  {
+    name: "data/source-frame-resolution",
+    category: "data",
+    description: "Resolve monitor source frames into a reusable frame buffer.",
+    tags: ["data", "monitor", "sources", "reuse"],
+    iterations: 500,
+    maxAverageMs: 3,
+    run: runSourceFrameResolutionWorkload,
   },
   {
     name: "input/mouse-hit-test-500-targets",
