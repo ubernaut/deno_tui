@@ -223,6 +223,10 @@ performance, shared terminal/web workbench projections, and oversized module red
   block-mode workbench rows no longer run the Unicode grapheme regex for every styled space.
 - Added rate-limited Three ASCII slow-frame diagnostics that report total, scene, ANSI/readback, and assembly timings
   into the existing workbench diagnostics stream.
+- Fixed the default workbench Three ASCII frame cadence regression by forcing redraw notifications for renderer-owned
+  mutable grid reuse, preserving the low-allocation grid path while keeping animation visible.
+- Added visible Three ASCII startup grids for both standalone canvas objects and workbench panel frames so first-frame
+  WebGPU initialization shows progress instead of a blank renderer area.
 - Reduced default workbench `studio` scene geometry density for ASCII rendering by lowering the torus knot and sphere
   segment counts while preserving the same objects and motion.
 - Fixed the Three ASCII block-rendering throughput regression by making blank block cells background-only and compacting
