@@ -293,7 +293,8 @@ import type {
 import {
   cpuHexGridColumnCount,
   type CpuHexNavigationKey,
-  cpuHexTileLayout,
+  type CpuHexTileLayout,
+  cpuHexTileLayoutInto,
   nextCpuHexLabel,
   renderVisualization,
   topCpuProcessLabelForCpu,
@@ -640,6 +641,8 @@ const workspaceMenuLabelBuffer: string[] = [];
 const realSourceIdBuffer: string[] = [];
 const realSourceFrameBuffer: SourceFrame[] = [];
 const syntheticSourceFrameBuffer: SourceFrame[] = [];
+const cpuHexHitTileBuffer: CpuHexTileLayout[] = [];
+const cpuHexRevealTileBuffer: CpuHexTileLayout[] = [];
 const menuBarHitLayouts: WorkbenchMenuBarHitLayout[] = [];
 const headerLayout: WorkbenchHeaderLayout = { menu: { column: 0, row: 0, width: 0, height: 1 } };
 const minimizedShelfEntries: Array<{ id: WindowId; title: string }> = [];
@@ -1422,7 +1425,7 @@ function renderVisualizationWindow(frame: Frame, id: VisualizationWindowId, rect
 }
 
 function addCpuHexTileHits(id: VisualizationWindowId, rect: Rectangle, context: RenderContext): void {
-  const tiles = cpuHexTileLayout(context.system.cpuCores, context.width, context.height);
+  const tiles = cpuHexTileLayoutInto(cpuHexHitTileBuffer, context.system.cpuCores, context.width, context.height);
   const bodyHeaderRows = 2;
   const cpuHexSummaryRows = 2;
   const rowOffset = rect.row + bodyHeaderRows + cpuHexSummaryRows;
@@ -4429,7 +4432,8 @@ function ensureCpuHexTileVisible(id: VisualizationWindowId, label: string): void
   const scroll = windowScrolls.get(id);
   if (!scroll) return;
   const system = systemMonitor.snapshot.peek();
-  const tiles = cpuHexTileLayout(
+  const tiles = cpuHexTileLayoutInto(
+    cpuHexRevealTileBuffer,
     system.cpuCores,
     Math.max(8, scroll.contentWidth.peek()),
     Math.max(4, scroll.viewportHeight.peek()),

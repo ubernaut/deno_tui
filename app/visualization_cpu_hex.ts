@@ -66,19 +66,31 @@ export function cpuHexTileLayout(
   width: number,
   height: number,
 ): CpuHexTileLayout[] {
-  if (cores.length === 0) return [];
+  return cpuHexTileLayoutInto([], cores, width, height);
+}
+
+export function cpuHexTileLayoutInto(
+  target: CpuHexTileLayout[],
+  cores: RenderContext["system"]["cpuCores"],
+  width: number,
+  height: number,
+): CpuHexTileLayout[] {
+  if (cores.length === 0) {
+    target.length = 0;
+    return target;
+  }
   const labelWidth = cpuHexLabelWidth(cores);
   const mode = cpuHexTileMode(width, height, cores.length, labelWidth);
   const tileWidth = cpuHexTileWidth(mode, labelWidth);
   const tileHeight = cpuHexTileHeight(mode);
   const columns = cpuHexColumns(width, tileWidth);
-  const layout = new Array<CpuHexTileLayout>(cores.length);
+  target.length = cores.length;
   for (let index = 0; index < cores.length; index++) {
     const core = cores[index]!;
     const logicalRow = Math.floor(index / columns);
     const columnIndex = index % columns;
     const indent = logicalRow % 2 === 1 ? cpuHexIndent(width, tileWidth) : 0;
-    layout[index] = {
+    const tile = target[index] ?? {
       core,
       label: core.label,
       column: indent + columnIndex * (tileWidth + 1),
@@ -86,8 +98,15 @@ export function cpuHexTileLayout(
       width: tileWidth,
       height: tileHeight,
     };
+    tile.core = core;
+    tile.label = core.label;
+    tile.column = indent + columnIndex * (tileWidth + 1);
+    tile.row = logicalRow * tileHeight;
+    tile.width = tileWidth;
+    tile.height = tileHeight;
+    target[index] = tile;
   }
-  return layout;
+  return target;
 }
 
 export function processMatchesCpuLabel(process: CpuProcessSnapshot, label: string): boolean {

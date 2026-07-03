@@ -7,7 +7,13 @@ import {
 } from "./visualization_catalog.ts";
 import { buildVisualizationDrive, fallbackSource, type VisualizationDrive } from "./visualization_drive.ts";
 import { driveThreeSignal } from "./visualization_three_signal.ts";
-import { cpuActivityRgb, cpuHexGridColumnCount, cpuHexTileLayout, renderCpuHexGrid } from "./visualization_cpu_hex.ts";
+import {
+  cpuActivityRgb,
+  cpuHexGridColumnCount,
+  cpuHexTileLayout,
+  cpuHexTileLayoutInto,
+  renderCpuHexGrid,
+} from "./visualization_cpu_hex.ts";
 import {
   biosignalStrip,
   channelMatrix,
@@ -56,11 +62,12 @@ export {
   cpuActivityRgb,
   cpuHexGridColumnCount,
   cpuHexTileLayout,
+  cpuHexTileLayoutInto,
   nextCpuHexLabel,
   processMatchesCpuLabel,
   topCpuProcessLabelForCpu,
 } from "./visualization_cpu_hex.ts";
-export type { CpuHexNavigationKey } from "./visualization_cpu_hex.ts";
+export type { CpuHexNavigationKey, CpuHexTileLayout } from "./visualization_cpu_hex.ts";
 
 export const visualizations: VisualizationDescriptor[] = visualizationCatalog.map((entry) => ({ ...entry }));
 

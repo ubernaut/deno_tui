@@ -246,3 +246,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   array without sharing mutable context across sibling slots.
 - Added caller-owned synthetic workbench source projection and routed non-monitor workbench visualization contexts
   through it, avoiding the per-frame source descriptor and frame-list allocations.
+- Added caller-owned CPU hex tile layout projection and routed workbench tile hit/reveal paths through reusable buffers
+  so CPU hex interaction geometry stops allocating tile arrays on every draw or selection reveal.

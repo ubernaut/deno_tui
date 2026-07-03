@@ -1,10 +1,11 @@
-import { assert, assertEquals, assertNotEquals } from "./deps.ts";
+import { assert, assertEquals, assertNotEquals, assertStrictEquals } from "./deps.ts";
 import { AudioRegistry } from "../app/audio.ts";
 import { getSourceFrame, resolveSourceFramesInto } from "../app/sources.ts";
 import {
   buildVisualizationDrive,
   cpuActivityRgb,
   cpuHexTileLayout,
+  cpuHexTileLayoutInto,
   nextCpuHexLabel,
   processMatchesCpuLabel,
   renderVisualization,
@@ -402,6 +403,13 @@ Deno.test("cpu hex grid renders every core with unique truecolor activity shades
   assert(gridPlain.includes("CPU015"));
   assertEquals(cpuHexTileLayout(manyCoreSystem.cpuCores, 36, 5).length, 16);
   assertEquals(cpuHexTileLayout(manyCoreSystem.cpuCores, 36, 5)[0]?.height, 2);
+  const tileBuffer = cpuHexTileLayout(manyCoreSystem.cpuCores, 36, 5);
+  const firstTile = tileBuffer[0];
+  assertStrictEquals(cpuHexTileLayoutInto(tileBuffer, manyCoreSystem.cpuCores.slice(0, 2), 20, 4), tileBuffer);
+  assertEquals(tileBuffer.length, 2);
+  assertStrictEquals(tileBuffer[0], firstTile);
+  assertStrictEquals(cpuHexTileLayoutInto(tileBuffer, [], 20, 4), tileBuffer);
+  assertEquals(tileBuffer.length, 0);
   assert(rendered.body.includes("\x1b[38;2;45;112;255m"));
   assert(rendered.body.includes("\x1b[38;2;22;214;107m"));
   assert(rendered.body.includes("\x1b[38;2;255;226;74m"));
