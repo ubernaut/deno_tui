@@ -4966,6 +4966,13 @@
       "documented": true
     },
     {
+      "module": "src/app/workbench_window_registry.ts",
+      "name": "workbenchWindowOptionWindowId",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
       "module": "src/app/workbench_workspace_store.ts",
       "name": "createWorkbenchWorkspaceStore",
       "kind": "function",
