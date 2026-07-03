@@ -246,6 +246,7 @@ import { makeStyle } from "./styles.ts";
 import { SystemMonitor } from "./system_metrics.ts";
 import { requireInteractiveTerminal } from "./terminal_guard.ts";
 import { ThreePanelFrameView } from "./three_panel.ts";
+import { writeWorkbenchThreeGrid } from "./workbench_three_grid.ts";
 import {
   threeRendererModeLabel,
   visualizationTextContentSize,
@@ -1496,13 +1497,7 @@ function renderThreeGrid(frame: Frame, rect: Rectangle, grid: string[][], t: The
     return;
   }
 
-  for (let row = 0; row < rect.height; row += 1) {
-    const source = grid[row] ?? [];
-    const target = frame[rect.row + row] ??= [];
-    for (let column = 0; column < rect.width; column += 1) {
-      target[rect.column + column] = source[column] ?? paint(" ", { bg: t.surface });
-    }
-  }
+  writeWorkbenchThreeGrid(frame, rect, grid, paint(" ", { bg: t.surface }));
 }
 
 function renderExplorer(frame: Frame, rect: Rectangle): void {

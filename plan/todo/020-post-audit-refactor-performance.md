@@ -188,3 +188,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   session id scans and keeping web/console behavior aligned.
 - Added a benchmark-retained Three ASCII ANSI-grid shortcut for block-mode fill-only cells so visible block cells skip
   the fill-glyph table lookup while preserving glyph and mixed modes.
+- Extracted workbench Three ASCII grid painting into a focused helper with direct tests so `api_workbench.ts` no longer
+  owns the inner grid-copy loop or repeated fallback-cell styling.
