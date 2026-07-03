@@ -1919,6 +1919,7 @@ var TextObject = class extends DrawObject {
   valueChars;
   overwriteRectangle;
   multiCodePointSupport;
+  rerenderRanges;
   #rectangleSubscription;
   #updateEffect;
   constructor(options) {
@@ -1928,6 +1929,7 @@ var TextObject = class extends DrawObject {
     this.overwriteRectangle = signalify(options.overwriteRectangle ?? false);
     this.multiCodePointSupport = signalify(options.multiCodePointSupport ?? false);
     this.valueChars = this.multiCodePointSupport.value ? getMultiCodePointCharacters(this.text.value) : this.text.value;
+    this.rerenderRanges = [];
     const { updateObjects } = this.canvas;
     const update = (text, rectangle, multiCodePointSupport, overwriteRectangle) => {
       if (!overwriteRectangle) {
@@ -1946,6 +1948,10 @@ var TextObject = class extends DrawObject {
       const { row, column, width } = rectangle;
       const barrier = overwriteRectangle ? width < previousValueChars.length ? width : -1 : valueChars.length < previousValueChars.length ? valueChars.length : -1;
       const columnRange = Math.max(valueChars.length, previousValueChars.length);
+      if (overwriteRectangle && width !== void 0 && valueChars.length >= width) {
+        this.queueRerenderRange(row, column, column + width);
+        return;
+      }
       if (barrier !== -1) {
         for (let c = 0; c < columnRange; ++c) {
           if (c >= barrier) {
@@ -2002,6 +2008,26 @@ var TextObject = class extends DrawObject {
     this.rectangle.unsubscribe(this.#rectangleSubscription);
     super.erase();
   }
+  queueRerender(row, column) {
+    this.queueRerenderRange(row, column, column + 1);
+  }
+  queueRerenderRange(row, startColumn, endColumn) {
+    const viewRectangle = this.view.peek()?.rectangle?.peek();
+    if (row < 0) return;
+    const { columns: columns2, rows: rows2 } = this.canvas.size.peek();
+    if (row >= rows2) return;
+    let start = Math.max(0, Math.floor(startColumn));
+    let end = Math.min(columns2, Math.ceil(endColumn));
+    if (viewRectangle) {
+      if (row < viewRectangle.row || row >= viewRectangle.row + viewRectangle.height) return;
+      start = Math.max(start, viewRectangle.column);
+      end = Math.min(end, viewRectangle.column + viewRectangle.width);
+    }
+    if (end <= start) return;
+    const normalizedRow = Math.floor(row);
+    const ranges = this.rerenderRanges[normalizedRow] ??= [];
+    ranges.push({ row: normalizedRow, startColumn: start, endColumn: end });
+  }
   updateMovement() {
     const { objectsUnder, previousRectangle } = this;
     const rectangle = this.rectangle.peek();
@@ -2031,7 +2057,7 @@ var TextObject = class extends DrawObject {
     }
   }
   rerender() {
-    const { canvas, valueChars, omitCells, rerenderCells } = this;
+    const { canvas, valueChars, omitCells, rerenderCells, rerenderRanges } = this;
     const { frameBuffer, rerenderQueue } = canvas;
     const { columns: columns2, rows: rows2 } = canvas.size.peek();
     const rectangle = this.rectangle.peek();
@@ -2046,23 +2072,60 @@ var TextObject = class extends DrawObject {
     }
     if (row > rowRange) return;
     const rerenderColumns = rerenderCells[row];
-    if (!rerenderColumns) return;
+    const ranges = rerenderRanges[row];
+    if (!rerenderColumns?.size && !ranges?.length) return;
     const omitColumns = omitCells[row];
     if (omitColumns?.size === valueChars.length) {
+      rerenderColumns?.clear();
+      if (ranges) ranges.length = 0;
       return;
     }
     const rowBuffer = frameBuffer[row] ??= [];
     const rerenderQueueRow = rerenderQueue[row] ??= /* @__PURE__ */ new Set();
-    for (const column of rerenderColumns) {
-      if (column >= columnRange || column < rectangle.column || omitColumns?.has(column)) {
-        continue;
+    if (ranges?.length) {
+      mergeTextRowRanges(ranges);
+      const directRanges = omitColumns?.size ? void 0 : canvas.rerenderRanges[row] ??= [];
+      for (const range of ranges) {
+        const start = Math.max(range.startColumn, rectangle.column);
+        const end = Math.min(range.endColumn, columnRange);
+        if (end <= start) continue;
+        for (let column = start; column < end; column += 1) {
+          if (omitColumns?.has(column)) continue;
+          rowBuffer[column] = style2(valueChars[column - rectangle.column] ?? " ");
+          if (!directRanges) rerenderQueueRow.add(column);
+        }
+        if (directRanges) directRanges.push({ row, startColumn: start, endColumn: end });
       }
-      rowBuffer[column] = style2(valueChars[column - rectangle.column]);
-      rerenderQueueRow.add(column);
+      ranges.length = 0;
     }
-    rerenderColumns.clear();
+    if (rerenderColumns?.size) {
+      for (const column of rerenderColumns) {
+        if (column >= columnRange || column < rectangle.column || omitColumns?.has(column)) {
+          continue;
+        }
+        rowBuffer[column] = style2(valueChars[column - rectangle.column]);
+        rerenderQueueRow.add(column);
+      }
+      rerenderColumns.clear();
+    }
   }
 };
+function mergeTextRowRanges(ranges) {
+  if (ranges.length < 2) return;
+  ranges.sort((left, right) => left.startColumn - right.startColumn || left.endColumn - right.endColumn);
+  let writeIndex = 0;
+  for (let readIndex = 1; readIndex < ranges.length; readIndex += 1) {
+    const active2 = ranges[writeIndex];
+    const next = ranges[readIndex];
+    if (next.startColumn <= active2.endColumn) {
+      active2.endColumn = Math.max(active2.endColumn, next.endColumn);
+      continue;
+    }
+    writeIndex += 1;
+    ranges[writeIndex] = next;
+  }
+  ranges.length = writeIndex + 1;
+}
 
 // src/grwizard_themes.ts
 var grWizardThemePalettes = [
@@ -3257,6 +3320,7 @@ var Canvas = class extends EventEmitter {
     for (let row = 0; row < size.rows; ++row) {
       const ranges = rerenderRanges[row];
       if (ranges?.length) {
+        mergeDirtyRowSegments(ranges);
         dirtyRowsSeen.add(row);
         const rowBuffer2 = frameBuffer[row] ??= [];
         for (const range of ranges) {
@@ -3307,7 +3371,7 @@ var Canvas = class extends EventEmitter {
       fullRedraws: renderedObjects,
       flushedCells
     };
-    if (cellUpdates.length > 0) {
+    if (cellUpdates.length > 0 || this.sink.flushRanges && rowRanges.length > 0) {
       if (this.sink.flushRanges) {
         this.sink.flushRanges(rowRanges, this.lastRenderStats, cellUpdates);
       } else {
@@ -3332,6 +3396,22 @@ function emptyRenderStats() {
     fullRedraws: 0,
     flushedCells: 0
   };
+}
+function mergeDirtyRowSegments(ranges) {
+  if (ranges.length < 2) return;
+  ranges.sort((left, right) => left.startColumn - right.startColumn || left.endColumn - right.endColumn);
+  let writeIndex = 0;
+  for (let readIndex = 1; readIndex < ranges.length; readIndex += 1) {
+    const active2 = ranges[writeIndex];
+    const next = ranges[readIndex];
+    if (next.startColumn <= active2.endColumn) {
+      active2.endColumn = Math.max(active2.endColumn, next.endColumn);
+      continue;
+    }
+    writeIndex += 1;
+    ranges[writeIndex] = next;
+  }
+  ranges.length = writeIndex + 1;
 }
 function cloneRectangle(rectangle) {
   return {

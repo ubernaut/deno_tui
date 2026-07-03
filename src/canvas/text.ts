@@ -7,6 +7,7 @@ import { Effect, Signal, SignalOfObject } from "../signals/mod.ts";
 import { Rectangle } from "../types.ts";
 import { signalify } from "../utils/signals.ts";
 import { Subscription } from "../signals/types.ts";
+import type { DirtyRowSegment } from "./dirty_region.ts";
 
 /**
  * Type that describes position and size of TextObject
@@ -33,6 +34,7 @@ export class TextObject extends DrawObject<"text"> {
   valueChars: string[] | string;
   overwriteRectangle: Signal<boolean>;
   multiCodePointSupport: Signal<boolean>;
+  rerenderRanges: DirtyRowSegment[][];
 
   #rectangleSubscription: Subscription<Rectangle>;
   #updateEffect: Effect;
@@ -45,6 +47,7 @@ export class TextObject extends DrawObject<"text"> {
     this.overwriteRectangle = signalify(options.overwriteRectangle ?? false);
     this.multiCodePointSupport = signalify(options.multiCodePointSupport ?? false);
     this.valueChars = this.multiCodePointSupport.value ? getMultiCodePointCharacters(this.text.value) : this.text.value;
+    this.rerenderRanges = [];
 
     const { updateObjects } = this.canvas;
 
@@ -78,6 +81,10 @@ export class TextObject extends DrawObject<"text"> {
         : (valueChars.length < previousValueChars.length ? valueChars.length : -1);
 
       const columnRange = Math.max(valueChars.length, previousValueChars.length);
+      if (overwriteRectangle && width !== undefined && valueChars.length >= width) {
+        this.queueRerenderRange(row, column, column + width);
+        return;
+      }
 
       if (barrier !== -1) {
         for (let c = 0; c < columnRange; ++c) {
@@ -145,6 +152,30 @@ export class TextObject extends DrawObject<"text"> {
     super.erase();
   }
 
+  override queueRerender(row: number, column: number): void {
+    this.queueRerenderRange(row, column, column + 1);
+  }
+
+  override queueRerenderRange(row: number, startColumn: number, endColumn: number): void {
+    const viewRectangle = this.view.peek()?.rectangle?.peek();
+    if (row < 0) return;
+    const { columns, rows } = this.canvas.size.peek();
+    if (row >= rows) return;
+
+    let start = Math.max(0, Math.floor(startColumn));
+    let end = Math.min(columns, Math.ceil(endColumn));
+    if (viewRectangle) {
+      if (row < viewRectangle.row || row >= viewRectangle.row + viewRectangle.height) return;
+      start = Math.max(start, viewRectangle.column);
+      end = Math.min(end, viewRectangle.column + viewRectangle.width);
+    }
+    if (end <= start) return;
+
+    const normalizedRow = Math.floor(row);
+    const ranges = this.rerenderRanges[normalizedRow] ??= [];
+    ranges.push({ row: normalizedRow, startColumn: start, endColumn: end });
+  }
+
   override updateMovement(): void {
     const { objectsUnder, previousRectangle } = this;
     const rectangle = this.rectangle.peek();
@@ -185,7 +216,7 @@ export class TextObject extends DrawObject<"text"> {
   }
 
   override rerender(): void {
-    const { canvas, valueChars, omitCells, rerenderCells } = this;
+    const { canvas, valueChars, omitCells, rerenderCells, rerenderRanges } = this;
 
     const { frameBuffer, rerenderQueue } = canvas;
     const { columns, rows } = canvas.size.peek();
@@ -207,10 +238,13 @@ export class TextObject extends DrawObject<"text"> {
     if (row > rowRange) return;
 
     const rerenderColumns = rerenderCells[row];
-    if (!rerenderColumns) return;
+    const ranges = rerenderRanges[row];
+    if (!rerenderColumns?.size && !ranges?.length) return;
 
     const omitColumns = omitCells[row];
     if (omitColumns?.size === valueChars.length) {
+      rerenderColumns?.clear();
+      if (ranges) ranges.length = 0;
       return;
     }
 
@@ -218,19 +252,56 @@ export class TextObject extends DrawObject<"text"> {
 
     const rerenderQueueRow = rerenderQueue[row] ??= new Set();
 
-    for (const column of rerenderColumns) {
-      if (
-        column >= columnRange ||
-        column < rectangle.column ||
-        omitColumns?.has(column)
-      ) {
-        continue;
+    if (ranges?.length) {
+      mergeTextRowRanges(ranges);
+      const directRanges = omitColumns?.size ? undefined : canvas.rerenderRanges[row] ??= [];
+      for (const range of ranges) {
+        const start = Math.max(range.startColumn, rectangle.column);
+        const end = Math.min(range.endColumn, columnRange);
+        if (end <= start) continue;
+        for (let column = start; column < end; column += 1) {
+          if (omitColumns?.has(column)) continue;
+          rowBuffer[column] = style(valueChars[column - rectangle.column] ?? " ");
+          if (!directRanges) rerenderQueueRow.add(column);
+        }
+        if (directRanges) directRanges.push({ row, startColumn: start, endColumn: end });
       }
-
-      rowBuffer[column] = style(valueChars[column - rectangle.column]);
-      rerenderQueueRow.add(column);
+      ranges.length = 0;
     }
 
-    rerenderColumns.clear();
+    if (rerenderColumns?.size) {
+      for (const column of rerenderColumns) {
+        if (
+          column >= columnRange ||
+          column < rectangle.column ||
+          omitColumns?.has(column)
+        ) {
+          continue;
+        }
+
+        rowBuffer[column] = style(valueChars[column - rectangle.column]);
+        rerenderQueueRow.add(column);
+      }
+
+      rerenderColumns.clear();
+    }
   }
+}
+
+function mergeTextRowRanges(ranges: DirtyRowSegment[]): void {
+  if (ranges.length < 2) return;
+  ranges.sort((left, right) => left.startColumn - right.startColumn || left.endColumn - right.endColumn);
+
+  let writeIndex = 0;
+  for (let readIndex = 1; readIndex < ranges.length; readIndex += 1) {
+    const active = ranges[writeIndex]!;
+    const next = ranges[readIndex]!;
+    if (next.startColumn <= active.endColumn) {
+      active.endColumn = Math.max(active.endColumn, next.endColumn);
+      continue;
+    }
+    writeIndex += 1;
+    ranges[writeIndex] = next;
+  }
+  ranges.length = writeIndex + 1;
 }

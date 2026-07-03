@@ -276,3 +276,6 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Added an adaptive workbench Three ASCII render-size cap and scaled grid blitting so large panes keep their visual
   footprint while reducing WebGPU readback cells and terminal truecolor payload; a 220x70 probe dropped full-frame
   output from roughly 303KB to 158KB with a 3,840-cell source cap.
+- Fixed the terminal canvas direct-row-range flush path so sinks that disable legacy per-cell updates still flush dense
+  range-only rows, and routed overwrite `TextObject` rows through direct row ranges. This targets the default workbench
+  Three ASCII path where every visible pane row is published as a full-width text object.

@@ -341,6 +341,7 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
     for (let row = 0; row < size.rows; ++row) {
       const ranges = rerenderRanges[row];
       if (ranges?.length) {
+        mergeDirtyRowSegments(ranges);
         dirtyRowsSeen.add(row);
         const rowBuffer = frameBuffer[row] ??= [];
         for (const range of ranges) {
@@ -399,7 +400,7 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
       flushedCells,
     };
 
-    if (cellUpdates.length > 0) {
+    if (cellUpdates.length > 0 || (this.sink.flushRanges && rowRanges.length > 0)) {
       if (this.sink.flushRanges) {
         this.sink.flushRanges(rowRanges, this.lastRenderStats, cellUpdates);
       } else {
@@ -426,6 +427,23 @@ function emptyRenderStats(): CanvasRenderStats {
     fullRedraws: 0,
     flushedCells: 0,
   };
+}
+
+function mergeDirtyRowSegments(ranges: DirtyRowSegment[]): void {
+  if (ranges.length < 2) return;
+  ranges.sort((left, right) => left.startColumn - right.startColumn || left.endColumn - right.endColumn);
+  let writeIndex = 0;
+  for (let readIndex = 1; readIndex < ranges.length; readIndex += 1) {
+    const active = ranges[writeIndex]!;
+    const next = ranges[readIndex]!;
+    if (next.startColumn <= active.endColumn) {
+      active.endColumn = Math.max(active.endColumn, next.endColumn);
+      continue;
+    }
+    writeIndex += 1;
+    ranges[writeIndex] = next;
+  }
+  ranges.length = writeIndex + 1;
 }
 
 function cloneRectangle(rectangle: Rectangle): Rectangle {

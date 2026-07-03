@@ -1,5 +1,6 @@
 import { assertEquals, assertStringIncludes } from "./deps.ts";
 import { BoxObject } from "../src/canvas/box.ts";
+import { TextObject } from "../src/canvas/text.ts";
 import {
   AnsiCanvasSink,
   Canvas,
@@ -8,6 +9,7 @@ import {
   coalesceCanvasRowRanges,
   MemoryCanvasSink,
 } from "../src/canvas/mod.ts";
+import { Signal } from "../src/signals/mod.ts";
 
 Deno.test("canvas flushes dirty cells through a pluggable sink", () => {
   const sink = new MemoryCanvasSink();
@@ -120,6 +122,35 @@ Deno.test("box renderer flushes queued row ranges as contiguous updates", () => 
   ]);
   assertEquals(sink.rowRanges, [{ row: 0, startColumn: 2, values: ["q", "q", "q", "q"] }]);
   assertEquals(sink.lastStats?.flushedCells, 4);
+});
+
+Deno.test("text renderer flushes overwrite rows as contiguous ranges", () => {
+  const sink = new DirectRangeSink();
+  const canvas = new Canvas({
+    sink,
+    size: { columns: 8, rows: 2 },
+  });
+  const value = new Signal("alpha   ");
+  const text = new TextObject({
+    canvas,
+    rectangle: { column: 0, row: 0, width: 8 },
+    value,
+    overwriteRectangle: true,
+    style: (text) => text,
+    zIndex: 1,
+  });
+
+  text.draw();
+  canvas.render();
+  sink.clear();
+
+  value.value = "beta    ";
+  canvas.render();
+
+  assertEquals(sink.flushCalls, 0);
+  assertEquals(sink.ranges, [{ row: 0, startColumn: 0, values: ["b", "e", "t", "a", " ", " ", " ", " "] }]);
+  assertEquals(sink.updates.length, 0);
+  assertEquals(sink.stats?.dirtyRowRanges, 1);
 });
 
 Deno.test("canvas notifies sinks when size changes", () => {
@@ -309,4 +340,15 @@ class RangeOnlySink {
     this.updates.push(...updates.map((update) => ({ ...update })));
     this.stats = { ...stats };
   }
+
+  clear(): void {
+    this.ranges.length = 0;
+    this.updates.length = 0;
+    this.stats = undefined;
+    this.flushCalls = 0;
+  }
+}
+
+class DirectRangeSink extends RangeOnlySink {
+  readonly requiresCellUpdates = false;
 }
