@@ -50,6 +50,7 @@ import {
   persistWorkbenchWorkspaceStorage,
   prepareWorkbenchFrame,
   projectWorkbenchButton,
+  projectWorkbenchButtonCommand,
   renameWorkbenchWorkspace,
   renderFrameRow,
   renderFrameSlice,
@@ -1854,11 +1855,12 @@ function renderTerminalOutputToolbar(frame: Frame, rect: Rectangle, startRow: nu
 
   workbenchButtonRowRenderCommandsInto(terminalOutputButtonCommands, terminalOutputButtonPlacements);
   for (const button of terminalOutputButtonCommands) {
+    const projection = projectWorkbenchButtonCommand(button, theme(), contrastText);
     write(
       frame,
       button.rect.row,
       button.rect.column,
-      paint(button.text, buttonPaintOptions(theme(), button.state, button.tone ?? "default")),
+      paint(projection.text, projection.style),
     );
     if (!button.item.disabled) {
       addHit(button.hitRect, { type: "terminalOutput", action: button.item.action });
@@ -2120,11 +2122,12 @@ function renderTerminalShellToolbar(frame: Frame, rect: Rectangle, startRow: num
 
   workbenchButtonRowRenderCommandsInto(terminalShellButtonCommands, terminalShellButtonPlacements);
   for (const button of terminalShellButtonCommands) {
+    const projection = projectWorkbenchButtonCommand(button, theme(), contrastText);
     write(
       frame,
       button.rect.row,
       button.rect.column,
-      paint(button.text, buttonPaintOptions(theme(), button.state, button.tone ?? "default")),
+      paint(projection.text, projection.style),
     );
     if (!button.item.disabled) {
       addHit(button.hitRect, { type: "terminalShell", action: button.item.action });
@@ -2534,11 +2537,12 @@ function renderModalOverlay(frame: Frame): void {
   );
   workbenchButtonRowRenderCommandsInto(modalActionButtonCommands, modalActionButtonPlacements);
   for (const command of modalActionButtonCommands) {
+    const button = projectWorkbenchButtonCommand(command, theme(), contrastText);
     write(
       frame,
       command.rect.row,
       command.rect.column,
-      paint(command.text, buttonPaintOptions(theme(), command.state, command.tone ?? "default")),
+      paint(button.text, button.style),
     );
     addHit(command.hitRect, { type: "modalAction", index: command.item.action });
   }
@@ -2603,11 +2607,12 @@ function renderThreeConfigModal(frame: Frame): void {
     { inner, actionRow: layout.actionRow },
   );
   for (const command of asciiConfigActionButtonCommands) {
+    const button = projectWorkbenchButtonCommand(command, theme(), contrastText);
     write(
       frame,
       command.rect.row,
       command.rect.column,
-      paint(command.text, buttonPaintOptions(theme(), command.state, command.tone ?? "default")),
+      paint(button.text, button.style),
     );
     addHit(command.hitRect, {
       type: "asciiConfigAction",

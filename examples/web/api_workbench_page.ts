@@ -53,6 +53,7 @@ import {
   prepareWorkbenchRows,
   ProgressBarController,
   projectWorkbenchButton,
+  projectWorkbenchButtonCommand,
   RadioGroupController,
   renderMenuBar,
   ScrollAreaController,
@@ -881,8 +882,13 @@ function renderMobileCommandStrip(frame: string[]): void {
   );
   workbenchButtonRowRenderCommandsInto(mobileCommandButtonCommands, mobileCommandButtonPlacements);
   for (const command of mobileCommandButtonCommands) {
-    const style = buttonPaintOptions(command.state, command.tone ?? "default");
-    write(frame, command.rect.row, command.rect.column, paint(command.text, style.fg, style.bg, style.bold));
+    const button = projectWorkbenchButtonCommand(command, theme(), contrastText);
+    write(
+      frame,
+      command.rect.row,
+      command.rect.column,
+      paint(button.text, button.style.fg, button.style.bg, button.style.bold),
+    );
     hitTargets.add(command.hitRect, { type: "mobileAction", action: command.item.action });
   }
 }
@@ -1237,8 +1243,13 @@ function renderTerminalToolbar(
   layoutWorkbenchButtonRowInto(webTerminalButtonPlacements, webTerminalButtonItems, rect, rect.row);
   workbenchButtonRowRenderCommandsInto(webTerminalButtonCommands, webTerminalButtonPlacements);
   for (const command of webTerminalButtonCommands) {
-    const style = buttonPaintOptions(command.state, command.tone ?? "default");
-    write(frame, command.rect.row, command.rect.column, paint(command.text, style.fg, style.bg, style.bold));
+    const button = projectWorkbenchButtonCommand(command, theme(), contrastText);
+    write(
+      frame,
+      command.rect.row,
+      command.rect.column,
+      paint(button.text, button.style.fg, button.style.bg, button.style.bold),
+    );
     if (!command.item.disabled) {
       hitTargets.add(command.hitRect, { type: "terminalAction", action: command.item.action });
     }
@@ -1969,8 +1980,13 @@ function renderThreeConfigModal(frame: string[]): void {
     { inner: layout.inner, actionRow: layout.actionRow },
   );
   for (const command of asciiConfigActionButtonCommands) {
-    const style = buttonPaintOptions(command.state, command.tone ?? "default");
-    write(frame, command.rect.row, command.rect.column, paint(command.text, style.fg, style.bg, style.bold));
+    const button = projectWorkbenchButtonCommand(command, theme(), contrastText);
+    write(
+      frame,
+      command.rect.row,
+      command.rect.column,
+      paint(button.text, button.style.fg, button.style.bg, button.style.bold),
+    );
     hitTargets.add(command.hitRect, { type: "asciiConfigAction", action: command.item.action });
   }
   write(
@@ -2028,8 +2044,13 @@ function renderModalOverlay(frame: string[]): void {
   );
   workbenchButtonRowRenderCommandsInto(modalActionButtonCommands, modalActionButtonPlacements);
   for (const command of modalActionButtonCommands) {
-    const style = buttonPaintOptions(command.state, command.tone ?? "default");
-    write(frame, command.rect.row, command.rect.column, paint(command.text, style.fg, style.bg, style.bold));
+    const button = projectWorkbenchButtonCommand(command, theme(), contrastText);
+    write(
+      frame,
+      command.rect.row,
+      command.rect.column,
+      paint(button.text, button.style.fg, button.style.bg, button.style.bold),
+    );
     hitTargets.add(command.hitRect, { type: "modalAction", index: command.item.action });
   }
 }

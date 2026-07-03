@@ -11286,6 +11286,13 @@ function projectWorkbenchButton(label, theme2, contrast, options = {}) {
     style: workbenchButtonPaintOptions(theme2, contrast, options.state ?? "base", options.tone ?? "default")
   };
 }
+function projectWorkbenchButtonCommand(command, theme2, contrast) {
+  return {
+    text: command.text,
+    width: textWidth(command.text),
+    style: workbenchButtonPaintOptions(theme2, contrast, command.state ?? "base", command.tone ?? "default")
+  };
+}
 
 // src/app/workbench_control_layout.ts
 function layoutWorkbenchButtonRowInto(target, items, bounds, startRow, options = {}) {
@@ -17721,8 +17728,13 @@ function renderMobileCommandStrip(frame) {
   );
   workbenchButtonRowRenderCommandsInto(mobileCommandButtonCommands, mobileCommandButtonPlacements);
   for (const command of mobileCommandButtonCommands) {
-    const style2 = buttonPaintOptions(command.state, command.tone ?? "default");
-    write(frame, command.rect.row, command.rect.column, paint(command.text, style2.fg, style2.bg, style2.bold));
+    const button = projectWorkbenchButtonCommand(command, theme(), contrastText);
+    write(
+      frame,
+      command.rect.row,
+      command.rect.column,
+      paint(button.text, button.style.fg, button.style.bg, button.style.bold)
+    );
     hitTargets.add(command.hitRect, { type: "mobileAction", action: command.item.action });
   }
 }
@@ -18051,8 +18063,13 @@ function renderTerminalToolbar(frame, rect, workspace = webTerminalWorkspace.ins
   layoutWorkbenchButtonRowInto(webTerminalButtonPlacements, webTerminalButtonItems, rect, rect.row);
   workbenchButtonRowRenderCommandsInto(webTerminalButtonCommands, webTerminalButtonPlacements);
   for (const command of webTerminalButtonCommands) {
-    const style2 = buttonPaintOptions(command.state, command.tone ?? "default");
-    write(frame, command.rect.row, command.rect.column, paint(command.text, style2.fg, style2.bg, style2.bold));
+    const button = projectWorkbenchButtonCommand(command, theme(), contrastText);
+    write(
+      frame,
+      command.rect.row,
+      command.rect.column,
+      paint(button.text, button.style.fg, button.style.bg, button.style.bold)
+    );
     if (!command.item.disabled) {
       hitTargets.add(command.hitRect, { type: "terminalAction", action: command.item.action });
     }
@@ -18711,8 +18728,13 @@ function renderThreeConfigModal(frame) {
     { inner: layout.inner, actionRow: layout.actionRow }
   );
   for (const command of asciiConfigActionButtonCommands) {
-    const style2 = buttonPaintOptions(command.state, command.tone ?? "default");
-    write(frame, command.rect.row, command.rect.column, paint(command.text, style2.fg, style2.bg, style2.bold));
+    const button = projectWorkbenchButtonCommand(command, theme(), contrastText);
+    write(
+      frame,
+      command.rect.row,
+      command.rect.column,
+      paint(button.text, button.style.fg, button.style.bg, button.style.bold)
+    );
     hitTargets.add(command.hitRect, { type: "asciiConfigAction", action: command.item.action });
   }
   write(
@@ -18769,8 +18791,13 @@ function renderModalOverlay(frame) {
   );
   workbenchButtonRowRenderCommandsInto(modalActionButtonCommands, modalActionButtonPlacements);
   for (const command of modalActionButtonCommands) {
-    const style2 = buttonPaintOptions(command.state, command.tone ?? "default");
-    write(frame, command.rect.row, command.rect.column, paint(command.text, style2.fg, style2.bg, style2.bold));
+    const button = projectWorkbenchButtonCommand(command, theme(), contrastText);
+    write(
+      frame,
+      command.rect.row,
+      command.rect.column,
+      paint(button.text, button.style.fg, button.style.bg, button.style.bold)
+    );
     hitTargets.add(command.hitRect, { type: "modalAction", index: command.item.action });
   }
 }
@@ -19346,9 +19373,6 @@ function writeButton(frame, row, column, label, options = {}) {
   if (button.width <= 0) return 0;
   write(frame, row, column, paint(button.text, button.style.fg, button.style.bg, button.style.bold));
   return button.width;
-}
-function buttonPaintOptions(state = "base", tone = "default") {
-  return workbenchButtonPaintOptions(theme(), contrastText, state, tone);
 }
 function paint(value, fg = theme().text, bg = theme().background, bold = false) {
   return makeStyle({ fg, bg, bold })(value);

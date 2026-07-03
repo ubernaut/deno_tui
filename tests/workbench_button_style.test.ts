@@ -2,6 +2,7 @@
 import { assertEquals } from "./deps.ts";
 import {
   projectWorkbenchButton,
+  projectWorkbenchButtonCommand,
   workbenchButtonPaintOptions,
   type WorkbenchButtonTheme,
 } from "../src/app/workbench_button_style.ts";
@@ -81,4 +82,28 @@ Deno.test("projectWorkbenchButton clips text and resolves shared paint options",
       bold: true,
     },
   });
+});
+
+Deno.test("projectWorkbenchButtonCommand preserves pre-clipped text and resolves paint", () => {
+  assertEquals(projectWorkbenchButtonCommand({ text: "[Save]", state: "active" }, theme, contrast), {
+    text: "[Save]",
+    width: 6,
+    style: {
+      fg: "contrast:#00ffaa",
+      bg: theme.buttonActiveBg,
+      bold: true,
+    },
+  });
+  assertEquals(
+    projectWorkbenchButtonCommand({ text: "[Delete]", state: "disabled", tone: "danger" }, theme, contrast),
+    {
+      text: "[Delete]",
+      width: 8,
+      style: {
+        fg: theme.buttonMutedText,
+        bg: theme.buttonMutedBg,
+        bold: false,
+      },
+    },
+  );
 });

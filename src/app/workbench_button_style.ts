@@ -40,6 +40,13 @@ export interface WorkbenchButtonProjection {
   style: { fg: string; bg: string; bold: boolean };
 }
 
+/** Options for projecting an already laid-out button command. */
+export interface WorkbenchButtonCommandProjectionOptions {
+  text: string;
+  state?: WorkbenchButtonState;
+  tone?: WorkbenchButtonTone;
+}
+
 /** Resolves theme-derived foreground/background styling for clickable workbench buttons. */
 export function workbenchButtonPaintOptions(
   theme: WorkbenchButtonTheme,
@@ -86,5 +93,18 @@ export function projectWorkbenchButton(
     text: fitCellText(rawText, width),
     width,
     style: workbenchButtonPaintOptions(theme, contrast, options.state ?? "base", options.tone ?? "default"),
+  };
+}
+
+/** Projects an already-clipped button command into reusable text, width, and paint metadata. */
+export function projectWorkbenchButtonCommand(
+  command: WorkbenchButtonCommandProjectionOptions,
+  theme: WorkbenchButtonTheme,
+  contrast: WorkbenchButtonContrast,
+): WorkbenchButtonProjection {
+  return {
+    text: command.text,
+    width: textWidth(command.text),
+    style: workbenchButtonPaintOptions(theme, contrast, command.state ?? "base", command.tone ?? "default"),
   };
 }
