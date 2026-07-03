@@ -287,6 +287,41 @@ Deno.test("ThreePanelFrameView only applies renderer settings when they change",
   }
 });
 
+Deno.test("ThreePanelFrameView updates when renderer reuses a mutable grid reference", async () => {
+  const rectangle = new Signal({ column: 0, row: 0, width: 4, height: 2 }, { deepObserve: true });
+  const scene = new Signal<ThreeSceneState | null>(sceneState());
+  const ascii = new Signal(createDefaultAsciiOptions("sharp"));
+  const enabled = new Signal(true);
+  let updates = 0;
+  let renderer: ReusedGridRenderer | undefined;
+  const panel = new ThreePanelFrameView({
+    rectangle,
+    scene,
+    ascii,
+    enabled,
+    frameInterval: 1,
+    onUpdate: () => {
+      updates += 1;
+    },
+    rendererFactory: (options) => renderer = new ReusedGridRenderer(options.columns, options.rows),
+  });
+
+  try {
+    await waitFor(() => (renderer?.renderCount ?? 0) >= 3);
+
+    assert(renderer);
+    assert(updates >= 3);
+    assertEquals(panel.grid.peek(), renderer.grid);
+    assertEquals(panel.grid.peek()[0]?.[0], String(renderer.renderCount % 10));
+  } finally {
+    panel.dispose();
+    rectangle.dispose();
+    scene.dispose();
+    ascii.dispose();
+    enabled.dispose();
+  }
+});
+
 Deno.test("ThreePanelFrameView caps large ASCII renderer sizes", async () => {
   const rectangle = new Signal({ column: 0, row: 0, width: 160, height: 60 }, { deepObserve: true });
   const scene = new Signal<ThreeSceneState | null>(sceneState());
@@ -996,6 +1031,37 @@ class FakeGridRenderer implements ThreePanelGridRenderer, ThreeAsciiGridRenderer
   }
 
   destroy(): void {}
+}
+
+class ReusedGridRenderer extends FakeGridRenderer {
+  readonly grid: string[][];
+
+  constructor(columns: number, rows: number) {
+    super(columns, rows);
+    this.grid = Array.from({ length: rows }, () => Array.from({ length: columns }, () => "0"));
+  }
+
+  override setSize(columns: number, rows: number): void {
+    super.setSize(columns, rows);
+    this.grid.length = rows;
+    for (let row = 0; row < rows; row += 1) {
+      const values = this.grid[row] ?? [];
+      values.length = columns;
+      values.fill("0");
+      this.grid[row] = values;
+    }
+  }
+
+  override async renderToAnsiGrid(
+    _deltaTime?: number,
+    onFrame?: (deltaTime: number) => void | Promise<void>,
+  ): Promise<string[][]> {
+    await onFrame?.(0.016);
+    this.renderCount += 1;
+    const glyph = String(this.renderCount % 10);
+    for (const row of this.grid) row.fill(glyph);
+    return this.grid;
+  }
 }
 
 class ControlledSequenceGridRenderer extends FakeGridRenderer {

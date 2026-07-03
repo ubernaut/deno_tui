@@ -463,7 +463,10 @@ export class ThreePanelFrameView {
 
       this.failed = false;
       const renderSize = this.renderSizeFor(rect, ascii);
-      this.setGrid(policy.renderAscii ? frame.grid ?? [] : this.blankGridFor(renderSize.columns, renderSize.rows));
+      this.setGrid(
+        policy.renderAscii ? frame.grid ?? [] : this.blankGridFor(renderSize.columns, renderSize.rows),
+        policy.renderAscii,
+      );
       this.reportSlowFrame(renderer);
     } catch (error) {
       if (!this.ownsFrame(frameGeneration, renderer, bundle)) {
@@ -531,9 +534,9 @@ export class ThreePanelFrameView {
     this.syncScheduler.schedule(this.syncCallback);
   }
 
-  private setGrid(grid: string[][]): void {
+  private setGrid(grid: string[][], forceUpdate = false): void {
     if (this.disposed) return;
-    if (this.grid.peek() === grid) return;
+    if (!forceUpdate && this.grid.peek() === grid) return;
     this.grid.jink(grid);
     this.onUpdate?.();
   }
