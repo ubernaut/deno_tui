@@ -110,19 +110,7 @@ export function apiWorkbenchCheckboxRowsInto(
   items: readonly ApiWorkbenchCheckboxOption[],
   options: { header?: string } = {},
 ): ApiWorkbenchOptionControlRow[] {
-  let written = 0;
-  target[written] = writeOptionControlRow(target[written], "checkbox", options.header ?? "Checkboxes");
-  written += 1;
-  for (let index = 0; index < items.length; index += 1) {
-    const item = items[index]!;
-    target[written] = writeOptionControlRow(
-      target[written],
-      "checkbox",
-      `${renderCheckBoxMark(item.checked)} ${item.label}`,
-      { indent: true, index },
-    );
-    written += 1;
-  }
+  const written = appendCheckboxRows(target, 0, items, options.header ?? "Checkboxes", writeOptionControlRow);
   target.length = written;
   return target;
 }
@@ -133,24 +121,7 @@ export function apiWorkbenchRadioRowsInto(
   activeIndex: number,
   options: { header?: string } = {},
 ): ApiWorkbenchOptionControlRow[] {
-  let written = 0;
-  target[written] = writeOptionControlRow(target[written], "radio", options.header ?? "Radio", {
-    previous: true,
-    next: true,
-  });
-  written += 1;
-  for (let index = 0; index < items.length; index += 1) {
-    const item = items[index]!;
-    const mark = item.selected ? "●" : "○";
-    const cursor = index === activeIndex ? ">" : " ";
-    target[written] = writeOptionControlRow(
-      target[written],
-      "radio",
-      `${cursor} ${mark} ${item.label}`,
-      { indent: true, index },
-    );
-    written += 1;
-  }
+  const written = appendRadioRows(target, 0, items, activeIndex, options.header ?? "Radio", writeOptionControlRow);
   target.length = written;
   return target;
 }
@@ -159,24 +130,8 @@ export function apiWorkbenchComboHeaderRowsInto(
   target: ApiWorkbenchProjectedControlRow[],
   options: ApiWorkbenchComboHeaderRowsOptions,
 ): ApiWorkbenchProjectedControlRow[] {
-  const expandedGlyph = options.expandedGlyph ?? "▾";
-  const collapsedGlyph = options.collapsedGlyph ?? "▸";
-  const glyph = options.expanded ? expandedGlyph : collapsedGlyph;
-  const title = `${options.title}  ${glyph}`;
-  const header = `${title} ${options.label}`;
-  const shouldSplit = textWidth(`> ${header}`) > options.rectWidth &&
-    options.rectWidth > Math.max(0, Math.floor(options.splitMinWidth ?? 16));
-  target[0] = writeProjectedControlRow(target[0], "combo", shouldSplit ? title : header, {
-    action: "activate",
-    previous: options.previous,
-    next: options.next,
-  });
-  if (shouldSplit) {
-    target[1] = writeProjectedControlRow(target[1], "combo", options.label, { indent: true });
-    target.length = 2;
-  } else {
-    target.length = 1;
-  }
+  const written = appendComboHeaderRows(target, 0, options);
+  target.length = written;
   return target;
 }
 
@@ -284,49 +239,16 @@ export function apiWorkbenchControlsRowsInto(
   written += 1;
   target[written] = apiWorkbenchSliderRowInto(target[written], options.slider);
   written += 1;
-  target[written] = writeProjectedControlRow(target[written], "checkbox", "Checkboxes");
-  written += 1;
-  for (let index = 0; index < options.checkboxes.length; index += 1) {
-    const item = options.checkboxes[index]!;
-    target[written] = writeProjectedControlRow(
-      target[written],
-      "checkbox",
-      `${renderCheckBoxMark(item.checked)} ${item.label}`,
-      { indent: true, index },
-    );
-    written += 1;
-  }
-  target[written] = writeProjectedControlRow(target[written], "radio", "Radio", { previous: true, next: true });
-  written += 1;
-  for (let index = 0; index < options.radio.items.length; index += 1) {
-    const item = options.radio.items[index]!;
-    const mark = item.selected ? "●" : "○";
-    const cursor = index === options.radio.activeIndex ? ">" : " ";
-    target[written] = writeProjectedControlRow(
-      target[written],
-      "radio",
-      `${cursor} ${mark} ${item.label}`,
-      { indent: true, index },
-    );
-    written += 1;
-  }
-  const expandedGlyph = options.combo.expandedGlyph ?? "▾";
-  const collapsedGlyph = options.combo.collapsedGlyph ?? "▸";
-  const comboGlyph = options.combo.expanded ? expandedGlyph : collapsedGlyph;
-  const comboTitle = `${options.combo.title}  ${comboGlyph}`;
-  const comboHeader = `${comboTitle} ${options.combo.label}`;
-  const comboShouldSplit = textWidth(`> ${comboHeader}`) > options.combo.rectWidth &&
-    options.combo.rectWidth > Math.max(0, Math.floor(options.combo.splitMinWidth ?? 16));
-  target[written] = writeProjectedControlRow(target[written], "combo", comboShouldSplit ? comboTitle : comboHeader, {
-    action: "activate",
-    previous: options.combo.previous,
-    next: options.combo.next,
-  });
-  written += 1;
-  if (comboShouldSplit) {
-    target[written] = writeProjectedControlRow(target[written], "combo", options.combo.label, { indent: true });
-    written += 1;
-  }
+  written = appendCheckboxRows(target, written, options.checkboxes, "Checkboxes", writeProjectedControlRow);
+  written = appendRadioRows(
+    target,
+    written,
+    options.radio.items,
+    options.radio.activeIndex,
+    "Radio",
+    writeProjectedControlRow,
+  );
+  written = appendComboHeaderRows(target, written, options.combo);
   target[written] = apiWorkbenchDropdownHeaderRowInto(target[written], options.dropdown);
   written += 1;
   target[written] = apiWorkbenchInputRowInto(target[written], options.input);
@@ -341,9 +263,92 @@ export function apiWorkbenchControlsRowsInto(
   return target;
 }
 
+type OptionRowId = Extract<ApiWorkbenchControlId, "checkbox" | "radio">;
+type ControlRowWriter<Row, Id extends ApiWorkbenchControlId = ApiWorkbenchControlId> = (
+  target: Row | undefined,
+  id: Id,
+  value: string,
+  options?: ApiWorkbenchControlLineOptions,
+) => Row;
+
+function appendCheckboxRows<Row>(
+  target: Row[],
+  start: number,
+  items: readonly ApiWorkbenchCheckboxOption[],
+  header: string,
+  writeRow: ControlRowWriter<Row, "checkbox">,
+): number {
+  let written = start;
+  target[written] = writeRow(target[written], "checkbox", header);
+  written += 1;
+  for (let index = 0; index < items.length; index += 1) {
+    const item = items[index]!;
+    target[written] = writeRow(
+      target[written],
+      "checkbox",
+      `${renderCheckBoxMark(item.checked)} ${item.label}`,
+      { indent: true, index },
+    );
+    written += 1;
+  }
+  return written;
+}
+
+function appendRadioRows<Row>(
+  target: Row[],
+  start: number,
+  items: readonly ApiWorkbenchRadioOption[],
+  activeIndex: number,
+  header: string,
+  writeRow: ControlRowWriter<Row, "radio">,
+): number {
+  let written = start;
+  target[written] = writeRow(target[written], "radio", header, { previous: true, next: true });
+  written += 1;
+  for (let index = 0; index < items.length; index += 1) {
+    const item = items[index]!;
+    const mark = item.selected ? "●" : "○";
+    const cursor = index === activeIndex ? ">" : " ";
+    target[written] = writeRow(
+      target[written],
+      "radio",
+      `${cursor} ${mark} ${item.label}`,
+      { indent: true, index },
+    );
+    written += 1;
+  }
+  return written;
+}
+
+function appendComboHeaderRows(
+  target: ApiWorkbenchProjectedControlRow[],
+  start: number,
+  options: ApiWorkbenchComboHeaderRowsOptions,
+): number {
+  const expandedGlyph = options.expandedGlyph ?? "▾";
+  const collapsedGlyph = options.collapsedGlyph ?? "▸";
+  const glyph = options.expanded ? expandedGlyph : collapsedGlyph;
+  const title = `${options.title}  ${glyph}`;
+  const header = `${title} ${options.label}`;
+  const shouldSplit = textWidth(`> ${header}`) > options.rectWidth &&
+    options.rectWidth > Math.max(0, Math.floor(options.splitMinWidth ?? 16));
+  let written = start;
+  target[written] = writeProjectedControlRow(target[written], "combo", shouldSplit ? title : header, {
+    action: "activate",
+    previous: options.previous,
+    next: options.next,
+  });
+  written += 1;
+  if (shouldSplit) {
+    target[written] = writeProjectedControlRow(target[written], "combo", options.label, { indent: true });
+    written += 1;
+  }
+  return written;
+}
+
 function writeOptionControlRow(
   target: ApiWorkbenchOptionControlRow | undefined,
-  id: Extract<ApiWorkbenchControlId, "checkbox" | "radio">,
+  id: OptionRowId,
   value: string,
   options?: ApiWorkbenchControlLineOptions,
 ): ApiWorkbenchOptionControlRow {

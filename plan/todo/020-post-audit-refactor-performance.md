@@ -234,3 +234,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   button label clipping and theme-derived paint stay consistent across renderers.
 - Added a shared `projectWorkbenchButtonCommand()` helper and routed terminal/browser command-button paint loops through
   it while keeping renderer-specific writes and hit registration local.
+- Consolidated API workbench checkbox, radio, and combo row projection behind shared append helpers so focused control
+  helpers and the aggregate controls panel cannot drift.
