@@ -917,15 +917,7 @@ function renderPanel(frame: string[], id: PanelId, rect: Rectangle): void {
   hitTargets.add(rect, { type: "focus", id });
   const selected = active.peek() === id;
   fillRect(frame, rect, selected ? theme().panelSoft : theme().panel);
-  const border = selected ? theme().accent : theme().borderStrong;
-  const title = panelTitle(id).toUpperCase();
-  const top = `┌ ${title} ${"─".repeat(Math.max(0, rect.width - title.length - 24))}             ┐`;
-  write(
-    frame,
-    rect.row,
-    rect.column,
-    paint(fit(top, rect.width), border, selected ? theme().panelSoft : theme().panel, selected),
-  );
+  drawFrame(frame, rect, panelTitle(id), selected);
   const titlebar = layoutWorkbenchTitlebarInto(titlebarLayout(id), {
     rect,
     title: panelTitle(id),
@@ -939,20 +931,6 @@ function renderPanel(frame: string[], id: PanelId, rect: Rectangle): void {
     });
     hitTargets.add(command.hitRect, panelTitlebarHit(id, command.kind));
   }
-  for (let r = 1; r < rect.height - 1; r++) {
-    write(
-      frame,
-      rect.row + r,
-      rect.column,
-      paint(`│${" ".repeat(rect.width - 2)}│`, border, selected ? theme().panelSoft : theme().panel),
-    );
-  }
-  write(
-    frame,
-    rect.row + rect.height - 1,
-    rect.column,
-    paint(`└${"─".repeat(rect.width - 2)}┘`, border, selected ? theme().panelSoft : theme().panel),
-  );
   const inner = {
     column: rect.column + 2,
     row: rect.row + 1,
