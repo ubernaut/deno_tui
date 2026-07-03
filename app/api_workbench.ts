@@ -111,6 +111,8 @@ import {
   workbenchAsciiConfigModalActionRenderCommandsInto,
   type WorkbenchAsciiConfigRowPlacement,
   workbenchAsciiConfigRowPlacementsInto,
+  type WorkbenchAsciiConfigRowRenderCommand,
+  workbenchAsciiConfigRowRenderCommandsInto,
 } from "../src/app/workbench_ascii_modal.ts";
 import { handleInput } from "../src/input.ts";
 import type { KeyPressEvent, MousePressEvent, MouseScrollEvent, PasteEvent } from "../src/input_reader/types.ts";
@@ -2551,6 +2553,7 @@ type ThreeConfigRow = WorkbenchAsciiConfigRow;
 
 const threeConfigRows: readonly ThreeConfigRow[] = defaultWorkbenchAsciiConfigRows;
 const threeConfigRowPlacements: WorkbenchAsciiConfigRowPlacement<ThreeConfigRow>[] = [];
+const threeConfigRowRenderCommands: WorkbenchAsciiConfigRowRenderCommand<ThreeConfigRow>[] = [];
 
 function renderThreeConfigModal(frame: Frame): void {
   const t = theme();
@@ -2573,18 +2576,22 @@ function renderThreeConfigModal(frame: Frame): void {
     visibleRows: layout.visibleRows,
     selectedIndex: threeConfigSelected.peek(),
   });
-  for (const placement of placements) {
-    const y = placement.rect.row;
-    const selected = placement.selected;
+  const rowCommands = workbenchAsciiConfigRowRenderCommandsInto(threeConfigRowRenderCommands, placements, {
+    text: threeConfigRowText,
+  });
+  for (const command of rowCommands) {
+    const selected = command.selected;
     const bg = selected ? t.warn : t.surface;
     const fg = selected ? t.background : t.text;
-    write(frame, y, inner.column, paint(" ".repeat(inner.width), { bg }));
+    const text = command.kind === "fill" ? " ".repeat(command.rect.width) : fit(command.text, command.rect.width);
     write(
       frame,
-      y,
-      inner.column,
-      paint(fit(threeConfigRowText(placement.row), inner.width), { fg, bg, bold: selected }),
+      command.rect.row,
+      command.rect.column,
+      paint(text, { fg, bg, bold: command.kind === "text" && selected }),
     );
+  }
+  for (const placement of placements) {
     addHit(placement.previousRect, {
       type: "asciiConfig",
       index: placement.rowIndex,

@@ -43,6 +43,16 @@ export interface WorkbenchAsciiConfigRowPlacement<Row> {
   nextRect: Rectangle;
 }
 
+/** Render command for one visible Three ASCII config row. */
+export interface WorkbenchAsciiConfigRowRenderCommand<Row> {
+  kind: "fill" | "text";
+  row: Row;
+  rowIndex: number;
+  selected: boolean;
+  rect: Rectangle;
+  text: string;
+}
+
 /** Action ids used by Three ASCII config modal buttons. */
 export type WorkbenchAsciiConfigModalAction = "cancel" | "apply" | "ok";
 
@@ -129,6 +139,55 @@ export function workbenchAsciiConfigRowPlacementsInto<Row>(
       previousRect,
       nextRect,
     });
+  }
+  return target;
+}
+
+/** Projects visible Three ASCII config rows into reusable fill/text render commands. */
+export function workbenchAsciiConfigRowRenderCommandsInto<Row>(
+  target: WorkbenchAsciiConfigRowRenderCommand<Row>[],
+  placements: readonly WorkbenchAsciiConfigRowPlacement<Row>[],
+  options: {
+    text: (row: Row) => string;
+  },
+): WorkbenchAsciiConfigRowRenderCommand<Row>[] {
+  target.length = placements.length * 2;
+  let written = 0;
+  for (let index = 0; index < placements.length; index += 1) {
+    const placement = placements[index]!;
+    const fill = target[written] ?? {
+      kind: "fill",
+      row: placement.row,
+      rowIndex: placement.rowIndex,
+      selected: placement.selected,
+      rect: placement.rect,
+      text: "",
+    };
+    fill.kind = "fill";
+    fill.row = placement.row;
+    fill.rowIndex = placement.rowIndex;
+    fill.selected = placement.selected;
+    fill.rect = placement.rect;
+    fill.text = "";
+    target[written] = fill;
+    written += 1;
+
+    const text = target[written] ?? {
+      kind: "text",
+      row: placement.row,
+      rowIndex: placement.rowIndex,
+      selected: placement.selected,
+      rect: placement.rect,
+      text: "",
+    };
+    text.kind = "text";
+    text.row = placement.row;
+    text.rowIndex = placement.rowIndex;
+    text.selected = placement.selected;
+    text.rect = placement.rect;
+    text.text = options.text(placement.row);
+    target[written] = text;
+    written += 1;
   }
   return target;
 }

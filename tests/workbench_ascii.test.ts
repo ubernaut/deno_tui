@@ -21,6 +21,7 @@ import {
   workbenchAsciiConfigModalActionItemsInto,
   workbenchAsciiConfigModalActionRenderCommandsInto,
   workbenchAsciiConfigRowPlacementsInto,
+  workbenchAsciiConfigRowRenderCommandsInto,
 } from "../src/app/workbench_ascii_modal.ts";
 import type { WorkbenchButtonRowItem, WorkbenchButtonRowPlacement } from "../src/app/workbench_control_layout.ts";
 
@@ -230,6 +231,48 @@ Deno.test("workbench ascii config row placements keep selected rows visible and 
   assertEquals(placements[0]?.rect, { column: 4, row: 6, width: 36, height: 1 });
   assertEquals(placements[0]?.previousRect, { column: 4, row: 6, width: 18, height: 1 });
   assertEquals(placements[0]?.nextRect, { column: 22, row: 6, width: 18, height: 1 });
+});
+
+Deno.test("workbench ascii config row render commands project fill and text rows", () => {
+  const layout = layoutWorkbenchAsciiConfigModal({
+    bounds: { column: 3, row: 2, width: 38, height: 13 },
+    rowCount: defaultWorkbenchAsciiConfigRows.length,
+  });
+  const placements = workbenchAsciiConfigRowPlacementsInto([], defaultWorkbenchAsciiConfigRows, {
+    inner: layout.inner,
+    rowsTop: layout.rowsTop,
+    visibleRows: 2,
+    selectedIndex: 0,
+  });
+  const commands = workbenchAsciiConfigRowRenderCommandsInto([], placements, {
+    text: (row) => row.label,
+  });
+
+  assertEquals(commands.map((command) => command.kind), ["fill", "text", "fill", "text"]);
+  assertEquals(commands.map((command) => command.rowIndex), [0, 0, 1, 1]);
+  assertEquals(commands.map((command) => command.selected), [true, true, false, false]);
+  assertEquals(commands.map((command) => command.text), ["", "Preset", "", "Glyph style"]);
+  assertEquals(commands[0]?.rect, { column: 4, row: 6, width: 36, height: 1 });
+});
+
+Deno.test("workbench ascii config row render commands reuse caller-owned commands", () => {
+  const placements = workbenchAsciiConfigRowPlacementsInto([], defaultWorkbenchAsciiConfigRows.slice(0, 1), {
+    inner: { column: 4, row: 4, width: 36, height: 8 },
+    rowsTop: 6,
+    visibleRows: 1,
+    selectedIndex: 0,
+  });
+  const commands = workbenchAsciiConfigRowRenderCommandsInto([], placements, {
+    text: (row) => row.label,
+  });
+  const firstFill = commands[0];
+  const firstText = commands[1];
+  const next = workbenchAsciiConfigRowRenderCommandsInto(commands, placements, {
+    text: (row) => `${row.label}!`,
+  });
+  assertEquals(next[0], firstFill);
+  assertEquals(next[1], firstText);
+  assertEquals(next[1]?.text, "Preset!");
 });
 
 Deno.test("workbench ascii config action buttons expose stable labels and tones", () => {
