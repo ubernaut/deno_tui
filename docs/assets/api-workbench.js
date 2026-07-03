@@ -1374,6 +1374,34 @@ var SortedArray = class extends Array {
   }
 };
 
+// src/canvas/rerender_queue.ts
+function queueRerenderRangeInto(queue, row, startColumn, endColumn, canvasSize, viewRectangle) {
+  if (row < 0 || row >= canvasSize.rows) {
+    return emptyQueueResult(row);
+  }
+  let start = Math.max(0, Math.floor(startColumn));
+  let end = Math.min(canvasSize.columns, Math.ceil(endColumn));
+  if (viewRectangle) {
+    if (row < viewRectangle.row || row >= viewRectangle.row + viewRectangle.height) {
+      return emptyQueueResult(row);
+    }
+    start = Math.max(start, viewRectangle.column);
+    end = Math.min(end, viewRectangle.column + viewRectangle.width);
+  }
+  if (end <= start) {
+    return emptyQueueResult(row);
+  }
+  const queueRow = queue[row] ??= /* @__PURE__ */ new Set();
+  const before = queueRow.size;
+  for (let column = start; column < end; column += 1) {
+    queueRow.add(column);
+  }
+  return { row, startColumn: start, endColumn: end, queuedCells: queueRow.size - before };
+}
+function emptyQueueResult(row) {
+  return { row, startColumn: 0, endColumn: 0, queuedCells: 0 };
+}
+
 // src/canvas/draw_object.ts
 var id = 0;
 var DrawObject = class {
@@ -1490,21 +1518,7 @@ var DrawObject = class {
   }
   queueRerenderRange(row, startColumn, endColumn) {
     const viewRectangle = this.view.peek()?.rectangle?.peek();
-    if (row < 0) return;
-    const { columns: columns2, rows: rows2 } = this.canvas.size.peek();
-    if (row >= rows2) return;
-    let start = Math.max(0, Math.floor(startColumn));
-    let end = Math.min(columns2, Math.ceil(endColumn));
-    if (viewRectangle) {
-      if (row < viewRectangle.row || row >= viewRectangle.row + viewRectangle.height) return;
-      start = Math.max(start, viewRectangle.column);
-      end = Math.min(end, viewRectangle.column + viewRectangle.width);
-    }
-    if (end <= start) return;
-    const rerenderColumns = this.rerenderCells[row] ??= /* @__PURE__ */ new Set();
-    for (let column = start; column < end; column += 1) {
-      rerenderColumns.add(column);
-    }
+    queueRerenderRangeInto(this.rerenderCells, row, startColumn, endColumn, this.canvas.size.peek(), viewRectangle);
   }
   queueRerenderRectangle(rectangle) {
     const rowRange = rectangle.row + rectangle.height;

@@ -6,6 +6,7 @@ import { rectangleEquals, rectangleIntersection } from "../utils/numbers.ts";
 import type { Style } from "../theme.ts";
 import type { Canvas } from "./canvas.ts";
 import type { Offset, Rectangle } from "../types.ts";
+import { queueRerenderRangeInto } from "./rerender_queue.ts";
 import { View } from "../view.ts";
 import { Signal, SignalOfObject } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
@@ -180,23 +181,7 @@ export class DrawObject<Type extends string = string> {
 
   queueRerenderRange(row: number, startColumn: number, endColumn: number): void {
     const viewRectangle = this.view.peek()?.rectangle?.peek();
-    if (row < 0) return;
-    const { columns, rows } = this.canvas.size.peek();
-    if (row >= rows) return;
-
-    let start = Math.max(0, Math.floor(startColumn));
-    let end = Math.min(columns, Math.ceil(endColumn));
-    if (viewRectangle) {
-      if (row < viewRectangle.row || row >= viewRectangle.row + viewRectangle.height) return;
-      start = Math.max(start, viewRectangle.column);
-      end = Math.min(end, viewRectangle.column + viewRectangle.width);
-    }
-    if (end <= start) return;
-
-    const rerenderColumns = this.rerenderCells[row] ??= new Set();
-    for (let column = start; column < end; column += 1) {
-      rerenderColumns.add(column);
-    }
+    queueRerenderRangeInto(this.rerenderCells, row, startColumn, endColumn, this.canvas.size.peek(), viewRectangle);
   }
 
   queueRerenderRectangle(rectangle: Rectangle): void {

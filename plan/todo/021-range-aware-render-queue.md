@@ -29,3 +29,10 @@ row ranges until the final sink flush.
 - `deno task benchmark -- --query canvas --repeat 5`
 - `deno test -A tests/canvas_* tests/three_ascii_diff.test.ts tests/three_panel_frame.test.ts`
 - `deno task health`
+
+## Progress
+
+- Added a tested `queueRerenderRangeInto` helper that centralizes canvas/view clipping and legacy row-set insertion.
+- Routed `DrawObject.queueRerenderRange()` through the helper so future range storage can be introduced behind one queue
+  boundary.
+- Routed the Three ASCII fractional fallback queueing path through the helper to keep clipping behavior shared.

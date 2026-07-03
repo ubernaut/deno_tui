@@ -1,5 +1,6 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { Rectangle } from "../types.ts";
+import { queueRerenderCellInto } from "./rerender_queue.ts";
 
 /** Terminal canvas size used when clipping changed three ASCII grid cells. */
 export interface ThreeAsciiDiffCanvasSize {
@@ -225,19 +226,12 @@ function queueChangedFractionalCells(options: QueueFractionalCellsOptions): bool
 }
 
 function queueFractionalRerenderCell(options: QueueFractionalCellsOptions, row: number, column: number): void {
-  if (row < 0) return;
   const canvasRow = Math.floor(row);
-  if (canvasRow >= options.canvasSize.rows) return;
-  let start = Math.max(0, Math.floor(column));
-  const end = Math.min(options.canvasSize.columns, Math.ceil(column + 1));
-  const viewRectangle = options.viewRectangle;
-  if (viewRectangle) {
-    if (canvasRow < viewRectangle.row || canvasRow >= viewRectangle.row + viewRectangle.height) return;
-    start = Math.max(start, viewRectangle.column);
-    if (Math.min(end, viewRectangle.column + viewRectangle.width) <= start) return;
-  } else if (end <= start) {
-    return;
-  }
-  const queueRow = options.rerenderCells[canvasRow] ??= new Set<number>();
-  queueRow.add(start);
+  queueRerenderCellInto(
+    options.rerenderCells,
+    canvasRow,
+    column,
+    options.canvasSize,
+    options.viewRectangle,
+  );
 }
