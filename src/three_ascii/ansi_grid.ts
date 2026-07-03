@@ -254,6 +254,7 @@ export class ThreeAsciiAnsiGridAssembler {
     lastRawBlue: number,
     lastFillGlyphIndex: number,
   ): string[][] {
+    const blockMode = terminalGlyphMode === GLYPH_MODE_BLOCKS;
     for (let row = 0; row < rows; row += 1) {
       const outputRow = grid[row];
       const rowOffset = row * columns;
@@ -274,7 +275,7 @@ export class ThreeAsciiAnsiGridAssembler {
           continue;
         }
 
-        const glyphKey = terminalGlyphMode === GLYPH_MODE_BLOCKS
+        const glyphKey = blockMode
           ? SOLID_BLOCK_GLYPH_KEY
           : fillGlyphKeyForIndex(terminalFillGlyphKeys, fillGlyphIndex);
         const colorOffset = index * 4;
@@ -283,7 +284,7 @@ export class ThreeAsciiAnsiGridAssembler {
         const rawBlue = colors[colorOffset + 2] ?? 0;
         if (
           rawRed === lastRawRed && rawGreen === lastRawGreen && rawBlue === lastRawBlue && glyphKey === lastGlyphKey &&
-          fillGlyphIndex === lastFillGlyphIndex
+          (blockMode || fillGlyphIndex === lastFillGlyphIndex)
         ) {
           outputRow[column] = lastCell;
           continue;
@@ -344,6 +345,7 @@ export class ThreeAsciiAnsiGridAssembler {
     lastRawBlue: number,
     lastFillGlyphIndex: number,
   ): string[][] {
+    const blockMode = terminalGlyphMode === GLYPH_MODE_BLOCKS;
     for (let row = 0; row < rows; row += 1) {
       const outputRow = grid[row];
       const rowOffset = row * columns;
@@ -365,7 +367,7 @@ export class ThreeAsciiAnsiGridAssembler {
           continue;
         }
 
-        const glyphKey = terminalGlyphMode === GLYPH_MODE_BLOCKS
+        const glyphKey = blockMode
           ? SOLID_BLOCK_GLYPH_KEY
           : fillGlyphKeyForIndex(terminalFillGlyphKeys, fillGlyphIndex);
         const colorOffset = index * 4;
@@ -374,7 +376,7 @@ export class ThreeAsciiAnsiGridAssembler {
         const rawBlue = colors[colorOffset + 2] as number;
         if (
           rawRed === lastRawRed && rawGreen === lastRawGreen && rawBlue === lastRawBlue && glyphKey === lastGlyphKey &&
-          fillGlyphIndex === lastFillGlyphIndex
+          (blockMode || fillGlyphIndex === lastFillGlyphIndex)
         ) {
           outputRow[column] = lastCell;
           continue;

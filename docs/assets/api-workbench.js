@@ -3571,6 +3571,7 @@ var ThreeAsciiAnsiGridAssembler = class {
     this.toByte.clear();
   }
   buildFillOnlyGrid(grid, columns2, rows2, fillGlyphs, colors, terminalGlyphMode, terminalFillGlyphKeys, lastForegroundKey, lastGlyphKey, lastCell, lastRawRed, lastRawGreen, lastRawBlue, lastFillGlyphIndex) {
+    const blockMode = terminalGlyphMode === GLYPH_MODE_BLOCKS;
     for (let row = 0; row < rows2; row += 1) {
       const outputRow = grid[row];
       const rowOffset = row * columns2;
@@ -3587,12 +3588,12 @@ var ThreeAsciiAnsiGridAssembler = class {
           column -= 1;
           continue;
         }
-        const glyphKey = terminalGlyphMode === GLYPH_MODE_BLOCKS ? SOLID_BLOCK_GLYPH_KEY : fillGlyphKeyForIndex(terminalFillGlyphKeys, fillGlyphIndex);
+        const glyphKey = blockMode ? SOLID_BLOCK_GLYPH_KEY : fillGlyphKeyForIndex(terminalFillGlyphKeys, fillGlyphIndex);
         const colorOffset = index * 4;
         const rawRed = colors[colorOffset] ?? 0;
         const rawGreen = colors[colorOffset + 1] ?? 0;
         const rawBlue = colors[colorOffset + 2] ?? 0;
-        if (rawRed === lastRawRed && rawGreen === lastRawGreen && rawBlue === lastRawBlue && glyphKey === lastGlyphKey && fillGlyphIndex === lastFillGlyphIndex) {
+        if (rawRed === lastRawRed && rawGreen === lastRawGreen && rawBlue === lastRawBlue && glyphKey === lastGlyphKey && (blockMode || fillGlyphIndex === lastFillGlyphIndex)) {
           outputRow[column] = lastCell;
           continue;
         }
@@ -3631,6 +3632,7 @@ var ThreeAsciiAnsiGridAssembler = class {
     return grid;
   }
   buildDenseFillOnlyGrid(grid, columns2, rows2, fillGlyphs, colors, terminalGlyphMode, terminalFillGlyphKeys, lastForegroundKey, lastGlyphKey, lastCell, lastRawRed, lastRawGreen, lastRawBlue, lastFillGlyphIndex) {
+    const blockMode = terminalGlyphMode === GLYPH_MODE_BLOCKS;
     for (let row = 0; row < rows2; row += 1) {
       const outputRow = grid[row];
       const rowOffset = row * columns2;
@@ -3647,12 +3649,12 @@ var ThreeAsciiAnsiGridAssembler = class {
           column -= 1;
           continue;
         }
-        const glyphKey = terminalGlyphMode === GLYPH_MODE_BLOCKS ? SOLID_BLOCK_GLYPH_KEY : fillGlyphKeyForIndex(terminalFillGlyphKeys, fillGlyphIndex);
+        const glyphKey = blockMode ? SOLID_BLOCK_GLYPH_KEY : fillGlyphKeyForIndex(terminalFillGlyphKeys, fillGlyphIndex);
         const colorOffset = index * 4;
         const rawRed = colors[colorOffset];
         const rawGreen = colors[colorOffset + 1];
         const rawBlue = colors[colorOffset + 2];
-        if (rawRed === lastRawRed && rawGreen === lastRawGreen && rawBlue === lastRawBlue && glyphKey === lastGlyphKey && fillGlyphIndex === lastFillGlyphIndex) {
+        if (rawRed === lastRawRed && rawGreen === lastRawGreen && rawBlue === lastRawBlue && glyphKey === lastGlyphKey && (blockMode || fillGlyphIndex === lastFillGlyphIndex)) {
           outputRow[column] = lastCell;
           continue;
         }

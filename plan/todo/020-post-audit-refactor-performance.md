@@ -182,8 +182,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   preserving the default report format.
 - Moved repeated benchmark best-of aggregation into the reusable performance API with direct tests and an updated stable
   API baseline.
-- Fixed compact monitor/demo window control visibility so minimized panes retain titlebar controls, and normalized
-  Three ASCII block-mode blank fill handling so invisible buckets do not render colored foreground spaces.
+- Fixed compact monitor/demo window control visibility so minimized panes retain titlebar controls, and normalized Three
+  ASCII block-mode blank fill handling so invisible buckets do not render colored foreground spaces.
 - Shared terminal-session id and title helpers between terminal and browser workbench adapters, removing duplicated
   session id scans and keeping web/console behavior aligned.
 - Added a benchmark-retained Three ASCII ANSI-grid shortcut for block-mode fill-only cells so visible block cells skip

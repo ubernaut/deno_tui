@@ -157,6 +157,34 @@ Deno.test("three ascii block mode keeps full-cell backgrounds without quantizing
   assertEquals(grid[0][3], "\x1b[48;2;0;255;0m \x1b[0m");
 });
 
+Deno.test("three ascii block mode treats visible fill buckets as the same full-cell block", () => {
+  const grid = buildThreeAsciiAnsiGrid({
+    columns: 3,
+    rows: 1,
+    fillGlyphs: new Float32Array([6, 10, 14]),
+    colors: new Float32Array([
+      0.1,
+      0.2,
+      0.3,
+      1,
+      0.1,
+      0.2,
+      0.3,
+      1,
+      0.1,
+      0.2,
+      0.3,
+      1,
+    ]),
+    terminalGlyphStyle: "blocks",
+    backgroundColor: 0x000000,
+  });
+
+  assertEquals(grid[0][0], "\x1b[48;2;89;124;149m \x1b[0m");
+  assertEquals(grid[0][1], grid[0][0]);
+  assertEquals(grid[0][2], grid[0][0]);
+});
+
 Deno.test("three ascii block mode ignores edge glyph promotion for solid color fidelity", () => {
   const grid = buildThreeAsciiAnsiGrid({
     columns: 1,
