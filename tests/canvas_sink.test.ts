@@ -173,6 +173,53 @@ Deno.test("ansi canvas sink preserves stdout terminal output path", () => {
   assertStringIncludes(output, "\x1b[2;1HC");
 });
 
+Deno.test("ansi canvas sink compacts styled row ranges before terminal writes", () => {
+  const chunks: Uint8Array[] = [];
+  const sink = new AnsiCanvasSink({
+    stdout: {
+      writeSync(data) {
+        chunks.push(data);
+        return data.length;
+      },
+    },
+  });
+
+  sink.flushRanges([
+    {
+      row: 0,
+      startColumn: 0,
+      values: [
+        "\x1b[48;2;1;2;3m \x1b[0m",
+        "\x1b[48;2;1;2;3m \x1b[0m",
+        "\x1b[38;2;255;0;0mA\x1b[0m\x1b[0m",
+        "\x1b[38;2;255;0;0mB\x1b[0m\x1b[0m",
+      ],
+    },
+  ], {
+    updatedObjects: 0,
+    renderedObjects: 0,
+    rerenderedObjects: 0,
+    intersectionUpdates: 0,
+    intersectionCandidateChecks: 0,
+    intersectionsDirty: false,
+    dirtyRectangles: 0,
+    dirtyRowRanges: 1,
+    dirtyRows: 1,
+    dirtyCells: 4,
+    fullRedraws: 0,
+    flushedCells: 4,
+  });
+
+  const output = new TextDecoder().decode(chunks[0]);
+  assertStringIncludes(output, "\x1b[48;2;1;2;3m  \x1b[0m");
+  assertStringIncludes(output, "\x1b[38;2;255;0;0mAB\x1b[0m\x1b[0m");
+  assertEquals(output.includes("\x1b[48;2;1;2;3m \x1b[0m\x1b[48;2;1;2;3m \x1b[0m"), false);
+  assertEquals(
+    output.includes("\x1b[38;2;255;0;0mA\x1b[0m\x1b[0m\x1b[38;2;255;0;0mB\x1b[0m\x1b[0m"),
+    false,
+  );
+});
+
 Deno.test("coalesceCanvasRowRanges groups sorted adjacent cells only", () => {
   const updates = [
     { row: 0, column: 0, value: "A" },

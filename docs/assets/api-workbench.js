@@ -2783,6 +2783,8 @@ var DrawObjectSpatialIndex = class _DrawObjectSpatialIndex {
 // src/canvas/sink.ts
 var textEncoder2 = new TextEncoder();
 var textDecoder3 = new TextDecoder();
+var MAX_ANSI_CELL_PARTS_CACHE_SIZE = 32768;
+var ansiCellPartsCache = /* @__PURE__ */ new Map();
 var AnsiCanvasSink = class {
   requiresCellUpdates = false;
   #stdout;
@@ -2796,20 +2798,15 @@ var AnsiCanvasSink = class {
   }
   flush(updates, _stats) {
     let drawSequence = "";
-    let lastRow = -1;
-    let lastColumn = -1;
-    for (const update of updates) {
-      const value = typeof update.value === "string" ? update.value : textDecoder3.decode(update.value);
-      if (update.row !== lastRow || update.column !== lastColumn + 1) {
-        drawSequence += moveCursor(update.row, update.column);
-      }
-      if (drawSequence.length + value.length > this.#flushLimit) {
+    for (let index = 0; index < updates.length; ) {
+      const span = compactAnsiUpdateSpan(updates, index);
+      drawSequence += moveCursor(span.row, span.column);
+      if (drawSequence.length + span.text.length > this.#flushLimit) {
         this.#stdout.writeSync(textEncoder2.encode(drawSequence));
-        drawSequence = moveCursor(update.row, update.column);
+        drawSequence = moveCursor(span.row, span.column);
       }
-      drawSequence += value;
-      lastRow = update.row;
-      lastColumn = update.column;
+      drawSequence += span.text;
+      index += span.cells;
     }
     if (drawSequence.length > 0) {
       this.#stdout.writeSync(textEncoder2.encode(drawSequence));
@@ -2820,14 +2817,15 @@ var AnsiCanvasSink = class {
     for (const range of ranges) {
       let column = range.startColumn;
       drawSequence += moveCursor(range.row, column);
-      for (const value of range.values) {
-        const text = typeof value === "string" ? value : textDecoder3.decode(value);
-        if (drawSequence.length + text.length > this.#flushLimit) {
+      for (let index = 0; index < range.values.length; ) {
+        const span = compactAnsiCellSpan(range.values, index);
+        if (drawSequence.length + span.text.length > this.#flushLimit) {
           this.#stdout.writeSync(textEncoder2.encode(drawSequence));
           drawSequence = moveCursor(range.row, column);
         }
-        drawSequence += text;
-        column += 1;
+        drawSequence += span.text;
+        column += span.cells;
+        index += span.cells;
       }
     }
     if (drawSequence.length > 0) {
@@ -2835,6 +2833,106 @@ var AnsiCanvasSink = class {
     }
   }
 };
+function compactAnsiUpdateSpan(updates, start) {
+  const firstUpdate = updates[start];
+  const first = splitAnsiCellValue(firstUpdate.value);
+  let text = first.text;
+  let index = start + 1;
+  let column = firstUpdate.column;
+  while (index < updates.length) {
+    const update = updates[index];
+    if (update.row !== firstUpdate.row || update.column !== column + 1) break;
+    const current = splitAnsiCellValue(update.value);
+    if (current.prefix !== first.prefix || current.suffix !== first.suffix) break;
+    text += current.text;
+    column = update.column;
+    index += 1;
+  }
+  return {
+    row: firstUpdate.row,
+    column: firstUpdate.column,
+    text: `${first.prefix}${text}${first.suffix}`,
+    cells: index - start
+  };
+}
+function compactAnsiCellSpan(values, start) {
+  const first = splitAnsiCellValue(values[start]);
+  let text = first.text;
+  let index = start + 1;
+  while (index < values.length) {
+    const current = splitAnsiCellValue(values[index]);
+    if (current.prefix !== first.prefix || current.suffix !== first.suffix) break;
+    text += current.text;
+    index += 1;
+  }
+  return {
+    text: `${first.prefix}${text}${first.suffix}`,
+    cells: index - start
+  };
+}
+function splitAnsiCellValue(value) {
+  const cell = typeof value === "string" ? value : textDecoder3.decode(value);
+  if (!cell.includes("\x1B[")) {
+    return { prefix: "", text: cell, suffix: "" };
+  }
+  const cached = ansiCellPartsCache.get(cell);
+  if (cached) return cached;
+  let textStart = 0;
+  let prefix = "";
+  while (textStart < cell.length) {
+    const sequence = readCsiSequenceAt2(cell, textStart);
+    if (!sequence) break;
+    prefix += sequence;
+    textStart += sequence.length;
+  }
+  const text = Array.from(cell.slice(textStart))[0];
+  if (!text || text.charCodeAt(0) === 27) {
+    return { prefix: "", text: cell, suffix: "" };
+  }
+  const suffix = cell.slice(textStart + text.length);
+  if (!isAnsiSuffix(suffix)) {
+    return { prefix: "", text: cell, suffix: "" };
+  }
+  const split = { prefix, text, suffix };
+  if (ansiCellPartsCache.size > MAX_ANSI_CELL_PARTS_CACHE_SIZE) {
+    ansiCellPartsCache.clear();
+  }
+  ansiCellPartsCache.set(cell, split);
+  return split;
+}
+function isAnsiSuffix(value) {
+  if (!value) return true;
+  let index = 0;
+  while (index < value.length) {
+    const sequence = readCsiSequenceAt2(value, index);
+    if (!sequence) return false;
+    index += sequence.length;
+  }
+  return true;
+}
+function readCsiSequenceAt2(value, start) {
+  if (value.charCodeAt(start) !== 27 || value[start + 1] !== "[") return void 0;
+  let index = start + 2;
+  while (index < value.length) {
+    const code = value.charCodeAt(index);
+    if (code >= 48 && code <= 63) {
+      index += 1;
+      continue;
+    }
+    break;
+  }
+  while (index < value.length) {
+    const code = value.charCodeAt(index);
+    if (code >= 32 && code <= 47) {
+      index += 1;
+      continue;
+    }
+    break;
+  }
+  const finalCode = value.charCodeAt(index);
+  if (!(finalCode >= 64 && finalCode <= 126)) return void 0;
+  return value.slice(start, index + 1);
+}
 function coalesceCanvasRowRanges(updates, target = []) {
   target.length = 0;
   let active2;

@@ -1,4 +1,5 @@
 import {
+  AnsiCanvasSink,
   AsyncScheduler,
   BenchmarkCase,
   BoxObject,
@@ -103,6 +104,33 @@ const threeAsciiReadbackPacked = new ArrayBuffer(threeAsciiReadbackLayout.byteLe
 const threeAsciiReadbackPackedFloats = new Float32Array(threeAsciiReadbackPacked);
 const threeAsciiReadbackViewCache = new ThreeAsciiReadbackViewCache();
 const threeAsciiGridAssembler = new ThreeAsciiAnsiGridAssembler({ reuseGrid: true });
+const ansiSinkStyledRangeValues = Array.from(
+  { length: 160 },
+  () => "\x1b[38;2;242;236;255;48;2;66;37;95m█\x1b[0m\x1b[0m",
+);
+const ansiSinkStyledRangeStats = {
+  updatedObjects: 0,
+  renderedObjects: 0,
+  rerenderedObjects: 0,
+  intersectionUpdates: 0,
+  intersectionCandidateChecks: 0,
+  intersectionsDirty: false,
+  dirtyRectangles: 0,
+  dirtyRowRanges: 1,
+  dirtyRows: 1,
+  dirtyCells: ansiSinkStyledRangeValues.length,
+  fullRedraws: 0,
+  flushedCells: ansiSinkStyledRangeValues.length,
+};
+let ansiSinkBytes = 0;
+const ansiSink = new AnsiCanvasSink({
+  stdout: {
+    writeSync(data) {
+      ansiSinkBytes += data.length;
+      return data.length;
+    },
+  },
+});
 const threeAsciiImageWidth = threeAsciiColumns * 8;
 const threeAsciiImageHeight = threeAsciiRows * 8;
 const threeAsciiImageBytesPerRow = threeAsciiImageWidth * 4;
@@ -1199,6 +1227,23 @@ export const benchmarkCases: BenchmarkCase[] = [
     iterations: 500,
     maxAverageMs: 5,
     run: runWorkbenchStringFrameFullRowWorkload,
+  },
+  {
+    name: "render/ansi-canvas-sink-styled-range-160",
+    category: "render",
+    description: "Flush a long truecolor terminal row range through the ANSI canvas sink with styled-run compaction.",
+    tags: ["render", "ansi", "canvas", "terminal"],
+    iterations: 1_000,
+    maxAverageMs: 2,
+    run: () => {
+      ansiSinkBytes = 0;
+      ansiSink.flushRanges([
+        { row: 0, startColumn: 0, values: ansiSinkStyledRangeValues },
+      ], ansiSinkStyledRangeStats);
+      if (ansiSinkBytes <= ansiSinkStyledRangeValues.length) {
+        throw new Error("ANSI sink emitted an unexpectedly small terminal sequence");
+      }
+    },
   },
   {
     name: "render/ansi-text-measure-crop-250",
