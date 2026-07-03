@@ -46,7 +46,6 @@ import {
   layoutWorkbenchTitlebarInto,
   layoutWorkbenchTopMenuItemRect,
   loadWorkbenchWorkspaceStorage,
-  maxTextWidthBy,
   normalizeWorkbenchWorkspaceName,
   persistWorkbenchWorkspaceStorage,
   prepareWorkbenchFrame,
@@ -244,6 +243,7 @@ import { SystemMonitor } from "./system_metrics.ts";
 import { requireInteractiveTerminal } from "./terminal_guard.ts";
 import { ThreePanelFrameView } from "./three_panel.ts";
 import { workbenchDataTablePageSize, workbenchDataTableRowsInto } from "./workbench_data_table.ts";
+import { explorerTextRowsInto, workbenchWindowContentSize } from "./workbench_content_size.ts";
 import { workbenchExplorerRowsInto } from "./workbench_explorer.ts";
 import { workbenchInspectorRowsInto } from "./workbench_inspector.ts";
 import { workbenchLogRowsInto } from "./workbench_logs.ts";
@@ -433,6 +433,7 @@ const dataTableTextRows: string[] = [];
 const dataTableBodyRows: RowStyle[] = [];
 const dataTableRenderRows: RowStyle[] = [];
 const explorerRenderRows: RowStyle[] = [];
+const explorerContentTextRows: string[] = [];
 const inspectorRenderRows: RowStyle[] = [];
 const inspectorActionTextRows: string[] = [];
 const inspectorWrappedTextRows: string[] = [];
@@ -440,6 +441,7 @@ const visualizationTextRows: string[] = [];
 const visualizationRenderRows: RowStyle[] = [];
 const threeFallbackRowsBuffer: RowStyle[] = [];
 const logRenderRows: RowStyle[] = [];
+const terminalOutputContentRows: string[] = [];
 const ASCII_DEMO_PRESET_IDS = asciiDemoPresetIds();
 const explorerKeys = new Set(["up", "down", "left", "right", "pageup", "pagedown", "home", "end", "space", "return"]);
 const htmlCssLayoutWindowOption: NewWindowOption = {
@@ -2688,54 +2690,25 @@ function windowScroll(id: WindowId): ScrollAreaController {
 }
 
 function windowContentSize(id: WindowId, viewport: Rectangle): { width: number; height: number } {
-  const baseWidth = Math.max(1, viewport.width);
-  const baseHeight = Math.max(1, viewport.height);
-  if (id === "explorer") {
-    const entries = explorer.entries();
-    return {
-      width: Math.max(baseWidth, maxTextWidthBy(entries, (entry) => entry.text) + 2),
-      height: Math.max(baseHeight, entries.length),
-    };
+  const outputLines = terminalOutputSession.output.lines.peek();
+  terminalOutputContentRows.length = outputLines.length;
+  for (let index = 0; index < outputLines.length; index += 1) {
+    terminalOutputContentRows[index] = formatTerminalOutputLine(outputLines[index]!, { sourcePrefix: true });
   }
-  if (id === "controls") {
-    return { width: baseWidth, height: Math.max(baseHeight, 44) };
-  }
-  if (id === "inspector") {
-    return { width: baseWidth, height: Math.max(baseHeight, 18) };
-  }
-  if (id === "logs") {
-    return { width: Math.max(baseWidth, maxTextWidth(docs) + 2), height: Math.max(baseHeight, docs.length) };
-  }
-  if (id === "data") {
-    let width = 8;
-    for (let index = 0; index < columns.length; index += 1) {
-      width += (columns[index]?.width ?? 12) + 2;
-    }
-    return { width: Math.max(baseWidth, width), height: Math.max(baseHeight, rows.length + 4) };
-  }
-  if (id === "three") {
-    return { width: baseWidth, height: baseHeight };
-  }
-  if (id === "htmlLayout") {
-    return { width: baseWidth, height: Math.max(baseHeight, 20) };
-  }
-  if (id === TERMINAL_SHELL_WINDOW_ID) {
-    return { width: Math.max(baseWidth, 72), height: Math.max(baseHeight, 24) };
-  }
-  if (id === TERMINAL_OUTPUT_WINDOW_ID) {
-    const outputWidth = maxTextWidthBy(
-      terminalOutputSession.output.lines.peek(),
-      (line) => formatTerminalOutputLine(line, { sourcePrefix: true }),
-    );
-    return {
-      width: Math.max(baseWidth, Math.min(120, Math.max(64, outputWidth + 2))),
-      height: Math.max(baseHeight, terminalOutputSession.output.lines.peek().length + 4, 16),
-    };
-  }
-  if (isVisualizationWindow(id)) {
-    return visualizationWindowContentSize(id, viewport, baseWidth, baseHeight);
-  }
-  return { width: baseWidth, height: Math.max(baseHeight, 16) };
+  return workbenchWindowContentSize({
+    id,
+    viewport,
+    docs,
+    explorerRows: explorerTextRowsInto(explorerContentTextRows, explorer.entries(), (entry) => entry.text),
+    dataColumns: columns,
+    dataRowCount: rows.length,
+    terminalOutputLines: terminalOutputContentRows,
+    terminalOutputWindowId: TERMINAL_OUTPUT_WINDOW_ID,
+    terminalShellWindowId: TERMINAL_SHELL_WINDOW_ID,
+    isVisualizationWindow: (candidate) => isVisualizationWindow(candidate as WindowId),
+    visualizationContentSize: (candidate, bounds, baseWidth, baseHeight) =>
+      visualizationWindowContentSize(candidate as VisualizationWindowId, bounds, baseWidth, baseHeight),
+  });
 }
 
 function visualizationWindowContentSize(

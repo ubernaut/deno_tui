@@ -201,3 +201,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   and caller-owned row reuse.
 - Extracted Three ASCII config modal row render command projection into the shared modal helper with tests for command
   ordering, selected-state propagation, and caller-owned command reuse.
+- Extracted API workbench scrollable content-size decisions into a renderer-neutral helper with tests for built-ins,
+  terminal clamps, visualization delegation, data widths, and reusable text projection.
