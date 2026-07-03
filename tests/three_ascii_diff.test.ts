@@ -55,6 +55,38 @@ Deno.test("three ascii grid diff clips changed cells to the active view", () => 
   assertEquals(rerenderCells[1], undefined);
 });
 
+Deno.test("three ascii grid diff keeps sparse row fallback cells stable", () => {
+  const previous = createThreeAsciiGridDiffState();
+  const rerenderCells: Array<Set<number> | undefined> = [];
+
+  assertEquals(
+    queueChangedThreeAsciiGridCells(
+      [["A"], undefined, ["B", "C"]],
+      { column: 0, row: 0, width: 3, height: 3 },
+      { columns: 4, rows: 4 },
+      rerenderCells,
+      previous,
+    ),
+    true,
+  );
+  assertEquals([...rerenderCells[0]!], [0, 1, 2]);
+  assertEquals([...rerenderCells[1]!], [0, 1, 2]);
+  assertEquals([...rerenderCells[2]!], [0, 1, 2]);
+
+  rerenderCells.length = 0;
+  assertEquals(
+    queueChangedThreeAsciiGridCells(
+      [["A", " ", " "], [" ", " ", " "], ["B", "C", " "]],
+      { column: 0, row: 0, width: 3, height: 3 },
+      { columns: 4, rows: 4 },
+      rerenderCells,
+      previous,
+    ),
+    false,
+  );
+  assertEquals(rerenderCells.length, 0);
+});
+
 Deno.test("three ascii grid diff clears retained state and supports fractional fallback queuing", () => {
   const previous = createThreeAsciiGridDiffState();
   const rerenderCells: Array<Set<number> | undefined> = [];

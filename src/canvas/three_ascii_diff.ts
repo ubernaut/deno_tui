@@ -126,6 +126,19 @@ function queueChangedFullyVisibleIntegerCells(options: QueueFullyVisibleIntegerC
     const canvasRow = rectangleRow + row;
     let queueRow: Set<number> | undefined;
 
+    if (outputRow && outputRow.length >= columns) {
+      for (let column = 0; column < columns; column += 1) {
+        const index = rowOffset + column;
+        const cell = outputRow[column] as string;
+        if (cacheValid && previous.cells[index] === cell) continue;
+        previous.cells[index] = cell;
+        queueRow ??= rerenderCells[canvasRow] ??= new Set<number>();
+        queueRow.add(rectangleColumn + column);
+        changed = true;
+      }
+      continue;
+    }
+
     for (let column = 0; column < columns; column += 1) {
       const index = rowOffset + column;
       const cell = outputRow?.[column] ?? " ";

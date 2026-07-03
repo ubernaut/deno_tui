@@ -207,3 +207,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   shell and process terminal title composition aligned outside the workbench renderer.
 - Moved Three ASCII config modal title composition into the shared workbench ASCII helper with direct tests, trimming
   renderer-local preset/glyph label formatting from the terminal workbench.
+- Added a dense-row fast path for fully visible Three ASCII grid diffing, reducing the focused
+  `three-ascii-frame-diff-96x40` best-of benchmark from 1.881ms to 1.762ms while preserving sparse-row fallback cells.
