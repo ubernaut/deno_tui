@@ -155,12 +155,7 @@ import {
   workbenchButtonRowRenderCommandsInto,
   wrappedControlOptionRowCount,
 } from "../src/app/workbench_control_layout.ts";
-import {
-  maxTextWidth,
-  type VisibleMenuSlice,
-  visibleMenuSliceInto,
-  wrapPlainTextInto,
-} from "../src/app/workbench_text.ts";
+import { maxTextWidth, type VisibleMenuSlice, visibleMenuSliceInto } from "../src/app/workbench_text.ts";
 import {
   nextWorkbenchTerminalSessionId,
   resolveWorkbenchShellBackend,
@@ -246,6 +241,7 @@ import { makeStyle } from "./styles.ts";
 import { SystemMonitor } from "./system_metrics.ts";
 import { requireInteractiveTerminal } from "./terminal_guard.ts";
 import { ThreePanelFrameView } from "./three_panel.ts";
+import { workbenchInspectorRowsInto } from "./workbench_inspector.ts";
 import { writeWorkbenchThreeGrid } from "./workbench_three_grid.ts";
 import {
   threeRendererModeLabel,
@@ -1528,42 +1524,22 @@ function renderExplorer(frame: Frame, rect: Rectangle): void {
 }
 
 function renderInspector(frame: Frame, rect: Rectangle): void {
-  const t = theme();
-  inspectorRenderRows.length = 0;
-  inspectorRenderRows.push(
-    { text: " Composable API surfaces ", fg: t.background, bg: t.accent, bold: true },
-    { text: "explorer  FileExplorerController", fg: t.good, bg: t.surface },
-    { text: "menu      MenuBarController", fg: t.good, bg: t.surface },
-    { text: "layout    WindowManagerController", fg: t.good, bg: t.surface },
-    { text: "viewport  ScrollAreaController", fg: t.good, bg: t.surface },
-    { text: "data      DataTableController", fg: t.good, bg: t.surface },
-    { text: "controls  SliderController / CheckBoxController", fg: t.good, bg: t.surface },
-    { text: "three     ThreePanelFrameView + Acerola ASCII", fg: t.good, bg: t.surface },
-    { text: `theme     ${themes[themeIndex.peek()]!.label}`, fg: t.warn, bg: t.surface, bold: true },
-    { text: "", bg: t.surface },
-    { text: " Recent actions ", fg: t.background, bg: t.border, bold: true },
+  writeRows(
+    frame,
+    rect,
+    workbenchInspectorRowsInto(inspectorRenderRows, {
+      width: rect.width,
+      height: rect.height,
+      themeLabel: themes[themeIndex.peek()]!.label,
+      logs: commandLog.peek(),
+      theme: theme(),
+      fit,
+      buffers: {
+        actionTextRows: inspectorActionTextRows,
+        wrappedTextRows: inspectorWrappedTextRows,
+      },
+    }),
   );
-  const availableActionRows = Math.max(0, rect.height - inspectorRenderRows.length);
-  inspectorActionTextRows.length = 0;
-  if (availableActionRows > 0) {
-    const logs = commandLog.peek();
-    const start = Math.max(0, logs.length - Math.max(4, availableActionRows));
-    for (let index = start; index < logs.length; index += 1) {
-      const wrapped = wrapPlainTextInto(inspectorWrappedTextRows, `• ${logs[index]!}`, rect.width, fit);
-      for (let row = 0; row < wrapped.length; row += 1) {
-        inspectorActionTextRows.push(wrapped[row]!);
-      }
-    }
-    const firstActionRow = Math.max(0, inspectorActionTextRows.length - availableActionRows);
-    for (let index = firstActionRow; index < inspectorActionTextRows.length; index += 1) {
-      inspectorRenderRows.push({
-        text: inspectorActionTextRows[index]!,
-        fg: t.text,
-        bg: t.panelSoft,
-      });
-    }
-  }
-  writeRows(frame, rect, inspectorRenderRows);
 }
 
 function renderData(frame: Frame, rect: Rectangle): void {
