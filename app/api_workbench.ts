@@ -1077,10 +1077,17 @@ function draw(): void {
   renderActiveDropdownOverlay(frame);
   renderModalOverlay(frame);
   for (let row = 0; row < height; row += 1) {
-    lineSignals[row]!.value = renderFrameRow(frame[row] ?? [], width);
+    const nextLine = renderFrameRow(frame[row] ?? [], width);
+    const signal = lineSignals[row]!;
+    if (signal.peek() !== nextLine) {
+      signal.value = nextLine;
+    }
   }
   for (let row = height; row < lineSignals.length; row += 1) {
-    lineSignals[row]!.value = "";
+    const signal = lineSignals[row]!;
+    if (signal.peek() !== "") {
+      signal.value = "";
+    }
   }
 }
 

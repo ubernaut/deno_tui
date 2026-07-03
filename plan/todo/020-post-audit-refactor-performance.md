@@ -287,3 +287,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   guard stays reusable while `scripts/benchmark_cases.ts` remains easier to scan.
 - Fixed Three ASCII frame pacing so render duration is subtracted from the next timer delay instead of being added on
   top of it; the default workbench Three pane keeps the same 18 FPS cadence as dynamic Three visualization panes.
+- Skipped unchanged workbench line-signal assignments so animated Three panes do not force every terminal row through
+  `TextObject` propagation and range flushing when only a subset of rows changed.
